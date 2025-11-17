@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/025/trial-run-report.schema.json",
+  "title": "TrialRunReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["runId", "ok"],
+  "properties": {
+    "runId": { "type": "string", "minLength": 1 },
+    "ok": { "type": "boolean" },
+    "manifest": { "$ref": "./module-manifest.schema.json" },
+    "staticIr": { "$ref": "./static-ir.schema.json" },
+    "environment": { "$ref": "./environment-ir.schema.json" },
+    "evidence": {
+      "$ref": "../../../020-runtime-internals-contracts/contracts/schemas/runtime-evidence-package.schema.json"
+    },
+    "summary": {
+      "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+    },
+    "error": {
+      "$ref": "../../../016-serializable-diagnostics-and-identity/contracts/schemas/serializable-error-summary.schema.json"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/010-form-api-perf-boundaries/schemas/trait-check-event.schema.json",
+  "title": "TraceEvent (trait:check)",
+  "description": "A DynamicTrace event item (Spec 009) whose kind is `trait:check`. This feature defines the event payload schema in `data`.",
+  "allOf": [
+    {
+      "$ref": "../../../009-txn-patch-dirtyset/contracts/schemas/dynamic-trace.schema.json#/properties/events/items"
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["txnId", "kind", "data"],
+      "properties": {
+        "txnId": { "type": "string", "minLength": 1 },
+        "nodeId": { "type": "string", "minLength": 1, "description": "Static IR node id for this check step (when available)." },
+        "kind": { "const": "trait:check" },
+        "data": { "$ref": "./trait-check-data.schema.json" }
+      }
+    }
+  ]
+}

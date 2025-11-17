@@ -1,0 +1,244 @@
+{
+  "protocolVersion": "v1",
+  "kitId": "imd/www2-default-ui",
+  "components": [
+    {
+      "componentKey": "imd/pro-button",
+      "tier": "pro",
+      "tags": [
+        "button",
+        "按钮",
+        "disabled",
+        "禁用",
+        "loading",
+        "加载中"
+      ],
+      "dependencies": [
+        "lodash-es",
+        "ahooks"
+      ],
+      "registryDependencies": [
+        "ui-button",
+        "ui-loading",
+        "ui-tooltip",
+        "class-generator"
+      ],
+      "props": [
+        {
+          "name": "debounceTime",
+          "bindable": true,
+          "required": false,
+          "type": "number",
+          "description": "防抖时间，单位毫秒，默认 300ms"
+        },
+        {
+          "name": "handleLoading",
+          "bindable": true,
+          "required": false,
+          "type": "boolean"
+        },
+        {
+          "name": "icon",
+          "bindable": true,
+          "required": false,
+          "type": "React.ReactNode",
+          "description": "图标，当按钮只显示图标时使用"
+        },
+        {
+          "name": "leftIcon",
+          "bindable": true,
+          "required": false,
+          "type": "React.ReactNode",
+          "description": "左侧图标"
+        },
+        {
+          "name": "loading",
+          "bindable": true,
+          "required": false,
+          "type": "boolean",
+          "description": "是否显示加载状态"
+        },
+        {
+          "name": "rightIcon",
+          "bindable": true,
+          "required": false,
+          "type": "React.ReactNode",
+          "description": "右侧图标"
+        },
+        {
+          "name": "tips",
+          "bindable": true,
+          "required": false,
+          "type": "React.ReactNode",
+          "description": "提示文本，鼠标悬停时显示"
+        }
+      ],
+      "events": [
+        {
+          "name": "onError",
+          "payloadType": "(e: unknown) => void"
+        },
+        {
+          "name": "onSubmit",
+          "payloadType": "() => Promise<boolean> | void",
+          "description": "点击事件处理函数"
+        }
+      ],
+      "slots": [],
+      "source": {
+        "kind": "imd_registry",
+        "componentId": "pro-button",
+        "files": [
+          "pro-button/index.tsx"
+        ]
+      }
+    },
+    {
+      "componentKey": "imd/pro-table",
+      "tier": "pro",
+      "tags": [
+        "table",
+        "data table",
+        "pro table",
+        "advanced table",
+        "表格",
+        "数据表",
+        "复杂表格",
+        "数据管理"
+      ],
+      "dependencies": [
+        "@tanstack/react-table",
+        "@tanstack/react-virtual",
+        "lodash-es",
+        "tailwind-merge",
+        "tailwind-variants",
+        "@radix-ui/react-context",
+        "@radix-ui/react-presence",
+        "@radix-ui/react-primitive"
+      ],
+      "registryDependencies": [
+        "i18n",
+        "pro-button",
+        "pro-pagination",
+        "pro-popover",
+        "ui-action-list",
+        "ui-checkbox",
+        "ui-radio-group",
+        "ui-spin"
+      ],
+      "source": {
+        "kind": "imd_registry",
+        "componentId": "pro-table",
+        "files": [
+          "pro-table/index.ts",
+          "pro-table/icon.tsx",
+          "pro-table/typings.d.ts"
+        ]
+      }
+    },
+    {
+      "componentKey": "imd/ui-button",
+      "tier": "ui",
+      "description": "按钮组件，支持多种样式变体（contained、outlined、text）、颜色主题、尺寸和图标，包含中文字符自动间距功能",
+      "tags": [
+        "button",
+        "contained",
+        "实心",
+        "outlined",
+        "描边",
+        "text",
+        "文字",
+        "icon",
+        "图标",
+        "size",
+        "尺寸",
+        "color",
+        "颜色",
+        "chinese-spacing",
+        "中文字符间距",
+        "按钮",
+        "图标按钮",
+        "disabled",
+        "禁用",
+        "loading",
+        "加载中"
+      ],
+      "dependencies": [
+        "@imd/base-button"
+      ],
+      "registryDependencies": [
+        "ui-loading"
+      ],
+      "props": [
+        {
+          "name": "asChild",
+          "bindable": false,
+          "required": false,
+          "type": "boolean",
+          "description": "启用插槽模式，允许将按钮行为应用到自定义元素上"
+        },
+        {
+          "name": "color",
+          "bindable": true,
+          "required": false,
+          "type": "ButtonColor",
+          "description": "按钮颜色主题\n- primary: 主要颜色，用于重要操作\n- secondary: 次要颜色，用于辅助操作\n- default: 默认颜色，用于一般操作\n- error: 错误颜色，用于危险操作\n- light-error: 浅错误颜色，用于错误提示\n- linear-gradient: 渐变色，用于特殊场景\n- search: 搜索颜色，用于搜索相关操作\n- reset: 重置颜色，用于重置操作"
+        },
+        {
+          "name": "size",
+          "bindable": true,
+          "required": false,
+          "type": "ButtonSize",
+          "description": "按钮尺寸"
+        },
+        {
+          "name": "variant",
+          "bindable": true,
+          "required": false,
+          "type": "ButtonVariant",
+          "description": "按钮变体风格"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "source": {
+        "kind": "imd_registry",
+        "componentId": "ui-button",
+        "files": [
+          "ui-button/index.tsx"
+        ]
+      }
+    },
+    {
+      "componentKey": "imd/ui-table",
+      "tier": "ui",
+      "tags": [
+        "table",
+        "data table",
+        "表格",
+        "数据表",
+        "列表",
+        "数据展示"
+      ],
+      "dependencies": [],
+      "registryDependencies": [],
+      "props": [
+        {
+          "name": "borderType",
+          "bindable": true,
+          "required": false,
+          "type": "BorderType"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "source": {
+        "kind": "imd_registry",
+        "componentId": "ui-table",
+        "files": [
+          "ui-table/index.tsx"
+        ]
+      }
+    }
+  ]
+}

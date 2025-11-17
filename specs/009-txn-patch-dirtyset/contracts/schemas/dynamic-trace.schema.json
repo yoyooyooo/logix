@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/009-txn-patch-dirtyset/schemas/dynamic-trace.schema.json",
+  "title": "DynamicTrace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meta", "txns", "events"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["moduleId", "instanceId"],
+      "properties": {
+        "moduleId": { "type": "string", "minLength": 1 },
+        "instanceId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "txns": { "type": "array", "items": { "$ref": "./txn-meta.schema.json" } },
+    "events": {
+      "type": "array",
+      "description": "Light/full diagnostic events in stable order (recommended: ascending eventSeq).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["eventSeq", "eventId", "at", "level", "moduleId", "instanceId", "kind"],
+        "properties": {
+          "eventSeq": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonic sequence within an instance. Used for stable ordering and deduplication."
+          },
+          "eventId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Deterministic, unique per instance. Must be derived from (instanceId, eventSeq). Recommended format: `${instanceId}::e${eventSeq}`."
+          },
+          "at": { "type": "number" },
+          "level": { "type": "string", "enum": ["light", "sampled", "full"] },
+          "moduleId": { "type": "string", "minLength": 1 },
+          "instanceId": { "type": "string", "minLength": 1 },
+          "txnId": { "type": "string" },
+          "nodeId": { "type": "string" },
+          "kind": { "type": "string", "minLength": 1 },
+          "data": {
+            "description": "Optional event payload. Must be JSON-serializable and slim. Default soft budget: 4KB (estimated by JSON string length); omit/truncate when over budget."
+          }
+        }
+      }
+    }
+  }
+}

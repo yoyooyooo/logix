@@ -1,0 +1,36 @@
+{
+  "name": "logix-galaxy-api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "dev:once": "tsx src/main.ts",
+    "smoke:pg": "tsx scripts/pg-smoke.ts",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed",
+    "test:cache": "vitest run --cache",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@effect/cluster": "0.56.0",
+    "@effect/experimental": "0.58.0",
+    "@effect/platform": "0.94.0",
+    "@effect/platform-node": "0.104.0",
+    "@effect/rpc": "0.73.0",
+    "@effect/sql": "0.49.0",
+    "@effect/sql-pg": "0.50.0",
+    "@effect/workflow": "0.16.0",
+    "better-auth": "^1.4.9",
+    "dotenv": "^16.4.7",
+    "effect": "3.19.13",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.1",
+    "@types/pg": "^8.15.4",
+    "tsx": "^4.19.2",
+    "typescript": "5.8.2"
+  }
+}

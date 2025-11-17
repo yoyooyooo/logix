@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-28T20:26:23.562Z",
+    "from": {
+      "file": "specs/047-core-ng-full-cutover-gate/perf/before.node.default.worktree.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "to": {
+      "file": "specs/047-core-ng-full-cutover-gate/perf/after.node.default.worktree.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 1,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=800 after=2000 (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.heapDeltaBytes.median",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 57951352
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 57951464
+          },
+          "message": "runtime.heapDeltaBytes.median(points) unit=bytes: before[value=57951352 ok=36 unavailable=0 missing=0] after[value=57951464 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.heapDeltaBytes.p95",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 58646712
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 58673976
+          },
+          "message": "runtime.heapDeltaBytes.p95(points) unit=bytes: before[value=58646712 ok=36 unavailable=0 missing=0] after[value=58673976 ok=36 unavailable=0 missing=0]"
+        }
+      ]
+    }
+  ]
+}

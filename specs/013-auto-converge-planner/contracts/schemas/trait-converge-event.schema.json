@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/trait-converge-event.schema.json",
+  "title": "TraceEvent (trait:converge)",
+  "description": "A Spec 009 DynamicTrace event whose kind is `trait:converge`. Use level-specific schemas to enforce light/full payload constraints.",
+  "oneOf": [
+    { "$ref": "./trait-converge-event.light.schema.json" },
+    { "$ref": "./trait-converge-event.sampled.schema.json" },
+    { "$ref": "./trait-converge-event.full.schema.json" }
+  ]
+}

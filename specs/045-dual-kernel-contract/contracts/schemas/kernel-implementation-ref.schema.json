@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "logix://specs/045-dual-kernel-contract/contracts/schemas/kernel-implementation-ref.schema.json",
+  "title": "KernelImplementationRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kernelId", "packageName"],
+  "properties": {
+    "kernelId": {
+      "type": "string",
+      "description": "Requested kernel family id (not a version number). Actual activation/fallback must be interpreted via RuntimeServicesEvidence.",
+      "enum": ["core", "core-ng"]
+    },
+    "packageName": {
+      "type": "string",
+      "description": "The npm package that provides the kernel implementation."
+    },
+    "packageVersion": {
+      "type": "string",
+      "description": "Optional semver for explainability (not used as a semantic anchor)."
+    },
+    "buildId": {
+      "type": "string",
+      "description": "Optional build hash/id for evidence diff explainability."
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "Optional capability labels for explainability only; must not become implicit semantic switches.",
+      "items": { "type": "string" }
+    }
+  }
+}

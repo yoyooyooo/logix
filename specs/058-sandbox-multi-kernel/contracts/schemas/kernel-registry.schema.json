@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/058-sandbox-multi-kernel/contracts/schemas/kernel-registry.schema.json",
+  "title": "KernelRegistry",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kernels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "intent-flow://specs/058-sandbox-multi-kernel/contracts/schemas/kernel-variant.schema.json"
+      },
+      "description": "Available kernel variants. Order should be stable (recommend: registration order)."
+    },
+    "defaultKernelId": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Default kernel when no kernelId is requested and the fallback target when allowed. Required when multiple kernels exist."
+    },
+    "allowCrossOrigin": {
+      "type": "boolean",
+      "description": "Whether cross-origin kernel resources are allowed. Default should be false; enable only when CORS and audit requirements are satisfied."
+    }
+  },
+  "required": ["kernels"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kernels": { "minItems": 2 }
+        },
+        "required": ["kernels"]
+      },
+      "then": {
+        "required": ["defaultKernelId"]
+      }
+    }
+  ]
+}

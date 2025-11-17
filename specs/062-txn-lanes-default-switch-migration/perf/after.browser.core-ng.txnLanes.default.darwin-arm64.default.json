@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-30T18:12:33.790Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2025-12-29",
+    "matrixHash": "06ffcdd64a4574fb0315e41f9fc0f33ce107bd4f8807b237acfcc23ce0cfe48f",
+    "git": {
+      "branch": "dev",
+      "commit": "6312fd64cd3c1819ce8ab1c995c47927e9390dcf",
+      "dirty": true
+    },
+    "config": {
+      "runs": 30,
+      "warmupDiscard": 5,
+      "timeoutMs": 20000,
+      "headless": true,
+      "profile": "default",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "txnLanes.urgentBacklog",
+      "title": "txn lanes: urgent interaction under non-urgent backlog (off vs on)",
+      "priority": "P1",
+      "primaryAxis": "steps",
+      "budgets": [
+        {
+          "id": "urgent.p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.urgentToStableMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "urgent.p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.urgentToStableMs",
+          "p95Ms": 100
+        },
+        {
+          "id": "catchUp.p95<=200ms",
+          "type": "absolute",
+          "metric": "runtime.backlogCatchUpMs",
+          "p95Ms": 200
+        },
+        {
+          "id": "catchUp.p95<=500ms",
+          "type": "absolute",
+          "metric": "runtime.backlogCatchUpMs",
+          "p95Ms": 500
+        }
+      ],
+      "requiredEvidence": [
+        "txnLanes.mode",
+        "txnLanes.budgetMs",
+        "txnLanes.maxLagMs",
+        "budget.cutOffCount"
+      ],
+      "metricCategories": {
+        "e2e.urgentToStableMs": "e2e",
+        "runtime.backlogCatchUpMs": "runtime"
+      },
+      "points": [
+        {
+          "params": {
+            "steps": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 25.200000047683716,
+                "p95Ms": 27.199999928474426
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 49.89999997615814,
+                "p95Ms": 52.40000009536743
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "default"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "steps": 800
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 25,
+                "p95Ms": 26.799999952316284
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 49.89999997615814,
+                "p95Ms": 51.39999997615814
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "default"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "steps": 2000
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 21.699999928474426,
+                "p95Ms": 22.899999976158142
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 50.199999928474426,
+                "p95Ms": 51.299999952316284
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "default"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "urgent.p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 100
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=200ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 200
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=500ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 500
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

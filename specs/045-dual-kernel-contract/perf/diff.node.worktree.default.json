@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-28T10:48:55.262Z",
+    "from": {
+      "file": "specs/045-dual-kernel-contract/perf/before.node.worktree.default.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "to": {
+      "file": "specs/045-dual-kernel-contract/perf/after.node.worktree.default.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.heapDeltaBytes.median",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 33,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 121623696
+          },
+          "after": {
+            "ok": 33,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 123288480
+          },
+          "message": "runtime.heapDeltaBytes.median(points) unit=bytes: before[value=121623696 ok=33 unavailable=3 missing=0] after[value=123288480 ok=33 unavailable=3 missing=0]"
+        },
+        {
+          "name": "runtime.heapDeltaBytes.p95",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 33,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 218379480
+          },
+          "after": {
+            "ok": 33,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 219367680
+          },
+          "message": "runtime.heapDeltaBytes.p95(points) unit=bytes: before[value=218379480 ok=33 unavailable=3 missing=0] after[value=219367680 ok=33 unavailable=3 missing=0]"
+        }
+      ],
+      "notes": "stabilityWarning: metric=runtime.txnCommitMs {convergeMode=full&dirtyRootsRatio=0.25&steps=800} baselineP95=39.73ms afterP95=46.38ms diff=6.65ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

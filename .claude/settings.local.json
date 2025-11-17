@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(codex --help:*)",
+      "Bash(codex exec --help:*)",
+      "Bash(codex exec:*)",
+      "Bash(jq:*)",
+      "Bash(xargs -I {} jq '.payload | has(\"\"\"\"{}\"\"\"\")' /Users/yoyo/.codex/sessions/2025/11/03/rollout-2025-11-03T10-35-43-019a4792-048d-7b82-ac45-1c0ec397f21d.jsonl)",
+      "Bash(cat:*)"
+    ]
+  }
+}

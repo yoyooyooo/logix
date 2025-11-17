@@ -1,0 +1,71 @@
+#!/usr/bin/env node
+// 从 lib 目录名推导宏，调用 skt 生成 lib 模块骨架
+import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+
+function toCamel(kebab) {
+  const parts = kebab.split('-').filter(Boolean)
+  if (!parts.length) return ''
+  const [head, ...rest] = parts
+  return head + rest.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('')
+}
+
+function resolveSktBin() {
+  if (process.env.SKT_BIN) return process.env.SKT_BIN
+  const home = process.env.HOME || ''
+  const wrapper = path.join(home, 'bin/skt')
+  if (existsSync(wrapper)) return wrapper
+  const guess = path.join(
+    home,
+    'Documents/code/personal/skill-template/packages/cli/dist/skt.js'
+  )
+  if (existsSync(guess)) return `node ${guess}`
+  return 'skt'
+}
+
+function parseArgs(argv) {
+  const args = argv.slice(2)
+  if (!args.length || args.includes('-h') || args.includes('--help')) {
+    console.log(
+      'Usage: scaffold-lib.mjs <lib-dir-name> [--write] [--dry-run]\n' +
+        'Example: scaffold-lib.mjs string-utils --write'
+    )
+    process.exit(0)
+  }
+  const name = args[0]
+  let write = false
+  let dryRun = true
+  for (let i = 1; i < args.length; i++) {
+    const a = args[i]
+    if (a === '--write') write = true
+    else if (a === '--dry-run') dryRun = true
+  }
+  if (write) dryRun = false
+  return { name, dryRun }
+}
+
+function main() {
+  const { name, dryRun } = parseArgs(process.argv)
+  const macros = {
+    LIB_DIR: name,
+    LIB_EXPORT: toCamel(name),
+  }
+  const skt = resolveSktBin()
+  const templateRoot = '.codex/skills/unit-creator'
+  const templateName = 'lib-basic'
+  const root = '.'
+  const macroJson = JSON.stringify(macros)
+
+  const cmd = `${skt} generate --template ${templateName} --template-root ${templateRoot} --root ${root} --macros '${macroJson}' ${
+    dryRun ? '--dry-run' : '--no-dry-run --overwrite'
+  } --plan-level brief --json`
+
+  const res = spawnSync(cmd, {
+    shell: true,
+    stdio: 'inherit',
+  })
+  process.exit(res.status ?? 0)
+}
+
+main()

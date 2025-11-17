@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ModuleRuntimeIdentity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["moduleId", "instanceId"],
+  "properties": {
+    "moduleId": { "type": "string", "minLength": 1 },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "runtimeLabel": { "type": "string", "minLength": 1 }
+  }
+}

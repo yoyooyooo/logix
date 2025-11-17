@@ -1,0 +1,1218 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-31T05:09:11.428Z",
+    "from": {
+      "file": "specs/046-core-ng-roadmap/perf/before.browser.38db2b05.darwin-arm64.default.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "to": {
+      "file": "specs/046-core-ng-roadmap/perf/after.browser.c2e7456d.darwin-arm64.default.json",
+      "commit": "c2e7456d498ebd1465d94ec4b6e8535b726ea8cc"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true",
+        "git.commit: before=38db2b0525e00e98fb24f696e7332dc9e89bbf40 after=c2e7456d498ebd1465d94ec4b6e8535b726ea8cc"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 29,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=full&dirtyRootsRatio=0.005}: before=800 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=full&dirtyRootsRatio=0.05}: before=800 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=full&dirtyRootsRatio=0.25}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=full&dirtyRootsRatio=0.75}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=dirty&dirtyRootsRatio=0.05}: before=800 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=dirty&dirtyRootsRatio=0.25}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=dirty&dirtyRootsRatio=0.75}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=auto&dirtyRootsRatio=0.05}: before=800 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=auto&dirtyRootsRatio=0.25}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=full&dirtyRootsRatio=0.005}: before=800 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=full&dirtyRootsRatio=0.05}: before=800 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=full&dirtyRootsRatio=0.25}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=full&dirtyRootsRatio=0.75}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=dirty&dirtyRootsRatio=0.05}: before=800 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=dirty&dirtyRootsRatio=0.25}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=dirty&dirtyRootsRatio=0.75}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=auto&dirtyRootsRatio=0.05}: before=800 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=auto&dirtyRootsRatio=0.25}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.005
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.005}: before=800 after=2000 (before:denominator:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05}: before=800 after=2000 (before:numerator:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.25}: before=200 after=2000 (before:numerator:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.75}: before=200 after=2000 (before:numerator:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.05}: before=800 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.25}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=200 after=2000 (before:pointTimeoutMs=20000)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 6
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=6 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 20,
+            "unavailable": 0,
+            "missing": 16,
+            "value": "core"
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core-ng"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=20 unavailable=0 missing=16] after[value=core-ng ok=36 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "stabilityWarning: metric=runtime.txnCommitMs {convergeMode=full&dirtyRootsRatio=0.75&steps=200} baselineP95=9.05ms afterP95=0.46ms diff=8.59ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    },
+    {
+      "id": "diagnostics.overhead.e2e",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=4 unavailable=0 missing=0] after[value=full ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core-ng"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=4 unavailable=0 missing=0] after[value=core-ng ok=4 unavailable=0 missing=0]"
+        }
+      ]
+    },
+    {
+      "id": "form.listScopeCheck",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=6 unavailable=0 missing=0] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "cache.evict",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 16,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.evict(points) unit=count: before[value=0 ok=12 unavailable=12 missing=0] after[value=0 ok=8 unavailable=16 missing=0]"
+        },
+        {
+          "name": "cache.hit",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 12
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 16,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.hit(points) unit=count: before[value=12 ok=12 unavailable=12 missing=0] after[value=0 ok=8 unavailable=16 missing=0]"
+        },
+        {
+          "name": "cache.invalidate",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.invalidate(points) unit=count: before[value=0 ok=12 unavailable=12 missing=0] after[value=0 ok=12 unavailable=12 missing=0]"
+        },
+        {
+          "name": "cache.miss",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 16,
+            "missing": 0,
+            "value": 8
+          },
+          "message": "cache.miss(points) unit=count: before[value=0 ok=12 unavailable=12 missing=0] after[value=8 ok=8 unavailable=16 missing=0]"
+        },
+        {
+          "name": "cache.size",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 12
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 16,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.size(points) unit=count: before[value=12 ok=12 unavailable=12 missing=0] after[value=0 ok=8 unavailable=16 missing=0]"
+        },
+        {
+          "name": "converge.decisionBudgetMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 6
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 6
+          },
+          "message": "converge.decisionBudgetMs(points) unit=count: before[value=6 ok=12 unavailable=12 missing=0] after[value=6 ok=12 unavailable=12 missing=0]"
+        },
+        {
+          "name": "converge.decisionDurationMs",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "converge.decisionDurationMs(points) unit=ratio: before[value=0 ok=12 unavailable=12 missing=0] after[value=0 ok=12 unavailable=12 missing=0]"
+        },
+        {
+          "name": "converge.executedMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 24,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 24,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "converge.executedMode(points) unit=count: before[value=full ok=24 unavailable=0 missing=0] after[value=full ok=24 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.outcome",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0
+          },
+          "message": "converge.outcome(points) unit=count: before[value=undefined ok=12 unavailable=12 missing=0] after[value=undefined ok=12 unavailable=12 missing=0]"
+        },
+        {
+          "name": "converge.reasons",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 12,
+            "missing": 0
+          },
+          "message": "converge.reasons(points) unit=count: before[value=undefined ok=12 unavailable=12 missing=0] after[value=undefined ok=12 unavailable=12 missing=0]"
+        },
+        {
+          "name": "converge.requestedMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 24,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "auto"
+          },
+          "after": {
+            "ok": 24,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "auto"
+          },
+          "message": "converge.requestedMode(points) unit=count: before[value=auto ok=24 unavailable=0 missing=0] after[value=auto ok=24 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 24,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 24,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=24 unavailable=0 missing=0] after[value=full ok=24 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 24,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 24,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core-ng"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=24 unavailable=0 missing=0] after[value=core-ng ok=24 unavailable=0 missing=0]"
+        }
+      ]
+    },
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 18,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 18,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=18 unavailable=0 missing=0] after[value=0 ok=18 unavailable=0 missing=0]"
+        },
+        {
+          "name": "cache.evict",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.evict(points) unit=count: before[value=0 ok=36 unavailable=36 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "cache.hit",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 23
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.hit(points) unit=count: before[value=23 ok=36 unavailable=36 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "cache.invalidate",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.invalidate(points) unit=count: before[value=0 ok=36 unavailable=36 missing=0] after[value=0 ok=36 unavailable=36 missing=0]"
+        },
+        {
+          "name": "cache.miss",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 13
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.miss(points) unit=count: before[value=13 ok=36 unavailable=36 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "cache.size",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 1093
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.size(points) unit=count: before[value=1093 ok=36 unavailable=36 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 72,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 72,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core-ng"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=72 unavailable=0 missing=0] after[value=core-ng ok=72 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "stabilityWarning: metric=runtime.txnCommitMs {convergeMode=full&dirtyRootsRatio=0.05&patternKind=repeatedStable&seed=1337&steps=800&uniquePatternPoolSize=8} baselineP95=14.80ms afterP95=0.80ms diff=14.00ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    },
+    {
+      "id": "react.bootResolve",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=8 unavailable=0 missing=0] after[value=0 ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.module.keyMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "explicit"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "explicit"
+          },
+          "message": "react.module.keyMode(points) unit=count: before[value=explicit ok=8 unavailable=0 missing=0] after[value=explicit ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.policy.mode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "suspend"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "suspend"
+          },
+          "message": "react.policy.mode(points) unit=count: before[value=suspend ok=8 unavailable=0 missing=0] after[value=suspend ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.policy.yieldStrategy",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "microtask"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "microtask"
+          },
+          "message": "react.policy.yieldStrategy(points) unit=ratio: before[value=microtask ok=8 unavailable=0 missing=0] after[value=microtask ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core-ng"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=8 unavailable=0 missing=0] after[value=core-ng ok=8 unavailable=0 missing=0]"
+        }
+      ]
+    },
+    {
+      "id": "react.deferPreload",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.defer.gatingFallbackRenders",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "message": "react.defer.gatingFallbackRenders(points) unit=count: before[value=2 ok=2 unavailable=0 missing=0] after[value=2 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.defer.suspenseFallbackRenders",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "react.defer.suspenseFallbackRenders(points) unit=count: before[value=1 ok=2 unavailable=0 missing=0] after[value=1 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.module.keyMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "auto"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "auto"
+          },
+          "message": "react.module.keyMode(points) unit=count: before[value=auto ok=2 unavailable=0 missing=0] after[value=auto ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.policy.mode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "defer"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "defer"
+          },
+          "message": "react.policy.mode(points) unit=count: before[value=defer ok=2 unavailable=0 missing=0] after[value=defer ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.policy.yieldStrategy",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "microtask"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "microtask"
+          },
+          "message": "react.policy.yieldStrategy(points) unit=ratio: before[value=microtask ok=2 unavailable=0 missing=0] after[value=microtask ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core-ng"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=2 unavailable=0 missing=0] after[value=core-ng ok=2 unavailable=0 missing=0]"
+        }
+      ]
+    },
+    {
+      "id": "react.strictSuspenseJitter",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 6
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 6
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=6 ok=3 unavailable=0 missing=0] after[value=6 ok=3 unavailable=0 missing=0]"
+        }
+      ]
+    },
+    {
+      "id": "watchers.clickToPaint",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "beforeMaxLevel": 64,
+          "afterMaxLevel": 128,
+          "message": "[category=e2e] p95<=50ms {reactStrictMode=true}: before=64 after=128 (after:budgetExceeded) (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "beforeMaxLevel": 256,
+          "afterMaxLevel": 512,
+          "message": "[category=e2e] p95<=100ms {reactStrictMode=true}: before=256 after=512 (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core-ng"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=14 unavailable=0 missing=0] after[value=core-ng ok=14 unavailable=0 missing=0]"
+        }
+      ]
+    }
+  ]
+}

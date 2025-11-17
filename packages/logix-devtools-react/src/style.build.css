@@ -1,0 +1,8 @@
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities";
+
+/* Scan Devtools UI sources (avoid scanning generated style.css itself). */
+@source "./internal";
+
+/* Logix Devtools theme variables & motion helpers. */
+@import "./internal/theme/theme.css";

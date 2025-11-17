@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+:root {
+  /* --- Surfaces: 空间与层级 --- */
+  /* 基础背景，极淡的暖灰，避免死白 */
+  --surface-base: #fafafa; /* zinc-50 */
+  /* 卡片背景，纯白，用于承载内容 */
+  --surface-card: #ffffff;
+  /* 浮层背景，带模糊 */
+  --surface-float: rgba(255, 255, 255, 0.85);
+
+  /* 交互背景 (Hover/Active) */
+  --surface-hover: rgba(24, 24, 27, 0.03); /* zinc-900 alpha 3% */
+  --surface-active: rgba(24, 24, 27, 0.06);
+
+  /* --- Dividers: 隐形边界 --- */
+  /* 极低透明度，只在纯视觉上做暗示，不用来画格子 */
+  --border-subtle: rgba(24, 24, 27, 0.06);
+  --border-highlight: rgba(24, 24, 27, 0.1);
+
+  /* --- Text: 清晰度优先 --- */
+  --text-primary: #18181b; /* zinc-900 */
+  --text-secondary: #52525b; /* zinc-600 */
+  --text-tertiary: #a1a1aa; /* zinc-400 */
+
+  /* --- Intents: 意图色彩系统 (Backgrounds) --- */
+  /* 一律使用高通透度 (8%-12%)，拒绝实心色块 */
+  --intent-primary-bg: rgba(24, 24, 27, 0.06);   /* Black/Zinc */
+  --intent-success-bg: rgba(22, 163, 74, 0.12);  /* Green-600 */
+  --intent-warning-bg: rgba(234, 88, 12, 0.12);  /* Orange-600 */
+  --intent-danger-bg:  rgba(220, 38, 38, 0.1);   /* Red-600 */
+  --intent-info-bg:    rgba(37, 99, 235, 0.1);   /* Blue-600 */
+
+  /* --- Intents: 意图色彩系统 (Foregrounds) --- */
+  --intent-primary-fg: #18181b;
+  --intent-success-fg: #15803d;
+  --intent-warning-fg: #c2410c;
+  --intent-danger-fg:  #dc2626;
+  --intent-info-fg:    #2563eb;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  @apply font-sans antialiased text-[var(--text-primary)] bg-[var(--surface-base)];
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* Utilities */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Anti-Ugly Physics Utilities */
+.au-card {
+  @apply bg-[var(--surface-card)] rounded-xl shadow-sm border border-transparent;
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.au-card:hover {
+  @apply shadow-md -translate-y-[1px] border-[var(--border-subtle)];
+}
+
+.au-clickable {
+  @apply cursor-pointer select-none active:scale-[0.98] active:brightness-95;
+  transition: transform 0.1s ease-out, filter 0.1s ease-out;
+}

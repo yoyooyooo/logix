@@ -1,0 +1,3983 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-30T18:27:44.716Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/bench.traitConverge.node.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2025-12-29",
+    "matrixHash": "06ffcdd64a4574fb0315e41f9fc0f33ce107bd4f8807b237acfcc23ce0cfe48f",
+    "git": {
+      "branch": "dev",
+      "commit": "6312fd64cd3c1819ce8ab1c995c47927e9390dcf",
+      "dirty": true
+    },
+    "config": {
+      "runs": 30,
+      "warmupDiscard": 5,
+      "timeoutMs": 20000,
+      "profile": "default",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      },
+      "controlPlane": {
+        "traitConvergeBudgetMs": 10000,
+        "traitConvergeDecisionBudgetMs": 10000
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "node",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "title": "converge: txn commit / derive",
+      "priority": "P1",
+      "primaryAxis": "steps",
+      "budgets": [
+        {
+          "id": "commit.p95<=50ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "commit.p95<=100ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 100
+        },
+        {
+          "id": "auto<=full*1.05",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.05,
+          "numeratorRef": "convergeMode=auto",
+          "denominatorRef": "convergeMode=full"
+        },
+        {
+          "id": "decision.p95<=0.5ms",
+          "type": "absolute",
+          "metric": "runtime.decisionMs",
+          "p95Ms": 0.5
+        }
+      ],
+      "metricCategories": {
+        "runtime.txnCommitMs": "runtime",
+        "runtime.decisionMs": "runtime"
+      },
+      "points": [
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 200,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.5573749999999791,
+                "p95Ms": 1.1879580000000942
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 652496
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 737344
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.171114599686221
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.171114599686221
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7752859385513489
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.7752859385513489
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.43212500000004184
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.2490264807340654
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.24902648073406541
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.1977485736026556
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.19774857360265563
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.23491699999988214
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.5998329999999896,
+                "p95Ms": 0.6997079999999869
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1085560
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1171984
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.901155821703841
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.901155821703841
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.445403970772012
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.445403970772012
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.066667000000052
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 5.154471579573301
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.154471579573301
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.553625226523099
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.553625226523099
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.486499999999978
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.0680829999998878,
+                "p95Ms": 1.5912090000001626
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1844936
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1911096
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 6.160960337352611
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 5.160960337352611
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 6.636110676792727
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 5.636110676792727
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 6.0198340000001735
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.294716156079636
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.2947161560796356
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.668305671975947
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.668305671975947
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 5.837040999999772
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 200,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.29937500000005457,
+                "p95Ms": 0.36979199999996126
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 616344
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 618464
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.755183298538541
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7551832985385412
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.8787741127341167
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.8787741127341167
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.5624579999998787
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.317181009865715
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.317181009865715
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.6591516311878913
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.6591516311878913
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.9833330000001297
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.576334000000088,
+                "p95Ms": 0.7002919999999904
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1128248
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1157432
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.71457002363144
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.71457002363144
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.819398126780001
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.8193981267800012
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.2012489999999616
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.748257869574421
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.748257869574421
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.676442112718853
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.6764421127188527
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.574583000000075
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.1690000000000964,
+                "p95Ms": 1.6253750000000764
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2024584
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2024616
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 5.6685201026514385
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.6685201026514385
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 6.085293413173421
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 5.085293413173421
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 5.944708000000219
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.181778358840012
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.1817783588400124
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.5183677612857505
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.5183677612857505
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 5.718667000000096
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 200,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.3404579999996713,
+                "p95Ms": 0.3832919999999831
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 676080
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 677408
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.6649131464111946
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.6649131464111946
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.754254562973509
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7542545629735091
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.5972500000002583
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.7292064535648333
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.7292064535648333
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.4590703693274896
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.4590703693274896
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.9425420000002305
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.7415419999997539,
+                "p95Ms": 1.2322500000000218
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1389088
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1465752
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.80434688797291
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.80434688797291
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.139292177652571
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.139292177652571
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.3279170000000704
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.768107121119901
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7681071211199009
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.8758709677418355
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.8758709677418355
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.3115419999999176
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.612666999999874,
+                "p95Ms": 2.362083999999868
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2628312
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2688056
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.486486050747378
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.486486050747378
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 4.646236947863618
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.646236947863618
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 5.880165999999917
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.166236679136213
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.166236679136213
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.2849344053811302
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.2849344053811302
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 5.39720699999998
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 200,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.5422079999998459,
+                "p95Ms": 0.5874170000001868
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 856792
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 858304
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9950830677528484
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9950830677528484
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.1473161591128553
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.1473161591128553
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.6220840000000862
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.560290219723477
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.560290219723477
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.7706739845795654
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7706739845795654
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1.0401240000001053
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.1884170000002996,
+                "p95Ms": 1.854707999999846
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2122512
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2171080
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.730278176767279
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7302781767672788
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.02534800495064
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.02534800495064
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.4069580000000315
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.0474694668919966
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.0474694668919966
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.1313554478658765
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.1313554478658765
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.09833400000025
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 1500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 2.973041999999623,
+                "p95Ms": 4.7512910000000375
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4431040
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4496576
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.9058341590873478
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9058341590873478
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.0821824918723495
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.0821824918723495
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 6.1904160000003685
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9335445881972149
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9335445881972149
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9887401129503326
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9887401129503326
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 4.697791999999936
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 200,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.20204199999989214,
+                "p95Ms": 0.2819159999999101
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 509456
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 510960
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.2472654200616071
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.24726542006160712
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.223547579215733
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.2235475792157331
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.045165999999881024
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.283038209964534
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.2830382099645341
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.0186225684252108
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.018622568425210817
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.005250000000160071
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 800,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.34433400000034453,
+                "p95Ms": 0.38762499999984357
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 780704
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 780736
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.6633559276739913
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.6633559276739913
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.665171025804504
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.665171025804504
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.22904099999959726
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.5453079651735615
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.5453079651735615
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.906912608835919
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.906912608835919
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.3515419999998812
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.6743749999995998,
+                "p95Ms": 0.7083339999999225
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1011896
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1075648
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9938832252092995
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9938832252092995
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.920481927712803
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9204819277128029
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.6207500000009532
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.841173796543647
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.841173796543647
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9468795794078695
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9468795794078695
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.6707070000002204
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 200,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.19900000000052387,
+                "p95Ms": 0.24387500000011642
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 527792
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 529320
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.5454321607960266
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.5454321607960266
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.5069095477332275
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.5069095477332275
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.10087499999917782
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.4143188108632554
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.4143188108632554
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.3423885187070874
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.3423885187070874
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.08349999999973079
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.3927080000003116,
+                "p95Ms": 0.453708000000006
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 796656
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 838848
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.883185471138019
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.8831854711380189
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9921493832554649
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9921493832554649
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.3896249999997963
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.923686600192428
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9236866001924282
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.3806611300648957
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.3806611300648957
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.626416999999492
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.8066660000004049,
+                "p95Ms": 0.9235420000004524
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1252840
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1252960
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.021385554863223
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.021385554863223
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.065031871925442
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.065031871925442
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.8591249999990396
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.3393630175984397
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.3393630175984397
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.4333403353598593
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.4333403353598593
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1.3237499999995634
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 200,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.29741699999976845,
+                "p95Ms": 0.3150000000005093
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 608904
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 610568
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.6203411371927023
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.6203411371927023
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.5906387328237082
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.5906387328237082
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.17566600000009203
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7240761904731108
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.7240761904731108
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7982793650772158
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.7982793650772158
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.2514579999997295
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 800,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.5748750000002474,
+                "p95Ms": 0.7007499999999709
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1145808
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1205200
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.3697168949767904
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.3697168949767904
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.5038782343985804
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.5038782343985804
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.8645420000002559
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.7214884052802515
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7214884052802515
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.9555247948629915
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9555247948629915
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1.3703340000001845
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.3538330000001224,
+                "p95Ms": 1.9840839999997115
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2018144
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2029136
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.375077280579939
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.375077280579939
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.514035335229887
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.5140353352298872
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.0497510000004695
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9183915600348522
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9183915600348522
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9786420333012977
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9786420333012977
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1.9417080000002898
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 200,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.5363749999996799,
+                "p95Ms": 0.5945000000001528
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 831264
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 833600
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.790335120020318
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.7903351200203179
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.8165928687975257
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.8165928687975257
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.43800000000101136
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.336067283431946
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.3360672834319458
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.832984020184318
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.8329840201843179
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.49520899999970425
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 800,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.1552499999997963,
+                "p95Ms": 1.7112919999999576
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2024328
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2064800
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.492966890283235
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.4929668902832351
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.8712036355775163
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.8712036355775163
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.1617080000005444
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9647675557412425
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9647675557412425
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.409217713867723
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.409217713867723
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.411583000000064
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 1500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 2.837000000000444,
+                "p95Ms": 3.573457999999846
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4297992
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4349616
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.6901364117019773
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.6901364117019773
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.7633503701087023
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7633503701087023
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 5.0026249999991705
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.3869618727855193
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.3869618727855193
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.2703616496962606
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.2703616496962606
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 4.539584000000104
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 200,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.1720420000001468,
+                "p95Ms": 0.18654100000003382
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.005458999999973457,
+                "p95Ms": 0.006999999999607098
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 507352
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 508960
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.3962172027758402
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.39621720277584016
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.406389137532734
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.406389137532734
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.0699159999994663
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.389104808055807
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.38910480805580705
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.4795674945443087
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.4795674945443087
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.08945899999980611
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.3280830000003334,
+                "p95Ms": 0.37483400000019174
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.006833999999798834,
+                "p95Ms": 0.008249999999861757
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 780896
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 780928
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7964204180008245
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.7964204180008245
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9451388825370965
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9451388825370965
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.31008399999973335
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.8846102541381753
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.8846102541381753
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.049240463776517
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.049240463776517
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.3932909999994081
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.7357089999995878,
+                "p95Ms": 1.094083999999384
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.009042000000590633,
+                "p95Ms": 0.01304100000015751
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 999504
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1076096
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.8877477372177789
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.8877477372177789
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.868378666022262
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.8683786660222621
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.6388740000002144
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.6771253395542085
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.6771253395542085
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.6946066298391893
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.6946066298391893
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.7599580000005517
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 200,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.21633400000064285,
+                "p95Ms": 0.31720900000073016
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.007667000000765256,
+                "p95Ms": 0.012708000000202446
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 525680
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 526960
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.3139404809177337
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.31394048091773374
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.2881331644571263
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.28813316445712633
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.0623329999998532
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.026925465542343
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.026925465542342986
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9579646226929789
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": -0.042035377307021116
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": -0.013334000000213564
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.3596660000002885,
+                "p95Ms": 0.4133750000000873
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.01229200000034325,
+                "p95Ms": 0.015416999999615655
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 793192
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 814736
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.076926926645248
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.076926926645248
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9756746537050276
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9756746537050276
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.3509169999997539
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.095150892046463
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.0951508920464632
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.8610027214993357
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.8610027214993357
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.35591699999986304
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.7531669999998485,
+                "p95Ms": 1.0129580000002534
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.01937499999985448,
+                "p95Ms": 0.028500000000349246
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1253328
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1253360
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.200430980116114
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.200430980116114
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.2217290454840244
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.2217290454840244
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.920165999999881
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.4493443953244367
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.4493443953244367
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.2689321768515125
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.2689321768515125
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1.2853749999994761
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 200,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.2801660000004631,
+                "p95Ms": 0.29933400000027177
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.011833000000478933,
+                "p95Ms": 0.014624999999796273
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 607592
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 609176
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.6787654461977266
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.6787654461977266
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.6499146934275437
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.6499146934275437
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.18208399999912217
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.8136095465222535
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.8136095465222535
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.83866517001147
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.83866517001147
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.2510410000004413
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.5779170000005251,
+                "p95Ms": 0.6670000000003711
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.03191700000024866,
+                "p95Ms": 0.0374999999994543
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1146248
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1205968
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.242607502458704
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.242607502458704
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.346573988995142
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.346573988995142
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.7782079999988127
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.811218890553015
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.811218890553015
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.9284737631170317
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9284737631170317
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1.2862919999997757
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.348417000000154,
+                "p95Ms": 2.077957999999853
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.08687499999996362,
+                "p95Ms": 0.0945000000001528
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2017336
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2029856
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.431987285832225
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.431987285832225
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.558493403746831
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.558493403746831
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.101499000000331
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.03120082311611
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.03120082311611
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.948688087055124
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.948688087055124
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1.971334000000752
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 200,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.5472920000001977,
+                "p95Ms": 0.6421250000003056
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.028000000000247383,
+                "p95Ms": 0.033083000000260654
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 852184
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 858464
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.1233345270898987
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.1233345270898987
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9767783925207452
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.9767783925207452
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.5345829999996567
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.7407046914524438
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.7407046914524438
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.3816749075316626
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.3816749075316626
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.8872079999991911
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.1927919999998267,
+                "p95Ms": 1.747957999999926
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.08883299999979499,
+                "p95Ms": 0.10224999999991269
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2122512
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2137960
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.744017397836572
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.744017397836572
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.9158478594763975
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.9158478594763975
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.285208000000239
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.1828093123516843
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.1828093123516843
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.2160618275729007
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.2160618275729007
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 2.125625000000582
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 1500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 2.8167499999999563,
+                "p95Ms": 3.450416000000587
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.24012499999935244,
+                "p95Ms": 0.2605829999993148
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4432392
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4545952
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.1219639655630145
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.1219639655630145
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.3740424247804186
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.3740424247804186
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 6.687084000000141
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.694288456811745
+            },
+            {
+              "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 1.6942884568117451
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 3.0772979258150093
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 2.0772979258150093
+            },
+            {
+              "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 7.1675420000001395
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

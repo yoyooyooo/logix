@@ -1,0 +1,384 @@
+name: logix-perf (quick)
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "before 基线（branch/tag/sha；留空=默认分支 tip）"
+        required: false
+        default: ""
+      head_ref:
+        description: "after 基线（branch/tag/sha；留空=触发 SHA）"
+        required: false
+        default: ""
+      perf_files:
+        description: "采集范围（logix-react browser perf 测试文件/目录，相对 packages/logix-react）"
+        required: false
+        default: "test/browser/perf-boundaries/converge-steps.test.tsx"
+      perf_profile:
+        description: "采样 profile（影响 runs/warmup/stability 等配置）"
+        required: false
+        default: "quick"
+      diff_mode:
+        description: "diff 模式（strict=不可比直接失败；triage=允许漂移，仅作线索）"
+        required: false
+        default: "triage"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: logix-perf-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  perf-quick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx
+      PERF_PROFILE: quick
+      PERF_DIFF_MODE: triage
+      PERF_ENV_ID: gh-${{ runner.os }}-${{ runner.arch }}
+      PERF_OUT_DIR: perf/ci
+      PERF_ARTIFACT_NAME: logix-perf-quick-${{ github.event.pull_request.number || github.run_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute SHAs
+        env:
+          INPUT_BASE_REF: ${{ github.event.inputs.base_ref }}
+          INPUT_HEAD_REF: ${{ github.event.inputs.head_ref }}
+          INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
+          INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
+          INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
+        run: |
+          set -euo pipefail
+
+          normalize_ref() {
+            local ref="$1"
+            ref="${ref#refs/heads/}"
+            ref="${ref#refs/remotes/origin/}"
+            ref="${ref#origin/}"
+            echo "$ref"
+          }
+
+          resolve_ref_to_sha() {
+            local ref="$1"
+            if git rev-parse --verify "${ref}^{commit}" >/dev/null 2>&1; then
+              git rev-parse "${ref}^{commit}"
+              return 0
+            fi
+            git fetch origin "$ref" --depth=1
+            git rev-parse FETCH_HEAD
+          }
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+
+            BASE_REF="$(normalize_ref "${INPUT_BASE_REF:-}")"
+            HEAD_REF="$(normalize_ref "${INPUT_HEAD_REF:-}")"
+
+            if [ -z "${BASE_REF}" ]; then
+              BASE_REF="$DEFAULT_BRANCH"
+            fi
+            if [ -z "${HEAD_REF}" ]; then
+              HEAD_REF="$GITHUB_SHA"
+            fi
+
+            echo "BASE_REF=$BASE_REF" >> "$GITHUB_ENV"
+            echo "HEAD_REF=$HEAD_REF" >> "$GITHUB_ENV"
+
+            BASE_SHA="$(resolve_ref_to_sha "$BASE_REF")"
+            HEAD_SHA="$(resolve_ref_to_sha "$HEAD_REF")"
+
+            if [ -n "${INPUT_PERF_FILES:-}" ]; then
+              echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
+              echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_DIFF_MODE:-}" ]; then
+              echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
+            fi
+          fi
+
+          echo "BASE_SHA=$BASE_SHA" >> "$GITHUB_ENV"
+          echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
+          echo "BASE_SHORT=${BASE_SHA::8}" >> "$GITHUB_ENV"
+          echo "HEAD_SHORT=${HEAD_SHA::8}" >> "$GITHUB_ENV"
+
+          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- pnpm-lock.yaml | grep -q '^pnpm-lock.yaml$'; then
+            echo "LOCKFILE_CHANGED=1" >> "$GITHUB_ENV"
+          else
+            echo "LOCKFILE_CHANGED=0" >> "$GITHUB_ENV"
+          fi
+
+      - name: Checkout head (for install)
+        run: git checkout --quiet "$HEAD_SHA"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium deps
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Collect (base)
+        run: |
+          mkdir -p "$PERF_OUT_DIR"
+          git checkout --quiet "$BASE_SHA"
+          if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
+            pnpm install --frozen-lockfile
+          fi
+          pnpm perf collect:quick -- \
+            --files "$PERF_FILES" \
+            --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+
+      - name: Collect (head)
+        run: |
+          git checkout --quiet "$HEAD_SHA"
+          if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
+            pnpm install --frozen-lockfile
+          fi
+          pnpm perf collect:quick -- \
+            --files "$PERF_FILES" \
+            --out "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+
+      - name: Diff (base..head)
+        run: |
+          if [ "${PERF_DIFF_MODE:-triage}" = "strict" ]; then
+            pnpm perf diff -- \
+              --before "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json" \
+              --after "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json" \
+              --out "$PERF_OUT_DIR/diff.${BASE_SHORT}__${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          else
+            pnpm perf diff:triage -- \
+              --before "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json" \
+              --after "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json" \
+              --out "$PERF_OUT_DIR/diff.${BASE_SHORT}__${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          fi
+
+      - name: Write job summary (markdown)
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require("node:fs")
+          const path = require("node:path")
+
+          const perfDir = process.env.PERF_OUT_DIR || "perf/ci"
+          fs.mkdirSync(perfDir, { recursive: true })
+
+          const baseShort = (process.env.BASE_SHORT || "").slice(0, 8)
+          const headShort = (process.env.HEAD_SHORT || "").slice(0, 8)
+          const baseRef = (process.env.BASE_REF || "").trim()
+          const headRef = (process.env.HEAD_REF || "").trim()
+          const envId = process.env.PERF_ENV_ID || ""
+          const profile = process.env.PERF_PROFILE || "quick"
+          const diffPath =
+            baseShort && headShort
+              ? path.join(perfDir, `diff.${baseShort}__${headShort}.${envId}.${profile}.json`)
+              : null
+
+          const files = fs
+            .readdirSync(perfDir)
+            .filter((f) => f.endsWith(".json") || f.endsWith(".md"))
+            .sort()
+
+          const scope = process.env.PERF_FILES || "test/browser/perf-boundaries/converge-steps.test.tsx"
+          const artifactName = process.env.PERF_ARTIFACT_NAME || ""
+
+          let md = ""
+          md += `### logix-perf (quick)\n`
+          md += `- scope: \`${scope}\`\n`
+          md += `- profile: \`${profile}\`\n`
+          if (envId) md += `- envId: \`${envId}\`\n`
+          if (baseShort && headShort) md += `- base: \`${baseShort}\`  head: \`${headShort}\`\n`
+          if (baseRef && headRef) md += `- refs: \`${baseRef.replaceAll("`", "")}\` → \`${headRef.replaceAll("`", "")}\`\n`
+          if (artifactName) md += `- artifacts: \`${artifactName}\`\n`
+
+          const hasDiff = diffPath && fs.existsSync(diffPath)
+          if (!hasDiff) {
+            md += `\n_diff 未生成（采集或 diff 步骤可能失败）；请查看 Actions 日志。_\n`
+          } else {
+            const diff = JSON.parse(fs.readFileSync(diffPath, "utf8"))
+            const summary = diff.summary ?? {}
+            const comparability = diff.meta?.comparability ?? {}
+            const comparable = comparability.comparable === true
+
+            md += `\n- comparable: \`${String(comparability.comparable ?? "?")}\`\n`
+            md += `- diffMode: allowConfigDrift=${String(comparability.allowConfigDrift ?? "?")}, allowEnvDrift=${String(comparability.allowEnvDrift ?? "?")}\n`
+            md += `- summary: regressions=${summary.regressions ?? "?"}, improvements=${summary.improvements ?? "?"}\n`
+
+            const renderList = (title, items) => {
+              if (!Array.isArray(items) || items.length === 0) return ""
+              const shown = items.slice(0, 10)
+              let out = `\n**${title}**\n`
+              for (const x of shown) out += `- \`${x}\`\n`
+              if (items.length > shown.length) out += `- ... +${items.length - shown.length} more\n`
+              return out
+            }
+
+            md += renderList("configMismatches", comparability.configMismatches)
+            md += renderList("envMismatches", comparability.envMismatches)
+            md += renderList("warnings", comparability.warnings)
+
+            if (!comparable) {
+              md += `\n_本次 diff 不可比（triage-only）。下方变化仅作线索，请先对齐采样参数/环境后复测再下结论。_\n`
+            }
+
+            const matrixPath = ".codex/skills/logix-perf-evidence/assets/matrix.json"
+            const suiteMeta = new Map()
+            if (fs.existsSync(matrixPath)) {
+              const matrix = JSON.parse(fs.readFileSync(matrixPath, "utf8"))
+              for (const s of matrix.suites ?? []) suiteMeta.set(s.id, s)
+            }
+
+            const suites = Array.isArray(diff.suites) ? diff.suites : []
+            const regressions = []
+            const improvements = []
+            const notes = []
+
+            for (const s of suites) {
+              const spec = suiteMeta.get(s.id)
+              const priority = spec?.priority ? `[${spec.priority}] ` : ""
+              const title = spec?.title ? ` — ${spec.title}` : ""
+              const suiteLabel = `${priority}\`${s.id}\`${title}`
+
+              if (typeof s.notes === "string" && s.notes.trim().length > 0) {
+                notes.push(`- ${suiteLabel}: ${s.notes}`)
+              }
+
+              const deltas = Array.isArray(s.thresholdDeltas) ? s.thresholdDeltas : []
+              const levels = spec?.primaryAxis && spec?.axes ? spec.axes[spec.primaryAxis] : null
+
+              const idx = (v) => {
+                if (!Array.isArray(levels)) return null
+                if (v === null || v === undefined) return -1
+                const i = levels.indexOf(v)
+                return i >= 0 ? i : null
+              }
+
+              for (const t of deltas) {
+                const before = t.beforeMaxLevel ?? null
+                const after = t.afterMaxLevel ?? null
+                const beforeIdx = idx(before)
+                const afterIdx = idx(after)
+                const delta = beforeIdx == null || afterIdx == null ? null : afterIdx - beforeIdx
+                const entry = { suiteLabel, message: t.message, delta }
+                if (delta != null && delta < 0) regressions.push(entry)
+                if (delta != null && delta > 0) improvements.push(entry)
+              }
+            }
+
+            const sortReg = regressions
+              .slice()
+              .sort((a, b) => (a.delta ?? 0) - (b.delta ?? 0))
+              .slice(0, 8)
+            const sortImp = improvements
+              .slice()
+              .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
+              .slice(0, 5)
+
+            if (sortReg.length > 0) {
+              md += `\n**Top ${comparable ? "regressions" : "potential regressions (triage-only)"}**\n`
+              for (const r of sortReg) md += `- ${r.suiteLabel}: ${r.message}\n`
+            }
+            if (sortImp.length > 0) {
+              md += `\n**Top ${comparable ? "improvements" : "potential improvements (triage-only)"}**\n`
+              for (const r of sortImp) md += `- ${r.suiteLabel}: ${r.message}\n`
+            }
+            if (notes.length > 0) {
+              md += `\n**Notes**\n${notes.join("\n")}\n`
+            }
+          }
+
+          if (files.length > 0) {
+            md += `\n产物（artifact 内文件名）：\n`
+            for (const f of files) md += `- \`${f}\`\n`
+          }
+
+          const summaryPath = path.join(perfDir, "summary.md")
+          fs.writeFileSync(summaryPath, `${md}\n`, "utf8")
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${md}\n`)
+          NODE
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PERF_ARTIFACT_NAME }}
+          path: ${{ env.PERF_OUT_DIR }}
+          if-no-files-found: warn
+
+      - name: PR comment (summary)
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("node:fs")
+
+            const marker = "<!-- logix-perf-quick -->"
+            const pr = context.payload.pull_request
+            let summary = ""
+            try {
+              summary = fs.readFileSync("perf/ci/summary.md", "utf8")
+            } catch {}
+
+            const body =
+              summary.trim().length > 0
+                ? `${marker}\n${summary}`
+                : `${marker}\n### logix-perf (quick)\n\n_summary.md 未生成；请查看 Actions 日志与 Artifacts。_\n`
+
+            const { owner, repo } = context.repo
+            const issue_number = pr.number
+
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            })
+
+            const found = existing.find((c) => typeof c.body === "string" && c.body.includes(marker))
+            if (found) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: found.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              })
+            }

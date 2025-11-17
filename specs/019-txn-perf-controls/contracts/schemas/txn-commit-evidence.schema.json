@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/019/txn-commit-evidence.schema.json",
+  "title": "TxnCommitEvidence",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "moduleId": { "type": "string", "minLength": 1 },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "txnSeq": { "type": "integer", "minimum": 1 },
+    "txnId": { "type": "string", "minLength": 1 },
+    "commitMode": {
+      "type": "string",
+      "enum": ["normal", "batch", "lowPriority"]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["normal", "low"]
+    },
+    "dirtySet": { "$ref": "./dirty-set-v2.schema.json" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "opCount": { "type": "integer", "minimum": 0 },
+        "patchCount": { "type": "integer", "minimum": 0 },
+        "validateCheckCount": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "required": ["moduleId", "instanceId", "txnSeq", "txnId", "commitMode", "priority", "dirtySet"]
+}
+

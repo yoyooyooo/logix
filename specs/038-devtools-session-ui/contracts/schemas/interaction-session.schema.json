@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/038/interaction-session.schema.json",
+  "title": "InteractionSession",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sessionId": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["running", "settled"] },
+    "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+    "degradedReason": { "type": "string" },
+    "startedAtMs": { "type": "integer", "minimum": 0 },
+    "endedAtMs": { "type": "integer", "minimum": 0 },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "anchors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "linkId": { "type": "string", "minLength": 1 },
+        "txnIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "required": ["txnIds"]
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eventCount": { "type": "integer", "minimum": 0 },
+        "txnCount": { "type": "integer", "minimum": 0 },
+        "patchCount": { "type": "integer", "minimum": 0 },
+        "renderCount": { "type": "integer", "minimum": 0 },
+        "effectOpCount": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["eventCount", "txnCount", "renderCount"]
+    },
+    "pulses": { "$ref": "./pulse-buckets.schema.json" },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": { "type": "string", "enum": ["ok", "warn", "danger"] },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": { "type": "string", "minLength": 1 },
+              "message": { "type": "string", "minLength": 1 },
+              "evidence": { "$ref": "./evidence-ref.schema.json" }
+            },
+            "required": ["code", "message"]
+          }
+        }
+      },
+      "required": ["level", "reasons"]
+    }
+  },
+  "required": [
+    "sessionId",
+    "title",
+    "status",
+    "confidence",
+    "startedAtMs",
+    "endedAtMs",
+    "durationMs",
+    "anchors",
+    "metrics",
+    "health"
+  ]
+}

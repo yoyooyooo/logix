@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessConcurrencyPolicy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode"],
+  "properties": {
+    "mode": { "type": "string", "enum": ["latest", "serial", "drop", "parallel"] },
+    "maxParallel": { "type": "integer", "minimum": 1, "description": "Limit for parallel mode (optional)." },
+    "maxQueue": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Queue cap for serial mode (optional). When omitted, treated as unlimited but still guarded; default overflow policy is failStop with a diagnosable error (process::serial_queue_overflow)."
+    }
+  }
+}

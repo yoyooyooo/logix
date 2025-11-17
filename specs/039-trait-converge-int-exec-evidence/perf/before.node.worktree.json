@@ -1,0 +1,1810 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-28T11:20:33.362Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/bench.traitConverge.node.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2025-12-28",
+    "matrixHash": "6ba91af1aafcc55320dbdf9a2c63b40f5ae59d0773cfc76c3945c1d95b9e9cdc",
+    "git": {
+      "branch": "dev",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40",
+      "dirty": true
+    },
+    "config": {
+      "runs": 30,
+      "warmupDiscard": 5,
+      "timeoutMs": 20000,
+      "profile": "matrix.defaults",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      },
+      "controlPlane": {
+        "traitConvergeBudgetMs": 10000,
+        "traitConvergeDecisionBudgetMs": 10000
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "node",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "title": "converge: txn commit / derive",
+      "priority": "P1",
+      "primaryAxis": "steps",
+      "budgets": [
+        {
+          "id": "commit.p95<=50ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "commit.p95<=100ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 100
+        },
+        {
+          "id": "auto<=full*1.05",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.05,
+          "numeratorRef": "convergeMode=auto",
+          "denominatorRef": "convergeMode=full"
+        },
+        {
+          "id": "decision.p95<=0.5ms",
+          "type": "absolute",
+          "metric": "runtime.decisionMs",
+          "p95Ms": 0.5
+        }
+      ],
+      "metricCategories": {
+        "runtime.txnCommitMs": "runtime",
+        "runtime.decisionMs": "runtime"
+      },
+      "points": [
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 200,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 2.485249999999951,
+                "p95Ms": 3.8321660000000293
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5145800
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5343360
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 7.758542000000034,
+                "p95Ms": 8.26354200000003
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5347632
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5478808
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 23.335125000000062,
+                "p95Ms": 26.010874999999942
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4821920
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5166920
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 200,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 2.2581669999999576,
+                "p95Ms": 2.5790410000001884
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 7118520
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 7123720
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 14.346041000000241,
+                "p95Ms": 15.414291000000048
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5600680
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6281048
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 68.14520800000037,
+                "p95Ms": 71.28091700000004
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1298496
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 16696600
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 200,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 3.8164999999999054,
+                "p95Ms": 4.15941599999951
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 73360
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 91248
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 40.24116700000013,
+                "p95Ms": 43.18787500000053
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2778480
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4052792
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 260.04262500000004,
+                "p95Ms": 270.9012079999993
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5321864
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 19355928
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 200,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 7.119958000001134,
+                "p95Ms": 7.632832999999664
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5912664
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5962168
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 92.34783299999981,
+                "p95Ms": 102.6586669999997
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5267848
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5329400
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 1500
+          },
+          "status": "timeout",
+          "reason": "pointTimeoutMs=20000",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 200,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.27345900000364054,
+                "p95Ms": 0.5423750000045402
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 707808
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 710080
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 800,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.9888330000030692,
+                "p95Ms": 1.5045410000020638
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2586144
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2723736
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 5.4276670000035665,
+                "p95Ms": 5.932290999997349
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 8104192
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 8105768
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 200,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.6129169999985606,
+                "p95Ms": 0.9678330000024289
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2914504
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2916832
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 6.737374999996973,
+                "p95Ms": 7.165625000001455
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5483264
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5740792
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 49.00958299999911,
+                "p95Ms": 50.13366600000154
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6196056
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6298192
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 200,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 2.4502920000013546,
+                "p95Ms": 2.6379589999996824
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": -3483200
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 12705616
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 800,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 33.198042000003625,
+                "p95Ms": 34.40108300000429
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6791640
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6807240
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 244.21495800000412,
+                "p95Ms": 262.3606249999939
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1294888
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 23059920
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 200,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 7.039583999998285,
+                "p95Ms": 7.677834000001894
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4776344
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4814888
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 800,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 91.6820829999997,
+                "p95Ms": 104.32166699999652
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 932640
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 944392
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 1500
+          },
+          "status": "timeout",
+          "reason": "pointTimeoutMs=20000",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 200,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.21404200000688434,
+                "p95Ms": 0.27891700000327546
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.005666999990353361,
+                "p95Ms": 0.0070829999895067886
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 712920
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 714248
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.04483299999265,
+                "p95Ms": 1.53270799999882
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.008208999992348254,
+                "p95Ms": 0.010874999992665835
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2586112
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2703968
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.005,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 5.7075000000040745,
+                "p95Ms": 6.438250000006519
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.011208999989321455,
+                "p95Ms": 0.015375000002677552
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 8104448
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 8105416
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 200,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.5915840000088792,
+                "p95Ms": 0.8699999999953434
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.008625000002211891,
+                "p95Ms": 0.011375000001862645
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2912952
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 2918392
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 7.080082999993465,
+                "p95Ms": 7.2884590000030585
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.02145800000289455,
+                "p95Ms": 0.025292000005720183
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5435984
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5693648
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.05,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 49.91950000000361,
+                "p95Ms": 50.77324999999837
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.04524999999557622,
+                "p95Ms": 0.05100000000675209
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6201456
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6652912
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 200,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 2.4975830000039423,
+                "p95Ms": 2.6856249999982538
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.021582999994279817,
+                "p95Ms": 0.026083999997354113
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": -3464056
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 12717464
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 34.92912499999511,
+                "p95Ms": 38.68179099999543
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.07483299999148585,
+                "p95Ms": 0.08574999999837019
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6781800
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6805008
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.25,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 264.04187499999534,
+                "p95Ms": 280.35437499999534
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.19720799999777228,
+                "p95Ms": 0.2203330000047572
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 1677632
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 23786088
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 200,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 7.494542000000365,
+                "p95Ms": 8.15975000000617
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.04812500000116415,
+                "p95Ms": 0.05795899999793619
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4741064
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4805208
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 103.60204199999862,
+                "p95Ms": 106.38899999999558
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.18316600000252947,
+                "p95Ms": 0.19437499999185093
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 929792
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 933960
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 2000,
+            "dirtyRootsRatio": 0.75,
+            "dirtyRoots": 1500
+          },
+          "status": "timeout",
+          "reason": "pointTimeoutMs=20000",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.heapDeltaBytes.median",
+              "unit": "bytes",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            },
+            {
+              "name": "runtime.heapDeltaBytes.p95",
+              "unit": "bytes",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=20000"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

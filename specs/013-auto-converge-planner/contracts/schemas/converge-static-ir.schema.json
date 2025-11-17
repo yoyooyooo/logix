@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/converge-static-ir.schema.json",
+  "title": "ConvergeStaticIR",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "staticIrDigest",
+    "moduleId",
+    "instanceId",
+    "generation",
+    "fieldPaths",
+    "stepOutFieldPathIdByStepId",
+    "stepSchedulingByStepId"
+  ],
+  "properties": {
+    "staticIrDigest": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Static IR reference key. Defined as `instanceId + \":\" + generation`."
+    },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "generation": { "type": "integer", "minimum": 0 },
+    "fieldPaths": {
+      "type": "array",
+      "items": {
+        "$ref": "../../../009-txn-patch-dirtyset/contracts/schemas/field-path.schema.json"
+      },
+      "description": "FieldPathId -> FieldPath mapping table (index by FieldPathId). Canonical FieldPath uses Spec 009 segments (no indices, no '*')."
+    },
+    "stepOutFieldPathIdByStepId": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "StepId -> output FieldPathId mapping table (index by StepId). Fixed 1:1 mapping."
+    },
+    "stepSchedulingByStepId": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["immediate", "deferred"] },
+      "description": "043: StepId -> scheduling (immediate|deferred) for converge time-slicing."
+    },
+    "topoOrder": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "Optional topological order of converge steps (StepId list)."
+    },
+    "offsets": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "Optional adjacency offsets for CSR-like representation."
+    },
+    "adjacency": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "Optional adjacency list for converge dependency graph (StepId list)."
+    },
+    "buildDurationMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Static IR build duration for this generation (may be sampled)."
+    }
+  }
+}

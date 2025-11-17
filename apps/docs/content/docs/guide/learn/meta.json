@@ -1,0 +1,13 @@
+{
+  "title": "核心概念",
+  "pages": [
+    "describing-modules",
+    "adding-interactivity",
+    "managing-state",
+    "lifecycle-and-watchers",
+    "escape-hatches",
+    "cross-module-communication",
+    "query",
+    "deep-dive"
+  ]
+}

@@ -1,0 +1,1164 @@
+openapi: 3.1.0
+info:
+  title: logix-galaxy-api（Projects & RBAC）
+  version: 0.0.1
+  description: |
+    Galaxy 后端示例服务：Project Governance（项目/成员/成员组/RBAC）增量契约。
+
+    - 认证：`Authorization: Bearer <token>`
+    - PostgreSQL：由 `DATABASE_URL` 提供
+servers:
+  - url: http://localhost:5500
+tags:
+  - name: Project
+    description: 项目管理
+  - name: ProjectMember
+    description: 项目成员与角色
+  - name: ProjectGroup
+    description: 成员组与组角色
+  - name: ProjectAudit
+    description: 项目审计事件
+paths:
+  /projects:
+    get:
+      tags: [Project]
+      operationId: projectList
+      summary: List accessible projects
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+    post:
+      tags: [Project]
+      operationId: projectCreate
+      summary: Create project
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictError"
+
+  /projects/{projectId}:
+    get:
+      tags: [Project]
+      operationId: projectGet
+      summary: Get project
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+    patch:
+      tags: [Project]
+      operationId: projectUpdate
+      summary: Update project
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+
+  /projects/{projectId}/access:
+    get:
+      tags: [ProjectMember]
+      operationId: projectAccessMe
+      summary: Get current user's access in project
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectAccess"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+
+  /projects/{projectId}/members:
+    get:
+      tags: [ProjectMember]
+      operationId: projectMemberList
+      summary: List project members
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectMember"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+    post:
+      tags: [ProjectMember]
+      operationId: projectMemberAdd
+      summary: Add project member (by email)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMemberAddRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMember"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictError"
+
+  /projects/{projectId}/members/{userId}:
+    patch:
+      tags: [ProjectMember]
+      operationId: projectMemberUpdateRole
+      summary: Update member role
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMemberUpdateRoleRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMember"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictError"
+    delete:
+      tags: [ProjectMember]
+      operationId: projectMemberRemove
+      summary: Remove member
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictError"
+
+  /projects/{projectId}/members/{userId}/access:
+    get:
+      tags: [ProjectMember]
+      operationId: projectAccessGet
+      summary: Get a member's access in project (admin/owner)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectAccess"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+
+  /projects/{projectId}/groups:
+    get:
+      tags: [ProjectGroup]
+      operationId: projectGroupList
+      summary: List member groups
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectGroup"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+    post:
+      tags: [ProjectGroup]
+      operationId: projectGroupCreate
+      summary: Create member group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectGroupCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGroup"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictError"
+
+  /projects/{projectId}/groups/{groupId}:
+    patch:
+      tags: [ProjectGroup]
+      operationId: projectGroupUpdate
+      summary: Update member group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectGroupUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGroup"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictError"
+    delete:
+      tags: [ProjectGroup]
+      operationId: projectGroupDelete
+      summary: Delete member group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+
+  /projects/{projectId}/groups/{groupId}/members:
+    get:
+      tags: [ProjectGroup]
+      operationId: projectGroupMemberList
+      summary: List group members
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectGroupMember"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+    post:
+      tags: [ProjectGroup]
+      operationId: projectGroupMemberAdd
+      summary: Add group member (by userId)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectGroupMemberAddRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGroupMember"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictError"
+
+  /projects/{projectId}/groups/{groupId}/members/{userId}:
+    delete:
+      tags: [ProjectGroup]
+      operationId: projectGroupMemberRemove
+      summary: Remove group member
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+
+  /projects/{projectId}/audit-events:
+    get:
+      tags: [ProjectAudit]
+      operationId: projectAuditEventList
+      summary: List project audit events (admin/owner)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+          description: ISO-8601 timestamp (inclusive)
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+          description: ISO-8601 timestamp (exclusive)
+        - name: eventType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ProjectAuditEventType"
+        - name: actorUserId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: subjectUserId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: subjectGroupId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectAuditEvent"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  schemas:
+    ProjectRoleKey:
+      type: string
+      enum: ["owner", "admin", "member", "viewer"]
+
+    UserSummary:
+      type: object
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+
+    Project:
+      type: object
+      required: [projectId, name, createdAt, updatedAt]
+      properties:
+        projectId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        createdAt:
+          type: string
+          description: 创建时间（可序列化字符串；建议为 ISO-8601）
+        updatedAt:
+          type: string
+          description: 更新时间（可序列化字符串；建议为 ISO-8601）
+
+    ProjectCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    ProjectUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+
+    ProjectPermissionKey:
+      type: string
+      description: 权限能力 key（稳定字符串）
+      enum:
+        - project.read
+        - project.update
+        - member.read
+        - member.manage
+        - group.read
+        - group.manage
+        - audit.read
+        - owner.manage
+
+    ProjectAccess:
+      type: object
+      required: [projectId, userId, directRole, groupRoleKeys, effectiveRoleKeys, effectivePermissionKeys]
+      properties:
+        projectId:
+          type: integer
+          format: int64
+        userId:
+          type: string
+        directRole:
+          $ref: "#/components/schemas/ProjectRoleKey"
+        groupRoleKeys:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectRoleKey"
+        effectiveRoleKeys:
+          type: array
+          description: 稳定排序：viewer < member < admin < owner
+          items:
+            $ref: "#/components/schemas/ProjectRoleKey"
+        effectivePermissionKeys:
+          type: array
+          description: 稳定排序：按字典序升序
+          items:
+            $ref: "#/components/schemas/ProjectPermissionKey"
+
+    ProjectMember:
+      type: object
+      required: [user, directRole, groupRoleKeys, effectiveRoleKeys, effectivePermissionKeys, createdAt]
+      properties:
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        directRole:
+          $ref: "#/components/schemas/ProjectRoleKey"
+        groupRoleKeys:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectRoleKey"
+        effectiveRoleKeys:
+          type: array
+          description: 稳定排序：viewer < member < admin < owner
+          items:
+            $ref: "#/components/schemas/ProjectRoleKey"
+        effectivePermissionKeys:
+          type: array
+          description: 稳定排序：按字典序升序
+          items:
+            $ref: "#/components/schemas/ProjectPermissionKey"
+        createdAt:
+          type: string
+
+    ProjectMemberAddRequest:
+      type: object
+      required: [email, roleKey]
+      properties:
+        email:
+          type: string
+        roleKey:
+          $ref: "#/components/schemas/ProjectRoleKey"
+
+    ProjectMemberUpdateRoleRequest:
+      type: object
+      required: [roleKey]
+      properties:
+        roleKey:
+          $ref: "#/components/schemas/ProjectRoleKey"
+
+    ProjectGroup:
+      type: object
+      required: [groupId, projectId, name, roleKey, createdAt]
+      properties:
+        groupId:
+          type: integer
+          format: int64
+        projectId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        roleKey:
+          $ref: "#/components/schemas/ProjectRoleKey"
+        createdAt:
+          type: string
+
+    ProjectGroupCreateRequest:
+      type: object
+      required: [name, roleKey]
+      properties:
+        name:
+          type: string
+        roleKey:
+          $ref: "#/components/schemas/ProjectRoleKey"
+
+    ProjectGroupUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        roleKey:
+          $ref: "#/components/schemas/ProjectRoleKey"
+
+    ProjectGroupMember:
+      type: object
+      required: [user, createdAt]
+      properties:
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        createdAt:
+          type: string
+
+    ProjectGroupMemberAddRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+
+    ProjectAuditEventType:
+      type: string
+      enum:
+        - project_created
+        - member_added
+        - member_removed
+        - member_role_changed
+        - group_created
+        - group_deleted
+        - group_member_added
+        - group_member_removed
+        - group_role_changed
+
+    ProjectAuditEvent:
+      type: object
+      required: [eventId, projectId, eventType, createdAt]
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        projectId:
+          type: integer
+          format: int64
+        eventType:
+          $ref: "#/components/schemas/ProjectAuditEventType"
+        actorUserId:
+          type: string
+          nullable: true
+        subjectUserId:
+          type: string
+          nullable: true
+        subjectGroupId:
+          type: integer
+          format: int64
+          nullable: true
+        createdAt:
+          type: string
+        detail:
+          type: object
+          nullable: true
+
+    UnauthorizedError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: UnauthorizedError
+        message:
+          type: string
+    ForbiddenError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: ForbiddenError
+        message:
+          type: string
+    ConflictError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: ConflictError
+        message:
+          type: string
+    ValidationError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: ValidationError
+        message:
+          type: string
+    NotFoundError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: NotFoundError
+        message:
+          type: string

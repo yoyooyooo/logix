@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/009-txn-patch-dirtyset/schemas/patch.schema.json",
+  "title": "Patch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["opSeq", "path", "reason"],
+  "properties": {
+    "opSeq": { "type": "integer", "minimum": 0, "description": "Monotonic operation sequence within a transaction." },
+    "opId": { "type": "string", "minLength": 1, "description": "Deterministic derived op id (e.g. txnId::opSeq)." },
+    "path": { "$ref": "./field-path.schema.json" },
+    "affectedKeys": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Optional stable row keys affected by this patch (for row-scoped filtering)."
+    },
+    "affectedIndices": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "Optional best-effort list indices affected by this patch (unstable across reorder)."
+    },
+    "from": {
+      "description": "Optional previous value (full diagnostics). Must be JSON-serializable; omit when not serializable."
+    },
+    "to": {
+      "description": "Optional next value (full diagnostics). Must be JSON-serializable; omit when not serializable."
+    },
+    "reason": { "type": "string", "minLength": 1 },
+    "stepId": { "type": "string" },
+    "nodeId": { "type": "string" }
+  }
+}

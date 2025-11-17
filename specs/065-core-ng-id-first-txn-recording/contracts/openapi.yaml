@@ -1,0 +1,61 @@
+openapi: 3.1.0
+info:
+  title: Logix Txn Recording (Id-First) Contracts
+  version: "065"
+  description: >
+    Contracts for txn dirty-set / patch recording / debug evidence with id-first anchors
+    (FieldPathId/StepId). This is a schema-first contract for platform/devtools/sandbox
+    integration; it does not imply a specific transport or server implementation.
+paths:
+  /ir/converge-static:
+    get:
+      summary: Fetch Converge Static IR (export)
+      responses:
+        "200":
+          description: Converge Static IR export
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/converge-static-ir.schema.json
+  /trace/state-update:
+    post:
+      summary: Validate a state:update debug event payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/debug-state-update.schema.json
+      responses:
+        "204":
+          description: Valid
+        "400":
+          description: Invalid
+  /trace/txn-patch:
+    post:
+      summary: Validate a txn patch record payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/txn-patch-record.schema.json
+      responses:
+        "204":
+          description: Valid
+        "400":
+          description: Invalid
+  /trace/exec-vm:
+    post:
+      summary: Validate an exec-vm evidence debug event payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/exec-vm-evidence.schema.json
+      responses:
+        "204":
+          description: Valid
+        "400":
+          description: Invalid

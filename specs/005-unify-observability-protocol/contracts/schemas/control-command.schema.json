@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/005-unify-observability-protocol/schemas/control-command.schema.json",
+  "title": "ControlCommand",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "commandSeq", "type"],
+  "properties": {
+    "protocolVersion": { "type": "string", "minLength": 1 },
+    "commandSeq": { "type": "integer", "minimum": 1 },
+    "type": { "type": "string", "enum": ["clear", "pause", "resume"] },
+    "runId": { "type": "string", "minLength": 1 }
+  }
+}

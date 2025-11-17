@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-30T14:36:46.906Z",
+    "from": {
+      "file": "specs/052-core-ng-diagnostics-off-gate/perf/before.browser.diagnostics-overhead.372a89d7.darwin-arm64.default.json",
+      "commit": "372a89d7228a66b43f51b73dc0567f2382a78a91"
+    },
+    "to": {
+      "file": "specs/052-core-ng-diagnostics-off-gate/perf/after.browser.diagnostics-overhead.worktree.darwin-arm64.default.json",
+      "commit": "372a89d7228a66b43f51b73dc0567f2382a78a91"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "diagnostics.overhead.e2e",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=4 unavailable=0 missing=0] after[value=full ok=4 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "stabilityWarning: metric=e2e.clickToPaintMs {diagnosticsLevel=full&scenario=watchers.clickToPaint} baselineP95=89.40ms afterP95=72.80ms diff=16.60ms limit=8.94ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

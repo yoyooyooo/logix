@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/converge-static-ir-evidence.schema.json",
+  "title": "ConvergeStaticIREvidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["fieldPathCount", "stepCount"],
+  "properties": {
+    "fieldPathCount": { "type": "integer", "minimum": 0 },
+    "stepCount": { "type": "integer", "minimum": 0 },
+    "buildDurationMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Static IR build duration for this generation (may be sampled)."
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-21T17:38:11.397Z",
+    "from": {
+      "file": "specs/020-runtime-internals-contracts/perf/before.worktree.quick.on.json",
+      "commit": "b1babae23eb3bf93c83dfcf55daf79af8d3d68bb"
+    },
+    "to": {
+      "file": "specs/020-runtime-internals-contracts/perf/after.worktree.quick.on.json",
+      "commit": "b1babae23eb3bf93c83dfcf55daf79af8d3d68bb"
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "diagnostics.overhead.e2e",
+      "budgetViolations": []
+    }
+  ]
+}

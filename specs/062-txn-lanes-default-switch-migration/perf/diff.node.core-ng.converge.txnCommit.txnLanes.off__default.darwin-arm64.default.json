@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-30T18:29:04.150Z",
+    "from": {
+      "file": "specs/062-txn-lanes-default-switch-migration/perf/before.node.core-ng.converge.txnCommit.txnLanes.off.darwin-arm64.default.json",
+      "commit": "6312fd64cd3c1819ce8ab1c995c47927e9390dcf"
+    },
+    "to": {
+      "file": "specs/062-txn-lanes-default-switch-migration/perf/after.node.core-ng.converge.txnCommit.txnLanes.default.darwin-arm64.default.json",
+      "commit": "6312fd64cd3c1819ce8ab1c995c47927e9390dcf"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 65.67899999999531
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 65.8009189999974
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs(points) unit=count: before[value=65.67899999999531 ok=36 unavailable=0 missing=0] after[value=65.8009189999974 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.182362459546983
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.1552492965659176
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio(points) unit=ratio: before[value=1.182362459546983 ok=36 unavailable=0 missing=0] after[value=1.1552492965659176 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.182362459546983
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.1552492965659176
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio(points) unit=ratio: before[value=2.182362459546983 ok=36 unavailable=0 missing=0] after[value=2.1552492965659176 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 71.39542000000188
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 70.50042099999825
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs(points) unit=count: before[value=71.39542000000188 ok=36 unavailable=0 missing=0] after[value=70.50042099999825 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.141269696161197
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.2105737332712856
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio(points) unit=ratio: before[value=1.141269696161197 ok=36 unavailable=0 missing=0] after[value=1.2105737332712856 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.141269696161197
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.2105737332712856
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio(points) unit=ratio: before[value=2.141269696161197 ok=36 unavailable=0 missing=0] after[value=2.2105737332712856 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.250809061487955
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.1977240792256585
+          },
+          "message": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio(points) unit=ratio: before[value=1.250809061487955 ok=36 unavailable=0 missing=0] after[value=1.1977240792256585 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.250809061487955
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.1977240792256585
+          },
+          "message": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio(points) unit=ratio: before[value=2.250809061487955 ok=36 unavailable=0 missing=0] after[value=2.1977240792256585 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.1984455483392473
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.261773818419596
+          },
+          "message": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio(points) unit=ratio: before[value=1.1984455483392473 ok=36 unavailable=0 missing=0] after[value=1.261773818419596 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.1984455483392473
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.261773818419596
+          },
+          "message": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio(points) unit=ratio: before[value=2.1984455483392473 ok=36 unavailable=0 missing=0] after[value=2.261773818419596 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.heapDeltaBytes.median",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 51426032
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 51464008
+          },
+          "message": "runtime.heapDeltaBytes.median(points) unit=bytes: before[value=51426032 ok=36 unavailable=0 missing=0] after[value=51464008 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.heapDeltaBytes.p95",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 52582928
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 52634992
+          },
+          "message": "runtime.heapDeltaBytes.p95(points) unit=bytes: before[value=52582928 ok=36 unavailable=0 missing=0] after[value=52634992 ok=36 unavailable=0 missing=0]"
+        }
+      ]
+    }
+  ]
+}

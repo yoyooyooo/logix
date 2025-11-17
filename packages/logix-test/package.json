@@ -1,0 +1,80 @@
+{
+  "name": "@logix/test",
+  "version": "0.0.1",
+  "description": "Testing utilities for Logix v3",
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./TestRuntime": "./src/TestRuntime.ts",
+    "./TestProgram": "./src/TestProgram.ts",
+    "./Execution": "./src/Execution.ts",
+    "./Assertions": "./src/Assertions.ts",
+    "./Vitest": "./src/vitest.ts",
+    "./internal/*": null
+  },
+  "publishConfig": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./TestRuntime": {
+        "types": "./dist/TestRuntime.d.ts",
+        "import": "./dist/TestRuntime.js",
+        "require": "./dist/TestRuntime.cjs"
+      },
+      "./TestProgram": {
+        "types": "./dist/TestProgram.d.ts",
+        "import": "./dist/TestProgram.js",
+        "require": "./dist/TestProgram.cjs"
+      },
+      "./Execution": {
+        "types": "./dist/Execution.d.ts",
+        "import": "./dist/Execution.js",
+        "require": "./dist/Execution.cjs"
+      },
+      "./Assertions": {
+        "types": "./dist/Assertions.d.ts",
+        "import": "./dist/Assertions.js",
+        "require": "./dist/Assertions.cjs"
+      },
+      "./Vitest": {
+        "types": "./dist/vitest.d.ts",
+        "import": "./dist/vitest.js",
+        "require": "./dist/vitest.cjs"
+      },
+      "./internal/*": null
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest",
+    "test:changed": "vitest run --changed",
+    "test:cache": "vitest run --cache"
+  },
+  "dependencies": {
+    "@logix/core": "workspace:*",
+    "effect": "^3.19.8"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.27.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.15"
+  },
+  "peerDependencies": {
+    "@logix/core": "workspace:*",
+    "effect": "^3.19.8"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/060-react-priority-scheduling/contracts/schemas/txn-lane-evidence.schema.json",
+  "title": "TxnLaneEvidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["anchor", "lane", "kind", "policy", "backlog", "reasons"],
+  "properties": {
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["moduleId", "instanceId", "txnSeq"],
+      "properties": {
+        "moduleId": { "type": "string", "minLength": 1 },
+        "instanceId": { "type": "string", "minLength": 1 },
+        "txnSeq": { "type": "integer", "minimum": 0 },
+        "opSeq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional operation sequence id for finer-grained correlation."
+        }
+      },
+      "description": "Stable evidence anchor (aligned with specs/016)."
+    },
+    "lane": {
+      "type": "string",
+      "enum": ["urgent", "nonUrgent"],
+      "description": "The lane of this work item / scheduling decision."
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Work kind label (e.g. trait:deferred_flush). Must be stable across versions for aggregation."
+    },
+    "policy": {
+      "$ref": "intent-flow://specs/060-react-priority-scheduling/contracts/schemas/txn-lane-policy.schema.json"
+    },
+    "backlog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pendingCount"],
+      "properties": {
+        "pendingCount": { "type": "integer", "minimum": 0 },
+        "ageMs": { "type": "number", "minimum": 0, "description": "Backlog age estimation for explainability." },
+        "coalescedCount": { "type": "integer", "minimum": 0 },
+        "canceledCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "budgetMs": { "type": "number", "minimum": 0 },
+        "sliceDurationMs": { "type": "number", "minimum": 0 },
+        "yieldCount": { "type": "integer", "minimum": 0 },
+        "yielded": { "type": "boolean" },
+        "yieldReason": {
+          "type": "string",
+          "enum": ["none", "input_pending", "budget_exceeded", "forced_frame_yield"],
+          "description": "Why the runtime yielded (or continued) after this non-urgent slice."
+        }
+      }
+    },
+    "starvation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "triggered": { "type": "boolean" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "disabled",
+          "forced_off",
+          "forced_sync",
+          "queued_non_urgent",
+          "preempted_by_urgent",
+          "budget_yield",
+          "coalesced",
+          "canceled",
+          "max_lag_forced",
+          "starvation_protection"
+        ]
+      },
+      "description": "Finite reason codes explaining why the runtime delayed/yielded/coalesced/escalated this work."
+    }
+  }
+}

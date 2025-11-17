@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/trait-converge-event.full.schema.json",
+  "title": "TraceEvent (trait:converge, full)",
+  "description": "A Spec 009 DynamicTrace event whose kind is `trait:converge` and level is `full`.",
+  "allOf": [
+    {
+      "$ref": "../../../009-txn-patch-dirtyset/contracts/schemas/dynamic-trace.schema.json#/properties/events/items"
+    },
+    {
+      "type": "object",
+      "required": ["txnId", "kind", "data"],
+      "properties": {
+        "level": { "const": "full" },
+        "txnId": { "type": "string", "minLength": 1 },
+        "kind": { "const": "trait:converge" },
+        "data": { "$ref": "./trait-converge-data.full.schema.json" }
+      }
+    }
+  ]
+}

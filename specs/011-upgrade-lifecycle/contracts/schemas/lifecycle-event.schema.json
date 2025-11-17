@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LifecycleEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "identity", "phase", "name"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["lifecycle:phase", "lifecycle:error", "diagnostic"]
+    },
+    "identity": { "$ref": "./module-runtime-identity.schema.json" },
+    "phase": { "type": "string", "enum": ["init", "run", "destroy", "platform"] },
+    "name": { "type": "string", "minLength": 1 },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+    "error": { "$ref": "./error-summary.schema.json" }
+  }
+}

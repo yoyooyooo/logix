@@ -1,0 +1,39 @@
+openapi: 3.1.0
+info:
+  title: Logix Transaction Performance Controls Contracts
+  version: "019"
+  description: >
+    Contracts for transaction performance controls: commit scheduling evidence
+    (batch / low priority), dirty-set quality, and transaction/commit summaries.
+    This is an extension to Spec 009 (unified minimal IR: Static IR + Dynamic Trace)
+    and Spec 013 (auto converge planner). Schema-first documentation for runtime/
+    devtools/sandbox alignment; it does not imply a specific transport.
+paths:
+  /trace/txn/commit:
+    post:
+      summary: Validate a commit evidence payload (DynamicTrace extension)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/txn-commit-evidence.schema.json
+      responses:
+        "204":
+          description: Valid
+        "400":
+          description: Invalid
+  /trace/txn/dirty-set:
+    post:
+      summary: Validate a dirty-set evidence payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/dirty-set-v2.schema.json
+      responses:
+        "204":
+          description: Valid
+        "400":
+          description: Invalid

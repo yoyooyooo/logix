@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-28T15:48:16.511Z",
+    "from": {
+      "file": "specs/039-trait-converge-int-exec-evidence/perf/before.browser.diagnostics-overhead.worktree.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "to": {
+      "file": "specs/039-trait-converge-int-exec-evidence/perf/after.browser.diagnostics-overhead.worktree.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "diagnostics.overhead.e2e",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=3 unavailable=0 missing=0] after[value=full ok=3 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "stabilityWarning: metric=e2e.clickToPaintMs {diagnosticsLevel=off&scenario=watchers.clickToPaint} baselineP95=100.50ms afterP95=81.90ms diff=18.60ms limit=10.05ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

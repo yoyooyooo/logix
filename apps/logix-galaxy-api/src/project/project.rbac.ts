@@ -1,0 +1,63 @@
+export type ProjectRoleKey = 'owner' | 'admin' | 'member' | 'viewer'
+
+export type ProjectPermissionKey =
+  | 'project.read'
+  | 'project.update'
+  | 'member.read'
+  | 'member.manage'
+  | 'group.read'
+  | 'group.manage'
+  | 'audit.read'
+  | 'owner.manage'
+
+export const ProjectRoleKeysByPriority: ReadonlyArray<ProjectRoleKey> = ['viewer', 'member', 'admin', 'owner']
+
+const RolePriority: Record<ProjectRoleKey, number> = {
+  viewer: 0,
+  member: 1,
+  admin: 2,
+  owner: 3,
+}
+
+const RolePermissions: Record<ProjectRoleKey, ReadonlyArray<ProjectPermissionKey>> = {
+  viewer: ['project.read', 'member.read'],
+  member: ['project.read', 'member.read', 'group.read'],
+  admin: ['project.read', 'member.read', 'group.read', 'member.manage', 'group.manage', 'audit.read'],
+  owner: [
+    'project.read',
+    'member.read',
+    'group.read',
+    'member.manage',
+    'group.manage',
+    'audit.read',
+    'project.update',
+    'owner.manage',
+  ],
+}
+
+export const sortRoleKeys = (keys: Iterable<ProjectRoleKey>): ReadonlyArray<ProjectRoleKey> => {
+  const uniq = new Set<ProjectRoleKey>()
+  for (const k of keys) uniq.add(k)
+  return Array.from(uniq).sort((a, b) => RolePriority[a] - RolePriority[b])
+}
+
+export const rolePermissionKeys = (roleKey: ProjectRoleKey): ReadonlyArray<ProjectPermissionKey> => RolePermissions[roleKey]
+
+export const computeEffectiveRoleKeys = (directRole: ProjectRoleKey, groupRoleKeys: ReadonlyArray<ProjectRoleKey>) =>
+  sortRoleKeys([directRole, ...groupRoleKeys])
+
+export const computeEffectivePermissionKeys = (
+  effectiveRoleKeys: ReadonlyArray<ProjectRoleKey>,
+): ReadonlyArray<ProjectPermissionKey> => {
+  const uniq = new Set<ProjectPermissionKey>()
+  for (const role of effectiveRoleKeys) {
+    for (const p of RolePermissions[role]) uniq.add(p)
+  }
+  return Array.from(uniq).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+}
+
+export const hasPermission = (
+  access: { readonly effectivePermissionKeys: ReadonlyArray<ProjectPermissionKey> },
+  required: ProjectPermissionKey,
+): boolean => access.effectivePermissionKeys.includes(required)
+

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/031-trialrun-artifacts/schemas/form-rules-manifest-artifact.schema.json",
+  "title": "FormRulesManifestArtifactPayload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest", "warnings"],
+  "properties": {
+    "manifest": { "$ref": "../../../028-form-api-dx/contracts/schemas/rules-manifest.schema.json" },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

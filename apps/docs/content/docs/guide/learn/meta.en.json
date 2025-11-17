@@ -1,0 +1,13 @@
+{
+  "title": "Learn",
+  "pages": [
+    "describing-modules",
+    "adding-interactivity",
+    "managing-state",
+    "lifecycle-and-watchers",
+    "escape-hatches",
+    "cross-module-communication",
+    "query",
+    "deep-dive"
+  ]
+}

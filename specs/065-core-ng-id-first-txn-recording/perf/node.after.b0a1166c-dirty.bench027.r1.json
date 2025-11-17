@@ -1,0 +1,407 @@
+{
+  "meta": {
+    "createdAt": "2026-01-01T04:02:46.587Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/027-runtime-observability-hardening.devtools-and-txn-baseline.ts",
+    "git": {
+      "branch": "065",
+      "commit": "b0a1166c002c2f8aad61f0158af2666e32ea678d",
+      "dirty": true
+    },
+    "env": {
+      "node": "v22.21.1",
+      "platform": "darwin/arm64",
+      "gc": false
+    },
+    "config": {
+      "outFile": "specs/065-core-ng-id-first-txn-recording/perf/node.after.b0a1166c-dirty.bench027.r1.json",
+      "runs": 10,
+      "warmupDiscard": 2,
+      "eventsNotFull": 1000,
+      "events100k": 100000,
+      "txnIters": 20000,
+      "cleanupRuns": 10,
+      "cleanupWarmupDiscard": 2,
+      "cleanupInstances": 10000,
+      "algoIters": 100000
+    }
+  },
+  "suites": {
+    "ringBufferAlgorithm": [
+      {
+        "algo": "shift",
+        "bufferSize": 500,
+        "iters": 100000,
+        "totalMs": 9.508707999999956,
+        "nsPerOp": 95.08707999999956,
+        "trimOps": 99500,
+        "maxLength": 500,
+        "finalLength": 500
+      },
+      {
+        "algo": "shift",
+        "bufferSize": 5000,
+        "iters": 100000,
+        "totalMs": 10.513791999999967,
+        "nsPerOp": 105.13791999999967,
+        "trimOps": 95000,
+        "maxLength": 5000,
+        "finalLength": 5000
+      },
+      {
+        "algo": "batch_splice",
+        "bufferSize": 500,
+        "iters": 100000,
+        "totalMs": 2.9497499999999945,
+        "nsPerOp": 29.497499999999945,
+        "trimOps": 396,
+        "maxLength": 750,
+        "finalLength": 604
+      },
+      {
+        "algo": "batch_splice",
+        "bufferSize": 5000,
+        "iters": 100000,
+        "totalMs": 1.3077919999999494,
+        "nsPerOp": 13.077919999999494,
+        "trimOps": 92,
+        "maxLength": 6024,
+        "finalLength": 5700
+      }
+    ],
+    "devtoolsHubRecord": {
+      "window500": {
+        "notFull": {
+          "bufferSize": 500,
+          "diagnosticsLevel": "light",
+          "events": 400,
+          "result": {
+            "runs": 10,
+            "warmupDiscard": 2,
+            "samplesMs": [
+              5.447167000000036,
+              5.075166999999965,
+              4.105749999999944,
+              5.028124999999932,
+              3.3467500000000427,
+              5.753874999999994,
+              3.57487500000002,
+              3.6650829999999814
+            ],
+            "heapDeltaBytesSamples": [
+              -8770304,
+              6247360,
+              6130144,
+              -8211712,
+              6050544,
+              -8179760,
+              6093056,
+              5958432
+            ],
+            "timeMs": {
+              "n": 8,
+              "p50Ms": 4.105749999999944,
+              "p95Ms": 5.447167000000036
+            },
+            "heapDeltaBytes": {
+              "n": 8,
+              "p50Ms": 5958432,
+              "p95Ms": 6130144
+            }
+          },
+          "snapshotAfter": {
+            "eventsLength": 400,
+            "instances": 0,
+            "latestStates": 0,
+            "latestTraitSummaries": 0,
+            "exportBudget": {
+              "dropped": 100000,
+              "oversized": 0
+            },
+            "snapshotToken": 4010
+          }
+        },
+        "full": {
+          "bufferSize": 500,
+          "diagnosticsLevel": "light",
+          "events": 100000,
+          "result": {
+            "runs": 10,
+            "warmupDiscard": 2,
+            "samplesMs": [
+              346.03979200000003,
+              349.071375,
+              341.4102499999999,
+              326.0825,
+              345.6595830000001,
+              330.0541250000001,
+              338.1202090000006,
+              335.8831249999994
+            ],
+            "heapDeltaBytesSamples": [
+              90265488,
+              -53863408,
+              -53851448,
+              88862080,
+              -50436776,
+              88890784,
+              -51518616,
+              -49495352
+            ],
+            "timeMs": {
+              "n": 8,
+              "p50Ms": 338.1202090000006,
+              "p95Ms": 346.03979200000003
+            },
+            "heapDeltaBytes": {
+              "n": 8,
+              "p50Ms": -50436776,
+              "p95Ms": 88890784
+            }
+          },
+          "snapshotAfter": {
+            "eventsLength": 604,
+            "instances": 0,
+            "latestStates": 0,
+            "latestTraitSummaries": 0,
+            "exportBudget": {
+              "dropped": 100000,
+              "oversized": 0
+            },
+            "snapshotToken": 1004020
+          }
+        }
+      },
+      "window5000": {
+        "notFull": {
+          "bufferSize": 5000,
+          "diagnosticsLevel": "light",
+          "events": 1000,
+          "result": {
+            "runs": 10,
+            "warmupDiscard": 2,
+            "samplesMs": [
+              3.922708000000057,
+              4.64416700000038,
+              4.405499999999847,
+              3.8717500000002474,
+              4.325958999999784,
+              4.481999999999971,
+              3.830334000000221,
+              4.286833000000115
+            ],
+            "heapDeltaBytesSamples": [
+              11159904,
+              -3838848,
+              -3654976,
+              11119720,
+              -3850760,
+              -3748344,
+              11078816,
+              -3904472
+            ],
+            "timeMs": {
+              "n": 8,
+              "p50Ms": 4.286833000000115,
+              "p95Ms": 4.481999999999971
+            },
+            "heapDeltaBytes": {
+              "n": 8,
+              "p50Ms": -3748344,
+              "p95Ms": 11119720
+            }
+          },
+          "snapshotAfter": {
+            "eventsLength": 1000,
+            "instances": 0,
+            "latestStates": 0,
+            "latestTraitSummaries": 0,
+            "exportBudget": {
+              "dropped": 100000,
+              "oversized": 0
+            },
+            "snapshotToken": 1014031
+          }
+        },
+        "full": {
+          "bufferSize": 5000,
+          "diagnosticsLevel": "light",
+          "events": 100000,
+          "result": {
+            "runs": 10,
+            "warmupDiscard": 2,
+            "samplesMs": [
+              331.9645840000003,
+              344.7343329999994,
+              343.2751249999992,
+              341.51658399999997,
+              350.36004200000025,
+              334.58895799999937,
+              348.1670839999997,
+              347.92120800000066
+            ],
+            "heapDeltaBytesSamples": [
+              114404104,
+              -22036312,
+              -36272000,
+              -9076336,
+              -35951552,
+              114309000,
+              -19227656,
+              -23411488
+            ],
+            "timeMs": {
+              "n": 8,
+              "p50Ms": 343.2751249999992,
+              "p95Ms": 348.1670839999997
+            },
+            "heapDeltaBytes": {
+              "n": 8,
+              "p50Ms": -22036312,
+              "p95Ms": 114309000
+            }
+          },
+          "snapshotAfter": {
+            "eventsLength": 5700,
+            "instances": 0,
+            "latestStates": 0,
+            "latestTraitSummaries": 0,
+            "exportBudget": {
+              "dropped": 100000,
+              "oversized": 0
+            },
+            "snapshotToken": 2014041
+          }
+        }
+      }
+    },
+    "txnQueue": {
+      "noLinkId": {
+        "iters": 20000,
+        "diagnosticsLevel": "off",
+        "hasLinkId": false,
+        "result": {
+          "runs": 10,
+          "warmupDiscard": 2,
+          "samplesMs": [
+            533.6622499999994,
+            532.0361250000005,
+            537.5993330000001,
+            524.0910830000012,
+            558.8888750000006,
+            525.5766669999994,
+            561.3289999999997,
+            533.3577920000007
+          ],
+          "heapDeltaBytesSamples": [
+            -69195120,
+            67373328,
+            -64518640,
+            69820256,
+            -66050448,
+            51743248,
+            -45631960,
+            51709288
+          ],
+          "timeMs": {
+            "n": 8,
+            "p50Ms": 533.3577920000007,
+            "p95Ms": 558.8888750000006
+          },
+          "heapDeltaBytes": {
+            "n": 8,
+            "p50Ms": -45631960,
+            "p95Ms": 67373328
+          }
+        }
+      },
+      "withLinkId": {
+        "iters": 20000,
+        "diagnosticsLevel": "off",
+        "hasLinkId": true,
+        "result": {
+          "runs": 10,
+          "warmupDiscard": 2,
+          "samplesMs": [
+            522.3492920000008,
+            558.1068340000002,
+            521.924583,
+            552.2921669999996,
+            523.6299160000017,
+            538.9107499999991,
+            530.010459000001,
+            558.4414579999975
+          ],
+          "heapDeltaBytesSamples": [
+            60429408,
+            -79145792,
+            60344040,
+            -71570696,
+            60173480,
+            -68413560,
+            59388480,
+            -37007768
+          ],
+          "timeMs": {
+            "n": 8,
+            "p50Ms": 530.010459000001,
+            "p95Ms": 558.1068340000002
+          },
+          "heapDeltaBytes": {
+            "n": 8,
+            "p50Ms": -37007768,
+            "p95Ms": 60344040
+          }
+        }
+      }
+    },
+    "cleanupCurve": {
+      "instances": 10000,
+      "result": {
+        "runs": 10,
+        "warmupDiscard": 2,
+        "samplesMs": [
+          127.95175000000017,
+          139.06704199999876,
+          129.6628329999985,
+          127.24200000000201,
+          137.28854199999842,
+          124.40795900000012,
+          126.19591600000058,
+          125.16416700000264
+        ],
+        "heapDeltaBytesSamples": [
+          28035904,
+          -114941280,
+          43148752,
+          42933544,
+          -96996224,
+          42484712,
+          43107288,
+          42871664
+        ],
+        "timeMs": {
+          "n": 8,
+          "p50Ms": 127.24200000000201,
+          "p95Ms": 137.28854199999842
+        },
+        "heapDeltaBytes": {
+          "n": 8,
+          "p50Ms": 42484712,
+          "p95Ms": 43107288
+        }
+      },
+      "snapshotAfter": {
+        "instances": 0,
+        "latestStates": 0,
+        "latestTraitSummaries": 0
+      }
+    }
+  },
+  "gate": {
+    "ok": true,
+    "sc002": {
+      "expectedMaxRatio": 1.1,
+      "p50Ratio5000Over500": 1.0152458086289617
+    }
+  }
+}

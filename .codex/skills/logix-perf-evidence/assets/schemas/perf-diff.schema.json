@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LogixPerfDiff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "meta", "summary", "suites"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "meta": { "$ref": "#/$defs/Meta" },
+    "summary": { "$ref": "#/$defs/Summary" },
+    "suites": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/SuiteDiff" }
+    }
+  },
+  "$defs": {
+    "Budget": { "$ref": "./perf-report.schema.json#/$defs/Budget" },
+    "Params": { "$ref": "./perf-report.schema.json#/$defs/Params" },
+    "Recommendation": { "$ref": "./perf-report.schema.json#/$defs/Recommendation" },
+    "EvidenceUnit": {
+      "type": "string",
+      "enum": ["count", "ratio", "bytes", "string"]
+    },
+    "EvidenceAgg": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "unavailable", "missing"],
+      "properties": {
+        "ok": { "type": "integer", "minimum": 0 },
+        "unavailable": { "type": "integer", "minimum": 0 },
+        "missing": { "type": "integer", "minimum": 0 },
+        "value": {
+          "oneOf": [{ "type": "number" }, { "type": "string" }]
+        }
+      }
+    },
+    "EvidenceDelta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "unit", "scope", "before", "after", "message"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "unit": { "$ref": "#/$defs/EvidenceUnit" },
+        "scope": { "type": "string", "enum": ["points", "whereSlices"] },
+        "before": { "$ref": "#/$defs/EvidenceAgg" },
+        "after": { "$ref": "#/$defs/EvidenceAgg" },
+        "message": { "type": "string" }
+      }
+    },
+    "Meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["createdAt", "from", "to"],
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "from": { "$ref": "#/$defs/ReportRef" },
+        "to": { "$ref": "#/$defs/ReportRef" },
+        "comparability": { "$ref": "#/$defs/Comparability" }
+      }
+    },
+    "Comparability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "comparable",
+        "allowConfigDrift",
+        "allowEnvDrift",
+        "configMismatches",
+        "envMismatches",
+        "warnings"
+      ],
+      "properties": {
+        "comparable": { "type": "boolean" },
+        "allowConfigDrift": { "type": "boolean" },
+        "allowEnvDrift": { "type": "boolean" },
+        "configMismatches": { "type": "array", "items": { "type": "string" } },
+        "envMismatches": { "type": "array", "items": { "type": "string" } },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "ReportRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file": { "type": "string" },
+        "commit": { "type": "string" },
+        "envId": { "type": "string" }
+      }
+    },
+    "Summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regressions", "improvements", "budgetViolations"],
+      "properties": {
+        "regressions": { "type": "integer", "minimum": 0 },
+        "improvements": { "type": "integer", "minimum": 0 },
+        "budgetViolations": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "SuiteDiff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "thresholdDeltas": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ThresholdDelta" }
+        },
+        "budgetViolations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/BudgetViolation" }
+        },
+        "evidenceDeltas": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceDelta" }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "ThresholdDelta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["budget", "beforeMaxLevel", "afterMaxLevel"],
+      "properties": {
+        "budget": { "$ref": "#/$defs/Budget" },
+        "where": { "$ref": "#/$defs/Params" },
+        "beforeMaxLevel": {
+          "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "null" }]
+        },
+        "afterMaxLevel": {
+          "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "null" }]
+        },
+        "message": { "type": "string" },
+        "recommendations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Recommendation" }
+        }
+      }
+    },
+    "BudgetViolation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["budget", "message"],
+      "properties": {
+        "budget": { "$ref": "#/$defs/Budget" },
+        "where": { "$ref": "#/$defs/Params" },
+        "message": { "type": "string" },
+        "recommendations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Recommendation" }
+        }
+      }
+    }
+  }
+}

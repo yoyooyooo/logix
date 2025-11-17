@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-20T14:12:31.757Z",
+    "generator": "scripts/perf/017-perf-tuning-lab.recommend.ts",
+    "profile": "quick",
+    "confirm": {
+      "enabled": true,
+      "confirmProfile": "quick",
+      "confirmTop": 2
+    },
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixFile": "specs/014-browser-perf-boundaries/matrix.json",
+    "files": [
+      "test/browser/perf-boundaries/converge-steps.test.tsx"
+    ],
+    "repro": {
+      "recommend": {
+        "command": "pnpm -C .codex/skills/logix-perf-evidence tuning:recommend",
+        "argv": [
+          "--profile",
+          "quick",
+          "--matrix",
+          "specs/014-browser-perf-boundaries/matrix.json",
+          "--out-dir",
+          "specs/014-browser-perf-boundaries/perf/tuning",
+          "--retries",
+          "0",
+          "--files",
+          "test/browser/perf-boundaries/converge-steps.test.tsx",
+          "--candidates",
+          "[{\"traitConvergeBudgetMs\":200,\"traitConvergeDecisionBudgetMs\":0.25},{\"traitConvergeBudgetMs\":200,\"traitConvergeDecisionBudgetMs\":0.5}]"
+        ],
+        "note": "argv 需要放在 `--` 之后传入（例如：pnpm -C .codex/skills/logix-perf-evidence tuning:recommend -- <argv...>）"
+      }
+    },
+    "scoreSpec": {
+      "suiteId": "converge.txnCommit",
+      "hardGateBudgetId": "auto<=full*1.05",
+      "budgetId": "commit.p95<=50ms",
+      "metric": "runtime.txnCommitMs",
+      "where": {
+        "convergeMode": "auto"
+      },
+      "slices": [
+        "dirtyRootsRatio"
+      ]
+    }
+  },
+  "summary": {
+    "winnerId": "executionBudgetMs=200,decisionBudgetMs=0.5",
+    "winnerScore": {
+      "worstMaxLevel": 200,
+      "sumMaxLevel": 5000
+    },
+    "winnerDeltaToRunnerUp": {
+      "worstMaxLevel": 0,
+      "sumMaxLevel": 1200
+    },
+    "winnerReportMeta": {
+      "git": {
+        "branch": "019-txn-perf-controls",
+        "commit": "534dfd33408e18194be65e58c38d8daebb01369a",
+        "dirty": true
+      },
+      "env": {
+        "os": "darwin",
+        "arch": "arm64",
+        "node": "v22.21.1",
+        "pnpm": "9.15.9",
+        "vitest": "4.0.15",
+        "playwright": "1.57.0",
+        "browser": {
+          "name": "chromium",
+          "headless": true
+        }
+      }
+    },
+    "runnerUpReportMeta": {
+      "git": {
+        "branch": "019-txn-perf-controls",
+        "commit": "534dfd33408e18194be65e58c38d8daebb01369a",
+        "dirty": true
+      },
+      "env": {
+        "os": "darwin",
+        "arch": "arm64",
+        "node": "v22.21.1",
+        "pnpm": "9.15.9",
+        "vitest": "4.0.15",
+        "playwright": "1.57.0",
+        "browser": {
+          "name": "chromium",
+          "headless": true
+        }
+      }
+    },
+    "confirmation": {
+      "requested": true,
+      "performed": false,
+      "profile": "quick",
+      "targets": [],
+      "skippedReason": "winnerNotClose"
+    },
+    "candidates": {
+      "total": 2,
+      "ok": 2,
+      "error": 0
+    },
+    "hardGate": {
+      "id": "auto<=full*1.05",
+      "expectedMaxLevel": 2000,
+      "ok": 2,
+      "failed": 0,
+      "unknown": 0
+    },
+    "uncomparable": {
+      "candidates": {
+        "error": 0,
+        "okWithMissingThreshold": 0
+      },
+      "reasonDist": {
+        "errorKinds": {},
+        "sliceIssues": {
+          "threshold:budgetExceeded": 5
+        }
+      }
+    },
+    "nextActions": [
+      "若 winner 贴近阈值或出现明显抖动：建议用 profile=default 复跑 winner（或 top2）确认",
+      "若要形成发布级证据：将 winner 作为 After，进入 014 做 Before/After diff"
+    ]
+  },
+  "candidates": [
+    {
+      "id": "executionBudgetMs=200,decisionBudgetMs=0.25",
+      "profile": "quick",
+      "ok": true,
+      "reportFile": "specs/014-browser-perf-boundaries/perf/tuning/sweep.017.executionBudgetMs=200,decisionBudgetMs=0.25.quick.json",
+      "hardGate": {
+        "id": "auto<=full*1.05",
+        "expectedMaxLevel": 2000,
+        "ok": true
+      },
+      "score": {
+        "worstMaxLevel": 200,
+        "sumMaxLevel": 3800
+      },
+      "slices": [
+        {
+          "dirtyRootsRatio": 0.005,
+          "maxLevel": 2000,
+          "firstFailLevel": null,
+          "p95AtMaxLevelMs": 15.699999988079071
+        },
+        {
+          "dirtyRootsRatio": 0.05,
+          "maxLevel": 800,
+          "firstFailLevel": 2000,
+          "reason": "budgetExceeded",
+          "p95AtMaxLevelMs": 7.799999997019768
+        },
+        {
+          "dirtyRootsRatio": 0.25,
+          "maxLevel": 800,
+          "firstFailLevel": 2000,
+          "reason": "budgetExceeded",
+          "p95AtMaxLevelMs": 34.599999994039536
+        },
+        {
+          "dirtyRootsRatio": 0.75,
+          "maxLevel": 200,
+          "firstFailLevel": 800,
+          "reason": "budgetExceeded",
+          "p95AtMaxLevelMs": 8.799999997019768
+        }
+      ]
+    },
+    {
+      "id": "executionBudgetMs=200,decisionBudgetMs=0.5",
+      "profile": "quick",
+      "ok": true,
+      "reportFile": "specs/014-browser-perf-boundaries/perf/tuning/sweep.017.executionBudgetMs=200,decisionBudgetMs=0.5.quick.json",
+      "hardGate": {
+        "id": "auto<=full*1.05",
+        "expectedMaxLevel": 2000,
+        "ok": true
+      },
+      "score": {
+        "worstMaxLevel": 200,
+        "sumMaxLevel": 5000
+      },
+      "slices": [
+        {
+          "dirtyRootsRatio": 0.005,
+          "maxLevel": 2000,
+          "firstFailLevel": null,
+          "p95AtMaxLevelMs": 5.200000002980232
+        },
+        {
+          "dirtyRootsRatio": 0.05,
+          "maxLevel": 2000,
+          "firstFailLevel": null,
+          "p95AtMaxLevelMs": 48.8999999910593
+        },
+        {
+          "dirtyRootsRatio": 0.25,
+          "maxLevel": 800,
+          "firstFailLevel": 2000,
+          "reason": "budgetExceeded",
+          "p95AtMaxLevelMs": 35.599999994039536
+        },
+        {
+          "dirtyRootsRatio": 0.75,
+          "maxLevel": 200,
+          "firstFailLevel": 800,
+          "reason": "budgetExceeded",
+          "p95AtMaxLevelMs": 9.599999994039536
+        }
+      ]
+    }
+  ],
+  "winner": {
+    "id": "executionBudgetMs=200,decisionBudgetMs=0.5",
+    "recommendedDefault": {
+      "stateTransaction": {
+        "traitConvergeMode": "auto",
+        "traitConvergeBudgetMs": 200,
+        "traitConvergeDecisionBudgetMs": 0.5
+      }
+    },
+    "score": {
+      "worstMaxLevel": 200,
+      "sumMaxLevel": 5000
+    },
+    "evidence": {
+      "reportFile": "specs/014-browser-perf-boundaries/perf/tuning/sweep.017.executionBudgetMs=200,decisionBudgetMs=0.5.quick.json"
+    }
+  }
+}

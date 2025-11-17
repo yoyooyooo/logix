@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-29T03:09:48.701Z",
+    "from": {
+      "file": "specs/039-trait-converge-int-exec-evidence/perf/before.browser.watchers-click-to-paint.worktree.quick.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "to": {
+      "file": "specs/039-trait-converge-int-exec-evidence/perf/after.browser.watchers-click-to-paint.worktree.quick.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 1,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "watchers.clickToPaint",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "beforeMaxLevel": 256,
+          "afterMaxLevel": 512,
+          "message": "[category=e2e] p95<=100ms {reactStrictMode=true}: before=256 after=512 (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "notes": "stabilityWarning: metric=e2e.clickToPaintMs {reactStrictMode=false&watchers=1} baselineP95=24.50ms afterP95=29.60ms diff=5.10ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

@@ -1,0 +1,621 @@
+openapi: 3.1.0
+info:
+  title: logix-galaxy-api（Auth & Users）
+  version: 0.0.1
+  description: |
+    Galaxy 后端示例服务：登录与用户模块（增量契约）。
+
+    - 认证：`Authorization: Bearer <token>`
+    - PostgreSQL：由 `DATABASE_URL` 提供（生产实现依赖数据库；测试可用替身 Repo）
+servers:
+  - url: http://localhost:5500
+tags:
+  - name: Auth
+    description: 登录 / 登出 / 当前用户 / 审计事件
+  - name: User
+    description: 用户管理（管理员）
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: authLogin
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLoginResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TooManyRequestsError"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: authLogout
+      summary: Logout current session
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+
+  /me:
+    get:
+      tags: [Auth]
+      operationId: authMe
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+
+  /auth/events:
+    get:
+      tags: [Auth]
+      operationId: authEventList
+      summary: List auth events (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+          description: ISO-8601 timestamp (inclusive)
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+          description: ISO-8601 timestamp (exclusive)
+        - name: subjectUserId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: actorUserId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: identifier
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuthEvent"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+
+  /users:
+    post:
+      tags: [User]
+      operationId: userCreate
+      summary: Create user (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictError"
+    get:
+      tags: [User]
+      operationId: userList
+      summary: List users (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search keyword (email/displayName)
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/UserStatus"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+
+  /users/{id}:
+    get:
+      tags: [User]
+      operationId: userGet
+      summary: Get user (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+    patch:
+      tags: [User]
+      operationId: userUpdate
+      summary: Update user (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+
+  /users/{id}/disable:
+    post:
+      tags: [User]
+      operationId: userDisable
+      summary: Disable user (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+
+  /users/{id}/enable:
+    post:
+      tags: [User]
+      operationId: userEnable
+      summary: Enable user (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+
+  /users/{id}/reset-password:
+    post:
+      tags: [User]
+      operationId: userResetPassword
+      summary: Reset user password (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserResetPasswordRequest"
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  schemas:
+    UserStatus:
+      type: string
+      enum: ["active", "disabled"]
+    RoleCode:
+      type: string
+      enum: ["admin", "user"]
+
+    User:
+      type: object
+      required: [id, email, displayName, status, roles, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleCode"
+        createdAt:
+          type: string
+          description: 创建时间（可序列化字符串；建议为 ISO-8601）
+        updatedAt:
+          type: string
+          description: 更新时间（可序列化字符串；建议为 ISO-8601）
+        lastLoginAt:
+          type: string
+          nullable: true
+        disabledAt:
+          type: string
+          nullable: true
+
+    AuthLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthLoginResponse:
+      type: object
+      required: [token, expiresAt, user]
+      properties:
+        token:
+          type: string
+          description: 不透明 session token（仅在登录时返回）
+        expiresAt:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    UserCreateRequest:
+      type: object
+      required: [email, displayName, password]
+      properties:
+        email:
+          type: string
+        displayName:
+          type: string
+        password:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleCode"
+          description: 可选；缺省为 ["user"]
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+
+    UserResetPasswordRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+
+    AuthEventType:
+      type: string
+      enum:
+        - login_succeeded
+        - login_failed
+        - logout
+        - user_created
+        - user_disabled
+        - user_enabled
+        - password_reset
+
+    AuthEvent:
+      type: object
+      required: [eventId, eventType, createdAt]
+      properties:
+        eventId:
+          type: integer
+        eventType:
+          $ref: "#/components/schemas/AuthEventType"
+        actorUserId:
+          type: string
+          nullable: true
+        subjectUserId:
+          type: string
+          nullable: true
+        identifier:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+
+    UnauthorizedError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: UnauthorizedError
+        message:
+          type: string
+    ForbiddenError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: ForbiddenError
+        message:
+          type: string
+    ConflictError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: ConflictError
+        message:
+          type: string
+    ValidationError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: ValidationError
+        message:
+          type: string
+    NotFoundError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: NotFoundError
+        message:
+          type: string
+    TooManyRequestsError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: TooManyRequestsError
+        message:
+          type: string

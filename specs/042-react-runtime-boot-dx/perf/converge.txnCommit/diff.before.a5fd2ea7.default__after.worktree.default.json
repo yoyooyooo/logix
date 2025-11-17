@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-28T04:42:45.562Z",
+    "from": {
+      "file": "specs/042-react-runtime-boot-dx/perf/converge.txnCommit/before.a5fd2ea7.darwin-arm64.m2max.chromium.headless.default.json",
+      "commit": "a5fd2ea76cd2f1962929bb100bdbe79dc49b3e80"
+    },
+    "to": {
+      "file": "specs/042-react-runtime-boot-dx/perf/converge.txnCommit/after.worktree.darwin-arm64.m2max.chromium.headless.default.json",
+      "commit": "a5fd2ea76cd2f1962929bb100bdbe79dc49b3e80"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "regressions": 3,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 200,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=full&dirtyRootsRatio=0.75}: before=800 after=200 (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 200,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=dirty&dirtyRootsRatio=0.75}: before=800 after=200 (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 200,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=800 after=200 (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "notes": "mostSignificantRegression: commit.p95<=100ms {convergeMode=full&dirtyRootsRatio=0.75} (before=800, after=200); stabilityWarning: metric=runtime.txnCommitMs {convergeMode=dirty&dirtyRootsRatio=0.75&steps=800} baselineP95=96.90ms afterP95=109.20ms diff=12.30ms limit=9.69ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

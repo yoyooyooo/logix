@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/033-module-stage-blueprints/schemas/row-ref.schema.json",
+  "title": "RowRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "rowPath"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "rowPath": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["listPath", "rowId"],
+        "properties": {
+          "listPath": { "type": "string", "minLength": 1 },
+          "rowId": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}

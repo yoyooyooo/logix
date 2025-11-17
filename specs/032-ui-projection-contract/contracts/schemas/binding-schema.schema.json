@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/032-ui-projection-contract/schemas/binding-schema.schema.json",
+  "title": "BindingSchema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "moduleId", "instanceId", "bindings"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "uiPropKey", "from"],
+            "properties": {
+              "kind": { "type": "string", "const": "read" },
+              "uiPropKey": { "type": "string", "minLength": 1 },
+              "from": {
+                "allOf": [
+                  { "$ref": "../../../035-module-ports-typeir/contracts/schemas/port-address.schema.json" },
+                  { "type": "object", "properties": { "kind": { "enum": ["output", "export"] } }, "required": ["kind"] }
+                ]
+              },
+              "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "uiEventKey", "to"],
+            "properties": {
+              "kind": { "type": "string", "const": "dispatch" },
+              "uiEventKey": { "type": "string", "minLength": 1 },
+              "to": {
+                "allOf": [
+                  { "$ref": "../../../035-module-ports-typeir/contracts/schemas/port-address.schema.json" },
+                  { "type": "object", "properties": { "kind": { "enum": ["action", "event"] } }, "required": ["kind"] }
+                ]
+              },
+              "mapping": { "$ref": "../../../034-expression-asset-protocol/contracts/schemas/code-asset-ref.schema.json" },
+              "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

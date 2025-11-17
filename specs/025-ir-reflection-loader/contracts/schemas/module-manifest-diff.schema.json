@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/025/module-manifest-diff.schema.json",
+  "title": "ModuleManifestDiff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "moduleId", "before", "after", "verdict", "changes", "summary"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "before": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest"],
+      "properties": {
+        "digest": { "type": "string", "minLength": 1 },
+        "manifestVersion": { "type": "string", "minLength": 1 }
+      }
+    },
+    "after": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest"],
+      "properties": {
+        "digest": { "type": "string", "minLength": 1 },
+        "manifestVersion": { "type": "string", "minLength": 1 }
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "WARN", "FAIL"]
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "code"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["BREAKING", "RISKY", "INFO"]
+          },
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "pointer": { "type": "string", "minLength": 1 },
+          "details": {
+            "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["breaking", "risky", "info"],
+      "properties": {
+        "breaking": { "type": "integer", "minimum": 0 },
+        "risky": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

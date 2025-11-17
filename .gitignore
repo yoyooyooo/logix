@@ -1,0 +1,39 @@
+node_modules
+dist
+build
+archive/
+coverage
+.turbo
+.next
+.vite
+.cache
+.source
+
+
+
+# codex
+.codex/log
+.codex/auth.json
+.codex/config.toml
+.codex/sessions
+.codex/history.jsonl
+.codex/version.json
+
+# agent
+.agent/worktrees/
+.rsworktree/
+*.log
+*.tsbuildinfo
+.env*
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+
+# Auto Claude data directory
+.auto-claude/
+
+# @logix/sandbox build assets (generated via bundle:kernel / prepack)
+packages/logix-sandbox/public/

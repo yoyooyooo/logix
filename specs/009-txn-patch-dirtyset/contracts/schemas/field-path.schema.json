@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/009-txn-patch-dirtyset/schemas/field-path.schema.json",
+  "title": "FieldPath",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "string",
+    "minLength": 1,
+    "pattern": "^(?!\\d+$)[^\\[\\]]+$",
+    "not": { "const": "*" }
+  },
+  "description": "Canonical normalized field path as segments. Segments must not contain list indices (no [] / [0] / pure-numeric segments); unknown writes use dirtyAll instead of '*'."
+}

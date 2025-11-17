@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": false,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 120,
+  "tabWidth": 2,
+  "arrowParens": "always",
+  "ignorePatterns": [
+    ".codex",
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    ".next",
+    ".source",
+    ".turbo",
+    ".vite",
+    ".cache",
+    ".git",
+    ".agent",
+    ".env*",
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "yarn.lock"
+  ]
+}

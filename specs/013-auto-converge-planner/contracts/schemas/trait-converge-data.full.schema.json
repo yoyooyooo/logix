@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/trait-converge-data.full.schema.json",
+  "title": "ConvergeDecisionSummary (full)",
+  "allOf": [
+    { "$ref": "./trait-converge-data.schema.json" },
+    { "type": "object", "required": ["cache", "generation", "staticIr"] }
+  ],
+  "description": "Full diagnostics payload: may include controlled roots summary (`rootCount` + `rootIds` TopK + `rootIdsTruncated`) and optional hotspots."
+}

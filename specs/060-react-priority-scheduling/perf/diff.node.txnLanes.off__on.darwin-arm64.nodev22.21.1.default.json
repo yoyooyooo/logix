@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "createdAt": "2025-12-29T20:47:03.722Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/060-react-priority-scheduling.txn-lanes-workloop.ts",
+    "envId": "darwin-arm64.nodev22.21.1",
+    "config": {
+      "runs": 30,
+      "warmupDiscard": 5,
+      "steps": 1024,
+      "computeIters": 4000,
+      "delayMs": 1,
+      "lanePolicy": {
+        "debounceMs": 0,
+        "maxLagMs": 50,
+        "budgetMs": 0
+      }
+    }
+  },
+  "before": {
+    "urgentMs": {
+      "n": 30,
+      "p50Ms": 0.4376249999997981,
+      "p95Ms": 0.5033750000000055
+    },
+    "catchUpMs": {
+      "n": 30,
+      "p50Ms": 8.278916000000095,
+      "p95Ms": 15.560874999999896
+    }
+  },
+  "after": {
+    "urgentMs": {
+      "n": 30,
+      "p50Ms": 0.3495419999999285,
+      "p95Ms": 0.4199580000001788
+    },
+    "catchUpMs": {
+      "n": 30,
+      "p50Ms": 18.315292,
+      "p95Ms": 19.61587499999996
+    }
+  },
+  "deltas": {
+    "urgentP95Ratio": 0.834284579091481,
+    "catchUpP95Ratio": 1.2605894591403177
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/038/evidence-ref.schema.json",
+  "title": "EvidenceRef",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["event", "node", "metric", "snapshot"]
+    },
+    "ref": { "type": "string", "minLength": 1 },
+    "note": { "type": "string" }
+  },
+  "required": ["kind", "ref"]
+}

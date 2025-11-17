@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/067/module-manifest-action.schema.json",
+  "title": "ModuleManifestAction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["actionTag", "payload"],
+  "properties": {
+    "actionTag": { "type": "string", "minLength": 1 },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["void", "nonVoid", "unknown"] }
+      }
+    },
+    "primaryReducer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["declared", "registered"] }
+      }
+    },
+    "source": { "$ref": "./dev-source.schema.json" }
+  }
+}

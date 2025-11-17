@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-30T15:15:50.434Z",
+    "from": {
+      "file": "specs/051-core-ng-txn-zero-alloc/perf/before.browser.p1.372a89d7.darwin-arm64.default.json",
+      "commit": "372a89d7228a66b43f51b73dc0567f2382a78a91"
+    },
+    "to": {
+      "file": "specs/051-core-ng-txn-zero-alloc/perf/after.browser.p1.worktree.darwin-arm64.default.json",
+      "commit": "372a89d7228a66b43f51b73dc0567f2382a78a91"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 2,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "budgetViolations": []
+    },
+    {
+      "id": "watchers.clickToPaint",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "beforeMaxLevel": 64,
+          "afterMaxLevel": 1,
+          "message": "[category=e2e] p95<=50ms {reactStrictMode=false}: before=64 after=1 (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.watchers.scale-down-watchers",
+              "title": "减少 watcher 数量或拆分模块",
+              "detail": "边界回归集中在 watcher 维度，可优先尝试降低单模块 watcher 数量、拆分模块或减少级联依赖。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "beforeMaxLevel": 256,
+          "afterMaxLevel": 64,
+          "message": "[category=e2e] p95<=100ms {reactStrictMode=false}: before=256 after=64 (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.watchers.scale-down-watchers",
+              "title": "减少 watcher 数量或拆分模块",
+              "detail": "边界回归集中在 watcher 维度，可优先尝试降低单模块 watcher 数量、拆分模块或减少级联依赖。"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "notes": "mostSignificantRegression: p95<=50ms {reactStrictMode=false} (before=64, after=1); stabilityWarning: metric=e2e.clickToPaintMs {reactStrictMode=false&watchers=8} baselineP95=33.40ms afterP95=93.50ms diff=60.10ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

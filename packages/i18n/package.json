@@ -1,0 +1,39 @@
+{
+  "name": "@logix/i18n",
+  "version": "0.0.1",
+  "description": "I18n domain package for Logix",
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  },
+  "scripts": {
+    "build": "tsup --format cjs,esm --dts",
+    "dev": "tsup --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed",
+    "test:cache": "vitest run --cache",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@logix/core": "workspace:*",
+    "effect": "^3.19.8"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.27.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.8.2",
+    "vitest": "^4.0.15"
+  },
+  "peerDependencies": {
+    "@logix/core": "workspace:*",
+    "effect": "^3.19.8"
+  }
+}

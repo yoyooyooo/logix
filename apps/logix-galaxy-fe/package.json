@@ -1,0 +1,33 @@
+{
+  "name": "logix-galaxy-fe",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@logix/core": "workspace:*",
+    "@logix/devtools-react": "workspace:*",
+    "@logix/react": "workspace:*",
+    "@logix/sandbox": "workspace:*",
+    "effect": "^3.19.8",
+    "esbuild-wasm": "^0.27.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react-swc": "^3.7.0",
+    "esbuild": "^0.27.1",
+    "tailwindcss": "^4.1.16",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  }
+}

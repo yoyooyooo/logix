@@ -1,0 +1,1987 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-17T04:21:51.724Z",
+    "generator": "scripts/perf/014-browser-perf-boundaries.collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "git": {
+      "branch": "011-upgrade-lifecycle",
+      "commit": "402f93d23b571b214c89d672f2fc43c82e9c3948",
+      "dirty": true
+    },
+    "config": {
+      "runs": 10,
+      "warmupDiscard": 2,
+      "timeoutMs": 8000,
+      "headless": true,
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "watchers.clickToPaint",
+      "title": "watchers: click→paint",
+      "priority": "P1",
+      "primaryAxis": "watchers",
+      "budgets": [
+        {
+          "id": "p95<=16ms",
+          "type": "absolute",
+          "metric": "e2e.clickToPaintMs",
+          "p95Ms": 16
+        },
+        {
+          "id": "p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.clickToPaintMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.clickToPaintMs",
+          "p95Ms": 100
+        }
+      ],
+      "points": [
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 13.900000035762787,
+                "p95Ms": 15.099999964237213
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 14.800000011920929,
+                "p95Ms": 16.099999964237213
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 32
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 13.800000011920929,
+                "p95Ms": 16
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 16.099999964237213,
+                "p95Ms": 21.5
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 24.30000001192093,
+                "p95Ms": 26.600000023841858
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 38.700000047683716,
+                "p95Ms": 41.5
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 75.80000001192093,
+                "p95Ms": 82.30000001192093
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 14.800000011920929,
+                "p95Ms": 15.199999988079071
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 14.100000023841858,
+                "p95Ms": 15.799999952316284
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 32
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 14.199999988079071,
+                "p95Ms": 15.599999964237213
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 15.100000023841858,
+                "p95Ms": 20
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 22.69999998807907,
+                "p95Ms": 24.899999976158142
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 40.5,
+                "p95Ms": 42
+              }
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 72.69999998807907,
+                "p95Ms": 74.40000003576279
+              }
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "p95<=16ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 16
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "maxLevel": 1,
+          "firstFailLevel": 8,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=16ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 16
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "maxLevel": 32,
+          "firstFailLevel": 64,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "maxLevel": 256,
+          "firstFailLevel": 512,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "maxLevel": 256,
+          "firstFailLevel": 512,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        }
+      ]
+    },
+    {
+      "id": "converge.txnCommit",
+      "title": "converge: txn commit / derive",
+      "priority": "P1",
+      "primaryAxis": "steps",
+      "budgets": [
+        {
+          "id": "commit.p95<=50ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "commit.p95<=100ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 100
+        },
+        {
+          "id": "auto<=full*1.05",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.05,
+          "numeratorRef": "convergeMode=auto",
+          "denominatorRef": "convergeMode=full"
+        },
+        {
+          "id": "decision.p95<=0.5ms",
+          "type": "absolute",
+          "metric": "runtime.decisionMs",
+          "p95Ms": 0.5
+        }
+      ],
+      "points": [
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005,
+            "steps": 200,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 2,
+                "p95Ms": 2.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005,
+            "steps": 800,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 6.399999976158142,
+                "p95Ms": 7
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005,
+            "steps": 2000,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 15.399999976158142,
+                "p95Ms": 18.600000023841858
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05,
+            "steps": 200,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.7000000476837158,
+                "p95Ms": 1.800000011920929
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05,
+            "steps": 800,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 10.600000023841858,
+                "p95Ms": 11.800000011920929
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05,
+            "steps": 2000,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 56.39999997615814,
+                "p95Ms": 57.19999998807907
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25,
+            "steps": 200,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 3.800000011920929,
+                "p95Ms": 4.299999952316284
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25,
+            "steps": 800,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 37.10000002384186,
+                "p95Ms": 40.10000002384186
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25,
+            "steps": 2000,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 201.89999997615814,
+                "p95Ms": 202.20000004768372
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75,
+            "steps": 200,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 9.199999988079071,
+                "p95Ms": 10.199999988079071
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75,
+            "steps": 800,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 104,
+                "p95Ms": 106.80000001192093
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75,
+            "steps": 2000,
+            "dirtyRoots": 1500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 203,
+                "p95Ms": 203.19999998807907
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005,
+            "steps": 200,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005,
+            "steps": 800,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.899999976158142,
+                "p95Ms": 2
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005,
+            "steps": 2000,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 8.199999988079071,
+                "p95Ms": 9.099999964237213
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05,
+            "steps": 200,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1,
+                "p95Ms": 1
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05,
+            "steps": 800,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 10.100000023841858,
+                "p95Ms": 11.599999964237213
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05,
+            "steps": 2000,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 55.90000003576279,
+                "p95Ms": 56
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25,
+            "steps": 200,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 3.600000023841858,
+                "p95Ms": 4.100000023841858
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25,
+            "steps": 800,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 35.5,
+                "p95Ms": 39.700000047683716
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25,
+            "steps": 2000,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 201.89999997615814,
+                "p95Ms": 202.30000001192093
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75,
+            "steps": 200,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 8.600000023841858,
+                "p95Ms": 9.800000011920929
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75,
+            "steps": 800,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 103.09999996423721,
+                "p95Ms": 110.20000004768372
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75,
+            "steps": 2000,
+            "dirtyRoots": 1500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 203,
+                "p95Ms": 203.10000002384186
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notImplemented"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005,
+            "steps": 200,
+            "dirtyRoots": 1
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005,
+            "steps": 800,
+            "dirtyRoots": 4
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005,
+            "steps": 2000,
+            "dirtyRoots": 10
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05,
+            "steps": 200,
+            "dirtyRoots": 10
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05,
+            "steps": 800,
+            "dirtyRoots": 40
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05,
+            "steps": 2000,
+            "dirtyRoots": 100
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25,
+            "steps": 200,
+            "dirtyRoots": 50
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25,
+            "steps": 800,
+            "dirtyRoots": 200
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25,
+            "steps": 2000,
+            "dirtyRoots": 500
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75,
+            "steps": 200,
+            "dirtyRoots": 150
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75,
+            "steps": 800,
+            "dirtyRoots": 600
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75,
+            "steps": 2000,
+            "dirtyRoots": 1500
+          },
+          "status": "skipped",
+          "reason": "convergeModeAutoNotImplemented",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "skipped"
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 800,
+          "firstFailLevel": 2000,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 800,
+          "firstFailLevel": 2000,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 200,
+          "firstFailLevel": 800,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 800,
+          "firstFailLevel": 2000,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 800,
+          "firstFailLevel": 2000,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 200,
+          "firstFailLevel": 800,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 800,
+          "firstFailLevel": 2000,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 200,
+          "firstFailLevel": 800,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 800,
+          "firstFailLevel": 2000,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 200,
+          "firstFailLevel": 800,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "numerator:convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "numerator:convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "numerator:convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "numerator:convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "convergeModeAutoNotImplemented"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,386 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-20T06:47:48.670Z",
+    "from": {
+      "file": "specs/014-browser-perf-boundaries/perf/before.402f93d2.darwin-arm64.m2max.chromium.headless.json",
+      "commit": "402f93d23b571b214c89d672f2fc43c82e9c3948"
+    },
+    "to": {
+      "file": "specs/014-browser-perf-boundaries/perf/after.worktree.default.full.r3.json",
+      "commit": "534dfd33408e18194be65e58c38d8daebb01369a"
+    }
+  },
+  "summary": {
+    "regressions": 2,
+    "improvements": 17,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=dirty&dirtyRootsRatio=0.05}: before=800 after=2000 (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=auto&dirtyRootsRatio=0.005}: before=null after=2000 (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=auto&dirtyRootsRatio=0.05}: before=null after=2000 (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=auto&dirtyRootsRatio=0.25}: before=null after=800 (after:budgetExceeded) (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 200,
+          "message": "[category=runtime] commit.p95<=50ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=null after=200 (after:budgetExceeded) (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=auto&dirtyRootsRatio=0.005}: before=null after=2000 (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=auto&dirtyRootsRatio=0.05}: before=null after=2000 (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=auto&dirtyRootsRatio=0.25}: before=null after=800 (after:budgetExceeded) (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 200,
+          "message": "[category=runtime] commit.p95<=100ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=null after=200 (after:budgetExceeded) (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.005
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.005}: before=null after=2000 (before:numerator:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05}: before=null after=2000 (before:numerator:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.25}: before=null after=2000 (before:numerator:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.75}: before=null after=2000 (before:numerator:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.005}: before=null after=2000 (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.05}: before=null after=2000 (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.25}: before=null after=2000 (before:convergeModeAutoNotImplemented)"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=null after=800 (after:budgetExceeded) (before:convergeModeAutoNotImplemented)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 12
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=undefined ok=0 unavailable=0 missing=12] after[value=0 ok=12 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "stabilityWarning: metric=runtime.txnCommitMs {convergeMode=dirty&dirtyRootsRatio=0.05&steps=2000} baselineP95=56.00ms afterP95=48.40ms diff=7.60ms limit=5.60ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    },
+    {
+      "id": "diagnostics.overhead.e2e",
+      "notes": "missing suite in before report"
+    },
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "notes": "missing suite in before report"
+    },
+    {
+      "id": "react.strictSuspenseJitter",
+      "notes": "missing suite in before report"
+    },
+    {
+      "id": "watchers.clickToPaint",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=16ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 16
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "beforeMaxLevel": 1,
+          "afterMaxLevel": null,
+          "message": "[category=e2e] p95<=16ms {reactStrictMode=false}: before=1 after=null (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.watchers.scale-down-watchers",
+              "title": "减少 watcher 数量或拆分模块",
+              "detail": "边界回归集中在 watcher 维度，可优先尝试降低单模块 watcher 数量、拆分模块或减少级联依赖。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "p95<=16ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 16
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "beforeMaxLevel": 32,
+          "afterMaxLevel": null,
+          "message": "[category=e2e] p95<=16ms {reactStrictMode=true}: before=32 after=null (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.watchers.scale-down-watchers",
+              "title": "减少 watcher 数量或拆分模块",
+              "detail": "边界回归集中在 watcher 维度，可优先尝试降低单模块 watcher 数量、拆分模块或减少级联依赖。"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 2
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=undefined ok=0 unavailable=0 missing=2] after[value=0 ok=2 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "mostSignificantRegression: p95<=16ms {reactStrictMode=true} (before=32, after=null); stabilityWarning: metric=e2e.clickToPaintMs {reactStrictMode=false&watchers=1} baselineP95=15.10ms afterP95=20.70ms diff=5.60ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

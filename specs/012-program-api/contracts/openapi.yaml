@@ -1,0 +1,92 @@
+openapi: 3.1.0
+info:
+  title: Logix Process Contracts
+  version: '012'
+  description: >
+    Contracts for Process: long-running logic, cross-module coordination, multi-scope
+    installation, concurrency/error policies, and minimal serializable diagnostics.
+    This is schema-first documentation for runtime/devtools/sandbox alignment; it does
+    not imply a specific transport or server implementation.
+paths:
+  /processes/installations:
+    get:
+      summary: List installed Processes (by scope)
+      parameters:
+        - in: query
+          name: scopeType
+          required: false
+          schema:
+            type: string
+            enum: [app, moduleInstance, uiSubtree]
+        - in: query
+          name: scopeKey
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Installations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ./schemas/process-installation.schema.json
+  /processes/instances/{processInstanceId}:
+    get:
+      summary: Fetch Process instance status
+      parameters:
+        - in: path
+          name: processInstanceId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/process-instance-status.schema.json
+  /processes/instances/{processInstanceId}/control:
+    post:
+      summary: Control a Process instance (start/stop/restart)
+      parameters:
+        - in: path
+          name: processInstanceId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/process-control-request.schema.json
+      responses:
+        '204':
+          description: Accepted
+  /processes/platform/event:
+    post:
+      summary: Deliver a platform event that may trigger Processes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/process-platform-event.schema.json
+      responses:
+        '204':
+          description: Accepted
+  /events/processes:
+    get:
+      summary: Fetch Process diagnostic events
+      responses:
+        '200':
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ./schemas/process-event.schema.json

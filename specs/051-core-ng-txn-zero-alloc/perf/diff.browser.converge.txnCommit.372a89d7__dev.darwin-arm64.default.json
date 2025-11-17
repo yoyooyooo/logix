@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-30T16:35:23.236Z",
+    "from": {
+      "file": "specs/051-core-ng-txn-zero-alloc/perf/before.browser.converge.txnCommit.372a89d7.darwin-arm64.default.json",
+      "commit": "372a89d7228a66b43f51b73dc0567f2382a78a91"
+    },
+    "to": {
+      "file": "specs/051-core-ng-txn-zero-alloc/perf/after.browser.converge.txnCommit.dev.darwin-arm64.default.json",
+      "commit": "372a89d7228a66b43f51b73dc0567f2382a78a91"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "budgetViolations": []
+    }
+  ]
+}

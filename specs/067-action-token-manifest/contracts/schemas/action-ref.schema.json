@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/067/action-ref.schema.json",
+  "title": "ActionRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["moduleId", "actionTag"],
+  "properties": {
+    "moduleId": { "type": "string", "minLength": 1 },
+    "actionTag": { "type": "string", "minLength": 1 }
+  }
+}

@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/018-periodic-self-calibration/contracts/calibration-run.schema.json",
+  "title": "Logix Periodic Self-Calibration Run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "runId", "runSeq", "createdAt", "policy", "env", "baseline", "candidates", "status"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "kind": { "type": "string", "enum": ["libraryAudit", "runtimeCalibration"] },
+    "runId": { "type": "string", "minLength": 1 },
+    "runSeq": { "type": "integer", "minimum": 0 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "enabled", "autoApply", "minIntervalMs", "ttlMs", "interactionGuardMs", "maxCalibrationDurationMs", "workloads", "candidates", "safety"],
+      "properties": {
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "enabled": { "type": "boolean" },
+        "autoApply": { "type": "boolean" },
+        "minIntervalMs": { "type": "number", "minimum": 0 },
+        "ttlMs": { "type": "number", "minimum": 0 },
+        "interactionGuardMs": { "type": "number", "minimum": 0 },
+        "maxCalibrationDurationMs": { "type": "number", "minimum": 0 },
+        "workloads": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "kind": { "type": "string", "enum": ["synthetic", "ui"] },
+              "weight": { "type": "number", "minimum": 0 }
+            }
+          }
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "stateTransaction"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "stateTransaction": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["traitConvergeMode"],
+                "properties": {
+                  "traitConvergeMode": { "type": "string", "enum": ["auto", "full"] },
+                  "traitConvergeBudgetMs": { "type": "number", "exclusiveMinimum": 0 },
+                  "traitConvergeDecisionBudgetMs": { "type": "number", "exclusiveMinimum": 0 }
+                }
+              }
+            }
+          }
+        },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rejectDegraded", "maxP95RegressionRatio", "minSamples"],
+          "properties": {
+            "rejectDegraded": { "type": "boolean" },
+            "maxP95RegressionRatio": { "type": "number", "minimum": 1 },
+            "minMedianImprovementMs": { "type": "number" },
+            "minSamples": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "moduleId": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userAgent", "timezoneOffsetMinutes"],
+      "properties": {
+        "userAgent": { "type": "string" },
+        "hardwareConcurrency": { "type": "integer", "minimum": 1 },
+        "deviceMemoryGb": { "type": "number", "minimum": 0 },
+        "platform": { "type": "string" },
+        "screen": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height", "devicePixelRatio"],
+          "properties": {
+            "width": { "type": "integer", "minimum": 0 },
+            "height": { "type": "integer", "minimum": 0 },
+            "devicePixelRatio": { "type": "number", "minimum": 0 }
+          }
+        },
+        "timezoneOffsetMinutes": { "type": "integer" }
+      }
+    },
+    "baseline": { "$ref": "#/$defs/candidateEval" },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/candidateEval" }
+    },
+    "recommendation": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["schemaVersion", "sourceRunId", "recommendedDefault", "configScope", "confidence", "uncertainty", "fallback"],
+      "properties": {
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "sourceRunId": { "type": "string", "minLength": 1 },
+        "recommendedDefault": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stateTransaction"],
+          "properties": {
+            "stateTransaction": { "$ref": "#/$defs/stateTransaction" }
+          }
+        },
+        "configScope": { "type": "string", "enum": ["libraryDefaults", "provider", "runtimeOptions"] },
+        "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+        "uncertainty": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "detail"],
+            "properties": {
+              "kind": { "type": "string", "minLength": 1 },
+              "detail": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "fallback": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "reason"],
+          "properties": {
+            "kind": { "type": "string", "enum": ["baseline", "builtin"] },
+            "reason": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "status": { "type": "string", "enum": ["running", "completed", "cancelled", "failed"] },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message"],
+      "properties": {
+        "message": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "stateTransaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["traitConvergeMode"],
+      "properties": {
+        "traitConvergeMode": { "type": "string", "enum": ["auto", "full"] },
+        "traitConvergeBudgetMs": { "type": "number", "exclusiveMinimum": 0 },
+        "traitConvergeDecisionBudgetMs": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "candidateEval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "stateTransaction", "ok"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "stateTransaction": { "$ref": "#/$defs/stateTransaction" },
+        "ok": { "type": "boolean" },
+        "workloadCoverage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "status"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "status": { "type": "string", "enum": ["ok", "unavailable", "skipped"] },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "commitWallTimeMs": { "$ref": "#/$defs/msStats" },
+            "executionDurationMs": { "$ref": "#/$defs/msStats" }
+          }
+        },
+        "converge": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "executedMode": { "type": "string", "enum": ["auto", "full"] },
+            "outcome": { "type": "string", "enum": ["Ok", "Degraded"] },
+            "reasons": { "type": "array", "items": { "type": "string" } },
+            "staticIrStepCount": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "msStats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n", "median", "p95"],
+      "properties": {
+        "n": { "type": "integer", "minimum": 1 },
+        "median": { "type": "number", "minimum": 0 },
+        "p95": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

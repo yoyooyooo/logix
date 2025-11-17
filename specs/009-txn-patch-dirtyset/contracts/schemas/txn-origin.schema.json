@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/009-txn-patch-dirtyset/schemas/txn-origin.schema.json",
+  "title": "TxnOrigin",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind"],
+  "properties": {
+    "kind": { "type": "string", "minLength": 1 },
+    "name": { "type": "string" },
+    "details": {
+      "description": "Optional details. Must be JSON-serializable and slim. Default soft budget: 2KB (estimated by JSON string length); omit/truncate when over budget."
+    }
+  }
+}

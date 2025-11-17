@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-26T12:56:16.270Z",
+    "from": {
+      "file": "specs/039-trait-converge-int-exec-evidence/perf/after.node.worktree.quick3.json",
+      "commit": "2304c70ff51e210b22667af5e8f8031b7357ea10"
+    },
+    "to": {
+      "file": "specs/039-trait-converge-int-exec-evidence/perf/after.node.worktree.quick4.json",
+      "commit": "2304c70ff51e210b22667af5e8f8031b7357ea10"
+    }
+  },
+  "summary": {
+    "regressions": 1,
+    "improvements": 1,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": null,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.75}: before=800 after=null (after:budgetExceeded) (before:numerator:pointTimeoutMs=8000)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 800,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=800 after=2000 (before:pointTimeoutMs=8000)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.heapDeltaBytes.median",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 35,
+            "unavailable": 1,
+            "missing": 0,
+            "value": 143025416
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 145860336
+          },
+          "message": "runtime.heapDeltaBytes.median(points) unit=bytes: before[value=143025416 ok=35 unavailable=1 missing=0] after[value=145860336 ok=36 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.heapDeltaBytes.p95",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 35,
+            "unavailable": 1,
+            "missing": 0,
+            "value": 222829952
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 243958032
+          },
+          "message": "runtime.heapDeltaBytes.p95(points) unit=bytes: before[value=222829952 ok=35 unavailable=1 missing=0] after[value=243958032 ok=36 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "mostSignificantRegression: auto<=full*1.05 {dirtyRootsRatio=0.75} (before=800, after=null); stabilityWarning: metric=runtime.txnCommitMs {convergeMode=full&dirtyRootsRatio=0.75&steps=800} baselineP95=116.59ms afterP95=104.17ms diff=12.42ms limit=11.66ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

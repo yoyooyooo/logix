@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TraceModuleDescriptorEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "moduleId", "instanceId", "data"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["trace:module:descriptor"],
+      "description": "Trace event type emitted via DebugSink when diagnosticsLevel != off."
+    },
+    "moduleId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Runtime moduleId anchor (stable identity)."
+    },
+    "instanceId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Runtime instanceId anchor (stable identity)."
+    },
+    "runtimeLabel": {
+      "type": "string",
+      "description": "Optional runtime label injected by Debug.record (FiberRef currentRuntimeLabel)."
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Timestamp injected by Debug.record (milliseconds since epoch)."
+    },
+    "txnSeq": {
+      "type": "number",
+      "description": "Optional transaction sequence number when the trace is associated with a StateTransaction commit."
+    },
+    "data": {
+      "$ref": "./module-descriptor.schema.json"
+    }
+  }
+}

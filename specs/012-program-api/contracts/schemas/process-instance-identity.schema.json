@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessInstanceIdentity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["identity", "runSeq"],
+  "properties": {
+    "identity": { "$ref": "./process-identity.schema.json" },
+    "runSeq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic per installation; increments on supervised restart."
+    }
+  }
+}

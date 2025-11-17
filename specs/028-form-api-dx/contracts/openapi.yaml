@@ -1,0 +1,25 @@
+openapi: 3.1.0
+info:
+  title: Logix Form Rules (rules-first) Contracts
+  version: "028"
+  description: >
+    Contracts for the rules-first Form API: RulesManifest (Static IR) and list
+    identity declarations, aligned with Spec 009 (FieldPath) and Spec 005
+    (JsonValue hard gate). Schema-first documentation for runtime/devtools/
+    sandbox alignment; it does not imply a specific transport or server.
+paths:
+  /form/rules/manifest:
+    post:
+      summary: Validate a RulesManifest payload (Static IR)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/rules-manifest.schema.json
+      responses:
+        "204":
+          description: Valid
+        "400":
+          description: Invalid
+

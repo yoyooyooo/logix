@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/060-react-priority-scheduling/contracts/schemas/txn-lane-policy.schema.json",
+  "title": "TxnLanePolicy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["enabled", "configScope", "budgetMs", "debounceMs", "maxLagMs", "allowCoalesce"],
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "description": "Whether Txn Lanes are enabled (default-on). When false, behavior should match the baseline."
+    },
+    "configScope": {
+      "type": "string",
+      "enum": ["provider", "runtime_module", "runtime_default", "builtin"],
+      "description": "Resolved configuration scope that determined the effective policy for this instance."
+    },
+    "overrideMode": {
+      "type": "string",
+      "enum": ["forced_off", "forced_sync"],
+      "description": "Runtime override mode (for rollback / comparison). When present, it forces the effective behavior regardless of enabled."
+    },
+    "budgetMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Non-urgent work loop slice budget in milliseconds."
+    },
+    "debounceMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Coalescing window for non-urgent backlog requests."
+    },
+    "maxLagMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Maximum lag upper bound. Exceeding it must trigger starvation protection (explainable)."
+    },
+    "allowCoalesce": {
+      "type": "boolean",
+      "description": "Whether the runtime is allowed to coalesce/cancel intermediate non-urgent work (must preserve final consistency)."
+    },
+    "yieldStrategy": {
+      "type": "string",
+      "enum": ["baseline", "inputPending"],
+      "description": "Non-urgent yield strategy. baseline uses budget/upper-bound only; inputPending additionally consults navigator.scheduling.isInputPending when available."
+    },
+    "queueMode": {
+      "type": "string",
+      "enum": ["fifo", "lanes"],
+      "description": "Explainability-only label: fifo means no lane-aware queue, lanes means urgent-first lane-aware queue."
+    }
+  }
+}

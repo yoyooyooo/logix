@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LifecycleStatus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["identity", "status"],
+  "properties": {
+    "identity": { "$ref": "./module-runtime-identity.schema.json" },
+    "status": {
+      "type": "string",
+      "enum": [
+        "creating",
+        "initializing",
+        "ready",
+        "failed",
+        "terminating",
+        "terminated"
+      ]
+    },
+    "initOutcome": { "$ref": "./lifecycle-outcome.schema.json" },
+    "initProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "completed"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "completed": { "type": "integer", "minimum": 0 },
+        "current": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional 0-based index of the currently executing required init task."
+        },
+        "startedAt": {
+          "type": "integer",
+          "description": "Optional epoch millis indicating when required init started."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/005-unify-observability-protocol/schemas/transport-observation-batch.schema.json",
+  "title": "TransportObservationBatch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "payload"],
+  "properties": {
+    "type": { "const": "OBSERVATION_BATCH" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "runId", "events"],
+      "properties": {
+        "protocolVersion": { "type": "string", "minLength": 1 },
+        "runId": { "type": "string", "minLength": 1 },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "./observation-envelope.schema.json" }
+        },
+        "droppedCount": { "type": "integer", "minimum": 0 },
+        "droppedReason": {
+          "type": "string",
+          "enum": ["buffer_overflow", "rate_limit", "unknown"]
+        }
+      }
+    }
+  }
+}

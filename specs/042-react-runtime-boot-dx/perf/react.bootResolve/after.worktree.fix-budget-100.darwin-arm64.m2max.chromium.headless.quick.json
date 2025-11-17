@@ -1,0 +1,680 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-28T06:32:01.489Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2025-12-28",
+    "matrixHash": "3ebc872fb4eb62dc60c20e6ddef67bdcac1bb1ec339a5c84961ae6b23f0af9f6",
+    "git": {
+      "branch": "dev",
+      "commit": "a5fd2ea76cd2f1962929bb100bdbe79dc49b3e80",
+      "dirty": true
+    },
+    "config": {
+      "runs": 10,
+      "warmupDiscard": 2,
+      "timeoutMs": 8000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "react.bootResolve",
+      "title": "react: boot/resolve baseline (provider + module init/tag resolve)",
+      "priority": "P3",
+      "primaryAxis": "mountCycles",
+      "budgets": [
+        {
+          "id": "suspend<=sync*100:impl",
+          "type": "relative",
+          "metric": "e2e.bootToModuleImplReadyMs",
+          "maxRatio": 100,
+          "numeratorRef": "policyMode=suspend",
+          "denominatorRef": "policyMode=sync"
+        },
+        {
+          "id": "suspend<=sync*100:tag",
+          "type": "relative",
+          "metric": "e2e.bootToModuleTagReadyMs",
+          "maxRatio": 100,
+          "numeratorRef": "policyMode=suspend",
+          "denominatorRef": "policyMode=sync"
+        }
+      ],
+      "requiredEvidence": [
+        "react.policy.mode",
+        "react.policy.yieldStrategy",
+        "react.module.keyMode",
+        "budget.cutOffCount"
+      ],
+      "metricCategories": {
+        "e2e.bootToModuleImplReadyMs": "e2e",
+        "e2e.bootToModuleTagReadyMs": "e2e"
+      },
+      "points": [
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "sync",
+            "yieldStrategy": "none",
+            "keyMode": "auto",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToModuleImplReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 6.5,
+                "p95Ms": 7.800000071525574
+              }
+            },
+            {
+              "name": "e2e.bootToModuleTagReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 6.5,
+                "p95Ms": 7.800000071525574
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "auto"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "sync"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "none"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "sync",
+            "yieldStrategy": "none",
+            "keyMode": "explicit",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToModuleImplReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 7.100000023841858,
+                "p95Ms": 8.200000047683716
+              }
+            },
+            {
+              "name": "e2e.bootToModuleTagReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 7.100000023841858,
+                "p95Ms": 8.200000047683716
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "explicit"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "sync"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "none"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "sync",
+            "yieldStrategy": "microtask",
+            "keyMode": "auto",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToModuleImplReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 7.199999928474426,
+                "p95Ms": 8.100000023841858
+              }
+            },
+            {
+              "name": "e2e.bootToModuleTagReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 7.199999928474426,
+                "p95Ms": 8.100000023841858
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "auto"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "sync"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "microtask"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "sync",
+            "yieldStrategy": "microtask",
+            "keyMode": "explicit",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToModuleImplReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 7.299999952316284,
+                "p95Ms": 8.300000071525574
+              }
+            },
+            {
+              "name": "e2e.bootToModuleTagReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 7.299999952316284,
+                "p95Ms": 8.300000071525574
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "explicit"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "sync"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "microtask"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "suspend",
+            "yieldStrategy": "none",
+            "keyMode": "auto",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToModuleImplReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 306,
+                "p95Ms": 307.60000002384186
+              }
+            },
+            {
+              "name": "e2e.bootToModuleTagReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 306,
+                "p95Ms": 307.60000002384186
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "auto"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "suspend"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "none"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "suspend",
+            "yieldStrategy": "none",
+            "keyMode": "explicit",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToModuleImplReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 306.2000000476837,
+                "p95Ms": 306.8000000715256
+              }
+            },
+            {
+              "name": "e2e.bootToModuleTagReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 306.2000000476837,
+                "p95Ms": 306.8000000715256
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "explicit"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "suspend"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "none"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "suspend",
+            "yieldStrategy": "microtask",
+            "keyMode": "auto",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToModuleImplReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 306.40000009536743,
+                "p95Ms": 306.6999999284744
+              }
+            },
+            {
+              "name": "e2e.bootToModuleTagReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 306.40000009536743,
+                "p95Ms": 306.6999999284744
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "auto"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "suspend"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "microtask"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "suspend",
+            "yieldStrategy": "microtask",
+            "keyMode": "explicit",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToModuleImplReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 306.60000002384186,
+                "p95Ms": 307.59999990463257
+              }
+            },
+            {
+              "name": "e2e.bootToModuleTagReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 306.60000002384186,
+                "p95Ms": 307.59999990463257
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "explicit"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "suspend"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "microtask"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "suspend<=sync*100:impl",
+            "type": "relative",
+            "metric": "e2e.bootToModuleImplReadyMs",
+            "maxRatio": 100,
+            "numeratorRef": "policyMode=suspend",
+            "denominatorRef": "policyMode=sync"
+          },
+          "where": {
+            "reactStrictMode": false,
+            "yieldStrategy": "none",
+            "keyMode": "auto"
+          },
+          "maxLevel": 1,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "suspend<=sync*100:impl",
+            "type": "relative",
+            "metric": "e2e.bootToModuleImplReadyMs",
+            "maxRatio": 100,
+            "numeratorRef": "policyMode=suspend",
+            "denominatorRef": "policyMode=sync"
+          },
+          "where": {
+            "reactStrictMode": false,
+            "yieldStrategy": "none",
+            "keyMode": "explicit"
+          },
+          "maxLevel": 1,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "suspend<=sync*100:impl",
+            "type": "relative",
+            "metric": "e2e.bootToModuleImplReadyMs",
+            "maxRatio": 100,
+            "numeratorRef": "policyMode=suspend",
+            "denominatorRef": "policyMode=sync"
+          },
+          "where": {
+            "reactStrictMode": false,
+            "yieldStrategy": "microtask",
+            "keyMode": "auto"
+          },
+          "maxLevel": 1,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "suspend<=sync*100:impl",
+            "type": "relative",
+            "metric": "e2e.bootToModuleImplReadyMs",
+            "maxRatio": 100,
+            "numeratorRef": "policyMode=suspend",
+            "denominatorRef": "policyMode=sync"
+          },
+          "where": {
+            "reactStrictMode": false,
+            "yieldStrategy": "microtask",
+            "keyMode": "explicit"
+          },
+          "maxLevel": 1,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "suspend<=sync*100:tag",
+            "type": "relative",
+            "metric": "e2e.bootToModuleTagReadyMs",
+            "maxRatio": 100,
+            "numeratorRef": "policyMode=suspend",
+            "denominatorRef": "policyMode=sync"
+          },
+          "where": {
+            "reactStrictMode": false,
+            "yieldStrategy": "none",
+            "keyMode": "auto"
+          },
+          "maxLevel": 1,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "suspend<=sync*100:tag",
+            "type": "relative",
+            "metric": "e2e.bootToModuleTagReadyMs",
+            "maxRatio": 100,
+            "numeratorRef": "policyMode=suspend",
+            "denominatorRef": "policyMode=sync"
+          },
+          "where": {
+            "reactStrictMode": false,
+            "yieldStrategy": "none",
+            "keyMode": "explicit"
+          },
+          "maxLevel": 1,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "suspend<=sync*100:tag",
+            "type": "relative",
+            "metric": "e2e.bootToModuleTagReadyMs",
+            "maxRatio": 100,
+            "numeratorRef": "policyMode=suspend",
+            "denominatorRef": "policyMode=sync"
+          },
+          "where": {
+            "reactStrictMode": false,
+            "yieldStrategy": "microtask",
+            "keyMode": "auto"
+          },
+          "maxLevel": 1,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "suspend<=sync*100:tag",
+            "type": "relative",
+            "metric": "e2e.bootToModuleTagReadyMs",
+            "maxRatio": 100,
+            "numeratorRef": "policyMode=suspend",
+            "denominatorRef": "policyMode=sync"
+          },
+          "where": {
+            "reactStrictMode": false,
+            "yieldStrategy": "microtask",
+            "keyMode": "explicit"
+          },
+          "maxLevel": 1,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

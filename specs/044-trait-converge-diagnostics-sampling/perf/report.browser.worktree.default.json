@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-29T09:27:38.037Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2025-12-28",
+    "matrixHash": "1c405a22b4f93a8a3ff54e2831e6aa6634670d936530bd35554a289787cc79c4",
+    "git": {
+      "branch": "dev",
+      "commit": "372a89d7228a66b43f51b73dc0567f2382a78a91",
+      "dirty": true
+    },
+    "config": {
+      "runs": 5,
+      "warmupDiscard": 0,
+      "timeoutMs": 20000,
+      "headless": true,
+      "profile": "default",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "diagnostics.overhead.e2e",
+      "title": "diagnostics: overhead curve (off/light/sampled/full) · e2e",
+      "priority": "P3",
+      "primaryAxis": "diagnosticsLevel",
+      "budgets": [],
+      "metricCategories": {
+        "e2e.clickToPaintMs": "diagnostics"
+      },
+      "points": [
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "off"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 78.10000002384186,
+                "p95Ms": 80.60000002384186
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "light"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 74.20000004768372,
+                "p95Ms": 79.29999995231628
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "light"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "sampled"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 68.5,
+                "p95Ms": 70.70000004768372
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "sampled"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "full"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 66.30000007152557,
+                "p95Ms": 70
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [],
+      "comparisons": [
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "light"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 0.9500640208070733,
+            "p95": 0.9838709668592924
+          }
+        },
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "sampled"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 0.8770806655453107,
+            "p95": 0.8771712162130313
+          }
+        },
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "full"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 0.8489116523852234,
+            "p95": 0.8684863521004178
+          }
+        },
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "full"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "sampled"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 0.967883212723001,
+            "p95": 0.9900990092332164
+          }
+        },
+        {
+          "kind": "delta",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "full"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ms",
+          "stats": {
+            "median": -11.799999952316284,
+            "p95": -10.600000023841858
+          }
+        }
+      ]
+    }
+  ]
+}

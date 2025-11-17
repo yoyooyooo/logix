@@ -1,0 +1,32 @@
+openapi: 3.1.0
+info:
+  title: Logix Auto Converge Planner Contracts
+  version: '013'
+  description: >
+    Contracts for Auto Converge Planner: decision summary, cache evidence, generation bump signals,
+    and static IR build evidence. This feature is an extension to Spec 009 DynamicTrace; it is
+    schema-first documentation for runtime/devtools/sandbox alignment and does not imply a
+    specific transport or server implementation.
+paths:
+  /events/trait-converge:
+    get:
+      summary: Fetch converge decision events (DynamicTrace extension)
+      responses:
+        '200':
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ./schemas/trait-converge-event.schema.json
+  /evidence-package/summary/converge:
+    get:
+      summary: Converge summary attachment (EvidencePackage.summary.converge)
+      responses:
+        '200':
+          description: Converge evidence summary (full diagnostics only)
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/converge-evidence-package-summary.schema.json

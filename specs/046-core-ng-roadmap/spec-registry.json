@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "group": "046-core-ng-roadmap",
+  "statusEnum": ["idea", "planned", "draft", "implementing", "done", "frozen"],
+  "entries": [
+    {
+      "id": "045",
+      "dir": "specs/045-dual-kernel-contract",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "039",
+      "dir": "specs/039-trait-converge-int-exec-evidence",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "043",
+      "dir": "specs/043-trait-converge-time-slicing",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "044",
+      "dir": "specs/044-trait-converge-diagnostics-sampling",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "047",
+      "dir": "specs/047-core-ng-full-cutover-gate",
+      "status": "done",
+      "dependsOn": ["045"]
+    },
+    {
+      "id": "048",
+      "dir": "specs/048-core-ng-default-switch-migration",
+      "status": "frozen",
+      "dependsOn": ["047"]
+    },
+    {
+      "id": "049",
+      "dir": "specs/049-core-ng-linear-exec-vm",
+      "status": "done",
+      "dependsOn": ["045"]
+    },
+    {
+      "id": "050",
+      "dir": "specs/050-core-ng-integer-bridge",
+      "status": "done",
+      "dependsOn": ["045"]
+    },
+    {
+      "id": "051",
+      "dir": "specs/051-core-ng-txn-zero-alloc",
+      "status": "done",
+      "dependsOn": ["045", "050"]
+    },
+    {
+      "id": "052",
+      "dir": "specs/052-core-ng-diagnostics-off-gate",
+      "status": "done",
+      "dependsOn": ["045"]
+    },
+    {
+      "id": "056",
+      "dir": "specs/056-core-ng-schema-layout-accessors",
+      "status": "done",
+      "dependsOn": ["045", "049"]
+    },
+    {
+      "id": "057",
+      "dir": "specs/057-core-ng-static-deps-without-proxy",
+      "status": "done",
+      "dependsOn": ["045"]
+    },
+    {
+      "id": "058",
+      "dir": "specs/058-sandbox-multi-kernel",
+      "status": "done",
+      "dependsOn": ["045"]
+    },
+    {
+      "id": "060",
+      "dir": "specs/060-react-priority-scheduling",
+      "status": "done",
+      "dependsOn": ["045", "043", "044"]
+    },
+    {
+      "id": "062",
+      "dir": "specs/062-txn-lanes-default-switch-migration",
+      "status": "done",
+      "dependsOn": ["060", "052"]
+    },
+    {
+      "id": "065",
+      "dir": "specs/065-core-ng-id-first-txn-recording",
+      "status": "implementing",
+      "dependsOn": ["045"]
+    },
+    {
+      "id": "059",
+      "dir": "specs/059-core-ng-planner-typed-reachability",
+      "status": "done",
+      "dependsOn": ["045"]
+    },
+    {
+      "id": "053",
+      "dir": "specs/053-core-ng-aot-artifacts",
+      "status": "frozen",
+      "dependsOn": ["045", "049", "050"]
+    },
+    {
+      "id": "054",
+      "dir": "specs/054-core-ng-wasm-planner",
+      "status": "frozen",
+      "dependsOn": ["045"]
+    },
+    {
+      "id": "055",
+      "dir": "specs/055-core-ng-flat-store-poc",
+      "status": "frozen",
+      "dependsOn": ["045"]
+    }
+  ]
+}

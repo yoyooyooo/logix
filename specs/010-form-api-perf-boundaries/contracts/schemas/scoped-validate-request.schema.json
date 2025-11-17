@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/010-form-api-perf-boundaries/schemas/scoped-validate-request.schema.json",
+  "title": "ScopedValidateRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "target"],
+  "properties": {
+    "mode": { "type": "string", "enum": ["submit", "blur", "valueChange", "manual"] },
+    "target": { "$ref": "./validate-target.schema.json" },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "op"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1, "description": "Event kind (e.g. action:setValue / submit)." },
+        "path": { "$ref": "./field-path.schema.json", "description": "Canonical field path (Spec 009 FieldPath segments; no indices)." },
+        "op": { "type": "string", "enum": ["set", "unset", "insert", "remove"] }
+      }
+    }
+  }
+}

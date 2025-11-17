@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessTrigger",
+  "type": "object",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "moduleId", "instanceId", "actionId", "txnSeq"],
+      "properties": {
+        "kind": { "const": "moduleAction" },
+        "name": { "type": "string", "minLength": 1 },
+        "moduleId": { "type": "string", "minLength": 1 },
+        "instanceId": { "type": "string", "minLength": 1 },
+        "actionId": { "type": "string", "minLength": 1 },
+        "txnSeq": { "type": "integer", "minimum": 1 },
+        "triggerSeq": { "type": "integer", "minimum": 1 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "moduleId", "instanceId", "path", "txnSeq"],
+      "properties": {
+        "kind": { "const": "moduleStateChange" },
+        "name": { "type": "string", "minLength": 1 },
+        "moduleId": { "type": "string", "minLength": 1 },
+        "instanceId": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "txnSeq": { "type": "integer", "minimum": 1 },
+        "triggerSeq": { "type": "integer", "minimum": 1 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "platformEvent"],
+      "properties": {
+        "kind": { "const": "platformEvent" },
+        "name": { "type": "string", "minLength": 1 },
+        "platformEvent": { "type": "string", "minLength": 1 },
+        "triggerSeq": { "type": "integer", "minimum": 1 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "timerId"],
+      "properties": {
+        "kind": { "const": "timer" },
+        "name": { "type": "string", "minLength": 1 },
+        "timerId": { "type": "string", "minLength": 1 },
+        "triggerSeq": { "type": "integer", "minimum": 1 }
+      }
+    }
+  ]
+}

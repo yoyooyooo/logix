@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/032-ui-projection-contract/schemas/presentation-state.schema.json",
+  "title": "PresentationState",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "overlays"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "overlays": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stack"],
+      "properties": {
+        "stack": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["frameId", "kind", "instanceId"],
+            "properties": {
+              "frameId": { "type": "string", "minLength": 1 },
+              "kind": { "type": "string", "enum": ["modal", "drawer", "popover", "sheet", "custom"] },
+              "instanceId": { "type": "string", "minLength": 1 },
+              "openedByRuleId": { "type": "string" },
+              "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+            }
+          }
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "params": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+      }
+    },
+    "focus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target"],
+      "properties": {
+        "target": { "type": "string", "minLength": 1 }
+      }
+    },
+    "selection": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/067/dev-source.schema.json",
+  "title": "DevSource",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["file", "line", "column"],
+  "properties": {
+    "file": { "type": "string", "minLength": 1 },
+    "line": { "type": "integer", "minimum": 1 },
+    "column": { "type": "integer", "minimum": 1 }
+  }
+}

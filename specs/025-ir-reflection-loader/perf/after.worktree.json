@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "node": "v22.21.1",
+    "platform": "darwin/arm64",
+    "iters": 200,
+    "warmupDiscard": 20,
+    "config": {
+      "diagnosticsLevel": "light",
+      "maxEvents": 200,
+      "trialRunTimeoutMs": 3000,
+      "closeScopeTimeout": 1000,
+      "reportMaxBytes": 500000
+    }
+  },
+  "results": {
+    "trialRunModule": {
+      "ok": true,
+      "iterations": 200,
+      "totalMs": 446.95387500000004,
+      "nsPerOp": 2234769.3750000005,
+      "okCount": 200,
+      "avgEventCount": 7,
+      "avgReportBytes": 3980.73
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/005-unify-observability-protocol/schemas/transport-control-ack.schema.json",
+  "title": "TransportControlAck",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "payload"],
+  "properties": {
+    "type": { "const": "CONTROL_ACK" },
+    "payload": { "$ref": "./control-ack.schema.json" }
+  }
+}

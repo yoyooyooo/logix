@@ -1,0 +1,395 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-21T17:37:41.009Z",
+    "from": {
+      "file": "specs/020-runtime-internals-contracts/perf/before.worktree.quick.off.json",
+      "commit": "b1babae23eb3bf93c83dfcf55daf79af8d3d68bb"
+    },
+    "to": {
+      "file": "specs/020-runtime-internals-contracts/perf/after.worktree.quick.off.json",
+      "commit": "b1babae23eb3bf93c83dfcf55daf79af8d3d68bb"
+    }
+  },
+  "summary": {
+    "regressions": 1,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "budgetViolations": []
+    },
+    {
+      "id": "diagnostics.overhead.e2e",
+      "budgetViolations": [],
+      "notes": "stabilityWarning: metric=e2e.clickToPaintMs {diagnosticsLevel=light&scenario=watchers.clickToPaint} baselineP95=54.10ms afterP95=47.60ms diff=6.50ms limit=5.41ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    },
+    {
+      "id": "form.listScopeCheck",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.requestedMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "auto"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "auto"
+          },
+          "message": "converge.requestedMode(points) unit=count: before[value=auto ok=8 unavailable=0 missing=0] after[value=auto ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.executedMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "converge.executedMode(points) unit=count: before[value=full ok=8 unavailable=0 missing=0] after[value=full ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.outcome",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0
+          },
+          "message": "converge.outcome(points) unit=count: before[value=undefined ok=4 unavailable=4 missing=0] after[value=undefined ok=4 unavailable=4 missing=0]"
+        },
+        {
+          "name": "converge.reasons",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0
+          },
+          "message": "converge.reasons(points) unit=count: before[value=undefined ok=4 unavailable=4 missing=0] after[value=undefined ok=4 unavailable=4 missing=0]"
+        },
+        {
+          "name": "converge.decisionBudgetMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 2
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 2
+          },
+          "message": "converge.decisionBudgetMs(points) unit=count: before[value=2 ok=4 unavailable=4 missing=0] after[value=2 ok=4 unavailable=4 missing=0]"
+        },
+        {
+          "name": "converge.decisionDurationMs",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "converge.decisionDurationMs(points) unit=ratio: before[value=0 ok=4 unavailable=4 missing=0] after[value=0 ok=4 unavailable=4 missing=0]"
+        },
+        {
+          "name": "cache.size",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 4
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 4
+          },
+          "message": "cache.size(points) unit=count: before[value=4 ok=4 unavailable=4 missing=0] after[value=4 ok=4 unavailable=4 missing=0]"
+        },
+        {
+          "name": "cache.hit",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 4
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 4
+          },
+          "message": "cache.hit(points) unit=count: before[value=4 ok=4 unavailable=4 missing=0] after[value=4 ok=4 unavailable=4 missing=0]"
+        },
+        {
+          "name": "cache.miss",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.miss(points) unit=count: before[value=0 ok=4 unavailable=4 missing=0] after[value=0 ok=4 unavailable=4 missing=0]"
+        },
+        {
+          "name": "cache.evict",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.evict(points) unit=count: before[value=0 ok=4 unavailable=4 missing=0] after[value=0 ok=4 unavailable=4 missing=0]"
+        },
+        {
+          "name": "cache.invalidate",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 4,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.invalidate(points) unit=count: before[value=0 ok=4 unavailable=4 missing=0] after[value=0 ok=4 unavailable=4 missing=0]"
+        }
+      ]
+    },
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 18,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 18,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=18 unavailable=0 missing=0] after[value=0 ok=18 unavailable=0 missing=0]"
+        },
+        {
+          "name": "cache.size",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 482
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 482
+          },
+          "message": "cache.size(points) unit=count: before[value=482 ok=36 unavailable=36 missing=0] after[value=482 ok=36 unavailable=36 missing=0]"
+        },
+        {
+          "name": "cache.hit",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 20
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 20
+          },
+          "message": "cache.hit(points) unit=count: before[value=20 ok=36 unavailable=36 missing=0] after[value=20 ok=36 unavailable=36 missing=0]"
+        },
+        {
+          "name": "cache.miss",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 13
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 13
+          },
+          "message": "cache.miss(points) unit=count: before[value=13 ok=36 unavailable=36 missing=0] after[value=13 ok=36 unavailable=36 missing=0]"
+        },
+        {
+          "name": "cache.evict",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.evict(points) unit=count: before[value=0 ok=36 unavailable=36 missing=0] after[value=0 ok=36 unavailable=36 missing=0]"
+        },
+        {
+          "name": "cache.invalidate",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.invalidate(points) unit=count: before[value=0 ok=36 unavailable=36 missing=0] after[value=0 ok=36 unavailable=36 missing=0]"
+        }
+      ]
+    },
+    {
+      "id": "react.strictSuspenseJitter",
+      "budgetViolations": [],
+      "notes": "stabilityWarning: metric=e2e.interactionToStableMs {mountCycles=1&reactStrictMode=true&suspenseCycles=1} baselineP95=23.60ms afterP95=29.40ms diff=5.80ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    },
+    {
+      "id": "watchers.clickToPaint",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=16ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 16
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "beforeMaxLevel": 8,
+          "afterMaxLevel": null,
+          "message": "[category=e2e] p95<=16ms {reactStrictMode=true}: before=8 after=null (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.watchers.scale-down-watchers",
+              "title": "减少 watcher 数量或拆分模块",
+              "detail": "边界回归集中在 watcher 维度，可优先尝试降低单模块 watcher 数量、拆分模块或减少级联依赖。"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "notes": "mostSignificantRegression: p95<=16ms {reactStrictMode=true} (before=8, after=null); stabilityWarning: metric=e2e.clickToPaintMs {reactStrictMode=true&watchers=1} baselineP95=15.10ms afterP95=21.30ms diff=6.20ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

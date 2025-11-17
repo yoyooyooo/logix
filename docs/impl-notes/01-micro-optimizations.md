@@ -1,0 +1,124 @@
+# Micro-Optimizations & Implementation Patterns
+
+> **定位**: 本文档集合了 Logix Runtime 中那些“为了极致性能与稳定性而做的微观决策”。这些细节往往隐藏在 Spec 的非功能需求之后，但却是支撑“无视场景高性能”的关键手段。
+
+## 1. 增量收敛 (Converge) 优化手段
+
+在 `specs/009-txn-patch-dirtyset` 与 `specs/013-auto-converge-planner` 的演进中，我们引入了以下微观优化：
+
+### 1.1 Dirty Pattern & Plan Caching (JIT 思想)
+
+- **概念**: 将一次事务中“归一化且排序后的 Dirty Roots 集合”视为一个 **Dirty Pattern**（例如 `["input.value", "user.name"]`）。
+- **优化**:
+  - **Cache Hit**: 当同一个 Dirty Pattern 再次出现时（如用户连续打字），直接复用上次计算好的 **Execution Plan**（即：需要执行哪些步骤）。
+  - **收益**: 将 O(N) 的图遍历与重叠计算（Overlaps）降级为 O(1) 的哈希查找。
+  - **代价**: 需要维护 LRU Cache；依赖图变更时需失效。
+
+### 1.2 Structural ID (结构化标识)
+
+- **痛点**: 字符串比较（如 `"user.profile.name"` vs `"user.profile"`）在热路径上开销巨大。
+- **优化**:
+  - **Static Mapping**: 在 `build` 阶段为每个 FieldPath 分配唯一的整型 ID (`int`)。
+  - **Bitmask Operations**: 在判断依赖重叠时，对于小规模依赖集合，使用位运算（Bitmask）替代字符串数组遍历。
+  - **收益**: 消除热路径上的 GC 压力与字符串哈希成本。
+
+### 1.3 Speculative Budget Cut-off (投机执行止损)
+
+- **痛点**: 既然是为了快，那么“判断能不能快”的过程本身不能慢。如果计算增量计划比直接全量跑还慢，就是负优化。
+- **优化**:
+  - **Time Budget**: 给“增量决策过程”设定一个硬性的时间预算（例如 0.5ms）。
+  - **Cut-off**: 一旦决策超时，**立即终止并回退到 Full 模式**。
+  - **收益**: 保证了 `auto` 模式的性能下界（Floor Performance），防止在超大规模图或恶意输入下卡死。
+
+### 1.4 Exec IR（执行侧 IR：SoA + TypedArray）
+
+> 目标：把 “决策层已整型化” 的收益打穿到 “执行层”——循环内只走 `stepId/pathId`，不再做 `path.split('.')` / 字符串拼接。
+
+- **核心思路**：在 build 阶段生成并缓存一份 “执行友好” 的 Exec IR（SoA/TypedArray），在每个操作窗口的 converge 执行循环中只做数组索引。
+- **典型做法**：
+  - `topoOrderInt32` / `planStepIds(Int32Array)`：执行顺序与增量计划以 `Int32Array` 表示，避免 `Array<number>` + iterator 开销。
+  - `stepOutFieldPathIdByStepId`：step 写回目标路径以 `FieldPathId` 直达，避免 `fieldPath string → parse → registry lookup` 的往返。
+  - `fieldPathSegments` / `accessors`：把 “路径分段/访问器构造” 前移到构造期，执行期只调用 “预分段的 get/set”。
+- **生命周期边界**：Exec IR 必须绑定到 “program generation”，generation bump 后立刻失效；禁止做 process-global cache（否则泄漏与漂移风险高）。
+
+### 1.5 Dense Bitset（dirty prefix 集合：TypedArray 复用）
+
+> 目标：把 “dirty prefix overlap 判定” 从 `Set/Map/trie walk` 降为 “bit test”。
+
+- **核心思路**：用稠密 `FieldPathId` 的特性，将 dirty roots/prefixes 表示为 bitset（`Uint32Array`），并复用 buffer（避免每窗口 `new`）。
+- **执行侧模式**：
+  - 每窗口开始：`bitset.clear()`（允许 `fill(0)` 或按 touched-words 清零）。
+  - 写回派生字段时：用 `outFieldPathId` 直连更新 prefix bits（避免重新 normalize 字符串路径）。
+- **风险与降级**：当 `fieldPathCount` 极端膨胀时，bitset 清零成本/内存占用可能反噬；需要有上界与保守降级（退回 Set），并在证据中可解释。
+
+### 1.6 Single Draft（单 draft 复用：一致读写 + 可回滚）
+
+> 目标：同一窗口内多 step 派生必须读取到前序写回，同时避免 “每 step create/finalize” 的分配与 GC。
+
+- **核心思路**：converge 期间只创建一次 draft，并在 step 内原地 mutate；窗口结束一次 finalize/commit（保持 0/1 commit 语义）。
+- **关键约束**：
+  - **可回滚**：发生超预算/运行时错误时，必须回退到窗口起始 base（不能留下半成品态）。
+  - **in-place draft 的边界**：只有在能证明 “所有写回路径都是 shallow / 不会触发深层结构共享写坏” 时才允许 in-place；否则必须退回 COW draft。
+  - **诊断与性能并存**：在 diagnostics=off 快路径下不应为了证据而触发额外分配（例如 steps 数组、stepLabel/traceKey 字符串）。
+
+## 2. 诊断 (Diagnostics) 优化手段
+
+为了实现“默认可诊断且不拖慢生产环境”，我们对 Event Payload 做了极其严格的控制。
+
+### 2.1 SlimOp (瘦身操作对象)
+
+- **问题**: 直接把 `EffectOp` 对象挂到诊断事件上会导致内存泄漏（闭包引用）和 JSON 序列化失败（循环引用）。
+- **优化**:
+  - **Payload Projection**: 只保留 `opId`, `kind`, `timing` 等元数据。
+  - **Recursive Truncation**: 对 `meta` 和 `payload` 做深度限制的序列化尝试，超长字符串（>256 chars）截断，非 POJO 对象丢弃。
+  - **收益**: 确保 Devtools 快照始终可序列化（`JSON.stringify` 安全），且 Ring Buffer 内存占用可控。
+
+### 2.2 Diagnostic Levels (off/light/full)
+
+- **策略**:
+  - **off**: 禁止导出诊断事件（DevtoolsHub/EvidencePackage 视角下应近零开销）。
+  - **light (Production)**: 仅记录“聚合计数器”和“事务摘要”（Transaction Summary），不记录单条 Operation。
+  - **full (Dev)**: 记录完整的时间线和 Payload。
+- **收益**: 在生产环境将观测开销降至“近零成本”（Zero-cost Abstraction）。
+
+## 3. 稳定性保证
+
+### 3.1 Single Writer Constraint (单写者约束)
+
+- **规则**: 在 Static IR 构建阶段，强制检查同一路径是否被多个 Rules/Writers 写入。
+- **目的**: 消除运行时的“执行顺序不确定性”。如果允许多写者，A 先跑还是 B 先跑会导致结果不同，这是测试噩梦。强制单写者使得系统行为**确定性（Deterministic）**。
+
+### 3.2 Stable Identity (稳定标识)
+
+- **规则**: 禁止使用 `Math.random()` 或 `Date.now()` 作为核心逻辑标识。
+- **手段**:
+  - `instanceId` 由外部注入（如 React `useId`）。
+  - `txnSeq` / `opSeq` 严格单调递增。
+  - `txnId` = `instanceId :: txnSeq`。
+- **收益**: 使得跨端回放、测试快照对比成为可能。
+
+## 4. Future Readiness (为 Wasm 铺路)
+
+虽然当前不直接引入 Wasm，但在 JS 层面的优化选择应尽量向“未来易于移植”靠拢，从而在 JS 层面也能获得更好的 JIT 性能。
+
+### 4.1 Compact Arrays over Objects (数组优于对象)
+
+- **策略**: 在 Static IR 的存储上，优先使用 `Int32Array` 存储节点拓扑关系（如 `Adjacency List`），而不是用 `Node` 对象相互引用。
+- **当下收益**: 更好的 CPU Cache Locality（线性内存），减少 JS 指针追逐开销；序列化/反序列化成本极低（直接 `buffer.slice`）。
+- **未来收益**: 这种内存布局可以直接 `memcpy` 给 Wasm 线性内存，实现 "Zero-Copy" 级别的初始化。
+
+### 4.2 Integer Only Exchange (纯整数交互)
+
+- **策略**: 确保 Planner/Runtime 内核的接口只接受 ID（主要为 Int ID），业务含义的字符串（Key/Path）只在边界处做一次映射（Map/Interning）。
+- **当下收益**: 加速 `Map.get(int)` 远快于 `Map.get(string)`；降低内存占用。
+- **未来收益**: 与 Wasm 的 FFI (Foreign Function Interface) 通信最怕传字符串。如果接口已经是纯整数，调用开销将降至最低。
+
+### 4.3 Separation of Kernel & User Logic (内核与用户逻辑分离)
+
+- **策略**: Planner 只输出“ID List（执行谁）”，绝对不包含闭包或业务具体的 `Effect` 对象。
+- **当下收益**: 让 Planner 的单元测试变得极其纯粹（输入数字，输出数字），易于做 Fuzz Testing。
+- **未来收益**: 这是 Wasm 落地的第一前提。只要 Planner 不持有业务闭包，它就可以随时被替换为 Wasm 实现。
+
+---
+
+_Generated by AntiGravity on 2025-12-16 · Updated by Agent on 2025-12-28_

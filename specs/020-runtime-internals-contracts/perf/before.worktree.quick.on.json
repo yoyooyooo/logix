@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-21T15:48:30.126Z",
+    "generator": "scripts/perf/014-browser-perf-boundaries.collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "git": {
+      "branch": "dev",
+      "commit": "b1babae23eb3bf93c83dfcf55daf79af8d3d68bb",
+      "dirty": true
+    },
+    "config": {
+      "runs": 5,
+      "warmupDiscard": 0,
+      "timeoutMs": 8000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "diagnostics.overhead.e2e",
+      "title": "diagnostics: overhead curve (off/light/full) · e2e",
+      "priority": "P3",
+      "primaryAxis": "diagnosticsLevel",
+      "budgets": [],
+      "metricCategories": {
+        "e2e.clickToPaintMs": "diagnostics"
+      },
+      "points": [
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "off"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 53.29999998211861,
+                "p95Ms": 56
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "light"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 48.30000001192093,
+                "p95Ms": 48.69999998807907
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "light"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "full"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 48.099999994039536,
+                "p95Ms": 49.599999994039536
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [],
+      "comparisons": [
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "light"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 0.9061913701336753,
+            "p95": 0.8696428569299834
+          }
+        },
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "full"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 0.9024390245811708,
+            "p95": 0.8857142856078488
+          }
+        },
+        {
+          "kind": "delta",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "full"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ms",
+          "stats": {
+            "median": -5.199999988079071,
+            "p95": -6.4000000059604645
+          }
+        }
+      ]
+    }
+  ]
+}

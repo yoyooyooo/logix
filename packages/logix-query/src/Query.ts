@@ -1,0 +1,239 @@
+import * as Logix from '@logix/core'
+import { Effect, Schema } from 'effect'
+import { autoTrigger } from './internal/logics/auto-trigger.js'
+import { invalidate } from './internal/logics/invalidate.js'
+import type { InvalidateRequest } from './Engine.js'
+import { toStateTraitSpec, type QuerySourceConfig, type QueryResourceData, type QueryResourceError } from './Traits.js'
+
+export type QueryState<
+  TParams,
+  TUI = unknown,
+  TQueries extends Record<string, QuerySourceConfig<TParams, TUI>> = {},
+> = {
+  readonly params: TParams
+  readonly ui: TUI
+  readonly queries: {
+    readonly [K in keyof TQueries]: Logix.Resource.ResourceSnapshot<
+      QueryResourceData<TQueries[K]['resource']>,
+      QueryResourceError<TQueries[K]['resource']>
+    >
+  }
+}
+
+export type QueryName<TQueries extends Record<string, any>> = Extract<keyof TQueries, string>
+
+type ForbiddenQueryName = 'params' | 'ui' | 'queries'
+type ForbidQueryNames = {
+  readonly [K in ForbiddenQueryName]?: never
+}
+
+export type QueryAction<TParams, TUI = unknown, TQueries extends Record<string, any> = {}> =
+  | { readonly _tag: 'setParams'; readonly payload: TParams }
+  | { readonly _tag: 'setUi'; readonly payload: TUI }
+  | { readonly _tag: 'refresh'; readonly payload: QueryName<TQueries> | undefined }
+  | { readonly _tag: 'invalidate'; readonly payload: InvalidateRequest }
+
+export interface QueryMakeConfig<
+  TParams,
+  TUI = unknown,
+  TQueries extends Record<string, QuerySourceConfig<TParams, TUI>> = {},
+> {
+  readonly params: Schema.Schema<TParams, any>
+  readonly initialParams: TParams
+  readonly ui?: TUI
+  readonly queries?: TQueries & ForbidQueryNames
+  readonly traits?: unknown
+}
+
+export interface QueryController<
+  TParams,
+  TUI = unknown,
+  TQueries extends Record<string, QuerySourceConfig<TParams, TUI>> = {},
+> {
+  readonly runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, TQueries>, QueryAction<TParams, TUI, TQueries>>
+  readonly getState: Effect.Effect<QueryState<TParams, TUI, TQueries>>
+  readonly dispatch: (action: QueryAction<TParams, TUI, TQueries>) => Effect.Effect<void>
+
+  readonly controller: {
+    readonly setParams: (params: TParams) => Effect.Effect<void>
+    readonly setUi: (ui: TUI) => Effect.Effect<void>
+    readonly refresh: (target?: QueryName<TQueries>) => Effect.Effect<void>
+    readonly invalidate: (request: InvalidateRequest) => Effect.Effect<void>
+  }
+}
+
+const InvalidateRequestSchema = Schema.Union(
+  Schema.Struct({
+    kind: Schema.Literal('byResource'),
+    resourceId: Schema.String,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal('byParams'),
+    resourceId: Schema.String,
+    keyHash: Schema.String,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal('byTag'),
+    tag: Schema.String,
+  }),
+) as Schema.Schema<InvalidateRequest, any>
+
+const assertQueryName = (name: string): void => {
+  if (!name) {
+    throw new Error(`[Query.make] query name must be non-empty`)
+  }
+  if (name.includes('.')) {
+    throw new Error(`[Query.make] query name must not include "."; got "${name}"`)
+  }
+  if (name === 'params' || name === 'ui' || name === 'queries') {
+    throw new Error(`[Query.make] query name "${name}" is reserved`)
+  }
+}
+
+export const make = <
+  Id extends string,
+  TParams,
+  TUI = unknown,
+  TQueries extends Record<string, QuerySourceConfig<TParams, TUI>> = {},
+>(
+  id: Id,
+  config: QueryMakeConfig<TParams, TUI, TQueries>,
+) => {
+  const queries = (config.queries ?? {}) as TQueries
+  for (const name of Object.keys(queries)) {
+    assertQueryName(name)
+  }
+
+  const RefreshTargetSchema = (() => {
+    const names = Object.keys(queries) as Array<QueryName<TQueries>>
+    if (names.length === 0) return Schema.Never as unknown as Schema.Schema<QueryName<TQueries>, any>
+    if (names.length === 1) {
+      return Schema.Literal(names[0] as any) as unknown as Schema.Schema<QueryName<TQueries>, any>
+    }
+    const asUnionMembers = <A>(items: ReadonlyArray<A>): readonly [A, A, ...Array<A>] => {
+      if (items.length < 2) {
+        throw new Error(`[Query.make] internal error: expected at least 2 query names for union`)
+      }
+      return items as unknown as readonly [A, A, ...Array<A>]
+    }
+
+    const members = names.map((n) => Schema.Literal(n as any))
+    return Schema.Union(...asUnionMembers(members)) as unknown as Schema.Schema<QueryName<TQueries>, any>
+  })()
+
+  const UiSchema = Schema.Unknown as Schema.Schema<TUI, any>
+
+  const QueriesSchema = Schema.Struct(
+    Object.fromEntries((Object.keys(queries) as Array<keyof TQueries>).map((k) => [k, Schema.Unknown])) as Record<
+      string,
+      Schema.Schema<any, any>
+    >,
+  )
+
+  const StateSchema = Schema.Struct({
+    params: config.params,
+    ui: UiSchema,
+    queries: QueriesSchema,
+  }) as unknown as Schema.Schema<QueryState<TParams, TUI, TQueries>, any>
+
+  const Actions = {
+    setParams: config.params,
+    setUi: UiSchema,
+    refresh: Schema.UndefinedOr(RefreshTargetSchema),
+    invalidate: InvalidateRequestSchema,
+  } as const
+
+  type Reducers = Logix.ReducersFromMap<typeof StateSchema, typeof Actions>
+
+  const reducers: Reducers = {
+    setParams: (state, action, sink) => {
+      sink?.('params')
+      const hasPayload = Object.prototype.hasOwnProperty.call(action as any, 'payload')
+      const nextParams = hasPayload ? ((action as any).payload as TParams) : state.params
+      return { ...state, params: nextParams }
+    },
+    setUi: (state, action, sink) => {
+      sink?.('ui')
+      const hasPayload = Object.prototype.hasOwnProperty.call(action as any, 'payload')
+      const nextUi = hasPayload ? ((action as any).payload as TUI) : state.ui
+      return { ...state, ui: nextUi }
+    },
+    refresh: (state) => state,
+    invalidate: (state) => state,
+  } satisfies Reducers
+
+  const queryTraits = Object.keys(queries).length > 0 ? toStateTraitSpec({ queries }) : undefined
+
+  const traits =
+    queryTraits || config.traits
+      ? ({
+          ...(queryTraits as any),
+          ...(config.traits as any),
+        } as any)
+      : undefined
+
+  const module = Logix.Module.make(id, {
+    state: StateSchema,
+    actions: Actions,
+    reducers,
+    traits,
+  })
+
+  const logics = [autoTrigger(module.tag, { queries }), invalidate(module.tag, { queries })] satisfies ReadonlyArray<
+    Logix.ModuleLogic<any, any, any>
+  >
+
+  const initial = (params?: TParams): QueryState<TParams, TUI, TQueries> =>
+    ({
+      params: params ?? config.initialParams,
+      ui: (config.ui ?? ({} as unknown as TUI)) as TUI,
+      queries: Object.fromEntries(
+        (Object.keys(queries) as Array<keyof TQueries>).map((k) => [k, Logix.Resource.Snapshot.idle()]),
+      ),
+    }) as QueryState<TParams, TUI, TQueries>
+
+  const controller = {
+    make: (
+      runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, TQueries>, QueryAction<TParams, TUI, TQueries>>,
+    ): QueryController<TParams, TUI, TQueries> => {
+      const dispatch = runtime.dispatch
+      return {
+        runtime,
+        getState: runtime.getState as Effect.Effect<QueryState<TParams, TUI, TQueries>>,
+        dispatch,
+        controller: {
+          setParams: (params: TParams) => dispatch({ _tag: 'setParams', payload: params }),
+          setUi: (ui: TUI) => dispatch({ _tag: 'setUi', payload: ui }),
+          refresh: (target?: QueryName<TQueries>) => dispatch({ _tag: 'refresh', payload: target }),
+          invalidate: (request: InvalidateRequest) => dispatch({ _tag: 'invalidate', payload: request }),
+        },
+      } as QueryController<TParams, TUI, TQueries>
+    },
+  }
+
+  ;(module as any).controller = controller
+
+  const EXTEND_HANDLE = Symbol.for('logix.module.handle.extend')
+  ;(module.tag as any)[EXTEND_HANDLE] = (
+    runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, TQueries>, QueryAction<TParams, TUI, TQueries>>,
+    base: Logix.ModuleHandle<any>,
+  ) => {
+    const c = controller.make(runtime)
+    return {
+      ...base,
+      controller: c.controller,
+    }
+  }
+
+  return module.implement({
+    initial: initial(),
+    logics: [...logics],
+  }) as unknown as Logix.Module.Module<
+    Id,
+    typeof module.shape,
+    { readonly controller: QueryController<TParams, TUI, TQueries>['controller'] },
+    any
+  > & {
+    readonly controller: typeof controller
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "plugins": ["typescript", "oxc"],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/.next/**",
+    "**/.source/**",
+    "**/.turbo/**",
+    "**/.vite/**",
+    "**/public/**",
+    "**/.agent/**",
+    "docs/**",
+    "packages/logix-sandbox/scripts/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/__tests__/**",
+    "**/*.test.*",
+    "**/*.spec.*"
+  ],
+  "rules": {
+    // 以下规则在当前仓库存量下噪声偏大（默认以 warning 报出，配合 --deny-warnings 会直接导致 lint 失败）：
+    // - no-unused-vars：大量占位参数/类型别名暂未清理
+    // - require-yield：Effect.gen / generator 场景里经常存在 “暂不 yield” 的用法
+    // - no-extra-boolean-cast：部分业务代码习惯性 Boolean(...)，短期不做全量收敛
+    "no-unused-vars": "off",
+    "require-yield": "off",
+    "no-extra-boolean-cast": "off"
+  }
+}

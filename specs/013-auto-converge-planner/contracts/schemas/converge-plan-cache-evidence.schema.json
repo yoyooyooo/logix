@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/converge-plan-cache-evidence.schema.json",
+  "title": "ExecutionPlanCacheEvidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["capacity", "size", "hits", "misses", "evicts", "hit"],
+  "properties": {
+    "capacity": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Max entries (or equivalent budget) for plan cache."
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Current cache size."
+    },
+    "hits": { "type": "integer", "minimum": 0 },
+    "misses": { "type": "integer", "minimum": 0 },
+    "evicts": { "type": "integer", "minimum": 0 },
+    "hit": { "type": "boolean", "description": "Whether this txn hit the plan cache." },
+    "keySize": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Canonical dirty-pattern key size (e.g., rootIds length)."
+    },
+    "missReason": {
+      "type": "string",
+      "enum": ["cold_start", "generation_bumped", "not_cached", "unknown"],
+      "description": "Optional miss reason for explainability."
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Whether cache reuse is currently disabled by self-protection."
+    },
+    "disableReason": {
+      "type": "string",
+      "enum": ["low_hit_rate", "generation_thrash", "manual_override", "unknown"],
+      "description": "Why reuse was disabled (when disabled=true)."
+    }
+  }
+}

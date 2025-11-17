@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessInstallation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["identity", "enabled"],
+  "properties": {
+    "identity": { "$ref": "./process-identity.schema.json" },
+    "enabled": { "type": "boolean" },
+    "installedAt": { "type": "string", "minLength": 1 }
+  }
+}

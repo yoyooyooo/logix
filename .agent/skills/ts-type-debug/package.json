@@ -1,0 +1,14 @@
+{
+  "name": "ts-type-debug-skill",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "inspect": "tsx scripts/inspect-types.ts"
+  },
+  "devDependencies": {
+    "ts-morph": "^25.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "5.8.2"
+  }
+}
+

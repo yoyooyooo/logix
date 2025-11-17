@@ -1,0 +1,5198 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-29T03:06:39.705Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2025-12-28",
+    "matrixHash": "1c405a22b4f93a8a3ff54e2831e6aa6634670d936530bd35554a289787cc79c4",
+    "git": {
+      "branch": "dev",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40",
+      "dirty": true
+    },
+    "config": {
+      "runs": 10,
+      "warmupDiscard": 2,
+      "timeoutMs": 8000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      },
+      "controlPlane": {}
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "title": "negative boundary: dirty-pattern adversarial scenarios",
+      "priority": "P2",
+      "primaryAxis": "uniquePatternPoolSize",
+      "budgets": [
+        {
+          "id": "auto<=full*1.05",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.05,
+          "numeratorRef": "convergeMode=auto",
+          "denominatorRef": "convergeMode=full"
+        }
+      ],
+      "metricCategories": {
+        "runtime.txnCommitMs": "runtime",
+        "runtime.decisionMs": "runtime"
+      },
+      "points": [
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.8999999761581421,
+                "p95Ms": 0.8999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.7000000476837158,
+                "p95Ms": 0.8000000715255737
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6999999284744263
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5999999046325684,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5999999046325684,
+                "p95Ms": 0.8000000715255737
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.7000000476837158
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 1
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.6000000238418579,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.40000009536743164
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.5999999046325684
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.40000009536743164,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.40000009536743164
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.40000009536743164,
+                "p95Ms": 0.7000000476837158
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.09999990463256836
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5,
+                "p95Ms": 0.6000000238418579
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.30000007152557373
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 3
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.09999990463256836,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 4
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 4
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 6
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 6
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 6
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 6
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 6
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.10000002384185791,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 12
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.30000007152557373
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 16
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 16
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 16
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.30000007152557373
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 22
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.5
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.09999990463256836,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 27
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.40000009536743164
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.09999990463256836,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 36
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.09999990463256836
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 44
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.40000009536743164
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.09999990463256836
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 51
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.40000009536743164
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 55
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.40000009536743164
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 59
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 64
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.40000009536743164
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 5
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3999999761581421,
+                "p95Ms": 0.40000009536743164
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 6
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.09999990463256836
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.09999990463256836,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion",
+            "uniquePatternPoolSize": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.09999990463256836
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion",
+            "uniquePatternPoolSize": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion",
+            "uniquePatternPoolSize": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2999999523162842,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0.10000002384185791
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion",
+            "uniquePatternPoolSize": 4096
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.30000007152557373,
+                "p95Ms": 0.3999999761581421
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "cache.evict",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.hit",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.invalidate",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "cache.miss",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "cache.size",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable"
+          },
+          "maxLevel": 4096,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable"
+          },
+          "maxLevel": 4096,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise"
+          },
+          "maxLevel": 4096,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift"
+          },
+          "maxLevel": 4096,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap"
+          },
+          "maxLevel": 4096,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality"
+          },
+          "maxLevel": 8,
+          "firstFailLevel": 64,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality"
+          },
+          "maxLevel": 4096,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation"
+          },
+          "maxLevel": 4096,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion"
+          },
+          "maxLevel": 4096,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

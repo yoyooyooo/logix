@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/038/pulse-bucket.schema.json",
+  "title": "PulseBucket",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "bucketId": { "type": "integer" },
+    "txnCount": { "type": "integer", "minimum": 0 },
+    "renderCount": { "type": "integer", "minimum": 0 },
+    "level": { "type": "string", "enum": ["ok", "warn", "danger"] }
+  },
+  "required": ["bucketId", "txnCount", "renderCount", "level"]
+}

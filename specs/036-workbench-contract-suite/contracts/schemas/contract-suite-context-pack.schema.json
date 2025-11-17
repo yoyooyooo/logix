@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/036-workbench-contract-suite/schemas/contract-suite-context-pack.schema.json",
+  "title": "ContractSuiteContextPack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "target", "constraints", "facts"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "suiteId": { "type": "string" },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["patch_code", "patch_rule", "patch_mock", "patch_spec", "investigate"] },
+        "description": { "type": "string" }
+      }
+    },
+    "constraints": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trialRunReport"],
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stageBlueprint": { "$ref": "../../../033-module-stage-blueprints/contracts/schemas/stage-blueprint.schema.json" },
+            "uiBlueprints": {
+              "type": "array",
+              "items": { "$ref": "../../../032-ui-projection-contract/contracts/schemas/ui-blueprint.schema.json" }
+            },
+            "uiKitRegistry": { "$ref": "../../../032-ui-projection-contract/contracts/schemas/ui-kit-registry.schema.json" },
+            "bindingSchemas": {
+              "type": "array",
+              "items": { "$ref": "../../../032-ui-projection-contract/contracts/schemas/binding-schema.schema.json" }
+            },
+            "codeAssets": {
+              "type": "array",
+              "items": { "$ref": "../../../034-expression-asset-protocol/contracts/schemas/code-asset.schema.json" }
+            }
+          }
+        },
+        "trialRunReport": { "$ref": "../../../025-ir-reflection-loader/contracts/schemas/trial-run-report.schema.json" },
+        "manifestDiff": { "$ref": "../../../025-ir-reflection-loader/contracts/schemas/module-manifest-diff.schema.json" },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["artifactKey", "status"],
+            "properties": {
+              "artifactKey": { "type": "string", "minLength": 1 },
+              "status": { "type": "string", "enum": ["PRESENT", "TRUNCATED", "MISSING", "FAILED", "SKIPPED"] },
+              "value": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "verdict": { "$ref": "./contract-suite-verdict.schema.json" },
+    "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/028-form-api-dx/schemas/list-identity-policy.schema.json",
+  "title": "ListIdentityPolicy",
+  "description": "Explicit row identity policy for a list field. trackBy is recommended; store and index are explicit fallbacks.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "trackBy"],
+      "properties": {
+        "mode": { "const": "trackBy" },
+        "trackBy": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\[\\]]+$",
+          "description": "Business key path for stable row identity (dot path; no bracket syntax)."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "const": "store" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "const": "index" }
+      }
+    }
+  ]
+}
+

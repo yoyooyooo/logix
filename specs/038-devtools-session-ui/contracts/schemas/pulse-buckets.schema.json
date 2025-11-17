@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/038/pulse-buckets.schema.json",
+  "title": "PulseBuckets",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "bucketMs": { "type": "integer", "minimum": 1 },
+    "buckets": {
+      "type": "array",
+      "items": { "$ref": "./pulse-bucket.schema.json" }
+    }
+  },
+  "required": ["bucketMs", "buckets"]
+}

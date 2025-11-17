@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/021/concurrency-diagnostic-details.schema.json",
+  "title": "ConcurrencyDiagnosticDetails",
+  "description": "Slim, serializable details payload intended for DebugSink diagnostic.trigger.details when code starts with 'concurrency::'.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "configScope": {
+      "type": "string",
+      "enum": ["builtin", "runtime_default", "runtime_module", "provider"]
+    },
+    "limit": {
+      "oneOf": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "string", "const": "unbounded" }
+      ]
+    },
+    "inFlight": { "type": "integer", "minimum": 0 },
+    "backlogCount": { "type": "integer", "minimum": 0 },
+    "saturatedDurationMs": { "type": "number", "minimum": 0 },
+    "threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backlogCount": { "type": "integer", "minimum": 1 },
+        "backlogDurationMs": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "cooldownMs": { "type": "number", "exclusiveMinimum": 0 },
+    "degradeStrategy": {
+      "type": "string",
+      "enum": ["none", "cooldown", "sample", "drop"]
+    },
+    "suppressedCount": { "type": "integer", "minimum": 0 },
+    "sampleRate": { "type": "number", "minimum": 0, "maximum": 1 },
+    "droppedCount": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["configScope", "limit"]
+}

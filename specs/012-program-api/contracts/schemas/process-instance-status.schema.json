@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessInstanceStatus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["identity", "status"],
+  "properties": {
+    "identity": { "$ref": "./process-instance-identity.schema.json" },
+    "status": { "type": "string", "enum": ["starting", "running", "stopping", "stopped", "failed"] },
+    "stoppedReason": { "type": "string", "enum": ["scopeDisposed", "manualStop", "failed", "unknown"] },
+    "lastError": { "$ref": "./error-summary.schema.json" }
+  }
+}

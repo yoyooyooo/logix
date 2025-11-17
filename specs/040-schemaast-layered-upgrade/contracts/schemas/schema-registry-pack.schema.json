@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/040-schemaast-layered-upgrade/schemas/schema-registry-pack.schema.json",
+  "title": "SchemaRegistryPack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "effectVersion", "schemas"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "effectVersion": { "type": "string", "minLength": 1 },
+    "schemas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schemaId", "ast"],
+        "properties": {
+          "schemaId": { "type": "string", "minLength": 1 },
+          "schemaIdSource": { "type": "string", "enum": ["annotation", "derived"] },
+          "ast": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+          "jsonSchema": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+          "meta": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "docsUrl": { "type": "string" },
+              "tags": { "type": "array", "items": { "type": "string" } },
+              "privacy": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "pii": { "type": "boolean" },
+                  "redaction": { "type": "string" }
+                }
+              }
+            }
+          },
+          "annotations": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+        }
+      }
+    },
+    "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}

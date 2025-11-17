@@ -1,0 +1,45 @@
+{
+  "name": "speckit-kit",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "speckit-kit": "dist/bin/speckit-kit.js"
+  },
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "build": "pnpm build:ui && pnpm build:cli",
+    "dev:ui": "vite -c ui/vite.config.ts",
+    "build:ui": "vite build -c ui/vite.config.ts",
+    "build:cli": "tsup",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p ui/tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@effect/platform": "0.94.0",
+    "@effect/platform-node": "0.104.0",
+    "clsx": "^2.1.1",
+    "effect": "3.19.13",
+    "framer-motion": "^12.23.26",
+    "open": "^10.1.0",
+    "tailwind-merge": "^3.4.0"
+  },
+  "devDependencies": {
+    "@logix/core": "workspace:*",
+    "@logix/react": "workspace:*",
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/node": "^22.19.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react-swc": "^3.7.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss": "^4.1.16",
+    "tsup": "^8.1.0",
+    "typescript": "5.8.2",
+    "vite": "^7.2.4"
+  }
+}

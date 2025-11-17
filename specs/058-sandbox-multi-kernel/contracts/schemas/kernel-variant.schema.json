@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/058-sandbox-multi-kernel/contracts/schemas/kernel-variant.schema.json",
+  "title": "KernelVariant",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kernelId": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Stable identifier for the kernel variant (lower-kebab; e.g., core, core-ng)."
+    },
+    "label": {
+      "type": "string",
+      "description": "Human-readable label for UI display."
+    },
+    "kernelUrl": {
+      "type": "string",
+      "description": "URL of the kernel entry (logix-core.js). Sibling effect.js and manifest are derived by convention."
+    }
+  },
+  "required": ["kernelId", "kernelUrl"]
+}

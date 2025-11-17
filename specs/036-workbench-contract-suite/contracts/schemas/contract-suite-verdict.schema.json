@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/036-workbench-contract-suite/schemas/contract-suite-verdict.schema.json",
+  "title": "ContractSuiteVerdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "verdict", "reasons", "artifacts"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "suiteId": { "type": "string" },
+    "runId": { "type": "string", "minLength": 1 },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "verdict": { "type": "string", "enum": ["PASS", "WARN", "FAIL"] },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "breaking": { "type": "integer", "minimum": 0 },
+        "risky": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "code"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["BREAKING", "RISKY", "INFO"] },
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string" },
+          "artifactKey": { "type": "string" },
+          "pointer": { "type": "string" },
+          "hint": { "type": "string" },
+          "details": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifactKey", "status"],
+        "properties": {
+          "artifactKey": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["PRESENT", "TRUNCATED", "MISSING", "FAILED", "SKIPPED"] },
+          "usedByVerdict": { "type": "boolean" },
+          "summary": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "links": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}
