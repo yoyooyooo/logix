@@ -1,0 +1,17 @@
+{
+  "id": "ops-workbench-demand",
+  "title": "运营工作台接入任务派发",
+  "summary": "需要一个统一工作台来处理指派、状态切换、看板指标。",
+  "painPoints": [
+    "任务列表与详情分散在多个 tab",
+    "没有统一状态管理",
+    "新成员很难记住操作路径"
+  ],
+  "readyIntentId": "ops-workbench",
+  "document": "## 背景\n- 运营每天需要处理各类任务（指派、状态更新、SLA 问题）\n- 现状：列表与详情分散在多个 Tab，状态变化没有统一存储\n\n## 目标\n1. 单屏可同时查看任务列表 + 指标 + 当前任务详情\n2. 任务状态切换需有统一 store（支持 undo / redo）\n3. 支持批量指派、批量完成，减少重复操作\n\n## 核心能力\n- workbench 布局（左列表、右详情、顶部指标）\n- 列表通过 table-with-server-filter + service-adapter-query 接入\n- 状态切片以 zustand-store-with-slices 维护选中项与 UI\n",
+  "llmSummaryBullets": [
+    "工作台布局 + 列表 + 详情 + 指标的经典组合",
+    "模式：workbench-layout、table-with-server-filter、zustand-store-with-slices",
+    "行为：选中任务后自动同步 WorkbenchSelectionService"
+  ]
+}

@@ -1,0 +1,76 @@
+id: filter-bar
+name: 顶部筛选条
+version: v1
+status: draft
+summary: 适用于列表页顶部的筛选区域，支持关键字搜索与多字段过滤。
+
+problem: >
+  在 toB 列表页中，筛选区经常被随意实现：有的在表格上方，有的在侧边栏，
+  多个页面复用不同的组件，导致交互和布局不统一。filter-bar 模式提供一个
+  统一的筛选区结构和状态管理约定，简化后续模板与生成器的设计。
+
+applicability:
+  goodFor:
+    - list-page 顶部筛选区域
+    - 需要关键字 + 多字段组合筛选的场景
+  badFor:
+    - 只需要单个下拉选择的极简场景
+    - 复杂分步筛选流程（应考虑向导或侧边过滤模式）
+  requiredSceneType:
+    - list-page
+
+composition:
+  roles:
+    - id: FilterComponent
+      label: 筛选组件
+      description: >
+        渲染筛选表单控件（select/input/date range 等），读取/更新 FilterStore，
+        并在筛选项变更时触发列表刷新。
+      requires:
+        - FilterService
+    - id: FilterStore
+      label: 筛选状态 Store
+      description: >
+        维护筛选条件的 UI 状态（例如 status、日期区间、keyword 等），对外暴露读写接口。
+      provides: FilterService
+
+dataContract:
+  description: 筛选字段由意图中的实体字段列表推导，不做强制约束。
+
+paramsSchema:
+  entity:
+    type: string
+    required: true
+    desc: 绑定的实体名称，用于从 Intent 中推导可用字段。
+  fields:
+    type: array
+    required: false
+    item:
+      type: string
+    desc: 参与筛选的字段列表（例如 ["status", "createdAt"]）。
+  inlineSearch:
+    type: boolean
+    required: false
+    default: true
+    desc: 是否启用关键字搜索输入框。
+  showResetButton:
+    type: boolean
+    required: false
+    default: true
+    desc: 是否显示“重置”按钮。
+
+uiSchema:
+  entity:
+    widget: select
+    label: 绑定实体
+    optionsFrom: intent.domain.entities
+  fields:
+    widget: multi-select
+    label: 筛选字段
+    optionsFrom: intent.domain.entities[entity].fields
+  inlineSearch:
+    widget: switch
+    label: 启用关键字搜索
+  showResetButton:
+    widget: switch
+    label: 显示重置按钮

@@ -1,0 +1,35 @@
+{
+  "id": "toolbar-with-quick-edit",
+  "name": "工具栏 + 快速编辑",
+  "version": "v1",
+  "status": "draft",
+  "summary": "适用于列表页顶部工具栏，提供快速编辑入口与导出入口的组合模式。",
+  "composition": {
+    "roles": [
+      {
+        "id": "ToolbarComponent",
+        "label": "工具栏组件",
+        "description": "渲染顶部工具栏按钮（导出、快速编辑等），触发对应的交互事件。",
+        "requires": ["QuickEditService", "ExportService"]
+      },
+      {
+        "id": "QuickEditComponent",
+        "label": "快速编辑组件",
+        "description": "展示和提交快速编辑表单",
+        "provides": "QuickEditService"
+      }
+    ]
+  },
+  "paramsSchema": {
+    "supportQuickEdit": { "type": "boolean", "default": true },
+    "supportExport": { "type": "boolean", "default": true },
+    "entity": { "type": "string" },
+    "editableFields": { "type": "array", "item": { "type": "string" } }
+  },
+  "uiSchema": {
+    "supportQuickEdit": { "widget": "switch", "label": "启用快速编辑" },
+    "supportExport": { "widget": "switch", "label": "启用导出" },
+    "entity": { "widget": "select", "label": "绑定实体" },
+    "editableFields": { "widget": "multi-select", "label": "可快速编辑字段" }
+  }
+}

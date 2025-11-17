@@ -1,0 +1,36 @@
+{
+  "id": "zustand-store-with-slices",
+  "name": "Zustand Store + Slice 拆分",
+  "version": "v1",
+  "status": "draft",
+  "summary": "统一使用单一 Store + 多 Slice 的状态管理结构，保持 TanStack Query 职责清晰。",
+  "composition": {
+    "roles": [
+      { "id": "StoreRoot", "label": "Store 聚合根", "description": "定义单一 Store 实例，聚合多个 Slice，暴露类型与 Hook。", "provides": "StoreHook" },
+      { "id": "DataSlice", "label": "数据 Slice", "description": "管理某一领域的数据型 UI 状态", "provides": ["DataSliceState", "DataSliceActions"] },
+      { "id": "UISlice", "label": "UI Slice", "description": "管理纯 UI 状态", "provides": ["UISliceState", "UISliceActions"] },
+      { "id": "SelectorsModule", "label": "Selector 模块", "description": "输出可复用的派生 Selector", "provides": "StoreSelectors" }
+    ]
+  },
+  "paramsSchema": {
+    "storeName": { "type": "string", "required": true },
+    "enableImmer": { "type": "boolean", "default": true },
+    "slices": {
+      "type": "array",
+      "required": true,
+      "item": {
+        "type": "object",
+        "fields": {
+          "id": { "type": "string", "required": true },
+          "kind": { "type": "string", "enum": ["data", "ui"], "required": true },
+          "hasSelectors": { "type": "boolean", "default": false }
+        }
+      }
+    }
+  },
+  "uiSchema": {
+    "storeName": { "widget": "text-input", "label": "Store 名称前缀" },
+    "enableImmer": { "widget": "switch", "label": "启用 immer" },
+    "slices": { "widget": "table-editor", "label": "Slice 列表" }
+  }
+}

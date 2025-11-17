@@ -1,0 +1,29 @@
+{
+  "id": "service-adapter-query",
+  "name": "服务层 + 适配器 + Query Hook",
+  "version": "v1",
+  "status": "draft",
+  "summary": "统一 service / adapter / TanStack Query Hook 的分层与职责。",
+  "composition": {
+    "roles": [
+      { "id": "ServiceModule", "label": "服务层模块", "description": "封装 HTTP 交互", "provides": "HttpService", "requires": ["HttpClient"] },
+      { "id": "AdapterModule", "label": "适配器模块", "description": "负责领域模型转换", "provides": "DomainAdapter" },
+      { "id": "QueryKeysModule", "label": "Query Keys 工厂", "description": "输出稳定 queryKey", "provides": "QueryKeysFactory" },
+      { "id": "QueryHookModule", "label": "Query Hook", "description": "封装 TanStack Query 行为", "requires": ["HttpService", "DomainAdapter", "QueryKeysFactory"], "provides": "QueryHook" }
+    ]
+  },
+  "paramsSchema": {
+    "entity": { "type": "string", "required": true },
+    "resourceName": { "type": "string", "required": true },
+    "operations": { "type": "array", "item": { "type": "string", "enum": ["list", "detail", "create", "update", "delete"] }, "required": true },
+    "hasPagination": { "type": "boolean", "default": false },
+    "queryKeyNamespace": { "type": "string" }
+  },
+  "uiSchema": {
+    "entity": { "widget": "text-input", "label": "领域实体名称" },
+    "resourceName": { "widget": "text-input", "label": "资源名" },
+    "operations": { "widget": "checkbox-group", "label": "支持的操作" },
+    "hasPagination": { "widget": "switch", "label": "列表是否分页" },
+    "queryKeyNamespace": { "widget": "text-input", "label": "Query Key 命名空间" }
+  }
+}

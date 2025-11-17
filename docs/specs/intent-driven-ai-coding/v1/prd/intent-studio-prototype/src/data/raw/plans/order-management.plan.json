@@ -1,0 +1,101 @@
+{
+  "intentId": "order-management",
+  "version": "v1",
+  "actions": [
+    {
+      "type": "create-file",
+      "path": "src/features/order-management/order-management.page.tsx",
+      "template": "list-page-shell",
+      "patternId": "list-page",
+      "params": {
+        "title": "订单管理列表",
+        "regions": ["filters", "toolbar", "table"]
+      }
+    },
+    {
+      "type": "create-file",
+      "path": "src/features/order-management/components/order-filters.tsx",
+      "template": "filter-bar",
+      "patternId": "filter-bar",
+      "params": {
+        "entity": "Order",
+        "fields": ["status", "createdAt"],
+        "inlineSearch": true,
+        "showResetButton": true
+      }
+    },
+    {
+      "type": "create-file",
+      "path": "src/features/order-management/components/order-table.tsx",
+      "template": "table-with-server-filter",
+      "patternId": "table-with-server-filter",
+      "params": {
+        "entity": "Order",
+        "columns": [
+          { "key": "id", "title": "订单号", "sortable": true },
+          { "key": "status", "title": "状态" },
+          { "key": "createdAt", "title": "下单时间", "sortable": true },
+          { "key": "totalAmount", "title": "金额" }
+        ],
+        "pagination": true,
+        "batchActions": ["export"],
+        "pageSize": 20
+      }
+    },
+    {
+      "type": "create-file",
+      "path": "src/features/order-management/components/order-toolbar.tsx",
+      "template": "toolbar-with-quick-edit",
+      "patternId": "toolbar-with-quick-edit",
+      "params": {
+        "supportQuickEdit": true,
+        "supportExport": true
+      }
+    },
+    {
+      "type": "create-file",
+      "path": "src/features/order-management/components/order-quick-edit.tsx",
+      "template": "quick-edit-dialog",
+      "patternId": "toolbar-with-quick-edit",
+      "params": {
+        "entity": "Order",
+        "editableFields": ["remark"]
+      }
+    },
+    {
+      "type": "create-file",
+      "path": "src/features/order-management/stores/filter.slice.ts",
+      "template": "filter-store-slice",
+      "patternId": "table-with-server-filter",
+      "params": {
+        "entity": "Order",
+        "fields": ["status", "createdAt"],
+        "initialState": {
+          "status": "ALL",
+          "createdAtRange": null
+        }
+      }
+    },
+    {
+      "type": "create-file",
+      "path": "src/features/order-management/stores/table.slice.ts",
+      "template": "table-store-slice",
+      "patternId": "table-with-server-filter",
+      "params": {
+        "entity": "Order",
+        "pageSize": 20
+      }
+    },
+    {
+      "type": "create-file",
+      "path": "src/features/order-management/queries/use-orders-list.hook.ts",
+      "template": "list-query-hook",
+      "patternId": "table-with-server-filter",
+      "params": {
+        "entity": "Order",
+        "apiName": "listOrders"
+      }
+    }
+  ]
+}
+

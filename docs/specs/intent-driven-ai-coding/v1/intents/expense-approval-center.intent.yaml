@@ -1,0 +1,105 @@
+id: expense-approval-center
+title: 费用报销审批中心
+description: 统一处理费用报销的待办/已办/全部审批任务，提供详情与审批历史视图。
+
+goals:
+  - 提升审批人处理效率，减少漏审
+  - 统一审批体验与状态展示方式
+
+scene:
+  type: approval
+  actors:
+    - role: approver
+      description: 负责审核费用报销申请的审批人
+  flows:
+    - from: "待办列表"
+      to: "审批详情"
+      action: "点击某条待办进入详情"
+    - from: "审批详情"
+      to: "待办列表"
+      action: "审批通过/拒绝后返回列表"
+    - from: "审批详情"
+      to: "审批历史"
+      action: "查看审批时间线与记录"
+
+patterns:
+  - id: approval-flow
+    config:
+      entity: ExpenseApproval
+      tabs: [todo, done, all]
+      listPageSize: 20
+      showHistory: true
+  - id: table-with-server-filter
+    target: approvals-list
+    config:
+      entity: ExpenseApproval
+      pagination: true
+      batchActions: []
+  - id: service-adapter-query
+    config:
+      entity: ExpenseApproval
+      resourceName: expense-approvals
+      operations: [list, detail, update]
+      hasPagination: true
+  - id: zustand-store-with-slices
+    config:
+      storeName: expenseApproval
+      enableImmer: true
+      slices:
+        - id: data
+          kind: data
+          hasSelectors: true
+        - id: ui
+          kind: ui
+          hasSelectors: false
+
+domain:
+  entities:
+    - name: ExpenseApproval
+      fields:
+        - id: string
+        - applicant: string
+        - amount: number
+        - currency: string
+        - status: enum[PENDING, APPROVED, REJECTED]
+        - createdAt: datetime
+        - updatedAt: datetime
+  apis:
+    - name: listExpenseApprovals
+      path: /api/expense-approvals
+      method: GET
+      query:
+        - name: status
+          type: string
+          optional: true
+        - name: applicant
+          type: string
+          optional: true
+        - name: page
+          type: number
+        - name: pageSize
+          type: number
+      returns: Paginated<ExpenseApproval>
+    - name: getExpenseApprovalDetail
+      path: /api/expense-approvals/{id}
+      method: GET
+      returns: ExpenseApproval
+    - name: approveExpense
+      path: /api/expense-approvals/{id}/approve
+      method: POST
+    - name: rejectExpense
+      path: /api/expense-approvals/{id}/reject
+      method: POST
+    - name: listExpenseApprovalHistory
+      path: /api/expense-approvals/{id}/history
+      method: GET
+      returns: List<ApprovalRecord>
+
+openQuestions:
+  - "是否需要支持多级审批（串/并行）？"
+  - "是否需要支持转交/加签等高级操作？"
+
+autoFill:
+  - "根据 ExpenseApproval 字段自动生成审批列表列配置"
+  - "根据 listExpenseApprovals 查询参数自动生成筛选字段"
+

@@ -1,0 +1,139 @@
+id: crud-feature-skeleton
+name: CRUD 垂直特性骨架
+version: v1
+status: draft
+summary: 适用于单个领域实体的标准 CRUD 功能，统一组织“列表 + 详情 + 表单 + 状态管理 + 服务层”的垂直切片结构。
+
+problem: >
+  在 toB 系统中，“订单管理”“用户管理”“配置项管理”等功能本质上都是 CRUD 场景，
+  但如果每个功能从零随意搭建目录和文件结构，就会出现：
+  1）有的直接在 pages 下堆逻辑，有的把服务层、适配器、状态散落在各个角落；
+  2）测试文件位置和命名不统一，导致难以复用和自动化校验；
+  3）新同学很难一眼看出“一个完整特性”从入口到服务层的边界。
+  crud-feature-skeleton 模式将 best-practice 仓库中的目录与文件类型规范整合为一个“垂直特性骨架”，
+  以一个领域实体为单位，约定列表页壳、工具栏、表格、服务、适配器、Query、Store、测试的组织方式。
+
+applicability:
+  goodFor:
+    - 基于单一领域实体的 CRUD 功能（订单、用户、组织、配置项等）
+    - 需要统一“从页面到服务层”的代码结构，方便模板和生成器直接铺骨架
+  badFor:
+    - 强流程型、跨多个实体的复杂场景（建议拆为多个特性 + 流程模式）
+    - 只读统计页面或纯图表视图（可使用独立的报表/图表模式）
+  preconditions:
+    - 已为该实体定义基本的列表/详情/增删改接口
+    - 希望后续在该特性上迭代更多行为（权限、导入导出、工作流等）
+
+composition:
+  roles:
+    - id: ListPageShell
+      label: 列表页壳
+      description: >
+        使用 list-page 模式提供统一的页面布局（filters/toolbar/table 区域），作为整个特性的入口。
+      requires:
+        - PageShellService
+    - id: FilterBar
+      label: 顶部筛选条
+      description: >
+        使用 filter-bar 模式实现筛选区，绑定实体字段和筛选条件，驱动列表刷新。
+      requires:
+        - FilterService
+    - id: ToolbarWithQuickEdit
+      label: 工具栏 + 快速编辑
+      description: >
+        使用 toolbar-with-quick-edit 模式提供新增/导出/快速编辑等按钮入口，协调导出与行内编辑。
+      requires:
+        - QuickEditService
+        - ExportService
+    - id: TableWithServerFilter
+      label: 服务端筛选表格
+      description: >
+        使用 table-with-server-filter 模式渲染主列表区域，负责分页、排序、列配置、批量导出等。
+      requires:
+        - ListQueryService
+        - TableUiStateService
+    - id: FeatureState
+      label: 特性状态层
+      description: >
+        基于 zustand-store-with-slices 模式，为当前实体定义特性级 Store（如 useOrderStore），
+        拆分 data/ui 等 Slice，并暴露必要的 Actions 与 Selectors。
+      requires:
+        - StoreHook
+    - id: FeatureServices
+      label: 服务层 + 适配器 + Query
+      description: >
+        基于 service-adapter-query 模式，为当前实体定义 service（*.service.ts）、
+        adapter（*.adapter.ts）、query-keys 与 Query Hook（*.hook.tsx），统一接口接入与缓存行为。
+      requires:
+        - HttpService
+        - DomainAdapter
+        - QueryHook
+    - id: Tests
+      label: 测试骨架
+      description: >
+        为服务层、适配器、核心 Store 与关键组件生成最小测试骨架（如 *.service.test.ts、*.adapter.test.ts），
+        保证特性可以被独立验证。
+
+dataContract:
+  description: >
+    crud-feature-skeleton 依赖 Intent 中对单个实体（如 Order）的完整 domain 描述：
+    1）实体字段与枚举（用于列表、筛选、表单、权限判断）；
+    2）列表/详情/创建/更新/删除接口契约（用于服务层与 Query Hook）；
+    3）必要时的权限字段或角色信息（可配合权限模式扩展）。
+
+paramsSchema:
+  entity:
+    type: string
+    required: true
+    desc: >
+      领域实体名称，例如 Order、User。用于命名页面、Store、服务层与适配器等。
+  routePath:
+    type: string
+    required: true
+    desc: >
+      列表页的路由路径（不含域名），例如 "/orders"。
+  enableQuickEdit:
+    type: boolean
+    required: false
+    default: true
+    desc: 是否为当前特性启用快速编辑入口和弹层。
+  enableExport:
+    type: boolean
+    required: false
+    default: true
+    desc: 是否为当前特性启用导出能力。
+  enableDetailPage:
+    type: boolean
+    required: false
+    default: true
+    desc: 是否为当前实体生成独立的详情页骨架。
+
+uiSchema:
+  entity:
+    widget: select
+    label: 绑定实体
+    optionsFrom: intent.domain.entities
+  routePath:
+    widget: text-input
+    label: 路由路径
+  enableQuickEdit:
+    widget: switch
+    label: 启用快速编辑
+  enableExport:
+    widget: switch
+    label: 启用导出
+  enableDetailPage:
+    widget: switch
+    label: 生成详情页骨架
+
+examples:
+  - name: 订单管理 CRUD 特性骨架
+    intentId: order-management
+    description: >
+      以 Order 为实体，在 "/orders" 路由下生成列表页壳、筛选区、工具栏、表格、Store、服务层与测试骨架，
+      对应 best-practice 仓库中的 feature-skeleton 与 basic CRUD 示例。
+    docRefs:
+      - /Users/yoyo/projj/git.imile.com/ux/best-practice/examples/feature-skeleton
+      - /Users/yoyo/projj/git.imile.com/ux/best-practice/templates/best-practice-templates/03-progressive-examples/01-basic-crud
+      - /Users/yoyo/projj/git.imile.com/ux/best-practice/docs/02-principles-and-architecture/05-file-conventions.md
+      - /Users/yoyo/projj/git.imile.com/ux/best-practice/docs/03-development-guides/03-api-integration-guide.md

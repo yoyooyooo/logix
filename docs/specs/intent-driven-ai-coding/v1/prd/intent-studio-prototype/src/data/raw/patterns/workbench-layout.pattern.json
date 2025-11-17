@@ -1,0 +1,56 @@
+{
+  "id": "workbench-layout",
+  "name": "工作台布局",
+  "version": "v1",
+  "status": "draft",
+  "summary": "适用于 toB 系统中的工作台场景，统一顶部指标 + 左列表 + 右详情布局。",
+  "composition": {
+    "roles": [
+      {
+        "id": "WorkbenchLayoutComponent",
+        "label": "工作台布局组件",
+        "description": "负责整体布局，不关心具体业务字段。",
+        "provides": "WorkbenchLayoutShell"
+      },
+      {
+        "id": "MetricsComponent",
+        "label": "顶部指标组件",
+        "description": "渲染关键指标卡"
+      },
+      {
+        "id": "LeftPaneComponent",
+        "label": "左侧列表组件",
+        "description": "渲染任务列表并处理选中行",
+        "requires": ["WorkbenchSelectionService"]
+      },
+      {
+        "id": "RightPaneComponent",
+        "label": "右侧详情组件",
+        "description": "渲染当前选中任务详情",
+        "requires": ["WorkbenchSelectionService"]
+      }
+    ]
+  },
+  "paramsSchema": {
+    "layoutMode": {
+      "type": "string",
+      "enum": ["two-column", "three-row"],
+      "default": "two-column"
+    },
+    "leftPanelId": { "type": "string", "required": true },
+    "rightPanelId": { "type": "string", "required": true },
+    "metricsRegionId": { "type": "string" },
+    "responsiveBehavior": {
+      "type": "string",
+      "enum": ["collapse-right", "collapse-left", "tabs"],
+      "default": "collapse-right"
+    }
+  },
+  "uiSchema": {
+    "layoutMode": { "widget": "select", "label": "布局模式" },
+    "leftPanelId": { "widget": "text-input", "label": "左侧区域" },
+    "rightPanelId": { "widget": "text-input", "label": "右侧区域" },
+    "metricsRegionId": { "widget": "text-input", "label": "顶部指标" },
+    "responsiveBehavior": { "widget": "select", "label": "窄屏行为" }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "id": "table-with-server-filter",
+  "name": "服务端筛选表格",
+  "version": "v1",
+  "status": "draft",
+  "summary": "适用于 toB 管理系统中的分页列表场景，通过服务端筛选、分页和批量操作统一实现列表展示与导出能力。",
+  "problem": "后台列表重复实现分页/筛选/批量导出造成维护成本，该模式统一结构与服务接口。",
+  "applicability": {
+    "goodFor": ["大规模数据的后台列表", "需要支持多字段筛选并希望统一导出行为", "服务端分页返回"],
+    "badFor": ["仅展示少量静态数据", "强流程型视图", "复杂交互式聚合视图"],
+    "requiredSceneType": ["list-page"],
+    "preconditions": ["至少定义一个实体", "存在分页列表接口"]
+  },
+  "composition": {
+    "roles": [
+      {
+        "id": "TableComponent",
+        "label": "列表组件",
+        "description": "组合 Query Hook、Filter Store、Table Store，负责渲染数据表格和交互。",
+        "requires": ["ListQueryService", "TableUiStateService"]
+      },
+      {
+        "id": "ColumnsConfig",
+        "label": "列配置",
+        "description": "定义列 key/title/sortable，并作为导出字段来源"
+      },
+      {
+        "id": "FilterStore",
+        "label": "筛选状态 Store",
+        "description": "维护筛选区 UI 状态",
+        "provides": "FilterService"
+      },
+      {
+        "id": "TableStore",
+        "label": "表格 UI 状态 Store",
+        "description": "维护分页/排序/列显隐",
+        "provides": "TableUiStateService"
+      },
+      {
+        "id": "ListQueryHook",
+        "label": "列表查询 Hook",
+        "description": "将 FilterStore 与 TableStore 的状态映射为 HTTP 请求参数",
+        "provides": "ListQueryService",
+        "requires": ["FilterService", "TableUiStateService"]
+      },
+      {
+        "id": "ExportService",
+        "label": "导出服务",
+        "description": "根据筛选条件与列配置构造导出载荷并调用导出接口",
+        "provides": "ExportService"
+      }
+    ]
+  },
+  "dataContract": {
+    "requiredEntityFields": ["id", "status"],
+    "recommendedEntityFields": ["createdAt", "updatedAt", "totalAmount"],
+    "listApi": {
+      "requiredQueryParams": ["page", "pageSize"],
+      "optionalQueryParams": ["keyword", "status", "createdAtFrom", "createdAtTo"]
+    }
+  },
+  "paramsSchema": {
+    "entity": { "type": "string", "required": true },
+    "pagination": { "type": "boolean", "default": true },
+    "batchActions": {
+      "type": "array",
+      "item": { "type": "string", "enum": ["export", "bulkUpdate"] }
+    },
+    "columns": {
+      "type": "array",
+      "item": {
+        "type": "object",
+        "fields": {
+          "key": { "type": "string", "required": true },
+          "title": { "type": "string", "required": true },
+          "sortable": { "type": "boolean", "default": false }
+        }
+      }
+    },
+    "pageSize": { "type": "number", "default": 20 }
+  },
+  "uiSchema": {
+    "entity": { "widget": "select", "label": "绑定实体" },
+    "pagination": { "widget": "switch", "label": "启用分页" },
+    "batchActions": { "widget": "checkbox-group", "label": "批量操作" },
+    "columns": { "widget": "column-picker", "label": "列配置" },
+    "pageSize": { "widget": "number-input", "label": "默认每页条数" }
+  }
+}

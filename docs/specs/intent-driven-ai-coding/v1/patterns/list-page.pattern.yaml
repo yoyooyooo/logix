@@ -1,0 +1,55 @@
+id: list-page
+name: 列表页壳（List Page Shell）
+version: v1
+status: draft
+summary: 为典型 toB 列表页提供统一的页面壳结构（筛选区 + 工具栏 + 列表区），不关心内部实现细节。
+
+problem: >
+  在管理后台中，大多数功能页面都可以抽象为“列表页”：顶部有筛选区和工具栏，下方是数据表格。
+  如果每个页面都自行设计布局，会导致视觉不统一、响应式行为不一致、可观察性和可测试性不足。
+  本模式仅提供统一的页面壳（layout），内部筛选/工具栏/表格由其他模式负责。
+
+applicability:
+  goodFor:
+    - 标准列表页（顶部筛选 + 工具栏，下方列表）
+    - 需要统一布局和间距的列表型功能
+  badFor:
+    - 向导式流程页面（应使用 wizard-form 等模式）
+    - 复杂工作台/仪表盘（应使用 workbench-layout 等模式）
+  requiredSceneType:
+    - list-page
+
+composition:
+  roles:
+    - id: PageComponent
+      label: 页面组件
+      description: >
+        作为列表页根组件，负责组合筛选区、工具栏和表格区域，
+        并提供统一的布局、间距和容器 className。内部组件由其他模式实现。
+      provides: PageShellService
+
+dataContract:
+  description: >
+    list-page 模式只关心“有哪些区域”，不关心具体实体和接口。
+
+paramsSchema:
+  title:
+    type: string
+    required: true
+    desc: 页面标题（例如“订单管理列表”）。
+  regions:
+    type: array
+    required: true
+    item:
+      type: string
+    desc: >
+      页面的区域标识列表，推荐使用 ["filters", "toolbar", "table"] 这样的命名，
+      以便其他模式通过 target 与之对接。
+
+uiSchema:
+  title:
+    widget: text-input
+    label: 页面标题
+  regions:
+    widget: tags
+    label: 区域标识

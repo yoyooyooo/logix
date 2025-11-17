@@ -1,0 +1,87 @@
+{
+  "id": "ops-workbench",
+  "title": "运营工作台",
+  "description": "统一处理运营任务的桌面工作台",
+  "goals": [
+    "提升任务处理效率 30%",
+    "支持 1440px 桌面 + 窄屏折叠"
+  ],
+  "scene": {
+    "type": "workbench",
+    "actors": [
+      { "role": "operator", "description": "日常处理任务的运营人员" }
+    ],
+    "flows": [
+      { "from": "待处理列表", "to": "详情面板", "action": "开始处理任务" },
+      { "from": "详情面板", "to": "待处理列表", "action": "完成任务后返回" }
+    ]
+  },
+  "patterns": [
+    {
+      "id": "workbench-layout",
+      "config": {
+        "leftPanelId": "tasks-list",
+        "rightPanelId": "task-detail",
+        "metricsRegionId": "metrics",
+        "layoutMode": "two-column"
+      }
+    },
+    {
+      "id": "table-with-server-filter",
+      "target": "tasks-list",
+      "config": {
+        "entity": "Task",
+        "pagination": true,
+        "batchActions": ["assign", "complete"]
+      }
+    },
+    {
+      "id": "service-adapter-query",
+      "config": {
+        "entity": "Task",
+        "resourceName": "tasks",
+        "operations": ["list", "detail"],
+        "hasPagination": true
+      }
+    },
+    {
+      "id": "zustand-store-with-slices",
+      "config": {
+        "storeName": "task",
+        "enableImmer": true,
+        "slices": [
+          { "id": "data", "kind": "data", "hasSelectors": true },
+          { "id": "ui", "kind": "ui", "hasSelectors": false }
+        ]
+      }
+    }
+  ],
+  "domain": {
+    "entities": [
+      {
+        "name": "Task",
+        "fields": [
+          { "name": "id", "type": "string" },
+          { "name": "status", "type": "enum", "values": ["TODO", "DOING", "DONE"] },
+          { "name": "assignee", "type": "string" },
+          { "name": "priority", "type": "enum", "values": ["LOW", "MEDIUM", "HIGH"] },
+          { "name": "createdAt", "type": "datetime" },
+          { "name": "updatedAt", "type": "datetime" }
+        ]
+      }
+    ],
+    "apis": [
+      { "name": "listTasks", "path": "/api/tasks", "method": "GET", "returns": "Paginated<Task>" },
+      { "name": "getTaskDetail", "path": "/api/tasks/{id}", "method": "GET", "returns": "Task" }
+    ]
+  },
+  "openQuestions": [
+    "任务优先级是否影响排序规则？",
+    "列表是否需要实时刷新？",
+    "是否需要支持批量指派/批量完成？"
+  ],
+  "autoFill": [
+    "根据 Task 字段自动生成列表列配置初稿",
+    "根据 listTasks 查询参数自动生成筛选字段"
+  ]
+}

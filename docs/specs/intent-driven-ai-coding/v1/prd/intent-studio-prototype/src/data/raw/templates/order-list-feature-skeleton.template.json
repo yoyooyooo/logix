@@ -1,0 +1,49 @@
+{
+  "id": "order-list-feature-skeleton",
+  "name": "订单管理列表功能骨架模板",
+  "version": "v1",
+  "status": "draft",
+  "description": "为 table-with-server-filter / filter-bar / toolbar-with-quick-edit 场景生成目录骨架。",
+  "runtimeBindings": {
+    "uiCapabilities": {
+      "table": { "useComponent": "ProTable", "import": "@/components/ProTable" },
+      "filterControls": {
+        "useComponents": {
+          "select": { "import": "@/components/Select" },
+          "dateRange": { "import": "@/components/DateRangePicker" },
+          "keyword": { "import": "@/components/KeywordInput" }
+        }
+      }
+    }
+  },
+  "patterns": [
+    {
+      "patternId": "table-with-server-filter",
+      "implements": [
+        { "role": "TableComponent", "impl": "react-table-shell", "path": "src/features/__FEATURE__/components/__ENTITY__-table.tsx" },
+        { "role": "ColumnsConfig", "impl": "columns-config", "path": "src/features/__FEATURE__/components/__ENTITY__-table.config.ts" },
+        { "role": "FilterStore", "impl": "zustand", "path": "src/features/__FEATURE__/stores/filter.slice.ts" },
+        { "role": "TableStore", "impl": "zustand", "path": "src/features/__FEATURE__/stores/table.slice.ts" },
+        { "role": "ListQueryHook", "impl": "react-query", "path": "src/features/__FEATURE__/queries/use-__ENTITY__-list.hook.ts" },
+        { "role": "ExportService", "optional": true, "impl": "http-export", "path": "src/features/__FEATURE__/services/__ENTITY__-export.service.ts" }
+      ]
+    },
+    {
+      "patternId": "filter-bar",
+      "implements": [
+        { "role": "FilterComponent", "impl": "filters-basic", "path": "src/features/__FEATURE__/components/__ENTITY__-filters.tsx" }
+      ]
+    },
+    {
+      "patternId": "toolbar-with-quick-edit",
+      "implements": [
+        { "role": "ToolbarComponent", "impl": "toolbar-basic", "path": "src/features/__FEATURE__/components/__ENTITY__-toolbar.tsx" },
+        { "role": "QuickEditComponent", "optional": true, "impl": "quick-edit-dialog", "path": "src/features/__FEATURE__/components/__ENTITY__-quick-edit.tsx" }
+      ]
+    }
+  ],
+  "params": {
+    "FEATURE": { "desc": "功能目录名（kebab-case，例如 order-management）", "required": true },
+    "ENTITY": { "desc": "实体名（PascalCase，例如 Order）", "required": true }
+  }
+}
