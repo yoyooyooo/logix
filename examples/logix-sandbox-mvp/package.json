@@ -1,0 +1,47 @@
+{
+  "name": "@examples/logix-sandbox-mvp",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen:monaco:types": "tsx scripts/generate-monaco-type-bundle.ts",
+    "predev": "pnpm gen:monaco:types",
+    "dev": "vite",
+    "prebuild": "pnpm gen:monaco:types",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "pretypecheck": "pnpm gen:monaco:types",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@logix/core": "workspace:*",
+    "@logix/form": "workspace:*",
+    "@logix/react": "workspace:*",
+    "@logix/sandbox": "workspace:*",
+    "@monaco-editor/react": "^4.7.0",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "effect": "^3.19.8",
+    "esbuild-wasm": "^0.27.1",
+    "monaco-editor": "^0.55.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.6",
+    "tailwind-merge": "^3.4.0"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.27.0",
+    "@locator/runtime": "^0.5.1",
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react-swc": "^3.7.0",
+    "esbuild": "^0.27.1",
+    "tailwindcss": "^4.1.16",
+    "tsx": "^4.19.2",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  }
+}

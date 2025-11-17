@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-28T07:09:14.760Z",
+    "from": {
+      "file": "specs/042-react-runtime-boot-dx/perf/converge.txnCommit/before.a5fd2ea7.darwin-arm64.m2max.chromium.headless.soak.m6ba91af1.json",
+      "commit": "a5fd2ea76cd2f1962929bb100bdbe79dc49b3e80"
+    },
+    "to": {
+      "file": "specs/042-react-runtime-boot-dx/perf/converge.txnCommit/after.worktree.darwin-arm64.m2max.chromium.headless.soak.m6ba91af1.json",
+      "commit": "a5fd2ea76cd2f1962929bb100bdbe79dc49b3e80"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "budgetViolations": []
+    }
+  ]
+}

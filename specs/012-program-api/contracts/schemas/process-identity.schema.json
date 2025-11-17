@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessIdentity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["processId", "scope"],
+  "properties": {
+    "processId": { "type": "string", "minLength": 1 },
+    "scope": { "$ref": "./process-scope.schema.json" }
+  }
+}

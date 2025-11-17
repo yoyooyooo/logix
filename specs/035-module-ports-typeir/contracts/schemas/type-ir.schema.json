@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/035-module-ports-typeir/schemas/type-ir.schema.json",
+  "title": "TypeIr",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "moduleId", "types"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "truncated": { "type": "boolean" },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxNodes": { "type": "integer", "minimum": 0 },
+        "maxDepth": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "types": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "kind"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "roots": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+    "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}

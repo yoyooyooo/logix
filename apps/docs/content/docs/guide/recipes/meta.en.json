@@ -1,0 +1,11 @@
+{
+  "title": "Recipes",
+  "pages": [
+    "common-patterns",
+    "unified-api",
+    "public-submodules",
+    "react-integration",
+    "route-scope-modals",
+    "migration-from-zustand"
+  ]
+}

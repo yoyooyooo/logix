@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+
+/* Tailwind v4 source scanning：
+ * - 本示例只扫描本地 src；
+ * - `@logix/devtools-react` 已自带预编译样式，无需额外 @source。
+ */
+@source "./src";
+
+@layer base {
+  html,
+  body,
+  #app {
+    @apply h-full w-full;
+  }
+}

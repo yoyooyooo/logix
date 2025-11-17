@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/020/runtime-evidence-package-summary.schema.json",
+  "title": "RuntimeEvidencePackageSummary",
+  "type": "object",
+  "properties": {
+    "converge": {
+      "$ref": "../../../013-auto-converge-planner/contracts/schemas/converge-evidence-package-summary.schema.json"
+    },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "services": { "$ref": "./runtime-services-evidence.schema.json" }
+      },
+      "additionalProperties": {
+        "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+      }
+    }
+  },
+  "additionalProperties": {
+    "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+  }
+}

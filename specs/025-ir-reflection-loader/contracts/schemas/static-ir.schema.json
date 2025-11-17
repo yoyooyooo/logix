@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/025/static-ir.schema.json",
+  "title": "StaticIR",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "moduleId", "digest", "nodes", "edges"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "digest": { "type": "string", "minLength": 1 },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["nodeId", "kind", "reads", "writes"],
+        "properties": {
+          "nodeId": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "reads": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "writes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "writesUnknown": { "type": "boolean" },
+          "policy": {
+            "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string" },
+              "description": { "type": "string" },
+              "tags": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "group": { "type": "string" },
+              "docsUrl": { "type": "string" },
+              "cacheGroup": { "type": "string" },
+              "annotations": {
+                "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["edgeId", "from", "to", "kind"],
+        "properties": {
+          "edgeId": { "type": "string", "minLength": 1 },
+          "from": { "type": "string", "minLength": 1 },
+          "to": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+      }
+    }
+  }
+}

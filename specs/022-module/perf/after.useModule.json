@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "node": "v22.21.1",
+    "platform": "darwin/arm64",
+    "iters": 20000
+  },
+  "results": {
+    "effect.serviceOption (hit)": {
+      "ok": true,
+      "iterations": 20000,
+      "totalMs": 10.382791999999995,
+      "nsPerOp": 519.1395999999997
+    },
+    "$.use(ModuleTag) (hit)": {
+      "ok": true,
+      "iterations": 20000,
+      "totalMs": 25.850416999999993,
+      "nsPerOp": 1292.5208499999997
+    },
+    "$.use(Module) (hit)": {
+      "ok": true,
+      "iterations": 20000,
+      "totalMs": 25.17824999999999,
+      "nsPerOp": 1258.9124999999997
+    },
+    "$.use(ModuleTag) (no provider)": {
+      "ok": false,
+      "error": "MissingModuleRuntimeError: [MissingModuleRuntimeError] Cannot resolve ModuleRuntime for ModuleTag.\n\ntokenId: PerfTarget\nentrypoint: logic.$.use\nmode: strict\nfrom: <unknown module id>\nstartScope: moduleId=<unknown>, instanceId=i1\n\nfix:\n- Provide the child implementation in the same scope (imports).\n  Example: ParentModule.implement({ imports: [PerfTarget.impl], ... })\n- If you intentionally want a root singleton, provide it at app root (Runtime.make(...,{ layer }) / root imports),\n  and use Root.resolve(ModuleTag) (instead of $.use) at the callsite.\n    at <anonymous> (/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/runtime/BoundApiRuntime.ts:522:19)"
+    },
+    "$.use(Module) (no provider)": {
+      "ok": false,
+      "error": "MissingModuleRuntimeError: [MissingModuleRuntimeError] Cannot resolve ModuleRuntime for ModuleTag.\n\ntokenId: PerfTarget\nentrypoint: logic.$.use\nmode: strict\nfrom: <unknown module id>\nstartScope: moduleId=<unknown>, instanceId=i1\n\nfix:\n- Provide the child implementation in the same scope (imports).\n  Example: ParentModule.implement({ imports: [PerfTarget.impl], ... })\n- If you intentionally want a root singleton, provide it at app root (Runtime.make(...,{ layer }) / root imports),\n  and use Root.resolve(ModuleTag) (instead of $.use) at the callsite.\n    at <anonymous> (/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/runtime/BoundApiRuntime.ts:522:19)"
+    }
+  }
+}

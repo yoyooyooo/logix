@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/031-trialrun-artifacts/schemas/trial-run-artifacts.schema.json",
+  "title": "TrialRunArtifacts",
+  "type": "object",
+  "propertyNames": {
+    "type": "string",
+    "pattern": "^@[^\\s/]+\\/[^\\s@]+@v\\d+$"
+  },
+  "patternProperties": {
+    "^@[^\\s/]+\\/[^\\s@]+@v\\d+$": {
+      "$ref": "./artifact-envelope.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

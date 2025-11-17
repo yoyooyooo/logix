@@ -1,0 +1,21 @@
+openapi: 3.1.0
+info:
+  title: Logix Devtools Converge Performance Pane Contracts
+  version: "015"
+  description: >
+    Contracts for Devtools-side outputs of the Converge Performance Pane:
+    audit findings and action snippets. These are Devtools outputs derived
+    from serialized runtime evidence; no transport/server is implied.
+paths:
+  /devtools/converge/audits:
+    get:
+      summary: Fetch converge audit findings (derived from evidence)
+      responses:
+        "200":
+          description: Audit findings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ./schemas/converge-audit-finding.schema.json

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/025/environment-ir.schema.json",
+  "title": "EnvironmentIR",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "tagIds": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "configKeys": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "missingServices": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "missingConfigKeys": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "runtimeServicesEvidence": {
+      "$ref": "../../../020-runtime-internals-contracts/contracts/schemas/runtime-services-evidence.schema.json"
+    },
+    "notes": {
+      "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/005-unify-observability-protocol/schemas/transport-subscribe.schema.json",
+  "title": "TransportSubscribe",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "payload"],
+  "properties": {
+    "type": { "const": "SUBSCRIBE" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion"],
+      "properties": {
+        "protocolVersion": { "type": "string", "minLength": 1 },
+        "runId": { "type": "string", "minLength": 1 },
+        "afterSeq": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

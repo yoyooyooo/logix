@@ -1,0 +1,189 @@
+{
+  "name": "@logix/core",
+  "version": "0.0.1",
+  "description": "The pure logic engine for Logix",
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./Actions": "./src/Actions.ts",
+    "./Bound": "./src/Bound.ts",
+    "./Debug": "./src/Debug.ts",
+    "./EffectOp": "./src/EffectOp.ts",
+    "./Env": "./src/Env.ts",
+    "./Flow": "./src/Flow.ts",
+    "./Kernel": "./src/Kernel.ts",
+    "./Handle": "./src/Handle.ts",
+    "./Link": "./src/Link.ts",
+    "./Logic": "./src/Logic.ts",
+    "./MatchBuilder": "./src/MatchBuilder.ts",
+    "./ReadQuery": "./src/ReadQuery.ts",
+    "./Middleware": "./src/Middleware.ts",
+    "./Module": "./src/Module.ts",
+    "./ModuleTag": "./src/ModuleTag.ts",
+    "./Observability": "./src/Observability.ts",
+    "./Platform": "./src/Platform.ts",
+    "./Resource": "./src/Resource.ts",
+    "./Root": "./src/Root.ts",
+    "./Runtime": "./src/Runtime.ts",
+    "./State": "./src/State.ts",
+    "./StateTrait": "./src/StateTrait.ts",
+    "./TraitLifecycle": "./src/TraitLifecycle.ts",
+    "./internal/*": null
+  },
+  "publishConfig": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./Actions": {
+        "types": "./dist/Actions.d.ts",
+        "import": "./dist/Actions.js",
+        "require": "./dist/Actions.cjs"
+      },
+      "./Bound": {
+        "types": "./dist/Bound.d.ts",
+        "import": "./dist/Bound.js",
+        "require": "./dist/Bound.cjs"
+      },
+      "./Debug": {
+        "types": "./dist/Debug.d.ts",
+        "import": "./dist/Debug.js",
+        "require": "./dist/Debug.cjs"
+      },
+      "./EffectOp": {
+        "types": "./dist/EffectOp.d.ts",
+        "import": "./dist/EffectOp.js",
+        "require": "./dist/EffectOp.cjs"
+      },
+      "./Env": {
+        "types": "./dist/Env.d.ts",
+        "import": "./dist/Env.js",
+        "require": "./dist/Env.cjs"
+      },
+      "./Flow": {
+        "types": "./dist/Flow.d.ts",
+        "import": "./dist/Flow.js",
+        "require": "./dist/Flow.cjs"
+      },
+      "./Kernel": {
+        "types": "./dist/Kernel.d.ts",
+        "import": "./dist/Kernel.js",
+        "require": "./dist/Kernel.cjs"
+      },
+      "./Handle": {
+        "types": "./dist/Handle.d.ts",
+        "import": "./dist/Handle.js",
+        "require": "./dist/Handle.cjs"
+      },
+      "./Link": {
+        "types": "./dist/Link.d.ts",
+        "import": "./dist/Link.js",
+        "require": "./dist/Link.cjs"
+      },
+      "./Logic": {
+        "types": "./dist/Logic.d.ts",
+        "import": "./dist/Logic.js",
+        "require": "./dist/Logic.cjs"
+      },
+      "./MatchBuilder": {
+        "types": "./dist/MatchBuilder.d.ts",
+        "import": "./dist/MatchBuilder.js",
+        "require": "./dist/MatchBuilder.cjs"
+      },
+      "./ReadQuery": {
+        "types": "./dist/ReadQuery.d.ts",
+        "import": "./dist/ReadQuery.js",
+        "require": "./dist/ReadQuery.cjs"
+      },
+      "./Middleware": {
+        "types": "./dist/Middleware.d.ts",
+        "import": "./dist/Middleware.js",
+        "require": "./dist/Middleware.cjs"
+      },
+      "./Module": {
+        "types": "./dist/Module.d.ts",
+        "import": "./dist/Module.js",
+        "require": "./dist/Module.cjs"
+      },
+      "./ModuleTag": {
+        "types": "./dist/ModuleTag.d.ts",
+        "import": "./dist/ModuleTag.js",
+        "require": "./dist/ModuleTag.cjs"
+      },
+      "./Observability": {
+        "types": "./dist/Observability.d.ts",
+        "import": "./dist/Observability.js",
+        "require": "./dist/Observability.cjs"
+      },
+      "./Platform": {
+        "types": "./dist/Platform.d.ts",
+        "import": "./dist/Platform.js",
+        "require": "./dist/Platform.cjs"
+      },
+      "./Resource": {
+        "types": "./dist/Resource.d.ts",
+        "import": "./dist/Resource.js",
+        "require": "./dist/Resource.cjs"
+      },
+      "./Root": {
+        "types": "./dist/Root.d.ts",
+        "import": "./dist/Root.js",
+        "require": "./dist/Root.cjs"
+      },
+      "./Runtime": {
+        "types": "./dist/Runtime.d.ts",
+        "import": "./dist/Runtime.js",
+        "require": "./dist/Runtime.cjs"
+      },
+      "./State": {
+        "types": "./dist/State.d.ts",
+        "import": "./dist/State.js",
+        "require": "./dist/State.cjs"
+      },
+      "./StateTrait": {
+        "types": "./dist/StateTrait.d.ts",
+        "import": "./dist/StateTrait.js",
+        "require": "./dist/StateTrait.cjs"
+      },
+      "./TraitLifecycle": {
+        "types": "./dist/TraitLifecycle.d.ts",
+        "import": "./dist/TraitLifecycle.js",
+        "require": "./dist/TraitLifecycle.cjs"
+      },
+      "./internal/*": null
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
+  "scripts": {
+    "build": "tsup --format cjs,esm --dts",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed",
+    "test:cache": "vitest run --cache",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "effect": "^3.19.8",
+    "mutative": "^1.0.4"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.27.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.15"
+  },
+  "peerDependencies": {
+    "effect": "^3.19.8"
+  }
+}

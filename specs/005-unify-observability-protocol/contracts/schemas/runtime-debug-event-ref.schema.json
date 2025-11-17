@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/005-unify-observability-protocol/schemas/runtime-debug-event-ref.schema.json",
+  "title": "RuntimeDebugEventRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventSeq", "moduleId", "instanceId", "txnSeq", "timestamp", "kind", "label"],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Event id (MUST be deterministically derived; recommended: `${instanceId}::e${eventSeq}`)."
+    },
+    "eventSeq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic sequence within a single instance (stable ordering + dedupe)."
+    },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "instanceId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable module instance anchor."
+    },
+    "runtimeLabel": { "type": "string" },
+    "txnSeq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic transaction sequence within a single instance (0 reserved for non-transaction events)."
+    },
+    "txnId": { "type": "string" },
+    "linkId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Causal chain anchor for linking related operations/events across boundaries (e.g. EffectOp linkId)."
+    },
+    "timestamp": { "type": "number" },
+    "kind": { "type": "string", "minLength": 1 },
+    "label": { "type": "string", "minLength": 1 },
+    "meta": {
+      "$ref": "./json-value.schema.json",
+      "description": "Optional slim metadata (MUST be JSON-serializable)."
+    },
+    "errorSummary": {
+      "$ref": "../../../011-upgrade-lifecycle/contracts/schemas/error-summary.schema.json",
+      "description": "Optional error summary for error/diagnostic events (MUST be JSON-serializable)."
+    },
+    "downgrade": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "enum": ["non_serializable", "oversized", "unknown"],
+          "description": "Why some original fields were downgraded/omitted."
+        }
+      }
+    }
+  }
+}

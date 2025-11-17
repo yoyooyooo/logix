@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LogixPerfReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "meta", "suites"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "meta": { "$ref": "#/$defs/Meta" },
+    "suites": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/SuiteResult" }
+    }
+  },
+  "$defs": {
+    "Meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["createdAt", "generator", "matrixId", "config", "env"],
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "generator": { "type": "string", "minLength": 1 },
+        "matrixId": { "type": "string", "minLength": 1 },
+        "matrixUpdatedAt": { "type": "string" },
+        "matrixHash": { "type": "string", "minLength": 1 },
+        "git": { "$ref": "#/$defs/GitMeta" },
+        "config": { "$ref": "#/$defs/RunConfig" },
+        "env": { "$ref": "#/$defs/EnvMeta" }
+      }
+    },
+    "GitMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "branch": { "type": "string" },
+        "commit": { "type": "string" },
+        "dirty": { "type": "boolean" }
+      }
+    },
+    "RunConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runs", "warmupDiscard", "timeoutMs"],
+      "properties": {
+        "runs": { "type": "integer", "minimum": 0 },
+        "warmupDiscard": { "type": "integer", "minimum": 0 },
+        "timeoutMs": { "type": "integer", "minimum": 0 },
+        "headless": { "type": "boolean" },
+        "profile": { "type": "string" },
+        "humanSummary": { "type": "boolean" },
+        "stability": { "$ref": "#/$defs/StabilityConfig" },
+        "controlPlane": { "$ref": "#/$defs/ConvergeControlPlane" },
+        "budgets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Budget" }
+        }
+      }
+    },
+    "StabilityConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxP95DeltaRatio", "maxP95DeltaMs"],
+      "properties": {
+        "maxP95DeltaRatio": { "type": "number", "minimum": 0 },
+        "maxP95DeltaMs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "ConvergeControlPlane": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "traitConvergeBudgetMs": { "type": "number", "exclusiveMinimum": 0 },
+        "traitConvergeDecisionBudgetMs": { "type": "number", "exclusiveMinimum": 0 },
+        "tuningId": { "type": "string" }
+      }
+    },
+    "EnvMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "arch", "node", "browser"],
+      "properties": {
+        "os": { "type": "string", "minLength": 1 },
+        "arch": { "type": "string", "minLength": 1 },
+        "cpu": { "type": "string" },
+        "memoryGb": { "type": "number" },
+        "node": { "type": "string", "minLength": 1 },
+        "pnpm": { "type": "string" },
+        "vitest": { "type": "string" },
+        "playwright": { "type": "string" },
+        "browser": { "$ref": "#/$defs/BrowserMeta" }
+      }
+    },
+    "BrowserMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "headless": { "type": "boolean" }
+      }
+    },
+    "Budget": {
+      "oneOf": [{ "$ref": "#/$defs/AbsoluteBudget" }, { "$ref": "#/$defs/RelativeBudget" }]
+    },
+    "AbsoluteBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "metric", "p95Ms"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "absolute" },
+        "metric": { "type": "string", "minLength": 1 },
+        "p95Ms": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "RelativeBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "metric", "maxRatio", "numeratorRef", "denominatorRef"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "relative" },
+        "metric": { "type": "string", "minLength": 1 },
+        "maxRatio": { "type": "number", "exclusiveMinimum": 0 },
+        "numeratorRef": { "type": "string", "minLength": 1 },
+        "denominatorRef": { "type": "string", "minLength": 1 }
+      }
+    },
+    "MetricCategory": {
+      "type": "string",
+      "enum": ["e2e", "runtime", "diagnostics"]
+    },
+    "SuiteResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "points"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "priority": { "type": "string", "enum": ["P1", "P2", "P3"] },
+        "primaryAxis": { "type": "string" },
+        "budgets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Budget" }
+        },
+        "metricCategories": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/MetricCategory" }
+        },
+        "points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PointResult" }
+        },
+        "thresholds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Threshold" }
+        },
+        "comparisons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ComparisonResult" }
+        }
+      }
+    },
+    "PointResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["params", "status", "metrics"],
+      "properties": {
+        "params": { "$ref": "#/$defs/Params" },
+        "status": {
+          "type": "string",
+          "enum": ["ok", "timeout", "failed", "skipped"]
+        },
+        "reason": { "type": "string" },
+        "metrics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MetricResult" }
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceResult" }
+        }
+      }
+    },
+    "Params": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }]
+      }
+    },
+    "MetricResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "unit", "status"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "unit": { "type": "string", "enum": ["ms"] },
+        "status": { "type": "string", "enum": ["ok", "unavailable"] },
+        "stats": { "$ref": "#/$defs/Stats" },
+        "samples": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "unavailableReason": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "ok" } } },
+          "then": { "required": ["stats"] }
+        },
+        {
+          "if": { "properties": { "status": { "const": "unavailable" } } },
+          "then": { "required": ["unavailableReason"] }
+        }
+      ]
+    },
+    "Stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n", "medianMs", "p95Ms"],
+      "properties": {
+        "n": { "type": "integer", "minimum": 0 },
+        "medianMs": { "type": "number" },
+        "p95Ms": { "type": "number" }
+      }
+    },
+    "Threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["budget", "maxLevel"],
+      "properties": {
+        "budget": { "$ref": "#/$defs/Budget" },
+        "where": { "$ref": "#/$defs/Params" },
+        "maxLevel": {
+          "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "null" }]
+        },
+        "firstFailLevel": {
+          "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "null" }]
+        },
+        "reason": { "type": "string" },
+        "recommendations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Recommendation" }
+        }
+      }
+    },
+    "Recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string" }
+      }
+    },
+    "EvidenceResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "unit", "status"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "unit": { "type": "string", "enum": ["count", "ratio", "bytes", "string"] },
+        "status": { "type": "string", "enum": ["ok", "unavailable"] },
+        "value": {
+          "oneOf": [{ "type": "number" }, { "type": "string" }]
+        },
+        "unavailableReason": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "ok" } } },
+          "then": { "required": ["value"] }
+        },
+        {
+          "if": { "properties": { "status": { "const": "unavailable" } } },
+          "then": { "required": ["unavailableReason"] }
+        },
+        {
+          "if": { "properties": { "unit": { "const": "string" } } },
+          "then": { "properties": { "value": { "type": "string" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "unit": { "enum": ["count", "ratio", "bytes"] }
+            }
+          },
+          "then": { "properties": { "value": { "type": "number" } } }
+        }
+      ]
+    },
+    "ScalarStats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["median", "p95"],
+      "properties": {
+        "median": { "type": "number" },
+        "p95": { "type": "number" }
+      }
+    },
+    "ComparisonResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "metric", "numeratorWhere", "denominatorWhere", "unit", "stats"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["ratio", "delta"] },
+        "metric": { "type": "string", "minLength": 1 },
+        "numeratorWhere": { "$ref": "#/$defs/Params" },
+        "denominatorWhere": { "$ref": "#/$defs/Params" },
+        "unit": { "type": "string", "enum": ["ratio", "ms"] },
+        "stats": { "$ref": "#/$defs/ScalarStats" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

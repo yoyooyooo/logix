@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessErrorPolicy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode"],
+  "properties": {
+    "mode": { "type": "string", "enum": ["failStop", "supervise"] },
+    "maxRestarts": { "type": "integer", "minimum": 0, "description": "Required for supervise mode; must be bounded." },
+    "windowMs": { "type": "integer", "minimum": 0, "description": "Optional time window for restart limits." }
+  }
+}

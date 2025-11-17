@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/028-form-api-dx/schemas/rules-manifest.schema.json",
+  "title": "RulesManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["moduleId", "lists", "rules"],
+  "properties": {
+    "moduleId": { "type": "string", "minLength": 1 },
+    "lists": {
+      "type": "array",
+      "description": "Declared list fields and their identity policies.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "identity"],
+        "properties": {
+          "path": {
+            "$ref": "./field-path.schema.json",
+            "description": "Canonical list root field path (Spec 009 FieldPath segments; no indices)."
+          },
+          "identity": { "$ref": "./list-identity-policy.schema.json" }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "./rule-descriptor.schema.json" }
+    }
+  }
+}
+

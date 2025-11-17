@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/038/session-node.schema.json",
+  "title": "SessionNode",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "nodeId": { "type": "string", "minLength": 1 },
+    "kind": {
+      "type": "string",
+      "enum": ["session", "txn", "effectop", "trait", "react", "diagnostic", "custom"]
+    },
+    "label": { "type": "string", "minLength": 1 },
+    "primaryParentId": { "type": "string", "minLength": 1 },
+    "relatedNodeIds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "linkId": { "type": "string", "minLength": 1 },
+        "txnId": { "type": "string", "minLength": 1 },
+        "txnSeq": { "type": "integer", "minimum": 0 },
+        "eventId": { "type": "string", "minLength": 1 },
+        "eventSeq": { "type": "integer", "minimum": 1 },
+        "opSeq": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["eventId", "eventSeq"]
+    },
+    "startedAtMs": { "type": "integer", "minimum": 0 },
+    "endedAtMs": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["nodeId", "kind", "label", "anchor", "startedAtMs", "endedAtMs"]
+}

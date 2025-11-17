@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/041-docs-inline-playground/contracts/playground-block.schema.json",
+  "title": "PlaygroundBlock",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "blockId": {
+      "type": "string",
+      "description": "Stable identifier for the block. When omitted, the host may derive one from the doc path + order."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title for the block."
+    },
+    "level": {
+      "type": "string",
+      "enum": ["basic", "debug"],
+      "default": "basic",
+      "description": "basic: teaching default; debug: allow deep observability panels."
+    },
+    "observe": {
+      "type": "array",
+      "description": "Observation points (recommended 1–3).",
+      "items": { "type": "string" },
+      "minItems": 0,
+      "maxItems": 5
+    },
+    "defaultPanels": {
+      "type": "array",
+      "description": "Panels visible by default.",
+      "items": {
+        "type": "string",
+        "enum": ["notes", "console", "result", "state", "trace", "timeline", "events"]
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "moduleExport": {
+      "type": "string",
+      "default": "AppRoot",
+      "description": "Named export used as the trial-run entry."
+    },
+    "code": {
+      "type": "string",
+      "description": "Initial editable source code provided by the author."
+    },
+    "runBudgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxEvents": { "type": "integer", "minimum": 1 },
+        "reportMaxBytes": { "type": "integer", "minimum": 1024 },
+        "timeoutMs": { "type": "integer", "minimum": 100 }
+      }
+    }
+  },
+  "required": ["code"]
+}

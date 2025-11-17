@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/025/module-manifest.schema.json",
+  "title": "ModuleManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifestVersion", "moduleId", "actionKeys", "digest"],
+  "properties": {
+    "manifestVersion": { "type": "string", "minLength": 1 },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "actionKeys": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "schemaKeys": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "logicUnits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "id"],
+        "properties": {
+          "kind": { "type": "string", "minLength": 1 },
+          "id": { "type": "string", "minLength": 1 },
+          "derived": { "type": "boolean" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "line", "column"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+      }
+    },
+    "staticIr": { "$ref": "./static-ir.schema.json" },
+    "digest": { "type": "string", "minLength": 1 }
+  }
+}

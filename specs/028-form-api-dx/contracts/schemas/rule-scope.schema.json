@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/028-form-api-dx/schemas/rule-scope.schema.json",
+  "title": "RuleScope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "fieldPath"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["root", "field", "list", "item"],
+      "description": "Scope kind: root ($root), field (single value), list (list-level), item (row-level)."
+    },
+    "fieldPath": {
+      "$ref": "./field-path.schema.json",
+      "description": "Canonical scope field path (Spec 009 FieldPath segments; no indices). For kind=root, use [\"$root\"]. For kind=list/item, this is the list root path."
+    },
+    "errorTarget": {
+      "type": "string",
+      "enum": ["$value", "$self"],
+      "default": "$value",
+      "description": "Optional error writeback target for kind=field. \"$value\" writes to errors.<fieldPath>; \"$self\" writes to errors.<fieldPath>.$self for object-level refine / cross-field validation."
+    }
+  }
+}

@@ -1,0 +1,82 @@
+"""
+Devtools Snapshot Contract (logical API)
+
+目标：
+- 为 Devtools/外部订阅提供“快照 + 变更令牌”的稳定契约
+- 不表达具体传输方式（可用于桥接、进程内 API、或其他宿主间通道）
+"""
+schema {
+  query: Query
+  subscription: Subscription
+}
+
+scalar JSON
+
+type Query {
+  devtoolsSnapshot: DevtoolsSnapshot!
+}
+
+type Subscription {
+  """
+  当快照发生对外可见变化时推送。
+  afterToken 可用于客户端去重/丢包恢复（逻辑语义）。
+  """
+  devtoolsSnapshotChanged(afterToken: Int): DevtoolsSnapshot!
+}
+
+type DevtoolsSnapshot {
+  """
+  SnapshotToken:
+  - 单调递增的快照变更令牌（外部订阅安全的事实源）；
+  - 任一对外可见变化必须推动 token 变化；
+  - token 未变化时，快照对外可见字段不得变化（避免 tearing）。
+  """
+  snapshotToken: Int!
+  instances: [InstanceCount!]!
+  events: [RuntimeDebugEventRef!]!
+  latestStates: [KeyedJsonValue!]!
+  latestTraitSummaries: [KeyedJsonValue!]!
+  exportBudget: ExportBudget!
+}
+
+type InstanceCount {
+  key: String!
+  count: Int!
+}
+
+type KeyedJsonValue {
+  key: String!
+  value: JSON!
+}
+
+type ExportBudget {
+  dropped: Int!
+  oversized: Int!
+}
+
+type RuntimeDebugEventRef {
+  eventId: String!
+  eventSeq: Int!
+  moduleId: String!
+  instanceId: String!
+  runtimeLabel: String
+  txnSeq: Int!
+  txnId: String
+  timestamp: Float!
+  kind: String!
+  label: String!
+  meta: JSON
+  errorSummary: SerializableErrorSummary
+  downgrade: DowngradeInfo
+}
+
+type SerializableErrorSummary {
+  message: String!
+  name: String
+  code: String
+  hint: String
+}
+
+type DowngradeInfo {
+  reason: String
+}

@@ -1,0 +1,29 @@
+---
+title: Form（表单）
+description: 由浅入深掌握 @logix/form 的表单模型、校验、动态列表与性能建议。
+---
+
+`@logix/form` 是 Logix 体系中的“表单领域包”：它把表单的 **values / errors / ui / submit 状态** 作为一个普通模块托管进 Runtime，让表单和其他业务模块共享同一套：
+
+- Runtime 生命周期与事务语义（一次交互最多一次可观察提交）
+- 调试与回放能力（Devtools 时间线、错误树、状态快照）
+- 声明式派生 / 校验 / 异步资源（Trait / Resource / Effect）
+
+## 推荐阅读顺序（由浅入深）
+
+1. [概览：Form 的模型](./introduction)
+2. [快速开始](./quick-start)
+3. [Rules DSL（z）](./rules)
+4. [校验与错误](./validation)
+5. [动态列表（Field Array）](./field-arrays)
+6. [迁移指南（traits → rules）](./migration)
+7. [派生与联动（derived / Trait）](./derived)
+8. [Schema 校验与错误映射](./schema)
+9. [性能与优化](./performance)
+
+## 你会得到什么
+
+- 知道 `Form.make(...)` 为什么返回一个 `Blueprint`，以及如何把它像其他模块一样接入 Runtime；
+- 明白错误树为什么统一使用 `$list/rows[]` 口径，以及如何在数组增删/重排时保持错误与 UI 状态稳定；
+- 能用 `validateOn / reValidateOn` 组织“提交前/提交后”的自动校验策略，并通过 controller 在组件外触发精确校验；
+- 在大表单/大列表场景下，能用 selector 订阅与稳定 identity 降低渲染与校验开销。

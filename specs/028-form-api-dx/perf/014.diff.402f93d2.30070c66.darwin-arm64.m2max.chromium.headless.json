@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-24T18:56:12.705Z",
+    "from": {
+      "file": "specs/014-browser-perf-boundaries/perf/before.402f93d2.darwin-arm64.m2max.chromium.headless.json",
+      "commit": "402f93d23b571b214c89d672f2fc43c82e9c3948"
+    },
+    "to": {
+      "file": "specs/028-form-api-dx/perf/014.after.worktree.darwin-arm64.m2max.chromium.headless.json",
+      "commit": "30070c6654eb7abb069616a82d77730bdcbac648"
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "diagnostics.overhead.e2e",
+      "notes": "missing suite in before report"
+    },
+    {
+      "id": "form.listScopeCheck",
+      "notes": "missing suite in before report"
+    },
+    {
+      "id": "watchers.clickToPaint",
+      "notes": "missing suite in after report"
+    }
+  ]
+}

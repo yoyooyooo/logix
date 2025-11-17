@@ -1,0 +1,37 @@
+openapi: 3.1.0
+info:
+  title: Logix Runtime Internals Contracts
+  version: "020"
+  description: >
+    Contracts for runtime internals: internal runtime services, runtime kernel evidence,
+    per-instance overrides, and service binding provenance. Schema-first documentation
+    for runtime/devtools/sandbox alignment; it does not imply a specific transport.
+paths:
+  /trace/runtime/services:
+    post:
+      summary: Validate runtime services evidence payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/runtime-services-evidence.schema.json
+      responses:
+        "204":
+          description: Valid
+        "400":
+          description: Invalid
+  /trace/runtime/evidence-package:
+    post:
+      summary: Validate runtime trial-run evidence package payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/runtime-evidence-package.schema.json
+      responses:
+        "204":
+          description: Valid
+        "400":
+          description: Invalid

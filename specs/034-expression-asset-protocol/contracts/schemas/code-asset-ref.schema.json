@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/034-expression-asset-protocol/schemas/code-asset-ref.schema.json",
+  "title": "CodeAssetRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["digest"],
+  "properties": {
+    "digest": { "type": "string", "minLength": 1 }
+  }
+}

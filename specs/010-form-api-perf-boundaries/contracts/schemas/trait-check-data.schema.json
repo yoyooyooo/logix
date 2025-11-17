@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/010-form-api-perf-boundaries/schemas/trait-check-data.schema.json",
+  "title": "TraitCheckData",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ruleId", "scopeFieldPath", "mode", "trigger", "summary"],
+  "properties": {
+    "ruleId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable rule identifier (e.g. `userList#uniqueWarehouse`)."
+    },
+    "scopeFieldPath": {
+      "$ref": "./field-path.schema.json",
+      "description": "Canonical scope field path (009 FieldPath segments). Typically the list root (e.g. [\"userList\"])."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["submit", "blur", "valueChange", "manual"],
+      "description": "Scoped validate mode (aligns with ScopedValidateRequest.mode)."
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "op"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "External trigger kind (aligns with TxnOrigin.kind when available)."
+        },
+        "path": {
+          "$ref": "./field-path.schema.json",
+          "description": "Canonical affected field path (009 FieldPath segments; no indices)."
+        },
+        "op": { "type": "string", "enum": ["set", "unset", "insert", "remove"] }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scannedRows", "affectedRows", "changedRows"],
+      "properties": {
+        "scannedRows": { "type": "integer", "minimum": 0 },
+        "affectedRows": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Rows whose error result depends on this rule (may be <= scannedRows)."
+        },
+        "changedRows": { "type": "integer", "minimum": 0, "description": "Rows whose error entries changed in this run." },
+        "setCount": { "type": "integer", "minimum": 0, "description": "Number of error fields set." },
+        "clearedCount": { "type": "integer", "minimum": 0, "description": "Number of error fields cleared." },
+        "durationMs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "rowIdMode": {
+      "type": "string",
+      "enum": ["trackBy", "store", "index"],
+      "description": "Row identity source mode: trackBy (business identity), store (runtime rowIdStore), or index (degraded fallback)."
+    },
+    "degraded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

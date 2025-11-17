@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/converge-generation.schema.json",
+  "title": "CacheGeneration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["generation"],
+  "properties": {
+    "generation": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Generation for Converge Static IR and Execution Plan Cache. Any generation bump invalidates all cached plans."
+    },
+    "generationBumpCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Cumulative generation bump count (used to detect thrashing)."
+    },
+    "lastBumpReason": {
+      "type": "string",
+      "enum": ["writers_changed", "deps_changed", "logic_installed", "logic_uninstalled", "imports_changed", "unknown"],
+      "description": "Reason for the most recent generation bump (finite enum, update on breaking change)."
+    }
+  }
+}

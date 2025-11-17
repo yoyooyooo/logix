@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/020/runtime-services-evidence.schema.json",
+  "title": "RuntimeServicesEvidence",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "moduleId": { "type": "string", "minLength": 1 },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "string",
+      "enum": ["builtin", "runtime_default", "runtime_module", "provider", "instance"]
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "serviceId": { "type": "string", "minLength": 1 },
+          "implId": { "type": "string", "minLength": 1 },
+          "implVersion": { "type": "string", "minLength": 1 },
+          "scope": {
+            "type": "string",
+            "enum": ["builtin", "runtime_default", "runtime_module", "provider", "instance"]
+          },
+          "overridden": { "type": "boolean" },
+          "notes": { "type": "string" }
+        },
+        "required": ["serviceId", "scope", "overridden"]
+      }
+    },
+    "overridesApplied": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "required": ["instanceId", "scope", "bindings"]
+}

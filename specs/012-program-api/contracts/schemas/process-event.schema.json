@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "identity", "severity", "eventSeq", "timestampMs"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "process:start",
+        "process:stop",
+        "process:restart",
+        "process:trigger",
+        "process:dispatch",
+        "process:error"
+      ]
+    },
+    "identity": { "$ref": "./process-instance-identity.schema.json" },
+    "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+    "eventSeq": { "type": "integer", "minimum": 1 },
+    "timestampMs": { "type": "number", "minimum": 0 },
+    "trigger": { "$ref": "./process-trigger.schema.json" },
+    "dispatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["moduleId", "instanceId", "actionId"],
+      "properties": {
+        "moduleId": { "type": "string", "minLength": 1 },
+        "instanceId": { "type": "string", "minLength": 1 },
+        "actionId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "error": { "$ref": "./error-summary.schema.json" }
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "process:start" } }
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "process:stop" } }
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "process:restart" } }
+        },
+        {
+          "type": "object",
+          "required": ["type", "trigger"],
+          "properties": { "type": { "const": "process:trigger" } }
+        },
+        {
+          "type": "object",
+          "required": ["type", "trigger", "dispatch"],
+          "properties": { "type": { "const": "process:dispatch" } }
+        },
+        {
+          "type": "object",
+          "required": ["type", "error"],
+          "properties": { "type": { "const": "process:error" } }
+        }
+      ]
+    }
+  ]
+}

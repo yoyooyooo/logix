@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/028-form-api-dx/schemas/rule-descriptor.schema.json",
+  "title": "RuleDescriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ruleId", "scope", "deps"],
+  "properties": {
+    "ruleId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable rule identifier (e.g. `contact.email#required`, `items#list.uniqueWarehouse`, `items#item.rowFields`)."
+    },
+    "scope": { "$ref": "./rule-scope.schema.json" },
+    "deps": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Dependency paths in the rule authoring syntax. For item/list scopes, deps are relative to the row item; for field/root scopes, deps are absolute (from values root)."
+    },
+    "validateOn": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["onChange", "onBlur"] },
+      "uniqueItems": true,
+      "description": "Explicit auto-validate allowlist for this rule (onChange/onBlur only). When omitted, the rule inherits Form-level validateOn/reValidateOn."
+    },
+    "meta": {
+      "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json",
+      "description": "Serializable rule meta for Devtools/explainability (JsonValue hard gate)."
+    }
+  }
+}
+

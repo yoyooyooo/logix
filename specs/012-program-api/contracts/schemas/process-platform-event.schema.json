@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessPlatformEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventName"],
+  "properties": {
+    "eventName": { "type": "string", "minLength": 1 },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

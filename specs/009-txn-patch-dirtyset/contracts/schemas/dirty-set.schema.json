@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/009-txn-patch-dirtyset/schemas/dirty-set.schema.json",
+  "title": "DirtySet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dirtyAll", "roots"],
+  "properties": {
+    "dirtyAll": {
+      "type": "boolean",
+      "description": "When true, indicates unknown writes or explicit full converge."
+    },
+    "roots": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Sorted unique normalized roots (prefix-free; stable lexicographic by FieldPath segments); empty array means no writes. When dirtyAll=true, consumers MUST treat as full converge regardless of roots.",
+      "items": { "$ref": "./field-path.schema.json" }
+    }
+  }
+}

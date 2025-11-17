@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/converge-executed-mode.schema.json",
+  "title": "ConvergeExecutedMode",
+  "type": "string",
+  "enum": ["full", "dirty"],
+  "description": "Actual executed converge path for a transaction. auto must never appear here."
+}

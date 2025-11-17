@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/converge-evidence-package-summary.schema.json",
+  "title": "ConvergeEvidencePackageSummary",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "staticIrByDigest": {
+      "type": "object",
+      "additionalProperties": { "$ref": "./converge-static-ir.schema.json" },
+      "description": "Map of `staticIrDigest -> ConvergeStaticIR`. Intended to be stored under EvidencePackage.summary.converge; must be exported only in full diagnostics and deduplicated per EvidencePackage."
+    }
+  }
+}

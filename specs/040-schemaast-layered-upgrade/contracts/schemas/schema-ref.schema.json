@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/040-schemaast-layered-upgrade/schemas/schema-ref.schema.json",
+  "title": "SchemaRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaId"],
+  "properties": {
+    "schemaId": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "minLength": 1 },
+    "hint": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}

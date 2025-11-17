@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/005-unify-observability-protocol/schemas/control-ack.schema.json",
+  "title": "ControlAck",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "commandSeq", "accepted"],
+  "properties": {
+    "protocolVersion": { "type": "string", "minLength": 1 },
+    "commandSeq": { "type": "integer", "minimum": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "accepted": { "type": "boolean" },
+    "reason": { "type": "string" }
+  }
+}

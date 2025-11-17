@@ -1,0 +1,10 @@
+{
+  "name": "@logix/fixture-src-root-violation",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  }
+}
+

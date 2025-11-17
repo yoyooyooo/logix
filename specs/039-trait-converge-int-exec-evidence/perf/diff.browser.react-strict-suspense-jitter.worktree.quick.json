@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-29T03:08:08.402Z",
+    "from": {
+      "file": "specs/039-trait-converge-int-exec-evidence/perf/before.browser.react-strict-suspense-jitter.worktree.quick.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "to": {
+      "file": "specs/039-trait-converge-int-exec-evidence/perf/after.browser.react-strict-suspense-jitter.worktree.quick.json",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "regressions": 1,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "react.strictSuspenseJitter",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.interactionToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true,
+            "suspenseCycles": 3
+          },
+          "beforeMaxLevel": 1,
+          "afterMaxLevel": null,
+          "message": "[category=e2e] p95<=100ms {reactStrictMode=true&suspenseCycles=3}: before=1 after=null (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.reactStrictSuspense.reduce-mount-or-suspense-cycles",
+              "title": "降低 mountCycles 或 suspenseCycles",
+              "detail": "严格模式 + Suspense 抖动增大时，可优先减少一次交互内的挂载次数或挂起循环次数。"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 3
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 4
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=3 ok=3 unavailable=0 missing=0] after[value=4 ok=3 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "mostSignificantRegression: p95<=100ms {reactStrictMode=true&suspenseCycles=3} (before=1, after=null); stabilityWarning: metric=e2e.interactionToStableMs {mountCycles=1&reactStrictMode=true&suspenseCycles=3} baselineP95=31.30ms afterP95=814.30ms diff=783.00ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

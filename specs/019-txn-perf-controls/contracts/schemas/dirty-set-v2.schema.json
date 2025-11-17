@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/019/dirty-set-v2.schema.json",
+  "title": "DirtySetV2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "dirtyAll": { "type": "boolean" },
+    "paths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "reason": {
+      "type": "string",
+      "enum": ["unknownWrite", "customMutation", "nonTrackablePatch", "fallbackPolicy"]
+    }
+  },
+  "required": ["dirtyAll"],
+  "allOf": [
+    {
+      "if": { "properties": { "dirtyAll": { "const": true } }, "required": ["dirtyAll"] },
+      "then": { "not": { "required": ["paths"] } }
+    },
+    {
+      "if": { "properties": { "dirtyAll": { "const": false } }, "required": ["dirtyAll"] },
+      "then": { "required": ["paths"] }
+    }
+  ]
+}
+

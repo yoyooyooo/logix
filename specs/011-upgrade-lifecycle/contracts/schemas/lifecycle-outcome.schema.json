@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LifecycleOutcome",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status"],
+  "properties": {
+    "status": { "type": "string", "enum": ["success", "failure"] },
+    "error": { "$ref": "./error-summary.schema.json" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "success" } } },
+      "then": { "not": { "required": ["error"] } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failure" } } },
+      "then": { "required": ["error"] }
+    }
+  ]
+}
+

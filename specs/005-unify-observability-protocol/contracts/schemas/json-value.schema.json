@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/005-unify-observability-protocol/schemas/json-value.schema.json",
+  "title": "JsonValue",
+  "description": "JSON-serializable value (used as the hard gate for cross-host transport and evidence packages).",
+  "$defs": {
+    "object": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#" }
+    },
+    "array": {
+      "type": "array",
+      "items": { "$ref": "#" }
+    }
+  },
+  "oneOf": [
+    { "type": "null" },
+    { "type": "boolean" },
+    { "type": "number" },
+    { "type": "string" },
+    { "$ref": "#/$defs/object" },
+    { "$ref": "#/$defs/array" }
+  ]
+}

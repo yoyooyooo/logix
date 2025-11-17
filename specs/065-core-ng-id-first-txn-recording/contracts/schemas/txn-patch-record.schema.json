@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/065-core-ng-id-first-txn-recording/schemas/txn-patch-record.schema.json",
+  "title": "TxnPatchRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["opSeq", "reason"],
+  "properties": {
+    "opSeq": { "type": "integer", "minimum": 0, "description": "Monotonic operation sequence within a transaction." },
+    "pathId": { "type": "integer", "minimum": 0, "description": "FieldPathId (index in fieldPaths table)." },
+    "reason": {
+      "type": "string",
+      "enum": ["reducer", "trait-computed", "trait-link", "source-refresh", "devtools", "perf", "unknown"]
+    },
+    "stepId": { "type": "integer", "minimum": 0, "description": "ConvergeStepId (index in stepsById table)." },
+    "traitNodeId": { "type": "string", "minLength": 1 },
+    "from": {
+      "description": "Optional previous value (full diagnostics). Must be JSON-serializable; omit when not serializable."
+    },
+    "to": {
+      "description": "Optional next value (full diagnostics). Must be JSON-serializable; omit when not serializable."
+    }
+  }
+}

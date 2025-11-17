@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ModuleDescriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "moduleId", "instanceId", "actionKeys", "logicUnits"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Readable module definition id (e.g. UserForm, OrderCrud)."
+    },
+    "moduleId": {
+      "type": "string",
+      "description": "Runtime moduleId (stable identity anchor)."
+    },
+    "instanceId": {
+      "type": "string",
+      "description": "Runtime instanceId (stable identity anchor).",
+      "minLength": 1
+    },
+    "actionKeys": {
+      "type": "array",
+      "description": "Action tags exposed on the handle (from ModuleHandle.actions; no function bodies).",
+      "items": { "type": "string" }
+    },
+    "schemaKeys": {
+      "type": "array",
+      "description": "Optional keys of reflected schemas on the Module (keys only; no schema bodies).",
+      "items": { "type": "string" }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional SDD traceability metadata (slim, serializable).",
+      "additionalProperties": true
+    },
+    "source": {
+      "type": "object",
+      "description": "Optional source location anchor for devtools (dev only).",
+      "additionalProperties": false,
+      "properties": {
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "logicUnits": {
+      "type": "array",
+      "description": "Mounted logic unit summaries (slim, serializable).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "id"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Logic unit kind/phase (e.g. install/user)."
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Deterministic logic unit id/slot key for diff/replay alignment (explicit preferred; derived allowed; no random/time defaults)."
+          },
+          "derived": {
+            "type": "boolean",
+            "description": "Whether this id is derived (not explicitly provided). Derived ids must be reproducible but are not guaranteed stable across reorder."
+          },
+          "name": {
+            "type": "string",
+            "description": "Optional stable logic name/id for explainability."
+          }
+        }
+      }
+    }
+  }
+}

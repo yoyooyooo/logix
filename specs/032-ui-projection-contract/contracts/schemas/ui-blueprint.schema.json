@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/032-ui-projection-contract/schemas/ui-blueprint.schema.json",
+  "title": "UiBlueprint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "uiId", "target", "nodes"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "uiId": { "type": "string", "minLength": 1 },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instanceId"],
+      "properties": {
+        "instanceId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["nodeId", "componentKey"],
+        "properties": {
+          "nodeId": { "type": "string", "minLength": 1 },
+          "componentKey": { "type": "string", "minLength": 1 },
+          "staticProps": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+          "propBindings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["propName", "uiPropKey"],
+              "properties": {
+                "propName": { "type": "string", "minLength": 1 },
+                "uiPropKey": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "eventBindings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["eventName", "uiEventKey"],
+              "properties": {
+                "eventName": { "type": "string", "minLength": 1 },
+                "uiEventKey": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "layout": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+        }
+      }
+    },
+    "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}

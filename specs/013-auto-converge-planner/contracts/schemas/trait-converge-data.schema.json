@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/trait-converge-data.schema.json",
+  "title": "ConvergeDecisionSummary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestedMode",
+    "executedMode",
+    "outcome",
+    "configScope",
+    "staticIrDigest",
+    "executionBudgetMs",
+    "executionDurationMs",
+    "reasons",
+    "stepStats"
+  ],
+  "properties": {
+    "requestedMode": { "$ref": "./converge-requested-mode.schema.json" },
+    "executedMode": { "$ref": "./converge-executed-mode.schema.json" },
+    "outcome": { "$ref": "./converge-outcome.schema.json" },
+    "configScope": {
+      "type": "string",
+      "enum": ["provider", "runtime_module", "runtime_default", "builtin"],
+      "description": "Resolved configuration scope that determined the effective converge config for this transaction."
+    },
+    "staticIrDigest": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable reference to the exported ConvergeStaticIR within an EvidencePackage. Defined as `instanceId + \":\" + generation`."
+    },
+    "executionBudgetMs": { "type": "number", "minimum": 0 },
+    "executionDurationMs": { "type": "number", "minimum": 0 },
+    "decisionBudgetMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Decision budget for auto mode (recommended when requestedMode=auto)."
+    },
+    "decisionDurationMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Actual decision duration (may be sampled)."
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "cold_start",
+          "cache_hit",
+          "cache_miss",
+          "budget_cutoff",
+          "near_full",
+          "unknown_write",
+          "dirty_all",
+          "generation_bumped",
+          "low_hit_rate_protection",
+          "module_override",
+          "time_slicing_immediate",
+          "time_slicing_deferred"
+        ]
+      },
+      "description": "Finite reason codes explaining why executedMode was chosen."
+    },
+    "stepStats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["totalSteps", "executedSteps", "skippedSteps", "changedSteps"],
+      "properties": {
+        "totalSteps": { "type": "integer", "minimum": 0 },
+        "executedSteps": { "type": "integer", "minimum": 0 },
+        "skippedSteps": { "type": "integer", "minimum": 0 },
+        "changedSteps": { "type": "integer", "minimum": 0 },
+        "affectedSteps": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional affected steps estimation used for decision (auto mode)."
+        }
+      }
+    },
+    "dirty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dirtyAll"],
+      "dependentRequired": {
+        "rootCount": ["dirtyAll"],
+        "rootIds": ["rootCount", "rootIdsTruncated"],
+        "rootIdsTruncated": ["rootCount", "rootIds"]
+      },
+      "properties": {
+        "dirtyAll": { "type": "boolean" },
+        "reason": {
+          "type": "string",
+          "enum": ["unknownWrite", "customMutation", "nonTrackablePatch", "fallbackPolicy"],
+          "description": "When dirtyAll=true, indicates why the dirty-set was downgraded (aligned with StateTransaction.dirtySet.reason)."
+        },
+        "rootCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Canonical dirty roots count (full diagnostics only)."
+        },
+        "rootIds": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "FieldPathId samples for explainability (full diagnostics only). Must be a prefix of the canonical sorted unique FieldPathId list."
+        },
+        "rootIdsTruncated": {
+          "type": "boolean",
+          "description": "Whether rootIds were truncated to the configured TopK bound."
+        }
+      }
+    },
+    "cache": { "$ref": "./converge-plan-cache-evidence.schema.json" },
+    "generation": { "$ref": "./converge-generation.schema.json" },
+    "staticIr": { "$ref": "./converge-static-ir-evidence.schema.json" },
+    "timeSlicing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "immediateStepCount", "deferredStepCount"],
+      "properties": {
+        "scope": { "type": "string", "enum": ["all", "immediate", "deferred"] },
+        "immediateStepCount": { "type": "integer", "minimum": 0 },
+        "deferredStepCount": { "type": "integer", "minimum": 0 }
+      },
+      "description": "043 time-slicing summary for this converge invocation (scope + step counts)."
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "floorRatio": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Floor ratio threshold for auto vs full (default 1.05)."
+        }
+      }
+    },
+    "diagnosticsSampling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "sampleEveryN", "topK", "sampled"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["txnSeq_interval"],
+          "description": "Deterministic sampling strategy. `txnSeq_interval` samples every N transactions using stable txnSeq."
+        },
+        "sampleEveryN": { "type": "integer", "minimum": 1 },
+        "topK": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "sampled": {
+          "type": "boolean",
+          "description": "Whether this converge invocation collected per-step timing and produced hotspots."
+        }
+      },
+      "description": "Optional sampling summary (044). Present when diagnosticsLevel=sampled."
+    },
+    "top3": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stepId", "durationMs", "changed"],
+        "properties": {
+          "kind": { "type": "string", "minLength": 1 },
+          "stepId": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Generation-local StepId. Use ConvergeStaticIR.stepOutFieldPathIdByStepId[stepId] and ConvergeStaticIR.fieldPaths to map to a readable FieldPath."
+          },
+          "outFieldPathId": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optional denormalized output FieldPathId for convenience (must match ConvergeStaticIR.stepOutFieldPathIdByStepId[stepId])."
+          },
+          "durationMs": { "type": "number", "minimum": 0 },
+          "changed": { "type": "boolean" }
+        }
+      },
+      "description": "Optional top hotspots (full diagnostics / sampled)."
+    }
+  }
+}

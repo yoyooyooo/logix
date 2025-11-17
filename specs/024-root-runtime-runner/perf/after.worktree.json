@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "node": "v22.21.1",
+    "platform": "darwin/arm64",
+    "iters": 5000,
+    "warmupDiscard": 200
+  },
+  "results": {
+    "manual": {
+      "ok": true,
+      "iterations": 5000,
+      "totalMs": 5928.096541999999,
+      "nsPerOp": 1185619.3083999997
+    },
+    "runProgram": {
+      "ok": true,
+      "iterations": 5000,
+      "totalMs": 5936.4372920000005,
+      "nsPerOp": 1187287.4584000001
+    }
+  }
+}

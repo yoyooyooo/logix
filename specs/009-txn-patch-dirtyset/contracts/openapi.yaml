@@ -1,0 +1,43 @@
+openapi: 3.1.0
+info:
+  title: Logix Transaction IR Contracts
+  version: "009"
+  description: >
+    Contracts for unified minimal IR (Static IR + Dynamic Trace) and transaction-level
+    dirty-set / patch evidence. This is a schema-first contract for platform/devtools/sandbox
+    integration; it does not imply a specific transport or server implementation.
+paths:
+  /ir/static:
+    get:
+      summary: Fetch Static IR
+      responses:
+        "200":
+          description: Static IR
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/static-ir.schema.json
+  /trace/dynamic:
+    get:
+      summary: Fetch Dynamic Trace
+      responses:
+        "200":
+          description: Dynamic Trace
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/dynamic-trace.schema.json
+  /trace/txn:
+    post:
+      summary: Validate a transaction trace payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/txn-meta.schema.json
+      responses:
+        "204":
+          description: Valid
+        "400":
+          description: Invalid

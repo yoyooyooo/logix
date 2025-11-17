@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/005-unify-observability-protocol/schemas/observation-envelope.schema.json",
+  "title": "ObservationEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "runId", "seq", "timestamp", "type", "payload"],
+  "properties": {
+    "protocolVersion": { "type": "string", "minLength": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "seq": { "type": "integer", "minimum": 1 },
+    "timestamp": { "type": "number" },
+    "type": { "type": "string", "minLength": 1 },
+    "payload": { "$ref": "./json-value.schema.json" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "debug:event" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "./runtime-debug-event-ref.schema.json" } } }
+    }
+  ]
+}

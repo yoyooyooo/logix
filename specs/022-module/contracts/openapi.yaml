@@ -1,0 +1,23 @@
+openapi: 3.1.0
+info:
+  title: Logix Module Contracts
+  version: "022"
+  description: >
+    Contracts for Module (definition object) + ModuleTag (identity anchor): a unified
+    module shape that can be consumed by Logic (`$.use`) and runtime adapters
+    without explicit `.tag/.impl` unwraps.
+    This is schema-first documentation for runtime/devtools/sandbox alignment; it does
+    not imply a specific transport or server implementation.
+paths:
+  /events/module-descriptor:
+    get:
+      summary: Fetch Module descriptor trace events
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ./schemas/module-event.schema.json

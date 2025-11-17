@@ -1,0 +1,245 @@
+openapi: 3.1.0
+info:
+  title: logix-galaxy-api
+  version: 0.0.1
+  description: |
+    Galaxy 后端示例服务（开发环境样例）。
+
+    - HTTP 默认端口：7001（可通过 PORT 覆盖）
+    - PostgreSQL：开发环境可选（由 DATABASE_URL 决定是否启用）
+servers:
+  - url: http://localhost:7001
+tags:
+  - name: Health
+    description: 健康检查与探针
+  - name: Todo
+    description: Todo CRUD（需要 PostgreSQL）
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: health
+      summary: Health check
+      responses:
+        "200":
+          description: 服务健康状态（包含数据库状态）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /health/{probe}:
+    get:
+      tags: [Health]
+      operationId: healthProbe
+      summary: Health check with probe
+      parameters:
+        - name: probe
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 服务健康状态（包含数据库状态与 probe 回显）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthProbeResponse"
+  /todos:
+    post:
+      tags: [Todo]
+      operationId: todoCreate
+      summary: Create todo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TodoCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+        "503":
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceUnavailableError"
+    get:
+      tags: [Todo]
+      operationId: todoList
+      summary: List todos
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Todo"
+        "503":
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceUnavailableError"
+  /todos/{id}:
+    get:
+      tags: [Todo]
+      operationId: todoGet
+      summary: Get todo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+        "503":
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceUnavailableError"
+    patch:
+      tags: [Todo]
+      operationId: todoUpdate
+      summary: Update todo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TodoUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+        "503":
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceUnavailableError"
+    delete:
+      tags: [Todo]
+      operationId: todoDelete
+      summary: Delete todo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No content
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotFoundError"
+        "503":
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceUnavailableError"
+components:
+  schemas:
+    DbStatus:
+      type: string
+      enum: ["ok", "disabled", "down"]
+    HealthResponse:
+      type: object
+      required: [ok, db]
+      properties:
+        ok:
+          type: boolean
+        db:
+          $ref: "#/components/schemas/DbStatus"
+    HealthProbeResponse:
+      allOf:
+        - $ref: "#/components/schemas/HealthResponse"
+        - type: object
+          required: [probe]
+          properties:
+            probe:
+              type: integer
+    Todo:
+      type: object
+      required: [id, title, completed, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        completed:
+          type: boolean
+        createdAt:
+          type: string
+          description: 创建时间（可序列化字符串；建议为 ISO-8601）
+    TodoCreateRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        completed:
+          type: boolean
+    TodoUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        completed:
+          type: boolean
+    NotFoundError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: NotFoundError
+        message:
+          type: string
+    ServiceUnavailableError:
+      type: object
+      required: [_tag, message]
+      properties:
+        _tag:
+          const: ServiceUnavailableError
+        message:
+          type: string

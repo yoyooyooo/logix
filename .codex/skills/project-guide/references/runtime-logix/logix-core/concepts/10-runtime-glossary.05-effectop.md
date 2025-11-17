@@ -1,0 +1,35 @@
+# 5. EffectOp（运行时事件与统一中间件总线）
+
+- **EffectOp**
+  - 概念上是「所有重要边界 Effect 的统一事件模型」：
+    - `kind`: `"action" | "flow" | "state" | "service" | "lifecycle" | "trait-*" | "devtools"` 等；
+    - `name`: 逻辑名称（如 Action tag、Flow 名称、资源 ID）；
+    - `payload`: 输入/上下文；
+    - `meta`: 结构化元信息（moduleId、fieldPath、resourceId、key、trace 等）；
+    - `effect`: 实际要执行的 Effect 程序。
+  - Runtime 在 Action/Flow/State/Service/Lifecycle 等边界构造 EffectOp，并通过统一的 MiddlewareStack 处理横切关注点（日志、监控、限流、Query 集成等）。
+- **EffectOp Middleware 总线**
+  - 与 `core/04-logic-middleware.md` 中的 Logic Middleware 不同，EffectOp 中间件是 **运行时级** 的统一总线：
+  - Logic Middleware 与全局 EffectOp 中间件栈，在 Logic/Flow 层为“单次边界操作”追加守卫与观测能力；
+    - EffectOp Middleware 在引擎层对所有边界事件统一拦截与装饰；
+  - 通过 Env Service（例如 `EffectOpMiddlewareEnv` + Tag）在 Runtime.make 入口注入当前使用的 MiddlewareStack，再由 StateTrait.install / Runtime 核心在需要时消费。
+- **操作链路（linkId）**
+  - 每次通过 Runtime 边界触发的 EffectOp 都会带上一个 `meta.linkId`：
+    - 同一条“业务链路”（例如一次 dispatch 引发的若干次 state:update / trait 更新 / service 调用）会共享同一个 linkId；
+    - 不同链路的操作则使用不同的 linkId；
+  - Runtime 通过 FiberRef 传播 linkId：链路起点创建 linkId，嵌套/下游 EffectOp 复用当前 Fiber 的 linkId，形成一条可追踪的事件链；
+  - DevTools/Playground 可以用 linkId 将 Action / Flow / State / Service 等事件在线上时间轴中归为同一条“操作链路”，方便回放与排查。
+- **守卫拒绝（OperationRejected，规范层术语）**
+  - 当 Guard 中间件认为某次操作不应被执行时，会在用户程序运行前直接以语义化错误拒绝该 EffectOp：
+    - 失败结果在错误通道中表现为带 `_tag = "OperationRejected"` 的结构化错误；
+    - 拒绝必须满足“显式失败 + 无业务副作用”：即在拒绝之后，不允许有任何 state/update 或外部副作用发生；
+  - 业务/平台可以在上层区分“正常业务错误”和“被守卫生效拒绝”的场景（例如在 DevTools / 监控中单独统计被 Guard 拦截的操作）。
+- **DevTools 视角**
+  - EffectOp 提供了一条天然的时间轴与因果链：DevTools 可以基于 EffectOp 序列构建「Action/Flow/State/Service」的 Timeline 与因果图；
+  - Debug 模块会将部分 EffectOp 以 `trace:effectop` 事件形式写入 DebugSink，供 Playground / Runtime Alignment Lab 与外部工具消费。
+  - StateTraitGraph 与 EffectOp Timeline 结合，构成“字段能力 + Runtime 行为”的双视角：结构（Graph）与事件（EffectOp）。
+
+- **中间件类别与推荐入口**
+- 中间件公共入口统一收敛在 `@logix/core/Middleware` 命名空间：对外暴露 `Middleware` / `MiddlewareStack` 类型别名，并提供少量内置中间件。
+  - 通用中间件（业务无关的横切能力，如监控、限流、熔断、重试、审计、Query 集成等）以 `EffectOp.Middleware` 为基本形态实现：输入一个 `EffectOp`，按需包装或替换 `op.effect`，再返回新的 Effect 程序，不直接操作 DebugSink。
+  - 调试/观测中间件通过同一总线桥接到 Debug 事件流：优先使用高层组合入口 `Middleware.withDebug(stack, options?)`，在现有 `MiddlewareStack` 上一次性追加 DebugLogger（日志）与 DebugObserver（`trace:effectop` 事件）；底层的 `Middleware.applyDebug` 与 `Middleware.applyDebugObserver` 作为更细粒度的组合原语保留，用于需要精确控制中间件顺序的高级场景。

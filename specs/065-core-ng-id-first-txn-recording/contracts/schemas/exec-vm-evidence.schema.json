@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/065-core-ng-id-first-txn-recording/schemas/exec-vm-evidence.schema.json",
+  "title": "DebugEvent(trace:exec-vm)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "moduleId", "instanceId", "data"],
+  "properties": {
+    "type": { "const": "trace:exec-vm" },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "runtimeLabel": { "type": "string" },
+    "timestamp": { "type": "number" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "stage", "hit"],
+      "properties": {
+        "version": { "const": "v1" },
+        "stage": { "const": "assembly" },
+        "hit": { "type": "boolean" },
+        "reasonCode": { "type": "string", "enum": ["not_implemented", "missing_capability", "disabled"] },
+        "reasonDetail": { "type": "string" },
+        "execIrVersion": { "type": "string" },
+        "execIrHash": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "implId": { "type": "string" }
+      }
+    }
+  }
+}

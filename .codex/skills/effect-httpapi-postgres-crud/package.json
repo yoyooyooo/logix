@@ -1,0 +1,8 @@
+{
+  "name": "effect-httpapi-postgres-crud",
+  "private": true,
+  "scripts": {
+    "generate": "pnpm -C ../../.. exec tsx .codex/skills/effect-httpapi-postgres-crud/scripts/generate-crud.ts"
+  }
+}
+

@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-31T03:21:02.981Z",
+    "from": {
+      "file": "specs/050-core-ng-integer-bridge/perf/before.browser.372a89d7.darwin-arm64.default.json",
+      "commit": "372a89d7228a66b43f51b73dc0567f2382a78a91"
+    },
+    "to": {
+      "file": "specs/049-core-ng-linear-exec-vm/perf/after.browser.core-ng.execVm.on.matrixP1.darwin-arm64.default.json",
+      "commit": "6312fd64cd3c1819ce8ab1c995c47927e9390dcf"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true",
+        "git.commit: before=372a89d7228a66b43f51b73dc0567f2382a78a91 after=6312fd64cd3c1819ce8ab1c995c47927e9390dcf"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.timeSlicing.txnCommit",
+      "notes": "missing suite spec in matrix.json"
+    },
+    {
+      "id": "converge.txnCommit",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 36
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core-ng"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=36] after[value=core-ng ok=36 unavailable=0 missing=0]"
+        }
+      ]
+    },
+    {
+      "id": "diagnostics.overhead.e2e",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "form.listScopeCheck",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "react.bootResolve",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "react.deferPreload",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "react.strictSuspenseJitter",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "txnLanes.urgentBacklog",
+      "notes": "missing suite in before report"
+    },
+    {
+      "id": "watchers.clickToPaint",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 14
+          },
+          "after": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core-ng"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=14] after[value=core-ng ok=14 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "stabilityWarning: metric=e2e.clickToPaintMs {reactStrictMode=false&watchers=1} baselineP95=29.10ms afterP95=34.50ms diff=5.40ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

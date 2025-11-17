@@ -1,0 +1,40 @@
+openapi: 3.1.0
+info:
+  title: Logix Form Validation Contracts
+  version: "010"
+  description: >
+    Contracts for Form validation: list-scope rules (cross-row), scoped validate requests,
+    `$list/rows[]` errors shape, and minimal serializable diagnostics (`trait:check`).
+    This is schema-first documentation for runtime/form/devtools/sandbox alignment; it does
+    not imply a specific transport or server implementation.
+paths:
+  /validate/scoped:
+    post:
+      summary: Request a scoped validate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/scoped-validate-request.schema.json
+      responses:
+        "204":
+          description: Validated (writeback handled by runtime)
+        "200":
+          description: Optional returned error snapshot (debug tooling)
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/list-scope-errors.schema.json
+  /events/trait-check:
+    get:
+      summary: Fetch trait check diagnostic events
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ./schemas/trait-check-event.schema.json

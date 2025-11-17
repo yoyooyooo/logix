@@ -1,0 +1,29 @@
+---
+title: Form
+description: "Learn @logix/form step by step: model, validation, field arrays, and performance guidance."
+---
+
+`@logix/form` is the “form domain package” in the Logix ecosystem. It hosts a form’s **values / errors / UI / submit state** as a regular module inside the Runtime, so your form and the rest of your application share the same:
+
+- Runtime lifecycle and transaction semantics (at most one observable commit per interaction)
+- Debugging and replay (DevTools timeline, error tree, state snapshots)
+- Declarative derivation / validation / async resources (Trait / Resource / Effect)
+
+## Recommended order (from basics to advanced)
+
+1. [Overview: the Form model](./introduction)
+2. [Quick Start](./quick-start)
+3. [Rules DSL（z）](./rules)
+4. [Validation & errors](./validation)
+5. [Field arrays](./field-arrays)
+6. [Migration guide (traits → rules)](./migration)
+7. [Derived and linked fields (derived / Trait)](./derived)
+8. [Schema validation & error mapping](./schema)
+9. [Performance & optimization](./performance)
+
+## What you’ll get
+
+- Understand why `Form.make(...)` returns a `Blueprint`, and how to wire it into the Runtime like any other module
+- Learn why the error tree uses the `$list/rows[]` convention, and how to keep errors and UI state stable when rows are added/removed/reordered
+- Use `validateOn / reValidateOn` to design validation strategies for “before submit / after submit”, and trigger precise validation via a controller outside React components
+- In large forms/lists, reduce render and validation cost with selector subscriptions and stable identity

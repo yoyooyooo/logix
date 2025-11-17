@@ -1,0 +1,9 @@
+{
+  "name": "@logix/fixture-cross-import-b",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  }
+}

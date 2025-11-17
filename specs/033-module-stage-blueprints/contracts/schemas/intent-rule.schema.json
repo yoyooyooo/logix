@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/033-module-stage-blueprints/schemas/intent-rule.schema.json",
+  "title": "IntentRule",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "ruleId", "source", "sink"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "ruleId": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instanceId", "port"],
+      "properties": {
+        "instanceId": { "type": "string", "minLength": 1 },
+        "port": {
+          "allOf": [
+            { "$ref": "../../../035-module-ports-typeir/contracts/schemas/port-address.schema.json" },
+            { "type": "object", "properties": { "kind": { "enum": ["event"] } }, "required": ["kind"] }
+          ]
+        }
+      }
+    },
+    "sink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instanceId", "port"],
+      "properties": {
+        "instanceId": { "type": "string", "minLength": 1 },
+        "port": {
+          "allOf": [
+            { "$ref": "../../../035-module-ports-typeir/contracts/schemas/port-address.schema.json" },
+            { "type": "object", "properties": { "kind": { "enum": ["action"] } }, "required": ["kind"] }
+          ]
+        }
+      }
+    },
+    "mapping": { "$ref": "../../../034-expression-asset-protocol/contracts/schemas/code-asset-ref.schema.json" },
+    "meta": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}

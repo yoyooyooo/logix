@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/031-trialrun-artifacts/schemas/artifact-envelope.schema.json",
+  "title": "ArtifactEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["artifactKey", "ok"],
+  "properties": {
+    "artifactKey": {
+      "type": "string",
+      "pattern": "^@[^\\s/]+\\/[^\\s@]+@v\\d+$"
+    },
+    "ok": { "type": "boolean" },
+    "value": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+    "truncated": { "type": "boolean" },
+    "budgetBytes": { "type": "integer", "minimum": 0 },
+    "actualBytes": { "type": "integer", "minimum": 0 },
+    "digest": { "type": "string", "minLength": 1 },
+    "error": {
+      "$ref": "../../../016-serializable-diagnostics-and-identity/contracts/schemas/serializable-error-summary.schema.json"
+    },
+    "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+      "then": {
+        "required": ["value"],
+        "not": { "required": ["error"] }
+      }
+    },
+    {
+      "if": { "properties": { "ok": { "const": false } }, "required": ["ok"] },
+      "then": {
+        "required": ["error"],
+        "not": { "required": ["value"] }
+      }
+    }
+  ]
+}

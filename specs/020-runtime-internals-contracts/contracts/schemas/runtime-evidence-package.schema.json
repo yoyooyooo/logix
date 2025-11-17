@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/020/runtime-evidence-package.schema.json",
+  "title": "RuntimeEvidencePackage",
+  "allOf": [
+    {
+      "$ref": "../../../005-unify-observability-protocol/contracts/schemas/evidence-package.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "summary": { "$ref": "./runtime-evidence-package-summary.schema.json" }
+      }
+    }
+  ]
+}

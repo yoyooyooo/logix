@@ -1,0 +1,451 @@
+{
+  "schemaVersion": 1,
+  "id": "logix-browser-perf-matrix-v1",
+  "updatedAt": "2025-12-29",
+  "defaults": {
+    "runs": 30,
+    "warmupDiscard": 5,
+    "timeoutMs": 20000,
+    "stability": {
+      "maxP95DeltaRatio": 0.1,
+      "maxP95DeltaMs": 5
+    },
+    "browser": {
+      "name": "chromium",
+      "headless": true
+    },
+    "profiles": {
+      "quick": { "runs": 10, "warmupDiscard": 2, "timeoutMs": 8000 },
+      "default": { "runs": 30, "warmupDiscard": 5, "timeoutMs": 20000 },
+      "soak": { "runs": 80, "warmupDiscard": 10, "timeoutMs": 30000 }
+    }
+  },
+  "semantics": {
+    "refSyntax": "axis=value[&axis=value...]",
+    "relativeBudget": {
+      "pairing": "matchAllOtherParams",
+      "stat": "p95",
+      "unavailableOn": ["missing", "timeout", "failed", "metricUnavailable"]
+    },
+    "thresholds": {
+      "levelOrder": "axisOrderInMatrix"
+    }
+  },
+  "suites": [
+    {
+      "id": "watchers.clickToPaint",
+      "priority": "P1",
+      "title": "watchers: click→paint",
+      "primaryAxis": "watchers",
+      "axes": {
+        "watchers": [1, 8, 32, 64, 128, 256, 512],
+        "reactStrictMode": [false, true]
+      },
+      "metrics": ["e2e.clickToPaintMs"],
+      "budgets": [
+        {
+          "id": "p95<=16ms",
+          "type": "absolute",
+          "metric": "e2e.clickToPaintMs",
+          "p95Ms": 16
+        },
+        {
+          "id": "p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.clickToPaintMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.clickToPaintMs",
+          "p95Ms": 100
+        }
+      ],
+      "baselineBudgetId": "p95<=50ms",
+      "limitBudgetId": "p95<=100ms",
+      "baselinePoints": [
+        { "watchers": 128, "reactStrictMode": true },
+        { "watchers": 256, "reactStrictMode": true }
+      ],
+      "notes": "现有维度示例：packages/logix-react/test/browser/watcher-browser-perf.test.tsx（后续纳入统一报告输出）。"
+    },
+    {
+      "id": "converge.txnCommit",
+      "priority": "P1",
+      "title": "converge: txn commit / derive",
+      "primaryAxis": "steps",
+      "axes": {
+        "convergeMode": ["full", "dirty", "auto"],
+        "steps": [200, 800, 2000],
+        "dirtyRootsRatio": [0.005, 0.05, 0.25, 0.75]
+      },
+      "derivedParams": [
+        {
+          "name": "dirtyRoots",
+          "rule": "dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))"
+        }
+      ],
+      "metrics": ["runtime.txnCommitMs", "runtime.decisionMs"],
+      "budgets": [
+        {
+          "id": "commit.p95<=50ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "commit.p95<=100ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 100
+        },
+        {
+          "id": "auto<=full*1.05",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.05,
+          "numeratorRef": "convergeMode=auto",
+          "denominatorRef": "convergeMode=full"
+        },
+        {
+          "id": "decision.p95<=0.5ms",
+          "type": "absolute",
+          "metric": "runtime.decisionMs",
+          "p95Ms": 0.5
+        }
+      ],
+      "baselineBudgetId": "commit.p95<=50ms",
+      "limitBudgetId": "commit.p95<=100ms",
+      "baselinePoints": [
+        { "steps": 800, "dirtyRootsRatio": 0.05, "convergeMode": "full" },
+        { "steps": 800, "dirtyRootsRatio": 0.05, "convergeMode": "auto" },
+        { "steps": 2000, "dirtyRootsRatio": 0.75, "convergeMode": "full" }
+      ],
+      "notes": "对齐 013 的写入分布口径（通过 dirtyRootsRatio 派生 dirtyRoots）；auto<=full*1.05 是 runtime 类硬门（默认在 DiagnosticsLevel=off 下跑）；light|full 仅记录开销曲线；decisionMs 可先占位，不可用时必须显式标注 unavailable + reason。"
+    },
+    {
+      "id": "converge.timeSlicing.txnCommit",
+      "priority": "P1",
+      "title": "converge: time-slicing txn commit (dirtyAll) on/off",
+      "primaryAxis": "steps",
+      "axes": {
+        "steps": [2000],
+        "timeSlicing": ["off", "on"],
+        "convergeMode": ["dirty"],
+        "immediateRatio": [0.1],
+        "dirtyMode": ["dirtyAll"]
+      },
+      "metrics": ["runtime.txnCommitMs"],
+      "budgets": [
+        {
+          "id": "timeSlicing.on<=off*0.5",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 0.5,
+          "numeratorRef": "timeSlicing=on",
+          "denominatorRef": "timeSlicing=off"
+        }
+      ],
+      "requiredEvidence": [
+        "converge.timeSlicing.scope",
+        "converge.timeSlicing.immediateStepCount",
+        "converge.timeSlicing.deferredStepCount",
+        "converge.timeSlicing.deferredDirtyPathCount",
+        "budget.cutOffCount"
+      ],
+      "notes": "验证 txn time-slicing 在大量 deferred computed 下的收益：on/off 相对预算作为硬门；证据字段用于解释 time-slicing 作用范围与立即/延后步骤分布。"
+    },
+    {
+      "id": "form.listScopeCheck",
+      "priority": "P2",
+      "title": "form: dynamic list (cross-row check) · txn commit",
+      "primaryAxis": "rows",
+      "axes": {
+        "diagnosticsLevel": ["off", "light", "full"],
+        "requestedMode": ["full", "auto"],
+        "rows": [10, 30, 100, 300]
+      },
+      "metrics": ["runtime.txnCommitMs", "runtime.decisionMs"],
+      "budgets": [
+        {
+          "id": "auto<=full*1.05",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.05,
+          "numeratorRef": "requestedMode=auto",
+          "denominatorRef": "requestedMode=full"
+        }
+      ],
+      "requiredEvidence": [
+        "converge.requestedMode",
+        "converge.executedMode",
+        "converge.outcome",
+        "converge.reasons",
+        "converge.decisionBudgetMs",
+        "converge.decisionDurationMs",
+        "cache.size",
+        "cache.hit",
+        "cache.miss",
+        "cache.evict",
+        "cache.invalidate",
+        "budget.cutOffCount",
+        "diagnostics.level"
+      ],
+      "notes": "代表性业务场景：动态列表（rows）+ 跨行唯一性规则（list-scope check）。请求模式以 requestedMode 表达（full vs auto），并要求在 auto 下输出 trait:converge 的解释链路（requested/executed/reasons/budget 等）；涉及缓存证据字段不可得时必须显式标注 unavailable + reason。"
+    },
+    {
+      "id": "diagnostics.overhead.e2e",
+      "priority": "P3",
+      "title": "diagnostics: overhead curve (off/light/sampled/full) · e2e",
+      "primaryAxis": "diagnosticsLevel",
+      "axes": {
+        "diagnosticsLevel": ["off", "light", "sampled", "full"],
+        "scenario": ["watchers.clickToPaint"]
+      },
+      "metrics": ["e2e.clickToPaintMs"],
+      "budgets": [],
+      "comparisons": [
+        {
+          "id": "light/off",
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorRef": "diagnosticsLevel=light",
+          "denominatorRef": "diagnosticsLevel=off"
+        },
+        {
+          "id": "sampled/off",
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorRef": "diagnosticsLevel=sampled",
+          "denominatorRef": "diagnosticsLevel=off"
+        },
+        {
+          "id": "full/off",
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=off"
+        },
+        {
+          "id": "full/sampled",
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=sampled"
+        },
+        {
+          "id": "full-off",
+          "kind": "delta",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=off"
+        }
+      ],
+      "notes": "用于量化诊断分档的开销曲线；结果需包含“是否启用任何输出/采样”以提示污染风险。"
+    },
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "priority": "P2",
+      "title": "negative boundary: dirty-pattern adversarial scenarios",
+      "primaryAxis": "uniquePatternPoolSize",
+      "axes": {
+        "convergeMode": ["full", "auto"],
+        "steps": [800],
+        "dirtyRootsRatio": [0.05],
+        "seed": [1337],
+        "uniquePatternPoolSize": [8, 64, 512, 4096],
+        "patternKind": [
+          "repeatedStable",
+          "alternatingTwoStable",
+          "mostlyStableWithNoise",
+          "warmupPhaseShift",
+          "slidingWindowOverlap",
+          "sawtoothCardinality",
+          "randomHighCardinality",
+          "graphChangeInvalidation",
+          "listIndexExplosion"
+        ]
+      },
+      "patternKindDocs": {
+        "repeatedStable": "每次事务写入相同 dirty-pattern（应稳定命中/复用；作为正向对照）。",
+        "alternatingTwoStable": "在两套各自稳定的 pattern 之间交替（反直觉：看似稳定但可能触发 cache thrash/逐出抖动）。",
+        "mostlyStableWithNoise": "大多数事务使用稳定 pattern，但以固定频率注入低占比的唯一 pattern（反直觉：平均命中率高但可能放大 tail/误触发自我保护）。",
+        "warmupPhaseShift": "warmup 阶段使用稳定 pattern A，正式采样阶段切换到稳定 pattern B（反直觉：warmup 让缓存看起来很美，但实际测量阶段发生相位漂移）。",
+        "slidingWindowOverlap": "dirty-roots 以滑动窗口方式缓慢位移（重叠很高但 pattern 持续变化；用于探测“高 overlap 但高基数”的负优化边界）。",
+        "sawtoothCardinality": "pattern 基数随时间递增到上界后再回落（用于探测逐出/自我保护在波峰波谷切换时的抖动与恢复成本）。",
+        "randomHighCardinality": "高基数近似随机写入（必须可复现：使用固定 seed；用于探测低命中率自我保护与资源上界）。",
+        "graphChangeInvalidation": "依赖图/规则集发生变化导致缓存失效（必须可观测 invalidate；验证失效正确性与成本）。",
+        "listIndexExplosion": "列表/动态行写入的 key/index 膨胀（反直觉：业务语义简单但 pattern 基数可能爆炸；验证归一化与止损）。"
+      },
+      "derivedParams": [
+        {
+          "name": "dirtyRoots",
+          "rule": "dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))"
+        }
+      ],
+      "metrics": ["runtime.txnCommitMs", "runtime.decisionMs"],
+      "budgets": [
+        {
+          "id": "auto<=full*1.05",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.05,
+          "numeratorRef": "convergeMode=auto",
+          "denominatorRef": "convergeMode=full"
+        }
+      ],
+      "requiredEvidence": [
+        "cache.size",
+        "cache.hit",
+        "cache.miss",
+        "cache.evict",
+        "cache.invalidate",
+        "budget.cutOffCount"
+      ],
+      "notes": "覆盖 014 的负优化边界：高基数/低命中率、重复 pattern 命中、图变化失效、列表/动态行归一化；证据字段不可得时必须显式标注 unavailable + reason。"
+    },
+    {
+      "id": "react.strictSuspenseJitter",
+      "priority": "P3",
+      "title": "react: strict mode / suspense jitter (interaction→stable)",
+      "primaryAxis": "mountCycles",
+      "axes": {
+        "reactStrictMode": [true],
+        "mountCycles": [1, 3, 5],
+        "suspenseCycles": [0, 1, 3]
+      },
+      "metrics": ["e2e.interactionToStableMs"],
+      "budgets": [
+        {
+          "id": "p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.interactionToStableMs",
+          "p95Ms": 100
+        }
+      ],
+      "baselineBudgetId": "p95<=100ms",
+      "notes": "对应 Edge Cases: 严格模式/挂起导致抖动；指标以“稳定交互延迟”定义边界（而非首次渲染）。"
+    },
+    {
+      "id": "react.bootResolve",
+      "priority": "P3",
+      "title": "react: boot/resolve baseline (provider + module init/tag resolve)",
+      "primaryAxis": "mountCycles",
+      "axes": {
+        "reactStrictMode": [false],
+        "mountCycles": [1],
+        "policyMode": ["sync", "suspend"],
+        "yieldStrategy": ["none", "microtask"],
+        "keyMode": ["auto", "explicit"]
+      },
+      "metrics": ["e2e.bootToModuleImplReadyMs", "e2e.bootToModuleTagReadyMs"],
+      "budgets": [
+        {
+          "id": "suspend.microtask<=suspend.none*1.2:impl",
+          "type": "relative",
+          "metric": "e2e.bootToModuleImplReadyMs",
+          "maxRatio": 1.2,
+          "numeratorRef": "policyMode=suspend&yieldStrategy=microtask",
+          "denominatorRef": "policyMode=suspend&yieldStrategy=none"
+        },
+        {
+          "id": "suspend.microtask<=suspend.none*1.2:tag",
+          "type": "relative",
+          "metric": "e2e.bootToModuleTagReadyMs",
+          "maxRatio": 1.2,
+          "numeratorRef": "policyMode=suspend&yieldStrategy=microtask",
+          "denominatorRef": "policyMode=suspend&yieldStrategy=none"
+        },
+        {
+          "id": "suspend.auto<=suspend.explicit*1.5:impl",
+          "type": "relative",
+          "metric": "e2e.bootToModuleImplReadyMs",
+          "maxRatio": 1.5,
+          "numeratorRef": "policyMode=suspend&keyMode=auto",
+          "denominatorRef": "policyMode=suspend&keyMode=explicit"
+        },
+        {
+          "id": "suspend.auto<=suspend.explicit*1.5:tag",
+          "type": "relative",
+          "metric": "e2e.bootToModuleTagReadyMs",
+          "maxRatio": 1.5,
+          "numeratorRef": "policyMode=suspend&keyMode=auto",
+          "denominatorRef": "policyMode=suspend&keyMode=explicit"
+        }
+      ],
+      "requiredEvidence": [
+        "react.policy.mode",
+        "react.policy.yieldStrategy",
+        "react.module.keyMode",
+        "budget.cutOffCount"
+      ],
+      "notes": "建立 React 冷启动/解析策略的 browser perf-boundary 基线：Provider boot → ModuleImpl init → ModuleTag resolve；预算以相对基线对比为主，证据字段输出 policy/yield/key 便于 diff 解释。"
+    },
+    {
+      "id": "react.deferPreload",
+      "priority": "P3",
+      "title": "react: defer+preload (no double fallback)",
+      "primaryAxis": "mountCycles",
+      "axes": {
+        "reactStrictMode": [false],
+        "mountCycles": [1],
+        "policyMode": ["defer"],
+        "preloadEnabled": [true, false],
+        "yieldStrategy": ["microtask"],
+        "keyMode": ["auto"]
+      },
+      "metrics": ["e2e.bootToReadyMs"],
+      "requiredEvidence": [
+        "react.policy.mode",
+        "react.policy.yieldStrategy",
+        "react.module.keyMode",
+        "react.defer.gatingFallbackRenders",
+        "react.defer.suspenseFallbackRenders",
+        "budget.cutOffCount"
+      ],
+      "notes": "验证 defer+preload 下子组件 useModule(PreloadedImpl) 不再触发二次 Suspense fallback：gatingFallbackRenders>0 且 suspenseFallbackRenders=0。"
+    },
+    {
+      "id": "txnLanes.urgentBacklog",
+      "priority": "P1",
+      "title": "txn lanes: urgent interaction under non-urgent backlog (off vs on)",
+      "primaryAxis": "steps",
+      "axes": {
+        "steps": [200, 800, 2000]
+      },
+      "metrics": ["e2e.urgentToStableMs", "runtime.backlogCatchUpMs"],
+      "budgets": [
+        {
+          "id": "urgent.p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.urgentToStableMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "urgent.p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.urgentToStableMs",
+          "p95Ms": 100
+        },
+        {
+          "id": "catchUp.p95<=200ms",
+          "type": "absolute",
+          "metric": "runtime.backlogCatchUpMs",
+          "p95Ms": 200
+        },
+        {
+          "id": "catchUp.p95<=500ms",
+          "type": "absolute",
+          "metric": "runtime.backlogCatchUpMs",
+          "p95Ms": 500
+        }
+      ],
+      "baselineBudgetId": "urgent.p95<=50ms",
+      "limitBudgetId": "urgent.p95<=100ms",
+      "baselinePoints": [{ "steps": 2000 }],
+      "requiredEvidence": ["txnLanes.mode", "txnLanes.budgetMs", "txnLanes.maxLagMs", "budget.cutOffCount"],
+      "notes": "060 Txn Lanes：在 backlog 存在时测量 urgent 交互延迟与追平时间；off/on 通过 VITE_LOGIX_PERF_TXN_LANES_MODE 切换；支持 VITE_LOGIX_PERF_KERNEL_ID=core-ng 复跑。"
+    }
+  ]
+}

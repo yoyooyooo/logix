@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/021/concurrency-policy.schema.json",
+  "title": "ConcurrencyPolicy",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "concurrencyLimit": {
+      "description": "Max in-flight for parallel event processing. 'unbounded' requires explicit opt-in.",
+      "oneOf": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "string", "const": "unbounded" }
+      ]
+    },
+    "losslessBackpressureCapacity": {
+      "description": "Hard upper bound for lossless channel backlog (business actions / critical tasks). When reached, producers must backpressure (wait) rather than keep buffering.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "allowUnbounded": { "type": "boolean" },
+    "pressureWarningThreshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backlogCount": { "type": "integer", "minimum": 1 },
+        "backlogDurationMs": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "warningCooldownMs": { "type": "number", "exclusiveMinimum": 0 },
+    "overridesByModuleId": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/ConcurrencyPolicyPatch" }
+    }
+  },
+  "$defs": {
+    "ConcurrencyPolicyPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "concurrencyLimit": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string", "const": "unbounded" }
+          ]
+        },
+        "losslessBackpressureCapacity": { "type": "integer", "minimum": 1 },
+        "allowUnbounded": { "type": "boolean" },
+        "pressureWarningThreshold": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "backlogCount": { "type": "integer", "minimum": 1 },
+            "backlogDurationMs": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "warningCooldownMs": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/065-core-ng-id-first-txn-recording/schemas/txn-dirty-root-ids.schema.json",
+  "title": "TxnDirtyRootIds",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dirtyAll", "rootIds", "rootCount", "keySize", "keyHash"],
+  "properties": {
+    "dirtyAll": { "type": "boolean" },
+    "reason": { "type": "string", "enum": ["unknownWrite", "customMutation", "nonTrackablePatch", "fallbackPolicy"] },
+    "rootIds": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 }
+    },
+    "rootCount": { "type": "integer", "minimum": 0 },
+    "keySize": { "type": "integer", "minimum": 0 },
+    "keyHash": { "type": "integer", "minimum": 0 },
+    "rootIdsTruncated": { "type": "boolean" }
+  }
+}

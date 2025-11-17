@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/065-core-ng-id-first-txn-recording/schemas/debug-state-update.schema.json",
+  "title": "DebugEvent(state:update)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "moduleId", "instanceId", "state"],
+  "properties": {
+    "type": { "const": "state:update" },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "runtimeLabel": { "type": "string" },
+    "timestamp": { "type": "number" },
+    "txnSeq": { "type": "integer", "minimum": 0 },
+    "txnId": { "type": "string", "minLength": 1 },
+    "staticIrDigest": { "type": "string", "minLength": 1 },
+    "state": {
+      "description": "State snapshot (must be JSON-serializable at export boundary; omit/trim when not serializable or oversized)."
+    },
+    "dirtySet": { "$ref": "./txn-dirty-root-ids.schema.json" },
+    "patchCount": { "type": "integer", "minimum": 0 },
+    "patchesTruncated": { "type": "boolean" },
+    "patchesTruncatedReason": { "type": "string", "enum": ["max_patches"] },
+    "commitMode": { "type": "string" },
+    "priority": { "type": "string" },
+    "originKind": { "type": "string" },
+    "originName": { "type": "string" }
+  }
+}

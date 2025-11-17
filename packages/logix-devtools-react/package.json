@@ -1,0 +1,69 @@
+{
+  "name": "@logix/devtools-react",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.tsx",
+  "module": "src/index.tsx",
+  "types": "src/index.tsx",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.tsx",
+    "./*": "./src/*.tsx",
+    "./internal/*": null
+  },
+  "publishConfig": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./*": {
+        "types": "./dist/*.d.ts",
+        "import": "./dist/*.js",
+        "require": "./dist/*.cjs"
+      },
+      "./internal/*": null
+    },
+    "main": "dist/index.cjs",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i src/style.build.css -o src/style.css --minify",
+    "build": "pnpm run build:css && tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed",
+    "test:cache": "vitest run --cache",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@logix/core": "workspace:*",
+    "clsx": "^2.1.1",
+    "effect": "^3.19.8",
+    "framer-motion": "^12.23.26",
+    "tailwind-merge": "^3.4.0"
+  },
+  "devDependencies": {
+    "@logix/react": "workspace:*",
+    "@tailwindcss/cli": "^4.1.17",
+    "@testing-library/react": "^16.0.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.3",
+    "jsdom": "24.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.17",
+    "tsup": "^8.1.0",
+    "typescript": "^5.4.5",
+    "vitest": "^4.0.15"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  }
+}

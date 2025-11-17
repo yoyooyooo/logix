@@ -1,0 +1,103 @@
+{
+  "name": "@logix/sandbox",
+  "version": "0.0.1",
+  "description": "Sandbox runtime for running Logix/Effect code in a browser Worker",
+  "files": [
+    "dist/**",
+    "public/**"
+  ],
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./Client": "./src/Client.ts",
+    "./Protocol": "./src/Protocol.ts",
+    "./Service": "./src/Service.ts",
+    "./Types": "./src/Types.ts",
+    "./Vite": {
+      "types": "./dist/Vite.d.ts",
+      "import": "./dist/Vite.js",
+      "require": "./dist/Vite.cjs"
+    },
+    "./vite": {
+      "types": "./dist/Vite.d.ts",
+      "import": "./dist/Vite.js",
+      "require": "./dist/Vite.cjs"
+    },
+    "./internal/*": null
+  },
+  "publishConfig": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./Client": {
+        "types": "./dist/Client.d.ts",
+        "import": "./dist/Client.js",
+        "require": "./dist/Client.cjs"
+      },
+      "./Protocol": {
+        "types": "./dist/Protocol.d.ts",
+        "import": "./dist/Protocol.js",
+        "require": "./dist/Protocol.cjs"
+      },
+      "./Service": {
+        "types": "./dist/Service.d.ts",
+        "import": "./dist/Service.js",
+        "require": "./dist/Service.cjs"
+      },
+      "./Types": {
+        "types": "./dist/Types.d.ts",
+        "import": "./dist/Types.js",
+        "require": "./dist/Types.cjs"
+      },
+      "./Vite": {
+        "types": "./dist/Vite.d.ts",
+        "import": "./dist/Vite.js",
+        "require": "./dist/Vite.cjs"
+      },
+      "./vite": {
+        "types": "./dist/Vite.d.ts",
+        "import": "./dist/Vite.js",
+        "require": "./dist/Vite.cjs"
+      },
+      "./internal/*": null
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed",
+    "test:cache": "vitest run --cache",
+    "test:watch": "vitest",
+    "bundle:kernel": "node scripts/bundle-kernel.mjs",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prepack": "node scripts/bundle-kernel.mjs && tsup"
+  },
+  "dependencies": {
+    "effect": "^3.19.13",
+    "esbuild-wasm": "^0.27.1"
+  },
+  "devDependencies": {
+    "@effect/platform": "0.94.0",
+    "esbuild": "^0.27.1",
+    "msw": "^2.4.9",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  },
+  "peerDependencies": {
+    "effect": "^3.19.13"
+  }
+}

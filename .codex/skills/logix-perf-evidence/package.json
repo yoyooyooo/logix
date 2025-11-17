@@ -1,0 +1,32 @@
+{
+  "name": "logix-perf-evidence",
+  "private": true,
+  "scripts": {
+    "collect": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "collect:quick": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/collect.ts --profile quick",
+    "diff": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/diff.ts",
+    "diff:triage": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/diff.ts --allow-config-drift --allow-env-drift",
+    "validate": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/validate.ts",
+    "tuning:recommend": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/tuning.recommend.ts",
+    "tuning:best": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/tuning.recommend.ts --profile quick",
+    "bench:useModule": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/bench.useModule.ts",
+    "bench:useModule:quick": "node scripts/bench.useModule.quick.mjs",
+    "bench:traitConverge:node": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/bench.traitConverge.node.ts",
+    "bench:008:resolve-module-runtime": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/008-hierarchical-injector.resolveModuleRuntime.ts",
+    "bench:009:txn-dirtyset": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/009-txn-patch-dirtyset.txn-dirtyset-baseline.ts",
+    "bench:011:lifecycle": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/011-upgrade-lifecycle.lifecycle-baseline.ts",
+    "bench:012:process-baseline": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/012-program-api.process-baseline.ts",
+    "bench:016:diagnostics-overhead": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/016-serializable-diagnostics-and-identity.diagnostics-overhead.ts",
+    "bench:024:boot": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/024-root-runtime-runner.boot.ts",
+    "bench:025:trialRunModule": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/025-ir-reflection-loader.trialRun.boot.ts",
+    "bench:026:query-auto-trigger": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/026-query-auto-trigger.ts",
+    "bench:027:devtools-txn": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/027-runtime-observability-hardening.devtools-and-txn-baseline.ts",
+    "bench:060:txn-lanes-workloop": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/060-react-priority-scheduling.txn-lanes-workloop.ts",
+    "bench:028:form-interactions": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/028-form-api-dx.form-interactions.baseline.ts",
+    "bench:029:i18n-token": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/029-i18n-root-resolve.message-token-baseline.ts",
+    "bench:029:i18n-root-resolve": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/029-i18n-root-resolve.root-resolve-baseline.ts"
+  },
+  "dependencies": {
+    "@logix/core": "workspace:*"
+  }
+}

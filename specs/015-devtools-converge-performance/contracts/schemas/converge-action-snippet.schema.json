@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/015-devtools-converge-performance/schemas/converge-action-snippet.schema.json",
+  "title": "ConvergeActionSnippet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "scope", "expectedConfigScope", "text"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["provider_override", "module_override"] },
+    "scope": { "type": "string", "minLength": 1 },
+    "expectedConfigScope": { "type": "string", "enum": ["provider", "runtime_module"] },
+    "text": { "type": "string", "minLength": 1 }
+  }
+}

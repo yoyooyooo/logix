@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/trait-converge-data.sampled.schema.json",
+  "title": "ConvergeDecisionSummary (sampled)",
+  "allOf": [
+    { "$ref": "./trait-converge-data.schema.json" },
+    {
+      "type": "object",
+      "required": ["cache", "generation", "staticIr", "diagnosticsSampling"],
+      "properties": {
+        "dirty": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "dirtyAll": { "type": "boolean" },
+            "reason": {
+              "type": "string",
+              "enum": ["unknownWrite", "customMutation", "nonTrackablePatch", "fallbackPolicy"],
+              "description": "When dirtyAll=true, indicates why the dirty-set was downgraded (aligned with StateTransaction.dirtySet.reason)."
+            }
+          }
+        }
+      }
+    }
+  ],
+  "description": "Sampled diagnostics payload: `dirty` must follow light constraints (slim) while allowing optional top hotspots + requiring diagnosticsSampling summary."
+}
+

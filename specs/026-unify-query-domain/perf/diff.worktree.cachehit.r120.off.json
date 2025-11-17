@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "createdAt": "2025-12-26T17:21:58.195Z",
+    "beforeFile": "specs/026-unify-query-domain/perf/before.worktree.cachehit.r120.off.json",
+    "afterFile": "specs/026-unify-query-domain/perf/after.worktree.cachehit.r120.off.json"
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 1
+  },
+  "cases": [
+    {
+      "scenarioId": "manual/refresh/keyFlipAB",
+      "diagnostics": "off",
+      "before": {
+        "p95Ms": 141.86791600000015,
+        "p95HeapDeltaBytes": 57640,
+        "p95LoadCalls": 40
+      },
+      "after": {
+        "p95Ms": 73.73754200000076,
+        "p95HeapDeltaBytes": 49464,
+        "p95LoadCalls": 2,
+        "p95EngineFetchCalls": 40
+      },
+      "deltaMs": -68.13037399999939,
+      "ratio": 0.5197619312318698,
+      "deltaHeapDeltaBytes": -8176,
+      "heapRatio": 0.8581540596807773
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/010-form-api-perf-boundaries/schemas/validate-target.schema.json",
+  "title": "ValidateTarget",
+  "description": "Serializable target ref for scoped validate (aligns with TraitLifecycle.FieldRef).",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": { "kind": { "const": "root" } }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": { "const": "field" },
+        "path": { "$ref": "./field-path.schema.json", "description": "Canonical field path (Spec 009 FieldPath segments; no indices)." }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": { "const": "list" },
+        "path": { "$ref": "./field-path.schema.json", "description": "Canonical list root path (Spec 009 FieldPath segments; no indices)." },
+        "listIndexPath": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Optional nested list index path (for deep lists)."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "index"],
+      "properties": {
+        "kind": { "const": "item" },
+        "path": { "$ref": "./field-path.schema.json", "description": "Canonical list root path (Spec 009 FieldPath segments; no indices)." },
+        "listIndexPath": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Optional nested list index path (for deep lists)."
+        },
+        "index": { "type": "integer", "minimum": 0 },
+        "field": { "type": "string", "minLength": 1 }
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "logix-api-reference",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docgen": "tsx src/docgen.ts",
+    "serve": "tsx src/serve.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typedoc": "^0.28.13"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/028-form-api-dx/schemas/field-path.schema.json",
+  "title": "FieldPath",
+  "allOf": [
+    {
+      "$ref": "../../../009-txn-patch-dirtyset/contracts/schemas/field-path.schema.json"
+    }
+  ],
+  "description": "Aligned with Spec 009 canonical FieldPath (segments array). Indices and list markers do not appear here; list/item targeting uses separate fields (e.g. ValidateTarget.index/listIndexPath)."
+}
+

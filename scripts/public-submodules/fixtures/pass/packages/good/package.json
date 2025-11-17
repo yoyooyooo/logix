@@ -1,0 +1,11 @@
+{
+  "name": "@logix/fixture-good",
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  }
+}
+

@@ -1,0 +1,339 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2025-12-29T03:07:54.046Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2025-12-28",
+    "matrixHash": "1c405a22b4f93a8a3ff54e2831e6aa6634670d936530bd35554a289787cc79c4",
+    "git": {
+      "branch": "dev",
+      "commit": "38db2b0525e00e98fb24f696e7332dc9e89bbf40",
+      "dirty": true
+    },
+    "config": {
+      "runs": 10,
+      "warmupDiscard": 2,
+      "timeoutMs": 8000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "react.strictSuspenseJitter",
+      "title": "react: strict mode / suspense jitter (interaction→stable)",
+      "priority": "P3",
+      "primaryAxis": "mountCycles",
+      "budgets": [
+        {
+          "id": "p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.interactionToStableMs",
+          "p95Ms": 100
+        }
+      ],
+      "metricCategories": {
+        "e2e.interactionToStableMs": "e2e"
+      },
+      "points": [
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 0,
+            "mountCycles": 1
+          },
+          "status": "timeout",
+          "reason": "pointTimeoutMs=8000",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=8000"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 0,
+            "mountCycles": 3
+          },
+          "status": "skipped",
+          "reason": "pointTimeoutMs=8000",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "cutOff"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 0,
+            "mountCycles": 5
+          },
+          "status": "skipped",
+          "reason": "pointTimeoutMs=8000",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "cutOff"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 1,
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 23,
+                "p95Ms": 30.200000047683716
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 1,
+            "mountCycles": 3
+          },
+          "status": "timeout",
+          "reason": "pointTimeoutMs=8000",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=8000"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 1,
+            "mountCycles": 5
+          },
+          "status": "skipped",
+          "reason": "pointTimeoutMs=8000",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "cutOff"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 3,
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 812.4000000953674,
+                "p95Ms": 814.3000000715256
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 3,
+            "mountCycles": 3
+          },
+          "status": "timeout",
+          "reason": "pointTimeoutMs=8000",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=8000"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 3,
+            "mountCycles": 5
+          },
+          "status": "skipped",
+          "reason": "pointTimeoutMs=8000",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "cutOff"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.interactionToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true,
+            "suspenseCycles": 0
+          },
+          "maxLevel": null,
+          "firstFailLevel": 1,
+          "reason": "pointTimeoutMs=8000"
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.interactionToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true,
+            "suspenseCycles": 1
+          },
+          "maxLevel": 1,
+          "firstFailLevel": 3,
+          "reason": "pointTimeoutMs=8000"
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.interactionToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true,
+            "suspenseCycles": 3
+          },
+          "maxLevel": null,
+          "firstFailLevel": 1,
+          "reason": "budgetExceeded"
+        }
+      ]
+    }
+  ]
+}

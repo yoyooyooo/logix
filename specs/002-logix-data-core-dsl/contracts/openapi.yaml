@@ -1,0 +1,124 @@
+openapi: 3.1.0
+info:
+  title: Logix Module Data & Core Integration Contracts (Design Only)
+  version: 0.1.0
+  description: >
+    设计层面的 HTTP 契约草案，用于说明未来 Devtools / 平台如何通过统一接口
+    获取模块的 Field / FieldCapability / StateGraph 视图。本特性不要求立即实现这些接口，
+    但在设计阶段通过 OpenAPI 明确数据形状和职责边界。
+
+paths:
+  /logix/modules/{moduleId}/data-graph:
+    get:
+      summary: 获取单个模块的字段能力与 StateGraph 视图
+      operationId: getModuleDataGraph
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          description: 模块唯一标识符
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 成功返回模块的字段能力视图
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleDataGraph"
+        "404":
+          description: 未找到对应模块
+
+components:
+  schemas:
+    Field:
+      type: object
+      description: 单个模块字段的规范化描述，由 @logix/data 提供
+      properties:
+        id:
+          type: string
+        path:
+          type: string
+        valueType:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - path
+        - valueType
+
+    FieldCapability:
+      type: object
+      description: 字段能力描述（Computed / Source / Link），来源于 @logix/data
+      properties:
+        fieldId:
+          type: string
+        kind:
+          type: string
+          enum: ["Computed", "Source", "Link"]
+        metadata:
+          type: object
+          additionalProperties: true
+      required:
+        - fieldId
+        - kind
+
+    GraphNode:
+      type: object
+      description: StateGraph 中的节点
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: 节点类型（例如 field / capability）
+      required:
+        - id
+        - type
+
+    GraphEdge:
+      type: object
+      description: StateGraph 中的有向边
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        kind:
+          type: string
+          description: 依赖关系类型（如 depends-on / drives 等）
+      required:
+        - from
+        - to
+
+    ModuleDataGraph:
+      type: object
+      description: Devtools / 平台所需的单模块字段能力与 StateGraph 汇总视图
+      properties:
+        moduleId:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/Field"
+        capabilities:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldCapability"
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphNode"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphEdge"
+      required:
+        - moduleId
+        - fields
+        - capabilities
+        - nodes
+        - edges
+
