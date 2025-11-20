@@ -1,0 +1,36 @@
+{
+  "name": "react",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rsbuild build",
+    "dev": "rsbuild dev --open",
+    "preview": "rsbuild preview",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/platform": "latest",
+    "@effect/schema": "^0.75.5",
+    "@effect/sql": "latest",
+    "effect": "latest",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.6.1",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "^1.2.16",
+    "@rsbuild/plugin-react": "^1.1.1",
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@types/react-router-dom": "^5.3.3",
+    "jsdom": "24.0.0",
+    "typescript": "^5.8.2",
+    "vitest": "^4.0.10"
+  }
+}

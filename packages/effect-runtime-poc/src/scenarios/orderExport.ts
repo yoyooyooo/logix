@@ -1,45 +1,71 @@
-import * as Effect from 'effect/Effect'
-import type { BasePlatformEnv, Fx } from '../shared/base'
+import * as Effect from "effect/Effect";
+import * as Context from "effect/Context";
+import { LoggerTag } from "../runtime/tags";
 
 export interface FilterService {
-  getCurrentFilters: () => Promise<Record<string, unknown>>
+  getCurrentFilters: () => Promise<Record<string, unknown>>;
 }
 
 export interface TableUiStateService {
-  getCurrentState: () => Promise<{ visibleColumns: string[] }>
+  getCurrentState: () => Promise<{ visibleColumns: string[] }>;
 }
 
 export interface ExportService {
   submitExportTask: (input: {
-    filters: Record<string, unknown>
-    columns: string[]
-  }) => Promise<void>
+    filters: Record<string, unknown>;
+    columns: string[];
+  }) => Promise<void>;
 }
 
-export interface OrderExportEnv extends BasePlatformEnv {
-  FilterService: FilterService
-  TableUiStateService: TableUiStateService
-  ExportService: ExportService
-}
+export class FilterServiceTag extends Context.Tag("FilterService")<
+  FilterServiceTag,
+  FilterService
+>() {}
 
-export const exportOrdersFlow: Fx<OrderExportEnv, never, void> = Effect.gen(function* () {
-  const env = yield* Effect.context<OrderExportEnv>()
+export class TableUiStateServiceTag extends Context.Tag("TableUiStateService")<
+  TableUiStateServiceTag,
+  TableUiStateService
+>() {}
 
-  const filters = yield* Effect.promise(() => env.FilterService.getCurrentFilters())
-  const tableState = yield* Effect.promise(() => env.TableUiStateService.getCurrentState())
+export class ExportServiceTag extends Context.Tag("ExportService")<
+  ExportServiceTag,
+  ExportService
+>() {}
 
-  env.logger.info('exportOrdersFlow.start', {
+export type OrderExportEnv =
+  | LoggerTag
+  | FilterServiceTag
+  | TableUiStateServiceTag
+  | ExportServiceTag;
+
+export const exportOrdersFlow: Effect.Effect<
+  void,
+  never,
+  OrderExportEnv
+> = Effect.gen(function* () {
+  const logger = yield* LoggerTag;
+  const filterService = yield* FilterServiceTag;
+  const tableStateService = yield* TableUiStateServiceTag;
+  const exportService = yield* ExportServiceTag;
+
+  const filters = yield* Effect.promise(() =>
+    filterService.getCurrentFilters(),
+  );
+  const tableState = yield* Effect.promise(() =>
+    tableStateService.getCurrentState(),
+  );
+
+  logger.info("exportOrdersFlow.start", {
     filters,
     columns: tableState.visibleColumns,
-  })
+  });
 
   yield* Effect.promise(() =>
-    env.ExportService.submitExportTask({
+    exportService.submitExportTask({
       filters,
       columns: tableState.visibleColumns,
     }),
-  )
+  );
 
-  env.logger.info('exportOrdersFlow.done', {})
-})
-
+  logger.info("exportOrdersFlow.done", {});
+});

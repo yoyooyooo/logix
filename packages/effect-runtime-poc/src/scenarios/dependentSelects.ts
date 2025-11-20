@@ -1,68 +1,83 @@
-import * as Effect from 'effect/Effect'
-import type { BasePlatformEnv, Fx } from '../shared/base'
+import * as Effect from "effect/Effect";
+import * as Context from "effect/Context";
+import { LoggerTag } from "../runtime/tags";
 
 export interface Province {
-  code: string
-  name: string
+  code: string;
+  name: string;
 }
 
 export interface City {
-  code: string
-  name: string
-  provinceCode: string
+  code: string;
+  name: string;
+  provinceCode: string;
 }
 
 export interface District {
-  code: string
-  name: string
-  cityCode: string
+  code: string;
+  name: string;
+  cityCode: string;
 }
 
 export interface LocationService {
-  listProvinces: () => Promise<Province[]>
-  listCities: (provinceCode: string) => Promise<City[]>
-  listDistricts: (cityCode: string) => Promise<District[]>
+  listProvinces: () => Promise<Province[]>;
+  listCities: (provinceCode: string) => Promise<City[]>;
+  listDistricts: (cityCode: string) => Promise<District[]>;
 }
 
-export interface DependentSelectEnv extends BasePlatformEnv {
-  LocationService: LocationService
-}
+export class LocationServiceTag extends Context.Tag("LocationService")<
+  LocationServiceTag,
+  LocationService
+>() {}
 
-export const loadProvincesFlow: Fx<DependentSelectEnv, never, Province[]> = Effect.gen(
-  function* () {
-    const env = yield* Effect.context<DependentSelectEnv>()
-    env.logger.info('location.loadProvinces.start')
-    const provinces = yield* Effect.promise(() => env.LocationService.listProvinces())
-    env.logger.info('location.loadProvinces.done', { count: provinces.length })
-    return provinces
-  },
-)
+export type DependentSelectEnv = LoggerTag | LocationServiceTag;
 
-export const onProvinceChangeFlow =
-  (provinceCode: string): Fx<
-    DependentSelectEnv,
-    never,
-    { cities: City[]; districts: District[] }
-  > =>
+export const loadProvincesFlow: Effect.Effect<
+  Province[],
+  never,
+  DependentSelectEnv
+> = Effect.gen(function* () {
+  const logger = yield* LoggerTag;
+  const location = yield* LocationServiceTag;
+
+  logger.info("location.loadProvinces.start");
+  const provinces = yield* Effect.promise(() =>
+    location.listProvinces(),
+  );
+  logger.info("location.loadProvinces.done", { count: provinces.length });
+  return provinces;
+});
+
+export const onProvinceChangeFlow = (
+  provinceCode: string,
+): Effect.Effect<
+  { cities: City[]; districts: District[] },
+  never,
+  DependentSelectEnv
+> =>
   Effect.gen(function* () {
-    const env = yield* Effect.context<DependentSelectEnv>()
-    env.logger.info('location.onProvinceChange', { provinceCode })
+    const logger = yield* LoggerTag;
+    const location = yield* LocationServiceTag;
+
+    logger.info("location.onProvinceChange", { provinceCode });
     const cities = yield* Effect.promise(() =>
-      env.LocationService.listCities(provinceCode),
-    )
-    const districts: District[] = []
-    return { cities, districts }
-  })
+      location.listCities(provinceCode),
+    );
+    const districts: District[] = [];
+    return { cities, districts };
+  });
 
-export const onCityChangeFlow =
-  (cityCode: string): Fx<DependentSelectEnv, never, District[]> =>
+export const onCityChangeFlow = (
+  cityCode: string,
+): Effect.Effect<District[], never, DependentSelectEnv> =>
   Effect.gen(function* () {
-    const env = yield* Effect.context<DependentSelectEnv>()
-    env.logger.info('location.onCityChange', { cityCode })
-    const districts = yield* Effect.promise(() =>
-      env.LocationService.listDistricts(cityCode),
-    )
-    env.logger.info('location.loadDistricts.done', { count: districts.length })
-    return districts
-  })
+    const logger = yield* LoggerTag;
+    const location = yield* LocationServiceTag;
 
+    logger.info("location.onCityChange", { cityCode });
+    const districts = yield* Effect.promise(() =>
+      location.listDistricts(cityCode),
+    );
+    logger.info("location.loadDistricts.done", { count: districts.length });
+    return districts;
+  });

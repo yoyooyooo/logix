@@ -1,41 +1,48 @@
-import * as Effect from 'effect/Effect'
-import type { BasePlatformEnv, Fx } from '../shared/base'
+import * as Effect from "effect/Effect";
+import * as Clock from "effect/Clock";
+import * as Context from "effect/Context";
+import { LoggerTag } from "../runtime/tags";
 
 export interface LongTaskService {
-  startTask: (payload: Record<string, unknown>) => Promise<{ taskId: string }>
-  getStatus: (taskId: string) => Promise<{ status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' }>
+  startTask: (
+    payload: Record<string, unknown>,
+  ) => Promise<{ taskId: string }>;
+  getStatus: (taskId: string) => Promise<{
+    status: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED";
+  }>;
 }
 
-export interface LongTaskEnv extends BasePlatformEnv {
-  LongTaskService: LongTaskService
-}
+export class LongTaskServiceTag extends Context.Tag("LongTaskService")<
+  LongTaskServiceTag,
+  LongTaskService
+>() {}
 
-export const startAndPollLongTaskFlow: Fx<LongTaskEnv, never, void> = Effect.gen(function* () {
-  const env = yield* Effect.context<LongTaskEnv>()
+export type LongTaskEnv = LoggerTag | LongTaskServiceTag;
 
-  env.logger.info('longTask.start', {})
+export const startAndPollLongTaskFlow: Effect.Effect<
+  void,
+  never,
+  LongTaskEnv
+> = Effect.gen(function* () {
+  const logger = yield* LoggerTag;
+  const service = yield* LongTaskServiceTag;
+
+  logger.info("longTask.start", {});
   const { taskId } = yield* Effect.promise(() =>
-    env.LongTaskService.startTask({}),
-  )
+    service.startTask({}),
+  );
 
   // 极简轮询示意，真实实现应考虑超时/退避/取消等
   // 这些策略在正式实现中应来自 ConstraintIntent + Layer。
   let status = yield* Effect.promise(() =>
-    env.LongTaskService.getStatus(taskId),
-  )
-  while (status.status === 'PENDING' || status.status === 'RUNNING') {
-    // 这里仍然用 setTimeout 模拟；未来可替换为基于 Effect.Schedule 的方案。
-    yield* Effect.async<void>(resume => {
-      const id = setTimeout(() => {
-        clearTimeout(id)
-        resume(Effect.succeed(undefined))
-      }, 1000)
-    })
+    service.getStatus(taskId),
+  );
+  while (status.status === "PENDING" || status.status === "RUNNING") {
+    yield* Clock.sleep(1000);
     status = yield* Effect.promise(() =>
-      env.LongTaskService.getStatus(taskId),
-    )
+      service.getStatus(taskId),
+    );
   }
 
-  env.logger.info('longTask.done', { taskId, status: status.status })
-})
-
+  logger.info("longTask.done", { taskId, status: status.status });
+});

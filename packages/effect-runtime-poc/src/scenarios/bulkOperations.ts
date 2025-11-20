@@ -1,40 +1,60 @@
-import * as Effect from 'effect/Effect'
-import type { BasePlatformEnv, Fx } from '../shared/base'
+import * as Effect from "effect/Effect";
+import * as Context from "effect/Context";
+import { LoggerTag } from "../runtime/tags";
 
 export interface BulkOperationService {
-  applyToMany: (input: { ids: string[]; operation: string }) => Promise<void>
+  applyToMany: (input: { ids: string[]; operation: string }) => Promise<void>;
 }
 
 export interface SelectionService {
-  getSelectedIds: () => Promise<string[]>
+  getSelectedIds: () => Promise<string[]>;
 }
 
 export interface NotificationService {
-  info?: (msg: string) => void
+  info?: (msg: string) => void;
 }
 
-export interface BulkEnv extends BasePlatformEnv {
-  BulkOperationService: BulkOperationService
-  SelectionService: SelectionService
-  NotificationService?: NotificationService
-}
+export class BulkOperationServiceTag extends Context.Tag("BulkOperationService")<
+  BulkOperationServiceTag,
+  BulkOperationService
+>() {}
 
-export const bulkOperationFlow =
-  (operation: string): Fx<BulkEnv, never, void> =>
+export class SelectionServiceTag extends Context.Tag("SelectionService")<
+  SelectionServiceTag,
+  SelectionService
+>() {}
+
+export class NotificationServiceTag extends Context.Tag("NotificationService")<
+  NotificationServiceTag,
+  NotificationService
+>() {}
+
+export type BulkEnv =
+  | LoggerTag
+  | BulkOperationServiceTag
+  | SelectionServiceTag
+  | NotificationServiceTag;
+
+export const bulkOperationFlow = (
+  operation: string,
+): Effect.Effect<void, never, BulkEnv> =>
   Effect.gen(function* () {
-    const env = yield* Effect.context<BulkEnv>()
-    const ids = yield* Effect.promise(() => env.SelectionService.getSelectedIds())
-    env.logger.info('bulkOperation.start', { operation, count: ids.length })
+    const logger = yield* LoggerTag;
+    const bulk = yield* BulkOperationServiceTag;
+    const selection = yield* SelectionServiceTag;
+    const notification = yield* NotificationServiceTag;
+
+    const ids = yield* Effect.promise(() => selection.getSelectedIds());
+    logger.info("bulkOperation.start", { operation, count: ids.length });
     if (!ids.length) {
-      env.NotificationService?.info?.('请先选择记录')
-      return
+      notification.info?.("请先选择记录");
+      return;
     }
     yield* Effect.promise(() =>
-      env.BulkOperationService.applyToMany({
+      bulk.applyToMany({
         ids,
         operation,
       }),
-    )
-    env.logger.info('bulkOperation.done', { operation })
-  })
-
+    );
+    logger.info("bulkOperation.done", { operation });
+  });

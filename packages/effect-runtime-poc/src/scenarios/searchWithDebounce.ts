@@ -1,30 +1,38 @@
-import * as Effect from 'effect/Effect'
-import type { BasePlatformEnv, Fx } from '../shared/base'
+import * as Effect from "effect/Effect";
+import * as Context from "effect/Context";
+import { LoggerTag } from "../runtime/tags";
 
 export interface SearchResult {
-  id: string
-  label: string
+  id: string;
+  label: string;
 }
 
 export interface SearchService {
-  search: (keyword: string) => Promise<SearchResult[]>
+  search: (keyword: string) => Promise<SearchResult[]>;
 }
 
-export interface SearchEnv extends BasePlatformEnv {
-  SearchService: SearchService
-}
+export class SearchServiceTag extends Context.Tag("SearchService")<
+  SearchServiceTag,
+  SearchService
+>() {}
+
+export type SearchEnv = LoggerTag | SearchServiceTag;
 
 // 单次搜索调用：防抖/取消由 UI/调用方控制，本 Flow 只负责一次请求。
-export const searchOnceFlow =
-  (keyword: string): Fx<SearchEnv, never, SearchResult[]> =>
+export const searchOnceFlow = (
+  keyword: string,
+): Effect.Effect<SearchResult[], never, SearchEnv> =>
   Effect.gen(function* () {
-    const env = yield* Effect.context<SearchEnv>()
-    env.logger.info('search.start', { keyword })
-    if (!keyword.trim()) {
-      return []
-    }
-    const results = yield* Effect.promise(() => env.SearchService.search(keyword))
-    env.logger.info('search.done', { keyword, count: results.length })
-    return results
-  })
+    const logger = yield* LoggerTag;
+    const searchService = yield* SearchServiceTag;
 
+    logger.info("search.start", { keyword });
+    if (!keyword.trim()) {
+      return [];
+    }
+    const results = yield* Effect.promise(() =>
+      searchService.search(keyword),
+    );
+    logger.info("search.done", { keyword, count: results.length });
+    return results;
+  });
