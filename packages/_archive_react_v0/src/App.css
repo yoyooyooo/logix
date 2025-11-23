@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  font-family: "Inter", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  background: #f7f7fb;
+}

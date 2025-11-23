@@ -61,11 +61,22 @@ export default tseslint.config(
     files: [
       "**/test/**/*.{ts,tsx}",
       "**/*config.ts",
+      "**/*config.cjs",
       "**/vitest.config.ts",
       "**/verify_ref.ts",
       "eslint.config.*",
       "prettier.config.*",
     ],
+    languageOptions: {
+      parserOptions: {
+        project: false,
+      },
+      sourceType: "commonjs",
+      globals: {
+        module: true,
+        require: true,
+      },
+    },
     rules: {
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-call": "off",
@@ -73,6 +84,8 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
       "@typescript-eslint/await-thenable": "off",
+      "@typescript-eslint/prefer-promise-reject-errors": "off",
+      "@typescript-eslint/require-await": "off",
       "@typescript-eslint/no-floating-promises": "off",
       "@typescript-eslint/no-array-delete": "off",
       "@typescript-eslint/no-base-to-string": "off",
@@ -83,6 +96,9 @@ export default tseslint.config(
       "@typescript-eslint/no-unnecessary-type-assertion": "off",
       "@typescript-eslint/no-unsafe-enum-comparison": "off",
       "@typescript-eslint/only-throw-error": "off",
+      "@typescript-eslint/restrict-plus-operands": "off",
+      "@typescript-eslint/restrict-template-expressions": "off",
+      "@typescript-eslint/unbound-method": "off",
     },
   }
 )
