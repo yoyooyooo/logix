@@ -3,7 +3,7 @@
 > **Status**: Draft
 > **Layer**: React Adapter
 
-本文档详细阐述如何在 React 组件树中优雅地注入 Kernel 所需的依赖（Services）。我们采用 **"Implicit Context + Runtime Guard"** 模式，在保持 API 简洁的同时提供强大的运行时保障。
+本文档详细阐述如何在 React 组件树中优雅地注入 Logix 所需的依赖（Services）。我们采用 **"Implicit Context + Runtime Guard"** 模式，在保持 API 简洁的同时提供强大的运行时保障。
 
 ## 1. 核心模式：隐式上下文 (Implicit Context)
 
@@ -15,7 +15,7 @@
 
 ```tsx
 // App.tsx
-import { RuntimeProvider } from '@kernel/react';
+import { RuntimeProvider } from '@logix/react';
 import { AppLayer } from './layers';
 
 function App() {
@@ -45,12 +45,12 @@ function Page() {
 
 ## 2. 运行时安全 (Runtime Safety)
 
-由于 TypeScript 无法静态分析 React Context 的内容，我们无法在编译期保证 Service 一定存在。因此，Kernel 实现了严格的 **Runtime Guard**。
+由于 TypeScript 无法静态分析 React Context 的内容，我们无法在编译期保证 Service 一定存在。因此，Logix 实现了严格的 **Runtime Guard**。
 
 ### 2.1 错误处理
 如果 `makeStore` 需要 `ApiService`，但上层 Provider 未提供，`useStore` 会捕获 Effect 的执行失败，并抛出友好的错误：
 
-> **[Kernel Error] Service Not Found**
+> **[Logix Error] Service Not Found**
 > Your store requires `ApiService`, but it was not provided in the context.
 > **Fix**: Please wrap your component tree with `<RuntimeProvider layer={Layer.succeed(ApiService, ...)}>`.
 
@@ -111,11 +111,11 @@ const parentService = yield* ParentService;
 
 ## 5. 错误流与 Error Boundary 集成
 
-Kernel 暴露的 `error$` 流可以与 React Error Boundary 集成。React Adapter 推荐提供一个类似 `useErrorStream` 的 Hook，将致命错误桥接到 UI：
+Logix 暴露的 `error$` 流可以与 React Error Boundary 集成。React Adapter 推荐提供一个类似 `useErrorStream` 的 Hook，将致命错误桥接到 UI：
 
 ```tsx
 useErrorStream(store, (error) => {
-  // 当 Kernel 抛出致命错误时，触发 Error Boundary 或全局提示
+  // 当 Logix 抛出致命错误时，触发 Error Boundary 或全局提示
   showBoundary(error);
 });
 ```

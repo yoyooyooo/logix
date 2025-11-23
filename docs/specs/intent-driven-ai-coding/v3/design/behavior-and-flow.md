@@ -4,7 +4,7 @@ status: draft
 version: 3
 ---
 
-> 本文定义了 v2 架构下的核心行为模型：基于 DAG 的逻辑编排、强类型的 Signal 驱动、以及双运行时（Effect/Kernel）的分发机制。
+> 本文定义了 v2 架构下的核心行为模型：基于 DAG 的逻辑编排、强类型的 Signal 驱动、以及双运行时（Effect/Logix Engine）的分发机制。
 
 ## 1. 核心定义
 
@@ -16,7 +16,7 @@ Behavior & Flow Intent 回答：**“当业务信号发生时，系统如何响�
 
 1.  **Signal 驱动 (Signal-Driven)**：Flow 不直接监听 UI 事件，而是监听业务信号（Signal）。UI 事件通过 Interaction Intent 转化为 Signal，从而实现 UI 与逻辑的彻底解耦。
 2.  **图状编排 (Graph-based)**：底层采用 DAG（有向无环图）结构，支持串行、并行、竞态、分支与汇聚，足以表达企业级复杂业务。
-3.  **双运行时 (Dual Runtime)**：同一份 Flow Intent 可根据 `runtimeTarget` 编译为服务端 Effect 程序或前端 Kernel 规则。
+3.  **双运行时 (Dual Runtime)**：同一份 Flow Intent 可根据 `runtimeTarget` 编译为服务端 Effect 程序或前端 Logix 规则。
 
 ## 2. 模型详解
 
@@ -48,7 +48,7 @@ interface FlowIntent {
   triggerSignalId: string
   
   // 运行时目标
-  runtimeTarget: 'effect-flow-runtime' | 'frontend-kernel'
+  runtimeTarget: 'effect-flow-runtime' | 'logix-engine'
 
   // 图结构定义
   nodes: Record<string, FlowNode>
@@ -104,12 +104,12 @@ Flow Intent 是逻辑蓝图，具体的执行由 `runtimeTarget` 决定：
 - **产物**：`.flow.ts` 文件。
 - **实现**：完整的 Effect-ts 程序，运行在 Node.js 容器中，通过 Layer 注入基础设施。
 
-### 4.2 Target: Frontend Kernel (前端)
+### 4.2 Target: Logix Engine (前端)
 - **适用场景**：贴近 UI 的交互逻辑、字段联动、乐观更新、本地校验（如表单级联、即时搜索）。
-- **产物**：Kernel Store `logic` 配置。
+- **产物**：Logix Store `logic` 配置。
 - **实现**：
   - 简单逻辑编译为 `watch` / `onSignal` 规则。
-  - 复杂 DAG 逻辑编译为 Kernel 内部的微型 Effect Runner 调用（Kernel 集成精简版 Effect 运行时）。
+  - 复杂 DAG 逻辑编译为 Logix 内部的微型 Effect Runner 调用（Logix 集成精简版 Effect 运行时）。
 
 ### 4.3 Hybrid Flow (混合运行时)
 - **概念**：一个 Flow 可能横跨前后端。例如：前端校验 -> 后端提交 -> 前端更新状态。
@@ -127,9 +127,9 @@ Flow Intent 是逻辑蓝图，具体的执行由 `runtimeTarget` 决定：
   - `SubmitFlow` (Success) -> `EditModal` (Close)
   - `SubmitFlow` (Success) -> `OrderList` (Refresh)
 
-**2. 编译产物 A: 前端 Kernel (`order.store.ts`)**
+**2. 编译产物 A: 前端 Logix (`order.store.ts`)**
 ```typescript
-// 自动生成的 Kernel Logic
+// 自动生成的 Logix Logic
 logic: (api) => [
   // 1. Interaction: 点击按钮 -> 触发 submit 信号
   api.onInput('SaveButton_click', (event, ops) => 

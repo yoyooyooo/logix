@@ -2,11 +2,11 @@
 
 > **Status**: Definitive (v2.4 Hybrid Mode)
 > **Date**: 2025-11-23
-> **Scope**: Kernel Core Logic Primitives
+> **Scope**: Logix Core Logic Primitives
 
 ## 1. 愿景 (Vision)
 
-Logic Rule DSL 是 Kernel 的**“逻辑原语层”**。它提供了一套声明式的、可组合的算子体系，用于替代手写 `Effect.gen`。
+Logic Rule DSL 是 Logix 的**“逻辑原语层”**。它提供了一套声明式的、可组合的算子体系，用于替代手写 `Effect.gen`。
 
 **目标**：
 1.  **AI-Ready**: 提供结构化的配置模板 (`api.rule`)，让 AI 只需“填空”即可生成健壮逻辑。
@@ -169,8 +169,8 @@ api.ops.fetch((ctx) =>
 DSL 支持通过 **Module Augmentation** 扩展自定义算子，允许领域层（如 Form）注入特定逻辑。
 
 ```typescript
-// @kernel/form/dsl.ts
-declare module '@kernel/core/dsl' {
+// @logix/form/dsl.ts
+declare module '@logix/core/dsl' {
   interface OperationBuilders {
     validate(schema: Schema): Operation;
   }
@@ -184,7 +184,7 @@ api.ops.validate = (schema) => ...
 
 `api.rule` 在运行时充当**编译器**的角色：
 
-1.  **解析 Trigger**: 将 Trigger 配置转换为 Kernel 原生的 `watch` 或 `onAction` 监听器。
+1.  **解析 Trigger**: 将 Trigger 配置转换为 Logix 原生的 `watch` 或 `onAction` 监听器。
 2.  **构建 Pipeline**: 将 `api.pipe` 定义的操作链转换为一个组合的 Effect。
 3.  **执行**: 在受控的 Fiber 中执行 Pipeline。自动捕获错误。
 4.  **Trace 注入**: 在整个流程中自动注入 `traceId` 和 `span`，记录逻辑执行路径。

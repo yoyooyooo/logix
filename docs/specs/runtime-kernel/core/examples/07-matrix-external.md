@@ -17,7 +17,7 @@ on(services.WebSocket.priceStream, (msg, { set }) =>
 
 ```typescript
 // 需求：WS 每秒推送 1000 次，需要缓冲并批量更新
-// 这是一个 User Land 的实现模式，Kernel 提供基础能力
+// 这是一个 User Land 的实现模式，Logix 提供基础能力
 on(
   services.WebSocket.highFreqStream.pipe(
     // 使用 Effect Stream 的缓冲能力

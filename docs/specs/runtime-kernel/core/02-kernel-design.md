@@ -1,12 +1,12 @@
-# 内核设计 (Kernel Design Specification)
+# 引擎设计 (Logix Design Specification)
 
 > **Status**: Definitive (v2.3 Unified Action)
 > **Date**: 2025-11-23
-> **Scope**: Kernel Runtime (Full Feature Set)
+> **Scope**: Logix Engine Runtime (Full Feature Set)
 
 ## 1. 核心概念 (Core Concepts)
 
-Kernel 是一个**“意图驱动的双流状态机”**。它通过严格区分“数据”与“意图”来消除架构上的模糊性：
+Logix 是一个**“意图驱动的双流状态机”**。它通过严格区分“数据”与“意图”来消除架构上的模糊性：
 
 1.  **State (持久状态)**: Schema 定义的、持久化的业务数据快照 (The Container)。
     *   *特性*: 惰性计算、可持久化、驱动 UI 渲染。
@@ -124,7 +124,7 @@ interface LogicApi<S, A, Services> {
 
 ## 3. 运行时与依赖注入 (Runtime & DI)
 
-Kernel 深度集成 Effect-TS 的 Context 系统，支持灵活的依赖注入策略。
+Logix 深度集成 Effect-TS 的 Context 系统，支持灵活的依赖注入策略。
 
 ### 3.1 Runtime 解析策略
 
@@ -132,7 +132,7 @@ Store 在启动时会按照以下优先级确定使用的 `Runtime`：
 
 1.  **Explicit Config**: `makeStore({ runtime: myRuntime })` 传入的实例。
 2.  **Implicit Context**: (React场景) 通过 `RuntimeProvider` 注入的上下文 Runtime。
-3.  **Global Default**: 通过 `KernelConfig.setDefaultRuntime()` 设置的全局兜底 Runtime。
+3.  **Global Default**: 通过 `LogixConfig.setDefaultRuntime()` 设置的全局兜底 Runtime。
 
 ### 3.2 依赖注入模式
 
@@ -145,7 +145,7 @@ Store 在启动时会按照以下优先级确定使用的 `Runtime`：
 ## 4. 关键机制 (Key Mechanisms)
 
 ### 4.1 Action-Driven Architecture
-UI Dispatch Action -> Kernel Handle Action -> State Change / Side Effect。
+UI Dispatch Action -> Logix Handle Action -> State Change / Side Effect。
 
 ### 4.2 循环防护 (Loop Protection)
 *   **同步熔断**: 限制调用栈深度。
@@ -156,7 +156,7 @@ UI Dispatch Action -> Kernel Handle Action -> State Change / Side Effect。
 
 ## 5. 最佳实践: 模块化逻辑 (Modular Logic)
 
-为了避免在大型项目中出现“巨型 Store 文件”，Kernel 提供了 `createLogicBuilder` 辅助函数，支持将逻辑拆分到独立模块中，同时保持类型安全。
+为了避免在大型项目中出现“巨型 Store 文件”，Logix 提供了 `createLogicBuilder` 辅助函数，支持将逻辑拆分到独立模块中，同时保持类型安全。
 
 ### 5.1 定义类型绑定的构建器
 
@@ -164,7 +164,7 @@ UI Dispatch Action -> Kernel Handle Action -> State Change / Side Effect。
 
 ```typescript
 // store/types.ts
-import { createLogicBuilder } from '@kernel/core';
+import { createLogicBuilder } from '@logix/core';
 import type { MyState, MyAction, MyServices } from './schema';
 
 // 一次绑定，处处受益

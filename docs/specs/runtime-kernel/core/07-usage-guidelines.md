@@ -4,7 +4,7 @@
 > **Date**: 2025-11-23
 > **Layer**: Application Layer
 
-本文档旨在指导开发者如何正确、优雅地使用 Kernel 构建应用。核心在于明确 **State (数据)** 与 **Action (意图)** 的边界，以及如何利用 **Rule DSL** 编写逻辑。
+本文档旨在指导开发者如何正确、优雅地使用 Logix 构建应用。核心在于明确 **State (数据)** 与 **Action (意图)** 的边界，以及如何利用 **Rule DSL** 编写逻辑。
 
 ## 1. 核心原则 (Core Principles)
 
@@ -88,7 +88,7 @@ api.rule({
 
 ## 3. 跨 Rule 共享状态 (Sharing State Between Rules)
 
-在 `rules` 数组配置模式下，每个 Rule 都是独立的配置对象，无法通过闭包变量隐式共享状态。这是 Kernel 有意为之的设计，旨在确保逻辑的**可观测性**和**可调试性**。
+在 `rules` 数组配置模式下，每个 Rule 都是独立的配置对象，无法通过闭包变量隐式共享状态。这是 Logix 有意为之的设计，旨在确保逻辑的**可观测性**和**可调试性**。
 
 当需要在不同 Rule 之间传递信息时，请遵循以下范式：
 
@@ -129,7 +129,7 @@ const myThrottle = (ms) => {
 
 ## 4. 多 Store 协作 (Multi-Store Collaboration)
 
-Kernel 鼓励 **Micro-Stores (微状态)** 架构，即每个业务领域（User, Form, List）拥有独立的 Store，而不是像 Redux/Zustand 那样构建一个巨大的单体 Store。
+Logix 鼓励 **Micro-Stores (微状态)** 架构，即每个业务领域（User, Form, List）拥有独立的 Store，而不是像 Redux/Zustand 那样构建一个巨大的单体 Store。
 
 ### 4.1 为什么不推荐 Slice 模式？
 *   **类型复杂**: 单体 Store 需要维护巨大的泛型定义。

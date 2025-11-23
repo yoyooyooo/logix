@@ -1,4 +1,4 @@
-# Intent Flow Runtime Kernel: 指导思想与宣言
+# Logix Engine: 指导思想与宣言
 
 > **Status**: Living Document
 > **Date**: 2025-11-20
@@ -13,7 +13,7 @@
 
 ## 2. 核心愿景 (Core Vision)
 
-**构建一套“AI-Ready”的标准化业务运行时内核 (Runtime Kernel)。**
+**构建一套“AI-Ready”的标准化业务逻辑引擎 (Logix Engine)。**
 
 这套内核不仅仅是一个状态管理库，更是一套**业务逻辑的标准原语 (Standard Primitives)**。它的目标是让任何难度的业务需求，都有一套**唯一的、标准的、声明式的**写法。
 
@@ -24,38 +24,38 @@
 *   “这个 API 请求怎么防抖？”
 *   “这个状态是放在 Context 里还是组件 State 里？”
 
-我们的 Kernel 将消除这些模糊点。通过提供标准化的 `logic` 编排机制，所有的副作用、联动、状态变更都只有一种写法。**当写法被标准化，AI 就能精准地“填空”，而不是“猜测”。**
+Logix 将消除这些模糊点。通过提供标准化的 `logic` 编排机制，所有的副作用、联动、状态变更都只有一种写法。**当写法被标准化，AI 就能精准地“填空”，而不是“猜测”。**
 
 ### 2.2 AI 友好的双向映射 (AI-Friendly Bi-directional Mapping)
 
 因为运行时是高度结构化和声明式的（基于 Schema 和 Effect Stream），代码本身就变成了意图的直接投影：
-*   **Intent -> Code**: AI 可以轻松地将自然语言需求转化为 Kernel 的配置（Schema + Logic Rules）。
-*   **Code -> Intent**: 平台工具可以轻松地解析 Kernel 代码，反向还原出业务流程图或意图线稿。
+*   **Intent -> Code**: AI 可以轻松地将自然语言需求转化为 Logix 配置（Schema + Logic Rules）。
+*   **Code -> Intent**: 平台工具可以轻松地解析 Logix 代码，反向还原出业务流程图或意图线稿。
 
 这使得 `Intent-Driven AI Coding` 平台成为可能。
 
 ## 3. 战略定位 (Strategic Positioning)
 
-这个 Kernel 是整个生态系统的**基石 (Foundation)**：
+这个 Logix 引擎是整个生态系统的**基石 (Foundation)**：
 
 *   **向下**: 封装 Effect-TS 的强大能力（并发、资源管理、错误处理），屏蔽底层复杂性。
 *   **向上**: 支撑 `Form`、`Global State` 等具体领域的应用，以及未来的 `AI Coding Platform`。
-*   **在平台视角下**: 作为 `intent-driven-ai-coding` v2 架构中的一个前端 Runtime Target（`frontend-kernel`），与 Effect Flow Runtime 一同承接 Behavior & Flow Intent 的执行职责。Behavior & Flow Intent 的概念模型与 Schema 以 `docs/specs/intent-driven-ai-coding/v2`（尤其是 `97-effect-runtime-and-flow-execution.md`）为事实源，Kernel 文档只说明“如何实现这些契约”。
+*   **在平台视角下**: 作为 `intent-driven-ai-coding` v2 架构中的一个前端 Runtime Target（`logix-engine`），与 Effect Flow Runtime 一同承接 Behavior & Flow Intent 的执行职责。Behavior & Flow Intent 的概念模型与 Schema 以 `docs/specs/intent-driven-ai-coding/v2`（尤其是 `97-effect-runtime-and-flow-execution.md`）为事实源，Logix 文档只说明“如何实现这些契约”。
 
 ## 4. 当前承诺与约束 (Commitments)
 
 > 这些是后续所有技术决策的“硬约束”，优先级高于历史代码和短期成本。
 
 1.  **v0 Form 视为 PoC，可以完全丢弃**  
-    现有 `packages/react/src/features/form` 仅作为早期验证，不再继续演进，也不需要兼容或迁移；新一代 Form 必须建立在 Kernel 之上。
-2.  **从 Kernel 起步，不计重构成本**
-    未来工作默认从 `@kernel/core` v1 开始设计，不再以"现有实现"为约束条件；优先保证模型清晰、可推理、可演进，而不是节省实现成本。
+    现有 `packages/react/src/features/form` 仅作为早期验证，不再继续演进，也不需要兼容或迁移；新一代 Form 必须建立在 Logix Engine 之上。
+2.  **从 Logix 起步，不计重构成本**
+    未来工作默认从 `@logix/core` v1 开始设计，不再以"现有实现"为约束条件；优先保证模型清晰、可推理、可演进，而不是节省实现成本。
 3.  **禁止在 UI 中编排业务副作用**  
-    业务级联动、异步调用、防抖/竞态处理等，一律通过 Kernel 的 `logic` / `watch` / `on` 声明，不允许再在 React/Vue 组件里用 `useEffect/useMemo` 编排业务逻辑；UI 层只读 Store，只派发标准化 Action。
+    业务级联动、异步调用、防抖/竞态处理等，一律通过 Logix 的 `logic` / `watch` / `on` 声明，不允许再在 React/Vue 组件里用 `useEffect/useMemo` 编排业务逻辑；UI 层只读 Store，只派发标准化 Action。
 4.  **唯一的状态机来源**  
-    Kernel 是唯一的状态与逻辑运行时，后续不得在 Form 或 React 适配层再发明第二套状态机或副作用系统（例如直接依赖 Zustand/自写 Hooks 维护核心业务状态）。
+    Logix 是唯一的状态与逻辑运行时，后续不得在 Form 或 React 适配层再发明第二套状态机或副作用系统（例如直接依赖 Zustand/自写 Hooks 维护核心业务状态）。
 5.  **表单只是第一个领域验证**
-    新 Form 库（`@kernel/form`）明确被视为 Kernel 的一个 Domain 实例，用来反向验证 Kernel API 的合理性，而不是与 Kernel 并行演进的另一套方案。
+    新 Form 库（`@logix/form`）明确被视为 Logix 的一个 Domain 实例，用来反向验证 Logix API 的合理性，而不是与 Logix 并行演进的另一套方案。
 
 ## 5. 核心原则 (Core Principles)
 

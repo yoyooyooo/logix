@@ -16,8 +16,8 @@ Interaction Intent 回答：**“用户做了什么，系统如何立即响应�
 
 ### 1.1 关键特性
 
-1.  **Input -> Signal 转化**：这是 Kernel 架构的核心输入源。Interaction 负责将底层的 DOM 事件（Input）映射为语义化的业务信号（Signal）。
-2.  **纯 UI 反馈**：处理不涉及业务逻辑的视觉变化（如打开弹窗、切换 Tab），这部分通常直接由 UI 框架（React/Kernel Store）处理，不经过 Flow Runtime。
+1.  **Input -> Signal 转化**：这是 Logix 架构的核心输入源。Interaction 负责将底层的 DOM 事件（Input）映射为语义化的业务信号（Signal）。
+2.  **纯 UI 反馈**：处理不涉及业务逻辑的视觉变化（如打开弹窗、切换 Tab），这部分通常直接由 UI 框架（React/Logix Store）处理，不经过 Flow Runtime。
 3.  **解耦**：Interaction 层的变化（如从按钮点击改为快捷键触发）不影响 Behavior 层的逻辑。
 
 ## 2. 模型详解
@@ -78,9 +78,9 @@ interface UiEffectIntent {
     - 含义：点击按钮触发该逻辑 (Emit Signal)。
     - 视觉：通常用实线表示，线上可标注 Signal 名称。
 
-## 5. Kernel 运行时落地
+## 5. Logix 运行时落地
 
-当 `runtimeTarget = 'frontend-kernel'` 时，Interaction Intent 会被编译为 Kernel 的 Input 监听规则：
+当 `runtimeTarget = 'logix-engine'` 时，Interaction Intent 会被编译为 Logix 的 Input 监听规则：
 
 ```typescript
 // 编译前 (Intent)
@@ -90,7 +90,7 @@ interface UiEffectIntent {
   action: { type: 'emitSignal', signalId: 'submit' }
 }
 
-// 编译后 (Kernel Logic)
+// 编译后 (Logix Logic)
 store.onInput('submitBtn_click', (event, ops) => {
   ops.emit('submit', extractPayload(event));
 })

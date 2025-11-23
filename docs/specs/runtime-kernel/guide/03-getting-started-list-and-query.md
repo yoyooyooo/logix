@@ -9,11 +9,11 @@
 - 切换页码或每页条数时自动重新拉取数据；  
 - 显示加载中状态与空/错误态，并支持手动刷新。  
 
-本指南只关注「如何用 Kernel 与其 Adapter 写出这类页面」，不讨论具体 UI 组件实现。
+本指南只关注「如何用 Logix 与其 Adapter 写出这类页面」，不讨论具体 UI 组件实现。
 
 ## 2. 步骤一：设计 State Schema
 
-先在 Kernel 中为列表页定义状态结构（详见 `core/examples/02-complex-list.md` 的 Schema 段落）：
+先在 Logix 中为列表页定义状态结构（详见 `core/examples/02-complex-list.md` 的 Schema 段落）：
 
 - `filters`：查询条件对象（关键字、状态等）；  
 - `pagination`：页码、每页条数、总数；  
@@ -36,7 +36,7 @@
 实践要点：
 
 - 把「筛选变化 -> 重置页码 -> 触发加载」拆成两个规则：一个只改页码，一个负责加载；  
-- 请求逻辑放在 Kernel Logic 中，通过注入的 `services.Api` 调用后端，避免在 React 组件内写 `useEffect`。  
+- 请求逻辑放在 Logix Logic 中，通过注入的 `services.Api` 调用后端，避免在 React 组件内写 `useEffect`。  
 
 ## 4. 步骤三：在 React 中接入
 
@@ -45,7 +45,7 @@
 - 使用 `useSelector` 只订阅当前组件真正关心的切片（例如列表数据、分页信息、加载状态）；  
 - 通过派发 Action 或调用 `set` 来修改 `filters`、`pagination` 并驱动逻辑规则。  
 
-表单式的筛选区域可以结合 `@kernel/form` 的 `useForm` / `useField`（见 `../form/03-react-api.md`），把「筛选表单」本身也纳入 Kernel 状态机。
+表单式的筛选区域可以结合 `@logix/form` 的 `useForm` / `useField`（见 `../form/03-react-api.md`），把「筛选表单」本身也纳入 Logix 状态机。
 
 ## 5. 进一步阅读
 

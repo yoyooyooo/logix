@@ -1,91 +1,74 @@
 ---
 title: 97 · 统一逻辑运行时 (Unified Logic Runtime)
 status: draft
-version: 2 (Refined)
+version: 6 (Hybrid-Visual)
 ---
 
-> 本文档描述了 Logic Intent (Behavior) 的运行时实现。在 v3 模型下，我们不再显式区分前端/后端运行时目标，而是采用统一的 **Flow DSL** 作为逻辑真理，由编译器根据上下文自动分发。
+> 本文档描述了 Logic Intent (Behavior) 的运行时实现。在 v3 模型下，我们采用统一的 **Flow DSL** 作为逻辑真理，由编译器根据上下文自动分发。
 
 ## 1. 核心理念：One Flow, Any Runtime
 
 Logic Intent 的 Impl 层是 **Flow DSL**。它是一种声明式的、图状的业务逻辑描述。
 
-*   **统一表达**：无论是“前端表单校验”还是“后端订单创建”，都使用同一套 DSL 描述（Trigger -> Steps -> Effects）。
-*   **环境无关**：Flow DSL 只描述“做什么 (What)”，不描述“在哪里做 (Where)”。
+## 2. 动态性与热更新 (Dynamism & HMR)
 
-## 2. Flow DSL v3 结构
+为了支持“全双工编排”和极致的开发体验 (DX)，Logix Runtime 必须具备动态加载与热替换能力。
+
+### 2.1 Interpreter Mode (开发态)
+
+在开发环境中，Logix 支持直接解释执行 Intent JSON，无需编译为 TS 代码。这实现了 **0 延迟** 的图码同步。
+
+### 2.2 Hot Swapping & State Migration (热替换与状态迁移)
+
+当 Logic 发生变更时（例如用户在画布上修改了流程），Logix 不仅要替换 Rule，还要**保留当前状态**。
 
 ```typescript
-interface FlowDSL {
-  id: string;
-  // 触发源：监听信号
-  trigger: {
-    signalId: string; // e.g. 'submitOrder'
-  };
+// Logix 内部逻辑
+function replaceRule(ruleId, newRule) {
+  // 1. 暂停旧 Rule，导出 State 快照
+  const snapshot = store.snapshot(ruleId);
   
-  // 逻辑编排 (DAG)
-  nodes: Record<string, FlowNode>;
-  edges: FlowEdge[];
+  // 2. 卸载旧 Rule
+  store.removeRule(ruleId);
+  
+  // 3. 挂载新 Rule，注入快照
+  // Logix 会尝试按 Path 匹配恢复状态
+  store.addRule(newRule, { initialState: snapshot });
 }
-
-type FlowNode = 
-  | ServiceCallNode   // 调用领域服务 (Inventory.check)
-  | StateUpdateNode   // 更新状态 (UIState.isSubmitting)
-  | BranchNode        // 逻辑分支
-  | EmitSignalNode    // 发射新信号
 ```
 
-## 3. 运行时分发 (Runtime Dispatch)
+**迁移策略**：
+*   **Exact Match**: 路径完全一致，直接恢复。
+*   **Fuzzy Match**: 路径部分一致（如数组索引变了），尝试智能恢复。
+*   **Mismatch**: 路径不存在，丢弃该部分状态。
 
-虽然 DSL 是统一的，但代码执行环境是物理分离的（浏览器 vs 服务器）。平台编译器负责这种映射。
+### 2.3 Vite HMR 集成
 
-### 3.1 自动分发策略
+平台提供 Vite 插件，监听 `.flow.ts` 或 Intent JSON 的变更，自动触发热替换。
 
-编译器分析 Flow 中的节点类型：
+## 3. 图码同步原理 (Code <-> Graph)
 
-*   **纯前端逻辑**：如果 Flow 只包含 `StateUpdateNode` (UI 状态) 和简单的 `BranchNode`。
-    *   -> **编译目标**：Frontend Kernel Logic (运行在浏览器主线程)。
-*   **纯后端逻辑**：如果 Flow 包含敏感的 `ServiceCallNode` (如支付、数据库写)。
-    *   -> **编译目标**：Effect Flow Runtime (运行在 Server/BFF)。
-*   **混合逻辑**：如果 Flow 既更新 UI 又调后端。
-    *   -> **编译目标**：Frontend Kernel (负责 UI 更新) + Remote Call (调用后端 Flow)。
+平台利用 **AST 锚点 (Anchors)** 实现代码与画布的无损同步。
 
-### 3.2 Effect-TS 的角色
+*   **Code -> Graph**: 解析带有 `@intent` 标记的代码块，重建图结构。
+*   **Graph -> Code**: 修改图结构后，利用 `ts-morph` 精准修改对应的 AST 节点。
 
-无论是在前端 Kernel 还是后端 Runtime，我们都推荐使用 **Effect-TS** 作为底层的执行引擎。
+### 3.1 混合可视化 (Hybrid Visualization)
 
-*   **统一原语**：使用 `Effect` 处理异步、错误、重试和资源管理。
-*   **统一 Layer**：通过依赖注入 (Layer) 屏蔽环境差异。例如 `LogService` 在前端调用 `console.log`，在后端调用 `Winston`。
+运行时支持三种级别的可视化呈现：
 
-## 4. 示例：混合 Flow 的编译
+1.  **White Box (Managed)**: 标准 DSL 节点。完全可视化，支持拖拽、参数配置。
+2.  **Gray Box (Ejected)**: 结构已知但参数被人工修改的节点。显示为“已修改”，仅允许查看代码或重置。
+3.  **Black Box (Raw)**: 纯手写的 Effect 代码块。在图中显示为代码编辑器组件，支持直接编写 TS 代码。
 
-**Flow DSL**:
-```yaml
-Trigger: onSignal('submit')
-Step 1: Update UI (loading = true)
-Step 2: Call Service (Order.create)
-Step 3: Update UI (loading = false)
-Step 4: Emit Signal (navigate: success-page)
-```
+## 4. 运行时分发 (Runtime Dispatch)
 
-**编译产物 (Frontend Kernel)**:
-```typescript
-// 自动生成的 Kernel Logic
-rule({
-  trigger: onSignal('submit'),
-  do: Effect.gen(function* () {
-    yield* set('loading', true);
-    try {
-      // 远程调用后端 Flow
-      yield* callRemote('Order.create', ...);
-      yield* emit('navigate', 'success-page');
-    } finally {
-      yield* set('loading', false);
-    }
-  })
-})
-```
+编译器分析 Flow 中的节点类型，自动决定代码生成的目标环境：
 
-## 5. 总结
+*   **Logix Engine (前端)**：纯 UI 逻辑。
+*   **Effect Flow Runtime**：纯后端逻辑。
+*   **Hybrid**：混合逻辑（Logix 负责 UI + Remote Call）。
 
-用户无需关心 `runtimeTarget`。他们只需编排逻辑。平台负责将这段逻辑“显影”到正确的物理环境中执行。
+## 5. Effect-TS 的角色
+
+无论是在前端 Logix 还是后端 Runtime，我们都推荐使用 **Effect-TS** 作为底层的执行引擎。

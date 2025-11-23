@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Methodology**: MECE (Mutually Exclusive, Collectively Exhaustive)
-> **Purpose**: 通过正交分解，穷尽 Kernel 可能面临的所有业务场景，验证 API 的完备性。
+> **Purpose**: 通过正交分解，穷尽 Logix 可能面临的所有业务场景，验证 API 的完备性。
 
 ## Dimension 1: Trigger Source (触发源)
 *   **T1 (Single Path)**: 单个字段变化 (e.g. `user.name`)
@@ -47,7 +47,7 @@
 
 ### 1. 高频推送的批量更新 (S11)
 *   **问题**: 如果 WebSocket 每秒推送 1000 次，单纯的 `set` 会导致 UI 卡死。即使有 `batch`，也需要一个机制来“收集”一段时间内的推送，然后一次性 `batch` 写入。
-*   **解法**: 需要结合 Effect 的 `Stream.buffer` 或 `Stream.groupedWithin`。这属于 User Land 的逻辑，但 Kernel 应该提供示例。
+*   **解法**: 需要结合 Effect 的 `Stream.buffer` 或 `Stream.groupedWithin`。这属于 User Land 的逻辑，但 Logix 应该提供示例。
 
 ### 2. 数组的精细化操作 (S06, S07)
 *   **问题**: `watchPattern` 虽然能监听到变化，但如果数组很大，频繁触发 pattern 匹配可能会有性能开销。
@@ -55,4 +55,4 @@
 
 ### 3. 复杂的流控制组合 (S15+)
 *   **问题**: 如果既要防抖，又要竞态取消，还要重试，还要错误回退，代码会很复杂。
-*   **解法**: Effect 的组合子 (`pipe`, `retry`, `timeout`) 是解药。Kernel 不需要额外造轮子，只需要暴露 Effect 的能力。
+*   **解法**: Effect 的组合子 (`pipe`, `retry`, `timeout`) 是解药。Logix 不需要额外造轮子，只需要暴露 Effect 的能力。

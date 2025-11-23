@@ -1,6 +1,6 @@
-# Intent Flow Runtime Kernel · 说明与导航
+# Logix Engine · 说明与导航
 
-> 本目录定义了 Intent Flow 平台中「运行时内核 (Runtime Kernel)」的整体方案：从指导思想、架构分工，到 Kernel API 契约、典型场景与示例代码骨架。
+> 本目录定义了 Intent Flow 平台中「逻辑引擎 (Logix Engine)」的整体方案：从指导思想、架构分工，到 Logix API 契约、典型场景与示例代码骨架。
 
 ## 文档分组概览
 
@@ -12,13 +12,13 @@
   核心背景与长期判断；为什么需要一个 AI-Ready 的标准化运行时。
 
 - `01-architecture.md`  
-  Kernel / Form / React 三层的能力分工与依赖关系；Monorepo 结构与各包的角色。
+  Logix / Form / React 三层的能力分工与依赖关系；Monorepo 结构与各包的角色。
 
 - `03-intent-alignment.md`  
-  Intent 模型与 Kernel 概念的映射关系；为何 Kernel 适合作为 Intent-Driven AI Coding 的运行时目标。
+  Intent 模型与 Logix 概念的映射关系；为何 Logix 适合作为 Intent-Driven AI Coding 的运行时目标。
 
 - `04-platform-integration.md`  
-  Kernel 在 intent-driven 平台中的角色；Intent 各层如何映射到 Schema / Logic / Services / Constraints；  
+  Logix 在 intent-driven 平台中的角色；Intent 各层如何映射到 Schema / Logic / Services / Constraints；  
   与 Effect Flow Runtime 及平台静态分析/竞态治理的协作方式。
 
 - `09-kernel-v2-capabilities.md`  
@@ -27,7 +27,7 @@
 ### 2. 内核契约与实现层（What & How）
 
 - `02-kernel-design.md`  
-  Kernel 运行时的完整能力面与 API 契约：`makeStore`、State/Actions/Logic、Path 体系、可观测性等。
+  Logix 运行时的完整能力面与 API 契约：`makeStore`、State/Actions/Logic、Path 体系、可观测性等。
 
 - `02-flow-kit-design.md`  
   Flow Operator System 设计：声明式逻辑原语、Flow.define、算子体系 (Source/Task/Sink)。
@@ -42,11 +42,11 @@
   调试与观测能力：调试事件、Trace、日志结构等。
 
 - `integration-guide.md`  
-  第三方库（React Query / WebSocket / RxJS 等）到 Kernel 的适配模式；  
+  第三方库（React Query / WebSocket / RxJS 等）到 Logix 的适配模式；  
   如何统一抽象成 `Stream` 并通过 `on` / `mount` / `flow` 接入。
 
 - `05-react-integration.md`  
-  从 Kernel 视角出发的 React 适配总览：Adapter 的职责边界、状态同步策略、派生状态分层等。  
+  从 Logix 视角出发的 React 适配总览：Adapter 的职责边界、状态同步策略、派生状态分层等。  
   具体 Hooks API 与 React 特性支持的详细规范在 `../react/` 目录中展开。
 
 ### 3. 场景与示例层（Examples & Scenarios）
@@ -58,14 +58,14 @@
 
 - `examples/`  
   - 以「表单 / 列表 / 外部集成 / 并发 / 系统能力 / 意图模式」等维度整理的示例代码骨架。  
-  - 既用于验证 Kernel API 是否顺手，也可作为 AI / 人类出码的参考蓝本。
+  - 既用于验证 Logix API 是否顺手，也可作为 AI / 人类出码的参考蓝本。
 
 ## 推荐阅读路径
 
 - 初次接触 / 架构对齐  
   按顺序阅读：`00-manifesto.md` → `01-architecture.md` → `02-kernel-design.md` → `03-intent-alignment.md` / `04-platform-integration.md`。
 
-- 设计/演进内核能力  
+- 设计/演进引擎能力  
   以 `02-kernel-design.md` 为主合同，同时结合 `06-implementation-architecture.md`、`07-usage-guidelines.md`、`08-debugging-features.md`、`09-kernel-v2-capabilities.md` 讨论具体改动。
 
 - 评估场景覆盖度或为 AI/人类准备范例  

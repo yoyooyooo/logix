@@ -25,7 +25,7 @@ const aiIntent = {
 };
 
 // 3. 运行时编译 (Compiler Layer)
-// 将 Intent 转换为 Kernel 的 LogicRule
+// 将 Intent 转换为 Logix 的 LogicRule
 const dynamicRule = store.logicApi.watch('amount', (amount, { get, set }) => 
   Effect.gen(function*() {
     const { isVip } = yield* get;
@@ -50,4 +50,4 @@ yield* ruleHandle.dispose();
 
 *   **热插拔**: `addRule` 允许在不重建 Store 的情况下扩展逻辑。
 *   **隔离性**: 动态规则运行在独立的子 Scope 中，`dispose` 只会清理该规则产生的副作用，不影响主 Store。
-*   **AI 桥接**: 虽然 Kernel 运行的是 TS 代码，但配合一个简单的 Compiler/Interpreter，就能完美对接 AI 的 JSON 输出。
+*   **AI 桥接**: 虽然 Logix 运行的是 TS 代码，但配合一个简单的 Compiler/Interpreter，就能完美对接 AI 的 JSON 输出。

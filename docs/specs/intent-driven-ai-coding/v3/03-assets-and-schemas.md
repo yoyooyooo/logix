@@ -1,7 +1,7 @@
 ---
 title: 03 · 资产映射与 Schema 定义 (Assets & Schemas)
 status: draft
-version: 3 (Refined)
+version: 11 (Metadata-Enhanced)
 ---
 
 > 本文档定义了“三位一体”模型下的核心资产结构。Intent 是唯一的真理来源，Pattern 是复用的模具，Flow 和 Schema 是 Intent 的高保真投影。
@@ -21,28 +21,10 @@ interface IntentSpecV3 {
   logic: LogicIntentNode[];
   domain: DomainIntentNode[];
 
-  // 全局约束 (原 Constraint Intent)
+  // 全局约束
   constraints?: {
     performance?: PerformanceBudget;
     security?: SecurityPolicy;
-  };
-}
-
-// 通用节点结构：双模态
-interface IntentNode<T_Spec, T_Impl> {
-  id: string;
-  // 需求规格 (PM)
-  spec: {
-    description: string;
-    acceptanceCriteria?: string[];
-    attachments?: string[];
-    status: 'Draft' | 'Review' | 'Approved';
-  };
-  // 技术实现 (Dev)
-  impl: {
-    patternId?: string; // 选用的模式
-    config?: T_Impl;    // 具体配置
-    status: 'Pending' | 'Implementing' | 'Done';
   };
 }
 ```
@@ -52,7 +34,6 @@ interface IntentNode<T_Spec, T_Impl> {
 UI 意图描述界面结构。它是一棵组件树。
 
 ```typescript
-// T_Impl for UI
 interface UIImplConfig {
   component: string; // 组件名或 Pattern ID
   props: Record<string, any>;
@@ -68,101 +49,124 @@ interface UIImplConfig {
 
 ## 3. Logic Intent Schema (Flow DSL)
 
-Logic 意图描述业务流程。它的 Impl 就是 Flow DSL。
+Logic 意图描述业务流程。它的 Impl 是 Flow DSL，直接映射到 Logix Engine / Effect 运行时。
 
 ```typescript
-// T_Impl for Logic
 interface LogicImplConfig {
+  // 触发器
   trigger: {
     type: 'onSignal';
     signalId: string;
+    payloadSchema?: JSONSchema;
   };
   
-  // 流程编排 (Flow DSL)
+  // 流程编排 (DAG)
   flow: {
     nodes: Record<string, FlowNode>;
     edges: FlowEdge[];
   };
+
+  // 运行时约束 (Effect Context)
+  constraints?: {
+    concurrency?: 'switch' | 'queue' | 'exhaust'; // Effect.switchMap 等
+    timeout?: number;
+    retry?: { count: number; delay: string }; // Effect.retry
+    transaction?: boolean; // Logix Transaction
+  };
+
+  // 自动化测试用例 (Self-Verification)
+  testCases?: Array<{
+    name: string;
+    input: any;
+    mock?: Record<string, any>; // Mock Service Returns
+    expect?: {
+      state?: Record<string, any>;
+      signals?: string[];
+      error?: string;
+    };
+  }>;
 }
 
 type FlowNode = 
   | { type: 'service-call'; service: string; method: string; args: any }
-  | { type: 'branch'; condition: string }
+  | { type: 'update-state'; path: string; value: any }
   | { type: 'emit-signal'; signalId: string; payload: any }
-  | { type: 'update-state'; path: string; value: any };
+  | { type: 'branch'; condition: string }
+  // 逃逸节点：用于承载无法解析的代码块
+  | { type: 'raw-code'; content: string; originalHash?: string };
+
+// 元数据：用于支持全双工同步
+interface NodeMetadata {
+  source?: {
+    file: string;
+    line: number;
+    hash: string; // 内容指纹，用于检测人工修改
+  };
+  visual?: {
+    x: number;
+    y: number;
+    collapsed?: boolean;
+  };
+}
 ```
 
 ## 4. Domain Intent Schema
 
-Domain 意图描述数据模型。它的 Impl 是 Schema 定义。
+Domain 意图描述数据模型和服务契约。
 
 ```typescript
-// T_Impl for Domain
 interface DomainImplConfig {
   name: string;
+  // 实体定义 (映射为 Zod/Effect Schema)
   fields: Record<string, FieldSchema>;
-  relations: RelationSchema[];
   
-  // 数据源配置
+  // 服务契约 (映射为 Effect Tag)
+  services: Record<string, {
+    args: FieldSchema[];
+    return: FieldSchema | 'void';
+    errors?: string[];
+  }>;
+  
+  // 实现来源 (映射为 Effect Layer)
   source?: {
-    type: 'api' | 'store' | 'local';
-    config: any;
+    type: 'api' | 'store' | 'custom';
+    config?: any;
   };
 }
 ```
 
-## 5. PatternSpec v3 (The Mold)
+## 5. Logix Builder SDK (`@logix/builder`)
 
-Pattern 是对一类 Intent 实现的封装。它吞噬了原有的 Template 和 Code Structure 概念。
+为了支持 **Dynamic Pattern** 的编写，Logix 体系提供了一套强类型的 Builder SDK。它是 Pattern 生成逻辑的“笔”。
+
+详细设计请参考：**[Logix Builder SDK Design](../../runtime-kernel/builder/01-builder-design.md)**
 
 ```typescript
-interface PatternSpecV3 {
-  id: string;
-  name: string;
-  type: 'UI' | 'Logic' | 'Domain'; // 作用域
-  
-  // 1. 接口定义 (Props Schema)
-  propsSchema: JSONSchema;
-  
-  // 2. 实现模板 (原 Template)
-  // 定义了该 Pattern 实例化时，如何生成代码文件
-  implementation: {
-    files: Array<{
-      pathTemplate: string; // e.g. "src/components/{{name}}.tsx"
-      contentTemplate: string;
-    }>;
-    dependencies?: string[];
-  };
-  
-  // 3. 默认行为
-  defaultConfig?: any;
-}
+import { Flow, UI, Domain } from '@logix/builder';
+import { OrderService } from './domain/order'; // 引用 Domain 定义
+
+// 示例：使用 Builder 构建 Logic Intent
+const logic = Flow.define({
+  trigger: Flow.onSignal('submit'),
+  steps: [
+    // 1. 直接调用 Service Proxy (生成 AST)
+    OrderService.validate({ entityName }),
+    
+    // 2. 组合：嵌入其他 Pattern 生成的 Flow
+    Flow.embed(otherFlow),
+    
+    // 3. 结构化控制流
+    Flow.if(
+      '${result.valid}',
+      OrderService.submit(),
+      Flow.emit('toast', 'Error')
+    )
+  ]
+});
 ```
 
-### Pattern 如何处理“工程结构”？
-
-用户不再定义“我要创建 `order-list.tsx`”。
-用户选择 `TablePattern`，该 Pattern 的 `implementation` 字段定义了：“使用我时，请在 `components/` 目录下创建一个 `.tsx` 文件，并在 `stores/` 下创建一个 slice。”
-
-平台根据 Pattern 的定义自动生成 Plan，用户无需操心文件路径。
-
-## 6. 资产关系图
-
-```mermaid
-graph TD
-    Intent[Intent (SSoT)] -->|包含| UI[UI Intent]
-    Intent -->|包含| Logic[Logic Intent]
-    Intent -->|包含| Domain[Domain Intent]
-
-    UI -->|引用| UIPattern[UI Pattern]
-    Logic -->|引用| LogicPattern[Logic Pattern]
-    Domain -->|引用| DomainPattern[Domain Pattern]
-
-    UIPattern -->|生成| Code[Code Files]
-    LogicPattern -->|生成| Code
-    DomainPattern -->|生成| Code
-
-    PM((PM)) -->|编辑 Spec| Intent
-    Dev((Dev)) -->|编辑 Impl| Intent
-    LLM((LLM)) -->|辅助转化| Intent
-```
+**核心价值**：
+1.  **同构体验**：Service 调用语法与 Runtime 完全一致。
+2.  **类型安全**：Service 引用是强类型的，防止拼写错误。
+3.  **逻辑复用 (Composition)**：支持 `Flow.embed`，像搭积木一样组合 Pattern。
+4.  **全双工支持 (Source Map)**：在开发模式下，自动注入 `__source` 元数据（文件/行号/Hash），支持 Graph -> Code 的精准反写。

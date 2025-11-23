@@ -11,7 +11,7 @@
 const TenantALayer = Layer.succeed(UserApi, TenantAImpl);
 const TenantBLayer = Layer.succeed(UserApi, TenantBImpl);
 
-// Kernel 代码完全复用，无需感知租户
+// Logix 代码完全复用，无需感知租户
 const store = makeStore({
   logic: ({ watch }) => [
     watch('id', (id, { services }) => 
@@ -27,8 +27,8 @@ const store = makeStore({
 
 ```typescript
 // 需求：将所有 watch 中的错误统一路由到 error$ 流
-// Kernel 内部实现：
-// watch 的 Effect 如果失败，Kernel 会捕获并 emit 到 error$
+// Logix 内部实现：
+// watch 的 Effect 如果失败，Logix 会捕获并 emit 到 error$
 
 // 用户侧订阅：
 store.error$.pipe(

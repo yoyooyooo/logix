@@ -1,7 +1,7 @@
 # Core Scenarios (核心场景压力测试)
 
 > **Status**: Draft
-> **Purpose**: 用于验证 Kernel API 设计是否完备，能否覆盖常见的业务复杂度。
+> **Purpose**: 用于验证 Logix API 设计是否完备，能否覆盖常见的业务复杂度。
 
 ## 1. 基础联动 (Basic Linkage)
 
@@ -84,8 +84,7 @@ watch('items', (items, { set }) =>
   })
 )
 ```
-> **Note**: 通配符监听 (`items.*.quantity`) 适用于「大规模行级联动」等进阶场景，属于 Kernel 的集合能力范畴。当前示例优先演示「整体数组更新」这一更易理解、实现成本更低的写法。
-
+> **Note**: 通配符监听 (`items.*.quantity`) 适用于「大规模行级联动」等进阶场景，属于 Logix 的集合能力范畴。当前示例优先演示「整体数组更新」这一更易理解、实现成本更低的写法。
 ## 4. 生命周期 (Lifecycle)
 
 ### Scenario 4.1: 初始化加载 (Init Load)
@@ -111,7 +110,7 @@ watch('userId', (id, { set, services }) =>
 **描述**: 监听 WebSocket 的 `price_update` 事件，实时更新 Store 中的 `stock.price`。
 **API 验证**:
 ```typescript
-// WebSocket 实时更新适用于「外部事件驱动」场景，属于 Kernel 的外部源集成能力。
+// WebSocket 实时更新适用于「外部事件驱动」场景，属于 Logix 的外部源集成能力。
 on(services.WebSocket.priceStream, (price, { set }) => 
   set('stock.price', price)
 )
@@ -121,7 +120,7 @@ on(services.WebSocket.priceStream, (price, { set }) =>
 
 ## 能力对照表 (Capability Overview)
 
-> 本表用于概览 Kernel 在不同能力域上的支持情况，区分「常见场景」与「进阶场景」，而非划分版本或阶段。
+> 本表用于概览 Logix 在不同能力域上的支持情况，区分「常见场景」与「进阶场景」，而非划分版本或阶段。
 
 | 能力域 (Capability) | 典型场景 | 说明 |
 | :--- | :--- | :--- |

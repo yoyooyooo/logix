@@ -1,4 +1,4 @@
-# 02 · 第一个 Kernel 表单（Basic Form）
+# 02 · 第一个 Logix 表单（Basic Form）
 
 > 对应：`core/examples/01-basic-form.md`  
 > 目标：用最少的步骤，在项目里接一个「带联动和异步校验的注册表单」。
@@ -11,11 +11,11 @@
   - 用户名需要异步重名校验，输入停顿 500ms 后请求，期间要防止多次并发；  
   - 密码和确认密码不一致时要给出明确错误。
 
-这些都是典型的「贴近 UI 的行为」，`runtimeTarget` 很明显是 `frontend-kernel`。
+这些都是典型的「贴近 UI 的行为」，`runtimeTarget` 很明显是 `logix-engine`。
 
 ## 2. 步骤一：定义表单 Schema
 
-在任意合适的位置（例如 `src/features/register/kernel/schema.ts`）定义表单状态：
+在任意合适的位置（例如 `src/features/register/logix/schema.ts`）定义表单状态：
 
 - 对应 `core/examples/01-basic-form.md` 中的 `RegisterSchema`；  
 - 建议直接使用项目统一的 Schema 约定（`import { Schema } from "effect"`），方便以后与 Intent 对齐。
@@ -24,7 +24,7 @@
 
 ## 3. 步骤二：创建 Store（makeStore）
 
-在 `src/features/register/kernel/store.ts` 中：
+在 `src/features/register/logix/store.ts` 中：
 
 - 使用 `makeStore` 创建一个注册表单的 Store；  
 - 填入 `schema` / `initialValues` / `services`（如 `UserApi`），并编写 `logic`。
@@ -42,7 +42,7 @@
 在 React 层推荐的接入方式是：
 
 - 在 feature 的根组件中创建 Store（或通过依赖注入拿到）；  
-- 使用 `@kernel/react` 提供的 Hook（如 `useStore` / `useField`）把字段和状态绑定到 UI 控件上；  
+- 使用 `@logix/react` 提供的 Hook（如 `useStore` / `useField`）把字段和状态绑定到 UI 控件上；  
 - 按「Dumb UI」原则：组件只读 Store 的值，只派发 `set`/`action`，不写业务逻辑。
 
 示意流程：
@@ -63,7 +63,7 @@
   - 两次密码不一致时，是否正确显示错误。
 
 - **调试层面**（可选）：  
-  - 通过 Kernel 的 `debug$` 或 DevTools，看 `SET` / `ACTION` / `RULE_START` 等事件，确认联动链路清晰；  
+  - 通过 Logix 的 `debug$` 或 DevTools，看 `SET` / `ACTION` / `RULE_START` 等事件，确认联动链路清晰；  
   - 结合平台的 Intent/Flow 视图，检查规则与原始需求是否一致。
 
-当这个基础表单跑顺之后，你就掌握了使用 Kernel 的最小工作流：**定义 Schema → 创建 Store → 写 Logic → 用 React 订阅**。后续列表/外部集成/调用 Flow Runtime 都是在这个模式上叠加能力。
+当这个基础表单跑顺之后，你就掌握了使用 Logix 的最小工作流：**定义 Schema → 创建 Store → 写 Logic → 用 React 订阅**。后续列表/外部集成/调用 Flow Runtime 都是在这个模式上叠加能力。

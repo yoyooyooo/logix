@@ -1,58 +1,56 @@
 ---
 title: intent-driven · 意图驱动开发平台 (v3)
 status: draft
-version: 4 (Dev-Centric)
+version: 8 (Full-Duplex)
 ---
 
-## 1. 核心理念：意图显影 (Intent Development)
+## 1. 核心理念：意图显影与资产复用
 
-软件开发不应是“翻译文档”，而应是**意图的显影**。
-
-本平台致力于构建一个**意图显影引擎 (Intent Development Engine)**，让软件从模糊的“需求意图”平滑过渡到精确的“代码实现”。
+本平台致力于构建一个**意图显影引擎**与**资产共建平台**。它不仅帮助个人开发者提效，更帮助团队沉淀知识资产。
 
 ## 2. 三位一体模型 (The Trinity Model)
 
-我们摒弃了繁琐的工程分层，将意图收敛为三个核心维度：
+1.  **UI (Presentation)**：**躯壳**。界面结构与视觉表现。
+2.  **Logic (Behavior)**：**灵魂**。业务规则与流程编排。
+3.  **Domain (Data)**：**记忆**。业务概念与数据模型。
 
-1.  **UI (Presentation)**：**躯壳**。界面长什么样，如何响应视觉操作。
-2.  **Logic (Behavior)**：**灵魂**。业务规则是什么，流程如何流转。
-3.  **Domain (Data)**：**记忆**。业务概念有哪些，数据如何存储。
+## 3. 技术基座 (The Tech Stack)
 
-## 3. 双模态意图 (Dual-Modality)
-
-每一个意图节点都同时包含两面：
-
-*   **Spec (需求态)**：描述“User Story”、“Wireframe”、“Concept”。
-*   **Impl (实现态)**：描述“Component Tree”、“Flow DSL”、“Schema”。
-
-平台负责维护 Spec 与 Impl 的**实时同步与一致性检查**。
+*   **Runtime**: 基于 `Effect-TS` 构建可组合、可测试、并发安全的业务流程。
+*   **Engine**: **全双工锚点引擎 (Full-Duplex Anchor Engine)**。
+    *   支持 **Intent -> Code** 的高质量生成。
+    *   支持 **Code -> Intent** 的无损回流（即使代码被人工修改）。
+    *   支持 **Type Projection**，在 Web 端提供 IDE 级的类型安全。
 
 ## 4. 渐进式采用策略 (Progressive Adoption)
 
-我们认识到，组织架构的变革往往滞后于工具的革新。因此，平台设计了平滑的演进路线：
-
 ### Phase 1: 前端开发者的超级 IDE (Solo Mode)
-*   **场景**：前端开发者独自使用。
-*   **用法**：开发者自行录入 Spec（替代脑内设计或草稿纸），利用 LLM 生成 Impl，最后导出代码。
-*   **价值**：个人效能提升，代码质量标准化，逻辑思考显性化。
+*   **场景**：个人提效。
+*   **价值**：利用 AI 和内置 Pattern 快速生成高质量代码。
+*   **出口**：支持 **Clean Mode** 导出。生成纯净、无依赖的代码，随时脱离平台，零厂商锁定。
 
 ### Phase 2: 产研协作平台 (Team Mode)
-*   **场景**：PM、设计师加入平台。
-*   **用法**：PM 直接在 Spec 层撰写需求，设计师在 Canvas 层调整 UI Spec。前端专注于 Impl 层的实现与审核。
-*   **价值**：消除文档与代码的鸿沟，实现真正的 DevOps 闭环。
+*   **场景**：PM/Designer 介入。
+*   **价值**：消除文档与代码的鸿沟，实现 DevOps 闭环。
+
+### Phase 3: 资产运营平台 (Asset Mode)
+*   **场景**：团队资产沉淀。
+*   **用法**：
+    *   **提炼**：资深开发将本地最佳实践（Hooks, Flows）提炼为 Pattern 上传。
+    *   **复用**：团队成员消费 Pattern，实现技术标准的统一。
+*   **价值**：抵消人员流动带来的熵增，通过资产复用实现数倍提效。
 
 ## 5. 平台视图体系
 
-为了支持不同阶段的显影，平台提供三种视图：
-
-*   **文档视图 (Doc View)**：以自然语言编写需求，自动提取意图结构。
-*   **画布视图 (Canvas View)**：可视化编排 UI 线框与逻辑流程。
-*   **工坊视图 (Studio View)**：IDE 级的深度编辑，生成精确代码。
+*   **Doc View**：需求录入。
+*   **Canvas View**：架构编排（支持黑盒/白盒混合视图）。
+*   **Studio View**：代码生成与精修（支持 Monaco Editor 类型增强）。
 
 ## 6. 文档索引
 
-*   `00-platform-manifesto.md`：平台宣言与核心哲学。
+*   `00-platform-manifesto.md`：平台宣言与资产共建策略。
 *   `02-intent-layers.md`：详解三位一体模型。
 *   `03-assets-and-schemas.md`：核心资产结构定义。
-*   `04-intent-to-code-example.md`：v3 演练示例。
+*   `04-intent-to-code-example.md`：v3 演练示例（含锚点代码）。
+*   `06-codegen-and-parser.md`：全双工引擎与锚点规范。
 *   `97-effect-runtime-and-flow-execution.md`：Logic 意图的运行时实现。

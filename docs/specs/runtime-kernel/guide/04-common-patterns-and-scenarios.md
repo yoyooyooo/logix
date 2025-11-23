@@ -33,7 +33,7 @@
 适用场景：
 
 - 大部分表单字段级异步校验；  
-- 希望在 Kernel 层统一控制防抖/并发策略。
+- 希望在 Logix 层统一控制防抖/并发策略。
 
 ## 3. 多字段约束（如开始/结束时间）
 
@@ -58,7 +58,7 @@
 推荐模式（v1 标准写法）：
 
 - 优先监听整个数组 `watch('items', handler)`，在 handler 中全量重算；  
-- 在 `set('items', newItems)` 时依赖 Kernel 内部的 Deep Equal + Loop Protection 避免死循环。
+- 在 `set('items', newItems)` 时依赖 Logix 内部的 Deep Equal + Loop Protection 避免死循环。
 
 适用场景：
 
@@ -93,7 +93,6 @@
 适用场景：
 
 - 实时行情、任务进度条、通知中心等；  
-- 希望把外部源整合进同一套 Kernel 状态与调试视图。
+- 希望把外部源整合进同一套 Logix 状态与调试视图。
 
 > 更多细节和高级场景（动态逻辑、Intent 优先级、复杂流编排）可以继续参考 `core/scenarios/02-advanced-scenarios.md` 与 `core/examples/*`，本章只覆盖日常开发中最常遇到的几类“配方”。
-

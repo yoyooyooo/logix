@@ -18,11 +18,10 @@
 *   **模型架构**：Layout, View, Interaction, Behavior, Data, Code Structure。
 *   **状态**：已归档。作为架构演进中的一次重要探索，为 v3 的收敛提供了理论基础。
 
-## 🧠 决策记录 (Decision Log)
+## 🧠 决策与蓝图 (Decisions & Blueprint)
 
-关于我们为何从 v1 演进到 v2，最终收敛至 v3 的详细决策背景与理由，请参阅全局架构决策记录：
-
-*   **[Architecture Decision Records (ADR)](./adr.md)**
+*   **[Architecture Decision Records (ADR)](./adr.md)**: 记录了我们“为什么走到今天”的历史决策。
+*   **[Long-term Blueprint](./blueprint.md)**: 描绘了我们“未来要去哪里”的终局愿景（自愈架构、全双工编排）。
 
 ## 🗺️ 总体进展 (Progress)
 

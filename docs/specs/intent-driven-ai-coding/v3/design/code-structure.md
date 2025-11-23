@@ -10,7 +10,7 @@ version: 3
 
 Code Structure Intent 回答：**“意图最终变成了哪些文件？放在哪里？”**
 
-它连接了 Intent 模型与物理文件系统。在 v2 架构中，由于引入了双运行时（Effect/Kernel），文件结构变得更加分层和模块化。
+它连接了 Intent 模型与物理文件系统。在 v2 架构中，由于引入了双运行时（Effect/Logix Engine），文件结构变得更加分层和模块化。
 
 ## 2. 标准目录结构 (Standard Directory Layout)
 
@@ -26,7 +26,7 @@ src/features/order/
 ├── application/            # 应用层 (流程与状态)
 │   ├── flows/              # 后端 Effect 流程 (Behavior Intent)
 │   │   └── submit-order.flow.ts
-│   └── stores/             # 前端 Kernel 状态 (Interaction Intent)
+│   └── stores/             # 前端 Logix 状态 (Interaction Intent)
 │       └── order.store.ts
 ├── components/             # 表现层 (View Intent)
 │   ├── OrderTable.tsx
@@ -54,7 +54,7 @@ src/features/order/
 - **Layer 实现**：在 `infrastructure/OrderApiLive.ts` 中生成 `Layer.effect`。
 - **Runtime 聚合**：在 `index.ts` 中自动生成 `OrderFeatureLayer`，通过 `Layer.mergeAll` 聚合该模块所有服务的 Live 实现，供根运行时使用。
 
-### 3.2 Target: Frontend Kernel
+### 3.2 Target: Logix Engine
 - **落点**：`src/features/*/stores/*.store.ts`
 - **内容**：
   - `makeStore` 配置对象。

@@ -4,12 +4,12 @@
 > **Date**: 2025-11-21
 > **Layer**: Core Feature
 
-本文档定义 Kernel v1 的高级调试特性。基于 Effect-TS 的结构化并发与追踪能力，我们将提供超越传统状态库（如 Redux/MobX）的调试体验，核心聚焦于 **因果追踪 (Causality)** 和 **确定性重放 (Deterministic Replay)**。
+本文档定义 Logix v1 的高级调试特性。基于 Effect-TS 的结构化并发与追踪能力，我们将提供超越传统状态库（如 Redux/MobX）的调试体验，核心聚焦于 **因果追踪 (Causality)** 和 **确定性重放 (Deterministic Replay)**。
 
 ## 1. 核心理念 (Core Philosophy)
 
 传统的调试通常是“基于状态快照”的（State Snapshot），开发者只能看到“结果”。
-Kernel 的调试是“基于因果链路”的（Causality Chain），开发者能看到“过程”和“原因”。
+Logix 的调试是“基于因果链路”的（Causality Chain），开发者能看到“过程”和“原因”。
 
 *   **Not just "What happened?"** (State changed from A to B)
 *   **But "Why did it happen?"** (Triggered by Event X -> Rule Y -> Effect Z)
@@ -19,7 +19,7 @@ Kernel 的调试是“基于因果链路”的（Causality Chain），开发者�
 
 ### 2.1 Causality Chain (因果链追踪)
 
-Kernel 利用 Effect 的 `Trace` 机制，自动构建每次状态变更的完整调用栈。
+Logix 利用 Effect 的 `Trace` 机制，自动构建每次状态变更的完整调用栈。
 
 **API**: `store.explain(path: string)`
 
@@ -39,7 +39,7 @@ Kernel 利用 Effect 的 `Trace` 机制，自动构建每次状态变更的完�
 
 ### 2.2 Time Travel Replay (时光机重放)
 
-由于 Kernel 的 Logic 是纯粹的 Effect，且输入仅由 State 和 Event 构成，我们可以实现**完全确定性**的重放。
+由于 Logix 的 Logic 是纯粹的 Effect，且输入仅由 State 和 Event 构成，我们可以实现**完全确定性**的重放。
 
 **API**:
 *   `store.exportSession(): SessionData`
@@ -69,7 +69,7 @@ interface SessionData {
 
 **控制台输出**:
 ```text
-[Kernel] Rule [UpdateTotal] triggered:
+[Logix] Rule [UpdateTotal] triggered:
   ✅ 'items.0.price' changed (10 -> 20)
   ❌ 'items.0.quantity' unchanged (1)
   -> Executing Handler...
@@ -101,7 +101,7 @@ graph TD
 
 ## 3. DevTools Protocol (协议定义)
 
-Kernel 通过 `store.debug$` 流向外部暴露调试信息。任何兼容此协议的 UI 工具（如 Chrome Extension）均可接入。
+Logix 通过 `store.debug$` 流向外部暴露调试信息。任何兼容此协议的 UI 工具（如 Chrome Extension）均可接入。
 
 **Event Types**:
 

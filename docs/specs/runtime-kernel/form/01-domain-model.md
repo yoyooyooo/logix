@@ -3,13 +3,13 @@
 > **Status**: Definitive (v2.0 Dual-Store)
 > **Layer**: Form Domain
 
-本文档定义表单引擎在 Kernel 之上的数据结构映射与 Action 协议。采用 **Dual-Store (双存储)** 模式以分离业务价值与交互状态。
+本文档定义表单引擎在 Logix 之上的数据结构映射与 Action 协议。采用 **Dual-Store (双存储)** 模式以分离业务价值与交互状态。
 
 ## 1. 概念映射 (Concept Mapping)
 
-Form 领域对 Kernel 的通用概念进行了语义化映射，以区分“容器”与“净荷”。
+Form 领域对 Logix 的通用概念进行了语义化映射，以区分“容器”与“净荷”。
 
-| Kernel Concept | Form Concept | Description |
+| Logix Concept | Form Concept | Description |
 | :--- | :--- | :--- |
 | `stateSchema` | **`dataSchema`** | 定义纯净的业务数据结构 (The Payload) |
 | `initialState` | **`initialData`** | 业务数据的初始回填值 (The Value) |
@@ -56,9 +56,9 @@ interface UIState {
 }
 ```
 
-### 2.3 The Unified State (Kernel View)
+### 2.3 The Unified State (Logix View)
 
-Kernel 看到的最终 State 结构如下：
+Logix 看到的最终 State 结构如下：
 
 ```typescript
 type FormState<T> = {
@@ -91,7 +91,7 @@ type FormAction =
 
 ## 4. 路径系统 (Path System)
 
-表单引擎沿用 Kernel 的路径系统。
+表单引擎沿用 Logix 的路径系统。
 
 *   **Object**: `user.name`
 *   **Array**: `items.0.price`

@@ -1,8 +1,8 @@
 # React Integration Strategy (React 集成规划)
 
 > **Status**: Definitive (v2.1 Robust Adapter)
-> **Layer**: Adapter Layer (`@kernel/react`)
-> **Purpose**: 定义如何将 Kernel 的状态与逻辑优雅地映射到 React 组件树，同时保持高性能和低心智负担。
+> **Layer**: Adapter Layer (`@logix/react`)
+> **Purpose**: 定义如何将 Logix 的状态与逻辑优雅地映射到 React 组件树，同时保持高性能和低心智负担。
 
 ## 1. 核心原则 (Core Principles)
 
@@ -16,10 +16,10 @@
 
 ### 2.1 Event Staging (事件暂存区)
 
-**问题**: 在 Suspense 模式下，组件可能被挂起。如果 Kernel 在此期间派发瞬态事件（如 Toast），组件恢复后会丢失该事件。
+**问题**: 在 Suspense 模式下，组件可能被挂起。如果 Logix 在此期间派发瞬态事件（如 Toast），组件恢复后会丢失该事件。
 
 **解决方案**: **Commit-Phase Consumption**
-1.  Kernel 将瞬态事件推入 `StagingQueue`。
+1.  Logix 将瞬态事件推入 `StagingQueue`。
 2.  React 组件通过 `useEventSubscription` 订阅。
 3.  只有在组件的 Commit 阶段（`useEffect` 执行时），才从队列中消费事件。
 4.  如果组件被卸载或挂起，事件保留在队列中，等待下一次挂载消费。
@@ -45,22 +45,22 @@
 
 ## 3. Adapter 能力视图
 
-从 Kernel 视角看，React Adapter 需要完成三类工作：
+从 Logix 视角看，React Adapter 需要完成三类工作：
 
 1. **生命周期与 Runtime 承载**：在组件树中创建/销毁 Store，并通过 `RuntimeProvider` 注入 Effect Runtime 与 Services。
 2. **高性能订阅与 Selector**：基于 `useSyncExternalStore` + Selector 模式，将 `state$` 转换为 React 组件可消费的切片。
-3. **事件桥接与错误通道**：把用户交互映射为 Kernel 事件/信号，并将 `error$` 等调试流桥接到 React Error Boundary 或全局提示。
+3. **事件桥接与错误通道**：把用户交互映射为 Logix 事件/信号，并将 `error$` 等调试流桥接到 React Error Boundary 或全局提示。
 
 ## 4. 派生状态分层 (Derived State Layering)
 
-Kernel 仅负责持久化业务数据与必要的业务级派生状态；UI 层的瞬态派生数据由 React 端的 Selector 承担。实践上：
+Logix 仅负责持久化业务数据与必要的业务级派生状态；UI 层的瞬态派生数据由 React 端的 Selector 承担。实践上：
 
-- 需要回放、审计、传输给后端或被其他逻辑依赖的字段（如 `orderTotal`、`isAdult`），应通过 Logic 规则写入 Kernel State；
+- 需要回放、审计、传输给后端或被其他逻辑依赖的字段（如 `orderTotal`、`isAdult`），应通过 Logic 规则写入 Logix State；
 - 只服务于本组件渲染的瞬态字段（如格式化日期、拼接展示文案），应通过 `useSelector` 在渲染期计算。
 
 ## 5. 与领域层（Form 等）的配合
 
 表单等领域库不直接操作 React Adapter，而是作为其「上层客户」：
 
-- Form Engine 在 Kernel 之上定义 `FormState` / `FormEvent` 等领域模型，并通过 Logic 规则与 Kernel 交互；
+- Form Engine 在 Logix 之上定义 `FormState` / `FormEvent` 等领域模型，并通过 Logic 规则与 Logix 交互；
 - React Adapter 暴露通用 Hooks（`useStore` / `useSelector` 等），Form 领域在此基础上封装 `useForm` / `useField` / `FormProvider` 等领域特化 API。

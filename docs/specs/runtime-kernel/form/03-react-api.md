@@ -2,7 +2,7 @@
 
 > **Status**: Definitive (v2.2 Advanced Effect API)
 > **Layer**: React Bindings (Form Specialized)
-> **Dependency**: Built on top of `@kernel/react` (React Adapter)
+> **Dependency**: Built on top of `@logix/react` (React Adapter)
 
 本文档定义面向最终用户的 React Hooks API。这些 Hooks 并非从零实现，而是 **React Adapter** (`useStore`, `useSelector`) 在表单领域的特化封装。
 
@@ -27,7 +27,7 @@ graph TD
 ```typescript
 // 实现伪代码
 function useForm<T>(config: UseFormConfig<T>) {
-  // 1. 调用 Kernel 的 makeFormStore 工厂
+  // 1. 调用 Logix 的 makeFormStore 工厂
   const factory = useMemo(() => 
     Effect.sync(() => makeFormStore(config)), 
     [config.schema] // 仅在 Schema 变化时重建
@@ -158,11 +158,11 @@ function useFieldArray<T, P extends ArrayPath<T>>(
 
 ## 7. Advanced: Effect-Native API
 
-对于精通 Effect 的高级玩家，Kernel 提供了一套基于 **Action** 和 **Stream** 的操作接口。这允许开发者将表单操作（如数组增删）纳入统一的逻辑编排体系，实现复杂的副作用管理。
+对于精通 Effect 的高级玩家，Logix 提供了一套基于 **Action** 和 **Stream** 的操作接口。这允许开发者将表单操作（如数组增删）纳入统一的逻辑编排体系，实现复杂的副作用管理。
 
 ### 7.1 Action-Driven Manipulation
 
-不再直接调用命令式方法，而是派发 Action。这些 Action 可以被 Kernel 的 `rules` 拦截和处理。
+不再直接调用命令式方法，而是派发 Action。这些 Action 可以被 Logix 的 `rules` 拦截和处理。
 
 ```typescript
 // 获取 dispatch 接口

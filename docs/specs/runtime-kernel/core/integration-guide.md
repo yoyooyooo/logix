@@ -1,18 +1,18 @@
 # Integration Guide: Third-Party Libraries
 
 > **Status**: Draft
-> **Purpose**: 标准化第三方库（React Query, RxJS, WebSocket）与 Kernel 的集成模式。
+> **Purpose**: 标准化第三方库（React Query, RxJS, WebSocket）与 Logix 的集成模式。
 
 ## 1. 核心理念 (Core Philosophy)
 
-Kernel 与外部世界的交互遵循 **"Everything is a Stream"** 原则。
+Logix 与外部世界的交互遵循 **"Everything is a Stream"** 原则。
 
 *   **Input**: 外部数据源（Query, Socket）通过适配器转换为 `Stream`，然后通过 `mount` 或 `on` 进入 Store。
 *   **Output**: Store 的状态变化通过 `state$` 流出，供 UI 或其他系统消费。
 
 ## 2. 通用适配器模式 (The Adapter Pattern)
 
-要将任意第三方库集成进 Kernel，只需做一件事：**将其封装为 `Effect.Stream`**。
+要将任意第三方库集成进 Logix，只需做一件事：**将其封装为 `Effect.Stream`**。
 
 ```typescript
 function adapt(externalLib): Stream.Stream<Data> {
@@ -54,7 +54,7 @@ export function fromQuery<T>(client: QueryClient, options: QueryOptions): Stream
 }
 ```
 
-### 3.2 在 Kernel 中使用
+### 3.2 在 Logix 中使用
 
 ```typescript
 makeStore({
@@ -85,7 +85,7 @@ export function fromSocket(socket, event: string): Stream.Stream<any> {
 }
 ```
 
-### 4.2 在 Kernel 中使用
+### 4.2 在 Logix 中使用
 
 ```typescript
 makeStore({

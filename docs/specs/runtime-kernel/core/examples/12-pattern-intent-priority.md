@@ -15,7 +15,7 @@
 
 ## 2. The Solution: Metadata-Driven Priority
 
-Kernel 允许在 `set` 操作中携带 `source` 和 `priority` 元数据。Kernel 内部或逻辑层利用这些元数据来解决冲突。
+Logix 允许在 `set` 操作中携带 `source` 和 `priority` 元数据。Logix 内部或逻辑层利用这些元数据来解决冲突。
 
 ### 2.1 Schema Definition
 
@@ -43,7 +43,7 @@ const store = makeStore({
     watchMany(['quantity', 'unitPrice'], ([qty, price], { set, get }, ctx) => 
       Effect.gen(function*() {
         // 检查当前 total 的优先级状态
-        // 假设 Kernel 提供了 getMeta API
+        // 假设 Logix 提供了 getMeta API
         const meta = yield* get.meta('total');
         
         // 如果当前值是用户手动输入的 (Priority 10)，则不覆盖

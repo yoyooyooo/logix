@@ -3,7 +3,7 @@
 > **Status**: Definitive (v2.1 Rule-Based Architecture)
 > **Layer**: Form Domain
 
-本文档描述 `makeForm` 内部预置的核心业务逻辑。这些逻辑利用 Kernel 的 `api.rule` DSL 实现。
+本文档描述 `makeForm` 内部预置的核心业务逻辑。这些逻辑利用 Logix 的 `api.rule` DSL 实现。
 
 ## 1. 逻辑工厂 (Logic Factory)
 

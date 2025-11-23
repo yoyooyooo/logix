@@ -4,7 +4,7 @@ status: draft
 version: 3
 ---
 
-> 本文定义了 v2 架构下的非功能性需求模型：如何将性能、可靠性、安全等约束条件，编译为双运行时（Effect/Kernel）的具体策略。
+> 本文定义了 v2 架构下的非功能性需求模型：如何将性能、可靠性、安全等约束条件，编译为双运行时（Effect/Logix Engine）的具体策略。
 
 ## 1. 核心定义
 
@@ -18,7 +18,7 @@ Constraint & Quality Intent 回答：**“系统不仅要跑通，还要跑得�
 
 ### 2.1 通用约束 (Universal Constraints)
 
-| 约束类型 | Intent 描述 | Effect Runtime 实现 | Kernel Runtime 实现 |
+| 约束类型 | Intent 描述 | Effect Runtime 实现 | Logix Runtime 实现 |
 | :--- | :--- | :--- | :--- |
 | **超时 (Timeout)** | `timeout: '5s'` | `Effect.timeout('5s')` | `AbortController` / `RxJS.timeout` |
 | **重试 (Retry)** | `retry: { times: 3 }` | `Effect.retry({ times: 3 })` | `retry` 中间件 / 策略 |
@@ -31,7 +31,7 @@ Constraint & Quality Intent 回答：**“系统不仅要跑通，还要跑得�
 - **审计 (Audit)**：`audit: true` -> 编译为 `AuditLayer` 注入。
 - **熔断 (Circuit Breaker)**：`circuitBreaker: { ... }` -> 编译为熔断器中间件。
 
-#### B. 仅限 Kernel Runtime (前端)
+#### B. 仅限 Logix Runtime (前端)
 - **防抖 (Debounce)**：`debounce: '500ms'` -> 编译为 `watch(..., { debounce: 500 })`。
 - **节流 (Throttle)**：`throttle: '1s'` -> 编译为 `watch(..., { throttle: 1000 })`。
 - **乐观更新 (Optimistic)**：`optimistic: true` -> 编译为 Store 的乐观 UI 更新逻辑。
@@ -78,7 +78,7 @@ export const myFlow = Effect.gen(function*() {
 );
 ```
 
-**Target: Kernel Runtime**
+**Target: Logix Runtime**
 ```typescript
 // 假设配置了 debounce
 store.watch('searchKeyword', (val, ops) => {

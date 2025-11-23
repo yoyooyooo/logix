@@ -17,7 +17,7 @@
 
 ## 2. The Solution: Stream-First Logic
 
-Kernel 引入了 **Stream Orchestration** 模式。不同于 `watch` 关注“状态的变化”，Stream 关注“事件的流动”。
+Logix 引入了 **Stream Orchestration** 模式。不同于 `watch` 关注“状态的变化”，Stream 关注“事件的流动”。
 
 核心概念：
 *   **Inputs (瞬态输入)**: 类似于 RxJS 的 Subject，用于接收不存储在 State 中的瞬态事件（如点击、信号）。
@@ -47,7 +47,7 @@ const store = makeStore({
   schema: EditorSchema,
   initialValues: { content: '', lastSavedAt: 0, isSaving: false },
   
-  // 声明 Inputs，Kernel 会自动创建对应的 Subject/Stream
+  // 声明 Inputs，Logix 会自动创建对应的 Subject/Stream
   inputs: ['saveBtnClick'],
 
   logic: ({ state$, inputs, set, services }) => [
@@ -106,7 +106,7 @@ const store = makeStore({
       ),
 
       // 必须调用 run 才能让流跑起来
-      // runDrain 返回一个 Effect，Kernel 会在初始化时 fork 它
+      // runDrain 返回一个 Effect，Logix 会在初始化时 fork 它
       Stream.runDrain
     )
   ]
@@ -115,13 +115,13 @@ const store = makeStore({
 
 ## 4. Lifecycle & Runtime (生命周期)
 
-这个模式之所以“完美”，是因为它与 Kernel 的生命周期深度绑定：
+这个模式之所以“完美”，是因为它与 Logix 的生命周期深度绑定：
 
-1.  **Start (启动)**: 当 `makeStore` 被调用时，Kernel 会创建一个独立的 `Scope`。`logic` 返回的 `Stream.runDrain` Effect 会被 `Runtime.runFork` 到这个 Scope 中。此时，定时器开始工作，监听器挂载。
+1.  **Start (启动)**: 当 `makeStore` 被调用时，Logix 会创建一个独立的 `Scope`。`logic` 返回的 `Stream.runDrain` Effect 会被 `Runtime.runFork` 到这个 Scope 中。此时，定时器开始工作，监听器挂载。
 2.  **Running (运行)**: 
     *   用户输入 -> `state$` 变 -> Auto Stream 计时。
     *   用户点击 -> `inputs.saveBtnClick` 发出 -> Manual Stream 触发 -> `switchMap` 取消 Auto Stream -> 执行保存。
-3.  **Dispose (销毁)**: 当组件卸载调用 `store.dispose()` 时，Kernel 关闭 `Scope`。
+3.  **Dispose (销毁)**: 当组件卸载调用 `store.dispose()` 时，Logix 关闭 `Scope`。
     *   所有正在运行的 Fiber 收到中断信号。
     *   正在进行的 HTTP 请求被 Abort (如果 Client 支持)。
     *   定时器被清除。

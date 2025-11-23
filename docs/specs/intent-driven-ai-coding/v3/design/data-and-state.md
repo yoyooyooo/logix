@@ -4,19 +4,19 @@ status: draft
 version: 3
 ---
 
-> 本文定义了 v2 架构下的数据模型：作为业务实体的单一事实源，为 Signal Payload 提供类型定义，并映射为 Kernel Store 的状态结构。
+> 本文定义了 v2 架构下的数据模型：作为业务实体的单一事实源，为 Signal Payload 提供类型定义，并映射为 Logix Store 的状态结构。
 
 ## 1. 核心定义
 
 Data & State Intent 回答：**“系统中有哪些业务实体？它们的状态如何流转？”**
 
-它不仅仅是数据库表结构的映射，更是**全链路类型系统 (Type System)** 的基石。从 UI 组件到 Signal Payload，再到 Kernel Store 和后端 API，所有数据结构都必须引用 Data Intent 中定义的 Schema。
+它不仅仅是数据库表结构的映射，更是**全链路类型系统 (Type System)** 的基石。从 UI 组件到 Signal Payload，再到 Logix Store 和后端 API，所有数据结构都必须引用 Data Intent 中定义的 Schema。
 
 ### 1.1 关键特性
 
 1.  **Schema First**：所有数据交互（API、Signal、Store）必须先定义 Schema。消灭 `any` 和隐式类型。
 2.  **Signal 类型源**：Signal Intent 中的 `payloadSchemaId` 直接引用本层的 Entity 定义。
-3.  **Kernel 映射**：Entity Schema 直接映射为 Kernel Store 的 `schema` 和 `initialValues`。
+3.  **Logix 映射**：Entity Schema 直接映射为 Logix Store 的 `schema` 和 `initialValues`。
 
 ## 2. 模型详解
 
@@ -66,13 +66,13 @@ interface OrderInput { ... }
 type SubmitOrderSignal = { type: 'submitOrder', payload: OrderInput }
 ```
 
-### 3.2 Kernel Store (前端状态)
+### 3.2 Logix Store (前端状态)
 
 ```typescript
 // Intent
-StateSource: { kind: "kernel", entityId: "OrderForm" }
+StateSource: { kind: "logix-engine", entityId: "OrderForm" }
 
-// Code (Kernel Store)
+// Code (Logix Store)
 const orderStore = makeStore({
   schema: OrderFormSchema, // 直接使用 Effect Schema
   initialValues: { ... },

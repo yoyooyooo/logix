@@ -11,7 +11,7 @@ watch('user.addresses.*.geo.location.lat', (lat, { set }, ctx) =>
   Effect.gen(function*() {
     const index = ctx.params[0];
     // 需求：如果 lat 变化，自动更新同级的 lastUpdated
-    // 挑战：路径可能不存在？Kernel 的 getPath 应该处理 Optional
+    // 挑战：路径可能不存在？Logix 的 getPath 应该处理 Optional
     yield* set(`user.addresses[${index}].geo.lastUpdated`, Date.now());
   })
 )

@@ -1,14 +1,14 @@
-# 内核实现架构思路 (Kernel Implementation Architecture)
+# 引擎实现架构思路 (Logix Implementation Architecture)
 
 > **Status**: Draft
 > **Date**: 2025-11-21
 > **Layer**: Core Implementation
 
-本文档详细阐述 Kernel v1 的内部实现架构，特别是如何融合 **State-Driven** (FRP) 与 **Event-Driven** (Command) 两种范式，以及如何利用 Effect-TS 的能力构建高性能、类型安全的运行时。
+本文档详细阐述 Logix v1 的内部实现架构，特别是如何融合 **State-Driven** (FRP) 与 **Event-Driven** (Command) 两种范式，以及如何利用 Effect-TS 的能力构建高性能、类型安全的运行时。
 
 ## 1. 核心架构图景 (The Big Picture)
 
-Kernel 不仅仅是一个状态容器，它是一个 **"Reactive State Machine" (响应式状态机)**。它由三个核心支柱构成：
+Logix 不仅仅是一个状态容器，它是一个 **"Reactive State Machine" (响应式状态机)**。它由三个核心支柱构成：
 
 1.  **Memory (State)**: 系统的“记忆”，基于 `SubscriptionRef`，存储持久化的业务数据。
 2.  **Senses (Events)**: 系统的“感官”，基于 `Hub`，处理瞬时的动作与意图。
@@ -74,7 +74,7 @@ graph TD
 
 ### 3.2 循环依赖防护 (Loop Protection)
 
-为了防止 `watch` -> `set` -> `watch` 的无限循环，Kernel 移除了昂贵的 Deep Equal，转而依赖显式的熔断机制：
+为了防止 `watch` -> `set` -> `watch` 的无限循环，Logix 移除了昂贵的 Deep Equal，转而依赖显式的熔断机制：
 
 1.  **Reference Equal**: 仅当 `Object.is(prev, next)` 为 false 时触发更新。这要求上游（UI/Logic）必须遵守 Immutable 规范（推荐使用 `ops.edit`）。
 2.  **Depth Limit (Sync)**: 运行时检测调用栈深度，超过阈值（如 50）抛出错误。
@@ -94,17 +94,17 @@ graph TD
 虽然底层是全量 State，但 `watch` 通过 Path Selector 实现细粒度监听，只有相关字段变化才触发 Handler。
 
 ### 4.2 Structural Sharing
-强制依赖 Immutable 更新。Kernel 内部集成 `Mutative`，通过 `ops.edit` 提供高性能的 Copy-on-Write 更新。这确保了 React `memo` 的有效性，并消除了 Deep Equal 的性能瓶颈。
+强制依赖 Immutable 更新。Logix 内部集成 `Mutative`，通过 `ops.edit` 提供高性能的 Copy-on-Write 更新。这确保了 React `memo` 的有效性，并消除了 Deep Equal 的性能瓶颈。
 
 ### 4.3 Concurrency Control
 利用 Effect 的 `switch`, `exhaust`, `debounce` 操作符，轻松处理竞态问题（如搜索建议、重复提交）。
 
 ### 4.4 Stream Multiplexing (流多路复用)
 
-为了避免在拥有大量规则（如 > 1000 个字段的表单）时产生过多的 Fiber 和 Scope 注册开销，Kernel 内部采用 **Master Stream** 模式进行优化：
+为了避免在拥有大量规则（如 > 1000 个字段的表单）时产生过多的 Fiber 和 Scope 注册开销，Logix 内部采用 **Master Stream** 模式进行优化：
 
 *   **问题**: 朴素实现中，每个 `watch` 规则都会 `fork` 一个独立的 Fiber。当规则数量达到数千级别时，会造成显著的内存压力和初始化卡顿。
-*   **优化**: Kernel 不会为每个规则单独 fork。相反，它将所有 `watch` 规则编译为一个 **Master Pipeline**。
+*   **优化**: Logix 不会为每个规则单独 fork。相反，它将所有 `watch` 规则编译为一个 **Master Pipeline**。
     *   仅创建一个主 Stream 订阅 `stateRef.changes`。
     *   在 Stream 内部进行高效的路由分发 (Routing)，根据变更路径匹配触发相应的 Handler。
     *   使用 `Effect.all(..., { concurrency: 'unbounded' })` 并发执行触发的 Handler。

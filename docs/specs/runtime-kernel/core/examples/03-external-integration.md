@@ -52,5 +52,5 @@ const store = makeStore({
 ## API Review
 
 *   **一等公民**: `mount` 和 `on` 让外部流的处理变得和内部状态一样自然。
-*   **资源管理**: 用户不需要手动 `subscribe/unsubscribe` WebSocket。Kernel 的 Scope 会自动管理这些流的生命周期。
+*   **资源管理**: 用户不需要手动 `subscribe/unsubscribe` WebSocket。Logix 的 Scope 会自动管理这些流的生命周期。
 *   **流式思维**: 通过 `Stream.map` 等操作符，可以在数据进入 Store 之前进行预处理（清洗、转换）。

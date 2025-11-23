@@ -3,7 +3,7 @@
 > **Status**: Draft
 > **Layer**: React Adapter
 
-本文档定义用于连接 Kernel 与 React 的通用 Hooks。
+本文档定义用于连接 Logix 与 React 的通用 Hooks。
 
 ## 1. `useStore` (Lifecycle & Access)
 
@@ -37,7 +37,7 @@ function useSelector<S, T>(
 
 ## 3. `useDispatch` (Event Trigger)
 
-提供一个稳定的 dispatch 函数，用于触发 Kernel Event。
+提供一个稳定的 dispatch 函数，用于触发 Logix Event。
 
 ```typescript
 function useDispatch<E>(store: Store<any, E>): (event: E) => void;
@@ -47,9 +47,9 @@ function useDispatch<E>(store: Store<any, E>): (event: E) => void;
 
 ## 4. `useEventCallback` (Effect Bridge)
 
-有时我们需要在 React 事件处理函数中直接调用 Kernel 的 Effect 逻辑，并等待其结果（例如：点击按钮 -> 调用 API -> 等待完成 -> 跳转页面）。
+有时我们需要在 React 事件处理函数中直接调用 Logix 的 Effect 逻辑，并等待其结果（例如：点击按钮 -> 调用 API -> 等待完成 -> 跳转页面）。
 
-虽然 Kernel 推荐 Event-Driven，但为了实用性，我们需要一个 Escape Hatch。
+虽然 Logix 推荐 Event-Driven，但为了实用性，我们需要一个 Escape Hatch。
 
 ```typescript
 function useEffectCallback<Args extends any[], R>(
@@ -63,15 +63,15 @@ function useEffectCallback<Args extends any[], R>(
 
 ## 5. 派生状态与 Selector 最佳实践
 
-在使用 `useSelector` 时，需要区分两类派生状态，以避免 Kernel 状态被无意义地放大：
+在使用 `useSelector` 时，需要区分两类派生状态，以避免 Logix 状态被无意义地放大：
 
 | 类型 | 定义 | 存储位置 | 实现方式 |
 | :--- | :--- | :--- | :--- |
-| Persistent Derived (业务数据) | 核心业务逻辑，需要持久化、传输给后端或被其他逻辑依赖，例如 `orderTotal`、`isAdult`。 | Kernel State | 使用 Kernel 的 `watch` + `set` 显式写入。 |
+| Persistent Derived (业务数据) | 核心业务逻辑，需要持久化、传输给后端或被其他逻辑依赖，例如 `orderTotal`、`isAdult`。 | Logix State | 使用 Logix 的 `watch` + `set` 显式写入。 |
 | Transient Derived (视图数据) | 仅用于 UI 展示，无需持久化，例如格式化日期、拼接字符串、UI 显隐计算。 | React 内存 | 使用 `useSelector`（可配合 `proxy-memoize`）在渲染期计算。 |
 
 实践建议：
 
-- 业务上“有含义且需回放”的数据，一律落在 Kernel 状态层，由 Logic 规则写入；  
+- 业务上“有含义且需回放”的数据，一律落在 Logix 状态层，由 Logic 规则写入；  
 - 单纯视图辅助数据（展示格式、拼文案、局部显隐），优先放在 Selector 层，用 `useSelector` 计算即可。  
-这样既保持 Kernel 状态的可审计性，又不会让状态结构因 UI 需求膨胀。
+这样既保持 Logix 状态的可审计性，又不会让状态结构因 UI 需求膨胀。
