@@ -1,10 +1,10 @@
 ---
 title: 03 · 资产映射与 Schema 定义 (Assets & Schemas)
 status: draft
-version: 11 (Metadata-Enhanced)
+version: 12 (Code-First)
 ---
 
-> 本文档定义了“三位一体”模型下的核心资产结构。Intent 是唯一的真理来源，Pattern 是复用的模具，Flow 和 Schema 是 Intent 的高保真投影。
+> 本文档定义了“三位一体”模型下的核心资产结构。Intent 是唯一的真理来源，Pattern 是复用的模具，LogicDSL 和 Schema 是 Intent 的高保真投影。
 
 ## 1. IntentSpec v3 (The SSoT)
 
@@ -47,9 +47,9 @@ interface UIImplConfig {
 }
 ```
 
-## 3. Logic Intent Schema (Flow DSL)
+## 3. Logic Intent Schema (Intent Graph)
 
-Logic 意图描述业务流程。它的 Impl 是 Flow DSL，直接映射到 Logix Engine / Effect 运行时。
+Logic 意图描述业务流程。在 v3 中，**Code is Truth**。Logic Intent Schema 实际上是 Parser 从源码中提取的 **Memory AST**，用于可视化渲染。
 
 ```typescript
 interface LogicImplConfig {
@@ -60,40 +60,24 @@ interface LogicImplConfig {
     payloadSchema?: JSONSchema;
   };
   
-  // 流程编排 (DAG)
-  flow: {
-    nodes: Record<string, FlowNode>;
-    edges: FlowEdge[];
+  // 源码引用 (The Truth)
+  source: {
+    file: string;
+    exportName: string;
   };
 
-  // 运行时约束 (Effect Context)
-  constraints?: {
-    concurrency?: 'switch' | 'queue' | 'exhaust'; // Effect.switchMap 等
-    timeout?: number;
-    retry?: { count: number; delay: string }; // Effect.retry
-    transaction?: boolean; // Logix Transaction
+  // 内存图结构 (The View)
+  // 仅用于画布渲染，不持久化存储
+  graph: {
+    nodes: Record<string, LogicNode>;
+    edges: LogicEdge[];
   };
-
-  // 自动化测试用例 (Self-Verification)
-  testCases?: Array<{
-    name: string;
-    input: any;
-    mock?: Record<string, any>; // Mock Service Returns
-    expect?: {
-      state?: Record<string, any>;
-      signals?: string[];
-      error?: string;
-    };
-  }>;
 }
 
-type FlowNode = 
-  | { type: 'service-call'; service: string; method: string; args: any }
-  | { type: 'update-state'; path: string; value: any }
-  | { type: 'emit-signal'; signalId: string; payload: any }
-  | { type: 'branch'; condition: string }
-  // 逃逸节点：用于承载无法解析的代码块
-  | { type: 'raw-code'; content: string; originalHash?: string };
+type LogicNode = 
+  | { type: 'pattern-block'; patternId: string; config: any } // 积木节点
+  | { type: 'dsl-op'; op: 'branch' | 'emit' | 'set' }       // 骨架节点
+  | { type: 'code-block'; content: string };                  // 黑盒节点
 
 // 元数据：用于支持全双工同步
 interface NodeMetadata {
@@ -137,36 +121,31 @@ interface DomainImplConfig {
 
 ## 5. Logix Builder SDK (`@logix/builder`)
 
-为了支持 **Dynamic Pattern** 的编写，Logix 体系提供了一套强类型的 Builder SDK。它是 Pattern 生成逻辑的“笔”。
+为了支持 **Pattern** 的编写，Logix 体系提供了一套强类型的 Builder SDK。它是 Pattern 定义的“契约”。
 
-详细设计请参考：**[Logix Builder SDK Design](../../runtime-kernel/builder/01-builder-design.md)**
+详细设计请参考：**[Logix Builder SDK Design](../../runtime-logix/builder/01-builder-design.md)**
 
 ```typescript
-import { Flow, UI, Domain } from '@logix/builder';
-import { OrderService } from './domain/order'; // 引用 Domain 定义
+import { definePattern } from '@logix/pattern';
+import { LogicDSL } from '@logix/dsl';
 
-// 示例：使用 Builder 构建 Logic Intent
-const logic = Flow.define({
-  trigger: Flow.onSignal('submit'),
-  steps: [
-    // 1. 直接调用 Service Proxy (生成 AST)
-    OrderService.validate({ entityName }),
+// 示例：使用 Builder 定义 Pattern
+export const ReliableSubmit = definePattern({
+  config: Schema.Struct({ ... }),
+  body: (config) => Effect.gen(function*(_) {
+    const dsl = yield* _(LogicDSL);
     
-    // 2. 组合：嵌入其他 Pattern 生成的 Flow
-    Flow.embed(otherFlow),
-    
-    // 3. 结构化控制流
-    Flow.if(
-      '${result.valid}',
-      OrderService.submit(),
-      Flow.emit('toast', 'Error')
-    )
-  ]
+    // 使用 Unified API 编写逻辑
+    yield* dsl.retry(
+      { times: config.retry },
+      dsl.call(config.service, "submit")
+    );
+  })
 });
 ```
 
 **核心价值**：
-1.  **同构体验**：Service 调用语法与 Runtime 完全一致。
-2.  **类型安全**：Service 引用是强类型的，防止拼写错误。
-3.  **逻辑复用 (Composition)**：支持 `Flow.embed`，像搭积木一样组合 Pattern。
-4.  **全双工支持 (Source Map)**：在开发模式下，自动注入 `__source` 元数据（文件/行号/Hash），支持 Graph -> Code 的精准反写。
+1.  **同构体验**：Pattern 内部逻辑与业务逻辑完全一致，均使用 `LogicDSL`。
+2.  **类型安全**：基于 TypeScript 的强类型推导。
+3.  **逻辑复用 (Composition)**：Pattern 本质是函数，可以像搭积木一样组合。
+4.  **全双工支持**：通过 `definePattern` 提供元数据，支持 Parser 识别和可视化。

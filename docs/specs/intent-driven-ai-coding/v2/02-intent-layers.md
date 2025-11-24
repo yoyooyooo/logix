@@ -36,7 +36,7 @@ version: 2
 ### 2.4 Behavior & Flow Intent
 *   **关注点**：业务逻辑。
 *   **Schema**：`signals`, `flows`。
-*   **设计**：区分了 `frontend-kernel` 和 `effect-flow-runtime` 两个目标。
+*   **设计**：区分了前端 Runtime 与 `effect-flow-runtime` 两个目标。
 
 ### 2.5 Data & State Intent
 *   **关注点**：数据模型。

@@ -1,30 +1,44 @@
 ---
-title: Effect Runtime PoC · 场景目录
-status: draft
-version: 0
+title: Effect Runtime PoC (v3 Reference Implementation)
+status: active
+version: 3 (Unified API)
 ---
 
-> 本目录用于基于 `effect-ts`（或等价简化版 Effect）进行**业务场景级 PoC**，在正式沉淀 best-practice 之前，先用若干独立文件尝试不同 Flow 写法与 Layer 组合方式，特别是 ToB 场景中的复杂异步与表单逻辑。
+> **核心目标**：验证 v3 架构下的 **Unified API**、**Pattern System** 和 **Static Analysis** 可行性。本目录包含可运行的 TypeScript 代码，作为 Logix 平台的参考实现。
 
-- `shared/`：公共类型、简化版 Effect/Env/Layer 抽象（如未直接引入 effect-ts 时使用）。  
-- `scenarios/`：按业务场景拆分的 Flow/Env/Layer 示例（列表/导出、审批流、复杂表单、轮询任务等）。
+## 目录结构
 
-约定：
+*   `shared/`: 核心基础设施。
+    *   `dsl.ts`: `LogicDSL` 接口定义 (The Contract)。
+    *   `runtime.ts`: `RuntimeLayer` 实现 (The Implementation)。
+    *   `pattern.ts`: `definePattern` 工具函数。
 
-- 每个场景独立在 `scenarios/*` 中建子目录，包含：
-  - `env.ts`：该场景需要的服务接口定义；
-  - `flow.ts`：Flow 实现（Effect 程序），对应 v2 模型中的某个 FlowIntent/FlowDslV2；
-  - `index.ts`（可选）：简单的 run 示例或测试入口。  
-- PoC 代码可以偏工程化，不要求完全贴合最终 API；但在语义上应贴近 `97-effect-runtime-and-flow-execution.md` 中描述的角色与边界。
+*   `patterns/`: 通用 Pattern 库 (Assets)。
+    *   `debounced-search.ts`: 防抖搜索。
 
-目前建议覆盖的典型 ToB 场景包括（可逐步补充）：
+*   `scenarios/`: 业务场景实战 (Usage)，每个 PoC 对应一个单文件。
+    *   `poc-01-simple-search.ts`: 基础搜索场景（调用 `DebouncedSearch`）。
+    *   `poc-approval-flow.ts`: 审批流（决策 + 审计 + 刷新列表）。
+    *   `poc-bulk-operations.ts`: 批量操作（选中项批量处理）。
+    *   `poc-crud-form.ts`: 表单加载与提交。
+    *   `poc-dependent-selects.ts`: 级联下拉（省 / 市 / 区）。
+    *   `poc-file-import.ts`: 文件导入（上传 + 轮询任务）。
+    *   `poc-long-task-polling.ts`: 长任务轮询。
+    *   `poc-optimistic-toggle.ts`: 乐观更新开关。
+    *   `poc-order-export.ts`: 订单导出。
+    *   `poc-search-with-debounce.ts`: 单次搜索 + 结果落盘。
 
-- 列表 + 筛选 + 导出：`scenarios/order-export`（已有）；
-- 通用 CRUD 表单（创建/编辑 + 服务端校验）：`scenarios/crud-form`（已有）；
-- 审批/多步骤工作流（含分支）：`scenarios/approval-flow`（已有）；
-- 批量操作（多选 + 后端批处理）：`scenarios/bulk-operations`（已有）；
-- 长耗时任务与轮询（导入、大规模计算）：`scenarios/long-task-polling`（已有）；
-- 异步联动（级联下拉、依赖字段）：`scenarios/dependent-selects`（省市区级联，已有）；
-- 搜索与防抖（输入联动、结果更新）：`scenarios/search-with-debounce`；
-- 乐观更新与回滚（切换状态开关）：`scenarios/optimistic-toggle`；
-- 文件上传与导入（上传 + 校验 + 导入任务）：`scenarios/file-import`.
+## 运行指南
+
+本目录代码基于 `effect` 库。你可以直接运行这些文件来验证逻辑执行结果。
+
+```bash
+# 示例：运行基础搜索场景 PoC
+ts-node scenarios/poc-01-simple-search.ts
+```
+
+## 关键验证点
+
+1.  **类型安全**: 验证 `dsl.call` 和 `Context.Tag` 的类型推导是否正常。
+2.  **运行时行为**: 验证 `RuntimeLayer` 是否正确执行了副作用。
+3.  **Pattern 组合**: 验证 `definePattern` 产出的 Effect 是否能被正确组合。

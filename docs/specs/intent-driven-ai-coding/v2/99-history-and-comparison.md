@@ -30,7 +30,7 @@ supersededBy: ../v3
 | 维度 | v1 | v2 | v3 |
 | --- | --- | --- | --- |
 | 核心关注 | 意图 + 模式 + 模板 | 六层 Intent 全景图 | Intent + Flow DSL + Logix Engine |
-| Runtime 角色 | 松散提及 Effect/状态库 | 双 Runtime：Effect / frontend-kernel | 以 Logix + Effect 为 Runtime 家族中心 |
+| Runtime 角色 | 松散提及 Effect/状态库 | 双 Runtime：Effect / 前端 Runtime | 以 Logix + Effect 为 Runtime 家族中心 |
 | 复杂度控制 | 主要依赖文档与 Pattern 约束 | 通过层级拆分控制概念，但有过度工程风险 | 通过 DSL/Engine 统一收敛，实现上简化、语义上增强 |
 
 更细的差异在 `v2/02-intent-layers.md` 与 `../v3/01-overview.md` 中都有体现，本文件不重复展开。
@@ -50,4 +50,3 @@ supersededBy: ../v3
 
 - 不再向 v1/v2 补充新的规范性内容，只允许增加少量“对照/批注”性质的段落；  
 - 任何对 Intent 模型、Flow DSL、Runtime 契约的调整，必须先在 `../v3` 目录下达成共识，再视情况在本文件中补一行“从 v1/v2 沿袭而来/已被取代”的说明。
-

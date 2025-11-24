@@ -1,2 +1,3 @@
 packages:
   - "packages/*"
+  - "docs/specs/intent-driven-ai-coding/v3/effect-poc"

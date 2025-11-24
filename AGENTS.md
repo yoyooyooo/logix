@@ -3,7 +3,7 @@
 ## 规划对齐（简版）
 
 - 平台主线：`intent-driven-ai-coding`，当前有效规范以 `docs/specs/intent-driven-ai-coding/v3` 为准；`v1`/`v2` 仅作为历史快照与对照材料，演进脉络见 `docs/specs/intent-driven-ai-coding/adr.md`。
-- 运行时主线：`runtime-kernel` 目录下的 **Logix Engine**（原 kernel），作为 Behavior & Flow Intent 的统一前端运行时 PoC；总览见 `docs/specs/runtime-kernel/README.md`。
+- 运行时主线：`runtime-logix` 目录下的 **Logix Engine**（原 kernel），作为 Behavior & Flow Intent 的统一前端运行时 PoC；总览见 `docs/specs/runtime-logix/README.md`。
 - 以上两条规划已经在 v3 / Logix 文档中收敛，任何新决策优先更新这些文档，再落到代码和 PoC。
 
 ## 仓库愿景与决策原则（当前）
@@ -12,7 +12,7 @@
 - **LLM 一等公民**：DSL / Schema / Flow / 配置的设计优先考虑“LLM 易生成、易校验、易对比”，假定主要维护者是 LLM + 工具链，人类只做审阅与少量 override。  
 - **引擎优先**：先把 Intent/Flow/Logix/Effect 的契约和幂等出码引擎打磨稳定，再考虑 Studio/画布等交互体验；遇到冲突，一律保证引擎正确、可回放、可追踪。  
 - **Effect 作为统一运行时**：默认使用 `effect`（effect-ts v3 系列）承载行为与流程执行，出码后的业务流程应以 `.flow.ts` + Effect/Logix 程序为落点；其他运行时只作为 PoC，而不是第二套正式栈。  
-- **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/specs/intent-driven-ai-coding/v3` 与 `docs/specs/runtime-kernel` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
+- **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/specs/intent-driven-ai-coding/v3` 与 `docs/specs/runtime-logix` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
 
 # Agent Context for `intent-flow`
 

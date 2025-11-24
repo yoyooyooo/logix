@@ -29,10 +29,14 @@ export class ArticleServiceTag extends Context.Tag('ArticleService')<ArticleServ
 **Generated Code (React Component)**:
 ```tsx
 // src/ui/LikeButton.tsx
+import { useLogic } from '@logix/react';
+import { ArticleLogic } from '@/features/article/logic';
+
 // @intent-component: like-btn
 export const LikeButton = () => {
-  const liked = useSelector(s => s.article.liked);
-  const emit = useEmit();
+  // 自动挂载 ArticleLogic，并获取句柄
+  const { emit, useRef } = useLogic(ArticleLogic);
+  const liked = useRef(s => s.liked);
   
   return (
     <IconButton 
@@ -53,39 +57,46 @@ export const LikeButton = () => {
 
 ```typescript
 // src/features/article/logic.ts
-import { defineRule } from '@logix/core';
+import type { LogicSetup } from '@logix/core';
 import { ArticleServiceTag } from '@/domain/article/service';
 
-export const likeFlow = defineRule((api) => api.rule({
-  // @intent-trigger: signal:toggleLike
-  trigger: api.on.signal('signal:toggleLike'),
-  mode: 'switch',
-  
-  do: (payload) => Effect.gen(function* () {
-    // @intent-start: node-1 { type: "update-state", hash: "a1b2" }
-    const currentLiked = yield* api.ops.get(s => s.article.liked);
-    yield* api.ops.set(s => s.article.liked, !currentLiked);
-    // @intent-end: node-1
+export const ArticleLogic: LogicSetup = (api) => {
+  // 局部状态：点赞状态
+  const $liked = api.ref({ value: false });
 
-    // @intent-start: node-2 { type: "retry-block", hash: "c3d4" }
-    yield* Effect.gen(function* () {
-      const service = yield* ArticleServiceTag;
-      // @intent-call: ArticleService.toggleLike
-      yield* service.toggleLike(payload.id);
-    }).pipe(
-      Effect.retry(Schedule.exponential('1 second', 3))
-    ).pipe(
-      // @intent-start: node-3 { type: "catch-all", hash: "e5f6" }
-      Effect.catchAll(() => Effect.gen(function* () {
-        // @intent-slot: fallback
-        yield* api.ops.set(s => s.article.liked, currentLiked);
-        yield* api.ops.emit('toast', 'Error');
-      }))
-      // @intent-end: node-3
-    );
-    // @intent-end: node-2
-  })
-}));
+  return {
+    toggleLike: api.rule({
+      // @intent-trigger: signal:toggleLike
+      trigger: api.on.signal('signal:toggleLike'),
+      mode: 'switch',
+      
+      do: (payload) => Effect.gen(function* () {
+        // @intent-start: node-1 { type: "update-state", hash: "a1b2" }
+        const currentLiked = yield* api.ops.get($liked);
+        yield* api.ops.set($liked, !currentLiked.value);
+        // @intent-end: node-1
+
+        // @intent-start: node-2 { type: "retry-block", hash: "c3d4" }
+        yield* Effect.gen(function* () {
+          const service = yield* ArticleServiceTag;
+          // @intent-call: ArticleService.toggleLike
+          yield* service.toggleLike(payload.id);
+        }).pipe(
+          Effect.retry(Schedule.exponential('1 second', 3))
+        ).pipe(
+          // @intent-start: node-3 { type: "catch-all", hash: "e5f6" }
+          Effect.catchAll(() => Effect.gen(function* () {
+            // @intent-slot: fallback
+            yield* api.ops.set($liked, currentLiked.value);
+            yield* api.ops.emit('toast', 'Error');
+          }))
+          // @intent-end: node-3
+        );
+        // @intent-end: node-2
+      })
+    })
+  };
+};
 ```
 
 ### 4. 总结

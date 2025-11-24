@@ -1,56 +1,59 @@
 ---
 title: 97 · 统一逻辑运行时 (Unified Logic Runtime)
 status: draft
-version: 6 (Hybrid-Visual)
+version: 9 (Unified-API)
 ---
 
-> 本文档描述了 Logic Intent (Behavior) 的运行时实现。在 v3 模型下，我们采用统一的 **Flow DSL** 作为逻辑真理，由编译器根据上下文自动分发。
+> 本文档描述了 Logic Intent (Behavior) 的运行时实现。在 v3 模型下，我们采用统一的 **LogicDSL** 作为逻辑真理，由 Effect Runtime 直接执行。
 
-## 1. 核心理念：One Flow, Any Runtime
+## 1. 核心理念：One Logic, Any Runtime
 
-Logic Intent 的 Impl 层是 **Flow DSL**。它是一种声明式的、图状的业务逻辑描述。
+Logic Intent 的 Impl 层是 **LogicDSL**。它是一套基于 TypeScript 的、声明式的业务逻辑原语。
 
 ## 2. 动态性与热更新 (Dynamism & HMR)
 
 为了支持“全双工编排”和极致的开发体验 (DX)，Logix Runtime 必须具备动态加载与热替换能力。
 
-### 2.1 Interpreter Mode (开发态)
+### 2.1 Direct Execution (开发态)
 
-在开发环境中，Logix 支持直接解释执行 Intent JSON，无需编译为 TS 代码。这实现了 **0 延迟** 的图码同步。
+在开发环境中，Logix 直接运行 TypeScript 编译后的 JS 代码。**不再有中间层的 JSON 解释器**。这实现了 **Native Performance**。
 
-### 2.2 Hot Swapping & State Migration (热替换与状态迁移)
+### 2.2 HMR 策略：安全重启与状态协调
 
-当 Logic 发生变更时（例如用户在画布上修改了流程），Logix 不仅要替换 Rule，还要**保留当前状态**。
+Logix 的 HMR 建立在 Effect 强大的 **Scope (资源作用域)** 机制之上，采用“基线兜底 + 渐进增强”的策略。
 
-```typescript
-// Logix 内部逻辑
-function replaceRule(ruleId, newRule) {
-  // 1. 暂停旧 Rule，导出 State 快照
-  const snapshot = store.snapshot(ruleId);
-  
-  // 2. 卸载旧 Rule
-  store.removeRule(ruleId);
-  
-  // 3. 挂载新 Rule，注入快照
-  // Logix 会尝试按 Path 匹配恢复状态
-  store.addRule(newRule, { initialState: snapshot });
-}
-```
+#### 2.2.1 基线策略：安全重启 (Baseline: Safe Restart)
 
-**迁移策略**：
-*   **Exact Match**: 路径完全一致，直接恢复。
-*   **Fuzzy Match**: 路径部分一致（如数组索引变了），尝试智能恢复。
-*   **Mismatch**: 路径不存在，丢弃该部分状态。
+这是 Logix HMR 的默认行为，确保了**绝对的安全性**（无内存泄漏、无僵尸逻辑）。
+
+*   **机制**: 
+    1.  **Teardown**: 当 Logic 变更时，Runtime 调用旧 Fiber 的 `Scope.close()`。Effect 运行时保证所有挂起的资源（Timer, Socket, File Handle）被强制且优雅地关闭。
+    2.  **Reboot**: 使用新定义启动新 Fiber。
+    3.  **Data Retention**: **Store 中的数据状态 (Data State) 100% 保留**。用户填写的表单、加载的数据不会丢失。
+*   **体验**: 逻辑流程会重置（例如倒计时重新开始），但业务数据不丢。这对于绝大多数调试场景已足够完美。
+
+#### 2.2.2 高级策略：三级状态协调 (Advanced: Tri-Level Reconciliation)
+
+在基线策略之上，针对追求极致体验的场景，Runtime 尝试进行更细粒度的状态保留（Optional）：
+
+1.  **Level 1: 参数级热更 (Hot Parameter Swap)**
+    *   当仅修改节点的**配置参数**（如 `debounce` 时间）时，不重启 Fiber，仅更新 `FiberRef`。正在运行的逻辑（如倒计时）无缝切换参数。
+
+2.  **Level 2: 结构兼容性重构 (Structural Reconciliation)**
+    *   当节点结构微调时，重启 Fiber，但尝试将旧的**执行状态** (Execution State) 映射给新 Fiber。
+
+3.  **Level 3: 显式迁移 (Explicit Migration)**
+    *   当逻辑质变时，允许开发者提供 `migrate(oldState)` 函数进行手动迁移。
 
 ### 2.3 Vite HMR 集成
 
-平台提供 Vite 插件，监听 `.flow.ts` 或 Intent JSON 的变更，自动触发热替换。
+平台提供 Vite 插件，监听 `.logic.ts` 的变更，自动触发上述协调流程。
 
 ## 3. 图码同步原理 (Code <-> Graph)
 
-平台利用 **AST 锚点 (Anchors)** 实现代码与画布的无损同步。
+平台利用 **Static Analysis (静态分析)** 实现代码与画布的无损同步。
 
-*   **Code -> Graph**: 解析带有 `@intent` 标记的代码块，重建图结构。
+*   **Code -> Graph**: Parser 提取 `LogicDSL` 调用链，构建内存图结构。
 *   **Graph -> Code**: 修改图结构后，利用 `ts-morph` 精准修改对应的 AST 节点。
 
 ### 3.1 混合可视化 (Hybrid Visualization)
@@ -63,7 +66,7 @@ function replaceRule(ruleId, newRule) {
 
 ## 4. 运行时分发 (Runtime Dispatch)
 
-编译器分析 Flow 中的节点类型，自动决定代码生成的目标环境：
+编译器分析 Logic 中的节点类型，自动决定代码生成的目标环境：
 
 *   **Logix Engine (前端)**：纯 UI 逻辑。
 *   **Effect Flow Runtime**：纯后端逻辑。
