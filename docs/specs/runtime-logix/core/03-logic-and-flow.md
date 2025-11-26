@@ -105,90 +105,60 @@ run*<A,E,R2>(eff: Effect.Effect<A,E,R2>): (stream: Stream<any>) => Effect.Effect
 
 即保留 Effect 的错误通道与环境类型，只改变其为 “挂在某个流上的执行器”。
 
-### 2.4 Intent 原语语法糖：andUpdateOnChanges
+## 3. Intent (Semantic Primitives)
 
-为了方便“从意图视角”表达高频场景，Flow 提供少量强语义语法糖。当前 PoC 中首个原语是：
+在 Flow / Control 之上，Logix 提供少量语义化的 Intent 原语，用于承载高频业务联动模式。它们在 PoC 中通过 `Intent` 命名空间暴露，同时在 Flow/Coordinator 中保留底层实现。
+
+### 3.1 L1 快捷方式：单 Store 内联动
+
+`Intent.andUpdateOnChanges` / `Intent.andUpdateOnAction` 负责表达单 Store 内部的同步联动：
 
 ```ts
-// 命名空间形态（独立模块 / Pattern 中使用）
-Flow.andUpdateOnChanges<MyShape>()(
+// 字段联动：State -> State
+Intent.andUpdateOnChanges<MyShape>(
+  s => s.country,
+  (country, prev) => ({ ...prev, province: "" }),
+);
+
+// 事件驱动的状态重排：Action -> State
+Intent.andUpdateOnAction<MyShape>(
+  (a): a is { _tag: "reset" } => a._tag === "reset",
+  () => initialState,
+);
+```
+
+它们的抽象语义是：
+
+- `andUpdateOnChanges`：“监听某个 State 视图的变化，并在每次变化时更新当前 Store 的 State”；  
+- `andUpdateOnAction`：“监听某一类 Action，并在每次触发时更新当前 Store 的 State”。  
+
+类型层面都提供纯 reducer / Effect reducer 两种 overload，内部实现则基于 `Store.Runtime.changes$ / actions$ + state.update` 构造对应的 Flow。
+
+### 3.2 L2 结构化协作：跨 Store 协调
+
+`Intent.Coordinate` 用于表达跨 Store 的标准协作模式，例如 Search → Detail：
+
+```ts
+Intent.Coordinate.onChangesDispatch<SearchShape, DetailShape>(
   s => s.results,
-  (results, prev) => ({
-    ...prev,
-    hasResult: results.length > 0,
-  }),
-);
-
-// 实例形态（Logic.make 内部使用）
-const logic = Logic.make<MyShape>(({ flow }) =>
-  Flow.andUpdateOnChanges<MyShape>()(
-    s => s.results,
-    (results, prev) => ({ ...prev, hasResult: results.length > 0 }),
-  )
+  results =>
+    results.length === 0
+      ? []
+      : [{ _tag: "detail/initialize", payload: results[0] }],
 );
 ```
 
-其抽象语义为：“**监听某个 State 视图的变化，并在每次变化时更新当前 Store 的 State**”。  
+抽象语义是：“当 Source Store 的某个 State 视图发生变化时，向 Target Store 派发一个或多个 Action”。  
 
-类型层面支持多重 overload：
+类似地，`Intent.Coordinate.onActionDispatch` 负责表达 “Source Store 的某类 Action 触发 Target Store 的 Action”。
 
-- 纯 reducer：`(value, prev) => nextState`，用于简单派生字段；  
-- Effect reducer：`(value, prev) => Effect<nextState,E,R2>`，用于需要先调用 Service 再决定最终 State 的场景。  
+平台在静态分析时会优先识别 `Intent.*` 调用，将其映射为统一的 `IntentRule`（详见 `06-platform-integration.md`），而底层 Runtime 则继续通过 Flow / Coordinator / Stream 实现具体行为。
 
-实现上（在运行时代码中），`andUpdateOnChanges` 会：
-
-1. 基于 `Store.Runtime.changes$` 监听 `selector` 对应的视图变化；  
-2. 对每个元素调用 `reducer`；  
-3. 将结果通过 `state.update` 写回 Store。  
-
-跨 Store 的协调（例如 A Store 的变化驱动 B Store 的更新）不由该原语负责，而是通过单独的 Coordinator helper 表达。
-
-### 2.5 Intent 原语语法糖：andUpdateOnAction
-
-`andUpdateOnAction` 用于表达另一类高频意图：“**监听某一类 Action，并在每次触发时更新当前 Store 的 State**”。
-
-典型写法：
-
-```ts
-// 命名空间形态：事件驱动的状态重排
-Flow.andUpdateOnAction<MyShape>()(
-  (a): a is { _tag: "form/change"; payload: string } => a._tag === "form/change",
-  (action, prev) => ({
-    ...prev,
-    value: action.payload,
-    isDirty: true,
-  }),
-);
-
-// 实例形态：可以在 Logic.make 内与其他 flow.* 算子组合
-const logic = Logic.make<MyShape>(({ flow }) =>
-  Effect.all([
-    flow.andUpdateOnAction(
-      (a): a is { _tag: "form/change"; payload: string } => a._tag === "form/change",
-      (action, prev) => ({ ...prev, value: action.payload, isDirty: true }),
-    ),
-    flow.andUpdateOnAction(
-      (a): a is { _tag: "form/reset" } => a._tag === "form/reset",
-      () => ({ value: "", isDirty: false }),
-    ),
-  ]),
-);
-```
-
-抽象语义：“**某类离散事件发生 → 当前 Store 的状态应如何重排**”。  
-
-类型层面同样提供纯 reducer / Effect reducer 两种 overload：
-
-- 纯 reducer：`(action, prev) => nextState`，适合简单重排；  
-- Effect reducer：`(action, prev) => Effect<nextState,E,R2>`，适合需要先调用 Service 再决定 next 的场景。  
-
-与 `flow.fromAction(...).pipe(flow.run(effect))` 相比，`andUpdateOnAction` 显式表达了「事件 → 状态更新」这一 intent，方便平台在图上识别并渲染为标准节点。
-
-## 3. Control (The Structure Layer)
+## 4. Control (The Structure Layer)
 
 `Control` 命名空间围绕 Effect 提供结构化的控制流算子，其职责是回答“**触发之后怎么执行？有哪些分支/错误域/并发结构？**”。
 
-### 3.1 分支逻辑 (Branching)
+### 4.1 分支逻辑 (Branching)
 
 ```ts
 control.branch({
@@ -206,7 +176,7 @@ branch<A,E,R2>({ if: boolean | Effect<boolean,E,R2>, then: Effect<A,E,R2>, else?
 
 平台可以将其渲染为菱形判定节点。
 
-### 3.2 错误边界 (Error Boundaries)
+### 4.2 错误边界 (Error Boundaries)
 
 ```ts
 control.tryCatch({
@@ -227,7 +197,7 @@ tryCatch<A,E,R2,A2,E2,R3>({
 
 平台可以将其标记为“错误域容器”，在图上画出红色错误路径。
 
-### 3.3 并行与聚合 (Parallel)
+### 4.3 并行与聚合 (Parallel)
 
 ```ts
 control.parallel([
@@ -244,7 +214,7 @@ parallel<R2>(effects: ReadonlyArray<Effect<any,any,R2>>): Effect<void, any, R2>
 
 平台可以将其渲染为“并行分叉/汇合”节点。
 
-## 4. 长逻辑与 Scope（简要约定）
+## 5. 长逻辑与 Scope（简要约定）
 
 在 `Logic` 中启动长逻辑时，推荐显式考虑它应当与哪一层生命周期绑定：
 
@@ -261,7 +231,7 @@ parallel<R2>(effects: ReadonlyArray<Effect<any,any,R2>>): Effect<void, any, R2>
 - 页面/组件级 Store：Logic 内长逻辑默认使用 `forkScoped`，避免“页面关闭但任务仍然持有过期状态”；  
 - 全局 Store 或专门的后台 Runtime：需要长期运行的任务显式使用 `fork` 或在单独的后台 Scope 中管理。
 
-## 5. 与原生 Effect 的关系
+## 6. 与原生 Effect 的关系
 
 - 对开发者而言，`flow.* / control.*` 只是围绕 Effect/Stream 封装的一组“语义化标准算子”，用来承载：  
   - Trigger / 时间 / 并发策略（Flow）  

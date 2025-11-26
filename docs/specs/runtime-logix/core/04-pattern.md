@@ -22,17 +22,17 @@ export const runAutoSave = (input: { interval: number }) =>
       flow.runLatest(saveEffect),
     );
 
-    // 方式二：使用 Flow 命名空间级 DSL（依赖 Logic.Env 作为运行环境）
+    // 方式二：使用 Intent.andUpdateOnChanges（依赖 Logic.Env 作为运行环境）
     // 更适合在完全独立于 Logic 的模块中复用
-    yield* Flow.andUpdateOnChanges<MyShape>()(
+    yield* Intent.andUpdateOnChanges<MyShape>(
       s => s.form,
       (form, prev) => ({ ...prev, lastSavedAt: Date.now() }),
     );
   });
 
-// 另一个典型模式：事件驱动的状态重排（使用 andUpdateOnAction）
+// 另一个典型模式：事件驱动的状态重排（使用 Intent.andUpdateOnAction）
 export const runDirtyFlag = (_: { shape: "example" }) =>
-  Flow.andUpdateOnAction<MyShape>()(
+  Intent.andUpdateOnAction<MyShape>(
     (a): a is { _tag: "input/change"; payload: string } => a._tag === "input/change",
     (action, prev) => ({
       ...prev,

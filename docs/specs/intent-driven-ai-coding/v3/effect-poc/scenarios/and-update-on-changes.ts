@@ -9,7 +9,7 @@
  */
 
 import { Effect, Schema } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Store, Logic, Intent } from '../shared/logix-v3-core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：包含派生标记的简单 State
@@ -28,11 +28,11 @@ export type DerivedState = Store.StateOf<DerivedShape>
 export type DerivedAction = Store.ActionOf<DerivedShape>
 
 // ---------------------------------------------------------------------------
-// Logic：使用 flow.andUpdateOnChanges 维护派生字段
+// Logic：使用 Intent.andUpdateOnChanges 维护派生字段
 // ---------------------------------------------------------------------------
 
-export const DerivedLogic = Logic.make<DerivedShape>(({ flow }) =>
-  flow.andUpdateOnChanges(
+export const DerivedLogic = Logic.make<DerivedShape>(() =>
+  Intent.andUpdateOnChanges<DerivedShape>(
     (s) => s.results,
     (results, prev) => ({
       ...prev,
@@ -53,4 +53,3 @@ const DerivedStateLayer = Store.State.make(DerivedStateSchema, {
 const DerivedActionLayer = Store.Actions.make(DerivedActionSchema)
 
 export const DerivedStore = Store.make<DerivedShape>(DerivedStateLayer, DerivedActionLayer, DerivedLogic)
-

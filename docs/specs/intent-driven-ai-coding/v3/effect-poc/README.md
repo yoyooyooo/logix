@@ -14,14 +14,15 @@ version: 3 (Unified API)
 
 *   `scenarios/`: 基于 v3 标准的业务场景 PoC。
     *   `search-with-debounce-latest.ts`: 使用 `fromChanges + debounce + filter + runLatest` 的搜索场景，并通过 Tag 注入 `SearchApi` 服务。
-    *   `long-task-pattern.ts`: 使用封装好的长逻辑（`Effect.forkScoped`）与 `runExhaust` 的进度更新场景。
+    *   `long-task-pattern.ts`: 使用 `patterns/long-task.ts` 中封装好的长逻辑（`Effect.forkScoped`）与 `runExhaust` 的进度更新场景。
     *   `approval-flow.ts`: 使用封装好的长逻辑组合“审批决策 + 审计 + 刷新列表”，并通过 `runExhaust` 保证提交幂等。
     *   `job-runner-service-config.ts`: 演示 `Effect.Service` + Config 读取 + Tagged Error（JobFailedError）的组合用法。
 
-*   `archive/`: LogicDSL PoC 与相关实验代码。
-    *   `patterns-legacy/`: 基于 `shared-legacy/pattern.ts` 与 `LogicDSL` 的通用模式库。
-    *   `scenarios-legacy/`: 若干业务场景（审批流 / CRUD 表单 / 文件导入等）的 PoC。
-    *   `shared-legacy/`: `dsl.ts` / `runtime.ts` / `pattern.ts` 的实现，便于对比不同实现风格。
+*   `patterns/`: 可复用的 pattern 资产（Effect-native）：
+    *   `long-task.ts`: 长任务进度更新 Pattern；
+    *   `bulk-operations.ts`: Selection + BulkOperation + Notification 批量操作 Pattern；
+    *   `file-import-flow.ts`: 文件上传 + 导入任务 + 轮询状态 Pattern；
+    *   `optimistic-toggle.ts`: 乐观开关 Logic Pattern。
 
 ## 运行指南
 

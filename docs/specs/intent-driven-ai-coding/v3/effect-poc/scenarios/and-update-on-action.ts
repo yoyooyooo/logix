@@ -9,7 +9,7 @@
  */
 
 import { Effect, Schema } from 'effect'
-import { Store, Logic, Flow } from '../shared/logix-v3-core'
+import { Store, Logic, Intent } from '../shared/logix-v3-core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：带脏标记的简单表单 State / Action
@@ -30,13 +30,13 @@ export type DirtyFormState = Store.StateOf<DirtyFormShape>
 export type DirtyFormAction = Store.ActionOf<DirtyFormShape>
 
 // ---------------------------------------------------------------------------
-// Logic：使用 Flow.andUpdateOnAction 直接表达「事件 → 状态更新」意图
+// Logic：使用 Intent.andUpdateOnAction 直接表达「事件 → 状态更新」意图
 // ---------------------------------------------------------------------------
 
 export const DirtyFormLogic = Logic.make<DirtyFormShape>(() =>
   Effect.all([
     // 监听 input/change，更新 value 并标记为脏
-    Flow.andUpdateOnAction<DirtyFormShape, never, { _tag: 'input/change'; payload: string }>(
+    Intent.andUpdateOnAction<DirtyFormShape, never, { _tag: 'input/change'; payload: string }>(
       (a): a is { _tag: 'input/change'; payload: string } => a._tag === 'input/change',
       (action, prev) => ({
         ...prev,
@@ -46,7 +46,7 @@ export const DirtyFormLogic = Logic.make<DirtyFormShape>(() =>
     ),
 
     // 监听 input/reset，重置 value 和 isDirty
-    Flow.andUpdateOnAction<DirtyFormShape, never, { _tag: 'input/reset' }>(
+    Intent.andUpdateOnAction<DirtyFormShape, never, { _tag: 'input/reset' }>(
       (a): a is { _tag: 'input/reset' } => a._tag === 'input/reset',
       (_action, _prev) => ({
         value: '',

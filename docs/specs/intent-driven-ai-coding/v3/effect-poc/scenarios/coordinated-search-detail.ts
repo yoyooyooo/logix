@@ -9,7 +9,7 @@
  */
 
 import { Effect, Schema, Context, Stream } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Store, Logic, Intent } from '../shared/logix-v3-core'
 
 // ---------------------------------------------------------------------------
 // 模块一：全局搜索 (Search Module)
@@ -122,24 +122,27 @@ class SearchStoreTag extends Context.Tag('SearchStore')<SearchStoreTag, Store.Ru
 class DetailStoreTag extends Context.Tag('DetailStore')<DetailStoreTag, Store.Runtime<Store.StateOf<DetailShape>, Store.ActionOf<DetailShape>>>() {}
 
 // 3.2. 协调逻辑：监听 SearchStore，操作 DetailStore
-const CoordinatorLogic = Logic.make<Store.Shape<any, any>, SearchStoreTag | DetailStoreTag>(() =>
-  Effect.gen(function* (_) {
-    const searchStore = yield* SearchStoreTag
-    const detailStore = yield* DetailStoreTag
+//
+// 这里演示两种等价写法：
+// - 写法一（推荐）：使用 Intent.Coordinate 作为跨 Store 协作的语义原语；
+// - 写法二：直接手写 Effect.gen + Tag 取 Runtime（见上一个版本）。
+//
+// 为了保持示例简洁，这里采用 Intent.Coordinate 的对象参数形式。
 
-    // 监听 SearchStore 的 results 字段变化
-    const results$ = searchStore.changes$((s) => s.results)
-
-    yield* results$.pipe(
-      Stream.filter((results) => results.length > 0),
-      Stream.runForEach((results) =>
-        detailStore.dispatch({
-          _tag: 'detail/initialize',
-          payload: results[0],
-        }),
-      ),
-    )
-  }),
+const CoordinatorLogic = Intent.Coordinate.onChangesDispatch<SearchShape, DetailShape>(
+  (s) => s.results,
+  (results) =>
+    results.length === 0
+      ? []
+      : [
+          {
+            _tag: 'detail/initialize' as const,
+            payload: {
+              id: results[0]!.id,
+              name: results[0]!.name,
+            },
+          },
+        ] as const,
 )
 
 // ---------------------------------------------------------------------------

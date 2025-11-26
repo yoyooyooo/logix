@@ -57,16 +57,23 @@ yield* keyword$.pipe(
 );
 ```
 
-### 2.3 Intent 原语选择 (Intent Primitives)
+### 2.3 Intent 原语选择 (L1 / L2 / L3)
 
-Logix 提供了少量强语义语法糖（Intent 原语），优先使用它们来表达“监听 + 更新”这类高频意图，只有在语义超出范畴时才回落到底层 `run*` 与手写 Effect。
+Logix 在 Intent 层提供了三档“响应式意图”表达，建议优先按层级选择：
 
-| 场景 | 推荐原语 | 说明 |
-| --- | --- | --- |
-| 监听某个 State 视图变化，并维护派生字段 | `flow.andUpdateOnChanges` / `Flow.andUpdateOnChanges` | 例如 `results` 变化时自动维护 `hasResults`、`summary` 等 |
-| 监听某一类 Action 并重排当前 Store State | `flow.andUpdateOnAction` / `Flow.andUpdateOnAction` | 例如表单 `change/reset`、Tab 切换、显式 reset 等离散事件 |
-| 监听 Action/State 触发复杂长逻辑（调用多个 Service、带错误边界） | `flow.run*` + `control.*` | 例如提交流程、审批流、Job 运行，通常封装为 `(input) => Effect` 的 Pattern |
-| 需要精细控制 Stream 结构（buffer、groupBy、低层 Stream 组合） | 直接使用 `Stream.*`/`Effect.*` | 平台视为 Gray/Black Box，适合高度自定义场景 |
+| 层级 | 场景 | 推荐原语 | 说明 |
+| --- | --- | --- | --- |
+| L1：单 Store 内同步联动 | 监听某个 State 视图变化，并维护派生字段 | `Intent.andUpdateOnChanges` | 例如 `results` 变化时自动维护 `hasResults`、`summary` 等 |
+| L1：单 Store 内同步联动 | 监听某一类 Action 并重排当前 Store State | `Intent.andUpdateOnAction` | 例如表单 `change/reset`、Tab 切换、显式 reset 等离散事件 |
+| L2：跨 Store 协作 | A.Store 的 State/Action 驱动 B.Store 的 Action | `Intent.Coordinate.onChangesDispatch` / `onActionDispatch` | 例如 SearchStore → DetailStore、GlobalLayoutStore.logout → 各 Store reset |
+| L2/L3：复杂异步流与副作用 | 监听 Action/State 触发复杂长逻辑（调用多个 Service、带错误边界） | `flow.run*` + `control.*`（未来可选 `Intent.react`） | 例如提交流程、审批流、Job 运行，通常封装为 `(input) => Effect` 的 Pattern |
+| L3：极度定制化流处理 | 需要精细控制 Stream 结构（buffer、groupBy、低层 Stream 组合） | 直接使用 `Stream.*` / `Effect.*` | 平台视为 Gray/Black Box，适合高度自定义场景 |
+
+其中：
+
+- L1 对应日常 80% 的简单联动场景，推荐默认使用；  
+- L2 用于显式表达跨 Store 协作关系，便于平台在图上呈现模块依赖；  
+- L3 仅在 Intent / Flow 原语无法覆盖时作为逃逸口使用。
 
 ## 3. 逻辑拆分 (Logic Splitting)
 

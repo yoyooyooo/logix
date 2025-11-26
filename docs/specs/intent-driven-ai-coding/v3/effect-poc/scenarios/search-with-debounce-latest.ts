@@ -33,21 +33,6 @@ export namespace SearchApi {
 }
 
 // ---------------------------------------------------------------------------
-// 搜索逻辑封装：封装「执行一次搜索」的长逻辑
-// ---------------------------------------------------------------------------
-
-interface SearchPatternInput {
-  keyword: string
-}
-
-export const runSearchEffect = (input: SearchPatternInput) =>
-  Effect.gen(function* (_) {
-    // 这里用 log 代替真实的远程调用
-    // 真正项目中可以在此调用 SearchService.search(input.keyword)
-    console.log('[SearchEffect] search with keyword =', input.keyword)
-  })
-
-// ---------------------------------------------------------------------------
 // Logic：基于 Flow 的控制流编排（fromChanges + debounce + filter + runLatest）
 // ---------------------------------------------------------------------------
 

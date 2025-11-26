@@ -7,7 +7,7 @@
  * - 长逻辑推荐封装为普通的 Effect 函数（pattern-style），通过 Ref / Env“借用”状态。
  *
  * 说明：
- * - 本文件以类型为主，函数实现均为占位（`null as any`），用于感受泛型与推导效果；
+ * - 本文件以类型为主，函数实现均为占位（例如返回 `null as unknown as T`），用于感受泛型与推导效果；
  * - 真正的运行时代码可以在此基础上单独实现 / 演进。
  */
 
@@ -572,6 +572,56 @@ export namespace Coordinator {
       predicate: (a: Store.ActionOf<ShSource>) => a is TSource,
       map: (action: TSource) => ReadonlyArray<Store.ActionOf<ShTarget>>,
     ): Effect.Effect<void, never, Env<ShSource, ShTarget, R>>
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Intent：对外暴露的语义原语门面（L1/L2 层）
+// ---------------------------------------------------------------------------
+
+export namespace Intent {
+  /**
+   * L1 快捷方式：单 Store 内 State → State 联动。
+   *
+   * 语义等价于 Flow.andUpdateOnChanges，但建议业务代码优先通过 Intent 命名空间访问，
+   * 便于平台静态分析与“意图级”可视化。
+   */
+  export const andUpdateOnChanges: typeof Flow.andUpdateOnChanges = Flow.andUpdateOnChanges
+
+  /**
+   * L1 快捷方式：单 Store 内 Action → State 联动。
+   *
+   * 语义等价于 Flow.andUpdateOnAction。
+   */
+  export const andUpdateOnAction: typeof Flow.andUpdateOnAction = Flow.andUpdateOnAction
+
+  /**
+   * L2：跨 Store 协作原语。
+   *
+   * 对 Coordinator 命名空间的语义包装，推荐通过 Intent.Coordinate 使用，
+   * 以便在代码层显式标记“这里存在跨 Store 依赖”。
+   */
+  export namespace Coordinate {
+    export type Env<
+      ShSource extends Store.Shape<any, any>,
+      ShTarget extends Store.Shape<any, any>,
+      R = never,
+    > = Coordinator.Env<ShSource, ShTarget, R>
+
+    export type OnChangesDispatch<
+      ShSource extends Store.Shape<any, any>,
+      ShTarget extends Store.Shape<any, any>,
+      R = never,
+    > = Coordinator.OnChangesDispatch<ShSource, ShTarget, R>
+
+    export type OnActionDispatch<
+      ShSource extends Store.Shape<any, any>,
+      ShTarget extends Store.Shape<any, any>,
+      R = never,
+    > = Coordinator.OnActionDispatch<ShSource, ShTarget, R>
+
+    export const onChangesDispatch: typeof Coordinator.onChangesDispatch = Coordinator.onChangesDispatch
+    export const onActionDispatch: typeof Coordinator.onActionDispatch = Coordinator.onActionDispatch
   }
 }
 

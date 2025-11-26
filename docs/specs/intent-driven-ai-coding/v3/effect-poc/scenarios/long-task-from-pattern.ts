@@ -1,20 +1,26 @@
+/**
+ * @scenario 长任务（Pattern 复用版）
+ * @description
+ *   与 long-task-pattern.ts 场景共享 `patterns/long-task.ts` 中的状态形状与长任务 Pattern，
+ *   但作为另一个 Store 实例挂载，用于验证长任务 Pattern 在多处复用时类型与行为的一致性。
+ */
+
 import { Effect } from 'effect'
-import { Store, Logic, Flow } from '../shared/logix-v3-core'
+import { Store, Logic } from '../shared/logix-v3-core'
 import {
   LongTaskStateSchema,
   LongTaskActionSchema,
   type LongTaskShape,
   type LongTaskState,
-  type LongTaskAction,
   runLongTaskPattern,
 } from '../patterns/long-task'
 
 // ---------------------------------------------------------------------------
-// Logic：通过 Action 触发长逻辑 Effect，并用 Flow 控制并发语义
+// Logic：与 long-task-pattern.ts 类似，但作为独立 Store 复用同一 Pattern
 // ---------------------------------------------------------------------------
 
-export const LongTaskLogic = Logic.make<LongTaskShape>(({ flow, state }) =>
-  Effect.gen(function* (_) {
+export const LongTaskLogicFromPattern = Logic.make<LongTaskShape>(({ flow, state }) =>
+  Effect.gen(function* () {
     const { ref, update } = state
     const start$ = flow.fromAction((a): a is { _tag: 'start' } => a._tag === 'start')
     const reset$ = flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
@@ -23,7 +29,7 @@ export const LongTaskLogic = Logic.make<LongTaskShape>(({ flow, state }) =>
     const stateRef = ref()
 
     // 启动长任务：如果已经在 running，runExhaust 会丢弃后续触发，避免重复启动
-    const startEffect = Effect.gen(function* (_) {
+    const startEffect = Effect.gen(function* () {
       yield* runLongTaskPattern({ stateRef })
     })
 
@@ -38,14 +44,19 @@ export const LongTaskLogic = Logic.make<LongTaskShape>(({ flow, state }) =>
 )
 
 // ---------------------------------------------------------------------------
-// Store：组合 State / Action / Logic 成为一棵 Store
+// Store：组合 State / Action / Logic 成为另一棵 Store
 // ---------------------------------------------------------------------------
 
-const LongTaskStateLayer = Store.State.make(LongTaskStateSchema, {
+const LongTaskStateLayerFromPattern = Store.State.make(LongTaskStateSchema, {
   status: 'idle' as const,
   progress: 0,
 })
 
-const LongTaskActionLayer = Store.Actions.make(LongTaskActionSchema)
+const LongTaskActionLayerFromPattern = Store.Actions.make(LongTaskActionSchema)
 
-export const LongTaskStore = Store.make<LongTaskShape>(LongTaskStateLayer, LongTaskActionLayer, LongTaskLogic)
+export const LongTaskStoreFromPattern = Store.make<LongTaskShape>(
+  LongTaskStateLayerFromPattern,
+  LongTaskActionLayerFromPattern,
+  LongTaskLogicFromPattern,
+)
+

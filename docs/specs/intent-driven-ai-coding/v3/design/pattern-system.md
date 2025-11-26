@@ -1,12 +1,11 @@
 ---
 title: 模式系统设计 (Pattern System Design)
 status: draft
-version: 7 (Comprehensive-Final)
+version: 8 (Effect-Native-Simplified)
 ---
 
-> **核心理念**：Pattern 是**“黑盒积木 (Black-Box Block)”**，也是**“高阶 Effect 生成器”**。它是平台资产管理的最小单元。在画布上，我们只关心它的**接口 (Config)** 和 **连接 (Topology)**；在代码中，我们关心它的**类型契约**与**逻辑闭包**。本设计以 Store / Logic / Flow / Pattern 四大概念和基于 Effect 的 pattern-style 长逻辑为基础，相关示例与类型设计以 `v3/effect-poc` 中的 PoC 为准。
-> 
-> **注意**：本文档描述的 `aiSlot`、`Spy DSL` 等高级特性，属于 **平台/工具链层面的构想**，用于增强 AI 协同与可视化配置能力。Logix **运行时核心** 对 Pattern 的定义则更为精简，仅将其视为一个普通的 `(input) => Effect` 函数，不包含这些高级运行时特性。
+> **核心共识**：在 v3 阶段，Pattern 的运行时定义已经收敛为“普通的 `(input) => Effect` 函数”，平台侧只在其外部包一层资产 metadata（id / configSchema / tags 等）。  
+> 本文件用于补充 Pattern 在 v3 体系中的角色，聚焦最小必要约定，早期构想的 `definePattern` / 自定义 DSL / Spy Runtime 等高级特性正式视为历史思路，不再作为当前规范的一部分。
 
 ## 1. Pattern 资产定义
 
@@ -16,57 +15,6 @@ version: 7 (Comprehensive-Final)
 - **Pattern Asset（平台形态）**：在 Pattern Function 外再包一层 metadata（id / version / configSchema / tags 等），用于平台注册、可视化和治理。
 
 开发者日常主要关心 **Pattern Function** 的编写；Pattern Asset 可以由 Builder / CLI 工具自动生成或补全。
-
-### 1.1 `definePattern` (The Contract)
-
-这是 Builder 侧将 Pattern Function 包装为平台资产的标准入口。  
-在推荐工作流中，开发者先编写 `(config) => Effect` 的 Pattern Function，随后由 Builder/CLI 生成或维护 `definePattern({...})` 包装层；运行时 Core 并不依赖 `@logix/pattern`。
-
-```typescript
-import { definePattern } from "@logix/pattern";
-import { Effect, Schema } from "effect";
-import { HttpClient } from "@effect/platform";
-
-// 1. 普通的 Pattern Function（运行时真正执行的函数）
-export interface ReliableFetchConfig {
-  service: string;
-  method: string;
-  retry: number;
-}
-
-export const reliableFetchImpl = (config: ReliableFetchConfig) =>
-  Effect.gen(function* (_) {
-    const client = yield* HttpClient;
-
-    const call = client.request({
-      service: config.service,
-      method: config.method
-      // ... 其他参数略
-    });
-
-    // 使用 Effect-native 重试语义，
-    return yield* Effect.retry(call, { times: config.retry });
-  });
-
-// 2. Builder 侧通过 definePattern 将其注册为资产
-export const ReliableFetch = definePattern({
-  // 身份元数据
-  id: "std/network/reliable-fetch",
-  version: "1.0.0",
-  icon: "cloud-sync",
-  tags: ["network", "retry"],
-
-  // 配置契约（决定 Wizard 表单）
-  configSchema: Schema.Struct({
-    service: Schema.String,
-    method: Schema.String,
-    retry: Schema.Number.pipe(Schema.default(3))
-  }),
-
-  // 运行时实现（Pattern Function）
-  impl: reliableFetchImpl
-});
-```
 
 ## 2. Pattern 的形态分类
 
@@ -80,140 +28,69 @@ export const ReliableFetch = definePattern({
 *   **示例**: `ModalFormWorkflow` (包含 Open/Close 信号, Loading 状态, 表单提交逻辑)。
 *   **画布表现**: 大型容器节点，暴露 Signal 端口。
 
-## 3. 高级特性：AI Slot (智能填空槽)
+## 3. Pattern 与平台的关系（v3 范围内）
 
-为了支持“结构化框架 + 智能化填充”，Pattern 可以在内部定义 `aiSlot`，将部分逻辑的实现权交给 LLM 和用户。
+在 v3 阶段，推荐的工程实践是：
 
-### 3.1 定义 Slot (Architect View)
+- 在运行时代码中，将常见长逻辑封装为 Pattern Function：  
+  - 例如审批流、Job 执行、表单提交、长任务轮询等；  
+  - 通过清晰的输入参数与 Effect 行为，保持逻辑可测试、可组合。  
+- 在平台层，将这些 Pattern Function 与元数据（id/configSchema/tags）关联：  
+  - 用于在 Galaxy 视图中以“黑盒积木”的形式呈现；  
+  - 用于在 Pattern Studio 中提供配置表单与模拟运行。  
+- 更复杂的 AI 协同（例如智能填槽、自动提炼 Pattern、富交互 Playground）可以在后续版本中按需引入，不作为 v3 的前置依赖。
 
-```typescript
-export const DataProcess = definePattern({
-  // ...
-  impl: (config) => Effect.gen(function*(_) {
-    // 这里的 runtime 代表 Builder 注入的“受控运行时”，
-    // 其能力本质上仍然来自 Store / Logic / Flow / Effect 等原语的组合。
-    const runtime = yield* PatternRuntime;
-    const rawData = yield* runtime.getPayload();
-    
-    // 定义一个 AI 填空槽
-    const cleanData = yield* runtime.aiSlot({
-      id: "data-cleaning",
-      prompt: { 
-        label: "数据清洗规则", 
-        placeholder: "例如：过滤掉金额小于 0 的订单" 
-      },
-      context: {
-        inputs: { rawData }, // 告诉 LLM 可用变量
-        output: Schema.Array(OrderSchema) // 告诉 LLM 期望输出
+本设计文件后续如需扩展（例如重新引入更强的 Builder DSL、AI Slot 等），应在 v3/v4 的 Roadmap 与 runtime-logix / platform 规范更新后，再补充新的章节；当前版本以 pattern-style `(input) => Effect` + 资产 metadata 为唯一事实源。***
+
+## 4. 工程约定：目录、命名与复用验证
+
+从“真实业务开发”的视角出发，为了让 Pattern 在仓库内可查、可测、可复用，v3 阶段补充以下工程约定。当前 PoC 的参考落点为：
+
+- 代码位置：  
+  - `docs/specs/intent-driven-ai-coding/v3/effect-poc/patterns/*.ts`：Pattern Function 的示例实现（Level 2 资产）；  
+  - `docs/specs/intent-driven-ai-coding/v3/effect-poc/scenarios/*.ts`：场景 PoC，作为 Pattern 的消费方（Level 3 代码）。
+
+- 命名约定（源码级）：  
+  - 纯 Effect Pattern（不直接依赖 Logix.Env）：  
+    - 函数：`runXxxPattern(input: XxxPatternInput): Effect.Effect<A, E, R>`；  
+    - 输入类型：`XxxPatternInput`；  
+    - 错误类型（如有）：`XxxPatternError`。  
+  - Logic Pattern（依赖 `Logic.Env<Sh,R>` / Store / Flow / Control）：  
+    - 工厂函数：`makeXxxLogicPattern(config?: C) => Logic.Fx<Sh, R, A, E>`；  
+    - 可选导出一个语法糖：`XxxLogicFromPattern = makeXxxLogicPattern()`，方便直接挂到 Store 上。
+
+- Tag-only Service vs 自带实现：  
+  - 对真实业务更有复用价值的模式，推荐 **只在 Pattern 中定义 Service 契约（Tag + interface），不提供默认实现**：  
+    - 例如：  
+      ```ts
+      export interface NotificationService {
+        info: (msg: string) => Effect.Effect<void>
+        error: (msg: string) => Effect.Effect<void>
       }
-    });
-    
-    yield* runtime.call("Api", "save", cleanData);
-  })
-});
-```
+      export class NotificationServiceTag extends Context.Tag('@svc/Notification')<
+        NotificationServiceTag,
+        NotificationService
+      > {}
+      ```  
+    - Pattern 内部只 `yield* NotificationServiceTag`，不 `provide` 实现。  
+  - 具体实现由消费方在“运行组合层”提供：  
+    - PoC 场景中，可以在单文件内使用 `Effect.provideService(Tag, impl)`；  
+    - 真正应用中，推荐集中在 RuntimeLayer / App 入口通过 `Layer.succeed` / `Layer.mergeAll` 注入。
 
-### 3.2 探测机制：Spy DSL (Platform View)
+- 场景文件（scenarios）要求：  
+  - 每个场景文件应当是**单文件完备**：  
+    - 明确 import 使用的 Pattern / Service Tag；  
+    - 在文件内或通过注释展示“如何提供依赖并运行”：  
+      - 对纯 Effect Pattern，至少给出一个 `const program = ...` 并在文件底部用 `Effect.runPromise(program)` 或等价入口；  
+      - 对依赖 Service Tag 的 Pattern，演示如何在场景内 `provideService`（或说明由上层 Runtime 提供）；  
+    - 让读者在不额外查找其它文件的情况下，理解“从 Action / 输入到 Effect 执行”的完整链路。
 
-平台如何获取 `aiSlot` 的定义？不是通过静态分析，而是通过 **“模拟执行 (Dry Run)”**。
+- 复用验证约束（多对多关系）：  
+  - 为了防止 Pattern 设计成“只适配单一 demo”，每个进入 `patterns/` 的 Pattern，理想状态应至少被 **两个及以上** 场景使用：  
+    - 例如：  
+      - `patterns/optimistic-toggle.ts` 同时被 `scenarios/optimistic-toggle.ts` 与 `scenarios/optimistic-toggle-from-pattern.ts` 消费；  
+      - `patterns/long-task.ts` 同时被 `scenarios/long-task-pattern.ts` 与 `scenarios/long-task-from-pattern.ts` 消费；  
+      - `patterns/notification.ts` 同时被 `scenarios/notify-simple-run.ts` 与 `scenarios/notify-with-bulk-and-import.ts` 消费。  
+  - 平台化阶段，可以将这种“一个 Pattern 被多个场景引用”的关系直接映射为 Pattern 资产的健康度指标，避免只服务某个孤立案例的“伪复用”。
 
-1.  **Inject Spy**: 平台注入一个特殊的 `SpyRuntime` 实现。它不执行真实逻辑，而是“捕获”所有 `aiSlot` 调用。
-2.  **Run**: 使用当前 Config 运行 Pattern 的 `impl` 函数。
-3.  **Capture**: `SpyRuntime` 记录下所有被触发的 Slot 元数据，返回给 Wizard。
-
-**优势**：
-*   **支持动态性**: 如果 Slot 在 `if (config.enableAI)` 分支内，只有当用户开启开关时，Wizard 才会显示对应的 AI 输入框。
-*   **无需复杂 Parser**: 直接利用 JS 引擎解析动态逻辑。
-
-### 3.3 填充 Slot (User/LLM View)
-
-1.  **交互**: 用户在 Wizard 中输入自然语言：“只保留 VIP 用户的订单”。
-2.  **生成**: 平台调用 LLM，结合 `context` 和用户意图，生成代码。
-3.  **结果**: 生成的代码被插入到 Pattern 实例中 (通常作为黑盒代码块)。
-
-## 4. AI 协同工作流 (AI Collaborative Workflow)
-
-为了解决“标准 Pattern 无法满足 10% 特殊需求”的痛点，平台提供基于 AI 的渐进式微调能力。
-
-### 4.1 AI 辅助 Eject (AI-Assisted Eject)
-
-当用户需要修改 Pattern 内部逻辑时，不再是简单的“炸开代码”，而是通过 AI 进行**语义化重构**。
-
-*   **交互**: 用户点击 "Eject & Refine" -> 输入指令：“在重试请求中添加 X-Retry-Count 头”。
-*   **流程**:
-    1.  **Expand**: 平台在内存中展开 Pattern 代码。
-    2.  **Prompt**: 将展开的代码 + 用户指令发送给 LLM。
-    3.  **Refine**: LLM 返回修改后的代码。
-    4.  **Replace**: 平台用新代码替换原 Pattern 节点 (降级为 Code Block)。
-
-### 4.2 自然语言配置 (NL Configuration)
-
-用户可以通过自然语言直接填充 Wizard 表单。
-
-*   **交互**: 在 Wizard 底部输入：“重试 5 次，超时 10 秒”。
-*   **流程**: LLM 解析意图 -> 映射到 Config Schema -> 自动填充表单项。
-
-## 5. Pattern Playground (核心练兵场)
-
-Playground 是架构师开发、验证 Pattern 的核心环境，也是连接“意图”与“落地”的信任构建器。
-
-### 5.1 界面布局
-*   **Editor**: 编写 `definePattern` 源码。
-*   **Preview**: 实时预览生成的 Wizard 表单。
-*   **Console**: 模拟运行控制台。
-
-### 5.2 模拟运行 (Simulation Run)
-利用 Effect 的 Layer 机制，Playground 内置 `MockRuntimeLayer`，支持在无后端环境下跑通逻辑。
-
-*   **Mock Call**: 拦截服务调用（`Effect.gen` 中 `yield* Service`），返回预设的 Mock Data。
-*   **State Viz**: 实时展示 `state.mutate` / `state.update` 导致的状态树变化。
-*   **AI Test**: 自动生成边界测试用例 (e.g. 网络连续失败 3 次)，验证 Pattern 的鲁棒性。
-
-## 6. 画布表现 (Canvas Representation)
-
-### 6.1 L2 编排视图 (The Orchestration View)
-这是 Pattern 的主战场。
-
-*   **形态**: 一个标准的方块节点 (Block Node)。
-*   **内容**: 图标、名称、关键摘要 (e.g. "Retry: 3")。
-*   **交互**: 
-    *   **配置**: 点击 -> 右侧弹出 Wizard 表单 (由 Config Schema 驱动)。
-    *   **连线**: 拖拽端口 -> 建立信号流。
-
-### 6.2 L3 详情视图 (The Detail View)
-当用户双击 Pattern 节点时，平台提供降级视图：
-
-*   **默认行为**: **Code View**。直接弹出一个只读的代码编辑器，展示 `body` 函数的源码。这是最清晰的逻辑展示。
-*   **可选行为**: **Graph View**。仅当 Pattern 内部逻辑非常简单且纯粹 (纯 DSL) 时，平台尝试将其渲染为子图。但这不再是强制要求。
-
-## 7. 治理与生命周期 (Governance & Lifecycle)
-
-Pattern 的管理分为**本地库 (Local)** 和 **公共库 (Registry)** 两层。
-
-### 7.1 生命周期状态机
-
-1.  **Draft (草稿)**: 开发者在本地项目中编写的 Pattern，仅本地可见。
-2.  **Review (评审)**: 提交到团队仓库，等待架构师审核。
-3.  **Stable (稳定)**: 审核通过，发布到 Registry，全团队可用。AI 优先推荐。
-4.  **Deprecated (废弃)**: 标记为不推荐，但保留运行时支持。AI 停止推荐，Studio 提示迁移。
-
-### 7.2 来源分层
-
-*   **System (Built-in)**: 平台内置的基础 Pattern (e.g., CRUD, Fetch with Loading)。
-*   **Team (Remote)**: 团队沉淀的业务 Pattern (e.g., 公司统一的审批流、支付组件)。
-*   **Local (Project)**: 当前项目特有的复用逻辑。
-
-## 8. 消费与组合
-
-### 8.1 积木式编排
-开发者在画布上的工作就是“搭积木”。
-
-*   拖入 `SearchPattern`。
-*   拖入 `ListPattern`。
-*   连线：`Search.onSearch` -> `List.fetch`。
-
-### 8.2 依赖注入的可视化
-如果 Pattern 声明了依赖 (`yield* _(AuditTag)`)：
-*   画布会在节点上显示一个 **Dependency Badge** (依赖徽章)。
-*   点击徽章，高亮显示提供该依赖的 Layer 节点（如果有）。
-*   这帮助架构师理解模块间的耦合关系，而无需深入代码细节。
+这些约定不强制束缚未来的 Builder / Codegen 形态，但为当前 v3 PoC 提供了一套清晰、一致的“Pattern 工程实践”，兼顾业务开发视角（能在真实需求里直接用）与平台视角（资产可解析、可管理）。***

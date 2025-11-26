@@ -68,7 +68,52 @@ UI 意图中的“用户行为”在 UI 层被标准化为 Logix 可消费的事
 | **直接循环** | Graph Cycle (A -> B -> A) | **Error**：阻止代码生成或运行，要求人工介入。 |
 | **多源写入** | 多条规则写入同一路径 (A -> C, B -> C) | **Warning**：提示竞态风险，建议合并逻辑。 |
 
-## 4. 可观测性与 Intent Trace 集成
+## 4. IntentRule：统一的规则 IR
+
+为了在平台侧统一描述各类联动规则（无论是由开发者手写 Intent API，还是由画布/DSL 生成），本架构引入 `IntentRule` 作为中间表示（IR）：
+
+```ts
+interface IntentRule {
+  source: {
+    context: "self" | string;        // self 或某个 Store/Service 标识
+    type: "state" | "action";        // 监听 State 视图还是 Action
+    selector: string;                // AST 引用或序列化表达式
+  };
+  pipeline: Array<{
+    op: "debounce" | "throttle" | "filter" | "switchMap" | "exhaustMap" | "custom";
+    args: ReadonlyArray<unknown>;
+  }>;
+  sink: {
+    context: "self" | string;        // self 或某个目标 Store/Service
+    type: "mutate" | "dispatch" | "service";
+    handler: string;                 // AST 引用或序列化表达式
+  };
+}
+```
+
+映射关系示意：
+
+- `Intent.andUpdateOnChanges/andUpdateOnAction`：  
+  - `source.context = "self"`，`type = "state" | "action"`；  
+  - `pipeline = []`；  
+  - `sink.context = "self"`，`type = "mutate"`。  
+- `Intent.Coordinate.on*Dispatch`：  
+  - `source.context = <SourceStoreId>`，`sink.context = <TargetStoreId>`；  
+  - `pipeline = []`；  
+  - `sink.type = "dispatch"`。  
+- `Intent.react`（未来扩展）：  
+  - `pipeline` 中填充 debounce/filter/switchMap 等算子；  
+  - 其余字段与上面一致。
+
+平台 Parser 的职责是：
+
+1. 从 TS 代码中解析 Intent API / Flow 组合，尽可能还原为 `IntentRule`；  
+2. 对于识别不了的复杂 Flow/Stream，退化为 Gray/Black Box 节点，仅保留 minimal 信息；  
+3. 在画布/DSL 编辑规则时，直接操作 `IntentRule` 结构，再通过 Generator 生成标准化的 Intent API 调用。
+
+这使得：**代码写法可以多样，但图模型与平台协议只有一个：IntentRule。**
+
+## 5. 可观测性与 Intent Trace 集成
 
 Logix 默认集成 Effect Tracing 与结构化调试事件（详见 `09-debugging.md`），平台 DevTools 可以在此基础上提供： 
 
