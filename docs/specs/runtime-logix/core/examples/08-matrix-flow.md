@@ -1,57 +1,80 @@
-# Matrix Examples: Flow Control (S14-S15)
+# Matrix Examples: Flow Control (v3 Standard Paradigm)
 
-> **Focus**: 错误重试、竞态取消、复杂流控
+> **Focus**: 错误重试、竞态取消、错误回退
+> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，使用 `Flow` API 和 `Effect` 组合子来声明式地处理复杂的异步控制流。
 
 ## S14: 失败重试 (Retry)
-**Trigger**: T1 (Single Path) -> **Effect**: E3 (Flow Control)
+
+**v3 标准模式**: 在传递给 `flow.run` 的 `Effect` 内部，使用 `Effect.retry` 组合子。
 
 ```typescript
-watch('username', (name, { set, services }) => 
-  Effect.gen(function*() {
-    const api = yield* services.UserApi;
-    // 如果 check 失败，自动重试
-    const result = yield* api.check(name).pipe(
-      Effect.retry({ 
-        times: 3, 
-        schedule: Schedule.exponential('100 millis') 
-      })
-    );
-    yield* set('isValid', result);
+const retryLogic = Logic.make<FormShape, UserApi>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const username$ = flow.fromChanges(s => s.username);
+
+    const checkUsernameWithRetry = Effect.gen(function* (_) {
+      const api = yield* UserApi;
+      const { username } = yield* state.read;
+      const result = yield* api.check(username).pipe(
+        // Effect 原生的重试能力
+        Effect.retry({ times: 3, schedule: Schedule.exponential('100 millis') })
+      );
+      yield* state.mutate(draft => { draft.isValid = result; });
+    });
+
+    yield* username$.pipe(flow.run(checkUsernameWithRetry));
   })
-)
+);
 ```
 
 ## S15: 竞态取消 (SwitchMap)
-**Trigger**: T1 (Single Path) -> **Effect**: E3 (Flow Control)
+
+**v3 标准模式**: 使用 `flow.runLatest` 代替 `flow.run`。`runLatest` 会自动取消前一个正在执行的 Effect，确保只有最新的流事件对应的逻辑在运行。
 
 ```typescript
-// 需求：用户快速输入，只处理最后一次请求，之前的请求自动取消
-watch('search', (kw, { set, services }) => 
-  Effect.gen(function*() {
-    const api = yield* services.SearchApi;
-    // 模拟耗时请求
-    const result = yield* api.search(kw);
-    yield* set('result', result);
-  }),
-  { 
-    debounce: '300 millis', 
-    concurrency: 'switch' // 关键：启用 SwitchMap 模式
-  }
-)
+const switchMapLogic = Logic.make<SearchShape, SearchApi>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const keyword$ = flow.fromChanges(s => s.keyword);
+
+    const searchEffect = Effect.gen(function* (_) {
+      const api = yield* SearchApi;
+      const { keyword } = yield* state.read;
+      const result = yield* api.search(keyword);
+      yield* state.mutate(draft => { draft.results = result; });
+    });
+
+    yield* keyword$.pipe(
+      flow.debounce(300),
+      // 关键：使用 runLatest 实现 SwitchMap 语义
+      flow.runLatest(searchEffect)
+    );
+  })
+);
 ```
 
 ## S16: 错误回退 (Error Fallback)
-**Trigger**: T1 -> **Effect**: E3
+
+**v3 标准模式**: 在 `Effect` 内部使用 `Effect.catchAll` 或 `control.tryCatch` 来处理错误分支。
 
 ```typescript
-watch('configId', (id, { set, services }) => 
-  Effect.gen(function*() {
-    const api = yield* services.ConfigApi;
-    // 尝试获取配置，如果失败，使用默认值
-    const config = yield* api.fetch(id).pipe(
-      Effect.catchAll(() => Effect.succeed(DEFAULT_CONFIG))
-    );
-    yield* set('config', config);
+const fallbackLogic = Logic.make<ConfigShape, ConfigApi>(({ flow, state, control }) => 
+  Effect.gen(function* (_) {
+    const configId$ = flow.fromChanges(s => s.configId);
+
+    const fetchEffect = Effect.gen(function* (_) {
+      const api = yield* ConfigApi;
+      const { configId } = yield* state.read;
+      
+      const fetchWithFallback = api.fetch(configId).pipe(
+        // 如果 API 调用失败，则回退到默认值
+        Effect.catchAll(() => Effect.succeed(DEFAULT_CONFIG))
+      );
+
+      const config = yield* fetchWithFallback;
+      yield* state.mutate(draft => { draft.config = config; });
+    });
+
+    yield* configId$.pipe(flow.run(fetchEffect));
   })
-)
+);
 ```

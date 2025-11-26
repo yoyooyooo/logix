@@ -36,7 +36,7 @@ interface InteractionEventIntent {
   // 响应动作 (Action)
   action: 
     | { type: 'uiEffect', effect: UiEffectIntent } // 纯 UI 反馈
-    | { type: 'emitSignal', signalId: string, payload?: any } // 触发业务信号
+    | { type: 'dispatch', action: any } // 派发 Action
     | { type: 'composite', actions: Action[] } // 组合动作
 }
 
@@ -57,8 +57,8 @@ interface UiEffectIntent {
 
 在 v2 架构中，Interaction 不再直接触发 Flow，而是通过 **Signal** 进行间接连接：
 
-1.  **Interaction 层**：`Button.onClick` -> `Emit Signal("submitOrder")`
-2.  **Behavior 层**：`Flow("OrderProcess")` 监听 `Signal("submitOrder")`
+1.  **Interaction 层**：`Button.onClick` -> `dispatch({ _tag: "submitOrder" })`
+2.  **Behavior 层**：`Logic` 通过 `flow.fromAction(a => a._tag === 'submitOrder')` 监听动作
 
 这种设计实现了彻底的解耦：
 - **多对一**：多个 Interaction（按钮点击、快捷键、语音指令）可以触发同一个 Signal。
@@ -75,7 +75,7 @@ interface UiEffectIntent {
 
 2.  **UI -> Logic 连线**：
     - 从“按钮”连向“逻辑卡片/Flow 节点”。
-    - 含义：点击按钮触发该逻辑 (Emit Signal)。
+    - 含义：点击按钮触发该逻辑 (Dispatch Action)。
     - 视觉：通常用实线表示，线上可标注 Signal 名称。
 
 ## 5. Logix 运行时落地
@@ -87,11 +87,10 @@ interface UiEffectIntent {
 {
   source: 'submitBtn',
   event: 'click',
-  action: { type: 'emitSignal', signalId: 'submit' }
+  action: { type: 'dispatch', action: { _tag: 'submit' } }
 }
 
 // 编译后 (Logix Logic)
-store.onInput('submitBtn_click', (event, ops) => {
-  ops.emit('submit', extractPayload(event));
-})
+// 在 React 组件中:
+// <button onClick={() => dispatch({ _tag: 'submit', payload: extractPayload() })} />
 ```

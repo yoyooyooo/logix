@@ -60,7 +60,7 @@
 *   **Code Editor (Left)**: 全功能的 Monaco Editor，支持 `definePattern` 的类型提示和补全。
 *   **Live Wizard (Center)**: 实时渲染当前 Config Schema 对应的表单。架构师修改 Schema，表单即时更新。
 *   **Simulation Console (Right)**: 
-    *   **Trace Log**: 展示 `dsl.call`, `dsl.emit` 的执行轨迹。
+    *   **Trace Log**: 展示服务调用 (`Effect.gen`) 与动作派发 (`dispatch`) 的执行轨迹。
     *   **State Tree**: 展示 `dsl.set` 导致的虚拟状态变化。
 
 ### 4.2 交互流程

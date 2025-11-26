@@ -1,7 +1,7 @@
 ---
 title: 02 · 三位一体意图模型 (The Trinity Intent Model)
 status: draft
-version: 4 (Unified-API)
+version: 5 (Unified-API-Aligned)
 ---
 
 > 本文档基于“奥卡姆剃刀”原则，将原有的六层意图模型收敛为 **UI (表现)**、**Logic (逻辑)**、**Domain (领域)** 三大核心维度。每个维度都支持从 PM（模糊需求）到 Dev（精确实现）的渐进式显影。
@@ -13,7 +13,7 @@ version: 4 (Unified-API)
 | 维度 | 核心职责 | 包含的原概念 | 对应资产 |
 | :--- | :--- | :--- | :--- |
 | **UI Intent** | **Presentation (躯壳)**<br>界面结构、组件组合与视觉交互 | Layout, View, Visual Interaction | Wireframe / Component Tree |
-| **Logic Intent** | **Behavior (灵魂)**<br>业务规则、流程编排与副作用 | Interaction(Trigger), Behavior, Flow | User Story / LogicDSL |
+| **Logic Intent** | **Behavior (灵魂)**<br>业务规则、流程编排与副作用 | Interaction(Trigger), Behavior, Flow | User Story / Logic (Effect-based DSL) |
 | **Domain Intent** | **Data (记忆)**<br>业务实体、数据模型与契约 | Data, State | Concept Model / Schema |
 
 ## 2. UI Intent · 表现意图
@@ -62,9 +62,9 @@ interface UIIntentNode {
 *   **PM 视角 (Low-Res)**：**用户故事 (User Story)**
     *   关注触发条件、业务规则和验收标准 (AC)。
     *   *例：“用户点击提交后，校验库存。如果库存不足，提示错误；否则创建订单。”*
-*   **Dev 视角 (High-Res)**：**LogicDSL**
-    *   关注信号监听、服务调用、分支判断和事务控制。
-    *   *例：“`onSignal('submitOrder')` -> `dsl.call(Inventory.check)` -> `dsl.branch` ...”*
+*   **Dev 视角 (High-Res)**：**Logic 程序 (Effect-based DSL)**
+    *   关注信号监听、服务调用、状态更新、分支判断和事务控制。
+    *   *例：“`flow.fromAction(a => a._tag === 'submitOrder')` -> `control.tryCatch` 调用 `InventoryService.check` -> `state.update` ...”*
 
 ### 3.2 业务交互 (Business Interaction)
 
@@ -143,6 +143,6 @@ interface DomainIntentNode {
 在这个模型中，软件开发不再是“翻译”，而是“结晶”。
 
 1.  **液态 (Liquid)**：PM 在文档或画布中输入的自然语言描述、草图。
-2.  **固态 (Solid)**：Dev (或 LLM) 将其转化为精确的组件树、LogicDSL 和 Schema。
+2.  **固态 (Solid)**：Dev (或 LLM) 将其转化为精确的组件树、Logic 程序（基于 Store / Logic / Flow / Control / Effect.Service / Config）和 Schema。
 
 平台的核心职责是维护液态 Spec 和固态 Impl 之间的**双向映射**，确保“需求”与“代码”永远同步。

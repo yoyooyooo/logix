@@ -32,8 +32,8 @@ Constraint & Quality Intent 回答：**“系统不仅要跑通，还要跑得�
 - **熔断 (Circuit Breaker)**：`circuitBreaker: { ... }` -> 编译为熔断器中间件。
 
 #### B. 仅限 Logix Runtime (前端)
-- **防抖 (Debounce)**：`debounce: '500ms'` -> 编译为 `watch(..., { debounce: 500 })`。
-- **节流 (Throttle)**：`throttle: '1s'` -> 编译为 `watch(..., { throttle: 1000 })`。
+- **防抖 (Debounce)**：`debounce: '500ms'` -> 编译为 `flow.debounce(500)`。
+- **节流 (Throttle)**：`throttle: '1s'` -> 编译为 `flow.throttle(1000)`。
 - **乐观更新 (Optimistic)**：`optimistic: true` -> 编译为 Store 的乐观 UI 更新逻辑。
 
 ## 3. Schema 定义
@@ -81,7 +81,12 @@ export const myFlow = Effect.gen(function*() {
 **Target: Logix Runtime**
 ```typescript
 // 假设配置了 debounce
-store.watch('searchKeyword', (val, ops) => {
+flow.fromChanges(s => s.searchKeyword).pipe(
+  flow.debounce(500),
+  flow.run(val => {
+    // ...
+  })
+);
   // ...
 }, { debounce: 500 }); // 编译器生成 options
 ```

@@ -1,69 +1,64 @@
-# 02 · 第一个 Logix 表单（Basic Form）
+# 02 · 第一个 Logix 表单 (v3 标准范式)
 
-> 对应：`core/examples/01-basic-form.md`  
-> 目标：用最少的步骤，在项目里接一个「带联动和异步校验的注册表单」。
+> **对应**: `core/examples/01-basic-form.md` (黄金标准实现)
+> **目标**: 遵循 v3 Effect-Native 范式，构建一个包含字段联动、异步校验和多字段约束的注册表单。
 
-## 1. 场景复述（用户语言）
+## 1. 场景复述 (用户语言)
 
-- 页面上有一个用户注册表单：用户名、密码、确认密码、所在国家/省份、自我介绍等字段；  
-- 需求包括：
-  - 选择国家时，省份要自动重置；  
-  - 用户名需要异步重名校验，输入停顿 500ms 后请求，期间要防止多次并发；  
-  - 密码和确认密码不一致时要给出明确错误。
+- 一个用户注册表单，包含用户名、密码、国家/省份等字段。
+- 需求：
+  - 选择国家时，省份自动重置。
+  - 用户名输入停止 500ms 后，异步检查重名，并处理竞态。
+  - 密码与确认密码不一致时提示错误。
 
-这些都是典型的「贴近 UI 的行为」，`runtimeTarget` 很明显是 `logix-engine`。
+这些行为都属于前端本地逻辑，`runtimeTarget` 明确为 `logix-engine`。
 
-## 2. 步骤一：定义表单 Schema
+## 2. 步骤一：定义 Schema 与 Shape
 
-在任意合适的位置（例如 `src/features/register/logix/schema.ts`）定义表单状态：
+在业务模块下（例如 `src/features/register/logix/schema.ts`），使用 `effect/Schema` 定义状态与动作的结构。
 
-- 对应 `core/examples/01-basic-form.md` 中的 `RegisterSchema`；  
-- 建议直接使用项目统一的 Schema 约定（`import { Schema } from "effect"`），方便以后与 Intent 对齐。
+- **StateSchema**: 定义表单的数据结构，包括值和错误字段。
+- **ActionSchema**: 定义用户可以派发的意图，如提交、重置。
+- **Store.Shape**: 将 State 和 Action 的 Schema 组合成一个类型契约，连接 `Logic` 与 `Store`。
 
-> 这一部分通常可以由平台/LLM 根据 Data & State Intent 自动生成，手写只是过渡期。
+这对应“黄金标准”示例中的 `RegisterStateSchema`, `RegisterActionSchema`, 和 `RegisterShape`。
 
-## 3. 步骤二：创建 Store（makeStore）
+## 3. 步骤二：定义 Logic
 
-在 `src/features/register/logix/store.ts` 中：
+在 `src/features/register/logix/logic.ts` 中，使用 `Logic.make` 创建一个独立的逻辑单元。所有业务规则都在这里通过 `Flow` API 声明。
 
-- 使用 `makeStore` 创建一个注册表单的 Store；  
-- 填入 `schema` / `initialValues` / `services`（如 `UserApi`），并编写 `logic`。
+- **字段联动**: 使用 `flow.fromChanges` 监听 `country` 字段的变化，然后通过 `flow.run` 触发 `state.mutate` 来重置 `province`。
+- **异步校验**: 同样使用 `flow.fromChanges` 监听 `username`，但链式调用 `flow.debounce(500)` 和 `flow.filter`，最后通过 `flow.runLatest` 执行异步校验 Effect。`runLatest` 会自动处理竞态，确保只有最后一次输入的结果会被采纳。
+- **多字段约束**: 使用 `flow.fromChanges` 同时监听 `[password, confirmPassword]` 的元组变化，在 `flow.run` 中执行比较逻辑并更新错误状态。
 
-逻辑部分对应三个子需求：
+所有逻辑都以清晰的、可组合的流（Stream）的形式存在，并通过 `Effect.all` 统一挂载。具体实现可直接参考 `core/examples/01-basic-form.md` 中的 `RegisterLogic`。
 
-- 监听 `country`，重置 `province`；  
-- 监听 `username`，调用 `UserApi.checkUsername` 并写入 `errors.username`；  
-- 使用 `watchMany(['password', 'confirmPassword'])` 保证两次密码一致。
+## 4. 步骤三：组装 Store
 
-你可以直接参考 `core/examples/01-basic-form.md` 中的实现，把它移动/简化到业务仓库的实际目录结构里。
+在 `src/features/register/logix/store.ts` 中，将之前定义的各个部分组装成一个完整的 `Store` 实例。
 
-## 4. 步骤三：在 React 中接入
+1.  **State Layer**: 使用 `Store.State.make(RegisterStateSchema, initialValues)` 创建状态层。
+2.  **Action Layer**: 使用 `Store.Actions.make(RegisterActionSchema)` 创建动作层。
+3.  **Store 实例**: 调用 `Store.make(StateLayer, ActionLayer, RegisterLogic)`，将状态、动作和逻辑组合在一起。
 
-在 React 层推荐的接入方式是：
+这个过程是纯粹的静态组合，没有副作用，易于测试和推理。
 
-- 在 feature 的根组件中创建 Store（或通过依赖注入拿到）；  
-- 使用 `@logix/react` 提供的 Hook（如 `useStore` / `useField`）把字段和状态绑定到 UI 控件上；  
-- 按「Dumb UI」原则：组件只读 Store 的值，只派发 `set`/`action`，不写业务逻辑。
+## 5. 步骤四：在 React 中接入
 
-示意流程：
+UI 层应保持“纯粹”，只负责渲染状态和派发动作。
 
-1. `<RegisterPage>` 创建或获取一个 `registerStore`；  
-2. 子组件 `<UsernameField>`、`<PasswordField>`、`<CountryField>` 通过 Hook 订阅对应字段；  
-3. 用户输入/选择时只调用 `set('path', value)`，后续联动/校验逻辑均由 Store 的 Logic 驱动。
+- 在顶层组件中创建或注入 `RegisterStore` 实例。
+- 使用 `@logix/react` 提供的 `useStore` 和 `useSelector` Hook 来订阅状态。
+  - `useSelector(store, s => s.username)`: 细粒度订阅，避免不必要的重渲染。
+- 用户的输入或点击等交互，通过 `store.dispatch({ _tag: '...' })` 或 `store.state.update(...)` (通过 Hook 暴露) 触发，驱动 `Logic` 中定义的流开始执行。
 
-> 具体 Hook API 的细节见 `core/05-react-integration.md`，本手册只强调「把业务逻辑写进 Logic，而不是组件」这一习惯。
+核心原则：**业务逻辑停留在 `Logic` 层，React 组件只做数据到视图的映射。**
 
-## 5. 步骤四：调试与验证
+## 6. 步骤五：调试与验证
 
-完成上述接入后，可以从两个层面验证：
+- **行为层面**: 验证表单的联动、校验是否符合预期。
+- **调试层面**: 
+  - 利用 DevTools 查看 Action 流和 State 快照。
+  - `Flow` 范式使得每个逻辑步骤（防抖、过滤、执行）都成为可观测的节点，极大地简化了复杂异步逻辑的调试。
 
-- **行为层面**：  
-  - 改变国家时，省份是否被清空；  
-  - 用户名输入停顿 500ms 后才发请求，再输入时是否会取消前一个请求；  
-  - 两次密码不一致时，是否正确显示错误。
-
-- **调试层面**（可选）：  
-  - 通过 Logix 的 `debug$` 或 DevTools，看 `SET` / `ACTION` / `RULE_START` 等事件，确认联动链路清晰；  
-  - 结合平台的 Intent/Flow 视图，检查规则与原始需求是否一致。
-
-当这个基础表单跑顺之后，你就掌握了使用 Logix 的最小工作流：**定义 Schema → 创建 Store → 写 Logic → 用 React 订阅**。后续列表/外部集成/调用 Flow Runtime 都是在这个模式上叠加能力。
+完成这个流程，你就掌握了 Logix v3 的标准工作流：**Schema → Logic → Store → UI**。所有更复杂的场景都是在这个核心模式上的扩展。

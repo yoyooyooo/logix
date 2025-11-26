@@ -1,7 +1,7 @@
----
-title: intent-driven · 意图驱动开发平台 (v3)
+--- 
+title: 01 · 意图驱动开发平台 (v3) (Intent-Driven Development Platform)
 status: draft
-version: 8 (Full-Duplex)
+version: 9 (Unified-API-Aligned)
 ---
 
 ## 1. 核心理念：意图显影与资产复用

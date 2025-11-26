@@ -23,7 +23,7 @@ import { TestClock } from 'effect/Test';
 
 const myTest = defineTest(myLogicRule, (api) => Effect.gen(function*() {
   // 1. Action: 触发信号 (复用 Core 语义)
-  yield* api.emit('submit', { id: 1 });
+    yield* api.dispatch({ _tag: 'submit', payload: { id: 1 } });
   
   // 2. Time Travel: Effect 原生能力
   yield* TestClock.advance('1 second');
@@ -64,7 +64,7 @@ import * as fc from 'fast-check';
 
 const fuzzTest = defineTest(myLogicRule, (api) => Effect.gen(function*() {
   const input = yield* Arb.make(InputSchema);
-  yield* api.emit('submit', input);
+    yield* api.dispatch({ _tag: 'submit', payload: input });
   yield* api.assert.state(s => s.isValid);
 }));
 ```
@@ -76,9 +76,9 @@ const fuzzTest = defineTest(myLogicRule, (api) => Effect.gen(function*() {
 ```typescript
 const raceTest = defineTest(myLogicRule, (api) => Effect.gen(function*() {
   // 模拟快速点击两次
-  yield* Effect.all([
-    api.emit('submit', { id: 1 }),
-    api.emit('submit', { id: 2 })
+    yield* Effect.all([
+    api.dispatch({ _tag: 'submit', payload: { id: 1 } }),
+    api.dispatch({ _tag: 'submit', payload: { id: 2 } })
   ], { concurrency: 'unbounded' });
   
   // 断言只发生了一次 API 调用

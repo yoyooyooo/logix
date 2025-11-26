@@ -1,66 +1,82 @@
-# Matrix Examples: External & Lifecycle (S10-S13)
+# Matrix Examples: External & Lifecycle (v3 Standard Paradigm)
 
-> **Focus**: 外部流集成、高频推送、生命周期
+> **Focus**: 外部流集成、高频推送、生命周期管理
+> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式。所有外部事件源都应被封装为 `Effect.Service` 并通过依赖注入在 `Logic` 中消费。
 
 ## S10: 实时推送 (Realtime Push)
-**Trigger**: T4 (External) -> **Effect**: E1 (Sync Mutation)
+
+**v3 标准模式**: 将 WebSocket 封装为服务，`Logic` 订阅其暴露的 `Stream`。
 
 ```typescript
-// 需求：将 WebSocket 的 price 消息同步到 Store
-on(services.WebSocket.priceStream, (msg, { set }) => 
-  set('stock.price', msg.price)
-)
+// 1. 定义服务接口
+class PriceService extends Context.Tag("PriceService")<PriceService, {
+  readonly price$: Stream.Stream<number>;
+}>() {}
+
+// 2. 在 Logic 中消费
+const realTimeLogic = Logic.make<StockShape, PriceService>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const priceSvc = yield* PriceService;
+
+    // 将外部价格流接入状态更新
+    yield* priceSvc.price$.pipe(
+      flow.run(price => 
+        state.mutate(draft => { draft.stock.price = price; })
+      )
+    );
+  })
+);
 ```
 
 ## S11: 高频推送 (High Frequency Push)
-**Trigger**: T4 (External) -> **Effect**: E4 (Batch)
+
+**v3 标准模式**: 在 `Logic` 消费 `Stream` 之前，使用 `Stream` 的原生操作符（如 `chunkN` 或 `debounce`) 进行缓冲或采样，然后通过一次 `state.mutate` 批量更新。
 
 ```typescript
-// 需求：WS 每秒推送 1000 次，需要缓冲并批量更新
-// 这是一个 User Land 的实现模式，Logix 提供基础能力
-on(
-  services.WebSocket.highFreqStream.pipe(
-    // 使用 Effect Stream 的缓冲能力
-    Stream.groupedWithin(100, "50 millis")
-  ), 
-  (chunk, { batch }) => 
-    // chunk 是一个数组
-    batch((ops) => 
-      Effect.forEach(chunk, (msg) => 
-        ops.set(`data.${msg.id}`, msg.value)
+const highFrequencyLogic = Logic.make<DataShape, HighFrequencyService>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const hfSvc = yield* HighFrequencyService;
+
+    yield* hfSvc.events$.pipe(
+      // 每 50 毫秒或每 100 个事件，将事件打包成一个数组 (Chunk)
+      Stream.chunkN(100),
+      Stream.debounce('50 millis'),
+      // 对每个事件包进行批量处理
+      flow.run(chunk => 
+        state.mutate(draft => {
+          chunk.forEach(event => {
+            draft.data[event.id] = event.value;
+          });
+        })
       )
-    )
-)
+    );
+  })
+);
 ```
 
 ## S12: 初始化加载 (Init Load)
-**Trigger**: T5 (Lifecycle) -> **Effect**: E2 (Async Computation)
+
+**v3 标准模式**: 在 `Logic.make` 的 `Effect.gen` 主体中直接编写初始化逻辑。这个 Effect 只会在 `Logic` 首次启动时执行一次。
 
 ```typescript
-watch('userId', (id, { set, services }) => 
-  Effect.gen(function*() {
-    const api = yield* services.UserApi;
-    const data = yield* api.fetch(id);
-    yield* set('data', data);
-  }),
-  { immediate: true } // 关键：Store 创建时立即触发
-)
+const initialLoadLogic = Logic.make<UserShape, UserApi>(({ state }) => 
+  Effect.gen(function* (_) {
+    const api = yield* UserApi;
+    const { userId } = yield* state.read;
+
+    // Logic 初始化时直接执行加载
+    yield* state.mutate(draft => { draft.meta.isLoading = true; });
+    const data = yield* api.fetchUser(userId);
+    yield* state.mutate(draft => {
+      draft.data = data;
+      draft.meta.isLoading = false;
+    });
+
+    // ... 此处可以继续定义其他流式监听逻辑
+  })
+);
 ```
 
 ## S13: 销毁清理 (Dispose)
-**Trigger**: T5 (Lifecycle) -> **Effect**: E1 (Cleanup)
 
-```typescript
-// 需求：Store 销毁时断开连接
-// 实际上，on/mount 产生的流会自动被 Scope 管理
-// 如果有额外的资源，可以在 handler 里注册 finalizer
-watch('isConnected', (connected, { services }) => 
-  Effect.gen(function*() {
-    if (connected) {
-      const socket = yield* services.WebSocket.connect();
-      // 注册清理逻辑
-      yield* Effect.addFinalizer(() => socket.disconnect());
-    }
-  })
-)
-```
+**v3 标准模式**: 开发者 **无需手动清理**。所有在 `Logic` 中启动的流 (`flow.run`) 或 `Effect` (`Effect.forkScoped`) 都会被绑定到 `Store` 的 `Scope` 上。当 `Store` 被销毁时，`Scope` 会被关闭，Effect 运行时会自动中断所有相关的 Fibers，并执行所有注册的 `finalizer`（例如断开 WebSocket 连接、清除定时器等）。这是 Effect 结构化并发带来的核心优势之一。

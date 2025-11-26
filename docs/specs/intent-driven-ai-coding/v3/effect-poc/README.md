@@ -4,41 +4,32 @@ status: active
 version: 3 (Unified API)
 ---
 
-> **核心目标**：验证 v3 架构下的 **Unified API**、**Pattern System** 和 **Static Analysis** 可行性。本目录包含可运行的 TypeScript 代码，作为 Logix 平台的参考实现。
+> **核心目标**：验证 v3 架构下的 **Unified API**、长逻辑封装风格和 **Static Analysis** 可行性。本目录包含可运行的 TypeScript 代码，作为 Logix 平台的参考实现。
 
-## 目录结构
+## 目录结构（v3 收敛中）
 
 *   `shared/`: 核心基础设施。
-    *   `dsl.ts`: `LogicDSL` 接口定义 (The Contract)。
-    *   `runtime.ts`: `RuntimeLayer` 实现 (The Implementation)。
-    *   `pattern.ts`: `definePattern` 工具函数。
+    *   `logix-v3-core.ts`: v3 版 Store / Logic / Flow 核心类型与示例。
+    *   `effect-types.ts`: Effect / Layer 等基础类型别名。
 
-*   `patterns/`: 通用 Pattern 库 (Assets)。
-    *   `debounced-search.ts`: 防抖搜索。
+*   `scenarios/`: 基于 v3 标准的业务场景 PoC。
+    *   `search-with-debounce-latest.ts`: 使用 `fromChanges + debounce + filter + runLatest` 的搜索场景，并通过 Tag 注入 `SearchApi` 服务。
+    *   `long-task-pattern.ts`: 使用封装好的长逻辑（`Effect.forkScoped`）与 `runExhaust` 的进度更新场景。
+    *   `approval-flow.ts`: 使用封装好的长逻辑组合“审批决策 + 审计 + 刷新列表”，并通过 `runExhaust` 保证提交幂等。
+    *   `job-runner-service-config.ts`: 演示 `Effect.Service` + Config 读取 + Tagged Error（JobFailedError）的组合用法。
 
-*   `scenarios/`: 业务场景实战 (Usage)，每个 PoC 对应一个单文件。
-    *   `poc-01-simple-search.ts`: 基础搜索场景（调用 `DebouncedSearch`）。
-    *   `poc-approval-flow.ts`: 审批流（决策 + 审计 + 刷新列表）。
-    *   `poc-bulk-operations.ts`: 批量操作（选中项批量处理）。
-    *   `poc-crud-form.ts`: 表单加载与提交。
-    *   `poc-dependent-selects.ts`: 级联下拉（省 / 市 / 区）。
-    *   `poc-file-import.ts`: 文件导入（上传 + 轮询任务）。
-    *   `poc-long-task-polling.ts`: 长任务轮询。
-    *   `poc-optimistic-toggle.ts`: 乐观更新开关。
-    *   `poc-order-export.ts`: 订单导出。
-    *   `poc-search-with-debounce.ts`: 单次搜索 + 结果落盘。
+*   `archive/`: LogicDSL PoC 与相关实验代码。
+    *   `patterns-legacy/`: 基于 `shared-legacy/pattern.ts` 与 `LogicDSL` 的通用模式库。
+    *   `scenarios-legacy/`: 若干业务场景（审批流 / CRUD 表单 / 文件导入等）的 PoC。
+    *   `shared-legacy/`: `dsl.ts` / `runtime.ts` / `pattern.ts` 的实现，便于对比不同实现风格。
 
 ## 运行指南
 
-本目录代码基于 `effect` 库。你可以直接运行这些文件来验证逻辑执行结果。
-
-```bash
-# 示例：运行基础搜索场景 PoC
-ts-node scenarios/poc-01-simple-search.ts
-```
+本目录代码基于 `effect` 库。旧版 LogicDSL PoC 仍可参考 `archive/*` 下代码与 `archive/shared-legacy/runtime.ts` 的实现；  
+v3 版 Store / Logic / Flow 当前以类型与示例为主，后续运行时实现会在 `runtime-logix` 文档与子包中演进。
 
 ## 关键验证点
 
-1.  **类型安全**: 验证 `dsl.call` 和 `Context.Tag` 的类型推导是否正常。
-2.  **运行时行为**: 验证 `RuntimeLayer` 是否正确执行了副作用。
-3.  **Pattern 组合**: 验证 `definePattern` 产出的 Effect 是否能被正确组合。
+1.  **类型安全**: 验证 v3 版 Store / Logic / Flow / Control / Service / Config 在典型场景下的推导效果。
+2.  **运行时行为**: 旧版 PoC 继续用于验证 `RuntimeLayer` 行为，新版运行时将迁移到统一的 Logix Engine。
+3.  **长逻辑封装风格**: 在运行时核心中，推荐将长逻辑封装为普通的 `(input) => Effect` 函数，资产化和 meta 由平台侧在自身实现中消费。

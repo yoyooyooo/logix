@@ -1,14 +1,31 @@
----
+--- 
 title: 97 · 统一逻辑运行时 (Unified Logic Runtime)
 status: draft
-version: 9 (Unified-API)
+version: 11 (Effect-Native)
 ---
 
-> 本文档描述了 Logic Intent (Behavior) 的运行时实现。在 v3 模型下，我们采用统一的 **LogicDSL** 作为逻辑真理，由 Effect Runtime 直接执行。
+> 本文档描述 Logic Intent (Behavior) 的运行时实现。实现层以 **Store / Logic / Flow** 三大运行时原语为基础，结合 `Control`、`Effect.Service`、`Config` 等能力构成统一的 Logic Runtime。具体类型与 PoC 以 `v3/effect-poc` 下代码为准。
 
 ## 1. 核心理念：One Logic, Any Runtime
 
-Logic Intent 的 Impl 层是 **LogicDSL**。它是一套基于 TypeScript 的、声明式的业务逻辑原语。
+Logic Intent 的 Impl 层是基于 Effect 的 **`Logic.make` 和 `Flow/flow` API** 风格的代码：  
+
+- Store：通过 Schema 定义 State/Action 形状，并由 `Store.Runtime` 提供 `getState / dispatch / actions$ / changes$ / ref` 等能力；  
+- Logic：通过 `Logic.make` 获取 `state / actions / flow / control` 四个命名空间，在 `Effect.gen` 中编排业务逻辑；  
+- Flow：围绕 `actions$ / changes$` 提供有限的时序与并发算子（如 `fromAction / fromChanges / debounce / throttle / run / runLatest / runExhaust / runSequence`），并在此基础上提供少量强语义语法糖（如 `andUpdateOnChanges`）；  
+- Control：提供结构化的控制流算子（如 `branch / tryCatch / parallel`），用于表达分支、错误域与并行。  
+
+长逻辑本身以 pattern-style 的 `(input) => Effect` 函数存在，可以直接被 Logic 调用，也可以在平台层被资产化。
+
+### 1.1 Flow 术语消歧 (Terminology)
+
+在不同文档中，`Flow` 一词曾被用来指代不同层级的概念，这里统一约定：
+
+- `Logix Flow`：特指前端 Logix Engine 内部的时间轴 / 并发原语集合，即 `runtime-logix/core/03-logic-and-flow.md` 中的 `Flow.Api`（`fromAction / fromChanges / debounce / run*` 等）。代码层面通过 `flow.*` 命名空间访问。  
+- `Effect Flow Runtime`：特指运行在 BFF / Server 侧的 Effect 驱动业务流程运行时（例如 `.flow.ts` 中编排的跨系统长流程）。为了避免歧义，后续文档中更倾向使用 **Flow Runtime** 或 **ServerFlow Runtime** 来称呼它，而不直接写 `Flow`。  
+- `Flow DSL`：指 YAML/JSON 级别的编排描述（参见 `v1/08-flow-dsl-and-ast.md`），主要用于 Flow 结构的抽象表达，便于 Intent 与工具链进行结构化对齐。  
+
+后续涉及“Flow”的文档应显式使用上述术语之一，并在首次出现时指明是 `Logix Flow` 还是 `Flow Runtime`，避免再出现混用。
 
 ## 2. 动态性与热更新 (Dynamism & HMR)
 
@@ -53,7 +70,7 @@ Logix 的 HMR 建立在 Effect 强大的 **Scope (资源作用域)** 机制之�
 
 平台利用 **Static Analysis (静态分析)** 实现代码与画布的无损同步。
 
-*   **Code -> Graph**: Parser 提取 `LogicDSL` 调用链，构建内存图结构。
+*   **Code -> Graph**: Parser 提取 `Flow` 调用链，构建内存图结构。
 *   **Graph -> Code**: 修改图结构后，利用 `ts-morph` 精准修改对应的 AST 节点。
 
 ### 3.1 混合可视化 (Hybrid Visualization)

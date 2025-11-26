@@ -51,7 +51,7 @@ Logix 将消除这些模糊点。通过提供标准化的 `logic` 编排机制�
 2.  **从 Logix 起步，不计重构成本**
     未来工作默认从 `@logix/core` v1 开始设计，不再以"现有实现"为约束条件；优先保证模型清晰、可推理、可演进，而不是节省实现成本。
 3.  **禁止在 UI 中编排业务副作用**  
-    业务级联动、异步调用、防抖/竞态处理等，一律通过 Logix 的 `logic` / `watch` / `on` 声明，不允许再在 React/Vue 组件里用 `useEffect/useMemo` 编排业务逻辑；UI 层只读 Store，只派发标准化 Action。
+    业务级联动、异步调用、防抖/竞态处理等，一律通过 Logix 的 `Logic` 声明，不允许再在 React/Vue 组件里用 `useEffect/useMemo` 编排业务逻辑；UI 层只读 Store，只派发标准化 Action。
 4.  **唯一的状态机来源**  
     Logix 是唯一的状态与逻辑运行时，后续不得在 Form 或 React 适配层再发明第二套状态机或副作用系统（例如直接依赖 Zustand/自写 Hooks 维护核心业务状态）。
 5.  **表单只是第一个领域验证**

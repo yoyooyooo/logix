@@ -1,68 +1,93 @@
-# Matrix Examples: Collection & Batch (S06-S09)
+# Matrix Examples: Collection & Batch (v3 Standard Paradigm)
 
-> **Focus**: 数组操作、通配符、批量更新
+> **Focus**: 数组操作、行级联动、聚合计算、批量更新
+> **Note**: 本文示例展示了 v3 Effect-Native 标准范式。所有集合操作都通过监听父级集合，并使用 `state.mutate` 进行原子化更新。
 
-## S06: 行级联动 (Row Linkage)
-**Trigger**: T3 (Collection) -> **Effect**: E1 (Sync Mutation)
+## S06 & S09: 行级联动与列表聚合 (Row Linkage & Aggregation)
+
+**v3 标准模式**: 监听整个 `items` 数组的变化。在 `flow.run` 中，使用一次 `state.mutate` 同时完成所有派生状态（行内 `total` 和整体 `summary`）的计算，以保证数据一致性并获得最佳性能。
 
 ```typescript
-// 需求：修改任意行的 price，自动计算该行的 total
-watchPattern('items.*.price', (price, { set }, ctx) => 
-  Effect.gen(function*() {
-    const index = ctx.params[0]; // 解析通配符
-    const qty = yield* ctx.ops.getPath(`items[${index}].quantity`);
-    yield* set(`items[${index}].total`, price * qty);
+const aggregationLogic = Logic.make<CartShape>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const items$ = flow.fromChanges(s => s.items);
+
+    const calculationEffect = state.mutate(draft => {
+      let totalAmount = 0;
+      // 1. 行级联动：计算每行的 total
+      draft.items.forEach(item => {
+        item.total = item.price * item.quantity;
+        // 2. 聚合计算：累加总价
+        if (item.checked) {
+          totalAmount += item.total;
+        }
+      });
+      draft.summary.totalAmount = totalAmount;
+    });
+
+    yield* items$.pipe(
+      flow.debounce(50), // 轻微防抖以应对连续的行操作
+      flow.run(calculationEffect)
+    );
   })
-)
+);
 ```
 
 ## S07: 行级异步 (Row Async)
-**Trigger**: T3 (Collection) -> **Effect**: E2 (Async Computation)
+
+**v3 标准模式**: 监听整个 `items` 数组。在 `flow.run` 中，遍历数组，识别出需要执行异步操作的项，并使用 `Effect.all` 并行处理它们。这需要开发者自行管理状态以避免重复请求。
 
 ```typescript
-// 需求：修改任意行的 productId，异步加载详情
-watchPattern('items.*.productId', (pid, { set, services }, ctx) => 
-  Effect.gen(function*() {
-    if (!pid) return;
-    const index = ctx.params[0];
-    const api = yield* services.ProductService;
-    const detail = yield* api.getDetail(pid);
-    yield* set(`items[${index}].detail`, detail);
-  }),
-  // 注意：这里不能用 'switch'，否则第二行的请求会取消第一行的
-  // 应该用 'concurrent' (默认) 或者 'merge'
-  { concurrency: undefined }
-)
+const asyncRowLogic = Logic.make<ProductListShape, ProductApi>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const items$ = flow.fromChanges(s => s.items);
+
+    const fetchDetailsEffect = Effect.gen(function* (_) {
+      const api = yield* ProductApi;
+      const { items } = yield* state.read;
+      
+      // 筛选出需要加载详情的行
+      const effects = items.map((item, index) => 
+        item.productId && !item.detail
+          ? api.fetchDetail(item.productId).pipe(
+              Effect.flatMap(detail => 
+                state.mutate(draft => { draft.items[index].detail = detail; })
+              )
+            )
+          : Effect.void
+      );
+
+      // 并行执行所有加载任务
+      yield* Effect.all(effects, { discard: true, concurrency: 'unbounded' });
+    });
+
+    yield* items$.pipe(flow.runLatest(fetchDetailsEffect));
+  })
+);
 ```
 
 ## S08: 全选/反选 (Batch Update)
-**Trigger**: T3 (Collection) -> **Effect**: E4 (Batch)
+
+**v3 标准模式**: 监听触发全选的 `Action`。在 `flow.run` 中执行一次 `state.mutate`，即可原子化地遍历并更新所有行，实现批量更新效果。
 
 ```typescript
-watch('selectAll', (checked, { get, batch }) => 
-  Effect.gen(function*() {
-    const { items } = yield* get;
-    // 使用 batch 暂停通知
-    yield* batch((ops) => 
-      Effect.forEach(items, (_, idx) => 
-        ops.set(`items[${idx}].checked`, checked)
-      )
-    );
+const toggleAllLogic = Logic.make<CartShape>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const toggleAll$ = flow.fromAction(a => a._tag === 'toggleAll');
+
+    const toggleAllEffect = Effect.gen(function* (_) {
+      const { isAllChecked } = yield* state.read;
+      const nextChecked = !isAllChecked;
+
+      yield* state.mutate(draft => {
+        draft.isAllChecked = nextChecked;
+        draft.items.forEach(item => {
+          item.checked = nextChecked;
+        });
+      });
+    });
+
+    yield* toggleAll$.pipe(flow.run(toggleAllEffect));
   })
-)
-```
-
-## S09: 列表聚合 (Aggregation)
-**Trigger**: T3 (Collection) -> **Effect**: E2 (Async/Sync Computation)
-
-```typescript
-// 需求：items 数组任意变化，重算总价
-// 推荐：监听父节点，利用 Deep Equal 避免不必要的 summary 更新
-watch('items', (items, { set }) => 
-  Effect.gen(function*() {
-    const total = items.reduce((sum, i) => sum + i.total, 0);
-    yield* set('summary.total', total);
-  }),
-  { debounce: '50 millis' } // 稍微防抖一下，避免频繁重算
-)
+);
 ```

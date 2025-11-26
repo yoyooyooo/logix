@@ -1,84 +1,129 @@
-# Matrix Examples: Basic & Async (S01-S05)
+# Matrix Examples: Basic & Async (v3 Standard Paradigm)
 
 > **Focus**: 单字段/多字段联动、异步副作用
+> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，统一使用 `Logic.make` + `Flow.Api`。
 
 ## S01: 基础联动 (Sync Linkage)
-**Trigger**: T1 (Single Path) -> **Effect**: E1 (Sync Mutation)
+
+**v3 标准模式**: 使用 `flow.fromChanges` 监听源字段，在 `flow.run` 中通过 `state.mutate` 更新目标字段。
 
 ```typescript
-api.rule({
-  name: 'ResetProvinceOnCountryChange',
-  trigger: api.on.change(s => s.country),
-  do: api.ops.set(s => s.province, null)
-});
+export const S01_ResetProvinceOnCountryChange = Logic.make<FormShape>(
+  ({ flow, state }) =>
+    Effect.gen(function* (_) {
+      const country$ = flow.fromChanges((s) => s.country);
+
+      yield* country$.pipe(
+        flow.run(
+          state.mutate((draft) => {
+            draft.province = "";
+          })
+        )
+      );
+    })
+);
 ```
 
 ## S02: 异步回填 (Async Fill)
-**Trigger**: T1 (Single Path) -> **Effect**: E2 (Async Computation)
+
+**v3 标准模式**: 监听 `zipCode` 变化，通过 `flow.runLatest` 执行包含 API 调用的 Effect，自动处理竞态。
 
 ```typescript
-api.rule({
-  name: 'FillCityByZipCode',
-  trigger: api.on.change(s => s.zipCode),
-  do: api.pipe(
-    api.ops.filter(ctx => ctx.value.length >= 5),
-    api.ops.fetch(ctx => api.services.GeoService.fetchCity(ctx.value)),
-    api.ops.set(s => s.city, ctx => ctx.value)
-  )
-});
+export const S02_FillCityByZipCode = Logic.make<FormShape, GeoService>(
+  ({ flow, state }) =>
+    Effect.gen(function* (_) {
+      const zip$ = flow.fromChanges((s) => s.zipCode);
+
+      const fillCityEffect = Effect.gen(function* (_) {
+        const svc = yield* GeoService;
+        const { zipCode } = yield* state.read;
+        const city = yield* svc.fetchCity(zipCode);
+        yield* state.mutate((draft) => { draft.city = city; });
+      });
+
+      yield* zip$.pipe(
+        flow.filter((zip) => zip.length >= 5),
+        flow.runLatest(fillCityEffect) // 使用 runLatest 保证只处理最新的 zip code
+      );
+    })
+);
 ```
 
 ## S03: 防抖搜索 (Debounced Search)
-**Trigger**: T1 (Single Path) -> **Effect**: E3 (Flow Control)
+
+**v3 标准模式**: 典型的 `debounce` + `filter` + `runLatest` 组合。
 
 ```typescript
-api.rule({
-  name: 'SearchWithDebounce',
-  trigger: api.on.change(s => s.keyword),
-  do: api.pipe(
-    api.ops.debounce(500),
-    api.ops.fetch(ctx => api.services.SearchService.search(ctx.value)),
-    api.ops.set(s => s.results, ctx => ctx.value)
-  )
-});
+export const S03_SearchWithDebounce = Logic.make<SearchShape, SearchApi>(
+  ({ flow, state }) =>
+    Effect.gen(function* (_) {
+      const keyword$ = flow.fromChanges((s) => s.keyword);
+
+      const searchEffect = Effect.gen(function* (_) {
+        const svc = yield* SearchApi;
+        const { keyword } = yield* state.read;
+        const results = yield* svc.search(keyword);
+        yield* state.mutate((draft) => { draft.results = results; });
+      });
+
+      yield* keyword$.pipe(
+        flow.debounce(500),
+        flow.filter((keyword) => keyword.trim() !== ""),
+        flow.runLatest(searchEffect)
+      );
+    })
+);
 ```
 
 ## S04: 联合校验 (Multi-Field Validation)
-**Trigger**: T2 (Multi Path) -> **Effect**: E1 (Sync Mutation)
+
+**v3 标准模式**: `flow.fromChanges` 可以监听一个返回元组 `[s.startDate, s.endDate]` 的 selector。
 
 ```typescript
-api.rule({
-  name: 'ValidateDateRange',
-  trigger: api.on.change(s => [s.startDate, s.endDate] as const),
-  do: api.ops.update(s => s.errors, (errors, _, ctx) => {
-    const [start, end] = ctx.value;
-    if (start && end && start > end) {
-      return { ...errors, date: 'Start must be <= End' };
-    }
-    const { date, ...rest } = errors;
-    return rest;
-  })
-});
+export const S04_ValidateDateRange = Logic.make<FormShape>(
+  ({ flow, state }) =>
+    Effect.gen(function* (_) {
+      const datePair$ = flow.fromChanges(
+        (s) => [s.startDate, s.endDate] as const
+      );
+
+      const validationEffect = state.mutate((draft) => {
+        if (draft.startDate && draft.endDate && draft.startDate > draft.endDate) {
+          draft.errors.dateRange = "Start must be <= End";
+        } else {
+          delete draft.errors.dateRange;
+        }
+      });
+
+      yield* datePair$.pipe(flow.run(validationEffect));
+    })
+);
 ```
 
 ## S05: 多参查询 (Multi-Arg Query)
-**Trigger**: T2 (Multi Path) -> **Effect**: E2 (Async Computation)
+
+**v3 标准模式**: 与 S04 类似，监听多个参数的元组，然后触发一个包含 API 调用的 Effect。
 
 ```typescript
-api.rule({
-  name: 'QueryByCategoryAndSort',
-  trigger: api.on.change(s => [s.category, s.sort] as const),
-  do: api.pipe(
-    api.ops.filter(ctx => {
-      const [cat, sort] = ctx.value;
-      return !!cat && !!sort;
-    }),
-    api.ops.fetch(ctx => {
-      const [cat, sort] = ctx.value;
-      return api.services.ProductService.query(cat, sort);
-    }),
-    api.ops.set(s => s.list, ctx => ctx.value),
-    api.ops.debounce(300)
-  )
-});
+export const S05_QueryByCategoryAndSort = Logic.make<ProductShape, ProductApi>(
+  ({ flow, state }) =>
+    Effect.gen(function* (_) {
+      const params$ = flow.fromChanges(
+        (s) => [s.category, s.sort] as const
+      );
+
+      const queryEffect = Effect.gen(function* (_) {
+        const svc = yield* ProductApi;
+        const { category, sort } = yield* state.read;
+        const list = yield* svc.query(category, sort);
+        yield* state.mutate((draft) => { draft.list = list; });
+      });
+
+      yield* params$.pipe(
+        flow.filter(([cat, sort]) => !!cat && !!sort),
+        flow.debounce(300),
+        flow.runLatest(queryEffect)
+      );
+    })
+);
 ```

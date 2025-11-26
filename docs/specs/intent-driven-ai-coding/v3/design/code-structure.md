@@ -58,7 +58,7 @@ src/features/order/
 - **落点**：`src/features/*/stores/*.store.ts`
 - **内容**：
   - `makeStore` 配置对象。
-  - `logic` 数组中包含编译后的 `watch` / `onSignal` 规则。
+  - `logic` 数组中包含编译后的 `Logic` 规则。
   - 引用 `*.schema.ts` 中的数据定义。
 
 ### 3.3 Hybrid Flow (胶水代码)

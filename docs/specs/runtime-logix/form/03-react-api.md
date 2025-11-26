@@ -97,4 +97,4 @@ function useFieldArray<T, P extends ArrayPath<T>>(
 | `mode` / `reValidateMode` | `FormConfig` | 通过 Logic Preset 内部规则实现 |
 | `arrayPush` (Method) | `array/append` (Action) | 方法调用变为 Action Dispatch |
 | `Stream.runForEach` | `useSelector` | 手动订阅变为自动优化的 Selector |
-| `SubscriptionRef` | `Logix Store` | 底层状态容器升级 |
+| `SubscriptionRef` | `store.ref()` | `SubscriptionRef` 仍用于状态借用，通过 `store.ref()` API 获取 |

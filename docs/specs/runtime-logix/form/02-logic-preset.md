@@ -1,7 +1,8 @@
-# 预置逻辑 (Logic Preset)
+# 表单预置逻辑 (Form Logic Presets)
 
-> **Status**: Definitive (v3.1 Strict Compliance)
-> **Layer**: Form Domain
+> **Status**: Definitive (v3.1 Strict Compliance)  
+> **Layer**: Form Domain  
+> **Note**: 本文档展示了基于 v3 Effect-Native 标准范式（`Logic.make` + `flow` API）的常见表单预置逻辑实现。所有旧的 `api.rule` DSL 形态已被废弃。
 
 ## 1. 配置契约 (Configuration Contract)
 
@@ -17,102 +18,109 @@ export interface FormConfig<T> {
 }
 ```
 
-## 2. 核心逻辑实现 (Logic Implementation)
+## 2. 核心逻辑实现 (v3 Standard Paradigm)
 
 ### 2.1 脏检查 (Dirty Check)
 
-使用 **Dynamic Arguments** 特性，直接在 `set` 中计算值。
+通过监听 `values` 的变化，并与初始值进行深度比较来更新 `isDirty` 状态。
 
 ```typescript
-api.rule({
-  name: 'DirtyCheck',
-  trigger: api.on.change(s => s.values),
-  // 利用 DSL 的动态参数能力：第二个参数可以是 (ctx) => value
-  do: api.ops.set(
-    s => s.ui.meta.isDirty,
-    (ctx) => !deepEqual(ctx.value, config.initialData)
-  )
-});
+const dirtyCheckLogic = Logic.make<FormShape>(({ flow, state }) => 
+  Effect.gen(function*(_) {
+    const values$ = flow.fromChanges(s => s.values);
+    const initialValues = (yield* state.read).initialValues; // 假设初始值在 state 中
+
+    yield* values$.pipe(
+      flow.run(values => 
+        state.mutate(draft => {
+          draft.ui.meta.isDirty = !deepEqual(values, initialValues);
+        })
+      )
+    );
+  })
+);
 ```
 
 ### 2.2 智能校验策略 (Smart Validation Strategy)
 
-逻辑过于复杂（涉及多条件分支），不适合强制使用 DSL。根据规范，采用 **Native Effect Mode** 实现。
+将不同的触发源（字段变更、失焦、提交）合并到一个流中，并根据当前表单状态（是否有错误）和配置来决定是否执行校验。
 
 ```typescript
-api.rule({
-  name: 'SmartValidationTrigger',
-  trigger: api.on.any(
-    api.on.action('field/change'),
-    api.on.action('field/blur'),
-    api.on.action('form/submit')
-  ),
-  // 切换到 Native Effect 模式以处理复杂控制流
-  do: Effect.gen(function*() {
-    const ctx = yield* api.context;
-    const state = yield* api.get;
-    
-    const { mode, reValidateMode } = config;
-    const actionType = ctx.action.type;
-    const hasErrors = !state.ui.meta.isValid;
-    
-    // 1. 决策逻辑
-    const activeMode = hasErrors ? (reValidateMode ?? mode) : mode;
-    const shouldValidate = match(actionType)
-      .with('form/submit', () => true)
-      .with('field/blur', () => activeMode === 'onBlur' || activeMode === 'all')
-      .with('field/change', () => activeMode === 'onChange' || activeMode === 'all')
-      .otherwise(() => false);
+const smartValidationLogic = Logic.make<FormShape, FormValidatorService>(({ flow, state, actions }) => 
+  Effect.gen(function*(_) {
+    const validator = yield* FormValidatorService;
+    const config = (yield* state.read).config;
 
-    if (!shouldValidate) return;
+    // 1. 定义触发源
+    const change$ = flow.fromAction(a => a._tag === 'field/change');
+    const blur$ = flow.fromAction(a => a._tag === 'field/blur');
+    const submit$ = flow.fromAction(a => a._tag === 'form/submit');
 
-    // 2. 执行逻辑
-    const validateOp = api.actions.validate(ctx.payload.path);
+    // 2. 定义校验 Effect
+    const validationEffect = (action: FieldChangeAction | FieldBlurAction) => 
+      Effect.gen(function*(_) {
+        const current = yield* state.read;
+        const activeMode = current.ui.meta.isValid ? config.mode : config.reValidateMode;
+        
+        const shouldValidate = match(action._tag)
+          .with('form/submit', () => true)
+          .with('field/blur', () => activeMode === 'onBlur' || activeMode === 'all')
+          .with('field/change', () => activeMode === 'onChange' || activeMode === 'all')
+          .otherwise(() => false);
 
-    if (actionType === 'field/change') {
-      // 在 Native Mode 中手动调用防抖工具或复用 DSL 算子
-      yield* api.ops.debounce(config.debounce, validateOp);
-    } else {
-      yield* validateOp;
-    }
+        if (!shouldValidate) return;
+
+        const validationResult = yield* validator.validate(action.payload.path, current.values);
+        yield* state.mutate(draft => {
+          draft.ui.errors[action.payload.path] = validationResult.error;
+        });
+      });
+
+    // 3. 组合流
+    const changeValidation$ = change$.pipe(
+      flow.debounce(config.debounce ?? '200 millis'),
+      flow.runLatest(validationEffect)
+    );
+    const blurValidation$ = blur$.pipe(flow.run(validationEffect));
+    const submitValidation$ = submit$.pipe(flow.run(() => validator.validateAll()));
+
+    yield* Effect.all([changeValidation$, blurValidation$, submitValidation$], { discard: true });
   })
-});
+);
 ```
 
 ### 2.3 数组操作逻辑 (Array Logic)
 
-涉及对 `values` 的深层修改，使用 `api.ops.edit` (基于 Mutative) 是最标准的方式。
+数组操作通过专有的 Action 触发，在 Logic 中监听这些 Action 并使用 `state.mutate` 执行具体的数组方法。
 
 ```typescript
-api.rule({
-  name: 'ArrayOperations',
-  trigger: api.on.actionType('array/*'),
-  do: api.pipe(
-    // 1. 原子化更新 Values (使用 Draft 编辑模式)
-    api.ops.edit((draft, ctx) => {
-      const { path, value, index, indexA, indexB, from, to } = ctx.payload;
-      const arr = get(draft.values, path);
-      if (!Array.isArray(arr)) return;
+const arrayLogic = Logic.make<FormShape>(({ flow, state }) => 
+  Effect.gen(function*(_) {
+    const arrayAction$ = flow.fromAction(a => a._tag.startsWith('array/'));
 
-      switch (ctx.action.type) {
-        case 'array/append': arr.push(value); break;
-        case 'array/prepend': arr.unshift(value); break;
-        case 'array/remove': arr.splice(index, 1); break;
-        case 'array/swap': 
-          [arr[indexA], arr[indexB]] = [arr[indexB], arr[indexA]]; 
-          break;
-        case 'array/move':
-          const [item] = arr.splice(from, 1);
-          arr.splice(to, 0, item);
-          break;
-      }
-    }),
-    
-    // 2. 标记 Dirty
-    api.ops.set(s => s.ui.meta.isDirty, true),
-    
-    // 3. 触发校验
-    api.ops.actions.validate(ctx => ctx.payload.path)
-  )
-});
+    yield* arrayAction$.pipe(
+      flow.run(action => 
+        state.mutate(draft => {
+          const { path, value, index, indexA, indexB, from, to } = action.payload;
+          const arr = get(draft.values, path);
+          if (!Array.isArray(arr)) return;
+
+          switch (action._tag) {
+            case 'array/append': arr.push(value); break;
+            case 'array/prepend': arr.unshift(value); break;
+            case 'array/remove': arr.splice(index, 1); break;
+            case 'array/swap': 
+              [arr[indexA], arr[indexB]] = [arr[indexB], arr[indexA]]; 
+              break;
+            case 'array/move':
+              const [item] = arr.splice(from, 1);
+              arr.splice(to, 0, item);
+              break;
+          }
+          draft.ui.meta.isDirty = true;
+        })
+      )
+    );
+  })
+);
 ```

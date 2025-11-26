@@ -1,7 +1,9 @@
 # POC: 智能防抖搜索 (Smart Debounced Search)
 
-> **Scenario**: CRM 系统中的客户搜索功能。
-> **Goal**: 验证 v3 架构下 "AI Copilot -> Pattern -> Hybrid Coding" 的全链路工作流。
+> **Scenario**: CRM 系统中的客户搜索功能。  
+> **Goal**: 验证架构下 "AI Copilot -> Pattern -> Hybrid Coding" 的全链路工作流。  
+> **Status**: PoC。  
+> **Note**: 本 PoC 已更新为 v3 Effect-Native 标准范式，展示了如何使用 `Logic.make` 和 `flow` API 结合 `Effect.Service` 来实现一个包含防抖、竞态处理和状态管理的复杂搜索功能。
 
 ## 1. 场景描述 (The Context)
 
@@ -20,50 +22,23 @@
 
 ```typescript
 // src/patterns/std/search.ts
-import { definePattern } from "@logix/pattern";
-import { Schema } from "@effect/schema";
-import { LogicDSL } from "@logix/dsl";
-import { Effect } from "effect";
+import { Effect, Schema, Context } from 'effect';
+import { Store, Logic } from '~/logix-v3-core'; // 概念性路径
 
-export const DebouncedSearch = definePattern({
-  id: "std/search/debounced",
-  version: "1.0.0",
-  icon: "search",
-  
-  // 配置契约：决定了 AI 如何填参，以及 Wizard 长什么样
-  config: Schema.Struct({
-    delay: Schema.Number.pipe(Schema.default(300)),
-    service: Schema.String,
-    method: Schema.String,
-    bindTo: Schema.String, // 状态路径
-    loadingPath: Schema.String.optional()
-  }),
+// 1. 定义服务与 Schema
+class CustomerApi extends Context.Tag('CustomerApi')<CustomerApi, {
+  readonly search: (keyword: string) => Effect.Effect<Customer[], Error>;
+}>() {}
 
-  // 逻辑实现：封装了复杂的并发控制
-  body: (config) => Effect.gen(function*(_) {
-    const dsl = yield* _(LogicDSL);
-    
-    // 1. 防抖
-    yield* dsl.debounce(config.delay);
-    
-    // 2. 设置 Loading
-    if (config.loadingPath) {
-      yield* dsl.set(config.loadingPath, true);
-    }
-    
-    // 3. 服务调用 (使用 switchMap 处理竞态)
-    // 注意：这里简化了写法，实际 DSL 会处理 switchMap
-    const result = yield* dsl.call(config.service, config.method, dsl.payload);
-    
-    // 4. 更新状态
-    yield* dsl.set(config.bindTo, result);
-    
-    // 5. 关闭 Loading
-    if (config.loadingPath) {
-      yield* dsl.set(config.loadingPath, false);
-    }
-  })
+const SearchStateSchema = Schema.Struct({
+  keyword: Schema.String,
+  results: Schema.Array(Schema.Any), // 应替换为 Customer Schema
+  isSearching: Schema.Boolean
 });
+
+const SearchActionSchema = Schema.Never;
+
+type SearchShape = Store.Shape<typeof SearchStateSchema, typeof SearchActionSchema>;
 ```
 
 ## 3. 开发者实战 (Developer View)
@@ -75,23 +50,38 @@ AI 推荐并配置了 `DebouncedSearch` Pattern，生成如下代码：
 
 ```typescript
 // src/features/customer/logic.ts
-import { Effect } from "effect";
-import { LogicDSL } from "@logix/dsl";
-import { DebouncedSearch } from "@/patterns/std/search";
 
-export const handleSearch = Effect.gen(function*(_) {
-  const dsl = yield* _(LogicDSL);
 
-  // [L1 White Box] Pattern 节点
-  // @intent-node: node-1 { type: "pattern-block", label: "Customer Search" }
-  yield* DebouncedSearch({
-    delay: 500,
-    service: "CustomerService",
-    method: "search",
-    bindTo: "ui.customerList",
-    loadingPath: "ui.isSearching"
-  });
-});
+// 2. Logic 实现
+export const SearchLogic = Logic.make<SearchShape, CustomerApi>(({ flow, state }) => 
+  Effect.gen(function*(_) {
+    const keyword$ = flow.fromChanges(s => s.keyword);
+
+    const searchEffect = Effect.gen(function*(_) {
+      const api = yield* CustomerApi;
+      const { keyword } = yield* state.read;
+
+      yield* state.mutate(draft => { draft.isSearching = true; });
+      const result = yield* Effect.either(api.search(keyword));
+
+      if (result._tag === 'Left') {
+        // 错误处理
+        yield* state.mutate(draft => { draft.isSearching = false; });
+      } else {
+        yield* state.mutate(draft => {
+          draft.isSearching = false;
+          draft.results = result.right;
+        });
+      }
+    });
+
+    yield* keyword$.pipe(
+      flow.debounce(500),
+      flow.filter(kw => kw.length > 2),
+      flow.runLatest(searchEffect)
+    );
+  })
+);
 ```
 
 **画布表现**：
@@ -104,29 +94,33 @@ export const handleSearch = Effect.gen(function*(_) {
 需求变更：需要增加复杂的埋点逻辑。开发者直接在 IDE 中插入代码。
 
 ```typescript
-export const handleSearch = Effect.gen(function*(_) {
-  const dsl = yield* _(LogicDSL);
+// 3. 混合编码 (Hybrid Coding)
+// 需求变更：增加一个复杂的埋点逻辑
+export const SearchLogicWithAnalytics = Logic.make<SearchShape, CustomerApi | AnalyticsApi>(
+  ({ flow, state }) => 
+    Effect.gen(function*(_) {
+      const keyword$ = flow.fromChanges(s => s.keyword);
 
-  // --- 手动插入的黑盒逻辑 ---
-  // [L3 Black Box] 代码块节点
-  // @intent-start: node-analytics { label: "Complex Analytics" }
-  const keyword = yield* dsl.getPayload();
-  if (keyword.length > 5 && keyword.includes("VIP")) {
-     const encrypted = yield* Effect.sync(() => myComplexCrypto(keyword));
-     yield* dsl.call("AnalyticsService", "track", { encrypted });
-  }
-  // @intent-end: node-analytics
-  // -------------------------
+      // 埋点逻辑 (Black Box)
+      const analyticsEffect = Effect.gen(function*(_) {
+        const analyticsApi = yield* AnalyticsApi;
+        const { keyword } = yield* state.read;
+        if (keyword.length > 5 && keyword.includes("VIP")) {
+          const encrypted = myComplexCrypto(keyword);
+          yield* analyticsApi.track({ encrypted });
+        }
+      });
 
-  // [L1 White Box] Pattern 节点
-  yield* DebouncedSearch({
-    delay: 500,
-    service: "CustomerService",
-    method: "search",
-    bindTo: "ui.customerList",
-    loadingPath: "ui.isSearching"
-  });
-});
+      // 将埋点逻辑和搜索逻辑组合
+      const combinedEffect = Effect.all([analyticsEffect, searchEffect], { discard: true });
+
+      yield* keyword$.pipe(
+        flow.debounce(500),
+        flow.filter(kw => kw.length > 2),
+        flow.runLatest(combinedEffect)
+      );
+    })
+);
 ```
 
 **画布表现**：

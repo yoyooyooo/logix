@@ -67,7 +67,7 @@ function useEffectCallback<Args extends any[], R>(
 
 | 类型 | 定义 | 存储位置 | 实现方式 |
 | :--- | :--- | :--- | :--- |
-| Persistent Derived (业务数据) | 核心业务逻辑，需要持久化、传输给后端或被其他逻辑依赖，例如 `orderTotal`、`isAdult`。 | Logix State | 使用 Logix 的 `watch` + `set` 显式写入。 |
+| Persistent Derived (业务数据) | 核心业务逻辑，需要持久化、传输给后端或被其他逻辑依赖，例如 `orderTotal`、`isAdult`。 | Logix State | 通过 `Logic` 规则（`flow.fromChanges` + `state.mutate`）显式写入。 |
 | Transient Derived (视图数据) | 仅用于 UI 展示，无需持久化，例如格式化日期、拼接字符串、UI 显隐计算。 | React 内存 | 使用 `useSelector`（可配合 `proxy-memoize`）在渲染期计算。 |
 
 实践建议：

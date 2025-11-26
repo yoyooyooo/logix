@@ -4,7 +4,11 @@ status: draft
 version: 3
 ---
 
-> 本文定义了 v2 架构下的核心行为模型：基于 DAG 的逻辑编排、强类型的 Signal 驱动、以及双运行时（Effect/Logix Engine）的分发机制。
+> **[定位澄清]** 本文档描述的是 Logic Intent 的 **抽象模型**，主要服务于平台的可视化与代码生成。在 v3 架构中，**代码是唯一事实源 (Code is Truth)**。本文定义的图状 DSL (Nodes/Edges) 最终会编译为（或从中解析出）标准的 Effect-Native 代码，而不是在运行时被直接解释。
+> 
+> ---
+> 
+> 本文定义了 v3 架构下的核心行为模型：基于 DAG 的逻辑编排、强类型的 Signal 驱动、以及双运行时（Effect/Logix Engine）的分发机制。
 
 ## 1. 核心定义
 
@@ -60,7 +64,7 @@ interface FlowIntent {
 
 type FlowNode = 
   | ServiceCallNode   // 调用服务 (Effect.promise/call)
-  | BranchNode        // 条件分支 (Effect.match)
+  | BranchNode        // 条件分支 (Effect.match / matchEffect)
   | WaitNode          // 等待信号/时间 (Effect.sleep/race)
   | StateMachineNode  // 嵌入复杂状态机 (XState/Workflow)
   | ReturnNode        // 结束并返回
@@ -108,7 +112,7 @@ Flow Intent 是逻辑蓝图，具体的执行由 `runtimeTarget` 决定：
 - **适用场景**：贴近 UI 的交互逻辑、字段联动、乐观更新、本地校验（如表单级联、即时搜索）。
 - **产物**：Logix Store `logic` 配置。
 - **实现**：
-  - 简单逻辑编译为 `watch` / `onSignal` 规则。
+  - 简单逻辑编译为 `Logic` 规则。
   - 复杂 DAG 逻辑编译为 Logix 内部的微型 Effect Runner 调用（Logix 集成精简版 Effect 运行时）。
 
 ### 4.3 Hybrid Flow (混合运行时)
@@ -132,29 +136,32 @@ Flow Intent 是逻辑蓝图，具体的执行由 `runtimeTarget` 决定：
 // 自动生成的 Logix Logic
 logic: (api) => [
   // 1. Interaction: 点击按钮 -> 触发 submit 信号
-  api.onInput('SaveButton_click', (event, ops) => 
-    ops.emit('submit')
-  ),
+  // UI组件的onClick处理器会调用: dispatch({ _tag: 'submit' })
+
 
   // 2. Behavior: 收到 submit 信号 -> 调用后端 Flow
-  api.onSignal('submit', (payload, ops) => 
+  flow.fromAction(a => a._tag === 'submit').pipe(
+    flow.run(
     Effect.gen(function*() {
       yield* ops.set('isSubmitting', true);
       // 自动生成的胶水代码：调用后端 Effect Flow
       yield* runFlow('submitOrderFlow', { ...ops.get() });
       yield* ops.set('isSubmitting', false);
-      yield* ops.emit('submitSuccess');
+            yield* dispatch({ _tag: 'submitSuccess' });
     }).pipe(
       Effect.catchAll(err => ops.set('error', err))
     )
   ),
 
   // 3. UI Effect: 收到 success 信号 -> 关闭弹窗 & 刷新列表
-  api.onSignal('submitSuccess', (payload, ops) => 
-    Effect.all([
-      ops.emit('ui_closeModal', { target: 'EditModal' }),
-      ops.emit('ui_refreshList', { target: 'OrderList' })
-    ])
+  flow.fromAction(a => a._tag === 'submitSuccess').pipe(
+    flow.run(
+      // 这里的UI操作可以通过更新状态来触发，或调用一个UI服务
+      state.mutate(draft => { 
+        draft.showModal = false; 
+        draft.needsRefresh = true; 
+      })
+    )
   )
 ]
 ```

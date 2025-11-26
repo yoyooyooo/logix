@@ -4,43 +4,67 @@ status: draft
 version: 7 (Comprehensive-Final)
 ---
 
-> **核心理念**：Pattern 是**“黑盒积木 (Black-Box Block)”**，也是**“高阶 Effect 生成器”**。它是平台资产管理的最小单元。在画布上，我们只关心它的**接口 (Config)** 和 **连接 (Topology)**；在代码中，我们关心它的**类型契约**与**逻辑闭包**。
+> **核心理念**：Pattern 是**“黑盒积木 (Black-Box Block)”**，也是**“高阶 Effect 生成器”**。它是平台资产管理的最小单元。在画布上，我们只关心它的**接口 (Config)** 和 **连接 (Topology)**；在代码中，我们关心它的**类型契约**与**逻辑闭包**。本设计以 Store / Logic / Flow / Pattern 四大概念和基于 Effect 的 pattern-style 长逻辑为基础，相关示例与类型设计以 `v3/effect-poc` 中的 PoC 为准。
+> 
+> **注意**：本文档描述的 `aiSlot`、`Spy DSL` 等高级特性，属于 **平台/工具链层面的构想**，用于增强 AI 协同与可视化配置能力。Logix **运行时核心** 对 Pattern 的定义则更为精简，仅将其视为一个普通的 `(input) => Effect` 函数，不包含这些高级运行时特性。
 
 ## 1. Pattern 资产定义
 
 在 v3 架构中，Pattern 不再是静态配置，而是标准的 TypeScript 代码资产。
 
+- **Pattern Function（源码形态）**：形如 `(config: C) => Effect.Effect<A, E, R>` 的普通函数，内部使用 Effect / Store / Logic / Flow / Control 等原语完成业务逻辑；
+- **Pattern Asset（平台形态）**：在 Pattern Function 外再包一层 metadata（id / version / configSchema / tags 等），用于平台注册、可视化和治理。
+
+开发者日常主要关心 **Pattern Function** 的编写；Pattern Asset 可以由 Builder / CLI 工具自动生成或补全。
+
 ### 1.1 `definePattern` (The Contract)
 
-这是将普通函数转化为平台资产的唯一入口。
+这是 Builder 侧将 Pattern Function 包装为平台资产的标准入口。  
+在推荐工作流中，开发者先编写 `(config) => Effect` 的 Pattern Function，随后由 Builder/CLI 生成或维护 `definePattern({...})` 包装层；运行时 Core 并不依赖 `@logix/pattern`。
 
 ```typescript
 import { definePattern } from "@logix/pattern";
-import { Schema } from "@effect/schema";
+import { Effect, Schema } from "effect";
+import { HttpClient } from "@effect/platform";
 
+// 1. 普通的 Pattern Function（运行时真正执行的函数）
+export interface ReliableFetchConfig {
+  service: string;
+  method: string;
+  retry: number;
+}
+
+export const reliableFetchImpl = (config: ReliableFetchConfig) =>
+  Effect.gen(function* (_) {
+    const client = yield* HttpClient;
+
+    const call = client.request({
+      service: config.service,
+      method: config.method
+      // ... 其他参数略
+    });
+
+    // 使用 Effect-native 重试语义，
+    return yield* Effect.retry(call, { times: config.retry });
+  });
+
+// 2. Builder 侧通过 definePattern 将其注册为资产
 export const ReliableFetch = definePattern({
-  // 1. 身份元数据
+  // 身份元数据
   id: "std/network/reliable-fetch",
   version: "1.0.0",
   icon: "cloud-sync",
   tags: ["network", "retry"],
-  
-  // 2. 配置契约 (决定了 Wizard 表单)
-  config: Schema.Struct({
+
+  // 配置契约（决定 Wizard 表单）
+  configSchema: Schema.Struct({
     service: Schema.String,
     method: Schema.String,
     retry: Schema.Number.pipe(Schema.default(3))
   }),
-  
-  // 3. 逻辑实现 (决定了运行时行为)
-  // 画布默认不展开此函数，视为黑盒
-  body: (config) => Effect.gen(function*(_) {
-    const dsl = yield* _(LogicDSL);
-    yield* dsl.retry(
-      { times: config.retry },
-      dsl.call(config.service, config.method, {})
-    );
-  })
+
+  // 运行时实现（Pattern Function）
+  impl: reliableFetchImpl
 });
 ```
 
@@ -65,12 +89,14 @@ export const ReliableFetch = definePattern({
 ```typescript
 export const DataProcess = definePattern({
   // ...
-  body: (config) => Effect.gen(function*(_) {
-    const dsl = yield* _(LogicDSL);
-    const rawData = yield* dsl.getPayload();
+  impl: (config) => Effect.gen(function*(_) {
+    // 这里的 runtime 代表 Builder 注入的“受控运行时”，
+    // 其能力本质上仍然来自 Store / Logic / Flow / Effect 等原语的组合。
+    const runtime = yield* PatternRuntime;
+    const rawData = yield* runtime.getPayload();
     
     // 定义一个 AI 填空槽
-    const cleanData = yield* dsl.aiSlot({
+    const cleanData = yield* runtime.aiSlot({
       id: "data-cleaning",
       prompt: { 
         label: "数据清洗规则", 
@@ -82,7 +108,7 @@ export const DataProcess = definePattern({
       }
     });
     
-    yield* dsl.call("Api", "save", cleanData);
+    yield* runtime.call("Api", "save", cleanData);
   })
 });
 ```
@@ -91,9 +117,9 @@ export const DataProcess = definePattern({
 
 平台如何获取 `aiSlot` 的定义？不是通过静态分析，而是通过 **“模拟执行 (Dry Run)”**。
 
-1.  **Inject Spy**: 平台注入一个特殊的 `SpyDSL` 实现。它不执行真实逻辑，而是“捕获”所有 `aiSlot` 调用。
-2.  **Run**: 使用当前 Config 运行 Pattern 的 `body` 函数。
-3.  **Capture**: `SpyDSL` 记录下所有被触发的 Slot 元数据，返回给 Wizard。
+1.  **Inject Spy**: 平台注入一个特殊的 `SpyRuntime` 实现。它不执行真实逻辑，而是“捕获”所有 `aiSlot` 调用。
+2.  **Run**: 使用当前 Config 运行 Pattern 的 `impl` 函数。
+3.  **Capture**: `SpyRuntime` 记录下所有被触发的 Slot 元数据，返回给 Wizard。
 
 **优势**：
 *   **支持动态性**: 如果 Slot 在 `if (config.enableAI)` 分支内，只有当用户开启开关时，Wizard 才会显示对应的 AI 输入框。
@@ -139,8 +165,8 @@ Playground 是架构师开发、验证 Pattern 的核心环境，也是连接“
 ### 5.2 模拟运行 (Simulation Run)
 利用 Effect 的 Layer 机制，Playground 内置 `MockRuntimeLayer`，支持在无后端环境下跑通逻辑。
 
-*   **Mock Call**: 拦截 `dsl.call`，返回预设的 Mock Data。
-*   **State Viz**: 实时展示 `dsl.set` 导致的状态树变化。
+*   **Mock Call**: 拦截服务调用（`Effect.gen` 中 `yield* Service`），返回预设的 Mock Data。
+*   **State Viz**: 实时展示 `state.mutate` / `state.update` 导致的状态树变化。
 *   **AI Test**: 自动生成边界测试用例 (e.g. 网络连续失败 3 次)，验证 Pattern 的鲁棒性。
 
 ## 6. 画布表现 (Canvas Representation)

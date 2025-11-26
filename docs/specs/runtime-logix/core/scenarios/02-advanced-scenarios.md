@@ -13,11 +13,11 @@
 
 ### Scenario 1.2: 判别联合类型切换
 **描述**：`payment` 根据 `type` 区分不同子结构，例如 `"card"` / `"cash"` / `"transfer"`，切换 `type` 时需要重置/迁移对应分支字段。  
-**目标**：验证在单个 `watch('payment.type', ...)` 中处理结构变化的可读性，及路径系统对“清空一整个分支”的支持能力。
+**目标**：验证在单个 `flow.fromChanges(s => s.payment.type)` 中处理结构变化的可读性，及路径系统对“清空一整个分支”的支持能力。
 
 ### Scenario 1.3: 动态字典 / Map
 **描述**：以 `itemsById[id].status` 为代表的动态键结构，需要支持“监听任意 entry 变化”和“只监听特定 key”。  
-**目标**：压测 Logix 是否需要提供字典级别的监听能力（如 `watch('itemsById.*.status', ...)`），以及通配符路径在类型与实现上的可行性。
+**目标**：压测 Logix 是否需要提供字典级别的监听能力（如 `flow.fromChanges(s => s.itemsById)`），以及通配符路径在类型与实现上的可行性。
 
 ---
 
@@ -25,7 +25,7 @@
 
 ### Scenario 2.1: 多字段约束（区间合法性）
 **描述**：`startDate <= endDate`、`min <= max` 等需要同时读取多个字段的约束与校验。  
-**目标**：验证使用单路径 `watch` + `get` 读取其他字段是否足够自然，是否需要 `watchMany(['startDate', 'endDate'], ...)` 之类 API。
+**目标**：验证 `flow.fromChanges` 是否能自然地处理多字段依赖，例如通过 `flow.fromChanges(s => [s.startDate, s.endDate])`。
 
 ### Scenario 2.2: 聚合字段（汇总统计）
 **描述**：购物车总价 `summary.total = sum(items[*].total)`，任何一行的 `quantity` / `price` / `discount` 变化都需要刷新总计与汇总信息。  
@@ -45,7 +45,7 @@
 
 ### Scenario 3.2: 双向绑定风格（外部源 + 手工编辑）
 **描述**：`price` 同时受外部源（如 WebSocket 行情）和用户手工编辑影响，需要区分“外部推送”和“用户输入”，避免互相刺激形成来回写。  
-**目标**：验证 `watch` / `mount` 是否需要引入来源标记（meta），以及 Logix 是否提供防止自触发的机制。
+**目标**：验证 `flow.fromChanges` 与外部源接入时，是否需要引入来源标记（meta）以防止自触发。
 
 ### Scenario 3.3: 多规则冲突（写同一路径）
 **描述**：多个规则都试图更新 `shipping.method`，例如“根据地区自动选择默认方式”与“根据重量强制升级方式”，在部分条件下可能互相覆盖。  
@@ -57,7 +57,7 @@
 
 ### Scenario 4.1: 表单提交并发控制
 **描述**：用户在提交按钮上快速多次点击，业务期望只执行一次（或串行执行），并正确维护 `isSubmitting`、`submitError` 等状态。  
-**目标**：验证 Logix 是否提供提交级并发策略（如 `exhaust` / `restart`），以及与 `watch`/`on` 的组合方式。
+**目标**：验证 `flow.runExhaust` / `flow.runLatest` 等并发策略是否能与 `flow.fromAction` / `flow.fromChanges` 优雅组合。
 
 ### Scenario 4.2: 自动保存 + 手动保存协同
 **描述**：自动保存逻辑按固定间隔或变更累计触发，用户也可以随时点击“保存”；两种保存需要共享节流/幂等语义，避免相互抢占或重复提交。  
@@ -65,7 +65,7 @@
 
 ### Scenario 4.3: 多服务并行调用与部分成功
 **描述**：一次操作中并行调用 A/B/C 三个服务，允许部分成功并更新对应子状态，同时收敛错误并反馈给用户。  
-**目标**：验证在 `watch` 中组合 `Effect.all` / `Effect.allWith` 等并发原语时，Logix 对错误通道路由、部分成功写入与回滚策略的兼容性。
+**目标**：验证在 `flow.run` 中组合 `Effect.all` / `Effect.allWith` 等并发原语时，对错误通道路由、部分成功写入与回滚策略的兼容性。
 
 ---
 
@@ -140,7 +140,7 @@
 **目标**：验证 Logix 是否支持 LogicRule 的动态注册/注销及其生命周期管理。
 
 ### Scenario 9.2: JSON 意图解释执行与 TS 等价性
-**描述**：同一业务逻辑既可以由 TS `watch` 代码表示，也可以由 JSON AST（Intent → Flow）解释执行，二者在行为和 Trace 上应保持等价。  
+**描述**：同一业务逻辑既可以由 TS `Logic` 代码表示，也可以由 JSON AST（Intent → Flow）解释执行，二者在行为和 Trace 上应保持等价。  
 **目标**：压测未来 JSON 解释器设计对 Logix API 的要求，例如逻辑序列化、规则标识与调试信息。
 
 ### Scenario 9.3: 多版本逻辑共存与灰度

@@ -1,61 +1,67 @@
-# Matrix Examples: Advanced Data & Circular Protection
+# Matrix Examples: Advanced Data & Circular Protection (v3 Standard Paradigm)
 
-> **Focus**: 深层嵌套、Map 结构、循环依赖防护
+> **Focus**: 深层嵌套、动态字典、循环依赖防护
+> **Note**: 本文示例展示了 v3 Effect-Native 标准范式。v3 通过监听父级集合来处理动态数据，并通过 `flow.fromChanges` 内置的深度相等检查来自动处理循环依赖。
 
-## S17: 深层嵌套与可选字段 (Deep Nested Optional)
-**Trigger**: T1 -> **Effect**: E1
+## S17 & S18: 深层嵌套与动态字典 (Deep Nested & Dynamic Map)
 
-```typescript
-// Schema: user.addresses[0].geo.location.lat
-watch('user.addresses.*.geo.location.lat', (lat, { set }, ctx) => 
-  Effect.gen(function*() {
-    const index = ctx.params[0];
-    // 需求：如果 lat 变化，自动更新同级的 lastUpdated
-    // 挑战：路径可能不存在？Logix 的 getPath 应该处理 Optional
-    yield* set(`user.addresses[${index}].geo.lastUpdated`, Date.now());
-  })
-)
-```
-
-## S18: 动态字典 (Dynamic Map)
-**Trigger**: T3 -> **Effect**: E1
+**v3 标准模式**: 监听包含动态数据（数组或字典）的顶层状态路径。在 `flow.run` 中执行的 Effect 负责遍历集合，应用业务逻辑。`state.mutate` 可以安全、高效地处理深层嵌套更新。
 
 ```typescript
-// Schema: itemsById: Record<string, { status: string }>
-// 需求：监听任意 item 的 status 变化
-watchPattern('itemsById.*.status', (status, { set }, ctx) => 
-  Effect.gen(function*() {
-    const id = ctx.params[0];
-    if (status === 'done') {
-      // 归档
-      yield* set(`itemsById.${id}.archived`, true);
-    }
+// 场景：监听一个动态字典 itemsById，当任意一项的 status 变为 'done' 时，为其添加 archived 标记。
+const dynamicMapLogic = Logic.make<DataShape>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    // 监听整个 itemsById 对象
+    const itemsById$ = flow.fromChanges(s => s.itemsById);
+
+    const archiveEffect = state.mutate(draft => {
+      Object.values(draft.itemsById).forEach(item => {
+        if (item.status === 'done' && !item.archived) {
+          item.archived = true;
+        }
+      });
+    });
+
+    yield* itemsById$.pipe(flow.run(archiveEffect));
   })
-)
+);
 ```
 
 ## S19: 循环依赖防护 (Circular Protection)
-**Trigger**: T1 -> **Effect**: E1
+
+**v3 标准模式**: `flow.fromChanges` 默认使用深度相等（deep equal）检查来判断状态是否真正发生了变化。如果一个更新操作导致的状态与前一个状态深度相等，流将不会发出新值，从而自动切断循环。
 
 ```typescript
-// 需求：USD <-> CNY 双向绑定
-// 机制：依赖 set 的 Deep Equal Check 防止死循环
+// 场景：USD <-> CNY 双向汇率换算
+const currencyLogic = Logic.make<CurrencyShape>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const usd$ = flow.fromChanges(s => s.usd);
+    const cny$ = flow.fromChanges(s => s.cny);
 
-// Rule 1: USD -> CNY
-watch('usd', (usd, { set }, ctx) => 
-  Effect.gen(function*() {
-    // 如果变更来自 'rule' (即 CNY -> USD 触发的)，且值一致，set 内部会拦截
-    // 但为了保险，也可以检查 meta
-    if (ctx.meta.source === 'rule') return;
-    yield* set('cny', usd * 7);
-  })
-)
+    // Rule 1: USD -> CNY
+    const usdToCny = usd$.pipe(
+      flow.run(
+        state.mutate(draft => {
+          draft.cny = draft.usd * 7; // 假设汇率为 7
+        })
+      )
+    );
 
-// Rule 2: CNY -> USD
-watch('cny', (cny, { set }, ctx) => 
-  Effect.gen(function*() {
-    if (ctx.meta.source === 'rule') return;
-    yield* set('usd', cny / 7);
+    // Rule 2: CNY -> USD
+    const cnyToUsd = cny$.pipe(
+      flow.run(
+        state.mutate(draft => {
+          draft.usd = draft.cny / 7;
+        })
+      )
+    );
+
+    // 当 usdToCny 更新 cny 时，会触发 cny$ 流。cnyToUsd 会根据新的 cny 计算出一个 usd 值。
+    // 这个新计算出的 usd 值与触发 usdToCny 的原始 usd 值相同。
+    // 因此，当 cnyToUsd 尝试更新 usd 时，state.mutate 产生的新状态与当前状态深度相等，
+    // 这导致 usd$ 流不会再次触发，循环被自动中断。
+
+    yield* Effect.all([usdToCny, cnyToUsd], { discard: true });
   })
-)
+);
 ```

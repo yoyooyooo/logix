@@ -1,10 +1,10 @@
 ---
 title: 04 · 从意图到代码：v3 演练 (Example)
 status: draft
-version: 3 (Anchor-Enhanced)
+version: 11 (Effect-Native)
 ---
 
-> 本文档通过一个“乐观更新的点赞按钮”示例，展示在三位一体模型下，意图是如何从 Spec 显影为带有 **全双工锚点** 的高质量代码的。
+> 本文档通过一个“乐观更新的点赞按钮”示例，展示在 **Effect-Native** 架构下，意图是如何从 Spec 显影为带有 **全双工锚点** 的高质量代码的。
 
 ## 场景：点赞 (Toggle Like)
 
@@ -29,20 +29,19 @@ export class ArticleServiceTag extends Context.Tag('ArticleService')<ArticleServ
 **Generated Code (React Component)**:
 ```tsx
 // src/ui/LikeButton.tsx
-import { useLogic } from '@logix/react';
-import { ArticleLogic } from '@/features/article/logic';
+import { useStore } from '@logix/react';
+import { ArticleStore } from '@/features/article/store';
 
 // @intent-component: like-btn
 export const LikeButton = () => {
-  // 自动挂载 ArticleLogic，并获取句柄
-  const { emit, useRef } = useLogic(ArticleLogic);
-  const liked = useRef(s => s.liked);
+  const { dispatch, useSelector } = useStore(ArticleStore);
+  const liked = useSelector(s => s.liked);
   
   return (
     <IconButton 
       icon="heart" 
       active={liked} 
-      onClick={() => emit('signal:toggleLike')} 
+      onClick={() => dispatch({ _tag: 'toggleLike' })} 
     />
   );
 };
@@ -52,56 +51,51 @@ export const LikeButton = () => {
 
 **Spec**: “点击后立即变色（乐观更新），然后调接口。失败则回滚并提示。”
 
-**Generated Code (Logix Rule with Anchors)**:
-> 注意：注释中的 Hash 用于检测人工修改。
+**Generated Code (Logix Program with Anchors)**:
+> 注意：代码采用了 State/Action Layer + Stream 的纯粹风格，Logic 本身是运行在其上的长生命周期 Effect 程序。
 
 ```typescript
-// src/features/article/logic.ts
-import type { LogicSetup } from '@logix/core';
+// src/features/article/store.ts
+import { Store, flow, Logic } from '@logix/core';
 import { ArticleServiceTag } from '@/domain/article/service';
+import { OptimisticToggle } from '@patterns/common';
 
-export const ArticleLogic: LogicSetup = (api) => {
-  // 局部状态：点赞状态
-  const $liked = api.ref({ value: false });
+// 1. 定义 State Layer
+const StateLive = Store.State.make(ArticleSchema, { liked: false });
 
-  return {
-    toggleLike: api.rule({
-      // @intent-trigger: signal:toggleLike
-      trigger: api.on.signal('signal:toggleLike'),
-      mode: 'switch',
-      
-      do: (payload) => Effect.gen(function* () {
-        // @intent-start: node-1 { type: "update-state", hash: "a1b2" }
-        const currentLiked = yield* api.ops.get($liked);
-        yield* api.ops.set($liked, !currentLiked.value);
-        // @intent-end: node-1
+// 2. 定义 Action Layer
+const ActionLive = Store.Actions.make(ArticleActionSchema);
 
-        // @intent-start: node-2 { type: "retry-block", hash: "c3d4" }
-        yield* Effect.gen(function* () {
-          const service = yield* ArticleServiceTag;
-          // @intent-call: ArticleService.toggleLike
-          yield* service.toggleLike(payload.id);
-        }).pipe(
-          Effect.retry(Schedule.exponential('1 second', 3))
-        ).pipe(
-          // @intent-start: node-3 { type: "catch-all", hash: "e5f6" }
-          Effect.catchAll(() => Effect.gen(function* () {
-            // @intent-slot: fallback
-            yield* api.ops.set($liked, currentLiked.value);
-            yield* api.ops.emit('toast', 'Error');
-          }))
-          // @intent-end: node-3
-        );
-        // @intent-end: node-2
-      })
-    })
-  };
-};
+// 3. 定义 Logic 程序
+const LogicLive = Logic.make(Effect.gen(function*(_) {
+  const store = yield* _(Store);
+
+  // @intent-rule: toggle-like { x: 100, y: 200 }
+  yield* Effect.all([
+    flow.from(store.action((a) => a._tag === 'toggleLike')).pipe(
+      // 使用 Pattern 复用逻辑
+            flow.run(OptimisticToggle({
+        statePath: 'liked',
+        action: (ctx) => Effect.gen(function*(_) {
+          const service = yield* _(ArticleServiceTag);
+          yield* service.toggleLike(ctx.payload.id);
+        })
+      }))
+    )
+  ], { concurrency: 'unbounded' });
+}));
+
+// 4. 组装 Store (State/Action Layer + Logic 程序)
+export const ArticleStore = Store.make(
+  StateLive,
+  ActionLive,
+  LogicLive
+);
 ```
 
 ### 4. 总结
 
-通过引入锚点系统：
-1.  **可读性**：代码依然清晰，注释仅作为元数据存在。
-2.  **鲁棒性**：如果开发者手动修改了 `node-1` 中的逻辑（导致 Hash 不匹配），Parser 会将其标记为 **Ejected Block**，在画布上显示为“已修改”，防止图结构崩塌。
-3.  **全双工**：支持从代码反向生成精确的 Intent 图。
+通过引入 **Effect-Native** 架构：
+1.  **纯粹性**：逻辑定义完全基于 Effect 和 Stream，没有黑盒配置。
+2.  **复用性**：`Flow.run(Logic.run(Pattern))` 使得业务积木的挂载变得极其自然。
+3.  **全双工**：Parser 依然可以通过识别 `Flow.from(...).pipe(...)` 结构，将这段纯代码还原为可视化的流程图。

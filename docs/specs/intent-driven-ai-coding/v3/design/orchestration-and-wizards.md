@@ -29,8 +29,8 @@ config: Schema.Struct({
 
 ### 2.1 槽位识别 (Slot Recognition)
 平台分析代码，识别出可以插入逻辑的“空位”：
-*   `yield* dsl.on("click", /* Slot */)`
-*   `yield* dsl.branch(cond, /* Then Slot */, /* Else Slot */)`
+*   `yield* flow.fromAction(a => a.type === 'click').pipe(/* Slot */)`
+*   `yield* control.branch(cond, /* Then Slot */, /* Else Slot */)`
 
 ### 2.2 AI 推荐 (AI Recommendation)
 用户点击槽位，AI 分析上下文 (Context) 并推荐 Pattern。
@@ -48,11 +48,11 @@ config: Schema.Struct({
 
 ```typescript
 // Before
-yield* dsl.on("click", null);
+yield* flow.fromAction(a => a.type === 'click').pipe(flow.run(Effect.void));
 
 // After (AI Generated)
-yield* dsl.on("click", 
-  StandardSubmit({ service: "Order", method: "create" })
+yield* flow.fromAction(a => a.type === 'click').pipe(
+  flow.run(StandardSubmit({ service: "Order", method: "create" }))
 );
 ```
 

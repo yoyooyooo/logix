@@ -6,6 +6,6 @@
     "module": "ESNext",
     "moduleResolution": "bundler"
   },
-  "include": ["./**/*.ts"]
+  "include": ["./**/*.ts"],
+  "exclude": ["archive"]
 }
-

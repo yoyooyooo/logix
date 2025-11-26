@@ -1,98 +1,168 @@
-# 04 · 常用配方：从 scenarios 到日常写法
+# 04 · 常用配方 (v3 标准范式)
 
-> 对应：`core/scenarios/*.md`  
-> 目标：把场景文档里的「能力测试用例」翻译成日常可以直接复用的写法模板。
+> **对应**: `core/scenarios/*.md`
+> **目标**: 将场景文档中的“能力测试用例”翻译成日常可以直接复用的 v3 标准写法模板。
 
 ## 1. 字段联动与重置
 
-**场景**：选中某个字段时，重置一批相关字段（如国家变化时重置省份/城市）。  
-**参考**：`core/scenarios/01-core-scenarios.md` · Scenario 1.1。
+**场景**: 选中某个字段时，重置一批相关字段（如国家变化时重置省份/城市）。
 
-推荐模式：
+**v3 标准模式**: 
+使用 `flow.fromChanges` 监听源字段，在 `flow.run` 中通过 `state.mutate` 更新目标字段。
 
-- 使用 `watch('country', handler)` 监听单个字段；  
-- 在 handler 中使用 `set` 批量更新，必要时配合 `Effect.all` 或 `batch`。
+```typescript
+const resetProvinceLogic = Logic.make<FormShape>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const country$ = flow.fromChanges(s => s.country);
 
-适用场景：
-
-- 简单联动，更新数量不大；  
-- 不需要跨多个模块或外部源。
+    yield* country$.pipe(
+      flow.run(
+        state.mutate(draft => {
+          draft.province = "";
+          draft.city = "";
+        })
+      )
+    );
+  })
+);
+```
 
 ## 2. 异步校验与错误状态
 
-**场景**：字段变化触发异步校验（用户名重名检查、优惠码校验等），结果写回 `errors.xxx`。  
-**参考**：`core/scenarios/02-core-scenarios.md` 中的校验场景，以及 `core/examples/01-basic-form.md`。
+**场景**: 字段变化触发异步校验（用户名重名检查），结果写回 `errors.xxx`。
 
-推荐模式：
+**v3 标准模式**: 
+使用 `flow.fromChanges` 监听，链式调用 `debounce` 和 `filter`，最后用 `runLatest` 执行包含 API 调用的 Effect，自动处理竞态。
 
-- 使用 `watch('field', handler, { debounce, concurrency })`；  
-- 在 handler 中通过 `services.SomeApi` 调用后端；  
-- 用 Effect 的 `retry` 处理瞬时错误；  
-- 把校验结果收敛到错误字段（而不是在组件里做逻辑判断）。
+```typescript
+const validateUsernameLogic = Logic.make<FormShape, UserApi>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const username$ = flow.fromChanges(s => s.username);
 
-适用场景：
-
-- 大部分表单字段级异步校验；  
-- 希望在 Logix 层统一控制防抖/并发策略。
+    yield* username$.pipe(
+      flow.debounce(500),
+      flow.filter(username => username.length >= 3),
+      flow.runLatest( // 确保只处理最后一次输入
+        Effect.gen(function* (_) {
+          const api = yield* UserApi;
+          const { username } = yield* state.read;
+          const isTaken = yield* api.checkUsername(username);
+          yield* state.mutate(draft => {
+            draft.errors.username = isTaken ? "Username already taken" : undefined;
+          });
+        })
+      )
+    );
+  })
+);
+```
 
 ## 3. 多字段约束（如开始/结束时间）
 
-**场景**：多个字段之间存在约束（开始时间必须早于结束时间，总金额必须等于明细之和等）。  
-**参考**：`core/scenarios/01-core-scenarios.md` · 多字段联动段落。
+**场景**: 多个字段之间存在约束（开始时间必须早于结束时间）。
 
-推荐模式：
+**v3 标准模式**: 
+使用 `flow.fromChanges` 监听一个包含多个字段的元组 `[s.startDate, s.endDate]`，然后在 `flow.run` 中执行校验逻辑。
 
-- 使用 `watchMany(['startDate', 'endDate'], handler)`；  
-- 在 handler 中根据多个值设置统一的错误字段或状态字段。
+```typescript
+const validateDateRangeLogic = Logic.make<FormShape>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const datePair$ = flow.fromChanges(s => [s.startDate, s.endDate] as const);
 
-适用场景：
+    yield* datePair$.pipe(
+      flow.run(
+        state.mutate(draft => {
+          if (draft.startDate && draft.endDate && draft.startDate > draft.endDate) {
+            draft.errors.dateRange = "Start date must be before end date";
+          } else {
+            delete draft.errors.dateRange;
+          }
+        })
+      )
+    );
+  })
+);
+```
 
-- 逻辑只依赖有限几个字段；  
-- 错误提示/派生状态集中在一个或少量字段上。
+## 4. 数组聚合计算（列表行内计算）
 
-## 4. 数组联动（列表行内计算）
+**场景**: 商品列表中，任何行内字段变化时，都需要重新计算总价。
 
-**场景**：商品列表中，行内字段变化时需要计算每行/整体的合计。  
-**参考**：`core/scenarios/01-core-scenarios.md` · Scenario 3.1。
+**v3 标准模式**: 
+监听整个数组 `items` 的变化。在 `flow.run` 中，一次性完成所有派生状态（行内 `total` 和整体 `summary`）的计算，避免多次更新和重复渲染。
 
-推荐模式（v1 标准写法）：
+```typescript
+const calculateTotalsLogic = Logic.make<CartShape>(({ flow, state }) => 
+  Effect.gen(function* (_) {
+    const items$ = flow.fromChanges(s => s.items);
 
-- 优先监听整个数组 `watch('items', handler)`，在 handler 中全量重算；  
-- 在 `set('items', newItems)` 时依赖 Logix 内部的 Deep Equal + Loop Protection 避免死循环。
+    yield* items$.pipe(
+      flow.debounce(50), // 轻微防抖，应对批量操作
+      flow.run(
+        state.mutate(draft => {
+          let totalAmount = 0;
+          draft.items.forEach(item => {
+            item.total = item.price * item.quantity;
+            if (item.checked) {
+              totalAmount += item.total;
+            }
+          });
+          draft.summary.totalAmount = totalAmount;
+        })
+      )
+    );
+  })
+);
+```
 
-适用场景：
+## 5. 初始化加载 (Init Load)
 
-- 列表长度在可接受范围内（通常 <1000）；  
-- 对性能要求中等，希望以更简单的写法换取可维护性。
+**场景**: Store 创建时自动加载一次数据（如详情页）。
 
-## 5. 初始化加载（Init Load）
+**v3 标准模式**: 
+在 `Logic.make` 的 `Effect.gen` 主体中，直接 `yield*` 一个加载数据的 Effect。这个 Effect 只会在 Logic 初始化时执行一次。
 
-**场景**：Store 创建时自动加载一次数据（详情页、首屏列表等）。  
-**参考**：`core/scenarios/01-core-scenarios.md` · Scenario 4.1。
+```typescript
+const initialLoadLogic = Logic.make<PageShape, PageApi>(({ state }) => 
+  Effect.gen(function* (_) {
+    const api = yield* PageApi;
+    const pageId = (yield* state.read).pageId; // 假设 pageId 已在初始状态中
 
-推荐模式：
+    // Logic 初始化时直接执行加载
+    yield* state.mutate(draft => { draft.meta.isLoading = true; });
+    const data = yield* api.fetchPage(pageId);
+    yield* state.mutate(draft => {
+      draft.data = data;
+      draft.meta.isLoading = false;
+    });
 
-- 使用 `watch('someKey', handler, { immediate: true })`；  
-- 或在 `logic` 初始化阶段显式添加一个“Init 规则”（视最终 API 为准）。
+    // 此处可以继续定义其他流式逻辑...
+  })
+);
+```
 
-适用场景：
+## 6. 外部源集成 (WebSocket / 轮询)
 
-- 页面或模块渲染后立即拉取数据；  
-- 数据加载行为与某个状态字段（如 `id`）相关联。
+**场景**: 订阅 WebSocket 消息或轮询任务状态。
 
-## 6. 外部源集成（WebSocket / 轮询）
+**v3 标准模式**: 
+将外部源（WebSocket 连接、定时器）作为 `Effect.Service` 注入到 `Logic` 的环境中。在 `Logic.make` 中，从服务中获取 `Stream`，并使用 `flow.run` 将其事件映射到状态更新。
 
-**场景**：订阅 WebSocket 消息、轮询任务状态等。  
-**参考**：`core/scenarios/01-core-scenarios.md` · Scenario 5.1，`core/integration-guide.md`。
+```typescript
+// 1. 定义服务
+class Ticker extends Context.Tag("Ticker")<Ticker, { readonly ticks$: Stream.Stream<number> }>() {}
 
-推荐模式：
+// 2. 在 Logic 中消费
+const tickerLogic = Logic.make<TickerShape, Ticker>(({ state, flow }) => 
+  Effect.gen(function* (_) {
+    const ticker = yield* Ticker;
 
-- 在 Store 配置中通过 `inputs` / `mount` / `onInput` 注入外部 Stream；  
-- 在 Logic 中编写「外部事件 → 状态更新」的规则（例如价格更新、任务进度更新）。
-
-适用场景：
-
-- 实时行情、任务进度条、通知中心等；  
-- 希望把外部源整合进同一套 Logix 状态与调试视图。
-
-> 更多细节和高级场景（动态逻辑、Intent 优先级、复杂流编排）可以继续参考 `core/scenarios/02-advanced-scenarios.md` 与 `core/examples/*`，本章只覆盖日常开发中最常遇到的几类“配方”。
+    // 将外部 ticks$ 流接入 Logix
+    yield* ticker.ticks$.pipe(
+      flow.run(tick => 
+        state.mutate(draft => { draft.lastTick = tick; })
+      )
+    );
+  })
+);
+```

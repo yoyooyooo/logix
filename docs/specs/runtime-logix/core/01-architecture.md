@@ -1,116 +1,57 @@
 # 架构总览 (Architecture Overview)
 
-> **Status**: Draft
-> **Date**: 2025-11-20
+> **Status**: Definitive (v3 Effect-Native)  
+> **Date**: 2025-11-24  
+> **Note**: 本文基于 v3 Effect-Native 范式，描述了由 **Store / Logic / Flow / Control** 四大运行时原语构成的核心架构。`Pattern` 作为一种 `(input) => Effect` 的函数封装风格，在平台层被视为可复用的资产。所有术语和类型定义以 `docs/specs/intent-driven-ai-coding/v3/effect-poc` 中的 PoC 为最新事实源。
 
 ## 1. 总体架构分层
 
-为了实现“标准化运行时”的目标，我们将采用严格的分层架构。每一层都有明确的职责边界，严禁跨层调用。
+Logix v3 采用 **Effect-Native** 架构，构建了一个由 **Store**, **Logic**, **Flow**, **Control** 四大运行时原语组成的自洽业务世界；Pattern 作为资产概念存在于平台层，用于包装 pattern-style 的 `(input) => Effect` 长逻辑。
 
 ```mermaid
 graph TD
-    A[AI Coding Platform / Tools] -->|Generates/Parses| B(Application Code)
-    B -->|Uses| C[Adapter Layer (@logix/react)]
-    B -->|Uses| D[Domain Layer (@logix/form)]
-    C -->|Depends on| E[Logix Layer (@logix/core)]
-    D -->|Depends on| E
-    E -->|Powered by| F[Effect-TS]
+    Store[Store.Runtime<State,Action>] -->|Provides| Flow[Flow Sources]
+    Store -->|Provides| StateApi[Logic.state/actions]
+    
+    Logic[User Logic (Effect)] -->|Consumes| StateApi
+    Logic -->|Consumes| Flow
+    Logic -->|Consumes| Control[Control Ops]
+    Logic -->|Consumes| Services[Effect.Services & Config]
+    
+    Pattern[Pattern-style Logic (input => Effect)] -->|Consumes| Logic.Env (Store + Services)
+    Pattern -->|Optional| PatternAsset[Pattern Asset (id/config)]
 ```
 
-### Layer 1: The Logix Engine (`@logix/core`)
+## 2. Logix 核心原语 (Core Primitives)
 
-- **定位**: 通用状态运行时引擎。
-- **职责**:
-  - 状态定义 (Schema)
-  - 动作分发 (Action Dispatch)
-  - 逻辑原语 (Flow Kit / Operators)
-  - 资源管理 (Scope / Lifecycle)
-- **依赖**: `effect`
-- **特征**: **No React**, **No DOM**, Pure Logic.
+### 2.1 元素对比矩阵
 
-### Layer 2: The Domain (`@logix/form`, etc.)
+| 维度 | Store (容器) | Logic (程序) | Flow (流) | Control (结构) |
+| :--- | :--- | :--- | :--- | :--- |
+| **语义** | **World**<br>运行环境 | **Behavior**<br>业务规则与副作用 | **Current**<br>触发与时间 | **Structure**<br>分支/错误/并发形态 |
+| **能力** | 状态持有<br>依赖注入<br>生命周期 | 修改状态<br>调用服务<br>组合 Flow/Control | 过滤/防抖<br>并发控制<br>时序编排 | 分支逻辑<br>错误边界<br>并行聚合 |
+| **平台支撑** | **架构视图**<br>展示应用结构 | **调试视图**<br>展示状态/Env 变更 | **流程视图**<br>展示逻辑连线 | **结构视图**<br>展示分支/错误域/并发结构 |
+| **本质** | `Store.Runtime<S,A>` + `Layer` | `Effect<A,E,R>`（约定 Env = `Logic.Env<Sh,R>`） | `Stream<T>` + `Flow.Api` | `Effect` 组合器集合 (`Control.Api`) |
 
-- **定位**: 特定领域的逻辑封装。
-- **职责**:
-  - 基于 Logix 扩展领域特定的状态（如表单的 `touched`, `isSubmitting`）。
-  - 提供领域特定的预设逻辑（如“校验”、“脏检查”）。
-- **依赖**: `@logix/core`
+### 2.2 Pattern 在架构中的位置
 
-### Layer 3: The Adapter (`@logix/react`)
+*   **没有 Store**: 状态无处安放，生命周期无法管理 (Memory Leak)。  
+*   **没有 Logic**: 无法安全地修改状态，无法追踪因果链。  
+*   **没有 Flow**: 无法处理复杂的并发竞态 (Race Condition)。  
+*   **没有 Control**: 无法表达清晰的分支/错误/并发结构，调试和图码同步都困难。  
 
-- **定位**: UI 框架适配层。
-- **职责**:
-  - 将 Logix 的 Stream 映射为 React 的 Hooks。
-  - 提供 UI 组件（如 `<Field />`）。
-  - 处理 React 生命周期与 Logix Scope 的绑定。
-- **依赖**: `@logix/core`, `@logix/form`, `react`
+Pattern 则作为**资产级概念**存在：当某个 pattern-style `(input) => Effect` 在平台侧被赋予 id/version/configSchema 等元信息时，它就成为可配置、可拖拽的 PatternAsset；但在 runtime-core 中，它始终只是普通的 Effect 函数。
 
----
-
-## 2. 仓库结构规划 (Repository Structure)
-
-我们将重组 Monorepo，废弃原有的 `packages/react`（作为 v0 归档）。
+## 3. 仓库结构规划
 
 ```text
-intent-flow/
-├── docs/
-│   └── specs/
-│       ├── runtime-logix/    # Logix Engine 规划文档
-│       └── intent-driven-ai-coding/ # AI 平台规划
-├── packages/
-│   ├── logix/                # [New] 核心引擎
-│   │   ├── src/
-│   │   │   ├── store.ts      # makeStore
-│   │   │   ├── logic.ts      # 逻辑编排器
-│   │   │   └── ...
-│   │   └── package.json
-│   │
-│   ├── form/                 # [New] 表单领域包
-│   │   ├── src/
-│   │   │   ├── makeForm.ts   # 基于 makeStore 的封装
-│   │   │   └── ...
-│   │   └── package.json
-│   │
-│   ├── react/                # [New] React 适配包
-│   │   ├── src/
-│   │   │   ├── useStore.ts
-│   │   │   ├── useForm.ts
-│   │   │   └── ...
-│   │   └── package.json
-│   │
-│   └── _archive_react_v0/    # [Moved] 原 packages/react 移至此处归档
-│
-└── examples/                 # 验证与示例
-    ├── basic-form/
-    └── complex-state/        # 验证 Logix 的通用性
+packages/
+  logix/                # 核心引擎
+    src/
+      store.ts          # Store.Runtime & Store.make
+      logic.ts          # Logic.Api & Logic.make
+      flow.ts           # Flow.Api
+      control.ts        # Control.Api
+  form/                 # 表单领域包
+  react/                # React 适配包
 ```
-
-## 3. 能力分工与实现顺序 (Capabilities & Implementation Order)
-
-我们将严格遵循 **Logix -> Form -> React** 的依赖顺序，绝不反向依赖。其中：
-
-- **Logix (`@logix/core`)**：提供通用状态与逻辑运行时（本文件主要讨论对象）。
-- **Form (`@logix/form`)**：作为 Logix 的第一个领域客户，验证其在表单场景下的表达力。
-- **React Adapter (`@logix/react`)**：负责将 Logix 的能力以 Hooks/组件的形式暴露给 UI。
-
-> 本节只描述能力分工与依赖关系，不绑定具体时间节点或阶段划分。具体实施节奏建议单独记录在 `ROADMAP.md`，避免影响设计讨论。
-
-### Logix 能力域 (Logix Capability Domains)
-
-- **State & Path**：Schema 定义、精确路径读写。  
-- **Logic Primitives (Flow Kit)**：`Flow.define`、Source/Task/Sink 算子体系，提供 AI-Ready 的声明式逻辑编排能力。  
-- **External Integration**：`on` / `mount`，用于接入 WebSocket、轮询、第三方缓存等外部源。  
-- **Batching & Transactions**：`batch` 等批处理能力，用于大规模更新时控制通知与渲染。  
-- **Dynamic Logic & Observability**：`addRule`/`LogicHandle` 与 Trace/Debug 能力，支撑 AI 动态注入逻辑与复杂联动调试。
-
-### Form 作为 Logix 的领域客户
-
-- 在 Form 领域内，基于 Logix 的 Store 模型扩展出 `FormState`（如 `values/errors/touched/isSubmitting`）。  
-- 利用 Logix 的逻辑编排能力实现表单校验、脏检查、联动等典型场景。  
-- 通过这些场景反向验证 Logix API 的合理性，并将最佳实践回流到本规范和示例中。
-
-### React Adapter 的职责
-
-- 基于 Logix 的 `state$/batch/error$/debug$` 提供 `useStore`、`useForm` 等 Hooks。  
-- 管理 Store 的 Scope 生命周期，确保创建/销毁与组件树挂钩。  
-- 坚持“React 只负责渲染与事件派发”，禁止在 UI 层重新引入业务级副作用系统。
