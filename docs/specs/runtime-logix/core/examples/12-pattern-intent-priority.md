@@ -42,18 +42,20 @@ type OrderItemShape = Store.Shape<typeof OrderItemSchema, typeof OrderItemAction
 每个逻辑源都成为一个独立的、有明确条件的流。
 
 ```typescript
-const priorityLogic = Logic.make<OrderItemShape>(({ flow, state }) => 
+const $Item = Logic.forShape<OrderItemShape>();
+
+const priorityLogic = Logic.make<OrderItemShape>(
   Effect.gen(function* (_) {
 
     // Rule 1: 自动计算
-    const priceOrQty$ = flow.fromChanges(s => [s.quantity, s.unitPrice]);
+    const priceOrQty$ = $.flow.fromChanges(s => [s.quantity, s.unitPrice]);
     const autoCalculation = priceOrQty$.pipe(
-      flow.run(
+      $.flow.run(
         Effect.gen(function* (_) {
-          const current = yield* state.read;
+          const current = yield* $.state.read;
           // 关键：只有在非手动模式下才执行自动计算
           if (!current.isTotalManual) {
-            yield* state.mutate(draft => {
+            yield* $.state.mutate(draft => {
               draft.total = draft.quantity * draft.unitPrice;
             });
           }
@@ -62,10 +64,10 @@ const priorityLogic = Logic.make<OrderItemShape>(({ flow, state }) =>
     );
 
     // Rule 2: 用户手动覆盖
-    const manualSet$ = flow.fromAction(a => a._tag === 'setTotalManually');
+    const manualSet$ = $.flow.fromAction(a => a._tag === 'setTotalManually');
     const userOverride = manualSet$.pipe(
-      flow.run(action => 
-        state.mutate(draft => {
+      $.flow.run(action =>
+        $.state.mutate(draft => {
           draft.total = action.payload;
           draft.isTotalManual = true; // 夺取控制权
         })
@@ -73,10 +75,10 @@ const priorityLogic = Logic.make<OrderItemShape>(({ flow, state }) =>
     );
 
     // Rule 3: 系统策略 (强制约束)
-    const total$ = flow.fromChanges(s => s.total);
+    const total$ = $.flow.fromChanges(s => s.total);
     const systemPolicy = total$.pipe(
-      flow.run(
-        state.mutate(draft => {
+      $.flow.run(
+        $.state.mutate(draft => {
           // 无论如何，总价不能低于 50
           if (draft.total < 50) {
             draft.total = 50;
@@ -86,10 +88,10 @@ const priorityLogic = Logic.make<OrderItemShape>(({ flow, state }) =>
     );
 
     // Rule 4: 重置为自动计算
-    const reset$ = flow.fromAction(a => a._tag === 'resetTotalToAuto');
+    const reset$ = $.flow.fromAction(a => a._tag === 'resetTotalToAuto');
     const resetToAuto = reset$.pipe(
-      flow.run(
-        state.mutate(draft => {
+      $.flow.run(
+        $.state.mutate(draft => {
           draft.isTotalManual = false; // 放弃控制权
           // 立即重新计算一次
           draft.total = draft.quantity * draft.unitPrice;

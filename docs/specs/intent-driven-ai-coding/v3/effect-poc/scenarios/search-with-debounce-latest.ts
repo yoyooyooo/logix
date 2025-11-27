@@ -1,5 +1,5 @@
 import { Context, Effect, Schema } from 'effect'
-import { Store, Logic, Flow } from '../shared/logix-v3-core'
+import { Store, Logic } from '../shared/logix-v3-core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：搜索场景的 State / Action
@@ -36,29 +36,30 @@ export namespace SearchApi {
 // Logic：基于 Flow 的控制流编排（fromChanges + debounce + filter + runLatest）
 // ---------------------------------------------------------------------------
 
-export const SearchLogic = Logic.make<SearchShape>(({ flow, state }) =>
-  Effect.gen(function* (_) {
-    const { read, update } = state
+const $ = Logic.forShape<SearchShape, SearchApi>()
+
+export const SearchLogic = Logic.make<SearchShape, SearchApi>(
+  Effect.gen(function* () {
     // 1. 从 State.keyword 构造变化流
-    const keywordChanges$ = flow.fromChanges((s) => s.keyword)
+    const keywordChanges$ = $.flow.fromChanges((s) => s.keyword)
 
     // 2. 防抖 + 非空过滤：只有稳定下来的非空关键字才触发搜索
     const debouncedValidKeyword$ = keywordChanges$.pipe(
-      flow.debounce(300),
-      flow.filter((keyword) => keyword.trim().length > 0),
+      $.flow.debounce(300),
+      $.flow.filter((keyword) => keyword.trim().length > 0),
     )
 
     // 3. 构造一次「读取当前关键字并执行搜索」的 Effect
     const runSearch = Effect.gen(function* (_) {
-      const state = yield* read
+      const state = yield* $.state.read
       const keyword = state.keyword
 
       // 通过 Tag 从 Env 中获取 SearchApi 服务
-      const api = yield* SearchApi
+      const api = yield* $.services(SearchApi)
 
-      yield* update((prev) => ({ ...prev, isLoading: true }))
+      yield* $.state.update((prev) => ({ ...prev, isLoading: true }))
       const results = yield* api.search(keyword)
-      yield* update((prev) => ({ ...prev, results, isLoading: false }))
+      yield* $.state.update((prev) => ({ ...prev, results, isLoading: false }))
     })
 
     // 4. 将控制流与 Effect 绑定：
@@ -66,7 +67,7 @@ export const SearchLogic = Logic.make<SearchShape>(({ flow, state }) =>
     //    - 时间：通过 debounce 限制频率
     //    - 过滤：只放过非空关键字
     //    - 并发语义：runLatest，始终只保留最新一次搜索
-    yield* debouncedValidKeyword$.pipe(flow.runLatest(runSearch))
+    yield* debouncedValidKeyword$.pipe($.flow.runLatest(runSearch))
   }),
 )
 

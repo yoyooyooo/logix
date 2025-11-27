@@ -47,7 +47,7 @@ export const runLongTaskPattern = (input: LongTaskPatternInput) =>
         // 初始标记为 running
         yield* SubscriptionRef.update(input.stateRef, (prev) => ({
           ...prev,
-          status: 'running' as LongTaskState['status'],
+          status: 'running' as const,
           progress,
         }))
 
@@ -56,9 +56,11 @@ export const runLongTaskPattern = (input: LongTaskPatternInput) =>
           yield* Effect.sleep(Duration.seconds(1))
           progress += 20
 
+          const status: LongTaskState['status'] = progress >= 100 ? 'done' : 'running'
+
           yield* SubscriptionRef.update(input.stateRef, (prev) => ({
             ...prev,
-            status: (progress >= 100 ? 'done' : 'running') as LongTaskState['status'],
+            status,
             progress,
           }))
         }

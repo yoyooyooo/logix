@@ -5,7 +5,7 @@ import { Store, Logic } from '../shared/logix-v3-core'
 // Schema → Shape：审批场景的 State / Action
 // ---------------------------------------------------------------------------
 
-const ApprovalDecisionSchema = Schema.Union(Schema.Literal('APPROVE' as const), Schema.Literal('REJECT' as const))
+const ApprovalDecisionSchema = Schema.Union(Schema.Literal('APPROVE'), Schema.Literal('REJECT'))
 
 const ApprovalStateSchema = Schema.Struct({
   taskId: Schema.String,
@@ -120,54 +120,57 @@ export const runApprovalFlowEffect = (input: ApprovalEffectInput) =>
 // Logic：响应提交 / 重置 Action，触发长逻辑 Effect
 // ---------------------------------------------------------------------------
 
+const $ = Logic.forShape<ApprovalShape, ApprovalService>()
+
 export const ApprovalLogic: Logic.Fx<ApprovalShape, ApprovalService, void, ApprovalServiceError | never> =
-  Logic.make<ApprovalShape, ApprovalService>(({ state, flow, control }) =>
-    Effect.gen(function* (_) {
-    const { update, ref, read } = state
+  Logic.make<ApprovalShape, ApprovalService>(
+    Effect.gen(function* () {
+      const submit$ = $.flow.fromAction((a): a is { _tag: 'submit' } => a._tag === 'submit')
+      const reset$ = $.flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
 
-    const submit$ = flow.fromAction((a): a is { _tag: 'submit' } => a._tag === 'submit')
-    const reset$ = flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
+      // 借用整棵审批状态作为 Ref，交给封装好的长逻辑内部读取
+      const stateRef = $.state.ref()
 
-    // 借用整棵审批状态作为 Ref，交给封装好的长逻辑内部读取
-    const stateRef = ref()
+      // 启动审批流：如果已有任务在提交中，runExhaust 会丢弃后续触发，防止重复提交
+      const startApproval = Effect.gen(function* () {
+        yield* $.state.update((prev) => ({
+          ...prev,
+          status: 'submitting',
+          errorMessage: undefined,
+        }))
 
-    // 启动审批流：如果已有任务在提交中，runExhaust 会丢弃后续触发，防止重复提交
-    const startApproval = Effect.gen(function* (_) {
-      yield* update((prev) => ({
-        ...prev,
-        status: 'submitting' as const,
-        errorMessage: undefined,
-      }))
+        // 执行业务长逻辑，并显式处理 ApprovalServiceError
+        yield* $.control.tryCatch({
+          try: runApprovalFlowEffect({ stateRef }),
+          catch: (err: ApprovalServiceError) =>
+            $.state.update((prev) => ({
+              ...prev,
+              status: 'error',
+              errorMessage: err.reason,
+            })),
+        })
 
-      // 执行业务长逻辑，并显式处理 ApprovalServiceError
-      yield* control.tryCatch({
-        try: runApprovalFlowEffect({ stateRef }),
-        catch: (err: ApprovalServiceError) =>
-          update((prev) => ({
+        // 若仍处于 submitting，说明没有错误，标记为 done
+        const latest = yield* $.state.read
+        if (latest.status === 'submitting') {
+          yield* $.state.update((prev) => ({
             ...prev,
-            status: 'error' as const,
-            errorMessage: err.reason,
-          })),
+            status: 'done',
+          }))
+        }
       })
 
-      // 若仍处于 submitting，说明没有错误，标记为 done
-      const latest = yield* read
-      if (latest.status === 'submitting') {
-        yield* update((prev) => ({
-          ...prev,
-          status: 'done' as const,
-        }))
-      }
-    })
+      const resetEffect = $.state.update((prev) => ({
+        ...prev,
+        status: 'idle',
+        errorMessage: undefined,
+        comment: '',
+      }))
 
-    const resetEffect = update((prev) => ({
-      ...prev,
-      status: 'idle' as const,
-      errorMessage: undefined,
-      comment: '',
-    }))
-
-      yield* Effect.all([submit$.pipe(flow.runExhaust(startApproval)), reset$.pipe(flow.run(resetEffect))])
+      yield* Effect.all([
+        submit$.pipe($.flow.runExhaust(startApproval)),
+        reset$.pipe($.flow.run(resetEffect)),
+      ])
     }) as Logic.Fx<ApprovalShape, ApprovalService, void, ApprovalServiceError | never>,
   )
 
@@ -178,8 +181,8 @@ export const ApprovalLogic: Logic.Fx<ApprovalShape, ApprovalService, void, Appro
 const ApprovalStateLayer = Store.State.make(ApprovalStateSchema, {
   taskId: '',
   comment: '',
-  decision: 'APPROVE' as const,
-  status: 'idle' as const,
+  decision: 'APPROVE',
+  status: 'idle',
 })
 
 const ApprovalActionLayer = Store.Actions.make(ApprovalActionSchema)

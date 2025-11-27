@@ -8,11 +8,13 @@
 **v3 标准模式**: 监听整个 `items` 数组的变化。在 `flow.run` 中，使用一次 `state.mutate` 同时完成所有派生状态（行内 `total` 和整体 `summary`）的计算，以保证数据一致性并获得最佳性能。
 
 ```typescript
-const aggregationLogic = Logic.make<CartShape>(({ flow, state }) => 
-  Effect.gen(function* (_) {
-    const items$ = flow.fromChanges(s => s.items);
+const $Cart = Logic.forShape<CartShape>();
 
-    const calculationEffect = state.mutate(draft => {
+const aggregationLogic = Logic.make<CartShape>(
+  Effect.gen(function* (_) {
+    const items$ = $Cart.flow.fromChanges(s => s.items);
+
+    const calculationEffect = $Cart.state.mutate(draft => {
       let totalAmount = 0;
       // 1. 行级联动：计算每行的 total
       draft.items.forEach(item => {
@@ -26,8 +28,8 @@ const aggregationLogic = Logic.make<CartShape>(({ flow, state }) =>
     });
 
     yield* items$.pipe(
-      flow.debounce(50), // 轻微防抖以应对连续的行操作
-      flow.run(calculationEffect)
+      $Cart.flow.debounce(50), // 轻微防抖以应对连续的行操作
+      $Cart.flow.run(calculationEffect)
     );
   })
 );
@@ -38,20 +40,22 @@ const aggregationLogic = Logic.make<CartShape>(({ flow, state }) =>
 **v3 标准模式**: 监听整个 `items` 数组。在 `flow.run` 中，遍历数组，识别出需要执行异步操作的项，并使用 `Effect.all` 并行处理它们。这需要开发者自行管理状态以避免重复请求。
 
 ```typescript
-const asyncRowLogic = Logic.make<ProductListShape, ProductApi>(({ flow, state }) => 
+const $List = Logic.forShape<ProductListShape, ProductApi>();
+
+const asyncRowLogic = Logic.make<ProductListShape, ProductApi>(
   Effect.gen(function* (_) {
-    const items$ = flow.fromChanges(s => s.items);
+    const items$ = $List.flow.fromChanges(s => s.items);
 
     const fetchDetailsEffect = Effect.gen(function* (_) {
-      const api = yield* ProductApi;
-      const { items } = yield* state.read;
+      const api = yield* $List.services(ProductApi);
+      const { items } = yield* $List.state.read;
       
       // 筛选出需要加载详情的行
       const effects = items.map((item, index) => 
         item.productId && !item.detail
           ? api.fetchDetail(item.productId).pipe(
-              Effect.flatMap(detail => 
-                state.mutate(draft => { draft.items[index].detail = detail; })
+              Effect.flatMap(detail =>
+                $List.state.mutate(draft => { draft.items[index].detail = detail; })
               )
             )
           : Effect.void
@@ -61,7 +65,7 @@ const asyncRowLogic = Logic.make<ProductListShape, ProductApi>(({ flow, state })
       yield* Effect.all(effects, { discard: true, concurrency: 'unbounded' });
     });
 
-    yield* items$.pipe(flow.runLatest(fetchDetailsEffect));
+    yield* items$.pipe($List.flow.runLatest(fetchDetailsEffect));
   })
 );
 ```
@@ -71,15 +75,17 @@ const asyncRowLogic = Logic.make<ProductListShape, ProductApi>(({ flow, state })
 **v3 标准模式**: 监听触发全选的 `Action`。在 `flow.run` 中执行一次 `state.mutate`，即可原子化地遍历并更新所有行，实现批量更新效果。
 
 ```typescript
-const toggleAllLogic = Logic.make<CartShape>(({ flow, state }) => 
+const $Cart = Logic.forShape<CartShape>();
+
+const toggleAllLogic = Logic.make<CartShape>(
   Effect.gen(function* (_) {
-    const toggleAll$ = flow.fromAction(a => a._tag === 'toggleAll');
+    const toggleAll$ = $Cart.flow.fromAction(a => a._tag === 'toggleAll');
 
     const toggleAllEffect = Effect.gen(function* (_) {
-      const { isAllChecked } = yield* state.read;
+      const { isAllChecked } = yield* $Cart.state.read;
       const nextChecked = !isAllChecked;
 
-      yield* state.mutate(draft => {
+      yield* $Cart.state.mutate(draft => {
         draft.isAllChecked = nextChecked;
         draft.items.forEach(item => {
           item.checked = nextChecked;
@@ -87,7 +93,7 @@ const toggleAllLogic = Logic.make<CartShape>(({ flow, state }) =>
       });
     });
 
-    yield* toggleAll$.pipe(flow.run(toggleAllEffect));
+    yield* toggleAll$.pipe($Cart.flow.run(toggleAllEffect));
   })
 );
 ```

@@ -44,17 +44,19 @@ type CartShape = Store.Shape<
 ## Logic Implementation（v3 Effect-Native）
 
 ```typescript
-export const CartLogic = Logic.make<CartShape>(({ flow, state }) =>
+const $Cart = Logic.forShape<CartShape>();
+
+export const CartLogic = Logic.make<CartShape>(
   Effect.gen(function* (_) {
-    const items$ = flow.fromChanges((s) => s.items);
-    const toggleAll$ = flow.fromAction(
+    const items$ = $.flow.fromChanges((s) => s.items);
+    const toggleAll$ = $.flow.fromAction(
       (a): a is { type: "cart/toggleAll" } => a.type === "cart/toggleAll"
     );
 
     // 1. 行级联动：price / quantity 变化时更新对应 total
     const recalcRowTotals = items$.pipe(
-      flow.run(
-        state.mutate((draft) => {
+      $.flow.run(
+        $.state.mutate((draft) => {
           draft.items.forEach((item) => {
             item.total = item.price * item.quantity;
           });
@@ -64,8 +66,8 @@ export const CartLogic = Logic.make<CartShape>(({ flow, state }) =>
 
     // 2. 聚合计算：监听 items 数组变化，汇总选中行的金额与数量
     const recalcSummary = items$.pipe(
-      flow.run(
-        state.update((prev) => {
+      $.flow.run(
+        $.state.update((prev) => {
           const totalAmount = prev.items.reduce(
             (sum, item) => (item.checked ? sum + item.total : sum),
             0
@@ -82,8 +84,8 @@ export const CartLogic = Logic.make<CartShape>(({ flow, state }) =>
 
     // 3. 批量更新：监听全选 Action，批量更新所有 items 的 checked 状态
     const toggleAllItems = toggleAll$.pipe(
-      flow.run(
-        state.mutate((draft) => {
+      $.flow.run(
+        $.state.mutate((draft) => {
           const nextChecked = !draft.isAllChecked;
 
           draft.items.forEach((item) => {

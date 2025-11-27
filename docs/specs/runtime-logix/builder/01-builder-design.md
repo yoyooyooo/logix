@@ -46,30 +46,32 @@ export const runReliableSubmit = (input: {
 
 ### 3.1 基础逻辑 (The Basic Flow)
 
-开发者使用 `Effect.gen` 配合 Runtime Core 提供的 `Logic.Api` 编写逻辑：
+开发者使用 `Effect.gen` 配合 Runtime Core 提供的 Bound API（`Logic.forShape`）编写逻辑：
 
 ```typescript
 import { Effect } from "effect";
 import { Logic } from "@logix/core";
 
+// Bound API：绑定当前 Shape 与 Env，提供 $ 作为 Logic 内的符号锚点
+const $ = Logic.forShape<OrderShape, OrderEnv>();
+
 export const submitOrder = Logic.make<OrderShape, OrderEnv>(
-  ({ state, flow, control }) =>
-    Effect.gen(function* (_) {
-      const submit$ = flow.fromAction(
-        (a): a is { type: "submit" } => a.type === "submit",
-      );
+  Effect.gen(function* (_) {
+    const submit$ = $.flow.fromAction(
+      (a): a is { type: "submit" } => a.type === "submit",
+    );
 
-      const handleSubmit = control.tryCatch({
-        try: Effect.gen(function* (_) {
-          yield* state.update(prev => ({ ...prev, isSubmitting: true }));
-          // 调用 Service / 处理结果 ...
-        }),
-        catch: err =>
-          state.update(prev => ({ ...prev, errorMessage: err.message })),
-      });
+    const handleSubmit = $.control.tryCatch({
+      try: Effect.gen(function* (_) {
+        yield* $.state.update(prev => ({ ...prev, isSubmitting: true }));
+        // 调用 Service / 处理结果 ...
+      }),
+      catch: err =>
+        $.state.update(prev => ({ ...prev, errorMessage: err.message })),
+    });
 
-      yield* submit$.pipe(flow.runExhaust(handleSubmit));
-    }),
+    yield* submit$.pipe($.flow.runExhaust(handleSubmit));
+  }),
 );
 ```
 
@@ -78,10 +80,12 @@ export const submitOrder = Logic.make<OrderShape, OrderEnv>(
 平台允许在 Logic 中混入原生 Effect 代码。Parser 会根据代码特征进行降级处理。
 
 ```typescript
-export const complexFlow = Logic.make<Shape, Env>(({ state, flow }) =>
+const $ = Logic.forShape<Shape, Env>();
+
+export const complexFlow = Logic.make<Shape, Env>(
   Effect.gen(function* (_) {
     // [White Box] 平台完全理解
-    const data$ = flow.fromChanges(s => s.filters);
+    const data$ = $.flow.fromChanges(s => s.filters);
 
     // [Black Box] 平台识别为 "Raw Code Block"
     const processed = yield* Effect.promise(async () => {

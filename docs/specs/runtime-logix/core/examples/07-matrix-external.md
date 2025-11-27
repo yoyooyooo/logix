@@ -14,14 +14,16 @@ class PriceService extends Context.Tag("PriceService")<PriceService, {
 }>() {}
 
 // 2. 在 Logic 中消费
-const realTimeLogic = Logic.make<StockShape, PriceService>(({ flow, state }) => 
+const $Stock = Logic.forShape<StockShape, PriceService>();
+
+const realTimeLogic = Logic.make<StockShape, PriceService>(
   Effect.gen(function* (_) {
-    const priceSvc = yield* PriceService;
+    const priceSvc = yield* $Stock.services(PriceService);
 
     // 将外部价格流接入状态更新
     yield* priceSvc.price$.pipe(
-      flow.run(price => 
-        state.mutate(draft => { draft.stock.price = price; })
+      $Stock.flow.run(price => 
+        $Stock.state.mutate(draft => { draft.stock.price = price; })
       )
     );
   })
@@ -33,17 +35,19 @@ const realTimeLogic = Logic.make<StockShape, PriceService>(({ flow, state }) =>
 **v3 标准模式**: 在 `Logic` 消费 `Stream` 之前，使用 `Stream` 的原生操作符（如 `chunkN` 或 `debounce`) 进行缓冲或采样，然后通过一次 `state.mutate` 批量更新。
 
 ```typescript
-const highFrequencyLogic = Logic.make<DataShape, HighFrequencyService>(({ flow, state }) => 
+const $Data = Logic.forShape<DataShape, HighFrequencyService>();
+
+const highFrequencyLogic = Logic.make<DataShape, HighFrequencyService>(
   Effect.gen(function* (_) {
-    const hfSvc = yield* HighFrequencyService;
+    const hfSvc = yield* $Data.services(HighFrequencyService);
 
     yield* hfSvc.events$.pipe(
       // 每 50 毫秒或每 100 个事件，将事件打包成一个数组 (Chunk)
       Stream.chunkN(100),
       Stream.debounce('50 millis'),
       // 对每个事件包进行批量处理
-      flow.run(chunk => 
-        state.mutate(draft => {
+      $Data.flow.run(chunk => 
+        $Data.state.mutate(draft => {
           chunk.forEach(event => {
             draft.data[event.id] = event.value;
           });
@@ -59,15 +63,17 @@ const highFrequencyLogic = Logic.make<DataShape, HighFrequencyService>(({ flow, 
 **v3 标准模式**: 在 `Logic.make` 的 `Effect.gen` 主体中直接编写初始化逻辑。这个 Effect 只会在 `Logic` 首次启动时执行一次。
 
 ```typescript
-const initialLoadLogic = Logic.make<UserShape, UserApi>(({ state }) => 
+const $User = Logic.forShape<UserShape, UserApi>();
+
+const initialLoadLogic = Logic.make<UserShape, UserApi>(
   Effect.gen(function* (_) {
-    const api = yield* UserApi;
-    const { userId } = yield* state.read;
+    const api = yield* $User.services(UserApi);
+    const { userId } = yield* $User.state.read;
 
     // Logic 初始化时直接执行加载
-    yield* state.mutate(draft => { draft.meta.isLoading = true; });
+    yield* $User.state.mutate(draft => { draft.meta.isLoading = true; });
     const data = yield* api.fetchUser(userId);
-    yield* state.mutate(draft => {
+    yield* $User.state.mutate(draft => {
       draft.data = data;
       draft.meta.isLoading = false;
     });

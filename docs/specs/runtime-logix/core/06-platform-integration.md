@@ -113,6 +113,49 @@ interface IntentRule {
 
 这使得：**代码写法可以多样，但图模型与平台协议只有一个：IntentRule。**
 
+### 4.1 可解析子集 (Parsable Subset)
+
+为了实现有效的 Full-Duplex（Intent ↔ Code），Logix 运行时代码中只有一部分模式会被平台解析为结构化的 `IntentRule` 或 Logic Graph 节点，其余视为 Gray/Black Box。
+
+**Source（触发源）**：
+
+- `flow.fromAction(guard)`：  
+  - `guard` 应为类型守卫或 `_tag` 检查的简单函数，例如 `a => a._tag === 'submit'`；  
+  - Parser 将其识别为 `source.type = "action"`，`selector = 'submit'`。
+- `flow.fromChanges(selector)`：  
+  - `selector` 应为简单属性访问（`s => s.country`、`s => s.keyword`）；  
+  - Parser 将其识别为 `source.type = "state"`，`selector = 'country'` / `'keyword'`。  
+- `Intent.andUpdateOnChanges / Intent.andUpdateOnAction`：  
+  - 直接映射为 L1 规则：`source.context = "self"`，`sink.context = "self"`，`pipeline = []`。
+
+**Pipeline（管道算子）**：
+
+- 仅识别以下标准 Flow 算子作为 pipeline：  
+  - `flow.debounce(ms)` → `op = "debounce", args = [ms]`；  
+  - `flow.throttle(ms)` → `op = "throttle", args = [ms]`；  
+  - `flow.filter(predicate)` → `op = "filter"`（predicate 以 AST 形式记录）；  
+  - `flow.run / flow.runLatest / flow.runExhaust / flow.runSequence` → 并发策略元信息。
+- 其它 Stream/Effect 组合（例如 `Stream.groupedWithin`、自定义 operator）一律作为 Gray Box 处理，不尝试拆解。
+
+**Sink（终点）**：
+
+- `state.update / state.mutate`：  
+  - 视为 `sink.type = "mutate"`，`context = "self"`；  
+  - handler 表达式以 AST/引用形式记录，供后续可视化或局部编辑。
+- `actions.dispatch(action)`：  
+  - 视为 `sink.type = "dispatch"`，`context = "self"` 或目标 Store；  
+- Pattern / Logic 调用：  
+  - `runXxxPattern(config)` 或 `makeXxxLogicPattern(config)` / `XxxLogicFromPattern` 的调用视为 `sink.type = "pattern"`，`handler` 记录 Pattern id 与 config。
+
+**Control 结构（结构化节点）**：
+
+- 仅对 `control.branch` / `control.tryCatch` / `control.parallel` 做结构化解析：  
+  - branch → 条件节点 + then/else 子图；  
+  - tryCatch → 错误域节点，catch 分支与主分支分开；  
+  - parallel → 并行分叉/汇合节点。
+
+超出上述子集的代码（例如任意 `Effect.flatMap` 链、复杂 Stream 组合）不会被强制解析为 IntentRule，只作为 Gray/Black Box 节点存在，方便平台在保证正确的前提下逐步扩大可解析范围。
+
 ## 5. 可观测性与 Intent Trace 集成
 
 Logix 默认集成 Effect Tracing 与结构化调试事件（详见 `09-debugging.md`），平台 DevTools 可以在此基础上提供： 

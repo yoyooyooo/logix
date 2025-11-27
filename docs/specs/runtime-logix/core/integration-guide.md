@@ -45,11 +45,13 @@ import { Schema, Effect } from 'effect';
 const StateLive = Store.State.make(Schema.Struct({ count: Schema.Number }), { count: 0 });
 const ActionLive = Store.Actions.make(Schema.Union(Schema.Struct({ _tag: 'inc' })));
 
-const LogicLive = Logic.make<CounterShape>(({ flow, state }) => 
+const $ = Logic.forShape<CounterShape>();
+
+const LogicLive = Logic.make<CounterShape>(
   Effect.gen(function*(_) {
-    const inc$ = flow.fromAction(a => a._tag === 'inc');
+    const inc$ = $.flow.fromAction(a => a._tag === 'inc');
     yield* inc$.pipe(
-      flow.run(state.mutate(draft => { draft.count += 1; }))
+      $.flow.run($.state.mutate(draft => { draft.count += 1; }))
     );
   })
 );

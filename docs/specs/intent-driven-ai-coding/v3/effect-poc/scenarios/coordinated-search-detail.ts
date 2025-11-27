@@ -39,22 +39,23 @@ const SearchActionSchema = Schema.Union(
 type SearchShape = Store.Shape<typeof SearchStateSchema, typeof SearchActionSchema>
 
 // 1.4. 搜索逻辑 (只关心自身)
-const SearchLogic = Logic.make<SearchShape, SearchApi>(({ flow, state }) =>
-  Effect.gen(function* (_) {
-    const { read, update } = state
-    const search$ = flow.fromAction((a): a is { _tag: 'search/trigger' } => a._tag === 'search/trigger')
+const $Search = Logic.forShape<SearchShape, SearchApi>()
+
+const SearchLogic = Logic.make<SearchShape, SearchApi>(
+  Effect.gen(function* () {
+    const search$ = $Search.flow.fromAction((a): a is { _tag: 'search/trigger' } => a._tag === 'search/trigger')
 
     const searchEffect = Effect.gen(function* (_) {
-      const api = yield* SearchApi
-      const { keyword } = yield* read
+      const api = yield* $Search.services(SearchApi)
+      const { keyword } = yield* $Search.state.read
 
-      yield* update((prev) => ({ ...prev, isSearching: true }))
+      yield* $Search.state.update((prev) => ({ ...prev, isSearching: true }))
       const result = yield* Effect.either(api.search(keyword))
 
       if (result._tag === 'Left') {
-        yield* update((prev) => ({ ...prev, isSearching: false }))
+        yield* $Search.state.update((prev) => ({ ...prev, isSearching: false }))
       } else {
-        yield* update((prev) => ({
+        yield* $Search.state.update((prev) => ({
           ...prev,
           isSearching: false,
           results: result.right,
@@ -62,7 +63,7 @@ const SearchLogic = Logic.make<SearchShape, SearchApi>(({ flow, state }) =>
       }
     })
 
-    yield* search$.pipe(flow.runExhaust(searchEffect))
+    yield* search$.pipe($Search.flow.runExhaust(searchEffect))
   }),
 )
 
@@ -89,10 +90,11 @@ const DetailActionSchema = Schema.Union(
 type DetailShape = Store.Shape<typeof DetailStateSchema, typeof DetailActionSchema>
 
 // 2.3. 详情逻辑 (只关心自身)
-const DetailLogic = Logic.make<DetailShape>(({ flow, state }) =>
-  Effect.gen(function* (_) {
-    const { update } = state
-    const init$ = flow.fromAction(
+const $Detail = Logic.forShape<DetailShape>()
+
+const DetailLogic = Logic.make<DetailShape>(
+  Effect.gen(function* () {
+    const init$ = $Detail.flow.fromAction(
       (a): a is {
         _tag: 'detail/initialize'
         payload: { id: string; name: string }
@@ -102,7 +104,7 @@ const DetailLogic = Logic.make<DetailShape>(({ flow, state }) =>
     // 监听到初始化动作，就更新自己的状态
     yield* init$.pipe(
       Stream.runForEach((action) =>
-        update((prev) => ({
+        $Detail.state.update((prev) => ({
           ...prev,
           selectedItem: {
             ...action.payload,
@@ -146,26 +148,35 @@ const CoordinatorLogic = Intent.Coordinate.onChangesDispatch<SearchShape, Detail
 )
 
 // ---------------------------------------------------------------------------
-// 组装与说明 (Assembly & Explanation)
+// Store 组装：导出可供 UI / Runtime 使用的两个 Store 和协调程序
 // ---------------------------------------------------------------------------
 
-// 在真实应用中，你会这样组装它们：
+const SearchStateLayer = Store.State.make(SearchStateSchema, {
+  keyword: '',
+  results: [],
+  isSearching: false,
+})
 
-// 1. 创建各自的 Store 实例
-// const searchStore = Store.make(SearchStateLayer, SearchActionLayer, SearchLogic)
-// const detailStore = Store.make(DetailStateLayer, DetailActionLayer, DetailLogic)
+const SearchActionLayer = Store.Actions.make(SearchActionSchema)
 
-// 2. 创建一个包含这两个 Store 实例的 Layer
-// const StoresLayer = Layer.merge(
-//   Layer.succeed(SearchStoreTag, searchStore),
-//   Layer.succeed(DetailStoreTag, detailStore)
-// )
+export const SearchStore = Store.make<SearchShape>(
+  SearchStateLayer,
+  SearchActionLayer,
+  SearchLogic,
+)
 
-// 3. 运行所有逻辑，并为协调逻辑提供 StoresLayer
-// const AppLogic = Effect.all([
-//   searchStore.run, 
-//   detailStore.run, 
-//   CoordinatorLogic.pipe(Effect.provide(StoresLayer))
-// ], { discard: true })
+const DetailStateLayer = Store.State.make(DetailStateSchema, {
+  selectedItem: undefined,
+  isLoading: false,
+})
 
-// Effect.runFork(AppLogic.pipe(Effect.provide(ApiServicesLayer)))
+const DetailActionLayer = Store.Actions.make(DetailActionSchema)
+
+export const DetailStore = Store.make<DetailShape>(
+  DetailStateLayer,
+  DetailActionLayer,
+  DetailLogic,
+)
+
+// 协调器程序：需要在上层 Runtime 中提供同时包含 SearchStore / DetailStore 的 Env 后运行
+export const SearchDetailCoordinator = CoordinatorLogic

@@ -9,12 +9,14 @@
 **描述**: 当用户改变 `country` 时，必须立即重置 `province` 和 `city` 为空。
 **API 验证**:
 ```typescript
-Logic.make<FormShape>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape>();
+
+Logic.make<FormShape>(
   Effect.gen(function*(_) {
-    const country$ = flow.fromChanges(s => s.country);
+    const country$ = $.flow.fromChanges(s => s.country);
     yield* country$.pipe(
-      flow.run(
-        state.mutate(draft => {
+      $.flow.run(
+        $.state.mutate(draft => {
           draft.province = null;
           draft.city = null;
         })
@@ -28,12 +30,14 @@ Logic.make<FormShape>(({ flow, state }) =>
 **描述**: 当 `age` 变化时，如果小于 18，强制将 `isAdult` 设为 false；否则设为 true。
 **API 验证**:
 ```typescript
-Logic.make<FormShape>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape>();
+
+Logic.make<FormShape>(
   Effect.gen(function*(_) {
-    const age$ = flow.fromChanges(s => s.age);
+    const age$ = $.flow.fromChanges(s => s.age);
     yield* age$.pipe(
-      flow.run(age => 
-        state.mutate(draft => {
+      $.flow.run(age =>
+        $.state.mutate(draft => {
           draft.isAdult = age >= 18;
         })
       )
@@ -48,21 +52,23 @@ Logic.make<FormShape>(({ flow, state }) =>
 **描述**: 当 `zipCode` 输入超过 5 位时，调用 API 获取城市信息并回填。需要防抖 500ms，且如果用户快速输入，只处理最后一次请求（SwitchMap）。
 **API 验证**:
 ```typescript
-Logic.make<FormShape, GeoService>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape, GeoService>();
+
+Logic.make<FormShape, GeoService>(
   Effect.gen(function*(_) {
-    const zip$ = flow.fromChanges(s => s.zipCode);
+    const zip$ = $.flow.fromChanges(s => s.zipCode);
 
     const fetchCityEffect = Effect.gen(function*(_) {
-      const geoApi = yield* GeoService;
-      const zipCode = (yield* state.read).zipCode;
+      const geoApi = yield* $.services(GeoService);
+      const zipCode = (yield* $.state.read).zipCode;
       const city = yield* geoApi.fetchCity(zipCode);
-      yield* state.mutate(draft => { draft.city = city; });
+      yield* $.state.mutate(draft => { draft.city = city; });
     });
 
     yield* zip$.pipe(
-      flow.filter(zip => zip.length >= 5),
-      flow.debounce(500),
-      flow.runLatest(fetchCityEffect)
+      $.flow.filter(zip => zip.length >= 5),
+      $.flow.debounce(500),
+      $.flow.runLatest(fetchCityEffect)
     );
   })
 )
@@ -72,24 +78,26 @@ Logic.make<FormShape, GeoService>(({ flow, state }) =>
 **描述**: 当 `username` 变化时，调用 API 检查是否重名。如果重名，设置错误状态。如果 API 失败，重试 3 次。
 **API 验证**:
 ```typescript
-Logic.make<FormShape, UserApi>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape, UserApi>();
+
+Logic.make<FormShape, UserApi>(
   Effect.gen(function*(_) {
-    const username$ = flow.fromChanges(s => s.username);
+    const username$ = $.flow.fromChanges(s => s.username);
 
     const checkUsernameEffect = Effect.gen(function*(_) {
-      const userApi = yield* UserApi;
-      const username = (yield* state.read).username;
+      const userApi = yield* $.services(UserApi);
+      const username = (yield* $.state.read).username;
       const exists = yield* userApi.checkExists(username).pipe(
         Effect.retry({ times: 3 })
       );
-      yield* state.mutate(draft => {
+      yield* $.state.mutate(draft => {
         draft.errors.username = exists ? 'Already taken' : null;
       });
     });
 
     yield* username$.pipe(
-      flow.debounce(300),
-      flow.runLatest(checkUsernameEffect)
+      $.flow.debounce(300),
+      $.flow.runLatest(checkUsernameEffect)
     );
   })
 )
@@ -101,15 +109,17 @@ Logic.make<FormShape, UserApi>(({ flow, state }) =>
 **描述**: 在一个商品列表中，当修改第 N 行的 `quantity` 或 `price` 时，自动计算该行的 `total`。
 **API 验证**:
 *挑战*: 如何监听数组中任意一项的变化？
-*解法 (v1 Standard)*: **监听整个数组**。虽然这看起来“重”，但对于大多数列表（<1000 items）来说，全量重算的开销是可以接受的，且逻辑最简单。
+*解法 (v3 Standard)*: **监听整个数组**。虽然这看起来“重”，但对于大多数列表（<1000 items）来说，全量重算的开销是可以接受的，且逻辑最简单。
 ```typescript
-// v1 推荐写法：监听父节点
-Logic.make<CartShape>(({ flow, state }) => 
+// v3 推荐写法：监听父节点
+const $Cart = Logic.forShape<CartShape>();
+
+Logic.make<CartShape>(
   Effect.gen(function*(_) {
-    const items$ = flow.fromChanges(s => s.items);
+    const items$ = $.flow.fromChanges(s => s.items);
     yield* items$.pipe(
-      flow.run(
-        state.mutate(draft => {
+      $.flow.run(
+        $.state.mutate(draft => {
           draft.items.forEach(item => {
             item.total = item.quantity * item.price;
           });
@@ -128,14 +138,15 @@ Logic.make<CartShape>(({ flow, state }) =>
 *挑战*: `flow.fromChanges` 是监听变化，如何处理初始化？
 *解法 (v3 Standard)*: 在 `Logic.make` 的 `Effect.gen` 主体中直接编写初始化逻辑。这个 Effect 只会在 Logic 首次启动时执行一次，无需特殊触发器。
 ```typescript
-// v1 标准写法
-Logic.make<UserPageShape, UserApi>(({ state }) => 
+const $UserPage = Logic.forShape<UserPageShape, UserApi>();
+
+Logic.make<UserPageShape, UserApi>(
   Effect.gen(function*(_) {
     // Logic 初始化时直接执行，无需特殊触发器
-    const userApi = yield* UserApi;
-    const userId = (yield* state.read).userId;
+    const userApi = yield* $UserPage.services(UserApi);
+    const userId = (yield* $UserPage.state.read).userId;
     const data = yield* userApi.fetchUserData(userId);
-    yield* state.mutate(draft => { draft.userData = data; });
+    yield* $UserPage.state.mutate(draft => { draft.userData = data; });
   })
 )
 ```
@@ -147,12 +158,14 @@ Logic.make<UserPageShape, UserApi>(({ state }) =>
 **API 验证**:
 ```typescript
 // WebSocket 实时更新适用于「外部事件驱动」场景，属于 Logix 的外部源集成能力。
-Logic.make<StockShape, WebSocketService>(({ flow, state }) => 
+const $Stock = Logic.forShape<StockShape, WebSocketService>();
+
+Logic.make<StockShape, WebSocketService>(
   Effect.gen(function*(_) {
-    const ws = yield* WebSocketService;
+    const ws = yield* $Stock.services(WebSocketService);
     yield* ws.priceStream.pipe(
-      flow.run(price => 
-        state.mutate(draft => { draft.stock.price = price; })
+      $Stock.flow.run(price => 
+        $Stock.state.mutate(draft => { draft.stock.price = price; })
       )
     );
   })

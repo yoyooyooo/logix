@@ -9,12 +9,14 @@
 
 ```typescript
 // 场景：监听一个动态字典 itemsById，当任意一项的 status 变为 'done' 时，为其添加 archived 标记。
-const dynamicMapLogic = Logic.make<DataShape>(({ flow, state }) => 
+const $Data = Logic.forShape<DataShape>();
+
+const dynamicMapLogic = Logic.make<DataShape>(
   Effect.gen(function* (_) {
     // 监听整个 itemsById 对象
-    const itemsById$ = flow.fromChanges(s => s.itemsById);
+    const itemsById$ = $.flow.fromChanges(s => s.itemsById);
 
-    const archiveEffect = state.mutate(draft => {
+    const archiveEffect = $.state.mutate(draft => {
       Object.values(draft.itemsById).forEach(item => {
         if (item.status === 'done' && !item.archived) {
           item.archived = true;
@@ -22,7 +24,7 @@ const dynamicMapLogic = Logic.make<DataShape>(({ flow, state }) =>
       });
     });
 
-    yield* itemsById$.pipe(flow.run(archiveEffect));
+    yield* itemsById$.pipe($.flow.run(archiveEffect));
   })
 );
 ```
@@ -33,15 +35,17 @@ const dynamicMapLogic = Logic.make<DataShape>(({ flow, state }) =>
 
 ```typescript
 // 场景：USD <-> CNY 双向汇率换算
-const currencyLogic = Logic.make<CurrencyShape>(({ flow, state }) => 
+const $Currency = Logic.forShape<CurrencyShape>();
+
+const currencyLogic = Logic.make<CurrencyShape>(
   Effect.gen(function* (_) {
-    const usd$ = flow.fromChanges(s => s.usd);
-    const cny$ = flow.fromChanges(s => s.cny);
+    const usd$ = $.flow.fromChanges(s => s.usd);
+    const cny$ = $.flow.fromChanges(s => s.cny);
 
     // Rule 1: USD -> CNY
     const usdToCny = usd$.pipe(
-      flow.run(
-        state.mutate(draft => {
+      $.flow.run(
+        $.state.mutate(draft => {
           draft.cny = draft.usd * 7; // 假设汇率为 7
         })
       )
@@ -49,8 +53,8 @@ const currencyLogic = Logic.make<CurrencyShape>(({ flow, state }) =>
 
     // Rule 2: CNY -> USD
     const cnyToUsd = cny$.pipe(
-      flow.run(
-        state.mutate(draft => {
+      $.flow.run(
+        $.state.mutate(draft => {
           draft.usd = draft.cny / 7;
         })
       )

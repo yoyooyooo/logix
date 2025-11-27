@@ -11,7 +11,7 @@
  * - 真正的运行时代码可以在此基础上单独实现 / 演进。
  */
 
-import { Effect, Stream, SubscriptionRef, Schema, Scope } from 'effect'
+import { Effect, Stream, SubscriptionRef, Schema, Scope, Context } from 'effect'
 
 // ---------------------------------------------------------------------------
 // Store：以 Schema 为事实源的 State / Action 形状 + 运行时能力
@@ -42,6 +42,15 @@ export namespace Store {
   export type StateOf<Sh extends Shape<any, any>> = Schema.Schema.Type<Sh['stateSchema']>
 
   export type ActionOf<Sh extends Shape<any, any>> = Schema.Schema.Type<Sh['actionSchema']>
+
+  /**
+   * v3：强类型 Store Tag，用于在 Intent.Coordinate / Logic.forShape 中进行类型安全约束。
+   *
+   * 说明：
+   * - Id 类型对本 PoC 不重要，因此统一使用 `any`；
+   * - Service 类型固定为当前 Shape 对应的 Runtime。
+   */
+  export type Tag<Sh extends Shape<any, any>> = Context.Tag<any, Runtime<StateOf<Sh>, ActionOf<Sh>>>
 
   /**
    * Store 的运行时接口（类似文档中的「Store as Context」），
@@ -131,19 +140,31 @@ export namespace Store {
 
 export namespace Logic {
   /**
+   * v3：Logic 作用域内用于获取当前 Store.Runtime 的核心 Tag。
+   *
+   * - 在运行时代码中，Logic.make 会在对应 Scope 内 provide 该 Tag；
+   * - 在 Pattern / Namespace 内部，可以通过 `yield* Logic.RuntimeTag` 借用当前 Store 能力。
+   *
+   * 这里的 Id / Service 类型均为 Runtime<any, any> 的宽类型，具体 Shape 由 Logic.Fx<Sh,R> 约束。
+   */
+  export const RuntimeTag: Context.Tag<any, Store.Runtime<any, any>> = Context.GenericTag<any, Store.Runtime<any, any>>(
+    '@logix/Runtime',
+  )
+
+  /**
    * Logic 能看到的环境：
    * - 某一类 Store 运行时能力（通过 Shape 反推出 S / A）；
    * - 额外注入的服务环境 R（通常通过 Context.Tag 定义服务并在 Env 中提供）。
    */
-  export type Env<Sh extends Store.Shape<any, any>, R = never> = Store.Runtime<Store.StateOf<Sh>, Store.ActionOf<Sh>> &
-    R
+  export type Env<Sh extends Store.Shape<any, any>, R = unknown> =
+    Store.Runtime<Store.StateOf<Sh>, Store.ActionOf<Sh>> & R
 
   /**
    * 严格 Logic Effect 别名：约定 Env 为 Logic.Env<Sh, R>。
    * 用于少量需要精确约束 A/E/R 的场景，其余场景可继续使用裸 Effect。
    * 这是未来正式 API 的一部分，而不是调试专用。
    */
-  export type Fx<Sh extends Store.Shape<any, any>, R = never, A = any, E = any> = Effect.Effect<A, E, Env<Sh, R>>
+  export type Fx<Sh extends Store.Shape<any, any>, R = unknown, A = void, E = never> = Effect.Effect<A, E, Env<Sh, R>>
 
   export interface Api<Sh extends Store.Shape<any, any>, R = never> {
     /**
@@ -196,29 +217,65 @@ export namespace Logic {
   }
 
   /**
-   * 构造一个 Logic.Unit，内部拿到类型安全的 Api。
+   * Bound API 工厂：为某一类 Store Shape + Env 创建预绑定的访问器。
    *
-   * 用法：
+   * - 默认基于 Logic.RuntimeTag 获取当前 Store.Runtime；
+   * - 可选传入 Store.Tag<Sh> 以显式指定 Runtime 来源（例如跨 Store 协作场景）。
+   *
+   * 说明：本函数仅提供类型签名，具体实现由运行时代码注入，本 PoC 中返回值为占位。
+   */
+  export interface BoundApi<Sh extends Store.Shape<any, any>, R = unknown> {
+    readonly state: {
+      readonly read: Fx<Sh, R, Store.StateOf<Sh>, never>
+      readonly update: (f: (prev: Store.StateOf<Sh>) => Store.StateOf<Sh>) => Fx<Sh, R, void, never>
+      readonly mutate: (f: (draft: Store.StateOf<Sh>) => void) => Fx<Sh, R, void, never>
+      readonly ref: {
+        (): SubscriptionRef.SubscriptionRef<Store.StateOf<Sh>>
+        <V>(selector: (s: Store.StateOf<Sh>) => V): SubscriptionRef.SubscriptionRef<V>
+      }
+    }
+    readonly actions: {
+      readonly dispatch: (action: Store.ActionOf<Sh>) => Fx<Sh, R, void, never>
+      readonly actions$: Stream.Stream<Store.ActionOf<Sh>>
+    }
+    readonly flow: Flow.Api<Sh, R>
+    readonly control: Control.Api<Sh, R>
+    readonly services: <Svc, Id = any>(tag: Context.Tag<Id, Svc>) => Effect.Effect<Svc, never, R>
+  }
+
+  export function forShape<Sh extends Store.Shape<any, any>, R = unknown>(_tag?: Store.Tag<Sh>): BoundApi<Sh, R> {
+    // 占位实现：仅用于类型推导，运行时代码会提供真实实现。
+    return null as unknown as BoundApi<Sh, R>
+  }
+
+  /**
+   * 构造一个 Logic.Unit。
+   *
+   * v3 推荐直接传入已经绑定好 Env 的 Effect（Bound API 模式）：
    *
    *   type CounterShape = Store.Shape<typeof stateSchema, typeof actionSchema>
    *
-   *   const CounterLogic = Logic.make<CounterShape>(({ state, flow }) =>
+   *   const CounterLogic = Logic.make<CounterShape>(
    *     Effect.gen(function*(_) {
-   *       const inc$ = flow.fromAction(a => a._tag === "inc");
+   *       const $ = Logic.forShape<CounterShape>()
+   *       const inc$ = $.flow.fromAction(a => a._tag === "inc")
    *       yield* inc$.pipe(
-   *         flow.run(state.update(prev => ({ ...prev, count: prev.count + 1 })))
-   *       );
+   *         $.flow.run($.state.update(prev => ({ ...prev, count: prev.count + 1 })))
+   *       )
    *     })
-   *   );
+   *   )
+   *
+   * 实际运行时代码内部可以选择以回调形式实现，但该细节不会通过类型暴露给业务代码。
    */
   export function make<
     Sh extends Store.Shape<any, any>,
     R = never,
     FX extends Effect.Effect<any, any, any> = Effect.Effect<any, any, any>,
-  >(body: (api: Api<Sh, R>) => FX): FX {
-    // 占位实现：真正逻辑由运行时代码注入 Api 后提供。
+  >(effect: FX): FX {
+    // 占位实现：真正逻辑由运行时代码注入 Env 后提供；Env 形状由调用方自行约束为 Logic.Env<Sh,R>。
     return null as unknown as FX
   }
+
 }
 
 // ---------------------------------------------------------------------------
@@ -233,7 +290,7 @@ export namespace Flow {
    *
    * 方便在命名空间级 DSL 中直接使用 Effect 的 DI 能力。
    */
-  export type Env<Sh extends Store.Shape<any, any>, R = never> = Logic.Env<Sh, R>
+  export type Env<Sh extends Store.Shape<any, any>, R = unknown> = Logic.Env<Sh, R>
 
   /**
    * 「监听变化然后更新 State」的强语义语法糖签名。
@@ -440,7 +497,7 @@ export namespace Coordinator {
   export type Env<
     ShSource extends Store.Shape<any, any>,
     ShTarget extends Store.Shape<any, any>,
-    R = never,
+    R = unknown,
   > = Store.Runtime<Store.StateOf<ShSource>, Store.ActionOf<ShSource>> &
     Store.Runtime<Store.StateOf<ShTarget>, Store.ActionOf<ShTarget>> &
     R
@@ -455,7 +512,7 @@ export namespace Coordinator {
   export interface OnChangesDispatch<
     ShSource extends Store.Shape<any, any>,
     ShTarget extends Store.Shape<any, any>,
-    R = never,
+    R = unknown,
   > {
     <V>(
       selector: (s: Store.StateOf<ShSource>) => V,
@@ -477,7 +534,7 @@ export namespace Coordinator {
   export interface OnActionDispatch<
     ShSource extends Store.Shape<any, any>,
     ShTarget extends Store.Shape<any, any>,
-    R = never,
+    R = unknown,
   > {
     <TSource extends Store.ActionOf<ShSource>>(
       predicate: (a: Store.ActionOf<ShSource>) => a is TSource,
@@ -498,7 +555,7 @@ export namespace Coordinator {
     <
       ShSource extends Store.Shape<any, any>,
       ShTarget extends Store.Shape<any, any>,
-      R = never,
+      R = unknown,
       V = any,
     >(
       selector: (s: Store.StateOf<ShSource>) => V,
@@ -507,7 +564,7 @@ export namespace Coordinator {
     <
       ShSource extends Store.Shape<any, any>,
       ShTarget extends Store.Shape<any, any>,
-      R = never,
+      R = unknown,
       V = any,
     >(
       selector: (s: Store.StateOf<ShSource>) => V,
@@ -517,7 +574,7 @@ export namespace Coordinator {
     <
       ShSource extends Store.Shape<any, any>,
       ShTarget extends Store.Shape<any, any>,
-      R = never,
+      R = unknown,
       V = any,
     >(
       selector: (s: Store.StateOf<ShSource>) => V,
@@ -526,7 +583,7 @@ export namespace Coordinator {
     <
       ShSource extends Store.Shape<any, any>,
       ShTarget extends Store.Shape<any, any>,
-      R = never,
+      R = unknown,
       V = any,
     >(
       selector: (s: Store.StateOf<ShSource>) => V,
@@ -538,7 +595,7 @@ export namespace Coordinator {
     <
       ShSource extends Store.Shape<any, any>,
       ShTarget extends Store.Shape<any, any>,
-      R = never,
+      R = unknown,
       TSource extends Store.ActionOf<ShSource> = Store.ActionOf<ShSource>,
     >(
       predicate: (a: Store.ActionOf<ShSource>) => a is TSource,
@@ -547,7 +604,7 @@ export namespace Coordinator {
     <
       ShSource extends Store.Shape<any, any>,
       ShTarget extends Store.Shape<any, any>,
-      R = never,
+      R = unknown,
       TSource extends Store.ActionOf<ShSource> = Store.ActionOf<ShSource>,
     >(
       predicate: (a: Store.ActionOf<ShSource>) => a is TSource,
@@ -557,7 +614,7 @@ export namespace Coordinator {
     <
       ShSource extends Store.Shape<any, any>,
       ShTarget extends Store.Shape<any, any>,
-      R = never,
+      R = unknown,
       TSource extends Store.ActionOf<ShSource> = Store.ActionOf<ShSource>,
     >(
       predicate: (a: Store.ActionOf<ShSource>) => a is TSource,
@@ -566,7 +623,7 @@ export namespace Coordinator {
     <
       ShSource extends Store.Shape<any, any>,
       ShTarget extends Store.Shape<any, any>,
-      R = never,
+      R = unknown,
       TSource extends Store.ActionOf<ShSource> = Store.ActionOf<ShSource>,
     >(
       predicate: (a: Store.ActionOf<ShSource>) => a is TSource,
@@ -678,16 +735,18 @@ export type CounterState = Store.StateOf<CounterShape>
 export type CounterAction = Store.ActionOf<CounterShape>
 
 // 3. Logic：在 CounterShape 对应的 Store 上运行的一段逻辑
-export const CounterLogic = Logic.make<CounterShape>(({ flow, state }) =>
-  Effect.gen(function* (_) {
+const $Counter = Logic.forShape<CounterShape>()
+
+export const CounterLogic = Logic.make<CounterShape>(
+  Effect.gen(function* () {
     // 从 Action 流中筛选 inc / dec
-    const inc$ = flow.fromAction((a): a is { _tag: 'inc' } => a._tag === 'inc')
-    const dec$ = flow.fromAction((a): a is { _tag: 'dec' } => a._tag === 'dec')
+    const inc$ = $Counter.flow.fromAction((a): a is { _tag: 'inc' } => a._tag === 'inc')
+    const dec$ = $Counter.flow.fromAction((a): a is { _tag: 'dec' } => a._tag === 'dec')
 
     // 将流与 update 关联起来
     yield* Effect.all([
-      inc$.pipe(flow.run(state.update((prev) => ({ ...prev, count: prev.count + 1 })))),
-      dec$.pipe(flow.run(state.update((prev) => ({ ...prev, count: prev.count - 1 })))),
+      inc$.pipe($Counter.flow.run($Counter.state.update((prev) => ({ ...prev, count: prev.count + 1 })))),
+      dec$.pipe($Counter.flow.run($Counter.state.update((prev) => ({ ...prev, count: prev.count - 1 })))),
     ])
   }),
 )
@@ -741,14 +800,15 @@ export const runRegisterSubmit = (input: RegisterSubmitInput) =>
 // 3. Logic：在 RegisterShape 对应的 Store 上运行一段逻辑，触发提交长逻辑
 //    —— 可以理解为「用户注册场景的 Logic」
 
-export const UserRegisterSceneLogic = Logic.make<RegisterShape>(({ flow, state }) =>
-  Effect.gen(function* (_) {
-    const { update, ref } = state
+const $Register = Logic.forShape<RegisterShape>()
+
+export const UserRegisterSceneLogic = Logic.make<RegisterShape>(
+  Effect.gen(function* () {
     // 3.1 从 Action 流中筛选 form/submit
-    const submit$ = flow.fromAction((a): a is { type: 'form/submit' } => a.type === 'form/submit')
+    const submit$ = $Register.flow.fromAction((a): a is { type: 'form/submit' } => a.type === 'form/submit')
 
     // 3.2 构造提交逻辑需要的依赖：借用整棵表单状态作为 Ref
-    const formStateRef = ref() // SubscriptionRef<RegisterState>
+    const formStateRef = $Register.state.ref() // SubscriptionRef<RegisterState>
     const input: RegisterSubmitInput = {
       formRef: formStateRef,
       submit: (values) =>
@@ -764,14 +824,14 @@ export const UserRegisterSceneLogic = Logic.make<RegisterShape>(({ flow, state }
     // 这里直接构造一个 Effect，用于挂在 Flow 上：
     const handleSubmit = Effect.gen(function* (_) {
       // 提交前标记 isSubmitting = true
-      yield* update((prev) => ({ ...prev, isSubmitting: true }))
+      yield* $Register.state.update((prev) => ({ ...prev, isSubmitting: true }))
       // 执行通用提交逻辑
       yield* runRegisterSubmit(input)
       // 提交结束后重置 isSubmitting
-      yield* update((prev) => ({ ...prev, isSubmitting: false }))
+      yield* $Register.state.update((prev) => ({ ...prev, isSubmitting: false }))
     })
 
-    yield* submit$.pipe(flow.run(handleSubmit))
+    yield* submit$.pipe($Register.flow.run(handleSubmit))
   }),
 )
 

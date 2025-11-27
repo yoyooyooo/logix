@@ -11,13 +11,15 @@
 使用 `flow.fromChanges` 监听源字段，在 `flow.run` 中通过 `state.mutate` 更新目标字段。
 
 ```typescript
-const resetProvinceLogic = Logic.make<FormShape>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape>();
+
+const resetProvinceLogic = Logic.make<FormShape>(
   Effect.gen(function* (_) {
-    const country$ = flow.fromChanges(s => s.country);
+    const country$ = $Form.flow.fromChanges(s => s.country);
 
     yield* country$.pipe(
-      flow.run(
-        state.mutate(draft => {
+      $Form.flow.run(
+        $Form.state.mutate(draft => {
           draft.province = "";
           draft.city = "";
         })
@@ -35,19 +37,21 @@ const resetProvinceLogic = Logic.make<FormShape>(({ flow, state }) =>
 使用 `flow.fromChanges` 监听，链式调用 `debounce` 和 `filter`，最后用 `runLatest` 执行包含 API 调用的 Effect，自动处理竞态。
 
 ```typescript
-const validateUsernameLogic = Logic.make<FormShape, UserApi>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape, UserApi>();
+
+const validateUsernameLogic = Logic.make<FormShape, UserApi>(
   Effect.gen(function* (_) {
-    const username$ = flow.fromChanges(s => s.username);
+    const username$ = $Form.flow.fromChanges(s => s.username);
 
     yield* username$.pipe(
-      flow.debounce(500),
-      flow.filter(username => username.length >= 3),
-      flow.runLatest( // 确保只处理最后一次输入
+      $Form.flow.debounce(500),
+      $Form.flow.filter(username => username.length >= 3),
+      $Form.flow.runLatest( // 确保只处理最后一次输入
         Effect.gen(function* (_) {
-          const api = yield* UserApi;
-          const { username } = yield* state.read;
+          const api = yield* $Form.services(UserApi);
+          const { username } = yield* $Form.state.read;
           const isTaken = yield* api.checkUsername(username);
-          yield* state.mutate(draft => {
+          yield* $Form.state.mutate(draft => {
             draft.errors.username = isTaken ? "Username already taken" : undefined;
           });
         })
@@ -65,13 +69,15 @@ const validateUsernameLogic = Logic.make<FormShape, UserApi>(({ flow, state }) =
 使用 `flow.fromChanges` 监听一个包含多个字段的元组 `[s.startDate, s.endDate]`，然后在 `flow.run` 中执行校验逻辑。
 
 ```typescript
-const validateDateRangeLogic = Logic.make<FormShape>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape>();
+
+const validateDateRangeLogic = Logic.make<FormShape>(
   Effect.gen(function* (_) {
-    const datePair$ = flow.fromChanges(s => [s.startDate, s.endDate] as const);
+    const datePair$ = $Form.flow.fromChanges(s => [s.startDate, s.endDate] as const);
 
     yield* datePair$.pipe(
-      flow.run(
-        state.mutate(draft => {
+      $Form.flow.run(
+        $Form.state.mutate(draft => {
           if (draft.startDate && draft.endDate && draft.startDate > draft.endDate) {
             draft.errors.dateRange = "Start date must be before end date";
           } else {
@@ -92,14 +98,16 @@ const validateDateRangeLogic = Logic.make<FormShape>(({ flow, state }) =>
 监听整个数组 `items` 的变化。在 `flow.run` 中，一次性完成所有派生状态（行内 `total` 和整体 `summary`）的计算，避免多次更新和重复渲染。
 
 ```typescript
-const calculateTotalsLogic = Logic.make<CartShape>(({ flow, state }) => 
+const $Cart = Logic.forShape<CartShape>();
+
+const calculateTotalsLogic = Logic.make<CartShape>(
   Effect.gen(function* (_) {
-    const items$ = flow.fromChanges(s => s.items);
+    const items$ = $Cart.flow.fromChanges(s => s.items);
 
     yield* items$.pipe(
-      flow.debounce(50), // 轻微防抖，应对批量操作
-      flow.run(
-        state.mutate(draft => {
+      $Cart.flow.debounce(50), // 轻微防抖，应对批量操作
+      $Cart.flow.run(
+        $Cart.state.mutate(draft => {
           let totalAmount = 0;
           draft.items.forEach(item => {
             item.total = item.price * item.quantity;
@@ -123,15 +131,17 @@ const calculateTotalsLogic = Logic.make<CartShape>(({ flow, state }) =>
 在 `Logic.make` 的 `Effect.gen` 主体中，直接 `yield*` 一个加载数据的 Effect。这个 Effect 只会在 Logic 初始化时执行一次。
 
 ```typescript
-const initialLoadLogic = Logic.make<PageShape, PageApi>(({ state }) => 
+const $Page = Logic.forShape<PageShape, PageApi>();
+
+const initialLoadLogic = Logic.make<PageShape, PageApi>(
   Effect.gen(function* (_) {
-    const api = yield* PageApi;
-    const pageId = (yield* state.read).pageId; // 假设 pageId 已在初始状态中
+    const api = yield* $Page.services(PageApi);
+    const pageId = (yield* $Page.state.read).pageId; // 假设 pageId 已在初始状态中
 
     // Logic 初始化时直接执行加载
-    yield* state.mutate(draft => { draft.meta.isLoading = true; });
+    yield* $Page.state.mutate(draft => { draft.meta.isLoading = true; });
     const data = yield* api.fetchPage(pageId);
-    yield* state.mutate(draft => {
+    yield* $Page.state.mutate(draft => {
       draft.data = data;
       draft.meta.isLoading = false;
     });
@@ -153,15 +163,17 @@ const initialLoadLogic = Logic.make<PageShape, PageApi>(({ state }) =>
 class Ticker extends Context.Tag("Ticker")<Ticker, { readonly ticks$: Stream.Stream<number> }>() {}
 
 // 2. 在 Logic 中消费
-const tickerLogic = Logic.make<TickerShape, Ticker>(({ state, flow }) => 
+const $Ticker = Logic.forShape<TickerShape, Ticker>();
+
+const tickerLogic = Logic.make<TickerShape, Ticker>(
   Effect.gen(function* (_) {
-    const ticker = yield* Ticker;
+    const ticker = yield* $Ticker.services(Ticker);
 
     // 将外部 ticks$ 流接入 Logix
     yield* ticker.ticks$.pipe(
-      flow.run(tick => 
-        state.mutate(draft => { draft.lastTick = tick; })
-      )
+      $Ticker.flow.run(tick =>
+        $Ticker.state.mutate(draft => { draft.lastTick = tick; }),
+      ),
     );
   })
 );

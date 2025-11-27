@@ -18,12 +18,14 @@ const TenantALayer = Layer.succeed(UserApi, { fetch: (id) => Effect.succeed({ id
 const TenantBLayer = Layer.succeed(UserApi, { fetch: (id) => Effect.succeed({ id, name: `Tenant B User ${id}` }) });
 
 // 3. Logic 代码保持不变，只依赖 UserApi Tag
-const userLogic = Logic.make<UserShape, UserApi>(({ state }) => 
+const $User = Logic.forShape<UserShape, UserApi>();
+
+const userLogic = Logic.make<UserShape, UserApi>(
   Effect.gen(function* (_) {
-    const api = yield* UserApi;
-    const { userId } = yield* state.read;
+    const api = yield* $User.services(UserApi);
+    const { userId } = yield* $User.state.read;
     const user = yield* api.fetch(userId);
-    yield* state.mutate(draft => { draft.user = user; });
+    yield* $User.state.mutate(draft => { draft.user = user; });
   })
 );
 
@@ -38,7 +40,7 @@ Effect.runFork(UserStore.run.pipe(Effect.provide(AppLayer)));
 
 ```typescript
 // 1. Logic 中允许出现失败
-const errorLogic = Logic.make<Shape, Api>(() => 
+const errorLogic = Logic.make<Shape, Api>(
   Effect.gen(function* (_) {
     const api = yield* Api;
     // 这个 Effect 可能会失败，类型为 Effect<void, ApiError, ...>
@@ -69,24 +71,25 @@ class AuthService extends Context.Tag("AuthService")<AuthService, {
 }>() {}
 
 // 2. 在 Logic 中使用
+const $Approval = Logic.forShape<ApprovalShape, AuthService | ApprovalApi>();
+
 const permissionLogic = Logic.make<ApprovalShape, AuthService | ApprovalApi>(
-  ({ flow, state, control }) => 
-    Effect.gen(function* (_) {
-      const approve$ = flow.fromAction(a => a._tag === 'approve');
+  Effect.gen(function* (_) {
+      const approve$ = $Approval.flow.fromAction(a => a._tag === 'approve');
 
       const approveEffect = Effect.gen(function* (_) {
-        const auth = yield* AuthService;
-        const api = yield* ApprovalApi;
+        const auth = yield* $Approval.services(AuthService);
+        const api = yield* $Approval.services(ApprovalApi);
 
         // 使用 control.branch 进行权限检查
-        yield* control.branch({
+        yield* $Approval.control.branch({
           if: auth.canApprove(),
           then: api.approve(),
-          else: state.mutate(draft => { draft.error = "Permission denied"; })
+          else: $Approval.state.mutate(draft => { draft.error = "Permission denied"; })
         });
       });
 
-      yield* approve$.pipe(flow.run(approveEffect));
+      yield* approve$.pipe($Approval.flow.run(approveEffect));
     })
 );
 ```

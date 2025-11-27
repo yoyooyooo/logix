@@ -42,43 +42,45 @@ export type BulkAction = Store.ActionOf<BulkShape>
 // Logic：监听 bulk/run，触发 Pattern，并更新本地 State
 // ---------------------------------------------------------------------------
 
+const $ = Logic.forShape<BulkShape, SelectionService | BulkOperationService | NotificationService>()
+
 export const BulkLogic = Logic.make<BulkShape, SelectionService | BulkOperationService | NotificationService>(
-  ({ state, flow, control }) =>
-    Effect.gen(function* (_) {
-      const { read, update } = state
+  Effect.gen(function* () {
+    const run$ = $.flow.fromAction((a): a is { _tag: 'bulk/run' } => a._tag === 'bulk/run')
+    const resetMessage$ = $.flow.fromAction(
+      (a): a is { _tag: 'bulk/resetMessage' } => a._tag === 'bulk/resetMessage',
+    )
 
-      const run$ = flow.fromAction((a): a is { _tag: 'bulk/run' } => a._tag === 'bulk/run')
-      const resetMessage$ = flow.fromAction(
-        (a): a is { _tag: 'bulk/resetMessage' } => a._tag === 'bulk/resetMessage',
-      )
+    const handleRun = Effect.gen(function* () {
+      const current = yield* $.state.read
 
-      const handleRun = Effect.gen(function* () {
-        const current = yield* read
-
-        const count = yield* control.tryCatch({
+      const count = yield* $.control.tryCatch({
           try: runBulkOperationPattern({ operation: current.operation }),
           catch: (err: BulkOperationPatternError) =>
             Effect.gen(function* () {
-              const notify = yield* NotificationService
+              const notify = yield* $.services(NotificationService)
               yield* notify.error(err.reason)
               return 0
             }),
         })
 
-        yield* update((prev) => ({
+      yield* $.state.update((prev) => ({
           ...prev,
           lastCount: count,
           lastMessage: count > 0 ? `本次 ${prev.operation} 作用于 ${count} 条记录` : prev.lastMessage,
         }))
-      })
+    })
 
-      const handleReset = update((prev) => ({
+    const handleReset = $.state.update((prev) => ({
         ...prev,
         lastMessage: undefined,
       }))
 
-      yield* Effect.all([run$.pipe(flow.runExhaust(handleRun)), resetMessage$.pipe(flow.run(handleReset))])
-    }),
+    yield* Effect.all([
+      run$.pipe($.flow.runExhaust(handleRun)),
+      resetMessage$.pipe($.flow.run(handleReset)),
+    ])
+  }),
 )
 
 // ---------------------------------------------------------------------------
@@ -86,7 +88,7 @@ export const BulkLogic = Logic.make<BulkShape, SelectionService | BulkOperationS
 // ---------------------------------------------------------------------------
 
 const BulkStateLayer = Store.State.make(BulkStateSchema, {
-  operation: 'archive' as const,
+  operation: 'archive',
   lastCount: 0,
   lastMessage: undefined,
 })

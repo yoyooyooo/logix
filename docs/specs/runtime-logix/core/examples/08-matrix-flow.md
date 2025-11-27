@@ -8,21 +8,23 @@
 **v3 标准模式**: 在传递给 `flow.run` 的 `Effect` 内部，使用 `Effect.retry` 组合子。
 
 ```typescript
-const retryLogic = Logic.make<FormShape, UserApi>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape, UserApi>();
+
+const retryLogic = Logic.make<FormShape, UserApi>(
   Effect.gen(function* (_) {
-    const username$ = flow.fromChanges(s => s.username);
+    const username$ = $.flow.fromChanges(s => s.username);
 
     const checkUsernameWithRetry = Effect.gen(function* (_) {
-      const api = yield* UserApi;
-      const { username } = yield* state.read;
+      const api = yield* $.services(UserApi);
+      const { username } = yield* $.state.read;
       const result = yield* api.check(username).pipe(
         // Effect 原生的重试能力
         Effect.retry({ times: 3, schedule: Schedule.exponential('100 millis') })
       );
-      yield* state.mutate(draft => { draft.isValid = result; });
+      yield* $.state.mutate(draft => { draft.isValid = result; });
     });
 
-    yield* username$.pipe(flow.run(checkUsernameWithRetry));
+    yield* username$.pipe($.flow.run(checkUsernameWithRetry));
   })
 );
 ```
@@ -32,21 +34,23 @@ const retryLogic = Logic.make<FormShape, UserApi>(({ flow, state }) =>
 **v3 标准模式**: 使用 `flow.runLatest` 代替 `flow.run`。`runLatest` 会自动取消前一个正在执行的 Effect，确保只有最新的流事件对应的逻辑在运行。
 
 ```typescript
-const switchMapLogic = Logic.make<SearchShape, SearchApi>(({ flow, state }) => 
+const $Search = Logic.forShape<SearchShape, SearchApi>();
+
+const switchMapLogic = Logic.make<SearchShape, SearchApi>(
   Effect.gen(function* (_) {
-    const keyword$ = flow.fromChanges(s => s.keyword);
+    const keyword$ = $.flow.fromChanges(s => s.keyword);
 
     const searchEffect = Effect.gen(function* (_) {
-      const api = yield* SearchApi;
-      const { keyword } = yield* state.read;
+      const api = yield* $.services(SearchApi);
+      const { keyword } = yield* $.state.read;
       const result = yield* api.search(keyword);
-      yield* state.mutate(draft => { draft.results = result; });
+      yield* $.state.mutate(draft => { draft.results = result; });
     });
 
     yield* keyword$.pipe(
-      flow.debounce(300),
+      $.flow.debounce(300),
       // 关键：使用 runLatest 实现 SwitchMap 语义
-      flow.runLatest(searchEffect)
+      $.flow.runLatest(searchEffect)
     );
   })
 );
@@ -57,13 +61,15 @@ const switchMapLogic = Logic.make<SearchShape, SearchApi>(({ flow, state }) =>
 **v3 标准模式**: 在 `Effect` 内部使用 `Effect.catchAll` 或 `control.tryCatch` 来处理错误分支。
 
 ```typescript
-const fallbackLogic = Logic.make<ConfigShape, ConfigApi>(({ flow, state, control }) => 
+const $Config = Logic.forShape<ConfigShape, ConfigApi>();
+
+const fallbackLogic = Logic.make<ConfigShape, ConfigApi>(
   Effect.gen(function* (_) {
-    const configId$ = flow.fromChanges(s => s.configId);
+    const configId$ = $.flow.fromChanges(s => s.configId);
 
     const fetchEffect = Effect.gen(function* (_) {
-      const api = yield* ConfigApi;
-      const { configId } = yield* state.read;
+      const api = yield* $.services(ConfigApi);
+      const { configId } = yield* $.state.read;
       
       const fetchWithFallback = api.fetch(configId).pipe(
         // 如果 API 调用失败，则回退到默认值
@@ -71,10 +77,10 @@ const fallbackLogic = Logic.make<ConfigShape, ConfigApi>(({ flow, state, control
       );
 
       const config = yield* fetchWithFallback;
-      yield* state.mutate(draft => { draft.config = config; });
+      yield* $.state.mutate(draft => { draft.config = config; });
     });
 
-    yield* configId$.pipe(flow.run(fetchEffect));
+    yield* configId$.pipe($.flow.run(fetchEffect));
   })
 );
 ```

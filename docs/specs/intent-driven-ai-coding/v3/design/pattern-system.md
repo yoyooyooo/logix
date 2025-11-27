@@ -61,21 +61,12 @@ version: 8 (Effect-Native-Simplified)
 
 - Tag-only Service vs 自带实现：  
   - 对真实业务更有复用价值的模式，推荐 **只在 Pattern 中定义 Service 契约（Tag + interface），不提供默认实现**：  
-    - 例如：  
-      ```ts
-      export interface NotificationService {
-        info: (msg: string) => Effect.Effect<void>
-        error: (msg: string) => Effect.Effect<void>
-      }
-      export class NotificationServiceTag extends Context.Tag('@svc/Notification')<
-        NotificationServiceTag,
-        NotificationService
-      > {}
-      ```  
-    - Pattern 内部只 `yield* NotificationServiceTag`，不 `provide` 实现。  
+    - Domain 领域服务（ApprovalService、ArchiveService 等）建议归类在 Domain 层（如 `domain/order/service.ts`），Tag 代表业务语言中的“动词”；  
+    - 通用能力（Notification/Confirm 等）可以放在 `patterns/shared` 或 `patterns/<pattern-name>/service.ts`，作为 Pattern 的“插槽”；  
+    - Pattern 内部只 `yield* SomeServiceTag`，不 `provide` 实现。  
   - 具体实现由消费方在“运行组合层”提供：  
-    - PoC 场景中，可以在单文件内使用 `Effect.provideService(Tag, impl)`；  
-    - 真正应用中，推荐集中在 RuntimeLayer / App 入口通过 `Layer.succeed` / `Layer.mergeAll` 注入。
+    - PoC 场景中，可以在单文件内使用 `Effect.provideService(Tag, impl)` 闭环演示；  
+    - 真正应用中，推荐集中在 RuntimeLayer / App Root 中通过 `Layer.succeed` / `Layer.mergeAll` 注入真实实现或测试替身。
 
 - 场景文件（scenarios）要求：  
   - 每个场景文件应当是**单文件完备**：  

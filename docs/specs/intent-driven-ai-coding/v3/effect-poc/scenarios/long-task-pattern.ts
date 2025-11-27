@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { Store, Logic, Flow } from '../shared/logix-v3-core'
+import { Store, Logic } from '../shared/logix-v3-core'
 import {
   LongTaskStateSchema,
   LongTaskActionSchema,
@@ -13,14 +13,15 @@ import {
 // Logic：通过 Action 触发长逻辑 Effect，并用 Flow 控制并发语义
 // ---------------------------------------------------------------------------
 
-export const LongTaskLogic = Logic.make<LongTaskShape>(({ flow, state }) =>
-  Effect.gen(function* (_) {
-    const { ref, update } = state
-    const start$ = flow.fromAction((a): a is { _tag: 'start' } => a._tag === 'start')
-    const reset$ = flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
+const $ = Logic.forShape<LongTaskShape>()
+
+export const LongTaskLogic = Logic.make<LongTaskShape>(
+  Effect.gen(function* () {
+    const start$ = $.flow.fromAction((a): a is { _tag: 'start' } => a._tag === 'start')
+    const reset$ = $.flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
 
     // 借用整棵状态作为 SubscriptionRef，交给 Pattern 持续更新
-    const stateRef = ref()
+    const stateRef = $.state.ref()
 
     // 启动长任务：如果已经在 running，runExhaust 会丢弃后续触发，避免重复启动
     const startEffect = Effect.gen(function* (_) {
@@ -28,12 +29,15 @@ export const LongTaskLogic = Logic.make<LongTaskShape>(({ flow, state }) =>
     })
 
     // 重置任务状态
-    const resetEffect = update(() => ({
-      status: 'idle' as LongTaskState['status'],
+    const resetEffect = $.state.update(() => ({
+      status: 'idle',
       progress: 0,
     }))
 
-    yield* Effect.all([start$.pipe(flow.runExhaust(startEffect)), reset$.pipe(flow.run(resetEffect))])
+    yield* Effect.all([
+      start$.pipe($.flow.runExhaust(startEffect)),
+      reset$.pipe($.flow.run(resetEffect)),
+    ])
   }),
 )
 
@@ -42,7 +46,7 @@ export const LongTaskLogic = Logic.make<LongTaskShape>(({ flow, state }) =>
 // ---------------------------------------------------------------------------
 
 const LongTaskStateLayer = Store.State.make(LongTaskStateSchema, {
-  status: 'idle' as const,
+  status: 'idle',
   progress: 0,
 })
 

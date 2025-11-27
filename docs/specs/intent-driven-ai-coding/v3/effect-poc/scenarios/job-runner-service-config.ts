@@ -64,57 +64,55 @@ export class JobRunner extends Effect.Service<JobRunner>()('JobRunner', {
 // 4. Logic：通过 Flow 调用 Service，显式处理 E 通道
 // ---------------------------------------------------------------------------
 
-export const JobLogic = Logic.make<JobShape, JobRunner>(({ state, flow }) =>
-  Effect.gen(function* (_) {
-    const { read, update } = state
+const $ = Logic.forShape<JobShape, JobRunner>()
 
-    const run$ = flow.fromAction((a): a is { _tag: 'run' } => a._tag === 'run')
-    const reset$ = flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
+export const JobLogic = Logic.make<JobShape, JobRunner>(
+  Effect.gen(function* () {
+    const run$ = $.flow.fromAction((a): a is { _tag: 'run' } => a._tag === 'run')
+    const reset$ = $.flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
 
-    const runEffect = Effect.gen(function* (_) {
-      const runner = yield* JobRunner
-      const current = yield* read
+    const runEffect = Effect.gen(function* () {
+      const runner = yield* $.services(JobRunner)
+      const current = yield* $.state.read
       const jobId = current.jobId
 
       // 进入 running 状态，清空错误
-      yield* update((prev) => ({
+      yield* $.state.update((prev) => ({
         ...prev,
-        status: 'running' as const,
+        status: 'running',
         errorMessage: undefined,
       }))
 
       // 调用 Service，显式处理 JobFailedError
-      yield* runner
-        .runJob({ id: jobId })
-        .pipe(
-          Effect.catchTag('JobFailedError', (err) =>
-            update((prev) => ({
-              ...prev,
-              status: 'error' as const,
-              errorMessage: err.reason,
-            })),
-          ),
-        )
+      yield* runner.runJob({ id: jobId }).pipe(
+        Effect.catchTag('JobFailedError', (err) =>
+          $.state.update((prev) => ({
+            ...prev,
+            status: 'error',
+            errorMessage: err.reason,
+          })),
+        ),
+      )
 
       // 如果没有失败，则标记为 success
-      const latest = yield* read
+      const latest = yield* $.state.read
       if (latest.status === 'running') {
-        yield* update((prev) => ({
+        yield* $.state.update((prev) => ({
           ...prev,
-          status: 'success' as const,
+          status: 'success',
         }))
       }
     })
 
-    const resetEffect = update((prev) => ({
+    const resetEffect = $.state.update((prev) => ({
       ...prev,
-      status: 'idle' as const,
+      status: 'idle',
       errorMessage: undefined,
     }))
 
     yield* Effect.all([
-      run$.pipe(flow.runExhaust(runEffect)),
-      reset$.pipe(flow.run(resetEffect)),
+      run$.pipe($.flow.runExhaust(runEffect)),
+      reset$.pipe($.flow.run(resetEffect)),
     ])
   }),
 )
@@ -125,7 +123,7 @@ export const JobLogic = Logic.make<JobShape, JobRunner>(({ state, flow }) =>
 
 const JobStateLayer = Store.State.make(JobStateSchema, {
   jobId: '',
-  status: 'idle' as const,
+  status: 'idle',
   errorMessage: undefined,
 })
 

@@ -40,32 +40,34 @@ class UserApi extends Context.Tag("UserApi")<UserApi, {
   readonly checkUsername: (name: string) => Effect.Effect<boolean, never, any>
 }>() {}
 
-// 使用 Logic.make 定义一个自包含的、可组合的逻辑单元
-export const RegisterLogic = Logic.make<RegisterShape, UserApi>(({ flow, state }) =>
+// 使用 Logic.make + Bound API 定义一个自包含的、可组合的逻辑单元
+const $Register = Logic.forShape<RegisterShape, UserApi>();
+
+export const RegisterLogic = Logic.make<RegisterShape, UserApi>(
   Effect.gen(function* (_) {
     // 1. 同步联动：country 变化时重置 province
-    const country$ = flow.fromChanges((s) => s.country);
+    const country$ = $Register.flow.fromChanges((s) => s.country);
 
     const resetProvince = country$.pipe(
-      flow.run(
-        state.mutate((draft) => {
+      $Register.flow.run(
+        $Register.state.mutate((draft) => {
           draft.province = "";
         })
       )
     );
 
     // 2. 异步校验：监听 username，调用 API 检查重名
-    const username$ = flow.fromChanges((s) => s.username);
+    const username$ = $Register.flow.fromChanges((s) => s.username);
 
     const validateUsername = username$.pipe(
-      flow.debounce(500),
-      flow.filter((username) => username.length >= 3),
-      flow.runLatest(
+      $Register.flow.debounce(500),
+      $Register.flow.filter((username) => username.length >= 3),
+      $Register.flow.runLatest(
         Effect.gen(function* (_) {
-          const svc = yield* UserApi;
-          const { username } = yield* state.read;
+          const svc = yield* $Register.services(UserApi);
+          const { username } = yield* $Register.state.read;
           const isTaken = yield* svc.checkUsername(username);
-          yield* state.mutate((draft) => {
+          yield* $Register.state.mutate((draft) => {
             draft.errors.username = isTaken ? "Username already taken" : undefined;
           });
         })
@@ -73,13 +75,13 @@ export const RegisterLogic = Logic.make<RegisterShape, UserApi>(({ flow, state }
     );
 
     // 3. 多字段约束：监听 password / confirmPassword，确保两者一致
-    const passwordPair$ = flow.fromChanges(
+    const passwordPair$ = $Register.flow.fromChanges(
       (s) => [s.password, s.confirmPassword] as const
     );
 
     const ensurePasswordMatch = passwordPair$.pipe(
-      flow.run(
-        state.mutate((draft) => {
+      $Register.flow.run(
+        $Register.state.mutate((draft) => {
           if (draft.confirmPassword && draft.password !== draft.confirmPassword) {
             draft.errors.confirmPassword = "Passwords do not match";
           } else {

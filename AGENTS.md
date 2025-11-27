@@ -3,6 +3,7 @@
 ## 规划对齐（简版）
 
 - 平台主线：`intent-driven-ai-coding`，当前有效规范以 `docs/specs/intent-driven-ai-coding/v3` 为准；`v1`/`v2` 仅作为历史快照与对照材料，演进脉络见 `docs/specs/intent-driven-ai-coding/adr.md`。
+  - 概念与术语层的单一事实源为：`docs/specs/intent-driven-ai-coding/v3/99-glossary-and-ssot.md`，所有「UI/Logic/Domain / Pattern / IntentRule / L0–L3」等术语以此为准，再向下映射到 runtime-logix 和 PoC。
 - 运行时主线：`runtime-logix` 目录下的 **Logix Engine**（原 kernel），作为 Behavior & Flow Intent 的统一前端运行时 PoC；总览见 `docs/specs/runtime-logix/README.md`。
 - 以上两条规划已经在 v3 / Logix 文档中收敛，任何新决策优先更新这些文档，再落到代码和 PoC。
 

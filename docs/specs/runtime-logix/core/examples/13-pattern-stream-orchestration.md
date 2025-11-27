@@ -34,29 +34,31 @@ type EditorShape = Store.Shape<typeof EditorStateSchema, typeof EditorActionSche
 ### 2.2 Logic Implementation
 
 ```typescript
-const saveLogic = Logic.make<EditorShape, EditorApi>(({ flow, state }) => 
+const $Editor = Logic.forShape<EditorShape, EditorApi>();
+
+const saveLogic = Logic.make<EditorShape, EditorApi>(
   Effect.gen(function* (_) {
     // 1. 定义统一的保存 Effect
     const saveEffect = (type: 'auto' | 'manual') => 
       Effect.gen(function* (_) {
-        const api = yield* EditorApi;
-        const { content } = yield* state.read;
+        const api = yield* $Editor.services(EditorApi);
+        const { content } = yield* $Editor.state.read;
 
         if (type === 'manual') {
-          yield* state.mutate(draft => { draft.isSaving = true; });
+          yield* $Editor.state.mutate(draft => { draft.isSaving = true; });
         }
 
         const result = yield* Effect.either(api.save(content));
 
         if (result._tag === 'Left') {
           if (type === 'manual') {
-            yield* state.mutate(draft => { 
+            yield* $Editor.state.mutate(draft => { 
               draft.isSaving = false;
               // draft.error = ...
             });
           }
         } else {
-          yield* state.mutate(draft => {
+          yield* $Editor.state.mutate(draft => {
             draft.isSaving = false;
             draft.lastSavedAt = Date.now();
           });
@@ -64,14 +66,14 @@ const saveLogic = Logic.make<EditorShape, EditorApi>(({ flow, state }) =>
       });
 
     // 2. 定义自动保存流
-    const autoSave$ = flow.fromChanges(s => s.content).pipe(
-      flow.debounce(2000),
-      flow.runLatest(saveEffect('auto'))
+    const autoSave$ = $Editor.flow.fromChanges(s => s.content).pipe(
+      $Editor.flow.debounce(2000),
+      $Editor.flow.runLatest(saveEffect('auto'))
     );
 
     // 3. 定义手动保存流
-    const manualSave$ = flow.fromAction(a => a._tag === 'manualSave').pipe(
-      flow.runLatest(saveEffect('manual'))
+    const manualSave$ = $Editor.flow.fromAction(a => a._tag === 'manualSave').pipe(
+      $Editor.flow.runLatest(saveEffect('manual'))
     );
 
     // 4. 并行启动两个流

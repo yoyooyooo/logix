@@ -52,19 +52,21 @@ const WebSocketServiceLive = Layer.succeed(
 ```typescript
 // a-stock.logic.ts
 
-export const StockLogic = Logic.make<StockShape, WebSocketService>(({ flow, state }) => 
+const $Stock = Logic.forShape<StockShape, WebSocketService>();
+
+export const StockLogic = Logic.make<StockShape, WebSocketService>(
   Effect.gen(function* (_) {
-    const ws = yield* WebSocketService;
+    const ws = yield* $Stock.services(WebSocketService);
 
     const statusLogic = ws.status$.pipe(
-      flow.run(status => 
-        state.mutate(draft => { draft.connectionStatus = status; })
+      $Stock.flow.run(status =>
+        $Stock.state.mutate(draft => { draft.connectionStatus = status; })
       )
     );
 
     const priceLogic = ws.price$.pipe(
-      flow.run(price => 
-        state.mutate(draft => {
+      $Stock.flow.run(price =>
+        $Stock.state.mutate(draft => {
           draft.price = price;
           draft.lastUpdate = Date.now();
         })

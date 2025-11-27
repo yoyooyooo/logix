@@ -24,22 +24,22 @@ import {
 // Logic：监听 Action，触发乐观更新与服务调用（未抽离 Pattern 版）
 // ---------------------------------------------------------------------------
 
-export const ToggleLogic = Logic.make<ToggleShape, ToggleService>(({ state, flow, control }) =>
-  Effect.gen(function* (_) {
-    const { read, update } = state
+const $ = Logic.forShape<ToggleShape, ToggleService>()
 
-    const click$ = flow.fromAction((a): a is { _tag: 'toggle/click' } => a._tag === 'toggle/click')
-    const resetError$ = flow.fromAction(
+export const ToggleLogic = Logic.make<ToggleShape, ToggleService>(
+  Effect.gen(function* () {
+    const click$ = $.flow.fromAction((a): a is { _tag: 'toggle/click' } => a._tag === 'toggle/click')
+    const resetError$ = $.flow.fromAction(
       (a): a is { _tag: 'toggle/resetError' } => a._tag === 'toggle/resetError',
     )
 
     const handleClick = Effect.gen(function* () {
-      const current = yield* read
+      const current = yield* $.state.read
       const previousValue = current.enabled
       const nextValue = !previousValue
 
       // 1. 乐观更新：立即切换开关并进入 saving 状态
-      yield* update((prev) => ({
+      yield* $.state.update((prev) => ({
         ...prev,
         enabled: nextValue,
         isSaving: true,
@@ -47,12 +47,12 @@ export const ToggleLogic = Logic.make<ToggleShape, ToggleService>(({ state, flow
       }))
 
       // 2. 调用服务，并显式处理错误；错误时回滚 enabled
-      const svc = yield* ToggleService
+      const svc = yield* $.services(ToggleService)
 
-      yield* control.tryCatch({
+      yield* $.control.tryCatch({
         try: svc.toggle({ id: current.id, nextValue }),
         catch: (err: ToggleServiceError) =>
-          update((prev) => ({
+          $.state.update((prev) => ({
             ...prev,
             enabled: previousValue,
             isSaving: false,
@@ -61,9 +61,9 @@ export const ToggleLogic = Logic.make<ToggleShape, ToggleService>(({ state, flow
       })
 
       // 3. 若仍处于 saving，说明没有错误，结束 saving 并更新 lastSynced
-      const latest = yield* read
+      const latest = yield* $.state.read
       if (latest.isSaving) {
-        yield* update((prev) => ({
+        yield* $.state.update((prev) => ({
           ...prev,
           isSaving: false,
           lastSynced: prev.enabled,
@@ -71,14 +71,14 @@ export const ToggleLogic = Logic.make<ToggleShape, ToggleService>(({ state, flow
       }
     })
 
-    const handleResetError = update((prev) => ({
+    const handleResetError = $.state.update((prev) => ({
       ...prev,
       errorMessage: undefined,
     }))
 
     yield* Effect.all([
-      click$.pipe(flow.runExhaust(handleClick)),
-      resetError$.pipe(flow.run(handleResetError)),
+      click$.pipe($.flow.runExhaust(handleClick)),
+      resetError$.pipe($.flow.run(handleResetError)),
     ])
   }),
 )

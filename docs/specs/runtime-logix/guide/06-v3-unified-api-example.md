@@ -61,19 +61,21 @@ import { ReliableSubmit } from "@/patterns/reliable-submit";
 // 假设已经有 Order 场景的 State / Action Schema
 type OrderShape = Store.Shape<typeof OrderStateSchema, typeof OrderActionSchema>;
 
-export const OrderLogic = Logic.make<OrderShape>(({ flow, state, control }) =>
+const $Order = Logic.forShape<OrderShape>();
+
+export const OrderLogic = Logic.make<OrderShape>(
   Effect.gen(function* (_) {
     // 1. 从 Action 获取提交触发源
-    const submit$ = flow.fromAction(
+    const submit$ = $Order.flow.fromAction(
       (a): a is { type: "order/submit" } => a.type === "order/submit"
     );
 
     // 2. 提交逻辑：包含校验 + Pattern 调用
     const handleSubmit = Effect.gen(function* (_) {
-      const current = yield* state.read;
+      const current = yield* $Order.state.read;
 
       // 使用 Control / Effect-native 表达分支
-      yield* control.branch({
+      yield* $Order.control.branch({
         if: current.ui.formValid,
         then: ReliableSubmit.impl({
           service: "OrderService",
@@ -88,7 +90,7 @@ export const OrderLogic = Logic.make<OrderShape>(({ flow, state, control }) =>
     });
 
     // 3. 将 Effect 挂到 Action 流上
-    yield* submit$.pipe(flow.run(handleSubmit));
+    yield* submit$.pipe($Order.flow.run(handleSubmit));
   })
 );
 ```
@@ -107,9 +109,11 @@ type AnalyticsShape = Store.Shape<
   typeof AnalyticsActionSchema
 >;
 
-export const AnalyticsLogic = Logic.make<AnalyticsShape>(({ flow }) =>
+const $Analytics = Logic.forShape<AnalyticsShape>();
+
+export const AnalyticsLogic = Logic.make<AnalyticsShape>(
   Effect.gen(function* (_) {
-    const analyze$ = flow.fromAction(
+    const analyze$ = $Analytics.flow.fromAction(
       (a): a is { type: "analytics/analyze" } => a.type === "analytics/analyze"
     );
 

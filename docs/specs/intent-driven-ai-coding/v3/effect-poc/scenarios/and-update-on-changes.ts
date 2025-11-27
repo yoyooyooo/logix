@@ -31,7 +31,7 @@ export type DerivedAction = Store.ActionOf<DerivedShape>
 // Logic：使用 Intent.andUpdateOnChanges 维护派生字段
 // ---------------------------------------------------------------------------
 
-export const DerivedLogic = Logic.make<DerivedShape>(() =>
+export const DerivedLogic = Logic.make<DerivedShape>(
   Intent.andUpdateOnChanges<DerivedShape>(
     (s) => s.results,
     (results, prev) => ({

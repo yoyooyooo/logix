@@ -8,29 +8,31 @@
 **v3 标准模式**: 监听提交 `Action`，并使用 `flow.runExhaust` 来执行提交 Effect。`runExhaust` 会在前一个 Effect 完成前，自动忽略所有新的触发，从而天然地防止了重复提交。
 
 ```typescript
-const submitLogic = Logic.make<FormShape, OrderApi>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape, OrderApi>();
+
+const submitLogic = Logic.make<FormShape, OrderApi>(
   Effect.gen(function* (_) {
-    const submit$ = flow.fromAction(a => a._tag === 'submit');
+    const submit$ = $.flow.fromAction(a => a._tag === 'submit');
 
     const submitEffect = Effect.gen(function* (_) {
-      const api = yield* OrderApi;
-      yield* state.mutate(draft => { draft.meta.isSubmitting = true; });
+      const api = yield* $Form.services(OrderApi);
+      yield* $Form.state.mutate(draft => { draft.meta.isSubmitting = true; });
 
       // 将 API 调用和后续状态更新包装在一个可中断的 Effect 中
       const result = yield* Effect.either(api.submit());
 
       if (result._tag === 'Left') {
-        yield* state.mutate(draft => {
+        yield* $Form.state.mutate(draft => {
           draft.meta.isSubmitting = false;
           draft.meta.error = result.left.message;
         });
       } else {
-        yield* state.mutate(draft => { draft.meta.isSubmitting = false; });
+        yield* $Form.state.mutate(draft => { draft.meta.isSubmitting = false; });
       }
     });
 
     // 关键：使用 runExhaust，在 submitEffect 完成前，所有 submit$ 的新事件都将被忽略
-    yield* submit$.pipe(flow.runExhaust(submitEffect));
+    yield* submit$.pipe($.flow.runExhaust(submitEffect));
   })
 );
 ```
@@ -40,25 +42,26 @@ const submitLogic = Logic.make<FormShape, OrderApi>(({ flow, state }) =>
 **v3 标准模式**: 在一个 `Effect` 中，使用 `Effect.all` 来并行执行多个独立的异步任务。通过在每个任务内部分别使用 `Effect.catchAll`，可以实现部分成功、部分失败的健壮错误处理。
 
 ```typescript
+const $Page = Logic.forShape<PageShape, UserApi | ConfigApi>();
+
 const parallelLoadLogic = Logic.make<PageShape, UserApi | ConfigApi>(
-  ({ state }) => 
-    Effect.gen(function* (_) {
-      const userApi = yield* UserApi;
-      const configApi = yield* ConfigApi;
-      const { userId } = yield* state.read;
+  Effect.gen(function* (_) {
+      const userApi = yield* $Page.services(UserApi);
+      const configApi = yield* $Page.services(ConfigApi);
+      const { userId } = yield* $Page.state.read;
 
       // Logic 初始化时，并行加载用户和配置
       yield* Effect.all(
         [
           // 第一个并行任务：加载用户
           userApi.fetch(userId).pipe(
-            Effect.flatMap(user => state.mutate(draft => { draft.user = user; })),
-            Effect.catchAll(error => state.mutate(draft => { draft.errors.user = error.message; }))
+            Effect.flatMap(user => $Page.state.mutate(draft => { draft.user = user; })),
+            Effect.catchAll(error => $Page.state.mutate(draft => { draft.errors.user = error.message; }))
           ),
           // 第二个并行任务：加载配置
           configApi.fetch().pipe(
-            Effect.flatMap(config => state.mutate(draft => { draft.config = config; })),
-            Effect.catchAll(error => state.mutate(draft => { draft.errors.config = error.message; }))
+            Effect.flatMap(config => $Page.state.mutate(draft => { draft.config = config; })),
+            Effect.catchAll(error => $Page.state.mutate(draft => { draft.errors.config = error.message; }))
           )
         ],
         { discard: true, concurrency: 'unbounded' } // 'unbounded' 允许所有任务并行

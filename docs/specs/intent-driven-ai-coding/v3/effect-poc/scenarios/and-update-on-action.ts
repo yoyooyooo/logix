@@ -33,7 +33,7 @@ export type DirtyFormAction = Store.ActionOf<DirtyFormShape>
 // Logic：使用 Intent.andUpdateOnAction 直接表达「事件 → 状态更新」意图
 // ---------------------------------------------------------------------------
 
-export const DirtyFormLogic = Logic.make<DirtyFormShape>(() =>
+export const DirtyFormLogic = Logic.make<DirtyFormShape>(
   Effect.all([
     // 监听 input/change，更新 value 并标记为脏
     Intent.andUpdateOnAction<DirtyFormShape, never, { _tag: 'input/change'; payload: string }>(

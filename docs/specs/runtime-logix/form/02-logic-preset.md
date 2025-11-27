@@ -25,14 +25,16 @@ export interface FormConfig<T> {
 通过监听 `values` 的变化，并与初始值进行深度比较来更新 `isDirty` 状态。
 
 ```typescript
-const dirtyCheckLogic = Logic.make<FormShape>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape>();
+
+const dirtyCheckLogic = Logic.make<FormShape>(
   Effect.gen(function*(_) {
-    const values$ = flow.fromChanges(s => s.values);
-    const initialValues = (yield* state.read).initialValues; // 假设初始值在 state 中
+    const values$ = $Form.flow.fromChanges(s => s.values);
+    const initialValues = (yield* $Form.state.read).initialValues; // 假设初始值在 state 中
 
     yield* values$.pipe(
-      flow.run(values => 
-        state.mutate(draft => {
+      $Form.flow.run(values =>
+        $Form.state.mutate(draft => {
           draft.ui.meta.isDirty = !deepEqual(values, initialValues);
         })
       )
@@ -46,20 +48,22 @@ const dirtyCheckLogic = Logic.make<FormShape>(({ flow, state }) =>
 将不同的触发源（字段变更、失焦、提交）合并到一个流中，并根据当前表单状态（是否有错误）和配置来决定是否执行校验。
 
 ```typescript
-const smartValidationLogic = Logic.make<FormShape, FormValidatorService>(({ flow, state, actions }) => 
+const $Form = Logic.forShape<FormShape, FormValidatorService>();
+
+const smartValidationLogic = Logic.make<FormShape, FormValidatorService>(
   Effect.gen(function*(_) {
-    const validator = yield* FormValidatorService;
-    const config = (yield* state.read).config;
+    const validator = yield* $Form.services(FormValidatorService);
+    const config = (yield* $Form.state.read).config;
 
     // 1. 定义触发源
-    const change$ = flow.fromAction(a => a._tag === 'field/change');
-    const blur$ = flow.fromAction(a => a._tag === 'field/blur');
-    const submit$ = flow.fromAction(a => a._tag === 'form/submit');
+    const change$ = $Form.flow.fromAction(a => a._tag === 'field/change');
+    const blur$ = $Form.flow.fromAction(a => a._tag === 'field/blur');
+    const submit$ = $Form.flow.fromAction(a => a._tag === 'form/submit');
 
     // 2. 定义校验 Effect
     const validationEffect = (action: FieldChangeAction | FieldBlurAction) => 
       Effect.gen(function*(_) {
-        const current = yield* state.read;
+        const current = yield* $Form.state.read;
         const activeMode = current.ui.meta.isValid ? config.mode : config.reValidateMode;
         
         const shouldValidate = match(action._tag)
@@ -71,18 +75,18 @@ const smartValidationLogic = Logic.make<FormShape, FormValidatorService>(({ flow
         if (!shouldValidate) return;
 
         const validationResult = yield* validator.validate(action.payload.path, current.values);
-        yield* state.mutate(draft => {
+        yield* $Form.state.mutate(draft => {
           draft.ui.errors[action.payload.path] = validationResult.error;
         });
       });
 
     // 3. 组合流
     const changeValidation$ = change$.pipe(
-      flow.debounce(config.debounce ?? '200 millis'),
-      flow.runLatest(validationEffect)
+      $Form.flow.debounce(config.debounce ?? '200 millis'),
+      $Form.flow.runLatest(validationEffect)
     );
-    const blurValidation$ = blur$.pipe(flow.run(validationEffect));
-    const submitValidation$ = submit$.pipe(flow.run(() => validator.validateAll()));
+    const blurValidation$ = blur$.pipe($Form.flow.run(validationEffect));
+    const submitValidation$ = submit$.pipe($Form.flow.run(() => validator.validateAll()));
 
     yield* Effect.all([changeValidation$, blurValidation$, submitValidation$], { discard: true });
   })
@@ -94,13 +98,15 @@ const smartValidationLogic = Logic.make<FormShape, FormValidatorService>(({ flow
 数组操作通过专有的 Action 触发，在 Logic 中监听这些 Action 并使用 `state.mutate` 执行具体的数组方法。
 
 ```typescript
-const arrayLogic = Logic.make<FormShape>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape>();
+
+const arrayLogic = Logic.make<FormShape>(
   Effect.gen(function*(_) {
-    const arrayAction$ = flow.fromAction(a => a._tag.startsWith('array/'));
+    const arrayAction$ = $Form.flow.fromAction(a => a._tag.startsWith('array/'));
 
     yield* arrayAction$.pipe(
-      flow.run(action => 
-        state.mutate(draft => {
+      $Form.flow.run(action =>
+        $Form.state.mutate(draft => {
           const { path, value, index, indexA, indexB, from, to } = action.payload;
           const arr = get(draft.values, path);
           if (!Array.isArray(arr)) return;

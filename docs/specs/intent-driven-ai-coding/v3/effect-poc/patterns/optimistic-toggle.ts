@@ -81,23 +81,23 @@ export interface OptimisticToggleLogicPatternConfig {}
  * - 依赖环境为 ToggleService，错误类型为 ToggleServiceError；
  * - 调用方可以在不同 Store 实例上复用本 Logic（前提是 State / Action 形状兼容 ToggleShape）。
  */
-export const makeOptimisticToggleLogicPattern = (_config: OptimisticToggleLogicPatternConfig = {}) =>
-  Logic.make<ToggleShape, ToggleService>(({ state, flow, control }) =>
-    Effect.gen(function* () {
-      const { read, update } = state
+const $Toggle = Logic.forShape<ToggleShape, ToggleService>()
 
-      const click$ = flow.fromAction((a): a is { _tag: 'toggle/click' } => a._tag === 'toggle/click')
-      const resetError$ = flow.fromAction(
+export const makeOptimisticToggleLogicPattern = (_config: OptimisticToggleLogicPatternConfig = {}) =>
+  Logic.make<ToggleShape, ToggleService>(
+    Effect.gen(function* () {
+      const click$ = $Toggle.flow.fromAction((a): a is { _tag: 'toggle/click' } => a._tag === 'toggle/click')
+      const resetError$ = $Toggle.flow.fromAction(
         (a): a is { _tag: 'toggle/resetError' } => a._tag === 'toggle/resetError',
       )
 
       const handleClick = Effect.gen(function* () {
-        const current = yield* read
+        const current = yield* $Toggle.state.read
         const previousValue = current.enabled
         const nextValue = !previousValue
 
         // 1. 乐观更新：立即切换开关并进入 saving 状态
-        yield* update((prev) => ({
+        yield* $Toggle.state.update((prev) => ({
           ...prev,
           enabled: nextValue,
           isSaving: true,
@@ -105,12 +105,12 @@ export const makeOptimisticToggleLogicPattern = (_config: OptimisticToggleLogicP
         }))
 
         // 2. 调用服务，并显式处理错误；错误时回滚 enabled
-        const svc = yield* ToggleService
+        const svc = yield* $Toggle.services(ToggleService)
 
-        yield* control.tryCatch({
+        yield* $Toggle.control.tryCatch({
           try: svc.toggle({ id: current.id, nextValue }),
           catch: (err: ToggleServiceError) =>
-            update((prev) => ({
+            $Toggle.state.update((prev) => ({
               ...prev,
               enabled: previousValue,
               isSaving: false,
@@ -119,9 +119,9 @@ export const makeOptimisticToggleLogicPattern = (_config: OptimisticToggleLogicP
         })
 
         // 3. 若仍处于 saving，说明没有错误，结束 saving 并更新 lastSynced
-        const latest = yield* read
+        const latest = yield* $Toggle.state.read
         if (latest.isSaving) {
-          yield* update((prev) => ({
+          yield* $Toggle.state.update((prev) => ({
             ...prev,
             isSaving: false,
             lastSynced: prev.enabled,
@@ -129,14 +129,14 @@ export const makeOptimisticToggleLogicPattern = (_config: OptimisticToggleLogicP
         }
       })
 
-      const handleResetError = update((prev) => ({
+      const handleResetError = $Toggle.state.update((prev) => ({
         ...prev,
         errorMessage: undefined,
       }))
 
       yield* Effect.all([
-        click$.pipe(flow.runExhaust(handleClick)),
-        resetError$.pipe(flow.run(handleResetError)),
+        click$.pipe($Toggle.flow.runExhaust(handleClick)),
+        resetError$.pipe($Toggle.flow.run(handleResetError)),
       ])
     }),
   )

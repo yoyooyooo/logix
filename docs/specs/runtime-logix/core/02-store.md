@@ -1,7 +1,7 @@
 # Store (The Environment)
 
-> **Status**: Definitive (v3 Effect-Native)
-> **Date**: 2025-11-24
+> **Status**: Definitive (v3 Effect-Native / Signed Off)  
+> **Date**: 2025-11-26  
 > **Scope**: Logix Engine Runtime
 
 ## 1. 核心概念：Store as Runtime
@@ -17,9 +17,32 @@ export namespace Store {
     dispatch: (action: A) => Effect.Effect<void>;
     actions$: Stream.Stream<A>;
     changes$<V>(selector: (s: S) => V): Stream.Stream<V>;
+
+    // 双形态引用：支持借用整棵状态或局部切片
+    ref(): SubscriptionRef.SubscriptionRef<S>;
     ref<V>(selector: (s: S) => V): SubscriptionRef.SubscriptionRef<V>;
   }
+
+  // [New in v3] 强类型 Tag 定义
+  // 用于 Intent.Coordinate 和 Logic.for 中进行安全的类型约束
+  export interface Tag<Sh extends Shape<any, any>>
+    extends Context.Tag<any, Runtime<StateOf<Sh>, ActionOf<Sh>>> {}
 }
+```
+
+### 1.1 推荐 Tag 定义模式
+
+为了让 `Intent.Coordinate` 等 API 能利用类型系统进行安全检查，建议按以下模式定义 Store Tag：
+
+```ts
+// 1. 定义具体的 Tag 类
+export class SearchStoreTag extends Context.Tag('SearchStore')<
+  SearchStoreTag,
+  Store.Runtime<StateOf<SearchShape>, ActionOf<SearchShape>>
+>() {}
+
+// 2. (可选) 显式约束类型别名，方便在签名中使用
+export type SearchStoreTagType = Store.Tag<SearchShape>;
 ```
 
 ## 2. API 设计: `Store.make`
@@ -29,7 +52,8 @@ import { Store } from '@logix/core';
 
 const StateLive  = Store.State.make(StateSchema, initialState);
 const ActionLive = Store.Actions.make(ActionSchema);
-const LogicLive  = Logic.make<Shape, Env>(/* 详见 03-logic-and-flow */);
+// v3 推荐使用纯 Effect 的 Logic（详见 03-logic-and-flow）
+const LogicLive  = Logic.make<Shape, Env>(Effect.gen(...));
 
 const MyStore = Store.make(StateLive, ActionLive, LogicLive);
 ```
@@ -47,33 +71,24 @@ export type Env<Sh, R = never> =
   Store.Runtime<Store.StateOf<Sh>, Store.ActionOf<Sh>> & R;
 ```
 
-在 `Logic.Api` 中，`Store.Runtime` 的能力被进一步包装为：
+> Note  
+> Tag 主要用于运行时底层和 Pattern/Namespace 内部（如 `Logic.RuntimeTag`），业务 Logic 代码通过 Bound API 层隔离掉 Tag 细节，只与 Env 交互。
+
+在 v3 标准范式（`Logic.for`）中，开发者通过 Bound API（`$`）访问这些能力，类型推导会自动完成：
 
 ```ts
-export interface Logic.Api<Sh, R> {
-  state: {
-    read:   Effect<Store.StateOf<Sh>, never, Env<Sh,R>>;
-    update: (f: (prev: S) => S) => Effect<void, never, Env<Sh,R>>;
-    mutate: (f: (draft: S) => void) => Effect<void, never, Env<Sh,R>>;
-    ref:    {
-      (): SubscriptionRef<Store.StateOf<Sh>>;
-      <V>(selector: (s: S) => V): SubscriptionRef<V>;
-    };
-  };
-  actions: {
-    dispatch: (action: Store.ActionOf<Sh>) => Effect<void, never, Env<Sh,R>>;
-    actions$: Stream<Store.ActionOf<Sh>>;
-  };
-  flow: Flow.Api<Sh,R>;
-  control: Control.Api<Sh,R>;
-}
-```
+const $ = Logic.forShape<MyShape>();
 
-Logic 作者只需要通过 `state/actions/flow/control` 访问 Store 能力，而不直接操作 Context / Layer。
+// $.state.read 自动获得 StateOf<MyShape> 类型
+const effect = $.state.read;
+```
 
 ## 4. Store 生命周期与 Scope
 
 在运行时实现中，`Store.Runtime` 只是“能力形状”，**真正决定 Store 何时出生 / 何时死亡的是它所运行在的 Effect Scope**。
+
+> 重要  
+> `Store.make` 仅负责构造 Runtime 实例与 Logic 组合，它本身不打开 Scope。具体在哪个 Scope 下运行（是全局单例还是组件级生命周期），完全由上层 Runtime（如 React 集成层的 `useLocalStore` 或平台的 `ManagedRuntime`）决定。
 
 典型分层可以理解为：
 

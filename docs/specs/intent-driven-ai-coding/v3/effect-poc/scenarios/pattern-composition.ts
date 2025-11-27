@@ -43,21 +43,24 @@ export type CompositionAction = Store.ActionOf<CompositionShape>
 // Logic：一次操作串联两个 Pattern（Bulk + Import）
 // ---------------------------------------------------------------------------
 
+const $ = Logic.forShape<
+  CompositionShape,
+  SelectionService | BulkOperationService | NotificationService | FileUploadService | ImportService
+>()
+
 export const CompositionLogic = Logic.make<
   CompositionShape,
   SelectionService | BulkOperationService | NotificationService | FileUploadService | ImportService
->(({ state, flow }) =>
+>(
   Effect.gen(function* () {
-    const { read, update } = state
-
-    const run$ = flow.fromAction((a): a is { _tag: 'combo/run' } => a._tag === 'combo/run')
-    const reset$ = flow.fromAction((a): a is { _tag: 'combo/reset' } => a._tag === 'combo/reset')
+    const run$ = $.flow.fromAction((a): a is { _tag: 'combo/run' } => a._tag === 'combo/run')
+    const reset$ = $.flow.fromAction((a): a is { _tag: 'combo/reset' } => a._tag === 'combo/reset')
 
     const handleRun = Effect.gen(function* () {
       // 标记为 running
-      yield* update((prev) => ({
+      yield* $.state.update((prev) => ({
         ...prev,
-        status: 'running' as const,
+        status: 'running',
       }))
 
       // 使用两个独立的 Pattern：
@@ -71,24 +74,24 @@ export const CompositionLogic = Logic.make<
       })
 
       // 更新组合场景的 State
-      yield* update((prev) => ({
+      yield* $.state.update((prev) => ({
         ...prev,
         lastBulkCount: bulkCount,
         lastImportTaskId: taskId,
-        status: 'done' as const,
+        status: 'done',
       }))
     })
 
-    const handleReset = update((prev) => ({
+    const handleReset = $.state.update((prev) => ({
       ...prev,
       lastBulkCount: 0,
       lastImportTaskId: undefined,
-      status: 'idle' as const,
+      status: 'idle',
     }))
 
     yield* Effect.all([
-      run$.pipe(flow.run(handleRun)),
-      reset$.pipe(flow.run(handleReset)),
+      run$.pipe($.flow.run(handleRun)),
+      reset$.pipe($.flow.run(handleReset)),
     ])
   }),
 )
@@ -100,7 +103,7 @@ export const CompositionLogic = Logic.make<
 const CompositionStateLayer = Store.State.make(CompositionStateSchema, {
   lastBulkCount: 0,
   lastImportTaskId: undefined,
-  status: 'idle' as const,
+  status: 'idle',
 })
 
 const CompositionActionLayer = Store.Actions.make(CompositionActionSchema)

@@ -54,6 +54,7 @@ version: 9 (Unified-API-Aligned)
 *   `04-intent-to-code-example.md`：v3 演练示例（含锚点代码）。
 *   `06-codegen-and-parser.md`：全双工引擎与锚点规范。
 *   `97-effect-runtime-and-flow-execution.md`：Logic 意图的运行时实现。
+*   `99-glossary-and-ssot.md`：跨层概念总览与术语表（Conceptual SSOT）。
 
 ## 7. 单一事实源与优先级（SSOT & Priority）
 

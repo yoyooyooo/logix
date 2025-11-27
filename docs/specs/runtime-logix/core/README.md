@@ -28,12 +28,14 @@ const ActionLive = Store.Actions.make(
   Schema.Union(Schema.Struct({ _tag: 'inc' }))
 );
 
-// 3. 定义 Logic 程序
-const CounterLogic = Logic.make<CounterShape>(({ flow, state }) => 
+// 3. 定义 Logic 程序（使用 Bound API）
+const $ = Logic.forShape<CounterShape>();
+
+const CounterLogic = Logic.make<CounterShape>(
   Effect.gen(function*(_) {
-    const inc$ = flow.fromAction(a => a._tag === 'inc');
+    const inc$ = $.flow.fromAction(a => a._tag === 'inc');
     yield* inc$.pipe(
-      flow.run(state.mutate(draft => { draft.count += 1; }))
+      $.flow.run($.state.mutate(draft => { draft.count += 1; }))
     );
   })
 );

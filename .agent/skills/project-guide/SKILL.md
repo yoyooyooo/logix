@@ -29,6 +29,7 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
 1. 读取 v3 总览与 SSOT（概念层）
    - `docs/specs/intent-driven-ai-coding/README.md`：版本索引与整体进展；
    - `v3/01-overview.md`：意图驱动开发平台总览，包含三位一体模型、全双工引擎与 SSOT 优先级定义；
+   - `v3/99-glossary-and-ssot.md`：跨层概念总览与术语表（Conceptual SSOT），所有核心术语（UI/Logic/Domain、Pattern、IntentRule、L0–L3 等）以此为准；
    - `v3/00-platform-manifesto.md`：平台宣言与资产共建策略；
    - `v3/blueprint.md`：长期蓝图（自愈架构、全双工编排）。
 2. 查 v3 Intent 模型与资产结构（模型层）

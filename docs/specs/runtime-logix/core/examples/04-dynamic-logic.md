@@ -16,22 +16,24 @@ Conditional logic should be implemented *inside* a `Logic` unit using standard `
 If a specific validation rule should only apply to VIP users, this is expressed with an `Effect.when` or a simple `if` statement within the logic's `Effect`.
 
 ```typescript
-const conditionalValidationLogic = Logic.make<FormShape>(({ flow, state }) => 
+const $Form = Logic.forShape<FormShape>();
+
+const conditionalValidationLogic = Logic.make<FormShape>(
   Effect.gen(function* (_) {
-    const amount$ = flow.fromChanges(s => s.amount);
+    const amount$ = $.flow.fromChanges(s => s.amount);
 
     const validationEffect = Effect.gen(function* (_) {
-      const { isVip, amount } = yield* state.read;
+      const { isVip, amount } = yield* $.state.read;
 
       // The logic is always active, but the effectful part only runs when the condition is met.
       if (isVip && amount < 100) {
-        yield* state.mutate(draft => {
+        yield* $.state.mutate(draft => {
           draft.errors.amount = "VIP minimum order is 100";
         });
       }
     });
 
-    yield* amount$.pipe(flow.run(validationEffect));
+    yield* amount$.pipe($.flow.run(validationEffect));
   })
 );
 ```

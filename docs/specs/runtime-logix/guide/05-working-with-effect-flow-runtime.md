@@ -38,15 +38,17 @@ class FlowRunner extends Context.Tag("FlowRunner")<FlowRunner, {
 
 ```typescript
 // a-feature.logic.ts
-const featureLogic = Logic.make<FeatureShape, FlowRunner>(({ flow, state }) => 
+const $Feature = Logic.forShape<FeatureShape, FlowRunner>();
+
+const featureLogic = Logic.make<FeatureShape, FlowRunner>(
   Effect.gen(function* (_) {
-    const submit$ = flow.fromAction(a => a._tag === 'submit');
+    const submit$ = $.flow.fromAction(a => a._tag === 'submit');
 
     const submitEffect = Effect.gen(function* (_) {
-      const runner = yield* FlowRunner; // 从环境中获取服务
-      const current = yield* state.read;
+      const runner = yield* $Feature.services(FlowRunner); // 从环境中获取服务
+      const current = yield* $Feature.state.read;
 
-      yield* state.mutate(draft => { draft.meta.isSubmitting = true; });
+      yield* $Feature.state.mutate(draft => { draft.meta.isSubmitting = true; });
 
       // 调用后端 Flow
       const result = yield* Effect.either(
@@ -55,12 +57,12 @@ const featureLogic = Logic.make<FeatureShape, FlowRunner>(({ flow, state }) =>
 
       // 根据成功或失败更新状态
       if (result._tag === 'Left') {
-        yield* state.mutate(draft => {
+        yield* $Feature.state.mutate(draft => {
           draft.meta.isSubmitting = false;
           draft.meta.error = result.left.message;
         });
       } else {
-        yield* state.mutate(draft => {
+        yield* $Feature.state.mutate(draft => {
           draft.meta.isSubmitting = false;
           draft.data = result.right.data; // 回填数据
         });
@@ -68,7 +70,7 @@ const featureLogic = Logic.make<FeatureShape, FlowRunner>(({ flow, state }) =>
     });
 
     // 使用 runExhaust 防止重复提交
-    yield* submit$.pipe(flow.runExhaust(submitEffect));
+    yield* submit$.pipe($.flow.runExhaust(submitEffect));
   })
 );
 ```

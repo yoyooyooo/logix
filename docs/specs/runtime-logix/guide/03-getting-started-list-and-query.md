@@ -48,22 +48,24 @@ type ListShape = Store.Shape<typeof ListStateSchema, typeof ListActionSchema>;
 
 ```typescript
 // 伪代码，需在 Logic.make 中实现
-const listLogic = Logic.make<ListShape, ListApi>(({ flow, state }) => 
+const $ = Logic.forShape<ListShape, ListApi>();
+
+const listLogic = Logic.make<ListShape, ListApi>(
   Effect.gen(function* (_) {
     // 1. 定义触发源
-    const search$ = flow.fromAction(a => a._tag === 'search');
-    const refresh$ = flow.fromAction(a => a._tag === 'refresh');
-    const pagination$ = flow.fromChanges(s => [s.pagination.page, s.pagination.pageSize]);
+    const search$ = $.flow.fromAction(a => a._tag === 'search');
+    const refresh$ = $.flow.fromAction(a => a._tag === 'refresh');
+    const pagination$ = $.flow.fromChanges(s => [s.pagination.page, s.pagination.pageSize]);
 
     // 2. 将所有触发源合并为一个“需要加载”的信号流
     const loadTrigger$ = Stream.mergeAll([search$, refresh$, pagination$]);
 
     // 3. 定义一次加载操作的 Effect
     const loadEffect = Effect.gen(function* (_) {
-      const api = yield* ListApi; // 注入的服务
-      const { filters, pagination } = yield* state.read;
+      const api = yield* $.services(ListApi); // 注入的服务
+      const { filters, pagination } = yield* $.state.read;
 
-      yield* state.mutate(draft => {
+      yield* $.state.mutate(draft => {
         draft.meta.isLoading = true;
         draft.meta.error = undefined;
       });
@@ -79,12 +81,12 @@ const listLogic = Logic.make<ListShape, ListApi>(({ flow, state }) =>
         .pipe(
           Effect.matchEffect({
             onFailure: (error) =>
-              state.mutate(draft => {
+              $.state.mutate(draft => {
                 draft.meta.isLoading = false;
                 draft.meta.error = "Failed to load data";
               }),
             onSuccess: (data) =>
-              state.mutate(draft => {
+              $.state.mutate(draft => {
                 draft.list = data.items;
                 draft.pagination.total = data.total;
                 draft.meta.isLoading = false;
