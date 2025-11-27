@@ -41,4 +41,8 @@
   - `@logix/form` 作为领域层客户端的规格：表单状态模型、事件协议与基于 React 的领域 Hooks。  
   - 详细设计见 `form/README.md` 及其子文档。
 
+- `impl/`  
+  - 运行时实现备忘录与技术草图：围绕 `Logix.app` / `Logix.module` / ModuleDef、Logic Middleware、Store 生命周期等复杂能力的具体实现思路与风险评估。  
+  - 面向 runtime 实现者使用，不作为对外 API 契约；关键决策一旦稳定，会同步回写到 `core/` 规格文档。
+
 > 讨论 Logix 能力与方案时，请优先参考 `core/` 下的文档；React/Form 相关内容分别沉淀在 `react/` / `form/` 中，使用示例与工作流则集中在 `guide/` 下，避免与引擎设计混淆。

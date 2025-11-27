@@ -5,18 +5,42 @@
 
 本文档定义用于连接 Logix 与 React 的通用 Hooks。
 
-## 1. `useStore` (Lifecycle & Access)
+## 1. `useStore` / `useLocalStore` (Lifecycle & Access)
 
-用于在组件内部创建或获取 Store 实例，并管理其生命周期。
+用于在组件内部**创建或获取 Store 实例**，并管理其生命周期，对应两类典型模式：
+
+| 场景模式 | 作用域 (Scope) | 来源 (Source) | `useStore` 传什么？ | 心智模型 (Mental Model) |
+| :--- | :--- | :--- | :--- | :--- |
+| **全局模式** (Global) | **应用级常驻** (App-wide singleton) | 定义在 `Logix.app` 蓝图中，由根 Provider 提供 | **传 Tag** (契约/身份证) | **“查找 (Lookup)”**<br>向环境询问：“谁负责这个 Tag？给我它的状态。” |
+| **局部模式** (Local) | **组件级临时** (Component transient) | 在当前组件（或父组件）中使用 `useLocalStore` 创建 | **传 Store 实例** (活体对象) | **“持有 (Holding)”**<br>直接操作手里拿着的这个具体的 Store 对象。 |
+
+为了复用核心类型定义，`Store` 在 PoC 中提供了一个统一的句柄类型：
+
+```ts
+// v3 Logix Core 中的定义（简化摘录）
+export namespace Store {
+  export type Handle<Sh extends Shape<any, any>> =
+    | Runtime<StateOf<Sh>, ActionOf<Sh>>
+    | Tag<Sh>;
+}
+```
+
+在 React Adapter 中，`useStore` 推荐以 `Store.Handle` 作为一体化参数类型，底层根据实际形态（Tag / Runtime）决定是“查找环境”还是“直接使用实例”。
+
+对应的 Hooks 类型签名建议如下（概念性）：
 
 ```typescript
 // 场景 A: 组件级 Store (Local State)
 // 自动管理 Scope：组件挂载时创建，卸载时销毁
-function useLocalStore<S, E>(factory: () => Effect<Store<S, E>>): Store<S, E>;
+function useLocalStore<Sh extends Store.Shape<any, any>>(
+  factory: () => Effect.Effect<Store.Runtime<Store.StateOf<Sh>, Store.ActionOf<Sh>>>
+): Store.Runtime<Store.StateOf<Sh>, Store.ActionOf<Sh>>;
 
 // 场景 B: 全局/共享 Store (Global State)
-// 仅获取实例，不管理生命周期
-function useStore<S, E>(store: Store<S, E>): Store<S, E>;
+// 仅获取实例，不管理生命周期 —— 通过 Handle 从 AppRuntime 中查找或直接使用实例
+function useStore<Sh extends Store.Shape<any, any>>(
+  handle: Store.Handle<Sh>
+): Store.Runtime<Store.StateOf<Sh>, Store.ActionOf<Sh>>;
 ```
 
 ## 2. `useSelector` (Fine-Grained Subscription)

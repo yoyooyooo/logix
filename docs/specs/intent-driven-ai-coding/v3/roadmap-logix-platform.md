@@ -152,4 +152,20 @@ version: 1
 
 本 Roadmap 本身也是“living document”：  
 - 每完成一个 Phase 或经历一次较大方向调整时，应回到本文件更新目标与优先级；  
-- 若 Roadmap 与 `01-overview.md` / runtime-logix / platform 规范产生冲突，以这些 SSOT 为准，并同步修订本文件。***
+- 若 Roadmap 与 `01-overview.md` / runtime-logix / platform 规范产生冲突，以这些 SSOT 为准，并同步修订本文件。
+
+## 4. 实现备忘与风险前移
+
+从 v3 收尾阶段开始，平台与运行时在讨论「复杂架构级 API」时（例如 `Logix.app` / 分形模块体系、Logic Middleware、生命周期钩子、双向同步解析器），需要**同步思考与记录其实现细节和潜在隐患**，避免后续落地时跑偏。
+
+具体约定：
+
+- **运行时侧**：  
+  - 所有围绕 `ModuleDef` / AppRuntime / Module 展开、以及 Logic Middleware、Store 生命周期的实现思路与取舍，沉淀在 `docs/specs/runtime-logix/impl/` 下（例如 `app-runtime-and-modules.md`、`logic-middleware-and-aop.md`）；  
+  - 这些文档可以比 core/ 规范更细、更工程化，但一旦发现与核心规范冲突，应先修 core/ 再修 impl/。
+
+- **平台侧**：  
+  - 围绕 Universe View / Galaxy View、IntentRule ↔ TS 代码生成、AOP 配置与可视化等能力的解析/生成逻辑，沉淀在 `v3/platform/impl/` 下（例如 `app-and-universe-view.md`、`intent-rule-and-codegen.md`）；  
+  - 平台实现者在设计解析器与出码链路时，优先查阅这些实现备忘，并在方案确定后回写主规格（platform/ 与 runtime-logix/core/）。
+
+目标是：**在规划阶段就把可能踩坑的点前移到文档中**，让后续实现工作尽量是在“有地基的施工”，而不是在开发中临时拍板核心架构决策。

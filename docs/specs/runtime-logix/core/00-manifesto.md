@@ -1,7 +1,7 @@
 # Logix Engine: 指导思想与宣言
 
-> **Status**: Living Document
-> **Date**: 2025-11-20
+> **Status**: Definitive (v3 Final)
+> **Date**: 2025-11-27
 
 ## 1. 背景与长期判断 (The Long View)
 
@@ -66,3 +66,57 @@ Logix 将消除这些模糊点。通过提供标准化的 `logic` 编排机制�
 ---
 
 **总结**: 我们不是在造又一个轮子，我们是在为 AI 时代的软件工程制定**标准**。一旦这个内核建成，业务开发将不再是堆砌代码，而是编排意图。
+
+## 6. v3 最终形态的关键决策 (Final Design Decisions)
+
+为了让 v3 成为 Logix Engine 的完整版本，而不是“通往 v4 的过渡版”，本节明确三条运行时层面的设计取舍，这些取舍在 v3 起视为**定稿共识**。
+
+### 6.1 运行时环境：扁平合并，不做强隔离
+
+- **决策**：  
+  v3 运行时采用 **Env 扁平合并 (Flat Environment)** 策略：  
+  所有 Module 的 `infra` / `providers` 所产生的 Tag 最终汇聚在一个统一的 Effect Context 中。
+
+- **不做的特性**：  
+  不提供基于 `exports` 的运行时 Env 裁剪机制。  
+  `ModuleDef.exports` 仅用于类型系统、Lint 与平台静态检查，不影响 Runtime 行为。
+
+- **理由**：  
+  - Effect Context 的设计本质是“可扩展的服务池”，在其上强行构造多级隔离会显著增加 Scope / Layer 投影的复杂度；  
+  - 强隔离让调试变得困难（开发者难以区分“Tag 未提供”与“被隔离遮蔽”）；  
+  - 真正的封装与治理更适合通过 **Module 拓扑 + exports + 平台检查** 来完成，而不是 Runtime 魔法。
+
+### 6.2 中间件与 AOP：显式组合，不做自动注入
+
+- **决策**：  
+  v3 中所有 AOP 能力（日志、鉴权、审计等）一律通过 **显式代码** 表达：  
+  - 使用 `Logic.compose(...)` / `secure(effect, meta)` 等模式在 Logic 内部组合中间件；  
+  - `ModuleDef.middlewares` 仅作为平台/出码器的配置来源，Runtime 不读取更不会自动注入。
+
+- **不做的特性**：  
+  不在 Runtime 内维护全局 Middleware Registry，也不在 `Logic.make` 过程中根据 Module 配置“自动套上”中间件。
+
+- **理由**：  
+  - 保留“代码即事实”：任何拦截/横切行为都能在源码中被看见与 grep 到；  
+  - StackTrace 清晰，调试时可以直接在中间件函数内部打断点；  
+  - 将复杂度留在 Codegen / VSCode 插件等工具链侧，而不是污染 Runtime 内核。
+
+### 6.3 模块加载：静态 Module 树，Lazy 归属集成/部署层
+
+- **决策**：  
+  v3 的 Module 体系仅支持 **静态 ModuleDef 树**：  
+  - `imports` 只接受静态的 `ModuleDef` 引用；  
+  - 不引入 `() => Promise<ModuleDef>` 或 `Effect<ModuleDef>` 形式的 Runtime 级 Lazy 模块。
+
+- **不做的特性**：  
+  不在 Runtime 层实现“异步 Module 加载 / 按需构建 Layer”的机制。
+
+- **理由**：  
+  - 模块懒加载更适合作为 **路由/子应用/打包工具** 的职责（例如按路由分包、多 AppRuntime）；  
+  - 在 ModuleDef 内混入异步加载，会引入复杂的“半初始化”状态机（加载中、失败、重试），破坏 Runtime 简洁性；  
+  - 核心架构的主要任务是定义清晰的 App / Module / Store 拓扑与执行契约，而不是承接 bundler 级别的优化。
+
+---
+
+上述三条决策共同定义了 v3 的边界：  
+**Logix 在 v3 中就是“完整体”的 Engine**，后续演进（无论是平台 UI、工具链，还是多 Runtime 组合）都应在保持这些根本取舍不变的前提下展开，而不是再尝试从 Runtime 语义层面“重写一版 v4”。***

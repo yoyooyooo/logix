@@ -53,6 +53,18 @@ export namespace Store {
   export type Tag<Sh extends Shape<any, any>> = Context.Tag<any, Runtime<StateOf<Sh>, ActionOf<Sh>>>
 
   /**
+   * Store 句柄（Store Handle）：
+   * - 在 React Adapter / 上层集成中，用于统一接收「Tag 或 Runtime」两种形态；
+   * - 作为 Env/DI：通常使用 Store.Tag<Sh> 放入 Layer / Runtime 环境；
+   * - 作为局部持有：通常使用 Store.Runtime<StateOf<Sh>, ActionOf<Sh>> 直接在组件或逻辑中传递实例。
+   *
+   * `useStore` 等上层 API 可以接受 Store.Handle<Sh>，在内部区分 Tag / Runtime 实际类型。
+   */
+  export type Handle<Sh extends Shape<any, any>> =
+    | Runtime<StateOf<Sh>, ActionOf<Sh>>
+    | Tag<Sh>
+
+  /**
    * Store 的运行时接口（类似文档中的「Store as Context」），
    * 对 Logic / Flow 暴露读写、订阅与派发能力。
    */
