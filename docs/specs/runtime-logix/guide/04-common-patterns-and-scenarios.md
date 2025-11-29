@@ -13,7 +13,7 @@
 ```typescript
 const $Form = Logic.forShape<FormShape>();
 
-const resetProvinceLogic = Logic.make<FormShape>(
+const resetProvinceLogic: Logic.Of<FormShape> =
   Effect.gen(function* (_) {
     const country$ = $Form.flow.fromChanges(s => s.country);
 
@@ -39,7 +39,7 @@ const resetProvinceLogic = Logic.make<FormShape>(
 ```typescript
 const $Form = Logic.forShape<FormShape, UserApi>();
 
-const validateUsernameLogic = Logic.make<FormShape, UserApi>(
+const validateUsernameLogic: Logic.Of<FormShape, UserApi> =
   Effect.gen(function* (_) {
     const username$ = $Form.flow.fromChanges(s => s.username);
 
@@ -71,7 +71,7 @@ const validateUsernameLogic = Logic.make<FormShape, UserApi>(
 ```typescript
 const $Form = Logic.forShape<FormShape>();
 
-const validateDateRangeLogic = Logic.make<FormShape>(
+const validateDateRangeLogic: Logic.Of<FormShape> =
   Effect.gen(function* (_) {
     const datePair$ = $Form.flow.fromChanges(s => [s.startDate, s.endDate] as const);
 
@@ -100,7 +100,7 @@ const validateDateRangeLogic = Logic.make<FormShape>(
 ```typescript
 const $Cart = Logic.forShape<CartShape>();
 
-const calculateTotalsLogic = Logic.make<CartShape>(
+const calculateTotalsLogic: Logic.Of<CartShape> =
   Effect.gen(function* (_) {
     const items$ = $Cart.flow.fromChanges(s => s.items);
 
@@ -128,12 +128,12 @@ const calculateTotalsLogic = Logic.make<CartShape>(
 **场景**: Store 创建时自动加载一次数据（如详情页）。
 
 **v3 标准模式**: 
-在 `Logic.make` 的 `Effect.gen` 主体中，直接 `yield*` 一个加载数据的 Effect。这个 Effect 只会在 Logic 初始化时执行一次。
+在 Logic 程序的 `Effect.gen` 主体中，直接 `yield*` 一个加载数据的 Effect。这个 Effect 只会在 Logic 初始化时执行一次。
 
 ```typescript
 const $Page = Logic.forShape<PageShape, PageApi>();
 
-const initialLoadLogic = Logic.make<PageShape, PageApi>(
+const initialLoadLogic: Logic.Of<PageShape, PageApi> =
   Effect.gen(function* (_) {
     const api = yield* $Page.services(PageApi);
     const pageId = (yield* $Page.state.read).pageId; // 假设 pageId 已在初始状态中
@@ -156,7 +156,7 @@ const initialLoadLogic = Logic.make<PageShape, PageApi>(
 **场景**: 订阅 WebSocket 消息或轮询任务状态。
 
 **v3 标准模式**: 
-将外部源（WebSocket 连接、定时器）作为 `Effect.Service` 注入到 `Logic` 的环境中。在 `Logic.make` 中，从服务中获取 `Stream`，并使用 `flow.run` 将其事件映射到状态更新。
+将外部源（WebSocket 连接、定时器）作为 `Effect.Service` 注入到 `Logic` 的环境中。在 Logic 程序中，从服务中获取 `Stream`，并使用 `flow.run` 将其事件映射到状态更新。
 
 ```typescript
 // 1. 定义服务
@@ -165,7 +165,7 @@ class Ticker extends Context.Tag("Ticker")<Ticker, { readonly ticks$: Stream.Str
 // 2. 在 Logic 中消费
 const $Ticker = Logic.forShape<TickerShape, Ticker>();
 
-const tickerLogic = Logic.make<TickerShape, Ticker>(
+const tickerLogic: Logic.Of<TickerShape, Ticker> =
   Effect.gen(function* (_) {
     const ticker = yield* $Ticker.services(Ticker);
 

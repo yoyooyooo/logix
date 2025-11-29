@@ -1,10 +1,11 @@
 ---
-title: 编排与向导交互 (Orchestration & Wizards)
+title: 编排与向导交互 (Link & Wizards)
 status: draft
-version: 2 (Auto-Generated)
+version: 3 (Auto-Generated)
 ---
 
 > **核心理念**：编排即配置。通过 `definePattern` 提供的 Schema，平台自动生成配置向导 (Wizard)，让复杂的逻辑编排变成简单的表单填写。
+> **术语注**：本文档中的“编排”在架构实体上对应 **Link**。Link 在运行时并非独立原语，而是 **Logic** 的一种特殊形态（跨模块协作），代码上体现为 `$.use()` + `$.on()` 的组合。
 
 ## 1. 自动化向导 (Auto-Generated Wizards)
 
@@ -25,18 +26,18 @@ config: Schema.Struct({
 *   `delay`: 数字输入框 (默认值 500)。
 *   `target`: 文本输入框 (或下拉选，如果使用了 Enum)。
 
-## 2. 编排流程 (The Orchestration Flow)
+## 2. 编排流程 (The Link Flow)
 
 ### 2.1 槽位识别 (Slot Recognition)
 平台分析代码，识别出可以插入逻辑的“空位”：
 *   `yield* flow.fromAction(a => a.type === 'click').pipe(/* Slot */)`
-*   `yield* control.branch(cond, /* Then Slot */, /* Else Slot */)`
+*   `yield* $.match(cond).when(true, ...).when(false, ...)`
 
 ### 2.2 AI 推荐 (AI Recommendation)
 用户点击槽位，AI 分析上下文 (Context) 并推荐 Pattern。
 
 *   **Context**: "这是一个提交按钮的点击事件"。
-*   **Recommendation**: 
+*   **Recommendation**:
     1. `StandardSubmit` (90%)
     2. `OptimisticUpdate` (60%)
 
@@ -59,7 +60,7 @@ yield* flow.fromAction(a => a.type === 'click').pipe(
 ## 3. 混合视图交互 (Hybrid Interaction)
 
 ### 3.1 宏观编排 (L2 View)
-在 L2 视图中，用户看到的是 **Pattern Block**。连线表示 Pattern 之间的信号流。
+在 L2 视图中，用户看到的是 **Link Node** 或 **Pattern Block**。连线表示 Pattern 之间的信号流。
 
 ### 3.2 微观透视 (L3 View)
 用户可以双击 Pattern Block 进入 L3 视图。

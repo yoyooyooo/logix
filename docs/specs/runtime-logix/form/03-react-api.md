@@ -11,17 +11,17 @@
 export interface UseFieldReturn<T> {
   // Data
   value: T;
-  
+
   // UI Status
   isTouched: boolean;
   isDirty: boolean;
   isValidating: boolean;
-  
+
   // Error Projection
   // Domain 层存储完整的 issues[]，但 UI 通常只需要显示第一个错误消息
-  error?: string; 
+  error?: string;
   issues: FormIssue[]; // 高级场景可访问完整 issues
-  
+
   // Handlers
   onChange: (value: T | React.ChangeEvent) => void;
   onBlur: () => void;
@@ -29,7 +29,7 @@ export interface UseFieldReturn<T> {
 }
 
 function useField<T, P extends Path<T>>(
-  control: Control<T>, 
+  control: Control<T>,
   name: P
 ): UseFieldReturn<PathValue<T, P>> {
   // 1. Selector 订阅
@@ -40,7 +40,7 @@ function useField<T, P extends Path<T>>(
 
   // 2. 派生 Error
   // 策略：取 severity 为 'error' 的第一条消息
-  const firstError = useMemo(() => 
+  const firstError = useMemo(() =>
     fieldState.meta.issues.find(i => i.severity === 'error')?.message,
     [fieldState.meta.issues]
   );
@@ -51,11 +51,11 @@ function useField<T, P extends Path<T>>(
     // ...
     error: firstError,
     issues: fieldState.meta.issues,
-    
+
     onChange: (val) => {
       // 自动处理 Event 对象
       const value = isEvent(val) ? val.target.value : val;
-      control.dispatch({ type: 'field/change', payload: { path: name, value } });
+      $.actions.dispatch({ _tag: 'field/change', payload: { path: name, value } });
     },
     // ...
   };
@@ -69,14 +69,14 @@ function useField<T, P extends Path<T>>(
 ```typescript
 export interface UseFieldArrayReturn<T> {
   fields: Array<{ id: string } & T>; // 自动注入 id 用于 key
-  
+
   // Actions 映射到 Domain Action
   append: (value: T) => void;
   prepend: (value: T) => void;
   remove: (index: number) => void;
   swap: (indexA: number, indexB: number) => void;
   move: (from: number, to: number) => void;
-  
+
   // 替换整个数组
   replace: (values: T[]) => void;
 }

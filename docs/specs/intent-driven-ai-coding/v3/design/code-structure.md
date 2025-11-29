@@ -18,7 +18,7 @@ Code Structure Intent 回答：**“意图最终变成了哪些文件？放在�
 
 ```text
 src/features/order/
-├── domain/                 # 领域层 (纯契约，无副作用实现)
+├── module/                 # 领域层 (纯契约，无副作用实现)
 │   ├── Order.schema.ts     # Entity Schema (Data Intent)
 │   └── OrderApi.ts         # Service Interface / Tag 定义
 ├── infrastructure/         # 基础设施层 (副作用实现)
@@ -34,7 +34,7 @@ src/features/order/
 └── index.ts                # 模块出口 (导出 RuntimeLayer)
 ```
 
-这种结构清晰地分离了**契约 (Domain)** 与 **实现 (Infrastructure)**，天然契合 Effect-ts 的 `Tag` vs `Layer` 模式。
+这种结构清晰地分离了**契约 (Module)** 与 **实现 (Infrastructure)**，天然契合 Effect-ts 的 `Tag` vs `Layer` 模式。
 
 ## 3. 运行时产物落点 (Runtime Artifacts)
 
@@ -44,13 +44,13 @@ src/features/order/
 - **落点**：`src/features/*/application/flows/*.flow.ts`
 - **内容**：
   - 导出一个或多个 Effect 程序函数。
-  - 引用 `domain/*` 中的 Tag 定义（Env 依赖）。
+  - 引用 `module/*` 中的 Tag 定义（Env 依赖）。
   - 纯粹的业务逻辑，无 UI 依赖。
 
 ### 3.4 Env 与 Layer 的自动化
 
 平台在出码时会自动处理 Effect 的依赖注入：
-- **Tag 定义**：在 `domain/OrderApi.ts` 中生成 `Context.Tag`。
+- **Tag 定义**：在 `module/OrderApi.ts` 中生成 `Context.Tag`。
 - **Layer 实现**：在 `infrastructure/OrderApiLive.ts` 中生成 `Layer.effect`。
 - **Runtime 聚合**：在 `index.ts` 中自动生成 `OrderFeatureLayer`，通过 `Layer.mergeAll` 聚合该模块所有服务的 Live 实现，供根运行时使用。
 

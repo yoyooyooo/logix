@@ -34,14 +34,18 @@ const handleSearch = (e) => {
 
 **注意**: 这需要 Logix 的 `set` 操作能够配合 React 的批处理机制。目前的 Logix 实现是同步通知的，这通常兼容 React 的自动批处理。但在 `startTransition` 中，我们需要确保 Logix 的通知回调是在 React 的上下文中执行的。
 
-## 3. Suspense Integration (未来规划)
+## 3. Suspense Integration (Phase 2 / Experimental)
 
 支持 `useSuspenseSelector`，允许组件在 Logix 数据尚未就绪（如异步加载中）时挂起。
 
+> **Strategy**:
+> 1.  **Selector-based**: `useSuspenseSelector(store, selector)`。Selector 保持同步，由 Adapter 判断当前 Store 状态（Pending/Error）决定是否抛出 Promise 或 Error。
+> 2.  **Resource Cache**: Adapter 内部维护 Suspense Resource Cache，确保 Promise 生命周期与 React 要求对齐。
+
 ```typescript
 // 这是一个 Effect，可能会挂起
-const data = useSuspenseSelector(store, async (state) => {
-  if (!state.data) throw Promise.resolve(); // 简化的挂起逻辑
+const data = useSuspenseSelector(store, (state) => {
+  // 如果 state.status === 'pending'，Hook 内部会自动 throw Promise
   return state.data;
 });
 ```

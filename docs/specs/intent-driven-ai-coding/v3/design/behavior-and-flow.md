@@ -110,7 +110,7 @@ Flow Intent 是逻辑蓝图，具体的执行由 `runtimeTarget` 决定：
 
 ### 4.2 Target: Logix Engine (前端)
 - **适用场景**：贴近 UI 的交互逻辑、字段联动、乐观更新、本地校验（如表单级联、即时搜索）。
-- **产物**：Logix Store `logic` 配置。
+- **产物**：Logix Module 定义 + `Module.logic` 配置。
 - **实现**：
   - 简单逻辑编译为 `Logic` 规则。
   - 复杂 DAG 逻辑编译为 Logix 内部的微型 Effect Runner 调用（Logix 集成精简版 Effect 运行时）。
@@ -131,7 +131,7 @@ Flow Intent 是逻辑蓝图，具体的执行由 `runtimeTarget` 决定：
   - `SubmitFlow` (Success) -> `EditModal` (Close)
   - `SubmitFlow` (Success) -> `OrderList` (Refresh)
 
-**2. 编译产物 A: 前端 Logix (`order.store.ts`)**
+**2. 编译产物 A: 前端 Logix (`order.module.ts`)**
 ```typescript
 // 自动生成的 Logix Logic
 logic: (api) => [

@@ -16,7 +16,7 @@ class PriceService extends Context.Tag("PriceService")<PriceService, {
 // 2. 在 Logic 中消费
 const $Stock = Logic.forShape<StockShape, PriceService>();
 
-const realTimeLogic = Logic.make<StockShape, PriceService>(
+const realTimeLogic: Logic.Of<StockShape, PriceService> =
   Effect.gen(function* (_) {
     const priceSvc = yield* $Stock.services(PriceService);
 
@@ -37,7 +37,7 @@ const realTimeLogic = Logic.make<StockShape, PriceService>(
 ```typescript
 const $Data = Logic.forShape<DataShape, HighFrequencyService>();
 
-const highFrequencyLogic = Logic.make<DataShape, HighFrequencyService>(
+const highFrequencyLogic: Logic.Of<DataShape, HighFrequencyService> =
   Effect.gen(function* (_) {
     const hfSvc = yield* $Data.services(HighFrequencyService);
 
@@ -60,12 +60,12 @@ const highFrequencyLogic = Logic.make<DataShape, HighFrequencyService>(
 
 ## S12: 初始化加载 (Init Load)
 
-**v3 标准模式**: 在 `Logic.make` 的 `Effect.gen` 主体中直接编写初始化逻辑。这个 Effect 只会在 `Logic` 首次启动时执行一次。
+**v3 标准模式**: 在 Logic 程序的 `Effect.gen` 主体中直接编写初始化逻辑。这个 Effect 只会在 `Logic` 首次启动时执行一次。
 
 ```typescript
 const $User = Logic.forShape<UserShape, UserApi>();
 
-const initialLoadLogic = Logic.make<UserShape, UserApi>(
+const initialLoadLogic: Logic.Of<UserShape, UserApi> =
   Effect.gen(function* (_) {
     const api = yield* $User.services(UserApi);
     const { userId } = yield* $User.state.read;

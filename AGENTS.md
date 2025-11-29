@@ -4,8 +4,9 @@
 
 - 平台主线：`intent-driven-ai-coding`，当前有效规范以 `docs/specs/intent-driven-ai-coding/v3` 为准；`v1`/`v2` 仅作为历史快照与对照材料，演进脉络见 `docs/specs/intent-driven-ai-coding/adr.md`。
   - 概念与术语层的单一事实源为：`docs/specs/intent-driven-ai-coding/v3/99-glossary-and-ssot.md`，所有「UI/Logic/Domain / Pattern / IntentRule / L0–L3」等术语以此为准，再向下映射到 runtime-logix 和 PoC。
-- 运行时主线：`runtime-logix` 目录下的 **Logix Engine**（原 kernel），作为 Behavior & Flow Intent 的统一前端运行时 PoC；总览见 `docs/specs/runtime-logix/README.md`。
+- 运行时主线：`runtime-logix` 目录下的 **Logix Engine**，作为 Behavior & Flow Intent 的统一前端运行时 PoC；总览见 `docs/specs/runtime-logix/README.md`。
 - 以上两条规划已经在 v3 / Logix 文档中收敛，任何新决策优先更新这些文档，再落到代码和 PoC。
+- 当用户提及「草稿」、「draft」，都认为是在说 docs/specs/drafts，如果没有加载过 drafts-tiered-system skill，执行 `openskills read drafts-tiered-system` 加载
 
 ## 仓库愿景与决策原则（当前）
 
@@ -14,6 +15,10 @@
 - **引擎优先**：先把 Intent/Flow/Logix/Effect 的契约和幂等出码引擎打磨稳定，再考虑 Studio/画布等交互体验；遇到冲突，一律保证引擎正确、可回放、可追踪。
 - **Effect 作为统一运行时**：默认使用 `effect`（effect-ts v3 系列）承载行为与流程执行，出码后的业务流程应以 `.flow.ts` + Effect/Logix 程序为落点；其他运行时只作为 PoC，而不是第二套正式栈。
 - **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/specs/intent-driven-ai-coding/v3` 与 `docs/specs/runtime-logix` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
+  - 对于已经确定、但实现细节容易跑偏的技术决策（例如 Store.Spec / Universal Bound API / Fluent DSL / Parser 约束），**需要同时在实现备忘中固化**：
+    - 平台侧：`docs/specs/intent-driven-ai-coding/v3/platform/impl/README.md`；
+    - runtime 侧：`docs/specs/runtime-logix/impl/README.md`。
+  - 后续在实现阶段若遇到取舍冲突，优先回看上述两个 impl/README 中的约束说明，再决定是否调整规范或实现。
 
 # Agent Context for `intent-flow`
 
@@ -87,6 +92,11 @@
   - 使用旧版 API 形式（如 `Effect.timeoutFail(effect, ...)`、`Effect.config(...)`），或假定 Promise reject 会自动走业务错误通道。
   - 在 `@effect/platform` HTTP 解码场景中混用 `@effect/schema` 与 `effect/Schema`，或直接把 `ReadonlyArray` 赋给 `Array`。
   - 定义 Service Tag 时，契约和实现返回结构（尤其数组可变性、错误类型、环境类型）不一致。
+- **API 命名约定 (v3)**
+  - 全面拥抱 `*.make` 风格，强调运行时构造语义，废弃 `*.define`。
+  - 标准范式：
+    - `Store.make("id", { ... })`
+    - `Pattern.make("id", { ... }, ($) => ...)`
 - 关键设计原则：
   - Intent 只表达业务/交互/信息结构的 **What**，不写组件/API/文件级 **How**；
   - Flow/Effect 层负责“步骤链 + 服务调用 + 质量约束”，领域算法细节保留在自定义服务实现里；
@@ -115,23 +125,27 @@
 When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.
 
 How to use skills:
-
 - Invoke: Bash("openskills read <skill-name>")
 - The skill content will load with detailed instructions on how to complete the task
 - Base directory provided in output for resolving bundled resources (references/, scripts/, assets/)
 
 Usage notes:
-
 - Only use skills listed in <available_skills> below
 - Do not invoke a skill that is already loaded in your context
 - Each skill invocation is stateless
-  </usage>
+</usage>
 
 <available_skills>
 
 <skill>
+<name>drafts-tiered-system</name>
+<description>This skill should be used when managing the docs/specs/drafts L1–L9 tiered draft system in the intent-flow repository, including placing new drafts, refining and promoting drafts between levels, consolidating related drafts, and maintaining the drafts index.</description>
+<location>project</location>
+</skill>
+
+<skill>
 <name>project-guide</name>
-<description>当在 intent-flow 仓库内进行架构设计、Flow/Effect 运行时演进、典型场景 PoC 或日常功能开发时，加载本 skill 以获得“单一事实源”（SSoT）级的项目指南、目录索引与施工流程。</description>
+<description>当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/平台规划演进、典型场景 PoC 或日常功能开发时，加载本 skill 以获得“docs/specs 为主事实源”的项目导航、目录索引与施工流程。</description>
 <location>project</location>
 </skill>
 
@@ -142,7 +156,6 @@ Usage notes:
 </skill>
 
 </available_skills>
-
 <!-- SKILLS_TABLE_END -->
 
 </skills_system>

@@ -18,7 +18,7 @@ If a specific validation rule should only apply to VIP users, this is expressed 
 ```typescript
 const $Form = Logic.forShape<FormShape>();
 
-const conditionalValidationLogic = Logic.make<FormShape>(
+const conditionalValidationLogic: Logic.Of<FormShape> =
   Effect.gen(function* (_) {
     const amount$ = $.flow.fromChanges(s => s.amount);
 

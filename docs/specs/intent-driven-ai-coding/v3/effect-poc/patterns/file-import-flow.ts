@@ -73,6 +73,16 @@ export const runUploadAndStartImportPattern = (input: UploadAndStartInput) =>
     const uploader = yield* FileUploadService
     const importer = yield* ImportService
 
+    // PoC：当文件名为 "fail" 时模拟上传阶段失败，映射为领域错误。
+    if (input.fileName === 'fail') {
+      return yield* Effect.fail(
+        new FileImportPatternError({
+          stage: 'upload',
+          reason: 'Simulated upload failure for demo',
+        }),
+      )
+    }
+
     const { fileId } = yield* uploader.upload({ name: input.fileName, size: input.fileSize })
     const { taskId } = yield* importer.startImport({ fileId })
 
@@ -90,6 +100,16 @@ export interface PollImportStatusInput {
 export const runPollImportStatusPattern = (input: PollImportStatusInput) =>
   Effect.gen(function* () {
     const importer = yield* ImportService
+
+    // PoC：当 taskId 为 "fail" 时模拟轮询阶段失败。
+    if (input.taskId === 'fail') {
+      return yield* Effect.fail(
+        new FileImportPatternError({
+          stage: 'poll',
+          reason: 'Simulated import failure for demo',
+        }),
+      )
+    }
 
     let status = yield* importer.getImportStatus({ taskId: input.taskId })
 

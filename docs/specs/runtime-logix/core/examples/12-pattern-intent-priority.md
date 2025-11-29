@@ -25,7 +25,7 @@ const OrderItemSchema = Schema.Struct({
   unitPrice: Schema.Number,
   total: Schema.Number,
   // 显式标志，用于控制逻辑优先级
-  isTotalManual: Schema.Boolean 
+  isTotalManual: Schema.Boolean
 });
 
 const OrderItemActionSchema = Schema.Union(
@@ -34,7 +34,7 @@ const OrderItemActionSchema = Schema.Union(
   Schema.Struct({ _tag: Schema.Literal('resetTotalToAuto') })
 );
 
-type OrderItemShape = Store.Shape<typeof OrderItemSchema, typeof OrderItemActionSchema>;
+type OrderItemShape = Logix.ModuleShape<typeof OrderItemSchema, typeof OrderItemActionSchema>;
 ```
 
 ### 2.2 Logic Implementation
@@ -44,7 +44,7 @@ type OrderItemShape = Store.Shape<typeof OrderItemSchema, typeof OrderItemAction
 ```typescript
 const $Item = Logic.forShape<OrderItemShape>();
 
-const priorityLogic = Logic.make<OrderItemShape>(
+const priorityLogic: Logic.Of<OrderItemShape> =
   Effect.gen(function* (_) {
 
     // Rule 1: 自动计算

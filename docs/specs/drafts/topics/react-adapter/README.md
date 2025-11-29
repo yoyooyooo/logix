@@ -21,9 +21,22 @@
 *   **Tearing Free**: 必须使用 `useSyncExternalStore` 保证并发渲染下的数据一致性。
 *   **Selector First**: 默认鼓励使用 Selector 进行细粒度订阅，避免全量重渲染。
 *   **Suspense Compatible**: 支持与 React Suspense 集成（未来规划）。
+*   **UI-Intent Agnostic**: 不直接承载 UI Intent / 组件树结构，仅提供 Store / Event 级桥接能力，由上层 UI Intent / Studio 使用这些锚点做图码同步。
 
 ## 3. 模块索引
 
-*   [01-hooks-api.md](./01-hooks-api.md): 核心 Hooks (`useStore`, `useSelector`)。
-*   [02-context-injection.md](./02-context-injection.md): 基于 Context 的依赖注入模式。
-*   [03-concurrent-rendering.md](./03-concurrent-rendering.md): 并发特性支持。
+*   [01-hooks-api.md](./01-hooks-api.md): 核心 Hooks (`useModule`, `useSelector`)。
+*   [02-context-injection.md](./02-context-injection.md): 依赖注入与 `RuntimeProvider`。
+
+## 核心原则
+
+1.  **Implicit Context**: 避免 Prop Drilling，通过 Context 隐式传递 Runtime。
+2.  **Runtime Guard**: 运行时检查依赖完整性，提供友好报错。
+3.  **Read/Write Segregation**:
+    *   读：使用 `useModule` / `useSelector` 将 Module State 映射为视图数据；
+    *   写：使用 `useDispatch` 获取 dispatch 函数触发 Action。
+
+> 上层关系：UI Intent / Studio 主要通过两个维度消费 React Adapter：
+> - 读：使用 `useModule` / `useSelector` 将 Store.State 映射为视图数据；
+> - 写：通过绑定到 `$.actions.dispatch` / IntentRule Anchor 的事件处理函数，将 UI 事件投递给 Logix。
+> React Adapter 自身保持不感知具体 UI Schema 或组件库，只暴露这些稳定锚点。

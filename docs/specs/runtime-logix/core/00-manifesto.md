@@ -94,7 +94,7 @@ Logix 将消除这些模糊点。通过提供标准化的 `logic` 编排机制�
   - `ModuleDef.middlewares` 仅作为平台/出码器的配置来源，Runtime 不读取更不会自动注入。
 
 - **不做的特性**：  
-  不在 Runtime 内维护全局 Middleware Registry，也不在 `Logic.make` 过程中根据 Module 配置“自动套上”中间件。
+  不在 Runtime 内维护全局 Middleware Registry，也不在 Logic 构造过程中根据 Module 配置“自动套上”中间件。
 
 - **理由**：  
   - 保留“代码即事实”：任何拦截/横切行为都能在源码中被看见与 grep 到；  

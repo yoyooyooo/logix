@@ -11,7 +11,8 @@
 ```typescript
 const $Form = Logic.forShape<FormShape>();
 
-Logic.make<FormShape>(
+// 伪代码：Logic 程序在 Env<FormShape,R> 上运行
+Effect.gen(function*(_) {
   Effect.gen(function*(_) {
     const country$ = $.flow.fromChanges(s => s.country);
     yield* country$.pipe(
@@ -32,7 +33,7 @@ Logic.make<FormShape>(
 ```typescript
 const $Form = Logic.forShape<FormShape>();
 
-Logic.make<FormShape>(
+Effect.gen(function*(_) {
   Effect.gen(function*(_) {
     const age$ = $.flow.fromChanges(s => s.age);
     yield* age$.pipe(
@@ -54,7 +55,7 @@ Logic.make<FormShape>(
 ```typescript
 const $Form = Logic.forShape<FormShape, GeoService>();
 
-Logic.make<FormShape, GeoService>(
+Effect.gen(function*(_) {
   Effect.gen(function*(_) {
     const zip$ = $.flow.fromChanges(s => s.zipCode);
 
@@ -80,7 +81,7 @@ Logic.make<FormShape, GeoService>(
 ```typescript
 const $Form = Logic.forShape<FormShape, UserApi>();
 
-Logic.make<FormShape, UserApi>(
+Effect.gen(function*(_) {
   Effect.gen(function*(_) {
     const username$ = $.flow.fromChanges(s => s.username);
 
@@ -114,7 +115,7 @@ Logic.make<FormShape, UserApi>(
 // v3 推荐写法：监听父节点
 const $Cart = Logic.forShape<CartShape>();
 
-Logic.make<CartShape>(
+Effect.gen(function*(_) {
   Effect.gen(function*(_) {
     const items$ = $.flow.fromChanges(s => s.items);
     yield* items$.pipe(
@@ -136,11 +137,11 @@ Logic.make<CartShape>(
 **描述**: Store 创建时，自动从 API 加载初始数据。
 **API 验证**:
 *挑战*: `flow.fromChanges` 是监听变化，如何处理初始化？
-*解法 (v3 Standard)*: 在 `Logic.make` 的 `Effect.gen` 主体中直接编写初始化逻辑。这个 Effect 只会在 Logic 首次启动时执行一次，无需特殊触发器。
+*解法 (v3 Standard)*: 在 Logic 程序的 `Effect.gen` 主体中直接编写初始化逻辑。这个 Effect 只会在 Logic 首次启动时执行一次，无需特殊触发器。
 ```typescript
 const $UserPage = Logic.forShape<UserPageShape, UserApi>();
 
-Logic.make<UserPageShape, UserApi>(
+Effect.gen(function*(_) {
   Effect.gen(function*(_) {
     // Logic 初始化时直接执行，无需特殊触发器
     const userApi = yield* $UserPage.services(UserApi);
@@ -160,7 +161,7 @@ Logic.make<UserPageShape, UserApi>(
 // WebSocket 实时更新适用于「外部事件驱动」场景，属于 Logix 的外部源集成能力。
 const $Stock = Logic.forShape<StockShape, WebSocketService>();
 
-Logic.make<StockShape, WebSocketService>(
+Effect.gen(function*(_) {
   Effect.gen(function*(_) {
     const ws = yield* $Stock.services(WebSocketService);
     yield* ws.priceStream.pipe(

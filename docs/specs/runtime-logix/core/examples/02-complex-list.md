@@ -1,8 +1,8 @@
 # Example: Complex List Logic
 
-> **Scenario**: 购物车  
-> **Features**: 行级联动、聚合计算、批量更新  
-> **Note**: 本示例基于 v3 Effect-Native Logix 写法（`Store.Shape` + `Logic.make` + `Flow / Control`）。
+> **Scenario**: 购物车
+> **Features**: 行级联动、聚合计算、批量更新
+> **Note**: 本示例基于 v3 Effect-Native Logix 写法（`Logix.ModuleShape` + Bound API `$` + `Flow / Control`）。
 
 ## Schema Definition
 
@@ -35,7 +35,7 @@ const CartActionSchema = Schema.Union(
   // ... 其他动作
 );
 
-type CartShape = Store.Shape<
+type CartShape = Logix.ModuleShape<
   typeof CartStateSchema,
   typeof CartActionSchema
 >;
@@ -46,7 +46,7 @@ type CartShape = Store.Shape<
 ```typescript
 const $Cart = Logic.forShape<CartShape>();
 
-export const CartLogic = Logic.make<CartShape>(
+export const CartLogic: Logic.Of<CartShape> =
   Effect.gen(function* (_) {
     const items$ = $.flow.fromChanges((s) => s.items);
     const toggleAll$ = $.flow.fromAction(
@@ -104,6 +104,6 @@ export const CartLogic = Logic.make<CartShape>(
 
 ## API Review
 
-*   **与 Core 一致**: 通过 `Store.Shape` + `Logic.make` + `Flow.Api` 表达行级联动、聚合与批量更新，直接对应 `logix-v3-core` 中的运行时原语。  
-*   **性能友好**: 聚合逻辑集中在单条 `state.update` 中完成，通过一次写入更新 summary，避免重复计算和多次渲染。  
+*   **与 Core 一致**: 通过 `Logix.ModuleShape` + Bound API `$` + `Flow.Api` 表达行级联动、聚合与批量更新，直接对应 `logix-v3-core` 中的运行时原语。
+*   **性能友好**: 聚合逻辑集中在单条 `state.update` 中完成，通过一次写入更新 summary，避免重复计算和多次渲染。
 *   **动作显式**: 全选操作通过 Typed Action `cart/toggleAll` 触发，配合 `flow.fromAction` 进行监听，便于在 DevTools 与 Trace 中统一观察来源。

@@ -10,7 +10,7 @@
  */
 
 import { Effect, Schema, Stream } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Logix } from '../shared/logix-v3-core'
 import {
   FileImportPatternError,
   FileUploadService,
@@ -31,37 +31,33 @@ const ImportStateSchema = Schema.Struct({
   errorMessage: Schema.optional(Schema.String),
 })
 
-const ImportActionSchema = Schema.Union(
-  Schema.Struct({
-    _tag: Schema.Literal('import/start'),
-    payload: Schema.Struct({
-      fileName: Schema.String,
-      fileSize: Schema.Number,
-    }),
+const ImportActionMap = {
+  'import/start': Schema.Struct({
+    fileName: Schema.String,
+    fileSize: Schema.Number,
   }),
-  Schema.Struct({ _tag: Schema.Literal('import/reset') }),
-)
+  'import/reset': Schema.Void,
+}
 
-export type ImportShape = Store.Shape<typeof ImportStateSchema, typeof ImportActionSchema>
-export type ImportState = Store.StateOf<ImportShape>
-export type ImportAction = Store.ActionOf<ImportShape>
+export type ImportShape = Logix.Shape<typeof ImportStateSchema, typeof ImportActionMap>
+export type ImportState = Logix.StateOf<ImportShape>
+export type ImportAction = Logix.ActionOf<ImportShape>
 
 // ---------------------------------------------------------------------------
-// Logic：监听 import/start / import/reset，驱动整个导入流程
+// Module：定义文件导入模块
 // ---------------------------------------------------------------------------
 
-const $ = Logic.forShape<ImportShape, FileUploadService | ImportService>()
+export const FileImportModule = Logix.Module('FileImportModule', {
+  state: ImportStateSchema,
+  actions: ImportActionMap,
+})
 
-export const FileImportLogic = Logic.make<ImportShape, FileUploadService | ImportService>(
+// ---------------------------------------------------------------------------
+// Logic：监听 import/start / import/reset，驱动整个导入流程（通过 Module.logic 注入 $）
+// ---------------------------------------------------------------------------
+
+export const FileImportLogic = FileImportModule.logic<FileUploadService | ImportService>(($) =>
   Effect.gen(function* () {
-    const start$ = $.flow.fromAction(
-      (a): a is {
-        _tag: 'import/start'
-        payload: { fileName: string; fileSize: number }
-      } => a._tag === 'import/start',
-    )
-    const reset$ = $.flow.fromAction((a): a is { _tag: 'import/reset' } => a._tag === 'import/reset')
-
     const handleStart = (action: {
       _tag: 'import/start'
       payload: { fileName: string; fileSize: number }
@@ -80,9 +76,8 @@ export const FileImportLogic = Logic.make<ImportShape, FileUploadService | Impor
         }))
 
         // 2. 上传 + 启动导入任务
-        const taskId = yield* $.control.tryCatch({
-          try: runUploadAndStartImportPattern({ fileName, fileSize }),
-          catch: (err: FileImportPatternError) =>
+        const taskId = yield* runUploadAndStartImportPattern({ fileName, fileSize }).pipe(
+          Effect.catchTag('FileImportPatternError', (err: FileImportPatternError) =>
             Effect.gen(function* () {
               yield* $.state.update((prev) => ({
                 ...prev,
@@ -91,7 +86,8 @@ export const FileImportLogic = Logic.make<ImportShape, FileUploadService | Impor
               }))
               return ''
             }),
-        })
+          ),
+        )
 
         if (!taskId) {
           return
@@ -105,9 +101,8 @@ export const FileImportLogic = Logic.make<ImportShape, FileUploadService | Impor
         }))
 
         // 4. 后台轮询任务状态
-        const finalStatus = yield* $.control.tryCatch({
-          try: runPollImportStatusPattern({ taskId }),
-          catch: (err: FileImportPatternError) =>
+        const finalStatus = yield* runPollImportStatusPattern({ taskId }).pipe(
+          Effect.catchTag('FileImportPatternError', (err: FileImportPatternError) =>
             Effect.gen(function* () {
               yield* $.state.update((prev) => ({
                 ...prev,
@@ -116,21 +111,24 @@ export const FileImportLogic = Logic.make<ImportShape, FileUploadService | Impor
               }))
               return 'FAILED' as const
             }),
-        })
+          ),
+        )
 
-        // 5. 根据最终状态更新 UI
-        if (finalStatus === 'SUCCESS') {
-          yield* $.state.update((prev) => ({
-            ...prev,
-            status: 'done',
-          }))
-        } else {
-          yield* $.state.update((prev) => ({
-            ...prev,
-            status: 'error',
-            errorMessage: prev.errorMessage ?? '导入失败',
-          }))
-        }
+        // 5. 根据最终状态更新 UI（演示使用 $.match 表达结构化分支）
+        yield* $.match(finalStatus)
+          .when('SUCCESS', () =>
+            $.state.update((prev) => ({
+              ...prev,
+              status: 'done',
+            })),
+          )
+          .otherwise(() =>
+            $.state.update((prev) => ({
+              ...prev,
+              status: 'error',
+              errorMessage: prev.errorMessage ?? '导入失败',
+            })),
+          )
       })
 
     const handleReset = $.state.update((prev) => ({
@@ -140,31 +138,22 @@ export const FileImportLogic = Logic.make<ImportShape, FileUploadService | Impor
       errorMessage: undefined,
     }))
 
-    yield* Effect.all([
-      // 这里直接使用 Stream.runForEach 将 Action 传入 Effect，
-      // 并发控制由 handleStart 内部的状态机负责；其他场景中仍由 flow.runExhaust 演示并发语义。
-      start$.pipe(Stream.runForEach(handleStart)),
-      reset$.pipe($.flow.run(handleReset)),
-    ])
+    yield* $.onAction('import/start').runExhaust(handleStart)
+    yield* $.onAction('import/reset').run(handleReset)
   }),
 )
 
 // ---------------------------------------------------------------------------
-// Store：组合 State / Action / Logic
+// Live：组合初始 State 与 Logic，生成运行时 Layer
 // ---------------------------------------------------------------------------
 
-const ImportStateLayer = Store.State.make(ImportStateSchema, {
-  fileName: '',
-  fileSize: 0,
-  taskId: undefined,
-  status: 'idle',
-  errorMessage: undefined,
-})
-
-const ImportActionLayer = Store.Actions.make(ImportActionSchema)
-
-export const FileImportStore = Store.make<ImportShape>(
-  ImportStateLayer,
-  ImportActionLayer,
+export const FileImportLive = FileImportModule.live(
+  {
+    fileName: '',
+    fileSize: 0,
+    taskId: undefined,
+    status: 'idle',
+    errorMessage: undefined,
+  },
   FileImportLogic,
 )

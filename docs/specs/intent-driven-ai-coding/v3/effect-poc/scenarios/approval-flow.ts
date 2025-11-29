@@ -1,5 +1,5 @@
 import { Config, Data, Effect, Schema, SubscriptionRef, Duration } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Logix, Logic } from '../shared/logix-v3-core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：审批场景的 State / Action
@@ -15,14 +15,14 @@ const ApprovalStateSchema = Schema.Struct({
   errorMessage: Schema.optional(Schema.String),
 })
 
-const ApprovalActionSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('submit') }),
-  Schema.Struct({ _tag: Schema.Literal('reset') }),
-)
+const ApprovalActionMap = {
+  submit: Schema.Void,
+  reset: Schema.Void,
+}
 
-export type ApprovalShape = Store.Shape<typeof ApprovalStateSchema, typeof ApprovalActionSchema>
-export type ApprovalState = Store.StateOf<ApprovalShape>
-export type ApprovalAction = Store.ActionOf<ApprovalShape>
+export type ApprovalShape = Logix.Shape<typeof ApprovalStateSchema, typeof ApprovalActionMap>
+export type ApprovalState = Logix.StateOf<ApprovalShape>
+export type ApprovalAction = Logix.ActionOf<ApprovalShape>
 
 // ---------------------------------------------------------------------------
 // 错误建模：Tagged Error（领域错误）
@@ -117,74 +117,75 @@ export const runApprovalFlowEffect = (input: ApprovalEffectInput) =>
   })
 
 // ---------------------------------------------------------------------------
-// Logic：响应提交 / 重置 Action，触发长逻辑 Effect
+// Module：定义审批模块
 // ---------------------------------------------------------------------------
 
-const $ = Logic.forShape<ApprovalShape, ApprovalService>()
+export const ApprovalModule = Logix.Module('ApprovalModule', {
+  state: ApprovalStateSchema,
+  actions: ApprovalActionMap,
+})
 
-export const ApprovalLogic: Logic.Fx<ApprovalShape, ApprovalService, void, ApprovalServiceError | never> =
-  Logic.make<ApprovalShape, ApprovalService>(
-    Effect.gen(function* () {
-      const submit$ = $.flow.fromAction((a): a is { _tag: 'submit' } => a._tag === 'submit')
-      const reset$ = $.flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
+// ---------------------------------------------------------------------------
+// Logic：响应提交 / 重置 Action，触发长逻辑 Effect（通过 Module.logic 注入 $）
+// ---------------------------------------------------------------------------
 
+export const ApprovalLogic: Logic.Of<ApprovalShape, ApprovalService, void, ApprovalServiceError | never> =
+  ApprovalModule.logic<ApprovalService>(($: Logic.BoundApi<ApprovalShape, ApprovalService>) =>
+    (Effect.gen(function* () {
       // 借用整棵审批状态作为 Ref，交给封装好的长逻辑内部读取
       const stateRef = $.state.ref()
 
       // 启动审批流：如果已有任务在提交中，runExhaust 会丢弃后续触发，防止重复提交
       const startApproval = Effect.gen(function* () {
-        yield* $.state.update((prev) => ({
+        yield* $.state.update((prev: ApprovalState) => ({
           ...prev,
           status: 'submitting',
           errorMessage: undefined,
         }))
 
         // 执行业务长逻辑，并显式处理 ApprovalServiceError
-        yield* $.control.tryCatch({
-          try: runApprovalFlowEffect({ stateRef }),
-          catch: (err: ApprovalServiceError) =>
-            $.state.update((prev) => ({
+        yield* runApprovalFlowEffect({ stateRef }).pipe(
+          Effect.catchTag('ApprovalServiceError', (err: ApprovalServiceError) =>
+            $.state.update((prev: ApprovalState) => ({
               ...prev,
               status: 'error',
               errorMessage: err.reason,
             })),
-        })
+          ),
+        )
 
         // 若仍处于 submitting，说明没有错误，标记为 done
         const latest = yield* $.state.read
         if (latest.status === 'submitting') {
-          yield* $.state.update((prev) => ({
+          yield* $.state.update((prev: ApprovalState) => ({
             ...prev,
             status: 'done',
           }))
         }
       })
 
-      const resetEffect = $.state.update((prev) => ({
+      const resetEffect = $.state.update((prev: ApprovalState) => ({
         ...prev,
         status: 'idle',
         errorMessage: undefined,
         comment: '',
       }))
 
-      yield* Effect.all([
-        submit$.pipe($.flow.runExhaust(startApproval)),
-        reset$.pipe($.flow.run(resetEffect)),
-      ])
-    }) as Logic.Fx<ApprovalShape, ApprovalService, void, ApprovalServiceError | never>,
+      yield* $.onAction('submit').runExhaust(startApproval)
+      yield* $.onAction('reset').run(resetEffect)
+    }) as Logic.Of<ApprovalShape, ApprovalService, void, ApprovalServiceError | never>),
   )
 
 // ---------------------------------------------------------------------------
-// Store：组合 State / Action / Logic 成为一棵 Store
+// Live：组合 State / Action / Logic 成为一棵可注入的领域模块
 // ---------------------------------------------------------------------------
 
-const ApprovalStateLayer = Store.State.make(ApprovalStateSchema, {
-  taskId: '',
-  comment: '',
-  decision: 'APPROVE',
-  status: 'idle',
-})
-
-const ApprovalActionLayer = Store.Actions.make(ApprovalActionSchema)
-
-export const ApprovalStore = Store.make<ApprovalShape>(ApprovalStateLayer, ApprovalActionLayer, ApprovalLogic)
+export const ApprovalLive = ApprovalModule.live(
+  {
+    taskId: '',
+    comment: '',
+    decision: 'APPROVE',
+    status: 'idle',
+  },
+  ApprovalLogic,
+)

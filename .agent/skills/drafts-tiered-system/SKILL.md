@@ -1,0 +1,138 @@
+---
+name: drafts-tiered-system
+description: This skill should be used when managing a tiered L1–L9 draft system rooted at docs/specs/drafts in a repository, including placing new drafts, refining and promoting drafts between levels, consolidating related drafts, and maintaining a draft index document.
+---
+
+# Drafts Tiered System · 使用说明
+
+本 skill 用于在任意代码仓库内，围绕约定的“草稿根目录” `docs/specs/drafts` 构建和维护 **L1–L9 阶梯式草稿体系**。
+目标是让后续的 Claude 实例在处理草稿相关任务时，有一套稳定的目录约定和操作流程，而不依赖具体项目路径。
+
+## 1. 背景与目的
+
+- 草稿用于承载「尚未完全定稿，但有潜在价值」的方案、调研、对话摘录和对外项目启发；
+- 正式规范（例如 `docs/specs/intent-driven-ai-coding/v3`、`docs/specs/runtime-logix`）只收敛稳定结论；
+- L1–L9 数字越小代表成熟度越高，新草稿默认放在 L9，随整理逐步前移；
+- 通过该体系，支持后续“集中梳理草稿 → 融合方案 → 更新正式规格”的工作流。
+
+## 2. 目录与分级约定
+
+在仓库根目录下约定 **drafts 根目录** 为：`docs/specs/drafts`，并在该目录下使用如下结构：
+
+- `README.md`：解释阶梯式草稿体系的整体规则与协作约定；
+- `index.md`：列出各层级（L1–L9）及 Topics 当前已有草稿的索引；
+- `topics/`：按主题整理的、相对完整的草稿集合（Consolidated Drafts）；
+- `L1/` … `L9/`：按成熟度分层的散乱草稿目录（Tiered Drafts）。
+
+成熟度含义（越小越稳定）：
+
+- `L1/`：几乎稳定，可直接视为正式规范的候选；
+- `L2/`：结构清晰、主要矛盾已解决，后续以细节调整为主；
+- `L3/`：有完整章节结构与 TODO，方向明确但实现/权衡尚在演化；
+- `L4/`：问题定义和部分方案较清楚，仍有明显空白或待决问题；
+- `L5/`：以对比/调研为主，有初步结论但未形成系统方案；
+- `L6/`：思路梳理、问题拆解为主，结论弱、问题强；
+- `L7/`：散碎灵感、会议记录、长对话摘录，已有一定分组；
+- `L8/`：一次性调研/探索结果，未来可能被合并或丢弃；
+- `L9/`：生草稿，新产生但未整理的想法/对话/外部启发。
+
+### 2.2 Topics (Consolidated Drafts)
+
+当一组 L1-L9 的草稿围绕同一个特定主题（如 "AI-Native UI", "Core API"）逐渐成熟并形成体系时，应将其收编至 `topics/<topic-name>/` 目录下。
+
+- **定位**：Topics 是 "Drafts" 到 "Specs" 的中间站。它比散乱的 L* 草稿更系统，但可能还未完全定型为核心规范。
+- **结构**：每个 Topic 目录下通常包含一组结构化的文档（如 `00-overview.md`, `01-concept.md`...）。
+
+约定：
+
+- 新草稿若无更明确定位，默认放入 `L9/`；
+- 文件名应尽量体现主题和作用域（例如 `bubblelab-integration-notes.md`，而不是 `notes.md`）；
+- 根目录下只保留极少数“全局愿景级”草稿，成熟后应迁入 L1–L3 或 Topics。
+
+## 3. 草稿文件的基本结构
+
+为方便后续梳理，每个草稿文件推荐包含以下内容（可按需要裁剪）：
+
+1. YAML frontmatter：
+   - `title`: 简明题目；
+   - `status`: 建议使用 `draft` / `active` / `superseded` / `merged` 等；
+   - `version`: 任意有意义的版本号或时间戳；
+2. 正文建议包含：
+   - 背景与动机：草稿试图解决的问题与场景；
+   - 主要观点/方案：当前认为较有价值的思路；
+   - 与现有规范的关系：补充/挑战的是哪些文档；
+   - 待决问题/风险：尚未定夺或存在不确定性的部分；
+   - 外部参考：相关仓库、文档或对话链接（如存在）。
+
+在帮助用户写入新的草稿时，应优先遵循上述结构，至少保证“未来另一个 LLM 能独立读懂”。
+
+## 4. 典型工作流
+
+### 4.1 新草稿落地（默认 L9）
+
+当用户与 LLM 讨论某个新主题、调研外部项目或产生一组初步想法时：
+
+1. 确认当前仓库使用 `docs/specs/drafts` 作为 drafts 根目录；
+2. 在 `docs/specs/drafts/L9/` 子目录中创建一个具备语义的文件名，例如：
+   - `bubblelab-integration-notes.md`
+   - `agent-compiler-loop-experiments.md`
+3. 写入包含 frontmatter + 背景 + 主要观点/启发 的草稿内容；
+4. 在 `docs/specs/drafts/index.md` 的 L9 小节下添加一行索引（路径 + 一句说明）。
+
+在这一阶段不要求结构完美，重点在于“把有用信息存下来”和“命名清晰”。
+
+### 4.2 梳理与前移（L9 → L7/L5）
+
+当某个主题在 L9/L8 中积累了多份草稿时，可以发起一次集中梳理：
+
+1. 选择一个目标主题（例如 “Agent 集成与编排”），收集相关 L7–L9 文件；
+2. 创建一个新的、更高层级文件（通常放在 `L6/` 或 `L5/`），例如：
+   - `L5/agent-orchestration-roadmap.md`；
+3. 在新文件中：
+   - 汇总各草稿的主要结论和分歧；
+   - 删除明显重复或低价值的内容；
+   - 标记 TODO / Open Questions；
+4. 对已被合并的旧草稿，在其 frontmatter 或开头段落标记 `status: superseded`，并注明“已被某某文档取代”，视情况可保留或裁剪。
+
+完成上述整理后，可将新文件逐步前移到更高成熟度层级（L5 → L4 → L3）。
+
+### 4.3 专题收编（L* → topics）
+
+当某个主题下的草稿数量较多且逻辑自洽时，应进行专题收编：
+
+1. 在 `docs/specs/drafts/topics/` 下创建新目录，如 `ai-native-ui/`；
+2. 将相关的 L* 草稿移动到该目录下，并重命名为有序的文件名（如 `00-overview.md`, `10-protocol.md`）；
+3. 创建该 Topic 的 README 或 Index 文件；
+4. 更新 `docs/specs/drafts/index.md`，将这些草稿从 L* 列表中移除，并在 Topics 章节下列出。
+
+### 4.3 成型方案与正式规范对接（L3/L2 → specs）
+
+当某个草稿已经具备较稳定的结构和结论（通常位于 L3/L2）时：
+
+1. 明确它在整体架构中的落点（例如 Agent 平台、Runtime DI、Pattern 资产库等）；
+2. 在当前仓库中选择对应的目标规范文件（通常位于 `docs/specs/...` 路径下）；
+3. 将草稿中的稳定结论和约束提炼为规范性文字，写入目标文件；
+4. 在草稿中注明“已部分/全部并入某某规范”，并更新 `status` 字段为 `merged` 或类似值。
+
+草稿并入正式规范后，可继续保留草稿用于追踪演进和对照。
+
+## 5. 与 LLM 协作的操作指引
+
+当用户发出与草稿相关的指令（例如“把这次讨论写入 drafts”“帮我梳理 L9 草稿”）时，应遵循以下原则：
+
+1. 识别任务类型：
+   - 新草稿落地 → 走 4.1 流程，优先写入 L9；
+   - 多稿合并/梳理 → 走 4.2 流程，产出更高层级草稿；
+   - 专题收编 → 走 4.3 流程，建立 Topic 目录；
+   - 方案收敛/更新规范 → 走 4.4 流程。
+2. 始终保持：
+   - `README.md` 中描述的分级含义不被草稿内容覆盖或冲突；
+   - `index.md` 与实际文件结构大致一致（可以在每次大规模调整后批量更新 index）。
+3. 避免：
+   - 在 drafts 中引入与现有 specs 明显矛盾且未标明“冲突点”的新标准；
+   - 将“确定性很高的决定”长期停留在低成熟度层级而不迁入 specs。
+
+## 6. 当前已知草稿（示例）
+
+本 skill 不绑定具体草稿文件名，仅约定 drafts 根目录路径为 `docs/specs/drafts`。
+在具体项目中使用时，应在该目录内维护实际草稿清单（通过 `index.md`），并在需要时让 Claude 遵循本 skill 描述的流程更新 index 与各草稿的 `status` 字段，以保持草稿体系的可追踪性与可演进性。

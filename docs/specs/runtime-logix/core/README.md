@@ -11,53 +11,48 @@ Logix Core 是 Logix 平台的运行时心脏。它是一个基于 **Effect-TS**
 *   **Full-Duplex**: 支持代码与可视化图的无损同步。
 *   **Modular**: 支持逻辑拆分与 Pattern 复用。
 
-## 快速开始
+## 快速开始（Module-First）
 
-```typescript
-import { Store, Flow, Logic } from '@logix/core';
+```ts
+import { Logix } from '@logix/core';
 import { Schema, Effect } from 'effect';
 
-// 1. 定义 State Layer
-const StateLive = Store.State.make(
-  Schema.Struct({ count: Schema.Number }), 
-  { count: 0 }
-);
+// 1. 定义领域 Module（纯定义，不含实例）
+export const CounterModule = Logix.Module('Counter', {
+  state: Schema.Struct({ count: Schema.Number }),
+  actions: {
+    inc: Schema.Void,
+  },
+});
 
-// 2. 定义 Action Layer
-const ActionLive = Store.Actions.make(
-  Schema.Union(Schema.Struct({ _tag: 'inc' }))
-);
-
-// 3. 定义 Logic 程序（使用 Bound API）
-const $ = Logic.forShape<CounterShape>();
-
-const CounterLogic = Logic.make<CounterShape>(
-  Effect.gen(function*(_) {
-    const inc$ = $.flow.fromAction(a => a._tag === 'inc');
-    yield* inc$.pipe(
-      $.flow.run($.state.mutate(draft => { draft.count += 1; }))
+// 2. 在该 Module 上编写 Logic 程序（使用 Bound API `$`）
+export const CounterLogic = CounterModule.logic(($) =>
+  Effect.gen(function* () {
+    yield* $.onAction('inc').then(
+      $.state.mutate((draft) => {
+        draft.count += 1;
+      }),
     );
-  })
+  }),
 );
 
-// 4. 组装 Store (State/Action Layer + Logic 程序)
-const store = Store.make(
-  StateLive,
-  ActionLive,
-  CounterLogic
+// 3. 生成 Live Layer（初始 State + 一组 Logic 程序）
+export const CounterLive = CounterModule.live(
+  { count: 0 },
+  CounterLogic,
 );
 
-// 5. 使用
-store.dispatch({ _tag: 'inc' });
+// 4. 使用：在 Runtime/React Shell 中注入 CounterLive
 ```
 
 ## 文档索引
 
 *   [架构总览](01-architecture.md)
-*   [Store (容器)](02-store.md)
-*   [Logic & Flow (工具)](03-logic-and-flow.md)
+*   [Module / Logic / Live / `$` 总览](02-module-and-logic-api.md)
+*   [Logic & Flow (工具)](03-logic-and-flow.md)：Logic / Flow / Control / Bound API `$` 详解
+*   [Logic Middleware](./04-logic-middleware.md)：Logic Middleware 与 `Logic.secure` 安全机制
 *   [Pattern (资产)](04-pattern.md)
-*   [实现架构](05-runtime-implementation.md)
+*   [实现架构](05-runtime-implementation.md)：Runtime 内部实现架构（ModuleRuntime / Store / Scope / Layer）
 *   [平台集成](06-platform-integration.md)
 *   [React 集成](07-react-integration.md)
 *   [使用指南](08-usage-guidelines.md)

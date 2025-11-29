@@ -95,6 +95,16 @@ export const runBulkOperationPattern = (input: BulkOperationPatternInput) =>
       return 0
     }
 
+    // PoC：当 operation 为 "fail" 时模拟批量操作失败，映射为领域错误。
+    if (input.operation === 'fail') {
+      return yield* Effect.fail(
+        new BulkOperationPatternError({
+          operation: input.operation,
+          reason: 'Simulated bulk operation failure for demo',
+        }),
+      )
+    }
+
     yield* bulk.applyToMany({ ids: Array.from(ids), operation: input.operation })
     return ids.length
   })

@@ -10,7 +10,7 @@
 ```typescript
 const $Cart = Logic.forShape<CartShape>();
 
-const aggregationLogic = Logic.make<CartShape>(
+const aggregationLogic: Logic.Of<CartShape> =
   Effect.gen(function* (_) {
     const items$ = $Cart.flow.fromChanges(s => s.items);
 
@@ -42,7 +42,7 @@ const aggregationLogic = Logic.make<CartShape>(
 ```typescript
 const $List = Logic.forShape<ProductListShape, ProductApi>();
 
-const asyncRowLogic = Logic.make<ProductListShape, ProductApi>(
+const asyncRowLogic: Logic.Of<ProductListShape, ProductApi> =
   Effect.gen(function* (_) {
     const items$ = $List.flow.fromChanges(s => s.items);
 
@@ -77,7 +77,7 @@ const asyncRowLogic = Logic.make<ProductListShape, ProductApi>(
 ```typescript
 const $Cart = Logic.forShape<CartShape>();
 
-const toggleAllLogic = Logic.make<CartShape>(
+const toggleAllLogic: Logic.Of<CartShape> =
   Effect.gen(function* (_) {
     const toggleAll$ = $Cart.flow.fromAction(a => a._tag === 'toggleAll');
 

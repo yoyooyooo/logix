@@ -1,0 +1,32 @@
+{
+    "name": "@intent-flow/logix-core",
+    "version": "0.0.1",
+    "description": "The pure logic engine for Logix v3",
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest"
+    },
+    "peerDependencies": {
+        "effect": "^3.10.0"
+    },
+    "dependencies": {
+        "effect": "^3.10.0"
+    },
+    "devDependencies": {
+        "tsup": "^8.0.0",
+        "typescript": "^5.4.0",
+        "vitest": "^1.0.0"
+    }
+}

@@ -1,8 +1,9 @@
-import { Effect } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+
+import { Effect, Scope } from 'effect'
+import { Logix } from '../shared/logix-v3-core'
 import {
   LongTaskStateSchema,
-  LongTaskActionSchema,
+  LongTaskActionMap,
   type LongTaskShape,
   type LongTaskState,
   type LongTaskAction,
@@ -10,16 +11,19 @@ import {
 } from '../patterns/long-task'
 
 // ---------------------------------------------------------------------------
-// Logic：通过 Action 触发长逻辑 Effect，并用 Flow 控制并发语义
+// Module：定义长任务模块
 // ---------------------------------------------------------------------------
 
-const $ = Logic.forShape<LongTaskShape>()
+export const LongTaskModule = Logix.Module('LongTaskModule', {
+  state: LongTaskStateSchema,
+  actions: LongTaskActionMap,
+})
 
-export const LongTaskLogic = Logic.make<LongTaskShape>(
+// Logic：通过 Action 触发长逻辑 Effect，并用 Flow 控制并发语义（通过 Module.logic 注入 $）
+// ---------------------------------------------------------------------------
+
+export const LongTaskLogic = LongTaskModule.logic<Scope.Scope>(($) =>
   Effect.gen(function* () {
-    const start$ = $.flow.fromAction((a): a is { _tag: 'start' } => a._tag === 'start')
-    const reset$ = $.flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
-
     // 借用整棵状态作为 SubscriptionRef，交给 Pattern 持续更新
     const stateRef = $.state.ref()
 
@@ -34,22 +38,19 @@ export const LongTaskLogic = Logic.make<LongTaskShape>(
       progress: 0,
     }))
 
-    yield* Effect.all([
-      start$.pipe($.flow.runExhaust(startEffect)),
-      reset$.pipe($.flow.run(resetEffect)),
-    ])
+    yield* $.onAction('start').runExhaust(startEffect)
+    yield* $.onAction('reset').run(resetEffect)
   }),
 )
 
 // ---------------------------------------------------------------------------
-// Store：组合 State / Action / Logic 成为一棵 Store
+// Live：组合 State / Action / Logic 成为一棵可注入的领域模块
 // ---------------------------------------------------------------------------
 
-const LongTaskStateLayer = Store.State.make(LongTaskStateSchema, {
-  status: 'idle',
-  progress: 0,
-})
-
-const LongTaskActionLayer = Store.Actions.make(LongTaskActionSchema)
-
-export const LongTaskStore = Store.make<LongTaskShape>(LongTaskStateLayer, LongTaskActionLayer, LongTaskLogic)
+export const LongTaskLive = LongTaskModule.live(
+  {
+    status: 'idle',
+    progress: 0,
+  },
+  LongTaskLogic,
+)

@@ -11,7 +11,7 @@
  */
 
 import { Effect, Schema } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Logix, Logic } from '../shared/logix-v3-core'
 import {
   runBulkOperationPattern,
   SelectionService,
@@ -30,35 +30,35 @@ const CompositionStateSchema = Schema.Struct({
   status: Schema.Literal('idle', 'running', 'done'),
 })
 
-const CompositionActionSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('combo/run') }),
-  Schema.Struct({ _tag: Schema.Literal('combo/reset') }),
-)
+const CompositionActionMap = {
+  'combo/run': Schema.Void,
+  'combo/reset': Schema.Void,
+}
 
-export type CompositionShape = Store.Shape<typeof CompositionStateSchema, typeof CompositionActionSchema>
-export type CompositionState = Store.StateOf<CompositionShape>
-export type CompositionAction = Store.ActionOf<CompositionShape>
+export type CompositionShape = Logix.Shape<typeof CompositionStateSchema, typeof CompositionActionMap>
+export type CompositionState = Logix.StateOf<CompositionShape>
+export type CompositionAction = Logix.ActionOf<CompositionShape>
 
 // ---------------------------------------------------------------------------
-// Logic：一次操作串联两个 Pattern（Bulk + Import）
+// Module：定义组合场景模块
 // ---------------------------------------------------------------------------
 
-const $ = Logic.forShape<
-  CompositionShape,
-  SelectionService | BulkOperationService | NotificationService | FileUploadService | ImportService
->()
+export const CompositionModule = Logix.Module('CompositionModule', {
+  state: CompositionStateSchema,
+  actions: CompositionActionMap,
+})
 
-export const CompositionLogic = Logic.make<
-  CompositionShape,
+// ---------------------------------------------------------------------------
+// Logic：一次操作串联两个 Pattern（Bulk + Import）（通过 Module.logic 注入 $）
+// ---------------------------------------------------------------------------
+
+export const CompositionLogic = CompositionModule.logic<
   SelectionService | BulkOperationService | NotificationService | FileUploadService | ImportService
->(
+>(($: Logic.BoundApi<CompositionShape, SelectionService | BulkOperationService | NotificationService | FileUploadService | ImportService>) =>
   Effect.gen(function* () {
-    const run$ = $.flow.fromAction((a): a is { _tag: 'combo/run' } => a._tag === 'combo/run')
-    const reset$ = $.flow.fromAction((a): a is { _tag: 'combo/reset' } => a._tag === 'combo/reset')
-
     const handleRun = Effect.gen(function* () {
       // 标记为 running
-      yield* $.state.update((prev) => ({
+      yield* $.state.update((prev: CompositionState) => ({
         ...prev,
         status: 'running',
       }))
@@ -74,7 +74,7 @@ export const CompositionLogic = Logic.make<
       })
 
       // 更新组合场景的 State
-      yield* $.state.update((prev) => ({
+      yield* $.state.update((prev: CompositionState) => ({
         ...prev,
         lastBulkCount: bulkCount,
         lastImportTaskId: taskId,
@@ -82,34 +82,27 @@ export const CompositionLogic = Logic.make<
       }))
     })
 
-    const handleReset = $.state.update((prev) => ({
+    const handleReset = $.state.update((prev: CompositionState) => ({
       ...prev,
       lastBulkCount: 0,
       lastImportTaskId: undefined,
       status: 'idle',
     }))
 
-    yield* Effect.all([
-      run$.pipe($.flow.run(handleRun)),
-      reset$.pipe($.flow.run(handleReset)),
-    ])
+    yield* $.onAction('combo/run').runExhaust(handleRun)
+    yield* $.onAction('combo/reset').run(handleReset)
   }),
 )
 
 // ---------------------------------------------------------------------------
-// Store：组合 State / Action / Logic
+// Live：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-const CompositionStateLayer = Store.State.make(CompositionStateSchema, {
-  lastBulkCount: 0,
-  lastImportTaskId: undefined,
-  status: 'idle',
-})
-
-const CompositionActionLayer = Store.Actions.make(CompositionActionSchema)
-
-export const CompositionStore = Store.make<CompositionShape>(
-  CompositionStateLayer,
-  CompositionActionLayer,
+export const CompositionLive = CompositionModule.live(
+  {
+    lastBulkCount: 0,
+    lastImportTaskId: undefined,
+    status: 'idle',
+  },
   CompositionLogic,
 )

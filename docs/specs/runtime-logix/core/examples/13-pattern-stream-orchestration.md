@@ -28,7 +28,7 @@ const EditorActionSchema = Schema.Union(
   Schema.Struct({ _tag: Schema.Literal('manualSave') })
 );
 
-type EditorShape = Store.Shape<typeof EditorStateSchema, typeof EditorActionSchema>;
+type EditorShape = Logix.ModuleShape<typeof EditorStateSchema, typeof EditorActionSchema>;
 ```
 
 ### 2.2 Logic Implementation
@@ -36,10 +36,10 @@ type EditorShape = Store.Shape<typeof EditorStateSchema, typeof EditorActionSche
 ```typescript
 const $Editor = Logic.forShape<EditorShape, EditorApi>();
 
-const saveLogic = Logic.make<EditorShape, EditorApi>(
+const saveLogic: Logic.Of<EditorShape, EditorApi> =
   Effect.gen(function* (_) {
     // 1. 定义统一的保存 Effect
-    const saveEffect = (type: 'auto' | 'manual') => 
+    const saveEffect = (type: 'auto' | 'manual') =>
       Effect.gen(function* (_) {
         const api = yield* $Editor.services(EditorApi);
         const { content } = yield* $Editor.state.read;
@@ -52,7 +52,7 @@ const saveLogic = Logic.make<EditorShape, EditorApi>(
 
         if (result._tag === 'Left') {
           if (type === 'manual') {
-            yield* $Editor.state.mutate(draft => { 
+            yield* $Editor.state.mutate(draft => {
               draft.isSaving = false;
               // draft.error = ...
             });

@@ -5,14 +5,14 @@
  *   - 用户在列表页点击“批量归档”；
  *   - 系统检查是否有选中项；
  *   - 弹出确认交互（Confirm Pattern）；
- *   - 调用批量归档 Service（Domain Service）；
+ *   - 调用批量归档 Service（Module Service）；
  *   - 根据结果发送通知（Notification Pattern）并触发列表刷新 Action。
  *
  *   该场景对应文档中的 L0–L3 资产链路示例，用作 IntentRule ↔ Code 的金标样板。
  */
 
 import { Context, Effect, Schema, Data } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Logix, Logic } from '../shared/logix-v3-core'
 import {
   ConfirmServiceTag,
   type ConfirmService,
@@ -25,7 +25,7 @@ import {
 } from '../patterns/notification'
 
 // ---------------------------------------------------------------------------
-// Domain Service 契约：ArchiveService（Tag-only）
+// Module Service 契约：ArchiveService（Tag-only）
 // ---------------------------------------------------------------------------
 
 export interface ArchiveService {
@@ -50,52 +50,51 @@ const BatchArchiveStateSchema = Schema.Struct({
   isArchiving: Schema.Boolean,
 })
 
-const BatchArchiveActionSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('batch/archive') }),
-  Schema.Struct({ _tag: Schema.Literal('list/refresh') }),
-)
+const BatchArchiveActionMap = {
+  'batch/archive': Schema.Void,
+  'list/refresh': Schema.Void,
+}
 
-export type BatchArchiveShape = Store.Shape<typeof BatchArchiveStateSchema, typeof BatchArchiveActionSchema>
-export type BatchArchiveState = Store.StateOf<BatchArchiveShape>
-export type BatchArchiveAction = Store.ActionOf<BatchArchiveShape>
+export type BatchArchiveShape = Logix.Shape<typeof BatchArchiveStateSchema, typeof BatchArchiveActionMap>
+export type BatchArchiveState = Logix.StateOf<BatchArchiveShape>
+export type BatchArchiveAction = Logix.ActionOf<BatchArchiveShape>
 
 // ---------------------------------------------------------------------------
-// Logic：监听 batch/archive，组合 Guard + Confirm + Service + Notify
+// Module：定义批量归档模块
 // ---------------------------------------------------------------------------
 
-const $ = Logic.forShape<
-  BatchArchiveShape,
-  ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag
->()
+export const BatchArchiveModule = Logix.Module('BatchArchiveModule', {
+  state: BatchArchiveStateSchema,
+  actions: BatchArchiveActionMap,
+})
 
-export const BatchArchiveLogic = Logic.make<
-  BatchArchiveShape,
+// ---------------------------------------------------------------------------
+// Logic：监听 batch/archive，组合 Guard + Confirm + Service + Notify（通过 Module.logic 注入 $）
+// ---------------------------------------------------------------------------
+
+export const BatchArchiveLogic = BatchArchiveModule.logic<
   ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag
->(
+>(($: Logic.BoundApi<BatchArchiveShape, ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag>) =>
   Effect.gen(function* () {
-    const archive$ = $.flow.fromAction((a): a is { _tag: 'batch/archive' } => a._tag === 'batch/archive')
-
     const handleArchive = Effect.gen(function* () {
       const s = yield* $.state.read
       const ids = s.selectedIds
-      const archiveSvc = yield* $.services(ArchiveServiceTag)
+      const archiveSvc = yield* $.use(ArchiveServiceTag)
 
       // Guard：没有选中项则直接返回
       if (ids.length === 0) {
-        const notify = yield* $.services(NotificationServiceTag)
+        const notify = yield* $.use(NotificationServiceTag)
         yield* notify.info('请选择至少一条记录再执行批量归档')
         return
       }
 
-      const notify = yield* $.services(NotificationServiceTag)
-
       // 使用 Confirm Pattern 包裹核心业务 Effect
       const archiveEffect = Effect.gen(function* () {
-        yield* $.state.update((prev) => ({ ...prev, isArchiving: true }))
+        yield* $.state.update((prev: BatchArchiveState) => ({ ...prev, isArchiving: true }))
 
         const result = yield* Effect.either(archiveSvc.archiveMany(ids))
 
-        yield* $.state.update((prev) => ({ ...prev, isArchiving: false }))
+        yield* $.state.update((prev: BatchArchiveState) => ({ ...prev, isArchiving: false }))
 
         if (result._tag === 'Right') {
           yield* runNotifyOnResultPattern({
@@ -103,8 +102,8 @@ export const BatchArchiveLogic = Logic.make<
             message: `归档成功：${ids.length} 条记录`,
           })
           // 触发列表刷新 Action
-          // 这里直接通过 Bound API dispatch Action
-          yield* $.actions.dispatch({ _tag: 'list/refresh' } as BatchArchiveAction)
+          // 使用新的智能 Dispatcher API
+          yield* $.actions['list/refresh']()
         } else {
           yield* runNotifyOnResultPattern({
             kind: 'failure',
@@ -119,23 +118,18 @@ export const BatchArchiveLogic = Logic.make<
       })
     })
 
-    yield* archive$.pipe($.flow.runExhaust(handleArchive))
+    yield* $.onAction('batch/archive').runExhaust(handleArchive)
   }),
 )
 
 // ---------------------------------------------------------------------------
-// Store：组合 State / Action / Logic，并提供一个 PoC 级运行入口
+// Live：组合 State / Action / Logic，并提供一个 PoC 级运行入口
 // ---------------------------------------------------------------------------
 
-const BatchArchiveStateLayer = Store.State.make(BatchArchiveStateSchema, {
-  selectedIds: ['id-1', 'id-2'],
-  isArchiving: false,
-})
-
-const BatchArchiveActionLayer = Store.Actions.make(BatchArchiveActionSchema)
-
-export const BatchArchiveStore = Store.make<BatchArchiveShape>(
-  BatchArchiveStateLayer,
-  BatchArchiveActionLayer,
+export const BatchArchiveLive = BatchArchiveModule.live(
+  {
+    selectedIds: ['id-1', 'id-2'],
+    isArchiving: false,
+  },
   BatchArchiveLogic,
 )

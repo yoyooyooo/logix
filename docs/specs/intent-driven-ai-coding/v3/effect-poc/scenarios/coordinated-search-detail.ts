@@ -1,6 +1,14 @@
 /**
  * @scenario 搜索与详情分离 (Coordinated Search & Detail)
- * @description 演示两个独立的 Store（SearchStore 和 DetailStore）如何通过一个上层的“协调逻辑”进行通信。
+ * @description
+ *   演示两个独立的 Store（SearchStore 和 DetailStore）如何通过一个上层的“协调逻辑”进行通信。
+ *   当前示例使用 Fluent DSL（`$.use + $.onAction(...).then(...)`）表达跨 Store 协作，
+ *   主要用于说明平台 IR / Parser 与代码之间的映射关系。
+ *
+ *   在 v3 最终形态下，业务代码更推荐使用 Fluent DSL：
+ *     - 通过 `$.use(Search)` / `$.use(Detail)` 获取 Store 句柄；
+ *     - 使用 `$.on($Search.changes(...)).then($Detail.dispatch(...))` 编排跨 Store 联动；
+ *   本文件保留作为跨 Store Fluent Intent 的 IR 级示例，而非推荐业务写法。
  * @requirement
  *   1. SearchStore: 位于全局 Layout，负责根据用户点击按钮触发搜索，并存储结果列表。
  *   2. DetailStore: 位于某个业务模块，负责展示单个选中项的详情。
@@ -9,7 +17,7 @@
  */
 
 import { Effect, Schema, Context, Stream } from 'effect'
-import { Store, Logic, Intent } from '../shared/logix-v3-core'
+import { Logix, Logic } from '../shared/logix-v3-core'
 
 // ---------------------------------------------------------------------------
 // 模块一：全局搜索 (Search Module)
@@ -20,9 +28,12 @@ interface SearchResult {
   id: string
   name: string
 }
-class SearchApi extends Context.Tag('SearchApi')<SearchApi, {
-  readonly search: (keyword: string) => Effect.Effect<SearchResult[], Error>
-}>() {}
+class SearchApi extends Context.Tag('SearchApi')<
+  SearchApi,
+  {
+    readonly search: (keyword: string) => Effect.Effect<SearchResult[], Error>
+  }
+>() {}
 
 // 1.2. Schema 定义
 const SearchStateSchema = Schema.Struct({
@@ -31,22 +42,23 @@ const SearchStateSchema = Schema.Struct({
   isSearching: Schema.Boolean,
 })
 
-const SearchActionSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('search/trigger') })
-)
+const SearchActionMap = {
+  'search/trigger': Schema.Void,
+}
 
 // 1.3. Store Shape
-type SearchShape = Store.Shape<typeof SearchStateSchema, typeof SearchActionSchema>
+type SearchShape = Logix.Shape<typeof SearchStateSchema, typeof SearchActionMap>
 
-// 1.4. 搜索逻辑 (只关心自身)
-const $Search = Logic.forShape<SearchShape, SearchApi>()
+// 1.4. 搜索模块 Module + Logic (只关心自身)
+export const SearchModule = Logix.Module('SearchModule', {
+  state: SearchStateSchema,
+  actions: SearchActionMap,
+})
 
-const SearchLogic = Logic.make<SearchShape, SearchApi>(
+const SearchLogic = SearchModule.logic<SearchApi>(($Search) =>
   Effect.gen(function* () {
-    const search$ = $Search.flow.fromAction((a): a is { _tag: 'search/trigger' } => a._tag === 'search/trigger')
-
     const searchEffect = Effect.gen(function* (_) {
-      const api = yield* $Search.services(SearchApi)
+      const api = yield* $Search.use(SearchApi)
       const { keyword } = yield* $Search.state.read
 
       yield* $Search.state.update((prev) => ({ ...prev, isSearching: true }))
@@ -63,7 +75,7 @@ const SearchLogic = Logic.make<SearchShape, SearchApi>(
       }
     })
 
-    yield* search$.pipe($Search.flow.runExhaust(searchEffect))
+    yield* $Search.onAction('search/trigger').runExhaust(searchEffect)
   }),
 )
 
@@ -73,44 +85,40 @@ const SearchLogic = Logic.make<SearchShape, SearchApi>(
 
 // 2.1. Schema 定义
 const DetailStateSchema = Schema.Struct({
-  selectedItem: Schema.optional(Schema.Struct({ 
-    id: Schema.String, 
-    name: Schema.String,
-    // 假设详情有更多字段
-    description: Schema.optional(Schema.String),
-  })),
+  selectedItem: Schema.optional(
+    Schema.Struct({
+      id: Schema.String,
+      name: Schema.String,
+      // 假设详情有更多字段
+      description: Schema.optional(Schema.String),
+    }),
+  ),
   isLoading: Schema.Boolean,
 })
 
-const DetailActionSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('detail/initialize'), payload: Schema.Struct({ id: Schema.String, name: Schema.String }) })
-)
+const DetailActionMap = {
+  'detail/initialize': Schema.Struct({ id: Schema.String, name: Schema.String }),
+}
 
 // 2.2. Store Shape
-type DetailShape = Store.Shape<typeof DetailStateSchema, typeof DetailActionSchema>
+type DetailShape = Logix.Shape<typeof DetailStateSchema, typeof DetailActionMap>
 
-// 2.3. 详情逻辑 (只关心自身)
-const $Detail = Logic.forShape<DetailShape>()
+// 2.3. 详情模块 Module + Logic (只关心自身)
+export const DetailModule = Logix.Module('DetailModule', {
+  state: DetailStateSchema,
+  actions: DetailActionMap,
+})
 
-const DetailLogic = Logic.make<DetailShape>(
+const DetailLogic = DetailModule.logic(($Detail) =>
   Effect.gen(function* () {
-    const init$ = $Detail.flow.fromAction(
-      (a): a is {
-        _tag: 'detail/initialize'
-        payload: { id: string; name: string }
-      } => a._tag === 'detail/initialize',
-    )
-
     // 监听到初始化动作，就更新自己的状态
-    yield* init$.pipe(
-      Stream.runForEach((action) =>
-        $Detail.state.update((prev) => ({
-          ...prev,
-          selectedItem: {
-            ...action.payload,
-          },
-        })),
-      ),
+    yield* $Detail.onAction('detail/initialize').run((action) =>
+      $Detail.state.update((prev) => ({
+        ...prev,
+        selectedItem: {
+          ...action.payload,
+        },
+      })),
     )
   }),
 )
@@ -119,64 +127,66 @@ const DetailLogic = Logic.make<DetailShape>(
 // 模块三：应用层协调逻辑 (Coordinator Logic)
 // ---------------------------------------------------------------------------
 
-// 3.1. 定义协调逻辑所需的环境：两个 Store 的运行时实例
-class SearchStoreTag extends Context.Tag('SearchStore')<SearchStoreTag, Store.Runtime<Store.StateOf<SearchShape>, Store.ActionOf<SearchShape>>>() {}
-class DetailStoreTag extends Context.Tag('DetailStore')<DetailStoreTag, Store.Runtime<Store.StateOf<DetailShape>, Store.ActionOf<DetailShape>>>() {}
-
-// 3.2. 协调逻辑：监听 SearchStore，操作 DetailStore
+// 3.1. 协调逻辑：监听 SearchModule，操作 DetailModule（Fluent DSL 写法）
 //
-// 这里演示两种等价写法：
-// - 写法一（推荐）：使用 Intent.Coordinate 作为跨 Store 协作的语义原语；
-// - 写法二：直接手写 Effect.gen + Tag 取 Runtime（见上一个版本）。
-//
-// 为了保持示例简洁，这里采用 Intent.Coordinate 的对象参数形式。
+// 这里使用上层 Logic + $.use + $.onAction 组合表达跨 Module 协作：
+// - 通过 $.use(SearchModule) / $.use(DetailModule) 获取只读句柄；
+// - 监听 $Search.changes(results)；
+// - 在 then 中向 DetailStore 派发初始化 Action。
 
-const CoordinatorLogic = Intent.Coordinate.onChangesDispatch<SearchShape, DetailShape>(
-  (s) => s.results,
-  (results) =>
-    results.length === 0
-      ? []
-      : [
-          {
-            _tag: 'detail/initialize' as const,
-            payload: {
-              id: results[0]!.id,
-              name: results[0]!.name,
-            },
+const CoordinatorStateSchema = Schema.Struct({})
+const CoordinatorActionMap = {
+  noop: Schema.Void,
+}
+type CoordinatorShape = Logix.Shape<typeof CoordinatorStateSchema, typeof CoordinatorActionMap>
+
+export const CoordinatorModule = Logix.Module('SearchDetailCoordinator', {
+  state: CoordinatorStateSchema,
+  actions: CoordinatorActionMap,
+})
+
+export const CoordinatorLogic = CoordinatorModule.logic(($) =>
+  Effect.gen(function* () {
+    const $SearchHandle = yield* $.use(SearchModule)
+    const $DetailHandle = yield* $.use(DetailModule)
+
+    yield* $.on($SearchHandle.changes((s) => s.results))
+      .filter((results: readonly { id: string; name: string }[]) => results.length > 0)
+      .run((results: readonly { id: string; name: string }[]) =>
+        $DetailHandle.dispatch({
+          _tag: 'detail/initialize',
+          payload: {
+            id: results[0]!.id,
+            name: results[0]!.name,
           },
-        ] as const,
+        }),
+      )
+  }),
 )
 
 // ---------------------------------------------------------------------------
-// Store 组装：导出可供 UI / Runtime 使用的两个 Store 和协调程序
+// 组装：导出可供 UI / Runtime 使用的两个 Module Live 和协调程序
 // ---------------------------------------------------------------------------
 
-const SearchStateLayer = Store.State.make(SearchStateSchema, {
-  keyword: '',
-  results: [],
-  isSearching: false,
-})
-
-const SearchActionLayer = Store.Actions.make(SearchActionSchema)
-
-export const SearchStore = Store.make<SearchShape>(
-  SearchStateLayer,
-  SearchActionLayer,
+export const SearchLive = SearchModule.live(
+  {
+    keyword: '',
+    results: [],
+    isSearching: false,
+  },
   SearchLogic,
 )
 
-const DetailStateLayer = Store.State.make(DetailStateSchema, {
-  selectedItem: undefined,
-  isLoading: false,
-})
-
-const DetailActionLayer = Store.Actions.make(DetailActionSchema)
-
-export const DetailStore = Store.make<DetailShape>(
-  DetailStateLayer,
-  DetailActionLayer,
+export const DetailLive = DetailModule.live<unknown>(
+  {
+    selectedItem: undefined,
+    isLoading: false,
+  },
   DetailLogic,
 )
 
-// 协调器程序：需要在上层 Runtime 中提供同时包含 SearchStore / DetailStore 的 Env 后运行
-export const SearchDetailCoordinator = CoordinatorLogic
+// 协调器：需要在上层 Runtime 中提供同时包含 SearchLive / DetailLive 的 Env 后运行
+export const CoordinatorLive = CoordinatorModule.live<unknown>(
+  {},
+  CoordinatorLogic,
+)

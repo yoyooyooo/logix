@@ -7,7 +7,7 @@
  */
 
 import { Duration, Effect, Schema, SubscriptionRef } from 'effect'
-import { Store } from '../shared/logix-v3-core'
+import { Logix, Logic } from '../shared/logix-v3-core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：长任务场景的 State / Action
@@ -18,14 +18,14 @@ export const LongTaskStateSchema = Schema.Struct({
   progress: Schema.Number,
 })
 
-export const LongTaskActionSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('start') }),
-  Schema.Struct({ _tag: Schema.Literal('reset') }),
-)
+export const LongTaskActionMap = {
+  start: Schema.Void,
+  reset: Schema.Void,
+}
 
-export type LongTaskShape = Store.Shape<typeof LongTaskStateSchema, typeof LongTaskActionSchema>
-export type LongTaskState = Store.StateOf<LongTaskShape>
-export type LongTaskAction = Store.ActionOf<LongTaskShape>
+export type LongTaskShape = Logix.Shape<typeof LongTaskStateSchema, typeof LongTaskActionMap>
+export type LongTaskState = Logix.StateOf<LongTaskShape>
+export type LongTaskAction = Logix.ActionOf<LongTaskShape>
 
 // ---------------------------------------------------------------------------
 // 长逻辑封装：启动一个持续更新进度的后台任务

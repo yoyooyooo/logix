@@ -1,14 +1,14 @@
 # POC: 智能防抖搜索 (Smart Debounced Search)
 
-> **Scenario**: CRM 系统中的客户搜索功能。  
-> **Goal**: 验证架构下 "AI Copilot -> Pattern -> Hybrid Coding" 的全链路工作流。  
-> **Status**: PoC。  
-> **Note**: 本 PoC 已更新为 v3 Effect-Native 标准范式，展示了如何使用 `Logic.make` 和 `flow` API 结合 `Effect.Service` 来实现一个包含防抖、竞态处理和状态管理的复杂搜索功能。
+> **Scenario**: CRM 系统中的客户搜索功能。
+> **Goal**: 验证架构下 "AI Copilot -> Pattern -> Hybrid Coding" 的全链路工作流。
+> **Status**: PoC。
+> **Note**: 本 PoC 已更新为 v3 Effect-Native 标准范式，展示了如何使用 Bound API (`$`) 和 `flow` API 结合 `Effect.Service` 来实现一个包含防抖、竞态处理和状态管理的复杂搜索功能。
 
 ## 1. 场景描述 (The Context)
 
 *   **UI**: 包含 `SearchInput` (输入框) 和 `CustomerTable` (表格)。
-*   **Requirement**: 
+*   **Requirement**:
     1. 监听输入框变化。
     2. 防抖 500ms。
     3. 调用 `CustomerService.search`。
@@ -38,7 +38,7 @@ const SearchStateSchema = Schema.Struct({
 
 const SearchActionSchema = Schema.Never;
 
-type SearchShape = Store.Shape<typeof SearchStateSchema, typeof SearchActionSchema>;
+type SearchShape = Logix.ModuleShape<typeof SearchStateSchema, typeof SearchActionSchema>;
 ```
 
 ## 3. 开发者实战 (Developer View)
@@ -53,7 +53,7 @@ AI 推荐并配置了 `DebouncedSearch` Pattern，生成如下代码：
 
 
 // 2. Logic 实现
-export const SearchLogic = Logic.make<SearchShape, CustomerApi>(({ flow, state }) => 
+export const SearchLogic: Logic.Of<SearchShape, CustomerApi> = Effect.gen(function* () {
   Effect.gen(function*(_) {
     const keyword$ = flow.fromChanges(s => s.keyword);
 
@@ -96,8 +96,8 @@ export const SearchLogic = Logic.make<SearchShape, CustomerApi>(({ flow, state }
 ```typescript
 // 3. 混合编码 (Hybrid Coding)
 // 需求变更：增加一个复杂的埋点逻辑
-export const SearchLogicWithAnalytics = Logic.make<SearchShape, CustomerApi | AnalyticsApi>(
-  ({ flow, state }) => 
+export const SearchLogicWithAnalytics: Logic.Of<SearchShape, CustomerApi | AnalyticsApi> = Effect.gen(function* () {
+  ({ flow, state }) =>
     Effect.gen(function*(_) {
       const keyword$ = flow.fromChanges(s => s.keyword);
 

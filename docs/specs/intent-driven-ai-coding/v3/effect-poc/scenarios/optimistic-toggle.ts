@@ -8,11 +8,11 @@
  *   - 调用后端 `ToggleService.toggle`，成功则更新 `lastSynced`；失败则回滚 `enabled` 并记录错误信息。
  */
 
-import { Effect } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Effect, Schema } from 'effect'
+import { Logix } from '../shared/logix-v3-core'
 import {
   ToggleStateSchema,
-  ToggleActionSchema,
+  ToggleActionMap,
   type ToggleShape,
   type ToggleState,
   type ToggleAction,
@@ -21,18 +21,28 @@ import {
 } from '../patterns/optimistic-toggle'
 
 // ---------------------------------------------------------------------------
-// Logic：监听 Action，触发乐观更新与服务调用（未抽离 Pattern 版）
+// Module：使用 Logix.Module 定义 FeatureToggleModule 模块
 // ---------------------------------------------------------------------------
 
-const $ = Logic.forShape<ToggleShape, ToggleService>()
 
-export const ToggleLogic = Logic.make<ToggleShape, ToggleService>(
+
+// ---------------------------------------------------------------------------
+// Module：使用 Logix.Module 定义 FeatureToggleModule 模块
+// ---------------------------------------------------------------------------
+
+export const FeatureToggleModule = Logix.Module('FeatureToggleModule', {
+  state: ToggleStateSchema,
+  actions: ToggleActionMap,
+})
+
+
+
+// ---------------------------------------------------------------------------
+// Logic：监听 Action，触发乐观更新与服务调用（未抽离 Pattern 版），通过 Module.logic 注入 $
+// ---------------------------------------------------------------------------
+
+export const FeatureToggleLogic = FeatureToggleModule.logic<ToggleService>(($) =>
   Effect.gen(function* () {
-    const click$ = $.flow.fromAction((a): a is { _tag: 'toggle/click' } => a._tag === 'toggle/click')
-    const resetError$ = $.flow.fromAction(
-      (a): a is { _tag: 'toggle/resetError' } => a._tag === 'toggle/resetError',
-    )
-
     const handleClick = Effect.gen(function* () {
       const current = yield* $.state.read
       const previousValue = current.enabled
@@ -47,18 +57,20 @@ export const ToggleLogic = Logic.make<ToggleShape, ToggleService>(
       }))
 
       // 2. 调用服务，并显式处理错误；错误时回滚 enabled
-      const svc = yield* $.services(ToggleService)
+      const svc = yield* $.use(ToggleService)
 
-      yield* $.control.tryCatch({
-        try: svc.toggle({ id: current.id, nextValue }),
-        catch: (err: ToggleServiceError) =>
-          $.state.update((prev) => ({
-            ...prev,
-            enabled: previousValue,
-            isSaving: false,
-            errorMessage: err.reason,
-          })),
-      })
+      yield* svc
+        .toggle({ id: current.id, nextValue })
+        .pipe(
+          Effect.catchTag('ToggleServiceError', (err: ToggleServiceError) =>
+            $.state.update((prev) => ({
+              ...prev,
+              enabled: previousValue,
+              isSaving: false,
+              errorMessage: err.reason,
+            })),
+          ),
+        )
 
       // 3. 若仍处于 saving，说明没有错误，结束 saving 并更新 lastSynced
       const latest = yield* $.state.read
@@ -76,25 +88,22 @@ export const ToggleLogic = Logic.make<ToggleShape, ToggleService>(
       errorMessage: undefined,
     }))
 
-    yield* Effect.all([
-      click$.pipe($.flow.runExhaust(handleClick)),
-      resetError$.pipe($.flow.run(handleResetError)),
-    ])
+    yield* $.onAction('toggle/click').runExhaust(handleClick)
+    yield* $.onAction('toggle/resetError').run(handleResetError)
   }),
 )
 
 // ---------------------------------------------------------------------------
-// Store：组合 State / Action / Logic
+// Live：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-const ToggleStateLayer = Store.State.make(ToggleStateSchema, {
-  id: 'toggle-1',
-  enabled: false,
-  lastSynced: false,
-  isSaving: false,
-  errorMessage: undefined,
-})
-
-const ToggleActionLayer = Store.Actions.make(ToggleActionSchema)
-
-export const ToggleStore = Store.make<ToggleShape>(ToggleStateLayer, ToggleActionLayer, ToggleLogic)
+export const ToggleLive = FeatureToggleModule.live(
+  {
+    id: 'toggle-1',
+    enabled: false,
+    lastSynced: false,
+    isSaving: false,
+    errorMessage: undefined,
+  },
+  FeatureToggleLogic,
+)

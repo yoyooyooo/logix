@@ -19,7 +19,7 @@ const StockStateSchema = Schema.Struct({
 
 const StockActionSchema = Schema.Never;
 
-type StockShape = Store.Shape<typeof StockStateSchema, typeof StockActionSchema>;
+type StockShape = Logix.ModuleShape<typeof StockStateSchema, typeof StockActionSchema>;
 ```
 
 ## 2. Service Definition (The v3 Way)
@@ -54,7 +54,7 @@ const WebSocketServiceLive = Layer.succeed(
 
 const $Stock = Logic.forShape<StockShape, WebSocketService>();
 
-export const StockLogic = Logic.make<StockShape, WebSocketService>(
+export const StockLogic: Logic.Of<StockShape, WebSocketService> =
   Effect.gen(function* (_) {
     const ws = yield* $Stock.services(WebSocketService);
 
@@ -78,26 +78,26 @@ export const StockLogic = Logic.make<StockShape, WebSocketService>(
 );
 ```
 
-## 4. Store Instantiation
+## 4. Module / Live Instantiation
 
-在创建 `Store` 时，需要将 `Logic` 所依赖的 `Layer` 提供给 `Effect.run`。
+在创建领域 Module 时，需要将 `Logic` 所依赖的 `Layer` 提供给运行时。
 
 ```typescript
-// a-stock.store.ts
+// a-stock.module.ts
 
-const StockStateLayer = Store.State.make(StockStateSchema, { ...initialValues });
-const StockActionLayer = Store.Actions.make(StockActionSchema);
+export const StockModule = Logix.Module('Stock', {
+  state: StockStateSchema,
+  actions: StockActionSchema,
+});
 
-export const StockStore = Store.make<StockShape>(
-  StockStateLayer,
-  StockActionLayer,
-  StockLogic
+export const StockLive = StockModule.live(
+  { ...initialValues },
+  StockLogic,
 );
 
-// 在应用入口处，为 Store 的运行提供所有依赖的 Layer
+// 在应用入口处，为运行时提供所有依赖的 Layer
 const AppLayer = Layer.merge(WebSocketServiceLive, ...otherLayers);
-
-Effect.runFork(StockStore.run.pipe(Effect.provide(AppLayer)));
+// 实际运行方式可参考 runtime 实现文档（例如通过 ManagedRuntime 将 StockLive 与 AppLayer 组合后运行）
 ```
 
 ## 5. Design Rationale

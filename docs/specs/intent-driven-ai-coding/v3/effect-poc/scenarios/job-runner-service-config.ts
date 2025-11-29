@@ -1,5 +1,5 @@
 import { Config, Data, Duration, Effect, Schema } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Logix, Logic } from '../shared/logix-v3-core'
 
 // ---------------------------------------------------------------------------
 // 1. Schema → Shape：Job 场景的 State / Action
@@ -11,14 +11,14 @@ const JobStateSchema = Schema.Struct({
   errorMessage: Schema.optional(Schema.String),
 })
 
-const JobActionSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('run') }),
-  Schema.Struct({ _tag: Schema.Literal('reset') }),
-)
+const JobActionMap = {
+  run: Schema.Void,
+  reset: Schema.Void,
+}
 
-export type JobShape = Store.Shape<typeof JobStateSchema, typeof JobActionSchema>
-export type JobState = Store.StateOf<JobShape>
-export type JobAction = Store.ActionOf<JobShape>
+export type JobShape = Logix.Shape<typeof JobStateSchema, typeof JobActionMap>
+export type JobState = Logix.StateOf<JobShape>
+export type JobAction = Logix.ActionOf<JobShape>
 
 // ---------------------------------------------------------------------------
 // 2. 错误建模：Tagged Error（对齐 EffectPatterns 推荐）
@@ -38,7 +38,7 @@ export class JobRunner extends Effect.Service<JobRunner>()('JobRunner', {
     // 从 Config 中读取超时时间，带默认值
     const timeoutMs = yield* Config.number('JOB_TIMEOUT_MS').pipe(Config.withDefault(1000))
 
-    const runJob = (input: { id: string }) =>
+    const runJob = (input: { id: string }): Effect.Effect<void, JobFailedError> =>
       Effect.gen(function* (_) {
         // 简单示意：id 为 "fail" 时触发领域错误
         if (input.id === 'fail') {
@@ -61,18 +61,21 @@ export class JobRunner extends Effect.Service<JobRunner>()('JobRunner', {
 }) {}
 
 // ---------------------------------------------------------------------------
-// 4. Logic：通过 Flow 调用 Service，显式处理 E 通道
+// 4. Module：定义 Job 模块
 // ---------------------------------------------------------------------------
 
-const $ = Logic.forShape<JobShape, JobRunner>()
+export const JobModule = Logix.Module('JobModule', {
+  state: JobStateSchema,
+  actions: JobActionMap,
+})
 
-export const JobLogic = Logic.make<JobShape, JobRunner>(
+// 5. Logic：通过 Flow 调用 Service，显式处理 E 通道（通过 Module.logic 注入 $）
+// ---------------------------------------------------------------------------
+
+export const JobLogic = JobModule.logic<JobRunner>(($: Logic.BoundApi<JobShape, JobRunner>) =>
   Effect.gen(function* () {
-    const run$ = $.flow.fromAction((a): a is { _tag: 'run' } => a._tag === 'run')
-    const reset$ = $.flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
-
     const runEffect = Effect.gen(function* () {
-      const runner = yield* $.services(JobRunner)
+      const runner = yield* $.use(JobRunner)
       const current = yield* $.state.read
       const jobId = current.jobId
 
@@ -85,8 +88,8 @@ export const JobLogic = Logic.make<JobShape, JobRunner>(
 
       // 调用 Service，显式处理 JobFailedError
       yield* runner.runJob({ id: jobId }).pipe(
-        Effect.catchTag('JobFailedError', (err) =>
-          $.state.update((prev) => ({
+        Effect.catchTag('JobFailedError', (err: JobFailedError) =>
+          $.state.update((prev: JobState) => ({
             ...prev,
             status: 'error',
             errorMessage: err.reason,
@@ -97,36 +100,33 @@ export const JobLogic = Logic.make<JobShape, JobRunner>(
       // 如果没有失败，则标记为 success
       const latest = yield* $.state.read
       if (latest.status === 'running') {
-        yield* $.state.update((prev) => ({
+        yield* $.state.update((prev: JobState) => ({
           ...prev,
           status: 'success',
         }))
       }
     })
 
-    const resetEffect = $.state.update((prev) => ({
+    const resetEffect = $.state.update((prev: JobState) => ({
       ...prev,
       status: 'idle',
       errorMessage: undefined,
     }))
 
-    yield* Effect.all([
-      run$.pipe($.flow.runExhaust(runEffect)),
-      reset$.pipe($.flow.run(resetEffect)),
-    ])
+    yield* $.onAction('run').runExhaust(runEffect)
+    yield* $.onAction('reset').run(resetEffect)
   }),
 )
 
 // ---------------------------------------------------------------------------
-// 5. Store：组合 State / Action / Logic
+// 6. Live：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-const JobStateLayer = Store.State.make(JobStateSchema, {
-  jobId: '',
-  status: 'idle',
-  errorMessage: undefined,
-})
-
-const JobActionLayer = Store.Actions.make(JobActionSchema)
-
-export const JobStore = Store.make<JobShape>(JobStateLayer, JobActionLayer, JobLogic)
+export const JobLive = JobModule.live(
+  {
+    jobId: '',
+    status: 'idle',
+    errorMessage: undefined,
+  },
+  JobLogic,
+)

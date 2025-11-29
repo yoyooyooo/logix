@@ -24,7 +24,7 @@
 *   **L2: Galaxy (编排视图) —— 核心层**
     *   **内容**: Pattern 实例 (积木块)、Logic Modules、State Atoms。
     *   **连线**: 信号流 (Signal Flow)。
-    *   **操作**: 
+    *   **操作**:
         *   **拖拽编排**: 调整积木顺序。
         *   **向导配置**: 点击积木，在右侧面板填写表单。
         *   **槽位识别**: 自动高亮可插入逻辑的 Trigger 端口。
@@ -59,7 +59,7 @@
 ### 4.1 界面分区
 *   **Code Editor (Left)**: 全功能的 Monaco Editor，支持 `definePattern` 的类型提示和补全。
 *   **Live Wizard (Center)**: 实时渲染当前 Config Schema 对应的表单。架构师修改 Schema，表单即时更新。
-*   **Simulation Console (Right)**: 
+*   **Simulation Console (Right)**:
     *   **Trace Log**: 展示服务调用 (`Effect.gen`) 与动作派发 (`dispatch`) 的执行轨迹。
     *   **State Tree**: 展示 `dsl.set` 导致的虚拟状态变化。
 
@@ -79,28 +79,28 @@ v3 的 UI 设计不再追求“全图形化编程”，而是致力于打造一�
 
 ### 6.1 业务积木 → IntentRule → Intent API
 
-平台 UI 不直接暴露 `Intent.andUpdate*` / `Intent.Coordinate` 等 TS API，而是通过业务化的“积木”表达意图，内部统一映射为 `IntentRule`，再由代码生成器产出标准的 Intent API 调用。
+平台 UI 不直接暴露任何 TS 级 API（包括历史上的 `Intent.andUpdate*` / `Intent.Coordinate`），而是通过业务化的“积木”表达意图，内部统一映射为 `IntentRule`，再由代码生成器产出标准的 Fluent 代码（`$.onState` / `$.onAction` / `$.on` + `$.state` / `dispatch` 等）。
 
 几个典型对照示例：
 
 | 画布上的业务构件 | IntentRule（概念上） | 生成的 TS Intent API |
 | --- | --- | --- |
-| 字段联动卡片：“当字段 A 变化时，清空字段 B” | `source: { context: self, type: state, selector: A }`；`pipeline: []`；`sink: { context: self, type: mutate }` | `Intent.andUpdateOnChanges(s => s.A, (val, prev) => ({ ...prev, B: '' }))` |
-| 模块联动连线：“Search 结果变化 → 初始化 Detail” | `source: { context: SearchStoreId, type: state, selector: results }`；`pipeline: []`；`sink: { context: DetailStoreId, type: dispatch }` | `Intent.Coordinate.onChangesDispatch<Search,Detail>(s => s.results, results => [{ _tag: 'detail/initialize', payload: results[0] }])` |
+| 字段联动卡片：“当字段 A 变化时，清空字段 B” | `source: { context: self, type: state, selector: A }`；`pipeline: []`；`sink: { context: self, type: mutate }` | `yield* $.onState(s => s.A).then($.state.update(prev => ({ ...prev, B: '' })))` |
+| 模块联动连线：“Search 结果变化 → 初始化 Detail” | `source: { context: SearchStoreId, type: state, selector: results }`；`pipeline: []`；`sink: { context: DetailStoreId, type: dispatch }` | `yield* $.on($Search.changes(s => s.results)).then(results => $Detail.dispatch({ _tag: 'detail/initialize', payload: results[0] }))` |
 | 审批流 Pattern：“点击提交 → 调用审批服务 → 更新状态” | 多条 `IntentRule`（Action 触发、Service 调用、状态更新）+ 一个 Pattern 资产 ID | `flow.fromAction(...).pipe(flow.run(runApprovalPattern(config)))` |
 
 从平台视角看：
 
-- 产品经理在画布上只需要选择合适的业务积木（字段联动卡片、模块连线、审批流 Pattern），并通过右侧表单配置参数；  
-- 这些操作由 UI 生成或更新一组 `IntentRule`；  
-- Codegen 层再将 `IntentRule` 转换为标准化的 TypeScript 调用（首选 `Intent.*`，其次是 Flow/Control 封装）。
+- 产品经理在画布上只需要选择合适的业务积木（字段联动卡片、模块连线、审批流 Pattern），并通过右侧表单配置参数；
+- 这些操作由 UI 生成或更新一组 `IntentRule`；
+- Codegen 层再将 `IntentRule` 转换为标准化的 Fluent TypeScript 调用（首选 `$.onState` / `$.onAction` / `$.on` + `$.state/dispatch` 组合，其次是 Flow/Control 封装）。
 
 ### 6.2 统一 IR，允许多种代码风格
 
 借助 `IntentRule` 这一 IR，平台可以做到：
 
-- **代码 → 图**：解析现有 TS 代码中的 `Intent.*` / Flow 组合，尽量还原为一组 `IntentRule`，在画布上展示为可编辑的规则节点；  
-- **图 → 代码**：当用户在画布上调整规则或配置参数时，仅修改 `IntentRule` 集合，再由 Generator 生成/更新 TS 代码；  
+- **代码 → 图**：解析现有 TS 代码中的 Fluent DSL / Flow 组合，尽量还原为一组 `IntentRule`，在画布上展示为可编辑的规则节点；
+- **图 → 代码**：当用户在画布上调整规则或配置参数时，仅修改 `IntentRule` 集合，再由 Generator 生成/更新 TS 代码；
 - **DSL 演进不锁死**：未来如需引入新的 Intent API（例如 `Intent.react`），只要能映射到同一套 `IntentRule`，画布与历史资产都不需要大改。
 
 这意味着：**PM 层的“意图语言”可以完全围绕业务构件 + 规则表单设计，而不需要直接面对 TypeScript API；而 Runtime/代码生成层则通过 `IntentRule` 与 Logix / Effect-Native API 精确对齐，避免语义漂移。**

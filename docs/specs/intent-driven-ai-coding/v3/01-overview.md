@@ -1,4 +1,4 @@
---- 
+---
 title: 01 · 意图驱动开发平台 (v3) (Intent-Driven Development Platform)
 status: draft
 version: 9 (Unified-API-Aligned)
@@ -12,7 +12,7 @@ version: 9 (Unified-API-Aligned)
 
 1.  **UI (Presentation)**：**躯壳**。界面结构与视觉表现。
 2.  **Logic (Behavior)**：**灵魂**。业务规则与流程编排。
-3.  **Domain (Data)**：**记忆**。业务概念与数据模型。
+3.  **Module (Data)**：**记忆**。业务概念与数据模型。
 
 ## 3. 技术基座 (The Tech Stack)
 
@@ -46,6 +46,26 @@ version: 9 (Unified-API-Aligned)
 *   **Canvas View**：架构编排（支持黑盒/白盒混合视图）。
 *   **Studio View**：代码生成与精修（支持 Monaco Editor 类型增强）。
 
+## 6. 一条黄金链路（Module → Logic → Fluent → IntentRule）
+
+在 v3 中，平台与 Runtime 围绕一条“黄金链路”协同：
+
+> **Module → Module.logic(($) => ...) → $.use(Module) → Fluent DSL (`$.onState` / `$.onAction` / `$.on`) → IntentRule**
+
+直观理解：
+
+- **Define**：用 `Logix.Module('Id', { state, actions })` 定义领域资产（Module Asset），同时承载 Id / Schema / Runtime Tag；
+- **Logic**：在 Module 上通过 `Module.logic(($)=>Effect.gen(...))` 编写 Logic，`$` 是 BoundContext（绑定当前 Module Runtime + 业务 Env 的统一入口）；
+- **Collaborate**：在其他 Logic 中通过 `$.use(Module)` 获取跨模块句柄；
+- **Fluent**：使用 `$.onState / $.onAction / $.on(stream)` + `$.state/dispatch` 表达规则；
+- **IntentRule**：平台解析 Fluent 链，将其还原为结构化的 IntentRule，用于 Universe/Galaxy 等视图。
+
+这条链路在以下文档中有详细说明：
+
+- Runtime 视角：`runtime-logix/core/03-logic-and-flow.md`（第 9 节）；
+- Intent & Asset 视角：`03-assets-and-schemas.md`、`03-module-assets.md`；
+- 解析 & 出码视角：`06-codegen-and-parser.md`、`runtime-logix/core/06-platform-integration.md`。
+
 ## 6. 文档索引
 
 *   `00-platform-manifesto.md`：平台宣言与资产共建策略。
@@ -60,31 +80,31 @@ version: 9 (Unified-API-Aligned)
 
 v3 规范仍在演进中，难免存在历史写法与新规划并存的情况。为避免歧义，出现冲突时应按以下优先级判断“谁说了算”：
 
-1. **平台与意图模型（概念层）**  
-   - 以本目录下的 v3 文档为最高优先级，特别是：  
-     - `00-platform-manifesto.md`：平台价值观与长期方向；  
-     - `02-intent-layers.md` / `03-assets-and-schemas.md`：三位一体模型与资产结构的定义；  
-     - `blueprint.md`：长期演进路线与终局形态。  
+1. **平台与意图模型（概念层）**
+   - 以本目录下的 v3 文档为最高优先级，特别是：
+     - `00-platform-manifesto.md`：平台价值观与长期方向；
+     - `02-intent-layers.md` / `03-assets-and-schemas.md`：三位一体模型与资产结构的定义；
+     - `blueprint.md`：长期演进路线与终局形态。
    - v1/v2 文档仅作为历史参考，不再作为事实源。
 
-2. **Runtime 与 Intent API（类型与行为层）**  
-   - 以 `runtime-logix/core/*.md` 中标记为 `Status: Definitive` 的文档为准，例如：  
-     - `02-store.md`：Store / Scope / 生命周期语义；  
-     - `03-logic-and-flow.md`：Logic / Flow / Intent L1/L2 API 形态；  
-     - `06-platform-integration.md`：IntentRule IR 及平台集成规范。  
+2. **Runtime 与 Intent API（类型与行为层）**
+   - 以 `runtime-logix/core/*.md` 中标记为 `Status: Definitive` 的文档为准，例如：
+     - `02-module-and-logic-api.md`：Module / Logic / Bound API `$` 与 Module-first 编程模型；
+     - `03-logic-and-flow.md`：Logic / Flow / Intent L1/L2 API 形态与 Fluent DSL；
+     - `06-platform-integration.md`：IntentRule IR 及平台集成规范。
    - 当文档与代码存在不一致时，以 `v3/effect-poc/shared/logix-v3-core.ts` 中的类型定义为最终裁决，并随后回写修正文档。
 
-3. **平台交互与资产体系（产品/UX 层）**  
-   - 以以下文档为平台侧 SSOT：  
-     - `06-platform-ui-and-interactions.md`：Universe/Galaxy/Studio 等视图与交互原则；  
-     - `platform/README.md`：平台 Intent & UX 规划、L0–L3 资产链路（业务需求 → 需求意图 → 开发意图 → 实现）的定义。  
+3. **平台交互与资产体系（产品/UX 层）**
+   - 以以下文档为平台侧 SSOT：
+     - `06-platform-ui-and-interactions.md`：Universe/Galaxy/Studio 等视图与交互原则；
+     - `platform/README.md`：平台 Intent & UX 规划、L0–L3 资产链路（业务需求 → 需求意图 → 开发意图 → 实现）的定义。
    - 若平台交互设计与 Runtime/API 细节有冲突，优先保证 v3 Intent 模型与 Runtime 语义一致，然后再调整交互方案。
 
-4. **实现细节与 PoC**  
-   - `v3/effect-poc` 下的代码示例（如 `shared/logix-v3-core.ts`、各 `scenarios/*.ts`）是当前实现的参考样例，但不等同于长期 API 设计承诺；  
+4. **实现细节与 PoC**
+   - `v3/effect-poc` 下的代码示例（如 `shared/logix-v3-core.ts`、各 `scenarios/*.ts`）是当前实现的参考样例，但不等同于长期 API 设计承诺；
    - 在演进过程中，PoC 可以先行试验新写法，再根据验证结果回写/调整上述规范文档。
 
-简言之，当遇到“多处不一致”的情况时，优先级排序为：  
+简言之，当遇到“多处不一致”的情况时，优先级排序为：
 
 > **平台宣言 & 意图模型 ≥ Runtime 规范 & 类型定义 ≥ 平台交互规范 ≥ PoC 实现细节。**
 

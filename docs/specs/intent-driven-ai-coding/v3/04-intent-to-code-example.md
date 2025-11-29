@@ -8,7 +8,7 @@ version: 11 (Effect-Native)
 
 ## 场景：点赞 (Toggle Like)
 
-### 1. Domain Intent (记忆)
+### 1. Module Intent (记忆)
 
 **Spec**: “文章实体包含点赞状态。需要一个点赞服务。”
 
@@ -29,19 +29,22 @@ export class ArticleServiceTag extends Context.Tag('ArticleService')<ArticleServ
 **Generated Code (React Component)**:
 ```tsx
 // src/ui/LikeButton.tsx
-import { useStore } from '@logix/react';
-import { ArticleStore } from '@/features/article/store';
+import { useModule, useDispatch } from '@logix/react';
+import { ArticleModule } from '@/features/article/store'; // Corrected path to ArticleModule
 
-// @intent-component: like-btn
-export const LikeButton = () => {
-  const { dispatch, useSelector } = useStore(ArticleStore);
-  const liked = useSelector(s => s.liked);
-  
+export const LikeButton = () => { // Kept component name as LikeButton for consistency with the example
+  // 1. 获取 Runtime (Stable)
+  const runtime = useModule(ArticleModule);
+  const dispatch = useDispatch(runtime);
+
+  // 2. 订阅状态
+  const liked = useModule(ArticleModule, s => s.liked); // Subscribing to 'liked' state
+
   return (
-    <IconButton 
-      icon="heart" 
-      active={liked} 
-      onClick={() => dispatch({ _tag: 'toggleLike' })} 
+    <IconButton
+      icon="heart"
+      active={liked}
+      onClick={() => dispatch({ _tag: 'toggleLike' })}
     />
   );
 };
@@ -52,44 +55,50 @@ export const LikeButton = () => {
 **Spec**: “点击后立即变色（乐观更新），然后调接口。失败则回滚并提示。”
 
 **Generated Code (Logix Program with Anchors)**:
-> 注意：代码采用了 State/Action Layer + Stream 的纯粹风格，Logic 本身是运行在其上的长生命周期 Effect 程序。
+> 注意：代码采用了 Module-first + Fluent Intent (`$.onAction().then(...)`) 的 Effect-Native 风格，Logic 本身是运行在其上的长生命周期 Effect 程序。
 
 ```typescript
 // src/features/article/store.ts
-import { Store, flow, Logic } from '@logix/core';
+import { Effect } from 'effect';
+import { Logix } from '@logix/core';
 import { ArticleServiceTag } from '@/domain/article/service';
 import { OptimisticToggle } from '@patterns/common';
 
-// 1. 定义 State Layer
-const StateLive = Store.State.make(ArticleSchema, { liked: false });
+// 1. 定义领域 Module（state/actions 形状）
+export const ArticleModule = Logix.Module('Article', {
+  state: ArticleStateSchema,
+  actions: ArticleActionSchema,
+});
 
-// 2. 定义 Action Layer
-const ActionLive = Store.Actions.make(ArticleActionSchema);
-
-// 3. 定义 Logic 程序
-const LogicLive = Logic.make(Effect.gen(function*(_) {
-  const store = yield* _(Store);
-
-  // @intent-rule: toggle-like { x: 100, y: 200 }
-  yield* Effect.all([
-    flow.from(store.action((a) => a._tag === 'toggleLike')).pipe(
+// 2. 定义 Logic 程序（基于 Fluent Intent + Pattern）
+export const ArticleLogic = ArticleModule.logic(($) =>
+  Effect.gen(function* () {
+    // @intent-rule: toggle-like { x: 100, y: 200 }
+    yield* $.onAction(
+      (a): a is { _tag: 'toggleLike'; payload: { id: string } } => a._tag === 'toggleLike',
+    ).then(
       // 使用 Pattern 复用逻辑
-            flow.run(OptimisticToggle({
+      OptimisticToggle({
         statePath: 'liked',
-        action: (ctx) => Effect.gen(function*(_) {
-          const service = yield* _(ArticleServiceTag);
-          yield* service.toggleLike(ctx.payload.id);
-        })
-      }))
-    )
-  ], { concurrency: 'unbounded' });
-}));
+        action: (ctx) =>
+          Effect.gen(function* () {
+            const service = yield* $.use(ArticleServiceTag);
+            yield* service.toggleLike(ctx.payload.id);
+          }),
+      }),
+      { mode: 'exhaust' },
+    );
+  }),
+);
 
-// 4. 组装 Store (State/Action Layer + Logic 程序)
-export const ArticleStore = Store.make(
-  StateLive,
-  ActionLive,
-  LogicLive
+// 3. 组装 Module Live（基于领域定义 + Logic 程序）
+export const ArticleLive = ArticleModule.live(
+  {
+    status: 'idle',
+    title: '',
+    content: '',
+  },
+  ArticleLogic,
 );
 ```
 

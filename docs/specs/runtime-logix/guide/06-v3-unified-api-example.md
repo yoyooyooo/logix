@@ -1,7 +1,7 @@
 # v3 Unified API 示例 (Unified API Example)
 
-> **Status**: New  
-> **Description**: 展示 v3 架构下，如何使用 Effect-Native Unified API 和 Pattern 编写业务逻辑。  
+> **Status**: New
+> **Description**: 展示 v3 架构下，如何使用 Effect-Native Unified API 和 Pattern 编写业务逻辑。
 > **Note**: 本文示例基于 Store / Logic / Flow / Pattern 的 v3 抽象。
 
 ## 1. 定义 Pattern (The Asset)
@@ -58,12 +58,12 @@ import { Effect } from "effect";
 import { Logic, Store } from "@/logix-core"; // 概念性导入
 import { ReliableSubmit } from "@/patterns/reliable-submit";
 
-// 假设已经有 Order 场景的 State / Action Schema
-type OrderShape = Store.Shape<typeof OrderStateSchema, typeof OrderActionSchema>;
+// 假设已经有 Order 场景的 Logix.ActionOf Schema
+type OrderShape = Logix.ModuleShape<typeof OrderStateSchema, typeof OrderActionSchema>;
 
 const $Order = Logic.forShape<OrderShape>();
 
-export const OrderLogic = Logic.make<OrderShape>(
+export const OrderLogic: Logic.Of<OrderShape> =
   Effect.gen(function* (_) {
     // 1. 从 Action 获取提交触发源
     const submit$ = $Order.flow.fromAction(
@@ -75,18 +75,17 @@ export const OrderLogic = Logic.make<OrderShape>(
       const current = yield* $Order.state.read;
 
       // 使用 Control / Effect-native 表达分支
-      yield* $Order.control.branch({
-        if: current.ui.formValid,
-        then: ReliableSubmit.impl({
+      yield* $Order.match(current.ui.formValid)
+        .when(true, () => ReliableSubmit.impl({
           service: "OrderService",
           method: "create",
           retry: 5
-        }),
-        else: Effect.sync(() => {
+        }))
+        .when(false, () => Effect.sync(() => {
           // 这里可以调用 Toast Service，或通过 state.update 写入 UI 提示
           console.warn("Form Invalid");
-        })
-      });
+        }))
+        .exhaustive();
     });
 
     // 3. 将 Effect 挂到 Action 流上
@@ -104,14 +103,14 @@ export const OrderLogic = Logic.make<OrderShape>(
 import { Logic, Store } from "@/logix-core";
 import { Effect } from "effect";
 
-type AnalyticsShape = Store.Shape<
+type AnalyticsShape = Logix.ModuleShape<
   typeof AnalyticsStateSchema,
   typeof AnalyticsActionSchema
 >;
 
 const $Analytics = Logic.forShape<AnalyticsShape>();
 
-export const AnalyticsLogic = Logic.make<AnalyticsShape>(
+export const AnalyticsLogic: Logic.Of<AnalyticsShape> =
   Effect.gen(function* (_) {
     const analyze$ = $Analytics.flow.fromAction(
       (a): a is { type: "analytics/analyze" } => a.type === "analytics/analyze"

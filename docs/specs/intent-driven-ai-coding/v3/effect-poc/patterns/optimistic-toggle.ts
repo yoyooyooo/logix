@@ -10,7 +10,7 @@
  */
 
 import { Data, Effect, Schema } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Logix, Logic } from '../shared/logix-v3-core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：与 optimistic-toggle.ts 场景保持一致的 State / Action 形状
@@ -24,14 +24,14 @@ export const ToggleStateSchema = Schema.Struct({
   errorMessage: Schema.optional(Schema.String),
 })
 
-export const ToggleActionSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('toggle/click') }),
-  Schema.Struct({ _tag: Schema.Literal('toggle/resetError') }),
-)
+export const ToggleActionMap = {
+  'toggle/click': Schema.Void,
+  'toggle/resetError': Schema.Void,
+}
 
-export type ToggleShape = Store.Shape<typeof ToggleStateSchema, typeof ToggleActionSchema>
-export type ToggleState = Store.StateOf<ToggleShape>
-export type ToggleAction = Store.ActionOf<ToggleShape>
+export type ToggleShape = Logix.Shape<typeof ToggleStateSchema, typeof ToggleActionMap>
+export type ToggleState = Logix.StateOf<ToggleShape>
+export type ToggleAction = Logix.ActionOf<ToggleShape>
 
 // ---------------------------------------------------------------------------
 // 错误与 Service：作为 Pattern 的领域依赖，对外导出供场景复用
@@ -83,12 +83,13 @@ export interface OptimisticToggleLogicPatternConfig {}
  */
 const $Toggle = Logic.forShape<ToggleShape, ToggleService>()
 
-export const makeOptimisticToggleLogicPattern = (_config: OptimisticToggleLogicPatternConfig = {}) =>
-  Logic.make<ToggleShape, ToggleService>(
-    Effect.gen(function* () {
-      const click$ = $Toggle.flow.fromAction((a): a is { _tag: 'toggle/click' } => a._tag === 'toggle/click')
+export const makeOptimisticToggleLogicPattern = (
+  _config: OptimisticToggleLogicPatternConfig = {},
+) =>
+  Effect.gen(function* () {
+      const click$ = $Toggle.flow.fromAction((a): a is { _tag: 'toggle/click'; payload: void } => a._tag === 'toggle/click')
       const resetError$ = $Toggle.flow.fromAction(
-        (a): a is { _tag: 'toggle/resetError' } => a._tag === 'toggle/resetError',
+        (a): a is { _tag: 'toggle/resetError'; payload: void } => a._tag === 'toggle/resetError',
       )
 
       const handleClick = Effect.gen(function* () {
@@ -107,16 +108,18 @@ export const makeOptimisticToggleLogicPattern = (_config: OptimisticToggleLogicP
         // 2. 调用服务，并显式处理错误；错误时回滚 enabled
         const svc = yield* $Toggle.services(ToggleService)
 
-        yield* $Toggle.control.tryCatch({
-          try: svc.toggle({ id: current.id, nextValue }),
-          catch: (err: ToggleServiceError) =>
-            $Toggle.state.update((prev) => ({
-              ...prev,
-              enabled: previousValue,
-              isSaving: false,
-              errorMessage: err.reason,
-            })),
-        })
+        yield* svc
+          .toggle({ id: current.id, nextValue })
+          .pipe(
+            Effect.catchTag('ToggleServiceError', (err: ToggleServiceError) =>
+              $Toggle.state.update((prev) => ({
+                ...prev,
+                enabled: previousValue,
+                isSaving: false,
+                errorMessage: err.reason,
+              })),
+            ),
+          )
 
         // 3. 若仍处于 saving，说明没有错误，结束 saving 并更新 lastSynced
         const latest = yield* $Toggle.state.read
@@ -138,8 +141,7 @@ export const makeOptimisticToggleLogicPattern = (_config: OptimisticToggleLogicP
         click$.pipe($Toggle.flow.runExhaust(handleClick)),
         resetError$.pipe($Toggle.flow.run(handleResetError)),
       ])
-    }),
-  )
+    })
 
 /**
  * 消费方使用示例：
@@ -147,10 +149,12 @@ export const makeOptimisticToggleLogicPattern = (_config: OptimisticToggleLogicP
  *   // 1) 在 Logic 层复用 Pattern：
  *   export const ToggleLogicFromPattern = makeOptimisticToggleLogicPattern()
  *
- *   // 2) 在 Store 层装配（示意，与 optimistic-toggle.ts 中类似）：
- *   const ToggleStateLayer = Store.State.make(ToggleStateSchema, { ... })
- *   const ToggleActionLayer = Store.Actions.make(ToggleActionSchema)
- *   export const ToggleStore = Store.make(ToggleStateLayer, ToggleActionLayer, ToggleLogicFromPattern)
+ *   // 2) 在 Module 层装配（示意，与 optimistic-toggle.ts 中类似）：
+ *   const ToggleModule = Logix.Module('Toggle', { state: ToggleStateSchema, actions: ToggleActionSchema })
+ *   export const ToggleLive = ToggleModule.live(
+ *     initialState,
+ *     ToggleLogicFromPattern,
+ *   )
  *
  * 实际项目中，只需在 Logic 部分替换为本 Pattern，即可在多处复用同一套乐观切换行为。
  */

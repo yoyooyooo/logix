@@ -10,7 +10,7 @@
 ```typescript
 const $Form = Logic.forShape<FormShape, OrderApi>();
 
-const submitLogic = Logic.make<FormShape, OrderApi>(
+const submitLogic: Logic.Of<FormShape, OrderApi> =
   Effect.gen(function* (_) {
     const submit$ = $.flow.fromAction(a => a._tag === 'submit');
 
@@ -44,7 +44,7 @@ const submitLogic = Logic.make<FormShape, OrderApi>(
 ```typescript
 const $Page = Logic.forShape<PageShape, UserApi | ConfigApi>();
 
-const parallelLoadLogic = Logic.make<PageShape, UserApi | ConfigApi>(
+const parallelLoadLogic: Logic.Of<PageShape, UserApi | ConfigApi> =
   Effect.gen(function* (_) {
       const userApi = yield* $Page.services(UserApi);
       const configApi = yield* $Page.services(ConfigApi);

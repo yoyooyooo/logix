@@ -10,7 +10,7 @@
  */
 
 import { Effect, Schema } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Logix, Logic } from '../shared/logix-v3-core'
 import {
   BulkOperationPatternError,
   SelectionService,
@@ -29,40 +29,42 @@ const BulkStateSchema = Schema.Struct({
   lastMessage: Schema.optional(Schema.String),
 })
 
-const BulkActionSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('bulk/run') }),
-  Schema.Struct({ _tag: Schema.Literal('bulk/resetMessage') }),
-)
+const BulkActionMap = {
+  'bulk/run': Schema.Void,
+  'bulk/resetMessage': Schema.Void,
+}
 
-export type BulkShape = Store.Shape<typeof BulkStateSchema, typeof BulkActionSchema>
-export type BulkState = Store.StateOf<BulkShape>
-export type BulkAction = Store.ActionOf<BulkShape>
+export type BulkShape = Logix.Shape<typeof BulkStateSchema, typeof BulkActionMap>
+export type BulkState = Logix.StateOf<BulkShape>
+export type BulkAction = Logix.ActionOf<BulkShape>
 
 // ---------------------------------------------------------------------------
-// Logic：监听 bulk/run，触发 Pattern，并更新本地 State
+// Module：定义批量操作模块
 // ---------------------------------------------------------------------------
 
-const $ = Logic.forShape<BulkShape, SelectionService | BulkOperationService | NotificationService>()
+export const BulkModule = Logix.Module('BulkModule', {
+  state: BulkStateSchema,
+  actions: BulkActionMap,
+})
 
-export const BulkLogic = Logic.make<BulkShape, SelectionService | BulkOperationService | NotificationService>(
+// ---------------------------------------------------------------------------
+// Logic：监听 bulk/run，触发 Pattern，并更新本地 State（通过 Module.logic 注入 $）
+// ---------------------------------------------------------------------------
+
+export const BulkLogic = BulkModule.logic<SelectionService | BulkOperationService | NotificationService>(($: Logic.BoundApi<BulkShape, SelectionService | BulkOperationService | NotificationService>) =>
   Effect.gen(function* () {
-    const run$ = $.flow.fromAction((a): a is { _tag: 'bulk/run' } => a._tag === 'bulk/run')
-    const resetMessage$ = $.flow.fromAction(
-      (a): a is { _tag: 'bulk/resetMessage' } => a._tag === 'bulk/resetMessage',
-    )
-
     const handleRun = Effect.gen(function* () {
       const current = yield* $.state.read
 
-      const count = yield* $.control.tryCatch({
-          try: runBulkOperationPattern({ operation: current.operation }),
-          catch: (err: BulkOperationPatternError) =>
-            Effect.gen(function* () {
-              const notify = yield* $.services(NotificationService)
-              yield* notify.error(err.reason)
-              return 0
-            }),
-        })
+      const count = yield* runBulkOperationPattern({ operation: current.operation }).pipe(
+        Effect.catchTag('BulkOperationPatternError', (err: BulkOperationPatternError) =>
+          Effect.gen(function* () {
+            const notify = yield* $.use(NotificationService)
+            yield* notify.error(err.reason)
+            return 0
+          }),
+        ),
+      )
 
       yield* $.state.update((prev) => ({
           ...prev,
@@ -76,23 +78,20 @@ export const BulkLogic = Logic.make<BulkShape, SelectionService | BulkOperationS
         lastMessage: undefined,
       }))
 
-    yield* Effect.all([
-      run$.pipe($.flow.runExhaust(handleRun)),
-      resetMessage$.pipe($.flow.run(handleReset)),
-    ])
+    yield* $.onAction('bulk/run').runExhaust(handleRun)
+    yield* $.onAction('bulk/resetMessage').run(handleReset)
   }),
 )
 
 // ---------------------------------------------------------------------------
-// Store：组合 State / Action / Logic
+// Live：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-const BulkStateLayer = Store.State.make(BulkStateSchema, {
-  operation: 'archive',
-  lastCount: 0,
-  lastMessage: undefined,
-})
-
-const BulkActionLayer = Store.Actions.make(BulkActionSchema)
-
-export const BulkStore = Store.make<BulkShape>(BulkStateLayer, BulkActionLayer, BulkLogic)
+export const BulkLive = BulkModule.live(
+  {
+    operation: 'archive',
+    lastCount: 0,
+    lastMessage: undefined,
+  },
+  BulkLogic,
+)

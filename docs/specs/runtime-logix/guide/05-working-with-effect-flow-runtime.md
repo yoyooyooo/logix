@@ -34,13 +34,13 @@ class FlowRunner extends Context.Tag("FlowRunner")<FlowRunner, {
 
 ### 步骤二：在 Logic 中调用服务
 
-在 `Logic.make` 中，通过 `flow.fromAction` 监听触发事件，然后在 `flow.run` 中执行一个包含服务调用的 Effect。
+在 Logic 程序中，通过 `flow.fromAction` 监听触发事件，然后在 `flow.run` 中执行一个包含服务调用的 Effect。
 
 ```typescript
 // a-feature.logic.ts
 const $Feature = Logic.forShape<FeatureShape, FlowRunner>();
 
-const featureLogic = Logic.make<FeatureShape, FlowRunner>(
+const featureLogic: Logic.Of<FeatureShape, FlowRunner> =
   Effect.gen(function* (_) {
     const submit$ = $.flow.fromAction(a => a._tag === 'submit');
 
@@ -86,6 +86,6 @@ const featureLogic = Logic.make<FeatureShape, FlowRunner>(
 ### 避免模式
 
 - **在 React 组件中直接调用**: 这会绕过 Logix 的状态管理和调试追踪体系，导致逻辑碎片化。
-- **将 Flow 的运行状态保存在组件本地**: 所有与流程相关的状态都应在 Logix Store 中，以保证数据流的单一和可预测。
+- **将 Flow 的运行状态保存在组件本地**: 所有与流程相关的状态都应由某个 Logix Module 管理（ModuleRuntime State），以保证数据流的单一和可预测。
 
 通过这种方式，调用一个复杂的后端长流程，和调用一个简单的数据查询 API，对于前端 Logix 来说在架构上是完全同构的，都统一在 `Effect` 和 `Flow` 的模型之下。

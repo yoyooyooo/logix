@@ -2,7 +2,7 @@
 
 > **Status**: Definitive (v3.1 Strict Compliance)  
 > **Layer**: Form Domain  
-> **Note**: 本文档展示了基于 v3 Effect-Native 标准范式（`Logic.make` + `flow` API）的常见表单预置逻辑实现。所有旧的 `api.rule` DSL 形态已被废弃。
+> **Note**: 本文档展示了基于 v3 Effect-Native 标准范式（Bound API `$` + `flow` API）的常见表单预置逻辑实现。所有旧的 `api.rule` DSL 形态已被废弃。
 
 ## 1. 配置契约 (Configuration Contract)
 
@@ -27,7 +27,7 @@ export interface FormConfig<T> {
 ```typescript
 const $Form = Logic.forShape<FormShape>();
 
-const dirtyCheckLogic = Logic.make<FormShape>(
+const dirtyCheckLogic: Logic.Of<FormShape> =
   Effect.gen(function*(_) {
     const values$ = $Form.flow.fromChanges(s => s.values);
     const initialValues = (yield* $Form.state.read).initialValues; // 假设初始值在 state 中
@@ -50,7 +50,7 @@ const dirtyCheckLogic = Logic.make<FormShape>(
 ```typescript
 const $Form = Logic.forShape<FormShape, FormValidatorService>();
 
-const smartValidationLogic = Logic.make<FormShape, FormValidatorService>(
+const smartValidationLogic: Logic.Of<FormShape, FormValidatorService> =
   Effect.gen(function*(_) {
     const validator = yield* $Form.services(FormValidatorService);
     const config = (yield* $Form.state.read).config;
@@ -100,7 +100,7 @@ const smartValidationLogic = Logic.make<FormShape, FormValidatorService>(
 ```typescript
 const $Form = Logic.forShape<FormShape>();
 
-const arrayLogic = Logic.make<FormShape>(
+const arrayLogic: Logic.Of<FormShape> =
   Effect.gen(function*(_) {
     const arrayAction$ = $Form.flow.fromAction(a => a._tag.startsWith('array/'));
 

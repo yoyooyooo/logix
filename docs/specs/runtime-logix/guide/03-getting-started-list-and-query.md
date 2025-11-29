@@ -16,7 +16,7 @@
 ```typescript
 // State Schema
 const ListStateSchema = Schema.Struct({
-  filters: Schema.Struct({ 
+  filters: Schema.Struct({
     keyword: Schema.String,
     status: Schema.optional(Schema.String)
   }),
@@ -39,7 +39,7 @@ const ListActionSchema = Schema.Union(
 );
 
 // Store Shape
-type ListShape = Store.Shape<typeof ListStateSchema, typeof ListActionSchema>;
+type ListShape = Logix.ModuleShape<typeof ListStateSchema, typeof ListActionSchema>;
 ```
 
 ## 3. 步骤二：设计 Logic 规则 (v3 Flow API)
@@ -47,10 +47,10 @@ type ListShape = Store.Shape<typeof ListStateSchema, typeof ListActionSchema>;
 在 `Logic` 中，我们将“触发加载”的多个来源（筛选变化、分页变化、手动刷新）汇聚成一个统一的数据加载流。
 
 ```typescript
-// 伪代码，需在 Logic.make 中实现
+// 伪代码，需在 Logic 程序（Domain.logic 或 Logic.Of）中实现
 const $ = Logic.forShape<ListShape, ListApi>();
 
-const listLogic = Logic.make<ListShape, ListApi>(
+const listLogic: Logic.Of<ListShape, ListApi> =
   Effect.gen(function* (_) {
     // 1. 定义触发源
     const search$ = $.flow.fromAction(a => a._tag === 'search');

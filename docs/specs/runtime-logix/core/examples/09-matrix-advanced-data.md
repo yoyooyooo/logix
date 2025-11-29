@@ -11,7 +11,7 @@
 // 场景：监听一个动态字典 itemsById，当任意一项的 status 变为 'done' 时，为其添加 archived 标记。
 const $Data = Logic.forShape<DataShape>();
 
-const dynamicMapLogic = Logic.make<DataShape>(
+const dynamicMapLogic: Logic.Of<DataShape> =
   Effect.gen(function* (_) {
     // 监听整个 itemsById 对象
     const itemsById$ = $.flow.fromChanges(s => s.itemsById);
@@ -37,7 +37,7 @@ const dynamicMapLogic = Logic.make<DataShape>(
 // 场景：USD <-> CNY 双向汇率换算
 const $Currency = Logic.forShape<CurrencyShape>();
 
-const currencyLogic = Logic.make<CurrencyShape>(
+const currencyLogic: Logic.Of<CurrencyShape> =
   Effect.gen(function* (_) {
     const usd$ = $.flow.fromChanges(s => s.usd);
     const cny$ = $.flow.fromChanges(s => s.cny);

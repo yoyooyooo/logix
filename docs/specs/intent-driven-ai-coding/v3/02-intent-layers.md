@@ -4,7 +4,7 @@ status: draft
 version: 5 (Unified-API-Aligned)
 ---
 
-> 本文档基于“奥卡姆剃刀”原则，将原有的六层意图模型收敛为 **UI (表现)**、**Logic (逻辑)**、**Domain (领域)** 三大核心维度。每个维度都支持从 PM（模糊需求）到 Dev（精确实现）的渐进式显影。
+> 本文档基于“奥卡姆剃刀”原则，将原有的六层意图模型收敛为 **UI (表现)**、**Logic (逻辑)**、**Module (领域)** 三大核心维度。每个维度都支持从 PM（模糊需求）到 Dev（精确实现）的渐进式显影。
 
 ## 1. 模型总览 (Overview)
 
@@ -14,7 +14,7 @@ version: 5 (Unified-API-Aligned)
 | :--- | :--- | :--- | :--- |
 | **UI Intent** | **Presentation (躯壳)**<br>界面结构、组件组合与视觉交互 | Layout, View, Visual Interaction | Wireframe / Component Tree |
 | **Logic Intent** | **Behavior (灵魂)**<br>业务规则、流程编排与副作用 | Interaction(Trigger), Behavior, Flow | User Story / Logic (Effect-based DSL) |
-| **Domain Intent** | **Data (记忆)**<br>业务实体、数据模型与契约 | Data, State | Concept Model / Schema |
+| **Module Intent** | **Data (记忆)**<br>业务实体、数据模型与契约 | Data, State | Concept Model / Schema |
 
 ## 2. UI Intent · 表现意图
 
@@ -41,13 +41,13 @@ version: 5 (Unified-API-Aligned)
 interface UIIntentNode {
   id: string;
   type: string; // 组件类型或 'Placeholder'
-  
+
   // 视觉交互与属性
   props: Record<string, any>;
-  
+
   // 布局插槽
   slots?: Record<string, UIIntentNode[]>;
-  
+
   // 信号发射口 (连接 Logic 的锚点)
   emits?: Record<string, string>; // e.g. { onClick: 'submitOrder' }
 }
@@ -64,7 +64,7 @@ interface UIIntentNode {
     *   *例：“用户点击提交后，校验库存。如果库存不足，提示错误；否则创建订单。”*
 *   **Dev 视角 (High-Res)**：**Logic 程序 (Effect-based DSL)**
     *   关注信号监听、服务调用、状态更新、分支判断和事务控制。
-    *   *例：“`flow.fromAction(a => a._tag === 'submitOrder')` -> `control.tryCatch` 调用 `InventoryService.check` -> `state.update` ...”*
+    *   *例：“`flow.fromAction(a => a._tag === 'submitOrder')` -> `Effect.catchAll` 调用 `InventoryService.check` -> `state.update` ...”*
 
 ### 3.2 业务交互 (Business Interaction)
 
@@ -77,20 +77,20 @@ interface UIIntentNode {
 ```typescript
 interface LogicIntentNode {
   id: string;
-  
+
   // 触发器
   trigger: {
     type: 'onSignal' | 'onLifecycle' | 'onSchedule';
     signalId?: string;
   };
-  
+
   // 流程编排 (Code is Truth)
   // 在 v3 中，这里不再是 JSON，而是指向源码的引用
   source: {
     file: string;
     exportName: string;
   };
-  
+
   // 约束 (原 Constraint Intent)
   constraints?: {
     transaction: boolean;
@@ -99,7 +99,7 @@ interface LogicIntentNode {
 }
 ```
 
-## 4. Domain Intent · 领域意图
+## 4. Module Intent · 领域意图
 
 **定义**：描述业务世界中的“概念”及其“数据结构”。遵循“通用语言 (Ubiquitous Language)”原则。
 
@@ -115,16 +115,16 @@ interface LogicIntentNode {
 ### 4.2 数据源 (Data Source)
 
 *   **定义**：数据的存储与同步方式。
-*   **归属**：Domain Intent 的实现细节。
+*   **归属**：Module Intent 的实现细节。
 *   **示例**：React Query (Server State)、Zustand (Client State)、URL Query。
 
 ### 4.3 Schema 结构示意
 
 ```typescript
-interface DomainIntentNode {
+interface ModuleIntentNode {
   id: string;
   name: string; // 业务名词
-  
+
   // 字段定义
   fields: Array<{
     name: string;
@@ -132,7 +132,7 @@ interface DomainIntentNode {
     validation?: string;
     description?: string;
   }>;
-  
+
   // 实体关系
   relations?: Relation[];
 }

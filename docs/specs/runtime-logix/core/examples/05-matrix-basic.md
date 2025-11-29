@@ -1,14 +1,14 @@
 # Matrix Examples: Basic & Async (v3 Standard Paradigm)
 
 > **Focus**: 单字段/多字段联动、异步副作用
-> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，统一使用 `Logic.make` + `Flow.Api`。
+> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，统一使用 Bound API `$` + `Flow.Api`。
 
 ## S01: 基础联动 (Sync Linkage)
 
 **v3 标准模式**: 使用 `flow.fromChanges` 监听源字段，在 `flow.run` 中通过 `state.mutate` 更新目标字段。
 
 ```typescript
-export const S01_ResetProvinceOnCountryChange = Logic.make<FormShape>(
+export const S01_ResetProvinceOnCountryChange: Logic.Of<FormShape> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
       const country$ = flow.fromChanges((s) => s.country);
@@ -29,7 +29,7 @@ export const S01_ResetProvinceOnCountryChange = Logic.make<FormShape>(
 **v3 标准模式**: 监听 `zipCode` 变化，通过 `flow.runLatest` 执行包含 API 调用的 Effect，自动处理竞态。
 
 ```typescript
-export const S02_FillCityByZipCode = Logic.make<FormShape, GeoService>(
+export const S02_FillCityByZipCode: Logic.Of<FormShape, GeoService> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
       const zip$ = flow.fromChanges((s) => s.zipCode);
@@ -54,7 +54,7 @@ export const S02_FillCityByZipCode = Logic.make<FormShape, GeoService>(
 **v3 标准模式**: 典型的 `debounce` + `filter` + `runLatest` 组合。
 
 ```typescript
-export const S03_SearchWithDebounce = Logic.make<SearchShape, SearchApi>(
+export const S03_SearchWithDebounce: Logic.Of<SearchShape, SearchApi> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
       const keyword$ = flow.fromChanges((s) => s.keyword);
@@ -80,7 +80,7 @@ export const S03_SearchWithDebounce = Logic.make<SearchShape, SearchApi>(
 **v3 标准模式**: `flow.fromChanges` 可以监听一个返回元组 `[s.startDate, s.endDate]` 的 selector。
 
 ```typescript
-export const S04_ValidateDateRange = Logic.make<FormShape>(
+export const S04_ValidateDateRange: Logic.Of<FormShape> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
       const datePair$ = flow.fromChanges(
@@ -105,7 +105,7 @@ export const S04_ValidateDateRange = Logic.make<FormShape>(
 **v3 标准模式**: 与 S04 类似，监听多个参数的元组，然后触发一个包含 API 调用的 Effect。
 
 ```typescript
-export const S05_QueryByCategoryAndSort = Logic.make<ProductShape, ProductApi>(
+export const S05_QueryByCategoryAndSort: Logic.Of<ProductShape, ProductApi> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
       const params$ = flow.fromChanges(

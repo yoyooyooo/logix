@@ -27,14 +27,14 @@
 | **S02** | T1 | E2 | **异步回填**: 改 Zip 查 City | `flow.fromChanges(s => s.zip).pipe(flow.runLatest(effect))` | ✅ |
 | **S03** | T1 | E3 | **防抖搜索**: 输入搜索词，防抖查 API | `flow.fromChanges(...).pipe(flow.debounce(500), flow.runLatest(effect))` | ✅ |
 | **S04** | T2 | E1 | **联合校验**: Start <= End | `flow.fromChanges(s => [s.start, s.end]).pipe(flow.run(effect))` | ✅ |
-| **S05** | T2 | E2 | **多参查询**: 只有当 A 和 B 都存在时查 API | `flow.fromChanges(...)` + `control.branch` | ✅ |
+| **S05** | T2 | E2 | **多参查询**: 只有当 A 和 B 都存在时查 API | `flow.fromChanges(...)` + `$.match` | ✅ |
 | **S06** | T3 | E1 | **行级联动**: 改某行 Price 算 Total | `flow.fromChanges(s => s.items).pipe(flow.run(effect))` | ✅ |
 | **S07** | T3 | E2 | **行级异步**: 改某行 ID 查详情 | `flow.fromChanges(s => s.items).pipe(flow.run(Effect.all(effects)))` | ✅ |
 | **S08** | T3 | E4 | **全选/反选**: 批量更新所有行 | `flow.fromAction(a => a._tag === 'toggleAll').pipe(flow.run(effect))` | ✅ |
 | **S09** | T3 | E2 | **列表聚合**: 算总价 (Sum) | `flow.fromChanges(s => s.items).pipe(flow.run(effect))` | ✅ |
 | **S10** | T4 | E1 | **实时推送**: WS 推送更新状态 | `wsStream.pipe(flow.run(effect))` | ✅ |
 | **S11** | T4 | E4 | **高频推送**: WS 高频推送，批量更新 UI | `wsStream.pipe(Stream.chunkN(), flow.run(chunk => ...))` | ⚠️ |
-| **S12** | T5 | E2 | **初始化加载**: Store 创建查 API | 在 `Logic.make` 中直接执行 Effect | ✅ |
+| **S12** | T5 | E2 | **初始化加载**: Store 创建查 API | 在 Logic 程序的 `Effect.gen` 主体中直接执行 Effect | ✅ |
 | **S13** | T5 | E1 | **销毁清理**: 断开连接 | Scope 自动管理 / `addFinalizer` | ✅ |
 | **S14** | T1 | E3 | **失败重试**: API 失败自动重试 | `Effect.retry` (原生能力) | ✅ |
 | **S15** | T1 | E3 | **竞态取消**: 新请求取消旧请求 | `flow.runLatest(effect)` | ✅ |

@@ -1,14 +1,14 @@
 # Logic Middleware & AOP 实现草图
 
-> **Status**: Draft (v3 Final · Implementation Planning)  
+> **Status**: Draft (v3 Final · Implementation Planning)
 > **Scope**: Logic Middleware（日志/鉴权/埋点等横切关注）在 v3 中的推荐实现方式与限制。
 
-本说明文档从运行时实现视角，整理 v3 版本下 Logic Middleware / AOP 的落地方式。  
+本说明文档从运行时实现视角，整理 v3 版本下 Logic Middleware / AOP 的落地方式。
 核心取向：
 
 - 保持 **Effect‑Native**：中间件本质是 `(Effect) => Effect` 的组合，不引入 Decorator 或运行时反射；
-- 区分 **设计时（Design‑time）** 与 **运行时（Runtime）** 的职责：  
-  - v3 更倾向于通过平台/生成器在代码中显式插入 Middleware 调用；  
+- 区分 **设计时（Design‑time）** 与 **运行时（Runtime）** 的职责：
+  - v3 更倾向于通过平台/生成器在代码中显式插入 Middleware 调用；
   - Runtime 核心不做复杂的“自动注入”，避免隐式耦合；
 - 为 v4 可能的“运行时 Middleware Registry”留出思考空间，但不在 v3 实现。
 
@@ -24,229 +24,166 @@ export interface LogicMeta {
   readonly tags?: string[]   // 自定义标签 (e.g. ["audit", "auth"])
 }
 
-// 简化示意版本
+// 基础 Middleware 定义
 export type Middleware<R = never> = (
   effect: Effect.Effect<any, any, any>,
   meta: LogicMeta
 ) => Effect.Effect<any, any, any>;
 ```
 
-> 实现备注  
-> - 正式实现中，Middleware 更推荐使用 `Logic.Fx<Sh, R, A, E>` 等别名，以保留原始 A/E/R 类型信息；  
+> 实现备注
+> - 正式实现中，Middleware 更推荐使用 `Logic.Of<Sh, R, A, E>` 等别名，以保留原始 A/E/R 类型信息；
 > - 核心语义不变：Middleware 是围绕 Logic Effect 的高阶组合器。
 
-## 2. v3 推荐使用模式
+## 2. v3 推荐使用模式：Explicit Composition (Hard Constraint)
 
-### 2.1 Logic 内部显式组合
+为了防止开发者忘记包裹必要的中间件（如鉴权），v3 引入 **Branded Type + Lint** 双重保险机制。
 
-这是 v3 的“黄金范式”，不依赖 runtime 自动注入：
+### 2.1 品牌类型与安全入口
 
-```ts
-const Logging: Middleware<Env> = (next, meta) =>
-  next.pipe(
-    Effect.tap(() => Logger.info(`[${meta.storeId}] ${meta.name} start`)),
-    Effect.tapError((e) => Logger.error(`[${meta.storeId}] ${meta.name} fail`, e)),
-  )
-
-const AuthGuard: Middleware<Env> = (next, meta) =>
-  Effect.gen(function* () {
-    const user = yield* UserService
-    if (!user.isAdmin) {
-      return yield* Effect.fail<never, AuthError>({
-        _tag: 'AuthError',
-        reason: 'AdminOnly',
-        meta,
-      })
-    }
-    return yield* next
-  })
-
-const $User = Logic.forShape<UserShape, Env>()
-
-export const AdminLogic = Logic.make<UserShape, Env>(
-  Effect.gen(function* () {
-    const delete$ = $User.flow.fromAction(
-      (a): a is { _tag: 'user/delete'; id: string } => a._tag === 'user/delete',
-    )
-
-    const deleteEffect = Effect.gen(function* () {
-      const svc = yield* UserService
-      // ...
-    })
-
-    const secure = Logic.compose(Logging, AuthGuard)
-
-    yield* delete$.pipe(
-      $User.flow.run(
-        secure(deleteEffect, {
-          name: 'deleteUser',
-          storeId: 'UserStore',
-          tags: ['audit', 'auth'],
-        }),
-      ),
-    )
-  }),
-)
-```
-
-特点：
-
-- **显式性**：中间件链清晰可见，便于审查与调试；  
-- **可解析性**：平台可以识别 `Logic.compose(...)` + `secure(effect, meta)` 这类固定 pattern，将其还原为节点上的“开启日志/开启鉴权”开关；  
-- **无运行时魔法**：Runtime 不需要知道 ModuleDef.middlewares 的存在，也不需要动态拼接中间件。
-
-### 2.2 ModuleDef.middlewares 的角色
-
-在 v3 设计中，`ModuleDef<R>.middlewares` **主要服务于平台与代码生成**，Runtime 不自动使用它：
+在 Runtime 类型定义中引入 `Logic.Secured`：
 
 ```ts
-export interface ModuleDef<R> {
-  // ...
-  readonly middlewares?: ReadonlyArray<Logic.Middleware<R>>;
-}
-```
+declare const Secured: unique symbol
 
-使用方式（设计时）：
+// 只有经过 Logic.secure 处理的 Effect 才有此标记
+export type Secured<Sh, R, A, E> =
+  Of<Sh, R, A, E> & { readonly [Secured]: true }
 
-- 平台 UI / 配置文件中可以为某个模块勾选“启用日志 / 启用鉴权”；  
-- 出码器读取 `middlewares` 列表，在生成 Logic 代码时：  
-  - 自动插入 `const secure = Logic.compose(Logging, AuthGuard)`；  
-  - 自动用 `secure(effect, meta)` 包裹实际业务 Effect。
-
-Runtime 不做：
-
-- 不会在 `Logic.make` 内自动读取 ModuleDef.middlewares；  
-- 不会有全局 Middleware Registry 自动分发中间件。
-
-选择原因：
-
-- 把复杂度留在 **生成阶段**，便于观测与调试；  
-- 避免在 Runtime 执行路径内引入隐式依赖（难以测试和静态分析）。
-
-## 3. Logic.compose 与类型保持
-
-`Logic.compose` 的实现可以是一个简单的函数组合器：
-
-```ts
 export namespace Logic {
-  export function compose<R>(
-    ...middlewares: ReadonlyArray<Middleware<R>>
-  ): Middleware<R> {
-    return (eff, meta) =>
-      middlewares.reduceRight(
-        (acc, mw) => mw(acc, meta),
-        eff,
-      )
+  // 唯一合法的“加固”入口
+  export function secure<Sh, R, A, E>(
+    eff: Of<Sh, R, A, E>,
+    meta: LogicMeta,
+    ...middlewares: ReadonlyArray<Middleware<Sh, R, A, E>>
+  ): Secured<Sh, R, A, E> {
+    const composed = compose(...middlewares)(eff, meta)
+    return composed as Secured<Sh, R, A, E>
   }
 }
 ```
 
-类型细化（推荐实现时参考）：
+修改 `$Module.flow.run` 签名，强制要求 `Logic.Secured`：
 
 ```ts
-export type Fx<Sh extends Store.Shape<any, any>, R, A, E> =
-  Effect.Effect<A, E, Logic.Env<Sh, R>>
-
-export type FxMiddleware<
-  Sh extends Store.Shape<any, any>,
-  R = never,
-  A = any,
-  E = any,
-> = (eff: Fx<Sh, R, A, E>, meta: LogicMeta) => Fx<Sh, R, A, E>
-```
-
-Runtime 实现可以同时保留：
-
-- 一个通用的 `Middleware<R>`（以 `Effect.Effect<any, any, any>` 为核心），方便组合不同 Store 的简单中间件；  
-- 一个泛型化的 `FxMiddleware<Sh, R, A, E>`，用于需要精确控制类型的场景。
-
-## 4. 潜在的 Runtime 自动注入方案（v4 备忘）
-
-若未来希望 Runtime 自动根据 ModuleDef.middlewares 注入中间件，可考虑以下设计（**v3 不实现，仅备忘**）：
-
-### 4.1 MiddlewareRegistry Service
-
-定义一个 `MiddlewareRegistry` Service，将 ModuleDef.middlewares 抽象为运行时可查询的结构：
-
-```ts
-interface MiddlewareRegistry {
-  // 按 storeId 或 groupId 查询中间件列表
-  getMiddlewares: (ctx: { storeId?: string; groupId?: string }) =>
-    ReadonlyArray<Middleware<any>>;
-}
-
-class MiddlewareRegistryTag extends Context.Tag(
-  'MiddlewareRegistry',
-)<MiddlewareRegistryTag, MiddlewareRegistry>() {}
-```
-
-`buildModule` 在构建 Layer 时：
-
-- 根据 ModuleDef.id / Store 标识，构造 Registry 实例；  
-- 通过 `Layer.succeed(MiddlewareRegistryTag, registry)` 注入 Env。
-
-### 4.2 Logic.make 中自动套用中间件
-
-在 `Logic.make` 实现中（runtime 层），增加一个 hook：
-
-```ts
-export function make<Sh extends Store.Shape<any, any>, R, A, E>(
-  eff: Fx<Sh, R, A, E>,
-  meta: LogicMeta,
-): Fx<Sh, R, A, E> {
-  return Effect.gen(function* () {
-    const registry = yield* MiddlewareRegistryTag
-    const mws = registry.getMiddlewares({ storeId: meta.storeId })
-    const composed = mws.reduceRight(
-      (acc, mw) => mw(acc, meta),
-      eff,
-    )
-    return yield* composed
-  })
+interface FlowApi<Sh, R> {
+  // 只接受 Logic.Secured，裸 Effect 会报错
+  run<A, E>(eff: Logic.Secured<Sh, R, A, E>): Of<Sh, R, void, never>
 }
 ```
 
-> 风险提示  
-> - 会把 ModuleDef 与 Logic 执行链隐式耦合在一起，增加调试与测试成本；  
-> - 对平台/出码器来说，必须保证 `meta.storeId` 等信息在 Logic.make 时始终准确可用。
+### 2.2 ESLint 规则兜底
 
-鉴于这些复杂性，v3 决定不实现自动注入，仅在生成阶段显式插入 Middleware 调用。
+即使类型系统被 `as any` 绕过，CI/CD 必须包含一条 ESLint 规则（如 `runtime-logix/require-secure-middleware`）：
 
-## 5. 平台与 Runtime 的职责边界
+- **规则逻辑**：扫描所有 `$X.flow.run(...)` 调用；
+- **要求**：参数必须是 `Logic.secure(...)` 调用表达式；
+- **例外**：仅允许带有 `// logic:allow-raw` 注释的代码（用于 PoC 或特殊底层逻辑）。
+
+### 2.3 示例代码
+
+```ts
+const Logging: Logic.Middleware<Env> = /* ... */
+const AuthGuard: Logic.Middleware<Env> = /* ... */
+
+export const AdminLogic: Logic.Of<UserShape, Env> = Effect.gen(function* () {
+  // ...
+  const deleteEffect = /* ... */
+
+  yield* delete$.pipe(
+    $User.flow.run(
+      // 必须使用 Logic.secure 包裹，否则编译报错 + Lint 报错
+      Logic.secure(deleteEffect, {
+          name: 'deleteUser',
+          storeId: 'UserStore',
+          tags: ['audit', 'auth'],
+        },
+        Logging,
+        AuthGuard
+      ),
+    ),
+  )
+})
+```
+
+## 3. Logic.compose 与类型保持
+
+为了保证中间件不破坏业务逻辑的类型契约（R/E），`Logic.compose` 必须严格类型化。
+
+### 3.1 FxMiddleware 定义
+
+只允许对同一个 `Fx<Sh, R, A, E>` 做自同态转换（Endomorphism）：
+
+```ts
+export type FxMiddleware<Sh, R, A, E> =
+  (eff: Fx<Sh, R, A, E>, meta: LogicMeta) => Fx<Sh, R, A, E>
+```
+
+### 3.2 严格组合器
+
+```ts
+export namespace Logic {
+  export function compose<Sh, R, A, E>(
+    ...mws: ReadonlyArray<FxMiddleware<Sh, R, A, E>>
+  ): FxMiddleware<Sh, R, A, E> {
+    return (eff, meta) =>
+      mws.reduceRight((acc, mw) => mw(acc, meta), eff)
+  }
+}
+```
+
+**防呆效果**：
+- 如果某个中间件试图引入额外的 Env 依赖（不在 R 中），或者抛出未声明的 Error（不在 E 中），TS 编译器会直接报错；
+- 确实需要改变 R/E 的“边界中间件”（如错误转换层），必须使用另一套 `AdvancedMiddleware` 接口，且只能在 Runtime 边界使用，不能混入普通业务链。
+
+## 4. ModuleDef.middlewares 的角色
+
+在 v3 设计中，`ModuleDef.middlewares` **主要服务于平台与代码生成器**，Runtime 不自动使用它。
+
+使用方式（设计时）：
+
+- 平台 UI / 配置文件中可以为某个模块勾选“启用日志 / 启用鉴权”；
+- 出码器读取 `middlewares` 列表，在生成 Logic 代码时自动插入 `Logic.secure(..., [Logging, AuthGuard])`。
+
+Runtime 不做：
+
+- 不会在 Logic 构造过程中自动读取 ModuleDef.middlewares；
+- 不会有全局 Middleware Registry 自动分发中间件。
+
+## 5. Codegen vs Runtime：失同步风险与防护
+
+由于 v3 依赖 Codegen 显式插入中间件，最大的风险是 **Codegen 结果与 ModuleDef 配置不一致**。
+
+### 5.1 风险场景
+- 开发者修改了 `ModuleDef.middlewares`（如加了 Auth），但忘记运行 Codegen，导致生成的 Logic 代码里没有 AuthGuard；
+- 开发者手动修改了 Logic 代码，删掉了 `Logic.secure` 里的 AuthGuard。
+
+### 5.2 防护策略 (Foolproof)
+
+1. **CI 强制检查**：
+   - CI 流程中必须包含 `pnpm codegen --check` 步骤；
+   - 该步骤会根据当前的 ModuleDef 重新生成内存中的代码，并与磁盘上的文件比对；
+   - 若有差异（说明配置改了没生成，或手改了生成代码），CI 直接失败。
+
+2. **平台侧提示**：
+   - 平台 UI 在保存 ModuleDef 时，应自动触发本地 Codegen；
+   - 若检测到本地有未提交的 Codegen 变更，UI 应高亮提示“代码与配置不同步”。
+
+3. **Runtime 辅助检查 (Optional)**：
+   - 在开发模式下，Runtime 可以读取 `ModuleDef.middlewares`，并尝试检查 LogicMeta 中的 tags 是否包含了预期的中间件标记（如果中间件会在 meta 上打标的话）；
+   - 若发现不一致，打印 Warning。
+
+## 6. 平台与 Runtime 的职责边界
 
 总结 v3 对 Middleware/AOP 的分工：
 
 - **Runtime**：
-  - 提供 `Logic.Meta`、`Middleware`、`Logic.compose` 等基础拼装工具；  
-  - 不主动解析 ModuleDef.middlewares，不自动注入。
+  - 提供 `Logic.Meta`、`Middleware`、`Logic.secure` 等基础拼装工具；
+  - **不**主动解析 ModuleDef.middlewares，**不**自动注入。
 
 - **平台 / 生成器**：
-  - 负责读取 ModuleDef.middlewares 与代码中的 Middleware 定义；  
-  - 在生成 Logic 代码时插入 `Logic.compose(...)` 与 `secure(effect, meta)` 等显式调用；  
-  - 在可视化层（Galaxy / Logic 图）展示哪些 Logic 受哪些中间件影响。
+  - 负责读取 ModuleDef.middlewares 与代码中的 Middleware 定义；
+  - 在生成 Logic 代码时插入 `Logic.secure(...)` 显式调用；
+  - 负责 CI/CD 阶段的一致性检查。
 
-这种分工既保留了 Effect‑Native 的运行时简单性，又保证了平台层足够的表达力与配置化空间。
-
-## 6. 设计权衡补充说明
-
-### 6.1 Codegen 负担 vs. 运行时魔法
-
-由于 v3 决定“不在 Runtime 自动注入中间件”，所有 AOP 生效都必须体现在 TS 代码中：
-
-- 平台或脚手架需要承担较多的 Codegen 工作：  
-  - 当在 UI 上勾选/取消“启用日志/鉴权”等能力时，需要修改/生成对应 Logic 文件中的 `Logic.compose(...)` 与 `secure(...)` 调用；  
-  - 这使得“代码生成器”从初始化工具变成高频使用的日常工具。
-
-这一点是刻意选择的：
-
-- 优先保证“代码即事实”：任何运行时行为都能在源码中被看到与 gre p 到；  
-- 避免出现“配置改了，但代码看不出来”的黑盒行为（典型 NestJS 痛点）。
-
-### 6.2 调试友好性与 StackTrace
-
-显式调用 `Logic.compose` / `secure(effect, meta)` 的另一个好处是：
-
-- 出错时，StackTrace 会明确包含 Middleware 包裹层（例如 Logging/AuthGuard 函数名），方便定位；  
-- 开发者可以在 Debugger 中直接在 Middleware 内打断点、查看 `meta` 与 Env，而不需要学习额外的运行时注入机制。
-
-从整体 DX 视角看，这也是选择“显式 AOP 而非自动注入”的重要理由之一。***
+这种分工既保留了 Effect‑Native 的运行时简单性，又保证了平台层足够的表达力与配置化空间，同时通过 Branded Type 和 CI Check 封堵了人为疏漏的风险。

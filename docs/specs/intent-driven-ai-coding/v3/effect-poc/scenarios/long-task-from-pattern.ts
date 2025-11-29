@@ -6,26 +6,25 @@
  */
 
 import { Effect } from 'effect'
-import { Store, Logic } from '../shared/logix-v3-core'
+import { Logix } from '../shared/logix-v3-core'
 import {
   LongTaskStateSchema,
-  LongTaskActionSchema,
+  LongTaskActionMap,
   type LongTaskShape,
   type LongTaskState,
   runLongTaskPattern,
 } from '../patterns/long-task'
 
 // ---------------------------------------------------------------------------
-// Logic：与 long-task-pattern.ts 类似，但作为独立 Store 复用同一 Pattern
-// ---------------------------------------------------------------------------
+// Logic：与 long-task-pattern.ts 类似，但作为独立 Module 复用同一 Pattern
+// Module：复用模式下的长任务模块
+export const TaskModule = Logix.Module('TaskModule', {
+  state: LongTaskStateSchema,
+  actions: LongTaskActionMap,
+})
 
-const $ = Logic.forShape<LongTaskShape>()
-
-export const LongTaskLogicFromPattern = Logic.make<LongTaskShape>(
+export const TaskLogic = TaskModule.logic(($) =>
   Effect.gen(function* () {
-    const start$ = $.flow.fromAction((a): a is { _tag: 'start' } => a._tag === 'start')
-    const reset$ = $.flow.fromAction((a): a is { _tag: 'reset' } => a._tag === 'reset')
-
     // 借用整棵状态作为 SubscriptionRef，交给 Pattern 持续更新
     const stateRef = $.state.ref()
 
@@ -40,26 +39,19 @@ export const LongTaskLogicFromPattern = Logic.make<LongTaskShape>(
       progress: 0,
     }))
 
-    yield* Effect.all([
-      start$.pipe($.flow.runExhaust(startEffect)),
-      reset$.pipe($.flow.run(resetEffect)),
-    ])
+    yield* $.onAction('start').runExhaust(startEffect)
+    yield* $.onAction('reset').run(resetEffect)
   }),
 )
 
 // ---------------------------------------------------------------------------
-// Store：组合 State / Action / Logic 成为另一棵 Store
+// Live：组合 State / Action / Logic 成为另一棵可注入的领域模块
 // ---------------------------------------------------------------------------
 
-const LongTaskStateLayerFromPattern = Store.State.make(LongTaskStateSchema, {
-  status: 'idle',
-  progress: 0,
-})
-
-const LongTaskActionLayerFromPattern = Store.Actions.make(LongTaskActionSchema)
-
-export const LongTaskStoreFromPattern = Store.make<LongTaskShape>(
-  LongTaskStateLayerFromPattern,
-  LongTaskActionLayerFromPattern,
-  LongTaskLogicFromPattern,
+export const TaskLive = TaskModule.live(
+  {
+    status: 'idle',
+    progress: 0,
+  },
+  TaskLogic,
 )

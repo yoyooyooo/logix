@@ -20,7 +20,7 @@ const TenantBLayer = Layer.succeed(UserApi, { fetch: (id) => Effect.succeed({ id
 // 3. Logic 代码保持不变，只依赖 UserApi Tag
 const $User = Logic.forShape<UserShape, UserApi>();
 
-const userLogic = Logic.make<UserShape, UserApi>(
+const userLogic: Logic.Of<UserShape, UserApi> =
   Effect.gen(function* (_) {
     const api = yield* $User.services(UserApi);
     const { userId } = yield* $User.state.read;
@@ -31,7 +31,7 @@ const userLogic = Logic.make<UserShape, UserApi>(
 
 // 4. 在应用入口处，根据当前租户选择并提供对应的 Layer
 const AppLayer = currentTenant === 'A' ? TenantALayer : TenantBLayer;
-Effect.runFork(UserStore.run.pipe(Effect.provide(AppLayer)));
+Effect.runFork(UserModule.live.pipe(Effect.provide(AppLayer)));
 ```
 
 ## S23: 错误流路由 (Error Routing)
@@ -40,20 +40,20 @@ Effect.runFork(UserStore.run.pipe(Effect.provide(AppLayer)));
 
 ```typescript
 // 1. Logic 中允许出现失败
-const errorLogic = Logic.make<Shape, Api>(
+const errorLogic: Logic.Of<Shape, Api> =
   Effect.gen(function* (_) {
     const api = yield* Api;
     // 这个 Effect 可能会失败，类型为 Effect<void, ApiError, ...>
-    yield* api.unreliableCall(); 
+    yield* api.unreliableCall();
   })
 );
 
-// 2. 在 Store 外部订阅错误流 (概念代码)
-const store = Store.make(..., errorLogic);
+// 2. 在 Domain 外部订阅错误流 (概念代码)
+const live = SomeDomain.live(initialState, errorLogic);
 
-// store.errors$ 是一个 Stream<ApiError>
-store.errors$.pipe(
-  Stream.runForEach(error => 
+// runtime.errors$ 是一个 Stream<ApiError>
+runtime.errors$.pipe(
+  Stream.runForEach(error =>
     // 在这里实现全局错误上报或弹窗提示
     Effect.logError(`Global Error Caught: ${error.message}`)
   )
@@ -62,7 +62,7 @@ store.errors$.pipe(
 
 ## S24: 权限控制 (Permission Gating)
 
-**v3 标准模式**: 在 `Effect` 内部通过调用注入的 `AuthService` 来实现运行时的权限检查，并使用 `Effect.if` 或 `control.branch` 来执行相应的逻辑分支。
+**v3 标准模式**: 在 `Effect` 内部通过调用注入的 `AuthService` 来实现运行时的权限检查，并使用 `Effect.if` 或 `$.match` 来执行相应的逻辑分支。
 
 ```typescript
 // 1. 定义 AuthService
@@ -73,7 +73,7 @@ class AuthService extends Context.Tag("AuthService")<AuthService, {
 // 2. 在 Logic 中使用
 const $Approval = Logic.forShape<ApprovalShape, AuthService | ApprovalApi>();
 
-const permissionLogic = Logic.make<ApprovalShape, AuthService | ApprovalApi>(
+const permissionLogic: Logic.Of<ApprovalShape, AuthService | ApprovalApi> =
   Effect.gen(function* (_) {
       const approve$ = $Approval.flow.fromAction(a => a._tag === 'approve');
 
@@ -81,12 +81,17 @@ const permissionLogic = Logic.make<ApprovalShape, AuthService | ApprovalApi>(
         const auth = yield* $Approval.services(AuthService);
         const api = yield* $Approval.services(ApprovalApi);
 
-        // 使用 control.branch 进行权限检查
-        yield* $Approval.control.branch({
-          if: auth.canApprove(),
-          then: api.approve(),
-          else: $Approval.state.mutate(draft => { draft.error = "Permission denied"; })
-        });
+        const hasPermission = yield* auth.canApprove();
+
+        // 使用 $.match 进行权限检查
+        yield* $Approval.match(hasPermission)
+          .when(true, () =>
+            $Approval.state.update(s => ({ ...s, status: 'approved' }))
+          )
+          .when(false, () =>
+             $Approval.state.update(s => ({ ...s, status: 'rejected', reason: 'No Permission' }))
+          )
+          .exhaustive();
       });
 
       yield* approve$.pipe($Approval.flow.run(approveEffect));

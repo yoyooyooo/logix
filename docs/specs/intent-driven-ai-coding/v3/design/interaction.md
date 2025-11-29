@@ -17,7 +17,7 @@ Interaction Intent 回答：**“用户做了什么，系统如何立即响应�
 ### 1.1 关键特性
 
 1.  **Input -> Signal 转化**：这是 Logix 架构的核心输入源。Interaction 负责将底层的 DOM 事件（Input）映射为语义化的业务信号（Signal）。
-2.  **纯 UI 反馈**：处理不涉及业务逻辑的视觉变化（如打开弹窗、切换 Tab），这部分通常直接由 UI 框架（React/Logix Store）处理，不经过 Flow Runtime。
+2.  **纯 UI 反馈**：处理不涉及业务逻辑的视觉变化（如打开弹窗、切换 Tab），这部分通常直接由 UI 框架（React/Logix Module/本地状态）处理，不经过 Flow Runtime。
 3.  **解耦**：Interaction 层的变化（如从按钮点击改为快捷键触发）不影响 Behavior 层的逻辑。
 
 ## 2. 模型详解
