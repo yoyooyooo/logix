@@ -7,16 +7,56 @@
 
 本文档描述了如何将 Logix 引擎与 React UI 框架无缝集成。核心目标是实现 **UI is Dumb** 的设计理念，让 React 专注于渲染，而将所有状态管理和业务逻辑委托给 Logix。
 
+> **规范分级提示**
+> - 本文中的要求可以分为三层：
+>   - **Level 1（行为约束）**：必须满足的运行时语义，例如“避免状态撕裂 (tearing)”“Runtime 引用稳定”等；
+>   - **Level 2（推荐 API 形状）**：例如 `useModule(handle, selector, equalityFn?)` 的具体签名，允许在不破坏 Level 1 的前提下做小幅调整；
+>   - **Level 3（长期能力）**：如更丰富的调试/性能特性，可作为 v3.x 演进目标，而非当前必须一次性实现的部分。
+> - 实现 `@logix/react` 时，应优先保证 Level 1，再在迭代中逐步对齐 Level 2 / Level 3。
+
 ## 1. 核心 API: Store Hooks
 
 React 适配层围绕三类 Hooks 暴露能力：
 
-- `useModule(handle)`：获取对应的运行时实例（**Stable, 不订阅状态更新**）；
-- `useModule(handle, selector, equalityFn?)`：**[推荐]** 快捷方式，直接订阅状态，支持自定义比较函数；
-- `useSelector(runtime, selector, equalityFn?)`：基于运行时实例做细粒度订阅；
-- `useDispatch(runtime)`：获取稳定的 `dispatch` 函数。
+- `useModule(handle)`：获取对应 Module 的 `ModuleRuntime`（**Stable, 不订阅状态更新**）；
+  - 支持 `ModuleInstance`（全局共享）、`ModuleImpl`（局部实现）或 `ModuleRuntime`（直接复用）。
+- `useModule(handle, selector, equalityFn?)`：**[推荐]** 直接订阅状态，内部基于 `useSyncExternalStore`，可传入自定义 `equalityFn`；
+- `useSelector(handle | runtime, selector, equalityFn?)`：在已有 Runtime 或 Module Tag 上做细粒度订阅；
+- `useDispatch(handle | runtime)`：获取稳定的 `dispatch` 函数，自动复用当前 React Runtime。
 
 这三者构成连接 React 与 Logix 领域模块的基础桥梁。
+
+### 1.1 ModuleImpl: 推荐的模块实现单元
+
+为了简化 React 侧的模块消费，Logix v3 引入了 `ModuleImpl` 概念：将 Module 蓝图、初始状态、Logic 列表和依赖环境打包为一个“实现单元”。
+
+**定义 ModuleImpl**:
+
+```typescript
+// 1. 定义 Module (Shape + Logic Factory)
+export const RegionModule = Logix.Module("RegionModule", { state, actions })
+export const RegionLogic = RegionModule.logic<RegionService>(/* ... */)
+
+// 2. 构造 Impl (绑定 Initial + Logic)
+export const RegionImpl = RegionModule.make({
+  initial: { province: null, city: null, isLoading: false },
+  logics: [RegionLogic]
+})
+```
+
+**在 React 中消费**:
+
+```tsx
+function RegionPage() {
+  // 自动处理 Scope、Layer 构建和依赖注入
+  const region = useModule(RegionImpl)
+
+  const province = useSelector(region, s => s.province)
+  // ...
+}
+```
+
+相比旧的 `useLocalModule(factory)`，`ModuleImpl` 模式让 UI 代码更干净，且类型推导更完整。
 
 ```typescript
 import { useModule, useDispatch } from '@logix/react';
@@ -43,6 +83,8 @@ function MyComponent() {
     </button>
   );
 }
+
+> 关于在 Logic 内部挂 watcher（`Effect.all + run` / `Effect.forkScoped` / `runFork`）以及它们与 Scope / 生命周期的关系，可以在产品文档中参阅《Watcher 模式与生命周期》一节；React 场景下的行为与核心引擎保持一致。
 ```
 
 ## 2. 状态订阅 (State Subscription)
@@ -92,10 +134,9 @@ function UserList() {
 > 3. **Logic 独立线程**：Logix 的业务逻辑在 Effect Runtime 中运行，不会阻塞 React 渲染线程（Main Thread），只有最终状态变更才会通知 UI。
 
 > 实现约束（Adapter 层）：
-> - `useSelector` 签名：`(runtime, selector, equalityFn?)`；
-> - 默认 `equalityFn` 为 `Object.is` (Strict Equality)。
-> - 必须通过 `useSyncExternalStore` 实现订阅（以避免并发渲染下的 tearing）；
-> - 推荐提供 `useSelector` 形式的封装，而不是让业务代码直接使用 `useSyncExternalStore`。
+> - **Level 2（推荐 API 形状）**：`useSelector` / `useModule(handle, selector)` 签名建议为 `(handle | runtime, selector, equalityFn?)`，默认 `equalityFn` 为 `Object.is`；
+> - **Level 1（行为约束）**：订阅必须通过 `useSyncExternalStore` 或等价机制实现，React Adapter 负责封装 selector / equality 行为，业务侧无需接触底层订阅实现；
+> - React Runtime Adapter 在运行 Effect 前需自动补齐所有 Layer/Context，保证 selector/dispatch 与 App Runtime 相同的依赖视图。
 
 ## 3. 意图派发 (Intent Dispatch)
 
@@ -135,21 +176,38 @@ dispatch({ _tag: 'updateUser', payload: { name: 'Alice' } });
 
 ## 4. 依赖注入与运行时入口 (Dependency Injection & Entry)
 
-Logix 通过 `RuntimeProvider` 组件在 React 树中注入 Effect 运行时环境。v3 推荐以 `Logix.app` 定义的应用蓝图作为全应用的组合根。
+Logix 通过 `RuntimeProvider` 组件在 React 树中注入 Effect 运行时环境。核心能力：
 
-### 4.1 推荐模式：App 蓝图注入 (App Blueprint)
+- `runtime={ManagedRuntime}`：复用外部构造的 Runtime（推荐形态，通常来自 `LogixRuntime.make(rootImpl, { layer, onError })`）；
+- `layer={Layer}`：在父 Runtime 基础上追加局部 Layer，所有 `useModule`/`useSelector` 将自动 `provide` 该 Layer 输出；
 
-最佳实践是使用 `Logix.app` 定义的应用蓝图，并通过 `app` 属性传入。这是全应用的 **Composition Root**。
+v3 分形 Runtime 模型下，推荐以某个 Root ModuleImpl + `LogixRuntime.make` 定义应用/页面/Feature 级 Runtime，再通过 `RuntimeProvider runtime={...}` 作为组合根，局部增强则通过 `layer` 叠加。
+
+### 4.1 推荐模式：Root ModuleImpl + LogixRuntime (Fractal Runtime)
+
+最佳实践是使用 Root ModuleImpl + `LogixRuntime.make` 定义应用/页面级 Runtime，并通过 `runtime` 属性传入。这是全应用或某个 Feature 的 **Composition Root**。
 
 ```tsx
 // src/App.tsx
 import { RuntimeProvider } from '@logix/react';
-import { CRMApp } from './app'; // 由 Logix.app 定义
+import { Logix, LogixRuntime } from '@logix/core';
+import { Layer } from 'effect';
+
+const RootModule = Logix.Module("Root", { state: RootState, actions: RootActions });
+const RootImpl = RootModule.make({
+  initial: { /* ... */ },
+  imports: [/* ModuleImpls / Service Layers */],
+  processes: [/* Coordinators / Links */]
+});
+
+const appRuntime = LogixRuntime.make(RootImpl, {
+  layer: Layer.mergeAll(AppInfraLayer, ReactPlatformLayer),
+});
 
 function App() {
   return (
-    // 自动构建 AppRuntime，启动全局服务和 Coordinators
-    <RuntimeProvider app={CRMApp}>
+    // 复用预构建的 Runtime，启动全局服务和 Root 进程
+    <RuntimeProvider runtime={appRuntime}>
       <Router />
     </RuntimeProvider>
   );
@@ -158,8 +216,11 @@ function App() {
 
 在这一模式下：
 
-- `CRMApp` 内部会通过 `Logix.app` 聚合 `infra`（Http / Router / Config 等）与 `modules`（全局 Module），并在根 Scope 上启动 `processes` 中定义的长生命周期进程（例如 Coordinator）；
+- Root ModuleImpl 通过 `imports` 引入子模块实现，通过 `processes` 声明长生命周期进程（例如 Coordinator / Link）；
+- `LogixRuntime.make` 会在内部使用 AppRuntime 机制合并 Layer、构建根 Scope 并统一 fork 这些进程；
 - `RuntimeProvider` 负责在 React 应用生命周期内持有该 Runtime 的 Scope，当应用卸载时自动触发资源释放。
+
+> React 端默认会注入 `ReactPlatformLayer`，将 Page Visibility、Tab Suspend/Resume 等信号映射到 `Logic.Platform`，模块逻辑可以通过 `yield* Logic.Platform` 订阅这些事件。
 
 ### 4.2 兼容模式：Layer 注入 (Layer Injection)
 
@@ -167,15 +228,14 @@ function App() {
 
 ```tsx
 // src/pages/OrderPage.tsx
-import { RuntimeProvider } from '@logix/react';
+import { RuntimeProvider, useLocalModule } from '@logix/react';
 import { Layer } from 'effect';
 
-function OrderPage() {
-  const pageModule = useLocalModule(makeOrderPageModule);
-  const PageLayer = Layer.succeed(OrderPageModuleTag, pageModule);
+function OrderPage({ userId }: { userId: string }) {
+  const pageRuntime = useLocalModule(() => makeOrderPageModule(userId), [userId]);
+  const PageLayer = Layer.succeed(OrderPageModuleTag, pageRuntime);
 
   return (
-    // 将 PageLayer 合并到当前环境中
     <RuntimeProvider layer={PageLayer}>
       <SubComponent />
     </RuntimeProvider>
@@ -184,8 +244,8 @@ function OrderPage() {
 ```
 
 > 说明
-> - `RuntimeProvider app={...}` 用于提供全局 AppRuntime，是应用的单一组合根；
-> - `RuntimeProvider layer={...}` 用于在某个子树下增强环境（例如注入页面级 Module 或局部服务），内部会在已有 Runtime 环境之上合并传入的 Layer。
+> - `RuntimeProvider runtime={...}` 用于提供全局应用级 Runtime，是应用或某个 Feature 的组合根；若内层 Provider 也显式传入 `runtime`，则会**完全切换到新的 Runtime**，不再继承外层；
+> - `RuntimeProvider layer={...}` 用于在某个子树下增强环境（例如注入页面级 Module 或局部服务），内部会在已有 Runtime 环境之上合并传入的 Layer；当内外层共享同一 Runtime 时，内层 Provider 的 `layer` 会在同名 Tag 上覆盖外层 Env，实现局部差异化配置。
 
 ## 5. 生命周期绑定 (Lifecycle Binding)
 
@@ -193,22 +253,25 @@ function OrderPage() {
 
 ### 5.1 全局 Module (Global Module)
 
-在 `Logix.app` 的 `modules` 中注册的 Module 是全局的：
+在应用级 Runtime 中注册的 Module（例如通过 Root ModuleImpl.imports 或 AppRuntime 提供的 Layer 挂载）是全局的：
 
 ```ts
-// app.ts
-export const CRMApp = Logix.app({
-  // 注入 React 平台能力 (onSuspend/onResume 等)
-  layer: Layer.mergeAll(AppInfraLayer, ReactPlatformLayer),
-  modules: [
-    Logix.provide(GlobalModuleTag, GlobalModuleRuntime),
-    // ...
-  ],
+// app-runtime.ts
+const GlobalModule = Logix.Module("Global", { state: GlobalState, actions: GlobalActions });
+const GlobalImpl = GlobalModule.make({ initial: { /* ... */ }, logics: [GlobalLogic] });
+
+const RootImpl = RootModule.make({
+  initial: { /* ... */ },
+  imports: [GlobalImpl],
   processes: [/* Coordinators / 长生命周期进程 */],
+});
+
+const appRuntime = LogixRuntime.make(RootImpl, {
+  layer: Layer.mergeAll(AppInfraLayer, ReactPlatformLayer),
 });
 ```
 
-子组件通过 `useModule(GlobalModuleTag)` 消费，不需要管理其生命周期；Module 的 Scope 绑定到 AppRuntime，由最外层的 `RuntimeProvider app={CRMApp}` 管理。
+子组件通过 `useModule(GlobalModule)` 消费，不需要管理其生命周期；Global Module 的 Scope 绑定到应用级 Runtime，由最外层的 `RuntimeProvider runtime={appRuntime}` 管理。
 
 ### 5.2 局部 Module (Local Module)
 
@@ -218,7 +281,7 @@ export const CRMApp = Logix.app({
 import { useLocalModule } from '@logix/react';
 
 function UserForm({ userId }: { userId: string }) {
-  // 每次 userId 变化时，都会重新创建一个新的 Module 实例
+  // factory 需返回 Effect<ModuleRuntime>；deps 控制复用/重建
   const moduleRuntime = useLocalModule(() => makeUserFormModule(userId), [userId]);
   const values = useSelector(moduleRuntime, s => s.values);
   const dispatch = useDispatch(moduleRuntime);
@@ -227,9 +290,22 @@ function UserForm({ userId }: { userId: string }) {
 }
 ```
 
+`useLocalModule` 也支持直接传入 `ModuleInstance` + 配置：
+
+```ts
+const editor = useLocalModule(EditorModule, {
+  initial: { content: "" },
+  logics: [EditorLogic],
+  deps: [docId]
+});
+```
+
+> `deps` 决定何时重新创建局部 Module（类似 React `useMemo` 语义）；默认不会因为 `initial` 或 `logics` 引用变化自动重建，需要调用方显式传入。
+
 这里 `UserForm` 组件是这棵 Module 的“宿主”，Module 的 Scope 与组件生命周期绑定：
 组件卸载时，对应 Module Scope 会被关闭，所有挂在其上的 `forkScoped` 长逻辑会被安全中断。
 
 > 约定：
-> - 组件内读取 State 与派发 Action 推荐统一通过 `useModule` / `useLocalModule` 获取 Runtime 后再操作；
+> - 组件内读取 State 与派发 Action 推荐统一通过 `useModule(Impl)` 获取 Runtime 后再操作；
+> - `useLocalModule` 作为底层 API 仍被保留，用于需要自定义 factory 的高级场景。
 > - 组件外的业务逻辑 / Pattern 可以直接使用 `module.dispatch` / `module.getState`。

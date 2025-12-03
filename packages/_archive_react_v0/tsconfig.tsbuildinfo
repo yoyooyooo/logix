@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/env.d.ts","./src/index.tsx","./src/components/regioncascade.tsx","./src/contexts/effectcontext.tsx","./src/demo/store.ts","./src/demo/zustand-react.tsx","./src/demo/zustand-react2.tsx","./src/hooks/useregioncascade.ts","./src/services/regionservice.ts","./src/stores/regioncascadestore.ts","./src/types/region.ts"],"version":"5.8.2"}

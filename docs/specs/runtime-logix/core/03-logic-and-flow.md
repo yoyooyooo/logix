@@ -2,7 +2,7 @@
 
 > **Status**: Definitive (v3 Effect-Native · Context is World)
 > **Scope**: Logix Core Primitives
-> **Audience**: 应用/业务开发者（Bound API + Fluent DSL）、库作者（Flow/Control/L3 Helper）、架构师（Env/Runtime 细节）。
+> **Audience**: 应用/业务开发者（Bound API `$` + Fluent DSL + Flow API）、库作者（Flow/Control/L3 Helper）、架构师（Env/Runtime 细节）。
 
 本节描述 Logix v3 中的 `Logic` / `Flow` / `Control` 原语，以及围绕 **Universal Bound API (`$`)** 的最终编程模型。
 类型草案见 `v3/effect-poc/shared/logix-v3-core.ts`，本文件给出概念视图，实际签名以 PoC 为准。
@@ -29,12 +29,9 @@ export const CounterLogic = Counter.logic(($) =>
     // 1. 本地 State 编排（当前 Module）
     yield* $.onState((s) => s.count)
       .debounce(300)
-      .then(
-        $.state.mutate((draft) => {
+      .mutate((draft) => {
           draft.status = 'idle';
-        }),
-        { mode: 'latest' },
-      );
+        });
 
     // 2. 跨 Module 协作 / Service 调用通过 $.use 完成
     const $User = yield* $.use(UserModule);
@@ -63,13 +60,15 @@ export const CounterLive = Counter.live(
 - `$` 必须是 **Logic 文件顶层绑定的常量**（通常来自 `Module.logic(($) => ...)` 的参数）；
 - 不允许对 `$` 重新赋值；
 - 不推荐将 `$` 作为普通函数参数层层传递——封装推荐使用 Pattern 或 `(input) => Effect` 形式；
-- Parser 只对满足上述条件、且使用 **Fluent Intent API (`$.onState` / `$.onAction` / `$.on`)** 的代码做结构化解析，其余写法统一降级为 Gray/Black Box。
+- Parser 只对满足上述条件、且使用 **Fluent Intent API (`$.onState` / `$.onAction` / `$.on` + `.update/.mutate/.run*`)** 的代码做结构化解析，其余写法统一降级为 Gray/Black Box。
 
 在 Bound API 模式下：
 
 - 业务代码主要通过 `$.*` 进行编排；
 - Intent 命名空间（`Intent.*`）退居 **IR / 平台协议层** 使用，业务代码不再直接依赖；
 - 内核与 Pattern 可以使用 `Logic.RuntimeTag` / `Logix.ModuleTag<Sh>` 等底层设施，但对业务 Logic 隐藏这些细节。
+
+> 心智模型回顾：在 `$` 内部，`$.on*` 承担“感知 (Perception)”，`$.flow.*` 承担“策略 (Strategy，时间轴与并发)”，`$.state / $.actions` 承担“行动 (Actuation)”——三者是一条链路的不同层面，而不是三套彼此独立的概念。
 
 ## 2. Logic (The Program)
 
@@ -85,16 +84,8 @@ type Fx<Sh, R, A, E> = Effect.Effect<A, E, Env<Sh, R>>;
 v3 对外推荐的 Logic 形态是：在 `Logic.Env<Sh,R>` 上运行的一段 `Effect.gen` 程序，
 通常通过 Module.logic 注入 Bound API `$`：
 
-```ts
-const $ = Logic.forShape<Shape, R>()
-
-export const SomeLogic: Logic.Of<Shape, R> = Effect.gen(function* () {
-  // 在此通过 $.state / $.actions / $.flow / $.use / $.match 编排逻辑
-});
-```
-
-在该范式下，Logic 作者不再解构 `({ state, flow, actions, control })`，
-而是通过文件顶部的 `$ = Logic.forShape<Sh,R>()` 访问所有能力（或在 Module.logic 回调中直接使用注入的 `$`）。
+在推荐范式下，Logic 作者通常通过 `Module.logic(($)=>Effect.gen(...))` 直接在回调中使用注入的 `$`；
+对于 Pattern / Namespace 等二次封装场景，当前 PoC 建议直接使用 `Logix.BoundApi.make(shape, runtime)` 在实现层构造 `$`，并让调用方显式注入 `$`。
 
 ### 2.2 Logic.Env 与 Logic.Of
 
@@ -113,60 +104,13 @@ export type Of<Sh extends Logix.ModuleShape<any, any>, R = never, A = void, E = 
 - 所有依赖具体 Store 的长逻辑（包括 Namespace Pattern）都应使用 `Logic.Of<Sh,R>` 表达其上下文依赖；
 - 这样可以在“跨 Store 复用 Pattern”时由类型系统兜底，避免把错误的 Store Runtime 注入给 Pattern。
 
-### 2.3 Logic.forShape：Bound API 工厂
-
-`Logic.forShape` 用于在类型层面绑定 Shape + Env，并在运行时通过 `Logic.RuntimeTag` / `Logix.ModuleTag` 获取对应的运行时容器：
-
-```ts
-// 绑定当前 Shape 与服务环境 R，返回预绑定的访问器
-const $ = Logic.forShape<MyShape, MyServices>();
-```
-
-在类型上，它大致等价于：
-
-```ts
-namespace Logic {
-  export const RuntimeTag: Context.Tag<Logix.ModuleRuntime<any, any>, Logix.ModuleRuntime<any, any>>;
-
-  export function forShape<Sh extends Logix.ModuleShape<any, any>, R = never>(
-    tag?: Logix.ModuleTag<Sh>, // 默认使用 RuntimeTag（当前 Logic 的 Store）
-  ): {
-    state: {
-      read: Fx<Sh, R, Logix.StateOf<Sh>, never>;
-      update: (f: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>) => Fx<Sh, R, void, never>;
-      mutate: (f: (draft: Logix.StateOf<Sh>) => void) => Fx<Sh, R, void, never>;
-      ref: {
-        (): SubscriptionRef.SubscriptionRef<Logix.StateOf<Sh>>;
-        <V>(selector: (s: Logix.StateOf<Sh>) => V): SubscriptionRef.SubscriptionRef<V>;
-      };
-    };
-    actions: {
-      // [New in v3] Smart Dispatchers: $.actions.inc() / $.actions.add(10)
-      [K in keyof Actions]: (payload: Payload<Actions[K]>) => Fx<Sh, R, void, never>;
-
-      // Low-level access
-      dispatch: (action: Logix.ActionOf<Sh>) => Fx<Sh, R, void, never>;
-      actions$: Stream.Stream<Logix.ActionOf<Sh>>;
-    };
-    flow: Flow.Api<Sh, R>;
-    // [New in v3] Fluent Match Builder (wraps Effect.Match)
-    match: <V>(value: V) => FluentMatch<V>;
-    matchTag: <V extends { _tag: string }>(value: V) => FluentMatchTag<V>;
-    services: <Svc>(tag: Context.Tag<Svc, Svc>) => Effect.Effect<Svc, never, R>;
-
-    // [New in v3.1] Unified Event Subscription ($.on*)
-    onState: <V>(selector: (s: Logix.StateOf<Sh>) => V) => Flow.Stream<V>;
-    onAction: <A extends Logix.ActionOf<Sh>>(filter: (a: Logix.ActionOf<Sh>) => a is A) => Flow.Stream<A>;
-    on: <A>(stream: Stream.Stream<A>) => Flow.Stream<A>;
-  };
-}
-```
-
 要点：
 
 - Bound API 的所有方法都在类型上显式依赖 `Logic.Env<Sh,R>`，不会“偷偷”通过 Tag 获取 Runtime；
-- `$.flow` 的接口**严格对齐** `Flow.Api<Sh,R>`（见下一节），只是预先绑定了当前 Env；
-- 跨 Store 协作场景中，可以通过显式传入 `Logix.ModuleTag<OtherShape>` 创建其他 Store 的访问器，但业务层推荐通过 `$.use(ModuleSpec)` + Fluent DSL（`$.on($Other.changes/...).then($SelfOrOther.dispatch)`）表达；`Intent.Coordinate` 仅在 IR 层用于标注语义。
+- `$.flow` 的接口**严格对齐** `Flow.Api<Sh,R>`（见下一节），只是预先绑定了当前 Env，业务代码在绝大多数场景下应优先通过 Fluent DSL 使用这些能力；
+- 跨 Store 协作场景中，可以通过显式传入 `Logix.ModuleTag<OtherShape>` 创建其他 Store 的访问器，但业务层推荐通过 `$.use(ModuleSpec)` + Fluent DSL（`$.on($Other.changes/...).run($SelfOrOther.dispatch)`）表达；`Intent.Coordinate` 仅在 IR 层用于标注语义。
+
+> 说明：在 Fluent DSL 之上，运行时可以选择性提供 `andThen` 之类的 DX sugar（例如 `$.onState(...).andThen(handler)`），用于简化手写业务逻辑或给 LLM 使用。此类 API 不属于 Fluent 白盒子集，平台默认将其视为 Gray/Black Box；如需参与 IR/可视化，应先通过 codemod/Agent 降级为规范的 `.update/.mutate/.run*` 形态。
 
 ## 3. Flow (The Time & Concurrency Layer)
 
@@ -175,10 +119,9 @@ Flow 负责围绕领域模块的运行时容器构造时间轴与并发语义，
 
 在 v3 中：
 
-- 业务代码优先使用 **`$.onState` / `$.onAction` / `$.on + then`** 这套 Fluent DSL；
-- 需要更细粒度流控制时，业务代码可以通过 `$.flow.*` 调用绑定好的 `Flow.Api`；
-- 底层库 / Pattern 内部可以直接使用 `Flow.*` 命名空间级 DSL 与 `Control.*` 组合；
-- `$.flow` 的接口与 `Flow.Api` 完全一致，只是预绑定了 Env。
+- 业务代码优先使用 **`$.onState` / `$.onAction` / `$.on + .update/.mutate/.run*`** 这套 Fluent DSL；
+- 底层库 / Pattern 内部可以直接使用 `Flow.*` 命名空间级 DSL 与 `Control.*` 组合，将 ModuleRuntime 暴露为 Stream 源；
+- `$.flow.*` 主要作为 Bound API 上的逃生舱和高级用法入口，一般业务场景不推荐直接使用；其接口与 `Flow.Api` 一致，只是预绑定了当前 Env。
 
 ### 3.1 触发源 (Triggers)
 
@@ -187,7 +130,7 @@ Flow 负责围绕领域模块的运行时容器构造时间轴与并发语义，
 $.flow.fromAction((a): a is SubmitAction => a._tag === "submit");
 
 // 从 State 的某个 selector 构造变化流
-$.flow.fromChanges(s => s.form.keyword);
+$.flow.fromState(s => s.form.keyword);
 ```
 
 ### 3.2 变换与过滤 (Transformers)
@@ -203,17 +146,20 @@ $.flow.filter(keyword => keyword !== ""); // 过滤
 ### 3.3 运行策略 (Runners)
 
 ```ts
-// 并行：来一个跑一个，互不干扰
+// 串行：默认逐个处理事件（单 watcher 内顺序执行）
 $.flow.run(effect);
 
-// 最新：新事件来了，取消旧逻辑（搜索 / Tab 切换）
+// 并行：显式无界并发，适用于日志/打点等高吞吐副作用
+$.flow.runParallel(effect);
+
+// 最新：后触发的 Effect 会取消仍在执行的旧 Effect（典型搜索联动）
 $.flow.runLatest(effect);
 
-// 阻塞：当前逻辑没跑完，忽略新事件（防重复提交）
+// 阻塞：当前 Effect 尚未完成时直接丢弃新的触发（防重复提交）
 $.flow.runExhaust(effect);
 
-// 串行：排队依次执行（消息队列消费）
-$.flow.runSequence(effect);
+// 串行：按触发顺序排队，一个完成后才执行下一个（默认语义）
+$.flow.run(effect);
 ```
 
 所有 `run*` 的类型形态统一为：
@@ -225,6 +171,13 @@ run*<A, E, R2>(
 ```
 
 即保留 Effect 的错误通道与环境类型，只改变其为“挂在某个流上的执行器”。
+
+> 实现说明（与当前 PoC 对齐）
+> - 在推荐实现中，`$.flow.run` 使用 `Stream.runForEach` 消费源流，保证同一条 watcher 内的 Effect 串行执行；
+> - `$.flow.runParallel` 使用 `Stream.mapEffect(..., { concurrency: "unbounded" })` + `Stream.runDrain` 实现显式无界并发；
+> - 其余 `run*` 变体通过内部状态（如 latest/exhaust/queue）控制在单 watcher 内的并发语义；
+> - Fluent API（`$.onState / $.onAction / $.on`）上的 `.update/.mutate/.run*` 在语义上必须等价于“先通过 `$.flow.from*` 拿到源流，再串上相应的 `Flow.run*` 或直接进行 `Stream.runForEach + state.update`”，
+> - **不要求机械地通过 Flow.Api 组合实现**，但要求错误语义、并发语义与上述 `Flow.run*` 描述保持一致，便于 Parser 与 DevTools 在这两层之间建立一一对应关系。
 
 ## 4. Intent (L1/L2 IR Semantics)
 
@@ -244,11 +197,9 @@ L1 IntentRule 负责抽象表达单 Store 内部的同步联动，其代码侧�
 ```ts
 // 字段联动：State -> State（业务写法）
 yield* $.onState<MyShape>((s) => s.country)
-  .then(
-    $.state.mutate((draft) => {
-      draft.province = ""
-    }),
-  )
+  .mutate((draft) => {
+    draft.province = ""
+  })
 ```
 
 抽象语义不变：
@@ -267,10 +218,10 @@ const $Detail = yield* $.use(Detail)
 
 yield* $.on($Search.changes((s) => s.results))
   .filter((results) => results.length > 0)
-  .then(
+  .run(
     Effect.gen(function* () {
       yield* $Detail.dispatch({ _tag: "detail/initialize", payload: /* ... */ })
-    }),
+    })
   )
 ```
 
@@ -278,7 +229,7 @@ yield* $.on($Search.changes((s) => s.results))
 
 > 约定
 > - v3 中不再定义单独的 `Intent` 运行时命名空间；
-> - 业务代码一律通过 Fluent DSL（`$.onState` / `$.onAction` / `$.on` + `$*.dispatch`）表达规则，由 Parser 负责生成/更新对应的 IntentRule；
+> - 业务代码一律通过 Fluent DSL（`$.onState` / `$.onAction` / `$.on` + `.update/.mutate/.run*`）表达规则，由 Parser 负责生成/更新对应的 IntentRule；
 > - 平台/工具在 IR 层只操作 `IntentRule` 结构，而不是某个 `Intent.*` API。
 
 ## 5. Control (The Structure Layer)
@@ -355,7 +306,7 @@ yield* Effect.all([taskA, taskB], { concurrency: "unbounded" });
 为了保证平台解析的鲁棒性，v3 对 Fluent DSL 制定了明确的“白盒子集”约束：
 
 1.  **触发 API 分拆**
-    -   本地 State：使用 `$.onState(selector)`，语义等价于 `$.flow.fromChanges(selector)`；
+    -   本地 State：使用 `$.onState(selector)`，语义等价于 `$.flow.fromState(selector)`；
     -   本地 Action：使用 `$.onAction(predicate)`，语义等价于 `$.flow.fromAction(predicate)`；
     -   任意 Stream（含跨 Store）：使用 `$.on(stream)`，典型用法是 `$.on($Other.changes(...))`。
     现在通过 `$.onState` / `$.onAction` / `$.on` 三个独立API明确区分，Parser 无需推断参数类型。
@@ -366,8 +317,8 @@ yield* Effect.all([taskA, taskB], { concurrency: "unbounded" });
     -   任何跨 Store 直接写入他库 State 的行为在 v3 中被视为违反运行时契约。
 
 3.  **白盒模式的结构约束**
-    -   Parser 只对形如 `yield* $.onState(...).op1().op2().then(effect, opts?)` / `yield* $.onAction(...).op().then(...)` / `yield* $.on(stream).op().then(...)` 的 **单语句直接调用** 提供结构化解析；
-    -   一旦将 Fluent 链拆解为中间变量或闭包包装（例如 `const flow = $.onState(...).op(); yield* flow.then(...)`），该段代码即被视为 Raw Mode（黑盒）。
+    -   Parser 只对形如 `yield* $.onState(...).op1().op2().update/mutate/run*(...)` / `yield* $.onAction(...).op().update/mutate/run*(...)` / `yield* $.on(stream).op().run*(...)` 的 **单语句直接调用** 提供结构化解析；
+    -   一旦将 Fluent 链拆解为中间变量或闭包包装（例如 `const flow = $.onState(...).op(); yield* flow.run(effect)`），该段代码即被视为 Raw Mode（黑盒）。
 
 4.  **Intent.IR 的生成路径**
     -   白盒 Fluent 规则会被映射为 IntentRule IR（包括 L1/L2 等规则形态），Intent 不再以单独命名空间形式出现；
@@ -407,14 +358,13 @@ export const CounterLogic = Counter.logic(($) =>
     // Action → State：基于 Action 更新 count
     yield* $.onAction(
       (a): a is { _tag: 'inc' } => a._tag === 'inc',
-    ).then(
-      $.state.update((prev) => ({ ...prev, count: prev.count + 1 })),
-    );
+    ).update((prev) => ({ ...prev, count: prev.count + 1 }));
 
     // State → State：基于 count 变化派生 hasPositive（示意）
-    yield* $.onState((s) => s.count).then(
-      $.state.update((prev) => ({ ...prev, hasPositive: prev.count > 0 })),
-    );
+    yield* $.onState((s) => s.count).update((prev) => ({
+      ...prev,
+      hasPositive: prev.count > 0,
+    }));
   }),
 );
 
@@ -425,9 +375,7 @@ export const SomeOtherLogic = OtherModule.logic(($) =>
 
     yield* $.on($Counter.changes((s) => s.count))
       .filter((count) => count > 10)
-      .then(() =>
-        $.state.update((prev) => ({ ...prev, showCongrats: true })),
-      );
+      .update((prev) => ({ ...prev, showCongrats: true }));
   }),
 );
 ```

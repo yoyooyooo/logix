@@ -1,0 +1,20 @@
+{
+    "name": "@examples/logix",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+  "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "typecheck": "tsc -p tsconfig.json --noEmit"
+    },
+    "dependencies": {
+        "@logix/core": "workspace:*",
+        "effect": "^3.19.6",
+        "zod": "^3.23.8"
+    },
+    "devDependencies": {
+        "@types/node": "^22.19.1",
+        "tsx": "^4.19.2",
+        "typescript": "^5.6.3"
+    }
+}

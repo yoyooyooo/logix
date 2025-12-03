@@ -1,65 +1,45 @@
 # Form Engine Specification
 
-> **Status**: Draft
-> **Date**: 2025-11-21
-> **Layer**: Domain Adapter
+> **Status**: Draft (to be aligned with current logix-core)
+> **Layer**: Form Core Adapter (Thin Wrapper)
 
-本文档定义了基于 Logix 构建的下一代表单引擎。该引擎旨在结合 React Hook Form 的易用性 API 与 Effect-TS 的强大运行时能力，解决复杂表单场景下的性能、校验与联动难题。
+本文档在 v3 logix-core 能力之上，收紧表单引擎的定位：**Form 不是另一套引擎，而是围绕 Logix.Module 的轻量状态封装 + React 绑定**。
 
-## 1. 核心价值 (Value Proposition)
+## 1. 设计立场
 
-- **Logix-Powered**: 继承 Logix 的所有特性（因果追踪、时光机重放、并发控制）。
-- **Headless & Performant**: 细粒度订阅 (`useField`)，零无效渲染。
-- **Schema-First**: 深度集成 `@effect/schema`，类型安全与运行时校验合一。
-- **Async-Ready**: 内置处理异步校验竞态、防抖与提交状态管理。
+- **Logix 优先**：状态管理、异步流程、Schema/Effect 能力全部由 `logix-core` 提供，Form 层不再自建并行的 DSL 或运行时。
+- **薄核心层**：Form Core 只做两件事：
+  - 约定一份通用的表单状态形状（Dual-Store：`values` + `ui`）；
+  - 提供少量可选的 Logic 预置（脏检查、校验策略、数组操作），在当前 PoC 中基于 `Logix.Module` + `Module.logic(($)=>...)` + `Flow` 实现。
+- **React 专注 DOM**：React 适配层只关心 DOM/Foucs 等前端细节（`onFocus`/`onBlur`、事件对象适配、细粒度订阅），不干预逻辑与状态模型。
+
+换句话说：**Form = Logix.Module<FormShape> +（可选）FormLogicPresets + React Hooks**。
 
 ## 2. 架构分层 (Architecture Layers)
 
 ```mermaid
 graph TD
-    React[React Layer (Hooks)] -->|useForm/useField| Domain[Form Domain Layer]
-    Domain -->|Preset Logic| Logix[Logix Engine Runtime]
-    Logix -->|State/Event| React
+    React[React Layer (Hooks)] -->|useForm/useField| FormCore[Form Core (Shape + Presets)]
+    FormCore -->|Module.live + Module.logic(($)=>...)| Logix[logix-core Runtime]
+    Logix -->|State/Action/Flow| React
 ```
 
-- **Layer 0: Logix**: 通用状态机 (State + Event + Logic)。
-- **Layer 1: Form Domain**: 预置表单模型 (Values/Errors/Touched) 与 核心逻辑 (Validate/Submit)。
-- **Layer 2: React Bindings**: 适配 React 生态的 Hooks 与组件。
+- **Layer 0: logix-core**：通用状态机（ModuleShape / ModuleRuntime / Logic / Flow）。
+- **Layer 1: Form Core**：标准化 FormShape（`FormState<T>`/`FormAction`）与一组推荐 Logic Preset（可选）。
+- **Layer 2: React Bindings**：`useForm` / `useField` / `useFieldArray` 等 Hooks，将 FormShape 投影为组件友好的 props。
 
 ## 3. 文档索引
 
-- [01-domain-model.md](./01-domain-model.md): 定义表单的状态结构与事件协议。
-- [02-logic-preset.md](./02-logic-preset.md): 预置的表单业务逻辑（校验、提交、重置）。
-- [03-react-api.md](./03-react-api.md): 面向用户的 React Hooks API 设计。
+- [01-domain-model.md](./01-domain-model.md): 定义表单的状态形状（FormShape）与 Action 协议，严格对齐 `_tag`/`payload` 约定。
+- [02-logic-preset.md](./02-logic-preset.md): 在 Bound API `$`（由 `Module.logic(($)=>...)` 注入） + `Flow` 上实现的一组轻量预置逻辑（可选挂载）。
+- [03-react-api.md](./03-react-api.md): 基于 ModuleRuntime 的 React Hooks API 设计，专注订阅与 DOM 事件适配。
+ - [04-real-world-poc.md](./04-real-world-poc.md): 模拟真实 B2B 管理后台的 PoC 项目骨架，只写类型与 demo，不含具体实现。
 
-## 4. Form 与 AppRuntime 的关系
+## 4. 生命周期与 AppRuntime 关系（收紧版）
 
-Form Store 本质上是一个标准的 Logix 领域模块实例，它可以根据业务需求选择生命周期与接入方式。
+Form 只在「是否注册为 AppRuntime 模块」这一个维度和其他模块区分：
 
-### 4.1 局部表单 (Local Form)
+- **局部表单 (Local Form)**：在组件内通过 `ModuleRuntime.make` 或 `FormModule.live` + React Hook 创建，生命周期随组件；不强制接入 AppRuntime。
+- **全局表单 (Global Form)**：将 `FormModule.live(...)` 作为 Layer 注册进 AppRuntime，与其他领域模块一视同仁；所有跨模块协作仍通过 `Link.make` / Logic 实现。
 
-- **场景**：页面级表单、弹窗表单、行内编辑等随 UI 生命周期波动的场景；
-- **生命周期**：随宿主组件销毁而销毁；
-- **接入方式**：
-  - 在组件中使用 `useLocalStore`（或 `useForm` 封装）基于对应的 Module/Live 创建本地实例；
-  - 不需要注册进 `Logix.app` 的 `modules`，也不参与应用级拓扑分析。
-
-```ts
-function UserForm({ userId }: { userId: string }) {
-  const formStore = useLocalStore(() => makeFormStore({ userId }), [userId]);
-  // ...
-}
-```
-
-### 4.2 全局表单 (Global Form)
-
-- **场景**：全局搜索栏、跨步向导（Wizard）的状态保持、全局设置面板等需要跨页面/模块共享状态的表单；
-- **生命周期**：随应用常驻，由 AppRuntime 管理；
-- **接入方式**：
-  - 使用对应的 Module.live 定义全局表单模块，例如 `GlobalSearchFormModule.live(initial, GlobalSearchLogic, ...)`；
-  - 使用 `Logix.provide` 将该模块的 Live Layer 注册进 `Logix.app` 的 `modules`：
-    - `modules: [Logix.provide(GlobalSearchFormTag, GlobalSearchFormLive), ...]`；
-  - 在 `Logix.app` 的 `processes` 中，使用 L2 IntentRule（`$.use + $.on($Other.changes/...).then($SelfOrOther.dispatch)`）或普通 Logic Effect 编写该表单与其他模块的联动逻辑。
-
-这样，Form 作为 Logix 的一个领域实例，可以在 **Local** 与 **Global** 两种模式下工作：
-Local 模式贴合 UI 生命周期，Global 模式则参与应用级拓扑，并受 DevTools 与平台治理能力统一管理。
+本规范后续的所有示例，都视 Form 为「普通 Logix 模块的一个专用 Shape」，不再引入额外的 Engine/Runtime 概念。

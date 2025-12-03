@@ -57,6 +57,8 @@ description: This skill should be used when managing a tiered L1–L9 draft syst
    - `title`: 简明题目；
    - `status`: 建议使用 `draft` / `active` / `superseded` / `merged` 等；
    - `version`: 任意有意义的版本号或时间戳；
+   - `value`: 草稿在整体系统中的价值类型（见下文 3.1）；
+   - `priority`: 草稿在当前/中短期路线图中的处理优先级（见下文 3.1）；
 2. 正文建议包含：
    - 背景与动机：草稿试图解决的问题与场景；
    - 主要观点/方案：当前认为较有价值的思路；
@@ -65,6 +67,43 @@ description: This skill should be used when managing a tiered L1–L9 draft syst
    - 外部参考：相关仓库、文档或对话链接（如存在）。
 
 在帮助用户写入新的草稿时，应优先遵循上述结构，至少保证“未来另一个 LLM 能独立读懂”。
+
+### 3.1 价值与优先级字段（value / priority）
+
+为便于跨主题决策和排期，每个草稿应在 frontmatter 中显式标注：
+
+- `value`: 从“对 SSoT/实现的结构性价值”角度分类，建议使用以下枚举值：
+  - `core`：直接影响 v3 / runtime-logix / 关键子包（如 `@logix/core`, `@logix/react`, `@logix/form`）的设计或实现，最终应沉淀到 `docs/specs` SSoT 与对应代码；
+  - `extension`：扩展能力、特定场景或子包（如 `@logix/query`、Draft Pattern、特定 ToB 场景）的设计，重要但不改变核心引擎契约；
+  - `vision`：中长期蓝图与方向性思考（例如平台终局形态、AI Native 愿景），用于指导但不直接约束当前实现；
+  - `background`：调研对比、历史记录、外部启发等，如不再被引用可在后续合并或归档。
+
+- `priority`: 从“何时需要处理/落实”角度标注，建议使用以下枚举值：
+  - `now`：当前或下一个迭代必须推进的内容，通常会对应到近期的实现 backlog；
+  - `next`：中短期（例如未来 1–2 个迭代）需要落地的内容，可在核心工作稳定后推进；
+  - `later`：有价值但不阻塞当前主线的想法/规划，暂以参考为主；
+  - `parked`：暂不考虑推进，仅保留为背景资料或历史记录。
+
+标准用法示例：
+
+```yaml
+---
+title: Logix React Adapter Specs
+status: draft
+version: 2025-11-28
+value: core
+priority: next
+---
+```
+
+在梳理和前移草稿时，应同步检查并更新 `value` / `priority`：
+
+- 当草稿内容已经部分/全部并入 SSoT 或实现时：
+  - 将原草稿标记为 `status: merged` 或 `status: superseded`；
+  - 通常将 `priority` 降为 `later` 或 `parked`，并在 `moved_to` / `related` 中指向最新规范；
+- 当某个主题进入当前迭代的重点工作时：
+  - 将核心草稿的 `priority` 提升为 `now`，并确保在 `implementation-status.md` 或类似路线图中有对应条目；
+  - 如有多个重叠草稿，可先按 4.2/4.3 流程合并为更高层级文件，再统一调整优先级。
 
 ## 4. 典型工作流
 
@@ -76,7 +115,9 @@ description: This skill should be used when managing a tiered L1–L9 draft syst
 2. 在 `docs/specs/drafts/L9/` 子目录中创建一个具备语义的文件名，例如：
    - `bubblelab-integration-notes.md`
    - `agent-compiler-loop-experiments.md`
-3. 写入包含 frontmatter + 背景 + 主要观点/启发 的草稿内容；
+3. 写入包含 frontmatter + 背景 + 主要观点/启发 的草稿内容：
+   - 若草稿直接针对当前迭代的实现/缺口（例如 Runtime Bugfix、核心 API 演进），建议设置 `value: core` 且 `priority: now` 或 `priority: next`；
+   - 若草稿更多是远期规划/灵感火花，建议设置 `value: vision` 且 `priority: later`，后续在集中梳理时再提升；
 4. 在 `docs/specs/drafts/index.md` 的 L9 小节下添加一行索引（路径 + 一句说明）。
 
 在这一阶段不要求结构完美，重点在于“把有用信息存下来”和“命名清晰”。

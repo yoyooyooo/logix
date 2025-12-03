@@ -1,22 +1,64 @@
-# @intent-flow/logix-react (Planning)
+# @logix/react
 
-> **Status**: 🚧 Design Phase
-> **Role**: Platform Glue / Runtime Adapter
+> Logix Runtime 的 React 适配层（Alpha 阶段：仓库内 API 已稳定，正式发版前仍可能微调）。
 
-This package is currently in the **Design & Specification** phase.
-No implementation code is present yet.
+## 功能亮点
 
-## Documentation & Specs
+- **RuntimeProvider**：
+  - `runtime={LogixRuntime.make(rootImpl, { layer })}` 启动完整应用 Runtime，并自动注入 `ReactPlatformLayer`（推荐用法）；
+  - `layer={Layer}` 在父 Runtime 上叠加局部服务（页面/组件级 DI）；
+  - `runtime` / `value` 直接复用已有 `ManagedRuntime`，常用于测试或集成场景。
+- **并发安全的 Hooks**：`useModule` 返回稳定的 `ModuleRuntime`；`useModule(handle, selector)` / `useSelector(handle | runtime, selector, equalityFn?)` 基于 `useSyncExternalStore` 实现，默认 `Object.is` 比较，可自定义 `equalityFn`，避免并发渲染撕裂。
+- **稳定派发器**：`useDispatch(handle | runtime)` 复用当前 Runtime Scope，保证回调引用稳定。
+- **局部模块（实验特性）**：`useLocalModule` 让 Module Scope 绑定到组件生命周期，适合表单/页面级状态。
 
-The detailed design specifications for this package are currently being incubated in drafts:
+## 快速上手
 
-- **[L3/react-adapter](../../../docs/specs/drafts/L3/react-adapter/index.md)**: Full design specs including Hooks, Context, Concurrent features, and SSR strategy.
+```tsx
+import { RuntimeProvider, ReactPlatformLayer } from "@logix/react"
+import { Logix, LogixRuntime } from "@logix/core"
+import { Layer } from "effect"
 
-## Roadmap
+const RootModule = Logix.Module("Root", { state: RootState, actions: RootActions })
+const RootImpl = RootModule.make({
+  initial: { /* ... */ },
+  imports: [/* ModuleImpls / Service Layers */],
+  processes: [/* Coordinators / Links */]
+})
 
-1.  [ ] Finalize Specs in Drafts (Review & Approval)
-2.  [ ] Promote Specs to `docs/specs/runtime-logix/react`
-3.  [ ] Implement Core Hooks (`useSyncExternalStore` integration)
-4.  [ ] Implement `RuntimeProvider` & Context logic
-5.  [ ] Add SSR Hydration support
-6.  [ ] Release v0.1.0 Alpha
+const appRuntime = LogixRuntime.make(RootImpl, {
+  layer: Layer.mergeAll(AppInfraLayer, ReactPlatformLayer)
+})
+
+export function App() {
+  return (
+    <RuntimeProvider runtime={appRuntime}>
+      <Router />
+    </RuntimeProvider>
+  )
+}
+```
+
+在组件中使用 Hooks：
+
+```tsx
+import { useModule, useSelector, useDispatch } from "@logix/react"
+
+function Counter() {
+  const runtime = useModule(CounterModule)
+  const count = useModule(CounterModule, (s) => s.count)
+  const dispatch = useDispatch(runtime)
+
+  return <button onClick={() => dispatch({ _tag: "inc" })}>{count}</button>
+}
+```
+
+## 文档与规划
+
+详细规范见 `docs/specs/runtime-logix/core/07-react-integration.md`，关键目标包括：
+
+1. React 组件只负责意图事件，所有状态/流程逻辑收敛到 Logix 模块；
+2. Hooks 必须兼容 Concurrent Mode（`useSyncExternalStore`）并提供稳定 Runtime 引用；
+3. RuntimeProvider 的 `runtime + layer` 组合与 Effect `Layer` 语义一致，方便 LLM / 工具链自动推断依赖注入。
+
+更多迁移策略、生命周期说明以及 ReactPlatform 细节，请参阅上述规范文档。

@@ -2,11 +2,13 @@
 title: Spec Studio Design (SPEC Integration)
 status: Ready for Review
 version: 2
+value: vision
+priority: later
 ---
 
 # Spec Studio: L0 意图入口 (The L0 Intent Interface)
 
-> **Status**: Ready for Review (L9)
+> **Status**: Ready for Review (Topic Draft)
 > **Focus**: 定义平台的 **L0 (Spec)** 层。这是将“模糊意图”转化为“清晰需求”的入口。
 
 ## 1. 核心理念：SPEC

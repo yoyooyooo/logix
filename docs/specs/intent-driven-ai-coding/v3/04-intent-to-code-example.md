@@ -106,5 +106,5 @@ export const ArticleLive = ArticleModule.live(
 
 通过引入 **Effect-Native** 架构：
 1.  **纯粹性**：逻辑定义完全基于 Effect 和 Stream，没有黑盒配置。
-2.  **复用性**：`Flow.run(Logic.run(Pattern))` 使得业务积木的挂载变得极其自然。
+2.  **复用性**：`Flow.run(Logic.run(Pattern))` 作为“默认串行挂载点”，使得业务积木的组合与复用变得自然、可预期；需要高吞吐时可以显式选择 `Flow.runParallel(...)` 等变体。
 3.  **全双工**：Parser 依然可以通过识别 `Flow.from(...).pipe(...)` 结构，将这段纯代码还原为可视化的流程图。

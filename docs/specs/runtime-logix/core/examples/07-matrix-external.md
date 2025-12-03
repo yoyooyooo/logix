@@ -1,7 +1,7 @@
 # Matrix Examples: External & Lifecycle (v3 Standard Paradigm)
 
-> **Focus**: 外部流集成、高频推送、生命周期管理
-> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式。所有外部事件源都应被封装为 `Effect.Service` 并通过依赖注入在 `Logic` 中消费。
+> **Focus**: 外部流集成、高频推送、生命周期管理  
+> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式。所有外部事件源都应被封装为 `Effect.Service` 并通过依赖注入在 `Logic` 中消费。当前 PoC 中，实际代码应在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`。
 
 ## S10: 实时推送 (Realtime Push)
 
@@ -13,9 +13,7 @@ class PriceService extends Context.Tag("PriceService")<PriceService, {
   readonly price$: Stream.Stream<number>;
 }>() {}
 
-// 2. 在 Logic 中消费
-const $Stock = Logic.forShape<StockShape, PriceService>();
-
+// 2. 在 Logic 中消费（概念上，这里的 `$Stock` 表示针对 StockShape + PriceService 预绑定的 Bound API）
 const realTimeLogic: Logic.Of<StockShape, PriceService> =
   Effect.gen(function* (_) {
     const priceSvc = yield* $Stock.services(PriceService);
@@ -35,8 +33,7 @@ const realTimeLogic: Logic.Of<StockShape, PriceService> =
 **v3 标准模式**: 在 `Logic` 消费 `Stream` 之前，使用 `Stream` 的原生操作符（如 `chunkN` 或 `debounce`) 进行缓冲或采样，然后通过一次 `state.mutate` 批量更新。
 
 ```typescript
-const $Data = Logic.forShape<DataShape, HighFrequencyService>();
-
+// 概念上，这里的 `$Data` 表示针对 DataShape + HighFrequencyService 预绑定的 Bound API。
 const highFrequencyLogic: Logic.Of<DataShape, HighFrequencyService> =
   Effect.gen(function* (_) {
     const hfSvc = yield* $Data.services(HighFrequencyService);
@@ -63,8 +60,7 @@ const highFrequencyLogic: Logic.Of<DataShape, HighFrequencyService> =
 **v3 标准模式**: 在 Logic 程序的 `Effect.gen` 主体中直接编写初始化逻辑。这个 Effect 只会在 `Logic` 首次启动时执行一次。
 
 ```typescript
-const $User = Logic.forShape<UserShape, UserApi>();
-
+// 概念上，这里的 `$User` 表示针对 UserShape + UserApi 预绑定的 Bound API。
 const initialLoadLogic: Logic.Of<UserShape, UserApi> =
   Effect.gen(function* (_) {
     const api = yield* $User.services(UserApi);

@@ -52,7 +52,7 @@ Parser 通过识别特定的 **AST Pattern** 来提取语义：
        - 本 Store 状态写入（`$.state.mutate/update`）；
        - 本/他 Store Action 派发（`$Handle.actions.xxx(...)`）；
        - Service 调用（`yield* service.method(...)`）；
-       - 并发策略（`opts.mode` → run / runLatest / runExhaust / runSequence）。
+       - 并发策略（`opts.mode` → run / runLatest / runExhaust，其中 `"sequence"`（如存在）在落地时等价映射为 `run`）。
 
 4.  **Pattern 挂载（可选）**
    - 在 Fluent 链中，如 `then(SomePattern(config))`，Parser 将 `SomePattern` 视为 Pattern 节点：

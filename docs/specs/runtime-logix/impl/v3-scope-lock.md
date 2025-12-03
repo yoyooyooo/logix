@@ -9,7 +9,7 @@
 | Feature Category | **Must Have (v3.0)** | **Deferred (v3.x / v4)** |
 | :--- | :--- | :--- |
 | **Core Logic** | - Single Module Reactivity (L1)<br>- Cross-Module Collaboration (`$.use`)<br>- Async Effects & Flows<br>- External Sources (WebSocket/Timer) | - Wildcard Listeners (`items.*.field`)<br>- Dynamic Rule Injection<br>- Multi-Tenant Isolation |
-| **Concurrency** | - `run` (Parallel)<br>- `runSequence`<br>- `takeLatest` / `takeExhaust` | - Complex Backpressure Strategies<br>- Fine-grained Fiber Supervision |
+| **Concurrency** | - `run` (Sequential)<br>- `takeLatest` / `takeExhaust` | - Complex Backpressure Strategies<br>- Fine-grained Fiber Supervision |
 | **Lifecycle** | - `onInit` (Blocking)<br>- `onDestroy` (Cleanup)<br>- `onSuspend` / `onResume` (Platform) | - Hot State Migration (HMR with data preservation is "Best Effort") |
 | **Data** | - Schema-driven State/Action<br>- Immutable Updates | - JSON AST Dual Representation<br>- CRDT / Collaborative Editing |
 | **Draft/Session** | - **None** (Use Local Modules instead) | - Transactional Draft API (`start/commit`)<br>- STM (Software Transactional Memory) |
@@ -19,8 +19,8 @@
 Only the following APIs are considered "Public" for application developers. All others are internal implementation details.
 
 ### Application Developer (The "User")
-- **Definition**: `Logix.Module`, `Logix.app`, `Logix.provide`
-- **Logic DSL**: `Module.logic`, `Module.live`
+- **Definition**: `Logix.Module`, `LogixRuntime.make`（基于 Root ModuleImpl 的应用级 Runtime 构造）
+- **Logic API**: `Module.logic`, `Module.live`
 - **Bound API (`$`)**:
     - `$.state`, `$.actions`
     - `$.onAction`, `$.onState`, `$.on`

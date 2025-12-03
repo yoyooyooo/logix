@@ -1,9 +1,9 @@
 # App / Module / Store → Universe View 实现草图
 
 > **Status**: Draft (v3 Final · Implementation Planning)
-> **Scope**: 平台如何从 `Logix.app` / `Logix.module` / `ModuleDef` 构建 Universe View（模块拓扑图）与依赖检查。
+> **Scope**: 平台如何从 `Logix.module` / `ModuleDef` / Root ModuleImpl 构建 Universe View（模块拓扑图）与依赖检查。
 
-本说明文档从平台实现视角，整理 v3 中基于 `ModuleDef` 的 Universe View 与依赖检查方案。
+本说明文档从平台实现视角，整理 v3 中基于 `ModuleDef` 与 Root ModuleImpl 的 Universe View 与依赖检查方案。
 目标：
 
 - 明确 Parser 在 TS 代码中需要识别的模式（AST Pattern）；
@@ -12,7 +12,7 @@
 
 ## 1. 需要识别的代码模式
 
-在 v3 规范中，模块体系通过以下 API 暴露：
+在 v3 规范中，模块体系通过以下 API 暴露（概念层）：
 
 ```ts
 // runtime-logix/core/architecture-app-runtime.ts (概念性)
@@ -21,24 +21,24 @@ export interface ModuleDef<R> { /* ... */ }
 
 export const Logix = {
   module: <R>(def: ModuleDef<R>) => def,
-  app:   <R>(def: Omit<ModuleDef<R>, "exports">) => AppDefinition<R>,
-  provide: <S>(tag: Context.Tag<S, S>, value: S): Provider<S> => ({ tag, value }),
+  // 应用级 Runtime 由 Root ModuleImpl + LogixRuntime.make 组合；
+  // 平台关心的是 Root ModuleImpl 与 ModuleDef，而非具体的 Runtime 组装 API。
 }
 ```
 
-平台解析器需要识别的主要调用形式：
+平台解析器需要识别的主要调用/声明形式：
 
 - `Logix.module({ ... })`：定义普通 Module；
-- `Logix.app({ ... })`：定义根 App；
+- `Module.make({ initial, logics, imports?, processes? })`：定义 Root ModuleImpl 或 Feature 级 ModuleImpl 蓝图；
 - `imports: [OrderModule, UserModule, ...]`：模块间依赖；
-- `providers: [Logix.provide(SomeTag, SomeStore), ...]`：模块提供的 Store / Service；
-- `links: [SearchSyncLink, ...]`：业务编排逻辑（胶水）；
+- `links: [SearchSyncLink, ...]`：业务编排逻辑（胶水）（在运行时实现中通过 Root ModuleImpl.processes 或 ModuleDef.links 表达）；
 - `processes: [SomeDaemon, ...]`：基础设施进程（杂役）；
-- `exports: [SomeTag, ...]`：对外公开的 Tag 列表。
+- `exports: [SomeTag, ...]`：对外公开的 Tag 列表；
+- `LogixRuntime.make(rootImpl, { layer, onError })`：应用/页面/Feature 级 Runtime 的根入口。
 
 > 实现建议
-> - 在 TS 层对 `Logix` 使用命名 import（例如 `import { Logix } from "@logix/core"`），以便解析器快速定位；
-> - 平台可以约定：所有 Module / App 定义必须使用 `export const XxxModule = Logix.module(...)` / `export const XxxApp = Logix.app(...)` 形式，避免运行时动态构造。
+> - 在 TS 层对 `Logix` 使用命名 import（例如 `import { Logix } from "@logix/core"`），以便解析器快速定位 Module 定义；
+> - 平台可以约定：所有 Module / Root ModuleImpl / Runtime 入口必须使用 `export const XxxModule = Logix.Module(...)`、`export const XxxImpl = XxxModule.make(...)`、`export const XxxRuntime = LogixRuntime.make(XxxImpl, { ... })` 形式，避免运行时动态构造。
 
 ## 2. AST → ModuleIR 的抽象
 
@@ -70,7 +70,7 @@ interface ModuleIR {
 
 解析流程（概念）：
 
-1. 扫描整个项目，定位所有 `Logix.module(...)` / `Logix.app(...)` 调用；
+1. 扫描整个项目，定位所有 `Logix.module(...)` 调用（以及早期版本中遗留的应用级配置调用，如 AppRuntime 入口）； 
 2. 对每个调用：
    - 读取 `id` 字段（要求为字符串字面量）；
    - 从变量声明中获取 `filePath` + `exportedName`；
@@ -92,7 +92,7 @@ Universe View 关注的是“模块间拓扑”与“模块内部的 Store/Link 
 
 推荐的节点类型：
 
-- **App Node**：根模块（`Logix.app`）；
+- **App/Feature Node**：根 Runtime 节点（由 Root ModuleImpl + `LogixRuntime.make` 定义）；
 - **Module Node**：通过 `Logix.module` 定义的模块；
 - **Store Node**：`providers` 中 valueSymbol 对应的 Store（通常是 `Logix.ModuleRuntime` 或 `ModuleRuntime.make()` 结果）；
 - **Link Node**：`links` 中的业务编排逻辑（胶水节点）；
@@ -122,7 +122,7 @@ Universe View 关注的是“模块间拓扑”与“模块内部的 Store/Link 
 
 ### 3.3 Drill‑down 规则
 
-- 第一层仅显示 App Node + 顶层 Module Node：
+- 第一层仅显示 App/Feature Node + 顶层 Module Node：
   - 节点标签使用 `ModuleDef.id`；
   - 提供“展开”操作。
 - 展开某 Module 节点时：
@@ -189,7 +189,7 @@ ModuleIR 的 imports 关系构成一张有向图：
 为了让上述实现保持可控，平台需要对 ModuleDef 写法做一些约束：
 
 - **对象字面量优先**：
-  - `Logix.module({ ... })` / `Logix.app({ ... })` 推荐使用直接的对象字面量；
+  - `Logix.module({ ... })` 推荐使用直接的对象字面量；
   - 避免在配置中使用 `...spread`、条件表达式、运行时变量拼接等复杂写法。
 - **符号引用优先**：
   - `imports` / `providers` / `links` / `processes` / `exports` 数组中的元素应为简单标识符或 `Logix.provide(Tag, Value)` 这种固定模式；

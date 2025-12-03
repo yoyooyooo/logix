@@ -120,7 +120,7 @@ interface IntentRule {
 - `flow.fromAction(guard)`：
   - `guard` 应为类型守卫或 `_tag` 检查的简单函数，例如 `a => a._tag === 'submit'`；
   - Parser 将其识别为 `source.type = "action"`，`selector = 'submit'`。
-- `flow.fromChanges(selector)`：
+- `flow.fromState(selector)`：
   - `selector` 应为简单属性访问（`s => s.country`、`s => s.keyword`）；
   - Parser 将其识别为 `source.type = "state"`，`selector = 'country'` / `'keyword'`。
 在早期 PoC 中，L1/L2 规则曾通过 `Intent.andUpdateOnChanges / Intent.andUpdateOnAction` 等 API 表达；在 v3 最终形态中，这些语义全部归入 `IntentRule` IR，通过 Fluent DSL 映射而来：
@@ -132,7 +132,7 @@ interface IntentRule {
   - `flow.debounce(ms)` → `op = "debounce", args = [ms]`；
   - `flow.throttle(ms)` → `op = "throttle", args = [ms]`；
   - `flow.filter(predicate)` → `op = "filter"`（predicate 以 AST 形式记录）；
-  - `flow.run / flow.runLatest / flow.runExhaust / flow.runSequence` → 并发策略元信息。
+- `flow.run / flow.runLatest / flow.runExhaust` → 并发策略元信息（如存在 `"sequence"` 模式，落地时视为 `run`）。
 - 其它 Stream/Effect 组合（例如 `Stream.groupedWithin`、自定义 operator）一律作为 Gray Box 处理，不尝试拆解。
 
 **Sink（终点）**：

@@ -1,0 +1,43 @@
+{
+    "name": "@logix/test",
+    "version": "0.0.1",
+    "description": "Testing utilities for Logix v3",
+    "type": "module",
+    "main": "./src/index.ts",
+    "module": "./src/index.ts",
+    "types": "./src/index.ts",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "publishConfig": {
+        "main": "./dist/index.cjs",
+        "module": "./dist/index.js",
+        "types": "./dist/index.d.ts",
+        "exports": {
+            ".": {
+                "types": "./dist/index.d.ts",
+                "import": "./dist/index.js",
+                "require": "./dist/index.cjs"
+            }
+        }
+    },
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm && tsc --emitDeclarationOnly --declaration",
+        "dev": "tsup --watch",
+        "typecheck": "tsc -p tsconfig.test.json --noEmit",
+        "test": "vitest"
+    },
+    "peerDependencies": {
+        "effect": "^3.10.0",
+        "@logix/core": "workspace:*"
+    },
+    "dependencies": {
+        "effect": "^3.10.0",
+        "@logix/core": "workspace:*"
+    },
+    "devDependencies": {
+        "tsup": "^8.0.0",
+        "typescript": "^5.4.0",
+        "vitest": "^1.0.0"
+    }
+}

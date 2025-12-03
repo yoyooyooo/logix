@@ -29,7 +29,7 @@ version: v3-code-first
 1. **感知 (Perception) → `$.flow` / `$.onState` / `$.onAction` / `$.on`**
    - 负责回答：“**什么时候触发？**”
    - 典型映射：
-    - “监听本地 State 变化” → `$.onState(selector)`（语义等价于 `$.flow.fromChanges`）；
+    - “监听本地 State 变化” → `$.onState(selector)`（语义等价于 `$.flow.fromState`）；
     - “监听本地 Action” → `$.onAction(predicate)`（语义等价于 `$.flow.fromAction`）；
      - "监听跨 Store / 外部流" → `$.on(stream)`，常见写法是 `$.on($Other.changes(...))`。
 
@@ -62,6 +62,8 @@ version: v3-code-first
 
 > Agent 视角下，这五个技能是等价的一等公民：
 > **不要只会写 `$.onState` / `$.onAction` / `$.on` 和 `$.state`，却把所有结构层逻辑埋在裸 `if/else` 和 `try/catch` 里。**
+
+> 与 runtime-logix v3 的对齐说明：这里的“感知/策略/行动”等技能，正好对应 Bound API `$` 内部的几个子域——`$.on*` 负责感知 (Perception)、`$.flow.*` 负责策略 (Strategy，时间轴与并发)、`$.state / $.actions` 负责行动 (Actuation)、`$.use` 与 `$.match` 分别承担协作与结构层职责。Agent 在写代码时应始终沿着这条链路思考，而不是把它们当成三套割裂的 API。
 
 ## 3. Fluent 白盒子集与 Effect 纯度（硬约束）
 

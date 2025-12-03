@@ -47,7 +47,7 @@ interface IntentRule {
 1. State 触发：
 
 ```ts
-const country$ = $Form.flow.fromChanges((s) => s.country)
+const country$ = $Form.flow.fromState((s) => s.country)
 ```
 
 映射为：
@@ -84,7 +84,7 @@ const submit$ = $Form.flow.fromAction(
 
 解析器在 AST 层的匹配规则：
 
-- 调用链起点为 `$X.flow.fromChanges` / `$X.flow.fromAction`；
+- 调用链起点为 `$X.flow.fromState` / `$X.flow.fromAction`；
 - 仅支持参数为单个箭头函数，内部是简单属性访问或 `_tag` 字面量比较。
 
 ### 2.2 Pipeline 模式
@@ -258,13 +258,13 @@ IntentRule IR 形态：
 }
 ```
 
-生成代码（Fluent 版本）：
+生成代码（Fluent 版本；示例中的 `$Form` 概念上表示针对 FormShape 预绑定的 Bound API，实际 PoC 中推荐在对应 Module 上通过 `Module.logic(($Form)=>...)` 获取 `$Form`）：
 
 ```ts
-const $Form = Logic.forShape<FormShape>()
+const $Form = {} as Logic.BoundApi<FormShape>
 
 export const CountryProvinceLogic: Logic.Of<FormShape> = Effect.gen(function* () {
-  const country$ = $Form.flow.fromChanges((s) => s.country)
+  const country$ = $Form.flow.fromState((s) => s.country)
 
   yield* country$.pipe(
     $Form.flow.debounce(300),
@@ -277,11 +277,9 @@ export const CountryProvinceLogic: Logic.Of<FormShape> = Effect.gen(function* ()
 })
 ```
 
-或直接生成 Fluent Intent DSL：
+或直接生成 Fluent Intent DSL（同样假定 `$Form` 由对应 Module 注入）：
 
 ```ts
-const $Form = Logic.forShape<FormShape>()
-
 export const CountryProvinceLogic: Logic.Of<FormShape> = Effect.gen(function* () {
   yield* $Form.onState((s) => s.country)
     .debounce(300)
@@ -307,10 +305,10 @@ export const CountryProvinceLogic: Logic.Of<FormShape> = Effect.gen(function* ()
 }
 ```
 
-生成代码（Fluent 版本）：
+生成代码（Fluent 版本；示例中的 `$` 概念上表示针对 CoordinatorShape 预绑定的 Bound API，实际 PoC 中推荐在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`）：
 
 ```ts
-const $ = Logic.forShape<CoordinatorShape>()
+const $ = {} as Logic.BoundApi<CoordinatorShape>
 
 export const SearchDetailCoordinator: Logic.Of<CoordinatorShape> = Effect.gen(function* () {
   const $Search = yield* $.use(SearchStore)
@@ -338,7 +336,7 @@ export const SearchDetailCoordinator: Logic.Of<CoordinatorShape> = Effect.gen(fu
   - 引导开发者把复杂逻辑放入 Pattern / Service，而不是塞进 Flow pipeline 中。
 
 - 提供自动修复建议：
-  - 将“展开写法”重构为标准 Fluent 链（e.g. 识别 `fromChanges + debounce + run(state.mutate)`，自动建议替换为 `$.onState(...).debounce(...).then($.state.mutate(...))`）。
+- 将“展开写法”重构为标准 Fluent 链（e.g. 识别 `fromState + debounce + run(state.mutate)`，自动建议替换为 `$.onState(...).debounce(...).then($.state.mutate(...))`）。
 
 这可以保证随着代码库增长，越来越多的 Logic 写法落在“可解析、可 round‑trip”的子集内。
 

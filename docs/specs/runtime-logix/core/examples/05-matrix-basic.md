@@ -5,13 +5,13 @@
 
 ## S01: 基础联动 (Sync Linkage)
 
-**v3 标准模式**: 使用 `flow.fromChanges` 监听源字段，在 `flow.run` 中通过 `state.mutate` 更新目标字段。
+**v3 标准模式**: 使用 `flow.fromState` 监听源字段，在 `flow.run` 中通过 `state.mutate` 更新目标字段。
 
 ```typescript
 export const S01_ResetProvinceOnCountryChange: Logic.Of<FormShape> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
-      const country$ = flow.fromChanges((s) => s.country);
+      const country$ = flow.fromState((s) => s.country);
 
       yield* country$.pipe(
         flow.run(
@@ -32,7 +32,7 @@ export const S01_ResetProvinceOnCountryChange: Logic.Of<FormShape> =
 export const S02_FillCityByZipCode: Logic.Of<FormShape, GeoService> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
-      const zip$ = flow.fromChanges((s) => s.zipCode);
+      const zip$ = flow.fromState((s) => s.zipCode);
 
       const fillCityEffect = Effect.gen(function* (_) {
         const svc = yield* GeoService;
@@ -57,7 +57,7 @@ export const S02_FillCityByZipCode: Logic.Of<FormShape, GeoService> =
 export const S03_SearchWithDebounce: Logic.Of<SearchShape, SearchApi> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
-      const keyword$ = flow.fromChanges((s) => s.keyword);
+      const keyword$ = flow.fromState((s) => s.keyword);
 
       const searchEffect = Effect.gen(function* (_) {
         const svc = yield* SearchApi;
@@ -77,13 +77,13 @@ export const S03_SearchWithDebounce: Logic.Of<SearchShape, SearchApi> =
 
 ## S04: 联合校验 (Multi-Field Validation)
 
-**v3 标准模式**: `flow.fromChanges` 可以监听一个返回元组 `[s.startDate, s.endDate]` 的 selector。
+**v3 标准模式**: `flow.fromState` 可以监听一个返回元组 `[s.startDate, s.endDate]` 的 selector。
 
 ```typescript
 export const S04_ValidateDateRange: Logic.Of<FormShape> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
-      const datePair$ = flow.fromChanges(
+      const datePair$ = flow.fromState(
         (s) => [s.startDate, s.endDate] as const
       );
 
@@ -108,7 +108,7 @@ export const S04_ValidateDateRange: Logic.Of<FormShape> =
 export const S05_QueryByCategoryAndSort: Logic.Of<ProductShape, ProductApi> =
   ({ flow, state }) =>
     Effect.gen(function* (_) {
-      const params$ = flow.fromChanges(
+      const params$ = flow.fromState(
         (s) => [s.category, s.sort] as const
       );
 

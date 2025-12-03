@@ -1,0 +1,9 @@
+{
+    "title": "Guide",
+    "root": true,
+    "pages": [
+        "get-started",
+        "learn",
+        "recipes"
+    ]
+}

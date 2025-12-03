@@ -45,19 +45,19 @@ Pattern 则作为**资产级概念**存在：当某个 pattern-style `(input) =>
 
 ### 2.3 核心运行机制 (Runtime Mechanism)
 
-Logix v3 的核心能力，可以理解为一种基于 Effect-TS `Context` / `Tag` 的「上下文隐形传态」：
+Logix v3 的核心能力，可以理解为一种基于 Effect-TS `Context` / `Tag` 的「上下文隐形传态」，
+但在当前 PoC 中，这一能力**通过 `Logix.Module` + `Module.logic(($)=>Effect.gen(...))` + Bound API `$` 落地**。
 
-- `Logic.forShape<Sh,R>()` 并不会直接拿到某个具体的 Store 实例，而是构造了一组 **在 `Logic.Env<Sh,R>` 上运行的访问器**（`state / actions / flow / control / services`）。
-- `Logix.Module('Id', { state, actions }).live(initial, ...logics)` 在内部会创建对应的运行时容器（ModuleRuntime），并在其 Scope 中通过 `Effect.provideService(Logic.RuntimeTag, runtime)` 注入到环境。
-- 当挂在同一个 Module 上的多个 Logic 开始运行时，它们内部各自文件里的 `const $ = Logic.forShape<Shape, R>()` 会在运行时从同一个 Env 中读取 `Logic.RuntimeTag`，从而 **共享同一颗 State 与同一条 actions$ / changes$ 流**。
+- `Logix.Module('Id', { state, actions })` 定义领域模块的 Schema 形状；
+- `Module.logic(($)=>Effect.gen(...))` 为该模块挂载 Logic 程序，并在回调参数中注入预绑定的 Bound API `$`；
+- `Module.live(initial, ...logics)` 在内部会创建对应的运行时容器（ModuleRuntime），并在其 Scope 中启动所有 Logic 程序。
 
 效果是：
 
-- 逻辑可以在物理上拆分为多个文件 / 模块（每个文件都有自己的 `$ = Logic.forShape<Shape,R>()`）；
-- 只要它们的 Shape / Env 一致，并且一起挂载在同一个 `Logix.Module('Id', ...)` 上（通过同一次 `.live(initial, ...logics)` 组合），运行时就会在同一个 Scope 中启动这些 Logic，它们看到的是同一棵 Store；
+- 逻辑可以在物理上拆分为多个文件 / 模块，但在实现层通过 `Module.logic(($)=>...)` 显式挂载到同一个 Module 上，从而共享同一棵 State 与同一条 actions$ / changes$ 流；
 - 若多个逻辑关注的是完全不同的领域（Shape 不同），则推荐拆成多个 Module，通过 L2 IntentRule（例如 `$.use(OtherModule)` + Fluent DSL 将源 Module 的 `changes / actions` 映射为目标 Module 的 `dispatch`）或协调 Pattern 在 L2 层进行跨 Module 协作。
 
-这套机制实现了「逻辑的物理拆分，状态的逻辑单源」，是支撑大规模应用开发与跨文件协作的关键架构特性。
+> 说明：早期草案中曾构想过基于 `Logic.RuntimeTag` 的 Env-First Bound API 工厂，用于从 `Logic.Env<Sh,R>` 中“隐式”获取 Runtime 并构造 `$`。该设想目前仅保留在 drafts 中，当前 PoC 的运行时契约一律以 `Module.logic(($)=>...)` 与 `BoundApi` 为准。
 
 ## 3. 仓库结构规划
 
@@ -66,7 +66,7 @@ packages/
   logix/                # 核心引擎
     src/
       store.ts          # 状态容器与运行时能力定义（内部实现细节）
-      logic.ts          # Logic.Env / Logic.Of / Logic.forShape / Bound API $
+      logic.ts          # Logic.Env / Logic.Of / Bound API $
       flow.ts           # Flow.Env / Flow.Api
       flow.ts           # Flow.Api
   form/                 # 表单领域包

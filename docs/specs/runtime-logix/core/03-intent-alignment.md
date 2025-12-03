@@ -44,7 +44,7 @@ Logix 视角只关心：某段 Behavior & Flow Intent 是否选择了 `logix-eng
 
 2. **行为步骤链**（Behavior & Flow Intent）  
    - 行为步骤（检查、调用服务、更新状态、发出信号等）被编译为 Logix 的 Logic 规则：  
-     - 对字段变化敏感的步骤 → `flow.fromChanges(selector)`；  
+     - 对字段变化敏感的步骤 → `flow.fromState(selector)`；  
      - 对 Actions 敏感的步骤 → `flow.fromAction(predicate)`；  
      - 对外部流敏感的步骤 → `flow` 规则。
 
@@ -107,7 +107,7 @@ Logix 端的 JSON 解释器与 Logic DSL 仅是“承接这些 Intent 的一种�
 | `UIIntentNode.emits` / `UIImplConfig.emits` | `dispatch(action)` | UI 事件（如 `onClick: 'signal:submitOrder'`）被编译为向对应 ModuleRuntime 派发某个 Action，供 `flow.fromAction` 触发。 |
 | `DomainIntentNode` / `DomainImplConfig.fields` | `Logix.Module('Id', { state, actions })` / `Module.live(initial, ...)` | Domain 字段 Schema 编译为 `stateSchema: Schema.Schema<S>`，同时生成对应的 `initialState: S`，共同决定某个 Logix.Module 的 State 形状与初始值。 |
 | `DomainImplConfig.services` | ModuleRuntime Env + Logic 中 `$.use / $.services` | Domain 服务契约映射为 `Services` 接口与具体实现对象，通过 Layer 注入到 ModuleRuntime 的环境，在 Logic 中通过 `$.use(ServiceTag)` 或 `services.Xxx` 调用。 |
-| `LogicIntentNode.trigger` / `LogicImplConfig.trigger` | `flow.fromAction` / `flow.fromChanges` | `type: 'onSignal' | 'onLifecycle' | 'onSchedule'` 等触发器被编译为对应的流创建函数；例如 `signalId: 'submitOrder'` → `flow.fromAction(a => a._tag === 'submitOrder')`。 |
+| `LogicIntentNode.trigger` / `LogicImplConfig.trigger` | `flow.fromAction` / `flow.fromState` | `type: 'onSignal' | 'onLifecycle' | 'onSchedule'` 等触发器被编译为对应的流创建函数；例如 `signalId: 'submitOrder'` → `flow.fromAction(a => a._tag === 'submitOrder')`。 |
 | `LogicImplConfig.flow.nodes` / `edges`（Flow DSL） | Logic / Flow API | Flow 节点（`service-call` / `update-state` / `dispatch` / `branch` 等）通过 Logic 程序中的 `Effect` 和 `flow` API 进行组合；调用服务 → 直接 `yield* services.Xxx` 或包装为 Pattern；更新状态 → 通过 `state.update` / `state.mutate` 实现；发射信号 → 通过 `dispatch` 实现。 |
 | `LogicImplConfig.constraints`（`concurrency` / `timeout` / `retry` / `transaction`） | 规则 Options / 中间件 | 编译为 Rule 层面的选项（如防抖/并发策略）或封装在服务调用的 Effect 组合子内（如 `Effect.timeoutFail`、`Effect.retry`），由 Logix Runtime 在执行时统一处理。 |
 | `LogicImplConfig.testCases` | `@logix/test` / Round-trip 测试 | 平台可将这些用例转换为基于 Logix ModuleRuntime 的 Round-trip 测试（参见 `runtime-logix/test` 系列文档），通过注入 Mock Services、构造输入、断言 State/Signals。 |

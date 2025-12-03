@@ -55,7 +55,7 @@ AI 推荐并配置了 `DebouncedSearch` Pattern，生成如下代码：
 // 2. Logic 实现
 export const SearchLogic: Logic.Of<SearchShape, CustomerApi> = Effect.gen(function* () {
   Effect.gen(function*(_) {
-    const keyword$ = flow.fromChanges(s => s.keyword);
+    const keyword$ = flow.fromState(s => s.keyword);
 
     const searchEffect = Effect.gen(function*(_) {
       const api = yield* CustomerApi;
@@ -99,7 +99,7 @@ export const SearchLogic: Logic.Of<SearchShape, CustomerApi> = Effect.gen(functi
 export const SearchLogicWithAnalytics: Logic.Of<SearchShape, CustomerApi | AnalyticsApi> = Effect.gen(function* () {
   ({ flow, state }) =>
     Effect.gen(function*(_) {
-      const keyword$ = flow.fromChanges(s => s.keyword);
+      const keyword$ = flow.fromState(s => s.keyword);
 
       // 埋点逻辑 (Black Box)
       const analyticsEffect = Effect.gen(function*(_) {

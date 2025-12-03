@@ -1,8 +1,8 @@
 # Pattern: Intent Priority & Conflict Resolution (v3 Standard Paradigm)
 
-> **Scenario**: 价格计算 (User Override vs Auto Calculation)
-> **Focus**: 显式状态建模、逻辑冲突解决
-> **Note**: 本文示例展示了 v3 Effect-Native 标准范式。通过在状态模型中添加明确的标志（如 `isManualOverride`），可以显式地、可预测地管理逻辑冲突。
+> **Scenario**: 价格计算 (User Override vs Auto Calculation)  
+> **Focus**: 显式状态建模、逻辑冲突解决  
+> **Note**: 本文示例展示了 v3 Effect-Native 标准范式。通过在状态模型中添加明确的标志（如 `isManualOverride`），可以显式地、可预测地管理逻辑冲突。当前 PoC 中，实际代码应在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`。
 
 ## 1. The Challenge (痛点)
 
@@ -42,13 +42,12 @@ type OrderItemShape = Logix.ModuleShape<typeof OrderItemSchema, typeof OrderItem
 每个逻辑源都成为一个独立的、有明确条件的流。
 
 ```typescript
-const $Item = Logic.forShape<OrderItemShape>();
-
+// 概念上，这里的 `$Item` 表示针对 OrderItemShape 预绑定的 Bound API。
 const priorityLogic: Logic.Of<OrderItemShape> =
   Effect.gen(function* (_) {
 
     // Rule 1: 自动计算
-    const priceOrQty$ = $.flow.fromChanges(s => [s.quantity, s.unitPrice]);
+    const priceOrQty$ = $.flow.fromState(s => [s.quantity, s.unitPrice]);
     const autoCalculation = priceOrQty$.pipe(
       $.flow.run(
         Effect.gen(function* (_) {
@@ -75,7 +74,7 @@ const priorityLogic: Logic.Of<OrderItemShape> =
     );
 
     // Rule 3: 系统策略 (强制约束)
-    const total$ = $.flow.fromChanges(s => s.total);
+    const total$ = $.flow.fromState(s => s.total);
     const systemPolicy = total$.pipe(
       $.flow.run(
         $.state.mutate(draft => {

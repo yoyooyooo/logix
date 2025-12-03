@@ -12,7 +12,7 @@ packages/logix-core/
 │   ├── index.ts                # Public API Barrel (Logix.*, Logic.*)
 │   │
 │   ├── api/                    # Public API Definitions
-│   │   ├── Logix.ts            # Logix Namespace (Module, app, provide)
+│   │   ├── Logix.ts            # Logix Namespace (Module, Logic, BoundApi 等)
 │   │   ├── Logic.ts            # Logic Namespace (Of, Env)
 │   │   └── BoundApi.ts         # The `$` Interface Definition
 │   │
@@ -22,7 +22,7 @@ packages/logix-core/
 │   │   └── MatchBuilder.ts     # Implementation of $.match(...)
 │   │
 │   ├── runtime/                # Runtime Execution Engine
-│   │   ├── AppRuntime.ts       # Logix.app() -> Runtime Instance
+│   │   ├── AppRuntime.ts       # 应用级 Runtime 内核（供 LogixRuntime.make 使用）
 │   │   ├── ModuleRuntime.ts    # Logix.Module() -> Runtime Instance
 │   │   ├── ScopeManager.ts     # Effect Scope & Lifecycle Management
 │   │   └── Registry.ts         # Global Module Registry
@@ -36,7 +36,7 @@ packages/logix-core/
 │       └── utils.ts            # Common Helpers
 │
 ├── test/                       # Unit Tests
-│   ├── dsl/
+│   ├── dsl/                    # Implementation of Flow.Api / BoundApi.flow
 │   ├── runtime/
 │   └── scenarios/              # Integration Scenarios
 │
@@ -100,10 +100,11 @@ packages/logix-test/
   - Output formats: `esm` (default), `cjs` (for legacy compat).
   - Dts: Enabled (`dts: true`) to generate type definitions.
   - Clean: Enabled (`clean: true`).
-- **Circular Dependencies**:
-  - **Rule**: `api/` defines types and thin factory interfaces. It should NOT import from `dsl/` or `runtime/` implementations.
-  - `dsl/` and `runtime/` depend on `api/`.
-  - `dsl/` and `runtime/` may interact, but `api/` remains the clean, dependency-free contract.
+- **Circular Dependencies（目标状态）**：
+  - **目标**：`api/` 只定义类型和薄工厂接口，不直接依赖具体实现（`dsl/` 或 `runtime/`）；
+  - `dsl/` 和 `runtime/` 依赖 `api/`；
+  - `dsl/` 和 `runtime/` 之间可以互相协作，但 `api/` 保持尽可能“无实现依赖”的契约角色。
+  - **当前 PoC 现状**：v3 PoC 阶段，出于实现简单性，`api/` 中的部分入口（例如 `Logix.Module` / Bound API `$` 工厂）直接引用了 `runtime/` 与 `dsl/`。这在短期内是被允许的工程折中，后续在需要 DevTools / 多 Runtime 适配时，再分阶段下沉实现代码到 `runtime/` / `dsl/` 并恢复“纯契约”形态。
 - **Barrel Files**: Each directory (`api`, `dsl`, `runtime`) should have an `index.ts` to control visibility.
 - **Effect Integration**: All `runtime/` code is heavily Effect-native. `dsl/` code constructs Effect descriptions but doesn't run them.
 

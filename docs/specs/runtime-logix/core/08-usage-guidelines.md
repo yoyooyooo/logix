@@ -44,7 +44,7 @@ yield* refresh$.pipe(
 **推荐模式**: 组合多个 Stream 算子。
 
 ```ts
-const keyword$ = flow.fromChanges(s => s.search);
+const keyword$ = flow.fromState(s => s.search);
 
 yield* keyword$.pipe(
   flow.debounce(300),
@@ -64,8 +64,8 @@ Logix 在 Intent 层提供了三档“响应式意图”表达，代码侧以 Fl
 
 | 层级 | 场景 | 代码推荐原语 | IR 映射 | 说明 |
 | --- | --- | --- | --- | --- |
-| L1：单 Store 内同步联动 | 监听某个 State 视图变化，并维护派生字段 | `$.onState(selector).then($.state.update/mutate)` | L1 IntentRule（self.state → self.mutate） | 例如 `results` 变化时自动维护 `hasResults`、`summary` 等 |
-| L1：单 Store 内同步联动 | 监听某一类 Action 并重排当前 Store State | `$.onAction(predicate).then(...)` | L1 IntentRule（self.action → self.mutate） | 例如表单 `change/reset`、Tab 切换、显式 reset 等离散事件 |
+| L1：单 Store 内同步联动 | 监听某个 State 视图变化，并维护派生字段 | `$.onState(selector).update/mutate(...)` | L1 IntentRule（self.state → self.mutate） | 例如 `results` 变化时自动维护 `hasResults`、`summary` 等 |
+| L1：单 Store 内同步联动 | 监听某一类 Action 并重排当前 Store State | `$.onAction(predicate).update/mutate(...)` | L1 IntentRule（self.action → self.mutate） | 例如表单 `change/reset`、Tab 切换、显式 reset 等离散事件 |
 | L2：跨 Module 协作 | A.Module 的 State/Action 驱动 B.Module 的 Action | `$.use(AModule/BModule) + Fluent DSL（$A.changes/… → $B.dispatch）` | L2 IntentRule（A.state/A.action → B.dispatch） | 例如 SearchModule → DetailModule、GlobalLayoutModule.logout → 各 Module reset |
 | L2/L3：复杂异步流与副作用 | 监听 Action/State 触发复杂长逻辑（调用多个 Service、带错误边界） | Fluent DSL 或 `flow.run*` + `$.match` / `Effect.*` | `Intent.react`（预留）或自定义节点 | 例如提交流程、审批流、Job 运行，通常封装为 `(input) => Effect` 的 Pattern |
 | L3：极度定制化流处理 | 需要精细控制 Stream 结构（buffer、groupBy、低层 Stream 组合） | 直接使用 `Stream.*` / `Effect.*` | 无（Gray/Black Box） | 平台视为 Gray/Black Box，适合高度自定义场景 |
@@ -102,6 +102,7 @@ export const UserLive = UserModule.live(initialUserState, UserLogic);
 - 宿主决定是单例还是多实例：
   - App Shell 可以选择在应用启动时调用工厂一次，得到全局 Live Layer；
   - 页面 / 弹框可以通过 `useLocalStore(() => makeXxxLive(props), deps)` 创建页面级实例。
+- 详细的多实例模式（工厂模式 vs 作用域模式）对比与最佳实践，请参考 **[10-pattern-multi-instance.md](./10-pattern-multi-instance.md)**。
 - 跨 Module 协作通过 Intent 层表达：
   - 使用 Fluent DSL + IntentRule（Link / Logic 协作原语），描述"ModuleA 状态 / Action 变化如何驱动 ModuleB"；
   - 避免在某个 Module 内部直接读取 / 修改另一个 Module 的内部状态实现细节。

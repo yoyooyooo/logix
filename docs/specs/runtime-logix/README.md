@@ -21,13 +21,13 @@
 
 - 业务工程师 / 平台集成方
   需要在真实业务中使用 Logix 与其 React/Form 适配层写代码。
-  以 `guide/` 下文档为入口，对应的核心契约和示例在 `core/examples/`、`core/scenarios/` 以及 `react/`、`form/` 中查找。
+  以 `guide/` 下文档为入口，对应的核心契约和示例在 `core/examples/` 以及 `react/`、`form/` 中查找。
 
 ## 一条黄金链路（Module → Logic → Fluent → IntentRule）
 
 从 Runtime 视角看，Logix v3 围绕一条标准链路设计：
 
-> **Module → Module.logic(($) => ...) → $.use(Module) → Fluent DSL (`$.onState` / `$.onAction` / `$.on`) → IntentRule**
+> **Module → Module.logic(($) => ...) → $.use(Module) → Fluent DSL (`$.onState` / `$.onAction` / `$.on` + `.update/.mutate/.run*`) → IntentRule**
 
 简要说明：
 
@@ -62,11 +62,10 @@
   - 详细设计见 `form/README.md` 及其子文档。
 
 - `test/`
-  - `@logix/test` 测试工具包：提供 `TestRuntime`、`renderLogic` 与 `Scenario` 流畅测试 API。
-  - 详细设计见 `impl/test-package.md`。
+  - `@logix/test` 测试工具包：提供 `TestRuntime`、`TestProgram` 与 `runTest` 等基础测试 API。当前实现已覆盖 Logic 场景编排与状态断言，高级能力（如基于 Trace 的断言 DSL、ExecutionDump 等）仍在演进中，设计见 `test/01-test-kit-design.md`。
 
 - `impl/`
-  - 运行时实现备忘录与技术草图：围绕 `Logix.app` / `Logix.module` / ModuleDef、Logic Middleware、Store 生命周期等复杂能力的具体实现思路与风险评估。
+  - 运行时实现备忘录与技术草图：围绕应用级 AppRuntime（内部基于 `AppRuntime.makeApp`）、`Logix.Module` / ModuleDef、Logic Middleware、Store 生命周期等复杂能力的具体实现思路与风险评估。
   - 面向 runtime 实现者使用，不作为对外 API 契约；关键决策一旦稳定，会同步回写到 `core/` 规格文档。
 
 > 讨论 Logix 能力与方案时，请优先参考 `core/` 下的文档；React/Form 相关内容分别沉淀在 `react/` / `form/` 中，使用示例与工作流则集中在 `guide/` 下，避免与引擎设计混淆。

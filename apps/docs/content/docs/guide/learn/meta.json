@@ -1,0 +1,11 @@
+{
+    "title": "核心概念",
+    "pages": [
+        "thinking-in-logix",
+        "describing-modules",
+        "adding-interactivity",
+        "managing-state",
+        "escape-hatches",
+        "deep-dive"
+    ]
+}

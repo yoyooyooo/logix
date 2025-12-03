@@ -1,15 +1,14 @@
 # Matrix Examples: Advanced Concurrency (v3 Standard Paradigm)
 
-> **Focus**: Exhaust Map (提交防重), 并行服务调用
-> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，使用 `Flow.Api` 和 `Effect.all` 来声明式地管理并发。
+> **Focus**: Exhaust Map (提交防重), 并行服务调用  
+> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，使用 `Flow.Api` 和 `Effect.all` 来声明式地管理并发。当前 PoC 中，实际代码应在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`。
 
 ## S20: 提交防重 (Submit Exhaust)
 
 **v3 标准模式**: 监听提交 `Action`，并使用 `flow.runExhaust` 来执行提交 Effect。`runExhaust` 会在前一个 Effect 完成前，自动忽略所有新的触发，从而天然地防止了重复提交。
 
 ```typescript
-const $Form = Logic.forShape<FormShape, OrderApi>();
-
+// 概念上，这里的 `$Form` 表示针对 FormShape + OrderApi 预绑定的 Bound API。
 const submitLogic: Logic.Of<FormShape, OrderApi> =
   Effect.gen(function* (_) {
     const submit$ = $.flow.fromAction(a => a._tag === 'submit');
@@ -42,8 +41,7 @@ const submitLogic: Logic.Of<FormShape, OrderApi> =
 **v3 标准模式**: 在一个 `Effect` 中，使用 `Effect.all` 来并行执行多个独立的异步任务。通过在每个任务内部分别使用 `Effect.catchAll`，可以实现部分成功、部分失败的健壮错误处理。
 
 ```typescript
-const $Page = Logic.forShape<PageShape, UserApi | ConfigApi>();
-
+// 概念上，这里的 `$Page` 表示针对 PageShape + (UserApi | ConfigApi) 预绑定的 Bound API。
 const parallelLoadLogic: Logic.Of<PageShape, UserApi | ConfigApi> =
   Effect.gen(function* (_) {
       const userApi = yield* $Page.services(UserApi);

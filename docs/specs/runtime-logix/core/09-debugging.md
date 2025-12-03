@@ -8,7 +8,26 @@ Logix 提供了强大的调试能力，旨在让逻辑执行过程透明化、�
 
 ## 1. DevTools 架构
 
-Logix DevTools 是一个独立的 Chrome 扩展或 React 组件，通过 `DevToolsBridge` 与 Logix 引擎通信。
+Logix DevTools 是一个独立的 Chrome 扩展或 React 组件，通过 `DevToolsBridge` 与 Logix 引擎通信。v3.1 起，核心运行时内置 `DebugSink` Tag，可由任意 Layer 提供实现以消费调试事件（默认 Noop）。
+
+### 1.0 DebugSink 接口
+
+```ts
+export type DebugEvent =
+  | { type: "module:init"; moduleId?: string }
+  | { type: "module:destroy"; moduleId?: string }
+  | { type: "action:dispatch"; moduleId?: string; action: unknown }
+  | { type: "state:update"; moduleId?: string; state: unknown }
+  | { type: "lifecycle:error"; moduleId?: string; cause: unknown }
+
+export interface DebugSink {
+  record(event: DebugEvent): Effect<void>
+}
+
+export const DebugSinkTag = Context.GenericTag<DebugSink>("@logix/DebugSink")
+```
+
+引擎默认提供 `NoopDebugSinkLayer`，也可以通过 `ConsoleDebugLayer` 在开发模式下直接输出事件。ModuleRuntime 会在 `onInit` / `onDestroy`、Action 派发、状态更新以及 lifecycle 错误时自动广播事件。
 
 ### 1.1 通信协议
 

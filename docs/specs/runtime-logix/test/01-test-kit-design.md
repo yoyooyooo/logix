@@ -13,43 +13,44 @@
 
 ## 2. API 设计
 
-### 2.1 `defineTest`
+### 2.1 `TestProgram` + `runTest`
 
-定义一个测试场景。它返回一个待执行的 `Effect`。
+推荐入口：通过声明式配置构建测试场景，再以 Effect 形式运行。
 
 ```typescript
-import { defineTest } from '@logix/test';
-import { TestClock } from 'effect/Test';
+import { TestProgram, runTest } from '@logix/test';
 
-const myTest = defineTest(myLogicRule, (api) => Effect.gen(function*() {
+const scenario = TestProgram.make({
+  main: {
+    module: CounterModule,
+    initial: { count: 0 },
+    logics: [CounterLogic],
+  },
+  modules: [
+    {
+      module: AuthModule,
+      initial: { loggedIn: false },
+      logics: [AuthLogic],
+    },
+  ],
+  layers: [
+    LinkLayer,
+  ],
+});
+
+const myTest = scenario.run((api) => Effect.gen(function*() {
   // 1. Action: 触发信号 (复用 Core 语义)
-    yield* api.dispatch({ _tag: 'submit', payload: { id: 1 } });
-  
-  // 2. Time Travel: Effect 原生能力
-  yield* TestClock.advance('1 second');
-  
-  // 3. Assertion: 状态断言 (Effect)
-  // 自动重试直到通过，或超时失败
+  yield* api.dispatch({ _tag: 'submit', payload: { id: 1 } });
+
+  // 2. Assertion: 状态断言 (Effect)
   yield* api.assert.state(s => s.count === 100);
-  
-  // 4. Assertion: 信号断言
+
+  // 3. Assertion: 信号断言
   yield* api.assert.signal('toast', { msg: 'Success' });
 }));
-```
 
-### 2.2 `runTest`
-
-执行测试。负责构建 Store、注入 Layer、捕获 Trace。
-
-```typescript
-import { runTest } from '@logix/test';
-
-await runTest(myTest, {
-  initialState: { count: 0 },
-  layers: [
-    Layer.succeed(MyServiceTag, { fetch: () => Effect.succeed(100) })
-  ]
-});
+// 执行测试，返回 ExecutionResult（包含 Trace）
+const result = await runTest(myTest);
 ```
 
 ## 3. 高级能力
@@ -62,7 +63,7 @@ await runTest(myTest, {
 import * as Arb from '@effect/schema/Arbitrary';
 import * as fc from 'fast-check';
 
-const fuzzTest = defineTest(myLogicRule, (api) => Effect.gen(function*() {
+const fuzzTest = scenario.run((api) => Effect.gen(function*() {
   const input = yield* Arb.make(InputSchema);
     yield* api.dispatch({ _tag: 'submit', payload: input });
   yield* api.assert.state(s => s.isValid);
@@ -74,7 +75,7 @@ const fuzzTest = defineTest(myLogicRule, (api) => Effect.gen(function*() {
 模拟竞态条件。
 
 ```typescript
-const raceTest = defineTest(myLogicRule, (api) => Effect.gen(function*() {
+const raceTest = scenario.run((api) => Effect.gen(function*() {
   // 模拟快速点击两次
     yield* Effect.all([
     api.dispatch({ _tag: 'submit', payload: { id: 1 } }),

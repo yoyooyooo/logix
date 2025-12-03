@@ -81,7 +81,7 @@ export const myFlow = Effect.gen(function*() {
 **Target: Logix Runtime**
 ```typescript
 // 假设配置了 debounce
-flow.fromChanges(s => s.searchKeyword).pipe(
+flow.fromState(s => s.searchKeyword).pipe(
   flow.debounce(500),
   flow.run(val => {
     // ...

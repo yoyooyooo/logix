@@ -28,7 +28,43 @@ version: 8 (Effect-Native-Simplified)
 *   **示例**: `ModalFormWorkflow` (包含 Open/Close 信号, Loading 状态, 表单提交逻辑)。
 *   **画布表现**: 大型容器节点，暴露 Signal 端口。
 
-## 3. Pattern 与平台的关系（v3 范围内）
+## 3. Pattern 与 ModuleImpl 的协同关系
+
+随着 React 侧 `ModuleImpl` 方案的引入，Pattern 在业务落地中的角色得到了进一步明确。Pattern 是“模具”，`ModuleImpl` 是“成品”。
+
+### 3.1 消费映射
+
+在 `ModuleImpl` 体系下，Pattern 的产出物有了明确的归宿：
+
+- **原子 Pattern** (Retry, Debounce)：作为 **Logic Helper**，在 `Module.logic` 内部被调用。
+- **逻辑 Pattern** (CRUD, Pagination)：作为 **Logic Factory**，在 `ModuleImpl` 的 `logics` 数组中被配置和实例化。
+  ```ts
+  // 示例：在 ModuleImpl 中消费 Pattern
+  export const UserListImpl = UserModule.make({
+    initial: { ... },
+    logics: [
+      // PaginationPattern.make 返回一个 ModuleLogic
+      PaginationPattern.make({ fetch: UserApi.list })
+    ]
+  })
+  ```
+- **场景 Pattern** (完整工作流)：作为 **Module Factory**，直接返回配置好的 `ModuleImpl`，或者生成包含完整 Shape 的 `Module`。
+  场景 Pattern 也可以在 `ModuleImpl` 基础上进一步封装 Env，例如通过 `ModuleImpl.withLayer` 预绑定 Service：
+  ```ts
+  // 场景 Pattern：返回一个已经绑定 Service 的 Impl
+  export const makeRegionImplWithService = () => {
+    const RegionImpl = RegionModule.make<RegionService>({
+      initial,
+      logics: [RegionLogicFromPattern],
+    })
+
+    return RegionImpl.withLayer(RegionServiceLive)
+  }
+  ```
+
+这种分层使得 Pattern 库专注于“通用逻辑的可复用性”，而 `ModuleImpl` 专注于“具体页面的组装与落地”。
+
+## 4. Pattern 与平台的关系（v3 范围内）
 
 在 v3 阶段，推荐的工程实践是：
 
@@ -42,7 +78,7 @@ version: 8 (Effect-Native-Simplified)
 
 本设计文件后续如需扩展（例如重新引入更强的 Builder DSL、AI Slot 等），应在 v3/v4 的 Roadmap 与 runtime-logix / platform 规范更新后，再补充新的章节；当前版本以 pattern-style `(input) => Effect` + 资产 metadata 为唯一事实源。***
 
-## 4. 工程约定：目录、命名与复用验证
+## 5. 工程约定：目录、命名与复用验证
 
 从“真实业务开发”的视角出发，为了让 Pattern 在仓库内可查、可测、可复用，v3 阶段补充以下工程约定。当前 PoC 的参考落点为：
 

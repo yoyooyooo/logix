@@ -1,7 +1,8 @@
 # Example: Conditional Logic Execution (v3 Paradigm)
 
-> **Status**: Informational
-> **Note**: This document clarifies the standard v3 approach for handling conditional or dynamic business logic.
+> **Status**: Informational  
+> **Note**: This document clarifies the standard v3 approach for handling conditional or dynamic business logic.  
+> **Implementation Note**: In the code snippets，`$` is assumed to be a Bound API on a given Shape/Env. In the current PoC, real code should obtain `$` via the corresponding `Module.logic(($)=>...)` or by explicitly receiving a `BoundApi<Sh,R>` parameter.
 
 ## Architectural Principle
 
@@ -16,11 +17,10 @@ Conditional logic should be implemented *inside* a `Logic` unit using standard `
 If a specific validation rule should only apply to VIP users, this is expressed with an `Effect.when` or a simple `if` statement within the logic's `Effect`.
 
 ```typescript
-const $Form = Logic.forShape<FormShape>();
-
+// 概念上，这里的 `$Form` 表示针对 FormShape 预绑定的 Bound API，实际 PoC 中通常由对应 Module 注入。
 const conditionalValidationLogic: Logic.Of<FormShape> =
   Effect.gen(function* (_) {
-    const amount$ = $.flow.fromChanges(s => s.amount);
+    const amount$ = $.flow.fromState(s => s.amount);
 
     const validationEffect = Effect.gen(function* (_) {
       const { isVip, amount } = yield* $.state.read;

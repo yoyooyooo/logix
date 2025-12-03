@@ -2,7 +2,7 @@
 
 > **Scenario**: 购物车
 > **Features**: 行级联动、聚合计算、批量更新
-> **Note**: 本示例基于 v3 Effect-Native Logix 写法（`Logix.ModuleShape` + Bound API `$` + `Flow / Control`）。
+> **Note**: 本示例基于 v3 Effect-Native Logix 写法（`Logix.ModuleShape` + Bound API `$` + `Flow / Control`）。当前 PoC 中，实际代码应在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`。
 
 ## Schema Definition
 
@@ -44,11 +44,10 @@ type CartShape = Logix.ModuleShape<
 ## Logic Implementation（v3 Effect-Native）
 
 ```typescript
-const $Cart = Logic.forShape<CartShape>();
-
+// 概念上，这里的 `$Cart` 表示针对 CartShape 预绑定的 Bound API。
 export const CartLogic: Logic.Of<CartShape> =
   Effect.gen(function* (_) {
-    const items$ = $.flow.fromChanges((s) => s.items);
+    const items$ = $.flow.fromState((s) => s.items);
     const toggleAll$ = $.flow.fromAction(
       (a): a is { type: "cart/toggleAll" } => a.type === "cart/toggleAll"
     );

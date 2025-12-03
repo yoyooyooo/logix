@@ -23,7 +23,7 @@ Logic Intent 的 Impl 层是基于 Effect 的 **Bound API (`$`) 与 `Flow` API**
 
 在不同文档中，`Flow` 一词曾被用来指代不同层级的概念，这里统一约定：
 
-- `Logix Flow`：特指前端 Logix Engine 内部的时间轴 / 并发原语集合，即 `runtime-logix/core/03-logic-and-flow.md` 中的 `Flow.Api`（`fromAction / fromChanges / debounce / run*` 等）。代码层面通过 `flow.*` 命名空间访问。
+- `Logix Flow`：特指前端 Logix Engine 内部的时间轴 / 并发原语集合，即 `runtime-logix/core/03-logic-and-flow.md` 中的 `Flow.Api`（`fromAction / fromState / debounce / run*` 等）。代码层面通过 `flow.*` 命名空间访问。
 - `Effect Flow Runtime`：特指运行在 BFF / Server 侧的 Effect 驱动业务流程运行时（例如 `.flow.ts` 中编排的跨系统长流程）。为了避免歧义，后续文档中更倾向使用 **Flow Runtime** 或 **ServerFlow Runtime** 来称呼它，而不直接写 `Flow`。
 - `Flow DSL`：指 YAML/JSON 级别的编排描述（参见 `v1/08-flow-dsl-and-ast.md`），主要用于 Flow 结构的抽象表达，便于 Intent 与工具链进行结构化对齐。
 

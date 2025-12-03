@@ -1,28 +1,40 @@
 {
-    "name": "@intent-flow/logix-core",
+    "name": "@logix/core",
     "version": "0.0.1",
     "description": "The pure logic engine for Logix v3",
-    "main": "./dist/index.js",
-    "module": "./dist/index.mjs",
-    "types": "./dist/index.d.ts",
+    "type": "module",
+    "main": "./src/index.ts",
+    "module": "./src/index.ts",
+    "types": "./src/index.ts",
     "exports": {
-        ".": {
-            "import": "./dist/index.mjs",
-            "require": "./dist/index.js",
-            "types": "./dist/index.d.ts"
+        ".": "./src/index.ts"
+    },
+    "publishConfig": {
+        "main": "./dist/index.cjs",
+        "module": "./dist/index.js",
+        "types": "./dist/index.d.ts",
+        "exports": {
+            ".": {
+                "types": "./dist/index.d.ts",
+                "import": "./dist/index.js",
+                "require": "./dist/index.cjs"
+            }
         }
     },
     "scripts": {
-        "build": "tsup",
+        "build": "tsup src/index.ts --format cjs,esm --dts",
         "dev": "tsup --watch",
         "typecheck": "tsc --noEmit",
-        "test": "vitest"
+        "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "peerDependencies": {
         "effect": "^3.10.0"
     },
     "dependencies": {
-        "effect": "^3.10.0"
+        "effect": "^3.19.6",
+        "mutative": "^1.0.4"
     },
     "devDependencies": {
         "tsup": "^8.0.0",

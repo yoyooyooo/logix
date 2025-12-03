@@ -1,18 +1,17 @@
 # Matrix Examples: Flow Control (v3 Standard Paradigm)
 
-> **Focus**: 错误重试、竞态取消、错误回退
-> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，使用 `Flow` API 和 `Effect` 组合子来声明式地处理复杂的异步控制流。
+> **Focus**: 错误重试、竞态取消、错误回退  
+> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，使用 `Flow` API 和 `Effect` 组合子来声明式地处理复杂的异步控制流。当前 PoC 中，实际代码应在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`。
 
 ## S14: 失败重试 (Retry)
 
 **v3 标准模式**: 在传递给 `flow.run` 的 `Effect` 内部，使用 `Effect.retry` 组合子。
 
 ```typescript
-const $Form = Logic.forShape<FormShape, UserApi>();
-
+// 概念上，这里的 `$Form` 表示针对 FormShape + UserApi 预绑定的 Bound API。
 const retryLogic: Logic.Of<FormShape, UserApi> =
   Effect.gen(function* (_) {
-    const username$ = $.flow.fromChanges(s => s.username);
+    const username$ = $.flow.fromState(s => s.username);
 
     const checkUsernameWithRetry = Effect.gen(function* (_) {
       const api = yield* $.services(UserApi);
@@ -34,11 +33,10 @@ const retryLogic: Logic.Of<FormShape, UserApi> =
 **v3 标准模式**: 使用 `flow.runLatest` 代替 `flow.run`。`runLatest` 会自动取消前一个正在执行的 Effect，确保只有最新的流事件对应的逻辑在运行。
 
 ```typescript
-const $Search = Logic.forShape<SearchShape, SearchApi>();
-
+// 概念上，这里的 `$Search` 表示针对 SearchShape + SearchApi 预绑定的 Bound API。
 const switchMapLogic: Logic.Of<SearchShape, SearchApi> =
   Effect.gen(function* (_) {
-    const keyword$ = $.flow.fromChanges(s => s.keyword);
+    const keyword$ = $.flow.fromState(s => s.keyword);
 
     const searchEffect = Effect.gen(function* (_) {
       const api = yield* $.services(SearchApi);
@@ -61,11 +59,10 @@ const switchMapLogic: Logic.Of<SearchShape, SearchApi> =
 **v3 标准模式**: 在 `Effect` 内部使用 `Effect.catchAll` 或 `Effect.try` 来处理错误分支。
 
 ```typescript
-const $Config = Logic.forShape<ConfigShape, ConfigApi>();
-
+// 概念上，这里的 `$Config` 表示针对 ConfigShape + ConfigApi 预绑定的 Bound API。
 const fallbackLogic: Logic.Of<ConfigShape, ConfigApi> =
   Effect.gen(function* (_) {
-    const configId$ = $.flow.fromChanges(s => s.configId);
+    const configId$ = $.flow.fromState(s => s.configId);
 
     const fetchEffect = Effect.gen(function* (_) {
       const api = yield* $.services(ConfigApi);

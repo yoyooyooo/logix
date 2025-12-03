@@ -1,26 +1,41 @@
 {
   "name": "intent-flow",
   "version": "0.0.0",
+  "packageManager": "pnpm@9.15.9",
   "private": true,
   "scripts": {
     "build": "pnpm -r build",
+    "build:pkg": "turbo run build --filter='./packages/*'",
     "typecheck": "pnpm -r typecheck",
+    "typecheck:test": "pnpm -r typecheck:test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "parse:intent": "tsx scripts/intent-fluent-parser.ts"
+    "parse:intent": "tsx scripts/intent-fluent-parser.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "skills": "tsx scripts/skill-runner.ts"
   },
   "devDependencies": {
     "@effect/eslint-plugin": "^0.3.2",
     "@effect/language-service": "^0.56.0",
     "@eslint/js": "^9.39.1",
+    "@types/prompts": "^2.4.9",
+    "@vitest/coverage-v8": "^4.0.14",
     "effect": "^3.19.6",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
+    "fast-glob": "^3.3.2",
+    "happy-dom": "^20.0.11",
+    "jsdom": "24.0.0",
     "prettier": "^3.6.2",
+    "prompts": "^2.4.2",
     "ts-morph": "^25.0.0",
     "tsx": "^4.19.2",
+    "turbo": "^2.6.1",
     "typescript": "5.8.2",
-    "typescript-eslint": "^8.47.0"
+    "typescript-eslint": "^8.47.0",
+    "vitest": "^4.0.14"
   }
 }

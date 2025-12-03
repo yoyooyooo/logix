@@ -38,10 +38,10 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
    - `v3/effect-poc` 下的注释（如 `effect-poc/README.md` 如存在），补充 PoC 范围与约束。
 3. 查 Runtime / Intent API 规范（运行时层）
    - `docs/specs/runtime-logix/core/README.md`：Logix Runtime 总览；
-   - `runtime-logix/core/02-store.md`：Store / Runtime / Scope / 生命周期约定；
-   - `runtime-logix/core/03-logic-and-flow.md`：Logic / Flow / Intent L1/L2（`Intent.*`）的 API 形态；
+   - `runtime-logix/core/02-module-and-logic-api.md`：Module / Logic / Live / ModuleImpl API 与契约；
+   - `runtime-logix/core/03-logic-and-flow.md`：Logic / Flow / Bound API `$` 与 Fluent DSL 形态；
    - `runtime-logix/core/06-platform-integration.md`：IntentRule IR 与平台集成规范；
-   - `docs/specs/intent-driven-ai-coding/v3/effect-poc/shared/logix-v3-core.ts`：以类型为准的最终 API 形状。
+   - `docs/specs/intent-driven-ai-coding/v3/effect-poc/shared/logix-v3-core.ts`：以类型为准的最终 API 形状（Module / Store / Flow / Intent）。
 4. 查平台交互与资产链路（产品/UX 层）
    - `v3/06-platform-ui-and-interactions.md`：Universe / Galaxy / Studio 等视图的交互原则；
    - `v3/platform/README.md`：平台 Intent & UX 规划，以及 L0–L3 资产链路（业务需求 → 需求意图 → 开发意图 → 实现出码）。
@@ -57,16 +57,27 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
 
 - `docs/specs/intent-driven-ai-coding/v3`
   - 作为 Intent 模型、资产结构、平台与 Runtime 契约的主事实源；
-  - 新约束、新场景、新 Schema 变更一律先更新这里。
+  - 新约束、新场景、新 Schema 变更一律先更新这里；
+  - `v3/effect-poc` 作为 Intent/Flow/Effect 组合的轻量演练场，**不直接绑定具体运行时实现**。
 
-- `docs/specs/intent-driven-ai-coding/v3/effect-poc/`
-  - 用于演练“v3 Intent/Flow/Effect 运行时”在简化场景中的落地；
-  - `shared/logix-v3-core.ts` 提供 Store / Logic / Flow / Intent API 的类型草案；
-  - `scenarios/*` 目录按业务场景拆分，展示 L1/L2 Intent 原语与 Pattern 的组合用法。
+- `docs/specs/runtime-logix`
+  - 作为 Logix Engine（前端运行时）的 SSoT：
+    - `core/*` 描述 Module/Logic/Flow/Intent API 与运行时契约；
+    - `impl/*` 记录当前实现方案与技术取舍；
+    - `test/*` 记录运行时层面的测试策略与覆盖要求。
+  - 任何 runtime 能力（如 ModuleRuntime / ModuleImpl / useRemote / Link / watcher patterns）的行为变更，需同步更新这里。
 
-- `packages/effect-runtime-poc/`
-  - 真实依赖 `effect`（v3.x）的运行时子包，逐步抽象 Env/Flow/Layer 结构；
-  - 作为未来 Studio / 平台的运行时基线，需要遵守本仓对 `Effect.Effect<A, E, R>`、Env 逆变与 Tag 模式的所有约定。
+- 运行时代码：
+  - `packages/logix-core`
+    - 当前主线运行时内核（ModuleRuntime / Bound API / Link / ModuleImpl / Logix.app 等）；
+    - 行为应与 `docs/specs/runtime-logix` 中的契约保持一致；
+    - 新增/调整运行时能力时，优先在这里实现并配套单测。
+  - `packages/logix-react`
+    - React 适配层：`RuntimeProvider` + `useModule` / `useSelector` / `useDispatch` / `useLocalModule` 等；
+    - 用于把 Logix Engine 能力暴露给 React 应用，行为约束同样以 `runtime-logix` 文档为准。
+  - `packages/effect-runtime-poc/`
+    - 早期 Effect 运行时 PoC，更多作为实验场与历史参考；
+    - 新的运行时约束建议优先落在 `logix-core` + `runtime-logix` 上，再视情况回收/迁移这里的经验。
 
 ## WORKFLOW · 典型任务用法
 
@@ -86,16 +97,19 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
 - 回写经验  
   - 将验证过的 Flow/Env/Layer/IntentRule 写法回写 `runtime-logix/core/*` 与 v3 文档（特别是 `03-logic-and-flow.md` 与 `06-platform-integration.md`）。
 
-### 场景二：扩展 effect-runtime-poc 运行时能力
+### 场景二：扩展 Logix Runtime 能力（@logix/core + @logix/react）
 
 - 对齐 Runtime 责任与契约  
-  - 重读 `runtime-logix/core/02-store.md`、`03-logic-and-flow.md` 与 `05-runtime-implementation.md`；  
+  - 重读 `runtime-logix/core/02-module-and-logic-api.md`、`03-logic-and-flow.md` 与 `05-runtime-implementation.md`；  
   - 如涉及 IntentRule 或平台集成，补读 `runtime-logix/core/06-platform-integration.md`。
 - 在运行时子包扩展能力  
-  - 在 `packages/effect-runtime-poc` 中以最小增量扩展 Env/Layer/Helper/API，并确保 `Effect.Effect<A, E, R>` 泛型顺序与 Env 逆变契约正确；  
-  - 必要时在 effect-poc 中添加对应 PoC 场景验证写法。
+  - 优先在 `packages/logix-core` 中以最小增量扩展 Env/Layer/Helper/API，并确保：
+    - `Effect.Effect<A, E, R>` 泛型顺序与 Env 逆变契约正确；
+    - Module / ModuleRuntime / BoundApi / ModuleImpl / Logix.app 契约与 runtime-logix 文档一致；
+  - 对应的 React 能力在 `packages/logix-react` 中补上适配（如 RuntimeProvider 新能力、hooks 扩展）。
 - 回写规格  
-  - 如涉及 API 形态或运行时语义变更，回写 `v3/97-effect-runtime-and-flow-execution.md` 与相关 runtime-logix 文档。
+  - 如涉及 API 形态或运行时语义变更，先更新 `docs/specs/runtime-logix/core/*` 与 `impl/*`，再在 `logix-core` / `logix-react` 中落实；
+  - 对应的使用教程/示例，再同步到 `apps/docs/content/docs`。
 
 ### 场景三：实现端到端 “需求 → IntentRule → 代码” 示例
 
@@ -113,6 +127,7 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
 - Intent 只表达业务/交互/信息结构的 **What**，不写组件/API/文件级 **How**；
 - Flow/Effect 层负责“步骤链 + 服务调用 + 横切约束”，领域算法留在服务实现中；
 - `Effect.Effect<A, E, R>` 泛型顺序固定为 A/E/R，Env 视为逆变集合，通过 Tag 获取服务；
+- Module / Logic / Live / ModuleImpl / BoundApi `$` 的最终形状以 `docs/specs/runtime-logix/core` + `v3/effect-poc/shared/logix-v3-core.ts` 为准；
 - 所有“看起来合理但文档未记载”的决定，应优先在 docs/specs 里形成说明，再在 PoC/运行时中实施。
 
 ## RESOURCES · 进一步阅读

@@ -28,11 +28,10 @@ export const CounterModule = Logix.Module('Counter', {
 // 2. 在该 Module 上编写 Logic 程序（使用 Bound API `$`）
 export const CounterLogic = CounterModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').then(
-      $.state.mutate((draft) => {
+    yield* $.onAction('inc')
+      .mutate((draft) => {
         draft.count += 1;
-      }),
-    );
+      });
   }),
 );
 

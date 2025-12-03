@@ -1,10 +1,18 @@
 当前仓库仍处在积极演进阶段，可以不计成本地重构与试验，不需要考虑向历史版本兼容。
 
+## Workflow
+
+1. 任何和项目相关的任务优先执行 `openskills read project-guide`，并根据项目指南执行后续操作。
+2. 需要快速掌握已有仓库的一些信息的时候，优先使用 auggie 了解脉络，然后再深入查看。
+
 ## 规划对齐（简版）
 
 - 平台主线：`intent-driven-ai-coding`，当前有效规范以 `docs/specs/intent-driven-ai-coding/v3` 为准；`v1`/`v2` 仅作为历史快照与对照材料，演进脉络见 `docs/specs/intent-driven-ai-coding/adr.md`。
   - 概念与术语层的单一事实源为：`docs/specs/intent-driven-ai-coding/v3/99-glossary-and-ssot.md`，所有「UI/Logic/Domain / Pattern / IntentRule / L0–L3」等术语以此为准，再向下映射到 runtime-logix 和 PoC。
 - 运行时主线：`runtime-logix` 目录下的 **Logix Engine**，作为 Behavior & Flow Intent 的统一前端运行时 PoC；总览见 `docs/specs/runtime-logix/README.md`。
+  - 运行时文档 SSoT：`apps/docs/content/docs`，所有 Logix 运行时相关的指南、API 文档以此为准。
+    - `apps/docs` 要始终以「最终产品用户」视角编写，不要在文档正文中出现类似“v3/PoC 阶段/内部实现”等表述；这些信息只放在 `docs/specs` 与 ADR 中。
+    - 作为 Agent 查阅 `apps/docs` 时，优先体验 API 是否易懂、易接入，把这里当作“未来官网文档”的预演；发现 API/文档体验问题时，再回流到 `docs/specs` 与代码中做结构性调整。
 - 以上两条规划已经在 v3 / Logix 文档中收敛，任何新决策优先更新这些文档，再落到代码和 PoC。
 - 当用户提及「草稿」、「draft」，都认为是在说 docs/specs/drafts，如果没有加载过 drafts-tiered-system skill，执行 `openskills read drafts-tiered-system` 加载
 
@@ -40,6 +48,7 @@
 - **知识源与冲突处理**
   - 当固有认知与当前项目的类型错误 / TS 提示冲突时，一律以本地 `effect` d.ts 和编译器为准。
   - 如遇“看起来对但 TS 报错”的写法，优先查官方源码/文档，必要时把结论沉淀回本节。
+  - 在本仓库内执行测试时，**禁止使用 watch 模式**（例如 `pnpm test -- <pattern>` 这种会退化为交互模式的调用）；优先使用包内的 `vitest run <pattern>` 或一次性 `pnpm test`（已配置为非 watch 模式），避免阻塞用户终端。
 
 - **核心签名与别名**
   - 固定认知：`Effect.Effect<A, E = never, R = never>` 三个泛型依次是 **成功值 / 业务错误类型 / 依赖环境**，不得调换。
@@ -106,11 +115,47 @@
   - 根目录脚本：
     - `pnpm build`：递归调用各子包的 `build` 脚本，用于构建运行时 / React 包等。
     - `pnpm typecheck`：递归执行 `typecheck`，以 TypeScript 类型检查为准做第一道防线。
+    - `pnpm typecheck:test`：递归执行 `typecheck:test`，对各包的 src + test 进行完整类型检查，作为回归测试前的类型兜底。
     - `pnpm lint`：运行 ESLint（基于 `eslint.config.mjs`），集成 `@eslint/js`、`typescript-eslint` 与 `@effect/eslint-plugin`，覆盖 Effect import 规范等。
     - `pnpm lint:fix` / `pnpm format`：在 `lint` 基础上尝试自动修复（含格式与部分 Effect/TS 规则）。
+    - `pnpm test`：使用 Vitest 一次性运行（`vitest run`），**不会进入 watch 模式**。
+  - 子包脚本（关键包）：
+    - `packages/logix-core`：
+      - `pnpm test`：等价于 `vitest run`，用于一次性跑完 core 的测试；
+      - `pnpm test:watch`：进入 Vitest watch 模式，仅供人工本地调试使用，**Agent 禁止调用**。
+      - `pnpm typecheck:test`：使用 `tsconfig.test.json` 对 src+test 做完整类型检查。
+    - `packages/logix-react`：
+      - `pnpm test`：等价于 `vitest run`，一次性跑 React 适配层测试；
+      - `pnpm test:watch`：仅本地人工调试使用，Agent 不得调用；
+      - `pnpm typecheck:test`：检测 React 包的 src+test 类型。
   - 约定流程：每次进行「大模块改造」（如重构 Flow/Env、重排 React feature 目录、引入新运行时能力）后，至少需要：
     - 先跑 `pnpm typecheck`，确认类型层面无红线；
     - 再跑 `pnpm lint`，确认 ESLint（含 Effect 规则）无新告警或告警在可接受范围内，再交接到后续任务。
+
+
+## 文档编写规范 （apps/docs）
+
+- **渐进式示例展示 (Progressive Examples)**
+  - 在编写场景化教程或示例时，应使用 Fumadocs Tabs 展示不同层次的实现，帮助用户理解本质：
+    1.  **Logic DSL**: 推荐的高层声明式写法 (e.g., `$.onState`)。
+    2.  **Flow API**: 底层流式写法 (e.g., `$.flow.fromState`)。
+    3.  **Raw Effect**: 纯 Effect/Stream 实现 (Mental Model)。
+  - Tab 标题应简洁，如 "Logic DSL", "Flow API", "Raw Effect"。
+
+- **文档定位与分层 (SSoT vs User Docs)**
+  - **内部规范 (SSoT)** -> `docs/specs/`:
+    - 面向：架构师、核心贡献者、Agent。
+    - 内容：架构决策、核心逻辑、设计约束、Drafts。
+    - 风格：严谨、技术深度、包含 "v3/PoC" 等内部术语。
+  - **用户文档 (User Docs)** -> `apps/docs/`:
+    - 面向：最终产品用户、业务开发者。
+    - 内容：使用指南、API 文档、教程、最佳实践。
+    - 风格：易读、产品视角、**禁止**出现 "v3/PoC/内部实现" 等术语。
+
+- **草稿体系 (Drafts System)**
+  - 所有未定稿的方案、调研、灵感应存放在 `docs/specs/drafts`。
+  - 遵循 `drafts-tiered-system` skill 管理 L1-L9 分级。
+  - 成熟后分别归档到 `docs/specs` (规范) 或 `apps/docs` (文档)。
 
 ## 工具调用
 

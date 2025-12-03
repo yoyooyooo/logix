@@ -1,9 +1,9 @@
 # AppRuntime & ModuleDef 实现草图
 
 > **Status**: Draft (v3 Final · Implementation Planning)
-> **Scope**: `Logix.app` / `Logix.module` / `ModuleDef` 在运行时层的具体组合方式与已知取舍。
+> **Scope**: 应用级 AppRuntime / `Logix.module` / `ModuleDef` 在运行时层的具体组合方式与已知取舍。
 
-本说明文档从 **Effect/Layer/Scope** 实现视角，展开 `ModuleDef` / `Logix.module` / `Logix.app` 的具体组合方式。
+本说明文档从 **Effect/Layer/Scope** 实现视角，展开 `ModuleDef` / `Logix.module` / AppRuntime 的具体组合方式。
 目标是：
 
 - 让后续实现者在落代码时有清晰的“拼 Layer 与 Scope”的规则可依；
@@ -54,29 +54,16 @@ export interface Provider<S> {
 - **processes**：基础设施守护进程（杂役），随模块启动；
 - **exports**：对外公开的 Tag 列表，平台用来做依赖检查与拓扑展示；v3 Runtime 暂不做强隔离。
 
-`Logix.app` 是 `ModuleDef` 的特例（无 `exports` 要求，且额外提供 `makeRuntime`）。
+在当前实现中，应用级 AppRuntime 是围绕 Root ModuleImpl 构造的一棵 Runtime：
+
+- 对内使用 `ModuleDef` / AppRuntime 组合（参见 `runtime/AppRuntime.ts` 与 `LogixRuntime.make` 的实现）；
+- 对外入口一律通过 `LogixRuntime.make(rootImpl, { layer, onError })` 暴露，不再导出早期的 `Logix.app` 这类组装 API。
 
 ## 2. flatten 目标：从 ModuleDef 到 { layer, processes }
 
-运行时的目标是：给定一棵模块树（App 视为根 ModuleDef），生成：
+运行时的目标是：给定一棵模块树（App 视为根 ModuleDef），生成一份可注入的 Layer（包含所有 Provider/Infra）、以及在该 Layer 所属 Scope 下运行的 processes。
 
-```ts
-interface BuiltModule<R> {
-  layer: Layer.Layer<R, any, never>
-  processes: ReadonlyArray<ProcessDef<R>> // 包含 Link 与 Process
-  middlewares: ReadonlyArray<Logic.Middleware<R>>
-}
-
-// 运行时内部使用的 Process 定义，区分业务与基建
-interface ProcessDef<R> {
-  readonly id: string
-  readonly kind: "link" | "process"
-  readonly effect: Effect.Effect<void, any, R>
-  readonly ownerModuleId: string
-}
-```
-
-对于 App：
+对于 App 级 Runtime，可以抽象为：
 
 ```ts
 interface AppDefinition<R> {
@@ -108,20 +95,32 @@ interface TagInfo {
   readonly key: TagKey
   readonly tag: Context.Tag<any, any>
   readonly ownerModuleId: string
-  readonly source: "provider" | "export" | "infra"
+  /**
+   * Tag 来源：
+   * - "module"  ：模块自身的 Runtime Tag（例如 `@logix/Module/<id>`）；
+   * - "service" ：由模块提供的 Service Tag（如 HttpClient / DomainService 等）。
+   *
+   * 说明：
+   * - v3 实现中，AppRuntime 级 TagIndex 只关心 "module" | "service" 两种来源；
+   * - ModuleDef 级 flatten 规划中，后续可扩展为 "provider" | "export" | "infra" 等更细粒度来源，
+   *   但不影响现有 AppRuntime 行为。
+   */
+  readonly source: "module" | "service" | "provider" | "export" | "infra"
 }
 
 // 必须抛出的错误类型
 interface TagCollisionError {
   readonly _tag: "TagCollisionError"
-  readonly key: TagKey
-  readonly conflicts: ReadonlyArray<TagInfo>
+  readonly collisions: ReadonlyArray<{
+    readonly key: TagKey
+    readonly conflicts: ReadonlyArray<TagInfo>
+  }>
 }
 ```
 
 **实现约束**：
-1. 递归收集所有子模块的 Tag 信息；
-2. 若发现同一个 Key 对应了不同的 Tag 实例（引用不相等），**必须**构造 `TagCollisionError` 并 fail 掉构建过程；
+1. 递归收集所有子模块的 Tag 信息，并构建 TagIndex；
+2. 若发现同一个 Key 在多个 ownerModuleId 下出现（即被多个模块声明），**必须**构造 `TagCollisionError` 并 fail 掉构建过程；
 3. **绝对禁止**依赖 `Layer.mergeAll` 的顺序进行静默覆盖。
 
 ### 3.2 Flatten 顺序约定
@@ -144,12 +143,7 @@ function buildModule<R>(def: ModuleDef<R>): BuiltModule<R> {
   // ... (Layer 构建逻辑同上，需加入 Tag 冲突检查) ...
 
   // 区分 Link 与 Process
-  const links = (def.links ?? []).map(eff => ({
-    id: generateId("link"),
-    kind: "link" as const,
-    effect: eff,
-    ownerModuleId: def.id
-  }))
+  // links 视为业务编排（接近 process），在 v3 中暂与 processes 合并对待
 
   const processes = (def.processes ?? []).map(eff => ({
     id: generateId("process"),
@@ -164,9 +158,7 @@ function buildModule<R>(def: ModuleDef<R>): BuiltModule<R> {
 }
 ```
 
-**错误处理差异**：
-- **Process 失败**：视为基础设施崩溃（如心跳停止、日志服务挂掉），默认策略应记录 Error 并可能导致 App 降级或退出（取决于 App 策略）；
-- **Link 失败**：视为业务逻辑错误（如“搜索联动详情”失败），默认策略应记录 Error 日志（带上 `kind: "link"`），但不应导致 App 崩溃。
+**错误处理**：AppRuntime 通过 `config.onError` 集中处理进程失败；默认实现记录错误并允许 Scope 继续运行，平台可根据业务需要重启/降级。
 
 **Dev-time 断言建议**：
 - 建议在开发模式下（`NODE_ENV !== "production"`）增加守卫：
@@ -231,7 +223,7 @@ v3 引入了 `links` 字段，用于区分“业务编排”与“基础设施�
 - **Link (胶水)**：
   - 属于核心业务逻辑，负责连接多个 Domain（如搜索联动详情）；
   - 平台会在架构图中将其渲染为重要节点；
-  - 推荐使用 `Link.make("Name", ...)` 创建，以便平台识别名称。
+  - 推荐使用 `Link.make({ id: "Name", modules: [...] }, ...)` 创建，以便平台识别名称与参与模块。
 - **Process (杂役)**：
   - 属于基础设施，负责后台维护（如日志、心跳）；
   - 平台通常将其折叠或隐藏。
@@ -247,7 +239,7 @@ v3 引入了 `links` 字段，用于区分“业务编排”与“基础设施�
 
 实现与使用建议：
 
-- 在 `Logix.app(...).makeRuntime()` 的调用侧，明确处理 App 启动失败的场景：
+- 在 AppRuntime 的 `makeApp(...).makeRuntime()` 调用侧，明确处理 App 启动失败的场景：
   - 例如在 CLI/Node 场景中 log 错误并退出；
   - 在前端场景中展示“应用启动失败，请联系管理员”之类的降级 UI。
 - 在 runtime 实现中，保持 infra Layer 的 Error 通道不被默默吞掉；让调用者有机会在顶层看到并处理这些错误。
@@ -267,6 +259,6 @@ v3 引入了 `links` 字段，用于区分“业务编排”与“基础设施�
 ---
 
 **结论**：
-v3 的 `Logix.app` / `Logix.module` 在实现上以“递归 flatten 到一个大 Layer + processes 列表”为主，Env 扁平、exports 只用于类型与平台检查。
+v3 的应用级 Runtime 在实现上以“递归 flatten 到一个大 Layer + processes 列表”为主，Env 扁平、exports 只用于类型与平台检查。
 引入 `links` 字段实现了“业务编排”与“基础设施”的语义分离，为 Universe View 提供了关键的拓扑信息。这为后续演进（Env 裁剪、Lazy 模块、自动 Middleware 注入）预留了空间，同时保证当前实现简单可控、调试成本低。
 ***

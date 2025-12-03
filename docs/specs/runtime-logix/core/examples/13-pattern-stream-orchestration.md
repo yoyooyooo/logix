@@ -1,8 +1,8 @@
 # Pattern: Stream Orchestration & Flow Coordination (v3 Standard Paradigm)
 
-> **Scenario**: 协同保存 (Auto Save vs Manual Save)
-> **Focus**: 流式编排、并发控制、声明式竞态解决
-> **Note**: 本文示例展示了 v3 Effect-Native 标准范式。通过组合 `flow.fromChanges` 和 `flow.fromAction`，并统一使用 `flow.runLatest`，可以优雅地、声明式地解决多源触发同一副作用的竞态问题。
+> **Scenario**: 协同保存 (Auto Save vs Manual Save)  
+> **Focus**: 流式编排、并发控制、声明式竞态解决  
+> **Note**: 本文示例展示了 v3 Effect-Native 标准范式。通过组合 `flow.fromState` 和 `flow.fromAction`，并统一使用 `flow.runLatest`，可以优雅地、声明式地解决多源触发同一副作用的竞态问题。当前 PoC 中，实际代码应在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`。
 
 ## 1. The Challenge (痛点)
 
@@ -34,8 +34,7 @@ type EditorShape = Logix.ModuleShape<typeof EditorStateSchema, typeof EditorActi
 ### 2.2 Logic Implementation
 
 ```typescript
-const $Editor = Logic.forShape<EditorShape, EditorApi>();
-
+// 概念上，这里的 `$Editor` 表示针对 EditorShape + EditorApi 预绑定的 Bound API。
 const saveLogic: Logic.Of<EditorShape, EditorApi> =
   Effect.gen(function* (_) {
     // 1. 定义统一的保存 Effect
@@ -66,7 +65,7 @@ const saveLogic: Logic.Of<EditorShape, EditorApi> =
       });
 
     // 2. 定义自动保存流
-    const autoSave$ = $Editor.flow.fromChanges(s => s.content).pipe(
+    const autoSave$ = $Editor.flow.fromState(s => s.content).pipe(
       $Editor.flow.debounce(2000),
       $Editor.flow.runLatest(saveEffect('auto'))
     );
@@ -87,5 +86,5 @@ const saveLogic: Logic.Of<EditorShape, EditorApi> =
 ## 3. Design Rationale
 
 - **Declarative Concurrency**: `flow.runLatest` 声明式地定义了“最新优先”的并发策略。开发者无需编写任何手动检查或取消逻辑，代码意图清晰，行为可预测。
-- **Unified Logic**: 多个触发源 (`fromChanges`, `fromAction`) 都汇聚到同一个 `saveEffect` 核心逻辑，提高了代码的内聚性和复用性。
+- **Unified Logic**: 多个触发源 (`fromState`, `fromAction`) 都汇聚到同一个 `saveEffect` 核心逻辑，提高了代码的内聚性和复用性。
 - **Automatic Resource Management**: 所有流的生命周期（包括 `debounce` 的定时器）都由 `Store` 的 `Scope` 自动管理，从根本上杜绝了内存泄漏的风险。

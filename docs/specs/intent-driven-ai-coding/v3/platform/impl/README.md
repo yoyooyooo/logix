@@ -5,7 +5,7 @@
 
 本目录用于沉淀 **平台视角** 下的实现细节与技术决策，特别是与 Logix Runtime 紧耦合的部分，例如：
 
-- Universe View / Galaxy View 如何消费 `ModuleDef` / `Logix.app` / `Logix.module` / `IntentRule` 等结构化信息；
+- Universe View / Galaxy View 如何消费 `ModuleDef` / `Logix.module` / `IntentRule` 等结构化信息；
 - Parser 如何从 TS 代码中还原 IntentRule / Logic Graph，并与平台 UI 做双向同步（Full‑Duplex）的“可解析子集”定义；
 - 平台如何基于 Module/App/Store 拓扑做依赖检查、风险分析（循环依赖、跨域过多联动等）与可视化提示。
 
@@ -21,8 +21,8 @@
 建议按功能域拆分实现备忘：
 
 - `app-and-universe-view.md`
-  记录平台如何从 `Logix.app` / `Logix.module` / `ModuleDef` 构建模块拓扑（Universe View）：
-  - AST 解析入口（`Logix.app(...)` / `Logix.module(...)` / `Logix.provide(...)` / `imports/providers/processes/exports`）；
+  记录平台如何从 `Logix.module` / `ModuleDef` 构建模块拓扑（Universe View）：
+  - AST 解析入口（`Logix.module(...)` / `Logix.provide(...)` / `imports/providers/processes/exports`）；
   - Drill‑down 规则（Module 展开为 Store / Process 节点）；
   - 依赖检查与错误提示策略（未 export Tag 的非法引用、循环依赖等）。
 

@@ -31,34 +31,50 @@ packages/logix-test/
 
 ## 3. Core APIs
 
-### 3.1 `defineTest` & `runTest`
+### 3.1 `TestProgram` & `runTest`
 
-The core testing primitive. `defineTest` creates a test Effect, and `runTest` executes it.
+The recommended entrypoint. `TestProgram.make` builds a test scenario from a
+declarative config, and `runTest` executes the resulting Effect.
 
-- `defineTest(Module, (api) => Effect)`: Defines a test scenario.
-- `runTest(effect, options?)`: Executes the test Effect.
+- `TestProgram.make(config)`: Defines a test scenario (single or multi-module).
+- `scenario.run((api) => Effect)`: Provides a `TestApi` for dispatch / assertions.
+- `runTest(effect)`: Executes the test Effect.
   - Returns `Promise<ExecutionResult>` containing traces and logs (useful for platform debugging).
-  - Supports custom `Layer` injection via options.
 
 ```typescript
-import { defineTest, runTest } from "@logix/test"
-import { TestClock } from "effect/Test"
+import { TestProgram, runTest } from "@logix/test"
 
-const myTest = defineTest(CounterModule, (api) => Effect.gen(function*() {
-  // ... test logic
-}))
-
-// Run with custom environment (e.g., for platform sandboxing)
-const result = await runTest(myTest, {
+const scenario = TestProgram.make({
+  main: {
+    module: CounterModule,
+    initial: { count: 0 },
+    logics: [CounterLogic],
+  },
+  modules: [
+    {
+      module: AuthModule,
+      initial: { loggedIn: false },
+      logics: [AuthLogic],
+    },
+  ],
   layers: [
-    // Replace real Fetch with Sandbox Fetch
-    Layer.succeed(FetchHttpClient.Fetch, sandboxFetch)
-  ]
+    LinkLayer, // e.g. Link.make({ modules: [UserModule, AuthModule] }, ($) => Effect)
+  ],
 })
 
-// result.trace can be used for AI analysis or visualization
+const testEffect = scenario.run(($) =>
+  Effect.gen(function* () {
+    yield* $.dispatch({ _tag: "increment", payload: undefined })
+    yield* $.assert.state((s) => s.count === 1)
+  })
+)
+
+const result = await runTest(testEffect)
 console.log(result.trace)
 ```
+
+> [!NOTE]
+> `defineTest` 仍然保留作为底层 API，适用于简单单模块场景或需要直接控制 Layer 注入的情况。
 
 ### 3.2 Test API Capabilities
 
@@ -83,34 +99,7 @@ interface TestApi<State, Actions> {
 }
 ```
 
-### 3.3 `Scenario` (Integration Builder)
-
-A builder pattern that constructs a test Effect for complex multi-module scenarios. It returns an `Effect`, maintaining purity.
-
-```typescript
-import { Scenario } from "@logix/test"
-
-const complexTest = Scenario.make()
-  .provide(UserModule, AuthModule)
-  // Inject platform-specific services (Database, API Clients)
-  .layer(Layer.succeed(DatabaseTag, mockDb))
-  .arrange({
-    [UserModule.id]: { name: "Alice" }
-  })
-  .act(($) =>
-    // Returns an Effect directly
-    $.dispatch(AuthModule.actions.login("alice", "password"))
-  )
-  .assert(($) =>
-    // Returns an Effect directly
-    $.assert.state(UserModule, s => s.isAuthenticated)
-  )
-  .build() // Returns Effect<void, TestError, TestEnv>
-
-it("should handle complex flow", () => runTest(complexTest))
-```
-
-### 3.4 `TestRuntime`
+### 3.3 `TestRuntime`
 
 Internally used by `runTest` to provide a `TestContext` where:
 - `Clock` is replaced by `TestClock`.

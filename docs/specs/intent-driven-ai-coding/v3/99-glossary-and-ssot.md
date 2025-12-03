@@ -142,7 +142,7 @@ version: 1 (Concept-First)
 - **Flow**
   - 概念上是「围绕时间与事件流的编排工具集」：
     - 回答「从哪里开始？如何触发？如何控制并发？」；
-    - fromAction / fromChanges / debounce / runLatest / runExhaust / runSequence 等。
+    - fromAction / fromState / debounce / runLatest / runExhaust 等（并发语义通过 `run` / `runLatest` / `runExhaust` / `runParallel` 等算子表达）。
   - 不负责业务决策，只负责“什么时候跑哪个 Effect”。
 
 - **Control**

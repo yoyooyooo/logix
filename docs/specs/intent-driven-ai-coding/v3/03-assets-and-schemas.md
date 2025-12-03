@@ -77,9 +77,9 @@ interface LogicImplConfig {
 type LogicNode =
   // 基于 Effect 的长逻辑封装（pattern-style）：(input) => Effect
   | { type: 'effect-block'; fnName: string; config?: any }
-  // Flow 侧骨架节点：围绕 actions$ / changes$ 的时序与并发语义
+  // Flow 侧骨架节点：围绕 actions$ / state 的时序与并发语义
   | { type: 'flow-op'; op: 'debounce' | 'throttle' | 'filter'
-      | 'run' | 'runLatest' | 'runExhaust' | 'runSequence' }
+      | 'run' | 'runLatest' | 'runExhaust' }
   // Control 侧骨架节点：围绕 Effect 的结构化控制流
   | { type: 'control-op'; op: 'branch' | 'tryCatch' | 'parallel' }
   // 其它无法结构化展开的代码块（黑盒）
@@ -107,19 +107,30 @@ Module 意图描述数据模型和服务契约。
 ```typescript
 interface ModuleImplConfig {
   name: string;
-  // 实体定义 (映射为 Zod/Effect Schema)
+
+  // 实体 / 状态定义 (映射为 Effect.Schema)
   fields: Record<string, FieldSchema>;
 
-  // 服务契约 (映射为 Effect Tag)
+  // 服务契约 (映射为 Effect Service / Tag)
   services: Record<string, {
     args: FieldSchema[];
     return: FieldSchema | 'void';
     errors?: string[];
   }>;
 
-  // 实现来源 (映射为 Effect Layer)
+  /**
+   * 实现来源：
+   * - "module"：生成 Logix.Module + ModuleImpl（形如 Module.make({ initial, logics })）；
+   * - "pattern"：基于 Pattern 直接生成 ModuleImpl（例如 场景 Pattern -> ImplWithService）；
+   * - "custom"：由业务自定义落点，仅在 Schema 层记录结构。
+   *
+   * 在 runtime 中，ModuleImplConfig 会被落实为：
+   * - 一个 Module 蓝图（ModuleInstance）；
+   * - 至少一个 ModuleImpl（配置好的 initial/logics/Env 组合）；
+   * - 可选的 withLayer 组合（例如 Impl.withLayer(ServiceLayer)）。
+   */
   source?: {
-    type: 'api' | 'store' | 'custom';
+    type: 'module' | 'pattern' | 'custom';
     config?: any;
   };
 }

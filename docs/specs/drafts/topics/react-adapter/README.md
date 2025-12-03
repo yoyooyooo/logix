@@ -1,6 +1,15 @@
+---
+title: React Adapter Specification
+status: draft
+version: 2025-11-21
+layer: Integration Layer
+value: core
+priority: next
+---
+
 # React Adapter Specification
 
-> **Status**: Draft
+> **Status**: Draft（部分内容已落地到 @logix/react 与 runtime-logix/react）
 > **Date**: 2025-11-21
 > **Layer**: Integration Layer
 

@@ -1,7 +1,7 @@
 # Matrix Examples: Advanced Data & Circular Protection (v3 Standard Paradigm)
 
-> **Focus**: 深层嵌套、动态字典、循环依赖防护
-> **Note**: 本文示例展示了 v3 Effect-Native 标准范式。v3 通过监听父级集合来处理动态数据，并通过 `flow.fromChanges` 内置的深度相等检查来自动处理循环依赖。
+> **Focus**: 深层嵌套、动态字典、循环依赖防护  
+> **Note**: 本文示例展示了 v3 Effect-Native 标准范式。v3 通过监听父级集合来处理动态数据，并通过 `flow.fromState` 内置的深度相等检查来自动处理循环依赖。当前 PoC 中，实际代码应在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`。
 
 ## S17 & S18: 深层嵌套与动态字典 (Deep Nested & Dynamic Map)
 
@@ -9,12 +9,11 @@
 
 ```typescript
 // 场景：监听一个动态字典 itemsById，当任意一项的 status 变为 'done' 时，为其添加 archived 标记。
-const $Data = Logic.forShape<DataShape>();
-
+// 概念上，这里的 `$Data` 表示针对 DataShape 预绑定的 Bound API。
 const dynamicMapLogic: Logic.Of<DataShape> =
   Effect.gen(function* (_) {
     // 监听整个 itemsById 对象
-    const itemsById$ = $.flow.fromChanges(s => s.itemsById);
+    const itemsById$ = $.flow.fromState(s => s.itemsById);
 
     const archiveEffect = $.state.mutate(draft => {
       Object.values(draft.itemsById).forEach(item => {
@@ -31,16 +30,14 @@ const dynamicMapLogic: Logic.Of<DataShape> =
 
 ## S19: 循环依赖防护 (Circular Protection)
 
-**v3 标准模式**: `flow.fromChanges` 默认使用深度相等（deep equal）检查来判断状态是否真正发生了变化。如果一个更新操作导致的状态与前一个状态深度相等，流将不会发出新值，从而自动切断循环。
+**v3 标准模式**: `flow.fromState` 默认使用深度相等（deep equal）检查来判断状态是否真正发生了变化。如果一个更新操作导致的状态与前一个状态深度相等，流将不会发出新值，从而自动切断循环。
 
 ```typescript
-// 场景：USD <-> CNY 双向汇率换算
-const $Currency = Logic.forShape<CurrencyShape>();
-
+// 场景：USD <-> CNY 双向汇率换算；`$Currency` 表示针对 CurrencyShape 预绑定的 Bound API。
 const currencyLogic: Logic.Of<CurrencyShape> =
   Effect.gen(function* (_) {
-    const usd$ = $.flow.fromChanges(s => s.usd);
-    const cny$ = $.flow.fromChanges(s => s.cny);
+    const usd$ = $.flow.fromState(s => s.usd);
+    const cny$ = $.flow.fromState(s => s.cny);
 
     // Rule 1: USD -> CNY
     const usdToCny = usd$.pipe(

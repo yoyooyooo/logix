@@ -46,16 +46,18 @@ export const runReliableSubmit = (input: {
 
 ### 3.1 基础逻辑 (The Basic Flow)
 
-开发者使用 `Effect.gen` 配合 Runtime Core 提供的 Bound API（`Logic.forShape`）编写逻辑：
+开发者使用 `Effect.gen` 配合 Runtime Core 提供的 Bound API（在 PoC 中通过 `Module.logic(($)=>...)` 注入 `$`）编写逻辑：
 
 ```typescript
 import { Effect } from "effect";
 import { Logic } from "@logix/core";
 
 // Bound API：绑定当前 Shape 与 Env，提供 $ 作为 Logic 内的符号锚点
-const $ = Logic.forShape<OrderShape, OrderEnv>();
-
-export const submitOrder: Logic.Of<OrderShape, OrderEnv> =
+// 概念性示意：`$` 是针对 OrderShape + OrderEnv 预绑定的 Bound API，
+// 实际 PoC 中通常由 `OrderModule.logic(($)=>...)` 的参数注入。
+export const submitOrder = (
+  $: Logic.BoundApi<OrderShape, OrderEnv>,
+): Logic.Of<OrderShape, OrderEnv> =>
   Effect.gen(function* (_) {
     const submit$ = $.flow.fromAction(
       (a): a is { type: "submit" } => a.type === "submit",
@@ -85,12 +87,13 @@ export const submitOrder: Logic.Of<OrderShape, OrderEnv> =
 平台允许在 Logic 中混入原生 Effect 代码。Parser 会根据代码特征进行降级处理。
 
 ```typescript
-const $ = Logic.forShape<Shape, Env>();
-
-export const complexFlow: Logic.Of<Shape, Env> =
+// 此处示意：`$` 由对应 Module.logic(($)=>...) 或调用方显式注入的 BoundApi<Shape, Env> 提供
+export const complexFlow = (
+  $: Logic.BoundApi<Shape, Env>,
+): Logic.Of<Shape, Env> =>
   Effect.gen(function* (_) {
     // [White Box] 平台完全理解
-    const data$ = $.flow.fromChanges(s => s.filters);
+    const data$ = $.flow.fromState(s => s.filters);
 
     // [Black Box] 平台识别为 "Raw Code Block"
     const processed = yield* Effect.promise(async () => {
@@ -111,7 +114,7 @@ Parser 不执行代码，而是遍历 TypeScript AST：
 1.  **Import Analysis**: 识别 `Logic` / `Store` / pattern helper / pattern-style 函数的引入和重命名。
 2.  **Context Tracking**: 追踪 `Logic.Of` 生成的 Logic 程序，以及 `Logic.Api` 解构出的 `state/actions/flow/control`。
 3.  **Call Expression Matching**:
-    *   匹配 `flow.fromAction / fromChanges / debounce / throttle / run*` -> 构建 Flow 层节点。
+    *   匹配 `flow.fromAction / fromState / debounce / throttle / run*` -> 构建 Flow 层节点。
     *   匹配 `$.match / Effect.catch* / Effect.all` -> 构建结构化控制流节点。
     *   匹配 pattern-style 长逻辑 (`runXxxEffect`) 的导出 / 调用位置 -> 构建 `effect-block` 节点，并结合 PatternAsset（如有）附加资产信息。
 4.  **Fallback Strategy**:

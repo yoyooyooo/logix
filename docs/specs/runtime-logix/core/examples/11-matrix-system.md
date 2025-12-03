@@ -1,7 +1,7 @@
 # Matrix Examples: System Capabilities (v3 Standard Paradigm)
 
-> **Focus**: 多租户隔离、错误流路由、权限控制
-> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，展示了如何利用 `Layer` 和 `Effect` 的原生能力来实现系统级的横切关注点。
+> **Focus**: 多租户隔离、错误流路由、权限控制  
+> **Note**: 本文示例已更新为 v3 Effect-Native 标准范式，展示了如何利用 `Layer` 和 `Effect` 的原生能力来实现系统级的横切关注点。当前 PoC 中，实际代码应在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`。
 
 ## S22: 多租户隔离 (Multi-Tenant)
 
@@ -17,9 +17,7 @@ class UserApi extends Context.Tag("UserApi")<UserApi, {
 const TenantALayer = Layer.succeed(UserApi, { fetch: (id) => Effect.succeed({ id, name: `Tenant A User ${id}` }) });
 const TenantBLayer = Layer.succeed(UserApi, { fetch: (id) => Effect.succeed({ id, name: `Tenant B User ${id}` }) });
 
-// 3. Logic 代码保持不变，只依赖 UserApi Tag
-const $User = Logic.forShape<UserShape, UserApi>();
-
+// 3. Logic 代码保持不变，只依赖 UserApi Tag；`$User` 概念上表示针对 UserShape + UserApi 预绑定的 Bound API。
 const userLogic: Logic.Of<UserShape, UserApi> =
   Effect.gen(function* (_) {
     const api = yield* $User.services(UserApi);
@@ -70,9 +68,7 @@ class AuthService extends Context.Tag("AuthService")<AuthService, {
   readonly canApprove: () => Effect.Effect<boolean>
 }>() {}
 
-// 2. 在 Logic 中使用
-const $Approval = Logic.forShape<ApprovalShape, AuthService | ApprovalApi>();
-
+// 2. 在 Logic 中使用；`$Approval` 概念上表示针对 ApprovalShape + (AuthService | ApprovalApi) 预绑定的 Bound API。
 const permissionLogic: Logic.Of<ApprovalShape, AuthService | ApprovalApi> =
   Effect.gen(function* (_) {
       const approve$ = $Approval.flow.fromAction(a => a._tag === 'approve');

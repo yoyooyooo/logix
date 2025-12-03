@@ -16,19 +16,27 @@ npm install @logix/core @logix/react effect
 
 ### 2.1 配置 Runtime Provider
 
-在应用的根组件中包裹 `RuntimeProvider`。
+在应用的根组件中包裹 `RuntimeProvider`，并使用 Root ModuleImpl + `LogixRuntime.make` 构造 Runtime。
 
 ```tsx
 // src/App.tsx
 import { RuntimeProvider } from '@logix/react';
+import { Logix, LogixRuntime } from '@logix/core';
 import { Layer } from 'effect';
 
-// 定义全局 Runtime Layer (可选，用于注入全局服务)
-const AppRuntime = Layer.empty;
+const UserModule = Logix.Module("User", { state: UserState, actions: UserActions });
+const UserImpl = UserModule.make({
+  initial: { info: null },
+  logics: [UserModuleLogic],
+});
+
+const appRuntime = LogixRuntime.make(UserImpl, {
+  layer: Layer.mergeAll(AppInfraLayer, ReactPlatformLayer),
+});
 
 export function App() {
   return (
-    <RuntimeProvider layer={AppRuntime}>
+    <RuntimeProvider runtime={appRuntime}>
       <Router />
     </RuntimeProvider>
   );
@@ -92,7 +100,7 @@ Logix 的设计深受 Redux 启发，迁移路径相对平滑。
 
 1.  **Schema**: 将 Redux State / Action 类型整理为显式的 `effect/Schema`；
 2.  **Module**: 使用 `Logix.Module` 定义领域模块，将 Schema 挂到 `state / actions` 上；
-3.  **Reducers & Thunks/Sagas**: 将 Reducer / 异步逻辑拆分为 `Module.logic(($)=>Effect.gen(...))` 中的 Fluent 链（`$.onState / $.onAction / $.on + then`），配合 `Effect`/`Flow` 表达并发语义。
+3.  **Reducers & Thunks/Sagas**: 将 Reducer / 异步逻辑拆分为 `Module.logic(($)=>Effect.gen(...))` 中的 Fluent 链（`$.onState / $.onAction / $.on + .update/.mutate/.run*`），配合 `Effect`/`Flow` 表达并发语义。
 
 ### 3.2 从 Zustand 迁移
 

@@ -2,7 +2,7 @@
 
 > **Scenario**: 用户注册表单
 > **Features**: 字段联动、异步校验、多字段约束
-> **Note**: 本示例是 v3 Effect-Native Logix API 的 **黄金标准实现**。所有新业务逻辑都应以此为范本，它严格对齐 `logix-v3-core.ts` 中的 `Logix.ModuleShape` + Module-first + Bound API `$` + Fluent Intent (`$.on*().then(...)`) 范式。
+> **Note**: 本示例是 v3 Effect-Native Logix API 的 **黄金标准实现**。所有新业务逻辑都应以此为范本，它严格对齐 `logix-v3-core.ts` 中的 `Logix.ModuleShape` + Module-first + Bound API `$` + Fluent Intent（`$.on*().update/mutate/run*`）范式。
 
 ## Schema Definition
 
@@ -50,17 +50,15 @@ export const RegisterModule = Logix.Module('Register', {
 export const RegisterLogic = RegisterModule.logic(($) =>
   Effect.gen(function* (_) {
     // 1. 同步联动：country 变化时重置 province
-    yield* $.onState(s => s.country).then(
-      $.state.mutate((draft) => {
-        draft.province = "";
-      }),
-    );
+    yield* $.onState((s) => s.country).mutate((draft) => {
+      draft.province = "";
+    });
 
     // 2. 异步校验：监听 username，调用 API 检查重名（latest 并发语义）
-    yield* $.onState(s => s.username)
+    yield* $.onState((s) => s.username)
       .debounce(500)
       .filter((username) => username.length >= 3)
-      .then(
+      .run(
         Effect.gen(function* (_) {
           const svc = yield* $.use(UserApi);
           const { username } = yield* $.state.read;
@@ -68,19 +66,18 @@ export const RegisterLogic = RegisterModule.logic(($) =>
           yield* $.state.mutate((draft) => {
             draft.errors.username = isTaken ? "Username already taken" : undefined;
           });
-        }),
-        { mode: 'latest' },
+        })
       );
 
     // 3. 多字段约束：监听 password / confirmPassword，确保两者一致
-    yield* $.onState(s => [s.password, s.confirmPassword] as const).then(
-      $.state.mutate((draft) => {
+    yield* $.onState((s) => [s.password, s.confirmPassword] as const).mutate(
+      (draft) => {
         if (draft.confirmPassword && draft.password !== draft.confirmPassword) {
           draft.errors.confirmPassword = "Passwords do not match";
         } else {
           delete draft.errors.confirmPassword;
         }
-      }),
+      }
     );
   }),
 );

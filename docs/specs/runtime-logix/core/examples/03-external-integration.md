@@ -2,7 +2,7 @@
 
 > **Scenario**: 实时股票看板
 > **Features**: WebSocket 接入、外部事件响应、资源管理
-> **Note**: 本示例是 v3 中处理外部事件源的 **黄金标准实现**。它演示了如何将外部流（如 WebSocket）封装为 `Effect.Service`，并通过依赖注入在 `Logic` 中安全地消费。
+> **Note**: 本示例是 v3 中处理外部事件源的 **黄金标准实现**。它演示了如何将外部流（如 WebSocket）封装为 `Effect.Service`，并通过依赖注入在 `Logic` 中安全地消费。当前 PoC 中，实际代码应在对应 Module 上通过 `Module.logic(($)=>...)` 获取 `$`。
 
 ## 1. Schema Definition
 
@@ -50,9 +50,7 @@ const WebSocketServiceLive = Layer.succeed(
 `Logic` 通过其环境 `R` 接收 `WebSocketService`，然后像处理内部流一样处理外部流。
 
 ```typescript
-// a-stock.logic.ts
-
-const $Stock = Logic.forShape<StockShape, WebSocketService>();
+// a-stock.logic.ts；`$Stock` 概念上表示针对 StockShape + WebSocketService 预绑定的 Bound API。
 
 export const StockLogic: Logic.Of<StockShape, WebSocketService> =
   Effect.gen(function* (_) {
