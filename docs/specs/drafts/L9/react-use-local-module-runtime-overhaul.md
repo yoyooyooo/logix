@@ -1,164 +1,145 @@
 ---
-title: React useLocalModule 重构草案（Scope 与并发安全）
+title: React useLocalModule 重构草案（Resource Cache 终局方案）
 status: draft
-version: 2025-12-03
+version: 2025-12-04
 value: core
 priority: next
 ---
 
 ## 背景与动机
 
-`@logix/react` 当前提供的 `useLocalModule` 实现，采用的是：
+为了在 Logix React 集成中实现**最佳的开发者体验（DX）**与**绝对的运行时安全**，我们需要彻底解决以下核心冲突：
 
-- 在 `useMemo` 中通过 `runtime.runSync(Scope.make)` + `runtime.runSync(buildEffect)` 同步构建本地 `ModuleRuntime`；
-- 在 `useEffect` 的 cleanup 中关闭 `Scope`（`Scope.close(scope, Exit.void)`）；
-- 组件渲染路径上假定构建过程是同步且不会被 React 丢弃。
+1.  **Suspense 必须同步抛出**：React 要求在 Render 阶段抛出 Promise 以触发 Suspense，这意味着异步任务必须在 Render 或更早阶段启动。
+2.  **Scope 必须精确管理**：Logix ModuleRuntime 包含副作用（Watcher/Effect），不能容忍 StrictMode 或并发渲染导致的“幽灵渲染”泄漏。
+3.  **useEffect 无法救场**：依赖 `useEffect` 来启动 Suspense 资源会导致死锁（Render 挂起 -> Commit 阻塞 -> Effect 不执行）。
 
-这带来几个问题：
+因此，我们决定跳过中间过渡态，直接采用业界最佳实践：**Resource Cache + Reference Counting** 模式。
 
-1. **React 并发模式 / StrictMode 下的 Scope 泄漏风险**  
-   - 在未 commit 的渲染路径中，`useMemo` 的副作用（`Scope.make` / `buildEffect`）已经执行，但对应的 `useEffect` 不会被调用；  
-   - 导致这一次渲染分支中创建的 Scope 与挂在其上的 Fiber 永远没有机会被关闭。
-2. **Render 阶段副作用与 Effect 语义冲突**  
-   - 创建 Scope 和运行 Module 构建逻辑本质上是 Effect 侧的“资源获取 + 长生命周期 watcher 启动”；  
-   - 挤在 render 中执行违背 React 推荐实践，也不利于后续支持 Suspense / 并发特性。
-3. **异步构建能力缺失**  
-   - 当前实现要求 Module 构建必须是完全同步的（包括其依赖 Layer 的初始化）；  
-   - 一旦 ModuleImpl 依赖 `Layer.scoped` + 异步 acquire 或远程配置，`runSync(buildEffect(scope))` 会直接报错。
+## 核心设计：ModuleResourceCache
 
-在运行时规划进入“生产化准备”阶段时，React 适配层应避免将这些实现细节长期固化，需要一版专门的重构方案。
+我们将引入一个资源缓存层，接管 ModuleRuntime 的生命周期。
 
-## 目标与约束
+### 1. 缓存结构与归属
 
-目标：
+**关键决策**：Cache 不应是全局单例，而应**绑定到 `ManagedRuntime` 实例**。
+这确保了不同 Runtime 环境（如 SSR 请求隔离、微前端隔离）下的资源互不干扰，且能正确获取当前 Runtime 的 Context/Layer。
 
-- 消除 `useLocalModule` 在 StrictMode / 并发渲染下的 Scope 泄漏风险；
-- 将「创建 Scope + 构建 ModuleRuntime + 启动 watcher」迁移到 commit 之后的 Effect 阶段，而不是 render/useMemo；
-- 为未来支持 **异步 Module 构建**（含 Suspense）预留空间；
-- 与现有 `RuntimeProvider` / `useModule` 的语义保持一致：Scope 生命周期绑定到组件树，Env 覆盖规则明确。
+```typescript
+// 扩展 ManagedRuntime 或通过 WeakMap<Runtime, Cache> 关联
+type ResourceKey = string; // 组件级唯一 ID (useId) + Deps Hash
 
-约束：
+interface ResourceEntry {
+  readonly scope: Scope.CloseableScope;
+  readonly promise: Promise<ModuleRuntime>;
 
-- React Hook 必须在 render 过程中返回“可渲染”的结果（要么是 `ModuleRuntime`，要么是可被 Suspense/ErrorBoundary 接住的占位状态）；  
-- 不在 render 阶段直接 `runPromise` 或触发 Effect side-effect；  
-- 保持与现有测试中的基本场景兼容（局部计数器、本地 Form、依赖 `deps` 重建等）。
+  // 状态机
+  status: 'pending' | 'success' | 'error';
+  value?: ModuleRuntime;
+  error?: unknown;
 
-## 方案草案：拆分 useLocalModule Runtime 与 UI 层责任
+  // 引用计数
+  refCount: number;
 
-### 1. 新底层 Hook：`useLocalModuleRuntime`
-
-引入新的底层 Hook，负责纯“运行时 + Scope 管理”：
-
-```ts
-interface LocalModuleState<MR> {
-  readonly runtime: MR | null
-  readonly isLoading: boolean
-  readonly error: unknown | null
+  // GC 定时器（用于回收“幽灵渲染”产生的资源）
+  gcTimeout?: NodeJS.Timeout;
 }
 
-function useLocalModuleRuntime<Sh extends Logix.AnyModuleShape>(
-  source: LocalModuleFactory | Logix.ModuleInstance<any, Sh>,
-  deps: React.DependencyList,
-  options?: ModuleInstanceOptions<Sh>
-): LocalModuleState<Logix.ModuleRuntime<any, any>>
+class RuntimeResourceCache {
+  private entries = new Map<ResourceKey, ResourceEntry>();
+
+  constructor(private runtime: ManagedRuntime) {}
+
+  // ... read, retain, release
+}
 ```
 
-核心行为：
+### 2. 生命周期管理 (The 4-Step Lifecycle)
 
-- 在 `useEffect` 中：
-  - 使用 `runtime.runSync(Scope.make)` 创建新的 `Scope`；
-  - 通过 `runtime.runPromise(buildEffect(scope))`（支持异步）构建 ModuleRuntime；
-  - 构建成功后：
-    - 关闭旧 Scope（若存在），更新 `state.runtime = newRuntime`；
-  - 构建失败时：
-    - 关闭新 Scope，写入 `state.error`，`state.runtime = null`。
-- 在 cleanup 中：
-  - 关闭当前生效的 Scope；
-  - 重置 `state.runtime = null`。
+#### Phase 1: Acquire (Render 阶段)
+当 `useLocalModule` 被调用时：
+1.  **生成 Key**：`useId()` + `stableHash(deps)`。
+2.  **获取 Cache**：从 `useRuntime()` 获取当前 Runtime 绑定的 Cache 实例。
+3.  **Cache Miss**:
+    -   立即创建 `Scope` 和 `Promise`（启动构建）。
+    -   创建 Entry，`refCount = 0`。
+    -   启动 `gcTimeout` (e.g., 500ms)。若超时后 `refCount` 仍为 0，则销毁。
+    -   存入 Cache。
+4.  **Cache Hit**: 返回 Entry。
+5.  根据 Entry 状态：
+    -   `pending`: **Throw Promise**。
+    -   `error`: **Throw Error**。
+    -   `success`: 返回 `ModuleRuntime`。
 
-注意：
+#### Phase 2: Retain (Commit 阶段)
+组件成功渲染并执行 `useEffect`：
+1.  调用 `Cache.retain(key)`。
+2.  Entry `refCount++`。
+3.  **清除 `gcTimeout`**：资源已被正式认领，取消自动回收。
 
-- `runPromise` 的异步特性仅存在于 Effect 层，React 渲染侧只通过 `isLoading / error / runtime` 三元状态表达当前可用性；
-- 不在 render 中直接抛错或阻塞，只由调用方决定如何处理 loading / error。
+#### Phase 3: Release (Cleanup 阶段)
+组件卸载或 `deps` 变化导致 `useEffect` cleanup：
+1.  调用 `Cache.release(key)`。
+2.  Entry `refCount--`。
+3.  **若 `refCount === 0`**：
+    -   不立即销毁（为了支持快速 Remount 或 StrictMode 的卸载/重挂载）。
+    -   启动 `gcTimeout` (e.g., 500ms)。
 
-### 2. UI 级 Hook：`useLocalModule`（新版）与 Suspense
+#### Phase 4: GC (Timeout)
+当 `gcTimeout` 触发：
+1.  再次检查 `refCount`。
+2.  若仍为 0：
+    -   `Scope.close(entry.scope)`。
+    -   `entries.delete(key)`。
 
-在 `useLocalModuleRuntime` 之上，提供更接近当前 API 的 UI Hook，同时把 Suspense 作为一等能力设计进去：
+### 3. API 设计
 
-```ts
-function useLocalModule<Sh extends Logix.AnyModuleShape>(
+用户侧 API 将极其简洁，不再暴露 `isLoading` 或 `error` 状态：
+
+```typescript
+export function useLocalModule<Sh extends Logix.AnyModuleShape>(
   module: Logix.ModuleInstance<any, Sh>,
-  options: ModuleInstanceOptions<Sh> & {
-    readonly suspense?: boolean          // 默认 true：走 Suspense 路线
-    readonly throwOnError?: boolean      // 默认 true：交给 ErrorBoundary
-  }
-): Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
+  options: ModuleInstanceOptions<Sh>
+): Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>> {
+  // 1. 获取当前 Runtime 及其 Cache
+  const runtime = useRuntime();
+  const cache = getCacheForRuntime(runtime);
+
+  // 2. 生成 Key (包含 deps 指纹)
+  const id = useId();
+  const depsHash = stableHash(options.deps); // 需实现稳定 Hash
+  const key = options.key ?? `${module.id}:${id}:${depsHash}`;
+
+  // 3. 读取资源 (可能会 Throw Promise/Error)
+  const moduleRuntime = cache.read(key, () => createFactory(module, options, runtime));
+
+  // 4. 锁定资源生命周期
+  useEffect(() => {
+    return cache.retain(key);
+  }, [cache, key]);
+
+  return moduleRuntime;
+}
 ```
 
-建议行为：
+## 实施现状与下一步 (2025-12-04 Update)
 
-- Suspense 优先（`suspense !== false`）：
-  - `isLoading && !runtime`：抛出一个挂起 Promise，让上层 Suspense 边界处理 loading；  
-  - `error && throwOnError !== false`：直接抛出 error，由 ErrorBoundary 兜底；  
-  - 调用方可以继续把 `useLocalModule` 当成“同步返回 runtime”的 Hook 使用，loading / error 全部交给边界处理。
-- 非 Suspense 模式（`suspense=false`）：
-  - `useLocalModule` 直接返回 `ModuleRuntime | null`，不会为调用方隐藏 loading/error 状态；  
-  - 推荐配套改造 `useSelector` 使其在 `runtime=null` 时返回 `undefined` 或初始快照，而不是抛错：
+### 已完成
+1.  **ModuleResourceCache**：
+    -   已实现基于 `WeakMap<Runtime, Cache>` 的缓存层。
+    -   已启用 **延迟 GC** (Acquire -> Retain -> Release -> GC)，解决了 StrictMode 下的资源泄漏问题。
+2.  **useLocalModule**：已完全迁移到 Resource Cache (Suspense 模式)。
+3.  **useModule(Impl)**：
+    -   已接入 Resource Cache (Sync 模式)，通过 `readSync` 保持同步构建语义。
+    -   新增 `options: { deps, key }` 参数，支持显式控制复用/重建。
+    -   使用 `useRef` 生成随机 ID 模拟 `useId`，配合 `stableHash(deps)` 生成稳定 Key。
 
-    ```ts
-    // 概念性签名：允许 runtime 为 null
-    function useSelector<H extends ReactModuleHandle, V>(
-      handle: H | null,
-      selector: (state: StateOfHandle<H>) => V,
-      equalityFn?: (prev: V | undefined, next: V | undefined) => boolean
-    ): V | undefined
-    ```
+### 待决事项
+1.  **useModule(Impl) 的 Suspense 化**：
+    -   目前在 StrictMode + 测试环境下，`useModule(Impl)` 走 Suspense 路径会导致无限重建（Key 不稳定）。
+    -   暂时保留 `readSync` 作为稳定实现。
+    -   后续需在独立分支探索如何稳定生成 Key（可能需要 React 19 `use` hook 或更激进的 Cache 策略）。
 
-    这样组件可以自然写成：
+## 结论
 
-    ```ts
-    const runtime = useLocalModule(Impl, { suspense: false })
-    const value = useSelector(runtime, s => s.value) ?? defaultValue
-    ```
-
-关于“Dummy Runtime”的取舍：
-
-- 草案不推荐返回“看起来可用但内部静默 no-op 的 Runtime”；  
-- 要么返回 `null` 并让 Hook 签名显式暴露“未就绪”的可能性，要么使用 Suspense 把 loading 隐藏在边界里；  
-- 若未来需要调试辅助，可以在开发模式下对“在 runtime=null 阶段调用 dispatch/getState”的行为给出明确 warning，而不是悄悄吞掉。
-
-### 3. 与 RuntimeProvider / useModule 的关系
-
-- `RuntimeProvider.layer` 已支持异步 Layer 构建，并在 `fallback` 期间不渲染子树；  
-- `useModule(Tag)` 通过 `useModuleRuntime` + `runtime.runSync(Tag)` 取 ModuleRuntime，仍然是假定 Tag 对应的 Module 已经在 Runtime 层构建好。
-
-未来推荐路径：
-
-- **全局 / 页面级模块**：继续通过 `LogixRuntime.make` + `RuntimeProvider` + `useModule` 组合；  
-- **局部 / 组件级模块**：优先使用新版 `useLocalModule`（底层由 `useLocalModuleRuntime` 托管 Scope），避免在 render 中创建 Scope；  
-- `useModule(Impl)` 可以被视为 `useLocalModule(Impl)` 的语法糖，内部同样复用 `useLocalModuleRuntime` 的 Scope 生命周期管理。
-
-## 实现与迁移计划（草案）
-
-1. **实现阶段**（短期）：
-   - 在 `@logix/react` 中新增 `useLocalModuleRuntime`（内部 API），将 Scope 管理与异步构建集中到这个 Hook 中；  
-   - 重构 `useLocalModule`，优先实现 Suspense 模式（`suspense=true` 默认），同时提供 `suspense=false` 的 fallback 路径；  
-   - 调整 `useSelector` 以优雅处理 `runtime | null`（在非 Suspense 场景下返回 `undefined` 而非直接崩溃）；  
-   - 为 `useLocalModuleRuntime` 补充 leak/pressure 测试（高频 mount/unmount、StrictMode 双渲染等），验证 Scope 不泄漏。
-
-2. **文档与规范更新**：
-   - 在 `docs/specs/runtime-logix/react/README.md` 中补充 `useLocalModuleRuntime` / Suspense 集成的设计说明；  
-   - 在 `apps/docs` 的 React 集成章节中，新增“局部模块 / 本地 Runtime（含 Suspense）”一节，给出典型写法（含 Suspense 边界与非 Suspense 模式）。
-
-3. **兼容性与后续演进**：
-   - 当前规划期不强调强向后兼容，可以接受 `useLocalModule` 行为的合理 break，只要在文档中明确变更点并给出迁移建议；  
-   - 后续视使用反馈决定是否导出底层的 `useLocalModuleRuntime` 作为高级 API，以及是否提供专门的 `useSuspenseLocalModule` 语法糖。
-
-## 待决问题
-
-- `useLocalModule` 默认是否要为调用方隐藏 `isLoading`/`error`，还是鼓励显式状态处理？  
-- 是否要在第一版就对接 Suspense / ErrorBoundary，还是先仅提供非 Suspense 版本？  
-- 与 `useModule(Impl)` 的边界怎么定义：是完全别名，还是保留细微差异？  
-- 在 DevTools / DebugSink 中如何区分“局部 ModuleRuntime 的 Scope 生命周期”和“全局 RuntimeScope”，是否需要更细粒度的事件。
-
-这些问题建议在实现前先在 `runtime-logix/react` 规范中给出初步结论，再回写到 `@logix/react` 实现和 apps/docs 文档中。 
+这是 Logix React 集成的**终局方案**。它牺牲了实现层的简单性（引入了 Runtime 级 Cache、GC 和 Hash 逻辑），换取了**最完美的 React 并发兼容性**和**最简单的用户 API**。

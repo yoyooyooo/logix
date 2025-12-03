@@ -94,23 +94,31 @@ const LocalCounterView: React.FC = () => {
 export const LocalModuleLayout: React.FC = () => {
   return (
     <RuntimeProvider runtime={localRuntime}>
-      <div className="space-y-6">
-        <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            局部 ModuleImpl 示例
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
-            本示例展示了如何直接使用 <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">ModuleImpl</code>{" "}
-            作为局部 Store：每个组件拥有自己的 <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">ModuleRuntime</code> 实例，
-            并在组件卸载时自动销毁对应状态。
-          </p>
-        </div>
+      <React.Suspense fallback={null}>
+        <div className="space-y-6">
+          <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              局部 ModuleImpl 示例
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
+              本示例展示了如何直接使用{" "}
+              <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
+                ModuleImpl
+              </code>{" "}
+              作为局部 Store：每个组件拥有自己的{" "}
+              <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
+                ModuleRuntime
+              </code>{" "}
+              实例，并在组件卸载时自动销毁对应状态。
+            </p>
+          </div>
 
-        <div className="pt-2 flex gap-4">
-          <LocalCounterView />
-          <LocalCounterView />
+          <div className="pt-2 flex gap-4">
+            <LocalCounterView />
+            <LocalCounterView />
+          </div>
         </div>
-      </div>
+      </React.Suspense>
     </RuntimeProvider>
   )
 }

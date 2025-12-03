@@ -24,7 +24,9 @@ describe("useLocalModule", () => {
   let rootRuntime: ManagedRuntime.ManagedRuntime<any, any>
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <RuntimeProvider runtime={rootRuntime}>{children}</RuntimeProvider>
+    <RuntimeProvider runtime={rootRuntime}>
+      <React.Suspense fallback={null}>{children}</React.Suspense>
+    </RuntimeProvider>
   )
 
   beforeEach(() => {
@@ -54,7 +56,7 @@ describe("useLocalModule", () => {
     const { result } = renderHook(useTest, { wrapper })
 
     await waitFor(() => {
-      expect(result.current.count).toBe(0)
+      expect(result.current?.count).toBe(0)
     })
 
     await act(async () => {
@@ -62,7 +64,7 @@ describe("useLocalModule", () => {
     })
 
     await waitFor(() => {
-      expect(result.current.count).toBe(1)
+      expect(result.current?.count).toBe(1)
     })
   })
 

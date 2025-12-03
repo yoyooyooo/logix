@@ -113,7 +113,7 @@ describe("React watcher patterns integration", () => {
     const { result } = renderHook(() => useTest(), { wrapper })
 
     await waitFor(() => {
-      expect(result.current.value).toBe(0)
+      expect(result.current?.value).toBe(0)
     })
 
     await act(async () => {
@@ -129,7 +129,8 @@ describe("React watcher patterns integration", () => {
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe(0)
+      expect(result.current).not.toBeNull()
+      expect(result.current?.value).toBe(0)
     })
   })
 
@@ -170,7 +171,8 @@ describe("React watcher patterns integration", () => {
     const { result } = renderHook(() => useTest(), { wrapper })
 
     await waitFor(() => {
-      expect(result.current.value).toBe(0)
+      expect(result.current).not.toBeNull()
+      expect(result.current?.value).toBe(0)
     })
 
     await act(async () => {
@@ -227,23 +229,26 @@ describe("React watcher patterns integration", () => {
     const { result } = renderHook(() => useTest(), { wrapper })
 
     await waitFor(() => {
-      expect(result.current.value).toBe(0)
+      expect(result.current).not.toBeNull()
+      expect(result.current?.value).toBe(0)
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "inc", payload: undefined })
+      result.current?.dispatch({ _tag: "inc", payload: undefined })
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe(1)
+      expect(result.current).not.toBeNull()
+      expect(result.current?.value).toBe(1)
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "dec", payload: undefined })
+      result.current?.dispatch({ _tag: "dec", payload: undefined })
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe(0)
+      expect(result.current).not.toBeNull()
+      expect(result.current?.value).toBe(0)
     })
   })
 
@@ -261,7 +266,9 @@ describe("React watcher patterns integration", () => {
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <React.StrictMode>
-        <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>
+        <RuntimeProvider runtime={runtime}>
+          <React.Suspense fallback={null}>{children}</React.Suspense>
+        </RuntimeProvider>
       </React.StrictMode>
     )
 
@@ -279,23 +286,26 @@ describe("React watcher patterns integration", () => {
     const { result } = renderHook(() => useTest(), { wrapper })
 
     await waitFor(() => {
-      expect(result.current.value).toBe(0)
+      expect(result.current).not.toBeNull()
+      expect(result.current?.value).toBe(0)
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "inc", payload: undefined })
+      result.current?.dispatch({ _tag: "inc", payload: undefined })
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe(1)
+      expect(result.current).not.toBeNull()
+      expect(result.current?.value).toBe(1)
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "dec", payload: undefined })
+      result.current?.dispatch({ _tag: "dec", payload: undefined })
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe(0)
+      expect(result.current).not.toBeNull()
+      expect(result.current?.value).toBe(0)
     })
   })
 })

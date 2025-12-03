@@ -133,7 +133,7 @@ const LocalForm = Logix.Module("LocalForm", {
 })
 
 export function LocalFormComponent() {
-  const runtime = useLocalModule(LocalForm, { initialState: { text: "" } })
+  const runtime = useLocalModule(LocalForm, { initial: { text: "" } })
   const text = useSelector(runtime, (s) => s.text)
   const dispatch = useDispatch(runtime)
 

@@ -3,7 +3,8 @@
 ## Workflow
 
 1. 任何和项目相关的任务优先执行 `openskills read project-guide`，并根据项目指南执行后续操作。
-2. 需要快速掌握已有仓库的一些信息的时候，优先使用 auggie 了解脉络，然后再深入查看。
+2. 当需要快速掌握已有仓库的一些泛化的信息的时候，优先使用 auggie 了解脉络，然后再深入查看。
+3. 当做完一个特性时，需要跑通测试用例和所有类型检测，同时把变更内容消化后整合到 SSoT 文档和用户文档
 
 ## 规划对齐（简版）
 
@@ -115,6 +116,7 @@
   - 根目录脚本：
     - `pnpm build`：递归调用各子包的 `build` 脚本，用于构建运行时 / React 包等。
     - `pnpm typecheck`：递归执行 `typecheck`，以 TypeScript 类型检查为准做第一道防线。
+    - `pnpm typecheck:test`：递归执行 `typecheck:test`，对各包的 src + test 进行完整类型检查，作为回归测试前的类型兜底。
     - `pnpm lint`：运行 ESLint（基于 `eslint.config.mjs`），集成 `@eslint/js`、`typescript-eslint` 与 `@effect/eslint-plugin`，覆盖 Effect import 规范等。
     - `pnpm lint:fix` / `pnpm format`：在 `lint` 基础上尝试自动修复（含格式与部分 Effect/TS 规则）。
     - `pnpm test`：使用 Vitest 一次性运行（`vitest run`），**不会进入 watch 模式**。

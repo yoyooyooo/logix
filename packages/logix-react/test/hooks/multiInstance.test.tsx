@@ -106,7 +106,9 @@ describe("useModule multi-instance behavior", () => {
     const runtime = makeImplRuntime()
 
     const Wrapper = ({ children }: { children: React.ReactNode }) => (
-      <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>
+      <RuntimeProvider runtime={runtime}>
+        <React.Suspense fallback={null}>{children}</React.Suspense>
+      </RuntimeProvider>
     )
 
     const UseLocalCounter = () => {
