@@ -12,7 +12,7 @@
  */
 
 import { Effect, Schema, Stream, Layer } from "effect"
-import { Logix, Link } from "@logix/core"
+import * as Logix from "@logix/core"
 
 // ---------------------------------------------------------------------------
 // 1. 定义三个独立模块
@@ -23,7 +23,7 @@ const SourceActions = {
   ping: Schema.Void,
 }
 
-const SourceModule = Logix.Module("SourceModule", {
+const SourceModule = Logix.Module.make("SourceModule", {
   state: SourceState,
   actions: SourceActions,
 })
@@ -35,7 +35,7 @@ const TargetActions = {
   hit: Schema.Void,
 }
 
-const TargetModule = Logix.Module("TargetModule", {
+const TargetModule = Logix.Module.make("TargetModule", {
   state: TargetState,
   actions: TargetActions,
 })
@@ -47,7 +47,7 @@ const AuditActions = {
   log: Schema.String,
 }
 
-const AuditModule = Logix.Module("AuditModule", {
+const AuditModule = Logix.Module.make("AuditModule", {
   state: AuditState,
   actions: AuditActions,
 })
@@ -73,7 +73,7 @@ const AuditLogic = AuditModule.logic(($) =>
 // 3. Link.make：基于 modules 数组 + Module.id 访问句柄
 // ---------------------------------------------------------------------------
 
-export const MultiModuleLink = Link.make(
+export const MultiModuleLink = Logix.Link.make(
   {
     // 不显式提供 id，默认会根据 modules.id 排序后拼接生成一个稳定 id
     modules: [SourceModule, TargetModule, AuditModule] as const,
@@ -108,16 +108,16 @@ export const MultiModuleLink = Link.make(
 // 4. 组合 ModuleImpl 与运行 Demo
 // ---------------------------------------------------------------------------
 
-export const SourceImpl = SourceModule.make({
+export const SourceImpl = SourceModule.implement({
   initial: undefined,
 })
 
-export const TargetImpl = TargetModule.make({
+export const TargetImpl = TargetModule.implement({
   initial: { count: 0 },
   logics: [TargetLogic],
 })
 
-export const AuditImpl = AuditModule.make({
+export const AuditImpl = AuditModule.implement({
   initial: { logs: [] },
   logics: [AuditLogic],
 })
@@ -150,4 +150,3 @@ export const main = Effect.gen(function* () {
     `Target.count=${targetState.count}, Audit.logs=${JSON.stringify(auditState.logs)}`,
   )
 }).pipe(Effect.provide(AppLayer))
-

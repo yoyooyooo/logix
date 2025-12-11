@@ -66,10 +66,11 @@
 
 - **当前状态**:
   - `@logix/test` 已提供 `TestProgram.make` 作为推荐入口，支持单模块与多模块 / Link 场景。
-  - `runTest` 已返回 `ExecutionResult`（包含 Trace）。
+  - `runTest` 用于在 `TestContext` 下执行任意 `Effect`；配合 `TestProgram.run` 时，返回值为 `ExecutionResult`（包含 Trace）。
   - 旧版 `defineTest` / `Scenario` 已从公共 API 中移除，仅保留内部实现片段。
+  - `Execution` 已补充一批基于 Trace 的断言 helper（如 `expectActionSequence` / `expectNoActionTag`），可用于编排更可读的集成测试断言。
 - **TODO**:
-  - [ ] 基于 ExecutionResult.Trace 设计更友好的断言 DSL（例如 `Trace.expectAction`、`Trace.expectNoError`）。
+  - [ ] 在现有 `Execution.*` helper 基础上，进一步整理基于 Trace 的声明式断言 DSL（例如 `Trace.expectAction`、`Trace.expectNoError`），并在 apps/docs 中提供示例。
   - [ ] 为平台 / AI 场景定义 ExecutionDump 结构（包含 Trace + 上下文快照）。
 
 

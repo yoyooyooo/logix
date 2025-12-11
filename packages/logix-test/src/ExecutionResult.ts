@@ -1,5 +1,5 @@
 import { Chunk } from "effect"
-import type { Logix } from "@logix/core"
+import type * as Logix from "@logix/core"
 
 export interface ExecutionResult<Sh extends Logix.AnyModuleShape> {
   readonly trace: ReadonlyArray<TraceEvent<Sh>>
@@ -53,6 +53,17 @@ export const getErrors = <Sh extends Logix.AnyModuleShape>(
       event._tag === "Error"
   )
 
+const actionTagOf = (action: Logix.ActionOf<Logix.AnyModuleShape>): string | undefined => {
+  const value = action as any
+  if (typeof value?._tag === "string") {
+    return value._tag
+  }
+  if (typeof value?.type === "string") {
+    return value.type
+  }
+  return undefined
+}
+
 // ---------------------------------------------------------------------------
 // Assertion-style helpers (throwing on failure)
 // ---------------------------------------------------------------------------
@@ -70,6 +81,45 @@ export const expectActionTag = <Sh extends Logix.AnyModuleShape>(
     throw new Error(
       `Expected ${options.times} actions with tag "${tag}", but found ${actions.length}.`
     )
+  }
+}
+
+export const expectNoActionTag = <Sh extends Logix.AnyModuleShape>(
+  result: ExecutionResult<Sh>,
+  tag: string,
+): void => {
+  const actions = getActionsByTag(result, tag)
+  if (actions.length > 0) {
+    throw new Error(
+      `Expected no actions with tag "${tag}", but found ${actions.length}.`,
+    )
+  }
+}
+
+export const expectActionSequence = <Sh extends Logix.AnyModuleShape>(
+  result: ExecutionResult<Sh>,
+  tags: ReadonlyArray<string>,
+): void => {
+  const actualTags = result.actions
+    .map((action) => actionTagOf(action))
+    .filter((tag): tag is string => typeof tag === "string")
+
+  if (actualTags.length !== tags.length) {
+    throw new Error(
+      `Expected action tag sequence [${tags.join(
+        ", ",
+      )}], but got [${actualTags.join(", ")}].`,
+    )
+  }
+
+  for (let i = 0; i < tags.length; i++) {
+    if (actualTags[i] !== tags[i]) {
+      throw new Error(
+        `Expected action tag sequence [${tags.join(
+          ", ",
+        )}], but got [${actualTags.join(", ")}].`,
+      )
+    }
   }
 }
 

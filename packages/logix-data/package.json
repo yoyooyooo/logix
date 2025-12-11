@@ -1,0 +1,54 @@
+{
+  "name": "@logix/data",
+  "version": "0.0.1",
+  "description": "[ARCHIVED] Field capabilities and state graph PoC (superseded by @logix/core StateTrait)",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "deprecated": "Archived PoC only – new field capability work must go through @logix/core StateTrait (see specs/001-module-traits-runtime).",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  },
+  "publishConfig": {
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./*": {
+        "types": "./dist/*.d.ts",
+        "import": "./dist/*.js",
+        "require": "./dist/*.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup --format cjs,esm --dts",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "effect": "^3.19.8"
+  },
+  "dependencies": {
+    "effect": "^3.19.8"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.27.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.15"
+  }
+}

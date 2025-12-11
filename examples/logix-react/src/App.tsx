@@ -7,10 +7,17 @@ import {
 import { GlobalRuntimeLayout } from "./demos/GlobalRuntimeLayout"
 import { AppDemoLayout } from "./demos/AppDemoLayout"
 import { LocalModuleLayout } from "./demos/LocalModuleLayout"
+import { AsyncLocalModuleLayout } from "./demos/AsyncLocalModuleLayout"
 import { FractalRuntimeLayout } from "./demos/FractalRuntimeLayout"
 import { FormDemoLayout } from "./demos/FormDemoLayout"
 import { LinkDemoLayout } from "./demos/LinkDemoLayout"
 import { LayerOverrideDemoLayout } from "./demos/LayerOverrideDemoLayout"
+import { SessionModuleLayout } from "./demos/SessionModuleLayout"
+import { SuspenseModuleLayout } from "./demos/SuspenseModuleLayout"
+import { CounterWithProfileDemo } from "./demos/CounterWithProfileDemo"
+import { TraitFormDemoLayout } from "./demos/TraitFormDemoLayout"
+import { MiddlewareDemoLayout } from "./demos/MiddlewareDemoLayout"
+import { LogixDevtools } from "@logix/devtools-react"
 import "./style.css"
 
 // Cast router components to any to avoid version-mismatch JSX typing issues in this example project.
@@ -42,10 +49,9 @@ export function App() {
                 to="/"
                 end
                 className={({ isActive }: { isActive: boolean }) =>
-                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                   }`
                 }
               >
@@ -57,14 +63,13 @@ export function App() {
               <NavLink
                 to="/app-counter"
                 className={({ isActive }: { isActive: boolean }) =>
-                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                   }`
                 }
               >
-                LogixRuntime 计数器
+                Runtime 计数器
                 <span className="block text-[10px] opacity-80 font-normal mt-0.5">
                   单模块 Runtime 定义
                 </span>
@@ -72,10 +77,9 @@ export function App() {
               <NavLink
                 to="/link-demo"
                 className={({ isActive }: { isActive: boolean }) =>
-                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                   }`
                 }
               >
@@ -87,10 +91,9 @@ export function App() {
               <NavLink
                 to="/local-module"
                 className={({ isActive }: { isActive: boolean }) =>
-                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                   }`
                 }
               >
@@ -100,12 +103,39 @@ export function App() {
                 </span>
               </NavLink>
               <NavLink
+                to="/async-local-module"
+                className={({ isActive }: { isActive: boolean }) =>
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  }`
+                }
+              >
+                异步局部 ModuleImpl
+                <span className="block text-[10px] opacity-80 font-normal mt-0.5">
+                  suspend:true + ModuleCache
+                </span>
+              </NavLink>
+              <NavLink
+                to="/session-module"
+                className={({ isActive }: { isActive: boolean }) =>
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  }`
+                }
+              >
+                会话级 Module
+                <span className="block text-[10px] opacity-80 font-normal mt-0.5">
+                  key + gcTime Session Pattern
+                </span>
+              </NavLink>
+              <NavLink
                 to="/fractal-runtime"
                 className={({ isActive }: { isActive: boolean }) =>
-                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                   }`
                 }
               >
@@ -117,10 +147,9 @@ export function App() {
               <NavLink
                 to="/layer-override"
                 className={({ isActive }: { isActive: boolean }) =>
-                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                   }`
                 }
               >
@@ -130,12 +159,25 @@ export function App() {
                 </span>
               </NavLink>
               <NavLink
+                to="/middleware-demo"
+                className={({ isActive }: { isActive: boolean }) =>
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  }`
+                }
+              >
+                中间件总线示例
+                <span className="block text-[10px] opacity-80 font-normal mt-0.5">
+                  EffectOp MiddlewareStack
+                </span>
+              </NavLink>
+              <NavLink
                 to="/form-demo"
                 className={({ isActive }: { isActive: boolean }) =>
-                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                   }`
                 }
               >
@@ -144,6 +186,57 @@ export function App() {
                   脏标记与校验
                 </span>
               </NavLink>
+              <NavLink
+                to="/suspense-module"
+                className={({ isActive }: { isActive: boolean }) =>
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  }`
+                }
+              >
+                真实 Suspense 演示
+                <span className="block text-[10px] opacity-80 font-normal mt-0.5">
+                  Async Layer 依赖
+                </span>
+              </NavLink>
+            </div>
+            <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-800">
+              <h3 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                StateTrait 场景
+              </h3>
+              <div className="space-y-1">
+                <NavLink
+                  to="/counter-with-profile-demo"
+                  className={({ isActive }: { isActive: boolean }) =>
+                    `w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 block ${
+                      isActive
+                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                    }`
+                  }
+                >
+                  Counter + Profile Traits
+                  <span className="block text-[10px] opacity-80 font-normal mt-0.5">
+                    computed + source + link
+                  </span>
+                </NavLink>
+                <NavLink
+                  to="/trait-form-demo"
+                  className={({ isActive }: { isActive: boolean }) =>
+                    `w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 block ${
+                      isActive
+                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                    }`
+                  }
+                >
+                  表单脏标记 Traits
+                  <span className="block text-[10px] opacity-80 font-normal mt-0.5">
+                    dirtyCount / isDirty
+                  </span>
+                </NavLink>
+              </div>
             </div>
           </div>
         </nav>
@@ -164,13 +257,26 @@ export function App() {
             <Route path="/global-runtime" element={<GlobalRuntimeLayout />} />
             <Route path="/app-counter" element={<AppDemoLayout />} />
             <Route path="/local-module" element={<LocalModuleLayout />} />
+            <Route
+              path="/async-local-module"
+              element={<AsyncLocalModuleLayout />}
+            />
+            <Route path="/session-module" element={<SessionModuleLayout />} />
             <Route path="/fractal-runtime" element={<FractalRuntimeLayout />} />
             <Route path="/form-demo" element={<FormDemoLayout />} />
             <Route path="/link-demo" element={<LinkDemoLayout />} />
             <Route path="/layer-override" element={<LayerOverrideDemoLayout />} />
+            <Route path="/middleware-demo" element={<MiddlewareDemoLayout />} />
+            <Route path="/suspense-module" element={<SuspenseModuleLayout />} />
+            {/* 内部 Demo：CounterWithProfile（StateTrait Quickstart 示例） */}
+            <Route path="/counter-with-profile-demo" element={<CounterWithProfileDemo />} />
+            {/* ToB 表单场景：利用 StateTrait 管理脏标记与合法性 */}
+            <Route path="/trait-form-demo" element={<TraitFormDemoLayout />} />
           </Routes>
         </div>
       </main>
+
+      <LogixDevtools position="bottom-left" />
     </div>
   )
 }

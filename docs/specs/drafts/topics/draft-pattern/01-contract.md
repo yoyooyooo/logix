@@ -2,6 +2,7 @@
 title: Draft Pattern Contract (Type Definitions & Runtime)
 status: draft
 version: 1.0
+related: []
 ---
 
 # Draft Pattern Contract

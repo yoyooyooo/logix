@@ -1,6 +1,5 @@
-
 import { Effect, Scope } from 'effect'
-import { Logix } from '@logix/core'
+import * as Logix from '@logix/core'
 import {
   LongTaskStateSchema,
   LongTaskActionMap,
@@ -14,7 +13,7 @@ import {
 // Module：定义长任务模块
 // ---------------------------------------------------------------------------
 
-export const LongTaskModule = Logix.Module('LongTaskModule', {
+export const LongTaskModule = Logix.Module.make('LongTaskModule', {
   state: LongTaskStateSchema,
   actions: LongTaskActionMap,
 })
@@ -47,7 +46,7 @@ export const LongTaskLogic = LongTaskModule.logic<Scope.Scope>(($) =>
 // Impl / Live：组合 State / Action / Logic 成为一棵可注入的领域模块
 // ---------------------------------------------------------------------------
 
-export const LongTaskImpl = LongTaskModule.make<Scope.Scope>({
+export const LongTaskImpl = LongTaskModule.implement<Scope.Scope>({
   initial: {
     status: 'idle',
     progress: 0,

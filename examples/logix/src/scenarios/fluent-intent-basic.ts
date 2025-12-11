@@ -9,7 +9,7 @@
 
 import { Effect, Schema, Stream } from 'effect'
 import { fileURLToPath } from 'node:url'
-import { Logix } from '@logix/core'
+import * as Logix from '@logix/core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：计数器带派生字段
@@ -31,7 +31,7 @@ type CounterShape = Logix.Shape<typeof CounterStateSchema, typeof CounterActionM
 // Module：使用 Logix.Module 定义模块身份与契约
 // ---------------------------------------------------------------------------
 
-export const CounterModule = Logix.Module('CounterModule', {
+export const CounterModule = Logix.Module.make('CounterModule', {
   state: CounterStateSchema,
   actions: CounterActionMap,
 })
@@ -71,7 +71,7 @@ export const CounterLogic = CounterModule.logic(($) =>
 // Impl / Live：组合 State 与 Logic，生成运行时实现
 // ---------------------------------------------------------------------------
 
-export const CounterFluentImpl = CounterModule.make({
+export const CounterFluentImpl = CounterModule.implement({
   initial: {
     count: 0,
     hasValue: false,

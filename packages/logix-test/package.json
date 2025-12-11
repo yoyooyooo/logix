@@ -28,16 +28,17 @@
         "test": "vitest"
     },
     "peerDependencies": {
-        "effect": "^3.10.0",
-        "@logix/core": "workspace:*"
+        "@logix/core": "workspace:*",
+        "effect": "^3.19.8"
     },
     "dependencies": {
-        "effect": "^3.10.0",
-        "@logix/core": "workspace:*"
+        "@logix/core": "workspace:*",
+        "effect": "^3.19.8"
     },
     "devDependencies": {
+        "@effect/vitest": "^0.27.0",
         "tsup": "^8.0.0",
         "typescript": "^5.4.0",
-        "vitest": "^1.0.0"
+        "vitest": "^4.0.15"
     }
 }

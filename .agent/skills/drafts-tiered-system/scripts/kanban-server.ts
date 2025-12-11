@@ -8,10 +8,17 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { cors } from 'hono/cors';
 import open from 'open';
 
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Configuration
-const REPO_ROOT = path.resolve(process.cwd(), '../../..');
+// __dirname is .../scripts
+const SKILL_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(SKILL_ROOT, '../../..');
 const DRAFTS_ROOT = path.resolve(REPO_ROOT, 'docs/specs/drafts');
-const UI_DIST = path.resolve(process.cwd(), 'ui/dist');
+const UI_DIST = path.resolve(SKILL_ROOT, 'ui/dist');
 
 // Types
 interface Draft {
@@ -22,6 +29,7 @@ interface Draft {
     value: string;
     priority: number | string; // Number for rank, string for legacy
     filename: string;
+    related?: string[];
 }
 
 interface UpdateDraftRequest {
@@ -48,6 +56,14 @@ function ensureDir(dirPath: string) {
 const app = new Hono();
 
 app.use('/*', cors());
+
+// Middleware: Logger
+app.use('*', async (c, next) => {
+    const start = Date.now();
+    await next();
+    const ms = Date.now() - start;
+    console.log(`${c.req.method} ${c.req.path} - ${c.res.status} (${ms}ms)`);
+});
 
 // API: Get all drafts
 app.get('/api/drafts', async (c) => {
@@ -83,7 +99,8 @@ app.get('/api/drafts', async (c) => {
             status: data.status || 'unknown',
             value: data.value || '-',
             priority: priority,
-            filename: path.basename(file)
+            filename: path.basename(file),
+            related: data.related || []
         });
     }
 
@@ -102,6 +119,25 @@ app.get('/api/drafts/:filename', async (c) => {
     const fullPath = path.join(DRAFTS_ROOT, files[0]);
     const content = fs.readFileSync(fullPath, 'utf-8');
     const { data, content: markdown } = matter(content);
+
+    // Filter related links to ensure they exist
+    if (data.related && Array.isArray(data.related)) {
+        data.related = data.related.filter((link: string) => {
+            try {
+                // Strategy 1: Relative to current file
+                const relativePath = path.resolve(path.dirname(fullPath), link);
+                if (fs.existsSync(relativePath)) return true;
+
+                // Strategy 2: Relative to DRAFTS_ROOT
+                const rootPath = path.resolve(DRAFTS_ROOT, link);
+                if (fs.existsSync(rootPath)) return true;
+
+                return false;
+            } catch (e) {
+                return false;
+            }
+        });
+    }
 
     return c.json({
         ...data,
@@ -160,10 +196,11 @@ app.patch('/api/drafts/:filename', async (c) => {
 });
 
 // Serve Frontend
-app.use('/*', serveStatic({ root: './ui/dist' }));
+// Use absolute path to avoid CWD ambiguity
+app.use('/*', serveStatic({ root: UI_DIST }));
 
 // Fallback for SPA routing
-app.get('*', serveStatic({ path: './ui/dist/index.html' }));
+app.get('*', serveStatic({ path: path.join(UI_DIST, 'index.html') }));
 
 const port = 0; // Random port
 console.log(`Starting server...`);

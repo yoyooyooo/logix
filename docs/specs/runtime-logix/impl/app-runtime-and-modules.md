@@ -56,8 +56,8 @@ export interface Provider<S> {
 
 在当前实现中，应用级 AppRuntime 是围绕 Root ModuleImpl 构造的一棵 Runtime：
 
-- 对内使用 `ModuleDef` / AppRuntime 组合（参见 `runtime/AppRuntime.ts` 与 `LogixRuntime.make` 的实现）；
-- 对外入口一律通过 `LogixRuntime.make(rootImpl, { layer, onError })` 暴露，不再导出早期的 `Logix.app` 这类组装 API。
+- 对内使用 `ModuleDef` / AppRuntime 组合（参见 `runtime/AppRuntime.ts` 与 `Logix.Runtime.make` 的实现）；
+- 对外入口一律通过 `Logix.Runtime.make(rootImpl, { layer, onError })` 暴露，不再导出早期的 `Logix.app` 这类组装 API。
 
 ## 2. flatten 目标：从 ModuleDef 到 { layer, processes }
 

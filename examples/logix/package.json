@@ -3,13 +3,13 @@
     "version": "0.0.1",
     "private": true,
     "type": "module",
-  "scripts": {
+    "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "typecheck": "tsc -p tsconfig.json --noEmit"
     },
     "dependencies": {
         "@logix/core": "workspace:*",
-        "effect": "^3.19.6",
+        "effect": "^3.19.8",
         "zod": "^3.23.8"
     },
     "devDependencies": {

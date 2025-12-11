@@ -6,6 +6,7 @@ supersedes:
   - ../L9/logix-instrumentation-overhaul.md
   - ../L9/runtime-logix-spec-adjustments.md
   - ../L9/module-runtime-adapter-and-customization.md
+related: []
 ---
 
 # Logix Runtime 核心演进路线
@@ -251,7 +252,7 @@ namespace ModuleRuntime {
 #### 标准本地 Store
 
 ```typescript
-const MyModule = Logix.Module('MyModule', { state, actions })
+const MyModule = Logix.Module.make('MyModule', { state, actions })
 const MyLogic = MyModule.logic(($) => ...)
 const MyLive = MyModule.live(initial, MyLogic)
 

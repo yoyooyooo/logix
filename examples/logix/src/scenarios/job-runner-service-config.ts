@@ -1,5 +1,5 @@
-import { Config, Data, Duration, Effect, Schema } from 'effect'
-import { Logix } from '@logix/core'
+import { Config, Data, Duration, Effect, Schema } from "effect"
+import * as Logix from "@logix/core"
 
 // ---------------------------------------------------------------------------
 // 1. Schema → Shape：Job 场景的 State / Action
@@ -64,7 +64,7 @@ export class JobRunner extends Effect.Service<JobRunner>()('JobRunner', {
 // 4. Module：定义 Job 模块
 // ---------------------------------------------------------------------------
 
-export const JobModule = Logix.Module('JobModule', {
+export const JobModule = Logix.Module.make('JobModule', {
   state: JobStateSchema,
   actions: JobActionMap,
 })
@@ -122,7 +122,7 @@ export const JobLogic = JobModule.logic<JobRunner>(($: Logix.BoundApi<JobShape, 
 // 6. Impl / Live：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-export const JobImpl = JobModule.make<JobRunner>({
+export const JobImpl = JobModule.implement<JobRunner>({
   initial: {
     jobId: '',
     status: 'idle',

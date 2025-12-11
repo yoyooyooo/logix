@@ -2,6 +2,7 @@
 title: Next-Gen Killer APIs (Agent.gen, Durable Flow, Invariants)
 status: draft
 version: 2025-11-28
+related: []
 ---
 
 # Next-Gen Killer APIs: 延续 Bound API 的辉煌
@@ -81,7 +82,7 @@ const ExpenseApprovalFlow = Flow.make(
 **Killer Feature**: 声明式地定义“绝对真理”，任何试图违反这些规则的 State Update 都会被 Runtime 自动拦截并回滚。
 
 ```typescript
-const BankModule = Logix.Module("BankAccount", {
+const BankModule = Logix.Module.make("BankAccount", {
   state: StateSchema,
   actions: ActionSchema
 })

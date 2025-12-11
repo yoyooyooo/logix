@@ -1,0 +1,10 @@
+{
+    "title": "Essentials",
+    "pages": [
+        "thinking-in-logix",
+        "modules-and-state",
+        "flows-and-effects",
+        "effect-basics",
+        "lifecycle"
+    ]
+}

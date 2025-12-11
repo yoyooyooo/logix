@@ -18,7 +18,7 @@
 
 ```ts
 // features/counter/module.ts
-export const Counter = Logix.Module('Counter', {
+export const Counter = Logix.Module.make('Counter', {
   state: CounterStateSchema,
   actions: CounterActionSchema,
 });
@@ -85,9 +85,37 @@ v3 对外推荐的 Logic 形态是：在 `Logic.Env<Sh,R>` 上运行的一段 `E
 通常通过 Module.logic 注入 Bound API `$`：
 
 在推荐范式下，Logic 作者通常通过 `Module.logic(($)=>Effect.gen(...))` 直接在回调中使用注入的 `$`；
-对于 Pattern / Namespace 等二次封装场景，当前 PoC 建议直接使用 `Logix.BoundApi.make(shape, runtime)` 在实现层构造 `$`，并让调用方显式注入 `$`。
+对于 Pattern / Namespace 等二次封装场景，当前 PoC 建议直接使用 `Logix.Bound.make(shape, runtime)` 在实现层构造 `$`，并让调用方显式注入 `$`。
 
-### 2.2 Logic.Env 与 Logic.Of
+### 2.2 两阶段 Logic Bootstrap（setup/run）
+
+> 目标：消除初始化期的 “Service not found” 噪音，保证 Env 就绪后才运行需要依赖的逻辑；在不改变 `Module.logic(($)=>Effect)` 形态的前提下，明确 setup / run 分层语义。
+
+- **builder 闭包的一次性执行 = 构造 LogicPlan**  
+  - 闭包体内的同步注册调用归入 **setup 段**：只允许注册 reducer、lifecycle、Debug/Devtools hook，不访问 Env/Service，不做 IO。  
+  - 闭包 `return` 的 Effect 归入 **run 段**：在「完全铺好 Env 的 runtime」上以长期 Fiber 运行，允许访问 `EnvTag`、挂载 `$.onAction / $.onState`、Flow/Process 等。
+- **运行时时序**  
+  1) ModuleRuntime.make t=0：执行所有 Logic 的 setup，完成注册并保证幂等（StrictMode 下重复注册会触发诊断而非静默覆盖）。  
+  2) Env Ready：AppRuntime/RuntimeProvider 构建完 `envLayer` 后，统一 `forkScoped(plan.run)`；此后若出现 `Service not found` 即视为真实配置错误。  
+  3) 生命周期绑定：`$.lifecycle.onInit/onDestroy` 在 run 段启动后与 ModuleRuntime Scope/宿主生命周期绑定，确保与 React mount/unmount 对齐。
+- **非法用法矩阵（DEV 诊断）**  
+  - 在 setup 段调用 run-only 能力（`$.onAction/$.onState/$.use` 等） → `diagnostic(error) code=logic::invalid_phase kind=...`，提示将调用移至 run 段。  
+  - 在 builder 顶层直接执行 Effect（`Effect.run*` 等） → `diagnostic(error) code=logic::setup_unsafe_effect`，提示不要在 setup 阶段做 IO。  
+  - 重复注册 reducer / lifecycle → 诊断去重并提示 StrictMode 可能触发多次初始化。
+- **向后兼容**：`Module.logic(($)=>Effect.gen(...))` 被解释为仅含 run 段；旧代码无需改动即可受益于新的时序与诊断。推荐升级写法是在 return 前完成注册，return 内部编写业务 Watcher/Flow。
+
+**Phase Guard 行为矩阵（Bound API 视角）**
+
+| API 分组 | 允许阶段 | setup 触发时行为 |
+| --- | --- | --- |
+| `$.onAction*` / `$.onState*` / `$.flow.from*` / IntentBuilder `.run/.runLatest/.runParallel/.runExhaust/.update/.mutate` | run | 抛 `LogicPhaseError(kind=\"use_in_setup\", api=...)` → 记录 `diagnostic code=logic::invalid_phase severity=error`，Runtime 继续完成构造 |
+| `$.use` | run | 同上；若 Env 未就绪还会额外发出 `logic::env_service_not_found`（warning/error）诊断 |
+| `$.lifecycle.*` / `$.reducer` / Debug/Devtools 注册 | setup | 允许；重复注册触发 `reducer::duplicate/late_registration` 诊断但不破坏构造 |
+| builder 顶层 `Effect.run*` | 都不允许 | 触发 `logic::setup_unsafe_effect` 诊断，提示将 IO 移至 run 段 |
+
+> 诊断字段结构化：`kind/api/phase/moduleId` 等字段可被 DevTools 与平台直接消费，无需字符串解析；所有诊断均通过 `DebugSink` 广播。
+
+### 2.3 Logic.Env 与 Logic.Of
 
 为了在 Pattern、Intent 等场景中精确表达上下文依赖，v3 引入了 `Logic.Of` 别名：
 
@@ -111,6 +139,107 @@ export type Of<Sh extends Logix.ModuleShape<any, any>, R = never, A = void, E = 
 - 跨 Store 协作场景中，可以通过显式传入 `Logix.ModuleTag<OtherShape>` 创建其他 Store 的访问器，但业务层推荐通过 `$.use(ModuleSpec)` + Fluent DSL（`$.on($Other.changes/...).run($SelfOrOther.dispatch)`）表达；`Intent.Coordinate` 仅在 IR 层用于标注语义。
 
 > 说明：在 Fluent DSL 之上，运行时可以选择性提供 `andThen` 之类的 DX sugar（例如 `$.onState(...).andThen(handler)`），用于简化手写业务逻辑或给 LLM 使用。此类 API 不属于 Fluent 白盒子集，平台默认将其视为 Gray/Black Box；如需参与 IR/可视化，应先通过 codemod/Agent 降级为规范的 `.update/.mutate/.run*` 形态。
+
+### 2.4 Logic.Env / R 的默认约定
+
+v3 PoC 中，`Logic.Of` 与 `ModuleLogic` 的 Env 泛型遵循以下约定：
+
+```ts
+// Logic.Env：默认只包含当前 ModuleRuntime + 平台服务
+export type Env<Sh extends Logix.ModuleShape<any, any>, R = never> =
+  Logix.ModuleTag<Sh> | Logix.Platform.Service | R
+
+// Logic.Of：所有 Logic 程序的统一别名
+export type Of<Sh extends Logix.ModuleShape<any, any>, R = never, A = void, E = never> =
+  Effect.Effect<A, E, Env<Sh, R>>
+```
+
+- 默认情况下，所有通过 `Module.logic(($) => ...)` 定义的 Logic 都使用 `R = never`：  
+  - 即 Logic 只依赖当前模块的 `ModuleRuntime` 与平台层的 `Platform.Service`（由 `Runtime.make` / `ReactPlatformLayer` 等提供）；  
+  - 不会隐式引入额外的 service / Tag 依赖，便于在应用级 Runtime 上组合 Layer 并闭合 Env。
+- 当 Logic 中需要额外的 Service / Tag / 其他 Module 时，**必须显式写出 `R`**，并在 Runtime 层通过 Layer 提供对应实现：
+
+```ts
+// 1) 定义依赖
+class ToggleService extends Effect.Service<ToggleService>()("ToggleService", { /* ... */ }) {}
+
+// 2) Logic 显式标注 Env
+const ToggleLogic = ToggleModule.logic<ToggleService>(($) =>
+  Effect.gen(function* () {
+    const svc = yield* $.use(ToggleService)
+    // ...
+  }),
+)
+
+// 3) ModuleImpl 保留 Env 依赖
+const ToggleImpl = ToggleModule.implement<ToggleService>({
+  initial,
+  logics: [ToggleLogic],
+})
+
+// 4) Runtime 侧通过 Layer 闭合 Env
+const AppRuntime = Logix.Runtime.make(ToggleImpl, {
+  layer: Layer.mergeAll(
+    ToggleService.Live as Layer.Layer<ToggleService, never, never>,
+    AppInfraLayer,
+  ),
+})
+```
+
+> 规则：**没有额外依赖 → 用默认 `R = never` 即可；有额外依赖 → 在 `Module.logic<R>` 与 `Module.implement<R>` 上显式标出 Env，并在 Runtime 层通过 Layer 收敛到 `R = never` 后再交给 `Runtime.make` / `ManagedRuntime.make`。
+
+### 2.5 `$.onAction / $.onState` 与 watcher 生命周期
+
+`$.onAction / $.onState / $.flow.from*` 本质上都会返回一个长期存在的 **IntentBuilder**，在 run 段中挂载为 watcher。为了避免「主 Logic 永不返回」「Env 带入 Scope」等问题，本规范约束：
+
+- 不允许直接 `yield* $.onAction(...).run(...)` 挂长期 watcher，必须通过以下两种方式之一：
+  - 使用 `runFork / runParallelFork` 等封装过的 helper：  
+    ```ts
+    yield* $.onAction("inc").runParallelFork(
+      $.state.update((s) => ({ ...s, count: s.count + 1 })),
+    )
+    ```
+    这在内部等价于 `Effect.forkScoped(flow.run(...))`，但会在类型上把 `Scope` 从 Env 中「吃掉」，避免污染 Logic 的 `R`。
+  - 将若干 watcher 作为子任务挂在 `Effect.all([...])` 中：  
+    ```ts
+    yield* Effect.all([
+      $.onAction("start").runFork(handleStart),
+      $.onAction("reset").run(handleReset),
+    ])
+    ```
+    这里的主 Logic 在所有 watcher 启动后很快返回，长期工作都由 fork 出去的 Fiber 承担。
+- 手写 `Effect.forkScoped($.onAction(...).run(...))` 的形式在 PoC 阶段视为内部实现细节，推荐一律使用 `runFork / runParallelFork` 等 helper 代替。
+
+> 实务建议：在 code review / Pattern 设计中，可以把「`yield* $.onAction` 后面是否跟了 `runFork/ParallelFork` 或包在 `Effect.all([...])` 里」当作一个 checklist，避免出现“Logic 主体永远挂起”或 Env 推导出 `Scope | ...` 之类噪音。
+
+### 2.6 Logic 书写顺序（Best Practice · 两阶段心智）
+
+为了减少时序相关的心智负担，推荐在单段 Logic 内遵循以下结构化顺序：
+
+1. **setup 段：先注册生命周期与错误处理**  
+   ```ts
+   yield* $.lifecycle.onError((cause, context) => /* 统一兜底 */)
+   // 如有需要，再注册 onInit / onDestroy 等
+   ```
+2. **setup 段：注册动态 Primary Reducer（如使用）**  
+   ```ts
+   // 前提：该 Action 尚未被 dispatch 过
+   yield* $.reducer("increment", (state, action) => nextState)
+   ```
+   对于必须从 t=0 就生效的主路径，推荐始终使用 `Module.make({ reducers })`，`$.reducer` 仅作为动态扩展入口。
+3. **run 段：挂载 Watcher / Flow**  
+   ```ts
+   yield* $.onAction("increment").runFork(/* 副作用或联动 */)
+   yield* $.onState(selector).runFork(/* 派生更新 */)
+   ```
+
+Runtime 会在以下场景提供智能提示（通过 DebugSink 以 `diagnostic` 事件形式暴露）：
+
+- 当某个 Action Tag 已经被 dispatch 之后才调用 `$.reducer(tag, ...)`，将触发 `reducer::late_registration` 诊断；
+- 当发生 lifecycle 错误而当前 Module 尚未注册任何 `$.lifecycle.onError` 时，将触发 `lifecycle::missing_on_error` 诊断。
+
+这些诊断不会改变运行语义，但会在开发阶段帮助你快速发现“声明过晚”或“错误阶段调用”一类时序问题。  
+推荐将上述结构化顺序视为 Logic 的默认写法模板。 
 
 ## 3. Flow (The Time & Concurrency Layer)
 
@@ -179,6 +308,34 @@ run*<A, E, R2>(
 > - Fluent API（`$.onState / $.onAction / $.on`）上的 `.update/.mutate/.run*` 在语义上必须等价于“先通过 `$.flow.from*` 拿到源流，再串上相应的 `Flow.run*` 或直接进行 `Stream.runForEach + state.update`”，
 > - **不要求机械地通过 Flow.Api 组合实现**，但要求错误语义、并发语义与上述 `Flow.run*` 描述保持一致，便于 Parser 与 DevTools 在这两层之间建立一一对应关系。
 
+### 3.4 Watcher 数量与性能基线
+
+在 v3 推荐的 Fluent 写法中，高频模式为：
+
+- `$.onAction(predicate).update/mutate/run*`：在 Module 的 `actions$` 流上挂多条 watcher；
+- `$.onState(selector).update/mutate/run*`：在 `changes(selector)` 产生的视图流上挂多条 watcher；
+- `$.on(source).update/mutate/run*`：在任意 Stream 上挂多条 watcher。
+
+心智模型：
+
+- 每条 watcher 本质是一段长期运行的 Flow/Effect 程序，生命周期绑定在 ModuleRuntime 的 Scope 上；
+- 对于某次 Action / State 变更，所有 watcher 都会各自“看一眼”事件（跑一遍 predicate/selector 与流式管道），再决定是否把事件交给 handler；
+- 真正的性能成本主要来自 handler（例如 `state.update/mutate`、网络请求、复杂计算），而不是单次 selector 本身。
+
+当前在 Chromium + Vitest Browser 模式下的测量（仅作量级参考）：
+
+- 单个 Module 的单段 Logic 内，随着 `on*` watcher 数量从 1 → 128 增加，“一次点击 → DOM 更新”的平均延迟基本保持在 30ms 级别内；
+- 当 watcher 数量提升到约 256 时，同一条轻量 handler 的 click→paint 延迟会上升到约 40ms；
+- 在 512 条 watcher、且所有 watcher 都命中同一 Action 并执行轻量 handler 的极端场景下，click→paint 延迟会接近 60ms。
+
+开发者建议（供设计与代码评审时参考）：
+
+- **绿区**（推荐）：单段 Logic 内的 `on*` watcher 数量控制在 **≤ 128**。此时即便 handler 稍重，交互仍然稳定；
+- **黄区**（警戒）：接近 **256** 条 watcher 时，应评估单个 Action 实际命中的 handler 数量，以及 handler 内是否存在高频重逻辑（大规模 state 更新 / IO 等），必要时拆分 Logic 或合并规则；
+- **红区**（避免）：单段 Logic 内 **≥ 512** 条 watcher 通常只接受为 PoC 或特殊场景，正式业务建议通过拆 Module / 拆 Logic / 合并 Flow 来降低单点 fan-out。
+
+更详细的实现链路与压测结论见 `impl/watcher-performance-and-flow.md`。
+
 ## 4. Intent (L1/L2 IR Semantics)
 
 在 Flow / Control 之上，Logix 使用 **IntentRule IR** 承载高频业务联动模式（L1/L2）：
@@ -231,6 +388,110 @@ yield* $.on($Search.changes((s) => s.results))
 > - v3 中不再定义单独的 `Intent` 运行时命名空间；
 > - 业务代码一律通过 Fluent DSL（`$.onState` / `$.onAction` / `$.on` + `.update/.mutate/.run*`）表达规则，由 Parser 负责生成/更新对应的 IntentRule；
 > - 平台/工具在 IR 层只操作 `IntentRule` 结构，而不是某个 `Intent.*` API。
+
+### 4.3 Primary Reducer 与 `$.reducer`（语义补充）
+
+在 v3 中，「状态主路径」与 watcher 明确分层：
+
+- **Primary Reducer**：
+  - 来自 `Logix.Module` 定义中的 `reducers` 字段，或在 Logic 中通过 `$.reducer` 注册；
+  - 形态固定为同步纯函数：`(state, action) => nextState`；
+  - 由 `ModuleRuntime.dispatch` 在发布 Action 之前同步应用，是 Action → State 的权威路径（State Intent）。
+- **Watcher (`$.onAction / $.onState / $.on`)**：
+  - 基于 `actions$ / changes(selector)` 的 Stream + Flow；
+  - 承载联动、派生字段与副作用（Flow Intent），可以访问 Env、发起 IO 等。
+
+运行时时序（简化）：
+
+1. 调用 `dispatch(action)`；
+2. 如果存在对应 `_tag` 的 primary reducer，先同步更新 State（`SubscriptionRef`）；
+3. 记录一次 `action:dispatch` Debug 事件（`state:update` 事件由内部 `setState` 记录）；
+4. 将 Action 广播到 `actions$`，触发所有 watcher。
+
+Bound API 提供 `$.reducer` 作为在 Logic 中注册 primary reducer 的语法糖：
+
+```ts
+export const CounterLogic = Counter.logic(($) =>
+  Effect.gen(function* () {
+    // 1. 主路径：同步、纯状态变换
+    yield* $.reducer(
+      "set",
+      Logix.Module.Reducer.mutate((draft, action) => {
+        draft.count = action.payload;
+      }),
+    );
+
+    // 2. watcher：派生字段 / 副作用
+    yield* $.onState((s) => s.count)
+      .run(($count) =>
+        $.state.update((prev) => ({
+          ...prev,
+          isZero: $count === 0,
+        })),
+      );
+  }),
+);
+```
+
+约束与实践建议：
+
+- primary reducer 不访问 Env，不做 IO，不再 dispatch，只负责「当前 Action 对 State 的主效果」；
+- watcher 则专注「在 State / Action 变化之后需要发生的联动与副作用」；
+- `Logix.Module.Reducer.mutate` 提供与 `$.state.mutate` 一致的 mutative 写法，内部通过 `mutative` 映射为不可变更新。
+
+### 4.4 Watcher handler 上下文：`IntentContext` 与 `runWithContext`
+
+默认形态下，Fluent DSL 的 watcher handler 一律以 **payload 优先** 作为第一参数：
+
+- `$.onAction(predicate).run((payload) => ...)` 中的 `payload` 始终代表触发源本身：  
+  - 对 Action watcher：`payload = ActionOf<Sh>`（例如 `{ _tag: "inc"; payload: void }`）；  
+  - 对 State watcher：`payload = selector(state)` 的返回值。
+- 这一写法不携带额外上下文（如 `state`、`env`），便于与 IntentRule 中的“source → pipeline → sink(handler)” 一一对应。
+
+为了在 handler 内稳定访问当前 State（以及未来可能的 Env/Actions），v3 在 DSL 层补充了一等上下文形态：
+
+```ts
+interface IntentContext<Sh extends Logix.AnyModuleShape, Payload> {
+  readonly payload: Payload
+  readonly state: Logix.StateOf<Sh>
+  // 预留：后续可扩展 actions / env / trace 等字段
+}
+```
+
+在保持 `.run(payload => ...)` 不变的前提下，Bound API 至少提供一个**核心变体**：
+
+```ts
+$.onAction("inc").runWithContext((ctx) =>
+  $.state.update((prev) => ({
+    ...prev,
+    count: prev.count + 1,
+  })),
+)
+```
+
+- 语义：每次触发时，先读取当前模块的 State，再将 `{ payload, state }` 作为 `IntentContext` 传给 handler；  
+- 性能：只有显式使用 `runWithContext` 的 watcher 才会在每次事件上读取一次 State，payload‑only 的 `.run` 不引入额外开销。
+
+在此基础上，Runtime 可以选择性提供链式语法糖：
+
+```ts
+$.onAction("inc")
+  .withContext() // :: IntentBuilder<IntentContext<Sh, Action>, Sh, R>
+  .run((ctx) =>
+    $.state.update((prev) => ({
+      ...prev,
+      count: prev.count + 1,
+    })),
+  )
+```
+
+- 语义：`withContext()` 将内部流从 `Payload` 提升为 `IntentContext<Sh, Payload>`，末端的 `.run(handler)` 与 `runWithContext(handler)` 在语义上等价；  
+- 规范要求：若实现该语法糖，其行为必须与 `runWithContext` 等价，不得引入额外语义或性能差异。
+
+Phase Guard 与 Diagnostics 约束：
+
+- `.runWithContext` 与 `.withContext().run` 均属于 **run‑only 能力**，在 setup 段调用时必须遵守上文 Phase Guard 矩阵；  
+- 在 setup 段触发时，Runtime 会产生 `LogicPhaseError(kind="use_in_setup", api="$.onAction.runWithContext/withContext.run")`，并通过 `logic::invalid_phase` 诊断暴露，避免影响 `ModuleRuntime.make` 的同步构造路径。
 
 ## 5. Control (The Structure Layer)
 
@@ -344,7 +605,7 @@ const CounterAction = {
   dec: Schema.Void,
 };
 
-export const Counter = Logix.Module('Counter', {
+export const Counter = Logix.Module.make('Counter', {
   state: CounterState,
   actions: {
     inc: Schema.Void,

@@ -6,7 +6,7 @@ version: 2025-12-03
 
 # React Adapter · `@logix/react` 规范总览
 
-> 作用：作为 `@logix/react` 的规范性说明，串联 RuntimeProvider、核心 Hooks 与 React 18 并发模型之间的契约。  
+> 作用：作为 `@logix/react` 的规范性说明，串联 RuntimeProvider、核心 Hooks 与 React 18 并发模型之间的契约。
 > 读者：使用 Logix 编写 React 前端的业务工程师、运行时实现者与平台集成方。
 
 本节以当前 `@logix/react` 实现为事实源，约定 React 适配层的定位与 API 形态，并指向更详细的专题草案（见 `docs/specs/drafts/topics/react-adapter`）。
@@ -28,7 +28,7 @@ version: 2025-12-03
 `RuntimeProvider` 是 React 适配层的入口组件，负责为子树提供一个带上下文的 `ManagedRuntime`：
 
 - Props 约定：
-  - `runtime?: ManagedRuntime<never, any>`：复用外部创建的 Runtime（推荐形态，通常来自 `LogixRuntime.make(rootImpl, { layer, onError })`）；
+  - `runtime?: ManagedRuntime<never, any>`：复用外部创建的 Runtime（推荐形态，通常来自 `Logix.Runtime.make(rootImpl, { layer, onError })`）；
   - `layer?: Layer<any, any, any>`：在父 Runtime 的基础上附加一层局部服务（页面/组件级 DI）。
 - 运行模式：
   - 若提供 `runtime`，则直接复用该 Runtime（“一 Provider 一 Runtime”，适合作为 App/Page/Feature 的 Composition Root）；
@@ -48,8 +48,8 @@ version: 2025-12-03
 `useModule` 是连接 React 与 Logix Module 的基础 Hook，负责在组件中获得 ModuleRuntime 或订阅其 State：
 
 - 支持三类句柄：
-  - `ModuleInstance`：`Logix.Module("Id", Shape)` 的实例 Tag；
-  - `ModuleImpl`：包含 `layer` + `module` 的实现体（通常由 `Module.make({ initial, logics, imports?, processes? })` 及其 `withLayer/withLayers` 组合返回）；
+  - `ModuleInstance`：`Logix.Module.make("Id", Shape)` 的实例 Tag；
+- `ModuleImpl`：包含 `layer` + `module` 的实现体（通常由 `Module.implement({ initial, logics, imports?, processes? })` 及其 `withLayer/withLayers` 组合返回）；
   - `ModuleRuntime`：已存在的运行时实例。
 - 调用形态：
   - `useModule(ModuleInstance | ModuleRuntime)`：返回稳定的 `ModuleRuntime` 引用；
@@ -96,25 +96,49 @@ version: 2025-12-03
 当前 `@logix/react` 已经：
 
 - 基于 `useSyncExternalStore` 保证基本的撕裂安全；
-- 在 `useModule` / `useLocalModule` 中通过 Scope + Context 管理资源。
+- 在 `useModule` / `useLocalModule` 中通过 `ModuleCache` (Resource Cache + Reference Counting) 管理资源，完美支持 StrictMode；
+- **Suspense 集成**：通过 `useModule(Impl, { suspend: true, key })` 支持异步模块构建的挂起与回退；
+- **runSync 不变量**：`ModuleCache.readSync` / `ManagedRuntime.runSync` 默认假定 Logic bootstrap 是同步可结束的；Runtime 通过 Phase Guard 将 setup 段的 run-only 调用收敛为结构化诊断（不抛出异步错误），保证 React 渲染阶段不会卡在未决 Fiber 上。
+- **模块运行时配置（快照模型）**：RuntimeProvider 挂载时通过 `ManagedRuntime.runPromise` 计算一份配置快照并缓存，优先级为：
+  - 调用点显式传入（`useModule(Impl, { gcTime/initTimeoutMs })`）；
+  - Runtime Layer 覆盖：`ReactRuntimeConfig.replace({ gcTime, initTimeoutMs })`；
+  - ConfigProvider：`logix.react.gc_time` / `logix.react.init_timeout_ms`；
+  - 内部默认：gcTime=500ms（StrictMode 抖动保护），initTimeoutMs 未启用。
+  - 快照带 `configVersion`，`useModule` / `ModuleCache` 只消费快照，不在 render 阶段 `runSync` 读 Env，兼容 StrictMode/Suspense 与含异步 Layer 的 Runtime。
+
+其中，模块运行时配置的优先级与语义为：
+
+- `gcTime`（无人持有后的保活时间，毫秒）：
+  - 调用点：`useModule(Impl, { gcTime })` 显式传入时优先；
+  - 其后为 Runtime Layer：`ReactRuntimeConfig.replace({ gcTime })`；
+  - 再次回退 ConfigProvider：`Config.number("logix.react.gc_time")`；
+  - 未配置时，内部默认值约为 `500ms`，主要用于抵御 StrictMode 下的 mount/unmount 抖动。
+- `initTimeoutMs`（Suspense 模式下的整体初始化超时，毫秒）：
+  - 仅在 `suspend: true` 场景生效；
+  - 调用点：`useModule(Impl, { suspend: true, initTimeoutMs })` 显式传入时优先；
+  - 其后为 Runtime Layer：`ReactRuntimeConfig.replace({ initTimeoutMs })`；
+  - 再回退 ConfigProvider：`Config.option(Config.number("logix.react.init_timeout_ms"))`；
+  - 未配置时视为“不开启初始化超时”，即保持默认无限等待。
+
+> 这些 Config 键是 `@logix/react` 的内部实现细节，主要面向 Runtime/Adapter 作者与基础设施工程师；  
+> 对普通业务开发者而言，只需记住：**默认情况下组件级 `useModule(Impl)` 会在卸载后短暂保活，Session 场景可以通过 `gcTime` 拉长保活时间，异步 ModuleImpl 则通过 `suspend: true + key (+ optional initTimeoutMs)` 显式声明行为。**
 
 仍在规划中的能力包括：
 
-- Suspense 集成：为异步 State 提供挂起/回退策略（参见 `docs/specs/drafts/topics/react-adapter/03-concurrent-rendering.md` 草案）；  
-- 更系统的 Concurrent 模式测试矩阵：验证多 RuntimeProvider / 多 Store 场景下的行为；  
+- 更系统的 Concurrent 模式测试矩阵：验证多 RuntimeProvider / 多 Store 场景下的行为；
 - SSR 与测试友好性：在无 DOM 环境下模拟 RuntimeProvider 行为，方便单元测试与服务端渲染。
 
-上述高级能力在官方实现完成前，均以草案文档为准，不视为稳定 API 契约。
+上述高级能力中，Suspense 与 Resource Cache 已作为 L9 阶段成果落地，详见 `docs/specs/drafts/L9/react-use-local-module-runtime-overhaul.md`。
 
 ## 5. 示例与用户文档
 
 - 运行时代码示例：
-  - `examples/logix-react`：展示基于应用级 Runtime（`LogixRuntime.make`）的 Counter 场景、Local Module 等典型集成方式。
+  - `examples/logix-react`：展示基于应用级 Runtime（`Logix.Runtime.make`）的 Counter 场景、Local Module 等典型集成方式。
 - 用户向导文档：
   - apps/docs 中的「Logix + React 集成」指南（见 `apps/docs/content/docs/guide/...`），从业务工程师视角讲解如何使用 RuntimeProvider 与核心 Hooks。
 
 后续在扩展 React Adapter 能力时，应遵循以下流程：
 
-1. 在 `docs/specs/drafts/topics/react-adapter` 中以草案形式演化设计；  
-2. 待设计稳定后，先更新本规范文件和 `implementation-status.md`；  
-3. 最后在 `@logix/react` 中实现，并通过 `examples/logix-react` 与 apps/docs 教程验证 DX。 
+1. 在 `docs/specs/drafts/topics/react-adapter` 中以草案形式演化设计；
+2. 待设计稳定后，先更新本规范文件和 `implementation-status.md`；
+3. 最后在 `@logix/react` 中实现，并通过 `examples/logix-react` 与 apps/docs 教程验证 DX。

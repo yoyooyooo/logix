@@ -1,7 +1,8 @@
 import React from "react"
 import { Context, Effect, Layer, ManagedRuntime } from "effect"
 import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from "@logix/react"
-import { Logix } from "@logix/core"
+import * as Logix from "@logix/core"
+import { devtoolsLayer } from "@logix/devtools-react"
 import { StepCounterModule, StepCounterImpl } from "../modules/stepCounter"
 
 interface StepConfig {
@@ -14,15 +15,12 @@ const BaseStepLayer = Layer.succeed(StepConfigTag, { step: 1 })
 const BigStepLayer = Layer.succeed(StepConfigTag, { step: 5 })
 
 const appRuntime = ManagedRuntime.make(
-  StepCounterImpl.layer as Layer.Layer<
-    Logix.ModuleRuntime<
-      Logix.StateOf<typeof StepCounterModule.shape>,
-      Logix.ActionOf<typeof StepCounterModule.shape>
-    >,
-    never,
-    never
-  >,
-) as ManagedRuntime.ManagedRuntime<never, any>
+  Layer.mergeAll(
+    Logix.Debug.runtimeLabel("LayerOverrideDemo"),
+    devtoolsLayer,
+    StepCounterImpl.layer,
+  ),
+)
 
 const StepCounterPanel: React.FC<{ label: string }> = ({ label }) => {
   const runtime = useRuntime()

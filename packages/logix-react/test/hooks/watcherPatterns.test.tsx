@@ -2,14 +2,15 @@ import { describe, it, expect } from "vitest"
 // @vitest-environment happy-dom
 import React from "react"
 import { renderHook, act, waitFor } from "@testing-library/react"
-import { Schema, ManagedRuntime, Effect, Layer } from "effect"
-import { Logix } from "@logix/core"
+import { Schema, ManagedRuntime, Effect, Layer, Scope } from "effect"
+import * as Logix from "@logix/core"
+import type { StateOf, ActionOf } from "@logix/core"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
 import { useSelector } from "../../src/hooks/useSelector.js"
 import { useDispatch } from "../../src/hooks/useDispatch.js"
 
-const Counter = Logix.Module("Counter", {
+const Counter = Logix.Module.make("Counter", {
   state: Schema.Struct({ value: Schema.Number }),
   actions: {
     inc: Schema.Void,
@@ -18,57 +19,73 @@ const Counter = Logix.Module("Counter", {
 })
 
 // ModuleImpl：用于验证在 React 场景下，Impl + runFork 的行为与 Tag 模式一致
-const CounterImpl = Counter.make({
+const CounterImpl = Counter.implement({
   initial: { value: 0 },
   logics: [],
 })
 
 // Error logging Logic：帮助在测试中看清逻辑错误原因
-const CounterErrorLogic = Counter.logic(($) =>
-  $.lifecycle.onError((cause, context) =>
+type CounterShape = typeof Counter.shape
+
+const CounterErrorLogic = Counter.logic<Scope.Scope>(($) =>
+  $.lifecycle.onError((cause: unknown, context: unknown) =>
     Effect.logError("Counter logic error", cause, context),
   ),
 )
 
 // Logic 1: 使用 runFork 在单个 Logic 内挂两条 watcher
-const CounterRunForkLogic = Counter.logic(($) =>
+const CounterRunForkLogic = Counter.logic<Scope.Scope>(($) =>
   Effect.gen(function* () {
-    yield* $.onAction("inc").runFork(
-      $.state.update((s) => ({ ...s, value: s.value + 1 })),
+    yield* Effect.log("CounterRunForkLogic setup")
+
+    yield* Effect.forkScoped(
+      $.onAction("inc").runParallel(
+        Effect.gen(function* () {
+          yield* Effect.log("CounterRunForkLogic inc watcher")
+          yield* $.state.update((s) => ({ ...s, value: s.value + 1 }))
+        }),
+      ),
     )
 
-    yield* $.onAction("dec").runFork(
-      $.state.update((s) => ({ ...s, value: s.value - 1 })),
+    yield* Effect.forkScoped(
+      $.onAction("dec").runParallel(
+        Effect.gen(function* () {
+          yield* Effect.log("CounterRunForkLogic dec watcher")
+          yield* $.state.update((s) => ({ ...s, value: s.value - 1 }))
+        }),
+      ),
     )
   }),
 )
 
-// Logic 2: 使用 Effect.all + run 挂两条 watcher
-const CounterAllLogic = Counter.logic(($) =>
-  Effect.all(
-    [
-      $.onAction("inc").run(
-        $.state.update((s) => ({ ...s, value: s.value + 1 })),
-      ),
-      $.onAction("dec").run(
-        $.state.update((s) => ({ ...s, value: s.value - 1 })),
-      ),
-    ],
-    { concurrency: "unbounded" },
-  ),
+// Logic 2: 使用 Effect.all + run 挂两条 watcher（全部在 run 段执行）
+const CounterAllLogic = Counter.logic<Scope.Scope>(($) =>
+  Effect.gen(function* () {
+    yield* Effect.all(
+      [
+        $.onAction("inc").run(
+          $.state.update((s) => ({ ...s, value: s.value + 1 })),
+        ),
+        $.onAction("dec").run(
+          $.state.update((s) => ({ ...s, value: s.value - 1 })),
+        ),
+      ],
+      { concurrency: "unbounded" },
+    )
+  }),
 )
 
 // Logic 3: 手写 Effect.forkScoped($.onAction().run(...)) 挂两条 watcher（对 runFork 的等价性校验）
-const CounterManualForkLogic = Counter.logic(($) =>
+const CounterManualForkLogic = Counter.logic<Scope.Scope>(($) =>
   Effect.gen(function* () {
     yield* Effect.forkScoped(
-      $.onAction("inc").run(
+      $.onAction("inc").runParallel(
         $.state.update((s) => ({ ...s, value: s.value + 1 })),
       ),
     )
 
     yield* Effect.forkScoped(
-      $.onAction("dec").run(
+      $.onAction("dec").runParallel(
         $.state.update((s) => ({ ...s, value: s.value - 1 })),
       ),
     )
@@ -84,11 +101,8 @@ describe("React watcher patterns integration", () => {
     )
 
     const runtime = ManagedRuntime.make(
-      layer as import("effect").Layer.Layer<
-        import("@logix/core").Logix.ModuleRuntime<
-          { readonly value: number },
-          import("@logix/core").Logix.ActionOf<typeof Counter.shape>
-        >,
+      layer as Layer.Layer<
+        Logix.ModuleRuntime<StateOf<CounterShape>, ActionOf<CounterShape>>,
         never,
         never
       >,
@@ -142,11 +156,8 @@ describe("React watcher patterns integration", () => {
     )
 
     const runtime = ManagedRuntime.make(
-      layer as import("effect").Layer.Layer<
-        import("@logix/core").Logix.ModuleRuntime<
-          { readonly value: number },
-          import("@logix/core").Logix.ActionOf<typeof Counter.shape>
-        >,
+      layer as Layer.Layer<
+        Logix.ModuleRuntime<StateOf<CounterShape>, ActionOf<CounterShape>>,
         never,
         never
       >,
@@ -200,11 +211,8 @@ describe("React watcher patterns integration", () => {
     )
 
     const runtime = ManagedRuntime.make(
-      layer as import("effect").Layer.Layer<
-        import("@logix/core").Logix.ModuleRuntime<
-          { readonly value: number },
-          import("@logix/core").Logix.ActionOf<typeof Counter.shape>
-        >,
+      layer as Layer.Layer<
+        Logix.ModuleRuntime<StateOf<CounterShape>, ActionOf<CounterShape>>,
         never,
         never
       >,
@@ -254,15 +262,16 @@ describe("React watcher patterns integration", () => {
 
   it("runFork-based watcher should also work with ModuleImpl + useModule(Impl)", async () => {
     // 基于 CounterImpl 构造局部 Module 实现（逻辑与 Tag 模式保持一致）
-    const CounterImplRunFork = Counter.make({
+    const CounterImplRunFork = Counter.implement({
       initial: { value: 0 },
       logics: [CounterRunForkLogic, CounterErrorLogic],
     })
 
-    // Impl 模式下，App 级 Runtime 可以是“空 Layer”——真正的 ModuleRuntime 由 useModule(Impl) 在组件内构造
-    const runtime = ManagedRuntime.make(
-      Layer.empty as Layer.Layer<any, never, never>,
-    )
+    // Impl 模式下，通过 Runtime.make 以 ModuleImpl 作为 Root 入口，
+    // React 端仍然通过 useModule(Impl) 在组件 Scope 内构造/复用 ModuleRuntime。
+    const runtime = Logix.Runtime.make(CounterImplRunFork, {
+      layer: Layer.empty as Layer.Layer<any, never, never>,
+    })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <React.StrictMode>

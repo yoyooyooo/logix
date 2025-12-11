@@ -7,7 +7,7 @@
  */
 
 import { Duration, Effect, Schema, SubscriptionRef } from 'effect'
-import { Logix, Logic } from '@logix/core'
+import * as Logix from '@logix/core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：长任务场景的 State / Action
@@ -35,7 +35,9 @@ export interface LongTaskPatternInput {
   stateRef: SubscriptionRef.SubscriptionRef<LongTaskState>
 }
 
-export const runLongTaskPattern = (input: LongTaskPatternInput) =>
+export const runLongTaskPattern = (
+  input: LongTaskPatternInput,
+): Effect.Effect<void, never, never> =>
   Effect.gen(function* () {
     // 在当前 Scope 内 fork 一个长期运行的 Fiber：
     // - 每秒更新一次进度；
@@ -56,7 +58,8 @@ export const runLongTaskPattern = (input: LongTaskPatternInput) =>
           yield* Effect.sleep(Duration.seconds(1))
           progress += 20
 
-          const status: LongTaskState['status'] = progress >= 100 ? 'done' : 'running'
+          const status: LongTaskState['status'] =
+            progress >= 100 ? 'done' : 'running'
 
           yield* SubscriptionRef.update(input.stateRef, (prev) => ({
             ...prev,
@@ -66,4 +69,4 @@ export const runLongTaskPattern = (input: LongTaskPatternInput) =>
         }
       }),
     )
-  })
+  }) as Effect.Effect<void, never, never>

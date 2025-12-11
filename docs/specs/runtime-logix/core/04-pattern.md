@@ -13,10 +13,10 @@ Pattern 是围绕这些原语构建的可复用长逻辑封装 + 资产包装约
 
 v3 将 Pattern 严格区分为两种形态：
 
-| 形态     | 定义方式               | 依赖注入           | 适用场景                    |
-| :------- | :--------------------- | :----------------- | :-------------------------- |
-| Functional | `runXxx(input)`      | 显式参数 + `Effect.service` | 工具型：纯计算、HTTP 请求等 |
-| Namespace | `Xxx.run(config)`     | 隐式环境（`Logic.Env`）     | 寄生型：依赖 Store 状态/生命周期 |
+| 形态       | 定义方式          | 依赖注入                    | 适用场景                         |
+| :--------- | :---------------- | :-------------------------- | :------------------------------- |
+| Functional | `runXxx(input)`   | 显式参数 + `Effect.service` | 工具型：纯计算、HTTP 请求等      |
+| Namespace  | `Xxx.run(config)` | 隐式环境（`Logic.Env`）     | 寄生型：依赖 Store 状态/生命周期 |
 
 ### 1.1 Functional Pattern
 
@@ -25,26 +25,26 @@ Functional Pattern 是完全与 Store 解耦的 `(input) => Effect` 函数，
 
 ```ts
 export interface BulkOperationConfig {
-  operation: string;
-  emptyMessage?: string;
+  operation: string
+  emptyMessage?: string
 }
 
 export const runBulkOperation = (config: BulkOperationConfig) =>
   Effect.gen(function* (_) {
-    const selection   = yield* SelectionService;
-    const bulk        = yield* BulkOperationService;
-    const notification = yield* NotificationService;
+    const selection = yield* SelectionService
+    const bulk = yield* BulkOperationService
+    const notification = yield* NotificationService
 
-    const ids = yield* selection.getSelectedIds();
+    const ids = yield* selection.getSelectedIds()
 
     if (ids.length === 0) {
-      yield* notification.info(config.emptyMessage ?? "请先选择记录");
-      return 0;
+      yield* notification.info(config.emptyMessage ?? '请先选择记录')
+      return 0
     }
 
-    yield* bulk.applyToMany({ ids, operation: config.operation });
-    return ids.length;
-  });
+    yield* bulk.applyToMany({ ids, operation: config.operation })
+    return ids.length
+  })
 ```
 
 特点：
@@ -53,46 +53,58 @@ export const runBulkOperation = (config: BulkOperationConfig) =>
 - 不依赖具体 Store 形状，可以在多个 Store / Runtime 中复用；
 - 常用于抽象 HTTP 调用、通知逻辑、批量操作等“工具型”模式。
 
-### 1.2 Namespace Pattern（标准范式）
+### 1.2 BoundApi Pattern（推荐范式）
 
-Namespace Pattern 用于表达依赖 Store 状态或生命周期的“寄生型”逻辑。
-它必须返回 `Logic.Of<Sh,R>`，以声明其对 `Logix.ModuleRuntime` 的上下文依赖：
+BoundApi Pattern 用于表达依赖 Store 状态或生命周期的"寄生型"逻辑。
+它通过显式接收 `$: BoundApi` 参数获取模块能力，返回一个 Effect：
 
 ```ts
-export interface AutoSaveConfig<Sh extends Logix.ModuleShape<any, any>, V, R = never> {
-  selector: (s: Logix.StateOf<Sh>) => V;
-  saveEffect: (value: V) => Effect.Effect<void, any, R>;
-  interval?: number;
-}
+/**
+ * @pattern Cascade (级联加载)
+ * @description 封装"字段联动"流程：监听上游 → 重置下游 → 加载数据 → 更新结果
+ */
+export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
+  $: Logix.BoundApi<Sh, R>,
+  config: {
+    source: (s: Logix.StateOf<Sh>) => T | undefined | null
+    loader: (val: T) => Logix.Logic.Of<Sh, R, Data, never>
+    onReset: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>
+    onSuccess: (prev: Logix.StateOf<Sh>, data: Data) => Logix.StateOf<Sh>
+    onLoading?: (prev: Logix.StateOf<Sh>, isLoading: boolean) => Logix.StateOf<Sh>
+  },
+) => {
+  return $.onState(config.source).runLatest((val) =>
+    Effect.gen(function* () {
+      yield* $.state.update(config.onReset)
+      if (val == null) return
 
-export namespace AutoSave {
-  // 柯里化签名：Config => Logic.Of
-  export const run = <Sh extends Logix.ModuleShape<any, any>, R = never, V = any>(
-    config: AutoSaveConfig<Sh, V, R>,
-  ): Logic.Of<Sh, R, void, never> =>
-    Effect.gen(function* (_) {
-      // 通过 Logic.RuntimeTag 隐式获取当前模块的运行时实例
-      const runtime = yield* Logic.RuntimeTag;
-      const changes$ = runtime.changes$(config.selector);
-      const interval = config.interval ?? 1000;
+      if (config.onLoading) {
+        yield* $.state.update((s) => config.onLoading!(s, true))
+      }
 
-      yield* changes$.pipe(
-        Stream.debounce(`${interval} millis`),
-        Stream.runForEach(value => config.saveEffect(value)),
-      );
-    });
+      const data = yield* config.loader(val)
+      yield* $.state.update((s) => {
+        let next = config.onSuccess(s, data)
+        if (config.onLoading) next = config.onLoading(next, false)
+        return next
+      })
+    }),
+  )
 }
 ```
 
 特点：
 
-- 入口为 `run(config)`，返回值类型为 `Logic.Of<Sh,R>`；
-- 通过 `Logic.RuntimeTag` “借用”当前模块的运行时能力（如 `changes$ / ref / getState`）；
-- 适合表达自动保存、乐观更新、长任务进度同步等“状态感知型 Pattern”。
+- 入口为 `runXxxPattern($, config)`，显式接收 `BoundApi` 参数；
+- 通过 `$` 使用模块能力（`$.onState / $.state.update / $.use` 等）；
+- 适合表达级联加载、乐观更新、批量操作等"状态感知型 Pattern"。
 
 > 约定
-> - Namespace Pattern 不直接导出 `Logic.Api`，而是依赖 `Logic.Env<Sh,R>`；
-> - 业务 Logic 通过 `yield* AutoSave.run({ ... })` 使用 Pattern，而不是把 `state` / `flow` 显式传入。
+>
+> - BoundApi Pattern 的第一个参数为 `$: Logix.BoundApi<Sh, R>`；
+> - 业务 Logic 通过 `yield* runCascadePattern($, { ... })` 使用 Pattern。
+
+> 参见：`examples/logix/src/patterns/` 目录下有更多实际示例（cascade、bulk-operations、optimistic-toggle 等）。
 
 ## 2. 平台解析契约（Parser Contract）
 
@@ -122,18 +134,18 @@ export namespace AutoSave {
 
 ```ts
 // Namespace Pattern 中借用当前 Store 的变化流
-const runtime  = yield* Logic.RuntimeTag;
-const changes$ = runtime.changes$(config.selector);
+const runtime = yield * Logic.RuntimeTag
+const changes$ = runtime.changes$(config.selector)
 
 // Functional Pattern 中通过 Ref 借用局部状态
 export interface PaginationInput {
-  pageRef: SubscriptionRef.SubscriptionRef<number>;
+  pageRef: SubscriptionRef.SubscriptionRef<number>
 }
 
 export const runPaginationEffect = (input: PaginationInput) =>
   Effect.gen(function* (_) {
-    yield* SubscriptionRef.update(input.pageRef, p => p + 1);
-  });
+    yield* SubscriptionRef.update(input.pageRef, (p) => p + 1)
+  })
 ```
 
 平台在资产层只关心 Pattern 的 **配置契约（Config / 输入参数）**，
@@ -147,8 +159,37 @@ export const runPaginationEffect = (input: PaginationInput) =>
 - `$.flow.run*` / `Effect.catch*` 等调用对应骨架节点；
 - 平台可以根据 Pattern 资产的 `id` / `configSchema` 将某些 Effect Block 渲染为“命名积木”（palette 中的 Pattern），但这不改变运行时行为。
 
-总结：
+## 5. 命名与最佳实践
+
+### 5.1 命名规范
+
+| 形态       | 命名约定                   | 示例                           |
+| ---------- | -------------------------- | ------------------------------ |
+| Functional | `runXxx(config)`           | `runBulkOperation(config)`     |
+| BoundApi   | `runXxxPattern($, config)` | `runCascadePattern($, config)` |
+
+### 5.2 错误处理约定
+
+- Pattern 内部可以处理可恢复错误，或通过 `Effect.catchTag` 转换为状态更新；
+- 不可恢复错误应冒泡给调用方，由 Logic 层统一处理。
+
+### 5.3 测试策略
+
+```ts
+import { it } from '@effect/vitest'
+
+it.scoped('runCascadePattern should reset and load', () =>
+  Effect.gen(function* () {
+    // 构造 mock $ 和 config，验证 Pattern 行为
+  }),
+)
+```
+
+---
+
+## 总结
 
 - 运行时核心只知道 `Effect` 与 `Store / Logic / Flow / Control`；
 - Pattern 是围绕这些 Effect 函数的写法惯例与资产包装协议；
-- 平台可选择性地将某些 Pattern 注册为资产，用于可视化、复用与配置化，而无需 runtime 提供特殊支持。
+- 平台可选择性地将某些 Pattern 注册为资产，用于可视化、复用与配置化，而无需 runtime 提供特殊支持；
+- 实际示例见 `examples/logix/src/patterns/`。

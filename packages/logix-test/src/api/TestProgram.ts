@@ -1,5 +1,5 @@
 import { Effect, Layer, Scope } from "effect"
-import type { Logix } from "@logix/core"
+import type * as Logix from "@logix/core"
 import * as InternalScenario from "../Scenario.js"
 import type { TestApi } from "./TestApi.js"
 import type { ExecutionResult } from "../ExecutionResult.js"

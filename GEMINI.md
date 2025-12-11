@@ -29,6 +29,17 @@
     - runtime 侧：`docs/specs/runtime-logix/impl/README.md`。
   - 后续在实现阶段若遇到取舍冲突，优先回看上述两个 impl/README 中的约束说明，再决定是否调整规范或实现。
 
+### logix-core 目录结构铁律（给 Agent 的简版）
+
+在 `packages/logix-core/src` 内改动时，默认遵守：
+
+- `src/*.ts` 直系文件是子模块（Module / Logic / Bound / Flow / Runtime / Link / Platform / Debug / MatchBuilder 等），**必须有实际实现代码**，不能只是纯 re-export。
+- 子模块之间的共享实现（类型内核、Runtime 内核、MatchBuilder/Flow/Platform/Debug 等）统一放到 `src/internal/**`，再由子模块引入；**禁止**从 `src/internal/**` 反向 import 任意 `src/*.ts`。
+- `src/internal/**` 内部再按「浅 → 深」分层：
+  - 核心实现下沉到 `src/internal/runtime/core/**`（module / LogicMiddleware / FlowRuntime / Lifecycle / Platform / DebugSink / MatchBuilder 等）；
+  - `src/internal/*.ts`、`src/internal/runtime/*.ts` 只通过 re-export 或薄适配依赖这些 core 文件，形成「浅层 API → 深层实现」的单向拓扑。
+  - 日常自检：`rg "../" src/internal/runtime` 应为空（core 目录内除外），确保 deep internal 不回头依赖浅层。
+
 # Agent Context for `intent-flow`
 
 - 仓库定位：意图驱动 + Effect 运行时 PoC 实验场，用于在平台化之前把 **Intent 模型 / Flow DSL / effect 运行时 / ToB 典型场景** 练透。
@@ -127,12 +138,12 @@
       - `pnpm typecheck:test`：使用 `tsconfig.test.json` 对 src+test 做完整类型检查。
     - `packages/logix-react`：
       - `pnpm test`：等价于 `vitest run`，一次性跑 React 适配层测试；
+      - `pnpm test -- --project browser`：只运行 Vitest browser 模式下的浏览器集成测试（匹配 `test/browser/**`），依赖 Playwright + `@vitest/browser-playwright`；
       - `pnpm test:watch`：仅本地人工调试使用，Agent 不得调用；
       - `pnpm typecheck:test`：检测 React 包的 src+test 类型。
   - 约定流程：每次进行「大模块改造」（如重构 Flow/Env、重排 React feature 目录、引入新运行时能力）后，至少需要：
     - 先跑 `pnpm typecheck`，确认类型层面无红线；
     - 再跑 `pnpm lint`，确认 ESLint（含 Effect 规则）无新告警或告警在可接受范围内，再交接到后续任务。
-
 
 ## 文档编写规范 （apps/docs）
 
@@ -171,15 +182,17 @@
 When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.
 
 How to use skills:
+
 - Invoke: Bash("openskills read <skill-name>")
 - The skill content will load with detailed instructions on how to complete the task
 - Base directory provided in output for resolving bundled resources (references/, scripts/, assets/)
 
 Usage notes:
+
 - Only use skills listed in <available_skills> below
 - Do not invoke a skill that is already loaded in your context
 - Each skill invocation is stateless
-</usage>
+  </usage>
 
 <available_skills>
 
@@ -202,6 +215,7 @@ Usage notes:
 </skill>
 
 </available_skills>
+
 <!-- SKILLS_TABLE_END -->
 
 </skills_system>

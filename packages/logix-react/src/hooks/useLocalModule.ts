@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo } from "react"
-import { Logix } from "@logix/core"
+import * as Logix from "@logix/core"
 import { Context, Effect, Layer, Scope } from "effect"
 import { useRuntime } from "../components/RuntimeProvider.js"
 import {
-  getModuleResourceCache,
-  type ModuleResourceFactory,
+  getModuleCache,
+  type ModuleCacheFactory,
   stableHash,
-} from "../internal/ModuleResourceCache.js"
+} from "../internal/ModuleCache.js"
+import { RuntimeContext } from "../internal/ReactContext.js"
 
 type LocalModuleFactory = () => Effect.Effect<
   Logix.ModuleRuntime<any, any>,
@@ -46,7 +47,22 @@ export function useLocalModule(
   second?: React.DependencyList | ModuleInstanceOptions
 ): Logix.ModuleRuntime<any, any> {
   const runtime = useRuntime()
-  const cache = useMemo(() => getModuleResourceCache(runtime), [runtime])
+  const runtimeContext = React.useContext(RuntimeContext)
+
+  if (!runtimeContext) {
+    throw new Error("RuntimeProvider not found")
+  }
+
+  const cache = useMemo(
+    () =>
+      getModuleCache(
+        runtime,
+        runtimeContext.reactConfigSnapshot,
+        runtimeContext.configVersion,
+      ),
+    [runtime, runtimeContext.reactConfigSnapshot, runtimeContext.configVersion],
+  )
+  const componentId = React.useId()
 
   const isModule = isModuleInstance(source)
   const moduleOptions = (isModule ? (second as ModuleInstanceOptions) : undefined)
@@ -54,16 +70,23 @@ export function useLocalModule(
     ? moduleOptions?.deps ?? []
     : (second as React.DependencyList) ?? []) as React.DependencyList
 
-  const key = useMemo(() => {
+  const { key, ownerId } = useMemo(() => {
+    const depsHash = stableHash(deps)
     if (isModule) {
       const module = source as Logix.ModuleInstance<any, Logix.AnyModuleShape>
-      const base = moduleOptions?.key ?? module.id ?? "module"
-      return `${base}:${stableHash(deps)}`
+      const baseKey = moduleOptions?.key ?? module.id ?? "module"
+      return {
+        key: `${baseKey}:${componentId}:${depsHash}`,
+        ownerId: module.id ?? "Module",
+      }
     }
-    return `factory:${stableHash(deps)}`
-  }, [isModule, source, moduleOptions?.key, deps])
+    return {
+      key: `factory:${componentId}:${depsHash}`,
+      ownerId: undefined as string | undefined,
+    }
+  }, [isModule, source, moduleOptions?.key, deps, componentId])
 
-  const factory = useMemo<ModuleResourceFactory>(() => {
+  const factory = useMemo<ModuleCacheFactory>(() => {
     if (isModule) {
       return createModuleInstanceFactory(
         source as Logix.ModuleInstance<any, Logix.AnyModuleShape>,
@@ -74,7 +97,7 @@ export function useLocalModule(
     return (scope: Scope.Scope) => factoryFn().pipe(Scope.extend(scope))
   }, [isModule, source, moduleOptions])
 
-  const moduleRuntime = cache.read(key, factory)
+  const moduleRuntime = cache.read(key, factory, undefined, ownerId)
 
   useEffect(() => cache.retain(key), [cache, key])
 
@@ -84,7 +107,7 @@ export function useLocalModule(
 function createModuleInstanceFactory<Sh extends Logix.AnyModuleShape>(
   module: Logix.ModuleInstance<any, Sh>,
   options?: ModuleInstanceOptions<Sh>
-): ModuleResourceFactory {
+): ModuleCacheFactory {
   if (!options || options.initial === undefined) {
     throw new Error("useLocalModule(module, options) 需要提供 initial 状态")
   }

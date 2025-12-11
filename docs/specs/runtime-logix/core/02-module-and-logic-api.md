@@ -9,7 +9,7 @@
 - 如何使用 `Logix.Module` 定义领域模块（Module，纯定义，不含实例状态）；
 - 如何在 Module 上通过 `Module.logic(($)=>Effect)` 编写逻辑程序；
 - 如何用 `Module.live(initial, ...logics)` 生成可注入的运行时 Layer；
-- 如何用 `Module.make({ initial, logics, imports?, processes? })` 生成可复用的 **ModuleImpl 蓝图**，再通过 `withLayer/withLayers` 与 `LogixRuntime.make(...)` 拼装到 Runtime 中；
+- 如何用 `Module.implement({ initial, logics, imports?, processes? })` 生成可复用的 **ModuleImpl 蓝图**，再通过 `withLayer/withLayers` 与 `Logix.Runtime.make(...)` 拼装到 Runtime 中；
 - Bound API `$` 在业务代码中的推荐用法（特别是 `$.on*` 事件订阅）。
 
 详细行为语义仍以：
@@ -24,7 +24,7 @@
 | 层级 | 面向角色 | 主要入口 | 说明 |
 | :--- | :--- | :--- | :--- |
 | 应用/业务开发者 | Feature/业务工程师 | `Logix.Module` / `Module.logic(($)=>...)` / `Module.live(...)` / Bound API `$`（`$.state / $.actions / $.on* / $.use`） | 日常开发只需这些入口即可完成绝大部分工作 |
-| 组件 / 页面作者 | UI & 交互工程师 | `Module.make({ initial, logics, imports?, processes? })` / `ModuleImpl.withLayer` / `LogixRuntime.make(...)` / React `useModule(impl)` | 把“模块 + 初始状态 + 逻辑 + 依赖注入 + 进程”打包成可复用蓝图，在 Runtime / React 中复用 |
+| 组件 / 页面作者 | UI & 交互工程师 | `Module.implement({ initial, logics, imports?, processes? })` / `ModuleImpl.withLayer` / `Logix.Runtime.make(...)` / React `useModule(impl)` | 把“模块 + 初始状态 + 逻辑 + 依赖注入 + 进程”打包成可复用蓝图，在 Runtime / React 中复用 |
 | 库作者 / Pattern 作者 | 复用逻辑、领域库作者 | `Flow.Api` / `Control.Api` / `Logic.of` / `$.flow.*` / Pattern 约定 | 用于封装可复用长逻辑、领域 Pattern 与 L3 Helper |
 | 架构师 / 引擎实现者 | 平台/Runtime 实现 | 运行时容器实现、Module/Runtime 组合、Scope 管理（见 `core/05-runtime-implementation.md`、`impl/*`） | 负责内部运行时实现，业务代码不直接依赖 |
 
@@ -32,7 +32,7 @@
 
 ## 0. 快速总览（Trinity + `$`）
 
-- `Logix.Module(id, { state, actions })`
+- `Logix.Module.make(id, { state, actions, reducers? })`
   - 定义「领域模块」，只负责 **身份 + 形状**；
   - 自身是一个 Tag，可被 `$.use(Module)` 消费；
   - 不包含任何运行时实例或状态。
@@ -43,14 +43,14 @@
   - 将 Module 定义 + 初始 State + 一组 Logic 程序组合成一个 Live Layer；
   - 每次调用都会生成一个新的 Layer，可在不同 Runtime/Scope 下多次注入；
   - 适合“一次性拼装 + 立即注入”的场景（如 CLI 脚本、单模块 PoC）。
-- `Module.make({ initial, logics, imports?, processes? })`
+- `Module.implement({ initial, logics, imports?, processes? })`
   - 在 `Module.live` 之上，进一步封装出一个 **ModuleImpl 蓝图**：
     - 记录该 Module 的初始 State 与 Logic 集合；
     - 暴露 `impl.layer`（`Layer<ModuleRuntime, never, any>`）、`impl.module` 以及可选的 `impl.processes`；
     - 支持通过 `impl.withLayer(...)` / `impl.withLayers(...)` 注入额外 Env（Service / 平台能力等）；
   - 典型使用场景：
     - React 中通过 `useModule(impl)` 直接消费配置好的模块实现；
-    - 应用级 Runtime 中通过 `LogixRuntime.make(rootImpl, { layer, onError })` 把某个 Root ModuleImpl 作为入口；
+    - 应用级 Runtime 中通过 `Logix.Runtime.make(rootImpl, { layer, onError })` 把某个 Root ModuleImpl 作为入口；
     - 平台/调试场景下可将这些 ModuleImpl 交给内部 AppRuntime 工具函数组装成可视化/调试用 Runtime（仅面向引擎实现与平台工具，不作为对外 API）。
 - `$`（Bound API）
   - 业务开发几乎只需要记住的唯一入口；
@@ -65,9 +65,9 @@
 
 ```ts
 import { Schema } from 'effect';
-import { Logix } from '@logix/core';
+import * as Logix from '@logix/core';
 
-export const CounterModule = Logix.Module('Counter', {
+export const CounterModule = Logix.Module.make('Counter', {
   state: Schema.Struct({
     count: Schema.Number,
   }),
@@ -82,6 +82,44 @@ export const CounterModule = Logix.Module('Counter', {
 
 - `id: string`：领域模块的全局 Id，用于 Universe/Galaxy 拓扑和平台识别；
 - `state` / `actions`：Effect.Schema 形式的 State / Action 形状；
+- 可选的 `reducers`：为部分 Action Tag 声明 **primary reducers**（主 reducer）：
+  - 形态：`{ [tag]: (state, { _tag, payload }) => nextState }`；
+  - 语义：**Action → State 的权威路径**（主状态变更），在 `dispatch` 时由 Runtime 同步调用；
+  - 实现：直接落到 `ModuleRuntime` 内部的 `_tag -> (state, action) => state` 跳表，不经过 watcher / Stream / Fiber。
+
+示例（包含 primary reducer）：
+
+```ts
+export const CounterModule = Logix.Module.make('Counter', {
+  state: CounterState,
+  actions: CounterActions,
+  reducers: {
+    inc: (state, _action) => ({ ...state, count: state.count + 1 }),
+    set: (state, action) => ({ ...state, count: action.payload }),
+  },
+});
+```
+
+对于需要 mutative 写法的主 reducer，可以使用运行时提供的 helper：
+
+```ts
+export const CounterModule = Logix.Module.make('Counter', {
+  state: CounterState,
+  actions: CounterActions,
+  reducers: {
+    inc: Logix.Module.Reducer.mutate((draft, _action) => {
+      draft.count += 1;
+    }),
+    set: Logix.Module.Reducer.mutate((draft, action) => {
+      draft.count = action.payload;
+    }),
+  },
+});
+```
+
+- `Logix.Module.Reducer.mutate`：接受 `(draft, action) => void` 形式的 mutative 函数，内部基于 `mutative` 映射为不可变 `(state, action) => state`；
+- 语义与 `$.state.mutate` 一致，只是多了 `action` 入参，适合在 primary reducer 中使用。
+
 - `CounterModule` 本身同时是：
   - Module 定义（Intent 视角：领域资产）；
   - Runtime Tag（可被 `$.use(CounterModule)` 消费）；
@@ -97,7 +135,8 @@ export const CounterModule = Logix.Module('Counter', {
 为了在类型上表达“在某一类 Module 上运行的一段逻辑程序”，v3.1 约定（以 `Logic.Of` 为主）：
 
 ```ts
-import { Logic, Store, Logix } from '@logix/core';
+import { Logic } from '@logix/core';
+import * as Logix from '@logix/core';
 
 export type ModuleLogic<Sh extends Logix.ModuleShape<any, any>, R = unknown, E = never> =
   Logic.Of<Sh, R, unknown, E>
@@ -110,7 +149,7 @@ export type ModuleLogic<Sh extends Logix.ModuleShape<any, any>, R = unknown, E =
 - `E`：Logic 可能抛出的错误（通常为 never，内部消化）。
 
 > 注：早期草案中曾设想过“基于 `Logic.Env<Sh,R>` + `Logic.RuntimeTag` 的 Bound API 工厂”，用于从环境中“隐式”获取 Runtime 并构造 `$`。该设想目前仅保留在 drafts 中，用于探索 Env-First 形态的可能性。  
-> 当前 PoC 中，Pattern / Namespace 场景请直接使用 `Logix.BoundApi.make(shape, runtime)` 在实现层构造 `$`，业务代码推荐统一通过 `Module.logic(($)=>Effect.gen(...))` 返回 Logic 值。
+> 当前 PoC 中，Pattern / Namespace 场景请直接使用 `Logix.Bound.make(shape, runtime)` 在实现层构造 `$`，业务代码推荐统一通过 `Module.logic(($)=>Effect.gen(...))` 返回 Logic 值。
 
 ---
 
@@ -155,6 +194,88 @@ export const CounterLive = CounterModule.live(
   MetricsLogic,   // 监控插件
 );
 ```
+
+### 3.3 两阶段写法与约束（setup / run）
+
+- **心智模型**：builder 闭包的一次性执行产出 `LogicPlan = { setup, run }`：return 前的同步调用归入 setup（注册 reducer / lifecycle / Debug/Devtools hook），return 的 Effect 归入 run（长逻辑、Env 访问、Watcher/Flow）。旧写法 `Module.logic(($)=>Effect.gen(...))` 等价于仅含 run 段。  
+- **约束**：setup 段不访问 Env/Service，不做 IO，保持幂等；在 setup 段调用 `$.use/$.onAction/$.onState` 等 run-only 能力，或在 builder 顶层执行 `Effect.run*`，会被 Runtime 转为 `diagnostic(error)`（`logic::invalid_phase` / `logic::setup_unsafe_effect`）。  
+- **推荐顺序**：return 前先注册 `$.lifecycle.onError/onInit`，再注册动态 `$.reducer`，最后在 return 的 Effect 内挂载 Watcher/Flow；详见 `core/03-logic-and-flow.md#logic-书写顺序（best-practice-·-两阶段心智）`。
+
+### 3.4 Phase Guard 与诊断（API 行为矩阵）
+
+- **LogicPlan 统一形态**：Logic 写法始终被归一为 `LogicPlan<Sh,R,E> = { setup: Effect<void, E, Env>; run: Effect<void, E, Env> }`，运行时在解析逻辑时自动注入 `phaseRef`，保证 setup/run 两段可观测。旧写法自动折叠为 `setup = Effect.void / run = 原逻辑`。  
+- **Phase Guard 规则**：下列 API 视为 run-only，若在 setup 段调用会抛出 `LogicPhaseError(kind=\"use_in_setup\", api=...)` 并被转换为 `diagnostic code=logic::invalid_phase severity=error`：`$.use / $.onAction* / $.onState* / $.flow.from*` 及基于 IntentBuilder 的 `.run* / .update / .mutate / .withContext / .runWithContext`。  
+- **诊断字段**：`LogicPhaseError` 暴露 `kind/api/phase/moduleId`，DevTools 与平台可直接依赖结构化字段，无需字符串解析；其他诊断同样通过 `DebugSink` 以 `logic::* / reducer::* / lifecycle::*` code 形式对外广播。  
+- **Env 缺失与 runSync 不变量**：Logic 构造阶段的错误（含 phase 违规）统一被收敛为诊断，不会破坏 `Module.live` / `Runtime.make` 的同步构造路径；只有在 Env 铺满后仍发生的 `Service not found` 才被视为硬错误。
+
+### 3.5 Field Capabilities 与 State Graph（StateTrait / `@logix/core` 的角色）
+
+> 更新说明（2025-12-10）：早期 v3 草案中，字段能力与 State Graph 曾规划由独立包 `@logix/data` 承载。  
+> 随着 `specs/001-module-traits-runtime` 设计收敛，当前主线改为由 `@logix/core` 内部的 StateTrait 模块统一承载字段能力与 State Graph，`@logix/data` 相关规范视为历史 PoC，仅供参考。
+
+在当前模型中，字段层的响应式与联动能力（例如 Computed 字段、从外部资源加载的 Source 字段、跨字段 Link 字段）统一收敛到 `@logix/core` 内部的 StateTrait 实现。整体边界大致如下：
+
+- **Schema / Traits 层（Layer 1）**：  
+  - Module 的 State Schema 使用 Effect 的 Schema 定义字段结构，computed / source / link 等能力通过 StateTrait DSL 声明，例如：  
+    - `StateTrait.computed((state) => ...)`  
+    - `StateTrait.source({ resource, key })`  
+    - `StateTrait.link({ from })`  
+  - 这些声明被统一收集为 `StateTraitSpec`，并在 build 阶段生成 `StateTraitProgram`，其中包含 StateTraitGraph（字段与能力拓扑）与 StateTraitPlan（运行计划）。
+- **Runtime 层（Layer 2）**：  
+  - Logix ModuleRuntime 在 live 阶段基于 StateTraitPlan 构建模块级的运行时计划（如“哪些字段依赖哪些字段”“哪些字段由外部资源驱动”），再用 Bound API `$` 与 EffectOp/Middleware 将其编译为实际的 `($) => Effect` 程序；  
+  - 长期目标是让典型的 Computed / Source / Link 写法都通过 StateTrait Program 驱动，而不是在每个 Module 中手写胶水逻辑。
+- **DevTools / 平台层**：  
+  - StateTraitProgram 提供的 StateTraitGraph（`GraphNode` / `GraphEdge` 等）作为 State Graph 事实源，Logix Runtime 和 DevTools 可以基于这份图结构：  
+    - 可视化字段与能力之间的依赖关系；  
+    - 对比两个版本模块的字段与依赖变更。  
+
+> 注意：关于 StateTrait 与 State Graph 的更详细数据模型与 API 形状，请参考：  
+> - `specs/001-module-traits-runtime/spec.md`  
+> - `docs/specs/drafts/topics/state-graph-and-capabilities/*`
+
+### 3.6 StateTrait.source 与 Resource / Query 的运行时接缝（概览）
+
+> 详细数据模型与 API 草图见：`specs/001-module-traits-runtime/references/resource-and-query.md` 与 `runtime-logix/core/05-runtime-implementation.md`。本节只在「Module / Logic API」视角补充资源相关术语的上下文。
+
+- **Module 图纸层**  
+  - Module 作者在 `traits` 槽位只需要写：  
+    ```ts
+    traits: StateTrait.from(StateSchema)({
+      profileResource: StateTrait.source({
+        resource: "user/profile",
+        key: (s) => ({ userId: s.profile.id }),
+      }),
+    })
+    ```  
+  - 这里的 `resource` 是逻辑资源 ID，`key(state)` 是访问该资源所需 key 的计算规则；Module 不关心 HTTP/DB/QueryClient 等具体实现。
+
+- **StateTraitProgram / Plan 层**  
+  - StateTrait.build 会在 Program/Graph/Plan 中把上述声明归一化为：  
+    - 一条 `kind = "source"` 的字段能力记录（包含 resourceId 与 keySelector 标识）；  
+    - 一条 `kind = "source-refresh"` 的 PlanStep，用于描述“刷新该字段时应触发一次服务调用”的指令；
+  - 这些结构本身不涉及具体的调用策略，只为 Runtime 与 Middleware 提供稳定的事实源。
+
+- **Runtime 层（Resource / Query / EffectOp 总线）**  
+  - Runtime 在 StateTrait.install 中，会为 source 字段挂载标准入口（例如 `$.traits.source.refresh("profileResource")`），在显式调用时：  
+    1. 从当前 State 计算 key；  
+    2. 构造一条 `EffectOp(kind = "service", name = resourceId, meta.resourceId = resourceId, meta.key = key, meta.fieldPath = targetFieldPath)`；  
+    3. 将该 EffectOp 交给当前 Env 中配置的 EffectOp MiddlewareStack 执行。  
+  - Resource 模块负责在 Env 中注册逻辑资源规格：  
+    - `Logix.Resource.make({...})` 定义 ResourceSpec；  
+    - `Logix.Resource.layer([specA, specB, ...])` 在某个 Runtime 范围内注册资源表；  
+    - Resource 中间件（未来的实现）根据 `resourceId + key` 选择并调用对应 ResourceSpec.load。  
+  - Query 中间件（可选）在上层包裹 Service 类 EffectOp：  
+    - `Query.layer(client)` 注册 QueryClient；  
+    - `Query.middleware(config)` 订阅 `kind = "service"` 的 EffectOp，并在配置命中时用 QueryClient(resourceId, key, load) 替代直接调用 ResourceSpec.load。
+
+- **DevTools / 平台层**  
+  - DevTools 可以同时依赖：  
+    - StateTraitGraph：看“哪些字段依赖哪些资源”；  
+    - EffectOp Timeline：看“哪些 source-refresh / service 调用何时发生、由哪个 Module/字段触发”；  
+  - 平台视角下，StateTrait.source 与 Resource/Query 的职责边界为：  
+    - StateTrait/source：声明“字段依赖的逻辑资源及 key 规则”；  
+    - Resource/Query：提供该资源的实现与访问策略；  
+    - EffectOp/Middleware：承载实际调用链与横切能力（日志/缓存/重试/熔断等）。  
 
 ---
 
@@ -246,16 +367,61 @@ const MyLogic = MyModule.logic(($) => Effect.gen(function*() {
 > - 运行时会收集所有注册的 `onInit` Effect，并在 Module 启动时按**注册顺序**依次执行（串行）。
 > - `Effect.fork` 的后台任务会立即启动，不阻塞后续的 `onInit` 注册，也不阻塞 Module 的 Ready 状态。
 
-### 5.2 未来演进 (Future Lifecycle Hooks)
+### 5.2 平台级生命周期钩子（Platform Lifecycle）
 
-以下钩子已在规划中，将在后续版本支持：
+以下钩子在 v3 中已经通过 `Logic.Platform` 提供统一接口，具体由各平台实现（例如 React 侧的 `ReactPlatformLayer`）按需驱动：
 
 - **`onSuspend` / `onResume`**:
   - 面向 React `<Offscreen>` / KeepAlive 或移动端后台场景；
-  - 用于在 UI 不可见时暂停高频任务（如 Polling），而不销毁状态。
+  - 用于在 UI 不可见时暂停高频任务（如 Polling），而不销毁状态；
+  - 语义属于“平台级行为状态”，与 Module 的存在与否、ModuleCache 的内存保活策略解耦。
 - **`onReset`**:
   - 面向业务逻辑的“软重置”（Soft Reset）；
   - 标准化 `Logout` / `Clear` 行为，重置状态但不销毁实例。
+
+### 5.3 Module Lifecycle 与 Session（概念视图）
+
+在 v3 的实现与实现草图中（参见 `runtime-logix/impl/module-lifecycle-and-scope.md`），我们将 Module 生命周期与 Session/ModuleCache 统一抽象为四个互相配合的维度：
+
+- **数据 Scope（ModuleRuntime Scope）**：由 `ModuleRuntime` 的内部 Scope 承载，`$.lifecycle.onInit / onDestroy / onError` 与之绑定，决定“这棵 ModuleRuntime 是否存在，以及何时彻底关闭”；  
+- **资源 Scope（ModuleCache Entry）**：由 React 侧的 `ModuleCache` 管理，决定“某个 ModuleRuntime 实例在内存中存活多久”（`Acquire → Retain → Release → GC`）；  
+- **会话语义（Session Pattern）**：由调用方在 `useModule(Impl, { key, gcTime })` 中选择 `key + gcTime` 决定，是暴露给 React/业务开发者的“组件级 / 区域级 / 会话级”状态保持接口；  
+- **行为状态（Platform Lifecycle）**：由 `$.lifecycle.onSuspend/onResume/onReset` + `Logic.Platform` 驱动，决定“在存在期间何时暂停/恢复/软重置行为”，不直接关闭 Scope。
+
+抽象时间轴上，单个 Module 实例通常经历四个阶段：
+
+1. **Construct（构建）**  
+   - 触发：首次通过 ModuleImpl.layer 或 ModuleCache 创建某个 `ModuleRuntime`；  
+   - 数据 Scope：打开根 Scope，注册所有 Logic，并串行执行已登记的 `onInit`；  
+   - 资源 Scope：ModuleCache 中创建 Entry，`status = pending/success`；  
+   - Session：若调用方传入显式 `key`，在该 Runtime 内认领一份“会话身份”，否则视为组件私有 Session。
+
+2. **Active（活跃）**  
+   - 数据 Scope：Scope 打开，Logic watcher 与进程运行中，可以持续读写 State / 派发 Action；  
+   - 资源 Scope：Entry `refCount > 0`，至少有一个 UI 持有该实例；  
+   - Session：业务视角下，可理解为“某个页面 / Tab / Widget 的会话正在进行”；  
+   - Platform：可选择性注册 `onSuspend/onResume`，响应页面可见性 / 路由切换等行为事件。
+
+3. **Idle（空闲/保活）**  
+   - 数据 Scope：仍然打开，状态留在内存中，但暂时没有 UI 订阅者；  
+   - 资源 Scope：`refCount` 回到 0，ModuleCache 启动基于 `gcTime` 的 Idle 计时；在计时窗口内如果有新组件重新 `retain`，视为“会话恢复”，取消 GC；  
+   - Session：业务视角可理解为“会话被暂存”，例如 Tab 被关闭但允许短时间内恢复；  
+   - Platform：可以通过 `onSuspend` 暂停高频行为（轮询等），但不销毁会话本身。
+
+4. **Terminate（结束）**  
+   - 数据 Scope：Idle 计时结束且 `refCount` 仍为 0 时，ModuleCache 触发 Scope 关闭，串行执行所有 `onDestroy`，随后删除 Entry；  
+   - 资源 Scope：该实例彻底从缓存中移除，所有 watcher / 长逻辑停止；  
+   - Session：会话结束，之后只能创建新的实例；  
+   - Platform：若有需要，可通过 `onReset` 或显式清理逻辑在到期前主动结束会话。
+
+在具体 API 层面的对应关系是：
+
+- **Module 定义/Logic 层**：只关心 `$.lifecycle` 与 Platform lifecycle，以“模块是否存在、何时暂停/恢复/重置”的语义思考；  
+- **React Adapter 层**：通过统一的 Resource Cache（`ModuleCache`）+ `useModule(Impl, { key, gcTime, suspend })` 将「Scope + Session + React 组件」绑定在一起；  
+- **宿主应用/平台**：按需为 Runtime 提供 `Logic.Platform` 实现（例如 `ReactPlatformLayer`），并在合适的事件源（路由 / Page Visibility / App 前后台）上驱动 `onSuspend/onResume/onReset`。
+
+> 心智模型可简化记忆为：**Session = ModuleRuntime 实例 + 稳定的 `key` + 一段 `gcTime` + 一套 Platform 行为策略**。  
+> 文档层面将继续以此视图约束 React Adapter 与未来多端平台的实现。
 
 Bound API 设计目标：
 
@@ -279,7 +445,7 @@ Bound API 设计目标：
   - 所有挂在该 Module 上的 Logic 程序运行在同一个运行时实例上（共享 State / actions$ / changes$）；
   - 跨 Module 协作通过 `$.use(OtherModule)` / `$.useRemote(OtherModule)` + Fluent DSL 表达；
   - 在分形 Runtime 模型下：
-    - 推荐通过 `LogixRuntime.make(rootImpl, { layer, onError })` 以某个 Root ModuleImpl 为入口构造一颗 Runtime（App / Page / Feature 均视为“Root + Runtime”）；
+    - 推荐通过 `Logix.Runtime.make(rootImpl, { layer, onError })` 以某个 Root ModuleImpl 为入口构造一颗 Runtime（App / Page / Feature 均视为“Root + Runtime”）；
     - Root ModuleImpl 可以通过 `imports` 引入子模块实现，通过 `processes` 声明长期进程（含 Link）；
     - 应用级 AppRuntime（基于 `LogixAppConfig` / `makeApp`）仅作为底层实现存在（基于 Layer 合成与 processes fork），主要服务于平台/运行时内部，不再建议业务直接调用。
 

@@ -5,7 +5,7 @@
 ## 功能亮点
 
 - **RuntimeProvider**：
-  - `runtime={LogixRuntime.make(rootImpl, { layer })}` 启动完整应用 Runtime，并自动注入 `ReactPlatformLayer`（推荐用法）；
+  - `runtime={Logix.Runtime.make(rootImpl, { layer })}` 启动完整应用 Runtime，并自动注入 `ReactPlatformLayer`（推荐用法）；
   - `layer={Layer}` 在父 Runtime 上叠加局部服务（页面/组件级 DI）；
   - `runtime` / `value` 直接复用已有 `ManagedRuntime`，常用于测试或集成场景。
 - **并发安全的 Hooks**：`useModule` 返回稳定的 `ModuleRuntime`；`useModule(handle, selector)` / `useSelector(handle | runtime, selector, equalityFn?)` 基于 `useSyncExternalStore` 实现，默认 `Object.is` 比较，可自定义 `equalityFn`，避免并发渲染撕裂。
@@ -16,17 +16,17 @@
 
 ```tsx
 import { RuntimeProvider, ReactPlatformLayer } from "@logix/react"
-import { Logix, LogixRuntime } from "@logix/core"
+import * as Logix from "@logix/core"
 import { Layer } from "effect"
 
-const RootModule = Logix.Module("Root", { state: RootState, actions: RootActions })
-const RootImpl = RootModule.make({
+const RootModule = Logix.Module.make("Root", { state: RootState, actions: RootActions })
+const RootImpl = RootModule.implement({
   initial: { /* ... */ },
   imports: [/* ModuleImpls / Service Layers */],
   processes: [/* Coordinators / Links */]
 })
 
-const appRuntime = LogixRuntime.make(RootImpl, {
+const appRuntime = Logix.Runtime.make(RootImpl, {
   layer: Layer.mergeAll(AppInfraLayer, ReactPlatformLayer)
 })
 

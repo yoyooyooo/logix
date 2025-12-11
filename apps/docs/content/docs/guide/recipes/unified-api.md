@@ -1,124 +1,128 @@
 ---
-title: "Unified API 示例"
-description: 展示如何使用 Effect-Native Unified API 和 Pattern 编写业务逻辑。
+title: 'Pattern 模式示例'
+description: 展示如何使用 BoundApi Pattern 和 Functional Pattern 编写可复用的业务逻辑。
 ---
 
+本示例展示了如何使用 Pattern 编写可复用、模块化的业务逻辑。
 
+### 适合谁
 
-本示例展示了如何使用 Pattern 和 Unified API 来编写可复用、模块化的业务逻辑。
+- 负责在团队内设计 Pattern / Template / 资产体系的架构师或高级工程师；
+- 希望把高频业务流程（如"级联加载"、"乐观更新"）抽象成可配置资产。
 
-## 1. 定义 Pattern (The Asset)
+### 前置知识
 
-首先，架构师定义一个可复用的“带重试的提交” Pattern Function，并由 Builder 包装为 Pattern Asset。
+- 熟悉 Effect、Layer 以及 Service Tag 的基本用法；
+- 理解 Logix Logic 与 BoundApi 的关系。
+
+### 读完你将获得
+
+- 一套"Pattern 资产 + Effect 实现 + 在 Logic 中消费"的完整范式；
+- 区分 Functional Pattern 和 BoundApi Pattern 的使用场景。
+
+## 1. Functional Pattern（工具型）
+
+完全与 Store 解耦的 `(config) => Effect` 函数，通过 Service 获取依赖：
 
 ```typescript
-// patterns/reliable-submit.ts
-import { definePattern } from "@logix/pattern";
-import { Effect, Schema } from "effect";
-import { HttpClient } from "@effect/platform";
+// patterns/bulk-operation.ts
+import { Effect, Context } from 'effect'
 
-export interface ReliableSubmitConfig {
-  service: string;
-  method: string;
-  retry: number;
+// 定义 Service 契约
+class BulkOperationService extends Context.Tag('@svc/BulkOp')<
+  BulkOperationService,
+  { applyToMany: (params: { ids: string[]; operation: string }) => Effect.Effect<void> }
+>() {}
+
+// Functional Pattern：不依赖具体 Store
+export const runBulkOperation = (config: { operation: string }) =>
+  Effect.gen(function* () {
+    const bulk = yield* BulkOperationService
+    const ids = ['1', '2', '3'] // 实际从参数或 Service 获取
+
+    yield* bulk.applyToMany({ ids, operation: config.operation })
+    return ids.length
+  })
+```
+
+特点：
+
+- 入口为 `runXxx(config)`，返回 `Effect`；
+- 可在多个 Store / Runtime 中复用。
+
+## 2. BoundApi Pattern（状态感知型）
+
+依赖 Store 状态的 Pattern，通过显式接收 `$: BoundApi` 参数：
+
+```typescript
+// patterns/cascade.ts
+import { Effect } from 'effect'
+import * as Logix from '@logix/core'
+
+/**
+ * @pattern Cascade (级联加载)
+ * @description 监听上游字段 → 重置下游 → 加载数据 → 更新结果
+ */
+export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
+  $: Logix.BoundApi<Sh, R>,
+  config: {
+    source: (s: Logix.StateOf<Sh>) => T | undefined | null
+    loader: (val: T) => Logix.Logic.Of<Sh, R, Data, never>
+    onReset: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>
+    onSuccess: (prev: Logix.StateOf<Sh>, data: Data) => Logix.StateOf<Sh>
+  },
+) => {
+  return $.onState(config.source).runLatest((val) =>
+    Effect.gen(function* () {
+      yield* $.state.update(config.onReset)
+      if (val == null) return
+
+      const data = yield* config.loader(val)
+      yield* $.state.update((s) => config.onSuccess(s, data))
+    }),
+  )
 }
+```
 
-// 1. Pattern Function：真正执行的逻辑，完全基于 Effect / Service
-export const reliableSubmitImpl = (config: ReliableSubmitConfig) =>
-  Effect.gen(function* (_) {
-    const client = yield* HttpClient;
+特点：
 
-    const call = client.request({
-      // 实际项目中可约定 service/method -> URL/HTTP 方法的映射关系
-      service: config.service,
-      method: config.method
-    });
+- 入口为 `runXxxPattern($, config)`，第一个参数为 `BoundApi`；
+- 通过 `$` 使用模块能力（`$.onState / $.state.update`）。
 
-    // 使用 Effect-native 重试语义
-    return yield* Effect.retry(call, { times: config.retry });
-  });
+## 3. 在 Logic 中消费 Pattern
 
-// 2. Pattern Asset：Builder 侧为其补充元数据与配置 Schema
-export const ReliableSubmit = definePattern({
-  id: "std/reliable-submit",
-  version: "1.0.0",
-  configSchema: Schema.Struct({
-    service: Schema.String,
-    method: Schema.String,
-    retry: Schema.Number.pipe(Schema.default(3))
+```typescript
+// features/address/logic.ts
+import { Effect } from 'effect'
+import { AddressModule } from './module'
+import { runCascadePattern } from '@/patterns/cascade'
+
+export const AddressLogic = AddressModule.logic(($) =>
+  Effect.gen(function* () {
+    // 使用 BoundApi Pattern
+    yield* runCascadePattern($, {
+      source: (s) => s.provinceId,
+      loader: (provinceId) =>
+        Effect.gen(function* () {
+          const api = yield* $.use(AddressApi)
+          return yield* api.getCities(provinceId)
+        }),
+      onReset: (s) => ({ ...s, cities: [], cityId: null }),
+      onSuccess: (s, cities) => ({ ...s, cities }),
+    })
   }),
-  impl: reliableSubmitImpl
-});
+)
 ```
 
-## 2. 消费 Pattern (The Usage)
+## 4. 命名规范
 
-开发者在 Logix Logic 中直接调用 Pattern Function（或通过 Asset 的 `impl` 属性）。
+| 形态       | 命名约定                   | 示例                           |
+| ---------- | -------------------------- | ------------------------------ |
+| Functional | `runXxx(config)`           | `runBulkOperation(config)`     |
+| BoundApi   | `runXxxPattern($, config)` | `runCascadePattern($, config)` |
 
-```typescript
-// features/order/logic.ts
-import { Effect } from "effect";
-import { ReliableSubmit } from "@/patterns/reliable-submit";
+## 下一步
 
-export const OrderLogic = Effect.gen(function* (_) {
-    // 1. 从 Action 获取提交触发源
-    const submit$ = $Order.flow.fromAction(
-      (a): a is { type: "order/submit" } => a.type === "order/submit"
-    );
-
-    // 2. 提交逻辑：包含校验 + Pattern 调用
-    const handleSubmit = Effect.gen(function* (_) {
-      const current = yield* $Order.state.read;
-
-      // 使用 Control / Effect-native 表达分支
-      yield* $Order.match(current.ui.formValid)
-        .when(true, () => ReliableSubmit.impl({
-          service: "OrderService",
-          method: "create",
-          retry: 5
-        }))
-        .when(false, () => Effect.sync(() => {
-          // 这里可以调用 Toast Service，或通过 state.update 写入 UI 提示
-          console.warn("Form Invalid");
-        }))
-        .exhaustive();
-    });
-
-    // 3. 将 Effect 挂到 Action 流上
-    yield* submit$.pipe($Order.flow.run(handleSubmit));
-  })
-);
-```
-
-## 3. 混合原生代码 (Hybrid Mode)
-
-处理复杂数据时，在 Logic 内部直接混入原生 Effect 代码，平台将其视为 Black-Box Block。
-
-```typescript
-// features/analytics/logic.ts
-import { Effect } from "effect";
-
-export const AnalyticsLogic = Effect.gen(function* (_) {
-    const analyze$ = $Analytics.flow.fromAction(
-      (a): a is { type: "analytics/analyze" } => a.type === "analytics/analyze"
-    );
-
-    const analyzeEffect = Effect.gen(function* (_) {
-      // [White Box] 获取数据（通过 Service Tag 或 HttpClient）
-      const rawData = yield* DataService.getRaw();
-
-      // [Black Box] 复杂计算（平台显示为代码块）
-      const result = yield* Effect.sync(() => {
-        return rawData
-          .map((item) => complexMath(item))
-          .filter((x) => x > 0);
-      });
-
-      // [White Box] 保存结果
-      yield* DataService.save(result);
-    });
-
-    yield* analyze$.pipe(flow.run(analyzeEffect));
-  })
-);
-```
+- 查看 API 参考文档：[API 参考](../../api/)
+- 回顾核心概念：[Thinking in Logix](../essentials/thinking-in-logix)
+- 返回文档首页：[文档首页](../../)

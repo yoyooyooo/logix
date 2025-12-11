@@ -14,7 +14,7 @@ const submitLogic: Logic.Of<FormShape, OrderApi> =
     const submit$ = $.flow.fromAction(a => a._tag === 'submit');
 
     const submitEffect = Effect.gen(function* (_) {
-      const api = yield* $Form.services(OrderApi);
+      const api = yield* $Form.use(OrderApi);
       yield* $Form.state.mutate(draft => { draft.meta.isSubmitting = true; });
 
       // 将 API 调用和后续状态更新包装在一个可中断的 Effect 中
@@ -44,8 +44,8 @@ const submitLogic: Logic.Of<FormShape, OrderApi> =
 // 概念上，这里的 `$Page` 表示针对 PageShape + (UserApi | ConfigApi) 预绑定的 Bound API。
 const parallelLoadLogic: Logic.Of<PageShape, UserApi | ConfigApi> =
   Effect.gen(function* (_) {
-      const userApi = yield* $Page.services(UserApi);
-      const configApi = yield* $Page.services(ConfigApi);
+      const userApi = yield* $Page.use(UserApi);
+      const configApi = yield* $Page.use(ConfigApi);
       const { userId } = yield* $Page.state.read;
 
       // Logic 初始化时，并行加载用户和配置

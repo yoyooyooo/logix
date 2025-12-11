@@ -3,16 +3,15 @@ title: 模块 (Modules)
 description: 理解 Logix 中的模块概念。
 ---
 
-
-
 **Module** 是 Logix 的核心。它定义了应用中特定领域的 **状态 (State)** 和 **行为 (Actions)**。
 
 ## 定义模块
 
 ```typescript
-import { Logix, Schema } from '@logix/core';
+import * as Logix from '@logix/core'
+import { Schema } from 'effect'
 
-export const Counter = Logix.Module('Counter', {
+export const Counter = Logix.Module.make('Counter', {
   state: Schema.Struct({
     count: Schema.Number,
   }),
@@ -20,7 +19,7 @@ export const Counter = Logix.Module('Counter', {
     increment: Schema.Void,
     decrement: Schema.Void,
   },
-});
+})
 ```
 
 ## 实现模块 (Module Implementation)
@@ -42,13 +41,13 @@ export const CounterImpl = Counter.make({
 
 ### 声明实现所需的依赖 (imports)
 
-在很多场景下，一个模块实现会“自带”一些依赖（例如共享的 Service、其他模块的实现）。  
+在很多场景下，一个模块实现会“自带”一些依赖（例如共享的 Service、其他模块的实现）。
 你可以在 `Module.make` 时，通过 `imports` 一次性声明这些依赖：
 
 ```ts
-import { Layer } from "effect";
-import { AuthImpl } from "../auth/module.impl";
-import { SessionTag } from "../auth/session";
+import { Layer } from 'effect'
+import { AuthImpl } from '../auth/module.impl'
+import { SessionTag } from '../auth/session'
 
 export const CounterImpl = Counter.make({
   initial: { count: 0 },
@@ -59,7 +58,7 @@ export const CounterImpl = Counter.make({
     // 2. 提供一个 Service 的默认实现
     Layer.succeed(SessionTag, { currentUserId: null }),
   ],
-});
+})
 ```
 
 要点：
@@ -70,7 +69,7 @@ export const CounterImpl = Counter.make({
 - 这些依赖只影响 **运行时装配**：
   - 让当前模块的 Logic 可以通过 Tag 访问到对应的 Service / ModuleRuntime；
   - 不会改变“跨模块通信通过 `$.useRemote` / `$.use` 完成”的基本方式，也不会引入 TypeScript 层面的循环依赖。
-- 对于模块作者来说，可以把“这个模块默认需要带着哪些依赖”写在 `imports` 里；  
+- 对于模块作者来说，可以把“这个模块默认需要带着哪些依赖”写在 `imports` 里；
   对于装配者（AppRuntime / React），仍然可以用 `impl.withLayer(...)` 在外层做局部覆盖或注入。
 
 ## 在 React 中使用
@@ -78,19 +77,21 @@ export const CounterImpl = Counter.make({
 推荐使用 `useModule` Hook 消费 `ModuleImpl`：
 
 ```tsx
-import { useModule, useSelector, useDispatch } from '@logix/react';
+import { useModule, useSelector, useDispatch } from '@logix/react'
 
 function CounterComponent() {
   // 自动处理依赖注入与生命周期
-  const counter = useModule(CounterImpl);
+  const counter = useModule(CounterImpl)
 
-  const count = useSelector(counter, s => s.count);
-  const dispatch = useDispatch(counter);
+  const count = useSelector(counter, (s) => s.count)
+  const dispatch = useDispatch(counter)
 
-  return (
-    <button onClick={() => dispatch({ _tag: 'increment' })}>
-      {count}
-    </button>
-  );
+  return <button onClick={() => dispatch({ _tag: 'increment' })}>{count}</button>
 }
 ```
+
+## 下一步
+
+- 学习如何编写响应式的业务逻辑：[逻辑流](./adding-interactivity)
+- 掌握状态管理最佳实践：[管理状态](./managing-state)
+- 了解模块生命周期：[生命周期与 Watcher](./lifecycle-and-watchers)

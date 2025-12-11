@@ -19,7 +19,7 @@
   - [x] `Logic.secure` (错误边界与追踪)
 - [x] **Link / Orchestration**: 跨模块编排。
   - [x] `Logic.Link` (多模块输入，声明式连接)
-  - [x] `LogixRuntime` (应用级 Layer/Scope 统一管理，进程 Fork)
+  - [x] Runtime（通过 `Logix.Runtime.make` 构造；应用级 Layer/Scope 统一管理，进程 Fork）
 - [x] **Observability**:
   - [x] `DebugSink` (支持 Console/Memory Sink)
   - [x] `Trace` (Action Dispatch, State Update, Lifecycle Error)

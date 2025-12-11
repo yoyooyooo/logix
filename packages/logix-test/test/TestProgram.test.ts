@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest"
 import { Effect, Layer, Schema, Stream } from "effect"
-import { Logix, Link } from "@logix/core"
+import * as Logix from "@logix/core"
 import { TestProgram, Execution, runTest } from "../src/index.js"
 
-const Counter = Logix.Module("Counter", {
+const Counter = Logix.Module.make("Counter", {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
     increment: Schema.Void,
@@ -12,9 +12,11 @@ const Counter = Logix.Module("Counter", {
 })
 
 const CounterLogic = Counter.logic((api) =>
-  api.onAction("increment").run(() =>
-    api.state.update((s) => ({ ...s, count: s.count + 1 }))
-  )
+  Effect.gen(function* () {
+    yield* api.onAction("increment").run(() =>
+      api.state.update((s) => ({ ...s, count: s.count + 1 })),
+    )
+  }),
 )
 
 describe("TestProgram", () => {
@@ -30,8 +32,11 @@ describe("TestProgram", () => {
     const program = scenario.run((api) =>
       Effect.gen(function* () {
         yield* api.dispatch({ _tag: "increment", payload: undefined })
-        yield* api.assert.state((s) => s.count === 1)
-      })
+        // 使用带 options 的自动重试断言，验证类型与选项透传
+        yield* api.assert.state((s) => s.count === 1, { maxAttempts: 5 })
+        // 使用 signal 断言，验证动作信号收集逻辑
+        yield* api.assert.signal("increment")
+      }),
     )
 
     const result = await runTest(program)
@@ -82,11 +87,11 @@ describe("TestProgram", () => {
   it("should support runFork watchers on a single Logic", async () => {
     const RunForkCounterLogic = Counter.logic(($) =>
       Effect.gen(function* () {
-        yield* $.onAction("increment").runFork(
+        yield* $.onAction("increment").runParallelFork(
           $.state.update((s) => ({ ...s, count: s.count + 1 })),
         )
 
-        yield* $.onAction("decrement").runFork(
+        yield* $.onAction("decrement").runParallelFork(
           $.state.update((s) => ({ ...s, count: s.count - 1 })),
         )
       }),
@@ -113,7 +118,7 @@ describe("TestProgram", () => {
   })
 
   it("should run multi-module link scenario", async () => {
-    const User = Logix.Module("User", {
+    const User = Logix.Module.make("User", {
       state: Schema.Struct({ name: Schema.String }),
       actions: {
         updateName: Schema.String,
@@ -121,10 +126,15 @@ describe("TestProgram", () => {
     })
 
     const UserLogic = User.logic((api) =>
-      api.onAction("updateName").update((s, a) => ({ ...s, name: a.payload }))
+      Effect.gen(function* () {
+        yield* api.onAction("updateName").update((s, a) => ({
+          ...s,
+          name: a.payload,
+        }))
+      }),
     )
 
-    const Auth = Logix.Module("Auth", {
+    const Auth = Logix.Module.make("Auth", {
       state: Schema.Struct({ loggedIn: Schema.Boolean }),
       actions: {
         login: Schema.Void,
@@ -133,16 +143,18 @@ describe("TestProgram", () => {
     })
 
     const AuthLogic = Auth.logic((api) =>
-      Effect.all(
-        [
-          api.onAction("login").update((s) => ({ ...s, loggedIn: true })),
-          api.onAction("logout").update((s) => ({ ...s, loggedIn: false })),
-        ],
-        { concurrency: "unbounded" },
-      ),
+      Effect.gen(function* () {
+        yield* Effect.all(
+          [
+            api.onAction("login").update((s) => ({ ...s, loggedIn: true })),
+            api.onAction("logout").update((s) => ({ ...s, loggedIn: false })),
+          ],
+          { concurrency: "unbounded" },
+        )
+      }),
     )
 
-    const LinkLogic = Link.make(
+    const LinkLogic = Logix.Link.make(
       {
         modules: [User, Auth] as const,
       },
@@ -155,10 +167,7 @@ describe("TestProgram", () => {
           yield* userHandle.actions$.pipe(
             Stream.runForEach((action) =>
               Effect.gen(function* () {
-                if (
-                  action._tag === "updateName" &&
-                  action.payload === "clear"
-                ) {
+                if (action._tag === "updateName" && action.payload === "clear") {
                   yield* authHandle.dispatch({
                     _tag: "login",
                     payload: undefined,
@@ -189,7 +198,11 @@ describe("TestProgram", () => {
         }),
     )
 
-    const linkLayer: Layer.Layer<any, any, any> = Layer.scopedDiscard(LinkLogic) as unknown as Layer.Layer<any, any, any>
+    const linkLayer: Layer.Layer<any, any, any> = Layer.scopedDiscard(LinkLogic) as unknown as Layer.Layer<
+      any,
+      any,
+      any
+    >
 
     const scenario = TestProgram.make({
       main: {
@@ -211,7 +224,7 @@ describe("TestProgram", () => {
       Effect.gen(function* () {
         yield* api.dispatch({ _tag: "updateName", payload: "clear" })
         yield* api.assert.state((s) => s.name === "")
-      })
+      }),
     )
 
     const result = await runTest(program)

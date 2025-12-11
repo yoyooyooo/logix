@@ -1,4 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useRoute, useLocation } from 'wouter';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query';
 import {
   DndContext,
   DragOverlay,
@@ -45,14 +51,49 @@ const COLUMNS = [
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
 
+const queryClient = new QueryClient();
+
 export default function App() {
-  const [drafts, setDrafts] = useState<Draft[]>([]);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <KanbanBoard />
+    </QueryClientProvider>
+  );
+}
+
+function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dragStartLevel, setDragStartLevel] = useState<string | null>(null);
   const [filterValue, setFilterValue] = useState<string>('all');
   const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [hideEmpty, setHideEmpty] = useState(true);
+
+  // TanStack Query for drafts
+  const { data: drafts = [], refetch } = useQuery({
+    queryKey: ['drafts'],
+    queryFn: async () => {
+      const res = await fetch('/api/drafts');
+      const data = await res.json();
+      // Sort by priority (number)
+      return data.sort((a: Draft, b: Draft) => {
+        const pA = typeof a.priority === 'number' ? a.priority : 9999;
+        const pB = typeof b.priority === 'number' ? b.priority : 9999;
+        return pA - pB;
+      });
+    }
+  });
+
+  // Optimistic updates helper (local state for drag and drop)
+  // We need local state to handle immediate drag updates before refetch
+  const [localDrafts, setLocalDrafts] = useState<Draft[]>([]);
+
+  // Sync query data to local state
+  useEffect(() => {
+    if (drafts.length > 0) {
+      setLocalDrafts(drafts);
+    }
+  }, [drafts]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -65,32 +106,18 @@ export default function App() {
     })
   );
 
-  useEffect(() => {
-    fetch('/api/drafts')
-      .then((res) => res.json())
-      .then((data) => {
-        // Sort by priority (number)
-        const sorted = data.sort((a: Draft, b: Draft) => {
-          const pA = typeof a.priority === 'number' ? a.priority : 9999;
-          const pB = typeof b.priority === 'number' ? b.priority : 9999;
-          return pA - pB;
-        });
-        setDrafts(sorted);
-      });
-  }, []);
-
   const filteredDrafts = useMemo(() => {
-    return drafts.filter(d => {
+    return localDrafts.filter((d: Draft) => {
       if (filterValue !== 'all' && d.value !== filterValue) return false;
       return true;
     });
-  }, [drafts, filterValue]);
+  }, [localDrafts, filterValue]);
 
   const columns = useMemo(() => {
     const cols: Record<string, Draft[]> = {};
     COLUMNS.forEach((c) => (cols[c.id] = []));
 
-    filteredDrafts.forEach((d) => {
+    filteredDrafts.forEach((d: Draft) => {
       if (cols[d.level]) {
         cols[d.level].push(d);
       }
@@ -105,7 +132,7 @@ export default function App() {
 
   function findContainer(id: string) {
     if (id in columns) return id;
-    const draft = drafts.find((d) => d.filename === id);
+    const draft = localDrafts.find((d: Draft) => d.filename === id);
     return draft?.level;
   }
 
@@ -130,14 +157,14 @@ export default function App() {
     }
 
     // Moving between columns
-    setDrafts((prev) => {
-      const overItems = prev.filter((d) => d.level === overContainer);
-      const overIndex = overItems.findIndex((d) => d.filename === overId);
+    setLocalDrafts((prev) => {
+      const overItems = prev.filter((d: Draft) => d.level === overContainer);
+      const overIndex = overItems.findIndex((d: Draft) => d.filename === overId);
 
       // Prevent unused var error
       void overIndex;
 
-      return prev.map((d) => {
+      return prev.map((d: Draft) => {
         if (d.filename === activeId) {
           return { ...d, level: overContainer };
         }
@@ -155,21 +182,21 @@ export default function App() {
     const overContainer = findContainer(overId || '');
 
     if (activeContainer && overContainer && activeContainer === overContainer) {
-      const activeIndex = drafts.findIndex((d) => d.filename === activeId);
-      const overIndex = drafts.findIndex((d) => d.filename === overId);
+      const activeIndex = localDrafts.findIndex((d: Draft) => d.filename === activeId);
+      const overIndex = localDrafts.findIndex((d: Draft) => d.filename === overId);
 
-      let newDrafts = drafts;
+      let newDrafts = localDrafts;
       if (activeIndex !== overIndex) {
-        newDrafts = arrayMove(drafts, activeIndex, overIndex);
-        setDrafts(newDrafts);
+        newDrafts = arrayMove(localDrafts, activeIndex, overIndex);
+        setLocalDrafts(newDrafts);
       }
 
       // Check if this was a cross-column move
       const isCrossColumn = dragStartLevel !== activeContainer;
 
       // Recalculate priority for this column
-      const columnDrafts = newDrafts.filter(d => d.level === activeContainer);
-      columnDrafts.forEach((d, idx) => {
+      const columnDrafts = newDrafts.filter((d: Draft) => d.level === activeContainer);
+      columnDrafts.forEach((d: Draft, idx: number) => {
         const updates: any = { priority: (idx + 1) * 100 };
         // If this is the moved item and it's a cross-column move, send level update
         if (d.filename === activeId && isCrossColumn) {
@@ -189,9 +216,109 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     });
+    // Invalidate query to refetch fresh data
+    refetch();
   }
 
   const isFiltered = filterValue !== 'all';
+
+  // Helper: Resolve relative path
+  function resolvePath(currentPath: string, relativePath: string): string {
+    const currentDir = currentPath.split('/').slice(0, -1);
+    const parts = relativePath.split('/');
+
+    for (const part of parts) {
+      if (part === '.' || part === '') continue;
+      if (part === '..') {
+        if (currentDir.length > 0) currentDir.pop();
+      } else {
+        currentDir.push(part);
+      }
+    }
+    return currentDir.join('/');
+  }
+
+  // Wouter hooks
+  const [match, params] = useRoute('/draft/:filename');
+  const [, setLocation] = useLocation();
+
+  // Sync URL -> State
+  useEffect(() => {
+    if (match && params?.filename) {
+      // Decode filename in case it contains special chars
+      const filename = decodeURIComponent(params.filename);
+
+      // Find draft
+      let draft = localDrafts.find((d: Draft) => d.filename === filename);
+
+      // Fallback strategies (same as before)
+      if (!draft && filename.includes('/')) {
+        draft = localDrafts.find((d: Draft) => d.path === filename);
+      }
+      if (!draft) {
+        const basename = filename.split('/').pop();
+        if (basename) {
+          draft = localDrafts.find((d: Draft) => d.filename === basename);
+        }
+      }
+
+      if (draft) {
+        setSelectedDraft(draft);
+        setIsDialogOpen(true);
+      } else if (localDrafts.length > 0) {
+        console.warn(`Draft not found for: ${filename}`);
+      }
+    } else {
+      setIsDialogOpen(false);
+      setSelectedDraft(null);
+    }
+  }, [match, params, localDrafts]);
+
+  // Handle custom navigation event from Dialog
+  useEffect(() => {
+    const handleNavigate = (e: Event) => {
+      const link = (e as CustomEvent).detail;
+      let targetFilename = link;
+
+      // Resolve path logic
+      if (selectedDraft) {
+        try {
+           const resolvedPath = resolvePath(selectedDraft.path, link);
+           const targetDraft = localDrafts.find((d: Draft) => d.path === resolvedPath);
+
+           if (targetDraft) {
+             targetFilename = targetDraft.filename;
+           } else {
+             const absoluteDraft = localDrafts.find((d: Draft) => d.path === link);
+             if (absoluteDraft) {
+                targetFilename = absoluteDraft.filename;
+             } else {
+                targetFilename = link.split('/').pop() || link;
+             }
+           }
+        } catch (err) {
+          console.error('Error resolving path:', err);
+          targetFilename = link.split('/').pop() || link;
+        }
+      } else {
+          targetFilename = link.split('/').pop() || link;
+      }
+
+      // Navigate using wouter
+      setLocation(`/draft/${encodeURIComponent(targetFilename)}`);
+    };
+
+    window.addEventListener('navigate-draft', handleNavigate);
+    return () => window.removeEventListener('navigate-draft', handleNavigate);
+  }, [localDrafts, selectedDraft, setLocation]);
+
+  // Sync Dialog state -> URL
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setLocation('/');
+    }
+  };
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
@@ -262,6 +389,8 @@ export default function App() {
                   onCardClick={(draft) => {
                     setSelectedDraft(draft);
                     setIsDialogOpen(true);
+                    // Update URL via wouter
+                    setLocation(`/draft/${encodeURIComponent(draft.filename)}`);
                   }}
                 />
               ))}
@@ -269,7 +398,7 @@ export default function App() {
             <DragOverlay>
               {activeId ? (
                 <DraftCard
-                  draft={drafts.find((d) => d.filename === activeId)!}
+                  draft={localDrafts.find((d: Draft) => d.filename === activeId)!}
                   onClick={() => { }}
                 />
               ) : null}
@@ -278,9 +407,10 @@ export default function App() {
         </div>
 
         <DraftDetailDialog
+          key={selectedDraft?.filename}
           draft={selectedDraft}
           open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
+          onOpenChange={handleDialogOpenChange}
         />
       </div>
     </ThemeProvider>

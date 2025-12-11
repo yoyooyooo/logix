@@ -4,6 +4,7 @@ status: draft
 version: 0
 value: vision
 priority: later
+related: []
 ---
 
 > 本文作为草稿，用于沉淀「Agent + Parser + AST + 后端执行」在 Logix v3 平台中的**终局形态**设想。

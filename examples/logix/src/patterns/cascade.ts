@@ -1,5 +1,5 @@
-import { Effect } from 'effect'
-import { Logix, Logic } from '@logix/core'
+import { Effect } from "effect"
+import * as Logix from "@logix/core"
 
 /**
  * @pattern Cascade (级联加载)
@@ -22,7 +22,7 @@ export const runCascadePattern = <
     /** 监听的上游字段 */
     source: (s: Logix.StateOf<Sh>) => T | undefined | null
     /** 数据加载器（运行在 Logic.Env<Sh,R> 上，错误通道为 never） */
-    loader: (val: T) => Logic.Of<Sh, R, Data, never>
+    loader: (val: T) => Logix.Logic.Of<Sh, R, Data, never>
     /** 重置下游字段的回调 (同步) */
     onReset: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>
     /** 加载成功的回调 (同步) */
@@ -40,7 +40,7 @@ export const runCascadePattern = <
 
       // 2. 标记 Loading (如果提供了回调)
       if (config.onLoading) {
-        yield* $.state.update((s) => config.onLoading!(s, true))
+        yield* $.state.update((s: Logix.StateOf<Sh>) => config.onLoading!(s, true))
       }
 
       // 3. 加载数据
@@ -49,7 +49,7 @@ export const runCascadePattern = <
       const data = yield* config.loader(val)
 
       // 4. 更新结果并关闭 Loading
-      yield* $.state.update((s) => {
+      yield* $.state.update((s: Logix.StateOf<Sh>) => {
         let next = config.onSuccess(s, data)
         if (config.onLoading) {
           next = config.onLoading(next, false)

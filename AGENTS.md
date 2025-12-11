@@ -1,4 +1,5 @@
 当前仓库仍处在积极演进阶段，可以不计成本地重构与试验，不需要考虑向历史版本兼容。
+任何一个地方都可以为了追求完美而推翻，拒绝向后兼容，勇敢向前兼容。
 
 ## Workflow
 
@@ -17,17 +18,35 @@
 - 以上两条规划已经在 v3 / Logix 文档中收敛，任何新决策优先更新这些文档，再落到代码和 PoC。
 - 当用户提及「草稿」、「draft」，都认为是在说 docs/specs/drafts，如果没有加载过 drafts-tiered-system skill，执行 `openskills read drafts-tiered-system` 加载
 
+### Spec-Driven & Playground 对齐（给 Agent 的简版）
+
+- SDD 映射与顶层方法论：`docs/specs/intent-driven-ai-coding/v3/concepts/00-sdd-mapping.md`，明确「SPECIFY/PLAN/TASKS/IMPLEMENT ↔ L0–L3/Intent/Logix/Runtime Alignment Lab」的关系。
+- Playground / Sandbox / Alignment Lab 术语与职责：统一以 `v3/99-glossary-and-ssot.md` 中的定义为准（含 Universal Spy / Semantic UI Mock 的全称与简称）。
+- 当改动 `@logix/sandbox` 或 `docs/specs/drafts/topics/sandbox-runtime/*` 时，默认把它视为 **Playground/Runtime Alignment Lab 的基础设施**，同时参考 `65-playground-as-executable-spec.md`，避免只做“代码 Runner”而丢掉 Spec/Intent 对齐视角。
+
 ## 仓库愿景与决策原则（当前）
 
 - **北极星**：面向真实业务仓库，跑通一条「Intent → Flow/Effect/Logix → 代码 → 上线与长期演进」的可回放链路，一切规划以能否支撑最终产品为准。
 - **LLM 一等公民**：DSL / Schema / Flow / 配置的设计优先考虑“LLM 易生成、易校验、易对比”，假定主要维护者是 LLM + 工具链，人类只做审阅与少量 override。
 - **引擎优先**：先把 Intent/Flow/Logix/Effect 的契约和幂等出码引擎打磨稳定，再考虑 Studio/画布等交互体验；遇到冲突，一律保证引擎正确、可回放、可追踪。
 - **Effect 作为统一运行时**：默认使用 `effect`（effect-ts v3 系列）承载行为与流程执行，出码后的业务流程应以 `.flow.ts` + Effect/Logix 程序为落点；其他运行时只作为 PoC，而不是第二套正式栈。
+- **Logix dogfooding（简称 Logix fooding）**：本仓所有上层应用（如 `examples/*`、`packages/logix-devtools-react` 等）在可行范围内，一律以 Logix Runtime（Flow/Effect/Logix）作为主要运行时与状态管理方式，不再引入第二套 ad-hoc 状态机或流程引擎，以便在真实场景中持续“吃自己狗粮”、验证和打磨 Logix 本身。
 - **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/specs/intent-driven-ai-coding/v3` 与 `docs/specs/runtime-logix` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
   - 对于已经确定、但实现细节容易跑偏的技术决策（例如 Store.Spec / Universal Bound API / Fluent DSL / Parser 约束），**需要同时在实现备忘中固化**：
     - 平台侧：`docs/specs/intent-driven-ai-coding/v3/platform/impl/README.md`；
     - runtime 侧：`docs/specs/runtime-logix/impl/README.md`。
   - 后续在实现阶段若遇到取舍冲突，优先回看上述两个 impl/README 中的约束说明，再决定是否调整规范或实现。
+
+### logix-core 目录结构铁律（给 Agent 的简版）
+
+在 `packages/logix-core/src` 内改动时，默认遵守：
+
+- `src/*.ts` 直系文件是子模块（Module / Logic / Bound / Flow / Runtime / Link / Platform / Debug / MatchBuilder 等），**必须有实际实现代码**，不能只是纯 re-export。
+- 子模块之间的共享实现（类型内核、Runtime 内核、MatchBuilder/Flow/Platform/Debug 等）统一放到 `src/internal/**`，再由子模块引入；**禁止**从 `src/internal/**` 反向 import 任意 `src/*.ts`。
+- `src/internal/**` 内部再按「浅 → 深」分层：
+  - 核心实现下沉到 `src/internal/runtime/core/**`（module / LogicMiddleware / FlowRuntime / Lifecycle / Platform / DebugSink / MatchBuilder 等）；
+  - `src/internal/*.ts`、`src/internal/runtime/*.ts` 只通过 re-export 或薄适配依赖这些 core 文件，形成「浅层 API → 深层实现」的单向拓扑。
+  - 日常自检：`rg "../" src/internal/runtime` 应为空（core 目录内除外），确保 deep internal 不回头依赖浅层。
 
 # Agent Context for `intent-flow`
 
@@ -127,12 +146,12 @@
       - `pnpm typecheck:test`：使用 `tsconfig.test.json` 对 src+test 做完整类型检查。
     - `packages/logix-react`：
       - `pnpm test`：等价于 `vitest run`，一次性跑 React 适配层测试；
+      - `pnpm test -- --project browser`：只运行 Vitest browser 模式下的浏览器集成测试（匹配 `test/browser/**`），依赖 Playwright + `@vitest/browser-playwright`；
       - `pnpm test:watch`：仅本地人工调试使用，Agent 不得调用；
       - `pnpm typecheck:test`：检测 React 包的 src+test 类型。
   - 约定流程：每次进行「大模块改造」（如重构 Flow/Env、重排 React feature 目录、引入新运行时能力）后，至少需要：
     - 先跑 `pnpm typecheck`，确认类型层面无红线；
     - 再跑 `pnpm lint`，确认 ESLint（含 Effect 规则）无新告警或告警在可接受范围内，再交接到后续任务。
-
 
 ## 文档编写规范 （apps/docs）
 
@@ -171,21 +190,35 @@
 When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.
 
 How to use skills:
+
 - Invoke: Bash("openskills read <skill-name>")
 - The skill content will load with detailed instructions on how to complete the task
 - Base directory provided in output for resolving bundled resources (references/, scripts/, assets/)
 
 Usage notes:
+
 - Only use skills listed in <available_skills> below
 - Do not invoke a skill that is already loaded in your context
 - Each skill invocation is stateless
-</usage>
+  </usage>
 
 <available_skills>
 
 <skill>
 <name>drafts-tiered-system</name>
-<description>This skill should be used when managing the docs/specs/drafts L1–L9 tiered draft system in the intent-flow repository, including placing new drafts, refining and promoting drafts between levels, consolidating related drafts, and maintaining the drafts index.</description>
+<description>This skill should be used when managing a tiered L1–L9 draft system rooted at docs/specs/drafts in a repository, including placing new drafts, refining and promoting drafts between levels, consolidating related drafts, and maintaining a draft index document.</description>
+<location>project</location>
+</skill>
+
+<skill>
+<name>frontend-project-init</name>
+<description>用于在 intent-flow 仓库内初始化前端项目，基于内置模板（首个为 Vite + Logix Sandbox 空壳）快速生成可运行的前端工程骨架。</description>
+<location>project</location>
+</skill>
+
+<skill>
+<name>logix-llms</name>
+<description>在 intent-flow 仓库中编写或修改基于 @logix/* 的代码时，为 LLM 提供 Logix v3（@logix/core/@logix/react/@logix/sandbox/@logix-devtools-react）用法速查与示例入口，避免每次从源码冷启动扫一遍。</description>
 <location>project</location>
 </skill>
 
@@ -202,6 +235,23 @@ Usage notes:
 </skill>
 
 </available_skills>
+
 <!-- SKILLS_TABLE_END -->
 
 </skills_system>
+
+## Active Technologies
+- TypeScript 5.x（ESM），Node.js 20+，React 18，effect v3（已确定） + `@logix/core`、`@logix/react`、`@logix-devtools-react`、`effect`、React Testing Library（已确定） (003-trait-txn-lifecycle)
+- N/A（仅内存状态与 Devtools 视图模型，不持久化） (003-trait-txn-lifecycle)
+
+- TypeScript 5.x + React 18 + Node.js 20（前端 Devtools 面板 + Runtime 内核协调） + `effect` v3、`@logix/core`、`@logix/react`、`@logix/devtools-react`、浏览器端 React 渲染栈 (003-trait-txn-lifecycle)
+- N/A（仅内存中的 Runtime 状态与 Devtools 视图模型，不接入持久化存储） (003-trait-txn-lifecycle)
+
+- TypeScript 5.x（ESM 输出，面向 Node.js 20+ 与现代浏览器） + `effect` v3、Logix Runtime 核心（`@logix/core` / `docs/specs/runtime-logix` 契约） (001-implement-logix-data)
+- N/A（仅管理内存中的模块状态与字段能力，不直接接入外部存储） (001-implement-logix-data)
+- TypeScript 5.x（ESM 输出）+ Node.js 20+，浏览器侧面向现代浏览器（Chromium/Firefox/Safari 最新两个大版本） + `effect` v3、`@logix/core`、`@logix/react`、`@logix-devtools-react`、Vitest、pnpm workspace (001-module-traits-runtime)
+- N/A（仅管理内存中的 Module Runtime / Devtools 状态，不直接接入外部存储） (001-module-traits-runtime)
+
+## Recent Changes
+
+- 001-implement-logix-data: Added TypeScript 5.x（ESM 输出，面向 Node.js 20+ 与现代浏览器） + `effect` v3、Logix Runtime 核心（`@logix/core` / `docs/specs/runtime-logix` 契约）

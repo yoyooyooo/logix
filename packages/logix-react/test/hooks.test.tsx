@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { RuntimeProvider, useModule, useSelector, useRuntime } from "../src/index.js"
-import { Logix, ModuleRuntime } from "@logix/core"
+import * as Logix from "@logix/core"
 import {
   Context,
   Effect,
@@ -16,7 +16,7 @@ import React from "react"
 describe("React Hooks", () => {
   const State = Schema.Struct({ count: Schema.Number })
   const Actions = { inc: Schema.Void }
-  const CounterModule = Logix.Module("Counter", {
+  const CounterModule = Logix.Module.make("Counter", {
     state: State,
     actions: Actions,
   })
@@ -25,10 +25,7 @@ describe("React Hooks", () => {
 
   beforeEach(() => {
     runtime = ManagedRuntime.make(
-      Layer.scoped(
-        CounterModule,
-        ModuleRuntime.make({ count: 0 })
-      )
+      CounterModule.live({ count: 0 }) as Layer.Layer<any, never, never>
     )
   })
 
@@ -100,7 +97,7 @@ describe("React Hooks", () => {
     await waitFor(() => expect(result.current).toBeDefined())
 
     const moduleRuntime = result.current
-    const countRef = moduleRuntime.ref((s) => s.count)
+    const countRef = moduleRuntime.ref((s: { count: number }) => s.count)
 
     // Check initial value
     expect(await runtime.runPromise(SubscriptionRef.get(countRef))).toBe(0)
@@ -119,28 +116,30 @@ describe("React Hooks", () => {
   it("should support $.useRemote-based logic with React hooks", async () => {
     const CountState = Schema.Struct({ count: Schema.Number })
     const CounterActions = { inc: Schema.Void }
-    const Counter = Logix.Module("RemoteCounter", {
+    const Counter = Logix.Module.make("RemoteCounter", {
       state: CountState,
       actions: CounterActions,
     })
 
     const BadgeState = Schema.Struct({ text: Schema.String })
-    const Badge = Logix.Module("Badge", {
+    const Badge = Logix.Module.make("Badge", {
       state: BadgeState,
       actions: {},
     })
 
     const counterLogic = Counter.logic(($) =>
-      $.onAction("inc").run(() =>
-        $.state.update((s) => ({ ...s, count: s.count + 1 })),
-      ),
+      Effect.gen(function* () {
+        yield* $.onAction("inc").run(() =>
+          $.state.update((s) => ({ ...s, count: s.count + 1 })),
+        )
+      }),
     )
 
     const badgeLogic = Badge.logic(($) =>
       Effect.gen(function* () {
         const RemoteCounter = yield* $.useRemote(Counter)
 
-        yield* RemoteCounter.onState((s) => s.count)
+        yield* RemoteCounter.onState((s: { count: number }) => s.count)
           .filter((count) => count > 0)
           .run((count) =>
             $.state.update((s) => ({
@@ -200,10 +199,7 @@ describe("React Hooks", () => {
 
     // 覆盖本用例的 runtime：只需要一个简单 CounterModule 即可
     const localRuntime = ManagedRuntime.make(
-      Layer.scoped(
-        CounterModule,
-        ModuleRuntime.make({ count: 0 }),
-      ),
+      CounterModule.live({ count: 0 }) as Layer.Layer<any, never, never>,
     )
 
     const useStepConfigValue = () => {
@@ -246,6 +242,47 @@ describe("React Hooks", () => {
     await waitFor(() => expect(innerHook.result.current).toBe(5))
   })
 
+  it("useRuntime({ layer }) should allow local Env override", async () => {
+    const StepConfigTag = Context.GenericTag<{ readonly step: number }>(
+      "@test/StepConfigHook",
+    )
+
+    const BaseLayer = Layer.succeed(StepConfigTag, { step: 1 })
+    const InnerLayer = Layer.succeed(StepConfigTag, { step: 5 })
+
+    const localRuntime = ManagedRuntime.make(
+      CounterModule.live({ count: 0 }) as Layer.Layer<any, never, never>,
+    )
+
+    const useStepConfigWithHookLayer = () => {
+      const adaptedRuntime = useRuntime({ layer: InnerLayer })
+      const [step, setStep] = React.useState<number | null>(null)
+
+      React.useEffect(() => {
+        void adaptedRuntime.runPromise(
+          Effect.gen(function* () {
+            const cfg = (yield* StepConfigTag) as { readonly step: number }
+            setStep(cfg.step)
+          }),
+        )
+      }, [adaptedRuntime])
+
+      return step
+    }
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <RuntimeProvider runtime={localRuntime} layer={BaseLayer}>
+        {children}
+      </RuntimeProvider>
+    )
+
+    const { result } = renderHook(() => useStepConfigWithHookLayer(), {
+      wrapper,
+    })
+
+    await waitFor(() => expect(result.current).toBe(5))
+  })
+
   it("should not leak scoped resources when RuntimeProvider unmounts", async () => {
     let activeResources = 0
 
@@ -266,10 +303,7 @@ describe("React Hooks", () => {
     )
 
     const localRuntime = ManagedRuntime.make(
-      Layer.scoped(
-        CounterModule,
-        ModuleRuntime.make({ count: 0 }),
-      ),
+      CounterModule.live({ count: 0 }) as Layer.Layer<any, never, never>,
     )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -300,13 +334,16 @@ describe("React Hooks", () => {
   it("nested RuntimeProvider.runtime should override parent runtime", async () => {
     const DualState = Schema.Struct({ count: Schema.Number })
     const DualActions = { inc: Schema.Void }
-    const DualCounter = Logix.Module("DualCounter", {
+    const DualCounter = Logix.Module.make("DualCounter", {
       state: DualState,
       actions: DualActions,
     })
 
     const DualLogic = DualCounter.logic(($) =>
-      $.onAction("inc").update((s) => ({ ...s, count: s.count + 1 })),
+      Effect.gen(function* () {
+        // 在 run 段挂载 watcher，避免 setup 阶段触发 Phase Guard
+        yield* $.onAction("inc").update((s) => ({ ...s, count: s.count + 1 }))
+      }),
     )
 
     const runtimeA = ManagedRuntime.make(
@@ -345,28 +382,27 @@ describe("React Hooks", () => {
 
   it("should support multiple modules in a single RuntimeProvider", async () => {
     const LoggerState = Schema.Struct({ logs: Schema.Array(Schema.String) })
-    const Logger = Logix.Module("Logger", {
+    const Logger = Logix.Module.make("Logger", {
       state: LoggerState,
       actions: { log: Schema.String },
     })
 
     const loggerLogic = Logger.logic(($) =>
-      $.onAction("log").run((action) =>
-        $.state.update((s) => ({
-          ...s,
-          logs: [...s.logs, action.payload],
-        })),
-      ),
+      Effect.gen(function* () {
+        // Logger 只在 run 段监听 log Action
+        yield* $.onAction("log").run((action) =>
+          $.state.update((s) => ({
+            ...s,
+            logs: [...s.logs, action.payload],
+          })),
+        )
+      }),
     )
 
     // 复用同一个 ManagedRuntime，挂载 Counter + Logger 两个模块
     const localRuntime = ManagedRuntime.make(
       Layer.mergeAll(
-        Layer.scoped(CounterModule, ModuleRuntime.make({ count: 0 })) as Layer.Layer<
-          any,
-          never,
-          any
-        >,
+        CounterModule.live({ count: 0 }) as Layer.Layer<any, never, any>,
         Logger.live({ logs: [] }, loggerLogic) as Layer.Layer<any, never, any>,
       ) as Layer.Layer<any, never, never>,
     )

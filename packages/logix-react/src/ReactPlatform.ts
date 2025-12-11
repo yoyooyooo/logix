@@ -35,12 +35,15 @@ export const ReactPlatform = {
   /**
    * Creates a root provider component for a given runtime.
    *
-   * 调用方负责构造并管理 Runtime 的生命周期（通常通过 LogixRuntime.make），
+   * 调用方负责构造并管理 Runtime 的生命周期（通常通过 Logix.Runtime.make），
    * ReactPlatform 只负责在 React 树中提供该 Runtime。
-   */
-  createRoot: (runtime: ManagedRuntime.ManagedRuntime<never, any>) => {
+  */
+  createRoot: (runtime: ManagedRuntime.ManagedRuntime<any, any>) => {
     return ({ children }: { children: React.ReactNode }) => {
-      return React.createElement(RuntimeProvider, { runtime, children })
+      return React.createElement(RuntimeProvider, {
+        runtime: runtime as ManagedRuntime.ManagedRuntime<any, any>,
+        children,
+      })
     }
   }
 }

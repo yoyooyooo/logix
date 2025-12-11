@@ -2,6 +2,7 @@
 title: Logix Platform Deep Dive Analysis (10 Rounds)
 status: draft
 version: 2025-11-28
+related: []
 ---
 
 # Logix 平台化深度推演 (10 Rounds Deep Dive)

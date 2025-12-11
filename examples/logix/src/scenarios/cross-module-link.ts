@@ -8,7 +8,7 @@
  */
 
 import { Effect, Schema, Context, Stream, Layer } from 'effect'
-import { Logix, Logic, Link } from '@logix/core'
+import * as Logix from '@logix/core'
 
 // ---------------------------------------------------------------------------
 // 1. Region Module (Simplified)
@@ -22,15 +22,17 @@ const RegionActions = {
   'region/select': Schema.String,
 }
 
-const RegionModule = Logix.Module('RegionModule', {
+const RegionModule = Logix.Module.make('RegionModule', {
   state: RegionState,
   actions: RegionActions,
 })
 
 const RegionLogic = RegionModule.logic(($) =>
-  $.onAction('region/select').run((action) =>
-    $.state.update((s) => ({ ...s, province: action.payload }))
-  )
+  Effect.gen(function* () {
+    yield* $.onAction('region/select').run((action) =>
+      $.state.update((s) => ({ ...s, province: action.payload })),
+    )
+  }),
 )
 
 // ---------------------------------------------------------------------------
@@ -47,20 +49,22 @@ const CartActions = {
   'cart/resetShippingFee': Schema.Void,
 }
 
-const CartModule = Logix.Module('CartModule', {
+const CartModule = Logix.Module.make('CartModule', {
   state: CartState,
   actions: CartActions,
 })
 
 const CartLogic = CartModule.logic(($) =>
-  Effect.all([
-    $.onAction('cart/addShippingFee').run((action) =>
-      $.state.update((s) => ({ ...s, shippingFee: action.payload }))
-    ),
-    $.onAction('cart/resetShippingFee').run(() =>
-      $.state.update((s) => ({ ...s, shippingFee: 0 }))
-    ),
-  ])
+  Effect.gen(function* () {
+    yield* Effect.all([
+      $.onAction('cart/addShippingFee').run((action) =>
+        $.state.update((s) => ({ ...s, shippingFee: action.payload })),
+      ),
+      $.onAction('cart/resetShippingFee').run(() =>
+        $.state.update((s) => ({ ...s, shippingFee: 0 })),
+      ),
+    ])
+  }),
 )
 
 // ---------------------------------------------------------------------------
@@ -69,7 +73,7 @@ const CartLogic = CartModule.logic(($) =>
 
 const REMOTE_PROVINCES = ['Tibet', 'Xinjiang']
 
-export const RegionShippingLink = Link.make(
+export const RegionShippingLink = Logix.Link.make(
   {
     modules: [RegionModule, CartModule] as const,
   },
@@ -99,12 +103,12 @@ export const RegionShippingLink = Link.make(
 // 5. Module Implementations & Runtime Composition
 // ---------------------------------------------------------------------------
 
-export const RegionImpl = RegionModule.make({
+export const RegionImpl = RegionModule.implement({
   initial: { province: undefined },
   logics: [RegionLogic],
 })
 
-export const CartImpl = CartModule.make({
+export const CartImpl = CartModule.implement({
   initial: { items: [], shippingFee: 0 },
   logics: [CartLogic],
 })

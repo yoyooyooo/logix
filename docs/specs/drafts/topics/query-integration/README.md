@@ -4,6 +4,7 @@ status: draft
 version: 2025-11-30
 value: extension
 priority: next
+related: []
 ---
 
 # Query Integration · 概览与路线图
@@ -21,7 +22,7 @@ priority: next
 
 ### 核心设计方向
 
-**三层渐进式 API**（从声明式到手动）：
+**三层渐进式 API**（从声明式到手动），在实现上统一遵守「Schema Metadata + Helper」模型，并允许通过工程化工具在需要时提前编译部分能力：
 
 1. **Layer 1: Declarative Query Field** (`Query.field`)
    - 目标：80% 标准 GET 场景
@@ -47,8 +48,10 @@ priority: next
 
 - [01-unified-api-design.md](./01-unified-api-design.md) - 三层 API 设计与架构评估
 - [02-integration-strategies.md](./02-integration-strategies.md) - TanStack Query 集成策略（零封装 vs 二次封装）
-- [03-module-computed.md](./03-module-computed.md) - Module 层 Computed 与 Query 的完美妥协
-- [04-reactive-paradigm.md](./04-reactive-paradigm.md) - Reactive Schema 与统一数据范式
+- [03-module-computed.md](./03-module-computed.md) - Module 层 Computed 与 Query 的融合
+- [04-query-as-capability-pattern.md](./04-query-as-capability-pattern.md) - Query as Capability: Config-Driven Integration Pattern (Config as Service 模式应用)
+
+> **Note**: Reactive Paradigm and Schema related drafts have been moved to [Reactive, Computed & Linkage](../reactive-and-linkage/README.md).
 
 ## 待决问题
 

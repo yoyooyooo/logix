@@ -10,8 +10,8 @@
  *   - 展示在真实场景中“一次操作串联多个 Pattern”时，Logix/Effect-ts 的写法。
  */
 
-import { Effect, Schema } from 'effect'
-import { Logix } from '@logix/core'
+import { Effect, Schema } from "effect"
+import * as Logix from "@logix/core"
 import {
   runBulkOperationPattern,
   SelectionService,
@@ -47,7 +47,7 @@ export type CompositionAction = Logix.ActionOf<CompositionShape>
 // Module：定义组合场景模块
 // ---------------------------------------------------------------------------
 
-export const CompositionModule = Logix.Module('CompositionModule', {
+export const CompositionModule = Logix.Module.make('CompositionModule', {
   state: CompositionStateSchema,
   actions: CompositionActionMap,
 })
@@ -119,7 +119,7 @@ export const CompositionLogic = CompositionModule.logic<CompositionServices>(($:
 // Impl / Live：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-export const CompositionImpl = CompositionModule.make<
+export const CompositionImpl = CompositionModule.implement<
   SelectionService | BulkOperationService | NotificationService | FileUploadService | ImportService
 >({
   initial: {

@@ -78,28 +78,62 @@ console.log(result.trace)
 
 ### 3.2 Test API Capabilities
 
-The `api` object provided in `defineTest` exposes the following capabilities:
+`TestProgram.run` 提供的 `api` 对象（以主模块为视角）当前具备：
 
-```typescript
-interface TestApi<State, Actions> {
-  // Dispatch an action to the module under test
-  dispatch(action: Action): Effect<void>
-
-  // Assertions (auto-retrying)
+```ts
+interface TestApi<Sh extends Logix.AnyModuleShape> {
+  dispatch(action: Logix.ActionOf<Sh>): Effect.Effect<void>
   assert: {
-    // Assert state matches a predicate
-    state(predicate: (s: State) => boolean): Effect<void>
-
-    // Assert a specific signal was emitted
-    signal(type: string, payload?: unknown): Effect<void>
-
-    // Assert a service method was called n times
-    serviceCalls(tag: Context.Tag<any, any>, times: number): Effect<void>
+    state(
+      predicate: (s: Logix.StateOf<Sh>) => boolean,
+      options?: WaitUntilOptions,
+    ): Effect.Effect<void, Error, unknown>
+    signal(
+      expectedType: string,
+      expectedPayload?: unknown,
+      options?: WaitUntilOptions,
+    ): Effect.Effect<void, Error, unknown>
   }
+}
+
+interface WaitUntilOptions {
+  readonly maxAttempts?: number
+  readonly step?: DurationInput
 }
 ```
 
-### 3.3 `TestRuntime`
+实现约定：
+
+- `assert.state` 与 `assert.signal` 均依赖 `TestClock` 与内部的 `waitUntil` 工具自动重试；
+- 默认最多重试约 `20` 次，每次推进虚拟时钟（默认步长 `10 millis`）并 `yieldNow`；
+- 调用方可以通过 `WaitUntilOptions` 调整最大重试次数与步长，用于适配更慢的异步场景。
+
+> [!NOTE]
+> 规格中预留的 `assert.serviceCalls(...)` 能力仍在规划中，当前实现尚未提供；后续如需落地会优先在本文件补充。
+
+### 3.3 `ExecutionResult` & `Execution` Helpers
+
+`ExecutionResult` 作为场景运行的统一结果结构，包含：
+
+- `state`：主模块最终 State；
+- `actions`：按时间顺序收集到的 Action 序列；
+- `trace`：包含 State / Action / Error 的详细时序事件。
+
+围绕该结果，`Execution` 命名空间目前提供：
+
+- 查询工具：
+  - `Execution.hasAction(result, predicate)`；
+  - `Execution.getActionsByTag(result, tag)`；
+  - `Execution.hasError(result)` / `Execution.getErrors(result)`。
+- 抛错式断言工具：
+  - `Execution.expectActionTag(result, tag, { times? })`；
+  - `Execution.expectNoError(result)`；
+  - `Execution.expectNoActionTag(result, tag)`：断言某个 tag 的 Action 不存在；
+  - `Execution.expectActionSequence(result, [tag1, tag2, ...])`：按顺序断言完整的 Action tag 序列。
+
+这些 helper 主要面向「集成测试 + 调试」场景，用于替代松散的 `expect(...).toEqual(...)`，也为未来的 DevTools / AI 分析提供结构化入口。
+
+### 3.4 `TestRuntime`
 
 Internally used by `runTest` to provide a `TestContext` where:
 - `Clock` is replaced by `TestClock`.

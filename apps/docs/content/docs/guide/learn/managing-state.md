@@ -3,15 +3,29 @@ title: 管理状态 (Managing State)
 description: 使用 $.state 与用例级 Action 管理单一事实源。
 ---
 
-
-
-在 Logix 中，**状态是单一事实源 (Single Source of Truth)**：  
+在 Logix 中，**状态是单一事实源 (Single Source of Truth)**：
 每个 Module 持有一棵自己的 State 树，所有 UI 渲染、业务联动和副作用都围绕它展开。
 
 本篇聚焦两件事：
 
 1. 如何通过 `$.state` 安全地读取和更新状态；
 2. 当“后一步逻辑需要依赖前一步的最新状态”时，推荐的写法是什么。
+
+### 适合谁
+
+- 已经会写简单的 Logic，希望在项目里设计更清晰的状态读写策略；
+- 遇到过“连续 dispatch + sleep 才能拿到最新状态”的实现，想要更好的替代方案。
+
+### 前置知识
+
+- 熟悉 [Modules & State](../essentials/modules-and-state) 中的基本概念；
+- 了解 Bound API 上的 `$.state.read / update / mutate`。
+
+### 读完你将获得
+
+- 一组在团队中可复用的“状态读写规范”；
+- 知道如何在 Logic 内部顺序地完成“更新状态 + 执行业务”，而不是在调用方拼装时序；
+- 对“用例级 Action”有直观认识，能够在自己的业务中识别出这类场景。
 
 ## 1. 用 $.state 读写状态
 
@@ -26,19 +40,21 @@ description: 使用 $.state 与用例级 Action 管理单一事实源。
 
 ```ts
 // 读取当前状态
-const state = yield* $.state.read
+const state = yield * $.state.read
 
 // 纯函数更新
-yield* $.state.update((prev) => ({
-  ...prev,
-  count: prev.count + 1,
-}))
+yield *
+  $.state.update((prev) => ({
+    ...prev,
+    count: prev.count + 1,
+  }))
 
 // Draft 更新（推荐）
-yield* $.state.mutate((draft) => {
-  draft.count += 1
-  draft.meta.lastUpdatedAt = Date.now()
-})
+yield *
+  $.state.mutate((draft) => {
+    draft.count += 1
+    draft.meta.lastUpdatedAt = Date.now()
+  })
 ```
 
 在 Effect 语义下：
@@ -57,9 +73,9 @@ yield* $.state.mutate((draft) => {
 
 ```ts
 // 不推荐：在调用方连续 dispatch，并通过 sleep 等待
-yield* runtime.dispatch({ _tag: "setFilter", payload: newFilter })
+yield * runtime.dispatch({ _tag: 'setFilter', payload: newFilter })
 // sleep(50) 或 Effect.sleep(...)
-yield* runtime.dispatch({ _tag: "reload", payload: undefined })
+yield * runtime.dispatch({ _tag: 'reload', payload: undefined })
 ```
 
 这类写法有几个问题：
@@ -77,7 +93,7 @@ yield* runtime.dispatch({ _tag: "reload", payload: undefined })
 在 Module 中，为这类组合操作单独定义一个 Action，例如：
 
 ```ts
-const Search = Logix.Module("Search", {
+const Search = Logix.Module.make('Search', {
   state: Schema.Struct({
     filter: Schema.String,
     items: Schema.Array(Schema.String),
@@ -96,7 +112,7 @@ const Search = Logix.Module("Search", {
 
 ```ts
 const logic = Search.logic(($) =>
-  $.onAction("applyFilterAndReload").run(({ payload }) =>
+  $.onAction('applyFilterAndReload').run(({ payload }) =>
     Effect.gen(function* () {
       // 第一步：写入最新的筛选条件
       yield* $.state.update((s) => ({ ...s, filter: payload.filter }))
@@ -115,10 +131,11 @@ const logic = Search.logic(($) =>
 调用方只需要派发一次用例级 Action：
 
 ```ts
-yield* runtime.dispatch({
-  _tag: "applyFilterAndReload",
-  payload: { filter: newFilter },
-})
+yield *
+  runtime.dispatch({
+    _tag: 'applyFilterAndReload',
+    payload: { filter: newFilter },
+  })
 ```
 
 这样可以保证：
@@ -127,11 +144,17 @@ yield* runtime.dispatch({
 - 外层调用方只关注“发起一个业务用例”，不再关心内部是“一次还是多次更新”；
 - 不需要任何 `sleep` 或魔法时间常数，就能自然获得“后一步看到的是前一步之后的状态”。
 
-> 更完整的示例与其他常见场景（例如表单提交、批量更新）可以参考  
+> 更完整的示例与其他常见场景（例如表单提交、批量更新）可以参考
 > [「常用配方」中的“用例级 Action 替代连续 dispatch”](../../recipes/common-patterns)。
 
 ## 4. 小结
 
 - 状态的读写应尽量集中在 Logic 内部，通过 `$.state.read / update / mutate` 完成；
 - 当后续步骤需要依赖“刚刚写入的最新状态”时，优先设计一个**用例级 Action**，在 Logic 里顺序编排，而不是在调用方拼多个 dispatch；
-- UI 组件和外层调用方只负责派发“意图”，具体“先做什么再做什么”交给 Logic 管理。 
+- UI 组件和外层调用方只负责派发“意图”，具体“先做什么再做什么”交给 Logic 管理。
+
+## 下一步
+
+- 深入了解模块生命周期：[生命周期与 Watcher](./lifecycle-and-watchers)
+- 学习跨模块通信：[跨模块通信](./cross-module-communication)
+- 查看运行时架构解析：[深度解析](./deep-dive)

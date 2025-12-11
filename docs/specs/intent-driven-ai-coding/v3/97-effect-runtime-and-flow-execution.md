@@ -125,7 +125,7 @@ Draft 的定义方式与 Module 几乎一致，但更加轻量：
 
 ```typescript
 // 1. 定义 Draft (Schema-First)
-const WizardDraft = Logix.Module('WizardDraft', {
+const WizardDraft = Logix.Module.make('WizardDraft', {
   // Draft 内部的临时状态
   state: Schema.Struct({ step: Schema.Number, draftData: DataSchema }),
   // Draft 启动时需要的上下文（只读，作为初始状态的一部分或 Context）

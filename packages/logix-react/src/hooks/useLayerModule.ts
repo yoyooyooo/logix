@@ -1,6 +1,6 @@
 import React from "react"
 import { Context, Effect, Layer } from "effect"
-import { Logix } from "@logix/core"
+import * as Logix from "@logix/core"
 import { useLocalModule } from "./useLocalModule.js"
 
 /**
@@ -37,4 +37,3 @@ export function useLayerModule<
     Logix.ActionOf<Sh>
   >
 }
-

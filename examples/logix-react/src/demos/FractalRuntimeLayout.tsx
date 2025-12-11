@@ -1,8 +1,9 @@
-import React from "react"
-import { Context, Effect, Layer, ManagedRuntime } from "effect"
-import { Logix } from "@logix/core"
-import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from "@logix/react"
-import { CounterModule, CounterImpl } from "../modules/counter"
+import React from 'react'
+import { Context, Effect, Layer } from 'effect'
+import * as Logix from '@logix/core'
+import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from '@logix/react'
+import { devtoolsLayer } from '@logix/devtools-react'
+import { CounterModule, CounterImpl } from '../modules/counter'
 
 // 演示“分形 Runtime Tree”：全局 Runtime + 局部 RuntimeProvider layer 注入。
 
@@ -11,25 +12,21 @@ interface ThemeService {
   readonly name: string
 }
 
-const ThemeTag = Context.GenericTag<ThemeService>("@examples/ThemeService")
+const ThemeTag = Context.GenericTag<ThemeService>('@examples/ThemeService')
 
-const GlobalThemeLayer = Layer.succeed(ThemeTag, { name: "GlobalTheme" })
-const FeatureThemeLayer = Layer.succeed(ThemeTag, { name: "FeatureTheme" })
+const GlobalThemeLayer = Layer.succeed(ThemeTag, { name: 'GlobalTheme' })
+const FeatureThemeLayer = Layer.succeed(ThemeTag, { name: 'FeatureTheme' })
 
-const appRuntime = ManagedRuntime.make(
-  CounterImpl.layer as Layer.Layer<
-    Logix.ModuleRuntime<
-      Logix.StateOf<typeof CounterModule.shape>,
-      Logix.ActionOf<typeof CounterModule.shape>
-    >,
-    never,
-    never
-  >,
-) as ManagedRuntime.ManagedRuntime<never, any>
+// 应用级 Runtime：承载 Debug / Devtools 与业务模块，Theme 通过 RuntimeProvider.layer 注入，
+// 便于在不同 Provider 子树中组合不同的 Env（例如 ThemeService）而共用同一 Runtime。
+const appRuntime = Logix.Runtime.make(CounterImpl, {
+  label: 'FractalRuntimeDemo',
+  layer: devtoolsLayer,
+})
 
 const ThemeProbe: React.FC<{ label: string }> = ({ label }) => {
   const runtime = useRuntime()
-  const [themeName, setThemeName] = React.useState<string>("(unknown)")
+  const [themeName, setThemeName] = React.useState<string>('(unknown)')
 
   React.useEffect(() => {
     void runtime.runPromise(
@@ -62,23 +59,21 @@ const ThemeProbe: React.FC<{ label: string }> = ({ label }) => {
 
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-500 dark:text-gray-400">当前值</span>
-        <span className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">
-          {value}
-        </span>
+        <span className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">{value}</span>
       </div>
 
       <div className="flex gap-2">
         <button
           type="button"
           className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95"
-          onClick={() => dispatch({ _tag: "dec", payload: undefined })}
+          onClick={() => dispatch({ _tag: 'dec', payload: undefined })}
         >
           -1
         </button>
         <button
           type="button"
           className="flex-1 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700 active:bg-indigo-800 transition-all active:scale-95 shadow-sm shadow-indigo-600/20"
-          onClick={() => dispatch({ _tag: "inc", payload: undefined })}
+          onClick={() => dispatch({ _tag: 'inc', payload: undefined })}
         >
           +1
         </button>
@@ -92,14 +87,18 @@ export const FractalRuntimeLayout: React.FC = () => {
     <RuntimeProvider runtime={appRuntime} layer={GlobalThemeLayer}>
       <div className="space-y-8">
         <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            分形 Runtime Tree 示例
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">分形 Runtime Tree 示例</h2>
           <p className="text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">
-            本示例展示了如何在应用级 Runtime 上注入全局主题 Layer，
-            并在某个子树下通过嵌套 RuntimeProvider + 额外 Layer 覆盖主题。
-            两个区域共享同一个 <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">CounterModule</code>，
-            但读取到的 <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">ThemeService</code> 值不同。
+            本示例展示了如何在应用级 Runtime 上注入全局主题 Layer， 并在某个子树下通过嵌套 RuntimeProvider + 额外 Layer
+            覆盖主题。 两个区域共享同一个{' '}
+            <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">
+              CounterModule
+            </code>
+            ， 但读取到的{' '}
+            <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">
+              ThemeService
+            </code>{' '}
+            值不同。
           </p>
         </div>
 

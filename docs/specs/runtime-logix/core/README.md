@@ -14,11 +14,11 @@ Logix Core 是 Logix 平台的运行时心脏。它是一个基于 **Effect-TS**
 ## 快速开始（Module-First）
 
 ```ts
-import { Logix } from '@logix/core';
+import * as Logix from '@logix/core';
 import { Schema, Effect } from 'effect';
 
 // 1. 定义领域 Module（纯定义，不含实例）
-export const CounterModule = Logix.Module('Counter', {
+export const CounterModule = Logix.Module.make('Counter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
     inc: Schema.Void,

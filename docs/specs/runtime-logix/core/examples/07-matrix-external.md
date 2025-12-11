@@ -16,7 +16,7 @@ class PriceService extends Context.Tag("PriceService")<PriceService, {
 // 2. 在 Logic 中消费（概念上，这里的 `$Stock` 表示针对 StockShape + PriceService 预绑定的 Bound API）
 const realTimeLogic: Logic.Of<StockShape, PriceService> =
   Effect.gen(function* (_) {
-    const priceSvc = yield* $Stock.services(PriceService);
+    const priceSvc = yield* $Stock.use(PriceService);
 
     // 将外部价格流接入状态更新
     yield* priceSvc.price$.pipe(
@@ -36,7 +36,7 @@ const realTimeLogic: Logic.Of<StockShape, PriceService> =
 // 概念上，这里的 `$Data` 表示针对 DataShape + HighFrequencyService 预绑定的 Bound API。
 const highFrequencyLogic: Logic.Of<DataShape, HighFrequencyService> =
   Effect.gen(function* (_) {
-    const hfSvc = yield* $Data.services(HighFrequencyService);
+    const hfSvc = yield* $Data.use(HighFrequencyService);
 
     yield* hfSvc.events$.pipe(
       // 每 50 毫秒或每 100 个事件，将事件打包成一个数组 (Chunk)
@@ -63,7 +63,7 @@ const highFrequencyLogic: Logic.Of<DataShape, HighFrequencyService> =
 // 概念上，这里的 `$User` 表示针对 UserShape + UserApi 预绑定的 Bound API。
 const initialLoadLogic: Logic.Of<UserShape, UserApi> =
   Effect.gen(function* (_) {
-    const api = yield* $User.services(UserApi);
+    const api = yield* $User.use(UserApi);
     const { userId } = yield* $User.state.read;
 
     // Logic 初始化时直接执行加载

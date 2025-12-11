@@ -3,7 +3,9 @@
     "root": true,
     "pages": [
         "get-started",
+        "essentials",
         "learn",
+        "advanced",
         "recipes"
     ]
 }

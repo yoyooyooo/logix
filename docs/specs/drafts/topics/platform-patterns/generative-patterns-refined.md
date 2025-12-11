@@ -2,6 +2,7 @@
 title: Generative Patterns & AI Slots (Refined)
 status: draft
 version: 2025-11-28
+related: []
 ---
 
 # Generative Patterns & AI Slots (Refined)

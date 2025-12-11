@@ -31,7 +31,7 @@
 
 简要说明：
 
-- 在定义层，用 `Logix.Module('Id', { state, actions })` 定义领域 Module，它同时承担 Id / Schema / Tag 三种角色；
+- 在定义层，用 `Logix.Module.make('Id', { state, actions })` 定义领域 Module，它同时承担 Id / Schema / Tag 三种角色；
 - 在逻辑层，通过 `Module.logic(($)=>Effect.gen(...))` 编写 Logic，`$` 是绑定了当前 ModuleRuntime + 业务服务 Env 的 Bound API；
 - 在协作层，通过 `$.use(Module)` 获取其他领域模块的只读句柄，用 Fluent DSL（`$.onState / $.onAction / $.on(stream)` + `$.state/dispatch`）表达单 Module 内与跨 Module 的联动；
 - 在平台层，这些 Fluent 链被解析为 `IntentRule` IR，用于 Universe/Galaxy 视图与图码双向同步。

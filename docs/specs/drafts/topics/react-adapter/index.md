@@ -2,6 +2,7 @@
 title: Logix React Adapter Specs
 status: draft
 version: 2025-11-28
+related: []
 ---
 
 # Logix React Adapter Specs (L3 Draft)

@@ -41,7 +41,7 @@ class UserApi extends Context.Tag("UserApi")<UserApi, {
 }>() {}
 
 // 定义领域 Module
-export const RegisterModule = Logix.Module('Register', {
+export const RegisterModule = Logix.Module.make('Register', {
   state: RegisterStateSchema,
   actions: RegisterActionSchema,
 });

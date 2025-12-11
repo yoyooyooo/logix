@@ -12,7 +12,11 @@
         "sourceMap": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "outDir": "./dist"
+        "outDir": "./dist",
+        "baseUrl": ".",
+        "paths": {
+            "@logix/core": ["src/index.ts"]
+        }
     },
     "include": [
         "src/**/*"

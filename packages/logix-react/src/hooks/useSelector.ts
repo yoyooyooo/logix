@@ -1,6 +1,6 @@
 import { useCallback } from "react"
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector"
-import { Logix } from "@logix/core"
+import * as Logix from "@logix/core"
 import { Effect, Stream, Fiber } from "effect"
 import { useRuntime } from "../components/RuntimeProvider.js"
 import { ReactModuleHandle, useModuleRuntime } from "../internal/useModuleRuntime.js"

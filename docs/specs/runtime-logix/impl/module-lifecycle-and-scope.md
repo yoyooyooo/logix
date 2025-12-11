@@ -172,16 +172,16 @@ const onInit = Effect.gen(function* () {
 
 核心要点：
 
-- **Scope 是“资源包裹层”**：  
-  - 在 Effect 里，`Scope` 可以理解为“一块挂资源的挂载点”；  
-  - 某棵 ModuleRuntime、它的 watcher Fiber、内部用到的 PubSub/SubscriptionRef，都会挂在某个 Scope 上。  
-- **Context 不是全局单例**：  
-  - `Layer.buildWithScope(layer, scope)` 会构造一份“只在这个 Scope 中有效”的 Context（Env）；  
+- **Scope 是“资源包裹层”**：
+  - 在 Effect 里，`Scope` 可以理解为“一块挂资源的挂载点”；
+  - 某棵 ModuleRuntime、它的 watcher Fiber、内部用到的 PubSub/SubscriptionRef，都会挂在某个 Scope 上。
+- **Context 不是全局单例**：
+  - `Layer.buildWithScope(layer, scope)` 会构造一份“只在这个 Scope 中有效”的 Context（Env）；
   - 这份 Context 随 Scope 生命周期存在，Scope 关掉后，这份 Env 也就随之失效，不会挂在什么全局静态变量上。
 
 React 侧的 `useLocalModule` 必须保证：
 
-1. 每次调用只创建 **一棵活的 Scope + ModuleRuntime**；  
+1. 每次调用只创建 **一棵活的 Scope + ModuleRuntime**；
 2. 组件卸载或依赖变更时，一定会调用 `Scope.close` 关闭这棵 Scope。
 
 伪代码示意：
@@ -231,17 +231,17 @@ function useLocalModule(factory, deps) {
 
 **对“内存会不会一直涨”的直观解读：**
 
-- 每个 `useLocalModule` 调用都会对应一棵 Scope，Scope 里挂着这一棵 ModuleRuntime 和它相关的资源；  
-- 当组件卸载时，我们显式调用 `Scope.close`：  
-  - Effect Runtime 会负责触发所有 finalizer（包括 `ModuleRuntime` 的 `onDestroy`）；  
-  - 把挂在这个 Scope 上的 Context/资源从运行时图中移除；  
-  - React 不再持有那棵 `ModuleRuntime` 的引用，剩下交给 JS GC 回收。  
+- 每个 `useLocalModule` 调用都会对应一棵 Scope，Scope 里挂着这一棵 ModuleRuntime 和它相关的资源；
+- 当组件卸载时，我们显式调用 `Scope.close`：
+  - Effect Runtime 会负责触发所有 finalizer（包括 `ModuleRuntime` 的 `onDestroy`）；
+  - 把挂在这个 Scope 上的 Context/资源从运行时图中移除；
+  - React 不再持有那棵 `ModuleRuntime` 的引用，剩下交给 JS GC 回收。
 - 只要遵守“每个组件对应的 Scope 最终一定会被关闭”这一点，就不会出现“用久了局部 Module 内存一直膨胀”的情况。
 
 总结这一节的关键不变量：
 
-- 任意时刻，一个 `useLocalModule` 实例最多持有一个活跃的 `Scope`；  
-- React cleanup 必定调用 `Scope.close`，从而触发 `onDestroy` finalizer 和资源释放；  
+- 任意时刻，一个 `useLocalModule` 实例最多持有一个活跃的 `Scope`；
+- React cleanup 必定调用 `Scope.close`，从而触发 `onDestroy` finalizer 和资源释放；
 - 即使在 Strict Mode 下的“Mount → Unmount → Mount”序列中，之前的 Scope 也会被完整关闭，不会留下悬挂的 ModuleRuntime。
 
 ## 5. Global Module 的生命周期（AppRuntime 路径）
@@ -328,7 +328,7 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
 
 **关键点：**
 
-- 所有 `modules[].layer`（通常是 `ModuleImpl.layer` 或 `Module.live(...)` 返回值）会与 App 级基础 `layer` 一起构成一个大的 Layer，挂在 **同一棵 App Scope** 下；  
+- 所有 `modules[].layer`（通常是 `ModuleImpl.layer` 或 `Module.live(...)` 返回值）会与 App 级基础 `layer` 一起构成一个大的 Layer，挂在 **同一棵 App Scope** 下；
 - 这个 App Scope 由 `ManagedRuntime.make(finalLayer)` 持有：当 AppRuntime 被 `dispose()` 时，这棵 Scope 被关闭，所有全局 ModuleRuntime 和 Process 统一销毁。
 
 ### 5.2 AppRuntime.provide 与 ModuleImpl
@@ -343,16 +343,16 @@ AppRuntime.provide(
 )
 
 // 2. 直接传 ModuleImpl（推荐）
-const Impl = SomeModule.make({ initial, logics: [...] })
+const Impl = SomeModule.implement({ initial, logics: [...] })
 AppRuntime.provide(Impl) // 等价于 provide(Impl.module, Impl.layer)
 ```
 
-在 App 级 Runtime 中，可以抽象为“Root ModuleImpl + AppInfraLayer” 的组合（由 `LogixRuntime.make` 封装）。在 React 场景下，典型用法是：
+在 App 级 Runtime 中，可以抽象为“Root ModuleImpl + AppInfraLayer” 的组合（由 `Logix.Runtime.make` 封装）。在 React 场景下，典型用法是：
 
 ```tsx
-const CounterImpl = CounterModule.make({ initial: { count: 0 }, logics: [CounterLogic] })
+const CounterImpl = CounterModule.implement({ initial: { count: 0 }, logics: [CounterLogic] })
 
-const appRuntime = LogixRuntime.make(CounterImpl, {
+const appRuntime = Logix.Runtime.make(CounterImpl, {
   layer: AppInfraLayer,
 })
 
@@ -372,23 +372,23 @@ function CounterView() {
 }
 ```
 
-- `useModule(Tag)` 使用当前 AppRuntime 运行 Tag Effect：  
-  - 本质是 `ManagedRuntime.runSync(Tag)`，从 App 级 Env 中取出对应的 `ModuleRuntime` 实例；  
-  - 所有使用同一个 Tag 的组件共享这棵 ModuleRuntime（「全局模块」语义）。  
-- 当宿主显式调用 `ManagedRuntime.dispose()`（当前 PoC 中通常在应用卸载时处理）时，App Scope 被关闭：  
-  - 所有通过 `modules[].layer` 创建的 ModuleRuntime 会统一触发 `onDestroy`；  
+- `useModule(Tag)` 使用当前 AppRuntime 运行 Tag Effect：
+  - 本质是 `ManagedRuntime.runSync(Tag)`，从 App 级 Env 中取出对应的 `ModuleRuntime` 实例；
+  - 所有使用同一个 Tag 的组件共享这棵 ModuleRuntime（「全局模块」语义）。
+- 当宿主显式调用 `ManagedRuntime.dispose()`（当前 PoC 中通常在应用卸载时处理）时，App Scope 被关闭：
+  - 所有通过 `modules[].layer` 创建的 ModuleRuntime 会统一触发 `onDestroy`；
   - 所有通过 `processes` 启动的协调器/长期任务也会一起终止。
 
 ### 5.4 Global vs Local 的对比视角
 
-- Global Module（通过 AppRuntime 挂载）：  
-  - ModuleRuntime 的 Scope 挂在 AppRuntime 根 Scope 上；  
-  - `useModule(Tag)` 只能看到这棵全局实例；  
+- Global Module（通过 AppRuntime 挂载）：
+  - ModuleRuntime 的 Scope 挂在 AppRuntime 根 Scope 上；
+  - `useModule(Tag)` 只能看到这棵全局实例；
   - 适合 Auth、全局配置、跨页面共享的 Domain 模块。
 
-- Local Module（通过 `ModuleImpl + useModule(Impl)` 挂载）：  
-  - ModuleRuntime 的 Scope 挂在组件自己的局部 Scope 上（见上一节）；  
-  - 每次 `useModule(Impl)` 调用都会创建一棵新的 ModuleRuntime，随组件卸载销毁；  
+- Local Module（通过 `ModuleImpl + useModule(Impl)` 挂载）：
+  - ModuleRuntime 的 Scope 挂在组件自己的局部 Scope 上（见上一节）；
+  - 每次 `useModule(Impl)` 调用都会创建一棵新的 ModuleRuntime，随组件卸载销毁；
   - 适合页面/组件局部状态，不需要注册到 App 层。
 
 这两种模式在实现层共用同一套 `ModuleRuntime.make` / Layer 机制，只是 **Scope 的挂载点不同**：
@@ -404,7 +404,7 @@ function CounterView() {
 以一个简单 Module 为例：
 
 ```ts
-const CounterModule = Logix.Module("LocalCounter", {
+const CounterModule = Logix.Module.make("LocalCounter", {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
     increment: Schema.Void,
@@ -423,7 +423,7 @@ const CounterLogic = CounterModule.logic(($) =>
   }),
 )
 
-const CounterImpl = CounterModule.make({
+const CounterImpl = CounterModule.implement({
   initial: { count: 0 },
   logics: [CounterLogic],
 })
@@ -494,9 +494,9 @@ function Module(id, def) {
 
 从这个角度看，`.module` 和 `.layer` 是如何关联起来的就很清楚了：
 
-- `.module`：就是那个 Context.Tag，本身也是 ModuleInstance；  
-- `.layer`：内部使用 `.module` 作为 Tag，把 `ModuleRuntime.make(...)` 的结果挂到某个 Scope 的 Context 上；  
-- 当你调用 `Layer.buildWithScope(Impl.layer, scope)` 时，Tag 和 runtime 的映射才真正写入了 Env；  
+- `.module`：就是那个 Context.Tag，本身也是 ModuleInstance；
+- `.layer`：内部使用 `.module` 作为 Tag，把 `ModuleRuntime.make(...)` 的结果挂到某个 Scope 的 Context 上；
+- 当你调用 `Layer.buildWithScope(Impl.layer, scope)` 时，Tag 和 runtime 的映射才真正写入了 Env；
 - 随后 `Context.get(env, Impl.module)` 只是利用这条映射把 runtime 读出来。
 
 只要在某个 Scope 内执行：
@@ -524,51 +524,100 @@ useModule(handle: ModuleImpl): ModuleRuntime
 内部实现简化后相当于：
 
 ```ts
-function useModule(impl: ModuleImpl) {
-  return useLocalModule(
-    () =>
-      Effect.gen(function* () {
-        const scope = yield* Scope.make()
-        const env = yield* Layer.buildWithScope(impl.layer, scope)
-        const runtime = Context.get(env, impl.module)
-        // 注意：scope 的关闭由 useLocalModule 统一托管
-        return runtime
-      }),
-    [impl],
-  )
+### 6.2 React 局部模式：基于 ModuleCache 的托管
+
+在 L9「react-use-local-module-runtime-overhaul」实施后，React 适配层已切换为基于 **ModuleCache** 的实现。这解决了 StrictMode 下的资源抖动问题，并支持了 Suspense。
+
+`useModule(Impl)` 的内部实现不再直接操作 Scope，而是委托给 Cache：
+
+```ts
+function useModule(impl: ModuleImpl, options) {
+  const cache = getModuleCache(useRuntime())
+  // 1. 生成 Key (组件 ID + deps hash)
+  const key = computeKey(impl, options)
+
+  // 2. 从 Cache 读取 (可能抛出 Promise)
+  const runtime = cache.read(key, () => createFactory(impl))
+
+  // 3. 锁定生命周期 (Retain)
+  useEffect(() => cache.retain(key), [key])
+
+  return runtime
 }
 ```
 
-而 `useLocalModule(factory, deps)` 的职责是：
+**ModuleCache 核心机制**：
 
-1. 通过 `useRuntime()` 拿到当前 App/页面级 `ManagedRuntime`（`RuntimeProvider` 提供）；  
-2. 在 `useMemo` 里：
-   - `const scope = runtime.runSync(Scope.make())` 创建一个局部 Scope；
-   - `const moduleRuntime = runtime.runSync(factory(scope))` 构造 ModuleRuntime（`Layer.buildWithScope + Context.get`）；
-   - 返回 `{ scope, moduleRuntime }`；
-3. 在 `useEffect` cleanup 里：
-   - 组件卸载或 `deps` 变更时，调用 `runtime.runFork(Scope.close(scope, Exit.void))`；
-   - 触发该 Scope 下的 `ModuleRuntime` finalizer 和所有 `forkScoped` watcher 的中断。
+- **缓存维度**：每个 `ManagedRuntime` 对应一个 `ModuleCache`（WeakMap 关联）；
+- **生命周期**：采用 `Acquire -> Retain -> Release -> GC` 流程：
+  - **Acquire**：`readSync / read` 在 Render 阶段命中/创建 Entry，并为该 Entry 创建独立的 Effect Scope；
+  - **Retain / Release**：在 Commit / Cleanup 阶段通过 `retain(key)` / `release(key)` 维护 `refCount`，仅当 `refCount` 降至 0 时才进入 Idle；
+  - **延迟 GC**：Idle 后不会立即销毁，而是等待一小段窗口（如 500ms），若期间再次 `retain`（StrictMode 重挂载或会话恢复）则复用，否则关闭 Scope 并删除 Entry。
+- **双模式支持**：
+  - **同步模式 (默认)**：`readSync`，要求 Factory 同步返回，适合纯内存模块；
+  - **Suspense 模式**：`read`，支持异步 Factory，抛出 Promise 挂起组件。
 
-**这就形成了一个清晰的生命周期链条：**
+> **LifecycleManager 与 ModuleCache 的关系**
+>
+> - `LifecycleManager` 始终只关注“某棵 ModuleRuntime Scope 何时打开/关闭”，不关心该 Scope 是如何被创建或缓存的；
+> - `ModuleRuntime.make` 在自身 Scope 上注册 finalizer：Scope 关闭时先执行 `lifecycle.runDestroy`，再记录 `module:destroy` 并从 `runtimeRegistry` 卸载实例；
+> - `ModuleCache` 只是决定“某个 ModuleRuntime Scope 何时被关闭”：在 GC 阶段调用 `Scope.close(entry.scope)`，从而间接触发 `onDestroy`；
+> - 换言之：**ModuleCache 只影响 ModuleRuntime 的存在时长，不改变 `onInit/onDestroy/onError` 的语义与触发时机**。
 
-- 每次 `useModule(Impl)` 调用都会创建一棵独立的 `Scope + ModuleRuntime` 实例，挂在当前 React 组件之下；
-- 当组件卸载时，通过 `Scope.close` 统一销毁这棵 Scope，包括：  
-  - `ModuleRuntime` 自身（`module:destroy` + `lifecycle.onDestroy`）；  
-  - 所有 `runFork` / `runParallelFork` 等挂出的 watcher Fiber。
+> **历史背景**：
+> 在 v3 早期版本中，`useLocalModule` 曾采用“每次 Render/Effect 创建新 Scope”的朴素实现。这种方式在 React 18 StrictMode 下会导致 Module 被重复创建销毁（Mount -> Unmount -> Mount），触发不必要的 `onInit/onDestroy` 甚至状态丢失。引入 Resource Cache 后，这些问题已得到根治。
+
+### 6.2 模块资源缓存：ModuleCache 与 Key 语义
+
+当前 @logix/react 中，局部 ModuleImpl 的核心实现落在 `ModuleCache` 上，关键点如下：
+
+- 缓存维度：
+  - 每个 `ManagedRuntime` 对应一个 `ModuleCache`（通过 WeakMap 关联）；
+  - 缓存内部以 `ResourceKey: string` 区分不同的局部 Module 实例。
+- 同步模式（默认）：
+  - `useModule(Impl)` / `useModule(Impl, { deps })` 走 `cache.readSync(key, factory)`；
+  - key 由内部的“组件实例 ID + deps 哈希”组成（`instanceKey`），在 StrictMode 下通过专门策略避免 key 抖动；
+  - 这一模式只适用于 `.layer` 不包含真正异步步骤的 ModuleImpl。
+- Suspense 模式（`suspend: true`）：
+  - `useModule(Impl, { suspend: true, key, deps })` 走 `cache.read(key, factory)`，在 render 阶段启动异步构建并通过 Promise 驱动 Suspense；
+  - `ResourceKey` 完全由调用方提供的 `key` 控制（运行时只会附加稳定的 `deps` 哈希），**用于标识一份局部 ModuleRuntime 资源**；
+  - cache 内部通过 `status: "pending" | "success" | "error" + refCount + 延迟 GC` 管理 Scope 生命周期，避免 StrictMode / Suspense 带来的频繁 mount/unmount 造成泄漏：
+    - `pending`：初始化过程中，即便 `refCount` 为 0，也不会立即 GC，而是延后调度，直到状态变为 `success` / `error`；
+    - `success`：GC 时使用业务配置的 `gcTime`（默认约 500ms），支持会话级保活；
+    - `error`：将 `gcTime` 收紧为一个固定的短周期（实现中为常量 `ERROR_GC_DELAY_MS`），避免错误状态长期占用缓存并阻塞后续重试。
+
+需要特别强调的是：
+
+- 对于 **同步模式**，调用方可以不关心 `key`，库内部会根据组件实例自动生成稳定 key；
+- 对于 **Suspense 模式**，`key` 被视为运行时契约的一部分——Logix 规范要求调用方：
+  - 显式传入稳定的 `key`；
+  - 该 `key` 在“同一份局部 ModuleRuntime 的所有渲染尝试”之间必须保持不变；
+  - 不得依赖内部的默认 key 生成逻辑作为长期行为。
+
+> useId 与 Suspense 的边界（结合 L9 调研）
+>
+> - React 18 中，`useId` 的设计目标是「保证最终 commit / Hydration 时 DOM `id` 的拓扑稳定」，**并不保证在 Suspense 重试 / 并发中断 / 未提交分支中的中间值不变**；
+> - 将 `useId` 直接用作 `ModuleCache` 的 Key，会把「渲染中的中间状态」暴露给缓存层：一旦某次重试中 `useId` 生成了新的值，缓存就会认为这是“全新的资源”，从而不断创建新的 Scope 并一直抛 Promise，表现为 Suspense fallback 永远 pending；
+> - 因此，异步局部 ModuleImpl 的推荐模式是：
+>   - 在 Suspense 边界外层使用 `useId()` 或业务 ID 生成稳定前缀；
+>   - 将该前缀通过 props 传入内部组件，用于构造 `useModule(Impl, { suspend: true, key })` 所需的 Key；
+>   - 避免在 `useModule` 内部直接依赖 `useId` 作为唯一 Key 来源。
 
 ### 6.3 与 AppRuntime 的关系
 
-- **局部 ModuleImpl 模式**：  
-  - 完全不需要将 ModuleImpl 注册到应用级 AppRuntime（`modules`）中；  
+- **局部 ModuleImpl 模式**：
+  - 完全不需要将 ModuleImpl 注册到应用级 AppRuntime（`modules`）中；
   - 状态随组件生命周期创建/销毁，非常适合 B 端「每页一个局部模块」的场景。
 
-- **全局 Module 模式**：  
-  - ModuleImpl 可以作为 AppRuntime 的模块条目：`modules: [CounterImpl]`；  
+- **全局 Module 模式**：
+  - ModuleImpl 可以作为 AppRuntime 的模块条目：`modules: [CounterImpl]`；
   - 此时 ModuleRuntime 的 Scope 挂在 AppRuntime 上，`useModule(Tag)` 只能读取这棵“全局实例”，不再由 `useLocalModule` 额外创建 Scope。
 
-这两条路径在实现层完全共存：  
-核心区别只是 **Scope 的挂载点**——局部 ModuleImpl 挂在组件自己的 Scope 上，全局 Module 挂在 AppRuntime 的根 Scope 上。
+这两条路径在实现层完全共存：
+核心区别只是 **Scope 的挂载点与实例复用维度**：
+
+- 全局 Module：挂在应用级 Runtime Scope，同一个 Tag 全局唯一实例；
+- 局部 ModuleImpl：挂在组件所在 Runtime 上的 `ModuleCache` 管理的局部 Scope 树中，实例复用粒度由调用方提供的 `ResourceKey` 决定（同步模式由组件实例 ID 推导，Suspense 模式由显式 `key` 决定）。
 
 ## 7. 总结
 

@@ -28,10 +28,10 @@
 
 ```ts
 import { Schema } from 'effect';
-import { Logix } from '@logix/core';
+import * as Logix from '@logix/core';
 
 // 领域资产（Module Asset）：计数器
-export const Counter = Logix.Module('Counter', {
+export const Counter = Logix.Module.make('Counter', {
   state: Schema.Struct({
     count: Schema.Number,
   }),
@@ -84,7 +84,7 @@ export const CounterLogic = Counter.logic(($) =>
 
 ```ts
 // Counter.module.ts
-export const Counter = Logix.Module('Counter', {
+export const Counter = Logix.Module.make('Counter', {
   state: CounterStateSchema,
   actions: CounterActionSchema,
 });
@@ -101,7 +101,7 @@ export const CounterLive = Counter.live(
 
 > **总结**
 > - 概念层：Module 是 Intent/Asset 视角下的领域模块；
-> - 代码层：Module 由 `Logix.Module('Id', { state, actions })` 表示；
+> - 代码层：Module 由 `Logix.Module.make('Id', { state, actions })` 表示；
 > - 运行时层：Module 通过 `Module.live(initial, ...logics)` 投影为可注入的运行时 Layer。
 >
 > 我们刻意避免引入额外的 `Module.define` API，以保证架构只有一套定义入口，减轻后续维护与演进成本。

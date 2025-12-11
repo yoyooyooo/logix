@@ -1,11 +1,24 @@
 ---
-title: "常用配方"
+title: '常用配方'
 description: 常见 Logix 写法配方，可直接复用于实际业务。
 ---
 
-
-
 本指南汇集了常见的 Logix 写法配方，涵盖字段联动、异步校验、多字段约束等场景，可直接复用于实际业务。
+
+### 适合谁
+
+- 已经掌握基本 Module/Logic 写法，希望直接套用成熟的“字段联动/异步校验/多字段约束”等模式；
+- 在团队中负责沉淀常用片段到内部组件库/脚手架的同学。
+
+### 前置知识
+
+- 读过 [Flows & Effects](../essentials/flows-and-effects) 与相关 Learn 章节；
+- 能够看懂 `$.onState / $.flow.* / $.state.mutate` 的组合。
+
+### 使用方式
+
+- 可以直接复制本页代码片段，替换成自己的 State/Service 类型；
+- 也可以将这些模式提炼成团队内部的 Pattern / Helper，统一复用。
 
 ## 1. 字段联动与重置
 
@@ -46,7 +59,7 @@ const validateUsernameLogic = Effect.gen(function* (_) {
       $Form.flow.filter(username => username.length >= 3),
       $Form.flow.runLatest( // 确保只处理最后一次输入
         Effect.gen(function* (_) {
-          const api = yield* $Form.services(UserApi);
+          const api = yield* $Form.use(UserApi);
           const { username } = yield* $Form.state.read;
           const isTaken = yield* api.checkUsername(username);
           yield* $Form.state.mutate(draft => {
@@ -124,7 +137,7 @@ const calculateTotalsLogic = Effect.gen(function* (_) {
 ```typescript
 // 概念上，这里的 `$Page` 表示针对 PageShape + PageApi 预绑定的 Bound API。
 const initialLoadLogic = Effect.gen(function* (_) {
-    const api = yield* $Page.services(PageApi);
+    const api = yield* $Page.use(PageApi);
     const pageId = (yield* $Page.state.read).pageId; // 假设 pageId 已在初始状态中
 
     // Logic 初始化时直接执行加载
@@ -146,13 +159,13 @@ const initialLoadLogic = Effect.gen(function* (_) {
 
 **模式**: 将外部源（WebSocket 连接、定时器）作为 `Effect.Service` 注入到 `Logic` 的环境中。在 Logic 程序中，从服务中获取 `Stream`，并使用 `flow.run` 将其事件映射到状态更新。
 
-```typescript
+````typescript
 // 1. 定义服务
 class Ticker extends Context.Tag("Ticker")<Ticker, { readonly ticks$: Stream.Stream<number> }>() {}
 
 // 2. 在 Logic 中消费；`$Ticker` 概念上表示针对 TickerShape + Ticker 预绑定的 Bound API。
 const tickerLogic = Effect.gen(function* (_) {
-    const ticker = yield* $Ticker.services(Ticker);
+    const ticker = yield* $Ticker.use(Ticker);
 
     // 将外部 ticks$ 流接入 Logix
     yield* ticker.ticks$.pipe(
@@ -171,7 +184,7 @@ const tickerLogic = Effect.gen(function* (_) {
 
 ```typescript
 // 1. 定义 Module，增加一个用例级动作 applyFilterAndReload
-const Search = Logix.Module("Search", {
+const Search = Logix.Module.make("Search", {
   state: Schema.Struct({
     filter: Schema.String,
     items: Schema.Array(Schema.String),
@@ -199,10 +212,19 @@ const logic = Search.logic(($) =>
     }),
   ),
 )
-```
+````
 
 在这一模式下：
 
 - UI / 调用方只需触发一次 `applyFilterAndReload`，不需要自己关心“先 set 再 reload”以及中间的等待时机；
 - 顺序与依赖关系全部收敛在 Logic 内部，通过 `$.state.update` / `$.state.read` 自然保证“后一步总是看到前一步已经落地的状态”，避免在业务代码中堆叠 sleep 或魔法时间常数。
+
+## 下一步
+
+- 了解 React 集成的完整指南：[React 集成](./react-integration)
+- 查看 API 参考文档：[API 参考](../../api/)
+- 探索更多高级模式：[Unified API 示例](./unified-api)
+
+```
+
 ```

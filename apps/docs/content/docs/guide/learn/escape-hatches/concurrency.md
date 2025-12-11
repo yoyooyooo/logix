@@ -41,12 +41,12 @@ Logix 的 DSL 是围绕这两条轴来设计的：
 
 建议：
 
-- 如果一个 Logic 里只挂一条 watcher，可以直接写成：
-  - `const Logic = Module.logic(($) => $.onAction("...").run(...))`；
-  - 对于状态更新建议用 `update` / `mutate` 这种语法糖；
+- 如果一个 Logic 里只挂一条 watcher，可以统一用“安全默认写法”：
+  - `const Logic = Module.logic(($) => Effect.gen(function* () { yield* $.onAction("...").runFork(...) }))`；
+  - 这样可以把所有 `yield* $.onAction/$.onState/$.use` 都写在 generator 体内，避免在 setup 阶段误用 run-only 能力；
 - 当一个 Logic 里要挂多条 watcher 时，推荐模式是：
   - 用 `Effect.gen` + 多个 `yield* $.onAction(...).runFork(...)`；
-  - 或使用 `Effect.all([...])` 一次性挂上多条 watcher；
+  - 或在 `Effect.gen` 里 `yield* Effect.all([...], { concurrency: "unbounded" })` 一次性挂上多条 watcher；
 - 日常 watcher 推荐使用 `$.onAction(...).run(...)` / `runLatest` / `runExhaust`，结构直观且并发语义明确；
 - 只有在确实需要手动管理 Fiber 时，再用裸的 `Effect.forkScoped`。
 
@@ -89,33 +89,39 @@ Logix 的 DSL 是围绕这两条轴来设计的：
 以下两种写法在 **watcher 语义上是一致的**，都会在当前 ModuleRuntime Scope 下挂两条长期 watcher：
 
 ```ts
-// 写法 A：Effect.all 一次性启动多个 runFork
+// 写法 A：Effect.gen + Effect.all 一次性启动多个 runFork
 const AppCounterLogic = AppCounterModule.logic(($) =>
-  Effect.all(
-    [
-      $.onAction("increment").runFork(
-        $.state.mutate((s) => {
-          s.count += 1
-        }),
-      ),
-      $.onAction("decrement").runFork(
-        $.state.mutate((s) => {
-          s.count -= 1
-        }),
-      ),
-    ],
-    { concurrency: "unbounded" }, // 这里只是“并行启动”这两个 runFork
-  ),
+  Effect.gen(function* () {
+    yield* Effect.all(
+      [
+        $.onAction("increment").runFork(
+          $.state.mutate((s) => {
+            s.count += 1
+          }),
+        ),
+        $.onAction("decrement").runFork(
+          $.state.mutate((s) => {
+            s.count -= 1
+          }),
+        ),
+      ],
+      { concurrency: "unbounded" }, // 这里只是“并行启动”这两个 runFork
+    )
+  }),
 )
 
 // 写法 B：Effect.gen 里顺序 yield* 多个 runFork
 const AppCounterLogic = AppCounterModule.logic(($) =>
   Effect.gen(function* () {
     yield* $.onAction("increment").runFork(
-      $.state.mutate((s) => { s.count += 1 }),
+      $.state.mutate((s) => {
+        s.count += 1
+      }),
     )
     yield* $.onAction("decrement").runFork(
-      $.state.mutate((s) => { s.count -= 1 }),
+      $.state.mutate((s) => {
+        s.count -= 1
+      }),
     )
   }),
 )
@@ -137,7 +143,7 @@ const AppCounterLogic = AppCounterModule.logic(($) =>
 
 - **Module 级 Scope**：
   - 每一棵 `ModuleRuntime` 实例都有自己的 Scope；
-  - 不论是通过应用级 Runtime（`LogixRuntime.make`）、`ModuleImpl.layer` 还是 React `useModule` 构建，这个 Scope 都会在“模块销毁”时统一关闭；
+  - 不论是通过应用级 Runtime（`Logix.Runtime.make`）、`ModuleImpl.layer` 还是 React `useModule` 构建，这个 Scope 都会在“模块销毁”时统一关闭；
   - 通过 `Flow.run*` / `runFork` 启动的 watcher，都挂在这棵 Scope 上。
 - **Effect.fork vs runFork**：
   - 如果在 Logic 里写 `yield* Effect.fork($.onAction("...").run(...))`，fork 出来的 Fiber 会附着在当前 Logic 所在的 Scope 上；

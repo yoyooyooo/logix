@@ -2,6 +2,7 @@
 title: Philosophy & Workflow
 status: draft
 version: 1.0
+related: []
 ---
 
 # Philosophy & Workflow: The "Intent-Driven" Way

@@ -22,8 +22,8 @@ packages/logix-core/
 │   │   └── MatchBuilder.ts     # Implementation of $.match(...)
 │   │
 │   ├── runtime/                # Runtime Execution Engine
-│   │   ├── AppRuntime.ts       # 应用级 Runtime 内核（供 LogixRuntime.make 使用）
-│   │   ├── ModuleRuntime.ts    # Logix.Module() -> Runtime Instance
+│   │   ├── AppRuntime.ts       # 应用级 Runtime 内核（供 Logix.Runtime.make 使用）
+│   │   ├── ModuleRuntime.ts    # Logix.Module.make() -> Runtime Instance
 │   │   ├── ScopeManager.ts     # Effect Scope & Lifecycle Management
 │   │   └── Registry.ts         # Global Module Registry
 │   │
@@ -59,7 +59,7 @@ packages/logix-react/
 │   │
 │   ├── hooks/
 │   │   ├── useModule.ts        # Main hook: const { state, actions } = useModule(Tag)
-│   │   ├── useLocalModule.ts   # Local hook: useLocalModule(() => Logix.Module(...))
+│   │   ├── useLocalModule.ts   # Local hook: useLocalModule(() => Logix.Module.make(...))
 │   │   ├── useSelector.ts      # Fine-grained selection
 │   │   └── useDispatch.ts      # Action dispatch only
 │   │

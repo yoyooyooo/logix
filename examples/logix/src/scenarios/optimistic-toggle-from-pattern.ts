@@ -5,7 +5,7 @@
  *   `patterns/optimistic-toggle.ts` 中的 `ToggleLogicFromPattern`，用于验证 Logic Pattern 在多处挂载的可行性。
  */
 
-import { Logix } from '@logix/core'
+import * as Logix from '@logix/core'
 import {
   ToggleStateSchema,
   ToggleActionMap,
@@ -17,7 +17,7 @@ import {
 // Module / Live：使用 Pattern 提供的 Logic 直接装配领域模块
 // ---------------------------------------------------------------------------
 
-export const ToggleModuleFromPattern = Logix.Module('ToggleFromPattern', {
+export const ToggleModuleFromPattern = Logix.Module.make('ToggleFromPattern', {
   state: ToggleStateSchema,
   actions: ToggleActionMap,
 })
@@ -26,7 +26,7 @@ export const ToggleLogicFromPattern = ToggleModuleFromPattern.logic(
   makeOptimisticToggleLogicPattern(),
 )
 
-export const ToggleImplFromPattern = ToggleModuleFromPattern.make({
+export const ToggleImplFromPattern = ToggleModuleFromPattern.implement({
   initial: {
     id: 'toggle-from-pattern',
     enabled: true,

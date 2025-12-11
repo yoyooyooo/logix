@@ -5,7 +5,7 @@ description: 了解模块之间如何通过 $.useRemote 通信，并在不产生
 
 # 跨模块通信（Cross-Module Communication）
 
-在真实业务里，模块很少是“单机作战”的：  
+在真实业务里，模块很少是“单机作战”的：
 「User 用户模块」需要知道当前是谁登录的，「Order 订单模块」需要从「Product 商品模块」拿价格信息，等等。
 
 Logix 从一开始就把这类跨模块协作当成常态，目标是让它们同时满足：
@@ -13,6 +13,22 @@ Logix 从一开始就把这类跨模块协作当成常态，目标是让它们�
 - 写法简单、可读；
 - 类型安全；
 - 支持 **模块之间互相依赖，但不会在导入层面产生循环引用**。
+
+### 适合谁
+
+- 正在用 Logix 设计中型以上应用，希望用多个 Module 分治领域，但又难免出现跨模块依赖；
+- 曾在 Redux/Zustand 等方案中被“全局大 Store / 循环依赖”困扰，想要更清晰的跨模块协作模式。
+
+### 前置知识
+
+- 熟悉 Module / ModuleImpl 的基本概念；
+- 能编写简单的 Logic，并理解 `$.use` / `$.useRemote` 的语义。
+
+### 读完你将获得
+
+- 一套可复用的“模块之间互相依赖但不循环 import”的组织方式；
+- 会用 `$.useRemote` + Bound 风格访问其他 Module，并清楚哪些能力是“只读”的；
+- 对“Module 作为领域边界”的实际落地有更清晰的感受。
 
 本指南重点讲两件事：
 
@@ -34,9 +50,9 @@ Logix 从一开始就把这类跨模块协作当成常态，目标是让它们�
 
 ```ts
 // features/user/logic.ts
-import { Effect } from "effect"
-import { UserModule } from "./module"
-import { AuthModule } from "../auth/module"
+import { Effect } from 'effect'
+import { UserModule } from './module'
+import { AuthModule } from '../auth/module'
 
 export const UserLogic = UserModule.logic(($) =>
   Effect.gen(function* () {
@@ -74,10 +90,10 @@ export const UserLogic = UserModule.logic(($) =>
 
 ```ts
 // features/auth/module.ts
-import { Schema } from "effect/Schema"
-import * as Logix from "@logix/core"
+import { Schema } from 'effect/Schema'
+import * as Logix from '@logix/core'
 
-export const AuthModule = Logix.Module("Auth", {
+export const AuthModule = Logix.Module.make('Auth', {
   state: Schema.Struct({ token: Schema.String }),
   actions: {
     loginSuccess: Schema.String,
@@ -88,20 +104,16 @@ export const AuthModule = Logix.Module("Auth", {
 
 ```ts
 // features/auth/logic.ts
-import { Effect } from "effect"
-import { AuthModule } from "./module"
-import { UserModule } from "../user/module"
+import { Effect } from 'effect'
+import { AuthModule } from './module'
+import { UserModule } from '../user/module'
 
 export const AuthLogic = AuthModule.logic(($) =>
   Effect.gen(function* () {
     const User = yield* $.useRemote(UserModule)
 
     // 当用户登出时，顺带清理用户信息
-    yield* $.onAction("logout").run(() =>
-      $.flow.run(
-        User.actions["user/clearProfile"](undefined),
-      ),
-    )
+    yield* $.onAction('logout').run(() => $.flow.run(User.actions['user/clearProfile'](undefined)))
   }),
 )
 ```
@@ -166,24 +178,29 @@ Logix 的路径不一样：
 
 ## 5. 使用建议（Best Practices）
 
-1. 使用 `$.useRemote`，不要自己搞全局单例  
+1. 使用 `$.useRemote`，不要自己搞全局单例
    访问其他模块时，统一通过 `$.useRemote(OtherModule)`，避免在全局手动共享运行时实例。
 
-2. 让 `module.ts` 保持“干净”  
+2. 让 `module.ts` 保持“干净”
    只定义 state 和 actions；不要在这里导入其他模块或具体的 runtime/wiring 代码。
 
-3. 把跨模块编排放在 Logic 层  
+3. 把跨模块编排放在 Logic 层
    像搜索 → 详情、Auth → UserProfile 这种跨模块流程，统一写在各自的 `logic.ts` 里，在这里自由地 `$.useRemote` 其他模块。
 
-4. 单条规则尽量保持单向依赖  
+4. 单条规则尽量保持单向依赖
    在同一个 Logic 文件里，优先写清晰的“单向流”（例如 User 监听 Auth）；即便另一个文件里有相反方向的规则，两条规则各自都是独立、易测试的。
 
-5. 需要“模块蓝图”时再用 ModuleImpl  
-   对于大部分业务场景，只用 `Logix.Module` + `Module.logic` + `Module.live` 就足够了。  
+5. 需要“模块蓝图”时再用 ModuleImpl
+   对于大部分业务场景，只用 `Logix.Module` + `Module.logic` + `Module.live` 就足够了。
    当你希望在多个入口（例如不同页面、不同 AppRuntime）里复用同一套“模块 + 初始状态 + 逻辑 + 依赖注入”时，可以：
-
-   - 在内部使用 `Module.make({ initial, logics, imports?, processes? })` 生成一个 ModuleImpl；
-   - 在应用层通过 Root ModuleImpl + `LogixRuntime.make(rootImpl, { layer, onError })` 组合出 App/Page Runtime；
+   - 在内部使用 `Module.implement({ initial, logics, imports?, processes? })` 生成一个 ModuleImpl；
+   - 在应用层通过 Root ModuleImpl + `Logix.Runtime.make(rootImpl, { layer, onError })` 组合出 App/Page Runtime；
    - 在 React 中通过 `useModule(impl)` 或 `useLocalModule(impl)` 消费它。
 
-   这些都是 **运行时层面的装配细节**，不会改变“Module 定义在 `module.ts`、Logic 写在 `logic.ts`、跨模块通过 `$.useRemote` 协作”这条主线，也不会引入新的循环依赖风险。
+   这些都是 **运行时层面的装配细节**，不会改变"Module 定义在 `module.ts`、Logic 写在 `logic.ts`、跨模块通过 `$.useRemote` 协作"这条主线，也不会引入新的循环依赖风险。
+
+## 下一步
+
+- 深入了解运行时架构：[深度解析](./deep-dive)
+- 进入高级主题：[Suspense & Async](../advanced/suspense-and-async)
+- 学习错误处理策略：[错误处理](../advanced/error-handling)

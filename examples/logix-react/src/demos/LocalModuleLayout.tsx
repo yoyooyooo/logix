@@ -1,11 +1,12 @@
-import React from "react"
-import { Effect, Layer, ManagedRuntime, Schema } from "effect"
-import { Logix } from "@logix/core"
-import { RuntimeProvider, useModule, useSelector, useDispatch } from "@logix/react"
+import React from 'react'
+import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
+import * as Logix from '@logix/core'
+import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
+import { devtoolsLayer } from '@logix/devtools-react'
 
 // 局部 ModuleImpl 示例：模块不注册到应用级 Runtime 的全局 modules 中，状态随组件生命周期销毁
 
-const LocalCounterModule = Logix.Module("LocalCounter", {
+const LocalCounterModule = Logix.Module.make('LocalCounter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
     increment: Schema.Void,
@@ -15,12 +16,12 @@ const LocalCounterModule = Logix.Module("LocalCounter", {
 
 const LocalCounterLogic = LocalCounterModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction("increment").runFork(
+    yield* $.onAction('increment').runFork(
       $.state.mutate((s) => {
         s.count += 1
       }),
     )
-    yield* $.onAction("decrement").runFork(
+    yield* $.onAction('decrement').runFork(
       $.state.mutate((s) => {
         s.count -= 1
       }),
@@ -28,31 +29,25 @@ const LocalCounterLogic = LocalCounterModule.logic(($) =>
   }),
 )
 
-const LocalCounterImpl = LocalCounterModule.make({
+const LocalCounterImpl = LocalCounterModule.implement({
   initial: { count: 0 },
   logics: [LocalCounterLogic],
 })
 
 // 用一个简单的 Runtime 承载 Effect 环境；模块实例本身由 useModule(LocalCounterImpl) 局部创建
 const localRuntime = ManagedRuntime.make(
-  Layer.empty as Layer.Layer<never, never, never>,
+  Layer.mergeAll(Logix.Debug.runtimeLabel('LocalModuleDemo'), devtoolsLayer, Layer.empty),
 )
-
 const LocalCounterView: React.FC = () => {
   // 每个组件调用都会创建一棵独立的 ModuleRuntime 实例，随组件卸载销毁
   const runtime = useModule(LocalCounterImpl)
-  const count = useSelector(
-    runtime,
-    (s) => s.count,
-  )
+  const count = useSelector(runtime, (s) => s.count)
   const dispatch = useDispatch(runtime)
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 max-w-sm">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          局部 Counter
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">局部 Counter</h3>
         <div className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-medium">
           ModuleImpl · Local
         </div>
@@ -62,27 +57,21 @@ const LocalCounterView: React.FC = () => {
         <span className="text-sm text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider font-medium">
           当前值
         </span>
-        <span className="text-5xl font-bold text-gray-900 dark:text-white tabular-nums tracking-tight">
-          {count}
-        </span>
+        <span className="text-5xl font-bold text-gray-900 dark:text-white tabular-nums tracking-tight">{count}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
           className="flex items-center justify-center px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all active:scale-95 font-medium shadow-sm"
-          onClick={() =>
-            dispatch({ _tag: "decrement", payload: undefined })
-          }
+          onClick={() => dispatch({ _tag: 'decrement', payload: undefined })}
         >
           减一
         </button>
         <button
           type="button"
           className="flex items-center justify-center px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 active:bg-emerald-800 transition-all active:scale-95 font-medium shadow-sm shadow-emerald-600/20"
-          onClick={() =>
-            dispatch({ _tag: "increment", payload: undefined })
-          }
+          onClick={() => dispatch({ _tag: 'increment', payload: undefined })}
         >
           加一
         </button>
@@ -97,18 +86,16 @@ export const LocalModuleLayout: React.FC = () => {
       <React.Suspense fallback={null}>
         <div className="space-y-6">
           <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              局部 ModuleImpl 示例
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">局部 ModuleImpl 示例</h2>
             <p className="text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
-              本示例展示了如何直接使用{" "}
+              本示例展示了如何直接使用{' '}
               <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
                 ModuleImpl
-              </code>{" "}
-              作为局部 Store：每个组件拥有自己的{" "}
+              </code>{' '}
+              作为局部 Store：每个组件拥有自己的{' '}
               <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
                 ModuleRuntime
-              </code>{" "}
+              </code>{' '}
               实例，并在组件卸载时自动销毁对应状态。
             </p>
           </div>

@@ -2,6 +2,7 @@
 title: Draft Pattern React Integration & DX
 status: draft
 version: 1.0
+related: []
 ---
 
 # Draft Pattern React Integration & DX

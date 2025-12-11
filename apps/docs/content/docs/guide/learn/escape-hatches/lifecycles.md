@@ -18,7 +18,7 @@ title: ModuleRuntime 实例与生命周期
 
 ```ts
 // 蓝图：只描述数据和事件形状
-export const RegionModule = Logix.Module("RegionModule", { state, actions })
+export const RegionModule = Logix.Module.make("RegionModule", { state, actions })
 
 // 逻辑：描述在这个蓝图上如何处理事件/状态
 export const RegionLogic = RegionModule.logic<RegionService>(/* ... */)

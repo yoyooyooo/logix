@@ -1,5 +1,5 @@
-import { Context, Effect, Schema } from 'effect'
-import { Logic, Logix } from '@logix/core'
+import { Context, Effect, Schema } from "effect"
+import * as Logix from "@logix/core"
 
 // Note: 本示例中的 `Logic.forShape` 写法仅作为“针对 SearchShape + SearchApi 预绑定的 Bound API `$`”
 // 的概念性缩写；当前 PoC 实现中，真实代码应在对应 Module 上通过 `Module.logic(($)=>...)` 注入 `$`。
@@ -39,7 +39,7 @@ export namespace SearchApi {
 // Module / Live：组合 State / Action / Logic 成为一棵领域模块（示例代码）
 // ---------------------------------------------------------------------------
 
-export const SearchModule = Logix.Module('SearchModule', {
+export const SearchModule = Logix.Module.make('SearchModule', {
   state: SearchStateSchema,
   actions: SearchActionMap,
 })
@@ -81,7 +81,7 @@ export const SearchLogic = SearchModule.logic<SearchApi>(($) =>
   })
 )
 
-export const SearchImpl = SearchModule.make<SearchApi>({
+export const SearchImpl = SearchModule.implement<SearchApi>({
   initial: {
     keyword: '',
     results: [],

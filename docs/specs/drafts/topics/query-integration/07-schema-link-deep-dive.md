@@ -1,7 +1,7 @@
 ---
-title: "Schema Link: The Relational State Paradigm"
+title: Schema Link The Relational State Paradigm
 status: draft
-version: 1.0
+version: 1
 layer: Concept
 value: extension
 priority: later
@@ -27,7 +27,8 @@ related:
 ## 2. API 设计 (The Shape)
 
 ```typescript
-import { Logix, Schema, Link } from '@logix/core'
+import * as Logix from '@logix/core'
+import { Schema } from 'effect'
 
 const PostState = Schema.Struct({
   id: Schema.String,
@@ -35,7 +36,7 @@ const PostState = Schema.Struct({
   authorId: Schema.String, // 外键 (Foreign Key)
 
   // 🌟 Schema Link: 声明式关联
-  author: Link.to(UserModule, {
+  author: Logix.Link.to(UserModule, {
     // 1. 依赖键 (Dependency Key)
     // 当 state.authorId 变化，或 UserModule 中对应数据变化时，重新计算
     key: (post) => post.authorId,

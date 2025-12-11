@@ -1,5 +1,5 @@
-import { Effect, Schema } from "effect"
-import { Logix } from "@logix/core"
+import { Effect, Schema } from 'effect'
+import * as Logix from '@logix/core'
 
 const CounterAllStateSchema = Schema.Struct({
   value: Schema.Number,
@@ -10,34 +10,36 @@ const CounterAllActionMap = {
   dec: Schema.Void,
 }
 
-export const CounterAllModule = Logix.Module("CounterAllModule", {
+export const CounterAllModule = Logix.Module.make('CounterAllModule', {
   state: CounterAllStateSchema,
   actions: CounterAllActionMap,
 })
 
 // 使用 Effect.all + 并发选项挂两条监听，作为 run 模式的对照示例。
-export const CounterAllLogic = CounterAllModule.logic(($) =>
-  Effect.all(
-    [
-      $.onAction("inc").run(
-        $.state.update((prev) => ({
-          ...prev,
-          value: prev.value + 1,
-        })),
-      ),
-      $.onAction("dec").run(
-        $.state.update((prev) => ({
-          ...prev,
-          value: prev.value - 1,
-        })),
-      ),
-    ],
-    { concurrency: "unbounded" },
-  ),
-)
+export const CounterAllLogic = CounterAllModule.logic(($) => ({
+  setup: Effect.void,
+  run: Effect.gen(function* () {
+    yield* Effect.all(
+      [
+        $.onAction('inc').run(
+          $.state.update((prev) => ({
+            ...prev,
+            value: prev.value + 1,
+          })),
+        ),
+        $.onAction('dec').run(
+          $.state.update((prev) => ({
+            ...prev,
+            value: prev.value - 1,
+          })),
+        ),
+      ],
+      { concurrency: 'unbounded' },
+    )
+  }),
+}))
 
-export const CounterAllImpl = CounterAllModule.make({
+export const CounterAllImpl = CounterAllModule.implement({
   initial: { value: 0 },
   logics: [CounterAllLogic],
 })
-

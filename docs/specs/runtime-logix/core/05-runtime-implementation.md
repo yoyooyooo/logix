@@ -22,7 +22,7 @@ Logix 引擎本质上是一个 **Effect Layer Runtime**。
 
 ## 2. 组装流程 (Assembly Process)
 
-当调用 `Logix.Module("Id", { state, actions }).live(initialState, ...logicPrograms)` 时，内部大致等价于：
+当调用 `Logix.Module.make("Id", { state, actions }).live(initialState, ...logicPrograms)` 时，内部大致等价于：
 
 1.  **Layer Composition**: 使用 `Layer.merge` 将 State Layer 和 Action Layer 合并为一个 `StoreLayer`，Logic 程序则在该 Runtime 上启动并托管生命周期（而不是作为 Layer 再次合并）。
 2.  **Runtime Creation**: 使用 `Layer.toRuntime` 创建一个基于领域模块运行时实例的 Effect Runtime。
@@ -33,6 +33,29 @@ Logix 引擎本质上是一个 **Effect Layer Runtime**。
 在 v3 范式中，不存在一个独立的 `LogicDSLTag`。`Logic` 本身就是一个 `Effect` 程序，它运行在一个由模块运行时和外部注入服务（`R`）共同构成的 `Logic.Env` 环境中。
 
 当 `Store` 运行时，它会构建这个 `Env`，并提供给所有基于 Bound API `$` 定义的 Logic 程序（例如 `Domain.logic(($)=>Effect.gen(...))`）。`Logic.Api`（即 `state`, `flow`, `control` 等）正是对这个 `Env` 中能力的封装，它在 `Store` 内部实现，并传递给业务逻辑，从而连接了抽象逻辑与真实的运行时。
+
+### 3.1 Logic Bootstrap：三层模型与两阶段执行
+
+> 结论状态（已取代同主题 drafts）：Runtime 以「蓝图 → 实例 → 完全铺好 Env」三层模型运行 Logic，内部统一使用 LogicPlan（setup/run）消除初始化噪音，并通过诊断约束错误阶段的调用。
+
+- **三层模型**  
+  1) **Module 蓝图层**：`Module.make(...)` 只定义 Schema/静态 reducer，不触发任何 Effect，也不得访问 Env。  
+  2) **Module 实例启动层 (t=0)**：`ModuleRuntime.make` 创建 stateRef/actionHub/lifecycle，执行每个 Logic 的 **setup 段**（注册 reducer、lifecycle、Debug/Devtools hook）；setup 不允许访问 Env/Service，不做 IO，必须幂等（StrictMode 重跑时通过诊断提示重复注册）。  
+  3) **完全铺好 Env 的 Runtime 层**：AppRuntime/RuntimeProvider 构建完成 `envLayer` 后，统一 `forkScoped(plan.run)` 启动 Logic 的 **run 段** 与 processes；此后若再出现 `Service not found` 视为真实配置错误。
+- **LogicPlan 内部模型（对外仍是 `Module.logic(($)=>Effect)`）**  
+  - builder 闭包的一次性执行产出 `{ setup, run }`：return 前的同步注册被收集为 setup，return 的 Effect 作为 run。  
+  - 纯旧写法 `Module.logic(($)=>Effect.gen(...))` 等价于 `setup = Effect.void`、`run = 原逻辑`，完全兼容旧代码。  
+  - BoundApi 在 setup 阶段仅暴露注册类 API；run 阶段暴露完整 `$`。
+- **运行时责任与错误收敛**  
+  - Logic 解析顺序：`isLogicPlan(raw)` → `returnsLogicPlan(raw)`（运行一次以解析 plan）→ 默认视为单阶段 Logic。解析失败或 Phase Guard 命中时统一归一为 `LogicFailure = LogicPhaseError | EnvServiceError | LogicUnknownError`，并通过 `DebugSink` 记录诊断。  
+  - 为保证 `Module.live` / `Runtime.make` 的同步构造路径不被打断，Phase Guard 命中的逻辑会被降级为仅执行 setup 的 noop plan（带 `__skipRun` 标记），run 段不再 fork，避免抛出 `AsyncFiberException`。  
+  - Env 铺满后仍出现的 `Service not found` 视为硬错误；初始化期的 Env 访问由 Phase Guard + 诊断处理，不会泄漏到底层 `runSync`。  
+  - `LogicPhaseError` / reducer 诊断 / lifecycle 缺失等均通过结构化诊断事件对外暴露，调用方无需解析字符串。
+- **诊断与非法用法矩阵（DEV 默认开启）**  
+  - setup 阶段调用 `$.onAction/$.onState/$.use` 等 run-only 能力 → `diagnostic(error) code=logic::invalid_phase kind=...`。  
+  - builder 顶层直接执行 `Effect.run*` → `diagnostic(error) code=logic::setup_unsafe_effect`，提示将 IO 移入 run 段或 Process。  
+  - 重复注册 reducer/lifecycle → 诊断折叠提示（避免 StrictMode 噪音），仍保持「每个 tag 至多一个 primary reducer」的不变式。  
+  - Env 缺失：仅在 Env Ready 之后出现时视为硬错误；初始化期的缺失不再被视为噪音，因为 setup 阶段不会访问 Env，run 阶段确保 Env 已就绪。
 
 ## 4. 并发与流 (Concurrency & Streams)
 
@@ -51,14 +74,14 @@ Logix 引擎本质上是一个 **Effect Layer Runtime**。
 2.  关闭 Action Hub。
 3.  释放所有资源。
 
-## 6. Runtime 容器实现 (LogixRuntime / AppRuntime)
+## 6. Runtime 容器实现 (Runtime / AppRuntime)
 
-`LogixRuntime` 是 v3 分形 Runtime 下对外暴露的应用级运行时构建工厂；它以某个 **Root ModuleImpl** 为中心，将「图纸」（ModuleImpl.layer + processes）转换为「施工」（Layer + Runtime），提供统一的 **Composition Root**。  
+Runtime（通过 `Logix.Runtime.make` 构造）是 v3 分形 Runtime 下对外暴露的应用级运行时构建工厂；它以某个 **Root ModuleImpl** 为中心，将「图纸」（ModuleImpl.layer + processes）转换为「施工」（Layer + Runtime），提供统一的 **Composition Root**。  
 AppRuntime（基于 `LogixAppConfig` / `AppDefinition`）则作为内部实现细节存在，主要服务于平台解析与运行时组合，不再建议业务代码直接调用。
 
 ### 6.1 配置与返回值 (Config & AppDefinition)
 
-在实现层面，我们仍然通过一组结构化配置（`LogixAppConfig` / `AppDefinition`）来描述 AppRuntime 的内部形态，并在其之上封装对外的 `LogixRuntime.make(rootImpl, options)`：
+在实现层面，我们仍然通过一组结构化配置（`LogixAppConfig` / `AppDefinition`）来描述 AppRuntime 的内部形态，并在其之上封装对外的 `Logix.Runtime.make(rootImpl, options)`：
 
 ```ts
 // App 配置：用于“画图纸”，不直接包含 Runtime 细节
@@ -67,7 +90,7 @@ export interface LogixAppConfig<R> {
    * 基础环境 Layer：
    * - Http / Router / Config / Logger / Platform 等全局服务；
    * - 要求第三个泛型为 never，表示已闭合依赖；
-   * - 推荐在进入 AppRuntime.makeApp / LogixRuntime.make 之前就收敛错误通道，使这里的 E=never。
+   * - 推荐在进入 AppRuntime.makeApp / `Logix.Runtime.make` 之前就收敛错误通道，使这里的 E=never。
   */
   readonly layer: Layer.Layer<R, never, never>
 
@@ -117,7 +140,7 @@ export interface AppDefinition<R> {
 ```
 
 > 说明
-> - `modules` 由 AppRuntime.provide(Module, Module.live(...)) 或等价 Layer 组合而成，在当前实现中对于 `LogixRuntime.make` 来说通常只有一个入口模块（Root ModuleImpl 对应的 Module）；
+> - `modules` 由 AppRuntime.provide(Module, Module.live(...)) 或等价 Layer 组合而成，在当前实现中对于 `Logix.Runtime.make` 来说通常只有一个入口模块（Root ModuleImpl 对应的 Module）；
 > - `processes` 中的 Effect 代表“长生命周期逻辑”，例如跨 Store 协调的 Coordinator，或持续监听环境变化的后台任务；在分形 Runtime 模型下，它们通常来源于 Root ModuleImpl 的 `processes` 字段。
 
 ### 6.2 构建逻辑 (from Blueprint to Layer)
@@ -208,17 +231,55 @@ function ModuleRuntime.make<Sh extends Logix.ModuleShape<any, any>>(
 - 明确**不推荐**的用法：
   - 在业务模块内部为每个 Module 自行造一套“特立独行”的 Runtime；这会破坏平台统一的调试/观测能力，也会让 Intent/Flow 录制难以复用。
 
-因此，日常业务开发应统一通过 `Logix.Module` + `Module.logic` + `Module.live` 使用引擎提供的标准 `ModuleRuntime` 实现；只有在实现适配层 / 平台扩展时，才在本文件约束下自定义 `ModuleRuntime`，并通过 Root ModuleImpl + `LogixRuntime.make`（或内部 AppRuntime 组合）注入到应用级 Runtime 中。
+因此，日常业务开发应统一通过 `Logix.Module` + `Module.logic` + `Module.live` 使用引擎提供的标准 `ModuleRuntime` 实现；只有在实现适配层 / 平台扩展时，才在本文件约束下自定义 `ModuleRuntime`，并通过 Root ModuleImpl + `Logix.Runtime.make`（或内部 AppRuntime 组合）注入到应用级 Runtime 中。
 
 > 换句话说：  
 > - **硬约束** 只落在 `ModuleRuntime<S, A>` 接口与上述语义不变式上；  
 > - `ModuleRuntime.make` / Adapter / Layer 组合等都属于 **可选的构造路径**，实现方可根据工程需要自由选择或封装。
 
+### 1.4 EffectOp MiddlewareEnv 与统一中间件总线（补充）
+
+> 本小节补充描述 v3 中基于 EffectOp 的统一中间件总线在 Runtime 实现层的落点，与 `core/04-logic-middleware.md` 中的 Logic 级 Middleware 互为补充而非替代。
+
+- **EffectOpMiddlewareEnv（Env Service 层）**  
+  - Runtime 内部通过一个 Env Service 暴露当前使用的 EffectOp MiddlewareStack：  
+    ```ts
+    export interface EffectOpMiddlewareEnv {
+      readonly stack: MiddlewareStack
+    }
+
+    export class EffectOpMiddlewareTag extends Context.Tag(
+      "Logix/EffectOpMiddleware",
+    )<EffectOpMiddlewareTag, EffectOpMiddlewareEnv>() {}
+    ```  
+  - 该 Service 由 `Logix.Runtime.make` 构造应用级 Runtime 时注入（见 `@logix/core` RuntimeOptions 中的 `middleware` 字段），所有需要走统一总线的运行时代码（例如 StateTrait.install、Resource/Query 中间件、调试中间件）都通过 `Effect.serviceOption(EffectOpMiddlewareTag)` 读取当前 stack。
+
+- **Runtime.make 中的总线注入点（对外 API 层）**  
+  - Runtime 对业务侧暴露的配置约定为（简化签名）：  
+    ```ts
+    export interface RuntimeOptions {
+      readonly layer?: Layer.Layer<any, never, never>
+      readonly onError?: (cause: Cause.Cause<unknown>) => Effect.Effect<void>
+      readonly label?: string
+      readonly middleware?: EffectOp.MiddlewareStack
+    }
+    ```  
+  - 当 `middleware` 为空或未配置时，运行时代码视为「无中间件总线」（所有 EffectOp 直接运行其内部 effect）；  
+  - 当传入非空的 MiddlewareStack 时，Runtime 会在应用级 Layer 中注入 `EffectOpMiddlewareEnv`，后续所有 EffectOp 行为（Action / Flow / State / Service / Lifecycle）都可以在同一总线上被拦截与装饰。
+
+- **与 Logic Middleware 的关系**  
+  - Logic Middleware（`Logic.secure` / `core/04-logic-middleware.md`）工作在「单段 Logic/Flow」层，主要解决某段业务逻辑是否经过鉴权/审计等问题；  
+  - EffectOp MiddlewareStack 工作在「引擎事件」层，对所有 Action / Flow / State / Service / Lifecycle 边界统一拦截，是一个更低层、与业务无关的基础设施：  
+    - 典型用法包括：运行时级日志/监控、Resource/Query 集成、全局限流/熔断、统一 Debug Observer（将 EffectOp 转为 Debug 事件）；  
+  - 两者可以叠加使用：  
+    - Logic 级中间件用于表达“这段业务逻辑必须经过哪些守卫”；  
+    - EffectOp 总线用于保证“所有边界事件都在统一链路上可观测、可调优”。
+
 ---
 
 ## 2. AppRuntime.makeApp：应用级组装
 
-如果说 `ModuleRuntime.make` 是单个器官的制造者，那么 `LogixRuntime`（内部基于 `AppRuntime.makeApp` 实现）就是组装整个人体的医生。
+如果说 `ModuleRuntime.make` 是单个器官的制造者，那么 Runtime（内部基于 `AppRuntime.makeApp` 实现，并通过 `Logix.Runtime.make` 暴露）就是组装整个人体的医生。
 
 ### 2.1 职责（逻辑模型）
 
@@ -258,7 +319,7 @@ function makeRuntimeFromDefinition(def: AppDefinition) {
 Logix v3 严格遵循 Effect 的 Scope 机制：
 
 - **Global Store**：
-  - 生命周期绑定在应用级 Runtime（`LogixRuntime` / 内部 AppRuntime）创建的根 Scope 上。
+  - 生命周期绑定在应用级 Runtime（通过 `Logix.Runtime.make` 构造的 Runtime / 内部 AppRuntime）创建的根 Scope 上。
   - App 关闭时，根 Scope 关闭，触发所有 Global Store 的 `onDestroy`。
 
 - **Local Store**：
@@ -269,7 +330,7 @@ Logix v3 严格遵循 Effect 的 Scope 机制：
    - 若某个模块初始化失败，`processes` 将不会被执行，AppRuntime 的构建会以错误告终。
 2. **生命周期绑定**：
    - `finalLayer` 通常作为应用根节点的 Runtime 入口：
-     - React 场景：由 `RuntimeProvider runtime={LogixRuntime.make(...).runtime}`（或等价封装）持有其 Scope；
+     - React 场景：由 `RuntimeProvider runtime={Logix.Runtime.make(...)}`（或等价封装）持有其 Scope；
      - Node / CLI 场景：通过 `makeRuntime()` 创建的 Runtime 持有其 Scope。
 
 > 注意
@@ -285,14 +346,14 @@ AppRuntime 在语义上遵循如下顺序：
    - 若某个模块初始化失败，`processes` 将不会被执行，AppRuntime 的构建会以错误告终。
 2. **生命周期绑定**：
    - `finalLayer` 通常作为应用根节点的 Runtime 入口：
-     - React 场景：由 `RuntimeProvider runtime={LogixRuntime.make(...).runtime}`（或等价封装）持有其 Scope；
+     - React 场景：由 `RuntimeProvider runtime={Logix.Runtime.make(...)}`（或等价封装）持有其 Scope；
      - Node / CLI 场景：通过 `makeRuntime()` 创建的 Runtime 持有其 Scope。
    - 当应用卸载或进程退出时：
      - `processes` 中通过 `forkScoped` 启动的所有进程会自动收到中断信号并优雅退出；
      - 所有挂在 App 根 Scope 下的 Store / Service 资源均会被释放。
 
 通过这种方式，Logix 在保持 Effect-Native 运行时特性的同时，为平台与 React/Form 层提供了一个稳定的 **App 级组合契约**：
-微观层使用 `Logix.Module` / Bound API `$` 组织行为，宏观层推荐使用 `LogixRuntime.make(rootImpl, { layer, onError })` 组织 Root Module 与跨模块协作；AppRuntime 仅作为底层实现存在。
+微观层使用 `Logix.Module` / Bound API `$` 组织行为，宏观层推荐使用 `Logix.Runtime.make(rootImpl, { layer, onError })` 组织 Root Module 与跨模块协作；AppRuntime 仅作为底层实现存在。
 
 ### 6.4 已知局限与取舍 (Known Trade-offs)
 

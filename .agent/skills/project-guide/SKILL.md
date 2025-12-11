@@ -29,9 +29,10 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
 1. 读取 v3 总览与 SSOT（概念层）
    - `docs/specs/intent-driven-ai-coding/README.md`：版本索引与整体进展；
    - `v3/01-overview.md`：意图驱动开发平台总览，包含三位一体模型、全双工引擎与 SSOT 优先级定义；
-   - `v3/99-glossary-and-ssot.md`：跨层概念总览与术语表（Conceptual SSOT），所有核心术语（UI/Logic/Domain、Pattern、IntentRule、L0–L3 等）以此为准；
+   - `v3/99-glossary-and-ssot.md`：跨层概念总览与术语表（Conceptual SSOT），所有核心术语（UI/Logic/Domain、Pattern、IntentRule、L0–L3 等）以此为准；Playground / Sandbox / Runtime Alignment Lab / Universal Spy / Semantic UI Mock 等术语也以此处为事实源；
    - `v3/00-platform-manifesto.md`：平台宣言与资产共建策略；
    - `v3/blueprint.md`：长期蓝图（自愈架构、全双工编排）。
+   - `v3/concepts/00-sdd-mapping.md`：Spec-Driven Development (SDD) 与本仓 Intent 模型的映射，说明 SPECIFY/PLAN/TASKS/IMPLEMENT 与 L0–L3/Intent/Logix/Alignment Lab 的关系。
 2. 查 v3 Intent 模型与资产结构（模型层）
    - `v3/02-intent-layers.md`：UI/Logic/Domain 三维 Intent 模型定义；
    - `v3/03-assets-and-schemas.md`：资产结构（Pattern / IntentRule / Store / Logic 等）的定义与关系；
@@ -45,11 +46,29 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
 4. 查平台交互与资产链路（产品/UX 层）
    - `v3/06-platform-ui-and-interactions.md`：Universe / Galaxy / Studio 等视图的交互原则；
    - `v3/platform/README.md`：平台 Intent & UX 规划，以及 L0–L3 资产链路（业务需求 → 需求意图 → 开发意图 → 实现出码）。
+   - `docs/specs/drafts/topics/sandbox-runtime/*`：Playground / Sandbox / Runtime Alignment Lab 主题草案，约束 @logix/sandbox 包设计与 RegionSelector Playground MVP 的范围。
 5. 查 v1/v2 历史资料（如有需要）
    - `v2/*`：六层 Intent 模型与 v2 阶段设计，仅作为历史背景与灵感来源；
    - 当 v3 未覆盖某个旧概念时，从 v2 中提炼，再以 v3 模型重写，并更新 v3 文档。
 
 在 docs/specs 中确定意图与契约之后，再进入 PoC 或运行时子包的修改。
+
+## USER-DOCS · 用户文档（apps/docs）
+
+在调整 Logix API 形状、编程模型叙事或示例代码时，需要同时把 **用户文档** 也视为一等公民：
+
+- 入口与结构：
+  - `apps/docs`：Next.js + Fumadocs 文档站；
+  - 用户视角首页：`apps/docs/content/docs/index.mdx`（学习路径与分层说明）；
+  - 指南总览：`apps/docs/content/docs/guide/index.mdx`，下挂：
+    - `guide/get-started/*`：快速上手与教程（不假定读者了解 Effect）；
+    - `guide/essentials/*`：必备概念（Modules & State / Flows & Effects / Lifecycle / Effect 速成等）；
+    - `guide/learn/*`：问题驱动的深入章节（跨模块通信、状态管理模式、生命周期与 Watcher 等）；
+    - `guide/advanced/*`、`guide/recipes/*`：高阶能力与常用配方。
+- 使用约定：
+  - 运行时能力和 API 形状发生改动时，除更新 `docs/specs/runtime-logix` 外，应同步更新 `apps/docs/content/docs/api/*` 与对应 Guide 页面；
+  - 调整编程模型叙事（例如新增推荐写法、废弃旧 API）时，优先通过 `guide/essentials` 与 `guide/learn` 体现，并回看 v3/runtime-logix 文档，确保概念层与实现层不冲突；
+  - 新增 PoC/模式时，优先在 Guide/Recipes 中准备一份“业务视角”的示例，把 `docs/specs` 当作抽象层，而不是反过来。
 
 ## REPO MAP · 文档与代码落点
 
@@ -79,6 +98,15 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
     - 早期 Effect 运行时 PoC，更多作为实验场与历史参考；
     - 新的运行时约束建议优先落在 `logix-core` + `runtime-logix` 上，再视情况回收/迁移这里的经验。
 
+- `apps/docs/content/docs`
+  - 作为对外 **用户文档 SSoT**：所有 Logix 运行时的使用指南与 API 文档以这里为准；
+  - 结构：
+    - `guide/*`：学习路径（Get Started / Essentials / Learn / Advanced / Recipes）；
+    - `api/*`：核心运行时与 React 适配 API 参考；
+  - 使用方式：
+    - 在修改运行时实现前，先用“普通业务开发者”视角通读相关 Guide/API 页，记录不顺畅之处；
+    - 在完成实现与测试后，回到对应文档页补充/更新示例与解释，保持文档可直接拿给外部开发者使用。
+
 ## WORKFLOW · 典型任务用法
 
 在使用本 skill 时，按任务类型选择对应流程：
@@ -87,7 +115,7 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
 
 - 在 v3 规格中对齐意图与落点  
   - 读取 `v3/01-overview.md`、`v3/02-intent-layers.md` 和 `v3/03-assets-and-schemas.md`，明确场景涉及的 UI/Logic/Domain 维度与资产类型；  
-  - 如涉及 Runtime 行为，补读 `runtime-logix/core/02-store.md` 与 `03-logic-and-flow.md`。
+  - 如涉及 Runtime 行为，补读 `runtime-logix/core/02-module-and-logic-api.md` 与 `03-logic-and-flow.md`。
 - 在 specs 中记录意图与契约  
   - 在 v3 文档中补充/更新相关 Intent 描述与 Data/State/Interaction 契约（必要时在 `v3/platform/README.md` 增加 Use Case Blueprint 草稿）；  
   - 确认是否需要新增/修改 Pattern 或 IntentRule 类型。
@@ -109,7 +137,7 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
   - 对应的 React 能力在 `packages/logix-react` 中补上适配（如 RuntimeProvider 新能力、hooks 扩展）。
 - 回写规格  
   - 如涉及 API 形态或运行时语义变更，先更新 `docs/specs/runtime-logix/core/*` 与 `impl/*`，再在 `logix-core` / `logix-react` 中落实；
-  - 对应的使用教程/示例，再同步到 `apps/docs/content/docs`。
+  - 对应的使用教程/示例，再同步到 `apps/docs/content/docs` 中的 Guide/API 页面（保证示例与最终 API 一致）。
 
 ### 场景三：实现端到端 “需求 → IntentRule → 代码” 示例
 
@@ -122,6 +150,22 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
 - 回写经验  
   - 把踩坑与反例沉淀回 `v3/04-intent-to-code-example.md` 与 runtime-logix 文档，作为后续 AI/人类复用的样板。
 
+### 场景四：优化用户文档与示例（apps/docs）
+
+- 明确目标与受众  
+  - 确认是为“初次接触 Logix 的前端开发者”补文档，还是为“架构师/平台侧”增加高级章节；
+  - 根据目标选择入口：入门/Essentials 调整 `guide/get-started/*`、`guide/essentials/*`，进阶能力调整 `guide/learn/*`、`guide/advanced/*`、`guide/recipes/*`。
+- 对齐当前实现  
+  - 先对照 `docs/specs/runtime-logix` 与 `packages/logix-core` / `packages/logix-react` 当前实现，列出文档中已经过时的 API/示例；
+  - 必要时在本地跑一遍示例代码（或对照类型检查），确保文档中的代码能在当前版本下直接通过编译。
+- 渐进式优化叙事  
+  - 优先保证“快速上手 → Essentials”路径对完全不了解 Effect/Logix 的读者友好，避免在入门章节堆积 Env/Layer/Stream 等细节；
+  - 将复杂概念下沉到 Learn/Advanced，入口处用“适合谁/前置知识/读完获得什么”三行进行分层提示；
+  - 对高频 API（`$.state`、`$.onAction`、`$.onState`、`useModule` 等）给出简短“速查表”，方便培训和 code review。
+- 回写规范  
+  - 在优化叙事过程中若发现概念/契约需要调整，先回到 `docs/specs/intent-driven-ai-coding/v3` 与 `docs/specs/runtime-logix` 中更新规范，再回到 apps/docs 做对应调整；
+  - 确保两边对“边界与责任”的表述一致，例如：Intent vs Logic vs Runtime、Module vs ModuleImpl vs Runtime 等。
+
 ## DESIGN PRINCIPLES · 使用时牢记的共识
 
 - Intent 只表达业务/交互/信息结构的 **What**，不写组件/API/文件级 **How**；
@@ -129,6 +173,15 @@ description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/
 - `Effect.Effect<A, E, R>` 泛型顺序固定为 A/E/R，Env 视为逆变集合，通过 Tag 获取服务；
 - Module / Logic / Live / ModuleImpl / BoundApi `$` 的最终形状以 `docs/specs/runtime-logix/core` + `v3/effect-poc/shared/logix-v3-core.ts` 为准；
 - 所有“看起来合理但文档未记载”的决定，应优先在 docs/specs 里形成说明，再在 PoC/运行时中实施。
+
+## INCIDENTS · 长链路问题备忘录（WIP）
+
+- 本节只做「问题/场景索引 + 一句话摘要」，详细分析统一放在 `references/*` 中，遵循 skill-creator 的拆分规则。
+
+- I-001 · React + Logix Runtime：AsyncFiberException（runSync 碰上异步 Env/Layer）  
+  - 摘要：在 React 渲染 / ModuleRuntime 构造阶段，通过 `ManagedRuntime.runSync(...)` 间接跑到了含真实异步工作的 Effect（异步 Layer、setup 段写异步、配置读取触发 Layer 构建），导致 Effect 抛出 `AsyncFiberException`。  
+  - 涉及：`@logix/core` ModuleRuntime & Phase Guard、`@logix/react` RuntimeProvider / ModuleCache、`@logix/sandbox` Worker+wasm 初始化。  
+  - 详情：见 `references/incident-I-001-async-fiber-exception.md`。
 
 ## RESOURCES · 进一步阅读
 

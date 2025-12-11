@@ -1,7 +1,8 @@
 ---
-title: 'Killer Feature Proposal: $.whenAI API'
+title: Killer Feature Proposal $.whenAI API
 status: proposal
 version: 1
+related: []
 ---
 
 # Killer Feature 提案: `$.whenAI`

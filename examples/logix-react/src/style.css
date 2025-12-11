@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* Tailwind v4 source scanning：
+ * - 本示例里简单按目录扫描：
+ *   - 扫描本地 src；
+ *   - 扫描 workspace 内的 packages/logix-devtools-react/src，保证 DevTools 面板样式被保留。
+ *
+ * 业务项目中使用已发布包时，可以改为：
+ *   @source "./src";
+ *   @source "../node_modules/@logix/devtools-react";
+ */
+@source "./src";
+@source "../../../packages/logix-devtools-react";
+
 @layer base {
 
   html,

@@ -2,6 +2,7 @@
 title: Logix AI Native Architecture (Effect AI Integration)
 status: draft
 version: 2025-11-28
+related: []
 ---
 
 # Logix AI Native 架构设计 (基于 Effect AI)

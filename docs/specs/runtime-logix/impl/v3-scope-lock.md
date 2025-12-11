@@ -19,7 +19,7 @@
 Only the following APIs are considered "Public" for application developers. All others are internal implementation details.
 
 ### Application Developer (The "User")
-- **Definition**: `Logix.Module`, `LogixRuntime.make`（基于 Root ModuleImpl 的应用级 Runtime 构造）
+- **Definition**: `Logix.Module`, `Logix.Runtime.make`（基于 Root ModuleImpl 的应用级 Runtime 构造）
 - **Logic API**: `Module.logic`, `Module.live`
 - **Bound API (`$`)**:
     - `$.state`, `$.actions`

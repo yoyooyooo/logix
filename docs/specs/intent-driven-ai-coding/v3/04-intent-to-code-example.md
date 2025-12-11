@@ -60,12 +60,12 @@ export const LikeButton = () => { // Kept component name as LikeButton for consi
 ```typescript
 // src/features/article/store.ts
 import { Effect } from 'effect';
-import { Logix } from '@logix/core';
+import * as Logix from '@logix/core';
 import { ArticleServiceTag } from '@/domain/article/service';
 import { OptimisticToggle } from '@patterns/common';
 
 // 1. 定义领域 Module（state/actions 形状）
-export const ArticleModule = Logix.Module('Article', {
+export const ArticleModule = Logix.Module.make('Article', {
   state: ArticleStateSchema,
   actions: ArticleActionSchema,
 });

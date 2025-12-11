@@ -9,7 +9,7 @@
 
 import { Effect, Schema, Stream } from 'effect'
 import { fileURLToPath } from 'node:url'
-import { Logix } from '@logix/core'
+import * as Logix from '@logix/core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：带脏标记的简单表单 State / Action
@@ -33,7 +33,7 @@ export type DirtyFormAction = Logix.ActionOf<DirtyFormShape>
 // Module：使用 Logix.Module 定义表单模块
 // ---------------------------------------------------------------------------
 
-export const FormModule = Logix.Module('FormModule', {
+export const FormModule = Logix.Module.make('FormModule', {
   state: DirtyFormStateSchema,
   actions: DirtyFormActionMap,
 })
@@ -43,33 +43,37 @@ export const FormModule = Logix.Module('FormModule', {
 // ---------------------------------------------------------------------------
 
 export const FormLogic = FormModule.logic(($) =>
-  Effect.all([
-    // 监听 input/change，更新 value 并标记为脏
-    $.onAction("input/change")
-      .run((action) =>
-        $.state.update((prev) => ({
-          ...prev,
-          value: action.payload,
-          isDirty: true,
-        })),
-      ),
-
-    // 监听 input/reset，重置 value 和 isDirty
-    $.onAction('input/reset')
-      .run(() =>
-        $.state.update(() => ({
-          value: '',
-          isDirty: false,
+  Effect.gen(function* () {
+    // 在 run 段挂载 watcher，避免 setup 阶段触发 Phase Guard
+    yield* Effect.all(
+      [
+        // 监听 input/change，更新 value 并标记为脏
+        $.onAction("input/change").run((action) =>
+          $.state.update((prev) => ({
+            ...prev,
+            value: action.payload,
+            isDirty: true,
           })),
-      ),
-  ]),
+        ),
+
+        // 监听 input/reset，重置 value 和 isDirty
+        $.onAction("input/reset").run(() =>
+          $.state.update(() => ({
+            value: "",
+            isDirty: false,
+          })),
+        ),
+      ],
+      { concurrency: "unbounded" },
+    )
+  }),
 )
 
 // ---------------------------------------------------------------------------
 // Impl / Live：组合初始 State 与 Logic，生成可注入的运行时实现
 // ---------------------------------------------------------------------------
 
-export const DirtyFormImpl = FormModule.make({
+export const DirtyFormImpl = FormModule.implement({
   initial: {
     value: '',
     isDirty: false,

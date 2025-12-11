@@ -9,11 +9,11 @@ description: Logix 核心 API 参考手册。
 
 ## 目录
 
--   [**Runtime 与 RuntimeProvider**](./runtime): 如何构造应用级 Runtime，并在 React 中通过 `RuntimeProvider` 提供和扩展 Runtime。
--   [**Bound API ($)**](./bound-api): 逻辑代码中最常用的 `$` 对象，提供了访问状态、派发动作、监听事件和生命周期管理的能力。
--   [**Module 定义**](./module-definition): 如何定义 Module 的 Shape（Schema）、创建 Module 实例以及组织代码结构。
--   [**Logic Flow**](./logic-flow): 基于 Fluent API 的事件驱动逻辑编写指南，涵盖 `onAction`、`onState` 以及流式操作符。
--   [**Lifecycle**](./lifecycle): 深入理解 Module 的生命周期钩子（Init, Destroy, Error）以及与 Effect Scope 的关系。
+-   [**Runtime 与 ManagedRuntime**](./core/runtime): 如何构造应用级 Runtime，并在不同宿主环境中运行 Logix。
+-   [**Bound API ($)**](./core/bound-api): 逻辑代码中最常用的 `$` 对象，提供访问状态、派发动作、监听事件和生命周期管理的能力。
+-   [**Module 定义与实现**](./core/module): 如何定义 Module 的 Shape（Schema）、创建 Module 实例以及组装 ModuleImpl。
+-   [**Flow API**](./core/flow): Fluent Flow 的底层 API 说明，与 `$.onAction / $.onState / $.on` 保持一一对应。
+-   [**React 集成**](./react/provider): 在 React 应用中通过 `RuntimeProvider` / `useModule` / `useSelector` / `useDispatch` 使用 Logix。
 
 ## 类型约定
 

@@ -93,7 +93,7 @@ related:
 
 ```ts
 // Layer 1
-const UserModule = Logix.Module('User', {
+const UserModule = Logix.Module.make('User', {
   state: Schema.Struct({
     id: Schema.String,
     profile: Query.field({

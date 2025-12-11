@@ -2,6 +2,7 @@
 title: Draft Pattern Design (Ephemeral Interaction)
 status: draft
 version: 2.0
+related: []
 ---
 
 # Draft Pattern: Ephemeral Interaction & Transaction

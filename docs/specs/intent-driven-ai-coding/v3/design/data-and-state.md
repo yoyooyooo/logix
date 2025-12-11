@@ -73,7 +73,7 @@ type SubmitOrderSignal = { type: 'submitOrder', payload: OrderInput }
 StateSource: { kind: "logix-engine", entityId: "OrderForm" }
 
 // Code (Logix Module)
-const OrderFormModule = Logix.Module("OrderForm", {
+const OrderFormModule = Logix.Module.make("OrderForm", {
   state: OrderFormSchema,          // 直接使用 Effect Schema
   actions: OrderFormActionSchema,  // 行为意图对应的 Action Schema
 })

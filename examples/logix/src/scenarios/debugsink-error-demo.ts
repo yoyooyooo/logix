@@ -7,9 +7,9 @@
  *     - 使用 ModuleImpl.layer + Effect.provide 将 DebugSink 注入运行时。
  */
 
-import { Effect, Layer, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { fileURLToPath } from "node:url"
-import { Logix, DebugSinkTag, DebugEvent } from "@logix/core"
+import * as Logix from "@logix/core"
 
 // ---------------------------------------------------------------------------
 // Module：简单计数模块，带一个会触发错误的 Action
@@ -23,54 +23,59 @@ const ErrorActionMap = {
   triggerError: Schema.Void,
 }
 
-export const ErrorModule = Logix.Module("DebugDemoModule", {
+export const ErrorModule = Logix.Module.make("DebugDemoModule", {
   state: ErrorStateSchema,
   actions: ErrorActionMap,
 })
 
 // Logic：监听 triggerError，并返回一个失败的 Effect
 export const ErrorLogic = ErrorModule.logic(($) =>
-  $.onAction("triggerError").run(() =>
-    // 使用 dieMessage 将错误作为 defect 抛出，错误通道仍为 never，
-    // 由 ModuleRuntime 捕获后通过 DebugSink 以 lifecycle:error 上报。
-    Effect.dieMessage("Boom from DebugDemoModule"),
-  ),
+  Effect.gen(function* () {
+    // 在 run 段监听 triggerError，避免 setup 阶段触发 Phase Guard
+    yield* $.onAction("triggerError").run(() =>
+      // 使用 dieMessage 将错误作为 defect 抛出，错误通道仍为 never，
+      // 由 ModuleRuntime 捕获后通过 DebugSink 以 lifecycle:error 上报。
+      Effect.dieMessage("Boom from DebugDemoModule"),
+    )
+  }),
 )
 
-export const ErrorImpl = ErrorModule.make({
+export const ErrorImpl = ErrorModule.implement({
   initial: { count: 0 },
   logics: [ErrorLogic],
 })
 
 // ---------------------------------------------------------------------------
-// DebugSink 实现：把所有 DebugEvent 打印到控制台
+// DebugSink 实现：把所有 Debug.Event 打印到控制台
 // ---------------------------------------------------------------------------
 
-const ConsoleDebugSinkLayer = Layer.succeed(DebugSinkTag, {
-  record: (event: DebugEvent) =>
+const consoleDebugSink: Logix.Debug.Sink = {
+  record: (event: Logix.Debug.Event) =>
     Effect.sync(() => {
       // 这里只做简单打印，真实应用可以写入文件或上报到监控系统。
       // eslint-disable-next-line no-console
       console.log("[DebugSink]", JSON.stringify(event))
     }),
-})
+}
 
 // ---------------------------------------------------------------------------
 // Demo：运行逻辑并触发错误，观察 DebugSink 输出
 // ---------------------------------------------------------------------------
 
 export const main = Effect.gen(function* () {
-  const program = Effect.gen(function* () {
-    const runtime = yield* ErrorModule
+  const program = Effect.locally(
+    Logix.Debug.internal.currentDebugSinks as any,
+    [consoleDebugSink],
+  )(
+    Effect.gen(function* () {
+      const runtime = yield* ErrorModule
 
-    // 派发一个会失败的 Action（在 DebugSink 中观测 lifecycle:error）
-    yield* runtime.dispatch({ _tag: "triggerError", payload: undefined })
+      // 派发一个会失败的 Action（在 DebugSink 中观测 lifecycle:error）
+      yield* runtime.dispatch({ _tag: "triggerError", payload: undefined })
 
-    // 等待后台 watcher 执行并上报错误
-    yield* Effect.sleep(50)
-  }).pipe(
-    Effect.provide(ErrorImpl.layer),
-    Effect.provide(ConsoleDebugSinkLayer),
+      // 等待后台 watcher 执行并上报错误
+      yield* Effect.sleep(50)
+    }).pipe(Effect.provide(ErrorImpl.layer)),
   ) as Effect.Effect<void, never, never>
 
   yield* program

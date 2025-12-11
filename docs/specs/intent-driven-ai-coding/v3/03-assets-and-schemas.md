@@ -120,7 +120,7 @@ interface ModuleImplConfig {
 
   /**
    * 实现来源：
-   * - "module"：生成 Logix.Module + ModuleImpl（形如 Module.make({ initial, logics })）；
+   * - "module"：生成 Logix.Module + ModuleImpl（形如 Module.implement({ initial, logics })）；
    * - "pattern"：基于 Pattern 直接生成 ModuleImpl（例如 场景 Pattern -> ImplWithService）；
    * - "custom"：由业务自定义落点，仅在 Schema 层记录结构。
    *
@@ -210,7 +210,7 @@ export const runReliableSubmit = (input: { data: SubmitData }) =>
 ### 6.4 Level 3：实现资产（Implementation / Code）
 
 - 形态：具体项目中的 Module / Logic / Pattern / UI 代码与运行时配置：
-  - 类型安全的 State/Action Schema、`Logix.Module('Id', { state, actions })` 定义与对应的 `Module.logic(($) => Effect.gen(...))` 调用；
+  - 类型安全的 State/Action Schema、`Logix.Module.make('Id', { state, actions })` 定义与对应的 `Module.logic(($) => Effect.gen(...))` 调用；
   - Logic 程序中的 `Effect.gen` 逻辑，结合 Fluent DSL（`$.onState` / `$.onAction` / `$.on`）/ Flow / Control，IR 层统一使用 `IntentRule` 表达语义；
   - Pattern 实现文件、测试用例与 React 绑定代码。
 - 复用方式：

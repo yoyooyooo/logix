@@ -17,7 +17,7 @@
  */
 
 import { Effect, Schema, Context, Stream } from 'effect'
-import { Logix, Logic } from '@logix/core'
+import * as Logix from '@logix/core'
 
 // ---------------------------------------------------------------------------
 // 模块一：全局搜索 (Search Module)
@@ -50,7 +50,7 @@ const SearchActionMap = {
 type SearchShape = Logix.Shape<typeof SearchStateSchema, typeof SearchActionMap>
 
 // 1.4. 搜索模块 Module + Logic (只关心自身)
-export const SearchModule = Logix.Module('SearchModule', {
+export const SearchModule = Logix.Module.make('SearchModule', {
   state: SearchStateSchema,
   actions: SearchActionMap,
 })
@@ -107,7 +107,7 @@ const DetailActionMap = {
 type DetailShape = Logix.Shape<typeof DetailStateSchema, typeof DetailActionMap>
 
 // 2.3. 详情模块 Module + Logic (只关心自身)
-export const DetailModule = Logix.Module('DetailModule', {
+export const DetailModule = Logix.Module.make('DetailModule', {
   state: DetailStateSchema,
   actions: DetailActionMap,
 })
@@ -143,7 +143,7 @@ const CoordinatorActionMap = {
 }
 type CoordinatorShape = Logix.Shape<typeof CoordinatorStateSchema, typeof CoordinatorActionMap>
 
-export const CoordinatorModule = Logix.Module('SearchDetailCoordinator', {
+export const CoordinatorModule = Logix.Module.make('SearchDetailCoordinator', {
   state: CoordinatorStateSchema,
   actions: CoordinatorActionMap,
 })
@@ -175,7 +175,7 @@ export const CoordinatorLogic = CoordinatorModule.logic(($) =>
 // 组装：导出可供 UI / Runtime 使用的 ModuleImpl 实现和协调程序
 // ---------------------------------------------------------------------------
 
-export const SearchImpl = SearchModule.make<SearchApi>({
+export const SearchImpl = SearchModule.implement<SearchApi>({
   initial: {
     keyword: '',
     results: [],
@@ -184,7 +184,7 @@ export const SearchImpl = SearchModule.make<SearchApi>({
   logics: [SearchLogic],
 })
 
-export const DetailImpl = DetailModule.make({
+export const DetailImpl = DetailModule.implement({
   initial: {
     selectedItem: undefined,
     isLoading: false,
@@ -192,7 +192,7 @@ export const DetailImpl = DetailModule.make({
   logics: [DetailLogic],
 })
 
-export const CoordinatorImpl = CoordinatorModule.make({
+export const CoordinatorImpl = CoordinatorModule.implement({
   initial: {},
   logics: [CoordinatorLogic],
 })

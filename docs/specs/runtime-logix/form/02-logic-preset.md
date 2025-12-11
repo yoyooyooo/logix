@@ -86,7 +86,7 @@ const smartValidationLogic: Logic.Of<
   FormShape<any>,
   FormValidatorService
 > = Effect.gen(function* () {
-  const validator = yield* $Form.services(FormValidatorService);
+  const validator = yield* $Form.use(FormValidatorService);
 
   const change$ = $Form.flow.fromAction(
     (a): a is Extract<FormAction, { _tag: "field/change" }> =>

@@ -2,6 +2,9 @@
 title: API Evolution · Topic Overview
 status: draft
 version: 2025-12-03
+value: vision
+priority: later
+related: []
 ---
 
 # API Evolution · Topic Overview
@@ -18,4 +21,3 @@ version: 2025-12-03
 
 - [next-gen-killer-apis.md](./next-gen-killer-apis.md) · Next-Gen Killer APIs（Agent.gen、Durable Flow、Invariants 等候选能力）  
 - [when-ai-api.md](./when-ai-api.md) · `$.whenAI` 提案（将 AI 调用融入响应式体系的声明式 API）
-

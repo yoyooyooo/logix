@@ -1,45 +1,32 @@
-# docs
+# Logix 文档应用（apps/docs）
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+`apps/docs` 是 intent-flow 仓库的用户文档站点，基于 **Next.js + Fumadocs** 搭建，主要面向：
 
-Run development server:
+- 使用 Logix 的前端/全栈开发者；
+- 在团队内推广 Intent/Flow/Effect 模式的架构师。
+
+文档内容包括：
+
+- **Guide**：从入门到进阶的使用指南（快速上手、Essentials、Learn、Advanced、Recipes）；
+- **API**：`@logix/core` / `@logix/react` 的 API 参考；
+- **示例与教程**：表单、复杂列表、跨模块协作等典型场景。
+
+## 本地开发
 
 ```bash
-npm run dev
-# or
+pnpm install
 pnpm dev
-# or
-yarn dev
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+默认端口为 `http://localhost:3000`，Fumadocs 会根据 `content/docs` 下的 MDX 文件生成文档站点。
 
-## Explore
+## 主要目录
 
-In the project, you can see:
+- `content/docs`：文档内容（Guide / API 等），是对外的用户文档 SSoT；
+- `source.config.ts`：Fumadocs Source 配置；
+- `src/app`：Next.js App 路由与布局（`/docs` 为文档入口）。
 
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
+在修改 Logix 行为或 API 形状时，建议同步更新：
 
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/(home)`              | The route group for your landing page and other pages. |
-| `app/docs`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
-
-### Fumadocs MDX
-
-A `source.config.ts` config file has been included, you can customise different options like frontmatter schema.
-
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
-
-## Learn More
-
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+- 规范文档：`docs/specs/runtime-logix` / `docs/specs/intent-driven-ai-coding/v3`；
+- 用户文档：本目录下的相关 MDX 页面。

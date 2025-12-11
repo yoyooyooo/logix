@@ -1,19 +1,59 @@
 import React from "react"
-import { Logix } from "@logix/core"
+import * as Logix from "@logix/core"
 import { Context, Effect, Layer, Scope } from "effect"
 import { ReactModuleHandle, useModuleRuntime } from "../internal/useModuleRuntime.js"
 import { useSelector } from "./useSelector.js"
 import { useRuntime } from "../components/RuntimeProvider.js"
+import { isDevEnv } from "../internal/env.js"
 import {
-  getModuleResourceCache,
-  type ModuleResourceFactory,
+  getModuleCache,
+  type ModuleCacheFactory,
   stableHash,
-} from "../internal/ModuleResourceCache.js"
+} from "../internal/ModuleCache.js"
+import { RuntimeContext } from "../internal/ReactContext.js"
 
-interface ModuleImplOptions {
+// 同步模式选项：默认行为，不触发 React Suspense。
+interface ModuleImplSyncOptions {
   readonly deps?: React.DependencyList
   readonly key?: string
+  readonly suspend?: false | undefined
+  readonly initTimeoutMs?: number
+  /**
+   * 当该 ModuleRuntime 在无人持有（refCount=0）后的保活时间（毫秒）。
+   * - 默认为 ModuleCache 的默认值（约 500ms），用于防止 StrictMode 抖动；
+   * - 会话级场景可显式设置为更长时间，例如 5 分钟。
+   */
+  readonly gcTime?: number
+  /**
+   * （可选）实例标签：用于 DevTools / 调试视图的友好名称。
+   * - 若未提供，则在启用 DevTools 时默认回退为 key 或自动编号（Instance #1/#2）。
+   * - 建议用于 Session / 分片等多实例场景，例如 "Session A" / "Session B"。
+   */
+  readonly label?: string
 }
+
+// Suspense 模式选项：当 suspend: true 时，必须显式提供稳定的 key。
+interface ModuleImplSuspendOptions {
+  readonly deps?: React.DependencyList
+  readonly key: string
+  readonly suspend: true
+  readonly gcTime?: number
+  /**
+   * 模块初始化（含异步 Layer 构建）允许的最长 Pending 时间（毫秒）。
+   * - 仅在 suspend:true 场景下生效；
+   * - 超过该时间仍未完成时，会通过 Effect.timeoutFail 触发错误，
+   *   由调用方的 ErrorBoundary 或上层逻辑决定重试 / 降级策略。
+   * - 不影响 gcTime 语义：gcTime 仍然只描述「无人持有后的保活时间」。
+   */
+  readonly initTimeoutMs?: number
+  /**
+   * （可选）实例标签：用于 DevTools / 调试视图的友好名称。
+   * - 若未提供，则在启用 DevTools 时默认回退为 key 或自动编号。
+   */
+  readonly label?: string
+}
+
+type ModuleImplOptions = ModuleImplSyncOptions | ModuleImplSuspendOptions
 
 const isModuleImpl = (
   handle: unknown
@@ -55,6 +95,33 @@ export function useModule<Sh extends Logix.AnyModuleShape, V>(
   equalityFn?: (previous: V, next: V) => boolean
 ): Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>> | V {
   const runtimeBase = useRuntime()
+  const runtimeContext = React.useContext(RuntimeContext)
+
+  if (!runtimeContext) {
+    throw new Error("RuntimeProvider not found")
+  }
+
+  const existingRuntimeFromRoot = React.useMemo(() => {
+    // 仅在当前 RuntimeContext 没有额外 Provider.layer 覆盖时，复用 Root Runtime 上的 ModuleRuntime；
+    // 一旦存在 React Provider.layer（contexts 非空），则优先走 ModuleCache 路径，以便在该层 Env 下构造局部 ModuleRuntime。
+    if (!isModuleImpl(handle) || !runtimeContext || runtimeContext.contexts.length > 0) {
+      return null
+    }
+    try {
+      return runtimeBase.runSync(
+        handle.module as unknown as Effect.Effect<
+          Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>,
+          never,
+          any
+        >,
+      )
+    } catch {
+      return null
+    }
+  }, [runtimeBase, runtimeContext, handle]) as Logix.ModuleRuntime<
+    Logix.StateOf<Sh>,
+    Logix.ActionOf<Sh>
+  > | null
 
   let selector: ((state: Logix.StateOf<Sh>) => V) | undefined
   let options: ModuleImplOptions | undefined
@@ -76,61 +143,147 @@ export function useModule<Sh extends Logix.AnyModuleShape, V>(
   let runtime: Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
 
   if (isModuleImpl(handle)) {
-    // ModuleImpl: 基于当前 Runtime 的 Resource Cache 构造局部 ModuleRuntime，
-    // 并将其生命周期绑定到组件（Suspense 优先，支持异步初始化）。
-    const cache = React.useMemo(
-      () => getModuleResourceCache(runtimeBase),
-      [runtimeBase],
-    )
-
-    // 默认：每个组件实例持有一份私有的 ModuleRuntime；
-    // 若提供 options.key，则可在同一 Runtime 下进行共享；
-    // deps 参与 stableHash，用于在依赖变化时触发重建。
-    const deps = (options?.deps ?? []) as React.DependencyList
-
-    // 每个组件实例生成一个稳定的本地 ID，确保在 StrictMode / 并发渲染下 key 不抖动。
-    const instanceKeyRef = React.useRef<string | null>(null)
-    if (instanceKeyRef.current === null) {
-      instanceKeyRef.current = Math.random().toString(36).slice(2)
-    }
-
-    const baseKey =
-      options?.key ??
-      `impl:${handle.module.id ?? "ModuleImpl"}:${instanceKeyRef.current}`
-    const key = `${baseKey}:${stableHash(deps)}`
-
-    const factory = React.useMemo<ModuleResourceFactory>(
-      () =>
-        (scope: Scope.Scope) =>
-          Layer.buildWithScope(
-            handle.layer as Layer.Layer<any, any, any>,
-            scope,
-          ).pipe(
-            Effect.map((context) =>
-              Context.get(
-                context as Context.Context<any>,
-                handle.module as Logix.ModuleInstance<
-                  any,
-                  Logix.AnyModuleShape
-                >,
-              ) as Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>,
-            ),
+    if (existingRuntimeFromRoot) {
+      // 当前 Runtime 已经挂载了该 Module 的 Runtime 实例：直接复用，
+      // 避免在 React ModuleCache 中重复构造一份 ModuleRuntime。
+      runtime = existingRuntimeFromRoot
+    } else {
+      // ModuleImpl：基于当前 Runtime 的 Resource Cache 构造局部 ModuleRuntime，
+      // 并将其生命周期绑定到组件。
+      //
+      // - 默认：使用 readSync（同步构建），保持与现有行为兼容；
+      // - 当 options.suspend === true 时：使用 read（Suspense 路径），允许异步 Layer。
+      const cache = React.useMemo(
+        () =>
+          getModuleCache(
+            runtimeBase,
+            runtimeContext.reactConfigSnapshot,
+            runtimeContext.configVersion,
           ),
-      [handle],
-    )
+        [
+          runtimeBase,
+          runtimeContext.reactConfigSnapshot,
+          runtimeContext.configVersion,
+        ],
+      )
 
-    const moduleRuntime = cache.readSync(key, factory) as Logix.ModuleRuntime<
-      Logix.StateOf<Sh>,
-      Logix.ActionOf<Sh>
-    >
+      const deps = (options?.deps ?? []) as React.DependencyList
+      const depsHash = stableHash(deps)
+      const suspend = options?.suspend === true
 
-    React.useEffect(() => cache.retain(key), [cache, key])
+      // 1) 解析 gcTime：调用点 > Config(logix.react.gc_time) > 默认 500ms。
+      const gcTime = options?.gcTime ?? runtimeContext.reactConfigSnapshot.gcTime
 
-    runtime = moduleRuntime
+      // 2) 解析 initTimeoutMs（仅在 suspend 模式下生效）：
+      //    调用点 > Config(logix.react.init_timeout_ms) > 默认 undefined（不启用超时）。
+      let initTimeoutMs: number | undefined = suspend ? options?.initTimeoutMs : undefined
+      if (suspend && initTimeoutMs === undefined) {
+        initTimeoutMs = runtimeContext.reactConfigSnapshot.initTimeoutMs
+      }
+
+      if (suspend && (!options || !options.key)) {
+        // 为了防止 Suspense 模式下的资源 key 抖动，suspend:true 必须显式提供 key。
+        // 这里在开发/测试环境中直接抛出可读错误，帮助调用方尽早修正用法。
+        if (isDevEnv()) {
+          throw new Error(
+            "[useModule] suspend:true 模式必须显式提供 options.key；" +
+              "请在 Suspense 边界外生成稳定 ID（例如 useId() 或业务 id），" +
+              "并在 useModule(Impl, { suspend: true, key }) 中传入该值。",
+          )
+        }
+      }
+
+      // 统一的 key 策略：
+      // - 默认使用 React.useId 生成组件级 ID，保证在生产环境 / SSR 下 Suspense 安全；
+      // - 若调用方提供 options.key，则用作显式覆盖（例如跨组件共享或手工分区）。
+      const componentId = React.useId()
+      const baseKey =
+        options?.key ??
+        `impl:${handle.module.id ?? "ModuleImpl"}:${componentId}`
+      const key = `${baseKey}:${depsHash}`
+      const ownerId = handle.module.id ?? "ModuleImpl"
+
+      const baseFactory = React.useMemo<ModuleCacheFactory>(
+        () =>
+          (scope: Scope.Scope) =>
+            Layer.buildWithScope(
+              handle.layer as Layer.Layer<any, any, any>,
+              scope,
+            ).pipe(
+              Effect.map((context) =>
+                Context.get(
+                  context as Context.Context<any>,
+                  handle.module as Logix.ModuleInstance<
+                    any,
+                    Logix.AnyModuleShape
+                  >,
+                ) as Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>,
+              ),
+            ),
+        [handle],
+      )
+
+      const factory = React.useMemo<ModuleCacheFactory>(
+        () => {
+          if (!suspend || initTimeoutMs === undefined) {
+            return baseFactory
+          }
+
+          // 在 Suspense 模式下，对整体初始化过程增加上界：
+          // - 包括 Layer.buildWithScope 以及 ModuleRuntime 构建；
+          // - 超时将以错误形式抛出，由调用方 ErrorBoundary 处理。
+          return (scope: Scope.Scope) =>
+            baseFactory(scope).pipe(
+              Effect.timeoutFail({
+                duration: initTimeoutMs,
+                onTimeout: () =>
+                  new Error(
+                    `[useModule] Module "${ownerId}" initialization timed out after ${initTimeoutMs}ms`,
+                  ),
+              }),
+            )
+        },
+        [baseFactory, suspend, initTimeoutMs, ownerId],
+      )
+
+      const moduleRuntime = (suspend
+        ? cache.read(key, factory, gcTime, ownerId)
+        : cache.readSync(key, factory, gcTime, ownerId)) as Logix.ModuleRuntime<
+        Logix.StateOf<Sh>,
+        Logix.ActionOf<Sh>
+      >
+
+      React.useEffect(() => cache.retain(key), [cache, key])
+
+      runtime = moduleRuntime
+    }
   } else {
     // ModuleInstance | ModuleRuntime: 使用 useModuleRuntime 获取/复用运行时
     runtime = useModuleRuntime(handle)
   }
+
+  // 为 DevTools 提供实例标签：通过 Debug trace 事件将 key/label 与 runtime.id 绑定，
+  // 由下游 DevTools Sink 解析并用于展示。
+  React.useEffect(() => {
+    if (!isModuleImpl(handle)) {
+      return
+    }
+    // 仅在 ModuleImpl 路径下尝试推导实例标签。
+    const opt = options as ModuleImplOptions | undefined
+    const label = (opt && "label" in opt && opt.label) || (opt && opt.key)
+    if (!label) {
+      return
+    }
+
+    const effect = Logix.Debug.record({
+      type: "trace:instanceLabel",
+      moduleId: handle.module.id,
+      runtimeId: runtime.id,
+      data: { label },
+    }) as Effect.Effect<void, never, any>
+
+    runtimeBase.runFork(effect)
+  }, [runtimeBase, runtime, handle, options])
 
   if (selector) {
     return useSelector(runtime, selector, equalityFn)

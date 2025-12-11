@@ -48,7 +48,7 @@ Pattern 则作为**资产级概念**存在：当某个 pattern-style `(input) =>
 Logix v3 的核心能力，可以理解为一种基于 Effect-TS `Context` / `Tag` 的「上下文隐形传态」，
 但在当前 PoC 中，这一能力**通过 `Logix.Module` + `Module.logic(($)=>Effect.gen(...))` + Bound API `$` 落地**。
 
-- `Logix.Module('Id', { state, actions })` 定义领域模块的 Schema 形状；
+- `Logix.Module.make('Id', { state, actions })` 定义领域模块的 Schema 形状；
 - `Module.logic(($)=>Effect.gen(...))` 为该模块挂载 Logic 程序，并在回调参数中注入预绑定的 Bound API `$`；
 - `Module.live(initial, ...logics)` 在内部会创建对应的运行时容器（ModuleRuntime），并在其 Scope 中启动所有 Logic 程序。
 

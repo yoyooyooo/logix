@@ -12,7 +12,7 @@
  */
 
 import { Context, Effect, Schema } from 'effect'
-import { Logix } from '@logix/core'
+import * as Logix from '@logix/core'
 
 // ---------------------------------------------------------------------------
 // 场景一：搜索框输入 → 防抖 + latest 搜索（Fluent + Service）
@@ -42,7 +42,7 @@ export namespace SearchService {
   }
 }
 
-export const AgentModule = Logix.Module('AgentModule', {
+export const AgentModule = Logix.Module.make('AgentModule', {
   state: SearchStateSchema,
   actions: SearchActionMap,
 })
@@ -63,7 +63,7 @@ export const SearchLogicAgent = AgentModule.logic<SearchService>(($) =>
   }),
 )
 
-export const SearchAgentImpl = AgentModule.make<SearchService>({
+export const SearchAgentImpl = AgentModule.implement<SearchService>({
   initial: {
     keyword: '',
     results: [],
@@ -102,7 +102,7 @@ export namespace LocationService {
   }
 }
 
-export const ProfileModule = Logix.Module('ProfileModule', {
+export const ProfileModule = Logix.Module.make('ProfileModule', {
   state: ProfileStateSchema,
   actions: ProfileActionMap,
 })
@@ -133,7 +133,7 @@ export const ProfileLogicAgent = ProfileModule.logic<LocationService>(($) =>
   }),
 )
 
-export const ProfileAgentImpl = ProfileModule.make<LocationService>({
+export const ProfileAgentImpl = ProfileModule.implement<LocationService>({
   initial: {
     country: '',
     city: '',

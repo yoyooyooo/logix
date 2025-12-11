@@ -2,6 +2,7 @@
 title: Logix Platform Readiness Gap Analysis
 status: draft
 version: 2025-11-28
+related: []
 ---
 
 # Logix 平台化能力差距分析 (Gap Analysis)

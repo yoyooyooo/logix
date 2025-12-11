@@ -7,6 +7,7 @@ export interface Draft {
     priority: number | string;
     rank?: number;
     filename: string;
+    related?: string[];
 }
 
 export interface Column {

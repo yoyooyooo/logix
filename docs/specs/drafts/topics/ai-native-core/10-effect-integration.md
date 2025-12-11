@@ -2,6 +2,7 @@
 title: Effect AI Integration Strategy
 status: draft
 version: 2025-11-28
+related: []
 ---
 
 # Effect AI 集成策略 (Integration Strategy)

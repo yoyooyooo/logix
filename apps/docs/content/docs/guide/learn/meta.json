@@ -1,11 +1,12 @@
 {
     "title": "核心概念",
     "pages": [
-        "thinking-in-logix",
         "describing-modules",
         "adding-interactivity",
         "managing-state",
+        "lifecycle-and-watchers",
         "escape-hatches",
+        "cross-module-communication",
         "deep-dive"
     ]
 }

@@ -1,5 +1,25 @@
 node_modules
 dist
+build
 archive/
 coverage
 .turbo
+
+
+
+# codex
+.codex/log
+.codex/auth.json
+.codex/config.toml
+.codex/sessions
+.codex/history.jsonl
+.codex/version.json
+.rsworktree/
+*.log
+.env*
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

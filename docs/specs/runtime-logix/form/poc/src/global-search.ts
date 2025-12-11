@@ -23,7 +23,7 @@ export namespace GlobalSearchForm {
 
   export type Shape = FormCore.FormShape<Values, ActionMap>
 
-  export type ModuleInstance = LogixCore.Logix.ModuleInstance<"GlobalSearchForm", Shape>
+  export type ModuleInstance = LogixCore.ModuleInstance<"GlobalSearchForm", Shape>
 }
 
 export declare const GlobalSearchFormModule: GlobalSearchForm.ModuleInstance

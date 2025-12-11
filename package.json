@@ -22,13 +22,16 @@
     "@effect/language-service": "^0.56.0",
     "@eslint/js": "^9.39.1",
     "@types/prompts": "^2.4.9",
-    "@vitest/coverage-v8": "^4.0.14",
-    "effect": "^3.19.6",
+    "@vitest/browser": "^4.0.15",
+    "@vitest/browser-playwright": "^4.0.15",
+    "@vitest/coverage-v8": "^4.0.15",
+    "effect": "^3.19.8",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "fast-glob": "^3.3.2",
     "happy-dom": "^20.0.11",
     "jsdom": "24.0.0",
+    "playwright": "^1.57.0",
     "prettier": "^3.6.2",
     "prompts": "^2.4.2",
     "ts-morph": "^25.0.0",
@@ -36,6 +39,7 @@
     "turbo": "^2.6.1",
     "typescript": "5.8.2",
     "typescript-eslint": "^8.47.0",
-    "vitest": "^4.0.14"
+    "vitest": "^4.0.15",
+    "vitest-browser-react": "^2.0.2"
   }
 }

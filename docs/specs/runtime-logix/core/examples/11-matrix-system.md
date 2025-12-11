@@ -20,7 +20,7 @@ const TenantBLayer = Layer.succeed(UserApi, { fetch: (id) => Effect.succeed({ id
 // 3. Logic 代码保持不变，只依赖 UserApi Tag；`$User` 概念上表示针对 UserShape + UserApi 预绑定的 Bound API。
 const userLogic: Logic.Of<UserShape, UserApi> =
   Effect.gen(function* (_) {
-    const api = yield* $User.services(UserApi);
+    const api = yield* $User.use(UserApi);
     const { userId } = yield* $User.state.read;
     const user = yield* api.fetch(userId);
     yield* $User.state.mutate(draft => { draft.user = user; });
@@ -74,8 +74,8 @@ const permissionLogic: Logic.Of<ApprovalShape, AuthService | ApprovalApi> =
       const approve$ = $Approval.flow.fromAction(a => a._tag === 'approve');
 
       const approveEffect = Effect.gen(function* (_) {
-        const auth = yield* $Approval.services(AuthService);
-        const api = yield* $Approval.services(ApprovalApi);
+        const auth = yield* $Approval.use(AuthService);
+        const api = yield* $Approval.use(ApprovalApi);
 
         const hasPermission = yield* auth.canApprove();
 

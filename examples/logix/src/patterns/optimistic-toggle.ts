@@ -9,8 +9,8 @@
  *   - 这是“状态感知型 Pattern”的示例，相比场景版更加抽象，便于在多处开关/点赞/收藏场景下复用。
  */
 
-import { Data, Effect, Schema } from 'effect'
-import { Logix, Logic } from '@logix/core'
+import { Data, Effect, Schema } from "effect"
+import * as Logix from "@logix/core"
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：与 optimistic-toggle.ts 场景保持一致的 State / Action 形状
@@ -85,15 +85,15 @@ export const makeOptimisticToggleLogicPattern = (
   _config: OptimisticToggleLogicPatternConfig = {},
 ) => (
   $Toggle: Logix.BoundApi<ToggleShape, ToggleService>,
-): Logic.Of<ToggleShape, ToggleService, void, never> =>
-  Effect.gen(function* () {
+): Logix.ModuleLogic<ToggleShape, ToggleService, never> =>
+  (Effect.gen(function* () {
     const click$ = $Toggle.flow.fromAction(
-      (a): a is { _tag: 'toggle/click'; payload: void } =>
-        a._tag === 'toggle/click',
+      (a): a is { _tag: "toggle/click"; payload: void } =>
+        a._tag === "toggle/click",
     )
     const resetError$ = $Toggle.flow.fromAction(
-      (a): a is { _tag: 'toggle/resetError'; payload: void } =>
-        a._tag === 'toggle/resetError',
+      (a): a is { _tag: "toggle/resetError"; payload: void } =>
+        a._tag === "toggle/resetError",
     )
 
     const handleClick = Effect.gen(function* () {
@@ -110,12 +110,12 @@ export const makeOptimisticToggleLogicPattern = (
       }))
 
       // 2. 调用服务，并显式处理错误；错误时回滚 enabled
-      const svc = yield* $Toggle.services(ToggleService)
+      const svc = yield* $Toggle.use(ToggleService)
 
       yield* svc
         .toggle({ id: current.id, nextValue })
         .pipe(
-          Effect.catchTag('ToggleServiceError', (err: ToggleServiceError) =>
+          Effect.catchTag("ToggleServiceError", (err: ToggleServiceError) =>
             $Toggle.state.update((prev) => ({
               ...prev,
               enabled: previousValue,
@@ -145,7 +145,7 @@ export const makeOptimisticToggleLogicPattern = (
       click$.pipe($Toggle.flow.runExhaust(handleClick)),
       resetError$.pipe($Toggle.flow.run(handleResetError)),
     ])
-  })
+  }) as Logix.ModuleLogic<ToggleShape, ToggleService, never>)
 
 /**
  * 消费方使用示例：
@@ -155,7 +155,7 @@ export const makeOptimisticToggleLogicPattern = (
  *     ToggleModule.logic<ToggleService>(makeOptimisticToggleLogicPattern())
  *
  *   // 2) 在 Module 层装配（示意，与 optimistic-toggle.ts 中类似）：
- *   const ToggleModule = Logix.Module('Toggle', { state: ToggleStateSchema, actions: ToggleActionSchema })
+ *   const ToggleModule = Logix.Module.make('Toggle', { state: ToggleStateSchema, actions: ToggleActionSchema })
  *   export const ToggleImpl = ToggleModule.make<ToggleService>({
  *     initial: initialState,
  *     logics: [ToggleLogicFromPattern],

@@ -1,0 +1,31 @@
+
+> @examples/logix-sandbox-mvp@0.0.1 typecheck /Users/yoyo/Documents/code/personal/intent-flow/examples/logix-sandbox-mvp
+> tsc -p tsconfig.json --noEmit
+
+../../packages/logix-core/src/Debug.ts(175,43): error TS2352: Conversion of type 'Layer<never, never, never>' to type 'Layer<any, any, any>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'any' is not comparable to type 'never'.
+../../packages/logix-core/src/Debug.ts(188,7): error TS2345: Argument of type 'FiberRef<readonly Sink[]>' is not assignable to parameter of type 'Tag<any, unknown>'.
+  Type 'FiberRef<readonly Sink[]>' is missing the following properties from type 'Tag<any, unknown>': _op, Service, Identifier, of, and 6 more.
+../../packages/logix-core/src/internal/runtime/core/DebugSink.ts(133,17): error TS2345: Argument of type 'FiberRef<readonly Sink[]>' is not assignable to parameter of type 'Tag<unknown, unknown>'.
+  Type 'FiberRef<readonly Sink[]>' is missing the following properties from type 'Tag<unknown, unknown>': _op, Service, Identifier, of, and 6 more.
+../../packages/logix-core/src/internal/runtime/core/DebugSink.ts(153,17): error TS2345: Argument of type 'FiberRef<readonly Sink[]>' is not assignable to parameter of type 'Tag<unknown, unknown>'.
+  Type 'FiberRef<readonly Sink[]>' is missing the following properties from type 'Tag<unknown, unknown>': _op, Service, Identifier, of, and 6 more.
+../../packages/logix-core/src/internal/runtime/core/DebugSink.ts(172,17): error TS2345: Argument of type 'FiberRef<readonly Sink[]>' is not assignable to parameter of type 'Tag<unknown, unknown>'.
+  Type 'FiberRef<readonly Sink[]>' is missing the following properties from type 'Tag<unknown, unknown>': _op, Service, Identifier, of, and 6 more.
+../../packages/logix-core/src/internal/runtime/core/DebugSink.ts(303,17): error TS2345: Argument of type 'FiberRef<readonly Sink[]>' is not assignable to parameter of type 'Tag<unknown, unknown>'.
+  Type 'FiberRef<readonly Sink[]>' is missing the following properties from type 'Tag<unknown, unknown>': _op, Service, Identifier, of, and 6 more.
+../../packages/logix-react/src/components/RuntimeProvider.tsx(110,9): error TS2345: Argument of type 'ManagedRuntime<never, any>' is not assignable to parameter of type 'ManagedRuntime<any, any>'.
+  Type 'any' is not assignable to type 'never'.
+../../packages/logix-react/src/components/RuntimeProvider.tsx(132,24): error TS2345: Argument of type '(prev: { snapshot: ReactConfigSnapshot; version: number; }) => { snapshot: ReactConfigSnapshot | { gcTime: number; initTimeoutMs: number | undefined; source: string; }; version: number; }' is not assignable to parameter of type 'SetStateAction<{ snapshot: ReactConfigSnapshot; version: number; }>'.
+  Type '(prev: { snapshot: ReactConfigSnapshot; version: number; }) => { snapshot: ReactConfigSnapshot | { gcTime: number; initTimeoutMs: number | undefined; source: string; }; version: number; }' is not assignable to type '(prevState: { snapshot: ReactConfigSnapshot; version: number; }) => { snapshot: ReactConfigSnapshot; version: number; }'.
+    Call signature return types '{ snapshot: ReactConfigSnapshot | { gcTime: number; initTimeoutMs: number | undefined; source: string; }; version: number; }' and '{ snapshot: ReactConfigSnapshot; version: number; }' are incompatible.
+      The types of 'snapshot' are incompatible between these types.
+        Type 'ReactConfigSnapshot | { gcTime: number; initTimeoutMs: number | undefined; source: string; }' is not assignable to type 'ReactConfigSnapshot'.
+          Type '{ gcTime: number; initTimeoutMs: number | undefined; source: string; }' is not assignable to type 'ReactConfigSnapshot'.
+            Types of property 'source' are incompatible.
+              Type 'string' is not assignable to type '"runtime" | "config" | "default"'.
+../../packages/logix-react/src/components/RuntimeProvider.tsx(383,38): error TS2345: Argument of type 'Effect<{ context: Context<any>; loggers: LoggerSet; logLevel: LogLevel; debugSinks: readonly Sink[]; }, any, any>' is not assignable to parameter of type 'Effect<{ context: Context<any>; loggers: LoggerSet; logLevel: LogLevel; debugSinks: readonly Sink[]; }, any, never>'.
+  Type 'any' is not assignable to type 'never'.
+../../packages/logix-react/src/components/RuntimeProvider.tsx(392,21): error TS2345: Argument of type 'Effect<{ context: Context<any>; loggers: LoggerSet; logLevel: LogLevel; debugSinks: readonly Sink[]; }, any, any>' is not assignable to parameter of type 'Effect<{ context: Context<any>; loggers: LoggerSet; logLevel: LogLevel; debugSinks: readonly Sink[]; }, any, never>'.
+  Type 'any' is not assignable to type 'never'.
+ ELIFECYCLE  Command failed with exit code 2.

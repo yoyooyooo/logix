@@ -2,6 +2,7 @@
 title: The Grand Bidirectional Architecture
 status: draft
 version: 1.0
+related: []
 ---
 
 # The Grand Bidirectional Architecture: Intent <-> Code

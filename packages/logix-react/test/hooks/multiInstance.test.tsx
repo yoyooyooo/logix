@@ -2,14 +2,14 @@ import { describe, it, expect, afterEach } from "vitest"
 // @vitest-environment happy-dom
 import React from "react"
 import { render, fireEvent, waitFor, cleanup } from "@testing-library/react"
-import { Schema, ManagedRuntime, Layer } from "effect"
-import { Logix } from "@logix/core"
+import { Schema, ManagedRuntime, Layer, Effect } from "effect"
+import * as Logix from "@logix/core"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
 import { useSelector } from "../../src/hooks/useSelector.js"
 import { useDispatch } from "../../src/hooks/useDispatch.js"
 
-const Counter = Logix.Module("CounterMulti", {
+const Counter = Logix.Module.make("CounterMulti", {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
     increment: Schema.Void,
@@ -17,12 +17,14 @@ const Counter = Logix.Module("CounterMulti", {
 })
 
 const CounterLogic = Counter.logic(($) =>
-  $.onAction("increment").run(
-    $.state.update((s) => ({ count: s.count + 1 })),
-  ),
+  Effect.gen(function* () {
+    yield* $.onAction("increment").run(
+      $.state.update((s) => ({ count: s.count + 1 })),
+    )
+  }),
 )
 
-const CounterImpl = Counter.make({
+const CounterImpl = Counter.implement({
   initial: { count: 0 },
   logics: [CounterLogic],
 })
@@ -33,14 +35,7 @@ describe("useModule multi-instance behavior", () => {
   })
   const makeTagRuntime = () =>
     ManagedRuntime.make(
-      Counter.live({ count: 0 }, CounterLogic) as Layer.Layer<
-        Logix.ModuleRuntime<
-          { readonly count: number },
-          Logix.ActionOf<typeof Counter.shape>
-        >,
-        never,
-        never
-      >,
+      Counter.live({ count: 0 }, CounterLogic) as Layer.Layer<any, never, never>,
     )
 
   const makeImplRuntime = () =>

@@ -172,6 +172,62 @@ version: 1 (Concept-First)
     - L2 IntentRule（Coordinate）：跨 Store 协作（A → B，代码侧使用 `$.use(StoreSpec) + $.on($Other.changes/...).then($SelfOrOther.dispatch)`）。
   - 对平台/Parser 来说，Intent 命名空间是识别 “意图原语” 的首选入口。
 
+### 4.3 StateTrait（字段能力引擎）
+
+- **StateTrait**
+  - 概念上是「字段能力与 State Graph 的统一引擎」：
+    - 从 Module 图纸上的 `state + traits` 槽位，抽象出每个字段的能力（Computed / Source / Link 等）；
+    - 生成结构化的 Graph 与 Plan，用于 Runtime 与 DevTools 消费；
+    - 以 Module 维度作为边界，不跨模块偷偷引入隐式字段依赖。
+  - 在实现层由 `@logix/core` 内部的 StateTrait 模块承载（见 `runtime-logix/core/02-module-and-logic-api.md` 与 `specs/001-module-traits-runtime/*`），早期分离包 `@logix/data` 的方案已被统一收敛到 StateTrait。
+- **StateTraitGraph / StateTraitPlan / StateTraitProgram**
+  - Graph（图）：字段与能力的结构视图（节点 = 字段；边 = 计算/联动/资源依赖）；
+  - Plan（计划）：Runtime 执行这些能力的步骤清单（何时重算 computed、何时刷新 source、何时进行 link 传播）；
+  - Program：从「State Schema + traits 声明」build 出来的统一 Program 对象，既包含原始 Spec，又包含 Graph/Plan，作为 Runtime 与 DevTools 的单一入口。
+- **设计要点**：
+  - StateTrait 只负责「字段如何被维护」的 **What**（例如：sum 是 a/b 的函数、profile.name 跟随 profileResource.name、某字段来自外部资源），不关心具体 IO 细节；
+  - Runtime 通过 StateTraitPlan 将这些能力编译为实际的 Effect/Watcher/EffectOp 流，DevTools 则以 StateTraitGraph 作为 State Graph 的事实源。
+
+### 4.4 Resource / Query（逻辑资源与查询环境）
+
+- **Resource（逻辑资源规格）**
+  - 概念上是「某类外部资源访问的规格说明」，由 ResourceSpec 描述：
+    - `id`：逻辑资源 ID（例如 `"user/profile"`），与 StateTrait.source 中的 `resource` 对齐；
+    - `keySchema`：用于描述访问 key 形状的 Schema（类似强类型 queryKey）；
+    - `load(key)`：给定 key 如何访问该资源（Effect-native 实现，通常基于 Service Tag + Layer 注入）；
+    - `meta`：缓存分组、描述信息等扩展位。
+  - ResourceSpec 注册在 Runtime 环境中（通过 `Resource.layer([...])`），不同 RuntimeProvider 子树可以为同一资源 ID 提供不同实现。
+- **Query（查询环境与中间件）**
+  - 概念上是「针对部分资源接入查询引擎（如 QueryClient）的可插拔适配层」，不改变 StateTraitProgram 的结构：
+    - `Query.layer(client)`：在 Env 中注册一个 QueryClient 实例；
+    - `Query.middleware(config)`：订阅 `EffectOp(kind="service")`，基于 `resourceId + key + config` 决定某些调用是否走 QueryClient（缓存/重试/并发合并）。
+  - StateTrait / Program **不理解** Query 细节，它们只负责在 Plan 中标记哪些字段是 Source、对应的 resourceId 与 key 规则；是否启用 Query 完全由 Runtime 层是否装配 `Query.layer + Query.middleware` 决定。
+- **Runtime 协作关系（StateTrait.source ↔ Resource/Query）**
+  - Module 图纸：只写 `StateTrait.source({ resource, key })`；
+  - StateTraitProgram：在 Graph/Plan 中标记 source 字段与 resourceId/keySelector；
+  - Runtime：在显式入口（例如 `$.traits.source.refresh("profileResource")`）被调用时构造 `EffectOp(kind="service", meta.resourceId, meta.key)`，交给 Middleware 总线；
+  - Resource / Query 中间件：根据 resourceId + key 决定走 ResourceSpec.load 还是 QueryClient，DevTools 则在 Timeline 中观察这些 Service 调用与 State 更新。
+
+### 4.5 EffectOp（运行时事件与统一中间件总线）
+
+- **EffectOp**
+  - 概念上是「所有重要边界 Effect 的统一事件模型」：
+    - `kind`: `"action" | "flow" | "state" | "service" | "lifecycle"` 等；
+    - `name`: 逻辑名称（如 Action tag、Flow 名称、资源 ID）；
+    - `payload`: 输入/上下文；
+    - `meta`: 结构化元信息（moduleId、fieldPath、resourceId、key、trace 等）；
+    - `effect`: 实际要执行的 Effect 程序。
+  - Runtime 在 Action/Flow/State/Service/Lifecycle 等边界构造 EffectOp，并通过统一的 MiddlewareStack 处理横切关注点（日志、监控、限流、Query 集成等）。
+- **EffectOp Middleware 总线**
+  - 与 `core/04-logic-middleware.md` 中的 Logic Middleware 不同，EffectOp 中间件是 **运行时级** 的统一总线：
+    - Logic Middleware（`Logic.secure`）在 Logic/Flow 层包装某一段业务 Effect；
+    - EffectOp Middleware 在引擎层对所有边界事件统一拦截与装饰；
+  - 通过 Env Service（例如 `EffectOpMiddlewareEnv` + Tag）在 Runtime.make 入口注入当前使用的 MiddlewareStack，再由 StateTrait.install / Runtime 核心在需要时消费。
+- **DevTools 视角**
+  - EffectOp 提供了一条天然的时间轴与因果链：DevTools 可以基于 EffectOp 序列构建「Action/Flow/State/Service」的 Timeline 与因果图；
+  - Debug 模块会将部分 EffectOp 以 `trace:effectop` 事件形式写入 DebugSink，供 Playground / Runtime Alignment Lab 与外部工具消费。  
+  - StateTraitGraph 与 EffectOp Timeline 结合，构成“字段能力 + Runtime 行为”的双视角：结构（Graph）与事件（EffectOp）。
+
 ## 5. 平台相关术语（概念视角）
 
 ### 5.1 平台视图
@@ -188,6 +244,44 @@ version: 1 (Concept-First)
 - 关键前提：
   - 代码子集必须遵守上文定义的 Pattern / Store / Logic / Flow / Control 语义；
   - 锚点（Anchor）与 IR（IntentRule）是中间桥梁。
+
+### 5.3 Playground / Sandbox / Runtime Alignment Lab
+
+- **Sandbox Runtime（沙箱运行时）**
+  - 指基于 Web Worker / Deno 等隔离环境的 Logix/Effect 运行容器；  
+  - 主要职责是：在受控环境中执行代码，并产出结构化的日志 / Trace / 状态快照；  
+  - 当前实现落点为 `@logix/sandbox` 子包（浏览器 Worker + esbuild-wasm + Mock 层）。
+
+- **Playground（意图 Playground）**
+  - 指平台侧面向人类/AI 的交互视图，用于：  
+    - 挂载某个 Intent/Scenario（例如省市区联动）；  
+    - 展示对应的 Logix/Effect 实现与运行结果（RunResult）；  
+    - 支持手动/自动运行场景，用于验证实现是否符合 Intent。  
+  - 本质上是 Intent/Spec → Logix → Runtime 闭环在 UI 层的一个窗口。
+
+- **Runtime Alignment Lab（运行时对齐实验室）**
+  - Playground 的目标形态：不仅“能跑代码”，而且显式回答：  
+    > 当前运行行为是否与 Spec/Intent 对齐？  
+  - 输入：Spec/Scenario + IntentRule/R-S-T + Logix/Effect 实现；  
+  - 输出：RunResult + 对齐报告（Alignment Report），指出哪些规则/场景被覆盖、哪些存在偏差。  
+  - 与 SDD 映射：对应于 SDD 中的 “Executable Specs + Verify/Loop” 阶段。
+
+### 5.4 Universal Spy / Semantic UI Mock（简称 & 角色）
+
+- **Universal Spy（通用探针 Mock）**
+  - 用途：接管非核心 IO/SDK 依赖（HTTP 客户端、第三方 SDK 等），在 Sandbox 中将其统一降维为「可观测的调用 + 可配置的 Mock 行为」。  
+  - 行为：通过递归 Proxy 记录调用路径与参数，并按 MockManifest 返回结果；  
+  - 与平台的关系：为运行时提供“外部世界”的可控替身，便于在 DevTools/Playground 中观测与调试。
+
+- **Semantic UI Mock（语义 UI Mock，简称 Semantic Mock）**
+  - 用途：接管 UI 组件库（如 antd/mui），在 Sandbox 中不渲染真实 DOM，而是输出 **语义组件 + UI_INTENT 信号**；  
+  - Worker 内：  
+    - 提供 Button/Modal/Select 等语义组件的 Headless 实现；  
+    - 以 `UiIntentPacket` 的形式发出组件的状态（props）与行为意图（mount/update/action 等）。  
+  - Host/Playground：  
+    - 在主线程将 UI_INTENT 渲染为线框视图或其他可视化表现；  
+    - 把用户交互回传 Worker，驱动 Logix/Effect 逻辑运行。  
+  - 概念定位：Semantic UI Mock 是 UI 层的 **Executable Spec** 载体——它描述“有哪些交互、这些交互如何影响状态”，而不是像素级的 UI 外观。
 
 ## 6. 冲突解决与 SSOT 归属
 

@@ -7,6 +7,21 @@ version: 15 (Effect-Native · Fluent DSL)
 > **核心目标**：实现 Intent (图) 与 Code (码) 的**无损双向同步**。
 > 在 v3 最终架构（Context is World）下，Parser 聚焦于识别 **Module + Fluent Intent 链**，并将其映射为稳定的 IntentRule IR。
 
+## 0. 全双工的边界：Platform-Grade vs Runtime-Grade
+
+在 v3 中，“全双工”并不意味着 **所有 Effect 代码都要可逆**，而是只对一小块 **平台子集（Platform-Grade Subset）** 做严格约束，其余视为运行时实现细节（Runtime-Grade）。
+
+- **Platform-Grade 子集**（必须全双工，可被平台完整解析与重写）：
+  - `Logix.Module` 定义与 `Module.logic(($) => ...)` 入口；
+  - 基于 `$` 的 Fluent DSL：`$.onState / $.onAction / $.on(...).then(...)`、`$.state.*`、`$.lifecycle.*` 等；
+  - 官方/平台认可的 `$` 扩展（如 `$.router` 等），其语义在平台侧有明确的 IR 映射。
+- **Runtime-Grade 区域**（不要求可逆，只需可运行、尽量可观测）：
+  - 任意 `Effect` / `Stream` 组合、领域算法、容错逻辑等；
+  - 通过 Service Tag / Env 提供的实现细节，如 `yield* RouterService`、`yield* PaymentService` 等；
+  - 平台只需知道“它挂在某个规则/节点里”，必要时通过 Trace 做灰盒观测。
+
+因此，本章所有“解析规则”“可视锚点”等约束，都只针对 Platform-Grade 子集：**凡是希望进入 IntentRule / 依赖图 / 画布编辑的逻辑，必须用 `$` + Fluent DSL 写在这块子集之内；其余代码默认视为 Runtime-Grade，Parser 仅做最佳努力的灰盒处理**。
+
 ## 1. 核心理念：架构即视图 (Architecture as View)
 
 我们依然不试图解析每一行代码，而是只关注架构骨架，但骨架的锚点已经演进为：
@@ -26,7 +41,7 @@ version: 15 (Effect-Native · Fluent DSL)
 Parser 通过识别特定的 **AST Pattern** 来提取语义：
 
 1.  **Module 定义与 Logic 入口**
-   - 匹配 `Logix.Module("Id", { state, actions })`，提取：
+   - 匹配 `Logix.Module.make("Id", { state, actions })`，提取：
      - Module 标识（Id）；
      - State/Action Schema（用于 Shape 与 IR 血缘追踪）；
    - 匹配 `Module.logic(($) => Effect.gen(function* (_) { ... }))`，将其视为一个 Logic 单元，并绑定 `$` 的上下文为对应的 Module。

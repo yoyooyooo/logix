@@ -1,5 +1,5 @@
-import { Config, Data, Effect, Schema, SubscriptionRef, Duration } from 'effect'
-import { Logix, Logic } from '@logix/core'
+import { Config, Data, Effect, Schema, SubscriptionRef, Duration } from "effect"
+import * as Logix from "@logix/core"
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：审批场景的 State / Action
@@ -120,7 +120,7 @@ export const runApprovalFlowEffect = (input: ApprovalEffectInput) =>
 // Module：定义审批模块
 // ---------------------------------------------------------------------------
 
-export const ApprovalModule = Logix.Module('ApprovalModule', {
+export const ApprovalModule = Logix.Module.make('ApprovalModule', {
   state: ApprovalStateSchema,
   actions: ApprovalActionMap,
 })
@@ -179,7 +179,7 @@ export const ApprovalLogic = ApprovalModule.logic<ApprovalService>(($: Logix.Bou
 // Impl / Live：组合 State / Action / Logic 成为一棵可注入的领域模块
 // ---------------------------------------------------------------------------
 
-export const ApprovalImpl = ApprovalModule.make<ApprovalService>({
+export const ApprovalImpl = ApprovalModule.implement<ApprovalService>({
   initial: {
     taskId: '',
     comment: '',

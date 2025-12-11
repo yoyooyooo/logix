@@ -9,7 +9,7 @@
 
 import { Effect, Schema, Stream, SubscriptionRef } from 'effect'
 import { fileURLToPath } from 'node:url'
-import { Logix } from '@logix/core'
+import * as Logix from '@logix/core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：包含派生标记的简单 State
@@ -33,7 +33,7 @@ export type DerivedAction = Logix.ActionOf<DerivedShape>
 // Module：使用 Logix.Module 定义派生场景模块
 // ---------------------------------------------------------------------------
 
-export const CounterModule = Logix.Module('CounterModule', {
+export const CounterModule = Logix.Module.make('CounterModule', {
   state: DerivedStateSchema,
   actions: DerivedActionMap,
 })
@@ -58,7 +58,7 @@ export const CounterLogic = CounterModule.logic(($) =>
 // Impl / Live：组合初始 State 与 Logic
 // ---------------------------------------------------------------------------
 
-export const DerivedImpl = CounterModule.make({
+export const DerivedImpl = CounterModule.implement({
   initial: {
     results: [],
     hasResults: false,

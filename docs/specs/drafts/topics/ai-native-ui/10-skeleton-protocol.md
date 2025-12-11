@@ -2,6 +2,7 @@
 title: Skeleton Protocol & Integration
 status: draft
 version: 1.0
+related: []
 ---
 
 # Skeleton Protocol: The "S" Namespace
@@ -102,7 +103,7 @@ interface InputIntent {
 
 ```tsx
 const Input = (props: SkeletonProps) => {
-  const runtime = useLogixRuntime();
+  const runtime = useRuntime();
   const theme = useLogixTheme();
 
   // 1. Resolve Data Binding

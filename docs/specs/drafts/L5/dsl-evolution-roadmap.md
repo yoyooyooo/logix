@@ -5,6 +5,7 @@ version: 0.2.0
 supersedes:
   - ../L9/logix-sugar-possibilities.md
   - ../L9/logic-for-shape-env-first-roadmap.md
+related: []
 ---
 
 # Logix DSL 与语法糖演进路线
@@ -147,12 +148,12 @@ HeavyComputeLogic: Logic.OnBackground
 ### 2.5 Module 层语法糖
 
 ```typescript
-Logix.Module('User', {
+Logix.Module.make('User', {
   meta: { persist: true, role: 'admin' },
   state: ...
 })
 // 或
-Logix.Module('User', { ... }).pipe(
+Logix.Module.make('User', { ... }).pipe(
   Module.annotate({ author: 'Yoyo' })
 )
 
@@ -186,6 +187,18 @@ Runtime 在加载 Module/Logic 时读取 Metadata，据此调整执行策略。
    - 语法糖永远只是"捷径"，不是"唯一路径"
    - 任何 Annotation 实现的功能都可通过手写 Logic 实现
    - 复杂需求可平滑退回显式编程模式
+
+### 2.8 工程化维度：本地 Codegen / Typegen
+
+在上述元编程与语法糖之上，v3 需要承认第三个现实维度：**工程化工具链**。  
+核心共识：
+
+- **元信息只存在于 Schema / Metadata**（包含 CapabilityMeta、字段级 annotations 等）；  
+- 真正“把蓝图变成代码/行为”的过程，可以发生在两处：
+  - Runtime：`Module.live` / Runtime Core 扫描元数据并调用 Helper Factory（Query / Reactive / Link / Capability Plugin 等）；  
+  - Build-Time：本地 generator（CLI / Vite 插件）扫描同一份元数据，生成普通 TS 代码和 `.d.ts`（例如 `L9/logix-state-first-module-codegen.md` 提出的 State-First Module Codegen）。
+
+这意味着：DSL 与语法糖在设计时应尽量统一到「Schema Metadata + Helper」模型上，**工程化辅助只是一种额外的编译路径**，而不是另一套魔法 API。所有 Sugar 最终都应可用“Runtime 编译”或“Build-Time 编译”二选一地落地，而不会引入第三种语义。
 
 ---
 
@@ -313,6 +326,7 @@ state: Schema.Struct({
 
 - [x] 保持 `Module.logic(($)=>...)` 作为主入口
 - [x] `Logic.forShape` 仅作为文档中的概念缩写
+- [x] 增强 IntentBuilder handler 上下文：引入 `IntentContext<Sh, Payload>` 与 `runWithContext` 作为核心 DSL 能力（`withContext().run` 视为可选语法糖）
 - [ ] 补充 Pattern 形态的最佳实践文档
 
 ### 阶段 2: 基础 Sugar 实现 (v3.x+)

@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest"
 // @vitest-environment happy-dom
 import { renderHook, waitFor, act } from "@testing-library/react"
-import { Logix } from "@logix/core"
-import { Schema, ManagedRuntime } from "effect"
+import * as Logix from "@logix/core"
+import { Schema, ManagedRuntime, Effect } from "effect"
 import { useSelector } from "../../src/hooks/useSelector.js"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
 import { useDispatch } from "../../src/hooks/useDispatch.js"
 import React from "react"
 
-const Counter = Logix.Module("Counter", {
+const Counter = Logix.Module.make("Counter", {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
     increment: Schema.Void,
@@ -18,21 +18,17 @@ const Counter = Logix.Module("Counter", {
 
 describe("useSelector", () => {
   it("should select state slice and update on change", async () => {
-    const layer = Counter.live({ count: 10 },
+    const layer = Counter.live(
+      { count: 10 },
       Counter.logic<never>((api) =>
-        api.onAction("increment").run(() => api.state.update(s => ({ count: s.count + 1 })))
-      )
+        Effect.gen(function* () {
+          yield* api.onAction("increment").run(() =>
+            api.state.update((s) => ({ count: s.count + 1 })),
+          )
+        }),
+      ),
     )
-    const runtime = ManagedRuntime.make(
-      layer as import("effect").Layer.Layer<
-        import("@logix/core").Logix.ModuleRuntime<
-          { readonly count: number },
-          { readonly _tag: "increment"; readonly payload: void }
-        >,
-        never,
-        never
-      >
-    )
+    const runtime = ManagedRuntime.make(layer as import("effect").Layer.Layer<any, never, never>)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>
@@ -65,24 +61,18 @@ describe("useSelector", () => {
   })
 
   it("should invoke equalityFn when provided", async () => {
-    const layer = Counter.live({ count: 0 },
+    const layer = Counter.live(
+      { count: 0 },
       Counter.logic<never>((api) =>
-        api.onAction("increment").run(() =>
-          api.state.update((s) => ({ count: s.count + 1 })),
-        ),
+        Effect.gen(function* () {
+          yield* api.onAction("increment").run(() =>
+            api.state.update((s) => ({ count: s.count + 1 })),
+          )
+        }),
       ),
     )
 
-    const runtime = ManagedRuntime.make(
-      layer as import("effect").Layer.Layer<
-        import("@logix/core").Logix.ModuleRuntime<
-          { readonly count: number },
-          { readonly _tag: "increment"; readonly payload: void }
-        >,
-        never,
-        never
-      >,
-    )
+    const runtime = ManagedRuntime.make(layer as import("effect").Layer.Layer<any, never, never>)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>

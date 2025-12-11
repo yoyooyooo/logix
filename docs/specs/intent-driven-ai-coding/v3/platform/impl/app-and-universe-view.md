@@ -17,28 +17,31 @@
 ```ts
 // runtime-logix/core/architecture-app-runtime.ts (概念性)
 
-export interface ModuleDef<R> { /* ... */ }
+export interface ModuleDef<R> {
+  /* ... */
+}
 
 export const Logix = {
   module: <R>(def: ModuleDef<R>) => def,
-  // 应用级 Runtime 由 Root ModuleImpl + LogixRuntime.make 组合；
+  // 应用级 Runtime 由 Root ModuleImpl + Logix.Runtime.make 组合；
   // 平台关心的是 Root ModuleImpl 与 ModuleDef，而非具体的 Runtime 组装 API。
 }
 ```
 
 平台解析器需要识别的主要调用/声明形式：
 
-- `Logix.module({ ... })`：定义普通 Module；
-- `Module.make({ initial, logics, imports?, processes? })`：定义 Root ModuleImpl 或 Feature 级 ModuleImpl 蓝图；
+- `Logix.Module.make({ ... })`：定义普通 Module；
+- `Module.implement({ initial, logics, imports?, processes? })`：定义 Root ModuleImpl 或 Feature 级 ModuleImpl 蓝图；
 - `imports: [OrderModule, UserModule, ...]`：模块间依赖；
 - `links: [SearchSyncLink, ...]`：业务编排逻辑（胶水）（在运行时实现中通过 Root ModuleImpl.processes 或 ModuleDef.links 表达）；
 - `processes: [SomeDaemon, ...]`：基础设施进程（杂役）；
 - `exports: [SomeTag, ...]`：对外公开的 Tag 列表；
-- `LogixRuntime.make(rootImpl, { layer, onError })`：应用/页面/Feature 级 Runtime 的根入口。
+- `Logix.Runtime.make(rootImpl, { layer, onError })`：应用/页面/Feature 级 Runtime 的根入口。
 
 > 实现建议
-> - 在 TS 层对 `Logix` 使用命名 import（例如 `import { Logix } from "@logix/core"`），以便解析器快速定位 Module 定义；
-> - 平台可以约定：所有 Module / Root ModuleImpl / Runtime 入口必须使用 `export const XxxModule = Logix.Module(...)`、`export const XxxImpl = XxxModule.make(...)`、`export const XxxRuntime = LogixRuntime.make(XxxImpl, { ... })` 形式，避免运行时动态构造。
+>
+> - 在 TS 层统一使用命名空间导入（例如 `import * as Logix from "@logix/core"`），以便解析器快速定位 Module 定义；
+> - 平台可以约定：所有 Module / Root ModuleImpl / Runtime 入口必须使用 `export const XxxModule = Logix.Module.make(...)`、`export const XxxImpl = XxxModule.implement(...)`、`export const XxxRuntime = Logix.Runtime.make(XxxImpl, { ... })` 形式，避免运行时动态构造。
 
 ## 2. AST → ModuleIR 的抽象
 
@@ -52,15 +55,15 @@ interface ModuleIR {
   filePath: string
   exportedName: string
 
-  imports: string[]           // 引入的子模块 ID（或符号名）
+  imports: string[] // 引入的子模块 ID（或符号名）
   providers: Array<{
-    tagSymbol: string         // Tag 的符号名（用于连线）
-    valueSymbol: string       // Store/Service 的符号名
+    tagSymbol: string // Tag 的符号名（用于连线）
+    valueSymbol: string // Store/Service 的符号名
   }>
 
-  links: string[]             // 业务编排 Link 的符号名
-  processes: string[]         // 基础设施 Process 的符号名
-  exports: string[]           // 对外公开的 Tag 符号名
+  links: string[] // 业务编排 Link 的符号名
+  processes: string[] // 基础设施 Process 的符号名
+  exports: string[] // 对外公开的 Tag 符号名
 
   // 附加元数据（如 middlewares、注释等），供后续使用
   middlewares: string[]
@@ -70,7 +73,7 @@ interface ModuleIR {
 
 解析流程（概念）：
 
-1. 扫描整个项目，定位所有 `Logix.module(...)` 调用（以及早期版本中遗留的应用级配置调用，如 AppRuntime 入口）； 
+1. 扫描整个项目，定位所有 `Logix.Module.make(...)` 调用（以及早期版本中遗留的应用级配置调用，如 AppRuntime 入口）；
 2. 对每个调用：
    - 读取 `id` 字段（要求为字符串字面量）；
    - 从变量声明中获取 `filePath` + `exportedName`；
@@ -81,6 +84,7 @@ interface ModuleIR {
 3. 生成整体 ModuleIR 图。
 
 > 解析工具
+>
 > - 实现上可使用 ts-morph 或 TypeScript Compiler API；
 > - 关键是固定模式：只支持对象字面量 + 简单标识符数组，避免在 ModuleDef 中写复杂表达式（如条件运算、spread 等），否则解析成本剧增。
 
@@ -92,7 +96,7 @@ Universe View 关注的是“模块间拓扑”与“模块内部的 Store/Link 
 
 推荐的节点类型：
 
-- **App/Feature Node**：根 Runtime 节点（由 Root ModuleImpl + `LogixRuntime.make` 定义）；
+- **App/Feature Node**：根 Runtime 节点（由 Root ModuleImpl + `Logix.Runtime.make` 定义）；
 - **Module Node**：通过 `Logix.module` 定义的模块；
 - **Store Node**：`providers` 中 valueSymbol 对应的 Store（通常是 `Logix.ModuleRuntime` 或 `ModuleRuntime.make()` 结果）；
 - **Link Node**：`links` 中的业务编排逻辑（胶水节点）；
@@ -189,7 +193,7 @@ ModuleIR 的 imports 关系构成一张有向图：
 为了让上述实现保持可控，平台需要对 ModuleDef 写法做一些约束：
 
 - **对象字面量优先**：
-  - `Logix.module({ ... })` 推荐使用直接的对象字面量；
+  - `Logix.Module.make({ ... })` 推荐使用直接的对象字面量；
   - 避免在配置中使用 `...spread`、条件表达式、运行时变量拼接等复杂写法。
 - **符号引用优先**：
   - `imports` / `providers` / `links` / `processes` / `exports` 数组中的元素应为简单标识符或 `Logix.provide(Tag, Value)` 这种固定模式；
@@ -205,19 +209,21 @@ ModuleIR 的 imports 关系构成一张有向图：
 针对“图形化编辑是否有意义”的问题，v3 采取 **二八原则**：
 
 ### 7.1 宏观架构 (L1/L2)：可编辑 (Editable)
+
 **场景**：模块划分、依赖治理、链路骨架设计。
 **价值**：降低架构重构成本，可视化意图。
 
-*   **拖拽重构**：将 Module 节点在 Module 之间拖拽，平台自动重构文件目录与 `imports` 配置。
-*   **连线编排**：在 Link Node 与 Module Node 之间拉线，平台自动在 Link 代码中插入 `yield* Module.Tag` 骨架。
-*   **爆炸半径分析**：点击节点高亮所有上下游依赖，辅助架构决策。
+- **拖拽重构**：将 Module 节点在 Module 之间拖拽，平台自动重构文件目录与 `imports` 配置。
+- **连线编排**：在 Link Node 与 Module Node 之间拉线，平台自动在 Link 代码中插入 `yield* Module.Tag` 骨架。
+- **爆炸半径分析**：点击节点高亮所有上下游依赖，辅助架构决策。
 
 ### 7.2 微观逻辑 (L3)：只读/跳转 (Read-only / Jump)
+
 **场景**：具体业务逻辑实现（如 `filter`, `map`, `if/else`）。
 **价值**：避免“连线编程”带来的低效与臃肿。
 
-*   **拒绝意大利面条**：不提供细粒度的 AST 节点编辑（如不提供“If 节点”、“Loop 节点”）。
-*   **代码为王**：双击 Link/Module 节点，直接跳转到 VSCode / 编辑器对应行。
-*   **AI 辅助**：L3 层的逻辑修改由 **AI Copilot** 在代码编辑器中完成，而不是在画布上连线。
+- **拒绝意大利面条**：不提供细粒度的 AST 节点编辑（如不提供“If 节点”、“Loop 节点”）。
+- **代码为王**：双击 Link/Module 节点，直接跳转到 VSCode / 编辑器对应行。
+- **AI 辅助**：L3 层的逻辑修改由 **AI Copilot** 在代码编辑器中完成，而不是在画布上连线。
 
 **总结**：Universe View 是架构师的上帝视角（God Mode），而不是程序员的积木玩具。

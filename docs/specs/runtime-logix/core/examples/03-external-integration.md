@@ -54,7 +54,7 @@ const WebSocketServiceLive = Layer.succeed(
 
 export const StockLogic: Logic.Of<StockShape, WebSocketService> =
   Effect.gen(function* (_) {
-    const ws = yield* $Stock.services(WebSocketService);
+    const ws = yield* $Stock.use(WebSocketService);
 
     const statusLogic = ws.status$.pipe(
       $Stock.flow.run(status =>
@@ -83,7 +83,7 @@ export const StockLogic: Logic.Of<StockShape, WebSocketService> =
 ```typescript
 // a-stock.module.ts
 
-export const StockModule = Logix.Module('Stock', {
+export const StockModule = Logix.Module.make('Stock', {
   state: StockStateSchema,
   actions: StockActionSchema,
 });

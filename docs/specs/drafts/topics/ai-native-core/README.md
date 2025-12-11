@@ -2,6 +2,9 @@
 title: AI Native Core · Topic Overview
 status: draft
 version: 2025-12-03
+value: vision
+priority: later
+related: []
 ---
 
 # AI Native Core · Topic Overview
@@ -18,4 +21,3 @@ version: 2025-12-03
 
 - [00-architecture.md](./00-architecture.md) · Logix AI Native 架构设计（Effect AI 与 v3 Intent/Runtime 的整体映射关系）  
 - [10-effect-integration.md](./10-effect-integration.md) · Effect AI 集成策略（Provider 抽象、Schema 驱动输入、并发与观测性等）
-

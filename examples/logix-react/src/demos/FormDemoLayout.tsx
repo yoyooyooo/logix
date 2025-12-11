@@ -1,7 +1,8 @@
 import React from "react"
 import { Effect, Schema } from "effect"
-import { Logix, LogixRuntime } from "@logix/core"
+import * as Logix from "@logix/core"
 import { RuntimeProvider, useModule, useSelector, useDispatch } from "@logix/react"
+import { devtoolsLayer } from "@logix/devtools-react"
 
 // 一个更贴近 ToB 表单场景的示例：单字段表单 + 脏标记 + 简单校验。
 
@@ -16,7 +17,7 @@ const FormActionMap = {
   reset: Schema.Void,
 }
 
-export const FormModule = Logix.Module("FormDemoModule", {
+export const FormModule = Logix.Module.make("FormDemoModule", {
   state: FormStateSchema,
   actions: FormActionMap,
 })
@@ -43,7 +44,7 @@ const FormLogic = FormModule.logic(($) =>
   ]),
 )
 
-const FormImpl = FormModule.make({
+const FormImpl = FormModule.implement({
   initial: {
     value: "",
     isDirty: false,
@@ -52,8 +53,11 @@ const FormImpl = FormModule.make({
   logics: [FormLogic],
 })
 
-// 应用级 Runtime：以 FormImpl 作为 Root ModuleImpl。
-const formRuntime = LogixRuntime.make(FormImpl)
+// 应用级 Runtime：以 FormImpl 作为 Root ModuleImpl，并通过 label + devtoolsLayer 启用 Debug 观测。
+const formRuntime = Logix.Runtime.make(FormImpl, {
+  label: "FormDemoRuntime",
+  layer: devtoolsLayer,
+})
 
 const FormView: React.FC = () => {
   const runtime = useModule(FormModule)
@@ -142,7 +146,7 @@ export const FormDemoLayout: React.FC = () => {
             </code>{" "}
             +{" "}
             <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">
-              LogixRuntime.make
+              Logix.Runtime.make
             </code>
             建模一个简单表单场景，包含脏标记与基础校验逻辑。
           </p>

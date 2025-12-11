@@ -7,7 +7,13 @@
     "module": "./src/index.ts",
     "types": "./src/index.ts",
     "exports": {
-        ".": "./src/index.ts"
+        "./package.json": "./package.json",
+        ".": "./src/index.ts",
+        "./effectop": "./src/effectop.ts",
+        "./middleware": "./src/middleware/index.ts",
+        "./middleware/query": "./src/middleware/query.ts",
+        "./*": "./src/*.ts",
+        "./internal/*": null
     },
     "publishConfig": {
         "main": "./dist/index.cjs",
@@ -18,11 +24,16 @@
                 "types": "./dist/index.d.ts",
                 "import": "./dist/index.js",
                 "require": "./dist/index.cjs"
+            },
+            "./*": {
+                "types": "./dist/*.d.ts",
+                "import": "./dist/*.js",
+                "require": "./dist/*.cjs"
             }
         }
     },
     "scripts": {
-        "build": "tsup src/index.ts --format cjs,esm --dts",
+        "build": "tsup --format cjs,esm --dts",
         "dev": "tsup --watch",
         "typecheck": "tsc --noEmit",
         "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
@@ -30,15 +41,16 @@
         "test:watch": "vitest"
     },
     "peerDependencies": {
-        "effect": "^3.10.0"
+        "effect": "^3.19.8"
     },
     "dependencies": {
-        "effect": "^3.19.6",
+        "effect": "^3.19.8",
         "mutative": "^1.0.4"
     },
     "devDependencies": {
+        "@effect/vitest": "^0.27.0",
         "tsup": "^8.0.0",
         "typescript": "^5.4.0",
-        "vitest": "^1.0.0"
+        "vitest": "^4.0.15"
     }
 }

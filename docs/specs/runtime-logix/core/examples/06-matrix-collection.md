@@ -45,7 +45,7 @@ const asyncRowLogic: Logic.Of<ProductListShape, ProductApi> =
     const items$ = $List.flow.fromState(s => s.items);
 
     const fetchDetailsEffect = Effect.gen(function* (_) {
-      const api = yield* $List.services(ProductApi);
+      const api = yield* $List.use(ProductApi);
       const { items } = yield* $List.state.read;
       
       // 筛选出需要加载详情的行

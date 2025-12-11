@@ -6,7 +6,7 @@
  */
 
 import { Effect } from 'effect'
-import { Logix } from '@logix/core'
+import * as Logix from '@logix/core'
 import {
   LongTaskStateSchema,
   LongTaskActionMap,
@@ -18,7 +18,7 @@ import {
 // ---------------------------------------------------------------------------
 // Logic：与 long-task-pattern.ts 类似，但作为独立 Module 复用同一 Pattern
 // Module：复用模式下的长任务模块
-export const TaskModule = Logix.Module('TaskModule', {
+export const TaskModule = Logix.Module.make('TaskModule', {
   state: LongTaskStateSchema,
   actions: LongTaskActionMap,
 })
@@ -48,7 +48,7 @@ export const TaskLogic = TaskModule.logic(($) =>
 // Impl / Live：组合 State / Action / Logic 成为另一棵可注入的领域模块
 // ---------------------------------------------------------------------------
 
-export const TaskImpl = TaskModule.make({
+export const TaskImpl = TaskModule.implement({
   initial: {
     status: 'idle',
     progress: 0,

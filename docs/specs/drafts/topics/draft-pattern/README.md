@@ -4,6 +4,7 @@ status: draft
 version: 2025-12-03
 value: extension
 priority: next
+related: []
 ---
 
 # Draft Pattern · Topic Overview

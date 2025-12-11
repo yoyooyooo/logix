@@ -2,6 +2,7 @@
 title: AI Slot Protocol (S.AISlot)
 status: draft
 version: 1.0
+related: []
 ---
 
 # AI Slot Protocol: The "Prompt-in-Code"

@@ -1,5 +1,5 @@
 import { Effect, Scope, Layer, Schedule, TestClock } from "effect"
-import { Logix } from "@logix/core"
+import * as Logix from "@logix/core"
 import * as TestRuntime from "./runtime/TestRuntime.js"
 import { TestApi } from "./api/TestApi.js"
 import { assertState, assertSignal } from "./utils/assertions.js"
@@ -20,10 +20,45 @@ export const make = <Sh extends Logix.AnyModuleShape>(
   ...logics: Array<Logix.ModuleLogic<Sh, any, any>>
 ): ScenarioBuilder<Sh> => {
   let initialState: Logix.StateOf<Sh> | undefined
-  let customLayer: Layer.Layer<any, any, any> | null = null
-  let hasCustomLayer = false
+  const customLayers: Array<Layer.Layer<any, any, any>> = []
   const providedModules: Array<{ module: Logix.ModuleInstance<any, any>, initialState: any, logics: Array<any> }> = []
   const steps: Array<(runtime: TestRuntime.TestRuntime<Sh>) => Effect.Effect<void, any, any>> = []
+
+  const makeTestApi = (runtime: TestRuntime.TestRuntime<Sh>): TestApi<Sh> => ({
+    dispatch: runtime.dispatch,
+    assert: {
+      state: (predicate, options) =>
+        Effect.gen(function* () {
+          const check = Effect.flatMap(runtime.state, (s) =>
+            assertState(s, predicate)
+          )
+
+          yield* waitUntil(check, options)
+        }).pipe(Effect.orDie),
+      signal: (expectedType, expectedPayload, options) =>
+        Effect.gen(function* () {
+          const check = Effect.flatMap(runtime.actions, (actions) =>
+            Effect.sync(() => {
+              for (const actual of actions) {
+                const exit = Effect.runSyncExit(
+                  assertSignal(actual, expectedType, expectedPayload)
+                )
+                if (exit._tag === "Success") {
+                  return
+                }
+              }
+              throw new Error(
+                `Signal assertion failed: expected type=${expectedType}, payload=${JSON.stringify(
+                  expectedPayload
+                )}`
+              )
+            })
+          )
+
+          yield* waitUntil(check, options)
+        }).pipe(Effect.orDie),
+    },
+  })
 
   const builder: ScenarioBuilder<Sh> = {
     provide: (mod, init, ...logs) => {
@@ -31,8 +66,7 @@ export const make = <Sh extends Logix.AnyModuleShape>(
       return builder
     },
     layer: (l) => {
-      customLayer = customLayer ? Layer.merge(customLayer, l) : l
-      hasCustomLayer = true
+      customLayers.push(l)
       return builder
     },
     arrange: (state) => {
@@ -41,83 +75,15 @@ export const make = <Sh extends Logix.AnyModuleShape>(
     },
     act: (fn) => {
       steps.push((runtime) => {
-         const api: TestApi<Sh> = {
-            dispatch: runtime.dispatch,
-            assert: {
-              state: (p) =>
-                Effect.gen(function* () {
-                  const check = Effect.flatMap(runtime.state, (s) =>
-                    assertState(s, p)
-                  )
-
-                  yield* waitUntil(check)
-                }).pipe(Effect.orDie),
-              signal: (expectedType, expectedPayload) =>
-                Effect.gen(function* () {
-                  const check = Effect.flatMap(runtime.actions, (actions) =>
-                    Effect.sync(() => {
-                      for (const actual of actions) {
-                        const exit = Effect.runSyncExit(
-                          assertSignal(actual, expectedType, expectedPayload)
-                        )
-                        if (exit._tag === "Success") {
-                          return
-                        }
-                      }
-                      throw new Error(
-                        `Signal assertion failed: expected type=${expectedType}, payload=${JSON.stringify(
-                          expectedPayload
-                        )}`
-                      )
-                    })
-                  )
-
-                  yield* waitUntil(check)
-                }).pipe(Effect.orDie),
-            }
-         }
-         return fn(api).pipe(Effect.orDie)
+        const api = makeTestApi(runtime)
+        return fn(api).pipe(Effect.orDie)
       })
       return builder
     },
     assert: (fn) => {
       steps.push((runtime) => {
-         const api: TestApi<Sh> = {
-            dispatch: runtime.dispatch,
-            assert: {
-              state: (p) =>
-                Effect.gen(function* () {
-                  const check = Effect.flatMap(runtime.state, (s) =>
-                    assertState(s, p)
-                  )
-
-                  yield* waitUntil(check)
-                }).pipe(Effect.orDie),
-              signal: (expectedType, expectedPayload) =>
-                Effect.gen(function* () {
-                  const check = Effect.flatMap(runtime.actions, (actions) =>
-                    Effect.sync(() => {
-                      for (const actual of actions) {
-                        const exit = Effect.runSyncExit(
-                          assertSignal(actual, expectedType, expectedPayload)
-                        )
-                        if (exit._tag === "Success") {
-                          return
-                        }
-                      }
-                      throw new Error(
-                        `Signal assertion failed: expected type=${expectedType}, payload=${JSON.stringify(
-                          expectedPayload
-                        )}`
-                      )
-                    })
-                  )
-
-                  yield* waitUntil(check)
-                }).pipe(Effect.orDie),
-            }
-         }
-         return fn(api).pipe(Effect.orDie)
+        const api = makeTestApi(runtime)
+        return fn(api).pipe(Effect.orDie)
       })
       return builder
     },
@@ -128,7 +94,7 @@ export const make = <Sh extends Logix.AnyModuleShape>(
         mainLayer = module.live(initialState, ...logics)
       } else {
         // ...
-        if (!hasCustomLayer) {
+        if (customLayers.length === 0) {
              throw new Error("Scenario needs arrange(initialState) or layer(...)")
         }
         mainLayer = Layer.empty as unknown as Layer.Layer<any, any, any>
@@ -147,15 +113,62 @@ export const make = <Sh extends Logix.AnyModuleShape>(
       // We cast to any to avoid strict type checks complaining about Layer<never> vs Layer<any>.
       let dependenciesLayer: Layer.Layer<any, any, any> = Layer.merge(
         mainLayer as Layer.Layer<any, any, any>,
-        modulesLayer as Layer.Layer<any, any, any>
+        modulesLayer as Layer.Layer<any, any, any>,
       )
 
-      // 4. Custom Layer (LinkLogic, mocks, etc.)
-      let finalLayer = dependenciesLayer
-      if (hasCustomLayer && customLayer) {
+      // 4. Custom Layers：
+      // - Env Layers（service mocks, extra env）：不依赖 Module Runtime，用于给 Logic 提供外部服务；
+      // - Process Layers（LinkLogic 等）：依赖 Module Runtime，自身不导出 Service，只负责长期流程。
+      const envLayers: Array<Layer.Layer<any, any, any>> = []
+      const processLayers: Array<Layer.Layer<any, any, any>> = []
+
+      for (const l of customLayers) {
+        const op = (l as any)?._op_layer
+        if (op === "Scoped") {
+          processLayers.push(l)
+        } else {
+          envLayers.push(l)
+        }
+      }
+
+      // 4.1 将 Env Layers 作为 Service 提供给依赖层（main + provided modules）。
+      let baseLayer: Layer.Layer<any, any, any> = dependenciesLayer
+      if (envLayers.length > 0) {
+        const mergedEnv =
+          envLayers.length === 1
+            ? envLayers[0]!
+            : Layer.mergeAll(
+                ...(envLayers as [
+                  Layer.Layer<any, any, any>,
+                  ...Array<Layer.Layer<any, any, any>>
+                ]),
+              )
+
+        baseLayer = dependenciesLayer.pipe(
+          Layer.provide(mergedEnv as Layer.Layer<any, any, any>),
+        )
+      }
+
+      // 4.2 Process Layers（例如 LinkLogic）：在 baseLayer 环境下运行长期流程。
+      let finalLayer: Layer.Layer<any, any, any> = baseLayer
+      if (processLayers.length > 0) {
+        const mergedProcess =
+          processLayers.length === 1
+            ? processLayers[0]!
+            : Layer.mergeAll(
+                ...(processLayers as [
+                  Layer.Layer<any, any, any>,
+                  ...Array<Layer.Layer<any, any, any>>
+                ]),
+              )
+
+        const processWithEnv = mergedProcess.pipe(
+          Layer.provide(baseLayer as Layer.Layer<any, any, any>),
+        )
+
         finalLayer = Layer.merge(
-            dependenciesLayer,
-            customLayer.pipe(Layer.provide(dependenciesLayer))
+          baseLayer as Layer.Layer<any, any, any>,
+          processWithEnv as Layer.Layer<any, any, any>,
         )
       }
 

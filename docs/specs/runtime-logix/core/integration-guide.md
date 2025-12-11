@@ -16,21 +16,21 @@ npm install @logix/core @logix/react effect
 
 ### 2.1 配置 Runtime Provider
 
-在应用的根组件中包裹 `RuntimeProvider`，并使用 Root ModuleImpl + `LogixRuntime.make` 构造 Runtime。
+在应用的根组件中包裹 `RuntimeProvider`，并使用 Root ModuleImpl + `Logix.Runtime.make` 构造 Runtime。
 
 ```tsx
 // src/App.tsx
 import { RuntimeProvider } from '@logix/react';
-import { Logix, LogixRuntime } from '@logix/core';
+import * as Logix from '@logix/core';
 import { Layer } from 'effect';
 
-const UserModule = Logix.Module("User", { state: UserState, actions: UserActions });
-const UserImpl = UserModule.make({
+const UserModule = Logix.Module.make("User", { state: UserState, actions: UserActions });
+const UserImpl = UserModule.implement({
   initial: { info: null },
   logics: [UserModuleLogic],
 });
 
-const appRuntime = LogixRuntime.make(UserImpl, {
+const appRuntime = Logix.Runtime.make(UserImpl, {
   layer: Layer.mergeAll(AppInfraLayer, ReactPlatformLayer),
 });
 
@@ -47,10 +47,10 @@ export function App() {
 
 ```typescript
 // src/features/counter/module.ts
-import { Logix } from '@logix/core';
+import * as Logix from '@logix/core';
 import { Schema, Effect } from 'effect';
 
-const CounterModule = Logix.Module('Counter', {
+const CounterModule = Logix.Module.make('Counter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
     inc: Schema.Void,

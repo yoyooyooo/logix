@@ -1,5 +1,5 @@
-import { Effect, Schema, Stream } from "effect"
-import { Logix, Link } from "@logix/core"
+import { Effect, Schema, Stream } from 'effect'
+import * as Logix from '@logix/core'
 
 // Source：只派发 ping，不持有复杂状态
 const SourceState = Schema.Void
@@ -7,7 +7,7 @@ const SourceActions = {
   ping: Schema.Void,
 }
 
-export const SourceModule = Logix.Module("ReactLinkSource", {
+export const SourceModule = Logix.Module.make('ReactLinkSource', {
   state: SourceState,
   actions: SourceActions,
 })
@@ -20,7 +20,7 @@ const TargetActions = {
   hit: Schema.Void,
 }
 
-export const TargetModule = Logix.Module("ReactLinkTarget", {
+export const TargetModule = Logix.Module.make('ReactLinkTarget', {
   state: TargetState,
   actions: TargetActions,
 })
@@ -33,26 +33,30 @@ const AuditActions = {
   log: Schema.String,
 }
 
-export const AuditModule = Logix.Module("ReactLinkAudit", {
+export const AuditModule = Logix.Module.make('ReactLinkAudit', {
   state: AuditState,
   actions: AuditActions,
 })
 
 // Target 逻辑：每次 hit，count + 1
 export const TargetLogic = TargetModule.logic(($) =>
-  $.onAction("hit").update((state) => ({ ...state, count: state.count + 1 })),
+  Effect.gen(function* () {
+    yield* $.onAction('hit').update((state) => ({ ...state, count: state.count + 1 }))
+  }),
 )
 
 // Audit 逻辑：追加日志
 export const AuditLogic = AuditModule.logic(($) =>
-  $.onAction("log").update((state, action) => ({
-    ...state,
-    logs: [...state.logs, action.payload],
-  })),
+  Effect.gen(function* () {
+    yield* $.onAction('log').update((state, action) => ({
+      ...state,
+      logs: [...state.logs, action.payload],
+    }))
+  }),
 )
 
 // Link.make：监听 Source.actions$，驱动 Target 和 Audit
-export const ReactMultiModuleLink = Link.make(
+export const ReactMultiModuleLink = Logix.Link.make(
   {
     modules: [SourceModule, TargetModule, AuditModule] as const,
   },
@@ -67,13 +71,13 @@ export const ReactMultiModuleLink = Link.make(
         Stream.runForEach(() =>
           Effect.all(
             [
-              target.dispatch({ _tag: "hit", payload: undefined }),
+              target.dispatch({ _tag: 'hit', payload: undefined }),
               audit.dispatch({
-                _tag: "log",
-                payload: "ReactLinkSource.ping -> ReactLinkTarget.hit",
+                _tag: 'log',
+                payload: 'ReactLinkSource.ping -> ReactLinkTarget.hit',
               }),
             ],
-            { concurrency: "unbounded" },
+            { concurrency: 'unbounded' },
           ),
         ),
       )
@@ -81,17 +85,16 @@ export const ReactMultiModuleLink = Link.make(
 )
 
 // ModuleImpl：供 React Runtime 组合使用
-export const SourceImpl = SourceModule.make({
+export const SourceImpl = SourceModule.implement({
   initial: undefined,
 })
 
-export const TargetImpl = TargetModule.make({
+export const TargetImpl = TargetModule.implement({
   initial: { count: 0 },
   logics: [TargetLogic],
 })
 
-export const AuditImpl = AuditModule.make({
+export const AuditImpl = AuditModule.implement({
   initial: { logs: [] },
   logics: [AuditLogic],
 })
-

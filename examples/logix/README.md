@@ -25,6 +25,15 @@ npx tsx src/scenarios/and-update-on-changes.ts
 
 # Confirm Pattern Demo
 npx tsx src/scenarios/confirm-simple-run.ts
+
+# EffectOp Middleware · 基础用法
+npx tsx src/scenarios/middleware-effectop-basic.ts
+
+# EffectOp Middleware · Runtime 集成
+npx tsx src/scenarios/middleware-runtime-effectop.ts
+
+# EffectOp Middleware · Resource + Query 集成
+npx tsx src/scenarios/middleware-resource-query.ts
 ```
 
 ## Structure

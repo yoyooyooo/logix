@@ -10,7 +10,7 @@
  */
 
 import { Effect, Schema, Stream } from 'effect'
-import { Logix } from '@logix/core'
+import * as Logix from '@logix/core'
 import {
   FileImportPatternError,
   FileUploadService,
@@ -47,7 +47,7 @@ export type ImportAction = Logix.ActionOf<ImportShape>
 // Module：定义文件导入模块
 // ---------------------------------------------------------------------------
 
-export const FileImportModule = Logix.Module('FileImportModule', {
+export const FileImportModule = Logix.Module.make('FileImportModule', {
   state: ImportStateSchema,
   actions: ImportActionMap,
 })
@@ -58,11 +58,11 @@ export const FileImportModule = Logix.Module('FileImportModule', {
 
 export const FileImportLogic = FileImportModule.logic<FileUploadService | ImportService>(($) =>
   Effect.gen(function* () {
-    const handleStart = (action: {
-      _tag: 'import/start'
-      payload: { fileName: string; fileSize: number }
-    }) =>
-      Effect.gen(function* () {
+    type StartAction = Extract<ImportAction, { _tag: 'import/start' }>
+
+    const handleStart = (action: StartAction) =>
+      Logix.Logic.of<ImportShape, FileUploadService | ImportService>(
+        Effect.gen(function* () {
         const fileName = action.payload.fileName
         const fileSize = action.payload.fileSize
 
@@ -116,7 +116,7 @@ export const FileImportLogic = FileImportModule.logic<FileUploadService | Import
 
         // 5. 根据最终状态更新 UI（演示使用 $.match 表达结构化分支）
         yield* $.match(finalStatus)
-          .when('SUCCESS', () =>
+          .with((s) => s === 'SUCCESS', () =>
             $.state.update((prev) => ({
               ...prev,
               status: 'done',
@@ -129,7 +129,8 @@ export const FileImportLogic = FileImportModule.logic<FileUploadService | Import
               errorMessage: prev.errorMessage ?? '导入失败',
             })),
           )
-      })
+        }),
+      )
 
     const handleReset = $.state.update((prev) => ({
       ...prev,
@@ -150,7 +151,7 @@ export const FileImportLogic = FileImportModule.logic<FileUploadService | Import
 // Impl / Live：组合初始 State 与 Logic，生成运行时实现
 // ---------------------------------------------------------------------------
 
-export const FileImportImpl = FileImportModule.make<FileUploadService | ImportService>({
+export const FileImportImpl = FileImportModule.implement<FileUploadService | ImportService>({
   initial: {
     fileName: '',
     fileSize: 0,

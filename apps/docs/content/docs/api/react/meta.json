@@ -1,0 +1,8 @@
+{
+    "title": "React Integration",
+    "pages": [
+        "use-module",
+        "use-local-module",
+        "provider"
+    ]
+}

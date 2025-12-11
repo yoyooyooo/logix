@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Logix } from "@logix/core"
+import * as Logix from "@logix/core"
 import { Effect } from "effect"
 import { useRuntime } from "../components/RuntimeProvider.js"
 

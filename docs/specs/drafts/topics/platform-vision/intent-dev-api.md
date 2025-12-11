@@ -1,7 +1,8 @@
 ---
-title: Intent Dev API (`$$`) 与 LLM 注解层草案
+title: Intent Dev API (`$`) 与 LLM 注解层草案
 status: draft
 version: 2025-12-02
+related: []
 ---
 
 # Intent Dev API (`$$`) 与 LLM 注解层草案

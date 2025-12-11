@@ -1,0 +1,216 @@
+openapi: 3.0.3
+info:
+  title: Logix Data Introspection API (Conceptual)
+  version: 0.1.0
+  description: >
+    概念级 OpenAPI 契约，用于描述平台或 DevTools 如何通过统一接口读取
+    Logix 模块的字段能力与状态图信息。实际实现可以是 HTTP 服务、CLI
+    或本地库封装，本文件仅作为契约参考。
+
+servers:
+  - url: https://example.com/logix-data
+    description: Placeholder endpoint for documentation
+
+paths:
+  /modules/{moduleId}/field-capabilities:
+    get:
+      summary: 列出模块中的字段能力
+      description: 返回指定模块内所有字段的能力信息（Raw / Computed / Source / Link），用于平台配置与调试。
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Logix 模块的唯一标识。
+        - name: includeNested
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+          description: 是否展开嵌套对象与列表项中的字段能力。
+      responses:
+        '200':
+          description: 字段能力列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  moduleId:
+                    type: string
+                  capabilities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FieldCapability'
+
+  /modules/{moduleId}/state-graph:
+    get:
+      summary: 获取模块的状态图视图
+      description: >
+        返回指定模块在数据层的 State Graph（字段节点与依赖边），供 DevTools
+        用于可视化、对比与出码。
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 模块的状态图
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateGraph'
+
+  /modules/{moduleId}/capability-diff:
+    post:
+      summary: 对比两个版本模块的字段能力变化
+      description: >
+        提交旧版与新版模块的 State Graph 或能力列表，返回字段与依赖关系的变化，
+        用于评审和回归。
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldGraph:
+                  $ref: '#/components/schemas/StateGraph'
+                newGraph:
+                  $ref: '#/components/schemas/StateGraph'
+      responses:
+        '200':
+          description: 字段能力与依赖关系的差异
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  addedNodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GraphNode'
+                  removedNodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GraphNode'
+                  addedEdges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GraphEdge'
+                  removedEdges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GraphEdge'
+
+components:
+  schemas:
+    FieldCapability:
+      type: object
+      properties:
+        fieldId:
+          type: string
+          description: 字段在模块内的唯一标识（路径或逻辑 ID）。
+        kind:
+          type: string
+          enum: [Raw, Computed, Source, Link]
+        deps:
+          type: array
+          items:
+            type: string
+          description: 依赖字段的 ID 列表（用于 Computed/Link）。
+        direction:
+          type: string
+          nullable: true
+          description: >
+            对于 Link 能力，联动方向（如 "one-way" 或 "two-way"），其他能力可为 null。
+        resource:
+          $ref: '#/components/schemas/ResourceMetadata'
+        statusModel:
+          type: object
+          nullable: true
+          description: >
+            描述 Source 字段的状态承载方式（如状态字段路径、状态枚举键名等），
+            具体结构由实现自定义。
+
+    ResourceMetadata:
+      type: object
+      properties:
+        resourceKind:
+          type: string
+          description: 资源类型，例如 "query"、"socket"、"storage"、"ai" 等。
+        identifier:
+          type: string
+          description: 资源标识符，如查询 key、订阅通道名或模型名称。
+        relation:
+          type: object
+          nullable: true
+          description: >
+            与其他模块状态或领域实体的关联信息（例如目标模块 ID 和字段路径），
+            结构由平台/场景包约定。
+        lifecycle:
+          type: string
+          nullable: true
+          description: 资源生命周期策略的文字描述（例如 "per-view"、"per-module" 等）。
+
+    StateGraph:
+      type: object
+      properties:
+        moduleId:
+          type: string
+        version:
+          type: string
+          nullable: true
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+
+    GraphNode:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [Field, Capability]
+        fieldId:
+          type: string
+          description: >
+            若为能力节点，指向关联字段；若为字段节点，则与自身 id 相同。
+        labels:
+          type: array
+          items:
+            type: string
+          description: 可用于前端可视化的标签列表。
+
+    GraphEdge:
+      type: object
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        relation:
+          type: string
+          description: >
+            关系类型，如 "depends-on"（依赖）、"drives"（驱动更新）或 "links-to"（联动）。
+        metadata:
+          type: object
+          nullable: true
+          description: 可选的附加信息（如条件表达式、优先级等）。
+

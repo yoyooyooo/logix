@@ -1,6 +1,9 @@
 node_modules
 dist
+build
 coverage
 .git
 .agent
 pnpm-lock.yaml
+package-lock.json
+yarn.lock

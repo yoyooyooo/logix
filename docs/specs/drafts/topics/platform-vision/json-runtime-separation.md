@@ -1,5 +1,5 @@
 ---
-title: "Logix v3: Platform Vision - JSON Definition & Runtime Separation"
+title: Logix v3 Platform Vision - JSON Definition & Runtime Separation
 status: draft
 layer: Platform
 related:

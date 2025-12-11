@@ -40,7 +40,7 @@ const saveLogic: Logic.Of<EditorShape, EditorApi> =
     // 1. 定义统一的保存 Effect
     const saveEffect = (type: 'auto' | 'manual') =>
       Effect.gen(function* (_) {
-        const api = yield* $Editor.services(EditorApi);
+        const api = yield* $Editor.use(EditorApi);
         const { content } = yield* $Editor.state.read;
 
         if (type === 'manual') {

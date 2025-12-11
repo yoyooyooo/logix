@@ -40,7 +40,7 @@ version: 8 (Effect-Native-Simplified)
 - **逻辑 Pattern** (CRUD, Pagination)：作为 **Logic Factory**，在 `ModuleImpl` 的 `logics` 数组中被配置和实例化。
   ```ts
   // 示例：在 ModuleImpl 中消费 Pattern
-  export const UserListImpl = UserModule.make({
+  export const UserListImpl = UserModule.implement({
     initial: { ... },
     logics: [
       // PaginationPattern.make 返回一个 ModuleLogic
@@ -53,7 +53,7 @@ version: 8 (Effect-Native-Simplified)
   ```ts
   // 场景 Pattern：返回一个已经绑定 Service 的 Impl
   export const makeRegionImplWithService = () => {
-    const RegionImpl = RegionModule.make<RegionService>({
+    const RegionImpl = RegionModule.implement<RegionService>({
       initial,
       logics: [RegionLogicFromPattern],
     })

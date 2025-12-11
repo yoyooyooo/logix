@@ -1,16 +1,21 @@
 ---
-title: "Unified Data Vision: Schema-First, Relations & External Sources"
-status: draft
-version: 1.0
+title: 'Unified Data Vision Schema-First, Relations & External Sources'
+status: merged
+version: 1.0.1
 layer: Vision
 value: vision
 priority: later
 related:
+  - ../state-graph-and-capabilities/01-field-capabilities-overview.md
   - 01-unified-api-design.md
   - 04-reactive-paradigm.md
 ---
 
 # Unified Data Vision: The "State Graph" Paradigm
+
+> **说明**：本篇提出的 State Graph 心智与三类字段（Computed / Source / Link）划分，  
+> 已在 `topics/state-graph-and-capabilities/01-field-capabilities-overview.md` 中收敛成统一模型。  
+> 本文保留完整的愿景化推导与示例，用作背景材料。
 
 > **发散思考 (Brainstorming)**: 超越单纯的 "Query Integration"，探索 **Schema-First** 的终极形态 —— 将 Logix Module 视为 **"State ORM"** 或 **"Data Graph"** 节点。
 
@@ -55,7 +60,8 @@ $$
 
 ```typescript
 import { Schema } from 'effect'
-import { Logix, Query, Link, Computed, Socket } from '@logix/core'
+import * as Logix from '@logix/core'
+import { Query, Link, Computed, Socket } from '@logix/core'
 
 const UserState = Schema.Struct({
   // 1. 基础字段 (Raw Data)

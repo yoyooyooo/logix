@@ -97,7 +97,7 @@ export const UserLive = UserModule.live(initialUserState, UserLogic);
 为了让领域模块真正成为“可独立演进 / 复用的逻辑单元”，推荐遵循以下约定：
 
 - Module 模块导出的是 **契约与 Layer 工厂**，而不是强行单例：
-  - 导出 `Module` 定义（`Logix.Module('Id', { state, actions })`）；
+  - 导出 `Module` 定义（`Logix.Module.make('Id', { state, actions })`）；
   - 导出一个 `makeXxxLive(env)` 工厂函数，内部调用 `Module.live(initial, ...logics)`，而不是直接在模块顶层创建单例 Layer。
 - 宿主决定是单例还是多实例：
   - App Shell 可以选择在应用启动时调用工厂一次，得到全局 Live Layer；

@@ -9,8 +9,8 @@
  *   - 当有选中项时，调用 BulkOperationService.applyToMany，并在本地记录最后一次操作的信息。
  */
 
-import { Effect, Schema } from 'effect'
-import { Logix } from '@logix/core'
+import { Effect, Schema } from "effect"
+import * as Logix from "@logix/core"
 import {
   BulkOperationPatternError,
   SelectionService,
@@ -42,7 +42,7 @@ export type BulkAction = Logix.ActionOf<BulkShape>
 // Module：定义批量操作模块
 // ---------------------------------------------------------------------------
 
-export const BulkModule = Logix.Module('BulkModule', {
+export const BulkModule = Logix.Module.make('BulkModule', {
   state: BulkStateSchema,
   actions: BulkActionMap,
 })
@@ -92,7 +92,7 @@ export const BulkLogic = BulkModule.logic<
 // Impl / Live：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-export const BulkImpl = BulkModule.make<SelectionService | BulkOperationService | NotificationService>({
+export const BulkImpl = BulkModule.implement<SelectionService | BulkOperationService | NotificationService>({
   initial: {
     operation: 'archive',
     lastCount: 0,

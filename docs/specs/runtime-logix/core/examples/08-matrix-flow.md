@@ -14,7 +14,7 @@ const retryLogic: Logic.Of<FormShape, UserApi> =
     const username$ = $.flow.fromState(s => s.username);
 
     const checkUsernameWithRetry = Effect.gen(function* (_) {
-      const api = yield* $.services(UserApi);
+      const api = yield* $.use(UserApi);
       const { username } = yield* $.state.read;
       const result = yield* api.check(username).pipe(
         // Effect 原生的重试能力
@@ -39,7 +39,7 @@ const switchMapLogic: Logic.Of<SearchShape, SearchApi> =
     const keyword$ = $.flow.fromState(s => s.keyword);
 
     const searchEffect = Effect.gen(function* (_) {
-      const api = yield* $.services(SearchApi);
+      const api = yield* $.use(SearchApi);
       const { keyword } = yield* $.state.read;
       const result = yield* api.search(keyword);
       yield* $.state.mutate(draft => { draft.results = result; });
@@ -65,7 +65,7 @@ const fallbackLogic: Logic.Of<ConfigShape, ConfigApi> =
     const configId$ = $.flow.fromState(s => s.configId);
 
     const fetchEffect = Effect.gen(function* (_) {
-      const api = yield* $.services(ConfigApi);
+      const api = yield* $.use(ConfigApi);
       const { configId } = yield* $.state.read;
 
       const fetchWithFallback = api.fetch(configId).pipe(

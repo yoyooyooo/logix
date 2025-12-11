@@ -2,6 +2,7 @@
 title: Skeleton Storage Strategy
 status: draft
 version: 1.0
+related: []
 ---
 
 # Skeleton Storage Strategy: Source vs Artifact

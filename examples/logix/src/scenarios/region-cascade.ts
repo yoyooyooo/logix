@@ -7,8 +7,8 @@
  *   - 价值：通过结构化配置消除样板代码，统一处理 Loading 与竞态问题。
  */
 
-import { Effect, Schema, Context } from 'effect'
-import { Logix } from '@logix/core'
+import { Effect, Schema, Context } from "effect"
+import * as Logix from "@logix/core"
 
 // ---------------------------------------------------------------------------
 // 1. Schema Definition
@@ -57,7 +57,7 @@ export class RegionService extends Context.Tag('RegionService')<
 // 3. Module Definition
 // ---------------------------------------------------------------------------
 
-export const RegionModule = Logix.Module('RegionModule', {
+export const RegionModule = Logix.Module.make('RegionModule', {
   state: RegionStateSchema,
   actions: RegionActionMap,
 })
@@ -131,7 +131,7 @@ export const RegionLogic = RegionModule.logic<RegionService>(($) =>
 // 5. Live Layer
 // ---------------------------------------------------------------------------
 
-export const RegionImpl = RegionModule.make({
+export const RegionImpl = RegionModule.implement({
   initial: {
     province: undefined,
     city: undefined,

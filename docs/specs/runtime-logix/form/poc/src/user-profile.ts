@@ -31,7 +31,7 @@ export namespace UserProfileForm {
 
   export type Shape = FormCore.FormShape<Values, ActionMap>
 
-  export type ModuleInstance = LogixCore.Logix.ModuleInstance<"UserProfileForm", Shape>
+  export type ModuleInstance = LogixCore.ModuleInstance<"UserProfileForm", Shape>
 }
 
 export declare const UserProfileFormModule: UserProfileForm.ModuleInstance

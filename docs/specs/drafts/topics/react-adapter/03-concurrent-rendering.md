@@ -34,20 +34,34 @@ const handleSearch = (e) => {
 
 **注意**: 这需要 Logix 的 `set` 操作能够配合 React 的批处理机制。目前的 Logix 实现是同步通知的，这通常兼容 React 的自动批处理。但在 `startTransition` 中，我们需要确保 Logix 的通知回调是在 React 的上下文中执行的。
 
-## 3. Suspense Integration (Phase 2 / Experimental)
+## 3. Suspense Integration (Implemented)
 
-支持 `useSuspenseSelector`，允许组件在 Logix 数据尚未就绪（如异步加载中）时挂起。
+Logix v3 已通过 **Module Resource Cache** 模式实现了对 Suspense 的支持，主要针对 **Module Runtime 的异步构建** 场景。
 
-> **Strategy**:
-> 1.  **Selector-based**: `useSuspenseSelector(store, selector)`。Selector 保持同步，由 Adapter 判断当前 Store 状态（Pending/Error）决定是否抛出 Promise 或 Error。
-> 2.  **Resource Cache**: Adapter 内部维护 Suspense Resource Cache，确保 Promise 生命周期与 React 要求对齐。
+> **Strategy**: **Resource Cache (Render-as-you-fetch style)**
+
+通过 `useModule(Impl, { suspend: true, key })`：
+
+1.  **Acquire**: 在 Render 阶段读取 Cache，若未命中则立即启动异步构建（Layer.build），并抛出 Promise；
+2.  **Retain**: 组件 Commit 后增加引用计数，锁定资源；
+3.  **Release**: 组件卸载或依赖变更时释放引用，触发延迟 GC。
 
 ```typescript
-// 这是一个 Effect，可能会挂起
-const data = useSuspenseSelector(store, (state) => {
-  // 如果 state.status === 'pending'，Hook 内部会自动 throw Promise
-  return state.data;
-});
+// 异步模块定义 (Layer 包含异步初始化)
+const AsyncImpl = MyModule.implement({ ... });
+
+function MyComponent() {
+  // 显式启用 suspend 模式，并提供稳定 Key
+  const runtime = useModule(AsyncImpl, {
+    suspend: true,
+    key: "unique-id",
+    deps: []
+  });
+
+  // runtime 在此处已就绪
+  const data = useSelector(runtime, s => s.data);
+  return <div>{data}</div>;
+}
 ```
 
-这需要 Logix 支持 **"Promise-based State Access"**，目前暂列为 Phase 2 特性。
+注意：目前 Suspense 主要用于 **Module 加载阶段**。对于 **数据加载（Data Fetching）**，推荐在 Logic 内部处理状态（Loading/Error/Data），UI 层通过 Selector 消费状态，而不是让 Selector 抛出 Promise（虽然技术上可行，但会导致 Waterfall 问题）。

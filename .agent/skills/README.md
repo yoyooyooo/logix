@@ -16,6 +16,7 @@ This directory contains specialized **Skills** that extend the Agent's capabilit
 | **[skill-creator](./skill-creator/SKILL.md)** | Guide for creating effective skills. Use this when you want to create a new skill or update an existing one. |
 | **[ts-type-debug](./ts-type-debug/SKILL.md)** | Inspects or debugs TypeScript types in a local project, especially for Effect's inferred types or complex generics. |
 | **[unit-creator](./unit-creator/SKILL.md)** | 使用内置模板快速生成 IMD 新「单元」（UI 组件、业务 Block、Hook、lib 模块、模板片段）的标准骨架。 |
+| **[frontend-project-init](./frontend-project-init/SKILL.md)** | 在 intent-flow 仓库内基于内置模板（首个为 Vite + Logix Sandbox）初始化前端项目骨架。 |
 
 ## Usage
 

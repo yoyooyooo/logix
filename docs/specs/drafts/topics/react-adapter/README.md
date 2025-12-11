@@ -5,6 +5,7 @@ version: 2025-11-21
 layer: Integration Layer
 value: core
 priority: next
+related: []
 ---
 
 # React Adapter Specification

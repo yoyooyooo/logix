@@ -1,5 +1,9 @@
 {
   // VSCode ESLint 扩展启用 Flat Config 支持，避免与 CLI 结果不一致
   "eslint.experimental.useFlatConfig": true,
-  "eslint.workingDirectories": [{ "mode": "auto" }]
+  "eslint.workingDirectories": [
+    {
+      "mode": "auto"
+    }
+  ]
 }

@@ -1,7 +1,7 @@
 ---
-title: "Module-Level Computed & Query: The Perfect Compromise"
+title: Module-Level Computed & Query The Perfect Compromise
 status: draft
-version: 1.0
+version: 1
 layer: Core Concept
 related:
   - logix-reactive-schema.md (superseded)
@@ -36,7 +36,9 @@ We leverage TypeScript's mapped types to enforce strict correctness:
 2.  **Resources**: Key `K` must be a field defined via `Resource.State<T>`, and the loader must return `T`.
 
 ```ts
-import { Logix, Schema, Resource } from '@logix/core'
+import * as Logix from '@logix/core'
+import { Schema } from 'effect'
+import { Resource } from '@logix/core'
 
 // 1. Define Pure Data Shapes (The "What")
 const UserState = Schema.Struct({
@@ -49,7 +51,7 @@ const UserState = Schema.Struct({
   fullName: Schema.String
 })
 
-export const UserModule = Logix.Module('User', {
+export const UserModule = Logix.Module.make('User', {
   // 1. Attach Schema
   state: UserState,
 

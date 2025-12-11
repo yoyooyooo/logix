@@ -4,96 +4,95 @@
 
 ## Topics (Consolidated)
 
-### AI Native & API
+### Core Topics（当前优先关注）
 
-- [AI Native Core](./topics/ai-native-core)
-- [AI Native UI](./topics/ai-native-ui)
-- [API Evolution](./topics/api-evolution)
-
-### Platform & Patterns
-
-- [Platform Vision](./topics/platform-vision)
-- [Platform Patterns](./topics/platform-patterns)
-- [Draft Pattern](./topics/draft-pattern)
-
-### Runtime & Data
-
+- [SDD Platform](./topics/sdd-platform) - SDD 生命周期总入口（Specify/Plan/Tasks/Implement + Agent 分工 + Context Supply Chain + Intent→Code→Alignment Lab）
+- [State Graph & Field Capabilities](./topics/state-graph-and-capabilities) - 统一的字段能力模型（Computed/Source/Link）与 State Graph 视角，对齐 Capability Plugin 与 runtime-logix/core
+- [Reactive & Linkage](./topics/reactive-and-linkage) - 响应式范式、计算属性与复杂联动（字段/列表/资源字段）
 - [Query Integration](./topics/query-integration) - Logix + Query/异步数据管理集成（三层 API、Reactive Schema 等）
+- [Capability Plugin System](./topics/capability-plugin-system) - CapabilityPlugin 蓝图与能力插件体系（Config as Service + SCD + 分形 Runtime）
+- [Runtime Observability](./topics/runtime-observability) - 调试、追踪与可观测性能力（Tracer / TraceBus / Observability 插件）
+- [Runtime Readiness](./topics/runtime-readiness) - Runtime 生产就绪、性能与架构演进
+- [Runtime Middleware & EffectOp](./topics/runtime-middleware-and-effectop) - Runtime 边界与中间件总线设计（EffectOp、Observer/Runner/Guard 与 Action/Flow/State/Service 边界）
+- [DevTools & Studio](./topics/devtools-and-studio) - CLI、DevTools 与 Studio 全双工集成
+- [React Adapter](./topics/react-adapter) - React 适配层规范（hooks、SSR、测试）
+- [Sandbox & Verifiable Intent](./topics/sandbox-runtime) - Web Worker Sandbox / Verifiable Intent Engine 主题（前端优先运行时、依赖治理、Mock、后续 Intent 覆盖/AI 反馈/多运行时漏斗）
+- [Draft Pattern](./topics/draft-pattern) - Ephemeral Interaction / Draft 会话模式
+- [Module Lifecycle & Session](./topics/module-lifecycle-and-session) - 模块生命周期、统一资源缓存与 Session 模式
 
-### React & Studio
+### Vision / Long-Term Topics（愿景与远期规划）
 
-- [React Adapter](./topics/react-adapter)
-- [Spec Studio](./topics/spec-studio)
+- [AI Native Core](./topics/ai-native-core) - Effect AI / AI Runtime 与 v3 Intent/Runtime 的整体集成愿景
+- [AI Native UI](./topics/ai-native-ui) - Grand Bidirectional Architecture（Skeleton / AISlot / Live Component / Toolchain）
+- [API Evolution](./topics/api-evolution) - 下一代 Bound API / Agent.gen / `$.whenAI` 等 Killer Feature 提案
+- [Platform Vision](./topics/platform-vision) - 平台终局形态（Generative Language Server / JSON Definition & Runtime Separation 等）
+- [Platform Patterns](./topics/platform-patterns) - 平台级生成式 Pattern 体系与 SCD 对齐
 
 ## Tiered Drafts
 
 ### L1 (Stable Candidates)
-*(None)*
+
+_(None)_
 
 ### L2 (Refining)
-*(None)*
+
+_(None)_
 
 ### L3 (Structured)
 
-*(None)*
+_(None)_
 
 ### L4 (Defined)
-*(None)*
+
+- ~~[Logix Sandbox & Verifiable Intent Architecture](./L4/logix-sandbox-verifiable-intent-architecture.md)~~ — (superseded → [topics/sandbox-runtime](./topics/sandbox-runtime))
 
 ### L5 (Comparative)
 
-*   [Logix Runtime Core Evolution](./L5/runtime-core-evolution.md) - 整合观测性重构、规范边界优化、Runtime 适配扩展三个维度的演进路线
-*   [Logix DSL Evolution Roadmap](./L5/dsl-evolution-roadmap.md) - 整合 Sugar 可能性愿景与 Env-First API 设计的 DSL 演进方向
+- [Logix Runtime Core Evolution](./L5/runtime-core-evolution.md) - 整合观测性重构、规范边界优化、Runtime 适配扩展三个维度的演进路线
+- [Logix DSL Evolution Roadmap](./L5/dsl-evolution-roadmap.md) - 整合 Sugar 可能性愿景与 Env-First API 设计的 DSL 演进方向
+- [Runtime Logic Phase Guard & Diagnostics](./L5/runtime-logic-phase-guard-and-diagnostics.md) - 收敛 Logic 两阶段 bootstrap + Phase Guard + 诊断链路的 v3 终极形态，约束 runSync / React 集成下的错误本地化行为
 
 ### L6 (Exploratory)
-*(None)*
+
+_(None)_
 
 ### L7 (Fragments)
-*(None)*
+
+_(None)_
 
 ### L8 (Transient)
-*(None)*
+
+- [Matrix Acceptance Logix Support](./L8/matrix-acceptance-case-study.md) - 矩阵验收详情页复杂逻辑支撑案例
 
 ### L9 (Raw Ideas)
 
-*   [DSL Sugar & Concurrency Safety](./L9/dsl-sugar-and-concurrency.md) - Flow.run 默认语义与并发 API 演进
-*   [Dynamic List Form Pattern](./L9/dynamic-list-form-pattern.md) - 复杂动态列表表单支撑方案
-*   [Matrix Acceptance Logix Support](./L9/matrix-acceptance-logix-support.md) - 矩阵验收详情页复杂逻辑支撑
-*   [Poisoned Effect Pattern](./L9/poisoned-effect-pattern.md) - 架构防御：毒药 Effect 模式
-*   [Logix Unified Middleware](./L9/logix-unified-middleware.md) - 统一中间件架构（待扩充后提升）
-*   [Runtime Logix Core Gaps & Production Readiness](./L9/runtime-logix-core-gaps-and-production-readiness.md) - 汇总当前 v3 Core 在接近生产可用前仍需补齐的关键缺口与优先级排序
-*   [Page Level Module State Retention](./L9/page-level-module-state-retention.md) - 探讨页面级模块的状态保持与优雅实现（避免全局 Module 爆炸）
-*   [Resource Field: Unified Data Plane](./L9/resource-field-unified-data-plane.md) - 尝试用 ResourceField 抽象统一 Query/Socket/AI 等“有来源字段”的数据平面
-*   [Form Session & Draft Pattern Convergence](./L9/form-session-draft-pattern-convergence.md) - 将 Draft Pattern 收缩为表单领域的 Form/Wizard Session 能力的收敛草案
-*   [React LiveComponent Host PoC](./L9/react-live-component-host-poc.md) - 在 examples/logix-react 中尝试 LiveComponent Host 原型以验证 AI Native UI 运行时接口
-*   [Platform Patterns as Flow Templates](./L9/platform-patterns-as-flow-templates.md) - 将平台 Pattern 收紧为 BoundApi/Flow 模板与元数据，而非第二套运行时
-*   [Builder & Studio Roadmap Alignment](./L9/builder-studio-roadmap-alignment.md) - 从 Generative Language Server/Spec Studio 中提炼 Builder 的近期可落地路线
+- [Beyond State & Action](./L9/beyond-state-and-action.md) - The Unified Schema Vision (元编程发散：Module Schema 的全维度演进)
+- [Forward-Only AI Coding](./L9/forward-only-ai-coding.md) - The "Intent-to-Code" Skill Pack (极致正向思考：Pattern-Rich, Schema-Less)
+- [Progressive Escape Hatch](./L9/progressive-escape-hatch.md) - The Compression-Decompression Model (渐进式逃生舱：AI 作为意图编解码器)
+- [From Requirement to Schema](./L9/from-requirement-to-schema.md) - The "Intent Pipeline" (意图流水线：从 L0 需求到 L9 Schema 的结晶过程)
+- [Logix React Components Without useEffect/useRef](./L9/logix-react-no-useeffect-useref-gaps.md) - 盘点在「组件不写 useEffect/useRef」目标下，当前 Logix/React 能力的覆盖面与潜在缺口
+- [State-First Logix Module Codegen](./L9/logix-state-first-module-codegen.md) - State-Only Module 设计 + TanStack Router 风格 Codegen/Vite 插件方案
 
-## Recently Organized (2025-12-02)
+## Recently Organized (2025-12-04)
 
-### Elevated
+### New Topics
 
-- L9 → L3: `logix-react-feature-and-hook-design.md`
-- L9 → L5: `runtime-core-evolution.md` (合并 3 篇)
-- L9 → L5: `dsl-evolution-roadmap.md` (合并 2 篇)
+- **devtools-and-studio**: Consolidated CLI, DevTools, and Studio integration drafts.
+- **runtime-readiness**: Consolidated Runtime readiness, performance, and architecture drafts.
 
-### Topic Collection
+### Moved/Promoted
 
-- **query-integration** (新建): 收编 5 篇 Query 相关草稿
-- **react-adapter**: 补充 ModuleImpl 设计
-- **platform-vision**: 补充 JSON/Intent 方案
+- L9 → L8: `matrix-acceptance-logix-support.md`
+- L9 → topics/platform-patterns: `platform-patterns-as-flow-templates.md`
+- L9 → topics/draft-pattern: `form-session-draft-pattern-convergence.md`
+- L9 → topics/ai-native-ui: `react-live-component-host-poc.md`
 
-### Superseded/Merged
+### Deleted (Superseded)
 
-- `logix-instrumentation-overhaul.md` → superseded by L5/runtime-core-evolution.md
-- `runtime-logix-spec-adjustments.md` → superseded by L5/runtime-core-evolution.md
-- `module-runtime-adapter-and-customization.md` → superseded by L5/runtime-core-evolution.md
-- `logix-sugar-possibilities.md` → superseded by L5/dsl-evolution-roadmap.md
-- `logic-for-shape-env-first-roadmap.md` → superseded by L5/dsl-evolution-roadmap.md
-- `logix-query-unified-api-design.md` → moved to topics/query-integration
-- `logix-query-integration-strategies.md` → moved to topics/query-integration
-- `logix-module-computed-query.md` → moved to topics/query-integration
-- `logix-reactive-schema.md` → merged to topics/query-integration
-- `logix-reactive-module-integration.md` → merged to topics/query-integration
-- `platform-json-runtime-separation.md` → moved to topics/platform-vision
-- `intent-dev-api-and-dollars.md` → moved to topics/platform-vision
+- `logix-instrumentation-overhaul.md`
+- `logix-sugar-possibilities.md`
+- `logic-for-shape-env-first-roadmap.md`
+- `module-runtime-adapter-and-customization.md`
+- `runtime-logix-spec-adjustments.md`
+- `topics/spec-studio/*` — 已被收束到 `topics/sdd-platform/03-spec-studio-l0.md` 及相关子章节
+- `topics/module-traits-sdd-roadmap/*` — 已被收束到 `topics/sdd-platform/01-module-traits-integration.md` 与 `04-module-traits-sdd-roadmap.md`

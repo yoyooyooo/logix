@@ -34,11 +34,11 @@ React 适配层围绕三类 Hooks 暴露能力：
 
 ```typescript
 // 1. 定义 Module (Shape + Logic Factory)
-export const RegionModule = Logix.Module("RegionModule", { state, actions })
+export const RegionModule = Logix.Module.make("RegionModule", { state, actions })
 export const RegionLogic = RegionModule.logic<RegionService>(/* ... */)
 
 // 2. 构造 Impl (绑定 Initial + Logic)
-export const RegionImpl = RegionModule.make({
+export const RegionImpl = RegionModule.implement({
   initial: { province: null, city: null, isLoading: false },
   logics: [RegionLogic]
 })
@@ -178,29 +178,29 @@ dispatch({ _tag: 'updateUser', payload: { name: 'Alice' } });
 
 Logix 通过 `RuntimeProvider` 组件在 React 树中注入 Effect 运行时环境。核心能力：
 
-- `runtime={ManagedRuntime}`：复用外部构造的 Runtime（推荐形态，通常来自 `LogixRuntime.make(rootImpl, { layer, onError })`）；
+- `runtime={ManagedRuntime}`：复用外部构造的 Runtime（推荐形态，通常来自 `Logix.Runtime.make(rootImpl, { layer, onError })`）；
 - `layer={Layer}`：在父 Runtime 基础上追加局部 Layer，所有 `useModule`/`useSelector` 将自动 `provide` 该 Layer 输出；
 
-v3 分形 Runtime 模型下，推荐以某个 Root ModuleImpl + `LogixRuntime.make` 定义应用/页面/Feature 级 Runtime，再通过 `RuntimeProvider runtime={...}` 作为组合根，局部增强则通过 `layer` 叠加。
+v3 分形 Runtime 模型下，推荐以某个 Root ModuleImpl + `Logix.Runtime.make` 定义应用/页面/Feature 级 Runtime，再通过 `RuntimeProvider runtime={...}` 作为组合根，局部增强则通过 `layer` 叠加。
 
-### 4.1 推荐模式：Root ModuleImpl + LogixRuntime (Fractal Runtime)
+### 4.1 推荐模式：Root ModuleImpl + Runtime (Fractal Runtime)
 
-最佳实践是使用 Root ModuleImpl + `LogixRuntime.make` 定义应用/页面级 Runtime，并通过 `runtime` 属性传入。这是全应用或某个 Feature 的 **Composition Root**。
+最佳实践是使用 Root ModuleImpl + `Logix.Runtime.make` 定义应用/页面级 Runtime，并通过 `runtime` 属性传入。这是全应用或某个 Feature 的 **Composition Root**。
 
 ```tsx
 // src/App.tsx
 import { RuntimeProvider } from '@logix/react';
-import { Logix, LogixRuntime } from '@logix/core';
+import * as Logix from '@logix/core';
 import { Layer } from 'effect';
 
-const RootModule = Logix.Module("Root", { state: RootState, actions: RootActions });
-const RootImpl = RootModule.make({
+const RootModule = Logix.Module.make("Root", { state: RootState, actions: RootActions });
+const RootImpl = RootModule.implement({
   initial: { /* ... */ },
   imports: [/* ModuleImpls / Service Layers */],
   processes: [/* Coordinators / Links */]
 });
 
-const appRuntime = LogixRuntime.make(RootImpl, {
+const appRuntime = Logix.Runtime.make(RootImpl, {
   layer: Layer.mergeAll(AppInfraLayer, ReactPlatformLayer),
 });
 
@@ -217,10 +217,11 @@ function App() {
 在这一模式下：
 
 - Root ModuleImpl 通过 `imports` 引入子模块实现，通过 `processes` 声明长生命周期进程（例如 Coordinator / Link）；
-- `LogixRuntime.make` 会在内部使用 AppRuntime 机制合并 Layer、构建根 Scope 并统一 fork 这些进程；
+- `Logix.Runtime.make` 会在内部使用 AppRuntime 机制合并 Layer、构建根 Scope 并统一 fork 这些进程；
 - `RuntimeProvider` 负责在 React 应用生命周期内持有该 Runtime 的 Scope，当应用卸载时自动触发资源释放。
-
-> React 端默认会注入 `ReactPlatformLayer`，将 Page Visibility、Tab Suspend/Resume 等信号映射到 `Logic.Platform`，模块逻辑可以通过 `yield* Logic.Platform` 订阅这些事件。
+> 推荐在应用级 Runtime 的 `layer` 中合并 `ReactPlatformLayer`，为 Logic Runtime 提供平台生命周期能力（`Logic.Platform`）。  
+> `ReactPlatformLayer` 本身只负责在 Env 中提供 `Logic.Platform` 服务，并将 `$.lifecycle.onSuspend/onResume/onReset` 注册的 Effect 收集起来；  
+> 具体使用哪些事件源（如 Page Visibility、路由切换、App 前后台）来触发这些生命周期回调，由宿主应用或上层框架自行接线，并通过自定义 Platform 实现或封装在 `ReactPlatformLayer` 之外的桥接代码完成。
 
 ### 4.2 兼容模式：Layer 注入 (Layer Injection)
 
@@ -257,16 +258,16 @@ function OrderPage({ userId }: { userId: string }) {
 
 ```ts
 // app-runtime.ts
-const GlobalModule = Logix.Module("Global", { state: GlobalState, actions: GlobalActions });
-const GlobalImpl = GlobalModule.make({ initial: { /* ... */ }, logics: [GlobalLogic] });
+const GlobalModule = Logix.Module.make("Global", { state: GlobalState, actions: GlobalActions });
+const GlobalImpl = GlobalModule.implement({ initial: { /* ... */ }, logics: [GlobalLogic] });
 
-const RootImpl = RootModule.make({
+const RootImpl = RootModule.implement({
   initial: { /* ... */ },
   imports: [GlobalImpl],
   processes: [/* Coordinators / 长生命周期进程 */],
 });
 
-const appRuntime = LogixRuntime.make(RootImpl, {
+const appRuntime = Logix.Runtime.make(RootImpl, {
   layer: Layer.mergeAll(AppInfraLayer, ReactPlatformLayer),
 });
 ```
@@ -309,3 +310,76 @@ const editor = useLocalModule(EditorModule, {
 > - 组件内读取 State 与派发 Action 推荐统一通过 `useModule(Impl)` 获取 Runtime 后再操作；
 > - `useLocalModule` 作为底层 API 仍被保留，用于需要自定义 factory 的高级场景。
 > - 组件外的业务逻辑 / Pattern 可以直接使用 `module.dispatch` / `module.getState`。
+
+### 5.3 ModuleImpl 的双模式：同步 vs Suspense
+
+在 React 集成层中，`ModuleImpl` 的消费主要通过 `useModule(Impl)` 完成。考虑到真实业务中既存在**纯同步模块**（只依赖内存状态）也存在**异步模块**（依赖 IndexedDB / 远程配置等），React 适配层对 ModuleImpl 提供了两种模式：
+
+1. **默认：同步构建（基线模式）**
+
+- 调用形态：
+  - `const runtime = useModule(MyImpl)`
+  - `const runtime = useModule(MyImpl, { deps })`
+- 特性：
+  - 使用 `Resource Cache` + `readSync` 在渲染阶段同步构建 `ModuleRuntime`；
+  - 每个组件实例默认持有一份私有的 `ModuleRuntime`，通过内部的 `instanceKey` 保证在 StrictMode 下 key 不抖动；
+  - 生命周期通过 `retain/release + 延迟 GC` 与组件绑定，卸载后相关 Scope 和 watcher 会被安全关闭；
+  - 仅适用于“构建过程本身是同步的” ModuleImpl（即 `.layer` 不依赖异步初始化）。
+
+2. **可选：Suspense 异步构建（高级模式）**
+
+- 调用形态：
+
+  ```ts
+  const id = useId()
+
+  const runtime = useModule(MyImpl, {
+    suspend: true,
+    key: `Local:${id}`,  // 显式提供稳定 Key
+    deps: [userId],
+  })
+  ```
+
+- 特性：
+  - 使用 `Resource Cache` + `read` 在渲染阶段启动异步构建，并通过抛出 Promise 驱动 React Suspense；
+  - 允许 ModuleImpl 的 `layer` 内部包含真正的异步初始化逻辑（如 IndexedDB、远程配置加载等）；  
+  - 构建完成后仍然通过 `retain/release + 延迟 GC` 管理 Scope 生命周期；
+  - **必须显式提供稳定的 `key`**，用于标识该 ModuleImpl 实例的资源——这是运行时契约的一部分，而不是可选优化。
+
+> 为什么异步模式必须显式 `key`？
+>
+> - React 的 `useId` 只承诺“最终提交到 DOM / Hydration 的 ID 在拓扑意义上稳定”，**不承诺在 Suspense 重试 / 并发中断 / 未提交分支中的中间值稳定**；
+> - `ModuleCache` 需要一个“外部可控、跨渲染尝试稳定”的 Key，来判断“当前这次渲染是否在使用同一份局部 ModuleRuntime”，否则会出现“每次重试都创建新资源、永远命中不到已完成构建”的情况（表现为 Suspense fallback 一直 pending）；
+> - 因此，在 `suspend: true` 模式下，Logix 规范要求调用方显式传入 `key`，通常建议：
+>   - 在 **Suspense 边界外层** 调用 `useId()`，并通过 props 传给内部组件，作为组件级前缀；
+>   - 再结合业务 ID（如 `userId` / `formId` / layout slot id）和 `deps`，构造出能在重渲染与重试之间保持稳定的 Key。
+>
+> 实现说明（当前 @logix/react 状态）：
+>
+> - 自 L9 重构后，`useModule(Impl, { suspend: true })` 在 **开发/测试环境中若省略 `key` 会立即抛出运行时错误**，提示调用方必须显式提供 `options.key`；  
+> - 这一行为旨在防止异步局部 Module 在 StrictMode + Suspense 下因为资源 key 抖动而出现“无限重建资源、永远 pending”的隐蔽问题；  
+> - 生产环境建议同样遵循该约束：所有使用 `suspend: true` 的调用都应按上文模式显式构造稳定 Key，使“资源身份”成为公共 API 的一部分，而不是依赖内部实现细节。
+
+推荐最佳实践（局部异步 ModuleImpl）：
+
+```ts
+function AsyncLocalWidget({ userId }: { userId: string }) {
+  const id = useId()
+
+  const runtime = useModule(AsyncImpl, {
+    suspend: true,
+    key: `AsyncLocalWidget:${id}`,  // 组件级稳定 Key
+    deps: [userId],                 // 业务依赖参与重建
+  })
+
+  const state = useSelector(runtime, s => s.state)
+  const dispatch = useDispatch(runtime)
+
+  // ...
+}
+```
+
+> 约定：
+> - **默认优先使用同步模式**：只要 ModuleImpl 构建不依赖异步步骤，优先保持 `useModule(Impl)` 的同步语义，获得更简单的调试体验；
+> - **明确异步意图**：当确实需要异步 Layer 时，通过 `suspend: true + key` 明确声明，调用方需要负责组织好稳定 Key；
+> - `useLocalModule` 仍然保留为底层 API，针对“模块级 Resource Cache”场景使用，`useModule(Impl)` 则是推荐的 UI 层入口。

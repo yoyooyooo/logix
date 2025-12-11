@@ -21,8 +21,8 @@
 建议按功能域拆分实现备忘：
 
 - `app-and-universe-view.md`
-  记录平台如何从 `Logix.module` / `ModuleDef` 构建模块拓扑（Universe View）：
-  - AST 解析入口（`Logix.module(...)` / `Logix.provide(...)` / `imports/providers/processes/exports`）；
+  记录平台如何从 `Logix.Module` / `ModuleDef` 构建模块拓扑（Universe View）：
+  - AST 解析入口（`Logix.Module.make(...)` / `Logix.provide(...)` / `imports/providers/processes/exports`）；
   - Drill‑down 规则（Module 展开为 Store / Process 节点）；
   - 依赖检查与错误提示策略（未 export Tag 的非法引用、循环依赖等）。
 
@@ -45,7 +45,7 @@
 
 1. **解析入口：以 `$` 与 Module 为中心**
    - 解析器不再围绕 `Flow.from().pipe(...)`，而是以以下结构作为主入口：
-     - `const X = Logix.Module("Id", { state, actions })`：定义领域模块与 Id；
+     - `const X = Logix.Module.make("Id", { state, actions })`：定义领域模块与 Id；
      - `X.logic(($) => Effect.gen(function* (_) { ... }))`：标记 Logic 单元与 `$` 上下文；
      - `yield* $.use(ModuleOrService)`：构建依赖符号表（Module / Service）。
    - 平台应将“`Logix.Module` + `.logic` + `$.use` + Fluent 链”视作完整的 **逻辑编排上下文**，其他代码仅作为补充信息显示。
@@ -74,8 +74,9 @@
      - `source`：从 `when*` + 符号表推导；
      - `pipeline`：从 `.debounce/.throttle/.filter/.map` 等算子推导；
      - `sink`：从 `then` 内部对 `$`/StoreHandle/Service 的调用推导。
-  - IR 层统一使用 `IntentRule` 结构来表达语义，不再依赖任何 `Intent.*` 命名空间；
-  - Graph → Code 时，平台修改 Fluent 链（而不是生成额外的适配 API），保证代码与 IR 的单一事实源仍是 `$`。
+
+- IR 层统一使用 `IntentRule` 结构来表达语义，不再依赖任何 `Intent.*` 命名空间；
+- Graph → Code 时，平台修改 Fluent 链（而不是生成额外的适配 API），保证代码与 IR 的单一事实源仍是 `$`。
 
 5. **Eject / Raw Mode 的平台行为**
    - 一旦用户在画布中选择“Eject to Code”：

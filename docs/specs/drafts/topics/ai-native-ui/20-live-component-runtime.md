@@ -2,6 +2,7 @@
 title: Live Component Triad (UI + Data + Behavior)
 status: draft
 version: 1.0
+related: []
 ---
 
 # Live Component Triad: The "Soul" of AI-Generated UI

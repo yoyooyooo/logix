@@ -1,14 +1,10 @@
 ---
-title: "@logix/query 统一 API 设计：三层架构 (Unified API Design)"
-status: draft
-version: 1.1
+title: '@logix/query 统一 API 设计：三层架构 (Unified API Design v3)'
+status: definitive.v3
+version: 3.0.0
 layer: Extension Library
-value: extension
-priority: later
 related:
-  - logix-query-integration-strategies.md
-  - logix-query-elegant-api-design.md (artifact)
-  - logix-query-perfect-design.md
+  - ../capability-plugin-system/01-capability-plugin-blueprint.md
 ---
 
 # @logix/query 统一 API 设计：三层架构
@@ -17,11 +13,14 @@ related:
 
 ---
 
-## 0. 设计理念
+## 0. 设计理念 (V3 Bound Helper Pattern)
 
-- **Module-Native**: Query 不是外挂，而是 State 的一部分。
-- **Schema-Driven**: 利用 Schema 元数据自动生成标准 Logic。
-- **Progressive**: 80% 场景用 Layer 1，20% 复杂场景下沉到 Layer 2/3。
+- **Helper-First**: 所有能力通过 `Query.query($, ...)` 暴露。
+- **Schema-Driven**: 利用 V3 `CapabilityMeta` 协议，将 Schema 描述自动编译为 Logic。
+- **DI-Native**: `QueryClient` 作为 Service 通过 Layer 注入。
+
+> [!WARNING]
+> **Level 1 Restriction**: Schema 定义中的 `fn` 是 **纯函数上下文**，无法访问 Module Scope (`$`) 或 Effect Environment。如果你的查询需要依赖 Context、Scope 或复杂 Env，请直接使用 **Layer 2 (Logic)**。
 
 ---
 
@@ -32,100 +31,112 @@ related:
 ### 1.1 API 契约
 
 ```ts
-import { Logix, Query } from '@logix/core'
+import * as Logix from '@logix/core'
+import { Query } from '@logix/query' // New V3 Package
 import { Schema } from 'effect'
 
-export const UserModule = Logix.Module('User', {
-  state: Schema.Struct({
-    userId: Schema.String,
-
-    // 🌟 Query.field: 声明这是一个"活"的字段
-    // 泛型自动推导：
-    // - State 类型 (S)
-    // - QueryKey 类型 (K)
-    // - Data 类型 (D)
-    profile: Query.field({
-      // 依赖追踪：state 即为当前 Module 的状态快照
-      queryKey: (state) => ['user', state.userId] as const,
-
-      // 执行函数：解构 ctx 获取强类型 key
-      queryFn: ({ queryKey: [_, id] }) => UserApi.fetchProfile(id),
-
-      // 启用条件
-      enabled: (state) => !!state.userId,
-
-      // 策略配置
-      staleTime: 5_000,
-    }),
+// 🌟 L1 Standard: Fluent Pipe (避免 State 拆分)
+const UserState = Schema.Struct({
+  userId: Schema.String,
+}).pipe(
+  // Query.attach: 自动推导左侧 Schema 类型
+  Query.attach('profile', {
+    key: (state) => ['user', state.userId], // ✅ state: { userId: string }
+    fn: (key) => UserApi.fetchProfile(key[1]),
+    enabled: (state) => !!state.userId,
   }),
+)
+
+export const UserModule = Logix.Module.make('User', {
+  state: UserState,
   actions: {
     setUserId: Schema.String,
-  }
+  },
 })
 ```
 
-### 1.2 运行时行为 (Module.live 自动装配)
+## 4.1 Advanced Definition Patterns
 
-当调用 `UserModule.live(...)` 时，底层 Runtime 会执行以下操作：
+### The "Fluent Pipe" Trick (High Trick)
 
-1. **Schema 扫描**：遍历 `stateSchema`，识别带有 `[QueryFieldSymbol]` 标记的字段。
-2. **Logic 生成**：为每个 Query Field 自动生成一段隐式的 `RxQueryLogic`。
-   - `deps = config.queryKey` (依赖 State 变化)
-   - `sink = state.profile` (自动回填 data/isLoading/error)
-3. **注入**：将生成的 Logic 合并到 Module 的 Logic 列表中。
-
-### 1.3 类型推导体验
-
-在 React 组件中：
+如果你不想把 State 拆成两半定义，可以使用 Effect `pipe` 模式。
+这既保持了链式推导，又让代码在视觉上通过 `pipe` 连在一起。
 
 ```ts
-const { state } = useModule(UserModule)
+const UserState = Schema.Struct({
+  userId: Schema.String,
+  // 基础字段...
+}).pipe(
+  // 🌟 .attach (Concept): 专门用于 Schema-Capability 绑定的 Helper
+  // 左侧的 Schema 类型会自动流入
+  Query.attach('profile', {
+    schema: ProfileSchema,
+    key: (s) => ['user', s.userId], // ✅ s 自动推导为 { userId: string }
+    fn: (key) => UserApi.fetchProfile(key[1]),
+  }),
+)
 
-// state.profile 自动展开为：
-// {
-//   data: User | null,
-//   isLoading: boolean,
-//   error: Error | null,
-//   refetch: () => void
-// }
+export const UserModule = Logix.Module.make('User', {
+  state: UserState,
+  // ...
+})
 ```
+
+### Logic-First (The Architecture Shift)
+
+如果一个 Query 对 State 的依赖关系非常复杂（例如依赖多个 computed 或者有复杂的竞态），**架构上建议直接下沉到 Layer 2 (Logic)**。
+
+- **Schema**: 只定义形状 `profile: Schema.Loadable(User)`。
+- **Logic**: 在 `Query.query($, ...)` 中处理所有依赖。
+
+因为在 Logic 中，`$` 总是持有最终完整的 State/Action 类型，**永远不会有循环引用的问题**。
+
+## 4.2 Best Practice: Separation of Concerns (v3 Principle)
+
+针对 "Schema 定义太长、拆分太碎" 的痛点，V3 提出了明确的指导原则：
+
+> **"Schema Defines Shape, Logic Defines Source."**
+
+- **Simple Cases (L1)**: 如果 Query 只依赖基础字段（如 `userId`），可以使用 `Query.field` 或 `Fluent Pipe` 定义。
+- **Complex Dependencies (L2)**: 一旦出现 `Query B` 依赖 `Query A` 的结果，或者依赖多个 Computed 字段，**请立即停止在 Schema 中纠结**，转而在 `Module.logic` 中使用 `Query.query($, ...)`。
+
+这种分离不仅解决了 TS 类型推导难题，也让“数据结构定义”保持了干净纯粹，符合 Logix **"Data First"** 的哲学。
+
+### 1.2 运行时行为
+
+当 `Module.live` 运行时，会扫描 `CapabilityMeta`，并自动调用 Layer 2 的 `Query.query` Helper，将逻辑注入到 Runtime。
 
 ---
 
 ## Layer 2: Explicit Query Logic (显式查询逻辑)
 
-**定位**：覆盖需要自定义副作用、跨 Module 依赖或复杂触发条件的场景。
+**定位**：覆盖需要自定义副作用、跨 Module 依赖或复杂触发条件的场景。这是 **标准 V3 推荐写法**。
 
 ### 2.1 API 契约
 
 ```ts
-import { createQueryLogic } from '@logix/query'
+import { Query } from '@logix/query'
 
-export const UserProfileQueryLogic = createQueryLogic(UserModule, {
-  // 1. 显式定义触发源 (Source)
-  params: (state) => state.userId,
+export const UserProfileQueryLogic = UserModule.logic(($) =>
+  // 🌟 Query.query (L2): Bound Helper
+  Query.query($, {
+    target: 'profile', // 回填字段
 
-  // 2. Query 配置
-  query: {
-    queryKey: (userId) => ['user', userId] as const,
-    queryFn: (ctx) => UserApi.fetchProfile(ctx.queryKey[1]),
-    enabled: (userId) => !!userId,
-  },
+    // Key Mapper: state -> QueryKey
+    key: (state) => ['user', state.userId],
 
-  // 3. 写入目标 (Sink)
-  target: 'profile',
+    // Fetcher
+    fn: (key) => UserApi.fetchProfile(key[1]),
 
-  // 4. 生命周期钩子 (Side Effects)
-  onSuccess: ($) => (data) => Effect.gen(function*() {
-    yield* Effect.log(`User loaded: ${data.name}`)
-    yield* $.actions.someAction(data)
+    // No more manual lifecycle needed! Helper handles it via Effect Scope.
   }),
-
-  onError: ($) => (error) => Effect.gen(function*() {
-    yield* $.actions.showToast(error.message)
-  })
-})
+)
 ```
+
+**为什么优于旧版 `createQueryLogic`？**
+
+- **强类型推导**：`$` 参数自动携带了 `State/Action` 类型，TS 可以自动推导 `key` 函数的 `state` 参数。
+- **Scope Native**: 内部自动管理订阅与 cleanup。
 
 ---
 
@@ -136,24 +147,28 @@ export const UserProfileQueryLogic = createQueryLogic(UserModule, {
 ### 3.1 API 契约 (Effect Native)
 
 ```ts
+import { QueryClientTag } from '@logix/query'
+import { Lifecycle } from '@logix/core'
+
 export const CustomQueryLogic = UserModule.logic(($) =>
   Effect.gen(function* () {
-    const queryClient = yield* QueryClientTag
+    // 🌟 DI: 获取底层 Client
+    const queryClient = yield* $.use(QueryClientTag)
+
+    // 🌟 Lifecycle: 显式挂载清理逻辑 (不再用 $.lifecycle)
+    yield* Lifecycle.onInit(Effect.log('Custom Query Logic Init'))
 
     // 手动编排流
     yield* $.flow.fromState(s => s.userId).pipe(
       $.flow.debounce(300),
       $.flow.runLatest((id) => Effect.gen(function*() {
-        // 手动管理 Loading
-        yield* $.state.update(s => ({ ...s, loading: true }))
+         yield* $.state.update(s => ({ ...s, loading: true }))
 
-        // 直接调用 RQ Core
-        const result = yield* Effect.tryPromise(() =>
-          queryClient.fetchQuery({ queryKey: ['user', id], ... })
-        )
+         const result = yield* Effect.tryPromise(() =>
+           queryClient.fetchQuery({ queryKey: ['user', id], ... })
+         )
 
-        // 手动回填
-        yield* $.state.update(s => ({ ...s, data: result, loading: false }))
+         yield* $.state.update(s => ({ ...s, data: result, loading: false }))
       }))
     )
   })
@@ -162,117 +177,12 @@ export const CustomQueryLogic = UserModule.logic(($) =>
 
 ---
 
-## 4. 架构评估与关键决策 (Evaluation)
+## 4. 架构总结
 
-### 4.1 Schema 递归类型问题 (Recursive Type Issue)
+| Layer  | API                     | 适用场景         | 实现机制                    |
+| ------ | ----------------------- | ---------------- | --------------------------- |
+| **L1** | `Query.field({...})`    | 简单 Fetch，CRUD | `CapabilityMeta` -> 调用 L2 |
+| **L2** | `Query.query($, {...})` | 复杂依赖，副作用 | **Standard Bound Helper**   |
+| **L3** | `$.use(QueryClientTag)` | 极端定制         | Raw Effect + Service        |
 
-**挑战**：在定义 state Schema 时，`queryKey: (state) => ...` 函数需要引用尚未定义完成的 State 类型。
-
-**解法**：使用 **Getter 模式** 或 **Builder 模式** 延迟推导，或者允许 state 参数为 `Partial<State>` 或 `any` (由运行时保证)，在 Module 定义完成后再通过 `Module.State` 进行类型收窄。
-
-在 Logix v3 中，推荐使用 **Two-Pass Definition** 或 **Proxy Type** 来解决：
-
-```ts
-// 1. 先定义纯数据结构 (DTO)
-const UserData = Schema.Struct({ userId: Schema.String });
-
-// 2. 再定义包含 Query 的 State
-const UserState = Schema.extend(UserData, Schema.Struct({
-  profile: Query.field<typeof UserData, ...>({ ... })
-}));
-```
-
-或者，接受在 `Logix.Module` 定义内部 `queryKey` 参数的类型推导可能需要一些 TypeScript 魔法（如 `ThisType`）。
-
-### 4.2 平台解析策略
-
-- **Layer 1**: Parser 扫描 Module Schema AST，识别 `Query.field` 调用。在可视化图中，将其渲染为 **"State 内嵌数据源" (State-Embedded Datasource)**，用特殊图标标记 State 节点上的该字段。
-- **Layer 2**: Parser 识别 `createQueryLogic` 调用。渲染为独立的 **Logic 节点**，连线指向 State 字段。
-- **Layer 3**: 渲染为普通 **Code Block**。
-
-### 4.3 推荐实施路径
-
-- **Phase 1**: 实现 `QueryClientTag` 和 Layer 3 (Manual)，打通底层。
-- **Phase 2**: 实现 `createQueryLogic` (Layer 2) 工厂函数，覆盖大部分手写场景。
-- **Phase 3**: 攻克 TypeScript 类型推导难点，实现 `Query.field` (Layer 1) 的 Schema 扩展与自动 Logic 注入。
-
-### 4.4 架构深度辨析：Live State vs Pure State
-
-**核心问题**：`Query.field` 在 State Schema 中定义了 `queryFn`（行为），这是否破坏了 Logix "State is Pure Data" 的原则？
-
-**架构决策**：为了保持 Logix 核心的纯粹性，我们需要明确区分 **Schema 定义** 与 **Runtime 实例**。
-
-#### 1. State 实例永远是纯的 (Runtime Purity)
-
-无论 Schema 定义多么花哨，`ModuleRuntime` 中持有的 `state` 必须永远是 **Plain JSON Object**。
-
-- ✅ **可序列化**：`state.profile` 在运行时只包含 `{ data: ..., isLoading: ..., error: ... }` 数据快照。
-- ✅ **Time Travel**：调试器可以随意快照和回放，因为它只是一堆数据。
-- ✅ **禁止闭包**：`queryFn` 和 `queryKey` 函数绝不会被存储在 State 实例中。
-
-#### 2. Schema 是"富"的 (Rich Schema)
-
-我们扩展了 Logix 对 Schema 的定义。**Schema 不仅描述数据的"形状 (Shape)"，也可以描述数据的"来源 (Source)"**。
-
-- `Query.field` 本质上是利用 `Schema.annotations` 挂载了 **元数据 (Metadata)**。
-- 这些元数据是**静态的**，只存在于定义层。
-
-#### 3. "虚实分离" 的装配过程 (The Assembly Process)
-
-`Module.live` 承担了"编译器"的角色：
-
-```
-Schema (含 Query 元数据)
-    ↓ 1. 提取元数据
-Module.live 装配器
-    ↓ 2. 生成纯净的 Initial State
-    ↓ 3. 生成隐式的 Query Logic (Effect)
-    ↓
-Module Runtime (纯净 State + Logic Fibers)
-```
-
-**结论**：Layer 1 的"优雅"并非通过牺牲纯粹性获得的，而是通过**将行为定义上移到元数据层**实现的。这实际上强化了 Logix 核心体系：它定义了一种标准的 **"Resource State" (资源型状态)** 范式。
-
----
-
-## 5. 待决问题与后续工作
-
-### 5.1 类型系统挑战
-
-- [ ] 解决 `Query.field` 中 `queryKey: (state) => ...` 的递归类型推导
-- [ ] 验证 Layer 1 在复杂嵌套 Schema 场景下的类型表现
-- [ ] 确保 `refetch/invalidate` 方法的类型安全注入
-
-### 5.2 运行时实现
-
-- [ ] 实现 `Module.live` 的 Schema 扫描与 Logic 自动注入机制
-- [ ] 设计 `QueryObserver` 的生命周期管理策略（基于 `$.lifecycle`）
-- [ ] 处理多个 Query Field 之间的资源共享与隔离
-
-### 5.3 平台集成
-
-- [ ] 定义 `Query.field` 的 AST 解析规则
-- [ ] 设计 Studio 中 Query Field 的可视化图标与交互
-- [ ] 支持 Query Field 的"无代码重配"能力
-
-### 5.4 文档与示例
-
-- [ ] 编写 Layer 1/2/3 的完整使用指南
-- [ ] 提供真实场景的迁移案例（从 `useQuery` 到 `Query.field`）
-- [ ] 补充 Mutation / Infinite Query 的设计方案
-
----
-
-## 6. 相关文档
-
-- [Logix Query 集成策略（零封装方案）](./logix-query-integration-strategies.md)
-- [Logix Query 极致优雅 API 设计](../../.gemini/antigravity/brain/.../logix-query-elegant-api-design.md) (artifact)
-- [runtime-logix/core/02-module-and-logic-api.md](../../runtime-logix/core/02-module-and-logic-api.md)
-- [runtime-logix/core/03-logic-and-flow.md](../../runtime-logix/core/03-logic-and-flow.md)
-
----
-
-**版本历史**：
-
-- v1.1 (2025-11-30): 基于与 Claude 的深度讨论，整合三层 API 设计，新增"虚实分离"架构辨析。
-- v1.0 (2025-11-30): 初始版本，梳理 Layer 1/2/3 契约与设计理念。
+这种架构完美契合了 **Micro-Kernel** 原则，且通过移除 `$.lifecycle`，使 API 更接近 Effect 原生风格。

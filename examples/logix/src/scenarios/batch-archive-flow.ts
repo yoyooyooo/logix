@@ -11,8 +11,8 @@
  *   该场景对应文档中的 L0–L3 资产链路示例，用作 IntentRule ↔ Code 的金标样板。
  */
 
-import { Context, Effect, Schema, Data } from 'effect'
-import { Logix } from '@logix/core'
+import { Context, Effect, Schema, Data } from "effect"
+import * as Logix from "@logix/core"
 import {
   ConfirmServiceTag,
   type ConfirmService,
@@ -63,7 +63,7 @@ export type BatchArchiveAction = Logix.ActionOf<BatchArchiveShape>
 // Module：定义批量归档模块
 // ---------------------------------------------------------------------------
 
-export const BatchArchiveModule = Logix.Module('BatchArchiveModule', {
+export const BatchArchiveModule = Logix.Module.make('BatchArchiveModule', {
   state: BatchArchiveStateSchema,
   actions: BatchArchiveActionMap,
 })
@@ -132,7 +132,7 @@ export const BatchArchiveLogic = BatchArchiveModule.logic<
 // Impl / Live：组合 State / Action / Logic，并提供一个 PoC 级运行入口
 // ---------------------------------------------------------------------------
 
-export const BatchArchiveImpl = BatchArchiveModule.make<
+export const BatchArchiveImpl = BatchArchiveModule.implement<
   ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag
 >({
   initial: {

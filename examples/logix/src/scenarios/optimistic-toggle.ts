@@ -9,7 +9,7 @@
  */
 
 import { Effect, Schema } from 'effect'
-import { Logix } from '@logix/core'
+import * as Logix from '@logix/core'
 import {
   ToggleStateSchema,
   ToggleActionMap,
@@ -30,7 +30,7 @@ import {
 // Module：使用 Logix.Module 定义 FeatureToggleModule 模块
 // ---------------------------------------------------------------------------
 
-export const FeatureToggleModule = Logix.Module('FeatureToggleModule', {
+export const FeatureToggleModule = Logix.Module.make('FeatureToggleModule', {
   state: ToggleStateSchema,
   actions: ToggleActionMap,
 })
@@ -97,7 +97,7 @@ export const FeatureToggleLogic = FeatureToggleModule.logic<ToggleService>(($) =
 // Impl / Live：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-export const FeatureToggleImpl = FeatureToggleModule.make<ToggleService>({
+export const FeatureToggleImpl = FeatureToggleModule.implement<ToggleService>({
   initial: {
     id: 'toggle-1',
     enabled: false,

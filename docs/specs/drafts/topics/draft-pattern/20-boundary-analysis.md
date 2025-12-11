@@ -2,6 +2,7 @@
 title: Draft Pattern vs Flow/Domain Boundary
 status: draft
 version: 1.0
+related: []
 ---
 
 # Draft Pattern vs Flow/Domain Boundary

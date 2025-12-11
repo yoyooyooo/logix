@@ -1,16 +1,20 @@
 import React from "react"
 import { Effect, Fiber, Layer, ManagedRuntime } from "effect"
+import * as Logix from "@logix/core"
 import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from "@logix/react"
+import { devtoolsLayer } from "@logix/devtools-react"
 import { SourceModule, TargetModule, AuditModule, SourceImpl, TargetImpl, AuditImpl, ReactMultiModuleLink } from "../modules/linkModules"
 
 // 组合三个 ModuleImpl 的 Layer，构造应用级 Runtime
 const appLayer = Layer.mergeAll(
+  Logix.Debug.runtimeLabel("LinkDemo"),
+  devtoolsLayer,
   SourceImpl.layer,
   TargetImpl.layer,
   AuditImpl.layer,
-) as Layer.Layer<any, never, never>
+)
 
-const appRuntime = ManagedRuntime.make(appLayer) as ManagedRuntime.ManagedRuntime<never, any>
+const appRuntime = ManagedRuntime.make(appLayer)
 
 const LinkRunner: React.FC = () => {
   const runtime = useRuntime()

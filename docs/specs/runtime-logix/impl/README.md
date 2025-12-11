@@ -20,18 +20,80 @@
 
 ## 规划中的子文档
 
-建议按能力领域拆分实现备忘：
+建议按能力领域拆分实现备忘，并随着实现推进逐步填充：
 
-- `app-runtime-and-modules.md`
+- `app-runtime-and-modules.md`  
   记录 AppRuntime（`makeApp`）/ `Logix.Module` / `ModuleDef` 的 flatten 规则、`imports/providers/processes/exports` 的展开顺序，以及 v3 使用 Env 扁平合并的具体实现方案；分析未来 Env 裁剪 / Lazy 模块加载的可能路径与风险。
 
-- `logic-middleware-and-aop.md`
+- `logic-middleware-and-aop.md`  
   记录 Logic Middleware (`Logic.Meta` / `Middleware` / 组合与注入方式) 的实现草图：如何在 Logic 构造周期内挂载 Module/App 级 `middlewares`，如何保证 A/E/R 泛型不被破坏，以及平台如何可靠识别可解析子集。
 
-- `module-lifecycle-and-scope.md`
+- `module-lifecycle-and-scope.md`  
   记录 Store 生命周期钩子 (`lifecycle.onInit/onDestroy`) 与 Effect Scope 的绑定关系：Local Store vs Global Store 的 Scope 管理、finalizer 的注册时机与错误处理策略。
 
-> 注：以上文件名仅为建议，可根据实际实现拆分/合并。关键是做到：**每一块复杂能力，在规范确定后，都有一份对应的实现说明文档可查**。
+- `watcher-performance-and-flow.md`  
+  记录 `$.onAction / $.onState / $.on` watcher 与 Flow/Logic/ModuleRuntime 之间的调用链、性能模型，以及当前 PoC 在浏览器环境下的压测基线与调优建议。
+
+> 注：以上文件名与拆分方式可以根据实际实现调整，关键是做到：**每一块复杂能力，在规范确定后，都有一份对应的实现说明文档可查**。
+
+## 目录与依赖铁律（logix-core 实现侧）
+
+在 `packages/logix-core/src` 的实现中，约定以下几条“铁律”来约束代码布局与依赖方向，确保后续重构时不至于陷入循环依赖或实现语义漂移。
+
+### 1. 顶层子模块 vs internal
+
+- `src/*.ts` 直系文件视为「子模块」：`Module.ts` / `Logic.ts` / `Bound.ts` / `Flow.ts` / `Runtime.ts` / `Link.ts` / `Platform.ts` / `Debug.ts` / `MatchBuilder.ts` 等。
+- 这些子模块必须包含**实际实现代码**（工厂函数、Thin Wrapper、组合逻辑），**不能**仅作为 `export * from "./something"` 的纯 re-export。
+- 多个子模块共享的实现细节，统一下沉到 `src/internal/**`，再由子模块引入：
+  - 例如 Module 类型内核在 `src/internal/module.ts`，Bound 实现内核在 `src/internal/runtime/BoundApiRuntime.ts`；
+  - 顶层 `Module.ts` / `Bound.ts` 等只通过 `import * as Internal from "./internal/..."` 拿到这些能力并收口为公共 API。
+- **禁止**从 `src/internal/**` 反向 import 顶层子模块（`src/Module.ts` / `src/Logic.ts` / `src/Bound.ts` / `src/Flow.ts` 等），防止 internal 与公共 API 形成环依赖。
+
+### 2. internal 内部的浅/深分层（浅 → 深 单向依赖）
+
+为避免 internal 自身变成“黑盒大杂烩”，`src/internal/**` 内部也约定一条严格的浅/深分层原则：
+
+- **核心实现一律下沉到 `src/internal/runtime/core/**`**：
+  - `src/internal/runtime/core/module.ts`：ModuleShape / ModuleRuntime / ModuleInstance / ModuleImpl / BoundApi 等类型与核心契约；
+  - `src/internal/runtime/core/LogicMiddleware.ts`：Logic.Env / Logic.Of / IntentBuilder / FluentMatch / Middleware / Secured 等 Logic 内核；
+  - `src/internal/runtime/core/FlowRuntime.ts`：Flow.Api & `make(runtime)` 的具体实现；
+  - `src/internal/runtime/core/Lifecycle.ts`：LifecycleManager / LifecycleContext 与生命周期调度实现；
+  - `src/internal/runtime/core/Platform.ts`：Platform.Service / Platform.Tag 抽象；
+  - `src/internal/runtime/core/DebugSink.ts`：Debug 事件模型与默认 Sink 实现；
+  - `src/internal/runtime/core/MatchBuilder.ts`：`makeMatch` / `makeMatchTag` 的实现。
+
+- **浅层 internal 文件只做 re-export 或薄适配，不再承载复杂实现**：
+  - `src/internal/module.ts` 仅 `export * from "./runtime/core/module.js"`，给顶层子模块提供一个稳定入口；
+  - `src/internal/LogicMiddleware.ts` / `src/internal/MatchBuilder.ts` / `src/internal/platform/Platform.ts` / `src/internal/debug/DebugSink.ts` 同理，全部只是从 `runtime/core/**` re-export；
+  - `src/internal/runtime/FlowRuntime.ts` / `src/internal/runtime/Lifecycle.ts` 也只转发到对应 core 文件。
+
+- **依赖方向约束**：
+  - 浅层 internal（`src/internal/*.ts`、`src/internal/runtime/*.ts`）→ 允许 import `./runtime/core/**`；
+  - `src/internal/runtime/core/**` → 只能依赖 `effect` 及 sibling core 文件，不得回头 import 上层 internal；
+  - 检查方式：`rg "../" src/internal/runtime` 应保持为空（core 目录内除外），所有跨文件引用应表现为：
+    - `./core/module.js`、`./core/LogicMiddleware.js`、`./Lifecycle.js` 这类“同级或更深”路径。
+
+这一分层的目标是：
+
+- 让“真正的运行时内核”在一个相对封闭的 core 子目录中演化，方便未来做拆包或抽取独立运行时；
+- 浅层 internal 文件则承担“为顶层子模块提供稳定入口”的角色，避免顶层 API 与核心实现强耦合。
+
+## 内部 Config Service 约定（Tag + layer）
+
+在运行时实现层，对“运行期行为参数”（如 React 集成中的 `gcTime`、初始化超时等）统一采用 **Config Service** 模式：
+
+- 为每类配置定义一个 Shape 接口与 Tag：
+  - `interface XxxConfigShape { /* 完整配置字段 */ }`
+  - `class XxxConfigTag extends Context.Tag<"XxxConfig", XxxConfigShape>() {}`
+- 提供一个最小的 helper Namespace，至少包含：
+  - `XxxConfig.tag`：导出 Tag 本体（lowerCamelCase，便于与 effect 风格对齐）；  
+  - `XxxConfig.replace(partial: Partial<XxxConfigShape>)`：在当前 Env 中已有的配置基础上叠加 partial，若不存在则以 `DEFAULT_CONFIG` 为初始值，返回一个新的 Layer。
+- 使用约束：
+  - 运行时代码通过 `Effect.service(XxxConfigTag)` 读取配置，不直接访问 `DEFAULT_CONFIG`；  
+  - 调用方若需要覆盖默认行为，通过 Runtime 或 Provider 的 `layer` 合成额外的 `XxxConfig.replace({...})` 覆写（语义类似 Logger.replace）；  
+  - 是否从 `Effect.Config` / 环境变量补齐默认值，由 Config Service 内部实现决定，不向业务暴露细节。
+
+`ReactRuntimeConfigTag` + `ReactRuntimeConfig.replace`（见 `@logix/react` 内部）是这一模式的参考实现；在命名上约定 `ReactRuntimeConfig.tag` 暴露 Tag，避免在 helper namespace 下再出现大写 `Tag` 属性。
 
 ## Universal Bound API / Module 的实现硬约束（v3 Final）
 
@@ -44,7 +106,7 @@
      - 同时充当 `Context.Tag`，用于 Env/Layer 提供和 `$.use` 的参数。
    - 建议在类型层为 Module 加品牌标记，例如：
      - `interface ModuleMarker<Shape> { readonly _kind: "Module"; readonly _shape: Shape }`；
-     - `Logix.Module(...)` 返回的对象需实现该接口（既是 Tag，又携带 Shape 信息与工厂能力）。
+     - `Logix.Module.make(...)` 返回的对象需实现该接口（既是 Tag，又携带 Shape 信息与工厂能力）。
    - `$.use` 的实现 **只能** 识别两类参数：实现了 ModuleMarker 的 Module 定义，以及普通 Service Tag；不得接受手写 `Context.GenericTag` 作为 Module。
 
 2. **StoreHandle 与 Runtime 的解耦**
@@ -101,11 +163,11 @@
 在实现层，ModuleImpl 相关能力的硬约束与当前做法：
 
 1. **Module.make → ModuleImpl 的构造路径**
-   - `Logix.Module(id, def)` 在内部委托给 `ModuleFactory.Module` 创建：
+   - `Logix.Module.make(id, def)` 在内部委托给 `ModuleFactory.Module` 创建：
      - 先根据 Schema 推导出 `ModuleShape`；
      - 定义 `ModuleInstance.logic`：从当前 `Context` 中取出 ModuleRuntime，并基于它构造 Bound API `$`；
-     - 定义 `ModuleInstance.live(initial, ...logics)`：调用 `ModuleRuntime.make(initial, { tag, logics, moduleId })`，挂载所有 Logic。
-   - `ModuleInstance.make({ initial, logics, imports?, processes? })` 则在 `live` 之上，生成一个：
+  - 定义 `ModuleInstance.live(initial, ...logics)`：调用 `ModuleRuntime.make(initial, { tag, logics, moduleId })`，挂载所有 Logic。
+  - `ModuleInstance.implement({ initial, logics, imports?, processes? })` 则在 `live` 之上，生成一个：
      - `module`: 原始 `ModuleInstance`；
      - `layer`: 第一版 `Layer<ModuleRuntime, never, any>`，后续通过 `imports` 与 `withLayer/withLayers` 叠加 Env；
      - `processes`: 与该 Module 实现绑定的一组长期流程（含 Link），由 Runtime 容器在 Root Scope 内统一 fork；
@@ -134,22 +196,49 @@
      - 更简单可靠的运行时语义（所有 Env 注入都通过 Layer 组合完成）；
      - 较好的 React 适配体验（`useModule(impl)` 只需关心最终 layer，不需要重新拼 Env）。
 
-4. **LogixRuntime / AppRuntime.provide(ModuleImpl) 在 AppRuntime 中的角色**
+4. **Runtime（Logix.Runtime） / AppRuntime.provide(ModuleImpl) 在 AppRuntime 中的角色**
    - 内部的 AppRuntime 在实现上只接收 `AppModuleEntry`：
      - `module`: ModuleInstance（Tag + Shape 信息）；
      - `layer`: 对应的 ModuleRuntime Layer。
    - `AppRuntime.provide(impl: ModuleImpl)` 是一层语法糖：
      - 拆出 `impl.module` 与 `impl.layer`；
      - 调用 `AppRuntime.provide(module, layer)`，生成 `AppModuleEntry`。
-   - 对外的 `LogixRuntime.make(rootImpl, { layer, onError })` 则基于 Root ModuleImpl 构造 AppRuntime 配置：
+   - 对外的 `Logix.Runtime.make(rootImpl, { layer, onError })` 则基于 Root ModuleImpl 构造 AppRuntime 配置：
      - modules 通常只包含一条由 `AppRuntime.provide(rootImpl)` 生成的 Root 入口；
      - processes 列表来源于 `rootImpl.processes`（若未提供则为空数组）。
    - 这样可以保证：
      - AppRuntime 的核心实现仍然只关心“若干 Module + 一棵合并后的 Layer + 一组 processes”；
-     - 业务与 React 集成只需要面对 Root ModuleImpl 与 `LogixRuntime`，无需直接操作 AppRuntime 组装细节。
+     - 业务与 React 集成只需要面对 Root ModuleImpl 与 Runtime（通过 `Logix.Runtime.make` 构造），无需直接操作 AppRuntime 组装细节。
 
 5. **测试兜底与约束**
    - `packages/logix-core/test/ModuleImpl.test.ts` 中的两个用例视为 ModuleImpl 路径的“最小完备回归集”：
      - `withLayer` 能让 Logic 内的 `yield* ServiceTag` 正常拿到实现，并驱动状态更新；
      - `AppRuntime.provide(ModuleImpl)` 组合后，`Consumer` 模块的逻辑在 AppRuntime 环境下同样能拿到 Service 并正常工作。
    - 一旦对 ModuleImpl / withLayer / provide 的实现做改动，必须保证这两条测试保持绿灯，否则视为破坏了 ModuleImpl 的基本契约。
+
+## Env 初始化与 Logic 启动时序（最终规范）
+
+> 状态：draft 段落已吸收并实施，未来迭代以此为基线；不再依赖 `docs/specs/drafts/L4/L6`。
+
+### 三层模型（实现视角）
+
+1. **Module 蓝图层（import 期）**  
+   - `Module.make` 仅声明 Schema 与静态 reducer；禁止访问 Env/Service，也不触发任何 Effect。
+2. **Module 实例启动层（t=0）**  
+   - `ModuleRuntime.make` 创建 stateRef/actionHub/lifecycle，并执行所有 Logic 的 **setup 段**（注册 reducer / lifecycle / Debug/Devtools hook）。  
+   - setup 段不可访问 Env，不做 IO，必须幂等；StrictMode 重跑时若重复注册会通过诊断提示，而非静默覆盖。
+3. **完全铺好 Env 的 Runtime 层**  
+   - AppRuntime / RuntimeProvider 完成 `envLayer` 构建后，统一 `forkScoped(plan.run)` 启动 Logic 的 **run 段** 与 processes。  
+   - 此后若出现 `Service not found` 视为真实配置错误（硬错误信号），不再有“初始化噪音”。
+
+### LogicPlan 与 BoundApi 视图
+
+- `Module.logic(($)=>Effect)` 在内部被提升为 `LogicPlan = { setup, run }`：return 前的同步注册被收集为 setup，return 的 Effect 作为 run。旧写法自动视为 `setup=Effect.void`、`run=原逻辑`。  
+- BoundApi 在 setup 阶段仅暴露注册类 API；run 阶段暴露完整 `$`。所有 Runtime 只与 LogicPlan 对话，不再直接 fork 整坨 Logic Effect。
+
+### 诊断与防呆
+
+- **phase 守卫**：在 setup 段调用 `$.use/$.onAction/$.onState/...` 等 run-only 能力会抛出 `LogicPhaseError`，经 DebugSink 转为 `diagnostic(error) code=logic::invalid_phase kind=...`，提示将调用移至 run 段。  
+- **unsafe effect**：在 builder 顶层执行 `Effect.run*` 会转为 `diagnostic(error) code=logic::setup_unsafe_effect`，提示将 IO 放入 run 段或 Process。  
+- **重复注册**：setup 幂等性通过诊断折叠提示，仍保持「每个 tag 至多一个 primary reducer」的不变式。  
+- **Env 缺失**：`logic::env_service_not_found` 仅用于真实缺失（Env Ready 后仍找不到 Tag），作为硬错误提示；初始化阶段因设计不会再触发该诊断。
