@@ -6,7 +6,7 @@
 
 - 架构/平台规划者
 关注 Logix 在 intent-driven 平台中的定位、与 Effect Flow Runtime 的关系以及与 Intent 模型的映射。
-推荐从 `core/00-manifesto.md`、`core/01-architecture.md`、`core/03-intent-alignment.md`、`core/04-platform-integration.md` 开始阅读；
+推荐从 `core/00-manifesto.md`、`core/01-architecture.md`、`core/03-intent-alignment.md`、`core/06-platform-integration.md` 开始阅读；
   Intent/Flow/Runtime 家族与 Linking/Replay 的上游规范见：
   - `docs/specs/intent-driven-ai-coding/README.md`（平台蓝图与版本索引，确立 v3 为事实源）；
   - `docs/specs/intent-driven-ai-coding/v3/01-overview.md`（三位一体模型与整体定位）；
@@ -21,7 +21,7 @@
 
 - 业务工程师 / 平台集成方
   需要在真实业务中使用 Logix 与其 React/Form 适配层写代码。
-  以 `guide/` 下文档为入口，对应的核心契约和示例在 `core/examples/` 以及 `react/`、`form/` 中查找。
+  以用户文档 `apps/docs/content/docs` 为入口，对应的核心契约和示例在 `core/examples/` 以及 `react/`、`form/` 中查找。
 
 ## 一条黄金链路（Module → Logic → Fluent → IntentRule）
 
@@ -41,7 +41,7 @@
 - `core/02-module-and-logic-api.md`：Module / Logic / Live / `$` API 总览与 Module-first 编程模型；
 - `core/03-logic-and-flow.md`：Bound API `$`、Logic / Flow / Control 与完整链路示例；
 - `core/06-platform-integration.md`：IntentRule IR 与平台集成；
-- `docs/specs/intent-driven-ai-coding/v3/03-module-assets.md`：Module 资产与代码层 Module 定义的映射。
+  - `docs/specs/intent-driven-ai-coding/v3/03-module-assets.md`：Module 资产与代码层 Module 定义的映射。
 
 ## 目录结构概览
 
@@ -49,9 +49,9 @@
   - Logix 运行时本身的设计与实现：宣言、架构、API 契约、平台集成、实现架构、使用规范、场景与示例等。
   - 官方入口文档：`core/README.md`（聚合各子文档的推荐阅读路径与分组）。
 
-- `guide/`
-  - 面向「使用 Logix 写业务」的一线工程师与平台集成方的用户手册。
-  - 覆盖从「我在架构里处于什么位置？」到「如何写第一个表单/列表」、「常见场景配方」等内容。
+- `apps/docs/`
+  - 面向「使用 Logix 写业务」的一线工程师与平台集成方的用户文档站点（Guide/API/Recipes）。
+  - 内容位于 `apps/docs/content/docs`，用于承载对外叙事与可复制示例。
 
 - `react/`
   - `@logix/react` 适配层的规范：生命周期管理、订阅模型、Context 注入、并发渲染与 Suspense 等。
@@ -68,4 +68,4 @@
   - 运行时实现备忘录与技术草图：围绕应用级 AppRuntime（内部基于 `AppRuntime.makeApp`）、`Logix.Module` / ModuleDef、Logic Middleware、Store 生命周期等复杂能力的具体实现思路与风险评估。
   - 面向 runtime 实现者使用，不作为对外 API 契约；关键决策一旦稳定，会同步回写到 `core/` 规格文档。
 
-> 讨论 Logix 能力与方案时，请优先参考 `core/` 下的文档；React/Form 相关内容分别沉淀在 `react/` / `form/` 中，使用示例与工作流则集中在 `guide/` 下，避免与引擎设计混淆。
+> 讨论 Logix 能力与方案时，请优先参考 `core/` 下的文档；React/Form 相关内容分别沉淀在 `react/` / `form/` 中；对外使用指南与示例以 `apps/docs` 为准，避免与引擎设计混淆。

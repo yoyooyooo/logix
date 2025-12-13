@@ -2,7 +2,6 @@ import React from 'react'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logix/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
-import { devtoolsLayer } from '@logix/devtools-react'
 import * as Middleware from '@logix/core/middleware'
 
 // ---------------------------------------------------------------------------
@@ -42,24 +41,29 @@ const MiddlewareCounterImpl = MiddlewareCounterModule.implement({
 })
 
 // ---------------------------------------------------------------------------
-// 2. EffectOp MiddlewareStack：DebugLogger + DebugObserver
+// 2. EffectOp MiddlewareStack：DebugLogger + DebugObserver 预设
 // ---------------------------------------------------------------------------
 
-const effectOpStack = Middleware.applyDebugObserver(
-  Middleware.applyDebug([], {
-    logger: (op) => {
-      // 这里故意用 console 打印，方便在 DevTools 之外观察 EffectOp 流；
-      // 真正的 DevTools 时间线会通过 DebugObserver -> DebugSink -> LogixDevtools 统一展示。
-      // eslint-disable-next-line no-console
-      console.log('[EffectOp]', `kind=${op.kind}`, `name=${op.name}`, `module=${op.meta?.moduleId ?? '-'}`)
-    },
-  }),
-)
+const effectOpStack = Middleware.withDebug([], {
+  logger: (op) => {
+    // 这里故意用 console 打印，方便在 DevTools 之外观察 EffectOp 流；
+    // 真正的 DevTools 时间线会通过 DebugObserver -> DebugSink -> LogixDevtools 统一展示。
+    // eslint-disable-next-line no-console
+    console.log(
+      '[EffectOp]',
+      `kind=${op.kind}`,
+      `name=${op.name}`,
+      `module=${op.meta?.moduleId ?? '-'}`,
+    )
+  },
+  // observer 由 Runtime.make(..., { devtools: true }) 自动追加，避免重复采集。
+  observer: false,
+})
 
 // 应用级 Runtime：挂载 EffectOp 中间件总线 + Devtools Layer
 const middlewareRuntime = Logix.Runtime.make(MiddlewareCounterImpl, {
   label: 'MiddlewareEffectOpDemo',
-  layer: devtoolsLayer,
+  devtools: true,
   middleware: effectOpStack,
 })
 
@@ -119,7 +123,7 @@ const CounterView: React.FC = () => {
         </p>
         <p>
           同时，由于使用了
-          <code className="px-1 bg-gray-100 dark:bg-gray-800 rounded mx-1">Middleware.applyDebugObserver</code>
+          <code className="px-1 bg-gray-100 dark:bg-gray-800 rounded mx-1">Middleware.withDebug</code>
           ，这些 EffectOp 也会以
           <code className="px-1 bg-gray-100 dark:bg-gray-800 rounded mx-1">trace:effectop</code>
           事件写入 DebugSink，Logix Devtools 会在时间线视图中统一展示。

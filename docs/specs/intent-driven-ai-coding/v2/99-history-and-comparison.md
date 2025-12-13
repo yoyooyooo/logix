@@ -6,7 +6,7 @@ supersededBy: ../v3
 ---
 
 > 目的：帮助阅读者快速理解 intent-driven-ai-coding 在 v1 → v2 → v3 过程中的关键演进，哪些概念已经废弃、哪些被继承，哪些仍在等待融合进 v3。  
-> 事实源：当前一切正式规范以 `../v3` 为准；本文件和 `v1/`、`v2/` 其他文档只作为对照材料。
+> 事实源：当前一切正式规范以 `../v3` 为准；本文件和 `v2/` 文档只作为对照材料。
 
 ## 1. 三个版本的大致角色
 
@@ -33,13 +33,13 @@ supersededBy: ../v3
 | Runtime 角色 | 松散提及 Effect/状态库 | 双 Runtime：Effect / 前端 Runtime | 以 Logix + Effect 为 Runtime 家族中心 |
 | 复杂度控制 | 主要依赖文档与 Pattern 约束 | 通过层级拆分控制概念，但有过度工程风险 | 通过 DSL/Engine 统一收敛，实现上简化、语义上增强 |
 
-更细的差异在 `v2/02-intent-layers.md` 与 `../v3/01-overview.md` 中都有体现，本文件不重复展开。
+更细的差异在 `00-architecture-decision-records.md` 与 `../v3/01-overview.md` 中都有体现，本文件不重复展开。
 
 ## 3. 如何使用 v1/v2 文档
 
 - 当你在思考「某个概念到底是 v3 新引入的，还是早期版本沿袭的？」时，可以：  
-  - 去看 `v1/01-overview.md` / `v1/02-patterns-and-intents.md` 里的原始说法；  
-  - 对比 `v2/02-intent-layers.md` 如何把这些概念拆得更细；  
+  - 去看 `00-architecture-decision-records.md` 里对 v1/v2 的原始动机与反思；  
+  - 对比 `00-architecture-decision-records.md` 中对六层模型的拆解与反思；  
   - 再回到 `../v3` 下的对应章节，看最终收敛到了哪些名词和边界。
 
 - 当你想为 v3 引入新能力时，如果在 v1/v2 中找到类似思路：  

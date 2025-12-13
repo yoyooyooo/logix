@@ -37,8 +37,8 @@ const timingMiddleware: Middleware.Middleware = (op) =>
     return result
   })
 
-// 使用内置 DebugLogger 追加一条简单日志
-const stack: Middleware.MiddlewareStack = Middleware.applyDebug(
+// 使用内置调试组合：在现有 stack 上追加 DebugLogger + DebugObserver 预设。
+const stack: Middleware.MiddlewareStack = Middleware.withDebug(
   [timingMiddleware],
   {
     logger: (op) => {
@@ -50,6 +50,8 @@ const stack: Middleware.MiddlewareStack = Middleware.applyDebug(
         `module=${op.meta?.moduleId ?? "-"}`,
       )
     },
+    // 这里可以按需控制 observer 行为，示例中使用默认配置。
+    observer: {},
   },
 )
 
@@ -81,4 +83,3 @@ export const main = Effect.gen(function* () {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   void Effect.runPromise(main)
 }
-

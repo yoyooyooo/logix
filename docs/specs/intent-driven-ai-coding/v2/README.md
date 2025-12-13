@@ -14,3 +14,7 @@
 - `00-architecture-decision-records.md`：v2 架构决策快照；  
 - `02-intent-layers.md`：六层 Intent 模型详情；  
 - `99-history-and-comparison.md`：v1/v2/v3 的简要对照与演进说明。
+
+## v2 深入草稿（已清理）
+
+v2 阶段曾存在一批 “按六层深入展开” 的草稿文档，但与 v3 已高度重叠且概念负担较大，已从仓库移除；保留的 v2 内容仅用于“为什么会从 v2 收敛到 v3”的对照。

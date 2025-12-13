@@ -1,4 +1,4 @@
-import { Effect, Stream, Ref } from "effect"
+import { Effect, Stream, Ref, Option } from "effect"
 import type {
   AnyModuleShape,
   ModuleRuntime,
@@ -7,6 +7,17 @@ import type {
   ModuleShape,
 } from "./module.js"
 import type * as Logic from "./LogicMiddleware.js"
+import * as EffectOp from "../../../effectop.js"
+import * as EffectOpCore from "../EffectOpCore.js"
+
+const getMiddlewareStack = (): Effect.Effect<
+  EffectOp.MiddlewareStack,
+  never,
+  any
+> =>
+  Effect.serviceOption(EffectOpCore.EffectOpMiddlewareTag).pipe(
+    Effect.map((maybe) => (Option.isSome(maybe) ? maybe.value.stack : [])),
+  )
 
 export interface Api<Sh extends ModuleShape<any, any>, R = never> {
   readonly fromAction: <T extends ActionOf<Sh>>(
@@ -32,25 +43,29 @@ export interface Api<Sh extends ModuleShape<any, any>, R = never> {
   readonly run: <V, A = void, E = never, R2 = unknown>(
     eff:
       | Logic.Of<Sh, R & R2, A, E>
-      | ((payload: V) => Logic.Of<Sh, R & R2, A, E>)
+      | ((payload: V) => Logic.Of<Sh, R & R2, A, E>),
+    options?: Logic.OperationOptions,
   ) => (stream: Stream.Stream<V>) => Effect.Effect<void, E, Logic.Env<Sh, R & R2>>
 
   readonly runParallel: <V, A = void, E = never, R2 = unknown>(
     eff:
       | Logic.Of<Sh, R & R2, A, E>
-      | ((payload: V) => Logic.Of<Sh, R & R2, A, E>)
+      | ((payload: V) => Logic.Of<Sh, R & R2, A, E>),
+    options?: Logic.OperationOptions,
   ) => (stream: Stream.Stream<V>) => Effect.Effect<void, E, Logic.Env<Sh, R & R2>>
 
   readonly runLatest: <V, A = void, E = never, R2 = unknown>(
     eff:
       | Logic.Of<Sh, R & R2, A, E>
-      | ((payload: V) => Logic.Of<Sh, R & R2, A, E>)
+      | ((payload: V) => Logic.Of<Sh, R & R2, A, E>),
+    options?: Logic.OperationOptions,
   ) => (stream: Stream.Stream<V>) => Effect.Effect<void, E, Logic.Env<Sh, R & R2>>
 
   readonly runExhaust: <V, A = void, E = never, R2 = unknown>(
     eff:
       | Logic.Of<Sh, R & R2, A, E>
-      | ((payload: V) => Logic.Of<Sh, R & R2, A, E>)
+      | ((payload: V) => Logic.Of<Sh, R & R2, A, E>),
+    options?: Logic.OperationOptions,
   ) => (stream: Stream.Stream<V>) => Effect.Effect<void, E, Logic.Env<Sh, R & R2>>
 }
 
@@ -67,6 +82,31 @@ const resolveEffect = <T, Sh extends AnyModuleShape, R, A, E>(
 export const make = <Sh extends AnyModuleShape, R = never>(
   runtime: ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>
 ): Api<Sh, R> => {
+  const runAsFlowOp = <A, E, R2, V>(
+    name: string,
+    payload: V,
+    eff: Effect.Effect<A, E, Logic.Env<Sh, R & R2>>,
+    options?: Logic.OperationOptions,
+  ): Effect.Effect<A, E, Logic.Env<Sh, R & R2>> =>
+    Effect.gen(function* () {
+      const stack = yield* getMiddlewareStack()
+      const op = EffectOp.make<A, E, any>({
+        kind: "flow",
+        name,
+        payload,
+        effect: eff as any,
+        meta: {
+          ...(options?.meta ?? {}),
+          policy: options?.policy,
+          tags: options?.tags,
+          trace: options?.trace,
+          moduleId: (runtime as any)?.moduleId,
+          runtimeId: (runtime as any)?.id,
+        },
+      })
+      return yield* EffectOp.run(op, stack)
+    }) as any
+
   const runEffect =
     <T, A, E, R2>(
       eff:
@@ -76,34 +116,37 @@ export const make = <Sh extends AnyModuleShape, R = never>(
       (payload: T) =>
         resolveEffect<T, Sh, R & R2, A, E>(eff, payload)
 
-  const runStreamSequential =
-    <T, A, E, R2>(
-      eff:
-        | Logic.Of<Sh, R & R2, A, E>
-        | ((payload: T) => Logic.Of<Sh, R & R2, A, E>)
-    ) =>
-    (stream: Stream.Stream<T>): Effect.Effect<
-      void,
-      E,
-      Logic.Env<Sh, R & R2>
-    > => Stream.runForEach(stream, (payload) =>
-      runEffect<T, A, E, R2>(eff)(payload),
+  const runStreamSequential = <T, A, E, R2>(
+    eff:
+      | Logic.Of<Sh, R & R2, A, E>
+      | ((payload: T) => Logic.Of<Sh, R & R2, A, E>),
+    options?: Logic.OperationOptions,
+  ) => (stream: Stream.Stream<T>): Effect.Effect<void, E, Logic.Env<Sh, R & R2>> =>
+    Stream.runForEach(stream, (payload) =>
+      runAsFlowOp<A, E, R2, T>(
+        "flow.run",
+        payload,
+        runEffect<T, A, E, R2>(eff)(payload),
+        options,
+      ),
     )
 
-  const runStreamParallel =
-    <T, A, E, R2>(
-      eff:
-        | Logic.Of<Sh, R & R2, A, E>
-        | ((payload: T) => Logic.Of<Sh, R & R2, A, E>)
-    ) =>
-    (stream: Stream.Stream<T>): Effect.Effect<
-      void,
-      E,
-      Logic.Env<Sh, R & R2>
-    > => Stream.runDrain(
+  const runStreamParallel = <T, A, E, R2>(
+    eff:
+      | Logic.Of<Sh, R & R2, A, E>
+      | ((payload: T) => Logic.Of<Sh, R & R2, A, E>),
+    options?: Logic.OperationOptions,
+  ) => (stream: Stream.Stream<T>): Effect.Effect<void, E, Logic.Env<Sh, R & R2>> =>
+    Stream.runDrain(
       stream.pipe(
         Stream.mapEffect(
-          (payload) => runEffect<T, A, E, R2>(eff)(payload),
+          (payload) =>
+            runAsFlowOp<A, E, R2, T>(
+              "flow.runParallel",
+              payload,
+              runEffect<T, A, E, R2>(eff)(payload),
+              options,
+            ),
           { concurrency: "unbounded" },
         ),
       ),
@@ -130,16 +173,21 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     filter: (predicate: (value: any) => boolean) => (stream) =>
       Stream.filter(stream, predicate),
 
-    run: (eff) => (stream) =>
-      runStreamSequential<any, any, any, any>(eff)(stream),
+    run: (eff, options) => (stream) =>
+      runStreamSequential<any, any, any, any>(eff, options)(stream),
 
-    runParallel: (eff) => (stream) =>
-      runStreamParallel<any, any, any, any>(eff)(stream),
+    runParallel: (eff, options) => (stream) =>
+      runStreamParallel<any, any, any, any>(eff, options)(stream),
 
-    runLatest: (eff) => (stream) =>
+    runLatest: (eff, options) => (stream) =>
       Stream.runDrain(
         Stream.map(stream, (payload) =>
-          runEffect<any, any, any, any>(eff)(payload)
+          runAsFlowOp<any, any, any, any>(
+            "flow.runLatest",
+            payload,
+            runEffect<any, any, any, any>(eff)(payload),
+            options,
+          )
         ).pipe(
           Stream.flatMap((effect) => Stream.fromEffect(effect), {
             switch: true,
@@ -147,7 +195,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
         )
       ),
 
-    runExhaust: (eff) => (stream) =>
+    runExhaust: (eff, options) => (stream) =>
       Effect.gen(function* () {
         const busyRef = yield* Ref.make(false)
         const mapper = (payload: any) =>
@@ -159,7 +207,12 @@ export const make = <Sh extends AnyModuleShape, R = never>(
               return
             }
             try {
-              yield* runEffect<any, any, any, any>(eff)(payload)
+              yield* runAsFlowOp<any, any, any, any>(
+                "flow.runExhaust",
+                payload,
+                runEffect<any, any, any, any>(eff)(payload),
+                options,
+              )
             } finally {
               yield* Ref.set(busyRef, false)
             }
@@ -173,4 +226,3 @@ export const make = <Sh extends AnyModuleShape, R = never>(
       }),
   }
 }
-

@@ -27,6 +27,10 @@ export const makeDebugLogger = (
 ): Middleware =>
   <A, E, R>(op: EffectOp.EffectOp<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
+      // 纯观测类能力：允许被局部策略关闭。
+      if (op.meta?.policy?.disableObservers) {
+        return yield* op.effect
+      }
       if (config?.logger) {
         config.logger(op)
       } else {
@@ -74,6 +78,10 @@ export const makeDebugObserver = (
 ): Middleware =>
   <A, E, R>(op: EffectOp.EffectOp<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
+      // 纯观测类能力：允许被局部策略关闭。
+      if (op.meta?.policy?.disableObservers) {
+        return yield* op.effect
+      }
       if (!config?.filter || config.filter(op)) {
         yield* Debug.record({
           type: "trace:effectop",
@@ -93,3 +101,64 @@ export const applyDebugObserver = (
   stack: MiddlewareStack,
   config?: DebugObserverConfig,
 ): MiddlewareStack => [...stack, makeDebugObserver(config)]
+
+/**
+ * WithDebugOptions：
+ * - 高层组合入口的配置项，用于在现有 MiddlewareStack 上追加 Debug 能力。
+ *
+ * 约定：
+ * - logger:
+ *   - 未设置（undefined）：启用默认 DebugLogger（Effect.logDebug）；
+ *   - 提供函数：使用自定义 logger(op) 替代默认行为；
+ *   - 显式 false：不追加 DebugLogger 中间件。
+ * - observer:
+ *   - 未设置（undefined）：启用 DebugObserver，使用默认配置；
+ *   - 提供 DebugObserverConfig：按配置启用 DebugObserver；
+ *   - 显式 false：不追加 DebugObserver 中间件。
+ */
+export interface WithDebugOptions {
+  readonly logger?: DebugLoggerConfig["logger"] | false
+  readonly observer?: DebugObserverConfig | false
+}
+
+/**
+ * withDebug：
+ * - 在现有 MiddlewareStack 上追加 DebugLogger + DebugObserver 预设；
+ * - 支持通过 options 控制 logger / observer 是否启用及其配置；
+ * - 返回新的 stack，不修改原数组。
+ *
+ * 典型用法：
+ *
+ *   let stack: MiddlewareStack = [metrics, timing]
+ *   stack = Middleware.withDebug(stack, {
+ *     logger: (op) => console.log(op.kind, op.name),
+ *     observer: { filter: (op) => op.kind !== "service" },
+ *   })
+ */
+export const withDebug = (
+  stack: MiddlewareStack,
+  options?: WithDebugOptions,
+): MiddlewareStack => {
+  let next = stack
+
+  // DebugLogger：默认开启，除非显式 logger === false。
+  if (options?.logger !== false) {
+    const loggerConfig: DebugLoggerConfig | undefined =
+      typeof options?.logger === "function"
+        ? { logger: options.logger }
+        : undefined
+    next = applyDebug(next, loggerConfig)
+  }
+
+  // DebugObserver：默认开启，除非显式 observer === false。
+  if (options?.observer !== false) {
+    // 这里已经通过条件排除了 observer === false，只需要在有配置对象时透传；
+    // undefined 表示使用 DebugObserver 默认行为。
+    const observerOption = options?.observer
+    const observerConfig: DebugObserverConfig | undefined =
+      observerOption === undefined ? undefined : observerOption
+    next = applyDebugObserver(next, observerConfig)
+  }
+
+  return next
+}

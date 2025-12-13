@@ -1,4 +1,4 @@
 import './theme.css'
-export { LogixDevtools } from './LogixDevtools.js'
+export { LogixDevtools } from './ui/shell/LogixDevtools.js'
 export { devtoolsLayer, setInstanceLabel } from './snapshot.js'
-export { StateTraitGraphView } from './StateTraitGraphView.js'
+export { StateTraitGraphView } from './ui/graph/StateTraitGraphView.js'

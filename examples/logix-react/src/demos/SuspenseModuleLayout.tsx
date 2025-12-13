@@ -2,7 +2,6 @@ import React, { Suspense } from 'react'
 import { Context, Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import * as Logix from '@logix/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
-import { devtoolsLayer } from '@logix/devtools-react'
 
 // 1. 定义一个需要“重型初始化”的服务
 interface HeavyService {
@@ -100,7 +99,7 @@ const SuspenseCounter: React.FC = () => {
 const suspenseRuntime = ManagedRuntime.make(
   Layer.mergeAll(
     Logix.Debug.runtimeLabel('SuspenseModuleDemo'),
-    devtoolsLayer,
+    Logix.Debug.devtoolsHubLayer(),
     Layer.empty,
   ),
 )

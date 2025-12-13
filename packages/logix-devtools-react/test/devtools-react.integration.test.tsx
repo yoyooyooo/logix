@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react"
-import { describe, expect, it } from "vitest"
-import { render, fireEvent, waitFor } from "@testing-library/react"
+import { describe, expect, it, beforeAll } from "vitest"
+import { render, fireEvent, waitFor, screen } from "@testing-library/react"
 import { Effect, Schema, Layer } from "effect"
 import * as Logix from "@logix/core"
 import {
@@ -10,6 +10,7 @@ import {
   useSelector,
   useDispatch,
 } from "@logix/react"
+import { LogixDevtools } from "../src/ui/shell/LogixDevtools.js"
 import { devtoolsLayer, getDevtoolsSnapshot } from "../src/snapshot.js"
 
 // 一个极简 Counter Module，用于验证 @logix/core + @logix/react + devtools 的集成行为。
@@ -64,6 +65,22 @@ const CounterView: React.FC = () => {
 }
 
 describe("@logix/devtools-react integration with @logix/react", () => {
+  beforeAll(() => {
+    if (typeof window !== "undefined") {
+      // jsdom 下补一个 matchMedia polyfill，避免 DevtoolsShell 中的主题探测报错。
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(window as any).matchMedia = (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      })
+    }
+  })
   it("collects Debug events and state updates from a React-driven module", async () => {
     const { getByText } = render(
       <RuntimeProvider runtime={runtime}>
@@ -108,6 +125,33 @@ describe("@logix/devtools-react integration with @logix/react", () => {
       for (let i = 1; i < counts.length; i++) {
         expect(counts[i]).toBeGreaterThanOrEqual(counts[i - 1])
       }
+    })
+  })
+
+  it("exposes transaction-level summary for the latest txn in Inspector", async () => {
+    render(
+      <RuntimeProvider runtime={runtime}>
+        <CounterView />
+        <LogixDevtools position="bottom-left" initialOpen={true} />
+      </RuntimeProvider>,
+    )
+
+    const button = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+
+    // 触发几次 increment，产生多条事务与渲染事件。
+    fireEvent.click(button)
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const snapshot = getDevtoolsSnapshot()
+      const stateUpdates = snapshot.events.filter(
+        (e) => e.type === "state:update" && "state" in e,
+      )
+      expect(stateUpdates.length).toBeGreaterThanOrEqual(2)
+
+      // Devtools 面板已经打开，并且 Inspector 中出现 Transaction Summary 概览。
+      expect(screen.getByText(/Developer Tools/i)).not.toBeNull()
+      expect(screen.getByText(/Transaction Summary/i)).not.toBeNull()
     })
   })
 })

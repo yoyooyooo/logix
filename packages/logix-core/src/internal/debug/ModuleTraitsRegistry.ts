@@ -7,13 +7,11 @@ import { isDevEnv } from "../runtime/core/env.js"
 
 const programsById = new Map<string, StateTraitProgram<any>>()
 
-const isProd = !isDevEnv()
-
 export const registerModuleProgram = (
   moduleId: string,
   program: StateTraitProgram<any>,
 ): void => {
-  if (isProd) {
+  if (!isDevEnv()) {
     // 生产环境默认不做注册，避免长生命周期的 Program 索引；
     // 如需在生产环境启用 Devtools，可后续通过环境变量或编译配置调整策略。
     return

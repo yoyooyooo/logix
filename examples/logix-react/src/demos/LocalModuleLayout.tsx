@@ -2,7 +2,6 @@ import React from 'react'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import * as Logix from '@logix/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
-import { devtoolsLayer } from '@logix/devtools-react'
 
 // 局部 ModuleImpl 示例：模块不注册到应用级 Runtime 的全局 modules 中，状态随组件生命周期销毁
 
@@ -36,7 +35,11 @@ const LocalCounterImpl = LocalCounterModule.implement({
 
 // 用一个简单的 Runtime 承载 Effect 环境；模块实例本身由 useModule(LocalCounterImpl) 局部创建
 const localRuntime = ManagedRuntime.make(
-  Layer.mergeAll(Logix.Debug.runtimeLabel('LocalModuleDemo'), devtoolsLayer, Layer.empty),
+  Layer.mergeAll(
+    Logix.Debug.runtimeLabel('LocalModuleDemo'),
+    Logix.Debug.devtoolsHubLayer(),
+    Layer.empty,
+  ),
 )
 const LocalCounterView: React.FC = () => {
   // 每个组件调用都会创建一棵独立的 ModuleRuntime 实例，随组件卸载销毁

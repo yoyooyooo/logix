@@ -1,3 +1,5 @@
+import { Context } from "effect"
+
 // 统一的运行时环境检测，避免 bundler 在构建期内联 NODE_ENV。
 export const getNodeEnv = (): string | undefined => {
   try {
@@ -10,3 +12,35 @@ export const getNodeEnv = (): string | undefined => {
 }
 
 export const isDevEnv = (): boolean => getNodeEnv() !== "production"
+
+export type StateTransactionInstrumentation = "full" | "light"
+
+/**
+ * getDefaultStateTxnInstrumentation：
+ * - 当前简单按 NODE_ENV 选择默认观测强度：
+ *   - dev / test：full（保留 Patch 与快照，便于调试）；
+ *   - production：light（仅保留最小语义，便于减少开销）。
+ * - 后续可在 Runtime.make / Module.make 上提供更细粒度的覆写入口。
+ */
+export const getDefaultStateTxnInstrumentation =
+  (): StateTransactionInstrumentation =>
+    isDevEnv() ? "full" : "light"
+
+/**
+ * Runtime 级 StateTransaction 配置 Service：
+ * - 由 Logix.Runtime.make / AppRuntime.makeApp 在 App 级 Layer 中提供；
+ * - ModuleRuntime.make 可以从 Env 中读取 runtime 级默认观测策略。
+ *
+ * 说明：
+ * - instrumentation 仅作为 Runtime 级默认值；
+ * - ModuleImpl / ModuleRuntimeOptions 中显式声明的 instrumentation 具有更高优先级。
+ */
+export interface StateTransactionRuntimeConfig {
+  readonly instrumentation?: StateTransactionInstrumentation
+}
+
+class StateTransactionConfigTagImpl extends Context.Tag(
+  "@logix/core/StateTransactionRuntimeConfig",
+)<StateTransactionConfigTagImpl, StateTransactionRuntimeConfig>() {}
+
+export const StateTransactionConfigTag = StateTransactionConfigTagImpl

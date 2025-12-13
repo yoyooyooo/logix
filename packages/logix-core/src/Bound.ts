@@ -14,12 +14,12 @@ import * as BoundApiRuntime from "./internal/runtime/BoundApiRuntime.js"
 export type ActionsApi<Sh extends Logix.AnyModuleShape, R> = {
   readonly dispatch: (
     action: Logix.ActionOf<Sh>
-  ) => Logic.Secured<Sh, R, void, never>
+  ) => Logic.Of<Sh, R, void, never>
   readonly actions$: Stream.Stream<Logix.ActionOf<Sh>>
 } & {
   readonly [K in keyof Sh["actionMap"]]: (
     payload: Schema.Schema.Type<Sh["actionMap"][K]>
-  ) => Logic.Secured<Sh, R, void, never>
+  ) => Logic.Of<Sh, R, void, never>
 }
 
 /**
@@ -117,10 +117,10 @@ export interface BoundApiPublic<Sh extends Logix.AnyModuleShape, R = never> {
     readonly read: Logic.Of<Sh, R, Logix.StateOf<Sh>, never>
     readonly update: (
       f: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>
-    ) => Logic.Secured<Sh, R, void, never>
+    ) => Logic.Of<Sh, R, void, never>
     readonly mutate: (
       f: (draft: Logic.Draft<Logix.StateOf<Sh>>) => void
-    ) => Logic.Secured<Sh, R, void, never>
+    ) => Logic.Of<Sh, R, void, never>
     readonly ref: {
       <V = Logix.StateOf<Sh>>(
         selector?: (s: Logix.StateOf<Sh>) => V

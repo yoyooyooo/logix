@@ -84,12 +84,14 @@ interface LogicIntentNode {
     signalId?: string;
   };
 
-  // 流程编排 (Code is Truth)
+  // 流程编排（实现载体在代码）
   // 在 v3 中，这里不再是 JSON，而是指向源码的引用
   source: {
     file: string;
     exportName: string;
   };
+  // 说明：源码是“可执行实现载体”，但不是概念/模型层的术语裁决点；
+  // 概念与边界以 `99-glossary-and-ssot.md` 为准。
 
   // 约束 (原 Constraint Intent)
   constraints?: {
@@ -145,4 +147,4 @@ interface ModuleIntentNode {
 1.  **液态 (Liquid)**：PM 在文档或画布中输入的自然语言描述、草图。
 2.  **固态 (Solid)**：Dev (或 LLM) 将其转化为精确的组件树、Logic 程序（基于 Store / Logic / Flow / Control / Effect.Service / Config）和 Schema。
 
-平台的核心职责是维护液态 Spec 和固态 Impl 之间的**双向映射**，确保“需求”与“代码”永远同步。
+平台的核心职责是维护液态 Spec 和固态 Impl 之间的**双向映射**，确保“需求”与“实现”永远同步。

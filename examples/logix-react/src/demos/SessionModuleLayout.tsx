@@ -2,7 +2,6 @@ import React, { Suspense } from 'react'
 import { Effect, Layer, ManagedRuntime, Schema, Option, Logger } from 'effect'
 import * as Logix from '@logix/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime, ReactPlatformLayer } from '@logix/react'
-import { devtoolsLayer } from '@logix/devtools-react'
 
 // Session 级 ModuleImpl 示例：演示 useModule(Impl, { key, gcTime }) 的会话保活语义。
 
@@ -69,7 +68,7 @@ const SessionCounterImpl = SessionCounterModule.implement({
 const sessionRuntime = ManagedRuntime.make(
   Layer.mergeAll(
     Logix.Debug.runtimeLabel('SessionModuleDemo'),
-    devtoolsLayer,
+    Logix.Debug.devtoolsHubLayer(),
     Layer.empty,
     ReactPlatformLayer,
     Logger.pretty,

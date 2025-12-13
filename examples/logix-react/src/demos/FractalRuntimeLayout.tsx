@@ -2,7 +2,6 @@ import React from 'react'
 import { Context, Effect, Layer } from 'effect'
 import * as Logix from '@logix/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from '@logix/react'
-import { devtoolsLayer } from '@logix/devtools-react'
 import { CounterModule, CounterImpl } from '../modules/counter'
 
 // 演示“分形 Runtime Tree”：全局 Runtime + 局部 RuntimeProvider layer 注入。
@@ -21,7 +20,7 @@ const FeatureThemeLayer = Layer.succeed(ThemeTag, { name: 'FeatureTheme' })
 // 便于在不同 Provider 子树中组合不同的 Env（例如 ThemeService）而共用同一 Runtime。
 const appRuntime = Logix.Runtime.make(CounterImpl, {
   label: 'FractalRuntimeDemo',
-  layer: devtoolsLayer,
+  devtools: true,
 })
 
 const ThemeProbe: React.FC<{ label: string }> = ({ label }) => {

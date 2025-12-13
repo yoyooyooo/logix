@@ -3,7 +3,7 @@
 > **Status**: Definitive (v3 Effect-Native)
 > **Date**: 2025-11-24
 > **Audience**: 应用/业务开发者、库作者与架构师的共同“地图”，从概念层俯视 Logix 引擎。
-> **Note**: 本文基于 v3 Effect-Native 范式，描述了由 **Store / Logic / Flow / Control** 四大运行时原语构成的核心架构。`Pattern` 作为一种 `(input) => Effect` 的函数封装风格，在平台层被视为可复用的资产。所有术语和类型定义以 `docs/specs/intent-driven-ai-coding/v3/effect-poc` 中的 PoC 为最新事实源。
+> **Note**: 本文基于 v3 Effect-Native 范式，描述了由 **Store / Logic / Flow / Control** 四大运行时原语构成的核心架构。`Pattern` 作为一种 `(input) => Effect` 的函数封装风格，在平台层被视为可复用的资产。类型以 `@logix/core`（`packages/logix-core/src`）为准，PoC 场景以 `examples/logix` 为准。
 
 ## 1. 总体架构分层
 

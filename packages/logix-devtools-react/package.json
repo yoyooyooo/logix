@@ -21,8 +21,11 @@
   },
   "dependencies": {
     "@logix/core": "workspace:*",
+    "clsx": "^2.1.1",
     "effect": "^3.19.8",
-    "react": "^19.2.0"
+    "framer-motion": "^12.23.26",
+    "react": "^19.2.0",
+    "tailwind-merge": "^3.4.0"
   },
   "peerDependencies": {
     "react": ">=18.0.0"

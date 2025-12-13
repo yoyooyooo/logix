@@ -35,6 +35,8 @@ export interface UseRuntimeOptions {
 export interface RuntimeProviderProps {
   // React 集成层的 layer 要求自身环境已闭合（R = never），
   // 只依赖 runtime 已经提供好的全局环境，避免在组件树内再引入未满足的依赖。
+  // 说明：StateTransaction 观测策略只能通过 Logix.Runtime.make / Module.implement 配置，
+  // RuntimeProvider 不暴露任何 stateTransaction 相关 props，以避免在 React 层引入第二套事务模式。
   readonly layer?: Layer.Layer<any, any, never>
   readonly runtime?: ManagedRuntime.ManagedRuntime<any, any>
   readonly children: React.ReactNode

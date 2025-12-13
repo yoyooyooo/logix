@@ -2,7 +2,6 @@ import React from 'react'
 import { Effect, Layer, ManagedRuntime, Schema, Logger } from 'effect'
 import * as Logix from '@logix/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch, ReactPlatformLayer } from '@logix/react'
-import { devtoolsLayer } from '@logix/devtools-react'
 
 // 异步局部 ModuleImpl 示例：演示 suspend:true + ModuleImpl.layer 内部存在异步初始化逻辑
 
@@ -51,7 +50,12 @@ const AsyncCounterImpl = AsyncCounterModule.implement({
 
 // Root 级 Runtime：只负责提供 Effect Env，真正的 ModuleRuntime 由 useModule(Impl) 在组件内构造
 const asyncLocalRuntime = ManagedRuntime.make(
-  Layer.mergeAll(Logix.Debug.runtimeLabel('AsyncLocalModuleDemo'), devtoolsLayer, Logger.pretty, ReactPlatformLayer),
+  Layer.mergeAll(
+    Logix.Debug.runtimeLabel('AsyncLocalModuleDemo'),
+    Logix.Debug.devtoolsHubLayer(),
+    Logger.pretty,
+    ReactPlatformLayer,
+  ),
 )
 
 interface AsyncLocalCounterViewProps {

@@ -62,7 +62,7 @@
     - 包一层 `Effect.catchAllCause` 统一打日志。
 - `.runFork(effect)` / `.runParallelFork(effect)`：
   - 语义：在当前 Logic.Env + Scope 上非阻塞地启动一条 watcher Fiber；
-  - 实现：`Logic.secure(Effect.forkScoped(flowApi.run*(effect)(stream)), meta)`。
+  - 实现：`Effect.forkScoped(flowApi.run*(effect, options)(stream))`，其中 `options` 会被提升到 EffectOp.meta，用于全局 MiddlewareStack 处理。
 
 > 关键点：**每条 watcher = 一段长期运行的 Flow/Effect 程序**。`runFork` 是典型写法，会在 ModuleRuntime Scope 下挂出长期存在的 Fiber。
 

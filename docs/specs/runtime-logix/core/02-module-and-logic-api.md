@@ -3,6 +3,7 @@
 > **Status**: v3.1 Canonical (Module-First)
 > **Scope**: Logix Engine — Public API Surface (Concept & Type Level)
 > **Audience**: 以应用/业务开发者为主，库作者与架构师在此基础上进行二次封装。
+> **StateTransaction 事务语义**：一次逻辑入口 = 一次 StateTransaction = 一次提交的约束，以及与 Devtools 事务视图的对齐方式，已在 `core/03-logic-and-flow.md#35-异步-flow-与-statetransaction-边界（长链路模式）` 与 `core/05-runtime-implementation.md#15-statetransaction-与状态提交路径（v3-内核）` 收敛；本文件作为 API 侧总览不再重复展开。
 
 本篇作为 v3.1 之后的 **Module-First 编程模型总览与单一事实源**，集中说明：
 
@@ -126,7 +127,7 @@ export const CounterModule = Logix.Module.make('Counter', {
   - Logic 入口（`CounterModule.logic` 的宿主）；
   - Live 工厂（`CounterModule.live` 的宿主）。
 
-对应类型可以在 `logix-v3-core.ts / Logix.Module` 中查看。
+对应类型以 `@logix/core` 为准（公共出口：`packages/logix-core/src/index.ts`；Module 相关实现与类型在 `packages/logix-core/src/Module.ts` 与 `packages/logix-core/src/internal/module.ts`）。
 
 ---
 
@@ -211,7 +212,7 @@ export const CounterLive = CounterModule.live(
 ### 3.5 Field Capabilities 与 State Graph（StateTrait / `@logix/core` 的角色）
 
 > 更新说明（2025-12-10）：早期 v3 草案中，字段能力与 State Graph 曾规划由独立包 `@logix/data` 承载。  
-> 随着 `specs/001-module-traits-runtime` 设计收敛，当前主线改为由 `@logix/core` 内部的 StateTrait 模块统一承载字段能力与 State Graph，`@logix/data` 相关规范视为历史 PoC，仅供参考。
+> 随着 `specs/001a-module-traits-runtime` 设计收敛，当前主线改为由 `@logix/core` 内部的 StateTrait 模块统一承载字段能力与 State Graph，`@logix/data` 相关规范视为历史 PoC，仅供参考。
 
 在当前模型中，字段层的响应式与联动能力（例如 Computed 字段、从外部资源加载的 Source 字段、跨字段 Link 字段）统一收敛到 `@logix/core` 内部的 StateTrait 实现。整体边界大致如下：
 
@@ -230,24 +231,35 @@ export const CounterLive = CounterModule.live(
     - 对比两个版本模块的字段与依赖变更。  
 
 > 注意：关于 StateTrait 与 State Graph 的更详细数据模型与 API 形状，请参考：  
-> - `specs/001-module-traits-runtime/spec.md`  
+> - `specs/001a-module-traits-runtime/spec.md`  
 > - `docs/specs/drafts/topics/state-graph-and-capabilities/*`
 
 ### 3.6 StateTrait.source 与 Resource / Query 的运行时接缝（概览）
 
-> 详细数据模型与 API 草图见：`specs/001-module-traits-runtime/references/resource-and-query.md` 与 `runtime-logix/core/05-runtime-implementation.md`。本节只在「Module / Logic API」视角补充资源相关术语的上下文。
+> 详细数据模型与 API 草图见：`specs/001a-module-traits-runtime/references/resource-and-query.md` 与 `runtime-logix/core/05-runtime-implementation.md`。本节只在「Module / Logic API」视角补充资源相关术语的上下文。
 
 - **Module 图纸层**  
-  - Module 作者在 `traits` 槽位只需要写：  
-    ```ts
-    traits: StateTrait.from(StateSchema)({
-      profileResource: StateTrait.source({
-        resource: "user/profile",
-        key: (s) => ({ userId: s.profile.id }),
-      }),
-    })
-    ```  
-  - 这里的 `resource` 是逻辑资源 ID，`key(state)` 是访问该资源所需 key 的计算规则；Module 不关心 HTTP/DB/QueryClient 等具体实现。
+	  - Module 作者在 `traits` 槽位只需要写：  
+	  ```ts
+	  const UserProfileResource = {
+	    id: "user/profile",
+	    meta: { label: "用户资料" },
+	  } as const
+	  
+	  traits: StateTrait.from(StateSchema)({
+	    profileResource: StateTrait.source({
+	      // 推荐：复用 ResourceRef（或 ResourceRef.id），避免散落字符串常量
+	      resource: UserProfileResource,
+	      key: (s) => ({ userId: s.profile.id }),
+	    }),
+	  })
+	  ```  
+	  - 这里的 `resource` 是逻辑资源 ID，`key(state)` 是访问该资源所需 key 的计算规则；Module 不关心 HTTP/DB/QueryClient 等具体实现。  
+	  - `key(state)` 允许返回 `undefined` 表示“当前无有效 key / 禁用”，此时 Runtime 不触发 IO（不产生 Service 类 EffectOp），目标字段回到 idle 快照（具体快照形状由上层领域约定）。  
+	  - 推荐在工程内维护一组 `ResourceRef` 常量（只包含 `id/meta`），并在 Module/Traits 图纸层引用它们；ResourceSpec 仍然可通过 `id: ResourceRef.id` 保持 id 的单一事实源。  
+	  - Devtools 展示资源信息时：`ResourceRef.meta` 优先；缺失字段再 fallback 到 `ResourceSpec.meta` 的同名字段（例如 description）。该合并只用于展示，不影响运行时语义。
+	  - 若同名展示字段（例如 description）同时存在且值不一致，dev 环境下 Devtools SHOULD 给出 warning（按 resourceId+字段去重），提示“展示元信息分叉”；展示仍以 ResourceRef 为准。
+	  - `ResourceRef.meta.tags` 是展示侧“分类标签”，用于 Devtools 的过滤/分组/检索；Devtools 在展示与索引时 SHOULD 对 tags 去重并按字典序排序，保证稳定可对比。
 
 - **StateTraitProgram / Plan 层**  
   - StateTrait.build 会在 Program/Graph/Plan 中把上述声明归一化为：  

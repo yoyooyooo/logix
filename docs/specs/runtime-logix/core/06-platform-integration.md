@@ -7,15 +7,15 @@
 
 在平台整体架构中：
 
-- **Intent (意图)**：产品与开发者在 v3 模型下表达的 UI / Logic / Domain 等信息；
+- **Intent (意图)**：产品与开发者在 v3 模型下表达的 UI / Logic / Module 等信息；
 - **Platform (平台)**：负责 Intent 的校验、Logic 编译、出码与治理；
 - **Runtimes (运行时家族)**：承接 Logic Intent 的具体执行后端，其中之一就是本文件描述的 Logix Engine Runtime。
 
 ## 2. Intent 层映射（Logix 视角）
 
-### 2.1 Domain Intent -> Logix Schema / Module
+### 2.1 Module Intent -> Logix Schema / Module
 
-平台定义的 Domain Intent（实体/字段/校验等）直接映射为 Logix Module 的 Schema 与初始值：
+平台定义的 Module Intent（实体/字段/校验、服务契约等）直接映射为 Logix Module 的 Schema 与初始值：
 
 - **Entity / Field Schema**：映射为 `Schema.Struct`、`Schema.Union` 等，组成 Module 的 `stateSchema`（对应 `Logix.ModuleShape`）；
 - **State Source**：
@@ -30,7 +30,7 @@
   - 字段变化：`Flow.from(store.change(selector))`；
   - 动作：`Flow.from(store.action(type))`；
 
-- **Steps**：`LogicIntent.graph` → 映射为 Logic Handler 中的 Effect 步骤序列：
+- **Steps**：Logic 的白盒子集以 Fluent DSL 表达（`$.onState/$.onAction/$.on + .update/.mutate/.run*`），平台侧将其解析为 IntentRule/Graph，再由代码生成与审阅流程落回到 `Module.logic(($)=>...)` 中：
   - `callService`：`yield* services.ServiceName.method(...)`；
   - `branch`：`$.match` (Switch/Case)；
   - `runPattern`：`Flow.run(Pattern(config))`。

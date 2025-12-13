@@ -1,193 +1,68 @@
 ---
 name: project-guide
-description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/平台规划演进、典型场景 PoC 或日常功能开发时，加载本 skill 以获得“docs/specs 为主事实源”的项目导航、目录索引与施工流程。
+description: 当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/平台规划演进、典型场景 PoC 或日常功能开发时，加载本 skill 以获得“docs/specs 为主事实源”的最短导航。
 ---
 
 # intent-flow · project-guide
 
-## PURPOSE · skill 目标
+## 目标
 
-在处理 intent-flow 仓库相关任务时，使用本 skill 明确三件事：
+- 用最少上下文定位：SSoT 在哪、代码落点在哪、示例在哪。
+- 默认先用 auggie 做语义检索，再补读必要文档。
 
-- 明确当前决策属于哪一层：平台/意图模型 (v3)、Logix Runtime/Intent API、还是 PoC/运行时代码；
-- 找到对应的 `docs/specs` 文档作为事实源，并基于文档中的契约与示例设计改动；
-- 在 PoC/运行时代码中验证过的经验及时回写 `docs/specs`，保持文档为 SSoT，本 skill 只做摘要与导航。
+## 新会话最短启动（建议顺序）
 
-> 任何涉及 Intent 模型、Flow/Intent API、Effect 运行时契约或平台交互的决策，一律以 `docs/specs/intent-driven-ai-coding/v3` 与 `docs/specs/runtime-logix` 下文档为准；若本 skill 与 docs/specs 不一致，应先修文档，再同步 skill。
+1. 用 auggie 定位你要改的“符号/能力/包”在哪（优先于 `rg`）。
+2. 读 v3 导航入口：`docs/specs/intent-driven-ai-coding/v3/README.md`
+3. 读概念与术语：`docs/specs/intent-driven-ai-coding/v3/99-glossary-and-ssot.md`
+4. 读 runtime 编程模型：`docs/specs/runtime-logix/core/02-module-and-logic-api.md`
+5. 读 `$`/Flow/IntentBuilder：`docs/specs/runtime-logix/core/03-logic-and-flow.md`
+6. 看类型裁决与真实导出：`packages/logix-core/src/index.ts`
+7. 看 PoC 场景与 Pattern：`examples/logix/src/scenarios/*`、`examples/logix/src/patterns/*`
 
-## WHEN · 何时加载本 skill
+## 默认 auggie 查询模板（复制即用）
 
-- 在 intent-flow 仓库内接到“新增功能 / PoC / 重构 / 规范化”任务，需要先看清落点与事实源时；
-- 需要对齐「意图驱动 + Effect 运行时 + 平台交互」整体蓝图，明确当前应遵循的 v3 规范时；
-- 需要决定：某个需求/修改是先更新 v3 docs/specs、还是直接在 `effect-poc` / `effect-runtime-poc` 中迭代代码时；
-- 在 CI/脚手架/工具链层面扩展本仓库时，需要确认“约束与契约”写在哪个文档或目录时。
+- “`@logix/core` 的 Bound API `$` 类型/实现在哪里（`$.onState`/`$.state.mutate`/`$.use`）？”
+- “`Runtime.make` 如何把 `ModuleImpl`/Layer/Devtools 组合起来？相关文件/符号在哪？”
+- “`LogicMiddleware` / `EffectOp middleware` 的注册点与执行链路在哪里？”
+- “`examples/logix` 里哪个场景最接近：表单联动/搜索+详情/长任务/审批流/跨模块协作？”
 
-## DOCS-FIRST · 文档作为主事实源
+## Logix v3 速查（避免翻源码冷启动）
 
-在任何实现行为之前，优先按以下顺序定位 v3 文档，并将 v1/v2 视为历史参考：
+- 心智模型：`Module`（契约）→ `Module.logic(($)=>...)`（行为）→ `Module.implement`（实现体/Layer）→ `Logix.Runtime.make` / `RuntimeProvider`（运行与集成）
+- 最小写法骨架：
+  - `import * as Logix from "@logix/core"`；Effect/Schema 从 `effect` 导入
+  - `const M = Logix.Module.make("Id", { state, actions, reducers? })`
+  - `const L = M.logic(($) => /* Effect.gen(...) 或 { setup, run } */)`
+  - `const Impl = M.implement({ initial, logics: [L], imports?, processes? })`
+- 推荐入口（按“从能写代码到能跑通”顺序）：
+  - 编程模型与 `$`：`docs/specs/runtime-logix/core/02-module-and-logic-api.md`、`docs/specs/runtime-logix/core/03-logic-and-flow.md`
+  - 真实导出与类型裁决：`packages/logix-core/src/index.ts`
+  - 可运行场景范式：`examples/logix/src/scenarios/*`、`examples/logix/src/patterns/*`
+- 写 Logic 时优先使用白盒子集：`$.onState` / `$.onAction` / `$.on` + `.update/.mutate/.run*`，需要服务就 `$.use(ServiceTag)`。
+- React/Sandbox/Devtools 场景：先用 auggie 查 `RuntimeProvider` / `useModule` / `SandboxClient` / `LogixDevtools` 的“示例文件路径”，再对照对应包与示例落地。
 
-1. 读取 v3 总览与 SSOT（概念层）
-   - `docs/specs/intent-driven-ai-coding/README.md`：版本索引与整体进展；
-   - `v3/01-overview.md`：意图驱动开发平台总览，包含三位一体模型、全双工引擎与 SSOT 优先级定义；
-   - `v3/99-glossary-and-ssot.md`：跨层概念总览与术语表（Conceptual SSOT），所有核心术语（UI/Logic/Domain、Pattern、IntentRule、L0–L3 等）以此为准；Playground / Sandbox / Runtime Alignment Lab / Universal Spy / Semantic UI Mock 等术语也以此处为事实源；
-   - `v3/00-platform-manifesto.md`：平台宣言与资产共建策略；
-   - `v3/blueprint.md`：长期蓝图（自愈架构、全双工编排）。
-   - `v3/concepts/00-sdd-mapping.md`：Spec-Driven Development (SDD) 与本仓 Intent 模型的映射，说明 SPECIFY/PLAN/TASKS/IMPLEMENT 与 L0–L3/Intent/Logix/Alignment Lab 的关系。
-2. 查 v3 Intent 模型与资产结构（模型层）
-   - `v3/02-intent-layers.md`：UI/Logic/Domain 三维 Intent 模型定义；
-   - `v3/03-assets-and-schemas.md`：资产结构（Pattern / IntentRule / Store / Logic 等）的定义与关系；
-   - `v3/effect-poc` 下的注释（如 `effect-poc/README.md` 如存在），补充 PoC 范围与约束。
-3. 查 Runtime / Intent API 规范（运行时层）
-   - `docs/specs/runtime-logix/core/README.md`：Logix Runtime 总览；
-   - `runtime-logix/core/02-module-and-logic-api.md`：Module / Logic / Live / ModuleImpl API 与契约；
-   - `runtime-logix/core/03-logic-and-flow.md`：Logic / Flow / Bound API `$` 与 Fluent DSL 形态；
-   - `runtime-logix/core/06-platform-integration.md`：IntentRule IR 与平台集成规范；
-   - `docs/specs/intent-driven-ai-coding/v3/effect-poc/shared/logix-v3-core.ts`：以类型为准的最终 API 形状（Module / Store / Flow / Intent）。
-4. 查平台交互与资产链路（产品/UX 层）
-   - `v3/06-platform-ui-and-interactions.md`：Universe / Galaxy / Studio 等视图的交互原则；
-   - `v3/platform/README.md`：平台 Intent & UX 规划，以及 L0–L3 资产链路（业务需求 → 需求意图 → 开发意图 → 实现出码）。
-   - `docs/specs/drafts/topics/sandbox-runtime/*`：Playground / Sandbox / Runtime Alignment Lab 主题草案，约束 @logix/sandbox 包设计与 RegionSelector Playground MVP 的范围。
-5. 查 v1/v2 历史资料（如有需要）
-   - `v2/*`：六层 Intent 模型与 v2 阶段设计，仅作为历史背景与灵感来源；
-   - 当 v3 未覆盖某个旧概念时，从 v2 中提炼，再以 v3 模型重写，并更新 v3 文档。
+## SSoT 优先级（冲突裁决）
 
-在 docs/specs 中确定意图与契约之后，再进入 PoC 或运行时子包的修改。
+1. 概念层（术语/边界）：`docs/specs/intent-driven-ai-coding/v3/*`（尤其 `99-glossary-and-ssot.md`）
+2. Runtime 规范（编程模型）：`docs/specs/runtime-logix/core/*`
+3. Runtime 类型与实现（最终裁决）：`packages/logix-core/src/*`（公共出口：`packages/logix-core/src/index.ts`）
+4. 场景与示例（推荐写法验证）：`examples/logix/*`
+5. 平台交互（平台侧 SSOT）：`docs/specs/intent-driven-ai-coding/v3/platform/*`
 
-## USER-DOCS · 用户文档（apps/docs）
+## 常见任务落点（先定目录再动手）
 
-在调整 Logix API 形状、编程模型叙事或示例代码时，需要同时把 **用户文档** 也视为一等公民：
+- Runtime API/类型/语义：`packages/logix-core/src/*` + `docs/specs/runtime-logix/core/*`
+- React 适配：`packages/logix-react/*` + `docs/specs/runtime-logix/core/07-react-integration.md`
+- Devtools：`packages/logix-devtools-react/*` + `docs/specs/runtime-logix/core/09-debugging.md`
+- Sandbox/Alignment Lab：`packages/logix-sandbox/*`（同时参考 runtime-logix 与 drafts 的 sandbox 主题）
+- 用户文档（产品视角）：`apps/docs/content/docs/*`
 
-- 入口与结构：
-  - `apps/docs`：Next.js + Fumadocs 文档站；
-  - 用户视角首页：`apps/docs/content/docs/index.mdx`（学习路径与分层说明）；
-  - 指南总览：`apps/docs/content/docs/guide/index.mdx`，下挂：
-    - `guide/get-started/*`：快速上手与教程（不假定读者了解 Effect）；
-    - `guide/essentials/*`：必备概念（Modules & State / Flows & Effects / Lifecycle / Effect 速成等）；
-    - `guide/learn/*`：问题驱动的深入章节（跨模块通信、状态管理模式、生命周期与 Watcher 等）；
-    - `guide/advanced/*`、`guide/recipes/*`：高阶能力与常用配方。
-- 使用约定：
-  - 运行时能力和 API 形状发生改动时，除更新 `docs/specs/runtime-logix` 外，应同步更新 `apps/docs/content/docs/api/*` 与对应 Guide 页面；
-  - 调整编程模型叙事（例如新增推荐写法、废弃旧 API）时，优先通过 `guide/essentials` 与 `guide/learn` 体现，并回看 v3/runtime-logix 文档，确保概念层与实现层不冲突；
-  - 新增 PoC/模式时，优先在 Guide/Recipes 中准备一份“业务视角”的示例，把 `docs/specs` 当作抽象层，而不是反过来。
+## 改动纪律（保证可交接）
 
-## REPO MAP · 文档与代码落点
+- 影响契约/API/术语：先改 `docs/specs`，再落代码，再同步 `apps/docs`。
+- PoC 里验证出的“通用写法/反例”：回写到 `docs/specs/runtime-logix/*`。
 
-处理具体任务时，以“docs/specs 决策 → PoC 演练 → runtime 实现”的顺序组织改动：
+## 进一步阅读
 
-- `docs/specs/intent-driven-ai-coding/v3`
-  - 作为 Intent 模型、资产结构、平台与 Runtime 契约的主事实源；
-  - 新约束、新场景、新 Schema 变更一律先更新这里；
-  - `v3/effect-poc` 作为 Intent/Flow/Effect 组合的轻量演练场，**不直接绑定具体运行时实现**。
-
-- `docs/specs/runtime-logix`
-  - 作为 Logix Engine（前端运行时）的 SSoT：
-    - `core/*` 描述 Module/Logic/Flow/Intent API 与运行时契约；
-    - `impl/*` 记录当前实现方案与技术取舍；
-    - `test/*` 记录运行时层面的测试策略与覆盖要求。
-  - 任何 runtime 能力（如 ModuleRuntime / ModuleImpl / useRemote / Link / watcher patterns）的行为变更，需同步更新这里。
-
-- 运行时代码：
-  - `packages/logix-core`
-    - 当前主线运行时内核（ModuleRuntime / Bound API / Link / ModuleImpl / Logix.app 等）；
-    - 行为应与 `docs/specs/runtime-logix` 中的契约保持一致；
-    - 新增/调整运行时能力时，优先在这里实现并配套单测。
-  - `packages/logix-react`
-    - React 适配层：`RuntimeProvider` + `useModule` / `useSelector` / `useDispatch` / `useLocalModule` 等；
-    - 用于把 Logix Engine 能力暴露给 React 应用，行为约束同样以 `runtime-logix` 文档为准。
-  - `packages/effect-runtime-poc/`
-    - 早期 Effect 运行时 PoC，更多作为实验场与历史参考；
-    - 新的运行时约束建议优先落在 `logix-core` + `runtime-logix` 上，再视情况回收/迁移这里的经验。
-
-- `apps/docs/content/docs`
-  - 作为对外 **用户文档 SSoT**：所有 Logix 运行时的使用指南与 API 文档以这里为准；
-  - 结构：
-    - `guide/*`：学习路径（Get Started / Essentials / Learn / Advanced / Recipes）；
-    - `api/*`：核心运行时与 React 适配 API 参考；
-  - 使用方式：
-    - 在修改运行时实现前，先用“普通业务开发者”视角通读相关 Guide/API 页，记录不顺畅之处；
-    - 在完成实现与测试后，回到对应文档页补充/更新示例与解释，保持文档可直接拿给外部开发者使用。
-
-## WORKFLOW · 典型任务用法
-
-在使用本 skill 时，按任务类型选择对应流程：
-
-### 场景一：新增 ToB 业务 Flow / Logix 场景 PoC
-
-- 在 v3 规格中对齐意图与落点  
-  - 读取 `v3/01-overview.md`、`v3/02-intent-layers.md` 和 `v3/03-assets-and-schemas.md`，明确场景涉及的 UI/Logic/Domain 维度与资产类型；  
-  - 如涉及 Runtime 行为，补读 `runtime-logix/core/02-module-and-logic-api.md` 与 `03-logic-and-flow.md`。
-- 在 specs 中记录意图与契约  
-  - 在 v3 文档中补充/更新相关 Intent 描述与 Data/State/Interaction 契约（必要时在 `v3/platform/README.md` 增加 Use Case Blueprint 草稿）；  
-  - 确认是否需要新增/修改 Pattern 或 IntentRule 类型。
-- 在 effect-poc 中演练  
-  - 在 `v3/effect-poc/scenarios` 下新增场景文件，使用 `Intent.andUpdate*` / `Intent.Coordinate` / Pattern 组合表达联动；  
-  - 根据需要扩展 `shared/logix-v3-core.ts` 类型草案。
-- 回写经验  
-  - 将验证过的 Flow/Env/Layer/IntentRule 写法回写 `runtime-logix/core/*` 与 v3 文档（特别是 `03-logic-and-flow.md` 与 `06-platform-integration.md`）。
-
-### 场景二：扩展 Logix Runtime 能力（@logix/core + @logix/react）
-
-- 对齐 Runtime 责任与契约  
-  - 重读 `runtime-logix/core/02-module-and-logic-api.md`、`03-logic-and-flow.md` 与 `05-runtime-implementation.md`；  
-  - 如涉及 IntentRule 或平台集成，补读 `runtime-logix/core/06-platform-integration.md`。
-- 在运行时子包扩展能力  
-  - 优先在 `packages/logix-core` 中以最小增量扩展 Env/Layer/Helper/API，并确保：
-    - `Effect.Effect<A, E, R>` 泛型顺序与 Env 逆变契约正确；
-    - Module / ModuleRuntime / BoundApi / ModuleImpl / Logix.app 契约与 runtime-logix 文档一致；
-  - 对应的 React 能力在 `packages/logix-react` 中补上适配（如 RuntimeProvider 新能力、hooks 扩展）。
-- 回写规格  
-  - 如涉及 API 形态或运行时语义变更，先更新 `docs/specs/runtime-logix/core/*` 与 `impl/*`，再在 `logix-core` / `logix-react` 中落实；
-  - 对应的使用教程/示例，再同步到 `apps/docs/content/docs` 中的 Guide/API 页面（保证示例与最终 API 一致）。
-
-### 场景三：实现端到端 “需求 → IntentRule → 代码” 示例
-
-- 在 v3 文档中走完整链路  
-  - 参考 `v3/04-intent-to-code-example.md` 与 `v3/platform/README.md`，从业务需求出发梳理 Level 0–2（业务需求 → 需求意图 → 开发意图）；  
-  - 为用例定义 Use Case Blueprint 与一组 IntentRule 草稿。
-- 在 PoC 与运行时中落地  
-  - 在 effect-poc 中用 Intent API/Pattern 落地规则，并在 effect-runtime-poc 中实现必要的运行时扩展；  
-  - 确保代码与 IntentRule/Schema 保持一致。
-- 回写经验  
-  - 把踩坑与反例沉淀回 `v3/04-intent-to-code-example.md` 与 runtime-logix 文档，作为后续 AI/人类复用的样板。
-
-### 场景四：优化用户文档与示例（apps/docs）
-
-- 明确目标与受众  
-  - 确认是为“初次接触 Logix 的前端开发者”补文档，还是为“架构师/平台侧”增加高级章节；
-  - 根据目标选择入口：入门/Essentials 调整 `guide/get-started/*`、`guide/essentials/*`，进阶能力调整 `guide/learn/*`、`guide/advanced/*`、`guide/recipes/*`。
-- 对齐当前实现  
-  - 先对照 `docs/specs/runtime-logix` 与 `packages/logix-core` / `packages/logix-react` 当前实现，列出文档中已经过时的 API/示例；
-  - 必要时在本地跑一遍示例代码（或对照类型检查），确保文档中的代码能在当前版本下直接通过编译。
-- 渐进式优化叙事  
-  - 优先保证“快速上手 → Essentials”路径对完全不了解 Effect/Logix 的读者友好，避免在入门章节堆积 Env/Layer/Stream 等细节；
-  - 将复杂概念下沉到 Learn/Advanced，入口处用“适合谁/前置知识/读完获得什么”三行进行分层提示；
-  - 对高频 API（`$.state`、`$.onAction`、`$.onState`、`useModule` 等）给出简短“速查表”，方便培训和 code review。
-- 回写规范  
-  - 在优化叙事过程中若发现概念/契约需要调整，先回到 `docs/specs/intent-driven-ai-coding/v3` 与 `docs/specs/runtime-logix` 中更新规范，再回到 apps/docs 做对应调整；
-  - 确保两边对“边界与责任”的表述一致，例如：Intent vs Logic vs Runtime、Module vs ModuleImpl vs Runtime 等。
-
-## DESIGN PRINCIPLES · 使用时牢记的共识
-
-- Intent 只表达业务/交互/信息结构的 **What**，不写组件/API/文件级 **How**；
-- Flow/Effect 层负责“步骤链 + 服务调用 + 横切约束”，领域算法留在服务实现中；
-- `Effect.Effect<A, E, R>` 泛型顺序固定为 A/E/R，Env 视为逆变集合，通过 Tag 获取服务；
-- Module / Logic / Live / ModuleImpl / BoundApi `$` 的最终形状以 `docs/specs/runtime-logix/core` + `v3/effect-poc/shared/logix-v3-core.ts` 为准；
-- 所有“看起来合理但文档未记载”的决定，应优先在 docs/specs 里形成说明，再在 PoC/运行时中实施。
-
-## INCIDENTS · 长链路问题备忘录（WIP）
-
-- 本节只做「问题/场景索引 + 一句话摘要」，详细分析统一放在 `references/*` 中，遵循 skill-creator 的拆分规则。
-
-- I-001 · React + Logix Runtime：AsyncFiberException（runSync 碰上异步 Env/Layer）  
-  - 摘要：在 React 渲染 / ModuleRuntime 构造阶段，通过 `ManagedRuntime.runSync(...)` 间接跑到了含真实异步工作的 Effect（异步 Layer、setup 段写异步、配置读取触发 Layer 构建），导致 Effect 抛出 `AsyncFiberException`。  
-  - 涉及：`@logix/core` ModuleRuntime & Phase Guard、`@logix/react` RuntimeProvider / ModuleCache、`@logix/sandbox` Worker+wasm 初始化。  
-  - 详情：见 `references/incident-I-001-async-fiber-exception.md`。
-
-## RESOURCES · 进一步阅读
-
-- `references/project-architecture.md`：在需要更细的“项目架构 & specs 导航”时加载，帮助快速定位应修改的文档与代码目录。
-- 其他可选资源：若后续为本仓增加通用脚本（如批量校验 Intent/Plan/Flow）或模板资产，可放入 `scripts/` / `assets/`，并在本节补充说明与使用方式。
-
-## 优化本 skill 注意事项
-
-必须使用 skill-creator skill 来优化
+- `references/project-architecture.md`：更细的目录地图与决策落点。

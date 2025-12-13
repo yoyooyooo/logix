@@ -12,6 +12,7 @@ import type {
   ModuleHandle,
   ModuleLogic,
   ModuleImpl,
+  ModuleImplementStateTransactionOptions,
 } from "./core/module.js"
 
 /**
@@ -268,6 +269,13 @@ export function Module<
        * - 业务代码通常通过 Link.make 构造这些流程。
        */
       processes?: ReadonlyArray<Effect.Effect<void, any, any>>
+      /**
+       * stateTransaction：模块级 StateTransaction 配置。
+       *
+       * - instrumentation 未提供时，退回到 Runtime 级配置（如有）或 NODE_ENV 默认；
+       * - instrumentation 提供时，优先于 Runtime 级配置与默认值。
+       */
+      stateTransaction?: ModuleImplementStateTransactionOptions
     }): ModuleImpl<
       Id,
         ModuleShape<
@@ -282,10 +290,26 @@ export function Module<
         >,
         R
       > => {
-      const baseLayer = moduleInstance.live<R, never>(
-        config.initial,
-        ...(config.logics || []),
-      )
+      const baseLayer = Layer.scoped(
+        tag,
+        ModuleRuntimeImpl.make<StateOf<typeof shape>, ActionOf<typeof shape>, R>(
+          config.initial,
+          {
+            tag,
+            logics: (config.logics || []) as ReadonlyArray<Effect.Effect<any, any, any>>,
+            moduleId: id,
+            reducers,
+            stateTransaction: config.stateTransaction,
+          },
+        ),
+      ) as Layer.Layer<
+        import("./core/module.js").ModuleRuntime<
+          StateOf<typeof shape>,
+          ActionOf<typeof shape>
+        >,
+        never,
+        any
+      >
 
       const processes = config.processes ?? []
 
@@ -328,6 +352,7 @@ export function Module<
         >,
         layer,
         processes,
+        stateTransaction: config.stateTransaction,
         withLayer: (
           extra: Layer.Layer<any, never, any>
         ): ModuleImpl<

@@ -83,8 +83,8 @@ version: 8 (Effect-Native-Simplified)
 从“真实业务开发”的视角出发，为了让 Pattern 在仓库内可查、可测、可复用，v3 阶段补充以下工程约定。当前 PoC 的参考落点为：
 
 - 代码位置：
-  - `docs/specs/intent-driven-ai-coding/v3/effect-poc/patterns/*.ts`：Pattern Function 的示例实现（Level 2 资产）；
-  - `docs/specs/intent-driven-ai-coding/v3/effect-poc/scenarios/*.ts`：场景 PoC，作为 Pattern 的消费方（Level 3 代码）。
+  - `examples/logix/src/patterns/*.ts`：Pattern Function 的示例实现（Level 2 资产）；
+  - `examples/logix/src/scenarios/*.ts`：场景 PoC，作为 Pattern 的消费方（Level 3 代码）。
 
 - 命名约定（源码级）：
   - 纯 Effect Pattern（不直接依赖 Logix.Env）：

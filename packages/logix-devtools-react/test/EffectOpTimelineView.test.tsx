@@ -10,8 +10,13 @@ import {
   useSelector,
   useDispatch,
 } from '@logix/react'
-import { LogixDevtools } from '../src/LogixDevtools.js'
+import { LogixDevtools } from '../src/ui/shell/LogixDevtools.js'
 import { devtoolsLayer } from '../src/snapshot.js'
+import {
+  devtoolsRuntime,
+  devtoolsModuleRuntime,
+  type DevtoolsState,
+} from '../src/state.js'
 
 // jsdom 默认不提供稳定的 matchMedia，这里为测试环境补一个最小 polyfill，
 // 避免 DevtoolsShell 内部的主题探测逻辑在浏览器外环境抛错。
@@ -89,7 +94,7 @@ describe('@logix/devtools-react · EffectOpTimelineView & Inspector behavior', (
       </RuntimeProvider>,
     )
 
-    const counterButton = screen.getByText(/count:/i)
+    const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
 
     // 触发多次 increment，以确保 Timeline 中有多条事件。
     fireEvent.click(counterButton)
@@ -103,12 +108,51 @@ describe('@logix/devtools-react · EffectOpTimelineView & Inspector behavior', (
       expect(screen.getByText(/Latest Event/i)).not.toBeNull()
     })
 
+    // Inspector 中应展示当前事务的概要信息。
+    expect(screen.getByText(/Transaction Summary/i)).not.toBeNull()
+
     // 默认状态下不应存在 Selected Event 区块。
     expect(screen.queryByText(/Selected Event/i)).toBeNull()
 
-    // 在 Timeline 中找到 trace:increment 事件行，并点击以选中该事件。
-    const traceRow = await waitFor(() => screen.getByText('trace:increment'))
-    fireEvent.click(traceRow)
+    // 等待 DevtoolsModule 派生出时间线数据。
+    await waitFor(() => {
+      const state = devtoolsRuntime.runSync(
+        devtoolsModuleRuntime.getState as any as Effect.Effect<
+          DevtoolsState,
+          never,
+          any
+        >,
+      ) as DevtoolsState
+      expect(state.timeline.length).toBeGreaterThan(0)
+    })
+
+    const stateAfterEvents = devtoolsRuntime.runSync(
+      devtoolsModuleRuntime.getState as any as Effect.Effect<
+        DevtoolsState,
+        never,
+        any
+      >,
+    ) as DevtoolsState
+    const lastEntry =
+      stateAfterEvents.timeline[stateAfterEvents.timeline.length - 1]
+    const lastRef = Logix.Debug.internal.toRuntimeDebugEventRef(
+      lastEntry.event as Logix.Debug.Event,
+    )
+    const targetLabel = lastRef?.label ?? String(lastEntry.event.type)
+
+    // 在 Timeline 中找到对应事件行，并点击以选中该事件。
+    let eventRow: HTMLElement | undefined
+    await waitFor(() => {
+      const rows = screen.getAllByRole('button', {
+        name: new RegExp(targetLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      })
+      expect(rows.length).toBeGreaterThan(0)
+      eventRow = rows[0] as HTMLElement
+    })
+    if (!eventRow) {
+      throw new Error('Timeline event row not found')
+    }
+    fireEvent.click(eventRow)
 
     // Inspector 应切换到 Selected Event 视图。
     await waitFor(() => {
@@ -116,11 +160,114 @@ describe('@logix/devtools-react · EffectOpTimelineView & Inspector behavior', (
     })
 
     // 再次点击同一行，取消选中，恢复到 Latest Event 模式。
-    fireEvent.click(traceRow)
+    fireEvent.click(eventRow)
 
     await waitFor(() => {
       expect(screen.getByText(/Latest Event/i)).not.toBeNull()
       expect(screen.queryByText(/Selected Event/i)).toBeNull()
     })
   })
-}
+
+  it('normalizes timeline events to RuntimeDebugEventRef and supports filtering by kind + txnId', async () => {
+    render(
+      <RuntimeProvider runtime={runtime}>
+        <CounterView />
+        <LogixDevtools position="bottom-left" initialOpen={true} />
+      </RuntimeProvider>,
+    )
+
+    const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+
+    // 触发多次 increment，以生成多个事务（每次交互 = 一次 StateTransaction）。
+    fireEvent.click(counterButton)
+    fireEvent.click(counterButton)
+    fireEvent.click(counterButton)
+
+    // 等待 DevtoolsModule 派生出时间线数据。
+    await waitFor(() => {
+      const state = devtoolsRuntime.runSync(
+        devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
+      ) as DevtoolsState
+      expect(state.timeline.length).toBeGreaterThan(0)
+    })
+
+    const state = devtoolsRuntime.runSync(
+      devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
+    ) as DevtoolsState
+
+    // 将时间线上的 Debug.Event 归一化为 RuntimeDebugEventRef，
+    // 便于按 kind + txnId 对事务进行筛选。
+    const refs = state.timeline
+      .map((entry) => Logix.Debug.internal.toRuntimeDebugEventRef(entry.event as Logix.Debug.Event))
+      .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
+
+    // 至少应存在一条带 txnId 的 state 事件。
+    const stateEventsWithTxn = refs.filter((ref) => ref.kind === 'state' && ref.txnId != null)
+    expect(stateEventsWithTxn.length).toBeGreaterThan(0)
+
+    const targetTxnId = stateEventsWithTxn[0].txnId!
+
+    // 基于同一个 txnId 过滤出该事务下的所有事件，
+    // 期望至少包含 action + state 两类事件，证明可以按 kind + txnId 聚合事务视图。
+    const eventsForTxn = refs.filter((ref) => ref.txnId === targetTxnId)
+    expect(eventsForTxn.length).toBeGreaterThanOrEqual(2)
+
+    const kindsForTxn = new Set(eventsForTxn.map((ref) => ref.kind))
+    expect(kindsForTxn.has('state')).toBe(true)
+    expect(kindsForTxn.has('action')).toBe(true)
+  })
+
+  it('visualizes react-render events and supports View kind filter', async () => {
+    render(
+      <RuntimeProvider runtime={runtime}>
+        <CounterView />
+        <LogixDevtools position="bottom-left" initialOpen={true} />
+      </RuntimeProvider>,
+    )
+
+    const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+
+    // 触发多次 increment，以产生若干事务与渲染事件。
+    fireEvent.click(counterButton)
+    fireEvent.click(counterButton)
+
+    // 等待 DevtoolsModule 派生出时间线数据。
+    await waitFor(() => {
+      const state = devtoolsRuntime.runSync(
+        devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
+      ) as DevtoolsState
+      expect(state.timeline.length).toBeGreaterThan(0)
+    })
+
+    const state = devtoolsRuntime.runSync(
+      devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
+    ) as DevtoolsState
+
+    const refs = state.timeline
+      .map((entry) => Logix.Debug.internal.toRuntimeDebugEventRef(entry.event as Logix.Debug.Event))
+      .filter(
+        (ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null,
+      )
+
+    const renderEvents = refs.filter((ref) => ref.kind === 'react-render')
+    expect(renderEvents.length).toBeGreaterThan(0)
+    const targetRenderLabel = renderEvents[0].label
+
+    // 切换到 View kind 过滤，仅保留 react-render 事件。
+    const viewFilterButton = screen.getAllByRole('button', {
+      name: /^View$/i,
+    })[0]
+    fireEvent.click(viewFilterButton)
+
+    await waitFor(() => {
+      // 至少存在一条 react-render 事件行（label 已归一化，不再依赖 trace:* type 字符串）。
+      const viewRows = screen.getAllByRole('button', {
+        name: new RegExp(
+          targetRenderLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+          'i',
+        ),
+      })
+      expect(viewRows.length).toBeGreaterThan(0)
+    })
+  })
+})

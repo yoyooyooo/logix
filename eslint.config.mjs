@@ -12,6 +12,7 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/dist/**",
       "**/build/**",
+      "**/*.min.js",
       "**/.agent/**",
       "**/.next/**",
       "**/.source/**",
@@ -81,6 +82,7 @@ export default tseslint.config(
       globals: {
         module: true,
         require: true,
+        URL: true,
       },
     },
     rules: {

@@ -23,5 +23,40 @@ describe("@logix/devtools-react · DevtoolsModule state", () => {
     const after = getState()
     expect(after.open).toBe(true)
   })
-})
 
+  it("setMode action updates DevtoolsSettings.mode and derived flags", async () => {
+    const getState = () =>
+      devtoolsRuntime.runSync(
+        devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
+      )
+
+    const before = getState()
+    expect(before.settings).toBeDefined()
+
+    await devtoolsRuntime.runPromise(
+      devtoolsModuleRuntime.dispatch({ _tag: "setMode", payload: "basic" }) as Effect.Effect<
+        unknown,
+        unknown,
+        any
+      >,
+    )
+
+    const after = getState()
+    expect(after.settings.mode).toBe("basic")
+    expect(after.settings.showTraitEvents).toBe(false)
+    expect(after.settings.showReactRenderEvents).toBe(false)
+
+    await devtoolsRuntime.runPromise(
+      devtoolsModuleRuntime.dispatch({ _tag: "setMode", payload: "deep" }) as Effect.Effect<
+        unknown,
+        unknown,
+        any
+      >,
+    )
+
+    const afterDeep = getState()
+    expect(afterDeep.settings.mode).toBe("deep")
+    expect(afterDeep.settings.showTraitEvents).toBe(true)
+    expect(afterDeep.settings.showReactRenderEvents).toBe(true)
+  })
+})

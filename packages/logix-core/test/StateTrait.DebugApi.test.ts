@@ -77,4 +77,32 @@ describe("Debug.getModuleTraits", () => {
 
     expect(traits).toBeUndefined()
   })
+
+  it("getModuleTraitsById should not register traits when NODE_ENV=production", () => {
+    const previousEnv = process.env.NODE_ENV
+    try {
+      process.env.NODE_ENV = "production"
+
+      const StateSchema = Schema.Struct({
+        value: Schema.Number,
+      })
+
+      const Actions = {
+        bump: Schema.Void,
+      }
+
+      const ProdModule = Logix.Module.make("ProdEnvCounter", {
+        state: StateSchema,
+        actions: Actions,
+        traits: Logix.StateTrait.from(StateSchema)({
+          value: Logix.StateTrait.computed((s) => s.value),
+        }),
+      })
+
+      const traits = Logix.Debug.getModuleTraitsById(ProdModule.id)
+      expect(traits).toBeUndefined()
+    } finally {
+      process.env.NODE_ENV = previousEnv
+    }
+  })
 })

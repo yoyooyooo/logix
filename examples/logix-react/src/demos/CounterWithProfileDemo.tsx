@@ -2,11 +2,10 @@ import React from 'react'
 import * as Logix from '@logix/core'
 import { Effect } from 'effect'
 import { RuntimeProvider, useModule, useSelector } from '@logix/react'
-import { devtoolsLayer } from '@logix/devtools-react'
 import { CounterWithProfile, type CounterState } from '../modules/counter-with-profile.js'
 
 // 为 Devtools 提供一个带 StateTrait 图纸的示例模块（CounterWithProfile），
-// 并通过独立的 Runtime + devtoolsLayer 将其纳入 Debug 观测范围。
+// 并通过独立的 Runtime + devtools 选项将其纳入 Debug 观测范围。
 const CounterWithProfileImpl = CounterWithProfile.implement({
   initial: {
     a: 1,
@@ -19,7 +18,7 @@ const CounterWithProfileImpl = CounterWithProfile.implement({
 
 const counterWithProfileRuntime = Logix.Runtime.make(CounterWithProfileImpl, {
   label: 'CounterWithProfileDemo',
-  layer: devtoolsLayer,
+  devtools: true,
 })
 
 // 应用启动时预热一次 Runtime，确保 Devtools 能看到该 Module 的初始状态与事件。

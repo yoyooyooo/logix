@@ -1,5 +1,6 @@
 import { Context, Effect, Layer, Schema, Stream, SubscriptionRef } from "effect"
 import type * as Logic from "./LogicMiddleware.js"
+import type { StateTransactionInstrumentation } from "./env.js"
 
 /**
  * 方便约束：任意 Effect Schema。
@@ -35,12 +36,22 @@ export type ActionOf<Sh extends AnyModuleShape> = Schema.Schema.Type<
   Sh["actionSchema"]
 >
 
+export interface ModuleImplementStateTransactionOptions {
+  readonly instrumentation?: StateTransactionInstrumentation
+}
+
 /**
  * Module 的运行时接口（类似文档中的「Store as Context」），
  * 对 Logic / Flow 暴露读写、订阅与派发能力。
  */
 export interface ModuleRuntime<S, A> {
   readonly id?: string
+  /**
+   * 关联的 Module 标识：
+   * - 由 ModuleRuntime.make 在构造时从 options.moduleId 注入；
+   * - 主要用于 Devtools / 调试，将 Runtime 实例与模块维度信息对齐。
+   */
+  readonly moduleId?: string
   // ----- State -----
   readonly getState: Effect.Effect<S>
   readonly setState: (next: S) => Effect.Effect<void>
@@ -158,10 +169,10 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
     readonly read: Logic.Of<Sh, R, StateOf<Sh>, never>
     readonly update: (
       f: (prev: StateOf<Sh>) => StateOf<Sh>
-    ) => Logic.Secured<Sh, R, void, never>
+    ) => Logic.Of<Sh, R, void, never>
     readonly mutate: (
       f: (draft: Logic.Draft<StateOf<Sh>>) => void
-    ) => Logic.Secured<Sh, R, void, never>
+    ) => Logic.Of<Sh, R, void, never>
     readonly ref: {
       <V = StateOf<Sh>>(
         selector?: (s: StateOf<Sh>) => V
@@ -171,12 +182,12 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
   readonly actions: {
     readonly dispatch: (
       action: ActionOf<Sh>
-    ) => Logic.Secured<Sh, R, void, never>
+    ) => Logic.Of<Sh, R, void, never>
     readonly actions$: Stream.Stream<ActionOf<Sh>>
   } & {
     readonly [K in keyof Sh["actionMap"]]: (
       payload: Schema.Schema.Type<Sh["actionMap"][K]>
-    ) => Logic.Secured<Sh, R, void, never>
+    ) => Logic.Of<Sh, R, void, never>
   }
   readonly flow: import("./FlowRuntime.js").Api<Sh, R>
   readonly match: <V>(value: V) => Logic.FluentMatch<V>
@@ -346,6 +357,7 @@ export interface ModuleInstance<
       Layer.Layer<any, any, any> | ModuleImpl<any, AnyModuleShape, any>
     >
     processes?: ReadonlyArray<Effect.Effect<void, any, any>>
+    stateTransaction?: ModuleImplementStateTransactionOptions
   }) => ModuleImpl<Id, Sh, R>
 }
 
@@ -368,6 +380,7 @@ export interface ModuleImpl<
     REnv
   >
   readonly processes?: ReadonlyArray<Effect.Effect<void, any, any>>
+  readonly stateTransaction?: ModuleImplementStateTransactionOptions
   readonly withLayer: (
     layer: Layer.Layer<any, never, any>
   ) => ModuleImpl<Id, Sh, REnv>

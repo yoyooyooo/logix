@@ -57,7 +57,7 @@ version: 1
 
 目标：用 Logix + Intent API 把“真实业务场景”写顺手。
 
-1. **补齐 PoC 场景矩阵（effect-poc）**
+1. **补齐 PoC 场景矩阵（examples/logix）**
    - 列出 5–10 个来自真实项目的典型场景（建议分类）：
      - 搜索 + 详情 / 列表 + 过滤；
      - 审批流 / 提交流程；
@@ -69,8 +69,8 @@ version: 1
      - 跨 Store 用 `$.use(StoreSpec) + Fluent DSL（$Other.changes/… → $SelfOrOther.dispatch）`；
      - 需要 Service/后端 Flow 的地方用 Pattern + Effect.Service。
 
-2. **Runtime 能力收敛到 effect-runtime-poc**
-   - 将在 effect-poc 中证明有效的写法，下沉为 `packages/effect-runtime-poc` 中的公共 Helper / Layer 组合；
+2. **Runtime 能力收敛到 logix-* 包**
+   - 将在 `examples/logix` 中证明有效的写法，下沉为 `packages/logix-core`（必要时联动 `packages/logix-react`/`packages/logix-sandbox`）中的公共 Helper / Layer 组合；
    - 确保 runtime-logix 文档（特别是 `02-module-and-logic-api` / `03-logic-and-flow`）紧跟这些能力更新。
 
 3. **每轮 PoC 后的回写与反思**
@@ -80,7 +80,7 @@ version: 1
      - 或者是模型设计问题，需要调整 Store/Logic/Patter/IntentRule 的角色划分。
 
 产出：
-- 一套覆盖典型场景的 `v3/effect-poc/scenarios`；
+- 一套覆盖典型场景的 `examples/logix/src/scenarios`；
 - runtime-logix 文档中对这些模式的总结与推荐用法；
 - 初步验证“Logix + Intent API”在真实场景下的可表达性与可维护性。
 
@@ -106,7 +106,7 @@ version: 1
      - PM/开发在 UI 上调整规则 → 生成代码 → 在 IDE 中查看 / 调整 → 运行 PoC。
 
 3. **与 PoC 场景集成**
-   - 选 effect-poc 中 1–2 个场景，先用手写规则，再用 UI 填表单生成规则和代码；
+   - 选 `examples/logix` 中 1–2 个场景，先用手写规则，再用 UI 填表单生成规则和代码；
    - 对比两种方式体验，收集“平台侧出码”的真实反馈。
 
 产出：
@@ -148,7 +148,7 @@ version: 1
    - 优先选择结构化、易解析的 API 形态，即便写起来稍微啰嗦一点。
 
 4. **是否可以先在 PoC 验证，再沉淀为规范？**
-   - 新 API / 新 Pattern / 新 IntentRule 类型，统一先在 effect-poc 中试验，再升级到 runtime-logix / v3 规范。
+   - 新 API / 新 Pattern / 新 IntentRule 类型，统一先在 `examples/logix` 中试验，再升级到 runtime-logix / v3 规范。
 
 本 Roadmap 本身也是“living document”：
 - 每完成一个 Phase 或经历一次较大方向调整时，应回到本文件更新目标与优先级；

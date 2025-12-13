@@ -22,7 +22,7 @@ SDD 强调 **Specification (Specs)** 不再是静态文档，而是 **Executable
 | :---------------------------- | :------------------------------- | :----------------------------------- |
 | **Governance / Constitution** | **Platform Manifesto & Rules**   | `docs/specs`, `IntentRule`           |
 | **Specify (/specify)**        | **L0: Requirement Intent**       | `UserJourney`, `BusinessGoal`        |
-| **Plan (/plan)**              | **L1: Domain & L2: Flow Intent** | `DomainSchema`, `Flow`, `Topology`   |
+| **Plan (/plan)**              | **L1: Module & L2: Flow Intent** | `ModuleSchema`, `Flow`, `Topology`   |
 | **Tasks (/tasks)**            | **L3: Step Intent**              | `Action`, `Step`, `TaskItem`         |
 | **Implement (/implement)**    | **Code Generation**              | `Logix Code`, `Effect Program`       |
 | **Verify / Loop**             | **Runtime Alignment Lab**        | `@logix/sandbox`, `RunResult` (Trace/Logs/State), Alignment Lab (`docs/specs/drafts/topics/sandbox-runtime/*`) |
@@ -44,7 +44,7 @@ SDD 强调 **Specification (Specs)** 不再是静态文档，而是 **Executable
 - **SDD 定义**: 技术架构、依赖关系、接口契约 (CDD)、非功能约束。
 - **Intent 实现**:
   - 输入：L0 Intent + Repository Context。
-  - 输出：**L1 Intent** (Domain Schema, Component Topology) + **L2 Intent** (Flow, Interaction)。
+  - 输出：**L1 Intent** (Module Schema, Component Topology) + **L2 Intent** (Flow, Interaction)。
   - 核心契约：**API-First / Schema-First**。在写代码前，先确定 `Effect<A, E, R>` 的签名与 `Schema`。
   - **Constraints**: 注入平台级约束 (e.g., "All side-effects must be wrapped in `Effect`").
 
@@ -63,7 +63,7 @@ SDD 强调 **Specification (Specs)** 不再是静态文档，而是 **Executable
   - 输入：L3 Intent + Context。
   - 执行引擎：**Codegen Agent**。
   - 产物：`packages/` 下的源码 (TypeScript / Effect)。
-  - **Guardrail**: 代码只是实现的投影 (Derived Artifact)，**Intent 才是源码**。禁止在不更新 Intent 的情况下手动 Hacker 代码 (Spec Drift Prevention)。
+  - **Guardrail**: 代码是实现载体，**Intent 是事实源**。允许在实现侧先行试验，但稳定后必须回写 Intent/Specs，避免长期漂移 (Spec Drift Prevention)。
 
 ## 3. The Alignment Loop (Verification)
 

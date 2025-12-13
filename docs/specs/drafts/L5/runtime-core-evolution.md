@@ -21,8 +21,8 @@ related: []
 
 当前 Logix runtime-logix 规范与实现在以下三个方向存在演进需求：
 
-1. **观测性架构** (`secure` → Supervisor)
-   - 现状：`Logic.secure` 手动包装，语义歧义，非 Effect 原生
+1. **观测性架构**（从显式包装到 Supervisor）
+   - 现状：显式“安全包装”函数手动包裹，语义歧义，非 Effect 原生
    - 目标：零侵入、Supervisor 驱动、与 Effect 生态深度集成
 
 2. **规范边界与灵活性** (ModuleRuntime.make 职责)
@@ -41,11 +41,11 @@ related: []
 
 ---
 
-## 二、观测性重构：从 `secure` 到 Supervisor
+## 二、观测性重构：从显式包装到 Supervisor
 
 ### 2.1 现状痛点
 
-当前 `Logic.secure` 存在的问题：
+当前 Logic 安全包装方案存在的问题：
 
 1. **语义歧义**: 名称暗示安全/鉴权，实际是插桩/AOP
 2. **手动且脆弱**: 依赖 DSL 层显式调用，绕过 Builder 就失去可观测性
@@ -66,10 +66,7 @@ related: []
 #### 阶段 1: 语义对齐 (v3.1)
 
 ```typescript
-// 之前
-Logic.secure(effect, { name: "flow.run" })
-
-// 之后
+// 示例：在运行时对 Logic 执行进行插桩
 import { LogicContext } from "@logix/core/internal"
 
 const instrument = (effect, meta) =>
@@ -83,7 +80,7 @@ const instrument = (effect, meta) =>
   )
 ```
 
-- 重命名 `Logic.secure` → `Logic.instrument`
+- 引入 `Logic.instrument` 作为插桩/观测用的高层 API
 - 剥离错误处理，移入 `Logic.catch` 或 Flow 定义
 
 #### 阶段 2: FiberRef 上下文 (v3.2)
@@ -303,7 +300,7 @@ Logix.app({
 
 ### 阶段 1: 立即改进 (v3.1)
 
-- [ ] 重命名 `Logic.secure` → `Logic.instrument`
+- [ ] 引入 `Logic.instrument` 作为 Logic 插桩入口
 - [ ] 剥离错误处理逻辑
 - [ ] 更新规范：区分 `ModuleRuntime` 硬边界与软建议
 - [ ] 禁止核心代码直接 `console.log`

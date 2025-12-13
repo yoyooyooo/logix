@@ -6,6 +6,8 @@ version: 1 (Concept-First)
 
 > 本文档站在「概念层」之上，对 v3 阶段出现的核心概念与术语做统一定义。
 > 运行时实现（runtime-logix）与平台实现（platform/Studio/Galaxy）都应当被视为这些概念的**具体化**，而不是反过来由实现去“定义”概念。
+>
+> 注：`status: draft` 表示内容仍在演进，但“遇到冲突先查这里”的裁决规则仍然生效；如有漂移，优先修正其它文档来对齐本文件。
 
 ## 1. 分层视角：我们在谈哪些「层」？
 
@@ -31,7 +33,7 @@ version: 1 (Concept-First)
      - Effect-native 的 Logix Runtime；
      - 平台的 Parser / Codegen / Studio 交互；
      - PoC 场景与 Pattern 示例。
-   - 主要由：`runtime-logix`、`v3/effect-poc`、`v3/platform` 目录内代码与文档承载。
+   - 主要由：`packages/logix-*`（运行时实现）、`examples/logix`（场景与 Pattern）、`docs/specs/intent-driven-ai-coding/v3/platform`（平台侧规划）承载。
 
 4. **应用层 (Application Layer)**
    - 讨论的是「在真实项目里如何使用」：
@@ -220,13 +222,55 @@ version: 1 (Concept-First)
   - Runtime 在 Action/Flow/State/Service/Lifecycle 等边界构造 EffectOp，并通过统一的 MiddlewareStack 处理横切关注点（日志、监控、限流、Query 集成等）。
 - **EffectOp Middleware 总线**
   - 与 `core/04-logic-middleware.md` 中的 Logic Middleware 不同，EffectOp 中间件是 **运行时级** 的统一总线：
-    - Logic Middleware（`Logic.secure`）在 Logic/Flow 层包装某一段业务 Effect；
+  - Logic Middleware 与全局 EffectOp 中间件栈，在 Logic/Flow 层为“单次边界操作”追加守卫与观测能力；
     - EffectOp Middleware 在引擎层对所有边界事件统一拦截与装饰；
   - 通过 Env Service（例如 `EffectOpMiddlewareEnv` + Tag）在 Runtime.make 入口注入当前使用的 MiddlewareStack，再由 StateTrait.install / Runtime 核心在需要时消费。
+- **操作链路（linkId）**
+  - 每次通过 Runtime 边界触发的 EffectOp 都会带上一个 `meta.linkId`：
+    - 同一条“业务链路”（例如一次 dispatch 引发的若干次 state:update / trait 更新 / service 调用）会共享同一个 linkId；
+    - 不同链路的操作则使用不同的 linkId；
+  - Runtime 通过 FiberRef 传播 linkId：链路起点创建 linkId，嵌套/下游 EffectOp 复用当前 Fiber 的 linkId，形成一条可追踪的事件链；
+  - DevTools/Playground 可以用 linkId 将 Action / Flow / State / Service 等事件在线上时间轴中归为同一条“操作链路”，方便回放与排查。
+- **守卫拒绝（OperationRejected，规范层术语）**
+  - 当 Guard 中间件认为某次操作不应被执行时，会在用户程序运行前直接以语义化错误拒绝该 EffectOp：
+    - 失败结果在错误通道中表现为带 `_tag = "OperationRejected"` 的结构化错误；
+    - 拒绝必须满足“显式失败 + 无业务副作用”：即在拒绝之后，不允许有任何 state/update 或外部副作用发生；
+  - 业务/平台可以在上层区分“正常业务错误”和“被守卫生效拒绝”的场景（例如在 DevTools / 监控中单独统计被 Guard 拦截的操作）。
 - **DevTools 视角**
   - EffectOp 提供了一条天然的时间轴与因果链：DevTools 可以基于 EffectOp 序列构建「Action/Flow/State/Service」的 Timeline 与因果图；
   - Debug 模块会将部分 EffectOp 以 `trace:effectop` 事件形式写入 DebugSink，供 Playground / Runtime Alignment Lab 与外部工具消费。  
   - StateTraitGraph 与 EffectOp Timeline 结合，构成“字段能力 + Runtime 行为”的双视角：结构（Graph）与事件（EffectOp）。
+
+- **中间件类别与推荐入口**
+  - 中间件公共入口统一收敛在 `@logix/core/middleware` 命名空间：对外暴露 `Middleware` / `MiddlewareStack` 类型别名，并提供少量内置中间件。
+  - 通用中间件（业务无关的横切能力，如监控、限流、熔断、重试、审计、Query 集成等）以 `EffectOp.Middleware` 为基本形态实现：输入一个 `EffectOp`，按需包装或替换 `op.effect`，再返回新的 Effect 程序，不直接操作 DebugSink。
+  - 调试/观测中间件通过同一总线桥接到 Debug 事件流：优先使用高层组合入口 `Middleware.withDebug(stack, options?)`，在现有 `MiddlewareStack` 上一次性追加 DebugLogger（日志）与 DebugObserver（`trace:effectop` 事件）；底层的 `Middleware.applyDebug` 与 `Middleware.applyDebugObserver` 作为更细粒度的组合原语保留，用于需要精确控制中间件顺序的高级场景。
+
+### 4.6 StateTransaction 与逻辑入口（Logical Entry）
+
+- **StateTransaction（状态事务）**
+  - 概念上是一笔「状态从某个快照演进到下一个快照」的最小原子单元，内部允许多次写入事务草稿，对外只在提交时暴露一次新状态；
+  - 在 v3 实现中，由 Runtime 内部的 `StateTransaction / StateTxnContext` 表示，承担“聚合一次逻辑入口下所有状态演进”的职责。
+
+- **逻辑入口（Logical Entry）**
+  - 指所有会显式进入 ModuleRuntime 的入口，包括但不限于：
+    - `dispatch` / `ModuleHandle.dispatch` / `handle.actions.xxx(...)`；
+    - StateTrait 的 `source.refresh(fieldPath)` 写回入口；
+    - 面向服务回调的专用入口（例如 `origin.kind = "service-callback"` 的写回逻辑）；
+    - Devtools 触发的时间旅行与状态回放操作（`origin.kind = "devtools"`）。
+  - 这些入口在 Runtime 层统一被视为“事务的起点”，**每次进入入口 API 都会开启一笔新的 StateTransaction**。
+
+- **事务窗口（Transaction Window）**
+  - 在实现层由 `runWithStateTransaction(origin, body)` 这一模式界定：从 `beginTransaction` 到 `commit` 的整个 Effect 程序即为事务窗口；
+  - Runtime 不解析 `body` 内部的 Effect 结构，也不会因为出现 `Effect.sleep` / HTTP 调用等异步步骤自动拆分事务；
+  - 若在同一个事务窗口内包含长时间 IO，则这笔事务的 `durationMs` 会被拉长，事务内“中间状态”对外仍然不可见。
+
+- **长链路逻辑与 IO 拆分（多入口模式）**
+  - 规范层要求：单个 StateTransaction 的窗口 **SHOULD** 只覆盖“纯计算 + 状态写入”，**MUST NOT** 跨越真实 IO 边界；
+  - 任何「发起 IO + 等待结果 + 写回状态」的长链路逻辑，应拆分为至少两笔事务：
+    - 事务 1（入口 1）：同步更新本地状态（例如 `loading = true` / 清理错误），并通过 `Effect.fork` 等方式发起 IO，而不在当前事务内等待结果；
+    - 事务 2（入口 2）：在 IO 完成时，再通过新的入口（例如 `origin.kind = "service-callback"` 的 dispatch 或专用结果 Action）写回成功/失败结果；
+  - 记忆规则：**想要多笔事务，就显式触发多次入口 API；不要指望 `Effect.sleep` 或其他异步调用自动切分事务。**
 
 ## 5. 平台相关术语（概念视角）
 
@@ -297,7 +341,7 @@ version: 1 (Concept-First)
    - 平台资产与视图：`platform/README.md`、`06-platform-ui-and-interactions.md`。
 
 3. **最后看 PoC 与实现细节**：
-   - `v3/effect-poc` 与其它运行时代码仅作为“实现参考”；
+   - `examples/logix` 与 `packages/logix-*` 仅作为“实现参考”（用于验证与沉淀），不应反向定义概念层术语；
    - 如实现先于文档演进，应尽快回写概念层与模型层文档，避免“事实源漂移”。
 
 > 一句话记忆：**概念先于实现，模型约束实现，PoC 用来帮我们验证与修正概念/模型，而不是反过来由 PoC 决定世界观。**

@@ -88,7 +88,7 @@ description: 用于在 intent-flow 仓库内初始化前端项目，基于内置
 若类型检查或构建失败：
 
 - 首先检查 `package.json` 中 workspace 依赖（`@logix/core` / `@logix/react` / `@logix/sandbox` / `effect` / `vite` 等）是否满足当前仓库版本。
-- 如为 Logix 相关类型问题，参照 `logix-llms` skill 或 `docs/specs/runtime-logix` 中的契约进行修正。
+- 如为 Logix 相关类型问题，优先参照 `project-guide`（含 Logix v3 速查与入口）或 `docs/specs/runtime-logix` 中的契约进行修正。
 
 ### 5. 可选：模板轻量化或自定义
 

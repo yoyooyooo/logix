@@ -123,5 +123,5 @@
   - Runtime 在执行该操作时：  
     - 只更新该实例的内部状态（例如通过内部 setState），并触发必要的纯 Trait 派生逻辑以保持派生字段一致；  
     - 不重新执行外部服务调用或重复执行业务副作用（例如不得重新发起 HTTP 请求或写入外部存储）；  
-    - 可以选择将本次时间旅行操作记录为一个特殊的 StateTransaction（origin.kind = "devtools"），以便 Devtools 展示与回溯。  
+    - 必须将本次时间旅行操作记录为一个特殊的 StateTransaction（origin.kind = "devtools"），以便 Devtools 在事务时间线中展示与回溯 time-travel 操作的完整轨迹；该 devtools 事务可以选择不对外触发新的订阅通知。  
   - 该能力必须通过运行时配置或 Devtools 通道显式启用，不允许在生产环境默认开放。

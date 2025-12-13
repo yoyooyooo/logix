@@ -2,7 +2,7 @@
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 import { render, fireEvent, screen, waitFor } from '@testing-library/react'
-import { LogixDevtools } from '../src/LogixDevtools.js'
+import { LogixDevtools } from '../src/ui/shell/LogixDevtools.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../src/state.js'
 
 // jsdom 默认不提供稳定的 matchMedia，这里为测试环境补一个最小 polyfill，

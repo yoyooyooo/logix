@@ -28,7 +28,6 @@
 
 - `packages/logix-core`：Logix 运行时内核（Module / Logic / Bound API `$` / Runtime 等）；  
 - `packages/logix-react`：React 适配层（`RuntimeProvider`、`useModule` 等）；  
-- `packages/effect-runtime-poc`：早期 Effect 运行时 PoC，仅供参考。
+- `examples/logix`：可运行的 PoC 场景与 Pattern（scenarios + patterns）。
 
 如需在真实业务仓库中接入 Logix，建议先阅读 `apps/docs` 中的「快速上手」与 Essentials，再结合 `docs/specs/runtime-logix` 理解运行时契约。 
-

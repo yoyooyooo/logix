@@ -84,7 +84,7 @@ export const LifecycleLogic = UserListModule.logic(($) =>
 )
 ```
 
-## 3. 交互防护 (`Logic.secure` & Middleware)
+## 3. 交互防护（EffectOp 总线 & Middleware）
 
 交互逻辑（如删除用户）同样写在 Logic 中，并由 Middleware 进行防护。
 
@@ -104,15 +104,19 @@ export const InteractionLogic = UserListModule.logic(($) =>
         yield* ToastService.success('删除成功')
       })
 
-    // 运行带防护的流程
+    // 运行带防护的流程：
+    // - Runtime 会将每次 deleteImpl 执行提升为 EffectOp(kind = "flow")；
+    // - 全局 MiddlewareStack 可以在 EffectOp 层挂载错误 Toast / Loading 等横切能力。
     yield* delete$.pipe(
-      $.flow.run(
-        Logic.secure(
-          deleteImpl,
-          { name: 'deleteUser' },
-          WithErrorToast, // 自动错误 Toast
-          WithLoading, // 自动 Loading
-        ),
+      $.flow.run((userId) =>
+        Effect.gen(function* () {
+          yield* WithLoading(
+            WithErrorToast(
+              deleteImpl(userId),
+              { name: 'deleteUser' },
+            ),
+          )
+        }),
       ),
     )
   }),

@@ -1,8 +1,7 @@
 import React from 'react'
 import { RuntimeProvider } from '@logix/react'
-import { ManagedRuntime } from 'effect'
+import { Layer, ManagedRuntime } from 'effect'
 import * as Logix from '@logix/core'
-import { devtoolsLayer } from '@logix/devtools-react'
 import { CounterModule, CounterImpl } from '../modules/counter'
 import { CounterAllModule, CounterAllImpl } from '../modules/counterAll'
 import { CounterMultiModule, CounterMultiImpl } from '../modules/counterMulti'
@@ -10,7 +9,10 @@ import { CounterRunFork, CounterAllDemo, TagSharedCounter, ImplLocalCounter } fr
 
 // 应用级 Runtime：基于多个 ModuleImpl 的 Layer 构建，所有使用 Tag 的组件共享这棵 Runtime。
 const globalRuntime = ManagedRuntime.make(
-  Logix.Debug.runtimeLabel('GlobalRuntime'),
+  Layer.mergeAll(
+    Logix.Debug.runtimeLabel('GlobalRuntime'),
+    Logix.Debug.devtoolsHubLayer(),
+  ),
   // CounterImpl / CounterAllImpl / CounterMultiImpl 自身已经通过 Runtime.make 参与 AppRuntime，
   // 这里只需要启用 Debug 与 Devtools 环境。
 )

@@ -2,7 +2,6 @@ import React from "react"
 import { Effect, Schema } from "effect"
 import * as Logix from "@logix/core"
 import { RuntimeProvider, useModule, useSelector, useDispatch } from "@logix/react"
-import { devtoolsLayer } from "@logix/devtools-react"
 
 // 一个更贴近 ToB 表单场景的示例：单字段表单 + 脏标记 + 简单校验。
 
@@ -53,10 +52,10 @@ const FormImpl = FormModule.implement({
   logics: [FormLogic],
 })
 
-// 应用级 Runtime：以 FormImpl 作为 Root ModuleImpl，并通过 label + devtoolsLayer 启用 Debug 观测。
+// 应用级 Runtime：以 FormImpl 作为 Root ModuleImpl，并通过 devtools 选项一键启用 Debug 观测。
 const formRuntime = Logix.Runtime.make(FormImpl, {
   label: "FormDemoRuntime",
-  layer: devtoolsLayer,
+  devtools: true,
 })
 
 const FormView: React.FC = () => {

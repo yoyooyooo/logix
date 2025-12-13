@@ -1,6 +1,7 @@
 import { Effect, Stream } from 'effect'
 import type * as Logix from './module.js'
 import * as Platform from './Platform.js'
+import type * as TaskRunner from './TaskRunner.js'
 
 // Logic 内核类型与中间件（供 Logic / Bound / Flow 等模块复用）
 
@@ -25,19 +26,44 @@ export interface IntentBuilder<Payload, Sh extends Logix.AnyModuleShape, R = nev
 
   readonly run: <A = void, E = never, R2 = unknown>(
     effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
+    options?: OperationOptions,
   ) => Of<Sh, R & R2, void, E>
 
   readonly runParallel: <A = void, E = never, R2 = unknown>(
     effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
+    options?: OperationOptions,
   ) => Of<Sh, R & R2, void, E>
 
   readonly runLatest: <A = void, E = never, R2 = unknown>(
     effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
+    options?: OperationOptions,
   ) => Of<Sh, R & R2, void, E>
 
   readonly runExhaust: <A = void, E = never, R2 = unknown>(
     effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
+    options?: OperationOptions,
   ) => Of<Sh, R & R2, void, E>
+
+  /**
+   * run*Task：长链路 Task Runner 语法糖（pending → IO → success/failure），自动拆分为多入口多事务。
+   *
+   * 并发语义分别镜像 run/runLatest/runExhaust/runParallel。
+   */
+  readonly runTask: <A = void, E = never, R2 = unknown>(
+    config: TaskRunner.TaskRunnerConfig<Payload, Sh, R & R2, A, E>,
+  ) => Of<Sh, R & R2, void, never>
+
+  readonly runParallelTask: <A = void, E = never, R2 = unknown>(
+    config: TaskRunner.TaskRunnerConfig<Payload, Sh, R & R2, A, E>,
+  ) => Of<Sh, R & R2, void, never>
+
+  readonly runLatestTask: <A = void, E = never, R2 = unknown>(
+    config: TaskRunner.TaskRunnerConfig<Payload, Sh, R & R2, A, E>,
+  ) => Of<Sh, R & R2, void, never>
+
+  readonly runExhaustTask: <A = void, E = never, R2 = unknown>(
+    config: TaskRunner.TaskRunnerConfig<Payload, Sh, R & R2, A, E>,
+  ) => Of<Sh, R & R2, void, never>
 
   /** Fork a watcher that runs in the ModuleRuntime Scope (equivalent to Effect.forkScoped + run) */
   readonly runFork: <A = void, E = never, R2 = unknown>(
@@ -100,22 +126,21 @@ export interface LogicMeta {
   readonly [key: string]: unknown
 }
 
+/**
+ * OperationOptions：
+ * - 用于在触发 Flow/Intent 运行时，为“单次边界操作”附加局部标注；
+ * - 只描述意图（例如关闭纯观测能力），不携带规则逻辑本身。
+ */
+export interface OperationOptions {
+  readonly policy?: {
+    readonly disableObservers?: boolean
+  }
+  readonly tags?: ReadonlyArray<string>
+  readonly trace?: ReadonlyArray<string>
+  readonly meta?: Readonly<Record<string, unknown>>
+}
+
 export type Middleware<Sh extends Logix.AnyModuleShape, R, A, E> = (
   effect: Effect.Effect<A, E, Env<Sh, R>>,
   meta: LogicMeta,
 ) => Effect.Effect<A, E, Env<Sh, R>>
-
-declare const Secured: unique symbol
-
-export type Secured<Sh extends Logix.AnyModuleShape, R, A, E> = Effect.Effect<A, E, Env<Sh, R>> & {
-  readonly [Secured]: true
-}
-
-export const secure = <Sh extends Logix.AnyModuleShape, R, A, E>(
-  effect: Effect.Effect<A, E, Env<Sh, R>>,
-  meta: LogicMeta,
-  ...middlewares: Middleware<Sh, R, A, E>[]
-): Secured<Sh, R, A, E> => {
-  const composed = middlewares.reduceRight((acc, mw) => mw(acc, meta), effect)
-  return composed as Secured<Sh, R, A, E>
-}

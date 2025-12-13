@@ -4,7 +4,7 @@ status: draft
 version: 11 (Effect-Native)
 ---
 
-> 本文档描述 Logic Intent (Behavior) 的运行时实现。实现层以 **Store / Logic / Flow** 三大运行时原语为基础，结合 `Control`、`Effect.Service`、`Config` 等能力构成统一的 Logic Runtime。具体类型与 PoC 以 `v3/effect-poc` 下代码为准。
+> 本文档描述 Logic Intent (Behavior) 的运行时实现。实现层以 **Store / Logic / Flow** 三大运行时原语为基础，结合 `Control`、`Effect.Service`、`Config` 等能力构成统一的 Logic Runtime。具体类型以 `@logix/core`（`packages/logix-core/src`）为准，PoC 以 `examples/logix` 为准。
 
 ## 1. 核心理念：One Logic, Any Runtime
 
@@ -25,7 +25,7 @@ Logic Intent 的 Impl 层是基于 Effect 的 **Bound API (`$`) 与 `Flow` API**
 
 - `Logix Flow`：特指前端 Logix Engine 内部的时间轴 / 并发原语集合，即 `runtime-logix/core/03-logic-and-flow.md` 中的 `Flow.Api`（`fromAction / fromState / debounce / run*` 等）。代码层面通过 `flow.*` 命名空间访问。
 - `Effect Flow Runtime`：特指运行在 BFF / Server 侧的 Effect 驱动业务流程运行时（例如 `.flow.ts` 中编排的跨系统长流程）。为了避免歧义，后续文档中更倾向使用 **Flow Runtime** 或 **ServerFlow Runtime** 来称呼它，而不直接写 `Flow`。
-- `Flow DSL`：指 YAML/JSON 级别的编排描述（参见 `v1/08-flow-dsl-and-ast.md`），主要用于 Flow 结构的抽象表达，便于 Intent 与工具链进行结构化对齐。
+- `Flow DSL`：指 YAML/JSON 级别的编排描述（历史概念），用于 Flow 结构的抽象表达，便于 Intent 与工具链进行结构化对齐。
 
 后续涉及“Flow”的文档应显式使用上述术语之一，并在首次出现时指明是 `Logix Flow` 还是 `Flow Runtime`，避免再出现混用。
 

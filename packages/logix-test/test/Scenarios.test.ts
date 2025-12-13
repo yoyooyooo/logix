@@ -26,32 +26,29 @@ const ToggleModule = Logix.Module.make("ToggleModule", {
 const ToggleLogic = ToggleModule.logic<ToggleService>((api) =>
   Effect.gen(function* () {
     yield* api.onAction("toggle").run((action) =>
-      Logix.Logic.secure(
-        Effect.gen(function* () {
-          const { id, value } = action.payload
+      Effect.gen(function* () {
+        const { id, value } = action.payload
 
-          // Optimistic update
-          yield* api.state.update((s) => ({
-            ...s,
-            flags: { ...s.flags, [id]: value },
-          }))
+        // Optimistic update
+        yield* api.state.update((s) => ({
+          ...s,
+          flags: { ...s.flags, [id]: value },
+        }))
 
-          const service = yield* ToggleServiceTag
+        const service = yield* ToggleServiceTag
 
-          // Sync with server, rollback on failure
-          yield* service
-            .sync(id, value)
-            .pipe(
-              Effect.catchAll(() =>
-                api.state.update((s) => ({
-                  ...s,
-                  flags: { ...s.flags, [id]: !value },
-                })),
-              ),
-            )
-        }),
-        { name: "toggle" },
-      ),
+        // Sync with server, rollback on failure
+        yield* service
+          .sync(id, value)
+          .pipe(
+            Effect.catchAll(() =>
+              api.state.update((s) => ({
+                ...s,
+                flags: { ...s.flags, [id]: !value },
+              })),
+            ),
+          )
+      }),
     )
   }),
 )
@@ -120,26 +117,23 @@ const TaskLogic = TaskModule.logic((api) =>
     yield* Effect.all(
       [
         api.onAction("start").run(() =>
-          Logix.Logic.secure(
-            Effect.gen(function* () {
-              yield* api.state.update((s) => ({
-                ...s,
-                status: "PENDING",
-              }))
+          Effect.gen(function* () {
+            yield* api.state.update((s) => ({
+              ...s,
+              status: "PENDING",
+            }))
 
-              // Poll until status becomes DONE
-              yield* Effect.repeat(
-                Effect.gen(function* () {
-                  const current = yield* api.state.read
-                  return current.status === "DONE"
-                }),
-                Schedule.recurWhile((done: boolean) => !done).pipe(
-                  Schedule.addDelay(() => "10 millis"),
-                ),
-              )
-            }),
-            { name: "poll" },
-          ),
+            // Poll until status becomes DONE
+            yield* Effect.repeat(
+              Effect.gen(function* () {
+                const current = yield* api.state.read
+                return current.status === "DONE"
+              }),
+              Schedule.recurWhile((done: boolean) => !done).pipe(
+                Schedule.addDelay(() => "10 millis"),
+              ),
+            )
+          }),
         ),
         api.onAction("externalDone").run(() =>
           api.state.update((s) => ({ ...s, status: "DONE" })),
@@ -168,20 +162,17 @@ const BatchModule = Logix.Module.make("BatchModule", {
 const BatchLogic = BatchModule.logic((api) =>
   Effect.gen(function* () {
     yield* api.onAction("processAll").run(() =>
-      Logix.Logic.secure(
-        Effect.gen(function* () {
-          const state = yield* api.state.read
-          for (const item of state.items) {
-            // 模拟异步工作，这里要依赖 TestClock/Effect.sleep 的虚拟时间能力
-            yield* Effect.sleep("5 millis")
-            yield* api.state.update((s) => ({
-              ...s,
-              processed: [...s.processed, item],
-            }))
-          }
-        }),
-        { name: "batch" },
-      ),
+      Effect.gen(function* () {
+        const state = yield* api.state.read
+        for (const item of state.items) {
+          // 模拟异步工作，这里要依赖 TestClock/Effect.sleep 的虚拟时间能力
+          yield* Effect.sleep("5 millis")
+          yield* api.state.update((s) => ({
+            ...s,
+            processed: [...s.processed, item],
+          }))
+        }
+      }),
     )
   }),
 )
@@ -235,40 +226,37 @@ const BulkLogic = BulkModule.logic((api) =>
     yield* Effect.all(
       [
         api.onAction("bulk/run").runExhaust((_) =>
-          Logix.Logic.secure(
-            Effect.gen(function* () {
-              const current = yield* api.state.read
-              const selection = yield* api.use(SelectionServiceTag)
-              const bulk = yield* api.use(BulkOperationServiceTag)
-              const notify = yield* api.use(NotificationServiceTag)
+          Effect.gen(function* () {
+            const current = yield* api.state.read
+            const selection = yield* api.use(SelectionServiceTag)
+            const bulk = yield* api.use(BulkOperationServiceTag)
+            const notify = yield* api.use(NotificationServiceTag)
 
-              const ids = yield* selection.getSelectedIds()
+            const ids = yield* selection.getSelectedIds()
 
-              if (ids.length === 0) {
-                yield* notify.info("请先选择记录")
-                return
-              }
+            if (ids.length === 0) {
+              yield* notify.info("请先选择记录")
+              return
+            }
 
-              // 模拟失败场景：operation === "fail" 时抛错并通知
-              if (current.operation === "fail") {
-                yield* notify.error("批量操作失败：fail for demo")
-                return
-              }
+            // 模拟失败场景：operation === "fail" 时抛错并通知
+            if (current.operation === "fail") {
+              yield* notify.error("批量操作失败：fail for demo")
+              return
+            }
 
-              yield* bulk.applyToMany({
-                ids: Array.from(ids),
-                operation: current.operation,
-              })
+            yield* bulk.applyToMany({
+              ids: Array.from(ids),
+              operation: current.operation,
+            })
 
-              const count = ids.length
-              yield* api.state.update((prev) => ({
-                ...prev,
-                lastCount: count,
-                lastMessage: `本次 ${prev.operation} 作用于 ${count} 条记录`,
-              }))
-            }),
-            { name: "bulk.run" },
-          ),
+            const count = ids.length
+            yield* api.state.update((prev) => ({
+              ...prev,
+              lastCount: count,
+              lastMessage: `本次 ${prev.operation} 作用于 ${count} 条记录`,
+            }))
+          }),
         ),
         api.onAction("bulk/resetMessage").run((_) =>
           api.state.update((prev) => ({
@@ -302,13 +290,10 @@ const DerivedStateLogic = DerivedStateModule.logic((api) =>
     yield* Effect.all(
       [
         api.onAction("setResults").run((action) =>
-          Logix.Logic.secure(
-            api.state.update((prev) => ({
-              ...prev,
-              results: action.payload,
-            })),
-            { name: "derived.setResults" },
-          ),
+          api.state.update((prev) => ({
+            ...prev,
+            results: action.payload,
+          })),
         ),
         api
           .onState((s) => s.results.length)
@@ -420,7 +405,7 @@ const SearchLogic = SearchModule.logic(($) =>
     // 外部 dispatch setKeyword → keyword 变化 → debounce + runLatest 搜索
     yield* debouncedValidKeyword$.pipe(
       $.flow.runLatest(
-        Logix.Logic.secure(runSearch, { name: "search.runSearch" }),
+        runSearch,
       ),
     )
   }),

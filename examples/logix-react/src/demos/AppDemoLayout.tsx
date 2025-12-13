@@ -1,10 +1,9 @@
 import React from 'react'
-import { Effect, Layer, Schema } from 'effect'
+import { Effect, Schema } from 'effect'
 import * as Module from '@logix/core/Module'
 import * as Runtime from '@logix/core/Runtime'
 import * as Debug from '@logix/core/Debug'
 import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
-import { devtoolsLayer } from '@logix/devtools-react'
 
 // 一个基于 Logix Runtime 的简单示例：单模块计数器应用
 
@@ -47,9 +46,9 @@ const AppCounterImpl = AppCounterModule.implement({
 
 const appRuntime = Runtime.make(AppCounterImpl, {
   // 应用级 Runtime：以 AppCounterImpl 作为 Root ModuleImpl 构建一颗 Runtime，
-  // 并通过 label + devtoolsLayer 启用 DevTools 观测。
+  // 并通过 devtools 选项一键启用 DevTools 观测。
   label: 'AppDemoRuntime',
-  layer: devtoolsLayer,
+  devtools: true,
 })
 
 const AppCounterView: React.FC = () => {

@@ -1,20 +1,24 @@
 <!--
 Sync Impact Report
-- Version change: - → 1.0.0
-- Modified principles: 首次从模板占位符落地为具体原则（I–V）
+- Version change: 1.1.0 → 1.2.0
+- Modified principles:
+  - Runtime & Codebase Constraints：
+    - 新增「Devtools UI 与依赖约束」小节，明确 Devtools 包内部可使用 Tailwind 等 UI 栈，
+      但业务项目需通过 @source 编译本包，避免将 Tailwind 变成隐性全局依赖；
+    - 新增「Devtools 组件复杂度与状态管理约束」小节，要求 Devtools UI 组件主要承载渲染，
+      复杂状态与副作用由 Logix Runtime 管理，并对组件文件行数给出软/硬上限。
 - Added sections:
-  - 运行时与仓库约束（Runtime & Codebase Constraints）
-  - Spec-Driven 开发流程与质量门槛
+  - 无（均在既有 Runtime & Codebase Constraints 下新增小节）
 - Removed sections: 无
 - Templates:
-  - ✅ .specify/templates/plan-template.md（Constitution Check 门槛与本宪章对齐）
+  - ✅ .specify/templates/plan-template.md（已复核，无需修改）
   - ✅ .specify/templates/spec-template.md（已复核，无需修改）
-  - ✅ .specify/templates/tasks-template.md（补充 logix-* 包测试约定说明）
+  - ✅ .specify/templates/tasks-template.md（已复核，无需修改）
   - ✅ .specify/templates/agent-file-template.md（已复核，无需修改）
   - ✅ .specify/templates/checklist-template.md（已复核，无需修改）
   - ⚠ .specify/templates/commands/*（当前仓库中不存在该目录，如后续添加需按本宪章补充说明）
 - Runtime guidance:
-  - ✅ README.md（与“文档分层 / 代码主线”原则一致，无需修改）
+  - ✅ README.md（与 Devtools UI/Tailwind/组件复杂度约束不冲突，无需修改）
 - Deferred TODOs: 无
 -->
 
@@ -102,6 +106,39 @@ Sync Impact Report
   目标运行时为 Node.js 20+ 与现代浏览器。
 - 运行时代码 MUST 依赖 `effect` v3 系列库；禁止混用旧版 `@effect-ts/*`
   或其他效果系统作为等价替代。
+
+**Devtools UI 与依赖约束**
+
+- Devtools 包（例如 `packages/logix-devtools-react`） MAY 在内部使用
+  Tailwind CSS、shadcn/ui、Radix UI、Recharts 等 UI 依赖；这些依赖视为
+  Devtools 专用栈，不得反向要求业务项目采用相同 UI 技术栈。
+- 业务项目在接入 Devtools 能力时 SHOULD 通过「@source 编译本包」
+  的方式使用源码（TS/JS）而非预构建 UMD/Bundled 产物，以便沿用自身的
+  构建配置（如 PostCSS/Tailwind/主题系统）并获得更好的 Tree-Shaking。
+- 为避免 Tailwind 成为业务项目的隐性全局依赖，Devtools 包 MUST
+  将 Tailwind 使用限制在自身作用域内（例如通过独立入口、样式前缀或局部样式），
+  不得要求业务应用在全局注入 Devtools 专用的 Tailwind 基础设施。
+- 如对 Devtools UI 栈进行重大调整（迁移 UI 库、拆分样式运行时等），MUST
+  在对应特性的 `specs/[###-feature]/plan.md` / `spec.md` 中显式记录，并在
+  `apps/docs` 的 Devtools 章节中同步更新使用说明。
+
+**Devtools 组件复杂度与状态管理约束**
+
+- `packages/logix-devtools-react` 中的 React 组件（UI 层） SHOULD 视为“纯渲染组件”：
+  - 业务状态与副作用 MUST 由 Logix Module/Runtime 管理，通过 props 与 action 回调
+    与 UI 组件交互；
+  - 组件内部 SHOULD 仅使用最小化的 React hooks（如 `useId` / `useMemo` /
+    `useCallback` / 为布局测量所需的少量 `useEffect`），SHOULD NOT 在 UI 层直接
+    通过 `useState` / `useReducer` 维护跨组件共享的业务状态。
+- Devtools UI 组件文件（`.tsx`）的复杂度约束：
+  - 当单文件总行数超过 ~300 行时，视为预警：作者或 Agent SHOULD 评估是否需要将
+    业务逻辑下沉到 Logix 层或拆分为子组件；
+  - 当单文件总行数超过 ~500 行时 MUST 进行拆解，不得继续在同一文件中累积逻辑与
+    渲染结构；
+  - 建议在 CI 中通过脚本或 lint 规则对 `packages/logix-devtools-react/src/ui/**`
+    做文件行数检查，将 >300 行标记为 warning、>500 行标记为 error。
+- 该约束优先适用于 Devtools UI 与后续可能新增的 `@logix-devtools/*` 系列包；
+  对业务示例与 apps/docs UI 层同样推荐遵守，但不作为强制门槛。
 
 **logix-core 目录结构铁律**
 
@@ -231,4 +268,4 @@ Sync Impact Report
 - 当发现长期偏离本宪章的实现时，团队与 Agent SHOULD
   共同判断是「修宪」还是「还债」，并通过 ADR / plan.md 记录决策。
 
-**Version**: 1.0.0 | **Ratified**: 2025-12-10 | **Last Amended**: 2025-12-10
+**Version**: 1.2.0 | **Ratified**: 2025-12-10 | **Last Amended**: 2025-12-11

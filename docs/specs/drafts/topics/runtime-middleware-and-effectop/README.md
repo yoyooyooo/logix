@@ -42,7 +42,7 @@ related:
 
 - 具体的 DevTools / Studio UI 形态（时间线、Galaxy 图、Console 等），这些放在 `devtools-and-studio`；  
 - 具体某个业务域的 Policy 规则内容（例如订单风控策略），这里只定义 Guard 的挂载方式与接口；  
-- 旧有 `Logic.secure` 等 API 的迁移细节——它们会在后续整理中被“收口”到本 Topic 提供的统一骨架之下。
+- 早期 Logic 安全包装类 API 的迁移细节——它们会在后续整理中被“收口”到本 Topic 提供的统一骨架之下。
 
 ## 2. 核心思路概览
 
@@ -102,7 +102,7 @@ related:
 后续可能补充：
 
 - `02-middleware-config-and-registry.md`：RuntimeConfig / ModuleMeta / FlowOptions 的配置模型与示例；  
-- `03-migration-from-legacy-secure-and-debugsink.md`：如何将旧有 `Logic.secure` / DebugSink 实现迁移到 `EffectOp` 总线；  
+- `03-migration-from-legacy-secure-and-debugsink.md`：如何将早期安全包装 API / DebugSink 实现迁移到 `EffectOp` 总线；  
 - `04-advanced-boundaries-and-performance.md`：复杂边界组合（如多 Runtime / 多租户）与性能考量。
 
 本 Topic 当前状态仍为 **draft / active**，未来可将稳定结论前移至：

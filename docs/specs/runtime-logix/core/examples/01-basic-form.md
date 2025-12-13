@@ -2,7 +2,7 @@
 
 > **Scenario**: 用户注册表单
 > **Features**: 字段联动、异步校验、多字段约束
-> **Note**: 本示例是 v3 Effect-Native Logix API 的 **黄金标准实现**。所有新业务逻辑都应以此为范本，它严格对齐 `logix-v3-core.ts` 中的 `Logix.ModuleShape` + Module-first + Bound API `$` + Fluent Intent（`$.on*().update/mutate/run*`）范式。
+> **Note**: 本示例是 v3 Effect-Native Logix API 的 **黄金标准实现**。所有新业务逻辑都应以此为范本，它对齐 `@logix/core` 的 `Logix.ModuleShape` + Module-first + Bound API `$` + Fluent Intent（`$.on*().update/mutate/run*`）范式。
 
 ## Schema Definition
 

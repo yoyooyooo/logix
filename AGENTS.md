@@ -1,5 +1,6 @@
 当前仓库仍处在积极演进阶段，可以不计成本地重构与试验，不需要考虑向历史版本兼容。
 任何一个地方都可以为了追求完美而推翻，拒绝向后兼容，勇敢向前兼容。
+当一个新的规划和已有实现产生交集甚至冲突时，需要寻求新的完美点，而不是坚持向后兼容。
 
 ## Workflow
 
@@ -55,10 +56,10 @@
   - IMD 组件库：`/Users/yoyo/projj/git.imile.com/ux/imd`（UI/Pro Pattern 与 registry）；
   - best-practice 仓库：`/Users/yoyo/projj/git.imile.com/ux/best-practice`（文件/状态/服务层规范与代码片段）。
 - 本仓库结构：
-  - `docs/specs/intent-driven-ai-coding/v1`：早期方案与 PoC（已精简为历史快照，仅用于对照 v3）；
-  - `docs/specs/intent-driven-ai-coding/v2`：六层 Intent 模型的快照与 ADR，对应 v2 阶段的设计记录；
-  - `docs/specs/intent-driven-ai-coding/v3`：当前主线（UI/Logic/Domain 三位一体 + Flow/Logix 设计与运行时契约）；
-  - `packages/effect-runtime-poc`：真实依赖 `effect` 的运行时子包，按场景拆分 Env/Flow。
+  - `docs/specs/intent-driven-ai-coding/v2`：六层 Intent 模型的快照与 ADR，仅用于对照 v3；
+  - `docs/specs/intent-driven-ai-coding/v3`：当前主线（UI/Logic/Module 三位一体 + Flow/Logix 设计与运行时契约）；
+  - `packages/logix-core` / `packages/logix-react` / `packages/logix-sandbox`：Logix Runtime 主线实现；
+  - `examples/logix`：可运行的 PoC 场景与 Pattern（用于验证与沉淀写法）。
 
 ## Effect-TS 使用与纠错模块（给模型/开发者的小抄）
 
@@ -153,6 +154,35 @@
     - 先跑 `pnpm typecheck`，确认类型层面无红线；
     - 再跑 `pnpm lint`，确认 ESLint（含 Effect 规则）无新告警或告警在可接受范围内，再交接到后续任务。
 
+## 测试栈与 @effect/vitest 约定（logix-\*）
+
+- 总体原则：
+  - Vitest 仍作为统一的测试 runner；在所有 Effect-heavy 场景中，`@effect/vitest` 视为一等公民测试 API。
+  - 能用“自动挡”（`it.effect` / `it.scoped` / `it.layer`）就不用到处手写 `Effect.runPromise` + `Effect.provide`；极端/特殊场景可以退回“手动挡”，但应是少数。
+
+- 分包约定：
+  - `packages/logix-core`：
+    - 默认从 `@effect/vitest` 导入 `describe` / `it` / `expect`。
+    - 涉及 Runtime / Layer / 并发 / 时间语义的测试（如 ModuleRuntime / Runtime.make / FlowRuntime / Lifecycle / Debug 等），优先使用 `it.effect` / `it.scoped` / `it.layer` 管理环境与 Scope，禁止在这类用例里散落手写 `Effect.runPromise(...)`。
+    - 纯同步、纯数据结构或简单 helper（如部分 internal 工具）的测试，可以继续写成普通 Vitest 风格（测试体返回 `void`/`Promise`，必要时局部使用 `Effect.runPromise`），不强制包上一层 `it.effect`。
+  - `packages/logix-test`：
+    - 测试与示例一律按“测试即 Effect”写法组织，默认 runner 是 `@effect/vitest` 的 `it.effect` / `it.scoped`，`runTest` 仅在非 Vitest 环境或过渡脚本中使用。
+    - 保持拓扑：`@logix/test` 可以依赖 `@logix/core`，但 core/runtime 自身测试不得反向依赖 `@logix/test`（避免循环依赖），与 `docs/specs/runtime-logix/test/01-test-kit-design.md` 的说明保持一致。
+  - `packages/logix-sandbox`：
+    - 视为 Runtime Alignment Lab 基础设施的一部分，内部大量使用 Effect / Layer / Stream，新增或重构测试时优先迁向 `@effect/vitest` 风格。
+    - 推荐模式：用 `it.effect` + `it.layer(SandboxClientLayer)`/专用测试 Layer，代替在每个用例中手动 `Effect.runPromise(program.pipe(Effect.provide(layer)))`。
+  - `packages/logix-react`：
+    - React DOM 行为测试（基于 Testing Library、jsdom/happy-dom 的组件交互）可以继续使用 `vitest` 的 `describe` / `it`，在内部通过 Runtime 的 `runPromise` 触发 Effect。
+    - 纯 Runtime / Layer / Config 行为测试（不涉及 DOM）的部分，优先使用 `@effect/vitest`（`it.effect` / `it.scoped` 等），减少样板式的 `ManagedRuntime.make` + `runPromise` 手工编排。
+  - `packages/logix-devtools-react`：
+    - 以 React Devtools UI 行为为主，测试栈以 jsdom + Testing Library + 普通 Vitest 为默认；只有在需要精细控制 Effect 时间线或 Debug Runtime 行为时，才引入 `@effect/vitest` 辅助。
+  - `packages/logix-data`：
+    - 已标记为 Archived PoC，新工作不再投入；如确需补充测试，可按普通 Vitest + 轻量 Effect 用法处理，不再额外演进其 `@effect/vitest` 形态。
+
+- 例外与兜底：
+  - 即使在上述约定下，如果某些“贴近底层实现”的测试（如紧贴 Promise 的错误语义、与第三方库交互的边界）更适合直接写 `Effect.runPromise` 或 `runtime.runPromise`，可以在单个用例中退回“手动挡”；但要保持局部、清晰，避免把 Runner 逻辑散落到整个测试文件。
+  - 当新增涉及 Logix Runtime / Layer / 并发控制 / TestClock 的测试场景时，如不确定如何选型，默认先考虑 `@effect/vitest`，再看是否有必要降级为纯 Vitest。
+
 ## 文档编写规范 （apps/docs）
 
 - **渐进式示例展示 (Progressive Examples)**
@@ -190,17 +220,15 @@
 When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.
 
 How to use skills:
-
 - Invoke: Bash("openskills read <skill-name>")
 - The skill content will load with detailed instructions on how to complete the task
 - Base directory provided in output for resolving bundled resources (references/, scripts/, assets/)
 
 Usage notes:
-
 - Only use skills listed in <available_skills> below
 - Do not invoke a skill that is already loaded in your context
 - Each skill invocation is stateless
-  </usage>
+</usage>
 
 <available_skills>
 
@@ -211,20 +239,8 @@ Usage notes:
 </skill>
 
 <skill>
-<name>frontend-project-init</name>
-<description>用于在 intent-flow 仓库内初始化前端项目，基于内置模板（首个为 Vite + Logix Sandbox 空壳）快速生成可运行的前端工程骨架。</description>
-<location>project</location>
-</skill>
-
-<skill>
-<name>logix-llms</name>
-<description>在 intent-flow 仓库中编写或修改基于 @logix/* 的代码时，为 LLM 提供 Logix v3（@logix/core/@logix/react/@logix/sandbox/@logix-devtools-react）用法速查与示例入口，避免每次从源码冷启动扫一遍。</description>
-<location>project</location>
-</skill>
-
-<skill>
 <name>project-guide</name>
-<description>当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/平台规划演进、典型场景 PoC 或日常功能开发时，加载本 skill 以获得“docs/specs 为主事实源”的项目导航、目录索引与施工流程。</description>
+<description>当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/平台规划演进、典型场景 PoC 或日常功能开发时，加载本 skill 以获得“docs/specs 为主事实源”的最短导航。</description>
 <location>project</location>
 </skill>
 
@@ -235,23 +251,17 @@ Usage notes:
 </skill>
 
 </available_skills>
-
 <!-- SKILLS_TABLE_END -->
 
 </skills_system>
 
 ## Active Technologies
-- TypeScript 5.x（ESM），Node.js 20+，React 18，effect v3（已确定） + `@logix/core`、`@logix/react`、`@logix-devtools-react`、`effect`、React Testing Library（已确定） (003-trait-txn-lifecycle)
-- N/A（仅内存状态与 Devtools 视图模型，不持久化） (003-trait-txn-lifecycle)
-
-- TypeScript 5.x + React 18 + Node.js 20（前端 Devtools 面板 + Runtime 内核协调） + `effect` v3、`@logix/core`、`@logix/react`、`@logix/devtools-react`、浏览器端 React 渲染栈 (003-trait-txn-lifecycle)
-- N/A（仅内存中的 Runtime 状态与 Devtools 视图模型，不接入持久化存储） (003-trait-txn-lifecycle)
-
-- TypeScript 5.x（ESM 输出，面向 Node.js 20+ 与现代浏览器） + `effect` v3、Logix Runtime 核心（`@logix/core` / `docs/specs/runtime-logix` 契约） (001-implement-logix-data)
-- N/A（仅管理内存中的模块状态与字段能力，不直接接入外部存储） (001-implement-logix-data)
-- TypeScript 5.x（ESM 输出）+ Node.js 20+，浏览器侧面向现代浏览器（Chromium/Firefox/Safari 最新两个大版本） + `effect` v3、`@logix/core`、`@logix/react`、`@logix-devtools-react`、Vitest、pnpm workspace (001-module-traits-runtime)
-- N/A（仅管理内存中的 Module Runtime / Devtools 状态，不直接接入外部存储） (001-module-traits-runtime)
+- TypeScript（pnpm workspace / monorepo） + `effect` v3、`@logix/core` / `@logix/react` / `@logix/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3) (005-unify-observability-protocol)
+- N/A（证据包导出/导入以文件或剪贴板为主；运行中以内存 ring buffer / 聚合快照为主） (005-unify-observability-protocol)
+- TypeScript 5.8.2（pnpm workspace） + effect v3（`effect`）、Vitest（含 `@effect/vitest` 风格用例）、React（`@logix/react` 适配层）、Vite（示例/开发） (007-unify-trait-system)
+- N/A（状态以内存为主；Query/Resource 通过可替换引擎缓存） (007-unify-trait-system)
+- TypeScript 5.x（ESM），Node.js 20+ + `effect` v3、`@logix/core`、`@logix/react`、`@logix-devtools-react`、（Query 外部引擎）`@tanstack/query-core` (007-unify-trait-system)
+- N/A（内存状态 + 可回放事件日志；不要求持久化） (007-unify-trait-system)
 
 ## Recent Changes
-
-- 001-implement-logix-data: Added TypeScript 5.x（ESM 输出，面向 Node.js 20+ 与现代浏览器） + `effect` v3、Logix Runtime 核心（`@logix/core` / `docs/specs/runtime-logix` 契约）
+- 005-unify-observability-protocol: Added TypeScript（pnpm workspace / monorepo） + `effect` v3、`@logix/core` / `@logix/react` / `@logix/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3)

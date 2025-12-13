@@ -1,4 +1,6 @@
 当前仓库仍处在积极演进阶段，可以不计成本地重构与试验，不需要考虑向历史版本兼容。
+任何一个地方都可以为了追求完美而推翻，拒绝向后兼容，勇敢向前兼容。
+当一个新的规划和已有实现产生交集甚至冲突时，需要寻求新的完美点，而不是坚持向后兼容。
 
 ## Workflow
 
@@ -17,12 +19,19 @@
 - 以上两条规划已经在 v3 / Logix 文档中收敛，任何新决策优先更新这些文档，再落到代码和 PoC。
 - 当用户提及「草稿」、「draft」，都认为是在说 docs/specs/drafts，如果没有加载过 drafts-tiered-system skill，执行 `openskills read drafts-tiered-system` 加载
 
+### Spec-Driven & Playground 对齐（给 Agent 的简版）
+
+- SDD 映射与顶层方法论：`docs/specs/intent-driven-ai-coding/v3/concepts/00-sdd-mapping.md`，明确「SPECIFY/PLAN/TASKS/IMPLEMENT ↔ L0–L3/Intent/Logix/Runtime Alignment Lab」的关系。
+- Playground / Sandbox / Alignment Lab 术语与职责：统一以 `v3/99-glossary-and-ssot.md` 中的定义为准（含 Universal Spy / Semantic UI Mock 的全称与简称）。
+- 当改动 `@logix/sandbox` 或 `docs/specs/drafts/topics/sandbox-runtime/*` 时，默认把它视为 **Playground/Runtime Alignment Lab 的基础设施**，同时参考 `65-playground-as-executable-spec.md`，避免只做“代码 Runner”而丢掉 Spec/Intent 对齐视角。
+
 ## 仓库愿景与决策原则（当前）
 
 - **北极星**：面向真实业务仓库，跑通一条「Intent → Flow/Effect/Logix → 代码 → 上线与长期演进」的可回放链路，一切规划以能否支撑最终产品为准。
 - **LLM 一等公民**：DSL / Schema / Flow / 配置的设计优先考虑“LLM 易生成、易校验、易对比”，假定主要维护者是 LLM + 工具链，人类只做审阅与少量 override。
 - **引擎优先**：先把 Intent/Flow/Logix/Effect 的契约和幂等出码引擎打磨稳定，再考虑 Studio/画布等交互体验；遇到冲突，一律保证引擎正确、可回放、可追踪。
 - **Effect 作为统一运行时**：默认使用 `effect`（effect-ts v3 系列）承载行为与流程执行，出码后的业务流程应以 `.flow.ts` + Effect/Logix 程序为落点；其他运行时只作为 PoC，而不是第二套正式栈。
+- **Logix dogfooding（简称 Logix fooding）**：本仓所有上层应用（如 `examples/*`、`packages/logix-devtools-react` 等）在可行范围内，一律以 Logix Runtime（Flow/Effect/Logix）作为主要运行时与状态管理方式，不再引入第二套 ad-hoc 状态机或流程引擎，以便在真实场景中持续“吃自己狗粮”、验证和打磨 Logix 本身。
 - **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/specs/intent-driven-ai-coding/v3` 与 `docs/specs/runtime-logix` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
   - 对于已经确定、但实现细节容易跑偏的技术决策（例如 Store.Spec / Universal Bound API / Fluent DSL / Parser 约束），**需要同时在实现备忘中固化**：
     - 平台侧：`docs/specs/intent-driven-ai-coding/v3/platform/impl/README.md`；
@@ -47,10 +56,10 @@
   - IMD 组件库：`/Users/yoyo/projj/git.imile.com/ux/imd`（UI/Pro Pattern 与 registry）；
   - best-practice 仓库：`/Users/yoyo/projj/git.imile.com/ux/best-practice`（文件/状态/服务层规范与代码片段）。
 - 本仓库结构：
-  - `docs/specs/intent-driven-ai-coding/v1`：早期方案与 PoC（已精简为历史快照，仅用于对照 v3）；
-  - `docs/specs/intent-driven-ai-coding/v2`：六层 Intent 模型的快照与 ADR，对应 v2 阶段的设计记录；
-  - `docs/specs/intent-driven-ai-coding/v3`：当前主线（UI/Logic/Domain 三位一体 + Flow/Logix 设计与运行时契约）；
-  - `packages/effect-runtime-poc`：真实依赖 `effect` 的运行时子包，按场景拆分 Env/Flow。
+  - `docs/specs/intent-driven-ai-coding/v2`：六层 Intent 模型的快照与 ADR，仅用于对照 v3；
+  - `docs/specs/intent-driven-ai-coding/v3`：当前主线（UI/Logic/Module 三位一体 + Flow/Logix 设计与运行时契约）；
+  - `packages/logix-core` / `packages/logix-react` / `packages/logix-sandbox`：Logix Runtime 主线实现；
+  - `examples/logix`：可运行的 PoC 场景与 Pattern（用于验证与沉淀写法）。
 
 ## Effect-TS 使用与纠错模块（给模型/开发者的小抄）
 
@@ -145,6 +154,35 @@
     - 先跑 `pnpm typecheck`，确认类型层面无红线；
     - 再跑 `pnpm lint`，确认 ESLint（含 Effect 规则）无新告警或告警在可接受范围内，再交接到后续任务。
 
+## 测试栈与 @effect/vitest 约定（logix-\*）
+
+- 总体原则：
+  - Vitest 仍作为统一的测试 runner；在所有 Effect-heavy 场景中，`@effect/vitest` 视为一等公民测试 API。
+  - 能用“自动挡”（`it.effect` / `it.scoped` / `it.layer`）就不用到处手写 `Effect.runPromise` + `Effect.provide`；极端/特殊场景可以退回“手动挡”，但应是少数。
+
+- 分包约定：
+  - `packages/logix-core`：
+    - 默认从 `@effect/vitest` 导入 `describe` / `it` / `expect`。
+    - 涉及 Runtime / Layer / 并发 / 时间语义的测试（如 ModuleRuntime / Runtime.make / FlowRuntime / Lifecycle / Debug 等），优先使用 `it.effect` / `it.scoped` / `it.layer` 管理环境与 Scope，禁止在这类用例里散落手写 `Effect.runPromise(...)`。
+    - 纯同步、纯数据结构或简单 helper（如部分 internal 工具）的测试，可以继续写成普通 Vitest 风格（测试体返回 `void`/`Promise`，必要时局部使用 `Effect.runPromise`），不强制包上一层 `it.effect`。
+  - `packages/logix-test`：
+    - 测试与示例一律按“测试即 Effect”写法组织，默认 runner 是 `@effect/vitest` 的 `it.effect` / `it.scoped`，`runTest` 仅在非 Vitest 环境或过渡脚本中使用。
+    - 保持拓扑：`@logix/test` 可以依赖 `@logix/core`，但 core/runtime 自身测试不得反向依赖 `@logix/test`（避免循环依赖），与 `docs/specs/runtime-logix/test/01-test-kit-design.md` 的说明保持一致。
+  - `packages/logix-sandbox`：
+    - 视为 Runtime Alignment Lab 基础设施的一部分，内部大量使用 Effect / Layer / Stream，新增或重构测试时优先迁向 `@effect/vitest` 风格。
+    - 推荐模式：用 `it.effect` + `it.layer(SandboxClientLayer)`/专用测试 Layer，代替在每个用例中手动 `Effect.runPromise(program.pipe(Effect.provide(layer)))`。
+  - `packages/logix-react`：
+    - React DOM 行为测试（基于 Testing Library、jsdom/happy-dom 的组件交互）可以继续使用 `vitest` 的 `describe` / `it`，在内部通过 Runtime 的 `runPromise` 触发 Effect。
+    - 纯 Runtime / Layer / Config 行为测试（不涉及 DOM）的部分，优先使用 `@effect/vitest`（`it.effect` / `it.scoped` 等），减少样板式的 `ManagedRuntime.make` + `runPromise` 手工编排。
+  - `packages/logix-devtools-react`：
+    - 以 React Devtools UI 行为为主，测试栈以 jsdom + Testing Library + 普通 Vitest 为默认；只有在需要精细控制 Effect 时间线或 Debug Runtime 行为时，才引入 `@effect/vitest` 辅助。
+  - `packages/logix-data`：
+    - 已标记为 Archived PoC，新工作不再投入；如确需补充测试，可按普通 Vitest + 轻量 Effect 用法处理，不再额外演进其 `@effect/vitest` 形态。
+
+- 例外与兜底：
+  - 即使在上述约定下，如果某些“贴近底层实现”的测试（如紧贴 Promise 的错误语义、与第三方库交互的边界）更适合直接写 `Effect.runPromise` 或 `runtime.runPromise`，可以在单个用例中退回“手动挡”；但要保持局部、清晰，避免把 Runner 逻辑散落到整个测试文件。
+  - 当新增涉及 Logix Runtime / Layer / 并发控制 / TestClock 的测试场景时，如不确定如何选型，默认先考虑 `@effect/vitest`，再看是否有必要降级为纯 Vitest。
+
 ## 文档编写规范 （apps/docs）
 
 - **渐进式示例展示 (Progressive Examples)**
@@ -198,13 +236,13 @@ Usage notes:
 
 <skill>
 <name>drafts-tiered-system</name>
-<description>This skill should be used when managing the docs/specs/drafts L1–L9 tiered draft system in the intent-flow repository, including placing new drafts, refining and promoting drafts between levels, consolidating related drafts, and maintaining the drafts index.</description>
+<description>This skill should be used when managing a tiered L1–L9 draft system rooted at docs/specs/drafts in a repository, including placing new drafts, refining and promoting drafts between levels, consolidating related drafts, and maintaining a draft index document.</description>
 <location>project</location>
 </skill>
 
 <skill>
 <name>project-guide</name>
-<description>当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/平台规划演进、典型场景 PoC 或日常功能开发时，加载本 skill 以获得“docs/specs 为主事实源”的项目导航、目录索引与施工流程。</description>
+<description>当在 intent-flow 仓库内进行架构设计、v3 Intent/Runtime/平台规划演进、典型场景 PoC 或日常功能开发时，加载本 skill 以获得“docs/specs 为主事实源”的最短导航。</description>
 <location>project</location>
 </skill>
 
@@ -219,3 +257,12 @@ Usage notes:
 <!-- SKILLS_TABLE_END -->
 
 </skills_system>
+
+## Active Technologies
+
+- TypeScript（pnpm workspace / monorepo） + `effect` v3、`@logix/core` / `@logix/react` / `@logix/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3) (005-unify-observability-protocol)
+- N/A（证据包导出/导入以文件或剪贴板为主；运行中以内存 ring buffer / 聚合快照为主） (005-unify-observability-protocol)
+
+## Recent Changes
+
+- 005-unify-observability-protocol: Added TypeScript（pnpm workspace / monorepo） + `effect` v3、`@logix/core` / `@logix/react` / `@logix/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3)

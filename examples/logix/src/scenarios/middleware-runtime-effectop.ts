@@ -38,8 +38,8 @@ const CounterImpl = CounterModule.implement({
   logics: [CounterLogic],
 })
 
-// 使用 DebugLogger 作为 EffectOp 中间件，观察生命周期 / Action / State 事件
-const effectOpStack: Middleware.MiddlewareStack = Middleware.applyDebug([], {
+// 使用 withDebug 组合 DebugLogger + DebugObserver，观察生命周期 / Action / State 事件。
+const effectOpStack: Middleware.MiddlewareStack = Middleware.withDebug([], {
   logger: (op) => {
     // eslint-disable-next-line no-console
     console.log(
@@ -49,6 +49,7 @@ const effectOpStack: Middleware.MiddlewareStack = Middleware.applyDebug([], {
       `module=${op.meta?.moduleId ?? "-"}`,
     )
   },
+  observer: {}, // 使用默认观察配置，将 EffectOp 流桥接到 DebugSink（如有配置）
 })
 
 const runtime = Logix.Runtime.make(CounterImpl, {

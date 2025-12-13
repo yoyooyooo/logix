@@ -11,18 +11,18 @@
   - 三位一体 Intent 模型：`v3/02-intent-layers.md`；  
   - 资产与 Schema 映射：`v3/03-assets-and-schemas.md`；  
   - Runtime 家族与 Flow 执行：`v3/97-effect-runtime-and-flow-execution.md`。  
-- 如需回顾 v2 六层模型及其与 v3 的差异，可参考 `v2/02-intent-layers.md` 与 `v2/99-history-and-comparison.md`，但它们不再作为当前 Logix 设计的事实源。  
+- 如需回顾 v2 六层模型及其与 v3 的差异，可参考 `v2/00-architecture-decision-records.md` 与 `v2/99-history-and-comparison.md`，但它们不再作为当前 Logix 设计的事实源。  
 Logix 只定义“这些 Intent 如何在前端运行时中落地”为 Module 定义（State/Action Schema）、ModuleRuntime 配置（初始状态等）与 Logic 规则。
 
 ## 2. Intent 三维与 Logix 的关系
 
-参考 v3 文档中的三维 Intent 模型（UI / Logic / Domain），Logix 的覆盖范围可以概括为：
+参考 v3 文档中的三维 Intent 模型（UI / Logic / Module），Logix 的覆盖范围可以概括为：
 
 | Intent 维度 | Logix 角色 | 说明 |
 | :--- | :--- | :--- |
 | **UI Intent** | Inputs & State Consumer | UI Intent 决定界面结构与可交互部件，Logix 通过 State/Actions/Inputs 为这些组件提供数据与行为入口，但不关心具体布局细节。 |
-| **Logic Intent** | 运行时目标之一 | 当 `runtimeTarget = 'logix-engine'` 时，Logic Intent 中的 Flow DSL 会被编译为 Logix 的 Logic 规则；当目标为其他 Runtime（如 Effect Flow Runtime）时，Logix 只负责触发/展示结果。 |
-| **Domain Intent** | Schema + Services | Domain Intent 中的实体与服务契约映射为 Logix Module 的 `stateSchema` / `initialState` 以及注入 ModuleRuntime 的 `services`，决定状态结构与可用服务。 |
+| **Logic Intent** | 运行时目标之一 | 当 `runtimeTarget = 'logix-engine'` 时，Logic Intent 的实现以 `Module.logic(($)=>...)` 的 Fluent DSL（`$.onState/$.onAction/$.on + .update/.mutate/.run*`）为白盒入口，平台侧解析为 IntentRule/Graph；当目标为其他 Runtime 时，Logix 只负责触发/展示结果。 |
+| **Module Intent** | Schema + Services | Module Intent 中的实体与服务契约映射为 Logix Module 的 `stateSchema` / `initialState` 以及注入 Runtime 的服务 Layer，决定状态结构与可用服务。 |
 
 在 v2 的六层模型中：
 
@@ -30,7 +30,7 @@ Logix 只定义“这些 Intent 如何在前端运行时中落地”为 Module �
 - Code Structure Intent 不再被视为 Intent，而是由 Pattern / 模板层自动产出的工程细节。  
 这些历史概念如需回顾，可以用来理解 Logix 覆盖范围的由来，但不再约束当前 DSL 与 Schema 设计。
 
-Logix 视角只关心：某段 Behavior & Flow Intent 是否选择了 `logix-engine` 作为 `runtimeTarget`，以及哪些 Interaction / Data & State / Constraint 信息需要在前端运行时中被落实。
+Logix 视角只关心：某段 Logic Intent 是否选择了 `logix-engine` 作为 `runtimeTarget`，以及哪些约束信息需要在前端运行时中被落实。
 
 ## 3. `runtimeTarget = 'logix-engine'` 时的映射
 

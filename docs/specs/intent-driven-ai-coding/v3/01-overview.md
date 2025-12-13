@@ -82,6 +82,7 @@ version: 9 (Unified-API-Aligned)
 - `06-codegen-and-parser.md`：全双工引擎与锚点规范。
 - `97-effect-runtime-and-flow-execution.md`：Logic 意图的运行时实现。
 - `99-glossary-and-ssot.md`：跨层概念总览与术语表（Conceptual SSOT）。
+- `EVOLUTION_POLICY.md`：v3 快速演进策略（允许 breaking、收敛事实源与清理规则）。
 
 ## 7. 单一事实源与优先级（SSOT & Priority）
 
@@ -99,7 +100,7 @@ v3 规范仍在演进中，难免存在历史写法与新规划并存的情况�
      - `02-module-and-logic-api.md`：Module / Logic / Bound API `$` 与 Module-first 编程模型；
      - `03-logic-and-flow.md`：Logic / Flow / Intent L1/L2 API 形态与 Fluent DSL；
      - `06-platform-integration.md`：IntentRule IR 及平台集成规范。
-   - 当文档与代码存在不一致时，以 `v3/effect-poc/shared/logix-v3-core.ts` 中的类型定义为最终裁决，并随后回写修正文档。
+   - 当文档与代码存在不一致时，以 `@logix/core` 的导出类型为最终裁决（见 `packages/logix-core/src/index.ts`），并随后回写修正文档。
 
 3. **平台交互与资产体系（产品/UX 层）**
    - 以以下文档为平台侧 SSOT：
@@ -108,7 +109,7 @@ v3 规范仍在演进中，难免存在历史写法与新规划并存的情况�
    - 若平台交互设计与 Runtime/API 细节有冲突，优先保证 v3 Intent 模型与 Runtime 语义一致，然后再调整交互方案。
 
 4. **实现细节与 PoC**
-   - `v3/effect-poc` 下的代码示例（如 `shared/logix-v3-core.ts`、各 `scenarios/*.ts`）是当前实现的参考样例，但不等同于长期 API 设计承诺；
+   - `examples/logix` 下的场景与 Pattern（`src/scenarios/*`、`src/patterns/*`）是当前实现的参考样例，但不等同于长期 API 设计承诺；
    - 在演进过程中，PoC 可以先行试验新写法，再根据验证结果回写/调整上述规范文档。
 
 简言之，当遇到“多处不一致”的情况时，优先级排序为：

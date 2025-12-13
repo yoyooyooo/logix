@@ -2,7 +2,6 @@ import React from "react"
 import { Context, Effect, Layer, ManagedRuntime } from "effect"
 import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from "@logix/react"
 import * as Logix from "@logix/core"
-import { devtoolsLayer } from "@logix/devtools-react"
 import { StepCounterModule, StepCounterImpl } from "../modules/stepCounter"
 
 interface StepConfig {
@@ -17,7 +16,7 @@ const BigStepLayer = Layer.succeed(StepConfigTag, { step: 5 })
 const appRuntime = ManagedRuntime.make(
   Layer.mergeAll(
     Logix.Debug.runtimeLabel("LayerOverrideDemo"),
-    devtoolsLayer,
+    Logix.Debug.devtoolsHubLayer(),
     StepCounterImpl.layer,
   ),
 )

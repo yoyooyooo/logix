@@ -97,6 +97,32 @@
   - N:1 到 `StateTransaction`（当 `txnId` 存在时）；  
   - 与底层 Debug 事件（`Logix.Debug.Event`）之间应有可逆或可追溯映射，便于后续扩展更细粒度的诊断能力。
 
+### 1.6 TaskRunner / TaskExecution（长链路语法糖，后续演进）
+
+> Task Runner 是在保持“逻辑入口 = 事务边界”不变量不变的前提下，对“pending → IO → result”长链路的高层封装；属于 Bound/Flow 层的可选语法糖。
+
+- **TaskRunnerConfig**（每个 `run*Task` 方法的配置对象，高层抽象）：
+  - `pending?: Effect | (payload) => Effect` — 同步 pending 写入；只对被接受并启动的 task 执行，且始终通过独立的 pending 事务提交；  
+  - `effect: (payload) => Effect` — 真实 IO/异步任务；在事务外的 Fiber 中运行；  
+  - `success?: (result, payload) => Effect` — 成功写回；  
+  - `failure?: (errorOrCause, payload) => Effect` — 失败写回；  
+  - `origin?: { pending?: StateTxnOrigin; success?: StateTxnOrigin; failure?: StateTxnOrigin }` — 允许覆写三笔事务的 origin；  
+  - `priority?: number` — 预留字段，仅用于未来调度/观测排序，不改变事务边界（可选）。
+
+- **TaskExecution**（运行期内部视图，不对外持久化）：
+  - `taskId: number` — 在同一 IntentBuilder/实例内递增的任务序号，用于 latest guard；  
+  - `status: "pending" | "running" | "success" | "failure" | "interrupted"`；  
+  - `triggeredAt: number` / `finishedAt?: number`；  
+  - `payload: any` / `result?: any` / `error?: any`（运行期可选记录，仅 dev 下采集）。  
+
+- **默认 origin 约定**：
+  - pending 事务：`origin.kind = "task:pending"`，`origin.name` 默认为触发源（如 actionTag / fieldPath），可被 config 覆写；  
+  - success/failure 写回事务：默认 `origin.kind = "service-callback"`，`origin.name = "task:success" | "task:failure"`，可被 config 覆写。
+
+- **Relationships**:
+  - 1 个 `TaskExecution` 最多派生 3 笔 `StateTransaction`（pending / success / failure），且在单实例 txnQueue 中保持顺序；  
+  - `runLatestTask` 的旧 `TaskExecution` 在被中断或 guard 掉后不再派生写回事务。
+
 
 ## 2. Trait Blueprint & Lifecycle Entities
 
@@ -172,6 +198,124 @@
   - `durationMs: number`；
   - `patchCount: number`；
   - `traitTouchedNodeIds: string[]` — 本事务涉及的 TraitGraph 节点 ID 集合。
+
+### 3.4 DevtoolsOriginTimelineEntry（未来阶段，Origin-first 视图用）
+
+- **Description**: 业务开发者视角的全局时间线条目，用于在 Devtools 中按“逻辑入口 / 业务事件 / Devtools 操作”维度聚合多个模块/实例的状态事务。该实体仅存在于 Devtools 视图模型层，用于驱动 Origin-first Timeline 视图，不作为 Runtime 契约的一部分。  
+- **Key Fields**（草案，后续可按需要细化）：
+  - `originId: string` — Origin 唯一标识，可基于 StateTransaction.origin 或 Devtools 内部生成；  
+  - `timestamp: number` — 代表该 Origin 的时间（通常为首个相关 StateTransaction.startedAt 或首个相关事件的 timestamp）；  
+  - `origin: { kind: string; name?: string; details?: any }` — 逻辑入口 / 业务事件 / Devtools 操作的描述，例如 `"action"` / `"service-callback"` / `"devtools"`；  
+  - `label: string` — 用于 Timeline 展示的简要文本，如 `"click: save"` / `"service: profileLoaded"` / `"devtools: timeTravel to Txn#42 AFTER"`；  
+  - `moduleInstanceSummaries: Array<{
+      moduleId: string;
+      instanceId: string;
+      txnIds: string[];
+    }>` — 本 Origin 下触达的模块实例与对应的 StateTransaction 列表，用于在 Origin detail 面板中展开事务视图。  
+- **Relationships**:
+  - 派生自一组 StateTransaction（即 origin 相同的一批事务），由 Devtools VM 层聚合生成；  
+  - 不直接持久化或对外暴露，只作为 RuntimeDebugEvent + StateTransaction 之上的派生视图。  
+
+
+### 3.5 DevtoolsState & 状态模块拆解（`state.ts` 重构约束）
+
+- **Description**: Devtools 模块内的统一视图状态模型与实现分层约束，用于指导 `packages/logix-devtools-react/src/state.ts` 拆解，避免「单文件过长 + 逻辑耦合」问题。重构后仍保持 Runtime 契约不变，仅在 Devtools VM 层做内部结构调整。
+
+#### 3.5.1 DevtoolsState（视图状态模型）
+
+- **Key Fields**（与实现中的 `DevtoolsStateSchema` 一一对应）：
+  - `open: boolean` — Devtools 面板是否展开；
+  - `selectedRuntime?: string` — 当前选中的 Runtime 标识；
+  - `selectedModule?: string` — 当前选中的 ModuleId；
+  - `selectedInstance?: string` — 当前选中的 InstanceId；
+  - `selectedEventIndex?: number` — Timeline 中当前高亮的事件索引；
+  - `selectedFieldPath?: string` — 由 TraitGraph 点击设置的字段路径，用于 Timeline 事件按字段关联筛选；
+  - `runtimes: DevtoolsRuntimeView[]` — 由 Snapshot 派生出的 Runtime/Module/Instance 结构视图（见 3.1 / 3.2）；
+  - `timeline: TimelineEntry[]` — 当前过滤条件下的事件时间线（带可选 `stateAfter` 快照）；
+  - `activeState?: any` — Inspector 右侧展示的“当前状态”（基于选中事件的 stateAfter 或 latestStates 推导）；
+  - `layout: DevtoolsLayout` — 面板高度、边距、拖拽状态等布局信息；
+  - `settings: DevtoolsSettings` — Devtools 设置面板中集中管理的观测/性能相关配置（含事件窗口大小等）；
+  - `theme: "system" | "light" | "dark"` — Devtools 主题偏好。
+- **Invariants**：
+  - `selectedEventIndex` 若存在，MUST 落在 `timeline` 当前长度范围内；超出范围时在 `computeDevtoolsState` 中自动回退为 `undefined`；
+  - `selectedRuntime` / `selectedModule` / `selectedInstance` 若指向不存在的实体，MUST 在 `computeDevtoolsState` 中回退为“第一个可用项”或 `undefined`；
+  - `layout.isDragging` 不持久化到 localStorage，刷新后 MUST 重置为 `false`。
+
+#### 3.5.2 DevtoolsLayout & Storage（布局与持久化）
+
+- **Key Fields**（与实现中的 `DevtoolsState['layout']` 对齐）：
+  - `height: number` — 面板高度；
+  - `marginLeft: number` / `marginRight: number` — 左右边距；
+  - `isDragging: boolean` — 当前是否处于拖拽调整阶段；
+  - `trigger?: { x: number; y: number; isDragging: boolean }` — 拖拽触发点记录，仅用于交互体验。
+- **Storage 约束**：
+  - 使用单独的 `DevtoolsLayoutStorage` 辅助模块封装 localStorage 访问逻辑（当前实现中的 `LAYOUT_STORAGE_KEY`、`loadLayoutFromStorage`、`persistLayoutToStorage`）；
+  - 所有对 `window.localStorage` 的读写 MUST 只出现在该 Storage 模块中，其他文件通过纯函数接口使用，便于测试与未来替换存储后端；
+  - localStorage 不可用时（如 SSR / 隐私模式） MUST 优雅降级为仅内存态，不影响 Devtools 基本功能。
+
+#### 3.5.3 Timeline & Selection 计算（纯函数层）
+
+- **职责**：从 `DevtoolsSnapshot`（事件 + latestStates + instances）与可选 `DevtoolsSelectionOverride` 派生出完整的 `DevtoolsState`，不直接触达 DOM 或存储。
+- **核心纯函数**：
+  - `getAtPath(obj: unknown, path: string): unknown` — 仅负责按 `"a.b.c"` 形式读取嵌套字段值，用于字段筛选与 diff 判断；
+  - `computeDevtoolsState(prev: DevtoolsState | undefined, snapshot: DevtoolsSnapshot, overrides: DevtoolsSelectionOverride): DevtoolsState`：
+    - 负责构建 `runtimes` 结构视图（包含活跃实例兜底逻辑）；
+    - 负责根据 overrides + base state 决定选中的 Runtime/Module/Instance/Event/FieldPath；
+    - 负责派生 Timeline（含字段筛选）与 activeState（事件快照或 latestStates 兜底）；
+    - 不允许直接访问 `window` / `localStorage` / DOM，仅依赖入参。
+- **约束**：
+  - `computeDevtoolsState` MUST 可重入且无副作用，便于在 reducer / Effect 流中复用；
+  - 字段筛选与事件选择逻辑须保持与 Spec 中「时间线游标 + 字段过滤」约束一致。
+
+#### 3.5.4 Devtools Module & Logic（Logix 模块层）
+
+- **DevtoolsModule（`state.module.ts` 目标形态）**：
+  - 封装 `DevtoolsStateSchema`、Actions Schema（如 `toggleOpen` / `selectRuntime` / `selectModule` / `selectInstance` / `selectEventIndex` / `selectFieldPath` / `clearEvents` / `resizeStart` / `updateLayout` / `setTheme`）；
+  - Reducer 仅负责：
+    - 调用 `computeDevtoolsState` 更新视图状态；
+    - 在 `updateLayout` 的场景下调用 `DevtoolsLayoutStorage` 落盘布局（仅当拖拽结束时）。
+  - 禁止在 reducer 内直接访问 DOM 或注册订阅。
+- **DevtoolsLogic（`state.logic.ts` 目标形态）**：
+  - 只负责 Logix 生命周期与副作用：
+    - 在 `run` 阶段通过 `DevtoolsSnapshotStore` Service 先读取一次当前 Snapshot（`yield* DevtoolsSnapshotStore` 并访问其 `get`），再使用 `$.on(snapshotStore.changes)` 订阅 Snapshot 流，在事件到达时触发 `$.state.update` 派生最新的 DevtoolsState；
+    - 处理 `resizeStart` 拖拽行为（通过 `fromDomEvent('mousemove'/'mouseup')`）；
+    - 处理 `clearEvents` 等需要调用 Runtime 侧清理函数的动作。
+  - 是唯一允许使用 `window` / DOM 事件的层（通过封装好的 `fromDomEvent`）。
+  - `DevtoolsSnapshotStore` 作为 Env Service 存在，其 Service 形状为 `{ get: Effect<DevtoolsSnapshot>; changes: Stream<DevtoolsSnapshot> }`，由 `devtoolsSnapshotLayer` 在 DevtoolsRuntime 中注入；DevtoolsLogic 不直接依赖 snapshot.ts 内部的全局 listeners，而只通过该 Tag 访问 Snapshot 及其变化流。
+
+#### 3.5.5 Runtime Wire-up（运行时装配）
+
+  - **DevtoolsRuntime（`state.runtime.ts` 目标形态）**：
+  - 负责通过 `Logix.Runtime.make(DevtoolsImpl)` 创建独立的 Devtools Runtime；
+  - 暴露 `devtoolsRuntime` 与 `devtoolsModuleRuntime` 给外层 React 适配（例如 DevtoolsShell）；
+  - 不再包含复杂业务逻辑，仅做装配与导出。
+- **重构后文件规划（建议）**：
+  - `state/model.ts`：`TimelineEntrySchema` / `DevtoolsStateSchema` / `DevtoolsState` / `DevtoolsSelectionOverride` / `emptyDevtoolsState`；
+  - `state/storage.ts`：`LAYOUT_STORAGE_KEY` / `loadLayoutFromStorage` / `persistLayoutToStorage`（封装 localStorage）；
+  - `state/compute.ts`：`getAtPath` / `computeDevtoolsState` 及其相关纯函数；
+  - `state/module.ts`：`DevtoolsModule` 定义（actions/reducers）；
+  - `state/logic.ts`：`DevtoolsLogic`（订阅 Snapshot + 拖拽 + clearEvents 副作用）；
+  - `state/runtime.ts`：`DevtoolsImpl` / `devtoolsRuntime` / `devtoolsModuleRuntime` / `fromDomEvent` 封装。
+- **约束**：
+  - 拆分仅限 Devtools 内部实现文件结构与职责，不改变对外导出的类型与 Runtime 界面；
+  - 在实现层面必须保持「一个方向的依赖图」：`model` → `storage` / `compute` → `module` → `logic` → `runtime`，禁止出现反向导入。
+
+### 3.6 DevtoolsSettings（设置面板模型）
+
+- **Description**: 通过设置面板集中管理的观测策略与性能相关参数，持久化到 `localStorage`，用于控制 Debug 事件采集粒度、时间线视图行为以及事件窗口大小等。
+- **Key Fields**：
+  - `mode: "basic" | "deep"` — 观测模式，控制是否展示 Trait 细节、`react-render` 事件、时间旅行控件等（与 FR-016 一致）；  
+  - `showTraitEvents: boolean` — 是否在 Timeline 中展示 Trait 级事件（在 `"basic"` 模式下通常为 false）；  
+  - `showReactRenderEvents: boolean` — 是否展示 `react-render` 事件；  
+  - `enableTimeTravelUI: boolean` — 是否在 UI 中展示时间旅行控件；  
+  - `overviewThresholds: { txnPerSecondWarn: number; txnPerSecondDanger: number; renderPerTxnWarn: number; renderPerTxnDanger: number }` — overview strip 用于红黄绿分段的软阈值集合；  
+  - `eventBufferSize: number` — Devtools 事件窗口大小，对应 Debug 层 ring buffer 的容量（例如默认 500，推荐范围 200–2000），用于控制在 dev 环境下保留多少条最近事件；  
+  - `sampling: { reactRenderSampleRate: number }` — 针对高频 `react-render` 事件的采样率配置（例如 1.0 表示全量采集，0.1 表示采样 10%）。
+- **Persistence & Invariants**：
+  - `DevtoolsSettings` MUST 通过 Settings 面板读写，并持久化到 `localStorage`（键名可统一前缀，例如 `__logix_devtools_settings__`），在 Devtools 初始化时从存储恢复；  
+  - 在 localStorage 不可用的环境中，Devtools MUST 使用内存态设置，并回退到内建默认值；  
+  - `eventBufferSize` 读取后 MUST 在合理范围内裁剪（例如 `< 100` 自动提升到 100，`> 5000` 自动压缩到 5000），防止极端配置导致 DebugSink 占用过多内存或过少事件；  
+  - Settings 改动生效后，Devtools SHOULD 将 `eventBufferSize` 等关键参数透传到 Debug 层（例如重新构造或调整 ring buffer Sink），以便真正影响事件采集行为，而不仅仅改变 UI。
 
 
 ## 4. Validation & Invariants

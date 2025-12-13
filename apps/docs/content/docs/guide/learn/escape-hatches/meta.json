@@ -3,6 +3,7 @@
     "pages": [
         "lifecycles",
         "concurrency",
+        "task-runner",
         "effect-runtime"
     ]
 }

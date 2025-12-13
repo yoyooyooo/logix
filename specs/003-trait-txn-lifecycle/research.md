@@ -1,77 +1,118 @@
-# Research: StateTrait 状态事务与生命周期分层（Devtools 升级）
+# Research: StateTrait 状态事务与生命周期分层（003-trait-txn-lifecycle）
 
-## Decision 1: 在 Runtime 内核中引入显式 StateTransaction 模型
+> 目的：补齐 StateTransaction / Instrumentation Policy / RuntimeProvider 之间的实现决策，为后续设计与编码提供统一依据。
 
-- **Decision**: 为每个 ModuleRuntime 增加 StateTransaction / StateTxnContext 抽象，将一次逻辑入口（dispatch / traits.refresh / service 回写等）视为一个状态事务，在事务内部聚合所有 Reducer / Trait / Middleware 对状态的修改，只在事务提交时执行一次真实的状态写入与对外通知。
-- **Rationale**:
-  - 现状依赖 SubscriptionRef.changes + Stream.changes 的值级去重，加上 React 的 useSyncExternalStore 批处理，行为虽“看起来正确”，但事务边界隐式且难以推理；
-  - Trait 越多，内部的 state:update 事件越多，如果没有事务语义，很难在 Devtools 中解释“这几步到底属于哪一次交互”；
-  - 显式 StateTransaction 让 Runtime 具备：
-    - 原子性：一次逻辑入口内的所有变更对外表现为一次提交；
-    - 可观测性：Devtools 可以按 txnId 聚合事件和 Patch；
-    - 可扩展性：未来可以在事务层做更多策略（批处理、限流、回放）。
-- **Alternatives considered**:
-  - 仅在 Devtools 层做“软聚合”：根据时间戳/事件顺序猜测哪些 state:update 属于同一次点击。
-    - 放弃：难以在边界场景（并发 dispatch / 背景刷新）保持正确聚合，也无法约束 Runtime 实际提交行为。
-  - 在 Trait 层做局部 batching（只对 computed/link 做合并）。
-    - 放弃：Trait 只是状态变更的一部分，真正的事务边界仍然在 Runtime；局部 batching 无法给 Devtools 提供全局可见的事务语义。
+## 1. StateTransaction 观测策略的配置入口与优先级
 
-## Decision 2: StateTrait 显式拆为「蓝图 → setup → run」三段
+**Decision**  
+- 在 Runtime 级通过 `Logix.Runtime.make(rootImpl, { stateTransaction?: { instrumentation?: "full" | "light" } })` 配置应用级默认观测策略；  
+- 在 Module 级通过 `Module.implement({ ..., stateTransaction?: { instrumentation?: "full" | "light" } })` 为单个模块覆写观测策略；  
+- 优先级：**ModuleImpl 配置 > Runtime.make 配置 > 基于 `NODE_ENV` 的默认值**（`getDefaultStateTxnInstrumentation()`）。  
 
-- **Decision**: 将 StateTrait 生命周期划分为：
-  - 蓝图层：`StateTrait.from` + `StateTrait.build`，只依赖 stateSchema + traitsSpec，生成 Program / Graph / Plan；
-  - setup 层：在 ModuleRuntime / BoundApi 构造阶段运行，只做 Env 无关的结构 wiring（注册 source-refresh 入口、向 Devtools/Debug 注册 TraitPlanId/Graph 节点锚点等），禁止调用 run-only 能力；
-  - run 层：在 Runtime 运行阶段基于 Program / Plan 安装 watcher / Flow / Middleware 行为，并在 StateTransaction 内执行具体步骤。
-- **Rationale**:
-  - 与 Module.reducer / lifecycle / Middleware 能力在“蓝图 vs Runtime”层级上对齐，便于 Studio / Alignment Lab 统一处理各种能力；
-  - setup 与 run 分离后，Phase Guard 更简单：
-    - setup 只跑结构接线，不依赖 Env / 外部服务，易于在测试中单独验证；
-    - run 只承载真实 Effect 行为，出错时指向更清晰；
-  - Studio / Devtools 可以：
-    - 在只加载蓝图 + setup 的模式下做结构校验与可视化，不必 boot 完整 Runtime；
-    - 在 run 模式下基于相同 Program / Graph 解释事务内的 Trait 行为。
-- **Alternatives considered**:
-  - 保持现状，在 StateTrait.install 内混合做结构 wiring 与 watcher 安装。
-    - 放弃：Phase Guard 难以区分结构行为与运行行为；Devtools 无法精确判断“蓝图有但 setup 未接线”的情况；结构测试需要完整 Runtime，成本高。
+**Rationale**  
+- Runtime 级配置便于一键切换整颗应用的观测强度（例如 CI / 性能压测时改为 `"light"`），符合“引擎优先”的集中配置原则；  
+- Module 级覆写可用于少数高频/性能敏感模块（如拖拽、动画）声明 `"light"`，避免为此引入全局策略分裂；  
+- 三层优先级（Module / Runtime / NODE_ENV 默认）既照顾现有实现（当前依赖 `getDefaultStateTxnInstrumentation()`），又避免再引入额外维度（例如 per-instance），控制复杂度。  
 
-## Decision 3: Devtools 以「Module → Instance → Transaction → Event」层级组织视图
+**Alternatives considered**  
+- 仅在 Runtime.make 上配置，禁止 per-module override：  
+  - 简单但不利于“个别模块超高频”场景，需要通过拆 Runtime 或多 RuntimeProvider 解决，成本偏高；  
+- 仅在 Module.implement 上配置，Runtime 不给全局默认：  
+  - 会把“整体环境是 debug 还是 performance-first”的信息下沉到每个模块，破坏配置集中度；  
+- 在 React RuntimeProvider 上暴露独立开关：  
+  - 容易引入第三套事务模式（React-only），与 runtime-logix 契约冲突，被否决。
 
-- **Decision**: 以 Devtools 面板为中心，将观察对象分为四级父子关系：
-  - Module（蓝图）：对应 Module 图纸与 StateTraitProgram / Graph；
-  - Instance（实例）：同一 Module 在不同 Runtime 环境下的实例，携带 moduleId + instanceId，与 BoundApi / Runtime 绑定；
-  - Transaction（事务）：一次逻辑入口对应的一次 StateTransaction，标识为 txnId，内部包含 Patch 与 Trait 步骤；
-  - Event（事件）：EffectOp 流中的 action/state/service/trait 事件，附着在某个 txnId 之下。
-- **Rationale**:
-  - Module 层便于从图纸和 TraitGraph 视角理解“模块本应如何工作”；
-  - Instance 层便于看“在这个具体运行时环境中是否接线成功（setup）、是否有多实例”；
-  - Transaction 层便于把一次业务交互的所有内部步骤打包起来调试和回放；
-  - Event 层保留 EffectOp 粒度，用于深入分析和时间线视图。
-- **Alternatives considered**:
-  - 在 Devtools 中将 Module / Instance / Transaction 做成三个平行 Tab 或独立面板。
-    - 放弃：难以在调试时自然地从蓝图追到某个实例，再追到某次事务；导航成本高，用户心智更复杂。
+## 2. 高频交互（拖拽）下的事务语义
 
-## Decision 4: React 层继续使用 useSyncExternalStore 作为订阅桥梁
+**Decision**  
+- 高频交互（如拖拽更新位置）**不得关闭 StateTransaction 或绕过事务直写**；  
+- 推荐在逻辑层采用“单步事务”模式：每次 pointer move 触发一次逻辑入口，只进行一次状态更新并立刻 commit；  
+- 性能优化通过「单步事务 + `"light"` instrumentation + 视图层节流/合并」组合实现，而不是引入非事务路径。  
 
-- **Decision**: 在 React 集成层继续使用 `useSyncExternalStoreWithSelector` 作为状态订阅入口，但将订阅源语义从“每次 setState”提升为“每次 StateTransaction 提交”，即：ModuleRuntime.changes(selector) 只在事务提交时 emit。
-- **Rationale**:
-  - 现有 hooks（useModule/useSelector）已经稳定依赖 useSyncExternalStore 行为，不宜在本特性中替换订阅机制；
-  - StateTransaction 模型可以在 Runtime 内部收敛状态变更次数，使得对 React 而言，每次用户交互对应的 commit 次数有明确上限；
-  - React 自带的批处理（同一事件内多次 onStoreChange 合并渲染）仍然可以发挥作用，但不再被用作“唯一的兜底机制”。
-- **Alternatives considered**:
-  - 为 Devtools 专门维护一份 Shadow Store，React 订阅与 Runtime 状态分离。
-    - 放弃：引入双写与一致性问题，且不能从根本上解决“事务语义缺失”的问题。
+**Rationale**  
+- 事务模型是 Devtools 事务视图、时间旅行与审计能力的基础，一旦允许部分入口绕过事务，会出现双轨语义，复杂度与踩坑成本都很高；  
+- 当前 StateTransaction 内核本身开销可控，真正的大头在 React 渲染和复杂 Trait 逻辑，通过节流与 `"light"` 模式即可显著降低开销；  
+- 将“单步事务”视为逻辑写法约束而非 runtime 特殊分支，可以保留统一的事务边界与队列语义。  
 
-## Decision 5: Devtools 视图按「蓝图 / setup / run」分层而非新增完全独立大面板
+**Alternatives considered**  
+- 为高频模块提供“非事务模式”开关（直写 state，多次通知）：  
+  - 直接破坏「单入口 = 单事务 = 单次订阅通知」与 FIFO 队列语义，与当前 spec 目标冲突；  
+- 在同一模块内混用两种模式（部分 action 走事务，部分不走）：  
+  - Devtools 难以给出一致的事务视图，需要在 UI 做复杂解释，故放弃。  
 
-- **Decision**: 在现有 Devtools 面板（或 Debug Tab）上扩展：
-  - 在 TraitGraph 视图中增加蓝图 vs setup 状态标记；
-  - 在 Timeline / Transaction 视图中增加 txnId 维度和按 Trait 节点过滤的能力；
-  - 以一个轻量「Traits」子视图呈现当前 Module/Instance 的蓝图、setup 状态与近期事务行为，而不是另起一整套新 UI。
-- **Rationale**:
-  - 减少 Devtools 入口碎片化，保持“一个面板解决 Trait + Middleware 调试”的心智；
-  - 利用现有 EffectOp Timeline 和 Graph 的基础，迭代成本小；
-  - 有利于后续在同一 Devtools 中持续增加与 Trait 相关的对齐能力（Alignment Lab）。
-- **Alternatives considered**:
-  - 单独做一个「Trait Devtools」应用或面板，与现有 Debug 面板完全分离。
-    - 放弃：Module 作者和平台侧都需要统一的调试入口，将 Debug / Trait / Middleware 拆成多个面板会让学习和使用成本显著升高。
+## 3. React RuntimeProvider 在事务观测中的职责
+
+**Decision**  
+- `@logix/react` 的 `RuntimeProvider` **不引入新的 StateTransaction 模式或开关**，只透传底层 Runtime 与额外 Layer；  
+- 当传入 `runtime={ManagedRuntime}` 时，StateTransaction 观测策略完全由构造该 Runtime 的 `Logix.Runtime.make` 决定；  
+- 当仅传入 `layer={Layer}` 时，Provider 只在 Env 维度叠加 Service（如 Logger / DebugSink），不能改变事务是否存在或其观测粒度。  
+
+**Rationale**  
+- 保持 runtime-logix 的契约单一：观测策略的来源集中在 Runtime 与 ModuleImpl，而不是在 React 层再加一层配置；  
+- 避免出现“代码层配置是 full，但 React 层偷偷降为 light”这类难以排查的问题；  
+- RuntimeProvider 本身已经承担了 Scope 管理与 Layer 叠加职责，再托管事务策略会让其职责过重。  
+
+**Alternatives considered**  
+- 为 RuntimeProvider 增加 `stateTransactionInstrumentation` 属性：  
+  - 在多层 Provider 嵌套场景下优先级难以解释，同时破坏了 Runtime/Module 作为配置中心的约定；  
+  - 容易导致“React-only 事务模式”，与非 React 宿主的行为不一致。  
+
+## 4. StateTransaction 内核与配置的类型形状
+
+**Decision**  
+- 沿用现有 `StateTransaction` 内核中的类型：  
+  - `StateTxnInstrumentationLevel = "full" | "light"`；  
+  - `StateTxnConfig`：构造 context 时的静态配置（moduleId / instanceId / runtimeId / instrumentation / captureSnapshots / now）；  
+  - `StateTxnRuntimeConfig`：运行时 config（已解析的 instrumentation / captureSnapshots / now 等）。  
+- Runtime 与 ModuleImpl 层新增的配置类型统一引用同一枚举类型，并保证语义相同：  
+
+```ts
+export interface RuntimeStateTransactionOptions {
+  readonly instrumentation?: "full" | "light"
+}
+
+export interface RuntimeOptions {
+  // ...
+  readonly stateTransaction?: RuntimeStateTransactionOptions
+}
+
+export interface ModuleImplementStateTransactionOptions {
+  readonly instrumentation?: "full" | "light"
+}
+
+export interface ModuleImplementConfig<R> {
+  // ...
+  readonly stateTransaction?: ModuleImplementStateTransactionOptions
+}
+```  
+
+**Rationale**  
+- 复用已有 `StateTxnInstrumentationLevel`，避免在不同层出现类似但不完全一致的字符串字面量；  
+- 将 RuntimeOptions / Module.implement 的配置形状限制为最小集合（仅 instrumentation），避免在外层暴露过多 StateTransaction 内部实现细节；  
+- 通过统一的类型别名方便在 runtime-logix 文档与代码之间对照。  
+
+**Alternatives considered**  
+- 直接在 RuntimeOptions / Module.implement 上内联 `instrumentation?: "full" | "light"`：  
+  - 简单但不利于未来扩展（例如考虑更多观测级别或额外选项），使用 Options 对象更具演进弹性；  
+- 将 StateTransaction 的所有 config 字段（包括 `captureSnapshots` / `now`）全部透出到 RuntimeOptions：  
+  - 过度暴露内部实现，不符合 “LLM 易生成、易校验” 的最小 API 原则。  
+
+## 5. Dev / Prod 下默认观测级别
+
+**Decision**  
+- 保持 `getDefaultStateTxnInstrumentation()` 现有行为：  
+  - 在非 production 环境（`NODE_ENV !== "production"`）默认 `"full"`；  
+  - 在 production 环境默认 `"light"`。  
+- 当 RuntimeOptions 或 ModuleImpl 显式给出 `instrumentation` 时，优先使用显式配置，不再依赖默认推导。  
+
+**Rationale**  
+- 当前实现已经基于 `getDefaultStateTxnInstrumentation()` 在 ModuleRuntime 中配置默认观测级别，行为稳定；  
+- Dev 环境下优先 `"full"` 有利于调试与 Devtools 使用，Prod 环境下默认 `"light"` 有利于减轻开销；  
+- 显式配置优先可以覆盖默认策略，用于在 dev 下压测 `"light"` 或在 prod 下针对关键模块保留 `"full"`。  
+
+**Alternatives considered**  
+- 在所有环境下一律使用 `"full"` 作为默认：  
+  - 增加生产环境的运行时开销，与“Effect 作为统一运行时”的性能约束不符；  
+- 在所有环境下一律使用 `"light"` 作为默认：  
+  - 会削弱 Devtools 的默认可见度，增加调试门槛。  
 

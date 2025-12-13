@@ -2,13 +2,12 @@ import React from "react"
 import { Effect, Fiber, Layer, ManagedRuntime } from "effect"
 import * as Logix from "@logix/core"
 import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from "@logix/react"
-import { devtoolsLayer } from "@logix/devtools-react"
 import { SourceModule, TargetModule, AuditModule, SourceImpl, TargetImpl, AuditImpl, ReactMultiModuleLink } from "../modules/linkModules"
 
 // 组合三个 ModuleImpl 的 Layer，构造应用级 Runtime
 const appLayer = Layer.mergeAll(
   Logix.Debug.runtimeLabel("LinkDemo"),
-  devtoolsLayer,
+  Logix.Debug.devtoolsHubLayer(),
   SourceImpl.layer,
   TargetImpl.layer,
   AuditImpl.layer,

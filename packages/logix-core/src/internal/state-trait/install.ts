@@ -1,5 +1,6 @@
 import { Effect, Option } from "effect"
 import * as EffectOp from "../../effectop.js"
+import { internal as ResourceInternal } from "../../Resource.js"
 import type { BoundApi } from "../runtime/core/module.js"
 import * as EffectOpCore from "../runtime/EffectOpCore.js"
 import type {
@@ -68,6 +69,33 @@ const buildEntryIndex = <S>(
 const getModuleId = (bound: BoundApi<any, any>): string | undefined =>
   (bound as any).__moduleId as string | undefined
 
+const getRuntimeId = (bound: BoundApi<any, any>): string | undefined =>
+  (bound as any).__runtimeId as string | undefined
+
+const recordTraitPatch = (
+  bound: BoundApi<any, any>,
+  patch: {
+    readonly path: string
+    readonly from?: unknown
+    readonly to?: unknown
+    readonly reason:
+      | "trait-computed"
+      | "trait-link"
+      | "source-refresh"
+      | (string & {})
+    readonly traitNodeId?: string
+    readonly stepId?: string
+  },
+): void => {
+  const record =
+    (bound as any).__recordStatePatch as
+      | ((p: typeof patch) => void)
+      | undefined
+  if (record) {
+    record(patch)
+  }
+}
+
 const getMiddlewareStack = (): Effect.Effect<
   EffectOp.MiddlewareStack,
   never,
@@ -93,6 +121,21 @@ const installComputed = <S>(
   }
 
   const moduleId = getModuleId(bound)
+  const runtimeId = getRuntimeId(bound)
+  const targetPath = step.targetFieldPath as string
+
+  const runWithStateTransaction =
+    (bound as any)
+      .__runWithStateTransaction as
+    | ((
+      origin: {
+        readonly kind: string
+        readonly name?: string
+        readonly details?: unknown
+      },
+      body: () => Effect.Effect<void, never, any>,
+    ) => Effect.Effect<void, never, any>)
+    | undefined
 
   // 监听完整 State 的变化，在每次变化时通过 EffectOp 总线重算目标字段。
   // - 首版实现依旧基于 onState(s => s)，后续可按 Graph.deps 收窄触发范围。
@@ -101,24 +144,57 @@ const installComputed = <S>(
     .run((state: any) =>
       Effect.gen(function* () {
         const stack = yield* getMiddlewareStack()
+        const body = (): Effect.Effect<void, never, any> =>
+          Effect.gen(function* () {
+            const before = getAtPath(state, targetPath)
+            const next = (entry.meta as any).derive(state)
 
-        const effect = bound.state.mutate((draft: any) => {
-          const next = (entry.meta as any).derive(state)
-          setAtPathMutating(
-            draft,
-            step.targetFieldPath as string,
-            next,
-          )
-        }) as Effect.Effect<void, never, any>
+            recordTraitPatch(bound, {
+              path: targetPath,
+              from: before,
+              to: next,
+              reason: "trait-computed",
+              traitNodeId: step.debugInfo?.graphNodeId,
+              stepId: step.id,
+            })
+
+            const mutateEffect = bound.state.mutate((draft: any) => {
+              setAtPathMutating(
+                draft,
+                targetPath,
+                next,
+              )
+            }) as Effect.Effect<void, never, any>
+
+            yield* mutateEffect
+          })
+
+        const effect =
+          runWithStateTransaction != null
+            ? runWithStateTransaction(
+              {
+                kind: "trait-computed",
+                name: targetPath,
+                details: {
+                  traitNodeId: step.debugInfo?.graphNodeId,
+                  stepId: step.id,
+                },
+              },
+              body,
+            )
+            : body()
 
         const op = EffectOp.make({
-          kind: "state",
+          kind: "trait-computed",
           name: "computed:update",
           effect,
           meta: {
             moduleId,
+            runtimeId,
             fieldPath: step.targetFieldPath,
             deps: step.sourceFieldPaths,
+            traitNodeId: step.debugInfo?.graphNodeId,
+            stepId: step.id,
           },
         })
 
@@ -141,7 +217,22 @@ const installLink = <S>(
   }
 
   const sourcePath = entry.meta.from as string
+  const targetPath = step.targetFieldPath as string
   const moduleId = getModuleId(bound)
+  const runtimeId = getRuntimeId(bound)
+
+  const runWithStateTransaction =
+    (bound as any)
+      .__runWithStateTransaction as
+    | ((
+      origin: {
+        readonly kind: string
+        readonly name?: string
+        readonly details?: unknown
+      },
+      body: () => Effect.Effect<void, never, any>,
+    ) => Effect.Effect<void, never, any>)
+    | undefined
 
   // 当源字段发生变化时，通过 EffectOp 总线同步目标字段的值。
   return bound
@@ -149,23 +240,57 @@ const installLink = <S>(
     .run((value: any) =>
       Effect.gen(function* () {
         const stack = yield* getMiddlewareStack()
+        const body = (): Effect.Effect<void, never, any> =>
+          Effect.gen(function* () {
+            recordTraitPatch(bound, {
+              path: targetPath,
+              from: undefined,
+              to: value,
+              reason: "trait-link",
+              traitNodeId: step.debugInfo?.graphNodeId,
+              stepId: step.id,
+            })
 
-        const effect = bound.state.mutate((draft: any) => {
-          setAtPathMutating(
-            draft,
-            step.targetFieldPath as string,
-            value,
-          )
-        }) as Effect.Effect<void, never, any>
+            const mutateEffect = bound.state.mutate((draft: any) => {
+              setAtPathMutating(
+                draft,
+                targetPath,
+                value,
+              )
+            }) as Effect.Effect<void, never, any>
+
+            yield* mutateEffect
+          })
+
+        const effect =
+          runWithStateTransaction != null
+            ? runWithStateTransaction(
+              {
+                kind: "trait-link",
+                name: targetPath,
+                details: {
+                  traitNodeId: step.debugInfo?.graphNodeId,
+                  stepId: step.id,
+                  from: sourcePath,
+                },
+              },
+              body,
+            )
+            : body()
 
         const op = EffectOp.make({
-          kind: "state",
+          kind: "trait-link",
           name: "link:propagate",
           effect,
           meta: {
             moduleId,
+            runtimeId,
+            fieldPath: step.targetFieldPath,
+            deps: [sourcePath],
             from: sourcePath,
             to: step.targetFieldPath,
+            traitNodeId: step.debugInfo?.graphNodeId,
+            stepId: step.id,
           },
         })
 
@@ -190,6 +315,7 @@ const installSource = <S>(
   const fieldPath = step.targetFieldPath
   const resourceId = step.resourceId
   const moduleId = getModuleId(bound)
+  const runtimeId = getRuntimeId(bound)
 
   // 仅供内部使用：由 BoundApiRuntime 暴露的刷新注册入口。
   const register = (bound as any)
@@ -211,22 +337,38 @@ const installSource = <S>(
 
       const key = (entry.meta as any).key(state)
 
-      const op = EffectOp.make<any, any, any>({
+      const registryOpt = yield* Effect.serviceOption(
+        ResourceInternal.ResourceRegistryTag,
+      )
+      const registry = Option.isSome(registryOpt) ? registryOpt.value : undefined
+      const spec = registry?.specs.get(resourceId)
+
+      if (!spec) {
+        // 未找到资源规格：视为配置缺失，保持 no-op（不写入 undefined）。
+        return
+      }
+
+      const loadEffect = (spec.load as any)(key) as Effect.Effect<any, any, any>
+
+      const loadOp = EffectOp.make<any, any, any>({
         kind: "service",
         name: resourceId,
-        effect: Effect.void as Effect.Effect<any, any, any>,
+        effect: loadEffect,
         meta: {
           moduleId,
+          runtimeId,
           fieldPath,
           resourceId,
           key,
+          traitNodeId: step.debugInfo?.graphNodeId,
+          stepId: step.id,
         },
       })
 
       // 通过 MiddlewareStack 执行资源访问逻辑：
-      // - 默认由 Resource/Query 中间件决定是直接调用 ResourceSpec.load 还是交给 QueryClient；
+      // - 若存在 Query 中间件，可在此处替换为 QueryClient；否则直接走 ResourceSpec.load；
       // - 在本层吞掉业务错误，确保刷新入口对调用方表现为 E = never。
-      const resultEffect = EffectOp.run(op, stack).pipe(
+      const resultEffect = EffectOp.run(loadOp, stack).pipe(
         Effect.catchAll(() => Effect.succeed(undefined as any)),
       )
       const result: any = yield* resultEffect
@@ -235,7 +377,31 @@ const installSource = <S>(
         setAtPathMutating(draft, fieldPath, result)
       }) as Effect.Effect<void, never, any>
 
-      return yield* updateEffect
+      recordTraitPatch(bound, {
+        path: fieldPath,
+        from: getAtPath(state, fieldPath),
+        to: result,
+        reason: "source-refresh",
+        traitNodeId: step.debugInfo?.graphNodeId,
+        stepId: step.id,
+      })
+
+      const applyOp = EffectOp.make<void, never, any>({
+        kind: "trait-source",
+        name: "source:refresh",
+        effect: updateEffect,
+        meta: {
+          moduleId,
+          runtimeId,
+          fieldPath,
+          resourceId,
+          key,
+          traitNodeId: step.debugInfo?.graphNodeId,
+          stepId: step.id,
+        },
+      })
+
+      return yield* EffectOp.run(applyOp, stack)
     }),
   )
 

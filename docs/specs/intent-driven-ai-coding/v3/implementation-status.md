@@ -16,7 +16,7 @@
 - [x] **Logic / Flow**: 业务逻辑编排 DSL。
   - [x] `BoundApi` (state, actions, flow, lifecycle)
   - [x] `FlowBuilder` (run, runLatest, runExhaust)
-  - [x] `Logic.secure` (错误边界与追踪)
+  - [x] Logic Middleware & EffectOp 总线（错误边界与追踪）
 - [x] **Link / Orchestration**: 跨模块编排。
   - [x] `Logic.Link` (多模块输入，声明式连接)
   - [x] Runtime（通过 `Logix.Runtime.make` 构造；应用级 Layer/Scope 统一管理，进程 Fork）

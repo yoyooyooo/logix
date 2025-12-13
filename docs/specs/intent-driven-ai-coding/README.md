@@ -7,9 +7,9 @@
 
 ## 📂 版本索引 (Version Index)
 
-### [v3: 三位一体模型 (Active)](./v3/01-overview.md)
+### [v3: 三位一体模型 (Active)](./v3/README.md)
 *   **核心理念**：**意图显影 (Intent Development)**。软件开发是意图从 Spec（需求态）到 Impl（实现态）的分辨率提升过程。
-*   **模型架构**：收敛为 **UI (表现) / Logic (逻辑) / Domain (领域)** 三大核心维度。
+*   **模型架构**：收敛为 **UI (表现) / Logic (逻辑) / Module (领域)** 三大核心维度。
 *   **适用场景**：优先服务于**前端开发者**的个人提效 (Solo Mode)，并支持向团队协作 (Team Mode) 演进。
 *   **关键文档**：[平台宣言](./v3/00-platform-manifesto.md) | [模型详解](./v3/02-intent-layers.md) | [资产定义](./v3/03-assets-and-schemas.md)
 

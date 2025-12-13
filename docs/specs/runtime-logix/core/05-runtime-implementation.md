@@ -10,7 +10,7 @@
 - AppRuntime（`makeApp`）如何将多个 Module 组装成一个 AppRuntime；
 - Scope 管理与资源释放机制。 React 集成的组合根。
 
-所有 API 和类型定义以 `docs/specs/intent-driven-ai-coding/v3/effect-poc` 中的 PoC 为最新事实源。
+所有 API 和类型定义以 `@logix/core`（`packages/logix-core/src`）为准；PoC 场景以 `examples/logix` 为准。
 
 ## 1. 核心组件 (Core Components)
 
@@ -262,18 +262,65 @@ function ModuleRuntime.make<Sh extends Logix.ModuleShape<any, any>>(
       readonly onError?: (cause: Cause.Cause<unknown>) => Effect.Effect<void>
       readonly label?: string
       readonly middleware?: EffectOp.MiddlewareStack
+      readonly stateTransaction?: {
+        readonly instrumentation?: "full" | "light"
+      }
     }
     ```  
   - 当 `middleware` 为空或未配置时，运行时代码视为「无中间件总线」（所有 EffectOp 直接运行其内部 effect）；  
   - 当传入非空的 MiddlewareStack 时，Runtime 会在应用级 Layer 中注入 `EffectOpMiddlewareEnv`，后续所有 EffectOp 行为（Action / Flow / State / Service / Lifecycle）都可以在同一总线上被拦截与装饰。
 
 - **与 Logic Middleware 的关系**  
-  - Logic Middleware（`Logic.secure` / `core/04-logic-middleware.md`）工作在「单段 Logic/Flow」层，主要解决某段业务逻辑是否经过鉴权/审计等问题；  
+- Logic Middleware（见 `core/04-logic-middleware.md`）工作在「单次边界操作」层，主要解决某段业务逻辑是否经过鉴权/审计等问题；  
   - EffectOp MiddlewareStack 工作在「引擎事件」层，对所有 Action / Flow / State / Service / Lifecycle 边界统一拦截，是一个更低层、与业务无关的基础设施：  
     - 典型用法包括：运行时级日志/监控、Resource/Query 集成、全局限流/熔断、统一 Debug Observer（将 EffectOp 转为 Debug 事件）；  
   - 两者可以叠加使用：  
     - Logic 级中间件用于表达“这段业务逻辑必须经过哪些守卫”；  
     - EffectOp 总线用于保证“所有边界事件都在统一链路上可观测、可调优”。
+
+- **公共中间件模块（`@logix/core/middleware`）**  
+  - Runtime 并不直接依赖具体中间件实现，只依赖 `EffectOp.Middleware` / `MiddlewareStack` 抽象；具体中间件由调用方在 `@logix/core/middleware` 命名空间下组合：  
+    - 通用中间件：以 `Middleware.Middleware` 形式实现，例如计时 / 指标上报 / 限流 / 审计 / Query 适配等，对 `op.effect` 做包装但不直接触碰 DebugSink；  
+    - 调试中间件：推荐使用高层组合入口 `Middleware.withDebug(stack, options?)` 在现有 `MiddlewareStack` 上一次性追加 DebugLogger（日志）与 DebugObserver（`type = "trace:effectop"`）；  
+    - 底层原语：`Middleware.applyDebug` / `Middleware.applyDebugObserver` 仍然可用，用于需要精细控制中间件顺序或选择性启用 logger/observer 的高级场景；  
+- 这样可以保持 Runtime 内核只关心“有无中间件总线”这一事实，业务侧则可以在 `Runtime.make(..., { middleware })` 一处集中挂载所需的通用与调试中间件组合，同时通过 `Middleware.withDebug` 快速打开调试链路。
+
+### 1.5 StateTransaction 与状态提交路径（v3 内核）
+
+> 状态：本节与 `specs/003-trait-txn-lifecycle/spec.md` / `data-model.md` / `contracts/devtools-runtime-contracts.md` 对齐，约束正式实现中的状态事务语义与观测策略。
+
+- **单入口 = 单事务 = 单次提交**  
+  - 标准 `ModuleRuntime` 内部以 `StateTransaction / StateTxnContext` 封装一次逻辑入口下的全部状态演进；  
+  - 支持的入口包括：`action:dispatch`、StateTrait `source.refresh` 写回、服务回调写回、Devtools 时间旅行等；  
+  - 对同一逻辑入口，Runtime 必须：
+    - 在事务内部聚合所有 reducer / Trait / middleware 对状态的修改；
+    - 只在 `commit` 时调用一次底层 `setState`，对外触发一次 `state:update` Debug 事件与一次订阅通知；
+    - 确保 Debug 侧同一 `txnId` 下最多出现一条 `kind = "state"` 的 `RuntimeDebugEventRef`（见 `core/09-debugging.md`）。  
+  - 实现层面，`runWithStateTransaction(origin, body)` 会将 `body` 视为黑盒 Effect 程序：  
+    - 引擎不会尝试解析 `body` 内部的 `Effect.gen` 结构，也不会因为出现 `Effect.sleep` / HTTP 调用等异步步骤自动拆分为多笔事务；  
+    - 若调用方在单个 `body` 中塞入长时间 IO，则这一笔事务的 `durationMs` 将直接反映该 IO 的耗时，“中间状态”在 commit 之前对外始终不可见；  
+    - 因此「长链路 = 多次逻辑入口」应由 Logic/Flow 层通过多次 `dispatch` / 专用入口 Action 显式表达，而不是依赖 StateTransaction 内部的隐式切分。  
+
+- **观测策略：`"full"` / `"light"`**  
+  - StateTransaction 支持两个观测强度：
+    - `"full"`：记录 Patch 列表、初始/最终状态快照，并在 Debug 事件中填充 `patchCount` / `originKind` 等诊断信息，供 Devtools 构建事务视图与时间旅行；  
+    - `"light"`：只保留必要的计时信息与最终状态，跳过 Patch 与快照构建，仍然保证“单事务 = 单次提交”的语义。  
+  - 配置入口与优先级：
+    - Runtime 级：`Logix.Runtime.make(rootImpl, { stateTransaction?: { instrumentation?: "full" | "light" } })`；  
+    - Module 级：`Module.implement({ ..., stateTransaction?: { instrumentation?: "full" | "light" } })`；  
+    - 默认：若调用方未显式配置，则由 `getDefaultStateTxnInstrumentation()` 基于 `NODE_ENV` 推导（dev/test 默认 `"full"`，production 默认 `"light"`）。  
+  - 优先级规则：**ModuleImpl 配置 > Runtime.make 配置 > NODE_ENV 默认**；无论观测强度如何变化，都不得改变事务边界与通知次数。  
+
+- **Dev-only 事务历史与时间旅行**  
+  - 在 dev/test 环境下，标准 ModuleRuntime 会为每个 `moduleId + instanceId` 维护一段有限长度的事务历史（当前实现为环形缓冲区，容量约 500 条）；  
+  - 对外通过 Devtools 契约暴露：
+    - `listTransactions(moduleId, instanceId)`：返回最近事务概要（`txnId` / `origin` / `durationMs` / `patchCount` / `traitTouchedNodeIds` 等）；  
+    - `getTransactionDetail(moduleId, instanceId, txnId)`：返回单个事务的 Patch 列表、事件序列以及可选的 `initialStateSnapshot` / `finalStateSnapshot`；  
+    - `applyTransactionSnapshot(moduleId, instanceId, txnId, mode: "before" | "after")`：在 dev/test 环境中将实例状态回放到指定事务开始前或提交后的状态。  
+  - 时间旅行本身也被视为一次 StateTransaction：
+    - 通过 `origin.kind = "devtools"` 标记，并在 `state:update` 的 `originKind` 中体现；  
+    - 可以选择不再次触发外部副作用（例如网络请求），但必须留下完整的事务记录供 Devtools 回放。  
+  - 事务历史与时间旅行能力只在 dev/test 环境开启，生产环境默认退化为 `"light"` 模式且不开启 dev-only 写入路径。  
 
 ---
 

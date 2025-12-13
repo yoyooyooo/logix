@@ -1,15 +1,14 @@
 import React from 'react'
-import { Effect, Layer } from 'effect'
+import { Effect } from 'effect'
 import * as Logix from '@logix/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
-import { devtoolsLayer } from '@logix/devtools-react'
 import { TraitFormImpl, TraitFormModule, type TraitFormState } from '../modules/trait-form.js'
 
 // ToB 场景 1：表单脏标记由 Trait 统一管理
 
 const runtime = Logix.Runtime.make(TraitFormImpl, {
   label: 'TraitFormDemoRuntime',
-  layer: Layer.mergeAll(devtoolsLayer),
+  devtools: true,
 })
 
 const TraitFormView: React.FC = () => {

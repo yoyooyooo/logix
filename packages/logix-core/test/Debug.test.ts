@@ -114,4 +114,72 @@ describe("Debug (public API)", () => {
       expect(getSnapshot()).toHaveLength(0)
     }),
   )
+
+  it.effect("toRuntimeDebugEventRef should normalize action/state events", () =>
+    Effect.gen(function* () {
+      const actionEvent: Logix.Debug.Event = {
+        type: "action:dispatch",
+        moduleId: "M1",
+        action: { _tag: "inc", payload: 1 },
+        runtimeId: "r-1",
+      }
+
+      const stateEvent: Logix.Debug.Event = {
+        type: "state:update",
+        moduleId: "M1",
+        state: { count: 1 },
+        runtimeId: "r-1",
+      }
+
+      const actionRef = Logix.Debug.internal.toRuntimeDebugEventRef(actionEvent)
+      const stateRef = Logix.Debug.internal.toRuntimeDebugEventRef(stateEvent)
+
+      expect(actionRef).toBeDefined()
+      expect(actionRef?.kind).toBe("action")
+      expect(actionRef?.label).toBe("inc")
+      expect(actionRef?.moduleId).toBe("M1")
+      expect(actionRef?.runtimeId).toBe("r-1")
+
+      expect(stateRef).toBeDefined()
+      expect(stateRef?.kind).toBe("state")
+      expect(stateRef?.label).toBe("state:update")
+      expect(stateRef?.moduleId).toBe("M1")
+      expect(stateRef?.runtimeId).toBe("r-1")
+    }),
+  )
+
+  it.effect("toRuntimeDebugEventRef should normalize trace:effectop into service/runtime events", () =>
+    Effect.gen(function* () {
+      const effectOp = {
+        id: "op-1",
+        kind: "service",
+        name: "UserApi.loadProfile",
+        meta: {
+          moduleId: "ServiceModule",
+          resourceId: "UserApi",
+          key: "loadProfile",
+        },
+        // effect 字段在本测试中不会真正执行，因此用 Effect.void 即可。
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        effect: Effect.void as any,
+      }
+
+      const traceEvent: Logix.Debug.Event = {
+        type: "trace:effectop",
+        moduleId: "FallbackModule",
+        runtimeId: "r-service",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: effectOp as any,
+      }
+
+      const ref = Logix.Debug.internal.toRuntimeDebugEventRef(traceEvent)
+
+      expect(ref).toBeDefined()
+      expect(ref?.kind).toBe("service")
+      expect(ref?.label).toBe("UserApi.loadProfile")
+      // 优先使用 EffectOp.meta.moduleId，而不是事件上的 moduleId。
+      expect(ref?.moduleId).toBe("ServiceModule")
+      expect((ref?.meta as any)?.meta?.resourceId).toBe("UserApi")
+    }),
+  )
 })

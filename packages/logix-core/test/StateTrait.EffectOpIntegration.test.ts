@@ -135,13 +135,13 @@ describe("StateTrait.install + EffectOp middleware", () => {
     const computedOp = computedOps[computedOps.length - 1]
     const linkOp = linkOps[linkOps.length - 1]
 
-    expect(computedOp.kind).toBe("state")
+    expect(computedOp.kind).toBe("trait-computed")
     expect(computedOp.meta?.fieldPath).toBe("sum")
     expect(computedOp.meta?.moduleId).toBe(
       "StateTraitEffectOpIntegrationTest",
     )
 
-    expect(linkOp.kind).toBe("state")
+    expect(linkOp.kind).toBe("trait-link")
     expect(linkOp.meta?.from).toBe("source.name")
     expect(linkOp.meta?.to).toBe("target")
     expect(linkOp.meta?.moduleId).toBe(

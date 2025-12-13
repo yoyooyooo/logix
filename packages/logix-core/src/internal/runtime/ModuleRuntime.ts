@@ -7,13 +7,24 @@ import {
   Context,
   Ref,
   Fiber,
+  FiberRef,
   Exit,
   Cause,
   Option,
+  Queue,
+  Deferred,
 } from "effect"
 import type { LogicPlan, ModuleRuntime as PublicModuleRuntime } from "./core/module.js"
 import * as Lifecycle from "./Lifecycle.js"
 import * as Debug from "./core/DebugSink.js"
+import * as StateTransaction from "./core/StateTransaction.js"
+import * as TaskRunner from "./core/TaskRunner.js"
+import {
+  getDefaultStateTxnInstrumentation,
+  isDevEnv,
+  StateTransactionConfigTag,
+} from "./core/env.js"
+import type { StateTransactionInstrumentation } from "./core/env.js"
 import * as ReducerDiagnostics from "./core/ReducerDiagnostics.js"
 import * as LifecycleDiagnostics from "./core/LifecycleDiagnostics.js"
 import * as LogicDiagnostics from "./core/LogicDiagnostics.js"
@@ -33,6 +44,13 @@ const runtimeRegistry = new WeakMap<
   Context.Tag<any, PublicModuleRuntime<any, any>>,
   PublicModuleRuntime<any, any>
 >()
+
+/**
+ * 按 moduleId + runtimeId 维度索引的运行时注册表：
+ * - 主要用于 Devtools / 内部调试按实例定位 ModuleRuntime；
+ * - key 形如 `${moduleId}::${runtimeId}`。
+ */
+const runtimeByInstanceKey = new Map<string, PublicModuleRuntime<any, any>>()
 
 export const registerRuntime = <S, A>(
   tag: Context.Tag<any, PublicModuleRuntime<S, A>>,
@@ -57,6 +75,14 @@ export const getRegisteredRuntime = <S, A>(
     tag as Context.Tag<any, PublicModuleRuntime<any, any>>
   ) as PublicModuleRuntime<S, A> | undefined
 
+export const getRuntimeByModuleAndInstance = <S, A>(
+  moduleId: string,
+  instanceId: string,
+): PublicModuleRuntime<S, A> | undefined =>
+  runtimeByInstanceKey.get(
+    `${moduleId}::${instanceId}`,
+  ) as PublicModuleRuntime<S, A> | undefined
+
 export interface ModuleRuntimeOptions<S, A, R = never> {
   readonly tag?: Context.Tag<any, PublicModuleRuntime<S, A>>
   readonly logics?: ReadonlyArray<
@@ -72,6 +98,14 @@ export interface ModuleRuntimeOptions<S, A, R = never> {
    * - 若某个 `_tag` 未定义 reducer，则行为与当前 watcher-only 模式一致。
    */
   readonly reducers?: Readonly<Record<string, (state: S, action: A) => S>>
+  /**
+   * 模块级 StateTransaction 配置：
+   * - 若提供 instrumentation，则优先于 Runtime 级配置与 NODE_ENV 默认；
+   * - 若未提供，则退回到 Runtime 级配置（如有）或 getDefaultStateTxnInstrumentation()。
+   */
+  readonly stateTransaction?: {
+    readonly instrumentation?: StateTransactionInstrumentation
+  }
 }
 
 type PhaseRef = { current: "setup" | "run" }
@@ -81,7 +115,7 @@ const createPhaseRef = (): PhaseRef => ({ current: "run" })
 const getMiddlewareStack = (): Effect.Effect<
   EffectOp.MiddlewareStack,
   never,
-  any
+  never
 > =>
   Effect.serviceOption(EffectOpCore.EffectOpMiddlewareTag).pipe(
     Effect.map((maybe) =>
@@ -104,33 +138,140 @@ export const make = <S, A, R = never>(
 
     const id = Math.random().toString(36).slice(2)
 
-    const runWithEffectOp = <A2>(
+    // 解析 StateTransaction 观测级别：
+    // - 优先使用 ModuleRuntimeOptions.stateTransaction.instrumentation；
+    // - 其次尝试从 Runtime 级 StateTransactionConfig Service 读取默认值；
+    // - 最后退回到基于 NODE_ENV 的默认策略。
+    const runtimeConfigOpt = yield* Effect.serviceOption(StateTransactionConfigTag)
+    const runtimeInstrumentation: StateTransactionInstrumentation | undefined =
+      Option.isSome(runtimeConfigOpt)
+        ? runtimeConfigOpt.value.instrumentation
+        : undefined
+
+    const instrumentation: StateTransactionInstrumentation =
+      options.stateTransaction?.instrumentation ??
+      runtimeInstrumentation ??
+      getDefaultStateTxnInstrumentation()
+
+    // StateTransaction 上下文：
+    // - 按 ModuleRuntime 维度维护单活跃事务；
+    // - 聚合本实例下所有逻辑入口（dispatch / Traits / source-refresh 等）的状态写入；
+    // - 后续新增的入口（如 service 回写 / devtools 操作）也必须通过同一上下文与队列接入。
+    const txnContext = StateTransaction.makeContext<S>({
+      moduleId: options.moduleId,
+      runtimeId: id,
+      instrumentation,
+    })
+
+    /**
+     * 事务历史：
+     * - 按 ModuleRuntime 维度维护最近若干 StateTransaction 记录；
+     * - 仅用于 dev/test 环境下的 Devtools 能力（如时间旅行、事务概要视图）；
+     * - 容量控制在有限上界，避免长期运行场景下内存无限增长。
+     */
+    const maxTxnHistory = 500
+    const txnHistory: Array<StateTransaction.StateTransaction<S>> = []
+    const txnById = new Map<string, StateTransaction.StateTransaction<S>>()
+
+    /**
+     * 事务队列：
+     * - 按 FIFO 顺序串行执行每个逻辑入口（dispatch / source-refresh / 后续扩展）；
+     * - 单实例内保证一次只处理一个事务，不同实例之间仍可并行。
+     */
+    const txnQueue = yield* Queue.unbounded<Effect.Effect<void, never, any>>()
+
+    // 后台消费 Fiber：依次执行队列中的事务 Effect。
+    yield* Effect.forkScoped(
+      Effect.forever(
+        Effect.gen(function* () {
+          const eff = yield* Queue.take(txnQueue)
+          yield* eff
+        }),
+      ),
+    )
+
+    /**
+     * 将给定事务 Effect 入队，并在当前 Fiber 中等待其完成：
+     * - 确保所有逻辑入口都通过同一个队列串行执行；
+     * - 调用方仍以单次 Effect 的形式感知该入口（保持原有 API 形状）。
+     */
+    const enqueueTransaction = <A2, E2, R2>(
+      eff: Effect.Effect<A2, E2, R2>,
+    ): Effect.Effect<A2, E2, never> =>
+      Effect.gen(function* () {
+        const done = yield* Deferred.make<Exit.Exit<A2, E2>>()
+
+        // 任务必须“永不失败”，否则会卡死队列消费 Fiber。
+        const task: Effect.Effect<void, never, any> = eff.pipe(
+          Effect.exit,
+          Effect.flatMap((exit) => Deferred.succeed(done, exit)),
+          Effect.asVoid,
+        )
+
+        yield* Queue.offer(txnQueue, task)
+
+        const exit = yield* Deferred.await(done)
+        return yield* Exit.match(exit, {
+          onFailure: (cause) => Effect.failCause(cause),
+          onSuccess: (value) => Effect.succeed(value),
+        })
+      })
+
+    const makeLinkId = (): string =>
+      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+
+    /**
+     * runOperation：
+     * - 统一的边界操作执行入口（防呆基座）；
+     * - 自动补齐 meta（moduleId/runtimeId/txnId/linkId/runtimeLabel...）；
+     * - 统一进入 middleware stack（空 stack 直通）。
+     */
+    const runOperation = <A2, E2, R2>(
       kind: EffectOp.EffectOp["kind"],
       name: string,
-      meta: EffectOp.EffectOp["meta"],
-      eff: Effect.Effect<A2, never, any>,
-    ): Effect.Effect<A2, never, never> =>
+      params: {
+        readonly payload?: unknown
+        readonly meta?: EffectOp.EffectOp["meta"]
+      },
+      eff: Effect.Effect<A2, E2, R2>,
+    ): Effect.Effect<A2, E2, R2> =>
       Effect.gen(function* () {
         const stack = yield* getMiddlewareStack()
-        if (!stack.length) {
-          return yield* eff
+
+        const currentTxnId = txnContext.current?.txnId
+        const existingLinkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
+        const linkId = existingLinkId ?? makeLinkId()
+
+        const runtimeLabel = yield* FiberRef.get(Debug.currentRuntimeLabel)
+
+        const baseMeta: EffectOp.EffectOp["meta"] = {
+          ...(params.meta ?? {}),
+          // Runtime 自动补齐
+          moduleId: (params.meta as any)?.moduleId ?? options.moduleId,
+          runtimeId: (params.meta as any)?.runtimeId ?? id,
+          runtimeLabel: (params.meta as any)?.runtimeLabel ?? runtimeLabel,
+          txnId: (params.meta as any)?.txnId ?? currentTxnId,
+          linkId,
         }
-        const op = EffectOp.make<A2, never, any>({
+
+        const op = EffectOp.make<A2, E2, R2>({
           kind,
           name,
+          payload: params.payload,
           effect: eff,
-          meta,
+          meta: baseMeta,
         })
-        return yield* EffectOp.run(op, stack)
-      }) as Effect.Effect<A2, never, never>
 
-    yield* runWithEffectOp(
+        const program = stack.length ? EffectOp.run(op, stack) : op.effect
+
+        // linkId：边界起点创建，嵌套复用（跨模块共享同一 FiberRef）。
+        return yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(program)
+      })
+
+    yield* runOperation(
       "lifecycle",
       "module:init",
-      {
-        moduleId: options.moduleId,
-        runtimeId: id,
-      },
+      { meta: { moduleId: options.moduleId, runtimeId: id } },
       Debug.record({
         type: "module:init",
         moduleId: options.moduleId,
@@ -143,31 +284,136 @@ export const make = <S, A, R = never>(
     // - 便于 DevTools 在没有任何业务交互时就能看到「Current State」，
     // - 同时为 timeline 提供第 0 帧状态，后续事件可以基于它做 time-travel 视图。
     const initialSnapshot = yield* SubscriptionRef.get(stateRef)
-    yield* Debug.record({
-      type: "state:update",
-      moduleId: options.moduleId,
-      state: initialSnapshot,
-      runtimeId: id,
+    yield* runOperation(
+      "state",
+      "state:init",
+      { meta: { moduleId: options.moduleId, runtimeId: id } },
+      Debug.record({
+        type: "state:update",
+        moduleId: options.moduleId,
+        state: initialSnapshot,
+        runtimeId: id,
+      }),
+    )
+
+    /**
+     * 读取当前状态：
+     * - 若存在活跃事务，则返回事务草稿；
+     * - 否则回退到底层 SubscriptionRef 快照。
+     */
+    const readState: Effect.Effect<S> = Effect.gen(function* () {
+      const current = txnContext.current
+      if (current) {
+        return current.draft
+      }
+      return yield* SubscriptionRef.get(stateRef)
     })
 
-    const setStateInternal = (next: S) =>
-      SubscriptionRef.set(stateRef, next).pipe(
-        Effect.tap(() =>
-          runWithEffectOp(
-            "state",
-            "state:update",
-            {
-              moduleId: options.moduleId,
-              runtimeId: id,
-            },
-            Debug.record({
+    /**
+     * setStateInternal：
+     * - 在活跃事务内：仅更新草稿并记录 Patch（整棵 State 为粒度），不直接写入底层 Ref；
+     * - 在无事务时：保持旧行为，直接写入 SubscriptionRef 并发出一次 state:update Debug 事件。
+     *
+     * 说明：
+     * - Patch 的 path 暂时统一为 "*"，后续在接入 StateTrait Patch 模型时再细化为字段级路径。
+     */
+    const setStateInternal = (next: S): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        if (txnContext.current) {
+          // 在活跃事务内，仅更新草稿并记录一次 reducer 级 Patch。
+          StateTransaction.updateDraft(txnContext, next, {
+            path: "*",
+            to: next,
+            reason: "reducer",
+          })
+          return
+        }
+
+        yield* runOperation(
+          "state",
+          "state:update",
+          {
+            payload: next,
+            meta: { moduleId: options.moduleId, runtimeId: id },
+          },
+          Effect.gen(function* () {
+            yield* SubscriptionRef.set(stateRef, next)
+            yield* Debug.record({
               type: "state:update",
               moduleId: options.moduleId,
               state: next,
               runtimeId: id,
+            })
+          }),
+        )
+      })
+
+    /**
+     * runWithStateTransaction：
+     * - 为一次逻辑入口（dispatch / source-refresh / 后续扩展）开启事务；
+     * - 在 body 中聚合所有状态写入，结束时统一 commit + state:update Debug 事件；
+     * - 由调用方保证 body 不跨越长 IO 边界（详见 spec 中关于事务窗口的约束）。
+     */
+    const runWithStateTransaction = <E2>(
+      origin: StateTransaction.StateTxnOrigin,
+      body: () => Effect.Effect<void, E2, any>,
+    ): Effect.Effect<void, E2, any> =>
+      Effect.locally(TaskRunner.inSyncTransactionFiber, true)(
+        Effect.gen(function* () {
+          const baseState = yield* SubscriptionRef.get(stateRef)
+
+          StateTransaction.beginTransaction(
+            txnContext,
+            origin,
+            baseState,
+          )
+
+          // 在事务窗口内执行具体逻辑（reducer / traits / 中间件等）。
+          const exit = yield* Effect.exit(body())
+          if (exit._tag === "Failure") {
+            // 失败时必须清理事务上下文，避免泄漏到后续入口。
+            StateTransaction.abort(txnContext)
+            return yield* Effect.failCause(exit.cause)
+          }
+
+          // 提交事务：单次写入底层状态，并发出一次聚合后的 state:update 事件。
+          yield* runOperation(
+            "state",
+            "state:update",
+            { meta: { moduleId: options.moduleId, runtimeId: id } },
+            Effect.gen(function* () {
+              const txn = yield* StateTransaction.commit(txnContext, stateRef)
+
+              if (txn) {
+                // 记录事务历史：仅在 dev/test 场景用于调试与 Devtools，不参与业务逻辑。
+                txnHistory.push(txn)
+                txnById.set(txn.txnId, txn)
+                if (txnHistory.length > maxTxnHistory) {
+                  const oldest = txnHistory.shift()
+                  if (oldest) {
+                    txnById.delete(oldest.txnId)
+                  }
+                }
+
+                const nextState =
+                  txn.finalStateSnapshot !== undefined
+                    ? txn.finalStateSnapshot
+                    : yield* SubscriptionRef.get(stateRef)
+
+                yield* Debug.record({
+                  type: "state:update",
+                  moduleId: options.moduleId,
+                  state: nextState,
+                  runtimeId: id,
+                  txnId: txn.txnId,
+                  patchCount: txn.patches.length,
+                  originKind: txn.origin.kind,
+                  originName: txn.origin.name,
+                })
+              }
             }),
           )
-        )
+        }),
       )
 
     // Primary Reducer 映射：初始值来自 options.reducers，并允许在运行时通过内部钩子追加（用于 $.reducer 语法糖）。
@@ -213,7 +459,7 @@ export const make = <S, A, R = never>(
         return Effect.void
       }
 
-      return SubscriptionRef.get(stateRef).pipe(
+      return readState.pipe(
         Effect.flatMap((prev) => {
           const next = reducer(prev, action)
           // 即便 next === prev，仍然复用 setStateInternal 的 Debug 行为，由上层决定是否据此做 diff。
@@ -222,32 +468,57 @@ export const make = <S, A, R = never>(
       )
     }
 
-    const runtime: PublicModuleRuntime<S, A> = {
-      id,
-      getState: SubscriptionRef.get(stateRef),
-      setState: setStateInternal,
-      dispatch: (action) =>
-        applyPrimaryReducer(action).pipe(
-          // 记录 Action 派发事件（同时通过 EffectOp 总线暴露给 DebugObserver）
-          Effect.zipRight(
-            runWithEffectOp(
-              "action",
-              "action:dispatch",
-              {
-                moduleId: options.moduleId,
-                runtimeId: id,
-              },
-              Debug.record({
+    /**
+     * runDispatch：
+     * - 以 { kind: "action" } 入口开启事务；
+     * - 在事务内执行 Primary Reducer + Debug action 事件 + Action 发布；
+     * - 提交逻辑与 state:update Debug 事件由 runWithStateTransaction 统一处理。
+     */
+    const runDispatch = (action: A): Effect.Effect<void, never, any> =>
+      runOperation(
+        "action",
+        "action:dispatch",
+        {
+          payload: action,
+          meta: { moduleId: options.moduleId, runtimeId: id },
+        },
+        runWithStateTransaction(
+          {
+            kind: "action",
+            name: "dispatch",
+            details: {
+              _tag: (action as any)?._tag ?? (action as any)?.type,
+            },
+          },
+          () =>
+            Effect.gen(function* () {
+              // 先应用 Primary Reducer（可能是 no-op）。
+              yield* applyPrimaryReducer(action)
+
+              // 记录 Action 派发事件（用于 Devtools/诊断）。
+              yield* Debug.record({
                 type: "action:dispatch",
                 moduleId: options.moduleId,
                 action,
                 runtimeId: id,
-              }),
-            )
-          ),
-          // 将 Action 发布给所有 watcher（Logic / Flow）
-          Effect.zipRight(PubSub.publish(actionHub, action))
+                txnId: txnContext.current?.txnId,
+              })
+
+              // 将 Action 发布给所有 watcher（Logic / Flow）。
+              yield* PubSub.publish(actionHub, action)
+            }),
         ),
+      )
+
+    const runtime: PublicModuleRuntime<S, A> = {
+      id,
+      // 将 moduleId 暴露到 Runtime 上，便于 React / Devtools 在视图层关联 Module 信息。
+      moduleId: options.moduleId,
+      getState: readState,
+      setState: setStateInternal,
+      dispatch: (action) =>
+        // 将事务请求排入队列，保证单实例内按 FIFO 串行执行。
+        enqueueTransaction(runDispatch(action)),
       actions$: Stream.fromPubSub(actionHub),
       changes: <V>(selector: (s: S) => V) =>
         Stream.map(stateRef.changes, selector).pipe(Stream.changes),
@@ -286,8 +557,104 @@ export const make = <S, A, R = never>(
       }
     }
 
+    const instanceKey =
+      options.moduleId != null ? `${options.moduleId}::${id}` : undefined
+
+    if (instanceKey) {
+      runtimeByInstanceKey.set(
+        instanceKey,
+        runtime as PublicModuleRuntime<any, any>,
+      )
+    }
+
+    // 暴露内部 StateTransaction 配置，便于测试与诊断在不同配置源下的观测级别决策。
+    ;(runtime as any).__stateTransactionInstrumentation = instrumentation
+
     // 将内部注册函数暴露给 BoundApiRuntime，用于实现 $.reducer 语法糖。
     ;(runtime as any).__registerReducer = registerReducer
+
+    // 仅供内部使用：在当前 Runtime 的 StateTransaction 上记录字段级 Patch。
+    ;(runtime as any).__recordStatePatch = (
+      patch: {
+        readonly path: string
+        readonly from?: unknown
+        readonly to?: unknown
+        readonly reason: StateTransaction.PatchReason
+        readonly traitNodeId?: string
+        readonly stepId?: string
+      },
+    ): void => {
+      StateTransaction.recordPatch(txnContext, patch)
+    }
+
+    // 仅供内部使用：为 BoundApi / Traits 等入口提供统一的事务执行助手，
+    // 确保 source-refresh 等逻辑入口与 dispatch 共享同一队列与 StateTransaction 语义。
+    ;(runtime as any).__runWithStateTransaction = (
+      origin: StateTransaction.StateTxnOrigin,
+      body: () => Effect.Effect<void, never, any>,
+    ): Effect.Effect<void> =>
+      enqueueTransaction(
+        runOperation(
+          (origin.kind as any) as EffectOp.EffectOp["kind"],
+          origin.name ? `txn:${origin.name}` : "txn",
+          { meta: { moduleId: options.moduleId, runtimeId: id } },
+          runWithStateTransaction(origin, body),
+        ),
+      )
+
+    // 仅供 Devtools / 测试使用：基于已有 StateTransaction 快照回放指定事务前/后的状态。
+    ;(runtime as any).__applyTransactionSnapshot = (
+      txnId: string,
+      mode: "before" | "after",
+    ): Effect.Effect<void> =>
+      enqueueTransaction(
+        Effect.gen(function* () {
+          // 生产环境默认不启用时间旅行，避免误用；
+          // Devtools 应在 dev/test 环境下结合 instrumentation = "full" 使用该能力。
+          if (!isDevEnv()) {
+            return
+          }
+
+          const txn = txnById.get(txnId)
+          if (!txn) {
+            return
+          }
+
+          const targetState =
+            mode === "before"
+              ? txn.initialStateSnapshot
+              : txn.finalStateSnapshot
+
+          if (targetState === undefined) {
+            // 在未采集快照的配置下无法进行时间旅行。
+            return
+          }
+
+          // 使用 StateTransaction 记录一次 origin.kind = "devtools" 的回放操作，
+          // 以在 Devtools 事务视图中留下完整的 time-travel 轨迹。
+          yield* runWithStateTransaction(
+            {
+              kind: "devtools",
+              name: "time-travel",
+              details: {
+                baseTxnId: txnId,
+                mode,
+              },
+            },
+            () =>
+              Effect.sync(() => {
+                StateTransaction.updateDraft(
+                  txnContext,
+                  targetState as S,
+                  {
+                    path: "*",
+                    reason: "devtools",
+                  },
+                )
+              }),
+          )
+        }),
+      )
 
     // 注册 Runtime，供跨模块访问（useRemote / Link 等）使用
     if (options.tag) {
@@ -297,30 +664,33 @@ export const make = <S, A, R = never>(
     yield* Effect.addFinalizer(() =>
       lifecycle.runDestroy.pipe(
         Effect.flatMap(() =>
-          runWithEffectOp(
+          runOperation(
             "lifecycle",
             "module:destroy",
-            {
-              moduleId: options.moduleId,
-              runtimeId: id,
-            },
+            { meta: { moduleId: options.moduleId, runtimeId: id } },
             Debug.record({
               type: "module:destroy",
               moduleId: options.moduleId,
               runtimeId: id,
             }),
-          )
+          ),
         ),
         Effect.tap(() =>
-          options.tag
-            ? Effect.sync(() =>
-                unregisterRuntime(
-                  options.tag as Context.Tag<any, PublicModuleRuntime<any, any>>
-                )
+          Effect.sync(() => {
+            if (options.tag) {
+              unregisterRuntime(
+                options.tag as Context.Tag<
+                  any,
+                  PublicModuleRuntime<any, any>
+                >,
               )
-            : Effect.void
-        )
-      )
+            }
+            if (instanceKey) {
+              runtimeByInstanceKey.delete(instanceKey)
+            }
+          }),
+        ),
+      ),
     )
 
     if (options.tag && options.logics?.length) {
@@ -373,13 +743,10 @@ export const make = <S, A, R = never>(
           moduleId: options.moduleId,
         }).pipe(
           Effect.flatMap(() =>
-            runWithEffectOp(
+            runOperation(
               "lifecycle",
               "lifecycle:error",
-              {
-                moduleId: options.moduleId,
-                runtimeId: id,
-              },
+              { payload: cause, meta: { moduleId: options.moduleId, runtimeId: id } },
               Debug.record({
                 type: "lifecycle:error",
                 moduleId: options.moduleId,

@@ -9,11 +9,19 @@ import * as Core from "./internal/runtime/EffectOpCore.js"
 export type EffectOp<Out = unknown, Err = unknown, Env = unknown> =
   Core.EffectOp<Out, Err, Env>
 
+export type OperationPolicy = Core.OperationPolicy
+
+export type OperationRejected = Core.OperationRejected
+
+export type OperationError<E> = Core.OperationError<E>
+
 export type Middleware = Core.Middleware
 
 export type MiddlewareStack = Core.MiddlewareStack
 
 export const composeMiddleware = Core.composeMiddleware
+
+export const makeOperationRejected = Core.makeOperationRejected
 
 /**
  * 生成随机 id，用于标识一次 EffectOp。
@@ -64,4 +72,3 @@ export const run = <A, E, R>(
   op: EffectOp<A, E, R>,
   stack: MiddlewareStack,
 ): Effect.Effect<A, E, R> => Core.runWithMiddleware(op, stack)
-

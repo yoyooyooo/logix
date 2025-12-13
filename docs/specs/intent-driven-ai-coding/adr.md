@@ -10,7 +10,7 @@ status: living
 *   **日期**: 2025-11-23
 *   **状态**: **Accepted (Active)**
 *   **决策**: 
-    基于奥卡姆剃刀原则，将意图收敛为 **UI / Logic / Domain** 三大维度，引入 **Spec/Impl 双模态**，并确立平台为前端开发者的“意图显影引擎”。
+	    基于奥卡姆剃刀原则，将意图收敛为 **UI / Logic / Module** 三大维度（早期文档中曾用 “Domain”，现统一为 “Module”），引入 **Spec/Impl 双模态**，并确立平台为前端开发者的“意图显影引擎”。
 *   **理由**: 
     v2 的六层模型过度工程化，概念碎片化严重。新模型更符合“意图驱动”本质，且支持从单人到团队的渐进式协作。
 *   **参考**: [v3 规范总览](./v3/01-overview.md)
@@ -38,4 +38,4 @@ status: living
     - **IMD / best-practice 作为“供体”**：把现有组件库和实践仓库视为模式/模板的知识库，而不是不可改动的规范；Intent/Pattern/Flow 是一等公民，IMD/best-practice 为它们服务。
 *   **与后续版本的关系**: 
     - v2 在此基础上把 Intent 进一步拆成六层，强调“全切面解构”；  
-    - v3 则回到“意图聚合”的方向，用 UI / Logic / Domain 三维 + Flow/Logix Runtime 承载 v1 的大部分原始诉求，同时弱化大块 YAML/多层 Intent 的复杂度。
+    - v3 则回到“意图聚合”的方向，用 UI / Logic / Module 三维 + Logix Runtime 承载 v1 的大部分原始诉求，同时弱化大块 YAML/多层 Intent 的复杂度。

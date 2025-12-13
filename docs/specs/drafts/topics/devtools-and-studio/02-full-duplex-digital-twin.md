@@ -302,7 +302,7 @@ yield* $.onAction("submit")
   - `docs/specs/runtime-logix/core/07-react-integration.md`：`Logix.Runtime.make` / `RuntimeProvider` 等 Composition Root 约定，是 Runtime↔Studio 连接的自然挂载点；
   - `docs/specs/drafts/L5/runtime-core-evolution.md`：Runtime 观测性（Supervisor/Debug 事件流）、规范边界与 RuntimeAdapter 能力的演进路线图，为 Runtime → Studio 的事件模型和“远程 DevTools/Studio 附着点”提供技术基础；
   - `docs/specs/drafts/L9/runtime-logix-devtools-and-runtime-tree.md`：Runtime Tree / TagIndex / DevTools 挂载面规划；
-  - `docs/specs/drafts/L9/logix-instrumentation-overhaul.md`（已并入 L5）：早期关于从 `Logic.secure` 迁移到 Effect-Native 观测体系的思考。
+  - `docs/specs/drafts/L9/logix-instrumentation-overhaul.md`（已并入 L5）：早期关于从显式安全包装迁移到 Effect-Native 观测体系的思考。
 
 从规划关系上看：
 

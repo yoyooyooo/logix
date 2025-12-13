@@ -4,6 +4,7 @@
         "suspense-and-async",
         "error-handling",
         "debugging-and-devtools",
+        "performance-and-optimization",
         "testing"
     ]
 }

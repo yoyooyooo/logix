@@ -2,6 +2,7 @@ import { Context, Effect, Option, Schema, Stream, SubscriptionRef } from "effect
 import { create } from "mutative"
 import type * as Logix from "./core/module.js"
 import * as Logic from "./core/LogicMiddleware.js"
+import * as TaskRunner from "./core/TaskRunner.js"
 import * as FlowRuntime from "./FlowRuntime.js"
 import * as MatchBuilder from "./core/MatchBuilder.js"
 import * as Platform from "./core/Platform.js"
@@ -24,80 +25,152 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
 ) => {
   const flowApi = FlowRuntime.make<Sh, R>(runtime)
 
-  return <T>(stream: Stream.Stream<T>): Logic.IntentBuilder<T, Sh, R> => {
+  return <T>(
+    stream: Stream.Stream<T>,
+    triggerName?: string,
+  ): Logic.IntentBuilder<T, Sh, R> => {
+    const runWithStateTransaction: TaskRunner.TaskRunnerRuntime["runWithStateTransaction"] = (
+      origin,
+      body,
+    ) => {
+      const anyRuntime = runtime as any
+      const fn:
+        | ((
+          o: {
+            readonly kind: string
+            readonly name?: string
+            readonly details?: unknown
+          },
+          b: () => Effect.Effect<void, never, any>,
+        ) => Effect.Effect<void, never, any>)
+        | undefined = anyRuntime && anyRuntime.__runWithStateTransaction
+      return fn ? fn(origin, body) : body()
+    }
+
+    const taskRunnerRuntime: TaskRunner.TaskRunnerRuntime = {
+      moduleId: (runtime as any)?.moduleId,
+      runWithStateTransaction,
+    }
+
     const builder = {
       debounce: (ms: number) =>
         LogicBuilderFactory<Sh, R>(runtime)(
-          flowApi.debounce<T>(ms)(stream)
+          flowApi.debounce<T>(ms)(stream),
+          triggerName,
         ),
       throttle: (ms: number) =>
         LogicBuilderFactory<Sh, R>(runtime)(
-          flowApi.throttle<T>(ms)(stream)
+          flowApi.throttle<T>(ms)(stream),
+          triggerName,
         ),
       filter: (predicate: (value: T) => boolean) =>
         LogicBuilderFactory<Sh, R>(runtime)(
-          flowApi.filter(predicate)(stream)
+          flowApi.filter(predicate)(stream),
+          triggerName,
         ),
       map: <U>(f: (value: T) => U) =>
         LogicBuilderFactory<Sh, R>(runtime)(
-          stream.pipe(Stream.map(f))
+          stream.pipe(Stream.map(f)),
+          triggerName,
         ),
-      run: <A = void, E = never, R2 = unknown>(
+      run<A = void, E = never, R2 = unknown>(
         eff:
           | Logic.Of<Sh, R & R2, A, E>
-          | ((p: T) => Logic.Of<Sh, R & R2, A, E>)
-      ): Logic.Of<Sh, R & R2, void, E> =>
-        Logic.secure(
-          flowApi.run<T, A, E, R2>(eff)(stream),
-          { name: "flow.run" }
-        ),
-      runLatest: <A = void, E = never, R2 = unknown>(
+          | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
+        options?: Logic.OperationOptions,
+      ): Logic.Of<Sh, R & R2, void, E> {
+        return flowApi.run<T, A, E, R2>(eff, options)(stream)
+      },
+      runLatest<A = void, E = never, R2 = unknown>(
         eff:
           | Logic.Of<Sh, R & R2, A, E>
-          | ((p: T) => Logic.Of<Sh, R & R2, A, E>)
-      ): Logic.Of<Sh, R & R2, void, E> =>
-        Logic.secure(
-          flowApi.runLatest<T, A, E, R2>(eff)(stream),
-          { name: "flow.runLatest" }
-        ),
-      runExhaust: <A = void, E = never, R2 = unknown>(
+          | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
+        options?: Logic.OperationOptions,
+      ): Logic.Of<Sh, R & R2, void, E> {
+        return flowApi.runLatest<T, A, E, R2>(eff, options)(stream)
+      },
+      runExhaust<A = void, E = never, R2 = unknown>(
         eff:
           | Logic.Of<Sh, R & R2, A, E>
-          | ((p: T) => Logic.Of<Sh, R & R2, A, E>)
-      ): Logic.Of<Sh, R & R2, void, E> =>
-        Logic.secure(
-          flowApi.runExhaust<T, A, E, R2>(eff)(stream),
-          { name: "flow.runExhaust" }
-        ),
-      runParallel: <A = void, E = never, R2 = unknown>(
+          | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
+        options?: Logic.OperationOptions,
+      ): Logic.Of<Sh, R & R2, void, E> {
+        return flowApi.runExhaust<T, A, E, R2>(eff, options)(stream)
+      },
+      runParallel<A = void, E = never, R2 = unknown>(
         eff:
           | Logic.Of<Sh, R & R2, A, E>
-          | ((p: T) => Logic.Of<Sh, R & R2, A, E>)
-      ): Logic.Of<Sh, R & R2, void, E> =>
-        Logic.secure(
-          flowApi.runParallel<T, A, E, R2>(eff)(stream),
-          { name: "flow.runParallel" }
-        ),
+          | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
+        options?: Logic.OperationOptions,
+      ): Logic.Of<Sh, R & R2, void, E> {
+        return flowApi.runParallel<T, A, E, R2>(eff, options)(stream)
+      },
       runFork: <A = void, E = never, R2 = unknown>(
         eff:
           | Logic.Of<Sh, R & R2, A, E>
           | ((p: T) => Logic.Of<Sh, R & R2, A, E>)
       ): Logic.Of<Sh, R & R2, void, E> =>
-        Logic.secure(
-          Effect.forkScoped(flowApi.run<T, A, E, R2>(eff)(stream)),
-          { name: "flow.runFork" }
+        Effect.forkScoped(flowApi.run<T, A, E, R2>(eff)(stream)).pipe(
+          Effect.asVoid,
         ) as Logic.Of<Sh, R & R2, void, E>,
       runParallelFork: <A = void, E = never, R2 = unknown>(
         eff:
           | Logic.Of<Sh, R & R2, A, E>
           | ((p: T) => Logic.Of<Sh, R & R2, A, E>)
       ): Logic.Of<Sh, R & R2, void, E> =>
-        Logic.secure(
-          Effect.forkScoped(
-            flowApi.runParallel<T, A, E, R2>(eff)(stream),
-          ),
-          { name: "flow.runParallelFork" }
+        Effect.forkScoped(
+          flowApi.runParallel<T, A, E, R2>(eff)(stream),
+        ).pipe(
+          Effect.asVoid,
         ) as Logic.Of<Sh, R & R2, void, E>,
+      runTask: <A = void, E = never, R2 = unknown>(
+        config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
+      ): Logic.Of<Sh, R & R2, void, never> =>
+        TaskRunner.makeTaskRunner<T, Sh, R & R2, A, E>(
+          stream,
+          "task",
+          taskRunnerRuntime,
+          {
+            ...config,
+            triggerName: config.triggerName ?? triggerName,
+          },
+        ) as Logic.Of<Sh, R & R2, void, never>,
+      runParallelTask: <A = void, E = never, R2 = unknown>(
+        config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
+      ): Logic.Of<Sh, R & R2, void, never> =>
+        TaskRunner.makeTaskRunner<T, Sh, R & R2, A, E>(
+          stream,
+          "parallel",
+          taskRunnerRuntime,
+          {
+            ...config,
+            triggerName: config.triggerName ?? triggerName,
+          },
+        ) as Logic.Of<Sh, R & R2, void, never>,
+      runLatestTask: <A = void, E = never, R2 = unknown>(
+        config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
+      ): Logic.Of<Sh, R & R2, void, never> =>
+        TaskRunner.makeTaskRunner<T, Sh, R & R2, A, E>(
+          stream,
+          "latest",
+          taskRunnerRuntime,
+          {
+            ...config,
+            triggerName: config.triggerName ?? triggerName,
+          },
+        ) as Logic.Of<Sh, R & R2, void, never>,
+      runExhaustTask: <A = void, E = never, R2 = unknown>(
+        config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
+      ): Logic.Of<Sh, R & R2, void, never> =>
+        TaskRunner.makeTaskRunner<T, Sh, R & R2, A, E>(
+          stream,
+          "exhaust",
+          taskRunnerRuntime,
+          {
+            ...config,
+            triggerName: config.triggerName ?? triggerName,
+          },
+        ) as Logic.Of<Sh, R & R2, void, never>,
       toStream: () => stream,
       update: (
         reducer: (
@@ -237,8 +310,10 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         })
       )
     )
-  const createIntentBuilder = <T>(stream: Stream.Stream<T>) =>
-    makeIntentBuilder(runtime)(stream)
+  const createIntentBuilder = <T>(
+    stream: Stream.Stream<T>,
+    triggerName?: string,
+  ) => makeIntentBuilder(runtime)(stream, triggerName)
 
   /**
    * 从当前 Env 或全局注册表中解析某个 Module 的 Runtime。
@@ -291,7 +366,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
                 Stream.filter(
                   (a: any) => a._tag === arg || a.type === arg
                 )
-              )
+              ),
+              arg,
             )
           }
           if (typeof arg === "object" && arg !== null) {
@@ -301,7 +377,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
                   Stream.filter(
                     (a: any) => a._tag === (arg as any)._tag
                   )
-                )
+                ),
+                String((arg as any)._tag),
               )
             }
             if (Schema.isSchema(arg)) {
@@ -326,7 +403,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
                 Stream.filter(
                   (a: any) => a._tag === prop || a.type === prop
                 )
-              )
+              ),
+              prop,
             )
           }
           return undefined
@@ -347,20 +425,14 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   const stateApi: BoundApi<Sh, R>["state"] = {
     read: runtime.getState,
     update: (f) =>
-      Logic.secure<Sh, R, void, never>(
-        Effect.flatMap(runtime.getState, (prev) => runtime.setState(f(prev))),
-        { name: "state.update", storeId: runtime.id }
-      ),
+      Effect.flatMap(runtime.getState, (prev) => runtime.setState(f(prev))),
     mutate: (f) =>
-      Logic.secure<Sh, R, void, never>(
-        Effect.flatMap(runtime.getState, (prev) => {
-          const next = create(prev as Logix.StateOf<Sh>, (draft) => {
-            f(draft as Logic.Draft<Logix.StateOf<Sh>>)
-          }) as Logix.StateOf<Sh>
-          return runtime.setState(next)
-        }),
-        { name: "state.mutate", storeId: runtime.id }
-      ),
+      Effect.flatMap(runtime.getState, (prev) => {
+        const next = create(prev as Logix.StateOf<Sh>, (draft) => {
+          f(draft as Logic.Draft<Logix.StateOf<Sh>>)
+        }) as Logix.StateOf<Sh>
+        return runtime.setState(next)
+      }),
     ref: runtime.ref,
   }
 
@@ -386,21 +458,18 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
 
   // Primary Reducer 注册：通过 runtime 上的内部注册函数（若存在）写入 reducer 映射。
   const reducer: BoundApi<Sh, R>["reducer"] = (tag, fn) => {
-    return Logic.secure<Sh, R, void, never>(
-      Effect.sync(() => {
-        const anyRuntime = runtime as any
-        const register: (t: string, fn: (s: any, a: any) => any) => void =
-          anyRuntime && anyRuntime.__registerReducer
-        if (!register) {
-          throw new Error(
-            "[BoundApi.reducer] Primary reducer registration is not supported by this runtime " +
-              "(missing internal __registerReducer hook)."
-          )
-        }
-        register(String(tag), fn as any)
-      }),
-      { name: "state.reducer", storeId: runtime.id }
-    )
+    return Effect.sync(() => {
+      const anyRuntime = runtime as any
+      const register: (t: string, fn: (s: any, a: any) => any) => void =
+        anyRuntime && anyRuntime.__registerReducer
+      if (!register) {
+        throw new Error(
+          "[BoundApi.reducer] Primary reducer registration is not supported by this runtime " +
+            "(missing internal __registerReducer hook)."
+        )
+      }
+      register(String(tag), fn as any)
+    }) as any
   }
 
   // StateTrait.source 刷新入口的内部注册表：
@@ -413,12 +482,31 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
 
   const api: BoundApi<Sh, R> & {
     __moduleId?: string
+    __runtimeId?: string
     __registerSourceRefresh?: (
       fieldPath: string,
       handler: (
         state: Logix.StateOf<Sh>,
       ) => Effect.Effect<void, never, any>,
     ) => void
+    __recordStatePatch?: (
+      patch: {
+        readonly path: string
+        readonly from?: unknown
+        readonly to?: unknown
+        readonly reason: string
+        readonly traitNodeId?: string
+        readonly stepId?: string
+      },
+    ) => void
+    __runWithStateTransaction?: (
+      origin: {
+        readonly kind: string
+        readonly name?: string
+        readonly details?: unknown
+      },
+      body: () => Effect.Effect<void, never, any>,
+    ) => Effect.Effect<void, never, any>
   } = {
     state: stateApi,
     actions: actionsApi,
@@ -491,19 +579,44 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     traits: {
       source: {
         refresh: (fieldPath: string) =>
-          Logic.secure<Sh, R, void, never>(
-            Effect.gen(function* () {
-              const handler = sourceRefreshRegistry.get(fieldPath)
-              if (!handler) {
-                // 若未注册刷新逻辑，则视为 no-op，避免在未挂 StateTraitProgram 时抛错。
-                return yield* Effect.void
-              }
+          Effect.gen(function* () {
+            const handler = sourceRefreshRegistry.get(fieldPath)
+            if (!handler) {
+              // 若未注册刷新逻辑，则视为 no-op，避免在未挂 StateTraitProgram 时抛错。
+              return yield* Effect.void
+            }
+            const runWithStateTransaction =
+              (api as any)
+                .__runWithStateTransaction as
+              | ((
+                origin: {
+                  readonly kind: string
+                  readonly name?: string
+                  readonly details?: unknown
+                },
+                body: () => Effect.Effect<void, never, any>,
+              ) => Effect.Effect<void, never, any>)
+              | undefined
 
-              const state = (yield* runtime.getState) as Logix.StateOf<Sh>
-              return yield* handler(state)
-            }),
-            { name: "traits.source.refresh", storeId: runtime.id }
-          ),
+            if (runWithStateTransaction) {
+              // 在支持 StateTransaction 的 Runtime 上，将一次 source-refresh 视为单独的事务入口。
+              return yield* runWithStateTransaction(
+                {
+                  kind: "source-refresh",
+                  name: fieldPath,
+                },
+                () =>
+                  Effect.gen(function* () {
+                    const state = (yield* runtime.getState) as Logix.StateOf<Sh>
+                    return yield* handler(state)
+                  }),
+              )
+            }
+
+            // 旧实现（无事务语义）：直接读取当前 State 并执行刷新逻辑。
+            const state = (yield* runtime.getState) as Logix.StateOf<Sh>
+            return yield* handler(state)
+          }),
       },
     },
     reducer,
@@ -611,7 +724,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
           return createIntentBuilder(
             runtime.actions$.pipe(
               Stream.filter((a: any) => a._tag === arg || a.type === arg)
-            )
+            ),
+            arg,
           )
         }
         if (typeof arg === "object" && arg !== null) {
@@ -619,7 +733,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
             return createIntentBuilder(
               runtime.actions$.pipe(
                 Stream.filter((a: any) => a._tag === (arg as any)._tag)
-              )
+              ),
+              String((arg as any)._tag),
             )
           }
           if (Schema.isSchema(arg)) {
@@ -645,7 +760,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
               Stream.filter(
                 (a: any) => a._tag === prop || a.type === prop
               )
-            )
+            ),
+            prop,
           )
         }
         return undefined
@@ -668,6 +784,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   // 仅供内部使用：为 Bound API 标记所属 ModuleId，方便在 StateTrait.install
   // 等运行时代码中为 EffectOp.meta 补充 moduleId。
   ;(api as any).__moduleId = options?.moduleId
+  ;(api as any).__runtimeId = (runtime as any)?.id as string | undefined
 
   // 仅供 StateTrait.install 使用：注册 source 字段的刷新实现。
   ;(api as any).__registerSourceRefresh = (
@@ -675,6 +792,48 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     handler: (state: Logix.StateOf<Sh>) => Effect.Effect<void, never, any>,
   ): void => {
     sourceRefreshRegistry.set(fieldPath, handler)
+  }
+
+  // 仅供 StateTrait.install 等内部代码使用：在当前 Runtime 的 StateTransaction 上记录字段级 Patch。
+  ;(api as any).__recordStatePatch = (
+    patch: {
+      readonly path: string
+      readonly from?: unknown
+      readonly to?: unknown
+      readonly reason: string
+      readonly traitNodeId?: string
+      readonly stepId?: string
+    },
+  ): void => {
+    const anyRuntime = runtime as any
+    const record: ((p: typeof patch) => void) | undefined =
+      anyRuntime && anyRuntime.__recordStatePatch
+    if (record) {
+      record(patch)
+    }
+  }
+
+  // 仅供内部使用：为 Trait 等入口提供统一的 StateTransaction 执行助手。
+  ;(api as any).__runWithStateTransaction = (
+    origin: {
+      readonly kind: string
+      readonly name?: string
+      readonly details?: unknown
+    },
+    body: () => Effect.Effect<void, never, any>,
+  ): Effect.Effect<void, never, any> => {
+    const anyRuntime = runtime as any
+    const runWithTxn:
+      | ((
+        origin: {
+          readonly kind: string
+          readonly name?: string
+          readonly details?: unknown
+        },
+        body: () => Effect.Effect<void, never, any>,
+      ) => Effect.Effect<void, never, any>)
+      | undefined = anyRuntime && anyRuntime.__runWithStateTransaction
+    return runWithTxn ? runWithTxn(origin, body) : body()
   }
 
   return api

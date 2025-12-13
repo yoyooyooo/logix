@@ -683,7 +683,7 @@ function runStateChangeWithMiddlewares<S, A, E, R>(
    - 确保 DSL 对业务开发者仍然简洁，不暴露 `EffectOp` 细节。
 
 4. **与现有实现的迁移路径**  
-   - 如何将旧有 `Logic.secure` 与 DebugSink 的使用点迁移到 EffectOp 总线；  
+   - 如何将早期 Logic 安全包装点与 DebugSink 的使用点迁移到 EffectOp 总线；  
    - 是否需要在一段时间内提供兼容层（例如将旧 API 映射为 Observer/Runner/Guard）；
 
 5. **中间件顺序与角色优先级**  

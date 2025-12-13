@@ -1,102 +1,291 @@
 :root {
-    /*
+  /*
      * Logix Devtools Theme (Midnight Harmony)
      * A deep, rich palette that avoids pure blacks for better visual hierarchy and reduced eye strain.
      */
 
-    /* Base Backgrounds */
-    --dt-bg-root: #0f1117; /* Deepest background (Panel shell) - slightly blue-tinted void */
-    --dt-bg-surface: #161b22; /* Component background (Sidebar, Lists) */
-    --dt-bg-header: #1a1f2e; /* Headers, Toolbars */
-    --dt-bg-hover: #1f2937; /* Hover states */
-    --dt-bg-active: #1e293b; /* Active/Selected states */
+  /* Base Backgrounds */
+  --dt-bg-root: #0f1117; /* Deepest background (Panel shell) - slightly blue-tinted void */
+  --dt-bg-surface: #161b22; /* Component background (Sidebar, Lists) */
+  --dt-bg-header: #1a1f2e; /* Headers, Toolbars */
+  --dt-bg-hover: #1f2937; /* Hover states */
+  --dt-bg-active: #1e293b; /* Active/Selected states */
 
-    /* Borders & Dividers */
-    --dt-border: #2d3342; /* Default borders */
-    --dt-border-light: #3f4756; /* Lighter separators */
+  /* Borders & Dividers */
+  --dt-border: #2d3342; /* Default borders */
+  --dt-border-light: #3f4756; /* Lighter separators */
 
-    /* Text Colors */
-    --dt-text-primary: #e2e8f0; /* Slate-200: Main text */
-    --dt-text-secondary: #94a3b8; /* Slate-400: Labels, secondary info */
-    --dt-text-muted: #64748b; /* Slate-500: De-emphasized text */
-    --dt-text-dim: #475569; /* Slate-600: Placeholders, very subtle text */
+  /* Text Colors */
+  --dt-text-primary: #e2e8f0; /* Slate-200: Main text */
+  --dt-text-secondary: #94a3b8; /* Slate-400: Labels, secondary info */
+  --dt-text-muted: #64748b; /* Slate-500: De-emphasized text */
+  --dt-text-dim: #475569; /* Slate-600: Placeholders, very subtle text */
 
-    /* Accents - Emerald (Primary Brand) */
-    --dt-primary: #10b981; /* Emerald-500 */
-    --dt-primary-hover: #059669; /* Emerald-600 */
-    --dt-primary-bg: rgba(16, 185, 129, 0.1); /* Subtle Emerald Tint */
-    --dt-primary-border: rgba(16, 185, 129, 0.2);
-    --dt-primary-glow: rgba(16, 185, 129, 0.4);
+  /* Accents - Emerald (Primary Brand) */
+  --dt-primary: #10b981; /* Emerald-500 */
+  --dt-primary-hover: #059669; /* Emerald-600 */
+  --dt-primary-bg: rgba(16, 185, 129, 0.1); /* Subtle Emerald Tint */
+  --dt-primary-border: rgba(16, 185, 129, 0.2);
+  --dt-primary-glow: rgba(16, 185, 129, 0.4);
 
-    /* Accents - Blue (Info/Selection) */
-    --dt-info: #3b82f6; /* Blue-500 */
-    --dt-info-bg: rgba(59, 130, 246, 0.1);
-    --dt-info-border: rgba(59, 130, 246, 0.2);
+  /* Accents - Blue (Info/Selection) */
+  --dt-info: #3b82f6; /* Blue-500 */
+  --dt-info-bg: rgba(59, 130, 246, 0.1);
+  --dt-info-border: rgba(59, 130, 246, 0.2);
 
-    /* Accents - Purple (State) */
-    --dt-state: #a855f7; /* Purple-500 */
-    --dt-state-bg: rgba(168, 85, 247, 0.1);
-    --dt-state-dim: #c084fc; /* Purple-400 */
+  /* Accents - Purple (State) */
+  --dt-state: #a855f7; /* Purple-500 */
+  --dt-state-bg: rgba(168, 85, 247, 0.1);
+  --dt-state-dim: #c084fc; /* Purple-400 */
 
-    /* Accents - Amber (Action) */
-    --dt-action: #f59e0b; /* Amber-500 */
-    --dt-action-bg: rgba(245, 158, 11, 0.1);
-    --dt-action-dim: #fbbf24; /* Amber-400 */
+  /* Accents - Amber (Action / Warning) */
+  --dt-action: #f59e0b; /* Amber-500 */
+  --dt-action-bg: rgba(245, 158, 11, 0.1);
+  --dt-action-dim: #fbbf24; /* Amber-400 */
 
-    /* Accents - Red (Error/Clear) */
-    --dt-danger: #ef4444; /* Red-500 */
-    --dt-danger-bg: rgba(239, 68, 68, 0.1);
+  /* Generic element background + warning alias */
+  --dt-bg-element: #111827; /* Slightly lighter than root for cards / chips */
+  --dt-warning: var(--dt-action);
+  --dt-warning-bg: var(--dt-action-bg);
 
-    /* Misc */
-    --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  /* Accents - Red (Error/Clear) */
+  --dt-danger: #ef4444; /* Red-500 */
+  --dt-danger-bg: rgba(239, 68, 68, 0.1);
+
+  /* Misc */
+  --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
 }
 
-[data-theme="light"] {
-    /* Base Backgrounds */
-    --dt-bg-root: #ffffff;
-    --dt-bg-surface: #f8fafc; /* Slate-50 */
-    --dt-bg-header: #f1f5f9;  /* Slate-100 */
-    --dt-bg-hover: #e2e8f0;   /* Slate-200 */
-    --dt-bg-active: #cbd5e1;  /* Slate-300 */
+[data-theme='light'] {
+  /* Base Backgrounds */
+  --dt-bg-root: #ffffff;
+  --dt-bg-surface: #f8fafc; /* Slate-50 */
+  --dt-bg-header: #f1f5f9; /* Slate-100 */
+  --dt-bg-hover: #e2e8f0; /* Slate-200 */
+  --dt-bg-active: #cbd5e1; /* Slate-300 */
 
-    /* Borders */
-    --dt-border: #e2e8f0;     /* Slate-200 */
-    --dt-border-light: #cbd5e1; /* Slate-300 */
+  /* Borders */
+  --dt-border: #e2e8f0; /* Slate-200 */
+  --dt-border-light: #cbd5e1; /* Slate-300 */
 
-    /* Text Colors */
-    --dt-text-primary: #0f172a;   /* Slate-900 */
-    --dt-text-secondary: #475569; /* Slate-600 */
-    --dt-text-muted: #64748b;     /* Slate-500 */
-    --dt-text-dim: #94a3b8;       /* Slate-400 */
+  /* Text Colors */
+  --dt-text-primary: #0f172a; /* Slate-900 */
+  --dt-text-secondary: #475569; /* Slate-600 */
+  --dt-text-muted: #64748b; /* Slate-500 */
+  --dt-text-dim: #94a3b8; /* Slate-400 */
 
-    /* Accents - Emerald (Primary Brand) */
-    --dt-primary: #059669;        /* Emerald-600 */
-    --dt-primary-hover: #047857;  /* Emerald-700 */
-    --dt-primary-bg: rgba(16, 185, 129, 0.1);
-    --dt-primary-border: rgba(16, 185, 129, 0.3);
-    --dt-primary-glow: rgba(16, 185, 129, 0.2);
+  /* Accents - Emerald (Primary Brand) */
+  --dt-primary: #059669; /* Emerald-600 */
+  --dt-primary-hover: #047857; /* Emerald-700 */
+  --dt-primary-bg: rgba(16, 185, 129, 0.1);
+  --dt-primary-border: rgba(16, 185, 129, 0.3);
+  --dt-primary-glow: rgba(16, 185, 129, 0.2);
 
-    /* Accents - Blue */
-    --dt-info: #2563eb;           /* Blue-600 */
-    --dt-info-bg: rgba(59, 130, 246, 0.1);
-    --dt-info-border: rgba(59, 130, 246, 0.3);
+  /* Accents - Blue */
+  --dt-info: #2563eb; /* Blue-600 */
+  --dt-info-bg: rgba(59, 130, 246, 0.1);
+  --dt-info-border: rgba(59, 130, 246, 0.3);
 
-    /* Accents - Purple */
-    --dt-state: #9333ea;          /* Purple-600 */
-    --dt-state-bg: rgba(168, 85, 247, 0.1);
-    --dt-state-dim: #a855f7;      /* Purple-500 */
+  /* Accents - Purple */
+  --dt-state: #9333ea; /* Purple-600 */
+  --dt-state-bg: rgba(168, 85, 247, 0.1);
+  --dt-state-dim: #a855f7; /* Purple-500 */
 
-    /* Accents - Amber */
-    --dt-action: #d97706;         /* Amber-600 */
-    --dt-action-bg: rgba(245, 158, 11, 0.1);
-    --dt-action-dim: #f59e0b;     /* Amber-500 */
+  /* Accents - Amber (Action / Warning) */
+  --dt-action: #d97706; /* Amber-600 */
+  --dt-action-bg: rgba(245, 158, 11, 0.1);
+  --dt-action-dim: #f59e0b; /* Amber-500 */
 
-    /* Accents - Red */
-    --dt-danger: #dc2626;         /* Red-600 */
-    --dt-danger-bg: rgba(220, 38, 38, 0.1);
+  /* Generic element background + warning alias */
+  --dt-bg-element: #e5e7eb; /* Slate-200 */
+  --dt-warning: var(--dt-action);
+  --dt-warning-bg: var(--dt-action-bg);
 
-    /* Misc */
-    --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    /* Glass effect for light mode needs to be lighter/translucent white */
-    --dt-glass: rgba(255, 255, 255, 0.9);
+  /* Accents - Red */
+  --dt-danger: #dc2626; /* Red-600 */
+  --dt-danger-bg: rgba(220, 38, 38, 0.1);
+
+  /* Misc */
+  --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  /* Glass effect for light mode needs to be lighter/translucent white */
+  --dt-glass: rgba(255, 255, 255, 0.9);
+}
+
+/* ---- Motion helpers (Devtools UI) ---- */
+
+.dt-timeline-enter {
+  animation: dtTimelineEnter 180ms ease-out both;
+}
+
+@keyframes dtTimelineEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- OverviewStrip motion (CSS-first to reduce main-thread cost) ---- */
+
+.dt-overview-viewport {
+  overflow: hidden;
+  height: 40px;
+}
+
+.dt-overview-track {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  will-change: transform;
+}
+
+.dt-overview-bucket {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  background: transparent;
+  --dt-overview-accent: var(--dt-primary);
+  --dt-overview-accent-bg: var(--dt-primary-bg);
+  transition:
+    opacity 120ms ease-out,
+    transform 120ms ease-out,
+    border-color 120ms ease-out,
+    background-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+.dt-overview-bucket[data-empty='true'] {
+  opacity: 0.5;
+}
+
+.dt-overview-bucket[data-empty='true']::after {
+  content: '';
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--dt-border-light);
+  opacity: 0.8;
+}
+
+.dt-overview-bucket:not(:disabled):hover {
+  background-color: var(--dt-bg-hover);
+  border-color: var(--dt-border-light);
+  box-shadow: 0 6px 14px -14px rgba(0, 0, 0, 0.6);
+}
+
+.dt-overview-bucket[data-active='true'] {
+  border-color: var(--dt-primary-border);
+  background:
+    linear-gradient(180deg, var(--dt-primary-bg) 0%, rgba(0, 0, 0, 0) 70%),
+    var(--dt-bg-active);
+  box-shadow:
+    0 0 0 1px var(--dt-primary) inset,
+    0 0 0 1px var(--dt-primary-glow),
+    0 10px 18px -14px rgba(0, 0, 0, 0.55),
+    0 0 18px -12px var(--dt-primary-glow);
+}
+
+.dt-overview-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  transform-origin: bottom;
+  will-change: transform;
+  transition: transform 180ms ease-out, background-color 180ms ease-out, opacity 120ms ease-out;
+}
+
+.dt-overview-insert {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    var(--dt-overview-accent-bg) 60%,
+    var(--dt-overview-accent-bg) 100%
+  );
+  box-shadow: 0 0 0 1px var(--dt-overview-accent) inset, 0 0 18px -10px var(--dt-overview-accent);
+  animation: dtOverviewInsertFlash 260ms ease-out both;
+}
+
+@keyframes dtOverviewInsertFlash {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.75;
+  }
+  62% {
+    opacity: 0.32;
+  }
+  82% {
+    opacity: 0.32;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.dt-overview-highlight {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  border-radius: 2px;
+  background: radial-gradient(
+    80% 120% at 50% 110%,
+    var(--dt-overview-accent-bg) 0%,
+    rgba(0, 0, 0, 0) 72%
+  );
+  box-shadow: 0 0 0 1px var(--dt-overview-accent) inset, 0 0 22px -10px var(--dt-overview-accent);
+  animation: dtOverviewHighlightFlash 220ms ease-out both;
+}
+
+@keyframes dtOverviewHighlightFlash {
+  0% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* Motion handling is CSS-first (transform/opacity) to reduce main-thread cost. */
+
+@media (prefers-reduced-motion: reduce) {
+  .dt-timeline-enter {
+    animation: none;
+  }
+
+  .dt-overview-bucket {
+    transition: none;
+  }
+
+  .dt-overview-bar {
+    transition: none;
+  }
+
+  .dt-overview-insert {
+    animation: none;
+  }
+
+  .dt-overview-highlight {
+    animation: none;
+  }
 }

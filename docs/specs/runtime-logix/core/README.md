@@ -49,7 +49,7 @@ export const CounterLive = CounterModule.live(
 *   [架构总览](01-architecture.md)
 *   [Module / Logic / Live / `$` 总览](02-module-and-logic-api.md)
 *   [Logic & Flow (工具)](03-logic-and-flow.md)：Logic / Flow / Control / Bound API `$` 详解
-*   [Logic Middleware](./04-logic-middleware.md)：Logic Middleware 与 `Logic.secure` 安全机制
+*   [Logic Middleware](./04-logic-middleware.md)：Logic Middleware 与基于 EffectOp 的全局中间件安全机制
 *   [Pattern (资产)](04-pattern.md)
 *   [实现架构](05-runtime-implementation.md)：Runtime 内部实现架构（ModuleRuntime / Store / Scope / Layer）
 *   [平台集成](06-platform-integration.md)

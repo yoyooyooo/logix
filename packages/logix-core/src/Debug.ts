@@ -6,6 +6,7 @@ import type {
   StateTraitPlan,
 } from "./state-trait.js"
 import * as Internal from "./internal/runtime/core/DebugSink.js"
+import * as DevtoolsHub from "./internal/runtime/core/DevtoolsHub.js"
 import * as ModuleTraitsRegistry from "./internal/debug/ModuleTraitsRegistry.js"
 import { getNodeEnv } from "./internal/runtime/core/env.js"
 
@@ -15,11 +16,29 @@ import { getNodeEnv } from "./internal/runtime/core/env.js"
 
 export type Event = Internal.Event
 export interface Sink extends Internal.Sink {}
+export interface RuntimeDebugEventRef extends Internal.RuntimeDebugEventRef {}
 
 export const internal = {
   currentDebugSinks: Internal.currentDebugSinks,
   currentRuntimeLabel: Internal.currentRuntimeLabel,
+  toRuntimeDebugEventRef: Internal.toRuntimeDebugEventRef,
 }
+
+export interface DevtoolsSnapshot extends DevtoolsHub.DevtoolsSnapshot {}
+export interface DevtoolsHubOptions extends DevtoolsHub.DevtoolsHubOptions {}
+
+export const getDevtoolsSnapshot = DevtoolsHub.getDevtoolsSnapshot
+export const subscribeDevtoolsSnapshot = DevtoolsHub.subscribeDevtoolsSnapshot
+export const clearDevtoolsEvents = DevtoolsHub.clearDevtoolsEvents
+export const setInstanceLabel = DevtoolsHub.setInstanceLabel
+export const getInstanceLabel = DevtoolsHub.getInstanceLabel
+
+/**
+ * isDevtoolsEnabled：
+ * - 用于 React/Devtools UI 在非 dev 环境下判断是否应启用额外观测（如 react-render 事件）。
+ * - 该标记由 devtoolsHubLayer 打开（显式 override）。
+ */
+export const isDevtoolsEnabled = DevtoolsHub.isDevtoolsEnabled
 
 /**
  * ModuleInstanceCounter：
@@ -232,6 +251,51 @@ export const replace = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never, nev
   ) as Layer.Layer<any, never, never>
 
 /**
+ * appendSinks：
+ * - 在当前 Fiber 的 Debug sinks 集合基础上“追加” sinks（不覆盖调用方已有 sinks）；
+ * - 典型用于 devtoolsHubLayer / traceLayer 等装饰器场景。
+ */
+export const appendSinks = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never, never> =>
+  Layer.fiberRefLocallyScopedWith(
+    Internal.currentDebugSinks,
+    (current) => [...current, ...(sinks as ReadonlyArray<Internal.Sink>)],
+  ) as Layer.Layer<any, never, never>
+
+/**
+ * devtoolsHubLayer：
+ * - 追加 DevtoolsHub Sink，用于在进程/页面内聚合 Debug 事件快照（DevtoolsSnapshot）；
+ * - 以“追加 sinks”的方式工作，不会覆盖 Debug.layer / Debug.replace / 自定义 sinks。
+ */
+export function devtoolsHubLayer(options?: DevtoolsHubOptions): Layer.Layer<any, never, never>
+export function devtoolsHubLayer(
+  base: Layer.Layer<any, any, any>,
+  options?: DevtoolsHubOptions,
+): Layer.Layer<any, never, any>
+export function devtoolsHubLayer(
+  baseOrOptions?: Layer.Layer<any, any, any> | DevtoolsHubOptions,
+  maybeOptions?: DevtoolsHubOptions,
+): Layer.Layer<any, never, any> {
+  // Layer 在 effect v3 运行时是一个带 `_op_layer` 标记的对象。
+  const isLayerValue = (value: unknown): value is Layer.Layer<any, any, any> =>
+    typeof value === "object" && value !== null && "_op_layer" in (value as Record<string, unknown>)
+
+  const hasBase = isLayerValue(baseOrOptions)
+  const base = hasBase
+    ? (baseOrOptions as Layer.Layer<any, any, any>)
+    : (Layer.empty as unknown as Layer.Layer<any, any, any>)
+  const options = hasBase
+    ? maybeOptions
+    : (baseOrOptions as DevtoolsHubOptions | undefined)
+
+  DevtoolsHub.configureDevtoolsHub(options)
+  const append = appendSinks([DevtoolsHub.devtoolsHubSink])
+
+  // FiberRef 层需要保证 base 先建立 sinks，再由 append 追加；provideMerge(append, base)
+  // 会先构建 base，再应用 append 的 FiberRefs patch，避免被覆盖。
+  return Layer.provideMerge(append, base) as Layer.Layer<any, never, any>
+}
+
+/**
  * runtimeLabel：
  * - 在当前 Fiber 作用域内为 Debug 事件附加一个逻辑 Runtime 标识（如 App 名称 / 场景标签）；
  * - DevTools 可以据此将 Debug 事件按 Runtime 分组展示。
@@ -310,7 +374,7 @@ export const getModuleTraitsById = (
  *   )
  */
 const isLayer = (value: unknown): value is Layer.Layer<any, any, any> =>
-  typeof value === "object" && value !== null && "_tag" in (value as Record<string, unknown>)
+  typeof value === "object" && value !== null && "_op_layer" in (value as Record<string, unknown>)
 
 export function traceLayer(
   onTrace?: (event: Event) => Effect.Effect<void>,
@@ -343,5 +407,6 @@ export function traceLayer(
     (sinks) => [...sinks, traceSink],
   )
 
-  return Layer.merge(base as Layer.Layer<any, any, any>, appendTrace) as Layer.Layer<any, never, any>
+  // 同 devtoolsHubLayer：先构建 base，再由 appendTrace 追加 FiberRef sinks。
+  return Layer.provideMerge(appendTrace, base as Layer.Layer<any, any, any>) as Layer.Layer<any, never, any>
 }

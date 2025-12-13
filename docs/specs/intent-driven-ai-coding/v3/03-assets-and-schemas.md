@@ -4,7 +4,7 @@ status: draft
 version: 14 (Effect-Native)
 ---
 
-> 本文档定义了“三位一体”模型下的核心资产结构。Intent 是唯一的真理来源，逻辑执行层在早期曾统一归纳为 LogicDSL；当前 v3 在实现上已收敛为 **Store / Logic / Flow** 三大运行时原语 + 基于 Effect 的 **pattern-style 长逻辑封装风格**。LogicDSL 可以理解为这些原语在 Intent / 工具链视角下的统称，具体类型设计以 `v3/effect-poc` 下 PoC 为最新事实源；Pattern 资产（带 id/config 的可复用逻辑）属于平台层概念，而不是运行时内建类型。
+> 本文档定义了“三位一体”模型下的核心资产结构。Intent 是唯一的真理来源，逻辑执行层在早期曾统一归纳为 LogicDSL；当前 v3 在实现上已收敛为 **Store / Logic / Flow** 三大运行时原语 + 基于 Effect 的 **pattern-style 长逻辑封装风格**。LogicDSL 可以理解为这些原语在 Intent / 工具链视角下的统称，具体类型设计以 `@logix/core`（`packages/logix-core/src`）为准；场景验证以 `examples/logix` 为准；Pattern 资产（带 id/config 的可复用逻辑）属于平台层概念，而不是运行时内建类型。
 
 ## 1. IntentSpec v3 (The SSoT)
 
@@ -49,7 +49,7 @@ interface UIImplConfig {
 
 ## 3. Logic Intent Schema (Intent Graph)
 
-Logic 意图描述业务流程。在 v3 中，**Code is Truth**。Logic Intent Schema 实际上是 Parser 从源码中提取的 **Memory AST**，用于可视化渲染。
+Logic 意图描述业务流程。在 v3 中，Logic 的“可执行实现载体”落在代码里；平台侧的 Logic/IntentRule/Graph 视图是从代码中可解析子集抽取出的结构化投影（Memory AST），用于可视化与对齐。
 
 ```typescript
 interface LogicImplConfig {

@@ -16,7 +16,10 @@ import { SessionModuleLayout } from "./demos/SessionModuleLayout"
 import { SuspenseModuleLayout } from "./demos/SuspenseModuleLayout"
 import { CounterWithProfileDemo } from "./demos/CounterWithProfileDemo"
 import { TraitFormDemoLayout } from "./demos/TraitFormDemoLayout"
+import { ComplexTraitFormDemoLayout } from "./demos/ComplexTraitFormDemoLayout"
 import { MiddlewareDemoLayout } from "./demos/MiddlewareDemoLayout"
+import { TraitTxnDevtoolsDemoLayout } from "./demos/trait-txn-devtools-demo"
+import { TaskRunnerDemoLayout } from "./demos/TaskRunnerDemoLayout"
 import { LogixDevtools } from "@logix/devtools-react"
 import "./style.css"
 
@@ -173,6 +176,20 @@ export function App() {
                 </span>
               </NavLink>
               <NavLink
+                to="/task-runner-demo"
+                className={({ isActive }: { isActive: boolean }) =>
+                  `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                  }`
+                }
+              >
+                Task Runner 长链路
+                <span className="block text-[10px] opacity-80 font-normal mt-0.5">
+                  runLatestTask / runExhaustTask
+                </span>
+              </NavLink>
+              <NavLink
                 to="/form-demo"
                 className={({ isActive }: { isActive: boolean }) =>
                   `w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 block ${isActive
@@ -236,6 +253,36 @@ export function App() {
                     dirtyCount / isDirty
                   </span>
                 </NavLink>
+                <NavLink
+                  to="/complex-trait-form-demo"
+                  className={({ isActive }: { isActive: boolean }) =>
+                    `w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 block ${
+                      isActive
+                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                    }`
+                  }
+                >
+                  复杂表单 Traits
+                  <span className="block text-[10px] opacity-80 font-normal mt-0.5">
+                    linkage + summary + validation
+                  </span>
+                </NavLink>
+                <NavLink
+                  to="/trait-txn-devtools-demo"
+                  className={({ isActive }: { isActive: boolean }) =>
+                    `w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 block ${
+                      isActive
+                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                    }`
+                  }
+                >
+                  Traits + Txn + Devtools
+                  <span className="block text-[10px] opacity-80 font-normal mt-0.5">
+                    事务视图 / 时间旅行 / 性能体验
+                  </span>
+                </NavLink>
               </div>
             </div>
           </div>
@@ -267,11 +314,16 @@ export function App() {
             <Route path="/link-demo" element={<LinkDemoLayout />} />
             <Route path="/layer-override" element={<LayerOverrideDemoLayout />} />
             <Route path="/middleware-demo" element={<MiddlewareDemoLayout />} />
+            <Route path="/task-runner-demo" element={<TaskRunnerDemoLayout />} />
             <Route path="/suspense-module" element={<SuspenseModuleLayout />} />
             {/* 内部 Demo：CounterWithProfile（StateTrait Quickstart 示例） */}
             <Route path="/counter-with-profile-demo" element={<CounterWithProfileDemo />} />
             {/* ToB 表单场景：利用 StateTrait 管理脏标记与合法性 */}
             <Route path="/trait-form-demo" element={<TraitFormDemoLayout />} />
+            {/* 复杂表单场景：多段信息 + 动态列表 + 联动与汇总 */}
+            <Route path="/complex-trait-form-demo" element={<ComplexTraitFormDemoLayout />} />
+            {/* Trait + Txn + Devtools · 综合演示页 */}
+            <Route path="/trait-txn-devtools-demo" element={<TraitTxnDevtoolsDemoLayout />} />
           </Routes>
         </div>
       </main>

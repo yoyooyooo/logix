@@ -35,9 +35,9 @@ Logix 的 DSL 是围绕这两条轴来设计的：
 
 | 写法 | 典型代码 | 适用场景 | 生命周期 / Scope | 错误处理 |
 | --- | --- | --- | --- | --- |
-| `Effect.all` + `run` | `Effect.all([ $.onAction("inc").run(...), $.onAction("dec").run(...) ], { concurrency: "unbounded" })` | 同一 Logic 里挂多条 watcher，结构简单、一次性启动 | 和当前 Logic 同进退；由 Logic 启动的 Scope 托管 | 通过 `Logic.secure` 管道统一收集（当前实现会在 IntentBuilder.run 内部自动包一层） |
-| `Effect.forkScoped($.onAction().run(...))` | `yield* Effect.forkScoped($.onAction("inc").run(...))` | 需要手动拿到 Fiber、做更细粒度控制时（比如手工中断） | 显式挂在当前 ModuleRuntime 的 Scope 上；模块销毁时会被中断 | 如果外面包了 `Logic.secure` / Middleware，则错误会走统一管线，否则是普通 Effect.forkScoped 行为 |
-| `runFork`（推荐） | `yield* $.onAction("inc").runFork(... )` | 希望“写起来像 fork watcher”，又不想关心 Fiber 与安全包装的日常业务 | 与 `Effect.fork($.onAction().run(...))` 等价，但内部已经通过 `Logic.secure` 与 Scope 做好封装 | 统一走 `Logic.secure` 管线，配合 Debug / Middleware 更容易观测和约束 |
+| `Effect.all` + `run` | `Effect.all([ $.onAction("inc").run(...), $.onAction("dec").run(... ) ], { concurrency: "unbounded" })` | 同一 Logic 里挂多条 watcher，结构简单、一次性启动 | 和当前 Logic 同进退；由 Logic 启动的 Scope 托管 | 通过全局 EffectOp 中间件栈统一收集（IntentBuilder.run 内部会将每次执行提升为 EffectOp） |
+| `Effect.forkScoped($.onAction().run(...))` | `yield* Effect.forkScoped($.onAction("inc").run(...))` | 需要手动拿到 Fiber、做更细粒度控制时（比如手工中断） | 显式挂在当前 ModuleRuntime 的 Scope 上；模块销毁时会被中断 | 如果配置了全局 MiddlewareStack，则错误与观测会通过 EffectOp 总线走统一管线；否则是普通 Effect.forkScoped 行为 |
+| `runFork`（推荐） | `yield* $.onAction("inc").runFork(... )` | 希望“写起来像 fork watcher”，又不想关心 Fiber 与安全包装的日常业务 | 与 `Effect.fork($.onAction().run(...))` 等价，但内部已经通过 EffectOp 总线与 Scope 做好封装 | 统一走 EffectOp 中间件总线，配合 Debug / Middleware 更容易观测和约束 |
 
 建议：
 
@@ -67,21 +67,21 @@ Logix 的 DSL 是围绕这两条轴来设计的：
 - 当前实现中，`Flow.run` / `IntentBuilder.run` 已经改为 **默认串行**，不再是“隐式无界并发”；
 - 真正需要高吞吐时，应该显式使用 `runParallel` / `runParallelFork`，并在文档/代码层写清楚意图。
 
-## 4. IntentBuilder.run 与 Logic.secure
+## 4. IntentBuilder.run 与 EffectOp 总线
 
-在实现层面，所有 `run*` 系列 API 都会被统一包上一层 `Logic.secure`：
+在实现层面，所有 `run*` 系列 API 都会被统一提升为 EffectOp，并通过 MiddlewareStack 执行：
 
 - `run` / `runLatest` / `runExhaust` / `runParallel`：
   - 语义上是“把 Action/State 流通过某种策略交给 Effect Flow 执行”；
-  - 当前实现中，它们最终都走 `flowApi.run*`，并在外层用 `Logic.secure(effect, { name: "flow.run*" })` 包裹；
+  - 当前实现中，它们最终都走 `flowApi.run*`，并在外层构造 `kind = "flow"` 的 EffectOp，附带必要的 meta；
 - `runFork` / `runParallelFork`：
-  - 内部等价于 `Logic.secure(Effect.forkScoped(flowApi.run*(...)), { name: "flow.run*Fork" })`；
+  - 内部近似于 `Effect.forkScoped(flowApi.run*(...))`，但会通过 EffectOp 总线与 Scope 一并封装；
   - 这样可以保证用这些 API 挂出来的 watcher 也在统一的 Middleware / Debug 管道下。
 
 对业务来说，这意味着：
 
 - 你可以放心在 Logic 内部使用这些高层 API，而不用每次手动加 try/catch 或埋点；
-- 如果需要统一的日志、埋点、告警，只需要在 Engine 层或 ModuleImpl 上挂 Middleware，而不是在每个 watcher 里重复写；
+- 如果需要统一的日志、埋点、告警，只需要在 Engine 层或 ModuleImpl 上挂 MiddlewareStack，而不是在每个 watcher 里重复写；
 - 复杂逻辑推荐始终写在 `Effect.gen` 里，通过 `$.use` 获取 Service、通过 `$.state.update/mutate` 更新状态，再通过合适的 `run*`/`run*Fork` 组合选择并发模型。
 
 ### 4.1 `Effect.all` vs `Effect.gen`：多条 `runFork` watcher 的等价写法

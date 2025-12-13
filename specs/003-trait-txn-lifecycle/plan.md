@@ -3,317 +3,324 @@
 **Branch**: `003-trait-txn-lifecycle` | **Date**: 2025-12-11 | **Spec**: `specs/003-trait-txn-lifecycle/spec.md`  
 **Input**: Feature specification from `/specs/003-trait-txn-lifecycle/spec.md`
 
-**Note**: 本计划围绕 Trait 状态事务模型、蓝图/setup/run 分层与 Devtools 时间线/时间旅行能力展开，遵守 Constitution 中的「文档先行 & 引擎优先」约束。
-
 ## Summary
 
-本特性围绕「Trait + 状态事务 + Devtools」打通一条从 Runtime 到调试视图的完整链路，核心目标是：
+本特性围绕「Trait + 状态事务 + Devtools」打通从 Runtime 到调试视图的完整链路，并为后续表单/复杂联动等高 Trait 密度场景打好运行时地基：
 
-- 在 `@logix/core` 中引入显式的 StateTransaction / StateTxnContext 模型，将一次逻辑入口（dispatch / traits.source.refresh / service 回写 / devtools 操作）视为一个状态事务，在事务内部聚合所有 Reducer / Trait / Middleware 的状态修改，只在提交时写入底层 store 并对订阅者发出一次聚合通知（对齐 FR-001 ~ FR-003）。  
-- 将 StateTrait 生命周期拆分为「蓝图 → setup → run」三段：蓝图层只负责基于 stateSchema + traitsSpec 构建 Program/Graph/Plan，setup 层只做 Env 无关的结构接线（source 刷新入口、Debug/Devtools 锚点），run 层在 StateTransaction 内执行 Trait 步骤与 Effect 行为（对齐 FR-004 ~ FR-005）。  
-- 在 Devtools 中以「Module → Instance → Transaction → Event」组织视图，提供 TraitGraph + 事务时间线 + 时间旅行能力：  
-  - 左侧导航按 Module / Instance / Transaction 三层组织（FR-006）；  
-  - 中心视图支持 TraitGraph、Trait 生命周期状态、事务详情（Patch + 步骤）与时间线游标（FR-007 ~ FR-009）；  
-  - 提供 `applyTransactionSnapshot` 式运行时接口与 UI 操作，支持按事务前/后状态进行时间旅行，并标记 time-travel 状态（FR-010 ~ FR-011）。  
-- 对 Debug / Devtools 可见事件做统一标准化，形成 RuntimeDebugEvent 模型，并在 `@logix/react` 中新增 `kind = "react-render"` 事件类型，将组件渲染纳入事务视图，使 Trait + 事务下的 UI 行为可回放、可比较（FR-013）。
+- 在 `@logix/core` 中引入显式的 `StateTransaction / StateTxnContext` 内核，将一次逻辑入口（dispatch / traits.source.refresh / service 回写 / devtools 操作）视为一个状态事务，在事务内部聚合所有 Reducer / Trait / Middleware 的状态修改，只在 commit 时写入底层 store 并对订阅者发出一次聚合通知。  
+- 将 StateTrait 生命周期拆分为「蓝图 → setup → run」三段：蓝图层只负责基于 stateSchema + traitsSpec 构建 Program/Graph/Plan，setup 层只做 Env 无关的结构接线（source 刷新入口、Debug/Devtools 锚点），run 层在 StateTransaction 内执行 Trait 步骤与 Effect 行为。  
+- 在 Devtools 中以「Module → Instance → Transaction → Event」组织视图，提供 TraitGraph + 事务时间线 + 时间旅行能力，并引入事务观测策略（Instrumentation Policy）与性能观测/预警：  
+  - Runtime 支持 `"full"` / `"light"` 等观测强度配置，在不破坏“单入口 = 单事务 = 单次订阅通知”语义的前提下，按环境/模块调整 Patch/快照/Debug 事件的记录开销；  
+  - Devtools 在主 Timeline 列表之上提供“时间轴总览条”（overview strip），按时间 bucket 可视化事务/渲染等事件频率，并支持框选时间段联动下方列表，同时派生简单性能指标和软性预警。  
+- 在 React 集成层纳入 `kind = "react-render"` 的 Debug 事件，将组件渲染纳入事务视图，使 Trait + 事务下的 UI 行为可回放、可比较。
 
-研究结论已经在 `research.md`、`data-model.md` 与 `contracts/devtools-runtime-contracts.md` 中固化：  
-- 决定在 Runtime 内核层面引入事务模型，而不是仅在 Devtools 做软聚合；  
-- 使用蓝图/setup/run 三段式 Trait 生命周期，与 Module.reducer / lifecycle 同构；  
-- 延续 useSyncExternalStore 作为 React 订阅桥梁，将 emit 粒度提升到 StateTransaction 提交；  
-- Devtools 层不新增独立大面板，而是在现有面板中扩展 TraitGraph / 事务视图 / 时间线功能。*** End Patch`"/>
+研究结论与数据模型已分别固化在 `research.md`、`data-model.md` 与 `contracts/devtools-runtime-contracts.md` 中，`quickstart.md` 给出了从 TraitForm Demo 出发的一条完整验证路径，`tasks.md` 将实现拆分为 Phase 1/2 + US1–US5 + Polish 的任务列表。
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
-
-**Language/Version**: TypeScript 5.x（ESM），Node.js 20+，React 18，effect v3（已确定）  
-**Primary Dependencies**: `@logix/core`、`@logix/react`、`@logix-devtools-react`、`effect`、React Testing Library（已确定）  
-**Storage**: N/A（仅内存状态与 Devtools 视图模型，不持久化）  
-**Testing**: Vitest（单元 + 集成），`pnpm test --filter @logix/core` / `--filter @logix/react` / `--filter @logix-devtools-react`（已确定）  
-**Target Platform**: 浏览器（现代 Chromium/Firefox/Safari） + Node.js 20（测试）  
-**Project Type**: Monorepo，核心为 runtime + React + Devtools 包（已确定）  
+**Language/Version**: TypeScript 5.x（ESM），Node.js 20+，React 18，effect v3  
+**Primary Dependencies**:  
+- Runtime & React：`@logix/core`、`@logix/react`、`@logix-devtools-react`、`effect`、React Testing Library  
+- Devtools UI：`shadcn/ui`、`@radix-ui/*`（基础组件与可访问性）、`recharts`（时间轴总览条 / 频率图表）  
+  - Devtools 配置持久化：浏览器 `localStorage`（仅限客户端；默认 dev/test 场景使用，但若业务显式开启 devtools 也可在 prod 生效；localStorage 不可用时必须优雅降级到内存态配置）  
+**Storage**: N/A（仅管理内存状态与 Devtools 视图模型，不引入持久化）  
+**Testing**: Vitest（单元 + 集成），通过 workspace 脚本与包内脚本组合：  
+- 根脚本：`pnpm typecheck`、`pnpm lint`、`pnpm test`  
+- 包内：`pnpm test --filter @logix/core` / `--filter @logix/react` / `--filter @logix-devtools-react`  
+**Target Platform**: 浏览器（现代 Chromium/Firefox/Safari） + Node.js 20（测试与 Devtools host）  
+**Project Type**: Monorepo（runtime + React 绑定 + Devtools + 示例 + 文档）  
 **Performance Goals**:  
-- 单次事务在 Trait 数量 ~50 的示例模块下，对外状态提交 <= 1 次；  
-- Devtools Timeline 在 500 条 RuntimeDebugEvent 内保持流畅滚动与筛选。  
+- 对齐 spec 中 SC-001：在包含 ~50 Trait 节点的示例模块中，一次用户交互对应的单次 StateTransaction 执行时间通常 < 50ms；对外状态提交 1 次，订阅通知 1 次，React 渲染次数不超过 3 次（StrictMode 额外渲染除外）。  
+- Devtools Timeline 在 ~500 条 RuntimeDebugEvent 内保持流畅滚动与筛选；时间轴总览条的 bucket 聚合与框选操作不成为瓶颈。  
 **Constraints**:  
-- MUST 避免在 React render 阶段做副作用（包含 Debug 事件上报）；  
-- Devtools 渲染事件噪音需可控（默认仅在启用 Devtools/trace 时采集）。  
+- MUST 避免在 React render 阶段做副作用（包含 Debug 事件上报与性能统计），所有 Debug/统计只能在 effect 中完成；  
+- MUST 保证 dev/test 环境下充分可观测（事务视图 + TraitGraph + 时间旅行 + 渲染事件 + overview strip），同时允许在生产环境通过观测策略退化为轻量模式；  
+- 新增的 Debug/Devtools 观测结构默认仅在 dev/test 环境生效；但当调用方显式传入 `Logix.Runtime.make(..., { devtools: true | DevtoolsRuntimeOptions })` 时，视为强制 override，Runtime/React 必须无视 `isDevEnv()` 全量启用 Devtools Hub / DebugObserver / `trace:react-render` 采集；是否在生产环境启用由业务自行判断，用户文档需明确提示开销与风险；  
+- Devtools 所有影响 Runtime 开销的观测开关（模式、Trait 明细、时间旅行控件、overview 维度等）必须通过统一的设置面板暴露给用户，并按浏览器 localStorage 持久化，localStorage 不可用时不得影响当前会话功能（回退到内存态）。  
+- StateTransaction 的观测策略（Instrumentation）配置面 MUST 收敛到 Runtime / ModuleImpl 两层：  
+  - 在 `@logix/core` 中通过 `Logix.Runtime.make(rootImpl, { stateTransaction?: { instrumentation?: "full" \| "light" } })` 提供应用级默认观测级别；  
+  - 在 `Module.implement({ initial, logics?, imports?, processes?, stateTransaction?: { instrumentation?: "full" \| "light" } })` 上允许为少数高频/性能敏感模块覆写观测级别；  
+  - 优先级约束：ModuleImpl 级配置 > Runtime.make 级配置 > `getDefaultStateTxnInstrumentation()`（基于 `NODE_ENV` 的默认值）；  
+  - React 层的 `RuntimeProvider` / `LogixProvider` 仅负责透传已构造好的 Runtime 与 Layer，不得在 Provider 级别引入新的事务观测模式或关闭事务模型。  
 **Scale/Scope**:  
-- 首批覆盖 examples/logix-react 中的 TraitForm 等 Demo；  
-- 为 runtime-logix 文档与未来 Studio 预留扩展空间。
+- 首批覆盖 `examples/logix-react` 中 TraitForm 等 Demo（包括高 Trait 密度版本）；  
+- 作为 runtime-logix 文档与未来 Studio 的基础能力，为后续表单 Helper / ResourceField / Origin-first Timeline / **长链路 Task Runner（run\*Task）** 等特性预留扩展空间，但本轮不直接实现这些上层语法糖。
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: 已在 Phase 0/1 级别完成自检，当前 Plan 对齐宪章约束。*
 
-- Answer the following BEFORE starting research, and re-check after Phase 1:
-  - How does this feature map to the
-    `Intent → Flow/Logix → Code → Runtime` chain?  
-    → Intent：模块作者希望“Trait 写法规模化后仍然一次交互 = 有界事务 + 可控渲染”；  
-      Flow/Logix：在 Module / StateTraitProgram / ModuleRuntime 层引入 StateTransaction 与 Trait 生命周期语义；  
-      Code：在 `@logix/core` / `@logix/react` / `@logix-devtools-react` 中实现事务内草稿状态、TraitPlan 执行与 Debug 事件上报；  
-      Runtime：通过 Devtools 的 Module → Instance → Transaction 视图 + 时间线 + 时间旅行验证行为。  
-  - Which `docs/specs/*` specs does it depend on or modify, and are they
-    updated first (docs-first & SSoT)?  
-    → 主要依赖并需更新：  
-      - `docs/specs/runtime-logix/core/02-module-and-logic-api.md`（补充 StateTransaction & ModuleRuntime 行为）；  
-      - `docs/specs/runtime-logix/core/03-logic-and-flow.md`（补充 Trait 执行与事务关系、EffectOp → Debug 事件流）；  
-      - 若有 Devtools 专门文档（如 future draft），需要将 RuntimeDebugEvent 模型与 FR-006~FR-013 对齐。  
-  - Does it introduce or change any Effect/Logix contracts? If yes, which
-    `docs/specs/runtime-logix/*` docs capture the new contract?  
-    → YES：  
-      - 新增状态事务契约（StateTransaction / StateTxnContext / StatePatch）；  
-      - 明确 StateTraitProgram 的蓝图/setup/run 分层契约；  
-      - 引入统一 RuntimeDebugEvent 模型（含 `kind = "react-render"`）；  
-      → 以上均需在 runtime-logix core 系列文档中建模，并与本 feature spec 对齐。  
-  - What quality gates (typecheck / lint / test) will be run before merge,
-    and what counts as “pass” for this feature?  
-    → 至少：  
-      - `pnpm typecheck` / `pnpm lint`（仓库根）；  
-      - `pnpm test --filter @logix/core`、`pnpm test --filter @logix/react`、`pnpm test --filter @logix-devtools-react`；  
-      - 手工跑 TraitForm Demo，验证：事务视图、TraitGraph、时间线游标、时间旅行、React 渲染事件可视化。
+- 本特性如何映射到 `Intent → Flow/Logix → Code → Runtime` 链路？  
+  - Intent：模块作者与平台维护者希望在 Trait 规模化后仍然可以以“事务 + 生命周期”的视角推理与调试状态变化；业务开发者希望以 Timeline/Origin 视角观察 Trait 行为与渲染成本，而不是在零散日志中摸索。  
+  - Flow/Logix：在 Module / StateTraitProgram / ModuleRuntime 层引入 StateTransaction 与 Trait 生命周期语义；在 Devtools 层以事务视图 + 时间线 + 性能概览条暴露观测与时间旅行能力。  
+  - Code：在 `packages/logix-core` / `packages/logix-react` / `packages/logix-devtools-react` 中实现事务内草稿状态、TraitPlan 执行、RuntimeDebugEvent 标准化、React 渲染事件以及 Devtools UI；  
+  - Runtime：通过 Devtools（Module → Instance → Transaction → Event + overview strip）与示例模块验证“一次交互 = 有界事务 + 可控渲染”的行为，并以时间旅行与性能预警支撑日常调试。  
+
+- 依赖或修改哪些 `docs/specs/*` 规范？是否已按文档先行更新？  
+  - 直接依赖：  
+    - `docs/specs/intent-driven-ai-coding/v3/99-glossary-and-ssot.md`（StateTransaction / Trait 生命周期 / Devtools 术语需在实现后登记）；  
+    - `docs/specs/runtime-logix/core/*`（Module / Logic / State / Debug 契约）；  
+    - `docs/specs/runtime-logix/impl/README.md`（运行时实现要点）；  
+    - `docs/specs/drafts/topics/reactive-and-linkage/*`（作为高 Trait 场景参考）。  
+  - 本 feature 目录下的 spec/plan/research/data-model/contracts/quickstart 已先行更新，后续在实现稳定后会通过 T041 将经验回写到 runtime-logix SSoT 文档。  
+
+- 是否引入/修改 Effect/Logix 契约？相关规范是否同步？  
+  - 引入：`StateTransaction / StateTxnContext / StatePatch / RuntimeDebugEventRef` 契约，以及 Devtools 与 Runtime 之间的 `listTransactions` / `getTransactionDetail` / `subscribeEffectOp` / `applyTransactionSnapshot` 接口；  
+  - 修改：对 Trait 生命周期（蓝图/setup/run）的约束、对 ModuleRuntime 订阅语义（以事务 commit 为粒度）的约束。  
+  - 契约细节已在本 feature 的 `data-model.md` 与 `contracts/devtools-runtime-contracts.md` 中定义，并将在落地后同步融入 `docs/specs/runtime-logix/core/*` 与 `impl/README.md`。  
+
+- 质量门槛：在合并前会运行哪些脚本？什么算“通过”？  
+  - 最低门槛：`pnpm typecheck`、`pnpm lint` 必须通过；  
+  - 核心包：`pnpm test --filter @logix/core`、`--filter @logix/react`、`--filter @logix-devtools-react` 三者在本特性范围内必须全部通过；  
+  - 示例验证：按 `quickstart.md` 路径对 TraitForm Demo 进行手工验证，检查事务视图、TraitGraph、时间线游标、时间旅行、渲染事件与 overview strip 的表现；  
+  - 若某些 Devtools UI 细节暂时以软门槛处理（例如样式或图表细节），需在 `tasks.md` 与 PR 描述中标记，并在后续迭代中补齐。
 
 ## Project Structure
 
-### Documentation (this feature)
+### Documentation（本特性目录）
 
 ```text
-specs/[###-feature]/
-├── plan.md              # This file (/speckit.plan command output)
-├── research.md          # Phase 0 output (/speckit.plan command)
-├── data-model.md        # Phase 1 output (/speckit.plan command)
-├── quickstart.md        # Phase 1 output (/speckit.plan command)
-├── contracts/           # Phase 1 output (/speckit.plan command)
-└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
+specs/003-trait-txn-lifecycle/
+├── spec.md          # 需求与 FR/SC（StateTransaction + Trait 生命周期 + Devtools 功能）
+├── plan.md          # 当前文件：实现方案与架构规划
+├── research.md      # Phase 0：设计决策与 alternatives（Decision 1–11 等）
+├── data-model.md    # Phase 1：StateTransaction / StatePatch / RuntimeDebugEvent / DevtoolsVM 实体
+├── quickstart.md    # Phase 1：从 TraitForm 等 Demo 出发的验证路径
+├── contracts/       # Devtools ↔ Runtime 契约（listTransactions / applyTransactionSnapshot 等）
+│   └── devtools-runtime-contracts.md
+├── tasks.md         # Phase 2：按 User Story 拆分的任务列表（US1–US5 + Polish）
+└── references/      # 扩展设计（如 future-devtools-data-model、Trait-first Form 模式）
 ```
 
-### Source Code (repository root)
+### Source Code（仓库根目录）
 
 ```text
 packages/
-├── logix-core/           # 核心 Runtime（StateTransaction / DebugSink / TraitProgram 生命周期）
+├── logix-core/
 │   └── src/
-│       ├── debug.ts
-│       ├── state-trait.ts
-│       └── internal/runtime/core/**
-├── logix-react/          # React 绑定（useModule / useSelector / ModuleCache）
+│       ├── internal/runtime/core/    # StateTxnContext / ModuleRuntime 内核 / DebugSink / DevtoolsHub 等
+│       ├── state-trait.ts            # StateTraitProgram / Graph / Plan + 生命周期拆分
+│       ├── Module.ts / Runtime.ts    # Module & ModuleRuntime，接入 StateTransaction
+│       └── Debug.ts                  # Debug API / RuntimeDebugEventRef / DevtoolsHub 公共入口
+├── logix-react/
 │   └── src/
-│       ├── hooks/useModule.ts
-│       └── internal/ModuleCache.ts
-├── logix-devtools-react/ # Devtools UI（DevtoolsShell / Timeline / Inspector 等）
+│       ├── hooks/useModule.ts        # React 绑定 + useSyncExternalStore + react-render 事件埋点
+│       ├── internal/env.ts           # re-export @logix/core/env
+│       └── ...                       # 其他 hooks / Provider
+├── logix-devtools-react/
 │   └── src/
-│       ├── snapshot.ts
-│       ├── EffectOpTimelineView.tsx
-│       └── Sidebar.tsx / Inspector.tsx / ...
-└── logix-sandbox/        # 如后续需要在 Sandbox 中验证 Trait + 事务，可增量调整
-
+│       ├── state/                    # Devtools VM state & Logic（Logix Module）
+│       │   ├── model.ts              # DevtoolsStateSchema / DevtoolsSettingsSchema / 类型别名
+│       │   ├── storage.ts            # layout/settings 的 localStorage 读写封装
+│       │   ├── compute.ts            # computeDevtoolsState / getAtPath 等纯函数
+│       │   ├── module.ts             # DevtoolsModule（actions/reducers，仅调用 compute + storage）
+│       │   ├── logic.ts              # DevtoolsLogic（订阅 @logix/core DevtoolsHub snapshot、拖拽、副作用）
+│       │   └── runtime.ts            # DevtoolsImpl / devtoolsRuntime / devtoolsModuleRuntime
+│       ├── snapshot.ts               # （将被移除）snapshot/Hub 下沉至 @logix/core，Devtools UI 改为直接消费 Debug.getDevtoolsSnapshot/subscribe
+│       ├── ui/
+│       │   ├── shell/
+│       │   │   ├── DevtoolsShell.tsx # 主面板布局容器（3 列布局 + header/overview）
+│       │   │   └── LogixDevtools.tsx # 对外暴露的 Devtools 入口组件（挂接 Runtime 与 Shell）
+│       │   ├── sidebar/
+│       │   │   └── Sidebar.tsx       # 左侧 Runtime/Module/Instance/Transaction 树
+│       │   ├── timeline/
+│       │   │   ├── Timeline.tsx              # 中部时间线容器（滚动区域）
+│       │   │   └── EffectOpTimelineView.tsx  # 事件列表渲染（按 kind/txnId 分组与高亮）
+│       │   ├── graph/
+│       │   │   └── StateTraitGraphView.tsx   # Trait Graph 结构视图
+│       │   ├── inspector/
+│       │   │   └── Inspector.tsx             # 右侧事务/状态详情面板
+│       │   ├── overview/
+│       │   │   └── OverviewStrip.tsx         # 顶部时间轴总览条（recharts + shadcn/radix）
+│       │   └── settings/
+│       │       └── SettingsPanel.tsx         # 设置面板（模式 / 事件窗口大小 / 阈值等）
+│       ├── DevtoolsHooks.tsx         # 与 React host 集成的少量桥接 hooks（如 useDevtoolsRuntime）
+│       ├── index.tsx                 # 包导出入口
+│       └── theme.css                 # Devtools 自身的 Tailwind/样式入口
 examples/
 └── logix-react/
-    └── src/modules/trait-form.ts   # 主验证场景
+    └── src/
+        ├── modules/
+        │   ├── trait-form.ts             # 现有 Trait Demo
+        │   └── trait-form-advanced.ts    # （可选）高 Trait 密度压测场景
+        └── demos/
+            └── trait-txn-devtools-demo.tsx   # Demo Page：挂载 Trait 模块 + Devtools 面板，用于手工体验事务/时间旅行/性能视图
+
+apps/docs/
+└── content/docs/guide/
+    ├── advanced/debugging-and-devtools.md            # 事务视图 + 时间旅行 + 渲染事件
+    └── advanced/performance-and-optimization.md      # （T045）性能优化与观测策略指南
 ```
 
 **Structure Decision**:  
-- 本特性主要落在 `@logix/core`（事务 / Trait 生命周期 / DebugSink）、`@logix/react`（React 渲染事件上报与 Runtime 绑定）与 `@logix-devtools-react`（Devtools 视图模型与 UI）三条主线；  
-- 示例与手工验证以 `examples/logix-react` 为主，不引入额外新包。  
+- 本特性主要落在三个核心包：`@logix/core`（事务 / Trait 生命周期 / DebugSink / DevtoolsHub + `Runtime.make({ devtools })` 一键启用）、`@logix/react`（React 渲染事件上报与 devtools 开关联动）、`@logix-devtools-react`（Devtools 视图模型与 UI，包括 overview strip；不再内置 snapshot/sink）。  
+- 示例与手工验证集中在 `examples/logix-react`，不会新增新的运行时包；  
+- 文档对齐通过本特性目录下的 spec/plan/research/data-model/contracts/quickstart，以及后续对 `docs/specs/runtime-logix` 与 `apps/docs` 的更新完成。
+
+### Devtools 一键启用与 Hub 下沉（FR-018 增量）
+
+> 背景：现有 Devtools 依赖调用方同时挂 `devtoolsLayer`（替换 DebugSink）+ `Middleware.withDebug`（产出 trace:effectop），使用成本高且职责分散。对齐 spec/FR-018 与 Clarifications 2025-12-12：Runtime 需提供 `devtools` 一键入口，Hub 下沉到 core，并以“追加 sinks / 显式 override”作为默认语义。
+
+- **DevtoolsHub（core 侧全局单例）**  
+  - 将 `packages/logix-devtools-react/src/snapshot.ts` 中的 ring buffer / instance counter / latestStates / instanceLabels 逻辑整体下沉到 `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`（或等价 internal/core 位置），作为**进程/页面级全局单例**收集 Debug 事件。  
+  - 通过 `packages/logix-core/src/Debug.ts` 暴露只读 API：  
+    - `Debug.getDevtoolsSnapshot()` / `Debug.subscribeDevtoolsSnapshot(listener)` / `Debug.clearDevtoolsEvents()`；  
+    - （可选）`Debug.setInstanceLabel(runtimeId, label)` 与读取接口一并下沉，保持实例命名能力不回退。  
+  - 新增 `Debug.devtoolsHubLayer({ bufferSize? })`：将 Hub Sink **追加**到当前 Debug sinks 中（不替换），并在 Hub 内使用可配置缓冲区大小。  
+  - 为满足“追加 sinks”语义，需要在 Debug 命名空间补一个 append 原语（如 `Debug.appendSinks(extra)` / `Debug.withSinks(base, extra)`），内部通过 FiberRef 合并 sinks；`Debug.replace` 继续保留用于显式替换场景。
+
+- **Runtime 一键启用 devtools**（`packages/logix-core/src/Runtime.ts`）  
+  - 扩展 `RuntimeOptions`：`devtools?: true | DevtoolsRuntimeOptions`，并在 core 侧定义 `DevtoolsRuntimeOptions`（仅含启动/桥接级字段：Hub bufferSize、DebugObserver/filter、`react-render` 采样/限频、未来的 replaceSinks 开关等）。  
+  - 在 `Runtime.make` 内：  
+    - 若 devtools 启用，自动把 `Debug.devtoolsHubLayer({ bufferSize })` merge 进 appLayer；  
+    - 自动对 `options.middleware ?? []` 追加 `Middleware.withDebug(..., { logger: false, observer })`，确保产出 `trace:effectop` 并携带 txnId；  
+    - devtools 为显式 override：只要传入即生效，不受 `isDevEnv()` 裁剪；是否在 prod 启用由业务自行判断，用户文档需提示开销与风险。
+
+- **React 渲染事件与 devtools 开关联动**（`packages/logix-react/src/hooks/useSelector.ts`）  
+  - 现有 `trace:react-render` 仅在 `isDevEnv()` 下采集；需改为：devtools 启用时无视 `isDevEnv()` 也采集。  
+  - 最低成本做法：core 暴露 `Debug.isDevtoolsEnabled()`（由 `devtoolsHubLayer` 打开全局标记），React 侧 gating 变为 `isDevEnv() || Debug.isDevtoolsEnabled()`；采样/限频依据 `DevtoolsRuntimeOptions` 与 DevtoolsSettings 回流后的值执行。
+
+- **devtools-react 退回纯 UI 消费者**  
+  - `@logix/devtools-react` 不再内置 Sink/Store：删除或空实现原 `snapshot.ts`，改为直接消费 core 的 `Debug.getDevtoolsSnapshot/subscribe`。  
+  - 对外入口维持 `<LogixDevtools />`，但不再要求调用方显式挂 `devtoolsLayer`；示例与用户文档统一迁移为 `Runtime.make(..., { devtools: true })` 写法。  
+  - `devtoolsLayer` 可暂时保留为薄别名（指向 `Debug.devtoolsHubLayer()`），用于过渡示例与避免心智断裂，但标记为 deprecated。
+
+### StateTransaction Instrumentation 策略与实现落点
+
+- **Runtime 级入口（全局默认）**  
+  - 扩展 `packages/logix-core/src/Runtime.ts` 中的 `RuntimeOptions`：增加可选字段  
+    `stateTransaction?: { readonly instrumentation?: "full" | "light" }`；  
+  - 在 `Logix.Runtime.make` 内将该配置下沉到 `AppRuntimeImpl.LogixAppConfig`，并在构造各 `ModuleRuntime` 时一并传入（例如通过扩展 `AppModuleEntry` 或为 ModuleRuntime Layer 提供额外配置 Tag）；  
+  - 若调用方未显式提供 `stateTransaction.instrumentation`，Runtime 层仍使用 `getDefaultStateTxnInstrumentation()`（基于 `NODE_ENV`）作为默认值，保持与现有实现兼容。  
+- **ModuleImpl 级入口（按模块覆写）**  
+  - 扩展 `packages/logix-core/src/internal/runtime/core/module.ts` 中的 `ModuleInstance["implement"]` 与 `ModuleImpl` 类型，在 `implement` 的 config 中新增可选字段  
+    `stateTransaction?: { readonly instrumentation?: "full" | "light" }`；  
+  - 在 `packages/logix-core/src/internal/runtime/ModuleFactory.ts` 的 `Module.implement` 实现中：  
+    - 先基于 `config.stateTransaction?.instrumentation`、Runtime 级默认与 `getDefaultStateTxnInstrumentation()` 计算出该 Module 的有效观测级别；  
+    - 通过扩展 `ModuleRuntimeOptions` 向 `ModuleRuntime.make` 传入该观测级别，并在内部调用 `StateTransaction.makeContext` 时使用（替代当前仅依赖 `getDefaultStateTxnInstrumentation()` 的实现）；  
+    - 确保优先级逻辑与 spec/FR-015 中的“ModuleImpl > Runtime > NODE_ENV 默认”保持一致。  
+- **ModuleRuntime / StateTransaction 内核调整**  
+  - 扩展 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts` 的 `ModuleRuntimeOptions`，增加可选 `stateTransaction?: { instrumentation?: "full" | "light" }`，并在构造 `txnContext` 时优先使用该配置；  
+  - 保留 `StateTransaction.StateTxnRuntimeConfig` / `makeContext` 现有字段，只调整默认值来源：若 ModuleRuntimeOptions 中未指定 instrumentation，则回退到 Runtime 级默认，再回退到 `getDefaultStateTxnInstrumentation()`。  
+- **React 层与 RuntimeProvider 约束**  
+  - 在 `@logix/react` 中复查 `RuntimeProvider` / `LogixProvider`：  
+    - 确认其 props 不新增任何与 StateTransaction 相关的配置字段，仅接受 `runtime` 与可选 `layer`；  
+    - `layer` 仅用于注入 Env（Logger / DebugSink / 平台 Service 等），不得改变 StateTransaction 是否存在或其观测级别；  
+  - 在 `packages/logix-react/test` 中补充一组集成用例：  
+    - 验证相同 `Logix.Runtime.make` 配置下，无论是否包一层 `RuntimeProvider` 或叠加 `layer`，事务级别（例如 `"full"` / `"light"`）与 Debug 行为（Patch/快照是否记录）保持一致；  
+    - 为后续防回归提供 clear signal。  
+
+### Devtools UI 组件拆分与约束
+
+- 组件目录结构 MUST 与上文 `logix-devtools-react/src` 规划保持一致：  
+  - `state/*` 只承载 Logix Module/Logic/Runtime，负责所有状态管理与副作用；  
+  - `ui/**` 仅包含 React 组件，视为“纯渲染层”。  
+- Devtools UI 组件（`ui/**`）的设计约束：  
+  - SHOULD 视为**受控视图组件**：绝大部分组件仅通过 props 接收视图模型（例如 DevtoolsState 的切片）与回调，不再自行持有复杂本地状态；  
+  - 除基础 UI 框架需要的少量 hooks（例如 `useId` / `useMemo` / `useCallback` / `useEffect` 做 DOM 尺寸测量）外，SHOULD NOT 在组件内部直接使用复杂的 `useState` / `useReducer` 管理业务状态，业务态一律交给 Logix Module；  
+  - 所有跨组件共享的状态（当前选中 Runtime/Module/Instance/Transaction、过滤条件、设置项等） MUST 通过 Devtools Module 暴露的 actions/state 管理，不得在多个组件之间各自维护局部 state。  
+- 复杂度与拆分约束：  
+  - 任意单个 React 组件文件（`ui/**.tsx`）的**业务逻辑**（不含类型/导入/样式）建议控制在 ~200 行以内；  
+  - 当组件文件总行数超过 ~300 行时，应视为“需要拆分”的预警信号：  
+    - 优先将纯逻辑提取到 Logix Module（`state/*`）或纯函数 helpers；  
+    - 将明显独立的 UI 区块拆出为子组件（仍放在 `ui/**` 目录结构下）。  
+  - 当组件文件总行数超过 ~500 行时 MUST 进行拆解，不允许继续在单文件内堆叠逻辑与渲染：  
+    - 可以按布局区块（header/sidebar/timeline/inspector）或者职责（列表渲染 / 行组件 / 控件条）拆分；  
+    - 重构后需要保证子组件仍然保持“纯渲染 + 轻 hooks”的特征。  
+  - 实现层面建议配合 lint 或简单脚本在 CI 中对 `logix-devtools-react/src/ui/**` 做文件行数检查，将 >300 行标记为 warning，>500 行标记为 error，以便在后续迭代中自动守护该约束。
+
+### Devtools UX Polish：操作摘要 / Overview 反馈 / Settings v2
+
+- **操作摘要（Operation Summary）窗口**  
+  - 逻辑层（state.ts / compute.ts）：  
+    - 基于 `RuntimeDebugEventRef` 现有时间线，在 `computeDevtoolsState` 或邻近纯函数中增加一次性“操作窗口”分组：  
+      - 从关键逻辑入口事件（例如 `action:dispatch`、Devtools 操作）开始，维护一个可配置的短时间窗口（默认 1000ms，对应 `DevtoolsSettings.eventBufferSize` 或新字段 `operationWindowMs`）；  
+      - 在窗口内收集所有相关事件（action/state/service/`react-render` 等），若期间持续有新事件到达，则自动续命延长窗口；  
+      - 窗口结束后，产出一条结构化的“操作摘要”（统计事件数、渲染次数、持续时间等），作为 DevtoolsState 的一部分暴露给 UI（例如 `state.operationSummary` 或 `state.recentOperations[0]`）。  
+    - 逻辑必须保持为纯函数（不直接访问 DOM/时间），时间获取通过注入 `now()` 或在调用侧提供当前时间戳，便于单元测试。  
+  - UI 层（DevtoolsShell / OperationSummaryBar）：  
+    - 在 `DevtoolsShell` 内引入一个固定 info bar 组件（例如 `OperationSummaryBar`），位于 OverviewStrip 与 Timeline 之间或 header 下方，用于展示最近一次操作摘要；  
+    - info bar 为受控组件：  
+      - props 来源于 DevtoolsState 中的 summary 结构；  
+      - 默认不自动消失，由下一次操作覆盖或用户点击关闭按钮隐藏当前摘要；  
+      - 在窄视口下可以折叠为一行精简摘要 + tooltip 详情，避免压缩主要调试区域。  
+
+- **OverviewStrip 的“新增反馈”效果**  
+  - 逻辑层：  
+    - 在现有 `OverviewStrip` buckets 计算中引入“最近变化”标记：当某个 bucket 的 txnCount / renderCount 相较于上一帧发生变化时，为其记录 `lastChangedAt` 或等价标记；  
+    - 引入新的设置字段（例如 `DevtoolsSettings.overviewHighlightDurationMs`），控制“新增高亮”持续时间，默认数秒；  
+  - UI 层：  
+    - 在 `OverviewStrip` 渲染时，根据当前时间与 `lastChangedAt` + `overviewHighlightDurationMs` 判定 bucket 是否处于高亮期；  
+    - 处于高亮期的 bucket 在颜色与形变上与普通柱子区分：  
+      - 颜色上使用稍高亮的填充/描边（与 warn/danger 阶段配合，不与阈值语义冲突）；  
+      - 形变上使用轻微的 `transform` 动画（例如上下 1–2px 的平移或小幅 scale），强化“刚刚发生变化”的感知；  
+    - 动画需满足性能与可访问性约束：  
+      - 优先使用 CSS 动画/transition（基于 `transform`），避免在每个柱子内部挂重型 React 状态；  
+      - 尊重 `prefers-reduced-motion`，在该模式下仅保留静态颜色高亮，不做跳动动画。  
+
+- **Settings v2：集中设置面板与字段分层**  
+  - 字段收敛：  
+    - Core 设置（面板默认展开区域）：  
+      - 观测模式：`mode`（`"basic"` / `"deep"`）；  
+      - 事件可见性：`showTraitEvents`、`showReactRenderEvents`；  
+      - 时间旅行 UI：`enableTimeTravelUI`；  
+      - 事件窗口大小：`eventBufferSize`（用于 Debug 事件 ring buffer 与 Timeline 截断）；  
+      - 操作摘要窗口：`operationWindowMs`（如采用独立字段）是否启用/窗口时长。  
+    - Advanced 设置（可折叠区域）：  
+      - Overview 阈值：`overviewThresholds.txnPerSecondWarn` / `txnPerSecondDanger` / `renderPerTxnWarn` / `renderPerTxnDanger`；  
+      - 概览高亮持续时间：`overviewHighlightDurationMs`；  
+      - 采样配置：`sampling.reactRenderSampleRate`。  
+  - UI 结构：  
+    - 在 Devtools header 右侧新增 Settings 按钮（图标 + tooltip），点击后在面板内部右侧弹出/展开一个 Settings 面板（可以是侧栏或下拉卡片），默认展示 Core 设置，Advanced 部分通过折叠区或“Advanced”分组展开；  
+    - Settings 面板本身不直接访问 localStorage，仅通过 DevtoolsState.actions（例如 `setMode`、`setSettingsField`）更新状态，由 state 层负责持久化；  
+    - 保留 header 中的快速模式切换与主题切换，但将所有“影响 Runtime/Devtools 开销”的细粒度开关迁移/镜像到 Settings 面板中（header 上仅保留最常用的快捷项）。  
+	  - 行为约束：  
+	    - 所有设置变更必须是即时生效（更新 DevtoolsState 与 UI），并同步写入 localStorage；  
+	    - 超出推荐范围的数值（如 eventBufferSize 过小/过大）在 Settings 面板中应做裁剪或给出轻量提示，而不是让底层 Debug 管道处于不确定状态；  
+	    - Settings 面板在关闭后仍然保留最近配置，重新打开时展示当前状态（不重置为默认值）。
+
+### Future Work: 长链路 Task Runner（run\*Task）
+
+> 本节细化 spec 中的“补充规划：长链路 Task Runner 语法糖”，作为本特性之后的通用演进方向；不改变现有“逻辑入口 = 事务边界”的内核不变量。
+
+- **目标**  
+  - 在 Bound/Flow 的 IntentBuilder 上提供 `runTask / runLatestTask / runExhaustTask / runParallelTask` 四个方法，分别镜像 `run / runLatest / runExhaust / runParallel` 的触发并发语义。  
+  - 让业务用线性写法表达长链路（pending → IO → result），由底层自动拆成多入口多事务。
+- **非目标**  
+  - 不引入隐式“异步边界自动切事务”；不允许把真实 IO 包在单笔 StateTransaction 内。  
+  - 不强制业务必须使用 Task Runner；手写多入口/多 action 仍是稳定后门。
+
+- **API 形态（高层草案）**  
+  - 四个方法均接受同构配置对象：  
+    - `pending?: Logic.Of | (payload) => Logic.Of`：同步的 pending 写入；**只对被接受并启动的 task 执行**，且始终作为独立事务入口；  
+    - `effect: (payload) => Effect.Effect<A, E, R>`：真实 IO/异步任务；  
+    - `success?: (result, payload) => Logic.Of`：成功写回；  
+    - `failure?: (errorOrCause, payload) => Logic.Of`：失败写回；  
+    - `origin?: { pending?; success?; failure? }`：可选覆写三笔事务的 origin（默认使用 task/service-callback 类别）；  
+    - 未来可选：`priority?: number`（仅影响调试/排序，不改变事务边界）。
+
+- **执行语义**  
+  - 每次触发被接受后：  
+    1. **事务 1（pending）**：通过 `__runWithStateTransaction` 开新入口提交 pending，并立即 commit；  
+    2. **IO 区**：在独立 Fiber 中运行 `effect`；  
+    3. **事务 2（success/failure）**：IO 完成后再开新入口写回结果。  
+  - `runLatestTask`：新触发到来时对旧 Fiber 发起 `interrupt`，并在写回阶段用递增 `taskId` guard 确保旧 task 永不写回。  
+  - `runExhaustTask`：busy 时忽略新触发，被忽略触发不产生 pending 事务。  
+  - `runTask`：按触发顺序串行执行 task；每次触发均产生 pending。  
+  - `runParallelTask`：允许并发；每个 task 独立 pending + 写回。
+
+- **实现落点与关键复用**  
+  - 类型与实现 helper：新增 `packages/logix-core/src/internal/runtime/core/TaskRunner.ts`（深层实现），由 `packages/logix-core/src/internal/runtime/BoundApiRuntime.ts` 的 IntentBuilderFactory 调用。  
+  - 事务入口复用：全部写回通过 `BoundApiRuntime.__runWithStateTransaction` → `ModuleRuntime.__runWithStateTransaction` → `txnQueue` 串行保证。  
+  - 并发语义复用：尽量复用 `FlowRuntime.runLatest/runExhaust/runParallel` 的 Stream/Fiber 模式，保持用户心智一致。
+
+- **使用边界与风险**  
+  - `run*Task` 仅面向 run 段 watcher（`$.onAction/$.onState/$.on`），**不得在 Reducer/Trait-run 的同步事务 body 内直接调用**，否则可能与内部队列等待语义冲突；dev 下应给出诊断提示。
 
 ## Complexity Tracking
 
-> **Fill ONLY if Constitution Check has violations that must be justified**
+目前规划不引入额外 project/包层级，也不新增第二套运行时或状态引擎；复杂度主要体现在：
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
-
-## Phase 0 – Research Summary & Remaining Unknowns
-
-> 研究与决策已在 `specs/003-trait-txn-lifecycle/research.md` 中形成完整记录，这里只摘取与实现直接相关的要点，并标记仍需在实现阶段细化的点（非阻塞）。
-
-- **R0-1 · 状态事务建模（StateTransaction / StateTxnContext）**  
-  - 已决：每个逻辑入口（action dispatch / traits.source.refresh / service 回写 / devtools 操作）对应一个 StateTransaction，内部通过 StateTxnContext 聚合草稿状态与 Patch，仅在 commit 时写入底层 store 并 emit 一次变更。  
-  - 实现待拆细节：  
-    - StateTxnContext 的具体类型结构（泛型参数、是否公开导出）、与 ModuleRuntime 内部 state 容器的关系；  
-    - 多入口 dispatch 串行化策略（Effect 级串行 vs 简单队列），以及在 Debug 事件中如何稳定表达事务顺序。  
-
-- **R0-2 · Trait 生命周期：蓝图 / setup / run 分层**  
-  - 已决：蓝图层只负责 `StateTrait.build`，setup 层只做结构 wiring，run 层只做行为执行；Phase Guard 必须能区分三个阶段。  
-  - 实现待拆细节：  
-    - 在 `state-trait.ts` 中是否需要新增显式的 `installBlueprint / installSetup / installRuntime` API，还是由现有 `install` 内部委派；  
-    - setup 阶段的错误语义（遇到非法字段 / resourceId 缺失时，是 fail-fast 终止 ModuleRuntime，还是仅在 Devtools 中标记 setup-error）。  
-
-- **R0-3 · Devtools 视图分层与时间线游标**  
-  - 已决：Devtools 左侧导航采用 Module → Instance → Transaction 三层；事务详情视图提供 Event 时间线 + Patch 列表，并支持事件级游标（Step k/N）与时间旅行。  
-  - 实现待拆细节：  
-    - Timeline 内部数据模型是否需要显式分 lane（Runtime / Trait / React / Devtools），还是仅靠 kind + 样式区分；  
-    - 时间线游标与时间旅行的耦合度：第一阶段是否只做“视图游标 + 事务级回放”，第二阶段再升级为“步级回放”。  
-
-- **R0-4 · React 渲染事件（kind = "react-render"）**  
-  - 已决：在 `@logix/react` 中新增组件渲染事件，统一归入 RuntimeDebugEvent 模型，使 Devtools 能在事务维度分析渲染成本。  
-  - 实现待拆细节：  
-    - 埋点时机：在 `useSelector` / `useModule` 内的哪个生命周期发事件（render 后的 `useEffect` / `useLayoutEffect`，还是通过某种“debug render scope”）；  
-    - StrictMode 双调用的处理策略：是通过 meta.strictModePhase 标记，还是对完全重复的 render 做合并展示。  
-
-> 结论：Phase 0 级别的 UNKNOWN 已通过 research 收敛到上述几个实现细节点，这些都属于实现期的“策略选择”，不再阻塞规范层；无需新增 [NEEDS CLARIFICATION] 标记，后续在 tasks 里按实现策略具体化即可。
-
-## Phase 1 – Design & Contracts Mapping
-
-> 这一节将 spec 中的 FR/SC 映射到具体设计产物（data-model / contracts / quickstart）与代码落点，确保没有“悬空需求”。
-
-- **D1-1 · FR-001~FR-003：状态事务与 Patch 模型**  
-  - 设计落点：  
-    - `data-model.md`：StateTransaction / StateTxnContext / StatePatch 实体与约束；  
-    - `contracts/devtools-runtime-contracts.md`：`listTransactions` / `getTransactionDetail` 输出结构；  
-    - 代码落点预期：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` 一类文件（实际路径待确认），新增 StateTxnContext 管线与 commit 逻辑。  
-  - plan 级拆解：  
-    - [Runtime] 在 ModuleRuntime 内引入 StateTxnContext：封装草稿 state、Patch 集合、txnId、origin；  
-    - [Runtime] 改造 state.write/emit：所有逻辑入口通过 StateTxnContext 聚合，commit 时一次性写入底层 SubscriptionRef 并 emit；  
-    - [Runtime] 在 DebugSink 中为每个事务写入至少一条 `kind = "state"` 事件（state:update）与若干 Patch 映射。
-
-- **D1-2 · FR-004~FR-005：StateTrait 蓝图 / setup / run 生命周期**  
-  - 设计落点：  
-    - `data-model.md`：StateTraitProgram / StateTraitGraph / StateTraitPlan / StateTraitLifecycleState；  
-    - `spec.md`：蓝图/setup/run 的职责切分与 Phase Guard 约束。  
-  - plan 级拆解：  
-    - [Runtime] 在 `state-trait.ts` 中将现有 build/install 流程拆为：  
-      - build：生成 Program / Graph / Plan；  
-      - setup：在 ModuleRuntime 构造时执行结构接线（注册 source-refresh / Debug 锚点）；  
-      - run：在 Runtime 启动阶段，根据 Plan 安装 watcher / Flow / Middleware，并挂到 StateTransaction 管线中。  
-    - [Runtime] 衔接 ModuleRuntime 与 TraitProgram：支持按 moduleId 查询 Traits 蓝图（对齐 Debug.getModuleTraitsById），供 Devtools 调用 `getTraitBlueprint`。  
-    - [Devtools] 在 TraitGraph 视图中基于 StateTraitLifecycleState 标记蓝图存在 / setup 状态 / run 行为是否发生。
-
-- **D1-3 · FR-006~FR-009：Module → Instance → Transaction 视图与事件时间线**  
-  - 设计落点：  
-    - `data-model.md`：DevtoolsModuleView / DevtoolsInstanceView / DevtoolsTransactionView / RuntimeDebugEventRef；  
-    - `contracts/devtools-runtime-contracts.md`：`listModules` / `listModuleInstances` / `listTransactions` / `getTransactionDetail` / `subscribeEffectOp`。  
-  - plan 级拆解：  
-    - [Runtime] 在 Debug 层提供 module:init/module:destroy、state:update、trace:* 等事件，用于驱动 Module/Instance 统计与 Transaction 聚合；  
-    - [Devtools] 建立从 snapshot（ringBuffer + instanceCounter + latestStates）到 DevtoolsState 的转换管道，填充 Module/Instance/Transaction VM；  
-    - [Devtools] 在 EffectOpTimelineView 中扩展为“按选中 Transaction + 事件游标”的视图，支持 Step k/N 高亮与按 kind 分色。
-
-- **D1-4 · FR-010~FR-011：事务级时间旅行**  
-  - 设计落点：  
-    - `data-model.md`：StateTransaction 的 `initialStateSnapshot` / `finalStateSnapshot` 与 Patch 序列；  
-    - `contracts/devtools-runtime-contracts.md`：`applyTransactionSnapshot(moduleId, instanceId, txnId, mode)` 契约；  
-    - `quickstart.md`：时间旅行使用说明与验证步骤。  
-  - plan 级拆解：  
-    - [Runtime] 在 ModuleRuntime 内为 dev/test 环境提供 dev-only setState 能力，允许在不触发外部副作用的前提下写入某个实例的 state snapshot 并重新派生 Trait；  
-    - [Runtime] 为时间旅行调用打上 origin.kind = "devtools" 的 StateTransaction（可选），避免与正常业务事务混淆；  
-    - [Devtools] 在选中 Transaction 时提供「回到事务前/后」按钮，并在 UI 上标记当前实例的 time-travel 状态与“返回最新状态”入口。
-
-- **D1-5 · FR-012~FR-013：RuntimeDebugEvent 标准化与 React 渲染事件**  
-  - 设计落点：  
-    - `data-model.md`：RuntimeDebugEventRef（扩展自 TraitRuntimeEventRef，增加 kind/label/meta 字段约定）；  
-    - `contracts/devtools-runtime-contracts.md`：`subscribeEffectOp` 输出结构与 kind 约束；  
-    - `quickstart.md`：在 timeline 中观察 `kind = "react-render"` 的场景说明。  
-  - plan 级拆解：  
-    - [Runtime] 在 DebugSink 层添加标准化转换：`Logix.Debug.Event` → RuntimeDebugEventRef（填充 eventId/moduleId/instanceId/runtimeId/txnId/kind/label/meta）；  
-    - [React] 在 `@logix/react` hooks 内新增 `kind = "react-render"` 事件埋点：将组件 label、selectorKey/fieldPaths、strictModePhase、txnId 写入 meta；  
-    - [Devtools] 在 Timeline 视图中识别 `react-render` 事件，提供独立的显示样式与过滤开关，并在事务视图中聚合“每事务触发的渲染次数”。
-
-## Phase 2 – Implementation Strategy（按模块拆解）
-
-> 本节不直接列出 tasks.md 的条目，而是从模块/包视角将实现工作拆到足够细，方便后续一一映射为任务。
-
-### P2-A · Runtime 内核（`packages/logix-core`）
-
-- **A1 · StateTransaction / StateTxnContext 内核实现**  
-  - 在 internal runtime core 中定义 StateTxnContext 类型：  
-    - 包含：txnId、origin、draftState 引用、patches[]、startedAt/endedAt、flags（如 isCommitted）；  
-    - 提供 API：`beginTransaction(origin)`、`updateDraft(updater)`、`recordPatch(patch)`、`commit()`、`rollback()`。  
-  - 将 ModuleRuntime 的状态写入链路改造为：  
-    - 逻辑入口（action dispatch / traits.source.refresh / service 回写 / devtools 操作）→ `beginTransaction`；  
-    - Reducer / Trait / Middleware 写 state 时改写为写 draft；  
-    - 事务结束时统一调用 `commit()`：写底层 store + emit state:update Debug 事件 + 通知订阅者。  
-
-- **A2 · Trait 生命周期拆分与 Phase Guard 调整**  
-  - 在 `state-trait.ts` 中：  
-    - 保持 StateTraitProgram 作为蓝图层唯一事实源（program.graph / program.plan）；  
-    - 新增或重构 install API：  
-      - `installBlueprint(module)`（如需要）；  
-      - `installSetup(runtime, program)`：注册 source-refresh 入口、Debug 锚点；  
-      - `installRuntime(runtime, program)`：安装 watcher / Flow / Middleware。  
-  - 在 Phase Guard 中为 setup / run 行为建立白名单：  
-    - setup 阶段禁止调用不允许的 Effect 能力（如真实 IO），只允许结构性注册；  
-    - run 阶段允许 Effect 行为，但所有状态写必须走 StateTxnContext。  
-
-- **A3 · Debug / RuntimeDebugEvent 标准化**  
-  - 在 `debug.ts` 与 internal DebugSink 中：  
-    - 设计 RuntimeDebugEventRef 的组装函数：`fromDebugEvent(e: Debug.Event): RuntimeDebugEventRef`；  
-    - 针对现有事件类型（module:init/destroy、action:dispatch、state:update、trace:*）定义统一的 kind/label/meta 映射规则；  
-    - 确保事件中附带 runtimeId / moduleId / instanceId / txnId（如可用），并保持 eventId 唯一。  
-  - 为 DevtoolsSink（见 `packages/logix-devtools-react/src/snapshot.ts`）提供标准化事件源，而不是直接透传原始 Debug.Event。
-
-### P2-B · React 绑定层（`packages/logix-react`）
-
-- **B1 · React 渲染事件埋点（react-render）**  
-  - 在 `hooks/useModule.ts` / `useSelector` 内：  
-    - 在 render 后的 effect 中获取 runtime.id / moduleId / 实例 label / selectorKey；  
-    - 通过 Runtime 上下文（或 Debug helper）发出 `kind = "react-render"` 的 Debug 事件，由 RuntimeDebugEvent 标准化为统一结构；  
-    - 在 StrictMode 下通过内部计数或 React 提供的标志写入 meta.strictModePhase，避免误判渲染次数。  
-
-- **B2 · txnId ↔ render 对齐策略**  
-  - 设计将 render 与 StateTransaction 对齐的策略（不一定首次就做到完美）：  
-    - 方案 1：在 state:update Debug 事件中记录 txnId，并在 Devtools 侧推断“最近一次 state:update 之后的若干 react-render”属于该 txn；  
-    - 方案 2：在 Runtime 内部提供“当前提交事务 ID”的线程局部上下文，让渲染事件上报时可以直接带上 txnId。  
-  - 在 plan 中将选择的方案记录清楚，后续 tasks 具体化与测试保证“单次事务 → 渲染次数”视图稳定。
-
-### P2-C · Devtools UI 与状态（`packages/logix-devtools-react`）
-
-- **C1 · Snapshot & DevtoolsState 扩展**  
-  - 扩展 `snapshot.ts` 中的 DevtoolsSnapshot，使其：  
-    - 以 RuntimeDebugEventRef 为基础（而非原始 Debug.Event）；  
-    - 能按 moduleId / instanceId / txnId 分组与过滤事件。  
-  - 扩展 DevtoolsState：  
-    - 引入 Module / Instance / Transaction 选中状态；  
-    - 引入事件游标（selectedEventIndex / stepIndex）与当前过滤条件（kindFilters）。  
-
-- **C2 · Timeline 视图增强**  
-  - 在 `EffectOpTimelineView.tsx`：  
-    - 支持按 kind 区分行样式（action / state / trait-* / react-render / devtools）；  
-    - 支持按类别过滤（带 toggle 按钮）；  
-    - 将 Step k/N 显示在 header 区域；  
-    - 点击事件时触发游标更新，并在未来与时间旅行操作对接。  
-
-- **C3 · Module / Instance / Transaction 导航联动**  
-  - 在 Sidebar/Inspector：  
-    - 左侧树基于 DevtoolsModuleView / DevtoolsInstanceView / DevtoolsTransactionView 渲染；  
-    - 选中 Transaction 时，中部 Timeline 自动过滤该 txn 的事件，并高亮 Patch 列表。  
-
-### P2-D · 文档与示例对齐
-
-- **D1 · runtime-logix 文档更新**  
-  - 在 `docs/specs/runtime-logix/core/02-module-and-logic-api.md` 中新增/扩展：  
-    - ModuleRuntime 的 StateTransaction 语义；  
-    - Module / StateTraitProgram / Debug 之间的关系。  
-  - 在 `core/03-logic-and-flow.md` 中：  
-    - 描述 Flow/Effect 与 StateTransaction / Debug 事件的关系；  
-    - 明确 Trait 执行与事务边界的契约。  
-
-- **D2 · 示例 & Quickstart 校验**  
-  - 对 `examples/logix-react/src/modules/trait-form.ts`：  
-    - 确认其 Trait 写法与新的蓝图/setup/run 生命周期兼容；  
-    - 在 quickstart 指引中以它为主例，走完“事务视图 + 时间旅行 + 渲染事件分析”的路径。  
-
-## Phase 3 – Verification & Rollout Strategy
-
-- **V1 · 自动化检查**  
-  - 统一运行：`pnpm typecheck` / `pnpm lint` / `pnpm test --filter @logix/core` / `--filter @logix/react` / `--filter @logix-devtools-react`；  
-  - 在 @logix/core 测试中增加 StateTransaction 行为用例（一次交互只 commit 一次）；  
-  - 在 @logix-react 测试中增加渲染事件集成测试（至少断言 react-render Debug 事件被触发且含必要 meta）。  
-
-- **V2 · 手工验证路径（对齐 quickstart）**  
-  - 在 examples/logix-react 中验证：  
-    - TraitForm 的 Trait 行为在事务视图和 TraitGraph 中可见；  
-    - Timeline 中的 Step k/N 与时间旅行按规范工作；  
-    - React 渲染事件可以被按事务过滤并用于分析渲染次数。  
-
-- **V3 · 回写与后续演进**  
-  - 在完成实现与验证后，将经验回写到：  
-    - `docs/specs/runtime-logix/impl/README.md`（运行时实现要点）；  
-    - 如有需要，补充/更新 `specs/003-trait-txn-lifecycle/references/future-devtools-data-model.md`，记录实现与设计的差异、未来扩展方向。  
-  - 后续若进入 `/speckit.tasks` 阶段，可直接以 P2-A~D 为骨架拆任务，保证任务拆解与本 plan 保持一一对应。
+|-----------|------------|--------------------------------------|
+| （none）  | 当前方案在单一 Runtime/Devtools 体系内完成，无需超出宪章的结构性例外 | N/A |
