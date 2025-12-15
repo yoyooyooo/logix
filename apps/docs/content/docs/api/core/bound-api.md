@@ -73,7 +73,7 @@ interface BoundApi<Sh, R> {
 - 生命周期：
   - `$.lifecycle.onInit(effect)` / `.onDestroy(effect)` / `.onError(handler)`。
 
-其余属性（`flow`、`match`、`useRemote` 等）在 Learn / Advanced / Recipes 中都有配套示例，建议按场景查阅。
+其余属性（`flow`、`match`、`traits` 等）在 Learn / Advanced / Recipes 中都有配套示例，建议按场景查阅。
 
 > 写法提示：`Module.logic(($)=>{ ...; return Effect.gen(...) })` 默认分成 setup（return 前）与 run（return 的 Effect）两段。setup 只做注册，不访问 `$.use/$.onAction/$.onState`，否则开发模式下会收到 `logic::invalid_phase` 诊断；Env 访问和 Watcher/Flow 应放在 return 内。若不需要显式 setup，推荐统一写成 `Module.logic(($) => Effect.gen(function* () { /* 这里是 run 段 */ }))`，这样可以“无脑”把所有 `yield* $.onAction/$.onState/$.use` 放进 generator 内，而不要写成 `Module.logic(($) => $.onAction("inc").run(...))` 这种直接在 builder 里调用 run-only 能力的形式。
 

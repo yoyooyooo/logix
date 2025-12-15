@@ -3,8 +3,6 @@ import { describe, it, expect } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import * as Logix from "@logix/core"
 import { Effect, Schema, ManagedRuntime } from "effect"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
-import { useSelector } from "../../src/hooks/useSelector.js"
 import { useModule } from "../../src/hooks/useModule.js"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import React from "react"
@@ -36,13 +34,9 @@ describe("useDispatch", () => {
     )
 
     const useTest = () => {
-      const runtime = useModule(Counter)
-      const dispatch = useDispatch(runtime)
-      const count = useSelector(
-        Counter,
-        (s: Logix.StateOf<typeof Counter.shape>) => s.count,
-      )
-      return { dispatch, count }
+      const counter = useModule(Counter)
+      const count = useModule(Counter, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      return { counter, count }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -52,7 +46,7 @@ describe("useDispatch", () => {
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "increment", payload: undefined })
+      result.current.counter.actions.increment()
     })
 
     await waitFor(() => {

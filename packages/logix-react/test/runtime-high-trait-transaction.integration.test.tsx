@@ -8,8 +8,6 @@ import * as Logix from "@logix/core"
 import {
   RuntimeProvider,
   useModule,
-  useDispatch,
-  useSelector,
 } from "../src/index.js"
 
 /**
@@ -80,56 +78,56 @@ const HighTraitActions = {
 }
 
 const HighTraitTraits = Logix.StateTrait.from(HighTraitStateSchema)({
-  "metrics.m01": Logix.StateTrait.computed((s) => s.base + 1),
-  "metrics.m02": Logix.StateTrait.computed((s) => s.base + 2),
-  "metrics.m03": Logix.StateTrait.computed((s) => s.base + 3),
-  "metrics.m04": Logix.StateTrait.computed((s) => s.base + 4),
-  "metrics.m05": Logix.StateTrait.computed((s) => s.base + 5),
-  "metrics.m06": Logix.StateTrait.computed((s) => s.base + 6),
-  "metrics.m07": Logix.StateTrait.computed((s) => s.base + 7),
-  "metrics.m08": Logix.StateTrait.computed((s) => s.base + 8),
-  "metrics.m09": Logix.StateTrait.computed((s) => s.base + 9),
-  "metrics.m10": Logix.StateTrait.computed((s) => s.base + 10),
-  "metrics.m11": Logix.StateTrait.computed((s) => s.base + 11),
-  "metrics.m12": Logix.StateTrait.computed((s) => s.base + 12),
-  "metrics.m13": Logix.StateTrait.computed((s) => s.base + 13),
-  "metrics.m14": Logix.StateTrait.computed((s) => s.base + 14),
-  "metrics.m15": Logix.StateTrait.computed((s) => s.base + 15),
-  "metrics.m16": Logix.StateTrait.computed((s) => s.base + 16),
-  "metrics.m17": Logix.StateTrait.computed((s) => s.base + 17),
-  "metrics.m18": Logix.StateTrait.computed((s) => s.base + 18),
-  "metrics.m19": Logix.StateTrait.computed((s) => s.base + 19),
-  "metrics.m20": Logix.StateTrait.computed((s) => s.base + 20),
-  "metrics.m21": Logix.StateTrait.computed((s) => s.base + 21),
-  "metrics.m22": Logix.StateTrait.computed((s) => s.base + 22),
-  "metrics.m23": Logix.StateTrait.computed((s) => s.base + 23),
-  "metrics.m24": Logix.StateTrait.computed((s) => s.base + 24),
-  "metrics.m25": Logix.StateTrait.computed((s) => s.base + 25),
-  "metrics.m26": Logix.StateTrait.computed((s) => s.base + 26),
-  "metrics.m27": Logix.StateTrait.computed((s) => s.base + 27),
-  "metrics.m28": Logix.StateTrait.computed((s) => s.base + 28),
-  "metrics.m29": Logix.StateTrait.computed((s) => s.base + 29),
-  "metrics.m30": Logix.StateTrait.computed((s) => s.base + 30),
-  "metrics.m31": Logix.StateTrait.computed((s) => s.base + 31),
-  "metrics.m32": Logix.StateTrait.computed((s) => s.base + 32),
-  "metrics.m33": Logix.StateTrait.computed((s) => s.base + 33),
-  "metrics.m34": Logix.StateTrait.computed((s) => s.base + 34),
-  "metrics.m35": Logix.StateTrait.computed((s) => s.base + 35),
-  "metrics.m36": Logix.StateTrait.computed((s) => s.base + 36),
-  "metrics.m37": Logix.StateTrait.computed((s) => s.base + 37),
-  "metrics.m38": Logix.StateTrait.computed((s) => s.base + 38),
-  "metrics.m39": Logix.StateTrait.computed((s) => s.base + 39),
-  "metrics.m40": Logix.StateTrait.computed((s) => s.base + 40),
-  "metrics.m41": Logix.StateTrait.computed((s) => s.base + 41),
-  "metrics.m42": Logix.StateTrait.computed((s) => s.base + 42),
-  "metrics.m43": Logix.StateTrait.computed((s) => s.base + 43),
-  "metrics.m44": Logix.StateTrait.computed((s) => s.base + 44),
-  "metrics.m45": Logix.StateTrait.computed((s) => s.base + 45),
-  "metrics.m46": Logix.StateTrait.computed((s) => s.base + 46),
-  "metrics.m47": Logix.StateTrait.computed((s) => s.base + 47),
-  "metrics.m48": Logix.StateTrait.computed((s) => s.base + 48),
-  "metrics.m49": Logix.StateTrait.computed((s) => s.base + 49),
-  "metrics.m50": Logix.StateTrait.computed((s) => s.base + 50),
+  "metrics.m01": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 1 }),
+  "metrics.m02": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 2 }),
+  "metrics.m03": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 3 }),
+  "metrics.m04": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 4 }),
+  "metrics.m05": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 5 }),
+  "metrics.m06": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 6 }),
+  "metrics.m07": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 7 }),
+  "metrics.m08": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 8 }),
+  "metrics.m09": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 9 }),
+  "metrics.m10": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 10 }),
+  "metrics.m11": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 11 }),
+  "metrics.m12": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 12 }),
+  "metrics.m13": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 13 }),
+  "metrics.m14": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 14 }),
+  "metrics.m15": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 15 }),
+  "metrics.m16": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 16 }),
+  "metrics.m17": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 17 }),
+  "metrics.m18": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 18 }),
+  "metrics.m19": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 19 }),
+  "metrics.m20": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 20 }),
+  "metrics.m21": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 21 }),
+  "metrics.m22": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 22 }),
+  "metrics.m23": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 23 }),
+  "metrics.m24": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 24 }),
+  "metrics.m25": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 25 }),
+  "metrics.m26": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 26 }),
+  "metrics.m27": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 27 }),
+  "metrics.m28": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 28 }),
+  "metrics.m29": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 29 }),
+  "metrics.m30": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 30 }),
+  "metrics.m31": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 31 }),
+  "metrics.m32": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 32 }),
+  "metrics.m33": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 33 }),
+  "metrics.m34": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 34 }),
+  "metrics.m35": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 35 }),
+  "metrics.m36": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 36 }),
+  "metrics.m37": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 37 }),
+  "metrics.m38": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 38 }),
+  "metrics.m39": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 39 }),
+  "metrics.m40": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 40 }),
+  "metrics.m41": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 41 }),
+  "metrics.m42": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 42 }),
+  "metrics.m43": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 43 }),
+  "metrics.m44": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 44 }),
+  "metrics.m45": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 45 }),
+  "metrics.m46": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 46 }),
+  "metrics.m47": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 47 }),
+  "metrics.m48": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 48 }),
+  "metrics.m49": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 49 }),
+  "metrics.m50": Logix.StateTrait.computed({ deps: ["base"], get: (s) => s.base + 50 }),
 })
 
 const HighTraitModule = Logix.Module.make("ReactHighTraitTxnModule", {
@@ -229,13 +227,9 @@ describe("React Runtime high-trait transaction integration", () => {
 
     const { result } = renderHook(
       () => {
-        // 在测试中不强求 ModuleRuntime 泛型精确推导，避免为高 Trait 场景增加额外类型噪音。
-        const runtime = useModule(
-          HighTraitImpl.module,
-        ) as Logix.ModuleRuntime<any, any>
-        const dispatch = useDispatch(runtime)
-        const base = useSelector(runtime as any, (s) => (s as any).base) as number
-        return { dispatch, base }
+        const rt = useModule(HighTraitImpl.module)
+        const base = useModule(rt, (s: any) => s.base) as number
+        return { bump: rt.actions.bump, base }
       },
       { wrapper },
     )
@@ -268,10 +262,7 @@ describe("React Runtime high-trait transaction integration", () => {
         Effect.gen(function* () {
           const before = countStateEventsAndTxn()
 
-          result.current.dispatch({
-            _tag: "bump",
-            payload: undefined,
-          } as any)
+          result.current.bump()
 
           // 让内部 Effect 有机会执行与提交事务。
           yield* Effect.sleep("10 millis")

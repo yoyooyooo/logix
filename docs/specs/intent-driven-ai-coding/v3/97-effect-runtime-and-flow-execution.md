@@ -138,12 +138,12 @@ const WizardDraft = Logix.Module.make('WizardDraft', {
 // 2. 在主 Module 中使用
 Module.logic(($) => Effect.gen(function* () {
   // 启动 Draft
-  yield* $.onAction('startWizard').then((orderId) =>
+  yield* $.onAction('startWizard').run((orderId) =>
     $.draft.start(WizardDraft, { orderId })
   );
 
   // 提交 Draft (Transactional Commit)
-  yield* $.onAction('submitWizard').then(() =>
+  yield* $.onAction('submitWizard').run(() =>
     $.draft.commit(WizardDraft).pipe(
       // 提交成功后，将结果回写到主 Module
       Effect.andThen((result) => $.actions.updateOrder(result))

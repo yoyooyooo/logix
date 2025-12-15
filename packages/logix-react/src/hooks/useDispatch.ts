@@ -2,13 +2,16 @@ import { useMemo } from "react"
 import * as Logix from "@logix/core"
 import { useRuntime } from "../components/RuntimeProvider.js"
 import { ReactModuleHandle, useModuleRuntime } from "../internal/useModuleRuntime.js"
+import type { ModuleRef } from "../internal/ModuleRef.js"
 
 // 根据句柄推导 Action 类型：支持 ModuleRuntime 与 ModuleInstance（Tag）
-type ActionOfHandle<H> = H extends Logix.ModuleRuntime<any, infer A>
+type ActionOfHandle<H> = H extends ModuleRef<any, infer A>
   ? A
-  : H extends Logix.ModuleInstance<any, infer Sh>
-    ? Logix.ActionOf<Sh>
-    : never
+  : H extends Logix.ModuleRuntime<any, infer A>
+    ? A
+    : H extends Logix.ModuleInstance<any, infer Sh>
+      ? Logix.ActionOf<Sh>
+      : never
 
 export function useDispatch<H extends ReactModuleHandle>(
   handle: H

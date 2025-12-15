@@ -7,10 +7,7 @@
 ### Core Topics（当前优先关注）
 
 - [SDD Platform](./topics/sdd-platform) - SDD 生命周期总入口（Specify/Plan/Tasks/Implement + Agent 分工 + Context Supply Chain + Intent→Code→Alignment Lab）
-- [State Graph & Field Capabilities](./topics/state-graph-and-capabilities) - 统一的字段能力模型（Computed/Source/Link）与 State Graph 视角，对齐 Capability Plugin 与 runtime-logix/core
-- [Reactive & Linkage](./topics/reactive-and-linkage) - 响应式范式、计算属性与复杂联动（字段/列表/资源字段）
-- [Query Integration](./topics/query-integration) - Logix + Query/异步数据管理集成（三层 API、Reactive Schema 等）
-- [Capability Plugin System](./topics/capability-plugin-system) - CapabilityPlugin 蓝图与能力插件体系（Config as Service + SCD + 分形 Runtime）
+- [Trait System](./topics/trait-system) - 007 Trait/StateTrait 主线收敛后的残渣归档与回归样本清单
 - [Runtime Observability](./topics/runtime-observability) - 调试、追踪与可观测性能力（Tracer / TraceBus / Observability 插件）
 - [Runtime Readiness](./topics/runtime-readiness) - Runtime 生产就绪、性能与架构演进
 - [Runtime Middleware & EffectOp](./topics/runtime-middleware-and-effectop) - Runtime 边界与中间件总线设计（EffectOp、Observer/Runner/Guard 与 Action/Flow/State/Service 边界）
@@ -26,7 +23,8 @@
 - [AI Native UI](./topics/ai-native-ui) - Grand Bidirectional Architecture（Skeleton / AISlot / Live Component / Toolchain）
 - [API Evolution](./topics/api-evolution) - 下一代 Bound API / Agent.gen / `$.whenAI` 等 Killer Feature 提案
 - [Platform Vision](./topics/platform-vision) - 平台终局形态（Generative Language Server / JSON Definition & Runtime Separation 等）
-- [Platform Patterns](./topics/platform-patterns) - 平台级生成式 Pattern 体系与 SCD 对齐
+- [Platform Patterns](./topics/platform-patterns) - 平台级生成式 Pattern 体系
+- [Intent Studio UX](./topics/intent-studio-ux) - Excel Killer / 决策表 / 场景驱动定义相关 UX 草案收敛
 
 ## Tiered Drafts
 
@@ -66,12 +64,10 @@ _(None)_
 
 ### L9 (Raw Ideas)
 
-- [Beyond State & Action](./L9/beyond-state-and-action.md) - The Unified Schema Vision (元编程发散：Module Schema 的全维度演进)
-- [Forward-Only AI Coding](./L9/forward-only-ai-coding.md) - The "Intent-to-Code" Skill Pack (极致正向思考：Pattern-Rich, Schema-Less)
-- [Progressive Escape Hatch](./L9/progressive-escape-hatch.md) - The Compression-Decompression Model (渐进式逃生舱：AI 作为意图编解码器)
-- [From Requirement to Schema](./L9/from-requirement-to-schema.md) - The "Intent Pipeline" (意图流水线：从 L0 需求到 L9 Schema 的结晶过程)
 - [Logix React Components Without useEffect/useRef](./L9/logix-react-no-useeffect-useref-gaps.md) - 盘点在「组件不写 useEffect/useRef」目标下，当前 Logix/React 能力的覆盖面与潜在缺口
 - [State-First Logix Module Codegen](./L9/logix-state-first-module-codegen.md) - State-Only Module 设计 + TanStack Router 风格 Codegen/Vite 插件方案
+- [Module Action / Reducer 建模重思考](./L9/module-actions-and-reducers-redesign.md) - ActionMap/Reducer/Primary Reducer 的边界与 API 收敛
+- [Logix Primary Reducer vs Watcher](./L9/runtime-logix-primary-reducer-vs-watcher.md) - 主 reducer 与 watcher 的分层与时序设想
 
 ## Recently Organized (2025-12-04)
 

@@ -1,17 +1,16 @@
 import React from "react"
 
-export interface OperationSummary {
-  readonly startedAt: number
-  readonly endedAt: number
-  readonly durationMs: number
-  readonly eventCount: number
-  readonly renderCount: number
-  readonly txnCount: number
-}
+import type { OperationSummary as DevtoolsOperationSummary } from "../../state/model.js"
 
 export interface OperationSummaryBarProps {
-  readonly summary?: OperationSummary
+  readonly summary?: DevtoolsOperationSummary
   readonly onClose?: () => void
+}
+
+const formatFieldPath = (path: string): string => {
+  const parts = path.split(".")
+  if (parts.length <= 3) return path
+  return `${parts[0]}.…${parts[parts.length - 1]}`
 }
 
 /**
@@ -26,6 +25,10 @@ export const OperationSummaryBar: React.FC<OperationSummaryBarProps> = ({
 }) => {
   if (!summary) return null
 
+  const trait = summary.traitConverge
+  const hasTrait = Boolean(trait && trait.txnCount > 0)
+  const hasDegraded = Boolean(trait && trait.outcomes.Degraded > 0)
+
   return (
     <div
       className="px-4 py-1.5 border-b flex items-center justify-between gap-3"
@@ -35,7 +38,7 @@ export const OperationSummaryBar: React.FC<OperationSummaryBarProps> = ({
         color: "var(--dt-text-secondary)",
       }}
     >
-      <div className="flex items-center gap-3 text-[10px] font-mono">
+      <div className="flex flex-wrap items-center gap-3 text-[10px] font-mono">
         <span
           className="uppercase tracking-wider"
           style={{ color: "var(--dt-text-muted)" }}
@@ -46,6 +49,34 @@ export const OperationSummaryBar: React.FC<OperationSummaryBarProps> = ({
         <span>txns: {summary.txnCount}</span>
         <span>renders: {summary.renderCount}</span>
         <span>duration: {summary.durationMs}ms</span>
+
+        {hasTrait && trait && (
+          <>
+            <span
+              style={{
+                color: hasDegraded ? "var(--dt-warning)" : "var(--dt-text-secondary)",
+              }}
+              title={
+                hasDegraded
+                  ? `degraded=${trait.outcomes.Degraded} (budget_exceeded=${trait.degradedReasons.budget_exceeded}, runtime_error=${trait.degradedReasons.runtime_error})`
+                  : undefined
+              }
+            >
+              trait: {trait.txnCount} txns · cost: {Math.round(trait.totalDurationMs)}ms
+            </span>
+            {trait.top3.length > 0 && (
+              <span
+                style={{ color: "var(--dt-text-muted)" }}
+                title={trait.top3.map((s) => `${s.kind}:${s.fieldPath} ${s.durationMs}ms`).join("\n")}
+              >
+                top3:{" "}
+                {trait.top3
+                  .map((s) => `${s.kind}:${formatFieldPath(s.fieldPath)} ${Math.round(s.durationMs)}ms`)
+                  .join(", ")}
+              </span>
+            )}
+          </>
+        )}
       </div>
 
       {onClose && (

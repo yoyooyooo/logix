@@ -48,3 +48,10 @@
 - **Alternatives considered**:
   - 一开始就做完整 time-travel：依赖运行时更多契约与状态快照存储，容易扩大范围。
 
+## Decision 7: 统一采用 Span-Based Timeline 与 Off-Main-Thread 渲染架构
+
+- **Decision**: 在视觉层放弃基于 DOM 的 Density Histogram，统一转向基于 Canvas 的 Time-Span Timeline；在架构层强制采用 Worker 聚合 + 异步渲染。
+- **Rationale**:
+  - **视觉**: Span + Flamegraph 才能真实反映 Intent-Flow 的并发与依赖关系，旧的密度图这方面信息有损。
+  - **性能**: 必须把渲染开销从主线程剥离，才能满足 FR-012/013 的硬指标，消灭观测者效应；这是 Spec 005 落地的技术基础。
+- **Reference**: 详见 [Design Doc: Timeline Rendering Engine](./design-timeline-rendering.md)。

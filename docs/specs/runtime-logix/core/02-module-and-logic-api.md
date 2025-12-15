@@ -212,14 +212,14 @@ export const CounterLive = CounterModule.live(
 ### 3.5 Field Capabilities 与 State Graph（StateTrait / `@logix/core` 的角色）
 
 > 更新说明（2025-12-10）：早期 v3 草案中，字段能力与 State Graph 曾规划由独立包 `@logix/data` 承载。  
-> 随着 `specs/001a-module-traits-runtime` 设计收敛，当前主线改为由 `@logix/core` 内部的 StateTrait 模块统一承载字段能力与 State Graph，`@logix/data` 相关规范视为历史 PoC，仅供参考。
+> 随着 `specs/007-unify-trait-system` 设计收敛，当前主线改为由 `@logix/core` 内部的 StateTrait 模块统一承载字段能力与派生收敛；早期以独立 Topic 讨论“字段能力/State Graph”的文档仅作为历史参考，已不再维护。
 
 在当前模型中，字段层的响应式与联动能力（例如 Computed 字段、从外部资源加载的 Source 字段、跨字段 Link 字段）统一收敛到 `@logix/core` 内部的 StateTrait 实现。整体边界大致如下：
 
 - **Schema / Traits 层（Layer 1）**：  
   - Module 的 State Schema 使用 Effect 的 Schema 定义字段结构，computed / source / link 等能力通过 StateTrait DSL 声明，例如：  
-    - `StateTrait.computed((state) => ...)`  
-    - `StateTrait.source({ resource, key })`  
+    - `StateTrait.computed({ deps, get, equals? })`  
+    - `StateTrait.source({ deps, resource, key })`  
     - `StateTrait.link({ from })`  
   - 这些声明被统一收集为 `StateTraitSpec`，并在 build 阶段生成 `StateTraitProgram`，其中包含 StateTraitGraph（字段与能力拓扑）与 StateTraitPlan（运行计划）。
 - **Runtime 层（Layer 2）**：  
@@ -230,13 +230,13 @@ export const CounterLive = CounterModule.live(
     - 可视化字段与能力之间的依赖关系；  
     - 对比两个版本模块的字段与依赖变更。  
 
-> 注意：关于 StateTrait 与 State Graph 的更详细数据模型与 API 形状，请参考：  
-> - `specs/001a-module-traits-runtime/spec.md`  
-> - `docs/specs/drafts/topics/state-graph-and-capabilities/*`
+> 注意：关于 Trait/StateTrait 与事务内收敛、回放与诊断口径的更详细数据模型与契约，请参考：  
+> - `specs/007-unify-trait-system/spec.md`  
+> - `docs/specs/drafts/topics/trait-system/*`（仅保留“残渣/场景清单”，不作为规范裁决）
 
 ### 3.6 StateTrait.source 与 Resource / Query 的运行时接缝（概览）
 
-> 详细数据模型与 API 草图见：`specs/001a-module-traits-runtime/references/resource-and-query.md` 与 `runtime-logix/core/05-runtime-implementation.md`。本节只在「Module / Logic API」视角补充资源相关术语的上下文。
+> 详细数据模型与契约见：`specs/007-unify-trait-system/contracts/query.md` 与 `runtime-logix/core/05-runtime-implementation.md`。本节只在「Module / Logic API」视角补充资源相关术语的上下文。
 
 - **Module 图纸层**  
 	  - Module 作者在 `traits` 槽位只需要写：  
@@ -248,8 +248,9 @@ export const CounterLive = CounterModule.live(
 	  
 	  traits: StateTrait.from(StateSchema)({
 	    profileResource: StateTrait.source({
+	      deps: ["profile.id"],
 	      // 推荐：复用 ResourceRef（或 ResourceRef.id），避免散落字符串常量
-	      resource: UserProfileResource,
+	      resource: UserProfileResource.id,
 	      key: (s) => ({ userId: s.profile.id }),
 	    }),
 	  })
@@ -288,6 +289,31 @@ export const CounterLive = CounterModule.live(
     - StateTrait/source：声明“字段依赖的逻辑资源及 key 规则”；  
     - Resource/Query：提供该资源的实现与访问策略；  
     - EffectOp/Middleware：承载实际调用链与横切能力（日志/缓存/重试/熔断等）。  
+
+### 3.7 TraitLifecycle：领域包（Form/Query/…）统一下沉协议
+
+> 目标：让业务侧尽量只接触“领域 API”（Form/Query/…），但底层仍能统一降解到同一套 Trait/事务/回放/诊断语义。  
+> 结论：领域包与内核之间通过 `Logix.TraitLifecycle` 交换 **可序列化、可比较** 的请求，而不是让每个领域包各自直连 Runtime 私有实现。
+
+TraitLifecycle 的定位：
+
+- **向上**：被领域包（`@logix/form`、`@logix/query` 等）用于表达“校验/刷新/清理/失效”等高层意图；  
+- **向下**：在 Runtime 内部被解释为对 `StateTraitProgram` / `StateTransaction` / `ReplayLog` 的标准操作序列。  
+
+核心 API（概览）：
+
+- `TraitLifecycle.Ref.*`：构造 FieldRef（字段引用），用于稳定定位“要操作的目标”。  
+- `TraitLifecycle.scopedValidate(bound, request)`：提交一次 scoped validate 请求（会被挂到当前事务并在提交前 flush）。  
+- `TraitLifecycle.cleanup(bound, request)`：结构变更下的确定性清理（典型：清理 `errors/ui` 子树）。  
+- `TraitLifecycle.scopedExecute(bound, request)`：领域动作的统一执行入口（Phase 2 中先固化失效请求的记录与回放口径）。  
+
+与 `Module.logic` / StateTransaction 的关系：
+
+- TraitLifecycle 的调用应当发生在 **run 段**（Watcher/Flow/事件处理）中；setup 段只做注册，不直接触发校验/刷新等动作。  
+- 当调用发生在“已开启的事务窗口”内时，TraitLifecycle 会将请求 **挂到当前事务**（避免额外 commit）；  
+- 当调用发生在事务窗口之外时，TraitLifecycle 会通过 Runtime 的统一入口 **开启一笔新事务** 来执行请求，从而保持“每次入口 = 一笔事务”的不变式。  
+
+> 参考：TraitLifecycle 的请求结构与 FieldRef 语义见 `@logix/core` 导出 `TraitLifecycle`（以及 `specs/007-unify-trait-system` 的术语与约束）；其在提交前 flush 的执行顺序见 `core/05-runtime-implementation.md#15-statetransaction-与状态提交路径（v3-内核）`。
 
 ---
 
@@ -455,7 +481,10 @@ Bound API 设计目标：
 - 运行时层：
   - 每个 Module.live / ModuleImpl.layer 会构造一个与该 Module 绑定的运行时实例；
   - 所有挂在该 Module 上的 Logic 程序运行在同一个运行时实例上（共享 State / actions$ / changes$）；
-  - 跨 Module 协作通过 `$.use(OtherModule)` / `$.useRemote(OtherModule)` + Fluent DSL 表达；
+  - 依赖解析与跨模块协作遵循 **strict 默认 + 显式 root provider**：
+    - **strict（默认）**：`$.use(ChildModule)` 仅用于访问“当前模块实例 scope”内由 `imports` 提供的子模块；
+    - **root/global（显式）**：使用 `Root.resolve(Tag)` 获取“当前 Runtime Tree 根”提供的单例（ServiceTag / ModuleTag）；
+    - **跨模块胶水/IR**：使用 `Link.make(...)` 显式描述协作关系（避免通过 Tag 猜实例）。
   - 在分形 Runtime 模型下：
     - 推荐通过 `Logix.Runtime.make(rootImpl, { layer, onError })` 以某个 Root ModuleImpl 为入口构造一颗 Runtime（App / Page / Feature 均视为“Root + Runtime”）；
     - Root ModuleImpl 可以通过 `imports` 引入子模块实现，通过 `processes` 声明长期进程（含 Link）；
@@ -463,3 +492,21 @@ Bound API 设计目标：
 
 对日常业务开发而言，只需通过 Module / Logic / Live / ModuleImpl / `$` 五个概念进行思考与编码。
 需要深入运行时生命周期、Scope、调试等能力时，再参考 `core/05-runtime-implementation.md` 与 impl 系列文档。
+
+### 6.1 Root Provider（单例）心智模型（吸收 Angular/Nest 思想，但保留 Effect 优势）
+
+核心类比：
+
+- Angular `providedIn: "root"` ≈ Logix “在 Runtime Tree 根提供 Layer + 显式 `Root.resolve(Tag)`”；
+- Angular/Nest 的“层级 injector + 最近 wins” ≈ Logix “React `RuntimeProvider.layer` / `useModule(ModuleTag)` 的就近覆盖（Nearest Wins）”；
+- Logix 的关键差异：我们保留了 Effect 的函数式 DI（Layer/Context/Tag/Scope），并把“是否跨 scope / 是否拿 root 单例”做成 **显式入口**，而不是隐式回退。
+
+行为约束（简版）：
+
+- `$.use(ModuleTag)`：**strict 默认**，只从当前模块实例 scope 解析（要求 imports 提供），缺失即失败；
+- `Root.resolve(Tag)`：**固定 root**，不受更近 scope 的 override 影响；用于 root 单例语义（包含 ModuleTag）。
+
+如何在测试中 mock Root Provider：
+
+- 在创建这棵 Runtime Tree 时注入 Layer（例如 `Logix.Runtime.make(rootImpl, { layer })`），而不是依赖嵌套 `RuntimeProvider.layer`；
+- `RuntimeProvider.layer` 仅用于“当前运行环境”的局部覆写（影响 `useRuntime` / `useModule(ModuleTag)` 等入口），不会影响 `Root.resolve`。

@@ -12,7 +12,11 @@ const CounterWithProfileImpl = CounterWithProfile.implement({
     b: 2,
     sum: 0,
     profile: { id: 'u1', name: 'Alice' },
-    profileResource: { name: 'Alice2' },
+    profileResource: {
+      status: 'success',
+      keyHash: 'init',
+      data: { name: 'Alice2' },
+    },
   },
 })
 
@@ -76,8 +80,12 @@ const CounterWithProfilePanel: React.FC = () => {
             </div>
             <div className="font-mono text-xs bg-gray-50 dark:bg-gray-800 rounded p-2">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 dark:text-gray-400 mr-1">profileResource.name:</span>
-                <span className="text-gray-900 dark:text-gray-100">{state.profileResource.name}</span>
+                <span className="text-gray-500 dark:text-gray-400 mr-1">profileResource.status:</span>
+                <span className="text-gray-900 dark:text-gray-100">{state.profileResource.status}</span>
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-gray-500 dark:text-gray-400 mr-1">profileResource.data.name:</span>
+                <span className="text-gray-900 dark:text-gray-100">{state.profileResource.data?.name ?? '-'}</span>
               </div>
             </div>
           </div>

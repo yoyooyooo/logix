@@ -11,94 +11,19 @@ import * as BoundApiRuntime from "./internal/runtime/BoundApiRuntime.js"
 /**
  * Action API：固定方法 + 动态 Action Dispatcher。
  */
+type ActionArgs<P> = [P] extends [void] ? [] | [P] : [P]
+type ActionFn<P, Out> = (...args: ActionArgs<P>) => Out
+
 export type ActionsApi<Sh extends Logix.AnyModuleShape, R> = {
   readonly dispatch: (
     action: Logix.ActionOf<Sh>
   ) => Logic.Of<Sh, R, void, never>
   readonly actions$: Stream.Stream<Logix.ActionOf<Sh>>
 } & {
-  readonly [K in keyof Sh["actionMap"]]: (
-    payload: Schema.Schema.Type<Sh["actionMap"][K]>
-  ) => Logic.Of<Sh, R, void, never>
-}
-
-/**
- * RemoteBoundApi：在当前 Logic 中以 Bound 风格访问「其他 Module」的只读句柄。
- *
- * - 与本模块的 `$` 在写法上尽量保持一致（onState / onAction / on / actions）；
- * - 只暴露「读取 + 监听 + 通过 Action 触发改变」的能力，不提供跨模块直接写 State 的入口。
- */
-export interface RemoteBoundApi<
-  SelfSh extends Logix.AnyModuleShape,
-  TargetSh extends Logix.AnyModuleShape,
-  R = never
-> {
-  readonly onState: <V>(
-    selector: (s: Logix.StateOf<TargetSh>) => V
-  ) => Logic.IntentBuilder<V, SelfSh, R>
-
-  readonly onAction: {
-    // 1. 类型守卫谓词
-    <T extends Logix.ActionOf<TargetSh>>(
-      predicate: (a: Logix.ActionOf<TargetSh>) => a is T
-    ): Logic.IntentBuilder<T, SelfSh, R>
-
-    // 2. 通过 _tag / type 字面量匹配某一变体
-    <
-      K extends Logix.ActionOf<TargetSh> extends { _tag: string }
-        ? Logix.ActionOf<TargetSh>["_tag"]
-        : never
-    >(
-      tag: K
-    ): Logic.IntentBuilder<
-      Extract<Logix.ActionOf<TargetSh>, { _tag: K } | { type: K }>,
-      SelfSh,
-      R
-    >
-
-    // 3. 通过具体 Action 值进行缩小
-    <
-      A extends Logix.ActionOf<TargetSh> &
-        ({ _tag: string } | { type: string })
-    >(
-      value: A
-    ): Logic.IntentBuilder<A, SelfSh, R>
-
-    // 4. 通过 Schema（单一变体 Schema）进行缩小
-    <Sc extends Logix.AnySchema>(
-      schema: Sc
-    ): Logic.IntentBuilder<
-      Extract<Logix.ActionOf<TargetSh>, Schema.Schema.Type<Sc>>,
-      SelfSh,
-      R
-    >
-  } & {
-    [K in keyof TargetSh["actionMap"]]: Logic.IntentBuilder<
-      Extract<Logix.ActionOf<TargetSh>, { _tag: K } | { type: K }>,
-      SelfSh,
-      R
-    >
-  }
-
-  readonly on: <V>(
-    source: Stream.Stream<V>
-  ) => Logic.IntentBuilder<V, SelfSh, R>
-
-  /**
-   * 基于 selector 读取目标模块的快照。
-   * 说明：保持只读，不暴露跨模块写 State 的接口。
-   */
-  readonly read: <V>(
-    selector: (s: Logix.StateOf<TargetSh>) => V
-  ) => Effect.Effect<V, never, Logix.ModuleTag<TargetSh>>
-
-  /**
-   * 通过目标模块的 Action 进行交互。
-   * - 只暴露 actions / actions$，不暴露 state.update/mutate。
-   * - 调用方仍然在当前模块的 Logic Env 中运行。
-   */
-  readonly actions: Logix.ModuleHandle<TargetSh>["actions"]
-  readonly actions$: Logix.ModuleHandle<TargetSh>["actions$"]
+  readonly [K in keyof Sh["actionMap"]]: ActionFn<
+    Schema.Schema.Type<Sh["actionMap"][K]>,
+    Logic.Of<Sh, R, void, never>
+  >
 }
 
 /**
@@ -197,15 +122,6 @@ export interface BoundApiPublic<Sh extends Logix.AnyModuleShape, R = never> {
       tag: Context.Tag<Id, Svc>
     ): Logic.Of<Sh, R, Svc, never>
   }
-  /**
-   * useRemote：以「只读 Bound API」视角访问其他 Module。
-   *
-   * - 写法上贴近当前模块的 `$`（onState / onAction / on / actions）；
-   * - 能读、能监听、能派发 Action，但不能直接跨模块写 State。
-   */
-  readonly useRemote: <Sh2 extends Logix.AnyModuleShape>(
-    module: import("./internal/module.js").ModuleInstance<string, Sh2>
-  ) => Logic.Of<Sh, R, RemoteBoundApi<Sh, Sh2, R>, never>
 
   /**
    * Action 监听入口：支持谓词、_tag / type 字面量、值对象或 Schema 作为「值选择器」进行变体缩小。

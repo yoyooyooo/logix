@@ -1,13 +1,11 @@
 import { describe, it, expect, vi } from "vitest"
 // @vitest-environment happy-dom
 import React, { Suspense } from "react"
-import { renderHook, waitFor } from "@testing-library/react"
-import { Schema, Effect, Layer, ManagedRuntime } from "effect"
+import { render, fireEvent, renderHook, waitFor } from "@testing-library/react"
+import { Schema, Effect, Layer, ManagedRuntime, Context } from "effect"
 import * as Logix from "@logix/core"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
-import { useSelector } from "../../src/hooks/useSelector.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
 
 const Counter = Logix.Module.make("SuspendCounter", {
   state: Schema.Struct({ value: Schema.Number }),
@@ -38,6 +36,168 @@ const AsyncCounterImpl = Counter.implement({
 })
 
 describe("useModule(Impl) suspend mode", () => {
+  it("should reuse same key across hook calls even when RuntimeProvider.layer is present", async () => {
+    const runtime = ManagedRuntime.make(
+      Layer.empty as Layer.Layer<any, never, never>,
+    )
+    const EnvTag = Context.GenericTag<{ readonly name: string }>(
+      "@logix/react-test/useModuleSuspend/env"
+    )
+    const EnvLayer = Layer.succeed(EnvTag, { name: "env" })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <React.StrictMode>
+        <RuntimeProvider runtime={runtime} layer={EnvLayer}>
+          <Suspense fallback={null}>{children}</Suspense>
+        </RuntimeProvider>
+      </React.StrictMode>
+    )
+
+    const useTest = () => {
+      const a = useModule(AsyncCounterImpl, {
+        suspend: true,
+        key: "AsyncCounter:shared",
+      })
+      const b = useModule(AsyncCounterImpl, {
+        suspend: true,
+        key: "AsyncCounter:shared",
+      })
+      const aValue = useModule(a, (s) => (s as { value: number }).value)
+      const bValue = useModule(b, (s) => (s as { value: number }).value)
+      return { a, b, aValue, bValue }
+    }
+
+    const { result } = renderHook(() => useTest(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.aValue).toBe(0)
+      expect(result.current.bValue).toBe(0)
+      expect(result.current.a.runtime.id).toBe(result.current.b.runtime.id)
+    })
+
+    result.current.a.actions.inc()
+
+    await waitFor(() => {
+      expect(result.current.aValue).toBe(1)
+      expect(result.current.bValue).toBe(1)
+    })
+
+    await runtime.dispose()
+  })
+
+  it("should isolate instances for different keys even when RuntimeProvider.layer is present", async () => {
+    const runtime = ManagedRuntime.make(
+      Layer.empty as Layer.Layer<any, never, never>,
+    )
+    const EnvTag = Context.GenericTag<{ readonly name: string }>(
+      "@logix/react-test/useModuleSuspend/env-keys"
+    )
+    const EnvLayer = Layer.succeed(EnvTag, { name: "env" })
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <React.StrictMode>
+        <RuntimeProvider runtime={runtime} layer={EnvLayer}>
+          <Suspense fallback={null}>{children}</Suspense>
+        </RuntimeProvider>
+      </React.StrictMode>
+    )
+
+    const useTest = () => {
+      const a = useModule(AsyncCounterImpl, {
+        suspend: true,
+        key: "AsyncCounter:a",
+      })
+      const b = useModule(AsyncCounterImpl, {
+        suspend: true,
+        key: "AsyncCounter:b",
+      })
+      const aValue = useModule(a, (s) => (s as { value: number }).value)
+      const bValue = useModule(b, (s) => (s as { value: number }).value)
+      return { a, b, aValue, bValue }
+    }
+
+    const { result } = renderHook(() => useTest(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.aValue).toBe(0)
+      expect(result.current.bValue).toBe(0)
+      expect(result.current.a.runtime.id).not.toBe(result.current.b.runtime.id)
+    })
+
+    result.current.a.actions.inc()
+
+    await waitFor(() => {
+      expect(result.current.aValue).toBe(1)
+      expect(result.current.bValue).toBe(0)
+    })
+
+    await runtime.dispose()
+  })
+
+  it("should not share instances across different RuntimeProvider.layer scopes even with the same key", async () => {
+    const runtime = ManagedRuntime.make(
+      Layer.empty as Layer.Layer<any, never, never>,
+    )
+    const EnvTag = Context.GenericTag<{ readonly name: string }>(
+      "@logix/react-test/useModuleSuspend/scope-env"
+    )
+    const LayerA = Layer.succeed(EnvTag, { name: "A" })
+    const LayerB = Layer.succeed(EnvTag, { name: "B" })
+
+    const Panel = ({ testId, buttonId }: { testId: string; buttonId: string }) => {
+      const counter = useModule(AsyncCounterImpl, {
+        suspend: true,
+        key: "AsyncCounter:shared",
+      })
+      const value = useModule(counter, (s) => (s as { value: number }).value)
+      return (
+        <>
+          <button type="button" data-testid={buttonId} onClick={() => counter.actions.inc()}>
+            inc
+          </button>
+          <span data-testid={testId}>{value}</span>
+          <span data-testid={`id:${testId}`}>{String(counter.runtime.id)}</span>
+        </>
+      )
+    }
+
+    const View = () => {
+      return (
+        <>
+          <RuntimeProvider runtime={runtime} layer={LayerA}>
+            <Suspense fallback={null}>
+              <Panel testId="a" buttonId="inc-a" />
+            </Suspense>
+          </RuntimeProvider>
+          <RuntimeProvider runtime={runtime} layer={LayerB}>
+            <Suspense fallback={null}>
+              <Panel testId="b" buttonId="inc-b" />
+            </Suspense>
+          </RuntimeProvider>
+        </>
+      )
+    }
+
+    const { getByTestId, unmount } = render(<View />)
+
+    await waitFor(() => {
+      expect(getByTestId("a").textContent).toBe("0")
+      expect(getByTestId("b").textContent).toBe("0")
+      expect(getByTestId("id:a").textContent).not.toBe(getByTestId("id:b").textContent)
+    })
+
+    fireEvent.click(getByTestId("inc-a"))
+
+    await waitFor(() => {
+      expect(getByTestId("a").textContent).toBe("1")
+      expect(getByTestId("b").textContent).toBe("0")
+      expect(getByTestId("id:a").textContent).not.toBe(getByTestId("id:b").textContent)
+    })
+
+    unmount()
+    await runtime.dispose()
+  })
+
   it("should support suspend:true with explicit key (baseline)", async () => {
     const runtime = ManagedRuntime.make(
       Layer.empty as Layer.Layer<any, never, never>,
@@ -52,16 +212,12 @@ describe("useModule(Impl) suspend mode", () => {
     )
 
     const useTest = () => {
-      const moduleRuntime = useModule(AsyncCounterImpl, {
+      const counter = useModule(AsyncCounterImpl, {
         suspend: true,
         key: "AsyncCounter:test",
       })
-      const value = useSelector(
-        moduleRuntime,
-        (s) => (s as { value: number }).value,
-      )
-      const dispatch = useDispatch(moduleRuntime)
-      return { value, dispatch }
+      const value = useModule(counter, (s) => (s as { value: number }).value)
+      return { counter, value }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -71,11 +227,13 @@ describe("useModule(Impl) suspend mode", () => {
       expect(result.current?.value).toBe(0)
     })
 
-    result.current?.dispatch({ _tag: "inc", payload: undefined })
+    result.current?.counter.actions.inc()
 
     await waitFor(() => {
       expect(result.current?.value).toBe(1)
     })
+
+    await runtime.dispose()
   })
 
   it("should throw helpful error when suspend:true is used without key in dev", async () => {
@@ -105,5 +263,7 @@ describe("useModule(Impl) suspend mode", () => {
     expect(() =>
       renderHook(() => useTest(), { wrapper }),
     ).toThrowError(/suspend:true 模式必须显式提供 options\.key/)
+
+    await runtime.dispose()
   })
 })

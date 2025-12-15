@@ -8,8 +8,6 @@ import * as Logix from "@logix/core"
 import {
   RuntimeProvider,
   useModule,
-  useSelector,
-  useDispatch,
 } from "../src/index.js"
 
 const Counter = Logix.Module.make("ReactRenderCounter", {
@@ -27,7 +25,7 @@ const Impl = Counter.implement({
 })
 
 describe("@logix/react · react-render Debug events", () => {
-  it("emits kind = \"react-render\" RuntimeDebugEventRef with selector metadata", async () => {
+  it("emits component-level react-render events and selector-level react-selector metadata", async () => {
     const events: Logix.Debug.Event[] = []
 
     const debugLayer = Logix.Debug.replace([
@@ -59,10 +57,9 @@ describe("@logix/react · react-render Debug events", () => {
 
     const { result } = renderHook(
       () => {
-        const runtimeHandle = useModule(Impl.module)
-        const value = useSelector(runtimeHandle, selectCount)
-        const dispatch = useDispatch(runtimeHandle)
-        return { value, dispatch }
+        const counter = useModule(Impl.module)
+        const value = useModule(counter, selectCount)
+        return { value, inc: counter.actions.inc }
       },
       { wrapper },
     )
@@ -72,36 +69,44 @@ describe("@logix/react · react-render Debug events", () => {
     await act(async () => {
       await runtime.runPromise(
         Effect.gen(function* () {
-          result.current.dispatch({
-            _tag: "inc",
-            payload: undefined,
-          } as any)
+          result.current.inc()
           yield* Effect.sleep(10)
         }),
       )
     })
 
     // 将收集到的 Debug.Event 归一化为 RuntimeDebugEventRef，
-    // 验证存在 kind = "react-render" 的事件，并检查其 meta 结构。
-    const refs = events
+    // 验证存在 kind = "react-render" 的组件级事件。
+    const renderRefs = events
       .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
       .filter(
         (ref): ref is Logix.Debug.RuntimeDebugEventRef =>
           ref != null && ref.kind === "react-render",
       )
 
-    expect(refs.length).toBeGreaterThan(0)
+    expect(renderRefs.length).toBeGreaterThan(0)
+    const renderEvent = renderRefs[renderRefs.length - 1]
+    const renderMeta = renderEvent.meta as any
+    expect(renderMeta).toBeDefined()
+    expect(renderMeta.componentLabel).toBe("useModule")
 
-    const renderEvent = refs[refs.length - 1]
-    expect(renderEvent.kind).toBe("react-render")
+    // 同时验证 selector 级诊断事件：应携带 debugKey/fieldPaths 元信息。
+    const selectorRefs = events
+      .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
+      .filter(
+        (ref): ref is Logix.Debug.RuntimeDebugEventRef =>
+          ref != null && ref.kind === "react-selector",
+      )
 
-    const meta = renderEvent.meta as any
-    expect(meta).toBeDefined()
-    expect(typeof meta.componentLabel).toBe("string")
-    expect(meta.selectorKey === "countSelector" || meta.selectorKey === "selectCount").toBe(
-      true,
-    )
-    expect(meta.fieldPaths).toEqual(["count"])
+    expect(selectorRefs.length).toBeGreaterThan(0)
+    const selectorEvent = selectorRefs[selectorRefs.length - 1]
+    const selectorMeta = selectorEvent.meta as any
+    expect(selectorMeta).toBeDefined()
+    expect(selectorMeta.componentLabel).toBe("useSelector")
+    expect(
+      selectorMeta.selectorKey === "countSelector" || selectorMeta.selectorKey === "selectCount",
+    ).toBe(true)
+    expect(selectorMeta.fieldPaths).toEqual(["count"])
   })
 
   it("still emits react-render events in production when devtools is explicitly enabled", async () => {
@@ -123,10 +128,9 @@ describe("@logix/react · react-render Debug events", () => {
 
       const { result } = renderHook(
         () => {
-          const runtimeHandle = useModule(Impl.module)
-          const value = useSelector(runtimeHandle, (s) => (s as any).count)
-          const dispatch = useDispatch(runtimeHandle)
-          return { value, dispatch }
+          const counter = useModule(Impl.module)
+          const value = useModule(counter, (s) => (s as any).count)
+          return { value, inc: counter.actions.inc }
         },
         { wrapper },
       )
@@ -134,10 +138,7 @@ describe("@logix/react · react-render Debug events", () => {
       await act(async () => {
         await runtime.runPromise(
           Effect.gen(function* () {
-            result.current.dispatch({
-              _tag: "inc",
-              payload: undefined,
-            } as any)
+            result.current.inc()
             yield* Effect.sleep(10)
           }),
         )

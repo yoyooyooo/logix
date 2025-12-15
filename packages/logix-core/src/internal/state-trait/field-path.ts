@@ -13,11 +13,13 @@ type Primitive =
   | RegExp
   | Function
 
+type NonNull<T> = Exclude<T, null | undefined>
+
 type IsPlainObject<T> =
-  T extends Primitive ? false
-    : T extends readonly any[] ? false
-    : T extends Map<any, any> | Set<any> | WeakMap<any, any> | WeakSet<any> ? false
-    : T extends object ? true
+  [NonNull<T>] extends [Primitive] ? false
+    : [NonNull<T>] extends [readonly any[]] ? false
+    : [NonNull<T>] extends [Map<any, any> | Set<any> | WeakMap<any, any> | WeakSet<any>] ? false
+    : [NonNull<T>] extends [object] ? true
     : false
 
 type Join<K, P> = K extends string | number

@@ -95,6 +95,24 @@
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
+### Non-Functional Requirements (Performance & Diagnosability)
+
+<!--
+  If this feature touches Logix runtime hot paths, treat performance and
+  diagnosability as first-class requirements:
+  - Define budgets (time/alloc/memory) and how they are measured
+  - Define what diagnostic events/Devtools surfaces exist and their overhead
+-->
+
+- **NFR-001**: System MUST define performance budgets for the affected hot paths
+  and record a measurable baseline (benchmark/profile) before implementation.
+- **NFR-002**: System MUST provide structured diagnostic signals for key state /
+  flow transitions, and diagnostics MUST have near-zero overhead when disabled.
+- **NFR-003**: System MUST use deterministic identifiers for instances/transactions
+  in diagnostic and replay surfaces (no random/time defaults).
+- **NFR-004**: System MUST enforce a synchronous transaction boundary: no IO/async
+  work inside a transaction window, and no out-of-transaction write escape hatches.
+
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]
@@ -113,3 +131,5 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-005**: [Performance metric, e.g., "No regression in p95 latency / allocations for [hot path]"]
+- **SC-006**: [Diagnosability metric, e.g., "Devtools can explain 'why' for [event] with causal chain"]

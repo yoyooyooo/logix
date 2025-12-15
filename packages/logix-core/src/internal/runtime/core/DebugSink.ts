@@ -1,4 +1,21 @@
 import { Cause, Effect, FiberRef, Layer, Logger } from "effect"
+import type * as ReplayLog from "./ReplayLog.js"
+
+export interface TriggerRef {
+  readonly kind: string
+  readonly name?: string
+  readonly details?: unknown
+}
+
+/**
+ * ReplayEventRef：
+ * - Debug 事件侧引用的“回放事件”结构；
+ * - 基于 ReplayLog.Event，并补齐 txn/trigger 等关联字段以便于在 Devtools 中做聚合与解释。
+ */
+export type ReplayEventRef = ReplayLog.ReplayLogEvent & {
+  readonly txnId?: string
+  readonly trigger?: TriggerRef
+}
 
 export type Event =
   | {
@@ -24,10 +41,10 @@ export type Event =
       readonly runtimeLabel?: string
       readonly timestamp?: number
     }
-  | {
-      readonly type: "state:update"
-      readonly moduleId?: string
-      readonly state: unknown
+	  | {
+	      readonly type: "state:update"
+	      readonly moduleId?: string
+	      readonly state: unknown
       readonly runtimeId?: string
       readonly txnId?: string
       /**
@@ -49,9 +66,21 @@ export type Event =
        * - 仅在基于 StateTransaction 的路径下由 Runtime 填充。
        */
       readonly originName?: string
-      readonly runtimeLabel?: string
-      readonly timestamp?: number
-    }
+      /**
+       * 预留：Trait 收敛摘要（用于 Devtools 展示窗口级统计/TopN 成本/降级原因等）。
+       * - Phase 2：仅固化字段位，不锁死结构；
+       * - 后续 Phase 会与 Trait/Replay 事件模型对齐为可解释结构。
+       */
+      readonly traitSummary?: unknown
+      /**
+	       * 预留：本次事务关联的回放事件（ReplayLog 侧的 re-emit 事实源）。
+	       * - Phase 2：仅固化字段位；
+	       * - 后续 Phase 会与 ReplayLog.Event 结构对齐。
+	       */
+	      readonly replayEvent?: ReplayEventRef
+	      readonly runtimeLabel?: string
+	      readonly timestamp?: number
+	    }
   | {
       readonly type: "lifecycle:error"
       readonly moduleId?: string
@@ -60,19 +89,21 @@ export type Event =
       readonly runtimeLabel?: string
       readonly timestamp?: number
     }
-  | {
-      readonly type: "diagnostic"
-      readonly moduleId?: string
-      readonly code: string
-      readonly severity: "error" | "warning" | "info"
-      readonly message: string
-      readonly hint?: string
-      readonly actionTag?: string
-      readonly kind?: string
-      readonly runtimeId?: string
-      readonly runtimeLabel?: string
-      readonly timestamp?: number
-    }
+	  | {
+	      readonly type: "diagnostic"
+	      readonly moduleId?: string
+	      readonly code: string
+	      readonly severity: "error" | "warning" | "info"
+	      readonly message: string
+	      readonly hint?: string
+	      readonly actionTag?: string
+	      readonly kind?: string
+	      readonly txnId?: string
+	      readonly trigger?: TriggerRef
+	      readonly runtimeId?: string
+	      readonly runtimeLabel?: string
+	      readonly timestamp?: number
+	    }
   /**
    * trace:* 事件：
    * - 作为运行时 trace / Playground / Alignment Lab 的扩展钩子；
@@ -92,6 +123,7 @@ export interface Sink {
 }
 export const currentDebugSinks = FiberRef.unsafeMake<ReadonlyArray<Sink>>([])
 export const currentRuntimeLabel = FiberRef.unsafeMake<string | undefined>(undefined)
+export const currentTxnId = FiberRef.unsafeMake<string | undefined>(undefined)
 
 export type RuntimeDebugEventKind =
   | "action"
@@ -113,6 +145,9 @@ export interface RuntimeDebugEventRef {
   readonly runtimeId?: string
   readonly runtimeLabel?: string
   readonly txnId?: string
+  readonly resourceId?: string
+  readonly keyHash?: string
+  readonly trigger?: TriggerRef
   readonly timestamp: number
   readonly kind: RuntimeDebugEventKind
   readonly label: string
@@ -385,6 +420,7 @@ export const record = (event: Event) =>
   Effect.gen(function* () {
     const sinks = yield* FiberRef.get(currentDebugSinks)
     const runtimeLabel = yield* FiberRef.get(currentRuntimeLabel)
+    const txnId = yield* FiberRef.get(currentTxnId)
 
     // 为 Debug.Event 补全基础字段：
     // - timestamp：用于 Devtools/Timeline/Overview 做时间聚合，避免 UI 侧用 Date.now()“首次观察时间”导致失真；
@@ -394,9 +430,12 @@ export const record = (event: Event) =>
     if (enriched.timestamp === undefined) {
       ;(enriched as any).timestamp = now
     }
-    if (runtimeLabel && enriched.runtimeLabel === undefined) {
-      ;(enriched as any).runtimeLabel = runtimeLabel
-    }
+	if (runtimeLabel && enriched.runtimeLabel === undefined) {
+	  ;(enriched as any).runtimeLabel = runtimeLabel
+	}
+	if (txnId && enriched.type === "diagnostic" && (enriched as any).txnId === undefined) {
+	  ;(enriched as any).txnId = txnId
+	}
 
     if (sinks.length > 0) {
       yield* Effect.forEach(
@@ -447,42 +486,66 @@ export const toRuntimeDebugEventRef = (
     timestamp
   } as const
 
-  switch (event.type) {
-    case "module:init":
-      return {
-        ...base,
-        kind: "lifecycle",
-        label: "module:init"
-      }
-    case "module:destroy":
-      return {
-        ...base,
-        kind: "lifecycle",
-        label: "module:destroy"
-      }
-    case "action:dispatch": {
-      const action: any = event.action
-      const tag = action?._tag ?? action?.type ?? "action:dispatch"
-      return {
-        ...base,
-        kind: "action",
-        label: String(tag),
-        meta: { action }
-      }
-    }
-    case "state:update": {
-      const e = event as Extract<Event, { readonly type: "state:update" }>
-      const ref: RuntimeDebugEventRef = {
-        ...base,
-        kind: "state",
-        label: "state:update",
-        meta: {
-          state: e.state,
-          patchCount: e.patchCount,
-          originKind: e.originKind,
-          originName: e.originName,
-        },
-      }
+	  switch (event.type) {
+	    case "module:init":
+	      return {
+	        ...base,
+	        kind: "lifecycle",
+	        label: "module:init"
+	      }
+	    case "module:destroy":
+	      return {
+	        ...base,
+	        kind: "lifecycle",
+	        label: "module:destroy"
+	      }
+	    case "action:dispatch": {
+	      const action: any = event.action
+	      const tag = action?._tag ?? action?.type ?? "action:dispatch"
+	      return {
+	        ...base,
+	        trigger: { kind: "action", name: String(tag) },
+	        kind: "action",
+	        label: String(tag),
+	        meta: { action }
+	      }
+	    }
+	    case "state:update": {
+	      const e = event as Extract<Event, { readonly type: "state:update" }>
+	      const trigger: TriggerRef | undefined =
+	        e.originKind ? { kind: e.originKind, name: e.originName } : undefined
+
+	      const replay = e.replayEvent as any
+	      const replayResourceId =
+	        replay &&
+	        typeof replay === "object" &&
+	        (replay as any)._tag === "ResourceSnapshot" &&
+	        typeof (replay as any).resourceId === "string"
+	          ? ((replay as any).resourceId as string)
+	          : undefined
+	      const replayKeyHash =
+	        replay &&
+	        typeof replay === "object" &&
+	        typeof (replay as any).keyHash === "string"
+	          ? ((replay as any).keyHash as string)
+	          : undefined
+
+	      const ref: RuntimeDebugEventRef = {
+	        ...base,
+	        trigger,
+	        resourceId: replayResourceId,
+	        keyHash: replayKeyHash,
+	        kind: "state",
+	        label: "state:update",
+	        meta: {
+	          state: e.state,
+	          patchCount: e.patchCount,
+	          originKind: e.originKind,
+	          originName: e.originName,
+	          traitSummary: e.traitSummary,
+	          replayEvent: e.replayEvent,
+	        },
+	      }
 
       // 记录最近一次带 txnId 的 state:update → runtimeId 映射，
       // 便于后续 trace:react-render 事件按 runtimeId 推断所属事务。
@@ -499,14 +562,15 @@ export const toRuntimeDebugEventRef = (
         label: "lifecycle:error",
         meta: { cause: event.cause }
       }
-    case "diagnostic":
-      return {
-        ...base,
-        kind: "diagnostic",
-        label: event.code,
-        meta: {
-          code: event.code,
-          severity: event.severity,
+	    case "diagnostic":
+	      return {
+	        ...base,
+	        trigger: (event as any).trigger,
+	        kind: "diagnostic",
+	        label: event.code,
+	        meta: {
+	          code: event.code,
+	          severity: event.severity,
           message: event.message,
           hint: event.hint,
           actionTag: event.actionTag,
@@ -514,8 +578,14 @@ export const toRuntimeDebugEventRef = (
         }
       }
     default: {
-      // trace:* 事件：目前主要关心 trace:react-render / trace:effectop，将视图与 EffectOp 抽象为统一事件视图。
-      if (typeof event.type === "string" && event.type === "trace:react-render") {
+  // trace:* 事件：
+      // - trace:react-render：组件级渲染 commit（用于 Devtools 的渲染密度评估）
+      // - trace:react-selector：selector 级诊断事件（不应计入 renderCount）
+      // - trace:effectop：EffectOp 视图（service/trait 等）
+      if (
+        typeof event.type === "string" &&
+        (event.type === "trace:react-render" || event.type === "trace:react-selector")
+      ) {
         const data: any = (event as any).data
         if (data && typeof data === "object") {
           const moduleId =
@@ -541,47 +611,60 @@ export const toRuntimeDebugEventRef = (
           const label =
             typeof data.componentLabel === "string" && data.componentLabel.length > 0
               ? data.componentLabel
-              : "react-render"
+              : event.type === "trace:react-selector"
+                ? "react-selector"
+                : "react-render"
 
           return {
             ...base,
             moduleId,
             txnId,
-            kind: "react-render",
+            kind: event.type === "trace:react-selector" ? "react-selector" : "react-render",
             label,
             meta
           }
         }
       }
 
-      if (typeof event.type === "string" && event.type === "trace:effectop") {
-        const data: any = (event as any).data
-        if (data && typeof data === "object") {
-          const opKind = (data.kind ?? "service") as RuntimeDebugEventKind
-          const label = typeof data.name === "string" ? data.name : "effectop"
-          const meta = {
-            id: data.id,
-            kind: data.kind,
-            name: data.name,
-            payload: data.payload,
-            meta: data.meta
-          }
-          // 优先使用 EffectOp.meta 中的 moduleId（若存在），否则回退到 Debug 事件上的 moduleId。
-          const moduleId =
-            (data.meta && (data.meta as any).moduleId) ?? base.moduleId
-          const txnId =
-            (data.meta && (data.meta as any).txnId) ?? base.txnId
+	      if (typeof event.type === "string" && event.type === "trace:effectop") {
+	        const data: any = (event as any).data
+	        if (data && typeof data === "object") {
+	          const opKind = (data.kind ?? "service") as RuntimeDebugEventKind
+	          const label = typeof data.name === "string" ? data.name : "effectop"
+	          const opMeta: any = data.meta
+	          const resourceId =
+	            opMeta && typeof opMeta === "object" && typeof opMeta.resourceId === "string"
+	              ? (opMeta.resourceId as string)
+	              : undefined
+	          const keyHash =
+	            opMeta && typeof opMeta === "object" && typeof opMeta.keyHash === "string"
+	              ? (opMeta.keyHash as string)
+	              : undefined
+	          const meta = {
+	            id: data.id,
+	            kind: data.kind,
+	            name: data.name,
+	            payload: data.payload,
+	            meta: opMeta
+	          }
+	          // 优先使用 EffectOp.meta 中的 moduleId（若存在），否则回退到 Debug 事件上的 moduleId。
+	          const moduleId =
+	            (opMeta && (opMeta as any).moduleId) ?? base.moduleId
+	          const txnId =
+	            (opMeta && (opMeta as any).txnId) ?? base.txnId
 
-          return {
-            ...base,
-            moduleId,
-            txnId,
-            kind: opKind,
-            label,
-            meta
-          }
-        }
-      }
+	          return {
+	            ...base,
+	            moduleId,
+	            txnId,
+	            resourceId,
+	            keyHash,
+	            kind: opKind,
+	            label,
+	            meta
+	          }
+	        }
+	      }
 
       // 其他 trace:* 或未知类型：统一视为 trace 类事件，仍保留原始 payload。
       if (typeof event.type === "string" && event.type.startsWith("trace:")) {

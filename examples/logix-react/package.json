@@ -12,9 +12,12 @@
   },
   "dependencies": {
     "@logix/core": "workspace:*",
+    "@logix/devtools-react": "workspace:*",
+    "@logix/form": "workspace:*",
+    "@logix/query": "workspace:^",
     "@logix/react": "workspace:*",
     "@logix/test": "workspace:*",
-    "@logix/devtools-react": "workspace:*",
+    "@tanstack/query-core": "^5.90.12",
     "effect": "^3.19.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

@@ -43,6 +43,129 @@ const getEventTimestamp = (event: Logix.Debug.Event): number => {
   return now
 }
 
+type TraitConvergeStep = {
+  stepId: string
+  kind: 'computed' | 'link'
+  fieldPath: string
+  durationMs: number
+  changed: boolean
+  txnId?: string
+}
+
+type TraitConvergeWindow = {
+  txnCount: number
+  outcomes: {
+    Converged: number
+    Noop: number
+    Degraded: number
+  }
+  degradedReasons: {
+    budget_exceeded: number
+    runtime_error: number
+  }
+  budgetMs?: number
+  totalDurationMs: number
+  executedSteps: number
+  changedSteps: number
+  top3: Array<TraitConvergeStep>
+}
+
+const emptyTraitConvergeWindow = (): TraitConvergeWindow => ({
+  txnCount: 0,
+  outcomes: {
+    Converged: 0,
+    Noop: 0,
+    Degraded: 0,
+  },
+  degradedReasons: {
+    budget_exceeded: 0,
+    runtime_error: 0,
+  },
+  budgetMs: undefined,
+  totalDurationMs: 0,
+  executedSteps: 0,
+  changedSteps: 0,
+  top3: [],
+})
+
+const pushTop3 = (window: TraitConvergeWindow, step: TraitConvergeStep): void => {
+  const next = [...window.top3, step].sort((a, b) => b.durationMs - a.durationMs).slice(0, 3)
+  window.top3 = next
+}
+
+const collectTraitConverge = (window: TraitConvergeWindow, event: Logix.Debug.Event): void => {
+  if (!event || typeof event !== 'object') return
+  if (event.type !== 'state:update') return
+
+  const traitSummary = (event as any).traitSummary
+  if (!traitSummary || typeof traitSummary !== 'object') return
+
+  const converge = (traitSummary as any).converge
+  if (!converge || typeof converge !== 'object') return
+
+  window.txnCount += 1
+
+  const outcome = (converge as any).outcome
+  if (outcome === 'Converged') {
+    window.outcomes.Converged += 1
+  } else if (outcome === 'Noop') {
+    window.outcomes.Noop += 1
+  } else if (outcome === 'Degraded') {
+    window.outcomes.Degraded += 1
+  }
+
+  const degradedReason = (converge as any).degradedReason
+  if (degradedReason === 'budget_exceeded') {
+    window.degradedReasons.budget_exceeded += 1
+  } else if (degradedReason === 'runtime_error') {
+    window.degradedReasons.runtime_error += 1
+  }
+
+  const budgetMs = (converge as any).budgetMs
+  if (typeof budgetMs === 'number' && Number.isFinite(budgetMs)) {
+    window.budgetMs = window.budgetMs != null ? Math.max(window.budgetMs, budgetMs) : budgetMs
+  }
+
+  const totalDurationMs = (converge as any).totalDurationMs
+  if (typeof totalDurationMs === 'number' && Number.isFinite(totalDurationMs)) {
+    window.totalDurationMs += totalDurationMs
+  }
+
+  const executedSteps = (converge as any).executedSteps
+  if (typeof executedSteps === 'number' && Number.isFinite(executedSteps)) {
+    window.executedSteps += executedSteps
+  }
+
+  const changedSteps = (converge as any).changedSteps
+  if (typeof changedSteps === 'number' && Number.isFinite(changedSteps)) {
+    window.changedSteps += changedSteps
+  }
+
+  const top3 = (converge as any).top3
+  if (!Array.isArray(top3)) return
+
+  const txnId = typeof (event as any).txnId === 'string' ? ((event as any).txnId as string) : undefined
+  for (const s of top3) {
+    if (!s || typeof s !== 'object') continue
+    const kind = (s as any).kind
+    if (kind !== 'computed' && kind !== 'link') continue
+    const fieldPath = typeof (s as any).fieldPath === 'string' ? ((s as any).fieldPath as string) : undefined
+    const durationMs = (s as any).durationMs
+    if (!fieldPath) continue
+    if (typeof durationMs !== 'number' || !Number.isFinite(durationMs)) continue
+
+    const step: TraitConvergeStep = {
+      stepId: typeof (s as any).stepId === 'string' ? ((s as any).stepId as string) : `${kind}:${fieldPath}`,
+      kind,
+      fieldPath,
+      durationMs,
+      changed: Boolean((s as any).changed),
+      txnId,
+    }
+    pushTop3(window, step)
+  }
+}
+
 const groupEventsIntoOperationWindows = (
   events: ReadonlyArray<Logix.Debug.Event>,
   settings: DevtoolsSettings,
@@ -56,11 +179,13 @@ const groupEventsIntoOperationWindows = (
     eventCount: number
     renderCount: number
     txnIds: Set<string>
+    traitConverge: TraitConvergeWindow
   } | undefined
 
   const flush = () => {
     if (!current) return
     const durationMs = Math.max(0, current.endedAt - current.startedAt)
+    const traitConverge = current.traitConverge.txnCount > 0 ? current.traitConverge : undefined
     summaries.push({
       startedAt: current.startedAt,
       endedAt: current.endedAt,
@@ -68,6 +193,7 @@ const groupEventsIntoOperationWindows = (
       eventCount: current.eventCount,
       renderCount: current.renderCount,
       txnCount: current.txnIds.size,
+      traitConverge: traitConverge as any,
     })
     current = undefined
   }
@@ -86,7 +212,9 @@ const groupEventsIntoOperationWindows = (
         eventCount: 1,
         renderCount: ref.kind === 'react-render' ? 1 : 0,
         txnIds: new Set(ref.txnId ? [ref.txnId] : []),
+        traitConverge: emptyTraitConvergeWindow(),
       }
+      collectTraitConverge(current.traitConverge, event)
       continue
     }
 
@@ -100,7 +228,9 @@ const groupEventsIntoOperationWindows = (
         eventCount: 1,
         renderCount: ref.kind === 'react-render' ? 1 : 0,
         txnIds: new Set(ref.txnId ? [ref.txnId] : []),
+        traitConverge: emptyTraitConvergeWindow(),
       }
+      collectTraitConverge(current.traitConverge, event)
       continue
     }
 
@@ -112,6 +242,7 @@ const groupEventsIntoOperationWindows = (
     if (ref.txnId) {
       current.txnIds.add(ref.txnId)
     }
+    collectTraitConverge(current.traitConverge, event)
   }
 
   flush()

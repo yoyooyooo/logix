@@ -85,6 +85,10 @@ export function App() {
 
 如果你的项目已经在别处创建了 `ManagedRuntime`，也可以直接把它传给 `RuntimeProvider`，效果类似。
 
+> 当某个模块通过 `imports` 组合了子模块（例如 Host imports 了一个 Query），组件侧若要在“父实例 scope”下读取/派发该子模块，使用 `useImportedModule(parent, childModule)` 或 `parent.imports.get(childModule)`：
+> - API：[`useImportedModule`](../react/use-imported-module)
+> - Guide：[`在 React 中使用 Logix`](../../guide/recipes/react-integration)
+
 ## 3. 局部增强：RuntimeProvider.layer
 
 有时你希望在某个子树下增加一点“局部配置”或 Service，而不影响全局 Runtime。可以使用 `RuntimeProvider` 的 `layer` 属性：
@@ -130,6 +134,16 @@ export function Page() {
   - 当多个 `layer` 提供了同一个 Service Tag 时，**内层 Provider 的 `layer` 会覆盖外层的值**，适合做“几乎一样但略有差异”的局部配置（如不同步长、不同主题、不同 Feature Flag）。
 
 内部实现上，`RuntimeProvider` 会为每个 `layer` 创建一个 Scope，并在组件卸载时关闭它，避免资源泄漏。
+
+如果你需要“固定读取当前 Runtime Tree 的根（root provider）”提供的单例（例如全局模块/服务），使用 `Logix.Root.resolve(Tag)`：
+
+```ts
+import * as Logix from "@logix/core"
+import { useRuntime } from "@logix/react"
+
+const runtime = useRuntime()
+const auth = runtime.runSync(Logix.Root.resolve(GlobalAuth.module))
+```
 
 ## 4. Runtime 与 ModuleImpl / Link 的关系
 

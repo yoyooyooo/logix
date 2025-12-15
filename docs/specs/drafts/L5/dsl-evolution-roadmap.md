@@ -332,7 +332,7 @@ state: Schema.Struct({
 ### 阶段 2: 基础 Sugar 实现 (v3.x+)
 
 - [ ] 实现 `Schema.LocalStorage` / `Schema.UrlSync`
-- [ ] 实现 `Schema.Loadable` + `Query.field` (见 query-integration topic)
+- [ ] 实现 `Schema.Loadable` + Query 的领域糖（以 `specs/007-unify-trait-system/contracts/query.md` 为裁决，避免引入第二套 Schema 行为事实源）
 - [ ] 补充 Annotation 机制的基础设施
 
 ### 阶段 3: Env-First 探索 (v4.0)
@@ -378,7 +378,7 @@ state: Schema.Struct({
 ### Sugar 方向
 
 - [ ] 哪些 Sugar 属于 Level 1 (必须实现) / Level 2 (推荐) / Level 3 (蓝图)？
-- [ ] Schema Sugar 与 Reactive Module (见 query-integration) 如何融合？
+- [ ] Sugar 与 Trait/事务/回放/诊断口径如何对齐（见 `topics/trait-system/00-overview.md`）？
 - [ ] Annotation 机制是否需要完整的 Type-Level Metadata？
 
 ### Env-First 方向
@@ -398,7 +398,7 @@ state: Schema.Struct({
 
 - [runtime-logix/core/02-module-and-logic-api.md](../../runtime-logix/core/02-module-and-logic-api.md)
 - [runtime-logix/core/03-logic-and-flow.md](../../runtime-logix/core/03-logic-and-flow.md)
-- [topics/query-integration/](../topics/query-integration/) (Query.field 与 Reactive Schema)
+- [topics/trait-system/](../topics/trait-system/)（007 之后的 Trait/StateTrait 主线收敛与场景清单）
 
 ---
 

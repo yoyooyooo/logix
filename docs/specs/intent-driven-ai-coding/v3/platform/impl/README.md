@@ -52,9 +52,9 @@
 
 2. **Fluent 链的白盒子集与 AST 模式**
    - 白盒模式仅覆盖以下直接调用形态（单语句，不经中转变量）：
-     - `yield* $.onState(selector).op1().op2().then(effect, opts?)`；
-     - `yield* $.onAction(predicate).op().then(effect, opts?)`；
-     - `yield* $.on(streamExpr).op().then(effect, opts?)`。
+     - `yield* $.onState(selector).debounce(...).update/mutate/run*(...)`；
+     - `yield* $.onAction(predicate).throttle(...).update/mutate/run*(...)`；
+     - `yield* $.on(streamExpr).filter(...).run*(...)`。
    - 实现时应优先用简单的模式匹配（例如“嵌套 CallExpression 链 + 最外层是 YieldExpression”），避免构建复杂的控制流分析；
    - 一旦链条被拆成中间变量或包裹在高阶函数里，即视为 Raw Mode，解析器只记录最外层 Effect Block 的位置信息。
 
@@ -63,17 +63,17 @@
      - `const $User = yield* $.use(User)` → `$User` 绑定到 StoreId `"User"`；
      - `const tracker = yield* $.use(Analytics)` → `tracker` 绑定到 Service `"Analytics"`。
    - 在解析 Fluent 链时，通过该符号表判断：
-     - 某个 `when($User.changes(...))` 的 Source 属于哪个 Store；
-     - `then` 中的 `$User.dispatch(...)` / `$.state.mutate(...)` / `tracker.track(...)` 的 Sink 属于哪个 Store/Service。
+     - 某个 `$.on($User.changes(...))` 的 Source 属于哪个 Store；
+     - `.run*` 的 handler 内出现的 `$User.dispatch(...)` / `$.state.update/mutate(...)` / `tracker.track(...)` 的归属（Store/Service）。
    - 若代码未通过 `$.use` 获取依赖（例如直接使用 Tag），平台可以选择：
      - 要么完全不解析该部分（标记为 Raw）；
      - 要么在 Universe/Galaxy 视图中降级为“未建模依赖”，但不对其做语义推断。
 
 4. **IntentRule IR 的生成与回写**
    - 对白盒 Fluent 链，解析器应生成完整的 IntentRule：
-     - `source`：从 `when*` + 符号表推导；
+     - `source`：从 `$.onState/$.onAction/$.on` + 符号表推导；
      - `pipeline`：从 `.debounce/.throttle/.filter/.map` 等算子推导；
-     - `sink`：从 `then` 内部对 `$`/StoreHandle/Service 的调用推导。
+     - `sink`：以终端算子 `.update/.mutate/.run*` 为准；对 `.run*` 仅在可识别的“直接调用”形态下提取结构，其余降级为 Gray/Black Box。
 
 - IR 层统一使用 `IntentRule` 结构来表达语义，不再依赖任何 `Intent.*` 命名空间；
 - Graph → Code 时，平台修改 Fluent 链（而不是生成额外的适配 API），保证代码与 IR 的单一事实源仍是 `$`。
@@ -96,7 +96,7 @@
    - 平台假设 runtime 对以下约束负责：
      - StoreHandle 无跨 Store 写接口（只有 `read/changes/dispatch`），保证 IR 中“谁写谁”的关系可靠；
      - Fluent 链在运行时等价于 Flow/Effect 组合，不会引入额外的隐形控制流。
-   - 若实现中需要突破上述约束（例如新增新的 `when*` 变种），必须同步更新：
+   - 若实现中需要突破上述约束（例如新增新的 `$.on*` 变种或新的白盒终端），必须同步更新：
      - `v3/06-codegen-and-parser.md`（解析规则）；
      - `runtime-logix/core/03-logic-and-flow.md`（Bound API 契约）；
      - 本 README（平台实现备忘）。

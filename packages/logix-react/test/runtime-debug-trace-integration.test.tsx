@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { Effect, Layer, Schema } from "effect"
 import * as Logix from "@logix/core"
-import { RuntimeProvider, useModule, useDispatch } from "../src/index.js"
+import { RuntimeProvider, useModule } from "../src/index.js"
 
 const Counter = Logix.Module.make("ReactDebugTraceCounter", {
   state: Schema.Struct({ count: Schema.Number }),
@@ -52,9 +52,8 @@ describe("Runtime + Debug trace integration (React happy-dom)", () => {
 
     const { result } = renderHook(
       () => {
-        const runtime = useModule(Impl.module)
-        const dispatch = useDispatch(runtime)
-        return { dispatch }
+        const counter = useModule(Impl.module)
+        return { inc: counter.actions.inc }
       },
       { wrapper },
     )
@@ -63,7 +62,7 @@ describe("Runtime + Debug trace integration (React happy-dom)", () => {
     await act(async () => {
       await baseRuntime.runPromise(
         Effect.gen(function* () {
-          result.current.dispatch({ _tag: "inc", payload: undefined } as any)
+          result.current.inc()
           yield* Effect.sleep(10)
         }),
       )

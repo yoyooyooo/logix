@@ -38,9 +38,9 @@ related:
 - `devtools-and-studio`  
   - 关注 Studio / CLI / Dev Server 的整体架构与双向桥接；  
   - 本 Topic 专注 Runtime 侧的观测与 Debug 能力，两者在 Debug 事件模型上需对齐。
-- `capability-plugin-system`  
-  - 定义 CapabilityPlugin 蓝图与能力插件体系；  
-  - 本 Topic 将定义一种 Observability/Track 能力插件，负责将 Runtime Trace 映射为平台级业务事件与调试接口。
+- `trait-system`  
+  - 007 之后的 Trait/回放/诊断口径是观测与调试的事实源之一；  
+  - 本 Topic 只在“观测如何解释这些事实源并对外输出”的层面补充。
 - `runtime-readiness`  
   - 关注生产可用性（性能、稳定性、部署）；  
   - Observability 能力是 Runtime Readiness 的重要支撑，本 Topic 主要从“观测与调试”视角展开。
@@ -56,4 +56,3 @@ related:
 - `03-devtools-integration-contract.md`（待补）：  
   - 整理 Runtime Debug 事件流与 Dev Server / Studio 之间的协议约束；  
   - 对齐 `devtools-and-studio` Topic 中的数字孪生方案。
-

@@ -13,18 +13,31 @@ Logix DevTools 是一个独立的 Chrome 扩展或 React 组件，通过 `DevToo
 ### 1.0 DebugSink 接口（FiberRef 模型）
 
 ```ts
+export interface TriggerRef {
+  readonly kind: string
+  readonly name?: string
+  readonly details?: unknown
+}
+
+export type ReplayEventRef = ReplayLog.ReplayLogEvent & {
+  readonly txnId?: string
+  readonly trigger?: TriggerRef
+}
+
 export type Event =
   | {
       readonly type: "module:init"
       readonly moduleId?: string
       readonly runtimeId?: string
       readonly runtimeLabel?: string
+      readonly timestamp?: number
     }
   | {
       readonly type: "module:destroy"
       readonly moduleId?: string
       readonly runtimeId?: string
       readonly runtimeLabel?: string
+      readonly timestamp?: number
     }
   | {
       readonly type: "action:dispatch"
@@ -33,6 +46,7 @@ export type Event =
       readonly runtimeId?: string
       readonly txnId?: string
       readonly runtimeLabel?: string
+      readonly timestamp?: number
     }
   | {
       readonly type: "state:update"
@@ -53,7 +67,26 @@ export type Event =
        * - Devtools 可据此区分业务事务与 Devtools time-travel 操作。
        */
       readonly originKind?: string
+      /**
+       * 可选：触发本次状态提交的事务来源名称（origin.name）：
+       * - 例如 action dispatch / fieldPath / task:success/task:failure 等；
+       * - 仅在基于 StateTransaction 的路径下由 Runtime 填充。
+       */
+      readonly originName?: string
+      /**
+       * 预留：Trait 收敛摘要（用于 Devtools 展示窗口级统计/TopN 成本/降级原因等）。
+       * - Phase 2：不锁死结构；
+       * - 后续 Phase 会与 Trait/Replay 事件模型对齐为可解释结构。
+       */
+      readonly traitSummary?: unknown
+      /**
+       * 预留：本次事务关联的回放事件（ReplayLog 侧的 re-emit 事实源）。
+       * - Phase 2：仅固化字段位；
+       * - 后续 Phase 会与 ReplayLog.Event 结构对齐。
+       */
+      readonly replayEvent?: ReplayEventRef
       readonly runtimeLabel?: string
+      readonly timestamp?: number
     }
   | {
       readonly type: "lifecycle:error"
@@ -61,6 +94,7 @@ export type Event =
       readonly cause: unknown
       readonly runtimeId?: string
       readonly runtimeLabel?: string
+      readonly timestamp?: number
     }
   | {
       readonly type: "diagnostic"
@@ -71,8 +105,11 @@ export type Event =
       readonly hint?: string
       readonly actionTag?: string
       readonly kind?: string
+      readonly txnId?: string
+      readonly trigger?: TriggerRef
       readonly runtimeId?: string
       readonly runtimeLabel?: string
+      readonly timestamp?: number
     }
   /**
    * trace:* 事件：
@@ -85,6 +122,7 @@ export type Event =
       readonly data?: unknown
       readonly runtimeId?: string
       readonly runtimeLabel?: string
+      readonly timestamp?: number
     }
 
 export interface Sink {
@@ -94,6 +132,7 @@ export interface Sink {
 // internal：唯一“真相”是 FiberRef.currentDebugSinks / currentRuntimeLabel
 export const currentDebugSinks: FiberRef.FiberRef<ReadonlyArray<Sink>>
 export const currentRuntimeLabel: FiberRef.FiberRef<string | undefined>
+export const currentTxnId: FiberRef.FiberRef<string | undefined>
 ```
 
 ### 1.1 RuntimeDebugEventRef（统一事件视图）
@@ -121,6 +160,9 @@ export interface RuntimeDebugEventRef {
   readonly runtimeId?: string
   readonly runtimeLabel?: string
   readonly txnId?: string
+  readonly resourceId?: string
+  readonly keyHash?: string
+  readonly trigger?: TriggerRef
   readonly timestamp: number
   readonly kind: RuntimeDebugEventKind
   readonly label: string
@@ -139,9 +181,12 @@ export const toRuntimeDebugEventRef: (
 - `state:update` → `kind = "state"`，`meta` 中包含：
   - `state`：提交后的整棵状态；
   - `patchCount`：本次事务聚合的 Patch 数量（若启用 StateTransaction）；
-  - `originKind`：触发该事务的来源种类（例如 `"action"` / `"source-refresh"` / `"service-callback"` / `"devtools"`）。  
+  - `originKind` / `originName`：触发该事务的来源（事务入口的 origin.kind / origin.name）；
+  - `traitSummary`：本窗口 Trait 收敛摘要（用于快速定位超预算/降级与 TopN 成本）；
+  - `replayEvent`：预留的回放事件引用（Phase 2 仅固化字段位）。  
 - `lifecycle:error` / `diagnostic` → `kind = "lifecycle"` / `"diagnostic"`，`meta` 中保留错误详情与诊断信息。  
-- `trace:react-render` → `kind = "react-render"`，`meta` 中包含 `componentLabel` / `selectorKey` / `fieldPaths` / `strictModePhase` 等；  
+- `trace:react-render` → `kind = "react-render"`，组件级渲染 commit；  
+- `trace:react-selector` → `kind = "react-selector"`，selector 级诊断（不应计入 renderCount），`meta` 中可包含 `componentLabel` / `selectorKey` / `fieldPaths` / `strictModePhase` 等；  
   - 若该事件缺少 `txnId`，Runtime 会使用同一 `runtimeId` 最近一次带事务的 `state:update` 补全，以便 Devtools 将渲染事件与 StateTransaction 对齐。  
 - `trace:effectop` → 根据 EffectOp 的 `kind` 映射为 `"service"` / `"trait-computed"` / `"trait-link"` / `"trait-source"` 等，并在 `meta` 中保留完整的 EffectOp payload（id/kind/name/payload/meta）。  
 - 其他 `trace:*` → 统一归类为 `kind = "devtools"`，原始数据放入 `meta.data`。  
@@ -309,6 +354,59 @@ const runtime = Logix.Runtime.make(RootImpl, {
 - `reducer::duplicate`（error）：同一 Action tag 注册多个 primary reducer。  
 - `reducer::late_registration`（error）：在该 tag 已派发过后才注册 primary reducer。  
 - `lifecycle::missing_on_error`（warning）：Module 发生 lifecycle 错误时缺少 `$.lifecycle.onError` 处理器。
+- `state_trait::deps_mismatch`（warning）：dev/test 环境下，侦测到 computed/source 的实际读取路径与声明的 `deps` 不一致（仅提示，不影响运行时语义）。  
+- `trait::budget_exceeded`（warning）：事务提交前的 Trait converge 超预算，派生字段在本窗口冻结（回退到窗口开始时的派生快照）。  
+- `trait::runtime_error`（warning）：事务提交前的 Trait converge 运行期异常，派生字段在本窗口冻结（回退到窗口开始时的派生快照）。  
+
+### 1.5 回放与 ReplayLog（re-emit，不 re-fetch）
+
+> 目标：让时间旅行与故障复现基于“事件事实源（Event Log）”，而不是“重新发真实请求”。  
+> 口径：**Replay Mode 下必须 re-emit（重赛结果），而不是 re-fetch（重算网络请求）**。
+
+#### 1.5.1 ReplayLog：事件事实源（Phase 2）
+
+Runtime 内置一个最小版 `ReplayLog`（Env Service）作为回放事实源，记录两类事件：
+
+- `ResourceSnapshot`：`idle/loading/success/error` 的资源快照变化（由 StateTrait.source 产生）；  
+- `InvalidateRequest`：显式失效请求（Phase 2 仅固化记录入口，供 Query/Devtools 聚合）。  
+
+`ReplayLog` 是顺序消费模型（带 cursor）：
+
+- live 模式下只追加记录；  
+- replay 模式下由运行时按匹配条件“消费下一条事件”，cursor 前进，保证重放顺序与当时一致；  
+- 可通过 `resetCursor` 回到起点以重复回放。
+
+#### 1.5.2 ReplayMode：资源刷新行为
+
+- live 模式：
+  - source-refresh 正常执行资源调用，并在写回快照时把 `ResourceSnapshot` 记录到 ReplayLog。  
+- replay 模式：
+  - source-refresh 不发真实请求；而是从 ReplayLog 依次消费并写回快照（通常是先写入 loading，再重赛 success/error，以保持“异步资源”的时间线结构）。  
+  - 若缺失对应事件，则刷新流程会停在当前可见状态（用于暴露“回放事实不完整”的问题，而不是静默降级为真实请求）。  
+
+> 说明：`Debug.Event.state:update.replayEvent` 字段位用于将“本次事务关联的回放事件”挂到 Debug 事件上，便于 Devtools 在事务视图中解释回放来源；Phase 2 尚未强制填充该字段。
+
+### 1.6 解析失败（Resolution Errors）
+
+在 strict-by-default 的依赖解析语义下，**缺失提供者必须稳定失败**，并在 dev/test 环境给出“可读 + 可修复”的诊断信息（而不是静默回退到某个全局注册表）。
+
+当前最小错误集合：
+
+- `MissingModuleRuntimeError`：Logic 侧解析 `ModuleTag` 失败（典型来源：`$.use(Child.module)` 但未在同一实例 scope 提供 imports）。
+- `MissingImportedModuleError`：React 侧从 imports-scope 解析子模块失败（`useImportedModule(parent, Child.module)` / `host.imports.get(Child.module)`）。
+
+dev/test 下，错误对象（或错误文本）至少包含这些字段：
+
+- `tokenId`：请求的 token 标识（通常是 `module.id`）。
+- `entrypoint`：发生位置（例如 `logic.$.use` / `react.useImportedModule/imports.get`）。
+- `mode`：本次解析的语义模式（当前 imports-scope 场景统一为 `strict`）。
+- `startScope`：起点 scope（至少包含 `moduleId`/`runtimeId`）。
+- `fix[]`：可执行修复建议（至少两条）。
+
+prod 下允许降级为短消息，但必须保持：
+
+- `error.name` 稳定；
+- 载荷 Slim（不包含 `Context`/`Effect`/闭包等大对象）。
 
 ## 2. 核心视图
 

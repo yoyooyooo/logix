@@ -61,7 +61,7 @@
     - `docs/specs/intent-driven-ai-coding/v3/99-glossary-and-ssot.md`（StateTransaction / Trait 生命周期 / Devtools 术语需在实现后登记）；  
     - `docs/specs/runtime-logix/core/*`（Module / Logic / State / Debug 契约）；  
     - `docs/specs/runtime-logix/impl/README.md`（运行时实现要点）；  
-    - `docs/specs/drafts/topics/reactive-and-linkage/*`（作为高 Trait 场景参考）。  
+    - `docs/specs/drafts/topics/trait-system/*`（作为高 Trait 场景参考与回归样本清单）。  
   - 本 feature 目录下的 spec/plan/research/data-model/contracts/quickstart 已先行更新，后续在实现稳定后会通过 T041 将经验回写到 runtime-logix SSoT 文档。  
 
 - 是否引入/修改 Effect/Logix 契约？相关规范是否同步？  

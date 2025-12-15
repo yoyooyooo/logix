@@ -1,17 +1,21 @@
-import { useCallback, useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector"
 import * as Logix from "@logix/core"
-import { Effect, Stream, Fiber } from "effect"
+import { Effect } from "effect"
 import { useRuntime } from "../components/RuntimeProvider.js"
 import { ReactModuleHandle, useModuleRuntime } from "../internal/useModuleRuntime.js"
 import { isDevEnv } from "../internal/env.js"
+import { getModuleRuntimeExternalStore } from "../internal/ModuleRuntimeExternalStore.js"
+import type { ModuleRef } from "../internal/ModuleRef.js"
 
 // 推导句柄对应的 State 类型：既支持 ModuleRuntime，也支持 ModuleInstance（Tag）
-type StateOfHandle<H> = H extends Logix.ModuleRuntime<infer S, any>
+type StateOfHandle<H> = H extends ModuleRef<infer S, any>
   ? S
-  : H extends Logix.ModuleInstance<any, infer Sh>
-    ? Logix.StateOf<Sh>
-    : never
+  : H extends Logix.ModuleRuntime<infer S, any>
+    ? S
+    : H extends Logix.ModuleInstance<any, infer Sh>
+      ? Logix.StateOf<Sh>
+      : never
 
 export function useSelector<H extends ReactModuleHandle>(
   handle: H
@@ -35,38 +39,24 @@ export function useSelector<H extends ReactModuleHandle, V>(
     (selector ??
       ((state: StateOfHandle<H>) => state as unknown as V))
 
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => {
-      const fiber = runtime.runFork(
-        Stream.runForEach(
-          moduleRuntime.changes((state) => state),
-          () => Effect.sync(onStoreChange)
-        )
-      )
-      return () => {
-        runtime.runFork(Fiber.interrupt(fiber))
-      }
-    },
-    [runtime, moduleRuntime]
-  )
-
-  const getSnapshot = useCallback(
+  const store = useMemo(
     () =>
-      runtime.runSync(
-        moduleRuntime.getState as Effect.Effect<StateOfHandle<H>, never, any>
+      getModuleRuntimeExternalStore(
+        runtime,
+        moduleRuntime as unknown as Logix.ModuleRuntime<StateOfHandle<H>, any>,
       ),
-    [runtime, moduleRuntime]
+    [runtime, moduleRuntime],
   )
 
   const selected = useSyncExternalStoreWithSelector(
-    subscribe,
-    getSnapshot,
-    getSnapshot,
+    store.subscribe,
+    store.getSnapshot,
+    store.getSnapshot,
     actualSelector,
     equalityFn
   )
 
-  // 在 React 渲染完成后发出一条 trace:react-render Debug 事件：
+  // 在 React 渲染完成后发出一条 trace:react-selector Debug 事件：
   // - 仅在 dev/test 环境启用，以避免在生产环境引入额外开销；
   // - 事件通过 DebugSink → RuntimeDebugEventRef 标准化后供 Devtools 消费。
   useEffect(() => {
@@ -98,14 +88,14 @@ export function useSelector<H extends ReactModuleHandle, V>(
         : undefined)
 
     const effect = Logix.Debug.record({
-      type: "trace:react-render",
+      type: "trace:react-selector",
       moduleId: (moduleRuntime as any).moduleId,
       runtimeId,
       data: {
         componentLabel: "useSelector",
         selectorKey,
         fieldPaths,
-        strictModePhase: "render",
+        strictModePhase: "commit",
       },
     }) as Effect.Effect<void, never, any>
 

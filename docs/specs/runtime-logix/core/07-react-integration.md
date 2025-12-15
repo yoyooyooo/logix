@@ -23,6 +23,7 @@ React 适配层围绕三类 Hooks 暴露能力：
 - `useModule(handle, selector, equalityFn?)`：**[推荐]** 直接订阅状态，内部基于 `useSyncExternalStore`，可传入自定义 `equalityFn`；
 - `useSelector(handle | runtime, selector, equalityFn?)`：在已有 Runtime 或 Module Tag 上做细粒度订阅；
 - `useDispatch(handle | runtime)`：获取稳定的 `dispatch` 函数，自动复用当前 React Runtime。
+- `useImportedModule(parent, childModule)`：**[分形模块]** 从“父模块实例的 imports scope”解析子模块实例（避免多实例场景串用全局 registry）。
 
 这三者构成连接 React 与 Logix 领域模块的基础桥梁。
 
@@ -86,6 +87,43 @@ function MyComponent() {
 
 > 关于在 Logic 内部挂 watcher（`Effect.all + run` / `Effect.forkScoped` / `runFork`）以及它们与 Scope / 生命周期的关系，可以在产品文档中参阅《Watcher 模式与生命周期》一节；React 场景下的行为与核心引擎保持一致。
 ```
+
+### 1.2 分形模块（imports）：在父实例 scope 下读取/派发子模块
+
+当一个子模块（例如 `Query`）通过 `imports: [Child.impl]` 被挂载到多个不同的父模块实例上时：
+
+- **父模块实例 ≈ 子模块实例的作用域锚点**；
+- 组件侧如果直接 `useModule(Child.module)`，拿到的是“当前运行环境（RuntimeProvider 链）”下的 ModuleTag 单例语义，无法表达“属于哪个父实例”的绑定；
+- 推荐使用 `useImportedModule(parent, Child.module)` 以显式绑定到父实例 scope。
+
+```ts
+import { useModule, useImportedModule, useSelector } from "@logix/react"
+
+const host = useModule(HostImpl, { key: "SessionA" })
+const child = useImportedModule(host, Child.module)
+
+const status = useSelector(child, (s) => s.status)
+```
+
+也可以使用链式语法糖（推荐）：
+
+```ts
+import { useModule, useSelector } from "@logix/react"
+
+const host = useModule(HostImpl, { key: "SessionA" })
+const child = host.imports.get(Child.module)
+
+const status = useSelector(child, (s) => s.status)
+```
+
+注意：
+
+- “父实例 scope” 通常来自 `useModule(HostImpl, { key })` / `useModule(HostImpl)` / `useLocalModule(HostModule, ...)`；避免用 `useModule(HostModule)`（Tag 语义）作为 parent 再去解析 imports；
+- `useImportedModule` / `host.imports.get(...)` 是 strict-only：只能从 `parent` 的 imports scope 解析；缺失即抛错（dev/test 下给出可读提示），避免“悄悄读到另一个实例”；
+- `host.imports.get(Child.module)` 返回稳定的 `ModuleRef`，可直接写在组件 render 内（无需 `useMemo`）；如偏好显式 memo，可使用 `useImportedModule(host, Child.module)`；
+- 编排/转发建议：父模块 Logic 内优先使用 `$.use(Child.module)`（同一实例 scope 的 DI 语义）进行编排，UI 仍只依赖父模块；仅当 UI 需要直连子模块 state/dispatch 时使用 `host.imports.get(...)`；
+- 深层 imports（3 层+）避免在组件里到处“爬树”：优先在边界 resolve 一次把 `ModuleRef` 往下传，或把常用模块提升为 Host 的直接 imports；必要时将子模块的最小 view 投影到父模块 state 再由 UI 消费。
+- 若你刻意使用 root/global 单例语义：使用 `useModule(Child.module)`（受 RuntimeProvider.layer 影响，最近 wins）；或在 Effect 边界使用 `Logix.Root.resolve(Child.module)`（固定 root provider，忽略局部 override）。
 
 ## 2. 状态订阅 (State Subscription)
 

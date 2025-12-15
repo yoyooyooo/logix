@@ -6,8 +6,7 @@ import { Schema, ManagedRuntime, Layer, Effect } from "effect"
 import React from "react"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useLocalModule } from "../../src/hooks/useLocalModule.js"
-import { useSelector } from "../../src/hooks/useSelector.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
+import { useModule } from "../../src/hooks/useModule.js"
 
 const Counter = Logix.Module.make("Counter", {
   state: Schema.Struct({ count: Schema.Number }),
@@ -55,16 +54,12 @@ describe("useLocalModule", () => {
 
   it("should create local runtime from module options", async () => {
     const useTest = () => {
-      const runtime = useLocalModule(Counter, {
+      const counter = useLocalModule(Counter, {
         initial: { count: 0 },
         logics: [incrementLogic],
       })
-      const count = useSelector(
-        runtime,
-        (s: Logix.StateOf<typeof Counter.shape>) => s.count,
-      )
-      const dispatch = useDispatch(runtime)
-      return { count, dispatch }
+      const count = useModule(counter, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      return { counter, count }
     }
 
     const { result } = renderHook(useTest, { wrapper })
@@ -74,7 +69,7 @@ describe("useLocalModule", () => {
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "increment", payload: undefined })
+      result.current.counter.actions.increment()
     })
 
     await waitFor(() => {
@@ -84,16 +79,12 @@ describe("useLocalModule", () => {
 
   it("should re-create runtime when deps change", async () => {
     const useTest = (userId: string) => {
-      const runtime = useLocalModule(Counter, {
+      const counter = useLocalModule(Counter, {
         initial: { count: Number(userId) },
         logics: [incrementLogic],
         deps: [userId],
       })
-      const count = useSelector(
-        runtime,
-        (s: Logix.StateOf<typeof Counter.shape>) => s.count,
-      )
-      return count
+      return useModule(counter, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
     }
 
     const { result, rerender } = renderHook(({ id }) => useTest(id), {

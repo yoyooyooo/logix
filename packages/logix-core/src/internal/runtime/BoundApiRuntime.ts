@@ -1,4 +1,4 @@
-import { Context, Effect, Option, Schema, Stream, SubscriptionRef } from "effect"
+import { Context, Effect, FiberRef, Option, Schema, Stream, SubscriptionRef } from "effect"
 import { create } from "mutative"
 import type * as Logix from "./core/module.js"
 import * as Logic from "./core/LogicMiddleware.js"
@@ -8,12 +8,14 @@ import * as MatchBuilder from "./core/MatchBuilder.js"
 import * as Platform from "./core/Platform.js"
 import * as Lifecycle from "./Lifecycle.js"
 import * as LogicDiagnostics from "./core/LogicDiagnostics.js"
+import { isDevEnv } from "./core/env.js"
 import type {
   AnyModuleShape,
   ModuleRuntime,
   StateOf,
   ActionOf,
 } from "./core/module.js"
+import type { ScopedValidateRequest } from "../state-trait/validate.js"
 
 export const globalLogicPhaseRef: { current: "setup" | "run" } = {
   current: "run",
@@ -181,15 +183,29 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
           | Effect.Effect<StateOf<Sh>, any, any>
       ): Logic.Of<Sh, R, void, never> =>
         Stream.runForEach(stream, (payload) =>
-          Effect.flatMap(runtime.getState, (prev) => {
-            const next = reducer(prev, payload)
-            return Effect.isEffect(next)
-              ? Effect.flatMap(
-                next as Effect.Effect<StateOf<Sh>, any, any>,
-                runtime.setState
-              )
-              : runtime.setState(next)
-          })
+          taskRunnerRuntime.runWithStateTransaction(
+            {
+              kind: "watcher:update",
+              name: triggerName,
+            },
+            () =>
+              Effect.gen(function* () {
+                const prev = (yield* runtime.getState) as StateOf<Sh>
+                const next = reducer(prev, payload)
+                if (Effect.isEffect(next)) {
+                  const exit = yield* Effect.exit(
+                    next as Effect.Effect<StateOf<Sh>, any, any>,
+                  )
+                  if (exit._tag === "Failure") {
+                    yield* Effect.logError("Flow error", exit.cause)
+                    return
+                  }
+                  yield* runtime.setState(exit.value as StateOf<Sh>)
+                  return
+                }
+                yield* runtime.setState(next as StateOf<Sh>)
+              }),
+          )
         ).pipe(
           Effect.catchAllCause((cause) =>
             Effect.logError("Flow error", cause)
@@ -199,12 +215,20 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
         reducer: (draft: Logic.Draft<StateOf<Sh>>, payload: T) => void
       ): Logic.Of<Sh, R, void, never> =>
         Stream.runForEach(stream, (payload) =>
-          Effect.flatMap(runtime.getState, (prev) => {
-            const next = create(prev as StateOf<Sh>, (draft) => {
-              reducer(draft as Logic.Draft<StateOf<Sh>>, payload)
-            }) as StateOf<Sh>
-            return runtime.setState(next)
-          })
+          taskRunnerRuntime.runWithStateTransaction(
+            {
+              kind: "watcher:mutate",
+              name: triggerName,
+            },
+            () =>
+              Effect.gen(function* () {
+                const prev = (yield* runtime.getState) as StateOf<Sh>
+                const next = create(prev as StateOf<Sh>, (draft) => {
+                  reducer(draft as Logic.Draft<StateOf<Sh>>, payload)
+                }) as StateOf<Sh>
+                yield* runtime.setState(next)
+              }),
+          )
         ).pipe(
           Effect.catchAllCause((cause) =>
             Effect.logError("Flow error", cause)
@@ -248,7 +272,8 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
   }
 }
 import type { BoundApi } from "./core/module.js"
-import * as ModuleRuntimeImpl from "./ModuleRuntime.js"
+import type { StateTraitProgram } from "../state-trait/model.js"
+import type { RowIdStore } from "../state-trait/rowid.js"
 
 /**
  * BoundApi 实现：为某一类 Store Shape + Runtime 创建预绑定的 `$`。
@@ -316,122 +341,126 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   ) => makeIntentBuilder(runtime)(stream, triggerName)
 
   /**
-   * 从当前 Env 或全局注册表中解析某个 Module 的 Runtime。
+   * strict：只从“当前 Effect Env”解析某个 Module 的 Runtime。
    *
-   * 优先级：
-   * 1. 当前 Effect 环境中已提供的 ModuleRuntime（例如通过应用级 Runtime.make 或 provideService 提供）；
-   * 2. ModuleRuntime 全局注册表（ModuleRuntime.make 内部维护），用于跨 Layer / 进程访问。
+   * 说明：
+   * - 多 root / 多实例场景下，任何进程级 registry 都无法表达正确语义；
+   * - 缺失提供者属于装配错误：必须稳定失败，并给出可修复的提示（dev/test 下更详细）。
    */
   const resolveModuleRuntime = (
     tag: Context.Tag<any, Logix.ModuleRuntime<any, any>>
   ): Effect.Effect<Logix.ModuleRuntime<any, any>, never, any> =>
     Effect.gen(function* () {
+      const requestedModuleId =
+        typeof (tag as any)?.id === "string"
+          ? ((tag as any).id as string)
+          : undefined
+      const fromModuleId =
+        typeof options?.moduleId === "string" ? options.moduleId : undefined
+
       // 1) 优先尝试从当前 Context 中读取
       const fromEnv = yield* Effect.serviceOption(tag)
       if (Option.isSome(fromEnv)) {
         return fromEnv.value
       }
 
-      // 2) 回退到全局注册表（同一进程内的其他 Layer 已初始化）
-      const fromRegistry = ModuleRuntimeImpl.getRegisteredRuntime(tag)
-      if (fromRegistry) {
-        return fromRegistry
-      }
+      // 2) 无法找到时直接 die —— 这是配置错误，提示调用方修正装配方式
+      const tokenId = requestedModuleId ?? "<unknown module id>"
+      const fix: string[] = isDevEnv()
+        ? [
+            "- Provide the child implementation in the same scope (imports).",
+            `  Example: ${fromModuleId ?? "ParentModule"}.implement({ imports: [${requestedModuleId ?? "ChildModule"}.impl], ... })`,
+            "- If you intentionally want a root singleton, provide it at app root (Runtime.make(...,{ layer }) / root imports),",
+            "  and use Root.resolve(ModuleTag) (instead of $.use) at the callsite.",
+          ]
+        : []
 
-      // 3) 无法找到时直接 die —— 这是配置错误，提示调用方修正装配方式
-      return yield* Effect.dieMessage(
-        "[BoundApi] ModuleRuntime not found for given Module Tag. " +
-          "Ensure the module is provided via an application Runtime (Runtime.make) or Module.live() in the current process."
+      const err = new Error(
+        isDevEnv()
+          ? [
+              "[MissingModuleRuntimeError] Cannot resolve ModuleRuntime for ModuleTag.",
+              "",
+              `tokenId: ${tokenId}`,
+              "entrypoint: logic.$.use",
+              "mode: strict",
+              `from: ${fromModuleId ?? "<unknown module id>"}`,
+              `startScope: moduleId=${fromModuleId ?? "<unknown>"}, runtimeId=${String((runtime as any)?.id ?? "<unknown>")}`,
+              "",
+              "fix:",
+              ...fix,
+            ].join("\n")
+          : "[MissingModuleRuntimeError] module runtime not found",
       )
+
+      ;(err as any).tokenId = tokenId
+      ;(err as any).entrypoint = "logic.$.use"
+      ;(err as any).mode = "strict"
+      ;(err as any).from = fromModuleId
+      ;(err as any).startScope = {
+        moduleId: fromModuleId,
+        runtimeId: String((runtime as any)?.id ?? "<unknown>"),
+      }
+      ;(err as any).fix = fix
+
+      err.name = "MissingModuleRuntimeError"
+      return yield* Effect.die(err)
     })
-
-  // 为「远程 Module」构造只读 Bound 风格 API
-  const makeRemoteBoundApi = <TargetSh extends Logix.AnyModuleShape>(
-    handle: Logix.ModuleHandle<TargetSh>
-  ) => {
-    const makeRemoteOnAction = (
-      source: Stream.Stream<Logix.ActionOf<TargetSh>>
-    ) =>
-      new Proxy(() => {}, {
-        apply: (_target, _thisArg, args) => {
-          const arg = args[0]
-          if (typeof arg === "function") {
-            return createIntentBuilder(
-              source.pipe(Stream.filter(arg as (a: any) => boolean))
-            )
-          }
-          if (typeof arg === "string") {
-            return createIntentBuilder(
-              source.pipe(
-                Stream.filter(
-                  (a: any) => a._tag === arg || a.type === arg
-                )
-              ),
-              arg,
-            )
-          }
-          if (typeof arg === "object" && arg !== null) {
-            if ("_tag" in arg) {
-              return createIntentBuilder(
-                source.pipe(
-                  Stream.filter(
-                    (a: any) => a._tag === (arg as any)._tag
-                  )
-                ),
-                String((arg as any)._tag),
-              )
-            }
-            if (Schema.isSchema(arg)) {
-              return createIntentBuilder(
-                source.pipe(
-                  Stream.filter((a: any) => {
-                    const result = Schema.decodeUnknownSync(
-                      arg as Schema.Schema<any, any, never>
-                    )(a)
-                    return !!result
-                  })
-                )
-              )
-            }
-          }
-          return createIntentBuilder(source)
-        },
-        get: (_target, prop) => {
-          if (typeof prop === "string") {
-            return createIntentBuilder(
-              source.pipe(
-                Stream.filter(
-                  (a: any) => a._tag === prop || a.type === prop
-                )
-              ),
-              prop,
-            )
-          }
-          return undefined
-        },
-      })
-
-    return {
-      onState: (selector: (s: Logix.StateOf<TargetSh>) => any) =>
-        createIntentBuilder(handle.changes(selector)),
-      onAction: makeRemoteOnAction(handle.actions$) as any,
-      on: (stream: Stream.Stream<any>) => createIntentBuilder(stream),
-      read: handle.read,
-      actions: handle.actions,
-      actions$: handle.actions$,
-    }
-  }
 
   const stateApi: BoundApi<Sh, R>["state"] = {
     read: runtime.getState,
     update: (f) =>
-      Effect.flatMap(runtime.getState, (prev) => runtime.setState(f(prev))),
+      Effect.gen(function* () {
+        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+        if (inTxn) {
+          const prev = yield* runtime.getState
+          return yield* runtime.setState(f(prev))
+        }
+
+        const anyRuntime = runtime as any
+        const runWithTxn:
+          | ((
+              origin: { readonly kind: string; readonly name?: string; readonly details?: unknown },
+              body: () => Effect.Effect<void, never, any>,
+            ) => Effect.Effect<void, never, any>)
+          | undefined = anyRuntime && anyRuntime.__runWithStateTransaction
+
+        const body = () =>
+          Effect.flatMap(runtime.getState, (prev) => runtime.setState(f(prev)))
+
+        return yield* (runWithTxn
+          ? runWithTxn({ kind: "state", name: "update" }, body)
+          : body())
+      }),
     mutate: (f) =>
-      Effect.flatMap(runtime.getState, (prev) => {
-        const next = create(prev as Logix.StateOf<Sh>, (draft) => {
-          f(draft as Logic.Draft<Logix.StateOf<Sh>>)
-        }) as Logix.StateOf<Sh>
-        return runtime.setState(next)
+      Effect.gen(function* () {
+        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+        if (inTxn) {
+          const prev = yield* runtime.getState
+          const next = create(prev as Logix.StateOf<Sh>, (draft) => {
+            f(draft as Logic.Draft<Logix.StateOf<Sh>>)
+          }) as Logix.StateOf<Sh>
+          return yield* runtime.setState(next)
+        }
+
+        const anyRuntime = runtime as any
+        const runWithTxn:
+          | ((
+              origin: { readonly kind: string; readonly name?: string; readonly details?: unknown },
+              body: () => Effect.Effect<void, never, any>,
+            ) => Effect.Effect<void, never, any>)
+          | undefined = anyRuntime && anyRuntime.__runWithStateTransaction
+
+        const body = () =>
+          Effect.flatMap(runtime.getState, (prev) => {
+            const next = create(prev as Logix.StateOf<Sh>, (draft) => {
+              f(draft as Logic.Draft<Logix.StateOf<Sh>>)
+            }) as Logix.StateOf<Sh>
+            return runtime.setState(next)
+          })
+
+        return yield* (runWithTxn
+          ? runWithTxn({ kind: "state", name: "mutate" }, body)
+          : body())
       }),
     ref: runtime.ref,
   }
@@ -472,17 +501,24 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     }) as any
   }
 
-  // StateTrait.source 刷新入口的内部注册表：
+  // StateTrait.source 刷新入口的注册表：
+  // - 必须挂到 runtime 上共享（而不是挂到单个 BoundApi 实例上），否则：
+  //   - Trait 安装逻辑与业务逻辑位于不同 Module.logic 时会拿到不同 BoundApi 实例；
+  //   - 业务侧通过 `Logix.Bound.make(...)` 新建的 BoundApi 也无法看到已安装的刷新实现。
   // - key 为字段路径（如 "profileResource"）；
   // - value 为基于当前 State 执行一次刷新流程的 Effect。
-  const sourceRefreshRegistry = new Map<
+  const anyRuntime = runtime as any
+  const sourceRefreshRegistry: Map<
     string,
     (state: Logix.StateOf<Sh>) => Effect.Effect<void, never, any>
-  >()
+  > =
+    anyRuntime.__sourceRefreshRegistry ??
+    (anyRuntime.__sourceRefreshRegistry = new Map())
 
   const api: BoundApi<Sh, R> & {
     __moduleId?: string
     __runtimeId?: string
+    __rowIdStore?: RowIdStore
     __registerSourceRefresh?: (
       fieldPath: string,
       handler: (
@@ -499,6 +535,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         readonly stepId?: string
       },
     ) => void
+    __registerStateTraitProgram?: (program: StateTraitProgram<any>) => void
     __runWithStateTransaction?: (
       origin: {
         readonly kind: string
@@ -585,6 +622,16 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
               // 若未注册刷新逻辑，则视为 no-op，避免在未挂 StateTraitProgram 时抛错。
               return yield* Effect.void
             }
+
+            // 事务窗口内禁止再走 enqueueTransaction（会导致死锁）：
+            // - 直接在当前事务内执行 handler，使其通过 bound.state.mutate 写入 draft；
+            // - 由外层同一事务窗口负责 commit + debug 聚合。
+            const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+            if (inTxn) {
+              const state = (yield* runtime.getState) as Logix.StateOf<Sh>
+              return yield* handler(state)
+            }
+
             const runWithStateTransaction =
               (api as any)
                 .__runWithStateTransaction as
@@ -668,49 +715,6 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         >
       },
     }) as unknown as BoundApi<Sh, R>["use"],
-    useRemote: ((module: any) => {
-      if (!Context.isTag(module)) {
-        return Effect.die(
-          "BoundApi.useRemote: expected a ModuleInstance Tag",
-        ) as unknown as Logic.Of<Sh, R, any, never>
-      }
-
-      const candidate = module as { _kind?: unknown }
-      if (candidate._kind !== "Module") {
-        return Effect.die(
-          "BoundApi.useRemote: expected a ModuleInstance with _kind = 'Module'",
-        ) as unknown as Logic.Of<Sh, R, any, never>
-      }
-
-      return resolveModuleRuntime(
-        module as Context.Tag<any, Logix.ModuleRuntime<any, any>>
-      ).pipe(
-        Effect.map((remoteRuntime: Logix.ModuleRuntime<any, any>) => {
-          const actionsProxy: Logix.ModuleHandle<any>["actions"] = new Proxy(
-            {},
-            {
-              get: (_target, prop) =>
-                (payload: unknown) =>
-                  remoteRuntime.dispatch({
-                    _tag: prop as string,
-                    payload,
-                  }),
-            },
-          ) as Logix.ModuleHandle<any>["actions"]
-
-          const handle: Logix.ModuleHandle<any> = {
-            read: (selector) =>
-              Effect.map(remoteRuntime.getState, selector),
-            changes: remoteRuntime.changes,
-            dispatch: remoteRuntime.dispatch,
-            actions$: remoteRuntime.actions$,
-            actions: actionsProxy,
-          }
-
-          return makeRemoteBoundApi(handle)
-        }),
-      ) as unknown as Logic.Of<Sh, R, any, never>
-    }) as unknown as BoundApi<Sh, R>["useRemote"],
     onAction: new Proxy(() => {}, {
       apply: (_target, _thisArg, args) => {
         guardRunOnly("use_in_setup", "$.onAction")
@@ -785,6 +789,9 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   // 等运行时代码中为 EffectOp.meta 补充 moduleId。
   ;(api as any).__moduleId = options?.moduleId
   ;(api as any).__runtimeId = (runtime as any)?.id as string | undefined
+  ;(api as any).__rowIdStore = (runtime as any)?.__rowIdStore as
+    | RowIdStore
+    | undefined
 
   // 仅供 StateTrait.install 使用：注册 source 字段的刷新实现。
   ;(api as any).__registerSourceRefresh = (
@@ -810,6 +817,40 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       anyRuntime && anyRuntime.__recordStatePatch
     if (record) {
       record(patch)
+    }
+  }
+
+  // 仅供内部使用：将 ReplayLog 事件记录到当前事务，以便在 state:update 中关联 replayEvent。
+  ;(api as any).__recordReplayEvent = (event: unknown): void => {
+    const anyRuntime = runtime as any
+    const record: ((e: unknown) => void) | undefined =
+      anyRuntime && anyRuntime.__recordReplayEvent
+    if (record) {
+      record(event)
+    }
+  }
+
+  // 仅供 StateTrait.install 使用：向 Runtime 注册 Program，以在事务窗口内执行收敛。
+  ;(api as any).__registerStateTraitProgram = (
+    program: StateTraitProgram<any>,
+  ): void => {
+    const anyRuntime = runtime as any
+    const register: ((p: StateTraitProgram<any>) => void) | undefined =
+      anyRuntime && anyRuntime.__registerStateTraitProgram
+    if (register) {
+      register(program)
+    }
+  }
+
+  // 仅供 TraitLifecycle.scopedValidate 使用：将校验请求挂到当前事务，等待 runtime 统一 flush。
+  ;(api as any).__enqueueStateTraitValidateRequest = (
+    request: ScopedValidateRequest,
+  ): void => {
+    const anyRuntime = runtime as any
+    const enqueue: ((r: ScopedValidateRequest) => void) | undefined =
+      anyRuntime && anyRuntime.__enqueueStateTraitValidateRequest
+    if (enqueue) {
+      enqueue(request)
     }
   }
 

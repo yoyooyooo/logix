@@ -318,7 +318,7 @@ export declare const SandboxModule: Logix.ModuleInstance<
 
 3. **与其他 Schema 能力（持久化/权限/埋点）的融合**  
    - 本草稿只谈 Action/Reducer；
-   - 后续需要与 `beyond-state-and-action.md` / SCD Pattern 对齐，避免多套 Metadata 体系冲突。
+   - 后续需要与 `topics/trait-system/00-overview.md` 对齐，避免出现第二套“行为事实源”（以 007 为裁决）。
 
 4. **跨语言/多运行时的一致性**  
    - 如果未来有 Node/边缘侧 Logix Runtime，是否也消费同一套生成物；
@@ -329,4 +329,3 @@ export declare const SandboxModule: Logix.ModuleInstance<
 - `docs/specs/runtime-logix/core/02-module-and-logic-api.md`；
 - `docs/specs/runtime-logix/impl/README.md`；
 - `docs/specs/intent-driven-ai-coding/v3/03-assets-and-schemas.md` 中对 Module/Schema 的说明。
-

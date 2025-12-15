@@ -89,9 +89,17 @@ interface StateTxnState<S> {
   readonly txnId: string
   readonly origin: StateTxnOrigin
   readonly startedAt: number
+  readonly baseState: S
   draft: S
   readonly initialStateSnapshot?: S
   readonly patches: Array<StatePatch>
+  /**
+   * dirtyPaths：
+   * - 事务窗口内所有“已知发生写入”的路径集合；
+   * - 与 instrumentation 无关：light 模式下不保留完整 patches，但仍保留 dirtyPaths，
+   *   以支持 StateTrait 的增量调度（dirty-set）等低开销语义。
+   */
+  readonly dirtyPaths: Set<string>
 }
 
 const defaultNow = () => Date.now()
@@ -145,10 +153,17 @@ export const beginTransaction = <S>(
     txnId,
     origin,
     startedAt,
+    baseState: initialState,
     draft: initialState,
     initialStateSnapshot: initialSnapshot,
-    patches: []
+    patches: [],
+    dirtyPaths: new Set()
   }
+}
+
+const recordDirtyPath = <S>(state: StateTxnState<S>, path: string | undefined): void => {
+  if (!path) return
+  state.dirtyPaths.add(path)
 }
 
 /**
@@ -167,6 +182,9 @@ export const updateDraft = <S>(
     return
   }
 
+  if (patch) {
+    recordDirtyPath(state, patch.path)
+  }
   if (patch && ctx.config.instrumentation === "full") {
     state.patches.push(patch)
   }
@@ -187,10 +205,10 @@ export const recordPatch = <S>(
   if (!state) {
     return
   }
-  if (ctx.config.instrumentation === "light") {
-    return
+  recordDirtyPath(state, patch.path)
+  if (ctx.config.instrumentation === "full") {
+    state.patches.push(patch)
   }
-  state.patches.push(patch)
 }
 
 /**
@@ -216,6 +234,12 @@ export const commit = <S>(
     const now = config.now
 
     const finalState = state.draft
+
+    // 0 commit：无变化时不写入底层 SubscriptionRef，也不产生 state:update 事件。
+    if (Object.is(finalState, state.baseState)) {
+      ctx.current = undefined
+      return undefined
+    }
 
     // 单次写入底层 SubscriptionRef，确保对外只有一次状态提交与订阅通知。
     yield* SubscriptionRef.set(stateRef, finalState)

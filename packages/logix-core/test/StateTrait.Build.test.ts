@@ -17,7 +17,10 @@ describe("StateTrait.build", () => {
 
   it("should build a program with graph and plan from a valid spec", () => {
     const traits = Logix.StateTrait.from(StateSchema)({
-      sum: Logix.StateTrait.computed((s: Readonly<State>) => s.a + s.b),
+      sum: Logix.StateTrait.computed({
+        deps: ["a", "b"],
+        get: (s: Readonly<State>) => s.a + s.b,
+      }),
       // 简单 link：profile.name 跟随 profile.id（仅用于验证 Graph / Plan 结构）
       "profile.name": Logix.StateTrait.link({
         from: "profile.id",
@@ -86,4 +89,3 @@ describe("StateTrait.build", () => {
     )
   })
 })
-

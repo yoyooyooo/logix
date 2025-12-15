@@ -5,8 +5,6 @@ import { Effect, Layer, ManagedRuntime, Schema } from "effect"
 import * as Logix from "@logix/core"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
-import { useSelector } from "../../src/hooks/useSelector.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
 
 const PerfState = Schema.Struct({
   value: Schema.Number,
@@ -37,16 +35,15 @@ const makePerfLogic = (watcherCount: number) =>
   )
 
 const PerfApp: React.FC = () => {
-  const moduleRuntime = useModule(PerfModule)
-  const value = useSelector(PerfModule, (s) => (s as { value: number }).value)
-  const dispatch = useDispatch(moduleRuntime)
+  const perf = useModule(PerfModule)
+  const value = useModule(perf, (s) => (s as { value: number }).value)
 
   return (
     <div>
       <p>Value: {value}</p>
       <button
         type="button"
-        onClick={() => dispatch({ _tag: "inc", payload: undefined })}
+        onClick={() => perf.actions.inc()}
       >
         Increment
       </button>

@@ -36,6 +36,9 @@ export type ActionOf<Sh extends AnyModuleShape> = Schema.Schema.Type<
   Sh["actionSchema"]
 >
 
+type ActionArgs<P> = [P] extends [void] ? [] | [P] : [P]
+type ActionFn<P, Out> = (...args: ActionArgs<P>) => Out
+
 export interface ModuleImplementStateTransactionOptions {
   readonly instrumentation?: StateTransactionInstrumentation
 }
@@ -120,9 +123,10 @@ export interface ModuleHandle<Sh extends AnyModuleShape> {
     action: ActionOf<Sh>
   ) => Effect.Effect<void, never, never>
   readonly actions: {
-    [K in keyof Sh["actionMap"]]: (
-      payload: Schema.Schema.Type<Sh["actionMap"][K]>
-    ) => Effect.Effect<void, never, never>
+    [K in keyof Sh["actionMap"]]: ActionFn<
+      Schema.Schema.Type<Sh["actionMap"][K]>,
+      Effect.Effect<void, never, never>
+    >
   }
   readonly actions$: Stream.Stream<ActionOf<Sh>, never, never>
 }
@@ -185,9 +189,10 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
     ) => Logic.Of<Sh, R, void, never>
     readonly actions$: Stream.Stream<ActionOf<Sh>>
   } & {
-    readonly [K in keyof Sh["actionMap"]]: (
-      payload: Schema.Schema.Type<Sh["actionMap"][K]>
-    ) => Logic.Of<Sh, R, void, never>
+    readonly [K in keyof Sh["actionMap"]]: ActionFn<
+      Schema.Schema.Type<Sh["actionMap"][K]>,
+      Logic.Of<Sh, R, void, never>
+    >
   }
   readonly flow: import("./FlowRuntime.js").Api<Sh, R>
   readonly match: <V>(value: V) => Logic.FluentMatch<V>
@@ -225,44 +230,6 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
       tag: Context.Tag<Id, Svc>
     ): Logic.Of<Sh, R, Svc, never>
   }
-  readonly useRemote: <Sh2 extends AnyModuleShape>(
-    module: ModuleInstance<string, Sh2>
-  ) => Logic.Of<
-    Sh,
-    R,
-    {
-      readonly onState: <V>(
-        selector: (s: StateOf<Sh2>) => V
-      ) => Logic.IntentBuilder<V, Sh, R>
-      readonly onAction: {
-        <T extends ActionOf<Sh2>>(
-          predicate: (a: ActionOf<Sh2>) => a is T
-        ): Logic.IntentBuilder<T, Sh, R>
-        <K extends keyof Sh2["actionMap"]>(
-          tag: K
-        ): Logic.IntentBuilder<
-          Extract<ActionOf<Sh2>, { _tag: K } | { type: K }>,
-          Sh,
-          R
-        >
-      } & {
-        [K in keyof Sh2["actionMap"]]: Logic.IntentBuilder<
-          Extract<ActionOf<Sh2>, { _tag: K } | { type: K }>,
-          Sh,
-          R
-        >
-      }
-      readonly on: <V>(
-        source: Stream.Stream<V>
-      ) => Logic.IntentBuilder<V, Sh, R>
-      readonly read: <V>(
-        selector: (s: StateOf<Sh2>) => V
-      ) => Effect.Effect<V, never, ModuleTag<Sh2>>
-      readonly actions: ModuleHandle<Sh2>["actions"]
-      readonly actions$: ModuleHandle<Sh2>["actions$"]
-    },
-    never
-  >
   readonly onAction: {
     <T extends ActionOf<Sh>>(
       predicate: (a: ActionOf<Sh>) => a is T
@@ -393,10 +360,15 @@ export interface ModuleImpl<
  * 辅助类型：将 Action Map 转换为 Union 类型。
  */
 export type ActionsFromMap<M extends Record<string, AnySchema>> = {
-  [K in keyof M]: {
-    readonly _tag: K
-    readonly payload: Schema.Schema.Type<M[K]>
-  }
+  [K in keyof M]: Schema.Schema.Type<M[K]> extends void
+    ? {
+        readonly _tag: K
+        readonly payload?: Schema.Schema.Type<M[K]>
+      }
+    : {
+        readonly _tag: K
+        readonly payload: Schema.Schema.Type<M[K]>
+      }
 }[keyof M]
 
 /**
@@ -409,10 +381,15 @@ export type ReducersFromMap<
 > = {
   readonly [K in keyof AMap]?: (
     state: Schema.Schema.Type<SSchema>,
-    action: {
-      readonly _tag: K
-      readonly payload: Schema.Schema.Type<AMap[K]>
-    }
+    action: Schema.Schema.Type<AMap[K]> extends void
+      ? {
+          readonly _tag: K
+          readonly payload?: Schema.Schema.Type<AMap[K]>
+        }
+      : {
+          readonly _tag: K
+          readonly payload: Schema.Schema.Type<AMap[K]>
+        }
   ) => Schema.Schema.Type<SSchema>
 }
 

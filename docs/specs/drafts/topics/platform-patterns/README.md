@@ -19,5 +19,8 @@ related: []
 
 ## 文档索引
 
-- [SCD Pattern & Platform Alignment](./scd-pattern-platform-alignment.md) - Enabling Full-Duplex Architecture (SCD 模式对平台全双工的支撑) · Generative Pattern 生命周期与 `Pattern.make` 扩展点
 - [generative-patterns-refined.md](./generative-patterns-refined.md) · 对现有 Pattern 设计的进一步收束与精炼
+- [05-flow-templates.md](./05-flow-templates.md) · 平台侧 Flow 模板与复用策略
+- [06-universal-crud-pattern.md](./06-universal-crud-pattern.md) · One Logic, Any Domain（通用 CRUD 模板）
+- [07-config-as-service.md](./07-config-as-service.md) · Config-as-Layer（配置即服务注入）
+- [08-fractal-runtime-and-layer-injection.md](./08-fractal-runtime-and-layer-injection.md) · 分形运行时与 Layer 覆盖（Runtime.fork 心智）

@@ -26,7 +26,10 @@ describe("StateTrait quickstart example (CounterWithProfile)", () => {
       b: 2,
       sum: 0,
       profile: { id: "u1", name: "Alice" },
-      profileResource: { name: "Bob" },
+      profileResource: Logix.Resource.Snapshot.success({
+        keyHash: "test",
+        data: { name: "Bob" },
+      }),
     }
 
     if (sumEntry.kind !== "computed") {
@@ -36,7 +39,7 @@ describe("StateTrait quickstart example (CounterWithProfile)", () => {
     const nextSum = sumEntry.meta.derive(state)
     expect(nextSum).toEqual(3)
 
-    // profile.name: link from profileResource.name
+    // profile.name: link from profileResource.data.name
     const linkEntry =
       CounterTraits["profile.name"] as Logix.StateTrait.StateTraitEntry<
         CounterState,
@@ -46,7 +49,7 @@ describe("StateTrait quickstart example (CounterWithProfile)", () => {
     if (linkEntry.kind !== "link") {
       throw new Error("expected link entry for profile.name")
     }
-    expect(linkEntry.meta.from).toBe("profileResource.name")
+    expect(linkEntry.meta.from).toBe("profileResource.data.name")
 
     // 额外 sanity check：StateFieldPath/StateAtPath 在此 Schema 上可用
     type Paths = Logix.StateTrait.StateFieldPath<
@@ -61,7 +64,8 @@ describe("StateTrait quickstart example (CounterWithProfile)", () => {
       "profile.id",
       "profile.name",
       "profileResource",
-      "profileResource.name",
+      "profileResource.data",
+      "profileResource.data.name",
     ]
 
     // 不触发运行时行为，仅验证 DSL 与 Schema 之间的类型连通性。

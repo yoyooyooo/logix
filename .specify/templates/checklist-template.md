@@ -32,6 +32,16 @@
 - [ ] CHK005 Item with specific criteria
 - [ ] CHK006 Final item in this category
 
+## Performance & Diagnosability *(if applicable)*
+
+- [ ] CHK0XX Performance budget + baseline measurement recorded
+- [ ] CHK0XX No hot-path regression (or justified in Complexity Tracking)
+- [ ] CHK0XX Deterministic identity model (instance/txn/op IDs) documented; no random/time defaults
+- [ ] CHK0XX Transaction boundary enforced: no IO/async in txn window; no writable ref escape hatches
+- [ ] CHK0XX Diagnostic events/Devtools surfaces updated and overhead documented
+- [ ] CHK0XX Diagnostic payloads are Slim/serializable and stored in bounded ring buffers
+- [ ] CHK0XX Breaking change declared and migration note linked (no compatibility layer)
+
 ## Notes
 
 - Check items off as completed: `[x]`

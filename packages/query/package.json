@@ -1,0 +1,40 @@
+{
+  "name": "@logix/query",
+  "version": "0.0.1",
+  "description": "Query domain package for Logix v3 Trait system",
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./react": "./src/react/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  },
+  "scripts": {
+    "build": "tsup --format cjs,esm --dts",
+    "dev": "tsup --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@logix/core": "workspace:*",
+    "effect": "^3.19.8",
+    "react": ">=18.0.0"
+  },
+  "dependencies": {
+    "@logix/core": "workspace:*",
+    "@tanstack/query-core": "^5.90.12",
+    "effect": "^3.19.8"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.27.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.8.2",
+    "vitest": "^4.0.15"
+  }
+}

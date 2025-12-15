@@ -163,18 +163,19 @@ version: 1 (Concept-First)
     - Link **不是** 一个独立的运行时原语（没有 `Link.define`）。
     - 它在代码层面通过 **Logic** + **Bound API (`$.use`)** 实现：
       - `$.use(TargetStore)` 声明依赖；
-      - `$.on(Source).then(Target.dispatch)` 实现交互。
+      - `yield* $.on(source$).run((value) => target.dispatch(/* action from value */))` 实现交互。
   - **历史注**：曾被称为 `Orchestrator`，现已废弃该术语，统一收敛为 Link（图视角）与 Logic（代码视角）。
 
-### 4.2 Intent 命名空间
+### 4.3 IntentRule（IR）
 
-- **Intent (L1/L2 门面)**
-  - 提供更接近业务语义的原语：
-    - L1 IntentRule：单 Store 内派生状态 / 事件驱动状态更新（对应代码侧 `$.onState / $.onAction + $.state.update/mutate`）；
-    - L2 IntentRule（Coordinate）：跨 Store 协作（A → B，代码侧使用 `$.use(StoreSpec) + $.on($Other.changes/...).then($SelfOrOther.dispatch)`）。
-  - 对平台/Parser 来说，Intent 命名空间是识别 “意图原语” 的首选入口。
+- **IntentRule（平台 IR）**
+  - 用结构化规则表达一条响应式链路（R-S-T），并作为平台/Devtools 的统一事实源；
+  - 代码侧不再存在任何运行时 `Intent.*` 命名空间：L1/L2/L3 规则都通过 Fluent DSL / Flow / Pattern 完全降解到 IntentRule（以及更底层的统一最小 IR）。
+  - L1/L2 的典型代码映射（示意）：
+    - L1：`yield* $.onState/$.onAction(...).update/.mutate(...)`
+    - L2：`const target = yield* $.use(TargetStore); yield* $.on(source$).run((value) => target.dispatch(/* action */))`
 
-### 4.3 StateTrait（字段能力引擎）
+### 4.4 StateTrait（字段能力引擎）
 
 - **StateTrait**
   - 概念上是「字段能力与 State Graph 的统一引擎」：
@@ -189,6 +190,42 @@ version: 1 (Concept-First)
 - **设计要点**：
   - StateTrait 只负责「字段如何被维护」的 **What**（例如：sum 是 a/b 的函数、profile.name 跟随 profileResource.name、某字段来自外部资源），不关心具体 IO 细节；
   - Runtime 通过 StateTraitPlan 将这些能力编译为实际的 Effect/Watcher/EffectOp 流，DevTools 则以 StateTraitGraph 作为 State Graph 的事实源。
+
+- **显式 deps（Explicit Dependencies）**
+  - 对 computed/source/check 等规则声明的依赖字段路径集合；
+  - 是依赖图构建与调度优化的唯一事实源：后续任何“最小触发 / 反向闭包 / 增量调度”都只认 deps。
+
+- **Dependency Graph（依赖图）**
+  - 从 StateTraitProgram 中的 `deps/link` 关系构建出的字段依赖图；
+  - 同时承担：
+    - 结构诊断（循环/冲突/热点定位）；
+    - scoped validate 的最小范围计算；
+    - 后续增量调度（reverse slicing）的基础设施。
+
+- **Reverse Closure（反向闭包）**
+  - 在依赖图中，某个 target 节点及其所有“直接或间接依赖 target”的节点集合；
+  - 用于 scoped validate 等“只重跑受影响规则”的范围收敛。
+
+- **RowID（虚拟身份）**
+  - 内核用于给列表项分配的稳定身份（对外仍以 index 语义表达）；
+  - 目标是在 insert/remove/reorder 下仍能稳定关联：
+    - in-flight 异步写回门控；
+    - 缓存复用；
+    - 诊断与回放定位。
+  - RowID 可以由业务提供 `trackBy` 提示以提升稳定性；但 RowID 本身不应泄漏为业务状态事实源。
+
+- **TraitLifecycle（领域包统一下沉协议）**
+  - 领域包（Form/Query/…）与 Trait 内核之间的统一桥接协议；
+  - 以“可序列化、可比较的请求”表达校验/刷新/清理/失效等意图，确保所有领域能力最终可降解到统一的事务/回放/诊断语义。
+
+- **FieldRef（字段引用）**
+  - TraitLifecycle 中用于指向“要操作的字段实例”的引用结构；
+  - 可表达：
+    - `root`（整棵结构）；
+    - `field(path)`（字段路径）；
+    - `list(path)`（列表路径）；
+    - `item(path, index, field?)`（列表项/列表项字段）。  
+  - 设计目标是：既能被日志/回放记录，也能在不同运行时实例中被一致解释。
 
 ### 4.4 Resource / Query（逻辑资源与查询环境）
 
@@ -205,7 +242,7 @@ version: 1 (Concept-First)
     - `Query.middleware(config)`：订阅 `EffectOp(kind="service")`，基于 `resourceId + key + config` 决定某些调用是否走 QueryClient（缓存/重试/并发合并）。
   - StateTrait / Program **不理解** Query 细节，它们只负责在 Plan 中标记哪些字段是 Source、对应的 resourceId 与 key 规则；是否启用 Query 完全由 Runtime 层是否装配 `Query.layer + Query.middleware` 决定。
 - **Runtime 协作关系（StateTrait.source ↔ Resource/Query）**
-  - Module 图纸：只写 `StateTrait.source({ resource, key })`；
+  - Module 图纸：只写 `StateTrait.source({ deps, resource, key })`；
   - StateTraitProgram：在 Graph/Plan 中标记 source 字段与 resourceId/keySelector；
   - Runtime：在显式入口（例如 `$.traits.source.refresh("profileResource")`）被调用时构造 `EffectOp(kind="service", meta.resourceId, meta.key)`，交给 Middleware 总线；
   - Resource / Query 中间件：根据 resourceId + key 决定走 ResourceSpec.load 还是 QueryClient，DevTools 则在 Timeline 中观察这些 Service 调用与 State 更新。
@@ -265,12 +302,64 @@ version: 1 (Concept-First)
   - Runtime 不解析 `body` 内部的 Effect 结构，也不会因为出现 `Effect.sleep` / HTTP 调用等异步步骤自动拆分事务；
   - 若在同一个事务窗口内包含长时间 IO，则这笔事务的 `durationMs` 会被拉长，事务内“中间状态”对外仍然不可见。
 
+- **Operation Window（操作窗口）**
+  - 面向业务/产品文档的口径：一次用户动作触发的收敛窗口；
+  - 在 v3 Runtime 中与“事务窗口（Transaction Window）”对齐（同一窗口对外最多 0/1 次可观察提交）。
+
 - **长链路逻辑与 IO 拆分（多入口模式）**
   - 规范层要求：单个 StateTransaction 的窗口 **SHOULD** 只覆盖“纯计算 + 状态写入”，**MUST NOT** 跨越真实 IO 边界；
   - 任何「发起 IO + 等待结果 + 写回状态」的长链路逻辑，应拆分为至少两笔事务：
     - 事务 1（入口 1）：同步更新本地状态（例如 `loading = true` / 清理错误），并通过 `Effect.fork` 等方式发起 IO，而不在当前事务内等待结果；
     - 事务 2（入口 2）：在 IO 完成时，再通过新的入口（例如 `origin.kind = "service-callback"` 的 dispatch 或专用结果 Action）写回成功/失败结果；
   - 记忆规则：**想要多笔事务，就显式触发多次入口 API；不要指望 `Effect.sleep` 或其他异步调用自动切分事务。**
+
+### 4.7 ReplayLog 与回放模式（Replay Mode）
+
+- **ReplayLog（回放日志）**
+  - 用于时间旅行/故障复现的事件事实源；
+  - 至少记录资源快照变化（`idle/loading/success/error`）以及显式失效请求（invalidate）。
+
+- **Replay Mode（回放模式）**
+  - Runtime 的一种运行模式：
+    - live：正常执行真实逻辑，并记录回放事实；
+    - replay：不触发真实网络/外部副作用，而是基于 ReplayLog 重赛结果。
+
+- **re-emit vs re-fetch**
+  - 回放语义的裁决规则：
+    - re-emit：重赛 ReplayLog 中记录的成功/失败 payload 与快照序列（可复现）；
+    - re-fetch：重新发起真实请求（不可复现且可能破坏外部系统）。  
+  - 规范层要求：Replay Mode 必须以 re-emit 为主。
+
+- **InvalidateRequest（失效请求）**
+  - 表达“使某个资源/查询结果失效并触发后续刷新”的意图；
+  - 作为事件记录到 ReplayLog，供回放与诊断聚合使用。
+
+### 4.8 作用域与层级解析（Root Provider / imports-scope / Nearest Wins）
+
+- **Runtime Tree（运行时树）**
+  - 指一次 Runtime 构造出的“可运行边界”：拥有自己的 root provider、模块实例树与 Scope 生命周期；
+  - 同一进程中可以存在多棵 Runtime Tree，彼此隔离；不得通过隐式兜底跨树解析依赖。
+
+- **Root Provider（根提供者）**
+  - 指某棵 Runtime Tree 的根作用域（root scope）所提供的依赖集合；
+  - 用途：表达“全局单例（对该 Runtime Tree 而言）”的提供与解析语义；
+  - 关键边界：Root Provider 不是“进程级绝对全局”，而是“当前 Runtime Tree 的根”。
+
+- **imports-scope（模块实例作用域）**
+  - 指某个模块实例（host）对其“直接 imports 子模块实例”的可见性边界；
+  - 用途：让“父模块/父组件访问子模块实例”变成可验证的约束：缺失 imports 就失败，而不是回退到更远作用域“碰巧拿到一个实例”。
+
+- **Nearest Wins（最近胜出）**
+  - 指依赖解析时的裁决规则：当同一 token 在多个层级存在时，解析结果必须来自“起点最近的那一层”，且行为稳定可预测；
+  - 其价值在于：让多实例、多 root、深层嵌套下的实例选择保持确定性与可解释性。
+
+- **strict（严格解析）**
+  - 指调用方声明依赖必须来自某个更近作用域（例如 imports-scope）；若该作用域缺失提供者，必须失败并给出可修复诊断；
+  - 用于把“模块关系（imports）”变成强约束，而不是弱约定。
+
+- **global/root（显式 root 解析）**
+  - 指调用方显式选择 Root Provider 语义解析依赖：忽略更近层级的 override；
+  - 用于表达“需要单例语义才显式选择 root”的原则（避免把 strict 入口当作隐式单例兜底）。
 
 ## 5. 平台相关术语（概念视角）
 

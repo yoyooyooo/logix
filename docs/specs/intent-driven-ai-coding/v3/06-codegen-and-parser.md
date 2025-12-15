@@ -13,7 +13,8 @@ version: 15 (Effect-Native · Fluent DSL)
 
 - **Platform-Grade 子集**（必须全双工，可被平台完整解析与重写）：
   - `Logix.Module` 定义与 `Module.logic(($) => ...)` 入口；
-  - 基于 `$` 的 Fluent DSL：`$.onState / $.onAction / $.on(...).then(...)`、`$.state.*`、`$.lifecycle.*` 等；
+  - 基于 `$` 的 Fluent DSL：`$.onState / $.onAction / $.on(...)` + pipeline + `.update/.mutate/.run*`（含 `.run*Task` 等）；
+  - `$.use`（依赖锚点）、`$.match`（结构化控制流锚点）、`$.lifecycle.*` 等；
   - 官方/平台认可的 `$` 扩展（如 `$.router` 等），其语义在平台侧有明确的 IR 映射。
 - **Runtime-Grade 区域**（不要求可逆，只需可运行、尽量可观测）：
   - 任意 `Effect` / `Stream` 组合、领域算法、容错逻辑等；
@@ -27,7 +28,7 @@ version: 15 (Effect-Native · Fluent DSL)
 我们依然不试图解析每一行代码，而是只关注架构骨架，但骨架的锚点已经演进为：
 
 - **Module 定义与 Logic 入口**：识别 `Logix.Module` 定义与 `Module.logic(($) => ...)` 形式的 Logic；
-- **Fluent Intent 链**：识别 `yield* $.onState(...).op().then(...)` / `$.onAction(...)` / `$.on(streamFromHandle)...then(...)` 结构；
+- **Fluent Intent 链**：识别 `yield* $.onState(...).debounce(...).update/mutate/run*(...)` / `$.onAction(...)` / `$.on(streamFromHandle)...run*(...)` 结构；
 - **依赖与上下文**：识别 `yield* $.use(ModuleOrService)` 构建模块依赖图与符号表。
 
 换言之：
@@ -53,24 +54,22 @@ Parser 通过识别特定的 **AST Pattern** 来提取语义：
    - 该符号表在后续 Fluent 解析中用于判定 “某个链条的 Source/Sink 属于哪个 Store / Service”。
 
 3.  **Fluent Intent 链（R-S-T）**
-   - 白盒模式仅覆盖以下直接调用形态（Unified When）：
-     - `yield* $.onState(selector).op().then(...)`  // State Selector (Function)
-     - `yield* $.onAction('actionType').op().then(...)` // Action Type (String Literal)
-     - `yield* $.on(stream$).op().then(...)`   // Stream (Object/Identifier)
+   - 白盒模式仅覆盖以下直接调用形态（单语句，不经中转变量）：
+     - `yield* $.onState(selector).debounce(...).update/mutate/run*(...)`  // State Selector (Function)
+     - `yield* $.onAction('actionType').debounce(...).update/mutate/run*(...)` // Action Type (String Literal)
+     - `yield* $.on(stream$).debounce(...).run*(...)`   // Stream (Object/Identifier)
    - 解析流程：
      - **Rule (Source)**：根据 `$.onState` / `$.onAction` / `$.on` 的不同API，结合符号表确定 Source：
        - Function / ArrowFunction → **State Source** (当前 Store)；
        - StringLiteral → **Action Source** (当前 Store)；
        - Identifier / CallExpression → **Stream Source** (需结合 `$.use` 符号表推导)；
      - **Strategy (Pipeline)**：在有限白盒算子子集内（`debounce` / `throttle` / `filter` / `map` 等）提取 `[{ op, args }]`；
-     - **Target (Sink)**：分析 `then(effect, opts?)` 内部对 `$` / `$Handle` / Service 的调用，识别：
-       - 本 Store 状态写入（`$.state.mutate/update`）；
-       - 本/他 Store Action 派发（`$Handle.actions.xxx(...)`）；
-       - Service 调用（`yield* service.method(...)`）；
-       - 并发策略（`opts.mode` → run / runLatest / runExhaust，其中 `"sequence"`（如存在）在落地时等价映射为 `run`）。
+     - **Target (Sink)**：以**终端算子**为准区分语义：
+       - `.update/.mutate`：纯同步写入（事务窗口内），对应 IR 的 `sink.type = "mutate"`；
+       - `.run*` / `.run*Task`：副作用/长链路（事务外），对应 IR 的 effectful sink；Parser 仅对“直接 dispatch / 直接 state.update/mutate / 直接 Pattern 调用”等可识别形态做结构化提取，其余降级为 Gray/Black Box。
 
 4.  **Pattern 挂载（可选）**
-   - 在 Fluent 链中，如 `then(SomePattern(config))`，Parser 将 `SomePattern` 视为 Pattern 节点：
+   - 在 Fluent 链中，如 `run*(SomePattern(config))` / `runTask({ ... })`，Parser 将 Pattern 调用视为 Pattern 节点：
      - 使用 `config` Schema 生成属性面板；
      - 将 Pattern 视为带有输入/输出契约的逻辑块，其内部实现仍可视为黑盒。
 
@@ -101,7 +100,7 @@ Parser 通过识别特定的 **AST Pattern** 来提取语义：
 
 - **White Box（Fluent Mode）**：
   - 满足以下全部条件的 Fluent 链被视为白盒：
-    - 直接写成单条 `yield* $.onState(...).op().then(...)` / `yield* $.onAction(...).op().then(...)` / `yield* $.on(...).op().then(...)` 调用（不拆成中间变量）；
+    - 直接写成单条 `yield* $.onState(...).debounce(...).update/mutate/run*(...)` / `yield* $.onAction(...).debounce(...).update/mutate/run*(...)` / `yield* $.on(...).debounce(...).run*(...)` 调用（不拆成中间变量）；
     - 使用受支持算子子集；
     - 使用 `$.use` 获取的 StoreHandle / Service，而非手写 Tag / Context。
   - Parser 对白盒链提供完整的 R-S-T 解析与 IntentRule 还原能力。
@@ -110,7 +109,7 @@ Parser 通过识别特定的 **AST Pattern** 来提取语义：
   - 以下情况统一视为 Raw Mode：
     - 任意 `Flow.from(...).pipe(...)` / `stream.pipe(...)` 风格代码；
     - Fluent 链被拆解为中间变量：
-      `const flow = $.onState(...).op(); yield* flow.then(...);`
+      `const flow = $.onState(...).debounce(300); yield* flow.runLatest(...);`
     - 复杂闭包 / 动态组合导致无法稳定识别 Source/Sink。
   - Raw Mode 仅在图上展示为 Code Block，不尝试还原 IntentRule；平台仅提供“打开代码编辑”的入口。
 
@@ -126,11 +125,11 @@ v3 之后，锚点系统不再依赖大量魔法注释，而是以内建结构�
    - `$.use(ModuleOrService)` 既是运行时代码的 DI API，也是 Parser 构建依赖图的唯一事实源；
    - 所有跨 Module 协作、Service 调用都必须经过 `$.use`，否则平台无法提供稳定的拓扑视图。
 
-3. **规则锚点：`$.onState().then(...)` / `$.onAction().then(...)` / `$.on().then(...)`**
+3. **规则锚点：`$.onState/$.onAction/$.on + pipeline + (.update/.mutate/.run*)`**
    - Fluent 链本身就是 IntentRule 的结构化表达：
-     - `when*` 对应 IR 的 `source`；
+     - `$.onState/$.onAction/$.on` 对应 IR 的 `source`；
      - 链上的算子对应 `pipeline`；
-     - `then` 对应 `sink`。
+     - 终端算子（`.update/.mutate/.run*`）对应 `sink`。
    - 只有满足 2.1/2.2 中约束的 Fluent 链才被视为“锚点规则”，其余逻辑节点统一降级。
 
 4. **幽灵注解（Ghost Annotations，兜底手段）**
@@ -138,7 +137,7 @@ v3 之后，锚点系统不再依赖大量魔法注释，而是以内建结构�
      ```ts
      // @intent-sink dispatch:Auth
      yield* $.onState((s) => s.xxx)
-       .then(dynamicDispatchEffect)
+       .run(dynamicDispatchEffect)
      ```
    - Ghost 注解仅作为兜底，不应成为主流编程方式；一旦可以用 Fluent 明确表达，应优先改写为结构化链路。
 
@@ -155,7 +154,7 @@ v3 之后，锚点系统不再依赖大量魔法注释，而是以内建结构�
 
 2. **Graph → Code（Graph-First 编辑）**
    - 当用户在 Galaxy View 中编辑规则（增加/删除连线、修改防抖时间、切换并发策略等）时：
-     - 平台直接修改对应 Fluent 链中的 `when* / op / then` 调用参数；
+     - 平台直接修改对应 Fluent 链中的 `on* / pipeline / terminal` 调用参数；
      - 保证修改范围严格限定在白盒子集内，避免破坏手写代码结构。
    - 对于 Raw Mode 节点，平台只提供“跳转代码”与“Eject 到代码”的操作，不提供可视化编辑。
 

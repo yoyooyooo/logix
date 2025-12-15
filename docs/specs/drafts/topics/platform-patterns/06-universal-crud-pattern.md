@@ -5,7 +5,7 @@ version: 1.3
 value: pattern
 priority: high
 related:
-  - ../capability-plugin-system/04-fractal-runtime-and-runtime-fork.md
+  - ./08-fractal-runtime-and-layer-injection.md
 ---
 
 # Universal CRUD Pattern: One Logic, Any Domain

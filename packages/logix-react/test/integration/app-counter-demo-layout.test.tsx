@@ -7,8 +7,6 @@ import { Effect, Layer, Schema } from "effect"
 import * as Logix from "@logix/core"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
-import { useSelector } from "../../src/hooks/useSelector.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
 
 describe("App-like counter demo layout (AppDemoLayout-style)", () => {
   const CounterModule = Logix.Module.make("AppDemoCounter", {
@@ -55,29 +53,21 @@ describe("App-like counter demo layout (AppDemoLayout-style)", () => {
   })
 
   const CounterView: React.FC = () => {
-    const runtime = useModule(CounterImpl)
-    const count = useSelector(
-      runtime,
-      (s) => (s as { count: number }).count,
-    )
-    const dispatch = useDispatch(runtime)
+    const counter = useModule(CounterImpl)
+    const count = useModule(counter, (s) => (s as { count: number }).count)
 
     return (
       <div>
         <span data-testid="count">{count}</span>
         <button
           type="button"
-          onClick={() =>
-            dispatch({ _tag: "decrement", payload: undefined } as any)
-          }
+          onClick={() => counter.actions.decrement()}
         >
           dec
         </button>
         <button
           type="button"
-          onClick={() =>
-            dispatch({ _tag: "increment", payload: undefined } as any)
-          }
+          onClick={() => counter.actions.increment()}
         >
           inc
         </button>

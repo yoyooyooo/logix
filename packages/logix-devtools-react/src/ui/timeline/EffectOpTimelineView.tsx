@@ -208,7 +208,7 @@ export const EffectOpTimelineView: React.FC = () => {
                 kind === 'trait-computed' ||
                 kind === 'trait-link' ||
                 kind === 'trait-source'
-              const isReactRenderKind = kind === 'react-render'
+              const isReactRenderKind = kind === 'react-render' || kind === 'react-selector'
 
               // 基于全局设置隐藏 Trait 级事件或 React 渲染事件，
               // 再叠加局部 kind 过滤。
@@ -235,8 +235,7 @@ export const EffectOpTimelineView: React.FC = () => {
 
               const primaryLabel =
                 typeof (event as any).type === 'string' &&
-                ((event as any).type === 'trace:effectop' ||
-                  (event as any).type === 'trace:react-render')
+                (event as any).type.startsWith('trace:')
                   ? ref?.label ?? (event as any).type
                   : typeof (event as any).type === 'string'
                     ? (event as any).type

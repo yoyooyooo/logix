@@ -21,7 +21,8 @@
   - 面板对被测页面的干扰明显低于内嵌面板；
   - 导入由组件形态导出的证据包后，关键计数与顺序可复现。
 
-## 3) 可选：Worker/Sandbox 验证
+## 3) 可选：业务 Worker/Sandbox 验证
 
-- 在 Worker 运行入口中产出同样的观测 Envelope（含 `runId/seq`），并可被同一聚合引擎消费。
+> 注：这里的“业务 Worker”指被测运行时在 Worker 中执行的入口；与 Devtools 的“聚合 Worker（FR-012，Worker-first）”是两件事。
 
+- 在业务 Worker 运行入口中产出同样的观测 Envelope（含 `runId/seq`），并可被同一聚合引擎消费。

@@ -6,8 +6,6 @@ import { Schema, ManagedRuntime, Layer, Effect } from "effect"
 import * as Logix from "@logix/core"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
-import { useSelector } from "../../src/hooks/useSelector.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
 
 const Counter = Logix.Module.make("CounterMulti", {
   state: Schema.Struct({ count: Schema.Number }),
@@ -51,13 +49,9 @@ describe("useModule multi-instance behavior", () => {
     )
 
     const UseCounter = () => {
-      const moduleRuntime = useModule(Counter)
-      const count = useSelector(
-        Counter,
-        (s) => (s as { count: number }).count,
-      )
-      const dispatch = useDispatch(moduleRuntime)
-      return { count, dispatch }
+      const counter = useModule(Counter)
+      const count = useModule(Counter, (s) => (s as { count: number }).count)
+      return { count, inc: counter.actions.increment }
     }
 
     const View = () => {
@@ -67,9 +61,7 @@ describe("useModule multi-instance behavior", () => {
         <>
           <button
             type="button"
-            onClick={() =>
-              a.dispatch({ _tag: "increment", payload: undefined })
-            }
+            onClick={() => a.inc()}
           >
             inc-a
           </button>
@@ -107,13 +99,9 @@ describe("useModule multi-instance behavior", () => {
     )
 
     const UseLocalCounter = () => {
-      const moduleRuntime = useModule(CounterImpl)
-      const count = useSelector(
-        moduleRuntime,
-        (s) => (s as { count: number }).count,
-      )
-      const dispatch = useDispatch(moduleRuntime)
-      return { count, dispatch }
+      const counter = useModule(CounterImpl)
+      const count = useModule(counter, (s) => (s as { count: number }).count)
+      return { count, inc: counter.actions.increment }
     }
 
     const View = () => {
@@ -123,17 +111,13 @@ describe("useModule multi-instance behavior", () => {
         <>
           <button
             type="button"
-            onClick={() =>
-              a.dispatch({ _tag: "increment", payload: undefined })
-            }
+            onClick={() => a.inc()}
           >
             inc-a
           </button>
           <button
             type="button"
-            onClick={() =>
-              b.dispatch({ _tag: "increment", payload: undefined })
-            }
+            onClick={() => b.inc()}
           >
             inc-b
           </button>

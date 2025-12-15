@@ -8,8 +8,6 @@ import * as Logix from "@logix/core"
 import {
   RuntimeProvider,
   useModule,
-  useDispatch,
-  useSelector,
 } from "../src/index.js"
 
 const Counter = Logix.Module.make("ReactTxnCounter", {
@@ -53,13 +51,9 @@ describe("React Runtime transaction integration", () => {
 
     const { result } = renderHook(
       () => {
-        const runtime = useModule(Impl.module) as Logix.ModuleRuntime<
-          { count: number },
-          { _tag: "inc"; payload: void }
-        >
-        const dispatch = useDispatch(runtime)
-        const count = useSelector(runtime, (s) => s.count) as number
-        return { dispatch, count }
+        const counter = useModule(Impl.module)
+        const count = useModule(counter, (s: any) => s.count) as number
+        return { inc: counter.actions.inc, count }
       },
       { wrapper },
     )
@@ -85,10 +79,7 @@ describe("React Runtime transaction integration", () => {
         Effect.gen(function* () {
           const before = countTxnStateUpdates()
 
-          result.current.dispatch({
-            _tag: "inc",
-            payload: undefined,
-          } as any)
+          result.current.inc()
 
           // 让内部 Effect 有机会执行
           yield* Effect.sleep("10 millis")

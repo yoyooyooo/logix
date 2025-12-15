@@ -5,12 +5,12 @@ version: 2025-12-12
 value: vision
 priority: next
 related:
-  - ../../L9/from-requirement-to-schema.md
+  - ./00-overview.md
 ---
 
 # Intent Pipeline：From Requirement to Schema
 
-> 本文以 `L9/from-requirement-to-schema.md` 为基础，在 `sdd-platform` 视角下重述“从需求到 Schema/Module”的流水线，把它并入统一的 SDD 叙事。原草稿作为更详细的思维过程保留。
+> 本文在 `sdd-platform` 视角下重述“从需求到 Schema/Module”的流水线，把它并入统一的 SDD 叙事。
 
 ## 1. 四阶段 SDD 下的 Intent Pipeline
 
@@ -59,4 +59,3 @@ Intent Pipeline 必须保持强溯源：
 - 上游：L0/L1 的捕获与可视化，依赖 `03-spec-studio-l0.md` 中定义的 Spec Studio 画布与 Intent Widgets。  
 - 中层：Module Schema / Module 图纸的形态与字段能力，依赖 `01-module-traits-integration.md` 与 `04-module-traits-sdd-roadmap.md`。  
 - 下游：代码生成与运行时验证，对应 `02-full-duplex-architecture.md` 与 Sandbox/Alignment Lab 相关草案。
-

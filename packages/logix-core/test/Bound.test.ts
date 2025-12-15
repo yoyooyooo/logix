@@ -187,7 +187,7 @@ describe("Bound API (public)", () => {
     expect(values).toEqual([0, 0, 1, 1])
   })
 
-  it("should allow using $.useRemote().onState to react to other module state", async () => {
+  it("should allow reacting to imported module state via $.use + ModuleHandle", async () => {
     const Source = Logix.Module.make("BoundSource", {
       state: Schema.Struct({ lastCount: Schema.Number }),
       actions: {},
@@ -206,49 +206,54 @@ describe("Bound API (public)", () => {
 
     const sourceLogic = Source.logic(($) =>
       Effect.gen(function* () {
-        const TargetRemote = yield* $.useRemote(Target)
-
-        yield* TargetRemote.onState((s) => s.count).run((count) =>
+        const $Target = yield* $.use(Target)
+        yield* $.on($Target.changes((s) => s.count)).run((count) =>
           $.state.update((prev) => ({ ...prev, lastCount: count })),
         )
       }),
     )
 
-    const program = Effect.gen(function* () {
-      const sourceRuntime = yield* Source
-      const targetRuntime = yield* Target
+    const targetImpl = Target.implement({
+      initial: { count: 0 },
+      logics: [targetLogic],
+    })
 
-      // 等待逻辑订阅完成
-      yield* Effect.sleep("50 millis")
+    const sourceImpl = Source.implement({
+      initial: { lastCount: 0 },
+      logics: [sourceLogic],
+      imports: [targetImpl],
+    })
 
-      expect(yield* sourceRuntime.getState).toEqual({ lastCount: 0 })
-      expect(yield* targetRuntime.getState).toEqual({ count: 0 })
+    const runtime = Logix.Runtime.make(sourceImpl)
 
-      // 触发 Target 的 inc
-      yield* targetRuntime.dispatch({ _tag: "inc", payload: undefined })
+    try {
+      await runtime.runPromise(
+        Effect.gen(function* () {
+          const sourceRuntime = yield* Source
+          const targetRuntime = yield* Target
 
-      // 等待 cross-module 传播
-      yield* Effect.sleep("150 millis")
+          // 等待逻辑订阅完成
+          yield* Effect.sleep("50 millis")
 
-      expect(yield* targetRuntime.getState).toEqual({ count: 1 })
-      expect(yield* sourceRuntime.getState).toEqual({ lastCount: 1 })
-    }).pipe(
-      Effect.provide(
-        Layer.mergeAll(
-          Target.live({ count: 0 }, targetLogic),
-          // 注意：Target 需要先于 Source 挂载，
-          // 以保证 $.useRemote(Target) 在 Logic 启动时可以拿到 Runtime。
-          Source.live({ lastCount: 0 }, sourceLogic),
-        ),
-      ),
-    )
+          expect(yield* sourceRuntime.getState).toEqual({ lastCount: 0 })
+          expect(yield* targetRuntime.getState).toEqual({ count: 0 })
 
-    await Effect.runPromise(
-      Effect.scoped(program) as Effect.Effect<void, never, never>,
-    )
+          // 触发 Target 的 inc
+          yield* targetRuntime.dispatch({ _tag: "inc", payload: undefined })
+
+          // 等待 cross-module 传播
+          yield* Effect.sleep("150 millis")
+
+          expect(yield* targetRuntime.getState).toEqual({ count: 1 })
+          expect(yield* sourceRuntime.getState).toEqual({ lastCount: 1 })
+        }) as Effect.Effect<void, never, any>,
+      )
+    } finally {
+      await runtime.dispose()
+    }
   })
 
-  it("should allow using $.useRemote().onAction to react to other module actions", async () => {
+  it("should allow reacting to imported module actions via $.use + ModuleHandle", async () => {
     const Logger = Logix.Module.make("BoundLogger", {
       state: Schema.Struct({ logs: Schema.Array(Schema.String) }),
       actions: {},
@@ -267,50 +272,59 @@ describe("Bound API (public)", () => {
 
     const loggerLogic = Logger.logic(($) =>
       Effect.gen(function* () {
-        const RemoteCounter = yield* $.useRemote(Counter)
+        const $Counter = yield* $.use(Counter)
 
-        yield* RemoteCounter.onAction("inc").run(() =>
-          $.state.update((s) => ({
-            ...s,
-            logs: [...s.logs, "counter/inc"],
-          })),
-        )
+        yield* $.on($Counter.actions$)
+          .filter((a: any) => a._tag === "inc")
+          .run(() =>
+            $.state.update((s) => ({
+              ...s,
+              logs: [...s.logs, "counter/inc"],
+            })),
+          )
       }),
     )
 
-    const program = Effect.gen(function* () {
-      const loggerRuntime = yield* Logger
-      const counterRuntime = yield* Counter
+    const counterImpl = Counter.implement({
+      initial: { count: 0 },
+      logics: [counterLogic],
+    })
 
-      // 等待逻辑订阅完成
-      yield* Effect.sleep("50 millis")
+    const loggerImpl = Logger.implement({
+      initial: { logs: [] },
+      logics: [loggerLogic],
+      imports: [counterImpl],
+    })
 
-      expect(yield* loggerRuntime.getState).toEqual({ logs: [] })
-      expect(yield* counterRuntime.getState).toEqual({ count: 0 })
+    const runtime = Logix.Runtime.make(loggerImpl)
 
-      // 触发 Counter 的 inc
-      yield* counterRuntime.dispatch({ _tag: "inc", payload: undefined })
+    try {
+      await runtime.runPromise(
+        Effect.gen(function* () {
+          const loggerRuntime = yield* Logger
+          const counterRuntime = yield* Counter
 
-      // 等待 cross-module 传播
-      yield* Effect.sleep("150 millis")
+          // 等待逻辑订阅完成
+          yield* Effect.sleep("50 millis")
 
-      expect(yield* counterRuntime.getState).toEqual({ count: 1 })
-      expect(yield* loggerRuntime.getState).toEqual({
-        logs: ["counter/inc"],
-      })
-    }).pipe(
-      Effect.provide(
-        Layer.mergeAll(
-          Counter.live({ count: 0 }, counterLogic),
-          // 同上：先挂载 Counter，保证 Logger.useRemote(Counter) 可用。
-          Logger.live({ logs: [] }, loggerLogic),
-        ),
-      ),
-    )
+          expect(yield* loggerRuntime.getState).toEqual({ logs: [] })
+          expect(yield* counterRuntime.getState).toEqual({ count: 0 })
 
-    await Effect.runPromise(
-      Effect.scoped(program) as Effect.Effect<void, never, never>,
-    )
+          // 触发 Counter 的 inc
+          yield* counterRuntime.dispatch({ _tag: "inc", payload: undefined })
+
+          // 等待 cross-module 传播
+          yield* Effect.sleep("150 millis")
+
+          expect(yield* counterRuntime.getState).toEqual({ count: 1 })
+          expect(yield* loggerRuntime.getState).toEqual({
+            logs: ["counter/inc"],
+          })
+        }) as Effect.Effect<void, never, any>,
+      )
+    } finally {
+      await runtime.dispose()
+    }
   })
 
   it("should allow one module to listen to another via $.use + ModuleHandle", async () => {
@@ -370,19 +384,24 @@ describe("Bound API (public)", () => {
       expect((yield* consumer.getState).received).toBe(42)
     })
 
-    const SourceLive = SourceModule.live({ value: 0 }, SourceLogic)
-    const ConsumerLive = ConsumerModule.live(
-      { received: 0 },
-      ConsumerLogic,
-    )
+    const sourceImpl = SourceModule.implement({
+      initial: { value: 0 },
+      logics: [SourceLogic],
+    })
 
-    const MainLayer = Layer.mergeAll(SourceLive, ConsumerLive)
+    const consumerImpl = ConsumerModule.implement({
+      initial: { received: 0 },
+      logics: [ConsumerLogic],
+      imports: [sourceImpl],
+    })
 
-    await Effect.runPromise(
-      program.pipe(
-        Effect.provide(MainLayer),
-      ) as unknown as Effect.Effect<void, never, never>,
-    )
+    const runtime = Logix.Runtime.make(consumerImpl)
+
+    try {
+      await runtime.runPromise(program as Effect.Effect<void, never, any>)
+    } finally {
+      await runtime.dispose()
+    }
   })
 
   it("should construct services() and advanced onAction builders", () => {
@@ -493,7 +512,6 @@ describe("Bound API (public)", () => {
 
     const program = Effect.scoped(
       Effect.gen(function* () {
-        // 注册到全局 runtimeRegistry（options.tag），以覆盖 use() 的 registry 分支。
         const runtime = yield* ModuleRuntimeImpl.make(
           { count: 0 },
           {
@@ -505,7 +523,11 @@ describe("Bound API (public)", () => {
         )
 
         const $ = Logix.Bound.make(SimpleModule.shape, runtime)
-        const handle = yield* $.use(SimpleModule)
+        const handle = yield* Effect.provideService(
+          $.use(SimpleModule),
+          SimpleModule,
+          runtime,
+        )
 
         expect(yield* handle.read((s) => s.count)).toBe(0)
         expect(handle.actions$).toBe(runtime.actions$)

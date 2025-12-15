@@ -158,7 +158,45 @@ export function LocalFormComponent() {
 > - 对于同步模块，会在首次渲染时同步构建 `ModuleRuntime`，后续在组件卸载时自动关闭；
 > - 对于需要异步初始化的模块，可以通过 factory 形式返回一个包含异步步骤的 `Effect`，配合外层的 `Suspense` 一起使用。
 
-## 6. 从 useEffect / useRef 迁移到 Logix
+## 6. 分形模块（imports）：在父实例 scope 下读取/派发子模块
+
+当一个模块通过 `imports` 组合了子模块时（例如：页面 Host 模块 imports 了一个 Query 模块），通常会出现一个很实际的问题：
+
+> “子模块不是全局单例，而是**跟随父模块实例**一起创建的；组件侧要怎么拿到**属于这个父实例**的那一份子模块？”
+
+这时推荐使用两种等价写法之一：
+
+- `const child = useImportedModule(host, ChildModule)`（显式 Hook）
+- `const child = host.imports.get(ChildModule)`（链式语法糖，更推荐）
+
+示例：
+
+```tsx
+import { useDispatch, useModule, useSelector } from '@logix/react'
+import { HostImpl, ChildModule } from './modules'
+
+export function Page() {
+  // 多实例场景用 key 区分（例如：SessionA / SessionB）
+  const host = useModule(HostImpl, { key: 'SessionA' })
+
+  // ✅ 解析到“属于这个 host 实例”的子模块
+  const child = host.imports.get(ChildModule)
+
+  const value = useSelector(child, (s) => s.value)
+  const dispatch = useDispatch(child)
+
+  return <button onClick={() => dispatch({ _tag: 'refresh' })}>{value}</button>
+}
+```
+
+注意：
+
+- 不要用 `useModule(ChildModule)` 来替代上面的写法：它表达的是“全局 Module（Tag）”语义，无法绑定到某个父实例，遇到多实例时容易串用；
+- `host.imports.get(...)` 返回稳定的句柄，可直接写在 render 中，不需要额外 `useMemo`。
+- 如果只是想“触发/编排”子模块行为（例如父动作转发到子 Query.refresh），优先把这件事放到父模块 Logic（`$.use(ChildModule)`）或 Link/Process 里，让 UI 仍只依赖父模块。
+- 当你发现 UI 需要链式访问多层 imports（`host.imports.get(A).imports.get(B)`）时，通常意味着依赖穿透过深：优先在边界处 resolve 一次并向下传 `ModuleRef`，或收敛为 Host 对外的 facade 状态/动作。
+
+## 7. 从 useEffect / useRef 迁移到 Logix
 
 在把现有 React 代码迁到 Logix 时，常见的一类问题是：
 
@@ -171,7 +209,7 @@ export function LocalFormComponent() {
 
 下面用两个典型例子来说明迁移方式。
 
-### 6.1 逻辑状态型 useRef：迁到 Module 状态/Logic
+### 7.1 逻辑状态型 useRef：迁到 Module 状态/Logic
 
 很多组件里会用 `useRef` 记“上一帧的值”或某个 flag，例如：
 
@@ -240,7 +278,7 @@ function CounterView() {
 
 > 经验：**只要某个 `useRef` 的变化会影响 UI 或业务分支，就把它当成状态建模到 Module 里，而不是继续藏在组件内部。**
 
-### 6.2 Flow 控制型 useRef：迁到 Logic/Effect
+### 7.2 Flow 控制型 useRef：迁到 Logic/Effect
 
 另一类常见用法是用 `useRef` 存定时器/请求句柄来做防抖、取消、重试，例如：
 
@@ -327,7 +365,7 @@ function SearchBox() {
 
 > 经验：**只为了“控制流程”的 `useRef`（定时器、AbortController 等），应该迁到 Logic/Effect 层，用 `$.onState` + Effect 的并发控制 API 表达，而不是继续在组件里手写。**
 
-### 6.3 还可以保留的 useRef：真·DOM/实例句柄
+### 7.3 还可以保留的 useRef：真·DOM/实例句柄
 
 迁移时，有一小部分 `useRef` 是可以保留在组件里的：
 
@@ -342,7 +380,7 @@ function SearchBox() {
 
 > 一句话总结：**业务逻辑相关的 `useRef` 收编到 Logix，纯 UI/DOM 相关的 `useRef` 可以保留在 React，但建议封装在小而清晰的视图组件/Hook 里。**
 
-### 6.4 组件生命周期型 useEffect：用局部 Module 表达
+### 7.4 组件生命周期型 useEffect：用局部 Module 表达
 
 还有一类常见的 `useEffect` 主要是为了表达“这个组件在的时候要做什么，组件卸载时要清什么”，例如：
 
@@ -376,7 +414,7 @@ function Widget() {
 - 把浏览器/第三方库的事件翻译成 Action（例如监听滚动再 `dispatch`）；
 - 极少数纯 UI 级别的副作用（例如修改 `<title>` 等），和业务流程无关。
 
-## 7. ModuleImpl 的同步 / 异步模式（高级）
+## 8. ModuleImpl 的同步 / 异步模式（高级）
 
 在实际项目中，你更推荐通过 `ModuleImpl` 暴露模块实现，然后在 React 里用 `useModule(Impl)` 来消费。
 `@logix/react` 为 ModuleImpl 提供了两种模式：
@@ -440,7 +478,7 @@ export function AsyncWidget(props: { userId: string }) {
   - `useId()` 作为组件级前缀；
   - 再拼上业务 ID（如 `userId` / `formId`）。
 
-## 8. 会话级状态保持（Session Pattern）
+## 9. 会话级状态保持（Session Pattern）
 
 在真实业务里，常见的一个需求是：
 
@@ -473,7 +511,7 @@ function TabContent({ tabId }: { tabId: string }) {
 - 当所有使用该 `key` 的组件都卸载后，状态不会立刻丢失，而是按照 `gcTime` 设定的时间窗口保留（默认来自 RuntimeProvider 配置快照，可通过 Runtime Layer `ReactRuntimeConfig.replace` 或 ConfigProvider 覆盖，未配置时约 500ms）；
 - 如果在窗口内重新挂载同一个 `key`，会话状态会被完整复用；如果超过窗口仍无人使用，该会话会被自动清理。
   
-## 9. 全局 Module vs 局部 ModuleImpl：执行时机心智模型
+## 10. 全局 Module vs 局部 ModuleImpl：执行时机心智模型
 
 在 React 集成里，经常会遇到两个看起来很像、但语义不同的写法：
 
@@ -484,7 +522,7 @@ function TabContent({ tabId }: { tabId: string }) {
 
 > **谁创建 Runtime，谁管理生命周期；`useModule` 只在拿到 ModuleImpl 时才负责“创建”。**
 
-### 9.1 应用级 / 全局 Module（Runtime.make + useModule(Module)）
+### 10.1 应用级 / 全局 Module（Runtime.make + useModule(Module)）
 
 典型写法：
 
@@ -522,7 +560,7 @@ function CounterValue() {
 - 当前用户、全局配置、应用级路由状态等“只在应用生命周期内初始化一次”的状态；
 - 希望多个路由/组件天然共享同一份状态，不需要按 `key`/会话做拆分。
 
-### 9.2 组件级 / 会话级 Module（useModule(Impl, options?)）
+### 10.2 组件级 / 会话级 Module（useModule(Impl, options?)）
 
 典型写法：
 
@@ -547,13 +585,13 @@ function LocalCounter({ sessionId }: { sessionId: string }) {
 - 页签 / 会话：每个 Tab / 页面实例都有自己的状态，需要在一定时间内保活；
 - 局部向导 / 表单：组件树销毁时自然结束，不希望长期常驻。
 
-### 9.3 选择建议（全局 vs 局部）
+### 10.3 选择建议（全局 vs 局部）
 
 - **局部表单 / 向导等仅在一处使用的状态** → 使用组件级 `useModule(Impl)` 或 `useLocalModule`；
 - **需要跨 Tab/页面短期保活的状态** → 使用 `useModule(Impl, { key, gcTime })` 设计会话级实例；
 - **需要全局长期存在的状态（例如当前用户、全局配置）** → 使用应用级 Root ModuleImpl + `Logix.Runtime.make` 提供“全局 Module”，在 React 中通过 `useModule(ModuleTag)` 访问。
 
-## 10. 下一步
+## 11. 下一步
 
 - 想了解更多 Logix API，可以继续阅读 [API 参考](../../api/index) 部分；
 - 想看更复杂的集成场景（多模块协作、异步流、远程服务），可以参考仓库中的 `examples/logix-react` 示例项目。

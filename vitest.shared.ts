@@ -1,6 +1,8 @@
-import path from "path"
+import path from "node:path"
+import { jsToTsResolver } from "./scripts/vite-js-to-ts-resolver"
 
 export const sharedConfig = {
+  plugins: [jsToTsResolver()],
   test: {
     globals: true,
     alias: {

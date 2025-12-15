@@ -185,12 +185,21 @@ importers:
       '@logix/devtools-react':
         specifier: workspace:*
         version: link:../../packages/logix-devtools-react
+      '@logix/form':
+        specifier: workspace:*
+        version: link:../../packages/form
+      '@logix/query':
+        specifier: workspace:^
+        version: link:../../packages/query
       '@logix/react':
         specifier: workspace:*
         version: link:../../packages/logix-react
       '@logix/test':
         specifier: workspace:*
         version: link:../../packages/logix-test
+      '@tanstack/query-core':
+        specifier: ^5.90.12
+        version: 5.90.12
       effect:
         specifier: ^3.19.8
         version: 3.19.8
@@ -280,6 +289,37 @@ importers:
       vite:
         specifier: ^7.2.4
         version: 7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.6)
+
+  packages/form:
+    dependencies:
+      '@logix/core':
+        specifier: workspace:*
+        version: link:../logix-core
+      '@logix/react':
+        specifier: workspace:*
+        version: link:../logix-react
+      effect:
+        specifier: ^3.19.8
+        version: 3.19.8
+    devDependencies:
+      '@effect/vitest':
+        specifier: ^0.27.0
+        version: 0.27.0(effect@3.19.8)(vitest@4.0.15)
+      '@types/react':
+        specifier: ^19.2.2
+        version: 19.2.7
+      react:
+        specifier: ^19.2.0
+        version: 19.2.0
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(@swc/core@1.15.3)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@types/node@24.10.1)(@vitest/browser-playwright@4.0.15)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@24.0.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@24.10.1)(typescript@5.9.3))(tsx@4.20.6)
 
   packages/logix-core:
     dependencies:
@@ -450,6 +490,34 @@ importers:
         version: 8.5.1(@swc/core@1.15.3)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)
       typescript:
         specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@types/node@24.10.1)(@vitest/browser-playwright@4.0.15)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@24.0.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@24.10.1)(typescript@5.9.3))(tsx@4.20.6)
+
+  packages/query:
+    dependencies:
+      '@logix/core':
+        specifier: workspace:*
+        version: link:../logix-core
+      '@tanstack/query-core':
+        specifier: ^5.90.12
+        version: 5.90.12
+      effect:
+        specifier: ^3.19.8
+        version: 3.19.8
+      react:
+        specifier: '>=18.0.0'
+        version: 19.2.0
+    devDependencies:
+      '@effect/vitest':
+        specifier: ^0.27.0
+        version: 0.27.0(effect@3.19.8)(vitest@4.0.15)
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(@swc/core@1.15.3)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.8.2
         version: 5.9.3
       vitest:
         specifier: ^4.0.15
@@ -2108,6 +2176,9 @@ packages:
     resolution: {integrity: sha512-4+9w8ZHOiGnpcGI6z1TVVfWaX/koK7fKeSYF3qlYg2xpBtbteP2ddBxiarL+HVgfSJGeK5RIxRQmKm4rTJJAwA==}
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7
+
+  '@tanstack/query-core@5.90.12':
+    resolution: {integrity: sha512-T1/8t5DhV/SisWjDnaiU2drl6ySvsHj1bHBCWNXd+/T+Hh1cf6JodyEYMd5sgwm+b/mETT4EV3H+zCVczCU5hg==}
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -6465,6 +6536,8 @@ snapshots:
       '@tailwindcss/oxide': 4.1.17
       tailwindcss: 4.1.17
       vite: 7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.6)
+
+  '@tanstack/query-core@5.90.12': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:

@@ -11,7 +11,9 @@ description: "Task list template for feature implementation"
 **Tests**: The examples below include test tasks. Tests are OPTIONAL in generic projects - only include
 them if explicitly requested in the feature specification. For `packages/logix-*` and other core
 runtime packages in this repo, tests are treated as REQUIRED unless the spec explicitly documents
-why a missing test is acceptable.
+why a missing test is acceptable. If a change touches runtime hot paths, include performance and
+diagnosability regression defenses (benchmark/profile baselines + diagnostic event validation) unless
+the spec explicitly justifies why this is not needed.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -70,6 +72,11 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T006 [P] Setup API routing and middleware structure
 - [ ] T007 Create base models/entities that all stories depend on
 - [ ] T008 Configure error handling and logging infrastructure
+- [ ] T00X [P] Define unified minimal IR + drift prevention (docs/specs + parser/codegen)
+- [ ] T00X [P] Define deterministic identity model (instanceId/txnSeq/opId) and remove random/time defaults
+- [ ] T00X [P] Enforce transaction boundary (no IO in txn window, no writable ref escape hatches)
+- [ ] T00X [P] Define performance budget + baseline measurement approach (benchmark/profile)
+- [ ] T00X [P] Define diagnostic events/Devtools surfaces + expected overhead (enabled vs disabled)
 - [ ] T009 Setup environment configuration management
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
@@ -156,6 +163,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
+- [ ] TXXX Performance regression guard (bench/profile baseline + CI-friendly check if applicable)
+- [ ] TXXX Diagnosability & explainability polish (events/trace/devtools UX + overhead validation)
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation

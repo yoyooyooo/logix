@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react'
-import { describe, expect, it } from 'vitest'
-import { render, fireEvent, waitFor, screen } from '@testing-library/react'
+import { describe, expect, it, afterEach } from 'vitest'
+import { render, fireEvent, waitFor, screen, cleanup } from '@testing-library/react'
 import { Effect, Schema, Layer } from 'effect'
 import * as Logix from '@logix/core'
 import {
@@ -69,6 +69,11 @@ const CounterView: React.FC = () => {
   )
 }
 
+afterEach(() => {
+  cleanup()
+  Logix.Debug.clearDevtoolsEvents()
+})
+
 describe('@logix/devtools-react · OverviewStrip', () => {
   it('aggregates events into buckets and drives timeline range when clicking a bucket', async () => {
     render(
@@ -127,6 +132,26 @@ describe('@logix/devtools-react · OverviewStrip', () => {
         >,
       ) as DevtoolsState
       expect(after.timelineRange).toBeDefined()
+    })
+  })
+
+  it('shows last operation summary and can be dismissed', async () => {
+    render(
+      <RuntimeProvider runtime={runtime}>
+        <CounterView />
+        <LogixDevtools position="bottom-left" initialOpen={true} />
+      </RuntimeProvider>,
+    )
+
+    const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+    fireEvent.click(counterButton)
+
+    await screen.findAllByText(/Last Operation/i)
+    const close = screen.getAllByLabelText('CloseOperationSummary')[0]
+    fireEvent.click(close)
+
+    await waitFor(() => {
+      expect(screen.queryAllByText(/Last Operation/i)).toHaveLength(0)
     })
   })
 

@@ -2,12 +2,12 @@
  * @scenario 搜索与详情分离 (Coordinated Search & Detail)
  * @description
  *   演示两个独立的 Store（SearchStore 和 DetailStore）如何通过一个上层的“协调逻辑”进行通信。
- *   当前示例使用 Fluent DSL（`$.use + $.onAction(...).then(...)`）表达跨 Store 协作，
+ *   当前示例使用 Fluent DSL（`$.use + $.onAction(...).run* / .update/.mutate`）表达跨 Store 协作，
  *   主要用于说明平台 IR / Parser 与代码之间的映射关系。
  *
  *   在 v3 最终形态下，业务代码更推荐使用 Fluent DSL：
  *     - 通过 `$.use(Search)` / `$.use(Detail)` 获取 Store 句柄；
- *     - 使用 `$.on($Search.changes(...)).then($Detail.dispatch(...))` 编排跨 Store 联动；
+ *     - 使用 `$.on($Search.changes(...)).run((results) => $Detail.dispatch(...))` 编排跨 Store 联动；
  *   本文件保留作为跨 Store Fluent Intent 的 IR 级示例，而非推荐业务写法。
  * @requirement
  *   1. SearchStore: 位于全局 Layout，负责根据用户点击按钮触发搜索，并存储结果列表。

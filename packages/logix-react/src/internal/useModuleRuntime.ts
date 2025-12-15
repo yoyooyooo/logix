@@ -2,6 +2,7 @@ import { useMemo } from "react"
 import * as Logix from "@logix/core"
 import { Effect } from "effect"
 import { useRuntime } from "../components/RuntimeProvider.js"
+import { isModuleRef, type ModuleRef } from "./ModuleRef.js"
 
 const isModuleRuntime = (
   value: unknown
@@ -11,6 +12,7 @@ const isModuleRuntime = (
 export type ReactModuleHandle =
   | Logix.ModuleRuntime<any, any>
   | Logix.ModuleInstance<any, any>
+  | ModuleRef<any, any>
 
 export function useModuleRuntime<Sh extends Logix.AnyModuleShape>(
   handle: ReactModuleHandle
@@ -18,6 +20,13 @@ export function useModuleRuntime<Sh extends Logix.AnyModuleShape>(
   const runtime = useRuntime()
 
   return useMemo(() => {
+    if (isModuleRef(handle)) {
+      return handle.runtime as Logix.ModuleRuntime<
+        Logix.StateOf<Sh>,
+        Logix.ActionOf<Sh>
+      >
+    }
+
     if (isModuleRuntime(handle)) {
       return handle as Logix.ModuleRuntime<
         Logix.StateOf<Sh>,

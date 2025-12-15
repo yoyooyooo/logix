@@ -325,7 +325,7 @@ const asGuardMiddleware =
 
 ### 4.4 CrossModule（跨模块协作）
 
-事件：模块之间的读取、监听与联动（Link / useRemote / ModuleHandle）。
+事件：模块之间的读取、监听与联动（Link / imports(strict) / Root.resolve / ModuleHandle）。
 
 - Observer：
   - 记录依赖边：谁在监听谁、谁影响谁；  

@@ -1,6 +1,8 @@
-# Logix v3.0 Package Structure
+# Logix v3 Package Structure
 
-This document defines the physical file structure for the Logix v3 implementation.
+This document is the SSoT for the physical file structure of the Logix v3
+implementation. If the repo drifts, fix this document or the code immediately
+(Phase 0 gate).
 
 ## 1. packages/logix-core
 
@@ -9,137 +11,186 @@ The platform-agnostic core engine. Zero dependencies on React or DOM.
 ```
 packages/logix-core/
 ├── src/
-│   ├── index.ts                # Public API Barrel (Logix.*, Logic.*)
+│   ├── index.ts                # Public API barrel (Logix.*, etc.)
 │   │
-│   ├── api/                    # Public API Definitions
-│   │   ├── Logix.ts            # Logix Namespace (Module, Logic, BoundApi 等)
-│   │   ├── Logic.ts            # Logic Namespace (Of, Env)
-│   │   └── BoundApi.ts         # The `$` Interface Definition
+│   ├── Module.ts               # Public submodule (MUST contain real implementation)
+│   ├── Logic.ts
+│   ├── Bound.ts                # The `$` interface + factories (public)
+│   ├── Flow.ts
+│   ├── MatchBuilder.ts
+│   ├── Runtime.ts
+│   ├── Debug.ts
+│   ├── Platform.ts
+│   ├── Resource.ts
+│   ├── state-trait.ts
+│   ├── trait-lifecycle.ts
+│   ├── effectop.ts
+│   ├── env.ts
+│   ├── Link.ts
+│   ├── Actions.ts
 │   │
-│   ├── dsl/                    # Fluent DSL Implementation
-│   │   ├── LogicBuilder.ts     # Implementation of Module.logic(...)
-│   │   ├── FlowBuilder.ts      # Implementation of $.onAction(...).then(...)
-│   │   └── MatchBuilder.ts     # Implementation of $.match(...)
+│   ├── middleware/
+│   │   ├── index.ts
+│   │   └── query.ts
 │   │
-│   ├── runtime/                # Runtime Execution Engine
-│   │   ├── AppRuntime.ts       # 应用级 Runtime 内核（供 Logix.Runtime.make 使用）
-│   │   ├── ModuleRuntime.ts    # Logix.Module.make() -> Runtime Instance
-│   │   ├── ScopeManager.ts     # Effect Scope & Lifecycle Management
-│   │   └── Registry.ts         # Global Module Registry
-│   │
-│   ├── platform/               # Platform Abstraction Layer
-│   │   ├── Platform.ts         # Platform Interface & Tag
-│   │   └── NoopPlatform.ts     # Default "No-op" implementation (Core only ships this)
-│   │
-│   └── internal/               # Internal Utilities (Not Exported)
-│       ├── errors.ts           # Error Types
-│       └── utils.ts            # Common Helpers
+│   └── internal/               # Internal implementation (NOT exported)
+│       ├── runtime/
+│       │   ├── core/           # Deep runtime core (module/flow/lifecycle/debug/txn/...)
+│       │   └── *.ts            # Shallow adapters / re-exports for public submodules
+│       ├── state-trait/        # Trait program/graph/plan/build/converge/source/...
+│       ├── platform/           # Platform implementations
+│       ├── debug/              # Debug-only internal helpers
+│       └── *.ts
 │
-├── test/                       # Unit Tests
-│   ├── dsl/                    # Implementation of Flow.Api / BoundApi.flow
-│   ├── runtime/
-│   └── scenarios/              # Integration Scenarios
-│
+├── test/                       # Unit/integration tests (Vitest)
 ├── package.json
 ├── tsconfig.json
-└── tsup.config.ts      # Build Configuration
+└── tsup.config.ts              # Build Configuration
 ```
+
+**Hard boundaries**
+
+- `src/*.ts` are the public submodules and MUST contain actual implementation
+  code (thin wrappers are fine, pure re-export is not).
+- Shared implementation MUST live in `src/internal/**` (enforced by package
+  exports: `./internal/*: null`).
+- `src/internal/**` MUST NOT import from any `src/*.ts` public submodule.
+- Deep core MUST live in `src/internal/runtime/core/**`; shallow internal files
+  should be re-exports or thin adapters only.
 
 ## 2. packages/logix-react
 
-The React adapter. Depends on `logix-core` and `react`.
+The React adapter. Depends on `@logix/core` and `react`.
 
 ```
 packages/logix-react/
 ├── src/
-│   ├── index.ts                # Public Exports (hooks, provider)
+│   ├── index.ts
+│   ├── ReactPlatform.ts
 │   │
 │   ├── components/
-│   │   └── RuntimeProvider.tsx # <RuntimeProvider value={app}>
+│   │   └── RuntimeProvider.tsx
 │   │
 │   ├── hooks/
-│   │   ├── useModule.ts        # Main hook: const { state, actions } = useModule(Tag)
-│   │   ├── useLocalModule.ts   # Local hook: useLocalModule(() => Logix.Module.make(...))
-│   │   ├── useSelector.ts      # Fine-grained selection
-│   │   └── useDispatch.ts      # Action dispatch only
+│   │   ├── useModule.ts
+│   │   ├── useLocalModule.ts
+│   │   ├── useImportedModule.ts
+│   │   ├── useSelector.ts
+│   │   └── useDispatch.ts
 │   │
 │   ├── platform/
-│   │   └── ReactPlatform.ts    # React Implementation of Platform Interface
-│   │                           # (Implements onSuspend, onResume via React APIs)
+│   │   ├── index.ts
+│   │   └── ReactPlatformLayer.ts
 │   │
 │   └── internal/
-│       └── ReactContext.ts     # React.createContext() definition
+│       ├── ReactContext.ts
+│       ├── ModuleCache.ts
+│       ├── ModuleRef.ts
+│       ├── resolveImportedModuleRef.ts
+│       ├── ModuleRuntimeExternalStore.ts
+│       ├── useModuleRuntime.ts
+│       └── *.ts
 │
 ├── test/
-│   └── hooks/                  # React Hook Testing Library tests
-│
-├── package.json
-├── tsconfig.json
-└── tsup.config.ts      # Build Configuration
-```
-
-## 3. packages/logix-test
-
-The testing utilities package. Depends on `logix-core` and `effect`.
-
-```
-packages/logix-test/
-├── src/
-│   ├── index.ts                # Public API
-│   ├── runtime/                # TestRuntime
-│   ├── api/                    # renderLogic, Scenario
-│   └── utils/                  # Matchers
 ├── package.json
 ├── tsconfig.json
 └── tsup.config.ts
 ```
 
-## 4. Key Implementation Details
+## 3. packages/logix-devtools-react
 
-- **Build Toolchain**: Use `tsup` for bundling.
-  - Output formats: `esm` (default), `cjs` (for legacy compat).
-  - Dts: Enabled (`dts: true`) to generate type definitions.
-  - Clean: Enabled (`clean: true`).
-- **Circular Dependencies（目标状态）**：
-  - **目标**：`api/` 只定义类型和薄工厂接口，不直接依赖具体实现（`dsl/` 或 `runtime/`）；
-  - `dsl/` 和 `runtime/` 依赖 `api/`；
-  - `dsl/` 和 `runtime/` 之间可以互相协作，但 `api/` 保持尽可能“无实现依赖”的契约角色。
-  - **当前 PoC 现状**：v3 PoC 阶段，出于实现简单性，`api/` 中的部分入口（例如 `Logix.Module` / Bound API `$` 工厂）直接引用了 `runtime/` 与 `dsl/`。这在短期内是被允许的工程折中，后续在需要 DevTools / 多 Runtime 适配时，再分阶段下沉实现代码到 `runtime/` / `dsl/` 并恢复“纯契约”形态。
-- **Barrel Files**: Each directory (`api`, `dsl`, `runtime`) should have an `index.ts` to control visibility.
-- **Effect Integration**: All `runtime/` code is heavily Effect-native. `dsl/` code constructs Effect descriptions but doesn't run them.
+The React Devtools UI for Logix. Depends on `@logix/core` and `@logix/react`.
 
-## 5. Dependency Graph
+```
+packages/logix-devtools-react/
+├── src/
+│   ├── index.tsx
+│   ├── snapshot.ts
+│   ├── state.ts
+│   ├── DevtoolsHooks.tsx
+│   ├── state/                  # compute/model/storage/runtime helpers
+│   └── ui/                     # Devtools UI components
+│
+├── test/
+├── package.json
+└── tsconfig.json
+```
+
+## 4. packages/logix-sandbox
+
+Sandbox / Alignment Lab infrastructure (compiler + worker protocol + client).
+
+```
+packages/logix-sandbox/
+├── src/
+│   ├── index.ts
+│   ├── protocol.ts
+│   ├── types.ts
+│   ├── compiler.ts
+│   ├── client.ts
+│   ├── service.ts
+│   └── worker/sandbox.worker.ts
+│
+├── test/
+├── package.json
+└── tsconfig.json
+```
+
+## 5. packages/logix-test
+
+The testing utilities package. Depends on `@logix/core` and `effect`.
+
+```
+packages/logix-test/
+├── src/
+│   ├── index.ts
+│   ├── runtime/
+│   ├── api/
+│   └── utils/
+│
+├── test/
+├── package.json
+└── tsconfig.json
+```
+
+## 6. Key Implementation Details
+
+- **Build Toolchain**: Use `tsup` for bundling (ESM + CJS + d.ts).
+- **Public/Internal boundary**: `@logix/core` internal implementation is not a
+  public API (`./internal/*` is blocked by package exports).
+- **Layering rule**: public `src/*.ts` → `src/internal/**` → `src/internal/runtime/core/**`
+  should be a one-way dependency graph.
+
+## 7. Dependency Graph (conceptual)
 
 ```mermaid
 graph TD
     subgraph "packages/logix-core"
-        API[api/ (Types & Interfaces)]
-        DSL[dsl/ (Builders)]
-        Runtime[runtime/ (Execution)]
-        Platform[platform/ (Interface)]
+        Public[src/*.ts (public submodules)]
+        Internal[src/internal/**]
+        Core[src/internal/runtime/core/**]
 
-        DSL --> API
-        Runtime --> API
-        Runtime --> Platform
-        DSL -.-> Runtime
+        Public --> Internal
+        Internal --> Core
     end
 
     subgraph "packages/logix-react"
-        ReactHooks[hooks/]
-        ReactPlatform[platform/ (React Impl)]
+        ReactPublic[src/components + src/hooks]
+        ReactInternal[src/internal/**]
 
-        ReactHooks --> API
-        ReactPlatform --> Platform
-        ReactHooks --> Runtime
+        ReactPublic --> Public
+        ReactPublic --> ReactInternal
+        ReactInternal --> Public
     end
 ```
 
-## 6. Package Scope (v3.0 vs Future)
+## 8. Package Scope (v3 vs Current Repo)
 
 | Package | Status | Description |
 | :--- | :--- | :--- |
-| `logix-core` | **v3.0** | The pure logic engine. Includes `NoopPlatform` only. |
-| `logix-react` | **v3.0** | React adapter. Includes `ReactPlatform`. |
-| `logix-test` | **Planned** | Testing utilities for Unit/Integration tests. |
-| `logix-node` | *Future* | Node.js adapter (CLI/Server). |
-| `logix-devtools` | *Future* | Chrome Extension bridge & UI. |
+| `@logix/core` | **Core** | The pure logic engine (Effect-native runtime). |
+| `@logix/react` | **Core Adapter** | React integration (provider + hooks + strict imports-scope). |
+| `@logix/devtools-react` | **Tooling** | Devtools UI + snapshots + time-travel. |
+| `@logix/sandbox` | **Infra** | Alignment Lab sandbox (compiler + protocol + worker). |
+| `@logix/test` | **Infra** | Test kit utilities for Effect/runtime-heavy tests. |
+| `@logix/form` / `@logix/query` | **Domain** | Domain packages that must degrade to Logix IR over time. |

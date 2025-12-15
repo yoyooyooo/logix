@@ -1068,6 +1068,129 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
+    it.scoped('traits.source.refresh should not deadlock when called inside an existing transaction', () =>
+      Effect.gen(function* () {
+        type State = { value: number }
+
+        const StateSchema = Schema.Struct({
+          value: Schema.Number,
+        })
+
+        type Shape = Logix.Module.Shape<
+          typeof StateSchema,
+          { outer: typeof Schema.Void; refresh: typeof Schema.Void }
+        >
+        type Action = Logix.Module.ActionOf<Shape>
+
+        const ring = Debug.makeRingBufferSink(16)
+
+        const program = Effect.locally(
+          Debug.internal.currentDebugSinks as any,
+          [ring.sink as Debug.Sink],
+        )(
+          Effect.scoped(
+            ModuleRuntime.make<State, Action>(
+              { value: 0 },
+              {
+                moduleId: 'SourceTxnInTxnModule',
+              },
+            ).pipe(
+              Effect.flatMap((runtime) =>
+                Effect.gen(function* () {
+                  const bound = BoundApiRuntime.make<Shape, never>(
+                    {
+                      stateSchema: StateSchema,
+                      // ActionSchema 在本测试中不会被使用，这里用占位 Schema 以满足类型要求。
+                      actionSchema: Schema.Never as any,
+                      actionMap: { outer: Schema.Void, refresh: Schema.Void } as any,
+                    } as any,
+                    runtime as any,
+                    {
+                      getPhase: () => 'run',
+                      moduleId: 'SourceTxnInTxnModule',
+                    },
+                  )
+
+                  const register =
+                    (bound as any)
+                      .__registerSourceRefresh as
+                    | ((
+                      field: string,
+                      handler: (
+                        state: State,
+                      ) => Effect.Effect<void, never, any>,
+                    ) => void)
+                    | undefined
+
+                  expect(register).toBeDefined()
+
+                  register?.('value', (state: State) =>
+                    bound.state.mutate((draft) => {
+                      draft.value = state.value + 1
+                    }) as any,
+                  )
+
+                  const before = ring.getSnapshot()
+                  const beforeUpdates = before.filter(
+                    (event) =>
+                      event.type === 'state:update' &&
+                      event.moduleId === 'SourceTxnInTxnModule',
+                  )
+                  expect(beforeUpdates).toHaveLength(1)
+
+                  const runWithTxn =
+                    (runtime as any)
+                      .__runWithStateTransaction as
+                    | ((
+                      origin: {
+                        readonly kind: string
+                        readonly name?: string
+                        readonly details?: unknown
+                      },
+                      body: () => Effect.Effect<void, never, any>,
+                    ) => Effect.Effect<void, never, any>)
+                    | undefined
+
+                  expect(runWithTxn).toBeDefined()
+
+                  // 在事务窗口内调用 traits.source.refresh：
+                  // - 不能再走 enqueueTransaction（否则会死锁）；
+                  // - 也不能触发嵌套事务（否则会产生额外 state:update）。
+                  yield* runWithTxn!(
+                    { kind: 'test', name: 'outer' },
+                    () => bound.traits.source.refresh('value') as any,
+                  ).pipe(
+                    Effect.timeoutFail({
+                      duration: '200 millis',
+                      onTimeout: () =>
+                        new Error(
+                          '[test] traits.source.refresh deadlocked inside transaction',
+                        ),
+                    }),
+                  )
+
+                  const after = ring.getSnapshot()
+                  const afterUpdates = after.filter(
+                    (event) =>
+                      event.type === 'state:update' &&
+                      event.moduleId === 'SourceTxnInTxnModule',
+                  )
+
+                  expect(afterUpdates).toHaveLength(2)
+                  expect((afterUpdates[1] as any).state).toEqual({ value: 1 })
+
+                  const finalState = (yield* runtime.getState) as State
+                  expect(finalState.value).toBe(1)
+                }),
+              ),
+            ),
+          ),
+        ) as Effect.Effect<void, never, any>
+
+        yield* program
+      }),
+    )
+
     it.scoped('ModuleRuntime should use NODE_ENV-based default instrumentation when no overrides', () =>
       Effect.gen(function* () {
         const runtime = yield* ModuleRuntime.make(

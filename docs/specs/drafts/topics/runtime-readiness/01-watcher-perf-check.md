@@ -12,7 +12,7 @@ priority: 2100
 
 # Runtime Logix · Watcher 并发与内存泄漏检查设计草案
 
-> 目标：为 v1.0 设计一套可执行的「长生命周期 / 高并发 watcher」验证方案，覆盖 `run/runLatest/runFork/runParallel`、Link、`$.useRemote` 等主路径，尽可能提前暴露内存泄漏和性能退化问题。
+> 目标：为 v1.0 设计一套可执行的「长生命周期 / 高并发 watcher」验证方案，覆盖 `run/runLatest/runFork/runParallel`、Link、跨模块解析（imports strict + Root.resolve）等主路径，尽可能提前暴露内存泄漏和性能退化问题。
 
 ## 1. 背景与问题定义
 
@@ -24,8 +24,9 @@ priority: 2100
 - Link：
   - `Link.make` 中长驻的跨模块 Orchestrator 逻辑；
   - `Link` 通常会订阅多个模块的 `actions$` / `changes`。
-- Remote：
-  - `$.useRemote(Module).onState` / `.onAction` 组合出的跨模块 watcher。
+- Cross-module：
+  - imports(strict)：`$.use(Child.module)` / `imports.get(Child.module)` 组合出的跨模块 watcher（必须显式声明 imports）；
+  - root provider：`Root.resolve(Tag)` 解析全局依赖后组合出的 watcher（用于真正的全局模块/服务）。
 
 这些 watcher 多数是长生命周期、持续订阅式的 Effect：
 
@@ -46,7 +47,7 @@ priority: 2100
 1. **具备可执行脚本**：提供一套可以通过 `pnpm bench:watchers` 或 `pnpm test:watchers` 运行的脚本，观察资源使用曲线；
 2. **覆盖核心模式**：至少覆盖：
    - 单模块高频 `onAction().runFork` / `runParallel`；
-   - 多模块 + Link + `$.useRemote` 联动；
+   - 多模块 + Link + imports(strict) 联动；
    - React 场景下反复 mount/unmount hooks（`useModule` / `useLocalModule`）；
 3. **可比较**：能够在不同提交之间对比“泄漏/资源上界是否变差”，而不要求非常精确的数值；
 4. **非侵入**：尽量通过现有 API（DebugSink / Lifecycle / 内部计数器）观测，而不在核心路径引入重型 profiling。
@@ -117,34 +118,34 @@ const CounterRunForkLogic = Counter.logic(($) =>
 - 模块销毁后（Scope close）不会再有新的 DebugSink 事件（如 action dispatch / state update）；
 - watcher Fiber 的最大数量在 N 的数量级附近，但在测试结束后不再增长。
 
-## 5. 场景二：多模块 + Link + `$.useRemote`
+## 5. 场景二：多模块 + Link + imports(strict)
 
 ### 5.1 场景描述
 
 - 模块：
   - `Source`：触发 action 流；
   - `Target`：实际做一些轻量 state 更新；
-  - `Badge`：通过 `$.useRemote(Target)` 监听 Target 状态，更新自己的展示字段；
+  - `Badge`：通过 imports(strict)（例如 `$.use(Target.module)`）监听 Target 状态，更新自己的展示字段；
   - Link：在 Source 和 Target 之间做额外 Orchestrator（例如过滤、聚合）。
 - 目标：
-  - 在有 Link + useRemote 的状态下，频繁触发 Source/Target 的 action，验证：
+  - 在有 Link + imports(strict) 的状态下，频繁触发 Source/Target 的 action，验证：
     - 所有联动链路在高频下保持正确；
-    - Link / Remote watcher 的 Fiber/订阅在结束时被回收。
+    - Link / 跨模块 watcher 的 Fiber/订阅在结束时被回收。
 
 ### 5.2 行为脚本（简要）
 
 ```ts
 // 伪代码结构
 
-const app = Logix.app({
-  layer: Layer.empty,
-  modules: [
-    Logix.provide(Source, Source.live(...)),
-    Logix.provide(Target, Target.live(...)),
-    Logix.provide(Badge, Badge.live(...)), // 内部用 $.useRemote(Target)
-  ],
-  processes: [LinkLogic], // Link.make(...)
-})
+	const app = Logix.app({
+	  layer: Layer.empty,
+	  modules: [
+	    Logix.provide(Source, Source.live(...)),
+	    Logix.provide(Target, Target.live(...)),
+	    Logix.provide(Badge, Badge.live(...)), // 内部通过 imports(strict) 解析 Target
+	  ],
+	  processes: [LinkLogic], // Link.make(...)
+	})
 
 const program = Effect.gen(function* () {
   const source = yield* Effect.provide(Source, app.layer)
@@ -165,7 +166,7 @@ const program = Effect.gen(function* () {
 
 - DebugSink 中：
   - Link 相关的 error/event 是否可见；
-  - 在 app Scope 关闭后，不再有 Link 或 Remote watcher 发出的事件。
+  - 在 app Scope 关闭后，不再有 Link 或跨模块 watcher 发出的事件。
 - Fiber/订阅：
   - 每个 ModuleRuntime 的 watcher 数量是否稳定在预期上界；
   - 多次重复运行 benchmark（例如 10 次）后，资源占用不呈线性增长。
@@ -202,7 +203,7 @@ const program = Effect.gen(function* () {
 
 2. **核心 watcher 场景的单元/集成测试（core 包）**  
    - 在 `watcherPatterns.test.ts` 或新增文件中实现“单模块高频 runFork/runParallel”场景；
-   - 增加 Link + useRemote 联动场景的高频测试。
+   - 增加 Link + imports(strict) 联动场景的高频测试。
 
 3. **React 挂载/卸载场景测试（react 包）**  
    - 新增 hook 层面的 leak/pressure 测试，覆盖 `useModule` / `useLocalModule` / `useLayerModule`；

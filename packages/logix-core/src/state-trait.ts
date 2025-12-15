@@ -1,7 +1,7 @@
-// StateTrait 命名空间占位模块（Phase 3）。
-// - 连接 internal/state-trait 下的类型与占位实现；
-// - 提供 from/computed/source/link 的最小 DSL 形态（仅限类型与结构），
-//   具体 Program/Graph/Plan 与 install 行为在后续 Phase 中按 spec 补全。
+// StateTrait 命名空间模块：
+// - 提供 traits spec 的 DSL（from/node/list/computed/source/link）；
+// - build：归一化 spec 并生成 Program/Graph/Plan；
+// - install：将 Program 安装到运行时（注册 source.refresh 等入口，并在事务窗口执行 converge/validate）。
 
 import type { Schema } from "effect"
 import { Effect } from "effect"
@@ -11,16 +11,21 @@ import * as FieldPath from "./internal/state-trait/field-path.js"
 import * as InternalBuild from "./internal/state-trait/build.js"
 import * as InternalInstall from "./internal/state-trait/install.js"
 
-// 对外暴露的核心类型别名（Phase 3 占位版本）。
+// 对外暴露的核心类型别名。
 export type StateTraitSpec<S> = Model.StateTraitSpec<S>
 export type StateTraitEntry<S = unknown, P extends string = string> =
   Model.StateTraitEntry<S, P>
 export type StateTraitProgram<S> = Model.StateTraitProgram<S>
 export type StateTraitGraph = Model.StateTraitGraph
 export type StateTraitPlan = Model.StateTraitPlan
+export type StateTraitNode<Input = unknown, Ctx = unknown> = Model.StateTraitNode<Input, Ctx>
+export type StateTraitList<Item = unknown> = Model.StateTraitList<Item>
+export type CheckRule<Input = unknown, Ctx = unknown> = Model.CheckRule<Input, Ctx>
 
 export type StateFieldPath<S> = FieldPath.StateFieldPath<S>
 export type StateAtPath<S, P> = FieldPath.StateAtPath<S, P>
+
+export const $root = "$root" as const
 
 /**
  * StateTrait.from：
@@ -33,28 +38,55 @@ export const from = <S extends object, I>(
 (spec: StateTraitSpec<S>): StateTraitSpec<S> =>
   spec
 
+export const node = <Input = unknown, Ctx = unknown>(
+  spec: Omit<Model.StateTraitNode<Input, Ctx>, "_tag">,
+): Model.StateTraitNode<Input, Ctx> => ({
+  _tag: "StateTraitNode",
+  ...spec,
+})
+
+export const list = <Item = unknown>(
+  spec: Omit<Model.StateTraitList<Item>, "_tag">,
+): Model.StateTraitList<Item> => ({
+  _tag: "StateTraitList",
+  ...spec,
+})
+
 /**
  * StateTrait.computed：
  * - 为某个字段声明 computed 能力；
- * - Phase 3 中仅在 meta 中保留 derive 函数，fieldPath 在 normalize 阶段补全。
+ * - 通过显式 deps 作为唯一依赖事实源（用于诊断/反向闭包/后续增量调度）。
  */
 export const computed = <S extends object, P extends StateFieldPath<S>>(
-  derive: (state: Readonly<S>) => StateAtPath<S, P>,
-): StateTraitEntry<S, P> =>
-  ({
+  input: {
+    readonly deps: ReadonlyArray<StateFieldPath<S>>
+    readonly get: (state: Readonly<S>) => StateAtPath<S, P>
+    readonly equals?: (prev: StateAtPath<S, P>, next: StateAtPath<S, P>) => boolean
+  },
+): StateTraitEntry<S, P> => {
+  return {
     fieldPath: undefined as unknown as P,
     kind: "computed",
-    meta: { derive },
-  } as StateTraitEntry<S, P>)
+    meta: { deps: input.deps, derive: input.get, equals: input.equals },
+  } as StateTraitEntry<S, P>
+}
 
 /**
  * StateTrait.source：
  * - 为某个字段声明外部资源来源（Resource / Query 集成在后续 Phase 中实现）；
- * - 当前仅在 meta 中保留 resourceId 与 key 规则。
+ * - 内核负责 keyHash gate / concurrency / ReplayMode 行为。
  */
 export const source = <S extends object, P extends StateFieldPath<S>>(meta: {
   resource: string
+  deps: ReadonlyArray<StateFieldPath<S>>
   key: (state: Readonly<S>) => unknown
+  triggers?: ReadonlyArray<"onMount" | "onValueChange" | "manual">
+  debounceMs?: number
+  concurrency?: "switch" | "exhaust-trailing"
+  /**
+   * 用于 Devtools/文档的可序列化元信息（白名单字段会在 build 阶段被提取）。
+   */
+  meta?: Record<string, unknown>
 }): StateTraitEntry<S, P> =>
   ({
     fieldPath: undefined as unknown as P,
@@ -77,9 +109,9 @@ export const link = <S extends object, P extends StateFieldPath<S>>(meta: {
   } as StateTraitEntry<S, P>)
 
 /**
- * StateTrait.build 占位导出：
- * - 当前仅委托 internal/state-trait/build.ts，内部实现仍为未实现占位；
- * - 具体构建逻辑在后续 Phase 中实现。
+ * StateTrait.build：
+ * - 将 Spec 归一化为可执行 Program（含 Graph/Plan）；
+ * - DSL 层与 build 层的约束以 build 为最终裁决（例如强制显式 deps）。
  */
 export const build = <S extends object>(
   stateSchema: Schema.Schema<S, any>,
@@ -87,9 +119,9 @@ export const build = <S extends object>(
 ): StateTraitProgram<S> => InternalBuild.build(stateSchema, spec)
 
 /**
- * StateTrait.install 占位导出：
- * - 当前仅委托 internal/state-trait/install.ts，占位实现总是抛出未实现错误；
- * - 具体安装逻辑在后续 Phase 中实现。
+ * StateTrait.install：
+ * - 在给定 Bound API 上安装 Program 描述的行为（computed/link/source/check 等）；
+ * - 每个 PlanStep 对应一个长生命周期 Effect，并挂载到 Runtime Scope。
  */
 export const install = <S extends object>(
   bound: BoundApi<any, any>,

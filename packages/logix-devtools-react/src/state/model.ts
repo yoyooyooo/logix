@@ -13,6 +13,34 @@ export const OperationSummarySchema = Schema.Struct({
   eventCount: Schema.Number,
   renderCount: Schema.Number,
   txnCount: Schema.Number,
+  traitConverge: Schema.optional(
+    Schema.Struct({
+      txnCount: Schema.Number,
+      outcomes: Schema.Struct({
+        Converged: Schema.Number,
+        Noop: Schema.Number,
+        Degraded: Schema.Number,
+      }),
+      degradedReasons: Schema.Struct({
+        budget_exceeded: Schema.Number,
+        runtime_error: Schema.Number,
+      }),
+      budgetMs: Schema.optional(Schema.Number),
+      totalDurationMs: Schema.Number,
+      executedSteps: Schema.Number,
+      changedSteps: Schema.Number,
+      top3: Schema.Array(
+        Schema.Struct({
+          stepId: Schema.String,
+          kind: Schema.Literal('computed', 'link'),
+          fieldPath: Schema.String,
+          durationMs: Schema.Number,
+          changed: Schema.Boolean,
+          txnId: Schema.optional(Schema.String),
+        }),
+      ),
+    }),
+  ),
 })
 export type OperationSummary = Schema.Schema.Type<typeof OperationSummarySchema>
 
@@ -168,4 +196,3 @@ export const emptyDevtoolsState: DevtoolsState = {
   theme: 'system',
   settings: defaultSettings,
 }
-

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
+import { RuntimeProvider, useModule } from '@logix/react'
 import * as Middleware from '@logix/core/middleware'
 
 // ---------------------------------------------------------------------------
@@ -73,8 +73,7 @@ const middlewareRuntime = Logix.Runtime.make(MiddlewareCounterImpl, {
 
 const CounterView: React.FC = () => {
   const runtimeHandle = useModule(MiddlewareCounterModule)
-  const count = useSelector(runtimeHandle, (s) => s.count)
-  const dispatch = useDispatch(runtimeHandle)
+  const count = useModule(runtimeHandle, (s) => s.count)
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 max-w-md space-y-4">
@@ -99,14 +98,14 @@ const CounterView: React.FC = () => {
         <button
           type="button"
           className="px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors active:scale-95"
-          onClick={() => dispatch({ _tag: 'dec', payload: undefined })}
+          onClick={() => runtimeHandle.actions.dec()}
         >
           减一
         </button>
         <button
           type="button"
           className="px-4 py-2.5 rounded-lg bg-indigo-600 text-sm text-white hover:bg-indigo-700 active:bg-indigo-800 transition-colors active:scale-95 shadow-sm shadow-indigo-600/20"
-          onClick={() => dispatch({ _tag: 'inc', payload: undefined })}
+          onClick={() => runtimeHandle.actions.inc()}
         >
           加一
         </button>

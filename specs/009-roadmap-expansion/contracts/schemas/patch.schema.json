@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/009-roadmap-expansion/schemas/patch.schema.json",
+  "title": "Patch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "reason"],
+  "properties": {
+    "path": { "$ref": "./field-path.schema.json" },
+    "from": { "description": "Optional previous value (full diagnostics).", "nullable": true },
+    "to": { "description": "Optional next value (full diagnostics).", "nullable": true },
+    "reason": { "type": "string", "minLength": 1 },
+    "stepId": { "type": "string" },
+    "nodeId": { "type": "string" }
+  }
+}
+

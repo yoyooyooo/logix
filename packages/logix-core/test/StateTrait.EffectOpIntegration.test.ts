@@ -21,9 +21,10 @@ describe("StateTrait.install + EffectOp middleware", () => {
 
   it("should emit EffectOp events for computed and link steps via middleware", async () => {
     const traits = Logix.StateTrait.from(StateSchema)({
-      sum: Logix.StateTrait.computed(
-        (s: Readonly<State>) => s.a + s.b,
-      ),
+      sum: Logix.StateTrait.computed({
+        deps: ["a", "b"],
+        get: (s: Readonly<State>) => s.a + s.b,
+      }),
       // target 跟随 source.name
       target: Logix.StateTrait.link({
         from: "source.name",

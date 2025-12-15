@@ -168,7 +168,7 @@ related:
 3. **明确 onError 的使用边界**
    - 文档层面补充：
      - onError 只用于“最后一跳上报”，不能指望它做错误恢复（恢复应该在 Logic 内部跑 try/catch 或 `Effect.catchAll`）；
-     - Link / useRemote / processes 等长期 watcher 的错误，默认策略是：
+     - Link / processes 等长期 watcher 的错误，默认策略是：
        - 抛到 ModuleRuntime Scope → 触发 onError + DebugSink → Scope 关闭（模块崩溃）；
        - 需要重试/自愈时，应在 Link/Flow 内部包裹 retry/supervisor。
    - 对应 TODO 已在 `runtime-logix-core-gaps-and-production-readiness.md` 中标记，这里需在实现与文档上对齐。

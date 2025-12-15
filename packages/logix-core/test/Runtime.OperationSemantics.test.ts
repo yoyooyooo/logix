@@ -111,4 +111,82 @@ describe("Runtime + EffectOp bus semantics", () => {
       )
     }),
   )
+
+  it.scoped("single dispatch should produce at most one state:update commit (0/1 commit) even with traits", () =>
+    Effect.gen(function* () {
+      const events: Array<EffectOp.EffectOp<any, any, any>> = []
+
+      const capture: EffectOp.Middleware = (op) =>
+        Effect.sync(() => {
+          events.push(op)
+        }).pipe(Effect.zipRight(op.effect))
+
+      const TraitState = Schema.Struct({
+        base: Schema.Number,
+        derived: Schema.Number,
+      })
+
+      const TraitActions = { bump: Schema.Void }
+
+      const TraitModule = Logix.Module.make("OpSemanticsWithTraits", {
+        state: TraitState,
+        actions: TraitActions,
+        traits: Logix.StateTrait.from(TraitState)({
+          derived: Logix.StateTrait.computed({
+            deps: ["base"],
+            get: (s) => s.base + 1,
+          }),
+        }),
+      })
+
+      const TraitLogic = TraitModule.logic(($) =>
+        Effect.gen(function* () {
+          yield* $.onAction("bump").mutate((draft) => {
+            draft.base += 1
+          })
+        }),
+      )
+
+      const impl = TraitModule.implement({
+        initial: { base: 0, derived: 1 },
+        logics: [TraitLogic],
+      })
+
+      const runtime = Logix.Runtime.make(impl, {
+        layer: Layer.empty as Layer.Layer<any, never, never>,
+        middleware: [capture],
+      })
+
+      const program = Effect.gen(function* () {
+        const rt = yield* TraitModule
+
+        yield* rt.dispatch({ _tag: "bump", payload: undefined } as any)
+
+        // 让 traits watcher 有机会完成（当前 Phase 仍基于 watcher 安装）。
+        yield* Effect.sleep("10 millis")
+
+        const state = yield* rt.getState
+        expect(state.base).toBe(1)
+        expect(state.derived).toBe(2)
+
+        const action = events.find((e) => e.kind === "action" && e.name === "action:dispatch")
+        expect(action?.meta?.linkId).toBeDefined()
+
+        const linkId = action?.meta?.linkId
+        const commits = events.filter(
+          (e) =>
+            e.kind === "state" &&
+            e.name === "state:update" &&
+            e.meta?.linkId != null &&
+            e.meta?.linkId === linkId,
+        )
+
+        expect(commits.length).toBeLessThanOrEqual(1)
+      })
+
+      yield* Effect.promise(() =>
+        runtime.runPromise(program as Effect.Effect<void, never, any>),
+      )
+    }),
+  )
 })

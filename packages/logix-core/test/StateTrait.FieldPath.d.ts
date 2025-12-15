@@ -20,7 +20,10 @@ type State = {
     id: string
     name: string
   }
-  profileResource: unknown
+  profileResource: Logix.Resource.ResourceSnapshot<
+    { name: string },
+    unknown
+  >
 }
 
 type Paths = Logix.StateTrait.StateFieldPath<State>
@@ -33,6 +36,11 @@ type ExpectedPaths =
   | "profile.id"
   | "profile.name"
   | "profileResource"
+  | "profileResource.status"
+  | "profileResource.keyHash"
+  | "profileResource.data"
+  | "profileResource.data.name"
+  | "profileResource.error"
 
 // Paths 应与 ExpectedPaths 严格相等（双向约束）。
 type _CheckPaths = Assert<
@@ -61,6 +69,20 @@ type _CheckAtLeaf = Assert<
   >
 >
 
+type _CheckResourceStatus = Assert<
+  Equals<
+    Logix.StateTrait.StateAtPath<State, "profileResource.status">,
+    Logix.Resource.ResourceStatus
+  >
+>
+
+type _CheckResourceName = Assert<
+  Equals<
+    Logix.StateTrait.StateAtPath<State, "profileResource.data.name">,
+    string
+  >
+>
+
 // 不存在的路径应推导为 never，用于在后续测试中触发类型错误。
 type _CheckInvalidPath = Assert<
   Equals<
@@ -68,4 +90,3 @@ type _CheckInvalidPath = Assert<
     never
   >
 >
-

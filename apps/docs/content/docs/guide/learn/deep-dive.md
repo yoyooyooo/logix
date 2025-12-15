@@ -140,6 +140,68 @@ export const UserListRuntime = Logix.Runtime.make(UserListImpl, {
 
 这个 `Runtime` 可以在 React 中通过 `RuntimeProvider runtime={UserListRuntime}` 挂载，也可以在测试环境中直接使用 `UserListRuntime.run*` 运行 Effect。
 
+## 5. 领域模块：表单与查询（同源 imports）
+
+在真实业务里，“表单”和“查询”往往是页面最核心的两类能力。Logix 推荐把它们也当成**普通模块**来组合：  
+它们以 `ModuleImpl` 的形式被 Root `imports` 引入，和其他模块共享同一套 Runtime、调试与回放能力，从而避免“表单状态”和“页面 Store 状态”割裂成两套事实源。
+
+### 5.1 表单：`@logix/form`
+
+`@logix/form` 提供 `Form.make(...)` 作为高层入口，它返回一个 Blueprint，其中 `impl` 可以直接被 imports 引入：
+
+```ts
+import * as Logix from '@logix/core'
+import { Schema } from 'effect'
+import { Form } from '@logix/form'
+
+export const UserForm = Form.make('UserForm', {
+  values: Schema.Struct({ name: Schema.String }),
+  initialValues: { name: '' },
+})
+
+export const RootImpl = RootModule.implement({
+  initial: { /* ... */ },
+  imports: [UserForm.impl],
+})
+```
+
+### 5.2 查询：`@logix/query`
+
+`@logix/query` 同样以 Blueprint 的方式工作：查询结果也存放在模块 state 上（可被订阅、可被调试）。
+
+```ts
+import { Schema } from 'effect'
+import { Query } from '@logix/query'
+
+export const SearchQuery = Query.make('SearchQuery', {
+  params: Schema.Struct({ q: Schema.String }),
+  initialParams: { q: '' },
+  queries: {
+    list: {
+      resource: { id: 'user/search' },
+      deps: ['params.q'],
+      key: (params) => (params.q ? { q: params.q } : undefined),
+    },
+  },
+})
+```
+
+当你希望把查询的缓存与 in-flight 去重交给查询引擎时，可以把 QueryClient 作为依赖注入到 Runtime，并在 EffectOp 中间件层启用 Query 集成：
+
+```ts
+import * as Logix from '@logix/core'
+import { Layer } from 'effect'
+import { Query } from '@logix/query'
+import { QueryClient } from '@tanstack/query-core'
+
+export const runtime = Logix.Runtime.make(RootImpl, {
+  layer: Layer.mergeAll(AppInfraLayer, Query.layer(new QueryClient())),
+  middleware: [Query.TanStack.middleware()],
+})
+```
+
+这样 Query 与 Form 都能在同一个“模块 → imports → Root Runtime”的组合链路里工作，保持 API 形状一致、调试方式一致。
+
 ## 总结
 
 Logix 的“魔法”其实就是一组明确定义的转换：

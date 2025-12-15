@@ -1,12 +1,18 @@
 当前仓库仍处在积极演进阶段，可以不计成本地重构与试验，不需要考虑向历史版本兼容。
 任何一个地方都可以为了追求完美而推翻，拒绝向后兼容，勇敢向前兼容。
 当一个新的规划和已有实现产生交集甚至冲突时，需要寻求新的完美点，而不是坚持向后兼容。
+性能与可诊断性优先：任何触及 Logix Runtime 核心路径的改动，都必须给出可复现的性能基线/测量，
+并同步完善诊断事件与 Devtools 可解释链路；破坏性变更用迁移说明替代兼容层。
+同时强制：统一最小 IR（Static IR + Dynamic Trace）、标识去随机化（稳定 instanceId/txnSeq/opSeq）、
+事务窗口禁止 IO、业务不可写 SubscriptionRef、诊断事件必须 Slim 且可序列化。
 
 ## Workflow
 
 1. 任何和项目相关的任务优先执行 `openskills read project-guide`，并根据项目指南执行后续操作。
 2. 当需要快速掌握已有仓库的一些泛化的信息的时候，优先使用 auggie 了解脉络，然后再深入查看。
 3. 当做完一个特性时，需要跑通测试用例和所有类型检测，同时把变更内容消化后整合到 SSoT 文档和用户文档
+4. 若改动触及核心路径 / 诊断协议 / 对外 API，必须在 plan.md 的 Constitution Check 中补齐性能预算、
+   诊断代价、IR/锚点漂移点、稳定标识与迁移说明，并在实现完成后同步 `docs/specs` 与 `apps/docs`。
 
 ## 规划对齐（简版）
 
@@ -28,6 +34,12 @@
 ## 仓库愿景与决策原则（当前）
 
 - **北极星**：面向真实业务仓库，跑通一条「Intent → Flow/Effect/Logix → 代码 → 上线与长期演进」的可回放链路，一切规划以能否支撑最终产品为准。
+- **性能与可诊断性优先**：性能与可诊断性都是产品能力本身；核心路径改动必须有可复现的性能证据，
+  诊断能力必须可解释且默认零成本或接近零成本。
+- **统一最小 IR**：所有高层抽象必须可完全降解到统一 IR，并显式区分 Static IR 与 Dynamic Trace；
+  平台/Devtools/Sandbox 只认 IR，不接受“并行真相源”。
+- **Logix-as-React**：公共 API/DSL 偏向声明式与可推导，运行时内部可自动优化，并可将执行与状态变更
+  映射回声明式输入以支持解释与回放。
 - **LLM 一等公民**：DSL / Schema / Flow / 配置的设计优先考虑“LLM 易生成、易校验、易对比”，假定主要维护者是 LLM + 工具链，人类只做审阅与少量 override。
 - **引擎优先**：先把 Intent/Flow/Logix/Effect 的契约和幂等出码引擎打磨稳定，再考虑 Studio/画布等交互体验；遇到冲突，一律保证引擎正确、可回放、可追踪。
 - **Effect 作为统一运行时**：默认使用 `effect`（effect-ts v3 系列）承载行为与流程执行，出码后的业务流程应以 `.flow.ts` + Effect/Logix 程序为落点；其他运行时只作为 PoC，而不是第二套正式栈。
@@ -260,9 +272,16 @@ Usage notes:
 
 ## Active Technologies
 
+- TypeScript 5.x（ESM），Node.js 20+ + `effect` v3、`@logix/core`、`@logix/react`（以及 Devtools 相关包作为诊断展示） (008-hierarchical-injector)
+- N/A（纯运行时语义；以内存 Context/Scope 为主） (008-hierarchical-injector)
+
 - TypeScript（pnpm workspace / monorepo） + `effect` v3、`@logix/core` / `@logix/react` / `@logix/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3) (005-unify-observability-protocol)
 - N/A（证据包导出/导入以文件或剪贴板为主；运行中以内存 ring buffer / 聚合快照为主） (005-unify-observability-protocol)
+- TypeScript 5.8.2（pnpm workspace） + effect v3（`effect`）、Vitest（含 `@effect/vitest` 风格用例）、React（`@logix/react` 适配层）、Vite（示例/开发） (007-unify-trait-system)
+- N/A（状态以内存为主；Query/Resource 通过可替换引擎缓存） (007-unify-trait-system)
+- TypeScript 5.x（ESM），Node.js 20+ + `effect` v3、`@logix/core`、`@logix/react`、`@logix-devtools-react`、（Query 外部引擎）`@tanstack/query-core` (007-unify-trait-system)
+- N/A（内存状态 + 可回放事件日志；不要求持久化） (007-unify-trait-system)
 
 ## Recent Changes
 
-- 005-unify-observability-protocol: Added TypeScript（pnpm workspace / monorepo） + `effect` v3、`@logix/core` / `@logix/react` / `@logix/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3)
+- 008-hierarchical-injector: Added TypeScript 5.x（ESM），Node.js 20+ + `effect` v3、`@logix/core`、`@logix/react`（以及 Devtools 相关包作为诊断展示）

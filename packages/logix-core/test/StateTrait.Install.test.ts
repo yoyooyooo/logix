@@ -19,7 +19,10 @@ describe("StateTrait.install (with ModuleRuntime)", () => {
 
   it("should recompute computed fields when state changes", async () => {
     const traits = Logix.StateTrait.from(StateSchema)({
-      sum: Logix.StateTrait.computed((s: Readonly<State>) => s.a + s.b),
+      sum: Logix.StateTrait.computed({
+        deps: ["a", "b"],
+        get: (s: Readonly<State>) => s.a + s.b,
+      }),
     })
 
     const program = Logix.StateTrait.build(StateSchema, traits)

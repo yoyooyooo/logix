@@ -1,7 +1,7 @@
 import React from "react"
 import { Effect, Fiber, Layer, ManagedRuntime } from "effect"
 import * as Logix from "@logix/core"
-import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from "@logix/react"
+import { RuntimeProvider, useModule, useRuntime } from "@logix/react"
 import { SourceModule, TargetModule, AuditModule, SourceImpl, TargetImpl, AuditImpl, ReactMultiModuleLink } from "../modules/linkModules"
 
 // 组合三个 ModuleImpl 的 Layer，构造应用级 Runtime
@@ -30,8 +30,7 @@ const LinkRunner: React.FC = () => {
 }
 
 const SourcePanel: React.FC = () => {
-  const runtime = useModule(SourceModule)
-  const dispatch = useDispatch(runtime)
+  const source = useModule(SourceModule)
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col gap-3">
@@ -46,7 +45,7 @@ const SourcePanel: React.FC = () => {
       <button
         type="button"
         className="w-full px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700 active:bg-emerald-800 transition-all active:scale-95 shadow-sm shadow-emerald-600/20"
-        onClick={() => dispatch({ _tag: "ping", payload: undefined })}
+        onClick={() => source.actions.ping()}
       >
         触发 ping
       </button>
@@ -55,8 +54,7 @@ const SourcePanel: React.FC = () => {
 }
 
 const TargetPanel: React.FC = () => {
-  const runtime = useModule(TargetModule)
-  const count = useSelector(TargetModule, (s) => s.count)
+  const count = useModule(TargetModule, (s) => s.count)
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col gap-3">
@@ -79,8 +77,7 @@ const TargetPanel: React.FC = () => {
 }
 
 const AuditPanel: React.FC = () => {
-  const runtime = useModule(AuditModule)
-  const logs = useSelector(AuditModule, (s) => s.logs)
+  const logs = useModule(AuditModule, (s) => s.logs)
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col gap-3">

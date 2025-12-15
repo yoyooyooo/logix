@@ -2,6 +2,7 @@
     "title": "React Integration",
     "pages": [
         "use-module",
+        "use-imported-module",
         "use-local-module",
         "provider"
     ]

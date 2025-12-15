@@ -19,6 +19,7 @@ export interface DevtoolsSnapshot {
   readonly instances: ReadonlyMap<string, number>
   readonly events: ReadonlyArray<Event>
   readonly latestStates: ReadonlyMap<string, unknown>
+  readonly latestTraitSummaries: ReadonlyMap<string, unknown>
 }
 
 export interface DevtoolsHubOptions {
@@ -29,6 +30,7 @@ export interface DevtoolsHubOptions {
 
 const instances = new Map<string, number>()
 const latestStates = new Map<string, unknown>()
+const latestTraitSummaries = new Map<string, unknown>()
 const instanceLabels = new Map<string, string>()
 
 let bufferSize = 500
@@ -39,6 +41,7 @@ const currentSnapshot: DevtoolsSnapshot = {
   instances,
   events: ringBuffer,
   latestStates,
+  latestTraitSummaries,
 }
 
 const listeners = new Set<() => void>()
@@ -139,6 +142,11 @@ export const devtoolsHubSink: Sink = {
         const runtimeId = (event as any).runtimeId ?? "unknown"
         const key = `${runtimeLabel}::${moduleId}::${runtimeId}`
         latestStates.set(key, (event as any).state)
+
+        const traitSummary = (event as any).traitSummary
+        if (traitSummary !== undefined) {
+          latestTraitSummaries.set(key, traitSummary)
+        }
       }
 
       // module:destroy 时清理实例标签。

@@ -21,7 +21,10 @@ describe("StateTrait DSL (computed & link)", () => {
 
   it("should create computed entry with derive function that can be used to recompute value", () => {
     const traits = Logix.StateTrait.from(StateSchema)({
-      sum: Logix.StateTrait.computed((s) => s.a + s.b),
+      sum: Logix.StateTrait.computed({
+        deps: ["a", "b"],
+        get: (s) => s.a + s.b,
+      }),
     })
 
     const entry = traits.sum as Logix.StateTrait.StateTraitEntry<State, "sum">

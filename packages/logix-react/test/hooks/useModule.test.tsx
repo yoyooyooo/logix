@@ -4,7 +4,6 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import * as Logix from "@logix/core"
 import { Schema, Effect, ManagedRuntime, Layer } from "effect"
 import { useModule } from "../../src/hooks/useModule.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import React from "react"
 
@@ -39,21 +38,20 @@ describe("useModule", () => {
 
     const { result } = renderHook(
       () => {
-        const runtime = useModule(Counter)
+        const counter = useModule(Counter)
         const count = useModule(Counter, (s) => (s as { readonly count: number }).count)
-        const dispatch = useDispatch(runtime)
-        return { runtime, count, dispatch }
+        return { counter, count }
       },
       { wrapper }
     )
 
     await waitFor(() => {
       expect(result.current.count).toBe(0)
-      expect(typeof result.current.runtime.dispatch).toBe("function")
+      expect(typeof result.current.counter.runtime.dispatch).toBe("function")
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "increment", payload: undefined })
+      result.current.counter.actions.increment()
     })
 
     await waitFor(() => {
@@ -96,7 +94,7 @@ describe("useModule", () => {
     const { result } = renderHook(
       () => {
         const rt = useModule(InstrCounter)
-        return (rt as any).__stateTransactionInstrumentation as string | undefined
+        return (rt.runtime as any).__stateTransactionInstrumentation as string | undefined
       },
       { wrapper },
     )

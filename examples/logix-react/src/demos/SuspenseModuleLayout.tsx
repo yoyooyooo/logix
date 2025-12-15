@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react'
 import { Context, Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
+import { RuntimeProvider, useModule } from '@logix/react'
 
 // 1. 定义一个需要“重型初始化”的服务
 interface HeavyService {
@@ -65,8 +65,7 @@ const SuspenseCounter: React.FC = () => {
     gcTime: 5000, // 必须 > 初始化耗时 (2000ms)，否则会在 pending 期间被 GC
   })
 
-  const count = useSelector(runtime, (s) => s.count)
-  const dispatch = useDispatch(runtime)
+  const count = useModule(runtime, (s) => s.count)
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 flex flex-col gap-4">
@@ -87,7 +86,7 @@ const SuspenseCounter: React.FC = () => {
       <button
         type="button"
         className="w-full flex items-center justify-center px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-all active:scale-95 text-sm font-medium shadow-sm shadow-indigo-600/20"
-        onClick={() => dispatch({ _tag: 'increment', payload: undefined })}
+        onClick={() => runtime.actions.increment()}
       >
         加一
       </button>

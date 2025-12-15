@@ -28,13 +28,19 @@ export const TraitFormActions = {
 
 // Traits：基于 baseline 与 form 计算脏标记
 export const TraitFormTraits = StateTrait.from(TraitFormStateSchema)({
-  'meta.dirtyCount': StateTrait.computed((s) => {
+  'meta.dirtyCount': StateTrait.computed({
+    deps: ["form.name", "form.email", "baseline.name", "baseline.email"],
+    get: (s) => {
     let count = 0
     if (s.form.name !== s.baseline.name) count++
     if (s.form.email !== s.baseline.email) count++
     return count
+    },
   }),
-  'meta.isDirty': StateTrait.computed((s) => s.form.name !== s.baseline.name || s.form.email !== s.baseline.email),
+  'meta.isDirty': StateTrait.computed({
+    deps: ["form.name", "form.email", "baseline.name", "baseline.email"],
+    get: (s) => s.form.name !== s.baseline.name || s.form.email !== s.baseline.email,
+  }),
 })
 
 export const TraitFormModule = Module.make('TraitFormModule', {

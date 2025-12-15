@@ -25,8 +25,8 @@
   代码中的 **Fluent DSL（`$.onState` / `$.onAction` / `$.on(stream)`）** 会被解析为 IntentRule；不同 L1/L2 规则形态仅通过 IntentRule 的字段（例如 kind/context/type）区分，不再依赖运行时 `Intent.*` 命名空间。
 
 - **L1 / L2 / L3 分层 API（代码视图）**：
-  - L1：单 Store 内同步联动 —— 代码侧推荐用 `$.onState / $.onAction` + `$.state.mutate/update` 表达；在 IR 中对应 L1 IntentRule（self.state/self.action → self.mutate）；
-  - L2：跨 Store 协作 —— 代码侧推荐用 `$.use(StoreSpec)` 获取 StoreHandle + `$.on($Other.changes/… ).then($SelfOrOther.dispatch)` 表达；在 IR 中对应 L2 IntentRule（A.state/A.action → B.dispatch）；
+  - L1：单 Store 内同步联动 —— 代码侧推荐用 `$.onState / $.onAction` + `.update/.mutate` 表达；在 IR 中对应 L1 IntentRule（self.state/self.action → self.mutate）；
+  - L2：跨 Store 协作 —— 代码侧推荐用 `$.use(StoreSpec)` 获取 StoreHandle + `$.on($Other.changes/… ).run((payload) => $Target.dispatch(/* action */))` 表达；在 IR 中对应 L2 IntentRule（A.state/A.action → B.dispatch）；
   - L3：Flow/Stream/Effect —— 极度定制化逻辑的逃逸口，平台仅部分可视化或降级为 Code Block。
 
 本目录后续所有平台交互设计，都默认建立在这套模型之上：
@@ -101,7 +101,7 @@
 
 1. **IntentRule 视角下的业务积木规范**
    - 为“字段联动卡片 / 模块联动连线 / Pattern 节点”等定义统一的配置 Schema 与对应的 IntentRule 模板；
-   - 明确哪些积木仅生成 L1（andUpdate*），哪些生成 L2（Coordinate），哪些生成 L2/L3 组合（react/Flow）。
+  - 明确哪些积木仅生成 L1（单 Store 同步联动）、哪些生成 L2（跨 Store 协作），哪些生成 L2/L3 组合（React/Flow/Pattern）。
 
 2. **跨文档对齐**
    - 将本目录中的模块拆分点与 `runtime-logix/core/*`、`v3/02-intent-layers.md`、`v3/03-assets-and-schemas.md` 等文档建立交叉链接，保证“Intent 模型 → Runtime → 平台 UI”三线一致。
@@ -148,7 +148,7 @@
 
 - 形态：在 Requirement Intent 的基础上，显式落到具体的 Store / Pattern / Intent API 选择上：
   - 确认涉及到哪些 Logix.ModuleShape（State/Action Schema）；
-  - 确认哪些联动属于 L1（andUpdate*）/ L2（Coordinate）/ L3（Flow/Pattern）；
+  - 确认哪些联动属于 L1（单 Store 同步联动）/ L2（跨 Store 协作）/ L3（Flow/Pattern）；
   - 为每条规则选择合适的 API 形态（Intent 快捷方式 / 结构化 Coordinate / Flow 组合）。
 - 平台资产：
   - **IntentRule 集合**：用结构化的 IR 全面覆盖某个用例/模块的联动规则；

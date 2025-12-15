@@ -3,10 +3,8 @@ import { describe, it, expect } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import * as Logix from "@logix/core"
 import { Schema, ManagedRuntime, Effect } from "effect"
-import { useSelector } from "../../src/hooks/useSelector.js"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
 import React from "react"
 
 const Counter = Logix.Module.make("Counter", {
@@ -36,13 +34,9 @@ describe("useSelector", () => {
 
     // Helper hook to trigger update
     const useTest = () => {
-      const runtime = useModule(Counter)
-      const count = useSelector(
-        Counter,
-        (s: Logix.StateOf<typeof Counter.shape>) => s.count,
-      )
-      const dispatch = useDispatch(runtime)
-      return { count, dispatch }
+      const counter = useModule(Counter)
+      const count = useModule(Counter, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      return { counter, count }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -52,7 +46,7 @@ describe("useSelector", () => {
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "increment", payload: undefined })
+      result.current.counter.actions.increment()
     })
 
     await waitFor(() => {
@@ -81,8 +75,8 @@ describe("useSelector", () => {
     let equalityCallCount = 0
 
     const useTest = () => {
-      const runtime = useModule(Counter)
-      const count = useSelector(
+      const counter = useModule(Counter)
+      const count = useModule(
         Counter,
         (s: Logix.StateOf<typeof Counter.shape>) => s.count,
         (prev, next) => {
@@ -90,8 +84,7 @@ describe("useSelector", () => {
           return Object.is(prev, next)
         },
       )
-      const dispatch = useDispatch(runtime)
-      return { count, dispatch }
+      return { counter, count }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -103,7 +96,7 @@ describe("useSelector", () => {
     const beforeCalls = equalityCallCount
 
     await act(async () => {
-      result.current.dispatch({ _tag: "increment", payload: undefined })
+      result.current.counter.actions.increment()
     })
 
     await waitFor(() => {

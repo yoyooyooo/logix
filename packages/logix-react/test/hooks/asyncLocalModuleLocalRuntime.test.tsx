@@ -6,8 +6,6 @@ import { Effect, Layer, ManagedRuntime, Schema } from "effect"
 import * as Logix from "@logix/core"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
-import { useSelector } from "../../src/hooks/useSelector.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
 
 // 复刻 examples/logix-react/src/demos/AsyncLocalModuleLayout.tsx 中的核心逻辑，
 // 用于在测试环境下验证 suspend:true + 本地 ModuleImpl 的行为。
@@ -53,15 +51,11 @@ const asyncLocalRuntime = ManagedRuntime.make(
 ) as unknown as ManagedRuntime.ManagedRuntime<any, any>
 
 const AsyncLocalCounterView: React.FC = () => {
-  const moduleRuntime = useModule(AsyncCounterImpl, {
+  const counter = useModule(AsyncCounterImpl, {
     suspend: true,
     key: "AsyncLocalCounter:test-instance",
   })
-  const state = useSelector(
-    moduleRuntime,
-    (s) => s as { count: number; ready: boolean },
-  )
-  const dispatch = useDispatch(moduleRuntime)
+  const state = useModule(counter, (s) => s as { count: number; ready: boolean })
 
   if (!state.ready) {
     return <div>Initializing…</div>
@@ -72,9 +66,7 @@ const AsyncLocalCounterView: React.FC = () => {
       <span data-testid="value">{state.count}</span>
       <button
         type="button"
-        onClick={() =>
-          dispatch({ _tag: "increment", payload: undefined })
-        }
+        onClick={() => counter.actions.increment()}
       >
         inc
       </button>

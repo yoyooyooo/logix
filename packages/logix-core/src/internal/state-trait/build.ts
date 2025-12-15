@@ -11,8 +11,10 @@ import {
   type StateTraitPlan,
   type StateTraitPlanStep,
   type StateTraitResource,
+  collectNodeMeta,
   normalizeSpec,
 } from "./model.js"
+import * as Meta from "./meta.js"
 
 /**
  * 根据 StateTraitEntry 构造标准化的 FieldTrait。
@@ -25,12 +27,27 @@ const toFieldTrait = (
 ): StateTraitFieldTrait => {
   const deps: Array<string> = []
 
-  if (entry.kind === "link") {
+  if (entry.kind === "computed") {
+    const meta = entry.meta as any
+    const list = meta.deps as ReadonlyArray<string> | undefined
+    if (list) deps.push(...list)
+  } else if (entry.kind === "source") {
+    const meta = entry.meta as any
+    const list = meta.deps as ReadonlyArray<string> | undefined
+    if (list) deps.push(...list)
+  } else if (entry.kind === "link") {
     deps.push(entry.meta.from as string)
+  } else if (entry.kind === "check") {
+    const meta = entry.meta as any
+    const rules = (meta?.rules ?? {}) as Record<string, any>
+    for (const name of Object.keys(rules)) {
+      const rule = rules[name]
+      if (rule && typeof rule === "object") {
+        const list = rule.deps as ReadonlyArray<string> | undefined
+        if (list) deps.push(...list)
+      }
+    }
   }
-
-  // 对于 computed/source，首版暂不尝试从 derive/key 中解析依赖字段；
-  // deps 保持为空数组，后续可按 data-model.md 扩展静态分析能力。
 
   return {
     fieldId: entry.fieldPath,
@@ -46,6 +63,7 @@ const toFieldTrait = (
  */
 const buildGraph = (
   entries: ReadonlyArray<StateTraitEntry<any, string>>,
+  nodeMetaByFieldPath: ReadonlyMap<string, Meta.TraitMeta>,
 ): {
   readonly graph: StateTraitGraph
   readonly plan: StateTraitPlan
@@ -85,6 +103,19 @@ const buildGraph = (
         targetFieldPath: fieldPath,
         // 说明：当前版本不静态分析 computed 依赖字段，sourceFieldPaths 留空。
       })
+      // 若显式声明 deps，则补充 Graph 边（用于诊断/反向闭包计算）。
+      const deps = (entry.meta as any).deps as ReadonlyArray<string> | undefined
+      if (deps) {
+        for (const dep of deps) {
+          ensureField(dep)
+          edges.push({
+            id: `computed:${dep}->${fieldPath}`,
+            from: dep,
+            to: fieldPath,
+            kind: "computed",
+          })
+        }
+      }
     } else if (entry.kind === "link") {
       const from = entry.meta.from as string
       ensureField(from)
@@ -108,16 +139,40 @@ const buildGraph = (
       })
     } else if (entry.kind === "source") {
       const resourceId = entry.meta.resource
+      const resourceMeta = Meta.sanitize((entry.meta as any).meta)
 
       const existing = resourcesById.get(resourceId)
       if (existing) {
-        ;(existing.ownerFields as Array<string>).push(fieldPath)
+        const ownerFields = [...existing.ownerFields, fieldPath]
+        let meta = existing.meta
+        let metaOrigin = existing.metaOrigin
+        let metaConflicts = existing.metaConflicts
+
+        if (resourceMeta) {
+          const merged = Meta.mergeCanonical(
+            { meta, origin: metaOrigin, conflicts: metaConflicts },
+            { origin: fieldPath, meta: resourceMeta },
+          )
+          meta = merged.meta
+          metaOrigin = merged.origin
+          metaConflicts = merged.conflicts
+        }
+
+        resourcesById.set(resourceId, {
+          ...existing,
+          ownerFields,
+          meta,
+          metaOrigin,
+          metaConflicts,
+        })
       } else {
         resourcesById.set(resourceId, {
           resourceId,
           // 暂时使用简单的标识字符串，后续可根据 key 规则进一步结构化。
           keySelector: `StateTrait.source@${fieldPath}`,
           ownerFields: [fieldPath],
+          meta: resourceMeta,
+          metaOrigin: resourceMeta ? fieldPath : undefined,
         })
       }
 
@@ -128,6 +183,38 @@ const buildGraph = (
         resourceId,
         keySelectorId: `StateTrait.source@${fieldPath}`,
       })
+
+      const deps = (entry.meta as any).deps as ReadonlyArray<string> | undefined
+      if (deps) {
+        for (const dep of deps) {
+          ensureField(dep)
+          edges.push({
+            id: `source-dep:${dep}->${fieldPath}`,
+            from: dep,
+            to: fieldPath,
+            kind: "source-dep",
+          })
+        }
+      }
+    } else if (entry.kind === "check") {
+      planSteps.push({
+        id: `check:${fieldPath}`,
+        kind: "check-validate",
+        targetFieldPath: fieldPath,
+      })
+
+      // 若规则显式声明 deps，则补充 Graph 边（用于 ReverseClosure scoped validate）。
+      if (trait.deps.length > 0) {
+        for (const dep of trait.deps) {
+          ensureField(dep)
+          edges.push({
+            id: `check-dep:${dep}->${fieldPath}`,
+            from: dep,
+            to: fieldPath,
+            kind: "check-dep",
+          })
+        }
+      }
     }
   }
 
@@ -136,6 +223,7 @@ const buildGraph = (
       id: field.id,
       field,
       traits: field.traits,
+      meta: nodeMetaByFieldPath.get(field.id),
     })
   }
 
@@ -218,8 +306,49 @@ export const build = <S extends object>(
   spec: StateTraitSpec<S>,
 ): StateTraitProgram<S> => {
   const entries = normalizeSpec(spec) as ReadonlyArray<StateTraitEntry<S, string>>
+  const nodeMetaByFieldPath = collectNodeMeta(spec)
 
-  const { graph, plan } = buildGraph(entries)
+  // Phase 4（US2）：强制显式 deps（Graph/diagnostics/replay 只认 deps 作为依赖事实源）。
+  for (const entry of entries) {
+    if (entry.kind === "computed") {
+      const deps = (entry.meta as any).deps as ReadonlyArray<string> | undefined
+      if (deps === undefined) {
+        throw new Error(
+          `[StateTrait.build] Missing explicit deps for computed "${entry.fieldPath}". ` +
+            "Please use StateTrait.computed({ deps: [...], get: ... }).",
+        )
+      }
+    }
+    if (entry.kind === "source") {
+      const deps = (entry.meta as any).deps as ReadonlyArray<string> | undefined
+      if (deps === undefined) {
+        throw new Error(
+          `[StateTrait.build] Missing explicit deps for source "${entry.fieldPath}". ` +
+            "Please provide meta.deps for StateTrait.source({ deps: [...], ... }).",
+        )
+      }
+    }
+    if (entry.kind === "check") {
+      const rules = ((entry.meta as any)?.rules ?? {}) as Record<string, any>
+      for (const name of Object.keys(rules)) {
+        const rule = rules[name]
+        if (typeof rule === "function" || !rule || typeof rule !== "object") {
+          throw new Error(
+            `[StateTrait.build] Missing explicit deps for check "${entry.fieldPath}" rule "${name}". ` +
+              "Please use { deps: [...], validate: ... } form.",
+          )
+        }
+        if ((rule as any).deps === undefined) {
+          throw new Error(
+            `[StateTrait.build] Missing explicit deps for check "${entry.fieldPath}" rule "${name}". ` +
+              "Please provide deps: [...].",
+          )
+        }
+      }
+    }
+  }
+
+  const { graph, plan } = buildGraph(entries, nodeMetaByFieldPath)
 
   // 针对 link 边进行一次环路检测，避免明显的配置错误。
   assertNoLinkCycles(graph.edges)
@@ -227,6 +356,7 @@ export const build = <S extends object>(
   return {
     stateSchema,
     spec,
+    entries: entries as ReadonlyArray<StateTraitEntry<any, string>>,
     graph,
     plan,
   }

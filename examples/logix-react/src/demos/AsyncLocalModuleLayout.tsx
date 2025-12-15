@@ -1,7 +1,7 @@
 import React from 'react'
 import { Effect, Layer, ManagedRuntime, Schema, Logger } from 'effect'
 import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector, useDispatch, ReactPlatformLayer } from '@logix/react'
+import { RuntimeProvider, useModule, ReactPlatformLayer } from '@logix/react'
 
 // 异步局部 ModuleImpl 示例：演示 suspend:true + ModuleImpl.layer 内部存在异步初始化逻辑
 
@@ -74,8 +74,7 @@ const AsyncLocalCounterView: React.FC<AsyncLocalCounterViewProps> = ({ title, ca
     key: `AsyncLocalCounter:${cacheKey}`,
   })
 
-  const state = useSelector(moduleRuntime, (s) => s as { count: number; ready: boolean })
-  const dispatch = useDispatch(moduleRuntime)
+  const state = useModule(moduleRuntime, (s) => s as { count: number; ready: boolean })
 
   if (!state.ready) {
     return (
@@ -112,14 +111,14 @@ const AsyncLocalCounterView: React.FC<AsyncLocalCounterViewProps> = ({ title, ca
         <button
           type="button"
           className="flex items-center justify-center px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all active:scale-95 font-medium shadow-sm"
-          onClick={() => dispatch({ _tag: 'decrement', payload: undefined })}
+          onClick={() => moduleRuntime.actions.decrement()}
         >
           减一
         </button>
         <button
           type="button"
           className="flex items-center justify-center px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-all active:scale-95 font-medium shadow-sm shadow-indigo-600/20"
-          onClick={() => dispatch({ _tag: 'increment', payload: undefined })}
+          onClick={() => moduleRuntime.actions.increment()}
         >
           加一
         </button>

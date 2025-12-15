@@ -21,11 +21,20 @@ export * as MatchBuilder from './MatchBuilder.js'
 // StateTrait：字段能力与 State 图纸内核（占位导出，详见 specs/001-module-traits-runtime）
 export * as StateTrait from './state-trait.js'
 
+// TraitLifecycle：领域包（Form/Query/...）统一下沉接口（见 specs/007-unify-trait-system）
+export * as TraitLifecycle from "./trait-lifecycle.js"
+
 // Resource：逻辑资源规格与注册（见 specs/001-module-traits-runtime/references/resource-and-query.md）
 export * as Resource from './Resource.js'
 
 // Runtime：应用级 Runtime（Logix.Runtime.make 等）
 export * as Runtime from './Runtime.js'
+
+// Root：显式 root provider 解析入口（忽略局部 override）
+export * as Root from "./Root.js"
+
+// Env：统一的运行时环境检测（避免 bundler 内联 NODE_ENV）
+export * as Env from './env.js'
 
 // Debug & Platform：调试与平台集成能力
 export * as Debug from './Debug.js'

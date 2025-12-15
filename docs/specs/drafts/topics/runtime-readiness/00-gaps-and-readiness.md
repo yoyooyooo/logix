@@ -6,7 +6,7 @@ layer: L9
 related:
   - ../L5/runtime-core-evolution.md
   - ../topics/react-adapter
-  - ../topics/query-integration
+  - ../topics/trait-system
   - ./plan-runtime-logix-v1-readiness.md
 priority: 1800
 ---
@@ -39,8 +39,9 @@ priority: 1800
     - `$.state.read/update/mutate`；
     - `$.onState / $.onAction / $.on` + `run / runParallel / runLatest / runFork`；
     - `Logic.Link`：跨模块的命令式 Orchestrator。
-  - Remote / App：
-    - `$.useRemote(Module)`：只读版 Bound API，用于跨模块读取/订阅/dispatch；
+  - Cross-module / App：
+    - `Link.make`：跨模块命令式 Orchestrator（长生命周期 watcher 的统一承载）；
+    - `Root.resolve(Tag)`：显式从 runtime tree 的 root provider 解析全局/根作用域依赖（不走 imports 的可见性规则）；
     - 应用级 Runtime：Root ModuleImpl + `Logix.Runtime.make(rootImpl, { layer, onError })`。
 
 - `@logix/react`
@@ -72,28 +73,29 @@ priority: 1800
     - 结合 Universe / Studio 的模块拓扑视图，定义 TagIndex 的导出结构与观测 API，让工具能够基于同一份 TagIndex 同时做“冲突检测 + Env 拓扑展示”；
     - 视后续复杂度再评估是否需要对通用 `Layer` 做深度 inspect，或仅在推荐路径（ModuleImpl.providers / exports）上进行 Tag 枚举与校验。
 
-### 2.2 Link / useRemote 的错误与生命周期语义
+### 2.2 Link / imports / Root.resolve 的错误与生命周期语义
 
   - `ModuleRuntime` 对 forked logics 的错误会通过 Lifecycle/DebugSink 汇聚，Link 使用时依赖这一层行为；
   - 应用级 Runtime 的 `onError`（在 `Logix.Runtime.make` 的 options 中配置）会在 processes fail 时被调用；
   - 对于：
     - Link 内部抛错（fail/die）；
-    - 通过 `$.useRemote(...)` 构造的跨模块 watcher 出现错误；
+    - 通过 imports（`$.use(Child.module)` / `imports.get(Child.module)`）或 `Root.resolve(Tag)` 构造的跨模块 watcher 出现错误；
     当前规范没有明确约定：
     - 是否自动重启；
     - 错误是否应扩散到 App 级别，还是停留在模块/Link 范围。
 - 风险：
   - 复杂链路中某个 Link 或 Remote watcher 挂掉后，可能悄悄停止工作而没有明显告警；
   - 若错误被误导致整个 AppRuntime 失败，生产可用性会受影响。
-- TODO：
+  - TODO：
   - 在 `runtime-logix` 规范中明确：
     - Link 的错误语义（是否视为“流程级错误”，是否需要重试/重启策略）；
-    - useRemote watcher 的错误归属（算当前模块的 Flow 错误，还是 Link 类错误）。
+    - imports strict 解析失败与跨模块 watcher 错误的归属（算当前模块的 Flow 错误，还是 Link/process 类错误）。
   - 在 `@logix/core` 中补充集成测试：
     - Link logic 中抛错 → 生命周期与 DebugSink 的表现；
-    - RemoteBound (`$.useRemote`) 中抛错 → `api.lifecycle.onError` 与 App `onError` 是否能捕捉到。
+    - imports strict 解析失败（`$.use(Child.module)` / `imports.get`）→ 结构化错误与 fix 建议；
+    - Root.resolve 缺失 provider → `api.lifecycle.onError` 与 App `onError` 的表现与 fix 建议。
   - 与 v1.0 Plan 对齐的默认策略：
-    - Link / Remote watcher 出错时，**优先选择“报告但不中断调用方 Flow”**：错误进入 `api.lifecycle.onError` + App `onError`，由上层决定是否重启或降级，而不是直接 crash 整个 AppRuntime；
+    - Link / 跨模块 watcher 出错时，**优先选择“报告但不中断调用方 Flow”**：错误进入 `api.lifecycle.onError` + App `onError`，由上层决定是否重启或降级，而不是直接 crash 整个 AppRuntime；
     - 对关键 Link 可选包装 `Effect.retry` 或 Supervisor，实现可配置的重试/熔断行为。
 
 ### 2.3 ReactPlatform 与 Platform Tag 的集成
@@ -117,7 +119,7 @@ priority: 1800
 ### 2.4 长生命周期 / 高并发 watcher 的内存与性能
 
 - 现状：
-  - `runFork / runParallel / Link / useRemote` 等能力会在背后 fork watcher Fiber；
+  - `runFork / runParallel / Link / processes` 等能力会在背后 fork watcher Fiber；
   - 现有用例只验证了少量 dispatch 的语义正确性，没有验证持续高频事件或长时间运行下的行为。
 - 风险：
   - 订阅泄漏：重复 mount/unmount 模块、重复注册 watcher 时，Scope 不当管理可能导致 Fiber 堆积；
@@ -125,7 +127,7 @@ priority: 1800
 - TODO：
   - 设计 1–2 组压力测试（可先放在内部 util/benchmarks，而非正式 test suite）：
     - 单模块 + 高频 `onAction(...).runFork`；
-    - 多模块 + Link + useRemote 联动；
+    - 多模块 + Link + imports(strict) 联动；
   - 观测指标：
     - Fiber 数量 / SubscriptionRef 数量的上界；
     - 长时间运行后的内存使用；
@@ -189,7 +191,7 @@ priority: 1800
   - 后续要做“运行时仪表盘 / 监控插件”时，没有一个标准的入口可复用。
 - TODO：
   - 在 AppRuntime 层设计一个只读的事件流（例如 `AppEvents` / `errors$`）：
-    - 汇总关键事件：Module lifecycle.error、Link/useRemote watcher 错误、processes 错误等；
+    - 汇总关键事件：Module lifecycle.error、Link/跨模块 watcher 错误、processes 错误等；
     - 明确事件模型与订阅方式（Effect.Stream / PubSub 等），便于上层绑定到日志/监控系统。
   - 在 React/CLI 层补充最小示例：
     - React：RuntimeProvider 内部订阅该通道，将“全局不可恢复错误”映射到 ErrorBoundary 或全局提示；
@@ -198,7 +200,7 @@ priority: 1800
 ## 3. 建议的推进顺序（生产前最小补齐集）
 
 1. Tag 冲突检测 + AppRuntime.onError 集成测试
-2. Link / useRemote 错误语义规范 + 简单集成测试（核心链路一条）
+2. Link / 跨模块解析（imports strict + Root.resolve）错误语义规范 + 简单集成测试（核心链路一条）
 3. ReactPlatform → Platform Tag 的最小集成（onSuspend/onResume/onReset）
 4. 压力测试（高频 watcher + 长生命周期）
 5. ModuleImpl / useLocalModule 边界场景实验

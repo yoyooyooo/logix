@@ -82,9 +82,9 @@ const makeItem = () => ({
 // Traits：计算字段 + 联动字段 + 校验与汇总
 export const ComplexTraitFormTraits = StateTrait.from(ComplexTraitFormStateSchema)({
   // profile.fullName 由 firstName / lastName 推导
-  'profile.fullName': StateTrait.computed((s) => {
-    const full = `${s.profile.firstName} ${s.profile.lastName}`.trim()
-    return full
+  'profile.fullName': StateTrait.computed({
+    deps: ['profile.firstName', 'profile.lastName'],
+    get: (s) => `${s.profile.firstName} ${s.profile.lastName}`.trim(),
   }),
 
   // shipping.* 跟随 profile / contact 联动
@@ -96,59 +96,86 @@ export const ComplexTraitFormTraits = StateTrait.from(ComplexTraitFormStateSchem
   }),
 
   // 验证字段
-  'validation.emailValid': StateTrait.computed((s) => {
-    const email = s.contact.email.trim()
-    // 这里只做一个非常宽松的校验，用于演示 Trait 行为
-    return email === '' ? false : email.includes('@')
+  'validation.emailValid': StateTrait.computed({
+    deps: ['contact.email'],
+    get: (s) => {
+      const email = s.contact.email.trim()
+      // 这里只做一个非常宽松的校验，用于演示 Trait 行为
+      return email === '' ? false : email.includes('@')
+    },
   }),
-  'validation.phoneRequired': StateTrait.computed((s) => {
-    return s.contact.preferredChannel === 'phone' && s.contact.phone.trim() === ''
+  'validation.phoneRequired': StateTrait.computed({
+    deps: ['contact.preferredChannel', 'contact.phone'],
+    get: (s) => s.contact.preferredChannel === 'phone' && s.contact.phone.trim() === '',
   }),
-  'validation.formValid': StateTrait.computed((s) => {
-    const emailValid = s.contact.email.trim() !== '' && s.contact.email.includes('@')
-    const phoneRequired = s.contact.preferredChannel === 'phone' && s.contact.phone.trim() === ''
-    const hasBadItem =
-      s.items.length === 0 ||
-      s.items.some((item) => item.name.trim() === '' || item.quantity <= 0 || item.price < 0)
-    return emailValid && !phoneRequired && !hasBadItem
+  'validation.formValid': StateTrait.computed({
+    deps: ['contact.email', 'contact.preferredChannel', 'contact.phone', 'items'],
+    get: (s) => {
+      const emailValid = s.contact.email.trim() !== '' && s.contact.email.includes('@')
+      const phoneRequired =
+        s.contact.preferredChannel === 'phone' && s.contact.phone.trim() === ''
+      const hasBadItem =
+        s.items.length === 0 ||
+        s.items.some((item) => item.name.trim() === '' || item.quantity <= 0 || item.price < 0)
+      return emailValid && !phoneRequired && !hasBadItem
+    },
   }),
 
   // 字段级错误提示（用于 UI 展示）
-  'errors.email': StateTrait.computed((s) => {
-    const email = s.contact.email.trim()
-    if (email === '') return '请填写邮箱'
-    if (!email.includes('@')) return '邮箱格式不正确'
-    return null
+  'errors.email': StateTrait.computed({
+    deps: ['contact.email'],
+    get: (s) => {
+      const email = s.contact.email.trim()
+      if (email === '') return '请填写邮箱'
+      if (!email.includes('@')) return '邮箱格式不正确'
+      return null
+    },
   }),
-  'errors.phone': StateTrait.computed((s) => {
-    const phoneRequired = s.contact.preferredChannel === 'phone' && s.contact.phone.trim() === ''
-    if (phoneRequired) return '当首选渠道为电话时，手机号必填'
-    return null
+  'errors.phone': StateTrait.computed({
+    deps: ['contact.preferredChannel', 'contact.phone'],
+    get: (s) => {
+      const phoneRequired =
+        s.contact.preferredChannel === 'phone' && s.contact.phone.trim() === ''
+      if (phoneRequired) return '当首选渠道为电话时，手机号必填'
+      return null
+    },
   }),
-  'errors.items': StateTrait.computed((s) => {
-    if (s.items.length === 0) return '至少需要一行商品'
-    const hasBadItem = s.items.some(
-      (item) => item.name.trim() === '' || item.quantity <= 0 || item.price < 0,
-    )
-    if (hasBadItem) return '请检查商品名称、数量和价格'
-    return null
+  'errors.items': StateTrait.computed({
+    deps: ['items'],
+    get: (s) => {
+      if (s.items.length === 0) return '至少需要一行商品'
+      const hasBadItem = s.items.some(
+        (item) => item.name.trim() === '' || item.quantity <= 0 || item.price < 0,
+      )
+      if (hasBadItem) return '请检查商品名称、数量和价格'
+      return null
+    },
   }),
 
   // 汇总字段
-  'summary.itemCount': StateTrait.computed((s) => s.items.length),
-  'summary.totalQuantity': StateTrait.computed((s) =>
-    s.items.reduce((acc, item) => acc + item.quantity, 0),
-  ),
-  'summary.totalAmount': StateTrait.computed((s) =>
-    s.items.reduce((acc, item) => acc + item.quantity * item.price, 0),
-  ),
-  'summary.hasInvalid': StateTrait.computed((s) => {
-    const hasBadItem =
-      s.items.length === 0 ||
-      s.items.some((item) => item.name.trim() === '' || item.quantity <= 0 || item.price < 0)
-    const emailValid = s.contact.email.trim() !== '' && s.contact.email.includes('@')
-    const phoneRequired = s.contact.preferredChannel === 'phone' && s.contact.phone.trim() === ''
-    return !emailValid || phoneRequired || hasBadItem
+  'summary.itemCount': StateTrait.computed({
+    deps: ['items'],
+    get: (s) => s.items.length,
+  }),
+  'summary.totalQuantity': StateTrait.computed({
+    deps: ['items'],
+    get: (s) => s.items.reduce((acc, item) => acc + item.quantity, 0),
+  }),
+  'summary.totalAmount': StateTrait.computed({
+    deps: ['items'],
+    get: (s) => s.items.reduce((acc, item) => acc + item.quantity * item.price, 0),
+  }),
+  'summary.hasInvalid': StateTrait.computed({
+    deps: ['contact.email', 'contact.preferredChannel', 'contact.phone', 'items'],
+    get: (s) => {
+      const hasBadItem =
+        s.items.length === 0 ||
+        s.items.some((item) => item.name.trim() === '' || item.quantity <= 0 || item.price < 0)
+      const emailValid = s.contact.email.trim() !== '' && s.contact.email.includes('@')
+      const phoneRequired =
+        s.contact.preferredChannel === 'phone' && s.contact.phone.trim() === ''
+      return !emailValid || phoneRequired || hasBadItem
+    },
   }),
 })
 

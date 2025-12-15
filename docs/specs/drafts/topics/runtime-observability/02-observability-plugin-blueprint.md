@@ -5,8 +5,8 @@ version: 0.1.0
 value: core
 priority: next
 related:
-  - ../capability-plugin-system/01-capability-plugin-blueprint.md
-  - ../capability-plugin-system/02-schema-capability-dual-pattern.md
+  - ../../../../specs/007-unify-trait-system/contracts/replay-and-diagnostics.md
+  - ../../../runtime-logix/core/09-debugging.md
   - ../devtools-and-studio/01-cli-and-dev-server.md
   - ../devtools-and-studio/02-full-duplex-digital-twin.md
 ---
@@ -33,7 +33,7 @@ related:
 
 ### 1.2 Observability / Track 能力插件（Platform-Grade）
 
-在 CapabilityPlugin 体系中，Observability 插件的职责是：
+在“平台侧可选能力”的视角下，Observability 插件的职责是：
 
 - 从 TraceBus 订阅事件流；  
 - 将事件转码并输出到：

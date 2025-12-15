@@ -55,7 +55,7 @@ export const LikeButton = () => { // Kept component name as LikeButton for consi
 **Spec**: “点击后立即变色（乐观更新），然后调接口。失败则回滚并提示。”
 
 **Generated Code (Logix Program with Anchors)**:
-> 注意：代码采用了 Module-first + Fluent Intent (`$.onAction().then(...)`) 的 Effect-Native 风格，Logic 本身是运行在其上的长生命周期 Effect 程序。
+> 注意：代码采用了 Module-first + Fluent Intent（`$.onAction().update/.mutate/.run*`）的 Effect-Native 风格，Logic 本身是运行在其上的长生命周期 Effect 程序。
 
 ```typescript
 // src/features/article/store.ts
@@ -76,7 +76,7 @@ export const ArticleLogic = ArticleModule.logic(($) =>
     // @intent-rule: toggle-like { x: 100, y: 200 }
     yield* $.onAction(
       (a): a is { _tag: 'toggleLike'; payload: { id: string } } => a._tag === 'toggleLike',
-    ).then(
+    ).runExhaust(
       // 使用 Pattern 复用逻辑
       OptimisticToggle({
         statePath: 'liked',
@@ -86,7 +86,6 @@ export const ArticleLogic = ArticleModule.logic(($) =>
             yield* service.toggleLike(ctx.payload.id);
           }),
       }),
-      { mode: 'exhaust' },
     );
   }),
 );

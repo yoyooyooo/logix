@@ -1,24 +1,30 @@
 <!--
 Sync Impact Report
-- Version change: 1.1.0 → 1.2.0
+- Version change: 2.0.0 → 2.1.0
 - Modified principles:
+  - Core Principles：
+    - 强化「Logix-as-React」：新增“统一最小 IR（Static IR + Dynamic Trace）与可降解性”约束。
   - Runtime & Codebase Constraints：
-    - 新增「Devtools UI 与依赖约束」小节，明确 Devtools 包内部可使用 Tailwind 等 UI 栈，
-      但业务项目需通过 @source 编译本包，避免将 Tailwind 变成隐性全局依赖；
-    - 新增「Devtools 组件复杂度与状态管理约束」小节，要求 Devtools UI 组件主要承载渲染，
-      复杂状态与副作用由 Logix Runtime 管理，并对组件文件行数给出软/硬上限。
+    - 新增「统一最小 IR」「稳定标识（Identity Model）」「事务边界与写入纪律」「作用域与多实例语义」
+      与「Sandbox / Alignment Lab」等硬约束；
+    - 扩充「性能预算与回归防线」：补齐 Patch/Dirty-set 一等公民与 `path="*"` 禁止项；
+    - 扩充「可诊断性与解释链路」：补齐 Slim 事件载荷与 ring buffer 裁剪要求（禁止携带 Effect/闭包）。
+  - Spec-Driven 开发流程与质量门槛：
+    - 扩充 Constitution Check：加入 IR/锚点漂移、稳定标识、事务窗口 IO 与写入逃逸等自检项。
 - Added sections:
-  - 无（均在既有 Runtime & Codebase Constraints 下新增小节）
+  - Runtime & Codebase Constraints: 统一最小 IR、稳定标识、事务边界与写入纪律、作用域与多实例语义、Sandbox / Alignment Lab
 - Removed sections: 无
 - Templates:
-  - ✅ .specify/templates/plan-template.md（已复核，无需修改）
-  - ✅ .specify/templates/spec-template.md（已复核，无需修改）
-  - ✅ .specify/templates/tasks-template.md（已复核，无需修改）
+  - ✅ .specify/templates/plan-template.md
+  - ✅ .specify/templates/spec-template.md
+  - ✅ .specify/templates/tasks-template.md
   - ✅ .specify/templates/agent-file-template.md（已复核，无需修改）
-  - ✅ .specify/templates/checklist-template.md（已复核，无需修改）
+  - ✅ .specify/templates/checklist-template.md
   - ⚠ .specify/templates/commands/*（当前仓库中不存在该目录，如后续添加需按本宪章补充说明）
 - Runtime guidance:
-  - ✅ README.md（与 Devtools UI/Tailwind/组件复杂度约束不冲突，无需修改）
+  - ✅ README.md
+  - ✅ AGENTS.md / CLAUDE.md / GEMINI.md
+  - ✅ docs/specs/runtime-logix/impl/package-structure.md（已修正结构漂移）
 - Deferred TODOs: 无
 -->
 
@@ -26,7 +32,44 @@ Sync Impact Report
 
 ## Core Principles
 
-### I. Intent → Flow → Code → Runtime 可回放
+### I. 性能与可诊断性优先（拒绝向后兼容）
+
+- Logix Runtime 的核心路径（调度、Flow 执行、State 更新、订阅传播、Devtools 事件采集）
+  MUST 以性能为第一约束：在设计阶段明确热点与复杂度，在实现阶段以可复现的测量验证
+  （基准、profile 或等价证据）。
+- 任何影响核心路径复杂度或分配行为的改动 MUST 提供性能证据（至少包含时间、分配、
+  内存三类指标中的一类），并记录在对应 `specs/[###-feature]/plan.md` 或 PR 描述中；
+  若存在回退，MUST 先修复或在 plan.md 的「Complexity Tracking」中给出可还债的理由。
+- 可诊断性 MUST 与性能同等优先：运行时与 Devtools MUST 能回答
+  “发生了什么 / 为何发生 / 由谁触发 / 影响了什么”，并以结构化事件支持聚合与回放。
+- 诊断能力 MUST 设计为“默认零成本或接近零成本”：禁用时不得引入显著额外分配或
+  O(n) 扫描；启用时成本 MUST 可预估，并在 plan.md 中声明“启用诊断的性能代价”。
+- 本仓库不提供向后兼容承诺：当更优设计出现时，旧接口/旧行为 MUST 直接删除或重写；
+  如产生 breaking change，MUST 同步更新 `docs/specs`、`apps/docs` 与示例，并在
+  plan.md / PR 中提供迁移说明（但不保留兼容层或 deprecation 期）。
+
+*Rationale*: Logix 作为“逻辑编排领域的 React”，性能与可诊断性都是产品能力本身，
+必须被同等对待与量化约束。
+
+### II. Logix-as-React：声明式、可推导、自动优化、可解释
+
+- 公共 API / DSL MUST 偏向声明式：表达 What（意图、约束、依赖、行为）而非 How；
+  如需 imperative escape hatch，MUST 收敛为少数受控边界，并在 `docs/specs` 中解释。
+- 运行时与 DSL MUST 可推导：依赖关系、执行顺序、资源/服务依赖 MUST 在类型或数据结构上
+  可被推断或显式表达，避免把关键语义隐藏在闭包捕获或隐式全局状态里。
+- 所有高层抽象（Rule/Logic/Trait/Task/领域包） MUST 100% 降解到统一最小 IR，
+  且 IR MUST 明确区分：
+  - Static IR（可编译、可合并、可冲突检测）；
+  - Dynamic Trace（运行期时间线，完全用稳定 id 串起因果链）。
+- 为了让运行时可以自动优化，核心数据结构 MUST 结构稳定、可比较、可复用
+  （例如 stable id、结构化 IR/AST、可序列化的诊断事件）；任何“不可推导”的魔法
+  MUST 被视为性能与诊断风险并显式登记。
+- 可解释性作为一等能力：每个 Flow/Logic 的执行与状态变更 MUST 能映射回声明式输入
+  （Intent/Rule/DSL）与触发源，支持 Devtools 展示与回放。
+
+*Rationale*: 只有在“声明式 + 可推导”的前提下，运行时才可能进行系统级优化与解释。
+
+### III. Intent → Flow → Code → Runtime 可回放
 
 - 每一项特性或改动 MUST 能沿着「业务需求 / Intent → Flow / Logix → 代码 → 运行行为」
   这条链路被追踪与回放，避免只存在于局部实现或一次性脚本中。
@@ -39,7 +82,7 @@ Sync Impact Report
 *Rationale*: 确保真实仓库中可以重建与审计「意图 → 行为 → 代码」全链路，为 AI
 和人类提供统一的溯源与重放能力。
 
-### II. LLM 一等公民
+### IV. LLM 一等公民
 
 - 所有 DSL / Schema / Flow / 配置设计 MUST 以
   「LLM 易生成、易校验、易对比」为首要目标，避免过多隐式约定或人肉记忆。
@@ -51,9 +94,9 @@ Sync Impact Report
 *Rationale*: 默认维护者是「LLM + 工具链」，人类更多做审阅与少量 override，
 因此需要让机器易读、易产、易验证。
 
-### III. 引擎优先
+### V. 引擎优先
 
-- 当「引擎正确性 / 可回放 / 可观测性」与「Studio / Playground / Demo 体验」
+- 当「引擎正确性 / 性能 / 可回放 / 可诊断性」与「Studio / Playground / Demo 体验」
   发生冲突时，前者 MUST 优先。
 - 新能力优先落地在 `packages/logix-core` / `packages/logix-react`
   与 `docs/specs/runtime-logix` 中：先稳定 Module / Logic / Flow / IntentRule
@@ -63,9 +106,9 @@ Sync Impact Report
   运行时代码中实现，并同步更新相关示例与用户文档。
 
 *Rationale*: Logix 作为运行时引擎是一切上层能力的基座，必须先保证正确、幂等、
-可调试，再追求交互与表现。
+高性能、可调试，再追求交互与表现。
 
-### IV. Effect 作为统一运行时
+### VI. Effect 作为统一运行时
 
 - 默认使用 `effect` v3 作为行为与流程执行的统一运行时；其他运行时只可作为 PoC
   或迁移垫片，MUST 在代码与文档中标明实验性质。
@@ -82,7 +125,7 @@ Sync Impact Report
 *Rationale*: 通过统一的 Effect 运行时约束行为与错误语义，保证 Flow/Logic
 具备一致的组合方式与可观测性。
 
-### V. 文档先行 & SSoT
+### VII. 文档先行 & SSoT
 
 - 任何影响 Intent 模型、Flow DSL、Logix / Effect 契约的决策 MUST
   先更新 `docs/specs/intent-driven-ai-coding/v3` 与
@@ -106,6 +149,89 @@ Sync Impact Report
   目标运行时为 Node.js 20+ 与现代浏览器。
 - 运行时代码 MUST 依赖 `effect` v3 系列库；禁止混用旧版 `@effect-ts/*`
   或其他效果系统作为等价替代。
+
+**统一最小 IR（Static IR + Dynamic Trace）**
+
+- Runtime / Devtools / Sandbox / 平台侧 MUST 以统一最小 IR 作为唯一事实源；
+  禁止并行维护多套“都能代表真相”的模型（例如规则 IR 与 Trait Graph 并列且无法合并）。
+- Platform-Grade 子集 MUST 唯一且可 AST Pattern 匹配；当子集、锚点或 DSL 发生变更时，
+  MUST 同步更新 parser/codegen、`docs/specs` 与 `apps/docs`，禁止出现“文档/脚本解析的写法”
+  与“真实运行时代码写法”漂移共存。
+- Gray/Black Box 允许存在，但 MUST 能降级为最小可诊断信息（含 loc/owner/粗粒度 source/sink
+  摘要），不得形成“完全看不见”的黑洞。
+
+**稳定标识（Runtime Identity Model）**
+
+- Runtime 实例 MUST 使用可注入的稳定 `instanceId`（来自 React key、Sandbox runId 或宿主实例键），
+  禁止默认用 `Math.random()` 生成实例标识；时间戳仅允许作为 `startedAt` 等元信息。
+- `txnId/opId/linkId` 等运行期标识 MUST 在同一 instance 内可确定重建（建议单调序号），
+  禁止默认用 `Math.random()/Date.now()` 作为 id 源；需要随机性的场景必须显式注入并可替换。
+- 诊断事件 MUST 同时携带 `moduleId + instanceId + txnId`（或可推导等价集合），以支持回放对齐、
+  性能回归与跨进程桥接。
+
+**事务边界与写入纪律（禁止逃逸）**
+
+- 事务窗口 MUST 是纯同步边界：事务内禁止 IO/await/异步边界；任何 IO MUST 通过 Task 模式拆分为
+  多事务（pending → IO → writeback），或在事务外执行后再写回为独立事务。
+- `update/mutate`（以及 reducer、同步 watcher 等进入事务闭包的路径） MUST 是纯同步写入；
+  禁止返回 `Effect`、禁止在内部 `fork` 长任务或引入不可控副作用。
+- 所有写入 MUST 进入事务队列并产出 dirty-set（与可选的 patch）；禁止业务侧绕过事务通过
+  `SubscriptionRef` 等可写 Ref 直接修改 state。
+
+**性能预算与回归防线**
+
+- 任何改动若触及核心路径（调度、Flow 执行、State 更新、订阅传播），MUST 明确：
+  - 热点在哪里、复杂度是否变化、内存/分配是否变化；
+  - 如何验证：基准、profile、或可复现的测量脚本与数据。
+- 当仓库尚未为该路径建立基准测试时，MUST 先把“可复现的测量方式 + 基线数据”
+  写入 `specs/[###-feature]/plan.md`，并在后续迭代中补齐基准测试或回归防线。
+- 性能优化不得以牺牲可诊断性为代价；若需要在性能与诊断之间做权衡，MUST
+  在 plan.md 中明确“诊断能力的可用性与启用成本”，并给出折衷方案。
+- Patch/Dirty-set MUST 是一等公民：
+  - 禁止以 `path="*"` 表达“未知写入”作为常态；若确实未知，必须显式标记为 `dirtyAll=true`
+    或等价结构，并在诊断中给出原因；
+  - dirty-set 生成 MUST 是 O(写入量)，不得在生产热路径默认通过“深 diff / 全量扫描 state”
+    推导 dirtyPaths；
+  - 需要“重活”的计算（拓扑排序、依赖索引、path normalize） SHOULD 下沉到 build 阶段，
+    runtime 每笔事务尽量接近 O(改动量 + 受影响 steps)；
+  - 必须提供负优化降级阀门（dirtyRoots 过粗/过多时直接全量收敛），并输出可解释诊断。
+
+**可诊断性与解释链路**
+
+- 运行时 MUST 提供结构化的诊断事件，并满足：
+  - 可关联：事件之间可用 stable id 串起因果链（触发源、Flow、状态变更、effect）；
+  - 可裁剪：不同级别（开发/生产）可选择性启用；
+  - 可回放：关键路径事件可用于重建与解释运行行为。
+- Devtools / Debug 能力的协议与语义 MUST 以 `docs/specs/runtime-logix/core/09-debugging.md`
+  为单一事实源；如协议调整，必须同步更新该文档与 `apps/docs` 相关章节。
+- 诊断事件载荷 MUST Slim & 可序列化：禁止把 `Effect` 本体、闭包或大型对象图塞进事件并进入
+  DevtoolsHub/Sandbox 的 ring buffer；需要携带的仅为结构化元信息与可引用的 id。
+- Devtools / Sandbox 的事件存储 MUST 有容量上限（ring buffer）与裁剪策略；禁止无界数组累积。
+
+**兼容性与迁移策略**
+
+- 本仓库拒绝向后兼容：对外 API / 行为 / 诊断事件协议的破坏性变更是常态手段。
+- 对 breaking change，MUST：
+  - 直接删除旧接口/旧行为（禁止长期保留 deprecated 入口与兼容层）；
+  - 同步更新 `docs/specs`、`apps/docs`、`examples/*`；
+  - 在 `specs/[###-feature]/plan.md` 或 PR 中提供“迁移说明”（可包含替代写法与
+    需要批量替换的模式），以迁移文档替代兼容期。
+
+**作用域与多实例语义（Strict by Default）**
+
+- core MUST 删除“进程级全局 runtime registry fallback”等隐式解析路径；跨模块解析必须基于显式
+  Context/imports-scope。若需要全局单例语义，必须通过 `mode:"global"` 或等价显式配置开启。
+- 当 strict 与 global 语义同时存在时，默认 MUST 为 strict；任何静默回退到 global 的行为视为
+  诊断缺陷与确定性破坏。
+
+**Sandbox / Alignment Lab（Executable Spec）**
+
+- Sandbox MUST 作为 Alignment Lab 的基础设施，而不是“代码 runner + 日志窗口”：
+  - 协议 MUST IR-first：输出 Static IR + Dynamic Trace（txn/op/diagnostic/replay/react-trace），Host 只做渲染与裁剪；
+  - `RUN.actions` MUST 可消费（可脚本化回放），`TERMINATE` MUST 可取消运行中的 fiber/effect；
+  - `UI_CALLBACK` MUST 全双工回注入用户程序，支持语义 UI Mock；
+  - Worker/Host MUST 使用 ring buffer + 批处理通知，避免观测导致负优化；
+  - Alignment Lab 底座 MUST 避免远程运行时依赖导致版本漂移（禁止在 worker 内另行加载第二份 `effect` 实例）。
 
 **Devtools UI 与依赖约束**
 
@@ -207,6 +333,12 @@ Sync Impact Report
   - 涉及哪些 `docs/specs/*` 规范文档？是否已按「文档先行」更新或补充草稿？
   - 是否会引入 / 修改 Effect / Logix 契约？若是，是否已在
     `docs/specs/runtime-logix` 中达成共识？
+  - IR 与锚点：是否新增/调整统一最小 IR 或 Platform-Grade 子集？是否存在 specs/scripts/examples 漂移点？
+  - 稳定标识：instanceId/txnId/opId 是否可确定重建？是否引入随机/时间作为默认 identity？
+  - 事务边界：是否引入事务窗口 IO、或写入逃逸（可写 SubscriptionRef/Ref）？是否有硬约束与诊断兜底？
+  - 性能预算：本特性涉及的核心路径是什么？有哪些可量化指标与基线数据？
+  - 诊断与解释：需要新增/调整哪些诊断事件或 Devtools 能力？启用诊断的性能代价是什么？
+  - 破坏性变更：是否存在 breaking change（API/行为/事件协议）？迁移说明写在何处？
   - 质量策略：计划运行哪些脚本（typecheck / lint / test），在何处设置验收门槛？
 
 **Plan / Spec / Tasks 协同**
@@ -223,6 +355,7 @@ Sync Impact Report
 - 所有影响核心运行时或平台规范的 PR MUST：
   - 链接至少一个相关的 `specs/[###-feature]/plan.md`；
   - 在描述中说明对应的 Constitution Check 结果；
+  - 声明是否包含 breaking change，并链接迁移说明（或说明为何无需迁移说明）；
   - 说明本次变更所影响的 `docs/specs` 与 `apps/docs` 文档。
 - Reviewer 与 Agent 在评审时 MUST
   检查是否违反本宪章中的任一非协商性约束；若有违规但有充分理由，必须在
@@ -268,4 +401,4 @@ Sync Impact Report
 - 当发现长期偏离本宪章的实现时，团队与 Agent SHOULD
   共同判断是「修宪」还是「还债」，并通过 ADR / plan.md 记录决策。
 
-**Version**: 1.2.0 | **Ratified**: 2025-12-10 | **Last Amended**: 2025-12-11
+**Version**: 2.1.0 | **Ratified**: 2025-12-10 | **Last Amended**: 2025-12-15

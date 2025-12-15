@@ -11,11 +11,16 @@ export const CounterStateSchema = Schema.Struct({
     id: Schema.String,
     name: Schema.String,
   }),
-  // 在示例实现中，将 profileResource 视为结构化对象，便于类型推导路径：
-  // - data-model 与 StateTrait 视角中，它是某逻辑资源的快照；
-  // - Resource / Query 实际接线会在 Runtime 层实现。
+  // profileResource：逻辑资源快照（ResourceSnapshot）
   profileResource: Schema.Struct({
-    name: Schema.String,
+    status: Schema.String,
+    keyHash: Schema.optional(Schema.String),
+    data: Schema.optional(
+      Schema.Struct({
+        name: Schema.String,
+      }),
+    ),
+    error: Schema.optional(Schema.Any),
   }),
 })
 
@@ -30,19 +35,23 @@ export const CounterActions = {
 // 3) Traits：使用 StateTrait.from(StateSchema) 声明 computed / source / link
 export const CounterTraits = StateTrait.from(CounterStateSchema)({
   // sum 是 a + b 的派生字段
-  sum: StateTrait.computed((s) => s.a + s.b),
+  sum: StateTrait.computed({
+    deps: ["a", "b"],
+    get: (s) => s.a + s.b,
+  }),
 
   // profileResource 代表 "user/profile" 资源
   profileResource: StateTrait.source({
+    deps: ["profile.id"],
     resource: "user/profile",
     key: (s) => ({
       userId: s.profile.id,
     }),
   }),
 
-  // profile.name 跟随 profileResource.name（内部字段联动）
+  // profile.name 跟随 profileResource.data.name（内部字段联动）
   "profile.name": StateTrait.link({
-    from: "profileResource.name",
+    from: "profileResource.data.name",
   }),
 })
 
@@ -52,4 +61,3 @@ export const CounterWithProfile = Logix.Module.make("CounterWithProfile", {
   actions: CounterActions,
   traits: CounterTraits,
 })
-

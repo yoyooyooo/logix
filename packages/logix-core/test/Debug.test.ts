@@ -34,10 +34,11 @@ describe("Debug (public API)", () => {
       )
 
       expect(events).toHaveLength(1)
-      expect(events[0]).toEqual({
+      expect(events[0]).toMatchObject({
         type: "module:init",
         moduleId: "test-module",
       })
+      expect(typeof events[0]?.timestamp).toBe("number")
     }),
   )
 

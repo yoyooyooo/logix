@@ -206,20 +206,13 @@ export const TodoList = ({ todos }: { todos: Array<{ id: string, title: string }
 }
 ```
 
-### 4.3 进阶技巧：Registry Pattern
+### 4.3 进阶技巧：Root-scoped Registry（高级）
 
-如果外部（如全局 Link）也需要访问这些动态创建的 Item Module，可以在 Factory 层引入一个全局/模块级 Registry：
+当你真的需要“在非 React 边界也能按 id 找到某个局部实例”（例如某段 processes 逻辑需要与某个 Session/Tab 对齐）时，**不要**使用进程级全局 `Map` 作为 registry：
 
-```typescript
-// features/todo/registry.ts
-const registry = new Map<string, TodoModuleInstance>()
+- 它会跨多个 Runtime Tree 串实例，破坏多 root / 多实例语义；
+- 清理时机不可控（尤其在 HMR/测试/多应用并存时）。
 
-export const getOrCreateTodoModule = (id: string) => {
-  if (!registry.has(id)) {
-    registry.set(id, createTodoModule(id))
-  }
-  return registry.get(id)!
-}
-```
+推荐做法是把 registry 作为一个 Service 提供在 **Runtime Tree 的 root layer** 中，并由“实例拥有者”（例如 Host/Coordinator）显式注册/注销，让作用域随 runtime tree 一起释放。
 
-这样，无论是 React 组件还是由 Link.make 定义的业务 Link，只要拿到 ID，就能获得同一个 Module 实例，实现跨层级协作。
+同时要明确：`Link.make` 只作用于它声明的 `modules` 集合（通常是“单例模块”协作），不负责“多实例选择”。多实例协作应通过显式句柄（`ModuleRef/ModuleRuntime`）透传或通过 root-scoped registry Service 进行桥接。

@@ -171,9 +171,10 @@ export const make = <
     never,
     never
   > =>
-    moduleInstance.logic(($) =>
-      StateTrait.install($ as unknown as BoundApi<any, any>, program),
-    ) as ModuleLogic<
+    moduleInstance.logic(($) => ({
+      setup: StateTrait.install($ as unknown as BoundApi<any, any>, program),
+      run: Effect.void,
+    })) as ModuleLogic<
       ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>,
       never,
       never

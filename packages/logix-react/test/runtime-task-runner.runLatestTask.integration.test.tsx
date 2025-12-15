@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import * as Logix from "@logix/core"
 import { Deferred, Effect, Schema } from "effect"
-import { RuntimeProvider, useModule, useRuntime, useSelector } from "../src/index.js"
+import { RuntimeProvider, useModule, useRuntime } from "../src/index.js"
 
 describe("TaskRunner integration (React): runLatestTask", () => {
   const StateSchema = Schema.Struct({
@@ -67,16 +67,16 @@ describe("TaskRunner integration (React): runLatestTask", () => {
     const { result } = renderHook(
       () => {
         const runtime = useRuntime()
-        const moduleRuntime = useModule(impl) as Logix.ModuleRuntime<
+        const moduleRuntime = useModule(impl).runtime as Logix.ModuleRuntime<
           { loading: boolean; data: number; logs: ReadonlyArray<string> },
           { _tag: "refresh"; payload: number }
         >
 
-        const state = useSelector(moduleRuntime) as {
+        const state = useModule(moduleRuntime, (s) => s as {
           loading: boolean
           data: number
           logs: ReadonlyArray<string>
-        }
+        })
 
         const dispatchRefresh = (n: number) =>
           runtime.runPromise(moduleRuntime.dispatch({ _tag: "refresh", payload: n } as any) as any)
@@ -119,4 +119,3 @@ describe("TaskRunner integration (React): runLatestTask", () => {
     expect(result.current.state.logs.join("|")).not.toContain("success:1:100")
   })
 })
-

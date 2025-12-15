@@ -68,7 +68,7 @@ export const CounterImpl = Counter.make({
   - 其他 `ModuleImpl`（例如当前模块依赖 Auth 模块的运行时）。
 - 这些依赖只影响 **运行时装配**：
   - 让当前模块的 Logic 可以通过 Tag 访问到对应的 Service / ModuleRuntime；
-  - 不会改变“跨模块通信通过 `$.useRemote` / `$.use` 完成”的基本方式，也不会引入 TypeScript 层面的循环依赖。
+  - 不会改变“跨模块协作通过 `$.use`（imports 内）/ `Link.make`（跨模块胶水逻辑）完成”的基本方式，也不会引入 TypeScript 层面的循环依赖。
 - 对于模块作者来说，可以把“这个模块默认需要带着哪些依赖”写在 `imports` 里；
   对于装配者（AppRuntime / React），仍然可以用 `impl.withLayer(...)` 在外层做局部覆盖或注入。
 

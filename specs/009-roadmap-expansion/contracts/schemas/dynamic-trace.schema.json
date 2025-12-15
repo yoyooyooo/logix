@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/009-roadmap-expansion/schemas/dynamic-trace.schema.json",
+  "title": "DynamicTrace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meta", "txns", "events"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["moduleId", "instanceId"],
+      "properties": {
+        "moduleId": { "type": "string", "minLength": 1 },
+        "instanceId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "txns": { "type": "array", "items": { "$ref": "./txn-meta.schema.json" } },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["eventId", "at", "level", "moduleId", "instanceId", "kind"],
+        "properties": {
+          "eventId": { "type": "string", "minLength": 1 },
+          "at": { "type": "number" },
+          "level": { "type": "string", "enum": ["light", "full"] },
+          "moduleId": { "type": "string", "minLength": 1 },
+          "instanceId": { "type": "string", "minLength": 1 },
+          "txnId": { "type": "string" },
+          "nodeId": { "type": "string" },
+          "kind": { "type": "string", "minLength": 1 },
+          "data": { "nullable": true }
+        }
+      }
+    }
+  }
+}
+

@@ -1,84 +1,93 @@
 ---
-title: 跨模块通信（Cross-Module Communication）
-description: 了解模块之间如何通过 $.useRemote 通信，并在不产生循环依赖的前提下互相依赖
+title: 跨模块协作（Cross-Module Communication）
+description: 理解模块之间如何通过 imports / $.use / Link.make 协作，并避免循环依赖
 ---
 
-# 跨模块通信（Cross-Module Communication）
+# 跨模块协作（Cross-Module Communication）
 
-在真实业务里，模块很少是“单机作战”的：
-「User 用户模块」需要知道当前是谁登录的，「Order 订单模块」需要从「Product 商品模块」拿价格信息，等等。
+在真实业务里，模块很少是“单机作战”的：订单要读商品价格、用户要读认证状态、搜索要驱动详情刷新。
 
-Logix 从一开始就把这类跨模块协作当成常态，目标是让它们同时满足：
+Logix 对跨模块协作的目标是同时满足：
 
-- 写法简单、可读；
-- 类型安全；
-- 支持 **模块之间互相依赖，但不会在导入层面产生循环引用**。
-
-### 适合谁
-
-- 正在用 Logix 设计中型以上应用，希望用多个 Module 分治领域，但又难免出现跨模块依赖；
-- 曾在 Redux/Zustand 等方案中被“全局大 Store / 循环依赖”困扰，想要更清晰的跨模块协作模式。
-
-### 前置知识
-
-- 熟悉 Module / ModuleImpl 的基本概念；
-- 能编写简单的 Logic，并理解 `$.use` / `$.useRemote` 的语义。
-
-### 读完你将获得
-
-- 一套可复用的“模块之间互相依赖但不循环 import”的组织方式；
-- 会用 `$.useRemote` + Bound 风格访问其他 Module，并清楚哪些能力是“只读”的；
-- 对“Module 作为领域边界”的实际落地有更清晰的感受。
-
-本指南重点讲两件事：
-
-- 如何用 `$.useRemote()` 在 Logic 中以 Bound 风格访问其他模块；
-- 如何组织文件结构，让 **两个 Module 之间可以互相引用**，而不会出现 TypeScript/打包层面的循环依赖 —— 这一点在很多 zustand 用法里其实很难做到（通常只能拆成 slice 或一个大 store）；
-- 在需要时，如何把“模块 + 初始状态 + 逻辑”打包成一个 **模块蓝图（ModuleImpl）**，方便在 AppRuntime / React 里复用，但不改变前两条的基本思路。
+- 写法清晰、类型安全；
+- 作用域语义可预测（尤其是多实例场景）；
+- 模块之间可以互相协作，但不会在 TypeScript/打包层面制造循环依赖。
 
 > 下文示例都基于 Bound API（`$`），即在 `Module.logic(($) => ...)` 回调里编排逻辑。
 
-## 1. 使用 `$.useRemote()` 访问其他模块
+## 1) 父子模块（imports）：在父实例 scope 下访问子模块（strict）
 
-在 Logic 内部，`$.useRemote(SomeModule)` 会返回一个指向目标模块的 **只读版 Bound API**，你可以：
+当一个模块通过 `imports` 组合了子模块时：
 
-- 用熟悉的 `onState / onAction / on` 写监听；
-- 读取 state 快照；
-- 通过 `actions.xxx` 向对方派发 actions。
-
-**不能**直接修改对方的状态；所有修改都必须通过对方自己的 actions 完成。
+- **父模块实例就是子模块实例的作用域锚点**；
+- 业务逻辑里用 `$.use(Child.module)` 获取子模块句柄（strict：只能从当前父实例的 imports scope 解析）；
+- React 组件里用 `host.imports.get(Child.module)` / `useImportedModule(host, Child.module)` 读取与派发子模块。
 
 ```ts
-// features/user/logic.ts
-import { Effect } from 'effect'
-import { UserModule } from './module'
-import { AuthModule } from '../auth/module'
+// host/logic.ts
+import { Effect } from "effect"
 
-export const UserLogic = UserModule.logic(($) =>
+export const HostLogic = HostModule.logic(($) =>
   Effect.gen(function* () {
-    // 1. 拿到 AuthModule 的「远程 Bound」视图
-    const Auth = yield* $.useRemote(AuthModule)
-
-    // 2. 像用当前模块的 $ 一样，监听 Auth 的 token 变化
-    yield* Auth.onState((s) => s.token)
-      .filter((token) => !!token)
-      .runLatest((token) =>
-        Effect.gen(function* () {
-          const profile = yield* fetchProfile(token)
-          yield* $.actions.setProfile(profile)
-        }),
-      )
+    const child = yield* $.use(ChildModule)
+    const v = yield* child.read((s) => s.value)
+    yield* $.actions.hostSawChild(v)
   }),
 )
 ```
 
-要点：
+前置条件：
 
-- `$.useRemote(AuthModule)` 是 **完全带类型的**：你只能看到 Auth 的 state 和 actions，不能越权访问实现细节。
-- 写法上和当前模块的 `$` 尽量一致：`Auth.onState / Auth.onAction / Auth.actions.xxx(...)`。
-- 跨模块通信没有额外“特殊 API”，只是在 Logic 里，**通过对方公开的 actions/选择器来协作**。
+- 你必须在装配时显式提供子模块实现：`HostImpl.implement({ imports: [ChildImpl] })`；
+- 若缺失 imports，strict 语义必须失败（并提示“补 imports / 把模块提升为直接 imports / 透传实例句柄”等修复方式）。
 
-## 2. 文件结构：从设计上规避循环依赖
+> 经验法则：**UI 默认只依赖 Host**。只有当 UI 需要直接渲染子模块 state（或把子模块句柄传给子组件）时，才在组件侧 `useImportedModule/host.imports.get`。
+
+## 2) 横向协作（Link.make）：把跨模块胶水逻辑挂到 Runtime processes
+
+当你需要在“模块外部”定义一段长期运行的跨模块协作（例如：监听 A 的变化驱动 B），推荐用 `Link.make`：
+
+- `Link` 逻辑运行在 Runtime 的 processes 中；
+- 逻辑入参是 **只读句柄**（`read/changes/dispatch`），跨模块写入必须通过对方 actions；
+- 适合“应用级/页面级单例模块”的编排（而不是“从多个实例里挑一个”）。
+
+```ts
+import * as Logix from "@logix/core"
+import { Stream } from "effect"
+
+const SyncUserFromAuth = Logix.Link.make(
+  { modules: [AuthModule, UserModule] as const },
+  ($) =>
+    $.Auth.changes((s) => s.token).pipe(
+      Stream.runForEach((token) => $.User.actions.syncFromToken(token)),
+    ),
+)
+
+export const RootImpl = RootModule.implement({
+  initial: { /* ... */ },
+  imports: [AuthImpl, UserImpl],
+  processes: [SyncUserFromAuth],
+})
+```
+
+## 3) 全局单例（Root.resolve）：从 root provider 读取“固定 root”实例
+
+当某个模块/服务被作为“全局单例”提供在 Runtime 的 root provider 中时：
+
+- 在 Logic 内部可以用 `Logix.Root.resolve(Tag)` 显式从 root provider 读取它；
+- 它不依赖 `imports`，也不会受到局部 override 的影响。
+
+```ts
+const Logic = SomeModule.logic(($) =>
+  Effect.gen(function* () {
+    const auth = yield* Logix.Root.resolve(GlobalAuth.module)
+    const userId = yield* auth.read((s) => s.userId)
+    // ...
+  }),
+)
+```
+
+## 4) 文件结构：从设计上规避循环依赖
 
 为了让导入关系始终干净、可控，推荐每个业务模块采用这样的文件布局：
 
@@ -110,7 +119,7 @@ import { UserModule } from '../user/module'
 
 export const AuthLogic = AuthModule.logic(($) =>
   Effect.gen(function* () {
-    const User = yield* $.useRemote(UserModule)
+    const User = yield* $.use(UserModule)
 
     // 当用户登出时，顺带清理用户信息
     yield* $.onAction('logout').run(() => $.flow.run(User.actions['user/clearProfile'](undefined)))
@@ -135,17 +144,17 @@ export const AuthLogic = AuthModule.logic(($) =>
 
 在上述结构下，让两个模块互相依赖是安全的：
 
-- 在 `UserLogic` 里，用 `$.useRemote(AuthModule)` 响应登录状态变化；
-- 在 `AuthLogic` 里，用 `$.useRemote(UserModule)` 更新用户相关数据。
+- 在 `UserLogic` 里，用 `Link.make` / “拥有者模块”去编排 Auth 与 User 的协作；
+- 在 `AuthLogic` 里，用 `$.use(UserModule)`（strict：要求被装配为 imports）或通过 actions 协作。
 
-因为所有跨模块访问都是 **运行时通过 `$.useRemote()`** 完成，导入层面始终是 `logic.ts` → 自己的 `module.ts` / 别人的 `module.ts`，不会出现经典的：
+因为跨模块访问发生在 **运行时**（`imports` / `Link` / Runtime processes），导入层面始终是 `logic.ts` → 自己的 `module.ts` / 别人的 `module.ts`，不会出现经典的：
 
 > store A 文件导入 store B，store B 又导入 store A，最终构成循环引用，实例不一致或初始化顺序混乱。
 
 可以用一个心智模型来记：
 
 - **编译期依赖图**：`logic.ts` → `module.ts`，无环；
-- **运行时依赖图**：Module 之间可以是任意拓扑（A 依赖 B，B 依赖 A，都没问题），靠 App Runtime + `$.useRemote()` 来解析。
+- **运行时依赖图**：Module 之间可以是任意拓扑（A 依赖 B，B 依赖 A，都没问题），靠 App Runtime 的装配（imports/processes/Link）来解析。
 
 ## 4. 为什么在 zustand 里这件事很难，而在 Logix 里很自然
 
@@ -169,35 +178,35 @@ Logix 的路径不一样：
 
 - **Module 只定义一次**，是纯粹的描述（`Logix.Module`，在 `module.ts` 里写 state + actions）；
 - Logic 后挂（`Module.logic(($) => ...)` 在 `logic.ts` 里实现行为）；
-- 跨模块通信一律通过 `$.useRemote(OtherModule)`，在当前 Logic 中拿到对方的「只读 Bound 视图」，再由 App Runtime 在运行时解析目标模块，而不是在导入层面直接拿某个 store 实例。
+- 跨模块协作通过“imports / Link / processes”等运行时装配完成：业务代码拿到的是对方公开的句柄（`read/changes/actions`），而不是在导入层面直接拿某个 store 实例。
 
 因此：
 
 - 你可以保持 **细粒度、按功能划分的 Module**；
 - 同时又可以在它们之间建立 **丰富的互相依赖关系**，不用为了避免循环导入而被迫合并 store 或硬拆 slices。
 
-## 5. 使用建议（Best Practices）
+## 5) 语义对比表（你应该用哪一个？）
 
-1. 使用 `$.useRemote`，不要自己搞全局单例
-   访问其他模块时，统一通过 `$.useRemote(OtherModule)`，避免在全局手动共享运行时实例。
+| 入口 | 场景 | 作用域语义 | 返回值（直觉） |
+|------|------|------------|----------------|
+| `$.use(Child.module)` | Logic 内访问“当前实例的子模块” | strict：只认当前模块实例的 imports scope | 子模块只读句柄（read/changes/actions） |
+| `host.imports.get(Child.module)` / `useImportedModule(host, Child.module)` | React 组件侧读取/派发子模块 | strict：只认 `host` 的 imports scope | 子模块 `ModuleRef`（可交给 hooks） |
+| `Link.make({ modules })` | Runtime processes 中的跨模块胶水逻辑 | 以 Runtime tree 为边界；不做多实例选择 | 多个模块的只读句柄集合 |
+| `Logix.Root.resolve(Tag)` | 显式读取 root provider 的固定单例 | 固定 root；忽略局部 override | Tag 对应的服务/模块运行时 |
 
-2. 让 `module.ts` 保持“干净”
+## 6) 使用建议（Best Practices）
+
+1. 让 `module.ts` 保持“干净”  
    只定义 state 和 actions；不要在这里导入其他模块或具体的 runtime/wiring 代码。
 
-3. 把跨模块编排放在 Logic 层
-   像搜索 → 详情、Auth → UserProfile 这种跨模块流程，统一写在各自的 `logic.ts` 里，在这里自由地 `$.useRemote` 其他模块。
+2. UI 默认只绑定 Host，一跳即可  
+   组件侧优先只拿 Host 的 state；只有 UI 真的需要渲染子模块状态时，才用 `host.imports.get/useImportedModule`。
 
-4. 单条规则尽量保持单向依赖
-   在同一个 Logic 文件里，优先写清晰的“单向流”（例如 User 监听 Auth）；即便另一个文件里有相反方向的规则，两条规则各自都是独立、易测试的。
+3. 深层（3 层+）不要到处“爬树”  
+   优先把常用模块提升为 Host 的直接 imports（“二层化”），或在边界 resolve 一次，把 `ModuleRef` 往下传；必要时将子模块的 view 投影到父模块 state 再由 UI 消费。
 
-5. 需要“模块蓝图”时再用 ModuleImpl
-   对于大部分业务场景，只用 `Logix.Module` + `Module.logic` + `Module.live` 就足够了。
-   当你希望在多个入口（例如不同页面、不同 AppRuntime）里复用同一套“模块 + 初始状态 + 逻辑 + 依赖注入”时，可以：
-   - 在内部使用 `Module.implement({ initial, logics, imports?, processes? })` 生成一个 ModuleImpl；
-   - 在应用层通过 Root ModuleImpl + `Logix.Runtime.make(rootImpl, { layer, onError })` 组合出 App/Page Runtime；
-   - 在 React 中通过 `useModule(impl)` 或 `useLocalModule(impl)` 消费它。
-
-   这些都是 **运行时层面的装配细节**，不会改变"Module 定义在 `module.ts`、Logic 写在 `logic.ts`、跨模块通过 `$.useRemote` 协作"这条主线，也不会引入新的循环依赖风险。
+4. 全局单例要显式  
+   需要固定 root provider 的单例语义时，用 `Logix.Root.resolve(Tag)`；不要指望深层组件的局部 override 能影响它。
 
 ## 下一步
 

@@ -31,14 +31,21 @@ import * as LogicDiagnostics from "./core/LogicDiagnostics.js"
 import { globalLogicPhaseRef } from "./BoundApiRuntime.js"
 import * as EffectOp from "../../effectop.js"
 import * as EffectOpCore from "./EffectOpCore.js"
+import type { StateTraitProgram } from "../state-trait/model.js"
+import * as StateTraitConverge from "../state-trait/converge.js"
+import * as StateTraitValidate from "../state-trait/validate.js"
+import * as StateTraitSource from "../state-trait/source.js"
+import * as RowId from "../state-trait/rowid.js"
 
 /**
- * 全局运行时注册表：
+ * 进程级运行时注册表（debug-only / non-authoritative）：
  * - key：Module Tag（ModuleInstance 本身）；
  * - value：对应的 ModuleRuntime 实例。
  *
- * 仅用于运行时内部（例如 $.useRemote / Link 等跨模块能力），
- * 不作为对外正式 API 暴露。
+ * 约束：
+ * - 这是一个“单槽表”：同一 Tag 只能映射到一个 runtime，无法表达多实例/多 root 正确语义；
+ * - 禁止作为解析兜底（strict 默认下缺失提供者必须失败）；
+ * - 仅允许用于 devtools/内部调试与过渡期的内部能力（并在可行时迁向显式句柄/Link）。
  */
 const runtimeRegistry = new WeakMap<
   Context.Tag<any, PublicModuleRuntime<any, any>>,
@@ -85,6 +92,14 @@ export const getRuntimeByModuleAndInstance = <S, A>(
 
 export interface ModuleRuntimeOptions<S, A, R = never> {
   readonly tag?: Context.Tag<any, PublicModuleRuntime<S, A>>
+  /**
+   * 当前实例 scope（imports-scope）下可解析的“子模块”清单：
+   * - 仅用于构造最小化的 imports injector（ModuleToken -> ModuleRuntime）；
+   * - 禁止把完整 Context 捕获进 ModuleRuntime（避免 root/base services 被意外引用）。
+   */
+  readonly imports?: ReadonlyArray<
+    Context.Tag<any, PublicModuleRuntime<any, any>>
+  >
   readonly logics?: ReadonlyArray<
     Effect.Effect<any, any, R> | LogicPlan<any, R, any>
   >
@@ -105,12 +120,21 @@ export interface ModuleRuntimeOptions<S, A, R = never> {
    */
   readonly stateTransaction?: {
     readonly instrumentation?: StateTransactionInstrumentation
+    readonly traitConvergeBudgetMs?: number
+    readonly traitConvergeMode?: "full" | "dirty"
   }
 }
 
 type PhaseRef = { current: "setup" | "run" }
 
 const createPhaseRef = (): PhaseRef => ({ current: "run" })
+
+type ImportsScope = {
+  readonly kind: "imports-scope"
+  readonly get: (
+    module: Context.Tag<any, PublicModuleRuntime<any, any>>,
+  ) => PublicModuleRuntime<any, any> | undefined
+}
 
 const getMiddlewareStack = (): Effect.Effect<
   EffectOp.MiddlewareStack,
@@ -147,11 +171,35 @@ export const make = <S, A, R = never>(
       Option.isSome(runtimeConfigOpt)
         ? runtimeConfigOpt.value.instrumentation
         : undefined
+    const runtimeTraitConvergeBudgetMs: number | undefined =
+      Option.isSome(runtimeConfigOpt)
+        ? runtimeConfigOpt.value.traitConvergeBudgetMs
+        : undefined
+    const runtimeTraitConvergeMode: "full" | "dirty" | undefined =
+      Option.isSome(runtimeConfigOpt)
+        ? runtimeConfigOpt.value.traitConvergeMode
+        : undefined
 
     const instrumentation: StateTransactionInstrumentation =
       options.stateTransaction?.instrumentation ??
       runtimeInstrumentation ??
       getDefaultStateTxnInstrumentation()
+
+    const normalizeBudgetMs = (ms: unknown): number | undefined =>
+      typeof ms === "number" && Number.isFinite(ms) && ms > 0 ? ms : undefined
+
+    const traitConvergeBudgetMs: number =
+      normalizeBudgetMs(options.stateTransaction?.traitConvergeBudgetMs) ??
+      normalizeBudgetMs(runtimeTraitConvergeBudgetMs) ??
+      200
+
+    const normalizeConvergeMode = (mode: unknown): "full" | "dirty" | undefined =>
+      mode === "full" || mode === "dirty" ? mode : undefined
+
+    const traitConvergeMode: "full" | "dirty" =
+      normalizeConvergeMode(options.stateTransaction?.traitConvergeMode) ??
+      normalizeConvergeMode(runtimeTraitConvergeMode) ??
+      "full"
 
     // StateTransaction 上下文：
     // - 按 ModuleRuntime 维度维护单活跃事务；
@@ -162,6 +210,12 @@ export const make = <S, A, R = never>(
       runtimeId: id,
       instrumentation,
     })
+
+    // StateTrait Program（由 StateTrait.install 注册）：
+    // - 运行时在每次事务提交前对其执行派生收敛（0/1 commit 语义的核心）。
+    let stateTraitProgram: StateTraitProgram<any> | undefined
+    let stateTraitListConfigs: ReadonlyArray<RowId.ListConfig> = []
+    const rowIdStore = new RowId.RowIdStore()
 
     /**
      * 事务历史：
@@ -302,10 +356,9 @@ export const make = <S, A, R = never>(
      * - 否则回退到底层 SubscriptionRef 快照。
      */
     const readState: Effect.Effect<S> = Effect.gen(function* () {
+      const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
       const current = txnContext.current
-      if (current) {
-        return current.draft
-      }
+      if (inTxn && current) return current.draft
       return yield* SubscriptionRef.get(stateRef)
     })
 
@@ -317,34 +370,38 @@ export const make = <S, A, R = never>(
      * 说明：
      * - Patch 的 path 暂时统一为 "*"，后续在接入 StateTrait Patch 模型时再细化为字段级路径。
      */
-    const setStateInternal = (next: S): Effect.Effect<void> =>
+    const setStateInternal = (
+      next: S,
+      patch: StateTransaction.StatePatch,
+    ): Effect.Effect<void> =>
       Effect.gen(function* () {
-        if (txnContext.current) {
-          // 在活跃事务内，仅更新草稿并记录一次 reducer 级 Patch。
-          StateTransaction.updateDraft(txnContext, next, {
-            path: "*",
-            to: next,
-            reason: "reducer",
-          })
+        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+        if (inTxn && txnContext.current) {
+          StateTransaction.updateDraft(txnContext, next, patch)
           return
         }
 
-        yield* runOperation(
-          "state",
-          "state:update",
-          {
-            payload: next,
-            meta: { moduleId: options.moduleId, runtimeId: id },
-          },
-          Effect.gen(function* () {
-            yield* SubscriptionRef.set(stateRef, next)
-            yield* Debug.record({
-              type: "state:update",
-              moduleId: options.moduleId,
-              state: next,
-              runtimeId: id,
-            })
-          }),
+        // 非事务 fiber 的写入必须入队：避免并发更新绕过 txnQueue。
+        yield* enqueueTransaction(
+          runOperation(
+            "state",
+            "state:update",
+            {
+              payload: next,
+              meta: { moduleId: options.moduleId, runtimeId: id },
+            },
+            runWithStateTransaction(
+              {
+                kind: "state",
+                name: "setState",
+              },
+              () =>
+                Effect.sync(() => {
+                  // 事务开始时的 baseState 由 runWithStateTransaction 注入，这里只需更新草稿。
+                  StateTransaction.updateDraft(txnContext, next, patch)
+                }),
+            ),
+          ),
         )
       })
 
@@ -367,52 +424,216 @@ export const make = <S, A, R = never>(
             origin,
             baseState,
           )
+          ;(txnContext.current as any).stateTraitValidateRequests = []
 
-          // 在事务窗口内执行具体逻辑（reducer / traits / 中间件等）。
-          const exit = yield* Effect.exit(body())
+          const txnId = txnContext.current?.txnId
+
+          const exit = yield* Effect.exit(
+            Effect.locally(Debug.currentTxnId, txnId)(
+              Effect.gen(function* () {
+              // 事务窗口内的 Trait 汇总信息（用于 Devtools/诊断展示）。
+              let traitSummary: unknown | undefined
+
+              // 在事务窗口内执行具体逻辑（reducer / watcher writeback / traits 等）。
+              yield* body()
+
+              // StateTrait：在提交前执行派生收敛（computed/link 等），确保单窗口 0/1 commit。
+              if (stateTraitProgram && txnContext.current) {
+                const convergeExit = yield* Effect.exit(
+                  StateTraitConverge.convergeInTransaction(
+                    stateTraitProgram as any,
+                    {
+                      moduleId: options.moduleId,
+                      runtimeId: id,
+                      now: txnContext.config.now,
+                      budgetMs: traitConvergeBudgetMs,
+                      mode: traitConvergeMode,
+                      dirtyPaths: (txnContext.current as any)?.dirtyPaths as
+                        | ReadonlySet<string>
+                        | undefined,
+                      getDraft: () => txnContext.current!.draft as any,
+                      setDraft: (next) => {
+                        StateTransaction.updateDraft(txnContext, next as any)
+                      },
+                      recordPatch: (patch) => {
+                        StateTransaction.recordPatch(txnContext, patch)
+                      },
+                    } as StateTraitConverge.ConvergeContext<any>,
+                  ),
+                )
+
+                if (convergeExit._tag === "Failure") {
+                  const errors = [
+                    ...Cause.failures(convergeExit.cause),
+                    ...Cause.defects(convergeExit.cause),
+                  ]
+                  const configError = errors.find(
+                    (err): err is StateTraitConverge.StateTraitConfigError =>
+                      err instanceof StateTraitConverge.StateTraitConfigError,
+                  )
+
+                  if (configError) {
+                    const fields = configError.fields ?? []
+                    yield* Debug.record({
+                      type: "diagnostic",
+                      moduleId: options.moduleId,
+                      runtimeId: id,
+                      txnId,
+                      trigger: origin,
+                      code: "state_trait::config_error",
+                      severity: "error",
+                      message: configError.message,
+                      hint:
+                        configError.code === "CYCLE_DETECTED"
+                          ? `computed/link 图存在循环：${fields.join(", ")}`
+                          : `同一字段存在多个 writer：${fields.join(", ")}`,
+                      kind: `state_trait_config_error:${configError.code}`,
+                    })
+                  }
+
+                  return yield* Effect.failCause(convergeExit.cause)
+                }
+
+                const outcome = convergeExit.value
+
+                traitSummary = {
+                  converge: outcome.summary
+                    ? {
+                        ...outcome.summary,
+                        outcome: outcome._tag,
+                        degradedReason:
+                          outcome._tag === "Degraded"
+                            ? outcome.reason
+                            : undefined,
+                      }
+                    : {
+                        outcome: outcome._tag,
+                      },
+                }
+
+                if (outcome._tag === "Degraded") {
+                  yield* Debug.record({
+                    type: "diagnostic",
+                    moduleId: options.moduleId,
+                    runtimeId: id,
+                    code:
+                      outcome.reason === "budget_exceeded"
+                        ? "trait::budget_exceeded"
+                        : "trait::runtime_error",
+                    severity: "warning",
+                    message:
+                      outcome.reason === "budget_exceeded"
+                        ? "Trait converge exceeded budget; derived fields are frozen for this operation window."
+                        : "Trait converge failed at runtime; derived fields are frozen for this operation window.",
+                    hint:
+                      outcome.reason === "budget_exceeded"
+                        ? "检查 computed/check 是否包含重型计算；将其下放到 source/task 或拆分为可缓存的派生。"
+                        : "检查 computed/link/check 是否有异常输入或不纯逻辑；必要时补充 equals 或 guard。",
+                    kind: "trait_degraded",
+                  })
+                }
+              }
+
+              // TraitLifecycle scoped validate：在 converge 之后统一 flush（保证校验读取到最新派生）。
+              if (stateTraitProgram && txnContext.current) {
+                const pending = (txnContext.current as any)
+                  .stateTraitValidateRequests as
+                  | ReadonlyArray<StateTraitValidate.ScopedValidateRequest>
+                  | undefined
+
+                if (pending && pending.length > 0) {
+                  yield* StateTraitValidate.validateInTransaction(
+                    stateTraitProgram as any,
+                    {
+                      moduleId: options.moduleId,
+                      runtimeId: id,
+                      getDraft: () => txnContext.current!.draft as any,
+                      setDraft: (next) => {
+                        StateTransaction.updateDraft(txnContext, next as any)
+                      },
+                      recordPatch: (patch) => {
+                        StateTransaction.recordPatch(txnContext, patch)
+                      },
+                    } as StateTraitValidate.ValidateContext<any>,
+                    pending,
+                  )
+                }
+              }
+
+              // Source key 变空同步回收为 idle（避免 tearing / 幽灵数据）。
+              if (stateTraitProgram && txnContext.current) {
+                yield* StateTraitSource.syncIdleInTransaction(
+                  stateTraitProgram as any,
+                  {
+                    moduleId: options.moduleId,
+                    runtimeId: id,
+                    getDraft: () => txnContext.current!.draft as any,
+                    setDraft: (next) => {
+                      StateTransaction.updateDraft(txnContext, next as any)
+                    },
+                    recordPatch: (patch) => {
+                      StateTransaction.recordPatch(txnContext, patch)
+                    },
+                  } as StateTraitSource.SourceSyncContext<any>,
+                )
+              }
+
+              // 提交事务：单次写入底层状态，并发出一次聚合后的 state:update 事件。
+              yield* runOperation(
+                "state",
+                "state:update",
+                { meta: { moduleId: options.moduleId, runtimeId: id } },
+                Effect.gen(function* () {
+                  const replayEvent = (txnContext.current as any)
+                    ?.lastReplayEvent as unknown
+                  const txn = yield* StateTransaction.commit(txnContext, stateRef)
+
+                  if (txn) {
+                    // 记录事务历史：仅在 dev/test 场景用于调试与 Devtools，不参与业务逻辑。
+                    txnHistory.push(txn)
+                    txnById.set(txn.txnId, txn)
+                    if (txnHistory.length > maxTxnHistory) {
+                      const oldest = txnHistory.shift()
+                      if (oldest) {
+                        txnById.delete(oldest.txnId)
+                      }
+                    }
+
+                    const nextState =
+                      txn.finalStateSnapshot !== undefined
+                        ? txn.finalStateSnapshot
+                        : yield* SubscriptionRef.get(stateRef)
+
+                    // RowID 虚拟身份层：在每次可观察提交后对齐映射，
+                    // 确保数组 insert/remove/reorder 下的 in-flight 门控与缓存复用稳定可用。
+                    if (stateTraitListConfigs.length > 0) {
+                      rowIdStore.updateAll(nextState as any, stateTraitListConfigs)
+                    }
+
+                    yield* Debug.record({
+                      type: "state:update",
+                      moduleId: options.moduleId,
+                      state: nextState,
+                      runtimeId: id,
+                      txnId: txn.txnId,
+                      patchCount: txn.patches.length,
+                      originKind: txn.origin.kind,
+                      originName: txn.origin.name,
+                      traitSummary,
+                      replayEvent: replayEvent as any,
+                    })
+                  }
+                }),
+              )
+              }),
+            ),
+          )
+
           if (exit._tag === "Failure") {
             // 失败时必须清理事务上下文，避免泄漏到后续入口。
             StateTransaction.abort(txnContext)
             return yield* Effect.failCause(exit.cause)
           }
-
-          // 提交事务：单次写入底层状态，并发出一次聚合后的 state:update 事件。
-          yield* runOperation(
-            "state",
-            "state:update",
-            { meta: { moduleId: options.moduleId, runtimeId: id } },
-            Effect.gen(function* () {
-              const txn = yield* StateTransaction.commit(txnContext, stateRef)
-
-              if (txn) {
-                // 记录事务历史：仅在 dev/test 场景用于调试与 Devtools，不参与业务逻辑。
-                txnHistory.push(txn)
-                txnById.set(txn.txnId, txn)
-                if (txnHistory.length > maxTxnHistory) {
-                  const oldest = txnHistory.shift()
-                  if (oldest) {
-                    txnById.delete(oldest.txnId)
-                  }
-                }
-
-                const nextState =
-                  txn.finalStateSnapshot !== undefined
-                    ? txn.finalStateSnapshot
-                    : yield* SubscriptionRef.get(stateRef)
-
-                yield* Debug.record({
-                  type: "state:update",
-                  moduleId: options.moduleId,
-                  state: nextState,
-                  runtimeId: id,
-                  txnId: txn.txnId,
-                  patchCount: txn.patches.length,
-                  originKind: txn.origin.kind,
-                  originName: txn.origin.name,
-                })
-              }
-            }),
-          )
         }),
       )
 
@@ -462,8 +683,12 @@ export const make = <S, A, R = never>(
       return readState.pipe(
         Effect.flatMap((prev) => {
           const next = reducer(prev, action)
-          // 即便 next === prev，仍然复用 setStateInternal 的 Debug 行为，由上层决定是否据此做 diff。
-          return setStateInternal(next)
+          // reducer 级写入在事务内聚合为一次提交；Patch path 暂时以 "*" 表示。
+          return setStateInternal(next, {
+            path: "*",
+            to: next,
+            reason: "reducer",
+          })
         })
       )
     }
@@ -515,7 +740,12 @@ export const make = <S, A, R = never>(
       // 将 moduleId 暴露到 Runtime 上，便于 React / Devtools 在视图层关联 Module 信息。
       moduleId: options.moduleId,
       getState: readState,
-      setState: setStateInternal,
+      setState: (next) =>
+        setStateInternal(next, {
+          path: "*",
+          to: next,
+          reason: "state:set",
+        }),
       dispatch: (action) =>
         // 将事务请求排入队列，保证单实例内按 FIFO 串行执行。
         enqueueTransaction(runDispatch(action)),
@@ -557,8 +787,37 @@ export const make = <S, A, R = never>(
       }
     }
 
+    // 构造最小化的 imports-scope injector：
+    // - 只保存 ModuleToken -> ModuleRuntime 映射；
+    // - 严禁把完整 Context 捕获进 runtime（避免 root/base services 被意外引用导致泄漏）。
+    const importsMap = new Map<
+      Context.Tag<any, PublicModuleRuntime<any, any>>,
+      PublicModuleRuntime<any, any>
+    >()
+
+    for (const imported of options.imports ?? []) {
+      const maybe = yield* Effect.serviceOption(imported)
+      if (Option.isSome(maybe)) {
+        importsMap.set(imported, maybe.value)
+      }
+    }
+
+    const importsScope: ImportsScope = {
+      kind: "imports-scope",
+      get: (module) => importsMap.get(module),
+    }
+
+    ;(runtime as any).__importsScope = importsScope
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        importsMap.clear()
+        ;(runtime as any).__importsScope = undefined
+      }),
+    )
+
     const instanceKey =
       options.moduleId != null ? `${options.moduleId}::${id}` : undefined
+
 
     if (instanceKey) {
       runtimeByInstanceKey.set(
@@ -573,6 +832,29 @@ export const make = <S, A, R = never>(
     // 将内部注册函数暴露给 BoundApiRuntime，用于实现 $.reducer 语法糖。
     ;(runtime as any).__registerReducer = registerReducer
 
+    // StateTrait Program 注册入口：由 StateTrait.install 调用，将 Program 下发到 Runtime 内核。
+    ;(runtime as any).__registerStateTraitProgram = (
+      program: StateTraitProgram<any>,
+    ): void => {
+      stateTraitProgram = program
+      stateTraitListConfigs = RowId.collectListConfigs(program.spec as any)
+    }
+
+    // RowID Store：仅供 StateTrait/source 与 TraitLifecycle/Devtools 等内部能力使用。
+    ;(runtime as any).__rowIdStore = rowIdStore
+
+    // TraitLifecycle scoped validate：将请求挂到当前事务，等待在 converge 之后统一 flush。
+    ;(runtime as any).__enqueueStateTraitValidateRequest = (
+      request: StateTraitValidate.ScopedValidateRequest,
+    ): void => {
+      if (!txnContext.current) return
+      const current: any = txnContext.current
+      const list: Array<StateTraitValidate.ScopedValidateRequest> =
+        current.stateTraitValidateRequests ?? []
+      list.push(request)
+      current.stateTraitValidateRequests = list
+    }
+
     // 仅供内部使用：在当前 Runtime 的 StateTransaction 上记录字段级 Patch。
     ;(runtime as any).__recordStatePatch = (
       patch: {
@@ -585,6 +867,17 @@ export const make = <S, A, R = never>(
       },
     ): void => {
       StateTransaction.recordPatch(txnContext, patch)
+    }
+
+    // 仅供内部使用：将 ReplayLog 事件记录到当前事务，以便在 state:update 中关联 replayEvent。
+    ;(runtime as any).__recordReplayEvent = (event: unknown): void => {
+      if (!txnContext.current) return
+      const current: any = txnContext.current
+      current.lastReplayEvent = {
+        ...(event as any),
+        txnId: current.txnId,
+        trigger: current.origin,
+      }
     }
 
     // 仅供内部使用：为 BoundApi / Traits 等入口提供统一的事务执行助手，
@@ -656,7 +949,7 @@ export const make = <S, A, R = never>(
         }),
       )
 
-    // 注册 Runtime，供跨模块访问（useRemote / Link 等）使用
+    // 注册 Runtime，供跨模块访问（Link 等）使用
     if (options.tag) {
       registerRuntime(options.tag as Context.Tag<any, PublicModuleRuntime<S, A>>, runtime)
     }

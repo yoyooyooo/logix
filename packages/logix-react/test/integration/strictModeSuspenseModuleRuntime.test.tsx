@@ -12,8 +12,6 @@ import { Schema, Effect, Layer, ManagedRuntime } from "effect"
 import * as Logix from "@logix/core"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
-import { useSelector } from "../../src/hooks/useSelector.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
 
 const Counter = Logix.Module.make("StrictAsyncCounter", {
   state: Schema.Struct({ value: Schema.Number }),
@@ -53,15 +51,11 @@ const SharedCounterView: React.FC<SharedCounterViewProps> = ({
   resourceKey,
   viewId,
 }) => {
-  const runtime = useModule(AsyncCounterImpl, {
+  const counter = useModule(AsyncCounterImpl, {
     suspend: true,
     key: resourceKey,
   })
-  const value = useSelector(
-    runtime,
-    (s) => (s as { value: number }).value,
-  )
-  const dispatch = useDispatch(runtime)
+  const value = useModule(counter, (s) => (s as { value: number }).value)
 
   return (
     <div>
@@ -69,7 +63,7 @@ const SharedCounterView: React.FC<SharedCounterViewProps> = ({
       <button
         type="button"
         data-testid={`inc-${viewId}`}
-        onClick={() => dispatch({ _tag: "inc", payload: undefined })}
+        onClick={() => counter.actions.inc()}
       >
         inc
       </button>
@@ -140,7 +134,7 @@ describe("StrictMode + Suspense integration for ModuleImpl", () => {
         suspend: true,
         key: "StrictShared:Right",
       })
-      return { leftId: left.id, rightId: right.id }
+      return { leftId: left.runtime.id, rightId: right.runtime.id }
     }
 
     const { result } = renderHook(() => usePair(), { wrapper })

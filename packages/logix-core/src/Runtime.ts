@@ -15,6 +15,8 @@ import * as Middleware from "./middleware/index.js"
  */
 export interface RuntimeStateTransactionOptions {
   readonly instrumentation?: StateTransactionInstrumentation
+  readonly traitConvergeBudgetMs?: number
+  readonly traitConvergeMode?: "full" | "dirty"
 }
 
 export interface RuntimeOptions {

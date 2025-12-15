@@ -60,10 +60,10 @@ export const StateTraitGraphView: React.FC<StateTraitGraphViewProps> = ({
         </div>
         <ul className="space-y-0.5">
           {graph.nodes.map((node) => {
-            const fieldPath =
-              (node as any).field?.path && typeof (node as any).field.path === 'string'
-                ? (node as any).field.path
-                : node.id
+            const fieldPath = node.field.path
+
+            const label = node.meta?.label
+            const tags = node.meta?.tags ?? []
 
             const handleClick = () => {
               if (onSelectNode) {
@@ -86,11 +86,61 @@ export const StateTraitGraphView: React.FC<StateTraitGraphViewProps> = ({
                       : undefined
                   }
                 >
-                  <span>{fieldPath}</span>
+                  <span className="flex flex-col gap-0.5 min-w-0">
+                    <span className="truncate">{label ?? fieldPath}</span>
+                    {label ? (
+                      <span className="text-[9px] truncate" style={{ color: 'var(--dt-text-muted)' }}>
+                        {fieldPath}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="text-[9px]" style={{ color: 'var(--dt-text-muted)' }}>
                     {node.traits.map((t) => t.kind).join(', ') || '—'}
+                    {tags.length > 0 ? ` · #${tags.join(' #')}` : ''}
                   </span>
                 </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
+      <div>
+        <div className="text-[9px] mt-2 mb-1" style={{ color: 'var(--dt-text-secondary)' }}>
+          Resources ({graph.resources.length})
+        </div>
+        <ul className="space-y-0.5">
+          {graph.resources.map((res) => {
+            const label = res.meta?.label
+            const tags = res.meta?.tags ?? []
+            const conflicts = res.metaConflicts ?? []
+
+            return (
+              <li key={res.resourceId} className="flex items-center justify-between gap-2">
+                <span className="min-w-0 flex-1 truncate">
+                  {res.resourceId}
+                  {label ? ` · ${label}` : ''}
+                </span>
+                <span className="text-[9px] flex items-center gap-2" style={{ color: 'var(--dt-text-muted)' }}>
+                  <span>
+                    owners:{' '}
+                    {res.ownerFields.length}
+                  </span>
+                  {tags.length > 0 ? <span>#{tags.join(' #')}</span> : null}
+                  {conflicts.length > 0 ? (
+                    <span
+                      className="px-1 rounded"
+                      style={{
+                        color: 'var(--dt-danger)',
+                        backgroundColor: 'var(--dt-danger-bg)',
+                        boxShadow: '0 0 0 1px var(--dt-danger-border)',
+                      }}
+                      title="Multiple conflicting meta declarations detected for this resource id."
+                    >
+                      meta-conflict+{conflicts.length}
+                    </span>
+                  ) : null}
+                </span>
               </li>
             )
           })}

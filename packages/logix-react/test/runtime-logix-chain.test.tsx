@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import * as Logix from "@logix/core"
 import { Context, Effect, Layer, Schema } from "effect"
-import { RuntimeProvider, useModule, useRuntime, useSelector, useDispatch } from "../src/index.js"
+import { RuntimeProvider, useModule, useRuntime } from "../src/index.js"
 
 describe("Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chain", () => {
   const EnvTag = Context.GenericTag<{
@@ -74,9 +74,9 @@ describe("Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
     const { result } = renderHook(
       () => {
         const runtime = useRuntime()
-        const moduleRuntime = useModule(TestImpl) as Logix.ModuleRuntime<
+        const moduleRuntime = useModule(TestImpl).runtime as Logix.ModuleRuntime<
           { initialized: boolean; label: string },
-          { _tag: "init"; payload: void }
+          { _tag: "init"; payload?: void }
         >
 
         const [state, setState] = React.useState<{ initialized: boolean; label: string } | null>(
@@ -88,7 +88,6 @@ describe("Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
             .runPromise(
               moduleRuntime.dispatch({
                 _tag: "init",
-                payload: undefined,
               }) as any,
             )
             .then(() =>
@@ -130,9 +129,9 @@ describe("Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
     const { result } = renderHook(
       () => {
         const runtime = useRuntime()
-        const moduleRuntime = useModule(TestImpl) as Logix.ModuleRuntime<
+        const moduleRuntime = useModule(TestImpl).runtime as Logix.ModuleRuntime<
           { initialized: boolean; label: string },
-          { _tag: "init"; payload: void }
+          { _tag: "init"; payload?: void }
         >
 
         const [state, setState] = React.useState<{ initialized: boolean; label: string } | null>(
@@ -144,7 +143,6 @@ describe("Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
             .runPromise(
               moduleRuntime.dispatch({
                 _tag: "init",
-                payload: undefined,
               }) as any,
             )
             .then(() =>
@@ -183,9 +181,9 @@ describe("Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
 
     const { result } = renderHook(
       () =>
-        useModule(TestImplWithProcess.module) as Logix.ModuleRuntime<
+        useModule(TestImplWithProcess.module).runtime as Logix.ModuleRuntime<
           { initialized: boolean; label: string },
-          { _tag: "init"; payload: void }
+          { _tag: "init"; payload?: void }
         >,
       { wrapper },
     )

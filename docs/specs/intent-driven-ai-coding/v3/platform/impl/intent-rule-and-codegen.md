@@ -193,9 +193,9 @@ $Source.flow.run(
 
 ```ts
 yield* $.onState((s: FormState) => s.country)
-  .then(
-    $.state.update((prev) => ({ ...prev, province: "" })),
-  )
+  .mutate((draft) => {
+    draft.province = ""
+  })
 ```
 
 IntentRule IR 形态：
@@ -218,7 +218,7 @@ const $Detail = yield* $.use(Detail);
 
 yield* $.on($Search.changes((s) => s.results))
   .filter((results) => results.length > 0)
-  .then((results) =>
+  .run((results) =>
     $Detail.dispatch({
       _tag: "detail/init",
       payload: pickFirst(results),
@@ -283,11 +283,9 @@ export const CountryProvinceLogic: Logic.Of<FormShape> = Effect.gen(function* ()
 export const CountryProvinceLogic: Logic.Of<FormShape> = Effect.gen(function* () {
   yield* $Form.onState((s) => s.country)
     .debounce(300)
-    .then(
-      $Form.state.mutate((draft) => {
-        draft.province = ""
-      }),
-    )
+    .mutate((draft) => {
+      draft.province = ""
+    })
 })
 ```
 
@@ -314,14 +312,14 @@ export const SearchDetailCoordinator: Logic.Of<CoordinatorShape> = Effect.gen(fu
   const $Search = yield* $.use(SearchStore)
   const $Detail = yield* $.use(DetailStore)
 
-  yield* $.on($Search.changes((s) => s.results))
-    .filter((results) => results.length > 0)
-    .then((results) =>
-      $Detail.dispatch({
-        _tag: "detail/init" as const,
-        payload: pickFirst(results),
-      }),
-    )
+yield* $.on($Search.changes((s) => s.results))
+  .filter((results) => results.length > 0)
+  .run((results) =>
+    $Detail.dispatch({
+      _tag: "detail/init" as const,
+      payload: pickFirst(results),
+    }),
+  )
 })
 ```
 
@@ -336,7 +334,7 @@ export const SearchDetailCoordinator: Logic.Of<CoordinatorShape> = Effect.gen(fu
   - 引导开发者把复杂逻辑放入 Pattern / Service，而不是塞进 Flow pipeline 中。
 
 - 提供自动修复建议：
-- 将“展开写法”重构为标准 Fluent 链（e.g. 识别 `fromState + debounce + run(state.mutate)`，自动建议替换为 `$.onState(...).debounce(...).then($.state.mutate(...))`）。
+- 将“展开写法”重构为标准 Fluent 链（e.g. 识别 `fromState + debounce + run(state.mutate)`，自动建议替换为 `$.onState(...).debounce(...).mutate(...)`）。
 
 这可以保证随着代码库增长，越来越多的 Logic 写法落在“可解析、可 round‑trip”的子集内。
 

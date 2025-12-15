@@ -7,6 +7,72 @@ export interface InspectorProps {
   readonly getProgramForModule?: (moduleId: string) => Logix.StateTrait.StateTraitProgram<any> | undefined
 }
 
+type DepsMismatchView = {
+  readonly key: string
+  readonly kind: 'computed' | 'source' | 'unknown'
+  readonly fieldPath: string
+  readonly declared: ReadonlyArray<string>
+  readonly reads: ReadonlyArray<string>
+  readonly missing: ReadonlyArray<string>
+  readonly unused: ReadonlyArray<string>
+  readonly message: string
+  readonly hint?: string
+}
+
+const parseBracketList = (message: string, label: string): ReadonlyArray<string> => {
+  const re = new RegExp(`${label}=\\[([^\\]]*)\\]`)
+  const m = message.match(re)
+  const raw = (m?.[1] ?? '').trim()
+  if (!raw) return []
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+}
+
+const parseDepsMismatch = (event: any): DepsMismatchView | undefined => {
+  if (!event || typeof event !== 'object') return undefined
+  if (event.type !== 'diagnostic') return undefined
+  if (event.code !== 'state_trait::deps_mismatch') return undefined
+
+  const message = typeof event.message === 'string' ? event.message : ''
+  const hint = typeof event.hint === 'string' ? event.hint : undefined
+
+  const kindFromKind =
+    typeof event.kind === 'string' && event.kind.startsWith('deps_mismatch:')
+      ? event.kind.slice('deps_mismatch:'.length)
+      : undefined
+
+  const head = message.match(/^\[deps\]\s+(\w+)\s+"([^"]+)"/)
+  const kindFromMessage = head?.[1]
+  const fieldPath = head?.[2]
+  if (!fieldPath) return undefined
+
+  const kind =
+    kindFromKind === 'computed' || kindFromKind === 'source'
+      ? kindFromKind
+      : kindFromMessage === 'computed' || kindFromMessage === 'source'
+        ? kindFromMessage
+        : 'unknown'
+
+  const declared = parseBracketList(message, 'declared')
+  const reads = parseBracketList(message, 'reads')
+  const missing = parseBracketList(message, 'missing')
+  const unused = parseBracketList(message, 'unused')
+
+  return {
+    key: `${kind}::${fieldPath}`,
+    kind,
+    fieldPath,
+    declared,
+    reads,
+    missing,
+    unused,
+    message,
+    hint,
+  }
+}
+
 export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => {
   const state = useDevtoolsState()
   const dispatch = useDevtoolsDispatch()
@@ -89,6 +155,16 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
   const selectedFieldPath = state.selectedFieldPath
 
   const program = getProgramForModule && selectedModule ? getProgramForModule(selectedModule) : undefined
+
+  const depsMismatches = React.useMemo(() => {
+    const byKey = new Map<string, DepsMismatchView>()
+    for (const entry of timeline) {
+      const parsed = parseDepsMismatch((entry as any)?.event)
+      if (!parsed) continue
+      byKey.set(parsed.key, parsed)
+    }
+    return Array.from(byKey.values())
+  }, [timeline])
 
   const handleSelectFieldPath = React.useCallback(
     (fieldPath: string) => {
@@ -267,6 +343,67 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {depsMismatches.length > 0 && (
+          <div className="border-b" style={{ borderColor: 'var(--dt-border)', backgroundColor: 'var(--dt-bg-root)' }}>
+            <div
+              className="px-4 py-2 border-b flex justify-between items-center"
+              style={{
+                backgroundColor: 'var(--dt-bg-header)',
+                borderColor: 'var(--dt-border)',
+              }}
+            >
+              <span className="text-[10px] font-mono" style={{ color: 'var(--dt-warning)' }}>
+                Deps Mismatch
+              </span>
+              <span className="text-[9px] font-mono" style={{ color: 'var(--dt-text-muted)' }}>
+                {depsMismatches.length} warning{depsMismatches.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="px-4 py-2 space-y-2">
+              {depsMismatches.map((m) => (
+                <div
+                  key={m.key}
+                  className="rounded border px-2 py-1"
+                  style={{
+                    borderColor: 'var(--dt-border-light)',
+                    backgroundColor: 'var(--dt-bg-element)',
+                  }}
+                  title={m.message}
+                >
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono">
+                    <span style={{ color: 'var(--dt-text-muted)' }}>{m.kind}</span>
+                    <button
+                      type="button"
+                      className="underline underline-offset-2"
+                      style={{ color: 'var(--dt-primary)' }}
+                      onClick={() => handleSelectFieldPath(m.fieldPath)}
+                      aria-label={`DepsMismatchFieldPath:${m.fieldPath}`}
+                      title="点击以按字段过滤时间线"
+                    >
+                      {m.fieldPath}
+                    </button>
+                    {m.missing.length > 0 && (
+                      <span style={{ color: 'var(--dt-warning)' }} title={m.missing.join('\n')}>
+                        missing({m.missing.length})
+                      </span>
+                    )}
+                    {m.unused.length > 0 && (
+                      <span style={{ color: 'var(--dt-text-secondary)' }} title={m.unused.join('\n')}>
+                        unused({m.unused.length})
+                      </span>
+                    )}
+                  </div>
+                  {m.hint && (
+                    <div className="mt-1 text-[9px] leading-relaxed" style={{ color: 'var(--dt-text-muted)' }}>
+                      {m.hint}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

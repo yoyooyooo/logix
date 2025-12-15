@@ -7,7 +7,7 @@
  *
  *   代码遵守 v3 的硬约束：
  *   - 使用 Bound API (`$`) 作为唯一入口；
- *   - Fluent 链写成单条 `yield* $.onAction*().op().then(Effect.gen(...), opts?)`；
+ *   - Fluent 链写成单条 `yield* $.onState/$.onAction(...).debounce(...).runLatest(Effect.gen(...))`；
  *   - handler 内仅使用 Effect.gen + yield*，不使用 async/await。
  */
 

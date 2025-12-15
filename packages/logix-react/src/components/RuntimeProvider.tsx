@@ -2,13 +2,13 @@ import React, { useContext, useEffect, useMemo, useRef, useState } from "react"
 import {
   Layer,
   ManagedRuntime,
-  Scope,
   Exit,
   Context,
   Effect,
   Runtime,
   FiberRef,
   LogLevel,
+  Scope,
 } from "effect"
 import * as Logix from "@logix/core"
 import type * as HashSet from "effect/HashSet"
@@ -50,79 +50,36 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
   fallback = null,
 }) => {
   const parent = useContext(RuntimeContext)
-  const resolution = useRuntimeResolution(runtime, parent)
+  const baseRuntime = useRuntimeResolution(runtime, parent)
 
-  const platformBinding: LayerBinding | null = null
-
-  const { binding: layerBinding, isLoading } = useLayerBinding(
-    resolution.runtime,
+  const { binding: layerBinding } = useLayerBinding(
+    baseRuntime,
     layer,
     Boolean(layer),
   )
 
-  const contexts = useMemo<Context.Context<any>[]>(() => {
-    const base: Array<Context.Context<any>> =
-      resolution.mode === "inherit" && parent ? [...parent.contexts] : []
-    // platformBinding 当前恒为 null，占位保留以便未来接入 React 平台层。
-    if (layerBinding) {
-      base.push(layerBinding.context)
-    }
-    return base
-  }, [resolution.mode, parent, platformBinding, layerBinding])
-
-  const scopes = useMemo<Scope.Scope[]>(() => {
-    const base: Array<Scope.Scope> =
-      resolution.mode === "inherit" && parent ? [...parent.scopes] : []
-    if (layerBinding) {
-      base.push(layerBinding.scope)
-    }
-    return base
-  }, [resolution.mode, parent, layerBinding])
-
-  const loggerSets = useMemo<ReadonlyArray<LoggerSet>>(() => {
-    const base: Array<LoggerSet> =
-      resolution.mode === "inherit" && parent ? [...parent.loggers] : []
-    if (layerBinding) {
-      base.push(layerBinding.loggers)
-    }
-    return base
-  }, [resolution.mode, parent, layerBinding])
-
-  const logLevels = useMemo<ReadonlyArray<LogLevel.LogLevel>>(() => {
-    const base: Array<LogLevel.LogLevel> =
-      resolution.mode === "inherit" && parent ? [...parent.logLevels] : []
-    if (layerBinding) {
-      base.push(layerBinding.logLevel)
-    }
-    return base
-  }, [resolution.mode, parent, layerBinding])
-
-  const debugSinks = useMemo<ReadonlyArray<ReadonlyArray<Logix.Debug.Sink>>>(() => {
-    const base: Array<ReadonlyArray<Logix.Debug.Sink>> =
-      resolution.mode === "inherit" && parent ? [...parent.debugSinks] : []
-    if (layerBinding) {
-      base.push(layerBinding.debugSinks)
-    }
-    return base
-  }, [resolution.mode, parent, layerBinding])
-
+  // 注意：必须让同一个 Provider 子树共享同一个 runtime adapter 引用，
+  // 否则 ModuleCache（以 runtime 为 WeakMap key）会退化为“每组件一份 cache”，
+  // 进而导致 `useModule(Impl,{ key })` 无法跨组件复用同一实例。
   const runtimeWithBindings = useMemo(
     () =>
-      createRuntimeAdapter(
-        resolution.runtime,
-        contexts,
-        scopes,
-        loggerSets,
-        logLevels,
-        debugSinks,
-      ),
-    [resolution.runtime, contexts, scopes, loggerSets, logLevels, debugSinks],
+      layerBinding
+        ? createRuntimeAdapter(
+            baseRuntime,
+            [layerBinding.context],
+            [layerBinding.scope],
+            [layerBinding.loggers],
+            [layerBinding.logLevel],
+            [layerBinding.debugSinks],
+          )
+        : baseRuntime,
+    [baseRuntime, layerBinding],
   )
 
   const [configState, setConfigState] = useState<{
     snapshot: ReactConfigSnapshot
     version: number
-  }>(() => ({ snapshot: DEFAULT_CONFIG_SNAPSHOT, version: 0 }))
+  }>(() => ({ snapshot: DEFAULT_CONFIG_SNAPSHOT, version: 1 }))
 
   useEffect(() => {
     let cancelled = false
@@ -144,9 +101,6 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
             prev.snapshot.source === snapshot.source
 
           if (sameSnapshot) {
-            if (prev.version === 0) {
-              return { snapshot, version: 1 }
-            }
             return prev
           }
 
@@ -185,16 +139,11 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
   const contextValue = useMemo<ReactRuntimeContextValue>(
     () => ({
-      runtime: resolution.runtime,
-      contexts,
-      scopes,
-      loggers: loggerSets,
-      logLevels,
-      debugSinks,
+      runtime: runtimeWithBindings,
       reactConfigSnapshot: configState.snapshot,
       configVersion: configState.version,
     }),
-    [resolution.runtime, contexts, scopes, loggerSets, logLevels, debugSinks, configState],
+    [runtimeWithBindings, configState],
   )
 
   const isReady = !layer || layerBinding !== null
@@ -210,16 +159,13 @@ const useRuntimeResolution = (
   runtimeProp: ManagedRuntime.ManagedRuntime<any, any> | undefined,
   parent: ReactRuntimeContextValue | null
 ) => {
-  const runtime = runtimeProp ?? parent?.runtime
-  if (!runtime) {
+  const baseRuntime = runtimeProp ?? parent?.runtime
+  if (!baseRuntime) {
     throw new Error(
       "RuntimeProvider requires a runtime prop, or must be nested inside another RuntimeProvider."
     )
   }
-
-  const mode: "prop" | "inherit" = runtimeProp ? "prop" : "inherit"
-
-  return { runtime, mode } as const
+  return baseRuntime
 }
 
 interface LayerBinding {
@@ -259,7 +205,7 @@ const useLayerBinding = (
       const current = activeBindingRef.current
       if (current) {
         activeBindingRef.current = null
-        void runtime.runPromise(Scope.close(current.scope, Exit.void))
+        void runtime.runPromise(Scope.close(current.scope, Exit.void)).catch(() => { })
       }
       setState({
         binding: null,
@@ -308,7 +254,7 @@ const useLayerBinding = (
     // 依赖发生变化时，关闭旧 scope 并重建。
     if (current) {
       activeBindingRef.current = null
-      void runtime.runPromise(Scope.close(current.scope, Exit.void))
+      void runtime.runPromise(Scope.close(current.scope, Exit.void)).catch(() => { })
     }
 
     let cancelled = false
@@ -356,7 +302,7 @@ const useLayerBinding = (
       debugSinks: ReadonlyArray<Logix.Debug.Sink>
     }) => {
       if (cancelled) {
-        return runtime.runPromise(Scope.close(newScope, Exit.void))
+        return runtime.runPromise(Scope.close(newScope, Exit.void)).catch(() => { })
       }
 
       const previous = activeBindingRef.current
@@ -381,7 +327,7 @@ const useLayerBinding = (
       })
 
       if (previous) {
-        return runtime.runPromise(Scope.close(previous.scope, Exit.void))
+        return runtime.runPromise(Scope.close(previous.scope, Exit.void)).catch(() => { })
       }
       return Promise.resolve()
     }
@@ -401,7 +347,7 @@ const useLayerBinding = (
         .then(assignBinding)
         .catch((error) => {
           // 构建失败时关闭新 scope，并清空绑定
-          void runtime.runPromise(Scope.close(newScope, Exit.void))
+          void runtime.runPromise(Scope.close(newScope, Exit.void)).catch(() => { })
           if (!cancelled) {
             // eslint-disable-next-line no-console
             console.error("[RuntimeProvider] Failed to build layer", error)
@@ -421,11 +367,11 @@ const useLayerBinding = (
       const current = activeBindingRef.current
       if (current) {
         activeBindingRef.current = null
-        void runtime.runPromise(Scope.close(current.scope, Exit.void))
+        void runtime.runPromise(Scope.close(current.scope, Exit.void)).catch(() => { })
         return
       }
       // 清理未成功绑定时提前创建的 scope
-      void runtime.runPromise(Scope.close(newScope, Exit.void))
+      void runtime.runPromise(Scope.close(newScope, Exit.void)).catch(() => { })
     }
   }, [runtime, layer, enabled])
 
@@ -525,53 +471,19 @@ export function useRuntime(options?: UseRuntimeOptions): ManagedRuntime.ManagedR
 
   const { binding } = useLayerBinding(context.runtime, mergedLayer, !!mergedLayer)
 
-  const contexts = useMemo<ReadonlyArray<Context.Context<any>>>(() => {
-    if (binding) {
-      return [...context.contexts, binding.context]
+  return useMemo(() => {
+    if (!binding) {
+      return context.runtime
     }
-    return context.contexts
-  }, [context.contexts, binding])
-
-  const scopes = useMemo<ReadonlyArray<Scope.Scope>>(() => {
-    if (binding) {
-      return [...context.scopes, binding.scope]
-    }
-    return context.scopes
-  }, [context.scopes, binding])
-
-  const loggers = useMemo<ReadonlyArray<LoggerSet>>(() => {
-    if (binding) {
-      return [...context.loggers, binding.loggers]
-    }
-    return context.loggers
-  }, [context.loggers, binding])
-
-  const logLevels = useMemo<ReadonlyArray<LogLevel.LogLevel>>(() => {
-    if (binding) {
-      return [...context.logLevels, binding.logLevel]
-    }
-    return context.logLevels
-  }, [context.logLevels, binding])
-
-  const debugSinks = useMemo<ReadonlyArray<ReadonlyArray<Logix.Debug.Sink>>>(() => {
-    if (binding) {
-      return [...context.debugSinks, binding.debugSinks]
-    }
-    return context.debugSinks
-  }, [context.debugSinks, binding])
-
-  return useMemo(
-    () =>
-      createRuntimeAdapter(
-        context.runtime as ManagedRuntime.ManagedRuntime<any, any>,
-        contexts,
-        scopes,
-        loggers,
-        logLevels,
-        debugSinks,
-      ),
-    [context.runtime, contexts, scopes, loggers, logLevels, debugSinks],
-  )
+    return createRuntimeAdapter(
+      context.runtime as ManagedRuntime.ManagedRuntime<any, any>,
+      [binding.context],
+      [binding.scope],
+      [binding.loggers],
+      [binding.logLevel],
+      [binding.debugSinks],
+    )
+  }, [context.runtime, binding])
 }
 
 const createRuntimeAdapter = (

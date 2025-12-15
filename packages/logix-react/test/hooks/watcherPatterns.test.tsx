@@ -7,8 +7,6 @@ import * as Logix from "@logix/core"
 import type { StateOf, ActionOf } from "@logix/core"
 import { RuntimeProvider } from "../../src/components/RuntimeProvider.js"
 import { useModule } from "../../src/hooks/useModule.js"
-import { useSelector } from "../../src/hooks/useSelector.js"
-import { useDispatch } from "../../src/hooks/useDispatch.js"
 
 const Counter = Logix.Module.make("Counter", {
   state: Schema.Struct({ value: Schema.Number }),
@@ -115,13 +113,9 @@ describe("React watcher patterns integration", () => {
     )
 
     const useTest = () => {
-      const moduleRuntime = useModule(Counter)
-      const value = useSelector(
-        Counter,
-        (s) => (s as { value: number }).value,
-      )
-      const dispatch = useDispatch(moduleRuntime)
-      return { value, dispatch }
+      const counter = useModule(Counter)
+      const value = useModule(Counter, (s) => (s as { value: number }).value)
+      return { value, counter }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -131,7 +125,7 @@ describe("React watcher patterns integration", () => {
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "inc", payload: undefined })
+      result.current.counter.actions.inc()
     })
 
     await waitFor(() => {
@@ -139,7 +133,7 @@ describe("React watcher patterns integration", () => {
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "dec", payload: undefined })
+      result.current.counter.actions.dec()
     })
 
     await waitFor(() => {
@@ -170,13 +164,9 @@ describe("React watcher patterns integration", () => {
     )
 
     const useTest = () => {
-      const moduleRuntime = useModule(Counter)
-      const value = useSelector(
-        Counter,
-        (s) => (s as { value: number }).value,
-      )
-      const dispatch = useDispatch(moduleRuntime)
-      return { value, dispatch }
+      const counter = useModule(Counter)
+      const value = useModule(Counter, (s) => (s as { value: number }).value)
+      return { value, counter }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -187,7 +177,7 @@ describe("React watcher patterns integration", () => {
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "inc", payload: undefined })
+      result.current.counter.actions.inc()
     })
 
     await waitFor(() => {
@@ -195,7 +185,7 @@ describe("React watcher patterns integration", () => {
     })
 
     await act(async () => {
-      result.current.dispatch({ _tag: "dec", payload: undefined })
+      result.current.counter.actions.dec()
     })
 
     await waitFor(() => {
@@ -225,13 +215,9 @@ describe("React watcher patterns integration", () => {
     )
 
     const useTest = () => {
-      const moduleRuntime = useModule(Counter)
-      const value = useSelector(
-        Counter,
-        (s) => (s as { value: number }).value,
-      )
-      const dispatch = useDispatch(moduleRuntime)
-      return { value, dispatch }
+      const counter = useModule(Counter)
+      const value = useModule(Counter, (s) => (s as { value: number }).value)
+      return { value, counter }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -242,7 +228,7 @@ describe("React watcher patterns integration", () => {
     })
 
     await act(async () => {
-      result.current?.dispatch({ _tag: "inc", payload: undefined })
+      result.current?.counter.actions.inc()
     })
 
     await waitFor(() => {
@@ -251,7 +237,7 @@ describe("React watcher patterns integration", () => {
     })
 
     await act(async () => {
-      result.current?.dispatch({ _tag: "dec", payload: undefined })
+      result.current?.counter.actions.dec()
     })
 
     await waitFor(() => {
@@ -283,13 +269,9 @@ describe("React watcher patterns integration", () => {
 
     const useTest = () => {
       // 这里直接消费 ModuleImpl：useModule 会在组件 Scope 内构造 ModuleRuntime
-      const moduleRuntime = useModule(CounterImplRunFork)
-      const value = useSelector(
-        moduleRuntime,
-        (s) => (s as { value: number }).value,
-      )
-      const dispatch = useDispatch(moduleRuntime)
-      return { value, dispatch }
+      const counter = useModule(CounterImplRunFork)
+      const value = useModule(counter, (s) => (s as { value: number }).value)
+      return { value, counter }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -300,7 +282,7 @@ describe("React watcher patterns integration", () => {
     })
 
     await act(async () => {
-      result.current?.dispatch({ _tag: "inc", payload: undefined })
+      result.current?.counter.actions.inc()
     })
 
     await waitFor(() => {
@@ -309,7 +291,7 @@ describe("React watcher patterns integration", () => {
     })
 
     await act(async () => {
-      result.current?.dispatch({ _tag: "dec", payload: undefined })
+      result.current?.counter.actions.dec()
     })
 
     await waitFor(() => {

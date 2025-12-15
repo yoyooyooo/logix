@@ -3,7 +3,8 @@
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
+**Note**: This template is copied into `specs/[###-feature-name]/plan.md` by
+`.specify/scripts/bash/setup-plan.sh` (invoked by the feature workflow).
 
 ## Summary
 
@@ -18,13 +19,13 @@
 -->
 
 **Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., effect v3, @logix/*, React, Next.js or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., files / N/A]  
+**Testing**: [e.g., Vitest, @effect/vitest (for Effect-heavy tests) or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Node.js 20+ + modern browsers]  
+**Project Type**: [pnpm workspace / packages + apps]  
+**Performance Goals**: [budgets + measurement method (benchmark/profile) or NEEDS CLARIFICATION]  
+**Constraints**: [include diagnostics overhead budgets if applicable]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
@@ -38,6 +39,18 @@
     updated first (docs-first & SSoT)?
   - Does it introduce or change any Effect/Logix contracts? If yes, which
     `docs/specs/runtime-logix/*` docs capture the new contract?
+  - IR & anchors: does it change the unified minimal IR or the Platform-Grade
+    subset/anchors; are parser/codegen + docs updated together (no drift)?
+  - Deterministic identity: are instance/txn/op IDs stable and reproducible
+    (no random/time defaults); is the identity model documented?
+  - Transaction boundary: is any IO/async work occurring inside a transaction
+    window; are write-escape hatches (writable refs) prevented and diagnosed?
+  - Performance budget: which hot paths are touched, what metrics/baselines
+    exist, and how will regressions be prevented?
+  - Diagnosability & explainability: what diagnostic events/Devtools surfaces
+    are added or changed, and what is the cost when diagnostics are enabled?
+  - Breaking changes: does this change any public API/behavior/event protocol;
+    where is the migration note documented (no compatibility layer)?
   - What quality gates (typecheck / lint / test) will be run before merge,
     and what counts as “pass” for this feature?
 

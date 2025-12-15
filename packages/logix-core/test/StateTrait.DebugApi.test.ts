@@ -95,7 +95,10 @@ describe("Debug.getModuleTraits", () => {
         state: StateSchema,
         actions: Actions,
         traits: Logix.StateTrait.from(StateSchema)({
-          value: Logix.StateTrait.computed((s) => s.value),
+          value: Logix.StateTrait.computed({
+            deps: ["value"],
+            get: (s) => s.value,
+          }),
         }),
       })
 

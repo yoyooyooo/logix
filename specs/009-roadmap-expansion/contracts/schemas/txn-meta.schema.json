@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/009-roadmap-expansion/schemas/txn-meta.schema.json",
+  "title": "TxnMeta",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "moduleId",
+    "instanceId",
+    "txnId",
+    "origin",
+    "startedAt",
+    "endedAt",
+    "durationMs",
+    "dirty",
+    "patchSummary"
+  ],
+  "properties": {
+    "moduleId": { "type": "string", "minLength": 1 },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "txnId": { "type": "string", "minLength": 1 },
+    "origin": { "$ref": "./txn-origin.schema.json" },
+    "startedAt": { "type": "number" },
+    "endedAt": { "type": "number" },
+    "durationMs": { "type": "number", "minimum": 0 },
+    "dirty": { "$ref": "./dirty-set.schema.json" },
+    "patchSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patchCount"],
+      "properties": {
+        "patchCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "degrade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "message": { "type": "string" }
+      }
+    },
+    "snapshots": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "initial": { "nullable": true },
+        "final": { "nullable": true }
+      }
+    },
+    "patches": {
+      "type": "array",
+      "items": { "$ref": "./patch.schema.json" }
+    }
+  }
+}
+

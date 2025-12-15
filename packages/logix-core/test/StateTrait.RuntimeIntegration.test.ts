@@ -14,7 +14,7 @@ describe("StateTrait runtime integration", () => {
         b: 2,
         sum: 0,
         profile: { id: "u1", name: "" },
-        profileResource: { name: "" },
+        profileResource: Logix.Resource.Snapshot.idle(),
       } satisfies CounterState,
     })
 
@@ -40,11 +40,14 @@ describe("StateTrait runtime integration", () => {
       const afterSum = (yield* runtime.getState) as CounterState
       expect(afterSum.sum).toBe(7)
 
-      // 修改 profileResource.name，应触发 profile.name 的联动
+      // 修改 profileResource.data.name，应触发 profile.name 的联动
       const next: CounterState = {
         ...afterSum,
         profile: { ...afterSum.profile, name: "" },
-        profileResource: { name: "Bob" },
+        profileResource: Logix.Resource.Snapshot.success({
+          keyHash: "test",
+          data: { name: "Bob" },
+        }),
       }
 
       yield* runtime.setState(next)

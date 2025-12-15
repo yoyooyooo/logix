@@ -37,6 +37,7 @@ function Counter() {
   - `key?: string`  
     - 用于在同一 `ManagedRuntime` 内区分不同“会话实例”；  
     - 相同 `key` 的 `useModule(Impl, { key })` 会共享一份 ModuleRuntime；  
+    - 未传 `key` 时也仍然会创建一个“组件级”的局部实例（不会回退到全局单例）。  
     - **无论 `suspend` 为 `true` 还是 `false`，`key` 的“会话实例”语义完全一致，仅构建路径（同步 / Suspense 异步）不同。**
   - `gcTime?: number`  
     - 会话级场景下的“保活时间”（毫秒），仅在 `useModule(Impl, { key, gcTime })` 形态下生效；  
@@ -106,3 +107,4 @@ const count2 = useModule(CounterModule, (s) => s.count)
 - [Guide: Modules & State](../../guide/essentials/modules-and-state)
 - [Guide: Suspense & Async](../../guide/advanced/suspense-and-async)
 - [Guide: React 集成与 Session Pattern](../../guide/recipes/react-integration)
+- [API: useImportedModule](./use-imported-module)

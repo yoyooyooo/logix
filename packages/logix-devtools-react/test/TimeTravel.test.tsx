@@ -36,7 +36,7 @@ if (typeof window !== 'undefined') {
 }
 
 const CounterModule = Logix.Module.make('TimeTravelCounter', {
-  state: Schema.Struct({ value: Schema.Number }),
+  state: Schema.Struct({ value: Schema.Number, isEven: Schema.Boolean }),
   actions: {
     set: Schema.Number,
   },
@@ -46,10 +46,17 @@ const CounterModule = Logix.Module.make('TimeTravelCounter', {
       value: (action as any).payload as number,
     }),
   },
+  traits: Logix.StateTrait.from(Schema.Struct({ value: Schema.Number, isEven: Schema.Boolean }))({
+    // 故意制造 deps mismatch：实际读取 value，但 declared deps 为空。
+    isEven: Logix.StateTrait.computed({
+      deps: [],
+      get: (state) => state.value % 2 === 0,
+    }),
+  }),
 })
 
 const CounterImpl = CounterModule.implement({
-  initial: { value: 0 },
+  initial: { value: 0, isEven: true },
 })
 
 const runtime = Logix.Runtime.make(CounterImpl, {
@@ -120,6 +127,11 @@ describe('@logix/devtools-react · TimeTravel UI', () => {
     // 等待 Transaction Summary 渲染出来（基于最新一条事务事件）。
     await screen.findByText(/Transaction Summary/i)
 
+    // deps mismatch 警告应出现在 Inspector 中，并可点击定位到字段。
+    await screen.findByText(/Deps Mismatch/i)
+    const mismatchField = screen.getByLabelText('DepsMismatchFieldPath:isEven')
+    expect(mismatchField).not.toBeNull()
+
     // 点击「回到事务前状态」
     const beforeButton = screen.getByText('回到事务前状态')
     fireEvent.click(beforeButton)
@@ -155,6 +167,19 @@ describe('@logix/devtools-react · TimeTravel UI', () => {
     await waitFor(() => {
       const valueText = screen.getByTestId('value')
       expect(valueText.textContent).toContain('value: 2')
+    })
+
+    // 点击 deps mismatch 的字段路径，应写入 selectedFieldPath（用于按字段过滤时间线）。
+    fireEvent.click(mismatchField)
+    await waitFor(() => {
+      const state = devtoolsRuntime.runSync(
+        devtoolsModuleRuntime.getState as any as Effect.Effect<
+          DevtoolsState,
+          never,
+          any
+        >,
+      ) as DevtoolsState
+      expect(state.selectedFieldPath).toBe('isEven')
     })
   })
 })

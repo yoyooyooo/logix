@@ -1,7 +1,7 @@
 import React from 'react'
 import { Context, Effect, Layer } from 'effect'
 import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from '@logix/react'
+import { RuntimeProvider, useModule, useRuntime } from '@logix/react'
 import { CounterModule, CounterImpl } from '../modules/counter'
 
 // 演示“分形 Runtime Tree”：全局 Runtime + 局部 RuntimeProvider layer 注入。
@@ -37,8 +37,7 @@ const ThemeProbe: React.FC<{ label: string }> = ({ label }) => {
   }, [runtime])
 
   const counter = useModule(CounterModule)
-  const value = useSelector(CounterModule, (s) => s.value)
-  const dispatch = useDispatch(counter)
+  const value = useModule(CounterModule, (s) => s.value)
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col gap-3">
@@ -65,14 +64,14 @@ const ThemeProbe: React.FC<{ label: string }> = ({ label }) => {
         <button
           type="button"
           className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95"
-          onClick={() => dispatch({ _tag: 'dec', payload: undefined })}
+          onClick={() => counter.actions.dec()}
         >
           -1
         </button>
         <button
           type="button"
           className="flex-1 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700 active:bg-indigo-800 transition-all active:scale-95 shadow-sm shadow-indigo-600/20"
-          onClick={() => dispatch({ _tag: 'inc', payload: undefined })}
+          onClick={() => counter.actions.inc()}
         >
           +1
         </button>

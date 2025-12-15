@@ -1,6 +1,6 @@
 import React from "react"
 import { Context, Effect, Layer, ManagedRuntime } from "effect"
-import { RuntimeProvider, useModule, useSelector, useDispatch, useRuntime } from "@logix/react"
+import { RuntimeProvider, useModule, useRuntime } from "@logix/react"
 import * as Logix from "@logix/core"
 import { StepCounterModule, StepCounterImpl } from "../modules/stepCounter"
 
@@ -23,7 +23,7 @@ const appRuntime = ManagedRuntime.make(
 
 const StepCounterPanel: React.FC<{ label: string }> = ({ label }) => {
   const runtime = useRuntime()
-  const value = useSelector(StepCounterModule, (s) => s.value)
+  const value = useModule(StepCounterModule, (s) => s.value)
 
   const handleStepIncrement = React.useCallback(() => {
     void runtime.runPromise(

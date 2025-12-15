@@ -9,6 +9,10 @@
 
 按特定主题整理的、相对完整的草稿集合。
 
+- **[Trait System](./topics/trait-system/00-overview.md)**
+  - 007 Trait/StateTrait 主线收敛后的残渣归档与回归样本清单。
+- **[SDD Platform](./topics/sdd-platform/00-overview.md)**
+  - SDD 生命周期与平台叙事总入口。
 - **[AI-Native UI](./topics/ai-native-ui/00-architecture-overview.md)**
   - 核心架构：Intent <-> Code 全双工链路 (Skeleton, Live Component)。
 - **[AI-Native Core](./topics/ai-native-core/00-architecture.md)**
@@ -17,14 +21,14 @@
   - 交互状态管理设计。
 - **[React Adapter](./topics/react-adapter/README.md)**
   - React 集成层。
+- **[Intent Studio UX](./topics/intent-studio-ux/README.md)**
+  - Excel Killer / 决策表 / 场景驱动定义相关 UX 草案收敛。
 - **[Platform Vision](./topics/platform-vision/00-generative-language-server.md)**
   - 长期愿景与分析。
 - **[API Evolution](./topics/api-evolution/next-gen-killer-apis.md)**
   - 未来 API 提案。
 - **[Platform Patterns](./topics/platform-patterns/generative-patterns-refined.md)**
   - 生成式模式。
-- **[Spec Studio](./topics/spec-studio/00-design.md)**
-  - 可视化 Spec 编辑器。
 
 ## 2. Tiered Drafts (L1~L9)
 

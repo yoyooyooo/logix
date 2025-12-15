@@ -2,6 +2,7 @@ import React from "react"
 import { Context, Effect, Layer } from "effect"
 import * as Logix from "@logix/core"
 import { useLocalModule } from "./useLocalModule.js"
+import type { ModuleRef } from "../internal/ModuleRef.js"
 
 /**
  * 基于已经组装好的 Module Layer（例如 RegionLive）创建一个局部 ModuleRuntime。
@@ -21,7 +22,7 @@ export function useLayerModule<
     any
   >,
   deps: React.DependencyList = []
-): Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>> {
+): ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>> {
   const factory = React.useCallback(
     () =>
       Layer.build(layer).pipe(
@@ -32,7 +33,7 @@ export function useLayerModule<
     [layer, module]
   )
 
-  return useLocalModule(factory, deps) as Logix.ModuleRuntime<
+  return useLocalModule(factory, deps) as ModuleRef<
     Logix.StateOf<Sh>,
     Logix.ActionOf<Sh>
   >

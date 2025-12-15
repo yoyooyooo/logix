@@ -322,6 +322,79 @@ function ModuleRuntime.make<Sh extends Logix.ModuleShape<any, any>>(
     - 可以选择不再次触发外部副作用（例如网络请求），但必须留下完整的事务记录供 Devtools 回放。  
   - 事务历史与时间旅行能力只在 dev/test 环境开启，生产环境默认退化为 `"light"` 模式且不开启 dev-only 写入路径。  
 
+#### 1.5.1 StateTrait：事务内派生收敛（Derived Converge）
+
+> 背景：`specs/007-unify-trait-system` 将 Trait 系统定义为「对外行为不变（004 心智），对内内核强约束（006 红线）」的统一内核。  
+> 运行时实现上，Trait 的核心要求是：**每次事务窗口内派生必须收敛，并且最终对外最多 0/1 次可观察提交**。
+
+Runtime 在事务窗口的提交前，会对当前模块已注册的 `StateTraitProgram` 执行一次派生收敛（Phase 2 形态），总体顺序为：
+
+1) 先执行业务逻辑入口（reducer / watcher writeback / middleware 产生的状态写入）。  
+2) 执行 **StateTrait.converge**：在事务内统一计算并写回派生字段（当前覆盖 `computed/link`）。  
+3) 执行 **TraitLifecycle.scopedValidate flush**：在 converge 之后统一执行本窗口累计的 scoped validate（保证读取到最新派生）。  
+4) 执行 **source idle 同步回收**：若任意 source 的 keySelector 结果变为空（`undefined`），在提交前同步将该字段写回 idle（避免 tearing）。  
+5) 执行 `commit`（若 draft 无变化则 0 commit）。  
+
+其中 converge 的关键不变式：
+
+- **单窗口 0/1 commit**：converge 只会更新事务 draft，并通过 StateTransaction 聚合 patch；对外提交仍由 commit 统一完成。  
+- **拓扑顺序 + 配置硬失败**：computed/link 的 writer 图在执行前会做拓扑排序；若发现环或同一字段多个 writer，将抛错并阻止本窗口 commit（Hard Fail）。  
+- **预算与降级（Soft Degrade）**：converge 具有固定预算（当前实现默认 200ms）；超预算或运行期异常会：
+  - 回退 draft 到本窗口开始时的 baseState（避免产生半成品派生）；  
+  - 发出结构化诊断（见 `core/09-debugging.md`）：`trait::budget_exceeded` / `trait::runtime_error`；  
+  - 语义上表现为“本次窗口派生被冻结”（业务写入仍可提交）。  
+- **显式 deps 是唯一依赖事实源**：converge 的排序与增量调度只认 `deps`；dev/test 环境会做一次 deps-trace 辅助检查并发出 `state_trait::deps_mismatch`（warning）。  
+
+> 说明：converge 支持两种调度策略：  
+> - `full`（默认）：全量 topo 执行 + equals/门控跳过写回。  
+> - `dirty`：基于事务窗口内的 `dirtyPaths` 与 `deps` 做最小触发；若仅存在 `"*"`（未知粒度写入）则回退到全量调度。  
+> 当前 `dirty` 模式对 list/index 的 dirtyRoots 会做折叠归一（安全但偏粗），更精细的 rowId/trackBy 粒度需后续阶段再收敛。  
+
+#### 1.5.2 scoped validate：Reverse Closure（反向闭包）最小化校验范围
+
+`TraitLifecycle.scopedValidate(...)` 会把校验请求（FieldRef → ValidateTarget）挂到当前事务，等待在提交前统一 flush。flush 时：
+
+- Runtime 会基于 `StateTraitProgram.graph.edges` 构建 DependencyGraph；  
+- 对每个 validate target，计算其在依赖图中的 **Reverse Closure**（target 自身 + 所有直接或间接依赖 target 的节点）；  
+- 只执行 Reverse Closure 范围内的 check 规则，并将结果写回 `state.errors.*`（同构错误树）。  
+
+该策略保证：当用户只改动一个字段时，校验传播只覆盖“受影响”的规则集合，而不是全量重跑所有 check。
+
+#### 1.5.3 RowID 虚拟身份层（对外 index，内核 RowID）
+
+> 目标：在保持对外 index 语义（RHF 心智）的前提下，为“in-flight 门控/缓存复用/稳定诊断定位”提供内部稳定身份。
+
+Runtime 会为每个 ModuleRuntime 维护一个 `RowIdStore`：
+
+- `RowIdStore` 只用于内核与领域包（Form/Query/…）的实现；对外仍以 `items[i]` 的 index 语义表达状态与错误树。  
+- 每次产生可观察提交后，Runtime 会根据 `StateTraitProgram.spec` 中声明的 `StateTraitList.identityHint.trackBy` 收集 list 配置，并对齐 `index -> RowID` 映射：  
+  - 若数组引用未变，RowID 不变；  
+  - 若长度未变且没有 reorder（按引用观测），RowID 不变；  
+  - 若发生 insert/remove/reorder，则优先用 trackBy（否则退回到 item 引用）复用旧 RowID，并通知“被移除的 RowID”。  
+
+RowID 的直接收益是：list.item scope 的 source-refresh 可以在插入/删除/重排下仍然把结果写回到“正确的那一行”，并在行移除时确定性清理 in-flight / trailing 状态。
+
+#### 1.5.4 StateTrait.source：两阶段提交、竞态门控与回放（Replay Mode）
+
+`StateTrait.source` 的 refresh 入口由 `StateTrait.install` 安装到 `$.traits.source.refresh(fieldPath)`：
+
+- **阶段 1（同步）**：在 `source.refresh` 的事务窗口内，先写入 `loading` snapshot（包含 `keyHash`）。  
+- **阶段 2（异步）**：在后台 fiber 中执行实际 service 调用；完成后以 `keyHash gate` 写回 `success/error` snapshot：  
+  - 若当前字段的 `keyHash` 已变化，旧结果会被丢弃（避免竞态覆盖）；  
+  - key 变空（`undefined`）时，必须同步写回 idle snapshot（清空 data/error），避免视图读取到非法中间态。  
+
+并发策略（Phase 2）：
+
+- `concurrency = "switch"`：新 key 到来时视旧请求为过期（旧结果由 gate 丢弃，部分场景会中断旧 fiber）；  
+- `concurrency = "exhaust-trailing"`：忙碌时记录 trailing，并立即更新到最新 loading；in-flight 结束后补跑一次 trailing。  
+
+回放模式（Replay Mode）的核心口径是：**re-emit，不 re-fetch**。
+
+- live 模式下：source-refresh 会把 `loading/success/error/idle` 的 ResourceSnapshot 事件记录到 `ReplayLog`；  
+- replay 模式下：source-refresh 不调用真实资源实现，而是按 `ReplayLog` 的顺序消费并重赛这些 snapshot，使时间旅行能够复现“当时发生了什么”。  
+
+更详细的 ReplayLog 数据模型与 Devtools 聚合口径见：`core/09-debugging.md`。
+
 ---
 
 ## 2. AppRuntime.makeApp：应用级组装

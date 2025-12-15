@@ -30,6 +30,38 @@
 - `seq` 必须是整数且 `>= 1`。
 - `timestamp` 必须为有限数字。
 - `payload` 在跨宿主传输/导出时必须可结构化克隆或可 JSON 化；否则需要降级表示（见 Edge Case 约束）。
+- 对已知高成本字段/超大 payload，允许在跨宿主传输/导出时强制摘要（或按需获取），并用可预测表示标记降级原因（例如 `oversized`）。
+
+## Entity: RuntimeDebugEventRef（规范化 Debug 事件引用）
+
+用于在跨宿主/证据包场景中承载 `@logix/core` 的 Debug 事件，保证字段稳定、易聚合。
+
+来源：`packages/logix-core/src/internal/runtime/core/DebugSink.ts` 的 `RuntimeDebugEventRef`（由 `toRuntimeDebugEventRef` 生成）。
+
+- `eventId: string`：事件 id（运行时内单调递增即可，不要求跨 run 稳定）。
+- `moduleId?: string`
+- `runtimeId?: string`：模块实例 id（等价于 Devtools/时间旅行语义中的 instanceId）。
+- `runtimeLabel?: string`
+- `txnId?: string`：关联的 `StateTransaction`（Operation Window）标识。
+- `timestamp: number`
+- `kind: string`：粗粒度类别（如 `action/state/service/trait-*/react-render/diagnostic/devtools`）。
+- `label: string`：用于 UI 展示的短标签。
+- `meta?: unknown`：可选结构化信息（例如 patchCount/originKind/originName/diagnostic 字段等）。
+
+## Entity: OperationWindowSpan（Time-Span Timeline 的顶层 Span）
+
+用于驱动“时序跨度时间线（Time-Span Timeline）”的顶层窗口跨度（通常以一次 `StateTransaction` 为单位）。
+
+- `txnId: string`
+- `moduleId?: string`
+- `runtimeId?: string`
+- `startedAt: number`
+- `endedAt: number`
+- `outcome?: "Converged" | "Noop" | "Degraded"`：可选，来自 trait 收敛摘要。
+- `degradedReason?: string`：可选，来自降级原因（如 budget_exceeded/runtime_error）。
+
+约束：
+- `startedAt/endedAt` 必须来自运行时权威时间（例如 `StateTransaction.startedAt/endedAt`）；查看器不得“补造”窗口边界。
 
 ## Entity: AggregatedSnapshot（宿主无关聚合快照）
 
@@ -37,7 +69,8 @@
 
 - `run: { runId: string; protocolVersion: string }`
 - `stats: { totalEvents: number; droppedEvents?: number }`
-- `timeline: ReadonlyArray<{ seq: number; timestamp: number; type: string; ref?: { moduleId?: string; runtimeId?: string; txnId?: string } }>`
+- `timeline: ReadonlyArray<{ seq: number; timestamp: number; type: string; kind?: string; label?: string; ref?: { moduleId?: string; runtimeId?: string; txnId?: string } }>`
+- `windows?: ReadonlyArray<OperationWindowSpan>`：可选的窗口跨度索引（用于 Time-Span Overview 泳道）。
 - `instances: ReadonlyMap<string, number>`：按 `runtimeLabel::moduleId` 维度的活跃实例计数（可复用现有 DevtoolsHub 语义）。
 - `latestStates: ReadonlyMap<string, unknown>`：按 `runtimeLabel::moduleId::runtimeId` 的最新状态快照（可选/可配置）。
 - `diagnostics: ReadonlyArray<unknown>`：错误/诊断事件的聚合索引（用于 Overview/列表）。
@@ -45,6 +78,17 @@
 
 约束：
 - 对同一份输入（相同 runId + 相同 envelopes 列表），聚合输出必须确定且可复现（同输入同输出）。
+
+## Entity: AggregationWorkerBoundary（Worker-first 边界）
+
+用于约束“聚合引擎应如何落在 Worker 内”，避免高频事件处理逻辑挤占 UI 主线程。
+
+- `input`: 批量的 `ObservationEnvelope` 追加流（append-only），以及可选的 `ControlCommand`（如 `clear/pause/resume`）。
+- `output`: `AggregatedSnapshot`（全量或增量），并携带丢弃/降级统计（例如 droppedEvents、oversizedCount 等）。
+
+约束：
+- 主线程不得承担事件索引、窗口聚合、视口裁剪、布局计算等高成本逻辑；这些必须在 Worker 内完成。
+- Worker → UI 的推送频率必须受控（参考 spec 的 FR-013 节流策略），避免“观测者效应”。
 
 ## Entity: EvidencePackage
 
@@ -59,6 +103,7 @@
 
 约束：
 - 导入后必须能还原核心计数与事件顺序（基于 `seq`）。
+- 证据包允许只包含录制窗口内事件：`events[*].runId` 必须一致，但 `seq` 允许不从 1 开始且可存在间隙；接收端不得假设 `seq` 连续。
 - 不可序列化字段必须以可预测方式降级，且不导致导入失败。
 
 ## Entity: ControlCommand（最小命令面）
@@ -68,4 +113,3 @@
 - `type: "clear" | "pause" | "resume"`
 - `runId?: string`：若命令针对特定 run；否则表示当前会话。
 - `seq?: number`：命令自身的顺序标识（可选，按需要引入）。
-

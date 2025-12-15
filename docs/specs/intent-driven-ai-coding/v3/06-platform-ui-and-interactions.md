@@ -85,8 +85,8 @@ v3 的 UI 设计不再追求“全图形化编程”，而是致力于打造一�
 
 | 画布上的业务构件 | IntentRule（概念上） | 生成的 TS Intent API |
 | --- | --- | --- |
-| 字段联动卡片：“当字段 A 变化时，清空字段 B” | `source: { context: self, type: state, selector: A }`；`pipeline: []`；`sink: { context: self, type: mutate }` | `yield* $.onState(s => s.A).then($.state.update(prev => ({ ...prev, B: '' })))` |
-| 模块联动连线：“Search 结果变化 → 初始化 Detail” | `source: { context: SearchStoreId, type: state, selector: results }`；`pipeline: []`；`sink: { context: DetailStoreId, type: dispatch }` | `yield* $.on($Search.changes(s => s.results)).then(results => $Detail.dispatch({ _tag: 'detail/initialize', payload: results[0] }))` |
+| 字段联动卡片：“当字段 A 变化时，清空字段 B” | `source: { context: self, type: state, selector: A }`；`pipeline: []`；`sink: { context: self, type: mutate }` | `yield* $.onState((s) => s.A).mutate((draft) => { draft.B = '' })` |
+| 模块联动连线：“Search 结果变化 → 初始化 Detail” | `source: { context: SearchStoreId, type: state, selector: results }`；`pipeline: []`；`sink: { context: DetailStoreId, type: dispatch }` | `yield* $.on($Search.changes((s) => s.results)).run((results) => $Detail.dispatch({ _tag: 'detail/initialize', payload: results[0] }))` |
 | 审批流 Pattern：“点击提交 → 调用审批服务 → 更新状态” | 多条 `IntentRule`（Action 触发、Service 调用、状态更新）+ 一个 Pattern 资产 ID | `flow.fromAction(...).pipe(flow.run(runApprovalPattern(config)))` |
 
 从平台视角看：

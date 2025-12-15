@@ -1,4 +1,4 @@
-import { Context } from "effect"
+import { Context, Layer } from "effect"
 
 // 统一的运行时环境检测，避免 bundler 在构建期内联 NODE_ENV。
 export const getNodeEnv = (): string | undefined => {
@@ -37,6 +37,18 @@ export const getDefaultStateTxnInstrumentation =
  */
 export interface StateTransactionRuntimeConfig {
   readonly instrumentation?: StateTransactionInstrumentation
+  /**
+   * StateTrait 派生收敛（converge）预算（ms）：
+   * - 超过预算将触发软降级（冻结派生字段，保住 base 写入与 0/1 commit 语义）。
+   * - 默认为 200ms（与 007 spec 的默认阈值保持一致）。
+   */
+  readonly traitConvergeBudgetMs?: number
+  /**
+   * StateTrait converge 调度策略：
+   * - full：全量 topo 执行（当前默认，最稳妥）；
+   * - dirty：基于事务窗口内 dirtyPaths + deps 做最小触发（要求 deps 准确）。
+   */
+  readonly traitConvergeMode?: "full" | "dirty"
 }
 
 class StateTransactionConfigTagImpl extends Context.Tag(
@@ -44,3 +56,20 @@ class StateTransactionConfigTagImpl extends Context.Tag(
 )<StateTransactionConfigTagImpl, StateTransactionRuntimeConfig>() {}
 
 export const StateTransactionConfigTag = StateTransactionConfigTagImpl
+
+export type ReplayMode = "live" | "replay"
+
+export interface ReplayModeConfig {
+  readonly mode: ReplayMode
+}
+
+class ReplayModeConfigTagImpl extends Context.Tag(
+  "@logix/core/ReplayModeConfig",
+)<ReplayModeConfigTagImpl, ReplayModeConfig>() {}
+
+export const ReplayModeConfigTag = ReplayModeConfigTagImpl
+
+export const replayModeLayer = (
+  mode: ReplayMode,
+): Layer.Layer<ReplayModeConfigTagImpl, never, never> =>
+  Layer.succeed(ReplayModeConfigTag, { mode })

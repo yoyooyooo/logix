@@ -113,7 +113,7 @@ describe("React Hooks", () => {
     // Check read-only: SubscriptionRef API 不暴露 set，这里只验证 Selector 行为
   })
 
-  it("should support $.useRemote-based logic with React hooks", async () => {
+  it("should support $.use-based cross-module logic with React hooks", async () => {
     const CountState = Schema.Struct({ count: Schema.Number })
     const CounterActions = { inc: Schema.Void }
     const Counter = Logix.Module.make("RemoteCounter", {
@@ -137,9 +137,9 @@ describe("React Hooks", () => {
 
     const badgeLogic = Badge.logic(($) =>
       Effect.gen(function* () {
-        const RemoteCounter = yield* $.useRemote(Counter)
+        const counter = yield* $.use(Counter)
 
-        yield* RemoteCounter.onState((s: { count: number }) => s.count)
+        yield* $.on(counter.changes((s: { count: number }) => s.count))
           .filter((count) => count > 0)
           .run((count) =>
             $.state.update((s) => ({
@@ -150,12 +150,18 @@ describe("React Hooks", () => {
       }),
     )
 
-    runtime = ManagedRuntime.make(
-      Layer.mergeAll(
-        Counter.live({ count: 0 }, counterLogic) as Layer.Layer<any, never, any>,
-        Badge.live({ text: "" }, badgeLogic) as Layer.Layer<any, never, any>,
-      ) as Layer.Layer<any, never, never>,
-    )
+    const CounterImpl = Counter.implement({
+      initial: { count: 0 },
+      logics: [counterLogic],
+    })
+
+    const BadgeImpl = Badge.implement({
+      initial: { text: "" },
+      logics: [badgeLogic],
+      imports: [CounterImpl],
+    })
+
+    runtime = Logix.Runtime.make(BadgeImpl)
 
     const wrapperWithApp = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>
@@ -170,7 +176,10 @@ describe("React Hooks", () => {
       { wrapper: wrapperWithApp },
     )
 
-    const counterHook = renderHook(() => useModule(Counter), {
+    const counterHook = renderHook(() => {
+      const host = useModule(Badge)
+      return host.imports.get(Counter)
+    }, {
       wrapper: wrapperWithApp,
     })
 
@@ -179,7 +188,7 @@ describe("React Hooks", () => {
     // 通过 CounterModule 的 runtime 触发 inc，验证 Badge 文本联动变化
     await act(async () => {
       await runtime.runPromise(
-        counterHook.result.current.dispatch({
+        counterHook.result.current.runtime.dispatch({
           _tag: "inc",
           payload: undefined,
         }),
@@ -429,7 +438,7 @@ describe("React Hooks", () => {
     // 通过 Logger runtime 派发 action，验证不会影响 Counter runtime 的引用稳定性
     await act(async () => {
       await localRuntime.runPromise(
-        loggerHook.result.current.dispatch({
+        loggerHook.result.current.runtime.dispatch({
           _tag: "log",
           payload: "hello",
         }),

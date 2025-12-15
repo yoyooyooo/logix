@@ -8,6 +8,8 @@ import {
   stableHash,
 } from "../internal/ModuleCache.js"
 import { RuntimeContext } from "../internal/ReactContext.js"
+import { makeModuleActions, type ModuleRef } from "../internal/ModuleRef.js"
+import { resolveImportedModuleRef } from "../internal/resolveImportedModuleRef.js"
 
 type LocalModuleFactory = () => Effect.Effect<
   Logix.ModuleRuntime<any, any>,
@@ -23,7 +25,7 @@ interface ModuleInstanceOptions<Sh extends Logix.AnyModuleShape = Logix.AnyModul
 }
 
 function isModuleInstance(
-  source: unknown
+  source: unknown,
 ): source is Logix.ModuleInstance<any, Logix.AnyModuleShape> {
   if (!source || typeof source !== "object") {
     return false
@@ -34,18 +36,18 @@ function isModuleInstance(
 
 export function useLocalModule(
   factory: LocalModuleFactory,
-  deps?: React.DependencyList
-): Logix.ModuleRuntime<any, any>
+  deps?: React.DependencyList,
+): ModuleRef<any, any>
 
 export function useLocalModule<Sh extends Logix.AnyModuleShape>(
   module: Logix.ModuleInstance<any, Sh>,
-  options: ModuleInstanceOptions<Sh>
-): Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
+  options: ModuleInstanceOptions<Sh>,
+): ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
 
 export function useLocalModule(
   source: LocalModuleFactory | Logix.ModuleInstance<any, Logix.AnyModuleShape>,
-  second?: React.DependencyList | ModuleInstanceOptions
-): Logix.ModuleRuntime<any, any> {
+  second?: React.DependencyList | ModuleInstanceOptions,
+): ModuleRef<any, any> {
   const runtime = useRuntime()
   const runtimeContext = React.useContext(RuntimeContext)
 
@@ -101,12 +103,38 @@ export function useLocalModule(
 
   useEffect(() => cache.retain(key), [cache, key])
 
-  return moduleRuntime
+  const dispatch = useMemo(
+    () => (action: any) => {
+      runtime.runFork((moduleRuntime.dispatch as (a: any) => any)(action))
+    },
+    [runtime, moduleRuntime],
+  )
+
+  const actions = useMemo(() => makeModuleActions(dispatch), [dispatch])
+
+  return useMemo(
+    () =>
+      ({
+        runtime: moduleRuntime,
+        dispatch,
+        actions,
+        imports: {
+          get: (module: any) =>
+            resolveImportedModuleRef(runtime, moduleRuntime as any, module),
+        },
+        getState: moduleRuntime.getState,
+        setState: moduleRuntime.setState,
+        actions$: moduleRuntime.actions$,
+        changes: moduleRuntime.changes,
+        ref: moduleRuntime.ref,
+      }) satisfies ModuleRef<any, any>,
+    [runtime, moduleRuntime, dispatch, actions],
+  )
 }
 
 function createModuleInstanceFactory<Sh extends Logix.AnyModuleShape>(
   module: Logix.ModuleInstance<any, Sh>,
-  options?: ModuleInstanceOptions<Sh>
+  options?: ModuleInstanceOptions<Sh>,
 ): ModuleCacheFactory {
   if (!options || options.initial === undefined) {
     throw new Error("useLocalModule(module, options) 需要提供 initial 状态")
@@ -114,6 +142,9 @@ function createModuleInstanceFactory<Sh extends Logix.AnyModuleShape>(
   const logics = options.logics ?? []
   return (scope: Scope.Scope) =>
     Layer.buildWithScope(module.live(options.initial, ...logics), scope).pipe(
-      Effect.map((context) => Context.get(context, module))
+      Effect.map((context) => {
+        const runtime = Context.get(context, module)
+        return runtime
+      }),
     )
 }

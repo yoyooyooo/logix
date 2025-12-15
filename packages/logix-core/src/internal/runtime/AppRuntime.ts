@@ -1,5 +1,6 @@
 import { Context, Effect, Layer, ManagedRuntime } from 'effect'
 import { StateTransactionConfigTag, type StateTransactionRuntimeConfig } from './core/env.js'
+import { RootContextTag } from "./core/RootContext.js"
 import type { AnyModuleShape, ModuleInstance, ModuleRuntime, StateOf, ActionOf } from './core/module.js'
 
 /**
@@ -177,7 +178,7 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
 
   // 若 Runtime 层提供了统一的 StateTransaction 配置，则在 App 级 Env 上追加对应 Service。
   const stateTxnLayer: Layer.Layer<R, never, never> =
-    config.stateTransaction && config.stateTransaction.instrumentation
+    config.stateTransaction
       ? (Layer.succeed(StateTransactionConfigTag, config.stateTransaction) as Layer.Layer<R, never, never>)
       : (Layer.empty as Layer.Layer<R, never, never>)
 
@@ -216,6 +217,7 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
       return Layer.mergeAll(
         Layer.succeedContext(env),
         fiberRefsLayer,
+        Layer.succeed(RootContextTag, { context: env }),
       )
     }),
   ) as Layer.Layer<R, never, never>

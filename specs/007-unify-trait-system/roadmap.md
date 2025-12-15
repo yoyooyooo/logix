@@ -35,6 +35,14 @@
 
 ## P1: DX & Tooling (开发体验)
 
+### 4.5 领域包内部类型安全收敛（Form / Query）
+
+- **痛点**：为了快速迭代，`@logix/form` 与 `@logix/query` 的 reducers/logics/Controller 中存在较多 `any` 断言，重构时容易隐式 break。
+- **Todo**：
+  - 为 Module 的 State/Action 推导提供可复用的 helper types（例如 `Reducer<S, A>` / `ActionOfTag<...>`），让 reducers 不再需要 `any`；
+  - 让 `TValues/TParams` 在内部传递时保持约束，不退化为 `object/unknown`；
+  - 将“最小 unsafe cast”集中在少量边界层（例如 Schema.Any 投影与 actions payload 的桥接），其余代码维持强类型。
+
 ### 5. `Form.traits` 的“伪扁平”语法糖 (Sugar)
 
 - **痛点**：手写 `list({ item: ... })` 嵌套太深，视觉噪音大。

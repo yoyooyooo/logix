@@ -60,14 +60,12 @@ import { Counter } from './counter.module';
 export const CounterLogic = Counter.logic(($) =>
   Effect.gen(function* () {
     // Action → State
-    yield* $.onAction((a): a is { _tag: 'inc' } => a._tag === 'inc').then(
-      $.state.update(prev => ({ ...prev, count: prev.count + 1 })),
+    yield* $.onAction((a): a is { _tag: 'inc' } => a._tag === 'inc').update(
+      (prev) => ({ ...prev, count: prev.count + 1 }),
     );
 
     // State → State
-    yield* $.onState(s => s.count).then(
-      Effect.logInfo('Count changed'),
-    );
+    yield* $.onState((s) => s.count).run(() => Effect.logInfo('Count changed'));
   }),
 );
 ```

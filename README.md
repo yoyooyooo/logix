@@ -6,6 +6,10 @@
 - Intent/Flow/Effect 的组合模式；
 - 面向 ToB 典型场景的 PoC 与最佳实践。
 
+原则：性能与可诊断性优先、拒绝向后兼容；目标是让 Logix 成为逻辑编排领域的“React”
+（声明式、可推导、内部自动优化、可解释）。治理与工作流以 `.specify/memory/constitution.md`
+为准。
+
 ## 文档分层
 
 - **用户文档（推荐从这里开始）**  

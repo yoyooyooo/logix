@@ -5,8 +5,10 @@ import * as LogicDiagnostics from "./core/LogicDiagnostics.js"
 import type {
   AnyModuleShape,
   AnySchema,
+  ActionsFromMap,
   ModuleInstance,
   ModuleShape,
+  ReducersFromMap,
   StateOf,
   ActionOf,
   ModuleHandle,
@@ -72,42 +74,31 @@ export function Module<
   def: {
     readonly state: SSchema
     readonly actions: AMap
-    readonly reducers?: {
-      readonly [K in keyof AMap]?: (
-        state: Schema.Schema.Type<SSchema>,
-        action: {
-          readonly _tag: K
-          readonly payload: Schema.Schema.Type<AMap[K]>
-        }
-      ) => Schema.Schema.Type<SSchema>
-    }
+    readonly reducers?: ReducersFromMap<SSchema, AMap>
   }
 ): ModuleInstance<
   Id,
-  ModuleShape<SSchema, Schema.Schema<{
-    [K in keyof AMap]: {
-      readonly _tag: K
-      readonly payload: Schema.Schema.Type<AMap[K]>
-      }
-    }[keyof AMap]>, AMap>
+  ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>
 > {
   const shape: ModuleShape<
     SSchema,
-    Schema.Schema<{
-      [K in keyof AMap]: {
-        readonly _tag: K
-        readonly payload: Schema.Schema.Type<AMap[K]>
-      }
-    }[keyof AMap]>,
+    Schema.Schema<ActionsFromMap<AMap>>,
     AMap
   > = {
     stateSchema: def.state,
     actionSchema: Schema.Union(
       ...Object.entries(def.actions).map(([tag, payload]) =>
-        Schema.Struct({
-          _tag: Schema.Literal(tag),
-          payload,
-        })
+        Schema.Struct(
+          payload === Schema.Void
+            ? {
+                _tag: Schema.Literal(tag),
+                payload: Schema.optional(payload),
+              }
+            : {
+                _tag: Schema.Literal(tag),
+                payload,
+              },
+        ),
       )
     ) as any,
     actionMap: def.actions,
@@ -278,18 +269,19 @@ export function Module<
       stateTransaction?: ModuleImplementStateTransactionOptions
     }): ModuleImpl<
       Id,
-        ModuleShape<
-          SSchema,
-          Schema.Schema<{
-            [K in keyof AMap]: {
-              readonly _tag: K
-              readonly payload: Schema.Schema.Type<AMap[K]>
-            }
-          }[keyof AMap]>,
-          AMap
-        >,
-        R
+      ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>,
+      R
       > => {
+      const importedModules = (config.imports ?? []).flatMap((item) => {
+        if ((item as ModuleImpl<any, AnyModuleShape, any>)._tag === "ModuleImpl") {
+          return [
+            (item as ModuleImpl<any, AnyModuleShape, any>)
+              .module as unknown as Context.Tag<any, import("./core/module.js").ModuleRuntime<any, any>>,
+          ]
+        }
+        return []
+      })
+
       const baseLayer = Layer.scoped(
         tag,
         ModuleRuntimeImpl.make<StateOf<typeof shape>, ActionOf<typeof shape>, R>(
@@ -298,6 +290,7 @@ export function Module<
             tag,
             logics: (config.logics || []) as ReadonlyArray<Effect.Effect<any, any, any>>,
             moduleId: id,
+            imports: importedModules,
             reducers,
             stateTransaction: config.stateTransaction,
           },
@@ -324,31 +317,13 @@ export function Module<
         >,
       ): ModuleImpl<
         Id,
-        ModuleShape<
-          SSchema,
-          Schema.Schema<{
-            [K in keyof AMap]: {
-              readonly _tag: K
-              readonly payload: Schema.Schema.Type<AMap[K]>
-            }
-          }[keyof AMap]>,
-          AMap
-        >,
+        ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>,
         any
       > => ({
         _tag: "ModuleImpl",
         module: moduleInstance as unknown as ModuleInstance<
           Id,
-          ModuleShape<
-            SSchema,
-            Schema.Schema<{
-              [K in keyof AMap]: {
-                readonly _tag: K
-                readonly payload: Schema.Schema.Type<AMap[K]>
-              }
-            }[keyof AMap]>,
-            AMap
-          >
+          ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>
         >,
         layer,
         processes,
@@ -357,16 +332,7 @@ export function Module<
           extra: Layer.Layer<any, never, any>
         ): ModuleImpl<
           Id,
-          ModuleShape<
-            SSchema,
-            Schema.Schema<{
-              [K in keyof AMap]: {
-                readonly _tag: K
-                readonly payload: Schema.Schema.Type<AMap[K]>
-              }
-            }[keyof AMap]>,
-            AMap
-          >,
+          ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>,
           any
         > => {
           const provided = (layer as Layer.Layer<
@@ -400,30 +366,12 @@ export function Module<
           ...extras: ReadonlyArray<Layer.Layer<any, never, any>>
         ): ModuleImpl<
           Id,
-          ModuleShape<
-            SSchema,
-            Schema.Schema<{
-              [K in keyof AMap]: {
-                readonly _tag: K
-                readonly payload: Schema.Schema.Type<AMap[K]>
-              }
-            }[keyof AMap]>,
-            AMap
-          >,
+          ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>,
           any
         > =>
           extras.reduce<ModuleImpl<
             Id,
-            ModuleShape<
-              SSchema,
-              Schema.Schema<{
-                [K in keyof AMap]: {
-                  readonly _tag: K
-                  readonly payload: Schema.Schema.Type<AMap[K]>
-                }
-              }[keyof AMap]>,
-              AMap
-            >,
+            ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>,
             any
           >>(
             (implAcc, extra) => implAcc.withLayer(extra),
@@ -456,16 +404,7 @@ export function Module<
 
       const finalImpl = imports.reduce<ModuleImpl<
         Id,
-        ModuleShape<
-          SSchema,
-          Schema.Schema<{
-            [K in keyof AMap]: {
-              readonly _tag: K
-              readonly payload: Schema.Schema.Type<AMap[K]>
-            }
-          }[keyof AMap]>,
-          AMap
-        >,
+        ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>,
         any
       >>((implAcc, item) => {
         const layer =
@@ -482,15 +421,6 @@ export function Module<
 
   return moduleInstance as ModuleInstance<
     Id,
-    ModuleShape<
-      SSchema,
-      Schema.Schema<{
-        [K in keyof AMap]: {
-          readonly _tag: K
-          readonly payload: Schema.Schema.Type<AMap[K]>
-        }
-      }[keyof AMap]>,
-      AMap
-    >
+    ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>
   >
 }

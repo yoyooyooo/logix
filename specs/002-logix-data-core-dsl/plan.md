@@ -3,7 +3,8 @@
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
+**Note**: This template is copied into `specs/[###-feature-name]/plan.md` by
+`.specify/scripts/bash/setup-plan.sh` (invoked by the feature workflow).
 
 ## Summary
 

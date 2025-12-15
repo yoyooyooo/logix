@@ -18,7 +18,14 @@ describe("StateTrait.source runtime integration", () => {
       name: Schema.String,
     }),
     profileResource: Schema.Struct({
-      name: Schema.String,
+      status: Schema.String,
+      keyHash: Schema.optional(Schema.String),
+      data: Schema.optional(
+        Schema.Struct({
+          name: Schema.String,
+        }),
+      ),
+      error: Schema.optional(Schema.Any),
     }),
   })
 
@@ -32,17 +39,19 @@ describe("StateTrait.source runtime integration", () => {
 
   const makeProgram = () => {
     const traits = Logix.StateTrait.from(StateSchema)({
-      sum: Logix.StateTrait.computed(
-        (s: Readonly<State>) => s.a + s.b,
-      ),
+      sum: Logix.StateTrait.computed({
+        deps: ["a", "b"],
+        get: (s: Readonly<State>) => s.a + s.b,
+      }),
       profileResource: Logix.StateTrait.source({
+        deps: ["profile.id"],
         resource: "user/profile",
         key: (s: Readonly<State>) => ({
           userId: s.profile.id,
         }),
       }),
       "profile.name": Logix.StateTrait.link({
-        from: "profileResource.name",
+        from: "profileResource.data.name",
       }),
     })
 
@@ -54,7 +63,7 @@ describe("StateTrait.source runtime integration", () => {
 
     const calls: Array<Key> = []
 
-    const spec = Logix.Resource.make<Key, State["profileResource"], never, never>(
+    const spec = Logix.Resource.make<Key, { readonly name: string }, never, never>(
       {
         id: "user/profile",
         keySchema: KeySchema,
@@ -77,7 +86,7 @@ describe("StateTrait.source runtime integration", () => {
         b: 2,
         sum: 0,
         profile: { id: "u1", name: "Alice" },
-        profileResource: { name: "Initial" },
+        profileResource: Logix.Resource.Snapshot.idle(),
       }
 
       const runtime = yield* ModuleRuntimeImpl.make<State, Action>(
@@ -111,12 +120,13 @@ describe("StateTrait.source runtime integration", () => {
       // 显式触发一次 source 刷新。
       yield* bound.traits.source.refresh("profileResource")
 
-      // 等待 watcher 与刷新逻辑完成（link/computed 可能依赖该字段）。
-      yield* Effect.sleep("10 millis")
+      // 等待刷新与写回（loading → success）
+      yield* Effect.sleep("30 millis")
 
       const finalState = (yield* runtime.getState) as State
-      expect(finalState.profileResource.name).toBe("resource:u1")
-      // link: profile.name 跟随 profileResource.name。
+      expect(finalState.profileResource.status).toBe("success")
+      expect(finalState.profileResource.data?.name).toBe("resource:u1")
+      // link: profile.name 跟随 profileResource.data.name。
       expect(finalState.profile.name).toBe("resource:u1")
     })
 
@@ -149,7 +159,7 @@ describe("StateTrait.source runtime integration", () => {
     const resourceCalls: Array<Key> = []
     const clientCalls: Array<{ resourceId: string; key: Key }> = []
 
-    const spec = Logix.Resource.make<Key, State["profileResource"], never, never>(
+    const spec = Logix.Resource.make<Key, { readonly name: string }, never, never>(
       {
         id: "user/profile",
         keySchema: KeySchema,
@@ -164,8 +174,8 @@ describe("StateTrait.source runtime integration", () => {
     const queryClient = (
       resourceId: string,
       key: Key,
-      _load: (key: Key) => Effect.Effect<State["profileResource"], never, never>,
-    ): Effect.Effect<State["profileResource"], never, never> =>
+      _load: (key: Key) => Effect.Effect<{ readonly name: string }, never, never>,
+    ): Effect.Effect<{ readonly name: string }, never, never> =>
       Effect.succeed({ name: `client:${resourceId}:${key.userId}` }).pipe(
         Effect.tap(() =>
           Effect.sync(() => {
@@ -186,7 +196,7 @@ describe("StateTrait.source runtime integration", () => {
         b: 2,
         sum: 0,
         profile: { id: "u2", name: "Alice" },
-        profileResource: { name: "Initial" },
+        profileResource: Logix.Resource.Snapshot.idle(),
       }
 
       const runtime = yield* ModuleRuntimeImpl.make<State, Action>(
@@ -215,12 +225,11 @@ describe("StateTrait.source runtime integration", () => {
       )
 
       yield* bound.traits.source.refresh("profileResource")
-      yield* Effect.sleep("10 millis")
+      yield* Effect.sleep("30 millis")
 
       const finalState = (yield* runtime.getState) as State
-      expect(finalState.profileResource.name).toBe(
-        "client:user/profile:u2",
-      )
+      expect(finalState.profileResource.status).toBe("success")
+      expect(finalState.profileResource.data?.name).toBe("client:user/profile:u2")
       expect(finalState.profile.name).toBe("client:user/profile:u2")
     })
 
