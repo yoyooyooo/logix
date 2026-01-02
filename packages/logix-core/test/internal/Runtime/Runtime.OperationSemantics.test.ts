@@ -154,7 +154,7 @@ describe('Runtime + EffectOp bus semantics', () => {
 
         yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 
-        // 让 traits watcher 有机会完成（当前 Phase 仍基于 watcher 安装）。
+        // Give the traits watcher a chance to complete (the current phase still relies on watcher installation).
         yield* Effect.sleep('10 millis')
 
         const state = yield* rt.getState
@@ -245,7 +245,7 @@ describe('Runtime + EffectOp bus semantics', () => {
 
           yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 
-          // 让 watcher 有机会完成（当前 Phase 仍基于 watcher 安装）。
+          // Give the watcher a chance to complete (the current phase still relies on watcher installation).
           yield* Effect.sleep('10 millis')
 
           const state: any = yield* rt.getState

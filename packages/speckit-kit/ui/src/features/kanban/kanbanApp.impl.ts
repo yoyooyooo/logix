@@ -15,6 +15,7 @@ const initialState: KanbanState = {
   hideDoneTasks: true,
   viewMode: 'us',
   viewModeBySpec: {},
+  refreshSeq: 0,
   error: null,
   specs: [],
   tasksBySpec: {},

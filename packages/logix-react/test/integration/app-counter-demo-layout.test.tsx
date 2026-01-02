@@ -22,17 +22,17 @@ describe('App-like counter demo layout (AppDemoLayout-style)', () => {
   })
 
   const CounterLogic = CounterModule.logic(($) => {
-    // setup-only：注册全局兜底错误处理
+    // setup-only: register a global fallback error handler.
     $.lifecycle.onError((cause) => Effect.logError('AppDemoCounter logic error', cause))
 
     return Effect.gen(function* () {
-      // 正常业务日志
+      // Normal business log
       yield* Effect.log('AppDemoCounter logic setup')
 
-      // 普通 watcher：打印一条日志，证明 dispatch 生效
+      // Regular watcher: log once to prove dispatch works.
       yield* $.onAction('increment').run(() => Effect.log('increment dispatched from AppDemoCounter'))
 
-      // trace watcher：每次 increment 发送 trace:* Debug 事件
+      // Trace watcher: emit a trace:* Debug event on each increment.
       yield* $.onAction('increment').run(() =>
         Logix.Debug.record({
           type: 'trace:increment',
@@ -67,8 +67,8 @@ describe('App-like counter demo layout (AppDemoLayout-style)', () => {
 
   it('should update count via Runtime.make + RuntimeProvider + hooks chain', async () => {
     const appRuntime = Logix.Runtime.make(CounterImpl, {
-      // 这里不额外注入 DebugSink，只验证 Runtime → Provider → hooks 的链路正常工作；
-      // Debug.trace 能力由专门的 runtime-debug-trace-integration.test.tsx 覆盖。
+      // Do not inject an extra DebugSink here; only verify the Runtime -> Provider -> hooks chain works.
+      // Debug.trace behavior is covered by runtime-debug-trace-integration.test.tsx.
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 

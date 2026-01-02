@@ -27,7 +27,7 @@ describe('Runtime.make · devtools option', () => {
       process.env.NODE_ENV = 'production'
 
       try {
-        // 清理 ring buffer，避免受其他测试干扰
+        // Clear the ring buffer to avoid interference from other tests.
         Logix.Debug.clearDevtoolsEvents()
 
         const runtimeLabel = 'ProdDevtoolsRuntime'
@@ -82,9 +82,9 @@ describe('Runtime.make · devtools option', () => {
 
       yield* Effect.promise(() => runtime.runPromise(program as Effect.Effect<void, never, any>))
 
-      // 用户 sinks 应仍能收到事件（append 语义）。
+      // User sinks should still receive events (append semantics).
       expect(received.length).toBeGreaterThan(0)
-      // Hub 仍然在全局 side 记录事件窗口。
+      // The hub should still record the event window globally.
       expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBeGreaterThan(0)
     }),
   )

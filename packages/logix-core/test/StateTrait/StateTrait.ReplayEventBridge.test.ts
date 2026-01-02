@@ -68,7 +68,7 @@ describe('ReplayEvent ↔ state:update bridge', () => {
         const rt = yield* M.tag
         yield* rt.dispatch({ _tag: 'refresh', payload: undefined } as any)
 
-        // 等待 watcher + source IO 纤程完成至少一轮写回。
+        // Wait for watchers + source IO fibers to complete at least one writeback cycle.
         yield* Effect.sleep('10 millis')
 
         const updates = ring

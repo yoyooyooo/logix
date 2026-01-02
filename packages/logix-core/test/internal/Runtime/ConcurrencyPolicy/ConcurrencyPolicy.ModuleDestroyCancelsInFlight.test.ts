@@ -23,7 +23,7 @@ describe('ConcurrencyPolicy (US1): ModuleRuntime.destroy should cancel in-flight
         scope,
       )
 
-      // 在 scope 内启动一个“长任务”处理器：确保 destroy 时会被 interrupt。
+      // Start a "long-running" handler inside the scope so destroy will interrupt it.
       yield* Scope.extend(
         Effect.forkScoped(
           Effect.gen(function* () {
@@ -33,18 +33,18 @@ describe('ConcurrencyPolicy (US1): ModuleRuntime.destroy should cancel in-flight
 
             yield* Deferred.succeed(started, undefined)
 
-            // 长耗时：依赖 interrupt 收敛
+            // Long duration: rely on interruption to terminate.
             yield* Effect.sleep('30 seconds')
           }).pipe(Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined).pipe(Effect.asVoid))),
         ),
         scope,
       )
 
-      // 触发一次 handler 开始执行
+      // Trigger once to start the handler.
       yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
       yield* Deferred.await(started)
 
-      // destroy：关闭 scope 并等待 handler 收到 interrupt
+      // Destroy: close the scope and wait for the handler to be interrupted.
       yield* Scope.close(scope, Exit.succeed(undefined))
       yield* Deferred.await(interrupted)
     })

@@ -53,7 +53,7 @@ describe('LogicTraits (setup) - freeze / phase guard', () => {
 
     const readErrorCount = Effect.gen(function* () {
       const rt = yield* M.tag
-      // 给 fork 的 run fiber 一次调度机会（ModuleRuntime.make 末尾也会 yieldNow，但这里更稳一点）
+      // Give the forked run fiber a chance to be scheduled (ModuleRuntime.make also yields at the end, but this is more robust).
       yield* Effect.yieldNow()
       const state = yield* rt.getState
       return (state as any).errorCount as number

@@ -39,7 +39,7 @@ describe('React Hooks', () => {
   it('useModule(handle, selector) should return state', async () => {
     const { result } = renderHook(
       () =>
-        // 在聚合 hooks 测试里不强压类型，只验证行为
+        // In aggregated hooks tests we don't over-constrain types; only verify behavior.
         useModule(CounterModule.tag, (s) => (s as { readonly count: number }).count),
       { wrapper },
     )
@@ -91,7 +91,7 @@ describe('React Hooks', () => {
     // Check ref updated
     expect(await runtime.runPromise(SubscriptionRef.get(countRef))).toBe(10)
 
-    // Check read-only: SubscriptionRef API 不暴露 set，这里只验证 Selector 行为
+    // Check read-only: SubscriptionRef API does not expose `set`; we only verify selector behavior here.
   })
 
   it('should support $.use-based cross-module logic with React hooks', async () => {
@@ -164,7 +164,7 @@ describe('React Hooks', () => {
 
     await waitFor(() => expect(badgeHook.result.current).toBe(''))
 
-    // 通过 CounterModule 的 runtime 触发 inc，验证 Badge 文本联动变化
+    // Trigger inc via CounterModule runtime and verify Badge text updates accordingly.
     await act(async () => {
       await runtime.runPromise(
         counterHook.result.current.runtime.dispatch({
@@ -183,7 +183,7 @@ describe('React Hooks', () => {
     const BaseLayer = Layer.succeed(StepConfigTag, { step: 1 })
     const InnerLayer = Layer.succeed(StepConfigTag, { step: 5 })
 
-    // 覆盖本用例的 runtime：只需要一个简单 CounterModule 即可
+    // Override the runtime for this case: a simple CounterModule is sufficient.
     const localRuntime = ManagedRuntime.make(CounterModule.live({ count: 0 }) as Layer.Layer<any, never, never>)
 
     const useStepConfigValue = () => {
@@ -314,7 +314,7 @@ describe('React Hooks', () => {
 
     const DualLogic = DualCounter.logic(($) =>
       Effect.gen(function* () {
-        // 在 run 段挂载 watcher，避免 setup 阶段触发 Phase Guard
+        // Mount watchers in the run phase to avoid triggering the Phase Guard during setup.
         yield* $.onAction('inc').update((s) => ({ ...s, count: s.count + 1 }))
       }),
     )
@@ -356,7 +356,7 @@ describe('React Hooks', () => {
 
     const loggerLogic = Logger.logic(($) =>
       Effect.gen(function* () {
-        // Logger 只在 run 段监听 log Action
+        // Logger listens to the log action only in the run phase.
         yield* $.onAction('log').run((action) =>
           $.state.update((s) => ({
             ...s,
@@ -366,7 +366,7 @@ describe('React Hooks', () => {
       }),
     )
 
-    // 复用同一个 ManagedRuntime，挂载 Counter + Logger 两个模块
+    // Reuse a single ManagedRuntime to mount both Counter + Logger modules.
     const localRuntime = ManagedRuntime.make(
       Layer.mergeAll(
         CounterModule.live({ count: 0 }) as Layer.Layer<any, never, any>,
@@ -393,7 +393,7 @@ describe('React Hooks', () => {
       expect(state.logs).toEqual([])
     })
 
-    // 通过 Logger runtime 派发 action，验证不会影响 Counter runtime 的引用稳定性
+    // Dispatch via Logger runtime and verify it does not affect Counter runtime reference stability.
     await act(async () => {
       await localRuntime.runPromise(
         loggerHook.result.current.runtime.dispatch({

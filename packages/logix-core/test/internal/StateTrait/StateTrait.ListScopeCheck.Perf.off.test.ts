@@ -59,7 +59,7 @@ describe('StateTrait list-scope check · perf baseline (Diagnostics=off)', () =>
           ])
 
         return Effect.gen(function* () {
-          // 制造重复 → 解除重复（两步），用于观测“跨行一致写回”的热路径开销。
+          // Make duplicates -> remove duplicates (two steps) to observe the hot-path cost of "cross-row consistent writeback".
           draft = {
             ...draft,
             items: applyDuplicateWarehouse(draft.items, DEFAULT_DUPLICATE_INDICES, DEFAULT_DUPLICATE_WAREHOUSE_ID),
@@ -106,7 +106,7 @@ describe('StateTrait list-scope check · perf baseline (Diagnostics=off)', () =>
       const p50 = quantile(samples, 0.5)
       const p95 = quantile(samples, 0.95)
 
-      // 用于人工填写 specs/010-form-api-perf-boundaries/references/perf-baseline.md
+      // Intended for manually filling specs/010-form-api-perf-boundaries/references/perf-baseline.md
       console.log(
         `[perf] StateTrait.ListScopeCheck.off rows=100 iters=${iterations} p50=${p50.toFixed(
           2,

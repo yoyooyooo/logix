@@ -38,8 +38,8 @@ describe('ReactPlatformLayer lifecycle integration', () => {
 
     const runtime = ManagedRuntime.make(layer)
 
-    // 先确保 ModuleRuntime 与 Logic 已经启动并完成 lifecycle hook 注册，
-    // 再通过 ReactPlatformLayer 的 emit* 触发平台级生命周期。
+    // First ensure ModuleRuntime + Logic are started and lifecycle hooks are registered,
+    // then trigger platform-level lifecycle via ReactPlatformLayer emit* helpers.
     const program = Effect.gen(function* () {
       yield* LifecycleModule.tag
 

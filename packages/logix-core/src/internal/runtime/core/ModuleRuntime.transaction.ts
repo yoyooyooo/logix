@@ -680,10 +680,10 @@ export const makeTransactionOps = <S>(args: {
    * - Inside an active transaction: only update the draft and record patches (whole-State granularity), without writing to the underlying Ref.
    * - Outside a transaction: keep legacy behavior, write to SubscriptionRef directly and emit a state:update Debug event.
    *
-   * 说明：
-   * - 当 path="*" 且缺少字段级证据时，视为 dirtyAll 降级入口：会触发 converge/validate 的全量路径；
-   * - 推荐优先使用 `$.state.mutate(...)` / `Logix.Module.Reducer.mutate(...)` 产出字段级 patchPaths；
-   * - 任一不可追踪写入（含 path="*"）都必须显式降级（dirtyAll），禁止在 roots 存在时“忽略 *”。
+   * Notes:
+   * - When path="*" and field-level evidence is missing, treat it as a dirtyAll-degrade entrypoint: it triggers full converge/validate paths;
+   * - Prefer `$.state.mutate(...)` / `Logix.Module.Reducer.mutate(...)` to produce field-level patchPaths;
+   * - Any non-trackable write (including path="*") must explicitly degrade (dirtyAll); do not "ignore *" when roots exist.
    */
   const setStateInternal: SetStateInternal<S> = (
     next: S,

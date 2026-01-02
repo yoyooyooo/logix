@@ -73,7 +73,7 @@ describe('useModule multi-instance behavior', () => {
     fireEvent.click(getByText('inc-a'))
 
     await waitFor(() => {
-      // Tag 模式下，两处使用同一 Module，都看到同一个值
+      // In Tag mode, using the same Module in two places should observe the same value.
       expect(getByTestId('a').textContent).toBe('1')
       expect(getByTestId('b').textContent).toBe('1')
     })
@@ -120,7 +120,7 @@ describe('useModule multi-instance behavior', () => {
       expect(getByTestId('b').textContent).toBe('0')
     })
 
-    // 只点 A，期待 B 不受影响
+    // Click A only; expect B to be unaffected.
     fireEvent.click(getByText('inc-a'))
 
     await waitFor(() => {
@@ -128,7 +128,7 @@ describe('useModule multi-instance behavior', () => {
       expect(getByTestId('b').textContent).toBe('0')
     })
 
-    // 再点 B，期待两个实例各自维护状态
+    // Then click B; expect the two instances to maintain independent state.
     fireEvent.click(getByText('inc-b'))
 
     await waitFor(() => {

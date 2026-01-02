@@ -40,7 +40,7 @@ describe('Runtime.make (public API)', () => {
         yield* rt.dispatch({ _tag: 'bump', payload: undefined })
         yield* rt.dispatch({ _tag: 'bump', payload: undefined })
 
-        // 稍作等待，让后台 watcher 有机会处理 Action
+        // Wait briefly to give background watchers a chance to process actions.
         yield* Effect.sleep('10 millis')
 
         const state = yield* rt.getState

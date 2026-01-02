@@ -40,7 +40,7 @@ describe('Platform integration (public API)', () => {
     >
 
     const program = Effect.gen(function* () {
-      // 触发 ModuleRuntime 初始化与逻辑注册
+      // Trigger ModuleRuntime initialization and logic registration.
       yield* TestModule.tag
       yield* Effect.sleep('10 millis')
     }).pipe(Effect.provide(layer))

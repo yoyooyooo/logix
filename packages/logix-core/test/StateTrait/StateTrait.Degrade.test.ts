@@ -56,7 +56,7 @@ describe('StateTrait degrade', () => {
 
         const state = (yield* rt.getState) as S
         expect(state.base).toBe(1)
-        // derived 冻结为旧值（不写入半成品）
+        // derived stays frozen at the old value (do not write partial results).
         expect(state.derived).toBe(123)
 
         const degraded = events.find(

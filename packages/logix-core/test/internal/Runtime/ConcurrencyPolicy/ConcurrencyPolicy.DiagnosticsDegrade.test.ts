@@ -36,7 +36,7 @@ describe('ConcurrencyPolicy (US3): diagnostics degrade', () => {
             saturatedDurationMs: 10,
           })
 
-          // 同一冷却窗口内：应被 suppress，并累计 suppressedCount
+          // Within the same cooldown window: it should be suppressed and increment suppressedCount.
           yield* diagnostics.emitPressureIfNeeded({
             policy,
             trigger: { kind: 'txnQueue', name: 'enqueueTransaction' },
@@ -46,7 +46,7 @@ describe('ConcurrencyPolicy (US3): diagnostics degrade', () => {
 
           yield* TestClock.adjust('40 millis')
 
-          // 冷却窗口后：再次 emit，携带 suppressedCount
+          // After the cooldown window: emit again and carry suppressedCount.
           yield* diagnostics.emitPressureIfNeeded({
             policy,
             trigger: { kind: 'txnQueue', name: 'enqueueTransaction' },

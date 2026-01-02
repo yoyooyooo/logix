@@ -202,8 +202,8 @@ describe('ModuleRuntime (internal)', () => {
 
         // Logic that immediately tries to read a missing Env service.
         const logic = Effect.gen(function* () {
-          // 这里故意不在 Env 中提供 EnvService，以触发 Service not found 错误。
-          // 该错误会被 ModuleRuntime 捕获并通过 LogicDiagnostics 转为 diagnostic。
+          // Intentionally do not provide EnvService in the Env to trigger a "service not found" error.
+          // The error is captured by ModuleRuntime and converted into a diagnostic via LogicDiagnostics.
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const _svc = yield* EnvService
           return undefined
@@ -227,7 +227,7 @@ describe('ModuleRuntime (internal)', () => {
               },
             )
 
-            // 让后台 Logic Fiber 有机会运行并失败
+            // Give the background Logic fiber a chance to run and fail.
             yield* TestClock.adjust('10 millis')
           }),
         )
@@ -262,7 +262,7 @@ describe('ModuleRuntime (internal)', () => {
 
         const logic = ModuleWithEnv.logic(($) =>
           Effect.gen(function* () {
-            // setup 段尝试读取 Env，应被 phase 守卫拦截并转为 logic::invalid_phase 诊断。
+            // Reading Env during setup should be blocked by the phase guard and converted into a logic::invalid_phase diagnostic.
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const _svc = yield* $.use(EnvService)
             return Effect.void
@@ -282,7 +282,7 @@ describe('ModuleRuntime (internal)', () => {
               },
             )
 
-            // 让后台 Logic Fiber 有机会运行并触发诊断
+            // Give the background Logic fiber a chance to run and emit the diagnostic.
             yield* TestClock.adjust('10 millis')
           }),
         )
@@ -292,7 +292,7 @@ describe('ModuleRuntime (internal)', () => {
         const diagnosticEvent = events.find((e) => e.type === 'diagnostic' && e.code === 'logic::invalid_phase')
 
         if (!diagnosticEvent) {
-          // 帮助调试：若未捕获诊断，输出事件供分析
+          // Debug aid: if the diagnostic wasn't captured, print events for inspection.
           // eslint-disable-next-line no-console
           console.error('logic::invalid_phase events', events)
         }
@@ -321,7 +321,7 @@ describe('ModuleRuntime (internal)', () => {
 
         const logic = ModuleWithWatcher.logic(($) =>
           Effect.gen(function* () {
-            // setup 段使用 run-only watcher API，期望触发 phase guard 诊断。
+            // Using run-only watcher APIs during setup should trigger a phase-guard diagnostic.
             yield* $.onAction('ping').run(Effect.void)
             return Effect.void
           }),
@@ -426,8 +426,8 @@ describe('ModuleRuntime (internal)', () => {
         const logic = PlanModule.logic(($) => ({
           setup: Effect.void,
           run: Effect.gen(function* () {
-            // 在 LogicPlan.run 段使用 $.lifecycle.onInit，期望被 phase guard 拦截，
-            // 转换为 logic::invalid_phase 诊断，而不是影响 Runtime 构造路径。
+            // Using $.lifecycle.onInit during LogicPlan.run should be blocked by the phase guard,
+            // converted into a logic::invalid_phase diagnostic, and must not affect runtime construction.
             yield* $.lifecycle.onInit(Effect.void)
           }),
         }))
@@ -542,7 +542,7 @@ describe('ModuleRuntime (internal)', () => {
           )
 
           const run = Effect.gen(function* () {
-            // 触发 reducer，依赖 setup 已经完成注册
+            // Trigger the reducer; this depends on setup having been registered already.
             yield* $.actions.inc()
             yield* Deferred.succeed(completed, undefined)
           })
@@ -576,7 +576,7 @@ describe('ModuleRuntime (internal)', () => {
 
         const ref = yield* SubscriptionRef.make<S>({ count: 0 })
 
-        // 使用可控的 now()，便于在后续需要时断言时间字段。
+        // Use a controllable now() so time fields can be asserted later if needed.
         let nowCounter = 0
         const ctx = StateTransaction.makeContext<S>({
           moduleId: 'TxnUnitModule',
@@ -621,8 +621,8 @@ describe('ModuleRuntime (internal)', () => {
 
         StateTransaction.beginTransaction(ctx, { kind: 'unit-test', name: 'light' }, { value: 0 })
 
-        // 在 light 模式下，即便频繁调用 updateDraft / recordPatch，
-        // 也不应累积 Patch 或快照，避免在高 Trait / 高频场景下产生额外开销（T026）。
+        // In light mode, even frequent updateDraft / recordPatch calls should not accumulate patches or snapshots,
+        // to avoid extra overhead in high-trait / high-frequency scenarios (T026).
         for (let i = 0; i < 100; i++) {
           StateTransaction.updateDraft(ctx, { value: i + 1 })
           StateTransaction.recordPatch(ctx, 'value', 'reducer', i, i + 1)
@@ -632,7 +632,7 @@ describe('ModuleRuntime (internal)', () => {
 
         const txn = yield* StateTransaction.commit(ctx, ref)
 
-        // light 模式下不应记录任何 Patch 或快照，但仍然写入最终状态（此处为最后一次 updateDraft 的结果）。
+        // In light mode, no patches/snapshots are recorded, but the final state should still be written (last updateDraft wins).
         expect(txn).toBeDefined()
         expect(txn?.patches.length).toBe(0)
         expect(txn?.initialStateSnapshot).toBeUndefined()
@@ -739,14 +739,14 @@ describe('ModuleRuntime (internal)', () => {
             ).pipe(
               Effect.flatMap((runtime) =>
                 Effect.gen(function* () {
-                  // 先后两次事务：value = 1, value = 2
+                  // Two transactions in order: value = 1, value = 2
                   yield* runtime.dispatch({ _tag: 'set', payload: 1 } as any)
                   yield* runtime.dispatch({ _tag: 'set', payload: 2 } as any)
 
                   const beforeTravel = yield* runtime.getState
                   expect(beforeTravel.value).toBe(2)
 
-                  // 从 Debug 事件中找到第二次 state:update 对应的 txnId
+                  // Find the txnId for the second state:update from Debug events.
                   const events = ring
                     .getSnapshot()
                     .filter(
@@ -759,7 +759,7 @@ describe('ModuleRuntime (internal)', () => {
                   const txnId = secondTxnEvent.txnId as string
                   expect(typeof txnId).toBe('string')
 
-                  // 回到该事务开始前的状态（应为 value = 1）
+                  // Travel back to the state before that transaction started (should be value = 1).
                   yield* Logix.InternalContracts.applyTransactionSnapshot(runtime as any, txnId, 'before')
 
                   const afterTravel = yield* runtime.getState
@@ -797,7 +797,7 @@ describe('ModuleRuntime (internal)', () => {
             ).pipe(
               Effect.flatMap((runtime) =>
                 Effect.gen(function* () {
-                  // 初始构造阶段会发出一次 state:update（初始快照）。
+                  // Initial construction emits one state:update (initial snapshot).
                   const before = ring.getSnapshot()
                   const beforeUpdates = before.filter(
                     (event) => event.type === 'state:update' && event.moduleId === 'TxnRuntimeModule',
@@ -805,7 +805,7 @@ describe('ModuleRuntime (internal)', () => {
 
                   expect(beforeUpdates).toHaveLength(1)
 
-                  // 单次 dispatch：期望只追加一次 state:update 事件。
+                  // Single dispatch: expect exactly one additional state:update event.
                   yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
 
                   const after = ring.getSnapshot()
@@ -814,7 +814,7 @@ describe('ModuleRuntime (internal)', () => {
                   )
 
                   expect(afterUpdates).toHaveLength(2)
-                  // 验证 state:update 顺序与聚合结果
+                  // Validate state:update ordering and aggregated result.
                   expect((afterUpdates[0] as any).state).toEqual({ count: 0 })
                   expect((afterUpdates[1] as any).state).toEqual({ count: 1 })
 
@@ -853,7 +853,7 @@ describe('ModuleRuntime (internal)', () => {
             ).pipe(
               Effect.flatMap((runtime) =>
                 Effect.gen(function* () {
-                  // 单次 dispatch：期望产生一条带 txnId 的 action:dispatch 和一条带相同 txnId 的 state:update。
+                  // Single dispatch: expect one action:dispatch with txnId and one state:update with the same txnId.
                   yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
 
                   const events = ring
@@ -868,7 +868,7 @@ describe('ModuleRuntime (internal)', () => {
                   expect(actionEvent).toBeDefined()
                   expect(typeof actionEvent.txnId === 'string').toBe(true)
 
-                  // 初始快照产生的 state:update 不带 txnId，这里只关心事务提交后的那一条。
+                  // The initial snapshot state:update has no txnId; only the post-commit one matters here.
                   const stateEventsWithTxn = events.filter(
                     (event) => event.type === 'state:update' && (event as any).txnId != null,
                   ) as any[]
@@ -908,7 +908,7 @@ describe('ModuleRuntime (internal)', () => {
             ).pipe(
               Effect.flatMap((runtime) =>
                 Effect.gen(function* () {
-                  // 5 次并发 dispatch，应按 FIFO 串行执行，最终 count = 5。
+                  // 5 concurrent dispatches should be serialized FIFO, ending with count = 5.
                   yield* Effect.all(
                     [
                       runtime.dispatch({ _tag: 'inc', payload: undefined } as any),
@@ -937,7 +937,7 @@ describe('ModuleRuntime (internal)', () => {
         const timingMiddleware = <A, E, R>(op: EffectOpCore.EffectOp<A, E, R>): Effect.Effect<A, E, R> =>
           Effect.gen(function* () {
             if (op.meta?.moduleId === 'SlowModule' && op.kind === 'state' && op.name === 'state:update') {
-              // 使用 TestClock 控制的 sleep 模拟慢事务，仅针对 SlowModule 的提交阶段（state:update）。
+              // Simulate a slow transaction with a TestClock-controlled sleep, only for SlowModule's commit phase (state:update).
               yield* Effect.sleep('100 millis')
             }
             return yield* op.effect
@@ -969,14 +969,14 @@ describe('ModuleRuntime (internal)', () => {
               const slowFiber = yield* Effect.fork(slowRuntime.dispatch({ _tag: 'inc', payload: undefined } as any))
               const fastFiber = yield* Effect.fork(fastRuntime.dispatch({ _tag: 'inc', payload: undefined } as any))
 
-              // FastModule 的事务应当在无需推进 TestClock 的情况下完成。
+              // FastModule's transaction should complete without advancing TestClock.
               yield* Fiber.join(fastFiber)
 
-              // SlowModule 仍在等待 sleep 完成，Fiber.poll 应返回 None。
+              // SlowModule is still waiting for the sleep; Fiber.poll should return None.
               const slowStatus = yield* Fiber.poll(slowFiber)
               expect(slowStatus._tag).toBe('None')
 
-              // 推进 TestClock，使慢事务得以完成。
+              // Advance TestClock so the slow transaction can complete.
               yield* TestClock.adjust('200 millis')
               yield* Fiber.join(slowFiber)
 
@@ -1023,7 +1023,7 @@ describe('ModuleRuntime (internal)', () => {
                     const bound = BoundApiRuntime.make<Shape, never>(
                       {
                         stateSchema: StateSchema,
-                        // ActionSchema 在本测试中不会被使用，这里用占位 Schema 以满足类型要求。
+                        // ActionSchema is not used in this test; use a placeholder Schema to satisfy typing.
                         actionSchema: Schema.Never as any,
                         actionMap: { refresh: Schema.Void } as any,
                       } as any,
@@ -1053,8 +1053,8 @@ describe('ModuleRuntime (internal)', () => {
                         }) as any,
                     )
 
-                    // 调用 traits.source.refresh：在支持 StateTransaction 的 Runtime 上，
-                    // 该入口应被包装为一次独立事务，最终只追加一次 state:update。
+                    // Call traits.source.refresh: on runtimes that support StateTransaction,
+                    // it should be wrapped as a single standalone transaction and append only one state:update.
                     yield* bound.traits.source.refresh('value')
 
                     const after = ring.getSnapshot()
@@ -1103,7 +1103,7 @@ describe('ModuleRuntime (internal)', () => {
                   const bound = BoundApiRuntime.make<Shape, never>(
                     {
                       stateSchema: StateSchema,
-                      // ActionSchema 在本测试中不会被使用，这里用占位 Schema 以满足类型要求。
+                      // ActionSchema is not used in this test; use a placeholder Schema to satisfy typing.
                       actionSchema: Schema.Never as any,
                       actionMap: { outer: Schema.Void, refresh: Schema.Void } as any,
                     } as any,
@@ -1132,9 +1132,9 @@ describe('ModuleRuntime (internal)', () => {
                   )
                   expect(beforeUpdates).toHaveLength(1)
 
-                  // 在事务窗口内调用 traits.source.refresh：
-                  // - 不能再走 enqueueTransaction（否则会死锁）；
-                  // - 也不能触发嵌套事务（否则会产生额外 state:update）。
+                  // Calling traits.source.refresh inside a transaction window:
+                  // - must not go through enqueueTransaction (otherwise deadlock);
+                  // - must not start a nested transaction (otherwise extra state:update).
                   yield* Logix.InternalContracts.runWithStateTransaction(
                     runtime as any,
                     { kind: 'test', name: 'outer' },
@@ -1261,7 +1261,7 @@ describe('ModuleRuntime (internal)', () => {
             ).pipe(
               Effect.flatMap((runtime) =>
                 Effect.gen(function* () {
-                  // 两次事务：value = 1, value = 2
+                  // Two transactions: value = 1, value = 2
                   yield* runtime.dispatch({ _tag: 'set', payload: 1 } as any)
                   yield* runtime.dispatch({ _tag: 'set', payload: 2 } as any)
 
@@ -1284,7 +1284,7 @@ describe('ModuleRuntime (internal)', () => {
                   const txnId = secondTxnEvent.txnId as string
                   expect(typeof txnId).toBe('string')
 
-                  // 通过 Runtime.applyTransactionSnapshot 按 moduleId + instanceId 进行时间旅行。
+                  // Time-travel via Runtime.applyTransactionSnapshot using moduleId + instanceId.
                   yield* Logix.Runtime.applyTransactionSnapshot(
                     'TimeTravelModuleRuntimeBridge',
                     instanceId,

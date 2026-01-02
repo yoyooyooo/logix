@@ -4,9 +4,10 @@ import { Context, Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 /**
- * ModuleImpl / withLayer / provide(ModuleImpl) 行为验证：
- * - ModuleDef.implement({ initial, logics }) 返回的 `Module` 其 `.impl`（ModuleImpl）应该能通过 withLayer 注入额外依赖；
- * - Logix.provide(ModuleImpl) 应等价于针对 module + layer 的显式 provide。
+ * ModuleImpl / withLayer / provide(ModuleImpl) behavior checks:
+ * - `ModuleDef.implement({ initial, logics })` returns a `Module` whose `.impl` (ModuleImpl) should support `withLayer`
+ *   to inject extra dependencies.
+ * - `Logix.provide(ModuleImpl)` should be equivalent to explicitly providing the module + layer.
  */
 
 const ServiceTag = Context.GenericTag<{ label: string }>('@logix/test/Service')
@@ -53,7 +54,7 @@ describe('ModuleImpl (public API)', () => {
           Effect.sync(() => {
             events.push(event)
             if (event.type === 'lifecycle:error') {
-              // 在测试输出中打印错误原因，便于调试
+              // Print the error cause in test output to make debugging easier.
               // eslint-disable-next-line no-console
               console.error('[ModuleImpl lifecycle:error]', event.cause)
             }
@@ -65,14 +66,14 @@ describe('ModuleImpl (public API)', () => {
       const context = yield* implWithLayer.layer.pipe(Layer.build)
       const runtime = Context.get(context, Consumer.tag)
 
-      // 确认 Service 已经通过 withLayer 正确注入到 Context 中
+      // Ensure the Service is correctly injected into the Context via withLayer.
       const svc = Context.get(context, ServiceTag as unknown as Context.Tag<any, { label: string }>)
       expect(svc.label).toBe('hello')
 
       expect(yield* runtime.getState).toEqual({ seen: '' })
 
       yield* runtime.dispatch({ _tag: 'read', payload: undefined })
-      // 等待 watcher 消化 action
+      // Wait for watchers to process the action.
       yield* Effect.sleep(20)
 
       expect(yield* runtime.getState).toEqual({ seen: 'hello' })
@@ -82,7 +83,7 @@ describe('ModuleImpl (public API)', () => {
       Effect.scoped(program).pipe(Effect.provide(debugLayer)) as Effect.Effect<void, never, never>,
     )
 
-    // 确认逻辑执行过程中没有生命周期错误
+    // Ensure there are no lifecycle errors during logic execution.
     expect(events.find((e) => e.type === 'lifecycle:error')).toBeUndefined()
   })
 
@@ -97,7 +98,7 @@ describe('ModuleImpl (public API)', () => {
       const context = yield* impl.layer.pipe(Layer.build)
       const runtime = Context.get(context, Consumer.tag)
 
-      // imports 提供的 ServiceTag 应该在 Context 中可见
+      // The ServiceTag provided by imports should be visible in the Context.
       const svc = Context.get(context, ServiceTag as unknown as Context.Tag<any, { label: string }>)
       expect(svc.label).toBe('from-import')
 
@@ -113,7 +114,7 @@ describe('ModuleImpl (public API)', () => {
   })
 
   it('ModuleDef.implement(imports) should allow importing other ModuleImpl layers', async () => {
-    // 定义一个简单的依赖模块，用于验证 imports: [ModuleImpl] 行为
+    // Define a minimal dependency module to validate imports: [ModuleImpl] behavior.
     const Dep = Logix.Module.make('DepModule', {
       state: Schema.Struct({ value: Schema.String }),
       actions: {},
@@ -134,11 +135,11 @@ describe('ModuleImpl (public API)', () => {
       const context = yield* impl.layer.pipe(Layer.build)
       const runtime = Context.get(context, Consumer.tag)
 
-      // Dep 的 ModuleRuntime 应该已经挂在 Context 上
+      // Dep's ModuleRuntime should already be attached to the Context.
       const depRuntime = Context.get(context, Dep.tag)
       expect(yield* depRuntime.getState).toEqual({ value: 'dep-initial' })
 
-      // 同时 ServiceTag 仍然可以通过 withLayer/withLayers 等方式叠加，这里只是验证 imports 不破坏主模块行为
+      // ServiceTag can still be layered via withLayer/withLayers; this only verifies imports don't break the main module.
       expect(yield* runtime.getState).toEqual({ seen: '' })
     })
 

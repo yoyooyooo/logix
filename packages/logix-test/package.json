@@ -13,7 +13,7 @@
     "./TestProgram": "./src/TestProgram.ts",
     "./Execution": "./src/Execution.ts",
     "./Assertions": "./src/Assertions.ts",
-    "./Vitest": "./src/vitest.ts",
+    "./Vitest": "./src/Vitest.ts",
     "./internal/*": null
   },
   "publishConfig": {
@@ -45,9 +45,9 @@
         "require": "./dist/Assertions.cjs"
       },
       "./Vitest": {
-        "types": "./dist/vitest.d.ts",
-        "import": "./dist/vitest.js",
-        "require": "./dist/vitest.cjs"
+        "types": "./dist/Vitest.d.ts",
+        "import": "./dist/Vitest.js",
+        "require": "./dist/Vitest.cjs"
       },
       "./internal/*": null
     },

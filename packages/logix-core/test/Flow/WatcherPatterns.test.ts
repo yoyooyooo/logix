@@ -15,7 +15,7 @@ const CounterErrorLogic = Counter.logic(($) =>
   $.lifecycle.onError((cause, context) => Effect.logError('Counter logic error', cause, context)),
 )
 
-// 使用 runParallelFork（等价于 forkScoped + runParallel）的 watcher 组合
+// Watcher wiring using runParallelFork (equivalent to forkScoped + runParallel).
 const CounterRunForkLogic = Counter.logic(($) =>
   Effect.gen(function* () {
     yield* $.onAction('inc').runParallelFork($.state.update((s) => ({ ...s, value: s.value + 1 })))
@@ -24,7 +24,7 @@ const CounterRunForkLogic = Counter.logic(($) =>
   }),
 )
 
-// 使用 Effect.all + run 的 watcher 组合
+// Watcher wiring using Effect.all + run.
 const CounterAllLogic = Counter.logic(($) =>
   Effect.gen(function* () {
     yield* Effect.all(
@@ -37,7 +37,7 @@ const CounterAllLogic = Counter.logic(($) =>
   }),
 )
 
-// 使用 runFork（等价于 forkScoped + run）的 watcher 组合
+// Watcher wiring using runFork (equivalent to forkScoped + run).
 const CounterManualForkLogic = Counter.logic(($) =>
   Effect.gen(function* () {
     yield* $.onAction('inc').runFork($.state.update((s) => ({ ...s, value: s.value + 1 })))
@@ -54,7 +54,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
       const context = yield* Layer.build(layer)
       const runtime = Context.get(context, Counter.tag)
 
-      // 等待逻辑订阅
+      // Wait for logic subscriptions.
       yield* Effect.sleep('100 millis')
 
       expect(yield* runtime.getState).toEqual({ value: 0 })
@@ -80,7 +80,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
       const context = yield* Layer.build(layer)
       const runtime = Context.get(context, Counter.tag)
 
-      // 等待逻辑订阅
+      // Wait for logic subscriptions.
       yield* Effect.sleep('50 millis')
 
       const N = 100
@@ -89,7 +89,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
         yield* runtime.dispatch({ _tag: 'inc', payload: undefined })
       }
 
-      // 等待所有 watcher 消化完事件
+      // Wait for all watchers to process the events.
       yield* Effect.sleep('200 millis')
 
       const state = yield* runtime.getState
@@ -106,7 +106,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
       const context = yield* Layer.build(layer)
       const runtime = Context.get(context, Counter.tag)
 
-      // 等待逻辑订阅
+      // Wait for logic subscriptions.
       yield* Effect.sleep('100 millis')
 
       expect(yield* runtime.getState).toEqual({ value: 0 })
@@ -132,7 +132,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
       const context = yield* Layer.build(layer)
       const runtime = Context.get(context, Counter.tag)
 
-      // 等待逻辑订阅
+      // Wait for logic subscriptions.
       yield* Effect.sleep('100 millis')
 
       expect(yield* runtime.getState).toEqual({ value: 0 })

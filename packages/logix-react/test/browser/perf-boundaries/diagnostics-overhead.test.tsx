@@ -206,7 +206,7 @@ test(
             label: `perf:diagnostics:${diagnosticsLevel}:${watcherCount}`,
           })
 
-          // 预热：避免在 React render 阶段触发 module assembly（可能引入 Suspense/不稳定延迟）。
+          // Warm up: avoid triggering module assembly during React render (may introduce Suspense / unstable latency).
           await runtime.runPromise(
             Effect.gen(function* () {
               yield* PerfModule.tag

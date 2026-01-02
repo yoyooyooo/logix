@@ -129,10 +129,10 @@ describe('StateTrait scoped validate · writeback', () => {
       const program = Effect.gen(function* () {
         const rt = yield* M.tag
 
-        // 先更新 age（单笔事务内 converge 生成最新派生）。
+        // First update age (converge produces the latest derived values within the same transaction).
         yield* rt.dispatch({ _tag: 'setAge', payload: { age: 10 } } as any)
 
-        // 再触发 scoped validate（在 watcher 事务内写回 errors）。
+        // Then trigger scoped validate (writes errors back within the watcher transaction).
         yield* rt.dispatch({ _tag: 'validateAge', payload: undefined } as any)
         yield* Effect.sleep('10 millis')
 
@@ -140,7 +140,7 @@ describe('StateTrait scoped validate · writeback', () => {
         expect(state1.errors.name).toBe('preset')
         expect(state1.errors.$root).toBe('forbidden')
 
-        // age 变为成人后再次校验，应清空 signUpPermission 的错误。
+        // After age becomes adult, validating again should clear the signUpPermission error.
         yield* rt.dispatch({ _tag: 'setAge', payload: { age: 20 } } as any)
         yield* rt.dispatch({ _tag: 'validateAge', payload: undefined } as any)
         yield* Effect.sleep('10 millis')

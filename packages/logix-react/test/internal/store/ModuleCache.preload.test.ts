@@ -57,7 +57,7 @@ describe('ModuleCache.preload', () => {
     const op2 = cache.preload('k', neverFactory, { yield: { strategy: 'none' } })
 
     const entries = (cache as any).entries as Map<string, unknown>
-    // preload 使用 runFork 启动后台任务，执行时机可能落在下一轮 tick
+    // preload uses runFork to start a background task; it may execute on the next tick.
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(calls).toBe(1)
 

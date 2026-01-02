@@ -106,33 +106,33 @@ describe('AppRuntime.makeApp (via internal runtime config)', () => {
   })
 
   it('regression: should preserve FiberRefs (e.g. Logger) when constructing Runtime', async () => {
-    // 1. 定义一个用于测试的 Logger，简单收集所有日志消息
+    // 1) Define a test Logger that collects all log messages.
     const logs: Array<string> = []
     const testLogger = Logger.make(({ message }) => {
       logs.push(String(message))
     })
 
-    // 2. 构造一个包含 Logger.replace 的 Layer
-    //    模拟用户场景：同时提供 Logger 和 Debug Layer
+    // 2) Build a Layer that includes Logger.replace.
+    //    Simulate a user scenario where both Logger and Debug layers are provided.
     const loggerLayer = Layer.merge(Logger.replace(Logger.defaultLogger, testLogger), Logix.Debug.noopLayer)
 
-    // 3. 构造一个简单 Module (Root)
+    // 3) Build a minimal Root module.
     const RootModule = Logix.Module.make('Root', {
       state: Schema.Void,
       actions: {},
     })
     const RootImpl = RootModule.implement({ initial: undefined })
 
-    // 4. 使用 Logix.Runtime.make 创建 Runtime
-    //    Runtime.make 内部还会 merge Debug.defaultLayer
+    // 4) Construct the runtime via Logix.Runtime.make.
+    //    Runtime.make also merges Debug.defaultLayer internally.
     const runtime = Logix.Runtime.make(RootImpl, {
       layer: loggerLayer,
     })
 
-    // 5. 运行一个打印日志的 Effect
+    // 5) Run an Effect that logs.
     await runtime.runPromise(Effect.log('hello world'))
 
-    // 6. 验证自定义 Logger 是否收到了日志
+    // 6) Verify the custom Logger received the log message.
     expect(logs).toEqual(['hello world'])
   })
 })

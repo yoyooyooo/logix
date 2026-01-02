@@ -35,8 +35,8 @@ export type RuntimeInternalsTxn = {
   ) => Effect.Effect<void, never, any>
   /**
    * updateDraft：
-   * - 仅在活跃事务内使用：更新当前事务草稿状态；
-   * - 不会隐式写入 wildcard patch（避免覆盖已记录的字段级 patchPaths）。 
+   * - Use only within an active transaction: update the current transaction draft state;
+   * - Does not implicitly write wildcard patches (avoid overriding already-recorded field-level patchPaths).
    */
   readonly updateDraft: (nextState: unknown) => void
   readonly recordStatePatch: (

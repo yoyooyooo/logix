@@ -95,18 +95,18 @@ const chooseDirtyIndices = (
       return { indices: makeIndicesForPattern(steps, used, baseIndex), iteration }
     }
     case 'randomHighCardinality': {
-      // Pseudo-random but可复现：用 seed + iteration 做简单 hash
+      // Pseudo-random but reproducible: use seed + iteration as a simple hash.
       const pseudo = (seed * 1_664_525 + iteration * 1_013_904_223) >>> 0
       const idx = pseudo % Math.max(1, uniquePatternPoolSize)
       return { indices: makeIndicesForPattern(steps, maxDirtyRoots, idx), iteration }
     }
     case 'graphChangeInvalidation': {
-      // 每次迭代在基于 baseIndex 的模式上再平移一小段，模拟依赖图变化导致失效
+      // Shift a bit on each iteration from baseIndex to simulate invalidation caused by dependency graph changes.
       const idx = baseIndex + iteration
       return { indices: makeIndicesForPattern(steps, maxDirtyRoots, idx), iteration }
     }
     case 'listIndexExplosion': {
-      // 使用 sawtooth 式的 dirtyRoots 增长，模拟列表项逐渐膨胀
+      // Use sawtooth growth of dirtyRoots to simulate expanding list cardinality.
       const cycle = Math.max(1, uniquePatternPoolSize)
       const level = (iteration % cycle) + 1
       const used = Math.min(maxDirtyRoots, level)

@@ -128,7 +128,7 @@ const collectSchemaFieldPaths = (schema: Schema.Schema<any, any>): ReadonlyArray
   const visit = (ast: SchemaAST.AST, prefix: ReadonlyArray<string>, seen: Set<SchemaAST.AST>): void => {
     let current: SchemaAST.AST = ast
 
-    // unwrap Suspend/Refinement（递归 schema / branded schema）
+    // Unwrap Suspend/Refinement (recursive schema / branded schema).
     while (true) {
       if (SchemaAST.isSuspend(current)) {
         if (seen.has(current)) return
@@ -156,7 +156,7 @@ const collectSchemaFieldPaths = (schema: Schema.Schema<any, any>): ReadonlyArray
       return
     }
 
-    // Array / Tuple：索引不进入 FieldPathId 空间；递归到 element type 以支持 `items[0].name -> items.name`。
+    // Array / Tuple: indices do not enter the FieldPathId space; recurse into element types to support `items[0].name -> items.name`.
     if (SchemaAST.isTupleType(current)) {
       for (const e of current.elements) {
         visit(e.type, prefix, seen)
@@ -175,11 +175,11 @@ const collectSchemaFieldPaths = (schema: Schema.Schema<any, any>): ReadonlyArray
         add(next)
         visit(ps.type, next, seen)
       }
-      // index signature（Record<string, T>）不支持静态枚举：避免生成不可对齐的动态 key path。
+      // Index signature (Record<string, T>) can't be enumerated statically: avoid generating misaligned dynamic key paths.
       return
     }
 
-    // Any / Unknown / Object / Declaration 等开放类型：无法枚举下钻路径，保守停止。
+    // Any / Unknown / Object / Declaration (open types): cannot enumerate nested paths; stop conservatively.
   }
 
   visit(schema.ast as unknown as SchemaAST.AST, [], new Set())
@@ -226,7 +226,7 @@ const buildConvergeIr = (
     }
   }
 
-  // 065：FieldPathId 的语义必须覆盖 stateSchema 的可枚举字段路径，否则 reducer patchPaths 会无法映射并导致 dirtyAll 回退。
+  // 065: FieldPathId semantics must cover all enumerable field paths of stateSchema; otherwise reducer patchPaths can't map and will fall back to dirtyAll.
   for (const schemaPath of collectSchemaFieldPaths(stateSchema)) {
     addPath(schemaPath)
   }

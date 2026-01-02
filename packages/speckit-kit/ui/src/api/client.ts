@@ -46,7 +46,7 @@ export interface TaskListResponse {
   readonly tasks: ReadonlyArray<TaskItem>
 }
 
-export type ArtifactName = 'spec.md' | 'plan.md' | 'tasks.md'
+export type ArtifactName = 'spec.md' | 'plan.md' | 'tasks.md' | 'quickstart.md' | 'data-model.md' | 'research.md'
 
 export interface FileReadResponse {
   readonly name: ArtifactName

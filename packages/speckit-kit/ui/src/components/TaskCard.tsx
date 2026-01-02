@@ -15,9 +15,8 @@ export function TaskCard({ task, focused, onToggle, onOpenDetail }: Props) {
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
       className={`au-card group min-w-0 px-3 py-2 transition-shadow duration-200 ${
         focused ? 'ring-2 ring-[var(--intent-primary-fg)] ring-offset-2' : ''
@@ -33,7 +32,7 @@ export function TaskCard({ task, focused, onToggle, onOpenDetail }: Props) {
 
         <button
           type="button"
-          className="au-clickable min-w-0 flex-1 overflow-hidden text-left"
+          className="au-clickable-no-scale min-w-0 flex-1 overflow-hidden text-left"
           onClick={onOpenDetail}
           title={title}
         >

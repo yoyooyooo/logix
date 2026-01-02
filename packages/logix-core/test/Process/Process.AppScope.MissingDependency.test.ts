@@ -23,7 +23,7 @@ describe('process: app-scope missing dependency', () => {
         actions: {},
       })
 
-      // 故意只装配 SourceModule，不装配 TargetModule，验证 strict scope 缺失依赖报错。
+      // Intentionally wire SourceModule only (omit TargetModule) to verify strict scope reports a missing-dependency error.
       const RootImpl = RootModule.implement({
         initial: undefined,
         imports: [SourceModule.implement({ initial: undefined }).impl],

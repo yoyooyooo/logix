@@ -12,7 +12,31 @@ import {
 import { MarkdownPreview } from './MarkdownPreview'
 import { TasksPreview } from './TasksPreview'
 
-const ALL_ARTIFACTS = ['spec.md', 'plan.md', 'tasks.md'] as const satisfies ReadonlyArray<ArtifactName>
+const ALL_ARTIFACTS = [
+  'spec.md',
+  'quickstart.md',
+  'data-model.md',
+  'research.md',
+  'plan.md',
+  'tasks.md',
+] as const satisfies ReadonlyArray<ArtifactName>
+
+function getArtifactSubtitle(name: ArtifactName): string {
+  switch (name) {
+    case 'spec.md':
+      return 'Requirements'
+    case 'quickstart.md':
+      return 'Quickstart'
+    case 'data-model.md':
+      return 'Data Model'
+    case 'research.md':
+      return 'Research'
+    case 'plan.md':
+      return 'Implementation'
+    case 'tasks.md':
+      return 'Tasks Checklist'
+  }
+}
 
 interface Props {
   spec: SpecListItem | null
@@ -194,7 +218,7 @@ export function SpecDetailDialog({
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 300, mass: 0.8 }}
-          className="w-screen max-w-6xl"
+          className="w-[90vw] max-w-[1400px]"
         >
           <div className="flex h-full flex-col bg-[var(--surface-base)] shadow-[0_0_40px_-10px_rgba(0,0,0,0.1)]">
             {/* Header */}
@@ -252,11 +276,7 @@ export function SpecDetailDialog({
                         <div
                           className={`mt-0.5 text-[11px] ${active ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]'}`}
                         >
-                          {name === 'spec.md'
-                            ? 'Requirements'
-                            : name === 'plan.md'
-                              ? 'Implementation'
-                              : 'Tasks Checklist'}
+                          {getArtifactSubtitle(name)}
                         </div>
                       </button>
                     )

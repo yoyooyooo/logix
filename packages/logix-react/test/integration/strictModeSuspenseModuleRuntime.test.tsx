@@ -24,18 +24,18 @@ const AsyncCounterImpl = Counter.implement({
   initial: { value: 0 },
   logics: [
     Effect.gen(function* () {
-      // 模拟异步初始化，确保会触发 Suspense 挂起路径。
+      // Simulate async initialization to ensure the Suspense path is exercised.
       yield* Effect.sleep('10 millis')
-      // 延迟后再挂载已有 CounterLogic，本身不在此处执行 Logic
+      // After the delay, attach the existing CounterLogic (do not run the Logic here).
       return CounterLogic as any
     }),
   ] as any,
 })
 
 interface SharedCounterViewProps {
-  /** 资源缓存用的 key，决定是否共享 ModuleRuntime */
+  /** Resource-cache key that determines whether ModuleRuntime is shared */
   readonly resourceKey: string
-  /** 用于区分视图实例的测试 id 前缀 */
+  /** Test id prefix used to distinguish view instances */
   readonly viewId: string
 }
 
@@ -73,17 +73,17 @@ describe('StrictMode + Suspense integration for ModuleImpl', () => {
       </React.StrictMode>,
     )
 
-    // 初始应展示 Suspense fallback
+    // Initially it should show the Suspense fallback.
     expect(screen.getByTestId('fallback')).toBeTruthy()
 
-    // 等待异步初始化完成，两处视图都应渲染出 0
+    // Wait for async init to complete; both views should render 0.
     await waitFor(() => {
       expect(screen.queryByTestId('fallback')).toBeNull()
       expect(screen.getByTestId('value-A').textContent).toBe('0')
       expect(screen.getByTestId('value-A-mirror').textContent).toBe('0')
     })
 
-    // 点击其中一个实例的按钮，两个视图的值应同时变为 1（共享同一 ModuleRuntime）
+    // Click one instance button; both views should become 1 (share the same ModuleRuntime).
     fireEvent.click(screen.getByTestId('inc-A'))
 
     await waitFor(() => {

@@ -5,6 +5,9 @@ import type { ArtifactName, TaskItem } from '../api/client'
 import { getDisplayTitle } from '../lib/spec-relations'
 import { MarkdownPreview } from './MarkdownPreview'
 
+const TASK_HIGHLIGHT_CLASS = 'speckit-task-highlight'
+const TASK_HIGHLIGHT_MS = 2000
+
 interface Props {
   specId: string | null
   task: TaskItem | null
@@ -36,12 +39,28 @@ export function TaskDetailDialog({
 }: Props) {
   const previewScrollRef = useRef<HTMLDivElement | null>(null)
   const lastAutoScrollLineRef = useRef<number | null>(null)
+  const lastHighlightElRef = useRef<HTMLElement | null>(null)
+  const highlightTimeoutRef = useRef<number | null>(null)
 
   const title = useMemo(() => {
     if (!task) return '详情'
     const displayTitle = getDisplayTitle(task)
     return task.taskId ? task.taskId + ' · ' + displayTitle : displayTitle
   }, [task])
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current)
+        highlightTimeoutRef.current = null
+      }
+
+      if (lastHighlightElRef.current) {
+        lastHighlightElRef.current.classList.remove(TASK_HIGHLIGHT_CLASS)
+        lastHighlightElRef.current = null
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!task) return
@@ -71,6 +90,26 @@ export function TaskDetailDialog({
     lastAutoScrollLineRef.current = task.line
     requestAnimationFrame(() => {
       target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current)
+        highlightTimeoutRef.current = null
+      }
+
+      const last = lastHighlightElRef.current
+      if (last && last !== target) {
+        last.classList.remove(TASK_HIGHLIGHT_CLASS)
+      }
+
+      target.classList.add(TASK_HIGHLIGHT_CLASS)
+      lastHighlightElRef.current = target
+      highlightTimeoutRef.current = window.setTimeout(() => {
+        target.classList.remove(TASK_HIGHLIGHT_CLASS)
+        if (lastHighlightElRef.current === target) {
+          lastHighlightElRef.current = null
+        }
+        highlightTimeoutRef.current = null
+      }, TASK_HIGHLIGHT_MS)
     })
   }, [task, fileName, viewMode, content])
 
@@ -135,6 +174,9 @@ export function TaskDetailDialog({
                     onChange={(e) => onSelectFile(e.target.value as ArtifactName)}
                   >
                     <option value="tasks.md">tasks.md</option>
+                    <option value="quickstart.md">quickstart.md</option>
+                    <option value="data-model.md">data-model.md</option>
+                    <option value="research.md">research.md</option>
                     <option value="plan.md">plan.md</option>
                     <option value="spec.md">spec.md</option>
                   </select>

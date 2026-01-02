@@ -17,7 +17,7 @@ const CounterModule = Logix.Module.make('CoreCounter', {
 
 describe('Module.make (public API)', () => {
   it('should create a Module with state/actions shape', () => {
-    // 模块本身是一个 Tag，可以作为 Service 使用
+    // The module itself is a Tag and can be used as a Service.
     expect(CounterModule.id).toBe('CoreCounter')
     expect(typeof CounterModule.implement).toBe('function')
     expect(typeof CounterModule.logic).toBe('function')
@@ -25,17 +25,17 @@ describe('Module.make (public API)', () => {
 
   it.scoped('should build ModuleImpl and access runtime via Tag', () =>
     Effect.gen(function* () {
-      // 通过 ModuleImpl 构造初始 state
+      // Build initial state via ModuleImpl.
       const impl = CounterModule.implement({
         initial: { count: 1 },
       })
 
-      // 使用 Runtime.make 构造应用级 Runtime（这里不注入额外 Layer）
+      // Build an app-level Runtime via Runtime.make (no extra Layer injected here).
       const runtime = Logix.Runtime.make(impl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
       })
 
-      // 在 Effect 中通过 Tag 访问 ModuleRuntime，并读取 state
+      // Access ModuleRuntime via Tag inside an Effect and read state.
       const program = Effect.gen(function* () {
         const moduleRuntime = yield* CounterModule.tag
         const state = yield* moduleRuntime.getState
@@ -205,7 +205,7 @@ describe('Module.make (public API)', () => {
             draft.count += 1
           }),
         )
-        // 直接在 Logic 内派发一次，验证 reducer 在 watcher 前同步生效。
+        // Dispatch once inside Logic to verify the reducer applies synchronously before watchers.
         yield* $.actions.inc()
         yield* Deferred.succeed(reducerApplied, undefined)
       }),
@@ -253,7 +253,7 @@ describe('Module.make (public API)', () => {
           }),
         )
 
-        // 再次为同一 tag 注册 primary reducer，应触发 Duplicate 错误
+        // Registering a primary reducer twice for the same tag should trigger a Duplicate error.
         yield* $.reducer(
           'set',
           Logix.Module.Reducer.mutate((draft, action: { payload: number }) => {
@@ -293,7 +293,7 @@ describe('Module.make (public API)', () => {
       state: Schema.Struct({ value: Schema.Number }),
       actions: { set: Schema.Number, noop: Schema.Void },
       reducers: {
-        // 占位 reducer 使 runtime 持有 reducerMap（非空），确保首个 dispatch 记录 tag。
+        // Placeholder reducer keeps reducerMap non-empty so the first dispatch records the tag.
         noop: (state) => state,
       },
     })
@@ -309,7 +309,7 @@ describe('Module.make (public API)', () => {
         ),
       ),
       run: Effect.gen(function* () {
-        // 先派发，再尝试注册 primary reducer，会触发 late_registration 诊断。
+        // Dispatch first, then try to register a primary reducer; should trigger late_registration diagnostics.
         yield* $.actions.set(1)
 
         yield* $.reducer(

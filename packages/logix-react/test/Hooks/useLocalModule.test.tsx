@@ -20,11 +20,11 @@ const incrementLogic = Counter.logic(($) =>
   }),
 )
 
-describe('useLocalModule', () => {
-  let rootRuntime: ManagedRuntime.ManagedRuntime<any, any>
-  // Vitest 的类型推断对 spy 实例的泛型约束较严格，这里使用宽松的 any，避免干扰用例本身。
+  describe('useLocalModule', () => {
+    let rootRuntime: ManagedRuntime.ManagedRuntime<any, any>
+  // Vitest's type inference is strict for spy generics; use a loose `any` to keep the test focused on behavior.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let useIdSpy: any
+    let useIdSpy: any
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <React.StrictMode>
@@ -36,8 +36,8 @@ describe('useLocalModule', () => {
 
   beforeEach(() => {
     rootRuntime = ManagedRuntime.make(Layer.empty as unknown as Layer.Layer<any, any, never>)
-    // 在测试环境中，React.useId 的行为与生产略有差异，这里固定返回值，
-    // 避免将测试 runner 的实现细节投射到生产代码的 key 设计上。
+    // In tests, React.useId behaves slightly differently than in production; fix the return value
+    // to avoid projecting runner-specific behavior onto the production key design.
     useIdSpy = vi.spyOn(React, 'useId').mockImplementation(() => 'test-local-id')
   })
 

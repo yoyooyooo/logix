@@ -8,15 +8,16 @@ import * as Logix from '@logix/core'
 import { RuntimeProvider, useModule } from '../../src/index.js'
 
 /**
- * 高 Trait 密度场景专用 Module：
- * - state.base 为单一入口字段；
- * - metrics.* 下挂载大量 StateTrait.computed 节点（至少 50 个）；
- * - 用于在 React 集成场景下验证「一次交互 = 一次事务 = 一次 state:update」在高 Trait 数量下仍然成立。
+ * Module for high trait density scenarios:
+ * - state.base is the single entry field;
+ * - mount many StateTrait.computed nodes under metrics.* (at least 50);
+ * - used to verify in React integration that "one interaction = one transaction = one state:update"
+ *   still holds with a high number of traits.
  */
 const HighTraitStateSchema = Schema.Struct({
   base: Schema.Number,
   metrics: Schema.Struct({
-    // 50 个派生字段，全部由 base 推导，形成高 Trait 密度。
+    // 50 derived fields, all computed from base, forming a high trait density.
     m01: Schema.Number,
     m02: Schema.Number,
     m03: Schema.Number,
@@ -135,7 +136,7 @@ const HighTraitModule = Logix.Module.make('ReactHighTraitTxnModule', {
 
 const HighTraitLogic = HighTraitModule.logic(($) =>
   Effect.gen(function* () {
-    // 单一入口：每次 bump 将 base + 1，触发 50 个 Trait 节点的联动更新。
+    // Single entrypoint: each bump increments base by 1 and triggers updates across 50 trait nodes.
     yield* $.onAction('bump').mutate((draft) => {
       draft.base += 1
     })
@@ -259,7 +260,7 @@ describe('React Runtime high-trait transaction integration', () => {
 
           result.current.bump()
 
-          // 让内部 Effect 有机会执行与提交事务。
+          // Give internal Effects a chance to run and commit the transaction.
           yield* Effect.sleep('10 millis')
 
           const after = countStateEventsAndTxn()
@@ -267,8 +268,8 @@ describe('React Runtime high-trait transaction integration', () => {
           const deltaState = after.stateEvents - before.stateEvents
           const deltaTxn = after.txnCount - before.txnCount
 
-          // 在高 Trait 密度场景下，至少会产生一个新的事务与对应的 state:update 事件，
-          // 且仍然保持「每个事务只对应一条 state 事件」这一核心不变式。
+          // With high trait density, we should produce at least one new transaction and its corresponding state:update,
+          // while still preserving the invariant: "each transaction maps to exactly one state event".
           expect(deltaState).toBeGreaterThan(0)
           expect(deltaTxn).toBeGreaterThan(0)
           expect(deltaState).toBe(deltaTxn)

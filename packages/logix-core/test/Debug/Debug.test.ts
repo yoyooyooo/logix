@@ -22,7 +22,7 @@ describe('Debug (public API)', () => {
           }),
       }
 
-      // 直接通过 FiberRef 在当前 Fiber 上挂载 DebugSink，避免误用 Layer / Context。
+      // Attach DebugSink on the current Fiber via FiberRef (avoid misusing Layer / Context).
       yield* Effect.locally(
         Logix.Debug.internal.currentDiagnosticsLevel as any,
         'full',
@@ -78,7 +78,7 @@ describe('Debug (public API)', () => {
       const hasDefaultAfter = HashSet.some(after, (logger) => logger === Logger.defaultLogger)
       const sizeAfter = HashSet.size(after)
 
-      // 提供后不应再包含默认 logger，且 logger 集合非空（被有效替换）。
+      // After providing, default logger should be removed and the logger set should be non-empty (effectively replaced).
       expect(hasDefaultAfter).toBe(false)
       expect(sizeAfter).toBeGreaterThanOrEqual(sizeBefore === 0 ? 1 : sizeBefore)
     }),
@@ -88,18 +88,18 @@ describe('Debug (public API)', () => {
     Effect.gen(function* () {
       const { sink, getSnapshot } = Logix.Debug.makeModuleRuntimeCounterSink()
 
-      // 模拟两个模块及多次 init/destroy
+      // Simulate two modules and multiple init/destroy events.
       yield* sink.record({ type: 'module:init', moduleId: 'A' })
       yield* sink.record({ type: 'module:init', moduleId: 'A' })
       yield* sink.record({ type: 'module:init', moduleId: 'B' })
       yield* sink.record({ type: 'module:destroy', moduleId: 'A' })
 
       const snapshot = getSnapshot()
-      // 未显式提供 runtimeLabel 时，默认归为 "unknown" 作用域。
+      // When runtimeLabel is not provided, default to the "unknown" scope.
       expect(snapshot.get('unknown::A')).toBe(1)
       expect(snapshot.get('unknown::B')).toBe(1)
 
-      // destroy 到 0 后应从快照中删除
+      // Once destroyed down to 0, it should be removed from the snapshot.
       yield* sink.record({ type: 'module:destroy', moduleId: 'A' })
       const snapshotAfter = getSnapshot()
       expect(snapshotAfter.has('unknown::A')).toBe(false)
@@ -111,10 +111,10 @@ describe('Debug (public API)', () => {
     Effect.gen(function* () {
       const { sink, getSnapshot, clear } = Logix.Debug.makeRingBufferSink(2)
 
-      // 初始为空
+      // Initially empty
       expect(getSnapshot()).toHaveLength(0)
 
-      // 推入三条事件，capacity=2，只保留后两条
+      // Push 3 events with capacity=2; keep only the last 2.
       yield* sink.record({ type: 'module:init', moduleId: 'A' })
       yield* sink.record({ type: 'module:init', moduleId: 'B' })
       yield* sink.record({ type: 'module:init', moduleId: 'C' })
@@ -173,7 +173,7 @@ describe('Debug (public API)', () => {
           resourceId: 'UserApi',
           key: 'loadProfile',
         },
-        // effect 字段在本测试中不会真正执行，因此用 Effect.void 即可。
+        // The effect field won't actually run in this test; Effect.void is sufficient.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         effect: Effect.void as any,
       }
@@ -191,7 +191,7 @@ describe('Debug (public API)', () => {
       expect(ref).toBeDefined()
       expect(ref?.kind).toBe('service')
       expect(ref?.label).toBe('UserApi.loadProfile')
-      // 优先使用 EffectOp.meta.moduleId，而不是事件上的 moduleId。
+      // Prefer EffectOp.meta.moduleId over the event's moduleId.
       expect(ref?.moduleId).toBe('ServiceModule')
       expect((ref?.meta as any)?.meta?.resourceId).toBe('UserApi')
     }),

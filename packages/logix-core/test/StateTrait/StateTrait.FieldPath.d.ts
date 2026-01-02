@@ -1,6 +1,6 @@
 import type * as Logix from '../../src/index.js'
 
-// 类型工具：判断两个类型是否相等 & 断言。
+// Type-level helpers: compare two types for equality and assert.
 type Equals<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
     ? (<T>() => T extends B ? 1 : 2) extends <T>() => T extends A ? 1 : 2
@@ -37,10 +37,10 @@ type ExpectedPaths =
   | 'profileResource.data.name'
   | 'profileResource.error'
 
-// Paths 应与 ExpectedPaths 严格相等（双向约束）。
+// Paths must be exactly equal to ExpectedPaths (bidirectional constraint).
 type _CheckPaths = Assert<Equals<Paths, ExpectedPaths>>
 
-// StateAtPath 应能根据路径推导字段类型。
+// StateAtPath should infer the field type from a path.
 type _CheckAtRoot = Assert<Equals<Logix.StateTrait.StateAtPath<State, 'profile'>, { id: string; name: string }>>
 
 type _CheckAtNested = Assert<Equals<Logix.StateTrait.StateAtPath<State, 'profile.name'>, string>>
@@ -53,5 +53,5 @@ type _CheckResourceStatus = Assert<
 
 type _CheckResourceName = Assert<Equals<Logix.StateTrait.StateAtPath<State, 'profileResource.data.name'>, string>>
 
-// 不存在的路径应推导为 never，用于在后续测试中触发类型错误。
+// Non-existent paths should infer to never, used to trigger type errors in follow-up tests.
 type _CheckInvalidPath = Assert<Equals<Logix.StateTrait.StateAtPath<State, 'profile.age'>, never>>

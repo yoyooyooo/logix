@@ -44,8 +44,8 @@ describe('@logix/react · react-render Debug events', () => {
       </RuntimeProvider>
     )
 
-    // 为测试挂上带有 debugKey/fieldPaths 元信息的 selector，
-    // 便于在 Debug 事件 meta 中验证这些字段是否被透传。
+    // Attach selector metadata (debugKey/fieldPaths) for the test,
+    // so we can verify it is forwarded via Debug event meta.
     const selectCount = Object.assign((state: { count: number }) => state.count, {
       debugKey: 'countSelector',
       fieldPaths: ['count'],
@@ -60,8 +60,8 @@ describe('@logix/react · react-render Debug events', () => {
       { wrapper },
     )
 
-    // 通过一次 inc 派发触发状态更新与重新渲染，
-    // 再等待一小段时间让 Debug 事件通过 runtime.runFork 落入 sink。
+    // Dispatch one inc to trigger state update + re-render,
+    // then wait briefly for Debug events to land in the sink via runtime.runFork.
     await act(async () => {
       await runtime.runPromise(
         Effect.gen(function* () {
@@ -71,8 +71,7 @@ describe('@logix/react · react-render Debug events', () => {
       )
     })
 
-    // 将收集到的 Debug.Event 归一化为 RuntimeDebugEventRef，
-    // 验证存在 kind = "react-render" 的组件级事件。
+    // Normalize collected Debug.Events into RuntimeDebugEventRef and verify there is a component-level react-render event.
     const renderRefs = events
       .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
       .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null && ref.kind === 'react-render')
@@ -93,11 +92,11 @@ describe('@logix/react · react-render Debug events', () => {
     expect(stateRefs.length).toBeGreaterThan(0)
     const lastState = stateRefs[stateRefs.length - 1]
 
-    // react-render / react-selector 事件应能与同 instance 的最新 state:update 事务对齐。
+    // react-render / react-selector events should align with the latest state:update txn of the same instance.
     expect(renderEvent.txnId).toBe(lastState.txnId)
     expect(renderEvent.txnSeq).toBe(lastState.txnSeq)
 
-    // 同时验证 selector 级诊断事件：应携带 debugKey/fieldPaths 元信息。
+    // Also verify selector-level diagnostics events carry debugKey/fieldPaths metadata.
     const selectorRefs = events
       .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
       .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null && ref.kind === 'react-selector')

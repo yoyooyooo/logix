@@ -44,7 +44,7 @@ describe('Middleware.DebugObserver', () => {
     expect(last.data).toBeDefined()
     expect(last.data.kind).toBeDefined()
     expect(last.data.effect).toBeUndefined()
-    // 确认所有核心 kind 均被 DebugObserver 观测并透传到 Debug 事件中。
+    // Ensure all core kinds are observed and forwarded into Debug events by DebugObserver.
     const seenKinds = traceEvents
       .map((e) => (e as any).data?.kind)
       .filter((k: unknown): k is string => typeof k === 'string')
@@ -106,11 +106,11 @@ describe('Middleware.DebugObserver', () => {
     expect(ref).toBeDefined()
     expect(ref.kind).toBe('service')
 
-    // JsonValue 硬门：不能抛，且必须受预算/裁剪约束。
+    // JsonValue hard gate: must not throw and must respect truncation budgets.
     const json = JSON.stringify(ref.meta)
     expect(json.length).toBeLessThanOrEqual(4 * 1024)
 
-    // full 档位应包含 payload/meta，但经过裁剪。
+    // The "full" level should include payload/meta, but truncated.
     expect(ref.meta?.payload?.bigString?.length).toBe(256)
     expect(ref.meta?.payload?.bigArray).toHaveLength(33)
     expect(ref.meta?.payload?.bigArray?.[32]).toBe('[...68 more]')

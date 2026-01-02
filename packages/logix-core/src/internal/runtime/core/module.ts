@@ -336,13 +336,13 @@ export interface ModuleTag<Id extends string, Sh extends AnyModuleShape> extends
   readonly stateSchema: Sh['stateSchema']
   readonly actionSchema: Sh['actionSchema']
   /**
-   * 原始 ActionMap（tag -> payload schema）。
-   * - 主要用于 DX/反射；运行时契约仍以 shape/actionSchema 为准。
+   * Raw ActionMap (tag -> payload schema).
+   * - Mainly for DX/reflection; runtime contract is still based on shape/actionSchema.
    */
   readonly actions: Sh['actionMap']
   /**
-   * 原始 reducers（若定义侧提供）。
-   * - 主要用于 DX/反射；运行时会在 ModuleFactory 内部归一化为 `_tag -> (state, action) => state` 映射。
+   * Raw reducers (if provided by the definition).
+   * - Mainly for DX/reflection; runtime normalizes them into a `_tag -> (state, action) => state` map inside ModuleFactory.
    */
   readonly reducers?: ReducersFromMap<Sh['stateSchema'], Sh['actionMap']>
 

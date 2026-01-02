@@ -37,12 +37,12 @@ describe('ReactModuleConfig (defaults)', () => {
   })
 
   it('ReactRuntimeConfig.replace should override existing config based on current value', () => {
-    // 先通过 ConfigProvider 提供 gc_time = 800
+    // Provide gc_time = 800 via ConfigProvider first.
     const envLayer = Layer.setConfigProvider(
       ConfigProvider.fromMap(new Map<string, string>([['logix.react.gc_time', '800']])),
     )
 
-    // replace 应在现有配置基础上覆盖 gcTime = 1200
+    // replace should override gcTime = 1200 based on the current config.
     const overrideLayer = ReactRuntimeConfig.replace({ gcTime: 1200 })
 
     const value = Effect.runSync(ReactModuleConfig.gcTime.pipe(Effect.provide(Layer.mergeAll(envLayer, overrideLayer))))

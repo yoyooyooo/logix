@@ -39,8 +39,8 @@ export interface ModuleImports {
 
 export interface ModuleRef<S, A, Tags extends string = ActionTags<A>, Def = unknown> {
   /**
-   * 定义侧锚点（通常是 ModuleTag），用于反射 actions/reducers/source 等信息。
-   * - DX：当 runtime.actions.* 无法跳转时，可通过 `ref.def?.reducers?.xxx` / `ref.def?.actions.xxx` 快速定位定义。
+   * Definition anchor (typically a ModuleTag) for reflecting actions/reducers/source and other metadata.
+   * - DX: when `runtime.actions.*` can't jump to source, use `ref.def?.reducers?.xxx` / `ref.def?.actions.xxx` to locate definitions quickly.
    */
   readonly def?: Def
   readonly runtime: Logix.ModuleRuntime<S, A>

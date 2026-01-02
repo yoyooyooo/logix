@@ -106,7 +106,7 @@ describe('StateTrait converge degrade (budget rollback)', () => {
 
         const state: any = yield* rt.getState
         expect(state.in0).toBe(1)
-        // converge 超预算：所有派生写回必须回滚到 base（不允许部分 commit）
+        // converge over budget: all derived writebacks must roll back to base (no partial commit).
         expect(state.d0).toBe(1)
         expect(state.d10).toBe(1)
         expect(state.d31).toBe(1)

@@ -122,9 +122,9 @@ interface StateTxnState<S> {
 	fieldPathIdRegistry?: FieldPathIdRegistry
   /**
    * dirtyPathIds：
-   * - 事务窗口内所有“可追踪写入”的 FieldPathId 集合（热路径只记录整型锚点）。
-   * - 任一不可映射/不可追踪写入必须显式降级为 dirtyAll（dirtyAllReason），禁止静默回退。
-   * - 与 instrumentation 无关：light 模式不保留 patches，但仍维护 dirtyPathIds/dirtyAllReason 供低成本语义使用（如调度/诊断）。
+   * - The set of FieldPathIds for all trackable writes within the transaction window (hot path records only integer anchors).
+   * - Any non-mappable/non-trackable write must explicitly degrade to dirtyAll (dirtyAllReason); no silent fallback.
+   * - Independent of instrumentation: light mode does not keep patches, but still maintains dirtyPathIds/dirtyAllReason for low-cost semantics (e.g. scheduling/diagnostics).
    */
   readonly dirtyPathIds: Set<FieldPathId>
   dirtyAllReason?: DirtyAllReason

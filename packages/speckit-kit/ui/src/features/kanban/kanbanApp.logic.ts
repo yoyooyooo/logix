@@ -80,6 +80,7 @@ export const KanbanRefreshLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
       pending: (_a) =>
         $.state.mutate((draft) => {
           draft.error = null
+          draft.refreshSeq += 1
           draft.tasksBySpec = {}
           draft.loadingBySpec = {}
           draft.storiesBySpec = {}
@@ -112,7 +113,7 @@ export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>(($)
       const visible = visibleSpecsOf(state)
       const specIds = visible.map((spec) => spec.id).join('|')
       const viewKey = visible.map((spec) => `${spec.id}:${resolveSpecViewMode(state, spec.id)}`).join('|')
-      return `${specIds}::${viewKey}`
+      return `${specIds}::${viewKey}::${state.refreshSeq}`
     })
 
     const ensure = visibleKey$.pipe(
@@ -138,53 +139,65 @@ export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>(($)
                 const shouldLoadStories = desiredView === 'us' && !storiesLoaded && !storiesLoading
 
                 if (shouldLoadTasks) {
-                  yield* $.state.mutate((draft) => {
-                    draft.loadingBySpec[specId] = true
-                  })
+                  yield* Effect.gen(function* () {
+                    yield* $.state.mutate((draft) => {
+                      draft.loadingBySpec[specId] = true
+                    })
 
-                  const res = yield* Effect.either(api.listTasks(specId))
+                    const res = yield* Effect.either(api.listTasks(specId))
 
-                  yield* $.state.mutate((draft) => {
-                    draft.loadingBySpec[specId] = false
+                    yield* $.state.mutate((draft) => {
+                      if (res._tag === 'Right') {
+                        draft.tasksBySpec[specId] = Array.from(res.right.tasks)
+                        return
+                      }
 
-                    if (res._tag === 'Right') {
-                      draft.tasksBySpec[specId] = Array.from(res.right.tasks)
-                      return
-                    }
+                      if (isNotFound(res.left)) {
+                        draft.tasksBySpec[specId] = []
+                        return
+                      }
 
-                    if (isNotFound(res.left)) {
+                      draft.error = formatError(res.left)
                       draft.tasksBySpec[specId] = []
-                      return
-                    }
-
-                    draft.error = formatError(res.left)
-                    draft.tasksBySpec[specId] = []
-                  })
+                    })
+                  }).pipe(
+                    Effect.ensuring(
+                      $.state.mutate((draft) => {
+                        draft.loadingBySpec[specId] = false
+                      }),
+                    ),
+                  )
                 }
 
                 if (shouldLoadStories) {
-                  yield* $.state.mutate((draft) => {
-                    draft.loadingStoriesBySpec[specId] = true
-                  })
+                  yield* Effect.gen(function* () {
+                    yield* $.state.mutate((draft) => {
+                      draft.loadingStoriesBySpec[specId] = true
+                    })
 
-                  const res = yield* Effect.either(api.readFile(specId, 'spec.md'))
+                    const res = yield* Effect.either(api.readFile(specId, 'spec.md'))
 
-                  yield* $.state.mutate((draft) => {
-                    draft.loadingStoriesBySpec[specId] = false
+                    yield* $.state.mutate((draft) => {
+                      if (res._tag === 'Right') {
+                        draft.storiesBySpec[specId] = Array.from(parseUserStories(res.right.content))
+                        return
+                      }
 
-                    if (res._tag === 'Right') {
-                      draft.storiesBySpec[specId] = Array.from(parseUserStories(res.right.content))
-                      return
-                    }
+                      if (isNotFound(res.left)) {
+                        draft.storiesBySpec[specId] = []
+                        return
+                      }
 
-                    if (isNotFound(res.left)) {
+                      draft.error = formatError(res.left)
                       draft.storiesBySpec[specId] = []
-                      return
-                    }
-
-                    draft.error = formatError(res.left)
-                    draft.storiesBySpec[specId] = []
-                  })
+                    })
+                  }).pipe(
+                    Effect.ensuring(
+                      $.state.mutate((draft) => {
+                        draft.loadingStoriesBySpec[specId] = false
+                      }),
+                    ),
+                  )
                 }
               }),
             { concurrency: 4 },
@@ -342,7 +355,7 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
           const specMd = yield* Effect.either(api.readFile(specId, 'spec.md'))
 
           type ArtifactCheck = { readonly name: ArtifactName; readonly exists: boolean | null }
-          const optional: ReadonlyArray<ArtifactName> = ['plan.md', 'tasks.md']
+          const optional: ReadonlyArray<ArtifactName> = ['quickstart.md', 'data-model.md', 'research.md', 'plan.md', 'tasks.md']
 
           const checks = yield* Effect.forEach(
             optional,

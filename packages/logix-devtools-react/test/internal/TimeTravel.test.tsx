@@ -115,11 +115,11 @@ describe('@logix/devtools-react · TimeTravel UI', () => {
     // The deps mismatch warning should appear in the Inspector and be clickable to locate the field.
     await screen.findByText(/Deps Mismatch/i)
     const mismatchField = screen.getByLabelText('DepsMismatchFieldPath:isEven')
-    expect(mismatchField).not.toBeNull()
-
-    // Click "Back to state before txn"
-    const beforeButton = screen.getByText('回到事务前状态')
-    fireEvent.click(beforeButton)
+	    expect(mismatchField).not.toBeNull()
+	
+	    // Click "Back to state before txn"
+	    const beforeButton = screen.getByText('Back to pre-transaction state')
+	    fireEvent.click(beforeButton)
 
     await waitFor(() => {
       const state = devtoolsRuntime.runSync(
@@ -127,11 +127,11 @@ describe('@logix/devtools-react · TimeTravel UI', () => {
       ) as DevtoolsState
       expect(state.timeTravel).toBeDefined()
       expect(state.timeTravel?.mode).toBe('before')
-    })
-
-    // Click "Return to latest state"
-    const latestButton = screen.getByText('返回最新状态')
-    fireEvent.click(latestButton)
+	    })
+	
+	    // Click "Return to latest state"
+	    const latestButton = screen.getByText('Back to latest state')
+	    fireEvent.click(latestButton)
 
     await waitFor(() => {
       const state = devtoolsRuntime.runSync(

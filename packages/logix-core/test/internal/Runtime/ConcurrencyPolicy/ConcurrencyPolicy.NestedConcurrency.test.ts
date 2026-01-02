@@ -42,7 +42,7 @@ describe('ConcurrencyPolicy (US1): nested concurrency', () => {
             yield* flow.runParallel(() => innerJob)(base)
           }).pipe(Effect.ensuring(Ref.update(outerInFlightRef, (n) => n - 1).pipe(Effect.asVoid)))
 
-        // 外层：对 action 触发做并行处理；内层：每次 action 再做一次并行 fan-out。
+        // Outer layer: handle action triggers in parallel; inner layer: each action triggers another parallel fan-out.
         const worker = flow.runParallel(outerHandler)(runtime.actions$.pipe(Stream.take(4)))
 
         const fiber = yield* Effect.fork(worker as any)
@@ -56,7 +56,7 @@ describe('ConcurrencyPolicy (US1): nested concurrency', () => {
         const maxOuter = yield* Ref.get(maxOuterInFlightRef)
         const maxInner = yield* Ref.get(maxInnerInFlightRef)
 
-        // policy.concurrencyLimit=2：外层 in-flight ≤2；内层每个外层最多 2，因此全局 inner ≤4。
+        // With policy.concurrencyLimit=2: outer in-flight ≤2; inner is ≤2 per outer, so global inner ≤4.
         expect(maxOuter).toBeLessThanOrEqual(2)
         expect(maxInner).toBeLessThanOrEqual(4)
       }).pipe(

@@ -464,12 +464,18 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
               </span>
             </div>
             <div className="p-4">
-              {(() => {
-                const ref = detailEvent as Logix.Debug.RuntimeDebugEventRef
-                const downgradeReason =
-                  ref.downgrade && typeof ref.downgrade === 'object'
-                    ? ((ref.downgrade as any).reason as string | undefined)
-                    : undefined
+	              {(() => {
+	                const ref = detailEvent as Logix.Debug.RuntimeDebugEventRef
+	                const downgradeReason = (() => {
+	                  const downgrade = (ref as any).downgrade as unknown
+	                  if (!downgrade) return undefined
+	                  if (typeof downgrade === 'string') return downgrade
+	                  if (typeof downgrade === 'object') {
+	                    const reason = (downgrade as any).reason as unknown
+	                    return typeof reason === 'string' && reason.length > 0 ? reason : undefined
+	                  }
+	                  return undefined
+	                })()
 
                 const downgradeLabel =
                   downgradeReason === 'non_serializable'

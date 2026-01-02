@@ -48,12 +48,12 @@ describe('StateTrait list-scope check · writeback ($list/rows[])', () => {
           { mode: 'valueChange', target: { kind: 'field', path: valuePath } },
         ])
 
-      // 初始：无错误（validate 不应产生写回）。
+      // Initial: no errors (validate should not write back).
       yield* validateAt('items.0.warehouseId')
       expect(setDraftCalls).toBe(0)
       expect(patches.length).toBe(0)
 
-      // 制造重复：10/20/30 行都应标错。
+      // Create duplicates: rows 10/20/30 should all be marked as errors.
       draft = {
         ...draft,
         items: applyDuplicateWarehouse(draft.items, DEFAULT_DUPLICATE_INDICES, DEFAULT_DUPLICATE_WAREHOUSE_ID),
@@ -71,7 +71,7 @@ describe('StateTrait list-scope check · writeback ($list/rows[])', () => {
       const row10Ref1 = rows1[10]
       const row30Ref1 = rows1[30]
 
-      // 解除一行重复：20 清除；10/30 仍重复且应避免等价 churn（复用引用）。
+      // Remove one duplicate: clear 20; 10/30 remain duplicated and should avoid equivalent churn (reuse references).
       draft = {
         ...draft,
         items: setWarehouseIdAt(draft.items, 20, 'WH-020'),
@@ -85,7 +85,7 @@ describe('StateTrait list-scope check · writeback ($list/rows[])', () => {
       expect(rows2[10]).toBe(row10Ref1)
       expect(rows2[30]).toBe(row30Ref1)
 
-      // 彻底解除重复：30 清除后，10 也应同步清除。
+      // Fully remove duplicates: after clearing 30, 10 should also be cleared.
       draft = {
         ...draft,
         items: setWarehouseIdAt(draft.items, 30, 'WH-030'),

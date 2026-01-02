@@ -19,7 +19,7 @@ describe('LifecycleManager (internal core)', () => {
         }),
       )
 
-      // 失败的 destroy effect 不会中断后续执行，但会通过 safeRun 记录日志
+      // A failing destroy effect should not stop subsequent execution, but should be logged via safeRun.
       manager.registerDestroy(Effect.die(new Error('destroy failed')))
 
       yield* manager.runDestroy
@@ -41,10 +41,10 @@ describe('LifecycleManager (internal core)', () => {
         Effect.gen(function* () {
           phases.push(context.phase)
 
-          // handler 中抛出的错误会被 notifyError 捕获并记录日志，而不会向上传播
+          // Errors thrown by the handler are caught and logged by notifyError, and are not rethrown upstream.
           yield* Effect.die(new Error('handler failed'))
 
-          // 防止编译器推断出 unreachable
+          // Prevent the compiler from inferring this as unreachable.
           return yield* Effect.void
         }),
       )

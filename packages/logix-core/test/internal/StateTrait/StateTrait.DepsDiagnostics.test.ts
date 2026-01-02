@@ -18,8 +18,8 @@ describe('StateTrait deps diagnostics (dev-mode)', () => {
       type State = Schema.Schema.Type<typeof StateSchema>
 
       const traits = Logix.StateTrait.from(StateSchema)({
-        // 通过“手写 entry”制造 deps mismatch：derive 读取了 b，但 deps 只声明 a。
-        // deps-as-args 的 DSL 会强制 `deps` 即读集，这里保留该测试用于覆盖手写 entry 的防线。
+        // Create a deps mismatch via a "hand-written entry": derive reads b but deps declares only a.
+        // The deps-as-args DSL enforces `deps` as the read-set; keep this test to cover the hand-written entry safety net.
         sum: {
           fieldPath: undefined as unknown as 'sum',
           kind: 'computed',
@@ -62,7 +62,7 @@ describe('StateTrait deps diagnostics (dev-mode)', () => {
 
             yield* Logix.StateTrait.install(bound as any, program)
 
-            // 触发一次事务窗口（即使 reducer no-op，也会进入 converge，触发 deps tracing）。
+            // Trigger a transaction window (even if reducer is a no-op) to enter converge and run deps tracing.
             yield* runtime.setState({ ...initial })
           }),
         ),
@@ -134,7 +134,7 @@ describe('StateTrait deps diagnostics (dev-mode)', () => {
 
           yield* Logix.StateTrait.install(bound as any, program)
 
-          // 显式刷新一次：keySelector 会读取 userId，但 deps 声明为 other → 应发出诊断。
+          // Explicit refresh: keySelector reads userId but deps declares other -> should emit a diagnostic.
           yield* bound.traits.source.refresh('profileResource')
         }),
       )

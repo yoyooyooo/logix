@@ -23,7 +23,7 @@ describe('DevtoolsHub (core)', () => {
         never
       >
 
-      // 记录几类不同事件
+      // Record a few different event kinds.
       yield* Logix.Debug.record({
         type: 'module:init',
         moduleId: 'A',
@@ -59,7 +59,7 @@ describe('DevtoolsHub (core)', () => {
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      // Hub snapshot 为全局单例，断言至少包含本次事件与派生视图。
+      // Hub snapshot is a global singleton; assert it contains these events and derived views.
       const snapshot = Logix.Debug.getDevtoolsSnapshot()
       expect(snapshot.snapshotToken).toBe(Logix.Debug.getDevtoolsSnapshotToken())
       expect(snapshot.events.length).toBeGreaterThanOrEqual(4)
@@ -77,7 +77,7 @@ describe('DevtoolsHub (core)', () => {
       expect(evidence.events.length).toBeGreaterThan(0)
       expect(() => JSON.stringify(evidence)).not.toThrow()
 
-      // appendSinks 不应覆盖调用方已有 sinks
+      // appendSinks must not override caller-provided sinks.
       expect(collected).toHaveLength(4)
     }),
   )

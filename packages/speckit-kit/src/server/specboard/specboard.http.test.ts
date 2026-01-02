@@ -92,6 +92,69 @@ describe('Specboard', () => {
           path: `specs/${specId}/plan.md`,
           content: '# Plan\n',
         })
+
+        const quickstartWrote = await handler(
+          new Request(`http://local.test/specs/${specId}/files/quickstart.md`, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ content: '# Quickstart\n' }),
+          }),
+        )
+        expect(quickstartWrote.status).toBe(200)
+        await expect(quickstartWrote.json()).resolves.toEqual({
+          name: 'quickstart.md',
+          path: `specs/${specId}/quickstart.md`,
+        })
+
+        const quickstartRead = await handler(new Request(`http://local.test/specs/${specId}/files/quickstart.md`))
+        expect(quickstartRead.status).toBe(200)
+        await expect(quickstartRead.json()).resolves.toEqual({
+          name: 'quickstart.md',
+          path: `specs/${specId}/quickstart.md`,
+          content: '# Quickstart\n',
+        })
+
+        const dataModelWrote = await handler(
+          new Request(`http://local.test/specs/${specId}/files/data-model.md`, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ content: '# Data Model\n' }),
+          }),
+        )
+        expect(dataModelWrote.status).toBe(200)
+        await expect(dataModelWrote.json()).resolves.toEqual({
+          name: 'data-model.md',
+          path: `specs/${specId}/data-model.md`,
+        })
+
+        const dataModelRead = await handler(new Request(`http://local.test/specs/${specId}/files/data-model.md`))
+        expect(dataModelRead.status).toBe(200)
+        await expect(dataModelRead.json()).resolves.toEqual({
+          name: 'data-model.md',
+          path: `specs/${specId}/data-model.md`,
+          content: '# Data Model\n',
+        })
+
+        const researchWrote = await handler(
+          new Request(`http://local.test/specs/${specId}/files/research.md`, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ content: '# Research\n' }),
+          }),
+        )
+        expect(researchWrote.status).toBe(200)
+        await expect(researchWrote.json()).resolves.toEqual({
+          name: 'research.md',
+          path: `specs/${specId}/research.md`,
+        })
+
+        const researchRead = await handler(new Request(`http://local.test/specs/${specId}/files/research.md`))
+        expect(researchRead.status).toBe(200)
+        await expect(researchRead.json()).resolves.toEqual({
+          name: 'research.md',
+          path: `specs/${specId}/research.md`,
+          content: '# Research\n',
+        })
       } finally {
         await dispose()
       }

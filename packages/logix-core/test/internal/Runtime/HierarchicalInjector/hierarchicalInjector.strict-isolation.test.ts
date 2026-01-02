@@ -19,8 +19,8 @@ describe('HierarchicalInjector strict isolation', () => {
     const parentRoot = ManagedRuntime.make(Parent.live({ ok: true }).pipe(Layer.mergeAll))
 
     try {
-      // 在“另一个 root”里先构造一次 Child runtime，让其进入进程级 registry。
-      // 现状：BoundApi $.use(Child) 可能会回退到这里，导致跨 root 串实例。
+      // Construct a Child runtime in "another root" first so it gets registered in the process-level registry.
+      // Current behavior: BoundApi $.use(Child) may fall back to it, causing cross-root instance leakage.
       otherRoot.runSync(Child.tag)
 
       const parentRuntime = parentRoot.runSync(Parent.tag) as Logix.ModuleRuntime<any, any>
@@ -32,7 +32,7 @@ describe('HierarchicalInjector strict isolation', () => {
 
       const exit = await Effect.runPromiseExit($.use(Child))
 
-      // 008 期望：strict 默认下，缺失提供者必须失败，不得回退到进程级 registry。
+      // Expectation (008): under strict-by-default, missing providers must fail and must not fall back to the process-level registry.
       expect(exit._tag).toBe('Failure')
       if (exit._tag !== 'Failure') return
 

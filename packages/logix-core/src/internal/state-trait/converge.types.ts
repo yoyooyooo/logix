@@ -99,8 +99,8 @@ export interface ConvergeContext<S> {
    */
   readonly schedulingScopeStepIds?: Int32Array
   /**
-   * dirtyAllReason：当事务窗口内发生不可追踪/不可映射写入时，必须显式降级为 dirtyAll，
-   * 并提供稳定原因码（用于诊断与 gate）。
+   * dirtyAllReason: when a non-trackable/non-mappable write happens within the transaction window,
+   * it must explicitly degrade to dirtyAll and provide a stable reason code (for diagnostics & gating).
    */
   readonly dirtyAllReason?: DirtyAllReason
   readonly dirtyPaths?: ReadonlySet<string | FieldPath | FieldPathId> | ReadonlyArray<string | FieldPath | FieldPathId>

@@ -24,8 +24,8 @@ const getAtPath = (obj: unknown, path: string): unknown => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-// 消费侧 digest gate：禁止在 digest 缺失时使用 rootIds → rootPaths 的反解结果（避免展示错误信息）。
-// 注意：Devtools 默认不主动反解；rootPaths 仅作为导出边界的可选辅助字段被动消费。
+// Consumer-side digest gate: do not use rootIds -> rootPaths reverse-mapping when digest is missing (avoid showing wrong info).
+// Note: Devtools does not reverse-map by default; rootPaths is only an optional helper field for export boundaries.
 const gateDirtyRootPathsByDigest = (meta: unknown): unknown => {
   if (!isRecord(meta)) return meta
 
@@ -48,7 +48,7 @@ const gateDirtyRootPathsByDigest = (meta: unknown): unknown => {
   }
 }
 
-// Snapshot.events 已经是 RuntimeDebugEventRef，timestamp 始终存在（core 会兜底为 Date.now）。
+// Snapshot.events are already RuntimeDebugEventRef; timestamp always exists (core falls back to Date.now).
 const getEventTimestamp = (event: Logix.Debug.RuntimeDebugEventRef): number => event.timestamp
 
 type TraitConvergeStep = {
@@ -514,12 +514,12 @@ export const computeDevtoolsState = (
         lastStateByInstance.set(instanceKey, state)
 
         if (!selectedFieldPath) {
-          // 未开启字段筛选：保留所有状态帧。
+          // No field filter: keep all state frames.
           timeline.push({ event: gatedEvent, stateAfter: state })
         } else {
           // Field filter on: keep a frame only when the field value changes.
           if (prev === undefined) {
-            // 首帧：始终保留，作为 baseline。
+            // First frame: always keep as the baseline.
             timeline.push({ event: gatedEvent, stateAfter: state })
           } else {
             const prevValue = getAtPath(prev, selectedFieldPath)

@@ -25,7 +25,7 @@ describe('StateTrait.install + EffectOp middleware', () => {
         deps: ['a', 'b'],
         get: (a, b) => a + b,
       }),
-      // target 跟随 source.name
+      // target follows source.name
       target: Logix.StateTrait.link({
         from: 'source.name',
       }),
@@ -44,7 +44,7 @@ describe('StateTrait.install + EffectOp middleware', () => {
     const stack: EffectOp.MiddlewareStack = [middleware]
 
     const testEffect = Effect.gen(function* () {
-      // 构造最小 ModuleRuntime（仅内存状态），不通过 Module 实现 Trait 自动接线。
+      // Build a minimal ModuleRuntime (in-memory state only), without using Module-based trait auto-wiring.
       type Shape = Logix.Module.Shape<typeof StateSchema, { noop: typeof Schema.Void }>
       type Action = Logix.Module.ActionOf<Shape>
 
@@ -63,22 +63,22 @@ describe('StateTrait.install + EffectOp middleware', () => {
       const bound = BoundApiRuntime.make<Shape, never>(
         {
           stateSchema: StateSchema,
-          // ActionSchema 在本测试中不会被使用，这里用占位 Schema 以满足类型要求。
+          // ActionSchema is not used in this test; use a placeholder Schema to satisfy typing.
           actionSchema: Schema.Never as any,
           actionMap: { noop: Schema.Void } as any,
         } as any,
         runtime as any,
         {
-          // 确保 onState 可在当前 Phase 内使用。
+          // Ensure onState is usable in the current phase.
           getPhase: () => 'run',
           moduleId: 'StateTraitEffectOpIntegrationTest',
         },
       )
 
-      // 安装 StateTrait Program 行为（会在当前 Scope 内 fork watcher）
+      // Install the StateTrait program behavior (forks watchers within the current Scope).
       yield* Logix.StateTrait.install(bound as any, program)
 
-      // 更新基础字段 a/b，应触发 sum 的重算（computed:update）
+      // Update base fields a/b to trigger sum recomputation (computed:update).
       let state = (yield* runtime.getState) as State
       state = {
         ...state,
@@ -87,7 +87,7 @@ describe('StateTrait.install + EffectOp middleware', () => {
       }
       yield* runtime.setState(state)
 
-      // 修改 source.name，应触发 target 的联动（link:propagate）
+      // Update source.name to trigger target propagation (link:propagate).
       let after = (yield* runtime.getState) as State
       after = {
         ...after,
@@ -96,7 +96,7 @@ describe('StateTrait.install + EffectOp middleware', () => {
       }
       yield* runtime.setState(after)
 
-      // 等待 watcher 消化这两次状态变更
+      // Wait for watchers to process the two state changes.
       yield* Effect.sleep('10 millis')
 
       const finalState = (yield* runtime.getState) as State

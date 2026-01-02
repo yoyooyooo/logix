@@ -141,7 +141,7 @@ describe('FlowRuntime.make (internal kernel)', () => {
     type Action = Logix.Module.ActionOf<CounterShape>
 
     const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
-      // 构造一个只实现 actions$/changes 的占位 runtime，用于验证 FlowRuntime API 组合行为
+      // Build a placeholder runtime that only implements actions$/changes, used to validate FlowRuntime API composition.
       const runtime = {
         actions$: Stream.fromIterable<Action>([
           { _tag: 'inc', payload: undefined } as any,
@@ -154,17 +154,17 @@ describe('FlowRuntime.make (internal kernel)', () => {
 
       const flow = FlowRuntimeImpl.make<CounterShape, never>(runtime)
 
-      // fromAction：只选择 inc
+      // fromAction: select inc only.
       const incStream = flow.fromAction((a: Action): a is Action => (a as any)._tag === 'inc')
       const incChunk = yield* Stream.runCollect(incStream)
       expect(Chunk.toReadonlyArray(incChunk).map((a) => (a as any)._tag)).toEqual(['inc', 'inc'])
 
-      // fromState：将 count 投影为数值流
+      // fromState: project count into a number stream.
       const countStream = flow.fromState((s) => s.count)
       const countChunk = yield* Stream.runCollect(countStream)
       expect(Chunk.toReadonlyArray(countChunk)).toEqual([1, 2])
 
-      // debounce/throttle/filter：这里只验证组合不会抛错
+      // debounce/throttle/filter: only validate composition does not throw.
       const base = Stream.fromIterable([1, 1, 2, 3])
       const debounced = flow.debounce(10)(base)
       const throttled = flow.throttle(5)(base)

@@ -42,7 +42,7 @@ describe('HierarchicalInjector ImportsScope lifecycle', () => {
           yield* Scope.close(scope, Exit.succeed(undefined))
         }
 
-        // scope close 后必须释放引用，以便 React 卸载/HMR 场景回收。
+        // After Scope.close, references must be released to allow React unmount / HMR scenarios to reclaim memory.
         expect(importsScope?.get(Child.tag)).toBeUndefined()
       }),
     )

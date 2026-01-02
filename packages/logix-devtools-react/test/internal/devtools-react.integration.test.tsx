@@ -210,18 +210,18 @@ describe('@logix/devtools-react integration with @logix/react', () => {
       }) as any,
     )
 
-    await waitFor(() => {
-      const state = devtoolsRuntime.runSync(devtoolsModuleRuntime.getState as any) as DevtoolsState
-      expect(state.selectedRuntime).toBe('R')
-      expect(state.selectedModule).toBe('M')
-      expect(state.selectedInstance).toBe('i1')
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText(/Developer Tools/i)).not.toBeNull()
-      expect(screen.getByText(/Error Summary/i)).not.toBeNull()
-      expect(screen.getAllByText(/boom/i).length).toBeGreaterThan(0)
-      expect(screen.getByText(/已降级：不可序列化/i)).not.toBeNull()
-    })
-  })
-})
+	    await waitFor(() => {
+	      const state = devtoolsRuntime.runSync(devtoolsModuleRuntime.getState as any) as DevtoolsState
+	      expect(state.selectedRuntime).toBe('R')
+	      expect(state.selectedModule).toBe('M')
+	      expect(state.selectedInstance).toBe('i1')
+	    })
+	
+		    await waitFor(() => {
+		      expect(screen.getByText(/Developer Tools/i)).not.toBeNull()
+		      expect(screen.getByText(/Error Summary/i)).not.toBeNull()
+		      expect(screen.getAllByText(/boom/i).length).toBeGreaterThan(0)
+		      expect(screen.getByText(/Degraded:\s*Not serializable/i)).not.toBeNull()
+		    })
+		  })
+		})

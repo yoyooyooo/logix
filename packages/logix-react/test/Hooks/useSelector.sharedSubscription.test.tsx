@@ -84,7 +84,7 @@ describe('useSelector(shared subscription)', () => {
       expect(result.current.a).toBe(0)
     })
 
-    // 即使同一组件内有多个 useSelector，也应共享同一条底层 changesWithMeta() 订阅。
+    // Even with multiple selectors in the same component, they should share one underlying changesWithMeta() subscription.
     expect(changesCallCount).toBe(1)
 
     await act(async () => {
@@ -95,7 +95,7 @@ describe('useSelector(shared subscription)', () => {
       expect(result.current.a).toBe(1)
     })
 
-    // 更新后也不应额外创建新的 changesWithMeta() 订阅。
+    // After updates, it should still not create additional changesWithMeta() subscriptions.
     expect(changesCallCount).toBe(1)
   })
 

@@ -10,10 +10,9 @@ import { useModule } from '../../src/Hooks.js'
 
 describe('AppDemoLayout-style runtime + Debug.traceLayer + Suspense', () => {
   //
-  // 这份测试基本复刻 examples/logix-react/src/demos/AppDemoLayout.tsx 的结构，
-  // 用来验证：
-  // - Runtime.make + Debug.layer({ mode: 'dev' }) + Debug.traceLayer 组合不会触发 AsyncFiberException；
-  // - 在 React.StrictMode + Suspense 场景下，useModule(Impl, { suspend: true, key }) 能正常完成初始化并响应点击。
+  // This test largely mirrors examples/logix-react/src/demos/AppDemoLayout.tsx and verifies:
+  // - Runtime.make + Debug.layer({ mode: 'dev' }) + Debug.traceLayer does not trigger AsyncFiberException;
+  // - Under React.StrictMode + Suspense, useModule(Impl, { suspend: true, key }) initializes correctly and responds to clicks.
   //
 
   const AppCounterModule = Logix.Module.make('AppCounterDemoTest', {
@@ -33,13 +32,13 @@ describe('AppDemoLayout-style runtime + Debug.traceLayer + Suspense', () => {
   })
 
   const AppCounterLogic = AppCounterModule.logic(($) => {
-    // setup-only：注册全局兜底错误处理
+    // setup-only: register a global fallback error handler.
     $.lifecycle.onError((cause) => Effect.logError('AppCounterLogic (test) error', cause))
 
     return Effect.gen(function* () {
       yield* Effect.log('AppCounterLogic (test) setup')
 
-      // 每次 increment 打一条业务日志 + 一条 trace:* Debug 事件
+      // On each increment, emit one business log + one trace:* Debug event.
       yield* $.onAction('increment').run(() =>
         Effect.gen(function* () {
           yield* Effect.log('increment dispatched from AppCounterLogic (test)')
@@ -58,7 +57,7 @@ describe('AppDemoLayout-style runtime + Debug.traceLayer + Suspense', () => {
     logics: [AppCounterLogic],
   })
 
-  // 应用级 Runtime：与 AppDemoLayout 一致，挂 Debug.layer + Debug.traceLayer
+  // App-level Runtime: same as AppDemoLayout, with Debug.layer + Debug.traceLayer.
   const appRuntime = Logix.Runtime.make(AppCounterImpl, {
     layer: Logix.Debug.traceLayer(Logix.Debug.layer({ mode: 'dev' })) as Layer.Layer<any, never, never>,
   })
@@ -95,18 +94,18 @@ describe('AppDemoLayout-style runtime + Debug.traceLayer + Suspense', () => {
       </React.StrictMode>,
     )
 
-    // 初始渲染：Suspense 完成后 count 应为 0
+    // Initial render: after Suspense resolves, count should be 0.
     await waitFor(() => {
       expect(getByTestId('count').textContent).toBe('0')
     })
 
-    // 点击 inc，期望 count 递增到 1
+    // Click inc; expect count to increment to 1.
     fireEvent.click(getByText('inc'))
     await waitFor(() => {
       expect(getByTestId('count').textContent).toBe('1')
     })
 
-    // 再点击 dec 回到 0，证明 ModuleRuntime 正常工作
+    // Click dec to return to 0, proving ModuleRuntime works.
     fireEvent.click(getByText('dec'))
     await waitFor(() => {
       expect(getByTestId('count').textContent).toBe('0')

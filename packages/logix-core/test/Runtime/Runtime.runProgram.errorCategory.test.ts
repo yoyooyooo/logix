@@ -71,7 +71,7 @@ describe('Runtime.runProgram error taxonomy (US1)', () => {
       const impl = Root.implement({ initial: undefined, logics: [] })
 
       const hangingFinalizerLayer = Layer.scopedDiscard(
-        // 模拟“finalizer 卡住但最终会结束”，避免测试进程永久悬挂。
+        // Simulate a "finalizer that stalls but eventually finishes" to avoid the test process hanging forever.
         Effect.addFinalizer(() => Effect.sleep('50 millis')),
       ) as unknown as Layer.Layer<any, never, never>
 
