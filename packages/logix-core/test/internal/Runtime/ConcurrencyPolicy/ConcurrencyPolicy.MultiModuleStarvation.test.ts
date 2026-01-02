@@ -92,7 +92,7 @@ describe('ConcurrencyPolicy (US1): multi-module starvation', () => {
           expect(yield* Ref.get(processedA)).toBe(12)
           expect(yield* Ref.get(processedB)).toBe(12)
 
-          // 若触发压力告警，应能按 moduleId 区分（避免“多模块饥饿”场景不可诊断）。
+          // If pressure warnings are triggered, they must be distinguishable by moduleId (to keep "multi-module starvation" diagnosable).
           const events = ring.getSnapshot()
           expect(countPressureByModuleId(events, 'StarvationA')).toBeGreaterThan(0)
           expect(countPressureByModuleId(events, 'StarvationB')).toBeGreaterThan(0)

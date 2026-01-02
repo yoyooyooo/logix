@@ -76,7 +76,7 @@ describe('StateTrait.computed deps-as-args', () => {
     const traits = Logix.StateTrait.from(StateSchema)({
       out: Logix.StateTrait.computed({
         deps: ['a', 'b'],
-        // @ts-expect-error deps-as-args: get 不再暴露 (state)=>，避免隐式 state 访问
+        // @ts-expect-error deps-as-args: get no longer exposes (state)=> to avoid implicit state access
         get: (state) => state.a + state.b,
       }),
     })

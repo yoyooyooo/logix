@@ -30,14 +30,14 @@ describe('Middleware.DebugLogger', () => {
   it('withDebug should append debug middlewares and preserve Effect result', async () => {
     const seen: Array<EffectOp.EffectOp<any, any, any>> = []
 
-    // 起始 stack 只包含一个占位中间件，用于验证顺序不会被破坏。
+    // The base stack contains a single placeholder middleware to verify ordering is preserved.
     const base: Middleware.MiddlewareStack = [(op) => op.effect as Effect.Effect<any, any, any>]
 
     const stack = Middleware.withDebug(base, {
       logger: (op) => {
         seen.push(op)
       },
-      observer: false, // 测试中无需依赖 DebugSink 行为
+      observer: false, // Tests do not need to depend on DebugSink behavior
     })
 
     const op = EffectOp.make({

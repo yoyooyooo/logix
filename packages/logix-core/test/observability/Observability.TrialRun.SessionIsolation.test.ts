@@ -48,7 +48,7 @@ describe('Observability.TrialRun (US4)', () => {
               const ctx = yield* options.module.impl.impl.layer.pipe(Layer.build)
               const runtime = Context.get(ctx, options.module.M.tag) as any
 
-              // 等待后台逻辑/traits 安装有机会执行，确保静态 IR 注册与证据采集完成。
+              // Give background logic/traits installation a chance to run so static IR registration and evidence collection can complete.
               yield* TestClock.adjust('1 millis')
 
               return runtime.instanceId as string
@@ -89,8 +89,8 @@ describe('Observability.TrialRun (US4)', () => {
         expect(servicesA?.instanceId).toBe(aInstanceId)
         expect(servicesB?.instanceId).toBe(bInstanceId)
 
-        // converge.staticIrByDigest 的 key 为稳定 staticIrDigest（不得依赖 instanceId/时间/随机）；
-        // 但 summary 必须按会话隔离：其 value 的 instanceId/moduleId 不得串扰。
+        // converge.staticIrByDigest uses a stable staticIrDigest key (must not depend on instanceId/time/randomness);
+        // but the summary must be session-isolated: its values' instanceId/moduleId must not leak across sessions.
         const staticIrByDigestA: any = summaryA?.converge?.staticIrByDigest
         const staticIrByDigestB: any = summaryB?.converge?.staticIrByDigest
         expect(staticIrByDigestA && typeof staticIrByDigestA === 'object').toBe(true)
@@ -118,7 +118,7 @@ describe('Observability.TrialRun (US4)', () => {
           expect(ir?.moduleId).toBe('TrialRunIsolationModuleB')
         }
 
-        // 事件 envelope 的 runId 必须与 session.runId 一致（不得串扰）。
+        // Event envelopes' runId must match session.runId (no cross-session leakage).
         for (const e of a.evidence.events as any[]) {
           expect(e.runId).toBe('run-a')
         }
@@ -126,7 +126,7 @@ describe('Observability.TrialRun (US4)', () => {
           expect(e.runId).toBe('run-b')
         }
 
-        // chaos：并行启动更多会话，验证 runId 与 IR digest 不串扰（主要覆盖 once/seq/去重隔离）。
+        // Chaos: start more sessions in parallel to validate runId and IR digests do not leak (covers once/seq/dedup isolation).
         const chaosRuns = [
           { runId: 'run-1', deps: 'a' },
           { runId: 'run-2', deps: 'b' },

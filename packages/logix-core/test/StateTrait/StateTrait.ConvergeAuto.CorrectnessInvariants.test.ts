@@ -116,7 +116,7 @@ describe('StateTrait converge auto correctness invariants', () => {
         yield* bump('in0')
         yield* bump('in0')
 
-        // 只写 state 但不补齐字段级 patch → dirtyPaths="*" → unknown_write。
+        // Writing state without field-level patches -> dirtyPaths="*" -> unknown_write.
         yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'unknown' }, () =>
           Effect.gen(function* () {
             const prev = yield* rt.getState
@@ -192,7 +192,7 @@ describe('StateTrait converge auto correctness invariants', () => {
             deps: ['in0'],
             get: (in0: any) => (in0 as number) + delta,
           }) as any),
-          // 强制写到同一字段：使其与 baseSpec 的 d0 writer 发生冲突。
+          // Force writing to the same field to conflict with baseSpec's d0 writer.
           fieldPath: 'd0',
         })
 

@@ -3,7 +3,7 @@ import * as Logix from '@logix/core'
 
 import type { SpecListItem, TaskItem } from '../../api/client'
 
-const ArtifactNameSchema = Schema.Literal('spec.md', 'plan.md', 'tasks.md')
+const ArtifactNameSchema = Schema.Literal('spec.md', 'plan.md', 'tasks.md', 'quickstart.md', 'data-model.md', 'research.md')
 
 const SpecTaskStatsSchema = Schema.Struct({
   total: Schema.Number,
@@ -72,6 +72,7 @@ const KanbanStateSchema = Schema.Struct({
   hideDoneTasks: Schema.Boolean,
   viewMode: Schema.Literal('task', 'us'),
   viewModeBySpec: Schema.Record({ key: Schema.String, value: Schema.Literal('task', 'us') }),
+  refreshSeq: Schema.Number,
   error: Schema.NullOr(Schema.String),
   specs: Schema.Array(SpecListItemSchema),
   tasksBySpec: Schema.Record({ key: Schema.String, value: Schema.Array(TaskItemSchema) }),
@@ -134,4 +135,3 @@ export const KanbanAppDef = Logix.Module.make('SpeckitKanbanApp', {
   state: KanbanStateSchema,
   actions: KanbanActions,
 })
-

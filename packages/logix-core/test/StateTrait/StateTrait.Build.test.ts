@@ -21,7 +21,7 @@ describe('StateTrait.build', () => {
         deps: ['a', 'b'],
         get: (a, b) => a + b,
       }),
-      // 简单 link：profile.name 跟随 profile.id（仅用于验证 Graph / Plan 结构）
+      // Simple link: profile.name follows profile.id (only used to validate Graph / Plan shape).
       'profile.name': Logix.StateTrait.link({
         from: 'profile.id',
       }),
@@ -29,7 +29,7 @@ describe('StateTrait.build', () => {
 
     const program = Logix.StateTrait.build(StateSchema, traits)
 
-    // 基础结构：Program / Graph / Plan 均已构建
+    // Baseline structure: Program / Graph / Plan are all built.
     expect(program.stateSchema).toBe(StateSchema)
     expect(program.spec).toBe(traits)
 
@@ -40,12 +40,12 @@ describe('StateTrait.build', () => {
     expect(Array.isArray(graph.nodes)).toBe(true)
     expect(Array.isArray(graph.edges)).toBe(true)
 
-    // 应该至少包含 sum / profile.name 两个字段节点
+    // Should include at least two field nodes: sum / profile.name
     const nodeIds = graph.nodes.map((n) => n.id).sort()
     expect(nodeIds).toContain('sum')
     expect(nodeIds).toContain('profile.name')
 
-    // link 边：profile.id -> profile.name
+    // Link edge: profile.id -> profile.name
     const linkEdges = graph.edges.filter((e) => e.kind === 'link')
     expect(linkEdges).toEqual([
       {
@@ -59,7 +59,7 @@ describe('StateTrait.build', () => {
     expect(plan._tag).toBe('StateTraitPlan')
     expect(Array.isArray(plan.steps)).toBe(true)
 
-    // Plan 中应包含 sum 的 computed-update 与 profile.name 的 link-propagate
+    // Plan should include computed-update for sum and link-propagate for profile.name
     const kinds = plan.steps.map((s) => s.kind).sort()
     expect(kinds).toEqual(['computed-update', 'link-propagate'])
 
@@ -75,7 +75,7 @@ describe('StateTrait.build', () => {
 
   it('should throw when link traits form a cycle', () => {
     const traits = Logix.StateTrait.from(StateSchema)({
-      // a <- b, b <- a 形成环路
+      // a <- b, b <- a form a cycle
       a: Logix.StateTrait.link({ from: 'b' }),
       b: Logix.StateTrait.link({ from: 'a' }),
     })

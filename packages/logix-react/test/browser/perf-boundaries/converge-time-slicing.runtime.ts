@@ -186,7 +186,7 @@ export const runConvergeTimeSlicingTxnCommitDirtyAll = (
           const next = rt.bumpReducer(prev, { _tag: 'bump', payload: mutateRoots } as any)
           yield* moduleScope.setState(next)
 
-          // 用 dirtyAll 模式强制走全量调度：用于对照 time-slicing on/off 下的 per-txn 收敛成本。
+          // Force full scheduling via dirtyAll to compare per-txn converge cost with time-slicing on/off.
           Logix.InternalContracts.recordStatePatch(moduleScope, '*', 'perf')
         }),
     )

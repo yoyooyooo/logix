@@ -131,7 +131,7 @@ describe('LogicTraits setup · perf baseline (Diagnostics=off)', () => {
       const p50 = quantile(samples, 0.5)
       const p95 = quantile(samples, 0.95)
 
-      // 用于人工填写 specs/023-logic-traits-setup/plan.md（Constitution Check: 性能预算）
+      // Intended for manually filling specs/023-logic-traits-setup/plan.md (Constitution Check: performance budget).
       console.log(
         `[perf] LogicTraits.Setup.off traits=100 contribs=4 iters=${iterations} p50=${p50.toFixed(
           2,

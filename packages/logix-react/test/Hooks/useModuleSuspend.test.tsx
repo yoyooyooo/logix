@@ -20,14 +20,14 @@ const CounterLogic = Counter.logic(($) =>
   }),
 )
 
-// 模拟一个“异步构建”的 ModuleImpl（这里用 Effect.delay 代替真实 IO）
+// Simulate an "async-built" ModuleImpl (use Effect.sleep as a stand-in for real IO).
 const AsyncCounterImpl = Counter.implement({
   initial: { value: 0 },
   logics: [
     Effect.gen(function* () {
-      // 模拟异步初始化逻辑
+      // Simulate async initialization logic.
       yield* Effect.sleep('10 millis')
-      // 延迟后再挂载已有的 CounterLogic（注意这里只需要返回 Logic 本身，不需要在这里执行它）
+      // After the delay, attach the existing CounterLogic (we only need to return the Logic itself; do not run it here).
       return CounterLogic as any
     }),
   ] as any,
@@ -236,10 +236,10 @@ describe('useModule(Impl) suspend mode', () => {
 
     try {
       const useTest = () => {
-        // 故意省略 key，验证 useModule 在 dev/test 环境下会抛出可读错误，
-        // 防止调用方误用 suspend:true 而没有显式资源标识。
+        // Intentionally omit `key` to verify useModule throws a readable error in dev/test,
+        // preventing callers from using suspend:true without an explicit resource identity.
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error suspend:true 模式必须显式提供 key
+        // @ts-expect-error suspend:true requires an explicit key
         useModule(AsyncCounterImpl, {
           suspend: true,
         })

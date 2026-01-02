@@ -18,11 +18,10 @@ export function UserStoryCard({ storyCode, title, stats, hint, tone = 'default',
   return (
     <motion.button
       type="button"
-      layout
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
-      className="au-card au-clickable group min-w-0 px-3 py-2.5 text-left"
+      className="au-card au-clickable-no-scale group min-w-0 px-3 py-2.5 text-left"
       onClick={onOpen}
       title={title}
     >

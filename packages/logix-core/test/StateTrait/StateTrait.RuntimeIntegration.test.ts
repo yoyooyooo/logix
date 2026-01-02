@@ -25,7 +25,7 @@ describe('StateTrait runtime integration', () => {
     const program = Effect.gen(function* () {
       const runtime = yield* CounterWithProfile.tag
 
-      // 修改 a/b，应触发 sum 的重算
+      // Update a/b to trigger sum recomputation.
       let state = (yield* runtime.getState) as CounterState
       state = {
         ...state,
@@ -34,13 +34,13 @@ describe('StateTrait runtime integration', () => {
       }
       yield* runtime.setState(state)
 
-      // 等待 traits watcher 消化此次状态更新
+      // Wait for the traits watcher to process the state update.
       yield* Effect.sleep('10 millis')
 
       const afterSum = (yield* runtime.getState) as CounterState
       expect(afterSum.sum).toBe(7)
 
-      // 修改 profileResource.data.name，应触发 profile.name 的联动
+      // Update profileResource.data.name to trigger profile.name propagation.
       const next: CounterState = {
         ...afterSum,
         profile: { ...afterSum.profile, name: '' },
@@ -52,7 +52,7 @@ describe('StateTrait runtime integration', () => {
 
       yield* runtime.setState(next)
 
-      // 同样等待 link watcher 生效
+      // Wait for the link watcher as well.
       yield* Effect.sleep('10 millis')
 
       const finalState = (yield* runtime.getState) as CounterState

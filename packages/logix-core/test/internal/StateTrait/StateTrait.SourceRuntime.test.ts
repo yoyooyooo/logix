@@ -88,31 +88,31 @@ describe('StateTrait.source runtime integration', () => {
       const bound = BoundApiRuntime.make<Shape, never>(
         {
           stateSchema: StateSchema,
-          // ActionSchema 在本测试中不会被使用，这里用占位 Schema 以满足类型要求。
+          // ActionSchema is not used in this test; use a placeholder Schema to satisfy typing.
           actionSchema: Schema.Never as any,
           actionMap: { load: Schema.Void } as any,
         } as any,
         runtime as any,
         {
-          // 确保 onState / traits 可在当前 Phase 内使用。
+          // Ensure onState / traits are usable in the current phase.
           getPhase: () => 'run',
           moduleId: 'StateTraitSourceRuntimeTest-Resource',
         },
       )
 
-      // 安装 StateTrait Program 行为（包含 source-refresh 入口注册）。
+      // Install the StateTrait program behavior (includes source-refresh entrypoint registration).
       yield* Logix.StateTrait.install(bound as any, program)
 
-      // 显式触发一次 source 刷新。
+      // Explicitly trigger a source refresh once.
       yield* bound.traits.source.refresh('profileResource')
 
-      // 等待刷新与写回（loading → success）
+      // Wait for refresh and writeback (loading -> success).
       yield* Effect.sleep('30 millis')
 
       const finalState = (yield* runtime.getState) as State
       expect(finalState.profileResource.status).toBe('success')
       expect(finalState.profileResource.data?.name).toBe('resource:u1')
-      // link: profile.name 跟随 profileResource.data.name。
+      // link: profile.name follows profileResource.data.name.
       expect(finalState.profile.name).toBe('resource:u1')
     })
 

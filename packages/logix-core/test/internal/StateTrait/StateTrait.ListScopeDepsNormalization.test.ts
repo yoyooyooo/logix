@@ -35,8 +35,8 @@ describe('StateTrait list-scope deps normalization', () => {
 
       const closure = Array.from(reverseClosure(graph, 'items[].warehouseId'))
 
-      // list-scope check 的 fieldPath = "items"，其 deps 必须被归一为 "items[].warehouseId"；
-      // 因此从 "items[].warehouseId" 反向闭包应能命中 "items"。
+      // The list-scope check fieldPath is "items", and its deps must be normalized to "items[].warehouseId";
+      // therefore reverse-closure from "items[].warehouseId" should reach "items".
       expect(closure).toContain('items')
     }),
   )

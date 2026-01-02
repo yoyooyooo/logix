@@ -55,7 +55,7 @@ describe('React Runtime transaction integration', () => {
       { wrapper },
     )
 
-    // 等待初始渲染完成
+    // Wait for the initial render to complete.
     await waitFor(() => {
       expect(result.current.count).toBe(0)
     })
@@ -75,11 +75,11 @@ describe('React Runtime transaction integration', () => {
 
           result.current.inc()
 
-          // 让内部 Effect 有机会执行
+          // Give internal Effects a chance to run.
           yield* Effect.sleep('10 millis')
 
           const after = countTxnStateUpdates()
-          // 本次交互应只追加一条带 txnId 的 state 事件。
+          // This interaction should append exactly one state event with a txnId.
           expect(after - before).toBe(1)
         }),
       )

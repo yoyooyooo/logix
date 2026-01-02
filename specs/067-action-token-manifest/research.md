@@ -1,7 +1,8 @@
 # Research: Action 级别定义锚点（ActionToken-ready Manifest）
 
 **Feature**: `specs/067-action-token-manifest/spec.md`  
-**Created**: 2026-01-01
+**Created**: 2026-01-01  
+**Updated**: 2026-01-02
 
 > 目标：把本特性的关键裁决固化为可复用结论，避免“实现先跑偏、文档后补”的漂移。
 
@@ -71,16 +72,90 @@
 
 ## Decision 5: token-first（不依赖 codegen）可以成立，但用户写法必须显式引用 token 符号
 
-**Decision**: 提供最小 `ActionToken` 形态（值级对象，至少包含 `_tag` 与 action creator），让用户在两处都引用同一个 symbol：
+**Decision**: 将 action 的“定义锚点”升级为值级 `ActionToken`（携带 payload Schema），并将 actions 的内部 canonical 形态定义为 “ActionToken map”，同时允许 `Module.make({ actions })` 直接接受 schema map 作为语法糖（并在内部规范化为 token map）。`actionTag` 的权威来源为 `_tag`，且默认规则为：`actionTag = key`（forward-only：rename 即协议变更）。
 
-- dispatch：`$.actions.dispatch(Token.action(payload))` / `runtime.dispatch(Token.action(payload))`
-- watcher：`$.onAction(Token)`（BoundApi 已支持 “传入带 `_tag` 的对象”）
+- 定义（定义点即 IDE 可跳转锚点）：
+  - canonical：`actions: { add: ActionToken.make(Schema.Number), inc: ActionToken.make(Schema.Void) }`
+  - sugar：`actions: { add: Schema.Number, inc: Schema.Void }`（Module.make 接受 schema map；内部规范化为 token map）
+  - sugar（可选 helper）：`actions: Logix.Action.makeActions({ add: Schema.Number, inc: Schema.Void })`（schema map → token map；用于抽出常量/强化类型约束时更直观）
+- watcher：`$.onAction($.actions.add)`（监听/订阅侧引用同一 token 符号）
+- dispatch：`$.dispatchers.add(payload)` 或 `$.dispatch($.actions.add, payload)`（派发侧引用同一 token 符号）
 
 **Rationale**:
 
-- IDE 跳转定义/查找引用/重命名依赖静态 value-level symbol；仅在运行时内部引入 token、但保持用户仍写 `runtime.actions.xxx(...)`（Proxy 动态属性）无法获得 F12 跳转。
-- 不依赖 codegen 也能成立（手写 token 即可），但 DX 成本更高；因此 codegen 仍是长期黄金路径。
+- IDE 跳转定义/查找引用/重命名依赖静态 value-level symbol：`$.dispatchers.add(...)` / `$.onAction($.actions.add)` 里点击 `add` 能回到模块 `actions.add` 的定义行；Proxy/字符串无法提供稳定符号关系。
+- `ActionToken` 自带 Schema，避免 “TS 类型一份、Schema 再写一份” 的漂移，并让 manifest 提取可免 AST。
+- `actionTag = key` 让“定义点 / 协议 tag / manifest 输出”三者同源；在 forward-only 策略下，重命名作为协议变更是可接受且更干净的治理口径。
 
 **Alternatives considered**:
 
-- Proxy/动态 property 生成 token：无法让 TypeScript Language Service 建立“使用点 → 定义点”的静态符号关系。
+- Proxy/动态 property（`$.actions.<tag>(payload)`）作为主路径：无法让 TypeScript Language Service 建立“使用点 → 定义点”的静态符号关系，且容易把 action 退化回字符串消息。
+
+**Notes**:
+
+- `Logix.Action.makeActions({ ... })` 已能覆盖“减少样板 + 保持跳转锚点”的主要收益；`makeActionsFromSchema(Schema.Struct({ ... }))` 暂不纳入 067，除非出现明确场景需要把 `Schema.Struct` 作为 actions 的单一 SSoT（例如与 CodeGen/外部契约生成强绑定）。如未来要引入，建议在独立的工具链/CodeGen 需求中统一裁决（见 069）。
+
+## Decision 6: 将 `actions`（定义/creator）与 `dispatchers`（执行/Effect）拆分为两套视图
+
+**Decision**: 在 BoundApi 上引入两套面向业务的 action surface：
+
+- `$.actions.<K>(payload)`：仅作为 ActionCreator，产出纯数据 action object（可序列化、可回放、可进入 manifest/trace join）。
+- `$.dispatchers.<K>(payload)`：返回可 `yield*` 的 Effect（真正 dispatch），并保证 `<K>` 仍是模块 `actions.<K>` 的同一符号（用于跳转定义/引用）。
+
+canonical 入口同时保留：
+
+- `$.dispatch(token, payload)` 与 `$.dispatch(action)`（用于需要组合/解构或绕开 receiver 约束的场景）
+- `$.onAction(token)`（以 token 为主路径；字符串/Proxy 作为降级路径）
+
+**Rationale**:
+
+- 解释性：定义（token/schema）与执行（dispatch effect）分离，避免“同一个值既像定义又像执行”导致的语义混乱与诊断链路断点。
+- 可序列化与可回放：ActionCreator 的产物是纯数据；dispatchers 只是执行入口，不承担定义真相源。
+- DX：把“可跳转的符号”固定在 `actions.<K>`；dispatchers 只复用该符号做执行视图。
+
+**Alternatives considered**:
+
+- 让 `$.actions.<K>(payload)` 直接返回 Effect（dispatch）：写法更短，但会把定义与执行混在一个值里，且难以保持 token 的纯定义属性（manifest/诊断/跨实例稳定性）。
+
+## Decision 7: `Reducer.mutate` 改为 payload-first（`(draft, payload)` / `(state, payload)`）
+
+**Decision**: 将 `Reducer.mutate` 的第二入参从 `action` 改为 `payload`（并由 `ActionToken` 携带的 Schema 推导 payload 类型），保持事务窗口纯同步与 patchPaths 机制不变。
+
+**Rationale**:
+
+- reducer 天然只对应一个 action：payload-first 更贴近真实语义，减少样板与误用（不再需要 `action.payload`）。
+- 对齐 067 的 token-first：payload 类型从 token 的 Schema 推导，减少重复声明与漂移。
+
+**Alternatives considered**:
+
+- 保留 `(draft, action)` 并新增 `mutatePayload`：会增加 API 面与学习成本，且 forward-only 下不如直接统一一次到位。
+
+## Decision 8: CodeGen 作为独立需求（spec 069），不在 067 交付范围内落地
+
+**Decision**: 067 只交付“无需 codegen 的最小手写路径 + manifest/事件对齐”；面向 actions/dispatchers/reducers 样板自动化的 CodeGen 另起 spec：`specs/069-codegen-action-surface/`。
+
+**Rationale**:
+
+- 保持 067 scope 可控：先把协议/锚点/运行时语义打牢，再统一思考多方 codegen 的产物编排与跳转策略。
+- 避免在同一 spec 内混入“协议裁决”和“工具链工程化”两种节奏，降低并行真相源漂移风险。
+
+## Decision 9: `onAction(token)` 回调参数 payload-first
+
+**Decision**: 当 `onAction` 以“单个 ActionToken”做精确监听时，其 IntentBuilder 的流元素类型为该 action 的 `payload`（而不是完整 action object），从而允许：
+
+- `$.onAction($.actions.add).run((payload) => ...)`
+- `$.onAction($.actions.add).mutate((draft, payload) => ...)`
+
+同时保留非 token 精确监听的回调形态：
+
+- `$.onAction((a) => ...)` / `$.onAction('tag')`：回调参数仍为完整 action object（用于区分 `_tag` / 访问元信息）。
+
+**Rationale**:
+
+- DX：绝大多数监听逻辑只关心 payload；payload-first 可以减少 `action.payload` 的样板与噪音。
+- 一致性：与 `Reducer.mutate(draft, payload)` 的 payload-first 方向一致，降低心智分裂。
+- 语义清晰：token 精确监听天然只有一个 `_tag`；保留完整 action object 只在需要区分 tag/读取元信息时才必要。
+
+**Alternatives considered**:
+
+- 统一都返回 action object：语义统一，但 DX 明显变差，且与 payload-first reducer/dispatchers 的方向不一致。

@@ -60,7 +60,7 @@ describe('Runtime + Debug trace integration (React happy-dom)', () => {
       { wrapper },
     )
 
-    // 派发一次 inc，触发 trace:inc 事件，由 Runtime 层提供的 DebugSink 收集事件。
+    // Dispatch one inc, trigger a trace:inc event, and have the DebugSink provided by Runtime collect it.
     await act(async () => {
       await baseRuntime.runPromise(
         Effect.gen(function* () {

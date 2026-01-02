@@ -89,13 +89,13 @@ describe('Link.make (public API)', () => {
         const source = yield* SourceModule.tag
         const target = yield* TargetModule.tag
 
-        // 等待逻辑订阅启动
+        // Wait for logic subscriptions to start.
         yield* Effect.sleep('50 millis')
 
-        // 触发 Source.increment
+        // Trigger Source.increment
         yield* source.dispatch({ _tag: 'increment', payload: undefined })
 
-        // 等待 Link 传播
+        // Wait for Link propagation.
         yield* Effect.sleep('100 millis')
 
         const s = yield* source.getState

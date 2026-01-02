@@ -83,3 +83,25 @@ pre {
   @apply cursor-pointer select-none active:scale-[0.98] active:brightness-95;
   transition: transform 0.1s ease-out, filter 0.1s ease-out;
 }
+
+.au-clickable-no-scale {
+  @apply cursor-pointer select-none active:brightness-95;
+  transition: filter 0.1s ease-out;
+}
+
+/* Task Detail: auto-scroll highlight */
+.speckit-task-highlight {
+  position: relative;
+  z-index: 0;
+}
+
+.speckit-task-highlight::before {
+  content: '';
+  position: absolute;
+  inset: -3px -6px;
+  background: var(--intent-info-bg);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: -1;
+}

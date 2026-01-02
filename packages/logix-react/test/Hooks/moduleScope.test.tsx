@@ -40,7 +40,7 @@ describe('ModuleScope.make', () => {
     cleanup()
   })
 
-  // 防止 Debug.record 在测试环境下走 console/logger fallback（会产生噪声输出）
+  // Prevent Debug.record from falling back to console/logger in tests (avoids noisy output).
   const noopSink: Logix.Debug.Sink = { record: () => Effect.void }
   const NoopDebugLayer = Logix.Debug.replace([noopSink])
 

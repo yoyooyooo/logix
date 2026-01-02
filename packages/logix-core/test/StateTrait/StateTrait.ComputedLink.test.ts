@@ -15,7 +15,7 @@ describe('StateTrait DSL (computed & link)', () => {
 
   type State = Schema.Schema.Type<typeof StateSchema>
 
-  // Helper: minimal path getter for tests（不进入正式运行时代码）
+  // Helper: minimal path getter for tests (not part of production runtime code).
   const getByPath = (state: State, path: string): unknown =>
     path.split('.').reduce((acc: any, key) => (acc == null ? acc : acc[key]), state)
 
@@ -46,7 +46,7 @@ describe('StateTrait DSL (computed & link)', () => {
 
   it('should create link entry whose meta.from can drive simple link behavior', () => {
     const traits = Logix.StateTrait.from(StateSchema)({
-      // target 跟随 source.name
+      // target follows source.name
       target: Logix.StateTrait.link({
         from: 'source.name',
       }),

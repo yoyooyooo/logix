@@ -15,7 +15,7 @@ describe('Runtime.runProgram dispose timeout (US1)', () => {
       const impl = Root.implement({ initial: undefined, logics: [] })
 
       const hangingFinalizerLayer = Layer.scopedDiscard(
-        // 模拟“finalizer 卡住但最终会结束”，避免测试进程永久悬挂。
+        // Simulate a "finalizer hangs but eventually ends" to avoid permanently hanging the test process.
         Effect.addFinalizer(() => Effect.sleep('50 millis')),
       ) as unknown as Layer.Layer<any, never, never>
 
@@ -41,7 +41,7 @@ describe('Runtime.runProgram dispose timeout (US1)', () => {
 
       expect(onErrorCalls).toBeGreaterThan(0)
 
-      // 等待实际 finalizer 自然结束，避免 vitest 的 open handles 影响后续用例。
+      // Wait for the finalizer to finish naturally to avoid vitest open handles affecting subsequent tests.
       yield* Effect.promise(() => new Promise((r) => setTimeout(r, 80)))
     }),
   )

@@ -24,7 +24,7 @@ describe('Debug trace events', () => {
       ),
     )
 
-    // 验证 trace:* 事件确实通过 DebugSink 传递到了调用方
+    // Verify trace:* events are delivered to the caller via DebugSink.
     const traceEvents = events.filter((e) => typeof e.type === 'string' && e.type.startsWith('trace:'))
     expect(traceEvents.length).toBeGreaterThanOrEqual(1)
     expect(traceEvents.some((e) => e.type === 'trace:inc' && (e as any).moduleId === 'DebugTraceCounter')).toBe(true)

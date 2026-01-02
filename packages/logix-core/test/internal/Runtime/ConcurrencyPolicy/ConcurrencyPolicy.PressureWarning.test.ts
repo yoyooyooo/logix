@@ -38,7 +38,7 @@ describe('ConcurrencyPolicy (US1): pressure warning', () => {
             } as any,
           )
 
-          // 慢消费：让 publish/backpressure 变成可观测的“持续饱和”。
+          // Slow consumption: make publish/backpressure a visible "continuous saturation".
           const consumerFiber = yield* Effect.fork(
             Effect.gen(function* () {
               const subscription = yield* PubSub.subscribe(actionHub)
@@ -71,7 +71,7 @@ describe('ConcurrencyPolicy (US1): pressure warning', () => {
         }).pipe(
           Effect.provideService(ConcurrencyPolicyTag, {
             concurrencyLimit: 16,
-            // 极小容量 + 极低阈值，确保 1s 内可复现触发。
+            // Tiny capacity + very low threshold to reproduce within 1s.
             losslessBackpressureCapacity: 2,
             pressureWarningThreshold: { backlogCount: 1, backlogDurationMs: 1 },
             warningCooldownMs: 1000,

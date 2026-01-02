@@ -26,7 +26,7 @@ describe('Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
 
   const TestLogic = TestModule.logic<{ readonly label: string }>(($) =>
     Effect.gen(function* () {
-      // 在运行阶段读取 EnvTag，确保 React Provider.layer 的覆盖生效。
+      // Read EnvTag in the run phase to ensure RuntimeProvider.layer overrides take effect.
       yield* $.onAction('init').run(
         Effect.gen(function* () {
           const env = yield* EnvTag
@@ -50,8 +50,8 @@ describe('Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
     logics: [TestLogic],
     processes: [
       Effect.gen(function* () {
-        // 这里的 dispatch 会在 AppRuntime 层的 envLayer 下运行，
-        // Logic 内部读取的 EnvTag 应该来自 Root Runtime 的 layer，而不是 React Provider 覆盖。
+        // This dispatch runs under AppRuntime's envLayer;
+        // EnvTag read inside Logic should come from the Root Runtime layer, not the React Provider override.
         const runtime = (yield* TestModule.tag) as Logix.ModuleRuntime<
           { initialized: boolean; label: string },
           { _tag: 'init'; payload: void }

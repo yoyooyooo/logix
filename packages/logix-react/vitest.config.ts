@@ -6,7 +6,7 @@ export default mergeConfig(
   defineConfig(sharedConfig),
   defineConfig({
     test: {
-      // 默认项目：沿用现有 happy-dom 环境，覆盖所有单元 / hooks / 集成测试
+      // Default project: keep the existing happy-dom environment for unit / hooks / integration tests.
       projects: [
         {
           extends: true,
@@ -21,7 +21,7 @@ export default mergeConfig(
           },
         },
         {
-          // browser 项目：只跑真实浏览器环境下的集成测试
+          // Browser project: run integration tests in a real browser environment only.
           extends: true,
           test: {
             name: {

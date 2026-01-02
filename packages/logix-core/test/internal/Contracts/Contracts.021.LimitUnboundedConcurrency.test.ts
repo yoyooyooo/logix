@@ -60,7 +60,7 @@ describe('contracts (021): limit unbounded concurrency', () => {
         const limit = record.limit
         expect(limit === 'unbounded' || (typeof limit === 'number' && limit >= 1)).toBe(true)
 
-        // JSON 序列化硬门（Slim 且可导出）
+        // JSON-serialization hard gate (slim and exportable).
         const json = JSON.stringify(record)
         const parsed = JSON.parse(json)
         expect(typeof parsed).toBe('object')

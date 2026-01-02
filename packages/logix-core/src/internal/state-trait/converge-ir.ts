@@ -20,8 +20,8 @@ export interface ConvergeStaticIrRegistry {
   readonly depsKey: string
   /**
    * fieldPathsKey：
-   * - 用于将 FieldPathId 的语义（fieldPaths table）纳入 staticIrDigest 的稳定口径；
-   * - build 阶段预计算，避免在运行时反复 stringify 大表。
+   * - Incorporates FieldPathId semantics (fieldPaths table) into the stable definition of staticIrDigest;
+   * - Precomputed at build time to avoid repeatedly stringifying large tables at runtime.
    */
   readonly fieldPathsKey: string
   readonly fieldPaths: ReadonlyArray<FieldPath>
@@ -60,10 +60,10 @@ export interface ConvergeStaticIrExport {
 }
 
 /**
- * ConvergeStaticIr digest（稳定口径）：
- * - 依赖 converge graph 的结构键（writersKey/depsKey）与 FieldPathId table key（fieldPathsKey）；
- * - 不得依赖 instanceId/时间/随机；
- * - 便于跨运行/跨进程对齐 Static IR 与整数映射。
+ * ConvergeStaticIr digest (stable definition):
+ * - Depends on the converge graph structural keys (writersKey/depsKey) and the FieldPathId table key (fieldPathsKey);
+ * - Must not depend on instanceId/time/randomness;
+ * - Enables aligning Static IR and integer mappings across runs/processes.
  */
 export const getConvergeStaticIrDigest = (
   ir: Pick<ConvergeStaticIrRegistry, 'writersKey' | 'depsKey' | 'fieldPathsKey'>,

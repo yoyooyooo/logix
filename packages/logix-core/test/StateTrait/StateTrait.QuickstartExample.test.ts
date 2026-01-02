@@ -43,7 +43,7 @@ describe('StateTrait quickstart example (CounterWithProfile)', () => {
     }
     expect(linkEntry.meta.from).toBe('profileResource.data.name')
 
-    // 额外 sanity check：StateFieldPath/StateAtPath 在此 Schema 上可用
+    // Extra sanity check: StateFieldPath/StateAtPath are usable on this Schema.
     type Paths = Logix.StateTrait.StateFieldPath<CounterState>
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _paths: Paths[] = [
@@ -58,7 +58,7 @@ describe('StateTrait quickstart example (CounterWithProfile)', () => {
       'profileResource.data.name',
     ]
 
-    // 不触发运行时行为，仅验证 DSL 与 Schema 之间的类型连通性。
+    // No runtime behavior here; only validate type connectivity between DSL and Schema.
     expect(CounterStateSchema).toBeDefined()
   })
 })

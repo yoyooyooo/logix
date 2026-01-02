@@ -147,13 +147,13 @@ type ModuleDefBase<
   readonly stateSchema: Sh['stateSchema']
   readonly actionSchema: Sh['actionSchema']
   /**
-   * 原始 ActionMap（tag -> payload schema）。
-   * - 主要用于 DX/反射；运行时仍以 tag.shape/actionSchema 为准。
+   * Raw ActionMap (tag -> payload schema).
+   * - Mainly for DX/reflection; runtime contract is still based on tag.shape/actionSchema.
    */
   readonly actions: Sh['actionMap']
   /**
-   * 原始 reducers（若定义侧提供）。
-   * - 主要用于 DX/反射；运行时会在 ModuleTag/ModuleFactory 内部归一化为 primary reducers。
+   * Raw reducers (if provided by the definition).
+   * - Mainly for DX/reflection; runtime normalizes them into primary reducers inside ModuleTag/ModuleFactory.
    */
   readonly reducers?: ReducersFromMap<Sh['stateSchema'], Sh['actionMap']>
   readonly live: <R = never, E = never>(

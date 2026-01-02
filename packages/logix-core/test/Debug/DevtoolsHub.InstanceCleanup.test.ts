@@ -59,7 +59,7 @@ describe('DevtoolsHub (instance cleanup)', () => {
       })
       expect(Logix.Debug.getInstanceLabel(instanceId)).toBe('Cleanup Instance')
 
-      // diagnosticsLevel=off 时 ref 会 early-return，但 module:destroy 的清理必须仍然执行。
+      // When diagnosticsLevel=off, refs may early-return, but module:destroy cleanup must still run.
       yield* Logix.Debug.record({
         type: 'module:destroy',
         moduleId,
@@ -72,7 +72,7 @@ describe('DevtoolsHub (instance cleanup)', () => {
       expect(Logix.Debug.getDevtoolsSnapshot().latestTraitSummaries.has(instanceKey)).toBe(false)
       expect(Logix.Debug.getInstanceLabel(instanceId)).toBeUndefined()
 
-      // module:destroy 后迟到的 state:update 允许进入窗口，但不得重建 latest* 派生缓存。
+      // Late state:update after module:destroy may enter the window, but must not rebuild latest* derived caches.
       yield* Logix.Debug.record({
         type: 'state:update',
         moduleId,

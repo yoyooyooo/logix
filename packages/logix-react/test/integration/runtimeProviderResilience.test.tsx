@@ -38,7 +38,7 @@ describe('RuntimeProvider resilience', () => {
       ),
     )
 
-    // 先成功获取资源，再故意失败，验证 Scope 被关闭并触发 release。
+    // First acquire the resource successfully, then fail intentionally; verify Scope closes and triggers release.
     const FailingLayer = Layer.merge(ResourceLayer, Layer.fail('boom'))
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -170,7 +170,7 @@ describe('RuntimeProvider resilience', () => {
 
     const { result, rerender } = renderHook(
       () => {
-        // 每次 render 新建数组，但元素相同，应复用合并结果且不触发 warn
+        // Create a new array each render but with the same elements; should reuse the merge result without warning.
         const runtime = useRuntime({
           layers: [layer1, layer2],
         })

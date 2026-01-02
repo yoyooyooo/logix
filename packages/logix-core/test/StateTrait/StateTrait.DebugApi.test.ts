@@ -13,10 +13,10 @@ describe('Debug.getModuleTraits', () => {
 
     const program = traits.program!
 
-    // Program 的 stateSchema 应与 Module 定义中的 state 一致
+    // Program.stateSchema should match the Module's state schema.
     expect(program.stateSchema).toBeDefined()
 
-    // Graph / Plan 至少包含 CounterState 中的 sum 与 profile.name 相关节点/步骤
+    // Graph / Plan should include nodes/steps related to sum and profile.name in CounterState.
     const nodeIds = program.graph.nodes.map((n) => n.id)
     expect(nodeIds).toContain('sum')
     expect(nodeIds).toContain('profile.name')

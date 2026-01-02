@@ -80,16 +80,16 @@ export type Event =
       readonly txnSeq?: number
       readonly txnId?: string
       /**
-       * 可选：与 FieldPathId/StepId 对齐的 Static IR digest（用于消费者侧反解与对齐）。
-       * - 当缺失或不匹配时，消费者必须不尝试反解 rootIds → rootPaths（避免展示错误信息）。
-       * - diagnostics=off 近零成本路径下允许不填。
+       * Optional: Static IR digest aligned with FieldPathId/StepId (for consumer-side reverse-mapping & alignment).
+       * - When missing or mismatched, consumers must not attempt to reverse-map rootIds -> rootPaths (avoid wrong UI).
+       * - Allowed to be omitted on near-zero-cost diagnostics=off paths.
        */
       readonly staticIrDigest?: string
       /**
-       * 可选：本次提交聚合的影响域（字段级 dirty-set）。
-       * - 由 Runtime 在 commit 点填充；
-       * - 必须保持 Slim 且可序列化；
-       * - 可被 Devtools 用于 explain “为何触发 converge/validate/为何退化 full”。
+       * Optional: the affected scope aggregated by this commit (field-level dirty-set).
+       * - Populated by Runtime at commit time;
+       * - Must stay slim and serializable;
+       * - Devtools can use it to explain "why converge/validate ran / why it degraded to full".
        */
       readonly dirtySet?: unknown
       /**
@@ -99,17 +99,17 @@ export type Event =
        */
       readonly patchCount?: number
       /**
-       * 可选：full 档位下 patch records 是否被裁剪（bounded）。
+       * Optional: whether patch records were truncated (bounded) under full instrumentation.
        */
       readonly patchesTruncated?: boolean
       /**
-       * 可选：裁剪原因码（稳定枚举）。
+       * Optional: truncation reason code (stable enum).
        */
       readonly patchesTruncatedReason?: 'max_patches'
       /**
-       * 可选：提交模式（普通/批处理/低优先级等）。
-       * - 由 Runtime 填充；
-       * - 默认值由调用方决定（通常为 "normal"）。
+       * Optional: commit mode (normal/batched/low-priority, etc).
+       * - Populated by Runtime;
+       * - Default is chosen by the caller (typically "normal").
        */
       readonly commitMode?: string
       /**

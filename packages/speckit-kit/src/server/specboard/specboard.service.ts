@@ -1,6 +1,6 @@
 import { Context, Effect } from 'effect'
 
-export type ArtifactName = 'spec.md' | 'plan.md' | 'tasks.md'
+export type ArtifactName = 'spec.md' | 'plan.md' | 'tasks.md' | 'quickstart.md' | 'data-model.md' | 'research.md'
 
 export interface SpecTaskStats {
   readonly total: number

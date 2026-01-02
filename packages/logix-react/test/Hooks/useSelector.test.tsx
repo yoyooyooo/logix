@@ -99,7 +99,7 @@ describe('useSelector', () => {
       expect(result.current.count).toBe(1)
     })
 
-    // 自定义 equalityFn 至少会在一次更新过程中被调用
+    // A custom equalityFn should be called at least once during an update cycle.
     expect(equalityCallCount).toBeGreaterThan(beforeCalls)
   })
 })

@@ -49,8 +49,8 @@ describe('ModuleRuntime init gate', () => {
         const runtimeReady = yield* Deferred.make<Logix.ModuleRuntime<any, any>>()
         const keepAlive = yield* Deferred.make<void>()
 
-        // 注意：不能用 `Effect.provide(layer)` 包住“释放 gate 的逻辑”，
-        // 否则会先 build layer（其中 initRequired await gate）导致死锁。
+        // Note: do not wrap the "gate release logic" with `Effect.provide(layer)`,
+        // otherwise the layer will be built first (initRequired awaits the gate) and deadlock.
         const acquireFiber = yield* Effect.forkScoped(
           Effect.gen(function* () {
             const runtime = yield* TestModule.tag

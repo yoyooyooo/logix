@@ -23,7 +23,7 @@ describe('ReadQuery.strictGate', () => {
         ),
       )
 
-      // 兜底：若 gate 未触发，至少让 stream 不会永久阻塞
+      // Fallback: if the gate didn't trigger, at least ensure the stream won't block forever.
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
       )
@@ -61,7 +61,7 @@ describe('ReadQuery.strictGate', () => {
         ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any),
       )
 
-      // 通过 toString 退化模拟低区分度来源（例如 [native code]），触发 fallbackReason=unstableSelectorId
+      // Simulate a low-discriminability source via toString (e.g. [native code]) to trigger fallbackReason=unstableSelectorId.
       const selector = (s: { count: number }) => s.count
       ;(selector as any).toString = () => 'function () { [native code] }'
 

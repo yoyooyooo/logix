@@ -21,7 +21,7 @@ const CounterModule = Logix.Module.make('BoundCounter', {
   actions: CounterActions,
 })
 
-// 订阅动作流的固定套路：先挂订阅，再等待指定数量的动作，避免用 sleep 猜时序。
+// Standard pattern for collecting an action stream: subscribe first, then wait for a fixed number of actions (avoid guessing timing with sleep).
 const setupActionCollector = <A>(hub: PubSub.PubSub<A>, count: number) =>
   Effect.gen(function* () {
     const ready = yield* Deferred.make<void>()
@@ -77,7 +77,7 @@ describe('Bound API (public)', () => {
     const program = Effect.gen(function* () {
       const rt = yield* CounterModule.tag
 
-      // 等待逻辑订阅
+      // Wait for logic subscriptions to be installed.
       yield* Effect.sleep('10 millis')
 
       // inc：update( +1 ) + mutate( +4 ) = +5
@@ -127,7 +127,7 @@ describe('Bound API (public)', () => {
     })
 
     const program = Effect.gen(function* () {
-      // 进入逻辑 scope 即可触发 match/matchTag
+      // Entering the logic scope is enough to execute match/matchTag.
       yield* CounterModule.tag
     })
 
@@ -217,16 +217,16 @@ describe('Bound API (public)', () => {
           const sourceRuntime = yield* Source.tag
           const targetRuntime = yield* Target.tag
 
-          // 等待逻辑订阅完成
+          // Wait for logic subscriptions to be installed.
           yield* Effect.sleep('50 millis')
 
           expect(yield* sourceRuntime.getState).toEqual({ lastCount: 0 })
           expect(yield* targetRuntime.getState).toEqual({ count: 0 })
 
-          // 触发 Target 的 inc
+          // Trigger Target.inc
           yield* targetRuntime.dispatch({ _tag: 'inc', payload: undefined })
 
-          // 等待 cross-module 传播
+          // Wait for cross-module propagation.
           yield* Effect.sleep('150 millis')
 
           expect(yield* targetRuntime.getState).toEqual({ count: 1 })
@@ -289,16 +289,16 @@ describe('Bound API (public)', () => {
           const loggerRuntime = yield* Logger.tag
           const counterRuntime = yield* Counter.tag
 
-          // 等待逻辑订阅完成
+          // Wait for logic subscriptions to be installed.
           yield* Effect.sleep('50 millis')
 
           expect(yield* loggerRuntime.getState).toEqual({ logs: [] })
           expect(yield* counterRuntime.getState).toEqual({ count: 0 })
 
-          // 触发 Counter 的 inc
+          // Trigger Counter.inc
           yield* counterRuntime.dispatch({ _tag: 'inc', payload: undefined })
 
-          // 等待 cross-module 传播
+          // Wait for cross-module propagation.
           yield* Effect.sleep('150 millis')
 
           expect(yield* counterRuntime.getState).toEqual({ count: 1 })
@@ -354,12 +354,12 @@ describe('Bound API (public)', () => {
 
       expect((yield* consumer.getState).received).toBe(0)
 
-      // 等待逻辑启动
+      // Wait for the logic to start.
       yield* Effect.sleep('50 millis')
 
       yield* source.dispatch({ _tag: 'update', payload: 42 })
 
-      // 等待跨模块传播
+      // Wait for cross-module propagation.
       yield* Effect.sleep('100 millis')
 
       expect((yield* source.getState).value).toBe(42)
@@ -402,7 +402,7 @@ describe('Bound API (public)', () => {
       payload: Schema.Void,
     })
 
-    // 使用占位 runtime，只关心 BoundApiRuntime 构造出的 API 形状，而不实际运行 Effect。
+    // Use a placeholder runtime: only validate the API shape produced by BoundApiRuntime, without actually running Effects.
     const dummyRuntime = {
       moduleId: 'BoundAdvanced',
       instanceId: 'dummy',
@@ -414,7 +414,7 @@ describe('Bound API (public)', () => {
       dispatchLowPriority: () => Effect.void,
       actions$: Stream.empty,
       actionsWithMeta$: Stream.empty,
-      // 仅用于类型与结构占位，不会在该测试中真正调用
+      // Placeholder for typing/shape only; it is never called in this test.
       changes: () => Stream.empty,
       changesWithMeta: () => Stream.empty,
       changesReadQueryWithMeta: () => Stream.empty as any,
@@ -508,7 +508,7 @@ describe('Bound API (public)', () => {
   })
 
   it('should dispatch actions via $.actions and expose actions$', async () => {
-    // 背景：此前用 sleep 等待订阅，容易掩盖时序问题，这里用显式的订阅 + 计数收集确保链路确定。
+    // Background: sleeping to wait for subscriptions can hide ordering issues; use an explicit subscription + counter to make the chain deterministic.
     const ActionsModule = Logix.Module.make('BoundActions', {
       state: Schema.Struct({
         logs: Schema.Array(Schema.String),
@@ -536,7 +536,7 @@ describe('Bound API (public)', () => {
         const collectorFiber = yield* setupActionCollector(actionHub, 2)
         const $ = Logix.Bound.make(ActionsModule.shape, moduleRuntime)
 
-        // Bound 暴露的 actions$ 应与 runtime.actions$ 一致
+        // actions$ exposed by Bound should be the same as runtime.actions$.
         expect($.actions.actions$).toBe(moduleRuntime.actions$)
 
         yield* $.actions.foo()
@@ -576,7 +576,7 @@ describe('Bound API (public)', () => {
         expect(yield* handle.read((s) => s.count)).toBe(0)
         expect(handle.actions$).toBe(runtime.actions$)
 
-        // 通过 handle.actions 触发 reducer，确认注册的 runtime 被复用。
+        // Trigger reducers via handle.actions to ensure the registered runtime is reused.
         yield* handle.actions.inc(undefined as any)
         expect(yield* runtime.getState).toEqual({ count: 1 })
       }),

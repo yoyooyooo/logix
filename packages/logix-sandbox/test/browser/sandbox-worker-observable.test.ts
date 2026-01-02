@@ -25,10 +25,10 @@ testFn(
       import * as Logix from "@logix/core";
 
       const program = Effect.gen(function* () {
-        // 触发 Debug trace:* 事件，worker 会映射为 TRACE(kind:"logix-debug")
+        // Trigger a Debug trace:* event; the worker maps it to TRACE(kind:"logix-debug").
         yield* Logix.Debug.record({ type: "trace:demo", payload: { foo: "bar" } });
 
-        // 触发 UI_INTENT
+        // Trigger UI_INTENT
         const bridge = (globalThis as any).logixSandboxBridge;
         if (bridge && typeof bridge.emitUiIntent === "function") {
           bridge.emitUiIntent({
@@ -40,12 +40,12 @@ testFn(
           });
         }
 
-        // 触发 Spy 观测
+        // Trigger Spy observation
         if (bridge && typeof bridge.emitSpy === "function") {
           bridge.emitSpy({ name: "spy-call", target: "sdk-demo", payload: { ok: true } });
         }
 
-        // 命中 HTTP Mock
+        // Hit HTTP Mock
         const resp = yield* Effect.promise(() =>
           fetch("https://api.test.dev/hello").then((r) => r.json()),
         );
@@ -76,7 +76,7 @@ testFn(
     expect(runResult.stateSnapshot && typeof runResult.stateSnapshot === 'object').toBe(true)
     expect((runResult.stateSnapshot as any).ok).toBe(true)
 
-    // UI_INTENT 收集
+    // UI_INTENT collection
     expect((runResult as any).uiIntents?.length).toBe(1)
     expect((runResult as any).uiIntents?.[0]?.component).toBe('Button')
 

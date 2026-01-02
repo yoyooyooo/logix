@@ -28,7 +28,7 @@ describe('BoundApi $.use missing import', () => {
     expect(exit._tag).toBe('Failure')
     if (exit._tag !== 'Failure') return
 
-    // 这里只断言关键内容，避免依赖 effect 的 Cause 展示细节。
+    // Only assert key parts to avoid depending on effect's Cause rendering details.
     const pretty = String((exit.cause as any)?.pretty ?? exit.cause)
     expect(pretty).toContain('MissingModuleRuntimeError')
     expect(pretty).toContain('tokenId: BoundApiMissingImportChild')

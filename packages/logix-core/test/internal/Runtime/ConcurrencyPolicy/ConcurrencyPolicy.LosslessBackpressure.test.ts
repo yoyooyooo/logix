@@ -52,7 +52,7 @@ describe('ConcurrencyPolicy (US1): lossless backpressure', () => {
     )
 
     const dispatchElapsedMs = await Effect.runPromise(program as any)
-    // 背压应让入口变慢（否则会把积压转移为无限缓冲/无限 fiber）。
+    // Backpressure should make the entrypoint slower (otherwise backlog shifts into unbounded buffering / fibers).
     expect(dispatchElapsedMs).toBeGreaterThanOrEqual(250)
   })
 })

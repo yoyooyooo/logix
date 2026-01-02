@@ -213,10 +213,10 @@ export const make = <S, A, R = never>(
       },
     })
 
-    // StateTransaction 上下文：
-    // - 按 ModuleRuntime 维度维护单活跃事务；
-    // - 聚合本实例下所有逻辑入口（dispatch / Traits / source-refresh 等）的状态写入；
-    // - 后续新增的入口（如 service 回写 / devtools 操作）也必须通过同一上下文与队列接入。
+    // StateTransaction context:
+    // - Maintain a single active transaction per ModuleRuntime;
+    // - Aggregate state writes from all entrypoints on this instance (dispatch / Traits / source-refresh, etc.);
+    // - New entrypoints (e.g. service writebacks / devtools operations) must also go through the same context + queue.
     const txnContext = StateTransaction.makeContext<S>({
       moduleId,
       instanceId,
@@ -1219,8 +1219,8 @@ export const make = <S, A, R = never>(
       }
     }
 
-    // 065：即使模块未声明任何 traits，也必须具备 schema-backed 的 Static IR table（FieldPathIdRegistry），
-    // 否则 reducer patchPaths / ReadQuery(static lane) 将不可映射并触发 dirtyAll 退化。
+    // 065: even if the module declares no traits, it must still have a schema-backed Static IR table (FieldPathIdRegistry),
+    // otherwise reducer patchPaths / ReadQuery(static lane) cannot be mapped and will degrade to dirtyAll.
     if (!traitState.program) {
       const stateSchema = (options.tag as any)?.stateSchema as unknown
       if (stateSchema) {

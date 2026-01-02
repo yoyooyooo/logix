@@ -36,7 +36,8 @@ Logix 在运行时会为「模块生命周期、Action 派发、状态更新、�
 - **前端开发 + DevTools 调试**（大部分日常开发场景）
   - 在 React 应用里挂上 `<LogixDevtools />`（见 DevTools 文档）；
   - 在 Runtime 上配置 `devtools: true`，一键启用 DevTools 所需的观测能力（事件聚合窗口 + `trace:effectop` + `trace:react-render`；默认 `diagnosticsLevel="light"`）；
-  - 在这种场景下，**可以不直接碰 `Debug.layer`**，主要通过 DevTools 面板看行为。
+  - 如希望 console 只保留诊断/错误：在 Runtime 上配置 `debug: { mode: 'dev', devConsole: 'diagnostic' }`；
+  - 在这种场景下，通常不需要手动拼 `Debug.layer(...)` / `Debug.devtoolsHubLayer(...)`，主要通过 DevTools 面板看行为。
 
 - **日志/监控/非浏览器环境（Node 脚本、测试、后端服务）**
   - 使用 `Logix.Debug.layer` / `Logix.Debug.replace` 控制 Debug 事件要不要启用、输出到哪里；
@@ -63,6 +64,17 @@ const runtime = Logix.Runtime.make(RootImpl, {
     AppInfraLayer,          // 你的应用基础设施（HTTP、Config 等）
     Logix.Debug.layer(),    // 根据 NODE_ENV 自动选择 dev / prod 调试组合
   ),
+})
+```
+
+也可以直接使用 `Runtime.make` 的 `debug` 选项（等价于手动合并 `Logix.Debug.layer(...)`）：
+
+```ts
+import * as Logix from '@logix/core'
+
+const runtime = Logix.Runtime.make(RootImpl, {
+  layer: AppInfraLayer,
+  debug: true,
 })
 ```
 
@@ -222,14 +234,10 @@ const pkg2 = Logix.Observability.importEvidencePackage(JSON.parse(json))
 
 ```ts
 import * as Logix from '@logix/core'
-import { Layer } from 'effect'
 
 const runtime = Logix.Runtime.make(RootImpl, {
-  layer: Layer.mergeAll(
-    AppInfraLayer,
-    Logix.Debug.diagnosticsLevel('full'),
-  ),
-  devtools: true,
+  layer: AppInfraLayer,
+  devtools: { diagnosticsLevel: 'full' },
 })
 ```
 
@@ -443,7 +451,8 @@ Logix 已经提供了官方 DevTools（通过 `@logix/devtools-react` 等包集�
 
    const runtime = Logix.Runtime.make(RootImpl, {
      label: 'AppRuntime',
-     devtools: true,
+     devtools: true, // 或 devtools: { diagnosticsLevel: 'full', bufferSize: 1000, observer: false }
+     debug: { mode: 'dev', devConsole: 'diagnostic' }, // 可选：console 只留诊断/错误，其余细节看 DevTools
    })
    ```
 

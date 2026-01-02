@@ -16,20 +16,20 @@ const Counter = Logix.Module.make('Counter', {
   },
 })
 
-// ModuleImpl：用于验证在 React 场景下，Impl + runFork 的行为与 Tag 模式一致
+// ModuleImpl: used to verify that in React, Impl + runFork behaves the same as Tag mode.
 const CounterImpl = Counter.implement({
   initial: { value: 0 },
   logics: [],
 })
 
-// Error logging Logic：帮助在测试中看清逻辑错误原因
+// Error-logging Logic: helps make logic errors visible during tests.
 type CounterShape = typeof Counter.shape
 
 const CounterErrorLogic = Counter.logic<Scope.Scope>(($) =>
   $.lifecycle.onError((cause: unknown, context: unknown) => Effect.logError('Counter logic error', cause, context)),
 )
 
-// Logic 1: 使用 runFork 在单个 Logic 内挂两条 watcher
+// Logic 1: use runFork-style wiring to mount two watchers in a single Logic.
 const CounterRunForkLogic = Counter.logic<Scope.Scope>(($) =>
   Effect.gen(function* () {
     yield* Effect.log('CounterRunForkLogic setup')
@@ -54,7 +54,7 @@ const CounterRunForkLogic = Counter.logic<Scope.Scope>(($) =>
   }),
 )
 
-// Logic 2: 使用 Effect.all + run 挂两条 watcher（全部在 run 段执行）
+// Logic 2: use Effect.all + run to mount two watchers (all in the run phase).
 const CounterAllLogic = Counter.logic<Scope.Scope>(($) =>
   Effect.gen(function* () {
     yield* Effect.all(
@@ -67,7 +67,7 @@ const CounterAllLogic = Counter.logic<Scope.Scope>(($) =>
   }),
 )
 
-// Logic 3: 手写 Effect.forkScoped($.onAction().run(...)) 挂两条 watcher（对 runFork 的等价性校验）
+// Logic 3: manually forkScoped($.onAction().run(...)) for two watchers (equivalence check vs runFork).
 const CounterManualForkLogic = Counter.logic<Scope.Scope>(($) =>
   Effect.gen(function* () {
     yield* Effect.forkScoped($.onAction('inc').runParallel($.state.update((s) => ({ ...s, value: s.value + 1 }))))
@@ -215,14 +215,14 @@ describe('React watcher patterns integration', () => {
   })
 
   it('runFork-based watcher should also work with ModuleImpl + useModule(Impl)', async () => {
-    // 基于 CounterImpl 构造局部 Module 实现（逻辑与 Tag 模式保持一致）
+    // Build a local Module impl from CounterImpl (keep logic consistent with Tag mode).
     const CounterImplRunFork = Counter.implement({
       initial: { value: 0 },
       logics: [CounterRunForkLogic, CounterErrorLogic],
     })
 
-    // Impl 模式下，通过 Runtime.make 以 ModuleImpl 作为 Root 入口，
-    // React 端仍然通过 useModule(Impl) 在组件 Scope 内构造/复用 ModuleRuntime。
+    // In Impl mode, Runtime.make uses ModuleImpl as the root entrypoint,
+    // and React still uses useModule(Impl) to construct/reuse ModuleRuntime within component scope.
     const runtime = Logix.Runtime.make(CounterImplRunFork, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
@@ -236,7 +236,7 @@ describe('React watcher patterns integration', () => {
     )
 
     const useTest = () => {
-      // 这里直接消费 ModuleImpl：useModule 会在组件 Scope 内构造 ModuleRuntime
+      // Consume ModuleImpl directly: useModule constructs ModuleRuntime within component scope.
       const counter = useModule(CounterImplRunFork)
       const value = useModule(counter, (s) => (s as { value: number }).value)
       return { value, counter }

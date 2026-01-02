@@ -60,7 +60,7 @@ describe('StateTrait converge degrade (runtime error rollback)', () => {
 
         const state = (yield* rt.getState) as any as S
         expect(state.base).toBe(1)
-        // runtime error：必须回滚所有派生写回（不允许 partial commit）
+        // Runtime error: must roll back all derived writebacks (no partial commit).
         expect(state.derivedOk).toBe(123)
         expect(state.derivedBoom).toBe(456)
 

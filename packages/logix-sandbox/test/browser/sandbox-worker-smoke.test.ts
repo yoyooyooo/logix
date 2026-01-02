@@ -10,7 +10,7 @@ testFn(
   async () => {
     const kernelUrl = `${window.location.origin}/sandbox/logix-core.js`
 
-    // 使用 MSW 拦截 kernelUrl，返回打包好的 @logix/core 内核脚本
+    // Use MSW to intercept kernelUrl and return the bundled @logix/core kernel script.
     await startKernelMock(kernelUrl)
 
     const client = createSandboxClient({
@@ -21,7 +21,7 @@ testFn(
 
     await client.init()
 
-    // 场景一：纯 Effect 程序
+    // Scenario 1: pure Effect program
     const code = `
       import { Effect } from "effect";
 
@@ -49,7 +49,7 @@ testFn(
     expect(runResult.traces.length).toBeGreaterThan(0)
     expect(runResult.traces.some((s) => s.status === 'success')).toBe(true)
 
-    // 场景二：@logix/core 的 Module + Logic + Runtime
+    // Scenario 2: @logix/core Module + Logic + Runtime
     const logixCode = `
       import { Effect, Schema } from "effect";
       import * as Logix from "@logix/core";
@@ -107,7 +107,7 @@ testFn(
 
     const logixRunResult = await client.run({ useCompiledCode: true })
 
-    // 如果当前环境下 runtime 执行失败（stateSnapshot 为空），先记录日志，不让测试整体挂掉
+    // If runtime execution fails in this environment (no stateSnapshot), log and avoid failing the whole test.
     if (!logixRunResult.stateSnapshot) {
       const state = client.getState()
       // eslint-disable-next-line no-console
@@ -132,7 +132,7 @@ testFn(
     const hasLogixLog = logixEffectLogs.some((l) => String(l.args[0]).includes('Counter final count: 2'))
     expect(hasLogixLog).toBe(true)
 
-    // 场景三：@effect/platform 的 Tag/Layer 与 effect 实例互操作（避免出现多份 effect 导致 Tag 失效）
+    // Scenario 3: @effect/platform Tag/Layer interop with the Effect instance (avoid multiple Effect copies breaking Tag).
     const platformCode = `
 	      import { Effect } from "effect";
 	      import { Path } from "@effect/platform";
@@ -172,7 +172,7 @@ testFn(
     expect((platformRunResult.stateSnapshot as any).ok).toBe(true)
     expect((platformRunResult.stateSnapshot as any).dirname).toBe('/a/b')
 
-    // 场景四：@logix/core 子路径 import（Module/Runtime/StateTrait）
+    // Scenario 4: @logix/core subpath imports (Module/Runtime/StateTrait)
     const logixSubpathCode = `
 	      import { Effect, Schema } from "effect";
 	      import * as Module from "@logix/core/Module";

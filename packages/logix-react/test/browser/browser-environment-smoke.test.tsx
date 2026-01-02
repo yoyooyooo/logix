@@ -2,7 +2,7 @@ import { expect, test } from 'vitest'
 import { page } from 'vitest/browser'
 
 test('browser DOM integration smoke', async () => {
-  // 在真实浏览器环境里挂载一段简单的交互式 DOM
+  // Mount a small interactive DOM snippet in a real browser environment.
   const root = document.createElement('div')
   root.innerHTML = `
     <label>
@@ -19,13 +19,13 @@ test('browser DOM integration smoke', async () => {
     greeting.textContent = `Hi, my name is ${input.value || 'Alice'}`
   })
 
-  // 初始状态断言
+  // Initial state assertion
   await expect.element(page.getByText('Hi, my name is Alice')).toBeInTheDocument()
 
-  // 通过 label 查询 input，并模拟用户输入
+  // Query the input by label and simulate user input.
   const usernameInput = page.getByLabelText(/username/i)
   await usernameInput.fill('Bob')
 
-  // 断言文案随输入更新
+  // Assert the text updates with input.
   await expect.element(page.getByText('Hi, my name is Bob')).toBeInTheDocument()
 })

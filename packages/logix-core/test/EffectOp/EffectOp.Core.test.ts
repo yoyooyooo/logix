@@ -34,7 +34,7 @@ describe('EffectOp core', () => {
     const result = await Effect.runPromise(composed(op) as Effect.Effect<number, never, never>)
 
     expect(result).toBe(1)
-    // 按 stack 顺序依次包裹：mw1 -> mw2
+    // Wrapped in stack order: mw1 -> mw2
     expect(events).toEqual(['mw1:before', 'mw2:before', 'mw2:after', 'mw1:after'])
   })
 

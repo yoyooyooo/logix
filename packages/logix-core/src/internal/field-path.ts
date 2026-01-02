@@ -30,21 +30,21 @@ export const normalizePatchReason = (reason: unknown): PatchReason => {
 export interface DirtySet {
   readonly dirtyAll: boolean
   /**
-   * dirtyAll=true 时必须提供稳定原因码；dirtyAll=false 时应省略。
+   * When dirtyAll=true, a stable reason code must be provided; when dirtyAll=false, it should be omitted.
    */
   readonly reason?: DirtyAllReason
   /**
-   * FieldPathId（Static IR table index）。
-   * - dirtyAll=true 时必须为空数组；
-   * - dirtyAll=false 时为去重/prefix-free/稳定排序后的 roots。
+   * FieldPathId (Static IR table index).
+   * - When dirtyAll=true, must be an empty array;
+   * - When dirtyAll=false, roots are deduped / prefix-free / stably sorted.
    */
   readonly rootIds: ReadonlyArray<FieldPathId>
   readonly rootCount: number
   readonly keySize: number
   readonly keyHash: number
   /**
-   * 可选：当输出被 TopK 裁剪（light/full）时标记裁剪。
-   * 注意：裁剪不影响 keyHash/keySize/rootCount 的口径（仍指完整 roots）。
+   * Optional: mark when the output is TopK-truncated (light/full).
+   * Note: truncation does not affect the definition of keyHash/keySize/rootCount (they still refer to full roots).
    */
   readonly rootIdsTruncated?: boolean
 }
@@ -312,7 +312,7 @@ export const dirtyPathsToRootIds = (options: {
     }
   }
 
-  // 任一不可追踪写入都必须显式降级（禁止在 roots 存在时“忽略 *”）。
+  // Any non-trackable write must explicitly degrade (do not "ignore *" when roots exist).
   if (sawStar) {
     return {
       dirtyAll: true,

@@ -74,7 +74,7 @@ describe('useModule(ModuleImpl, { key })', () => {
     fireEvent.click(getByText('inc-a'))
 
     await waitFor(() => {
-      // 同 key：两处看到同一个值
+      // Same key: both places should observe the same value.
       expect(getByTestId('a').textContent).toBe('1')
       expect(getByTestId('b').textContent).toBe('1')
       expect(getByTestId('id-a').textContent).toBe(getByTestId('id-b').textContent)
@@ -184,12 +184,12 @@ describe('useModule(ModuleImpl, { key })', () => {
 
     fireEvent.click(getByTestId('inc-a'))
 
-    await waitFor(() => {
-      expect(getByTestId('a').textContent).toBe('1')
-      // 不同 Provider.layer scope：即便 key 相同，也不应串实例
-      expect(getByTestId('b').textContent).toBe('0')
-      expect(getByTestId('id:a').textContent).not.toBe(getByTestId('id:b').textContent)
-    })
+      await waitFor(() => {
+        expect(getByTestId('a').textContent).toBe('1')
+        // Different Provider.layer scopes: even with the same key, instances must not be shared.
+        expect(getByTestId('b').textContent).toBe('0')
+        expect(getByTestId('id:a').textContent).not.toBe(getByTestId('id:b').textContent)
+      })
 
     unmount()
     await runtime.dispose()

@@ -1,11 +1,26 @@
 # Data Model: Action 级别定义锚点（ActionToken-ready Manifest）
 
 **Feature**: `specs/067-action-token-manifest/spec.md`  
-**Created**: 2026-01-01
+**Created**: 2026-01-01  
+**Updated**: 2026-01-02
 
 > 说明：本特性不涉及持久化存储；此处的 “Data Model” 指平台/运行时/Devtools 之间传输与对齐的可序列化 IR（Static）与事件引用（Dynamic Trace）。
 
 ## Entities
+
+### 0) ActionToken（代码侧定义锚点，非协议）
+
+**Represents**: action 的源码定义锚点（value-level symbol），用于 IDE 跳转/引用/重命名，以及为 manifest/事件提供确定性的 `actionTag` 与 payload 形态来源。
+
+**Fields (conceptual)**:
+
+- `_tag: string`（权威 tag；默认规则：`actionTag = key`）
+- `payloadSchema: Schema`（用于区分 void/nonVoid，并支撑后续更强摘要）
+
+**Rules**:
+
+- `ActionToken` 本身不是 on-wire 协议字段（不可把函数/闭包/Schema 本体塞进 manifest）。
+- `ActionToken._tag` MUST 与 `ActionRef.actionTag`、`ModuleManifest.actions[].actionTag` 一致；重命名（key 变更）视为协议变更（forward-only）。
 
 ### 1) DevSource（源码锚点，best-effort）
 

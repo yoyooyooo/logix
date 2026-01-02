@@ -7,8 +7,8 @@ import * as Logix from '@logix/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
 
-// 复刻 examples/logix-react/src/demos/AsyncLocalModuleLayout.tsx 中的核心逻辑，
-// 用于在测试环境下验证 suspend:true + 本地 ModuleImpl 的行为。
+// Reproduce the core logic from examples/logix-react/src/demos/AsyncLocalModuleLayout.tsx
+// to verify suspend:true + local ModuleImpl behavior under tests.
 
 const AsyncCounterModule = Logix.Module.make('AsyncLocalCounter:test', {
   state: Schema.Struct({ count: Schema.Number, ready: Schema.Boolean }),
@@ -81,10 +81,10 @@ describe('AsyncLocalModule with suspend:true and local runtime', () => {
       </RuntimeProvider>,
     )
 
-    // 初始应展示 Suspense fallback
+    // Initially it should show the Suspense fallback.
     expect(screen.getByTestId('fallback')).toBeTruthy()
 
-    // 等待异步初始化完成并渲染实际视图
+    // Wait for async initialization to complete and render the real view.
     await waitFor(() => {
       expect(screen.queryByTestId('fallback')).toBeNull()
       expect(screen.getByTestId('value').textContent).toBe('0')

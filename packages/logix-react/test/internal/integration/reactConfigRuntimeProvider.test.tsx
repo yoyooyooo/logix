@@ -141,8 +141,8 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
   })
 
   it('does not dispose ModuleCache when only non-critical config fields change', async () => {
-    // ConfigProvider.fromMap 会在创建时拷贝 map；为了模拟“同一 runtime 下配置变化”，
-    // 这里用可变的 runtime-level override（ReactRuntimeConfigTag）驱动快照变化。
+    // ConfigProvider.fromMap copies the map on creation; to simulate config changes under the same runtime,
+    // we use a mutable runtime-level override (ReactRuntimeConfigTag) to drive snapshot changes.
     const runtimeConfig: { gcTime: number; initTimeoutMs?: number } = { gcTime: 500, initTimeoutMs: undefined }
     const runtime = ManagedRuntime.make(
       Layer.succeed(ReactRuntimeConfig.tag, runtimeConfig) as Layer.Layer<any, never, never>,
@@ -150,7 +150,7 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
 
     const ConfigMutator = () => {
       React.useLayoutEffect(() => {
-        // initTimeoutMs 是非 cache-critical 字段：变化不应导致 configVersion 递增。
+        // initTimeoutMs is non cache-critical: changes must not increment configVersion.
         runtimeConfig.initTimeoutMs = 1234
       }, [])
       return null

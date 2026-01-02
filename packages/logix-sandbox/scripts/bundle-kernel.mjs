@@ -1,9 +1,9 @@
 /**
- * 打包 Sandbox 的内置运行环境：
- * - effect（固定版本，作为内置运行时）
- * - @logix/core（Kernel bundle，external 到同目录的 effect）
+ * Bundle the built-in Sandbox runtime:
+ * - effect (pinned version, used as the built-in runtime)
+ * - @logix/core (kernel bundle, externalized to the co-located effect bundle)
  *
- * 使用方法: pnpm --filter @logix/sandbox bundle:kernel
+ * Usage: pnpm --filter @logix/sandbox bundle:kernel
  */
 
 import * as esbuild from 'esbuild'
@@ -14,15 +14,15 @@ import { mkdirSync, copyFileSync, readFileSync, readdirSync, rmSync, writeFileSy
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const sandboxRoot = join(__dirname, '..')
 
-// 版本信息仅用于 banner 展示（真正版本由 pnpm override/lock 决定）
+// The version is only used for the banner (the actual version is determined by pnpm overrides/lockfile).
 const EFFECT_VERSION = '3.19.13'
 
 const effectCdnPlugin = {
   name: 'effect-cdn',
   setup(build) {
     build.onResolve({ filter: /^effect($|\/)/ }, (args) => {
-      // Kernel 与用户代码都统一引用同目录下的内置 effect bundle，避免多份 effect 实例。
-      // 这里使用相对路径，保证无论 kernelUrl 部署到哪，都能加载同目录的 effect.js。
+      // Both the kernel and user code must resolve to the same co-located effect bundle to avoid duplicate instances.
+      // Use relative paths so the bundle works regardless of where kernelUrl is hosted.
       if (args.path === 'effect') {
         return { path: './effect.js', external: true }
       }
@@ -59,7 +59,7 @@ const sandboxRuntimeExternalPlugin = (options) => {
 const canonicalizePascalSegment = (segment) => {
   if (!segment) return segment
   const lower = segment.toLowerCase()
-  // 特例：保持与现有命名空间一致（EffectOp）
+  // Special case: keep the namespace aligned with existing naming (EffectOp).
   if (lower === 'effectop') return 'EffectOp'
 
   if (segment.includes('-')) {
@@ -86,7 +86,7 @@ async function bundle() {
   const publicRoot = join(sandboxRoot, 'public')
   mkdirSync(publicRoot, { recursive: true })
 
-  // 1) 打包 effect（浏览器 ESM，单文件）
+  // 1) Bundle effect (browser ESM, single-file entry).
   const effectPkg = JSON.parse(readFileSync(join(sandboxRoot, 'node_modules/effect/package.json'), 'utf8'))
   const effectSubpaths = Object.keys(effectPkg.exports ?? {})
     .filter((key) => key.startsWith('./') && !key.includes('*'))
@@ -102,7 +102,7 @@ async function bundle() {
   const effectEntryPoints = Object.fromEntries([
     ['effect', 'effect'],
     ...effectSubpaths.map((subpath) => [`effect/${subpath}`, `effect/${subpath}`]),
-    // @effect/platform（root + 全子路径；其他 @effect/* 仍可走 sandbox compiler 的 esm.sh 路径）
+    // @effect/platform (root + all subpaths; other @effect/* can still go through the sandbox compiler esm.sh path)
     ['@effect/platform', '@effect/platform'],
     ...platformSubpaths.map((subpath) => [`@effect/platform/${subpath}`, `@effect/platform/${subpath}`]),
   ])
@@ -128,7 +128,7 @@ async function bundle() {
     `✅ 打包完成: public/sandbox/effect.js (+ effect:${effectSubpaths.length} subpaths, @effect/platform:${platformSubpaths.length} subpaths)`,
   )
 
-  // 2) 打包 @logix/core kernel（external 到 ./effect.js）
+  // 2) Bundle the @logix/core kernel (externalized to ./effect.js).
   const entry = join(sandboxRoot, '../logix-core/src/index.ts')
 
   const result = await esbuild.build({
@@ -144,17 +144,17 @@ async function bundle() {
     plugins: [effectCdnPlugin],
     banner: {
       js: `// @logix/core kernel bundle for @logix/sandbox
-// effect 从同目录 ./effect.js 加载 (v${EFFECT_VERSION})
+// effect is loaded from the co-located ./effect.js (v${EFFECT_VERSION})
 `,
     },
   })
 
   console.log('✅ 打包完成: public/sandbox/logix-core.js')
 
-  // 2.5) 打包 @logix/core 子路径模块（支持 import "@logix/core/Runtime" / "@logix/core/Flow" 等）
-  // 命名对齐 effect：子路径模块统一使用 PascalCase 命名（非规范写法由 sandbox compiler 拒绝并提示改写）
-  // 说明：为了避免可变相对路径，子路径输出统一放在 public/sandbox/logix-core/*.js（多级路径用 "." 展平）
-  // 例如：
+  // 2.5) Bundle @logix/core subpath modules (supports import "@logix/core/Runtime" / "@logix/core/Flow", etc.)
+  // Naming alignment with effect: subpath modules use PascalCase; non-canonical forms are rejected by the sandbox compiler.
+  // To avoid mutable relative paths, all subpath outputs go to public/sandbox/logix-core/*.js (flatten multi-level paths with ".").
+  // Example:
   // - @logix/core/Runtime          -> /sandbox/logix-core/Runtime.js
   // - @logix/core/StateTrait       -> /sandbox/logix-core/StateTrait.js
   const logixCoreSrcDir = join(sandboxRoot, '../logix-core/src')
@@ -215,7 +215,7 @@ async function bundle() {
     'utf8',
   )
 
-  // 清理旧输出，避免遗留大小写/命名不一致的文件污染产物目录。
+  // Clean old outputs to avoid polluting the artifact directory with stale casing/naming variants.
   rmSync(join(outDir, 'logix-core'), { recursive: true, force: true })
 
   await esbuild.build({
@@ -244,7 +244,7 @@ async function bundle() {
   })
   console.log(`✅ 打包完成: public/sandbox/logix-core/* (entries=${Object.keys(logixCoreEntryPoints).length})`)
 
-  // 3) 打包 Sandbox Worker（运行于浏览器 Worker，需可通过 /sandbox/worker.js 直接加载）
+  // 3) Bundle the Sandbox Worker (runs in a browser Worker and must be loadable via /sandbox/worker.js).
   const workerEntry = join(sandboxRoot, 'src/internal/worker/sandbox.worker.ts')
   await esbuild.build({
     entryPoints: [workerEntry],
@@ -263,7 +263,7 @@ async function bundle() {
   })
   console.log('✅ 打包完成: public/sandbox/worker.js')
 
-  // 同步拷贝 esbuild.wasm 到 public 根目录，供 Worker 通过 /esbuild.wasm 加载
+  // Copy esbuild.wasm into the public root so the Worker can load it via /esbuild.wasm.
   const wasmSource = join(sandboxRoot, 'node_modules/esbuild-wasm/esbuild.wasm')
   const wasmTarget = join(publicRoot, 'esbuild.wasm')
   try {
