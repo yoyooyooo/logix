@@ -268,8 +268,10 @@
 1. 当你对 Effect-ts 的 api 有疑问时，优先考虑使用 context7 查询最新使用方式
 
 ## Active Technologies
+
 - TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`） + pnpm workspace、`effect` v3（override 3.19.13）、`@logix/core`、`@logix/react`、`@logix/sandbox`、Vite、React 19、Monaco Editor (061-playground-editor-intellisense)
 - N/A（类型 bundle 作为前端构建产物；不引入持久化） (061-playground-editor-intellisense)
 
 ## Recent Changes
+
 - 061-playground-editor-intellisense: Added TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`） + pnpm workspace、`effect` v3（override 3.19.13）、`@logix/core`、`@logix/react`、`@logix/sandbox`、Vite、React 19、Monaco Editor

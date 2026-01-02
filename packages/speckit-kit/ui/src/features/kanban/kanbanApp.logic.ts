@@ -362,7 +362,7 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
             (name): Effect.Effect<ArtifactCheck, never, never> =>
               api.readFile(specId, name).pipe(
                 Effect.as({ name, exists: true }),
-                Effect.catchAll((e) => Effect.succeed({ name, exists: isNotFound(e) ? false : null })),
+                Effect.catchAll(() => Effect.succeed({ name, exists: false })),
               ),
             { concurrency: 'unbounded' },
           )

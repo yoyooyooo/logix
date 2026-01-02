@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/067/module-manifest-effect.schema.json",
+  "title": "ModuleManifestEffect",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["actionTag", "sourceKey", "kind"],
+  "properties": {
+    "actionTag": { "type": "string", "minLength": 1 },
+    "sourceKey": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "enum": ["declared", "registered"] },
+    "source": { "$ref": "./dev-source.schema.json" }
+  }
+}

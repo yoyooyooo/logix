@@ -92,7 +92,7 @@ export function SpecDetailDialog({
   onOpenTask,
 }: Props) {
   const artifactList = useMemo(() => {
-    return ALL_ARTIFACTS.filter((name) => artifactExists[name] !== false)
+    return ALL_ARTIFACTS.filter((name) => artifactExists[name] === true)
   }, [artifactExists])
 
   useEffect(() => {

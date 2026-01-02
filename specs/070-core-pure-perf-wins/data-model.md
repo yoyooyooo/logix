@@ -1,4 +1,4 @@
-# Data Model: 067 core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
+# Data Model: 070 core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
 
 ## Entities
 

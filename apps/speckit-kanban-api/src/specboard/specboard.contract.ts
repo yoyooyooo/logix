@@ -1,7 +1,14 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from '@effect/platform'
 import { Schema } from 'effect'
 
-export const ArtifactName = Schema.Union(Schema.Literal('spec.md'), Schema.Literal('plan.md'), Schema.Literal('tasks.md'))
+export const ArtifactName = Schema.Union(
+  Schema.Literal('spec.md'),
+  Schema.Literal('plan.md'),
+  Schema.Literal('tasks.md'),
+  Schema.Literal('quickstart.md'),
+  Schema.Literal('data-model.md'),
+  Schema.Literal('research.md'),
+)
 
 export const SpecTaskStats = Schema.Struct({
   total: Schema.Number,
@@ -111,4 +118,3 @@ export const SpecboardGroup = HttpApiGroup.make('Specboard')
       .setPayload(FileWriteRequest)
       .addSuccess(FileWriteResponse),
   )
-

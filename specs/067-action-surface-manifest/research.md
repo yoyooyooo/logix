@@ -1,6 +1,6 @@
-# Research: Action 级别定义锚点（ActionToken-ready Manifest）
+# Research: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
-**Feature**: `specs/067-action-token-manifest/spec.md`  
+**Feature**: `specs/067-action-surface-manifest/spec.md`  
 **Created**: 2026-01-01  
 **Updated**: 2026-01-02
 
@@ -159,3 +159,33 @@ canonical 入口同时保留：
 **Alternatives considered**:
 
 - 统一都返回 action object：语义统一，但 DX 明显变差，且与 payload-first reducer/dispatchers 的方向不一致。
+
+## Decision 10: 将副作用注册提升为一等概念（`effects`/`$.effect`），并定义“1 watcher + N handlers”的治理语义
+
+**Decision**: 引入显式的副作用注册面（effects/`$.effect`），用来结构化表达“收到某个 action 后要做什么副作用”，并以此替代/收敛大量散落的 `onAction(...).runFork(...)` 写法：
+
+- effects 与 reducers 的对称/差异：
+  - reducers：事务内、纯函数、同 tag 必须唯一（否则状态语义不确定）。
+  - effects：事务外、允许 IO/并发、同 tag 允许多个 handler（1→N）以支持 SRP/OCP，但必须提供去重与诊断治理。
+- 注册 API：`$.effect(token, handler)`（handler 参数 payload-first，返回 Effect；注册本身不执行 handler）。
+- 定义侧语法糖：`Module.make({ effects })`（图纸级别），运行时转译为内部 logic unit，在 setup 阶段调用 `$.effect(...)` 完成注册。
+- 执行模型：对同一 actionTag，运行时只装配 **一个**底层 watcher/订阅链路，内部维护 handler 列表并在触发时 fan-out（每次 dispatch → 命中 K 个 handlers → K 次执行，默认不承诺顺序）。
+- 去重键：以 `(actionTag, sourceKey)` 作为唯一性约束（同一 actionTag 可有多个不同 sourceKey 的 handler；同一 sourceKey 重复注册为 no-op + 诊断）。
+- sourceKey：允许运行时内部派生（无需用户手填），推荐派生自 `logicUnitId + handlerId`（handlerId 由 WeakMap 对函数引用分配），并可在 manifest/诊断中序列化输出；未来若要更强稳定性/可跳转，可交给 codegen 统一提供（见 069）。
+- 动态注册：run 阶段允许动态注册（高级路径），但语义必须明确为“只对未来 action 生效”；若在某 actionTag 已发生派发后再注册，必须产出晚注册诊断。
+- 诊断事件（Slim & 可序列化）：至少覆盖
+  - `effect::duplicate_registration`（同 `(actionTag, sourceKey)` 重复注册；默认 no-op，避免副作用翻倍）
+  - `effect::dynamic_registration`（run 阶段注册；提示“这是动态拼装的订阅”）
+  - `effect::late_registration`（该 actionTag 已发生派发后再注册；提示“早期事件无法回放”）
+  - `effect::handler_failed`（handler 执行失败；失败隔离，记录 cause 摘要与来源）
+
+**Rationale**:
+
+- 语义清晰：把“状态主路径”（reducer）与“反应路径”（effects）严格分离，避免 IO 混入事务窗口。
+- 治理与诊断：副作用显式化后，Devtools/Studio 能解释“某 action 会触发哪些副作用（来自哪里）”，并能对重复注册、晚注册、动态注册、handler 失败做结构化诊断。
+- 性能与可控性：每 tag 单 watcher，避免 handlers 数量线性膨胀订阅链路；未命中 effects 时不引入额外开销。
+
+**Alternatives considered**:
+
+- 继续用散落的 `onAction(...).runFork(...)`：能跑但不利于治理（去重/来源/诊断/统计/Explainability）且易产生重复副作用。
+- 强制同 tag 只允许一个 effect：会把多个副作用揉进一个 handler，SRP 崩溃且不利于 OCP/traits 扩展。

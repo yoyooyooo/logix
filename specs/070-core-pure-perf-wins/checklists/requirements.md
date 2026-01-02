@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2025-12-31  
-**Feature**: `specs/067-core-pure-perf-wins/spec.md`
+**Feature**: `specs/070-core-pure-perf-wins/spec.md`
 
 ## Content Quality
 

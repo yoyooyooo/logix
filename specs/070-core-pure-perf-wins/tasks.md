@@ -1,13 +1,13 @@
-# Tasks: 067 core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
+# Tasks: 070 core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
 
-**Input**: Design documents from `specs/067-core-pure-perf-wins/`  
-**Prerequisites**: `specs/067-core-pure-perf-wins/plan.md`、`specs/067-core-pure-perf-wins/spec.md`（其余为可选补充）
+**Input**: Design documents from `specs/070-core-pure-perf-wins/`  
+**Prerequisites**: `specs/070-core-pure-perf-wins/plan.md`、`specs/070-core-pure-perf-wins/spec.md`（其余为可选补充）
 
 **Tests**: 涉及 `packages/logix-core` 热路径，测试与回归防线视为必需；并必须完成 Node + Browser perf evidence（见 plan.md）。
 
 ## Phase 1: Setup（证据落盘与交接锚点）
 
-- [ ] T001 创建 `specs/067-core-pure-perf-wins/perf/README.md`（记录 envId、before/after/diff 路径与结论模板）
+- [ ] T001 创建 `specs/070-core-pure-perf-wins/perf/README.md`（记录 envId、before/after/diff 路径与结论模板）
 
 ---
 
@@ -33,14 +33,14 @@
 - [ ] T005 [US1] 在 `packages/logix-core/src/internal/state-trait/converge-in-transaction.ts` 收紧门控：`shouldCollectDecision` 仅要求 sinks 非 errorOnly-only（存在明确 consumer）；并将 heavy/exportable 细节门控到 `diagnosticsLevel!=off`，确保默认档不构造 `dirtySummary/topK/hotspots/decision` 等纯观测 payload
 - [ ] T006 [US1]（可选但推荐）在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts` 的 commit 点增加门控：errorOnly-only 时跳过 `state:update` 事件对象构造与 `Debug.record` 调用
 - [ ] T007 [P] [US1] 新增单测（建议新增文件）`packages/logix-core/test/StateTrait/StateTrait.Converge.DecisionOffByDefault.test.ts`：在 diagnostics=off + errorOnly-only 下运行一次 converge，并断言 outcome 不包含 decision（从而阻断默认档 payload 回归）
-- [ ] T008 [US1] 准备隔离采集目录 `./.agent/perf-worktrees/067-before` 与 `./.agent/perf-worktrees/067-after`（硬结论必须隔离采集；混杂改动结果仅作线索）
-- [ ] T009 [US1] 采集 Node(before)：`specs/067-core-pure-perf-wins/perf/before.node.converge.txnCommit.<sha>.<envId>.default.json`（suite: `converge.txnCommit`；命令见 `specs/067-core-pure-perf-wins/plan.md`）
-- [ ] T010 [US1] 采集 Node(after)：`specs/067-core-pure-perf-wins/perf/after.node.converge.txnCommit.<sha|local>.<envId>.default.json`（suite: `converge.txnCommit`）
-- [ ] T011 [US1] 生成 Node(diff)：`specs/067-core-pure-perf-wins/perf/diff.node.converge.txnCommit.<before>__<after>.<envId>.default.json`（要求 `meta.comparability.comparable=true && summary.regressions==0`）
-- [ ] T012 [US1] 采集 Browser(before)：`specs/067-core-pure-perf-wins/perf/before.browser.diagnostics-overhead.<sha>.<envId>.default.json`（suite: `diagnostics.overhead.e2e`；文件见 `packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`）
-- [ ] T013 [US1] 采集 Browser(after)：`specs/067-core-pure-perf-wins/perf/after.browser.diagnostics-overhead.<sha|local>.<envId>.default.json`（suite: `diagnostics.overhead.e2e`）
-- [ ] T014 [US1] 生成 Browser(diff)：`specs/067-core-pure-perf-wins/perf/diff.browser.diagnostics-overhead.<before>__<after>.<envId>.default.json`（要求 `meta.comparability.comparable=true && summary.regressions==0`）
-- [ ] T015 [US1] 回写 `specs/067-core-pure-perf-wins/quickstart.md` 的“最近一次证据”区块：填入 diff 路径与 PASS/FAIL 判据；若要主张“纯赚收益”，同时摘录至少 1 条 improvements/evidenceDeltas（SC-004）
+- [ ] T008 [US1] 准备隔离采集目录 `./.agent/perf-worktrees/070-before` 与 `./.agent/perf-worktrees/070-after`（硬结论必须隔离采集；混杂改动结果仅作线索）
+- [ ] T009 [US1] 采集 Node(before)：`specs/070-core-pure-perf-wins/perf/before.node.converge.txnCommit.<sha>.<envId>.default.json`（suite: `converge.txnCommit`；命令见 `specs/070-core-pure-perf-wins/plan.md`）
+- [ ] T010 [US1] 采集 Node(after)：`specs/070-core-pure-perf-wins/perf/after.node.converge.txnCommit.<sha|local>.<envId>.default.json`（suite: `converge.txnCommit`）
+- [ ] T011 [US1] 生成 Node(diff)：`specs/070-core-pure-perf-wins/perf/diff.node.converge.txnCommit.<before>__<after>.<envId>.default.json`（要求 `meta.comparability.comparable=true && summary.regressions==0`）
+- [ ] T012 [US1] 采集 Browser(before)：`specs/070-core-pure-perf-wins/perf/before.browser.diagnostics-overhead.<sha>.<envId>.default.json`（suite: `diagnostics.overhead.e2e`；文件见 `packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`）
+- [ ] T013 [US1] 采集 Browser(after)：`specs/070-core-pure-perf-wins/perf/after.browser.diagnostics-overhead.<sha|local>.<envId>.default.json`（suite: `diagnostics.overhead.e2e`）
+- [ ] T014 [US1] 生成 Browser(diff)：`specs/070-core-pure-perf-wins/perf/diff.browser.diagnostics-overhead.<before>__<after>.<envId>.default.json`（要求 `meta.comparability.comparable=true && summary.regressions==0`）
+- [ ] T015 [US1] 回写 `specs/070-core-pure-perf-wins/quickstart.md` 的“最近一次证据”区块：填入 diff 路径与 PASS/FAIL 判据；若要主张“纯赚收益”，同时摘录至少 1 条 improvements/evidenceDeltas（SC-004）
 
 **Checkpoint**: 默认档“不会被消费就不付费”成立，且证据可交接。
 
@@ -57,7 +57,7 @@
 
 - [ ] T016 [P] [US2] 扩展或新增单测（推荐扩展）`packages/logix-core/test/Debug/DevtoolsHub.test.ts`：在 `devtoolsHubLayer + diagnosticsLevel=full` 下跑一次 trait converge，并断言 snapshot/evidence 包含与 converge 决策相关的可序列化字段
 - [ ] T017 [P] [US2] 新增单测 `packages/logix-core/test/Debug/DevtoolsHub.DiagnosticsOff.test.ts`：在 diagnostics=off 下不导出 converge 决策 payload（但不影响 `lifecycle:error`/`diagnostic(warn/error)` 兜底）
-- [ ] T018 [US2] 若实现中引入了新的门控 helper 或命名调整，同步更新 `specs/067-core-pure-perf-wins/contracts/debug-consumption-contract.md`
+- [ ] T018 [US2] 若实现中引入了新的门控 helper 或命名调整，同步更新 `specs/070-core-pure-perf-wins/contracts/debug-consumption-contract.md`
 
 **Checkpoint**: “需要时可解释，默认零成本”两种档位都可验收。
 
@@ -73,7 +73,7 @@
 - `kernelId!=core` + `fullCutover` 缺失 binding 时装配失败且携带 gate 摘要（非本次主要实现，但需保证不回归）
 
 - [ ] T019 [US3] 审查现有覆盖：在 `packages/logix-core/test/Runtime/**` 与 `specs/047-core-ng-full-cutover-gate/` 相关测试中确认上述语义已有回归防线；如缺失则补齐测试文件（新增）`packages/logix-core/test/Runtime/Runtime.KernelId.AssemblyOnly.test.ts`
-- [ ] T020 [US3] 若补测涉及新的可解释字段或错误摘要，同步更新 `specs/067-core-pure-perf-wins/research.md`（记录证据与裁决）
+- [ ] T020 [US3] 若补测涉及新的可解释字段或错误摘要，同步更新 `specs/070-core-pure-perf-wins/research.md`（记录证据与裁决）
 
 **Checkpoint**: kernelId 语义清晰且不因本特性回退到运行期分支。
 
@@ -82,7 +82,7 @@
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [ ] T021 [P] 跑通质量门：`pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`
-- [ ] T022 [P] 补齐 `specs/067-core-pure-perf-wins/perf/README.md`：记录 envId、profile、before/after/diff 路径与结论摘要（含 `meta.matrixId/matrixHash`）
+- [ ] T022 [P] 补齐 `specs/070-core-pure-perf-wins/perf/README.md`：记录 envId、profile、before/after/diff 路径与结论摘要（含 `meta.matrixId/matrixHash`）
 
 ---
 

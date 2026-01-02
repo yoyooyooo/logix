@@ -1,11 +1,11 @@
-# Quickstart: Action 级别定义锚点（ActionToken-ready Manifest）
+# Quickstart: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
 本 quickstart 描述本特性实现完成后的最小用法（偏 runtime/工具链消费者视角）。
 
-## 1) 提取模块 Action Manifest（免 AST）
+## 1) 提取模块 Module Manifest（免 AST）
 
 - 输入：用户导出的 `Module` / `ModuleImpl`
-- 输出：可序列化 JSON（deterministic，可 diff）
+- 输出：可序列化 JSON（`ModuleManifest`；deterministic，可 diff）
 
 示例（概念性）：
 
@@ -20,12 +20,12 @@ const manifest = Logix.Reflection.extractManifest(MyModule, {
 ## 2) 事件 → 定义锚点对齐（Studio/Devtools）
 
 - 事件侧：`RuntimeDebugEventRef.kind === "action"` 时使用 `moduleId + label(actionTag)` 定位 action。
-- 定义侧：manifest 的 `actions[]` 提供 action 摘要（payload/primaryReducer/source?）。
+- 定义侧：`ModuleManifest.actions[]` 提供 action 摘要（payload/primaryReducer/source?）。
 - 若找不到 action：展示为 `unknown/opaque`，但时间线与统计不被破坏。
 
 ## 3) 开发者写法：可跳转的 ActionToken（定义）+ `dispatchers`（执行）
 
-目标：dispatch 的调用点引用源码里显式声明的符号，从而获得 IDE 跳转定义/查找引用/安全重命名；同时保持 Action 产物可序列化、可回放、可用于 manifest/事件 join。
+目标：dispatch 的调用点引用源码里显式声明的符号，从而获得 IDE 跳转定义/查找引用/安全重命名；同时保持 Action 产物可序列化、可回放、可用于 `ModuleManifest`/事件 join。
 
 ### 3.1 定义：`actions` 使用 schema map（定义点）
 
@@ -42,7 +42,9 @@ export const Counter = Logix.Module.make('Counter', {
 })
 ```
 
-`Module.make({ actions })` 接受 schema map（推荐写法）；内部 canonical 仍然是 ActionToken map（每个 token 携带 payload Schema，且 `actionTag = key`）。如需抽出 actions 常量或显式表达“从 schema 生成 token”，可用 `Logix.Action.makeActions(...)`。
+`Module.make({ actions })` 接受 schema map（推荐写法）；内部 canonical 仍然是 ActionToken map（每个 token 携带 payload Schema，且 `actionTag = key`）。
+
+推荐：actions 定义尽量保持“一种形态”，要么全用 schema map，要么用 `Logix.Action.makeActions(...)` 抽出 token map；不建议 Schema/Token 混用（避免 TS 推导与提示出现不必要的复杂度）。
 
 ### 3.2 执行：`$.dispatchers.<K>(payload)` 返回可 `yield*` 的 Effect
 
@@ -74,5 +76,33 @@ yield* $.onAction($.actions.add).run((payload) => {
 ### 3.5 reducer（payload-first）
 
 `Reducer.mutate` 的第二入参改为 payload：`(draft, payload)` / `(state, payload)`，避免 `action.payload` 样板，并保持事务窗口纯同步与 patchPaths 机制不变。
+
+### 3.6 effects（副作用注册面）
+
+目的：把副作用从散落的 `onAction(...).runFork(...)` 收敛为可治理的注册面；同一 actionTag 允许多个 handler（1→N），默认并发且不承诺顺序；去重键为 `(actionTag, sourceKey)`，重复注册不会导致副作用翻倍，并会产出诊断。
+
+`effects` 可在模块定义中静态声明（图纸级别）：
+
+```ts
+export const Counter = Logix.Module.make('Counter', {
+  state: CounterState,
+  actions: {
+    add: Schema.Number,
+    inc: Schema.Void,
+  },
+  effects: {
+    inc: [
+      ($, _payload) => Effect.log('analytics: inc'),
+      ($, _payload) => Effect.log('sync: inc'),
+    ],
+  },
+})
+```
+
+也可在逻辑单元中通过 `$.effect(token, handler)` 注册（推荐在 setup 注册；run 动态注册作为高级能力）：
+
+```ts
+$.effect($.actions.add, (payload) => Effect.log(`add: ${payload}`))
+```
 
 > CodeGen：面向 actions/dispatchers/reducers 的样板自动化作为独立需求见 `specs/069-codegen-action-surface/`。

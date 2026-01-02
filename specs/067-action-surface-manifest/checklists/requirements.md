@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Action 级别定义锚点（ActionToken-ready Manifest）
+# Specification Quality Checklist: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-01-01  

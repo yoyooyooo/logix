@@ -1,6 +1,6 @@
-# Data Model: Action 级别定义锚点（ActionToken-ready Manifest）
+# Data Model: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
-**Feature**: `specs/067-action-token-manifest/spec.md`  
+**Feature**: `specs/067-action-surface-manifest/spec.md`  
 **Created**: 2026-01-01  
 **Updated**: 2026-01-02
 
@@ -82,6 +82,7 @@
 - `manifestVersion: string`（建议 `067`）
 - `moduleId: string`
 - `actions: ReadonlyArray<ActionDescriptor>`
+- `effects?: ReadonlyArray<EffectDescriptor>`（可选：副作用摘要；不得承载闭包/Effect 本体）
 - `digest: string`（仅由结构字段决定；用于 diff/契约守护）
 - 可选沿用：`schemaKeys/logicUnits/source/meta/staticIr`（需满足 Slim + 可裁剪）
 
@@ -95,7 +96,51 @@
 - 必须支持 `maxBytes` 上界（默认建议 64KB）。
 - 超限时以 deterministic 顺序裁剪低价值字段，并在 `meta.__logix` 中记录裁剪证据（dropped/truncatedArrays）。
 
-### 5) RuntimeDebugEventRef → ActionRef 映射（Dynamic Trace 对齐）
+### 5) EffectSourceKey（副作用来源键，运行时派生）
+
+**Represents**: 在 Devtools/诊断/manifest 中稳定标识一个 effect handler 的“来源键”（用于去重与解释，不要求跨版本稳定）。
+
+**Fields**:
+
+- `sourceKey: string`（必须可序列化；建议派生自 `logicUnitId + handlerId`，其中 handlerId 由运行时对函数引用分配）
+
+**Rules**:
+
+- 去重键为 `(actionTag, sourceKey)`：同一个 sourceKey 重复注册不得导致副作用翻倍。
+- sourceKey 不依赖随机/时间；在相同输入/顺序下应 deterministic。
+
+### 6) EffectDescriptor（Effect 定义摘要）
+
+**Represents**: Manifest/诊断中的副作用摘要（用于展示与排错，不承载闭包/Effect 本体）。
+
+**Fields**:
+
+- `actionTag: string`
+- `sourceKey: string`
+- `kind: "declared" | "registered"`（declared 来自 `Module.make({ effects })`；registered 来自 `$.effect(...)` 的 setup 注册）
+- `source?: DevSource`（可选）
+
+**Validation rules**:
+
+- `effects[]` 必须按 `(actionTag, sourceKey)` 稳定排序（字节级一致）。
+- 禁止在此处输出不可序列化内容（函数/Effect/闭包）。
+
+### 7) EffectRef（Effect 引用）
+
+**Represents**: 在诊断/Devtools 中定位某个 effect handler 的稳定引用。
+
+**Fields**:
+
+- `moduleId: string`
+- `actionTag: string`
+- `sourceKey: string`
+
+**Rules**:
+
+- `EffectRef` 只包含可序列化字段；不得包含函数/Effect/闭包。
+- 允许消费侧仅展示 `actionTag + sourceKey`，但 join/聚合时建议以三元组为键。
+
+### 8) RuntimeDebugEventRef → ActionRef 映射（Dynamic Trace 对齐）
 
 **Represents**: Runtime→Studio 的事件侧如何定位 Action 定义。
 
@@ -118,7 +163,7 @@
 ### A) 反射提取：Module → ModuleManifest
 
 - **Input**: `AnyModule | ModuleImpl`（Loader/CI/试运行环境可动态 import）
-- **Transition**: 从 actions map / reducers map / dev.source 提取结构摘要，按 budget 裁剪
+- **Transition**: 从 actions map / reducers map / effects map / dev.source 提取结构摘要，按 budget 裁剪；必要时通过受控试运行补齐 setup 注册的 reducers/effects keys
 - **Output**: deterministic JSON（`ModuleManifest`）
 
 ### B) 运行期：dispatch → Debug event → RuntimeDebugEventRef
