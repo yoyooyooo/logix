@@ -1,7 +1,16 @@
-# Implementation Plan: Action 级别定义锚点（ActionToken-ready Manifest）
+# Implementation Plan: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
-**Branch**: `067-action-token-manifest` | **Date**: 2026-01-02 | **Spec**: [spec.md](./spec.md)  
-**Input**: Feature specification from `specs/067-action-token-manifest/spec.md`
+**Branch**: `067-action-surface-manifest` | **Date**: 2026-01-02 | **Spec**: [spec.md](./spec.md)  
+**Input**: Feature specification from `specs/067-action-surface-manifest/spec.md`
+
+## Review Digest
+
+Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-02）
+
+- Accepted: R101 → 将 SC-006“确定性截断”落实为单测与稳定裁剪规则（写入 `tasks.md`）。
+- Accepted: R102 → 在文档中明确 `actions` 的推荐写法（默认用 schema map 或 `Logix.Action.makeActions`；避免 Schema/Token 混用），降低 TS 推导/提示的不确定性。
+- Accepted: Top issue 3 → 在任务层补齐 FR-009（字符串 tag 的 dispatch/订阅仍可工作）的回归验证。
+- Closed: Top issue 1（`tasks.md` 缺失）→ 本次已补齐 `tasks.md`（见 `specs/067-action-surface-manifest/tasks.md`）。
 
 ## Summary
 
@@ -16,10 +25,20 @@
 3. **Manifest IR 扩展（免 AST）**：在现有 `Reflection.extractManifest` 的 `ModuleManifest` 基础上扩展 `actions[]` 描述符（payload 形态、primary reducer 摘要、可选 source），输出为 deterministic JSON（可 diff），并与 token 定义一致。
 4. **事件 → 定义锚点对齐**：复用 `RuntimeDebugEventRef` 的 `moduleId + kind=action + label=actionTag` 作为 `ActionRef`（单一事实源），Studio/Devtools 通过 manifest 反查 ActionAnchor（无定义则降级为 unknown/opaque）。
 5. **Reducer DX 对齐（payload-first）**：将 `Reducer.mutate` 的签名从 `(state, action)`/`(draft, action)` 改为 `(state, payload)`/`(draft, payload)`，减少样板与误用，并保持事务窗口纯同步与 patchPaths 语义不变。
+6. **Effects/`$.effect`（副作用面）**：把散落的 watcher 监听提升为可治理的副作用注册面（允许同 tag 多 handler），在 run 阶段统一装配为“每 tag 单 watcher + fan-out”，并提供去重与极致诊断（重复注册/动态注册/晚注册/失败隔离），保证事务外执行且不阻塞 dispatch。
 
 本阶段交付的规格产物：`plan.md`（本文件）、`research.md`（裁决与取舍）、`data-model.md`（实体/键/对齐规则）、`contracts/schemas/*`（JSON Schema）、`quickstart.md`（最小使用说明与迁移要点）。
 
 > 备注：面向“自动生成 actions/reducers/dispatchers 等样板代码”的 CodeGen 作为独立需求另起 spec（`specs/069-codegen-action-surface/`；不在 067 范围内落地）。
+
+## Deepening Notes
+
+- Decision: `actionTag` MUST 等于 `actions` key，且不提供独立 stable tag 字段（source: spec.md Clarifications / AUTO 2026-01-02）
+- Decision: 单 ActionToken 精确监听与 primary reducer 均采用 payload-first（source: spec.md Clarifications / AUTO 2026-01-02）
+- Decision: effects MUST 事务外触发；同 tag 允许多个 handler，默认并发且不承诺顺序，失败隔离并记录诊断（source: spec.md Clarifications / AUTO 2026-01-02）
+- Decision: effects 重复注册必须不翻倍；默认视为 no-op，并产出结构化重复注册诊断（source: spec.md Clarifications / AUTO 2026-01-02）
+- Decision: `sourceKey` 由系统自动派生且必须可序列化/可确定（source: spec.md Clarifications / AUTO 2026-01-02）
+- Decision: manifest 至少包含 Module.make 声明 effects；受控试运行可补齐 setup 注册并标记为 registered；run 动态注册不入 manifest，但必须在运行时诊断流可见（source: spec.md Clarifications / AUTO 2026-01-02）
 
 ## Technical Context
 
@@ -35,6 +54,7 @@
 - diagnostics=light/full：Action 事件追加的 `actionTag/actionRef` 计算为 O(1)，额外分配可控；manifest 提取属于冷路径。
 - manifest 输出：默认 `maxBytes ≤ 64KB`；超限时 deterministic 裁剪并以 `meta.__logix.truncated` 给出可解释证据。
 - `$.dispatchers` 构造：不得为每个 bound instance 生成 O(n actions) 的闭包函数；优先复用 token 符号（或等价的零/低分配视图），避免“actions 多 → 绑定成本爆炸”。
+- effects 装配：同一 actionTag 只允许一个底层 watcher/订阅链路，handler 以列表 fan-out；dispatch 未命中 effects 时不得引入额外成本。
 
 **Constraints**:
 
@@ -42,6 +62,7 @@
 - 稳定标识：`instanceId/txnSeq/txnId` 不引入随机/时间默认值（复用现有模型）。
 - 事务窗口禁止 IO；诊断载荷必须 Slim 且可序列化（`JsonValue`）。
 - IDE 跳转定义：`dispatch`/`onAction` 的推荐写法必须引用源码里的稳定 symbol（token），避免 Proxy/字符串成为主路径。
+- effects 必须事务外执行；setup 阶段只允许注册规则，不得提前执行 handler。
 
 **Scale/Scope**:
 
@@ -55,11 +76,11 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - Intent → Flow/Logix → Code → Runtime：把 ActionRef 作为 Dynamic Trace（RuntimeDebugEventRef）与 Static 摘要（ModuleManifest.actions）的连接点。
 - docs/specs：本特性以 `specs/067-*` 交付；若裁决升级为平台协议，将同步回写到 `docs/specs/intent-driven-ai-coding/*` 与 runtime-logix 事件协议文档。
-- Effect/Logix contracts：扩展 ModuleManifest 的 schema；事件侧优先复用既有 `RuntimeDebugEventRef`（避免另起炉灶的 on-wire 协议）。
+- Effect/Logix contracts：扩展 ModuleManifest 的 schema（actions + effects）；事件侧优先复用既有 `RuntimeDebugEventRef`（避免另起炉灶的 on-wire 协议）。
 - IR & anchors：新增 ActionAnchor/ActionDescriptor（platform-grade 子集），字段语义固化到本 feature 的 contracts + quickstart（避免平台/运行时双真相源）。
 - Deterministic identity：ActionRef 不含随机字段；实例/事务锚点沿用现有 `instanceId/txnSeq/txnId`。
 - Transaction boundary：反射/导出发生在冷路径；事务内不引入 IO/async。
-- Internal contracts & trial runs：若需要从 trial run 提取 “setup 注册的 reducer keys”，通过 `RuntimeInternals`（txn service）增加可导出、可 mock 的最小接口（只导出 keys）。
+- Internal contracts & trial runs：若需要从 trial run 提取 “setup 注册的 reducer keys / effects 列表”，通过 `RuntimeInternals`（txn service）增加可导出、可 mock 的最小接口（只导出 keys/摘要，不导出函数体）。
 - Dual kernels（core + core-ng）：本特性不引入 core-ng 专有依赖；若后续触及 KernelContract/RuntimeServicesEvidence，再补 kernel matrix（当前预期 N/A）。
 - Performance budget：见 Perf Evidence Plan。
 - Diagnosability & explainability：Action 事件仍走 `Debug.record → toRuntimeDebugEventRef`；新增字段必须可序列化且可裁剪。
@@ -71,23 +92,31 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 ## Perf Evidence Plan（MUST）
 
-- Baseline 语义：代码前后对比（before/after）
-- envId：`<os-arch.cpu.node-version>`（按实际填写）
-- profile：default
-- 覆盖的最小集合：
-  - `Debug.record → DebugSink.toRuntimeDebugEventRef`（diagnostics off vs light）
-  - `ModuleRuntime.dispatch`（diagnostics off 的无额外开销门槛）
-  - `makeBoundApi`（或等价入口）：构造 `$` 时的 actions/dispatchers 视图不得出现 O(n) 闭包分配
-  - `Reflection.extractManifest`（冷路径：吞吐与 maxBytes 裁剪成本）
-- collect/diff：按模板命令执行，产物落点：`specs/067-action-token-manifest/perf/*`
-- Failure Policy：出现 `stabilityWarning/timeout/missing suite` → 复测；`comparable=false` 禁止下硬结论
+- Baseline 语义：代码前后对比（before=改动前采集；after=改动后采集；硬结论以 `diff.meta.comparability.comparable=true` 为准）
+- envId：`darwin-arm64.apple-m2-max.node22.21.1`
+- profile：
+  - 迭代探路：`quick`（只做趋势；不下硬结论）
+  - 交付结论：`default`（必要时升级 `soak`）
+- 覆盖的最小集合（browser perf matrix v1）：
+  - `watchers.clickToPaint`（watcher 数量上升的边界）
+  - `diagnostics.overhead.e2e`（diagnostics 分档开销曲线：`off` vs `light|sampled|full`）
+  - `converge.txnCommit`（事务提交/derive 主路径边界，确保本特性不引入回归）
+- collect（before）：
+  - `pnpm perf collect -- --profile default --files test/browser/watcher-browser-perf.test.tsx --files test/browser/perf-boundaries/diagnostics-overhead.test.tsx --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/067-action-surface-manifest/perf/before.local.darwin-arm64.apple-m2-max.node22.21.1.default.json`
+- collect（after）：
+  - `pnpm perf collect -- --profile default --files test/browser/watcher-browser-perf.test.tsx --files test/browser/perf-boundaries/diagnostics-overhead.test.tsx --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/067-action-surface-manifest/perf/after.local.darwin-arm64.apple-m2-max.node22.21.1.default.json`
+- diff（hard）：
+  - `pnpm perf diff -- --before specs/067-action-surface-manifest/perf/before.local.darwin-arm64.apple-m2-max.node22.21.1.default.json --after specs/067-action-surface-manifest/perf/after.local.darwin-arm64.apple-m2-max.node22.21.1.default.json --out specs/067-action-surface-manifest/perf/diff.before.local__after.local.darwin-arm64.apple-m2-max.node22.21.1.default.json`
+- Failure Policy：
+  - `stabilityWarning/timeout/missing suite`：复测（可先 `quick` 定位，再用 `default/soak` 下结论）
+  - `comparable=false`：禁止下硬结论（只作线索，需对齐参数/环境后复测）
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/067-action-token-manifest/
+specs/067-action-surface-manifest/
 ├── plan.md
 ├── research.md
 ├── data-model.md
@@ -97,6 +126,7 @@ specs/067-action-token-manifest/
 │     ├── action-ref.schema.json
 │     ├── dev-source.schema.json
 │     ├── module-manifest-action.schema.json
+│     ├── module-manifest-effect.schema.json
 │     └── module-manifest.schema.json
 └── tasks.md
 ```
@@ -109,16 +139,17 @@ packages/logix-core/
 │  ├── Module.ts                                  # Module.make：actions 支持 Schema map sugar → 规范化为 ActionToken map；导出契约/迁移说明
 │  ├── ModuleTag.ts                               # Reducer.mutate(payload-first)；ModuleTag.make 同步对齐 actions 形态（如适用）
 │  ├── Reflection.ts                              # extractManifest 对外入口（可能扩展 options/返回结构）
-│  ├── ActionToken.ts                             # ActionToken/ActionCreator（携带 Schema + 稳定 tag；可被反射/序列化）
+│  ├── Action.ts                                  # Logix.Action：ActionToken/ActionCreator/makeActions（携带 Schema + 稳定 tag；可被反射/序列化）
 │  └── internal/
 │     ├── module.ts                               # internal types：ActionOf/ReducersFromMap 等随 token/payload-first 对齐
 │     ├── reflection/manifest.ts                  # ModuleManifest 提取（扩展 actions/anchors + budgets）
 │     └── runtime/
 │        ├── ModuleFactory.ts                     # Action union schema：从 ActionToken map 构造（_tag + payload schema）
 │        └── core/
-│           ├── BoundApiRuntime.ts                # 去 Proxy：暴露 $.actions（creator）与 $.dispatchers（Effect）+ token-first onAction
+│           ├── BoundApiRuntime.ts                # 去 Proxy：暴露 $.actions（creator）与 $.dispatchers（Effect）+ token-first onAction + $.effect 注册
 │           ├── DebugSink.ts                      # Action 事件的 ActionRef 语义对齐/必要时补字段
-│           └── ModuleRuntime.dispatch.ts         # actionTag 归一化（_tag 为权威）与 reducer keys/patchPaths 对齐
+│           ├── ModuleRuntime.dispatch.ts         # actionTag 归一化（_tag 为权威）与 reducer keys/patchPaths 对齐
+│           └── ModuleRuntime.effects.ts          # effect registry（每 tag 单 watcher + handlers fan-out）与 effect 诊断
 
 packages/logix-devtools-react/
 └── src/...                                      # 消费 manifest 做 “event → anchor” 映射（按 ROI 选择落地）

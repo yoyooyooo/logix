@@ -1,4 +1,4 @@
-# Contract: Debug sinks “会被消费”判定（067）
+# Contract: Debug sinks “会被消费”判定（070）
 
 ## 目标
 

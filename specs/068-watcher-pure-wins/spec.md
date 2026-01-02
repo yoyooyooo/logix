@@ -44,7 +44,7 @@
 ## Related (read-only references)
 
 - `specs/014-browser-perf-boundaries/`（浏览器侧性能跑道与门禁）
-- `specs/067-core-pure-perf-wins/`（默认档位零诊断税与单内核边界）
+- `specs/070-core-pure-perf-wins/`（默认档位零诊断税与单内核边界）
 - `docs/specs/drafts/topics/runtime-v3-core/03-perf-regression-suite.md`（watcher 压力回归用例草案）
 - `docs/specs/drafts/topics/module-definition-future/03-primary-reducer.md`（Primary Reducer 与 watcher 分层草案）
 - `docs/specs/drafts/topics/logix-ng-architecture/01-compiler-driven-runtime.md`（编译器驱动运行时：构建期前移的路线草案）

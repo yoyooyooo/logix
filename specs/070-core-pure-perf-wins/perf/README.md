@@ -1,6 +1,6 @@
-# Perf Evidence: 067 core 纯赚/近纯赚
+# Perf Evidence: 070 core 纯赚/近纯赚
 
-本目录用于归档 067 的 perf evidence（before/after/diff），并提供可交接的“最近一次 Gate 结论”锚点。
+本目录用于归档 070 的 perf evidence（before/after/diff），并提供可交接的“最近一次 Gate 结论”锚点。
 
 ## Environment
 
@@ -29,4 +29,4 @@
 
 ## Repro Commands
 
-以 `specs/067-core-pure-perf-wins/plan.md` 的 `Perf Evidence Plan（MUST）` 为准。
+以 `specs/070-core-pure-perf-wins/plan.md` 的 `Perf Evidence Plan（MUST）` 为准。

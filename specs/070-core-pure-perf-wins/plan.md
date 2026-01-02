@@ -1,7 +1,7 @@
-# Implementation Plan: 067 core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
+# Implementation Plan: 070 core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
 
-**Branch**: `067-core-pure-perf-wins` | **Date**: 2025-12-31 | **Spec**: `specs/067-core-pure-perf-wins/spec.md`  
-**Input**: Feature specification from `specs/067-core-pure-perf-wins/spec.md`
+**Branch**: `070-core-pure-perf-wins` | **Date**: 2025-12-31 | **Spec**: `specs/070-core-pure-perf-wins/spec.md`  
+**Input**: Feature specification from `specs/070-core-pure-perf-wins/spec.md`
 
 ## Summary
 
@@ -31,7 +31,7 @@
 
 **Language/Version**: TypeScript 5.8.x（ESM；以仓库 `package.json` 为准）  
 **Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、（browser evidence）`@logix/react`  
-**Storage**: N/A（证据落盘到 `specs/067-core-pure-perf-wins/perf/*`）  
+**Storage**: N/A（证据落盘到 `specs/070-core-pure-perf-wins/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+ + modern browsers（至少 1 组 headless browser evidence）  
 **Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
@@ -76,22 +76,22 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 **Collect (Node / converge.txnCommit)**:
 
-- `pnpm perf bench:traitConverge:node -- --profile default --out specs/067-core-pure-perf-wins/perf/before.node.converge.txnCommit.<sha|local>.<envId>.default.json`
-- `pnpm perf bench:traitConverge:node -- --profile default --out specs/067-core-pure-perf-wins/perf/after.node.converge.txnCommit.<sha|local>.<envId>.default.json`
-- `pnpm perf diff -- --before specs/067-core-pure-perf-wins/perf/before.node.converge.txnCommit...json --after specs/067-core-pure-perf-wins/perf/after.node.converge.txnCommit...json --out specs/067-core-pure-perf-wins/perf/diff.node.converge.txnCommit.before...__after....json`
+- `pnpm perf bench:traitConverge:node -- --profile default --out specs/070-core-pure-perf-wins/perf/before.node.converge.txnCommit.<sha|local>.<envId>.default.json`
+- `pnpm perf bench:traitConverge:node -- --profile default --out specs/070-core-pure-perf-wins/perf/after.node.converge.txnCommit.<sha|local>.<envId>.default.json`
+- `pnpm perf diff -- --before specs/070-core-pure-perf-wins/perf/before.node.converge.txnCommit...json --after specs/070-core-pure-perf-wins/perf/after.node.converge.txnCommit...json --out specs/070-core-pure-perf-wins/perf/diff.node.converge.txnCommit.before...__after....json`
 
 **Collect (Browser / diagnostics overhead)**:
 
-- `pnpm perf collect -- --profile default --out specs/067-core-pure-perf-wins/perf/before.browser.diagnostics-overhead.<sha|local>.<envId>.default.json --files packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
-- `pnpm perf collect -- --profile default --out specs/067-core-pure-perf-wins/perf/after.browser.diagnostics-overhead.<sha|local>.<envId>.default.json --files packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
-- `pnpm perf diff -- --before specs/067-core-pure-perf-wins/perf/before.browser.diagnostics-overhead...json --after specs/067-core-pure-perf-wins/perf/after.browser.diagnostics-overhead...json --out specs/067-core-pure-perf-wins/perf/diff.browser.diagnostics-overhead.before...__after....json`
+- `pnpm perf collect -- --profile default --out specs/070-core-pure-perf-wins/perf/before.browser.diagnostics-overhead.<sha|local>.<envId>.default.json --files packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
+- `pnpm perf collect -- --profile default --out specs/070-core-pure-perf-wins/perf/after.browser.diagnostics-overhead.<sha|local>.<envId>.default.json --files packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
+- `pnpm perf diff -- --before specs/070-core-pure-perf-wins/perf/before.browser.diagnostics-overhead...json --after specs/070-core-pure-perf-wins/perf/after.browser.diagnostics-overhead...json --out specs/070-core-pure-perf-wins/perf/diff.browser.diagnostics-overhead.before...__after....json`
 
 Failure Policy：任一 diff `meta.comparability.comparable=false` 或 `summary.regressions>0` → 不得下硬结论，必须复测并定位（profile 升级或缩小 files 子集）。
 
 ## Project Structure
 
 ```text
-specs/067-core-pure-perf-wins/
+specs/070-core-pure-perf-wins/
 ├── spec.md
 ├── plan.md
 ├── checklists/
@@ -142,4 +142,4 @@ packages/logix-react/
 
 - **Phase 0（research）**：`research.md`（现状与决策清单、候选纯赚点、风险与替代方案）。
 - **Phase 1（design）**：`data-model.md`、`contracts/*`、`quickstart.md`（验收口径与证据跑法）。
-- **Phase 2（tasks）**：由 `tasks.md` 承载（`$speckit tasks 067` 生成/维护）。
+- **Phase 2（tasks）**：由 `tasks.md` 承载（`$speckit tasks 070` 生成/维护）。
