@@ -83,3 +83,8 @@
 
 - **收尾**
   - 已移除 `packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx` 的“失败后二次确认”临时逻辑并修复缩进；hard gate 失败时仍会输出 `p95(auto/full)` 与 ratio 便于定位。
+
+## 最新进展（Action 仍失败的直接原因）
+
+- `origin/dev` 已包含 `0a8ee5a6`（harness 相邻采样等修复），但 **`.github/workflows/logix-perf-quick.yml` 的止血改动当时未提交**，导致 Action 仍在跑旧 workflow，collect 阶段 hard gate 继续把 job 打挂（报错栈里指向 `.codex/skills/logix-perf-evidence/scripts/collect.ts`）。
+- 止血方式：在 workflow 的 `Collect (base/head)` step 对 `pnpm perf collect:quick` 加前缀 `VITE_LOGIX_PERF_HARD_GATES=off`，让 quick 专注 “采集+diff(triage)”，不再因 ratio flake 直接失败。
