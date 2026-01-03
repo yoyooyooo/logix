@@ -185,8 +185,8 @@
 
 - **SC-001**: 对同一模块在相同输入与环境下重复提取 Module Manifest，输出必须字节级一致（deterministic）。
 - **SC-002**: 对已声明的 actions，Studio/Devtools 的“事件 → 定义锚点”映射命中率为 100%（无 missing mapping）；未声明 action 必须被稳定标记为 unknown/opaque。
-- **SC-003**: 在 token-first 路径下，开发者可从 action 使用点通过 IDE “跳转到定义”定位到 action 定义符号，并且“查找引用/重命名”覆盖 dispatch 与 watcher/订阅两侧。
-- **SC-004**: 运行时 action 派发热路径在默认关闭诊断/Devtools 时满足既定性能预算；相对基线回归（p95 时间与分配）≤ 2%（以同环境、同采样参数的证据为准）。
+- **SC-003**: 在 token-first 路径下，dispatch 与 watcher/订阅两侧 MUST 引用同一个值级 ActionToken 符号（不经字符串 tag）；并提供类型回归用例覆盖 `$.dispatchers.<K>` 与 `$.onAction($.actions.<K>)` 的“同符号引用 + payload 推导”。IDE 的“跳转到定义/查找引用/重命名”作为人工验收项，按 `quickstart.md` 步骤验证。
+- **SC-004**: 性能证据闭环：按 `plan.md` 的 Perf Evidence Plan 采集 before/after/diff，且 diff 满足 `meta.comparability.comparable=true` 与 `summary.budgetViolations=0`（PASS）。本 spec 的 perf matrix 当前只覆盖时间类指标（分配指标暂不纳入本 spec）。
 - **SC-005**: 运行时事件与 manifest 中使用的实例/事务/动作标识均为确定性来源（无随机/时间默认值），并能用于回放与对齐。
 - **SC-006**: 单模块 Module Manifest（actions 清单 + 摘要部分）的输出大小 ≤ 64 KB（超出时必须有可解释的截断/摘要策略并可被验证）。
 - **SC-007**: 同一 actionTag 注册多个 effect handlers 时，每次派发会触发对应数量的 handler 执行（K 次），且 handler 之间失败隔离。

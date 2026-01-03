@@ -46,7 +46,7 @@ describe('useModule multi-instance behavior', () => {
     const UseCounter = () => {
       const counter = useModule(Counter.tag)
       const count = useModule(Counter.tag, (s) => (s as { count: number }).count)
-      return { count, inc: counter.actions.increment }
+      return { count, inc: counter.dispatchers.increment }
     }
 
     const View = () => {
@@ -93,7 +93,7 @@ describe('useModule multi-instance behavior', () => {
     const UseLocalCounter = () => {
       const counter = useModule(CounterImpl)
       const count = useModule(counter, (s) => (s as { count: number }).count)
-      return { count, inc: counter.actions.increment }
+      return { count, inc: counter.dispatchers.increment }
     }
 
     const View = () => {

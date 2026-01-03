@@ -21,7 +21,8 @@ const makeGenerationFixture = (options: {
     shape[`d${i}`] = Schema.Number
   }
 
-  const State = Schema.Struct(shape)
+  type S = Record<string, number>
+  const State = Schema.Struct(shape) as unknown as Schema.Schema<S>
   const Actions = { bump: Schema.String }
 
   const baseTraits: Record<string, any> = {}
@@ -36,11 +37,10 @@ const makeGenerationFixture = (options: {
   const baseSpec = Logix.StateTrait.from(State as any)(baseTraits as any)
 
   const M = Logix.Module.make(options.moduleId, {
-    state: State as any,
+    state: State,
     actions: Actions,
     reducers: {
-      bump: Logix.Module.Reducer.mutate((draft: any, action: { readonly payload: string }) => {
-        const key = action.payload
+      bump: Logix.Module.Reducer.mutate((draft, key: string) => {
         draft[key] = (draft[key] ?? 0) + 1
       }),
     },
@@ -54,7 +54,7 @@ const makeGenerationFixture = (options: {
   }
 
   const impl = M.implement({
-    initial: initial as any,
+    initial,
     logics: [],
   })
 

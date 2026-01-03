@@ -64,7 +64,8 @@ const makeTxnLanesModule = (
     fields[`d${i}`] = Schema.Number
   }
 
-  const State = Schema.Struct(fields) as any
+  type S = Record<string, number>
+  const State = Schema.Struct(fields) as unknown as Schema.Schema<S>
   const Actions = { setA: Schema.Number, urgent: Schema.Void }
 
   const traits: Record<string, any> = {}
@@ -80,10 +81,10 @@ const makeTxnLanesModule = (
     state: State,
     actions: Actions,
     reducers: {
-      setA: Logix.Module.Reducer.mutate((draft: any, action: any) => {
-        draft.a = action.payload
+      setA: Logix.Module.Reducer.mutate((draft, payload: number) => {
+        draft.a = payload
       }),
-      urgent: Logix.Module.Reducer.mutate((draft: any) => {
+      urgent: Logix.Module.Reducer.mutate((draft) => {
         draft.b = (draft.b ?? 0) + 1
       }),
     },
@@ -98,7 +99,7 @@ const makeTxnLanesModule = (
     initial[`d${i}`] = computeValue(iters, 0, i)
   }
 
-  const impl = M.implement({ initial: initial as any })
+  const impl = M.implement({ initial })
   const lastKey = `d${Math.max(0, steps - 1)}`
 
   return { M, impl, lastKey, initialLastValue: initial[lastKey] ?? 0 }

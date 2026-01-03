@@ -44,7 +44,7 @@ describe('useSelector', () => {
     })
 
     await act(async () => {
-      result.current.counter.actions.increment()
+      result.current.counter.dispatchers.increment()
     })
 
     await waitFor(() => {
@@ -92,7 +92,7 @@ describe('useSelector', () => {
     const beforeCalls = equalityCallCount
 
     await act(async () => {
-      result.current.counter.actions.increment()
+      result.current.counter.dispatchers.increment()
     })
 
     await waitFor(() => {

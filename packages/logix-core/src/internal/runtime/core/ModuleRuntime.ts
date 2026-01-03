@@ -41,6 +41,7 @@ import { EvidenceCollectorTag } from '../../observability/evidenceCollector.js'
 import * as EffectOp from '../../effect-op.js'
 import { makeRunOperation } from './ModuleRuntime.operation.js'
 import { makeDispatchOps } from './ModuleRuntime.dispatch.js'
+import { makeEffectsRegistry } from './ModuleRuntime.effects.js'
 import { makeTransactionOps } from './ModuleRuntime.transaction.js'
 import { makeResolveConcurrencyPolicy } from './ModuleRuntime.concurrencyPolicy.js'
 import { makeResolveTxnLanePolicy } from './ModuleRuntime.txnLanePolicy.js'
@@ -886,10 +887,19 @@ export const make = <S, A, R = never>(
       ),
     )
 
+    const declaredActionTags = (() => {
+      const actionMap = (options.tag as any)?.shape?.actionMap
+      if (!actionMap || typeof actionMap !== 'object') {
+        return undefined
+      }
+      return new Set(Object.keys(actionMap))
+    })()
+
     const makeDispatchBuiltin = Effect.sync(() =>
       makeDispatchOps<S, A>({
         optionsModuleId: options.moduleId,
         instanceId,
+        declaredActionTags,
         initialReducers: options.reducers as any,
         txnContext,
         readState,
@@ -1306,6 +1316,12 @@ export const make = <S, A, R = never>(
 
     const stateSchema = (options.tag as any)?.stateSchema
 
+    const effectsRegistry = makeEffectsRegistry({
+      moduleId: options.moduleId,
+      instanceId,
+      actions$: runtime.actions$ as Stream.Stream<unknown>,
+    })
+
     const runtimeInternals: RuntimeInternals = {
       moduleId: options.moduleId,
       instanceId,
@@ -1372,6 +1388,9 @@ export const make = <S, A, R = never>(
         setModuleTraitsSnapshot: (snapshot) => {
           moduleTraitsState.snapshot = snapshot
         },
+      },
+      effects: {
+        registerEffect: (args) => effectsRegistry.registerEffect(args as any),
       },
       devtools: {
         registerConvergeStaticIr: registerConvergeStaticIr as any,

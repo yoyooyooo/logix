@@ -21,8 +21,8 @@ export const CounterDef = Logix.Module.make('Counter', {
 
 - `id: string`：领域模块的全局 Id，用于 Universe/Galaxy 拓扑和平台识别；
 - `state` / `actions`：Effect.Schema 形式的 State / Action 形状；
-- 可选的 `reducers`：为部分 Action Tag 声明 **primary reducers**（主 reducer）：
-  - 形态：`{ [tag]: (state, { _tag, payload }) => nextState }`；
+- 可选的 `immerReducers` / `reducers`：为部分 Action Tag 声明 **primary reducers**（主 reducer）：
+  - 形态：`immerReducers: { [tag]: (draft, payload) => void }` 或 `reducers: { [tag]: (state, { _tag, payload }, sink?) => nextState }`；
   - 语义：**Action → State 的权威路径**（主状态变更），在 `dispatch` 时由 Runtime 同步调用；
   - 实现：直接落到 `ModuleRuntime` 内部的 `_tag -> (state, action) => state` 跳表，不经过 watcher / Stream / Fiber。
 
@@ -39,25 +39,25 @@ export const CounterDef = Logix.Module.make('Counter', {
 });
 ```
 
-对于需要 mutative 写法的主 reducer，可以使用运行时提供的 helper：
+对于需要 draft 风格写法的主 reducer，推荐直接在定义处使用 `immerReducers`：
 
 ```ts
 export const CounterDef = Logix.Module.make('Counter', {
   state: CounterState,
   actions: CounterActions,
-  reducers: {
-    inc: Logix.Module.Reducer.mutate((draft, _action) => {
+  immerReducers: {
+    inc: (draft) => {
       draft.count += 1;
-    }),
-    set: Logix.Module.Reducer.mutate((draft, action) => {
-      draft.count = action.payload;
-    }),
+    },
+    set: (draft, payload) => {
+      draft.count = payload;
+    },
   },
 });
 ```
 
-- `Logix.Module.Reducer.mutate`：接受 `(draft, action) => void` 形式的 mutative 函数，内部基于 `mutative` 映射为不可变 `(state, action) => state`；
-- 语义与 `$.state.mutate` 一致，只是多了 `action` 入参，适合在 primary reducer 中使用。
+- `immerReducers`：接受 `(draft, payload) => void` 形式的 mutator，运行时会自动包装为不可变 reducer，并采集更精确的 patchPaths。
+- 如果你想保持 `reducers` 字段（或在 Logic 中通过 `$.reducer` 注册），可以用 `Logix.Module.Reducer.mutate` / `mutateMap` 把 `(draft, payload)` 包装为 `(state, action) => nextState`。
 
 - `CounterDef`（ModuleDef）本身同时是：
   - Module 定义（Intent 视角：领域资产）；

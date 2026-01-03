@@ -23,7 +23,7 @@ const manifest = Logix.Reflection.extractManifest(MyModule, {
 - 定义侧：`ModuleManifest.actions[]` 提供 action 摘要（payload/primaryReducer/source?）。
 - 若找不到 action：展示为 `unknown/opaque`，但时间线与统计不被破坏。
 
-## 3) 开发者写法：可跳转的 ActionToken（定义）+ `dispatchers`（执行）
+## 3) 开发者写法：可跳转的 ActionToken（定义）+ token-first（执行/监听）
 
 目标：dispatch 的调用点引用源码里显式声明的符号，从而获得 IDE 跳转定义/查找引用/安全重命名；同时保持 Action 产物可序列化、可回放、可用于 `ModuleManifest`/事件 join。
 
@@ -46,13 +46,49 @@ export const Counter = Logix.Module.make('Counter', {
 
 推荐：actions 定义尽量保持“一种形态”，要么全用 schema map，要么用 `Logix.Action.makeActions(...)` 抽出 token map；不建议 Schema/Token 混用（避免 TS 推导与提示出现不必要的复杂度）。
 
-### 3.2 执行：`$.dispatchers.<K>(payload)` 返回可 `yield*` 的 Effect
+或：显式构造 token map（注意 `key` 必须等于 `token.tag`，否则会在规范化阶段抛错）：
 
 ```ts
-yield* $.dispatchers.add(1)
+const actions = Logix.Action.makeActions({
+  add: Schema.Number,
+  inc: Schema.Void,
+})
+
+export const Counter = Logix.Module.make('Counter', {
+  state: CounterState,
+  actions,
+})
 ```
 
-点击 `add` 会跳到模块 `actions.add` 的定义行（定义锚点）。
+如果你的目标包含 “IDE 跳转到定义/查找引用/安全重命名”，推荐把 token 抽成**具名常量**（值级符号）：
+
+```ts
+export const CounterActions = Logix.Action.makeActions({
+  add: Schema.Number,
+  inc: Schema.Void,
+})
+
+export const Counter = Logix.Module.make('Counter', {
+  state: CounterState,
+  actions: CounterActions,
+})
+```
+
+### 3.2 执行：优先让代码里显式出现 ActionToken
+
+```ts
+yield* $.dispatch(CounterActions.add, 1)
+```
+
+> `$.dispatchers.<K>(payload)` 仍然是常用短写，但它是运行时生成的语法糖，不保证 IDE 的“跳转/找引用/重命名”能落到源码定义；需要稳定锚点时，以 ActionToken 常量为准。
+
+### 3.2.1 IDE 人工验收（SC-003）
+
+> 说明：这部分属于“人工验收”，不做自动化断言；自动化部分由类型回归用例兜底（`packages/logix-core/test/types/ActionSurface.d.ts.test.ts`）。
+
+- 在 `$.dispatch(CounterActions.add, 1)` 的 `add` 上执行“跳转到定义”，应定位到 `CounterActions.add` 的定义处。
+- 对 `CounterActions.add` 执行“查找引用”，结果应同时覆盖 dispatch 与 watcher/订阅两侧使用点（同一个 token 符号）。
+- 对 `CounterActions.add` 执行“重命名”，IDE 应同时重写 dispatch 与 watcher/订阅两侧引用（不需要手工维护字符串 tag）。
 
 ### 3.3 定义视图：`$.actions.<K>(payload)` 只创建 action object（纯数据）
 
@@ -64,7 +100,7 @@ yield* $.dispatch(action)
 ### 3.4 监听：`$.onAction(token)` 以 token 为主路径
 
 ```ts
-yield* $.onAction($.actions.add).run((payload) => {
+yield* $.onAction(CounterActions.add).run((payload) => {
   // payload === 1
 })
 ```
@@ -75,7 +111,8 @@ yield* $.onAction($.actions.add).run((payload) => {
 
 ### 3.5 reducer（payload-first）
 
-`Reducer.mutate` 的第二入参改为 payload：`(draft, payload)` / `(state, payload)`，避免 `action.payload` 样板，并保持事务窗口纯同步与 patchPaths 机制不变。
+`Reducer.mutate(mutator)` 的 **mutator 回调**为 payload-first：`(draft, payload)`（避免 `action.payload` 样板）。  
+但 `mutate` 返回的 reducer 仍然以 `(state, action, sink?) => state` 的形态运行：运行时会从 action 上提取 payload，并在需要时通过 `sink` 记录 patchPaths（保持事务窗口纯同步与 patchPaths 机制不变）。
 
 ### 3.6 effects（副作用注册面）
 

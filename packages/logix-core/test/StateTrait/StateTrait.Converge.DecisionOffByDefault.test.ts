@@ -31,7 +31,8 @@ describe('StateTrait converge diagnostics=off', () => {
         Debug.diagnosticsLevel('off'),
       ) as Layer.Layer<any, never, never>
 
-      let draft: any = { a: 0, derivedA: 0, derivedB: 0 }
+      type S = Schema.Schema.Type<typeof State>
+      let draft: S = { a: 0, derivedA: 0, derivedB: 0 }
       const outcome = yield* StateTraitConverge.convergeInTransaction(
         program as any,
         {
@@ -46,7 +47,7 @@ describe('StateTrait converge diagnostics=off', () => {
           dirtyPaths: new Set<string>(),
           getDraft: () => draft,
           setDraft: (next: unknown) => {
-            draft = next
+            draft = next as S
           },
           recordPatch: (
             _path: unknown,
@@ -70,4 +71,3 @@ describe('StateTrait converge diagnostics=off', () => {
     }),
   )
 })
-

@@ -17,10 +17,9 @@ export const CustomerSearchToDetailProcess = Logix.Process.link(
         .pipe(
           Stream.runForEach((results) =>
             results.length > 0
-              ? detail.actions['customerDetail/setSelected'](results[0]!)
-              : detail.actions['customerDetail/clear'](),
+              ? detail.actions.setSelected(results[0]!)
+              : detail.actions.clear(),
           ),
         )
     }),
 )
-

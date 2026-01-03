@@ -42,7 +42,7 @@ describe('StateTrait nested list rowId stability', () => {
 
   const run = (rowIdStore: RowId.RowIdStore, initial: State) =>
     Effect.gen(function* () {
-      let draft: any = initial
+      let draft: State = initial
       const ctx: StateTraitValidate.ValidateContext<any> = {
         moduleId: 'M',
         instanceId: 'i-1',

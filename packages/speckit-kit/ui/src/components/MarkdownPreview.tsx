@@ -3,6 +3,7 @@ import remarkGfm from 'remark-gfm'
 
 interface Props {
   markdown: string
+  highlightLine?: number | null
 }
 
 type NodeWithPosition = {
@@ -21,19 +22,26 @@ function getStartLine(node: unknown): number | null {
 function headingClass(level: number): string {
   switch (level) {
     case 1:
-      return 'mt-4 text-lg font-semibold text-zinc-900'
+      return 'mt-4 text-lg font-semibold text-foreground'
     case 2:
-      return 'mt-4 text-base font-semibold text-zinc-900'
+      return 'mt-4 text-base font-semibold text-foreground'
     case 3:
-      return 'mt-3 text-sm font-semibold text-zinc-900'
+      return 'mt-3 text-sm font-semibold text-foreground'
     default:
-      return 'mt-3 text-sm font-semibold text-zinc-900'
+      return 'mt-3 text-sm font-semibold text-foreground'
   }
 }
 
-export function MarkdownPreview({ markdown }: Props) {
+export function MarkdownPreview({ markdown, highlightLine }: Props) {
   if (markdown.trim() === '') {
-    return <div className="text-sm text-zinc-500">（空）</div>
+    return <div className="text-sm text-muted-foreground">（空）</div>
+  }
+
+  const shouldHighlight = (line: number | null): boolean => typeof highlightLine === 'number' && line === highlightLine
+
+  const withLine = (node: unknown): { readonly 'data-md-line'?: number } => {
+    const line = getStartLine(node)
+    return line ? { 'data-md-line': line } : {}
   }
 
   return (
@@ -41,40 +49,98 @@ export function MarkdownPreview({ markdown }: Props) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => <h1 className={headingClass(1)}>{children}</h1>,
-          h2: ({ children }) => <h2 className={headingClass(2)}>{children}</h2>,
-          h3: ({ children }) => <h3 className={headingClass(3)}>{children}</h3>,
-          h4: ({ children }) => <h4 className={headingClass(4)}>{children}</h4>,
-          h5: ({ children }) => <h5 className={headingClass(5)}>{children}</h5>,
-          h6: ({ children }) => <h6 className={headingClass(6)}>{children}</h6>,
-          hr: () => <hr className="my-2 border-zinc-200" />,
-          p: ({ node, children }) => (
-            <p
-              data-md-line={getStartLine(node) ?? undefined}
-              className="whitespace-pre-wrap break-words text-sm leading-6 text-zinc-800"
-            >
-              {children}
-            </p>
-          ),
-          ul: ({ children }) => <ul className="ml-5 list-disc space-y-1 text-sm text-zinc-800">{children}</ul>,
-          ol: ({ children }) => <ol className="ml-5 list-decimal space-y-1 text-sm text-zinc-800">{children}</ol>,
-          li: ({ node, children }) => (
-            <li data-md-line={getStartLine(node) ?? undefined} className="whitespace-pre-wrap break-words">
-              {children}
-            </li>
-          ),
+          h1: ({ node, children }) => {
+            const line = getStartLine(node)
+            return (
+              <h1 {...withLine(node)} className={[headingClass(1), shouldHighlight(line) ? 'speckit-task-highlight' : null].filter(Boolean).join(' ')}>
+                {children}
+              </h1>
+            )
+          },
+          h2: ({ node, children }) => {
+            const line = getStartLine(node)
+            return (
+              <h2 {...withLine(node)} className={[headingClass(2), shouldHighlight(line) ? 'speckit-task-highlight' : null].filter(Boolean).join(' ')}>
+                {children}
+              </h2>
+            )
+          },
+          h3: ({ node, children }) => {
+            const line = getStartLine(node)
+            return (
+              <h3 {...withLine(node)} className={[headingClass(3), shouldHighlight(line) ? 'speckit-task-highlight' : null].filter(Boolean).join(' ')}>
+                {children}
+              </h3>
+            )
+          },
+          h4: ({ node, children }) => {
+            const line = getStartLine(node)
+            return (
+              <h4 {...withLine(node)} className={[headingClass(4), shouldHighlight(line) ? 'speckit-task-highlight' : null].filter(Boolean).join(' ')}>
+                {children}
+              </h4>
+            )
+          },
+          h5: ({ node, children }) => {
+            const line = getStartLine(node)
+            return (
+              <h5 {...withLine(node)} className={[headingClass(5), shouldHighlight(line) ? 'speckit-task-highlight' : null].filter(Boolean).join(' ')}>
+                {children}
+              </h5>
+            )
+          },
+          h6: ({ node, children }) => {
+            const line = getStartLine(node)
+            return (
+              <h6 {...withLine(node)} className={[headingClass(6), shouldHighlight(line) ? 'speckit-task-highlight' : null].filter(Boolean).join(' ')}>
+                {children}
+              </h6>
+            )
+          },
+          hr: () => <hr className="my-2 border-border/60" />,
+          p: ({ node, children }) => {
+            const line = getStartLine(node)
+            return (
+              <p
+                data-md-line={line ?? undefined}
+                className={[
+                  'whitespace-pre-wrap break-words text-sm leading-6 text-foreground/90',
+                  shouldHighlight(line) ? 'speckit-task-highlight' : null,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {children}
+              </p>
+            )
+          },
+          ul: ({ children }) => <ul className="ml-5 list-disc space-y-1 text-sm text-foreground/90">{children}</ul>,
+          ol: ({ children }) => <ol className="ml-5 list-decimal space-y-1 text-sm text-foreground/90">{children}</ol>,
+          li: ({ node, children }) => {
+            const line = getStartLine(node)
+            return (
+              <li
+                data-md-line={line ?? undefined}
+                className={['whitespace-pre-wrap break-words', shouldHighlight(line) ? 'speckit-task-highlight' : null]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {children}
+              </li>
+            )
+          },
           a: ({ href, children }) => (
             <a
               href={href}
               target="_blank"
               rel="noreferrer"
-              className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-800 hover:decoration-sky-400"
+              className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary/60"
             >
               {children}
             </a>
           ),
           pre: ({ children }) => (
-            <pre className="max-w-full overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 font-mono text-xs leading-5 text-zinc-900">
+            <pre className="max-w-full overflow-x-auto rounded-xl border border-border/60 bg-muted p-3 font-mono text-xs leading-5 text-foreground">
               {children}
             </pre>
           ),
@@ -97,7 +163,7 @@ export function MarkdownPreview({ markdown }: Props) {
 
             return (
               <code
-                className={['rounded bg-zinc-100 px-1 py-0.5 font-mono text-[12px] text-zinc-800', className ?? null]
+                className={['rounded bg-muted px-1 py-0.5 font-mono text-[12px] text-foreground', className ?? null]
                   .filter(Boolean)
                   .join(' ')}
                 {...props}
@@ -112,13 +178,13 @@ export function MarkdownPreview({ markdown }: Props) {
           },
           table: ({ children }) => (
             <div className="max-w-full overflow-x-auto">
-              <table className="w-full border-collapse text-sm text-zinc-800">{children}</table>
+              <table className="w-full border-collapse text-sm text-foreground/90">{children}</table>
             </div>
           ),
-          th: ({ children }) => <th className="border border-zinc-200 bg-zinc-50 px-2 py-1 text-left font-medium">{children}</th>,
-          td: ({ children }) => <td className="border border-zinc-200 px-2 py-1 align-top">{children}</td>,
+          th: ({ children }) => <th className="border border-border/60 bg-muted px-2 py-1 text-left font-medium">{children}</th>,
+          td: ({ children }) => <td className="border border-border/60 px-2 py-1 align-top">{children}</td>,
           blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-zinc-200 pl-3 text-sm text-zinc-700">{children}</blockquote>
+            <blockquote className="border-l-2 border-border/60 pl-3 text-sm text-muted-foreground">{children}</blockquote>
           ),
         }}
       >

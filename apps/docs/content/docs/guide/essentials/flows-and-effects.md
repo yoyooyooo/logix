@@ -33,7 +33,7 @@ import { UserApi } from "../services/UserApi"
 export const UserLogic = UserModule.logic(($) =>
   Effect.gen(function* () {
     // 监听 "fetchUser" 动作
-    yield* $.onAction("fetchUser").run((userId: string) =>
+    yield* $.onAction("fetchUser").run(({ payload: userId }) =>
       Effect.gen(function* () {
         // 1. 打日志（可选）
         yield* Effect.log(`Fetching user ${userId}...`)
@@ -43,7 +43,9 @@ export const UserLogic = UserModule.logic(($) =>
         const user = yield* api.getUser(userId)
 
         // 3. 写回状态
-        yield* $.state.update((s) => ({ ...s, user }))
+        yield* $.state.mutate((draft) => {
+          draft.user = user
+        })
       }),
     )
   }),
@@ -75,7 +77,7 @@ export const UserLogic = UserModule.logic(($) =>
 ### 2.1 `run` —— 串行（Sequential）
 
 ```ts
-yield* $.onAction("log").run((msg: string) =>
+yield* $.onAction("log").run(({ payload: msg }) =>
   Effect.log(`Log: ${msg}`),
 )
 ```
@@ -85,11 +87,13 @@ yield* $.onAction("log").run((msg: string) =>
 ### 2.2 `runLatest` —— 最新优先（Search / 输入类场景）
 
 ```ts
-yield* $.onAction("search").runLatest((keyword: string) =>
+yield* $.onAction("search").runLatest(({ payload: keyword }) =>
   Effect.gen(function* () {
     const api = yield* $.use(SearchApi)
     const results = yield* api.search(keyword)
-    yield* $.state.update((s) => ({ ...s, results }))
+    yield* $.state.mutate((draft) => {
+      draft.results = results
+    })
   }),
 )
 ```
@@ -129,7 +133,7 @@ yield* $.onState((s) => s.userId)
   .run((userId) =>
     Effect.gen(function* () {
       if (!userId) return
-      yield* $.actions.dispatch({ _tag: "fetchUser", payload: userId })
+      yield* $.dispatch({ _tag: "fetchUser", payload: userId })
     }),
   )
 ```

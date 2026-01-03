@@ -216,7 +216,7 @@ export const scopedExecute = (bound: BoundApi<any, any>, request: ExecuteRequest
 export const cleanup = (bound: BoundApi<any, any>, request: CleanupRequest): Effect.Effect<void, never, any> =>
   Effect.gen(function* () {
     const apply = () =>
-      bound.state.mutate((draft: any) => {
+      bound.state.mutate((draft) => {
         const clearAt = (root: 'errors' | 'ui', path: string): void => {
           if (!path) return
           RowId.unsetAtPathMutating(draft, `${root}.${path}`)
@@ -245,7 +245,7 @@ export const cleanup = (bound: BoundApi<any, any>, request: CleanupRequest): Eff
           // Alignment of errors/ui should be handled by domain reducers or higher-level logic; keep it a no-op here.
           return
         }
-      }) as Effect.Effect<void, never, any>
+      })
 
     const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
     if (inTxn) {

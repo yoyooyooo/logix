@@ -1,4 +1,5 @@
 import { Effect, Stream } from 'effect'
+import type { Draft as MutativeDraft } from 'mutative'
 import type * as Logix from './module.js'
 import * as Platform from './Platform.js'
 import type * as TaskRunner from './TaskRunner.js'
@@ -9,13 +10,7 @@ export type Env<Sh extends Logix.AnyModuleShape, R> = Logix.ModuleRuntimeTag<Sh>
 
 export type Of<Sh extends Logix.AnyModuleShape, R = never, A = void, E = never> = Effect.Effect<A, E, Env<Sh, R>>
 
-type IsAny<T> = 0 extends 1 & T ? true : false
-
-type DraftImpl<T> = {
-  -readonly [K in keyof T]: Draft<T[K]>
-}
-
-export type Draft<T> = DraftImpl<T> | (IsAny<T> extends true ? any : never)
+export type Draft<T> = MutativeDraft<T>
 
 export type AndThenUpdateHandler<Sh extends Logix.AnyModuleShape, Payload, E = any, R2 = any> = (
   prev: Logix.StateOf<Sh>,

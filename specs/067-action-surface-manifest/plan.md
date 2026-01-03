@@ -22,9 +22,10 @@ Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-0
    - `$.dispatchers.<K>(payload)`：返回可 `yield*` 的 Effect（真正 dispatch），且点击 `<K>` 可跳转到模块 `actions.<K>` 的定义行。
    - canonical：`$.dispatch(token, payload)` / `$.dispatch(action)`；监听：`$.onAction(token)`（避免 Proxy 动态属性作为主路径）。
    - DX 约定：`onAction(token)` 的回调参数 payload-first；predicate/string 监听仍回调完整 action object（用于区分 `_tag`）。
+   - React 侧衔接：`useModule(...)` 返回的 `ModuleRef.dispatchers.<K>(payload)` 作为 UI 便捷派发入口（同步 dispatch），并与 `ModuleDef.actions.<K>` 的符号锚点对齐（IDE 可跳转/找引用/重命名）。
 3. **Manifest IR 扩展（免 AST）**：在现有 `Reflection.extractManifest` 的 `ModuleManifest` 基础上扩展 `actions[]` 描述符（payload 形态、primary reducer 摘要、可选 source），输出为 deterministic JSON（可 diff），并与 token 定义一致。
 4. **事件 → 定义锚点对齐**：复用 `RuntimeDebugEventRef` 的 `moduleId + kind=action + label=actionTag` 作为 `ActionRef`（单一事实源），Studio/Devtools 通过 manifest 反查 ActionAnchor（无定义则降级为 unknown/opaque）。
-5. **Reducer DX 对齐（payload-first）**：将 `Reducer.mutate` 的签名从 `(state, action)`/`(draft, action)` 改为 `(state, payload)`/`(draft, payload)`，减少样板与误用，并保持事务窗口纯同步与 patchPaths 语义不变。
+5. **Reducer DX 对齐（payload-first）**：将 `Reducer.mutate` 的 **mutator 回调**签名改为 `(draft, payload)`（payload-first），避免 `action.payload` 样板；`mutate` 返回的 reducer 仍按 `(state, action, sink?) => state` 运行，并保持事务窗口纯同步与 patchPaths 语义不变。
 6. **Effects/`$.effect`（副作用面）**：把散落的 watcher 监听提升为可治理的副作用注册面（允许同 tag 多 handler），在 run 阶段统一装配为“每 tag 单 watcher + fan-out”，并提供去重与极致诊断（重复注册/动态注册/晚注册/失败隔离），保证事务外执行且不阻塞 dispatch。
 
 本阶段交付的规格产物：`plan.md`（本文件）、`research.md`（裁决与取舍）、`data-model.md`（实体/键/对齐规则）、`contracts/schemas/*`（JSON Schema）、`quickstart.md`（最小使用说明与迁移要点）。
@@ -62,6 +63,7 @@ Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-0
 - 稳定标识：`instanceId/txnSeq/txnId` 不引入随机/时间默认值（复用现有模型）。
 - 事务窗口禁止 IO；诊断载荷必须 Slim 且可序列化（`JsonValue`）。
 - IDE 跳转定义：`dispatch`/`onAction` 的推荐写法必须引用源码里的稳定 symbol（token），避免 Proxy/字符串成为主路径。
+- React（`@logix/react`）侧的对齐：UI 中用 `useDispatch(handle)` / `ModuleRef.dispatch` 承担“执行视图”（类比 `$.dispatchers`），用 `ModuleDef.actions.<K>`（ActionToken）生成 action object（类比 `$.actions`）；需要 IDE 重命名/找引用时避免依赖 `ModuleRef.actions.<K>`（其实现是字符串 Proxy 的便捷派发糖）。
 - effects 必须事务外执行；setup 阶段只允许注册规则，不得提前执行 handler。
 
 **Scale/Scope**:

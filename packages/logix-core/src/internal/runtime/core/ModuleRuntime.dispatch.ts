@@ -12,6 +12,7 @@ import type { ResolvedConcurrencyPolicy } from './ModuleRuntime.concurrencyPolic
 export const makeDispatchOps = <S, A>(args: {
   readonly optionsModuleId: string | undefined
   readonly instanceId: string
+  readonly declaredActionTags?: ReadonlySet<string>
   readonly initialReducers?: Readonly<
     Record<string, (state: S, action: A, sink?: (path: StateTransaction.StatePatchPath) => void) => S>
   >
@@ -43,6 +44,7 @@ export const makeDispatchOps = <S, A>(args: {
   const {
     optionsModuleId,
     instanceId,
+    declaredActionTags,
     initialReducers,
     txnContext,
     readState,
@@ -57,6 +59,16 @@ export const makeDispatchOps = <S, A>(args: {
     runWithStateTransaction,
     isDevEnv,
   } = args
+
+  const resolveActionTag = (action: A): string | undefined => {
+    const tag = (action as any)?._tag
+    if (typeof tag === 'string' && tag.length > 0) return tag
+    const type = (action as any)?.type
+    if (typeof type === 'string' && type.length > 0) return type
+    if (tag != null) return String(tag)
+    if (type != null) return String(type)
+    return undefined
+  }
 
   // Primary reducer map: initial values come from options.reducers and can be extended at runtime via internal hooks (for $.reducer sugar).
   const reducerMap = new Map<string, (state: S, action: A) => S>()
@@ -82,11 +94,11 @@ export const makeDispatchOps = <S, A>(args: {
   }
 
   const applyPrimaryReducer = (action: A) => {
-    const tag = (action as any)?._tag ?? (action as any)?.type
+    const tag = resolveActionTag(action)
     if (tag == null || reducerMap.size === 0) {
       return Effect.void
     }
-    const tagKey = String(tag)
+    const tagKey = tag.length > 0 ? tag : 'unknown'
     dispatchedTags.add(tagKey)
     const reducer = reducerMap.get(tagKey)
     if (!reducer) {
@@ -161,10 +173,10 @@ export const makeDispatchOps = <S, A>(args: {
     kind: 'action',
     name: originName,
     details: {
-      _tag: (action as any)?._tag ?? (action as any)?.type,
+      _tag: resolveActionTag(action) ?? 'unknown',
       path: typeof (action as any)?.payload?.path === 'string' ? ((action as any).payload.path as string) : undefined,
       op: (() => {
-        const tag = String((action as any)?._tag ?? (action as any)?.type ?? '')
+        const tag = resolveActionTag(action) ?? ''
         if (tag.includes('Remove') || tag.includes('remove')) return 'remove'
         if (
           tag.includes('Append') ||
@@ -191,11 +203,17 @@ export const makeDispatchOps = <S, A>(args: {
       // Apply the primary reducer first (may be a no-op).
       yield* applyPrimaryReducer(action)
 
+      const actionTag = resolveActionTag(action)
+      const actionTagNormalized = typeof actionTag === 'string' && actionTag.length > 0 ? actionTag : 'unknown'
+      const unknownAction = declaredActionTags ? !declaredActionTags.has(actionTagNormalized) : false
+
       // Record action dispatch (for Devtools/diagnostics).
       yield* Debug.record({
         type: 'action:dispatch',
         moduleId: optionsModuleId,
         action,
+        actionTag: actionTagNormalized,
+        ...(unknownAction ? { unknownAction: true } : {}),
         instanceId,
         txnSeq: txnContext.current?.txnSeq,
         txnId: txnContext.current?.txnId,

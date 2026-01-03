@@ -64,7 +64,7 @@ const AsyncLocalCounterView: React.FC = () => {
   return (
     <div>
       <span data-testid="value">{state.count}</span>
-      <button type="button" onClick={() => counter.actions.increment()}>
+      <button type="button" onClick={() => counter.dispatchers.increment()}>
         inc
       </button>
     </div>

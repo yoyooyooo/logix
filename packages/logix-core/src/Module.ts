@@ -2,6 +2,7 @@ import { Context, Effect, FiberRef, Layer, Schema } from 'effect'
 import * as Debug from './Debug.js'
 import * as Logic from './Logic.js'
 import * as ModuleTagNS from './ModuleTag.js'
+import * as Action from './internal/action.js'
 import { isDevEnv } from './internal/runtime/core/env.js'
 import * as LogicUnitMetaInternal from './internal/runtime/core/LogicUnitMeta.js'
 import type {
@@ -101,6 +102,8 @@ type LogicUnitMeta = LogicUnitMetaInternal.LogicUnitMeta
 const attachLogicUnitMeta = <L extends object>(logic: L, meta: LogicUnitMeta): L =>
   LogicUnitMetaInternal.attachLogicUnitMeta(logic, meta as any) as any
 
+type NoInfer_<T> = [T][T extends any ? 0 : never]
+
 type MountedLogicUnit<Sh extends AnyModuleShape> = {
   readonly id: string
   readonly derived: boolean
@@ -137,6 +140,7 @@ type ModuleInternal<Id extends string, Sh extends AnyModuleShape> = {
 }
 
 const MODULE_INTERNAL = Symbol.for('logix.module.internal')
+const MODULE_DECLARED_EFFECTS = Symbol.for('logix.module.effects.declared')
 
 type ModuleDefBase<
   Id extends string = string,
@@ -435,6 +439,56 @@ const makeOverrideDiagnosticsLogic = (
   )
 }
 
+const makeDeclaredEffectsLogic = (
+  tag: ModuleTag<any, AnyModuleShape>,
+  effects: Record<string, ReadonlyArray<unknown> | undefined> | undefined,
+  moduleId: string,
+): ModuleLogic<any, any, never> => {
+  if (!effects || typeof effects !== 'object' || Object.keys(effects).length === 0) {
+    return Effect.void as any
+  }
+
+  const logic = tag.logic(($) => ({
+    setup: Effect.gen(function* () {
+      const actions = ($ as any).actions as Record<string, Action.AnyActionToken>
+      const effectApi = ($ as any).effect as
+        | ((token: unknown, handler: (payload: unknown) => Effect.Effect<void, any, any>) => Effect.Effect<void, never, any>)
+        | undefined
+      if (typeof effectApi !== 'function') return
+
+      const wrappedHandlers = new WeakMap<(...args: any[]) => any, (payload: unknown) => Effect.Effect<void, any, any>>()
+
+      for (const actionTag of Object.keys(effects).sort()) {
+        const token = actions[actionTag]
+        if (!Action.isActionToken(token)) continue
+
+        const handlers = effects[actionTag]
+        if (!Array.isArray(handlers)) continue
+
+        for (const handler of handlers) {
+          if (typeof handler !== 'function') continue
+          let wrapped = wrappedHandlers.get(handler)
+          if (!wrapped) {
+            wrapped = (payload: unknown) => (handler as any)($, payload)
+            wrappedHandlers.set(handler, wrapped)
+          }
+          yield* effectApi(token, wrapped)
+        }
+      }
+    }),
+    run: Effect.void,
+  })) as ModuleLogic<any, any, never>
+
+  LogicUnitMetaInternal.attachLogicUnitMeta(logic as any, {
+    id: '__logix_internal:effects:declared',
+    kind: 'internal',
+    name: 'effects:declared',
+    moduleId,
+  })
+
+  return logic
+}
+
 const makeLogicFactory = <Id extends string, Sh extends AnyModuleShape, Ext extends object>(
   selfModule: ModuleDefBase<Id, Sh, Ext>,
 ): ModuleDefBase<Id, Sh, Ext>['logic'] => {
@@ -460,11 +514,12 @@ const makeLogicFactory = <Id extends string, Sh extends AnyModuleShape, Ext exte
   }
 }
 
-type MakeDef<Id extends string, SSchema extends AnySchema, AMap extends Record<string, AnySchema>> = {
+type MakeDef<Id extends string, SSchema extends AnySchema, AMap extends Action.ActionDefs> = {
   readonly state: SSchema
   readonly actions: AMap
-  readonly reducers?: ReducersFromMap<SSchema, AMap>
-  readonly immerReducers?: MutatorsFromMap<SSchema, AMap>
+  readonly reducers?: ReducersFromMap<SSchema, NoInfer_<AMap>>
+  readonly immerReducers?: MutatorsFromMap<SSchema, NoInfer_<AMap>>
+  readonly effects?: EffectsFromMap<NoInfer_<AMap>>
   readonly traits?: unknown
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, unknown>
@@ -472,9 +527,24 @@ type MakeDef<Id extends string, SSchema extends AnySchema, AMap extends Record<s
   readonly dev?: ModuleDev
 }
 
-type AnyActionMap = Record<string, AnySchema>
+type AnyActionMap = Action.ActionDefs
+type EmptyActionMap = Record<never, never>
 
-type MergeActionMap<Base extends AnyActionMap, Ext extends AnyActionMap> = Omit<Base, keyof Ext> & Ext
+type PayloadOfActionDef<V> = V extends Schema.Schema<any, any, any>
+  ? Schema.Schema.Type<V>
+  : V extends Action.ActionToken<any, infer P, any>
+    ? P
+    : never
+
+type DeclaredEffectHandler<Payload> = ($: unknown, payload: Payload) => Effect.Effect<void, any, any>
+
+type EffectsFromMap<M extends AnyActionMap> = {
+  readonly [K in keyof M]?: ReadonlyArray<DeclaredEffectHandler<PayloadOfActionDef<M[K]>>>
+}
+
+type MergeActionMap<Base extends AnyActionMap, Ext extends AnyActionMap> = {
+  readonly [K in keyof Base | keyof Ext]: K extends keyof Ext ? Ext[K] : K extends keyof Base ? Base[K] : never
+}
 
 /**
  * Module.make "app-side extension/override" parameters (a two-stage responsibility split: domain library author → app developer).
@@ -486,11 +556,12 @@ type MergeActionMap<Base extends AnyActionMap, Ext extends AnyActionMap> = Omit<
 export type MakeExtendDef<
   SSchema extends AnySchema,
   BaseActions extends AnyActionMap,
-  ExtActions extends AnyActionMap = {},
+  ExtActions extends AnyActionMap = EmptyActionMap,
 > = {
   readonly actions?: ExtActions
   readonly reducers?: ReducersFromMap<SSchema, MergeActionMap<BaseActions, ExtActions>>
   readonly immerReducers?: MutatorsFromMap<SSchema, MergeActionMap<BaseActions, ExtActions>>
+  readonly effects?: EffectsFromMap<MergeActionMap<BaseActions, ExtActions>>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, unknown>
   readonly services?: Record<string, Context.Tag<any, any>>
@@ -517,9 +588,55 @@ const mergeMakeDef = <
     }
   }
 
-  const actions = { ...baseActions, ...extActions } as Record<string, AnySchema>
+  const mergedActionDefs = { ...(base.actions as any), ...(extend?.actions as any) } as MergeActionMap<
+    BaseActions,
+    ExtActions
+  >
+  const actions = Action.normalizeActions(mergedActionDefs)
 
-  const wrapImmerReducers = (mutators?: Record<string, ((draft: any, action: any) => void) | undefined>) => {
+  const mergeEffects = (): Record<string, ReadonlyArray<unknown>> | undefined => {
+    const baseEffects = (base.effects ?? {}) as Record<string, unknown>
+    const extEffects = (extend?.effects ?? {}) as Record<string, unknown>
+
+    const keys = Array.from(new Set([...Object.keys(baseEffects), ...Object.keys(extEffects)])).sort()
+    if (keys.length === 0) return undefined
+
+    const out: Record<string, ReadonlyArray<unknown>> = {}
+    for (const key of keys) {
+      if (!(key in actions)) {
+        throw new Error(`[Logix.Module.make] effect key "${key}" does not exist in actionMap.`)
+      }
+
+      const baseValue = baseEffects[key]
+      const extValue = extEffects[key]
+      const baseArr = Array.isArray(baseValue) ? baseValue : baseValue === undefined ? [] : null
+      const extArr = Array.isArray(extValue) ? extValue : extValue === undefined ? [] : null
+
+      if (baseArr === null) {
+        throw new Error(`[Logix.Module.make] effects["${key}"] must be an array of handlers.`)
+      }
+      if (extArr === null) {
+        throw new Error(`[Logix.Module.make] effects["${key}"] must be an array of handlers.`)
+      }
+
+      const merged = [...baseArr, ...extArr].filter((h) => h !== undefined)
+      for (const h of merged) {
+        if (typeof h !== 'function') {
+          throw new Error(`[Logix.Module.make] effects["${key}"] handlers must be functions.`)
+        }
+      }
+
+      if (merged.length > 0) {
+        out[key] = merged as ReadonlyArray<unknown>
+      }
+    }
+
+    return Object.keys(out).length > 0 ? out : undefined
+  }
+
+  const effects = mergeEffects()
+
+  const wrapImmerReducers = (mutators?: Record<string, ((draft: unknown, payload: unknown) => void) | undefined>) => {
     if (!mutators) return {}
     const out: Record<string, unknown> = {}
     for (const key of Object.keys(mutators)) {
@@ -557,6 +674,7 @@ const mergeMakeDef = <
     ...base,
     actions: actions as any,
     reducers: Object.keys(reducers).length > 0 ? (reducers as any) : undefined,
+    effects: effects as any,
     schemas,
     meta,
     services,
@@ -566,38 +684,46 @@ const mergeMakeDef = <
 
 export const Reducer = ModuleTagNS.Reducer
 
-export type Shape<S extends AnySchema, M extends Record<string, AnySchema>> = ModuleShape<
+export type Shape<S extends AnySchema, M extends Action.ActionDefs> = ModuleShape<
   S,
-  Schema.Schema<ActionsFromMap<M>>,
-  M
+  Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<M>>>,
+  Action.NormalizedActionTokens<M>
 >
 
 export function make<
   Id extends string,
   SSchema extends AnySchema,
-  AMap extends Record<string, AnySchema>,
+  AMap extends Action.ActionDefs,
   Ext extends object = {},
 >(
   id: Id,
   def: MakeDef<Id, SSchema, AMap>,
-): ModuleDef<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, Ext>
-
-export function make<
-  Id extends string,
-  SSchema extends AnySchema,
-  AMap extends Record<string, AnySchema>,
-  Ext extends object = {},
-  ExtActions extends Record<string, AnySchema> = {},
->(
-  id: Id,
-  def: MakeDef<Id, SSchema, AMap>,
-  extend: MakeExtendDef<SSchema, AMap, ExtActions>,
 ): ModuleDef<
   Id,
   ModuleShape<
     SSchema,
-    Schema.Schema<ActionsFromMap<MergeActionMap<AMap, ExtActions>>>,
-    MergeActionMap<AMap, ExtActions>
+    Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<AMap>>>,
+    Action.NormalizedActionTokens<AMap>
+  >,
+  Ext
+>
+
+export function make<
+  Id extends string,
+  SSchema extends AnySchema,
+  AMap extends Action.ActionDefs,
+  Ext extends object = {},
+  ExtActions extends Action.ActionDefs = EmptyActionMap,
+>(
+  id: Id,
+  def: MakeDef<Id, SSchema, AMap>,
+  extend: MakeExtendDef<SSchema, NoInfer_<AMap>, ExtActions>,
+): ModuleDef<
+  Id,
+  ModuleShape<
+    SSchema,
+    Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<MergeActionMap<AMap, ExtActions>>>>,
+    Action.NormalizedActionTokens<MergeActionMap<AMap, ExtActions>>
   >,
   Ext
 >
@@ -612,6 +738,15 @@ export function make(id: any, def: any, extend?: any): any {
     traits: merged.traits,
   }) as unknown as ModuleTag<any, AnyModuleShape>
 
+  if (merged.effects && typeof merged.effects === 'object' && Object.keys(merged.effects).length > 0) {
+    Object.defineProperty(tag as any, MODULE_DECLARED_EFFECTS, {
+      value: merged.effects,
+      enumerable: false,
+      configurable: true,
+      writable: false,
+    })
+  }
+
   const base: any = {
     _kind: 'ModuleDef' as const,
     id,
@@ -621,6 +756,7 @@ export function make(id: any, def: any, extend?: any): any {
     actionSchema: tag.actionSchema,
     actions: merged.actions,
     reducers: merged.reducers,
+    effects: merged.effects,
     live: tag.live,
     schemas: merged.schemas,
     meta: merged.meta,
@@ -657,7 +793,8 @@ export function make(id: any, def: any, extend?: any): any {
 
     const buildImpl = (state: State): ModuleImpl<any, AnyModuleShape, any> => {
       const diagnosticsLogic = makeOverrideDiagnosticsLogic(tag as any, state.overrides)
-      const allLogics = [...state.mounted.map((u) => u.logic), diagnosticsLogic]
+      const declaredEffectsLogic = makeDeclaredEffectsLogic(tag as any, merged.effects, id)
+      const allLogics = [...state.mounted.map((u) => u.logic), declaredEffectsLogic, diagnosticsLogic]
 
       let impl = (tag as any).implement({
         initial,

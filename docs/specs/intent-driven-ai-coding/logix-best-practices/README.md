@@ -190,6 +190,12 @@ src/
 - `actions` 命名建议具备稳定的“领域语言”：
   - 示例工程可用 `"domain/verb"` 风格（如 `cart/addShippingFee`），真实业务建议进一步收敛为稳定约定（避免同义 action 泛滥）。
 
+#### 4.1.1 Reducers：优先 `immerReducers`（少样板 + 更好推导）
+
+- **推荐**：在 `Module.make({ immerReducers })` 里直接写 draft 风格 mutator（payload-first）：`(draft, payload) => { ... }`。
+- **何时用 `reducers`**：需要“纯 reducer（state, action）”形态、或需要显式 `sink` 记录 patchPaths 时，再用 `reducers`（必要时配合 `Logix.Module.Reducer.mutate/mutateMap` 包装）。
+- **避免 `draft: any`**：`Logix.Logic.Draft<T>` 已对齐 `mutative.Draft<T>`，常见写法（primitive、数组、index signature）可正常推导；动态 key 写入场景优先把 state 收敛为 `Record<string, V>`（或用 `satisfies` 显式挂上约束）。
+
 ### 4.2 Logic 拆分：组合优于配置（SRP）
 
 - 不要把所有逻辑写进一个巨大 `Effect.gen`：拆成多个 Logic 单元再组合挂载。

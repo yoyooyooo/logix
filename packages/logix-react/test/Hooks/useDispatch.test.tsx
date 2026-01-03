@@ -44,7 +44,7 @@ describe('useDispatch', () => {
     })
 
     await act(async () => {
-      result.current.counter.actions.increment()
+      result.current.counter.dispatchers.increment()
     })
 
     await waitFor(() => {

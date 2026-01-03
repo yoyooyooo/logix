@@ -25,6 +25,17 @@ description: 如何在 React 应用中接入 Logix Runtime，并通过 Hooks 使
 - 一套可直接复用的接入步骤：如何创建 Runtime、如何在根组件挂载 Provider、如何在组件中消费 Module；
 - 对全局 Module vs 局部 Module（`useLocalModule`）的适用场景有直观认识。
 
+## 0. 能力地图（先掌握这些）
+
+在 `@logix/react` 里，建议把能力拆成几条正交轴：
+
+1. **解析句柄**：`useModule` / `useLocalModule` → 得到 `ModuleRef`
+2. **订阅渲染**：`useSelector(handle, selector[, equalityFn])`
+3. **派发动作**：`useDispatch(handle)`（或 `handle.dispatch(action)`）
+4. **imports scope**：`handle.imports.get(Child.tag)`（或 `useImportedModule` 作为 Hook 形态）
+
+> 本文后面会用到一些语法糖（如 `ref.dispatchers.*`、`useModule(handle, selector)`），它们只是写法更短，不引入新能力。
+
 ## 1. 准备一个 Logix Module
 
 先在任意目录下定义一个最简单的计数器 Module：
@@ -85,11 +96,11 @@ export function App() {
 
 `RuntimeProvider` 会负责：
 
-- 创建并托管一个 Logix `ManagedRuntime`；
+- 托管并向下透传一个 Logix `ManagedRuntime`（通常由 `Logix.Runtime.make(...)` 创建）；
 - 把必要的 Context（Layer 提供的服务）注入到 Runtime 中；
 - 让子树里的所有 Hooks 都能访问到同一个 Runtime。
 
-如果你的项目已经自己创建了 Runtime，也可以直接传入 `runtime` 属性，而不是 `app`。
+如果你的项目已经自己创建了 Runtime，直接传入 `runtime` 即可。
 
 ## 3. 在组件中读取状态：useModule / useSelector
 
@@ -129,13 +140,15 @@ import { CounterDef } from '../runtime/CounterModule'
 
 export function CounterButton() {
   const counter = useModule(CounterDef)
-  const dispatch = useDispatch(CounterDef)
+  const dispatch = useDispatch(counter)
 
-  return <button onClick={() => dispatch({ _tag: 'inc' })}>+1</button>
+  return <button onClick={() => dispatch(CounterDef.actions.inc())}>+1</button>
 }
 ```
 
 `useDispatch` 会自动使用当前的 Runtime 和对应的 ModuleRuntime，在内部调用 `runtime.runFork(moduleRuntime.dispatch(action))`，不需要你自己处理异步或错误通道。
+
+如果你更偏好“方法调用”风格，可以在拿到 `ModuleRef` 后使用 `ref.dispatchers.*`（语法糖，见下文「6.1 语法糖速查」）。
 
 ### 4.1 （可选）性能用法：批处理与低优先级派发
 
@@ -151,10 +164,10 @@ export function CounterButton() {
 
 > 提示：Batch 更适合“同一业务意图里连续派发多个 Action”且不依赖每一步的中间派生结果；更完整的边界与踩坑见“性能与优化”章节。
 
-在 React 事件处理函数里，你可以直接用 `dispatch.batch / dispatch.lowPriority`（语法糖），或用 `useRuntime()` 手动执行 Effect（更白盒）。
+在 React 事件处理函数里，你可以直接用 `dispatch.batch / dispatch.lowPriority`；或者用 `useRuntime()` 更白盒地执行 Effect。
 
 ```tsx
-import { useModule, useSelector, useDispatch } from "@logix/react"
+import { useDispatch, useModule, useSelector } from '@logix/react'
 
 export function Form() {
   const form = useModule(FormModule)
@@ -165,18 +178,18 @@ export function Form() {
 
   const onBulkUpdate = () => {
     dispatch.batch([
-      { _tag: "setA", payload: 1 } as any,
-      { _tag: "setB", payload: 2 } as any,
+      FormModule.actions.setA(1),
+      FormModule.actions.setB(2),
     ])
   }
 
   const onRecomputeSummary = () => {
-    dispatch.lowPriority({ _tag: "recomputeSummary", payload: undefined } as any)
+    dispatch.lowPriority(FormModule.actions.recomputeSummary())
   }
 
   return (
     <>
-      <input value={value} onChange={(e) => dispatch({ _tag: "change", payload: e.target.value } as any)} />
+      <input value={value} onChange={(e) => dispatch(FormModule.actions.change(e.target.value))} />
       <button onClick={onBulkUpdate}>bulk</button>
       <button onClick={onRecomputeSummary}>summary</button>
     </>
@@ -189,7 +202,7 @@ export function Form() {
 对于仅在单个页面或组件中使用的状态（例如临时表单、向导），可以用 `useLocalModule` 创建一个“局部模块实例”：
 
 ```tsx
-import { useLocalModule } from '@logix/react'
+import { useDispatch, useLocalModule, useSelector } from '@logix/react'
 import * as Logix from '@logix/core'
 import { Schema } from 'effect'
 
@@ -199,11 +212,11 @@ const LocalForm = Logix.Module.make('LocalForm', {
 })
 
 export function LocalFormComponent() {
-  const runtime = useLocalModule(LocalForm, { initial: { text: '' } })
-  const text = useSelector(runtime, (s) => s.text)
-  const dispatch = useDispatch(runtime)
+  const form = useLocalModule(LocalForm, { initial: { text: '' } })
+  const text = useSelector(form, (s) => s.text)
+  const dispatch = useDispatch(form)
 
-  return <input value={text} onChange={(e) => dispatch({ _tag: 'change', payload: e.target.value })} />
+  return <input value={text} onChange={(e) => dispatch(LocalForm.actions.change(e.target.value))} />
 }
 ```
 
@@ -220,10 +233,7 @@ export function LocalFormComponent() {
 
 > “子模块不是全局单例，而是**跟随父模块实例**一起创建的；组件侧要怎么拿到**属于这个父实例**的那一份子模块？”
 
-这时推荐使用两种等价写法之一：
-
-- `const child = useImportedModule(host, ChildModule.tag)`（显式 Hook）
-- `const child = host.imports.get(ChildModule.tag)`（链式语法糖，更推荐）
+这件事的核心能力是“在父实例 scope 内解析子模块”。推荐直接用 `host.imports.get(...)`（稳定、无需额外 Hook）；如果你想把它写成 Hook 形态，也可以用 `useImportedModule(host, ChildModule.tag)`（等价语法糖）。
 
 示例：
 
@@ -241,7 +251,7 @@ export function Page() {
   const value = useSelector(child, (s) => s.value)
   const dispatch = useDispatch(child)
 
-  return <button onClick={() => dispatch({ _tag: 'refresh' })}>{value}</button>
+  return <button onClick={() => dispatch(ChildModule.actions.refresh())}>{value}</button>
 }
 ```
 
@@ -252,6 +262,13 @@ export function Page() {
 - 如果你的目标是“路由 scope 下多个弹框 keepalive，离开路由统一销毁”，推荐直接套用 [路由 Scope 下的弹框 Keepalive](./route-scope-modals) 这条配方。
 - 如果只是想“触发/编排”子模块行为（例如父动作转发到子 Query.refresh），优先把这件事放到父模块 Logic（`$.use(ChildModule)`）或 Link/Process 里，让 UI 仍只依赖父模块。
 - 当你发现 UI 需要链式访问多层 imports（`host.imports.get(A).imports.get(B)`）时，通常意味着依赖穿透过深：优先在边界处 resolve 一次并向下传 `ModuleRef`，或收敛为 Host 对外的 facade 状态/动作。
+
+## 6.1 语法糖速查（只为更短，不引入新能力）
+
+- `useModule(handle, selector[, equalityFn])` 等价于：`useSelector(useModule(handle), selector[, equalityFn])`
+- `ref.dispatchers.<K>(payload)` 等价于：`dispatch(ModuleDef.actions.<K>(payload))`（其中 `dispatch = useDispatch(ref)`；`dispatchers` 只是语法糖，不保证 IDE 跳转到定义；需要稳定的“跳转/找引用/重命名”时，让代码里显式出现 `ModuleDef.actions.<K>`（或 `ref.def?.actions.<K>`）作为锚点）
+- `useImportedModule(parent, Child.tag)` 等价于：`parent.imports.get(Child.tag)`
+- `ModuleScope.make(Host.impl)` 等价于：在边界 `useModule(Host.impl, { key })` + React Context 传递（适合路由 scope / keepalive）
 
 ## 7. 从 useEffect / useRef 迁移到 Logix
 
@@ -651,5 +668,6 @@ function LocalCounter({ sessionId }: { sessionId: string }) {
 
 ## 11. 下一步
 
+- 回到总览：[可组合性地图](../advanced/composability)
 - 想了解更多 Logix API，可以继续阅读 [API 参考](../../api/index) 部分；
 - 想看更复杂的集成场景（多模块协作、异步流、远程服务），可以参考仓库中的 `examples/logix-react` 示例项目。

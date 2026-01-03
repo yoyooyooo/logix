@@ -36,35 +36,40 @@ const ListLogic = ListDef.logic(($) =>
   Effect.gen(function* () {
     const api = yield* $.use(ListApi)
 
-    // 使用 runExhaust 防止重复请求
-    yield* $.onAction('loadMore').runExhaust(() =>
-      Effect.gen(function* () {
-        const state = yield* $.state.read
-        if (!state.hasMore || state.isLoading) return
+    yield* Effect.all(
+      [
+        // 使用 runExhaust 防止重复请求
+        $.onAction('loadMore').runExhaust(() =>
+          Effect.gen(function* () {
+            const state = yield* $.state.read
+            if (!state.hasMore || state.isLoading) return
 
-        yield* $.state.mutate((d) => {
-          d.isLoading = true
-        })
+            yield* $.state.mutate((d) => {
+              d.isLoading = true
+            })
 
-        const { items, nextCursor } = yield* api.fetch(state.cursor)
+            const { items, nextCursor } = yield* api.fetch(state.cursor)
 
-        yield* $.state.mutate((d) => {
-          d.items = [...d.items, ...items]
-          d.cursor = nextCursor
-          d.hasMore = nextCursor !== null
-          d.isLoading = false
-        })
-      }),
-    )
+            yield* $.state.mutate((d) => {
+              d.items = [...d.items, ...items]
+              d.cursor = nextCursor
+              d.hasMore = nextCursor !== null
+              d.isLoading = false
+            })
+          }),
+        ),
 
-    // 重置列表
-    yield* $.onAction('reset').run(() =>
-      $.state.update(() => ({
-        items: [],
-        cursor: null,
-        hasMore: true,
-        isLoading: false,
-      })),
+        // 重置列表
+        $.onAction('reset').run(() =>
+          $.state.update(() => ({
+            items: [],
+            cursor: null,
+            hasMore: true,
+            isLoading: false,
+          })),
+        ),
+      ],
+      { concurrency: 'unbounded' },
     )
   }),
 )

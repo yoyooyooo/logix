@@ -32,12 +32,12 @@
 
 输出（概要）：
 
-- `moduleId/actionKeys/schemaKeys/logicUnits/source/meta/staticIr/digest`
+- `moduleId/actionKeys/actions/effects?/schemaKeys/logicUnits/source/meta/staticIr/digest`
 
 确定性口径：
 
 - 数组/键排序稳定（用于 diff）。
-- `digest` 只由结构字段决定（不含 `meta/source`），用于 CI 降噪与快速对比。
+- `digest` 只由结构字段决定（不含 `meta/source/staticIr` 本体），用于 CI 降噪与快速对比（但包含 `staticIr.digest`）。
 - 超预算时会 deterministic 地裁剪，并以 `meta.__logix` 标记裁剪信息（truncated/dropped/truncatedArrays）。
 
 ### `Reflection.exportStaticIr(module, options?)`

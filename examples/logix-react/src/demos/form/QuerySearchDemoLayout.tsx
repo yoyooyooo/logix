@@ -31,13 +31,13 @@ const Panel: React.FC = () => {
   // Query 也是 Module：推荐通过 ModuleRef 的 imports.get(...) 在父实例 scope 下解析子模块（避免串实例）。
   const host = useModule(QuerySearchDemoHostModule.impl)
 
-  const runtime = host.imports.get(SearchQuery.tag)
-  const dispatch = useDispatch(runtime)
+  const query = host.imports.get(SearchQuery.tag)
+  const dispatch = useDispatch(query)
 
-  const params = useSelector(runtime, (s) => s.params)
-  const ui = useSelector(runtime, (s) => s.ui)
-  const search = useSelector(runtime, (s) => s.queries.search)
-  const detail = useSelector(runtime, (s) => s.queries.detail)
+  const params = useSelector(query, (s) => s.params)
+  const ui = useSelector(query, (s) => s.ui)
+  const search = useSelector(query, (s) => s.queries.search)
+  const detail = useSelector(query, (s) => s.queries.detail)
 
   const searchData = search.status === 'success' ? search.data : undefined
   const detailData = detail.status === 'success' ? detail.data : undefined
@@ -199,7 +199,7 @@ const Panel: React.FC = () => {
                   <div className="text-sm text-gray-500 dark:text-gray-400">无结果</div>
                 ) : (
                   <div className="divide-y divide-gray-200 dark:divide-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-                    {items.map((item) => (
+                    {items.map((item: any) => (
                       <button
                         key={item.id}
                         type="button"

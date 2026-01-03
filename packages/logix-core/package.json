@@ -16,6 +16,7 @@
     "./Env": "./src/Env.ts",
     "./Flow": "./src/Flow.ts",
     "./Kernel": "./src/Kernel.ts",
+    "./Handle": "./src/Handle.ts",
     "./Link": "./src/Link.ts",
     "./Logic": "./src/Logic.ts",
     "./MatchBuilder": "./src/MatchBuilder.ts",
@@ -75,6 +76,11 @@
         "types": "./dist/Kernel.d.ts",
         "import": "./dist/Kernel.js",
         "require": "./dist/Kernel.cjs"
+      },
+      "./Handle": {
+        "types": "./dist/Handle.d.ts",
+        "import": "./dist/Handle.js",
+        "require": "./dist/Handle.cjs"
       },
       "./Link": {
         "types": "./dist/Link.d.ts",

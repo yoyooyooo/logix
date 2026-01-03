@@ -362,7 +362,7 @@ const defineCrud = <
           Effect.gen(function* () {
             const apiOpt = yield* Effect.serviceOption(services.api)
             if (Option.isNone(apiOpt)) {
-              yield* $.actions.queryFailed(
+              yield* $.dispatchers.queryFailed(
                 `[CRUDModule] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`,
               )
               return
@@ -370,15 +370,15 @@ const defineCrud = <
             const api = apiOpt.value
 
             const result = yield* api.list(action.payload as QueryInput)
-            yield* $.actions.querySucceeded(result)
-          }).pipe(Effect.catchAll((e) => $.actions.queryFailed(toErrorMessage(e)))),
+            yield* $.dispatchers.querySucceeded(result)
+          }).pipe(Effect.catchAll((e) => $.dispatchers.queryFailed(toErrorMessage(e)))),
         )
 
         yield* $.onAction('save').runFork((action) =>
           Effect.gen(function* () {
             const apiOpt = yield* Effect.serviceOption(services.api)
             if (Option.isNone(apiOpt)) {
-              yield* $.actions.saveFailed(
+              yield* $.dispatchers.saveFailed(
                 `[CRUDModule] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`,
               )
               return
@@ -386,15 +386,15 @@ const defineCrud = <
             const api = apiOpt.value
 
             const entity = yield* api.save(action.payload as Entity)
-            yield* $.actions.saveSucceeded(entity)
-          }).pipe(Effect.catchAll((e) => $.actions.saveFailed(toErrorMessage(e)))),
+            yield* $.dispatchers.saveSucceeded(entity)
+          }).pipe(Effect.catchAll((e) => $.dispatchers.saveFailed(toErrorMessage(e)))),
         )
 
         yield* $.onAction('remove').runFork((action) =>
           Effect.gen(function* () {
             const apiOpt = yield* Effect.serviceOption(services.api)
             if (Option.isNone(apiOpt)) {
-              yield* $.actions.removeFailed(
+              yield* $.dispatchers.removeFailed(
                 `[CRUDModule] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`,
               )
               return
@@ -402,8 +402,8 @@ const defineCrud = <
             const api = apiOpt.value
 
             yield* api.remove(action.payload as EntityId)
-            yield* $.actions.removeSucceeded(action.payload as EntityId)
-          }).pipe(Effect.catchAll((e) => $.actions.removeFailed(toErrorMessage(e)))),
+            yield* $.dispatchers.removeSucceeded(action.payload as EntityId)
+          }).pipe(Effect.catchAll((e) => $.dispatchers.removeFailed(toErrorMessage(e)))),
         )
       }),
     { id: 'install' },

@@ -67,6 +67,8 @@ export type Event =
       readonly moduleId?: string
       readonly instanceId?: string
       readonly action: unknown
+      readonly actionTag?: string
+      readonly unknownAction?: boolean
       readonly txnSeq?: number
       readonly txnId?: string
       readonly runtimeLabel?: string
@@ -957,19 +959,27 @@ export const toRuntimeDebugEventRef = (
     }
     case 'action:dispatch': {
       const action: any = (event as any).action
-      const tag = action?._tag ?? action?.type ?? 'action:dispatch'
-      const label = String(tag)
-      const metaInput = isLightLike ? { actionTag: label } : { action }
+      const actionTagRaw = (event as any).actionTag
+      const tag = typeof actionTagRaw === 'string' && actionTagRaw.length > 0 ? actionTagRaw : (action?._tag ?? action?.type)
+      const label = String(tag ?? 'action:dispatch')
+      const labelNormalized = label.length > 0 ? label : 'unknown'
+      const unknownAction = (event as any).unknownAction === true ? true : undefined
+      const metaInput = isLightLike
+        ? { actionTag: labelNormalized, ...(unknownAction ? { unknownAction: true } : {}) }
+        : { action, ...(unknownAction ? { unknownAction: true } : {}) }
       const metaProjection = projectJsonValue(metaInput)
       options?.onMetaProjection?.({
         stats: metaProjection.stats,
         downgrade: metaProjection.downgrade,
       })
       downgrade = mergeDowngrade(downgrade, metaProjection.downgrade)
+      if (unknownAction) {
+        downgrade = mergeDowngrade(downgrade, 'unknown')
+      }
       return withDowngrade({
         ...base,
         kind: 'action',
-        label,
+        label: labelNormalized,
         meta: metaProjection.value,
       })
     }

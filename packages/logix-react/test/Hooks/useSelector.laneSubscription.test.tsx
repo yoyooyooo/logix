@@ -65,7 +65,7 @@ describe('useSelector(lane subscription)', () => {
     const baselineDynamicCalls = dynamicCalls
 
     await act(async () => {
-      result.current.rt.actions.bumpOther()
+      result.current.rt.dispatchers.bumpOther()
     })
 
     await waitFor(() => {

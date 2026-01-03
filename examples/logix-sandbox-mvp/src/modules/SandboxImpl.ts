@@ -14,19 +14,19 @@ const CounterActions = { inc: Schema.Void };
 const CounterDef = Logix.Module.make("Counter", {
 	state: CounterState,
 	actions: CounterActions,
-	reducers: {
-		inc: Logix.Module.Reducer.mutate((draft) => {
+	immerReducers: {
+		inc: (draft) => {
 			draft.count += 1;
-		}),
+		},
 	},
 });
 
 const CounterLogic = CounterDef.logic(($) => ({
 	setup: Effect.void,
 	run: Effect.gen(function* () {
-		// 两种写法等价：直接 dispatch Action 或调用 reducers
-		yield* $.actions.dispatch({ _tag: "inc", payload: undefined });
-		yield* $.actions.inc();
+		// 两种写法等价：直接 dispatch Action 或使用 dispatchers
+		yield* $.dispatch({ _tag: "inc", payload: undefined });
+		yield* $.dispatchers.inc();
 	}),
 }));
 

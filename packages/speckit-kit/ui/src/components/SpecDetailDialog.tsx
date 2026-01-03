@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { MotionDialog, MotionDialogContent } from './ui/motion-dialog'
 
 import type { ArtifactName, SpecListItem, TaskItem } from '../api/client'
 import {
@@ -11,6 +12,10 @@ import {
 } from '../lib/spec-relations'
 import { MarkdownPreview } from './MarkdownPreview'
 import { TasksPreview } from './TasksPreview'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+
+const STORY_HIGHLIGHT_MS = 2000
 
 const ALL_ARTIFACTS = [
   'spec.md',
@@ -39,6 +44,8 @@ function getArtifactSubtitle(name: ArtifactName): string {
 }
 
 interface Props {
+  open: boolean
+  specId: string | null
   spec: SpecListItem | null
   tasks: ReadonlyArray<TaskItem> | undefined
   fileName: ArtifactName
@@ -52,7 +59,10 @@ interface Props {
   artifactExists: Record<string, boolean>
   expandedStoryCode: string | null
   pendingScrollToTaskLine: number | null
+  pendingScrollToStoryLine: number | null
   highlightTaskLine: number | null
+  isFullscreen: boolean
+  onToggleFullscreen: () => void
   onClose: () => void
   onSelectFile: (name: ArtifactName) => void
   onSetViewMode: (mode: 'preview' | 'edit') => void
@@ -61,11 +71,15 @@ interface Props {
   onToggleStory: (storyCode: string) => void
   onJumpToTaskLine: (line: number) => void
   onDidScrollToTaskLine: (line: number) => void
+  onJumpToStoryLine: (line: number) => void
+  onDidScrollToStoryLine: (line: number) => void
   onClearHighlight: () => void
   onOpenTask: (task: TaskItem) => void
 }
 
 export function SpecDetailDialog({
+  open,
+  specId,
   spec,
   tasks,
   fileName,
@@ -79,7 +93,10 @@ export function SpecDetailDialog({
   artifactExists,
   expandedStoryCode,
   pendingScrollToTaskLine,
+  pendingScrollToStoryLine,
   highlightTaskLine,
+  isFullscreen,
+  onToggleFullscreen,
   onClose,
   onSelectFile,
   onSetViewMode,
@@ -88,9 +105,16 @@ export function SpecDetailDialog({
   onToggleStory,
   onJumpToTaskLine,
   onDidScrollToTaskLine,
+  onJumpToStoryLine,
+  onDidScrollToStoryLine,
   onClearHighlight,
   onOpenTask,
 }: Props) {
+  const headerId = spec?.id ?? specId
+  const previewScrollRef = useRef<HTMLDivElement | null>(null)
+  const [highlightStoryLine, setHighlightStoryLine] = useState<number | null>(null)
+  const storyHighlightTimeoutRef = useRef<number | null>(null)
+
   const artifactList = useMemo(() => {
     return ALL_ARTIFACTS.filter((name) => artifactExists[name] === true)
   }, [artifactExists])
@@ -101,6 +125,15 @@ export function SpecDetailDialog({
     if (artifactList.includes(fileName)) return
     onSelectFile(artifactList[0] ?? 'spec.md')
   }, [artifactList, fileName, onSelectFile])
+
+  useEffect(() => {
+    return () => {
+      if (storyHighlightTimeoutRef.current !== null) {
+        window.clearTimeout(storyHighlightTimeoutRef.current)
+        storyHighlightTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   useEffect(() => {
     // if (!open) return
@@ -122,6 +155,44 @@ export function SpecDetailDialog({
 
     return () => window.clearTimeout(timeout)
   }, [viewMode, fileName, pendingScrollToTaskLine, tasks, onDidScrollToTaskLine, onClearHighlight])
+
+  useEffect(() => {
+    if (viewMode !== 'preview') return
+    if (fileName !== 'spec.md') return
+    if (pendingScrollToStoryLine === null) return
+
+    const root = previewScrollRef.current
+    if (!root) return
+
+    const selector = [
+      `h1[data-md-line="${pendingScrollToStoryLine}"]`,
+      `h2[data-md-line="${pendingScrollToStoryLine}"]`,
+      `h3[data-md-line="${pendingScrollToStoryLine}"]`,
+      `h4[data-md-line="${pendingScrollToStoryLine}"]`,
+      `h5[data-md-line="${pendingScrollToStoryLine}"]`,
+      `h6[data-md-line="${pendingScrollToStoryLine}"]`,
+      `[data-md-line="${pendingScrollToStoryLine}"]`,
+    ].join(', ')
+    const el = root.querySelector(selector)
+    if (!(el instanceof HTMLElement)) return
+
+    const line = pendingScrollToStoryLine
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      onDidScrollToStoryLine(line)
+
+      setHighlightStoryLine(line)
+      if (storyHighlightTimeoutRef.current !== null) {
+        window.clearTimeout(storyHighlightTimeoutRef.current)
+        storyHighlightTimeoutRef.current = null
+      }
+
+      storyHighlightTimeoutRef.current = window.setTimeout(() => {
+        setHighlightStoryLine((cur) => (cur === line ? null : cur))
+        storyHighlightTimeoutRef.current = null
+      }, STORY_HIGHLIGHT_MS)
+    })
+  }, [viewMode, fileName, pendingScrollToStoryLine, content, onDidScrollToStoryLine])
 
   const stories = useMemo(() => parseUserStories(specMarkdown), [specMarkdown])
   const storyByCode = useMemo(() => new Map(stories.map((s) => [s.code, s])), [stories])
@@ -158,6 +229,15 @@ export function SpecDetailDialog({
   }, [tasks])
 
   const storySections = useMemo(() => {
+    const allStoryCodes = Array.from(new Set<string>([...grouped.storyCodes, ...Array.from(storyByCode.keys())])).sort(
+      (a, b) => {
+        const ai = Number.parseInt(a.replace(/^US/, ''), 10)
+        const bi = Number.parseInt(b.replace(/^US/, ''), 10)
+        if (Number.isFinite(ai) && Number.isFinite(bi)) return ai - bi
+        return a.localeCompare(b)
+      },
+    )
+
     const sections: Array<{
       readonly storyCode: string
       readonly storyTitle: string
@@ -168,7 +248,7 @@ export function SpecDetailDialog({
       readonly missingInSpec: boolean
     }> = []
 
-    for (const storyCode of grouped.storyCodes) {
+    for (const storyCode of allStoryCodes) {
       const storyDef = storyByCode.get(storyCode) ?? null
       const storyTasks = grouped.byStory.get(storyCode) ?? []
       const refStats = computeRefStats(storyTasks)
@@ -197,372 +277,460 @@ export function SpecDetailDialog({
     }
   }, [grouped.unassigned])
 
-  if (!spec) return null
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-40 overflow-hidden"
-    >
-      <div
-        className="absolute inset-0 bg-zinc-900/20 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
-      />
-
-      <div className="absolute inset-y-0 right-0 flex max-w-full pl-10">
-        <motion.div
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300, mass: 0.8 }}
-          className="w-[90vw] max-w-[1400px]"
-        >
-          <div className="flex h-full flex-col bg-[var(--surface-base)] shadow-[0_0_40px_-10px_rgba(0,0,0,0.1)]">
-            {/* Header */}
-            <div className="flex-none border-b border-[var(--border-subtle)] bg-[var(--surface-float)] px-6 py-4 backdrop-blur-md">
-              <div className="flex items-start justify-between gap-6">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-6 min-w-6 items-center justify-center rounded bg-[var(--intent-primary-bg)] px-1.5 font-mono text-xs font-bold text-[var(--text-secondary)]">
-                      {String(spec.num).padStart(3, '0')}
-                    </span>
-                    <div className="truncate text-lg font-semibold text-[var(--text-primary)]">{spec.title}</div>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 pl-9">
-                    <span className="font-mono text-xs text-[var(--text-tertiary)] opacity-60">{spec.id}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="rounded-full p-2 text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] transition-colors"
-                  onClick={onClose}
-                >
-                  <span className="sr-only">Close</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-1 overflow-hidden">
-              {/* Sidebar */}
-              <div className="flex w-[200px] shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--surface-base)]">
-                <div className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                  Artifacts
-                </div>
-                <div className="scrollbar-none flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
-                  {artifactList.map((name) => {
-                    const active = fileName === name
-                    return (
-                      <button
-                        key={name}
-                        type="button"
-                        className={
-                          active
-                            ? 'group w-full rounded-lg bg-[var(--surface-card)] px-3 py-2.5 text-left shadow-sm ring-1 ring-black/5'
-                            : 'group w-full rounded-lg px-3 py-2.5 text-left hover:bg-[var(--surface-hover)] transition-colors'
-                        }
-                        onClick={() => onSelectFile(name)}
-                      >
-                        <div
-                          className={`font-mono text-[13px] ${active ? 'font-medium text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}
-                        >
-                          {name}
-                        </div>
-                        <div
-                          className={`mt-0.5 text-[11px] ${active ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]'}`}
-                        >
-                          {getArtifactSubtitle(name)}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Middle Column: Task List */}
-              <div className="flex w-[440px] shrink-0 flex-col border-r border-zinc-200 bg-zinc-50">
-                <div className="border-b border-zinc-200 px-4 py-3">
-                  <div className="text-xs font-semibold text-zinc-700">编号关联（US → Tasks → Refs）</div>
-                  {specError ? (
-                    <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] text-red-700">
-                      {specError}
-                    </div>
-                  ) : null}
-                  {loadingSpec ? <div className="mt-2 text-[11px] text-zinc-500">加载 spec.md…</div> : null}
-                  {tasks === undefined ? <div className="mt-1 text-[11px] text-zinc-500">加载 tasks…</div> : null}
-                </div>
-
-                <div className="scrollbar-none flex-1 overflow-y-auto p-4">
-                  {storySections.length === 0 && !unassignedSection ? (
-                    <div className="text-sm text-zinc-500">当前 spec 未发现可关联的任务（或 tasks 尚未加载）。</div>
-                  ) : null}
-
-                  <div className="flex flex-col gap-3">
-                    {storySections.map((sec) => (
-                      <div key={sec.storyCode} className="rounded-xl border border-zinc-200 bg-white p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex min-w-0 items-start gap-2">
-                              <span
-                                className={
-                                  sec.missingInSpec
-                                    ? 'mt-0.5 shrink-0 rounded bg-red-50 px-1.5 py-0.5 font-mono text-[11px] text-red-700'
-                                    : 'mt-0.5 shrink-0 rounded bg-sky-50 px-1.5 py-0.5 font-mono text-[11px] text-sky-700'
-                                }
-                              >
-                                {sec.storyCode}
-                              </span>
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-zinc-900">{sec.storyTitle}</div>
-                                <div className="mt-1 text-[11px] text-zinc-500">
-                                  {sec.missingInSpec
-                                    ? '未在 spec.md 中找到对应 User Story 标题'
-                                    : `spec.md#L${sec.storyLine ?? 1}`}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex shrink-0 items-start gap-2">
-                            <div className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700">
-                              {sec.stats.done}/{sec.stats.total}
-                            </div>
-                            <button
-                              type="button"
-                              className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700 hover:bg-zinc-50"
-                              onClick={() => onToggleStory(sec.storyCode)}
-                            >
-                              {expandedStoryCode === sec.storyCode ? '收起' : '展开'}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-zinc-100">
-                          <div
-                            className="h-full bg-emerald-500"
-                            style={{
-                              width:
-                                sec.stats.total > 0 ? `${Math.round((sec.stats.done / sec.stats.total) * 100)}%` : '0%',
-                            }}
-                          />
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {sec.tasks.map((t) => {
-                            const title = getDisplayTitle(t)
-                            return (
-                              <button
-                                key={t.line}
-                                type="button"
-                                className={
-                                  t.checked
-                                    ? 'rounded bg-emerald-50 px-2 py-1 text-[11px] text-emerald-700 hover:bg-emerald-100'
-                                    : 'rounded bg-zinc-100 px-2 py-1 text-[11px] text-zinc-700 hover:bg-zinc-200'
-                                }
-                                title={t.taskId ? `${t.taskId} · ${title}` : title}
-                                onClick={() => onJumpToTaskLine(t.line)}
-                              >
-                                {t.taskId ?? `L${t.line}`}
-                              </button>
-                            )
-                          })}
-                        </div>
-
-                        {sec.refStats.length > 0 ? (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {sec.refStats.map((r) => (
-                              <span
-                                key={r.code}
-                                className="rounded border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700"
-                                title={`${r.done}/${r.total}`}
-                              >
-                                {r.code} {r.done}/{r.total}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-
-                        {expandedStoryCode === sec.storyCode ? (
-                          <div className="mt-3 space-y-2">
-                            {sec.tasks.map((t) => {
-                              const title = getDisplayTitle(t)
-                              const refs = extractRefsFromTaskRaw(t.raw)
-                              return (
-                                <div key={t.line} className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
-                                  <div className="flex items-start gap-2">
-                                    <button
-                                      type="button"
-                                      className="min-w-0 flex-1 break-words text-left text-sm text-zinc-900 hover:underline"
-                                      onClick={() => onOpenTask(t)}
-                                    >
-                                      <span className={t.checked ? 'line-through text-zinc-500' : undefined}>
-                                        {t.taskId ? `${t.taskId} · ${title}` : title}
-                                      </span>
-                                    </button>
-                                    <span className="shrink-0 font-mono text-[11px] text-zinc-500">L{t.line}</span>
-                                  </div>
-                                  {refs.length > 0 ? (
-                                    <div className="mt-2 flex flex-wrap gap-1">
-                                      {refs.map((r) => (
-                                        <span
-                                          key={r}
-                                          className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-600"
-                                        >
-                                          {r}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        ) : null}
+    <MotionDialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <MotionDialogContent
+        className={
+          isFullscreen
+            ? 'fixed inset-0 h-full w-full sm:max-w-none rounded-none border-none shadow-none outline-none'
+            : 'w-[1200px] sm:max-w-none rounded-none border-l border-border bg-background shadow-none outline-none'
+        }
+        overlayClassName={isFullscreen ? 'hidden' : 'bg-foreground/20 transition-opacity duration-300'}
+        motionProps={{
+          initial: isFullscreen ? false : { x: '100%' },
+          animate: { x: 0 },
+          exit: isFullscreen ? { x: 0 } : { x: '100%' },
+          transition: isFullscreen ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 40 },
+        }}
+        aria-describedby={undefined}
+      >
+        <DialogPrimitive.Title className="sr-only">Spec Detail</DialogPrimitive.Title>
+        <div className={isFullscreen ? 'absolute inset-0' : 'h-full w-full'}>
+          {specId ? (
+            <div className={isFullscreen ? 'flex h-full flex-col bg-background' : 'flex h-full flex-col bg-background'}>
+              {/* Header */}
+              <div className="relative flex-none overflow-hidden border-b-4 border-double border-border/40 bg-background px-6 py-5">
+                <div className="relative z-10 flex items-start justify-between gap-6">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3">
+                      <div className="font-mono text-xs font-bold text-muted-foreground opacity-50">
+                        {spec ? String(spec.num).padStart(3, '0') : '---'}
                       </div>
-                    ))}
+                      <div className="truncate text-2xl font-bold font-serif tracking-tight text-foreground">
+                        {spec?.title ?? '—'}
+                      </div>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      {headerId ? (
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground opacity-70">
+                          {headerId}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-none border border-transparent hover:border-border hover:bg-muted focus-visible:ring-0"
+                      onClick={onToggleFullscreen}
+                      aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                    >
+                      {isFullscreen ? (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 3H5a2 2 0 0 0-2 2v4m18 0V5a2 2 0 0 0-2-2h-4M3 15v4a2 2 0 0 0 2 2h4m10 0h4a2 2 0 0 0 2-2v-4"
+                          />
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"
+                          />
+                        </svg>
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-none border border-transparent hover:border-border hover:bg-destructive/10 hover:text-destructive focus-visible:ring-0"
+                      onClick={onClose}
+                      aria-label="Close"
+                    >
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </Button>
+                  </div>
+                </div>
 
-                    {unassignedSection ? (
-                      <div className="rounded-xl border border-zinc-200 bg-white p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex min-w-0 items-start gap-2">
-                              <span className="mt-0.5 shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700">
-                                未分配
-                              </span>
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-zinc-900">
-                                  没有 [USn] 标记的任务
-                                </div>
-                                <div className="mt-1 text-[11px] text-zinc-500">tasks.md 中没有 `[USn]` 标记</div>
-                              </div>
-                            </div>
+                {/* Watermark Stamp */}
+                {spec?.taskStats && (
+                  <div
+                    className={`pointer-events-none absolute right-16 top-2 select-none border-4 border-double px-2 py-1 font-mono text-sm font-black uppercase tracking-widest opacity-20 transition-opacity duration-300 md:right-32 md:top-4 md:text-xl md:opacity-10 ${
+                      spec.taskStats.todo === 0
+                        ? 'rotate-12 border-success text-success'
+                        : '-rotate-12 border-foreground text-foreground'
+                    }`}
+                  >
+                    {spec.taskStats.todo === 0 ? 'PASSED' : 'WORK IN PROGRESS'}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-1 overflow-hidden">
+                {/* Sidebar */}
+                <div className="flex w-[200px] shrink-0 flex-col border-r border-border/50 bg-background">
+                  <div className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Artifacts
+                  </div>
+                  <div className="scrollbar-none flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
+                    {artifactList.map((name) => {
+                      const active = fileName === name
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          className={
+                            active
+                              ? 'group w-full border-l-2 border-foreground bg-muted/30 px-4 py-3 text-left transition-all duration-300'
+                              : 'group w-full border-l-2 border-transparent px-4 py-3 text-left transition-all duration-300 hover:bg-muted/10 hover:border-border/50'
+                          }
+                          onClick={() => onSelectFile(name)}
+                        >
+                          <div
+                            className={`font-mono text-[13px] ${active ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
+                          >
+                            {name}
                           </div>
-
-                          <div className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700">
-                            {unassignedSection.stats.done}/{unassignedSection.stats.total}
+                          <div
+                            className={`mt-0.5 text-[11px] ${active ? 'text-muted-foreground' : 'text-muted-foreground/70 group-hover:text-muted-foreground'}`}
+                          >
+                            {getArtifactSubtitle(name)}
                           </div>
-                        </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
 
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {unassignedSection.tasks.map((t) => {
-                            const title = getDisplayTitle(t)
-                            return (
-                              <button
-                                key={t.line}
-                                type="button"
-                                className={
-                                  t.checked
-                                    ? 'rounded bg-emerald-50 px-2 py-1 text-[11px] text-emerald-700 hover:bg-emerald-100'
-                                    : 'rounded bg-zinc-100 px-2 py-1 text-[11px] text-zinc-700 hover:bg-zinc-200'
-                                }
-                                title={t.taskId ? `${t.taskId} · ${title}` : title}
-                                onClick={() => onJumpToTaskLine(t.line)}
-                              >
-                                {t.taskId ?? `L${t.line}`}
-                              </button>
-                            )
-                          })}
-                        </div>
-
-                        {unassignedSection.refStats.length > 0 ? (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {unassignedSection.refStats.map((r) => (
-                              <span
-                                key={r.code}
-                                className="rounded border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700"
-                                title={`${r.done}/${r.total}`}
-                              >
-                                {r.code} {r.done}/{r.total}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
+                {/* Middle Column: Task List */}
+                <div className="flex w-[480px] shrink-0 flex-col border-r border-border/30 bg-background">
+                  <div className="flex h-12 flex-none items-center border-b border-border/30 px-4">
+                    <div className="text-xs font-semibold text-foreground">编号关联（US → Tasks → Refs）</div>
+                    {specError ? (
+                      <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
+                        {specError}
                       </div>
                     ) : null}
                   </div>
-                </div>
-              </div>
 
-              {/* Right Column: Preview/Edit */}
-              <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white">
-                <div className="border-b border-zinc-200 px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate font-mono text-xs text-zinc-700">{fileName}</div>
+                  <div className="scrollbar-none flex-1 overflow-y-auto p-4">
+                    {tasks !== undefined && storySections.length === 0 && !unassignedSection ? (
+                      <div className="text-sm text-muted-foreground">当前 spec 未发现可关联的任务。</div>
+                    ) : null}
+
+                    <div className="flex flex-col gap-0 divide-y divide-dashed divide-border/40">
+                      {storySections.map((sec) => (
+                        <div
+                          key={sec.storyCode}
+                          className="py-6 px-2 transition-colors duration-500 hover:bg-muted/5 group"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex min-w-0 items-start gap-2">
+                                {sec.storyLine !== null ? (
+                                  <button
+                                    type="button"
+                                    className={
+                                      sec.missingInSpec
+                                        ? 'mt-0.5 shrink-0 cursor-pointer rounded-sm border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground'
+                                        : 'mt-0.5 shrink-0 cursor-pointer rounded-sm border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground hover:text-background'
+                                    }
+                                    onClick={() => onJumpToStoryLine(sec.storyLine ?? 1)}
+                                  >
+                                    {sec.storyCode}
+                                  </button>
+                                ) : (
+                                  <span
+                                    className={
+                                      sec.missingInSpec
+                                        ? 'mt-0.5 shrink-0 rounded-sm border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive'
+                                        : 'mt-0.5 shrink-0 rounded-sm border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground'
+                                    }
+                                  >
+                                    {sec.storyCode}
+                                  </span>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-semibold text-foreground">{sec.storyTitle}</div>
+                                  <div className="mt-1 text-[11px] text-muted-foreground">
+                                    {sec.missingInSpec
+                                      ? '未在 spec.md 中找到对应 User Story 标题'
+                                      : `spec.md#L${sec.storyLine ?? 1}`}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex shrink-0 items-start gap-2">
+                              <Badge variant="outline" className="font-mono text-[11px]">
+                                {sec.stats.done}/{sec.stats.total}
+                              </Badge>
+                              {sec.tasks.length > 0 ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 py-0.5 text-[11px]"
+                                  onClick={() => onToggleStory(sec.storyCode)}
+                                >
+                                  {expandedStoryCode === sec.storyCode ? '收起' : '展开'}
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-border/40">
+                            <div
+                              className="h-full bg-success"
+                              style={{
+                                width:
+                                  sec.stats.total > 0
+                                    ? `${Math.round((sec.stats.done / sec.stats.total) * 100)}%`
+                                    : '0%',
+                              }}
+                            />
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {sec.tasks.map((t) => {
+                              const title = getDisplayTitle(t)
+                              return (
+                                <button
+                                  key={t.line}
+                                  type="button"
+                                  className={
+                                    t.checked
+                                      ? 'rounded bg-success/10 px-2 py-1 text-[11px] text-success-foreground hover:bg-success/15'
+                                      : 'rounded bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent'
+                                  }
+                                  title={t.taskId ? `${t.taskId} · ${title}` : title}
+                                  onClick={() => onJumpToTaskLine(t.line)}
+                                >
+                                  {t.taskId ?? `L${t.line}`}
+                                </button>
+                              )
+                            })}
+                          </div>
+
+                          {sec.refStats.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {sec.refStats.map((r) => (
+                                <Badge
+                                  key={r.code}
+                                  variant="outline"
+                                  className="font-mono text-[11px]"
+                                  title={`${r.done}/${r.total}`}
+                                >
+                                  {r.code} {r.done}/{r.total}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {sec.tasks.length > 0 && expandedStoryCode === sec.storyCode ? (
+                            <div className="mt-3 space-y-2">
+                              {sec.tasks.map((t) => {
+                                const title = getDisplayTitle(t)
+                                const refs = extractRefsFromTaskRaw(t.raw)
+                                return (
+                                  <div
+                                    key={t.line}
+                                    className="group/task flex flex-col p-2 transition-colors duration-300 hover:bg-muted/20 border-l-2 border-transparent hover:border-accent/50"
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <button
+                                        type="button"
+                                        className="min-w-0 flex-1 break-words text-left text-sm text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-lg"
+                                        onClick={() => onOpenTask(t)}
+                                      >
+                                        <span
+                                          className={
+                                            t.checked ? 'line-through text-muted-foreground opacity-80' : undefined
+                                          }
+                                        >
+                                          {t.taskId ? `${t.taskId} · ${title}` : title}
+                                        </span>
+                                      </button>
+                                      <span className="shrink-0 font-mono text-[11px] text-muted-foreground opacity-70">
+                                        L{t.line}
+                                      </span>
+                                    </div>
+                                    {refs.length > 0 ? (
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        {refs.map((r) => (
+                                          <Badge
+                                            key={r}
+                                            variant="outline"
+                                            className="font-mono text-[11px] text-muted-foreground"
+                                          >
+                                            {r}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+
+                      {unassignedSection ? (
+                        <div className="py-6 px-2 border-t border-dashed border-border/40">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex min-w-0 items-start gap-2">
+                                <Badge variant="outline" className="mt-0.5 shrink-0 font-mono text-[11px]">
+                                  未分配
+                                </Badge>
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-semibold text-foreground">
+                                    没有 [USn] 标记的任务
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-muted-foreground">
+                                    tasks.md 中没有 `[USn]` 标记
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <Badge variant="outline" className="font-mono text-[11px]">
+                              {unassignedSection.stats.done}/{unassignedSection.stats.total}
+                            </Badge>
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {unassignedSection.tasks.map((t) => {
+                              const title = getDisplayTitle(t)
+                              return (
+                                <button
+                                  key={t.line}
+                                  type="button"
+                                  className={
+                                    t.checked
+                                      ? 'rounded bg-success/10 px-2 py-1 text-[11px] text-success-foreground hover:bg-success/15'
+                                      : 'rounded bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent'
+                                  }
+                                  title={t.taskId ? `${t.taskId} · ${title}` : title}
+                                  onClick={() => onJumpToTaskLine(t.line)}
+                                >
+                                  {t.taskId ?? `L${t.line}`}
+                                </button>
+                              )
+                            })}
+                          </div>
+
+                          {unassignedSection.refStats.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {unassignedSection.refStats.map((r) => (
+                                <Badge
+                                  key={r.code}
+                                  variant="outline"
+                                  className="font-mono text-[11px]"
+                                  title={`${r.done}/${r.total}`}
+                                >
+                                  {r.code} {r.done}/{r.total}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="ml-auto flex items-center gap-2">
-                      <div className="flex overflow-hidden rounded-md border border-zinc-200 bg-white text-xs">
+                  </div>
+                </div>
+
+                {/* Right Column: Preview/Edit */}
+                <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-card">
+                  <div className="flex h-12 flex-none items-center justify-between border-b border-border/30 bg-card px-4">
+                    <div className="min-w-0">
+                      <div className="truncate font-mono text-xs text-muted-foreground">{fileName}</div>
+                    </div>
+                    <div className="ml-auto flex items-center gap-3">
+                      {viewMode === 'edit' ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 border-border px-3 font-mono text-[10px] tracking-wider hover:bg-foreground hover:text-background"
+                          disabled={loadingFile}
+                          onClick={onSave}
+                        >
+                          SAVE
+                        </Button>
+                      ) : null}
+
+                      <div className="flex items-center border border-border bg-background">
                         <button
                           type="button"
                           className={
                             viewMode === 'preview'
-                              ? 'bg-zinc-900 px-2 py-1 text-white'
-                              : 'px-2 py-1 text-zinc-700 hover:bg-zinc-50'
+                              ? 'bg-foreground px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-background transition-colors'
+                              : 'bg-transparent px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
                           }
                           onClick={() => onSetViewMode('preview')}
                         >
-                          预览
+                          PREVIEW
                         </button>
+                        <div className="h-3 w-px bg-border" />
                         <button
                           type="button"
                           className={
                             viewMode === 'edit'
-                              ? 'bg-zinc-900 px-2 py-1 text-white'
-                              : 'px-2 py-1 text-zinc-700 hover:bg-zinc-50'
+                              ? 'bg-foreground px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-background transition-colors'
+                              : 'bg-transparent px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
                           }
                           onClick={() => onSetViewMode('edit')}
                         >
-                          编辑
+                          EDIT
                         </button>
                       </div>
-
-                      {viewMode === 'edit' ? (
-                        <button
-                          type="button"
-                          className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
-                          disabled={loadingFile}
-                          onClick={onSave}
-                        >
-                          保存
-                        </button>
-                      ) : null}
                     </div>
                   </div>
                   {fileError ? (
-                    <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                       {fileError}
                     </div>
                   ) : null}
-                </div>
 
-                <div className="flex-1 overflow-hidden">
-                  {viewMode === 'edit' ? (
-                    <textarea
-                      className="h-full w-full resize-none border-0 bg-white p-4 font-mono text-xs leading-5 text-zinc-900 outline-none"
-                      value={content}
-                      onChange={(e) => onChangeContent(e.target.value)}
-                      placeholder={loadingFile ? '加载中…' : '文件内容'}
-                    />
-                  ) : (
-                    <div className="scrollbar-none h-full overflow-y-auto p-4">
-                      {fileName === 'tasks.md' && tasks ? (
-                        <TasksPreview tasks={tasks} highlightLine={highlightTaskLine} onOpenTask={onOpenTask} />
-                      ) : (
-                        <MarkdownPreview markdown={content} />
-                      )}
-                    </div>
-                  )}
+                  <div className="flex-1 overflow-hidden">
+                    {viewMode === 'edit' ? (
+                      <textarea
+                        className="h-full w-full resize-none border-0 bg-transparent p-4 font-mono text-xs leading-5 text-foreground outline-none placeholder:text-muted-foreground"
+                        value={content}
+                        onChange={(e) => onChangeContent(e.target.value)}
+                        placeholder={loadingFile ? '加载中…' : '文件内容'}
+                      />
+                    ) : (
+                      <div ref={previewScrollRef} className="scrollbar-none h-full overflow-y-auto p-4">
+                        {fileName === 'tasks.md' && tasks ? (
+                          <TasksPreview tasks={tasks} highlightLine={highlightTaskLine} onOpenTask={onOpenTask} />
+                        ) : (
+                          <MarkdownPreview
+                            markdown={content}
+                            highlightLine={fileName === 'spec.md' ? highlightStoryLine : null}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </motion.div>
-      </div>
-    </motion.div>
+          ) : null}
+        </div>
+      </MotionDialogContent>
+    </MotionDialog>
   )
 }

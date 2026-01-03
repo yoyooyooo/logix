@@ -66,19 +66,19 @@ export const ProjectGroupsDef = Logix.Module.make('GalaxyProjectGroups', {
 
 export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
   const clearAll = Effect.gen(function* () {
-    yield* $.actions.setGroups([])
-    yield* $.actions.setGroupsError(null)
-    yield* $.actions.setGroupsLoading(false)
-    yield* $.actions.setSelectedGroupId(null)
-    yield* $.actions.setSelectedGroupMembers([])
-    yield* $.actions.setMembersError(null)
-    yield* $.actions.setMembersLoading(false)
+    yield* $.dispatchers.setGroups([])
+    yield* $.dispatchers.setGroupsError(null)
+    yield* $.dispatchers.setGroupsLoading(false)
+    yield* $.dispatchers.setSelectedGroupId(null)
+    yield* $.dispatchers.setSelectedGroupMembers([])
+    yield* $.dispatchers.setMembersError(null)
+    yield* $.dispatchers.setMembersLoading(false)
   })
 
   const loadGroups = (token: string, projectId: number) =>
     Effect.gen(function* () {
-      yield* $.actions.setGroupsLoading(true)
-      yield* $.actions.setGroupsError(null)
+      yield* $.dispatchers.setGroupsLoading(true)
+      yield* $.dispatchers.setGroupsError(null)
 
       const listEither = yield* Effect.tryPromise({
         try: () => galaxyApi.projectGroupList(token, projectId),
@@ -86,21 +86,21 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
       }).pipe(Effect.either)
 
       if (listEither._tag === 'Left') {
-        yield* $.actions.setGroups([])
-        yield* $.actions.setGroupsError(galaxyApi.toMessage(listEither.left))
-        yield* $.actions.setGroupsLoading(false)
+        yield* $.dispatchers.setGroups([])
+        yield* $.dispatchers.setGroupsError(galaxyApi.toMessage(listEither.left))
+        yield* $.dispatchers.setGroupsLoading(false)
         return
       }
 
-      yield* $.actions.setGroups(listEither.right as any)
-      yield* $.actions.setGroupsLoading(false)
+      yield* $.dispatchers.setGroups(listEither.right as any)
+      yield* $.dispatchers.setGroupsLoading(false)
     })
 
   const loadGroupMembers = (token: string, projectId: number, groupId: number) =>
     Effect.gen(function* () {
-      yield* $.actions.setMembersLoading(true)
-      yield* $.actions.setMembersError(null)
-      yield* $.actions.setSelectedGroupMembers([])
+      yield* $.dispatchers.setMembersLoading(true)
+      yield* $.dispatchers.setMembersError(null)
+      yield* $.dispatchers.setSelectedGroupMembers([])
 
       const listEither = yield* Effect.tryPromise({
         try: () => galaxyApi.projectGroupMemberList(token, projectId, groupId),
@@ -108,13 +108,13 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
       }).pipe(Effect.either)
 
       if (listEither._tag === 'Left') {
-        yield* $.actions.setMembersError(galaxyApi.toMessage(listEither.left))
-        yield* $.actions.setMembersLoading(false)
+        yield* $.dispatchers.setMembersError(galaxyApi.toMessage(listEither.left))
+        yield* $.dispatchers.setMembersLoading(false)
         return
       }
 
-      yield* $.actions.setSelectedGroupMembers(listEither.right as any)
-      yield* $.actions.setMembersLoading(false)
+      yield* $.dispatchers.setSelectedGroupMembers(listEither.right as any)
+      yield* $.dispatchers.setMembersLoading(false)
     })
 
   return {
@@ -133,8 +133,8 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
                 : Effect.gen(function* () {
                     const token = yield* auth.read((s) => s.token)
                     if (!token) return yield* clearAll
-                    yield* $.actions.setSelectedGroupId(null)
-                    yield* $.actions.setSelectedGroupMembers([])
+                    yield* $.dispatchers.setSelectedGroupId(null)
+                    yield* $.dispatchers.setSelectedGroupMembers([])
                     yield* loadGroups(token, projectId)
                   }),
           ),
@@ -154,8 +154,8 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
 
-              yield* $.actions.setGroupsLoading(true)
-              yield* $.actions.setGroupsError(null)
+              yield* $.dispatchers.setGroupsLoading(true)
+              yield* $.dispatchers.setGroupsError(null)
 
               const createEither = yield* Effect.tryPromise({
                 try: () => galaxyApi.projectGroupCreate(token, projectId, action.payload),
@@ -163,16 +163,16 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               }).pipe(Effect.either)
 
               if (createEither._tag === 'Left') {
-                yield* $.actions.setGroupsError(galaxyApi.toMessage(createEither.left))
-                yield* $.actions.setGroupsLoading(false)
+                yield* $.dispatchers.setGroupsError(galaxyApi.toMessage(createEither.left))
+                yield* $.dispatchers.setGroupsLoading(false)
                 return
               }
 
-              yield* $.actions.setGroupsLoading(false)
+              yield* $.dispatchers.setGroupsLoading(false)
               yield* loadGroups(token, projectId)
               yield* projects.actions.refreshAccess()
             }),
-          ),
+        ),
 
           $.onAction('updateGroup').runLatest((action) =>
             Effect.gen(function* () {
@@ -180,8 +180,8 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
 
-              yield* $.actions.setGroupsLoading(true)
-              yield* $.actions.setGroupsError(null)
+              yield* $.dispatchers.setGroupsLoading(true)
+              yield* $.dispatchers.setGroupsError(null)
 
               const updateEither = yield* Effect.tryPromise({
                 try: () =>
@@ -193,16 +193,16 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               }).pipe(Effect.either)
 
               if (updateEither._tag === 'Left') {
-                yield* $.actions.setGroupsError(galaxyApi.toMessage(updateEither.left))
-                yield* $.actions.setGroupsLoading(false)
+                yield* $.dispatchers.setGroupsError(galaxyApi.toMessage(updateEither.left))
+                yield* $.dispatchers.setGroupsLoading(false)
                 return
               }
 
-              yield* $.actions.setGroupsLoading(false)
+              yield* $.dispatchers.setGroupsLoading(false)
               yield* loadGroups(token, projectId)
               yield* projects.actions.refreshAccess()
             }),
-          ),
+        ),
 
           $.onAction('deleteGroup').runLatest((action) =>
             Effect.gen(function* () {
@@ -210,8 +210,8 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
 
-              yield* $.actions.setGroupsLoading(true)
-              yield* $.actions.setGroupsError(null)
+              yield* $.dispatchers.setGroupsLoading(true)
+              yield* $.dispatchers.setGroupsError(null)
 
               const deleteEither = yield* Effect.tryPromise({
                 try: () => galaxyApi.projectGroupDelete(token, projectId, action.payload),
@@ -219,23 +219,23 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               }).pipe(Effect.either)
 
               if (deleteEither._tag === 'Left') {
-                yield* $.actions.setGroupsError(galaxyApi.toMessage(deleteEither.left))
-                yield* $.actions.setGroupsLoading(false)
+                yield* $.dispatchers.setGroupsError(galaxyApi.toMessage(deleteEither.left))
+                yield* $.dispatchers.setGroupsLoading(false)
                 return
               }
 
-              yield* $.actions.setGroupsLoading(false)
+              yield* $.dispatchers.setGroupsLoading(false)
               yield* loadGroups(token, projectId)
               yield* projects.actions.refreshAccess()
             }),
-          ),
+        ),
 
           $.onAction('selectGroup').runLatest((action) =>
             Effect.gen(function* () {
               const nextId = action.payload
-              yield* $.actions.setSelectedGroupId(nextId)
-              yield* $.actions.setSelectedGroupMembers([])
-              yield* $.actions.setMembersError(null)
+              yield* $.dispatchers.setSelectedGroupId(nextId)
+              yield* $.dispatchers.setSelectedGroupMembers([])
+              yield* $.dispatchers.setMembersError(null)
 
               const token = yield* auth.read((s) => s.token)
               const projectId = yield* projects.read((s) => s.selectedProjectId)
@@ -260,8 +260,8 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
 
-              yield* $.actions.setMembersLoading(true)
-              yield* $.actions.setMembersError(null)
+              yield* $.dispatchers.setMembersLoading(true)
+              yield* $.dispatchers.setMembersError(null)
 
               const addEither = yield* Effect.tryPromise({
                 try: () =>
@@ -272,16 +272,16 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               }).pipe(Effect.either)
 
               if (addEither._tag === 'Left') {
-                yield* $.actions.setMembersError(galaxyApi.toMessage(addEither.left))
-                yield* $.actions.setMembersLoading(false)
+                yield* $.dispatchers.setMembersError(galaxyApi.toMessage(addEither.left))
+                yield* $.dispatchers.setMembersLoading(false)
                 return
               }
 
-              yield* $.actions.setMembersLoading(false)
+              yield* $.dispatchers.setMembersLoading(false)
               yield* loadGroupMembers(token, projectId, action.payload.groupId)
               yield* projects.actions.refreshAccess()
             }),
-          ),
+        ),
 
           $.onAction('removeMember').runLatest((action) =>
             Effect.gen(function* () {
@@ -289,8 +289,8 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
 
-              yield* $.actions.setMembersLoading(true)
-              yield* $.actions.setMembersError(null)
+              yield* $.dispatchers.setMembersLoading(true)
+              yield* $.dispatchers.setMembersError(null)
 
               const removeEither = yield* Effect.tryPromise({
                 try: () =>
@@ -299,16 +299,16 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
               }).pipe(Effect.either)
 
               if (removeEither._tag === 'Left') {
-                yield* $.actions.setMembersError(galaxyApi.toMessage(removeEither.left))
-                yield* $.actions.setMembersLoading(false)
+                yield* $.dispatchers.setMembersError(galaxyApi.toMessage(removeEither.left))
+                yield* $.dispatchers.setMembersLoading(false)
                 return
               }
 
-              yield* $.actions.setMembersLoading(false)
+              yield* $.dispatchers.setMembersLoading(false)
               yield* loadGroupMembers(token, projectId, action.payload.groupId)
               yield* projects.actions.refreshAccess()
             }),
-          ),
+        ),
         ],
         { concurrency: 'unbounded' },
       )

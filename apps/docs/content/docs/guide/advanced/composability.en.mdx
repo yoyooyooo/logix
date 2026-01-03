@@ -1,0 +1,74 @@
+---
+title: Composability Map
+description: A default-path guide to composing @logix/core + @logix/react (Module / Logic / Runtime / React).
+---
+
+This page is not “yet another way to do things”. It’s a **map** of existing Logix composition points, answering the questions you’ll hit in real apps:
+
+- Should this be a **singleton** or **multi-instance**?
+- If a module composes child modules, how does the UI get the child **within the parent instance scope**?
+- Should cross-module collaboration live **inside a module** (`$.use`) or **outside modules** (`Process.link / Link.make`)?
+- When do you need subtree overrides like `RuntimeProvider.layer`?
+
+## One-sentence rules (prefer the default path)
+
+1. **Make singleton vs multi-instance explicit**: `useModule(ModuleDef/ModuleTag)` is a Provider-scoped singleton; `useModule(Impl, { key })` is multi-instance.
+2. **For parent-child composition, prefer imports (strict scope)**: children follow the parent instance; Logic uses `$.use(Child)`, UI uses `host.imports.get(Child.tag)`.
+3. **For “runtime-owned” glue logic, prefer processes**: when collaboration belongs to the runtime (not a single module), attach it via `processes`.
+4. **UI should bind to a Host by default**: don’t “climb the imports tree” everywhere; resolve once at the boundary and pass `ModuleRef` down.
+
+## Decision tree (Mermaid)
+
+<Mermaid
+  colorize
+  look="handDrawn"
+  handDrawnSeed={7}
+  chart={`flowchart TD
+Q0{Where does this state live?}
+Q0 -->|Component-local| L0["useLocalModule"]
+Q0 -->|Route/page| Q1{Need multiple instances?}
+Q0 -->|App singleton| G0["Root + Runtime.make<br/>useModule(ModuleDef/Tag)"]
+
+Q1 -->|Yes| I0["useModule(Impl, { key, gcTime })"]
+Q1 -->|No| I1["useModule(Impl)"]
+
+I0 --> Q2{Should children follow parent instance?}
+I1 --> Q2
+
+Q2 -->|Yes| C0["imports + $.use(Child)<br/>UI: host.imports.get(Child.tag)"]
+Q2 -->|No| Q3{Need runtime-owned glue?}
+
+Q3 -->|Yes| P0["processes: Process.link / Link.make"]
+Q3 -->|No| Q4{Need fixed root singleton read?}
+
+Q4 -->|Yes| R0["Root.resolve(Tag)"]
+Q4 -->|No| E0["Keep it in the module<br/>onAction/onState + Flow"]
+`}
+/>
+
+## Composition cheat sheet (what should I use?)
+
+| What you’re solving | Recommended entry | Scope intuition | Where it lives | Read more |
+| --- | --- | --- | --- | --- |
+| Local UI state (replace `useState/useReducer`) | `useLocalModule` | component lifetime | React component | [React integration](../recipes/react-integration) |
+| Page/session multi-instance (tabs/sessions) | `useModule(Impl, { key })` | one instance per `(Impl, key)` | React component | [React integration](../recipes/react-integration) |
+| Parent-child composition (children follow parent) | `imports` + `$.use(Child)` | strict imports scope | ModuleImpl / Logic | [Cross-module communication](../learn/cross-module-communication) |
+| UI reads child within parent instance scope | `host.imports.get(Child.tag)` / `useImportedModule` | parent instance scope | React component | [useImportedModule](../../api/react/use-imported-module), [Route-scope modals](../recipes/route-scope-modals) |
+| Long-running cross-module collaboration (runtime glue) | `Process.link` / `Link.make` | runtime processes | Root `processes` | [Cross-module communication](../learn/cross-module-communication), [Runtime](../../api/core/runtime) |
+| Fixed root singleton read | `Logix.Root.resolve(Tag)` | fixed root provider | Logic | [Cross-module communication](../learn/cross-module-communication) |
+| Subtree env override (light config) | `RuntimeProvider layer={...}` | subtree env override | React tree | [Runtime](../../api/core/runtime) |
+| Caller DX (author-side) | handle extensions | extra handle fields | module author code | [Module handle extensions](./module-handle-extensions) |
+| Reuse “logic snippets / flow templates” | Pattern functions | `(config) => Effect` or `($, config) => ...` | `guide/patterns` / helpers | [Pattern example](../patterns/optimistic-update) |
+
+## Common footguns (avoid these)
+
+1. **Treating an imports child as a global singleton**: writing `useModule(Child)` / `useModule(Child.tag)` when you actually need `host.imports.get(Child.tag)`.
+2. **Using Link/Process to “pick an instance”**: processes are for singleton sets; for multi-instance collaboration, let the owner module drive it within its instance scope via `$.use(...)`.
+3. **Climbing the imports tree everywhere**: `host.imports.get(A).imports.get(B)...` scatters dependencies; resolve once at the boundary and pass `ModuleRef` down.
+4. **Expecting local overrides to affect root singletons**: `Root.resolve` reads from the fixed root provider; if you need override semantics, use imports or `RuntimeProvider.layer`.
+
+## Next
+
+- To understand the semantics of `imports / $.use / Link / Root.resolve`: read [Cross-module communication](../learn/cross-module-communication).
+- To apply composition in React code: read [React integration](../recipes/react-integration) and [Route-scope modals keepalive](../recipes/route-scope-modals).
+- To package high-frequency operations into ergonomic call sites: read [Module handle extensions](./module-handle-extensions).

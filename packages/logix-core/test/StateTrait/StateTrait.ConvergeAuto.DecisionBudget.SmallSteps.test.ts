@@ -19,7 +19,8 @@ const makeSmallStepsFixture = (options: {
     shape[`d${i}`] = Schema.Number
   }
 
-  const State = Schema.Struct(shape)
+  type S = Record<string, number>
+  const State = Schema.Struct(shape) as unknown as Schema.Schema<S>
   const Actions = { noop: Schema.Void, bump: Schema.String }
 
   const traits: Record<string, any> = {}
@@ -32,13 +33,12 @@ const makeSmallStepsFixture = (options: {
   }
 
   const M = Logix.Module.make(options.moduleId, {
-    state: State as any,
+    state: State,
     actions: Actions,
     reducers: {
       noop: (s: any) => s,
-      bump: Logix.Module.Reducer.mutate((draft: any, action: { readonly payload: string }) => {
-        const key = action.payload
-        draft[key] += 1
+      bump: Logix.Module.Reducer.mutate((draft, key: string) => {
+        draft[key] = (draft[key] ?? 0) + 1
       }),
     },
     traits: Logix.StateTrait.from(State as any)(traits as any),
@@ -51,7 +51,7 @@ const makeSmallStepsFixture = (options: {
   }
 
   const impl = M.implement({
-    initial: initial as any,
+    initial,
     logics: [],
   })
 

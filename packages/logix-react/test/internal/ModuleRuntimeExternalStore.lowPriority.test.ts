@@ -20,7 +20,7 @@ describe('ModuleRuntimeExternalStore lowPriority scheduling', () => {
         state: State,
         actions: Actions,
         reducers: {
-          inc: Logix.Module.Reducer.mutate((draft: any) => {
+          inc: Logix.Module.Reducer.mutate((draft) => {
             draft.value += 1
           }),
         },

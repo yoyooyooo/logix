@@ -201,14 +201,16 @@ const logic = Search.logic(($) =>
   $.onAction("applyFilterAndReload").run(({ payload }) =>
     Effect.gen(function* () {
       // 第一步：写入最新的筛选条件
-      yield* $.state.update((s) => ({ ...s, filter: payload.filter }))
+      yield* $.state.mutate((draft) => {
+        draft.filter = payload.filter
+      })
 
       // 如有需要，可以读取一次最新状态
       const state = yield* $.state.read
 
       // 第二步：基于最新 filter 执行后续逻辑（调用接口 / 触发其他 Action 等）
       yield* runSearchWithFilter(state.filter)
-      // 或者：yield* $.actions.reload(undefined)
+      // 或者：yield* $.dispatchers.reload()
     }),
   ),
 )
@@ -217,7 +219,7 @@ const logic = Search.logic(($) =>
 在这一模式下：
 
 - UI / 调用方只需触发一次 `applyFilterAndReload`，不需要自己关心“先 set 再 reload”以及中间的等待时机；
-- 顺序与依赖关系全部收敛在 Logic 内部，通过 `$.state.update` / `$.state.read` 自然保证“后一步总是看到前一步已经落地的状态”，避免在业务代码中堆叠 sleep 或魔法时间常数。
+- 顺序与依赖关系全部收敛在 Logic 内部，通过 `$.state.mutate` / `$.state.read` 自然保证“后一步总是看到前一步已经落地的状态”，避免在业务代码中堆叠 sleep 或魔法时间常数。
 
 ## 下一步
 

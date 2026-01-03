@@ -19,7 +19,7 @@ describe('Runtime.runProgram (sync transaction guard)', () => {
         state: Schema.Struct({ value: Schema.Number }),
         actions: { trigger: Schema.Void },
         reducers: {
-          trigger: Logix.Module.Reducer.mutate((draft: any) => {
+          trigger: Logix.Module.Reducer.mutate((draft) => {
             const p = Logix.Runtime.runProgram(InnerImpl, () => Effect.void, {
               layer: Layer.empty as Layer.Layer<any, never, never>,
               handleSignals: false,

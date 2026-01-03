@@ -40,14 +40,20 @@ Logix 支持在 React 中以**可选**方式使用 Suspense 来等待“模块�
 ```ts
 const UserLogic = UserModule.logic(($) => {
   // onStart：此时 Watcher 已经挂载，可以触发一次加载
-  $.lifecycle.onStart($.actions.refresh())
+  $.lifecycle.onStart($.dispatchers.refresh())
 
   return Effect.gen(function* () {
     yield* $.onAction('refresh').runLatest(() =>
       Effect.gen(function* () {
-        yield* $.state.update((s) => ({ ...s, isLoading: true, error: undefined }))
+        yield* $.state.mutate((draft) => {
+          draft.isLoading = true
+          draft.error = undefined
+        })
         const user = yield* fetchUser()
-        yield* $.state.update((s) => ({ ...s, isLoading: false, user }))
+        yield* $.state.mutate((draft) => {
+          draft.isLoading = false
+          draft.user = user
+        })
       }),
     )
   })
@@ -68,7 +74,9 @@ const UserLogic = UserModule.logic(($) => {
       // 模拟异步加载
       yield* Effect.sleep('1 seconds')
       const user = yield* fetchUser()
-      yield* $.state.update((s) => ({ ...s, user }))
+      yield* $.state.mutate((draft) => {
+        draft.user = user
+      })
     }),
   )
 
@@ -110,12 +118,16 @@ function App() {
 yield* $.onAction('refresh').runExhaust(() =>
   Effect.gen(function* () {
     // 标记开始 loading
-    yield* $.state.update((s) => ({ ...s, isLoading: true }))
+    yield* $.state.mutate((draft) => {
+      draft.isLoading = true
+    })
 
     // ... 加载数据 ...
 
     // 标记结束 loading
-    yield* $.state.update((s) => ({ ...s, isLoading: false }))
+    yield* $.state.mutate((draft) => {
+      draft.isLoading = false
+    })
   }),
 )
 ```

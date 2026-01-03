@@ -59,9 +59,14 @@ const ProfileLogic = Profile.logic(($) => {
   // onInit：模块第一次启动时加载用户资料（setup-only 注册，Runtime 统一调度执行）
   $.lifecycle.onInit(
     Effect.gen(function* () {
-      yield* $.state.update((s) => ({ ...s, status: 'loading' }))
+      yield* $.state.mutate((draft) => {
+        draft.status = 'loading'
+      })
       const detail = yield* UserService.getProfile()
-      yield* $.state.update((s) => ({ ...s, status: 'ready', detail }))
+      yield* $.state.mutate((draft) => {
+        draft.status = 'ready'
+        draft.detail = detail
+      })
     }),
   )
 
@@ -97,9 +102,17 @@ const ProfileLogic = Profile.logic(($) => {
 // runFork：每条事件以独立 Fiber 方式执行，Watcher 本身作为一个长期挂载的“订阅者”
 const CounterRunForkLogic = Counter.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').runFork($.state.update((s) => ({ ...s, value: s.value + 1 })))
+    yield* $.onAction('inc').runFork(
+      $.state.mutate((draft) => {
+        draft.value += 1
+      }),
+    )
 
-    yield* $.onAction('dec').runFork($.state.update((s) => ({ ...s, value: s.value - 1 })))
+    yield* $.onAction('dec').runFork(
+      $.state.mutate((draft) => {
+        draft.value -= 1
+      }),
+    )
   }),
 )
 
@@ -107,8 +120,16 @@ const CounterRunForkLogic = Counter.logic(($) =>
 const CounterAllLogic = Counter.logic(($) =>
   Effect.all(
     [
-      $.onAction('inc').run($.state.update((s) => ({ ...s, value: s.value + 1 }))),
-      $.onAction('dec').run($.state.update((s) => ({ ...s, value: s.value - 1 }))),
+      $.onAction('inc').run(
+        $.state.mutate((draft) => {
+          draft.value += 1
+        }),
+      ),
+      $.onAction('dec').run(
+        $.state.mutate((draft) => {
+          draft.value -= 1
+        }),
+      ),
     ],
     { concurrency: 'unbounded' },
   ),
@@ -146,16 +167,23 @@ const PollingModule = Logix.Module.make('Polling', {
 
 const PollingLogic = PollingModule.logic(($) => {
   // 平台挂起/恢复：setup-only 注册（由宿主 Platform 信号触发）
-  $.lifecycle.onSuspend($.state.update((s) => ({ ...s, paused: true })))
-  $.lifecycle.onResume($.state.update((s) => ({ ...s, paused: false })))
+  $.lifecycle.onSuspend(
+    $.state.mutate((draft) => {
+      draft.paused = true
+    }),
+  )
+  $.lifecycle.onResume(
+    $.state.mutate((draft) => {
+      draft.paused = false
+    }),
+  )
 
   return Effect.gen(function* () {
     // 示例：简单定时触发 tick（实际项目中可通过 Link / 外部定时器驱动）
     yield* $.onAction('tick').run(
-      $.state.update((s) => ({
-        ...s,
-        lastUpdatedAt: Date.now(),
-      })),
+      $.state.mutate((draft) => {
+        draft.lastUpdatedAt = Date.now()
+      }),
     )
   })
 })

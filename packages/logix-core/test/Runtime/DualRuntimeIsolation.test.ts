@@ -10,8 +10,8 @@ describe('Dual runtime isolation (core vs core-ng)', () => {
         state: Schema.Struct({ value: Schema.Number }),
         actions: { inc: Schema.Void },
         reducers: {
-          inc: Logix.Module.Reducer.mutate((draft: any) => {
-            draft.value = (draft.value as number) + 1
+          inc: Logix.Module.Reducer.mutate((draft) => {
+            draft.value += 1
           }),
         },
       })

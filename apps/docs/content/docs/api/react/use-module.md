@@ -6,27 +6,66 @@ description: API Reference for useModule hook
 # useModule
 
 `useModule` 是 React 中消费 Logix Module 的主要 Hook。  
-它既可以**创建/管理局部 ModuleRuntime**（传入带 `.impl` 的模块对象或 `ModuleImpl`），也可以**接入已经存在的全局 ModuleRuntime**（传入模块定义对象、`ModuleTag` 或 `ModuleRuntime` 本身）。
+它既可以**创建/管理局部 ModuleRuntime**（传入带 `.impl` 的模块对象或 `ModuleImpl`），也可以**接入已经存在的全局 ModuleRuntime**（传入模块定义对象、`ModuleTag` 或 `ModuleRuntime` 本身）。无论哪种形态，最终返回的都是一个 `ModuleRef`（包含 `runtime` / `dispatch` / `dispatchers` / `imports` 等能力）。
+
+## 能力拆分（心智模型）
+
+- `useModule`：负责解析“模块句柄”（`ModuleRef`），本身**不会订阅**状态变化。
+- `useSelector`：负责订阅状态并驱动组件重渲染（推荐把渲染依赖都收敛到 selector）。
+- `useDispatch`：负责派发 action（并提供 `batch` / `lowPriority` 两个常用旋钮）。
+
+> 注意：`useModule` / `useSelector` / `useDispatch` 等都必须在 `RuntimeProvider` 子树内调用。
 
 ## 基本用法
 
 ```tsx
-	import { useModule } from '@logix/react'
-	import { CounterDef } from './modules/counter'
+import { useDispatch, useModule, useSelector } from '@logix/react'
+import { CounterDef } from './modules/counter'
 
-	function Counter() {
-	  // 获取 Module 运行时实例
-	  const counter = useModule(CounterDef)
-
-  // 读取状态
+export function Counter() {
+  const counter = useModule(CounterDef)
   const count = useSelector(counter, (s) => s.count)
+  const dispatch = useDispatch(counter)
 
-  // 派发 Action
-  const increment = () => counter.dispatch({ _tag: 'increment' })
-
-  return <button onClick={increment}>{count}</button>
+  return <button onClick={() => dispatch(CounterDef.actions.increment())}>{count}</button>
 }
 ```
+
+## 一个组件内多个 selector（性能写法）
+
+推荐让 `useModule` 只负责“拿到模块句柄”，把渲染依赖都收敛到 `useSelector`：
+
+- 多个字段：用多个 `useSelector(ref, ...)`，或把多个字段打包成对象并传 `shallow`
+- 避免同一组件里对同一个模块重复调用多次 `useModule(handle)`（通常没有收益）
+
+```tsx
+import { shallow, useModule, useSelector } from '@logix/react'
+
+const user = useModule(UserModule)
+const { name, age } = useSelector(user, (s) => ({ name: s.name, age: s.age }), shallow)
+```
+
+## 与 actions/dispatchers 的衔接（推荐写法）
+
+在组件里建议按“定义锚点 vs 执行入口”分离：
+
+- **定义锚点**：让代码里显式出现 `ModuleDef.actions.<K>`（ActionToken）。这是稳定符号，便于 IDE 跳转/找引用/重命名。
+- **执行入口**：用 `useDispatch(handle)` 或 `ref.dispatch(action)` 执行派发（组件侧无需 `yield*`）。
+
+在此之上，`ref.dispatchers.<K>(payload)` 只是便捷语法糖（内部等价于 `dispatch(ModuleDef.actions.<K>(payload))`）。
+
+```tsx
+const counter = useModule(CounterDef)
+const dispatch = useDispatch(counter)
+
+const onInc = () => dispatch(CounterDef.actions.increment())
+const onIncSugar = () => counter.dispatchers.increment()
+```
+
+> 提示：
+>
+> - `counter.actions.*` 是运行时通过 Proxy 生成的“兼容糖”，IDE 不保证可跳转；需要“跳转/找引用/重命名”时，让代码里出现 `CounterDef.actions.*`（或 `counter.def?.actions.*`）作为锚点。
+> - `counter.dispatchers.*` 是运行时生成的语法糖（少写 `dispatch(CounterDef.actions.<K>(...))`）；它本身不是源码里的“定义符号”，因此 IDE **不保证**能跳到 `actions.<K>` 的定义。若需要稳定的“跳转/找引用/重命名”，请让代码里显式出现 `CounterDef.actions.*`（或 `counter.def?.actions.*`）作为锚点。
 
 ## API
 
@@ -56,6 +95,8 @@ description: API Reference for useModule hook
 
 ### 2. `useModule(handle, selector, equalityFn?)`（内联选择器）
 
+这是 `useSelector` 的语法糖：`useModule(handle, selector[, equalityFn])` 等价于 `useSelector(useModule(handle), selector[, equalityFn])`。
+
 ```ts
 const count = useModule(CounterImpl, (s) => s.count)
 const count2 = useModule(CounterDef, (s) => s.count)
@@ -68,7 +109,7 @@ const count2 = useModule(CounterDef, (s) => s.count)
 - **`selector`**：`(state) => slice` —— 内联选择器，只订阅部分状态；
 - **`equalityFn`**：可选，自定义比较函数，控制何时触发组件重渲染。
 
-当传入 selector 时，`useModule` 直接返回 selector 的结果，而不是完整的 `ModuleRuntime`。  
+当传入 selector 时，`useModule` 直接返回 selector 的结果，而不是完整的 `ModuleRef`。  
 这一形态下不再接受 options 对象。
 
 ### 3. `useModule(模块定义对象 / ModuleTag)` / `useModule(runtime)`（接入全局 Module）
@@ -105,7 +146,9 @@ const count2 = useModule(CounterDef, (s) => s.count)
 
 ### See Also
 
+- [API: RuntimeProvider](./provider)
 - [Guide: Modules & State](../../guide/essentials/modules-and-state)
 - [Guide: Suspense & Async](../../guide/advanced/suspense-and-async)
 - [Guide: React 集成与 Session Pattern](../../guide/recipes/react-integration)
+- [API: useLocalModule](./use-local-module)
 - [API: useImportedModule](./use-imported-module)

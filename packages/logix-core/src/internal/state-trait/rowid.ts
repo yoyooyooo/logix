@@ -29,7 +29,7 @@ export const getAtPath = (state: any, path: string): any => {
   return current
 }
 
-export const setAtPathMutating = (draft: any, path: string, value: any): void => {
+export const setAtPathMutating = (draft: unknown, path: string, value: unknown): void => {
   if (!path) return
   const segments = parseSegments(path)
   if (segments.length === 0) return
@@ -50,7 +50,7 @@ export const setAtPathMutating = (draft: any, path: string, value: any): void =>
   current[last as any] = value
 }
 
-export const unsetAtPathMutating = (draft: any, path: string): void => {
+export const unsetAtPathMutating = (draft: unknown, path: string): void => {
   if (!path) return
   const segments = parseSegments(path)
   if (segments.length === 0) return

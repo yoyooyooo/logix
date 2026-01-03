@@ -13,9 +13,29 @@ const isModuleRuntime = (value: unknown): value is Logix.ModuleRuntime<any, any>
 
 export type ReactModuleHandle = Logix.ModuleRuntime<any, any> | Logix.ModuleTagType<any, any> | ModuleRef<any, any>
 
-export function useModuleRuntime<Sh extends Logix.AnyModuleShape>(
-  handle: ReactModuleHandle,
-): Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>> {
+type StateOfHandle<H> =
+  H extends ModuleRef<infer S, any>
+    ? S
+    : H extends Logix.ModuleRuntime<infer S, any>
+      ? S
+      : H extends Logix.ModuleTagType<any, infer Sh>
+        ? Logix.StateOf<Sh>
+        : never
+
+type ActionOfHandle<H> =
+  H extends ModuleRef<any, infer A>
+    ? A
+    : H extends Logix.ModuleRuntime<any, infer A>
+      ? A
+      : H extends Logix.ModuleTagType<any, infer Sh>
+        ? Logix.ActionOf<Sh>
+        : never
+
+export function useModuleRuntime<H extends ReactModuleHandle>(
+  handle: H,
+): Logix.ModuleRuntime<StateOfHandle<H>, ActionOfHandle<H>>
+
+export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime<any, any> {
   const runtime = useRuntime()
   const runtimeContext = useContext(RuntimeContext)
   if (!runtimeContext) {
@@ -31,11 +51,11 @@ export function useModuleRuntime<Sh extends Logix.AnyModuleShape>(
 
   const resolved = useMemo(() => {
     if (isModuleRef(handle)) {
-      return handle.runtime as Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
+      return handle.runtime
     }
 
     if (isModuleRuntime(handle)) {
-      return handle as Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
+      return handle
     }
 
     const tag = handle as unknown as Logix.ModuleTagType<string, Logix.AnyModuleShape>
@@ -47,9 +67,7 @@ export function useModuleRuntime<Sh extends Logix.AnyModuleShape>(
     const mode = runtimeContext.policy.moduleTagMode
 
     const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
-      (tag as unknown as Effect.Effect<Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>, never, any>).pipe(
-        Scope.extend(scope),
-      )
+      (tag as unknown as Effect.Effect<Logix.ModuleRuntime<any, any>, never, any>).pipe(Scope.extend(scope))
 
     return (
       mode === 'suspend'
@@ -63,7 +81,7 @@ export function useModuleRuntime<Sh extends Logix.AnyModuleShape>(
             policyMode: runtimeContext.policy.mode,
             warnSyncBlockingThresholdMs: 5,
           })
-    ) as Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
+    ) as Logix.ModuleRuntime<any, any>
   }, [cache, runtimeContext.policy, handle])
 
   useEffect(() => {
@@ -90,5 +108,5 @@ export function useModuleRuntime<Sh extends Logix.AnyModuleShape>(
     runtime.runFork(effect)
   }, [runtime, runtimeContext.policy, resolved, handle, isTagHandle])
 
-  return resolved
+  return resolved as Logix.ModuleRuntime<any, any>
 }

@@ -49,7 +49,8 @@ describe('StateTrait converge diagnostics sampling (deterministic topK)', () => 
       ) as Layer.Layer<any, never, never>
 
       const runConverge = (params: { readonly txnSeq: number; readonly now: () => number }) => {
-        let draft: any = { a: 0, derivedA: 0, derivedB: 0 }
+        type S = Schema.Schema.Type<typeof State>
+        let draft: S = { a: 0, derivedA: 0, derivedB: 0 }
         return StateTraitConverge.convergeInTransaction(
           program as any,
           {
@@ -64,7 +65,7 @@ describe('StateTrait converge diagnostics sampling (deterministic topK)', () => 
             dirtyPaths: new Set<string>(),
             getDraft: () => draft,
             setDraft: (next: unknown) => {
-              draft = next
+              draft = next as S
             },
             recordPatch: (
               _path: unknown,

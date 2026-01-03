@@ -95,3 +95,22 @@ const value = useSelector(child, (s) => s.value)
 
 `useDispatch(handle | runtime)` 返回稳定的 `dispatch` 函数；当你希望把 dispatch 下传给子组件、或避免在 JSX 里捕获闭包时可用。
 
+## 6) 067 Action Surface 在 React 侧怎么落地（actions/dispatchers/def）
+
+> 结论先行：在 React 组件里，“定义锚点”用 `Module.actions.<K>`，“执行派发”用 `ref.dispatchers.<K>`。
+
+### 6.1 `useModule` 的返回值（`ModuleRef`）里，几个面是正交的
+
+- `ref.def`：定义锚点（通常是你传入的 Module/ModuleDef/ModuleTag）。用于 IDE 跳转/查找引用/安全重命名（尤其是 action key）。
+- `ref.dispatchers.<K>(payload)`：**推荐执行面**。按 `def.actions`（ActionToken map）推导 payload 类型；调用即 dispatch。
+- `ref.actions.<tag>(payload)`：兼容/糖。基于 Proxy 的动态属性（字符串 tag），不保证 IDE “跳转到定义”；仅在你明确接受这一点时使用。
+- `ref.dispatch(action)` / `ref.dispatch.batch([...])`：最底层入口（直接发 action object），用于通用封装或批量派发。
+
+### 6.2 如何获得“可跳转”的 action key（以及为什么有时跳不动）
+
+要让 `ref.dispatchers.add(1)` 的 `add` 能跳回模块定义处的 `actions.add`：
+
+- **优先**把模块导出为 `Module`（或至少保留 `ModuleDef`），并在组件里 `useModule(MyModule)`（而不是只拿到 `MyModule.impl` 再传给 hook）。
+- 如果你确实只有 `impl` 可用：通常仍能拿到 `dispatchers` 的类型推导，但 IDE 跳转可能退化；这时用 `ref.def?.actions.<K>` 作为“手动锚点”定位定义。
+
+> 经验：action key 尽量用可点访问的标识符（如 `add/inc/setKeyword`），避免 `foo/bar` 这类必须 `['foo/bar']` 的写法，否则重命名与跳转体验都会变差。067 下 ActionRef = `moduleId + actionTag`，业务侧不需要把 moduleId 再塞进 actionTag。

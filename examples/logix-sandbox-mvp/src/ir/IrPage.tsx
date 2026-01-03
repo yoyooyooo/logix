@@ -38,10 +38,10 @@ const IR_PRESETS_LEGACY = [
     moduleCode: `const Counter = Logix.Module.make("IrPreset.Counter", {
   state: Schema.Struct({ count: Schema.Number }),
   actions: { inc: Schema.Void },
-  reducers: {
-    inc: Logix.Module.Reducer.mutate((draft) => {
+  immerReducers: {
+    inc: (draft) => {
       draft.count += 1
-    }),
+    },
   },
   schemas: { Foo: Schema.String },
   meta: { owner: "demo" },
@@ -132,10 +132,10 @@ const AppRoot = ControlPlane.implement({
     moduleCode: `const Timeline = Logix.Module.make("IrPreset.Timeline", {
   state: Schema.Struct({ n: Schema.Number }),
   actions: { inc: Schema.Void },
-  reducers: {
-    inc: Logix.Module.Reducer.mutate((draft) => {
+  immerReducers: {
+    inc: (draft) => {
       draft.n += 1
-    }),
+    },
   },
 })
 
@@ -143,8 +143,8 @@ const emit = Timeline.logic(
   ($) =>
     Effect.gen(function* () {
       yield* Effect.log("[timeline] start")
-      yield* $.actions.inc()
-      yield* $.actions.inc()
+      yield* $.dispatchers.inc()
+      yield* $.dispatchers.inc()
       yield* Effect.log("[timeline] done")
     }),
   { id: "logic:emit", kind: "user", name: "emit" },

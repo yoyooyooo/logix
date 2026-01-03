@@ -108,24 +108,26 @@ const Search = Logix.Module.make('Search', {
 
 ### 3.2 在 Logic 中顺序使用 $.state
 
-在 Logic 中，通过 `$.state.update` 和 `$.state.read` 保证顺序：
+在 Logic 中，通过 `$.state.mutate` 和 `$.state.read` 保证顺序：
 
 ```ts
 const logic = Search.logic(($) =>
   $.onAction('applyFilterAndReload').run(({ payload }) =>
-    Effect.gen(function* () {
-      // 第一步：写入最新的筛选条件
-      yield* $.state.update((s) => ({ ...s, filter: payload.filter }))
+      Effect.gen(function* () {
+        // 第一步：写入最新的筛选条件
+        yield* $.state.mutate((draft) => {
+          draft.filter = payload.filter
+        })
 
       // 如有需要，可以读取一次最新状态
       const state = yield* $.state.read
 
-      // 第二步：基于最新 filter 执行后续逻辑（调用接口 / 触发其他 Action 等）
-      yield* runSearchWithFilter(state.filter)
-      // 或者：yield* $.actions.reload(undefined)
-    }),
-  ),
-)
+        // 第二步：基于最新 filter 执行后续逻辑（调用接口 / 触发其他 Action 等）
+        yield* runSearchWithFilter(state.filter)
+        // 或者：yield* $.dispatchers.reload()
+      }),
+    ),
+  )
 ```
 
 调用方只需要派发一次用例级 Action：

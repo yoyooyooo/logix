@@ -218,7 +218,7 @@ describe('Runtime + EffectOp bus semantics', () => {
           Effect.gen(function* () {
             yield* $.onAction('bump').run(() =>
               Effect.gen(function* () {
-                yield* $.state.mutate((draft: any) => {
+                yield* $.state.mutate((draft) => {
                   draft.base += 1
                 })
                 yield* Logix.TraitLifecycle.scopedValidate($ as any, {

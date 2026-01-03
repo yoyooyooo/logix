@@ -14,15 +14,15 @@ export function CheckButton({ checked, onChange, className = '' }: Props) {
         e.stopPropagation()
         onChange(!checked)
       }}
-      className={`group relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ease-out focus:outline-none ${
+      className={`group relative flex h-5 w-5 shrink-0 items-center justify-center rounded-none border-2 transition-all duration-300 ease-out focus:outline-none ${
         checked
-          ? 'bg-[var(--intent-primary-fg)] border-[var(--intent-primary-fg)] shadow-sm scale-100'
-          : 'bg-transparent border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50 scale-100 active:scale-90'
+          ? 'bg-primary border-primary text-primary-foreground'
+          : 'bg-transparent border-input hover:bg-accent hover:border-input'
       } ${className}`}
     >
       <svg
-        className={`h-3 w-3 text-white transition-all duration-300 ease-out ${
-          checked ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 -rotate-90'
+        className={`h-3 w-3 transition-all duration-300 ease-out ${
+          checked ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
         }`}
         fill="none"
         viewBox="0 0 24 24"

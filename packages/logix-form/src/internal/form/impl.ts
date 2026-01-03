@@ -60,7 +60,8 @@ const FormActions = {
   }),
 } as const
 
-export type FormAction = Logix.ActionsFromMap<typeof FormActions>
+type FormShapeForActions = FormShape<Record<string, never>>
+export type FormAction = Logix.ActionOf<FormShapeForActions>
 
 export type FormShape<TValues extends object> = Logix.Shape<Schema.Schema<FormState<TValues>, any>, typeof FormActions>
 

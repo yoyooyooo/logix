@@ -44,7 +44,7 @@ describe('useModule(ModuleImpl, { key })', () => {
     const UseCounter = () => {
       const counter = useModule(CounterImpl, { key: 'shared' })
       const count = useModule(counter, (s) => (s as { count: number }).count)
-      return { count, inc: counter.actions.increment, id: String(counter.runtime.instanceId) }
+      return { count, inc: counter.dispatchers.increment, id: String(counter.runtime.instanceId) }
     }
 
     const View = () => {
@@ -100,10 +100,10 @@ describe('useModule(ModuleImpl, { key })', () => {
       const bCount = useModule(b, (s) => (s as { count: number }).count)
       return (
         <>
-          <button type="button" onClick={() => a.actions.increment()}>
+          <button type="button" onClick={() => a.dispatchers.increment()}>
             inc-a
           </button>
-          <button type="button" onClick={() => b.actions.increment()}>
+          <button type="button" onClick={() => b.dispatchers.increment()}>
             inc-b
           </button>
           <span data-testid="a">{aCount}</span>
@@ -148,7 +148,7 @@ describe('useModule(ModuleImpl, { key })', () => {
       const count = useModule(counter, (s) => (s as { count: number }).count)
       return (
         <>
-          <button type="button" data-testid={buttonId} onClick={() => counter.actions.increment()}>
+          <button type="button" data-testid={buttonId} onClick={() => counter.dispatchers.increment()}>
             inc
           </button>
           <span data-testid={testId}>{count}</span>

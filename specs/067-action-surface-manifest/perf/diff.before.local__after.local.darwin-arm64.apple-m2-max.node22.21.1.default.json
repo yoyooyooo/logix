@@ -1,0 +1,251 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-02T11:50:21.761Z",
+    "from": {
+      "file": "specs/067-action-surface-manifest/perf/before.local.darwin-arm64.apple-m2-max.node22.21.1.default.json",
+      "commit": "2cc9f50b35c56555bb147ffc1fe8f176ae8d4f2f"
+    },
+    "to": {
+      "file": "specs/067-action-surface-manifest/perf/after.local.darwin-arm64.apple-m2-max.node22.21.1.default.json",
+      "commit": "2cc9f50b35c56555bb147ffc1fe8f176ae8d4f2f"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 5,
+    "improvements": 1,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": null,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.005}: before=2000 after=null (after:decisionMissing)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": null,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.05}: before=2000 after=null (after:decisionMissing)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": null,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.25}: before=2000 after=null (after:decisionMissing)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": null,
+          "message": "[category=runtime] decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.75}: before=2000 after=null (after:decisionMissing)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=36 unavailable=0 missing=0] after[value=core ok=36 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "mostSignificantRegression: decision.p95<=0.5ms {convergeMode=auto&dirtyRootsRatio=0.005} (before=2000, after=null)"
+    },
+    {
+      "id": "diagnostics.overhead.e2e",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=4 unavailable=0 missing=0] after[value=full ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=4 unavailable=0 missing=0] after[value=core ok=4 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "stabilityWarning: metric=e2e.clickToPaintMs {diagnosticsLevel=full&scenario=watchers.clickToPaint} baselineP95=76.10ms afterP95=67.50ms diff=8.60ms limit=7.61ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    },
+    {
+      "id": "watchers.clickToPaint",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "beforeMaxLevel": 128,
+          "afterMaxLevel": 64,
+          "message": "[category=e2e] p95<=50ms {reactStrictMode=false}: before=128 after=64 (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.watchers.scale-down-watchers",
+              "title": "减少 watcher 数量或拆分模块",
+              "detail": "边界回归集中在 watcher 维度，可优先尝试降低单模块 watcher 数量、拆分模块或减少级联依赖。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "beforeMaxLevel": 64,
+          "afterMaxLevel": 128,
+          "message": "[category=e2e] p95<=50ms {reactStrictMode=true}: before=64 after=128 (after:budgetExceeded) (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=14 unavailable=0 missing=0] after[value=core ok=14 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "mostSignificantRegression: p95<=50ms {reactStrictMode=false} (before=128, after=64); stabilityWarning: metric=e2e.clickToPaintMs {reactStrictMode=true&watchers=8} baselineP95=26.20ms afterP95=31.80ms diff=5.60ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

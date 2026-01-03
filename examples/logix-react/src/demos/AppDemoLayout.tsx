@@ -13,12 +13,12 @@ const AppCounterDef = Module.make('AppCounter', {
     increment: Schema.Void,
     decrement: Schema.Void,
   },
-  reducers: {
-    increment: Module.Reducer.mutate((draft, _action) => {
+  immerReducers: {
+    increment: (draft) => {
       draft.count += 1
-    }),
-    decrement(s) {
-      return { ...s, count: s.count - 1 }
+    },
+    decrement: (draft) => {
+      draft.count -= 1
     },
   },
 })
@@ -77,7 +77,7 @@ const AppCounterView: React.FC = () => {
         <button
           type="button"
           className="flex items-center justify-center px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all active:scale-95 font-medium shadow-sm"
-          onClick={() => dispatch({ _tag: 'increment', payload: undefined })}
+          onClick={() => dispatch({ _tag: 'decrement', payload: undefined })}
         >
           减一
         </button>

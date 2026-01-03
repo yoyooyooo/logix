@@ -105,7 +105,7 @@ describe('React watcher patterns integration', () => {
     })
 
     await act(async () => {
-      result.current.counter.actions.inc()
+      result.current.counter.dispatchers.inc()
     })
 
     await waitFor(() => {
@@ -113,7 +113,7 @@ describe('React watcher patterns integration', () => {
     })
 
     await act(async () => {
-      result.current.counter.actions.dec()
+      result.current.counter.dispatchers.dec()
     })
 
     await waitFor(() => {
@@ -151,7 +151,7 @@ describe('React watcher patterns integration', () => {
     })
 
     await act(async () => {
-      result.current.counter.actions.inc()
+      result.current.counter.dispatchers.inc()
     })
 
     await waitFor(() => {
@@ -159,7 +159,7 @@ describe('React watcher patterns integration', () => {
     })
 
     await act(async () => {
-      result.current.counter.actions.dec()
+      result.current.counter.dispatchers.dec()
     })
 
     await waitFor(() => {
@@ -196,7 +196,7 @@ describe('React watcher patterns integration', () => {
     })
 
     await act(async () => {
-      result.current?.counter.actions.inc()
+      result.current?.counter.dispatchers.inc()
     })
 
     await waitFor(() => {
@@ -205,7 +205,7 @@ describe('React watcher patterns integration', () => {
     })
 
     await act(async () => {
-      result.current?.counter.actions.dec()
+      result.current?.counter.dispatchers.dec()
     })
 
     await waitFor(() => {
@@ -250,7 +250,7 @@ describe('React watcher patterns integration', () => {
     })
 
     await act(async () => {
-      result.current?.counter.actions.inc()
+      result.current?.counter.dispatchers.inc()
     })
 
     await waitFor(() => {
@@ -259,7 +259,7 @@ describe('React watcher patterns integration', () => {
     })
 
     await act(async () => {
-      result.current?.counter.actions.dec()
+      result.current?.counter.dispatchers.dec()
     })
 
     await waitFor(() => {

@@ -33,7 +33,7 @@ const I18nModuleLogic = I18nModuleDef.logic(($) => ({
   }),
 }))
 
-export const I18nModule = I18nModuleDef.implement({
+export const I18nModule: Logix.AnyModule = I18nModuleDef.implement({
   initial: { snapshot: { language: 'unknown', init: 'pending', seq: 0 } },
   logics: [I18nModuleLogic],
 })

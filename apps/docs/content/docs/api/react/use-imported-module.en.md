@@ -47,3 +47,4 @@ const child = host.imports.get(ChildModule.tag)
 ## See Also
 
 - [API: ModuleScope](./module-scope)
+- [Advanced: Composability map](../../guide/advanced/composability)

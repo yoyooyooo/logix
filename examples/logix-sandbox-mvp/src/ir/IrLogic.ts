@@ -143,14 +143,14 @@ export const IrLogic = IrDef.logic(($) => ({
         $.onAction('init').run(() =>
           Effect.gen(function* () {
             const { kernels, defaultKernelId } = yield* client.listKernels()
-            yield* $.actions.setKernelCatalog({ kernels: kernels as any, defaultKernelId: defaultKernelId as any })
+            yield* $.dispatchers.setKernelCatalog({ kernels: kernels as any, defaultKernelId: defaultKernelId as any })
 
             const currentKernelId = (yield* $.state.read).kernelId
             const hasCurrentKernelId = kernels.some((k) => k.kernelId === currentKernelId)
             if (!hasCurrentKernelId) {
               const nextKernelId = defaultKernelId ?? kernels[0]?.kernelId
               if (nextKernelId) {
-                yield* $.actions.setKernelId(nextKernelId)
+                yield* $.dispatchers.setKernelId(nextKernelId)
               }
             }
 
@@ -179,7 +179,7 @@ export const IrLogic = IrDef.logic(($) => ({
             if (manifestText.length > 0) {
               const parsed = parseJson(manifestText)
               if (!parsed.ok) {
-                yield* $.actions.setRunError(parsed.error)
+                yield* $.dispatchers.setRunError(parsed.error)
                 return
               }
               mockManifest = parsed.value as MockManifest
@@ -191,7 +191,7 @@ export const IrLogic = IrDef.logic(($) => ({
               allowFallback: state.allowFallback,
             })
             if (!compiled.success) {
-              yield* $.actions.setRunError(compiled.errors?.join('\n') || '编译失败')
+              yield* $.dispatchers.setRunError(compiled.errors?.join('\n') || '编译失败')
               return
             }
 
@@ -203,7 +203,7 @@ export const IrLogic = IrDef.logic(($) => ({
               allowFallback: state.allowFallback,
             })
 
-            yield* $.actions.setRunSummary({
+            yield* $.dispatchers.setRunSummary({
               runId: result.runId,
               duration: result.duration,
               requestedKernelId: (result as any).requestedKernelId,
@@ -230,11 +230,11 @@ export const IrLogic = IrDef.logic(($) => ({
               )
             }
 
-            yield* $.actions.setBundle(incoming as any)
-            yield* $.actions.setActiveTab(incoming.trialRunReport ? 'trialRun' : 'manifest')
+            yield* $.dispatchers.setBundle(incoming as any)
+            yield* $.dispatchers.setActiveTab(incoming.trialRunReport ? 'trialRun' : 'manifest')
           }).pipe(
-            Effect.catchAll((e) => $.actions.setRunError(String(e))),
-            Effect.ensuring($.actions.setIsRunning(false)),
+            Effect.catchAll((e) => $.dispatchers.setRunError(String(e))),
+            Effect.ensuring($.dispatchers.setIsRunning(false)),
           ),
         ),
       ],

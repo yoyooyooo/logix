@@ -2,6 +2,7 @@ import { Context, Effect, FiberRef, Option, Schema, Stream, SubscriptionRef } fr
 import { create } from 'mutative'
 import type * as Logix from './module.js'
 import * as Logic from './LogicMiddleware.js'
+import * as Action from '../../action.js'
 import * as TaskRunner from './TaskRunner.js'
 import { mutateWithPatchPaths } from './mutativePatches.js'
 import * as FlowRuntime from './FlowRuntime.js'
@@ -515,17 +516,48 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     ref: runtime.ref,
   }
 
-  const actionsApi = new Proxy({} as BoundApi<Sh, R>['actions'], {
+  const actions = shape.actionMap as BoundApi<Sh, R>['actions']
+
+  const dispatcherCache = new Map<string, (...args: any[]) => Effect.Effect<void, any, any>>()
+
+  const hasAction = (key: string): boolean => Object.prototype.hasOwnProperty.call(actions as any, key)
+
+  const dispatchers: BoundApi<Sh, R>['dispatchers'] = new Proxy({} as any, {
     get: (_target, prop) => {
-      if (prop === 'dispatch') {
-        return (a: Logix.ActionOf<Sh>) => runtime.dispatch(a)
-      }
-      if (prop === 'actions$') {
-        return runtime.actions$
-      }
-      return (payload: any) => runtime.dispatch({ _tag: prop as string, payload } as Logix.ActionOf<Sh>)
+      if (typeof prop !== 'string') return undefined
+      if (!hasAction(prop)) return undefined
+
+      const cached = dispatcherCache.get(prop)
+      if (cached) return cached
+
+      const token = (actions as any)[prop] as Action.AnyActionToken
+      const fn = (...args: any[]) => runtime.dispatch((token as any)(...args))
+
+      dispatcherCache.set(prop, fn)
+      return fn
     },
-  })
+    has: (_target, prop) => typeof prop === 'string' && hasAction(prop),
+    ownKeys: () => Object.keys(actions as any),
+    getOwnPropertyDescriptor: (_target, prop) => {
+      if (typeof prop !== 'string') return undefined
+      if (!hasAction(prop)) return undefined
+      return { enumerable: true, configurable: true }
+    },
+  }) as unknown as BoundApi<Sh, R>['dispatchers']
+
+  const dispatch: BoundApi<Sh, R>['dispatch'] = (...args: any[]) => {
+    const [first, second] = args
+
+    if (typeof first === 'string') {
+      return runtime.dispatch({ _tag: first, payload: second } as Logix.ActionOf<Sh>)
+    }
+
+    if (Action.isActionToken(first)) {
+      return runtime.dispatch((first as any)(second))
+    }
+
+    return runtime.dispatch(first as Logix.ActionOf<Sh>)
+  }
 
   const matchApi = <V>(value: V): Logic.FluentMatch<V> => MatchBuilder.makeMatch(value)
 
@@ -539,6 +571,31 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     }) as any
   }
 
+  const effect: BoundApi<Sh, R>['effect'] = (token, handler) =>
+    Effect.gen(function* () {
+      if (!Action.isActionToken(token)) {
+        return yield* Effect.dieMessage('[BoundApi.effect] token must be an ActionToken')
+      }
+
+      const phase = getCurrentPhase()
+      const logicUnit = options?.logicUnit
+
+      yield* runtimeInternals.effects.registerEffect({
+        actionTag: token.tag,
+        handler: handler as any,
+        phase,
+        ...(logicUnit
+          ? {
+              logicUnit: {
+                logicUnitId: logicUnit.logicUnitId,
+                logicUnitLabel: logicUnit.logicUnitLabel,
+                path: logicUnit.path,
+              },
+            }
+          : {}),
+      })
+    }) as any
+
   const api: BoundApi<Sh, R> = {
     root: {
       resolve: (tag: any) => {
@@ -550,7 +607,9 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       },
     },
     state: stateApi,
-    actions: actionsApi,
+    actions,
+    dispatchers,
+    dispatch,
     flow: flowApi,
     match: matchApi,
     matchTag: matchTagApi,
@@ -691,6 +750,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       },
     },
     reducer,
+    effect,
     use: new Proxy(() => {}, {
       apply: (_target, _thisArg, [arg]) => {
         guardRunOnly('use_in_setup', '$.use')
@@ -746,6 +806,16 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       apply: (_target, _thisArg, args) => {
         guardRunOnly('use_in_setup', '$.onAction')
         const arg = args[0]
+        if (Action.isActionToken(arg)) {
+          const tag = arg.tag
+          return createIntentBuilder(
+            runtime.actions$.pipe(
+              Stream.filter((a: any) => a._tag === tag || a.type === tag),
+              Stream.map((a: any) => a.payload),
+            ),
+            tag,
+          )
+        }
         if (typeof arg === 'function') {
           return createIntentBuilder(runtime.actions$.pipe(Stream.filter(arg)))
         }

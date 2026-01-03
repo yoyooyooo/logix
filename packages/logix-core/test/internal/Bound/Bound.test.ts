@@ -484,6 +484,9 @@ describe('Bound API (public)', () => {
         getModuleTraitsSnapshot: () => undefined,
         setModuleTraitsSnapshot: () => {},
       },
+      effects: {
+        registerEffect: () => Effect.succeed({ sourceKey: 'unknown::h1', duplicate: false }),
+      },
       devtools: {
         registerConvergeStaticIr: () => {},
       },
@@ -507,7 +510,7 @@ describe('Bound API (public)', () => {
     expect(typeof (builderSchema as any).run).toBe('function')
   })
 
-  it('should dispatch actions via $.actions and expose actions$', async () => {
+  it('should dispatch actions via $.dispatchers', async () => {
     // Background: sleeping to wait for subscriptions can hide ordering issues; use an explicit subscription + counter to make the chain deterministic.
     const ActionsModule = Logix.Module.make('BoundActions', {
       state: Schema.Struct({
@@ -536,11 +539,8 @@ describe('Bound API (public)', () => {
         const collectorFiber = yield* setupActionCollector(actionHub, 2)
         const $ = Logix.Bound.make(ActionsModule.shape, moduleRuntime)
 
-        // actions$ exposed by Bound should be the same as runtime.actions$.
-        expect($.actions.actions$).toBe(moduleRuntime.actions$)
-
-        yield* $.actions.foo()
-        yield* $.actions.bar()
+        yield* $.dispatchers.foo()
+        yield* $.dispatchers.bar()
 
         const actions = yield* Fiber.join(collectorFiber)
         const tags = actions.map((a: any) => a._tag).sort()

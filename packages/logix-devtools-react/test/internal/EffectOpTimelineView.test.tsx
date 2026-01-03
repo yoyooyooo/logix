@@ -31,7 +31,8 @@ const counterFields: Record<string, Schema.Schema.Any> = { count: Schema.Number 
 for (let i = 0; i < DEFERRED_STEPS; i++) {
   counterFields[`d${i}`] = Schema.Number
 }
-const CounterState = Schema.Struct(counterFields) as any
+type CounterState = { count: number } & Record<string, number>
+const CounterStateSchema = Schema.Struct(counterFields) as unknown as Schema.Schema<CounterState>
 
 const counterTraits: Record<string, any> = {}
 for (let i = 0; i < DEFERRED_STEPS; i++) {
@@ -44,23 +45,23 @@ for (let i = 0; i < DEFERRED_STEPS; i++) {
 }
 
 const CounterModule = Logix.Module.make('DevtoolsTimelineCounter', {
-  state: CounterState as any,
+  state: CounterStateSchema,
   actions: {
     increment: Schema.Void,
   },
   reducers: {
-    increment: Logix.Module.Reducer.mutate((draft: any) => {
+    increment: Logix.Module.Reducer.mutate((draft) => {
       draft.count += 1
     }),
   },
-  traits: Logix.StateTrait.from(CounterState as any)(counterTraits as any),
+  traits: Logix.StateTrait.from(CounterStateSchema as any)(counterTraits as any),
 })
 
 const CounterImpl = CounterModule.implement({
   initial: {
     count: 0,
     ...Object.fromEntries(Array.from({ length: DEFERRED_STEPS }, (_, i) => [`d${i}`, i])),
-  } as any,
+  } as CounterState,
   logics: [
     CounterModule.logic(($) =>
       Effect.gen(function* () {
@@ -91,7 +92,7 @@ const runtime = Logix.Runtime.make(CounterImpl, {
 
 const CounterView: React.FC = () => {
   const runtimeHandle = useModule(CounterImpl.tag)
-  const count = useSelector(runtimeHandle, (s: any) => s.count)
+  const count = useSelector(runtimeHandle, (s) => s.count)
   const dispatch = useDispatch(runtimeHandle)
 
   return (

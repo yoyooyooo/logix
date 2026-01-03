@@ -33,7 +33,7 @@ describe('StateTrait list-scope check · perf baseline (Diagnostics=off)', () =>
       const rowIdStore = new RowId.RowIdStore('i-list-scope-perf')
 
       const runOnce = Effect.sync(() => {
-        let draft: any = makeInitialState()
+        let draft = makeInitialState()
         let setDraftCalls = 0
         let patchCount = 0
 

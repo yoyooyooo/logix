@@ -1,14 +1,35 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { motion } from 'framer-motion'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { MotionDialog, MotionDialogContent } from './ui/motion-dialog'
 
 import type { ArtifactName, TaskItem } from '../api/client'
 import { getDisplayTitle } from '../lib/spec-relations'
 import { MarkdownPreview } from './MarkdownPreview'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+
+function smoothScroll(element: HTMLElement, target: number, duration: number) {
+  const start = element.scrollTop
+  const change = target - start
+  const startTime = performance.now()
+
+  function animateScroll(currentTime: number) {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    const ease = 1 - Math.pow(1 - progress, 3)
+    element.scrollTop = start + change * ease
+    if (progress < 1) {
+      requestAnimationFrame(animateScroll)
+    }
+  }
+  requestAnimationFrame(animateScroll)
+}
 
 const TASK_HIGHLIGHT_CLASS = 'speckit-task-highlight'
-const TASK_HIGHLIGHT_MS = 2000
+const TASK_HIGHLIGHT_MS = 3000
 
 interface Props {
+  open: boolean
   specId: string | null
   task: TaskItem | null
   fileName: ArtifactName
@@ -24,6 +45,7 @@ interface Props {
 }
 
 export function TaskDetailDialog({
+  open,
   specId,
   task,
   fileName,
@@ -79,17 +101,23 @@ export function TaskDetailDialog({
     const target =
       exact ??
       (needles.length > 0
-        ? Array.from(root.querySelectorAll('li')).find((li) => {
+        ? (Array.from(root.querySelectorAll('li')).find((li) => {
             const text = li.textContent ?? ''
             return needles.some((n) => text.includes(n))
-          }) ?? null
+          }) ?? null)
         : null)
 
     if (!(target instanceof HTMLElement)) return
 
     lastAutoScrollLineRef.current = task.line
     requestAnimationFrame(() => {
-      target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      // Manual smooth scroll for speed control (<1s)
+      const rootRect = root.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      const relativeTop = targetRect.top - rootRect.top
+      const targetScroll = root.scrollTop + relativeTop - root.clientHeight / 2 + targetRect.height / 2
+
+      smoothScroll(root, targetScroll, 600)
 
       if (highlightTimeoutRef.current !== null) {
         window.clearTimeout(highlightTimeoutRef.current)
@@ -115,138 +143,135 @@ export function TaskDetailDialog({
 
   // NOTE: Logic moved to parent AnimatePresence.
   // We assume valid props if rendered.
-  if (!specId || !task) return null
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 overflow-hidden"
-    >
-      <div
-        className="absolute inset-0 bg-zinc-900/20 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
-      />
-
-      <div className="absolute inset-y-0 right-0 flex max-w-full pl-10">
-        <motion.div
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300, mass: 0.8 }}
-          className="w-screen max-w-2xl"
-        >
-          <div className="flex h-full flex-col bg-[var(--surface-base)] shadow-2xl">
+    <MotionDialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <MotionDialogContent
+        className="right-4 top-4 bottom-4 h-auto w-[600px] max-w-none rounded-none border border-border shadow-2xl outline-none"
+        overlayClassName="bg-black/10 backdrop-blur-[1px]"
+        motionProps={{
+          initial: { opacity: 0, x: 20, scale: 0.98 },
+          animate: { opacity: 1, x: 0, scale: 1 },
+          exit: { opacity: 0, x: 20, scale: 0.98 },
+          transition: { type: 'spring', damping: 25, stiffness: 300 },
+        }}
+        aria-describedby={undefined} // Suppress warning if description missing
+      >
+        <DialogPrimitive.Title className="sr-only">Task Detail</DialogPrimitive.Title>
+        {specId && task ? (
+          <div className="flex h-full flex-col bg-background">
             {/* Header */}
-            <div className="flex-none border-b border-[var(--border-subtle)] bg-[var(--surface-float)] px-6 py-5 backdrop-blur-md">
+            <div className="flex-none border-b-4 border-double border-border/40 bg-background px-6 py-5">
               <div className="flex items-start justify-between gap-6">
                 <div className="min-w-0">
-                  <div className="text-lg font-semibold text-[var(--text-primary)] leading-6">{title}</div>
-                  <div className="mt-1 flex items-center gap-2 font-mono text-xs text-[var(--text-tertiary)] opacity-70">
-                    <span>{specId}</span>
-                    <span>·</span>
-                    <span>L{task.line}</span>
+                  <div className="text-xl font-bold font-serif leading-6 text-foreground">{title}</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="rounded-none font-mono">
+                      {specId}
+                    </Badge>
+                    <Badge variant="outline" className="rounded-none font-mono">
+                      L{task.line}
+                    </Badge>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="rounded-full p-2 text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] transition-colors"
-                  onClick={onClose}
-                >
-                  <span className="sr-only">Close</span>
+                <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </button>
+                </Button>
               </div>
             </div>
 
             {/* Controls */}
-            <div className="flex-none border-b border-[var(--border-subtle)] bg-[var(--surface-base)] px-6 py-3">
-              <div className="flex items-center gap-3">
-                <label className="text-xs font-medium text-[var(--text-secondary)]">Source</label>
-                <div className="relative">
-                  <select
-                    className="appearance-none rounded-lg bg-[var(--surface-card)] pl-3 pr-8 py-1.5 text-sm text-[var(--text-primary)] shadow-sm ring-1 ring-inset ring-[var(--border-subtle)] focus:ring-2 focus:ring-black"
-                    value={fileName}
-                    onChange={(e) => onSelectFile(e.target.value as ArtifactName)}
-                  >
-                    <option value="tasks.md">tasks.md</option>
-                    <option value="quickstart.md">quickstart.md</option>
-                    <option value="data-model.md">data-model.md</option>
-                    <option value="research.md">research.md</option>
-                    <option value="plan.md">plan.md</option>
-                    <option value="spec.md">spec.md</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[var(--text-tertiary)]">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+            <div className="flex h-12 flex-none items-center border-b border-border/30 bg-background px-6">
+              <div className="flex w-full items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Source
+                  </label>
+                  <div className="relative">
+                    <select
+                      className="h-7 w-40 appearance-none rounded-none border border-border bg-background px-3 pr-8 font-mono text-[11px] text-foreground outline-none transition-colors hover:border-foreground focus-visible:ring-0"
+                      value={fileName}
+                      onChange={(e) => onSelectFile(e.target.value as ArtifactName)}
+                    >
+                      <option value="tasks.md">tasks.md</option>
+                      <option value="quickstart.md">quickstart.md</option>
+                      <option value="data-model.md">data-model.md</option>
+                      <option value="research.md">research.md</option>
+                      <option value="plan.md">plan.md</option>
+                      <option value="spec.md">spec.md</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
 
-                <div className="ml-auto flex items-center gap-3">
-                  <div className="flex overflow-hidden rounded-md border border-zinc-200 bg-white text-xs">
+                <div className="flex items-center gap-3">
+                  {error ? <span className="text-xs text-destructive">{error}</span> : null}
+                  {viewMode === 'edit' && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 rounded-none border-border px-3 font-mono text-[10px] tracking-wider hover:bg-foreground hover:text-background"
+                      disabled={loading}
+                      onClick={onSave}
+                    >
+                      {loading ? 'SAVING...' : 'SAVE'}
+                    </Button>
+                  )}
+
+                  <div className="flex items-center border border-border bg-background">
                     <button
                       type="button"
                       className={
                         viewMode === 'preview'
-                          ? 'bg-zinc-900 px-2 py-1 text-white'
-                          : 'px-2 py-1 text-zinc-700 hover:bg-zinc-50'
+                          ? 'bg-foreground px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-background transition-colors'
+                          : 'bg-transparent px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
                       }
                       onClick={() => onSetViewMode('preview')}
                     >
-                      预览
+                      PREVIEW
                     </button>
+                    <div className="h-3 w-px bg-border" />
                     <button
                       type="button"
                       className={
                         viewMode === 'edit'
-                          ? 'bg-zinc-900 px-2 py-1 text-white'
-                          : 'px-2 py-1 text-zinc-700 hover:bg-zinc-50'
+                          ? 'bg-foreground px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-background transition-colors'
+                          : 'bg-transparent px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
                       }
                       onClick={() => onSetViewMode('edit')}
                     >
-                      编辑
+                      EDIT
                     </button>
                   </div>
-
-                  {error ? <span className="text-xs text-red-600 animate-pulse">{error}</span> : null}
-                  {viewMode === 'edit' && (
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center rounded-lg bg-[var(--intent-primary-fg)] px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:brightness-110 disabled:opacity-50 transition-all active:scale-95"
-                      disabled={loading}
-                      onClick={onSave}
-                    >
-                      {loading ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
 
             {/* Editor */}
-            <div className="flex-1 overflow-hidden bg-[var(--surface-card)]">
+            <div className="flex-1 overflow-hidden bg-card">
               {viewMode === 'preview' ? (
                 <div ref={previewScrollRef} className="scrollbar-none h-full overflow-y-auto p-6">
                   <MarkdownPreview markdown={content} />
                 </div>
               ) : (
                 <textarea
-                  className="h-full w-full resize-none border-0 bg-transparent p-6 font-mono text-[13px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+                  className="h-full w-full resize-none border-0 bg-transparent p-6 font-mono text-[13px] leading-6 text-foreground outline-none placeholder:text-muted-foreground"
                   value={content}
                   onChange={(e) => onChangeContent(e.target.value)}
-                  placeholder={loading ? 'Loading content...' : 'File content...'}
+                  placeholder={loading ? '加载中…' : '文件内容…'}
                   spellCheck={false}
                 />
               )}
             </div>
           </div>
-        </motion.div>
-      </div>
-    </motion.div>
+        ) : null}
+      </MotionDialogContent>
+    </MotionDialog>
   )
 }

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 
 import type { TaskItem } from '../api/client'
 import { extractRefsFromTaskRaw, getDisplayTitle } from '../lib/spec-relations'
+import { Badge } from './ui/badge'
 
 interface Props {
   tasks: ReadonlyArray<TaskItem>
@@ -13,11 +14,11 @@ export function TasksPreview({ tasks, highlightLine, onOpenTask }: Props) {
   const ordered = useMemo(() => Array.from(tasks).sort((a, b) => a.line - b.line), [tasks])
 
   if (ordered.length === 0) {
-    return <div className="text-sm text-zinc-500">tasks.md 中没有任务</div>
+    return <div className="text-sm text-muted-foreground">tasks.md 中没有任务</div>
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-0 divide-y divide-dashed divide-border/40 pr-2">
       {ordered.map((t) => {
         const title = getDisplayTitle(t)
         const refs = extractRefsFromTaskRaw(t.raw)
@@ -31,44 +32,71 @@ export function TasksPreview({ tasks, highlightLine, onOpenTask }: Props) {
             type="button"
             className={
               isHighlighted
-                ? 'rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-left shadow-sm ring-2 ring-sky-200'
-                : 'rounded-xl border border-zinc-200 bg-white px-3 py-2 text-left hover:bg-zinc-50'
+                ? 'group relative flex w-full items-start gap-3 bg-accent/10 px-3 py-3 text-left transition-colors hover:bg-accent/15'
+                : 'group relative flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/40'
             }
             onClick={() => onOpenTask(t)}
           >
-            <div className="flex items-start gap-2">
-              <span
+            {/* Checkbox */}
+            <span
+              className={
+                t.checked
+                  ? 'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-success bg-success/10 text-[10px] font-bold text-success-foreground'
+                  : 'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-border bg-background transition-colors group-hover:border-foreground'
+              }
+            >
+              {t.checked ? '✓' : ''}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className="h-5 rounded-sm px-1 font-mono text-[10px] text-muted-foreground group-hover:border-foreground group-hover:text-foreground"
+                >
+                  {label}
+                </Badge>
+                {t.story ? (
+                  <Badge
+                    variant="outline"
+                    className="h-5 rounded-sm border-border px-1 font-mono text-[10px] text-muted-foreground group-hover:border-foreground group-hover:text-foreground"
+                  >
+                    {t.story}
+                  </Badge>
+                ) : null}
+                {t.parallel ? (
+                  <Badge
+                    variant="outline"
+                    className="h-5 rounded-sm border-warning/50 px-1 font-mono text-[10px] text-warning group-hover:border-warning"
+                  >
+                    P
+                  </Badge>
+                ) : null}
+                <span className="ml-auto font-mono text-[10px] text-muted-foreground opacity-50">L{t.line}</span>
+              </div>
+
+              <div
                 className={
                   t.checked
-                    ? 'mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded border border-emerald-300 bg-emerald-50 text-[10px] text-emerald-700'
-                    : 'mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded border border-zinc-300 bg-white text-[10px] text-zinc-400'
+                    ? 'mt-1.5 break-words text-sm font-serif text-muted-foreground line-through opacity-60'
+                    : 'mt-1.5 break-words text-sm font-serif text-foreground font-medium'
                 }
               >
-                {t.checked ? '✓' : ''}
-              </span>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700">{label}</span>
-                  {t.story ? <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-700">{t.story}</span> : null}
-                  {t.parallel ? <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-700">P</span> : null}
-                  <span className="ml-auto font-mono text-[11px] text-zinc-400">L{t.line}</span>
-                </div>
-
-                <div className={t.checked ? 'mt-1 break-words text-sm text-zinc-500 line-through' : 'mt-1 break-words text-sm text-zinc-900'}>
-                  {title}
-                </div>
-
-                {refs.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {refs.map((code) => (
-                      <span key={code} className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] text-zinc-600">
-                        {code}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+                {title}
               </div>
+
+              {refs.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {refs.map((code) => (
+                    <span
+                      key={code}
+                      className="inline-block border-b border-dashed border-muted-foreground/30 font-mono text-[10px] text-muted-foreground"
+                    >
+                      {code}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </button>
         )
@@ -76,4 +104,3 @@ export function TasksPreview({ tasks, highlightLine, onOpenTask }: Props) {
     </div>
   )
 }
-

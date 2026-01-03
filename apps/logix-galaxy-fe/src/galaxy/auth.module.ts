@@ -52,24 +52,24 @@ export const AuthLogic = AuthDef.logic(($) => {
   const clearSession = (message?: string) =>
     Effect.gen(function* () {
       tokenStorage.clear()
-      yield* $.actions.setToken(null)
-      yield* $.actions.setUser(null)
-      yield* $.actions.setPhase('anonymous')
-      yield* $.actions.setPending(false)
-      yield* $.actions.setError(message ?? null)
+      yield* $.dispatchers.setToken(null)
+      yield* $.dispatchers.setUser(null)
+      yield* $.dispatchers.setPhase('anonymous')
+      yield* $.dispatchers.setPending(false)
+      yield* $.dispatchers.setError(message ?? null)
     })
 
   const bootstrapFromStorage = Effect.gen(function* () {
     const stored = tokenStorage.get()
     if (!stored) {
-      yield* $.actions.setPhase('anonymous')
-      yield* $.actions.setPending(false)
+      yield* $.dispatchers.setPhase('anonymous')
+      yield* $.dispatchers.setPending(false)
       return
     }
 
-    yield* $.actions.setToken(stored)
-    yield* $.actions.setPending(true)
-    yield* $.actions.setError(null)
+    yield* $.dispatchers.setToken(stored)
+    yield* $.dispatchers.setPending(true)
+    yield* $.dispatchers.setError(null)
 
     const meEither = yield* Effect.tryPromise({
       try: () => galaxyApi.me(stored),
@@ -80,9 +80,9 @@ export const AuthLogic = AuthDef.logic(($) => {
       return yield* clearSession(galaxyApi.toMessage(meEither.left))
     }
 
-    yield* $.actions.setUser(meEither.right as any)
-    yield* $.actions.setPhase('authenticated')
-    yield* $.actions.setPending(false)
+    yield* $.dispatchers.setUser(meEither.right as any)
+    yield* $.dispatchers.setPhase('authenticated')
+    yield* $.dispatchers.setPending(false)
   })
 
   return {
@@ -93,8 +93,8 @@ export const AuthLogic = AuthDef.logic(($) => {
       yield* Effect.all([
         $.onAction('login').runLatest((action) =>
           Effect.gen(function* () {
-            yield* $.actions.setPending(true)
-            yield* $.actions.setError(null)
+            yield* $.dispatchers.setPending(true)
+            yield* $.dispatchers.setError(null)
 
             const resEither = yield* Effect.tryPromise({
               try: () => galaxyApi.login(action.payload),
@@ -102,17 +102,17 @@ export const AuthLogic = AuthDef.logic(($) => {
             }).pipe(Effect.either)
 
             if (resEither._tag === 'Left') {
-              yield* $.actions.setPending(false)
-              yield* $.actions.setPhase('anonymous')
-              yield* $.actions.setError(galaxyApi.toMessage(resEither.left))
+              yield* $.dispatchers.setPending(false)
+              yield* $.dispatchers.setPhase('anonymous')
+              yield* $.dispatchers.setError(galaxyApi.toMessage(resEither.left))
               return
             }
 
             tokenStorage.set(resEither.right.token)
-            yield* $.actions.setToken(resEither.right.token)
-            yield* $.actions.setUser(resEither.right.user as any)
-            yield* $.actions.setPhase('authenticated')
-            yield* $.actions.setPending(false)
+            yield* $.dispatchers.setToken(resEither.right.token)
+            yield* $.dispatchers.setUser(resEither.right.user as any)
+            yield* $.dispatchers.setPhase('authenticated')
+            yield* $.dispatchers.setPending(false)
           }),
         ),
 

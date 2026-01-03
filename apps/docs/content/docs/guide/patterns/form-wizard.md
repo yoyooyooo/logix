@@ -55,43 +55,48 @@ const WizardDef = Logix.Module.make('Wizard', {
 ```ts
 const WizardLogic = WizardDef.logic(($) =>
   Effect.gen(function* () {
-    // 下一步：先校验当前步骤
-    yield* $.onAction('next').run(() =>
-      Effect.gen(function* () {
-        const state = yield* $.state.read
-        const currentStep = state.currentStep
+    yield* Effect.all(
+      [
+        // 下一步：先校验当前步骤
+        $.onAction('next').run(() =>
+          Effect.gen(function* () {
+            const state = yield* $.state.read
+            const currentStep = state.currentStep
 
-        // 校验当前步骤
-        const isValid = yield* validateStep(currentStep, state)
-        if (!isValid) return
+            // 校验当前步骤
+            const isValid = yield* validateStep(currentStep, state)
+            if (!isValid) return
 
-        // 标记当前步骤有效，进入下一步
-        yield* $.state.mutate((d) => {
-          d.steps[currentStep].isValid = true
-          if (currentStep < d.steps.length - 1) {
-            d.currentStep = currentStep + 1
-            d.steps[currentStep + 1].isVisited = true
-          }
-        })
-      }),
-    )
+            // 标记当前步骤有效，进入下一步
+            yield* $.state.mutate((d) => {
+              d.steps[currentStep].isValid = true
+              if (currentStep < d.steps.length - 1) {
+                d.currentStep = currentStep + 1
+                d.steps[currentStep + 1].isVisited = true
+              }
+            })
+          }),
+        ),
 
-    // 上一步：无需校验
-    yield* $.onAction('prev').run(() =>
-      $.state.mutate((d) => {
-        if (d.currentStep > 0) {
-          d.currentStep = d.currentStep - 1
-        }
-      }),
-    )
+        // 上一步：无需校验
+        $.onAction('prev').run(() =>
+          $.state.mutate((d) => {
+            if (d.currentStep > 0) {
+              d.currentStep = d.currentStep - 1
+            }
+          }),
+        ),
 
-    // 跳转到指定步骤（只能跳到已访问的步骤）
-    yield* $.onAction('goToStep').run((step) =>
-      $.state.mutate((d) => {
-        if (step >= 0 && step < d.steps.length && d.steps[step].isVisited) {
-          d.currentStep = step
-        }
-      }),
+        // 跳转到指定步骤（只能跳到已访问的步骤）
+        $.onAction('goToStep').run(({ payload: step }) =>
+          $.state.mutate((d) => {
+            if (step >= 0 && step < d.steps.length && d.steps[step].isVisited) {
+              d.currentStep = step
+            }
+          }),
+        ),
+      ],
+      { concurrency: 'unbounded' },
     )
   }),
 )

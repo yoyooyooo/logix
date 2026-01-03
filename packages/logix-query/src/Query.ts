@@ -27,6 +27,19 @@ type ForbidQueryNames = {
   readonly [K in ForbiddenQueryName]?: never
 }
 
+export type QueryActions<TParams, TUI = unknown, TQueries extends Record<string, any> = {}> = {
+  readonly setParams: Schema.Schema<TParams, any>
+  readonly setUi: Schema.Schema<TUI, any>
+  readonly refresh: Schema.Schema<QueryName<TQueries> | undefined, any>
+  readonly invalidate: Schema.Schema<InvalidateRequest, any>
+}
+
+export type QueryShape<
+  TParams,
+  TUI = unknown,
+  TQueries extends Record<string, QuerySourceConfig<TParams, TUI>> = {},
+> = Logix.Shape<Schema.Schema<QueryState<TParams, TUI, TQueries>, any>, QueryActions<TParams, TUI, TQueries>>
+
 export type QueryAction<TParams, TUI = unknown, TQueries extends Record<string, any> = {}> =
   | { readonly _tag: 'setParams'; readonly payload: TParams }
   | { readonly _tag: 'setUi'; readonly payload: TUI }
@@ -60,6 +73,33 @@ export interface QueryController<
     readonly refresh: (target?: QueryName<TQueries>) => Effect.Effect<void>
     readonly invalidate: (request: InvalidateRequest) => Effect.Effect<void>
   }
+}
+
+export type QueryModuleController<
+  TParams,
+  TUI = unknown,
+  TQueries extends Record<string, QuerySourceConfig<TParams, TUI>> = {},
+> = {
+  readonly make: (
+    runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, TQueries>, QueryAction<TParams, TUI, TQueries>>,
+  ) => QueryController<TParams, TUI, TQueries>
+}
+
+export type QueryHandleExt<
+  TParams,
+  TUI = unknown,
+  TQueries extends Record<string, QuerySourceConfig<TParams, TUI>> = {},
+> = {
+  readonly controller: QueryController<TParams, TUI, TQueries>['controller']
+}
+
+export type QueryModule<
+  Id extends string,
+  TParams,
+  TUI = unknown,
+  TQueries extends Record<string, QuerySourceConfig<TParams, TUI>> = {},
+> = Logix.Module.Module<Id, QueryShape<TParams, TUI, TQueries>, QueryHandleExt<TParams, TUI, TQueries>, any> & {
+  readonly controller: QueryModuleController<TParams, TUI, TQueries>
 }
 
 const InvalidateRequestSchema = Schema.Union(
@@ -98,7 +138,7 @@ export const make = <
 >(
   id: Id,
   config: QueryMakeConfig<TParams, TUI, TQueries>,
-) => {
+): QueryModule<Id, TParams, TUI, TQueries> => {
   const queries = (config.queries ?? {}) as TQueries
   for (const name of Object.keys(queries)) {
     assertQueryName(name)
@@ -141,22 +181,18 @@ export const make = <
     setUi: UiSchema,
     refresh: Schema.UndefinedOr(RefreshTargetSchema),
     invalidate: InvalidateRequestSchema,
-  } as const
+  } satisfies QueryActions<TParams, TUI, TQueries>
 
   type Reducers = Logix.ReducersFromMap<typeof StateSchema, typeof Actions>
 
   const reducers: Reducers = {
     setParams: (state, action, sink) => {
       sink?.('params')
-      const hasPayload = Object.prototype.hasOwnProperty.call(action as any, 'payload')
-      const nextParams = hasPayload ? ((action as any).payload as TParams) : state.params
-      return { ...state, params: nextParams }
+      return { ...state, params: action.payload ?? state.params }
     },
     setUi: (state, action, sink) => {
       sink?.('ui')
-      const hasPayload = Object.prototype.hasOwnProperty.call(action as any, 'payload')
-      const nextUi = hasPayload ? ((action as any).payload as TUI) : state.ui
-      return { ...state, ui: nextUi }
+      return { ...state, ui: action.payload ?? state.ui }
     },
     refresh: (state) => state,
     invalidate: (state) => state,
@@ -192,7 +228,7 @@ export const make = <
       ),
     }) as QueryState<TParams, TUI, TQueries>
 
-  const controller = {
+  const controller: QueryModuleController<TParams, TUI, TQueries> = {
     make: (
       runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, TQueries>, QueryAction<TParams, TUI, TQueries>>,
     ): QueryController<TParams, TUI, TQueries> => {
@@ -228,12 +264,5 @@ export const make = <
   return module.implement({
     initial: initial(),
     logics: [...logics],
-  }) as unknown as Logix.Module.Module<
-    Id,
-    typeof module.shape,
-    { readonly controller: QueryController<TParams, TUI, TQueries>['controller'] },
-    any
-  > & {
-    readonly controller: typeof controller
-  }
+  }) as unknown as QueryModule<Id, TParams, TUI, TQueries>
 }

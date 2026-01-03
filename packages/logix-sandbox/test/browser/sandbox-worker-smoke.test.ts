@@ -70,8 +70,8 @@ testFn(
       const CounterLogic = CounterModule.logic(($) => ({
         setup: Effect.void,
         run: Effect.gen(function* () {
-          yield* $.actions.dispatch({ _tag: "inc", payload: undefined });
-          yield* $.actions.inc()
+          yield* $.dispatch({ _tag: "inc", payload: undefined });
+          yield* $.dispatchers.inc()
         }),
       }));
 
@@ -197,8 +197,8 @@ testFn(
 	        run: Effect.gen(function* () {
 	          yield* Effect.log("Runtime.make type: " + String(typeof Runtime.make));
 	          yield* Effect.log("StateTrait.source type: " + String(typeof StateTrait.source));
-	          yield* $.actions.inc();
-	          yield* $.actions.inc();
+	          yield* $.dispatchers.inc();
+	          yield* $.dispatchers.inc();
 	        }),
 	      }));
 

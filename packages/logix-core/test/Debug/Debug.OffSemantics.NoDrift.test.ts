@@ -13,7 +13,7 @@ describe('Debug semantics: diagnostics=off should not change runtime behavior (U
         state: State,
         actions: Actions,
         reducers: {
-          inc: Logix.Module.Reducer.mutate((draft: any) => {
+          inc: Logix.Module.Reducer.mutate((draft) => {
             draft.value += 1
           }),
         },
@@ -38,9 +38,9 @@ describe('Debug semantics: diagnostics=off should not change runtime behavior (U
           const state = yield* Effect.promise(() =>
             runtime.runPromise(
               Effect.gen(function* () {
-                const rt: any = yield* M.tag
-                yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
-                return (yield* rt.getState) as any
+                const rt = yield* M.tag
+                yield* rt.dispatch({ _tag: 'inc', payload: undefined })
+                return yield* rt.getState
               }),
             ),
           )

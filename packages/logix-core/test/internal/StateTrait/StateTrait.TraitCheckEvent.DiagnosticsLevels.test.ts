@@ -47,7 +47,8 @@ describe('StateTrait trait:check diagnostics levels', () => {
     readonly originOp: 'set' | 'unset' | 'insert' | 'remove'
   }) =>
     Effect.gen(function* () {
-      let draft: any = {
+      type State = Schema.Schema.Type<typeof StateSchema>
+      let draft: State = {
         items: [{ warehouseId: 'WH-1' }, { warehouseId: 'WH-1' }],
         errors: {},
       }

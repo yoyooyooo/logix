@@ -73,7 +73,7 @@ describe('StateTrait nested list scoped validate', () => {
     requests: ReadonlyArray<StateTraitValidate.ScopedValidateRequest>,
   ) =>
     Effect.gen(function* () {
-      let draft: any = initial
+      let draft: State = initial
       const patches: Array<any> = []
       const ctx: StateTraitValidate.ValidateContext<any> = {
         moduleId: 'M',

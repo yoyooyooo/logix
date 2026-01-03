@@ -4,6 +4,17 @@ title: React 集成（启动策略与冷启动优化）
 
 在 React 中使用 Logix 时，请先把 `RuntimeProvider` 放到组件树的边界（通常是 App 根或路由 Layout）。所有 `@logix/react` 的 hooks 都必须在 Provider 子树内调用。
 
+如果你现在只想知道“应该用哪些 hooks”，先记住这张能力地图：
+
+- 环境：`RuntimeProvider`（必需） → [API: RuntimeProvider](../../api/react/provider)
+- 解析句柄：`useModule` / `useLocalModule` → [API: useModule](../../api/react/use-module) / [API: useLocalModule](../../api/react/use-local-module)
+- 订阅渲染：`useSelector`（推荐所有渲染依赖都走 selector）
+- 派发动作：`useDispatch`（以及 `handle.dispatch`）
+- imports scope：`handle.imports.get` / `useImportedModule` → [API: useImportedModule](../../api/react/use-imported-module)
+- 组合件（语法糖）：`ModuleScope` → [API: ModuleScope](../../api/react/module-scope)
+
+> 本篇只讲 Provider 的启动策略与诊断；“组件里如何读/写 state”更推荐从 [配方：React 集成](../recipes/react-integration) 开始。
+
 ## 统一入口：只用一个 `fallback`
 
 推荐始终提供 `fallback`，它会同时覆盖：
@@ -89,19 +100,23 @@ const sessionB = useModule(SessionImpl, { key: 'SessionB' })
 `@logix/react` 会从 Effect 的 `ConfigProvider` 读取一组全局默认配置（作用域是当前 `ManagedRuntime`）。你可以在创建 Runtime 时一次性注入：
 
 ```tsx
-import { ConfigProvider, Layer, ManagedRuntime } from 'effect'
+import * as Logix from '@logix/core'
+import { ConfigProvider, Layer } from 'effect'
 import { RuntimeProvider } from '@logix/react'
+import { RootImpl } from './root-module'
 
 const ReactConfigLayer = Layer.setConfigProvider(
   ConfigProvider.fromMap(
-    new Map<string, string>([
+    new Map([
       ['logix.react.gc_time', String(5 * 60_000)],
       ['logix.react.init_timeout_ms', '30000'],
     ]),
   ),
 )
 
-const runtime = ManagedRuntime.make(Layer.mergeAll(ReactConfigLayer, AppLayer) as Layer.Layer<any, never, never>)
+const runtime = Logix.Runtime.make(RootImpl, {
+  layer: Layer.mergeAll(ReactConfigLayer, AppLayer),
+})
 
 export function Root() {
   return (

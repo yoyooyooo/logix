@@ -101,7 +101,10 @@ export const makeOptimisticCrudModule = <
 
   type State = Schema.Schema.Type<typeof StateSchema>
 
-  const getId = (entity: Entity): EntityId => (entity as Record<string, unknown>)[idField] as EntityId
+  const toDraft = <T>(value: T): Logix.Logic.Draft<T> => value as unknown as Logix.Logic.Draft<T>
+
+  const getId = (entity: Entity | Logix.Logic.Draft<Entity>): EntityId =>
+    (entity as Record<string, unknown>)[idField] as EntityId
 
   const recomputeItems = (base: ReadonlyArray<Entity>, pending: ReadonlyArray<PendingOp>): ReadonlyArray<Entity> =>
     applyOptimisticOps(base, pending as ReadonlyArray<OptimisticOp<Entity, EntityId>>, getId)
@@ -141,109 +144,140 @@ export const makeOptimisticCrudModule = <
 
   type ActionMap = typeof Actions
 
-  const reducers = {
-    query: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>, action) => {
+  const immerReducers = {
+    query: (draft, payload) => {
       draft.loading = true
       draft.error = undefined
-      draft.lastQuery = action.payload.input
-      draft.lastQueryOpId = action.payload.opId
-    }),
-    querySucceeded: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>, action) => {
-      if (draft.lastQueryOpId && action.payload.opId !== draft.lastQueryOpId) {
+      draft.lastQuery = toDraft(payload.input)
+      draft.lastQueryOpId = payload.opId
+    },
+    querySucceeded: (draft, payload) => {
+      if (draft.lastQueryOpId && payload.opId !== draft.lastQueryOpId) {
         return
       }
 
-      draft.base = Array.from(action.payload.result.items) as any
-      draft.items = Array.from(recomputeItems(draft.base as any, draft.pending as any)) as any
-      draft.total = action.payload.result.total
+      draft.base = Array.from(payload.result.items).map(toDraft)
+      draft.items = Array.from(
+        recomputeItems(
+          draft.base as unknown as ReadonlyArray<Entity>,
+          draft.pending as unknown as ReadonlyArray<PendingOp>,
+        ),
+      ).map(toDraft)
+      draft.total = payload.result.total
       draft.error = undefined
       draft.loading = draft.pending.length > 0
-    }),
-    queryFailed: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>, action) => {
-      if (draft.lastQueryOpId && action.payload.opId !== draft.lastQueryOpId) {
+    },
+    queryFailed: (draft, payload) => {
+      if (draft.lastQueryOpId && payload.opId !== draft.lastQueryOpId) {
         return
       }
 
-      draft.error = action.payload.error
+      draft.error = payload.error
       draft.loading = draft.pending.length > 0
-    }),
+    },
 
-    save: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>, action) => {
-      draft.pending = [
-        ...draft.pending,
-        {
-          _tag: 'save',
-          opId: action.payload.opId,
-          seq: action.payload.seq,
-          entity: action.payload.entity,
-        },
-      ]
-      draft.items = Array.from(recomputeItems(draft.base as any, draft.pending as any)) as any
-      draft.error = undefined
-      draft.loading = true
-    }),
-    saveSucceeded: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>, action) => {
-      if (!draft.pending.some((op) => op.opId === action.payload.opId)) {
-        return
-      }
-
-      draft.base = Array.from(upsertBase(draft.base as any, action.payload.entity as any)) as any
-      draft.pending = Array.from(removeOp(draft.pending as any, action.payload.opId)) as any
-      draft.items = Array.from(recomputeItems(draft.base as any, draft.pending as any)) as any
-      draft.error = undefined
-      draft.loading = draft.pending.length > 0
-    }),
-    saveFailed: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>, action) => {
-      if (!draft.pending.some((op) => op.opId === action.payload.opId)) {
-        return
-      }
-
-      draft.pending = Array.from(removeOp(draft.pending as any, action.payload.opId)) as any
-      draft.items = Array.from(recomputeItems(draft.base as any, draft.pending as any)) as any
-      draft.error = action.payload.error
-      draft.loading = draft.pending.length > 0
-    }),
-
-    remove: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>, action) => {
-      draft.pending = [
-        ...draft.pending,
-        {
-          _tag: 'remove',
-          opId: action.payload.opId,
-          seq: action.payload.seq,
-          id: action.payload.id,
-        },
-      ]
-      draft.items = Array.from(recomputeItems(draft.base as any, draft.pending as any)) as any
+    save: (draft, payload) => {
+      draft.pending.push({
+        _tag: 'save',
+        opId: payload.opId,
+        seq: payload.seq,
+        entity: toDraft(payload.entity),
+      })
+      draft.items = Array.from(
+        recomputeItems(
+          draft.base as unknown as ReadonlyArray<Entity>,
+          draft.pending as unknown as ReadonlyArray<PendingOp>,
+        ),
+      ).map(toDraft)
       draft.error = undefined
       draft.loading = true
-    }),
-    removeSucceeded: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>, action) => {
-      if (!draft.pending.some((op) => op.opId === action.payload.opId)) {
+    },
+    saveSucceeded: (draft, payload) => {
+      if (!draft.pending.some((op) => op.opId === payload.opId)) {
         return
       }
 
-      draft.base = (draft.base as any).filter((e: any) => getId(e) !== action.payload.id) as any
-      draft.pending = Array.from(removeOp(draft.pending as any, action.payload.opId)) as any
-      draft.items = Array.from(recomputeItems(draft.base as any, draft.pending as any)) as any
+      draft.base = Array.from(
+        upsertBase(draft.base as unknown as ReadonlyArray<Entity>, payload.entity),
+      ).map(toDraft)
+      draft.pending = Array.from(removeOp(draft.pending, payload.opId))
+      draft.items = Array.from(
+        recomputeItems(
+          draft.base as unknown as ReadonlyArray<Entity>,
+          draft.pending as unknown as ReadonlyArray<PendingOp>,
+        ),
+      ).map(toDraft)
       draft.error = undefined
       draft.loading = draft.pending.length > 0
-    }),
-    removeFailed: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>, action) => {
-      if (!draft.pending.some((op) => op.opId === action.payload.opId)) {
+    },
+    saveFailed: (draft, payload) => {
+      if (!draft.pending.some((op) => op.opId === payload.opId)) {
         return
       }
 
-      draft.pending = Array.from(removeOp(draft.pending as any, action.payload.opId)) as any
-      draft.items = Array.from(recomputeItems(draft.base as any, draft.pending as any)) as any
-      draft.error = action.payload.error
+      draft.pending = Array.from(removeOp(draft.pending, payload.opId))
+      draft.items = Array.from(
+        recomputeItems(
+          draft.base as unknown as ReadonlyArray<Entity>,
+          draft.pending as unknown as ReadonlyArray<PendingOp>,
+        ),
+      ).map(toDraft)
+      draft.error = payload.error
       draft.loading = draft.pending.length > 0
-    }),
+    },
 
-    clearError: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<State>) => {
+    remove: (draft, payload) => {
+      draft.pending.push({
+        _tag: 'remove',
+        opId: payload.opId,
+        seq: payload.seq,
+        id: toDraft(payload.id),
+      })
+      draft.items = Array.from(
+        recomputeItems(
+          draft.base as unknown as ReadonlyArray<Entity>,
+          draft.pending as unknown as ReadonlyArray<PendingOp>,
+        ),
+      ).map(toDraft)
       draft.error = undefined
-    }),
-  } satisfies Logix.ReducersFromMap<typeof StateSchema, ActionMap>
+      draft.loading = true
+    },
+    removeSucceeded: (draft, payload) => {
+      if (!draft.pending.some((op) => op.opId === payload.opId)) {
+        return
+      }
+
+      draft.base = draft.base.filter((e) => getId(e) !== payload.id)
+      draft.pending = Array.from(removeOp(draft.pending, payload.opId))
+      draft.items = Array.from(
+        recomputeItems(
+          draft.base as unknown as ReadonlyArray<Entity>,
+          draft.pending as unknown as ReadonlyArray<PendingOp>,
+        ),
+      ).map(toDraft)
+      draft.error = undefined
+      draft.loading = draft.pending.length > 0
+    },
+    removeFailed: (draft, payload) => {
+      if (!draft.pending.some((op) => op.opId === payload.opId)) {
+        return
+      }
+
+      draft.pending = Array.from(removeOp(draft.pending, payload.opId))
+      draft.items = Array.from(
+        recomputeItems(
+          draft.base as unknown as ReadonlyArray<Entity>,
+          draft.pending as unknown as ReadonlyArray<PendingOp>,
+        ),
+      ).map(toDraft)
+      draft.error = payload.error
+      draft.loading = draft.pending.length > 0
+    },
+
+    clearError: (draft) => {
+      draft.error = undefined
+    },
+  } satisfies Logix.MutatorsFromMap<typeof StateSchema, ActionMap>
 
   const module = Logix.Module.make<
     Id,
@@ -253,7 +287,7 @@ export const makeOptimisticCrudModule = <
   >(id, {
     state: StateSchema,
     actions: Actions,
-    reducers,
+    immerReducers,
     meta: { kind: 'optimistic-crud', idField },
     services,
   })
@@ -265,7 +299,7 @@ export const makeOptimisticCrudModule = <
           Effect.gen(function* () {
             const apiOpt = yield* Effect.serviceOption(services.api)
             if (Option.isNone(apiOpt)) {
-              yield* $.actions.queryFailed({
+              yield* $.dispatchers.queryFailed({
                 opId: action.payload.opId,
                 error: `[OptimisticCrud] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`,
               })
@@ -273,10 +307,10 @@ export const makeOptimisticCrudModule = <
             }
             const api = apiOpt.value
             const result = yield* api.list(action.payload.input)
-            yield* $.actions.querySucceeded({ opId: action.payload.opId, result })
+            yield* $.dispatchers.querySucceeded({ opId: action.payload.opId, result })
           }).pipe(
             Effect.catchAll((e) =>
-              $.actions.queryFailed({
+              $.dispatchers.queryFailed({
                 opId: action.payload.opId,
                 error: toErrorMessage(e),
               }),
@@ -288,7 +322,7 @@ export const makeOptimisticCrudModule = <
           Effect.gen(function* () {
             const apiOpt = yield* Effect.serviceOption(services.api)
             if (Option.isNone(apiOpt)) {
-              yield* $.actions.saveFailed({
+              yield* $.dispatchers.saveFailed({
                 opId: action.payload.opId,
                 error: `[OptimisticCrud] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`,
               })
@@ -296,10 +330,10 @@ export const makeOptimisticCrudModule = <
             }
             const api = apiOpt.value
             const entity = yield* api.save(action.payload.entity as Entity)
-            yield* $.actions.saveSucceeded({ opId: action.payload.opId, entity })
+            yield* $.dispatchers.saveSucceeded({ opId: action.payload.opId, entity })
           }).pipe(
             Effect.catchAll((e) =>
-              $.actions.saveFailed({
+              $.dispatchers.saveFailed({
                 opId: action.payload.opId,
                 error: toErrorMessage(e),
               }),
@@ -311,7 +345,7 @@ export const makeOptimisticCrudModule = <
           Effect.gen(function* () {
             const apiOpt = yield* Effect.serviceOption(services.api)
             if (Option.isNone(apiOpt)) {
-              yield* $.actions.removeFailed({
+              yield* $.dispatchers.removeFailed({
                 opId: action.payload.opId,
                 error: `[OptimisticCrud] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`,
               })
@@ -319,13 +353,13 @@ export const makeOptimisticCrudModule = <
             }
             const api = apiOpt.value
             yield* api.remove(action.payload.id as EntityId)
-            yield* $.actions.removeSucceeded({
+            yield* $.dispatchers.removeSucceeded({
               opId: action.payload.opId,
               id: action.payload.id,
             })
           }).pipe(
             Effect.catchAll((e) =>
-              $.actions.removeFailed({
+              $.dispatchers.removeFailed({
                 opId: action.payload.opId,
                 error: toErrorMessage(e),
               }),

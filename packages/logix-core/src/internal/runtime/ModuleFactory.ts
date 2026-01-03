@@ -3,6 +3,7 @@ import * as ModuleRuntimeImpl from './ModuleRuntime.js'
 import * as BoundApiRuntime from './BoundApiRuntime.js'
 import * as LogicDiagnostics from './core/LogicDiagnostics.js'
 import * as LogicPlanMarker from './core/LogicPlanMarker.js'
+import type * as Action from '../action.js'
 import type { FieldPath } from '../field-path.js'
 import type {
   AnyModuleShape,
@@ -62,7 +63,7 @@ export function Link<Modules extends Record<string, LogixModuleTag<any, AnyModul
 /**
  * Module factory implementation: construct a ModuleTag from an id and Schema definitions.
  */
-export function Module<Id extends string, SSchema extends AnySchema, AMap extends Record<string, AnySchema>>(
+export function Module<Id extends string, SSchema extends AnySchema, AMap extends Record<string, Action.AnyActionToken>>(
   id: Id,
   def: {
     readonly state: SSchema
@@ -73,8 +74,9 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
   const shape: ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap> = {
     stateSchema: def.state,
     actionSchema: Schema.Union(
-      ...Object.entries(def.actions).map(([tag, payload]) =>
-        Schema.Struct(
+      ...Object.entries(def.actions).map(([tag, token]) => {
+        const payload = (token as Action.AnyActionToken).schema as AnySchema
+        return Schema.Struct(
           payload === Schema.Void
             ? {
                 _tag: Schema.Literal(tag),
@@ -84,8 +86,8 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
                 _tag: Schema.Literal(tag),
                 payload,
               },
-        ),
-      ),
+        )
+      }),
     ) as unknown as Schema.Schema<ActionsFromMap<AMap>>,
     actionMap: def.actions,
   }

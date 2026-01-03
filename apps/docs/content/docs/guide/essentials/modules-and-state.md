@@ -72,24 +72,30 @@ import * as Logix from '@logix/core'
 ```ts
 import { Effect } from 'effect'
 
-	const CounterLogic = CounterDef.logic(($) =>
-	  Effect.gen(function* () {
-    // 监听 increment
-    yield* $.onAction('increment').runFork(
-      $.state.update((s) => ({ ...s, count: s.count + 1 })),
-    )
+		const CounterLogic = CounterDef.logic(($) =>
+		  Effect.gen(function* () {
+	    // 监听 increment
+	    yield* $.onAction('increment').runFork(
+	      $.state.mutate((draft) => {
+	        draft.count += 1
+	      }),
+	    )
 
-    // 监听 decrement
-    yield* $.onAction('decrement').runFork(
-      $.state.update((s) => ({ ...s, count: s.count - 1 })),
-    )
+	    // 监听 decrement
+	    yield* $.onAction('decrement').runFork(
+	      $.state.mutate((draft) => {
+	        draft.count -= 1
+	      }),
+	    )
 
-    // 监听 setValue
-    yield* $.onAction('setValue').runFork((value) =>
-      $.state.update((s) => ({ ...s, count: value })),
-    )
-  }),
-)
+	    // 监听 setValue
+	    yield* $.onAction('setValue').runFork(({ payload: value }) =>
+	      $.state.mutate((draft) => {
+	        draft.count = value
+	      }),
+	    )
+	  }),
+	)
 ```
 
 上面的例子通过 Logic 中的监听器（watcher）来更新状态。对于像计数器这类**纯同步、无副作用**的核心状态变更，你也可以选择在 `Logix.Module` 定义里通过可选的 `reducers` 字段声明主 reducer，由 Runtime 在 `dispatch` 时同步应用；两者的职责划分和更完整的示例可以参考「Thinking in Logix」文档中的 Primary Reducer vs Watcher 说明。

@@ -70,7 +70,7 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
   }
 
   const scope = Effect.runSync(Scope.make())
-  const runtime = makeRuntime(rootImpl as ModuleImpl<any, AnyModuleShape, any>, options)
+  const runtime = makeRuntime(rootImpl as unknown as ModuleImpl<any, AnyModuleShape, any>, options)
 
   let ctx:
     | (ProgramRunContext<Sh> & {

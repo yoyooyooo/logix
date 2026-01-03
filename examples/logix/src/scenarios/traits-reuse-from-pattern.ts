@@ -10,10 +10,10 @@ import { TraitsReuseStateSchema, TraitsReuseActionMap, makeTraitsReuseLogicPatte
 export const TraitsReuseDefFromPattern = Logix.Module.make('TraitsReuseFromPattern', {
   state: TraitsReuseStateSchema,
   actions: TraitsReuseActionMap,
-  reducers: {
-    'base/set': Logix.Module.Reducer.mutate((draft: any, action: any) => {
-      draft.base = action.payload
-    }),
+  immerReducers: {
+    'base/set': (draft, payload) => {
+      draft.base = payload
+    },
   },
 })
 

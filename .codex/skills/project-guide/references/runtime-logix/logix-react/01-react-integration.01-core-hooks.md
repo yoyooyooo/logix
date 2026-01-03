@@ -3,7 +3,7 @@
 React 适配层围绕三类 Hooks 暴露能力：
 
 - `RuntimeProvider`：React 集成的 **唯一入口**（运行时 + 策略 + 统一 fallback）；所有 hooks 必须在其子树内调用；
-- `useModule(handle)`：获取对应 Module 的 `ModuleRef`（包含 `runtime/dispatch/actions`；`runtime` 引用稳定，且该重载不订阅状态更新）；
+- `useModule(handle)`：获取对应 Module 的 `ModuleRef`（包含 `runtime/dispatch/actions/dispatchers`；`runtime` 引用稳定，且该重载不订阅状态更新）；
   - 支持 `ModuleDef`（定义对象）、`Module`（wrap，含 `.impl`）、`ModuleImpl`（局部实现）、`ModuleTag`（全局实例）、`ModuleRuntime`（直接复用）或 `ModuleRef`（直接复用）。
 - `useModule(handle, selector, equalityFn?)`：**[推荐]** 直接订阅状态，内部基于 `useSyncExternalStore`，可传入自定义 `equalityFn`；
 - `useSelector(handle | runtime, selector, equalityFn?)`：在已有 Runtime 或 Module Tag 上做细粒度订阅；

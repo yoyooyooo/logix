@@ -20,12 +20,13 @@ interface BoundApi<Sh, R> {
     readonly ref: () => SubscriptionRef<State>;
   };
 
-  // 动作派发与监听
-  readonly actions: {
-    readonly dispatch: (action: Action) => Effect<void>;
-    readonly actions$: Stream<Action>;
-    // ...以及根据 actionMap 生成的快捷方法
-  };
+  // Action（067 action surface）
+  // - actions: ActionToken（创建 action value）
+  // - dispatchers: 直接 dispatch（推荐）
+  // - dispatch: 通用 dispatch（action/token/tag）
+  readonly actions: ActionMap;
+  readonly dispatchers: Record<string, (...args) => Effect<void>>;
+  readonly dispatch: (actionOrTokenOrTag, ...args) => Effect<void>;
 
   // 逻辑流构建
   readonly flow: FlowApi<Sh, R>;
@@ -79,6 +80,10 @@ interface BoundApi<Sh, R> {
 - 状态：
   - `$.state.read`：读取当前状态快照；
   - `$.state.update(prev => next)` / `$.state.mutate(draft => { ... })`：更新状态；
+- Actions：
+  - `yield* $.dispatchers.<K>(payload)`：派发 Action（常用短写）；
+  - `yield* $.dispatch($.actions.<K>, payload)`：token-first（让代码里显式出现 ActionToken，便于 IDE 跳转/找引用/重命名）；
+  - `yield* $.dispatch({ _tag: "<K>", payload })`：通用派发；
 - 事件与 Flow：
   - `$.onAction("tag").run(handler)` / `.runLatest(handler)` / `.runExhaust(handler)`；
   - `$.onState(selector).debounce(300).run(handler)`；
@@ -112,9 +117,10 @@ yield* $.state.mutate(draft => {
 
 ## 动作 (Actions)
 
-- **`dispatch`**: 派发一个 Action。
-- **`actions$`**: 原始 Action 流。
-- **快捷方法**: 如果 Module 定义了 `actionMap`，可以直接调用 `$.actions.increment()`。
+- **`dispatch`**: 通用派发（action value / ActionToken / tag）。
+- **`dispatchers`**: 常用短写：`yield* $.dispatchers.increment()`（payload 类型来自 `actions` 定义）。
+- **`actions`**: ActionToken（创建 action value）：`const action = $.actions.increment()`；需要 action object 时可配合 `yield* $.dispatch(action)`。
+  - 如果你希望 IDE 能稳定“跳转/找引用/重命名”，请让代码里显式出现 ActionToken：例如 `yield* $.dispatch($.actions.increment)` 或 `yield* $.dispatch($.actions.add, 1)`，并把同一个 token 传给 `$.onAction(token)`。
 
 ## 逻辑流 (Flow)
 
@@ -126,7 +132,7 @@ yield* $.state.mutate(draft => {
 
 ## 依赖注入 (Dependency Injection)
 
-- **`use`**: 统一的依赖注入入口。可以获取其他 Module 的 Handle，或者获取 Service 实例。
+- **`use`**: 统一的依赖注入入口。可以获取其他 Module 的 `ModuleHandle`，或者获取 Service 实例（也可视为 `ServiceHandle`）。参见：[Handle（消费面）](./handle)。
 
 ```typescript
 const userApi = yield* $.use(UserApi);

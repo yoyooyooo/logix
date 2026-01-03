@@ -69,7 +69,7 @@ describe('useModule(Impl) suspend mode', () => {
       expect(result.current.a.runtime.instanceId).toBe(result.current.b.runtime.instanceId)
     })
 
-    result.current.a.actions.inc()
+    result.current.a.dispatchers.inc()
 
     await waitFor(() => {
       expect(result.current.aValue).toBe(1)
@@ -114,7 +114,7 @@ describe('useModule(Impl) suspend mode', () => {
       expect(result.current.a.runtime.instanceId).not.toBe(result.current.b.runtime.instanceId)
     })
 
-    result.current.a.actions.inc()
+    result.current.a.dispatchers.inc()
 
     await waitFor(() => {
       expect(result.current.aValue).toBe(1)
@@ -138,7 +138,7 @@ describe('useModule(Impl) suspend mode', () => {
       const value = useModule(counter, (s) => (s as { value: number }).value)
       return (
         <>
-          <button type="button" data-testid={buttonId} onClick={() => counter.actions.inc()}>
+          <button type="button" data-testid={buttonId} onClick={() => counter.dispatchers.inc()}>
             inc
           </button>
           <span data-testid={testId}>{value}</span>
@@ -211,7 +211,7 @@ describe('useModule(Impl) suspend mode', () => {
       expect(result.current?.value).toBe(0)
     })
 
-    result.current?.counter.actions.inc()
+    result.current?.counter.dispatchers.inc()
 
     await waitFor(() => {
       expect(result.current?.value).toBe(1)

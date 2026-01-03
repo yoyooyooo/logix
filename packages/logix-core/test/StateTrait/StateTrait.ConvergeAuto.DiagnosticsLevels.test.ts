@@ -29,7 +29,7 @@ const makeRuntimeWithDevtoolsHub = (options: {
     actions: Actions,
     reducers: {
       noop: (s: any) => s,
-      incA: Logix.Module.Reducer.mutate((draft: any) => {
+      incA: Logix.Module.Reducer.mutate((draft) => {
         draft.a += 1
       }),
     },

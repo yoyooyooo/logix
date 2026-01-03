@@ -10,7 +10,7 @@ describe('Runtime.runProgram (US1)', () => {
         state: Schema.Struct({ value: Schema.Number }),
         actions: { bump: Schema.Void },
         reducers: {
-          bump: Logix.Module.Reducer.mutate((draft: any) => {
+          bump: Logix.Module.Reducer.mutate((draft) => {
             draft.value += 1
           }),
         },
@@ -19,7 +19,7 @@ describe('Runtime.runProgram (US1)', () => {
       const logic = Root.logic(($) =>
         Effect.gen(function* () {
           yield* $.onAction('bump').run(() =>
-            $.state.mutate((draft: any) => {
+            $.state.mutate((draft) => {
               draft.value += 1
             }),
           )

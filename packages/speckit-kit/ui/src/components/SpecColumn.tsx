@@ -6,6 +6,9 @@ import { computeTaskStats } from '../lib/spec-relations'
 import { TaskCard } from './TaskCard'
 import { UserStoryCard } from './UserStoryCard'
 import { ViewModeTabs } from './ViewModeTabs'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Card } from './ui/card'
 
 interface Props {
   spec: SpecListItem
@@ -124,120 +127,138 @@ export function SpecColumn({
   }, [allTasks, tasks])
 
   return (
-    <div className="flex h-full w-[360px] flex-col overflow-hidden rounded-2xl bg-[var(--surface-base)]">
-      {/* Header: Floating feel */}
-      <div className="sticky top-0 z-10 bg-[var(--surface-float)] px-4 py-3 backdrop-blur-md shadow-sm border-b border-[var(--border-subtle)]">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+    <div className="group flex h-full w-[360px] flex-col overflow-hidden bg-background transition-all duration-500 hover:bg-muted/20">
+      <div className="sticky top-0 z-10 border-b border-border/10 bg-background px-4 py-3 transition-colors duration-300 group-hover:bg-muted/10 relative overflow-hidden">
+        <div className="flex items-start gap-3 relative z-10">
+          <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-start gap-2">
-              <span className="mt-0.5 shrink-0 rounded bg-[var(--intent-primary-bg)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--text-secondary)]">
+              <Badge
+                variant="outline"
+                className="mt-0.5 shrink-0 font-mono text-[10px] opacity-50 group-hover:opacity-100 transition-opacity"
+              >
                 {header.num}
-              </span>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{header.title}</div>
+              </Badge>
+              <div className="min-w-0 flex-1">
+                <div className="break-words text-lg font-bold font-serif text-foreground/80 leading-tight line-clamp-2 transition-colors duration-300 group-hover:text-foreground pr-8">
+                  {header.title}
+                </div>
+                <div className="mt-1 font-mono text-[10px] text-muted-foreground opacity-40 uppercase tracking-widest truncate group-hover:opacity-70 transition-opacity">
+                  {spec.id}
+                </div>
               </div>
             </div>
-            <div className="mt-1 text-[11px] text-[var(--text-tertiary)] font-mono opacity-60 ml-1">{spec.id}</div>
           </div>
-
-          {spec.taskStats ? (
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                className="au-clickable rounded-md bg-[var(--surface-card)] px-2 py-1 text-xs text-[var(--text-secondary)] shadow-sm hover:text-[var(--text-primary)]"
-                onClick={onOpenSpecDetail}
-              >
-                详情
-              </button>
-              <div className="rounded-full bg-[var(--intent-primary-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
-                {spec.taskStats.done}/{spec.taskStats.total}
-              </div>
-            </div>
-          ) : (
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                className="au-clickable rounded-md bg-[var(--surface-card)] px-2 py-1 text-xs text-[var(--text-secondary)] shadow-sm hover:text-[var(--text-primary)]"
-                onClick={onOpenSpecDetail}
-              >
-                详情
-              </button>
-              <div className="rounded-full bg-[var(--surface-base)] px-2 py-0.5 text-[11px] text-[var(--text-tertiary)]">
-                —
-              </div>
-            </div>
-          )}
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-2">
-          {/* ViewModeTabs will need refactor too, but for now we keep it and trust it adapts or we fix it next */}
-          <ViewModeTabs size="sm" value={viewMode} onChange={onChangeViewMode} />
-          {hasViewModeOverride ? (
-            <span className="rounded bg-[var(--intent-warning-bg)] px-1.5 py-0.5 text-[10px] text-[var(--intent-warning-fg)] font-medium">
-              列覆写
-            </span>
-          ) : (
-            <span className="text-[10px] text-[var(--text-tertiary)] opacity-60">
-              跟随 {globalViewMode === 'us' ? 'US' : 'Task'}
-            </span>
-          )}
+        {/* The Stamp (Absolute Watermark) */}
+        {spec.taskStats && (
+          <div
+            className={`absolute top-1 right-2 pointer-events-none select-none transform rotate-12 border-2 border-double rounded-sm px-1 py-0.5 text-[9px] font-mono font-black uppercase tracking-widest transition-opacity duration-300
+              ${
+                spec.taskStats.todo === 0
+                  ? 'border-success text-success opacity-80'
+                  : 'border-foreground/40 text-muted-foreground opacity-60 group-hover:opacity-100'
+              }`}
+          >
+            {spec.taskStats.todo === 0 ? 'PASSED' : `${spec.taskStats.done}/${spec.taskStats.total}`}
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/40 pt-2">
+          <div className="flex items-center gap-2">
+            <ViewModeTabs size="sm" value={viewMode} onChange={onChangeViewMode} />
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10px] uppercase tracking-widest font-mono text-muted-foreground hover:text-foreground"
+            onClick={onOpenSpecDetail}
+          >
+            Read Spec →
+          </Button>
         </div>
       </div>
 
-      <div className="scrollbar-none flex-1 overflow-x-hidden overflow-y-auto px-2 py-2">
-        {loading ? <div className="p-4 text-center text-xs text-[var(--text-tertiary)]">加载中…</div> : null}
-        {!loading && !tasks ? <div className="p-4 text-center text-xs text-[var(--text-tertiary)]">未加载</div> : null}
-        {!loading && tasks && tasks.length === 0 ? (
-          <div className="p-4 text-center text-xs text-[var(--text-tertiary)]">暂无任务</div>
+      <div className="relative scrollbar-none flex-1 overflow-x-hidden overflow-y-auto px-0 py-0">
+        {/* Loading Overlay / Progress Line */}
+        {loading ? (
+          <div className="absolute inset-x-0 top-0 z-20 h-0.5 w-full overflow-hidden bg-transparent">
+            <div className="h-full w-full animate-indeterminate-bar bg-accent/50 origin-left" />
+          </div>
         ) : null}
 
-        {viewMode === 'task' ? (
-          <div className="mt-1 flex flex-col gap-2.5 pb-2">
-            {(tasks ?? []).map((t) => (
-              <TaskCard
-                key={`${spec.id}:${t.line}`}
-                task={t}
-                focused={t.line === focusedTaskLine}
-                onToggle={(c) => onToggleTask(t, c)}
-                onOpenDetail={() => onOpenTask(t)}
-              />
-            ))}
+        {/* Initial Empty States */}
+        {!loading && !tasks ? (
+          <div className="p-4 text-center text-xs font-mono text-muted-foreground uppercase tracking-widest border-b border-dashed border-border/60">
+            No Data
           </div>
-        ) : (
-          <div className="mt-1 flex flex-col gap-2.5 pb-2">
-            {loadingStories ? <div className="p-2 text-xs text-[var(--text-tertiary)]">Loading Stories...</div> : null}
+        ) : null}
+        {/* Content Area - Always render if we have data (stale-while-revalidate) */}
+        {tasks || stories ? (
+          <div
+            className={`transition-opacity duration-200 ${loading ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}
+          >
+            {viewMode === 'task' ? (
+              <div className="flex flex-col divide-y divide-dashed divide-border/60 border-b border-dashed border-border/60">
+                {tasks && tasks.length === 0 ? (
+                  <div className="p-8 text-center text-xs font-mono text-muted-foreground uppercase tracking-widest">
+                    Empty
+                  </div>
+                ) : null}
+                {(tasks ?? []).map((t) => (
+                  <TaskCard
+                    key={`${spec.id}:${t.line}`}
+                    task={t}
+                    focused={t.line === focusedTaskLine}
+                    onToggle={(c) => onToggleTask(t, c)}
+                    onOpenDetail={() => onOpenTask(t)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-dashed divide-border/60 border-b border-dashed border-border/60">
+                {storyOrder.length === 0 && groupedByStory.unassigned.length === 0 ? (
+                  <div className="p-8 text-center text-xs font-mono text-muted-foreground uppercase tracking-widest">
+                    No Stories
+                  </div>
+                ) : null}
 
-            {storyOrder.map((storyCode) => {
-              const stats = storyStatsByCode.get(storyCode)
-              const story = storyByCode.get(storyCode) ?? null
-              const missingInSpec = story === null
-              const storyTitle = story?.title ?? storyCode
-              const hint = stats ? `Todo ${stats.todo}` : null
+                {/* Remove inline Loading Stories text to avoid jump, relying on global dim opacity */}
 
-              return (
-                <UserStoryCard
-                  key={storyCode}
-                  storyCode={storyCode}
-                  title={storyTitle}
-                  stats={stats}
-                  hint={hint}
-                  tone={missingInSpec ? 'danger' : 'default'}
-                  onOpen={() => onOpenStory(storyCode)}
-                />
-              )
-            })}
+                {storyOrder.map((storyCode) => {
+                  const stats = storyStatsByCode.get(storyCode)
+                  const story = storyByCode.get(storyCode) ?? null
+                  const missingInSpec = !loadingStories && story === null
+                  const storyTitle = story?.title ?? storyCode
+                  const hint = stats ? `Todo ${stats.todo}` : null
 
-            {groupedByStory.unassigned.length > 0 ? (
-              <UserStoryCard
-                storyCode="—"
-                title="未归属"
-                stats={computeTaskStats(groupedByStory.unassigned)}
-                hint={null}
-                onOpen={onOpenSpecDetail}
-              />
-            ) : null}
+                  return (
+                    <UserStoryCard
+                      key={storyCode}
+                      storyCode={storyCode}
+                      title={storyTitle}
+                      stats={stats}
+                      hint={hint}
+                      tone={missingInSpec ? 'danger' : 'default'}
+                      onOpen={() => onOpenStory(storyCode)}
+                    />
+                  )
+                })}
+
+                {groupedByStory.unassigned.length > 0 ? (
+                  <UserStoryCard
+                    storyCode="—"
+                    title="Unassigned"
+                    stats={computeTaskStats(groupedByStory.unassigned)}
+                    hint={null}
+                    onOpen={onOpenSpecDetail}
+                  />
+                ) : null}
+              </div>
+            )}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

@@ -124,19 +124,18 @@ export function SpecRelationsDialog({ open, specId, tasks, onClose, onOpenTask }
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-
-      <div className="absolute inset-y-0 right-0 w-[min(900px,100vw)] bg-white shadow-2xl">
+      <div className="absolute inset-0 bg-foreground/20" onClick={onClose} />
+      <div className="absolute inset-y-0 right-0 w-[min(900px,100vw)] bg-background shadow-2xl">
         <div className="flex h-full flex-col">
-          <div className="border-b border-zinc-200 px-5 py-4">
+          <div className="border-b border-border px-5 py-4">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <div className="truncate text-base font-semibold text-zinc-900">关联（US → Tasks → Refs）</div>
-                <div className="mt-1 text-[11px] text-zinc-500">{specId}</div>
+                <div className="truncate text-base font-semibold text-foreground">关联（US → Tasks → Refs）</div>
+                <div className="mt-1 text-[11px] text-muted-foreground">{specId}</div>
               </div>
               <button
                 type="button"
-                className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-700 hover:bg-zinc-50"
+                className="rounded-none border border-border bg-card px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
                 onClick={onClose}
               >
                 关闭
@@ -144,36 +143,40 @@ export function SpecRelationsDialog({ open, specId, tasks, onClose, onOpenTask }
             </div>
 
             {specError ? (
-              <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{specError}</div>
+              <div className="mt-3 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {specError}
+              </div>
             ) : null}
-            {loadingSpec ? <div className="mt-3 text-xs text-zinc-500">加载 spec.md…</div> : null}
-            {tasks === undefined ? <div className="mt-2 text-xs text-zinc-500">加载 tasks…</div> : null}
+            {loadingSpec ? <div className="mt-3 text-xs text-muted-foreground">加载 spec.md…</div> : null}
+            {tasks === undefined ? <div className="mt-2 text-xs text-muted-foreground">加载 tasks…</div> : null}
           </div>
 
           <div className="scrollbar-none flex-1 overflow-y-auto p-5">
             {storySections.length === 0 && !unassignedSection ? (
-              <div className="text-sm text-zinc-500">当前 spec 未发现可关联的任务（或 tasks 尚未加载）。</div>
+              <div className="text-sm text-muted-foreground">当前 spec 未发现可关联的任务（或 tasks 尚未加载）。</div>
             ) : null}
 
             <div className="flex flex-col gap-4">
               {storySections.map((sec) => (
-                <div key={sec.storyCode} className="rounded-xl border border-zinc-200 bg-white p-4">
+                <div key={sec.storyCode} className="rounded-none border-2 border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-start gap-2">
-                        <span className="mt-0.5 shrink-0 rounded bg-sky-50 px-1.5 py-0.5 font-mono text-[11px] text-sky-700">
+                        <span className="mt-0.5 shrink-0 rounded-none bg-info/10 px-1.5 py-0.5 font-mono text-[11px] text-info">
                           {sec.storyCode}
                         </span>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-zinc-900">{sec.storyTitle}</div>
-                          <div className="mt-1 text-[11px] text-zinc-500">
-                            {sec.missingInSpec ? '未在 spec.md 中找到对应 User Story 标题' : `spec.md#L${sec.storyLine ?? 1}`}
+                          <div className="truncate text-sm font-semibold text-foreground">{sec.storyTitle}</div>
+                          <div className="mt-1 text-[11px] text-muted-foreground">
+                            {sec.missingInSpec
+                              ? '未在 spec.md 中找到对应 User Story 标题'
+                              : `spec.md#L${sec.storyLine ?? 1}`}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="shrink-0 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700">
+                    <div className="shrink-0 rounded-none border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground">
                       {sec.stats.todo}/{sec.stats.total}
                     </div>
                   </div>
@@ -181,7 +184,10 @@ export function SpecRelationsDialog({ open, specId, tasks, onClose, onOpenTask }
                   {sec.refs.length > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-1">
                       {sec.refs.map((code) => (
-                        <span key={code} className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700">
+                        <span
+                          key={code}
+                          className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+                        >
                           {code}
                         </span>
                       ))}
@@ -196,21 +202,23 @@ export function SpecRelationsDialog({ open, specId, tasks, onClose, onOpenTask }
                         <button
                           key={`${sec.storyCode}:${t.line}`}
                           type="button"
-                          className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-left hover:bg-zinc-100"
+                          className="rounded-none border border-border bg-muted/30 px-3 py-2 text-left hover:bg-muted/60"
                           onClick={() => onOpenTask(t)}
                         >
                           <div className="flex items-start gap-2">
                             {t.taskId ? (
-                              <span className="shrink-0 rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-zinc-700">
+                              <span className="shrink-0 rounded-none bg-card px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
                                 {t.taskId}
                               </span>
                             ) : null}
                             {t.parallel ? (
-                              <span className="shrink-0 rounded bg-white px-1.5 py-0.5 text-[11px] text-zinc-700">P</span>
+                              <span className="shrink-0 rounded-none bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                                P
+                              </span>
                             ) : null}
                             <div className="min-w-0 flex-1">
-                              <div className="break-words text-sm text-zinc-900">{title}</div>
-                              <div className="mt-1 text-[11px] text-zinc-500">
+                              <div className="break-words text-sm text-foreground">{title}</div>
+                              <div className="mt-1 text-[11px] text-muted-foreground">
                                 {t.checked ? '已完成' : '未完成'} · line {t.line}
                               </div>
                             </div>
@@ -219,7 +227,10 @@ export function SpecRelationsDialog({ open, specId, tasks, onClose, onOpenTask }
                           {refs.length > 0 ? (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {refs.map((code) => (
-                                <span key={code} className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-zinc-600">
+                                <span
+                                  key={code}
+                                  className="rounded-none bg-card px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+                                >
                                   {code}
                                 </span>
                               ))}
@@ -233,21 +244,21 @@ export function SpecRelationsDialog({ open, specId, tasks, onClose, onOpenTask }
               ))}
 
               {unassignedSection ? (
-                <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                <div className="rounded-none border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-start gap-2">
-                        <span className="mt-0.5 shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700">
+                        <span className="mt-0.5 shrink-0 rounded-none bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
                           (no US)
                         </span>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-zinc-900">未标注 User Story</div>
-                          <div className="mt-1 text-[11px] text-zinc-500">tasks.md 中没有 `[USn]` 标记</div>
+                          <div className="truncate text-sm font-semibold text-foreground">未标注 User Story</div>
+                          <div className="mt-1 text-[11px] text-muted-foreground">tasks.md 中没有 `[USn]` 标记</div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="shrink-0 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700">
+                    <div className="shrink-0 rounded-none border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground">
                       {unassignedSection.stats.todo}/{unassignedSection.stats.total}
                     </div>
                   </div>
@@ -255,7 +266,10 @@ export function SpecRelationsDialog({ open, specId, tasks, onClose, onOpenTask }
                   {unassignedSection.refs.length > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-1">
                       {unassignedSection.refs.map((code) => (
-                        <span key={code} className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700">
+                        <span
+                          key={code}
+                          className="rounded-none bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+                        >
                           {code}
                         </span>
                       ))}
@@ -270,21 +284,23 @@ export function SpecRelationsDialog({ open, specId, tasks, onClose, onOpenTask }
                         <button
                           key={`unassigned:${t.line}`}
                           type="button"
-                          className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-left hover:bg-zinc-100"
+                          className="rounded-none border border-border bg-muted/30 px-3 py-2 text-left hover:bg-muted/60"
                           onClick={() => onOpenTask(t)}
                         >
                           <div className="flex items-start gap-2">
                             {t.taskId ? (
-                              <span className="shrink-0 rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-zinc-700">
+                              <span className="shrink-0 rounded-none bg-card px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
                                 {t.taskId}
                               </span>
                             ) : null}
                             {t.parallel ? (
-                              <span className="shrink-0 rounded bg-white px-1.5 py-0.5 text-[11px] text-zinc-700">P</span>
+                              <span className="shrink-0 rounded-none bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                                P
+                              </span>
                             ) : null}
                             <div className="min-w-0 flex-1">
-                              <div className="break-words text-sm text-zinc-900">{title}</div>
-                              <div className="mt-1 text-[11px] text-zinc-500">
+                              <div className="break-words text-sm text-foreground">{title}</div>
+                              <div className="mt-1 text-[11px] text-muted-foreground">
                                 {t.checked ? '已完成' : '未完成'} · line {t.line}
                               </div>
                             </div>
@@ -293,7 +309,10 @@ export function SpecRelationsDialog({ open, specId, tasks, onClose, onOpenTask }
                           {refs.length > 0 ? (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {refs.map((code) => (
-                                <span key={code} className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-zinc-600">
+                                <span
+                                  key={code}
+                                  className="rounded-none bg-card px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+                                >
                                   {code}
                                 </span>
                               ))}

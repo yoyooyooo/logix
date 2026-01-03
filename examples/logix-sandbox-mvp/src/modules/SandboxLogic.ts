@@ -57,13 +57,13 @@ export const SandboxLogic = SandboxDef.logic(($) => {
           $.onAction('init').run(() =>
             Effect.gen(function* () {
               yield* Effect.log('[SandboxLogic] init action received')
-              yield* $.actions.setStatus('initializing')
+              yield* $.dispatchers.setStatus('initializing')
               // Start syncing state (fork daemon)
               yield* syncFlow.pipe(Effect.fork)
               yield* Effect.log('[SandboxLogic] syncFlow forked')
 
               const { kernels, defaultKernelId } = yield* client.listKernels()
-              yield* $.actions.setKernelCatalog({
+              yield* $.dispatchers.setKernelCatalog({
                 kernels: kernels as any,
                 defaultKernelId: defaultKernelId as any,
               })
@@ -72,13 +72,13 @@ export const SandboxLogic = SandboxDef.logic(($) => {
               if (!hasCurrentKernelId) {
                 const nextKernelId = defaultKernelId ?? kernels[0]?.kernelId
                 if (nextKernelId) {
-                  yield* $.actions.setKernelId(nextKernelId)
+                  yield* $.dispatchers.setKernelId(nextKernelId)
                 }
               }
 
               yield* client.init()
               yield* Effect.log('[SandboxLogic] client.init() completed')
-              yield* $.actions.setStatus('ready')
+              yield* $.dispatchers.setStatus('ready')
               yield* Effect.log('[SandboxLogic] status set to ready')
             }),
           ),
@@ -164,7 +164,7 @@ export const SandboxLogic = SandboxDef.logic(($) => {
               })
               yield* Effect.log('[SandboxLogic] run: execution completed')
 
-              yield* $.actions.setResult(result as any)
+              yield* $.dispatchers.setResult(result as any)
               yield* $.state.update((prev) => ({
                 ...prev,
                 uiIntents: result.uiIntents ?? [],
@@ -227,15 +227,15 @@ export const SandboxLogic = SandboxDef.logic(($) => {
               if (foundScenario) {
                 const steps = foundScenario.steps as readonly SpecStep[]
                 const fullScript = steps.map((s) => s.intentScript || '').join('\n')
-                yield* $.actions.setIntentScript(fullScript)
+                yield* $.dispatchers.setIntentScript(fullScript)
 
                 const mappedSteps = steps.map((s) => ({
                   stepId: s.id,
                   label: s.label,
                 }))
-                yield* $.actions.setScenarioSteps(mappedSteps)
+                yield* $.dispatchers.setScenarioSteps(mappedSteps)
 
-                yield* $.actions.setScenarioId(foundScenario.id)
+                yield* $.dispatchers.setScenarioId(foundScenario.id)
               }
             })
           }),

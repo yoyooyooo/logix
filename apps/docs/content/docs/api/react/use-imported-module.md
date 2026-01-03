@@ -9,6 +9,8 @@ description: 从父模块实例的 imports scope 解析子模块实例
 
 `useImportedModule(parent, childModule)` 用来解决这件事：它会从 `parent` 对应实例的 imports scope 中解析出 `childModule` 的运行时句柄，并返回一个可直接交给 `useSelector` / `useDispatch` 的 `ModuleRef`。
 
+它等价于 `parent.imports.get(childModule)`；`useImportedModule` 只是把这件事用 Hook 形态显式表达出来。
+
 ## Usage
 
 ```tsx
@@ -27,7 +29,7 @@ function Page() {
 }
 ```
 
-也可以使用链式语法糖（更推荐）：
+推荐直接使用 `imports.get`（不需要额外 Hook）：
 
 ```ts
 const child = host.imports.get(ChildModule.tag)
@@ -47,3 +49,4 @@ const child = host.imports.get(ChildModule.tag)
 ## See Also
 
 - [API: ModuleScope](./module-scope)
+- [进阶专题：可组合性地图](../../guide/advanced/composability)

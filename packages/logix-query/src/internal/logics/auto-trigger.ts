@@ -38,13 +38,14 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
   config: AutoTriggerLogicConfig<TParams, TUI>,
 ): Logix.ModuleLogic<Sh, any, never> =>
   module.logic(($) => {
+    type _State = Logix.StateOf<Sh> & { readonly queries: Record<string, unknown> }
     type QueryName = Extract<keyof typeof config.queries, string>
 
     const pending = new Map<string, Fiber.RuntimeFiber<void, any>>()
     const lastKeyHash = new Map<string, string | undefined>()
 
     const hydrateFromFreshCache = (
-      name: string,
+      name: QueryName,
       q: QuerySourceConfig<TParams, TUI>,
       keyHash: string,
     ): Effect.Effect<boolean, never, any> =>
@@ -65,9 +66,9 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
           keyHash,
           data: dataOpt.value,
         })
-        yield* $.state.mutate((draft: any) => {
-          draft.queries[name] = snapshot
-        }) as Effect.Effect<void, never, any>
+        yield* $.state.mutate((draft) => {
+          ;(draft as Logix.Logic.Draft<_State>).queries[name] = snapshot
+        })
 
         return true
       })

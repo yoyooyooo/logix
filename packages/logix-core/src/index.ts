@@ -1,7 +1,7 @@
 // Public barrel for @logix/core
 // Recommended usage:
 //   import * as Logix from '@logix/core'
-// Then `Logix` exposes Module / State / Actions / Logic / Bound / Link / Flow / Runtime / Debug namespaces.
+// Then `Logix` exposes Module / State / Actions / Logic / Bound / Handle / Link / Flow / Runtime / Debug namespaces.
 
 // Core module API: Module / ModuleRuntime / ModuleImpl / StateOf / ActionOf / Reducer, etc.
 export * as Module from './Module.js'
@@ -10,12 +10,14 @@ export * as ModuleTag from './ModuleTag.js'
 export type { ModuleTag as ModuleTagType, ModuleRuntimeTag } from './internal/module.js'
 export * as State from './State.js'
 export * as Actions from './Actions.js'
+export * as Action from './Action.js'
 
 // Logic / Bound / Link: orchestration and cross-module access
 export * as Logic from './Logic.js'
 export * as Bound from './Bound.js'
 export * as Link from './Link.js'
 export * as Process from './Process.js'
+export * as Handle from './Handle.js'
 
 // Flow & DSL: fluent orchestration tools for application code
 export * as Flow from './Flow.js'

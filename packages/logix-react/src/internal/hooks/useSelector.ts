@@ -1,7 +1,6 @@
 import { useContext, useEffect, useMemo } from 'react'
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
 import * as Logix from '@logix/core'
-import { Effect } from 'effect'
 import { RuntimeContext } from '../provider/ReactContext.js'
 import { ReactModuleHandle, useModuleRuntime } from './useModuleRuntime.js'
 import { isDevEnv } from '../provider/env.js'
@@ -46,7 +45,7 @@ export function useSelector<H extends ReactModuleHandle, V>(
     selector ?? ((state: StateOfHandle<H>) => state as unknown as V)
 
   const selectorReadQuery = useMemo(
-    () => (typeof selector === 'function' ? Logix.ReadQuery.compile(selector as any) : undefined),
+    () => (typeof selector === 'function' ? Logix.ReadQuery.compile(selector) : undefined),
     [selector],
   )
 
@@ -63,8 +62,8 @@ export function useSelector<H extends ReactModuleHandle, V>(
       useStaticLane && selectorReadQuery
         ? getModuleRuntimeSelectorExternalStore(
             runtime,
-            moduleRuntime as unknown as Logix.ModuleRuntime<StateOfHandle<H>, any>,
-            selectorReadQuery as any,
+            moduleRuntime,
+            selectorReadQuery,
             {
               lowPriorityDelayMs: runtimeContext.reactConfigSnapshot.lowPriorityDelayMs,
               lowPriorityMaxDelayMs: runtimeContext.reactConfigSnapshot.lowPriorityMaxDelayMs,
@@ -72,7 +71,7 @@ export function useSelector<H extends ReactModuleHandle, V>(
           )
         : getModuleRuntimeExternalStore(
             runtime,
-            moduleRuntime as unknown as Logix.ModuleRuntime<StateOfHandle<H>, any>,
+            moduleRuntime,
             {
               lowPriorityDelayMs: runtimeContext.reactConfigSnapshot.lowPriorityDelayMs,
               lowPriorityMaxDelayMs: runtimeContext.reactConfigSnapshot.lowPriorityMaxDelayMs,
@@ -106,17 +105,31 @@ export function useSelector<H extends ReactModuleHandle, V>(
 
     const instanceId = moduleRuntime.instanceId
 
-    const selectorFn = selector as any
-    const fieldPaths: ReadonlyArray<string> | undefined =
-      selectorFn && Array.isArray(selectorFn.fieldPaths) ? selectorFn.fieldPaths.slice() : undefined
+    type SelectorMeta = {
+      readonly fieldPaths?: unknown
+      readonly debugKey?: unknown
+    }
 
-    const selectorKey: string | undefined =
-      (selectorFn && typeof selectorFn.debugKey === 'string' && selectorFn.debugKey.length > 0
-        ? selectorFn.debugKey
-        : undefined) ??
-      (typeof selectorFn === 'function' && typeof selectorFn.name === 'string' && selectorFn.name.length > 0
-        ? selectorFn.name
-        : undefined)
+    let fieldPaths: ReadonlyArray<string> | undefined
+    let selectorKey: string | undefined
+
+    if (typeof selector === 'function') {
+      const meta = selector as typeof selector & SelectorMeta
+
+      const rawFieldPaths = meta.fieldPaths
+      if (Array.isArray(rawFieldPaths)) {
+        const paths = rawFieldPaths.filter((p): p is string => typeof p === 'string')
+        fieldPaths = paths.length > 0 ? paths.slice() : undefined
+      }
+
+      const rawDebugKey = meta.debugKey
+      selectorKey =
+        typeof rawDebugKey === 'string' && rawDebugKey.length > 0
+          ? rawDebugKey
+          : typeof selector.name === 'string' && selector.name.length > 0
+            ? selector.name
+            : undefined
+    }
 
     const effect = Logix.Debug.record({
       type: 'trace:react-selector',
@@ -134,7 +147,7 @@ export function useSelector<H extends ReactModuleHandle, V>(
         equalsKind: selectorReadQuery?.equalsKind,
         strictModePhase: 'commit',
       },
-    }) as Effect.Effect<void, never, any>
+    })
 
     runtime.runFork(effect)
   }, [runtime, moduleRuntime, selector, selected, selectorReadQuery])

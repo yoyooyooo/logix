@@ -52,8 +52,8 @@ describe('Module.Manage.make (factory) forwards extend def', () => {
     const M = Factory.make('Module.Manage.extend.custom', { initialTotal: 0 }, {
       actions: ExtActions,
       reducers: {
-        setTotal: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>, action) => {
-          draft.total = action.payload
+        setTotal: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>, total) => {
+          draft.total = total
         }),
         clearError: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>) => {
           draft.error = 'cleared'

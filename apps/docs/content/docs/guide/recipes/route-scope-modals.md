@@ -152,3 +152,8 @@ export function ModalAView() {
 - 约束：它表达的是“当前最近 RuntimeProvider 环境里的单例”，不是 Host(imports) 的子模块实例。
 
 如果你的目标是“路由 scope 的限定全局”，优先回到甜点区：**Host(imports) + host.imports.get(...)**。
+
+## 下一步
+
+- 回到总览：[可组合性地图](../advanced/composability)
+- 深入理解 imports/作用域语义：[跨模块协作](../learn/cross-module-communication)
