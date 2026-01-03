@@ -37,3 +37,6 @@ Thumbs.db
 
 # @logix/sandbox build assets (generated via bundle:kernel / prepack)
 packages/logix-sandbox/public/
+
+# apps/docs API Reference (generated from apps/api-reference/dist)
+apps/docs/public/api-reference/
