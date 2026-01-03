@@ -25,8 +25,8 @@ export function UserStoryCard({ storyCode, title, stats, hint, tone = 'default',
       onClick={onOpen}
       title={title}
     >
-      <div className="flex min-w-0 items-start gap-3 p-3 border-l-4 border-transparent transition-all duration-200 group-hover:border-accent">
-        <Badge variant={pillVariant} className="mt-0.5 shrink-0">
+      <div className="flex min-w-0 items-start gap-3 p-3 border-l-4 border-transparent transition-all duration-200 group-hover:translate-x-1 group-hover:border-accent">
+        <Badge variant={pillVariant} className="mt-0.5 shrink-0 font-mono">
           {storyCode}
         </Badge>
 

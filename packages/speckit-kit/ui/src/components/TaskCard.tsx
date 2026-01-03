@@ -22,7 +22,7 @@ export function TaskCard({ task, focused, onToggle, onOpenDetail }: Props) {
       exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.1 } }}
       className="group relative min-w-0 bg-background transition-all duration-200 hover:bg-muted/30"
     >
-      <div className="flex min-w-0 items-start gap-3 p-3 border-l-4 border-transparent transition-all duration-200 group-hover:border-accent">
+      <div className="flex min-w-0 items-start gap-3 p-3 border-l-4 border-transparent transition-all duration-200 group-hover:translate-x-1 group-hover:border-accent">
         <input
           className="mt-1 h-4 w-4 cursor-pointer accent-primary"
           type="checkbox"
@@ -37,9 +37,19 @@ export function TaskCard({ task, focused, onToggle, onOpenDetail }: Props) {
           title={title}
         >
           <div className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <Badge variant="outline">{label}</Badge>
-            {task.story ? <Badge variant="info">{task.story}</Badge> : null}
-            {task.parallel ? <Badge variant="warning">P</Badge> : null}
+            <Badge variant="outline" className="font-mono">
+              {label}
+            </Badge>
+            {task.story ? (
+              <Badge variant="info" className="font-mono">
+                {task.story}
+              </Badge>
+            ) : null}
+            {task.parallel ? (
+              <Badge variant="warning" className="font-mono">
+                P
+              </Badge>
+            ) : null}
             <span className="ml-auto font-mono opacity-70">L{task.line}</span>
           </div>
 
