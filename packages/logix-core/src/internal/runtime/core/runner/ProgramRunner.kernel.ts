@@ -37,7 +37,7 @@ export const makeProgramRunnerKernel = <Sh extends AnyModuleShape>(
     }
 
     const scope = yield* Scope.make()
-    const runtime = makeRuntime(rootImpl as ModuleImpl<any, AnyModuleShape, any>, options)
+    const runtime = makeRuntime(rootImpl as unknown as ModuleImpl<any, AnyModuleShape, any>, options)
 
     yield* Scope.addFinalizer(scope, Effect.promise(() => runtime.dispose()).pipe(Effect.asVoid))
 

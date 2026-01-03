@@ -20,15 +20,15 @@ export function useDispatch<H extends ReactModuleHandle>(handle: H): Dispatch<Ac
 
   return useMemo(() => {
     const base = (action: ActionOfHandle<H>) => {
-      runtime.runFork((moduleRuntime.dispatch as (a: ActionOfHandle<H>) => any)(action))
+      runtime.runFork(moduleRuntime.dispatch(action))
     }
 
     return Object.assign(base, {
       batch: (actions: ReadonlyArray<ActionOfHandle<H>>) => {
-        runtime.runFork((moduleRuntime.dispatchBatch as (a: ReadonlyArray<ActionOfHandle<H>>) => any)(actions))
+        runtime.runFork(moduleRuntime.dispatchBatch(actions))
       },
       lowPriority: (action: ActionOfHandle<H>) => {
-        runtime.runFork((moduleRuntime.dispatchLowPriority as (a: ActionOfHandle<H>) => any)(action))
+        runtime.runFork(moduleRuntime.dispatchLowPriority(action))
       },
     })
   }, [runtime, moduleRuntime])

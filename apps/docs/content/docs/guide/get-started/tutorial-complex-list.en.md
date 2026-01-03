@@ -136,7 +136,7 @@ Create `src/features/users/logic.ts`:
 
     // --- 4) Execute load logic ---
     // Use $.on(...) to wrap the merged Stream back into a DSL pipeline.
-    yield* $.on(loadTrigger$).pipe($.flow.debounce(50), $.flow.runLatest(loadEffect))
+    yield* $.on(loadTrigger$).debounce(50).runLatest(loadEffect)
   })
 })
 ```
@@ -150,8 +150,7 @@ Create `src/features/users/logic.ts`:
     // --- 1) Use low-level APIs to get Streams ---
     const filters$ = $.flow.fromState((s) => s.filters)
     const pagination$ = $.flow.fromState((s) => s.pagination)
-    // Action Stream needs manual filtering
-    const refresh$ = $.flow.actionStream.pipe(Stream.filter((a) => a.type === 'refresh'))
+    const refresh$ = $.flow.fromAction((a): a is { _tag: 'refresh' } => (a as any)._tag === 'refresh')
 
     // --- 2) Automatically reset page index ---
     yield* filters$.pipe(

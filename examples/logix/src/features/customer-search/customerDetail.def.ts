@@ -16,5 +16,12 @@ export type CustomerDetailShape = Logix.Shape<typeof CustomerDetailStateSchema, 
 export const CustomerDetailDef = Logix.Module.make('CustomerDetail', {
   state: CustomerDetailStateSchema,
   actions: CustomerDetailActionMap,
+  immerReducers: {
+    'customerDetail/setSelected': (draft, selected) => {
+      draft.selected = selected
+    },
+    'customerDetail/clear': (draft) => {
+      draft.selected = undefined
+    },
+  },
 })
-

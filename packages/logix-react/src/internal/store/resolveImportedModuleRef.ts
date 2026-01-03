@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import type { ManagedRuntime } from 'effect'
 import * as Logix from '@logix/core'
 import { isDevEnv } from '../provider/env.js'
-import { makeModuleActions, type ModuleRef } from './ModuleRef.js'
+import { makeModuleActions, makeModuleDispatchers, type ModuleDispatchersOfShape, type ModuleRef } from './ModuleRef.js'
 
 type RuntimeKey = object
 type ParentRuntimeKey = object
@@ -25,7 +25,13 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
   parentRuntime: Logix.ModuleRuntime<any, any>,
   module: Logix.ModuleTagType<Id, Sh>,
-): ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>, keyof Sh['actionMap'] & string, Logix.ModuleTagType<Id, Sh>> => {
+): ModuleRef<
+  Logix.StateOf<Sh>,
+  Logix.ActionOf<Sh>,
+  keyof Sh['actionMap'] & string,
+  Logix.ModuleTagType<Id, Sh>,
+  ModuleDispatchersOfShape<Sh>
+> => {
   const byParent = getOrCreateWeakMap(
     cacheByRuntime,
     runtime as unknown as RuntimeKey,
@@ -42,7 +48,8 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
       Logix.StateOf<Sh>,
       Logix.ActionOf<Sh>,
       keyof Sh['actionMap'] & string,
-      Logix.ModuleTagType<Id, Sh>
+      Logix.ModuleTagType<Id, Sh>,
+      ModuleDispatchersOfShape<Sh>
     >
   }
 
@@ -70,17 +77,20 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
     )
 
     const actions = makeModuleActions(dispatch)
+    const dispatchers = makeModuleDispatchers(dispatch, module.actions)
 
     const ref: ModuleRef<
       Logix.StateOf<Sh>,
       Logix.ActionOf<Sh>,
       keyof Sh['actionMap'] & string,
-      Logix.ModuleTagType<Id, Sh>
+      Logix.ModuleTagType<Id, Sh>,
+      ModuleDispatchersOfShape<Sh>
     > = {
       def: module,
       runtime: childRuntime as any,
       dispatch,
       actions,
+      dispatchers,
       imports: {
         get: (m: any) => resolveImportedModuleRef(runtime, childRuntime, m),
       },

@@ -7,10 +7,12 @@ type KanbanAction = Logix.ActionOf<KanbanShape>
 export function useKanbanShortcuts({
   specDetailOpen,
   taskDetailOpen,
+  onCloseDrawers,
   dispatch,
 }: {
   readonly specDetailOpen: boolean
   readonly taskDetailOpen: boolean
+  readonly onCloseDrawers?: () => void
   readonly dispatch: (action: KanbanAction) => void
 }) {
   useEffect(() => {
@@ -26,10 +28,6 @@ export function useKanbanShortcuts({
 
       // Ignore if drawers are open (context shifts to drawer)
       if (specDetailOpen || taskDetailOpen) {
-        if (e.key === 'Escape') {
-          dispatch({ _tag: 'specDetail/close' })
-          dispatch({ _tag: 'taskDetail/close' })
-        }
         return
       }
 
@@ -58,5 +56,5 @@ export function useKanbanShortcuts({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [specDetailOpen, taskDetailOpen, dispatch])
+  }, [specDetailOpen, taskDetailOpen, onCloseDrawers, dispatch])
 }

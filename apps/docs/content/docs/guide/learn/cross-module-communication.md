@@ -31,7 +31,7 @@ export const HostLogic = HostModule.logic(($) =>
   Effect.gen(function* () {
     const child = yield* $.use(ChildModule)
     const v = yield* child.read((s) => s.value)
-    yield* $.actions.hostSawChild(v)
+    yield* $.dispatchers.hostSawChild(v)
   }),
 )
 ```
@@ -128,10 +128,10 @@ import { UserDef } from '../user/module'
 
 export const AuthLogic = AuthDef.logic(($) =>
   Effect.gen(function* () {
-    const User = yield* $.use(UserModule)
+    const user = yield* $.use(UserDef)
 
     // 当用户登出时，顺带清理用户信息
-    yield* $.onAction('logout').run(() => $.flow.run(User.actions['user/clearProfile'](undefined)))
+    yield* $.onAction('logout').run(() => user.dispatch(UserDef.actions['user/clearProfile']()))
   }),
 )
 ```
@@ -239,6 +239,7 @@ graph TB
 
 ## 下一步
 
+- 回到总览：[可组合性地图](../advanced/composability)
 - 深入了解运行时架构：[深度解析](./deep-dive)
 - 进入高级主题：[Suspense & Async](../advanced/suspense-and-async)
 - 学习错误处理策略：[错误处理](../advanced/error-handling)

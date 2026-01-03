@@ -7,6 +7,12 @@ description: 把 Host 实例变成可复用的 Scope（Provider + use + useImpor
 
 `ModuleScope` 用来把“创建 Host 模块实例 + Context Provider + useHost()”打包成一个可复用的 Scope。
 
+它不引入新的运行时能力，只是把这些能力组合成一个更顺手的入口：
+
+- `useModule(HostImpl, { key/gcTime })`：创建/复用 Host 实例
+- React Context：把 Host 实例向下发放，避免 props 透传
+- `host.imports.get(...)`：在 Host 实例 scope 下解析子模块
+
 它主要解决两件事：
 
 1. **避免 props 透传**：深层弹框/子组件可以直接拿到“属于当前路由/页面 scope”的 Host 句柄。
@@ -74,3 +80,7 @@ export function OverlayRoot({ routeKey }: { routeKey: string }) {
 
 - `Provider.options` 会透传给内部的 `useModule(HostImpl, options)`（其中 `options.scopeId` 会被映射为内部的 `options.key`）；`scopeId` 用来区分/复用同一个 scope（同 scopeId 复用、换 scopeId 新建）。
 - `use()` / `useImported()` 在缺少 Provider 时会直接抛错（不会静默兜底到“全局单例”）。
+
+## See Also
+
+- [进阶专题：可组合性地图](../../guide/advanced/composability)

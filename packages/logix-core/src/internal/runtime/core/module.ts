@@ -2,6 +2,7 @@ import { Context, Effect, Layer, Schema, Stream, SubscriptionRef } from 'effect'
 import type * as Logic from './LogicMiddleware.js'
 import type { StateTransactionInstrumentation, TxnLanesPatch } from './env.js'
 import type { FieldPath } from '../../field-path.js'
+import type * as Action from '../../action.js'
 import type * as ModuleTraits from './ModuleTraits.js'
 import type { ReadQueryInput } from './ReadQuery.js'
 
@@ -19,7 +20,7 @@ export type AnySchema = any
 export interface ModuleShape<
   SSchema extends AnySchema,
   ASchema extends AnySchema,
-  AMap extends Record<string, AnySchema> = Record<string, never>,
+  AMap extends Record<string, Action.AnyActionToken> = Record<string, never>,
 > {
   readonly stateSchema: SSchema
   readonly actionSchema: ASchema
@@ -37,6 +38,7 @@ export type ActionOf<Sh extends AnyModuleShape> = Schema.Schema.Type<Sh['actionS
 
 type ActionArgs<P> = [P] extends [void] ? [] | [P] : [P]
 type ActionFn<P, Out> = (...args: ActionArgs<P>) => Out
+type ActionPayload<T> = T extends Action.ActionToken<any, infer P, any> ? P : never
 
 export interface ModuleImplementStateTransactionOptions {
   readonly instrumentation?: StateTransactionInstrumentation
@@ -160,7 +162,7 @@ export interface ModuleHandle<Sh extends AnyModuleShape> {
   readonly changes: <V>(selector: (s: StateOf<Sh>) => V) => Stream.Stream<V, never, never>
   readonly dispatch: (action: ActionOf<Sh>) => Effect.Effect<void, never, never>
   readonly actions: {
-    [K in keyof Sh['actionMap']]: ActionFn<Schema.Schema.Type<Sh['actionMap'][K]>, Effect.Effect<void, never, never>>
+    [K in keyof Sh['actionMap']]: ActionFn<ActionPayload<Sh['actionMap'][K]>, Effect.Effect<void, never, never>>
   }
   readonly actions$: Stream.Stream<ActionOf<Sh>, never, never>
 }
@@ -234,15 +236,34 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
       <V = StateOf<Sh>>(selector?: (s: StateOf<Sh>) => V): SubscriptionRef.SubscriptionRef<V>
     }
   }
-  readonly actions: {
-    readonly dispatch: (action: ActionOf<Sh>) => Logic.Of<Sh, R, void, never>
-    readonly actions$: Stream.Stream<ActionOf<Sh>>
-  } & {
-    readonly [K in keyof Sh['actionMap']]: ActionFn<
-      Schema.Schema.Type<Sh['actionMap'][K]>,
-      Logic.Of<Sh, R, void, never>
-    >
+  readonly actions: Sh['actionMap']
+  readonly dispatchers: {
+    readonly [K in keyof Sh['actionMap']]: ActionFn<ActionPayload<Sh['actionMap'][K]>, Logic.Of<Sh, R, void, never>>
   }
+  readonly dispatch: {
+    (action: ActionOf<Sh>): Logic.Of<Sh, R, void, never>
+    <K extends keyof Sh['actionMap']>(
+      token: Sh['actionMap'][K],
+      ...args: ActionArgs<ActionPayload<Sh['actionMap'][K]>>
+    ): Logic.Of<Sh, R, void, never>
+    <K extends keyof Sh['actionMap']>(
+      tag: K,
+      ...args: ActionArgs<ActionPayload<Sh['actionMap'][K]>>
+    ): Logic.Of<Sh, R, void, never>
+  }
+  /**
+   * effect：
+   * - Register a side-effect handler for a specific Action token.
+   * - Setup registration is the primary path; run-phase dynamic registration is allowed but emits diagnostics and only affects future actions.
+   *
+   * Constraints:
+   * - Handlers must run outside the transaction window (FR-012); never perform IO inside reducers/transactions.
+   * - The runtime de-duplicates by `(actionTag, sourceKey)` (sourceKey is derived automatically).
+   */
+  readonly effect: <K extends keyof Sh['actionMap']>(
+    token: Sh['actionMap'][K],
+    handler: (payload: ActionPayload<Sh['actionMap'][K]>) => Logic.Of<Sh, R, void, any>,
+  ) => Logic.Of<Sh, R, void, never>
   readonly flow: import('./FlowRuntime.js').Api<Sh, R>
   readonly match: <V>(value: V) => Logic.FluentMatch<V>
   readonly matchTag: <V extends { _tag: string }>(value: V) => Logic.FluentMatchTag<V>
@@ -273,6 +294,11 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
     <K extends keyof Sh['actionMap']>(
       tag: K,
     ): Logic.IntentBuilder<Extract<ActionOf<Sh>, { _tag: K } | { type: K }>, Sh, R>
+    <A extends ActionOf<Sh> & ({ _tag: string } | { type: string })>(value: A): Logic.IntentBuilder<A, Sh, R>
+    <Sc extends AnySchema>(
+      schema: Sc,
+    ): Logic.IntentBuilder<Extract<ActionOf<Sh>, Schema.Schema.Type<Sc>>, Sh, R>
+    <K extends keyof Sh['actionMap']>(token: Sh['actionMap'][K]): Logic.IntentBuilder<ActionPayload<Sh['actionMap'][K]>, Sh, R>
   } & {
     [K in keyof Sh['actionMap']]: Logic.IntentBuilder<Extract<ActionOf<Sh>, { _tag: K } | { type: K }>, Sh, R>
   }
@@ -336,7 +362,7 @@ export interface ModuleTag<Id extends string, Sh extends AnyModuleShape> extends
   readonly stateSchema: Sh['stateSchema']
   readonly actionSchema: Sh['actionSchema']
   /**
-   * Raw ActionMap (tag -> payload schema).
+   * Raw ActionToken map (actionTag -> token).
    * - Mainly for DX/reflection; runtime contract is still based on shape/actionSchema.
    */
   readonly actions: Sh['actionMap']
@@ -390,35 +416,37 @@ export interface ModuleImpl<Id extends string, Sh extends AnyModuleShape, REnv =
 /**
  * Helper type: convert an Action Map into a union type.
  */
+type PayloadOfActionDef<V> = V extends Schema.Schema<any, any, any>
+  ? Schema.Schema.Type<V>
+  : V extends Action.ActionToken<any, infer P, any>
+    ? P
+    : never
+
 export type ActionsFromMap<M extends Record<string, AnySchema>> = {
-  [K in keyof M]: Schema.Schema.Type<M[K]> extends void
-    ? {
-        readonly _tag: K
-        readonly payload?: Schema.Schema.Type<M[K]>
-      }
-    : {
-        readonly _tag: K
-        readonly payload: Schema.Schema.Type<M[K]>
-      }
+  [K in keyof M]: M[K] extends Schema.Schema<any, any, any>
+    ? PayloadOfActionDef<M[K]> extends void
+      ? {
+          readonly _tag: K
+          readonly payload?: PayloadOfActionDef<M[K]>
+        }
+      : {
+          readonly _tag: K
+          readonly payload: PayloadOfActionDef<M[K]>
+        }
+    : M[K] extends Action.ActionToken<any, any, any>
+      ? ReturnType<M[K]>
+      : never
 }[keyof M]
 
 /**
  * Derive a tag-keyed "draft-style reducer (mutator) map" from an Action Map:
- * - Each Action tag may optionally declare a `(draftState, actionOfThisTag) => void`.
+ * - Each Action tag may optionally declare a `(draftState, payload) => void`.
  * - Higher-level APIs wrap it into a pure reducer via `Module.Reducer.mutate` / `Module.Reducer.mutateMap`.
  */
 export type MutatorsFromMap<SSchema extends AnySchema, AMap extends Record<string, AnySchema>> = {
   readonly [K in keyof AMap]?: (
     draft: Logic.Draft<Schema.Schema.Type<SSchema>>,
-    action: Schema.Schema.Type<AMap[K]> extends void
-      ? {
-          readonly _tag: K
-          readonly payload?: Schema.Schema.Type<AMap[K]>
-        }
-      : {
-          readonly _tag: K
-          readonly payload: Schema.Schema.Type<AMap[K]>
-        },
+    payload: PayloadOfActionDef<AMap[K]>,
   ) => void
 }
 
@@ -429,15 +457,11 @@ export type MutatorsFromMap<SSchema extends AnySchema, AMap extends Record<strin
 export type ReducersFromMap<SSchema extends AnySchema, AMap extends Record<string, AnySchema>> = {
   readonly [K in keyof AMap]?: (
     state: Schema.Schema.Type<SSchema>,
-    action: Schema.Schema.Type<AMap[K]> extends void
-      ? {
-          readonly _tag: K
-          readonly payload?: Schema.Schema.Type<AMap[K]>
-        }
-      : {
-          readonly _tag: K
-          readonly payload: Schema.Schema.Type<AMap[K]>
-        },
+    action: AMap[K] extends Action.ActionToken<any, any, any>
+      ? ReturnType<AMap[K]>
+      : PayloadOfActionDef<AMap[K]> extends void
+        ? { readonly _tag: K; readonly payload?: PayloadOfActionDef<AMap[K]> }
+        : { readonly _tag: K; readonly payload: PayloadOfActionDef<AMap[K]> },
     sink?: (path: string | FieldPath) => void,
   ) => Schema.Schema.Type<SSchema>
 }
@@ -446,8 +470,8 @@ export type ReducersFromMap<SSchema extends AnySchema, AMap extends Record<strin
  * A simplified Shape helper tailored for Action Maps.
  * @example type MyShape = Shape<typeof MyState, typeof MyActionMap>
  */
-export type Shape<S extends AnySchema, M extends Record<string, AnySchema>> = ModuleShape<
+export type Shape<S extends AnySchema, M extends Action.ActionDefs> = ModuleShape<
   S,
-  Schema.Schema<ActionsFromMap<M>>,
-  M
+  Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<M>>>,
+  Action.NormalizedActionTokens<M>
 >

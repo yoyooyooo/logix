@@ -85,64 +85,68 @@ import { UserApi } from '../../services/UserApi'
 
 export const RegisterLogic = RegisterDef.logic(($) =>
   Effect.gen(function* () {
-    // --- 场景 1: 字段联动 ---
-    // 当 country 变化时，重置 province
-    yield* $.onState((s) => s.country).run(() =>
-      $.state.mutate((draft) => {
-        draft.province = ''
-      }),
-    )
+    yield* Effect.all(
+      [
+        // --- 场景 1: 字段联动 ---
+        // 当 country 变化时，重置 province
+        $.onState((s) => s.country).run(() =>
+          $.state.mutate((draft) => {
+            draft.province = ''
+          }),
+        ),
 
-    // --- 场景 2: 异步校验 ---
-    // 监听 username 变化 -> 防抖 -> 校验 -> 更新错误状态
-    yield* $.onState((s) => s.username).pipe(
-      $.flow.debounce(500),
-      $.flow.filter((name) => name.length >= 3),
-      $.flow.runLatest((name) =>
-        Effect.gen(function* () {
-          yield* $.state.mutate((d) => {
-            d.meta.isValidating = true
-          })
+        // --- 场景 2: 异步校验 ---
+        // 监听 username 变化 -> 防抖 -> 校验 -> 更新错误状态
+        $.onState((s) => s.username)
+          .debounce(500)
+          .filter((name) => name.length >= 3)
+          .runLatest((name) =>
+            Effect.gen(function* () {
+              yield* $.state.mutate((d) => {
+                d.meta.isValidating = true
+              })
 
-          const api = yield* $.use(UserApi)
-          const isTaken = yield* api.checkUsername(name)
+              const api = yield* $.use(UserApi)
+              const isTaken = yield* api.checkUsername(name)
 
-          yield* $.state.mutate((d) => {
-            d.meta.isValidating = false
-            d.errors.username = isTaken ? '用户名已被占用' : undefined
-          })
-        }),
-      ),
-    )
+              yield* $.state.mutate((d) => {
+                d.meta.isValidating = false
+                d.errors.username = isTaken ? '用户名已被占用' : undefined
+              })
+            }),
+          ),
 
-    // --- 场景 3: 多字段约束 ---
-    // 监听密码对变化 -> 校验一致性
-    yield* $.onState((s) => [s.password, s.confirmPassword] as const).run(([pwd, confirm]) =>
-      $.state.mutate((draft) => {
-        if (confirm && pwd !== confirm) {
-          draft.errors.password = '两次输入的密码不一致'
-        } else {
-          delete draft.errors.password
-        }
-      }),
-    )
+        // --- 场景 3: 多字段约束 ---
+        // 监听密码对变化 -> 校验一致性
+        $.onState((s) => [s.password, s.confirmPassword] as const).run(([pwd, confirm]) =>
+          $.state.mutate((draft) => {
+            if (confirm && pwd !== confirm) {
+              draft.errors.password = '两次输入的密码不一致'
+            } else {
+              delete draft.errors.password
+            }
+          }),
+        ),
 
-    // --- 处理提交 ---
-    yield* $.onAction('submit').runExhaust(() =>
-      Effect.gen(function* () {
-        const state = yield* $.state.read
-        // 简单的校验拦截
-        if (state.errors.username || state.errors.password) return
+        // --- 处理提交 ---
+        $.onAction('submit').runExhaust(() =>
+          Effect.gen(function* () {
+            const state = yield* $.state.read
+            // 简单的校验拦截
+            if (state.errors.username || state.errors.password) return
 
-        yield* $.state.mutate((d) => {
-          d.meta.isSubmitting = true
-        })
-        // ... 提交逻辑 ...
-        yield* Effect.sleep('1 seconds') // 模拟请求
-        yield* $.state.mutate((d) => {
-          d.meta.isSubmitting = false
-        })
-      }),
+            yield* $.state.mutate((d) => {
+              d.meta.isSubmitting = true
+            })
+            // ... 提交逻辑 ...
+            yield* Effect.sleep('1 seconds') // 模拟请求
+            yield* $.state.mutate((d) => {
+              d.meta.isSubmitting = false
+            })
+          }),
+        ),
+      ],
+      { concurrency: 'unbounded' },
     )
   }),
 )

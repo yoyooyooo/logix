@@ -74,3 +74,7 @@ Failure semantics:
 
 - `Provider.options` is forwarded to the internal `useModule(HostImpl, options)` (where `options.scopeId` is mapped to internal `options.key`). `scopeId` distinguishes/reuses a scope (same scopeId reuses; new scopeId creates a new instance).
 - `use()` / `useImported()` throws immediately if the Provider is missing (it does not silently fall back to a “global singleton”).
+
+## See also
+
+- [Advanced: Composability map](../../guide/advanced/composability)

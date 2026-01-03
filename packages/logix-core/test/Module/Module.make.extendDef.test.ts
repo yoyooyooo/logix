@@ -72,7 +72,7 @@ describe('Module.make extend def (actions/reducers)', () => {
             draft.count += 2
           }),
         },
-      } satisfies Logix.Module.MakeExtendDef<typeof State, typeof Actions>,
+      },
     )
 
     return Effect.gen(function* () {

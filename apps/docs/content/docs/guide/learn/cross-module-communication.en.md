@@ -239,6 +239,7 @@ graph TB
 
 ## Next
 
+- Back to the overview: [Composability map](../advanced/composability)
 - Runtime architecture: [Deep dive](./deep-dive)
 - Advanced topic: [Suspense & Async](../advanced/suspense-and-async)
 - Error handling: [Error handling](../advanced/error-handling)

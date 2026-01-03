@@ -45,6 +45,7 @@ const SpecDetailStateSchema = Schema.Struct({
   content: Schema.String,
   expandedStoryCode: Schema.NullOr(Schema.String),
   pendingScrollToTaskLine: Schema.NullOr(Schema.Number),
+  pendingScrollToStoryLine: Schema.NullOr(Schema.Number),
   highlightTaskLine: Schema.NullOr(Schema.Number),
   loadingSpec: Schema.Boolean,
   specError: Schema.NullOr(Schema.String),
@@ -110,6 +111,8 @@ const KanbanActions = {
   'specDetail/toggleStory': Schema.String,
   'specDetail/jumpToTask': Schema.Number,
   'specDetail/didScrollToTask': Schema.Number,
+  'specDetail/jumpToStory': Schema.Number,
+  'specDetail/didScrollToStory': Schema.Number,
   'specDetail/clearHighlight': Schema.Void,
 
   'taskDetail/open': Schema.Struct({

@@ -19,11 +19,11 @@ const makeTestRuntime = (options: {
     actions: Actions,
     reducers: {
       noop: (s: any) => s,
-      bump: Logix.Module.Reducer.mutate((draft: any, action: { readonly payload: string }) => {
-        const key = action.payload
-        const prev = (draft as any)[key]
+      bump: Logix.Module.Reducer.mutate((draft, key: string) => {
+        const record = draft as Record<string, unknown>
+        const prev = record[key]
         if (typeof prev === 'number') {
-          ;(draft as any)[key] = prev + 1
+          record[key] = prev + 1
         }
       }),
     },

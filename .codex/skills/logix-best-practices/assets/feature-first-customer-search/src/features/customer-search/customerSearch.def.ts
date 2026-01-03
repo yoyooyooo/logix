@@ -9,15 +9,18 @@ export const CustomerSearchStateSchema = Schema.Struct({
   errorMessage: Schema.optional(Schema.String),
 })
 
-export const CustomerSearchActionMap = {
-  'customerSearch/setKeyword': Schema.String,
-  'customerSearch/trigger': Schema.Void,
-}
+export const CustomerSearchActions = {
+  setKeyword: Schema.String,
+} as const
 
-export type CustomerSearchShape = Logix.Shape<typeof CustomerSearchStateSchema, typeof CustomerSearchActionMap>
+export type CustomerSearchShape = Logix.Shape<typeof CustomerSearchStateSchema, typeof CustomerSearchActions>
 
 export const CustomerSearchDef = Logix.Module.make('CustomerSearch', {
   state: CustomerSearchStateSchema,
-  actions: CustomerSearchActionMap,
+  actions: CustomerSearchActions,
+  immerReducers: {
+    setKeyword: (draft, keyword) => {
+      draft.keyword = keyword
+    },
+  },
 })
-

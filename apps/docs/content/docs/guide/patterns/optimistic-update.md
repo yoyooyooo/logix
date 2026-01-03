@@ -38,7 +38,7 @@ const TodoLogic = TodoDef.logic(($) =>
   Effect.gen(function* () {
     const api = yield* $.use(TodoApi)
 
-    yield* $.onAction('toggle').run((itemId) =>
+    yield* $.onAction('toggle').run(({ payload: itemId }) =>
       Effect.gen(function* () {
         // 1. 保存原状态
         const original = yield* $.state.read
@@ -72,12 +72,12 @@ const TodoLogic = TodoDef.logic(($) =>
 yield*
   api.toggleTodo(itemId).pipe(
     Effect.retry({ times: 2 }), // 自动重试 2 次
-    Effect.catchAll(() =>
-      Effect.gen(function* () {
-        yield* $.state.update(() => original)
-        yield* $.actions.showError('操作失败，请稍后重试')
-      }),
-    ),
+      Effect.catchAll(() =>
+        Effect.gen(function* () {
+          yield* $.state.update(() => original)
+          yield* $.dispatchers.showError('操作失败，请稍后重试')
+        }),
+      ),
   )
 ```
 
@@ -85,7 +85,7 @@ yield*
 
 ```ts
 yield*
-  $.onAction('batchToggle').run((itemIds: string[]) =>
+  $.onAction('batchToggle').run(({ payload: itemIds }) =>
     Effect.gen(function* () {
       const original = yield* $.state.read
 

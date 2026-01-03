@@ -43,9 +43,17 @@ const LoginLogic = LoginModule.logic(($) =>
         // 尝试登录
         yield* loginApi(credentials).pipe(
           // 捕获特定错误
-          Effect.catchTag('InvalidPassword', () => $.state.update((s) => ({ ...s, error: '密码错误' }))),
+          Effect.catchTag('InvalidPassword', () =>
+            $.state.mutate((draft) => {
+              draft.error = '密码错误'
+            }),
+          ),
           // 捕获其他错误
-          Effect.catchAll(() => $.state.update((s) => ({ ...s, error: '登录失败' }))),
+          Effect.catchAll(() =>
+            $.state.mutate((draft) => {
+              draft.error = '登录失败'
+            }),
+          ),
         )
       }),
     )

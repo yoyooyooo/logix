@@ -95,7 +95,7 @@ const getAtPath = (state: any, path: string): any => {
   return current
 }
 
-const setAtPathMutating = (draft: any, path: string, value: any): void => {
+const setAtPathMutating = (draft: unknown, path: string, value: unknown): void => {
   if (!path) return
   const segments = parseSegments(path)
   if (segments.length === 0) return
@@ -116,7 +116,7 @@ const setAtPathMutating = (draft: any, path: string, value: any): void => {
   current[last as any] = value
 }
 
-const unsetAtPathMutating = (draft: any, path: string): void => {
+const unsetAtPathMutating = (draft: unknown, path: string): void => {
   if (!path) return
   const segments = parseSegments(path)
   if (segments.length === 0) return
@@ -1351,7 +1351,7 @@ export const validateInTransaction = <S extends object>(
           ? 0
           : updates.reduce((acc, u) => acc + (countErrorLeaves(u.next) - countErrorLeaves(u.prev)), 0)
 
-      const nextState = create(draft, (nextDraft: any) => {
+      const nextState = create(draft, (nextDraft) => {
         for (const u of updates) {
           if (u.next === undefined) {
             unsetAtPathMutating(nextDraft, u.errorPath)

@@ -20,8 +20,8 @@ describe('StateTrait converge dirty-set scheduling', () => {
     actions: Actions,
     reducers: {
       noop: (s: any) => s,
-      setA: Logix.Module.Reducer.mutate((draft: any, action: { readonly payload: number }) => {
-        draft.a = action.payload
+      setA: Logix.Module.Reducer.mutate((draft, value: number) => {
+        draft.a = value
       }),
     },
     traits: Logix.StateTrait.from(State)({

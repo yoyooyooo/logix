@@ -64,7 +64,12 @@ export const BatchArchiveDef = Logix.Module.make('BatchArchiveModule', {
 export const BatchArchiveLogic = BatchArchiveDef.logic<ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag>(
   ($: Logix.BoundApi<BatchArchiveShape, ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag>) =>
     Effect.gen(function* () {
-      const handleArchive = Effect.gen(function* () {
+      const handleArchive: Logix.Logic.Of<
+        BatchArchiveShape,
+        ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag,
+        void,
+        unknown
+      > = Effect.gen(function* () {
         const s = yield* $.state.read
         const ids = s.selectedIds
         const archiveSvc = yield* $.use(ArchiveServiceTag)
@@ -91,7 +96,7 @@ export const BatchArchiveLogic = BatchArchiveDef.logic<ConfirmServiceTag | Archi
             })
             // 触发列表刷新 Action
             // 使用新的智能 Dispatcher API
-            yield* $.actions['list/refresh']()
+            yield* $.dispatchers['list/refresh']()
           } else {
             yield* runNotifyOnResultPattern({
               kind: 'failure',

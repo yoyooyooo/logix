@@ -28,14 +28,14 @@ export const makeConvergeAutoFixture = (options?: {
     state: State,
     actions: Actions,
     reducers: {
-      noop: (s: any) => s,
-      bumpA: Logix.Module.Reducer.mutate((draft: any) => {
+      noop: (s: S) => s,
+      bumpA: Logix.Module.Reducer.mutate((draft) => {
         draft.a += 1
       }),
-      bumpB: Logix.Module.Reducer.mutate((draft: any) => {
+      bumpB: Logix.Module.Reducer.mutate((draft) => {
         draft.b += 1
       }),
-      bumpAB: Logix.Module.Reducer.mutate((draft: any) => {
+      bumpAB: Logix.Module.Reducer.mutate((draft) => {
         draft.a += 1
         draft.b += 1
       }),

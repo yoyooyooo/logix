@@ -22,7 +22,7 @@ describe('AppDemoLayout-style runtime + Debug.traceLayer + Suspense', () => {
       decrement: Schema.Void,
     },
     reducers: {
-      increment: Logix.Module.Reducer.mutate((draft, _action) => {
+      increment: Logix.Module.Reducer.mutate((draft) => {
         draft.count += 1
       }),
       decrement(s) {

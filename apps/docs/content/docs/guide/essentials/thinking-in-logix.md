@@ -83,7 +83,7 @@ const CounterModule = Logix.Module.make('Counter', {
 // 在 Logic 中只放联动 / 副作用 watcher
 const Logic = CounterModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onState((s) => s.count).runFork((count) => $.state.update((s) => ({ ...s, isZero: count === 0 })))
+    yield* $.onState((s) => s.count).runFork((count) => (count === 0 ? Effect.log('count is zero') : Effect.void))
   }),
 )
 ```

@@ -65,7 +65,7 @@ Logix Runtime 默认以“可观测性优先”的方式工作：
 
 1. **默认**：先用默认配置与声明式写法跑通，保持语义清晰。
 2. **观察**：开启 Devtools、导出证据包，先定位瓶颈属于“事务次数 / dirtySet / 派生规模 / 渲染 fan-out / 初始化”。
-3. **收窄写入**：优先用 `$.state.mutate`/`Module.Reducer.mutate`/`Module.Reducer.mutateMap` 等让运行时能采集更精确的影响域；避免无意义的全量 setState。
+3. **收窄写入**：优先用 `immerReducers` / `$.state.mutate`（或 `Module.Reducer.mutate/mutateMap` 作为 escape hatch）让运行时能采集更精确的影响域；避免无意义的全量 setState。
 4. **稳定标识**：为列表项/逻辑单元提供稳定的业务 ID（例如 list `trackBy`、logicUnitId），减少漂移与无谓重算/重渲染。
 5. **覆盖/调优**：只在热点模块上做局部 override（观测档位、调度/预算阈值等），并用证据包固化回归窗口。
 6. **拆分/重构**：当单个模块/逻辑密度过高时，拆分 Module / Logic / Trait 规则，回收复杂度与诊断可解释性。
@@ -384,9 +384,9 @@ React 侧会用更温和的调度策略合并通知（例如 `requestAnimationFr
    - 旧：在 UI 层用 `setTimeout`/`requestAnimationFrame` 手动合并 dispatch 或 setState。
    - 新：把“可延迟”的那类更新显式标记为 lowPriority，让运行时与 React 适配层统一负责调度与上界。
 
-3. **全量 update/setState → `Module.Reducer.mutate/mutateMap` / `$.state.mutate` / `$.onAction(...).mutate`**
+3. **全量 update/setState → `immerReducers` / `$.state.mutate` / `$.onAction(...).mutate`（或 `Module.Reducer.mutate/mutateMap`）**
    - 旧：`(s) => ({ ...s, a: s.a + 1 })`、`$.state.update((s) => ({ ...s, a: s.a + 1 }))` 这类“整棵替换”很难提供字段级影响域，派生/校验更容易退化为全量路径。
-   - 新：优先使用 `Logix.Module.Reducer.mutate(...)` / `Logix.Module.Reducer.mutateMap({...})`、`$.state.mutate(...)` 或 `$.onAction(...).mutate(...)`，让运行时自动采集“变更路径”，用于增量派生/校验。
+   - 新：优先使用 `immerReducers`、`$.state.mutate(...)` 或 `$.onAction(...).mutate(...)`，让运行时自动采集“变更路径”，用于增量派生/校验；如果你想保留 `reducers` 字段，再用 `Logix.Module.Reducer.mutate/mutateMap` 包装。
 
 例如：在 `Module.make` 内直接定义 draft 风格 reducers（推荐）：
 
@@ -395,8 +395,8 @@ immerReducers: {
   inc: (draft) => {
     draft.count += 1
   },
-  add: (draft, action) => {
-    draft.count += action.payload
+  add: (draft, payload) => {
+    draft.count += payload
   },
 },
 ```
@@ -408,13 +408,13 @@ reducers: Logix.Module.Reducer.mutateMap({
   inc: (draft) => {
     draft.count += 1
   },
-  add: (draft, action) => {
-    draft.count += action.payload
+  add: (draft, payload) => {
+    draft.count += payload
   },
 }),
 ```
 
-类型提示：如果你发现 `mutateMap` 里 `draft/action` 在 IDE 里退化成了 `any`，优先改用 `immerReducers`；或用 `satisfies Logix.Module.MutatorsFromMap<typeof State, typeof Actions>` 给 mutators 显式“挂上”类型约束。
+类型提示：如果你发现 `mutateMap` 里 `draft/payload` 在 IDE 里退化成了 `any`，优先改用 `immerReducers`；或用 `satisfies Logix.Module.MutatorsFromMap<typeof State, typeof Actions>` 给 mutators 显式“挂上”类型约束。
 
 同时需要“普通 reducer”时，可以同时提供 `immerReducers` 与 `reducers`（同名 key 以 `reducers` 为准）：
 

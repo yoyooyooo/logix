@@ -34,8 +34,17 @@ pnpm dev
 - `content/docs`：文档内容（Guide / API 等），是对外的用户文档 SSoT；
 - `source.config.ts`：Fumadocs Source 配置；
 - `src/app`：Next.js App 路由与布局（文档入口为 `/{lang}/docs`）。
+- `src/components/ui`：shadcn/ui 基础组件（唯一基元来源）。
+- `src/components/landing`：docs 首页 Landing 的 Section 组件与文案配置。
 
 在修改 Logix 行为或 API 形状时，建议同步更新：
 
 - 规范文档：`.codex/skills/project-guide/references/runtime-logix` / `docs/specs/intent-driven-ai-coding`；
 - 用户文档：本目录下的相关 MDX 页面。
+
+## 首页 Landing 约束（硬约束）
+
+- 颜色：只使用 tokens（CSS variables）及其派生；禁止硬编码颜色值。
+- 组件：基础 UI 只使用 shadcn/ui（`src/components/ui/*`），业务层只做组合。
+- 禁止：backdrop blur / backdrop filter、`0 0 Npx` glow 阴影。
+- 动效：只用 Framer Motion，并尊重 reduced-motion。

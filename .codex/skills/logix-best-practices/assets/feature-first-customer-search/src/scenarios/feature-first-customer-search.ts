@@ -52,14 +52,14 @@ const main = Effect.gen(function* () {
               ),
           )
 
-          yield* search.dispatch({ _tag: 'customerSearch/setKeyword', payload: 'alice' })
-          yield* Effect.sleep('400 millis')
+          yield* search.dispatch(CustomerSearchDef.actions.setKeyword('alice'))
+          yield* Effect.sleep('800 millis')
 
-          yield* search.dispatch({ _tag: 'customerSearch/setKeyword', payload: 'bob' })
-          yield* Effect.sleep('400 millis')
+          yield* search.dispatch(CustomerSearchDef.actions.setKeyword('bob'))
+          yield* Effect.sleep('800 millis')
 
-          yield* search.dispatch({ _tag: 'customerSearch/setKeyword', payload: '!' })
-          yield* Effect.sleep('400 millis')
+          yield* search.dispatch(CustomerSearchDef.actions.setKeyword('!'))
+          yield* Effect.sleep('800 millis')
         }),
       ),
     )

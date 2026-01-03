@@ -18,7 +18,7 @@ export const SomeLogic = SomeModule.logic(($) =>
 
 - 感知（Perception）：`$.onState / $.onAction / $.on` —— Fluent Intent DSL，用于监听当前 Module 的 State / Action 或任意 Stream；
 - 策略（Strategy）：`$.flow.*` —— Flow API，包含 `fromAction / fromState / debounce / throttle / filter / run / runLatest / runExhaust` 等算子，用来描述时间轴与并发语义；
-- 行动（Actuation）：`$.state` / `$.actions` —— 读写当前 Module 状态（`read / update / mutate / ref`）与派发当前 Module 的 Action（`dispatch / actions$`）；selector 级 Ref 仍需结合 `$.onState` / Flow 或自定义封装；
+- 行动（Actuation）：`$.state` / `$.actions` / `$.dispatchers` / `$.dispatch` / `$.effect` —— 读写当前 Module 状态（`read / update / mutate / ref`）；`$.actions` 只创建可序列化 action object（定义视图/纯数据）；`$.dispatchers` 返回可 `yield*` 的 Effect（执行视图/派发）；`$.dispatch(...)` 是通用派发入口；`$.effect(...)` 是副作用注册面（事务外触发、可诊断/可去重）；
 - 协作（Collaboration）：`$.use` —— 依赖注入入口（`$.use(ModuleOrService)`），用于访问其他 Module 的只读句柄或外部 Service；
 - 结构（Structure）：`$.match` —— 结构化分支与模式匹配（`match / matchTag` 等），配合 Effect 原语表达控制结构；
 - 生命周期（Lifecycle）：`$.lifecycle` —— 生命周期钩子（`onInitRequired / onStart / onDestroy / onError` 等），与 Module Runtime 的 Scope 绑定。

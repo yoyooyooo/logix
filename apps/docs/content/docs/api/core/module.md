@@ -48,7 +48,7 @@ export const CounterDef = Logix.Module.make('Counter', {
 - **`config`**: `ModuleConfig`
   - **`state`**: `Schema<State>` - 状态的 Schema 定义。
   - **`actions`**: `Record<string, Schema<Payload>>` - Action 的 Payload Schema 定义。
-  - **`immerReducers`**: `Record<string, (draft, action) => void>` - 在模块定义处用 draft 风格写 reducer（运行时会自动包装为不可变更新，并采集更精确的变更路径）。
+  - **`immerReducers`**: `Record<string, (draft, payload) => void>` - 在模块定义处用 draft 风格写 reducer（运行时会自动包装为不可变更新，并采集更精确的变更路径）。
   - **`reducers`**: `Record<string, (state, action, sink?) => nextState>` - 传统“纯 reducer”写法；需要精细控制时使用。
 
 当 `immerReducers` 与 `reducers` 同时提供且 key 重合时，以 `reducers` 为准。
@@ -63,9 +63,12 @@ export const CounterDef = Logix.Module.make('Counter', {
     increment: (draft) => {
       draft.count += 1
     },
+    setValue: (draft, value) => {
+      draft.count = value
+    },
   },
   reducers: {
-    setValue: (state, action) => ({ ...state, count: action.payload }),
+    decrement: (state) => ({ ...state, count: state.count - 1 }),
   },
 })
 ```
@@ -79,11 +82,16 @@ import { Effect } from 'effect'
 
 export const CounterLogic = CounterDef.logic(($) =>
   Effect.gen(function* () {
-    // 监听 increment：挂一条长期 watcher
-    yield* $.onAction('increment').runFork($.state.update((s) => ({ ...s, count: s.count + 1 })))
-
-    // 监听 count 变化：再挂一条 watcher 做日志或联动
-    yield* $.onState((state) => state.count).runFork((count) => Effect.log(`Count changed to ${count}`))
+    // 多条 watcher 属于长运行：并行启动（不要顺序 yield* 多条 .run*）
+    yield* Effect.all(
+      [
+        // 监听 increment：做副作用（纯同步状态更新更适合放在 reducers/immerReducers）
+        $.onAction('increment').run(() => Effect.log('increment')),
+        // 监听 count 变化：做日志或联动
+        $.onState((state) => state.count).run((count) => Effect.log(`Count changed to ${count}`)),
+      ],
+      { concurrency: 'unbounded' },
+    )
   }),
 )
 ```
@@ -101,6 +109,8 @@ export const CounterLogic = CounterDef.logic(($) =>
 ## 2.1 ModuleHandle（只读句柄）
 
 在 Logic 的 run 段中，你可以用 `yield* $.use(OtherModule)` 解析到对方模块的 **`ModuleHandle`**（只读句柄）：它提供 `read/changes/dispatch/actions`，但不暴露直接写 state 的能力。
+
+- 更完整的“ModuleHandle vs ServiceHandle（Tag + Layer）”取舍说明，参见：[Handle（消费面）](./handle)。
 
 - 需要对方的 `ModuleRuntime`（escape hatch）时，用 `yield* OtherModule.tag`
 - 需要固定 root provider 单例时，用 `yield* Logix.Root.resolve(OtherModule.tag)`

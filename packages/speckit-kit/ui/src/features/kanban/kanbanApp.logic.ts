@@ -5,9 +5,15 @@ import { parseUserStories } from '../../lib/spec-relations'
 import { KanbanAppDef, type KanbanState } from './kanbanApp.def'
 import { SpecboardApi } from './service'
 
-const isNotFound = (e: unknown): boolean => e instanceof ApiResponseError && e.status === 404 && e.tag === 'NotFoundError'
+const isNotFound = (e: unknown): boolean =>
+  e instanceof ApiResponseError && e.status === 404 && e.tag === 'NotFoundError'
 
 const formatError = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+
+const isSpecDetailRoute = (): boolean => {
+  if (typeof window === 'undefined') return false
+  return /^\/specs\/[^/]+\/?$/.test(window.location.pathname)
+}
 
 const computeStats = (tasks: ReadonlyArray<TaskItem>) => {
   const total = tasks.length
@@ -26,6 +32,18 @@ const visibleSpecsOf = (s: KanbanState): ReadonlyArray<SpecListItem> => {
     if (stats.total === 0) return true
     return stats.todo > 0
   })
+}
+
+const specsToEnsureLoadedOf = (s: KanbanState): ReadonlyArray<SpecListItem> => {
+  const visible = visibleSpecsOf(s)
+  if (!s.specDetail.open) return visible
+
+  const openSpecId = s.specDetail.specId
+  if (!openSpecId) return visible
+  if (visible.some((spec) => spec.id === openSpecId)) return visible
+
+  const openedSpec = s.specs.find((spec) => spec.id === openSpecId)
+  return openedSpec ? [...visible, openedSpec] : visible
 }
 
 export const KanbanFilterLogic = KanbanAppDef.logic(($) => ({
@@ -110,18 +128,27 @@ export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>(($)
   run: Effect.gen(function* () {
     const visibleKey$ = $.flow.fromState((s) => {
       const state = s as KanbanState
-      const visible = visibleSpecsOf(state)
+      const visible = specsToEnsureLoadedOf(state)
       const specIds = visible.map((spec) => spec.id).join('|')
       const viewKey = visible.map((spec) => `${spec.id}:${resolveSpecViewMode(state, spec.id)}`).join('|')
-      return `${specIds}::${viewKey}::${state.refreshSeq}`
+      const drawerKey = [
+        state.specDetail.open ? `specDetail:${state.specDetail.specId ?? ''}` : 'specDetail:off',
+        state.taskDetail.open
+          ? `taskDetail:${state.taskDetail.specId ?? ''}:${state.taskDetail.taskLine ?? ''}`
+          : 'taskDetail:off',
+      ].join('|')
+      return `${specIds}::${viewKey}::${state.refreshSeq}::${drawerKey}`
     })
 
     const ensure = visibleKey$.pipe(
       $.flow.runLatest(
         Effect.gen(function* () {
-          const api = yield* $.use(SpecboardApi)
           const state = (yield* $.state.read) as KanbanState
-          const visibleSpecs = visibleSpecsOf(state)
+          if (isSpecDetailRoute()) return
+          if (state.specDetail.open || state.taskDetail.open) return
+
+          const api = yield* $.use(SpecboardApi)
+          const visibleSpecs = specsToEnsureLoadedOf(state)
 
           yield* Effect.forEach(
             visibleSpecs,
@@ -266,6 +293,15 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
       draft.specDetail.expandedStoryCode = draft.specDetail.expandedStoryCode === a.payload ? null : a.payload
     })
 
+    const jumpToStory = $.onAction('specDetail/jumpToStory').mutate((draft, a) => {
+      draft.specDetail.fileName = 'spec.md'
+      draft.specDetail.viewMode = 'preview'
+      draft.specDetail.loadingFile = false
+      draft.specDetail.fileError = null
+      draft.specDetail.content = draft.specDetail.specMarkdown
+      draft.specDetail.pendingScrollToStoryLine = a.payload
+    })
+
     const selectFile = $.onAction('specDetail/selectFile').runLatestTask({
       pending: (a) =>
         $.state.mutate((draft) => {
@@ -341,6 +377,7 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
           draft.specDetail.content = ''
           draft.specDetail.expandedStoryCode = null
           draft.specDetail.pendingScrollToTaskLine = null
+          draft.specDetail.pendingScrollToStoryLine = null
           draft.specDetail.highlightTaskLine = null
           draft.specDetail.loadingSpec = true
           draft.specDetail.specError = null
@@ -353,9 +390,16 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
           const specId = a.payload
 
           const specMd = yield* Effect.either(api.readFile(specId, 'spec.md'))
+          const tasks = yield* Effect.either(api.listTasks(specId))
 
           type ArtifactCheck = { readonly name: ArtifactName; readonly exists: boolean | null }
-          const optional: ReadonlyArray<ArtifactName> = ['quickstart.md', 'data-model.md', 'research.md', 'plan.md', 'tasks.md']
+          const optional: ReadonlyArray<ArtifactName> = [
+            'quickstart.md',
+            'data-model.md',
+            'research.md',
+            'plan.md',
+            'tasks.md',
+          ]
 
           const checks = yield* Effect.forEach(
             optional,
@@ -367,7 +411,7 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
             { concurrency: 'unbounded' },
           )
 
-          return { specId, specMd, checks }
+          return { specId, specMd, tasks, checks }
         }),
       success: (r) =>
         $.state.mutate((draft) => {
@@ -377,6 +421,17 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
           for (const c of r.checks) {
             if (c.exists === true) draft.specDetail.artifactExists[c.name] = true
             if (c.exists === false) draft.specDetail.artifactExists[c.name] = false
+          }
+
+          if (r.tasks._tag === 'Right') {
+            const tasks = Array.from(r.tasks.right.tasks)
+            draft.tasksBySpec[r.specId] = tasks
+            const stats = computeStats(tasks)
+            draft.specs = draft.specs.map((s) => (s.id === r.specId ? { ...s, taskStats: stats } : s))
+          } else if (isNotFound(r.tasks.left)) {
+            draft.tasksBySpec[r.specId] = []
+          } else {
+            draft.error = formatError(r.tasks.left)
           }
 
           if (r.specMd._tag === 'Right') {
@@ -410,6 +465,10 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
     const didScrollToTask = $.onAction('specDetail/didScrollToTask').mutate((draft, a) => {
       draft.specDetail.pendingScrollToTaskLine = null
       draft.specDetail.highlightTaskLine = a.payload
+    })
+
+    const didScrollToStory = $.onAction('specDetail/didScrollToStory').mutate((draft) => {
+      draft.specDetail.pendingScrollToStoryLine = null
     })
 
     const clearHighlight = $.onAction('specDetail/clearHighlight').mutate((draft) => {
@@ -480,8 +539,10 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
         setContent,
         save,
         toggleStory,
+        jumpToStory,
         jumpToTask,
         didScrollToTask,
+        didScrollToStory,
         clearHighlight,
       ],
       { concurrency: 'unbounded' },

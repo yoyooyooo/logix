@@ -77,10 +77,20 @@ const RegionParams = Schema.Struct({
 
 type RegionP = Schema.Schema.Type<typeof RegionParams>
 
+type RegionUi = {
+  readonly query: {
+    readonly autoEnabled: boolean
+  }
+}
+
+const regionInitialUi: RegionUi = {
+  query: { autoEnabled: true },
+}
+
 const RegionQuery = Query.make('RegionQuery', {
   params: RegionParams,
   initialParams: { country: 'CN', province: '' },
-  ui: { query: { autoEnabled: true } },
+  ui: regionInitialUi,
   queries: {
     provinces: {
       resource: ProvinceSpec,
@@ -128,10 +138,10 @@ const runtime = Logix.Runtime.make(RegionHostModule, {
 
 const RegionCascadingCase: React.FC = () => {
   const form = useModule(CascadingForm.tag)
-  const formState = useSelector(form) as any
+  const formState = useSelector(form)
 
   const queryRuntime = useModule(RegionQuery.tag)
-  const queryState = useSelector(queryRuntime) as any
+  const queryState = useSelector(queryRuntime)
 
   const provincesSnap = queryState?.queries?.provinces
   const citiesSnap = queryState?.queries?.cities
@@ -143,13 +153,13 @@ const RegionCascadingCase: React.FC = () => {
     form.actions.setValue({ path: 'country', value: country })
     form.actions.setValue({ path: 'province', value: '' })
     form.actions.setValue({ path: 'city', value: '' })
-    queryRuntime.actions.setParams({ ...queryState.params, country, province: '' })
+    queryRuntime.actions.dispatch({ _tag: 'setParams', payload: { ...queryState.params, country, province: '' } })
   }
 
   const setProvince = (province: string) => {
     form.actions.setValue({ path: 'province', value: province })
     form.actions.setValue({ path: 'city', value: '' })
-    queryRuntime.actions.setParams({ ...queryState.params, province })
+    queryRuntime.actions.dispatch({ _tag: 'setParams', payload: { ...queryState.params, province } })
   }
 
   const setCity = (city: string) => {
@@ -225,8 +235,9 @@ const RegionCascadingCase: React.FC = () => {
               <GhostButton
                 type="button"
                 onClick={() =>
-                  queryRuntime.actions.setUi({
-                    query: { autoEnabled: !Boolean(queryState?.ui?.query?.autoEnabled) },
+                  queryRuntime.actions.dispatch({
+                    _tag: 'setUi',
+                    payload: { query: { autoEnabled: !queryState.ui.query.autoEnabled } },
                   })
                 }
               >

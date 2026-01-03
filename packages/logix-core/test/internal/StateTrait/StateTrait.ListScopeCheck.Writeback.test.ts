@@ -23,7 +23,7 @@ describe('StateTrait list-scope check · writeback ($list/rows[])', () => {
       const listConfigs = RowId.collectListConfigs(traits as any)
       const rowIdStore = new RowId.RowIdStore('i-list-scope')
 
-      let draft: any = makeInitialState()
+      let draft = makeInitialState()
       let setDraftCalls = 0
       const patches: Array<any> = []
 

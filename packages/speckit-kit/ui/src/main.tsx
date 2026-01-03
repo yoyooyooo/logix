@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import { RuntimeProvider } from '@logix/react'
+import { BrowserRouter } from 'react-router-dom'
 
 import App from './app/App'
 import { appRuntime } from './runtime/appRuntime'
@@ -13,6 +14,8 @@ if (!container) {
 
 createRoot(container).render(
   <RuntimeProvider runtime={appRuntime} policy={{ mode: 'sync' }}>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </RuntimeProvider>,
 )

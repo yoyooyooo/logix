@@ -1,4 +1,4 @@
 {
   "title": "React",
-  "pages": ["use-module", "use-imported-module", "module-scope", "use-local-module", "provider"]
+  "pages": ["provider", "use-module", "use-local-module", "use-imported-module", "module-scope"]
 }

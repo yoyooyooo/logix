@@ -41,7 +41,7 @@ describe('StateTrait converge · dirty-set from $.state.mutate', () => {
       const MutateLogic = M.logic(($) =>
         Effect.gen(function* () {
           yield* $.onAction('mutateA').run(() =>
-            $.state.mutate((draft: any) => {
+            $.state.mutate((draft) => {
               draft.a += 1
             }),
           )

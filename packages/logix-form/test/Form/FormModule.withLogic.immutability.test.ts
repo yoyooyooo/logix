@@ -23,7 +23,7 @@ describe('FormModule.withLogic immutability', () => {
       const SetName = form.logic(
         ($) =>
           Effect.gen(function* () {
-            yield* $.actions.setValue({ path: 'name', value: 'Alice' } as any)
+            yield* $.dispatchers.setValue({ path: 'name', value: 'Alice' } as any)
             yield* Deferred.succeed(done, undefined)
           }),
         { id: 'SetName' },

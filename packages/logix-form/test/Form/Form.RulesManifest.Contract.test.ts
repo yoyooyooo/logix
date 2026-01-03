@@ -119,7 +119,7 @@ describe('Form RulesManifest contracts (028)', () => {
             // Size budget: avoid accidentally bringing heavy structures into the Static IR.
             expect(jsonUtf8Bytes(m1)).toBeLessThanOrEqual(50_000)
 
-            yield* $0.state.mutate((draft: any) => {
+            yield* $0.state.mutate((draft) => {
               draft.ok = true
             })
           }),

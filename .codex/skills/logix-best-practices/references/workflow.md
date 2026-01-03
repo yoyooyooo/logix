@@ -10,10 +10,14 @@ title: 工作流与检查清单
 
 1. 定义最小领域模型：`src/features/<feature>/model.ts`
 2. 定义 Tag-only Service 契约（插槽）：`src/features/<feature>/service.ts`
-3. 定义 ModuleDef（只放 Schema）：`src/features/<feature>/<Feature>.def.ts`
+3. 定义 ModuleDef（Shape + 纯 reducers；不放长逻辑）：`src/features/<feature>/<Feature>.def.ts`
 4. 编写 Logic（Fluent/Flow）：`src/features/<feature>/<Feature>.logic.ts`
    - 只在 run 段/Effect 主体里使用 `$.use / $.onAction / $.onState / $.flow`
    - handler 内统一 `Effect.gen` + `yield*`，避免 `async/await`
+   - 多条长运行 watcher 用 `Effect.all([...], { concurrency: "unbounded" })` 并行启动（不要顺序 `yield*` 多条 `.run*`）
+   - 067 action surface：监听优先 `$.onAction($.actions.<K>)`（payload-first），执行优先 `$.dispatchers.<K>(payload)`（可跳转定义），避免散落字符串 tag
+   - Action → State 的纯同步更新优先用 `immerReducers` / `$.reducer`；局部字段写入优先 `$.state.mutate`（避免 `state_transaction::dirty_all_fallback`）
+   - 长链路（pending → IO → writeback）优先用 `run*Task`（并发语义清晰，IO 不落进同步事务 body）
    - 错误在靠近 Service 调用边界处收敛为领域错误（或在 UI 层转成可展示 message）
 5. 组合 ModuleImpl：`src/features/<feature>/<Feature>.impl.ts`（initial + logics）
 6. 有跨模块协作时：新增 `src/features/<feature>/processes/*.process.ts`

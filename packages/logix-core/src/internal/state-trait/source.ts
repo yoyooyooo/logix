@@ -122,13 +122,13 @@ const setSnapshotInTxn = (
 ): Effect.Effect<boolean, never, any> =>
   Effect.gen(function* () {
     let wrote = false
-    yield* bound.state.mutate((draft: any) => {
+    yield* bound.state.mutate((draft) => {
       const prev = RowId.getAtPath(draft, fieldPath)
       if (Object.is(prev, next)) return
       wrote = true
       RowId.setAtPathMutating(draft, fieldPath, next)
       recordTraitPatch(bound, fieldPath, reason, prev, next, traitNodeId)
-    }) as Effect.Effect<void, never, any>
+    })
     return wrote
   })
 
@@ -144,7 +144,7 @@ const writebackIfCurrentKeyHash = (
 ): Effect.Effect<boolean, never, any> =>
   Effect.gen(function* () {
     let wrote = false
-    yield* bound.state.mutate((draft: any) => {
+    yield* bound.state.mutate((draft) => {
       const current = RowId.getAtPath(draft, fieldPath)
       const currentKeyHash = current && typeof current === 'object' ? (current as any).keyHash : undefined
       if (currentKeyHash !== keyHash) return
@@ -158,7 +158,7 @@ const writebackIfCurrentKeyHash = (
         recordReplayEvent(bound, replayEvent)
       }
       recordTraitPatch(bound, fieldPath, reason, prev, next, traitNodeId)
-    }) as Effect.Effect<void, never, any>
+    })
     return wrote
   })
 
@@ -241,7 +241,7 @@ export const syncIdleInTransaction = <S extends object>(
 
     const reason: PatchReason = 'source-refresh'
 
-    const nextDraft = create(draft, (next: any) => {
+    const nextDraft = create(draft, (next) => {
       for (const u of updates) {
         RowId.setAtPathMutating(next, u.fieldPath, Snapshot.idle())
       }
@@ -356,7 +356,7 @@ export const installSourceRefresh = <S>(
     ): Effect.Effect<string | undefined, never, any> =>
       Effect.gen(function* () {
         let wrotePath: string | undefined
-        yield* bound.state.mutate((draft: any) => {
+        yield* bound.state.mutate((draft) => {
           const index = store.getIndex(listPath, rowId)
           if (index === undefined) return
           const concretePath = RowId.toListItemValuePath(listPath, index, itemPath)
@@ -365,7 +365,7 @@ export const installSourceRefresh = <S>(
           wrotePath = concretePath
           RowId.setAtPathMutating(draft, concretePath, next)
           recordTraitPatch(bound, concretePath, reason, prev, next, step.debugInfo?.graphNodeId)
-        }) as Effect.Effect<void, never, any>
+        })
         return wrotePath
       })
 
@@ -379,7 +379,7 @@ export const installSourceRefresh = <S>(
     ): Effect.Effect<string | undefined, never, any> =>
       Effect.gen(function* () {
         let wrotePath: string | undefined
-        yield* bound.state.mutate((draft: any) => {
+        yield* bound.state.mutate((draft) => {
           const index = store.getIndex(listPath, rowId)
           if (index === undefined) return
           const concretePath = RowId.toListItemValuePath(listPath, index, itemPath)
@@ -409,7 +409,7 @@ export const installSourceRefresh = <S>(
             })
           }
           recordTraitPatch(bound, concretePath, reason, prev, next, step.debugInfo?.graphNodeId)
-        }) as Effect.Effect<void, never, any>
+        })
         return wrotePath
       })
 

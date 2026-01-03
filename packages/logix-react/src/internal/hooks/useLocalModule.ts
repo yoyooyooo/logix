@@ -5,17 +5,17 @@ import { useRuntime } from './useRuntime.js'
 import { getModuleCache, type ModuleCacheFactory, stableHash } from '../store/ModuleCache.js'
 import { RuntimeContext } from '../provider/ReactContext.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
-import { makeModuleActions, type Dispatch, type ModuleRef } from '../store/ModuleRef.js'
+import { makeModuleActions, makeModuleDispatchers, type Dispatch, type ModuleRef } from '../store/ModuleRef.js'
 import { resolveImportedModuleRef } from '../store/resolveImportedModuleRef.js'
 import { useStableId } from './useStableId.js'
 
 type LocalModuleFactory<S, A> = () => Effect.Effect<Logix.ModuleRuntime<S, A>, unknown, unknown>
 
-type ModuleDef<Id extends string, Sh extends Logix.AnyModuleShape> = {
-  readonly _kind: 'ModuleDef'
-  readonly id: Id
-  readonly tag: Logix.ModuleTagType<Id, Sh>
-}
+type ModuleDef<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}> = Logix.Module.ModuleDef<
+  Id,
+  Sh,
+  Ext
+>
 
 interface ModuleTagOptions<Sh extends Logix.AnyModuleShape = Logix.AnyModuleShape> {
   readonly initial: Logix.StateOf<Sh>
@@ -34,15 +34,10 @@ function isModuleTag(source: unknown): source is Logix.ModuleTagType<string, Log
 
 export function useLocalModule<S, A>(factory: LocalModuleFactory<S, A>, deps?: React.DependencyList): ModuleRef<S, A>
 
-export function useLocalModule<Id extends string, Sh extends Logix.AnyModuleShape>(
-  module: ModuleDef<Id, Sh>,
+export function useLocalModule<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}>(
+  module: ModuleDef<Id, Sh, Ext>,
   options: ModuleTagOptions<Sh>,
-): ModuleRef<
-  Logix.StateOf<Sh>,
-  Logix.ActionOf<Sh>,
-  keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>
->
+): ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>, keyof Sh['actionMap'] & string, ModuleDef<Id, Sh, Ext>> & Ext
 
 export function useLocalModule<Sh extends Logix.AnyModuleShape>(
   module: Logix.ModuleTagType<string, Sh>,
@@ -76,6 +71,13 @@ export function useLocalModule(source: unknown, second?: unknown): ModuleRef<unk
       return source
     }
     return null
+  }, [source])
+
+  const def = React.useMemo(() => {
+    if (Logix.Module.is(source) || isModuleTag(source)) {
+      return source
+    }
+    return undefined
   }, [source])
 
   const isModule = moduleTag !== null
@@ -131,15 +133,33 @@ export function useLocalModule(source: unknown, second?: unknown): ModuleRef<unk
     })
   }, [runtime, moduleRuntime])
 
+  type AnyActionToken = Logix.Action.ActionToken<string, any, any>
+  const tokens = useMemo(() => {
+    if (!def || (typeof def !== 'object' && typeof def !== 'function')) {
+      return undefined
+    }
+    const candidate = def as { readonly actions?: unknown }
+    if (!candidate.actions || typeof candidate.actions !== 'object') {
+      return undefined
+    }
+    return candidate.actions as Record<string, AnyActionToken>
+  }, [def])
+
   const actions = useMemo(() => makeModuleActions(dispatch), [dispatch])
+
+  const dispatchers = useMemo(
+    () => (tokens ? makeModuleDispatchers(dispatch, tokens) : makeModuleDispatchers(dispatch)),
+    [dispatch, tokens],
+  )
 
   return useMemo(
     () =>
       ({
-        def: moduleTag ?? undefined,
+        def,
         runtime: moduleRuntime,
         dispatch,
         actions,
+        dispatchers,
         imports: {
           get: <Id extends string, Sh extends Logix.AnyModuleShape>(module: Logix.ModuleTagType<Id, Sh>) =>
             resolveImportedModuleRef(runtime, moduleRuntime, module),
@@ -150,7 +170,7 @@ export function useLocalModule(source: unknown, second?: unknown): ModuleRef<unk
         changes: moduleRuntime.changes,
         ref: moduleRuntime.ref,
       }) satisfies ModuleRef<unknown, unknown>,
-    [runtime, moduleTag, moduleRuntime, dispatch, actions],
+    [runtime, moduleRuntime, dispatch, actions, dispatchers, def],
   )
 }
 

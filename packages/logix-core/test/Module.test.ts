@@ -60,8 +60,8 @@ describe('Module.make (public API)', () => {
         inc: Logix.Module.Reducer.mutate((draft) => {
           draft.count += 1
         }),
-        add: Logix.Module.Reducer.mutate((draft, action) => {
-          draft.count += action.payload
+        add: Logix.Module.Reducer.mutate((draft, payload) => {
+          draft.count += payload
         }),
       },
     })
@@ -95,8 +95,8 @@ describe('Module.make (public API)', () => {
         inc: (draft) => {
           draft.count += 1
         },
-        add: (draft, action) => {
-          draft.count += action.payload
+        add: (draft, payload) => {
+          draft.count += payload
         },
       }),
     })
@@ -127,14 +127,14 @@ describe('Module.make (public API)', () => {
       state: ReducerState,
       actions: ReducerActions,
       immerReducers: {
-        inc: (draft, action) => {
+        inc: (draft, _payload) => {
           type _DraftNotAny = Expect<IsAny<typeof draft> extends true ? false : true>
-          type _ActionNotAny = Expect<IsAny<typeof action> extends true ? false : true>
+          type _PayloadNotAny = Expect<IsAny<typeof _payload> extends true ? false : true>
           draft.count += 1
         },
-        add: (draft, action) => {
-          type _ActionNotAny = Expect<IsAny<typeof action> extends true ? false : true>
-          draft.count += action.payload
+        add: (draft, payload) => {
+          type _PayloadNotAny = Expect<IsAny<typeof payload> extends true ? false : true>
+          draft.count += payload
         },
       },
     })
@@ -206,7 +206,7 @@ describe('Module.make (public API)', () => {
           }),
         )
         // Dispatch once inside Logic to verify the reducer applies synchronously before watchers.
-        yield* $.actions.inc()
+        yield* $.dispatchers.inc()
         yield* Deferred.succeed(reducerApplied, undefined)
       }),
     )
@@ -248,16 +248,16 @@ describe('Module.make (public API)', () => {
       run: Effect.gen(function* () {
         yield* $.reducer(
           'set',
-          Logix.Module.Reducer.mutate((draft, action: { payload: number }) => {
-            draft.value = action.payload
+          Logix.Module.Reducer.mutate((draft, payload: number) => {
+            draft.value = payload
           }),
         )
 
         // Registering a primary reducer twice for the same tag should trigger a Duplicate error.
         yield* $.reducer(
           'set',
-          Logix.Module.Reducer.mutate((draft, action: { payload: number }) => {
-            draft.value = action.payload + 1
+          Logix.Module.Reducer.mutate((draft, payload: number) => {
+            draft.value = payload + 1
           }),
         )
       }),
@@ -310,12 +310,12 @@ describe('Module.make (public API)', () => {
       ),
       run: Effect.gen(function* () {
         // Dispatch first, then try to register a primary reducer; should trigger late_registration diagnostics.
-        yield* $.actions.set(1)
+        yield* $.dispatchers.set(1)
 
         yield* $.reducer(
           'set',
-          Logix.Module.Reducer.mutate((draft, action: { payload: number }) => {
-            draft.value = action.payload
+          Logix.Module.Reducer.mutate((draft, payload: number) => {
+            draft.value = payload
           }),
         )
       }),

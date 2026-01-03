@@ -6,6 +6,19 @@ import type { ResolvedTxnLanePolicy } from './ModuleRuntime.txnLanePolicy.js'
 import type { ConcurrencyLimit, StateTransactionInstrumentation } from './env.js'
 import type * as ModuleTraits from './ModuleTraits.js'
 
+export type RuntimeInternalsEffects = {
+  readonly registerEffect: (args: {
+    readonly actionTag: string
+    readonly handler: (payload: unknown) => Effect.Effect<void, any, any>
+    readonly phase: 'setup' | 'run'
+    readonly logicUnit?: {
+      readonly logicUnitId: string
+      readonly logicUnitLabel: string
+      readonly path?: string
+    }
+  }) => Effect.Effect<{ readonly sourceKey: string; readonly duplicate: boolean }, never, any>
+}
+
 export type ImportsScope = {
   readonly kind: 'imports-scope'
   readonly get: (module: Context.Tag<any, PublicModuleRuntime<any, any>>) => PublicModuleRuntime<any, any> | undefined
@@ -127,5 +140,6 @@ export interface RuntimeInternals {
   readonly concurrency: RuntimeInternalsConcurrency
   readonly txnLanes: RuntimeInternalsTxnLanes
   readonly traits: RuntimeInternalsTraits
+  readonly effects: RuntimeInternalsEffects
   readonly devtools: RuntimeInternalsDevtools
 }

@@ -17,7 +17,7 @@ describe('process: uiSubtree stop → start (re-install)', () => {
         setup: Effect.void,
         run: Effect.gen(function* () {
           yield* $.onAction('inc').runParallelFork(
-            $.state.mutate((draft: any) => {
+            $.state.mutate((draft) => {
               draft.value += 1
             }),
           )

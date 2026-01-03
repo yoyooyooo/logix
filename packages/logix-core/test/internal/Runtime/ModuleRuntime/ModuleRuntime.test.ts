@@ -543,7 +543,7 @@ describe('ModuleRuntime (internal)', () => {
 
           const run = Effect.gen(function* () {
             // Trigger the reducer; this depends on setup having been registered already.
-            yield* $.actions.inc()
+            yield* $.dispatchers.inc()
             yield* Deferred.succeed(completed, undefined)
           })
 

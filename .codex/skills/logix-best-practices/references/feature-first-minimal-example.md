@@ -76,6 +76,7 @@ src/
 ## 3. 你复制后通常需要改什么
 
 - **命名**：把 `customer-search`、`CustomerSearch`、action 名称替换成你的领域语言。
+- **Action key**：优先用短 key（如 `setKeyword/inc/add`），不要把 moduleId 再塞进 actionTag；执行用 `dispatchers`，监听用 `onAction(token)`。
 - **State**：只保留“最小可解释数据面”，派生字段优先用 selector/trait 而不是写回 state（除非你明确需要）。
 - **Service 契约**：让 Tag 表达业务动词，错误类型用领域化 Error（不要把 `unknown` 直接冒泡到业务层）。
 - **Process**：跨模块协作一律落在 `processes/`（或更上层的 use-case coordinator），避免在某个模块内部隐式操控另一个模块。

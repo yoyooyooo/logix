@@ -651,5 +651,6 @@ Good for:
 
 ## 11. Next steps
 
+- Back to the overview: [Composability map](../advanced/composability)
 - For more Logix APIs, continue to [API reference](../../api/index).
 - For more complex integration scenarios (multi-module collaboration, async flows, remote services), see `examples/logix-react` in this repository.

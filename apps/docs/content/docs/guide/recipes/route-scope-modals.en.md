@@ -153,3 +153,8 @@ If you truly need a “Provider-level singleton”, you can use `useModule(Modul
 - Constraint: it means “singleton in the nearest RuntimeProvider environment”, not a Host(imports) child instance.
 
 If your goal is a “route-scoped global”, prefer the sweet spot: **Host(imports) + host.imports.get(...)**.
+
+## Next
+
+- Back to the overview: [Composability map](../advanced/composability)
+- For the full semantics of imports/scopes: [Cross-module communication](../learn/cross-module-communication)

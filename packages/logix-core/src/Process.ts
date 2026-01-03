@@ -98,7 +98,12 @@ const isModuleLike = (value: unknown): value is ModuleLike<string, AnyModuleShap
 
 const unwrapModuleTag = <Id extends string, Sh extends AnyModuleShape>(
   module: LinkModuleToken<Id, Sh>,
-): ModuleTag<Id, Sh> => (isModuleLike(module) ? module.tag : module)
+): ModuleTag<Id, Sh> => {
+  if (isModuleLike(module)) {
+    return module.tag
+  }
+  return module as ModuleTag<Id, Sh>
+}
 
 export interface LinkConfig<Ms extends readonly LinkModuleToken<string, AnyModuleShape>[]> {
   readonly id?: string

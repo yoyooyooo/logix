@@ -75,11 +75,10 @@ export const makeConvergeTimeSlicingRuntime = (
     logics: [],
   })
 
-  const bumpReducer = Logix.Module.Reducer.mutate((draft: any, action: { readonly payload: number }) => {
-    const dirtyRoots = action.payload
+  const bumpReducer = Logix.Module.Reducer.mutate((draft: Record<string, number>, dirtyRoots: number) => {
     for (let i = 0; i < dirtyRoots; i++) {
       const k = `b${i}`
-      draft[k] = (draft[k] as number) + 1
+      draft[k] += 1
     }
   })
 

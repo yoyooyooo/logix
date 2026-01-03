@@ -10,7 +10,7 @@ describe('Runtime.runProgram exit strategy (US1)', () => {
         state: Schema.Struct({ value: Schema.Number }),
         actions: { bump: Schema.Void },
         reducers: {
-          bump: Logix.Module.Reducer.mutate((draft: any) => {
+          bump: Logix.Module.Reducer.mutate((draft) => {
             draft.value += 1
           }),
         },

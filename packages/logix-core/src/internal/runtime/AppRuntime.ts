@@ -18,7 +18,7 @@ import type { AnyModuleShape, ModuleTag, ModuleRuntime, StateOf, ActionOf } from
  * - layer: the runtime Layer for the Module.
  */
 export interface AppModuleEntry {
-  readonly module: ModuleTag<any, AnyModuleShape>
+  readonly module: ModuleTag<any, any>
   readonly layer: Layer.Layer<any, any, any>
   /**
    * Optional: list of Service Tags provided by this module's layer.

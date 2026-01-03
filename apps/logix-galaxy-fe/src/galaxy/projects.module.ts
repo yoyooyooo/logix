@@ -60,22 +60,22 @@ export const ProjectsDef = Logix.Module.make('GalaxyProjects', {
 
 export const ProjectsLogic = ProjectsDef.logic(($) => {
   const resetAll = Effect.gen(function* () {
-    yield* $.actions.setProjects([])
-    yield* $.actions.setProjectsError(null)
-    yield* $.actions.setProjectsLoading(false)
-    yield* $.actions.setSelectedProjectId(null)
-    yield* $.actions.setSelectedProject(null)
-    yield* $.actions.setSelectedProjectError(null)
-    yield* $.actions.setSelectedProjectLoading(false)
-    yield* $.actions.setAccess(null)
-    yield* $.actions.setAccessError(null)
-    yield* $.actions.setAccessLoading(false)
+    yield* $.dispatchers.setProjects([])
+    yield* $.dispatchers.setProjectsError(null)
+    yield* $.dispatchers.setProjectsLoading(false)
+    yield* $.dispatchers.setSelectedProjectId(null)
+    yield* $.dispatchers.setSelectedProject(null)
+    yield* $.dispatchers.setSelectedProjectError(null)
+    yield* $.dispatchers.setSelectedProjectLoading(false)
+    yield* $.dispatchers.setAccess(null)
+    yield* $.dispatchers.setAccessError(null)
+    yield* $.dispatchers.setAccessLoading(false)
   })
 
   const loadProjects = (token: string) =>
     Effect.gen(function* () {
-      yield* $.actions.setProjectsLoading(true)
-      yield* $.actions.setProjectsError(null)
+      yield* $.dispatchers.setProjectsLoading(true)
+      yield* $.dispatchers.setProjectsError(null)
 
       const listEither = yield* Effect.tryPromise({
         try: () => galaxyApi.projectList(token),
@@ -83,21 +83,21 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
       }).pipe(Effect.either)
 
       if (listEither._tag === 'Left') {
-        yield* $.actions.setProjects([])
-        yield* $.actions.setProjectsError(galaxyApi.toMessage(listEither.left))
-        yield* $.actions.setProjectsLoading(false)
+        yield* $.dispatchers.setProjects([])
+        yield* $.dispatchers.setProjectsError(galaxyApi.toMessage(listEither.left))
+        yield* $.dispatchers.setProjectsLoading(false)
         return
       }
 
-      yield* $.actions.setProjects(listEither.right as any)
-      yield* $.actions.setProjectsLoading(false)
+      yield* $.dispatchers.setProjects(listEither.right as any)
+      yield* $.dispatchers.setProjectsLoading(false)
     })
 
   const loadSelectedProject = (token: string, projectId: number) =>
     Effect.gen(function* () {
-      yield* $.actions.setSelectedProjectLoading(true)
-      yield* $.actions.setSelectedProjectError(null)
-      yield* $.actions.setSelectedProject(null)
+      yield* $.dispatchers.setSelectedProjectLoading(true)
+      yield* $.dispatchers.setSelectedProjectError(null)
+      yield* $.dispatchers.setSelectedProject(null)
 
       const getEither = yield* Effect.tryPromise({
         try: () => galaxyApi.projectGet(token, projectId),
@@ -105,20 +105,20 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
       }).pipe(Effect.either)
 
       if (getEither._tag === 'Left') {
-        yield* $.actions.setSelectedProjectError(galaxyApi.toMessage(getEither.left))
-        yield* $.actions.setSelectedProjectLoading(false)
+        yield* $.dispatchers.setSelectedProjectError(galaxyApi.toMessage(getEither.left))
+        yield* $.dispatchers.setSelectedProjectLoading(false)
         return
       }
 
-      yield* $.actions.setSelectedProject(getEither.right as any)
-      yield* $.actions.setSelectedProjectLoading(false)
+      yield* $.dispatchers.setSelectedProject(getEither.right as any)
+      yield* $.dispatchers.setSelectedProjectLoading(false)
     })
 
   const loadAccess = (token: string, projectId: number) =>
     Effect.gen(function* () {
-      yield* $.actions.setAccessLoading(true)
-      yield* $.actions.setAccessError(null)
-      yield* $.actions.setAccess(null)
+      yield* $.dispatchers.setAccessLoading(true)
+      yield* $.dispatchers.setAccessError(null)
+      yield* $.dispatchers.setAccess(null)
 
       const accessEither = yield* Effect.tryPromise({
         try: () => galaxyApi.projectAccessMe(token, projectId),
@@ -126,13 +126,13 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
       }).pipe(Effect.either)
 
       if (accessEither._tag === 'Left') {
-        yield* $.actions.setAccessError(galaxyApi.toMessage(accessEither.left))
-        yield* $.actions.setAccessLoading(false)
+        yield* $.dispatchers.setAccessError(galaxyApi.toMessage(accessEither.left))
+        yield* $.dispatchers.setAccessLoading(false)
         return
       }
 
-      yield* $.actions.setAccess(accessEither.right as any)
-      yield* $.actions.setAccessLoading(false)
+      yield* $.dispatchers.setAccess(accessEither.right as any)
+      yield* $.dispatchers.setAccessLoading(false)
     })
 
   return {
@@ -173,8 +173,8 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
               const t = yield* auth.read((s) => s.token)
               if (!t) return yield* resetAll
 
-              yield* $.actions.setProjectsError(null)
-              yield* $.actions.setProjectsLoading(true)
+              yield* $.dispatchers.setProjectsError(null)
+              yield* $.dispatchers.setProjectsLoading(true)
 
               const createEither = yield* Effect.tryPromise({
                 try: () => galaxyApi.projectCreate(t, { name: action.payload }),
@@ -182,12 +182,12 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
               }).pipe(Effect.either)
 
               if (createEither._tag === 'Left') {
-                yield* $.actions.setProjectsError(galaxyApi.toMessage(createEither.left))
-                yield* $.actions.setProjectsLoading(false)
+                yield* $.dispatchers.setProjectsError(galaxyApi.toMessage(createEither.left))
+                yield* $.dispatchers.setProjectsLoading(false)
                 return
               }
 
-              yield* $.actions.setProjectsLoading(false)
+              yield* $.dispatchers.setProjectsLoading(false)
               yield* loadProjects(t)
             }),
           ),
@@ -195,7 +195,7 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
           $.onAction('selectProject').runLatest((action) =>
             Effect.gen(function* () {
               const projectId = action.payload
-              yield* $.actions.setSelectedProjectId(projectId)
+              yield* $.dispatchers.setSelectedProjectId(projectId)
 
               const t = yield* auth.read((s) => s.token)
               if (!t) return yield* resetAll

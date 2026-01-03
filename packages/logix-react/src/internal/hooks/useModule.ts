@@ -8,11 +8,19 @@ import { isDevEnv } from '../provider/env.js'
 import { getModuleCache, type ModuleCacheFactory, stableHash } from '../store/ModuleCache.js'
 import { RuntimeContext } from '../provider/ReactContext.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
-import { applyHandleExtend, isModuleRef, makeModuleActions, type Dispatch, type ModuleRef } from '../store/ModuleRef.js'
+import {
+  applyHandleExtend,
+  isModuleRef,
+  makeModuleActions,
+  makeModuleDispatchers,
+  type Dispatch,
+  type ModuleDispatchersOfShape,
+  type ModuleRef,
+} from '../store/ModuleRef.js'
 import { resolveImportedModuleRef } from '../store/resolveImportedModuleRef.js'
 import { useStableId } from './useStableId.js'
 
-export type { ModuleActions, ModuleRef } from '../store/ModuleRef.js'
+export type { ModuleActions, ModuleDispatchers, ModuleDispatchersOfShape, ModuleRef } from '../store/ModuleRef.js'
 
 // Sync mode options: default behavior; does not trigger React Suspense.
 interface ModuleImplSyncOptions {
@@ -60,16 +68,17 @@ type ModuleImplOptions = ModuleImplSyncOptions | ModuleImplSuspendOptions
 const isModuleImpl = (handle: unknown): handle is Logix.ModuleImpl<string, Logix.AnyModuleShape, unknown> =>
   Boolean(handle) && typeof handle === 'object' && (handle as { readonly _tag?: unknown })._tag === 'ModuleImpl'
 
-type ModuleDef<Id extends string, Sh extends Logix.AnyModuleShape> = {
-  readonly _kind: 'ModuleDef'
-  readonly id: Id
-  readonly tag: Logix.ModuleTagType<Id, Sh>
-}
+type ModuleDef<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}> = Logix.Module.ModuleDef<
+  Id,
+  Sh,
+  Ext
+>
 
 const isModule = (handle: unknown): handle is Logix.Module.Module<string, Logix.AnyModuleShape, any, unknown> =>
   Logix.Module.hasImpl(handle)
 
-const isModuleDef = (handle: unknown): handle is ModuleDef<string, Logix.AnyModuleShape> => Logix.Module.is(handle)
+const isModuleDef = (handle: unknown): handle is ModuleDef<string, Logix.AnyModuleShape, any> =>
+  Logix.Module.is(handle) && (handle as { readonly _kind?: unknown })._kind === 'ModuleDef'
 
 type StateOfHandle<H> =
   H extends ModuleRef<infer S, infer _A>
@@ -95,7 +104,8 @@ export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, R 
   Logix.StateOf<Sh>,
   Logix.ActionOf<Sh>,
   keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>
+  Logix.ModuleTagType<Id, Sh>,
+  ModuleDispatchersOfShape<Sh>
 >
 
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, R = never>(
@@ -105,7 +115,8 @@ export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, R 
   Logix.StateOf<Sh>,
   Logix.ActionOf<Sh>,
   keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>
+  Logix.ModuleTagType<Id, Sh>,
+  ModuleDispatchersOfShape<Sh>
 >
 
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object, R = never>(
@@ -114,7 +125,7 @@ export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, Ex
   Logix.StateOf<Sh>,
   Logix.ActionOf<Sh>,
   keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>
+  Logix.Module.Module<Id, Sh, Ext, R>
 > &
   Ext
 
@@ -125,17 +136,22 @@ export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, Ex
   Logix.StateOf<Sh>,
   Logix.ActionOf<Sh>,
   keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>
+  Logix.Module.Module<Id, Sh, Ext, R>
 > &
   Ext
 
+export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}>(
+  handle: ModuleDef<Id, Sh, Ext>,
+): ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>, keyof Sh['actionMap'] & string, ModuleDef<Id, Sh, Ext>> & Ext
+
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape>(
-  handle: ModuleDef<Id, Sh>,
+  handle: Logix.ModuleTagType<Id, Sh>,
 ): ModuleRef<
   Logix.StateOf<Sh>,
   Logix.ActionOf<Sh>,
   keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>
+  Logix.ModuleTagType<Id, Sh>,
+  ModuleDispatchersOfShape<Sh>
 >
 
 export function useModule<H extends ReactModuleHandle>(handle: H): ModuleRef<StateOfHandle<H>, ActionOfHandle<H>>
@@ -153,7 +169,13 @@ export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, R,
 ): V
 
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, V>(
-  handle: ModuleDef<Id, Sh>,
+  handle: ModuleDef<Id, Sh, any>,
+  selector: (state: Logix.StateOf<Sh>) => V,
+  equalityFn?: (previous: V, next: V) => boolean,
+): V
+
+export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, V>(
+  handle: Logix.ModuleTagType<Id, Sh>,
   selector: (state: Logix.StateOf<Sh>) => V,
   equalityFn?: (previous: V, next: V) => boolean,
 ): V
@@ -169,7 +191,7 @@ export function useModule(
     | ReactModuleHandle
     | Logix.ModuleImpl<string, Logix.AnyModuleShape, unknown>
     | Logix.Module.Module<string, Logix.AnyModuleShape, any, unknown>
-    | ModuleDef<string, Logix.AnyModuleShape>,
+    | ModuleDef<string, Logix.AnyModuleShape, any>,
   selectorOrOptions?: ((state: unknown) => unknown) | ModuleImplOptions,
   equalityFn?: (previous: unknown, next: unknown) => boolean,
 ): unknown {
@@ -363,6 +385,51 @@ export function useModule(
     return useSelector(normalizedHandle, selector as never, equalityFn as never)
   }
 
+  const def = React.useMemo(() => {
+    if (isModule(handle) || isModuleDef(handle)) {
+      return handle
+    }
+    if (isModuleRef(handle)) {
+      return handle.def
+    }
+    if (isModuleImpl(handle)) {
+      return handle.module
+    }
+    if (
+      handle &&
+      (typeof handle === 'object' || typeof handle === 'function') &&
+      (handle as { readonly _kind?: unknown })._kind === 'ModuleTag'
+    ) {
+      return handle
+    }
+    if (isModuleImpl(normalizedHandle)) {
+      return normalizedHandle.module
+    }
+    if (isModuleRef(normalizedHandle)) {
+      return normalizedHandle.def
+    }
+    if (
+      normalizedHandle &&
+      (typeof normalizedHandle === 'object' || typeof normalizedHandle === 'function') &&
+      (normalizedHandle as { readonly _kind?: unknown })._kind === 'ModuleTag'
+    ) {
+      return normalizedHandle
+    }
+    return undefined
+  }, [handle, normalizedHandle])
+
+  type AnyActionToken = Logix.Action.ActionToken<string, any, any>
+  const tokens = React.useMemo(() => {
+    if (!def || (typeof def !== 'object' && typeof def !== 'function')) {
+      return undefined
+    }
+    const candidate = def as { readonly actions?: unknown }
+    if (!candidate.actions || typeof candidate.actions !== 'object') {
+      return undefined
+    }
+    return candidate.actions as Record<string, AnyActionToken>
+  }, [def])
+
   const dispatch = React.useMemo((): Dispatch<unknown> => {
     const base = (action: unknown) => {
       runtimeBase.runFork(runtime.dispatch(action))
@@ -378,8 +445,6 @@ export function useModule(
     })
   }, [runtimeBase, runtime])
 
-  const actions = React.useMemo(() => makeModuleActions(dispatch), [dispatch])
-
   const extendTag = React.useMemo(() => {
     if (isModuleImpl(normalizedHandle)) {
       return normalizedHandle.module
@@ -387,22 +452,12 @@ export function useModule(
     return normalizedHandle
   }, [normalizedHandle])
 
-  const def = React.useMemo(() => {
-    if (isModuleImpl(normalizedHandle)) {
-      return normalizedHandle.module
-    }
-    if (isModuleRef(normalizedHandle)) {
-      return normalizedHandle.def
-    }
-    if (
-      normalizedHandle &&
-      (typeof normalizedHandle === 'object' || typeof normalizedHandle === 'function') &&
-      (normalizedHandle as { _kind?: unknown })._kind === 'ModuleTag'
-    ) {
-      return normalizedHandle
-    }
-    return undefined
-  }, [normalizedHandle])
+  const actions = React.useMemo(() => makeModuleActions(dispatch), [dispatch])
+
+  const dispatchers = React.useMemo(
+    () => (tokens ? makeModuleDispatchers(dispatch, tokens) : makeModuleDispatchers(dispatch)),
+    [dispatch, tokens],
+  )
 
   return React.useMemo(() => {
     const base: ModuleRef<unknown, unknown> = {
@@ -410,6 +465,7 @@ export function useModule(
       runtime,
       dispatch,
       actions,
+      dispatchers,
       imports: {
         get: <Id extends string, Sh extends Logix.AnyModuleShape>(module: Logix.ModuleTagType<Id, Sh>) =>
           resolveImportedModuleRef(runtimeBase, runtime, module),
@@ -422,5 +478,5 @@ export function useModule(
     }
 
     return applyHandleExtend(extendTag, runtime, base)
-  }, [runtimeBase, runtime, dispatch, actions, extendTag, def])
+  }, [runtimeBase, runtime, dispatch, actions, dispatchers, extendTag, def])
 }

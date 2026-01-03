@@ -45,7 +45,11 @@ description: Logix 常见问题解答，帮助你快速找到答案。
 
 ```ts
 // 不需要知道 Effect 细节，只需要知道：
-yield* $.onAction('save').run(() => $.state.update((s) => ({ ...s, saved: true })))
+yield* $.onAction('save').run(() =>
+  $.state.mutate((draft) => {
+    draft.saved = true
+  }),
+)
 ```
 
 只有在需要高级能力（重试、超时、资源管理）时，再深入学习 Effect。
@@ -80,10 +84,12 @@ yield* $.onAction('save').run(() => $.state.update((s) => ({ ...s, saved: true }
 使用 `runLatest`：
 
 ```ts
-yield* $.onAction('search').runLatest((keyword) =>
+yield* $.onAction('search').runLatest(({ payload: keyword }) =>
   Effect.gen(function* () {
     const results = yield* api.search(keyword)
-    yield* $.state.update((s) => ({ ...s, results }))
+    yield* $.state.mutate((draft) => {
+      draft.results = results
+    })
   }),
 )
 ```

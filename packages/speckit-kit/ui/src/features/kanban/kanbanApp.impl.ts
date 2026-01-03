@@ -32,6 +32,7 @@ const initialState: KanbanState = {
     content: '',
     expandedStoryCode: null,
     pendingScrollToTaskLine: null,
+    pendingScrollToStoryLine: null,
     highlightTaskLine: null,
     loadingSpec: false,
     specError: null,

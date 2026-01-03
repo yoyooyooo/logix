@@ -109,7 +109,7 @@ export const RegionSelectorLogic = RegionSelectorDef.logic(($) => ({
       Effect.gen(function* () {
         yield* Effect.log(`选择省份: ${action.payload.code}`)
         const cities = yield* mockLoadCities(action.payload.code)
-        yield* $.actions.dispatch({
+        yield* $.dispatch({
           _tag: 'citiesLoaded',
           payload: { options: cities },
         })
@@ -121,7 +121,7 @@ export const RegionSelectorLogic = RegionSelectorDef.logic(($) => ({
       Effect.gen(function* () {
         yield* Effect.log(`选择城市: ${action.payload.code}`)
         const districts = yield* mockLoadDistricts(action.payload.code)
-        yield* $.actions.dispatch({
+        yield* $.dispatch({
           _tag: 'districtsLoaded',
           payload: { options: districts },
         })
@@ -129,9 +129,9 @@ export const RegionSelectorLogic = RegionSelectorDef.logic(($) => ({
     )
 
     // 初始加载省份列表
-    yield* $.actions.dispatch({ _tag: 'loadProvinces', payload: undefined })
+    yield* $.dispatch({ _tag: 'loadProvinces', payload: undefined })
     const provinces = yield* mockLoadProvinces()
-    yield* $.actions.dispatch({
+    yield* $.dispatch({
       _tag: 'provincesLoaded',
       payload: { options: provinces },
     })

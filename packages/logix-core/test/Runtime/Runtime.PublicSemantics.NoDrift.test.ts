@@ -19,7 +19,7 @@ describe('Runtime public semantics: no drift (US1)', () => {
         state: State,
         actions: Actions,
         reducers: {
-          bump: Logix.Module.Reducer.mutate((draft: any) => {
+          bump: Logix.Module.Reducer.mutate((draft) => {
             draft.base += 1
           }),
         },

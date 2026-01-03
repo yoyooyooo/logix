@@ -28,10 +28,13 @@ This page collects diagnostic codes emitted by the Logix Runtime, common failure
 | Code                           | Severity | Meaning                 | Fix direction                |
 | ------------------------------ | -------- | ----------------------- | ---------------------------- |
 | `logic::invalid_phase`         | error    | API used in wrong phase | move the call into the correct phase |
-| `logic::env_service_not_found` | warning  | Env service not ready   | check Layer provisioning order        |
+| `logic::env_service_not_found` | warning  | Env service not ready (common startup noise) | check Layer provisioning order |
+| `assembly::missing_module_runtime` | error | missing imports/scope for a child module | provide `imports` or a root singleton |
 | `reducer::late_registration`   | warning  | Reducer registered late | move `$.reducer` into setup            |
-| `state::mutation_outside_txn`  | error    | State mutated outside txn | update state inside Flow handlers     |
-| `source::fetch_failed`         | warning  | Async resource load failed | check network/Service implementation  |
+| `state_transaction::dirty_all_fallback` | warning | missing field-level dirty evidence | prefer `$.state.mutate` / `immerReducers` / `ModuleTag.Reducer.mutate` |
+| `state_transaction::async_escape` | error | async/await escaped txn window | no IO/await inside a synchronous transaction; use `run*Task` or split entries |
+| `state_transaction::enqueue_in_transaction` | error | dispatch/setState inside txn window | move dispatch outside the transaction window; use a multi-entry pattern |
+| `logic::invalid_usage`         | error    | `run*Task` called inside txn window | call `run*Task` from watcher run section, not inside reducers/update/mutate bodies |
 
 ---
 

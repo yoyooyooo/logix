@@ -28,6 +28,10 @@
   - Runtime / Logix 内核：`.codex/skills/project-guide/references/runtime-logix`（project-guide 内置的 Runtime SSoT，按渐进式披露组织）  
   - 任何影响 Intent 模型、Flow DSL、Runtime 契约的决策，优先更新上述文档。
 
+- **团队引入/宣讲材料（精简版）**
+  - 路径：`docs/team-briefing/README.md`
+  - 内容：Logix 的初衷、优势与对比（面向团队沟通，不替代用户文档与 SSoT）。
+
 ## 代码主线
 
 - `packages/logix-core`：Logix 运行时内核（Module / Logic / Bound API `$` / Runtime 等）；  

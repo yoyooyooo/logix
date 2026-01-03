@@ -124,19 +124,24 @@ export const UserListDef = Logix.Module.make('UserList', {
     const pagination$ = $.onState((s) => s.pagination).toStream()
     const refresh$ = $.onAction('refresh').toStream()
 
-    // --- 2. 自动重置页码 ---
-    yield* $.onState((s) => s.filters).run(() =>
-      $.state.mutate((d) => {
-        d.pagination.page = 1
-      }),
-    )
-
     // --- 3. 汇聚加载信号 ---
     const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
 
-    // --- 4. 执行加载逻辑 ---
-    // 使用 $.on(...) 将合并后的 Stream 重新包装回 DSL
-    yield* $.on(loadTrigger$).pipe($.flow.debounce(50), $.flow.runLatest(loadEffect))
+    yield* Effect.all(
+      [
+        // --- 2. 自动重置页码 ---
+        $.onState((s) => s.filters).run(() =>
+          $.state.mutate((d) => {
+            d.pagination.page = 1
+          }),
+        ),
+
+        // --- 4. 执行加载逻辑 ---
+        // 使用 $.on(...) 将合并后的 Stream 重新包装回 DSL
+        $.on(loadTrigger$).debounce(50).runLatest(loadEffect),
+      ],
+      { concurrency: 'unbounded' },
+    )
   })
 })
 ```
@@ -150,8 +155,7 @@ export const UserListDef = Logix.Module.make('UserList', {
     // --- 1. 使用底层 API 获取 Stream ---
     const filters$ = $.flow.fromState((s) => s.filters)
     const pagination$ = $.flow.fromState((s) => s.pagination)
-    // Action Stream 需要手动过滤
-    const refresh$ = $.flow.actionStream.pipe(Stream.filter((a) => a.type === 'refresh'))
+    const refresh$ = $.flow.fromAction((a): a is { _tag: 'refresh' } => (a as any)._tag === 'refresh')
 
     // --- 2. 自动重置页码 ---
     yield* filters$.pipe(

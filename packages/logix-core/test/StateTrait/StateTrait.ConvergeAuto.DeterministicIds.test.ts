@@ -23,7 +23,7 @@ describe('StateTrait converge auto deterministic ids', () => {
         actions: Actions,
         reducers: {
           noop: (s: any) => s,
-          incA: Logix.Module.Reducer.mutate((draft: any) => {
+          incA: Logix.Module.Reducer.mutate((draft) => {
             draft.a += 1
           }),
         },
@@ -117,7 +117,7 @@ describe('StateTrait converge auto deterministic ids', () => {
         actions: Actions,
         reducers: {
           noop: (s: any) => s,
-          incA: Logix.Module.Reducer.mutate((draft: any) => {
+          incA: Logix.Module.Reducer.mutate((draft) => {
             draft.a += 1
           }),
         },

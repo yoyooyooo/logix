@@ -1,6 +1,6 @@
 import React from 'react'
 import * as Logix from '@logix/core'
-import type { ModuleRef } from './internal/store/ModuleRef.js'
+import type { ModuleDispatchersOfShape, ModuleRef } from './internal/store/ModuleRef.js'
 import { useModule } from './internal/hooks/useModule.js'
 import { RuntimeProvider } from './internal/provider/RuntimeProvider.js'
 import { useRuntime } from './internal/hooks/useRuntime.js'
@@ -46,7 +46,13 @@ export type ModuleScope<Ref> = {
    */
   readonly useImported: <Id extends string, Sh extends Logix.AnyModuleShape>(
     module: Logix.ModuleTagType<Id, Sh>,
-  ) => ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
+  ) => ModuleRef<
+    Logix.StateOf<Sh>,
+    Logix.ActionOf<Sh>,
+    keyof Sh['actionMap'] & string,
+    Logix.ModuleTagType<Id, Sh>,
+    ModuleDispatchersOfShape<Sh>
+  >
   readonly Context: React.Context<Ref | null>
   /**
    * Bridge: reuse the same scope across React subtrees / separate roots.
@@ -64,8 +70,22 @@ export type ModuleScope<Ref> = {
 const makeModuleScope = <Id extends string, Sh extends Logix.AnyModuleShape, R = never>(
   handle: Logix.ModuleImpl<Id, Sh, R>,
   defaults?: ModuleScopeOptions,
-): ModuleScope<ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>> => {
-  type Ref = ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
+): ModuleScope<
+  ModuleRef<
+    Logix.StateOf<Sh>,
+    Logix.ActionOf<Sh>,
+    keyof Sh['actionMap'] & string,
+    Logix.ModuleTagType<Id, Sh>,
+    ModuleDispatchersOfShape<Sh>
+  >
+> => {
+  type Ref = ModuleRef<
+    Logix.StateOf<Sh>,
+    Logix.ActionOf<Sh>,
+    keyof Sh['actionMap'] & string,
+    Logix.ModuleTagType<Id, Sh>,
+    ModuleDispatchersOfShape<Sh>
+  >
 
   const Context = React.createContext<Ref | null>(null)
 

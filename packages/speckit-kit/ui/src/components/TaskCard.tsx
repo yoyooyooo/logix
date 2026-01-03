@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
 import type { TaskItem } from '../api/client'
 import { getDisplayTitle } from '../lib/spec-relations'
+import { Badge } from './ui/badge'
+import { Card } from './ui/card'
 
 interface Props {
   task: TaskItem
@@ -17,14 +19,12 @@ export function TaskCard({ task, focused, onToggle, onOpenDetail }: Props) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      className={`au-card group min-w-0 px-3 py-2 transition-shadow duration-200 ${
-        focused ? 'ring-2 ring-[var(--intent-primary-fg)] ring-offset-2' : ''
-      }`}
+      exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.1 } }}
+      className="group relative min-w-0 bg-background transition-all duration-200 hover:bg-muted/30"
     >
-      <div className="flex min-w-0 items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3 p-3 border-l-4 border-transparent transition-all duration-200 group-hover:translate-x-1 group-hover:border-accent">
         <input
-          className="mt-1 h-4 w-4 cursor-pointer accent-black/80"
+          className="mt-1 h-4 w-4 cursor-pointer accent-primary"
           type="checkbox"
           checked={task.checked}
           onChange={(e) => onToggle(e.target.checked)}
@@ -32,35 +32,29 @@ export function TaskCard({ task, focused, onToggle, onOpenDetail }: Props) {
 
         <button
           type="button"
-          className="au-clickable-no-scale min-w-0 flex-1 overflow-hidden text-left"
+          className="min-w-0 flex-1 overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           onClick={onOpenDetail}
           title={title}
         >
-          <div className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)]">
-            <span className="rounded bg-[var(--intent-primary-bg)] px-1.5 py-0.5 font-mono text-[var(--intent-primary-fg)] font-medium opacity-80">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            <Badge variant="outline" className="font-mono">
               {label}
-            </span>
+            </Badge>
             {task.story ? (
-              <span className="rounded bg-[var(--intent-info-bg)] px-1.5 py-0.5 text-[var(--intent-info-fg)]">
+              <Badge variant="info" className="font-mono">
                 {task.story}
-              </span>
+              </Badge>
             ) : null}
             {task.parallel ? (
-              <span className="rounded bg-[var(--intent-warning-bg)] px-1.5 py-0.5 text-[var(--intent-warning-fg)]">
+              <Badge variant="warning" className="font-mono">
                 P
-              </span>
+              </Badge>
             ) : null}
-            <span className="ml-auto font-mono text-[var(--text-tertiary)] opacity-60">L{task.line}</span>
+            <span className="ml-auto font-mono opacity-70">L{task.line}</span>
           </div>
 
-          <div className="mt-1.5 min-w-0 break-words text-[13.5px] leading-relaxed text-[var(--text-primary)] group-hover:text-black">
-            <span
-              className={`block min-w-0 transition-all duration-300 ${
-                task.checked ? 'text-[var(--text-tertiary)] opacity-40 grayscale' : ''
-              }`}
-            >
-              {title}
-            </span>
+          <div className="mt-1.5 min-w-0 break-words text-[13.5px] leading-relaxed text-foreground">
+            <span className={task.checked ? 'text-muted-foreground line-through opacity-70' : undefined}>{title}</span>
           </div>
         </button>
       </div>

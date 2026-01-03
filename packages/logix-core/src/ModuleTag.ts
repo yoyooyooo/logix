@@ -1,5 +1,6 @@
 import { Effect, FiberRef, Layer, Schema } from 'effect'
 import * as Logic from './Logic.js'
+import * as Action from './internal/action.js'
 import * as ModuleFactory from './internal/runtime/ModuleFactory.js'
 import type { FieldPath } from './internal/field-path.js'
 import { mutateWithoutPatches, mutateWithPatchPaths } from './internal/runtime/core/mutativePatches.js'
@@ -71,7 +72,7 @@ export type {
  *     state: CounterState,
  *     actions: CounterActions,
  *     reducers: {
- *       inc: Logix.ModuleTag.Reducer.mutate((draft, _action) => {
+ *       inc: Logix.ModuleTag.Reducer.mutate((draft, _payload) => {
  *         draft.count += 1
  *       }),
  *     },
@@ -79,25 +80,26 @@ export type {
  *
  *   yield* $.reducer(
  *     "setValue",
- *     Logix.ModuleTag.Reducer.mutate((draft, action) => {
- *       draft.value = action.payload
+ *     Logix.ModuleTag.Reducer.mutate((draft, payload) => {
+ *       draft.value = payload
  *     }),
  *   )
  */
 export const Reducer = {
   mutate:
-    <S, A>(
-      mutator: (draft: Logic.Draft<S>, action: A) => void,
+    <S, A extends { readonly payload?: any }>(
+      mutator: (draft: Logic.Draft<S>, payload: A['payload']) => void,
     ): ((state: S, action: A, sink?: (path: string | FieldPath) => void) => S) =>
     (state, action, sink) => {
+      const payload = (action as any)?.payload as A['payload']
       if (!sink) {
         return mutateWithoutPatches(state as S, (draft) => {
-          mutator(draft as Logic.Draft<S>, action)
+          mutator(draft as Logic.Draft<S>, payload)
         })
       }
 
       const { nextState, patchPaths } = mutateWithPatchPaths(state as S, (draft) => {
-        mutator(draft as Logic.Draft<S>, action)
+        mutator(draft as Logic.Draft<S>, payload)
       })
 
       for (const path of patchPaths) {
@@ -109,20 +111,18 @@ export const Reducer = {
 
   mutateMap: <
     R extends Readonly<
-      Record<
-        string,
-        | ((state: any, action: any, sink?: (path: string | FieldPath) => void) => any)
-        | undefined
-      >
+      Record<string, ((state: any, action: any, sink?: (path: string | FieldPath) => void) => any) | undefined>
     >,
-  >(
-    mutators: {
-      readonly [K in keyof NoInfer_<R>]?: (
-        draft: Logic.Draft<Parameters<NonNullable<NoInfer_<R>[K]>>[0]>,
-        action: Parameters<NonNullable<NoInfer_<R>[K]>>[1],
-      ) => void
-    },
-  ): R => {
+  >(mutators: {
+    readonly [K in keyof NoInfer_<R>]?: (
+      draft: Logic.Draft<Parameters<NonNullable<NoInfer_<R>[K]>>[0]>,
+      payload: Parameters<NonNullable<NoInfer_<R>[K]>>[1] extends { readonly payload: infer P }
+        ? P
+        : Parameters<NonNullable<NoInfer_<R>[K]>>[1] extends { readonly payload?: infer P }
+          ? P | undefined
+          : never,
+    ) => void
+  }): R => {
     const out: Record<string, unknown> = {}
     for (const key of Object.keys(mutators)) {
       const mutator = (mutators as any)[key]
@@ -139,11 +139,11 @@ export const Reducer = {
  */
 export type Shape<S extends AnySchema, M extends Record<string, AnySchema>> = ModuleShape<
   S,
-  Schema.Schema<ActionsFromMap<M>>,
-  M
+  Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<M & Action.ActionDefs>>>,
+  Action.NormalizedActionTokens<M & Action.ActionDefs>
 >
 
-const makeImpl = <Id extends string, SSchema extends AnySchema, AMap extends Record<string, AnySchema>>(
+const makeImpl = <Id extends string, SSchema extends AnySchema, AMap extends Record<string, Action.AnyActionToken>>(
   id: Id,
   def: {
     readonly state: SSchema
@@ -160,12 +160,12 @@ const makeImpl = <Id extends string, SSchema extends AnySchema, AMap extends Rec
  *
  * Note: since 022, the old `Module` (Tag identity) was renamed to `ModuleTag`; use `Logix.Module` for module definition objects.
  */
-export const make = <Id extends string, SSchema extends AnySchema, AMap extends Record<string, AnySchema>>(
+export const make = <Id extends string, SSchema extends AnySchema, ADefs extends Action.ActionDefs>(
   id: Id,
   def: {
     readonly state: SSchema
-    readonly actions: AMap
-    readonly reducers?: ReducersFromMap<SSchema, AMap>
+    readonly actions: ADefs
+    readonly reducers?: ReducersFromMap<SSchema, ADefs>
     /**
      * traits：
      * - Used to attach a StateTraitSpec (see specs/000-module-traits-runtime).
@@ -176,10 +176,26 @@ export const make = <Id extends string, SSchema extends AnySchema, AMap extends 
      */
     readonly traits?: unknown
   },
-): ModuleTag<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>> => {
-  const moduleTag = makeImpl(id, def)
+): ModuleTag<
+  Id,
+  ModuleShape<
+    SSchema,
+    Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<ADefs>>>,
+    Action.NormalizedActionTokens<ADefs>
+  >
+> => {
+  const actions = Action.normalizeActions(def.actions)
+  const moduleTag = makeImpl(id, {
+    state: def.state,
+    actions,
+    reducers: def.reducers as any,
+  })
 
-  type Sh = ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>
+  type Sh = ModuleShape<
+    SSchema,
+    Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<ADefs>>>,
+    Action.NormalizedActionTokens<ADefs>
+  >
 
   const stateSchema = def.state as Schema.Schema<any, any>
   const moduleTraitsSpec = def.traits as StateTrait.StateTraitSpec<any> | undefined

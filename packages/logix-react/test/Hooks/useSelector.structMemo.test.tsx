@@ -49,7 +49,7 @@ describe('useSelector(struct memo)', () => {
     const first = result.current.view
 
     await act(async () => {
-      result.current.rt.actions.bumpOther()
+      result.current.rt.dispatchers.bumpOther()
     })
 
     await waitFor(() => {

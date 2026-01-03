@@ -10,7 +10,7 @@ describe('Runtime.runProgram handle-extend (US1)', () => {
         state: Schema.Struct({ count: Schema.Number }),
         actions: { inc: Schema.Void },
         reducers: {
-          inc: Logix.Module.Reducer.mutate((draft: any) => {
+          inc: Logix.Module.Reducer.mutate((draft) => {
             draft.count += 1
           }),
         },

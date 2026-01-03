@@ -23,16 +23,16 @@ export type TraitsReuseShape = Logix.Shape<typeof TraitsReuseStateSchema, typeof
 
 /**
  * makeTraitsReuseModule：
- * - 便捷工厂：为示例场景生成一个可运行的 Module（包含 reducers）。
+ * - 便捷工厂：为示例场景生成一个可运行的 Module（包含 primary reducer）。
  */
 export const makeTraitsReuseModule = (id: string) =>
   Logix.Module.make(id, {
     state: TraitsReuseStateSchema,
     actions: TraitsReuseActionMap,
-    reducers: {
-      'base/set': Logix.Module.Reducer.mutate((draft: any, action: any) => {
-        draft.base = action.payload
-      }),
+    immerReducers: {
+      'base/set': (draft, payload) => {
+        draft.base = payload
+      },
     },
   })
 

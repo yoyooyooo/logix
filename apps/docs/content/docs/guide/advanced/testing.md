@@ -46,7 +46,11 @@ const Counter = Logix.Module.make('Counter', {
 
 const CounterLogic = Counter.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
+    yield* $.onAction('inc').run(() =>
+      $.state.mutate((draft) => {
+        draft.count += 1
+      }),
+    )
   }),
 )
 

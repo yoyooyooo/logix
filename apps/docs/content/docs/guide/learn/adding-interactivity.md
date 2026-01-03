@@ -41,18 +41,19 @@ SearchModule.logic(($) =>
   Effect.gen(function* () {
     // 1. 监听 keyword 状态变化 (Logic DSL)
     // $.onState 返回的是一个 Fluent Flow 对象，可以直接链式调用
-    yield* $.onState((s) => s.keyword).pipe(
-      $.flow.debounce(300), // 防抖 300ms
-      $.flow.filter((kw) => kw.length > 2), // 仅当长度 > 2 时触发
-      $.flow.runLatest((kw) =>
+    yield* $.onState((s) => s.keyword)
+      .debounce(300) // 防抖 300ms
+      .filter((kw) => kw.length > 2) // 仅当长度 > 2 时触发
+      .runLatest((kw) =>
         Effect.gen(function* () {
           // 使用 runLatest 处理竞态
           const api = yield* $.use(SearchApi)
           const results = yield* api.search(kw)
-          yield* $.state.update((s) => ({ ...s, results }))
+          yield* $.state.mutate((draft) => {
+            draft.results = results
+          })
         }),
-      ),
-    )
+      )
   }),
 )
 ```
@@ -70,7 +71,9 @@ SearchModule.logic(($) =>
       Effect.gen(function* () {
         const api = yield* $.use(SearchApi)
         const results = yield* api.search(kw)
-        yield* $.state.update((s) => ({ ...s, results }))
+        yield* $.state.mutate((draft) => {
+          draft.results = results
+        })
       })
 
     // 3. 手动组装 Flow
@@ -101,7 +104,9 @@ SearchModule.logic(($) =>
           Effect.gen(function* () {
             const api = yield* $.use(SearchApi)
             const results = yield* api.search(kw)
-            yield* $.state.update((s) => ({ ...s, results }))
+            yield* $.state.mutate((draft) => {
+              draft.results = results
+            })
           }),
         { switch: true },
       ),

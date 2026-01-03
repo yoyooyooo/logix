@@ -75,7 +75,7 @@ describe('useSelector(shared subscription)', () => {
       const f = useModule(handle, (s: any) => s.count + 5)
       const g = useModule(handle, (s: any) => s.count + 6)
       const h = useModule(handle, (s: any) => s.count + 7)
-      return { a, b, c, d, e, f, g, h, inc: rt.actions.inc }
+      return { a, b, c, d, e, f, g, h, inc: rt.dispatchers.inc }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -113,7 +113,7 @@ describe('useSelector(shared subscription)', () => {
         renderCount += 1
         const rt = useModule(Counter.tag)
         const count = useModule(rt, (s: any) => s.count)
-        return { rt, count, inc: rt.actions.inc }
+        return { rt, count, inc: rt.dispatchers.inc }
       }
 
       const useTest8 = () => {
@@ -127,7 +127,7 @@ describe('useSelector(shared subscription)', () => {
         useModule(rt, (s: any) => s.count + 5)
         useModule(rt, (s: any) => s.count + 6)
         useModule(rt, (s: any) => s.count + 7)
-        return { rt, count: a, inc: rt.actions.inc }
+        return { rt, count: a, inc: rt.dispatchers.inc }
       }
 
       const { result } = renderHook(() => (selectors === 1 ? useTest1() : useTest8()), { wrapper })

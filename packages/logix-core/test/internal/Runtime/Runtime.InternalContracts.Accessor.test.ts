@@ -74,6 +74,9 @@ const makeInternals = (instanceId: string): RuntimeInternals => ({
     getModuleTraitsSnapshot: () => undefined,
     setModuleTraitsSnapshot: () => {},
   },
+  effects: {
+    registerEffect: () => Effect.succeed({ sourceKey: 'unknown::h1', duplicate: false }),
+  },
   devtools: {
     registerConvergeStaticIr: () => {},
   },

@@ -70,8 +70,8 @@ export const CounterLogic = Counter.logic(($) =>
     // 1. 主路径：同步、纯状态变换
     yield* $.reducer(
       "set",
-      Logix.Module.Reducer.mutate((draft, action) => {
-        draft.count = action.payload;
+      Logix.Module.Reducer.mutate((draft, payload) => {
+        draft.count = payload;
       }),
     );
 
@@ -91,7 +91,7 @@ export const CounterLogic = Counter.logic(($) =>
 
 - primary reducer 不访问 Env，不做 IO，不再 dispatch，只负责「当前 Action 对 State 的主效果」；
 - watcher 则专注「在 State / Action 变化之后需要发生的联动与副作用」；
-- `Logix.Module.Reducer.mutate` 提供与 `$.state.mutate` 一致的 mutative 写法，内部通过 `mutative` 映射为不可变更新。
+- `Logix.Module.Reducer.mutate` 提供与 `$.state.mutate` 一致的 draft 写法（mutator 回调为 `(draft, payload)`），内部通过 `mutative` 映射为不可变更新。
 
 ## 4.4 Watcher handler 上下文：payload-first +（可选）prevState
 
