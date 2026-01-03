@@ -95,7 +95,7 @@ const generateIndexHtml = () => {
       const page = `Pg. ${String.fromCharCode(65 + i)}`
 
       return `            <li class="article">
-              <a class="articleLink" href="./${t.id}/" aria-label="Read ${t.displayName} docs">
+              <a class="articleLink" href="./${t.id}/index.html" aria-label="Read ${t.displayName} docs">
                 <div class="metaRow">
                   <span class="category">&ldquo;${section}&rdquo;</span>
                   <span class="pageNumber">&ldquo;${page}&rdquo;</span>

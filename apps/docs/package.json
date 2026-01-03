@@ -5,8 +5,8 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "prebuild": "fumadocs-mdx",
-    "predev": "fumadocs-mdx",
+    "prebuild": "node scripts/sync-api-reference.mjs --build && fumadocs-mdx",
+    "predev": "node scripts/sync-api-reference.mjs --if-missing && fumadocs-mdx",
     "start": "next start",
     "types:check": "fumadocs-mdx && tsc --noEmit",
     "postinstall": "fumadocs-mdx",
