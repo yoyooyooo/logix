@@ -40,8 +40,9 @@ test(
   async () => {
     await withNodeEnv('production', async () => {
       const controlPlane = readConvergeControlPlaneFromEnv()
+      const maxSteps = stepsLevels[stepsLevels.length - 1]
+      const autoRatioBudgetId = 'auto<=full*1.05'
       const runtimeByKey = new Map<string, ConvergeRuntime>()
-
       try {
         const { points, thresholds } = await runMatrixSuite(
           suite,
@@ -135,24 +136,67 @@ test(
           },
         )
 
-        const maxSteps = stepsLevels[stepsLevels.length - 1]
-        const autoRatioBudgetId = 'auto<=full*1.05'
-        const autoRatioThresholds = thresholds.filter((t) => (t.budget as any)?.id === autoRatioBudgetId)
-        expect(autoRatioThresholds.length).toBeGreaterThan(0)
+        const readTxnCommitP95 = (args: {
+          readonly points: ReadonlyArray<any>
+          readonly convergeMode: 'full' | 'auto'
+          readonly steps: number
+          readonly dirtyRootsRatio: number
+        }): number | undefined => {
+          const point = args.points.find(
+            (p) =>
+              p.status === 'ok' &&
+              (p.params as any).convergeMode === args.convergeMode &&
+              (p.params as any).steps === args.steps &&
+              (p.params as any).dirtyRootsRatio === args.dirtyRootsRatio,
+          )
+          const metric = point?.metrics.find((m: any) => m.name === 'runtime.txnCommitMs')
+          return metric && metric.status === 'ok' ? metric.stats.p95Ms : undefined
+        }
 
-        const gateFailures = autoRatioThresholds.filter((t) => t.maxLevel !== maxSteps)
-        const hardGatesEnabled = import.meta.env.VITE_LOGIX_PERF_HARD_GATES !== 'off'
-        if (hardGatesEnabled && gateFailures.length > 0) {
-          const details = gateFailures
-            .map(
-              (t) =>
+        const formatGateFailures = (points: ReadonlyArray<any>, failures: ReadonlyArray<any>): string =>
+          failures
+            .map((t) => {
+              const dirtyRootsRatio = (t.where as any)?.dirtyRootsRatio
+              const level = typeof t.firstFailLevel === 'number' ? t.firstFailLevel : undefined
+              const autoP95 =
+                typeof dirtyRootsRatio === 'number' && typeof level === 'number'
+                  ? readTxnCommitP95({ points, convergeMode: 'auto', steps: level, dirtyRootsRatio })
+                  : undefined
+              const fullP95 =
+                typeof dirtyRootsRatio === 'number' && typeof level === 'number'
+                  ? readTxnCommitP95({ points, convergeMode: 'full', steps: level, dirtyRootsRatio })
+                  : undefined
+              const ratio =
+                typeof autoP95 === 'number' &&
+                Number.isFinite(autoP95) &&
+                typeof fullP95 === 'number' &&
+                Number.isFinite(fullP95) &&
+                fullP95 > 0
+                  ? autoP95 / fullP95
+                  : undefined
+
+              const ratioSummary =
+                typeof ratio === 'number'
+                  ? ` p95(auto/full)=${String(autoP95)}/${String(fullP95)} ratio=${String(ratio)}`
+                  : ''
+
+              return (
                 `where=${JSON.stringify(t.where ?? {})} maxLevel=${String(t.maxLevel)} firstFail=${String(
                   t.firstFailLevel,
-                )} reason=${String(t.reason)}`,
-            )
+                )} reason=${String(t.reason)}` + ratioSummary
+              )
+            })
             .join('\n')
+
+        const autoRatioThresholds = thresholds.filter((t) => (t.budget as any)?.id === autoRatioBudgetId)
+        expect(autoRatioThresholds.length).toBeGreaterThan(0)
+        const gateFailures = autoRatioThresholds.filter((t) => t.maxLevel !== maxSteps)
+
+        const hardGatesEnabled = import.meta.env.VITE_LOGIX_PERF_HARD_GATES !== 'off'
+        if (hardGatesEnabled && gateFailures.length > 0) {
           throw new Error(
-            `perf hard gate failed: ${autoRatioBudgetId} expected maxLevel=${String(maxSteps)}\n${details}`,
+            `perf hard gate failed: ${autoRatioBudgetId} expected maxLevel=${String(maxSteps)}\n` +
+              formatGateFailures(points, gateFailures),
           )
         }
 
@@ -190,26 +234,26 @@ test(
             : { convergeMode: 'auto' as const, steps: 2000, dirtyRootsRatio: 0.05 }
 
         const overheadDirtyRoots = Math.max(1, Math.ceil(overheadScenario.steps * overheadScenario.dirtyRootsRatio))
-        const overheadKey = `${overheadScenario.convergeMode}:${overheadScenario.steps}`
-        const overheadRuntime =
-          runtimeByKey.get(overheadKey) ??
-          makeConvergeRuntime(overheadScenario.steps, overheadScenario.convergeMode, { captureDecision: true })
-        runtimeByKey.set(overheadKey, overheadRuntime)
+        const overheadRuntime = makeConvergeRuntime(overheadScenario.steps, overheadScenario.convergeMode, { captureDecision: true })
 
-        for (const entry of overheadPoints) {
-          for (let i = 0; i < overheadRuns; i++) {
-            overheadRuntime.clearLastConvergeDecision()
-            const start = performance.now()
-            await overheadRuntime.runtime.runPromise(
-              runConvergeTxnCommitWithDiagnosticsLevel(
-                overheadRuntime,
-                overheadDirtyRoots,
-                entry.diagnosticsLevel,
-              ) as Effect.Effect<void, never, any>,
-            )
-            const end = performance.now()
-            entry.samples.push(end - start)
+        try {
+          for (const entry of overheadPoints) {
+            for (let i = 0; i < overheadRuns; i++) {
+              overheadRuntime.clearLastConvergeDecision()
+              const start = performance.now()
+              await overheadRuntime.runtime.runPromise(
+                runConvergeTxnCommitWithDiagnosticsLevel(
+                  overheadRuntime,
+                  overheadDirtyRoots,
+                  entry.diagnosticsLevel,
+                ) as Effect.Effect<void, never, any>,
+              )
+              const end = performance.now()
+              entry.samples.push(end - start)
+            }
           }
+        } finally {
+          await overheadRuntime.runtime.dispose()
         }
 
         const summarizeOverhead = (level: 'off' | 'light' | 'full') => {
