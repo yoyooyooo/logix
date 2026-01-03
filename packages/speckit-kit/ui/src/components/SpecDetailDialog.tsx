@@ -442,8 +442,8 @@ export function SpecDetailDialog({
                                     type="button"
                                     className={
                                       sec.missingInSpec
-                                        ? 'mt-0.5 shrink-0 cursor-pointer rounded-sm border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground'
-                                        : 'mt-0.5 shrink-0 cursor-pointer rounded-sm border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground hover:text-background'
+                                        ? 'mt-0.5 shrink-0 cursor-pointer rounded-none border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground'
+                                        : 'mt-0.5 shrink-0 cursor-pointer rounded-none border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground hover:text-background'
                                     }
                                     onClick={() => onJumpToStoryLine(sec.storyLine ?? 1)}
                                   >
@@ -453,8 +453,8 @@ export function SpecDetailDialog({
                                   <span
                                     className={
                                       sec.missingInSpec
-                                        ? 'mt-0.5 shrink-0 rounded-sm border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive'
-                                        : 'mt-0.5 shrink-0 rounded-sm border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground'
+                                        ? 'mt-0.5 shrink-0 rounded-none border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive'
+                                        : 'mt-0.5 shrink-0 rounded-none border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground'
                                     }
                                   >
                                     {sec.storyCode}
