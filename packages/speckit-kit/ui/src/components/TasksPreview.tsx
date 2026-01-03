@@ -14,7 +14,7 @@ export function TasksPreview({ tasks, highlightLine, onOpenTask }: Props) {
   const ordered = useMemo(() => Array.from(tasks).sort((a, b) => a.line - b.line), [tasks])
 
   if (ordered.length === 0) {
-    return <div className="text-sm text-muted-foreground">tasks.md 中没有任务</div>
+    return <div className="text-sm text-muted-foreground">No tasks in tasks.md</div>
   }
 
   return (
@@ -41,8 +41,8 @@ export function TasksPreview({ tasks, highlightLine, onOpenTask }: Props) {
             <span
               className={
                 t.checked
-                  ? 'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-success bg-success/10 text-[10px] font-bold text-success-foreground'
-                  : 'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-border bg-background transition-colors group-hover:border-foreground'
+                  ? 'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-none border border-success bg-success/10 text-[10px] font-bold text-success-foreground'
+                  : 'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-none border border-border bg-background transition-colors group-hover:border-foreground'
               }
             >
               {t.checked ? '✓' : ''}
@@ -52,14 +52,14 @@ export function TasksPreview({ tasks, highlightLine, onOpenTask }: Props) {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge
                   variant="outline"
-                  className="h-5 rounded-sm px-1 font-mono text-[10px] text-muted-foreground group-hover:border-foreground group-hover:text-foreground"
+                  className="h-5 rounded-none px-1 font-mono text-[10px] text-muted-foreground group-hover:border-foreground group-hover:text-foreground"
                 >
                   {label}
                 </Badge>
                 {t.story ? (
                   <Badge
                     variant="outline"
-                    className="h-5 rounded-sm border-border px-1 font-mono text-[10px] text-muted-foreground group-hover:border-foreground group-hover:text-foreground"
+                    className="h-5 rounded-none border-border px-1 font-mono text-[10px] text-muted-foreground group-hover:border-foreground group-hover:text-foreground"
                   >
                     {t.story}
                   </Badge>
@@ -67,7 +67,7 @@ export function TasksPreview({ tasks, highlightLine, onOpenTask }: Props) {
                 {t.parallel ? (
                   <Badge
                     variant="outline"
-                    className="h-5 rounded-sm border-warning/50 px-1 font-mono text-[10px] text-warning group-hover:border-warning"
+                    className="h-5 rounded-none border-warning/50 px-1 font-mono text-[10px] text-warning group-hover:border-warning"
                   >
                     P
                   </Badge>

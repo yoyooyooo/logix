@@ -415,7 +415,7 @@ export function SpecDetailDialog({
                 {/* Middle Column: Task List */}
                 <div className="flex w-[480px] shrink-0 flex-col border-r border-border/30 bg-background">
                   <div className="flex h-12 flex-none items-center border-b border-border/30 px-4">
-                    <div className="text-xs font-semibold text-foreground">编号关联（US → Tasks → Refs）</div>
+                    <div className="text-xs font-semibold text-foreground">Correlation (US → Tasks → Refs)</div>
                     {specError ? (
                       <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
                         {specError}
@@ -425,7 +425,7 @@ export function SpecDetailDialog({
 
                   <div className="scrollbar-none flex-1 overflow-y-auto p-4">
                     {tasks !== undefined && storySections.length === 0 && !unassignedSection ? (
-                      <div className="text-sm text-muted-foreground">当前 spec 未发现可关联的任务。</div>
+                      <div className="text-sm text-muted-foreground">No correlated tasks found in current spec.</div>
                     ) : null}
 
                     <div className="flex flex-col gap-0 divide-y divide-dashed divide-border/40">
@@ -442,8 +442,8 @@ export function SpecDetailDialog({
                                     type="button"
                                     className={
                                       sec.missingInSpec
-                                        ? 'mt-0.5 shrink-0 cursor-pointer rounded-sm border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground'
-                                        : 'mt-0.5 shrink-0 cursor-pointer rounded-sm border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground hover:text-background'
+                                        ? 'mt-0.5 shrink-0 cursor-pointer rounded-none border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground'
+                                        : 'mt-0.5 shrink-0 cursor-pointer rounded-none border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground hover:text-background'
                                     }
                                     onClick={() => onJumpToStoryLine(sec.storyLine ?? 1)}
                                   >
@@ -453,8 +453,8 @@ export function SpecDetailDialog({
                                   <span
                                     className={
                                       sec.missingInSpec
-                                        ? 'mt-0.5 shrink-0 rounded-sm border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive'
-                                        : 'mt-0.5 shrink-0 rounded-sm border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground'
+                                        ? 'mt-0.5 shrink-0 rounded-none border border-destructive px-1.5 py-0.5 font-mono text-[11px] font-bold text-destructive'
+                                        : 'mt-0.5 shrink-0 rounded-none border border-border px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground'
                                     }
                                   >
                                     {sec.storyCode}
@@ -464,7 +464,7 @@ export function SpecDetailDialog({
                                   <div className="truncate text-sm font-semibold text-foreground">{sec.storyTitle}</div>
                                   <div className="mt-1 text-[11px] text-muted-foreground">
                                     {sec.missingInSpec
-                                      ? '未在 spec.md 中找到对应 User Story 标题'
+                                      ? 'User Story title not found in spec.md'
                                       : `spec.md#L${sec.storyLine ?? 1}`}
                                   </div>
                                 </div>
@@ -472,7 +472,7 @@ export function SpecDetailDialog({
                             </div>
 
                             <div className="flex shrink-0 items-start gap-2">
-                              <Badge variant="outline" className="font-mono text-[11px]">
+                              <Badge variant="outline" className="font-mono text-[11px] rounded-none">
                                 {sec.stats.done}/{sec.stats.total}
                               </Badge>
                               {sec.tasks.length > 0 ? (
@@ -483,13 +483,13 @@ export function SpecDetailDialog({
                                   className="h-6 px-2 py-0.5 text-[11px]"
                                   onClick={() => onToggleStory(sec.storyCode)}
                                 >
-                                  {expandedStoryCode === sec.storyCode ? '收起' : '展开'}
+                                  {expandedStoryCode === sec.storyCode ? 'Collapse' : 'Expand'}
                                 </Button>
                               ) : null}
                             </div>
                           </div>
 
-                          <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-border/40">
+                          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-none bg-border/40">
                             <div
                               className="h-full bg-success"
                               style={{
@@ -510,8 +510,8 @@ export function SpecDetailDialog({
                                   type="button"
                                   className={
                                     t.checked
-                                      ? 'rounded bg-success/10 px-2 py-1 text-[11px] text-success-foreground hover:bg-success/15'
-                                      : 'rounded bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent'
+                                      ? 'rounded-none bg-success/10 px-2 py-1 text-[11px] text-success-foreground hover:bg-success/15'
+                                      : 'rounded-none bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent'
                                   }
                                   title={t.taskId ? `${t.taskId} · ${title}` : title}
                                   onClick={() => onJumpToTaskLine(t.line)}
@@ -528,7 +528,7 @@ export function SpecDetailDialog({
                                 <Badge
                                   key={r.code}
                                   variant="outline"
-                                  className="font-mono text-[11px]"
+                                  className="font-mono text-[11px] rounded-none"
                                   title={`${r.done}/${r.total}`}
                                 >
                                   {r.code} {r.done}/{r.total}
@@ -550,7 +550,7 @@ export function SpecDetailDialog({
                                     <div className="flex items-start gap-2">
                                       <button
                                         type="button"
-                                        className="min-w-0 flex-1 break-words text-left text-sm text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-lg"
+                                        className="min-w-0 flex-1 break-words text-left text-sm text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-none"
                                         onClick={() => onOpenTask(t)}
                                       >
                                         <span
@@ -571,7 +571,7 @@ export function SpecDetailDialog({
                                           <Badge
                                             key={r}
                                             variant="outline"
-                                            className="font-mono text-[11px] text-muted-foreground"
+                                            className="font-mono text-[11px] text-muted-foreground rounded-none"
                                           >
                                             {r}
                                           </Badge>
@@ -591,21 +591,21 @@ export function SpecDetailDialog({
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="flex min-w-0 items-start gap-2">
-                                <Badge variant="outline" className="mt-0.5 shrink-0 font-mono text-[11px]">
-                                  未分配
+                                <Badge variant="outline" className="mt-0.5 shrink-0 font-mono text-[11px] rounded-none">
+                                  Unassigned
                                 </Badge>
                                 <div className="min-w-0">
                                   <div className="truncate text-sm font-semibold text-foreground">
-                                    没有 [USn] 标记的任务
+                                    Tasks without [USn]
                                   </div>
                                   <div className="mt-1 text-[11px] text-muted-foreground">
-                                    tasks.md 中没有 `[USn]` 标记
+                                    No `[USn]` tags in tasks.md
                                   </div>
                                 </div>
                               </div>
                             </div>
 
-                            <Badge variant="outline" className="font-mono text-[11px]">
+                            <Badge variant="outline" className="font-mono text-[11px] rounded-none">
                               {unassignedSection.stats.done}/{unassignedSection.stats.total}
                             </Badge>
                           </div>
@@ -619,8 +619,8 @@ export function SpecDetailDialog({
                                   type="button"
                                   className={
                                     t.checked
-                                      ? 'rounded bg-success/10 px-2 py-1 text-[11px] text-success-foreground hover:bg-success/15'
-                                      : 'rounded bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent'
+                                      ? 'rounded-none bg-success/10 px-2 py-1 text-[11px] text-success-foreground hover:bg-success/15'
+                                      : 'rounded-none bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent'
                                   }
                                   title={t.taskId ? `${t.taskId} · ${title}` : title}
                                   onClick={() => onJumpToTaskLine(t.line)}
@@ -637,7 +637,7 @@ export function SpecDetailDialog({
                                 <Badge
                                   key={r.code}
                                   variant="outline"
-                                  className="font-mono text-[11px]"
+                                  className="font-mono text-[11px] rounded-none"
                                   title={`${r.done}/${r.total}`}
                                 >
                                   {r.code} {r.done}/{r.total}
@@ -710,7 +710,7 @@ export function SpecDetailDialog({
                         className="h-full w-full resize-none border-0 bg-transparent p-4 font-mono text-xs leading-5 text-foreground outline-none placeholder:text-muted-foreground"
                         value={content}
                         onChange={(e) => onChangeContent(e.target.value)}
-                        placeholder={loadingFile ? '加载中…' : '文件内容'}
+                        placeholder={loadingFile ? 'Loading…' : 'File Content'}
                       />
                     ) : (
                       <div ref={previewScrollRef} className="scrollbar-none h-full overflow-y-auto p-4">

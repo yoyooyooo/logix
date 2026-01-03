@@ -7,6 +7,7 @@ import { getDisplayTitle } from '../lib/spec-relations'
 import { MarkdownPreview } from './MarkdownPreview'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
 function smoothScroll(element: HTMLElement, target: number, duration: number) {
   const start = element.scrollTop
@@ -146,7 +147,7 @@ export function TaskDetailDialog({
   return (
     <MotionDialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <MotionDialogContent
-        className="right-4 top-4 bottom-4 h-auto w-[600px] max-w-none rounded-none border border-border shadow-2xl outline-none"
+        className="right-4 top-4 bottom-4 h-auto w-[800px] sm:max-w-none rounded-none border border-border shadow-2xl outline-none"
         overlayClassName="bg-black/10 backdrop-blur-[1px]"
         motionProps={{
           initial: { opacity: 0, x: 20, scale: 0.98 },
@@ -163,7 +164,7 @@ export function TaskDetailDialog({
             <div className="flex-none border-b-4 border-double border-border/40 bg-background px-6 py-5">
               <div className="flex items-start justify-between gap-6">
                 <div className="min-w-0">
-                  <div className="text-xl font-bold font-serif leading-6 text-foreground">{title}</div>
+                  <div className="text-xl font-bold font-serif leading-6 text-foreground break-words">{title}</div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="rounded-none font-mono">
                       {specId}
@@ -189,23 +190,31 @@ export function TaskDetailDialog({
                     Source
                   </label>
                   <div className="relative">
-                    <select
-                      className="h-7 w-40 appearance-none rounded-none border border-border bg-background px-3 pr-8 font-mono text-[11px] text-foreground outline-none transition-colors hover:border-foreground focus-visible:ring-0"
-                      value={fileName}
-                      onChange={(e) => onSelectFile(e.target.value as ArtifactName)}
-                    >
-                      <option value="tasks.md">tasks.md</option>
-                      <option value="quickstart.md">quickstart.md</option>
-                      <option value="data-model.md">data-model.md</option>
-                      <option value="research.md">research.md</option>
-                      <option value="plan.md">plan.md</option>
-                      <option value="spec.md">spec.md</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground">
-                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
+                    <Select value={fileName} onValueChange={(val) => onSelectFile(val as ArtifactName)}>
+                      <SelectTrigger className="h-7 w-40 rounded-none border-border bg-background px-3 font-mono text-[11px] text-foreground transition-colors hover:border-foreground focus:ring-0">
+                        <SelectValue placeholder="Select Source" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none border-border bg-popover font-mono text-[11px]">
+                        <SelectItem value="tasks.md" className="rounded-none text-[11px]">
+                          tasks.md
+                        </SelectItem>
+                        <SelectItem value="quickstart.md" className="rounded-none text-[11px]">
+                          quickstart.md
+                        </SelectItem>
+                        <SelectItem value="data-model.md" className="rounded-none text-[11px]">
+                          data-model.md
+                        </SelectItem>
+                        <SelectItem value="research.md" className="rounded-none text-[11px]">
+                          research.md
+                        </SelectItem>
+                        <SelectItem value="plan.md" className="rounded-none text-[11px]">
+                          plan.md
+                        </SelectItem>
+                        <SelectItem value="spec.md" className="rounded-none text-[11px]">
+                          spec.md
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
