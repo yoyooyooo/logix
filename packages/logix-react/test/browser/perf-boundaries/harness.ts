@@ -438,272 +438,353 @@ export const runMatrixSuite = async (
 
   const axisKeys = Object.keys(suite.axes)
   const otherAxes = axisKeys.filter((k) => k !== primaryAxis)
-  const otherAxisLevels = otherAxes.map((k) => suite.axes[k] ?? [])
-  const whereCombos = cartesian(otherAxisLevels).map((values) => {
-    const where: Params = {}
-    for (let i = 0; i < otherAxes.length; i++) {
-      where[otherAxes[i]!] = values[i]!
-    }
-    return where
-  })
-
   const cutOffOn = new Set(options?.cutOffOn ?? ['timeout', 'failed'])
-
-  const points: PointResult[] = []
 
   const requiredEvidence = Array.isArray(suite.requiredEvidence) ? suite.requiredEvidence : []
 
-  for (const where of whereCombos) {
-    const whereStartIndex = points.length
-    let cutOffSkippedCount = 0
-
-    let cutOff = false
-    let cutOffReason: string | undefined
-
-    for (const level of primaryLevels) {
-      const baseParams: Params = { ...where, [primaryAxis]: level }
-      const rawParams = options?.enrichParams ? options.enrichParams(baseParams) : baseParams
-      const skip = options?.shouldSkip?.(rawParams)
-
-      if (cutOff || skip?.skip) {
-        if (cutOff) cutOffSkippedCount += 1
-
-        points.push({
-          params: rawParams,
-          status: 'skipped',
-          reason: cutOff ? cutOffReason : skip?.reason,
-          metrics: suite.metrics.map((name) => ({
+  const makeSkippedPoint = (
+    rawParams: Params,
+    unavailableReason: 'cutOff' | 'skipped',
+    reason?: string,
+  ): PointResult => ({
+    params: rawParams,
+    status: 'skipped',
+    reason,
+    metrics: suite.metrics.map((name) => ({
+      name,
+      unit: 'ms',
+      status: 'unavailable',
+      unavailableReason,
+    })),
+    evidence:
+      requiredEvidence.length > 0
+        ? requiredEvidence.map((name) => ({
             name,
-            unit: 'ms',
+            unit: inferEvidenceUnit(name),
             status: 'unavailable',
-            unavailableReason: cutOff ? 'cutOff' : 'skipped',
-          })),
-          evidence:
-            requiredEvidence.length > 0
-              ? requiredEvidence.map((name) => ({
-                  name,
-                  unit: inferEvidenceUnit(name),
-                  status: 'unavailable',
-                  unavailableReason: cutOff ? 'cutOff' : 'skipped',
-                }))
-              : undefined,
-        })
-        continue
+            unavailableReason,
+          }))
+        : undefined,
+  })
+
+  const measurePoint = async (rawParams: Params): Promise<PointResult> => {
+    const samplesByMetric = new Map<string, number[]>()
+    const unavailableByMetric = new Map<string, string>()
+
+    const samplesByEvidenceNumber = new Map<string, number[]>()
+    const samplesByEvidenceString = new Map<string, string[]>()
+    const unavailableByEvidence = new Map<string, string>()
+
+    let status: PointResult['status'] = 'ok'
+    let reason: string | undefined
+
+    const pointStartedAt = performance.now()
+
+    for (let runIndex = 0; runIndex < runs; runIndex++) {
+      const elapsedMs = performance.now() - pointStartedAt
+      const remainingMs = timeoutMs - elapsedMs
+      if (remainingMs <= 0) {
+        status = 'timeout'
+        reason = `pointTimeoutMs=${timeoutMs}`
+        break
       }
 
-      const samplesByMetric = new Map<string, number[]>()
-      const unavailableByMetric = new Map<string, string>()
-
-      const samplesByEvidenceNumber = new Map<string, number[]>()
-      const samplesByEvidenceString = new Map<string, string[]>()
-      const unavailableByEvidence = new Map<string, string>()
-
-      let status: PointResult['status'] = 'ok'
-      let reason: string | undefined
-
-      const pointStartedAt = performance.now()
-
-      for (let runIndex = 0; runIndex < runs; runIndex++) {
-        const elapsedMs = performance.now() - pointStartedAt
-        const remainingMs = timeoutMs - elapsedMs
-        if (remainingMs <= 0) {
-          status = 'timeout'
-          reason = `pointTimeoutMs=${timeoutMs}`
-          break
-        }
-
-        const res = await withTimeout(remainingMs, () => measureOnce(rawParams))
-        if (!res.ok) {
-          status = 'timeout'
-          reason = `pointTimeoutMs=${timeoutMs}`
-          break
-        }
-
-        const envelope = res.value
-        const metricsSamples =
-          typeof envelope === 'object' &&
-          envelope !== null &&
-          'metrics' in envelope &&
-          typeof (envelope as any).metrics === 'object' &&
-          (envelope as any).metrics !== null
-            ? ((envelope as any).metrics as Record<string, MetricSample>)
-            : (envelope as Record<string, MetricSample>)
-
-        const evidenceSamples =
-          typeof envelope === 'object' &&
-          envelope !== null &&
-          'metrics' in envelope &&
-          typeof (envelope as any).metrics === 'object' &&
-          (envelope as any).metrics !== null
-            ? ((envelope as any).evidence as Record<string, EvidenceSample> | undefined)
-            : undefined
-
-        const mergedEvidence = {
-          ...defaultEvidenceFromParams(rawParams),
-          ...(evidenceSamples ?? {}),
-        }
-
-        for (const metricName of suite.metrics) {
-          const v = metricsSamples[metricName]
-          if (typeof v === 'number' && Number.isFinite(v)) {
-            const list = samplesByMetric.get(metricName) ?? []
-            list.push(v)
-            samplesByMetric.set(metricName, list)
-          } else if (v && typeof v === 'object') {
-            if (!unavailableByMetric.has(metricName)) {
-              unavailableByMetric.set(metricName, (v as any).unavailableReason ?? 'unavailable')
-            }
-          }
-        }
-
-        for (const [name, v] of Object.entries(mergedEvidence)) {
-          if (typeof v === 'number' && Number.isFinite(v)) {
-            const list = samplesByEvidenceNumber.get(name) ?? []
-            list.push(v)
-            samplesByEvidenceNumber.set(name, list)
-          } else if (typeof v === 'string') {
-            const list = samplesByEvidenceString.get(name) ?? []
-            list.push(v)
-            samplesByEvidenceString.set(name, list)
-          } else if (v && typeof v === 'object') {
-            if (!unavailableByEvidence.has(name)) {
-              unavailableByEvidence.set(name, (v as any).unavailableReason ?? 'unavailable')
-            }
-          }
-        }
+      const res = await withTimeout(remainingMs, () => measureOnce(rawParams))
+      if (!res.ok) {
+        status = 'timeout'
+        reason = `pointTimeoutMs=${timeoutMs}`
+        break
       }
 
-      if (status !== 'ok') {
-        points.push({
-          params: rawParams,
-          status,
-          reason,
-          metrics: suite.metrics.map((name) => ({
-            name,
-            unit: 'ms',
-            status: 'unavailable',
-            unavailableReason: reason ?? status,
-          })),
-          evidence:
-            requiredEvidence.length > 0
-              ? requiredEvidence.map((name) => ({
-                  name,
-                  unit: inferEvidenceUnit(name),
-                  status: 'unavailable',
-                  unavailableReason: reason ?? status,
-                }))
-              : undefined,
-        })
+      const envelope = res.value
+      const metricsSamples =
+        typeof envelope === 'object' &&
+        envelope !== null &&
+        'metrics' in envelope &&
+        typeof (envelope as any).metrics === 'object' &&
+        (envelope as any).metrics !== null
+          ? ((envelope as any).metrics as Record<string, MetricSample>)
+          : (envelope as Record<string, MetricSample>)
 
-        if (cutOffOn.has(status)) {
-          cutOff = true
-          cutOffReason = reason ?? status
-        }
-        continue
+      const evidenceSamples =
+        typeof envelope === 'object' &&
+        envelope !== null &&
+        'metrics' in envelope &&
+        typeof (envelope as any).metrics === 'object' &&
+        (envelope as any).metrics !== null
+          ? ((envelope as any).evidence as Record<string, EvidenceSample> | undefined)
+          : undefined
+
+      const mergedEvidence = {
+        ...defaultEvidenceFromParams(rawParams),
+        ...(evidenceSamples ?? {}),
       }
 
-      const metrics: MetricResult[] = []
       for (const metricName of suite.metrics) {
-        const samples = samplesByMetric.get(metricName) ?? []
-        const trimmed = samples.slice(Math.min(warmupDiscard, samples.length))
-        if (trimmed.length === 0) {
-          metrics.push({
-            name: metricName,
-            unit: 'ms',
-            status: 'unavailable',
-            unavailableReason:
-              unavailableByMetric.get(metricName) ?? (samples.length === 0 ? 'metricMissing' : 'insufficientSamples'),
-          })
-          continue
+        const v = metricsSamples[metricName]
+        if (typeof v === 'number' && Number.isFinite(v)) {
+          const list = samplesByMetric.get(metricName) ?? []
+          list.push(v)
+          samplesByMetric.set(metricName, list)
+        } else if (v && typeof v === 'object') {
+          if (!unavailableByMetric.has(metricName)) {
+            unavailableByMetric.set(metricName, (v as any).unavailableReason ?? 'unavailable')
+          }
         }
+      }
 
+      for (const [name, v] of Object.entries(mergedEvidence)) {
+        if (typeof v === 'number' && Number.isFinite(v)) {
+          const list = samplesByEvidenceNumber.get(name) ?? []
+          list.push(v)
+          samplesByEvidenceNumber.set(name, list)
+        } else if (typeof v === 'string') {
+          const list = samplesByEvidenceString.get(name) ?? []
+          list.push(v)
+          samplesByEvidenceString.set(name, list)
+        } else if (v && typeof v === 'object') {
+          if (!unavailableByEvidence.has(name)) {
+            unavailableByEvidence.set(name, (v as any).unavailableReason ?? 'unavailable')
+          }
+        }
+      }
+    }
+
+    if (status !== 'ok') {
+      return {
+        params: rawParams,
+        status,
+        reason,
+        metrics: suite.metrics.map((name) => ({
+          name,
+          unit: 'ms',
+          status: 'unavailable',
+          unavailableReason: reason ?? status,
+        })),
+        evidence:
+          requiredEvidence.length > 0
+            ? requiredEvidence.map((name) => ({
+                name,
+                unit: inferEvidenceUnit(name),
+                status: 'unavailable',
+                unavailableReason: reason ?? status,
+              }))
+            : undefined,
+      }
+    }
+
+    const metrics: MetricResult[] = []
+    for (const metricName of suite.metrics) {
+      const samples = samplesByMetric.get(metricName) ?? []
+      const trimmed = samples.slice(Math.min(warmupDiscard, samples.length))
+      if (trimmed.length === 0) {
         metrics.push({
           name: metricName,
           unit: 'ms',
-          status: 'ok',
-          stats: summarizeMs(trimmed),
-        })
-      }
-
-      const evidenceNames = Array.from(
-        new Set<string>([
-          ...requiredEvidence,
-          ...samplesByEvidenceNumber.keys(),
-          ...samplesByEvidenceString.keys(),
-          ...unavailableByEvidence.keys(),
-        ]),
-      ).sort()
-
-      const evidence: EvidenceResult[] = []
-      for (const name of evidenceNames) {
-        const nums = samplesByEvidenceNumber.get(name) ?? []
-        const strs = samplesByEvidenceString.get(name) ?? []
-        const trimmedNums = nums.slice(Math.min(warmupDiscard, nums.length))
-        const trimmedStrs = strs.slice(Math.min(warmupDiscard, strs.length))
-
-        if (trimmedNums.length > 0) {
-          evidence.push({
-            name,
-            unit: inferEvidenceUnit(name),
-            status: 'ok',
-            value: summarizeNumber(trimmedNums),
-          })
-          continue
-        }
-
-        if (trimmedStrs.length > 0) {
-          evidence.push({
-            name,
-            unit: 'string',
-            status: 'ok',
-            value: trimmedStrs[trimmedStrs.length - 1]!,
-          })
-          continue
-        }
-
-        evidence.push({
-          name,
-          unit: strs.length > 0 ? 'string' : inferEvidenceUnit(name),
           status: 'unavailable',
           unavailableReason:
-            unavailableByEvidence.get(name) ??
-            (nums.length === 0 && strs.length === 0 ? 'evidenceMissing' : 'insufficientSamples'),
+            unavailableByMetric.get(metricName) ?? (samples.length === 0 ? 'metricMissing' : 'insufficientSamples'),
         })
+        continue
       }
 
-      points.push({
-        params: rawParams,
+      metrics.push({
+        name: metricName,
+        unit: 'ms',
         status: 'ok',
-        metrics,
-        evidence: evidence.length > 0 ? evidence : undefined,
+        stats: summarizeMs(trimmed),
       })
     }
 
-    for (let i = whereStartIndex; i < points.length; i++) {
-      const p = points[i]!
-      const prevEvidence = (p.evidence ?? []).filter((e) => e.name !== 'budget.cutOffCount')
-      points[i] = {
-        ...p,
-        evidence: [
-          ...prevEvidence,
-          {
-            name: 'budget.cutOffCount',
-            unit: 'count',
-            status: 'ok',
-            value: cutOffSkippedCount,
-          },
-        ],
+    const evidenceNames = Array.from(
+      new Set<string>([
+        ...requiredEvidence,
+        ...samplesByEvidenceNumber.keys(),
+        ...samplesByEvidenceString.keys(),
+        ...unavailableByEvidence.keys(),
+      ]),
+    ).sort()
+
+    const evidence: EvidenceResult[] = []
+    for (const name of evidenceNames) {
+      const nums = samplesByEvidenceNumber.get(name) ?? []
+      const strs = samplesByEvidenceString.get(name) ?? []
+      const trimmedNums = nums.slice(Math.min(warmupDiscard, nums.length))
+      const trimmedStrs = strs.slice(Math.min(warmupDiscard, strs.length))
+
+      if (trimmedNums.length > 0) {
+        evidence.push({
+          name,
+          unit: inferEvidenceUnit(name),
+          status: 'ok',
+          value: summarizeNumber(trimmedNums),
+        })
+        continue
+      }
+
+      if (trimmedStrs.length > 0) {
+        evidence.push({
+          name,
+          unit: 'string',
+          status: 'ok',
+          value: trimmedStrs[trimmedStrs.length - 1]!,
+        })
+        continue
+      }
+
+      evidence.push({
+        name,
+        unit: strs.length > 0 ? 'string' : inferEvidenceUnit(name),
+        status: 'unavailable',
+        unavailableReason:
+          unavailableByEvidence.get(name) ??
+          (nums.length === 0 && strs.length === 0 ? 'evidenceMissing' : 'insufficientSamples'),
+      })
+    }
+
+    return {
+      params: rawParams,
+      status: 'ok',
+      metrics,
+      evidence: evidence.length > 0 ? evidence : undefined,
+    }
+  }
+
+  const relativeBudgetRefs = (suite.budgets ?? [])
+    .filter((b): b is RelativeBudget => b.type === 'relative')
+    .map((b) => ({
+      numerator: parseRef(b.numeratorRef),
+      denominator: parseRef(b.denominatorRef),
+    }))
+
+  const refAxesSet = new Set<string>()
+  for (const ref of relativeBudgetRefs) {
+    for (const k of Object.keys(ref.numerator)) {
+      if (k !== primaryAxis) refAxesSet.add(k)
+    }
+    for (const k of Object.keys(ref.denominator)) {
+      if (k !== primaryAxis) refAxesSet.add(k)
+    }
+  }
+
+  const baseAxes = otherAxes.filter((k) => !refAxesSet.has(k))
+  const refAxes = otherAxes.filter((k) => refAxesSet.has(k))
+
+  const orderAxisLevels = (axis: string): ReadonlyArray<Primitive> => {
+    const levels = suite.axes[axis] ?? []
+    if (relativeBudgetRefs.length === 0 || levels.length === 0) return levels
+
+    const out: Primitive[] = []
+    const pushIfExists = (v: unknown): void => {
+      if (v === undefined) return
+      if (!levels.some((x) => x === v)) return
+      if (out.some((x) => x === v)) return
+      out.push(v as Primitive)
+    }
+
+    for (const ref of relativeBudgetRefs) {
+      pushIfExists(ref.denominator[axis])
+      pushIfExists(ref.numerator[axis])
+    }
+
+    for (const level of levels) {
+      if (!out.some((x) => x === level)) out.push(level)
+    }
+
+    return out
+  }
+
+  const makeWhereCombos = (axes: ReadonlyArray<string>, axisLevels: ReadonlyArray<ReadonlyArray<Primitive>>): ReadonlyArray<Params> =>
+    cartesian(axisLevels).map((values) => {
+      const where: Params = {}
+      for (let i = 0; i < axes.length; i++) {
+        where[axes[i]!] = values[i]!
+      }
+      return where
+    })
+
+  const baseWhereCombos = makeWhereCombos(baseAxes, baseAxes.map((k) => suite.axes[k] ?? []))
+  const refWhereCombos = makeWhereCombos(refAxes, refAxes.map((k) => orderAxisLevels(k)))
+
+  type CutOffState = {
+    cutOff: boolean
+    cutOffReason?: string
+    cutOffSkippedCount: number
+  }
+
+  const cutOffStateByWhereKey = new Map<string, CutOffState>()
+  const getCutOffState = (whereKey: string): CutOffState => {
+    const cached = cutOffStateByWhereKey.get(whereKey)
+    if (cached) return cached
+    const created: CutOffState = { cutOff: false, cutOffSkippedCount: 0 }
+    cutOffStateByWhereKey.set(whereKey, created)
+    return created
+  }
+
+  const whereKeyFromWhere = (where: Params): string => otherAxes.map((k) => `${k}=${String(where[k])}`).join('|')
+  const whereKeyFromParams = (params: Params): string => otherAxes.map((k) => `${k}=${String((params as any)[k])}`).join('|')
+
+  const points: PointResult[] = []
+  for (const baseWhere of baseWhereCombos) {
+    for (const level of primaryLevels) {
+      for (const refWhere of refWhereCombos) {
+        const where: Params = { ...baseWhere, ...refWhere }
+        const whereKey = whereKeyFromWhere(where)
+        const cutOffState = getCutOffState(whereKey)
+
+        const baseParams: Params = { ...where, [primaryAxis]: level }
+        const rawParams = options?.enrichParams ? options.enrichParams(baseParams) : baseParams
+        const skip = options?.shouldSkip?.(rawParams)
+
+        if (cutOffState.cutOff || skip?.skip) {
+          if (cutOffState.cutOff) cutOffState.cutOffSkippedCount += 1
+
+          points.push(
+            makeSkippedPoint(
+              rawParams,
+              cutOffState.cutOff ? 'cutOff' : 'skipped',
+              cutOffState.cutOff ? cutOffState.cutOffReason : skip?.reason,
+            ),
+          )
+          continue
+        }
+
+        const point = await measurePoint(rawParams)
+        points.push(point)
+
+        if (point.status !== 'ok' && cutOffOn.has(point.status)) {
+          cutOffState.cutOff = true
+          cutOffState.cutOffReason = point.reason ?? point.status
+        }
       }
     }
   }
 
+  const pointsWithCutOffCount = points.map((p) => {
+    const whereKey = whereKeyFromParams(p.params)
+    const cutOffSkippedCount = cutOffStateByWhereKey.get(whereKey)?.cutOffSkippedCount ?? 0
+    const prevEvidence = (p.evidence ?? []).filter((e) => e.name !== 'budget.cutOffCount')
+    return {
+      ...p,
+      evidence: [
+        ...prevEvidence,
+        {
+          name: 'budget.cutOffCount',
+          unit: 'count',
+          status: 'ok',
+          value: cutOffSkippedCount,
+        },
+      ],
+    }
+  })
+
   const thresholds = computeSuiteThresholds(
     { primaryAxis: suite.primaryAxis, axes: suite.axes },
-    points,
+    pointsWithCutOffCount,
     suite.budgets ?? [],
   )
 
-  return { points, thresholds }
+  return { points: pointsWithCutOffCount, thresholds }
 }
 
 export const withNodeEnv = async <A>(nodeEnv: string, run: () => Promise<A>): Promise<A> => {
