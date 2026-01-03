@@ -760,20 +760,23 @@ export const runMatrixSuite = async (
     }
   }
 
-  const pointsWithCutOffCount = points.map((p) => {
+  const pointsWithCutOffCount: ReadonlyArray<PointResult> = points.map((p): PointResult => {
     const whereKey = whereKeyFromParams(p.params)
     const cutOffSkippedCount = cutOffStateByWhereKey.get(whereKey)?.cutOffSkippedCount ?? 0
     const prevEvidence = (p.evidence ?? []).filter((e) => e.name !== 'budget.cutOffCount')
+
+    const cutOffEvidence = {
+      name: 'budget.cutOffCount',
+      unit: 'count',
+      status: 'ok',
+      value: cutOffSkippedCount,
+    } satisfies EvidenceResult
+
     return {
       ...p,
       evidence: [
         ...prevEvidence,
-        {
-          name: 'budget.cutOffCount',
-          unit: 'count',
-          status: 'ok',
-          value: cutOffSkippedCount,
-        },
+        cutOffEvidence,
       ],
     }
   })
