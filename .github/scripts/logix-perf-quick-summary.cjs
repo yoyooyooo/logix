@@ -234,6 +234,10 @@ if (!diff) {
   md += `- regressions: ${code(summary.regressions ?? '?')}\n`
   md += `- improvements: ${code(summary.improvements ?? '?')}\n`
   md += `- budgetViolations: ${code(summary.budgetViolations ?? '?')}\n`
+  if (summary && summary.slices) {
+    const s = summary.slices
+    md += `- thresholdSlices: compared=${code(s.compared ?? '?')}, afterOnly=${code(s.afterOnly ?? '?')}, beforeOnly=${code(s.beforeOnly ?? '?')}, skippedData=${code(s.skippedData ?? '?')}, total=${code(s.total ?? '?')}\n`
+  }
   if (!comparable) {
     md += `\n_Triage-only diff: before/after are not strictly comparable. Treat deltas as hints, not conclusions._\n`
   }
@@ -481,12 +485,25 @@ if (!diff) {
           })
         }
 
-        // Render a compact table for small matrices; otherwise show worst rows only.
+        const isComparableThreshold = (t) => t && (!t.reason || t.reason === 'budgetExceeded')
+        const comparableRows = rows.filter((r) => isComparableThreshold(r.before) && isComparableThreshold(r.after))
+        const skippedRows = rows.length - comparableRows.length
+
+        if (skippedRows > 0) {
+          md += `\n_Skipped ${skippedRows}/${rows.length} rows due to missing/incomplete base/head data (e.g. matrix drift)._ \n`
+        }
+
+        if (comparableRows.length === 0) {
+          md += `_No comparable rows for this budget._\n`
+          continue
+        }
+
+        // Render a compact table for comparable rows only.
         const maxRows = 24
         const shownRows =
-          rows.length <= maxRows
-            ? rows
-            : rows
+          comparableRows.length <= maxRows
+            ? comparableRows
+            : comparableRows
                 .slice()
                 .sort((a, b) => {
                   const aFailed = a.after?.firstFailLevel != null
@@ -517,8 +534,8 @@ if (!diff) {
           md += `| ${r.whereStr} | ${bMax} | ${aMax} | ${r.beforeRatio} | ${r.afterRatio} |\n`
         }
 
-        if (rows.length > shownRows.length) {
-          md += `\n_Showing ${shownRows.length}/${rows.length} rows (matrix too large for full table)._ \n`
+        if (comparableRows.length > shownRows.length) {
+          md += `\n_Showing ${shownRows.length}/${comparableRows.length} comparable rows (matrix too large for full table)._ \n`
         }
 
         const canChart =

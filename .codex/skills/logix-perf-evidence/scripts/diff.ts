@@ -170,6 +170,14 @@ type PerfDiff = {
     readonly regressions: number
     readonly improvements: number
     readonly budgetViolations: number
+    readonly slices?: {
+      readonly total: number
+      readonly compared: number
+      readonly skippedCoverage: number
+      readonly skippedData: number
+      readonly beforeOnly: number
+      readonly afterOnly: number
+    }
   }
   readonly suites: ReadonlyArray<{
     readonly id: string
@@ -466,13 +474,15 @@ const cartesian = <T>(axes: ReadonlyArray<ReadonlyArray<T>>): ReadonlyArray<Read
   return out
 }
 
+const isComparableReason = (reason: string | undefined): boolean => reason === undefined || reason === 'budgetExceeded'
+
 const computeThresholdMaxLevel = (
   suiteSpec: SuiteSpec,
   suiteResult: SuiteResult,
   budget: AbsoluteBudget,
   where: Params,
+  axisLevels: ReadonlyArray<Primitive>,
 ): { readonly maxLevel: Primitive | null; readonly reason?: string } => {
-  const axisLevels = suiteSpec.axes[suiteSpec.primaryAxis] ?? []
   const metric = budget.metric
 
   let maxLevel: Primitive | null = null
@@ -518,13 +528,62 @@ const parseRef = (ref: string): Params => {
   return out
 }
 
+const hasAnyPointForWhere = (suite: SuiteResult, where: Params): boolean =>
+  suite.points.some((p) => Object.keys(where).every((k) => isEqualParam(p.params[k], where[k])))
+
+const commonPrefixAxisLevelsAbsolute = (
+  spec: SuiteSpec,
+  beforeSuite: SuiteResult,
+  afterSuite: SuiteResult,
+  where: Params,
+): ReadonlyArray<Primitive> => {
+  const full = spec.axes[spec.primaryAxis] ?? []
+  const out: Primitive[] = []
+  for (const level of full) {
+    const params: Params = { ...where, [spec.primaryAxis]: level }
+    const beforePoint = findPoint(beforeSuite, params)
+    const afterPoint = findPoint(afterSuite, params)
+    if (!beforePoint || !afterPoint) break
+    out.push(level)
+  }
+  return out
+}
+
+const commonPrefixAxisLevelsRelative = (
+  spec: SuiteSpec,
+  beforeSuite: SuiteResult,
+  afterSuite: SuiteResult,
+  budget: RelativeBudget,
+  where: Params,
+): ReadonlyArray<Primitive> => {
+  const full = spec.axes[spec.primaryAxis] ?? []
+  const numeratorRef = parseRef(budget.numeratorRef)
+  const denominatorRef = parseRef(budget.denominatorRef)
+  const out: Primitive[] = []
+
+  for (const level of full) {
+    const numeratorParams: Params = { ...where, ...numeratorRef, [spec.primaryAxis]: level }
+    const denominatorParams: Params = { ...where, ...denominatorRef, [spec.primaryAxis]: level }
+
+    const beforeNumerator = findPoint(beforeSuite, numeratorParams)
+    const beforeDenominator = findPoint(beforeSuite, denominatorParams)
+    const afterNumerator = findPoint(afterSuite, numeratorParams)
+    const afterDenominator = findPoint(afterSuite, denominatorParams)
+
+    if (!beforeNumerator || !beforeDenominator || !afterNumerator || !afterDenominator) break
+    out.push(level)
+  }
+
+  return out
+}
+
 const computeThresholdMaxLevelRelative = (
   suiteSpec: SuiteSpec,
   suiteResult: SuiteResult,
   budget: RelativeBudget,
   where: Params,
+  axisLevels: ReadonlyArray<Primitive>,
 ): { readonly maxLevel: Primitive | null; readonly reason?: string } => {
-  const axisLevels = suiteSpec.axes[suiteSpec.primaryAxis] ?? []
   const metric = budget.metric
   const numeratorRef = parseRef(budget.numeratorRef)
   const denominatorRef = parseRef(budget.denominatorRef)
@@ -879,6 +938,14 @@ const main = async (): Promise<void> => {
   let regressions = 0
   let improvements = 0
 
+  const triageMode = allowConfigDrift || allowEnvDrift
+  let slicesTotal = 0
+  let slicesCompared = 0
+  let slicesSkippedCoverage = 0
+  let slicesSkippedData = 0
+  let slicesBeforeOnly = 0
+  let slicesAfterOnly = 0
+
   const suiteDiffs: Array<PerfDiff['suites'][number]> = []
 
   for (const suiteId of suiteIds) {
@@ -934,14 +1001,43 @@ const main = async (): Promise<void> => {
       })
 
       for (const where of whereCombos) {
+        slicesTotal += 1
+
+        const comparedAxisLevels = triageMode
+          ? budget.type === 'absolute'
+            ? commonPrefixAxisLevelsAbsolute(spec, beforeSuite, afterSuite, where)
+            : commonPrefixAxisLevelsRelative(spec, beforeSuite, afterSuite, budget, where)
+          : axisLevels
+
+        if (triageMode && comparedAxisLevels.length === 0) {
+          const beforeHas = hasAnyPointForWhere(beforeSuite, where)
+          const afterHas = hasAnyPointForWhere(afterSuite, where)
+
+          if (beforeHas && !afterHas) slicesBeforeOnly += 1
+          else if (!beforeHas && afterHas) slicesAfterOnly += 1
+          else if (beforeHas && afterHas) slicesSkippedData += 1
+          else slicesSkippedCoverage += 1
+
+          continue
+        }
+
         const beforeRes =
           budget.type === 'absolute'
-            ? computeThresholdMaxLevel(spec, beforeSuite, budget, where)
-            : computeThresholdMaxLevelRelative(spec, beforeSuite, budget, where)
+            ? computeThresholdMaxLevel(spec, beforeSuite, budget, where, comparedAxisLevels)
+            : computeThresholdMaxLevelRelative(spec, beforeSuite, budget, where, comparedAxisLevels)
         const afterRes =
           budget.type === 'absolute'
-            ? computeThresholdMaxLevel(spec, afterSuite, budget, where)
-            : computeThresholdMaxLevelRelative(spec, afterSuite, budget, where)
+            ? computeThresholdMaxLevel(spec, afterSuite, budget, where, comparedAxisLevels)
+            : computeThresholdMaxLevelRelative(spec, afterSuite, budget, where, comparedAxisLevels)
+
+        if (triageMode && (!isComparableReason(beforeRes.reason) || !isComparableReason(afterRes.reason))) {
+          slicesSkippedData += 1
+          continue
+        }
+
+        if (triageMode) {
+          slicesCompared += 1
+        }
 
         if (beforeRes.maxLevel === afterRes.maxLevel) {
           continue
@@ -1087,6 +1183,16 @@ const main = async (): Promise<void> => {
       regressions,
       improvements,
       budgetViolations: 0,
+      slices: triageMode
+        ? {
+            total: slicesTotal,
+            compared: slicesCompared,
+            skippedCoverage: slicesSkippedCoverage,
+            skippedData: slicesSkippedData,
+            beforeOnly: slicesBeforeOnly,
+            afterOnly: slicesAfterOnly,
+          }
+        : undefined,
     },
     suites: suiteDiffs,
   }
