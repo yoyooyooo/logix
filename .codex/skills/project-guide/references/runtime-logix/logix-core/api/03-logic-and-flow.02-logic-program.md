@@ -69,7 +69,7 @@ export type Of<Sh extends Logix.ModuleShape<any, any>, R = never, A = void, E = 
 - `$.flow` 的接口**严格对齐** `Flow.Api<Sh,R>`（见下一节），只是预先绑定了当前 Env，业务代码在绝大多数场景下应优先通过 Fluent DSL 使用这些能力；
 - 跨 Module 协作场景中，可以通过显式传入 `Logix.ModuleTag<OtherShape>` 创建其他 Module 的访问器，但业务层推荐通过 `$.use(ModuleSpec)` + Fluent DSL（`$.on($Other.changes/...).run($SelfOrOther.dispatch)`）表达；`Intent.Coordinate` 仅在 IR 层用于标注语义。
 
-> 说明：在 Fluent DSL 之上，运行时可以选择性提供 `andThen` 之类的 DX sugar（例如 `$.onState(...).andThen(handler)`），用于简化手写业务逻辑或给 LLM 使用。此类 API 不属于 Fluent 白盒子集，平台默认将其视为 Gray/Black Box；如需参与 IR/可视化，应先通过 codemod/Agent 降级为规范的 `.update/.mutate/.run*` 形态。
+> 说明：运行时不再提供 `andThen` 这类“同名多语义”的 DX sugar，以保证平台可解析子集稳定且可回写；请使用显式终端 `.update/.mutate/.run*`。如果想要“链式风格”，放到 `.run(...)` 的 handler 内用 `Effect.andThen/flatMap` 完成即可。
 
 ## 2.4 Logic.Env / R 的默认约定
 

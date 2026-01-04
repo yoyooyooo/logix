@@ -6,6 +6,9 @@ status: living
 > **核心目标**：实现 Intent (图) 与 Code (码) 的**无损双向同步**。
 > 在当前主线架构（Context is World）下，Parser 聚焦于识别 **Module + Fluent Intent 链**，并将其映射为稳定的 IntentRule IR。
 
+> 注：为保证 Platform-Grade 子集的可解析/可回写，`IntentBuilder.andThen`（按 handler 形态/参数数推断语义）已从公共 API 移除；业务/平台只允许显式终端 `.update/.mutate/.run*`。
+> 同时，早期 Parser PoC（`scripts/intent-fluent-parser.ts`）已删除；当前仓库暂无可执行 Parser CLI，本章描述的是目标约束与锚点系统。
+
 ## 0. 全双工的边界：Platform-Grade vs Runtime-Grade
 
 在当前主线中，“全双工”并不意味着 **所有 Effect 代码都要可逆**，而是只对一小块 **平台子集（Platform-Grade Subset）** 做严格约束，其余视为运行时实现细节（Runtime-Grade）。

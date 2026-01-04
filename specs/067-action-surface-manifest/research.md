@@ -132,7 +132,7 @@ canonical 入口同时保留：
 
 ## Decision 8: CodeGen 作为独立需求（spec 069），不在 067 交付范围内落地
 
-**Decision**: 067 只交付“无需 codegen 的最小手写路径 + manifest/事件对齐”；面向 actions/dispatchers/reducers 样板自动化的 CodeGen 另起 spec：`specs/069-codegen-action-surface/`。
+**Decision**: 067 只交付“无需 codegen 的最小手写路径 + manifest/事件对齐”；面向 Schema-first + CodeGen 的 action surface 样板自动化另起 spec：`specs/069-schema-first-codegen-action-surface/`。
 
 **Rationale**:
 

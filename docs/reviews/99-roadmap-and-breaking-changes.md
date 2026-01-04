@@ -9,7 +9,7 @@
 - 选择并固化代码结构的 SSoT：要么迁回 `api|dsl|runtime`，要么更新 specs 并明确 `src/internal/**` 的分层铁律。
 - 收敛全双工锚点写法：以 `$.onState/$.onAction/$.on + pipeline + .update/.mutate/.run*` 为唯一 Platform-Grade 子集，同步清理 specs/scripts/examples 中的 `when/then` 漂移，以及 `.op()`（现实现不存在）、`andThen`（语义不纯）等歧义入口。
 - 固定 philosophy ↔ reviews 的互链与对照入口：以 `docs/reviews/08-philosophy-alignment.md` 为总表，确保原则层不再把 drift 扩散到 specs/脚本/示例。
-- 清理/替换过时解析脚本：重写 `scripts/intent-fluent-parser.ts`，以 Platform-Grade 子集为唯一解析锚点，并产出平台可消费的最小 IR（可序列化 + 可合并 + 可锚定 loc）。
+- 清理/替换过时解析脚本：已删除过时 PoC（`scripts/intent-fluent-parser.ts`）；后续以 Platform-Grade 子集为唯一解析锚点实现 Parser/Codegen，并产出平台可消费的最小 IR（可序列化 + 可合并 + 可锚定 loc）。
 - 统一 Tag/Identity 约定：稳定 key、冲突检测策略、Devtools 分组策略。
 - Identity 去随机化：`instanceId/txnId/opId/linkId` 改为“可注入 instanceId + 单调序号”，禁止 `Math.random()` 作为默认标识来源（详见 `04-diagnostics-and-devtools.md`）。
 - Tag 体系收敛：明确 class Tag 为唯一形式（或相反，但必须二选一），并让 collision 检测只依赖稳定 key（避免 `GenericTag`/toString 兜底带来的不确定性）。

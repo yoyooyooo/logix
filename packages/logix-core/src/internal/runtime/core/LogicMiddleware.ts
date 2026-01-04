@@ -12,11 +12,6 @@ export type Of<Sh extends Logix.AnyModuleShape, R = never, A = void, E = never> 
 
 export type Draft<T> = MutativeDraft<T>
 
-export type AndThenUpdateHandler<Sh extends Logix.AnyModuleShape, Payload, E = any, R2 = any> = (
-  prev: Logix.StateOf<Sh>,
-  payload: Payload,
-) => Logix.StateOf<Sh> | Effect.Effect<Logix.StateOf<Sh>, E, R2>
-
 export interface IntentBuilder<Payload, Sh extends Logix.AnyModuleShape, R = never> {
   readonly debounce: (ms: number) => IntentBuilder<Payload, Sh, R>
   readonly throttle: (ms: number) => IntentBuilder<Payload, Sh, R>
@@ -82,14 +77,6 @@ export interface IntentBuilder<Payload, Sh extends Logix.AnyModuleShape, R = nev
   ) => Of<Sh, R, void, never>
 
   readonly mutate: (reducer: (draft: Draft<Logix.StateOf<Sh>>, payload: Payload) => void) => Of<Sh, R, void, never>
-
-  readonly andThen: {
-    <E = never, R2 = never>(handler: AndThenUpdateHandler<Sh, Payload, E, R2>): Of<Sh, R & R2, void, E>
-
-    <A = void, E = never, R2 = never>(
-      effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
-    ): Of<Sh, R & R2, void, E>
-  }
 
   readonly pipe: (
     ...fns: ReadonlyArray<(self: IntentBuilder<Payload, Sh, R>) => IntentBuilder<Payload, Sh, R>>

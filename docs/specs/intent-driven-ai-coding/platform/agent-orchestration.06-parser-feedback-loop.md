@@ -16,9 +16,8 @@ Parser 是 Code-First 路径下的“执法者”，负责在类型与 AST 层�
   - 失败：`{ rules: PartialIntentRule[], errors: ParseError[] }`，提供足够信息帮助 Agent/人类定位问题。
 
 > 实现建议：
-> 首版 Parser 可以基于 `ts-morph` 实现为 CLI 工具：
-> `pnpm tsx scripts/intent-fluent-parser.ts --file path/to/logic.ts`，
-> 只支持最小 Fluent 子集与少量错误码即可，后续再迭代。
+> 首版 Parser 仍建议基于 `ts-morph` 实现为 CLI 工具；但当前仓库已移除早期 PoC 脚本，暂不提供可执行 Parser。
+> 本章的重点是固化“平台可解析子集”的判定与错误码形态，后续实现应以 `$.onState/$.onAction/$.on + pipeline + .update/.mutate/.run*` 为唯一解析锚点。
 
 ## 6.2 与 Agent 的交互模式
 

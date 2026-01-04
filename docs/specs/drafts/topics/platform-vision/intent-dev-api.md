@@ -15,7 +15,7 @@ related: []
   - 源：`$.onState` / `$.onAction` / `$.on`；
   - 策略：`$.flow.fromState/fromAction` + `debounce` / `throttle` / `filter` / `run*`（主要给库与 Pattern 使用）；
   - 行动：`$.state.update/mutate` / `$.actions.dispatch`；
-  - DX 糖：`andThen(handler)`，在 Fluent Builder 上做智能路由（update/mutate vs 副作用）。
+  - 为保证 Platform-Grade 子集可解析/可回写，运行时不再提供 `andThen` 这类“同名多语义”的 DX 糖；统一使用显式终端 `.update/.mutate/.run*`。
 - Parser/平台使用的白盒子集仅包含 Fluent 规范形态：
   - `yield* $.onState(selector).op().update/mutate/run*(...)`
   - `yield* $.onAction(predicate).op().update/mutate/run*(...)`
@@ -46,9 +46,13 @@ related: []
 ```ts
 AppCounterModule.logic(($, $$) =>
   Effect.gen(function* () {
-    // 1. 运行时代码（Fluent + andThen）
-    yield* $.onAction("increment").andThen((prev) => ({ ...prev, count: prev.count + 1 }))
-    yield* $.onAction("decrement").andThen((prev) => ({ ...prev, count: prev.count - 1 }))
+    // 1. 运行时代码（Fluent + 显式终端）
+    yield* $.onAction("increment").run(
+      $.state.update((prev) => ({ ...prev, count: prev.count + 1 })),
+    )
+    yield* $.onAction("decrement").run(
+      $.state.update((prev) => ({ ...prev, count: prev.count - 1 })),
+    )
 
     // 2. 开发期 Intent 注解（IR + Prompt）
     if (__LOGIX_INTENT_DEV__) {

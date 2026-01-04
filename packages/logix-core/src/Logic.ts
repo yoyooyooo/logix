@@ -31,12 +31,6 @@ export function of<Sh extends Logix.AnyModuleShape, R = never, A = void, E = nev
 
 // DSL type aliases: reuse internal definitions directly.
 export type Draft<T> = Internal.Draft<T>
-export type AndThenUpdateHandler<
-  Sh extends Logix.AnyModuleShape,
-  Payload,
-  E = any,
-  R2 = any,
-> = Internal.AndThenUpdateHandler<Sh, Payload, E, R2>
 export type IntentBuilder<Payload, Sh extends Logix.AnyModuleShape, R = never> = Internal.IntentBuilder<Payload, Sh, R>
 export type FluentMatch<V> = Internal.FluentMatch<V>
 export type FluentMatchTag<V extends { _tag: string }> = Internal.FluentMatchTag<V>

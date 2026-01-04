@@ -225,6 +225,21 @@ const computeRelativeStatsAt = (suiteSpec, suiteResult, budget, where, level) =>
   }
 }
 
+const computeAbsoluteStatsAt = (suiteSpec, suiteResult, budget, where, level) => {
+  const primary = suiteSpec.primaryAxis
+  const params = { ...(where || {}), [primary]: level }
+  const point = findPoint(suiteResult, params)
+  if (!point) return { ok: false, reason: 'missingPoint' }
+  const stats = getMetricStatsMs(point, budget.metric)
+  if (!stats.ok) return { ok: false, reason: stats.reason }
+  return {
+    ok: true,
+    n: stats.stats.n,
+    medianMs: stats.stats.medianMs,
+    p95Ms: stats.stats.p95Ms,
+  }
+}
+
 const renderList = (title, items) => {
   if (!Array.isArray(items) || items.length === 0) return ''
   const shown = items.slice(0, 10)
@@ -280,7 +295,6 @@ if (!diff) {
   md += `\n### Automated interpretation\n`
   md += `- regressions: ${code(summary.regressions ?? '?')}\n`
   md += `- improvements: ${code(summary.improvements ?? '?')}\n`
-  md += `- budgetViolations: ${code(summary.budgetViolations ?? '?')}\n`
   if (summary && summary.slices) {
     const s = summary.slices
     md += `- thresholdSlices: compared=${code(s.compared ?? '?')}, afterOnly=${code(s.afterOnly ?? '?')}, beforeOnly=${code(s.beforeOnly ?? '?')}, skippedData=${code(s.skippedData ?? '?')}, total=${code(s.total ?? '?')}\n`
@@ -302,6 +316,199 @@ if (!diff) {
   const afterSuiteById = new Map(
     afterReport && Array.isArray(afterReport.suites) ? afterReport.suites.map((s) => [s.id, s]) : [],
   )
+
+  // Head-only budget status: show current head failures even when base is not comparable.
+  if (afterReport && suiteSpecById.size > 0) {
+    const headFailures = []
+    const headDataIssues = []
+    const headBudgetSummaries = []
+
+    const fmtNum = (n, digits = 4) =>
+      typeof n === 'number' && Number.isFinite(n) ? n.toFixed(digits) : 'n/a'
+    const fmtMs = (n) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(3) : 'n/a')
+
+    for (const [suiteId, afterSuite] of afterSuiteById.entries()) {
+      const spec = suiteSpecById.get(suiteId)
+      if (!spec || !afterSuite) continue
+
+      const axisLevels = spec.axes?.[spec.primaryAxis] ?? []
+      const maxAxis = axisLevels.length > 0 ? axisLevels[axisLevels.length - 1] : null
+      if (maxAxis == null) continue
+
+      const priority = spec.priority ? `[${spec.priority}] ` : ''
+      const title = spec.title ? ` — ${spec.title}` : ''
+      const suiteLabel = `${priority}\`${suiteId}\`${title}`
+
+      const thresholds = Array.isArray(afterSuite.thresholds) ? afterSuite.thresholds : []
+      const budgetsById = new Map()
+
+      for (const t of thresholds) {
+        const budget = t?.budget
+        if (!budget) continue
+
+        const id = budgetKey(budget)
+        const agg =
+          budgetsById.get(id) ??
+          (() => {
+            const x = {
+              budget,
+              total: 0,
+              budgetExceeded: 0,
+              dataIssues: 0,
+              notApplicable: 0,
+              maxLevelCounts: new Map(),
+            }
+            budgetsById.set(id, x)
+            return x
+          })()
+
+        agg.total += 1
+        const maxLevelKey = t.maxLevel == null ? 'null' : String(t.maxLevel)
+        agg.maxLevelCounts.set(maxLevelKey, (agg.maxLevelCounts.get(maxLevelKey) ?? 0) + 1)
+
+        if (t.reason === 'budgetExceeded') {
+          agg.budgetExceeded += 1
+        } else if (t.reason === 'notApplicable') {
+          agg.notApplicable += 1
+        } else if (t.reason) {
+          agg.dataIssues += 1
+          headDataIssues.push({
+            suiteLabel,
+            budget,
+            whereKey: stableParamsKey(t.where),
+            maxLevel: t.maxLevel ?? null,
+            firstFailLevel: t.firstFailLevel ?? null,
+            reason: t.reason,
+          })
+        }
+
+        if (t.reason !== 'budgetExceeded') continue
+
+        const where = t.where && typeof t.where === 'object' ? t.where : {}
+        const whereKey = stableParamsKey(where)
+        const maxLevel = t.maxLevel ?? null
+        const firstFailLevel = t.firstFailLevel ?? (axisLevels[0] ?? null)
+
+        let classification = 'unknown'
+        let overshoot = null
+        let detail = ''
+
+        if (budget.type === 'relative') {
+          const at = firstFailLevel != null ? computeRelativeStatsAt(spec, afterSuite, budget, where, firstFailLevel) : { ok: false }
+          if (at.ok) {
+            const p95Over = at.ratioP95 > budget.maxRatio
+            const medianOver = at.ratioMedian > budget.maxRatio
+            classification = medianOver ? 'systemic' : p95Over ? 'tail-only' : 'unknown'
+            overshoot = at.ratioP95 - budget.maxRatio
+            detail =
+              `p95 ratio=${fmtNum(at.ratioP95)} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms), ` +
+              `median ratio=${fmtNum(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms), ` +
+              `n=${code(at.n)}`
+          } else {
+            detail = `p95 ratio=n/a (${at.reason || 'unknown'})`
+          }
+        } else {
+          const at = firstFailLevel != null ? computeAbsoluteStatsAt(spec, afterSuite, budget, where, firstFailLevel) : { ok: false }
+          if (at.ok) {
+            const p95Over = at.p95Ms > budget.p95Ms
+            const medianOver = at.medianMs > budget.p95Ms
+            classification = medianOver ? 'systemic' : p95Over ? 'tail-only' : 'unknown'
+            overshoot = at.p95Ms - budget.p95Ms
+            detail =
+              `p95=${fmtMs(at.p95Ms)}ms (budget<=${fmtMs(budget.p95Ms)}ms), ` +
+              `median=${fmtMs(at.medianMs)}ms, n=${code(at.n)}`
+          } else {
+            detail = `p95=n/a (${at.reason || 'unknown'})`
+          }
+        }
+
+        headFailures.push({
+          suiteLabel,
+          primaryAxis: spec.primaryAxis,
+          budget,
+          whereKey,
+          maxLevel,
+          firstFailLevel,
+          overshoot,
+          classification,
+          detail,
+        })
+      }
+
+      for (const [budgetId, agg] of budgetsById.entries()) {
+        if (agg.budgetExceeded === 0 && agg.dataIssues === 0 && agg.notApplicable === 0) continue
+        const counts = Array.from(agg.maxLevelCounts.entries())
+          .sort((a, b) => {
+            const aNull = a[0] === 'null'
+            const bNull = b[0] === 'null'
+            if (aNull !== bNull) return aNull ? 1 : -1
+            const aNum = Number(a[0])
+            const bNum = Number(b[0])
+            if (Number.isFinite(aNum) && Number.isFinite(bNum)) return bNum - aNum
+            return String(a[0]).localeCompare(String(b[0]))
+          })
+          .map(([k, v]) => `${k}×${v}`)
+          .join(', ')
+
+        headBudgetSummaries.push(
+          `- ${suiteLabel}: ${code(budgetId)} failing=${code(`${agg.budgetExceeded}/${agg.total}`)}, dataIssues=${code(
+            `${agg.dataIssues}/${agg.total}`,
+          )}, notApplicable=${code(`${agg.notApplicable}/${agg.total}`)}, maxLevel=${code(counts)}`,
+        )
+      }
+    }
+
+    md += `\n### Head budget status (quick warning)\n`
+    md += `_Based on head-only thresholds (not a diff). Useful even when comparable=false._\n\n`
+    md += `- headBudgetFailures: ${code(headFailures.length)} (reason=budgetExceeded)\n`
+    md += `- headDataIssues: ${code(headDataIssues.length)} (missing/timeout/etc)\n`
+    md += `- classification: ${code('tail-only')} = p95 over budget but median within; ${code('systemic')} = median also over\n`
+    md += `\n_Tip: quick profile uses small sample size; tail-only failures are often noise unless reproducible._\n`
+
+    if (headBudgetSummaries.length > 0) {
+      md += `\n**Failing budgets (head-only)**\n`
+      for (const line of headBudgetSummaries.sort()) md += `${line}\n`
+    }
+
+    if (headFailures.length > 0) {
+      const sorted = headFailures
+        .slice()
+        .sort((a, b) => {
+          const aRel = a.budget?.type === 'relative'
+          const bRel = b.budget?.type === 'relative'
+          if (aRel !== bRel) return aRel ? -1 : 1
+          const aOver = typeof a.overshoot === 'number' && Number.isFinite(a.overshoot) ? a.overshoot : -Infinity
+          const bOver = typeof b.overshoot === 'number' && Number.isFinite(b.overshoot) ? b.overshoot : -Infinity
+          return bOver - aOver
+        })
+
+      md += `\n**Top head failures**\n`
+      const shown = sorted.slice(0, 10)
+      for (const f of shown) {
+        const primaryAxis = f.primaryAxis || 'steps'
+        md += `- ${f.suiteLabel}: ${code(budgetKey(f.budget))} ${code(f.whereKey)}\n`
+        md += `  - after: maxLevel=${code(
+          f.maxLevel == null ? 'null' : String(f.maxLevel),
+        )} firstFail=${code(
+          f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`,
+        )} classification=${code(f.classification)}\n`
+        md += `  - ${f.detail}\n`
+      }
+
+      if (sorted.length > shown.length) {
+        md += `\n<details>\n<summary>All head failures (${sorted.length})</summary>\n\n`
+        for (const f of sorted) {
+          const primaryAxis = f.primaryAxis || 'steps'
+          md += `- ${f.suiteLabel}: ${code(budgetKey(f.budget))} ${code(f.whereKey)} maxLevel=${code(
+            f.maxLevel == null ? 'null' : String(f.maxLevel),
+          )} firstFail=${code(
+            f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`,
+          )} ${code(f.classification)}\n`
+        }
+        md += `\n</details>\n`
+      }
+    }
+  }
 
   const suites = Array.isArray(diff.suites) ? diff.suites : []
   if (summary && summary.slices && (summary.slices.afterOnly > 0 || summary.slices.beforeOnly > 0)) {

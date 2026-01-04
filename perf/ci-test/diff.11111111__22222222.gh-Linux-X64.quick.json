@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-03T16:30:02.177Z",
+    "from": {
+      "file": "perf/ci-test/before.11111111.gh-Linux-X64.quick.json",
+      "commit": "6e9ef1c70c784071efbdbe7ba1c4e7d2f935932c"
+    },
+    "to": {
+      "file": "perf/ci-test/after.22222222.gh-Linux-X64.quick.json",
+      "commit": "6e9ef1c70c784071efbdbe7ba1c4e7d2f935932c"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": true,
+      "allowEnvDrift": true,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 1,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=36 unavailable=0 missing=0] after[value=core ok=36 unavailable=0 missing=0]"
+        }
+      ],
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05}: before=null after=800 (after:budgetExceeded) (before:budgetExceeded)"
+        }
+      ]
+    }
+  ]
+}

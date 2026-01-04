@@ -68,7 +68,7 @@ export const SomeLogic = SomeDef.logic<MyService>(($) => ({
 ## 3.4 Phase Guard 与诊断（API 行为矩阵）
 
 - **LogicPlan 统一形态**：Logic 写法始终被归一为 `LogicPlan<Sh,R,E> = { setup: Effect<void, E, Env>; run: Effect<void, E, Env> }`，运行时在解析逻辑时自动注入 `phaseRef`，保证 setup/run 两段可观测。旧写法自动折叠为 `setup = Effect.void / run = 原逻辑`。
-- **Phase Guard 规则**：下列 API 视为 run-only，若在 setup 段调用会抛出 `LogicPhaseError(kind=\"use_in_setup\", api=...)` 并被转换为 `diagnostic code=logic::invalid_phase severity=error`：`$.use / $.onAction* / $.onState* / $.flow.from*` 及基于 IntentBuilder 的 `.run* / .run*Task / .update / .mutate / .andThen`。
+- **Phase Guard 规则**：下列 API 视为 run-only，若在 setup 段调用会抛出 `LogicPhaseError(kind=\"use_in_setup\", api=...)` 并被转换为 `diagnostic code=logic::invalid_phase severity=error`：`$.use / $.onAction* / $.onState* / $.flow.from*` 及基于 IntentBuilder 的 `.run* / .run*Task / .update / .mutate`。
 - **Setup-only（023）**：`$.traits.declare(traits)` 只允许在 setup 段调用；在 run 段调用会抛出 `LogicPhaseError(kind=\"traits_declare_in_run\", api=\"$.traits.declare\")`，并被转换为 `diagnostic code=logic::invalid_phase severity=error`（提示“traits 已冻结”）。
 - **诊断字段**：`LogicPhaseError` 暴露 `kind/api/phase/moduleId`，DevTools 与平台可直接依赖结构化字段，无需字符串解析；其他诊断同样通过 `DebugSink` 以 `logic::* / reducer::* / lifecycle::*` code 形式对外广播。
 - **Env 缺失与 runSync 不变量**：Logic 构造阶段的错误（含 phase 违规）统一被收敛为诊断，不会破坏 `ModuleDef.live` / `Runtime.make` 的同步构造路径；只有在 Env 铺满后仍发生的 `Service not found` 才被视为硬错误。
