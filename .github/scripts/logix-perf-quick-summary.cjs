@@ -490,7 +490,6 @@ if (!diff) {
           )}, notApplicable=${code(`${agg.notApplicable}/${agg.total}`)}, maxLevel=${code(counts)}`,
         )
       }
-
       // If this suite has a single "where axis" (e.g. dirtyRootsRatio), render a compact head-only map
       // so readers can see exactly which primary-axis level starts failing.
       const beforeSuite = beforeSuiteById.get(suiteId)
@@ -629,7 +628,6 @@ if (!diff) {
           f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`,
         )} classification=${code(f.classification)}\n`
         md += `  - ${f.detail}\n`
-
         if (f.budget?.type === 'relative' && f.firstFailLevel != null) {
           const spec = suiteSpecById.get(f.suiteId)
           const afterSuite = afterSuiteById.get(f.suiteId)
@@ -685,7 +683,6 @@ if (!diff) {
         md += `\n</details>\n`
       }
     }
-
     if (headBudgetMaps.length > 0) {
       md += `\n<details>\n<summary>Head maps (where -> maxLevel / firstFail / p95 series)</summary>\n\n`
       md += `_Each row shows which primary-axis level starts failing for that ${code('where')} slice. ` +

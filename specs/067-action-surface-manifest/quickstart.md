@@ -142,4 +142,4 @@ export const Counter = Logix.Module.make('Counter', {
 $.effect($.actions.add, (payload) => Effect.log(`add: ${payload}`))
 ```
 
-> CodeGen：面向 actions/dispatchers/reducers 的样板自动化作为独立需求见 `specs/069-codegen-action-surface/`。
+> CodeGen：面向 Schema-first + actions/dispatchers/reducers 的样板自动化作为独立需求见 `specs/069-schema-first-codegen-action-surface/`。

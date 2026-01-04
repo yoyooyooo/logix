@@ -163,17 +163,7 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
               }),
           ),
         ).pipe(Effect.catchAllCause((cause) => Effect.logError('Flow error', cause))) as Logic.Of<Sh, R, void, never>,
-    } as Omit<Logic.IntentBuilder<T, Sh, R>, 'pipe' | 'andThen'>
-
-    const andThen: Logic.IntentBuilder<T, Sh, R>['andThen'] = (handlerOrEff: any): any => {
-      if (typeof handlerOrEff === 'function') {
-        if (handlerOrEff.length >= 2) {
-          return (builder as any).update(handlerOrEff)
-        }
-        return (builder as any).run(handlerOrEff)
-      }
-      return (builder as any).run(handlerOrEff)
-    }
+    } as Omit<Logic.IntentBuilder<T, Sh, R>, 'pipe'>
 
     const pipe: Logic.IntentBuilder<T, Sh, R>['pipe'] = function (this: unknown) {
       // eslint-disable-next-line prefer-rest-params
@@ -187,7 +177,7 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
       return acc
     }
 
-    return Object.assign(builder, { pipe, andThen }) as Logic.IntentBuilder<T, Sh, R>
+    return Object.assign(builder, { pipe }) as Logic.IntentBuilder<T, Sh, R>
   }
 }
 import type { BoundApi } from './module.js'

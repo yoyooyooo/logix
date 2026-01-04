@@ -1,6 +1,6 @@
 # 1.4 诊断代码与触发条件（稳定不变量）
 
-- `logic::invalid_phase`（error）：在 setup 段调用 run-only 能力（`$.use / $.onAction* / $.onState* / IntentBuilder.run* / update / mutate / andThen` 等）或 builder 顶层执行 IO 时触发；源错误为 `LogicPhaseError(kind/api/phase/moduleId)`。
+- `logic::invalid_phase`（error）：在 setup 段调用 run-only 能力（`$.use / $.onAction* / $.onState* / IntentBuilder.run* / update / mutate` 等）或 builder 顶层执行 IO 时触发；源错误为 `LogicPhaseError(kind/api/phase/moduleId)`。
 - `logic::env_service_not_found`（warning/error，视实现）：Env 未完全就绪时访问 Service 触发，用于提示将 Env 访问移到 run 段；Env 铺满后再次出现则视为硬错误。
 - `reducer::duplicate`（error）：同一 Action tag 注册多个 primary reducer。
 - `reducer::late_registration`（error）：在该 tag 已派发过后才注册 primary reducer。

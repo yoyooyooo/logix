@@ -1,0 +1,2251 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-03T13:38:41.927Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2025-12-29",
+    "matrixHash": "1264d11b0beeded94a038591cd2daf3c4d8f2fe989201148209f5e8199b7ff36",
+    "git": {
+      "branch": "dev",
+      "commit": "ad7ccd99015de6c4ace87fd049fabd80765e66fa",
+      "dirty": true
+    },
+    "config": {
+      "runs": 10,
+      "warmupDiscard": 2,
+      "timeoutMs": 8000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      },
+      "controlPlane": {}
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "title": "converge: txn commit / derive",
+      "priority": "P1",
+      "primaryAxis": "steps",
+      "budgets": [
+        {
+          "id": "commit.p95<=50ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "commit.p95<=100ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 100
+        },
+        {
+          "id": "auto<=full*1.05",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.05,
+          "numeratorRef": "convergeMode=auto",
+          "denominatorRef": "convergeMode=full"
+        },
+        {
+          "id": "decision.p95<=0.5ms",
+          "type": "absolute",
+          "metric": "runtime.decisionMs",
+          "p95Ms": 0.5
+        }
+      ],
+      "metricCategories": {
+        "runtime.txnCommitMs": "runtime",
+        "runtime.decisionMs": "runtime"
+      },
+      "points": [
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005,
+            "steps": 200,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.25,
+                "p95Ms": 0.2619999998807907
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005,
+            "steps": 800,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3819999998807907,
+                "p95Ms": 0.42
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005,
+            "steps": 2000,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.8260000002384186,
+                "p95Ms": 0.85
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05,
+            "steps": 200,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.2,
+                "p95Ms": 0.22
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05,
+            "steps": 800,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.37399999976158144,
+                "p95Ms": 0.3980000001192093
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05,
+            "steps": 2000,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.8520000004768371,
+                "p95Ms": 0.8640000003576279
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25,
+            "steps": 200,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.24400000035762787,
+                "p95Ms": 0.2579999995231628
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25,
+            "steps": 800,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.4380000001192093,
+                "p95Ms": 0.44399999976158144
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25,
+            "steps": 2000,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.9919999998807907,
+                "p95Ms": 1.0139999997615814
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75,
+            "steps": 200,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.36199999988079073,
+                "p95Ms": 0.36400000035762786
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75,
+            "steps": 800,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5780000001192093,
+                "p95Ms": 0.5839999997615815
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75,
+            "steps": 2000,
+            "dirtyRoots": 1500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.39,
+                "p95Ms": 1.4119999998807906
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005,
+            "steps": 200,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.21,
+                "p95Ms": 0.21799999952316285
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005,
+            "steps": 800,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.36199999988079073,
+                "p95Ms": 0.37599999964237213
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005,
+            "steps": 2000,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.8139999997615814,
+                "p95Ms": 0.84
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05,
+            "steps": 200,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.1980000001192093,
+                "p95Ms": 0.21
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05,
+            "steps": 800,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.37400000035762787,
+                "p95Ms": 0.39
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05,
+            "steps": 2000,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.8480000001192093,
+                "p95Ms": 0.87
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25,
+            "steps": 200,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.24,
+                "p95Ms": 0.24799999952316285
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25,
+            "steps": 800,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.4359999996423721,
+                "p95Ms": 0.4539999997615814
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25,
+            "steps": 2000,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.0020000004768372,
+                "p95Ms": 1.0139999997615814
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75,
+            "steps": 200,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3539999997615814,
+                "p95Ms": 0.36400000035762786
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75,
+            "steps": 800,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5740000003576279,
+                "p95Ms": 0.5939999997615815
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75,
+            "steps": 2000,
+            "dirtyRoots": 1500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.3619999998807908,
+                "p95Ms": 1.3719999998807908
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "notApplicable"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005,
+            "steps": 200,
+            "dirtyRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.19399999976158142,
+                "p95Ms": 0.20600000023841858
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005,
+            "steps": 800,
+            "dirtyRoots": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.37,
+                "p95Ms": 0.38
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005,
+            "steps": 2000,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.8280000001192093,
+                "p95Ms": 0.8519999998807907
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05,
+            "steps": 200,
+            "dirtyRoots": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.19400000035762788,
+                "p95Ms": 0.21200000047683715
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05,
+            "steps": 800,
+            "dirtyRoots": 40
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.36400000035762786,
+                "p95Ms": 0.37399999976158144
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05,
+            "steps": 2000,
+            "dirtyRoots": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.8760000002384186,
+                "p95Ms": 0.8919999998807907
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25,
+            "steps": 200,
+            "dirtyRoots": 50
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.24399999976158143,
+                "p95Ms": 0.2579999995231628
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25,
+            "steps": 800,
+            "dirtyRoots": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.43399999976158143,
+                "p95Ms": 0.43400000035762787
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25,
+            "steps": 2000,
+            "dirtyRoots": 500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.005999999642372,
+                "p95Ms": 1.0119999998807907
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75,
+            "steps": 200,
+            "dirtyRoots": 150
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.3559999996423721,
+                "p95Ms": 0.3680000001192093
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75,
+            "steps": 800,
+            "dirtyRoots": 600
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.5780000001192093,
+                "p95Ms": 0.5919999998807907
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75,
+            "steps": 2000,
+            "dirtyRoots": 1500
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.35,
+                "p95Ms": 1.3719999998807908
+              }
+            },
+            {
+              "name": "runtime.decisionMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0,
+                "p95Ms": 0
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=50ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "commit.p95<=100ms",
+            "type": "absolute",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notApplicable"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notApplicable"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notApplicable"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "full",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notApplicable"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notApplicable"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notApplicable"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notApplicable"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "notApplicable"
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.005
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.05
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.25
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "decision.p95<=0.5ms",
+            "type": "absolute",
+            "metric": "runtime.decisionMs",
+            "p95Ms": 0.5
+          },
+          "where": {
+            "convergeMode": "auto",
+            "dirtyRootsRatio": 0.75
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        }
+      ],
+      "comparisons": [
+        {
+          "id": "converge.txnCommit.diagnosticsOverhead.light/off",
+          "kind": "ratio",
+          "metric": "runtime.txnCommitMs",
+          "numeratorRef": "diagnosticsLevel=light",
+          "denominatorRef": "diagnosticsLevel=off",
+          "unit": "ratio",
+          "stats": {
+            "median": 6.499999962747098,
+            "p95": 7.99999985098839
+          },
+          "scenario": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05
+          }
+        },
+        {
+          "id": "converge.txnCommit.diagnosticsOverhead.light-off",
+          "kind": "delta",
+          "metric": "runtime.txnCommitMs",
+          "numeratorRef": "diagnosticsLevel=light",
+          "denominatorRef": "diagnosticsLevel=off",
+          "unit": "ms",
+          "stats": {
+            "median": 2.2000000178813934,
+            "p95": 2.7999999821186066
+          },
+          "scenario": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05
+          }
+        },
+        {
+          "id": "converge.txnCommit.diagnosticsOverhead.full/off",
+          "kind": "ratio",
+          "metric": "runtime.txnCommitMs",
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=off",
+          "unit": "ratio",
+          "stats": {
+            "median": 7.249999906867744,
+            "p95": 7.249999906867744
+          },
+          "scenario": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05
+          }
+        },
+        {
+          "id": "converge.txnCommit.diagnosticsOverhead.full-off",
+          "kind": "delta",
+          "metric": "runtime.txnCommitMs",
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=off",
+          "unit": "ms",
+          "stats": {
+            "median": 2.5,
+            "p95": 2.5
+          },
+          "scenario": {
+            "convergeMode": "auto",
+            "steps": 800,
+            "dirtyRootsRatio": 0.05
+          }
+        }
+      ]
+    }
+  ]
+}

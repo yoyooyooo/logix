@@ -25,7 +25,7 @@ Logix 已经具备平台化所需的两块“硬地基”：
 但目前平台化会被以下“硬阻塞”卡住：
 
 - **全双工锚点在 specs 与脚本中严重漂移**：`then/when` 旧约束仍占据多个规范与实现备忘；而真实实现已经收敛为 `.run/.update/.mutate` 终端。
-- **Parser/Codegen 的“可执行实现”缺位且过时**：仓库里唯一的解析脚本 `scripts/intent-fluent-parser.ts` 解析的是不存在的 DSL（`.when(...).then(...)`）。
+- **Parser/Codegen 的“可执行实现”缺位**：早期解析脚本 `scripts/intent-fluent-parser.ts`（已删除）解析的是不存在的 DSL（`.when(...).then(...)`），当前仍缺少以 Platform-Grade 子集为锚点的可执行 Parser/Codegen。
 - **IntentRule IR 只存在于文档，不存在于代码的最小中间表示**：StateTraitGraph 已经落地，但“规则 IR（IntentRule）/逻辑图（LogicGraph）”尚未形成统一的、可序列化、可合并的 IR。
 - **诊断协议未以 IR 为中心闭环**：缺少稳定 ruleId/stepId 的端到端锚定，且 Sandbox/Devtools 的 trace 仍有“塞入事件对象/闭包”的倾向，难以支撑平台端的因果与性能分析。
 
@@ -130,7 +130,7 @@ StateTrait 具备三类平台关键特性：
 - 约束 A（旧）：`...then(...)` / `.when(...)`
   - `docs/specs/intent-driven-ai-coding/06-codegen-and-parser.md`
   - `docs/specs/intent-driven-ai-coding/platform/impl/README.md`
-  - `scripts/intent-fluent-parser.ts`
+  - `scripts/intent-fluent-parser.ts`（已删除）
 - 约束 B（现行实现）：`...update/mutate/run*(...)`
   - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`（Hard Constraints 明确写 `.update/mutate/run*`）
   - `packages/logix-core` 真实类型与实现（IntentBuilder 不存在 `.then`）
@@ -142,9 +142,9 @@ StateTrait 具备三类平台关键特性：
 
 ### 3.2 Parser/Codegen 的“可执行实现”缺失且过时
 
-仓库目前唯一可执行的 Fluent 解析脚本：
+仓库目前没有可执行的 Fluent Parser；此前的 PoC 脚本（已删除）为：
 
-- `scripts/intent-fluent-parser.ts`：只识别 `.then(...)`，并且以 `.when(...)` 作为链路根节点。
+- `scripts/intent-fluent-parser.ts`（已删除）：只识别 `.then(...)`，并且以 `.when(...)` 作为链路根节点。
 
 但真实 API 不存在 `when/then`，导致该脚本在平台主链路上不可用；同时代码里也没有任何可复用的 `IntentRule`/LogicGraph IR 实现。
 

@@ -16,7 +16,6 @@
     "format": "oxfmt apps packages examples",
     "format:all": "oxfmt .",
     "format:check": "oxfmt --check apps packages",
-    "parse:intent": "tsx scripts/intent-fluent-parser.ts",
     "perf": "tsx scripts/perf.ts",
     "speckit:kanban": "pnpm -C packages/speckit-kit build && speckit-kit kanban",
     "speckit:kanban:dev": "tsx scripts/speckit-kanban.ts",

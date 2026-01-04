@@ -30,7 +30,7 @@ Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-0
 
 本阶段交付的规格产物：`plan.md`（本文件）、`research.md`（裁决与取舍）、`data-model.md`（实体/键/对齐规则）、`contracts/schemas/*`（JSON Schema）、`quickstart.md`（最小使用说明与迁移要点）。
 
-> 备注：面向“自动生成 actions/reducers/dispatchers 等样板代码”的 CodeGen 作为独立需求另起 spec（`specs/069-codegen-action-surface/`；不在 067 范围内落地）。
+> 备注：面向“Schema-first + CodeGen：自动生成 actions/reducers/dispatchers 等样板代码”的需求作为独立 spec：`specs/069-schema-first-codegen-action-surface/`（不在 067 范围内落地）。
 
 ## Deepening Notes
 
