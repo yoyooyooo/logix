@@ -59,18 +59,18 @@ const ListLogic = ListDef.logic(($) =>
           }),
         ),
 
-        // 重置列表
-        $.onAction('reset').run(() =>
-          $.state.update(() => ({
-            items: [],
-            cursor: null,
-            hasMore: true,
-            isLoading: false,
-          })),
-        ),
-      ],
-      { concurrency: 'unbounded' },
-    )
+	        // 重置列表
+	        $.onAction('reset').run(() =>
+	          $.state.mutate((d) => {
+	            d.items = []
+	            d.cursor = null
+	            d.hasMore = true
+	            d.isLoading = false
+	          }),
+	        ),
+	      ],
+	      { concurrency: 'unbounded' },
+	    )
   }),
 )
 ```

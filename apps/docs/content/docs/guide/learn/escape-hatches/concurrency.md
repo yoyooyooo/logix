@@ -82,7 +82,7 @@ Logix 的 DSL 是围绕这两条轴来设计的：
 
 - 你可以放心在 Logic 内部使用这些高层 API，而不用每次手动加 try/catch 或埋点；
 - 如果需要统一的日志、埋点、告警，只需要在 Engine 层或 ModuleImpl 上挂 MiddlewareStack，而不是在每个 watcher 里重复写；
-- 复杂逻辑推荐始终写在 `Effect.gen` 里，通过 `$.use` 获取 Service、通过 `$.state.update/mutate` 更新状态，再通过合适的 `run*`/`run*Fork` 组合选择并发模型。
+- 复杂逻辑推荐始终写在 `Effect.gen` 里，通过 `$.use` 获取 Service、通过 `$.state.mutate` 更新状态（默认优先），再通过合适的 `run*`/`run*Fork` 组合选择并发模型。
 
 ### 4.1 `Effect.all` vs `Effect.gen`：多条 `runFork` watcher 的等价写法
 

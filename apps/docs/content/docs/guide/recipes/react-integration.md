@@ -304,7 +304,7 @@ function Counter() {
 这种 `prevRef` 本质是业务状态的一部分，可以直接迁到 Module：
 
 - 在 Module 的 `state` 里显式加上 `prevCount` / `trend` 等字段；
-- 在 Logic 中用 `$.onState` / `$.state.update` 维护它们；
+- 在 Logic 中用 `$.onState` / `$.state.mutate` 维护它们；
 - 组件只订阅最终状态，不再维护 `useRef`。
 
 迁移后的结构大致是：

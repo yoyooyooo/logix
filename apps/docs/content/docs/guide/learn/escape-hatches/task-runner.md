@@ -32,28 +32,25 @@ title: Task Runner（长链路：pending → IO → writeback）
 ```ts
 yield* $.onAction("search").runLatestTask({
   pending: (a) =>
-    $.state.update((s) => ({
-      ...s,
-      loading: true,
-      keyword: a.payload,
-      error: undefined,
-    })),
+    $.state.mutate((d) => {
+      d.loading = true
+      d.keyword = a.payload
+      d.error = undefined
+    }),
 
   effect: (a) => api.search(a.payload),
 
   success: (result) =>
-    $.state.update((s) => ({
-      ...s,
-      loading: false,
-      items: result.items,
-    })),
+    $.state.mutate((d) => {
+      d.loading = false
+      d.items = result.items
+    }),
 
   failure: (cause) =>
-    $.state.update((s) => ({
-      ...s,
-      loading: false,
-      error: String(cause),
-    })),
+    $.state.mutate((d) => {
+      d.loading = false
+      d.error = String(cause)
+    }),
 })
 ```
 

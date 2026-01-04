@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/069/state-ops-blueprint.v1.schema.json",
+  "title": "StateOpsBlueprintV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ops"],
+  "properties": {
+    "scope": { "type": "string", "enum": ["public", "internal"] },
+    "group": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "ops": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "./state-op.v1.schema.json" }
+    }
+  }
+}

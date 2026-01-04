@@ -79,7 +79,8 @@ interface BoundApi<Sh, R> {
 
 - 状态：
   - `$.state.read`：读取当前状态快照；
-  - `$.state.update(prev => next)` / `$.state.mutate(draft => { ... })`：更新状态；
+  - `$.state.mutate(draft => { ... })`：更新状态（推荐；默认优先使用）；
+  - `$.state.update(prev => next)`：整棵替换（通常会被视为全量写入，谨慎使用）；
 - Actions：
   - `yield* $.dispatchers.<K>(payload)`：派发 Action（常用短写）；
   - `yield* $.dispatch($.actions.<K>, payload)`：token-first（让代码里显式出现 ActionToken，便于 IDE 跳转/找引用/重命名）；
@@ -101,8 +102,8 @@ interface BoundApi<Sh, R> {
 ## 状态 (State)
 
 - **`read`**: 读取当前状态快照。
-- **`update`**: 使用纯函数更新状态。
-- **`mutate`**: 使用 `mutative` 风格的可变 Draft 更新状态（推荐）。
+- **`update`**: 使用纯函数整棵替换状态（通常会被视为全量写入，谨慎使用）。
+- **`mutate`**: 使用 `mutative` 风格的可变 Draft 更新状态（推荐；会保留字段级影响域）。
 - **`ref`**: 获取底层的 `SubscriptionRef`，用于高级响应式操作。
 
 ```typescript

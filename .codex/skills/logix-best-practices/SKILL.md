@@ -12,6 +12,7 @@ description: Logix（@logix/core + effect）业务开发工程最佳实践的自
 1. 选择落点：用 `src/features/<feature>/` 聚合该 feature 的 Module/Process/局部 Pattern/Service Tag。
 2. 建最小闭环：用 `src/runtime/*` 作为 Composition Root（imports/processes/layer），再用 `src/scenarios/*` 提供可运行入口。
 3. 需要“逐文件最小写法”时：直接复制本 skill 内置样板（见 “资源导航”）。
+4. 状态写入：默认优先用 `$.state.mutate(...)` / `immerReducers`（保留字段级影响域）；仅在“整棵替换/回滚”场景用 `$.state.update(...)`。
 
 ## 工作流（从需求到落点）
 
