@@ -646,6 +646,8 @@ jobs:
 
                     const beforeRatio = computeRelativeRatioAt(spec, beforeSuite, budget, where, beforeLevel)
                     const afterRatio = computeRelativeRatioAt(spec, afterSuite, budget, where, afterLevel)
+                    const beforeRatioValue = beforeRatio.ok && Number.isFinite(beforeRatio.ratio) ? beforeRatio.ratio : null
+                    const afterRatioValue = afterRatio.ok && Number.isFinite(afterRatio.ratio) ? afterRatio.ratio : null
 
                     const fmtRatio = (r, level) => {
                       if (!r.ok) return `n/a (${r.reason})`
@@ -666,12 +668,36 @@ jobs:
                       after: afterRes,
                       beforeRatio: fmtRatio(beforeRatio, beforeLevel),
                       afterRatio: fmtRatio(afterRatio, afterLevel),
+                      beforeRatioValue,
+                      afterRatioValue,
                     })
                   }
 
                   // Render a compact table for small matrices; otherwise show worst rows only.
-                  const maxRows = 12
-                  const shownRows = rows.length <= maxRows ? rows : rows.slice().sort((a, b) => String(b.afterRatio).localeCompare(String(a.afterRatio))).slice(0, maxRows)
+                  const maxRows = 24
+                  const shownRows =
+                    rows.length <= maxRows
+                      ? rows
+                      : rows
+                          .slice()
+                          .sort((a, b) => {
+                            const aFailed = a.after?.firstFailLevel != null
+                            const bFailed = b.after?.firstFailLevel != null
+                            if (aFailed !== bFailed) return aFailed ? -1 : 1
+
+                            const aExceed =
+                              typeof a.afterRatioValue === 'number' ? a.afterRatioValue - (budget.maxRatio ?? 0) : Number.NEGATIVE_INFINITY
+                            const bExceed =
+                              typeof b.afterRatioValue === 'number' ? b.afterRatioValue - (budget.maxRatio ?? 0) : Number.NEGATIVE_INFINITY
+                            if (aExceed !== bExceed) return bExceed - aExceed
+
+                            const aRatio = typeof a.afterRatioValue === 'number' ? a.afterRatioValue : Number.NEGATIVE_INFINITY
+                            const bRatio = typeof b.afterRatioValue === 'number' ? b.afterRatioValue : Number.NEGATIVE_INFINITY
+                            if (aRatio !== bRatio) return bRatio - aRatio
+
+                            return String(a.whereStr).localeCompare(String(b.whereStr))
+                          })
+                          .slice(0, maxRows)
 
                   md += `\n| where | before maxLevel | after maxLevel | before ratio | after ratio |\n`
                   md += `| --- | --- | --- | --- | --- |\n`
@@ -685,6 +711,73 @@ jobs:
 
                   if (rows.length > shownRows.length) {
                     md += `\n_Showing ${shownRows.length}/${rows.length} rows (matrix too large for full table)._ \n`
+                  }
+
+                  const canChart =
+                    otherAxes.length === 1 &&
+                    axisLevels.length > 0 &&
+                    axisLevels.length <= 6 &&
+                    Array.isArray(spec.axes?.[otherAxes[0]]) &&
+                    (spec.axes[otherAxes[0]] ?? []).length > 1 &&
+                    (spec.axes[otherAxes[0]] ?? []).length <= 32
+
+                  if (canChart) {
+                    const xAxisKey = otherAxes[0]
+                    const xAxisLevels = (spec.axes?.[xAxisKey] ?? []).slice()
+                    md += `\n<details>\n<summary>Charts: p95 ratio across ${code(xAxisKey)}</summary>\n\n`
+                    md += `Bars: base(before) vs head(after). Line: budget maxRatio=${code(budget.maxRatio)}.\n\n`
+
+                    const fmtNum = (n) => {
+                      if (typeof n !== 'number' || !Number.isFinite(n)) return null
+                      return Number(n.toFixed(4))
+                    }
+
+                    for (const level of axisLevels) {
+                      const xs = []
+                      const beforeBars = []
+                      const afterBars = []
+
+                      for (const x of xAxisLevels) {
+                        const where = { [xAxisKey]: x }
+                        const beforeAt = computeRelativeRatioAt(spec, beforeSuite, budget, where, level)
+                        const afterAt = computeRelativeRatioAt(spec, afterSuite, budget, where, level)
+
+                        const b = beforeAt.ok ? fmtNum(beforeAt.ratio) : null
+                        const a = afterAt.ok ? fmtNum(afterAt.ratio) : null
+                        if (b == null || a == null) continue
+
+                        xs.push(x)
+                        beforeBars.push(b)
+                        afterBars.push(a)
+                      }
+
+                      if (xs.length < 2) continue
+
+                      const all = [...beforeBars, ...afterBars, budget.maxRatio].filter(
+                        (n) => typeof n === 'number' && Number.isFinite(n),
+                      )
+                      const min = Math.min(...all)
+                      const max = Math.max(...all)
+                      const pad = Math.max(0.05, (max - min) * 0.1)
+                      const yMin = Math.max(0, min - pad)
+                      const yMax = max + pad
+
+                      const title = `${suiteId} ${budgetKey(budget)} @ ${primary}=${String(level)}`
+                      const xLabels = xs.map((v) => JSON.stringify(String(v))).join(', ')
+                      const threshold = fmtNum(budget.maxRatio) ?? budget.maxRatio
+
+                      md += `\n\`\`\`mermaid\n`
+                      md += `xychart-beta\n`
+                      md += `    title ${JSON.stringify(title)}\n`
+                      md += `    x-axis [${xLabels}]\n`
+                      md += `    y-axis ${JSON.stringify('ratio')} ${fmtNum(yMin) ?? yMin} --> ${fmtNum(yMax) ?? yMax}\n`
+                      md += `    bar [${beforeBars.join(', ')}]\n`
+                      md += `    bar [${afterBars.join(', ')}]\n`
+                      md += `    line [${xs.map(() => threshold).join(', ')}]\n`
+                      md += `\`\`\`\n`
+                    }
+
+                    md += `\n</details>\n`
                   }
                 }
               }

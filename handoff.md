@@ -110,7 +110,6 @@
     - 对单一 where 轴支持输出 Mermaid `xychart-beta`（若 GitHub Mermaid 版本支持，会直接渲染柱/线图；否则退化为代码块文本）。
 - `@logix/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
   - `converge.txnCommit.dirtyRootsRatio` 扩展到 15 档（`0.005…1`，提高“在哪个区间开始退化/抖动”的可解释性；代价是 quick 的 point 数显著增加）。
-
 ## 最新进展（根因确认：setState 写回会触发 dirty_all/unknown_write，覆盖手工 patch 证据）
 
 - 现象（来自 perf report 的 converge evidence）：
