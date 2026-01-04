@@ -59,10 +59,10 @@ export const makeConvergeRuntime = (
     bump: Schema.Number,
   }
 
-  const bumpReducer = Logix.Module.Reducer.mutate((draft: Record<string, number>, dirtyRoots: number) => {
+  const bumpReducer = Logix.Module.Reducer.mutate((draft, dirtyRoots: number) => {
     for (let i = 0; i < dirtyRoots; i++) {
       const k = `b${i}`
-      draft[k] += 1
+      ;(draft as any)[k] += 1
     }
   })
 
