@@ -1,94 +1,84 @@
-# Logix Package Structure
+# Logix 包结构（SSoT）
 
-This document is the SSoT for the physical file structure of the Logix
-implementation. If the repo drifts, fix this document or the code immediately.
+本文是 Logix 实现的“物理目录结构”SSoT。仓库若漂移，必须修本文或修代码（二选一，不允许长期漂移）。
 
 ## 1. packages/logix-core
 
-The platform-agnostic core engine. Zero dependencies on React or DOM.
+平台无关核心引擎：零依赖 React/DOM。
 
 ```
 packages/logix-core/
 ├── src/
-│   ├── index.ts                # Public API barrel (Logix.*, etc.)
+│   ├── index.ts                # Public barrel：推荐 `import * as Logix from '@logix/core'`
 │   │
-│   ├── Module.ts               # Public submodule (MUST contain real implementation)
+│   ├── Module.ts               # Public submodule（必须有真实实现，不能纯 re-export）
+│   ├── ModuleTag.ts
 │   ├── Logic.ts
-│   ├── Bound.ts                # The `$` interface + factories (public)
+│   ├── Bound.ts                # `$` interface + factories（public）
 │   ├── Flow.ts
 │   ├── MatchBuilder.ts
+│   ├── Middleware.ts
+│   ├── EffectOp.ts
+│   ├── Process.ts
+│   ├── Handle.ts
 │   ├── Runtime.ts
+│   ├── Root.ts
 │   ├── Debug.ts
-│   ├── Platform.ts
-│   ├── Resource.ts
-│   ├── state-trait.ts
-│   ├── trait-lifecycle.ts
-│   ├── effectop.ts
-│   ├── env.ts
-│   ├── Link.ts
+│   ├── Observability.ts
+│   ├── ReadQuery.ts
+│   ├── State.ts
 │   ├── Actions.ts
+│   ├── Action.ts
+│   ├── StateTrait.ts
+│   ├── TraitLifecycle.ts
+│   ├── Resource.ts
+│   ├── Platform.ts
+│   ├── Kernel.ts
+│   ├── Reflection.ts
+│   ├── ScopeRegistry.ts
 │   │
-│   ├── middleware/
-│   │   ├── index.ts
-│   │   └── query.ts
-│   │
-│   └── internal/               # Internal implementation (NOT exported)
+│   └── internal/               # Internal implementation（对外不可见，exports: `./internal/*: null`）
 │       ├── runtime/
-│       │   ├── core/           # Deep runtime core (module/flow/lifecycle/debug/txn/...)
-│       │   └── *.ts            # Shallow adapters / re-exports for public submodules
+│       │   ├── core/           # Deep runtime core（ModuleRuntime/FlowRuntime/Lifecycle/Debug/StateTransaction/...）
+│       │   └── *.ts            # 拆分文件/薄适配/re-export（供 public submodules 组装）
 │       ├── state-trait/        # Trait program/graph/plan/build/converge/source/...
-│       ├── platform/           # Platform implementations
-│       ├── debug/              # Debug-only internal helpers
+│       ├── trait-lifecycle/    # TraitLifecycle 内核与适配
+│       ├── platform/           # Platform 实现与 BuildEnv
+│       ├── reflection/         # IR/manifest/trial-run
+│       ├── observability/      # evidence/runSession/trial-run 侧链路
 │       └── *.ts
 │
-├── test/                       # Unit/integration tests (Vitest)
+├── test/                       # 单元/集成测试（Vitest）
 ├── package.json
 ├── tsconfig.json
-└── tsup.config.ts              # Build Configuration
+└── tsup.config.ts
 ```
 
-**Hard boundaries**
+**硬边界（强约束）**
 
-- `src/*.ts` are the public submodules and MUST contain actual implementation
-  code (thin wrappers are fine, pure re-export is not).
-- Shared implementation MUST live in `src/internal/**` (enforced by package
-  exports: `./internal/*: null`).
-- `src/internal/**` MUST NOT import from any `src/*.ts` public submodule.
-- Deep core MUST live in `src/internal/runtime/core/**`; shallow internal files
-  should be re-exports or thin adapters only.
+- `src/*.ts` 是 public submodules，必须包含实际实现代码（允许薄封装，但禁止纯 re-export）。
+- 共享实现必须下沉到 `src/internal/**`（由 `packages/logix-core/package.json` 的 `exports` 强制阻断：`./internal/*: null`）。
+- `src/internal/**` 禁止反向 import 任意 `src/*.ts` public submodule（避免环依赖）。
+- Deep core 固定在 `src/internal/runtime/core/**`；浅层 internal 文件仅做 re-export 或薄适配。
 
 ## 2. packages/logix-react
 
-The React adapter. Depends on `@logix/core` and `react`.
+React 适配层：依赖 `@logix/core` 与 `react`。
 
 ```
 packages/logix-react/
 ├── src/
 │   ├── index.ts
+│   ├── Hooks.ts                # Public hooks 聚合导出
+│   ├── RuntimeProvider.ts       # React RuntimeProvider
 │   ├── ReactPlatform.ts
-│   │
-│   ├── components/
-│   │   └── RuntimeProvider.tsx
-│   │
-│   ├── hooks/
-│   │   ├── useModule.ts
-│   │   ├── useLocalModule.ts
-│   │   ├── useImportedModule.ts
-│   │   ├── useSelector.ts
-│   │   └── useDispatch.ts
-│   │
-│   ├── platform/
-│   │   ├── index.ts
-│   │   └── ReactPlatformLayer.ts
-│   │
+│   ├── ModuleScope.ts           # UI subtree scope/隔离策略（React 侧）
+│   ├── Platform.ts
 │   └── internal/
-│       ├── ReactContext.ts
-│       ├── ModuleCache.ts
-│       ├── ModuleRef.ts
-│       ├── resolveImportedModuleRef.ts
-│       ├── ModuleRuntimeExternalStore.ts
-│       ├── useModuleRuntime.ts
-│       └── *.ts
+│       ├── hooks/               # useModule/useLocalModule/useSelector/... 的实现
+│       ├── provider/            # provider 层配置/上下文/注入
+│       ├── platform/            # ReactPlatformLayer 等
+│       └── store/               # ModuleCache/ModuleRef/ExternalStore 等
 │
 ├── test/
 ├── package.json
@@ -98,17 +88,23 @@ packages/logix-react/
 
 ## 3. packages/logix-devtools-react
 
-The React Devtools UI for Logix. Depends on `@logix/core` and `@logix/react`.
+React Devtools UI：依赖 `@logix/core` 与 `@logix/react`。
 
 ```
 packages/logix-devtools-react/
 ├── src/
 │   ├── index.tsx
-│   ├── snapshot.ts
-│   ├── state.ts
-│   ├── DevtoolsHooks.tsx
-│   ├── state/                  # compute/model/storage/runtime helpers
-│   └── ui/                     # Devtools UI components
+│   ├── DevtoolsLayer.tsx
+│   ├── LogixDevtools.tsx
+│   ├── StateTraitGraphView.tsx
+│   ├── style.css
+│   ├── style.build.css
+│   ├── style.ts
+│   └── internal/
+│       ├── snapshot/
+│       ├── state/
+│       ├── theme/
+│       └── ui/
 │
 ├── test/
 ├── package.json
@@ -117,18 +113,21 @@ packages/logix-devtools-react/
 
 ## 4. packages/logix-sandbox
 
-Sandbox / Alignment Lab infrastructure (compiler + worker protocol + client).
+Sandbox / Alignment Lab 基础设施（worker + protocol + client + compiler/kernel glue）。
 
 ```
 packages/logix-sandbox/
 ├── src/
 │   ├── index.ts
-│   ├── protocol.ts
-│   ├── types.ts
-│   ├── compiler.ts
-│   ├── client.ts
-│   ├── service.ts
-│   └── worker/sandbox.worker.ts
+│   ├── Client.ts
+│   ├── Protocol.ts
+│   ├── Service.ts
+│   ├── Types.ts
+│   ├── Vite.ts
+│   └── internal/
+│       ├── compiler/
+│       ├── kernel/
+│       └── worker/
 │
 ├── test/
 ├── package.json
@@ -137,59 +136,61 @@ packages/logix-sandbox/
 
 ## 5. packages/logix-test
 
-The testing utilities package. Depends on `@logix/core` and `effect`.
+测试工具包：依赖 `@logix/core` 与 `effect`，统一“测试即 Effect”语义。
 
 ```
 packages/logix-test/
 ├── src/
 │   ├── index.ts
-│   ├── runtime/
-│   ├── api/
-│   └── utils/
+│   ├── TestRuntime.ts           # runTest（TestContext + Scope）
+│   ├── TestProgram.ts           # runProgram（复用 core ProgramRunner）
+│   ├── Execution.ts
+│   ├── Assertions.ts
+│   ├── Vitest.ts                # itProgram / itProgramResult
+│   └── internal/
+│       ├── api/
+│       ├── runtime/
+│       └── utils/
 │
 ├── test/
 ├── package.json
 └── tsconfig.json
 ```
 
-## 6. Key Implementation Details
+## 6. 关键实现约束
 
-- **Build Toolchain**: Use `tsup` for bundling (ESM + CJS + d.ts).
-- **Public/Internal boundary**: `@logix/core` internal implementation is not a
-  public API (`./internal/*` is blocked by package exports).
-- **Layering rule**: public `src/*.ts` → `src/internal/**` → `src/internal/runtime/core/**`
-  should be a one-way dependency graph.
+- **构建**：各包使用 `tsup` 产出（ESM + CJS + d.ts）。
+- **Public/Internal 边界**：`@logix/core` 的 internal 实现不是公共 API（`./internal/*` 被 exports 阻断）。
+- **分层规则**：public `src/*.ts` → `src/internal/**` → `src/internal/runtime/core/**` 必须保持单向依赖图。
 
-## 7. Dependency Graph (conceptual)
+## 7. 依赖拓扑（概念图）
 
 ```mermaid
 graph TD
-    subgraph "packages/logix-core"
-        Public[src/*.ts (public submodules)]
-        Internal[src/internal/**]
-        Core[src/internal/runtime/core/**]
+  subgraph "packages/logix-core"
+    Public[src/*.ts (public submodules)]
+    Internal[src/internal/**]
+    Core[src/internal/runtime/core/**]
+    Public --> Internal
+    Internal --> Core
+  end
 
-        Public --> Internal
-        Internal --> Core
-    end
-
-    subgraph "packages/logix-react"
-        ReactPublic[src/components + src/hooks]
-        ReactInternal[src/internal/**]
-
-        ReactPublic --> Public
-        ReactPublic --> ReactInternal
-        ReactInternal --> Public
-    end
+  subgraph "packages/logix-react"
+    ReactPublic[src/*.ts (public surface)]
+    ReactInternal[src/internal/**]
+    ReactPublic --> Public
+    ReactPublic --> ReactInternal
+    ReactInternal --> Public
+  end
 ```
 
-## 8. Package Scope
+## 8. 包定位（当前口径）
 
-| Package                        | Status           | Description                                                  |
-| :----------------------------- | :--------------- | :----------------------------------------------------------- |
-| `@logix/core`                  | **Core**         | The pure logic engine (Effect-native runtime).               |
-| `@logix/react`                 | **Core Adapter** | React integration (provider + hooks + strict imports-scope). |
-| `@logix/devtools-react`        | **Tooling**      | Devtools UI + snapshots + time-travel.                       |
-| `@logix/sandbox`               | **Infra**        | Alignment Lab sandbox (compiler + protocol + worker).        |
-| `@logix/test`                  | **Infra**        | Test kit utilities for Effect/runtime-heavy tests.           |
-| `@logix/form` / `@logix/query` | **Domain**       | Domain packages that must degrade to Logix IR over time.     |
+| 包 | 状态 | 说明 |
+| :-- | :-- | :-- |
+| `@logix/core` | Core | 纯引擎（Effect-native runtime） |
+| `@logix/react` | Core Adapter | React 适配（Provider + hooks + strict imports-scope） |
+| `@logix/devtools-react` | Tooling | Devtools UI + 快照/回放消费侧 |
+| `@logix/sandbox` | Infra | Alignment Lab sandbox（compiler/protocol/worker/client） |
+| `@logix/test` | Infra | 测试工具（ProgramRunner 语义对齐） |
+| `@logix/form` / `@logix/query` | Domain | 领域包（长期目标：可完全降解到 Logix IR） |

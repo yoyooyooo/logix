@@ -2,7 +2,7 @@
 
 ## 1.1 ModuleRuntime 源流
 
-实现位置：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`
+实现位置：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts`
 
 - 状态存储：
   - `stateRef: SubscriptionRef<S>` 持有当前 State；
@@ -37,7 +37,7 @@
 
 ## 1.3 Logic.IntentBuilder：run/update/mutate/runFork
 
-实现位置：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`（IntentBuilder / Fluent DSL）
+实现位置：`packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`（IntentBuilder / Fluent DSL）
 
 `makeIntentBuilderFactory(runtime)` 为某个 ModuleRuntime 预绑定 Flow.Api，并为每条源流构造 Fluent IntentBuilder：
 
@@ -60,7 +60,7 @@
 
 ## 1.4 BoundApi：`$.onAction / $.onState / $.on`
 
-实现位置：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts` + `packages/logix-core/src/Bound.ts`
+实现位置：`packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts` + `packages/logix-core/src/Bound.ts`
 
 - 对当前 Module：
   - `BoundApiRuntime.make(shape, runtime)`：
@@ -82,7 +82,7 @@
 
 ## 1.5 Logic 与 ModuleRuntime Scope
 
-实现位置：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts` + `impl/03-module-lifecycle-and-scope.md`
+实现位置：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` + `impl/03-module-lifecycle-and-scope.md`
 
 - Logic 注入与启动：
   - `ModuleTag.live`（或上层 `module.impl.layer`）会调用 `ModuleRuntime.make(initial, { tag, logics, moduleId })`；

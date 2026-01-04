@@ -3,7 +3,7 @@
 > 详见 [`05-runtime-implementation.md#14-effectop-middlewareenv-与统一中间件总线（补充）`](../runtime/05-runtime-implementation.md#14-effectop-middlewareenv-与统一中间件总线（补充）) 与 `specs/001-module-traits-runtime/references/effectop-and-middleware.md`。
 
 - Runtime 在内部使用 EffectOp 作为 Action / Flow / State / Service / Lifecycle 等边界事件的统一模型；
-- 中间件模块（`@logix/core/middleware`）提供了一个标准的 DebugObserver 实现：
+- 中间件模块（`@logix/core/Middleware`）提供了一个标准的 DebugObserver 实现：
   - 作为 EffectOp MiddlewareStack 中的一员，观察所有 EffectOp；
   - 将每条 EffectOp 以 `type = "trace:effectop"` 的事件写入 DebugSink：
     ```ts
@@ -15,7 +15,7 @@
     ```
 - DevTools 可以基于 `trace:effectop` 的**可导出投影**重建 EffectOp Timeline（只保留 Slim/可序列化字段，见 009 的 SlimOp 约束），并与 StateTraitGraph / IntentRule Graph 结合，呈现更完整的“结构 + 时间线”视图。
 
-在实际项目中推荐通过 `@logix/core/middleware` 统一组合运行时中间件：
+在实际项目中推荐通过 `@logix/core/Middleware` 统一组合运行时中间件：
 
 - 推荐使用高层组合入口 `Middleware.withDebug(stack, options?)`，在现有 MiddlewareStack 上一次性追加 DebugLogger（日志）与 DebugObserver（`trace:effectop`）；
 - 当需要精细控制顺序或选择性启用 logger/observer 时，再使用底层原语 `Middleware.applyDebug` / `Middleware.applyDebugObserver` 进行组合；

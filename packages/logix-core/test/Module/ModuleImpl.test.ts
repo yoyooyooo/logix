@@ -7,7 +7,7 @@ import * as Logix from '../../src/index.js'
  * ModuleImpl / withLayer / provide(ModuleImpl) behavior checks:
  * - `ModuleDef.implement({ initial, logics })` returns a `Module` whose `.impl` (ModuleImpl) should support `withLayer`
  *   to inject extra dependencies.
- * - `Logix.provide(ModuleImpl)` should be equivalent to explicitly providing the module + layer.
+ * - `ModuleDef.implement({ imports })` should layer extra Env (Layer or other ModuleImpl.layer) into ModuleImpl.layer.
  */
 
 const ServiceTag = Context.GenericTag<{ label: string }>('@logix/test/Service')

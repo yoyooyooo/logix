@@ -30,6 +30,6 @@
   - StateTraitGraph 与 EffectOp Timeline 结合，构成“字段能力 + Runtime 行为”的双视角：结构（Graph）与事件（EffectOp）。
 
 - **中间件类别与推荐入口**
-  - 中间件公共入口统一收敛在 `@logix/core/middleware` 命名空间：对外暴露 `Middleware` / `MiddlewareStack` 类型别名，并提供少量内置中间件。
+- 中间件公共入口统一收敛在 `@logix/core/Middleware` 命名空间：对外暴露 `Middleware` / `MiddlewareStack` 类型别名，并提供少量内置中间件。
   - 通用中间件（业务无关的横切能力，如监控、限流、熔断、重试、审计、Query 集成等）以 `EffectOp.Middleware` 为基本形态实现：输入一个 `EffectOp`，按需包装或替换 `op.effect`，再返回新的 Effect 程序，不直接操作 DebugSink。
   - 调试/观测中间件通过同一总线桥接到 Debug 事件流：优先使用高层组合入口 `Middleware.withDebug(stack, options?)`，在现有 `MiddlewareStack` 上一次性追加 DebugLogger（日志）与 DebugObserver（`trace:effectop` 事件）；底层的 `Middleware.applyDebug` 与 `Middleware.applyDebugObserver` 作为更细粒度的组合原语保留，用于需要精确控制中间件顺序的高级场景。

@@ -46,10 +46,11 @@ function ModuleTag(id, def) {
   // 1. 为这个 Module 定义一个 Tag：
   //    - 既是 Context.Tag（Effect 里的“键”）；
   //    - 也是 ModuleTag 本身。
-  const tag = Context.GenericTag<
-    any,
+  class ModuleTag extends Context.Tag(`@logix/Module/${id}`)<
+    ModuleTag,
     ModuleRuntime<StateOf<typeof shape>, ActionOf<typeof shape>>
-  >(`@logix/Module/${id}`)
+  >() {}
+  const tag = ModuleTag
 
   const moduleTag = Object.assign(tag, {
     _kind: "ModuleTag",
@@ -126,9 +127,6 @@ useModule(handle: ModuleImpl): ModuleRuntime
 
 内部实现简化后相当于：
 
-````ts
-## 6.2 React 局部模式：基于 ModuleCache 的托管
-
 在 L9「react-use-local-module-runtime-overhaul」实施后，React 适配层已切换为基于 **ModuleCache** 的实现。这解决了 StrictMode 下的资源抖动问题，并支持了 Suspense。
 
 `useModule(Impl)` 的内部实现不再直接操作 Scope，而是委托给 Cache：
@@ -147,7 +145,7 @@ function useModule(impl: ModuleImpl, options) {
 
   return runtime
 }
-````
+```
 
 **ModuleCache 核心机制**：
 

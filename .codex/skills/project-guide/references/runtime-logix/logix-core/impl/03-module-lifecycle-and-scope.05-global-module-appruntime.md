@@ -7,19 +7,24 @@ Global Module 的 Scope 由 **AppRuntime 根 Scope** 管理。本节结合 AppRu
 在 runtime 层，AppRuntime 的定义集中在 `AppRuntime.ts` 中：
 
 ```ts
-// App 模块条目：由 AppRuntime.provide 生成
 export interface AppModuleEntry {
-  readonly module: ModuleTag<any, AnyModuleShape>
+  readonly module: ModuleTag<any, any>
   readonly layer: Layer.Layer<any, any, any>
+  /**
+   * 可选：显式声明“该模块 layer 提供的 ServiceTag 列表”，仅用于 App 装配期的 tag collision 检测与拓扑分析。
+   * 不影响运行时行为；缺省则视为“未声明任何 service tags”。
+   */
+  readonly serviceTags?: ReadonlyArray<Context.Tag<any, any>>
 }
 
 export interface LogixAppConfig<R> {
-  readonly layer: Layer.Layer<R, never, never>                // App 级基础 Env
-  readonly modules: ReadonlyArray<AppModuleEntry>             // 全局模块列表
-  readonly processes: ReadonlyArray<Effect.Effect<void, any, any>> // 长生命周期进程
-  readonly onError?: (
-    cause: import("effect").Cause.Cause<unknown>
-  ) => Effect.Effect<void>
+  readonly layer: Layer.Layer<R, never, never> // App 级基础 Env
+  readonly modules: ReadonlyArray<AppModuleEntry> // 全局模块列表
+  readonly processes: ReadonlyArray<Effect.Effect<void, any, any>> // 长生命周期进程（Process/Link 或 raw Effect fallback）
+  readonly onError?: (cause: import('effect').Cause.Cause<unknown>) => Effect.Effect<void>
+  readonly stateTransaction?: StateTransactionRuntimeConfig
+  readonly concurrencyPolicy?: ConcurrencyPolicy
+  readonly readQueryStrictGate?: ReadQueryStrictGateRuntimeConfig
 }
 
 export interface AppDefinition<R> {
@@ -29,61 +34,26 @@ export interface AppDefinition<R> {
 }
 ```
 
-`makeApp` 的核心逻辑简化后如下：
+`makeApp` 的核心流程（简化且与实现一致）：
 
-```ts
-export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
-  // 1. 校验模块 ID 唯一性
-  const seenIds = new Set<string>()
-  for (const entry of config.modules) {
-    const id = String(entry.module.id)
-    if (seenIds.has(id)) {
-      throw new Error(`Duplicate Module ID: ${id}`)
-    }
-    seenIds.add(id)
-  }
-
-  // 2. 聚合所有模块 Layer
-  const moduleLayers = config.modules.map((entry) => entry.layer)
-  const envLayer = moduleLayers.length > 0
-    ? Layer.mergeAll(config.layer, ...moduleLayers)
-    : config.layer
-
-  // 3. 为 App 构造一个「根 Scope + Env」
-  const finalLayer = Layer.unwrapScoped(
-    Effect.gen(function* () {
-      const scope = yield* Effect.scope
-      const env = yield* Layer.buildWithScope(envLayer, scope)
-
-      // 4. 在同一 Scope 下启动所有 Process（协调器等长期任务）
-      yield* Effect.forEach(config.processes, (process) =>
-        Effect.forkScoped(
-          Effect.provide(
-            config.onError
-              ? Effect.catchAllCause(process, config.onError)
-              : process,
-            env
-          )
-        )
-      )
-
-      // 5. 返回带 Env 的 Layer：后续 runtime 复用这份 Context
-      return Layer.succeedContext(env)
-    })
-  ) as Layer.Layer<R, never, never>
-
-  return {
-    definition: config,
-    layer: finalLayer,
-    makeRuntime: () => ManagedRuntime.make(finalLayer),
-  }
-}
-```
+1. 校验 `modules[].module.id` 唯一性（重复直接抛错）。
+2. `validateTags(config.modules)`：
+   - 总是记录每个模块的 ModuleTag 自身；
+   - 若 entry 携带 `serviceTags`，则也参与 collision 检测（仅元信息，不影响运行时行为）；
+   - 跨模块 key 冲突则抛 `TagCollisionError`（禁止依赖 Layer merge 顺序静默覆盖）。
+3. 构造 `baseLayer`：合并 `config.layer` + runtime_default 配置服务（StateTransaction / ConcurrencyPolicy / ReadQueryStrictGate）+ `ProcessRuntime.layer()` + `RootContextTag`。
+4. 构造 `moduleLayers`：对每个 entry 执行 `Layer.provide(entry.layer, baseLayer)`，避免模块初始化期缺失 App 级 Env。
+5. 构造 `envLayer`：`Layer.mergeAll(baseLayer, ...moduleLayers)`。
+6. 在 `Layer.unwrapScoped(...)` 中：
+   - `Layer.buildWithScope(envLayer, scope)` 并 `Effect.diffFiberRefs(...)` 回灌 FiberRef patch；
+   - 完成 `RootContext.ready`（root provider 的单一事实源）；
+   - 启动 `config.processes`：优先 `ProcessRuntime.install(...)`，raw Effect 作为 fallback 仍会被 `forkScoped`。
+7. 返回 `finalLayer` 并用 `ManagedRuntime.make(finalLayer)` 持有 App Scope。
 
 **关键点：**
 
-- 所有 `modules[].layer`（通常是 `ModuleImpl.layer` 或 `ModuleDef.live(...)` 返回值）会与 App 级基础 `layer` 一起构成一个大的 Layer，挂在 **同一棵 App Scope** 下；
-- 这个 App Scope 由 `ManagedRuntime.make(finalLayer)` 持有：当 AppRuntime 被 `dispose()` 时，这棵 Scope 被关闭，所有全局 ModuleRuntime 和 Process 统一销毁。
+- 所有 `modules[].layer` 会挂在 **同一棵 App Scope** 下；当 AppRuntime `dispose()` 时，Scope 关闭，所有全局 ModuleRuntime 与 app-scope processes 统一销毁。
+- Root provider（`Root.resolve` 等）以 `RootContextTag` 为单一事实源：Env 完全构建后才会 `Deferred.succeed(ready, env)` 解除阻塞，避免初始化阶段“服务缺失噪音”。
 
 ## 5.2 AppRuntime.provide 与 ModuleImpl
 
@@ -142,8 +112,7 @@ function CounterView() {
   - 适合 Auth、全局配置、跨页面共享的 Domain 模块。
 
 - Local Module（通过 `ModuleImpl + useModule(Impl)` 挂载）：
-  - ModuleRuntime 的 Scope 挂在组件自己的局部 Scope 上（见上一节）；
-  - 每次 `useModule(Impl)` 调用都会创建一棵新的 ModuleRuntime，随组件卸载销毁；
+  - ModuleRuntime 的 Scope 由 React 侧资源缓存（ModuleCache）托管：按 key 复用/保活/GC；
   - 适合页面/组件局部状态，不需要注册到 App 层。
 
 这两种模式在实现层共用同一套 `ModuleRuntime.make` / Layer 机制，只是 **Scope 的挂载点不同**：

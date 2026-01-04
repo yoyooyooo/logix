@@ -57,7 +57,7 @@ Logix 的策略是：
    - provenance 固定锚点：`originType="module"`, `originId=<moduleId>`, `originIdKind="explicit"`。
 
 2. **LogicUnit-level contribution**（逻辑单元层）
-   - 入口：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts` 的 `$.traits.declare(...)`
+   - 入口：`packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts` 的 `$.traits.declare(...)`
    - 仅允许在 setup 期调用；run 期调用会抛 `LogicPhaseError(code="traits_declare_in_run")`；
    - provenance 来自“被装配后的逻辑单元身份”（见 3.2）。
 
@@ -116,7 +116,7 @@ LogicUnit provenance 的 `originId` 不是“运行时随机生成”，而是�
 - 装配裁决：`packages/logix-core/src/Module.ts` 的 `mountLogicUnit(...)`
   - id 决策优先级：`options.id` → logic meta 默认 `id` → derived id（基于组合顺序的可复现生成）
   - 并将 `resolvedId/resolvedIdKind/resolvedSource/...` 写回 `LogicUnitMeta`（供运行时读取）
-- 运行时读取：`packages/logix-core/src/internal/runtime/ModuleRuntime.logics.ts` 的 `resolveLogicUnitService(...)`
+- 运行时读取：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.logics.ts` 的 `resolveLogicUnitService(...)`
   - `logicUnitId = meta.resolvedId ?? meta.id ?? derived`
   - `logicUnitIdKind = meta.resolvedIdKind ?? (meta.id ? "explicit" : "derived")`
   - label/path 从 resolved meta 中读取（见下）。

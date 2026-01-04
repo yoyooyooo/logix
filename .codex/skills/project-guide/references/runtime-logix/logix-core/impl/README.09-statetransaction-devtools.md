@@ -8,12 +8,12 @@
   - 任何进入 ModuleRuntime 的状态写入路径（reducer / Trait / middleware / Devtools 操作）都必须在 `runWithStateTransaction(origin, fn)` 包装下执行；
   - `StateTransaction.commit` 负责单次 `SubscriptionRef.set` 与 Debug 事件派发，是“单入口 = 单事务 = 单次提交”的唯一落点。
 - 观测策略实现要点：
-  - `StateTxnInstrumentationLevel = "full" | "light"` 定义在 `src/internal/runtime/core/env.ts` 中，`makeContext` 在构造时解析：
+  - `StateTransactionInstrumentation = "full" | "light"` 定义在 `packages/logix-core/src/internal/runtime/core/env.ts` 中，`makeContext` 在构造时解析：
     - `"full"`：构建 Patch 列表与 initial/final 快照，并在 Debug 事件中携带 `patchCount` / `originKind`；
     - `"light"`：跳过 Patch 与快照，仅在 commit 时写入最终状态；
   - 默认观测级别：
     - `getDefaultStateTxnInstrumentation()` 基于 `NODE_ENV` 选择 dev/test 下 `"full"`、production 下 `"light"`；
-    - RuntimeOptions 与 ModuleImpl 的显式配置通过 `StateTxnRuntimeConfig` 覆盖默认值，优先级为 ModuleImpl > Runtime.make > 默认；
+    - Runtime.make 的 `options.stateTransaction` 会注入 `StateTransactionConfigTag`（service 类型 `StateTransactionRuntimeConfig`）作为 runtime_default；ModuleImpl / ModuleRuntimeOptions 的显式配置覆盖默认值；
   - 实现层避免把 Instrumentation 细节泄漏到业务层 API，只在 `RuntimeOptions` / `Module.implement` 上暴露最小的 `{ instrumentation?: "full" | "light" }` 选项。
 
 ### 1.1 065：txn dirty-set / patch recording 的 id-first（FieldPathId/StepId）
@@ -23,7 +23,7 @@
   - `dirtyAll=false`：输出 `rootIds`（`FieldPathId`，Static IR table index）+ `rootCount/keyHash/keySize` 摘要；消费侧可按 `staticIrDigest` 反解为可读路径。
 - `DirtyAllReason` / `PatchReason`：
   - 必须是稳定枚举；任一不可追踪写入都必须显式降级为 `dirtyAll=true`（禁止“在 roots 存在时忽略 *”）。
-  - 归一化逻辑集中在 `src/internal/field-path.ts`（`normalizePatchReason` / dirty-set downgrade rules）。
+  - 归一化逻辑集中在 `packages/logix-core/src/internal/field-path.ts`（`normalizePatchReason` / dirty-set downgrade rules）。
 - `FieldPathIdRegistry`：
   - 来源：StateTrait build 期产出的 Static IR table（`ConvergeStaticIrExport.fieldPaths`）。
   - 作用域：必须按 runtime instance 隔离（txn 内通过 `getFieldPathIdRegistry()` 注入），禁止进程级单例（避免多实例/多 session 串扰）。
@@ -56,7 +56,7 @@
 
 ## 3. DebugSink → RuntimeDebugEventRef 映射
 
-- `src/internal/runtime/core/DebugSink.ts` 是 Debug 事件聚合的唯一事实源：
+- `packages/logix-core/src/internal/runtime/core/DebugSink.ts` 是 Debug 事件聚合的唯一事实源：
   - `DebugSink.Event` 中的 `state:update` 事件必须在 Runtime 层填充 `txnId` / `patchCount` / `originKind`，否则 Devtools 无法构建完整的事务视图；
   - `toRuntimeDebugEventRef(event)` 负责：
     - 为每条事件分配单调递增的 `eventId` 与 `timestamp`；
@@ -83,4 +83,4 @@
   - `@logix/react` 的 `trace:react-render` 采集应满足：`isDevEnv() || Debug.isDevtoolsEnabled()`；
   - 这样在生产环境也可以在“业务显式开启 Devtools”时开启渲染观测，并保持默认情况下的开销可控。
 
-这一节的目标是帮助后续维护者在阅读 `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`、`ModuleRuntime.ts` 与 `DebugSink.ts` 时快速对齐设计意图，并在扩展 Devtools 契约（例如步级 time-travel、事务录制导出）时避免破坏现有不变量。
+这一节的目标是帮助后续维护者在阅读 `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`、`packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` 与 `packages/logix-core/src/internal/runtime/core/DebugSink.ts` 时快速对齐设计意图，并在扩展 Devtools 契约（例如步级 time-travel、事务录制导出）时避免破坏现有不变量。
