@@ -67,7 +67,6 @@ const formatAxisValues = (values) => {
   if (xs.length <= limit) return `[${xs.join(', ')}]`
   return `[${xs.slice(0, limit).join(', ')}, … +${xs.length - limit} more]`
 }
-
 const budgetKey = (b) => {
   if (!b || typeof b !== 'object') return 'unknownBudget'
   if (typeof b.id === 'string' && b.id.trim()) return b.id
@@ -130,7 +129,6 @@ const getEvidenceValue = (point, evidenceName) => {
   if (e.status !== 'ok') return { ok: false, reason: e.unavailableReason ?? 'evidenceUnavailable' }
   return { ok: true, value: e.value }
 }
-
 const cartesian = (axes) => {
   if (!Array.isArray(axes) || axes.length === 0) return [[]]
   const [head, ...tail] = axes
@@ -269,7 +267,6 @@ const computeAbsoluteStatsAt = (suiteSpec, suiteResult, budget, where, level) =>
     p95Ms: stats.stats.p95Ms,
   }
 }
-
 const renderList = (title, items) => {
   if (!Array.isArray(items) || items.length === 0) return ''
   const shown = items.slice(0, 10)
@@ -307,7 +304,6 @@ md += `\n### What do \`steps\` and \`dirtyRootsRatio\` mean?\n`
 md += `- \`steps\` is the primary axis for this suite: it controls the size of the converge state (more steps = more roots/fields).\n`
 md += `- \`dirtyRootsRatio\` controls how many roots/fields are patched per transaction: \`dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))\`.\n`
 md += `- Metrics are evaluated on the p95 statistic (quick profile uses small n; tail-only failures are often noise unless reproducible).\n`
-
 if (!diff) {
   md += `\n### Diff\n`
   md += `_Diff file not found. Collect or diff step may have failed. Check the Actions logs._\n`
