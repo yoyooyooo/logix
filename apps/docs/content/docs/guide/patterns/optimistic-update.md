@@ -51,14 +51,14 @@ const TodoLogic = TodoDef.logic(($) =>
 
         // 3. 执行实际请求，失败则回滚
         yield* api.toggleTodo(itemId).pipe(
-          Effect.catchAll(() =>
-            Effect.gen(function* () {
-              // 回滚到原状态
-              yield* $.state.update(() => original)
-              // 可以触发 toast 通知
-              yield* Effect.log('Toggle failed, rolled back')
-            }),
-          ),
+	          Effect.catchAll(() =>
+	            Effect.gen(function* () {
+	              // 回滚到原状态（整棵替换：用 update）
+	              yield* $.state.update(() => original)
+	              // 可以触发 toast 通知
+	              yield* Effect.log('Toggle failed, rolled back')
+	            }),
+	          ),
         )
       }),
     )
@@ -97,10 +97,10 @@ yield*
         }
       })
 
-      // 批量请求
-      yield* api.batchToggle(itemIds).pipe(Effect.catchAll(() => $.state.update(() => original)))
-    }),
-  )
+	      // 批量请求
+	      yield* api.batchToggle(itemIds).pipe(Effect.catchAll(() => $.state.update(() => original)))
+	    }),
+	  )
 ```
 
 ## 最佳实践

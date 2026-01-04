@@ -43,7 +43,9 @@ Logix Module 的生命周期与 Effect 的 `Scope` 紧密绑定。
 $.lifecycle.onInitRequired(
   Effect.gen(function* () {
     yield* Effect.log('Module mounted')
-    yield* $.state.update((s) => ({ ...s, ready: true }))
+    yield* $.state.mutate((d) => {
+      d.ready = true
+    })
   }),
 )
 ```

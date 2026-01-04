@@ -91,7 +91,9 @@ export const TodoModule = TodoDef.implement({
             const api = yield* Effect.serviceOption(todo.services.api)
             if (api._tag === "None") return
             const items = yield* api.value.load()
-            yield* $.state.update(() => ({ items: Array.from(items) }))
+            yield* $.state.mutate((d) => {
+              d.items = Array.from(items)
+            })
           }),
         )
       }),

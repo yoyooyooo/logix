@@ -33,7 +33,7 @@ run 里才允许：
 
 - `yield* $.use(Tag)` 读取 Service；
 - `yield* $.onAction(...).run* / $.onState(...).run*` 挂载 watcher；
-- `yield* $.flow.from*`、IntentBuilder 的 `.run* / .run*Task / .update / .mutate / .andThen` 等“会产生运行时行为”的 API。
+- `yield* $.flow.from*`、IntentBuilder 的 `.run* / .run*Task / .update / .mutate 等“会产生运行时行为”的 API。
 
 ### 1.3 最小模板（推荐显式写 setup/run）
 
@@ -41,10 +41,10 @@ run 里才允许：
 export const SomeLogic = SomeDef.logic<MyServiceTag>(($) => ({
   setup: Effect.void, // 或 Effect.sync(() => $.traits.declare(...))
   run: Effect.gen(function* () {
-    const svc = yield* $.use(MyServiceTag)
+    const svc = yield* $.use(MyServiceTag);
     // 在这里挂 watcher/flow 并 yield* 它们
   }),
-}))
+}));
 ```
 
 ## 2) Phase Guard：常见报错与修复
@@ -56,7 +56,7 @@ export const SomeLogic = SomeDef.logic<MyServiceTag>(($) => ({
 - `$.use(...)`
 - `$.onAction* / $.onState*`
 - `$.flow.from*`
-- IntentBuilder 的 `.run* / .run*Task / .update / .mutate / .andThen`
+- IntentBuilder 的 `.run* / .run*Task / .update / .mutate`
 
 修复：把该调用移动到 `run` 段（或旧写法的 Effect 主体）中。
 
@@ -96,12 +96,12 @@ export const SomeLogic = SomeDef.logic<MyServiceTag>(($) => ({
 run: Effect.gen(function* () {
   yield* Effect.all(
     [
-      $.onAction('A').run(() => Effect.void),
+      $.onAction("A").run(() => Effect.void),
       $.onState((s) => s.count).runLatest(() => Effect.void),
     ],
-    { concurrency: 'unbounded' },
-  )
-})
+    { concurrency: "unbounded" }
+  );
+});
 ```
 
 ## 5) 状态写入：优先 `mutate` / `immerReducers`，避免 `update` 触发 dirtyAll 退化
@@ -114,7 +114,7 @@ run: Effect.gen(function* () {
 
 - 高频、局部字段更新：优先 `$.state.mutate((draft) => { ... })`
 - Action → State 的纯同步更新：优先 `Module.make(..., { immerReducers: { ... } })`（或 `$.reducer(tag, Logix.ModuleTag.Reducer.mutate(...))`）
-- 只有在你确实要“整棵替换”时才用 `$.state.update((prev) => next)`（会更容易触发 dirtyAll）
+- 只有在你确实要“整棵替换/回滚”时才用 `$.state.update((prev) => next)`（当前实现会直接降级为 dirtyAll）
 
 补充（067 action surface）：
 

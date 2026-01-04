@@ -68,17 +68,21 @@ export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
   config: {
     source: (s: Logix.StateOf<Sh>) => T | undefined | null
     loader: (val: T) => Logix.Logic.Of<Sh, R, Data, never>
-    onReset: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>
-    onSuccess: (prev: Logix.StateOf<Sh>, data: Data) => Logix.StateOf<Sh>
+    onReset: (draft: Logix.Logic.Draft<Logix.StateOf<Sh>>) => void
+    onSuccess: (draft: Logix.Logic.Draft<Logix.StateOf<Sh>>, data: Data) => void
   },
 ) => {
   return $.onState(config.source).runLatest((val) =>
     Effect.gen(function* () {
-      yield* $.state.update(config.onReset)
+      yield* $.state.mutate((draft) => {
+        config.onReset(draft)
+      })
       if (val == null) return
 
       const data = yield* config.loader(val)
-      yield* $.state.update((s) => config.onSuccess(s, data))
+      yield* $.state.mutate((draft) => {
+        config.onSuccess(draft, data)
+      })
     }),
   )
 }
@@ -87,7 +91,7 @@ export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
 特点：
 
 - 入口为 `runXxxPattern($, config)`，第一个参数为 `BoundApi`；
-- 通过 `$` 使用模块能力（`$.onState / $.state.update`）。
+- 通过 `$` 使用模块能力（`$.onState / $.state.mutate`）。
 
 ## 3. 在 Logic 中消费 Pattern
 
@@ -100,17 +104,22 @@ import { runCascadePattern } from '@/patterns/cascade'
 export const AddressLogic = AddressModule.logic(($) =>
   Effect.gen(function* () {
     // 使用 BoundApi Pattern
-    yield* runCascadePattern($, {
-      source: (s) => s.provinceId,
-      loader: (provinceId) =>
-        Effect.gen(function* () {
-          const api = yield* $.use(AddressApi)
-          return yield* api.getCities(provinceId)
-        }),
-      onReset: (s) => ({ ...s, cities: [], cityId: null }),
-      onSuccess: (s, cities) => ({ ...s, cities }),
-    })
-  }),
+	    yield* runCascadePattern($, {
+	      source: (s) => s.provinceId,
+	      loader: (provinceId) =>
+	        Effect.gen(function* () {
+	          const api = yield* $.use(AddressApi)
+	          return yield* api.getCities(provinceId)
+	        }),
+	      onReset: (d) => {
+	        d.cities = []
+	        d.cityId = null
+	      },
+	      onSuccess: (d, cities) => {
+	        d.cities = cities
+	      },
+	    })
+	  }),
 )
 ```
 

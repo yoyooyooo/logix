@@ -46,6 +46,28 @@ const stableParamsKey = (p) => {
   return `{${keys.map((k) => `${k}=${String(p[k])}`).join('&')}}`
 }
 
+const uniqValuesFromPoints = (suite, key) => {
+  const out = new Set()
+  for (const p of suite?.points ?? []) {
+    const v = p?.params?.[key]
+    if (v === undefined || v === null) continue
+    out.add(v)
+  }
+  return Array.from(out).sort((a, b) => {
+    const aNum = typeof a === 'number' && Number.isFinite(a)
+    const bNum = typeof b === 'number' && Number.isFinite(b)
+    if (aNum && bNum) return a - b
+    return String(a).localeCompare(String(b))
+  })
+}
+
+const formatAxisValues = (values) => {
+  const xs = (values || []).map(String)
+  const limit = 16
+  if (xs.length <= limit) return `[${xs.join(', ')}]`
+  return `[${xs.slice(0, limit).join(', ')}, … +${xs.length - limit} more]`
+}
+
 const budgetKey = (b) => {
   if (!b || typeof b !== 'object') return 'unknownBudget'
   if (typeof b.id === 'string' && b.id.trim()) return b.id
@@ -322,6 +344,7 @@ if (!diff) {
     const headFailures = []
     const headDataIssues = []
     const headBudgetSummaries = []
+    const headBudgetMaps = []
 
     const fmtNum = (n, digits = 4) =>
       typeof n === 'number' && Number.isFinite(n) ? n.toFixed(digits) : 'n/a'
@@ -456,6 +479,108 @@ if (!diff) {
           )}, notApplicable=${code(`${agg.notApplicable}/${agg.total}`)}, maxLevel=${code(counts)}`,
         )
       }
+
+      // If this suite has a single "where axis" (e.g. dirtyRootsRatio), render a compact head-only map
+      // so readers can see exactly which primary-axis level starts failing.
+      const beforeSuite = beforeSuiteById.get(suiteId)
+      const axisCoverageLines = []
+      if (beforeSuite) {
+        for (const axisKey of Object.keys(spec.axes || {})) {
+          const beforeVals = uniqValuesFromPoints(beforeSuite, axisKey)
+          const afterVals = uniqValuesFromPoints(afterSuite, axisKey)
+          if (beforeVals.length === 0 && afterVals.length === 0) continue
+          if (beforeVals.length === afterVals.length && beforeVals.every((v, i) => v === afterVals[i])) continue
+          axisCoverageLines.push(
+            `- ${code(suiteId)} ${code(axisKey)}: base(${beforeVals.length})=${code(
+              formatAxisValues(beforeVals),
+            )}, head(${afterVals.length})=${code(formatAxisValues(afterVals))}`,
+          )
+        }
+      }
+
+      const budgets =
+        (Array.isArray(spec.budgets) && spec.budgets.length > 0
+          ? spec.budgets
+          : Array.isArray(afterSuite.budgets) && afterSuite.budgets.length > 0
+            ? afterSuite.budgets
+            : []) || []
+
+      for (const budget of budgets) {
+        if (!budget || budget.type !== 'relative') continue
+        if (!Array.isArray(axisLevels) || axisLevels.length === 0 || axisLevels.length > 6) continue
+        if (typeof budget.maxRatio !== 'number') continue
+
+        const refAxes = Array.from(
+          new Set([
+            ...Object.keys(parseRef(budget.numeratorRef)),
+            ...Object.keys(parseRef(budget.denominatorRef)),
+          ]),
+        )
+        const otherAxes = Object.keys(spec.axes || {}).filter((k) => k !== spec.primaryAxis && !refAxes.includes(k))
+        if (otherAxes.length !== 1) continue
+
+        const xAxisKey = otherAxes[0]
+        const xAxisLevels = Array.isArray(spec.axes?.[xAxisKey]) ? spec.axes[xAxisKey] : []
+        if (xAxisLevels.length <= 1 || xAxisLevels.length > 32) continue
+
+        const fmtSeries = (values) => values.filter(Boolean).join(', ')
+
+        const rows = []
+        for (const x of xAxisLevels) {
+          const where = { [xAxisKey]: x }
+          const afterRes = computeThresholdMaxLevelRelative(spec, afterSuite, budget, where)
+          if (afterRes.reason && afterRes.reason !== 'budgetExceeded' && afterRes.reason !== undefined) {
+            continue
+          }
+
+          const series = []
+          for (const level of axisLevels) {
+            const at = computeRelativeStatsAt(spec, afterSuite, budget, where, level)
+            if (!at.ok) {
+              series.push(`${String(level)}=n/a`)
+              continue
+            }
+            const over = at.ratioP95 > budget.maxRatio ? '!' : ''
+            series.push(`${String(level)}=${fmtNum(at.ratioP95)}${over}`)
+          }
+
+          const failLevel = afterRes.firstFailLevel
+          let classification = '-'
+          let failDetail = '-'
+          if (failLevel != null) {
+            const at = computeRelativeStatsAt(spec, afterSuite, budget, where, failLevel)
+            if (at.ok) {
+              const medianOver = at.ratioMedian > budget.maxRatio
+              classification = medianOver ? 'systemic' : 'tail-only'
+              failDetail = `p95=${fmtNum(at.ratioP95)} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(
+                at.denominatorP95Ms,
+              )} ms), median=${fmtNum(at.ratioMedian)}, n=${String(at.n)}`
+            }
+          }
+
+          rows.push({
+            x,
+            maxLevel: afterRes.maxLevel,
+            firstFail: afterRes.firstFailLevel,
+            series: fmtSeries(series),
+            classification,
+            failDetail,
+          })
+        }
+
+        if (rows.length === 0) continue
+
+        headBudgetMaps.push({
+          suiteLabel,
+          suiteId,
+          primaryAxis: spec.primaryAxis,
+          axisCoverageLines,
+          budget,
+          xAxisKey,
+          axisLevels,
+          rows,
+        })
+      }
     }
 
     md += `\n### Head budget status (quick warning)\n`
@@ -508,39 +633,40 @@ if (!diff) {
         md += `\n</details>\n`
       }
     }
+
+    if (headBudgetMaps.length > 0) {
+      md += `\n<details>\n<summary>Head maps (where -> maxLevel / firstFail / p95 series)</summary>\n\n`
+      md += `_Each row shows which primary-axis level starts failing for that ${code('where')} slice. ` +
+        `Levels are the discrete test levels (e.g. steps=200/800/2000)._ \n\n`
+
+      for (const m of headBudgetMaps) {
+        md += `**${m.suiteLabel} — ${code(budgetKey(m.budget))}**\n`
+        md += `- where axis: ${code(m.xAxisKey)} (${m.rows.length} rows)\n`
+        md += `- primaryAxis: ${code(m.primaryAxis)} (levels=${code(formatAxisValues(m.axisLevels))})\n`
+        if (Array.isArray(m.axisCoverageLines) && m.axisCoverageLines.length > 0) {
+          md += `\n_Axis coverage (base vs head)_\n`
+          for (const line of m.axisCoverageLines) md += `${line}\n`
+        }
+
+        md += `\n| ${m.xAxisKey} | maxLevel | firstFail | classification | p95 ratio series | fail detail |\n`
+        md += `| --- | --- | --- | --- | --- | --- |\n`
+        for (const r of m.rows) {
+          const maxLevel = r.maxLevel == null ? 'null' : String(r.maxLevel)
+          const firstFail = r.firstFail == null ? '-' : `${m.primaryAxis}=${String(r.firstFail)}`
+          md += `| ${String(r.x)} | ${maxLevel} | ${firstFail} | ${r.classification} | ${r.series} | ${r.failDetail} |\n`
+        }
+        md += `\n`
+      }
+
+      md += `</details>\n`
+    }
   }
 
   const suites = Array.isArray(diff.suites) ? diff.suites : []
   if (summary && summary.slices && (summary.slices.afterOnly > 0 || summary.slices.beforeOnly > 0)) {
     const driftLines = []
 
-    const uniqValues = (suite, key) => {
-      const out = new Set()
-      for (const p of suite?.points ?? []) {
-        const v = p?.params?.[key]
-        if (v === undefined || v === null) continue
-        out.add(v)
-      }
-      return Array.from(out)
-    }
-
-    const sortValues = (values) =>
-      values
-        .slice()
-        .sort((a, b) => {
-          const aNum = typeof a === 'number' && Number.isFinite(a)
-          const bNum = typeof b === 'number' && Number.isFinite(b)
-          if (aNum && bNum) return a - b
-          return String(a).localeCompare(String(b))
-        })
-        .map(String)
-
-    const formatValues = (values) => {
-      const xs = sortValues(values)
-      const limit = 12
-      if (xs.length <= limit) return `[${xs.join(', ')}]`
-      return `[${xs.slice(0, limit).join(', ')}, … +${xs.length - limit} more]`
-    }
+    const formatValues = (values) => formatAxisValues(values)
 
     for (const s of suites) {
       const suiteId = s?.id
@@ -551,8 +677,8 @@ if (!diff) {
       if (!spec || !beforeSuite || !afterSuite) continue
 
       for (const axisKey of Object.keys(spec.axes || {})) {
-        const beforeVals = uniqValues(beforeSuite, axisKey)
-        const afterVals = uniqValues(afterSuite, axisKey)
+        const beforeVals = uniqValuesFromPoints(beforeSuite, axisKey)
+        const afterVals = uniqValuesFromPoints(afterSuite, axisKey)
         const beforeSet = new Set(beforeVals)
         const afterSet = new Set(afterVals)
 
@@ -560,7 +686,13 @@ if (!diff) {
         const removed = beforeVals.filter((v) => !afterSet.has(v))
         if (added.length === 0 && removed.length === 0) continue
 
-        driftLines.push(`- ${code(suiteId)} ${code(axisKey)}: +${code(formatValues(added))} -${code(formatValues(removed))}`)
+        driftLines.push(
+          `- ${code(suiteId)} ${code(axisKey)}: base(${code(beforeVals.length)})=${code(
+            formatValues(beforeVals),
+          )} head(${code(afterVals.length)})=${code(formatValues(afterVals))} +${code(formatValues(added))} -${code(
+            formatValues(removed),
+          )}`,
+        )
       }
     }
 

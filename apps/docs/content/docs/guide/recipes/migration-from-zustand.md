@@ -15,7 +15,7 @@ description: 从 Zustand 迁移到 Logix 的完整指南。
 | Store              | Module                    | 状态容器           |
 | State              | State Schema              | 用 Schema 定义类型 |
 | Actions (in store) | Actions + Reducers/Logic  | 分离声明与实现     |
-| `set(state)`       | `$.state.update/mutate`   | 状态更新           |
+| `set(state)`       | `$.state.mutate`（推荐）  | 状态更新           |
 | `get()`            | `$.state.read`            | 读取状态           |
 | Selectors          | `useSelector(module, fn)` | 派生与订阅         |
 | Middleware         | Logic + Flow              | 异步/副作用        |
@@ -143,13 +143,15 @@ function App() {
 // 在 Logix Logic 中读取 Zustand
 const BridgeLogic = NewModuleDef.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('syncFromZustand').run(() =>
-      Effect.sync(() => {
-        const zustandState = useOldStore.getState()
-        return $.state.update((s) => ({ ...s, legacy: zustandState }))
-      }),
-    )
-  }),
+	    yield* $.onAction('syncFromZustand').run(() =>
+	      Effect.sync(() => {
+	        const zustandState = useOldStore.getState()
+	        return $.state.mutate((d) => {
+	          d.legacy = zustandState
+	        })
+	      }),
+	    )
+	  }),
 )
 ```
 

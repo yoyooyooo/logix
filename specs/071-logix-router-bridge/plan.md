@@ -40,25 +40,47 @@
 
 来源：外部问题清单（`$speckit plan-from-questions`）。
 
+**Batch A（2026-01-03）**：
+
 - Q001（txn 检测契约）：core 通过 `Logix.InternalContracts` 暴露只读的“是否在同步事务窗口内”检查，供 `@logix/router` 显式防御（避免不可实现的设计）。
 - Q002（ExecuteRequest 扩展）：保留封闭 union，但新增通用 `trace` 变体（`name: string` + 载荷），避免 core 为每个领域包枚举具体 kind。
-- Q003（after snapshot）：`trace:router:navigate` 拆为 start/settled 两次事件（同 `navSeq`），after 由订阅异步采样，避免阻塞或记录错误值。
+- Q003（after snapshot）：`trace:router:navigate` 拆为 start/settled 两次事件（同 `navSeq`），after 以异步方式采样与记录，避免阻塞或记录错误值。
 - Q004（Query Params DX）：提供官方 SearchParams utils（不把 Query Params 塞进 `params`），减少业务侧重复解析。
 - Q005（React tearing）：接受 “Logic 可能先于 UI render 观察到新路由” 的短暂撕裂；不强行与 React 周期同步。
 - Q006（back 栈空）：栈空视为不可用错误（结构化失败），不 silent no-op。
 - Q007（intent 反序列化）：在 `contracts/public-api.md` 明确 `NavigationIntent` 的 discriminated union tag，便于 Devtools 识别。
-- 已同步回写：`spec.md`、`data-model.md`、`contracts/public-api.md`、`contracts/diagnostics.md`。
+
+**Batch B（2026-01-04）**：
+
+- Q001（perf 预算）：为 `bench:071:router-navigate` 声明 latency/retained-heap 的硬预算（并要求把首次 baseline 结果回写到 `plan.md`）。
+- Q002（search 语义）：`RouteSnapshot.search` 透传 raw string，不做 querystring 归一化；若顺序变化导致字符串变化，视为一次 snapshot 变化。
+- Q003（routeId/matches 边界）：允许可选扩展字段，但标记为 `unsafe`（引擎可替换性不作保证）；业务 logic 必须能在缺失时退化。
+- Q004（settled 采样粒度）：`trace:router:navigate` 的 `settled` 记录“导航完成后的最终快照（含重定向）”，不以“紧接着的一次变更”作为默认口径。
+- Q005（basepath 归一化）：Binding 必须保证 `RouteSnapshot.pathname` 为 router-local（剥离 `basename/basepath`），使部署路径不影响业务语义。
+- Q006（Memory 夹具复杂度）：`Router.Memory` 需要最小 history stack（entries + index）以覆盖 `back()` 语义；不要求完整 browser history API（`go/forward/length`）对外暴露。
+- Q007（navSeq 可见性）：`navSeq` 仅作为诊断锚点透出（诊断事件内），不注入到 `RouterService` API 返回值中。
+- Q008（InternalContracts 状态）：`Logix.InternalContracts.isInSyncTransaction()` 属于本特性新增内部契约（由 core 暴露），不是既有公共能力。
+- Q009（同步 throw 语义）：Binding 必须捕获底层 router 在 navigate 时的同步 throw / promise rejection，并转换为 `RouterError`（错误通道），不得作为 defect 冒泡。
+
+已同步回写：`plan.md`、`spec.md`、`data-model.md`、`tasks.md`、`contracts/public-api.md`、`contracts/diagnostics.md`。
 
 ## Deepening Notes
 
 - Decision: RouteSnapshot 仅提交/已解析；可选 routeId/matches 必须 Slim 且可序列化（source: spec clarify AUTO）
 - Decision: `search/hash` 保留 `?/#` 前缀或为空字符串（source: spec clarify AUTO）
+- Decision: `RouteSnapshot.search` 为 raw string 透传；不做 querystring 归一化（key 排序/重编码等），字符串变化视为 snapshot 变化（source: Q002）
 - Decision: `params` 键缺失=不存在；值恒为 string（source: spec clarify AUTO）
 - Decision: `changes` 订阅时包含 initial（先 emit current snapshot），避免 init 期间漏变更（source: spec clarify Q009）
 - Decision: `changes` 必须保序，且不得丢最后一次快照（source: spec clarify AUTO）
 - Decision: `navigate` 不返回“导航后的快照”；结果通过 `getSnapshot/changes` 观测（source: spec clarify AUTO）
 - Decision: 未注入 Router 与 txn 窗口内导航均以结构化错误失败（source: spec clarify AUTO）
+- Decision: `trace:router:navigate` 的 `settled` 记录“导航完成后的最终快照（含重定向）”；在不阻塞 `navigate` 的前提下异步采样（source: Q004）
 - Decision: 归因仅覆盖 logic 经 Router Contract 发起的导航；外部 route change 不强行归因（source: spec clarify AUTO）
+- Decision: `RouteSnapshot.pathname` 必须是 router-local（剥离 `basename/basepath`），避免部署路径影响业务语义（source: Q005）
+- Decision: `routeId/matches` 允许作为可选扩展字段，但使用它们会削弱引擎可替换性保证（标记为 unsafe，业务需能缺失退化）（source: Q003）
+- Decision: `Router.Memory` 是测试夹具：提供最小 history stack（entries + index）以覆盖 push/replace/back；不追求完整 browser history API（source: Q006）
+- Decision: `navSeq` 仅用于诊断事件相关性锚点，不作为 `RouterService` API 的公共返回值（source: Q007）
+- Decision: Binding 必须把底层 router 的同步 throw / rejection 转换为 `RouterError`（错误通道），不得 defect 冒泡（source: Q009）
 
 ## Technical Context
 
@@ -72,7 +94,7 @@
 
 - Router contract 未被消费（无 read/changes/navigate）时：不创建常驻监听/轮询/后台 fiber（NFR-001）。
 - diagnostics off：不额外记录事件、不开启重载路径；对 navigate/read/changes 的额外开销应接近零（NFR-002）。
-- diagnostics on：每次 `navigate` 至多写入 1 条 Slim 诊断事件（可序列化），不做大对象图投影（NFR-002）。
+- diagnostics on：每次 `navigate` 至多写入 2 条 Slim 诊断事件（`start` + `settled`），不做大对象图投影（NFR-002）。
 
 **Constraints**:
 
@@ -145,11 +167,27 @@ Minimal（required）
 - `diagnostics=off`：不得分配 `navSeq`、不得调用 TraitLifecycle 的 trace 事件化路径（避免隐式成本）。
 - `diagnostics=on`：单次 navigate 的额外开销必须是 O(1) 且线性随次数增长；首次实现需采集 baseline（time/alloc 至少一项），并以 baseline 为准设定回归阈值（默认 20%）。
 
+**Budgets（numeric, before baseline is recorded）**：
+
+> 说明：以下为“硬预算上限”（避免仅写 O(1) 流于形式）。首次实现完成后，仍需把实测 baseline 回写到本节，并以 baseline 为准设定回归阈值（默认 20%）。
+> 预算口径以 `bench:071:router-navigate` 的 `timePerNavMs = timeMs / navCount` 与 `heapDeltaBytes`（GC 后 retained heap Δ）为准。
+
+- `bench:071:router-navigate` 默认参数（固定用于 baseline 与后续回归）：
+  - `RUNS=30`，`WARMUP_DISCARD=5`，`NAV_COUNT=10_000`，`ENGINE=memory`
+- `diagnostics=off`（hard ceilings）：
+  - `timePerNavMs.p95 <= 0.05ms`
+  - `heapDeltaBytes.p95 <= 64KiB`
+- `diagnostics=on`（hard ceilings）：
+  - `timePerNavMs.p95 <= 0.10ms`
+  - `heapDeltaBytes.p95 <= 256KiB`
+  - 相对开销：`timePerNavMs.p95(on) / timePerNavMs.p95(off) <= 1.20`
+
 **Measurement**（实现阶段必做，见 `tasks.md` 的 perf tasks）：
 
 - envId：`darwin-arm64.node22.21.1`
 - A/B：`diagnostics=off` vs `diagnostics=on`（并对比 router enable/disable 的额外开销）
 - 探路：复用既有 `bench:016:diagnostics-overhead`，并新增 `bench:071:router-navigate`（node 侧模拟 N 次导航）
+- 前提：以 `NODE_OPTIONS=--expose-gc` 运行 bench（否则 `heapDeltaBytes` 指标不可复现/不可比）
 - 产物：把 baseline 数值、采样参数与结论回写到本节（作为后续 PerfDiff 的对照）
 - Failure Policy：若出现明显噪声或无法复现，记录原因并把“补齐可比证据”写入后续 tasks（不要下硬结论）
 

@@ -60,22 +60,23 @@ description: 从运行时视角理解 Logix 的核心抽象。
 	// UserListLogic.ts
 	import { Effect } from 'effect'
 
-	export const LifecycleLogic = UserListDef.logic(($) => {
-	  // 页面初始化：拉取数据（setup-only 注册，Runtime 统一调度执行）
-	  $.lifecycle.onInit(
-	    Effect.gen(function* () {
-      yield* $.state.update((s) => ({ ...s, loading: true }))
-
-      const [users, roles] = yield* Effect.all([UserApi.list(), RoleApi.list()])
-
-      yield* $.state.update((s) => ({
-        ...s,
-        list: users,
-        roles: roles,
-        loading: false,
-      }))
-    }),
-  )
+		export const LifecycleLogic = UserListDef.logic(($) => {
+		  // 页面初始化：拉取数据（setup-only 注册，Runtime 统一调度执行）
+		  $.lifecycle.onInit(
+		    Effect.gen(function* () {
+	      yield* $.state.mutate((d) => {
+	        d.loading = true
+	      })
+	
+	      const [users, roles] = yield* Effect.all([UserApi.list(), RoleApi.list()])
+	
+	      yield* $.state.mutate((d) => {
+	        d.list = users
+	        d.roles = roles
+	        d.loading = false
+	      })
+	    }),
+	  )
 
   // 页面销毁：清理
   $.lifecycle.onDestroy(Effect.log('页面已关闭，资源已清理'))
@@ -94,15 +95,14 @@ description: 从运行时视角理解 Logix 的核心抽象。
 	  Effect.gen(function* () {
     const delete$ = $.flow.fromAction('deleteUser')
 
-    const deleteImpl = (userId: string) =>
-      Effect.gen(function* () {
-        yield* UserApi.delete(userId)
-        yield* $.state.update((s) => ({
-          ...s,
-          list: s.list.filter((u) => u.id !== userId),
-        }))
-        yield* ToastService.success('删除成功')
-      })
+	    const deleteImpl = (userId: string) =>
+	      Effect.gen(function* () {
+	        yield* UserApi.delete(userId)
+	        yield* $.state.mutate((d) => {
+	          d.list = d.list.filter((u) => u.id !== userId)
+	        })
+	        yield* ToastService.success('删除成功')
+	      })
 
     // 运行带防护的流程：
     // - Runtime 会将每次 deleteImpl 执行提升为 EffectOp(kind = "flow")；

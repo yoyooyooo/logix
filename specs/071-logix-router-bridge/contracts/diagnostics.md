@@ -12,7 +12,7 @@
 
 建议事件模型（概念，具体实现可用 DebugSink trace 或 TraitLifecycle 内核事件化）：
 
-- `type: trace:router:navigate`（两阶段：start/settled）
+- `type: trace:router:navigate`（两阶段：start/settled；每次 navigate 至多 2 条）
   - `moduleId/instanceId`：从 Bound API 提取（满足“谁发起”）
   - `data`：
     - `navSeq: number`（per router 实例递增）
@@ -29,6 +29,14 @@
 - 不得把闭包/Effect 本体/大型对象图塞进事件。
 - `RouteSnapshot` 进入事件时必须可序列化；若实现提供了不可序列化字段，应在边界做裁剪。
 - 关联策略：以 `navSeq + phase` 作为相关性锚点：先记录 `phase:'start'`（before+intent），再在观测到后续快照后异步记录 `phase:'settled'`（after），不得阻塞业务逻辑（Q003）。
+- `settled` 采样口径：默认记录“导航完成后的最终快照（含重定向/二次跳转）”，而不是“紧接着的一次快照变化”。实现侧优先使用 Router Engine 的 settle 信号（Promise/事件）；若缺失，则以“观测到变更后等待一个微任务/短暂 quiet window，再取最后一次观测到的快照”的策略近似，并设置最大等待上限以避免悬挂。
+  - 默认常量（MUST, for testability）：`quietWindowMs=0`（一个 microtask）、`settleTimeoutMs=10_000`
+  - 超时语义（MUST）：记录 `phase:'settled'` 且 `status:'error'`，并填充 `error.code='router:settle_timeout'`（`after` 可省略）
+  - 落点（MUST）：`packages/logix-router/src/internal/navigateTrace.ts`
+
+可见性边界：
+
+- `navSeq` 仅作为诊断相关性锚点（存在于诊断事件载荷中），不注入 `RouterService` API 的返回值。
 
 ## 3) 缺失注入/能力不足的错误口径
 

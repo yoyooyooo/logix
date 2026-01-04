@@ -105,10 +105,14 @@
 - params 缺失/不匹配/类型不一致：`params` 始终为对象；键缺失表示“键不存在”；值始终为字符串；不进行隐式数字/布尔转换。
 - base path/嵌套路由导致的 pathname 与 params 组合差异：快照必须保持自洽，避免出现“pathname 已变但 params 仍是旧值”的中间态外泄。
 - `basename/basepath`：`RouteSnapshot.pathname` 对外不包含 base（暴露 router-local pathname），避免部署路径与业务语义耦合。
+- `basename/basepath` 配置错误：若 Binding 无法保证 `pathname` 为 router-local（例如无法剥离 configured basepath），必须以结构化错误失败，避免把部署路径泄露进业务语义。
+- 可选扩展字段（`routeId/matches`）：允许存在，但不属于引擎可替换性的稳定保证面；业务 logic 若依赖它们，必须视为 `unsafe` 并能在缺失时退化（否则等价于“绑定某个引擎/路由表形态”）。
+- Querystring 顺序变化：`RouteSnapshot.search` 透传 raw string，不做归一化；若仅顺序变化导致字符串变化，仍会触发 snapshot change（如需语义级比较，应自行解析后比较）。
 - Router 未注入或被错误注入：必须快速失败并给出可定位信息（错误码/消息），不得默默降级成空行为。
 - `back()` 无历史可回：必须以结构化错误失败（不得 silent no-op），以便业务逻辑可测试可诊断地处理该分支。
 - React 生态 tearing：允许 “Logic 可能先于 UI render 观察到新路由” 的短暂撕裂；不强行与 React 渲染周期同步（保持低成本与可替换性）。
 - 导航引发的业务重入：如果 route change 触发业务逻辑再次导航，系统必须可诊断该因果链，避免难以排查的循环。
+- 底层 router 抛同步错误：底层引擎在 `navigate` 时的同步 throw / promise rejection 必须被捕获并转换为 `RouterError`（错误通道），不得 defect 冒泡（否则会破坏可测试性与诊断链路）。
 
 ## Requirements _(mandatory)_
 
@@ -126,7 +130,7 @@
 
 ### Functional Requirements
 
-- **FR-001**: 系统 MUST 提供 Router Contract 抽象，使 Logix `.logic()` 内可读取当前 Route Snapshot（仅对外暴露已提交/已解析的一致快照；至少包含 pathname/search/hash 与 params；`search/hash` 保留 `?/#` 前缀或为空字符串；Query Params 通过 `search` 获取，官方提供 `Router.SearchParams` utils 避免重复解析样板）。
+- **FR-001**: 系统 MUST 提供 Router Contract 抽象，使 Logix `.logic()` 内可读取当前 Route Snapshot（仅对外暴露已提交/已解析的一致快照；至少包含 pathname/search/hash 与 params；`search/hash` 保留 `?/#` 前缀或为空字符串；Query Params 通过 `search` 获取，官方提供 `Router.SearchParams` utils 避免重复解析样板；`pathname` 必须为 router-local（Binding 需剥离 configured `basename/basepath`，避免部署路径影响业务语义））。
 - **FR-002**: 系统 MUST 提供在 `.logic()` 内订阅路由变化的能力：订阅流在 subscribe 时必须先 emit 一次 current snapshot（initial），随后在每次快照变化后触发；变更通知必须保序，且不得丢最后一次快照；每次触发都必须能读取到一致的最新快照。
 - **FR-003**: 系统 MUST 支持在 `.logic()` 内发起导航意图（至少包含 push、replace、back 三类），且该调用不返回“导航后的快照”；导航结果通过 `getSnapshot/changes` 观测；该能力必须可测试（可被 mock、可断言）。
 - **FR-004**: 系统 MUST 将“由业务 logic 通过 Router Contract 发起的导航意图”与“最终路由快照变化”建立可追溯关联（例如在诊断事件中体现来源与因果链），以支持调试与回放对齐；外部触发的 route change 不要求强行归因到某个 logic。

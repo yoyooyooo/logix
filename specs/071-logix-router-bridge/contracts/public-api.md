@@ -50,8 +50,11 @@ export type NavigationIntent =
 - `getSnapshot` 返回 **已提交/已解析** 的一致快照；不得以 `RouteSnapshot` 形式对外泄露 pending 中间态。
 - `changes` 在 subscribe 时先 emit 一次 current snapshot（initial），随后在快照变化后 emit；变更通知必须保序，且不得丢最后一次快照。
 - `navigate` 不返回“导航后的快照”；导航结果通过 `getSnapshot/changes` 观测。
-- `RouteSnapshot.pathname` 为 router-local pathname（不包含 `basename/basepath`）。
-- `RouteSnapshot.search/hash` 保留 `?/#` 前缀或为空字符串；`params` 为 `Record<string, string>` 且“键缺失=不存在”；Query Params 保持在 `search`，并通过 `Router.SearchParams` 获取（支持 `getAll` 多值）。
+- `RouteSnapshot.pathname` 为 router-local pathname（不包含 `basename/basepath`）；Binding 必须保证部署路径不会泄露进业务语义（必要时剥离 configured basepath，否则以结构化错误失败）。
+- `RouteSnapshot.search/hash` 保留 `?/#` 前缀或为空字符串；`search` 透传 raw string（不做 querystring 归一化）；`params` 为 `Record<string, string>` 且“键缺失=不存在”；Query Params 保持在 `search`，并通过 `Router.SearchParams` 获取（支持 `getAll` 多值）。
+- `navigate/controller.*` 必须把底层 Router Engine 的同步 throw / promise rejection 转换为 `RouterError`（错误通道），不得以 defect 形式冒泡。
+- `routeId/matches` 若存在，仅作为可选扩展字段；业务 logic 使用它们会削弱引擎可替换性保证，必须能在缺失时退化（或显式声明对引擎/路由表的依赖）。
+- `navSeq` 仅用于诊断事件相关性锚点，不作为 `RouterService` API 的公共返回值。
 
 ### 2.2 注入入口（Layer）
 
@@ -69,21 +72,26 @@ builder 是唯一与具体路由库耦合的边界；业务模块/logic 只依�
 ```ts
 // React Router (Data Router): createBrowserRouter(...) / <RouterProvider router={router} />
 export const ReactRouter: {
-  readonly make: (router: unknown, options?: unknown) => RouterService
+  readonly make: (router: unknown, options?: { readonly basepath?: string }) => RouterService
 }
 
 // TanStack Router: createRouter(...)
 export const TanStackRouter: {
-  readonly make: (router: unknown, options?: unknown) => RouterService
+  readonly make: (router: unknown, options?: { readonly basepath?: string }) => RouterService
 }
 ```
+
+`options.basepath`（可选）：
+
+- 用途：当路由库实例无法可靠推断其 `basename/basepath` 时，由调用方显式提供，用于剥离部署路径并确保 `RouteSnapshot.pathname` 为 router-local。
+- 约束：若提供但与实际 pathname 不一致，必须结构化失败（避免把部署路径泄露进业务语义）。
 
 ## 3) SHOULD/MAY（按需）
 
 - `Router.Memory`：纯内存实现（测试夹具）
   - 支持手动 `setSnapshot` 驱动变更
   - 记录 intents，便于断言
-  - 支持最小 history stack（push/replace/back），用于覆盖 `back()` 语义测试
+  - 支持最小 history stack（entries + index；push/replace/back），用于覆盖 `back()` 语义测试（不要求对外暴露 `go/forward/length`）
 - `Router.use($)`：面向 `.logic()` 的推荐入口（绑定 `BoundApi`）
   - 返回值：`RouterService`
   - 语义：在 `navigate/controller.*` 内统一做“事务窗口禁航”的显式防御与诊断事件化（包含 moduleId/instanceId），避免业务侧遗漏
