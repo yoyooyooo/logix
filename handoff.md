@@ -112,3 +112,19 @@
     - 对单一 where 轴支持输出 Mermaid `xychart-beta`（若 GitHub Mermaid 版本支持，会直接渲染柱/线图；否则退化为代码块文本）。
 - `@logix/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
   - `converge.txnCommit.dirtyRootsRatio` 扩展到 15 档（`0.005…1`，提高“在哪个区间开始退化/抖动”的可解释性；代价是 quick 的 point 数显著增加）。
+
+## 最新进展（根因确认：setState 写回会触发 dirty_all/unknown_write，覆盖手工 patch 证据）
+
+- 现象（来自 perf report 的 converge evidence）：
+  - `requestedMode=auto` 但 `executedMode=full`，并出现 `reasons` 包含 `dirty_all,unknown_write`。
+  - 这会让 `auto<=full*1.05` 退化为“full-path + 决策常数开销”的相对门槛；在 `~0.3–2ms` 的量级上，5% 容差是几十微秒，quick(profile runs=10,warmupDiscard=2) 下非常容易被噪声击穿，表现为失败点漂移。
+
+- 直接原因（源码链路）：
+  - `moduleScope.setState(next)` 走 `setStateInternal(next, path='*', ...)` 的 whole-state 颗粒度补丁记录，会在事务内标记 dirtyAll（对应 converge reasons 的 `dirty_all/unknown_write`）。
+  - 随后再调用 `InternalContracts.recordStatePatch(...)` 记录字段级 path 已经晚了：StateTransaction 一旦进入 dirtyAll 分支，后续 field-level patch 会被忽略（以保证语义可预测）。
+
+- 修复方向（让用例真正测到 auto/dirty 的能力，而不是 dirtyAll fallback）：
+  - 在 `packages/logix-react/test/browser/perf-boundaries/converge-runtime.ts` 中：
+    - 给 Module 声明 `reducers`（基于 `Logix.Module.Reducer.mutate`，能通过 `sink` 产出 field-level patchPaths）。
+    - 把 `runConvergeTxnCommit` 从 `getState → bumpReducer → setState + recordStatePatch` 改为 `moduleScope.dispatch({ _tag:'bump', payload: dirtyRoots })`。
+  - 结果（本机验证）：`pnpm perf collect:quick -- --files test/browser/perf-boundaries/converge-steps.test.tsx` 在 hard gate 开启时可稳定通过，且 `executedMode` 会随 `dirtyRootsRatio` 在 `dirty/full` 间切换（例如 `dirtyRootsRatio=0.005` 会执行 `dirty` 并 `affectedSteps=1`）。

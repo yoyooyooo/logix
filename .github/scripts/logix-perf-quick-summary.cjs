@@ -123,6 +123,14 @@ const getMetricStatsMs = (point, metric) => {
   return { ok: true, stats: { n, medianMs, p95Ms } }
 }
 
+const getEvidenceValue = (point, evidenceName) => {
+  if (!point) return { ok: false, reason: 'pointMissing' }
+  const e = Array.isArray(point.evidence) ? point.evidence.find((x) => x?.name === evidenceName) : null
+  if (!e) return { ok: false, reason: 'evidenceMissing' }
+  if (e.status !== 'ok') return { ok: false, reason: e.unavailableReason ?? 'evidenceUnavailable' }
+  return { ok: true, value: e.value }
+}
+
 const cartesian = (axes) => {
   if (!Array.isArray(axes) || axes.length === 0) return [[]]
   const [head, ...tail] = axes
@@ -295,6 +303,11 @@ md += `  - \`maxLevel=2000\`: budget passes at \`steps=200\`, \`800\`, and \`200
 md += `  - \`maxLevel=800\`: budget passes at \`steps=200\` and \`800\`, but fails at \`steps=2000\`.\n`
 md += `  - \`maxLevel=null\`: budget fails already at the first tested level (e.g. \`steps=200\`).\n`
 
+md += `\n### What do \`steps\` and \`dirtyRootsRatio\` mean?\n`
+md += `- \`steps\` is the primary axis for this suite: it controls the size of the converge state (more steps = more roots/fields).\n`
+md += `- \`dirtyRootsRatio\` controls how many roots/fields are patched per transaction: \`dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))\`.\n`
+md += `- Metrics are evaluated on the p95 statistic (quick profile uses small n; tail-only failures are often noise unless reproducible).\n`
+
 if (!diff) {
   md += `\n### Diff\n`
   md += `_Diff file not found. Collect or diff step may have failed. Check the Actions logs._\n`
@@ -447,8 +460,10 @@ if (!diff) {
 
         headFailures.push({
           suiteLabel,
+          suiteId,
           primaryAxis: spec.primaryAxis,
           budget,
+          where,
           whereKey,
           maxLevel,
           firstFailLevel,
@@ -618,6 +633,47 @@ if (!diff) {
           f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`,
         )} classification=${code(f.classification)}\n`
         md += `  - ${f.detail}\n`
+
+        if (f.budget?.type === 'relative' && f.firstFailLevel != null) {
+          const spec = suiteSpecById.get(f.suiteId)
+          const afterSuite = afterSuiteById.get(f.suiteId)
+          const where = f.where && typeof f.where === 'object' ? f.where : {}
+
+          if (spec && afterSuite) {
+            const level = f.firstFailLevel
+            const numeratorRef = parseRef(f.budget.numeratorRef)
+            const denominatorRef = parseRef(f.budget.denominatorRef)
+
+            const numeratorParams = { ...where, ...numeratorRef, [spec.primaryAxis]: level }
+            const denominatorParams = { ...where, ...denominatorRef, [spec.primaryAxis]: level }
+
+            const numeratorPoint = findPoint(afterSuite, numeratorParams)
+            const denominatorPoint = findPoint(afterSuite, denominatorParams)
+
+            const renderEv = (label, p) => {
+              const mode = getEvidenceValue(p, 'converge.executedMode')
+              const executedSteps = getEvidenceValue(p, 'converge.executedSteps')
+              const affectedSteps = getEvidenceValue(p, 'converge.affectedSteps')
+              const reasons = getEvidenceValue(p, 'converge.reasons')
+
+              const parts = []
+              if (mode.ok) parts.push(`executedMode=${code(mode.value)}`)
+              if (executedSteps.ok) parts.push(`executedSteps=${code(executedSteps.value)}`)
+              if (affectedSteps.ok) parts.push(`affectedSteps=${code(affectedSteps.value)}`)
+              if (reasons.ok) parts.push(`reasons=${code(reasons.value)}`)
+
+              if (parts.length === 0) return null
+              return `${label}: ${parts.join(' ')}`
+            }
+
+            const autoLine = renderEv('auto', numeratorPoint)
+            const fullLine = renderEv('full', denominatorPoint)
+            if (autoLine || fullLine) {
+              if (autoLine) md += `  - ${autoLine}\n`
+              if (fullLine) md += `  - ${fullLine}\n`
+            }
+          }
+        }
       }
 
       if (sorted.length > shown.length) {

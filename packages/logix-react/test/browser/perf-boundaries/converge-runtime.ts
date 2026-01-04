@@ -59,6 +59,13 @@ export const makeConvergeRuntime = (
     bump: Schema.Number,
   }
 
+  const bumpReducer = Logix.Module.Reducer.mutate((draft: Record<string, number>, dirtyRoots: number) => {
+    for (let i = 0; i < dirtyRoots; i++) {
+      const k = `b${i}`
+      draft[k] += 1
+    }
+  })
+
   const traits: Record<string, unknown> = {}
   for (let i = 0; i < steps; i++) {
     traits[`d${i}`] = Logix.StateTrait.computed<any, any, any>({
@@ -70,6 +77,7 @@ export const makeConvergeRuntime = (
   const M = Logix.Module.make(`PerfConvergeSteps${steps}`, {
     state: State as any,
     actions: Actions,
+    reducers: { bump: bumpReducer } as any,
     traits: Logix.StateTrait.from(State as any)(traits as any) as any,
   })
 
@@ -82,13 +90,6 @@ export const makeConvergeRuntime = (
   const impl = M.implement({
     initial: initial as any,
     logics: [],
-  })
-
-  const bumpReducer = Logix.Module.Reducer.mutate((draft: Record<string, number>, dirtyRoots: number) => {
-    for (let i = 0; i < dirtyRoots; i++) {
-      const k = `b${i}`
-      draft[k] += 1
-    }
   })
 
   const bumpByIndicesReducer = Logix.Module.Reducer.mutate(
@@ -156,20 +157,7 @@ export const makeConvergeRuntime = (
 export const runConvergeTxnCommit = (rt: ConvergeRuntime, dirtyRoots: number): Effect.Effect<void, never, any> =>
   Effect.gen(function* () {
     const moduleScope = (yield* rt.module.tag) as any
-    yield* Logix.InternalContracts.runWithStateTransaction(
-      moduleScope,
-      { kind: 'perf', name: 'converge:txnCommit' },
-      () =>
-        Effect.gen(function* () {
-          const prev = yield* moduleScope.getState
-          const next = rt.bumpReducer(prev, { _tag: 'bump', payload: dirtyRoots } as any)
-          yield* moduleScope.setState(next)
-
-          for (let i = 0; i < dirtyRoots; i++) {
-            Logix.InternalContracts.recordStatePatch(moduleScope, `b${i}`, 'perf')
-          }
-        }),
-    )
+    yield* moduleScope.dispatch({ _tag: 'bump', payload: dirtyRoots } as any)
   }) as Effect.Effect<void, never, any>
 
 export const runConvergeTxnCommitWithDiagnosticsLevel = (
