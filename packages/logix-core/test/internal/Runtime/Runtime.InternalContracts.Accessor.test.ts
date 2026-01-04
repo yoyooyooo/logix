@@ -56,6 +56,7 @@ const makeInternals = (instanceId: string): RuntimeInternals => ({
     instrumentation: 'light',
     registerReducer: () => {},
     runWithStateTransaction: () => Effect.void,
+    updateDraft: () => {},
     recordStatePatch: () => {},
     recordReplayEvent: () => {},
     applyTransactionSnapshot: () => Effect.void,

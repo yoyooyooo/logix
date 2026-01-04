@@ -438,6 +438,7 @@ describe('Bound API (public)', () => {
         instrumentation: 'light',
         registerReducer: () => {},
         runWithStateTransaction: (_origin, body) => body(),
+        updateDraft: () => {},
         recordStatePatch: () => {},
         recordReplayEvent: () => {},
         applyTransactionSnapshot: () => Effect.void,
