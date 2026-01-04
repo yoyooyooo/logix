@@ -213,13 +213,13 @@ jobs:
                 summary = fs.readFileSync("perf/ci/summary.md", "utf8")
               } catch {}
 
-	              const body =
-	                summary.trim().length > 0
-	                  ? `${marker}\n${summary}`
-	                  : `${marker}\n### logix-perf (quick)\n\n_summary.md not found. Check Actions logs and artifacts._\n`
+              const body =
+                summary.trim().length > 0
+                  ? `${marker}\n${summary}`
+                  : `${marker}\n### logix-perf (quick)\n\n_summary.md not found. Check Actions logs and artifacts._\n`
 
-	              const { owner, repo } = context.repo
-	              const issue_number = pr.number
+              const { owner, repo } = context.repo
+              const issue_number = pr.number
 
               const existing = await github.paginate(github.rest.issues.listComments, {
                 owner,
