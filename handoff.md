@@ -30,6 +30,17 @@
 - 失败截图（路径固定、文件名会随重跑覆盖）：  
   - `packages/logix-react/test/browser/perf-boundaries/__screenshots__/converge-steps.test.tsx/browser-converge-baseline--txnCommit-derive-under-steps---dirty-roots-distributions-1.png`
 
+## 下载 artifact 分析（gh-Linux-X64 · quick）
+
+- artifact（本机下载）：`/Users/yoyo/Downloads/logix-perf-quick-1/`
+  - `before.747818c0.gh-Linux-X64.quick.json`
+  - `after.9a37a9e8.gh-Linux-X64.quick.json`
+  - `diff.747818c0__9a37a9e8.gh-Linux-X64.quick.json`
+- `dirtyRootsRatio=0.05` 的 `after maxLevel=200` 直接原因：
+  - gate 扫描 `steps=[200,800,2000]`，`after` 在 `steps=800` 首次超出 `auto<=full*1.05` 就会停，因此 `maxLevel=200`。
+  - 该 slice 在 `steps=2000` 实际又是通过的（`p95(auto/full)≈0.973`），属于“中间档位 p95 尾部爆点”，更像 jitter/偶发慢路径，不是随 steps 单调变差。
+  - 对比 `steps=800` 的 median：`after median(auto/full)≈0.992`（未超标），说明主要是 p95 尾部被拉高。
+
 ## 关键发现（为什么会 flaky）
 
 - 预算是相对门槛：`auto<=full*1.05`，而 `runtime.txnCommitMs` 的 p95 量级在 `~0.4–0.9ms`，5% 的容差只剩几十微秒，容易被浏览器/机器噪声击穿。
@@ -88,3 +99,16 @@
 
 - `origin/dev` 已包含 `0a8ee5a6`（harness 相邻采样等修复），但 **`.github/workflows/logix-perf-quick.yml` 的止血改动当时未提交**，导致 Action 仍在跑旧 workflow，collect 阶段 hard gate 继续把 job 打挂（报错栈里指向 `.codex/skills/logix-perf-evidence/scripts/collect.ts`）。
 - 止血方式：在 workflow 的 `Collect (base/head)` step 对 `pnpm perf collect:quick` 加前缀 `VITE_LOGIX_PERF_HARD_GATES=off`，让 quick 专注 “采集+diff(triage)”，不再因 ratio flake 直接失败。
+
+## 最新进展（CI quick：评论可读性/可解释性）
+
+- `.github/workflows/logix-perf-quick.yml`
+  - `Collect (base/head)` 默认加 `VITE_LOGIX_PERF_HARD_GATES=off`，避免 quick 采集被 flake 中断（保证 before/after/diff 都能产出）。
+  - `permissions` 增加 `pull-requests: write`；遇到 `Resource not accessible by integration` 的 403 时跳过评论并保持 job 绿。
+  - PR comment 的 `summary.md` 输出增强（纯英文）：
+    - `maxLevel/null` 解释
+    - top regressions/improvements
+    - budget details（从 points 计算 maxLevel/firstFail + p95(auto)/p95(full) ratio）
+    - 对单一 where 轴支持输出 Mermaid `xychart-beta`（若 GitHub Mermaid 版本支持，会直接渲染柱/线图；否则退化为代码块文本）。
+- `@logix/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
+  - `converge.txnCommit.dirtyRootsRatio` 扩展到 15 档（`0.005…1`，提高“在哪个区间开始退化/抖动”的可解释性；代价是 quick 的 point 数显著增加）。
