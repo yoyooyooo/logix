@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import React from 'react'
-import { describe, expect, it } from 'vitest'
-import { render, fireEvent, screen, waitFor } from '@testing-library/react'
+import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { render, fireEvent, screen, waitFor, cleanup } from '@testing-library/react'
 import { Effect, Schema, Layer } from 'effect'
 import * as Logix from '@logix/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
 import { LogixDevtools } from '../../src/LogixDevtools.js'
-import { devtoolsLayer } from '../../src/DevtoolsLayer.js'
+import { devtoolsLayer, clearDevtoolsEvents, clearDevtoolsSnapshotOverride } from '../../src/DevtoolsLayer.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
 
 // jsdom does not provide a stable `matchMedia` by default; add a minimal polyfill for tests
@@ -24,6 +24,31 @@ if (typeof window !== 'undefined') {
     dispatchEvent: () => false,
   })
 }
+
+const dispatchDevtools = async (action: any) => {
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch(action) as Effect.Effect<any, any, any>)
+}
+
+beforeEach(async () => {
+  clearDevtoolsSnapshotOverride()
+  clearDevtoolsEvents()
+
+  await dispatchDevtools({
+    _tag: 'updateSettings',
+    payload: {
+      mode: 'deep',
+      showTraitEvents: true,
+      showReactRenderEvents: true,
+      sampling: { reactRenderSampleRate: 1 },
+    },
+  })
+})
+
+afterEach(() => {
+  cleanup()
+  clearDevtoolsSnapshotOverride()
+  clearDevtoolsEvents()
+})
 
 // A minimal Counter Module used to drive the Devtools timeline and produce EffectOp / Debug events.
 const DEFERRED_STEPS = 64
