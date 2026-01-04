@@ -86,6 +86,21 @@ const getMetricP95Ms = (point, metric) => {
   return { ok: true, p95Ms: m.stats?.p95Ms }
 }
 
+const getMetricStatsMs = (point, metric) => {
+  if (!point) return { ok: false, reason: 'pointMissing' }
+  if (point.status !== 'ok') return { ok: false, reason: point.reason ?? point.status ?? 'notOk' }
+  const m = Array.isArray(point.metrics) ? point.metrics.find((x) => x.name === metric) : null
+  if (!m) return { ok: false, reason: 'metricMissing' }
+  if (m.status !== 'ok') return { ok: false, reason: m.unavailableReason ?? 'metricUnavailable' }
+  const n = m.stats?.n
+  const medianMs = m.stats?.medianMs
+  const p95Ms = m.stats?.p95Ms
+  if (typeof n !== 'number' || typeof medianMs !== 'number' || typeof p95Ms !== 'number') {
+    return { ok: false, reason: 'statsMissing' }
+  }
+  return { ok: true, stats: { n, medianMs, p95Ms } }
+}
+
 const cartesian = (axes) => {
   if (!Array.isArray(axes) || axes.length === 0) return [[]]
   const [head, ...tail] = axes
@@ -178,6 +193,38 @@ const computeRelativeRatioAt = (suiteSpec, suiteResult, budget, where, level) =>
   }
 }
 
+const computeRelativeStatsAt = (suiteSpec, suiteResult, budget, where, level) => {
+  const primary = suiteSpec.primaryAxis
+  const numeratorRef = parseRef(budget.numeratorRef)
+  const denominatorRef = parseRef(budget.denominatorRef)
+  const numeratorParams = { ...(where || {}), ...numeratorRef, [primary]: level }
+  const denominatorParams = { ...(where || {}), ...denominatorRef, [primary]: level }
+
+  const numeratorPoint = findPoint(suiteResult, numeratorParams)
+  const denominatorPoint = findPoint(suiteResult, denominatorParams)
+  if (!numeratorPoint) return { ok: false, reason: 'missingNumerator' }
+  if (!denominatorPoint) return { ok: false, reason: 'missingDenominator' }
+
+  const numeratorStats = getMetricStatsMs(numeratorPoint, budget.metric)
+  const denominatorStats = getMetricStatsMs(denominatorPoint, budget.metric)
+  if (!numeratorStats.ok) return { ok: false, reason: `numerator:${numeratorStats.reason}` }
+  if (!denominatorStats.ok) return { ok: false, reason: `denominator:${denominatorStats.reason}` }
+  if (!(denominatorStats.stats.p95Ms > 0) || !(denominatorStats.stats.medianMs > 0)) {
+    return { ok: false, reason: 'denominatorZero' }
+  }
+
+  return {
+    ok: true,
+    n: Math.min(numeratorStats.stats.n, denominatorStats.stats.n),
+    numeratorP95Ms: numeratorStats.stats.p95Ms,
+    denominatorP95Ms: denominatorStats.stats.p95Ms,
+    numeratorMedianMs: numeratorStats.stats.medianMs,
+    denominatorMedianMs: denominatorStats.stats.medianMs,
+    ratioP95: numeratorStats.stats.p95Ms / denominatorStats.stats.p95Ms,
+    ratioMedian: numeratorStats.stats.medianMs / denominatorStats.stats.medianMs,
+  }
+}
+
 const renderList = (title, items) => {
   if (!Array.isArray(items) || items.length === 0) return ''
   const shown = items.slice(0, 10)
@@ -257,6 +304,65 @@ if (!diff) {
   )
 
   const suites = Array.isArray(diff.suites) ? diff.suites : []
+  if (summary && summary.slices && (summary.slices.afterOnly > 0 || summary.slices.beforeOnly > 0)) {
+    const driftLines = []
+
+    const uniqValues = (suite, key) => {
+      const out = new Set()
+      for (const p of suite?.points ?? []) {
+        const v = p?.params?.[key]
+        if (v === undefined || v === null) continue
+        out.add(v)
+      }
+      return Array.from(out)
+    }
+
+    const sortValues = (values) =>
+      values
+        .slice()
+        .sort((a, b) => {
+          const aNum = typeof a === 'number' && Number.isFinite(a)
+          const bNum = typeof b === 'number' && Number.isFinite(b)
+          if (aNum && bNum) return a - b
+          return String(a).localeCompare(String(b))
+        })
+        .map(String)
+
+    const formatValues = (values) => {
+      const xs = sortValues(values)
+      const limit = 12
+      if (xs.length <= limit) return `[${xs.join(', ')}]`
+      return `[${xs.slice(0, limit).join(', ')}, … +${xs.length - limit} more]`
+    }
+
+    for (const s of suites) {
+      const suiteId = s?.id
+      if (!suiteId) continue
+      const spec = suiteSpecById.get(suiteId)
+      const beforeSuite = beforeSuiteById.get(suiteId)
+      const afterSuite = afterSuiteById.get(suiteId)
+      if (!spec || !beforeSuite || !afterSuite) continue
+
+      for (const axisKey of Object.keys(spec.axes || {})) {
+        const beforeVals = uniqValues(beforeSuite, axisKey)
+        const afterVals = uniqValues(afterSuite, axisKey)
+        const beforeSet = new Set(beforeVals)
+        const afterSet = new Set(afterVals)
+
+        const added = afterVals.filter((v) => !beforeSet.has(v))
+        const removed = beforeVals.filter((v) => !afterSet.has(v))
+        if (added.length === 0 && removed.length === 0) continue
+
+        driftLines.push(`- ${code(suiteId)} ${code(axisKey)}: +${code(formatValues(added))} -${code(formatValues(removed))}`)
+      }
+    }
+
+    if (driftLines.length > 0) {
+      md += `\n### Coverage drift (axes values)\n`
+      md += `_New/removed axis values in head vs base; not counted as regressions/improvements._\n\n`
+      md += `${driftLines.join('\n')}\n`
+    }
+  }
   const regressive = []
   const progressive = []
   const notes = []
@@ -358,7 +464,49 @@ if (!diff) {
           : computeThresholdMaxLevelRelative(suiteSpecResolved, afterSuite, budget, where)
     }
 
-    return `- ${suiteLabel}: ${code(budgetKey(budget))} ${code(whereKey)}\n  - ${describe('before', beforeRes)}\n  - ${describe('after', afterRes)}`
+    let extra = ''
+    if (
+      budget &&
+      budget.type === 'relative' &&
+      beforeSuite &&
+      afterSuite &&
+      Array.isArray(axisLevels) &&
+      axisLevels.length > 0 &&
+      typeof budget.maxRatio === 'number'
+    ) {
+      const fmtRatio = (n) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(4) : 'n/a')
+      const fmtMs = (n) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(3) : 'n/a')
+
+      const first = axisLevels[0]
+      const mid = axisLevels[Math.floor(axisLevels.length / 2)]
+      const last = axisLevels[axisLevels.length - 1]
+      const levelsToShow = Array.from(new Set([first, mid, last]))
+
+      const series = []
+      for (const level of levelsToShow) {
+        const b = computeRelativeStatsAt(suiteSpecResolved, beforeSuite, budget, where, level)
+        const a = computeRelativeStatsAt(suiteSpecResolved, afterSuite, budget, where, level)
+        if (!b.ok || !a.ok) continue
+        const over = a.ratioP95 > budget.maxRatio ? ' (over)' : ''
+        series.push(`${primary}=${String(level)}: ${fmtRatio(b.ratioP95)}→${fmtRatio(a.ratioP95)}${over}`)
+      }
+      if (series.length > 0) {
+        extra += `\n  - p95 ratio series (auto/full): ${series.join(', ')}`
+      }
+
+      const delta = entry.delta ?? 0
+      const focus = delta < 0 ? { side: 'after', res: afterRes, suite: afterSuite } : { side: 'before', res: beforeRes, suite: beforeSuite }
+      const failLevel = focus.res?.firstFailLevel
+      if (failLevel != null) {
+        const at = computeRelativeStatsAt(suiteSpecResolved, focus.suite, budget, where, failLevel)
+        if (at.ok) {
+          const over = at.ratioP95 > budget.maxRatio ? ' (over)' : ''
+          extra += `\n  - ${focus.side} fail @ ${primary}=${String(failLevel)}: p95 ratio=${fmtRatio(at.ratioP95)}${over} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms), median ratio=${fmtRatio(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms), n=${code(at.n)}`
+        }
+      }
+    }
+
+    return `- ${suiteLabel}: ${code(budgetKey(budget))} ${code(whereKey)}\n  - ${describe('before', beforeRes)}\n  - ${describe('after', afterRes)}${extra}`
   }
 
   if (regressive.length > 0) {
