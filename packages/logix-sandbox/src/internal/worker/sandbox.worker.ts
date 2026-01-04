@@ -18,8 +18,8 @@ import type {
   ErrorEvent,
   ReadyEvent,
   CompileResultEvent,
-} from '../../protocol.js'
-import type { LogEntry, TraceSpan, MockManifest, HttpMockRule, UiIntentPacket } from '../../types.js'
+} from '../../Protocol.js'
+import type { LogEntry, TraceSpan, MockManifest, HttpMockRule, UiIntentPacket } from '../../Types.js'
 
 const VERSION = '0.2.0'
 const DEFAULT_WASM_URL = '/esbuild.wasm'

@@ -6,7 +6,7 @@ import type {
   RunCommand,
   TerminateCommand,
   UiCallbackCommand,
-} from './protocol.js'
+} from './Protocol.js'
 import {
   isReadyEvent,
   isCompileResultEvent,
@@ -16,7 +16,7 @@ import {
   isUiCallbackAckEvent,
   isErrorEvent,
   isCompleteEvent,
-} from './protocol.js'
+} from './Protocol.js'
 import type {
   KernelId,
   KernelRegistry,
@@ -30,7 +30,7 @@ import type {
   SandboxStatus,
   MockManifest,
   UiIntentPacket,
-} from './types.js'
+} from './Types.js'
 
 type KernelRunOptions = {
   readonly kernelId?: KernelId

@@ -1,4 +1,4 @@
-import type { LogEntry, SandboxErrorInfo, TraceSpan, MockManifest, UiIntentPacket } from './types.js'
+import type { LogEntry, SandboxErrorInfo, TraceSpan, MockManifest, UiIntentPacket } from './Types.js'
 
 // Commands (Host → Worker)
 export interface InitCommand {

@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Stream } from 'effect'
-import { createSandboxClient, type SandboxClient, type SandboxClientConfig } from './client.js'
+import { createSandboxClient, type SandboxClient, type SandboxClientConfig } from './Client.js'
 import type {
   SandboxStatus,
   LogEntry,
@@ -11,7 +11,7 @@ import type {
   KernelId,
   KernelVariant,
   DiagnosticsLevel,
-} from './types.js'
+} from './Types.js'
 
 export interface SandboxClientService {
   readonly init: () => Effect.Effect<void, unknown>

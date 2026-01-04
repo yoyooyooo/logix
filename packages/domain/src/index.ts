@@ -1,2 +1,2 @@
-export * from './crud.js'
-export type * from './crud.js'
+export * from './Crud.js'
+export type * from './Crud.js'
