@@ -55,7 +55,7 @@ test(
             const key = `${convergeMode}:${steps}`
             const cached =
               runtimeByKey.get(key) ??
-              makeConvergeRuntime(steps, convergeMode, { captureDecision: convergeMode === 'auto' })
+              makeConvergeRuntime(steps, convergeMode, { captureDecision: true })
             runtimeByKey.set(key, cached)
 
             const start = performance.now()
@@ -74,6 +74,35 @@ test(
             const end = performance.now()
             const decision = cached.getLastConvergeDecision() as any
 
+            const stepStats = (decision && typeof decision === 'object' ? decision.stepStats : undefined) as any
+
+            const totalSteps =
+              typeof stepStats?.totalSteps === 'number' && Number.isFinite(stepStats.totalSteps)
+                ? stepStats.totalSteps
+                : { unavailableReason: 'decisionMissing' }
+
+            const executedSteps =
+              typeof stepStats?.executedSteps === 'number' && Number.isFinite(stepStats.executedSteps)
+                ? stepStats.executedSteps
+                : { unavailableReason: 'decisionMissing' }
+
+            const affectedSteps =
+              typeof stepStats?.affectedSteps === 'number' && Number.isFinite(stepStats.affectedSteps)
+                ? stepStats.affectedSteps
+                : typeof stepStats?.totalSteps === 'number' && Number.isFinite(stepStats.totalSteps)
+                  ? stepStats.totalSteps
+                  : { unavailableReason: 'decisionMissing' }
+
+            const executedMode =
+              typeof decision?.executedMode === 'string' && decision.executedMode.length > 0
+                ? decision.executedMode
+                : { unavailableReason: 'decisionMissing' }
+
+            const reasons =
+              Array.isArray(decision?.reasons) && decision.reasons.every((x: unknown) => typeof x === 'string')
+                ? (decision.reasons as string[]).join(',')
+                : { unavailableReason: 'decisionMissing' }
+
             return {
               metrics: {
                 'runtime.txnCommitMs': (end - start) / SAMPLE_BATCH,
@@ -83,6 +112,13 @@ test(
                       ? decision.decisionDurationMs
                       : { unavailableReason: 'decisionMissing' }
                     : { unavailableReason: 'notApplicable' },
+              },
+              evidence: {
+                'converge.executedMode': executedMode,
+                'converge.executedSteps': executedSteps,
+                'converge.affectedSteps': affectedSteps,
+                'converge.totalSteps': totalSteps,
+                'converge.reasons': reasons,
               },
             }
           },
