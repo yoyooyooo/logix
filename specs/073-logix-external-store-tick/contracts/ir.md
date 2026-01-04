@@ -1,0 +1,98 @@
+# Contracts: IR（ExternalStoreTrait + DeclarativeLinkIR）
+
+> 本文约束本特性的“统一最小 IR”落点：Static IR 可导出、可比对、可冲突检测；Dynamic Trace 只携带 Slim 引用信息。
+
+## 1) Static IR：ExternalStoreTrait
+
+ExternalStoreTrait 必须进入 `StateTraitProgram` 的静态图谱（Graph/Plan），以便：
+
+- 被 TickScheduler 识别为“强一致输入节点”；
+- 可进行依赖闭包与增量调度（未来）；
+- 可被 Devtools/Alignment Lab 解释（不可成为黑盒）。
+
+最小字段：
+
+- `traitId` / `storeId`（稳定标识）
+- `targetFieldPath`（写回路径）
+- `priority` / `coalesceWindowMs`（调度元数据，可选）
+- `meta`（可序列化白名单）
+
+## 2) Static IR：DeclarativeLinkIR（跨模块依赖）
+
+DeclarativeLinkIR 是 TickScheduler 可识别的跨模块依赖表达。它必须满足：
+
+- **依赖事实源唯一**：reads 只能来自 ReadQuery/static deps（可 gate），禁止从闭包捕获/动态路径推导“隐式依赖”。
+- **写侧可追踪且受限**：writes 只允许降解为可追踪写入（`dispatch`），禁止 direct state write（避免通过 IR 描述写逃逸）。
+- **可裁剪**：IR 必须可 JSON 序列化与裁剪（大对象图、闭包、Effect 本体不得进入 IR）。
+
+### 2.1 实现侧 Type Definition（落点）
+
+- `StateTraitProgram`：`packages/logix-core/src/internal/state-trait/model.ts`
+- `StaticIrNode`（state-trait 的通用静态节点形状，含 reads/writes）：`packages/logix-core/src/internal/state-trait/ir.ts`
+- `ReadQueryStaticIr`（selector readsDigest）：`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`（public re-export：`packages/logix-core/src/ReadQuery.ts`）
+- `DeclarativeLinkIR`（本特性新增，internal）：`packages/logix-core/src/internal/runtime/core/DeclarativeLinkIR.ts`
+
+### 2.2 DeclarativeLinkIR（V1，JSON 可序列化）
+
+> 说明：DeclarativeLinkIR **不是用户输入**，而是运行时/编译器在受控 builder 下生成的 internal IR；因此可以保证写侧不逃逸。
+
+```ts
+type ReadsDigest = { readonly count: number; readonly hash: number }
+
+type DeclarativeLinkNodeId = string
+
+type DeclarativeLinkIR = {
+  readonly version: 1
+  readonly nodes: ReadonlyArray<
+    | {
+        readonly id: DeclarativeLinkNodeId
+        readonly kind: "readQuery"
+        readonly moduleId: string
+        readonly instanceKey?: string
+        readonly selectorId: string
+        readonly readsDigest: ReadsDigest
+      }
+    | {
+        readonly id: DeclarativeLinkNodeId
+        readonly kind: "dispatch"
+        readonly moduleId: string
+        readonly instanceKey?: string
+        readonly actionTag: string
+      }
+  >
+  readonly edges: ReadonlyArray<{ readonly from: DeclarativeLinkNodeId; readonly to: DeclarativeLinkNodeId }>
+}
+```
+
+### 2.3 跨内核复现约束（core-ng）
+
+DeclarativeLinkIR 只描述“依赖图形状”，不携带运行时语义。要在不同内核（例如 `core-ng`）中复现等价的强一致行为，除了 IR 形状，还必须满足以下 **Runtime Service 语义约束**（本特性视为合同的一部分）：
+
+- tick 边界：默认 microtask；允许显式 `Runtime.batch(...)` 提供更强边界。
+- lanes：区分 urgent/nonUrgent；预算超限只允许推迟 nonUrgent；urgent 遇到循环/超限必须安全中断（避免冻结 UI），并输出可解释证据。
+- budget 与降级：fixpoint 预算（ms/steps/txnCount）一致；降级必须通过 `trace:tick.result.stable=false`（含 degradeReason）可解释。
+- token 不变量：`tickSeq`（或等价 token）未变化时，对外可见 snapshot 不得变化；变化时订阅者必须最终收到通知。
+- 事务窗口纪律：事务窗口禁 IO；写入必须可追踪（dispatch/txn），禁止 direct write 逃逸。
+
+结论：IR 不是唯一事实源；异构内核要达到语义等价，必须实现同一组 TickScheduler/RuntimeStore 服务合同（见 `plan.md` 与 `contracts/diagnostics.md`）。
+
+## 3) Dynamic Trace：只携带锚点与摘要
+
+Dynamic Trace（如 `trace:tick`）必须遵守 Slim 原则：
+
+- 只携带 `tickSeq` 与必要锚点（moduleId/instanceId/txnSeq/opSeq）；
+- 若需要展示 IR 详情，必须通过 Static IR export（digest 引用）或 on-demand 拉取，而不是把 IR 塞进事件流。
+
+## 4) Export / Evidence（Alignment Lab）
+
+本特性要求能导出：
+
+- ExternalStoreTrait 的静态表（storeId/targetFieldPath/调度元信息）
+- DeclarativeLinkIR（nodes/edges + readsDigest）
+
+导出必须：
+
+- JSON 可序列化；
+- 带版本号；
+- 带 digest（用于比对与缓存）；
+- 能在 Node.js/browsers 的 trial-run 中复用（不依赖 process-global 单例）。
