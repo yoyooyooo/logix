@@ -140,6 +140,25 @@ const cartesian = (axes) => {
   return out
 }
 
+const pickChartLevels = (axisLevels) => {
+  if (!Array.isArray(axisLevels) || axisLevels.length === 0) return []
+  if (axisLevels.length <= 6) return axisLevels.slice()
+  const first = axisLevels[0]
+  const mid = axisLevels[Math.floor(axisLevels.length / 2)]
+  const last = axisLevels[axisLevels.length - 1]
+  return Array.from(new Set([first, mid, last]))
+}
+
+const getRelativeMinDeltaMs = (budget) => {
+  const v = budget?.minDeltaMs
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0
+}
+
+const isRelativeBudgetExceeded = (budget, ratio, deltaMs) => {
+  const minDeltaMs = getRelativeMinDeltaMs(budget)
+  return ratio > budget.maxRatio && deltaMs > minDeltaMs
+}
+
 const computeThresholdMaxLevelAbsolute = (suiteSpec, suiteResult, budget, where) => {
   const primary = suiteSpec.primaryAxis
   const axisLevels = suiteSpec.axes?.[primary] ?? []
@@ -184,7 +203,12 @@ const computeThresholdMaxLevelRelative = (suiteSpec, suiteResult, budget, where)
     if (!(denominatorP95.p95Ms > 0)) return { maxLevel, firstFailLevel: level, reason: 'denominatorZero' }
 
     const ratio = numeratorP95.p95Ms / denominatorP95.p95Ms
-    if (ratio <= budget.maxRatio) {
+    const deltaMs = numeratorP95.p95Ms - denominatorP95.p95Ms
+    const minDeltaMs =
+      typeof budget.minDeltaMs === 'number' && Number.isFinite(budget.minDeltaMs) ? budget.minDeltaMs : 0
+    const overBudget = ratio > budget.maxRatio && deltaMs > minDeltaMs
+
+    if (!overBudget) {
       maxLevel = level
       continue
     }
@@ -248,8 +272,11 @@ const computeRelativeStatsAt = (suiteSpec, suiteResult, budget, where, level) =>
     denominatorP95Ms: denominatorStats.stats.p95Ms,
     numeratorMedianMs: numeratorStats.stats.medianMs,
     denominatorMedianMs: denominatorStats.stats.medianMs,
+    deltaP95Ms: numeratorStats.stats.p95Ms - denominatorStats.stats.p95Ms,
+    deltaMedianMs: numeratorStats.stats.medianMs - denominatorStats.stats.medianMs,
     ratioP95: numeratorStats.stats.p95Ms / denominatorStats.stats.p95Ms,
     ratioMedian: numeratorStats.stats.medianMs / denominatorStats.stats.medianMs,
+    minDeltaMs: getRelativeMinDeltaMs(budget),
   }
 }
 
@@ -303,7 +330,7 @@ md += `  - \`maxLevel=null\`: budget fails already at the first tested level (e.
 md += `\n### What do \`steps\` and \`dirtyRootsRatio\` mean?\n`
 md += `- \`steps\` is the primary axis for this suite: it controls the size of the converge state (more steps = more roots/fields).\n`
 md += `- \`dirtyRootsRatio\` controls how many roots/fields are patched per transaction: \`dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))\`.\n`
-md += `- Metrics are evaluated on the p95 statistic (quick profile uses small n; tail-only failures are often noise unless reproducible).\n`
+md += `- Metrics are evaluated on the p95 statistic (\`n = runs - warmupDiscard\`; tail-only failures are often noise unless reproducible).\n`
 if (!diff) {
   md += `\n### Diff\n`
   md += `_Diff file not found. Collect or diff step may have failed. Check the Actions logs._\n`
@@ -428,14 +455,15 @@ if (!diff) {
         if (budget.type === 'relative') {
           const at = firstFailLevel != null ? computeRelativeStatsAt(spec, afterSuite, budget, where, firstFailLevel) : { ok: false }
           if (at.ok) {
-            const p95Over = at.ratioP95 > budget.maxRatio
-            const medianOver = at.ratioMedian > budget.maxRatio
+            const p95Over = isRelativeBudgetExceeded(budget, at.ratioP95, at.deltaP95Ms)
+            const medianOver = isRelativeBudgetExceeded(budget, at.ratioMedian, at.deltaMedianMs)
             classification = medianOver ? 'systemic' : p95Over ? 'tail-only' : 'unknown'
             overshoot = at.ratioP95 - budget.maxRatio
+            const minDeltaNote = at.minDeltaMs > 0 ? `, minDeltaMs=${fmtMs(at.minDeltaMs)}ms` : ''
             detail =
-              `p95 ratio=${fmtNum(at.ratioP95)} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms), ` +
-              `median ratio=${fmtNum(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms), ` +
-              `n=${code(at.n)}`
+              `p95 ratio=${fmtNum(at.ratioP95)} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms, Δ=${fmtMs(at.deltaP95Ms)}ms), ` +
+              `median ratio=${fmtNum(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), ` +
+              `n=${code(at.n)}${minDeltaNote}`
           } else {
             detail = `p95 ratio=n/a (${at.reason || 'unknown'})`
           }
@@ -517,7 +545,9 @@ if (!diff) {
 
       for (const budget of budgets) {
         if (!budget || budget.type !== 'relative') continue
-        if (!Array.isArray(axisLevels) || axisLevels.length === 0 || axisLevels.length > 6) continue
+        if (!Array.isArray(axisLevels) || axisLevels.length === 0) continue
+        const chartLevels = pickChartLevels(axisLevels)
+        if (chartLevels.length === 0) continue
         if (typeof budget.maxRatio !== 'number') continue
 
         const refAxes = Array.from(
@@ -544,13 +574,14 @@ if (!diff) {
           }
 
           const series = []
-          for (const level of axisLevels) {
+          const seriesLevels = axisLevels.length <= 10 ? axisLevels : chartLevels
+          for (const level of seriesLevels) {
             const at = computeRelativeStatsAt(spec, afterSuite, budget, where, level)
             if (!at.ok) {
               series.push(`${String(level)}=n/a`)
               continue
             }
-            const over = at.ratioP95 > budget.maxRatio ? '!' : ''
+            const over = isRelativeBudgetExceeded(budget, at.ratioP95, at.deltaP95Ms) ? '!' : ''
             series.push(`${String(level)}=${fmtNum(at.ratioP95)}${over}`)
           }
 
@@ -560,11 +591,15 @@ if (!diff) {
           if (failLevel != null) {
             const at = computeRelativeStatsAt(spec, afterSuite, budget, where, failLevel)
             if (at.ok) {
-              const medianOver = at.ratioMedian > budget.maxRatio
+              const medianOver = isRelativeBudgetExceeded(budget, at.ratioMedian, at.deltaMedianMs)
               classification = medianOver ? 'systemic' : 'tail-only'
+              const minDeltaMs = getRelativeMinDeltaMs(budget)
+              const minDeltaNote = minDeltaMs > 0 ? `, minDeltaMs=${fmtMs(minDeltaMs)}ms` : ''
               failDetail = `p95=${fmtNum(at.ratioP95)} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(
                 at.denominatorP95Ms,
-              )} ms), median=${fmtNum(at.ratioMedian)}, n=${String(at.n)}`
+              )} ms, Δ=${fmtMs(at.deltaP95Ms)}ms), median=${fmtNum(at.ratioMedian)} (Δ=${fmtMs(
+                at.deltaMedianMs,
+              )}ms), n=${String(at.n)}${minDeltaNote}`
             }
           }
 
@@ -598,7 +633,7 @@ if (!diff) {
     md += `- headBudgetFailures: ${code(headFailures.length)} (reason=budgetExceeded)\n`
     md += `- headDataIssues: ${code(headDataIssues.length)} (missing/timeout/etc)\n`
     md += `- classification: ${code('tail-only')} = p95 over budget but median within; ${code('systemic')} = median also over\n`
-    md += `\n_Tip: quick profile uses small sample size; tail-only failures are often noise unless reproducible._\n`
+    md += `\n_Tip: quick profile still has limited samples vs default; tail-only failures are often noise unless reproducible._\n`
 
     if (headBudgetSummaries.length > 0) {
       md += `\n**Failing budgets (head-only)**\n`
@@ -875,7 +910,7 @@ if (!diff) {
         const b = computeRelativeStatsAt(suiteSpecResolved, beforeSuite, budget, where, level)
         const a = computeRelativeStatsAt(suiteSpecResolved, afterSuite, budget, where, level)
         if (!b.ok || !a.ok) continue
-        const over = a.ratioP95 > budget.maxRatio ? ' (over)' : ''
+        const over = isRelativeBudgetExceeded(budget, a.ratioP95, a.deltaP95Ms) ? ' (over)' : ''
         series.push(`${primary}=${String(level)}: ${fmtRatio(b.ratioP95)}→${fmtRatio(a.ratioP95)}${over}`)
       }
       if (series.length > 0) {
@@ -888,8 +923,9 @@ if (!diff) {
       if (failLevel != null) {
         const at = computeRelativeStatsAt(suiteSpecResolved, focus.suite, budget, where, failLevel)
         if (at.ok) {
-          const over = at.ratioP95 > budget.maxRatio ? ' (over)' : ''
-          extra += `\n  - ${focus.side} fail @ ${primary}=${String(failLevel)}: p95 ratio=${fmtRatio(at.ratioP95)}${over} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms), median ratio=${fmtRatio(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms), n=${code(at.n)}`
+          const over = isRelativeBudgetExceeded(budget, at.ratioP95, at.deltaP95Ms) ? ' (over)' : ''
+          const minDeltaNote = at.minDeltaMs > 0 ? `, minDeltaMs=${fmtMs(at.minDeltaMs)}ms` : ''
+          extra += `\n  - ${focus.side} fail @ ${primary}=${String(failLevel)}: p95 ratio=${fmtRatio(at.ratioP95)}${over} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms, Δ=${fmtMs(at.deltaP95Ms)}ms), median ratio=${fmtRatio(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), n=${code(at.n)}${minDeltaNote}`
         }
       }
     }
@@ -977,6 +1013,10 @@ if (!diff) {
         md += `\n**Budget: ${code(budgetKey(budget))}**\n`
         md += `- metric: ${code(budget.metric)}\n`
         md += `- maxRatio: ${code(budget.maxRatio)}\n`
+        {
+          const minDeltaMs = getRelativeMinDeltaMs(budget)
+          if (minDeltaMs > 0) md += `- minDeltaMs: ${code(`${String(minDeltaMs)}ms`)}\n`
+        }
         md += `- numeratorRef: ${code(budget.numeratorRef)}\n`
         md += `- denominatorRef: ${code(budget.denominatorRef)}\n`
 
@@ -1077,12 +1117,13 @@ if (!diff) {
         const canChart =
           otherAxes.length === 1 &&
           axisLevels.length > 0 &&
-          axisLevels.length <= 6 &&
           Array.isArray(spec.axes?.[otherAxes[0]]) &&
           (spec.axes[otherAxes[0]] ?? []).length > 1 &&
           (spec.axes[otherAxes[0]] ?? []).length <= 32
 
         if (canChart) {
+          const chartLevels = pickChartLevels(axisLevels)
+          if (chartLevels.length === 0) continue
           const xAxisKey = otherAxes[0]
           const xAxisLevels = (spec.axes?.[xAxisKey] ?? []).slice()
           md += `\n<details>\n<summary>Charts: p95 ratio across ${code(xAxisKey)}</summary>\n\n`
@@ -1093,7 +1134,7 @@ if (!diff) {
             return Number(n.toFixed(4))
           }
 
-          for (const level of axisLevels) {
+          for (const level of chartLevels) {
             const xs = []
             const beforeBars = []
             const afterBars = []

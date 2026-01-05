@@ -124,7 +124,7 @@ const readMatrixMeta = async (): Promise<MatrixMeta | undefined> => {
 const readGitMeta = (): PerfReport['meta']['git'] | undefined => {
   const branch = safeExec('git', ['branch', '--show-current'])
   const commit = safeExec('git', ['rev-parse', 'HEAD'])
-  const dirty = safeExec('git', ['status', '--porcelain'])
+  const dirty = safeExec('git', ['status', '--porcelain=v1', '--untracked-files=no'])
   if (!branch && !commit && dirty == null) return undefined
   return {
     branch: branch || undefined,
@@ -281,6 +281,7 @@ const main = async (): Promise<void> => {
   const childEnv: NodeJS.ProcessEnv = {
     ...process.env,
     NODE_ENV: 'production',
+    ...(process.env.VITE_LOGIX_PERF_HARD_GATES ? {} : { VITE_LOGIX_PERF_HARD_GATES: 'off' }),
     ...(profile ? { VITE_LOGIX_PERF_PROFILE: profile } : {}),
   }
 

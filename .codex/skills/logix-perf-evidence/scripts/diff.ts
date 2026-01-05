@@ -17,6 +17,7 @@ type RelativeBudget = {
   readonly type: 'relative'
   readonly metric: string
   readonly maxRatio: number
+  readonly minDeltaMs?: number
   readonly numeratorRef: string
   readonly denominatorRef: string
 }
@@ -619,7 +620,13 @@ const computeThresholdMaxLevelRelative = (
     }
 
     const ratio = numeratorP95.p95Ms / denominatorP95.p95Ms
-    if (ratio <= budget.maxRatio) {
+    const deltaMs = numeratorP95.p95Ms - denominatorP95.p95Ms
+    const minDeltaMsRaw = budget.minDeltaMs
+    const minDeltaMs =
+      typeof minDeltaMsRaw === 'number' && Number.isFinite(minDeltaMsRaw) ? minDeltaMsRaw : 0
+    const overBudget = ratio > budget.maxRatio && deltaMs > minDeltaMs
+
+    if (!overBudget) {
       maxLevel = level
       continue
     }

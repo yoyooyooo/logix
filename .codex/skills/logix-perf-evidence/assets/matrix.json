@@ -15,7 +15,7 @@
       "headless": true
     },
     "profiles": {
-      "quick": { "runs": 10, "warmupDiscard": 2, "timeoutMs": 8000 },
+      "quick": { "runs": 25, "warmupDiscard": 5, "timeoutMs": 15000 },
       "default": { "runs": 30, "warmupDiscard": 5, "timeoutMs": 20000 },
       "soak": { "runs": 80, "warmupDiscard": 10, "timeoutMs": 30000 }
     }
@@ -77,8 +77,8 @@
       "primaryAxis": "steps",
       "axes": {
         "convergeMode": ["full", "dirty", "auto"],
-        "steps": [200, 800, 2000],
-        "dirtyRootsRatio": [0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.33, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1]
+        "steps": [200, 400, 600, 800, 1200, 1600, 2000],
+        "dirtyRootsRatio": [0.005, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.25, 0.33, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1]
       },
       "derivedParams": [
         {
@@ -105,6 +105,7 @@
           "type": "relative",
           "metric": "runtime.txnCommitMs",
           "maxRatio": 1.05,
+          "minDeltaMs": 0.1,
           "numeratorRef": "convergeMode=auto",
           "denominatorRef": "convergeMode=full"
         },
