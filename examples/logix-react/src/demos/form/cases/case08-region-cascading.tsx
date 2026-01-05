@@ -91,27 +91,26 @@ const RegionQuery = Query.make('RegionQuery', {
   params: RegionParams,
   initialParams: { country: 'CN', province: '' },
   ui: regionInitialUi,
-  queries: {
-    provinces: {
+  queries: ($) => ({
+    provinces: $.source({
       resource: ProvinceSpec,
       deps: ['params.country', 'ui.query.autoEnabled'],
-      triggers: ['onMount', 'onValueChange'],
+      triggers: ['onMount', 'onKeyChange'],
       concurrency: 'switch',
-      key: ({ params, ui }: { readonly params: RegionP; readonly ui: any }) =>
-        ui?.query?.autoEnabled ? { country: params.country } : undefined,
-    },
-    cities: {
+      key: (country, autoEnabled) => (autoEnabled ? { country } : undefined),
+    }),
+    cities: $.source({
       resource: CitySpec,
       deps: ['params.country', 'params.province', 'ui.query.autoEnabled'],
-      triggers: ['onValueChange'],
+      triggers: ['onKeyChange'],
       concurrency: 'switch',
-      key: ({ params, ui }: { readonly params: RegionP; readonly ui: any }) => {
-        if (!ui?.query?.autoEnabled) return undefined
-        if (!params.province) return undefined
-        return { country: params.country, province: params.province }
+      key: (country, province, autoEnabled) => {
+        if (!autoEnabled) return undefined
+        if (!province) return undefined
+        return { country, province }
       },
-    },
-  },
+    }),
+  }),
 })
 
 const RegionHostDef = Logix.Module.make('RegionHost', {

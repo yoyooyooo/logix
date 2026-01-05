@@ -133,7 +133,7 @@ export const install = <TValues extends object>(
           const path = action.payload.path
           if (!path || isAuxRootPath(path)) return
 
-          yield* sourceWiring.refreshOnValueChange(path)
+          yield* sourceWiring.refreshOnKeyChange(path)
           yield* cancelPending(path)
 
           if (!wantsChange) return
@@ -157,7 +157,7 @@ export const install = <TValues extends object>(
       // Array structural changes: refresh if they affect source deps.
       yield* $.onAction('arrayAppend').runFork((action) =>
         Effect.gen(function* () {
-          yield* sourceWiring.refreshOnValueChange(action.payload.path)
+          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
           if (!wantsChange) return
           const state = yield* $.state.read
           const submitCount = readSubmitCount(state)
@@ -170,7 +170,7 @@ export const install = <TValues extends object>(
       )
       yield* $.onAction('arrayPrepend').runFork((action) =>
         Effect.gen(function* () {
-          yield* sourceWiring.refreshOnValueChange(action.payload.path)
+          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
           if (!wantsChange) return
           const state = yield* $.state.read
           const submitCount = readSubmitCount(state)
@@ -183,7 +183,7 @@ export const install = <TValues extends object>(
       )
       yield* $.onAction('arrayRemove').runFork((action) =>
         Effect.gen(function* () {
-          yield* sourceWiring.refreshOnValueChange(action.payload.path)
+          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
           if (!wantsChange) return
           const state = yield* $.state.read
           const submitCount = readSubmitCount(state)
@@ -196,7 +196,7 @@ export const install = <TValues extends object>(
       )
       yield* $.onAction('arraySwap').runFork((action) =>
         Effect.gen(function* () {
-          yield* sourceWiring.refreshOnValueChange(action.payload.path)
+          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
           if (!wantsChange) return
           const state = yield* $.state.read
           const submitCount = readSubmitCount(state)
@@ -209,7 +209,7 @@ export const install = <TValues extends object>(
       )
       yield* $.onAction('arrayMove').runFork((action) =>
         Effect.gen(function* () {
-          yield* sourceWiring.refreshOnValueChange(action.payload.path)
+          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
           if (!wantsChange) return
           const state = yield* $.state.read
           const submitCount = readSubmitCount(state)

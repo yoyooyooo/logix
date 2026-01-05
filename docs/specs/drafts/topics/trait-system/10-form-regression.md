@@ -58,7 +58,7 @@ related:
 样本必须覆盖：
 
 - `items[]` 行内：country → province → city → warehouse 的级联 options；
-- deps 变化触发 refresh（onValueChange），并发策略为 `switch`；
+- deps 变化触发 refresh（onKeyChange），并发策略为 `switch`；
 - key 未激活（`undefined`）时写回 clean idle。
 
 现状写法基线：`case11-dynamic-list-cascading-exclusion.tsx` 中 `item.source.*Options`。

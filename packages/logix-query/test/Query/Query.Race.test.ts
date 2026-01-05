@@ -26,17 +26,15 @@ describe('Query.Race', () => {
       const module = Query.make('QueryRaceBlueprint', {
         params: ParamsSchema,
         initialParams: { q: 'q0' },
-        queries: {
-          search: {
+        queries: ($) => ({
+          search: $.source({
             resource: { id: spec.id },
             deps: ['params.q'],
-            triggers: ['onValueChange'],
+            triggers: ['onKeyChange'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => ({
-              q: params.q,
-            }),
-          },
-        },
+            key: (q) => ({ q }),
+          }),
+        }),
       })
 
       const runtime = Logix.Runtime.make(module.impl, {

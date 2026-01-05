@@ -164,7 +164,7 @@ packages/logix-query/src/
 └── internal/
    ├── engine/tanstack.ts       # TanStack Engine 适配器
    ├── middleware/middleware.ts # EffectOp 接管点实现
-   ├── logics/auto-trigger.ts   # onMount/onValueChange 统一触发逻辑
+   ├── logics/auto-trigger.ts   # onMount/onKeyChange 统一触发逻辑
    ├── logics/invalidate.ts     # invalidate 事件化 +（可选）engine.invalidate + source.refresh
    └── tanstack/observer.ts     # observe（可选）
 

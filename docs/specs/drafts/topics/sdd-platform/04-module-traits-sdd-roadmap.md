@@ -38,7 +38,7 @@ related:
 
 - **Resource/Query 契约**：  
   - 用 `ResourceSpec` 定义服务层 contract 与 Layer/Middleware 组合；  
-  - 强制 `StateTrait.source` 引用已注册的 `resourceId`，并通过 `key(state)` 建立与 Domain Intent 的联系。  
+  - 强制 `StateTrait.source` 引用已注册的 `resourceId`，并通过 `key(...depsValues)` 建立与 Domain Intent 的联系。  
 - **Alignment Lab 集成**：  
   - 在 Sandbox 运行 Scenario 时，同时导出 `StateTraitGraph`、EffectOp 时间线与每步 State Snapshot；  
   - 将这些结果与 `ScenarioSpec.Then` 及 Trait 期望进行结构/行为/状态三重对比，得出 AlignmentReport。  

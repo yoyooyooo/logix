@@ -103,7 +103,7 @@ description: "Tasks for 010-form-api-perf-boundaries"
 - [X] T032 [US2] 移除 `listValidateOnChange` 安装逻辑分支，并用 `TraitLifecycle.Ref.fromValuePath` 统一解析 validate target（删除 form 内自造 parser）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/logics/install.ts`
 - [X] T033 [US2] arrayAppend/Prepend/Remove/Swap/Move 必须触发 list target 的 scopedValidate（结构变更也刷新跨行规则）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/logics/install.ts`
 - [X] T034 [US2] 移除 demo 中的 `listValidateOnChange/mode` 配置，改用 `validateOn/reValidateOn`，并保持跨行规则默认正确 `/Users/yoyo/Documents/code/personal/intent-flow/examples/logix-react/src/demos/form/cases/case11-dynamic-list-cascading-exclusion.tsx`
-- [X] T035 [US2] 将 source 的 `onMount/onValueChange` 默认 wiring 下沉到 TraitLifecycle（form 不再扫描 program.entries）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/trait-lifecycle/index.ts`
+- [X] T035 [US2] 将 source 的 `onMount/onKeyChange` 默认 wiring 下沉到 TraitLifecycle（form 不再扫描 program.entries）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/trait-lifecycle/index.ts`
 - [X] T036 [US2] 删除/收敛 form install 内的 source 扫描与 refreshAffectedSources（改为调用 TraitLifecycle 能力或完全移除）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/logics/install.ts`
 
 **Checkpoint**: US2 达成（无专家开关、结构变更也触发 list-scope）

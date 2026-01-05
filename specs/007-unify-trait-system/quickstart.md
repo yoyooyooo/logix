@@ -135,7 +135,7 @@ export const SearchQuery = Query.make("SearchQuery", {
     search: {
       resource: SearchResource,
       deps: ["params.q", "params.page", "ui.query.autoEnabled"],
-      triggers: ["onMount", "onValueChange"],
+      triggers: ["onMount", "onKeyChange"],
       debounceMs: 200,
       concurrency: "switch",
       key: (state) =>

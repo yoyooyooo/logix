@@ -28,6 +28,10 @@ type ExternalStore<T> = {
 - `ExternalStore.fromSubscriptionRef(ref)`
   - 典型：已存在的 SubscriptionRef 作为单一事实源
   - 约束：`SubscriptionRef.get(ref)` 必须同步纯读、无 IO/副作用（不要把副作用藏进 `getSnapshot()`）
+- `ExternalStore.fromModule(module, selector)`
+  - 典型：模块组合（Module Composition）：把模块 A 的 selector 结果作为模块 B 的输入源声明式接入
+  - 约束：必须是 **IR 可识别依赖**（可导出、可诊断）；实现不得退化为 runtime 黑盒订阅（否则无法保证同 tick 稳定化与可解释链路）
+  - 值语义：Runtime 不会自动 clone；写回的是 selector 返回值本身（按引用共享）。把返回值当作只读快照；如确需隔离请在 selector 中显式投影/拷贝（注意成本）
 - `ExternalStore.fromStream(stream, { initial })`
   - 仅当提供 `initial/current` 时允许；否则必须以 Runtime Error fail-fast（Stream 无 current）
   - ⚠️ `initial` 可能 stale（订阅时序导致）：若业务需要可靠 current，请优先用 `fromService/fromSubscriptionRef` 或直接手写 `ExternalStore<T>` 的 `getSnapshot()`
@@ -38,12 +42,27 @@ type ExternalStore<T> = {
 
 `StateTrait.externalStore(...)` 作为 `StateTrait` 的一个 entry，声明“某个 state field 的值来自 ExternalStore”。
 
+概念签名（以本仓库 TypeScript 类型为准）：
+
+```ts
+type ExternalStoreTraitOptions<T, V = T> = {
+  readonly store: ExternalStore<T>
+  readonly select?: (snapshot: T) => V
+  readonly equals?: (a: V, b: V) => boolean
+  readonly coalesceWindowMs?: number
+  readonly priority?: "urgent" | "nonUrgent"
+  readonly meta?: Record<string, unknown>
+}
+```
+
 语义要点：
 
 - 只负责“写回 state 字段”（SRP）；派生与联动由 `computed/link/source` 表达。
 - 写回字段为 **external-owned**：除 externalStore trait 外禁止其它写入路径并发修改同一路径（如需 override，使用独立字段 + computed 合并）。
 - 写回进入事务窗口并参与 converge/validate；不允许事务窗口 IO。
 - 初始化必须保证“getSnapshot 与 subscribe 之间不漏事件”的原子语义。
+- priority：默认视为 `urgent`；当标注为 `nonUrgent` 时，预算超限只会推迟该类 backlog（允许 partial fixpoint，但必须可解释）。
+- coalesce：当 `coalesceWindowMs` 启用时，只允许“committed 值”进入 state 与对外 snapshot；raw/pending 变化不得以“可观测值变化但未 notify”的形式泄露（避免 tearing）。
 
 ### 2.2 推荐的业务写法（概念）
 
@@ -52,6 +71,7 @@ const Traits = Logix.StateTrait.from(StateSchema)({
   "inputs.router": Logix.StateTrait.externalStore({
     store: RouterExternalStore,
     select: (snap) => ({ pathname: snap.pathname, params: snap.params }),
+    priority: "urgent",
   }),
   profile: Logix.StateTrait.source({ deps: ["inputs.router.params.id"], resource: "user/profile", key: ... }),
 })

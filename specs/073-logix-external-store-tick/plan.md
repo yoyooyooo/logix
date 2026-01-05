@@ -27,6 +27,10 @@
 - Decision: `retainedHeapDeltaBytesAfterGc` 用于限制常驻增长（泄漏/缓存膨胀）；分配率/GC 压力门禁可选补 `allocatedBytes`/`peakHeapDeltaBeforeGc`（source: `spec.md#Clarifications`）
 - Decision: blackbox `Process.link` 不进入同 tick fixpoint（Next Tick best-effort），并必须在 diagnostics 中标注边界（source: `spec.md#Clarifications`）
 - Decision: 模块内 storm：ReadQuery static lane 可选用 `selectorId/readsDigest` 进一步分片；dynamic selector 用 equality 兜底正确性（source: `spec.md#Clarifications`）
+- Decision: Module-as-Source：支持把模块 selector 结果当作 ExternalStore 来源（`ExternalStore.fromModule(...)`），并用 `StateTrait.externalStore` 声明式写回到下游模块字段；但必须被编译为 IR 可识别依赖（module readQuery → trait writeback）并参与同 tick 稳定化，禁止退化为 runtime 黑盒订阅（source: `spec.md#Clarifications` / FR-012 / SC-005）
+- Decision: `ExternalStore.fromModule` 不做值拷贝：Trait 写回存的是 selector 返回值本身（按引用共享，不深拷贝/不结构化拷贝）。因此禁止用 fromModule “镜像大状态”；保持 selector 小且稳定，必要时在 selector 内显式投影/拷贝并把成本计入预算（source: `spec.md#Clarifications`）
+- Decision: React 订阅单一真相源：`@logix/react` 必须只订阅 RuntimeStore topic facade，禁止直接订阅 `moduleRuntime.changes*`；per-module stores（`ModuleRuntimeExternalStore*`）在 cutover 后必须删除以避免双真相源/回归 tearing（source: `spec.md#Clarifications` / NFR-007）
+- Decision: Trait 下沉边界：`StateTrait` 只负责“模块内字段能力 + 静态治理 + Static IR 导出”；`TickScheduler/RuntimeStore` 只消费 IR 做调度与快照一致性。禁止把 tick/React 订阅逻辑塞进 traits（SRP + no-dual-truth）。
 
 ## Questions Digest（$speckit plan-from-questions）
 
@@ -71,6 +75,20 @@
   - Q006：SSR：React adapter 在 server render 时使用 `getServerSnapshot ?? getSnapshot`（fallback，而非 `undefined/throw`），宿主负责 hydration 一致性。
   - Q007：Perf 指标口径：`timePerTickMs` 只度量 `tick flush -> notify`（不含 React render/commit）；“跟手性”用独立 `click→paint` guard 覆盖，避免业务组件复杂度污染基线。
   - Q008：`ExternalStore.fromSubscriptionRef(ref)` 以“同步纯读”为前提：`SubscriptionRef.get(ref)` 必须是纯读、无 IO/副作用；否则视为 defect/不支持（不把副作用藏进 `getSnapshot()`）。
+- Batch F：
+  - Q001：Module-as-Source 不是“订阅胶水升级版”，而是 declarative 图的一等节点：`ExternalStore.fromModule(...)` 必须携带可导出的依赖事实源（moduleId/selectorId/readsDigest 等），让 TickScheduler 在同 tick 内稳定化下游 externalStore 写回（否则只剩最终一致与不可解释黑盒）。
+  - Q002：写侧安全：Module-as-Source 的写回仍由 **下游模块的 ExternalStoreTrait** 执行（external-owned fieldPath + txn-window），跨模块依赖只负责触发/排序，不引入“跨模块 direct write”逃逸。
+- Batch G（外部问题清单：Perf/SSR/优先级/IR 复用）：
+  - Q001：Perf budget 是 **Total**（该边界场景的 `tick flush -> notify` 端到端总开销），不是“只算新增 TickScheduler 的 delta”；仍会用 before/after diff 兜底“无回归”，且首次实现完成后以实测 baseline 回写本节预算（默认 20% 相对阈值）。
+  - Q002：SSR：RuntimeStore/RuntimeExternalStore 的 `getServerSnapshot` 只读当前 RuntimeSnapshot（同步、无 IO、不等待 tick）；异步数据必须以 state 的 pending/empty 形态呈现，ExternalStore 侧如需稳定首屏需提供 `getServerSnapshot()`，宿主负责 hydration 一致性（本特性不做自动注水/rehydrate）。
+  - Q003：低优先级节流不会丢：RuntimeStore topic facade 必须保留现有 low-priority notify 策略（microtask vs raf/timeout + maxDelay），避免高频 tick flood React render；优先级来源由 tick/commit 元数据映射（urgent→normal，nonUrgent-only→low）。
+  - Q004：DeclarativeLinkIR 的 “readQuery 节点”必须复用 `ReadQueryStaticIr`（含 `selectorId/readsDigest/lane/producer/equalsKind`），禁止平行定义另一份 selector-like Static IR；读依赖只接受 static lane。
+  - Q005：循环防卡死以 hard cap 为主（maxSteps/maxMs/maxTxnCount），`cycle_detected` 作为 best-effort 诊断：在同 tick 内反复 requeue/无进展时提前标注并中断；跨 tick 的反馈环允许存在（最终一致），但需在 `trace:tick` 中可解释（stable=false + degradeReason）。
+  - Q006：T035 的目的仅是把现有 SelectorGraph 的“dirty roots → selectorId”增量能力迁到 RuntimeStore 的 selector-topic version（保持性能同级）；`[P]` 仅表示可并行实现，**不是可选**，属于 cutover 阻断项。
+  - Q007：加入 priority inversion 诊断：当 nonUrgent backlog 被推迟且存在对应 React 订阅者时，diagnostics=light/full 产出 Slim Warn（不要求定位到具体组件，但至少能指到 module/instance/selectorId）。
+  - Q008：不提供 legacy shim：forward-only，cutover 后删除 per-module stores（无兼容层/无弃用期），避免双真相源。
+  - Q009：external-owned 以运行期/装配期 fail-fast 为主（build-time 冲突检测 + txn-window guard + 测试），不引入 eslint/类型层静态写入分析（成本高且不可靠）。
+  - Q010：Module-as-Source 的可识别性必须可 gate：`fromModule` 的 moduleId 必须可解析且 selectorId 必须稳定（deny `unstableSelectorId`），否则 fail-fast；selector 若缺少 readsDigest，允许退化为 module-topic edge（仍 IR 可识别，不是黑盒订阅）并在 diagnostics 下 Warn。
 
 ## Technical Context
 
@@ -122,6 +140,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 Baseline 语义：代码前后（before=现状 per-module ExternalStore；after=runtimeStore + tick）
 
 - Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`
+- Budget 语义：本节 `timePerTickMs` 是 boundary 场景下 `tick flush -> notify` 的 **Total** 端到端开销（包含现有 commit/selector machinery 与新增调度/路由）；before/after diff 负责守“无回归”，首次实现完成后以 baseline 回写并按默认 20% 相对阈值设定回归门槛。
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
 - 采集隔离：硬结论的 before/after/diff 必须同环境同参数，且必须使用独立目录或 `git worktree` 隔离采集（混杂工作区结果只作线索不得宣称 Gate PASS）
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`（并确保 before/after 的 `meta.matrixId/matrixHash` 一致）
@@ -197,15 +216,30 @@ packages/logix-core/
 │       ├── runtime/core/TickScheduler.ts        # NEW: Runtime tick scheduler (internal)
 │       ├── runtime/core/RuntimeStore.ts         # NEW: runtime store snapshot/token (internal)
 │       ├── runtime/core/DeclarativeLinkIR.ts    # NEW: declarative cross-module link IR types (internal)
-│       └── state-trait/external-store.ts        # NEW: externalStore trait runtime/install (internal)
+│       ├── runtime/core/ModuleRuntime.ts        # CHANGE: commit -> RuntimeStore + tickSeq anchoring (T024)
+│       ├── runtime/core/ModuleRuntime.*.ts      # NEW: split ModuleRuntime(>1000 LOC) into mutually exclusive modules（见下文）
+│       ├── runtime/core/DevtoolsHub.ts          # CHANGE: tick/commit correlation + evidence (as needed by T024/T029)
+│       ├── runtime/core/DebugSink.ts            # CHANGE: add `trace:tick` event shape + sampling gates (as needed)
+│       ├── runtime/core/DebugSink.*.ts          # NEW: split DebugSink(>1000 LOC) into mutually exclusive modules（见下文）
+│       ├── runtime/core/process/ProcessRuntime.ts   # CHANGE: Process.link boundary (best-effort) + tick integration (as needed)
+│       ├── runtime/core/process/ProcessRuntime.*.ts # NEW: split ProcessRuntime(>1000 LOC) into mutually exclusive modules（见下文）
+│       ├── state-trait/model.ts                 # CHANGE: add externalStore kind + plan step
+│       ├── state-trait/build.ts                 # CHANGE: emit externalStore plan steps + writer/ownership governance
+│       ├── state-trait/ir.ts                    # CHANGE: export externalStore policy into Static IR
+│       ├── state-trait/external-store.ts        # NEW: externalStore trait runtime/install (internal)
+│       ├── state-trait/source.ts                # CHANGE: deps-as-args + writeback semantics (T009)
+│       ├── state-trait/source.*.ts              # NEW: split source(>1000 LOC) into mutually exclusive modules（见下文）
+│       ├── state-trait/converge-in-transaction.ts    # CHANGE: external-store-sync plan step + tick scheduling hooks (T014/T020)
+│       ├── state-trait/converge-in-transaction.*.ts  # NEW: split converge-in-transaction(>1000 LOC) into mutually exclusive modules（见下文）
+│       ├── state-trait/validate.ts              # CHANGE: ownership + new kind validation (T019)
+│       └── state-trait/validate.*.ts            # NEW: split validate(>1000 LOC) into mutually exclusive modules（见下文）
 
 packages/logix-core-ng/
 └── src/**                           # 若 core-ng 需要等价实现：通过 Runtime Services/Kernel 选择器接入
 
 packages/logix-react/
 ├── src/internal/store/
-│   ├── RuntimeExternalStore.ts      # NEW: runtime-level ExternalStore for React
-│   └── ModuleRuntimeExternalStore.ts # REF: 现状（将被替换或降级为内部实现）
+│   └── RuntimeExternalStore.ts      # NEW: runtime-level ExternalStore for React (single subscription truth)
 ├── src/internal/hooks/useSelector.ts # CHANGE: 从 per-module store 切换到 runtime store
 └── test/browser/perf-boundaries/
     └── runtime-store-no-tearing.test.tsx        # NEW: perf + semantic assertion (tickSeq一致)
@@ -215,6 +249,82 @@ docs/specs/**                         # 若对外术语/契约升级：同步更
 ```
 
 **Structure Decision**: 交付能力落在 `@logix/core`（契约 + 默认实现）与 `@logix/react`（runtime-store 订阅适配），其余实现细节下沉 `src/internal/**`；core-ng 通过 Runtime Services/Kernel 选择器保证等价语义或显式降级。
+
+## Large File Decomposition（≥1000 LOC）
+
+> 本节是 `$speckit plan 073` 的强制产物：对“本需求必然会触及”的既有超大文件，提前规划互斥拆分，以降低实现期耦合与冲突面，并把 SRP 作为默认约束。
+
+### 命名约定（用户补充）
+
+- 若是**单一主体**为了行数/职责治理而拆分：使用 `*.*.ts` 命名并在同目录平铺（例如 `ModuleRuntime.runtimeStore.ts`）。
+- 若形成的是**一大类子模块/子系统**：用目录承载子模块（例如 `runtime/core/process/*` 已是目录；仅在出现明确子系统时再引入更深目录）。
+
+### 本需求涉及的超大文件清单（现状行数）
+
+- `packages/logix-core/src/internal/runtime/core/DebugSink.ts`（1653）
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts`（1506）
+- `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.ts`（1349）
+- `packages/logix-core/src/internal/state-trait/source.ts`（1173）
+- `packages/logix-core/src/internal/state-trait/converge-in-transaction.ts`（1031）
+- `packages/logix-core/src/internal/state-trait/validate.ts`（1384）
+
+### 拆分计划（互斥职责 + 落点）
+
+#### 1) `ModuleRuntime.ts`（1506）→ `ModuleRuntime.*.ts`
+
+目标：把 “组装/注册/事务上下文/commit 可观测” 拆成互斥模块，使 T024（commit→RuntimeStore）与后续演进不继续膨胀 `ModuleRuntime.ts`。
+
+- `ModuleRuntime.hubs.ts`：`stateRef`/`commitHub`/`actionHub` 与 stream wrapper（订阅计数、legacy module changes stream）
+- `ModuleRuntime.txnContext.ts`：`StateTransaction.makeContext` + `recordPatch/updateDraft` 等 txn-window 适配与 guard
+- `ModuleRuntime.traits.ts`：traitState/rowIdStore/selectorGraph 装配 + trait converge time-slicing state（只做组装，不做 tick）
+- `ModuleRuntime.runtimeStore.ts`：commit/selector-topic 版本路由 → `RuntimeStore`（含 token 不变量、tickSeq↔txnSeq 关联锚点）
+- `ModuleRuntime.ts`：仅保留 `make()` 的顶层编排与公开导出（其余实现下沉到以上模块）
+
+#### 2) `state-trait/source.ts`（1173）→ `source.*.ts`
+
+目标：将 “idle 同步 / refresh 安装 / 依赖漂移诊断 / 写回记录” 拆分，方便执行 T009（deps-as-args）与后续 ExternalStoreTrait 的联动，不把所有逻辑堆回单文件。
+
+- `source.syncIdle.ts`：`syncIdleInTransaction`（含 list.item 分支的纯同步 key 评估与 idle 写回）
+- `source.refresh.ts`：`installSourceRefresh`（resource snapshot 流程、rowId gating、concurrency、replay 记录）
+- `source.depsMismatch.ts`：deps mismatch 计算/格式化与 `state_trait::deps_mismatch` 诊断发射
+- `source.recording.ts`：`recordTraitPatch`/`recordReplayEvent`/`getBoundScope`/`setSnapshotInTxn` 等共享写回工具
+- `source.ts`：保留对外导出与最薄 glue（避免循环依赖；不再承载大段业务逻辑）
+
+#### 3) `converge-in-transaction.ts`（1031）→ `converge-in-transaction.*.ts`
+
+目标：把 converge 的 “诊断门禁/采样、dirty→rootIds、exec loop” 拆分，给 ExternalStoreTrait 增加 `external-store-sync` plan step 与 tick scheduling hook 时不把核心循环继续膨胀。
+
+- `converge-in-transaction.diagnostics.ts`：diagnostics level/sinks gate、采样策略、trace payload（Slim + 可序列化）
+- `converge-in-transaction.dirty.ts`：dirtyPaths/dirtyRootIds 计算与降级原因汇总（含 digest/evidence 组装）
+- `converge-in-transaction.exec.ts`：exec IR 构建与 step 执行循环（hotspot 统计、time-slicing scope）
+- `converge-in-transaction.ts`：仅保留 `convergeInTransaction()` 的编排与返回结构，避免成为“所有 converge 逻辑的垃圾场”
+
+#### 4) `validate.ts`（1384）→ `validate.*.ts`
+
+目标：把 “路径读写工具/错误值模型/规则执行/trace” 分离；新增 external-owned/单 writer 治理与新 kind 校验时，避免继续堆叠在单文件内。
+
+- `validate.path.ts`：path parse/get/set/unset 等纯工具
+- `validate.errorValue.ts`：ErrorValue merge/normalize/count 等模型工具（约束：不把 array 当多错误集合）
+- `validate.rules.ts`：rule 执行/模式映射（submit/blur/valueChange/manual）与 scope 扫描
+- `validate.diagnostics.ts`：`trace:trait:validate`/diagnostic 事件门禁与 slim payload 组装
+- `validate.ts`：保留 `validateInTransaction()` 的编排与对外类型导出
+
+#### 5) `DebugSink.ts`（1653）→ `DebugSink.*.ts`
+
+目标：为新增 `trace:tick`（以及 topic/backlog/降级证据字段）预留清晰落点，避免 DebugSink 成为“类型+序列化+输出+Layer 全混在一起”的单体文件。
+
+- `DebugSink.events.ts`：Event union 与 ref 类型（包括 `trace:*` 统一入口与 `trace:tick` 结构）
+- `DebugSink.layers.ts`：Layer 构造（noop/errorOnly/console/browser*）
+- `DebugSink.record.ts`：`record()`/`toRuntimeDebugEventRef()`/去重与 txn anchor 回填
+- `DebugSink.ts`：保留对外导出与最薄 glue
+
+#### 6) `process/ProcessRuntime.ts`（1349）→ `ProcessRuntime.*.ts`
+
+目标：在明确 “黑盒 Process.link = Next Tick best-effort（不进入同 tick fixpoint）” 的边界时，把 link 相关逻辑从 runtime 组装里拆出去，降低后续演进风险。
+
+- `ProcessRuntime.link.ts`：link 边界与写侧约束（dispatch-only；与 DeclarativeLinkIR 的职责互斥）
+- `ProcessRuntime.make.ts`：Tag + make/layer 组装（只负责 wiring，不承载 link/调度细节）
+- `ProcessRuntime.ts`：保留对外导出与 glue
 
 ## Complexity Tracking
 
@@ -229,7 +339,16 @@ N/A（本特性不以“引入额外复杂度”为目标；若实现阶段出�
 - `ExternalStore<T>` 必须具备同步 `getSnapshot()`；Stream 仅作为语法糖（必须提供 `initial/current`，否则 fail-fast）。
 - SSR：ExternalStore 可选 `getServerSnapshot()`（同步、无 IO）；React adapter 在 server render 时优先用它（否则回退到 `getSnapshot()`），宿主负责 hydration 一致性（本特性不做自动注水/rehydrate）。
 - 容错：ExternalStore.getSnapshot() 同步抛错必须被 trait 层捕获；熔断该 trait（保留 last committed 值），并通过 diagnostics 记录 Warn（不得崩溃整个 runtime）。
+- Module-as-Source：提供 `ExternalStore.fromModule(module, selector)`（或等价）把模块 selector 结果归一到 ExternalStore；但其依赖必须可被 IR 识别并由 TickScheduler 参与同 tick 稳定化，禁止实现为“黑盒订阅 + 事件驱动写回”。
+- 可识别性门禁（必须实现）：`fromModule` 的 moduleId 必须可解析且 selectorId 必须稳定（deny `unstableSelectorId`），否则 fail-fast；selector 若缺少 readsDigest，允许退化为 module-topic edge（仍 IR 可识别，不是黑盒订阅）并在 diagnostics=light/full 下 Warn。
 - `StateTrait.externalStore` 只负责“写回 state field”，派生/联动用 `computed/link/source` 表达（保持 SRP）。
+- Trait 下沉（做到位，避免“Runtime 猜语义”）：
+  - `ExternalStore` sugar 必须携带内部 descriptor（至少 `kind="module"` 时包含 `moduleId + ReadQueryStaticIr`），供 trait build/IR export/门禁消费（不允许在 runtime 侧通过 subscribe 黑盒识别）。
+  - `StateTrait.source` 的 `key` 改为 **deps-as-args**：`key(...depsValues)`（不再接收 `key(state)`），与 computed 对齐，避免“key 读集漂移/隐式依赖”导致 deps/IR 不一致；实现层通过 DSL 将其 lower 为 `key(state)` 供 source runtime 调用。
+  - StateTrait 必须把 externalStore 作为一等 kind 进入 `Program/Graph/Plan`（新增 plan step，如 `external-store-sync`），并在 `StateTrait.exportStaticIr` 导出 `source/ownership/lane` 等 policy，确保 Static IR digest 覆盖结构变化。
+  - ownership 与 writer 冲突必须在 build-time 统一治理：同一 fieldPath 只能有一个 writer（computed/link/source/externalStore），并固化 external-owned registry；runtime 写入路径对 external-owned fail-fast（含 root reset/patch）。
+  - lane hint 下沉到 trait policy：externalStore 可声明 `lane`（urgent/nonUrgent），TickScheduler 仅做 lane→notify-priority 映射（urgent→normal，nonUrgent-only→low），notify 节流策略仍由 RuntimeStore topic facade 承担。
+  - Non-goals：traits 不负责跨模块稳定化、topic version 增量或 React 订阅；这些属于 RuntimeStore/TickScheduler/SelectorGraph。
 - 初始化语义对齐 React external store：保证 `getSnapshot` 与 subscribe 之间不漏事件（通过“订阅建立后 refreshSnapshotIfStale”或等价机制）。
 - 执行模型：ExternalStore 的 listener 只负责 **Signal Dirty**（origin）：幂等地点亮 dirty 并确保同一 microtask 内最多调度一次 tick；不得把外部事件 payload 作为 task 入队（避免队列风暴）。写回发生在 tick flush 的第 0 阶段（before converge/computed），保证同窗派生（computed/source/link）看到的是本次 flush 的 committed 值。
 - `coalesceWindowMs`：**Pre-Write** 聚合（写回前聚合）：底层 ExternalStore.getSnapshot 仍为 raw current；coalesce 发生在 trait 写回层（pending/raw 与 committed 分离），只有 committed 值进入 state 与 RuntimeStore snapshot（避免“未 notify 但可观测值已变化”的 tearing）。外部源的 subscribe 回调不延迟，仅延迟 committed 写回与 tick flush。
@@ -251,7 +370,9 @@ N/A（本特性不以“引入额外复杂度”为目标；若实现阶段出�
 ### 3) React RuntimeStore（无 tearing）
 
 - React 订阅点的“快照真理源”唯一：`useSelector` 读取 “同 tickSeq 的 runtime snapshot”。
+- SSR：RuntimeStore topic facade 提供 `getServerSnapshot`（同步只读当前 RuntimeSnapshot，不等待 tick、无 IO）；异步来源必须以 state 的 pending/empty 形态呈现，ExternalStore 若需要稳定首屏必须提供 `getServerSnapshot`，宿主负责 hydration 一致性。
 - 订阅通知按 topic 分片：至少按 `ModuleInstanceKey = ${moduleId}::${instanceId}`，可选进一步按 `ReadQueryStaticIr.readsDigest` 收敛，避免任意模块变更导致全局 O(N) notify。
+- 低优先级节流：topic facade 的 notify 必须保留现有策略（normal→microtask；low→raf/timeout + maxDelay），优先级由 tick/commit 元数据映射（urgent→normal，nonUrgent-only→low），避免高频 tick flood React renders。
 - 模块内 O(N) 回退风险：仅按 `ModuleInstanceKey` 分片只能避免跨模块 O(N)，但模块内仍可能在单字段更新时触发大量 selector 重算。为保持现状（per-selector store + ReadQuery/static deps 的增量触发），`readsDigest/selectorId` 细粒度分片（T035）为必做；dynamic selector 继续依赖 `useSyncExternalStoreWithSelector` equality 兜底正确性（不承诺零开销）。
 - T035（防呆约束）：只有当 `ReadQuery.compile(selector).lane==="static"` 且 `readsDigest` 存在且 `fallbackReason` 为空时，才允许创建 selector-topic；topicKey 推荐 `ModuleInstanceKey::rq:${selectorId}`。**selector-topic 的版本增量必须由 core 的 RuntimeStore/TickScheduler 在 tick flush 中产出**（复用 `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts` 的“dirty roots → selectorId”索引或等价机制），React adapter 只消费 topicVersion；禁止在 React 侧直接订阅 `moduleRuntime.changesReadQueryWithMeta(...)` 来“算出哪些 selector 脏了”（容易重回 tearing/双真相源）。
 - Sharded notify 的实现采用 **ExternalStore Facade Pattern**：为每个 topicKey 创建独立的 ExternalStore facade（`subscribe` 仅监听该 topic 的版本变化；`getSnapshot` 读取共享 RuntimeSnapshot）。`useSelector` 内部按 handle/selector 选择 facade，从根上避免“一个全局 store 导致所有 selector 都执行”的 O(N)。

@@ -3,7 +3,7 @@ import { Duration, Effect, Fiber } from 'effect'
 import type { QuerySourceConfig, QueryTrigger } from '../../Traits.js'
 import { Engine } from '../../Engine.js'
 
-const defaultTriggers = ['onMount', 'onValueChange'] as const
+const defaultTriggers = ['onMount', 'onKeyChange'] as const
 
 const getTriggers = (triggers: ReadonlyArray<QueryTrigger> | undefined): ReadonlyArray<QueryTrigger> =>
   triggers ?? defaultTriggers
@@ -30,8 +30,8 @@ export interface AutoTriggerLogicConfig<TParams, TUI> {
 /**
  * Query auto-trigger logic:
  * - onMount: triggers once on initialization (if the key is valid and current snapshot does not match the same keyHash).
- * - onValueChange: triggers after params/ui state changes (can debounce; only when keyHash changes or current is idle).
- * - manual-only: when triggers=["manual"], disable onMount/onValueChange auto triggering.
+ * - onKeyChange: triggers after params/ui state changes (can debounce; only when keyHash changes or current is idle).
+ * - manual-only: when triggers=["manual"], disable onMount/onKeyChange auto triggering.
  */
 export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
   module: Logix.ModuleTagType<any, Sh>,
@@ -100,8 +100,20 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
       })
 
     const computeKeyHash = (state: any, q: QuerySourceConfig<TParams, TUI>): string | undefined => {
+      const getAtPath = (root: any, path: string): unknown => {
+        const parts = path.split('.')
+        let cur = root
+        for (const p of parts) {
+          if (cur == null) return undefined
+          cur = cur[p]
+        }
+        return cur
+      }
+
       try {
-        const key = q.key({ params: state.params as any, ui: state.ui as any } as any)
+        const keyState = { params: state.params as any, ui: state.ui as any } as any
+        const args = (q.deps as ReadonlyArray<string>).map((dep) => getAtPath(keyState, dep))
+        const key = (q.key as any)(...args)
         if (key === undefined) return undefined
         return Logix.Resource.keyHash(key)
       } catch {
@@ -110,7 +122,7 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
     }
 
     const maybeAutoRefresh = (
-      phase: 'mount' | 'valueChange',
+      phase: 'mount' | 'keyChange',
       stateOverride?: unknown,
     ): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
@@ -127,7 +139,7 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
             continue
           }
 
-          if (phase === 'valueChange' && !triggers.includes('onValueChange')) {
+          if (phase === 'keyChange' && !triggers.includes('onKeyChange')) {
             continue
           }
 
@@ -165,7 +177,7 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
           }
 
           const debounceMs = q.debounceMs ?? 0
-          if (phase === 'valueChange' && debounceMs > 0) {
+          if (phase === 'keyChange' && debounceMs > 0) {
             yield* scheduleDebounced(queryName, debounceMs)
           } else {
             // mount / no debounce: trigger immediately
@@ -190,14 +202,14 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
             Effect.gen(function* () {
               const state = (yield* $.state.read) as any
               const next = { ...state, params: action.payload }
-              yield* maybeAutoRefresh('valueChange', next)
+              yield* maybeAutoRefresh('keyChange', next)
             }),
           ),
           $.onAction('setUi').runFork((action: any) =>
             Effect.gen(function* () {
               const state = (yield* $.state.read) as any
               const next = { ...state, ui: action.payload }
-              yield* maybeAutoRefresh('valueChange', next)
+              yield* maybeAutoRefresh('keyChange', next)
             }),
           ),
 

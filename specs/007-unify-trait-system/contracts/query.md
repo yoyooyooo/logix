@@ -24,7 +24,7 @@
 至少支持：
 
 - `onMount`：初始触发
-- `onValueChange`：参数变化触发（可选 debounce）
+- `onKeyChange`：参数变化触发（可选 debounce）
 - `manual`：仅手动触发（必须独占）
 
 触发来源必须可被诊断与回放复现。
@@ -66,7 +66,7 @@ Query 领域必须通过 effect 的依赖注入向宿主索取“可替换的外
 ## 6. TraitLifecycle（统一下沉接口）
 
 - Query 的默认 logics MUST 基于 TraitLifecycle 的 scoped execute（见 `contracts/trait-lifecycle.md`）：
-  - 自动触发（onMount/onValueChange）与手动触发（manual）都必须能被降解为同一条“触发 → 并发控制 → keyHash 门控 → 写回快照”的内核执行链路；
+  - 自动触发（onMount/onKeyChange）与手动触发（manual）都必须能被降解为同一条“触发 → 并发控制 → keyHash 门控 → 写回快照”的内核执行链路；
   - 失效/刷新必须以可回放事件进入日志，回放时按录制事实重赛（不重发真实请求）。
 
 ## 7. InvalidateRequest（失效/刷新）

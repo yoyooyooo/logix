@@ -43,17 +43,15 @@ describe('TanStack.engine.cacheLimit', () => {
       const module = Query.make('TanStackEngineCacheLimitBlueprint', {
         params: ParamsSchema,
         initialParams: { q: 'a' },
-        queries: {
-          search: {
+        queries: ($) => ({
+          search: $.source({
             resource: spec,
             deps: ['params.q'],
             triggers: ['manual'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => ({
-              q: params.q,
-            }),
-          },
-        },
+            key: (q) => ({ q }),
+          }),
+        }),
       })
 
       const queryClient = new QueryClient()

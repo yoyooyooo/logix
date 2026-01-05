@@ -44,9 +44,7 @@ export const CounterTraits = StateTrait.from(CounterStateSchema)({
   profileResource: StateTrait.source({
     deps: ['profile.id'],
     resource: 'user/profile',
-    key: (s) => ({
-      userId: s.profile.id,
-    }),
+    key: (profileId) => ({ userId: profileId }),
   }),
 
   // profile.name 跟随 profileResource.data.name（内部字段联动）

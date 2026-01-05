@@ -30,6 +30,9 @@ type ExternalStore<T> = {
   - `subscribe = ...`（订阅 ref.changes，listener 只 Signal Dirty）
 - `ExternalStore.fromStream(stream, { initial })`
   - 仅当提供 `initial/current` 时成立；否则应以 Runtime Error fail-fast（Stream 没有 current）。
+- `ExternalStore.fromModule(module, selector)`
+  - 把模块的 selector 结果当作 ExternalStore 来源（Module-as-Source）
+  - 必须可被 IR 识别（moduleId/selectorId/readsDigest 等），由 TickScheduler 参与同 tick 稳定化（FR-012 / SC-005），禁止退化为 runtime 黑盒订阅
 
 ## 2) ExternalStoreTrait（StateTrait.externalStore）
 
@@ -38,10 +41,24 @@ ExternalStoreTrait 是 `StateTrait` 的一种 entry：声明某个 state 字段�
 ### 2.1 Trait Spec（概念）
 
 ```ts
+type ReadsDigest = { readonly count: number; readonly hash: number }
+
+type ExternalStoreSource =
+  | { readonly kind: "external"; readonly storeId: string }
+  | {
+      readonly kind: "module"
+      readonly moduleId: string
+      readonly instanceKey?: string
+      readonly selectorId: string
+      readonly readsDigest?: ReadsDigest
+    }
+
 type ExternalStoreTraitSpec<S, P extends StateFieldPath<S>, T, V = T> = {
   kind: "externalStore"
   fieldPath: P
   storeId: string
+  /** Optional (preferred): declarative source metadata for TickScheduler/IR export (e.g. Module-as-Source). */
+  source?: ExternalStoreSource
   deps?: ReadonlyArray<StateFieldPath<S>> // 可选：用于把“外部输入”纳入依赖图（未来增量化）
   getSnapshot: () => T
   subscribe: (listener: () => void) => () => void
@@ -125,7 +142,7 @@ DeclarativeLinkIR 用于让 TickScheduler 识别跨模块依赖并参与稳定�
 
 ```ts
 // Reads 事实源：ReadQueryStaticIr（packages/logix-core/src/internal/runtime/core/ReadQuery.ts）
-type ReadsDigest = { readonly count: number; readonly hash: number }
+// type ReadsDigest 已在 2.1 定义（count+hash）
 
 type DeclarativeLinkNodeId = string
 

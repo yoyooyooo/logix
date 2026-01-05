@@ -24,7 +24,7 @@ describe('FormBlueprint.resource-idle', () => {
           deps: ['userId'],
           resource: 'user/profile',
           triggers: ['manual'],
-          key: (s) => (s.userId ? { userId: s.userId } : undefined),
+          key: (userId) => (userId ? { userId } : undefined),
         }),
       })
 

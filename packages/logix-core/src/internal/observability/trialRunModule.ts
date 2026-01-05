@@ -395,6 +395,7 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
 
     let ok = Exit.isSuccess(bootExit) && Exit.isSuccess(closeExit)
     let error: SerializableErrorSummary | undefined
+    let summary: unknown | undefined
 
     const depsFromBootFailure = Exit.isFailure(bootExit)
       ? parseMissingDependencyFromCause(bootExit.cause as Cause.Cause<unknown>)
@@ -440,17 +441,25 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
       const failure = Option.getOrUndefined(Cause.failureOption(closeExit.cause))
       const base = died ?? failure ?? closeExit.cause
 
-      const tag = isRecord(base) ? (base as any)._tag : undefined
-      if (tag === 'DisposeTimeout') {
-        ok = false
-        error = toErrorSummaryWithCode(
-          base,
-          'DisposeTimeout',
-          'Dispose timed out: check for unclosed resource handles, fibers not interrupted, or event listeners not unregistered.',
-        )
+      const closeErrorSummary = (() => {
+        const tag = isRecord(base) ? (base as any)._tag : undefined
+        if (tag === 'DisposeTimeout') {
+          return toErrorSummaryWithCode(
+            base,
+            'DisposeTimeout',
+            'Dispose timed out: check for unclosed resource handles, fibers not interrupted, or event listeners not unregistered.',
+          )
+        }
+        return toErrorSummaryWithCode(base, 'RuntimeFailure')
+      })()
+
+      ok = false
+      if (!error) {
+        // If boot succeeded but dispose failed, the close error is the primary failure.
+        error = closeErrorSummary
       } else {
-        ok = false
-        error = toErrorSummaryWithCode(base, 'RuntimeFailure')
+        // Preserve the primary boot failure (e.g. TrialRunTimeout) but keep dispose failure evidence.
+        summary = { __logix: { closeError: closeErrorSummary } }
       }
     }
 
@@ -485,6 +494,7 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
       artifacts,
       environment,
       evidence,
+      summary,
       error,
     }
 

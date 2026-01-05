@@ -53,7 +53,7 @@ export const invalidate = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
           }
 
           // 3) Immediately refresh related sources (write-back gating is still guaranteed by kernel keyHash).
-          const targets = toInvalidateTargets(request, config.queries)
+          const targets = toInvalidateTargets<TParams, TUI>(request, config.queries)
           const sourcePathOf = (name: string): string => `queries.${name}`
           yield* Effect.forEach(
             targets,

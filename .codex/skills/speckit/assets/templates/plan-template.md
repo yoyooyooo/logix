@@ -45,6 +45,12 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
     (no random/time defaults); is the identity model documented?
   - Transaction boundary: is any IO/async work occurring inside a transaction
     window; are write-escape hatches (writable refs) prevented and diagnosed?
+  - React consistency (no tearing): if this touches React integration or external
+    reactive sources, is there a single snapshot anchor (e.g. `tickSeq`) for
+    `useSyncExternalStore` consumers, with no dual truth source and no data-glue
+    `useEffect` syncing state?
+  - External sources (signal dirty): are subscriptions pull-based (signal dirty +
+    deduped scheduling) rather than payload/queue based (no thundering herd)?
   - Internal contracts & trial runs: does this feature introduce/modify internal
     hooks or implicit collaboration protocols; are they encapsulated as explicit
     injectable Runtime Services (no magic fields / parameter explosion), mockable
@@ -67,6 +73,12 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
     `src/index.ts` barrel + PascalCase public submodules (top-level `src/*.ts`,
     except `index.ts`/`global.d.ts`), move non-submodule code into
     `src/internal/**`, and keep `package.json#exports` from exposing internals?
+  - Large modules/files (decomposition): if this touches any existing file/module
+    that is ≥1000 LOC (or is expected to exceed the threshold), does the plan
+    include a decomposition brief with mutually exclusive submodules, chosen
+    structure (flat `*.*.ts` vs directory), one-way dependency topology, and an
+    incremental rollout + verification strategy (keep refactor separate from
+    semantic changes)?
   - What quality gates (typecheck / lint / test) will be run before merge,
     and what counts as “pass” for this feature?
 

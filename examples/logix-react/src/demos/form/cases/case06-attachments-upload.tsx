@@ -61,11 +61,11 @@ const UploadForm = Form.make('FormCase.AttachmentsUpload', {
           upload: Form.Trait.source({
             resource: UploadSpec.id,
             deps: ['fileKey'],
-            triggers: ['onValueChange'],
+            triggers: ['onKeyChange'],
             concurrency: 'switch',
-            key: (row: any) => {
-              const fileKey = String(row?.fileKey ?? '').trim()
-              return fileKey ? { fileKey } : undefined
+            key: (fileKey: any) => {
+              const trimmed = String(fileKey ?? '').trim()
+              return trimmed ? { fileKey: trimmed } : undefined
             },
           }),
         },

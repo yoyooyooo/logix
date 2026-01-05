@@ -298,9 +298,9 @@ export const LanguageTraits = StateTrait.from(LanguageFormStateSchema)({
   // 列表级 meta：写在独立字段上（不在 list 内做 patch）
   "meta.canAddLanguage": StateTrait.computed({
     deps: ["languages"],
-    get: (s) => {
-      const hasNone = s.languages.some((i) => i.type === "无")
-      const count = s.languages.length
+    get: (languages) => {
+      const hasNone = languages.some((i) => i.type === "无")
+      const count = languages.length
       const maxLanguageCount = 5
       return !hasNone && count < maxLanguageCount // R2
     },
@@ -308,9 +308,9 @@ export const LanguageTraits = StateTrait.from(LanguageFormStateSchema)({
 
   "meta.languageTypeOptions": StateTrait.computed({
     deps: ["languages"],
-    get: (s) => {
-      const hasNone = s.languages.some((i) => i.type === "无")
-      const count = s.languages.length
+    get: (languages) => {
+      const hasNone = languages.some((i) => i.type === "无")
+      const count = languages.length
       const allLanguageTypes = ["英语", "日语", "无"]
 
       // R1 + R3
@@ -326,7 +326,7 @@ export const LanguageTraits = StateTrait.from(LanguageFormStateSchema)({
       computed: {
         "ui.hideLevelAndScore": StateTrait.computed({
           deps: ["type"],
-          get: (item) => item.type === "无", // R4
+          get: (type) => type === "无", // R4
         }),
       },
     }),
@@ -426,56 +426,51 @@ export const ContractTraits = StateTrait.from(ContractFormStateSchema)({
   items: StateTrait.list<ContractFormState, ContractLine>({
 	    item: StateTrait.node({
 	      // 1) 同步联动 + 远程结果派生（纯派生：每个字段各自产值）
-	      computed: {
-	        supplierCodeDisabled: StateTrait.computed({
-	          deps: ["contractId"],
-	          get: (row) => !!row.contractId,
-	        }),
+		      computed: {
+		        supplierCodeDisabled: StateTrait.computed({
+		          deps: ["contractId"],
+		          get: (contractId) => !!contractId,
+		        }),
 
-	        // 合同 -> 供应商编码（禁用时强制回填；否则保持用户输入）
-	        supplierCode: StateTrait.computed({
-	          deps: ["contractId", "supplierCode"],
-	          get: (row) =>
-	            row.contractId
-	              ? deriveSupplierCodeFromContract(row.contractId)
-	              : row.supplierCode,
-	        }),
+		        // 合同 -> 供应商编码（禁用时强制回填；否则保持用户输入）
+		        supplierCode: StateTrait.computed({
+		          deps: ["contractId", "supplierCode"],
+		          get: (contractId, supplierCode) =>
+		            contractId ? deriveSupplierCodeFromContract(contractId) : supplierCode,
+		        }),
 
-	        // supplierInfo -> options
-	        feeSiteOptions: StateTrait.computed({
-	          deps: ["supplierInfo"],
-	          get: (row) => {
-	            const snap = row.supplierInfo
-	            const info = snap && snap.status === "success" ? snap.data : undefined
-	            return info ? info.allowedFeeSites : []
-	          },
-	        }),
-	        categoryOptions: StateTrait.computed({
-	          deps: ["supplierInfo"],
-	          get: (row) => {
-	            const snap = row.supplierInfo
-	            const info = snap && snap.status === "success" ? snap.data : undefined
-	            return info ? info.allowedCategories : []
-	          },
-	        }),
-	      },
+		        // supplierInfo -> options
+		        feeSiteOptions: StateTrait.computed({
+		          deps: ["supplierInfo"],
+		          get: (supplierInfo) => {
+		            const snap = supplierInfo
+		            const info = snap && snap.status === "success" ? snap.data : undefined
+		            return info ? info.allowedFeeSites : []
+		          },
+		        }),
+		        categoryOptions: StateTrait.computed({
+		          deps: ["supplierInfo"],
+		          get: (supplierInfo) => {
+		            const snap = supplierInfo
+		            const info = snap && snap.status === "success" ? snap.data : undefined
+		            return info ? info.allowedCategories : []
+		          },
+		        }),
+		      },
 
 	      // 2) 异步资源依赖：供应商编码 -> supplierInfo（写回 ResourceSnapshot）
-	      source: {
-	        supplierInfo: {
-	          deps: ["supplierCode"],
-	          resource: SupplierInfoResource,
-	          triggers: ["onMount", "onValueChange"],
-	          debounceMs: 300,
-	          // 默认 switch：以“最新 key”为准（尽量取消旧 in-flight，且无论是否可取消都必须丢弃 stale）。
-	          // 若该资源请求成本高/需限流，可改用 exhaust：in-flight 期间合并触发，结束后补一次最新 key 的刷新。
-          concurrency: "switch",
-          key: (row) =>
-            row.supplierCode
-              ? { supplierCode: row.supplierCode }
-              : undefined,
-        },
-      },
+		      source: {
+		        supplierInfo: {
+		          deps: ["supplierCode"],
+		          resource: SupplierInfoResource,
+		          triggers: ["onMount", "onKeyChange"],
+		          debounceMs: 300,
+		          // 默认 switch：以“最新 key”为准（尽量取消旧 in-flight，且无论是否可取消都必须丢弃 stale）。
+		          // 若该资源请求成本高/需限流，可改用 exhaust：in-flight 期间合并触发，结束后补一次最新 key 的刷新。
+		          concurrency: "switch",
+		          key: (supplierCode) => (supplierCode ? { supplierCode } : undefined),
+	        },
+	      },
 
       // 3) （可选）基于资源结果派生错误
       check: {

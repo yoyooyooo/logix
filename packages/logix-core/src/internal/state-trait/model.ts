@@ -62,12 +62,16 @@ export interface SourceMeta<S, P> {
    */
   readonly resource: string
   /**
-   * Rule for computing the key required to access the resource from the full State.
+   * Rule for computing the key required to access the resource.
+   *
+   * - deps is the single source of truth for dependencies: Graph/ReverseClosure/incremental scheduling/perf optimizations rely on deps only.
+   * - In the DSL, `StateTrait.source({ deps, key })` uses deps-as-args; it does not expose `(state) => ...`.
+   * - During build, `key(...depsValues)` is lowered into `key(state)` for runtime execution, but the dependency read-set remains deps-based.
    *
    * - Returning undefined means the resource is inactive under the current state (should be recycled to idle).
    */
   readonly key: (state: Readonly<S>) => unknown
-  readonly triggers?: ReadonlyArray<'onMount' | 'onValueChange' | 'manual'>
+  readonly triggers?: ReadonlyArray<'onMount' | 'onKeyChange' | 'manual'>
   readonly debounceMs?: number
   readonly concurrency?: 'switch' | 'exhaust-trailing'
   /**

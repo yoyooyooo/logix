@@ -131,27 +131,27 @@ export const SearchQuery = Query.make('QuerySearchDemo', {
   params: ParamsSchema,
   initialParams: { q: '', page: 1, selectedId: null },
   ui: initialUi,
-  queries: {
-    search: {
+  queries: ($) => ({
+    search: $.source({
       resource: SearchSpec,
       deps: ['params.q', 'params.page', 'ui.query.autoEnabled'],
-      triggers: ['onMount', 'onValueChange'],
+      triggers: ['onMount', 'onKeyChange'],
       debounceMs: 200,
       concurrency: 'switch',
-      key: ({ params, ui }: { readonly params: Params; readonly ui: Ui }) => {
-        if (!ui.query.autoEnabled) return undefined
-        const keyword = normalizeKeyword(params.q)
-        return { keyword, page: params.page }
+      key: (q, page, autoEnabled) => {
+        if (!autoEnabled) return undefined
+        const keyword = normalizeKeyword(q)
+        return { keyword, page }
       },
-    },
-    detail: {
+    }),
+    detail: $.source({
       resource: DetailSpec,
       deps: ['params.selectedId'],
-      triggers: ['onValueChange'],
+      triggers: ['onKeyChange'],
       concurrency: 'switch',
-      key: ({ params }: { readonly params: Params }) => (params.selectedId ? { id: params.selectedId } : undefined),
-    },
-  },
+      key: (selectedId) => (selectedId ? { id: selectedId } : undefined),
+    }),
+  }),
 })
 
 // Host Module：演示 Query module（其 `.impl` 是 ModuleImpl）作为子模块，被引入到另一个 program module 中。

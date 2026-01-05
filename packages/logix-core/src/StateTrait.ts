@@ -95,23 +95,32 @@ export const computed = <
  * - Declares an external resource source for a field (Resource / Query integration is implemented in later phases).
  * - The kernel owns keyHash gating / concurrency / ReplayMode behavior.
  */
-export const source = <S extends object, P extends StateFieldPath<S>>(meta: {
-  resource: string
-  deps: ReadonlyArray<StateFieldPath<S>>
-  key: (state: Readonly<S>) => unknown
-  triggers?: ReadonlyArray<'onMount' | 'onValueChange' | 'manual'>
-  debounceMs?: number
-  concurrency?: 'switch' | 'exhaust-trailing'
+export const source = <
+  S extends object,
+  P extends StateFieldPath<S>,
+  const Deps extends ReadonlyArray<StateFieldPath<S>>,
+>(input: {
+  readonly resource: string
+  readonly deps: Deps
+  readonly key: (...depsValues: DepsArgs<S, Deps>) => unknown
+  readonly triggers?: ReadonlyArray<'onMount' | 'onKeyChange' | 'manual'>
+  readonly debounceMs?: number
+  readonly concurrency?: 'switch' | 'exhaust-trailing'
   /**
    * Serializable metadata for Devtools/docs (whitelisted fields are extracted during build).
    */
-  meta?: Record<string, unknown>
-}): StateTraitEntry<S, P> =>
-  ({
+  readonly meta?: Record<string, unknown>
+}): StateTraitEntry<S, P> => {
+  const key = (state: Readonly<S>): unknown => {
+    const args = (input.deps as ReadonlyArray<string>).map((dep) => RowId.getAtPath(state as any, dep))
+    return (input.key as any)(...args)
+  }
+  return {
     fieldPath: undefined as unknown as P,
     kind: 'source',
-    meta,
-  }) as StateTraitEntry<S, P>
+    meta: { ...input, key },
+  } as StateTraitEntry<S, P>
+}
 
 /**
  * StateTrait.link:

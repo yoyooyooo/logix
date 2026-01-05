@@ -213,7 +213,7 @@ Patch 里有 `reason/stepId/traitNodeId`，Debug 事件里有 `txnId/originKind/
 
 当前 source 已有 keyHash gate 与并发语义，但仍可进一步：
 
-- 将 source 的触发条件（onMount/onValueChange/manual）编译成 IR，避免在运行时散落判断；
+- 将 source 的触发条件（onMount/onKeyChange/manual）编译成 IR，避免在运行时散落判断；
 - 引入 per-resource 的全局去重与共享（同 keyHash 的请求跨字段复用）；
 - 把 Source 的写回也纳入 patch/dirty-set 统一模型，并与 txn 的 trigger/cause 强绑定。
 

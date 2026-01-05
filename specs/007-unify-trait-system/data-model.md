@@ -91,7 +91,7 @@ type StateTraitNodeSpec<Input, Ctx> = {
       readonly key: (input: Input, ctx: Ctx) => unknown | undefined
       readonly concurrency?: "switch" | "exhaust"
       readonly triggers?: ReadonlyArray<
-        "onMount" | "onValueChange" | "manual"
+        "onMount" | "onKeyChange" | "manual"
       >
       readonly debounceMs?: number
       readonly meta?: RuleMeta
@@ -332,7 +332,7 @@ type QueryId = string
 type QuerySnapshot<Params, Out, Err> = {
   readonly params: Params
   readonly result: ResourceSnapshot<unknown, Out, Err>
-  readonly lastTrigger?: { readonly kind: "onMount" | "onValueChange" | "manual" }
+  readonly lastTrigger?: { readonly kind: "onMount" | "onKeyChange" | "manual" }
 }
 ```
 

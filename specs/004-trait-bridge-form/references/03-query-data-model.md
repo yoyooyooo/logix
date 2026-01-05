@@ -58,14 +58,14 @@ QueryKey 的来源通常是“参数对象”（filters/pagination/sort/searchTe
 沿用 004 data-model 的约束：
 
 ```ts
-type QueryTrigger = "manual" | "onMount" | "onValueChange" | "onBlur"
+type QueryTrigger = "manual" | "onMount" | "onKeyChange" | "onBlur"
 type QueryConcurrency = "switch" | "exhaust"
 ```
 
 补充约束（Query 语义）：
 
 - `manual` MUST 独占（不与其他触发混用），避免“既自动又手动”的歧义；
-- `onValueChange` 可以配置 `debounceMs`；`onMount` 通常不需要；
+- `onKeyChange` 可以配置 `debounceMs`；`onMount` 通常不需要；
 - 并发策略不改变正确性：stale 丢弃必须做；并发策略只影响“是否取消/是否合并触发”的体验与成本。
 
 ---

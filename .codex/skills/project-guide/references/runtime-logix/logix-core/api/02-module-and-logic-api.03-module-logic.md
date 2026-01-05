@@ -83,7 +83,7 @@ export const SomeLogic = SomeDef.logic<MyService>(($) => ({
 - **Schema / Traits 层（Layer 1）**：
   - Module 的 State Schema 使用 Effect 的 Schema 定义字段结构，computed / source / link 等能力通过 StateTrait DSL 声明，例如：
     - `StateTrait.computed({ deps, get, equals? })`
-    - `StateTrait.source({ deps, resource, key })`
+    - `StateTrait.source({ deps, resource, key })`（`key(...depsValues)`）
     - `StateTrait.link({ from })`
   - 这些声明被统一收集为 `StateTraitSpec`，并在 build 阶段生成 `StateTraitProgram`，其中包含 StateTraitGraph（字段与能力拓扑）与 StateTraitPlan（运行计划）。
 - **Runtime 层（Layer 2）**：
@@ -119,13 +119,13 @@ export const SomeLogic = SomeDef.logic<MyService>(($) => ({
       deps: ["profile.id"],
       // 推荐：复用 ResourceRef（或 ResourceRef.id），避免散落字符串常量
       resource: UserProfileResource.id,
-      key: (s) => ({ userId: s.profile.id }),
+      key: (profileId) => ({ userId: profileId }),
     }),
   })
   ```
 
-  - 这里的 `resource` 是逻辑资源 ID，`key(state)` 是访问该资源所需 key 的计算规则；Module 不关心 HTTP/DB/QueryClient 等具体实现。
-  - `key(state)` 允许返回 `undefined` 表示“当前无有效 key / 禁用”，此时 Runtime 不触发 IO（不产生 Service 类 EffectOp），目标字段回到 idle 快照（具体快照形状由上层领域约定）。
+  - 这里的 `resource` 是逻辑资源 ID，`key(...depsValues)` 是访问该资源所需 key 的计算规则；Module 不关心 HTTP/DB/QueryClient 等具体实现。
+  - `key(...depsValues)` 允许返回 `undefined` 表示“当前无有效 key / 禁用”，此时 Runtime 不触发 IO（不产生 Service 类 EffectOp），目标字段回到 idle 快照（具体快照形状由上层领域约定）。
   - 推荐在工程内维护一组 `ResourceRef` 常量（只包含 `id/meta`），并在 Module/Traits 图纸层引用它们；ResourceSpec 仍然可通过 `id: ResourceRef.id` 保持 id 的单一事实源。
   - Devtools 展示资源信息时：`ResourceRef.meta` 优先；缺失字段再 fallback 到 `ResourceSpec.meta` 的同名字段（例如 description）。该合并只用于展示，不影响运行时语义。
   - 若同名展示字段（例如 description）同时存在且值不一致，dev 环境下 Devtools SHOULD 给出 warning（按 resourceId+字段去重），提示“展示元信息分叉”；展示仍以 ResourceRef 为准。

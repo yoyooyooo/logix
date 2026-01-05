@@ -17,7 +17,7 @@ description: 用 @logix/query 构建可回放的查询模块，并按需接入�
 
 ## 0.1 成本模型（粗粒度）
 
-- 每次刷新都会走一次 `key(state) -> keyHash` 的门控；当 `key` 为 `undefined` 时刷新会被跳过（no-op）。
+- 每次刷新都会走一次 `key(...depsValues) -> keyHash` 的门控；当 `key` 为 `undefined` 时刷新会被跳过（no-op）。
 - 自动触发的“频率上限”由 `deps` + `debounceMs` 决定：`debounceMs` 越大，越能把高频输入收敛成更少的真实刷新。
 - `concurrency` 决定竞态语义：`switch` 会中断旧 in-flight（并通过 `keyHash` gate 丢弃旧结果），`exhaust`/trailing 会把中间变化合并到尾部一次执行（减少无意义写回）。
 - 启用外部引擎 + middleware 后：命中缓存时可以避免重复执行 `ResourceSpec.load`；diagnostics=off 的额外开销预算为 p95 ≤ +1%，diagnostics=full/light 预算为 p95 ≤ +5%。
@@ -51,16 +51,15 @@ export const SearchQuery = Query.make('SearchQuery', {
   // ui：交互态命名空间（例如开关/面板状态），可参与 deps/key 计算
   ui: { query: { autoEnabled: true } },
 
-  queries: {
-    list: {
+  queries: ($) => ({
+    list: $.source({
       resource: SearchSpec,
       deps: ['params.q', 'ui.query.autoEnabled'],
-      triggers: ['onMount', 'onValueChange'],
+      triggers: ['onMount', 'onKeyChange'],
       concurrency: 'switch',
-      key: (state) =>
-        (state.ui.query.autoEnabled && state.params.q ? { q: state.params.q } : undefined),
-    },
-  },
+      key: (q, autoEnabled) => (autoEnabled && q ? { q } : undefined),
+    }),
+  }),
 })
 ```
 
@@ -68,7 +67,7 @@ export const SearchQuery = Query.make('SearchQuery', {
 
 - `params` 用于业务参数；`ui` 用于交互态（没有预设形状，但应保持可序列化/可回放）。
 - 每条 query 的结果会写回到模块 `state.queries[queryName]`（`ResourceSnapshot`：`idle/loading/success/error` + `keyHash`）。
-- TanStack v5 的 `status:"pending"` + `fetchStatus` 语义不直接搬进快照：Logix 只用 `ResourceSnapshot.status` 表达四态；“禁用/手动/参数未就绪”等由 `params/ui`（以及 `key(state)` 返回 undefined）表达。
+- TanStack v5 的 `status:"pending"` + `fetchStatus` 语义不直接搬进快照：Logix 只用 `ResourceSnapshot.status` 表达四态；“禁用/手动/参数未就绪”等由 `params/ui`（以及 `key(...depsValues)` 返回 undefined）表达。
 - `deps` 必须显式声明：它既是触发收敛的依据，也是调试/解释链路的一部分。
 
 ## 2) 把 Query 当成普通子模块组合（推荐）
@@ -126,7 +125,7 @@ queries: {
 
 1. **纯透传（最简单）**：只写 `Query.make(...)`，不注入引擎、不启用 middleware —— 每次刷新直接执行 `ResourceSpec.load`。
 2. **缓存/去重（推荐默认）**：注入 `Query.Engine.layer(Query.TanStack.engine(new QueryClient()))` 并启用 `Query.Engine.middleware()` —— 获得缓存、in-flight 去重与失效能力。
-3. **减少无意义刷新**：用 `key(state) => undefined` 表达“参数未就绪/禁用”，并确保 `deps` 只声明真正影响 key 的字段。
+3. **减少无意义刷新**：用 `key(...depsValues) => undefined` 表达“参数未就绪/禁用”，并确保 `deps` 只声明真正影响 key 的字段。
 4. **避免 loading 抖动（缓存命中快读）**：当引擎提供 `peekFresh` 时，Query 默认逻辑会在 refresh 前尝试命中 fresh cache，直接写入 `success` 快照。
 5. **真正取消/超时/重试**：在 `ResourceSpec.load` 中使用 `AbortSignal` + `Effect.timeoutFail` / `Effect.retry`，让 `switch` 不仅“丢弃旧结果”，还能真正取消网络层 IO。
 

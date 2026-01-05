@@ -43,17 +43,15 @@ describe('Query.CachePeekSkipLoading', () => {
       const module = Query.make('QueryCachePeekSkipLoadingBlueprint', {
         params: ParamsSchema,
         initialParams: { q: 'a' },
-        queries: {
-          search: {
+        queries: ($) => ({
+          search: $.source({
             resource: { id: spec.id },
             deps: ['params.q'],
-            triggers: ['onMount', 'onValueChange'],
+            triggers: ['onMount', 'onKeyChange'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => ({
-              q: params.q,
-            }),
-          },
-        },
+            key: (q) => ({ q }),
+          }),
+        }),
       })
 
       const queryClient = new QueryClient({

@@ -15,7 +15,7 @@
     - `Query.Engine.middleware(config)`：订阅 `EffectOp(kind="trait-source")`，基于 `resourceId + key + config` 决定某些调用是否由外部引擎接管（缓存/in-flight 去重/失效）。
   - StateTrait / Program **不理解** Query 细节，它们只负责在 Plan 中标记哪些字段是 Source、对应的 resourceId 与 key 规则；是否启用 Query 完全由 Runtime 层是否装配 `Query.Engine.layer + Query.Engine.middleware` 决定。
 - **Runtime 协作关系（StateTrait.source ↔ Resource/Query）**
-  - Module 图纸：只写 `StateTrait.source({ deps, resource, key })`；
+  - Module 图纸：只写 `StateTrait.source({ deps, resource, key })`（`key(...depsValues)`）；
   - StateTraitProgram：在 Graph/Plan 中标记 source 字段与 resourceId/keySelector；
   - Runtime：在显式入口（例如 `$.traits.source.refresh("profileResource")`）被调用时构造 `EffectOp(kind="trait-source", name = resourceId, meta.resourceId/meta.key/meta.keyHash)`，交给 Middleware 总线；
   - Resource / Query 中间件：根据 resourceId + key 决定走 ResourceSpec.load 还是 QueryClient，DevTools 则在 Timeline 中观察这些 Service 调用与 State 更新。

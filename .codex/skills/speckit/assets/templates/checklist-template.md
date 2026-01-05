@@ -39,6 +39,8 @@
 - [ ] CHK0XX User-facing performance mental model updated (≤5 keywords + cost model + optimization ladder); vocabulary aligned across docs/benchmarks/diagnostics
 - [ ] CHK0XX Deterministic identity model (instance/txn/op IDs) documented; no random/time defaults
 - [ ] CHK0XX Transaction boundary enforced: no IO/async in txn window; no writable ref escape hatches
+- [ ] CHK0XX No render-level tearing: single snapshot anchor for React reads; no dual truth sources; no data-glue `useEffect` syncing state
+- [ ] CHK0XX External sources are pull-based: subscriptions signal dirty + dedupe scheduling; tick flush pulls snapshots (no payload/queue storms)
 - [ ] CHK0XX Diagnostic events/Devtools surfaces updated and overhead documented
 - [ ] CHK0XX Diagnostic payloads are Slim/serializable and stored in bounded ring buffers
 - [ ] CHK0XX Breaking change declared and migration note linked (forward-only: no compatibility layer / no deprecation period)

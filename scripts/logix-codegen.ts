@@ -213,7 +213,7 @@ function renderScaffold(opts: Options, fieldPaths: string[]): string {
   const makeCall =
     opts.kind === "form"
       ? `Form.make("${opts.id}", {\n  ${schemaType}: ${schemaVar},\n  ${initialVar}: ${initialPlaceholder},\n  traits: Form.traits(${schemaVar})({\n    // TODO: traits\n  }),\n})`
-      : `Query.make("${opts.id}", {\n  ${schemaType}: ${schemaVar},\n  ${initialVar}: ${initialPlaceholder},\n  queries: {\n    // TODO: queries\n    example: {\n      resource: { id: \"demo/resource\" },\n      deps: [],\n      key: (_state) => undefined,\n    },\n  },\n})`;
+      : `Query.make("${opts.id}", {\n  ${schemaType}: ${schemaVar},\n  ${initialVar}: ${initialPlaceholder},\n  queries: ($) => ({\n    // TODO: queries\n    example: $.source({\n      resource: { id: \"demo/resource\" },\n      deps: [],\n      triggers: [\"manual\"],\n      key: () => undefined,\n    }),\n  }),\n})`;
 
   return [
     `import { Schema } from "effect";`,

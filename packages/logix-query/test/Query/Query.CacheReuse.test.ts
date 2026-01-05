@@ -31,17 +31,15 @@ describe('Query.CacheReuse', () => {
       const module = Query.make('QueryCacheReuseBlueprint', {
         params: ParamsSchema,
         initialParams: { q: 'same' },
-        queries: {
-          search: {
+        queries: ($) => ({
+          search: $.source({
             resource: { id: spec.id },
             deps: ['params.q'],
-            triggers: ['onMount', 'onValueChange'],
+            triggers: ['onMount', 'onKeyChange'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => ({
-              q: params.q,
-            }),
-          },
-        },
+            key: (q) => ({ q }),
+          }),
+        }),
       })
 
       const runtime = Logix.Runtime.make(module.impl, {

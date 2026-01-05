@@ -1,6 +1,6 @@
 import * as Logix from '@logix/core'
 
-export type QueryTrigger = 'onMount' | 'onValueChange' | 'manual'
+export type QueryTrigger = 'onMount' | 'onKeyChange' | 'manual'
 
 export type QueryConcurrency = 'switch' | 'exhaust'
 
@@ -21,9 +21,24 @@ export type QueryKeyState<TParams, TUI> = Readonly<{
 
 export type QueryDepsPath<TParams, TUI> = Logix.StateTrait.StateFieldPath<QueryKeyState<TParams, TUI>>
 
-export interface QuerySourceConfig<TParams, TUI = unknown, R extends QueryResource = QueryResource> {
+type DepsArgs<S extends object, Deps extends ReadonlyArray<string>> = {
+  readonly [K in keyof Deps]: Deps[K] extends Logix.StateTrait.StateFieldPath<S>
+    ? Logix.StateTrait.StateAtPath<S, Deps[K]>
+    : any
+}
+
+type BivariantCallback<Args extends ReadonlyArray<any>, R> = {
+  bivarianceHack(...args: Args): R
+}['bivarianceHack']
+
+export interface QuerySourceConfig<
+  TParams,
+  TUI = unknown,
+  R extends QueryResource = QueryResource,
+  Deps extends ReadonlyArray<string> = ReadonlyArray<QueryDepsPath<TParams, TUI>>,
+> {
   readonly resource: R
-  readonly deps: ReadonlyArray<QueryDepsPath<TParams, TUI>>
+  readonly deps: Deps & ReadonlyArray<QueryDepsPath<TParams, TUI>>
   readonly triggers?: ReadonlyArray<QueryTrigger>
   /**
    * Optional static tags for invalidate(byTag), used to narrow byTag from "refresh all" to a matched subset.
@@ -33,25 +48,47 @@ export interface QuerySourceConfig<TParams, TUI = unknown, R extends QueryResour
   readonly tags?: ReadonlyArray<string>
   readonly debounceMs?: number
   readonly concurrency?: QueryConcurrency
-  readonly key: (state: QueryKeyState<TParams, TUI>) => QueryResourceKey<R> | undefined
+  readonly key: BivariantCallback<DepsArgs<QueryKeyState<TParams, TUI>, Deps>, QueryResourceKey<R> | undefined>
 }
+
+export type QueryBuilder<TParams, TUI> = {
+  readonly source: <
+    R extends QueryResource,
+    const Deps extends ReadonlyArray<string> = ReadonlyArray<QueryDepsPath<TParams, TUI>>,
+  >(config: {
+    readonly resource: R
+    readonly deps: Deps & ReadonlyArray<QueryDepsPath<TParams, TUI>>
+    readonly triggers?: ReadonlyArray<QueryTrigger>
+    readonly tags?: ReadonlyArray<string>
+    readonly debounceMs?: number
+    readonly concurrency?: QueryConcurrency
+    readonly key: (...depsValues: DepsArgs<QueryKeyState<TParams, TUI>, Deps>) => QueryResourceKey<R> | undefined
+  }) => QuerySourceConfig<TParams, TUI, R, Deps>
+}
+
+/**
+ * Query.source:
+ * - Strongly typed helper to preserve `deps` as a tuple and infer `key(...depsValues)` argument types from it.
+ * - Recommended usage inside `Query.make(..., { queries: { name: Query.source({ ... }) } })`.
+ */
+export const source = <
+  TParams,
+  TUI = unknown,
+  R extends QueryResource = QueryResource,
+  const Deps extends ReadonlyArray<string> = ReadonlyArray<QueryDepsPath<TParams, TUI>>,
+>(config: {
+  readonly resource: R
+  readonly deps: Deps & ReadonlyArray<QueryDepsPath<TParams, TUI>>
+  readonly triggers?: ReadonlyArray<QueryTrigger>
+  readonly tags?: ReadonlyArray<string>
+  readonly debounceMs?: number
+  readonly concurrency?: QueryConcurrency
+  readonly key: (...depsValues: DepsArgs<QueryKeyState<TParams, TUI>, Deps>) => QueryResourceKey<R> | undefined
+}): QuerySourceConfig<TParams, TUI, R, Deps> => config as QuerySourceConfig<TParams, TUI, R, Deps>
 
 export interface QueryTraitsInput<TParams, TUI> {
   readonly queries: Readonly<Record<string, QuerySourceConfig<TParams, TUI, any>>>
 }
-
-const isDevEnv = (): boolean => Logix.Env.isDevEnv()
-
-const makeLazyUiProxy = (state: any): any =>
-  new Proxy(
-    {},
-    {
-      get: (_target, prop) => (state as any)?.ui?.[prop as any],
-      has: (_target, prop) => prop in ((state as any)?.ui ?? {}),
-      ownKeys: () => Reflect.ownKeys((state as any)?.ui ?? {}),
-      getOwnPropertyDescriptor: (_target, prop) => Object.getOwnPropertyDescriptor((state as any)?.ui ?? {}, prop),
-    },
-  )
 
 /**
  * Lowering rules (Query -> StateTrait):
@@ -68,7 +105,7 @@ export const toStateTraitSpec = <TParams, TUI>(
   const out: Record<string, Logix.StateTrait.StateTraitEntry<any, any>> = {}
 
   for (const [name, q] of Object.entries(input.queries)) {
-    const triggers = q.triggers ?? (['onMount', 'onValueChange'] as const)
+    const triggers = q.triggers ?? (['onMount', 'onKeyChange'] as const)
 
     // "manual" must be exclusive to avoid ambiguous semantics (configuration error).
     if (triggers.includes('manual') && triggers.length > 1) {
@@ -84,14 +121,7 @@ export const toStateTraitSpec = <TParams, TUI>(
       triggers,
       debounceMs: q.debounceMs,
       concurrency: q.concurrency === 'exhaust' ? 'exhaust-trailing' : q.concurrency,
-      key: (state: any) =>
-        q.key({
-          params: state.params,
-          // Avoid deps-trace false positives caused by "reading ui only to pass args":
-          // - dev/test: use a lazy proxy; only record paths when key actually reads ui.
-          // - production: pass state.ui directly to avoid extra Proxy overhead.
-          ui: isDevEnv() ? makeLazyUiProxy(state) : state.ui,
-        }),
+      key: (...depsValues: ReadonlyArray<any>) => (q.key as any)(...depsValues),
     })
   }
 

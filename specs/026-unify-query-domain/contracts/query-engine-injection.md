@@ -107,7 +107,7 @@ export interface EngineService {
 
 ## 6) CacheHook（`peekFresh`）与“避免 loading 抖动”
 
-- Query 自动触发（onMount/onValueChange）在发起 refresh 前 MAY 先走一次 `engine.peekFresh(...)`：
+- Query 自动触发（onMount/onKeyChange）在发起 refresh 前 MAY 先走一次 `engine.peekFresh(...)`：
   - 若命中 fresh success，则允许直接把 success snapshot 写回模块 state，并记录可回放事件（例如 `query:cache-hit`）。
   - 若未命中，则正常走 refresh → middleware → engine.fetch 路径。
 

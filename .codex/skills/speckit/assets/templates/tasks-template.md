@@ -77,8 +77,10 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T00X [P] Define unified minimal IR + drift prevention (docs/specs + parser/codegen)
 - [ ] T00X [P] Define deterministic identity model (instanceId/txnSeq/opId) and remove random/time defaults
 - [ ] T00X [P] Enforce transaction boundary (no IO in txn window, no writable ref escape hatches)
+- [ ] T00X [P] Define external reactive source integration: signal-dirty (pull-based), no render-level tearing (single snapshot anchor), and sharded notify to avoid O(N) selector work
 - [ ] T00X [P] Encapsulate internal hooks as explicit injectable contracts (Runtime Services); avoid magic fields / parameter explosion; document migration in specs/[###-feature]/plan.md
 - [ ] T00X [P] Normalize package public submodules: PascalCase `src/*.ts` (except `index.ts`/`global.d.ts`), move non-submodule code into `src/internal/**`, and keep `exports` from exposing internals
+- [ ] T00X [P] Decompose oversized modules/files (≥1000 LOC or expected to exceed): define a decomposition brief (mutually exclusive submodules), pick structure (flat `*.*.ts` vs directory), keep refactor semantics-preserving, and add incremental verification checkpoints
 - [ ] T00X [P] Add controlled trial-run harness (RunSession + Evidence/IR export) with schema validation; ensure parallel sessions are isolated
 - [ ] T00X [P] Define performance budget + baseline measurement approach (benchmark/profile)
 - [ ] T00X [P] Define diagnostic events/Devtools surfaces + expected overhead (enabled vs disabled)

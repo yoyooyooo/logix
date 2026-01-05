@@ -217,30 +217,30 @@ const DynamicListCascadingForm = Form.make('FormCase.DynamicListCascadingExclusi
           provinceOptions: Form.Trait.source({
             resource: ProvincesSpec.id,
             deps: ['country'],
-            triggers: ['onMount', 'onValueChange'],
+            triggers: ['onMount', 'onKeyChange'],
             concurrency: 'switch',
-            key: (row) => ({ country: String(row.country ?? 'CN') }),
+            key: (country) => ({ country: String(country ?? 'CN') }),
           }),
           cityOptions: Form.Trait.source({
             resource: CitiesSpec.id,
             deps: ['country', 'province'],
-            triggers: ['onValueChange'],
+            triggers: ['onKeyChange'],
             concurrency: 'switch',
-            key: (row) => {
-              const province = String(row.province ?? '')
+            key: (country, provinceValue) => {
+              const province = String(provinceValue ?? '')
               if (!province) return undefined
-              return { country: String(row.country ?? 'CN'), province }
+              return { country: String(country ?? 'CN'), province }
             },
           }),
           warehouseOptions: Form.Trait.source({
             resource: WarehousesSpec.id,
             deps: ['country', 'province', 'city'],
-            triggers: ['onValueChange'],
+            triggers: ['onKeyChange'],
             concurrency: 'switch',
-            key: (row) => {
-              const city = String(row.city ?? '')
+            key: (country, provinceValue, cityValue) => {
+              const city = String(cityValue ?? '')
               if (!city) return undefined
-              return { country: String(row.country ?? 'CN'), province: String(row.province ?? ''), city }
+              return { country: String(country ?? 'CN'), province: String(provinceValue ?? ''), city }
             },
           }),
         },

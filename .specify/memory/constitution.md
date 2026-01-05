@@ -1,27 +1,22 @@
 <!--
 Sync Impact Report
-- Version change: 2.5.0 → 2.6.0
+- Version change: 2.7.0 → 2.8.0
 - Modified principles:
-  - Core Principles:
-    - I（性能与可诊断性优先）：明确“向前兼容（forward-only evolution）”口径：冲突时以新规划/规范为准，删除/重写旧实现；以迁移说明替代兼容层与弃用期。
-    - VII（文档先行 & SSoT）：修正过时路径引用 `docs/specs/intent-driven-ai-coding/v3` → `docs/specs/intent-driven-ai-coding`。
   - Runtime & Codebase Constraints:
-    - 兼容性与迁移策略：补充“向前兼容（forward-only evolution）”为首要演进策略，并显式写入冲突处理规则。
-- Added sections: 无
+    - 新增「模块规模门槛与渐进式无损拆解（互斥子模块）」：对 ≥1000 LOC（或预计将超阈值）的文件/模块，必须先形成互斥拆解方案与落点；拆分与语义改动解耦；小步验证与单向依赖。
+- Added sections:
+  - Runtime & Codebase Constraints / 模块规模门槛与渐进式无损拆解（互斥子模块）
 - Removed sections: 无
 - Templates:
   - ✅ .specify/templates/plan-template.md
   - ✅ .codex/skills/speckit/assets/templates/plan-template.md
+  - ✅ .specify/templates/tasks-template.md
+  - ✅ .codex/skills/speckit/assets/templates/tasks-template.md
   - ✅ .specify/templates/spec-template.md
   - ✅ .codex/skills/speckit/assets/templates/spec-template.md
   - ✅ .specify/templates/checklist-template.md
   - ✅ .codex/skills/speckit/assets/templates/checklist-template.md
-  - ✅ .specify/templates/tasks-template.md
-  - ✅ .codex/skills/speckit/assets/templates/tasks-template.md
-- Other sync:
-  - ✅ AGENTS.md
-  - ✅ docs/specs/drafts/topics/platform-vision/README.md
-  - ✅ docs/specs/drafts/topics/sdd-platform/README.md
+- Other sync: 无
 - Deferred TODOs: 无
 -->
 
@@ -175,6 +170,50 @@ _Rationale_: 保证规范、实现与工具链共用同一事实源，避免“�
   禁止返回 `Effect`、禁止在内部 `fork` 长任务或引入不可控副作用。
 - 所有写入 MUST 进入事务队列并产出 dirty-set（与可选的 patch）；禁止业务侧绕过事务通过
   `SubscriptionRef` 等可写 Ref 直接修改 state。
+
+**订阅一致性（No tearing）与 React-as-Viewer（少写胶水）**
+
+- React 集成 MUST 保证“无撕裂（no tearing）”：同一次 React render/commit 中读取到的
+  Logix 快照必须锚定在同一个稳定版本（例如 `tickSeq`），禁止出现“同一屏同时看到新旧快照”的
+  物理不一致（render-level tearing）。
+- 允许存在“业务一致性降级”（partial fixpoint / 最终一致），但必须满足：
+  - 降级仅发生在业务语义层（例如 nonUrgent backlog 推迟），不得破坏 render-level no tearing；
+  - 必须通过 `trace:tick`（或等价事件）输出可序列化证据，解释降级原因、预算与 backlog。
+- React 层 SHOULD 尽量作为 Viewer：订阅/同步/派生/拉取尽量用 Logix（Trait/Flow/Runtime）
+  表达，尽量消灭数据胶水 `useEffect`；`useEffect` 仅保留给 DOM 测量与不可避免的
+  imperative UI/三方 UI 集成边界（不用于数据同步与跨模块写入）。
+- 禁止“双真相源”：
+  - React 组件不得同时以三方状态（如 router 的 `useLocation`）与 Logix State 作为同一事实源；
+  - 外部源必须通过 Logix 统一接入并以 Logix 快照对外，UI 只读 Logix（或只读三方，但不能两套并行）。
+
+**ExternalStore 接入语义（Signal Dirty, Pull-based）**
+
+- 高强度外部更新 MUST 采用 Pull-based：`subscribe(cb)` 的回调只能幂等“signal dirty”
+  并去重调度；禁止把 payload 或“每次 emit 都入队一个任务”的 Push-Queue 方案带进内核，
+  以免形成队列风暴与负优化。
+- `getSnapshot()` MUST 是纯同步读：禁止 IO/await/异步边界；需要 IO 的场景必须拆分为
+  多事务（pending → IO → writeback）。
+- Module-as-Source 允许存在，但跨模块依赖 MUST IR 可识别：禁止通过黑盒 `subscribe`
+  建立“运行时才知道”的跨模块同步链路；必须能降解为 Static IR + 可回放的 Dynamic Trace。
+
+**模块规模门槛与渐进式无损拆解（互斥子模块）**
+
+- 当本次变更触及既有文件/模块，且满足任一条件时：
+  - 该文件/模块已 ≥ 1000 LOC；或
+  - 预计本次实现会使其达到/超过 1000 LOC（包括必然增加的分支/诊断/适配逻辑）；
+  MUST 先产出一份可追踪的“拆解简报（Decomposition Brief）”，至少包含：
+  - 目标清单（含 LOC）；
+  - 拆分形态选择（单一主体：同目录 `*.*.ts` 平铺；子系统：目录承载）；
+  - 互斥子模块清单（单一职责、导出边界、依赖方向、原文件保留内容）；
+  - 渐进落地步骤（一次只落地一个互斥子模块）与验证策略（类型/测试/必要的 perf 证据）。
+- 拆分过程 MUST 与语义改动解耦：
+  - “无损拆分”只允许移动/提取/重排文件与依赖；禁止顺手引入新行为、新缓存、新调度策略、
+    新副作用或新的性能开销路径；
+  - 任何语义改动/优化必须拆分为独立任务与验证（并按需补性能/诊断证据）。
+- import 拓扑 MUST 保持单向、无循环依赖；若出现循环依赖，视为边界设计失败，
+  MUST 回到“互斥职责划分”重画边界，而不是用临时 re-export/hack 强行打通。
+- 新增文件默认 SHOULD 避免超出 1000 LOC；若确需超阈值，必须在对应变更的
+  Complexity Tracking（或等价载体）中解释原因，并明确后续拆解计划与时间点。
 
 **性能预算与回归防线**
 
@@ -467,4 +506,4 @@ _Rationale_: 保证规范、实现与工具链共用同一事实源，避免“�
 - 当发现长期偏离本宪章的实现时，团队与 Agent SHOULD
   共同判断是「修宪」还是「还债」，并通过 ADR / plan.md 记录决策。
 
-**Version**: 2.6.0 | **Ratified**: 2025-12-10 | **Last Amended**: 2025-12-31
+**Version**: 2.8.0 | **Ratified**: 2025-12-10 | **Last Amended**: 2026-01-05

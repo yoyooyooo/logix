@@ -32,15 +32,15 @@ export const computed = <
   readonly equals?: (prev: AtPath<S, P>, next: AtPath<S, P>) => boolean
 }): DerivedEntry<S, P> => Logix.StateTrait.computed(input as any) as any
 
-export const source = <S extends object, P extends FieldPath<S>>(meta: {
+export const source = <S extends object, P extends FieldPath<S>, const Deps extends ReadonlyArray<FieldPath<S>>>(input: {
   readonly resource: string
-  readonly deps: ReadonlyArray<FieldPath<S>>
-  readonly key: (state: Readonly<S>) => unknown
-  readonly triggers?: ReadonlyArray<'onMount' | 'onValueChange' | 'manual'>
+  readonly deps: Deps
+  readonly key: (...depsValues: DepsArgs<S, Deps>) => unknown
+  readonly triggers?: ReadonlyArray<'onMount' | 'onKeyChange' | 'manual'>
   readonly debounceMs?: number
   readonly concurrency?: 'switch' | 'exhaust-trailing'
   readonly meta?: Record<string, unknown>
-}): DerivedEntry<S, P> => Logix.StateTrait.source(meta as any) as any
+}): DerivedEntry<S, P> => Logix.StateTrait.source(input as any) as any
 
 export const link = <S extends object, P extends FieldPath<S>>(meta: {
   readonly from: FieldPath<S>

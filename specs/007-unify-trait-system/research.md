@@ -78,7 +78,7 @@
 
 **Decision**: Query 的缓存、in-flight 去重、重试/取消等请求层复杂度允许委托给外部引擎；默认采用 TanStack Query（`QueryObserver`）作为实现方案。Logix 侧仍必须负责：
 
-- 触发语义（onMount/onValueChange/manual）与并发策略选择；
+- 触发语义（onMount/onKeyChange/manual）与并发策略选择；
 - keySchema/keyHash 规范化与写回 stale 门控；
 - 产出可回放事件与可解释诊断（外部引擎行为不得成为事实源）。  
   并且通过 effect 的 DI 注入外部引擎实例：`@logix/query` 暴露 `Query.Engine`（Tag）并提供 `Query.Engine.layer(engine)`，由宿主在全局 Runtime Layer 注入（默认推荐 `Query.Engine.layer(Query.TanStack.engine(new QueryClient()))`）。  

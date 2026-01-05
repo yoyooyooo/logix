@@ -154,7 +154,7 @@ docs/reviews/                                             # breaking changes/roa
 
 **Core/Form 分层（落实）**（依据：`specs/010-form-api-perf-boundaries/references/pr.md`）
 
-- **下沉到 `@logix/core`（TraitLifecycle/StateTrait/Runtime）**：valuePath→FieldRef 解析、source 的 `onMount/onValueChange` 默认 wiring、deps 命中归一化（含 `[]` pattern）、list-scope deps 默认语义（`deps:["x"] => list[].x`）与结构依赖补齐、rowIdStore、通用 cleanup 原语。
+- **下沉到 `@logix/core`（TraitLifecycle/StateTrait/Runtime）**：valuePath→FieldRef 解析、source 的 `onMount/onKeyChange` 默认 wiring、deps 命中归一化（含 `[]` pattern）、list-scope deps 默认语义（`deps:["x"] => list[].x`）与结构依赖补齐、rowIdStore、通用 cleanup 原语。
 - **留在 `@logix/form`（领域语义与 DX 外观）**：`$list/rows[]` 错误树与 `manual > rules > schema`、ValuePath↔ErrorsPath（数组插入 `rows`）映射、内置规则库与 RHF 风格简写、`controller.*` 统一动作命名空间、`Form.Path` 与类型化 FieldPath/FieldValue（含数组 index）。
 - **实现纪律**：form 不再复制 path 解析 / source wiring / deps 命中逻辑；若 core 缺能力，优先补 core 而不是在 form 侧引入新的专家开关。
 

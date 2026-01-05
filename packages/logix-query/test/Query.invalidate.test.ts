@@ -28,17 +28,15 @@ describe('Query.invalidate', () => {
       const module = Query.make('QueryInvalidateBlueprint', {
         params: ParamsSchema,
         initialParams: { q: 'x' },
-        queries: {
-          search: {
+        queries: ($) => ({
+          search: $.source({
             resource: spec,
             deps: ['params.q'],
             triggers: ['onMount'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => ({
-              q: params.q,
-            }),
-          },
-        },
+            key: (q) => ({ q }),
+          }),
+        }),
       })
 
       const invalidateCalls: Array<Query.InvalidateRequest> = []
@@ -130,24 +128,24 @@ describe('Query.invalidate', () => {
       const module = Query.make('QueryInvalidateByTagBlueprint', {
         params: ParamsSchema,
         initialParams: { q: 'x' },
-        queries: {
-          a: {
+        queries: ($) => ({
+          a: $.source({
             resource: specA,
             deps: ['params.q'],
             triggers: ['onMount'],
             tags: ['user'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => ({ q: params.q }),
-          },
-          b: {
+            key: (q) => ({ q }),
+          }),
+          b: $.source({
             resource: specB,
             deps: ['params.q'],
             triggers: ['onMount'],
             tags: ['order'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => ({ q: params.q }),
-          },
-        },
+            key: (q) => ({ q }),
+          }),
+        }),
       })
 
       const invalidateCalls: Array<Query.InvalidateRequest> = []

@@ -54,9 +54,9 @@ derived: d({
   "cityOptions": Form.source({
     resource: "demo/region/cities",
     deps: ["country", "province"],
-    triggers: ["onValueChange"],
+    triggers: ["onKeyChange"],
     concurrency: "switch",
-    key: (state) => ({ country: state.country, province: state.province }),
+    key: (country, province) => ({ country, province }),
   }),
 })
 ```

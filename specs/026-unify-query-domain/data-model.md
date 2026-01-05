@@ -74,8 +74,8 @@ Query 的 params/result/ui 必须全部落在模块 state 上，以保证可回�
 
 - `resource`：资源引用（ResourceSpec 或 { id }）。
 - `deps`：依赖字段路径数组（如 `params.q` / `ui.query.autoEnabled`），用于图构建与触发收敛；类型建议收窄为 `StateTrait.StateFieldPath<TState>`（`TState` 为模块 state；深度上限 4）。
-- `triggers`：触发语义（`onMount` / `onValueChange` / `manual`）。
-- `debounceMs`（可选）：onValueChange 的去抖（ms）。
+- `triggers`：触发语义（`onMount` / `onKeyChange` / `manual`）。
+- `debounceMs`（可选）：onKeyChange 的去抖（ms）。
 - `concurrency`：并发语义（如 `switch` / `exhaust`）。
 - `key(state)`：从模块 state 计算 key；返回 undefined 表示当前不应触发请求。
 

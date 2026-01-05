@@ -67,7 +67,7 @@ describe('StateTrait RowID matrix (list.item source)', () => {
             profileResource: Logix.StateTrait.source({
               deps: ['id'] as any,
               resource: 'user/profile',
-              key: (item: any) => ({ userId: item.id }),
+              key: (id: any) => ({ userId: id }),
               concurrency: 'switch',
             }) as any,
           },

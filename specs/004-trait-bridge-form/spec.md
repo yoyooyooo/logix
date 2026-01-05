@@ -75,7 +75,7 @@
 - Q: FieldError 的形状是否允许“多条命名错误”（对齐 RHF `types` / `criteriaMode="all"`）？ → A: 允许。`FieldError` 统一为 `string | Record<ruleName, string>`（无错误为 undefined）；默认返回 string（单条错误），需要多条/命名规则时返回对象以保留上限与 Devtools 可视化。
 - Q: kernel 的 check/computed 是否支持 `Record<ruleName, fn>` 作为命名规则集合（单函数为语法糖）？ → A: 支持。`check/computed` 同时允许单函数与 Record 形态；当使用 Record 形态时，ruleName 作为诊断/展示的一等信息进入 Devtools 与错误树 leaf（Record 形态）。
 - Q: 多条命名 check/computed 规则的执行顺序与合并语义是什么？ → A: 采用确定性深合并：Record 形态按 `ruleName` 字典序依次执行；返回 patch 做 deep‑merge。`check` 叶子若来自多条命名规则，合并为 `Record<ruleName, message>`（同名覆盖）；`computed` 叶子冲突时 last‑writer‑wins，dev 环境给出 warning。
-- Q: Form 场景声明的 source 是否默认自动触发？触发枚举叫什么，并为 React 的 onBlur 等事件预留扣子吗？ → A: 是。Form.traits 中声明的 source 默认启用自动触发，触发枚举命名为 `onValueChange`（而不是 onKeyChange），并允许配置 `debounceMs`（仅对 onValueChange 生效）；同时预留 `onBlur` 等 UI 事件触发位：短期可由 @logix/react 的表单绑定层在对应事件发生时显式调用 refresh，长期可将这些事件纳入统一的 triggers 语义。
+- Q: Form 场景声明的 source 是否默认自动触发？触发枚举叫什么，并为 React 的 onBlur 等事件预留扣子吗？ → A: 是。Form.traits 中声明的 source 默认启用自动触发，触发枚举命名为 `onKeyChange`（语义更准确：当 keySelector 推导得到的 key 发生变化时触发），并允许配置 `debounceMs`（仅对 onKeyChange 生效）；同时预留 `onBlur` 等 UI 事件触发位：短期可由 @logix/react 的表单绑定层在对应事件发生时显式调用 refresh，长期可将这些事件纳入统一的 triggers 语义。
 - Q: source 字段写回的值是否需要包含 loading/error（表单与 Devtools 可直接消费）？ → A: 需要。source 统一写回 `ResourceSnapshot`（`status: "idle" | "loading" | "success" | "error"` + `data?/error?`），而不是仅写回 raw data；表单/Devtools 直接读 snapshot，视图层再通过 computed/check 派生 options 与用户可见错误。
 - Q: `ResourceSnapshot` 是否需要携带本次请求参数（resource key）用于 Devtools/回放/排查？ → A: 需要。snapshot 必须携带 `key`（与 ResourceSpec.keySchema 对齐），用于识别“当前数据对应哪个 key”与处理 key 变化下的竞态。
 - Q: key selector 是否允许返回 undefined 表示“禁用/不触发”，并把 snapshot 置回 idle？ → A: 允许。key selector 返回 undefined 时视为“当前无有效 key”，不得触发 IO，目标字段写回 `{ status: "idle" }`（不携带 key）。
@@ -86,8 +86,8 @@
 ### Session 2025-12-12
 
 - Q: 是否引入 `StateTrait.node` 作为统一 DSL 形状，并将数组 scope 命名从 perItem/perList 收敛为 item/list？ → A: 是。`StateTrait.node` 作为纯编译期组合子统一承载 `computed/check/source/link` 的声明形状；数组字段通过 `StateTrait.list({ item, list })` 表达两种输入域（单行/整列），不再使用 per* 前缀，降低心智负担并为未来 *Trait 同源形状铺路。
-- Q: Form.traits 声明的 source 默认触发是否包含 onMount（用于编辑/回填时初始拉齐依赖资源）？ → A: 包含。Form.traits 的 source 默认采用 `triggers: ["onMount", "onValueChange"]`：既保证初始有值时能自动拉齐依赖资源，也保证输入变化时实时更新；若担心资源风暴，可改为 `triggers: ["manual"]` 或配合 `concurrency: "exhaust"` 与 `debounceMs` 收敛触发频率。
-- Q: triggers 是否允许包含 "manual"，以及能否与其它触发混用？ → A: 允许包含 "manual"，但必须严格独占：只能写成 `triggers: ["manual"]`，不得与 `onMount/onValueChange/onBlur` 等混用，避免“既自动又手动”的歧义。
+- Q: Form.traits 声明的 source 默认触发是否包含 onMount（用于编辑/回填时初始拉齐依赖资源）？ → A: 包含。Form.traits 的 source 默认采用 `triggers: ["onMount", "onKeyChange"]`：既保证初始有值时能自动拉齐依赖资源，也保证输入变化时实时更新；若担心资源风暴，可改为 `triggers: ["manual"]` 或配合 `concurrency: "exhaust"` 与 `debounceMs` 收敛触发频率。
+- Q: triggers 是否允许包含 "manual"，以及能否与其它触发混用？ → A: 允许包含 "manual"，但必须严格独占：只能写成 `triggers: ["manual"]`，不得与 `onMount/onKeyChange/onBlur` 等混用，避免“既自动又手动”的歧义。
 - Q: source.resource 是否允许传对象以承载蓝图元信息？这些元信息是否影响运行时语义？ → A: 允许。`resource` 允许为 `string | ResourceRef`（`{ id, meta? }`），运行时只使用 `.id` 查找 ResourceRegistry；`meta` 仅用于 Devtools/文档/代码生成等“蓝图展示/诊断”，不得影响运行时执行语义（否则会破坏全双工可回放与边界清晰）。
 - Q: 同一 resourceId 在同一 Program 内出现多个不同 ResourceRef.meta 时如何处理（只影响展示/诊断）？ → A: dev 环境给出 warning 并采用确定性 first-wins：按 ownerFields（使用该 resourceId 的 fieldPath）字典序最小的那一处作为 canonical meta；其它 meta 不参与合并。建议工程内始终维护“每个 id 一个 ResourceRef 常量”避免冲突。
 - Q: ResourceRef 的工程组织（id/spec 是否强制拆分文件）？ → A: 不强制。文档给出推荐组织方式（例如 id/spec 拆分）以降低耦合与 bundle 风险，但允许在小项目或局部场景把 id/spec 放在同一个文件里。
@@ -102,7 +102,7 @@
 - Q: 跨行/列表级联动校验在 `list.list.check` 下的写入能力如何定义（只写 `$list` 还是也能写行级错误）？ → A: `list.list.check` 允许同时写 `$list` 与任意行/字段的错误（`errors.items[i].x` / `errors.items[i].$item`），以覆盖真实 ToB 场景；其返回值仍是相对 scope 的 ListErrorNode（数组节点 + `$list`），不要求回退到 `$root`。
 - Q: 嵌套数组（如 `sections[].items[]`）下的 ctx 如何提供最小且可扩展的定位信息（便于规则读取上下文）？ → A: 采用 `listIndexPath + index`：list ctx 固化 `listIndexPath`（list 实例锚点，如 `[sectionIndex]`）；item ctx 固化 `listIndexPath + index`（可拼出完整 indexPath），避免把所有层级都摊平进 ctx 字段，同时保持两层嵌套一等公民。
 - Q: `StateTrait.list` 的 `item/list` 两个 scope 是否必须同时声明？ → A: 不必须。`item` 与 `list` 都是可选的：默认只声明 `item`（每行规则/派生/资源）；只有在需要“跨行/列表级”规则或摘要（如唯一性、单调性、最少 N 行）时才补充 `list`，避免无谓的 API 表面积。
-- Q: `source.triggers` 的命名应更偏“状态语义”还是更贴近 UI 事件？ → A: kernel 统一使用状态语义命名：`onValueChange`（保留 `onBlur`），避免与 UI 层事件混淆；React 适配层负责把 input 事件映射为值变化触发。
+- Q: `source.triggers` 的命名应更偏“状态语义”还是更贴近 UI 事件？ → A: kernel 统一使用状态语义命名：`onKeyChange`（保留 `onBlur`），避免与 UI 层事件混淆；React 适配层负责把 input 的 onChange/onBlur 映射为 onKeyChange/onBlur。
 - Q: 校验能力在 Rules（RHF rules 对标）与 Schema（effect/Schema）之间如何分工？ → A: 采用双轨但同构落盘：Rules 负责“输入体验/即时反馈”（field/item/list/root 的 check），Schema 负责“提交/边界校验 + transform”（decode 失败需可映射回同一套 ErrorTree）；两者产出的错误最终都落在同构的 `state.errors`，不要求开发者二选一。
 - Q: Schema 解码错误映射（helper）应归属到 `@logix/form` 的哪个命名空间？ → A: 归属到 `Form.Error`：`Form.Error.fromSchemaError(error)`，因为它本质是“错误结构与映射”，而不是校验规则本身；`Form.Rule` 只负责产出 `check`。
 - Q: FieldError leaf 是否要支持 RHF `criteriaMode="all"` 那种“多条命名错误”（保留校验上限）？ → A: 支持。`FieldError` 固化为 `string | Record<ruleName, string> | undefined`（undefined 表示无错误）；默认简单场景返回 string，需要保留多条命名规则输出时返回 Record，以便 Devtools/Studio 可展示 ruleName。
@@ -385,16 +385,16 @@ Trait 链路一旦落实现，会牵动 StateSchema、TraitSpec、Runtime/Devtoo
   - 合并语义不得引入非确定性（如依赖运行时遍历顺序）；  
   - Devtools MUST 能还原每条命名规则的输出与最终合并结果（至少在 debug 视图中可追溯）。
 
-- **FR-015 · Form 场景 source 的默认触发（onValueChange + debounce + 事件扩展）**  
+- **FR-015 · Form 场景 source 的默认触发（onKeyChange + debounce + 事件扩展）**  
   为了让“输入变化 → 资源约束变化”的表单链路足够甜且可演进，规范 MUST 满足：  
   - kernel `StateTrait.source` 默认保持“只显式 refresh”（避免资源风暴）；  
-  - Form.traits（领域糖）中声明的 source 默认启用自动触发，默认 `triggers: ["onMount", "onValueChange"]`：  
+  - Form.traits（领域糖）中声明的 source 默认启用自动触发，默认 `triggers: ["onMount", "onKeyChange"]`：  
     - `onMount` 用于“编辑/回填”场景：初始 state 已有有效 key 时，自动触发一次 refresh；  
-    - `onValueChange` 用于“输入变化”场景：当 keySelector 推导得到的 key 发生变化时触发 refresh（实现层可做 key 去重）；  
+    - `onKeyChange` 用于“输入变化”场景：当 keySelector 推导得到的 key 发生变化时触发 refresh（实现层可做 key 去重）；  
   - `triggers: ["manual"]` 表示“仅显式 refresh”，并且 MUST 与其它 trigger 互斥（不得出现 `["manual", ...]`）；  
-  - 可选配置 `debounceMs`：默认仅对 `onValueChange` 生效（onMount 不需要防抖）；  
+  - 可选配置 `debounceMs`：默认仅对 `onKeyChange` 生效（onMount 不需要防抖）；  
   - keySelector 允许返回 undefined 表示“当前无有效 key / 禁用”：此时不得触发 IO，并将 snapshot 置为 `{ status: "idle" }`（该禁用语义是 kernel 的通用能力，不仅限于 Form.traits）；  
-  - triggers 的命名以用户心智为主（`onValueChange`），不在对外文档中强调“key change”；  
+  - triggers 的命名以语义为准：`onKeyChange` 描述“keySelector 结果变化”而不是 UI 事件；UI 事件映射由 React 适配层负责；  
   - 预留 `triggers: ["onBlur"]`（以及未来更多 UI 事件）的扩展位：本轮不强制实现自动 wiring，但用户文档必须给出在 @logix/react 中如何在 blur/submit 等事件上触发 refresh 的推荐模式（通过显式调用 refresh 或等价 helper）。
 
 - **FR-016 · source 的写回形态（ResourceSnapshot）**  

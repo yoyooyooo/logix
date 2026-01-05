@@ -31,6 +31,7 @@ related:
 - 并发：`switch` / `exhaust-trailing`。
 - key 失效（undefined）：同一次可观察提交内写回 clean idle。
 - list.item：RowId 门控，避免数组结构变更导致写错行。
+- `source.key`：已升级为 **deps-as-args**（`key(...depsValues)`），并由 build 阶段强制 deps 显式声明；dev-mode 仍保留 deps mismatch 诊断用于发现“读取了没声明”的依赖。
 - dev-mode deps mismatch：对 key 的实际读取与声明 deps 不一致会出诊断，但不改变语义。
 
 ## 仍需补齐的能力
@@ -53,22 +54,3 @@ related:
 - 实现：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
 - 内核：`packages/logix-core/src/internal/state-trait/source.ts`
 - 桥接协议：可考虑同步扩展 `TraitLifecycle.scopedExecute` 的 `source:refresh` 请求形态（可选）。
-
-### P2 · Source Key 的 deps-as-args（需要裁决）
-
-当前 `source.key` 形态：
-
-- root：`key: (state) => unknown`
-- list.item：`key: (item) => unknown`
-
-并且有两个“守卫”：
-
-- build 阶段强制 `deps` 显式声明；
-- dev-mode 通过 DepsTrace 给出 deps mismatch 诊断。
-
-**需要裁决的问题**：是否仍要把 `key` 升级为 `(...depsValues) => key`（像 `computed.get` 一样）？
-
-- 倾向保留（理由）：把 deps 从“约定+诊断”升级为“编译期物理约束”，减少 stale key 风险。
-- 倾向暂缓（理由）：当前已经强制 deps + mismatch 诊断；升级会带来类型推导与迁移成本，且 list.item 还需要同时处理 “按行注入 depsValues”。
-
-建议：在完成 `P1 force refresh` 与 `P0 list.item derived 执行` 之后再决定，避免同时引入两次结构性变更。

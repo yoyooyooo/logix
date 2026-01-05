@@ -275,7 +275,7 @@ export const cleanup = (bound: BoundApi<any, any>, request: CleanupRequest): Eff
 
 type SourceWiring = {
   readonly setup: Effect.Effect<void, never, any>
-  readonly refreshOnValueChange: (changedPath: string) => Effect.Effect<void, never, any>
+  readonly refreshOnKeyChange: (changedPath: string) => Effect.Effect<void, never, any>
 }
 
 const isAuxRootPath = (path: string): boolean =>
@@ -309,8 +309,8 @@ export const makeSourceWiring = (bound: BoundApi<any, any>, module: unknown): So
     Array.isArray(e?.meta?.triggers) ? e.meta.triggers.includes('onMount') : false,
   )
 
-  const sourceOnValueChange = sources.filter((e: any) =>
-    Array.isArray(e?.meta?.triggers) ? e.meta.triggers.includes('onValueChange') : false,
+  const sourceOnKeyChange = sources.filter((e: any) =>
+    Array.isArray(e?.meta?.triggers) ? e.meta.triggers.includes('onKeyChange') : false,
   )
 
   const setup = Effect.sync(() => {
@@ -322,15 +322,15 @@ export const makeSourceWiring = (bound: BoundApi<any, any>, module: unknown): So
     )
   })
 
-  const refreshOnValueChange = (changedPath: string): Effect.Effect<void, never, any> =>
+  const refreshOnKeyChange = (changedPath: string): Effect.Effect<void, never, any> =>
     Effect.gen(function* () {
       if (!changedPath || isAuxRootPath(changedPath)) return
-      if (sourceOnValueChange.length === 0) return
+      if (sourceOnKeyChange.length === 0) return
 
       const changedPattern = toPatternPath(changedPath)
 
       yield* Effect.forEach(
-        sourceOnValueChange,
+        sourceOnKeyChange,
         (entry: any) => {
           const deps = (entry?.meta?.deps ?? []) as ReadonlyArray<string>
           const affected = deps.some((dep) => isDepAffectedByChange(dep, changedPattern))
@@ -341,7 +341,7 @@ export const makeSourceWiring = (bound: BoundApi<any, any>, module: unknown): So
       )
     }).pipe(Effect.asVoid)
 
-  return { setup, refreshOnValueChange }
+  return { setup, refreshOnKeyChange }
 }
 
 /**

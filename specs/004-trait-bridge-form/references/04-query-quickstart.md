@@ -75,29 +75,25 @@ export const SearchQuery = Query.make("SearchQuery", {
   // 说明：字段命名是“建议形状”，语义以 004 约束为准
   ui: { query: { autoEnabled: true } },
 
-  queries: {
-    search: {
+  queries: ($) => ({
+    search: $.source({
       resource: SearchResource,
       // 004 硬语义：必须显式声明 deps（用于触发收敛/图构建/可解释性）
       deps: ["params.q", "params.filters", "params.page", "ui.query.autoEnabled"],
-      triggers: ["onMount", "onValueChange"],
+      triggers: ["onMount", "onKeyChange"],
       debounceMs: 200,
       concurrency: "switch",
-      key: (state) =>
-        (state.ui.query.autoEnabled
-          ? { q: state.params.q, filters: state.params.filters, page: state.params.page }
-          : undefined),
-    },
+      key: (q, filters, page, autoEnabled) => (autoEnabled ? { q, filters, page } : undefined),
+    }),
 
-    detail: {
+    detail: $.source({
       resource: { id: "DetailResource" } as const,
       deps: ["params.selectedId"],
-      triggers: ["onValueChange"],
+      triggers: ["onKeyChange"],
       concurrency: "switch",
-      key: (state) =>
-        (state.params.selectedId ? { id: state.params.selectedId } : undefined),
-    },
-  },
+      key: (selectedId) => (selectedId ? { id: selectedId } : undefined),
+    }),
+  }),
 })
 ```
 
@@ -205,12 +201,12 @@ export const QueryRuntimeLayer = Layer.mergeAll(
 - `exhaust`：in-flight 期间合并触发；结束后补一次最新 key 的刷新；
 - 无论哪种并发策略，**写回都必须按 keyHash 丢弃 stale**。
 
-### 1.3 触发语义：`onMount` / `onValueChange` / `manual`
+### 1.3 触发语义：`onMount` / `onKeyChange` / `manual`
 
 Query 触发不再散落在组件 `useEffect`：
 
 - `onMount`：用于初始同步（已有参数时）；
-- `onValueChange`：参数变化触发（可 debounce）；
+- `onKeyChange`：参数变化触发（可 debounce）；
 - `manual`：仅手动触发（通过 Controller.refresh / invalidate）。
 
 ---

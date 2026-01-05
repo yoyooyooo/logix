@@ -38,9 +38,7 @@ describe('ReplayMode · Sequence', () => {
       profileResource: Logix.StateTrait.source({
         deps: ['profile.id'],
         resource: 'user/profile',
-        key: (s: Readonly<State>) => ({
-          userId: s.profile.id,
-        }),
+        key: (profileId) => ({ userId: profileId }),
       }),
     })
 

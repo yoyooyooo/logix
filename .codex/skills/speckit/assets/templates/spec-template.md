@@ -125,6 +125,10 @@ _Example of marking unclear requirements:_
 - **NFR-007**: If this feature introduces breaking changes, the project MUST provide a
   migration note (plan.md / PR) and MUST NOT keep compatibility layers or a deprecation
   period (forward-only evolution).
+- **NFR-008**: If this feature integrates external reactive sources or React runtime
+  consumption, the system MUST guarantee no render-level tearing (single snapshot
+  anchor for `useSyncExternalStore`) and MUST avoid dual truth sources or data-glue
+  `useEffect` syncing state.
 
 ### Key Entities _(include if feature involves data)_
 

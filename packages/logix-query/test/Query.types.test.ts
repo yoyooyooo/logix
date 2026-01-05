@@ -30,15 +30,20 @@ if (false) {
   const Module = Query.make('QueryTypes', {
     params: ParamsSchema,
     initialParams: { q: 'x' },
-    queries: {
-      search: {
+    queries: ($) => ({
+      search: $.source({
         resource: Spec,
         deps: ['params.q'],
         triggers: ['manual'],
         concurrency: 'switch',
-        key: ({ params }: { readonly params: { readonly q: string } }) => ({ q: params.q }),
-      },
-    },
+        key: (q) => {
+          q.toUpperCase()
+          // @ts-expect-error q is inferred as string from deps
+          q.toFixed()
+          return { q }
+        },
+      }),
+    }),
   })
 
   type Sh = typeof Module.shape
@@ -57,26 +62,26 @@ if (false) {
   Query.make('QueryTypes.BadDeps', {
     params: ParamsSchema,
     initialParams: { q: 'x' },
-    queries: {
-      search: {
+    queries: ($) => ({
+      search: $.source({
         resource: Spec,
         // @ts-expect-error deps path must be within { params; ui }
         deps: ['params.nope'],
-        key: ({ params }: { readonly params: { readonly q: string } }) => ({ q: params.q }),
-      },
-    },
+        key: (q) => ({ q }),
+      }),
+    }),
   })
 
-  Query.make('QueryTypes.ReservedName', {
-    params: ParamsSchema,
-    initialParams: { q: 'x' },
-    queries: {
-      // @ts-expect-error reserved query name: "params"
-      params: {
-        resource: Spec,
-        deps: ['params.q'],
-        key: ({ params }: { readonly params: { readonly q: string } }) => ({ q: params.q }),
-      },
-    },
-  })
+	  Query.make('QueryTypes.ReservedName', {
+	    params: ParamsSchema,
+	    initialParams: { q: 'x' },
+	    // @ts-expect-error reserved query name: "params"
+	    queries: ($) => ({
+	      params: $.source({
+	        resource: Spec,
+	        deps: ['params.q'],
+	        key: (q) => ({ q }),
+	      }),
+	    }),
+	  })
 }

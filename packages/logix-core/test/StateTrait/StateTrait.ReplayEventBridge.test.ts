@@ -36,7 +36,7 @@ describe('ReplayEvent ↔ state:update bridge', () => {
           profileResource: Logix.StateTrait.source({
             deps: ['profile.id'],
             resource: 'user/profile',
-            key: (s: Readonly<S>) => ({ userId: s.profile.id }),
+            key: (profileId) => ({ userId: profileId }),
           }),
         }),
       })

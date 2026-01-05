@@ -125,7 +125,7 @@ type StateTraitDeps = ReadonlyArray<string>
  */
 type StateTraitComputedSpec<Input, Ctx> = {
   readonly deps: StateTraitDeps
-  readonly get: (input: Input, ctx: Ctx) => unknown
+  readonly get: (...depsValues: Array<unknown>) => unknown
   readonly equals?: (prev: unknown, next: unknown) => boolean
 }
 
@@ -133,11 +133,11 @@ type StateTraitSourceSpec<Input, Ctx> = {
   readonly deps: StateTraitDeps
   readonly resource: ResourceIdLike
   // 允许返回 undefined 表示“当前无有效 key”：不触发 IO，snapshot 回到 idle。
-  readonly key: (input: Input, ctx: Ctx) => unknown | undefined
-  // 触发集合：Form.traits 默认 ["onMount", "onValueChange"]；kernel 默认 ["manual"]。
+  readonly key: (...depsValues: Array<unknown>) => unknown | undefined
+  // 触发集合：Form.traits 默认 ["onMount", "onKeyChange"]；kernel 默认 ["manual"]。
   // 约束：若包含 "manual"，则必须严格等于 ["manual"]（与其它 trigger 互斥）。
-  // 说明：kernel 统一用“状态语义”命名，避免与 UI 层事件混淆；UI 适配层可把 onChange/onBlur 映射为 onValueChange/onBlur。
-  readonly triggers?: ReadonlyArray<"manual" | "onMount" | "onValueChange" | "onBlur">
+  // 说明：kernel 统一用“状态语义”命名，避免与 UI 层事件混淆；UI 适配层可把 onChange/onBlur 映射为 onKeyChange/onBlur。
+  readonly triggers?: ReadonlyArray<"manual" | "onMount" | "onKeyChange" | "onBlur">
   readonly debounceMs?: number
   readonly concurrency?: "switch" | "exhaust"
 }

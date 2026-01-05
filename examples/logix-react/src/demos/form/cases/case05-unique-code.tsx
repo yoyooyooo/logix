@@ -47,12 +47,12 @@ const UniqueForm = Form.make('FormCase.UniqueCode', {
     codeCheck: Form.source({
       resource: CodeAvailabilitySpec.id,
       deps: ['code'],
-      triggers: ['onValueChange'],
+      triggers: ['onKeyChange'],
       debounceMs: 200,
       concurrency: 'switch',
-      key: (s: Readonly<Form.Trait.DerivedState<UniqueV>>) => {
-        const code = s.code.trim()
-        return code ? { code } : undefined
+      key: (code: string) => {
+        const trimmed = String(code ?? '').trim()
+        return trimmed ? { code: trimmed } : undefined
       },
     }),
   }),

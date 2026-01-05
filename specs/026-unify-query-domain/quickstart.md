@@ -39,16 +39,16 @@ export const SearchQuery = Query.make("SearchQuery", {
   params: /* ... */,
   initialParams: /* ... */,
   ui: /* ... */,
-  queries: {
-    search: {
+  queries: ($) => ({
+    search: $.source({
       resource: SearchSpec,
       deps: ["params.q", "ui.query.autoEnabled"],
-      triggers: ["onMount", "onValueChange"],
+      triggers: ["onMount", "onKeyChange"],
       concurrency: "switch",
       debounceMs: 200,
-      key: (state) => (state.ui.query.autoEnabled ? { q: state.params.q } : undefined),
-    },
-  },
+      key: (q, autoEnabled) => (autoEnabled ? { q } : undefined),
+    }),
+  }),
 })
 
 // 3) Runtime 装配：Resource +（可选）外部引擎 + middleware
@@ -122,18 +122,17 @@ const StateSchema = Schema.Struct({
 
 export const Traits = Logix.StateTrait.from(StateSchema)({
   ...Query.traits({
-    queries: {
-      search: {
-        resource: SearchSpec,
-        deps: ["params.q", "ui.query.autoEnabled"],
-        triggers: ["onMount", "onValueChange"],
-        debounceMs: 200,
-        concurrency: "switch",
-        key: (state) =>
-          (state.ui.query.autoEnabled && state.params.q ? { q: state.params.q } : undefined),
-      },
-    },
-  }),
+	    queries: {
+	      search: {
+	        resource: SearchSpec,
+	        deps: ["params.q", "ui.query.autoEnabled"],
+	        triggers: ["onMount", "onKeyChange"],
+	        debounceMs: 200,
+	        concurrency: "switch",
+	        key: (q, autoEnabled) => (autoEnabled && q ? { q } : undefined),
+	      },
+	    },
+	  }),
 })
 ```
 

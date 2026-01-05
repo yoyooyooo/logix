@@ -134,7 +134,7 @@
 
 ## Phase 6: User Story 4 - 查询场景的自动触发与缓存复用 (Priority: P2)
 
-**Goal**: Query 作为对照领域：支持 onMount/onValueChange/manual（manual 独占）、switch/exhaust(trailing) 并发语义、缓存复用与 in-flight 去重（委托外部引擎），并通过 `Query.Engine` + `Query.Engine.layer()` 以 DI 注入（以 `Query.Engine.middleware()` 作为引擎接管点）。
+**Goal**: Query 作为对照领域：支持 onMount/onKeyChange/manual（manual 独占）、switch/exhaust(trailing) 并发语义、缓存复用与 in-flight 去重（委托外部引擎），并通过 `Query.Engine` + `Query.Engine.layer()` 以 DI 注入（以 `Query.Engine.middleware()` 作为引擎接管点）。
 
 **Independent Test**: 在 `packages/logix-query/test/*` 中跑“10 次快速参数变更 + 10 次重复参数触发”的基准：旧结果覆盖次数=0，重复 loading 次数≤1，并能解释触发来源与复用原因。
 
@@ -144,7 +144,7 @@
 - [x] T055 [P] [US4] 实现 QueryBlueprint（make/impl/initial/logics/controller）骨架：`packages/logix-query/src/query.ts`
 - [x] T056 [P] [US4] 实现 Query DSL（queries/triggers/concurrency/deps）降解到 StateTraitSpec：`packages/logix-query/src/traits.ts`
 - [x] T057 [US4] 实现 TanStack QueryObserver 集成（scope 内订阅/cleanup）：`packages/logix-query/src/tanstack/observer.ts`
-- [x] T058 [US4] 实现自动触发（onMount/onValueChange + debounce）与 manual 独占语义：`packages/logix-query/src/logics/auto-trigger.ts`
+- [x] T058 [US4] 实现自动触发（onMount/onKeyChange + debounce）与 manual 独占语义：`packages/logix-query/src/internal/logics/auto-trigger.ts`
 - [x] T059 [US4] 实现 invalidate/refresh 的事件化（TraitLifecycle.execute + ReplayLog 记录）：`packages/logix-query/src/logics/invalidate.ts`
 
 ### Tests for User Story 4

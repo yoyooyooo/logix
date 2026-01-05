@@ -82,6 +82,48 @@
 - 黑盒闭包不可推导依赖图，无法做稳定化与预算控制；
 - 保留黑盒作为 escape hatch，避免阻塞旧写法，但通过语义边界倒逼系统性收敛。
 
+---
+
+### D5：Module-as-Source 进入同一套声明式图谱（模块组合）
+
+**Decision**：支持把模块 A 的 selector 结果作为模块 B 的 ExternalStore 来源（对外心智：`ExternalStore.fromModule(...) + StateTrait.externalStore(...)`），并要求该依赖进入统一最小 IR，使 TickScheduler 能在同 tick 内稳定化它（避免 “订阅胶水升级版” 变成不可解释黑盒）。
+
+**Rationale**：
+
+- Module 本身天然符合 ExternalStore 的形状（sync current + subscribe signal），把它纳入同一抽象后，外部源/模块源都能以同一套声明式语言表达；
+- 关键不是“能订阅”，而是“依赖可导出、可诊断、可预算”，否则最终会回到 tearing/不可解释的 state glue。
+
+---
+
+### D6：fromModule 不做值拷贝（按引用共享）
+
+**Decision**：`ExternalStore.fromModule` 的 selector 返回值不会被 Runtime 自动 clone；下游 `StateTrait.externalStore` 写回按引用存储 selector 返回值本身。该能力用于“必要输入纳入收敛图谱”，禁止用它做全量 state 镜像；selector 应保持小、稳定、可解释。
+
+**Rationale**：
+
+- Runtime 核心路径不允许为“跨模块输入”引入隐式深拷贝/结构化拷贝：这会放大分配与 retained，直接冲击 perf budget 与可诊断性（事件体积/快照压力）。
+- Logix 的状态快照心智为“只读 + 结构共享”：把 selector 返回值按引用传播更符合当前模型，也避免多份对象图导致的漂移与额外 GC 压力。
+
+**Alternatives considered**：
+
+- Runtime 自动深拷贝 selector 返回值：成本不可控且与“性能优先/诊断 Slim”冲突；需要隔离时应由 selector 显式投影/拷贝，并把成本纳入预算。
+
+---
+
+### D7：Trait 下沉边界（Static governance + IR 单一事实源）
+
+**Decision**：ExternalStoreTrait 必须作为 `StateTrait` 的一等 kind 进入 `StateTraitProgram.graph/plan` 并参与 Static IR 导出；traits 只负责“模块内字段能力 + 静态治理 + IR 导出”，Runtime（TickScheduler/RuntimeStore）只消费 IR 做调度与快照一致性。禁止把 tick/React 订阅逻辑塞进 traits，也禁止 Runtime 通过 subscribe 黑盒“猜”Module-as-Source。
+
+**Rationale**：
+
+- 避免双真相源：若 React/Runtime 自己推导“哪些外部源来自 module/selector”，最终一定会与 trait 声明漂移（诊断与回放失真）。
+- 静态治理前置：external-owned/单 writer/可识别性门禁必须在 build/install 阶段 fail-fast，否则错误会在热路径被放大成 tearing/回归。
+- 便于跨内核复现：core-ng 只要遵循同一组 Runtime Services 合同并消费同一 Static IR，即可复现语义；不依赖“闭包内容”这种不可移植信息。
+
+**Alternatives considered**：
+
+- 把 ExternalStoreTrait 作为 runtime 层胶水（不进 StateTraitProgram/IR）：实现短期快，但长期必然产生不可解释黑盒与难以 gate 的回归（尤其 T035/Topic routing 与 Module-as-Source）。
+
 ## 2. 未决问题（需要在实现前拍板）
 
 本次 `spec.md` 已明确方向，但仍有 3 类细节需要在 `tasks.md`/实现阶段固化为“可测口径”：
@@ -93,4 +135,3 @@
 ## 3. 结论
 
 本特性的关键不在“再加一个 helper”，而在于把外部输入与跨模块联动纳入统一最小 IR，并以 tick 作为唯一一致性与解释单位，最终在 React 侧通过单一 RuntimeStore 消灭 tearing。
-

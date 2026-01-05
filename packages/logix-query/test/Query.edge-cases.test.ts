@@ -13,20 +13,20 @@ describe('Query edge cases', () => {
       Query.make('QueryEdgeCases.ManualExclusive', {
         params: ParamsSchema,
         initialParams: { q: 'x' },
-        queries: {
-          search: {
+        queries: ($) => ({
+          search: $.source({
             resource: { id: 'demo/edge-cases' },
             deps: ['params.q'],
             triggers: ['manual', 'onMount'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => ({ q: params.q }),
-          },
-        },
+            key: (q) => ({ q }),
+          }),
+        }),
       }),
     ).toThrow(/manual/i)
   })
 
-  itFx.scoped('should skip refresh when key(state) is undefined', () =>
+  itFx.scoped('should skip refresh when key(deps) is undefined', () =>
     Effect.gen(function* () {
       let calls = 0
       const Spec = Logix.Resource.make({
@@ -44,15 +44,15 @@ describe('Query edge cases', () => {
       const module = Query.make('QueryEdgeCases.KeyUndefined', {
         params: ParamsSchema,
         initialParams: { q: '' },
-        queries: {
-          search: {
+        queries: ($) => ({
+          search: $.source({
             resource: Spec,
             deps: ['params.q'],
-            triggers: ['onMount', 'onValueChange'],
+            triggers: ['onMount', 'onKeyChange'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => (params.q ? { q: params.q } : undefined),
-          },
-        },
+            key: (q) => (q ? { q } : undefined),
+          }),
+        }),
       })
 
       const runtime = Logix.Runtime.make(module.impl, {
@@ -107,17 +107,15 @@ describe('Query edge cases', () => {
       const module = Query.make('QueryEdgeCases.ExhaustTrailing', {
         params: ParamsSchema,
         initialParams: { q: 'q0' },
-        queries: {
-          search: {
+        queries: ($) => ({
+          search: $.source({
             resource: Spec,
             deps: ['params.q'],
-            triggers: ['onValueChange'],
+            triggers: ['onKeyChange'],
             concurrency: 'exhaust',
-            key: ({ params }: { readonly params: { readonly q: string } }) => ({
-              q: params.q,
-            }),
-          },
-        },
+            key: (q) => ({ q }),
+          }),
+        }),
       })
 
       const runtime = Logix.Runtime.make(module.impl, {

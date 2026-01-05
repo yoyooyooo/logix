@@ -11,7 +11,7 @@
 事件必须能用于：
 
 - stale 丢弃解释（resourceId + keyHash + 当前 keyHash）
-- 触发来源解释（onMount/onValueChange/manual）
+- 触发来源解释（onMount/onKeyChange/manual）
 - txn 聚合（txnId）
 - 失效/刷新重赛（InvalidateRequest）
 

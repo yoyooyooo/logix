@@ -55,23 +55,22 @@ describe('Query.controller.refreshAll', () => {
       const module = Query.make('QueryRefreshAllBlueprint', {
         params: ParamsSchema,
         initialParams: { q: 'a', selectedId: null },
-        queries: {
-          search: {
+        queries: ($) => ({
+          search: $.source({
             resource: SearchSpec,
             deps: ['params.q'],
             triggers: ['manual'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly q: string } }) => (params.q ? { q: params.q } : undefined),
-          },
-          detail: {
+            key: (q) => (q ? { q } : undefined),
+          }),
+          detail: $.source({
             resource: DetailSpec,
             deps: ['params.selectedId'],
             triggers: ['manual'],
             concurrency: 'switch',
-            key: ({ params }: { readonly params: { readonly selectedId: string | null } }) =>
-              params.selectedId ? { id: params.selectedId } : undefined,
-          },
-        },
+            key: (selectedId) => (selectedId ? { id: selectedId } : undefined),
+          }),
+        }),
       })
 
       const runtime = Logix.Runtime.make(module.impl, {

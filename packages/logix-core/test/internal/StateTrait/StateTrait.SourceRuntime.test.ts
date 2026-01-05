@@ -45,9 +45,7 @@ describe('StateTrait.source runtime integration', () => {
       profileResource: Logix.StateTrait.source({
         deps: ['profile.id'],
         resource: 'user/profile',
-        key: (s: Readonly<State>) => ({
-          userId: s.profile.id,
-        }),
+        key: (profileId) => ({ userId: profileId }),
       }),
       'profile.name': Logix.StateTrait.link({
         from: 'profileResource.data.name',

@@ -81,6 +81,7 @@ related:
 下列“诉求级结论”已被源码覆盖，旧草案应删除，改以本目录文档作为新事实源：
 
 - `computed` 的 deps-as-args（已落地，且有测试覆盖）。
+- `source.key` 的 deps-as-args（已落地：DSL 为 `key(...depsValues)`，内部 lower 为 `key(state)`；并补齐 callsite 迁移与类型回归断言）。
 - 事务窗口内 converge + scoped validate（已落地，且有诊断事件与降级策略）。
 - 动态列表（Form Array）的 list-scope check、RowId 归属与数组结构变更的默认 wiring（已在 `@logix/form` 中落地）。
 - `Trait.source` 的并发/回放/keyHash gate/idle 收敛（已落地）。
@@ -89,4 +90,3 @@ related:
 
 - P0：**list.item 的 computed/link 执行**（`items[].x` 目前只停留在 Program/Graph/IR，事务内 converge 未做按行展开执行）→ 见 `50-list-item-derived.md`。
 - P1：**source.force refresh / retry**（key 不变但需要重试/手动刷新）→ 见 `40-source-backlog.md`。
-- P2：评估 **source.key 的 deps-as-args** 是否仍有必要（当前已具备 deps mismatch 诊断；是否要把它升级为编译期硬约束需要裁决）→ 见 `40-source-backlog.md`。
