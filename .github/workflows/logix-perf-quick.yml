@@ -169,6 +169,7 @@ jobs:
       - name: Collect (base)
         run: |
           mkdir -p "$PERF_OUT_DIR"
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f "$BASE_SHA"
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
@@ -188,9 +189,12 @@ jobs:
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
 
       - name: Collect (head)
         run: |
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f "$HEAD_SHA"
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
@@ -209,6 +213,8 @@ jobs:
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
 
       - name: Normalize reports (pin matrixHash + browser.version)
         run: |
