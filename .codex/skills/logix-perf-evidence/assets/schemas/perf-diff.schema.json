@@ -47,6 +47,74 @@
         "message": { "type": "string" }
       }
     },
+    "MetricDeltaSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric",
+        "unit",
+        "compared",
+        "missing",
+        "unavailable",
+        "topRegressions",
+        "topImprovements"
+      ],
+      "properties": {
+        "metric": { "type": "string", "minLength": 1 },
+        "unit": { "type": "string", "const": "ms" },
+        "compared": { "type": "integer", "minimum": 0 },
+        "missing": { "type": "integer", "minimum": 0 },
+        "unavailable": { "type": "integer", "minimum": 0 },
+        "topRegressions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MetricDeltaPoint" }
+        },
+        "topImprovements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MetricDeltaPoint" }
+        }
+      }
+    },
+    "MetricDeltaPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["params", "before", "after", "deltaMs", "ratio"],
+      "properties": {
+        "params": { "$ref": "#/$defs/Params" },
+        "before": { "$ref": "#/$defs/MetricStatsMs" },
+        "after": { "$ref": "#/$defs/MetricStatsMs" },
+        "deltaMs": { "$ref": "#/$defs/MetricDeltaMs" },
+        "ratio": { "$ref": "#/$defs/MetricDeltaRatio" }
+      }
+    },
+    "MetricStatsMs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n", "medianMs", "p95Ms"],
+      "properties": {
+        "n": { "type": "integer", "minimum": 0 },
+        "medianMs": { "type": "number" },
+        "p95Ms": { "type": "number" }
+      }
+    },
+    "MetricDeltaMs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["medianMs", "p95Ms"],
+      "properties": {
+        "medianMs": { "type": "number" },
+        "p95Ms": { "type": "number" }
+      }
+    },
+    "MetricDeltaRatio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["median", "p95"],
+      "properties": {
+        "median": { "type": "number", "exclusiveMinimum": 0 },
+        "p95": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
     "Meta": {
       "type": "object",
       "additionalProperties": false,
@@ -114,6 +182,10 @@
         "evidenceDeltas": {
           "type": "array",
           "items": { "$ref": "#/$defs/EvidenceDelta" }
+        },
+        "metricDeltas": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MetricDeltaSummary" }
         },
         "notes": { "type": "string" }
       }

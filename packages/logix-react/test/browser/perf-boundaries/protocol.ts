@@ -37,7 +37,47 @@ export type PerfReport = {
   readonly suites: ReadonlyArray<unknown>
 }
 
+const inferBrowserVersion = (): string | undefined => {
+  if (typeof navigator === 'undefined') return undefined
+  const ua = navigator.userAgent
+  if (typeof ua !== 'string' || ua.length === 0) return undefined
+
+  const chrome = ua.match(/(?:HeadlessChrome|Chrome)\/(\d+(?:\.\d+)+)/)
+  if (chrome?.[1]) return chrome[1]
+
+  const firefox = ua.match(/\bFirefox\/(\d+(?:\.\d+)+)\b/)
+  if (firefox?.[1]) return firefox[1]
+
+  const safari = ua.match(/\bVersion\/(\d+(?:\.\d+)+)\b/)
+  if (safari?.[1]) return safari[1]
+
+  return undefined
+}
+
+const normalizePerfReport = (report: PerfReport): PerfReport => {
+  const browser = report.meta.env.browser
+  if (browser.version) return report
+
+  const inferred = inferBrowserVersion()
+  if (!inferred) return report
+
+  return {
+    ...report,
+    meta: {
+      ...report.meta,
+      env: {
+        ...report.meta.env,
+        browser: {
+          ...browser,
+          version: inferred,
+        },
+      },
+    },
+  }
+}
+
 export const emitPerfReport = (report: PerfReport): void => {
+  const normalized = normalizePerfReport(report)
   // eslint-disable-next-line no-console
-  console.log(`${LOGIX_PERF_REPORT_PREFIX}${JSON.stringify(report)}`)
+  console.log(`${LOGIX_PERF_REPORT_PREFIX}${JSON.stringify(normalized)}`)
 }
