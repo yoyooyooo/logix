@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Layer, Schema } from 'effect'
 import * as Logix from '@logix/core'
-import { getModuleRuntimeExternalStore } from '../../src/internal/store/ModuleRuntimeExternalStore.js'
+import { getRuntimeModuleExternalStore } from '../../src/internal/store/RuntimeExternalStore.js'
 
-describe('ModuleRuntimeExternalStore lowPriority scheduling', () => {
+describe('RuntimeExternalStore lowPriority scheduling', () => {
   it('lowPriority updates are delayed/merged and bounded by maxDelayMs', async () => {
     vi.useFakeTimers()
 
@@ -33,7 +33,7 @@ describe('ModuleRuntimeExternalStore lowPriority scheduling', () => {
 
       const rt: any = runtime.runSync(M.tag)
 
-      const store = getModuleRuntimeExternalStore(runtime as any, rt, {
+      const store = getRuntimeModuleExternalStore(runtime as any, rt, {
         lowPriorityMaxDelayMs: 20,
       })
 
@@ -43,6 +43,7 @@ describe('ModuleRuntimeExternalStore lowPriority scheduling', () => {
       })
 
       await runtime.runPromise(rt.dispatchLowPriority({ _tag: 'inc', payload: undefined } as any))
+      await new Promise<void>((resolve) => queueMicrotask(resolve))
 
       expect(notifyCount).toBe(0)
 
@@ -57,6 +58,7 @@ describe('ModuleRuntimeExternalStore lowPriority scheduling', () => {
 
       await runtime.runPromise(rt.dispatchLowPriority({ _tag: 'inc', payload: undefined } as any))
       await runtime.runPromise(rt.dispatchLowPriority({ _tag: 'inc', payload: undefined } as any))
+      await new Promise<void>((resolve) => queueMicrotask(resolve))
 
       expect(notifyCount).toBe(0)
 

@@ -6,6 +6,7 @@
     "flows-and-effects",
     "effect-basics",
     "lifecycle",
-    "react-integration"
+    "react-integration",
+    "tick-and-flush"
   ]
 }

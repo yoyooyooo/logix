@@ -28,6 +28,61 @@ Logic Intent 的 Impl 层是基于 Effect 的 **Bound API (`$`) 与 `Flow` API**
 
 后续涉及“Flow”的文档应显式使用上述术语之一，并在首次出现时指明是 `Logix Flow` 还是 `Flow Runtime`，避免再出现混用。
 
+### 1.2 最小系统方程：约束闭包 C_T 与控制律 Π（工作模型，可迭代）
+
+> 这是一个“工作模型”：它不宣称永远正确，但提供统一语言，把 Many（写法/场景/胶水）压缩为 One（可推演的系统方程），用于指导后续所有 Runtime / Traits / Flow 的规划与实现。
+
+```text
+Ops_t = Π(E_t, S_t, t)
+S_{t+1} = Close_{C_T}( S_t ⊕ Δ(Ops_t) )
+
+（若把 Close_{C_T}(S)=S 简写为 C_T(S)=0，则得到：S_{t+1} = S_t ⊕ Δ(Ops_t) with C_T(S_{t+1})=0）
+```
+
+变量解释：
+
+- `S_t`：时刻 `t` 的系统状态（模块 state 的一致快照）。在实现上，`t` 更接近 **tickSeq（离散“逻辑时间”）**：它定义了“同时性/一致性”的观测参考系（同一次 render/commit 只能观测到同一 tick 的快照）。
+- `E_t`：进入系统的事件/Action 流（dispatch 的 Action、lifecycle、外部源 signal-dirty、timer fire 等）。
+- `t`：时间（使 `delay/debounce/retry/timeout` 成为一等公民）。这里区分：
+  - **物理时间**：wall-clock/计时器，只能以可观测事件的形式进入 `E_t` 或进入 trace；
+  - **逻辑时间**：tickSeq/txnSeq/opSeq 等稳定序号，用于确定性回放与解释。
+- `Π`：显式的“控制律/Flow Program”（由 FlowSpec build/compile 得到），把 `E_t` 映射为可执行的操作序列（必须可导出 IR，禁止影子时间线绕开 tick 证据链）。
+- `Ops_t`：`Π` 产出的操作序列（调用服务、dispatch 新 Action、navigate、触发 `traits.source.refresh` 等）。
+- `Δ` / `⊕`：把操作序列解释为状态增量并**事务化**应用（避免 tearing/保证可回放）；事务窗口内禁止 IO，IO 必须被显式表示为 Ops 并在窗口外执行。
+- `C_T`：来自 StateTraits 的静态约束/派生闭包（computed/validation/binding/source 写回等）。`Close_{C_T}` 表示“在约束闭包下求收敛”（允许预算与软降级，但必须可解释、可诊断、可回放）。
+
+规划裁决（用于防漂移）：
+
+- **Traits 只负责 `C_T`（静态结构/受限绑定）**：它描述约束与边界条件，必须可 IR 化/可预算/可诊断；不得把自由工作流（多步协议/分支/跨服务协调）编码进 trait meta。
+- **Flow/Program 只负责 `Π`（动态律/自由编排）**：它描述“事件→步骤→结果”的控制律；时间算子必须进入同一证据链，避免黑盒 `setTimeout/Promise` 链断因果。
+- **Runtime 只执行（并导出证据链）**：runtime 不再“从静态里推断动态”，而是执行已编译的 `Π` 与已声明的 `C_T`，并在 tick/事务边界上产出 Slim、可序列化的诊断事件。
+
+工程落地（当前主线）：
+
+- `specs/073-logix-external-store-tick/`：建立 tick 参考系（`RuntimeStore + tickSeq`）与 no-tearing 观测语义。
+- `specs/075-logix-flow-program-ir/`：补齐通用 `Π`（FlowProgram IR：Action→Action + 时间算子）。
+- `specs/076-logix-source-auto-trigger-kernel/`：补齐 `Π_source`（source 的受限自动触发内核化，消灭 Query/Form 胶水）。
+
+#### 1.2.1 开放系统与并发（从“经典”到“量子”的必要补项）
+
+上述最小系统方程是一个 **有效理论**：它把系统压缩成“事件驱动的离散动力学”。但真实 runtime 是一个开放系统，至少有两类“量子项”需要被显式纳入心智模型，否则后续会在时间算子/并发/回放上反复踩坑：
+
+- **外界不确定性**：IO 结果、外部源推送、timer fire 本质上不可预测；要做到可解释/可回放，必须把它们收敛为进入系统的 `E_t`，并进入 trace（记录后 replay 才变为确定）。
+- **在途态与非交换性**：并发、取消、定时器、背压队列等会让“系统状态”不再只有 committed data；同时 Ops 的执行顺序并非总是可交换（`A∘B ≠ B∘A`），需要明确的 happens-before/预算调度。
+
+因此更稳妥的长期公式是把状态扩展为：
+
+```text
+Σ_t = (S_t, I_t)              // committed state + in-flight（timers/fibers/backlog…）
+Ops_t = Π(E_t, Σ_t, t)
+Σ_{t+1} = Close_{C_T}( Σ_t ⊕ Δ(Ops_t) )
+```
+
+解释：
+
+- `I_t` 不是业务状态，但它决定“下一步会发生什么”（例如 delay 还剩多久、latest 会取消谁、队列是否超预算）；
+- “量子”并不要求我们引入概率论：我们做的是 **把不确定性显式事件化并记录**，从而在给定 trace 的条件下恢复为确定的 replay（这是 Logix 的工程取向）。
+
 ## 2. 动态性与热更新 (Dynamism & HMR)
 
 为了支持“全双工编排”和极致的开发体验 (DX)，Logix Runtime 必须具备动态加载与热替换能力。

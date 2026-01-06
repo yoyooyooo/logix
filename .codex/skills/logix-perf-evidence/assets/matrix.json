@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "logix-browser-perf-matrix-v1",
-  "updatedAt": "2025-12-29",
+  "updatedAt": "2026-01-06",
   "defaults": {
     "runs": 30,
     "warmupDiscard": 5,
@@ -447,6 +447,42 @@
       "baselinePoints": [{ "steps": 2000 }],
       "requiredEvidence": ["txnLanes.mode", "txnLanes.budgetMs", "txnLanes.maxLagMs", "budget.cutOffCount"],
       "notes": "060 Txn Lanes：在 backlog 存在时测量 urgent 交互延迟与追平时间；off/on 通过 VITE_LOGIX_PERF_TXN_LANES_MODE 切换；支持 VITE_LOGIX_PERF_KERNEL_ID=core-ng 复跑。"
+    },
+    {
+      "id": "runtimeStore.noTearing.tickNotify",
+      "priority": "P1",
+      "title": "runtimeStore: tick→notify baseline (no-tearing workload)",
+      "primaryAxis": "watchers",
+      "axes": {
+        "watchers": [256],
+        "diagnosticsLevel": ["off", "full"]
+      },
+      "metrics": ["timePerTickMs"],
+      "budgets": [
+        {
+          "id": "p95<=0.30ms",
+          "type": "absolute",
+          "metric": "timePerTickMs",
+          "p95Ms": 0.3
+        },
+        {
+          "id": "full/off<=1.25",
+          "type": "relative",
+          "metric": "timePerTickMs",
+          "maxRatio": 1.25,
+          "minDeltaMs": 0.02,
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=off"
+        }
+      ],
+      "requiredEvidence": [
+        "diagnostics.level",
+        "runtimeStore.adapter",
+        "workload.modules",
+        "workload.ticksPerRun",
+        "budget.cutOffCount"
+      ],
+      "notes": "tick flush → external-store notify（不含 React render/commit），用于 073 runtimeStore cutover 的 baseline 与回归门禁。"
     }
   ]
 }

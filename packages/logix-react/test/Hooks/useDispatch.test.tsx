@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import { renderHook, act, waitFor } from '@testing-library/react'
 import * as Logix from '@logix/core'
-import { Effect, Schema, ManagedRuntime } from 'effect'
+import { Effect, Schema, ManagedRuntime, Layer } from 'effect'
 import { useModule } from '../../src/Hooks.js'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import React from 'react'
@@ -24,8 +24,12 @@ describe('useDispatch', () => {
     )
 
     const layer = Counter.live({ count: 0 }, CounterLogic)
-    // In tests, the Layer dependencies are already closed in Counter.live; use a type assertion to close RIn.
-    const runtime = ManagedRuntime.make(layer as import('effect').Layer.Layer<any, never, never>)
+    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, never>
+    const runtimeLayer = Layer.mergeAll(
+      tickServicesLayer,
+      Layer.provide(layer as unknown as Layer.Layer<any, any, any>, tickServicesLayer),
+    ) as Layer.Layer<any, any, never>
+    const runtime = ManagedRuntime.make(runtimeLayer)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>

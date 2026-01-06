@@ -3,6 +3,9 @@ import {
   ConcurrencyPolicyTag,
   ReadQueryStrictGateConfigTag,
   StateTransactionConfigTag,
+  declarativeLinkRuntimeLayer,
+  runtimeStoreLayer,
+  tickSchedulerLayer,
   type ConcurrencyPolicy,
   type ReadQueryStrictGateRuntimeConfig,
   type StateTransactionRuntimeConfig,
@@ -215,11 +218,16 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
   const appModuleIds = config.modules.map((entry) => String(entry.module.id))
   const appId = appModuleIds.length === 1 ? appModuleIds[0]! : appModuleIds.slice().sort().join('~')
 
+  const tickServicesLayer = Layer.provideMerge(runtimeStoreLayer)(
+    Layer.provideMerge(declarativeLinkRuntimeLayer)(tickSchedulerLayer()),
+  )
+
   const baseLayer = Layer.mergeAll(
     config.layer,
     stateTxnLayer,
     concurrencyPolicyLayer,
     readQueryStrictGateLayer,
+    tickServicesLayer,
     ProcessRuntime.layer(),
     Layer.effect(
       RootContextTag,
@@ -230,57 +238,84 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
     ),
   ) as Layer.Layer<R, never, never>
 
-  const moduleLayers = config.modules.map((entry) =>
-    // Ensure each module layer can see the app Env (baseLayer) to avoid missing root env during initialization.
-    Layer.provide(entry.layer, baseLayer),
-  )
-  const envLayer = moduleLayers.length > 0 ? Layer.mergeAll(baseLayer, ...moduleLayers) : baseLayer
-
   const finalLayer = Layer.unwrapScoped(
     Effect.gen(function* () {
       const scope = yield* Effect.scope
 
-      // buildWithScope builds envLayer within the current scope and patches FiberRefs (e.g. Debug sinks).
+      // buildWithScope builds layers within the current scope and patches FiberRefs (e.g. Debug sinks).
       // We wrap it with diffFiberRefs to capture FiberRef patch changes, then feed the patch back as a Layer,
       // so FiberRef modifications are not "washed out" during assembly.
-      const [patch, env] = yield* Effect.diffFiberRefs(Layer.buildWithScope(envLayer, scope))
+      //
+      // IMPORTANT (073):
+      // - Build baseLayer first, then build module layers under baseEnv.
+      // - Otherwise, module initialization may fork long-lived fibers (txnQueue/logics) before TickScheduler/RuntimeStore
+      //   is available, and those fibers will permanently miss the runtime services due to Env capture semantics.
+      const [patch, env] = yield* Effect.diffFiberRefs(
+        Effect.gen(function* () {
+          const baseEnv = yield* Layer.buildWithScope(baseLayer, scope)
 
-      // After envLayer is built, complete RootContext (single source of truth for the root provider).
-      // Note: module logics may already be forked and waiting for RootContext in the run phase; completing it here unblocks them.
-      // RootContextTag is an internal service injected by AppRuntime (should not leak into external R types);
-      // keep types minimal to avoid incorrect generic inference in Context.get.
-      const rootContext = Context.get(env as Context.Context<any>, RootContextTag as any) as RootContext
+          const moduleEnv =
+            config.modules.length > 0
+              ? yield* Effect.provide(
+                  Layer.buildWithScope(
+                    config.modules.length === 1
+                      ? config.modules[0]!.layer
+                      : config.modules
+                          .slice(1)
+                          .reduce((acc, entry) => Layer.merge(acc, entry.layer), config.modules[0]!.layer),
+                    scope,
+                  ),
+                  baseEnv as Context.Context<any>,
+                )
+              : undefined
 
-      rootContext.context = env as Context.Context<any>
-      yield* Deferred.succeed(rootContext.ready, env as Context.Context<any>)
+          const mergedEnv = moduleEnv
+            ? (Context.merge(baseEnv as Context.Context<any>, moduleEnv as Context.Context<any>) as Context.Context<any>)
+            : (baseEnv as Context.Context<any>)
 
-      const processRuntime = Context.get(
-        env as Context.Context<any>,
-        ProcessRuntime.ProcessRuntimeTag as any,
-      ) as ProcessRuntime.ProcessRuntime
+          // After env is built, complete RootContext (single source of truth for the root provider).
+          // Note: module logics may already be forked and waiting for RootContext in the run phase; completing it here unblocks them.
+          // RootContextTag is an internal service injected by AppRuntime (should not leak into external R types);
+          // keep types minimal to avoid incorrect generic inference in Context.get.
+          const rootContext = Context.get(mergedEnv as Context.Context<any>, RootContextTag as any) as RootContext
 
-      // After Env is fully ready, start app-level long-lived processes (Process / Link / watchers / host bridges, etc.).
-      yield* Effect.forEach(
-        config.processes,
-        (process) =>
-          Effect.gen(function* () {
-            const installation = yield* Effect.provide(
-              processRuntime.install(process as any, {
-                scope: { type: 'app', appId },
-                enabled: true,
-                installedAt: 'appRuntime',
+          rootContext.context = mergedEnv as Context.Context<any>
+          yield* Deferred.succeed(rootContext.ready, mergedEnv as Context.Context<any>)
+
+          const processRuntime = Context.get(
+            mergedEnv as Context.Context<any>,
+            ProcessRuntime.ProcessRuntimeTag as any,
+          ) as ProcessRuntime.ProcessRuntime
+
+          // After Env is fully ready, start app-level long-lived processes (Process / Link / watchers / host bridges, etc.).
+          yield* Effect.forEach(
+            config.processes,
+            (process) =>
+              Effect.gen(function* () {
+                const installation = yield* Effect.provide(
+                  processRuntime.install(process as any, {
+                    scope: { type: 'app', appId },
+                    enabled: true,
+                    installedAt: 'appRuntime',
+                  }),
+                  mergedEnv,
+                )
+
+                // Legacy fallback: a raw Effect is still allowed as a process host, but it has no Process static surface/diagnostics.
+                if (installation === undefined) {
+                  yield* Effect.forkScoped(
+                    Effect.provide(
+                      config.onError ? Effect.catchAllCause(process, config.onError) : process,
+                      mergedEnv,
+                    ),
+                  )
+                }
               }),
-              env,
-            )
+            { discard: true },
+          )
 
-            // Legacy fallback: a raw Effect is still allowed as a process host, but it has no Process static surface/diagnostics.
-            if (installation === undefined) {
-              yield* Effect.forkScoped(
-                Effect.provide(config.onError ? Effect.catchAllCause(process, config.onError) : process, env),
-              )
-            }
-          }),
-        { discard: true },
+          return mergedEnv
+        }),
       )
 
       const fiberRefsLayer = Layer.scopedDiscard(Effect.patchFiberRefs(patch))

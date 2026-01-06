@@ -24,6 +24,7 @@
     - 步骤顺序（串行/并行/重试/补偿）；
     - 状态更新与副作用（写 Module、调用服务、发通知）。
   - 在当前实现中，Logic 通常落在 Logix Runtime 的 `Module / Logic / Flow` 层，并配合 Effect 原生结构化控制流（含 `$.match`/`$.matchTag`）。
+  - 形式化工作模型（约束闭包 `C_T` / 控制律 `Π` / 事务 `Δ⊕`）见 `docs/specs/intent-driven-ai-coding/97-effect-runtime-and-flow-execution.md` 的 “1.2 最小系统方程”。
 
 - **Module (Data)**
   - 表达业务概念与数据模型（实体）及其不变量；

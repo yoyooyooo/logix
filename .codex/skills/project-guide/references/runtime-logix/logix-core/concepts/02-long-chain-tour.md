@@ -39,7 +39,7 @@
 
 - 想搞清楚 `$.onState/$.onAction/$.on` 的白盒边界：读 `../api/03-logic-and-flow.md`，然后搜 `BoundApi` / `Flow.Api`（`packages/logix-core/src/internal/runtime/**`）
 - 想搞清楚 middleware：先读 `../api/04-logic-middleware.md`，再看 `specs/001-module-traits-runtime/references/effectop-and-middleware.md`
-- 想搞清楚 React 行为：从 `../../logix-react/01-react-integration.md` 进入（再看 `packages/logix-react/src/internal/ModuleRuntimeExternalStore.ts`）
+- 想搞清楚 React 行为：从 `../../logix-react/01-react-integration.md` 进入（再看 `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`）
 - 想搞清楚平台 IR：从 `../platform/06-platform-integration.md` 进入（IntentRule / Gray Box 边界）
 
 ## 3. 实现视角小抄（可选，不是 SSoT）

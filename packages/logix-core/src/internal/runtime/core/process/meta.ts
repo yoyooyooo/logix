@@ -9,7 +9,7 @@ export type ProcessMeta = {
    * - This field is for export/diagnostics only; it does not participate in stable identity derivation (see identity.ts).
    */
   readonly installationScope?: ProcessScope
-  readonly kind?: 'process' | 'link'
+  readonly kind?: 'process' | 'link' | 'declarativeLink'
 }
 
 export const PROCESS_META = Symbol.for('@logix/core/processMeta')

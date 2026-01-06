@@ -3,7 +3,7 @@ import * as EffectOpCore from './EffectOpCore.js'
 import * as Debug from './DebugSink.js'
 import * as TaskRunner from './TaskRunner.js'
 import type { ConcurrencyDiagnostics } from './ConcurrencyDiagnostics.js'
-import { StateTransactionOverridesTag, type StateTransactionOverrides } from './env.js'
+import { RuntimeStoreTag, StateTransactionOverridesTag, TickSchedulerTag, type StateTransactionOverrides } from './env.js'
 import type { ResolvedConcurrencyPolicy } from './ModuleRuntime.concurrencyPolicy.js'
 
 export type TxnLane = 'urgent' | 'nonUrgent'
@@ -33,6 +33,8 @@ type CapturedDiagnosticContext = {
   readonly diagnosticsLevel: Debug.DiagnosticsLevel
   readonly debugSinks: ReadonlyArray<Debug.Sink>
   readonly overridesOpt: Option.Option<StateTransactionOverrides>
+  readonly runtimeStoreOpt: Option.Option<any>
+  readonly tickSchedulerOpt: Option.Option<any>
 }
 
 const captureDiagnosticContext = (args: {
@@ -40,6 +42,8 @@ const captureDiagnosticContext = (args: {
 }): Effect.Effect<CapturedDiagnosticContext> =>
   Effect.gen(function* () {
     const overridesOpt = yield* Effect.serviceOption(StateTransactionOverridesTag)
+    const runtimeStoreOpt = yield* Effect.serviceOption(RuntimeStoreTag)
+    const tickSchedulerOpt = yield* Effect.serviceOption(TickSchedulerTag)
     const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
     const runtimeLabel = yield* FiberRef.get(Debug.currentRuntimeLabel)
     const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
@@ -52,6 +56,8 @@ const captureDiagnosticContext = (args: {
       diagnosticsLevel,
       debugSinks,
       overridesOpt,
+      runtimeStoreOpt,
+      tickSchedulerOpt,
     }
   })
 
@@ -63,7 +69,15 @@ const withDiagnosticContext = <A, E>(
     ? Effect.provideService(eff, StateTransactionOverridesTag, context.overridesOpt.value)
     : eff
 
-  return effWithOverrides.pipe(
+  const effWithRuntimeStore = Option.isSome(context.runtimeStoreOpt)
+    ? Effect.provideService(effWithOverrides, RuntimeStoreTag, context.runtimeStoreOpt.value)
+    : effWithOverrides
+
+  const effWithTickScheduler = Option.isSome(context.tickSchedulerOpt)
+    ? Effect.provideService(effWithRuntimeStore, TickSchedulerTag, context.tickSchedulerOpt.value)
+    : effWithRuntimeStore
+
+  return effWithTickScheduler.pipe(
     Effect.locally(EffectOpCore.currentLinkId, context.linkId),
     Effect.locally(Debug.currentRuntimeLabel, context.runtimeLabel),
     Effect.locally(Debug.currentDiagnosticsLevel, context.diagnosticsLevel),
@@ -209,30 +223,30 @@ export const makeEnqueueTransaction = (args: {
         }
       })
 
-    // Background consumer fiber: executes queued transaction Effects sequentially (urgent first).
-    yield* Effect.forkScoped(
-      Effect.forever(
-        Effect.gen(function* () {
-          yield* Queue.take(wakeQueue)
+    const consumerLoop: Effect.Effect<never, never, never> = Effect.forever(
+      Effect.gen(function* () {
+        yield* Queue.take(wakeQueue)
 
-          while (true) {
-            const urgent = yield* Queue.poll(urgentQueue)
-            if (Option.isSome(urgent)) {
-              yield* urgent.value
-              continue
-            }
-
-            const nonUrgent = yield* Queue.poll(nonUrgentQueue)
-            if (Option.isSome(nonUrgent)) {
-              yield* nonUrgent.value
-              continue
-            }
-
-            break
+        while (true) {
+          const urgent = yield* Queue.poll(urgentQueue)
+          if (Option.isSome(urgent)) {
+            yield* urgent.value
+            continue
           }
-        }),
-      ),
+
+          const nonUrgent = yield* Queue.poll(nonUrgentQueue)
+          if (Option.isSome(nonUrgent)) {
+            yield* nonUrgent.value
+            continue
+          }
+
+          break
+        }
+      }),
     )
+
+    // Background consumer fiber: executes queued transaction Effects sequentially (urgent first).
+    yield* Effect.forkScoped(consumerLoop)
 
     const enqueueTransaction: EnqueueTransaction = <A2, E2>(
       a0: TxnLane | Effect.Effect<A2, E2, never>,

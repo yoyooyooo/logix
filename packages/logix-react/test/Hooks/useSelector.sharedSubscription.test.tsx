@@ -27,26 +27,15 @@ const makeRuntime = (events: Logix.Debug.Event[]) => {
     },
   ]) as Layer.Layer<any, never, never>
 
-  const layer = Layer.mergeAll(Counter.live({ count: 0 }), debugLayer) as Layer.Layer<any, never, never>
-  return ManagedRuntime.make(layer)
-}
+  const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+  const counterLayer = Counter.live({ count: 0 }) as Layer.Layer<any, never, any>
 
-const makeInstrumentedHandle = <S, A>(
-  handle: Logix.ModuleRuntime<S, A>,
-  onChangesCall: () => void,
-): Logix.ModuleRuntime<S, A> => {
-  return new Proxy(handle as any, {
-    get: (target, prop, receiver) => {
-      if (prop === 'changesWithMeta') {
-        return (...args: any[]) => {
-          onChangesCall()
-          return (target as any).changesWithMeta(...args)
-        }
-      }
-      const value = Reflect.get(target, prop, receiver)
-      return typeof value === 'function' ? value.bind(target) : value
-    },
-  }) as any
+  const layer = Layer.mergeAll(
+    tickServicesLayer,
+    Layer.provide(counterLayer, tickServicesLayer),
+    debugLayer as Layer.Layer<any, never, any>,
+  ) as Layer.Layer<any, never, never>
+  return ManagedRuntime.make(layer)
 }
 
 describe('useSelector(shared subscription)', () => {
@@ -60,21 +49,27 @@ describe('useSelector(shared subscription)', () => {
     type CounterAction = { readonly _tag: 'inc'; readonly payload?: void }
     const baseHandle = runtime.runSync(Counter.tag as any) as Logix.ModuleRuntime<{ count: number }, CounterAction>
 
-    let changesCallCount = 0
-    const handle = makeInstrumentedHandle(baseHandle, () => {
-      changesCallCount += 1
-    })
+    const moduleInstanceKey = `${baseHandle.moduleId}::${baseHandle.instanceId}`
+    const runtimeStore = Logix.InternalContracts.getRuntimeStore(runtime as any) as any
+    let subscribeCallCount = 0
+    const subscribeOriginal = runtimeStore.subscribeTopic?.bind(runtimeStore)
+    runtimeStore.subscribeTopic = (topicKey: string, listener: () => void) => {
+      if (topicKey === moduleInstanceKey) {
+        subscribeCallCount += 1
+      }
+      return subscribeOriginal(topicKey, listener)
+    }
 
     const useTest = () => {
-      const rt = useModule(handle)
-      const a = useModule(handle, (s: any) => s.count)
-      const b = useModule(handle, (s: any) => s.count + 1)
-      const c = useModule(handle, (s: any) => s.count + 2)
-      const d = useModule(handle, (s: any) => s.count + 3)
-      const e = useModule(handle, (s: any) => s.count + 4)
-      const f = useModule(handle, (s: any) => s.count + 5)
-      const g = useModule(handle, (s: any) => s.count + 6)
-      const h = useModule(handle, (s: any) => s.count + 7)
+      const rt = useModule(baseHandle)
+      const a = useModule(baseHandle, (s: any) => s.count)
+      const b = useModule(baseHandle, (s: any) => s.count + 1)
+      const c = useModule(baseHandle, (s: any) => s.count + 2)
+      const d = useModule(baseHandle, (s: any) => s.count + 3)
+      const e = useModule(baseHandle, (s: any) => s.count + 4)
+      const f = useModule(baseHandle, (s: any) => s.count + 5)
+      const g = useModule(baseHandle, (s: any) => s.count + 6)
+      const h = useModule(baseHandle, (s: any) => s.count + 7)
       return { a, b, c, d, e, f, g, h, inc: rt.dispatchers.inc }
     }
 
@@ -84,8 +79,8 @@ describe('useSelector(shared subscription)', () => {
       expect(result.current.a).toBe(0)
     })
 
-    // Even with multiple selectors in the same component, they should share one underlying changesWithMeta() subscription.
-    expect(changesCallCount).toBe(1)
+    // Even with multiple selectors in the same component, they should share a single runtime-store subscription.
+    expect(subscribeCallCount).toBe(1)
 
     await act(async () => {
       result.current.inc()
@@ -95,8 +90,8 @@ describe('useSelector(shared subscription)', () => {
       expect(result.current.a).toBe(1)
     })
 
-    // After updates, it should still not create additional changesWithMeta() subscriptions.
-    expect(changesCallCount).toBe(1)
+    // After updates, it should still not create additional runtime-store subscriptions.
+    expect(subscribeCallCount).toBe(1)
   })
 
   it('react-render events do not scale with selector count', async () => {

@@ -28,6 +28,7 @@ export interface SelectorGraph<S> {
     meta: StateCommitMeta,
     dirtySet: DirtySet,
     diagnosticsLevel: Debug.DiagnosticsLevel,
+    onSelectorChanged?: (selectorId: string) => void,
   ) => Effect.Effect<void, never, never>
 }
 
@@ -138,7 +139,7 @@ export const make = <S>(args: {
     }
   }
 
-  const onCommit: SelectorGraph<S>['onCommit'] = (state, meta, dirtySet, diagnosticsLevel) =>
+  const onCommit: SelectorGraph<S>['onCommit'] = (state, meta, dirtySet, diagnosticsLevel, onSelectorChanged) =>
     Effect.gen(function* () {
       if (selectorsById.size === 0) return
 
@@ -216,6 +217,7 @@ export const make = <S>(args: {
           entry.cachedValue = next
           entry.hasValue = true
           entry.cachedAtTxnSeq = meta.txnSeq
+          onSelectorChanged?.(entry.selectorId)
 
           yield* PubSub.publish(entry.hub as any, {
             value: entry.cachedValue,
@@ -328,6 +330,7 @@ export const make = <S>(args: {
           entry.cachedValue = next
           entry.hasValue = true
           entry.cachedAtTxnSeq = meta.txnSeq
+          onSelectorChanged?.(selectorId)
 
           yield* PubSub.publish(entry.hub as any, {
             value: entry.cachedValue,

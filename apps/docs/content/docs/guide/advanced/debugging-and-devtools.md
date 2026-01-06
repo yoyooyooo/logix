@@ -43,6 +43,8 @@ Logix 在运行时会为「模块生命周期、Action 派发、状态更新、�
   - 使用 `Logix.Debug.layer` / `Logix.Debug.replace` 控制 Debug 事件要不要启用、输出到哪里；
   - 适合把运行轨迹接入团队现有的日志/监控平台，或者在没有 DevTools 的环境里观察引擎行为。
 
+> 如果你希望先建立 “tick/flush/trace:tick” 的基础心智（为什么一次输入会被合并/延后），建议先读：[`Tick / Flush（从输入到稳定快照）`](../essentials/tick-and-flush)。
+
 后面的章节会细分这两条通道：
 
 - 第 1～3 节：以日志/监控视角介绍 Debug layer；
@@ -93,6 +95,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 - `module:init` / `module:destroy`：模块实例创建与销毁；
 - `action:dispatch`：某个模块收到了一次 Action；
 - `state:update`：模块状态发生了变化；
+- `trace:tick`：一次 tick 的 flush 证据（start/settled/budgetExceeded），用于解释“为什么某些更新被合并/延后”；
 - `lifecycle:error`：模块逻辑在执行过程中出现错误（包括 fail / die）；
 - `diagnostic`：运行时给出的结构化提示（例如 reducer 注册时序错误、缺少 `$.lifecycle.onError` 等）。
 

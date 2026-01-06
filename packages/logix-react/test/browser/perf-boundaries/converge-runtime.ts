@@ -92,14 +92,12 @@ export const makeConvergeRuntime = (
     logics: [],
   })
 
-  const bumpByIndicesReducer = Logix.Module.Reducer.mutate(
-    (draft: any, action: { readonly payload: ReadonlyArray<number> }) => {
-      for (const idx of action.payload) {
-        const k = `b${idx}`
-        draft[k] = (draft[k] as number) + 1
-      }
-    },
-  )
+  const bumpByIndicesReducer = Logix.Module.Reducer.mutate((draft: any, indices: ReadonlyArray<number>) => {
+    for (const idx of indices) {
+      const k = `b${idx}`
+      draft[k] = (draft[k] as number) + 1
+    }
+  })
 
   const bumpByIndices = (state: any, indices: ReadonlyArray<number>): any =>
     bumpByIndicesReducer(state, { _tag: 'bumpIndices', payload: indices } as any)

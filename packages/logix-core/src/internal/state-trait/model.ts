@@ -19,7 +19,9 @@ export type StateTraitSpec<S> = S extends object
     }
   : never
 
-export type StateTraitKind = 'computed' | 'source' | 'link' | 'check'
+export type StateTraitKind = 'computed' | 'source' | 'link' | 'externalStore' | 'check'
+
+export type TraitLane = 'urgent' | 'nonUrgent'
 
 /**
  * TraitConvergeScheduling：
@@ -95,6 +97,22 @@ export interface LinkMeta<S> {
   readonly scheduling?: TraitConvergeScheduling
 }
 
+export interface ExternalStoreLike<T> {
+  readonly getSnapshot: () => T
+  readonly getServerSnapshot?: () => T
+  readonly subscribe: (listener: () => void) => () => void
+}
+
+export interface ExternalStoreMeta<S, P, T = unknown> {
+  readonly store: ExternalStoreLike<T>
+  readonly select?: (snapshot: T) => StateAtPath<S, P>
+  readonly equals?: (prev: StateAtPath<S, P>, next: StateAtPath<S, P>) => boolean
+  readonly coalesceWindowMs?: number
+  readonly priority?: TraitLane
+  readonly meta?: Meta.TraitMeta
+  readonly _fieldPath?: P
+}
+
 export type CheckRule<Input = unknown, Ctx = unknown> = {
   readonly deps: ReadonlyArray<string>
   /**
@@ -144,6 +162,11 @@ export type StateTraitEntry<S = unknown, P extends string = StateFieldPath<S>> =
     }
   | {
       readonly fieldPath: P
+      readonly kind: 'externalStore'
+      readonly meta: ExternalStoreMeta<S, P>
+    }
+  | {
+      readonly fieldPath: P
       readonly kind: 'check'
       readonly meta: CheckMeta<unknown, unknown>
     }
@@ -153,6 +176,7 @@ export interface StateTraitNode<Input = unknown, Ctx = unknown> {
   readonly computed?: StateTraitEntry<Input, any> | Readonly<Record<string, StateTraitEntry<Input, any>>>
   readonly source?: StateTraitEntry<Input, any> | Readonly<Record<string, StateTraitEntry<Input, any>>>
   readonly link?: StateTraitEntry<Input, any> | Readonly<Record<string, StateTraitEntry<Input, any>>>
+  readonly externalStore?: StateTraitEntry<Input, any> | Readonly<Record<string, StateTraitEntry<Input, any>>>
   readonly check?: Readonly<Record<string, CheckRule<Input, Ctx>>>
   readonly meta?: Meta.TraitMeta
 }
@@ -196,6 +220,7 @@ export interface StateTraitFieldTrait {
     | ComputedMeta<unknown, string>
     | SourceMeta<unknown, string>
     | LinkMeta<unknown>
+    | ExternalStoreMeta<unknown, string>
     | CheckMeta<unknown, unknown>
   readonly deps: ReadonlyArray<string>
 }
@@ -257,7 +282,7 @@ export interface StateTraitGraph {
  */
 export interface StateTraitPlanStep {
   readonly id: string
-  readonly kind: 'computed-update' | 'link-propagate' | 'source-refresh' | 'check-validate'
+  readonly kind: 'computed-update' | 'link-propagate' | 'source-refresh' | 'external-store-sync' | 'check-validate'
   readonly targetFieldPath?: string
   readonly sourceFieldPaths?: ReadonlyArray<string>
   readonly resourceId?: string
@@ -367,6 +392,14 @@ export const normalizeSpec = <S>(spec: StateTraitSpec<S>): ReadonlyArray<StateTr
         meta: { ...meta, deps, _fieldPath: fieldPath },
       }
     }
+    if (entry.kind === 'externalStore') {
+      const meta = entry.meta as any
+      return {
+        ...(entry as any),
+        fieldPath,
+        meta: { ...meta, _fieldPath: fieldPath },
+      }
+    }
     if (entry.kind === 'link') {
       const meta = entry.meta as any
       const from = prefixDeps([meta.from as string], depPrefix)[0] ?? meta.from
@@ -423,6 +456,7 @@ export const normalizeSpec = <S>(spec: StateTraitSpec<S>): ReadonlyArray<StateTr
     expandMaybeRecord(node.computed)
     expandMaybeRecord(node.source)
     expandMaybeRecord(node.link)
+    expandMaybeRecord(node.externalStore)
 
     if (node.check) {
       const rules: Record<string, CheckRule<any, any>> = {}

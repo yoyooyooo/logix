@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-06T05:51:31.823Z",
+    "from": {
+      "file": "specs/073-logix-external-store-tick/perf/browser.before.1d0b0a28-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=perModule.json",
+      "commit": "1d0b0a280237fc62eb63d55f63677f2b4a89b5a5"
+    },
+    "to": {
+      "file": "specs/073-logix-external-store-tick/perf/browser.after.1d0b0a28-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=runtimeStore.json",
+      "commit": "1d0b0a280237fc62eb63d55f63677f2b4a89b5a5"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "diagnostics.overhead.e2e",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=4 unavailable=0 missing=0] after[value=full ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=4 unavailable=0 missing=0] after[value=core ok=4 unavailable=0 missing=0]"
+        }
+      ],
+      "notes": "stabilityWarning: metric=e2e.clickToPaintMs {diagnosticsLevel=off&scenario=watchers.clickToPaint} baselineP95=65.20ms afterP95=72.10ms diff=6.90ms limit=6.52ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    },
+    {
+      "id": "runtimeStore.noTearing.tickNotify",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=2 unavailable=0 missing=0] after[value=full ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=2 unavailable=0 missing=0] after[value=core ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtimeStore.adapter",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "perModule"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "runtimeStore"
+          },
+          "message": "runtimeStore.adapter(points) unit=count: before[value=perModule ok=2 unavailable=0 missing=0] after[value=runtimeStore ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.modules",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 20
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 20
+          },
+          "message": "workload.modules(points) unit=count: before[value=20 ok=2 unavailable=0 missing=0] after[value=20 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.ticksPerRun",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "message": "workload.ticksPerRun(points) unit=count: before[value=2 ok=2 unavailable=0 missing=0] after[value=2 ok=2 unavailable=0 missing=0]"
+        }
+      ]
+    }
+  ]
+}

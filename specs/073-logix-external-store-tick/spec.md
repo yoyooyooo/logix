@@ -28,6 +28,20 @@
 - 将任意“黑盒 Effect/Process.link”提升为强一致：黑盒仍允许存在，但强一致模式只对 declarative IR 生效；若存量业务依赖黑盒在同 microtask 内同步生效，该行为不再保证，属于 breaking（见 migration）。
 - 在同步事务窗口内执行 IO（严格禁止）。
 - 不提供 SSR 的“自动注水/序列化/rehydrate”工具链；但本特性提供 SSR 所需的最小契约（`ExternalStore.getServerSnapshot`）与对应 React 适配口径，宿主需自行保证 server/client 初始快照一致以避免 hydration mismatch。
+- 不在本特性内引入通用的 Action/Flow 编排 IR（多步协议/分支/时间算子如 delay/retry/timeout 等）：避免把“自由编排”误塞进 trait 的静态 meta；该方向由后续 spec 独立推进，并必须对齐 tick 参考系（可解释/可回放/可预算，禁止产生“影子时间线”绕开 tick 证据链）。
+- 不在本特性内扩展或固化 `StateTrait.source` 的 `meta.triggers/debounceMs` 作为主路径：它们属于旧的“反射式解释”接口，后续由 `076-logix-source-auto-trigger-kernel` 收敛/替换；073 只保证 tick 参考系与受限绑定能力不依赖该旧接口继续演化。
+
+## 073 疏通：Tick 参考系、受限绑定与自由编排
+
+本特性完成后，Logix 的“同时性/一致性”将以 **tickSeq** 为锚点被重新裁决：React/宿主对状态的观测不再等价于“各模块各自最新”，而是“同一 tick 的一致快照”。
+
+为避免后续能力（尤其 Action/Flow/时间算子）在旧心智里继续发散，本 spec 显式固化三层分工：
+
+1. **观测参考系（Observation Frame）**：`RuntimeStore + tickSeq` 是对外唯一订阅真相源（no-tearing）。
+2. **受限绑定（Boundaries / Geometry）**：`StateTrait.externalStore` / `StateTrait.source` 属于“边界条件绑定”，必须可 IR 化、可诊断、可预算；写回受 external-owned/单 writer 治理，且严格遵守事务窗口禁 IO。
+3. **自由编排（Control Laws / Workflows）**：多步协议、分支、时间算子、跨服务协调等属于“自由度”，不应被编码在 trait meta 中；它们应由独立的 Flow/Action Program 表达，并以 tick 作为调度与证据边界（使因果链不断裂）。
+
+形式化工作模型（约束闭包 `C_T` / 控制律 `Π` / 事务 `Δ⊕` + tick 参考系）见 `docs/specs/intent-driven-ai-coding/97-effect-runtime-and-flow-execution.md` 的 “1.2 最小系统方程”。
 
 ## Terminology
 

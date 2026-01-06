@@ -1,0 +1,473 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-06T05:51:06.436Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-01-06",
+    "matrixHash": "35a9ede8c24468b76ef6c4dec3290415d05a13fedc2525f68ccbe82468f5f5ff",
+    "git": {
+      "branch": "073",
+      "commit": "1d0b0a280237fc62eb63d55f63677f2b4a89b5a5",
+      "dirty": true
+    },
+    "config": {
+      "runs": 5,
+      "warmupDiscard": 0,
+      "timeoutMs": 20000,
+      "headless": true,
+      "profile": "default",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "diagnostics.overhead.e2e",
+      "title": "diagnostics: overhead curve (off/light/sampled/full) · e2e",
+      "priority": "P3",
+      "primaryAxis": "diagnosticsLevel",
+      "budgets": [],
+      "metricCategories": {
+        "e2e.clickToPaintMs": "diagnostics"
+      },
+      "points": [
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "off"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 69.10000002384186,
+                "p95Ms": 72.09999996423721
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "light"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 60.69999998807907,
+                "p95Ms": 61.89999997615814
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "light"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "sampled"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 61.89999997615814,
+                "p95Ms": 62.5
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "sampled"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenario": "watchers.clickToPaint",
+            "diagnosticsLevel": "full"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 5,
+                "medianMs": 62.89999997615814,
+                "p95Ms": 63.10000002384186
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [],
+      "comparisons": [
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "light"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 0.8784370472812663,
+            "p95": 0.8585298197900355
+          }
+        },
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "sampled"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 0.8958031831374896,
+            "p95": 0.8668515954369075
+          }
+        },
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "full"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 0.9102749631614399,
+            "p95": 0.8751733710837795
+          }
+        },
+        {
+          "kind": "ratio",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "full"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "sampled"
+          },
+          "unit": "ratio",
+          "stats": {
+            "median": 1.016155088859211,
+            "p95": 1.0096000003814698
+          }
+        },
+        {
+          "kind": "delta",
+          "metric": "e2e.clickToPaintMs",
+          "numeratorWhere": {
+            "diagnosticsLevel": "full"
+          },
+          "denominatorWhere": {
+            "diagnosticsLevel": "off"
+          },
+          "unit": "ms",
+          "stats": {
+            "median": -6.200000047683716,
+            "p95": -8.999999940395355
+          }
+        }
+      ]
+    },
+    {
+      "id": "runtimeStore.noTearing.tickNotify",
+      "title": "runtimeStore: tick→notify baseline (no-tearing workload)",
+      "priority": "P1",
+      "primaryAxis": "watchers",
+      "budgets": [
+        {
+          "id": "p95<=0.30ms",
+          "type": "absolute",
+          "metric": "timePerTickMs",
+          "p95Ms": 0.3
+        },
+        {
+          "id": "full/off<=1.25",
+          "type": "relative",
+          "metric": "timePerTickMs",
+          "maxRatio": 1.25,
+          "minDeltaMs": 0.02,
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=off"
+        }
+      ],
+      "metricCategories": {
+        "timePerTickMs": "runtimeStore"
+      },
+      "points": [
+        {
+          "params": {
+            "diagnosticsLevel": "off",
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerTickMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.399999976158142,
+                "p95Ms": 1.800000011920929
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "full",
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerTickMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.5,
+                "p95Ms": 1.600000023841858
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "p95<=0.30ms",
+            "type": "absolute",
+            "metric": "timePerTickMs",
+            "p95Ms": 0.3
+          },
+          "where": {
+            "diagnosticsLevel": "off"
+          },
+          "maxLevel": null,
+          "firstFailLevel": 256,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=0.30ms",
+            "type": "absolute",
+            "metric": "timePerTickMs",
+            "p95Ms": 0.3
+          },
+          "where": {
+            "diagnosticsLevel": "full"
+          },
+          "maxLevel": null,
+          "firstFailLevel": 256,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "full/off<=1.25",
+            "type": "relative",
+            "metric": "timePerTickMs",
+            "maxRatio": 1.25,
+            "minDeltaMs": 0.02,
+            "numeratorRef": "diagnosticsLevel=full",
+            "denominatorRef": "diagnosticsLevel=off"
+          },
+          "maxLevel": 256,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

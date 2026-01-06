@@ -321,6 +321,8 @@ Logix 允许你在同一 Module 内挂载大量 `$.onAction` / `$.onState` watch
 
 ## 6. 显式 Batch 与低优先级更新（高频兜底）
 
+如果你还不熟悉 “tick/flush/trace:tick” 的含义，建议先读：[`Tick / Flush（从输入到稳定快照）`](../essentials/tick-and-flush)（它解释了为什么这些优化能减少“可观察提交/通知”，以及为什么它们不等价于“严格减少 render 次数”）。
+
 当你遇到“输入很频繁 / 同步 dispatch 太多 / React render 压力大”时，可以在不改变业务正确性的前提下，显式选择两种兜底策略：
 
 - **Batch（批处理窗口）**：把多次同步写入合并为一次可观察提交（一次订阅通知 + 一条 `state:update`）。

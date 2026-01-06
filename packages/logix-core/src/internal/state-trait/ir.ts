@@ -1,6 +1,8 @@
 import type { StateTraitEntry, StateTraitPlanStep, StateTraitProgram } from './model.js'
 import * as CanonicalFieldPath from '../field-path.js'
 import { fnv1a32, stableStringify } from '../digest.js'
+import { getExternalStoreDescriptor } from '../external-store-descriptor.js'
+import * as Meta from './meta.js'
 
 export type FieldPath = CanonicalFieldPath.FieldPath
 
@@ -62,6 +64,8 @@ const toNodeKind = (step: StateTraitPlanStep): string => {
       return 'link'
     case 'source-refresh':
       return 'source'
+    case 'external-store-sync':
+      return 'externalStore'
     case 'check-validate':
       return 'check'
   }
@@ -96,6 +100,9 @@ const getReadsForEntry = (entry: StateTraitEntry<any, string> | undefined): Read
   if (entry.kind === 'link') {
     const from = (entry.meta as any).from as string | undefined
     return from ? [from] : []
+  }
+  if (entry.kind === 'externalStore') {
+    return []
   }
   if (entry.kind === 'check') {
     const rules = ((entry.meta as any)?.rules ?? {}) as Record<string, any>
@@ -173,11 +180,54 @@ export const exportStaticIr = (params: {
 
     const meta = target ? metaByField.get(target) : undefined
 
+    const externalStorePolicy = (): Record<string, unknown> | undefined => {
+      if (kind !== 'externalStore') return undefined
+      if (!entry || entry.kind !== 'externalStore') return undefined
+
+      const descriptor = getExternalStoreDescriptor((entry.meta as any).store)
+      const storeId = descriptor?.storeId
+
+      const priorityRaw = (entry.meta as any)?.priority
+      const lane = priorityRaw === 'nonUrgent' ? 'nonUrgent' : 'urgent'
+
+      const meta = Meta.sanitize((entry.meta as any).meta)
+
+      const source =
+        descriptor?.kind === 'module'
+          ? {
+              kind: 'module',
+              storeId,
+              moduleId: descriptor.moduleId,
+              ...(descriptor.instanceId ? { instanceKey: descriptor.instanceId } : {}),
+              selectorId: descriptor.readQuery.staticIr.selectorId,
+              readsDigest: descriptor.readQuery.staticIr.readsDigest,
+              fallbackReason: descriptor.readQuery.staticIr.fallbackReason,
+            }
+          : descriptor
+            ? { kind: 'external', storeId }
+            : { kind: 'external', storeId: 'unknown' }
+
+      const coalesceWindowMs = (entry.meta as any)?.coalesceWindowMs
+
+      return {
+        traitId: step.id,
+        storeId: storeId ?? 'unknown',
+        source,
+        ownership: 'external-owned',
+        lane,
+        ...(typeof coalesceWindowMs === 'number' && Number.isFinite(coalesceWindowMs) && coalesceWindowMs > 0
+          ? { coalesceWindowMs }
+          : {}),
+        ...(meta ? { meta } : {}),
+      }
+    }
+
     const base: StaticIrNode = {
       nodeId: step.id,
       kind,
       reads,
       writes: kind === 'check' ? [] : writes,
+      ...(kind === 'externalStore' ? { policy: externalStorePolicy() } : {}),
       meta,
     }
 

@@ -26,6 +26,9 @@ export * as MatchBuilder from './MatchBuilder.js'
 // ReadQuery: protocolized state reads (selectorId/deps/lane/strict gate entry point)
 export * as ReadQuery from './ReadQuery.js'
 
+// ExternalStore: normalized external input sources (sync snapshot + subscribe)
+export * as ExternalStore from './ExternalStore.js'
+
 // StateTrait: field capabilities and StateTrait kernel (see specs/000-module-traits-runtime)
 export * as StateTrait from './StateTrait.js'
 

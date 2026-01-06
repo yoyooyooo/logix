@@ -1,8 +1,11 @@
 import { Effect, Layer } from 'effect'
+import type { ManagedRuntime } from 'effect'
 import type { ImportsScope } from './runtime/core/RuntimeInternals.js'
 import type { StateTransactionInstrumentation } from './runtime/core/env.js'
+import { declarativeLinkRuntimeLayer, runtimeStoreLayer, RuntimeStoreTag, tickSchedulerLayer } from './runtime/core/env.js'
 import type { StatePatchPath } from './runtime/core/StateTransaction.js'
 import * as EffectOpCore from './runtime/core/EffectOpCore.js'
+import type { RuntimeStore } from './runtime/core/RuntimeStore.js'
 import { getRuntimeInternals } from './runtime/core/runtimeInternalsAccessor.js'
 import * as ProcessRuntime from './runtime/core/process/ProcessRuntime.js'
 import type * as ProcessProtocol from './runtime/core/process/protocol.js'
@@ -28,6 +31,22 @@ export * as ReplayLog from './runtime/core/ReplayLog.js'
 export const getImportsScope = (runtime: object): ImportsScope => {
   return getRuntimeInternals(runtime).imports
 }
+
+const RUNTIME_STORE_CACHE = new WeakMap<object, RuntimeStore>()
+
+export const getRuntimeStore = (runtime: ManagedRuntime.ManagedRuntime<any, any>): RuntimeStore => {
+  const key = runtime as unknown as object
+  const cached = RUNTIME_STORE_CACHE.get(key)
+  if (cached) return cached
+
+  const store = runtime.runSync(Effect.serviceOptional(RuntimeStoreTag) as any) as RuntimeStore
+  RUNTIME_STORE_CACHE.set(key, store)
+  return store
+}
+
+export const tickServicesLayer: Layer.Layer<any, never, never> = Layer.provideMerge(runtimeStoreLayer)(
+  Layer.provideMerge(declarativeLinkRuntimeLayer)(tickSchedulerLayer()),
+)
 
 export const getStateTransactionInstrumentation = (runtime: object): StateTransactionInstrumentation =>
   getRuntimeInternals(runtime).txn.instrumentation

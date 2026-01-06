@@ -16,8 +16,15 @@ describe('React Hooks', () => {
 
   let runtime: ManagedRuntime.ManagedRuntime<any, any>
 
+  const makeRuntime = (layer: Layer.Layer<any, never, any>) => {
+    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    return ManagedRuntime.make(
+      Layer.mergeAll(tickServicesLayer, Layer.provide(layer, tickServicesLayer)) as Layer.Layer<any, never, never>,
+    )
+  }
+
   beforeEach(() => {
-    runtime = ManagedRuntime.make(CounterModule.live({ count: 0 }) as Layer.Layer<any, never, never>)
+    runtime = makeRuntime(CounterModule.live({ count: 0 }) as Layer.Layer<any, never, any>)
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -184,7 +191,7 @@ describe('React Hooks', () => {
     const InnerLayer = Layer.succeed(StepConfigTag, { step: 5 })
 
     // Override the runtime for this case: a simple CounterModule is sufficient.
-    const localRuntime = ManagedRuntime.make(CounterModule.live({ count: 0 }) as Layer.Layer<any, never, never>)
+    const localRuntime = makeRuntime(CounterModule.live({ count: 0 }) as Layer.Layer<any, never, any>)
 
     const useStepConfigValue = () => {
       const adaptedRuntime = useRuntime()
@@ -232,7 +239,7 @@ describe('React Hooks', () => {
     const BaseLayer = Layer.succeed(StepConfigTag, { step: 1 })
     const InnerLayer = Layer.succeed(StepConfigTag, { step: 5 })
 
-    const localRuntime = ManagedRuntime.make(CounterModule.live({ count: 0 }) as Layer.Layer<any, never, never>)
+    const localRuntime = makeRuntime(CounterModule.live({ count: 0 }) as Layer.Layer<any, never, any>)
 
     const useStepConfigWithHookLayer = () => {
       const adaptedRuntime = useRuntime({ layer: InnerLayer })
@@ -282,7 +289,7 @@ describe('React Hooks', () => {
       ),
     )
 
-    const localRuntime = ManagedRuntime.make(CounterModule.live({ count: 0 }) as Layer.Layer<any, never, never>)
+    const localRuntime = makeRuntime(CounterModule.live({ count: 0 }) as Layer.Layer<any, never, any>)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={localRuntime} layer={ResourceLayer}>
@@ -319,8 +326,8 @@ describe('React Hooks', () => {
       }),
     )
 
-    const runtimeA = ManagedRuntime.make(DualCounter.live({ count: 1 }, DualLogic) as Layer.Layer<any, never, never>)
-    const runtimeB = ManagedRuntime.make(DualCounter.live({ count: 10 }, DualLogic) as Layer.Layer<any, never, never>)
+    const runtimeA = makeRuntime(DualCounter.live({ count: 1 }, DualLogic) as Layer.Layer<any, never, any>)
+    const runtimeB = makeRuntime(DualCounter.live({ count: 10 }, DualLogic) as Layer.Layer<any, never, any>)
 
     const useDualCount = () => useModule(DualCounter.tag, (s) => (s as { readonly count: number }).count)
 
@@ -367,11 +374,11 @@ describe('React Hooks', () => {
     )
 
     // Reuse a single ManagedRuntime to mount both Counter + Logger modules.
-    const localRuntime = ManagedRuntime.make(
+    const localRuntime = makeRuntime(
       Layer.mergeAll(
         CounterModule.live({ count: 0 }) as Layer.Layer<any, never, any>,
         Logger.live({ logs: [] }, loggerLogic) as Layer.Layer<any, never, any>,
-      ) as Layer.Layer<any, never, never>,
+      ) as Layer.Layer<any, never, any>,
     )
 
     const multiWrapper = ({ children }: { children: React.ReactNode }) => (

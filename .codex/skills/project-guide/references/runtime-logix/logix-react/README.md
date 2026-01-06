@@ -9,9 +9,9 @@
 
 ## 代码落点（用于深挖）
 
-- Provider：`packages/logix-react/src/components/RuntimeProvider.tsx`
-- Hooks：`packages/logix-react/src/hooks/*`
-- 订阅桥接：`packages/logix-react/src/internal/ModuleRuntimeExternalStore.ts`
+- Provider：`packages/logix-react/src/RuntimeProvider.ts`（public） / `packages/logix-react/src/internal/provider/RuntimeProvider.tsx`（impl）
+- Hooks：`packages/logix-react/src/Hooks.ts`（public） / `packages/logix-react/src/internal/hooks/*`（impl）
+- 订阅桥接：`packages/logix-react/src/internal/store/RuntimeExternalStore.ts`（RuntimeStore 单订阅 facade）
 
 ## 上游依赖（先建立心智模型）
 

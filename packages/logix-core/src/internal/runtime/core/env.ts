@@ -1,6 +1,9 @@
-import { Context, Layer } from 'effect'
+import { Context, Effect, Layer } from 'effect'
 import type { TraitConvergeRequestedMode } from '../../state-trait/model.js'
 import type { ReadQueryStrictGateConfig } from './ReadQuery.js'
+import { makeRuntimeStore, type RuntimeStore } from './RuntimeStore.js'
+import { makeTickScheduler, type TickScheduler, type TickSchedulerConfig } from './TickScheduler.js'
+import { makeDeclarativeLinkRuntime, type DeclarativeLinkRuntime } from './DeclarativeLinkRuntime.js'
 
 // Unified runtime env detection, avoiding bundlers inlining NODE_ENV at build time.
 export const getNodeEnv = (): string | undefined => {
@@ -238,3 +241,53 @@ class ConcurrencyPolicyOverridesTagImpl extends Context.Tag('@logix/core/Concurr
 >() {}
 
 export const ConcurrencyPolicyOverridesTag = ConcurrencyPolicyOverridesTagImpl
+
+// ---- 073: TickScheduler + RuntimeStore (injectable runtime services) ----
+
+export interface RuntimeStoreService extends RuntimeStore {}
+
+export class RuntimeStoreTag extends Context.Tag('@logix/core/RuntimeStore')<RuntimeStoreTag, RuntimeStoreService>() {}
+
+export const runtimeStoreLayer: Layer.Layer<any, never, never> = Layer.scoped(
+  RuntimeStoreTag,
+  Effect.acquireRelease(
+    Effect.sync(() => makeRuntimeStore() as RuntimeStoreService),
+    (store) => Effect.sync(() => store.dispose()),
+  ),
+) as Layer.Layer<any, never, never>
+
+export const runtimeStoreTestStubLayer = (store: RuntimeStoreService): Layer.Layer<any, never, never> =>
+  Layer.succeed(RuntimeStoreTag, store) as Layer.Layer<any, never, never>
+
+export interface DeclarativeLinkRuntimeService extends DeclarativeLinkRuntime {}
+
+export class DeclarativeLinkRuntimeTag extends Context.Tag('@logix/core/DeclarativeLinkRuntime')<
+  DeclarativeLinkRuntimeTag,
+  DeclarativeLinkRuntimeService
+>() {}
+
+export const declarativeLinkRuntimeLayer: Layer.Layer<any, never, never> = Layer.succeed(
+  DeclarativeLinkRuntimeTag,
+  makeDeclarativeLinkRuntime() as DeclarativeLinkRuntimeService,
+) as Layer.Layer<any, never, never>
+
+export const declarativeLinkRuntimeTestStubLayer = (
+  runtime: DeclarativeLinkRuntimeService,
+): Layer.Layer<any, never, never> => Layer.succeed(DeclarativeLinkRuntimeTag, runtime) as Layer.Layer<any, never, never>
+
+export interface TickSchedulerService extends TickScheduler {}
+
+export class TickSchedulerTag extends Context.Tag('@logix/core/TickScheduler')<TickSchedulerTag, TickSchedulerService>() {}
+
+export const tickSchedulerLayer = (config?: TickSchedulerConfig): Layer.Layer<any, never, never> =>
+  Layer.effect(
+    TickSchedulerTag,
+    Effect.gen(function* () {
+      const store = yield* RuntimeStoreTag
+      const declarativeLinkRuntime = yield* DeclarativeLinkRuntimeTag
+      return makeTickScheduler({ runtimeStore: store, declarativeLinkRuntime, config }) as TickSchedulerService
+    }),
+  ) as Layer.Layer<any, never, never>
+
+export const tickSchedulerTestStubLayer = (scheduler: TickSchedulerService): Layer.Layer<any, never, never> =>
+  Layer.succeed(TickSchedulerTag, scheduler) as Layer.Layer<any, never, never>

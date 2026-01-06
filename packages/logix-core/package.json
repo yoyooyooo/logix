@@ -13,6 +13,7 @@
     "./Bound": "./src/Bound.ts",
     "./Debug": "./src/Debug.ts",
     "./EffectOp": "./src/EffectOp.ts",
+    "./ExternalStore": "./src/ExternalStore.ts",
     "./Env": "./src/Env.ts",
     "./Flow": "./src/Flow.ts",
     "./Kernel": "./src/Kernel.ts",
@@ -61,6 +62,11 @@
         "types": "./dist/EffectOp.d.ts",
         "import": "./dist/EffectOp.js",
         "require": "./dist/EffectOp.cjs"
+      },
+      "./ExternalStore": {
+        "types": "./dist/ExternalStore.d.ts",
+        "import": "./dist/ExternalStore.js",
+        "require": "./dist/ExternalStore.cjs"
       },
       "./Env": {
         "types": "./dist/Env.d.ts",
