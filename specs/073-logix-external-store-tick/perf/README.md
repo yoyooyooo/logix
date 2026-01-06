@@ -24,11 +24,11 @@
 - After（adapter=runtimeStore）：`specs/073-logix-external-store-tick/perf/browser.after.d8756502.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=runtimeStore.json`
 - Diff：`specs/073-logix-external-store-tick/perf/diff.browser.adapter=perModule__runtimeStore.d8756502.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
 
-### externalStore ingest（dirty，作为 baseline 引入记录）
+### externalStore ingest（clean evidence）
 
-- Before（r1）：`specs/073-logix-external-store-tick/perf/browser.before.5aac8782-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=externalStore.ingest.tickNotify.r1.json`
-- After（r2）：`specs/073-logix-external-store-tick/perf/browser.after.5aac8782-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=externalStore.ingest.tickNotify.r2.json`
-- Diff：`specs/073-logix-external-store-tick/perf/diff.browser.suite=externalStore.ingest.tickNotify.r1__r2.5aac8782-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
+- r1：`specs/073-logix-external-store-tick/perf/browser.r1.fe1257bb.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=externalStore.ingest.tickNotify.json`
+- r2：`specs/073-logix-external-store-tick/perf/browser.r2.fe1257bb.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=externalStore.ingest.tickNotify.json`
+- Diff：`specs/073-logix-external-store-tick/perf/diff.browser.suite=externalStore.ingest.tickNotify.r1__r2.fe1257bb.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
 
 ### 历史证据（dirty，已废弃）
 
@@ -82,7 +82,8 @@
     - Before（perModule）：`timePerTickMs.p95` off=2.10ms / full=2.00ms
     - After（runtimeStore）：`timePerTickMs.p95` off=1.90ms / full=1.80ms
   - `externalStore.ingest.tickNotify`（watchers=256, modules=10）：
-    - `timePerIngestMs.p95` off≈1.8ms / full≈1.8ms（详见对应 report 的 points）
+    - r1：`timePerIngestMs.p95` off=1.70ms / full=1.80ms
+    - r2：`timePerIngestMs.p95` off=1.90ms / full=1.90ms
   - `diagnostics.overhead.e2e`（watchers.clickToPaint）：仅作观测口径（matrix 目前无 budgets；定义见下文“click→paint”）
   - `retainedHeapDeltaBytesAfterGc`：由 browser gate 硬门禁（`test/browser/perf-boundaries/external-store-ingest.test.tsx`，`MAX_DELTA_BYTES=10MB`；不走 matrix budgets）
 
