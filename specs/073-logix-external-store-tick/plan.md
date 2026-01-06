@@ -190,10 +190,10 @@ Baseline 语义：策略 A/B（before=perModule adapter；after=runtimeStore ada
     - 相对开销：`timePerTickMs.p95(full) / timePerTickMs.p95(off) <= 1.25`（matrix v1）
   - Baseline（ingest workload）：
     - `externalStore.ingest.tickNotify`（watchers=256, modules=10）：
-      - r1：`timePerIngestMs.p95` off=1.90ms / full=2.00ms
-      - r2：`timePerIngestMs.p95` off=2.30ms / full=2.30ms
-      - baseline（conservative=max(r1,r2)）：`timePerIngestMs.p95` off=2.30ms / full=2.30ms
-      - 回归阈值（baseline +20%）：`timePerIngestMs.p95 <= 2.76ms`（off/full）
+      - r1（clean）：`timePerIngestMs.p95` off=1.70ms / full=1.80ms
+      - r2（clean）：`timePerIngestMs.p95` off=1.90ms / full=1.90ms
+      - baseline（conservative=max(r1,r2)）：`timePerIngestMs.p95` off=1.90ms / full=1.90ms
+      - 回归阈值（baseline +20%）：`timePerIngestMs.p95 <= 2.28ms`（off/full）
 
 指标口径澄清：
 
