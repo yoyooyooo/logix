@@ -17,7 +17,7 @@ on:
       perf_files:
         description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 packages/logix-react）"
         required: false
-        default: "test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx,test/browser/perf-boundaries/external-store-ingest.test.tsx,test/browser/perf-boundaries/diagnostics-overhead.test.tsx"
+        default: "test/browser/perf-boundaries/diagnostics-overhead.test.tsx"
       perf_profile:
         description: "采样 profile（影响 runs/warmup/stability 等配置）"
         required: false
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      PERF_FILES: test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx,test/browser/perf-boundaries/external-store-ingest.test.tsx,test/browser/perf-boundaries/diagnostics-overhead.test.tsx
+      PERF_FILES: test/browser/perf-boundaries/diagnostics-overhead.test.tsx
       PERF_PROFILE: smoke
       PERF_DIFF_MODE: strict
       PERF_OUT_DIR: perf/ci

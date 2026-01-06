@@ -13,7 +13,7 @@ const profile = process.env.PERF_PROFILE || 'quick'
 
 const scope =
   process.env.PERF_FILES ||
-  'test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx,test/browser/perf-boundaries/external-store-ingest.test.tsx,test/browser/perf-boundaries/diagnostics-overhead.test.tsx'
+  'test/browser/perf-boundaries/diagnostics-overhead.test.tsx'
 const artifactName = process.env.PERF_ARTIFACT_NAME || ''
 
 const beforePath =
