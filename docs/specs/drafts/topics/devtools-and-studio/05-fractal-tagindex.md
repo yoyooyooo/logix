@@ -9,7 +9,7 @@ related:
   - ./04-devtools-and-runtime-tree.md
   - .codex/skills/project-guide/references/runtime-logix/logix-core/impl/01-app-runtime-and-modules.md
   - .codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md
-  - docs/specs/intent-driven-ai-coding/platform/impl/app-and-universe-view.md
+  - docs/specs/sdd-platform/impl/app-and-universe-view.md
 ---
 
 # Runtime Logix · 分形 Module 树级 TagIndex 与 Universe 拓扑视图（草案）

@@ -4,7 +4,7 @@ status: draft
 layer: Runtime
 related:
   - docs/specs/drafts/topics/ai-native-ui/30-compilation-toolchain.md
-  - docs/specs/intent-driven-ai-coding/97-effect-runtime-and-flow-execution.md
+  - docs/specs/sdd-platform/ssot/contracts/00-execution-model.md
   - specs/039-trait-converge-int-exec-evidence/spec.md
 ---
 

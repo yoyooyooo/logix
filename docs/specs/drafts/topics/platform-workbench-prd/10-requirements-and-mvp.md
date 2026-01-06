@@ -10,8 +10,8 @@ related:
   - ../sdd-platform/09-user-value-routes.md
   - ../sdd-platform/11-spec-to-code-mvp.md
   - ../intent-studio-ux/00-overview.md
-  - ../../../intent-driven-ai-coding/platform/README.md
-  - ../../../intent-driven-ai-coding/roadmap-logix-platform.md
+  - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
+  - ../../../sdd-platform/ssot/roadmap-logix-platform.md
   - ../sandbox-runtime/35-playground-product-view.md
 ---
 

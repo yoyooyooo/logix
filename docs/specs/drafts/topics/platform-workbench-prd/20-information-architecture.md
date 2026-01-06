@@ -10,8 +10,8 @@ related:
   - ./23-live-spec-and-scenario-editor.md
   - ../sdd-platform/05-intent-pipeline.md
   - ../intent-studio-ux/00-overview.md
-  - ../../../intent-driven-ai-coding/06-platform-ui-and-interactions.md
-  - ../../../intent-driven-ai-coding/platform/README.md
+  - ../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md
+  - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
   - ../sandbox-runtime/35-playground-product-view.md
 ---
 
@@ -23,7 +23,7 @@ related:
 - 让用户随时能跳转：Spec ↔ Rule ↔ Code ↔ Trace（四端对齐）
 - 让复杂性按层次暴露：Universe（拓扑）→ Galaxy（规则/编排）→ Planet（代码/实现）
 
-> 对齐原则：`../../../intent-driven-ai-coding/06-platform-ui-and-interactions.md` 的 Universe/Galaxy/Planet 分层 + “配置优于连线，代码优于图形”。
+> 对齐原则：`../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md` 的 Universe/Galaxy/Planet 分层 + “配置优于连线，代码优于图形”。
 
 ## 2. 顶层导航树（建议）
 

@@ -300,7 +300,7 @@ export declare const SandboxModule: Logix.ModuleTagType<
 - 将 `"logix/autoReducer"` 元数据暴露给 DevTools / Studio：
   - 展示“哪些字段有自动 reducer，对应的 Action 列表”；
   - 支持从 State 视角浏览 Action/Reducer；
-- 在 `.codex/skills/project-guide/references/runtime-logix` / `docs/specs/intent-driven-ai-coding` 中固化：
+- 在 `.codex/skills/project-guide/references/runtime-logix` / `docs/specs/sdd-platform/ssot` 中固化：
   - State-First Module 定义模式；
   - Codegen + Runtime 分层职责。
 
@@ -328,4 +328,4 @@ export declare const SandboxModule: Logix.ModuleTagType<
 
 - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`；
 - `.codex/skills/project-guide/references/runtime-logix/logix-core/impl/README.md`；
-- `docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md` 中对 Module/Schema 的说明。
+- `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md` 中对 Module/Schema 的说明。

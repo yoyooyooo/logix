@@ -16,7 +16,7 @@ superseded_by: ../topics/sandbox-runtime/05-architecture-and-boundary.md
 
 本草案尝试把当前关于「Sandbox Architecture Strategy: The Verifiable Intent Engine」的一组想法，抽象为与 v3 规范兼容的中立方案，用于后续收敛到：
 
-- `docs/specs/intent-driven-ai-coding/platform/impl/code-runner-and-sandbox.md`（平台层实现规划）；
+- `docs/specs/sdd-platform/impl/code-runner-and-sandbox.md`（平台层实现规划）；
 - `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与相关 impl 文档（前端 Runtime 契约与 Platform 集成）；
 - 未来的 `@logix/sandbox` 子包实现。
 

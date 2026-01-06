@@ -56,7 +56,7 @@
 **Links（背景草案，不作为 036 SSoT）**：
 
 - Context Pack 原则与最小字段：`docs/specs/drafts/topics/platform-workbench-prd/33-alignment-and-diagnostics.md`
-- Lean Context 与治理：`docs/specs/drafts/topics/sdd-platform/17-project-governance-and-lean-context.md`
+- Lean Context 与治理：`docs/specs/sdd-platform/workbench/17-project-governance-and-lean-context.md`
 
 ### D004：语义化 UI 与画布可以端口化打通（BindingSchema 是接线层）
 
@@ -69,7 +69,7 @@
 **Links**：
 
 - 端口化打通小抄（036）：`specs/036-workbench-contract-suite/semantic-ui-port-bridge.md`
-- 语义 UI 草案：`docs/specs/drafts/topics/sdd-platform/ui-ux/04-semantic-ui-modeling.md`
+- 语义 UI 草案：`docs/specs/sdd-platform/workbench/ui-ux/04-semantic-ui-modeling.md`
 - Semantic UI Mock 分层：`docs/specs/drafts/topics/sandbox-runtime/20-dependency-and-mock-strategy.md`
 
 ## Open Questions（先落盘，后续再定优先级）

@@ -128,8 +128,8 @@ StateTrait 具备三类平台关键特性：
 同一件事（Fluent 规则白盒解析）在仓库内至少出现了两套互斥的锚点约束：
 
 - 约束 A（旧）：`...then(...)` / `.when(...)`
-  - `docs/specs/intent-driven-ai-coding/06-codegen-and-parser.md`
-  - `docs/specs/intent-driven-ai-coding/platform/impl/README.md`
+  - `docs/specs/sdd-platform/ssot/ir/00-codegen-and-parser.md`
+  - `docs/specs/sdd-platform/impl/README.md`
   - `scripts/intent-fluent-parser.ts`（已删除）
 - 约束 B（现行实现）：`...update/mutate/run*(...)`
   - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`（Hard Constraints 明确写 `.update/mutate/run*`）
@@ -247,7 +247,7 @@ StateTrait 具备三类平台关键特性：
 
 随之必须执行的“不兼容清理”：
 
-- 更新/重写 `docs/specs/intent-driven-ai-coding/06-codegen-and-parser.md` 与 `docs/specs/intent-driven-ai-coding/platform/impl/README.md`：移除 `when/then` 约束，统一为 `.run*/update/mutate`；
+- 更新/重写 `docs/specs/sdd-platform/ssot/ir/00-codegen-and-parser.md` 与 `docs/specs/sdd-platform/impl/README.md`：移除 `when/then` 约束，统一为 `.run*/update/mutate`；
 - 删除或重写 `scripts/intent-fluent-parser.ts`：以 `.onState/.onAction/.on + 终端 run*` 为解析锚点；
 - 清理 examples 中仍保留的 `then/when` 注释与旧 IR 示例，避免误导团队协作。
 
@@ -326,7 +326,7 @@ Sandbox 在平台体系中不是“代码 runner”，而是 **Executable Spec /
 - **可解析子集违规的诊断**：当代码超出 Platform-Grade 子集，应能给出 loc + 原因 + 自动修复建议（codemod/Agent 降级）。
 - **回写边界的硬限制**：首期只允许修改“安全参数”（debounce/throttle 时间、run→runLatest 这种同构切换、deps 列表等），避免 AST Patch 演化成不可控的“代码生成器”。
 
-参考入口：`docs/specs/drafts/topics/sdd-platform/06-dev-server-and-digital-twin.md`、`docs/specs/intent-driven-ai-coding/platform/impl/README.md`（需先修正其中的 then/when 漂移）。
+参考入口：`docs/specs/sdd-platform/workbench/06-dev-server-and-digital-twin.md`、`docs/specs/sdd-platform/impl/README.md`（需先修正其中的 then/when 漂移）。
 
 ---
 
@@ -338,7 +338,7 @@ Sandbox 在平台体系中不是“代码 runner”，而是 **Executable Spec /
 
 - 统一 Platform-Grade 子集的唯一写法（建议以 `.run*/update/mutate` 为终端锚点）；
 - 移除 `andThen` 或隔离为内部 API；
-- 修订关键 specs（`v3/06-codegen-and-parser.md`、`v3/platform/impl/README.md` 等）与示例注释，保证“写法/规范/解析器”三者一致。
+- 修订关键 specs（`docs/specs/sdd-platform/ssot/ir/00-codegen-and-parser.md`、`docs/specs/sdd-platform/impl/README.md` 等）与示例注释，保证“写法/规范/解析器”三者一致。
 
 ### Step 2：落地最小 IR 与 Parser（可用即可）
 

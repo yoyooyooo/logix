@@ -131,6 +131,7 @@ function ModuleRuntime.make<Sh extends Logix.ModuleShape<any, any>>(
   - StateTransaction 支持两个观测强度：
     - `"full"`：记录 Patch 列表、初始/最终状态快照，并在 Debug 事件中填充 `patchCount` / `originKind` 等诊断信息，供 Devtools 构建事务视图与时间旅行；
     - `"light"`：只保留必要的计时信息与最终状态，跳过 Patch 与快照构建，仍然保证“单事务 = 单次提交”的语义。
+  - impl 补充（dirty-set id-first / staticIrDigest gate / 事务历史细节）：见 `../impl/README.09-statetransaction-devtools.md`。
   - 配置入口与优先级：
     - Runtime 级：`Logix.Runtime.make(root, { stateTransaction?: { instrumentation?: "full" | "light" } })`（`root` 可为 program module 或其 `.impl`）；
     - Module 级：`ModuleDef.implement({ ..., stateTransaction?: { instrumentation?: "full" | "light" } })`；
@@ -166,7 +167,7 @@ Runtime 在事务窗口的提交前，会对当前模块已注册的 `StateTrait
 - **单窗口 0/1 commit**：converge 只会更新事务 draft，并通过 StateTransaction 聚合 patch；对外提交仍由 commit 统一完成。
 - **拓扑顺序 + 配置硬失败**：computed/link 的 writer 图在执行前会做拓扑排序；若发现环或同一字段多个 writer，将抛错并阻止本窗口 commit（Hard Fail）。
 - **预算与降级（Soft Degrade）**：converge 具有固定预算（当前实现默认 200ms）；超预算或运行期异常会：
-  - 回退 draft 到本窗口开始时的 baseState（避免产生半成品派生）；
+  - 回退到 **converge 开始时的 draft**（即：只回滚本次 converge 写入的派生字段；不回滚业务入口在本窗口内的写入，避免产生半成品派生）；
   - 发出结构化诊断（见 [`09-debugging.md`](../observability/09-debugging.md)）：`trait::budget_exceeded` / `trait::runtime_error`；
   - 语义上表现为“本次窗口派生被冻结”（业务写入仍可提交）。
 - **显式 deps 是唯一依赖事实源**：converge 的排序与增量调度只认 `deps`；dev/test 环境会做一次 deps-trace 辅助检查并发出 `state_trait::deps_mismatch`（warning）。
@@ -183,7 +184,11 @@ Runtime 在事务窗口的提交前，会对当前模块已注册的 `StateTrait
 
 - `txnSeq === 1`：`executedMode="full"`，`reasons=["cold_start"]`
 - `dirtyAll=true` 或 rootIds 为空：`executedMode="full"`，`reasons=["unknown_write"]`
-- 其他情况：计算/复用 execution plan（写入 `cache.hit/miss`），若 `affectedSteps/totalSteps >= 0.8` 则回退 `full` 并追加 `reason="near_full"`，否则采用 `dirty`
+- 其他情况：计算/复用 execution plan（写入 `cache.hit/miss`）；若命中决策预算（`decisionBudgetMs`）则直接回退 `full` 并追加 `reason="budget_cutoff"`
+- 若 `dirtyRoots / totalSteps >= 0.75`：回退 `full` 并追加 `reason="near_full"`
+- 否则若 `affectedSteps / totalSteps >= 0.9`：回退 `full` 并追加 `reason="near_full"`；否则采用 `dirty`
+
+> 043 time-slicing（可选）：当开启 `traitConvergeTimeSlicing` 且模块存在 `scheduling="deferred"` 的 computed/link 时，正常事务窗口只收敛 `immediate` 范围；`deferred` 范围会被合并到后续内部事务（`origin.kind="trait:deferred_flush"`）补算，因此被标记为 deferred 的派生字段允许短暂读到旧值（语义换性能）。
 
 ### 1.5.2 scoped validate：Reverse Closure（反向闭包）最小化校验范围
 

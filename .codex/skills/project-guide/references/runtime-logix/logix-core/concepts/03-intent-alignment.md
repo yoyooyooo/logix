@@ -5,13 +5,13 @@
 
 ## 1. 目标
 
-本 Logix 引擎的设计初衷之一，是作为 `intent-driven-ai-coding` 平台中的一个前端 Runtime Target（`logix-engine`），承载“贴近 UI 的行为与联动”。这意味着：
+本 Logix 引擎的设计初衷之一，是作为 `SDD Platform` 体系中的一个前端 Runtime Target（`logix-engine`），承载“贴近 UI 的行为与联动”。这意味着：
 
-- Logix 不重新定义 Intent / Flow / Constraint 的模型，相关概念与 Schema 以 `docs/specs/intent-driven-ai-coding` 为事实源：
-  - 三位一体 Intent 模型：`docs/specs/intent-driven-ai-coding/02-intent-layers.md`；
-  - 资产与 Schema 映射：`docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md`；
-  - Runtime 家族与 Flow 执行：`docs/specs/intent-driven-ai-coding/97-effect-runtime-and-flow-execution.md`。
-- 如需回顾历史六层模型，可参考 `docs/specs/intent-driven-ai-coding/v2/00-architecture-decision-records.md` 与 `docs/specs/intent-driven-ai-coding/v2/99-history-and-comparison.md`（历史目录名保留），但它们不再作为当前 Logix 设计的事实源。  
+- Logix 不重新定义 Intent / Flow / Constraint 的模型，相关概念与 Schema 以平台 SSoT 为事实源：
+  - 三位一体 Intent 模型：`docs/specs/sdd-platform/ssot/foundation/03-trinity-and-layers.md`；
+  - 资产与 Schema 映射：`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`；
+  - Runtime 家族与执行口径：`docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`。
+- 如需回顾历史探索与教训，统一参考：`docs/specs/sdd-platform/ssot/governance/decisions/history-and-lessons.md`。  
   Logix 只定义“这些 Intent 如何在前端运行时中落地”为 Module 定义（State/Action Schema）、ModuleRuntime 配置（初始状态等）与 Logic 规则。
 
 ## 2. Intent 三维与 Logix 的关系
@@ -26,7 +26,7 @@
 
 历史补充（六层模型）：
 
-- Layout / View / Interaction Intent 现在被统一纳入 UI / Logic 维度（参见 `docs/specs/intent-driven-ai-coding/02-intent-layers.md` 中的说明）；
+- Layout / View / Interaction Intent 现在被统一纳入 UI / Logic 维度（参见 `docs/specs/sdd-platform/ssot/foundation/03-trinity-and-layers.md` 中的说明）；
 - Code Structure Intent 不再被视为 Intent，而是由 Pattern / 模板层自动产出的工程细节。  
   这些历史概念如需回顾，可以用来理解 Logix 覆盖范围的由来，但不再约束当前 DSL 与 Schema 设计。
 
@@ -95,7 +95,7 @@ Behavior & Flow Intent 在平台层可以选择不同的 Runtime Target：
   - 有哪些防抖/并发/重试约束；
   - 需要调用哪些前端可用的服务（如本地缓存、前端校验库、Flow Runner 客户端）。
 
-Logix 端的 JSON 解释器与 Logic DSL 仅是“承接这些 Intent 的一种落地形式”，其 Schema 设计应以上游平台 SSoT 的 Intent / Flow / Constraint 模型为准（参见 `docs/specs/intent-driven-ai-coding/02-intent-layers.md`、`docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md` 与 `docs/specs/intent-driven-ai-coding/97-effect-runtime-and-flow-execution.md`），避免再出现第二套事实源。
+Logix 端的 JSON 解释器与 Logic DSL 仅是“承接这些 Intent 的一种落地形式”，其 Schema 设计应以上游平台 SSoT 的 Intent / Flow / Constraint 模型为准（参见 `docs/specs/sdd-platform/ssot/foundation/03-trinity-and-layers.md`、`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md` 与 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`），避免再出现第二套事实源。
 
 ## 6. Intent ↔ Logix API 映射表
 
@@ -112,4 +112,4 @@ Logix 端的 JSON 解释器与 Logic DSL 仅是“承接这些 Intent 的一种�
 | `LogicImplConfig.constraints`（`concurrency` / `timeout` / `retry` / `transaction`） | 规则 Options / 中间件                                                          | 编译为 Rule 层面的选项（如防抖/并发策略）或封装在服务调用的 Effect 组合子内（如 `Effect.timeoutFail`、`Effect.retry`），由 Logix Runtime 在执行时统一处理。                                                                                                                 |
 | `LogicImplConfig.testCases`                                                          | `@logix/test` / Round-trip 测试                                                | 平台可将这些用例转换为基于 Logix ModuleRuntime 的 Round-trip 测试（参见 `runtime-logix/test` 系列文档），通过注入 Mock Services、构造输入、断言 State/Signals。                                                                                                             |
 
-在实际出码链路中，平台会先根据 Intent/Flow Schema 生成中间层的 Flow DSL/JSON（与 `docs/specs/intent-driven-ai-coding/04-intent-to-code-example.md` 一致），再由 Logix 编译器将其中 `runtimeTarget = 'logix-engine'` 的部分落地为上述 Module 定义 / ModuleRuntime 配置与 Logic 规则。
+在实际出码链路中，平台会先根据 Intent/Flow Schema 生成中间层的 Flow DSL/JSON（与 `docs/specs/sdd-platform/ssot/appendix/intent-to-code-example.md` 的演练一致），再由 Logix 编译器将其中 `runtimeTarget = 'logix-engine'` 的部分落地为上述 Module 定义 / ModuleRuntime 配置与 Logic 规则。

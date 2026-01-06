@@ -19,8 +19,8 @@
 - [x] T003 产出 data model（实体 + DDL 映射）：`specs/062-galaxy-api-postgres/data-model.md`
 - [x] T004 产出 OpenAPI 3.1 契约：`specs/062-galaxy-api-postgres/contracts/openapi.yaml`
 - [x] T005 产出 quickstart 验收步骤：`specs/062-galaxy-api-postgres/quickstart.md`
-- [x] T006 沉淀 `todos` 表结构与语义到 SSoT：`docs/specs/intent-driven-ai-coding/examples/02-logix-galaxy-api-postgres.md`
-- [x] T007 沉淀 CRUD 写法模板到 SSoT：`docs/specs/intent-driven-ai-coding/examples/03-effect-httpapi-postgres-crud-template.md`
+- [x] T006 沉淀 `todos` 表结构与语义到 SSoT：`docs/specs/sdd-platform/ssot/examples/02-logix-galaxy-api-postgres.md`
+- [x] T007 沉淀 CRUD 写法模板到 SSoT：`docs/specs/sdd-platform/ssot/examples/03-effect-httpapi-postgres-crud-template.md`
 - [x] T008 完善 CRUD 指导 skill（Effect HttpApi + PostgreSQL）：`.codex/skills/effect-httpapi-postgres-crud/SKILL.md`
 
 ---
@@ -80,7 +80,7 @@
 
 - [x] T019 [P] 用 `$skill-creator` 复核并打包 CRUD skill（可选生成 `.skill` 产物，用于分发）：`.codex/skills/effect-httpapi-postgres-crud/SKILL.md`
 - [x] T020 完整跑通 `quickstart.md`（DB smoke 需提供 `DATABASE_URL`；本次以无 DB 的自动化测试作为验收口径），并修复发现的漂移：`specs/062-galaxy-api-postgres/quickstart.md`
-- [x] T023 [P] 将“`DATABASE_URL` 集成测试”写法同步沉淀到模板与 skill（避免只剩脚本 smoke）：`docs/specs/intent-driven-ai-coding/examples/03-effect-httpapi-postgres-crud-template.md`、`.codex/skills/effect-httpapi-postgres-crud/SKILL.md`
+- [x] T023 [P] 将“`DATABASE_URL` 集成测试”写法同步沉淀到模板与 skill（避免只剩脚本 smoke）：`docs/specs/sdd-platform/ssot/examples/03-effect-httpapi-postgres-crud-template.md`、`.codex/skills/effect-httpapi-postgres-crud/SKILL.md`
 
 ---
 

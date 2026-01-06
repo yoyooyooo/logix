@@ -59,4 +59,4 @@ Logix 的目标不是替换某一个库，而是给团队提供一个“业务�
 - 价值观与演进策略：`docs/philosophy/README.md`（含开发者主权、向前兼容等）
 - Zustand 迁移示例（较详细）：`apps/docs/content/docs/guide/recipes/migration-from-zustand.en.md`
 - Query 与 TanStack 的关系（较详细）：`apps/docs/content/docs/guide/learn/query.en.md`
-- 平台/Intent 的大图景（SSoT）：`docs/specs/intent-driven-ai-coding/01-overview.md`
+- 平台/Intent 的大图景（SSoT）：`docs/specs/sdd-platform/ssot/01-overview.md`

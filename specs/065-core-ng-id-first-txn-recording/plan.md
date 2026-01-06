@@ -64,7 +64,7 @@ _GATE：必须在 Phase 0/1 设计完成后再次复核；本计划在本阶段�
 
 ### 2) 依赖/修改的 SSoT（docs-first）
 
-- 方法论/术语基线：`docs/specs/intent-driven-ai-coding/99-glossary-and-ssot.md`
+- 方法论/术语基线：`docs/specs/sdd-platform/ssot/foundation/02-glossary.md`
 - Runtime SSoT 导览：`.codex/skills/project-guide/references/runtime-logix/README.md`
 - Trait 静态治理与溯源（Static IR digest / 锚点）：`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/05-trait-provenance-and-static-governance.md`
 - Perf evidence 与门禁口径：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`

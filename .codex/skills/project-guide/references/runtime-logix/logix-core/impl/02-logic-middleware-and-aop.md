@@ -8,7 +8,11 @@
 
 当前主线的单一完美点是：把所有“会执行的边界操作”统一提升为 `EffectOp`，并强制进入同一条 `MiddlewareStack`。
 
-规范性描述以 `../api/04-logic-middleware.md` 为准；本文只记录实现落点与防呆约束。
+## 边界与外链（避免重复叙述）
+
+- 规范性口径（公共 API）：`../api/04-logic-middleware.md`
+- Devtools 可观测链路（`trace:effectop` 等）：`../observability/09-debugging.md`
+- 本文只记录实现落点与防呆约束；若需要调整公共契约，先改 API/SSoT，再改实现
 
 ---
 

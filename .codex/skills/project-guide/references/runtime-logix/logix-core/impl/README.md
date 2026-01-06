@@ -2,6 +2,12 @@
 
 本目录为实现备忘录（impl），只保留导航；正文拆分为同目录分节文件，按需加载。
 
+## 与 SSoT 的关系（先看口径，再看实现）
+
+- 运行时契约/语义口径（SSoT）：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/*`、`.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/*`、`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/*`。
+- 平台级硬约束（如事务窗口禁止 IO/等待）：`docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`。
+- 本目录只补充实现层“为什么/怎么做/风险点/源码锚点”，避免重复叙述 SSoT；若发现冲突，优先修 SSoT，再修 impl。
+
 ## 最短链路
 
 - 我在改动 `packages/logix-core/src/internal/**`：先读 `README.03-structure-rules.md`

@@ -8,8 +8,8 @@ related:
   - ./30-system-architecture.md
   - ./32-collaboration-and-permissions.md
   - ./33-alignment-and-diagnostics.md
-  - ../../../intent-driven-ai-coding/03-assets-and-schemas.md
-  - ../../../intent-driven-ai-coding/platform/README.md
+  - ../../../sdd-platform/ssot/assets/00-assets-and-schemas.md
+  - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
   - ../sandbox-runtime/65-playground-as-executable-spec.md
 ---
 
@@ -198,7 +198,7 @@ RunResult（最小）：
 - 解析器输出 IntentRule 时必须附带 `sourceAnchor`（file + span + contentHash）
 - 生成器写回代码时必须保留 ruleId 与 anchor 的可追踪关系
 
-该部分实现细节以 `../../../intent-driven-ai-coding/platform/impl/*` 为准，本 Topic 只要求“必须有锚点”，不规定具体 AST 序列化方案。
+该部分实现细节以 `../../../sdd-platform/impl/*` 为准，本 Topic 只要求“必须有锚点”，不规定具体 AST 序列化方案。
 
 ## 5. 示例（最小可用 JSON 样例）
 

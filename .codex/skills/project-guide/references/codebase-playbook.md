@@ -10,7 +10,7 @@ version: 1
 
 ## 0. 使用方式（建议顺序）
 
-1. **先定裁决层**：概念/术语 → `docs/specs/intent-driven-ai-coding`；Runtime 契约/口径 → `.codex/skills/project-guide/references/runtime-logix`；实现 → `packages/logix-*`。
+1. **先定裁决层**：概念/术语 → `docs/specs/sdd-platform/ssot`；Runtime 契约/口径 → `.codex/skills/project-guide/references/runtime-logix`；实现 → `packages/logix-*`。
 2. **先看公共出口**：`packages/logix-core/src/index.ts`（导出即裁决点）。
 3. **按“链路三跳”下钻**：入口（public）→ `src/internal/**`（实现）→ `test/**`（回归/语义边界）。
 4. **优先用 auggie 命中文档/入口，再用 rg 补齐细节**：auggie 先给“路径+符号列表”，避免大段贴代码。

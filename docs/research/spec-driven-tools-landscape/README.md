@@ -166,9 +166,9 @@ https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html
 ## 4) 与仓内规划的映射（便于继续往 spec/plan 落地）
 
 - 本仓已有 draft 视角（平台愿景与 MVP 竖切）：
-  - `docs/specs/drafts/topics/sdd-platform/00-overview.md`
-  - `docs/specs/drafts/topics/sdd-platform/11-spec-to-code-mvp.md`
-  - `docs/specs/drafts/topics/sdd-platform/10-market-landscape.md`（市场扫描汇总）
+  - `docs/specs/sdd-platform/workbench/00-overview.md`
+  - `docs/specs/sdd-platform/workbench/11-spec-to-code-mvp.md`
+  - `docs/specs/sdd-platform/workbench/10-market-landscape.md`（市场扫描汇总）
 
 ## 5) 本目录文件索引
 

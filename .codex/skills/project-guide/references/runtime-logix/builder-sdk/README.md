@@ -8,4 +8,4 @@
 
 ## 上游规范
 
-- Intent / 资产映射：`docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md`
+- Intent / 资产映射：`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`

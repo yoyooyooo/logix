@@ -42,7 +42,7 @@ Logix 将消除这些模糊点。通过提供标准化的 `logic` 编排机制�
 
 - **向下**: 封装 Effect-TS 的强大能力（并发、资源管理、错误处理），屏蔽底层复杂性。
 - **向上**: 支撑 `Form`、`Global State` 等具体领域的应用，以及未来的 `AI Coding Platform`。
-- **在平台视角下**: 作为 `intent-driven-ai-coding` 架构中的一个前端 Runtime Target（`logix-engine`），与 Effect Flow Runtime 一同承接 Logic Intent / Flow DSL 的执行职责。Intent/Flow/Runtime 的概念模型与 Schema 以 `docs/specs/intent-driven-ai-coding`（尤其是 `02-intent-layers.md`、`03-assets-and-schemas.md` 与 `97-effect-runtime-and-flow-execution.md`）为事实源，Logix 文档只说明“如何在前端运行时实现这些契约”。
+- **在平台视角下**: 作为 `SDD Platform` 体系中的一个前端 Runtime Target（`logix-engine`），与 Effect Flow Runtime 一同承接 Logic Intent / Flow 编排的执行职责。Intent/Flow/Runtime 的概念模型与 Schema 以 `docs/specs/sdd-platform/ssot` 为事实源（尤其是 `docs/specs/sdd-platform/ssot/foundation/03-trinity-and-layers.md`、`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md` 与 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`），Logix 文档只说明“如何在前端运行时实现这些契约”。
 
 ## 4. 当前承诺与约束 (Commitments)
 

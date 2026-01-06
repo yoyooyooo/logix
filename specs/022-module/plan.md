@@ -37,7 +37,7 @@
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - `Intent → Flow/Logix → Code → Runtime`：Module（定义对象）属于“领域能力装配层”的公共 API/契约；会影响 Logic 的 `$.use(...)` 消费模型、`actions`（模块 action dispatchers）语义，以及 UI/Runtime 的装配入口。
-- 依赖与文档优先：新增/调整的对外契约必须同步固化在 `docs/specs/intent-driven-ai-coding/*`（SSoT）与 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/*`；并在 `apps/docs` 更新面向业务的用法与心智模型（避免 spec 与用户文档漂移）。
+- 依赖与文档优先：新增/调整的对外契约必须同步固化在 `docs/specs/sdd-platform/ssot/*`（SSoT）与 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/*`；并在 `apps/docs` 更新面向业务的用法与心智模型（避免 spec 与用户文档漂移）。
 - 契约变化：新增 `Module`（定义对象）统一形状与“挂载逻辑/依赖”的 fluent 组合；旧 `Module` 更名为 `ModuleTag`；明确 `logic`（产出逻辑值）与 `withLogic`（挂载到蓝图）的分工。
 - DX：`Module.logic(build, { id? })` 的 `$` 提供 `$.self` 获取当前 ModuleHandle（含扩展），避免在本模块逻辑中重复 `$.use(SelfModule)`。
 - IR & anchors：不引入第二套 IR；若增加诊断事件，必须复用既有 DebugSink `trace:*` 通道并可被 `trialRun` evidence 导出，同时携带 stable identity 字段。

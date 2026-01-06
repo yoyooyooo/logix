@@ -6,22 +6,22 @@ value: core
 priority: now
 related:
   - ../sdd-platform/00-overview.md
-  - ../../../intent-driven-ai-coding/platform/README.md
-  - ../../../intent-driven-ai-coding/06-platform-ui-and-interactions.md
-  - ../../../intent-driven-ai-coding/03-assets-and-schemas.md
+  - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
+  - ../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md
+  - ../../../sdd-platform/ssot/assets/00-assets-and-schemas.md
   - ../sandbox-runtime/35-playground-product-view.md
   - ../devtools-and-studio/README.md
 ---
 
 # Platform Workbench PRD · Topic Overview
 
-> 主题定位：把“平台侧规划”下沉为 **可交付的产品级规划**（需求原型、交互设计、系统设计），并显式对齐本仓既有的 SSoT（v3 specs）与草案主线（`topics/sdd-platform`）。
+> 主题定位：把“平台侧规划”下沉为 **可交付的产品级规划**（需求原型、交互设计、系统设计），并显式对齐本仓既有的 SSoT（v3 specs）与平台主线（`docs/specs/sdd-platform/workbench`）。
 
 ## 约束（继承上游裁决）
 
-- 平台的统一 IR：`IntentRule`（R-S-T + `source/pipeline/sink`），详见：`../../../intent-driven-ai-coding/platform/README.md` 与 `.codex/skills/project-guide/references/runtime-logix/logix-core/platform/06-platform-integration.md`。
+- 平台的统一 IR：`IntentRule`（R-S-T + `source/pipeline/sink`），详见：`../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md` 与 `.codex/skills/project-guide/references/runtime-logix/logix-core/platform/06-platform-integration.md`。
 - Playground/Alignment Lab 是“Executable Spec Lab”，不是纯 Code Runner（参考：`../sandbox-runtime/65-playground-as-executable-spec.md`）。
-- Full‑Duplex（Intent ↔ Code）优先走“可解析子集 + 明确降级（Gray/Black Box）”，避免半懂半不懂（参考：`../../../intent-driven-ai-coding/platform/impl/README.md`）。
+- Full‑Duplex（Intent ↔ Code）优先走“可解析子集 + 明确降级（Gray/Black Box）”，避免半懂半不懂（参考：`../../../sdd-platform/impl/README.md`）。
 
 ## 文档
 

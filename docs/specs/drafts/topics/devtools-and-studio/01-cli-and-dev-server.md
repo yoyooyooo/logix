@@ -5,7 +5,7 @@ version: 0.1.0
 value: core
 priority: later
 related:
-  - ../sdd-platform/06-dev-server-and-digital-twin.md
+  - ../../../sdd-platform/workbench/02-full-duplex-architecture.md
   - ../platform-vision/10-platform-deep-dive.md
   - ../runtime-v3-core/README.md
 ---

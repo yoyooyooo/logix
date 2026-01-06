@@ -6,7 +6,7 @@
 
 如 `docs/impl-notes` 与规范/类型不一致，按以下顺序裁决：
 
-1. 概念/术语/平台定位：`docs/specs/intent-driven-ai-coding`
+1. 概念/术语/平台定位：`docs/specs/sdd-platform/ssot`
 2. Runtime 契约/语义/诊断口径：`.codex/skills/project-guide/references/runtime-logix`
 3. 代码类型与真实导出：`packages/logix-core/src/index.ts`（以及实际实现）
 

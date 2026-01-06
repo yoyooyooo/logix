@@ -7,18 +7,18 @@
 
 ## 1. Core Specifications (The Truth)
 
-确定性高、已进入实施阶段的核心规范。
+确定性高、作为事实源（SSoT）使用的核心规范。
 
-- **[Intent-Driven AI Coding](./intent-driven-ai-coding/README.md)**
-  - 平台主线：UI/Logic/Module 三位一体 + Flow/Logix 设计与运行时契约。
-- **[Runtime Logix](./runtime-logix/README.md)**
-  - 运行时主线：Logix Engine, Behavior & Flow Intent 的统一前端运行时 PoC。
+- **[SDD Platform](./sdd-platform/README.md)**
+  - 平台侧主线：需求→规格→出码→运行证据→对齐回流（含 `ssot/` 与 `workbench/`）。
+- **Runtime SSoT（只读）**
+  - `.codex/skills/project-guide/references/runtime-logix/**`（以真实类型/实现为裁决；与 `packages/logix-*` 同步）。
 
 ## 2. Drafts & Topics (The Lab)
 
 正在孵化、探讨或作为特定主题参考的草稿文档。
 
-- **[Drafts Index](./drafts/README.md)**
+- **[Drafts Index](./drafts/index.md)**
   - 包含按主题分类的草稿 (`topics/`) 和按成熟度分级的草稿 (`L1~L9`)。
 
 ---
@@ -27,8 +27,7 @@
 
 ```
 docs/specs/
-├── intent-driven-ai-coding/  # Platform Specs
-├── runtime-logix/            # Runtime Specs
+├── sdd-platform/       # Platform specs root
 └── drafts/                   # Drafts & Topics
     ├── topics/               # Consolidated Topics (AI UI, Core API...)
     └── L1~L9/                # Tiered Drafts

@@ -22,13 +22,13 @@ date: 2025-12-26
 
 ## 1) 语义化 UI 草案口径（外链）
 
-- 语义组件与接线模型：`docs/specs/drafts/topics/sdd-platform/ui-ux/04-semantic-ui-modeling.md`
+- 语义组件与接线模型：`docs/specs/sdd-platform/workbench/ui-ux/04-semantic-ui-modeling.md`
   - `UiPort`：语义组件实例（type/slots/inputs/outputs）
   - `UiBinding`：prop ← module(state/view/trait)
   - `UiSignal`：event → module(action/intent)
 - Sandbox 中的 Mock 分层：`docs/specs/drafts/topics/sandbox-runtime/20-dependency-and-mock-strategy.md`
-- 多视图原则（同一工件多投影）：`docs/specs/drafts/topics/sdd-platform/ui-ux/05-multi-view-principles.md`
-- 平台术语裁决（Universal Spy / Semantic UI Mock / UI_INTENT）：`docs/specs/intent-driven-ai-coding/99-glossary-and-ssot.md`
+- 多视图原则（同一工件多投影）：`docs/specs/sdd-platform/workbench/ui-ux/05-multi-view-principles.md`
+- 平台术语裁决（Universal Spy / Semantic UI Mock / UI_INTENT）：`docs/specs/sdd-platform/ssot/foundation/02-glossary.md`
 
 ## 2) 与 032/033/035 的“插座/插口”映射（不引入新协议）
 
@@ -105,7 +105,7 @@ Semantic UI Mock 在 Sandbox 里会产出 `UI_INTENT`（PoC 已有 `UiIntentPack
 
 ### 3.3 多视图投影：用 `tier` 把“产品视角/开发视角”做成同一份工件的不同投影
 
-`docs/specs/drafts/topics/sdd-platform/ui-ux/05-multi-view-principles.md` 的裁决是“一套工件，多种投影”。把它落到本仓的 032/036 体系上，建议直接用 `@logix/module.uiKitRegistry@v1.components[].tier` 驱动“画布组件面板”的裁剪：
+`docs/specs/sdd-platform/workbench/ui-ux/05-multi-view-principles.md` 的裁决是“一套工件，多种投影”。把它落到本仓的 032/036 体系上，建议直接用 `@logix/module.uiKitRegistry@v1.components[].tier` 驱动“画布组件面板”的裁剪：
 
 - **Product View（默认）**：只展示语义组件树 + 高层绑定摘要；组件面板只露 `tier=pro`（语义强、组合度高，LLM 更易选型与生成）。
 - **Dev View（开关）**：展示 props/events 的接线面板与失败诊断；组件面板额外露 `tier=ui`（更细粒度的 UI 组件）。
@@ -115,7 +115,7 @@ Semantic UI Mock 在 Sandbox 里会产出 `UI_INTENT`（PoC 已有 `UiIntentPack
 
 ## 4) 与旧 UIIntentNode 口径的关系（避免并行真相源）
 
-`docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md` 中的 `UIIntentNode` 是早期口径：
+`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md` 中的 `UIIntentNode` 是早期口径：
 
 - 可作为“历史叙事/概念背景”
 - 不建议继续扩展为平台事实源协议

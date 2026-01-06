@@ -139,7 +139,7 @@
 在导出的 Static IR 与 Evidence Summary 中，除最小拓扑/依赖外，必须携带可扩展的“语义锚点/注解”（trait meta 的 label/description/tags/docsUrl 等），并为未来 Phantom Source / 语义压缩保留扩展位（例如 `x-*` 形式的注解键）。所有 meta/注解必须 Slim、可序列化且可裁剪。
 
 **Rationale**  
-- `docs/specs/drafts/topics/sdd-platform/13-agentic-reversibility.md` 的三种可逆模式都需要“可被机器读取的语义提示”，否则从 IR 反推只能得到无灵魂骨架。  
+- `docs/specs/sdd-platform/workbench/13-agentic-reversibility.md` 的三种可逆模式都需要“可被机器读取的语义提示”，否则从 IR 反推只能得到无灵魂骨架。  
 - 现有 IR 导出已包含 label/tags，但缺少 description/docsUrl 等更强语义信号；补齐后可作为 LLM 的最小上下文，减少幻觉与回填成本。  
 - 把锚点放在 IR/证据侧比依赖代码注释更可控（可 schema 校验、可裁剪、可 diff）。
 

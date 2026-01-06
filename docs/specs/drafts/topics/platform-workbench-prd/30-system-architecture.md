@@ -6,11 +6,10 @@ value: core
 priority: now
 related:
   - ./21-interaction-prototypes.md
-  - ../sdd-platform/02-full-duplex-architecture.md
-  - ../sdd-platform/06-dev-server-and-digital-twin.md
-  - ../sdd-platform/08-alignment-lab-and-sandbox.md
-  - ../../../intent-driven-ai-coding/platform/impl/code-runner-and-sandbox.md
-  - ../../../intent-driven-ai-coding/platform/impl/intent-rule-and-codegen.md
+  - ../../../sdd-platform/workbench/02-full-duplex-architecture.md
+  - ../../../sdd-platform/workbench/08-alignment-lab-and-sandbox.md
+  - ../../../sdd-platform/impl/code-runner-and-sandbox.md
+  - ../../../sdd-platform/impl/intent-rule-and-codegen.md
   - ../sandbox-runtime/15-protocol-and-schema.md
 ---
 
@@ -42,7 +41,7 @@ related:
 - **Timeline / EffectOp**：运行时事件流（可被聚合为“规则触发证据”）
 - **AlignmentReport**：Spec/Rule 与动态证据的对比结果（通过/失败 + 可行动诊断）
 
-> 上游参考：`../sdd-platform/02-full-duplex-architecture.md`（Code↔Studio↔Runtime）与 `../sandbox-runtime/65-playground-as-executable-spec.md`（Executable Spec Lab）。
+> 上游参考：`../../../sdd-platform/workbench/02-full-duplex-architecture.md`（Code↔Studio↔Runtime）与 `../sandbox-runtime/65-playground-as-executable-spec.md`（Executable Spec Lab）。
 
 ## 2. 组件与边界
 
@@ -90,7 +89,7 @@ graph TD
 
 ### 2.3 Browser / Sandbox Worker（Executable Spec Lab 的运行容器）
 
-- 参考：`../../../intent-driven-ai-coding/platform/impl/code-runner-and-sandbox.md` 与 `../sandbox-runtime/*`
+- 参考：`../../../sdd-platform/impl/code-runner-and-sandbox.md` 与 `../sandbox-runtime/*`
 - 负责：编译（esbuild‑wasm）、运行（Effect/Logix）、输出 RunResult（logs/traces/stateSnapshot）
 - 必须：具备硬重置能力（terminate & restart worker），避免死循环卡死
 

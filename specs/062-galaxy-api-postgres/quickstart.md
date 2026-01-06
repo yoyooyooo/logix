@@ -81,4 +81,4 @@ curl -sS -X DELETE http://127.0.0.1:7001/todos/1
 
 - 接口契约：`specs/062-galaxy-api-postgres/contracts/openapi.yaml`
 - 数据模型与表结构：`specs/062-galaxy-api-postgres/data-model.md`
-- 表结构 SSoT：`docs/specs/intent-driven-ai-coding/examples/02-logix-galaxy-api-postgres.md`
+- 表结构 SSoT：`docs/specs/sdd-platform/ssot/examples/02-logix-galaxy-api-postgres.md`

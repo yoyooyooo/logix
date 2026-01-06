@@ -173,7 +173,7 @@
 
 ### 1) 文档中的 DSL 名称与真实 API 不一致（会直接误导用户/LLM）
 
-- specs/文档中大量出现 `.then(...)` 链式写法（例如 `docs/specs/intent-driven-ai-coding/03-module-assets.md`、部分 scenario 注释），但当前 `IntentBuilder` 实际暴露的是 `.run/.update/.mutate/...` 与 `.andThen`（并且 `andThen` 还带 arity 隐式分派）。
+- specs/文档中大量出现 `.then(...)` 链式写法（例如 `docs/specs/sdd-platform/ssot/03-module-assets.md`、部分 scenario 注释），但当前 `IntentBuilder` 实际暴露的是 `.run/.update/.mutate/...` 与 `.andThen`（并且 `andThen` 还带 arity 隐式分派）。
 
 建议（不兼容）：
 

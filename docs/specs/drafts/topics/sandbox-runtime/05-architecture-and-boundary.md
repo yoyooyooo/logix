@@ -121,7 +121,7 @@ graph TB
 
 | 规范                                                                                                                                                                   | 关系                                                          |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `docs/specs/intent-driven-ai-coding/platform/impl/code-runner-and-sandbox.md` | 本文档是其「细化与补充」，对齐 Frontend First 决策            |
+| `docs/specs/sdd-platform/impl/code-runner-and-sandbox.md` | 本文档是其「细化与补充」，对齐 Frontend First 决策            |
 | `.codex/skills/project-guide/references/runtime-logix/logix-core`               | Sandbox 复用 `Platform.Service` / Tracer / Observability 插件 |
 | runtime-observability                                                                                                                                                  | DebugSink/TraceBus 事件源                                     |
 | devtools-and-studio                                                                                                                                                    | Waterfall 视图、UI 意图信号展示                               |

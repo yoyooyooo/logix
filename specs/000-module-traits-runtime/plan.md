@@ -36,7 +36,7 @@
   - Flow/Logix 层通过 StateTraitProgram + Logic/Flow API 将「图纸」映射为 Effect 程序；  
   - Code/Runtime 层由 `@logix/core` ModuleRuntime + EffectOp/Middleware 统一执行业务与横切能力。  
 - 依赖 / 修改的上游 specs：  
-  - `docs/specs/intent-driven-ai-coding/*` 中关于 Module 图纸与 Traits 的章节；  
+  - `docs/specs/sdd-platform/ssot/*` 中关于 Module 图纸与 Traits 的章节；  
   - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md` / `03-logic-and-flow.md` / `06-platform-integration.md` 中的 StateTrait / EffectOp / Middleware 契约。  
 - Effect/Logix 契约变更落点：  
   - 新增 StateTraitProgram/Graph/Plan/EffectOp 数据结构与运行时行为；  

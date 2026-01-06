@@ -18,7 +18,7 @@ version: 1
 
 ### 1.2 关键目录 (Key Directories)
 
-- **Spec SSoT**: `docs/specs/intent-driven-ai-coding` (意图模型事实源)
+- **Spec SSoT**: `docs/specs/sdd-platform/ssot` (意图模型事实源)
 - **Runtime SSoT**: `.codex/skills/project-guide/references/runtime-logix` (运行时设计事实源)
 - **Core Implementation**: `packages/logix-core/src` (核心代码)
 - **Proof of Concepts**: `examples/logix` (场景验证)

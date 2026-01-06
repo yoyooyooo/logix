@@ -11,8 +11,8 @@ related:
   - ./31-data-model-and-contracts.md
   - ./32-collaboration-and-permissions.md
   - ./33-alignment-and-diagnostics.md
-  - ../../../intent-driven-ai-coding/platform/README.md
-  - ../../../intent-driven-ai-coding/platform/impl/README.md
+  - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
+  - ../../../sdd-platform/impl/README.md
   - ../intent-studio-ux/00-overview.md
   - ../sdd-platform/ui-ux/02-pm-intent-workbench.md
 ---
@@ -34,7 +34,7 @@ related:
 - RUN/ALIGN：把运行证据映射回 ruleId/stepId（可解释）
 
 > 交互哲学对齐：
-> - “配置优于连线，代码优于图形”：`../../../intent-driven-ai-coding/06-platform-ui-and-interactions.md`
+> - “配置优于连线，代码优于图形”：`../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md`
 > - “Excel 级高频录入 + 编译器思维”：`../intent-studio-ux/00-overview.md`
 
 ## 2. 统一概念：R‑S‑T + Condition + Effects

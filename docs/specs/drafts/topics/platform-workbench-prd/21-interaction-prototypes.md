@@ -11,7 +11,7 @@ related:
   - ../intent-studio-ux/00-overview.md
   - ../sdd-platform/05-intent-pipeline.md
   - ../sandbox-runtime/35-playground-product-view.md
-  - ../../../intent-driven-ai-coding/06-platform-ui-and-interactions.md
+  - ../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md
 ---
 
 # 21 · 关键流程原型（线框 + 交互）（Platform Workbench PRD）
@@ -141,7 +141,7 @@ Right Panel (when select a row):
   - Actions: [Generate Patch] [Open in Code] [Run Scenario]
 ```
 
-交互要点（对齐 `../../../intent-driven-ai-coding/platform/impl/README.md`）：
+交互要点（对齐 `../../../sdd-platform/impl/README.md`）：
 
 - 默认只允许编辑“白盒子集”规则；Gray/Raw 只给跳转与建议，不做结构化编辑。
 - “Generate Patch” 必须是可回滚的补丁集（但平台不做自动 git 操作），并且生成后能再解析回等价 IntentRule。

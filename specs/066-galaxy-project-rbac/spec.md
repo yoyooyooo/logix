@@ -3,7 +3,7 @@
 **Feature Branch**: `[066-galaxy-project-rbac]`  
 **Created**: 2025-12-31  
 **Status**: Draft  
-**Input**: User description: "分析下 docs/specs/drafts/topics/sdd-platform/，平台侧现在还是想法阶段，但需要先做项目管理、成员管理、权限管理、成员组；继续推进后端 API + 表设计（用 $postgresql-table-design）；apps/logix-galaxy-fe 做对应页面并集成路由，和 API 联调跑通；前端必须 dogfooding Logix；样式只要轻量布局"
+**Input**: User description: "分析下 docs/specs/sdd-platform/workbench/，平台侧现在还是想法阶段，但需要先做项目管理、成员管理、权限管理、成员组；继续推进后端 API + 表设计（用 $postgresql-table-design）；apps/logix-galaxy-fe 做对应页面并集成路由，和 API 联调跑通；前端必须 dogfooding Logix；样式只要轻量布局"
 
 ## Clarifications
 
@@ -39,7 +39,7 @@
 
 作为已登录用户，我希望能创建一个「Project」作为协作与资产容器，并在项目内添加/移除成员、分配基础角色（Owner/Admin/Member/Viewer），从而形成最小可联调闭环：登录 → 创建项目 → 添加成员 → 成员按权限访问对应页面/接口。
 
-**Why this priority**: 没有 Project 与成员/角色，后续任何平台资产（Specs/Tracks/Artifacts）的协作与治理都无法落地验证；这也是 `docs/specs/drafts/topics/sdd-platform/17-project-governance-and-lean-context.md` 所述 “Project Management Kernel” 的必要前置。
+**Why this priority**: 没有 Project 与成员/角色，后续任何平台资产（Specs/Tracks/Artifacts）的协作与治理都无法落地验证；这也是 `docs/specs/sdd-platform/workbench/17-project-governance-and-lean-context.md` 所述 “Project Management Kernel” 的必要前置。
 
 **Independent Test**: 在不实现“成员组/自定义权限/审计查询 UI”的情况下，仅通过「项目创建 + 成员管理 + 后端强制鉴权 + 前端路由可用」即可独立验收：用两个账号验证“可访问/不可访问”的差异，并能在前端完成基本操作而无需手工改库。
 
@@ -60,7 +60,7 @@
 
 作为项目 `Owner/Admin`，我希望能创建「成员组」，把成员归组并给组绑定角色（或等价的权限集合），从而用更低的运维成本管理一批成员的访问权限（尤其在成员规模增长时）。
 
-**Why this priority**: 单独给每个成员分配角色在中长期不可维护；成员组是最小可复用的权限治理单元，能支撑后续“按团队/职能”裁剪导航与能力（呼应 `docs/specs/drafts/topics/sdd-platform/ui-ux/05-multi-view-principles.md` 中“导航与权限：按角色裁剪”的原则）。
+**Why this priority**: 单独给每个成员分配角色在中长期不可维护；成员组是最小可复用的权限治理单元，能支撑后续“按团队/职能”裁剪导航与能力（呼应 `docs/specs/sdd-platform/workbench/ui-ux/05-multi-view-principles.md` 中“导航与权限：按角色裁剪”的原则）。
 
 **Independent Test**: 仅实现「创建组 + 组内加成员 + 给组绑定角色 + 权限生效」即可独立验收：不要求完整的权限编辑器，只要能验证“来自组的角色”会影响成员的可访问接口/页面即可。
 

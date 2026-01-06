@@ -63,4 +63,4 @@
   - 诊断/Devtools/Trace 等通道允许采样或 Ring Buffer；
   - 但必须显式记录采样率/丢弃计数/丢弃原因，以便 Devtools 可解释。
 
-以上裁决的决策记录见 `docs/specs/intent-driven-ai-coding/decisions/adr.md` 的 ADR-004。
+以上裁决的决策记录见 `docs/specs/sdd-platform/ssot/governance/decisions/adr.md` 的 ADR-004。

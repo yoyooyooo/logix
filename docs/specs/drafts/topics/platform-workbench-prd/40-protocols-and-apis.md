@@ -8,10 +8,9 @@ related:
   - ./31-data-model-and-contracts.md
   - ./32-collaboration-and-permissions.md
   - ./33-alignment-and-diagnostics.md
-  - ../sdd-platform/02-full-duplex-architecture.md
-  - ../sdd-platform/06-dev-server-and-digital-twin.md
+  - ../../../sdd-platform/workbench/02-full-duplex-architecture.md
   - ../sandbox-runtime/15-protocol-and-schema.md
-  - ../../../intent-driven-ai-coding/platform/impl/code-runner-and-sandbox.md
+  - ../../../sdd-platform/impl/code-runner-and-sandbox.md
 ---
 
 # 40 · API / 协议草案（Platform Workbench PRD）
@@ -121,7 +120,7 @@ related:
 - `anchors`: `Array<{ ruleId: string; anchor: { file: string; span?; contentHash? } }>`
 - `diagnostics`: `Diagnostic[]`
 
-> 解析边界与“白盒子集”以 `../../../intent-driven-ai-coding/platform/impl/README.md` 为准；协议只要求能回传：规则投影 + 锚点 + 诊断。
+> 解析边界与“白盒子集”以 `../../../sdd-platform/impl/README.md` 为准；协议只要求能回传：规则投影 + 锚点 + 诊断。
 
 #### 3.1.2 `dev.generatePatchFromRules`（建议形状）
 
@@ -183,7 +182,7 @@ related:
 - `dev.event.workspaceChanged`：文件变更（用于数字孪生刷新）
 - `dev.event.moduleGraphUpdated`：模块拓扑更新（Universe 信号）
 
-> 具体“可解析子集/符号表/白盒链条”约束以 `../../../intent-driven-ai-coding/platform/impl/README.md` 为准，协议层只保证可传递 anchors 与 diagnostics。
+> 具体“可解析子集/符号表/白盒链条”约束以 `../../../sdd-platform/impl/README.md` 为准，协议层只保证可传递 anchors 与 diagnostics。
 
 ## 4. Studio ↔ Sandbox Worker：消息协议（引用上游）
 
@@ -208,4 +207,4 @@ Worker 通道建议直接复用 `@logix/sandbox` 的协议定义（见 `../sandb
 - `GET /jobs/:jobId/events`：拉取/订阅进度事件（plan/tasks/patch/testResult）
 - `POST /jobs/:jobId/artifacts`：回写产物（如新 revision 或 patch）
 
-> Agent 的“最小特权上下文”与行为边界以 `../../../intent-driven-ai-coding/platform/agent-orchestration.md` 与 `../sdd-platform/00-overview.md` 为上游约束。
+> Agent 的“最小特权上下文”与行为边界以 `../../../sdd-platform/agents/agent-orchestration.md` 与 `../sdd-platform/00-overview.md` 为上游约束。

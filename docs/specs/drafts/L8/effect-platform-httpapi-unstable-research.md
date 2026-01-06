@@ -5,7 +5,7 @@ version: 2025-12-18
 value: extension
 priority: next
 related:
-  - ../topics/sdd-platform
+  - ../sdd-platform/workbench/README.md
   - ../topics/devtools-and-studio
 ---
 
@@ -99,4 +99,3 @@ related:
 如果你们 **不强依赖** “自动 client / OpenAPI”：
 
 - 更稳的过渡方案：先用 `HttpRouter + 自己封一层薄 DSL` 固化团队风格（method/path + Schema + handler + error mapping），等 `HttpApi` 更成熟后再把 DSL 迁移到 `HttpApi` 的 contract 表达（业务层不动）。
-

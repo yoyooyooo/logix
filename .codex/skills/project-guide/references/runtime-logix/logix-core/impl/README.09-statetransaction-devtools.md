@@ -2,6 +2,13 @@
 
 > 本节补充记录 003-trait-txn-lifecycle 特性在 runtime-logix 实现侧的关键技术点，方便后续维护与排查。规范性描述以 `../runtime/05-runtime-implementation.md` 与 `../observability/09-debugging.md` 为准，此处强调实现细节与风险。
 
+## 0. 边界与外链（避免重复叙述）
+
+- 事务窗口/逻辑入口/operation window 的语义口径：`../concepts/10-runtime-glossary.06-statetransaction-entry.md`
+- 收敛阶段（StateTrait converge）、预算/降级、time-slicing 的语义口径：`../runtime/05-runtime-implementation.01-module-runtime-make.md`（`1.5.*`）
+- 事务窗口禁止 IO/等待（硬约束）：`docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`
+- Devtools 事件种类与可导出裁剪规则：`../observability/09-debugging.02-eventref.md`
+
 ## 1. StateTransaction 与观测策略
 
 - Runtime 内部统一通过 `StateTransaction.StateTxnContext` 管理状态写入：

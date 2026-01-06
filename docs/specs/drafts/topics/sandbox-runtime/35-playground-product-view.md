@@ -13,7 +13,7 @@ priority: next
 
 关联文档：
 
-- 概念与方法论：`docs/specs/intent-driven-ai-coding/99-glossary-and-ssot.md`、`docs/specs/intent-driven-ai-coding/concepts/00-sdd-mapping.md`  
+- 概念与方法论：`docs/specs/sdd-platform/ssot/foundation/02-glossary.md`、`docs/specs/sdd-platform/ssot/appendix/concepts/00-sdd-mapping.md`  
 - 架构与协议：`05-architecture-and-boundary.md`、`10-runtime-baseline.md`、`15-protocol-and-schema.md`、`20-dependency-and-mock-strategy.md`  
 - 包与实现：`25-sandbox-package-api.md`、`mvp/README.md`、`65-playground-as-executable-spec.md`
 

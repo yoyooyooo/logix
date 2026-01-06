@@ -12,7 +12,7 @@ version: 1
 
 ## 2. SSoT 裁决（冲突时用这个）
 
-1. 概念与术语：`docs/specs/intent-driven-ai-coding/*`（尤其 `99-glossary-and-ssot.md`）
+1. 概念与术语：`docs/specs/sdd-platform/ssot/*`（尤其 `docs/specs/sdd-platform/ssot/foundation/02-glossary.md`）
 2. Runtime 编程模型：`.codex/skills/project-guide/references/runtime-logix/logix-core/*`
 3. 真实类型与实现：`packages/logix-core/src/*`（公共出口：`packages/logix-core/src/index.ts`）
 4. 场景与模式验证：`examples/logix/*`
@@ -24,7 +24,7 @@ version: 1
 - Devtools UI：`packages/logix-devtools-react/`
 - Sandbox / Alignment Lab：`packages/logix-sandbox/`
 - 运行时规范（核心文档）：`.codex/skills/project-guide/references/runtime-logix/`
-- Intent/平台规范（概念层/平台层）：`docs/specs/intent-driven-ai-coding/`
+- Intent/平台规范（概念层/平台层）：`docs/specs/sdd-platform/`
 - 场景与 Pattern（可运行示例）：`examples/logix/`
 - 用户文档（产品视角）：`apps/docs/`
 
@@ -37,4 +37,4 @@ version: 1
 
 ## 5. 最短入口（新会话）
 
-- `docs/specs/intent-driven-ai-coding/README.md`：导航与最短阅读路径
+- `docs/specs/sdd-platform/README.md`：平台侧总入口（含 Workbench + SSoT）

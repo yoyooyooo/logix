@@ -155,7 +155,7 @@ export const runPaginationEffect = (input: PaginationInput) =>
 
 在图码同步视角下：
 
-- Functional / Namespace Pattern 对应 `effect-block` 节点（参见 `03-assets-and-schemas.md` 的 `LogicNode`）；
+- Functional / Namespace Pattern 对应 `effect-block` 节点（参见 `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md` 的 `LogicNode`）；
 - `$.flow.run*` / `Effect.catch*` 等调用对应骨架节点；
 - 平台可以根据 Pattern 资产的 `id` / `configSchema` 将某些 Effect Block 渲染为“命名积木”（palette 中的 Pattern），但这不改变运行时行为。
 

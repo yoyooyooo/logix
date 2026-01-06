@@ -25,10 +25,11 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 
 ### 1) 平台/方法论规格（SSoT）
 
-- 位置：`docs/specs/intent-driven-ai-coding/*`
-- 入口：`docs/specs/intent-driven-ai-coding/README.md`
-- 按需深入：`docs/specs/intent-driven-ai-coding/concepts/README.md`、`docs/specs/intent-driven-ai-coding/design/README.md`、`docs/specs/intent-driven-ai-coding/platform/README.md`、`docs/specs/intent-driven-ai-coding/examples/README.md`、`docs/specs/intent-driven-ai-coding/decisions/README.md`
-- 典型产物：术语与边界（`docs/specs/intent-driven-ai-coding/99-glossary-and-ssot.md`）、资产与 Schema（`docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md`）、平台交互（`docs/specs/intent-driven-ai-coding/platform/*`）、执行模型（`docs/specs/intent-driven-ai-coding/97-effect-runtime-and-flow-execution.md`）
+- 位置：`docs/specs/sdd-platform/*`
+- 入口：`docs/specs/sdd-platform/README.md`
+- 平台 SSoT：`docs/specs/sdd-platform/ssot/README.md`
+- 平台 Workbench（平台闭环草案）：`docs/specs/sdd-platform/workbench/README.md`
+- 典型产物：最小系统方程与符号表（`docs/specs/sdd-platform/ssot/foundation/01-the-one.md`）、术语与边界（`docs/specs/sdd-platform/ssot/foundation/02-glossary.md`）、资产与 Schema（`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`）、执行模型（`docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`）
 
 ### 2) 草案系统（Drafts / Topics / Tiered）
 
@@ -42,15 +43,15 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 
 ### 推荐流程（从 spec 到代码）
 
-- 先定裁决层：硬约束看 `.specify/memory/constitution.md`；概念/术语/平台定位优先改 `docs/specs/intent-driven-ai-coding`；未定稿想法放 `docs/specs/drafts`；单个可交付特性用 `specs/<id>/spec.md`
+- 先定裁决层：硬约束看 `.specify/memory/constitution.md`；概念/术语/平台定位优先改 `docs/specs/sdd-platform/ssot`；未定稿想法放 `docs/specs/drafts`；单个可交付特性用 `specs/<id>/spec.md`
 - 再写可执行计划：把约束、落点目录、验收与质量门固化到 `plan.md`（尤其 Constitution Check / Project Structure），再拆 `tasks.md` 进入实现
 - 最后同步三处“可交接事实源”：运行时规范（`.codex/skills/project-guide/references/runtime-logix/**`）→ 代码（`packages/*` / `examples/*`）→ 用户文档（`apps/docs/content/docs/*`）
 
 ## 新会话最短启动（建议顺序）
 
 1. 用 auggie 定位你要改的“符号/能力/包”在哪（优先于 `rg`）。
-2. 读导航入口：`docs/specs/intent-driven-ai-coding/README.md`
-3. 读概念与术语：`docs/specs/intent-driven-ai-coding/99-glossary-and-ssot.md`
+2. 读导航入口：`docs/specs/sdd-platform/README.md`
+3. 读概念与术语：`docs/specs/sdd-platform/ssot/foundation/02-glossary.md`
 4. 读 runtime 编程模型：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`
 5. 读 `$`/Flow/IntentBuilder：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`
 6. 看类型裁决与真实导出：`packages/logix-core/src/index.ts`
@@ -62,7 +63,7 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 | 你想做…                     | 先读…                                                                                            | 再按需下钻…                                                                                                                                             |
 | --------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 新增/迭代 feature spec      | `specs/<NNN-*>/spec.md`                                                                          | `docs/specs/drafts/index.md`                                                                                                                            |
-| 改平台术语/方法论           | `docs/specs/intent-driven-ai-coding/README.md`                                                   | `docs/specs/intent-driven-ai-coding/99-glossary-and-ssot.md`                                                                                            |
+| 改平台术语/方法论           | `docs/specs/sdd-platform/README.md`                                                              | `docs/specs/sdd-platform/ssot/foundation/02-glossary.md`                                                                                                 |
 | 修复 logix-core runtime bug | `references/troubleshooting.md`                                                                  | `references/codebase-playbook.md`                                                                                                                       |
 | 定位长链路/热路径           | `.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/02-long-chain-tour.md` | `references/long-chain-index.md`                                                                                                                        |
 | 调整诊断/Devtools 协议      | `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`  | `references/diagnostics-perf-baseline.md`                                                                                                               |
@@ -87,7 +88,7 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 - Runtime SSoT 导览：`.codex/skills/project-guide/references/runtime-logix/README.md`
 - 总骨架/不变量/关键机制：`references/long-chain-cheatsheet.md`
 - 示例场景与 Pattern 索引：`references/examples-logix-index.md`
-- examples dogfooding 工程最佳实践（目录结构/Module 拆分/组合根）：`docs/specs/intent-driven-ai-coding/logix-best-practices/README.md`
+- examples dogfooding 工程最佳实践（目录结构/Module 拆分/组合根）：`docs/specs/sdd-platform/ssot/logix-best-practices/README.md`
 
 ## 子包用法速查（用户视角）
 
@@ -150,5 +151,5 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 
 - `references/project-architecture.md`：更细的目录地图与决策落点。
 - `references/codebase-playbook.md`：源码导航压缩包（入口 → 内核 → 回归），用于快速定位实现与测试。
-- `docs/specs/intent-driven-ai-coding/concepts/README.md`：方法论映射与概念补篇索引（渐进披露入口）。
+- `docs/specs/sdd-platform/ssot/appendix/concepts/README.md`：方法论映射与概念补篇索引（渐进披露入口）。
 - `references/long-chain-index.md`：长链路正交分解（A–K）索引与“分贝”指针（按需加载）。

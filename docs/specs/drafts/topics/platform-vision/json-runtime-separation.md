@@ -3,9 +3,9 @@ title: Logix v3 Platform Vision - JSON Definition & Runtime Separation
 status: draft
 layer: Platform
 related:
-  - docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md
-  - docs/specs/intent-driven-ai-coding/platform/impl/intent-rule-and-codegen.md
-  - docs/specs/drafts/topics/sdd-platform/07-intent-compiler-and-json-definition.md
+  - docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md
+  - docs/specs/sdd-platform/impl/intent-rule-and-codegen.md
+  - docs/specs/sdd-platform/workbench/07-intent-compiler-and-json-definition.md
   - docs/specs/drafts/topics/runtime-middleware-and-effectop/README.md
 ---
 

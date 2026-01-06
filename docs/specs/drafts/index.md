@@ -6,7 +6,7 @@
 
 ### Core Topics（当前优先关注）
 
-- [SDD Platform](./topics/sdd-platform/README.md) - SDD 生命周期总入口（Specify/Plan/Tasks/Implement + Agent 分工 + Context Supply Chain + Intent→Code→Alignment Lab）
+- [SDD Platform](../sdd-platform/workbench/README.md) - SDD 平台 Topic 总入口（已提升出 drafts；以 `sdd-platform/workbench` 为准）
 - [Spec Graph](./topics/spec-graph/README.md) - Drafts × Speckit 的统一依赖/生命周期可视化（Track/Artifact/Stage 模型）
 - [Platform Workbench PRD](./topics/platform-workbench-prd/README.md) - 平台侧“需求原型/交互/系统设计”深度规划落点（对齐 sdd-platform 与 v3/platform SSoT）
 - [Trait System](./topics/trait-system/README.md) - 007 Trait/StateTrait 主线收敛后的残渣归档与回归样本清单

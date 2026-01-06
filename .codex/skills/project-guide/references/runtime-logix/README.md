@@ -11,8 +11,7 @@
 
 ## 上游平台 SSoT（只在需要对齐术语/协议时读）
 
-- `docs/specs/intent-driven-ai-coding/README.md`
-- `docs/specs/intent-driven-ai-coding/99-glossary-and-ssot.md`
+- `docs/specs/sdd-platform/ssot/foundation/02-glossary.md`
 
 ## 一条黄金链路（ModuleDef → Logic → Fluent → IntentRule）
 
@@ -32,7 +31,7 @@
 - `logix-core/api/02-module-and-logic-api.md`：ModuleDef / Module / ModuleImpl / Live / `$`；
 - `logix-core/api/03-logic-and-flow.md`：Bound API `$`、Logic / Flow / 结构化控制流、Parser 约束与链路示例；
 - `logix-core/platform/06-platform-integration.md`：IntentRule IR 与平台集成；
-  - `docs/specs/intent-driven-ai-coding/03-module-assets.md`：Module 资产与代码层 Module 定义的映射。
+  - `docs/specs/sdd-platform/ssot/assets/10-module-assets.md`：Module 资产与代码层 Module 定义的映射。
 
 ## 目录结构概览
 

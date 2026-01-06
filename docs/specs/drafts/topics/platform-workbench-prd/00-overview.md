@@ -5,15 +5,14 @@ version: 2025-12-19
 value: core
 priority: now
 related:
-  - ../sdd-platform/00-overview.md
-  - ../sdd-platform/05-intent-pipeline.md
-  - ../sdd-platform/06-dev-server-and-digital-twin.md
-  - ../sdd-platform/08-alignment-lab-and-sandbox.md
-  - ../../../intent-driven-ai-coding/platform/README.md
-  - ../../../intent-driven-ai-coding/06-platform-ui-and-interactions.md
-  - ../../../intent-driven-ai-coding/03-assets-and-schemas.md
-  - ../../../intent-driven-ai-coding/roadmap-logix-platform.md
-  - ../../../intent-driven-ai-coding/platform/impl/README.md
+  - ../../../sdd-platform/workbench/00-overview.md
+  - ../../../sdd-platform/workbench/05-intent-pipeline.md
+  - ../../../sdd-platform/workbench/08-alignment-lab-and-sandbox.md
+  - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
+  - ../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md
+  - ../../../sdd-platform/ssot/assets/00-assets-and-schemas.md
+  - ../../../sdd-platform/ssot/roadmap-logix-platform.md
+  - ../../../sdd-platform/impl/README.md
   - ../sandbox-runtime/65-playground-as-executable-spec.md
 ---
 
@@ -23,8 +22,8 @@ related:
 
 当前仓库对“平台侧”的规划已经形成两条强主线：
 
-1. `topics/sdd-platform/*`：以 SDD 生命周期 + Agent 分工 + Context Supply Chain 为中心的“平台大图”（愿景、架构、链路）。
-2. `docs/specs/intent-driven-ai-coding/platform/*` + `docs/specs/intent-driven-ai-coding/06-platform-ui-and-interactions.md`：以 `IntentRule` / Universe-Galaxy-Planet 为核心的“平台 SSoT（偏交互骨架 + 协议约束）”。
+1. `docs/specs/sdd-platform/workbench/*`：以 SDD 生命周期 + 角色/视图 + Context Supply Chain 为中心的“工作台大图”（愿景、架构、链路）。
+2. `docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md` + `docs/specs/sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md`：以 `IntentRule` / Universe-Galaxy-Planet 为核心的“平台交互骨架 + 协议约束”。
 
 但当我们准备把平台从“概念正确”推进到“产品可交付”时，会遇到一个缺口：
 
@@ -34,7 +33,7 @@ related:
 因此，本 Topic 的目标是：
 
 - 在不重写上游 SSoT 的前提下，把“平台侧规划”补齐到 **可推进实现的粒度**；
-- 明确哪些内容应当最终沉淀回 `docs/specs/intent-driven-ai-coding`，哪些长期留在 drafts。
+- 明确哪些内容应当最终沉淀回 `docs/specs/sdd-platform/ssot`，哪些长期留在 drafts。
 
 ## 2. 范围与不做的事
 
@@ -46,7 +45,7 @@ related:
 
 ### 2.2 本 Topic 不覆盖（保持上游裁决）
 
-- 不重新定义 Intent 模型与术语（以 `../../../intent-driven-ai-coding/99-glossary-and-ssot.md` 为准）。
+- 不重新定义 Intent 模型与术语（以 `../../../sdd-platform/ssot/foundation/02-glossary.md` 为准）。
 - 不重新发明第二套 IR；统一以 `IntentRule`（R-S-T + `source/pipeline/sink`）作为平台侧规则 IR。
 - 不把 Sandbox/Playground 简化为“在线跑代码”；它必须服务“Executable Spec Lab”闭环。
 
@@ -54,11 +53,10 @@ related:
 
 ### 3.1 平台大图（Drafts / Topic：sdd-platform）
 
-目录：`../sdd-platform/`
+目录：`../../../sdd-platform/workbench/`
 
 - `00-overview.md`：SDD 平台愿景 + 四阶段（Specify/Plan/Tasks/Implement）+ Context Supply Chain 骨架
 - `05-intent-pipeline.md`：Spec → Intent → Blueprint/IR 的管线视角
-- `06-dev-server-and-digital-twin.md`：Dev Server 与 Runtime–Studio 全双工通道
 - `07-intent-compiler-and-json-definition.md`：Definition/Compiler 的方向与边界
 - `08-alignment-lab-and-sandbox.md`：Alignment Lab / Sandbox 的位置与责任
 - `ui-ux/*`：偏某些工作台/表格形态的 UX 草案素材
@@ -66,16 +64,16 @@ related:
 
 ### 3.2 平台 SSoT（v3 specs）
 
-目录：`../../../intent-driven-ai-coding/`
+目录：`../../../sdd-platform/ssot/`
 
-- `platform/README.md`：平台顶层模块拆分 + `IntentRule`（R-S-T）的统一模型（平台交互骨架索引）
-- `06-platform-ui-and-interactions.md`：Universe/Galaxy/Planet 的视角与交互原则（“配置优于连线，代码优于图形”）
-- `03-assets-and-schemas.md`：资产分层（Level0-3）与 Schema/Graph 的“平台语义”落点
+- `docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`：平台顶层模块拆分 + `IntentRule`（R-S-T）的统一模型（平台交互骨架索引）
+- `docs/specs/sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md`：Universe/Galaxy/Planet 的视角与交互原则（“配置优于连线，代码优于图形”）
+- `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`：资产分层（Level0-3）与 Schema/Graph 的“平台语义”落点
 - `roadmap-logix-platform.md`：平台→出码、可解析子集、解析器/生成器的阶段性节奏
 
-### 3.3 平台实现备忘（intent-driven-ai-coding/platform/impl）
+### 3.3 平台实现备忘（sdd-platform/impl）
 
-目录：`../../../intent-driven-ai-coding/platform/impl/`
+目录：`../../../sdd-platform/impl/`
 
 - `README.md`：Full‑Duplex 的硬约束（Fluent 白盒子集、`$.use` 符号表、Eject/Raw 降级策略）
 - `code-runner-and-sandbox.md`：Browser/Worker 优先的 Code Runner 决策与边界
@@ -108,8 +106,8 @@ related:
 
 - 本 Topic 先以“可实施的 PRD + 系统设计草案”为目标产出；
 - 当其中某部分结论稳定后，应回写到：
-  - `../../../intent-driven-ai-coding/platform/*`（平台 SSoT，偏交互与协议）
-  - `../../../intent-driven-ai-coding/platform/impl/*`（实现备忘，偏解析/出码/双向同步细节）
+  - `../../../sdd-platform/workbench/*`（工作台规格，偏交互与链路）
+  - `../../../sdd-platform/impl/*`（实现备忘，偏解析/出码/双向同步细节）
   - 或者按需分流到 `../sandbox-runtime/*` / `../devtools-and-studio/*` 等已有主题
 
 下一步：在 `10/20/21/22/23/30/31/32/33/40/50` 中把缺口逐项补齐，并给出可执行的 MVP 分期。

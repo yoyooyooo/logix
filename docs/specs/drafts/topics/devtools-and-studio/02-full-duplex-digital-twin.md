@@ -5,8 +5,7 @@ version: 2025-12-03T00:00:00.000Z
 value: core
 priority: later
 related:
-  - ../sdd-platform/02-full-duplex-architecture.md
-  - ../sdd-platform/06-dev-server-and-digital-twin.md
+  - ../../../sdd-platform/workbench/02-full-duplex-architecture.md
 ---
 
 # 背景与动机
@@ -80,7 +79,7 @@ yield* $.onAction("submit")
 - Runtime/API 通过“**可解析性**”获得更强的长期可维护性（Studio 反向约束代码质量）。
 
 > 对应规范落点（未来）：  
-> - `docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md`：补充“Parsable Logic Pattern”一节；  
+> - `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`：补充“Parsable Logic Pattern”一节；  
 > - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`：把“推荐 Fluent 写法 + Parsable 子集”写死。
 
 ## 1.3 可观测性即调试器 (Observability as Debugger)
@@ -293,9 +292,9 @@ yield* $.onAction("submit")
 本草稿与以下规范/草稿直接相关（后续应作为它们之间的“桥梁”而不是平行体系）：
 
 - Intent / 平台规划：
-  - `docs/specs/intent-driven-ai-coding/01-overview.md`：整体 Intent-Driven 平台蓝图；
-  - `docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md`：IntentRule / LogicNode IR 与 R-S-T 链路；
-  - `docs/specs/intent-driven-ai-coding/platform/README.md`：Universe / Galaxy / UI & Module Studio / Pattern Studio / IntentRule Explorer 等平台视图，以及 Level 0–3 资产链路（业务需求 → 需求意图 → 开发意图 → 实现）的规划；
+  - `docs/specs/sdd-platform/ssot/foundation/00-overview.md`：整体 Intent-Driven 平台蓝图；
+  - `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`：IntentRule / LogicNode IR 与 R-S-T 链路；
+  - `docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`：Universe / Galaxy / UI & Module Studio / Pattern Studio / IntentRule Explorer 等平台视图，以及 Level 0–3 资产链路（业务需求 → 需求意图 → 开发意图 → 实现）的规划；
   - `docs/specs/drafts/topics/spec-studio/*`（如存在）：Spec Studio / Galaxy Canvas 相关草稿。
 - Runtime / 观测性与 DevTools：
   - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`：Flow / Logic API 形态与 Parsable 子集约定，是“代码 ↔ IR”往返的硬边界；

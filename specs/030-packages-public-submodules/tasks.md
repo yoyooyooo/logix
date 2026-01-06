@@ -175,7 +175,7 @@
 > 说明：030 的 contracts 是“特性期 SSoT”。当代码落地并通过验证门后，需要把稳定裁决写回仓库级 SSoT 与用户文档，避免只停留在 feature 目录里。
 
 - [x] T073 写回 Runtime SSoT：将 Public Submodules / exports-policy / verify gate 的裁决摘要同步到 `.codex/skills/project-guide/references/*`（至少包含：推荐 import 形态、禁止项、质量门命令）：`.codex/skills/project-guide/references`
-- [x] T074 写回 Platform/Glossary SSoT：将 Public Submodule / Independent Entry Point / Promotion Path 等术语同步到 `docs/specs/intent-driven-ai-coding` 的词汇表/决策文档（避免术语漂移）：`docs/specs/intent-driven-ai-coding`
+- [x] T074 写回 Platform/Glossary SSoT：将 Public Submodule / Independent Entry Point / Promotion Path 等术语同步到 `docs/specs/sdd-platform/ssot` 的词汇表/决策文档（避免术语漂移）：`docs/specs/sdd-platform/ssot`
 - [x] T075 写回用户文档：更新 `apps/docs` 中所有示例与推荐 import 形态（禁止出现 internal deep import）；新增/更新一页“Public Submodules 迁移与导入约定”（必须包含 ≤5 关键词词汇表与迁移说明模板，口径与 `contracts/migration.md` 对齐；术语保持产品视角，不出现 v3/PoC/内部实现），并更新对应 `meta.json`：`apps/docs/content/docs/guide/recipes`
 
 ---

@@ -77,7 +77,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 结论：PASS（plan 阶段）。Phase 1 设计完成后需要复核：manifestVersion/字段语义、裁剪顺序、以及事件对齐说明是否已回写到 runtime-logix 文档。
 
 - Intent → Flow/Logix → Code → Runtime：把 ActionRef 作为 Dynamic Trace（RuntimeDebugEventRef）与 Static 摘要（ModuleManifest.actions）的连接点。
-- docs/specs：本特性以 `specs/067-*` 交付；若裁决升级为平台协议，将同步回写到 `docs/specs/intent-driven-ai-coding/*` 与 runtime-logix 事件协议文档。
+- docs/specs：本特性以 `specs/067-*` 交付；若裁决升级为平台协议，将同步回写到 `docs/specs/sdd-platform/ssot/*` 与 runtime-logix 事件协议文档。
 - Effect/Logix contracts：扩展 ModuleManifest 的 schema（actions + effects）；事件侧优先复用既有 `RuntimeDebugEventRef`（避免另起炉灶的 on-wire 协议）。
 - IR & anchors：新增 ActionAnchor/ActionDescriptor（platform-grade 子集），字段语义固化到本 feature 的 contracts + quickstart（避免平台/运行时双真相源）。
 - Deterministic identity：ActionRef 不含随机字段；实例/事务锚点沿用现有 `instanceId/txnSeq/txnId`。
@@ -159,7 +159,7 @@ packages/logix-devtools-react/
 packages/logix-sandbox/ or examples/logix-sandbox-mvp/
 └── ...                                          # Alignment Lab/Playground 侧的 manifest loader & 展示（可选）
 
-docs/specs/drafts/topics/sdd-platform/
+docs/specs/sdd-platform/workbench/
 └── 02/15/16...                                  # 本特性引用其裁决；若升级为平台协议再回写 SSoT
 ```
 

@@ -24,7 +24,7 @@
     ```
 
 - **规范与设计文档（SSoT）**  
-  - Intent / 平台侧：`docs/specs/intent-driven-ai-coding`  
+  - 平台侧（SDD Platform）：`docs/specs/sdd-platform`  
   - Runtime / Logix 内核：`.codex/skills/project-guide/references/runtime-logix`（project-guide 内置的 Runtime SSoT，按渐进式披露组织）  
   - 任何影响 Intent 模型、Flow DSL、Runtime 契约的决策，优先更新上述文档。
 

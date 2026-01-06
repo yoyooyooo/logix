@@ -50,8 +50,8 @@
 - **链路映射（Intent → Flow/Logix → Code → Runtime）**：
   - schema 定义来自模块/契约（Code），被注册为可导出工件（Runtime），并作为 IR/Trace/协议的解释锚点（Intent/Flow/Devtools/Workbench 消费）。
 - **依赖/修改的 SSoT（docs-first）**：
-  - 资产与 schema 的平台约束：`docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md`
-  - 运行时/Flow 执行与图码同步背景：`docs/specs/intent-driven-ai-coding/97-effect-runtime-and-flow-execution.md`
+  - 资产与 schema 的平台约束：`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`
+  - 运行时/Flow 执行与图码同步背景：`docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`
   - Devtools/诊断事件口径：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
   - 统一可序列化 JsonValue 基线（事件/协议）：`specs/005-unify-observability-protocol/contracts/schemas/json-value.schema.json`
 - **Effect/Logix 契约变化**：
@@ -140,9 +140,9 @@ packages/logix-sandbox/
 packages/logix-devtools-react/
 └── src/                                 # schema-aware 解释视图（消费方；仅引用工件/协议，不读内部对象图）
 
-docs/specs/intent-driven-ai-coding/
-├── 03-assets-and-schemas.md             # 资产/SchemaAST 的平台裁决（计划回写）
-└── 99-glossary-and-ssot.md              # 术语（schemaId/registry pack/schemaRef）对齐（按需回写）
+docs/specs/sdd-platform/ssot/
+├── docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md             # 资产/SchemaAST 的平台裁决（计划回写）
+└── docs/specs/sdd-platform/ssot/foundation/02-glossary.md              # 术语（schemaId/registry pack/schemaRef）对齐（按需回写）
 ```
 
 **Structure Decision**：

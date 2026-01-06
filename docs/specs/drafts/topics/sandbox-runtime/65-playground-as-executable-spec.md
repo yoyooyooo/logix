@@ -31,9 +31,9 @@ priority: later
 - 不设计新的 IntentRule 语法与 Spec DSL，只在概念上占位，具体语法仍以 v3 文档与 runtime-logix 为主事实源。
 
 > 关联文档：  
-> - `docs/specs/intent-driven-ai-coding/01-overview.md`（平台整体愿景）  
-> - `docs/specs/intent-driven-ai-coding/06-platform-ui-and-interactions.md`（Universe/Galaxy/Studio 视图）  
-> - `docs/specs/intent-driven-ai-coding/platform/README.md`（IntentRule / R-S-T 模型）  
+> - `docs/specs/sdd-platform/ssot/foundation/00-overview.md`（平台整体愿景）  
+> - `docs/specs/sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md`（Universe/Galaxy/Studio 视图）  
+> - `docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`（IntentRule / R-S-T 模型）  
 > - `.codex/skills/project-guide/references/runtime-logix/logix-core/*`（Module / Logic / Flow / Runtime 契约）  
 > - `docs/specs/drafts/topics/sandbox-runtime/00-overview.md`（Playground & Sandbox 概览）  
 > - `docs/specs/drafts/topics/sandbox-runtime/mvp/README.md`（Playground/Sandbox MVP · 省市区联动）
@@ -235,7 +235,7 @@ Playground 在 UI 上可以用非常简单的方式呈现：
 等这条链路跑通后，可以再将这些经验回写到：
 
 - `30-intent-coverage-and-ai-feedback.md`：正式定义 AlignmentReport 与 Intent 覆盖率；  
-- `06-platform-ui-and-interactions.md` / `v3/platform/README.md`：增加一节「Playground / Alignment Lab」视图说明。
+- `docs/specs/sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md`：增加一节「Playground / Alignment Lab」视图说明。
 
 ## 6. 小结
 

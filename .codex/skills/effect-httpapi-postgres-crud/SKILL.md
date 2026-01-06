@@ -34,13 +34,13 @@ pnpm -C .codex/skills/effect-httpapi-postgres-crud generate -- --out apps/logix-
 > 推荐先把“契约/SSoT/测试口径”定死，再落实现；避免“实现即规范”导致漂移。
 
 1. 选定资源与最小接口（CRUD + 错误形状）
-   - 参考模板：`docs/specs/intent-driven-ai-coding/examples/03-effect-httpapi-postgres-crud-template.md`
+   - 参考模板：`docs/specs/sdd-platform/ssot/appendix/examples/03-effect-httpapi-postgres-crud-template.md`
    - 参考实现：`apps/logix-galaxy-api/src/todo/todo.contract.ts`
 
 2. 设计表结构（开发环境 PostgreSQL）并沉淀到 SSoT
    - 深入表设计：优先用现有 skill：`postgresql-table-design`
-   - SSoT 资产：在 `docs/specs/intent-driven-ai-coding/examples/` 增加或更新一份 `<nn>-*.md`，并在 `examples/README.md` 建索引
-   - 示例：`docs/specs/intent-driven-ai-coding/examples/02-logix-galaxy-api-postgres.md`
+   - SSoT 资产：在 `docs/specs/sdd-platform/ssot/appendix/examples/` 增加或更新一份 `<nn>-*.md`，并在 `docs/specs/sdd-platform/ssot/appendix/examples/README.md` 建索引
+   - 示例：`docs/specs/sdd-platform/ssot/appendix/examples/02-logix-galaxy-api-postgres.md`
 
 3. 固化对外契约（OpenAPI 3.1）
    - 产物落点：`specs/<id>/contracts/openapi.yaml`
@@ -73,7 +73,7 @@ pnpm -C .codex/skills/effect-httpapi-postgres-crud generate -- --out apps/logix-
 - **代码**：`apps/<service>/src/<resource>/*`（contract/model/repo/repo.live/http.live/http.test）
 - **契约**：`specs/<id>/contracts/openapi.yaml`
 - **数据模型**：`specs/<id>/data-model.md`
-- **SSoT**：`docs/specs/intent-driven-ai-coding/examples/<nn>-*.md`（并更新 `examples/README.md` 索引）
+- **SSoT**：`docs/specs/sdd-platform/ssot/appendix/examples/<nn>-*.md`（并更新 `docs/specs/sdd-platform/ssot/appendix/examples/README.md` 索引）
 
 ### 验收最小集（建议）
 

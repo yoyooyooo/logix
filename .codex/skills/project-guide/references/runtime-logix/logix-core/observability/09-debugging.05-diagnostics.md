@@ -6,5 +6,5 @@
 - `reducer::late_registration`（error）：在该 tag 已派发过后才注册 primary reducer。
 - `lifecycle::missing_on_error`（warning）：Module 发生 lifecycle 错误时缺少 `$.lifecycle.onError` 处理器。
 - `state_trait::deps_mismatch`（warning）：dev/test 环境下，侦测到 computed/source 的实际读取路径与声明的 `deps` 不一致（仅提示，不影响运行时语义）。
-- `trait::budget_exceeded`（warning）：事务提交前的 Trait converge 超预算，派生字段在本窗口冻结（回退到窗口开始时的派生快照）。
-- `trait::runtime_error`（warning）：事务提交前的 Trait converge 运行期异常，派生字段在本窗口冻结（回退到窗口开始时的派生快照）。
+- `trait::budget_exceeded`（warning）：事务提交前的 Trait converge 超预算，派生字段在本窗口冻结（回退到 converge 开始时的派生快照；不回滚业务入口写入）。
+- `trait::runtime_error`（warning）：事务提交前的 Trait converge 运行期异常，派生字段在本窗口冻结（回退到 converge 开始时的派生快照；不回滚业务入口写入）。

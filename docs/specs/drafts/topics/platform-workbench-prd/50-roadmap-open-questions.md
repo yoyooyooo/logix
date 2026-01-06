@@ -6,7 +6,7 @@ value: core
 priority: now
 related:
   - ./10-requirements-and-mvp.md
-  - ../../../intent-driven-ai-coding/roadmap-logix-platform.md
+  - ../../../sdd-platform/ssot/roadmap-logix-platform.md
   - ../sdd-platform/11-spec-to-code-mvp.md
   - ../sandbox-runtime/60-vision-runtime-alignment-lab.md
 ---
@@ -88,13 +88,13 @@ related:
 
 当本 Topic 的某些结论稳定后，建议按以下落点回写，避免 drafts 与 SSoT 漂移：
 
-- `docs/specs/intent-driven-ai-coding/platform/README.md`：Workbench 的信息架构增补（Live Spec / Pipeline / Intent Studio / Playground 的关系）
-- `docs/specs/intent-driven-ai-coding/platform/impl/README.md`：Dev Server 协议面、diagnostics/anchors 的最小形状（不绑定实现细节）
-- `docs/specs/intent-driven-ai-coding/platform/impl/intent-rule-and-codegen.md`：Rule Grid → IntentRule → Fluent 白盒子集 的映射（若收敛出稳定的 GridRow 形状）
+- `docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`：Workbench 的信息架构增补（Live Spec / Pipeline / Intent Studio / Playground 的关系）
+- `docs/specs/sdd-platform/impl/README.md`：Dev Server 协议面、diagnostics/anchors 的最小形状（不绑定实现细节）
+- `docs/specs/sdd-platform/impl/intent-rule-and-codegen.md`：Rule Grid → IntentRule → Fluent 白盒子集 的映射（若收敛出稳定的 GridRow 形状）
 - `docs/specs/drafts/topics/sandbox-runtime/15-protocol-and-schema.md`：RunConfig/RunResult 与 scenarioRevisionId/ruleId/stepId 的锚点对齐要求
 - `docs/specs/drafts/topics/sandbox-runtime/30-intent-coverage-and-ai-feedback.md`：AlignmentReport/覆盖率/AI Context Pack 的最小结构（保持 Slim + 可序列化）
-- `docs/specs/drafts/topics/sdd-platform/05-intent-pipeline.md`：Pipeline 视图的 UI 形态与 traceability 约束（若收敛出明确模板）
-- `docs/specs/intent-driven-ai-coding/03-assets-and-schemas.md`：资产层级的 `derivedFrom/anchors` 约束（若确定为平台通用机制）
+- `docs/specs/sdd-platform/workbench/05-intent-pipeline.md`：Pipeline 视图的 UI 形态与 traceability 约束（若收敛出明确模板）
+- `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`：资产层级的 `derivedFrom/anchors` 约束（若确定为平台通用机制）
 
 ## 4. 下一步行动（建议顺序）
 

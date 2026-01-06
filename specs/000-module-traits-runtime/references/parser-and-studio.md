@@ -138,7 +138,7 @@ Parser / Studio 的职责是：
 
 因此，本 reference 文档需要与：
 
-- `docs/specs/intent-driven-ai-coding` 中的 SDD / Mapping 文档；  
+- `docs/specs/sdd-platform/ssot` 中的 SDD / Mapping 文档；  
 - `.codex/skills/project-guide/references/runtime-logix` 中的 Runtime / Flow / Module 说明  
 
 保持概念对齐，如要调整术语或映射关系，应优先更新上述上游文档，再回流到本 feature 的 spec / plan / references。

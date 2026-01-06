@@ -11,7 +11,7 @@ description: This skill should be used when managing a tiered L1–L9 draft syst
 ## 1. 背景与目的
 
 - 草稿用于承载「尚未完全定稿，但有潜在价值」的方案、调研、对话摘录和对外项目启发；
-- 正式规范（例如 `docs/specs/intent-driven-ai-coding/v3`、`.codex/skills/project-guide/references/runtime-logix`）只收敛稳定结论；
+- 正式规范（例如 `docs/specs/sdd-platform/ssot`、`.codex/skills/project-guide/references/runtime-logix`）只收敛稳定结论；
 - L1–L9 数字越小代表成熟度越高，新草稿默认放在 L9，随整理逐步前移；
 - 通过该体系，支持后续“集中梳理草稿 → 融合方案 → 更新正式规格”的工作流。
 
