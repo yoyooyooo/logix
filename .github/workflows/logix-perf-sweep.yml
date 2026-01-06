@@ -1,9 +1,6 @@
-name: logix-perf (quick)
+name: logix-perf (sweep)
 
 on:
-  pull_request:
-  schedule:
-    - cron: "0 18 * * *" # daily, UTC
   workflow_dispatch:
     inputs:
       base_ref:
@@ -17,11 +14,11 @@ on:
       perf_files:
         description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 packages/logix-react）"
         required: false
-        default: "test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx,test/browser/perf-boundaries/external-store-ingest.test.tsx,test/browser/perf-boundaries/diagnostics-overhead.test.tsx"
+        default: "test/browser/perf-boundaries/converge-steps.test.tsx"
       perf_profile:
-        description: "采样 profile（影响 runs/warmup/stability 等配置）"
+        description: "采样 profile（smoke/quick/default/soak；影响 runs/warmup/timeout）"
         required: false
-        default: "smoke"
+        default: "quick"
       diff_mode:
         description: "diff 模式（strict=不可比直接失败；triage=允许漂移，仅作线索）"
         required: false
@@ -33,19 +30,19 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: logix-perf-${{ github.event.pull_request.number || github.ref }}
+  group: logix-perf-sweep-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  perf-quick:
+  perf-sweep:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
-      PERF_FILES: test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx,test/browser/perf-boundaries/external-store-ingest.test.tsx,test/browser/perf-boundaries/diagnostics-overhead.test.tsx
-      PERF_PROFILE: smoke
+      PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx
+      PERF_PROFILE: quick
       PERF_DIFF_MODE: strict
       PERF_OUT_DIR: perf/ci
-      PERF_ARTIFACT_NAME: logix-perf-quick-${{ github.event.pull_request.number || github.run_id }}
+      PERF_ARTIFACT_NAME: logix-perf-sweep-${{ github.run_id }}
 
     steps:
       - name: Checkout
@@ -83,48 +80,38 @@ jobs:
             git rev-parse FETCH_HEAD
           }
 
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          elif [ "${{ github.event_name }}" = "schedule" ]; then
-            # Nightly on default branch: compare current HEAD to its parent (best-effort).
-            HEAD_SHA="$GITHUB_SHA"
-            BASE_SHA="$(git rev-parse "${HEAD_SHA}^" 2>/dev/null || echo "$HEAD_SHA")"
-            echo "PERF_PROFILE=quick" >> "$GITHUB_ENV"
-          else
-            DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
 
-            BASE_REF="$(normalize_ref "${INPUT_BASE_REF:-}")"
-            HEAD_REF="$(normalize_ref "${INPUT_HEAD_REF:-}")"
+          BASE_REF="$(normalize_ref "${INPUT_BASE_REF:-}")"
+          HEAD_REF="$(normalize_ref "${INPUT_HEAD_REF:-}")"
 
-            if [ -z "${BASE_REF}" ]; then
-              BASE_REF="$DEFAULT_BRANCH"
-            fi
-            if [ -z "${HEAD_REF}" ]; then
-              HEAD_REF="$GITHUB_SHA"
-            fi
-
-            echo "BASE_REF=$BASE_REF" >> "$GITHUB_ENV"
-            echo "HEAD_REF=$HEAD_REF" >> "$GITHUB_ENV"
-
-            BASE_SHA="$(resolve_ref_to_sha "$BASE_REF")"
-            HEAD_SHA="$(resolve_ref_to_sha "$HEAD_REF")"
-
-            if [ -n "${INPUT_PERF_FILES:-}" ]; then
-              echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
-              echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_DIFF_MODE:-}" ]; then
-              echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
-            fi
+          if [ -z "${BASE_REF}" ]; then
+            BASE_REF="$DEFAULT_BRANCH"
           fi
+          if [ -z "${HEAD_REF}" ]; then
+            HEAD_REF="$GITHUB_SHA"
+          fi
+
+          echo "BASE_REF=$BASE_REF" >> "$GITHUB_ENV"
+          echo "HEAD_REF=$HEAD_REF" >> "$GITHUB_ENV"
+
+          BASE_SHA="$(resolve_ref_to_sha "$BASE_REF")"
+          HEAD_SHA="$(resolve_ref_to_sha "$HEAD_REF")"
 
           echo "BASE_SHA=$BASE_SHA" >> "$GITHUB_ENV"
           echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
           echo "BASE_SHORT=${BASE_SHA::8}" >> "$GITHUB_ENV"
           echo "HEAD_SHORT=${HEAD_SHA::8}" >> "$GITHUB_ENV"
+
+          if [ -n "${INPUT_PERF_FILES:-}" ]; then
+            echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
+            echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${INPUT_DIFF_MODE:-}" ]; then
+            echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
+          fi
 
           if git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- pnpm-lock.yaml | grep -q '^pnpm-lock.yaml$'; then
             echo "LOCKFILE_CHANGED=1" >> "$GITHUB_ENV"
@@ -177,6 +164,7 @@ jobs:
           mkdir -p .codex/skills/logix-perf-evidence/assets
           git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
           FILE_ARGS=()
           for f in "${PERF_FILES_ARRAY[@]}"; do
@@ -185,6 +173,7 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
@@ -198,6 +187,7 @@ jobs:
           mkdir -p .codex/skills/logix-perf-evidence/assets
           git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
           FILE_ARGS=()
           for f in "${PERF_FILES_ARRAY[@]}"; do
@@ -206,6 +196,7 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
@@ -241,64 +232,4 @@ jobs:
         with:
           name: ${{ env.PERF_ARTIFACT_NAME }}
           path: ${{ env.PERF_OUT_DIR }}
-          if-no-files-found: warn
 
-      - name: PR comment (summary)
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require("node:fs")
-
-            try {
-              const marker = "<!-- logix-perf-quick -->"
-              const pr = context.payload.pull_request
-              let summary = ""
-              try {
-                summary = fs.readFileSync("perf/ci/summary.md", "utf8")
-              } catch {}
-
-              const body =
-                summary.trim().length > 0
-                  ? `${marker}\n${summary}`
-                  : `${marker}\n### logix-perf (quick)\n\n_summary.md not found. Check Actions logs and artifacts._\n`
-
-              const { owner, repo } = context.repo
-              const issue_number = pr.number
-
-              const existing = await github.paginate(github.rest.issues.listComments, {
-                owner,
-                repo,
-                issue_number,
-                per_page: 100,
-              })
-
-              const found = existing.find((c) => typeof c.body === "string" && c.body.includes(marker))
-              if (found) {
-                await github.rest.issues.updateComment({
-                  owner,
-                  repo,
-                  comment_id: found.id,
-                  body,
-                })
-              } else {
-                await github.rest.issues.createComment({
-                  owner,
-                  repo,
-                  issue_number,
-                  body,
-                })
-              }
-            } catch (err) {
-              const status = err?.status ?? err?.response?.status
-              const message = String(err?.message ?? err)
-              const isIntegration403 =
-                status === 403 || message.includes("Resource not accessible by integration")
-
-              if (isIntegration403) {
-                console.log(`[logix-perf] PR comment skipped: ${message}`)
-                return
-              }
-
-              console.log(`[logix-perf] PR comment failed (ignored): ${message}`)
-            }

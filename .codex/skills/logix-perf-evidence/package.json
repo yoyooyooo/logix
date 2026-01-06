@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "collect": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "collect:smoke": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/collect.ts --profile smoke",
     "collect:quick": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/collect.ts --profile quick",
     "diff": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/diff.ts",
     "diff:triage": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/diff.ts --allow-config-drift --allow-env-drift",

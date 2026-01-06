@@ -11,7 +11,9 @@ const headRef = (process.env.HEAD_REF || '').trim()
 const envId = process.env.PERF_ENV_ID || ''
 const profile = process.env.PERF_PROFILE || 'quick'
 
-const scope = process.env.PERF_FILES || 'test/browser/perf-boundaries/converge-steps.test.tsx'
+const scope =
+  process.env.PERF_FILES ||
+  'test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx,test/browser/perf-boundaries/external-store-ingest.test.tsx,test/browser/perf-boundaries/diagnostics-overhead.test.tsx'
 const artifactName = process.env.PERF_ARTIFACT_NAME || ''
 
 const beforePath =

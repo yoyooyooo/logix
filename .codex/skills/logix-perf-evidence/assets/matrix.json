@@ -15,6 +15,7 @@
       "headless": true
     },
     "profiles": {
+      "smoke": { "runs": 12, "warmupDiscard": 2, "timeoutMs": 12000 },
       "quick": { "runs": 25, "warmupDiscard": 5, "timeoutMs": 15000 },
       "default": { "runs": 30, "warmupDiscard": 5, "timeoutMs": 20000 },
       "soak": { "runs": 80, "warmupDiscard": 10, "timeoutMs": 30000 }
