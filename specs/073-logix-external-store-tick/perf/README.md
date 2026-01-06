@@ -38,8 +38,9 @@
 
 ## CI（quick）协作
 
-- Workflow：`.github/workflows/logix-perf-quick.yml`（默认 `profile=quick` + **strict comparability**：不允许 config/env drift；用于“可比性极致化”的 diff 线索）
-- 采集范围：对本特性建议用 `perf_files=test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx`（相对 `packages/logix-react`）
+- PR 默认链路：`.github/workflows/logix-perf-quick.yml`（默认 `profile=smoke` + **strict comparability**：不允许 config/env drift；用于“主干道 baseline 是否回归”的快速检查）
+  - 默认 scope：`runtime-store-no-tearing` + `external-store-ingest` + `diagnostics-overhead`（逗号分隔多文件）
+- 全量矩阵扫描（耗时更长）：`.github/workflows/logix-perf-sweep.yml`（默认跑 `converge-steps`；用于定位“哪一段参数空间出现 tail/systemic”）
 - 产物：CI 默认写入 `perf/ci/*` 并作为 artifact 上传；需要长期留档时，手动拷贝/重命名到本目录并更新上面的“证据文件/结论”
 
 ### CI 可比性策略（严格可比 / 可复现）
@@ -51,7 +52,7 @@
 - **git checkout 安全**：base/head 来回切换时使用强制 checkout，避免 pinned matrix 覆盖导致 `git checkout` 失败；
 - **避免 dirty baseline**：CI 覆盖 pinned matrix 会让工作区变 dirty；通过 `assume-unchanged` 让 `meta.git.dirty` 不被该文件污染（否则会出现 `git.dirty.before=true` 警告）。
 
-### Artifact 复核：`logix-perf-quick-10`（strict comparability 是否达标）
+### Artifact 复核：`logix-perf-quick-10`（sweep / converge-steps；strict comparability 是否达标）
 
 数据源（本地下载产物）：`/Users/yoyo/Downloads/logix-perf-quick-10/summary.md`
 
@@ -64,7 +65,7 @@
   - 原因：同一个 workflow run 内为了 pin matrix，覆盖了工作区文件，导致 before 采集时被认为“dirty working tree”
   - 处理：已在 `main`/`073` 的 workflow 中修复（避免 pinned matrix 污染 `meta.git.dirty`）；重新跑一次 action 后，该 warning 应消失
 
-### `logix-perf-quick-10` 的差异解读（只把它当“定位线索”）
+### `logix-perf-quick-10` 的差异解读（只把它当“定位线索”，不当 quick 门禁）
 
 > quick profile 样本少：`tail-only`（p95 超预算但 median 在预算内）很可能是噪声；必须复测/加样本后才能作为“硬证据”。
 
