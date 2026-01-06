@@ -24,6 +24,12 @@
 - After（adapter=runtimeStore）：`specs/073-logix-external-store-tick/perf/browser.after.d8756502.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=runtimeStore.json`
 - Diff：`specs/073-logix-external-store-tick/perf/diff.browser.adapter=perModule__runtimeStore.d8756502.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
 
+### externalStore ingest（dirty，作为 baseline 引入记录）
+
+- Before（r1）：`specs/073-logix-external-store-tick/perf/browser.before.5aac8782-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=externalStore.ingest.tickNotify.r1.json`
+- After（r2）：`specs/073-logix-external-store-tick/perf/browser.after.5aac8782-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=externalStore.ingest.tickNotify.r2.json`
+- Diff：`specs/073-logix-external-store-tick/perf/diff.browser.suite=externalStore.ingest.tickNotify.r1__r2.5aac8782-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
+
 ### 历史证据（dirty，已废弃）
 
 - Before（adapter=perModule）：`specs/073-logix-external-store-tick/perf/browser.before.1d0b0a28-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=perModule.json`
@@ -32,9 +38,41 @@
 
 ## CI（quick）协作
 
-- Workflow：`.github/workflows/logix-perf-quick.yml`（默认 `profile=quick` + `diff_mode=triage`，结论只作线索）
+- Workflow：`.github/workflows/logix-perf-quick.yml`（默认 `profile=quick` + **strict comparability**：不允许 config/env drift；用于“可比性极致化”的 diff 线索）
 - 采集范围：对本特性建议用 `perf_files=test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx`（相对 `packages/logix-react`）
 - 产物：CI 默认写入 `perf/ci/*` 并作为 artifact 上传；需要长期留档时，手动拷贝/重命名到本目录并更新上面的“证据文件/结论”
+
+### CI 可比性策略（严格可比 / 可复现）
+
+目标：让 before/after 的差异尽可能只来自 **被测代码**，而不是来自 matrix/config/env 的漂移，从而使 `PerfDiff` 的结论可用作优化证据链的起点。
+
+- **Pinned matrix**：在同一个 workflow run 内，把 matrix 固定为同一份（base/head 都使用同一份 pinned matrix）；
+- **Report normalize**：在 diff 前把 report 的 `matrixId/matrixHash/matrixUpdatedAt`、`env.browser.version` 等对齐到 pinned matrix，避免“元信息不一致导致不可比/误报 drift”；
+- **git checkout 安全**：base/head 来回切换时使用强制 checkout，避免 pinned matrix 覆盖导致 `git checkout` 失败；
+- **避免 dirty baseline**：CI 覆盖 pinned matrix 会让工作区变 dirty；通过 `assume-unchanged` 让 `meta.git.dirty` 不被该文件污染（否则会出现 `git.dirty.before=true` 警告）。
+
+### Artifact 复核：`logix-perf-quick-10`（strict comparability 是否达标）
+
+数据源（本地下载产物）：`/Users/yoyo/Downloads/logix-perf-quick-10/summary.md`
+
+- Scope：`test/browser/perf-boundaries/converge-steps.test.tsx`（`profile=quick`，`envId=gh-Linux-X64`）
+- Base / Head：`1d0b0a28` → `de18e4cf`
+- 可比性：`meta.comparability.comparable=true`，且 `allowConfigDrift=false`、`allowEnvDrift=false`
+  - `matrixHash`：before/after 一致（`35a9ede8…`）
+  - `browser.version`：before/after 一致（`143.0.7499.4`）
+- Warning（需要被消除，才能做到“极致可比”）：`git.dirty.before=true`
+  - 原因：同一个 workflow run 内为了 pin matrix，覆盖了工作区文件，导致 before 采集时被认为“dirty working tree”
+  - 处理：已在 `main`/`073` 的 workflow 中修复（避免 pinned matrix 污染 `meta.git.dirty`）；重新跑一次 action 后，该 warning 应消失
+
+### `logix-perf-quick-10` 的差异解读（只把它当“定位线索”）
+
+> quick profile 样本少：`tail-only`（p95 超预算但 median 在预算内）很可能是噪声；必须复测/加样本后才能作为“硬证据”。
+
+- Automated interpretation：regressions=`7`，improvements=`3`
+- 最显著回归线索：`converge.txnCommit`（budget：`auto<=full*1.05`，primary axis=`steps`）
+  - `{dirtyRootsRatio=0.1}`：before `maxLevel=2000` → after `maxLevel=null`（在 `steps=200` 就 fail）
+  - after @ `steps=200`：p95 ratio=2.2323（auto/full=1.134/0.508 ms），但 median ratio=0.8073（auto/full=0.352/0.436 ms）
+  - 解读：该点呈现“尾部膨胀但中位数更好”的形态；更像 **偶发 tail / 调度抖动 / 单点异常** 的候选，需要用 default/soak profile 复测确认是否可复现，再决定是否追代码优化
 
 ## 结论（可交接摘要）
 
@@ -43,8 +81,10 @@
   - `runtimeStore.noTearing.tickNotify`（watchers=256）：
     - Before（perModule）：`timePerTickMs.p95` off=2.10ms / full=2.00ms
     - After（runtimeStore）：`timePerTickMs.p95` off=1.90ms / full=1.80ms
+  - `externalStore.ingest.tickNotify`（watchers=256, modules=10）：
+    - `timePerIngestMs.p95` off≈1.8ms / full≈1.8ms（详见对应 report 的 points）
   - `diagnostics.overhead.e2e`（watchers.clickToPaint）：仅作观测口径（matrix 目前无 budgets；定义见下文“click→paint”）
-  - `retainedHeapDeltaBytesAfterGc`：N/A（matrix v1 的该 suite 未纳入此指标）
+  - `retainedHeapDeltaBytesAfterGc`：由 browser gate 硬门禁（`test/browser/perf-boundaries/external-store-ingest.test.tsx`，`MAX_DELTA_BYTES=10MB`；不走 matrix budgets）
 
 ## 解读（前后差异）
 

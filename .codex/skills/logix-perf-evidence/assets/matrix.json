@@ -483,6 +483,42 @@
         "budget.cutOffCount"
       ],
       "notes": "tick flush → external-store notify（不含 React render/commit），用于 073 runtimeStore cutover 的 baseline 与回归门禁。"
+    },
+    {
+      "id": "externalStore.ingest.tickNotify",
+      "priority": "P1",
+      "title": "externalStore: ingest→notify baseline (external input workload)",
+      "primaryAxis": "watchers",
+      "axes": {
+        "watchers": [256],
+        "diagnosticsLevel": ["off", "full"]
+      },
+      "metrics": ["timePerIngestMs"],
+      "budgets": [
+        {
+          "id": "p95<=3.00ms",
+          "type": "absolute",
+          "metric": "timePerIngestMs",
+          "p95Ms": 3
+        },
+        {
+          "id": "full/off<=1.25",
+          "type": "relative",
+          "metric": "timePerIngestMs",
+          "maxRatio": 1.25,
+          "minDeltaMs": 0.02,
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=off"
+        }
+      ],
+      "requiredEvidence": [
+        "diagnostics.level",
+        "workload.modules",
+        "workload.ticksPerRun",
+        "workload.externalStores",
+        "budget.cutOffCount"
+      ],
+      "notes": "external callback → trait writeback → runtimeStore notify（不含 React render/commit），用于 073 externalStore ingest 的 baseline 与回归门禁。"
     }
   ]
 }

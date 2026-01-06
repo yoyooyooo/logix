@@ -175,7 +175,10 @@ Baseline 语义：策略 A/B（before=perModule adapter；after=runtimeStore ada
 
 **Budgets（073 首版，baseline 回写后按 20% 回归阈值）**：
 
-> 说明：matrix v1 对本特性当前只 gate `timePerTickMs`（suite=`runtimeStore.noTearing.tickNotify`）；`click→paint` 仅作观测口径；`retainedHeapDeltaBytesAfterGc` 暂未纳入该 suite（TODO）。
+> 说明：matrix v1 对本特性当前 gate：
+> - `timePerTickMs`（suite=`runtimeStore.noTearing.tickNotify`，dispatch workload）
+> - `timePerIngestMs`（suite=`externalStore.ingest.tickNotify`，external input workload）
+> `click→paint` 仍作观测口径；`retainedHeapDeltaBytesAfterGc` 由 browser gate 测试硬门禁（见下文）。
 
 - Browser（React 订阅/notify + tick flush）：
   - Baseline（2026-01-06 / darwin-arm64 / chromium-headless / profile=default / watchers=256）：
@@ -185,6 +188,12 @@ Baseline 语义：策略 A/B（before=perModule adapter；after=runtimeStore ada
     - `timePerTickMs.p95 <= 2.16ms`（diagnostics=off）
     - `timePerTickMs.p95 <= 1.92ms`（diagnostics=full）
     - 相对开销：`timePerTickMs.p95(full) / timePerTickMs.p95(off) <= 1.25`（matrix v1）
+  - Baseline（ingest workload）：
+    - `externalStore.ingest.tickNotify`（watchers=256, modules=10）：
+      - r1：`timePerIngestMs.p95` off=1.90ms / full=2.00ms
+      - r2：`timePerIngestMs.p95` off=2.30ms / full=2.30ms
+      - baseline（conservative=max(r1,r2)）：`timePerIngestMs.p95` off=2.30ms / full=2.30ms
+      - 回归阈值（baseline +20%）：`timePerIngestMs.p95 <= 2.76ms`（off/full）
 
 指标口径澄清：
 
@@ -192,6 +201,7 @@ Baseline 语义：策略 A/B（before=perModule adapter；after=runtimeStore ada
 - 口径：以同一 workload 的“起止强制 GC 后 usedHeap 差值”作为常驻净增（越接近 0 越好）；不以 tick 过程的临时留存为目标指标。
 - GC 压力（allocation rate）若要 gate：在 `runtime-store-no-tearing` test 内新增 `allocatedBytes`/`peakHeapDeltaBeforeGc` 等可复现指标（可选，按 matrix 能力决定）。
 - `timePerTickMs`：仅覆盖 `tick flush -> notify`（含 scheduler/commit/notify 路径），**不包含** React render/commit；渲染相关的“跟手性”使用 `click→paint` 之类场景单独 gate（避免业务组件复杂度污染基线）。
+- `retainedHeapDeltaBytesAfterGc` gate：`packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx` 内置硬门禁（`MAX_DELTA_BYTES=10MB`），依赖 browser 启动参数 `--js-flags=--expose-gc` + `--enable-precise-memory-info`（由 `packages/logix-react/vitest.config.ts` 统一注入）。
 
 **Collect (Browser / runtimeStore-no-tearing + click→paint guard)**：
 
@@ -204,6 +214,13 @@ Baseline 语义：策略 A/B（before=perModule adapter；after=runtimeStore ada
   - `pnpm perf validate -- --report <after.json> --allow-partial`
 - Diff（hard conclusion）：  
   - `pnpm perf diff -- --before <before.json> --after <after.json> --out specs/073-logix-external-store-tick/perf/diff.browser.adapter=perModule__runtimeStore.<sha>.<envId>.logix-browser-perf-matrix-v1.default.json`
+
+**Collect (Browser / externalStore ingest + retained heap gate)**：
+
+- 采集（suite=`externalStore.ingest.tickNotify`，同时会跑 retained heap gate）：  
+  - `pnpm perf collect -- --profile default --out specs/073-logix-external-store-tick/perf/browser.<before|after>.<sha>.<envId>.logix-browser-perf-matrix-v1.default.suite=externalStore.ingest.tickNotify.<rN>.json --files test/browser/perf-boundaries/external-store-ingest.test.tsx`
+- Diff（同代码 r1/r2，用于确认可比性与稳定性）：  
+  - `pnpm perf diff -- --before <r1.json> --after <r2.json> --out specs/073-logix-external-store-tick/perf/diff.browser.suite=externalStore.ingest.tickNotify.r1__r2.<sha>.<envId>.logix-browser-perf-matrix-v1.default.json`
 
 **Perceived latency guard（click→paint）**：
 

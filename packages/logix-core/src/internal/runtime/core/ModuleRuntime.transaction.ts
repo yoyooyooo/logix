@@ -169,6 +169,11 @@ export const makeTransactionOps = <S>(args: {
         txnCurrent.commitMode = 'normal' as StateCommitMode
         txnCurrent.priority = 'normal' as StateCommitPriority
 
+        const stateCommitPriority = (origin as any)?.details?.stateCommit?.priority
+        if (stateCommitPriority === 'low' || stateCommitPriority === 'normal') {
+          txnCurrent.priority = stateCommitPriority as StateCommitPriority
+        }
+
         const txnId = txnContext.current?.txnId
         const txnSeq = txnContext.current?.txnSeq
 

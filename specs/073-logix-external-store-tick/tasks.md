@@ -120,3 +120,13 @@
 - US2（declarative 外部输入）是 Level1 的主体。
 - US3（超预算/循环软降级 + 可解释）主要落在 Phase 3（尤其 `T025/T026`），并作为 React 切换前的语义护栏（必须能解释“为何降级/推迟了什么/何时追赶”）。
 - US1（ABCD 链路 + 无 tearing）需要 Level2 + React 切换完成后才能用最小 demo 验证；Phase 5 的 IR 工作把“跨模块强一致”从黑盒提升为可识别依赖。
+
+---
+
+## Phase 7: Post-Acceptance Fixes（补齐 coded points 全 PASS）
+
+- [x] T054 [P] Emit diagnostics on externalStore fuse (getSnapshot throw) in `packages/logix-core/src/internal/state-trait/external-store.ts` and assert via Debug ring buffer sink in `packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts` (FR-001)
+- [x] T055 Wire `StateTrait.externalStore({ priority: "nonUrgent" })` to runtime commit priority (low) in `packages/logix-core/src/internal/state-trait/external-store.ts` + `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts` and add regression test in `packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts` (FR-011)
+- [x] T056 Add externalStore ingest perf boundary suite + retained heap gate in `packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx` (NFR-001 / NFR-008)
+- [x] T057 Collect and diff perf reports for the new suite and update `specs/073-logix-external-store-tick/perf/*` + `specs/073-logix-external-store-tick/plan.md#Perf Evidence Plan` (NFR-001 / NFR-008 / SC-004)
+- [x] T058 Record updated acceptance matrix + gaps and rerun workspace gates in `specs/073-logix-external-store-tick/notes/sessions/2026-01-06.md` (Quality gate)

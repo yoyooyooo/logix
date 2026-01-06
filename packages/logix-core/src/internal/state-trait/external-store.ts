@@ -53,6 +53,8 @@ export const installExternalStoreSync = <S>(
     const computeValue = (snapshot: unknown): unknown => (isFn(select) ? select(snapshot) : snapshot)
     const isEqual = (a: unknown, b: unknown): boolean => (isFn(equals) ? equals(a, b) : Object.is(a, b))
 
+    const traitLane = (entry.meta as any)?.priority as 'urgent' | 'nonUrgent' | undefined
+
     const rawStore = (entry.meta as any)?.store
     const rawDescriptor = getExternalStoreDescriptor(rawStore)
 
@@ -163,8 +165,18 @@ export const installExternalStoreSync = <S>(
             return yield* body
           }
 
-          return yield* internals.txn.runWithStateTransaction({ kind: 'trait-external-store', name: fieldPath } as any, () =>
-            body.pipe(Effect.asVoid),
+          const stateCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
+          return yield* internals.txn.runWithStateTransaction(
+            {
+              kind: 'trait-external-store',
+              name: fieldPath,
+              details: {
+                stateCommit: {
+                  priority: stateCommitPriority,
+                },
+              },
+            },
+            () => body.pipe(Effect.asVoid),
           )
         }).pipe(Effect.provide(env))
 
@@ -205,9 +217,44 @@ export const installExternalStoreSync = <S>(
     }
 
     let fused = false
+    let fuseCause: unknown | undefined
+    let fuseRecorded = false
     let pending = false
     let resume: (() => void) | undefined
     let waitPromise: Promise<void> | undefined
+
+    const recordFuseDiagnostic = Effect.gen(function* () {
+      if (fuseRecorded) return
+      fuseRecorded = true
+
+      const errorMessage = (() => {
+        if (fuseCause instanceof Error) return fuseCause.message
+        if (typeof fuseCause === 'string') return fuseCause
+        return 'unknown'
+      })()
+
+      yield* Debug.record({
+        type: 'diagnostic',
+        moduleId: internals.moduleId,
+        instanceId: internals.instanceId,
+        code: 'external_store::snapshot_threw',
+        severity: 'warning',
+        message:
+          `[StateTrait.externalStore] store.getSnapshot() threw; trait is fused and will stop syncing for "${fieldPath}".`,
+        hint: 'Fix: ensure getSnapshot is synchronous and non-throwing; async resources should use StateTrait.source or ExternalStore.fromStream({ current/initial }).',
+        kind: 'external_store_fused:get_snapshot',
+        trigger: {
+          kind: 'trait',
+          name: 'externalStore.getSnapshot',
+          details: {
+            fieldPath,
+            traitId: step.id,
+            storeKind: rawDescriptor?.kind ?? 'raw',
+            error: errorMessage,
+          },
+        },
+      })
+    })
 
     const signal = (): void => {
       if (fused) return
@@ -236,15 +283,19 @@ export const installExternalStoreSync = <S>(
     const getSnapshotOrFuse = (): unknown => {
       try {
         return (store as any).getSnapshot()
-      } catch {
+      } catch (err) {
         fused = true
+        fuseCause = err
         return undefined
       }
     }
 
     // T016: atomic init semantics (no missed updates between getSnapshot() and subscribe()).
     const before = getSnapshotOrFuse()
-    if (fused) return
+    if (fused) {
+      yield* recordFuseDiagnostic
+      return
+    }
 
     const unsubscribe = (store as any).subscribe(signal) as (() => void) | undefined
     yield* Effect.addFinalizer(() =>
@@ -258,7 +309,10 @@ export const installExternalStoreSync = <S>(
     )
 
     const after = getSnapshotOrFuse()
-    if (fused) return
+    if (fused) {
+      yield* recordFuseDiagnostic
+      return
+    }
 
     const writeValue = (nextValue: unknown): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
@@ -281,14 +335,24 @@ export const installExternalStoreSync = <S>(
           internals.txn.updateDraft(nextDraft)
         })
 
-        if (inTxn) {
-          return yield* body
-        }
+          if (inTxn) {
+            return yield* body
+          }
 
-        return yield* internals.txn.runWithStateTransaction({ kind: 'trait-external-store', name: fieldPath } as any, () =>
-          body.pipe(Effect.asVoid),
-        )
-      })
+          const stateCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
+          return yield* internals.txn.runWithStateTransaction(
+            {
+              kind: 'trait-external-store',
+              name: fieldPath,
+              details: {
+                stateCommit: {
+                  priority: stateCommitPriority,
+                },
+              },
+            },
+            () => body.pipe(Effect.asVoid),
+          )
+        })
 
     // Use the post-subscribe snapshot as the initial committed value to avoid missing an update between getSnapshot and subscribe.
     yield* writeValue(computeValue(after))
@@ -307,7 +371,10 @@ export const installExternalStoreSync = <S>(
           if (fused) return
 
           const snapshot = getSnapshotOrFuse()
-          if (fused) return
+          if (fused) {
+            yield* recordFuseDiagnostic
+            return
+          }
 
           yield* writeValue(computeValue(snapshot))
         }

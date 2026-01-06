@@ -31,7 +31,11 @@ export default mergeConfig(
             include: ['test/browser/**/*.test.tsx', 'test/browser/**/*.test.ts'],
             browser: {
               enabled: true,
-              provider: playwright(),
+              provider: playwright({
+                launchOptions: {
+                  args: ['--js-flags=--expose-gc', '--enable-precise-memory-info'],
+                },
+              }),
               headless: true,
               instances: [
                 {
