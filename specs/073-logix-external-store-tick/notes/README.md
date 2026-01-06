@@ -13,7 +13,8 @@
 
 - Phase 2/3：已落地（ExternalStoreTrait + TickScheduler/RuntimeStore + `trace:tick` + tests）
 - Phase 4/5：已落地（React cutover + IR + browser 语义门禁）
-- Phase 6：perf evidence 已产出（before/after/diff，见 `specs/073-logix-external-store-tick/perf/README.md`）；剩余 tasks.md 回勾 + 最终复验
+- Phase 6：perf evidence 已产出并已用 clean commit 复采（见 `specs/073-logix-external-store-tick/perf/README.md`）
+- `specs/073-logix-external-store-tick/tasks.md`：已全回勾（收尾中）
 
 ## Current Hypothesis
 
@@ -22,12 +23,11 @@
 
 ## Next Actions
 
-- 回勾 `specs/073-logix-external-store-tick/tasks.md` 未勾选项（T002/T030–T036/T034/T040–T045/T050–T053）。
-- 跑一次 `pnpm typecheck:test` 作为最终交付复验。
+- 跑一次 `pnpm typecheck:test` + `pnpm test:turbo` 作为最终交付复验。
 - （可选）跑 `$speckit acceptance 073` 做 coded points 的“上帝视角”回归。
 
 ## Last Flush
 
 - 2026-01-06
-- 意图：补齐 perf evidence（A/B adapter before/after/diff）并回写 `plan.md#Perf Evidence Plan`，推进 tasks.md 收尾
+- 意图：升级 perf 工具链（metric-level diff / click→paint 更贴近 paint / 补齐 headless browser.version），并重新采集可比的 before/after/diff
   - 详情：`specs/073-logix-external-store-tick/notes/sessions/2026-01-06.md`

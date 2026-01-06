@@ -7,18 +7,24 @@
 ## 环境元信息（硬结论必填）
 
 - Date：2026-01-06
-- Branch / commit（working tree 是否 dirty）：`073` / `1d0b0a280237fc62eb63d55f63677f2b4a89b5a5`（dirty=true）
+- Branch / commit（working tree 是否 dirty）：`073` / `d8756502829cb1f047ba4aec5bf5f213b766b8e1`（dirty=false）
 - OS / arch / CPU / Memory：darwin / arm64 / Apple M2 Max / 64GB
 - Node.js / pnpm：v22.21.1 / 9.15.9
-- Browser（name/version/headless）：chromium / (unknown) / headless
+- Browser（name/version/headless）：chromium / 143.0.7499.4 / headless
 - Matrix（matrixId/matrixHash）：`logix-browser-perf-matrix-v1` / `35a9ede8…`
 - Profile（quick/default/soak）：default
 - Sampling（runs/warmupDiscard/timeoutMs）：
-  - `diagnostics.overhead.e2e`：5 / 0 / 20000
+  - `diagnostics.overhead.e2e`：10 / 0 / 20000
   - `runtimeStore.noTearing.tickNotify`：10 / 2 / 30000（metric stats n=8）
 - Notes：N/A
 
 ## 证据文件
+
+- Before（adapter=perModule）：`specs/073-logix-external-store-tick/perf/browser.before.d8756502.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=perModule.json`
+- After（adapter=runtimeStore）：`specs/073-logix-external-store-tick/perf/browser.after.d8756502.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=runtimeStore.json`
+- Diff：`specs/073-logix-external-store-tick/perf/diff.browser.adapter=perModule__runtimeStore.d8756502.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
+
+### 历史证据（dirty，已废弃）
 
 - Before（adapter=perModule）：`specs/073-logix-external-store-tick/perf/browser.before.1d0b0a28-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=perModule.json`
 - After（adapter=runtimeStore）：`specs/073-logix-external-store-tick/perf/browser.after.1d0b0a28-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=runtimeStore.json`
@@ -32,12 +38,12 @@
 
 ## 结论（可交接摘要）
 
-- Gate：PASS（`meta.comparability.comparable=true` 且 `summary.regressions==0`；diff 仅有 `git.dirty.*` warnings）
+- Gate：PASS（`meta.comparability.comparable=true` 且 `summary.regressions==0`）
 - 关键指标：
   - `runtimeStore.noTearing.tickNotify`（watchers=256）：
-    - Before（perModule）：`timePerTickMs.p95` off=2.00ms / full=1.90ms
-    - After（runtimeStore）：`timePerTickMs.p95` off=1.80ms / full=1.60ms
-  - `diagnostics.overhead.e2e`（watchers.clickToPaint）：仅作观测口径（matrix 目前无 budgets）
+    - Before（perModule）：`timePerTickMs.p95` off=2.10ms / full=2.00ms
+    - After（runtimeStore）：`timePerTickMs.p95` off=1.90ms / full=1.80ms
+  - `diagnostics.overhead.e2e`（watchers.clickToPaint）：仅作观测口径（matrix 目前无 budgets；定义见下文“click→paint”）
   - `retainedHeapDeltaBytesAfterGc`：N/A（matrix v1 的该 suite 未纳入此指标）
 
 ## 解读（前后差异）
@@ -60,11 +66,11 @@
 ### 3) tick→notify：runtimeStore adapter 更快（本 workload 下）
 
 - diagnostics=off：
-  - median：1.70ms → 1.40ms（-0.30ms，-17.6%）
-  - p95：2.00ms → 1.80ms（-0.20ms，-10.0%）
+  - median：1.60ms → 1.40ms（-0.20ms，-12.5%）
+  - p95：2.10ms → 1.90ms（-0.20ms，-9.5%）
 - diagnostics=full：
-  - median：1.70ms → 1.50ms（-0.20ms，-11.8%）
-  - p95：1.90ms → 1.60ms（-0.30ms，-15.8%）
+  - median：1.90ms → 1.50ms（-0.40ms，-21.1%）
+  - p95：2.00ms → 1.80ms（-0.20ms，-10.0%）
 - 解读：在“同等 watcher 压力”下，`runtimeStore` 的 flush→notify 端到端窗口更短，对高频 tick 的稳定性与 no-tearing 目标更友好。
 
 ### 4) 为什么 diff 的 improvements=0 但数值变好？
@@ -74,10 +80,12 @@
 
 ### 5) click→paint：仅观测点（不宜硬下结论）
 
-- suite：`diagnostics.overhead.e2e`，本次 runs=5，matrix v1 未设 budgets（因此只作观测口径）。
+- 定义（当前 test 口径）：从触发 click（用户输入）开始计时，等待 React commit 生效（断言 DOM 更新），再额外等待至少一帧（`requestAnimationFrame`）作为 “commit 后 paint” 的近似，取 end 计时。
+
+- suite：`diagnostics.overhead.e2e`，本次 runs=10，matrix v1 未设 budgets（因此只作观测口径）。
 - 结果（p95）：
-  - off：65.2ms → 72.1ms（+6.9ms，+10.6%）
-  - light：74.4ms → 61.9ms（-12.5ms，-16.8%）
-  - sampled：65.4ms → 62.5ms（-2.9ms，-4.4%）
-  - full：62.3ms → 63.1ms（+0.8ms，+1.3%）
-- 解读：方向不一致且样本量小，更像是 browser e2e 噪声；如需把 click→paint 作为硬门禁，建议提高 runs 或用 `profile=soak` 复测，并在 matrix 里补 budgets。
+  - off：79.9ms → 76.9ms（-3.0ms，-3.8%）
+  - light：69.1ms → 68.2ms（-0.9ms，-1.3%）
+  - sampled：69.7ms → 68.9ms（-0.8ms，-1.1%）
+  - full：66.1ms → 69.3ms（+3.2ms，+4.8%）
+- 解读：方向不一致且仍有噪声；如需把 click→paint 作为硬门禁，建议进一步提高 runs 或用 `profile=soak` 复测，并在 matrix 里补 budgets。
