@@ -168,6 +168,7 @@ jobs:
           fi
           # Ensure base run uses the SAME matrix spec as head (tests import it).
           mkdir -p .codex/skills/logix-perf-evidence/assets
+          git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             --files "$PERF_FILES" \
@@ -180,6 +181,7 @@ jobs:
             pnpm install --frozen-lockfile
           fi
           mkdir -p .codex/skills/logix-perf-evidence/assets
+          git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             --files "$PERF_FILES" \
