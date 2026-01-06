@@ -41,7 +41,7 @@ jobs:
     env:
       PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx
       PERF_PROFILE: quick
-      PERF_DIFF_MODE: triage
+      PERF_DIFF_MODE: strict
       PERF_OUT_DIR: perf/ci
       PERF_ARTIFACT_NAME: logix-perf-quick-${{ github.event.pull_request.number || github.run_id }}
 
@@ -151,6 +151,14 @@ jobs:
       - name: Install Playwright Chromium deps
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Pin perf matrix (for strict comparability)
+        run: |
+          set -euo pipefail
+          PINNED_MATRIX="$RUNNER_TEMP/logix-perf-matrix.json"
+          mkdir -p "$(dirname "$PINNED_MATRIX")"
+          cp .codex/skills/logix-perf-evidence/assets/matrix.json "$PINNED_MATRIX"
+          echo "PERF_PINNED_MATRIX=$PINNED_MATRIX" >> "$GITHUB_ENV"
+
       - name: Collect (base)
         run: |
           mkdir -p "$PERF_OUT_DIR"
@@ -158,6 +166,9 @@ jobs:
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
           fi
+          # Ensure base run uses the SAME matrix spec as head (tests import it).
+          mkdir -p .codex/skills/logix-perf-evidence/assets
+          cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             --files "$PERF_FILES" \
             --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
@@ -168,9 +179,18 @@ jobs:
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
           fi
+          mkdir -p .codex/skills/logix-perf-evidence/assets
+          cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             --files "$PERF_FILES" \
             --out "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+
+      - name: Normalize reports (pin matrixHash + browser.version)
+        run: |
+          node .github/scripts/logix-perf-normalize-ci-reports.cjs \
+            --before "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json" \
+            --after "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json" \
+            --matrix "$PERF_PINNED_MATRIX"
 
       - name: Diff (base..head)
         run: |
