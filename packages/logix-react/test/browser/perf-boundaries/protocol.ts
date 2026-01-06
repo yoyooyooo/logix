@@ -42,7 +42,7 @@ const inferBrowserVersion = (): string | undefined => {
   const ua = navigator.userAgent
   if (typeof ua !== 'string' || ua.length === 0) return undefined
 
-  const chrome = ua.match(/\bChrome\/(\d+(?:\.\d+)+)\b/)
+  const chrome = ua.match(/(?:HeadlessChrome|Chrome)\/(\d+(?:\.\d+)+)/)
   if (chrome?.[1]) return chrome[1]
 
   const firefox = ua.match(/\bFirefox\/(\d+(?:\.\d+)+)\b/)
