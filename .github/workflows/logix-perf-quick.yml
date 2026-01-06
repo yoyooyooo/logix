@@ -126,7 +126,7 @@ jobs:
           fi
 
       - name: Checkout head (for install)
-        run: git checkout --quiet "$HEAD_SHA"
+        run: git checkout --quiet -f "$HEAD_SHA"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -162,7 +162,7 @@ jobs:
       - name: Collect (base)
         run: |
           mkdir -p "$PERF_OUT_DIR"
-          git checkout --quiet "$BASE_SHA"
+          git checkout --quiet -f "$BASE_SHA"
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
           fi
@@ -175,7 +175,7 @@ jobs:
 
       - name: Collect (head)
         run: |
-          git checkout --quiet "$HEAD_SHA"
+          git checkout --quiet -f "$HEAD_SHA"
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
           fi
