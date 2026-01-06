@@ -19,6 +19,16 @@ import {
 
 const PerfModule = makePerfCounterModule('PerfDiagnosticsOverheadCounter')
 
+const nextFrame = (): Promise<void> =>
+  new Promise((resolve) => {
+    const raf = (globalThis as any).requestAnimationFrame as ((cb: () => void) => void) | undefined
+    if (typeof raf === 'function') {
+      raf(() => resolve())
+    } else {
+      setTimeout(() => resolve(), 0)
+    }
+  })
+
 const PerfApp: React.FC = () => {
   const perf = useModule(PerfModule.tag)
   const value = useModule(perf, (s: unknown) => (s as { value: number }).value)
@@ -177,7 +187,7 @@ test(
   async () => {
     await withNodeEnv('production', async () => {
       const watcherCount = 256
-      const diagRuns = Math.min(5, runs)
+      const diagRuns = Math.min(10, runs)
       const diagWarmupDiscard = 0
       const perfKernelLayer = makePerfKernelLayer()
 
@@ -229,6 +239,8 @@ test(
             const start = performance.now()
             await button.click()
             await expect.element(screen.getByText(`Value: ${watcherCount}`)).toBeInTheDocument()
+            // "click → paint" approximation: wait for at least one frame after commit.
+            await nextFrame()
             const end = performance.now()
 
             return {

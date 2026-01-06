@@ -112,6 +112,7 @@ type SuiteSpec = {
   readonly title?: string
   readonly primaryAxis: string
   readonly axes: Record<string, ReadonlyArray<Primitive>>
+  readonly metrics?: ReadonlyArray<string>
   readonly budgets?: ReadonlyArray<Budget>
   readonly requiredEvidence?: ReadonlyArray<string>
 }
@@ -152,6 +153,24 @@ type ThresholdDelta = {
   readonly recommendations?: ReadonlyArray<Recommendation>
 }
 
+type MetricDeltaPoint = {
+  readonly params: Params
+  readonly before: { readonly n: number; readonly medianMs: number; readonly p95Ms: number }
+  readonly after: { readonly n: number; readonly medianMs: number; readonly p95Ms: number }
+  readonly deltaMs: { readonly medianMs: number; readonly p95Ms: number }
+  readonly ratio: { readonly median: number; readonly p95: number }
+}
+
+type MetricDeltaSummary = {
+  readonly metric: string
+  readonly unit: 'ms'
+  readonly compared: number
+  readonly missing: number
+  readonly unavailable: number
+  readonly topRegressions: ReadonlyArray<MetricDeltaPoint>
+  readonly topImprovements: ReadonlyArray<MetricDeltaPoint>
+}
+
 type PerfDiff = {
   readonly schemaVersion: number
   readonly meta: {
@@ -185,6 +204,7 @@ type PerfDiff = {
     readonly thresholdDeltas?: ReadonlyArray<ThresholdDelta>
     readonly budgetViolations?: ReadonlyArray<unknown>
     readonly evidenceDeltas?: ReadonlyArray<EvidenceDelta>
+    readonly metricDeltas?: ReadonlyArray<MetricDeltaSummary>
     readonly notes?: string
   }>
 }
@@ -460,6 +480,26 @@ const getMetricP95Ms = (
     return { ok: false, reason: m.unavailableReason }
   }
   return { ok: true, p95Ms: m.stats.p95Ms }
+}
+
+const getMetricStats = (
+  point: PointResult,
+  metric: string,
+):
+  | { readonly ok: true; readonly stats: { readonly n: number; readonly medianMs: number; readonly p95Ms: number } }
+  | { readonly ok: false; readonly reason: string } => {
+  if (point.status !== 'ok') {
+    return { ok: false, reason: point.reason ?? point.status }
+  }
+
+  const m = point.metrics.find((x) => x.name === metric)
+  if (!m) {
+    return { ok: false, reason: 'metricMissing' }
+  }
+  if (m.status !== 'ok') {
+    return { ok: false, reason: m.unavailableReason }
+  }
+  return { ok: true, stats: m.stats }
 }
 
 const cartesian = <T>(axes: ReadonlyArray<ReadonlyArray<T>>): ReadonlyArray<ReadonlyArray<T>> => {
@@ -756,7 +796,7 @@ const computeEvidenceAggByPoints = (spec: SuiteSpec, suite: SuiteResult, evidenc
     ok,
     unavailable,
     missing,
-    value: numbers.length > 0 ? numbers.reduce((a, b) => a + b, 0) : undefined,
+    value: numbers.length > 0 ? medianNumber(numbers) : undefined,
   }
 }
 
@@ -807,6 +847,111 @@ const computeCutOffAggByWhereSlices = (spec: SuiteSpec, suite: SuiteResult): Evi
   }
 
   return { ok, unavailable, missing, value: ok > 0 ? total : undefined }
+}
+
+const computeMetricDeltaSummaries = (
+  spec: SuiteSpec,
+  beforeSuite: SuiteResult,
+  afterSuite: SuiteResult,
+): ReadonlyArray<MetricDeltaSummary> => {
+  const paramsList = listPointParams(spec)
+
+  const specMetrics = Array.isArray(spec.metrics) ? spec.metrics.filter((m) => typeof m === 'string' && m.length > 0) : []
+  const metricNames =
+    specMetrics.length > 0
+      ? Array.from(new Set(specMetrics)).sort()
+      : Array.from(
+          new Set<string>([
+            ...beforeSuite.points.flatMap((p) => p.metrics.map((m) => m.name)),
+            ...afterSuite.points.flatMap((p) => p.metrics.map((m) => m.name)),
+          ]),
+        ).sort()
+
+  const TOP_N = 5
+  const out: MetricDeltaSummary[] = []
+
+  for (const metric of metricNames) {
+    let compared = 0
+    let missing = 0
+    let unavailable = 0
+    const all: MetricDeltaPoint[] = []
+
+    for (const params of paramsList) {
+      const beforePoint = findPoint(beforeSuite, params)
+      const afterPoint = findPoint(afterSuite, params)
+      if (!beforePoint || !afterPoint) {
+        missing += 1
+        continue
+      }
+
+      const before = getMetricStats(beforePoint, metric)
+      const after = getMetricStats(afterPoint, metric)
+      if (!before.ok || !after.ok) {
+        unavailable += 1
+        continue
+      }
+
+      const beforeStats = before.stats
+      const afterStats = after.stats
+
+      const inputsOk =
+        Number.isFinite(beforeStats.medianMs) &&
+        Number.isFinite(beforeStats.p95Ms) &&
+        Number.isFinite(afterStats.medianMs) &&
+        Number.isFinite(afterStats.p95Ms) &&
+        beforeStats.medianMs > 0 &&
+        beforeStats.p95Ms > 0
+      if (!inputsOk) {
+        unavailable += 1
+        continue
+      }
+
+      compared += 1
+
+      all.push({
+        params,
+        before: beforeStats,
+        after: afterStats,
+        deltaMs: {
+          medianMs: afterStats.medianMs - beforeStats.medianMs,
+          p95Ms: afterStats.p95Ms - beforeStats.p95Ms,
+        },
+        ratio: {
+          median: afterStats.medianMs / beforeStats.medianMs,
+          p95: afterStats.p95Ms / beforeStats.p95Ms,
+        },
+      })
+    }
+
+    const hasDelta = all.some((p) => p.deltaMs.medianMs !== 0 || p.deltaMs.p95Ms !== 0)
+    if (!hasDelta && missing === 0 && unavailable === 0) {
+      continue
+    }
+
+    const topRegressions = all
+      .filter((p) => p.deltaMs.p95Ms > 0)
+      .slice()
+      .sort((a, b) => b.deltaMs.p95Ms - a.deltaMs.p95Ms)
+      .slice(0, TOP_N)
+
+    const topImprovements = all
+      .filter((p) => p.deltaMs.p95Ms < 0)
+      .slice()
+      .sort((a, b) => a.deltaMs.p95Ms - b.deltaMs.p95Ms)
+      .slice(0, TOP_N)
+
+    out.push({
+      metric,
+      unit: 'ms',
+      compared,
+      missing,
+      unavailable,
+      topRegressions,
+      topImprovements,
+    })
+  }
+
+  return out
 }
 
 const buildRecommendations = (
@@ -1145,6 +1290,8 @@ const main = async (): Promise<void> => {
       })
     }
 
+    const metricDeltas = computeMetricDeltaSummaries(spec, beforeSuite, afterSuite)
+
     let notes: string | undefined
     if (regressiveSlices.length > 0) {
       const worst = regressiveSlices.reduce((acc, cur) => (cur.delta < acc.delta ? cur : acc))
@@ -1168,6 +1315,7 @@ const main = async (): Promise<void> => {
       thresholdDeltas: thresholdDeltas.length > 0 ? thresholdDeltas : undefined,
       budgetViolations: [],
       evidenceDeltas: evidenceDeltas.length > 0 ? evidenceDeltas : undefined,
+      metricDeltas: metricDeltas.length > 0 ? metricDeltas : undefined,
       notes,
     })
   }
