@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "group": "077-logix-control-laws-v1",
+  "statusEnum": ["idea", "planned", "draft", "implementing", "done", "frozen"],
+  "entries": [
+    {
+      "id": "073",
+      "dir": "specs/073-logix-external-store-tick",
+      "status": "implementing",
+      "dependsOn": []
+    },
+    {
+      "id": "075",
+      "dir": "specs/075-logix-flow-program-ir",
+      "status": "draft",
+      "dependsOn": ["073"]
+    },
+    {
+      "id": "076",
+      "dir": "specs/076-logix-source-auto-trigger-kernel",
+      "status": "draft",
+      "dependsOn": ["073", "075"]
+    }
+  ]
+}
+
