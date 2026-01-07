@@ -89,21 +89,21 @@ jobs:
 
           DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
 
-	          if [ "${{ github.event_name }}" = "schedule" ]; then
-	            # Scheduled run on default branch: compare current HEAD to its parent (best-effort).
-	            HEAD_SHA="$GITHUB_SHA"
-	            BASE_SHA="$(git rev-parse "${HEAD_SHA}^" 2>/dev/null || echo "$HEAD_SHA")"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # Scheduled run on default branch: compare current HEAD to its parent (best-effort).
+            HEAD_SHA="$GITHUB_SHA"
+            BASE_SHA="$(git rev-parse "${HEAD_SHA}^" 2>/dev/null || echo "$HEAD_SHA")"
 
             # Use SHAs for clarity in summaries (scheduled runs compare adjacent commits).
             echo "BASE_REF=$BASE_SHA" >> "$GITHUB_ENV"
             echo "HEAD_REF=$HEAD_SHA" >> "$GITHUB_ENV"
 
-	            if [ "${GITHUB_EVENT_SCHEDULE:-}" = "0 19 * * 0" ]; then
-	              # Weekly: mirror collect.ts default (perf-boundaries + watcher-browser-perf).
-	              echo "PERF_FILES=test/browser/perf-boundaries,test/browser/watcher-browser-perf.test.tsx" >> "$GITHUB_ENV"
-	              echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
-	              echo "PERF_ARTIFACT_NAME=logix-perf-sweep-weekly-${{ github.run_id }}" >> "$GITHUB_ENV"
-	            else
+            if [ "${GITHUB_EVENT_SCHEDULE:-}" = "0 19 * * 0" ]; then
+              # Weekly: mirror collect.ts default (perf-boundaries + watcher-browser-perf).
+              echo "PERF_FILES=test/browser/perf-boundaries,test/browser/watcher-browser-perf.test.tsx" >> "$GITHUB_ENV"
+              echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
+              echo "PERF_ARTIFACT_NAME=logix-perf-sweep-weekly-${{ github.run_id }}" >> "$GITHUB_ENV"
+            else
               echo "PERF_FILES=test/browser/perf-boundaries/converge-steps.test.tsx" >> "$GITHUB_ENV"
               echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-nightly-${{ github.run_id }}" >> "$GITHUB_ENV"
