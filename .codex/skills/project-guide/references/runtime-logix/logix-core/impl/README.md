@@ -10,6 +10,7 @@
 
 ## 最短链路
 
+- 我想先看“实现小抄/高频坑位”：读 `README.00-impl-cheatsheet.md`
 - 我在改动 `packages/logix-core/src/internal/**`：先读 `README.03-structure-rules.md`
 - 我在改 Module/Bound API/Env：读 `README.05-bound-api-constraints.md` → `README.07-env-and-bootstrap.md`
 - 我在看 ModuleImpl/AppRuntime 组装：读 `README.06-moduleimpl.md`
@@ -17,6 +18,7 @@
 
 ## 分节索引
 
+- `README.00-impl-cheatsheet.md`
 - `README.01-how-to-use.md`
 - `README.02-planned.md`
 - `README.03-structure-rules.md`

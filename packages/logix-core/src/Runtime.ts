@@ -58,6 +58,16 @@ export interface RunProgramOptions<Args = unknown> extends OpenProgramOptions {
   readonly reportError?: boolean
 }
 
+type HostSchedulerCancel = () => void
+
+type HostScheduler = {
+  readonly nowMs: () => number
+  readonly scheduleMicrotask: (cb: () => void) => void
+  readonly scheduleMacrotask: (cb: () => void) => HostSchedulerCancel
+  readonly scheduleAnimationFrame: (cb: () => void) => HostSchedulerCancel
+  readonly scheduleTimeout: (ms: number, cb: () => void) => HostSchedulerCancel
+}
+
 const resolveRootImpl = <Sh extends AnyModuleShape>(
   root: ModuleImpl<any, Sh, any> | AnyModule,
 ): ModuleImpl<any, Sh, any> =>
@@ -120,6 +130,17 @@ export interface RuntimeOptions {
    * Optional runtime label (e.g. `AppDemoRuntime`) for Debug / DevTools grouping.
    */
   readonly label?: string
+  /**
+   * Optional HostScheduler override for this Runtime.
+   *
+   * Use it when you need deterministic host scheduling (tests) or a custom host integration.
+   *
+   * NOTE:
+   * - TickScheduler captures HostScheduler at Layer build-time (073); overriding HostScheduler via `options.layer`
+   *   is not sufficient unless the dependent layer is built under that override.
+   * - This option avoids the pitfall by injecting HostScheduler into the runtime tick services build pipeline.
+   */
+  readonly hostScheduler?: HostScheduler
   /**
    * Optional Debug console output configuration.
    *
@@ -273,6 +294,7 @@ export const make = (
     modules: [AppRuntimeImpl.provide(rootImpl.module, rootImpl.layer as Layer.Layer<any, any, any>)],
     processes: rootImpl.processes ?? [],
     onError: options?.onError,
+    hostScheduler: options?.hostScheduler,
     stateTransaction: options?.stateTransaction,
     concurrencyPolicy: options?.concurrencyPolicy,
     readQueryStrictGate,

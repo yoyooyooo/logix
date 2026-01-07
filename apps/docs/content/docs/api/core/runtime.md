@@ -261,3 +261,37 @@ When you want to run multiple tasks in stages on the same runtime tree, use `ope
 - closing `ctx.scope` triggers resource release (useful for interactive scripts and platform runners).
 
 > Tip: in Node/CLI scenarios, `runProgram/openProgram` handles SIGINT/SIGTERM by default and closes `ctx.scope` for graceful shutdown. Disable it via `handleSignals: false` if you don’t need it.
+
+## 8. Advanced: Custom HostScheduler (tests / special hosts)
+
+Logix’s TickScheduler relies on host scheduling (microtask / macrotask / raf / timeout) to establish tick boundaries and yield-to-host behavior. By default, Runtime uses a built-in global HostScheduler (auto-selected for Browser / Node).
+
+When to pass `hostScheduler`:
+
+- **Tests**: you want deterministic scheduling and precise flushing of microtasks/macrotasks, instead of `sleep/setTimeout`.
+- **Custom hosts**: you need to integrate scheduling with a non-standard host API (e.g. WebWorker, embedded containers, custom event loops).
+
+Recommended: inject it once when constructing the Runtime:
+
+```ts
+import * as Logix from "@logix/core"
+import * as LogixTest from "@logix/test"
+import { Layer } from "effect"
+
+const hostScheduler = LogixTest.Act.makeTestHostScheduler()
+const runtime = Logix.Runtime.make(RootImpl, {
+  hostScheduler,
+  layer: Layer.mergeAll(
+    // Example: tweak TickScheduler config in tests (to make yield-to-host easier to trigger)
+    LogixTest.Act.tickSchedulerTestLayer({ maxSteps: 1 }),
+  ),
+})
+```
+
+If you must override HostScheduler via Layers (not recommended as the default path), keep in mind: **Layers capture dependencies at build time**. If a Layer (e.g. TickScheduler) reads HostScheduler while building, overriding the final Env with `Layer.mergeAll(...)` will not affect it. Provide HostScheduler to the build stage of the dependent Layer via `Layer.provide(...)`:
+
+```ts
+const hostLayer = LogixTest.Act.testHostSchedulerLayer(hostScheduler)
+const tickLayer = LogixTest.Act.tickSchedulerTestLayer({ maxSteps: 1 }).pipe(Layer.provide(hostLayer))
+const runtime = Logix.Runtime.make(RootImpl, { layer: Layer.mergeAll(hostLayer, tickLayer) })
+```

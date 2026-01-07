@@ -5,6 +5,7 @@ import {
   StateTransactionConfigTag,
   declarativeLinkRuntimeLayer,
   hostSchedulerLayer,
+  HostSchedulerTag,
   runtimeStoreLayer,
   tickSchedulerLayer,
   type ConcurrencyPolicy,
@@ -12,6 +13,7 @@ import {
   type StateTransactionRuntimeConfig,
 } from './core/env.js'
 import { RootContextTag, type RootContext } from './core/RootContext.js'
+import type { HostScheduler } from './core/HostScheduler.js'
 import * as ProcessRuntime from './core/process/ProcessRuntime.js'
 import type { AnyModuleShape, ModuleTag, ModuleRuntime, StateOf, ActionOf } from './core/module.js'
 
@@ -39,6 +41,14 @@ export interface LogixAppConfig<R> {
   readonly modules: ReadonlyArray<AppModuleEntry>
   readonly processes: ReadonlyArray<Effect.Effect<void, any, any>>
   readonly onError?: (cause: import('effect').Cause.Cause<unknown>) => Effect.Effect<void>
+  /**
+   * Optional HostScheduler override for this Runtime.
+   *
+   * IMPORTANT:
+   * - Services like TickScheduler capture HostScheduler at Layer build-time (073).
+   * - This option injects the override into the tick services build pipeline to avoid env-override pitfalls.
+   */
+  readonly hostScheduler?: HostScheduler
   /**
    * Runtime-level default StateTransaction config:
    * - If not provided, each ModuleRuntime falls back to NODE_ENV-based default instrumentation.
@@ -219,7 +229,12 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
   const appModuleIds = config.modules.map((entry) => String(entry.module.id))
   const appId = appModuleIds.length === 1 ? appModuleIds[0]! : appModuleIds.slice().sort().join('~')
 
-  const tickServicesLayer = Layer.provideMerge(hostSchedulerLayer)(
+  const pinnedHostSchedulerLayer: Layer.Layer<any, never, never> | undefined =
+    config.hostScheduler !== undefined
+      ? (Layer.succeed(HostSchedulerTag, config.hostScheduler) as Layer.Layer<any, never, never>)
+      : undefined
+
+  const tickServicesLayer = Layer.provideMerge(pinnedHostSchedulerLayer ?? hostSchedulerLayer)(
     Layer.provideMerge(runtimeStoreLayer)(Layer.provideMerge(declarativeLinkRuntimeLayer)(tickSchedulerLayer())),
   )
 
@@ -230,6 +245,9 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
   const baseLayer = Layer.mergeAll(
     tickServicesLayer,
     appLayer,
+    // If a HostScheduler override is requested, pin it as the final HostSchedulerTag value to avoid accidental divergence.
+    // (Build-time capture is handled above by injecting it into tickServicesLayer.)
+    pinnedHostSchedulerLayer ?? (Layer.empty as Layer.Layer<any, never, never>),
     stateTxnLayer,
     concurrencyPolicyLayer,
     readQueryStrictGateLayer,

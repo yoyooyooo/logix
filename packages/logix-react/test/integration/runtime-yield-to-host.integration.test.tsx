@@ -2,7 +2,7 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import { render, fireEvent, screen, waitFor } from '@testing-library/react'
-import { Effect, Layer, Schema } from 'effect'
+import { Effect, Schema } from 'effect'
 import * as Logix from '@logix/core'
 import * as LogixTest from '@logix/test'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
@@ -65,17 +65,18 @@ describe('TickScheduler yield-to-host (React integration)', () => {
     })
 
     const hostScheduler = LogixTest.Act.makeTestHostScheduler()
-    const hostLayer = LogixTest.Act.testHostSchedulerLayer(hostScheduler)
+
     const tickLayer = LogixTest.Act.tickSchedulerTestLayer({
       maxSteps: 1,
       urgentStepCap: 64,
       maxDrainRounds: 4,
       microtaskChainDepthLimit: 32,
-    }).pipe(Layer.provide(hostLayer))
+    })
 
     const runtime = Logix.Runtime.make(RootImpl, {
+      hostScheduler,
       devtools: { diagnosticsLevel: 'light' },
-      layer: Layer.mergeAll(hostLayer, tickLayer, Layer.empty) as Layer.Layer<any, never, never>,
+      layer: tickLayer,
     })
 
     const runtimeStore = Logix.InternalContracts.getRuntimeStore(runtime) as unknown as { readonly getTickSeq: () => number }

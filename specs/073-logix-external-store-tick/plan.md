@@ -17,6 +17,15 @@
   - 提供 DeclarativeLink IR（强一致可识别的跨模块依赖表达），并定义与 `Process.link` 黑盒的边界；
   - 稳定化（fixpoint）有预算与软降级，但必须产出 Slim、可序列化证据（`trace:tick`）。
 
+## Review Digest（外部 design review 回灌）
+
+来源：`specs/073-logix-external-store-tick/review.md`（2026-01-07）。
+
+- 采纳：明确 `requestAnimationFrame` 在 073 的边界（仅用于 low-priority notify / perf 观测，不作为 tick 驱动）；如需 frame-aligned yield，独立扩展 `yield-to-next-frame`（见 `contracts/scheduler.md#3.3`）
+- 采纳：固化 `microtaskChainDepth` 必须由 TickScheduler/HostScheduler 自维护（不能依赖宿主 API；见 `contracts/scheduler.md#3.4`）
+- 采纳：强化 React 并发交互用例（yield 后 React 可插入更高优先级更新，且最终 no-tearing 仍以 `tickSeq` 为锚；已作为 Phase 8 T063 交付）
+- 采纳：生产环境退化遥测作为可选项（低成本、采样；已作为 Phase 8 T065 交付）
+
 ## 073 疏通：参考系 / 受限绑定 / 自由编排
 
 本特性一旦完成，Logix 的“同时性”与“因果链”将以 **tick** 为基准被重新裁决。为了避免后续能力（尤其 Action/Flow/时间算子）继续在旧心智里发散，本节把 073 的架构边界显式固化：
@@ -164,6 +173,7 @@ Baseline 语义：策略 A/B（before=perModule adapter；after=runtimeStore ada
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
 - 采集隔离：硬结论的 before/after/diff 必须同环境同参数；若是 adapter A/B（同一代码）对比，可在同一工作区采集，但必须保证采集期间不改代码/不切换 profile，并把 git dirty 状态写入 `specs/073-logix-external-store-tick/perf/README.md`
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`（并确保 before/after 的 `meta.matrixId/matrixHash` 一致）
+- 关联信号（CI sweep）：`converge-steps`（`converge.txnCommit / auto<=full*1.05`）在 `perf-sweep=default` 出现回归 slice（artifact：`logix-perf-sweep-20769840785`），已记录到 `specs/073-logix-external-store-tick/perf/README.md`，并拆为 Phase 10（T068/T069）后续任务归因/修复。
 - 前提：以 `NODE_OPTIONS=--expose-gc` 运行采集（否则 heap 指标不可复现/不可比）
 - 环境元信息：硬结论采集必须把 env/versions/profile/runs/warmup/timeoutMs 等信息与证据文件名，记录到 `specs/073-logix-external-store-tick/perf/README.md`（避免“可比性争论”）
 - Validate：对 before/after 先跑 `pnpm perf validate -- --report <file>.json`；若使用 `--files` 做子集采集，必须加 `--allow-partial` 并在结论中标注（缺点位/timeout/skip 不允许默默吞掉）
@@ -493,3 +503,11 @@ N/A（本特性不以“引入额外复杂度”为目标；若实现阶段出�
 - **Phase 0（research）**：`research.md`（现状对比、关键裁决、候选方案与风险）。
 - **Phase 1（design）**：`data-model.md`、`contracts/*`、`quickstart.md`（对外契约/诊断协议/迁移说明）；并补齐 core-ng 复现强一致所需的 Runtime Service 语义约束（tick 边界/lanes/budget/token 不变量），不能仅靠 `contracts/ir.md` 的 IR 形状。
 - **Phase 2（tasks）**：由 `tasks.md` 承载（`$speckit tasks 073` 生成/维护）。
+
+## Follow-ups（补强规划：HostScheduler 的稳定注入面）
+
+Phase 8 已完成 “HostScheduler 作为 internal Runtime Service + Layer” 的收敛；但为了避免业务/集成方直接依赖 internal Tag，同时又能在必要时替换宿主调度实现（例如 deterministic/平台差异/特殊宿主），需要补一个“稳定对外注入面”的裁决与落地（见 `tasks.md` 的 Phase 9：T066/T067）：
+
+- 方案 A（public submodule）：在 `@logix/core` 提供 `HostScheduler` public submodule（仅暴露 layer/默认实现/测试替身构造等最小面）。
+- 方案 B（高层选项）：在 `Logix.Runtime.make` 增加 `hostScheduler` 选项（内部转换为 `Layer.succeed(HostSchedulerTag, ...)` 注入）。
+- 强约束：所有依赖 `HostSchedulerTag` 的服务（例如 TickScheduler）在 Layer build-time 会捕获依赖；因此 override/替换必须通过 `Layer.provide(hostLayer)` 进入依赖的 build 阶段，而不是仅 `Layer.mergeAll(hostLayer, ...)` 做最终 Env 覆盖。

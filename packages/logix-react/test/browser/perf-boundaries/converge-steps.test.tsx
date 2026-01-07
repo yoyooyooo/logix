@@ -99,10 +99,32 @@ test(
                 ? decision.executedMode
                 : { unavailableReason: 'decisionMissing' }
 
+            const requestedMode =
+              typeof decision?.requestedMode === 'string' && decision.requestedMode.length > 0
+                ? decision.requestedMode
+                : { unavailableReason: 'decisionMissing' }
+
+            const outcome =
+              typeof decision?.outcome === 'string' && decision.outcome.length > 0
+                ? decision.outcome
+                : { unavailableReason: 'decisionMissing' }
+
             const reasons =
               Array.isArray(decision?.reasons) && decision.reasons.every((x: unknown) => typeof x === 'string')
                 ? (decision.reasons as string[]).join(',')
                 : { unavailableReason: 'decisionMissing' }
+
+            const executionDurationMs =
+              typeof decision?.executionDurationMs === 'number' && Number.isFinite(decision.executionDurationMs)
+                ? decision.executionDurationMs
+                : { unavailableReason: 'decisionMissing' }
+
+            const decisionDurationMs =
+              convergeMode === 'auto'
+                ? typeof decision?.decisionDurationMs === 'number' && Number.isFinite(decision.decisionDurationMs)
+                  ? decision.decisionDurationMs
+                  : { unavailableReason: 'decisionMissing' }
+                : { unavailableReason: 'notApplicable' }
 
             return {
               metrics: {
@@ -115,11 +137,15 @@ test(
                     : { unavailableReason: 'notApplicable' },
               },
               evidence: {
+                'converge.requestedMode': requestedMode,
                 'converge.executedMode': executedMode,
+                'converge.outcome': outcome,
                 'converge.executedSteps': executedSteps,
                 'converge.affectedSteps': affectedSteps,
                 'converge.totalSteps': totalSteps,
                 'converge.reasons': reasons,
+                'converge.executionDurationMs': executionDurationMs,
+                'converge.decisionDurationMs': decisionDurationMs,
               },
             }
           },

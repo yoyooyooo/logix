@@ -210,31 +210,17 @@ export const convergeInTransaction = <S extends object>(
 
     const registry = ir.fieldPathIdRegistry
     const dirtyPaths = ctx.dirtyPaths == null ? [] : Array.isArray(ctx.dirtyPaths) ? ctx.dirtyPaths : ctx.dirtyPaths
-
-    const dirtyRootIds = dirtyPathsToRootIds({
-      dirtyPaths,
-      registry,
-      dirtyAllReason: ctx.dirtyAllReason,
-    })
+    const dirtyPathCountHint = Array.isArray(dirtyPaths)
+      ? dirtyPaths.length
+      : typeof (dirtyPaths as any)?.size === 'number'
+        ? ((dirtyPaths as any).size as number)
+        : undefined
+    let dirtyRootIds: ReturnType<typeof dirtyPathsToRootIds> | undefined
 
     const DIRTY_ROOT_IDS_TOP_K = 3
     const AUTO_FLOOR_RATIO = 1.05
-    const dirtySummary: TraitConvergeDirtySummary | undefined = !shouldCollectDecisionDetails
-      ? undefined
-      : dirtyRootIds.dirtyAll
-        ? {
-            dirtyAll: true,
-            reason: dirtyRootIds.reason ?? 'unknownWrite',
-            rootCount: 0,
-            rootIds: [],
-            rootIdsTruncated: false,
-          }
-        : {
-            dirtyAll: false,
-            rootCount: dirtyRootIds.rootCount,
-            rootIds: dirtyRootIds.rootIds.slice(0, DIRTY_ROOT_IDS_TOP_K),
-            rootIdsTruncated: dirtyRootIds.rootIds.length > DIRTY_ROOT_IDS_TOP_K,
-          }
+    const MAX_CACHEABLE_ROOT_IDS = 128
+    const MAX_CACHEABLE_ROOT_RATIO = 0.5
 
     const configScope: TraitConvergeConfigScope = ctx.configScope ?? 'builtin'
     const generationEvidence: TraitConvergeGenerationEvidence = ctx.generation ?? {
@@ -428,14 +414,34 @@ export const convergeInTransaction = <S extends object>(
     ) {
       cache.disable('generation_thrash')
     }
-    const canUseCache =
-      !!cache &&
-      !cache.isDisabled() &&
-      ctx.schedulingScopeStepIds == null &&
-      !dirtyRootIds.dirtyAll &&
-      dirtyRootIds.rootIds.length > 0
-    const planKeyHash = dirtyRootIds.keyHash ^ (schedulingScope === 'all' ? 0 : schedulingScope === 'immediate' ? 1 : 2)
-    const rootIdsKey = canUseCache ? dirtyRootIds.rootIds : undefined
+    let canUseCache = false
+    let planKeyHash = 0
+    let rootIdsKey: ReadonlyArray<number> | undefined = undefined
+
+    const ensureDirtyRootIds = (): ReturnType<typeof dirtyPathsToRootIds> => {
+      if (dirtyRootIds) return dirtyRootIds
+      dirtyRootIds = dirtyPathsToRootIds({
+        dirtyPaths,
+        registry,
+        dirtyAllReason: ctx.dirtyAllReason,
+      })
+      const rootRatioForCache =
+        !dirtyRootIds.dirtyAll && scopeStepCount > 0 ? dirtyRootIds.rootCount / scopeStepCount : undefined
+      const cacheableBySize =
+        !dirtyRootIds.dirtyAll &&
+        dirtyRootIds.rootIds.length > 0 &&
+        dirtyRootIds.rootIds.length <= MAX_CACHEABLE_ROOT_IDS &&
+        (rootRatioForCache == null || rootRatioForCache <= MAX_CACHEABLE_ROOT_RATIO)
+      canUseCache =
+        !!cache &&
+        !cache.isDisabled() &&
+        ctx.schedulingScopeStepIds == null &&
+        cacheableBySize
+      planKeyHash =
+        dirtyRootIds.keyHash ^ (schedulingScope === 'all' ? 0 : schedulingScope === 'immediate' ? 1 : 2)
+      rootIdsKey = canUseCache ? dirtyRootIds.rootIds : undefined
+      return dirtyRootIds
+    }
 
     let cacheEvidence: TraitConvergePlanCacheEvidence | undefined = shouldCollectDecisionHeavyDetails
       ? {
@@ -455,11 +461,12 @@ export const convergeInTransaction = <S extends object>(
       readonly missReason?: TraitConvergePlanCacheEvidence['missReason']
       readonly stopOnDecisionBudget?: boolean
     }): { readonly plan?: Int32Array; readonly hit: boolean; readonly budgetCutoff?: true } => {
-      if (dirtyRootIds.dirtyAll) {
+      const dirty = ensureDirtyRootIds()
+      if (dirty.dirtyAll) {
         if (cacheEvidence && cache) {
           cacheEvidence = cache.evidence({
             hit: false,
-            keySize: dirtyRootIds.keySize,
+            keySize: dirty.keySize,
             missReason: options?.missReason ?? 'unknown',
           })
         }
@@ -474,7 +481,7 @@ export const convergeInTransaction = <S extends object>(
           if (cacheEvidence) {
             cacheEvidence = cache.evidence({
               hit: true,
-              keySize: dirtyRootIds.keySize,
+              keySize: dirty.keySize,
             })
           }
           affectedSteps = cached.length
@@ -489,25 +496,35 @@ export const convergeInTransaction = <S extends object>(
         if (cacheEvidence && cache) {
           cacheEvidence = cache.evidence({
             hit: false,
-            keySize: dirtyRootIds.keySize,
+            keySize: dirty.keySize,
             missReason: options?.missReason ?? 'unknown',
           })
         }
-        return { hit: false, budgetCutoff: true } as const
+        const fullPlan = scopeStepIds
+        affectedSteps = fullPlan.length
+        if (canUseCache && cache && rootIdsKey) {
+          cache.set(planKeyHash, rootIdsKey, fullPlan)
+        }
+        return { plan: fullPlan, hit: false, budgetCutoff: true } as const
       }
 
-      const computed = computePlanStepIds(dirtyRootIds.rootIds, {
+      const computed = computePlanStepIds(dirty.rootIds, {
         stopOnDecisionBudget: options?.stopOnDecisionBudget,
       })
       if (computed.budgetCutoff) {
         if (cacheEvidence && cache) {
           cacheEvidence = cache.evidence({
             hit: false,
-            keySize: dirtyRootIds.keySize,
+            keySize: dirty.keySize,
             missReason: options?.missReason ?? 'unknown',
           })
         }
-        return { hit: false, budgetCutoff: true } as const
+        const fullPlan = scopeStepIds
+        affectedSteps = fullPlan.length
+        if (canUseCache && cache && rootIdsKey) {
+          cache.set(planKeyHash, rootIdsKey, fullPlan)
+        }
+        return { plan: fullPlan, hit: false, budgetCutoff: true } as const
       }
 
       const plan = computed.plan ?? new Int32Array(0)
@@ -517,7 +534,7 @@ export const convergeInTransaction = <S extends object>(
       if (cacheEvidence && cache) {
         cacheEvidence = cache.evidence({
           hit: false,
-          keySize: dirtyRootIds.keySize,
+          keySize: dirty.keySize,
           missReason: options?.missReason ?? 'not_cached',
         })
       }
@@ -525,33 +542,62 @@ export const convergeInTransaction = <S extends object>(
       return { plan, hit: false }
     }
 
-    const NEAR_FULL_ROOT_RATIO_THRESHOLD = 0.75
+    const getNearFullRootRatioThreshold = (stepCount: number): number => {
+      // Heuristic:
+      // - For large graphs, computing/reusing a precise dirty plan can be dominated by decision/cache overhead,
+      //   and can make auto slower than full under mixed dirty patterns (perf: converge-steps).
+      // - Cut over to full earlier to keep auto<=full stable and avoid large retained plan-cache entries.
+      if (stepCount >= 1536) return 0.65
+      if (stepCount >= 1024) return 0.7
+      if (stepCount >= 512) return 0.75
+      return 0.9
+    }
     const NEAR_FULL_PLAN_RATIO_THRESHOLD = 0.9
 
     if (requestedMode === 'auto') {
       if (ctx.txnSeq === 1) {
         mode = 'full'
         reasons.push('cold_start')
-      } else if (dirtyRootIds.dirtyAll) {
+      } else if (ctx.dirtyAllReason) {
         mode = 'full'
         reasons.push('dirty_all')
         reasons.push('unknown_write')
-      } else if (dirtyRootIds.rootIds.length === 0) {
+      } else if (dirtyPathCountHint === 0) {
         mode = 'full'
         reasons.push('unknown_write')
       } else {
-        const rootRatio = scopeStepCount > 0 ? dirtyRootIds.rootCount / scopeStepCount : 1
-        if (rootRatio >= NEAR_FULL_ROOT_RATIO_THRESHOLD) {
+        const nearFullRootRatioThreshold = getNearFullRootRatioThreshold(scopeStepCount)
+        const rootRatio =
+          typeof dirtyPathCountHint === 'number' && Number.isFinite(dirtyPathCountHint) && dirtyPathCountHint >= 0
+            ? scopeStepCount > 0
+              ? dirtyPathCountHint / scopeStepCount
+              : 1
+            : undefined
+        if (rootRatio != null && rootRatio >= nearFullRootRatioThreshold) {
           mode = 'full'
           reasons.push('near_full')
         } else {
+          const dirty = ensureDirtyRootIds()
+          if (dirty.dirtyAll) {
+            mode = 'full'
+            reasons.push('dirty_all')
+            reasons.push('unknown_write')
+          } else if (dirty.rootIds.length === 0) {
+            mode = 'full'
+            reasons.push('unknown_write')
+          } else if ((scopeStepCount > 0 ? dirty.rootCount / scopeStepCount : 1) >= nearFullRootRatioThreshold) {
+            mode = 'full'
+            reasons.push('near_full')
+          } else {
           const { plan, hit, budgetCutoff } = getOrComputePlan({
             missReason: cacheMissReasonHint ?? 'not_cached',
             stopOnDecisionBudget: decisionBudgetMs != null,
           })
-          if (budgetCutoff || !plan) {
-            mode = 'full'
+          if (budgetCutoff) {
             markDecisionBudgetCutoff()
+          }
+          if (!plan) {
+            mode = 'dirty'
           } else {
             planStepIds = plan
             reasons.push(hit ? 'cache_hit' : 'cache_miss')
@@ -563,16 +609,18 @@ export const convergeInTransaction = <S extends object>(
               mode = 'dirty'
             }
           }
+          }
         }
       }
     } else {
       reasons.push('module_override')
+      const dirty = ensureDirtyRootIds()
       if (mode === 'dirty') {
         const { plan, hit } = getOrComputePlan({ missReason: cacheMissReasonHint ?? 'not_cached' })
         planStepIds = plan
-        if (dirtyRootIds.dirtyAll) {
+        if (dirty.dirtyAll) {
           reasons.push('dirty_all')
-        } else if (cache && dirtyRootIds.rootIds.length > 0) {
+        } else if (cache && dirty.rootIds.length > 0) {
           reasons.push(hit ? 'cache_hit' : 'cache_miss')
         }
       }
@@ -584,6 +632,68 @@ export const convergeInTransaction = <S extends object>(
       !reasons.includes('low_hit_rate_protection')
     ) {
       reasons.push('low_hit_rate_protection')
+    }
+
+    const getDirtySummary = (): TraitConvergeDirtySummary | undefined => {
+      if (!shouldCollectDecisionDetails) return undefined
+
+      // Diagnostics contract:
+      // - light/full: exported evidence expects dirty.rootIds (and rootPaths derived by DebugSink) to be present.
+      // - sampled: keep slim by default (DebugSink strips heavy fields, but we also avoid unnecessary root mapping here).
+      const requiresRootIds =
+        diagnosticsLevel === 'light' ||
+        diagnosticsLevel === 'full' ||
+        requestedMode === 'dirty' ||
+        mode === 'dirty' ||
+        dirtyRootIds != null
+      const dirty =
+        requiresRootIds && dirtyRootIds == null && (diagnosticsLevel === 'light' || diagnosticsLevel === 'full')
+          ? ensureDirtyRootIds()
+          : dirtyRootIds
+
+      if (dirty?.dirtyAll) {
+        return {
+          dirtyAll: true,
+          reason: dirty.reason ?? 'unknownWrite',
+          rootCount: 0,
+          ...(requiresRootIds ? { rootIds: [], rootIdsTruncated: false } : null),
+        }
+      }
+
+      if (dirty) {
+        return {
+          dirtyAll: false,
+          rootCount: dirty.rootCount,
+          ...(requiresRootIds
+            ? {
+                rootIds: dirty.rootIds.slice(0, DIRTY_ROOT_IDS_TOP_K),
+                rootIdsTruncated: dirty.rootIds.length > DIRTY_ROOT_IDS_TOP_K,
+              }
+            : null),
+        }
+      }
+
+      if (typeof dirtyPathCountHint === 'number' && dirtyPathCountHint === 0) {
+        return {
+          dirtyAll: true,
+          reason: 'unknownWrite',
+          rootCount: 0,
+        }
+      }
+
+      if (typeof dirtyPathCountHint === 'number') {
+        return {
+          dirtyAll: false,
+          rootCount: dirtyPathCountHint,
+        }
+      }
+
+      return {
+        dirtyAll: true,
+        reason: 'unknownWrite',
+        rootCount: 0,
+        ...(requiresRootIds ? { rootIds: [], rootIdsTruncated: false } : null),
+      }
     }
 
     executionStartedAt = ctx.now()
@@ -614,10 +724,8 @@ export const convergeInTransaction = <S extends object>(
         staticIrDigest,
         executionBudgetMs: ctx.budgetMs,
         executionDurationMs: params.executionDurationMs,
-        ...(requestedMode === 'auto' && ctx.decisionBudgetMs != null
-          ? { decisionBudgetMs: ctx.decisionBudgetMs }
-          : null),
-        ...(requestedMode === 'auto' && decisionDurationMs != null ? { decisionDurationMs } : null),
+        decisionBudgetMs: requestedMode === 'auto' ? ctx.decisionBudgetMs : undefined,
+        decisionDurationMs: requestedMode === 'auto' ? decisionDurationMs : undefined,
         reasons,
         stepStats,
       } satisfies TraitConvergeDecisionSummary
@@ -627,12 +735,14 @@ export const convergeInTransaction = <S extends object>(
       }
 
       if (!shouldCollectDecisionHeavyDetails) {
+        const dirtySummary = getDirtySummary()
         return {
           ...base,
           dirty: dirtySummary,
         } satisfies TraitConvergeDecisionSummary
       }
 
+      const dirtySummary = getDirtySummary()
       return {
         ...base,
         thresholds: { floorRatio: AUTO_FLOOR_RATIO },
@@ -655,6 +765,7 @@ export const convergeInTransaction = <S extends object>(
     const canUseInPlaceDraft = ctx.allowInPlaceDraft === true && execIr.allOutPathsShallow
     const draft = canUseInPlaceDraft ? new ShallowInPlaceDraft(base) : new CowDraft(base)
     let budgetChecks = 0
+    const dirtyRootIdsForExecution = mode === 'dirty' ? ensureDirtyRootIds() : undefined
     const rollbackDraft = (): void => {
       if (draft instanceof ShallowInPlaceDraft) {
         draft.rollback()
@@ -663,15 +774,10 @@ export const convergeInTransaction = <S extends object>(
     }
 
     try {
-      if (mode === 'dirty' && !planStepIds) {
-        const { plan } = getOrComputePlan({ missReason: cacheMissReasonHint ?? 'not_cached' })
-        planStepIds = plan
-      }
-
       let dirtyPrefixSet: typeof dirtyPrefixBitSet | undefined
-      if (mode === 'dirty' && !dirtyRootIds.dirtyAll) {
+      if (mode === 'dirty' && !planStepIds && dirtyRootIdsForExecution && !dirtyRootIdsForExecution.dirtyAll) {
         dirtyPrefixBitSet.clear()
-        const roots = dirtyRootIds.rootIds
+        const roots = dirtyRootIdsForExecution.rootIds
         for (let i = 0; i < roots.length; i++) {
           addPathPrefixes(roots[i]!)
         }

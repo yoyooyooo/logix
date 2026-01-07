@@ -53,6 +53,7 @@ version: 1
 - **影响面分析（Reverse Closure）**：用反向邻接表从 dirty 字段做 BFS 得到“受影响闭包”，用于 scoped validate/diagnostics（避免全图遍历）
 - **批处理（dispatchBatch）**：把 `[A,B,C]` 作为一个 task 入队，在同一事务窗口内跑完 reducer，最后只 converge 一次、只 commit 一次（减少重算与通知）
 - **低优先级刷新（dispatchLowPriority）**：不改变队列优先级，只在 commit meta 标记 `priority="low"`；React 订阅侧据此延后 flush（rAF/timeout + maxDelay 兜底）
+- **调度依赖注入（HostScheduler）是 build-time**：`TickScheduler` 构建时会 `yield* HostSchedulerTag` 并闭包捕获；`Layer.mergeAll(hostLayer, tickLayer)` 不会把 hostLayer 注入 tickLayer 的构建过程。要替换 scheduler（如 deterministic 测试），必须 `tickLayer.pipe(Layer.provide(hostLayer))`（或等价 `Layer.provideMerge(hostLayer)(tickLayer)`），否则 tick 仍会排到默认 scheduler 导致队列观测失真/测试抖动。
 - **副作用总线（EffectOp Pipeline）**：逻辑只产出 Op（纯数据）→ runtime middleware 洋葱链（trace 注入/拦截/DebugSink tap）→ platform handler 执行真实 IO
 - **证据包（Evidence Package）**：`DevtoolsHub` 按 digest 去重存 Exported IR，事件只引用 digest + integer ID，导出时组装成 `summary(staticIR)` + `events(trace)`
 - **模块解析三分法**：本模块 imports（strict）/ Root 单例（global）/ Link 胶水（显式协作）；三者语义混用会让实例绑定与可诊断性崩掉

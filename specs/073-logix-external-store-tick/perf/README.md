@@ -18,6 +18,13 @@
   - `runtimeStore.noTearing.tickNotify`：10 / 2 / 30000（metric stats n=8）
 - Notes：N/A
 
+补充（子集采集 / 非硬结论）：
+
+- Date：2026-01-07
+- Branch / commit（working tree 是否 dirty）：`073` / `7ee6baa6`（dirty=true）
+- Matrix（matrixId/matrixHash）：`logix-browser-perf-matrix-v1` / `f9cd4f4c…`
+- Scope：仅采集 `tickScheduler.yieldToHost.backlog` 子集（`--allow-partial`），用于验证 yield 路径的可比性与量级线索。
+
 ## 证据文件
 
 - Before（adapter=perModule）：`specs/073-logix-external-store-tick/perf/browser.before.d8756502.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=perModule.json`
@@ -80,6 +87,30 @@
   - `{dirtyRootsRatio=0.1}`：before `maxLevel=2000` → after `maxLevel=null`（在 `steps=200` 就 fail）
   - after @ `steps=200`：p95 ratio=2.2323（auto/full=1.134/0.508 ms），但 median ratio=0.8073（auto/full=0.352/0.436 ms）
   - 解读：该点呈现“尾部膨胀但中位数更好”的形态；更像 **偶发 tail / 调度抖动 / 单点异常** 的候选，需要用 default/soak profile 复测确认是否可复现，再决定是否追代码优化
+
+## CI（sweep=default）解读：`converge-steps`
+
+- Artifact：`logix-perf-sweep-20769840785`（base=`f223e80f`，head=`4a7a3ca2`，envId=`gh-Linux-X64`，matrixHash=`f9cd4f4c…`）
+  - `summary.md`：`/Users/yoyo/Downloads/logix-perf-sweep-20769840785/summary.md`
+  - `PerfDiff`：`/Users/yoyo/Downloads/logix-perf-sweep-20769840785/diff.f223e80f__4a7a3ca2.gh-Linux-X64.default.json`
+- 可比性：`meta.comparability.comparable=true`（allowConfigDrift=false, allowEnvDrift=false）
+- 预算变化（`converge.txnCommit` / `auto<=full*1.05` / primaryAxis=`steps`）：regressions=`4`，improvements=`1`
+  - 回归：`dirtyRootsRatio=0.15`（2000 → 600）、`0.5`（2000 → 800）、`0.8`（2000 → 800）、`1`（2000 → 600）
+  - 改善：`dirtyRootsRatio=0.75`（1200 → 2000）
+- 关键回归点（systemic）：`dirtyRootsRatio=0.5, steps=1200`
+  - after：auto p95=3.098ms / full p95=2.068ms（ratio=1.498；median 也显著偏大）
+  - 同点 `convergeMode=dirty` p95≈2.052ms（接近 full），说明“auto<=full 回归”不是简单等价于 dirty 执行变慢；需要进一步分解 `runtime.txnCommitMs` 的构成（converge decision/execution、tick flush 干扰等），并用更细证据定位。
+- 注意：该 suite 的 threshold 用 `maxLevel` 表示“第一次 fail 的 steps level”；当前数据存在非严格单调的 slice（例如某些 ratio 在 steps=1200 fail，但 steps=2000 又 pass），因此需要以具体点位的 p95/median 为准做归因，而不是只看 maxLevel。
+
+### 归因补充（073 修复后新增 evidence）
+
+为避免只看 `runtime.txnCommitMs` 造成“无法解释 auto/full ratio”的盲点，`converge-steps` 已新增最小证据字段（不会引入新 budgets）：
+
+- `converge.executionDurationMs`：单次 converge pass 的执行耗时（**不含** commit/通知），用于判断“是否 converge 本体变慢”。  
+- `converge.decisionDurationMs`：auto 模式的决策耗时（`notApplicable` 于 full/dirty）。  
+- `converge.requestedMode / converge.executedMode / converge.reasons`：解释“为什么这次 auto 走 full/dirty（near_full/cache_hit/...）”。
+
+同时 073 已对 `convergeMode=auto` 做最小修复：在高 dirtyRootsRatio/大 steps 的 slice 上更早切到 full，避免 auto 在“接近 full 的 workload”下因 dirty-plan/cache 路径抖动导致 `auto<=full*1.05` 失守。
 
 ## 结论（可交接摘要）
 

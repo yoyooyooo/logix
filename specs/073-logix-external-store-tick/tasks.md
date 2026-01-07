@@ -143,3 +143,25 @@
 - [x] T063 [P] Provide act-like TestKit API (flushAll/advanceTicks) backed by deterministic HostScheduler; migrate new tests away from ad-hoc `flushMicrotasks/sleep` (align with React `act`, but anchor on `tickSeq`); add at least 1 React integration regression test for yield-to-host (React can insert higher-priority updates; no-tearing anchored on `tickSeq`)
 - [x] T064 [P] Extend perf evidence (if HostScheduler/yield changes core path): add/adjust perf boundary to capture yield overhead and ensure click→paint observation remains acceptable (update `specs/073-logix-external-store-tick/plan.md#Perf Evidence Plan`)
 - [x] T065 [P?] Add optional production telemetry for degraded ticks (opt-in, sampled): observe frequency of `result.stable=false` / `forcedMacrotask` even under `diagnostics=off` (see `contracts/diagnostics.md#1.3`)
+
+---
+
+## Phase 9: Follow-ups（HostScheduler 的“公开/稳定注入面”与用法固化）
+
+> 说明：Phase 8 已把 HostScheduler 做成 **internal Runtime Service + Layer**（T060 已完成）；本 Phase 关注“是否需要对外暴露/稳定化注入面”，避免把 internal Tag 直接变成业务依赖。
+
+- [x] T066 [P] Decide & implement **public** HostScheduler injection surface (one of):
+  - A) `@logix/core` 新增 public submodule `HostScheduler`（提供 `layer(...)` / `makeDefault...` / `makeDeterministic...` *仅测试*）；或
+  - B) `Logix.Runtime.make(..., { hostScheduler })` 形式的高层选项（内部用 `Layer.succeed(HostSchedulerTag, ...)` 注入，并确保 build-time 依赖正确）。
+  - 同步更新 runtime SSoT + 用户文档（明确 internal-only vs public）。
+  - Non-goals：不暴露 TickScheduler/RuntimeStore internal Tag 给业务层（除非另开 spec）。
+- [x] T067 [P] 固化 Layer build-time 注入的“坑与标准写法”到文档与示例：覆盖 `Layer.provide(hostLayer)` vs `Layer.mergeAll(...)` 的差异，并给出最小示例（优先落在 `examples/logix` 或 `apps/docs` 对应章节）。
+
+---
+
+## Phase 10: Perf Follow-ups（CI sweep=default：`converge-steps` 的回归点归因与修复）
+
+> 背景：GitHub Actions `perf-sweep=default`（`converge-steps`）显示 `converge.txnCommit / auto<=full*1.05` 在部分 `dirtyRootsRatio` slice 出现 `maxLevel` 下降（见 `specs/073-logix-external-store-tick/perf/README.md` 的 “CI（sweep=default）解读”）。
+
+- [x] T068 [P] 归因：为 `packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx` 增加最小“可解释证据”，把 `runtime.txnCommitMs` 拆成可归因的组成（至少区分 `converge decision` vs `converge execution` vs `tick flush` 干扰）；在不引入大量新 budgets 的前提下，把证据写回 `specs/073-logix-external-store-tick/perf/README.md`。
+- [x] T069 [P] 修复：基于 T068 的证据，对 `convergeMode=auto` 的策略/实现做最小修复，使 CI sweep 的 `auto<=full*1.05` 在回归 slice 上恢复（或给出明确的“为何该 budget 不再适用”的裁决并同步更新 matrix/门禁口径）；必要时用 `profile=soak` 复测确认稳定性。

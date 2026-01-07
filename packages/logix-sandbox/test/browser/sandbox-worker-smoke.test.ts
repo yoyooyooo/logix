@@ -86,8 +86,12 @@ testFn(
           runtime.runPromise(
 	            Effect.gen(function* () {
 	              const counter = yield* CounterModule.tag;
-	              const state = yield* counter.getState;
-	              return state;
+                for (let i = 0; i < 50; i++) {
+                  const state = yield* counter.getState;
+                  if (state.count >= 2) return state;
+                  yield* Effect.sleep("1 millis");
+                }
+	              return yield* counter.getState;
 	            }),
 	          ),
 	        );
@@ -213,8 +217,12 @@ testFn(
 	          runtime.runPromise(
 	            Effect.gen(function* () {
 	              const counter = yield* CounterModule.tag;
-	              const state = yield* counter.getState;
-	              return state;
+                for (let i = 0; i < 50; i++) {
+                  const state = yield* counter.getState;
+                  if (state.count >= 2) return state;
+                  yield* Effect.sleep("1 millis");
+                }
+	              return yield* counter.getState;
 	            }),
 	          ),
 	        );

@@ -44,3 +44,4 @@
 
 - 在创建这棵 Runtime Tree 时注入 Layer（例如 `Logix.Runtime.make(root, { layer })`），而不是依赖嵌套 `RuntimeProvider.layer`；
 - `RuntimeProvider.layer` 仅用于“当前运行环境”的局部覆写（影响 `useRuntime` / `useModule(ModuleTag)` 等入口），不会影响 `Root.resolve`。
+- 若测试需要可控的宿主调度（microtask/macrotask/raf/timeout），优先使用 `Logix.Runtime.make(root, { hostScheduler })` 在 Runtime 构造时一次性注入，避免 `Layer.mergeAll(...)` 只做最终 Env 覆盖却无法影响 build-time 捕获的服务（例如 TickScheduler）。
