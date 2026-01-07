@@ -36,7 +36,7 @@ concurrency:
 jobs:
   perf-sweep:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 360
     env:
       PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx
       PERF_PROFILE: quick
