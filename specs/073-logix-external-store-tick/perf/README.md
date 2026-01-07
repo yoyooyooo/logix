@@ -30,6 +30,12 @@
 - r2：`specs/073-logix-external-store-tick/perf/browser.r2.fe1257bb.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=externalStore.ingest.tickNotify.json`
 - Diff：`specs/073-logix-external-store-tick/perf/diff.browser.suite=externalStore.ingest.tickNotify.r1__r2.fe1257bb.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
 
+### tickScheduler yield-to-host backlog（subset collect，dirty）
+
+- r1：`specs/073-logix-external-store-tick/perf/browser.yield.r1.7ee6baa6-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=tickScheduler.yieldToHost.backlog.json`
+- r2：`specs/073-logix-external-store-tick/perf/browser.yield.r2.7ee6baa6-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=tickScheduler.yieldToHost.backlog.json`
+- Diff：`specs/073-logix-external-store-tick/perf/diff.browser.suite=tickScheduler.yieldToHost.backlog.r1__r2.7ee6baa6-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
+
 ### 历史证据（dirty，已废弃）
 
 - Before（adapter=perModule）：`specs/073-logix-external-store-tick/perf/browser.before.1d0b0a28-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=perModule.json`

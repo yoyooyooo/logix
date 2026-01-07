@@ -214,6 +214,15 @@ export type Event =
       readonly runtimeLabel?: string
       readonly timestamp?: number
     }
+  | {
+      readonly type: 'warn:microtask-starvation'
+      readonly moduleId?: string
+      readonly instanceId?: string
+      readonly tickSeq: number
+      readonly microtaskChainDepth?: number
+      readonly runtimeLabel?: string
+      readonly timestamp?: number
+    }
   /**
    * trace:* events:
    * - Extension hook for runtime tracing / Playground / Alignment Lab.
@@ -1212,6 +1221,32 @@ export const toRuntimeDebugEventRef = (
         meta: metaProjection.value,
       })
     }
+    case 'warn:microtask-starvation': {
+      const e = event as Extract<Event, { readonly type: 'warn:microtask-starvation' }>
+      const metaInput = isLightLike
+        ? {
+            tickSeq: e.tickSeq,
+            microtaskChainDepth: e.microtaskChainDepth,
+          }
+        : {
+            tickSeq: e.tickSeq,
+            microtaskChainDepth: e.microtaskChainDepth,
+          }
+
+      const metaProjection = projectJsonValue(metaInput)
+      options?.onMetaProjection?.({
+        stats: metaProjection.stats,
+        downgrade: metaProjection.downgrade,
+      })
+      downgrade = mergeDowngrade(downgrade, metaProjection.downgrade)
+
+      return withDowngrade({
+        ...base,
+        kind: 'diagnostic',
+        label: e.type,
+        meta: metaProjection.value,
+      })
+    }
     default: {
       if (typeof event.type !== 'string' || !event.type.startsWith('trace:')) {
         return undefined
@@ -1224,6 +1259,7 @@ export const toRuntimeDebugEventRef = (
           ? {
               tickSeq: data?.tickSeq,
               phase: data?.phase,
+              schedule: data?.schedule,
               triggerSummary: data?.triggerSummary,
               anchors: data?.anchors,
               budget: data?.budget,

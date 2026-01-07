@@ -42,6 +42,7 @@ description: 运行与维护 Logix 的性能证据框架（PerfReport/PerfDiff�
 - 采集（建议显式指定输出）：`pnpm perf collect -- --out specs/<id>/perf/after.local.<envId>.<profile>.json`
 - 对比（硬结论口径）：`pnpm perf diff -- --before <before.json> --after <after.json> --out <diff.json>`
 - 对比（探索口径/允许漂移）：`pnpm perf diff:triage -- --before <before.json> --after <after.json> --out <diff.json>`
+- 解读 GitHub Actions artifact（下载目录/`perf/ci` 目录均可）：`pnpm perf ci:interpret -- --artifact <dir> [--out <summary.md>]`
 
 > 重要：`pnpm perf diff` 产物会带 `meta.comparability`。`comparable=false` 时**禁止**下“性能回归/提升”的硬结论，只能作为线索。
 

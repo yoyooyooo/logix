@@ -4,6 +4,7 @@ import {
   ReadQueryStrictGateConfigTag,
   StateTransactionConfigTag,
   declarativeLinkRuntimeLayer,
+  hostSchedulerLayer,
   runtimeStoreLayer,
   tickSchedulerLayer,
   type ConcurrencyPolicy,
@@ -218,16 +219,20 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
   const appModuleIds = config.modules.map((entry) => String(entry.module.id))
   const appId = appModuleIds.length === 1 ? appModuleIds[0]! : appModuleIds.slice().sort().join('~')
 
-  const tickServicesLayer = Layer.provideMerge(runtimeStoreLayer)(
-    Layer.provideMerge(declarativeLinkRuntimeLayer)(tickSchedulerLayer()),
+  const tickServicesLayer = Layer.provideMerge(hostSchedulerLayer)(
+    Layer.provideMerge(runtimeStoreLayer)(Layer.provideMerge(declarativeLinkRuntimeLayer)(tickSchedulerLayer())),
   )
 
+  // Provide tick services as the baseline runtime env for caller layers.
+  // This allows app layers to override TickScheduler/HostScheduler while still depending on RuntimeStore/DeclarativeLinkRuntime.
+  const appLayer = (config.layer as Layer.Layer<any, never, never>).pipe(Layer.provide(tickServicesLayer))
+
   const baseLayer = Layer.mergeAll(
-    config.layer,
+    tickServicesLayer,
+    appLayer,
     stateTxnLayer,
     concurrencyPolicyLayer,
     readQueryStrictGateLayer,
-    tickServicesLayer,
     ProcessRuntime.layer(),
     Layer.effect(
       RootContextTag,

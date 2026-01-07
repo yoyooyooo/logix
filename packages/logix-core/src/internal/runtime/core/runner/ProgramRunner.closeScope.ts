@@ -1,4 +1,6 @@
 import { Cause, Effect, Exit, Fiber, Option, Scope } from 'effect'
+import { getGlobalHostScheduler } from '../HostScheduler.js'
+import { HostSchedulerTag } from '../env.js'
 import { DisposeError, DisposeTimeoutError, type ProgramIdentity } from './ProgramRunner.errors.js'
 
 export const closeProgramScope = (params: {
@@ -9,6 +11,11 @@ export const closeProgramScope = (params: {
 }): Effect.Effect<void, never, never> => {
   return Effect.gen(function* () {
     const start = Date.now()
+    const hostSchedulerOpt = yield* Effect.serviceOption(HostSchedulerTag)
+    const hostScheduler = Option.isSome(hostSchedulerOpt) ? hostSchedulerOpt.value : getGlobalHostScheduler()
+    const yieldMicrotask = Effect.async<void, never>((resume) => {
+      hostScheduler.scheduleMicrotask(() => resume(Effect.void))
+    })
 
     const fiber = yield* Effect.forkDaemon(Scope.close(params.scope, Exit.void))
 
@@ -39,7 +46,7 @@ export const closeProgramScope = (params: {
 
       // NOTE: Use a microtask yield (not TestClock-based) to avoid being blocked by TestClock,
       // while keeping the "successful close" fast path cheap (perf-critical for tight loops).
-      yield* Effect.promise(() => new Promise<void>((r) => queueMicrotask(r)))
+      yield* yieldMicrotask
     }
   })
 }

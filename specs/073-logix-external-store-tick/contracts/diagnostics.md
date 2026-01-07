@@ -18,6 +18,20 @@ type TraceTick = {
   phase: TraceTickPhase
   timestampMs: number
 
+  // Tick 调度信息（用于解释“为何/如何被安排”，以及是否发生 yield-to-host）
+  schedule?: {
+    /** 本次 tick 的起始调度边界（默认 microtask；batch 为显式边界） */
+    startedAs?: "microtask" | "macrotask" | "batch" | "unknown"
+    /** 若发生续跑（分段稳定化），续跑的调度边界（通常为 macrotask） */
+    continuedAs?: "microtask" | "macrotask" | "unknown"
+    /** microtask 链深度（best-effort；用于定位饥饿风险） */
+    microtaskChainDepth?: number
+    /** 是否因反饥饿防线被强制切到 macrotask */
+    forcedMacrotask?: boolean
+    /** Slim 的原因摘要（不要放长数组） */
+    reason?: "budget" | "cycle_detected" | "microtask_starvation" | "unknown"
+  }
+
   // 触发源摘要（light: summary；full: 可选附带 samples）
   triggerSummary?: {
     total: number
@@ -90,6 +104,20 @@ type TraceTick = {
 - diagnostics=light：允许发出 `trace:tick`，但只携带 `triggerSummary`（count+primary）等 Slim 字段；不得附带触发源长列表。
 - diagnostics=full：允许附带更完整的 samples（仍需裁剪与上限），但完整 IR/图仍必须通过 Static IR export（digest 引用）处理，不进入事件流。
 
+### 1.3 生产巡检（可选，opt-in）
+
+> 背景：`diagnostics=off` 默认不产出事件流，但我们仍可能需要在生产环境观测 “stable=false / forced yield” 的发生频率（用于巡检与质量红线）。
+
+建议（择一或组合）：
+
+- **遥测钩子**：提供一个默认关闭的配置（例如 `onTickDegraded` + `sampleRate`），仅在 tick 出现 `result.stable=false` 或 `schedule.forcedMacrotask=true` 时触发；payload 必须 Slim 且可序列化（可直接复用 `trace:tick` 的最小子集）。
+- **低频采样日志**：不引入回调也可提供等价能力（同样 opt-in），避免“必须开 Devtools 才能发现长期降级/频繁 yield”的盲区。
+
+约束：
+
+- 必须在事务窗口外触发；不得在 hook 内要求 runtime 做 IO（如需 IO 由调用方自行异步化）。
+- 默认关闭以保证 `diagnostics=off` 的近零成本承诺。
+
 ## 2) 可选：`trace:external-store`（外部输入 ingest）
 
 外部输入 ingest 属于高频路径，默认不建议逐事件记录；但在调试 tearing/抖动时需要最小可解释链路。
@@ -140,6 +168,27 @@ Devtools 呈现建议（非合同约束）：
 
 - Tick Timeline：当同一 `tickSeq` 出现 `warn:priority-inversion`，该 tick 行高亮（Warn 色）并展示 `reason + moduleId/instanceId/selectorId?` 的最小摘要（hover/侧栏详情）。
 - 关联链路：点击该 Warn 应能跳转/过滤到同 `tickSeq` 的 `trace:tick`（尤其 `backlog.deferredPrimary`）以解释“谁被推迟/为何被推迟”。
+
+## 3.5) 可选：`warn:microtask-starvation`（forced yield-to-host）
+
+当 tick 因 “microtask 链过深/连续无进展” 等原因触发反饥饿防线，被强制切到 macrotask 续跑时，Devtools 需要一个 Slim 的 Warn 来回答“为什么这次看起来有延迟/为什么被拆成多段”。
+
+约束：
+
+- 只在 diagnostics=light/full 发出（diagnostics=off 不引入任何成本）。
+- 不要求定位到具体组件，但必须能指到 runtime/module/instance 的最小锚点（若可得）。
+
+概念载荷：
+
+```ts
+type WarnMicrotaskStarvation = {
+  type: "warn:microtask-starvation"
+  tickSeq: number
+  microtaskChainDepth?: number
+  moduleId?: string
+  instanceId?: string
+}
+```
 
 ## 4) 与既有事件的协同
 

@@ -14,6 +14,7 @@
 
 - **M1（Reference Frame Cutover）**：完成 Phase 3 + Phase 4 + Phase 6，使 `RuntimeStore + tickSeq` 成为 React 唯一订阅真相源，并具备 `trace:tick` 证据闭环与 perf gate（此里程碑完成后，后续所有 Flow/Action 能力都默认以 tick 为参考系）。
 - **M2（IR Strong Consistency）**：完成 Phase 5，为跨模块强一致补齐“可识别依赖 IR”（DeclarativeLinkIR/Module-as-Source），并把强一致边界（declarative vs blackbox）写入测试与诊断证据。
+- **M3（HostScheduler + act-like TestKit）**：收敛宿主调度入口（microtask/macrotask/raf/timeout）到可注入 Runtime Service，并提供统一 flush 口径（类似 React `act` 但以 `tickSeq` 为锚点），用于反饥饿治理、可诊断证据与稳定测试。
 - **Out-of-scope（拆到后续 spec）**：自由工作流（多步协议/时间算子）与 source 自动触发内核化不在 073 主干里强塞，避免把“自由度”误塞进 trait meta；相关工作以新 spec 单独推进。
 
 ---
@@ -130,3 +131,15 @@
 - [x] T056 Add externalStore ingest perf boundary suite + retained heap gate in `packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx` (NFR-001 / NFR-008)
 - [x] T057 Collect and diff perf reports for the new suite and update `specs/073-logix-external-store-tick/perf/*` + `specs/073-logix-external-store-tick/plan.md#Perf Evidence Plan` (NFR-001 / NFR-008 / SC-004)
 - [x] T058 Record updated acceptance matrix + gaps and rerun workspace gates in `specs/073-logix-external-store-tick/notes/sessions/2026-01-06.md` (Quality gate)
+
+---
+
+## Phase 8: Scheduler Hardening（单一调度闭环：Signal→Queue→Tick→Yield→Snapshot→Notify→Evidence/Test）
+
+- [x] T059 [P] Add scheduler contract and wire it into plan/docs: `specs/073-logix-external-store-tick/contracts/scheduler.md` + update `specs/073-logix-external-store-tick/contracts/diagnostics.md` + update `specs/073-logix-external-store-tick/plan.md` + update `specs/073-logix-external-store-tick/research.md` + update `specs/073-logix-external-store-tick/quickstart.md`
+- [x] T060 [P] Introduce internal Runtime Service `HostScheduler` (Tag + default Node/Browser impl) and route all core-path scheduling through it (ban direct `queueMicrotask/setTimeout/requestAnimationFrame` in TickScheduler/RuntimeStore/ExternalStore/DevtoolsHub/state-trait) (see `contracts/scheduler.md`)
+- [x] T061 [P] Make TickScheduler queue explicit (JobQueue): Signal Dirty only enqueues/dedups, tick flush pulls latest snapshots and drives fixpoint; record `coalescedCount`/backlog summaries for diagnostics (align with `plan.md#调度抽象与反饥饿`)
+- [x] T062 [P] Implement yield-to-host (anti-starvation) for TickScheduler: when `budgetExceeded/cycle_detected/microtaskChainDepth` triggers, continue backlog via macrotask and emit Slim evidence (`trace:tick.schedule` + `warn:microtask-starvation`); `microtaskChainDepth` must be maintained internally (reset on macrotask boundary) (see `contracts/scheduler.md` + `contracts/diagnostics.md`)
+- [x] T063 [P] Provide act-like TestKit API (flushAll/advanceTicks) backed by deterministic HostScheduler; migrate new tests away from ad-hoc `flushMicrotasks/sleep` (align with React `act`, but anchor on `tickSeq`); add at least 1 React integration regression test for yield-to-host (React can insert higher-priority updates; no-tearing anchored on `tickSeq`)
+- [x] T064 [P] Extend perf evidence (if HostScheduler/yield changes core path): add/adjust perf boundary to capture yield overhead and ensure click→paint observation remains acceptable (update `specs/073-logix-external-store-tick/plan.md#Perf Evidence Plan`)
+- [x] T065 [P?] Add optional production telemetry for degraded ticks (opt-in, sampled): observe frequency of `result.stable=false` / `forcedMacrotask` even under `diagnostics=off` (see `contracts/diagnostics.md#1.3`)

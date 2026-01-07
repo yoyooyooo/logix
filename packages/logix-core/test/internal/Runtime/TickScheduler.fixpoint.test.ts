@@ -2,6 +2,8 @@ import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../../src/index.js'
+import { getGlobalHostScheduler } from '../../../src/internal/runtime/core/HostScheduler.js'
+import { makeJobQueue } from '../../../src/internal/runtime/core/JobQueue.js'
 import { makeRuntimeStore, makeModuleInstanceKey } from '../../../src/internal/runtime/core/RuntimeStore.js'
 import { makeTickScheduler } from '../../../src/internal/runtime/core/TickScheduler.js'
 
@@ -11,8 +13,11 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       Logix.Debug.clearDevtoolsEvents()
 
       const store = makeRuntimeStore()
+      const queue = makeJobQueue()
       const scheduler = makeTickScheduler({
         runtimeStore: store,
+        queue,
+        hostScheduler: getGlobalHostScheduler(),
         config: { maxSteps: 64, urgentStepCap: 64, maxDrainRounds: 4 },
       })
 
@@ -22,7 +27,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       store.registerModuleInstance({ moduleId: 'A', instanceId: 'i-1', moduleInstanceKey: aKey, initialState: { v: 0 } })
       store.registerModuleInstance({ moduleId: 'B', instanceId: 'i-1', moduleInstanceKey: bKey, initialState: { v: 0 } })
 
-      store.enqueueModuleCommit({
+      queue.enqueueModuleCommit({
         moduleId: 'A',
         instanceId: 'i-1',
         moduleInstanceKey: aKey,
@@ -30,9 +35,9 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
         meta: { txnSeq: 1, txnId: 'i-1::t1', commitMode: 'normal', priority: 'normal', originKind: 'dispatch', originName: 'inc' },
         opSeq: 10,
       })
-      store.markTopicDirty(aKey, 'normal')
+      queue.markTopicDirty(aKey, 'normal')
 
-      store.enqueueModuleCommit({
+      queue.enqueueModuleCommit({
         moduleId: 'B',
         instanceId: 'i-1',
         moduleInstanceKey: bKey,
@@ -40,7 +45,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
         meta: { txnSeq: 1, txnId: 'i-1::t1', commitMode: 'normal', priority: 'low', originKind: 'dispatch', originName: 'incLow' },
         opSeq: 11,
       })
-      store.markTopicDirty(bKey, 'low')
+      queue.markTopicDirty(bKey, 'low')
 
       yield* scheduler.flushNow.pipe(
         Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
@@ -69,8 +74,11 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       Logix.Debug.clearDevtoolsEvents()
 
       const store = makeRuntimeStore()
+      const queue = makeJobQueue()
       const scheduler = makeTickScheduler({
         runtimeStore: store,
+        queue,
+        hostScheduler: getGlobalHostScheduler(),
         config: { maxSteps: 1, urgentStepCap: 64, maxDrainRounds: 4 },
       })
 
@@ -89,7 +97,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
 
       const unsubscribe = store.subscribeTopic(slowKey, () => {})
 
-      store.enqueueModuleCommit({
+      queue.enqueueModuleCommit({
         moduleId: 'Urgent',
         instanceId: 'i-1',
         moduleInstanceKey: urgentKey,
@@ -97,9 +105,9 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
         meta: { txnSeq: 1, txnId: 'i-1::t1', commitMode: 'normal', priority: 'normal', originKind: 'dispatch', originName: 'click' },
         opSeq: 1,
       })
-      store.markTopicDirty(urgentKey, 'normal')
+      queue.markTopicDirty(urgentKey, 'normal')
 
-      store.enqueueModuleCommit({
+      queue.enqueueModuleCommit({
         moduleId: 'Other',
         instanceId: 'i-1',
         moduleInstanceKey: otherKey,
@@ -114,9 +122,9 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
         },
         opSeq: 0,
       })
-      store.markTopicDirty(otherKey, 'low')
+      queue.markTopicDirty(otherKey, 'low')
 
-      store.enqueueModuleCommit({
+      queue.enqueueModuleCommit({
         moduleId: 'Slow',
         instanceId: 'i-1',
         moduleInstanceKey: slowKey,
@@ -131,7 +139,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
         },
         opSeq: 2,
       })
-      store.markTopicDirty(slowKey, 'low')
+      queue.markTopicDirty(slowKey, 'low')
 
       yield* scheduler.flushNow.pipe(
         Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
@@ -178,8 +186,11 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       Logix.Debug.clearDevtoolsEvents()
 
       const store = makeRuntimeStore()
+      const queue = makeJobQueue()
       const scheduler = makeTickScheduler({
         runtimeStore: store,
+        queue,
+        hostScheduler: getGlobalHostScheduler(),
         config: { maxSteps: 64, urgentStepCap: 1, maxDrainRounds: 4 },
       })
 
@@ -188,7 +199,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       store.registerModuleInstance({ moduleId: 'A', instanceId: 'i-1', moduleInstanceKey: aKey, initialState: { v: 0 } })
       store.registerModuleInstance({ moduleId: 'B', instanceId: 'i-1', moduleInstanceKey: bKey, initialState: { v: 0 } })
 
-      store.enqueueModuleCommit({
+      queue.enqueueModuleCommit({
         moduleId: 'A',
         instanceId: 'i-1',
         moduleInstanceKey: aKey,
@@ -196,9 +207,9 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
         meta: { txnSeq: 1, txnId: 'i-1::t1', commitMode: 'normal', priority: 'normal', originKind: 'dispatch', originName: 'a' },
         opSeq: 1,
       })
-      store.markTopicDirty(aKey, 'normal')
+      queue.markTopicDirty(aKey, 'normal')
 
-      store.enqueueModuleCommit({
+      queue.enqueueModuleCommit({
         moduleId: 'B',
         instanceId: 'i-1',
         moduleInstanceKey: bKey,
@@ -206,7 +217,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
         meta: { txnSeq: 1, txnId: 'i-1::t1', commitMode: 'normal', priority: 'normal', originKind: 'dispatch', originName: 'b' },
         opSeq: 2,
       })
-      store.markTopicDirty(bKey, 'normal')
+      queue.markTopicDirty(bKey, 'normal')
 
       yield* scheduler.flushNow.pipe(
         Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),

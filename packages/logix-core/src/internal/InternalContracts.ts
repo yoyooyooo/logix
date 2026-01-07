@@ -2,15 +2,31 @@ import { Effect, Layer } from 'effect'
 import type { ManagedRuntime } from 'effect'
 import type { ImportsScope } from './runtime/core/RuntimeInternals.js'
 import type { StateTransactionInstrumentation } from './runtime/core/env.js'
-import { declarativeLinkRuntimeLayer, runtimeStoreLayer, RuntimeStoreTag, tickSchedulerLayer } from './runtime/core/env.js'
+import {
+  declarativeLinkRuntimeLayer,
+  hostSchedulerLayer,
+  hostSchedulerTestStubLayer,
+  HostSchedulerTag,
+  runtimeStoreLayer,
+  RuntimeStoreTag,
+  tickSchedulerLayer,
+} from './runtime/core/env.js'
 import type { StatePatchPath } from './runtime/core/StateTransaction.js'
 import * as EffectOpCore from './runtime/core/EffectOpCore.js'
+import {
+  __unsafeSetGlobalHostSchedulerForTests,
+  getGlobalHostScheduler,
+  makeDeterministicHostScheduler as makeDeterministicHostSchedulerInternal,
+  type DeterministicHostScheduler,
+  type HostScheduler,
+} from './runtime/core/HostScheduler.js'
 import type { RuntimeStore } from './runtime/core/RuntimeStore.js'
 import { getRuntimeInternals } from './runtime/core/runtimeInternalsAccessor.js'
 import * as ProcessRuntime from './runtime/core/process/ProcessRuntime.js'
 import type * as ProcessProtocol from './runtime/core/process/protocol.js'
 import { currentExecVmMode, execVmModeLayer as execVmModeLayerInternal } from './state-trait/exec-vm-mode.js'
 import type { PatchReason } from './field-path.js'
+import type { TickSchedulerConfig } from './runtime/core/TickScheduler.js'
 
 export * as BuildEnv from './platform/BuildEnv.js'
 export * as RuntimeHost from './platform/RuntimeHost.js'
@@ -44,8 +60,34 @@ export const getRuntimeStore = (runtime: ManagedRuntime.ManagedRuntime<any, any>
   return store
 }
 
-export const tickServicesLayer: Layer.Layer<any, never, never> = Layer.provideMerge(runtimeStoreLayer)(
-  Layer.provideMerge(declarativeLinkRuntimeLayer)(tickSchedulerLayer()),
+const HOST_SCHEDULER_CACHE = new WeakMap<object, HostScheduler>()
+
+export const getHostScheduler = (runtime: ManagedRuntime.ManagedRuntime<any, any>): HostScheduler => {
+  const key = runtime as unknown as object
+  const cached = HOST_SCHEDULER_CACHE.get(key)
+  if (cached) return cached
+
+  const resolved = runtime.runSync(Effect.serviceOptional(HostSchedulerTag) as any) as HostScheduler | undefined
+  const scheduler = resolved ?? getGlobalHostScheduler()
+  HOST_SCHEDULER_CACHE.set(key, scheduler)
+  return scheduler
+}
+
+export type { HostScheduler, DeterministicHostScheduler, TickSchedulerConfig }
+
+export const makeDeterministicHostScheduler = (): DeterministicHostScheduler => makeDeterministicHostSchedulerInternal()
+
+export const hostSchedulerTestLayer = (scheduler: HostScheduler): Layer.Layer<any, never, never> =>
+  hostSchedulerTestStubLayer(scheduler as any)
+
+export const tickSchedulerTestLayer = (config?: TickSchedulerConfig): Layer.Layer<any, never, never> => tickSchedulerLayer(config)
+
+export const __unsafeSetGlobalHostScheduler = (next: HostScheduler | undefined): void => {
+  __unsafeSetGlobalHostSchedulerForTests(next)
+}
+
+export const tickServicesLayer: Layer.Layer<any, never, never> = Layer.provideMerge(hostSchedulerLayer)(
+  Layer.provideMerge(runtimeStoreLayer)(Layer.provideMerge(declarativeLinkRuntimeLayer)(tickSchedulerLayer())),
 )
 
 export const getStateTransactionInstrumentation = (runtime: object): StateTransactionInstrumentation =>

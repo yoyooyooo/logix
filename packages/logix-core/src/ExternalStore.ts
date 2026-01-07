@@ -3,6 +3,7 @@ import type { Context } from 'effect'
 import * as ReadQuery from './ReadQuery.js'
 import { fnv1a32, stableStringify } from './internal/digest.js'
 import { attachExternalStoreDescriptor, type ExternalStoreDescriptor } from './internal/external-store-descriptor.js'
+import { getGlobalHostScheduler } from './internal/runtime/core/HostScheduler.js'
 
 export type ExternalStore<T> = {
   readonly getSnapshot: () => T
@@ -37,7 +38,7 @@ const makeNotifyScheduler = (listeners: Set<() => void>): (() => void) => {
   return () => {
     if (scheduled) return
     scheduled = true
-    queueMicrotask(() => {
+    getGlobalHostScheduler().scheduleMicrotask(() => {
       scheduled = false
       for (const listener of listeners) {
         listener()
@@ -48,7 +49,10 @@ const makeNotifyScheduler = (listeners: Set<() => void>): (() => void) => {
 
 const resolveTagId = (tag: Context.Tag<any, any>): string | undefined => {
   const id = (tag as any).id
-  return typeof id === 'string' && id.length > 0 ? id : undefined
+  if (typeof id === 'string' && id.length > 0) return id
+
+  const key = (tag as any).key
+  return typeof key === 'string' && key.length > 0 ? key : undefined
 }
 
 const resolveModuleIdOrThrow = (module: unknown): string => {

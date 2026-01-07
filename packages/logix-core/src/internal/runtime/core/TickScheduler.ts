@@ -2,6 +2,9 @@ import { Effect, FiberRef } from 'effect'
 import * as Debug from './DebugSink.js'
 import * as DevtoolsHub from './DevtoolsHub.js'
 import type { DeclarativeLinkRuntime } from './DeclarativeLinkRuntime.js'
+import type { HostScheduler } from './HostScheduler.js'
+import { makeJobQueue, type JobQueue } from './JobQueue.js'
+import * as TaskRunner from './TaskRunner.js'
 import {
   makeReadQueryTopicKey,
   type ModuleInstanceKey,
@@ -33,6 +36,35 @@ export interface TickSchedulerConfig {
    * - Exceeding the cap is treated as a cycle (stable=false, degradeReason=cycle_detected).
    */
   readonly maxDrainRounds?: number
+  /**
+   * Microtask starvation protection threshold:
+   * - Counts consecutive ticks scheduled on microtask boundaries without yielding to host (best-effort).
+   * - Exceeding the limit forces the next tick to start on a macrotask boundary.
+   */
+  readonly microtaskChainDepthLimit?: number
+  /**
+   * Optional degraded-tick telemetry (opt-in, sampled):
+   * - Runs even when diagnostics=off (Devtools disabled).
+   * - Intended for production health signals (frequency of stable=false / forced yield).
+   */
+  readonly telemetry?: TickSchedulerTelemetryConfig
+}
+
+export interface TickSchedulerTelemetryEvent {
+  readonly tickSeq: number
+  readonly stable: boolean
+  readonly degradeReason?: TickDegradeReason
+  readonly forcedMacrotask?: boolean
+  readonly scheduleReason?: TickScheduleReason
+  readonly microtaskChainDepth?: number
+  readonly deferredWorkCount?: number
+}
+
+export interface TickSchedulerTelemetryConfig {
+  /** Sample rate in [0, 1]. Default: 0 (disabled). */
+  readonly sampleRate?: number
+  /** Called for ticks that are degraded (stable=false) and/or started on a forced macrotask boundary. */
+  readonly onTickDegraded?: (event: TickSchedulerTelemetryEvent) => void
 }
 
 export interface TickScheduler {
@@ -72,31 +104,70 @@ export const exitRuntimeBatch = (): void => {
 }
 
 const waitForBatchEndIfNeeded = (): Effect.Effect<void, never, never> =>
-  Effect.gen(function* () {
-    if (batchDepth === 0) return
+  batchDepth === 0
+    ? Effect.void
+    : Effect.async<void, never>((resume, signal) => {
 
-    let resolve!: () => void
-    const promise = new Promise<void>((r) => {
-      resolve = r
-    })
+    let done = false
+    const cleanup = () => {
+      if (done) return
+      done = true
+      batchWaiters.delete(waiter)
+      try {
+        signal.removeEventListener('abort', onAbort)
+      } catch {
+        // best-effort
+      }
+    }
 
-    const waiter: BatchWaiter = { resolve }
+    const onAbort = () => {
+      cleanup()
+    }
+
+    const waiter: BatchWaiter = {
+      resolve: () => {
+        cleanup()
+        resume(Effect.void)
+      },
+    }
+
     batchWaiters.add(waiter)
-
-    yield* Effect.promise(() => promise).pipe(
-      Effect.ensuring(
-        Effect.sync(() => {
-          batchWaiters.delete(waiter)
-        }),
-      ),
-    )
+    try {
+      signal.addEventListener('abort', onAbort, { once: true })
+    } catch {
+      // best-effort
+    }
   })
-
-const microtask = Effect.promise(() => new Promise<void>((r) => queueMicrotask(r)))
 
 // ---- TickScheduler implementation ----
 
 type TriggerKind = 'externalStore' | 'dispatch' | 'timer' | 'unknown'
+
+type TickScheduleStartedAs = 'microtask' | 'macrotask' | 'batch' | 'unknown'
+type TickScheduleReason = 'budget' | 'cycle_detected' | 'microtask_starvation' | 'unknown'
+
+type TickSchedule = {
+  readonly startedAs?: TickScheduleStartedAs
+  readonly microtaskChainDepth?: number
+  readonly forcedMacrotask?: boolean
+  readonly reason?: TickScheduleReason
+}
+
+const clampSampleRate = (sampleRate: number | undefined): number => {
+  if (typeof sampleRate !== 'number' || !Number.isFinite(sampleRate)) return 0
+  if (sampleRate <= 0) return 0
+  if (sampleRate >= 1) return 1
+  return sampleRate
+}
+
+const shouldSampleTick = (tickSeq: number, sampleRate: number): boolean => {
+  if (sampleRate <= 0) return false
+  if (sampleRate >= 1) return true
+  // Deterministic sampling: stable across runs, avoids Math.random() and keeps overhead minimal.
+  const x = tickSeq >>> 0
+  const h = Math.imul(x ^ 0x9e3779b9, 0x85ebca6b) >>> 0
+  return h / 0xffffffff < sampleRate
+}
 
 const toTriggerKind = (originKind: string | undefined): TriggerKind => {
   if (originKind === 'action') return 'dispatch'
@@ -140,46 +211,116 @@ const emptyDrain = (): RuntimeStorePendingDrain => ({ modules: new Map(), dirtyT
 
 export const makeTickScheduler = (args: {
   readonly runtimeStore: RuntimeStore
+  readonly queue?: JobQueue
+  readonly hostScheduler: HostScheduler
   readonly config?: TickSchedulerConfig
   readonly declarativeLinkRuntime?: DeclarativeLinkRuntime
 }): TickScheduler => {
   const store = args.runtimeStore
+  const hostScheduler = args.hostScheduler
   const declarativeLinks = args.declarativeLinkRuntime
+  const queue = args.queue ?? makeJobQueue()
 
-  const config: Required<TickSchedulerConfig> = {
+  const config: Required<Pick<TickSchedulerConfig, 'maxSteps' | 'urgentStepCap' | 'maxDrainRounds' | 'microtaskChainDepthLimit'>> = {
     maxSteps: args.config?.maxSteps ?? 64,
     urgentStepCap: args.config?.urgentStepCap ?? 512,
     maxDrainRounds: args.config?.maxDrainRounds ?? 8,
+    microtaskChainDepthLimit: args.config?.microtaskChainDepthLimit ?? 32,
   }
+  const telemetry = args.config?.telemetry
+  const telemetrySampleRate = clampSampleRate(telemetry?.sampleRate)
 
   let tickSeq = 0
   let scheduled = false
+  let microtaskChainDepth = 0
+  let nextForcedReason: TickScheduleReason | undefined
+
+  let coalescedModules = 0
+  let coalescedTopics = 0
+
+  const yieldMicrotask = Effect.async<void, never>((resume) => {
+    hostScheduler.scheduleMicrotask(() => resume(Effect.void))
+  })
+  const yieldMacrotask = Effect.async<void, never>((resume, signal) => {
+    const cancel = hostScheduler.scheduleMacrotask(() => resume(Effect.void))
+    try {
+      signal.addEventListener(
+        'abort',
+        () => {
+          cancel()
+        },
+        { once: true },
+      )
+    } catch {
+      // best-effort
+    }
+  })
 
   const scheduleTick = (): Effect.Effect<void, never, never> =>
     Effect.gen(function* () {
       if (scheduled) return
       scheduled = true
 
-      yield* Effect.fork(
-        Effect.gen(function* () {
-          try {
-            yield* waitForBatchEndIfNeeded()
-            yield* microtask
-            yield* flushNow
-          } finally {
-            scheduled = false
-            // If something was re-queued or arrived after commit, schedule the next tick (best-effort).
-            if (store.hasPending()) {
-              yield* scheduleTick()
+      const waitedForBatch = batchDepth > 0
+
+      const forcedReason = nextForcedReason
+      nextForcedReason = undefined
+
+      const shouldYieldForStarvation =
+        forcedReason == null && microtaskChainDepth >= Math.max(1, config.microtaskChainDepthLimit)
+
+      const reason: TickScheduleReason | undefined = forcedReason ?? (shouldYieldForStarvation ? 'microtask_starvation' : undefined)
+      const boundary: 'microtask' | 'macrotask' = reason ? 'macrotask' : 'microtask'
+      const startedAs: TickScheduleStartedAs = waitedForBatch ? 'batch' : boundary
+      const depthAtSchedule = microtaskChainDepth
+
+      yield* Effect.forkDaemon(
+        Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
+          Effect.gen(function* () {
+            try {
+              yield* waitForBatchEndIfNeeded()
+              if (boundary === 'microtask') {
+                yield* yieldMicrotask
+                microtaskChainDepth += 1
+              } else {
+                yield* yieldMacrotask
+                microtaskChainDepth = 0
+              }
+
+              const schedule: TickSchedule = {
+                startedAs,
+                microtaskChainDepth: boundary === 'macrotask' ? depthAtSchedule : microtaskChainDepth,
+                ...(boundary === 'macrotask' ? { forcedMacrotask: true, reason: reason ?? 'unknown' } : {}),
+              }
+
+              const outcome = yield* flushTick(schedule)
+              if (!outcome.stable) {
+                nextForcedReason =
+                  outcome.degradeReason === 'budget_steps'
+                    ? 'budget'
+                    : outcome.degradeReason === 'cycle_detected'
+                      ? 'cycle_detected'
+                      : 'unknown'
+              }
+            } finally {
+              scheduled = false
+              // If something was re-queued or arrived after commit, schedule the next tick (best-effort).
+              if (queue.hasPending()) {
+                yield* scheduleTick()
+              } else {
+                // Reset chain depth when the system becomes idle (avoid forcing a macrotask on the next unrelated tick).
+                microtaskChainDepth = 0
+              }
             }
-          }
-        }),
+          }),
+        ),
       )
     })
 
-  const flushNow: TickScheduler['flushNow'] = Effect.gen(function* () {
-    if (!store.hasPending()) {
-      return
+  const flushTick = (schedule: TickSchedule): Effect.Effect<{ stable: boolean; degradeReason?: TickDegradeReason }, never, never> =>
+    Effect.gen(function* () {
+    if (!queue.hasPending()) {
+      return { stable: true }
     }
 
     tickSeq += 1
@@ -202,7 +343,7 @@ export const makeTickScheduler = (args: {
 
     // Fixpoint capture: drain -> apply declarative links -> drain (bounded by maxDrainRounds).
     while (captured.drainRounds < config.maxDrainRounds) {
-      const drained = store.drainPending()
+      const drained = queue.drain()
       if (!drained) break
       captured.drainRounds += 1
       captured.accepted = mergeDrain(captured.accepted, drained)
@@ -217,7 +358,7 @@ export const makeTickScheduler = (args: {
       }
     }
 
-    if (store.hasPending()) {
+    if (queue.hasPending()) {
       captured.stable = false
       captured.degradeReason = 'cycle_detected'
     }
@@ -320,6 +461,10 @@ export const makeTickScheduler = (args: {
           total: triggers.length,
           kinds: Array.from(counts.entries()).map(([kind, count]) => ({ kind, count })),
           primary,
+          coalescedCount: {
+            modules: coalescedModules,
+            topics: coalescedTopics,
+          },
         }
       })()
 
@@ -371,6 +516,16 @@ export const makeTickScheduler = (args: {
       } as const
     }
 
+    if (shouldEmitTrace && schedule.forcedMacrotask && schedule.reason === 'microtask_starvation') {
+      yield* Debug.record({
+        type: 'warn:microtask-starvation',
+        moduleId: anchor?.moduleId,
+        instanceId: anchor?.instanceId,
+        tickSeq: currentTickSeq,
+        microtaskChainDepth: schedule.microtaskChainDepth,
+      })
+    }
+
     if (shouldEmitTrace) {
       yield* Debug.record({
         type: 'trace:tick',
@@ -380,6 +535,7 @@ export const makeTickScheduler = (args: {
           tickSeq: currentTickSeq,
           phase: 'start',
           timestampMs: startedAtMs!,
+          schedule,
           triggerSummary,
           anchors: anchor,
           budget: {
@@ -401,6 +557,7 @@ export const makeTickScheduler = (args: {
           tickSeq: currentTickSeq,
           phase: 'budgetExceeded',
           timestampMs: Date.now(),
+          schedule,
           triggerSummary,
           anchors: anchor,
           budget: {
@@ -417,7 +574,7 @@ export const makeTickScheduler = (args: {
 
     // Requeue deferred backlog before committing the tick, so the next tick can pick it up.
     if (deferredDrain) {
-      store.requeuePending(deferredDrain)
+      queue.requeue(deferredDrain)
     }
 
     const committed = store.commitTick({
@@ -462,6 +619,7 @@ export const makeTickScheduler = (args: {
           tickSeq: currentTickSeq,
           phase: 'settled',
           timestampMs: Date.now(),
+          schedule,
           triggerSummary,
           anchors: anchor,
           budget: {
@@ -475,7 +633,29 @@ export const makeTickScheduler = (args: {
         },
       })
     }
+
+    if (telemetry?.onTickDegraded && (schedule.forcedMacrotask || !captured.stable) && shouldSampleTick(currentTickSeq, telemetrySampleRate)) {
+      try {
+        telemetry.onTickDegraded({
+          tickSeq: currentTickSeq,
+          stable: captured.stable,
+          degradeReason: captured.stable ? undefined : (captured.degradeReason ?? 'unknown'),
+          forcedMacrotask: schedule.forcedMacrotask,
+          scheduleReason: schedule.reason,
+          microtaskChainDepth: schedule.microtaskChainDepth,
+          deferredWorkCount: deferredDrain ? deferredDrain.modules.size + deferredDrain.dirtyTopics.size : 0,
+        })
+      } catch {
+        // best-effort: never let user telemetry break the tick
+      }
+    }
+    coalescedModules = 0
+    coalescedTopics = 0
+
+    return { stable: captured.stable, degradeReason: captured.degradeReason }
   })
+
+  const flushNow: TickScheduler['flushNow'] = flushTick({ startedAs: 'unknown' }).pipe(Effect.asVoid)
 
   const storeTopicToModuleInstanceKey = (topicKey: string): ModuleInstanceKey | undefined => {
     const idx = topicKey.indexOf('::rq:')
@@ -489,13 +669,16 @@ export const makeTickScheduler = (args: {
   }
 
   const onSelectorChanged: TickScheduler['onSelectorChanged'] = ({ moduleInstanceKey, selectorId, priority }) => {
-    store.markTopicDirty(makeReadQueryTopicKey(moduleInstanceKey, selectorId), priority)
+    const coalesced = queue.markTopicDirty(makeReadQueryTopicKey(moduleInstanceKey, selectorId), priority)
+    if (coalesced) coalescedTopics += 1
   }
 
   const onModuleCommit: TickScheduler['onModuleCommit'] = (commit) =>
     Effect.gen(function* () {
-      store.enqueueModuleCommit(commit)
-      store.markTopicDirty(commit.moduleInstanceKey, commit.meta.priority)
+      const coalescedCommit = queue.enqueueModuleCommit(commit)
+      if (coalescedCommit) coalescedModules += 1
+      const coalescedTopic = queue.markTopicDirty(commit.moduleInstanceKey, commit.meta.priority)
+      if (coalescedTopic) coalescedTopics += 1
       yield* scheduleTick()
     })
 

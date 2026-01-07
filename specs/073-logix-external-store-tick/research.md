@@ -124,6 +124,76 @@
 
 - 把 ExternalStoreTrait 作为 runtime 层胶水（不进 StateTraitProgram/IR）：实现短期快，但长期必然产生不可解释黑盒与难以 gate 的回归（尤其 T035/Topic routing 与 Module-as-Source）。
 
+---
+
+### D8：宿主调度入口收敛（HostScheduler runtime service）
+
+**Decision**：引入 internal Runtime Service `HostScheduler`，作为唯一允许触碰宿主调度 API（`queueMicrotask/setTimeout/requestAnimationFrame/MessageChannel/setImmediate` 等）的入口；TickScheduler/RuntimeStore/ExternalStore/DevtoolsHub 等核心路径不得直接调用这些 API（统一通过 HostScheduler）。
+
+**Rationale**：
+
+- 避免链式 microtask 饥饿：当 tick/notify 工作量增大时，散落 `queueMicrotask` 很容易造成“微任务套微任务”阻塞渲染/IO，且难以集中治理。
+- 平台差异可控：browser/Node 的“最快 macrotask”实现不同（MessageChannel vs setImmediate），集中化能避免各处各写一套 fallback。
+- 测试可控：可注入 deterministic HostScheduler，使“排空 tick/微任务/宏任务”的测试口径稳定（减少 flaky）。
+- 与 React 思想一致：React 会在不同场景选择 microtask/macrotask 组合；关键不是某个 API，而是“调度策略集中在 scheduler 层”。
+
+**Alternatives considered**：
+
+- 继续在各模块散落 `queueMicrotask/raf/timeout`：短期快，但会把性能/可诊断性问题变成“全局排查难题”，且容易出现上下文污染（例如 fiber-local guard 继承错误）。
+- 仅依赖 `effect` 的调度/时间（Clock/Schedule/fiber 调度）来替代宿主调度：无法显式表达 microtask/macrotask/raf 的关键边界（合并触发/让出主线程/节流），且会把宿主差异隐藏成实现细节，难以诊断与做 perf gate；更容易引入 fiber-local 上下文传播风险。
+
+---
+
+### D9：反饥饿策略（yield-to-host）
+
+**Decision**：tick 的“合并触发”允许使用 microtask（同一 microtask 内 schedule-once），但当出现 `budgetExceeded/cycle_detected/microtaskChainDepth` 等风险信号时，tick 必须 yield-to-host：将后续 backlog 的续跑切到 macrotask（MessageChannel/setImmediate fallback），并在 diagnostics=light/full 下给出 Slim 证据（`trace:tick.schedule`/`warn:*`）。
+
+补充约束（避免实现跑偏）：
+
+- `microtaskChainDepth` 不能依赖宿主提供（原生 `queueMicrotask` 不暴露深度），必须在 TickScheduler/HostScheduler 内自维护计数（best-effort），并在进入 macrotask 续跑时重置。
+- `requestAnimationFrame` 在 073 中只用于 low-priority notify 节流与 perf 观测（click→paint），不作为 tick 的驱动边界；如需 frame-aligned tick/yield-to-next-frame，作为独立扩展另开。
+
+**Rationale**：
+
+- microtask 天然更容易阻塞渲染/IO；将“重活续跑”切到 macrotask 是更安全的默认。
+- 073 的不变量是 no-tearing（同 tickSeq 快照），而不是“所有业务链路都必须在同一 microtask 里稳定化”；预算/降级/续跑是可解释的一等能力。
+
+**Alternatives considered**：
+
+- 只靠 hard cap 中断，不提供 yield/续跑：会把“避免卡死”退化为“直接丢工作/长期 deferred”，难以形成可用体验与可解释链路。
+- 全部用 microtask（到处 `queueMicrotask`）把 backlog 跑完：更容易阻塞渲染/IO，最终把“性能问题”放大为“交互不可用”，且缺少清晰的让出点与证据链。
+
+---
+
+### D10：测试 flush 语义（act-like）
+
+**Decision**：提供一等公民的测试辅助（类似 React `act` 但以 `tickSeq` 为锚点），统一排空 tick + HostScheduler 的 microtask/macrotask 队列：`flushAll()/advanceTicks(n)`，避免在测试里散落 `sleep/flushMicrotasks`。
+
+补充要求：
+
+- 至少 1 个 React 集成回归用例覆盖 yield-to-host：验证 React 可插入更高优先级更新且 no-tearing（同一次 render/commit 观测同一 `tickSeq`）。
+
+**Rationale**：
+
+- 将“异步队列排空”变成显式 API，可以把语义断言写得更稳定、更贴近真实调度（减少对 timing 的碰运气）。
+- 更便于在 perf/diagnostics 的边界测试里复用一致的推进方式（避免测试自身引入额外噪声）。
+
+---
+
+### D11：单一调度闭环（Signal → Queue → Tick → Yield → Snapshot → Notify → Evidence/Test）
+
+**Decision**：不把“调度/背压/公平性/测试推进”拆成多套彼此独立的小系统，而是收敛为一条可解释、可压测、可治理的闭环：Signal→Queue→Tick→Yield→Snapshot→Notify→Evidence/Test（详见 `plan.md#调度抽象与反饥饿` 与 `contracts/scheduler.md`）。
+
+**Rationale**：
+
+- 避免大杂烩：多个 scheduler 并存会造成双真相源与证据链断裂（尤其是 core 调度 vs adapter 调度 vs 测试调度）。
+- 与北极星一致：统一最小 IR + tickSeq 参考系要求“可见性/订阅/稳定化”必须在同一条时间线里解释。
+- 可治理：统一入口才能做“禁止散落宿主 API”的门禁、做 perf gate、做 deterministic 测试替身。
+
+**Alternatives considered**：
+
+- 为不同场景分别引入独立调度器（外部输入/notify/测试各一套）：短期看似解耦，长期会在边界处相互打架（饥饿/延迟/漂移），并让诊断与回放失真。
+
 ## 2. 未决问题（需要在实现前拍板）
 
 本次 `spec.md` 已明确方向，但仍有 3 类细节需要在 `tasks.md`/实现阶段固化为“可测口径”：

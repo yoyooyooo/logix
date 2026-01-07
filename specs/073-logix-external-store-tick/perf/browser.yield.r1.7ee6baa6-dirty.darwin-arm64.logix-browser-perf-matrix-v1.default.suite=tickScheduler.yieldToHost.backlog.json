@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-07T03:02:27.412Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-01-06",
+    "matrixHash": "f9cd4f4cec972aecda81319fde33a40c8d10bcb97673826aaeae5ef0f3f8fdf1",
+    "git": {
+      "branch": "073",
+      "commit": "7ee6baa6bcd7b4bf25b2171b9bbcfdd33a20c09b",
+      "dirty": true
+    },
+    "config": {
+      "runs": 10,
+      "warmupDiscard": 2,
+      "timeoutMs": 30000,
+      "headless": true,
+      "profile": "default",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "tickScheduler.yieldToHost.backlog",
+      "title": "tickScheduler: yield-to-host overhead under budgeted backlog",
+      "priority": "P3",
+      "primaryAxis": "budgetMaxSteps",
+      "budgets": [],
+      "requiredEvidence": [
+        "diagnostics.level",
+        "runtimeStore.adapter",
+        "tickScheduler.maxSteps",
+        "tickScheduler.degradedTicks",
+        "tickScheduler.forcedMacrotaskTicks",
+        "workload.modules",
+        "workload.ticksPerRun",
+        "budget.cutOffCount"
+      ],
+      "metricCategories": {
+        "runtime.backlogCatchUpMs": "runtimeStore"
+      },
+      "points": [
+        {
+          "params": {
+            "watchers": 256,
+            "diagnosticsLevel": "off",
+            "budgetMaxSteps": 2
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.600000023841858,
+                "p95Ms": 2.1999999284744263
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "tickScheduler.degradedTicks",
+              "unit": "count",
+              "status": "ok",
+              "value": 4
+            },
+            {
+              "name": "tickScheduler.forcedMacrotaskTicks",
+              "unit": "count",
+              "status": "ok",
+              "value": 4
+            },
+            {
+              "name": "tickScheduler.maxSteps",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "watchers": 256,
+            "diagnosticsLevel": "off",
+            "budgetMaxSteps": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.4000000953674316,
+                "p95Ms": 1.5999999046325684
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "tickScheduler.degradedTicks",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "tickScheduler.forcedMacrotaskTicks",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "tickScheduler.maxSteps",
+              "unit": "count",
+              "status": "ok",
+              "value": 4
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "watchers": 256,
+            "diagnosticsLevel": "full",
+            "budgetMaxSteps": 2
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.600000023841858,
+                "p95Ms": 2.200000047683716
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "tickScheduler.degradedTicks",
+              "unit": "count",
+              "status": "ok",
+              "value": 4
+            },
+            {
+              "name": "tickScheduler.forcedMacrotaskTicks",
+              "unit": "count",
+              "status": "ok",
+              "value": 4
+            },
+            {
+              "name": "tickScheduler.maxSteps",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "watchers": 256,
+            "diagnosticsLevel": "full",
+            "budgetMaxSteps": 4
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.399999976158142,
+                "p95Ms": 1.7000000476837158
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "tickScheduler.degradedTicks",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "tickScheduler.forcedMacrotaskTicks",
+              "unit": "count",
+              "status": "ok",
+              "value": 2
+            },
+            {
+              "name": "tickScheduler.maxSteps",
+              "unit": "count",
+              "status": "ok",
+              "value": 4
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": []
+    }
+  ]
+}

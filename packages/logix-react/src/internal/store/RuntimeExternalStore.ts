@@ -23,6 +23,14 @@ type RuntimeStore = {
   readonly subscribeTopic: (topicKey: TopicKey, listener: () => void) => () => void
 }
 
+type Cancel = () => void
+
+type HostScheduler = {
+  readonly scheduleMicrotask: (cb: () => void) => void
+  readonly scheduleAnimationFrame: (cb: () => void) => Cancel
+  readonly scheduleTimeout: (ms: number, cb: () => void) => Cancel
+}
+
 const storesByRuntime = new WeakMap<object, Map<TopicKey, ExternalStore<any>>>()
 
 const getStoreMapForRuntime = (runtime: object): Map<TopicKey, ExternalStore<any>> => {
@@ -38,28 +46,11 @@ const makeModuleInstanceKey = (moduleId: string, instanceId: string): ModuleInst
 const makeReadQueryTopicKey = (moduleInstanceKey: ModuleInstanceKey, selectorId: string): TopicKey =>
   `${moduleInstanceKey}::rq:${selectorId}`
 
-const cancelRaf = (id: number | undefined): void => {
-  const cancel = (globalThis as any).cancelAnimationFrame as ((rafId: number) => void) | undefined
-  if (!cancel || typeof id !== 'number') return
-  try {
-    cancel(id)
-  } catch {
-    // ignore best-effort cancellation failures
-  }
-}
-
-const scheduleRaf = (cb: () => void): number | undefined => {
-  const raf = (globalThis as any).requestAnimationFrame as ((run: () => void) => number) | undefined
-  if (!raf) return undefined
-  try {
-    return raf(cb)
-  } catch {
-    return undefined
-  }
-}
-
 const getRuntimeStore = (runtime: ManagedRuntime.ManagedRuntime<any, any>): RuntimeStore =>
   Logix.InternalContracts.getRuntimeStore(runtime as any) as RuntimeStore
+
+const getHostScheduler = (runtime: ManagedRuntime.ManagedRuntime<any, any>): HostScheduler =>
+  Logix.InternalContracts.getHostScheduler(runtime as any) as HostScheduler
 
 const getOrCreateStore = <S>(
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
@@ -92,6 +83,7 @@ const makeTopicExternalStore = <S>(args: {
   readonly onLastListener?: () => void
 }): ExternalStore<S> => {
   const { runtime, runtimeStore, topicKey } = args
+  const hostScheduler = getHostScheduler(runtime)
 
   let currentVersion: number | undefined
   let hasSnapshot = false
@@ -105,23 +97,19 @@ const makeTopicExternalStore = <S>(args: {
 
   let notifyScheduled = false
   let notifyScheduledLow = false
-  let lowTimeoutId: ReturnType<typeof setTimeout> | undefined
-  let lowMaxTimeoutId: ReturnType<typeof setTimeout> | undefined
-  let lowRafId: number | undefined
+  let lowCancelDelay: Cancel | undefined
+  let lowCancelMaxDelay: Cancel | undefined
+  let lowCancelRaf: Cancel | undefined
 
   const cancelLow = (): void => {
     if (!notifyScheduledLow) return
     notifyScheduledLow = false
-    if (lowTimeoutId != null) {
-      clearTimeout(lowTimeoutId)
-      lowTimeoutId = undefined
-    }
-    if (lowMaxTimeoutId != null) {
-      clearTimeout(lowMaxTimeoutId)
-      lowMaxTimeoutId = undefined
-    }
-    cancelRaf(lowRafId)
-    lowRafId = undefined
+    lowCancelDelay?.()
+    lowCancelDelay = undefined
+    lowCancelMaxDelay?.()
+    lowCancelMaxDelay = undefined
+    lowCancelRaf?.()
+    lowCancelRaf = undefined
   }
 
   const flushNotify = (): void => {
@@ -147,20 +135,28 @@ const makeTopicExternalStore = <S>(args: {
         flushNotify()
       }
 
-      const rafId = scheduleRaf(flush)
-      if (rafId !== undefined) {
-        lowRafId = rafId
-      } else {
-        lowTimeoutId = setTimeout(flush, lowPriorityDelayMs)
+      const scheduleRaf = () => {
+        if (!notifyScheduledLow) return
+        lowCancelRaf = hostScheduler.scheduleAnimationFrame(flush)
       }
-      lowMaxTimeoutId = setTimeout(flush, lowPriorityMaxDelayMs)
+
+      // Delay window semantics:
+      // - Do not flush before lowPriorityDelayMs (coalesce more changes).
+      // - Prefer aligning the flush to animation frame after the delay.
+      // - Always cap by lowPriorityMaxDelayMs (avoid starvation if raf never fires).
+      if (lowPriorityDelayMs <= 0) {
+        scheduleRaf()
+      } else {
+        lowCancelDelay = hostScheduler.scheduleTimeout(lowPriorityDelayMs, scheduleRaf)
+      }
+      lowCancelMaxDelay = hostScheduler.scheduleTimeout(lowPriorityMaxDelayMs, flush)
       return
     }
 
     cancelLow()
     if (notifyScheduled) return
     notifyScheduled = true
-    queueMicrotask(flushNotify)
+    hostScheduler.scheduleMicrotask(flushNotify)
   }
 
   const onRuntimeStoreChange = (): void => {

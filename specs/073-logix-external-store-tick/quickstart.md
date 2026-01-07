@@ -11,6 +11,7 @@
 - React 继续用 `useSelector`；底层通过 RuntimeStore 保证跨模块同一 `tickSeq` 快照（无 tearing）。
 - React 侧尽量不写“数据胶水 useEffect”：订阅/同步/拉取应在 Trait/ExternalStore/Source 中表达；`useEffect` 只保留给 DOM/第三方组件 integration（focus/scroll/measure/动画等）。
 - 同一 `moduleId` 的多实例按 `ModuleInstanceKey = ${moduleId}::${instanceId}` 分片订阅：只会唤醒订阅该实例的组件（单例只是特例）。
+- 调度心智：microtask 只用于“合并触发（Signal Dirty → schedule once）”；tick 若超预算/遇到饥饿风险允许 yield-to-host（macrotask 续跑），但 no-tearing（tickSeq）仍成立。测试不要靠手写 `queueMicrotask` 循环碰运气，统一用 TestKit/Runtime 的 flush API（见 `contracts/scheduler.md`）。
 
 ## 1) 定义 ExternalStore（最小手写版）
 

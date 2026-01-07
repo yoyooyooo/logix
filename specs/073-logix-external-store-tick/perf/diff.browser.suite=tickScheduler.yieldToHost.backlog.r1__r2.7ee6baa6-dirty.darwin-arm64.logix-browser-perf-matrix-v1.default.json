@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-07T03:05:54.751Z",
+    "from": {
+      "file": "specs/073-logix-external-store-tick/perf/browser.yield.r1.7ee6baa6-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=tickScheduler.yieldToHost.backlog.json",
+      "commit": "7ee6baa6bcd7b4bf25b2171b9bbcfdd33a20c09b"
+    },
+    "to": {
+      "file": "specs/073-logix-external-store-tick/perf/browser.yield.r2.7ee6baa6-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.suite=tickScheduler.yieldToHost.backlog.json",
+      "commit": "7ee6baa6bcd7b4bf25b2171b9bbcfdd33a20c09b"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "tickScheduler.yieldToHost.backlog",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=4 unavailable=0 missing=0] after[value=full ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=4 unavailable=0 missing=0] after[value=core ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtimeStore.adapter",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "runtimeStore"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "runtimeStore"
+          },
+          "message": "runtimeStore.adapter(points) unit=count: before[value=runtimeStore ok=4 unavailable=0 missing=0] after[value=runtimeStore ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "tickScheduler.degradedTicks",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "message": "tickScheduler.degradedTicks(points) unit=count: before[value=2 ok=4 unavailable=0 missing=0] after[value=2 ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "tickScheduler.forcedMacrotaskTicks",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "message": "tickScheduler.forcedMacrotaskTicks(points) unit=count: before[value=2 ok=4 unavailable=0 missing=0] after[value=2 ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "tickScheduler.maxSteps",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2
+          },
+          "message": "tickScheduler.maxSteps(points) unit=count: before[value=2 ok=4 unavailable=0 missing=0] after[value=2 ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.modules",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "message": "workload.modules(points) unit=count: before[value=10 ok=4 unavailable=0 missing=0] after[value=10 ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.ticksPerRun",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "workload.ticksPerRun(points) unit=count: before[value=1 ok=4 unavailable=0 missing=0] after[value=1 ok=4 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "runtime.backlogCatchUpMs",
+          "unit": "ms",
+          "compared": 4,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "budgetMaxSteps": 2,
+                "watchers": 256,
+                "diagnosticsLevel": "full"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 1.600000023841858,
+                "p95Ms": 2.200000047683716
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 1.7000000476837158,
+                "p95Ms": 2.5
+              },
+              "deltaMs": {
+                "medianMs": 0.10000002384185791,
+                "p95Ms": 0.2999999523162842
+              },
+              "ratio": {
+                "median": 1.0625000139698384,
+                "p95": 1.1363636117336184
+              }
+            },
+            {
+              "params": {
+                "budgetMaxSteps": 4,
+                "watchers": 256,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 1.4000000953674316,
+                "p95Ms": 1.5999999046325684
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 1.600000023841858,
+                "p95Ms": 1.8000000715255737
+              },
+              "deltaMs": {
+                "medianMs": 0.19999992847442627,
+                "p95Ms": 0.20000016689300537
+              },
+              "ratio": {
+                "median": 1.1428570820360808,
+                "p95": 1.1250001117587156
+              }
+            },
+            {
+              "params": {
+                "budgetMaxSteps": 2,
+                "watchers": 256,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 1.600000023841858,
+                "p95Ms": 2.1999999284744263
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 1.7000000476837158,
+                "p95Ms": 2.399999976158142
+              },
+              "deltaMs": {
+                "medianMs": 0.10000002384185791,
+                "p95Ms": 0.20000004768371582
+              },
+              "ratio": {
+                "median": 1.0625000139698384,
+                "p95": 1.0909091155391102
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "budgetMaxSteps": 4,
+                "watchers": 256,
+                "diagnosticsLevel": "full"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 1.399999976158142,
+                "p95Ms": 1.7000000476837158
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 1.399999976158142,
+                "p95Ms": 1.5
+              },
+              "deltaMs": {
+                "medianMs": 0,
+                "p95Ms": -0.20000004768371582
+              },
+              "ratio": {
+                "median": 1,
+                "p95": 0.8823529164271378
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

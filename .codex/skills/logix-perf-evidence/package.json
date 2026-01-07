@@ -5,6 +5,7 @@
     "collect": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/collect.ts",
     "collect:smoke": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/collect.ts --profile smoke",
     "collect:quick": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/collect.ts --profile quick",
+    "ci:interpret": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/ci.interpret-artifact.ts",
     "diff": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/diff.ts",
     "diff:triage": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/diff.ts --allow-config-drift --allow-env-drift",
     "validate": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/validate.ts",

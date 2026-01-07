@@ -1,6 +1,7 @@
 import { Context, Effect, Layer } from 'effect'
 import type { TraitConvergeRequestedMode } from '../../state-trait/model.js'
 import type { ReadQueryStrictGateConfig } from './ReadQuery.js'
+import { getGlobalHostScheduler, type HostScheduler } from './HostScheduler.js'
 import { makeRuntimeStore, type RuntimeStore } from './RuntimeStore.js'
 import { makeTickScheduler, type TickScheduler, type TickSchedulerConfig } from './TickScheduler.js'
 import { makeDeclarativeLinkRuntime, type DeclarativeLinkRuntime } from './DeclarativeLinkRuntime.js'
@@ -259,6 +260,21 @@ export const runtimeStoreLayer: Layer.Layer<any, never, never> = Layer.scoped(
 export const runtimeStoreTestStubLayer = (store: RuntimeStoreService): Layer.Layer<any, never, never> =>
   Layer.succeed(RuntimeStoreTag, store) as Layer.Layer<any, never, never>
 
+export interface HostSchedulerService extends HostScheduler {}
+
+export class HostSchedulerTag extends Context.Tag('@logix/core/HostScheduler')<
+  HostSchedulerTag,
+  HostSchedulerService
+>() {}
+
+export const hostSchedulerLayer: Layer.Layer<any, never, never> = Layer.succeed(
+  HostSchedulerTag,
+  getGlobalHostScheduler() as HostSchedulerService,
+) as Layer.Layer<any, never, never>
+
+export const hostSchedulerTestStubLayer = (scheduler: HostSchedulerService): Layer.Layer<any, never, never> =>
+  Layer.succeed(HostSchedulerTag, scheduler) as Layer.Layer<any, never, never>
+
 export interface DeclarativeLinkRuntimeService extends DeclarativeLinkRuntime {}
 
 export class DeclarativeLinkRuntimeTag extends Context.Tag('@logixjs/core/DeclarativeLinkRuntime')<
@@ -285,7 +301,8 @@ export const tickSchedulerLayer = (config?: TickSchedulerConfig): Layer.Layer<an
     Effect.gen(function* () {
       const store = yield* RuntimeStoreTag
       const declarativeLinkRuntime = yield* DeclarativeLinkRuntimeTag
-      return makeTickScheduler({ runtimeStore: store, declarativeLinkRuntime, config }) as TickSchedulerService
+      const hostScheduler = yield* HostSchedulerTag
+      return makeTickScheduler({ runtimeStore: store, declarativeLinkRuntime, hostScheduler, config }) as TickSchedulerService
     }),
   ) as Layer.Layer<any, never, never>
 

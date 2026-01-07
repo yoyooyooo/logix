@@ -12,6 +12,7 @@ import {
   type RuntimeDebugEventRef,
   type Sink,
 } from './DebugSink.js'
+import { getGlobalHostScheduler } from './HostScheduler.js'
 
 /**
  * DevtoolsHub：
@@ -144,9 +145,10 @@ const listeners = new Set<() => void>()
 
 let notifyScheduled = false
 const scheduleNotify = () => {
+  if (listeners.size === 0) return
   if (notifyScheduled) return
   notifyScheduled = true
-  queueMicrotask(() => {
+  getGlobalHostScheduler().scheduleMicrotask(() => {
     notifyScheduled = false
     for (const listener of listeners) {
       listener()

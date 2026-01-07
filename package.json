@@ -24,7 +24,7 @@
     "test:cache": "pnpm test",
     "test:fast": "bun x vitest run",
     "test:full": "vitest run",
-    "test:browser": "pnpm -C packages/logix-react test -- --project browser && pnpm -C packages/logix-sandbox test -- --project browser",
+    "test:browser": "pnpm -C packages/logix-react test -- --project browser && pnpm -C packages/logix-sandbox test:browser",
     "test:watch": "vitest",
     "test:turbo": "turbo run test --ui=stream --output-logs=new-only --log-prefix=none --summarize=true --filter='./packages/*' --filter='./apps/logix-galaxy-api' --filter='./examples/effect-api' --filter='./examples/logix-react' -- --run --cache --project=!browser* --silent=passed-only --reporter=dot --hideSkippedTests",
     "coverage": "vitest run --coverage",

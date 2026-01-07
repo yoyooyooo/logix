@@ -1,0 +1,357 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-07T00:47:52.098Z",
+    "from": {
+      "file": "specs/073-logix-external-store-tick/perf/browser.before.7ee6baa6-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=perModule.json",
+      "commit": "7ee6baa6bcd7b4bf25b2171b9bbcfdd33a20c09b"
+    },
+    "to": {
+      "file": "specs/073-logix-external-store-tick/perf/browser.after.7ee6baa6-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.adapter=runtimeStore.json",
+      "commit": "7ee6baa6bcd7b4bf25b2171b9bbcfdd33a20c09b"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "diagnostics.overhead.e2e",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=4 unavailable=0 missing=0] after[value=full ok=4 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 4,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=4 unavailable=0 missing=0] after[value=core ok=4 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "e2e.clickToPaintMs",
+          "unit": "ms",
+          "compared": 4,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "diagnosticsLevel": "off",
+                "scenario": "watchers.clickToPaint"
+              },
+              "before": {
+                "n": 10,
+                "medianMs": 59.5,
+                "p95Ms": 65.70000004768372
+              },
+              "after": {
+                "n": 10,
+                "medianMs": 64.79999995231628,
+                "p95Ms": 71
+              },
+              "deltaMs": {
+                "medianMs": 5.299999952316284,
+                "p95Ms": 5.299999952316284
+              },
+              "ratio": {
+                "median": 1.0890756294506938,
+                "p95": 1.0806697100223692
+              }
+            },
+            {
+              "params": {
+                "diagnosticsLevel": "light",
+                "scenario": "watchers.clickToPaint"
+              },
+              "before": {
+                "n": 10,
+                "medianMs": 62.300000071525574,
+                "p95Ms": 66.29999995231628
+              },
+              "after": {
+                "n": 10,
+                "medianMs": 67.39999997615814,
+                "p95Ms": 68.69999992847443
+              },
+              "deltaMs": {
+                "medianMs": 5.099999904632568,
+                "p95Ms": 2.399999976158142
+              },
+              "ratio": {
+                "median": 1.081861956641691,
+                "p95": 1.0361990946890536
+              }
+            },
+            {
+              "params": {
+                "diagnosticsLevel": "sampled",
+                "scenario": "watchers.clickToPaint"
+              },
+              "before": {
+                "n": 10,
+                "medianMs": 62.200000047683716,
+                "p95Ms": 66.89999997615814
+              },
+              "after": {
+                "n": 10,
+                "medianMs": 62.90000009536743,
+                "p95Ms": 68.5
+              },
+              "deltaMs": {
+                "medianMs": 0.7000000476837158,
+                "p95Ms": 1.600000023841858
+              },
+              "ratio": {
+                "median": 1.0112540200505962,
+                "p95": 1.0239162933394927
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "diagnosticsLevel": "full",
+                "scenario": "watchers.clickToPaint"
+              },
+              "before": {
+                "n": 10,
+                "medianMs": 61.5,
+                "p95Ms": 67.70000004768372
+              },
+              "after": {
+                "n": 10,
+                "medianMs": 61.200000047683716,
+                "p95Ms": 66.70000004768372
+              },
+              "deltaMs": {
+                "medianMs": -0.2999999523162842,
+                "p95Ms": -1
+              },
+              "ratio": {
+                "median": 0.9951219519948572,
+                "p95": 0.985228951265943
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtimeStore.noTearing.tickNotify",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=2 unavailable=0 missing=0] after[value=full ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=2 unavailable=0 missing=0] after[value=core ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtimeStore.adapter",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "perModule"
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "runtimeStore"
+          },
+          "message": "runtimeStore.adapter(points) unit=count: before[value=perModule ok=2 unavailable=0 missing=0] after[value=runtimeStore ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.modules",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "message": "workload.modules(points) unit=count: before[value=10 ok=2 unavailable=0 missing=0] after[value=10 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.ticksPerRun",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "workload.ticksPerRun(points) unit=count: before[value=1 ok=2 unavailable=0 missing=0] after[value=1 ok=2 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "timePerTickMs",
+          "unit": "ms",
+          "compared": 2,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [],
+          "topImprovements": [
+            {
+              "params": {
+                "watchers": 256,
+                "diagnosticsLevel": "full"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 1.8000000715255737,
+                "p95Ms": 2.5
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 1.5,
+                "p95Ms": 2.100000023841858
+              },
+              "deltaMs": {
+                "medianMs": -0.30000007152557373,
+                "p95Ms": -0.3999999761581421
+              },
+              "ratio": {
+                "median": 0.8333333002196431,
+                "p95": 0.8400000095367431
+              }
+            },
+            {
+              "params": {
+                "watchers": 256,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 1.6999999284744263,
+                "p95Ms": 2.1999999284744263
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 1.399999976158142,
+                "p95Ms": 2.100000023841858
+              },
+              "deltaMs": {
+                "medianMs": -0.2999999523162842,
+                "p95Ms": -0.09999990463256836
+              },
+              "ratio": {
+                "median": 0.8235294323891513,
+                "p95": 0.9545454964164873
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -51,6 +51,7 @@
     "use-sync-external-store": "^1.2.0"
   },
   "devDependencies": {
+    "@logix/test": "workspace:*",
     "@testing-library/react": "^16.0.1",
     "@types/react": "^19.2.2",
     "@types/use-sync-external-store": "^1.5.0",

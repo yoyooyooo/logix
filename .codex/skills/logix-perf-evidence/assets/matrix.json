@@ -520,6 +520,30 @@
         "budget.cutOffCount"
       ],
       "notes": "external callback → trait writeback → runtimeStore notify（不含 React render/commit），用于 073 externalStore ingest 的 baseline 与回归门禁。"
+    },
+    {
+      "id": "tickScheduler.yieldToHost.backlog",
+      "priority": "P3",
+      "title": "tickScheduler: yield-to-host overhead under budgeted backlog",
+      "primaryAxis": "budgetMaxSteps",
+      "axes": {
+        "budgetMaxSteps": [2, 4],
+        "watchers": [256],
+        "diagnosticsLevel": ["off", "full"]
+      },
+      "metrics": ["runtime.backlogCatchUpMs"],
+      "budgets": [],
+      "requiredEvidence": [
+        "diagnostics.level",
+        "runtimeStore.adapter",
+        "tickScheduler.maxSteps",
+        "tickScheduler.degradedTicks",
+        "tickScheduler.forcedMacrotaskTicks",
+        "workload.modules",
+        "workload.ticksPerRun",
+        "budget.cutOffCount"
+      ],
+      "notes": "073 TickScheduler yield-to-host：通过人为缩小 maxSteps 触发 stable=false（budget_steps）并强制后续 tick 以 macrotask 续跑；用于观测 backlog 追平的端到端延迟（包含 tick continuation + notify）。"
     }
   ]
 }

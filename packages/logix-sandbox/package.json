@@ -80,6 +80,7 @@
     "test": "vitest run",
     "test:changed": "vitest run --changed",
     "test:cache": "vitest run --cache",
+    "test:browser": "pnpm bundle:kernel && vitest run --project browser",
     "test:watch": "vitest",
     "bundle:kernel": "node scripts/bundle-kernel.mjs",
     "build": "tsup",

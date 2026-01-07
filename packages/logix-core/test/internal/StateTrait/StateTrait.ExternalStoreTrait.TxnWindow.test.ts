@@ -4,14 +4,12 @@ import * as Logix from '../../../src/index.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
 import * as BoundApiRuntime from '../../../src/internal/runtime/BoundApiRuntime.js'
 import * as TaskRunner from '../../../src/internal/runtime/core/TaskRunner.js'
-
-const flushMicrotasks = (times = 2): Effect.Effect<void> =>
-  Effect.forEach(Array.from({ length: Math.max(0, times) }), () => Effect.promise(() => new Promise<void>((r) => queueMicrotask(r))))
-    .pipe(Effect.asVoid)
+import { flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } from '../testkit/hostSchedulerTestKit.js'
 
 describe('StateTrait.externalStore txn-window discipline', () => {
-  it.scoped('writeback runs in a transaction; getSnapshot is never called inside txn-window', () =>
-    Effect.gen(function* () {
+  it.scoped('writeback runs in a transaction; getSnapshot is never called inside txn-window', () => {
+    const hostScheduler = makeTestHostScheduler()
+    return Effect.gen(function* () {
       const StateSchema = Schema.Struct({ value: Schema.Number })
       type State = Schema.Schema.Type<typeof StateSchema>
 
@@ -71,19 +69,19 @@ describe('StateTrait.externalStore txn-window discipline', () => {
           Effect.sync(() => commits.push({ value, originKind: meta.originKind, originName: meta.originName })),
         ),
       )
-      yield* flushMicrotasks(1)
+      yield* flushAllHostScheduler(hostScheduler)
       commits.length = 0
 
       current = 1
       for (const listener of listeners) listener()
 
-      yield* flushMicrotasks(6)
+      yield* flushAllHostScheduler(hostScheduler)
 
       const after = (yield* runtime.getState) as State
       expect(after.value).toBe(1)
       expect(commits).toHaveLength(1)
       expect(commits[0]?.originKind).toBe('trait-external-store')
       expect(commits[0]?.originName).toBe('value')
-    }),
-  )
+    }).pipe(Effect.provide(testHostSchedulerLayer(hostScheduler)))
+  })
 })

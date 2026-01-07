@@ -49,6 +49,8 @@
 - Decision: `ExternalStore.fromModule` 不做值拷贝：Trait 写回存的是 selector 返回值本身（按引用共享，不深拷贝/不结构化拷贝）。因此禁止用 fromModule “镜像大状态”；保持 selector 小且稳定，必要时在 selector 内显式投影/拷贝并把成本计入预算（source: `spec.md#Clarifications`）
 - Decision: React 订阅单一真相源：`@logix/react` 必须只订阅 RuntimeStore topic facade，禁止直接订阅 `moduleRuntime.changes*`；per-module stores（`ModuleRuntimeExternalStore*`）在 cutover 后必须删除以避免双真相源/回归 tearing（source: `spec.md#Clarifications` / NFR-007）
 - Decision: Trait 下沉边界：`StateTrait` 只负责“模块内字段能力 + 静态治理 + Static IR 导出”；`TickScheduler/RuntimeStore` 只消费 IR 做调度与快照一致性。禁止把 tick/React 订阅逻辑塞进 traits（SRP + no-dual-truth）。
+- Decision: 调度入口收敛：`queueMicrotask/setTimeout/requestAnimationFrame/MessageChannel/setImmediate` 等宿主调度 API 只允许在单一可注入 Runtime Service（`HostScheduler`）内使用；`TickScheduler/RuntimeStore/ExternalStore/DevtoolsHub` 等核心路径禁止散落直接调用，避免平台差异、链式 microtask 饥饿与测试不确定性。
+- Decision: 反饥饿（yield-to-host）：tick 的“合并触发”允许用 microtask，但任何 **超预算 / 连续无进展 / microtask 链过深** 的续跑必须切到 macrotask（MessageChannel/setImmediate fallback），确保渲染/IO 有机会推进；diagnostics=light/full 必须产出 Slim 证据（见 `contracts/scheduler.md` 与 `contracts/diagnostics.md`）。
 
 ## Questions Digest（$speckit plan-from-questions）
 
@@ -137,7 +139,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **IR & anchors**：新增 ExternalStoreTrait 的 Static IR 与 DeclarativeLink IR（强一致可识别）；动态链路新增 `trace:tick` 事件（Slim & 可序列化）。`tickSeq` 作为新的稳定锚点必须在事件与运行时快照中贯通。
 - **Deterministic identity**：tickSeq 单调递增、无随机/时间默认；与 `instanceId/txnSeq/opSeq` 可关联（至少通过 `trace:tick` 的 anchor）。
 - **Transaction boundary**：externalStore 写回/派生收敛必须在事务窗口内完成；tick 稳定化期间不得引入 IO；IO 只能通过既有 `StateTrait.source` 两阶段语义（loading → async writeback）落地。
-- **Internal contracts & trial runs**：TickScheduler/RuntimeStore/ExternalStoreRegistry 需要作为可注入 Runtime Service，支持测试替换与 trial-run 证据导出（避免 process-global 单例）。
+- **Internal contracts & trial runs**：TickScheduler/RuntimeStore/ExternalStoreRegistry/HostScheduler 需要作为可注入 Runtime Service，支持测试替换与 trial-run 证据导出（避免 process-global 单例）。
 - **Dual kernels（core + core-ng）**：对外契约仅在 `@logix/core`；core-ng 通过 Kernel/RuntimeService 选择器实现等价行为（或显式降级），禁止 consumer 直接依赖 `@logix/core-ng`。
 - **Performance budget**：触及热路径：state commit → react notify（ExternalStore）→ render；必须建立 perf evidence（diagnostics off/on，before/after diff 无回归）并固化预算。
 - **Diagnosability & explainability**：新增 `trace:tick` 与外部输入 ingest 相关证据（最小化字段、可关联）。diagnostics=off 必须接近零成本。
@@ -227,6 +229,24 @@ Baseline 语义：策略 A/B（before=perModule adapter；after=runtimeStore ada
 - 场景：`test/browser/perf-boundaries/diagnostics-overhead.test.tsx`（scenario=`watchers.clickToPaint`）
 - 口径：matrix v1 暂无 budgets（P3 观测点）；如需变成硬门禁，后续在 matrix 中补 budgets（例如限定 diagnosticsLevel=off 的 p95 上限或相对比值）。
 
+**Yield-to-host overhead（P3 观测点）**：
+
+> 目的：这不是稳定态（stable=true）的常规路径，而是 “budget_steps → stable=false → forced macrotask continuation” 的退化路径观测，
+> 用于回答：在必须让出主线程/IO 的情况下，backlog 追平的端到端延迟量级是否仍可接受。
+
+- 场景：`test/browser/perf-boundaries/tick-yield-to-host.test.tsx`（suite=`tickScheduler.yieldToHost.backlog`）
+- 指标：`runtime.backlogCatchUpMs`（包含 tick continuation + notify；不含 React render/commit）
+- 证据：suite 会输出 `tickScheduler.degradedTicks / tickScheduler.forcedMacrotaskTicks`（用于确认确实触发 yield-to-host）
+- budgets：matrix v1 暂无 budgets（先做观测；如需硬门禁，后续把 p95 上限固化到 matrix 并与业务 SLA 对齐）
+
+Collect（Browser / tickScheduler yield-to-host backlog）：
+
+- 采集（r1/r2，用于稳定性/可比性确认）：  
+  - `NODE_OPTIONS=--expose-gc pnpm perf collect -- --profile default --out specs/073-logix-external-store-tick/perf/browser.yield.r1.<sha>.<envId>.logix-browser-perf-matrix-v1.default.suite=tickScheduler.yieldToHost.backlog.json --files test/browser/perf-boundaries/tick-yield-to-host.test.tsx`
+  - `NODE_OPTIONS=--expose-gc pnpm perf collect -- --profile default --out specs/073-logix-external-store-tick/perf/browser.yield.r2.<sha>.<envId>.logix-browser-perf-matrix-v1.default.suite=tickScheduler.yieldToHost.backlog.json --files test/browser/perf-boundaries/tick-yield-to-host.test.tsx`
+- Diff（同代码 r1/r2）：  
+  - `pnpm perf diff -- --before <r1.json> --after <r2.json> --out specs/073-logix-external-store-tick/perf/diff.browser.suite=tickScheduler.yieldToHost.backlog.r1__r2.<sha>.<envId>.logix-browser-perf-matrix-v1.default.json`
+
 Failure Policy：任一 diff `meta.comparability.comparable=false` 或 `summary.regressions>0` → 不得下硬结论，必须复测并定位（profile 升级或缩小 files 子集）。
 
 ## Project Structure
@@ -244,6 +264,7 @@ specs/073-logix-external-store-tick/
 │   ├── public-api.md
 │   ├── diagnostics.md
 │   ├── ir.md
+│   ├── scheduler.md
 │   └── migration.md
 ├── tasks.md
 └── perf/
@@ -259,6 +280,7 @@ packages/logix-core/
 │   ├── StateTrait.ts               # ADD: StateTrait.externalStore DSL（public）
 │   └── internal/
 │       ├── runtime/core/TickScheduler.ts        # NEW: Runtime tick scheduler (internal)
+│       ├── runtime/core/HostScheduler.ts        # NEW: host scheduling abstraction (microtask/macrotask/raf/timeout; deterministic in tests)
 │       ├── runtime/core/RuntimeStore.ts         # NEW: runtime store snapshot/token (internal)
 │       ├── runtime/core/DeclarativeLinkIR.ts    # NEW: declarative cross-module link IR types (internal)
 │       ├── runtime/core/ModuleRuntime.ts        # CHANGE: commit -> RuntimeStore + tickSeq anchoring (T024)
@@ -437,6 +459,34 @@ N/A（本特性不以“引入额外复杂度”为目标；若实现阶段出�
 - A2｜facade retained 增长/泄漏：facade cache 必须在 `listeners=0` 时 detach + `Map.delete`；细粒度 topic 必须按需存在（listeners>0，归零删除；若未来引入 warm-cache 再加 cap/TTL）；并用 `retainedHeapDeltaBytesAfterGc` 回归门禁守护（见 `Perf Evidence Plan`）。
 - B｜输入延迟（double scheduling）：urgent lane 的 flush 不得被 nonUrgent backlog 阻塞；如出现 budgetExceeded，仍必须先 drain urgent 并 flush。宿主侧可用 `Runtime.batch(...)` 把“同一事件源的多次变更”合并到同一个 tick（减少 microtask/notify 次数）。
 - C｜黑盒心智负担：强一致只覆盖 declarative IR；黑盒 `Process.link` 的写入明确为 Next Tick best-effort。预算降级允许 partial fixpoint，但必须通过 `trace:tick.result.stable=false` 与 `triggerSummary` 解释“为何本次不是强一致”。
+
+### 5) 调度抽象与反饥饿（吸收 React 的有利思想）
+
+目标：避免“到处 queueMicrotask”导致的链式 microtask 饥饿与上下文污染，把调度策略收敛到可注入、可诊断、可压测的单一入口；并把不同来源的成熟经验（React/Vue/Rx/结构化并发/MVCC 心智）收敛成 **一条链路**，避免大杂烩。
+
+统一链路（调度闭环）：
+
+- Signal：外部源/dispatch 只 Signal Dirty（不搬 payload、不做 IO）。
+- Queue：统一 JobQueue 去重合流（同一 microtask schedule-once + 计数 coalesce）。
+- Tick：按 IR 依赖 pull latest snapshot，跑 fixpoint（写回进 txn-window，禁 IO）。
+- Yield：遇到 budget/cycle/starvation 风险，yield-to-host（macrotask 续跑，避免卡渲染/IO）。
+- Snapshot：以 `tickSeq` 作为版本号（token 不变量：同 token 不变值不得变）。
+- Notify：RuntimeStore 按 topicVersion 分片通知 facade（normal/microtask；low/raf|timeout）。
+- Evidence/Test：`trace:tick`/warn 解释“为何安排/为何 yield/推迟了什么”，并提供 act-like `flushAll`（锚定 tickSeq）。
+- RAF 边界：`requestAnimationFrame` 仅用于 low-priority notify 节流与 click→paint 观测；tick 的合并触发/续跑不使用 raf（如需 frame-aligned tick / yield-to-next-frame，另开扩展并配套 perf/diagnostics gate）。
+- `microtaskChainDepth`：不得依赖宿主 API 提供深度信息，必须在 TickScheduler/HostScheduler 内自维护计数（best-effort），并在进入 macrotask 续跑时重置。
+
+- HostScheduler：新增 internal Runtime Service `HostScheduler`（契约见 `contracts/scheduler.md`），提供 microtask/macrotask/raf/timeout 的统一调度入口与默认实现（browser/node），并为测试提供可控替身（deterministic）。
+- TickScheduler：把 “安排 tick” 与 “执行 tick” 解耦：microtask 只用于合并触发（Signal Dirty → schedule once）；tick 执行遇到超预算/循环/无进展时必须 yield-to-host（macrotask continuation），并在 `trace:tick` 中可解释（scheduleKind + reason）。
+- RuntimeStore topic notify：low-priority 节流（raf/timeout + maxDelay）也必须通过 HostScheduler 执行，避免 React adapter 自行选择宿主 API 造成双真相源与漂移。
+- 测试口径（act-like）：提供统一的 `Runtime.flushAll/advanceTick`（或 `@logix/test` 的 TestKit）来排空 tick + microtasks/macrotasks，避免在测试里散落 `sleep/flushMicrotasks`；行为参考 React `act`（但以 tickSeq 作为唯一观测锚点）。
+- 诊断：当出现 microtask 饥饿防线触发（forced macrotask）或 tick 因预算被切分为多段续跑时，diagnostics=light/full 产出 Slim Warn（不要求指到具体组件，但必须能指到 runtime/module/instance 的最小锚点）。
+- 生产巡检（可选）：在 `diagnostics=off` 下仍允许 opt-in 的低频遥测（sampled `onTickDegraded` / sampling log），用于统计 `stable=false / forced yield` 发生率（默认关闭，确保近零成本）。
+
+明确不做（避免语义漂移）：
+
+- 不把调度“交给纯 effect-ts runtime scheduler/Clock”以替代宿主调度：我们需要显式区分 microtask/macrotask/raf，并保证与 React external store 的订阅时序一致（详见 `contracts/scheduler.md` 的 alternatives）。
+- 不允许在核心路径散落直接调用宿主 API（`queueMicrotask/setTimeout/requestAnimationFrame/...`），否则会把平台差异与饥饿风险扩散为不可治理问题。
 
 ## Deliverables by Phase
 

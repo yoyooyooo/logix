@@ -81,11 +81,6 @@ export interface RuntimeStore {
   readonly unregisterModuleInstance: (moduleInstanceKey: ModuleInstanceKey) => void
 
   // ---- TickScheduler integration (internal) ----
-  readonly hasPending: () => boolean
-  readonly enqueueModuleCommit: (commit: RuntimeStoreModuleCommit) => void
-  readonly markTopicDirty: (topicKey: TopicKey, priority: StateCommitPriority) => void
-  readonly drainPending: () => RuntimeStorePendingDrain | undefined
-  readonly requeuePending: (drain: RuntimeStorePendingDrain) => void
   readonly commitTick: (args: {
     readonly tickSeq: number
     readonly accepted: RuntimeStorePendingDrain
@@ -93,9 +88,6 @@ export interface RuntimeStore {
 
   readonly dispose: () => void
 }
-
-const maxPriority = (a: StateCommitPriority, b: StateCommitPriority): StateCommitPriority =>
-  a === 'normal' || b === 'normal' ? 'normal' : 'low'
 
 export const makeRuntimeStore = (): RuntimeStore => {
   let tickSeq = 0
@@ -108,10 +100,6 @@ export const makeRuntimeStore = (): RuntimeStore => {
   // ---- Subscriptions ----
   const listenersByTopic = new Map<TopicKey, Set<() => void>>()
   const subscriberCountByModule = new Map<ModuleInstanceKey, number>()
-
-  // ---- Pending (drained by TickScheduler) ----
-  let pendingModules = new Map<ModuleInstanceKey, RuntimeStoreModuleCommit>()
-  let pendingDirtyTopics = new Map<TopicKey, StateCommitPriority>()
 
   const getTopicVersion = (topicKey: TopicKey): number => topicVersions.get(topicKey) ?? 0
   const getTopicPriority = (topicKey: TopicKey): StateCommitPriority => topicPriorities.get(topicKey) ?? 'normal'
@@ -180,48 +168,6 @@ export const makeRuntimeStore = (): RuntimeStore => {
     // Keep topic versions by default (helps debugging). Subscribers are expected to detach on module destroy.
   }
 
-  const hasPending = (): boolean => pendingModules.size > 0 || pendingDirtyTopics.size > 0
-
-  const enqueueModuleCommit = (commit: RuntimeStoreModuleCommit): void => {
-    const prev = pendingModules.get(commit.moduleInstanceKey)
-    if (!prev) {
-      pendingModules.set(commit.moduleInstanceKey, commit)
-    } else {
-      pendingModules.set(commit.moduleInstanceKey, {
-        ...commit,
-        meta: {
-          ...commit.meta,
-          priority: maxPriority(prev.meta.priority, commit.meta.priority),
-        },
-      })
-    }
-  }
-
-  const markTopicDirty = (topicKey: TopicKey, priority: StateCommitPriority): void => {
-    const prev = pendingDirtyTopics.get(topicKey)
-    pendingDirtyTopics.set(topicKey, prev ? maxPriority(prev, priority) : priority)
-  }
-
-  const drainPending = (): RuntimeStorePendingDrain | undefined => {
-    if (!hasPending()) return undefined
-    const drained: RuntimeStorePendingDrain = {
-      modules: pendingModules,
-      dirtyTopics: pendingDirtyTopics,
-    }
-    pendingModules = new Map()
-    pendingDirtyTopics = new Map()
-    return drained
-  }
-
-  const requeuePending = (drain: RuntimeStorePendingDrain): void => {
-    for (const [k, commit] of drain.modules) {
-      enqueueModuleCommit(commit)
-    }
-    for (const [k, p] of drain.dirtyTopics) {
-      markTopicDirty(k, p)
-    }
-  }
-
   const commitTick = (args: { readonly tickSeq: number; readonly accepted: RuntimeStorePendingDrain }): RuntimeStoreCommitResult => {
     tickSeq = args.tickSeq
 
@@ -250,8 +196,6 @@ export const makeRuntimeStore = (): RuntimeStore => {
     topicPriorities.clear()
     listenersByTopic.clear()
     subscriberCountByModule.clear()
-    pendingModules.clear()
-    pendingDirtyTopics.clear()
   }
 
   return {
@@ -264,11 +208,6 @@ export const makeRuntimeStore = (): RuntimeStore => {
     getModuleSubscriberCount,
     registerModuleInstance,
     unregisterModuleInstance,
-    hasPending,
-    enqueueModuleCommit,
-    markTopicDirty,
-    drainPending,
-    requeuePending,
     commitTick,
     dispose,
   }

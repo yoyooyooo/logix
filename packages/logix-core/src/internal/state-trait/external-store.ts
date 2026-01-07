@@ -6,13 +6,12 @@ import * as TaskRunner from '../runtime/core/TaskRunner.js'
 import * as Debug from '../runtime/core/DebugSink.js'
 import { getExternalStoreDescriptor } from '../external-store-descriptor.js'
 import { normalizeFieldPath } from '../field-path.js'
-import { DeclarativeLinkRuntimeTag } from '../runtime/core/env.js'
+import { DeclarativeLinkRuntimeTag, HostSchedulerTag } from '../runtime/core/env.js'
+import { getGlobalHostScheduler } from '../runtime/core/HostScheduler.js'
 import * as RowId from './rowid.js'
 import type { StateTraitEntry, StateTraitPlanStep } from './model.js'
 
 const isFn = (value: unknown): value is (...args: ReadonlyArray<any>) => unknown => typeof value === 'function'
-
-const microtask = Effect.promise(() => new Promise<void>((r) => queueMicrotask(r)))
 
 type ExternalStoreEntry<S> = Extract<StateTraitEntry<S, string>, { readonly kind: 'externalStore' }>
 
@@ -39,6 +38,11 @@ export const installExternalStoreSync = <S>(
     if (!fieldPath) return
 
     const env = yield* Effect.context<any>()
+    const hostSchedulerOpt = yield* Effect.serviceOption(HostSchedulerTag)
+    const hostScheduler = Option.isSome(hostSchedulerOpt) ? hostSchedulerOpt.value : getGlobalHostScheduler()
+    const microtask = Effect.async<void, never>((resume) => {
+      hostScheduler.scheduleMicrotask(() => resume(Effect.void))
+    })
 
     let internals: ReturnType<typeof getBoundInternals>
     try {
@@ -221,7 +225,6 @@ export const installExternalStoreSync = <S>(
     let fuseRecorded = false
     let pending = false
     let resume: (() => void) | undefined
-    let waitPromise: Promise<void> | undefined
 
     const recordFuseDiagnostic = Effect.gen(function* () {
       if (fuseRecorded) return
@@ -258,27 +261,47 @@ export const installExternalStoreSync = <S>(
 
     const signal = (): void => {
       if (fused) return
-      pending = true
       if (resume) {
         const r = resume
-        resume = undefined
-        waitPromise = undefined
+        pending = false
         r()
+        return
       }
+      pending = true
     }
 
-    const awaitSignal = Effect.promise(() => {
+    const awaitSignal = (): Effect.Effect<void, never, never> => {
       if (pending) {
         pending = false
-        return Promise.resolve()
+        return Effect.void
       }
-      if (!waitPromise) {
-        waitPromise = new Promise<void>((r) => {
-          resume = r
-        })
-      }
-      return waitPromise
-    })
+
+      return Effect.async<void, never>((resumeEffect, signal) => {
+        let done = false
+        const r = () => {
+          if (done) return
+          done = true
+          resume = undefined
+          resumeEffect(Effect.void)
+        }
+
+        resume = r
+
+        try {
+          signal.addEventListener(
+            'abort',
+            () => {
+              if (resume === r) {
+                resume = undefined
+              }
+            },
+            { once: true },
+          )
+        } catch {
+          // best-effort
+        }
+      })
+    }
 
     const getSnapshotOrFuse = (): unknown => {
       try {
@@ -290,8 +313,10 @@ export const installExternalStoreSync = <S>(
       }
     }
 
+    const readSnapshotOrFuse = Effect.locally(TaskRunner.inSyncTransactionFiber, false)(Effect.sync(getSnapshotOrFuse))
+
     // T016: atomic init semantics (no missed updates between getSnapshot() and subscribe()).
-    const before = getSnapshotOrFuse()
+    const before = yield* readSnapshotOrFuse
     if (fused) {
       yield* recordFuseDiagnostic
       return
@@ -308,7 +333,7 @@ export const installExternalStoreSync = <S>(
       }),
     )
 
-    const after = getSnapshotOrFuse()
+    const after = yield* readSnapshotOrFuse
     if (fused) {
       yield* recordFuseDiagnostic
       return
@@ -363,21 +388,23 @@ export const installExternalStoreSync = <S>(
 
     // Long-lived sync loop: coalesce changes, pull latest snapshot, and write back in a txn.
     yield* Effect.forkScoped(
-      Effect.gen(function* () {
-        while (true) {
-          yield* awaitSignal
-          if (fused) return
-          yield* microtask
-          if (fused) return
+      Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
+        Effect.gen(function* () {
+          while (true) {
+            yield* awaitSignal()
+            if (fused) return
+            yield* microtask
+            if (fused) return
 
-          const snapshot = getSnapshotOrFuse()
-          if (fused) {
-            yield* recordFuseDiagnostic
-            return
+            const snapshot = yield* readSnapshotOrFuse
+            if (fused) {
+              yield* recordFuseDiagnostic
+              return
+            }
+
+            yield* writeValue(computeValue(snapshot))
           }
-
-          yield* writeValue(computeValue(snapshot))
-        }
-      }),
+        }),
+      ),
     )
   })
