@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "logix-browser-perf-matrix-v1",
-  "updatedAt": "2026-01-06",
+  "updatedAt": "2026-01-07",
   "defaults": {
     "runs": 30,
     "warmupDiscard": 5,
@@ -455,7 +455,7 @@
       "title": "runtimeStore: tick→notify baseline (no-tearing workload)",
       "primaryAxis": "watchers",
       "axes": {
-        "watchers": [256],
+        "watchers": [128, 256, 512],
         "diagnosticsLevel": ["off", "full"]
       },
       "metrics": ["timePerTickMs"],
@@ -491,7 +491,7 @@
       "title": "externalStore: ingest→notify baseline (external input workload)",
       "primaryAxis": "watchers",
       "axes": {
-        "watchers": [256],
+        "watchers": [128, 256, 512],
         "diagnosticsLevel": ["off", "full"]
       },
       "metrics": ["timePerIngestMs"],
@@ -528,7 +528,7 @@
       "primaryAxis": "budgetMaxSteps",
       "axes": {
         "budgetMaxSteps": [2, 4],
-        "watchers": [256],
+        "watchers": [128, 256, 512],
         "diagnosticsLevel": ["off", "full"]
       },
       "metrics": ["runtime.backlogCatchUpMs"],

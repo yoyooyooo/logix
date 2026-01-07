@@ -314,7 +314,7 @@ const explainWarning = (w) => {
 }
 
 let md = ''
-md += `### logix-perf (quick)\n`
+md += `### logix-perf (summary)\n`
 md += `- scope: ${code(scope)}\n`
 md += `- profile: ${code(profile)}\n`
 if (envId) md += `- envId: ${code(envId)}\n`
@@ -322,6 +322,81 @@ if (baseShort && headShort) md += `- base: ${code(baseShort)}  head: ${code(head
 if (baseRef && headRef) md += `- refs: ${code(baseRef)} -> ${code(headRef)}\n`
 if (artifactName) md += `- artifacts: ${code(artifactName)}\n`
 
+const collectBudgetExceeded = (report) => {
+  const failures = []
+  const suites = Array.isArray(report?.suites) ? report.suites : []
+  for (const s of suites) {
+    const suiteId = typeof s?.id === 'string' ? s.id : 'unknownSuite'
+    const thresholds = Array.isArray(s?.thresholds) ? s.thresholds : []
+    for (const t of thresholds) {
+      if (!t || typeof t !== 'object') continue
+      if (t.reason !== 'budgetExceeded') continue
+      const b = t.budget
+      failures.push({
+        suiteId,
+        budgetId: budgetKey(b),
+        whereKey: stableParamsKey(t.where),
+        maxLevel: t.maxLevel ?? null,
+        firstFailLevel: t.firstFailLevel ?? null,
+        metric: b?.metric,
+        type: b?.type,
+        absP95Ms: b?.type === 'absolute' ? b?.p95Ms : undefined,
+        maxRatio: b?.type === 'relative' ? b?.maxRatio : undefined,
+      })
+    }
+  }
+  return failures
+}
+
+const afterFailures = afterReport ? collectBudgetExceeded(afterReport) : []
+const comparable = diff?.meta?.comparability?.comparable === true
+const regressions = diff?.summary?.regressions ?? 0
+const improvements = diff?.summary?.improvements ?? 0
+
+const conclusion = (() => {
+  if (!diff) return 'no_diff'
+  if (!comparable) return 'triage_only_not_comparable'
+  if (typeof regressions === 'number' && regressions > 0) return 'has_regressions'
+  if (afterFailures.length > 0) return 'head_budget_exceeded'
+  return 'ok'
+})()
+
+md += `\n### Conclusion\n`
+md += `- comparable: ${code(String(diff?.meta?.comparability?.comparable ?? '?'))}\n`
+md += `- diff: regressions=${code(regressions)}, improvements=${code(improvements)}\n`
+md += `- head budgetExceeded: ${code(afterFailures.length)}\n`
+md += `- status: ${code(conclusion)}\n`
+
+if (afterFailures.length > 0) {
+  const byKey = new Map()
+  for (const f of afterFailures) {
+    const k = `${f.suiteId}::${f.budgetId}`
+    byKey.set(k, (byKey.get(k) ?? 0) + 1)
+  }
+  const top = Array.from(byKey.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+  md += `\n**Head budgetExceeded (top)**\n`
+  for (const [k, n] of top) md += `- ${code(k)} ×${code(n)}\n`
+  if (afterFailures.length > 0) {
+    const samples = afterFailures.slice(0, 6)
+    md += `\n<details>\n<summary>samples (where / firstFail)</summary>\n\n`
+    for (const f of samples) {
+      const budgetHint =
+        f.type === 'absolute'
+          ? `p95<=${String(f.absP95Ms)}ms`
+          : f.type === 'relative'
+            ? `ratio<=${String(f.maxRatio)}`
+            : 'unknown'
+      md += `- ${code(f.suiteId)} ${code(f.budgetId)} ${code(budgetHint)} where=${code(f.whereKey)} firstFail=${code(
+        f.firstFailLevel,
+      )}\n`
+    }
+    md += `\n</details>\n`
+  }
+}
+
+md += `\n<details>\n<summary>Terminology (maxLevel / steps / dirtyRootsRatio)</summary>\n\n`
 md += `\n### What do \`maxLevel\` and \`null\` mean?\n`
 md += `- \`maxLevel\` is the highest primary-axis level that still satisfies a budget.\n`
 md += `- Example (primary axis = \`steps\`):\n`
@@ -333,6 +408,9 @@ md += `\n### What do \`steps\` and \`dirtyRootsRatio\` mean?\n`
 md += `- \`steps\` is the primary axis for this suite: it controls the size of the converge state (more steps = more roots/fields).\n`
 md += `- \`dirtyRootsRatio\` controls how many roots/fields are patched per transaction: \`dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))\`.\n`
 md += `- Metrics are evaluated on the p95 statistic (\`n = runs - warmupDiscard\`; tail-only failures are often noise unless reproducible).\n`
+md += `\n</details>\n`
+
+md += `\n<details>\n<summary>Details (diff / thresholds / points)</summary>\n\n`
 if (!diff) {
   md += `\n### Diff\n`
   md += `_Diff file not found. Collect or diff step may have failed. Check the Actions logs._\n`
@@ -1192,6 +1270,8 @@ if (files.length > 0) {
   md += `\n### Artifacts (files inside the uploaded artifact)\n`
   for (const f of files) md += `- ${code(f)}\n`
 }
+
+md += `\n</details>\n`
 
 const summaryPath = path.join(perfDir, 'summary.md')
 fs.writeFileSync(summaryPath, `${md}\n`, 'utf8')
