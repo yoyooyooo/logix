@@ -2,6 +2,9 @@
   "name": "@logix/core-ng",
   "version": "0.0.1",
   "description": "Next-gen kernel implementation package for Logix",
+  "files": [
+    "dist/**"
+  ],
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -13,6 +16,7 @@
     "./internal/*": null
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       "./package.json": "./package.json",
       ".": {
@@ -32,7 +36,7 @@
     "types": "./dist/index.d.ts"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",

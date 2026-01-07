@@ -1,46 +1,94 @@
-# intent-flow / Logix 实验场
+# Logix
 
-本仓库是「意图驱动开发 + Effect-Native 运行时」的实验场，用于打磨：
+[English](README.md) | [中文](README.zh-CN.md)
 
-- Logix Runtime（前端运行时内核）；
-- Intent/Flow/Effect 的组合模式；
-- 面向 ToB 典型场景的 PoC 与最佳实践。
+Logix is an **Effect-native runtime for frontend state and business logic**.
 
-原则：性能与可诊断性优先、拒绝向后兼容；目标是让 Logix 成为逻辑编排领域的“React”
-（声明式、可推导、内部自动优化、可解释）。治理与工作流以 `.specify/memory/constitution.md`
-为准。
+This repository is the incubation monorepo for Logix: runtime packages, the React adapter, devtools, a browser sandbox, and runnable examples.
+It evolves quickly and is **forward-only** (no backward compatibility guarantees).
+This README intentionally focuses on Logix; other directories may contain experiments and can change or disappear.
 
-## 文档分层
+## What is Logix for?
 
-- **用户文档（推荐从这里开始）**  
-  - 路径：`apps/docs`（Next.js + Fumadocs）  
-  - 内容：Logix 使用指南、API 参考、教程、配方。  
-  - 本地开发：
-    ```bash
-    cd apps/docs
-    pnpm install
-    pnpm dev
-    # 打开 http://localhost:3000
-    ```
+- Build **type-safe Modules** (State + Actions) with `effect/Schema`.
+- Orchestrate async business flows with **Effect programs** instead of ad-hoc `useEffect` chains.
+- Compose large apps from smaller modules with explicit boundaries, testability, and observability hooks.
 
-- **规范与设计文档（SSoT）**  
-  - 平台侧（SDD Platform）：`docs/specs/sdd-platform`  
-  - Runtime / Logix 内核：`.codex/skills/project-guide/references/runtime-logix`（project-guide 内置的 Runtime SSoT，按渐进式披露组织）  
-  - 任何影响 Intent 模型、Flow DSL、Runtime 契约的决策，优先更新上述文档。
+## Core mental model
 
-- **团队引入/宣讲材料（精简版）**
-  - 路径：`docs/team-briefing/README.md`
-  - 内容：Logix 的初衷、优势与对比（面向团队沟通，不替代用户文档与 SSoT）。
+- **Module**: a unit of business boundary (identity + State/Actions shape).
+- **Logic**: an Effect program that reacts to Actions / State changes via the bound API `$`.
+- **Runtime**: hosts module instances, runs Logic/Processes, and wires service Layers.
 
-## 代码主线
+## Minimal example
 
-- `packages/logix-core`：Logix 运行时内核（Module / Logic / Bound API `$` / Runtime 等）；  
-- `packages/logix-react`：React 适配层（`RuntimeProvider`、`useModule` 等）；  
-- `examples/logix`：可运行的 PoC 场景与 Pattern（scenarios + patterns）。
+```ts
+import * as Logix from '@logix/core'
+import { Effect, Schema } from 'effect'
 
-如需在真实业务仓库中接入 Logix，建议先阅读 `apps/docs` 中的「快速上手」与 Essentials，再结合 `.codex/skills/project-guide/references/runtime-logix` 理解运行时契约。 
+export const CounterDef = Logix.Module.make('Counter', {
+  state: Schema.Struct({ count: Schema.Number }),
+  actions: { inc: Schema.Void },
+})
 
-## Speckit Kanban（本地调试）
+export const CounterLogic = CounterDef.logic(($) =>
+  Effect.gen(function* () {
+    yield* $.onAction('inc').update((s) => ({ ...s, count: s.count + 1 }))
+  }),
+)
 
-- 快速预览（静态 dist）：`pnpm speckit:kanban`
-- 开发模式（HMR）：`pnpm speckit:kanban:dev`
+export const CounterModule = CounterDef.implement({
+  initial: { count: 0 },
+  logics: [CounterLogic],
+})
+```
+
+## Quick start (from this monorepo)
+
+1. Install dependencies:
+
+```bash
+pnpm install
+```
+
+2. Run the React demo:
+
+```bash
+pnpm -C examples/logix-react dev
+```
+
+3. Run a standalone Node scenario:
+
+```bash
+pnpm tsx examples/logix/src/scenarios/and-update-on-action.ts
+```
+
+4. Read the docs (bilingual):
+
+```bash
+pnpm -C apps/docs dev
+# open http://localhost:3000
+```
+
+## Packages
+
+- `packages/logix-core` → `@logix/core` (kernel: Module / Logic / Flow / Runtime / `$`)
+- `packages/logix-react` → `@logix/react` (React adapter: `RuntimeProvider`, hooks)
+- `packages/logix-devtools-react` → `@logix/devtools-react` (devtools UI)
+- `packages/logix-sandbox` → `@logix/sandbox` (run Logix/Effect in a browser Worker)
+- `packages/logix-test` → `@logix/test` (testing utilities)
+
+Add-ons and feature kits live in `packages/logix-form`, `packages/logix-query`, `packages/i18n`, `packages/domain`.
+
+## Documentation
+
+- Getting started: `apps/docs/content/docs/guide/get-started/introduction.en.md`
+- Quick start: `apps/docs/content/docs/guide/get-started/quick-start.en.md`
+- Tutorial (form): `apps/docs/content/docs/guide/get-started/tutorial-first-app.en.md`
+
+## Development
+
+- Build packages (needed by some examples/tools): `pnpm build:pkg`
+- Typecheck: `pnpm typecheck`
+- Lint: `pnpm lint`
+- Test: `pnpm test` (or `pnpm test:turbo`)

@@ -2,6 +2,9 @@
   "name": "@logix/form",
   "version": "0.0.1",
   "description": "Form domain package for Logix v3 Trait system",
+  "files": [
+    "dist/**"
+  ],
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -12,6 +15,31 @@
     "./react": "./src/react/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./package.json": "./package.json",
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./react": {
+        "types": "./dist/react/index.d.ts",
+        "import": "./dist/react/index.js",
+        "require": "./dist/react/index.cjs"
+      },
+      "./*": {
+        "types": "./dist/*.d.ts",
+        "import": "./dist/*.js",
+        "require": "./dist/*.cjs"
+      },
+      "./internal/*": null
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts"
   },
   "scripts": {
     "build": "tsup --format cjs,esm --dts",

@@ -30,6 +30,7 @@
     "./internal/*": null
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       "./package.json": "./package.json",
       ".": {

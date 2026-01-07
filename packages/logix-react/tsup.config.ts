@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/RuntimeProvider.ts', 'src/Hooks.ts', 'src/Platform.ts', 'src/ReactPlatform.ts'],
+  entry: ['src/*.ts'],
   format: ['cjs', 'esm'],
   dts: true,
   clean: true,

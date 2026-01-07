@@ -1,6 +1,9 @@
 {
   "name": "@logix/react",
   "version": "0.1.0",
+  "files": [
+    "dist/**"
+  ],
   "type": "module",
   "main": "src/index.ts",
   "module": "src/index.ts",
@@ -12,6 +15,7 @@
     "./internal/*": null
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       "./package.json": "./package.json",
       ".": {

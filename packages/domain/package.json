@@ -2,6 +2,9 @@
   "name": "@logix/domain",
   "version": "0.0.1",
   "description": "Domain modules (based on Logix.Module.Manage) for Logix v3",
+  "files": [
+    "dist/**"
+  ],
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -11,6 +14,26 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./package.json": "./package.json",
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./*": {
+        "types": "./dist/*.d.ts",
+        "import": "./dist/*.js",
+        "require": "./dist/*.cjs"
+      },
+      "./internal/*": null
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts"
   },
   "scripts": {
     "build": "tsup --format cjs,esm --dts",

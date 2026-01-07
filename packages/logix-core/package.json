@@ -2,6 +2,9 @@
   "name": "@logix/core",
   "version": "0.0.1",
   "description": "The pure logic engine for Logix",
+  "files": [
+    "dist/**"
+  ],
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -35,6 +38,7 @@
     "./internal/*": null
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       "./package.json": "./package.json",
       ".": {

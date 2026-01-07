@@ -1,6 +1,4 @@
 declare module 'use-sync-external-store/shim/with-selector.js' {
-  import type { MutableRefObject } from 'react'
-
   export function useSyncExternalStoreWithSelector<Snapshot, Selection>(
     subscribe: (onStoreChange: () => void) => () => void,
     getSnapshot: () => Snapshot,
