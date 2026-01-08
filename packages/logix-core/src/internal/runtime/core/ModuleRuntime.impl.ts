@@ -532,10 +532,19 @@ export const make = <S, A, R = never>(
 
     const enqueueTransaction: EnqueueTransaction = ((a0: any, a1?: any) =>
       Effect.gen(function* () {
-        if (!tickSchedulerCached && rootContext?.context) {
-          const fromRoot = Context.getOption(rootContext.context, TickSchedulerTag as any) as Option.Option<TickSchedulerService>
-          if (Option.isSome(fromRoot)) {
-            tickSchedulerCached = fromRoot.value
+        // Cache TickScheduler from the current fiber Env whenever possible:
+        // - ManagedRuntime scenarios (e.g. React RuntimeProvider injecting tick services) may not have TickSchedulerTag
+        //   visible during ModuleRuntime initialization.
+        // - But it is often available at enqueue-time (callsite), and caching it ensures onCommit can publish into RuntimeStore.
+        if (!tickSchedulerCached) {
+          const refreshed = (yield* Effect.serviceOption(TickSchedulerTag)) as Option.Option<TickSchedulerService>
+          if (Option.isSome(refreshed)) {
+            tickSchedulerCached = refreshed.value
+          } else if (rootContext?.context) {
+            const fromRoot = Context.getOption(rootContext.context, TickSchedulerTag as any) as Option.Option<TickSchedulerService>
+            if (Option.isSome(fromRoot)) {
+              tickSchedulerCached = fromRoot.value
+            }
           }
         }
 
