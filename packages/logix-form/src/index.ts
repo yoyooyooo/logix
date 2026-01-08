@@ -1,6 +1,6 @@
-// Public barrel for @logix/form
+// Public barrel for @logixjs/form
 // Recommended usage:
-//   import * as Form from "@logix/form"
+//   import * as Form from "@logixjs/form"
 // Then Form exposes namespaces like make / traits / node / list / Rule / Error / Path.
 
 export { make } from './Form.js'

@@ -55,7 +55,7 @@ function Counter() {
 ### Logix 迁移后
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 // 1. 定义 Module（分离声明与实现）
@@ -96,7 +96,7 @@ const CounterModule = CounterDef.implement({
 
 ```tsx
 // React 使用
-import { useModule, useSelector, useDispatch } from '@logix/react'
+import { useModule, useSelector, useDispatch } from '@logixjs/react'
 
 function Counter() {
   const counter = useModule(CounterModule)

@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import * as CoreNg from '../src/index.js'
 
 describe('core-ng: Reflection.verifyFullCutoverGate', () => {

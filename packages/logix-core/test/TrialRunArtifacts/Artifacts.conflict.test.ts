@@ -4,7 +4,7 @@ import type { TrialRunArtifactExporter } from '../../src/internal/observability/
 
 describe('TrialRunArtifacts.collect: conflict', () => {
   it('marks key conflicts as actionable errors and still exports other artifacts', () => {
-    const conflictKey = '@logix/form.rulesManifest@v1'
+    const conflictKey = '@logixjs/form.rulesManifest@v1'
 
     const exporters: ReadonlyArray<TrialRunArtifactExporter> = [
       {
@@ -23,7 +23,7 @@ describe('TrialRunArtifacts.collect: conflict', () => {
       },
       {
         exporterId: 'ok',
-        artifactKey: '@logix/demo.ok@v1',
+        artifactKey: '@logixjs/demo.ok@v1',
         export: () => ({ ok: true }) as const,
       },
     ]
@@ -35,7 +35,7 @@ describe('TrialRunArtifacts.collect: conflict', () => {
     })
 
     expect(artifacts).toBeDefined()
-    expect(Object.keys(artifacts!)).toEqual(['@logix/demo.ok@v1', conflictKey])
+    expect(Object.keys(artifacts!)).toEqual(['@logixjs/demo.ok@v1', conflictKey])
 
     const conflict = (artifacts as any)[conflictKey]
     expect(conflict.ok).toBe(false)
@@ -43,7 +43,7 @@ describe('TrialRunArtifacts.collect: conflict', () => {
     expect(String(conflict.error?.hint ?? '')).toContain('e1')
     expect(String(conflict.error?.hint ?? '')).toContain('e2')
 
-    const ok = (artifacts as any)['@logix/demo.ok@v1']
+    const ok = (artifacts as any)['@logixjs/demo.ok@v1']
     expect(ok.ok).toBe(true)
     expect(ok.value).toEqual({ ok: true })
   })

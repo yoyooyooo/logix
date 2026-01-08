@@ -18,7 +18,7 @@ export type ValuesT = Schema.Schema.Type<typeof Values>
 ## 2) 创建 Form Module
 
 ```ts
-import * as Form from "@logix/form"
+import * as Form from "@logixjs/form"
 
 const $ = Form.from(Values)
 const z = $.rules
@@ -48,9 +48,9 @@ export const UserForm = Form.make("UserForm", {
 ```tsx
 import React from "react"
 import { Effect } from "effect"
-import * as Logix from "@logix/core"
-import { RuntimeProvider } from "@logix/react"
-import { useForm, useField, useFormState } from "@logix/form/react"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
+import { useForm, useField, useFormState } from "@logixjs/form/react"
 import { UserForm } from "./UserForm"
 
 const runtime = Logix.Runtime.make(UserForm, { devtools: true })

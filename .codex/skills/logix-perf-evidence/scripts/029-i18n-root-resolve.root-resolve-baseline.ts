@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Schema } from 'effect'
 import { performance } from 'node:perf_hooks'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 type BenchResult =
   | {
@@ -49,7 +49,7 @@ interface TestService {
   readonly value: number
 }
 
-class TestServiceTag extends Context.Tag('@logix/perf/029-i18n-root-resolve/TestService')<
+class TestServiceTag extends Context.Tag('@logixjs/perf/029-i18n-root-resolve/TestService')<
   TestServiceTag,
   TestService
 >() {}

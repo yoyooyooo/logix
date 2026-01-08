@@ -1,6 +1,6 @@
-// Public barrel for @logix/core
+// Public barrel for @logixjs/core
 // Recommended usage:
-//   import * as Logix from '@logix/core'
+//   import * as Logix from '@logixjs/core'
 // Then `Logix` exposes Module / State / Actions / Logic / Bound / Handle / Link / Flow / Runtime / Debug namespaces.
 
 // Core module API: Module / ModuleRuntime / ModuleImpl / StateOf / ActionOf / Reducer, etc.

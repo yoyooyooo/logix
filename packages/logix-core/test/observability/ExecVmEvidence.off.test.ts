@@ -8,7 +8,7 @@ describe('Exec VM evidence (diagnostics off)', () => {
     Effect.gen(function* () {
       const program = Logix.Debug.record({
         type: 'trace:exec-vm',
-        moduleId: '@logix/core-ng',
+        moduleId: '@logixjs/core-ng',
         instanceId: 'kernel:core-ng',
         data: {
           version: 'v1',

@@ -1,9 +1,9 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Context, Effect, Layer, Stream } from 'effect'
 
 /**
  * Notes:
- * - Since 003-trait-txn-lifecycle, DevtoolsHub has been moved down into @logix/core (global singleton).
+ * - Since 003-trait-txn-lifecycle, DevtoolsHub has been moved down into @logixjs/core (global singleton).
  * - This file is only a thin adapter layer:
  *   - Still exports DevtoolsSnapshotStore / devtoolsSnapshotLayer for DevtoolsModule.
  *   - Still exports devtoolsLayer as a legacy compatibility entry (deprecated).

@@ -7,13 +7,13 @@ description: 在 `.logic()` 内消费依赖的统一概念：ModuleHandle 与 Se
 
 `Handle` 指的是：**在 `.logic()` 内消费一个依赖时拿到的“可用视图”**。它的目标不是“把所有东西统一成同一个接口”，而是提供一套稳定语言，指导你把能力沉淀成两种形态之一，并让消费方式尽量趋同。
 
-在代码层，`@logix/core` 提供 `Logix.Handle` 子模块（也可用子路径 `@logix/core/Handle`）来承载这套概念与少量工具函数。
+在代码层，`@logixjs/core` 提供 `Logix.Handle` 子模块（也可用子路径 `@logixjs/core/Handle`）来承载这套概念与少量工具函数。
 
 ## 1) 两种 Handle（两种封装方向）
 
 ### 1.1 ModuleHandle（自定义 Module 的句柄）
 
-当你写成自定义 Module（例如 `@logix/query` / `@logix/form` 的主线形态）时：
+当你写成自定义 Module（例如 `@logixjs/query` / `@logixjs/form` 的主线形态）时：
 
 - 业务逻辑通过 `yield* $.use(OtherModule)` 拿到对方的 `ModuleHandle`；
 - 基础能力固定为：`read/changes/dispatch/actions`；

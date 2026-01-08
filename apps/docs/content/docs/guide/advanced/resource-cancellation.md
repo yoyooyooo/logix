@@ -5,7 +5,7 @@ description: Make `switch` concurrency not only drop old results, but also cance
 
 # Interruptible IO (Cancellation and Timeouts)
 
-In Logix, queries/resource loading eventually goes through `ResourceSpec.load` (an Effect). When you use `StateTrait.source` (and `@logix/query` built on top of it), the default concurrency is `switch`: a new key interrupts the previous in-flight fiber.
+In Logix, queries/resource loading eventually goes through `ResourceSpec.load` (an Effect). When you use `StateTrait.source` (and `@logixjs/query` built on top of it), the default concurrency is `switch`: a new key interrupts the previous in-flight fiber.
 
 But “interrupting a fiber” does not automatically mean “cancelling the network request”. If you want true cancellation (e.g. aborting an axios request), your `load` must actively use the `AbortSignal` provided by Effect.
 
@@ -22,7 +22,7 @@ Logix guarantees (1) by default (via the `keyHash` gate). To get (2), you need t
 
 ```ts
 import { Effect, Schema } from "effect"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 export const UserSpec = Logix.Resource.make({
   id: "demo/user/get",
@@ -41,7 +41,7 @@ export const UserSpec = Logix.Resource.make({
 ```ts
 import axios from "axios"
 import { Effect, Schema } from "effect"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 export const SearchSpec = Logix.Resource.make({
   id: "demo/user/search",

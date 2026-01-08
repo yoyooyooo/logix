@@ -2,7 +2,7 @@
 title: React integration (startup strategy and cold-start optimization)
 ---
 
-When using Logix in React, put `RuntimeProvider` at the boundary of your component tree (usually the app root or a route layout). All `@logix/react` hooks must be called under the Provider subtree.
+When using Logix in React, put `RuntimeProvider` at the boundary of your component tree (usually the app root or a route layout). All `@logixjs/react` hooks must be called under the Provider subtree.
 
 ## One entry point: use a single `fallback`
 
@@ -86,11 +86,11 @@ Further reading:
 
 ## Global defaults: ConfigProvider (`logix.react.*`)
 
-`@logix/react` reads a set of global defaults from Effect’s `ConfigProvider` (scoped to the current `ManagedRuntime`). You can inject them once when creating the Runtime:
+`@logixjs/react` reads a set of global defaults from Effect’s `ConfigProvider` (scoped to the current `ManagedRuntime`). You can inject them once when creating the Runtime:
 
 ```tsx
 import { ConfigProvider, Layer, ManagedRuntime } from 'effect'
-import { RuntimeProvider } from '@logix/react'
+import { RuntimeProvider } from '@logixjs/react'
 
 const ReactConfigLayer = Layer.setConfigProvider(
   ConfigProvider.fromMap(

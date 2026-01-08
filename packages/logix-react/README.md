@@ -1,4 +1,4 @@
-# @logix/react
+# @logixjs/react
 
 > Logix Runtime 的 React 适配层（Alpha 阶段：仓库内 API 已稳定，正式发版前仍可能微调）。
 
@@ -15,8 +15,8 @@
 ## 快速上手
 
 ```tsx
-import { RuntimeProvider, ReactPlatformLayer } from "@logix/react"
-import * as Logix from "@logix/core"
+import { RuntimeProvider, ReactPlatformLayer } from "@logixjs/react"
+import * as Logix from "@logixjs/core"
 import { Layer } from "effect"
 
 const RootDef = Logix.Module.make("Root", { state: RootState, actions: RootActions })
@@ -42,7 +42,7 @@ export function App() {
 在组件中使用 Hooks：
 
 ```tsx
-import { useModule, useSelector, useDispatch } from "@logix/react"
+import { useModule, useSelector, useDispatch } from "@logixjs/react"
 
 function Counter() {
   const runtime = useModule(CounterModule)

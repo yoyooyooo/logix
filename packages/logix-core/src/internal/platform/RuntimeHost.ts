@@ -26,7 +26,7 @@ export const make = (kind: RuntimeHostKind): RuntimeHostService => ({
   isBrowser: kind === 'browser',
 })
 
-export class RuntimeHost extends Context.Tag('@logix/RuntimeHost')<RuntimeHost, RuntimeHostService>() {}
+export class RuntimeHost extends Context.Tag('@logixjs/RuntimeHost')<RuntimeHost, RuntimeHostService>() {}
 
 export const layer = (service: RuntimeHostService): Layer.Layer<RuntimeHost, never, never> =>
   Layer.succeed(RuntimeHost, service)

@@ -23,7 +23,7 @@ describe('TrialRunReport.environment (kernel ref, diagnostics off)', () => {
       expect(report.environment?.runtimeServicesEvidence).toBeUndefined()
       expect(report.environment?.kernelImplementationRef).toBeDefined()
       expect(report.environment?.kernelImplementationRef?.kernelId).toBe('core')
-      expect(report.environment?.kernelImplementationRef?.packageName).toBe('@logix/core')
+      expect(report.environment?.kernelImplementationRef?.packageName).toBe('@logixjs/core')
     }),
   )
 })

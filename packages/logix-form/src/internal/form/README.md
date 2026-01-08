@@ -1,6 +1,6 @@
 # `packages/form/src/internal/form/*`
 
-本目录用于承载 `@logix/form` 的 **Form Runtime 实现内核**（热路径 + 可维护性拆分），目标是让 `packages/form/src/Form.ts` 只做 public API 的组合与导出，而把高频变更点按职责归位到独立模块。
+本目录用于承载 `@logixjs/form` 的 **Form Runtime 实现内核**（热路径 + 可维护性拆分），目标是让 `packages/form/src/Form.ts` 只做 public API 的组合与导出，而把高频变更点按职责归位到独立模块。
 
 ## 模块职责
 

@@ -4,7 +4,7 @@ import React, { useEffect } from 'react'
 import { describe, it, expect } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { Cause, Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule, useRuntime } from '../../src/Hooks.js'
 

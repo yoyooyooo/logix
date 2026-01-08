@@ -52,7 +52,7 @@ When you need long-running cross-module collaboration “outside modules” (e.g
 - Suitable for orchestration over app/page singleton modules (not “pick one instance out of many”).
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Stream } from 'effect'
 
 const SyncUserFromAuth = Logix.Link.make({ modules: [AuthDef, UserDef] as const }, ($) =>
@@ -72,7 +72,7 @@ export const RootImpl = RootModule.impl
 
 ## 2.1 Common case: linkage triggers refetch for an imported Query child module
 
-If `BModule` imports an `AQuery` (`@logix/query`), and you want “some state change in B” to proactively refetch `AQuery`:
+If `BModule` imports an `AQuery` (`@logixjs/query`), and you want “some state change in B” to proactively refetch `AQuery`:
 
 - **Best practice**: keep linkage logic inside `BModule`’s own Logic (B is the owner). Resolve the `AQuery` handle in **B’s instance scope**, then call `setParams/refresh` explicitly.
 - **Don’t** “find a global AQuery instance and refresh it” inside Link: it becomes ambiguous with multiple instances and is harder to debug.
@@ -109,7 +109,7 @@ Cross-module communication should live in **each module’s `logic.ts`**, and th
 ```ts
 // features/auth/module.ts
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export const AuthDef = Logix.Module.make('Auth', {
   state: Schema.Struct({ token: Schema.String }),

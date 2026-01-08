@@ -1,5 +1,5 @@
 import { Config, Data, Duration, Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // 1. Schema → Shape：Job 场景的 State / Action

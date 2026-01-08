@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useEffect } from 'react'
-import { useDispatch, useModule } from '@logix/react'
+import { useDispatch, useModule } from '@logixjs/react'
 import { Navigate, useLocation, useParams } from 'react-router-dom'
 import { AuthDef } from '../galaxy/auth.module'
 import { hasPermission, type ProjectPermissionKey } from '../galaxy/permissions'

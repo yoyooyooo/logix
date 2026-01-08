@@ -56,7 +56,7 @@ At this point you already get two wins:
 At app startup (or in tests), use Layer to provide implementations for those Tags:
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Layer } from "effect"
 
 const EnvLayer = Layer.mergeAll(

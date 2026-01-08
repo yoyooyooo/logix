@@ -14,7 +14,7 @@ description: 模块结构摘要（Manifest）与依赖预检（试运行）API�
 
 ```ts
 import { writeFileSync } from 'node:fs'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 import { AppRoot } from './app.root.js'
 
@@ -29,7 +29,7 @@ writeFileSync('dist/module-manifest.json', JSON.stringify(manifest, null, 2))
 ## 对比 Manifest（CI / Breaking 检测）
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const diff = Logix.Reflection.diffManifest(before, after, {
   // 可选：只关注允许变化的 meta keys，避免 CI 噪音
@@ -49,7 +49,7 @@ const diff = Logix.Reflection.diffManifest(before, after, {
 
 ```ts
 import { Effect } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { AppRoot } from './app.root.js'
 
 const main = Effect.gen(function* () {

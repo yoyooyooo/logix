@@ -12,7 +12,7 @@
  */
 
 import { Effect, Schema, Stream, Layer } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // 1. 定义三个独立模块

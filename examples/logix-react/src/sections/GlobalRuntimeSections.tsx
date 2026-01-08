@@ -1,5 +1,5 @@
 import React from 'react'
-import { useModule } from '@logix/react'
+import { useModule } from '@logixjs/react'
 import { CounterDef } from '../modules/counter'
 import { CounterAllDef } from '../modules/counterAll'
 import { CounterMultiDef, CounterMultiImpl } from '../modules/counterMulti'

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Effect } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useProcesses } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useProcesses } from '@logixjs/react'
 import { CounterDef, CounterImpl } from '../modules/counter'
 
 const SubtreeTicker = Logix.Process.link({ modules: [CounterDef] as const }, ($) =>

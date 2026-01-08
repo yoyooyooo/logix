@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useContext } from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Scope } from 'effect'
 import { useRuntime } from './useRuntime.js'
 import { isModuleRef, type ModuleRef } from '../store/ModuleRef.js'

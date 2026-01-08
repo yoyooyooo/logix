@@ -24,7 +24,7 @@ import { DiShowcaseLayout } from './demos/DiShowcaseLayout'
 import { I18nDemoLayout } from './demos/I18nDemoLayout'
 import { PerfTuningLabLayout } from './demos/PerfTuningLabLayout'
 import { TrialRunEvidenceDemo } from './demos/TrialRunEvidenceDemo'
-import { LogixDevtools } from '@logix/devtools-react'
+import { LogixDevtools } from '@logixjs/devtools-react'
 import './style.css'
 
 // Cast router components to any to avoid version-mismatch JSX typing issues in this example project.

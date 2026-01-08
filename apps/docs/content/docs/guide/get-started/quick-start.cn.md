@@ -24,7 +24,7 @@ description: 用不到 30 分钟构建你的第一个 Logix 应用。
 ## 1. 安装
 
 ```bash
-npm install @logix/core @logix/react effect
+npm install @logixjs/core @logixjs/react effect
 ```
 
 ## 2. 定义 Module（状态与动作）
@@ -33,7 +33,7 @@ npm install @logix/core @logix/react effect
 
 ```typescript
 // counter.module.ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Schema } from "effect"
 
 export const CounterDef = Logix.Module.make('Counter', {
@@ -101,7 +101,7 @@ export const CounterImpl = CounterModule.impl
 
 ```tsx
 // runtime.ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Layer } from "effect"
 import { CounterModule } from "./counter.impl"
 
@@ -113,7 +113,7 @@ export const AppRuntime = Logix.Runtime.make(CounterModule, {
 
 ```tsx
 // App.tsx（或任意应用入口）
-import { RuntimeProvider } from "@logix/react"
+import { RuntimeProvider } from "@logixjs/react"
 import { AppRuntime } from "./runtime"
 import { CounterView } from "./CounterView"
 
@@ -132,7 +132,7 @@ export function App() {
 
 ```tsx
 // CounterView.tsx
-import { useModule, useSelector, useDispatch } from "@logix/react"
+import { useModule, useSelector, useDispatch } from "@logixjs/react"
 import { CounterDef } from "./counter.module"
 
 export function CounterView() {

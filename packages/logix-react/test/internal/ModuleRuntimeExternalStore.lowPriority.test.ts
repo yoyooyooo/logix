@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { getModuleRuntimeExternalStore } from '../../src/internal/store/ModuleRuntimeExternalStore.js'
 
 describe('ModuleRuntimeExternalStore lowPriority scheduling', () => {

@@ -173,7 +173,7 @@ export interface DevtoolsRuntimeOptions {
   readonly traitConvergeDiagnosticsSampling?: Debug.TraitConvergeDiagnosticsSamplingConfig
   /** DebugObserver config for `trace:effectop`; undefined means full observation. */
   readonly observer?: Middleware.DebugObserverConfig | false
-  /** Reserved: React render sampling / throttling config (consumed by `@logix/react`). */
+  /** Reserved: React render sampling / throttling config (consumed by `@logixjs/react`). */
   readonly sampling?: {
     readonly reactRenderSampleRate?: number
   }

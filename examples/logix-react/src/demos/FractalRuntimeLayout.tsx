@@ -1,7 +1,7 @@
 import React from 'react'
 import { Context, Effect, Layer } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useRuntime } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useRuntime } from '@logixjs/react'
 import { CounterDef, CounterModule } from '../modules/counter'
 
 // 演示“分形 Runtime Tree”：全局 Runtime + 局部 RuntimeProvider layer 注入。

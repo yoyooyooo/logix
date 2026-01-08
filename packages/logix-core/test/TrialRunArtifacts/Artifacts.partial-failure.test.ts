@@ -7,12 +7,12 @@ describe('TrialRunArtifacts.collect: partial failure', () => {
     const exporters: ReadonlyArray<TrialRunArtifactExporter> = [
       {
         exporterId: 'ok',
-        artifactKey: '@logix/demo.ok@v1',
+        artifactKey: '@logixjs/demo.ok@v1',
         export: () => ({ ok: true }) as const,
       },
       {
         exporterId: 'boom',
-        artifactKey: '@logix/demo.boom@v1',
+        artifactKey: '@logixjs/demo.boom@v1',
         export: () => {
           throw Object.assign(new Error('boom'), { code: 'BOOM' })
         },
@@ -26,16 +26,16 @@ describe('TrialRunArtifacts.collect: partial failure', () => {
     })
 
     expect(artifacts).toBeDefined()
-    expect(Object.keys(artifacts!)).toEqual(['@logix/demo.boom@v1', '@logix/demo.ok@v1'])
+    expect(Object.keys(artifacts!)).toEqual(['@logixjs/demo.boom@v1', '@logixjs/demo.ok@v1'])
 
-    const ok = (artifacts as any)['@logix/demo.ok@v1']
+    const ok = (artifacts as any)['@logixjs/demo.ok@v1']
     expect(ok.ok).toBe(true)
     expect(ok.value).toEqual({ ok: true })
 
-    const boom = (artifacts as any)['@logix/demo.boom@v1']
+    const boom = (artifacts as any)['@logixjs/demo.boom@v1']
     expect(boom.ok).toBe(false)
     expect(boom.error?.code).toBe('ArtifactExportFailed')
-    expect(String(boom.error?.hint ?? '')).toContain('@logix/demo.boom@v1')
+    expect(String(boom.error?.hint ?? '')).toContain('@logixjs/demo.boom@v1')
     expect(String(boom.error?.hint ?? '')).toContain('boom')
   })
 })

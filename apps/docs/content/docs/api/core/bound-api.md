@@ -138,7 +138,7 @@ const otherModule = yield* $.use(OtherModule)
 
 ## Pattern Matching
 
-Provides a lightweight Fluent-style pattern matching helper (implemented internally in `@logix/core`). Handlers are expected to return `Effect`.
+Provides a lightweight Fluent-style pattern matching helper (implemented internally in `@logixjs/core`). Handlers are expected to return `Effect`.
 
 - **`match(value)`**: match on a value.
 - **`matchTag(value)`**: match on a tagged union with a `_tag` field.

@@ -1,4 +1,4 @@
-import { RuntimeProvider, useModule, useSelector } from '@logix/react'
+import { RuntimeProvider, useModule, useSelector } from '@logixjs/react'
 
 import { Button } from '@/components/ui/button'
 import { appRuntime } from '@/logix/runtime'

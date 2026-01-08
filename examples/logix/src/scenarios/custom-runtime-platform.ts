@@ -1,9 +1,9 @@
 import { Effect, Layer, Stream, Console, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // -----------------------------------------------------------------------------
 // 2. Platform Implementations (The Custom Runtimes)
-// Defined in @logix/react or @logix/node.
+// Defined in @logixjs/react or @logixjs/node.
 // -----------------------------------------------------------------------------
 
 // Scenario A: React / Browser Runtime

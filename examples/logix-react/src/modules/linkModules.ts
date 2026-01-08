@@ -1,5 +1,5 @@
 import { Effect, Schema, Stream } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // Source：只派发 ping，不持有复杂状态
 const SourceState = Schema.Void

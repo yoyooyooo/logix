@@ -3,8 +3,8 @@ import React from 'react'
 import { describe, expect, it } from 'vitest'
 import { render, fireEvent, waitFor, screen } from '@testing-library/react'
 import { Effect, Schema, Layer } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useDispatch, useSelector } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useDispatch, useSelector } from '@logixjs/react'
 import { LogixDevtools } from '../../src/LogixDevtools.js'
 import { devtoolsLayer } from '../../src/DevtoolsLayer.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
@@ -77,7 +77,7 @@ const CounterView: React.FC = () => {
   )
 }
 
-describe('@logix/devtools-react · TimeTravel UI', () => {
+describe('@logixjs/devtools-react · TimeTravel UI', () => {
   it('applies time-travel before/after and marks DevtoolsState.timeTravel, then returns to latest state', async () => {
     render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>

@@ -1,9 +1,9 @@
 import React from 'react'
 import { Effect, Schema } from 'effect'
-import * as Module from '@logix/core/Module'
-import * as Runtime from '@logix/core/Runtime'
-import * as Debug from '@logix/core/Debug'
-import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
+import * as Module from '@logixjs/core/Module'
+import * as Runtime from '@logixjs/core/Runtime'
+import * as Debug from '@logixjs/core/Debug'
+import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logixjs/react'
 
 // 一个基于 Logix Runtime 的简单示例：单模块计数器应用
 

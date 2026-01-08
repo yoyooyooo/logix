@@ -2,7 +2,7 @@ import { Effect, Layer, Schema } from 'effect'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { performance } from 'node:perf_hooks'
 import { dirname } from 'node:path'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const now = () => performance.now()
 

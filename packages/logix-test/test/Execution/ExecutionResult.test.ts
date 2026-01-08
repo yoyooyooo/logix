@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 import * as Execution from '../../src/Execution.js'
 
 const makeAction = (tag: string): Logix.ActionOf<Logix.AnyModuleShape> => ({ _tag: tag, payload: undefined }) as any
 
-describe('@logix/test · Execution helpers', () => {
+describe('@logixjs/test · Execution helpers', () => {
   it('expectNoActionTag should throw when tag exists', () => {
     const result: Execution.ExecutionResult<Logix.AnyModuleShape> = {
       state: {} as any,

@@ -12,7 +12,7 @@ When a module composes child modules via `imports`, the UI often needs to read/d
 ## Usage
 
 ```tsx
-import { useImportedModule, useModule, useSelector } from '@logix/react'
+import { useImportedModule, useModule, useSelector } from '@logixjs/react'
 import { HostImpl, ChildModule } from './modules'
 
 function Page() {

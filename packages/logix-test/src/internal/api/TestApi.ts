@@ -1,6 +1,6 @@
 import type { Duration, Effect, TestClock } from 'effect'
-import type * as Logix from '@logix/core'
-import type { ProgramRunContext } from '@logix/core/Runtime'
+import type * as Logix from '@logixjs/core'
+import type { ProgramRunContext } from '@logixjs/core/Runtime'
 import type { WaitUntilOptions } from '../utils/waitUntil.js'
 
 export interface TestApi<Sh extends Logix.AnyModuleShape> {

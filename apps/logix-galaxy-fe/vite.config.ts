@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import tailwindcss from '@tailwindcss/vite'
-import { logixSandboxKernelPlugin } from '@logix/sandbox/vite'
+import { logixSandboxKernelPlugin } from '@logixjs/sandbox/vite'
 
 const GalaxyApiProxyTarget = process.env.GALAXY_API_PROXY_TARGET ?? 'http://127.0.0.1:5500'
 

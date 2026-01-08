@@ -1,4 +1,4 @@
-// Shared env helpers (@logix/core/Env):
+// Shared env helpers (@logixjs/core/Env):
 // - getNodeEnv: reads the caller environment from globalThis.process.env.NODE_ENV.
 // - isDevEnv: treats NODE_ENV !== "production" as a dev environment.
 // The implementation lives in internal/runtime/core/env.ts to avoid duplication across packages.

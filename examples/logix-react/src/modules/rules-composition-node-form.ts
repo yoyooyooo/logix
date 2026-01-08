@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import * as Form from '@logix/form'
+import * as Form from '@logixjs/form'
 
 // Rules 可组合性示例（Node DSL only）：
 // - 用 `z.object/z.array/z.field(...)` 写结构化规则树

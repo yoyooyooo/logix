@@ -8,7 +8,7 @@ In this tutorial, you’ll build a small “cancelable search” app: as the use
 > [!NOTE]
 > This is a “single input + async query” scenario—plain `Logix.Module` is enough.
 >
-> If you’re building real forms (multiple fields, validations, dynamic arrays), don’t hand-roll form state here. Use `@logix/form` instead:
+> If you’re building real forms (multiple fields, validations, dynamic arrays), don’t hand-roll form state here. Use `@logixjs/form` instead:
 > - [When to use Form](../../form/when-to-use)
 > - [Form Quick Start](../../form/quick-start)
 
@@ -33,7 +33,7 @@ In this tutorial, you’ll build a small “cancelable search” app: as the use
 Create `src/features/search/search.def.ts`:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 export const SearchState = Schema.Struct({
@@ -159,7 +159,7 @@ Key points:
 Create `src/features/search/search.module.ts`:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { SearchDef } from './search.def'
 import { SearchLogic } from './search.logic'
 import { SearchApiLive } from './search.service'
@@ -186,7 +186,7 @@ export const AppRuntime = Logix.Runtime.make(SearchModule, {
 Mount the runtime in your app entry:
 
 ```tsx
-import { RuntimeProvider } from '@logix/react'
+import { RuntimeProvider } from '@logixjs/react'
 import { AppRuntime } from './features/search/search.module'
 import { SearchView } from './features/search/SearchView'
 
@@ -202,7 +202,7 @@ export function App() {
 The component is now purely “render + dispatch intent”:
 
 ```tsx
-import { useModule, useSelector } from '@logix/react'
+import { useModule, useSelector } from '@logixjs/react'
 import { SearchModule } from './search.module'
 
 export function SearchView() {

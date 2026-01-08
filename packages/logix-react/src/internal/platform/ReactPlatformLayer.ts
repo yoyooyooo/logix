@@ -1,5 +1,5 @@
 import { Effect, Layer, Ref } from 'effect'
-import { Platform } from '@logix/core'
+import { Platform } from '@logixjs/core'
 
 /**
  * ReactPlatformLayer

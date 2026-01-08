@@ -6,7 +6,7 @@
 
 - **Browser perf matrix suite（推荐）**：真实浏览器长链路/端到端口径；产物进入 `PerfReport/PerfDiff`，可做基线对比与回归判定。
   - 用例落点：`packages/logix-react/test/browser/perf-boundaries/*.test.tsx`（或 `packages/logix-react/test/browser/*.test.tsx`）
-  - 矩阵/契约落点：`@logix/perf-evidence/assets/*`（物理路径：`.codex/skills/logix-perf-evidence/assets/*`）
+  - 矩阵/契约落点：`@logixjs/perf-evidence/assets/*`（物理路径：`.codex/skills/logix-perf-evidence/assets/*`）
   - 输出协议：`LOGIX_PERF_REPORT:<json>`（见 `packages/logix-react/test/browser/perf-boundaries/protocol.ts`）
 - **Node bench（补充）**：微基准/算法/内核对比；默认不进入 `PerfReport/PerfDiff`（除非你专门做一个 collect runner）。
   - 脚本落点：`.codex/skills/logix-perf-evidence/scripts/bench.*.ts` 或 `scripts/<NNN-*>.ts`

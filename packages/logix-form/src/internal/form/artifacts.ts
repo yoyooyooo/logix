@@ -1,7 +1,7 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type { RulesManifest } from './rules.js'
 
-export const formRulesManifestArtifactKey = '@logix/form.rulesManifest@v1' as const
+export const formRulesManifestArtifactKey = '@logixjs/form.rulesManifest@v1' as const
 
 export type FormRulesManifestArtifactPayload = {
   readonly manifest: RulesManifest

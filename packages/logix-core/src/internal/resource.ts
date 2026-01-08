@@ -104,7 +104,7 @@ export interface ResourceRegistry {
   readonly specs: ReadonlyMap<string, AnyResourceSpec>
 }
 
-export class ResourceRegistryTag extends Context.Tag('@logix/core/ResourceRegistry')<
+export class ResourceRegistryTag extends Context.Tag('@logixjs/core/ResourceRegistry')<
   ResourceRegistryTag,
   ResourceRegistry
 >() {}

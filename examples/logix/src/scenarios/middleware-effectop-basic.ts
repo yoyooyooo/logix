@@ -9,8 +9,8 @@
 
 import { Effect } from 'effect'
 import { fileURLToPath } from 'node:url'
-import * as EffectOp from '@logix/core/EffectOp'
-import * as Middleware from '@logix/core/Middleware'
+import * as EffectOp from '@logixjs/core/EffectOp'
+import * as Middleware from '@logixjs/core/Middleware'
 
 // 一个简单的计时中间件：在 Effect 执行前后打印耗时
 const timingMiddleware: Middleware.Middleware = (op) =>

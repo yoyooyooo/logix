@@ -1,5 +1,5 @@
 import { Effect, Fiber, Ref, Stream, SubscriptionRef, Schedule } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { getDevtoolsSnapshot, subscribeDevtoolsSnapshot } from '../snapshot/index.js'
 
 export type IslandState =

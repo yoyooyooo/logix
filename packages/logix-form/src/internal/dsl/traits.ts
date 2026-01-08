@@ -1,5 +1,5 @@
 import type { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type { RuleEntry } from '../../Rule.js'
 
 type NonNull<T> = Exclude<T, null | undefined>

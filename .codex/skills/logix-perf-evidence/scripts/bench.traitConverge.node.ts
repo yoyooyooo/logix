@@ -5,8 +5,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import process from 'node:process'
-import * as Logix from '@logix/core'
-import * as CoreNg from '@logix/core-ng'
+import * as Logix from '@logixjs/core'
+import * as CoreNg from '@logixjs/core-ng'
 
 type Primitive = string | number | boolean
 

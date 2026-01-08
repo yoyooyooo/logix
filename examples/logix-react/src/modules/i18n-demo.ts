@@ -1,6 +1,6 @@
 import { Effect, Schema, SubscriptionRef } from 'effect'
-import * as Logix from '@logix/core'
-import { I18nSnapshotSchema, I18nTag, type I18nMessageToken } from '@logix/i18n'
+import * as Logix from '@logixjs/core'
+import { I18nSnapshotSchema, I18nTag, type I18nMessageToken } from '@logixjs/i18n'
 
 const I18nTokenOptionsSchema = Schema.Record({
   key: Schema.String,

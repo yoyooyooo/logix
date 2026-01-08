@@ -52,7 +52,7 @@ export const HostLogic = HostModule.logic(($) =>
 - 适合“应用级/页面级单例模块”的编排（而不是“从多个实例里挑一个”）。
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Stream } from 'effect'
 
 const SyncUserFromAuth = Logix.Link.make({ modules: [AuthDef, UserDef] as const }, ($) =>
@@ -72,7 +72,7 @@ export const RootImpl = RootModule.impl
 
 ## 2.1 常见场景：状态联动触发“被 imports 的 Query 子模块”refetch
 
-如果 `BModule` 通过 `imports` 引入了一个 `AQuery`（`@logix/query`），并且你希望“B 的某个状态变化”主动触发 `AQuery` 重新拉取：
+如果 `BModule` 通过 `imports` 引入了一个 `AQuery`（`@logixjs/query`），并且你希望“B 的某个状态变化”主动触发 `AQuery` 重新拉取：
 
 - **最佳实践**：联动逻辑写在 `BModule` 自己的 Logic 内（B 作为 owner），在 **B 的实例 scope** 下解析到 `AQuery` 句柄，再显式触发 `setParams/refresh`。
 - **不要**在 Link 里直接去“全局找一个 AQuery 实例然后 refresh”：多实例时会产生歧义，也更难调试。
@@ -109,7 +109,7 @@ const Logic = SomeModule.logic(($) =>
 ```ts
 // features/auth/module.ts
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export const AuthDef = Logix.Module.make('Auth', {
   state: Schema.Struct({ token: Schema.String }),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-describe('@logix/form', () => {
+describe('@logixjs/form', () => {
   it('smoke', () => {
     expect(true).toBe(true)
   })

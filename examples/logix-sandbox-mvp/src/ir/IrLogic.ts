@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { SandboxClientTag, type MockManifest } from '@logix/sandbox'
+import { SandboxClientTag, type MockManifest } from '@logixjs/sandbox'
 import { IrDef } from './IrModule'
 
 type ArtifactBundle = {
@@ -112,18 +112,18 @@ const buildSandboxIrWrapper = (options: {
 
   return [
     `import { Context, Effect, Schema } from "effect"`,
-    `import * as Logix from "@logix/core"`,
+    `import * as Logix from "@logixjs/core"`,
     ``,
     options.moduleCode,
     ``,
     `const __programModule = ${options.moduleExport}`,
     `const __kernelId = ${JSON.stringify(options.kernelId)}`,
-    `const __kernelLayer = (__kernelId === "core" || __kernelId === "core-ng") ? Logix.Kernel.kernelLayer({ kernelId: __kernelId, packageName: "@logix/core" }) : undefined`,
+    `const __kernelLayer = (__kernelId === "core" || __kernelId === "core-ng") ? Logix.Kernel.kernelLayer({ kernelId: __kernelId, packageName: "@logixjs/core" }) : undefined`,
     ``,
     `export default Effect.gen(function* () {`,
     `  const trialRunModule = (Logix as any)?.Observability?.trialRunModule`,
     `  if (typeof trialRunModule !== "function") {`,
-    `    throw new Error("[Logix][Sandbox] 缺少 Observability.trialRunModule：请重新 bundle @logix/sandbox kernel（pnpm --filter @logix/sandbox bundle:kernel）")`,
+    `    throw new Error("[Logix][Sandbox] 缺少 Observability.trialRunModule：请重新 bundle @logixjs/sandbox kernel（pnpm --filter @logixjs/sandbox bundle:kernel）")`,
     `  }`,
     `  const options = ${JSON.stringify(trialRunOptions, null, 2)}`,
     `  const report = yield* trialRunModule(__programModule as any, __kernelLayer ? { ...options, layer: __kernelLayer } : options)`,

@@ -1,5 +1,5 @@
 import { Effect, Context, Equal } from 'effect'
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 
 export const assertState = <Sh extends Logix.AnyModuleShape>(
   actual: Logix.StateOf<Sh>,

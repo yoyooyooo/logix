@@ -19,4 +19,4 @@ export interface Service {
   readonly emitReset: () => Effect.Effect<void, never, any>
 }
 
-export const Tag = Context.GenericTag<Service>('@logix/Platform')
+export const Tag = Context.GenericTag<Service>('@logixjs/Platform')

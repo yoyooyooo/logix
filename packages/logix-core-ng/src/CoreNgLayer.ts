@@ -1,5 +1,5 @@
 import { Config, Effect, Layer } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { coreNgRuntimeServicesRegistry } from './RuntimeServices.impls.js'
 
 export interface CoreNgKernelLayerOptions {
@@ -31,7 +31,7 @@ export const coreNgKernelLayer = (options: CoreNgKernelLayerOptions = {}): Layer
     coreNgExecVmModeLayer,
     Logix.Kernel.kernelLayer({
       kernelId: 'core-ng',
-      packageName: '@logix/core-ng',
+      packageName: '@logixjs/core-ng',
       ...(options.packageVersion ? { packageVersion: options.packageVersion } : {}),
       ...(options.buildId ? { buildId: options.buildId } : {}),
       ...(options.capabilities ? { capabilities: options.capabilities } : {}),

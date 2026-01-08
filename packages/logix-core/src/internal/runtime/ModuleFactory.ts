@@ -117,7 +117,7 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
       (state: ShapeState, action: ShapeAction, sink?: (path: string | FieldPath) => void) => ShapeState
     >)
 
-  class ModuleTag extends Context.Tag(`@logix/Module/${id}`)<
+  class ModuleTag extends Context.Tag(`@logixjs/Module/${id}`)<
     ModuleTag,
     import('./core/module.js').ModuleRuntime<StateOf<typeof shape>, ActionOf<typeof shape>>
   >() {}

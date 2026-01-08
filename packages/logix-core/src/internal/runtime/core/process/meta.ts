@@ -12,7 +12,7 @@ export type ProcessMeta = {
   readonly kind?: 'process' | 'link'
 }
 
-export const PROCESS_META = Symbol.for('@logix/core/processMeta')
+export const PROCESS_META = Symbol.for('@logixjs/core/processMeta')
 
 export type ProcessEffect<E = never, R = never> = Effect.Effect<void, E, R> & {
   readonly [PROCESS_META]?: ProcessMeta

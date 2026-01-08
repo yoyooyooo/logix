@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import React from 'react'
 import { render, cleanup, waitFor } from '@testing-library/react'
 import { Schema, ManagedRuntime, Layer, Effect } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { ModuleScope } from '../../src/ModuleScope.js'
 

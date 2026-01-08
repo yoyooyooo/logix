@@ -8,8 +8,8 @@
 
 import { Effect, Layer, Schema } from 'effect'
 import { fileURLToPath } from 'node:url'
-import * as Logix from '@logix/core'
-import * as Middleware from '@logix/core/Middleware'
+import * as Logix from '@logixjs/core'
+import * as Middleware from '@logixjs/core/Middleware'
 
 const CounterState = Schema.Struct({
   count: Schema.Number,

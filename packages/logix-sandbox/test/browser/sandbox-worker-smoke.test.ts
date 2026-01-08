@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { createSandboxClient } from '@logix/sandbox'
+import { createSandboxClient } from '@logixjs/sandbox'
 import { startKernelMock } from './msw/kernel-mock.js'
 
 const hasWorker = typeof Worker !== 'undefined'
@@ -10,7 +10,7 @@ testFn(
   async () => {
     const kernelUrl = `${window.location.origin}/sandbox/logix-core.js`
 
-    // Use MSW to intercept kernelUrl and return the bundled @logix/core kernel script.
+    // Use MSW to intercept kernelUrl and return the bundled @logixjs/core kernel script.
     await startKernelMock(kernelUrl)
 
     const client = createSandboxClient({
@@ -49,10 +49,10 @@ testFn(
     expect(runResult.traces.length).toBeGreaterThan(0)
     expect(runResult.traces.some((s) => s.status === 'success')).toBe(true)
 
-    // Scenario 2: @logix/core Module + Logic + Runtime
+    // Scenario 2: @logixjs/core Module + Logic + Runtime
     const logixCode = `
       import { Effect, Schema } from "effect";
-      import * as Logix from "@logix/core";
+      import * as Logix from "@logixjs/core";
 
       const CounterState = Schema.Struct({ count: Schema.Number });
       const CounterActions = { inc: Schema.Void };
@@ -172,12 +172,12 @@ testFn(
     expect((platformRunResult.stateSnapshot as any).ok).toBe(true)
     expect((platformRunResult.stateSnapshot as any).dirname).toBe('/a/b')
 
-    // Scenario 4: @logix/core subpath imports (Module/Runtime/StateTrait)
+    // Scenario 4: @logixjs/core subpath imports (Module/Runtime/StateTrait)
     const logixSubpathCode = `
 	      import { Effect, Schema } from "effect";
-	      import * as Module from "@logix/core/Module";
-	      import * as Runtime from "@logix/core/Runtime";
-	      import * as StateTrait from "@logix/core/StateTrait";
+	      import * as Module from "@logixjs/core/Module";
+	      import * as Runtime from "@logixjs/core/Runtime";
+	      import * as StateTrait from "@logixjs/core/StateTrait";
 
 	      const CounterState = Schema.Struct({ count: Schema.Number });
 	      const CounterActions = { inc: Schema.Void };
@@ -227,7 +227,7 @@ testFn(
 
     const logixSubpathCompileResult = await client.compile(logixSubpathCode, 'logix-subpath-program.ts')
     if (!logixSubpathCompileResult.success) {
-      console.warn('[sandbox-worker-smoke] skip @logix/core subpath scenario:', logixSubpathCompileResult.errors)
+      console.warn('[sandbox-worker-smoke] skip @logixjs/core subpath scenario:', logixSubpathCompileResult.errors)
       return
     }
 
@@ -236,7 +236,7 @@ testFn(
       const state = client.getState()
       // eslint-disable-next-line no-console
       console.warn(
-        '[sandbox-worker-smoke] @logix/core subpath scenario did not produce stateSnapshot;',
+        '[sandbox-worker-smoke] @logixjs/core subpath scenario did not produce stateSnapshot;',
         'logs:',
         logixSubpathRunResult.logs,
         'traces:',

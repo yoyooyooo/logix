@@ -1,6 +1,6 @@
 import { it } from 'vitest'
 import type { Effect } from 'effect'
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 import * as Execution from './ExecutionResult.js'
 import { runTest } from '../runtime/runTest.js'
 import type { TestApi } from './TestApi.js'

@@ -6,9 +6,9 @@
  *   - 切换语言后，token 不变，但展示结果随语言变化更新。
  */
 
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Layer, Schema, SubscriptionRef } from 'effect'
-import { I18n, I18nTag, type I18nDriver, type I18nMessageToken } from '@logix/i18n'
+import { I18n, I18nTag, type I18nDriver, type I18nMessageToken } from '@logixjs/i18n'
 
 type Resources = Readonly<Record<string, Readonly<Record<string, string>>>>
 

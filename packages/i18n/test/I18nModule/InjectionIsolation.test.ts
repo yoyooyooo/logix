@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { I18n, I18nTag, I18nModule, type I18nDriver } from '../../src/index.js'
 
 const makeDriver = (id: string): I18nDriver & { readonly calls: { changeLanguage: number } } => {

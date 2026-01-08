@@ -14,10 +14,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@logix/core": "workspace:*",
-    "@logix/form": "workspace:*",
-    "@logix/react": "workspace:*",
-    "@logix/sandbox": "workspace:*",
+    "@logixjs/core": "workspace:*",
+    "@logixjs/form": "workspace:*",
+    "@logixjs/react": "workspace:*",
+    "@logixjs/sandbox": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",

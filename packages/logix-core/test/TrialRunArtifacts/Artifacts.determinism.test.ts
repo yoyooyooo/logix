@@ -7,12 +7,12 @@ describe('TrialRunArtifacts.collect: determinism', () => {
     const exporters: ReadonlyArray<TrialRunArtifactExporter> = [
       {
         exporterId: 'a',
-        artifactKey: '@logix/demo.a@v1',
+        artifactKey: '@logixjs/demo.a@v1',
         export: () => ({ a: 1, b: 2 }) as const,
       },
       {
         exporterId: 'b',
-        artifactKey: '@logix/demo.b@v1',
+        artifactKey: '@logixjs/demo.b@v1',
         export: () => ({ list: ['z', 'a'] }) as const,
       },
     ]
@@ -32,7 +32,7 @@ describe('TrialRunArtifacts.collect: determinism', () => {
     expect(artifacts2).toBeDefined()
     expect(JSON.stringify(artifacts1)).toBe(JSON.stringify(artifacts2))
 
-    const env: any = (artifacts1 as any)['@logix/demo.a@v1']
+    const env: any = (artifacts1 as any)['@logixjs/demo.a@v1']
     expect(env.ok).toBe(true)
     expect(typeof env.digest).toBe('string')
     expect(String(env.digest)).toContain('artifact:031:')

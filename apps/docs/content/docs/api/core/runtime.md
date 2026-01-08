@@ -12,12 +12,12 @@ The core execution unit of Logix is the **Runtime**: it hosts module state, logi
 At the code level, Runtime mainly has two shapes:
 
 - `ManagedRuntime` (from `effect`): an execution environment that runs Effect programs, creates Scopes, and manages resources.
-- `Logix.Runtime` (from `@logix/core`): a thin wrapper on top of `ManagedRuntime` that combines a Root module (or Root `ModuleImpl`) and Layers into an application-level runtime tree.
+- `Logix.Runtime` (from `@logixjs/core`): a thin wrapper on top of `ManagedRuntime` that combines a Root module (or Root `ModuleImpl`) and Layers into an application-level runtime tree.
 
 The most common pattern looks like this:
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect, Layer } from "effect"
 
 const RootDef = Logix.Module.make("Root", { state: RootState, actions: RootActions })
@@ -61,10 +61,10 @@ At this point:
 
 ## 2. Mount a Runtime in React: RuntimeProvider
 
-In React, use `RuntimeProvider` from `@logix/react` to mount a Runtime onto the component tree:
+In React, use `RuntimeProvider` from `@logixjs/react` to mount a Runtime onto the component tree:
 
 ```tsx
-import { RuntimeProvider } from "@logix/react"
+import { RuntimeProvider } from "@logixjs/react"
 import { AppRuntime } from "./runtime"
 import { Router } from "./Router"
 
@@ -96,7 +96,7 @@ If your project already creates a `ManagedRuntime` elsewhere, you can also pass 
 Sometimes you want to add a bit of local configuration or Services under a subtree, without affecting the global Runtime. Use the `layer` prop of `RuntimeProvider`:
 
 ```tsx
-import { RuntimeProvider } from "@logix/react"
+import { RuntimeProvider } from "@logixjs/react"
 import { Layer, Context } from "effect"
 
 // A simple Service example
@@ -140,8 +140,8 @@ Internally, `RuntimeProvider` creates a Scope for each `layer` and closes it on 
 If you need to always read a singleton provided by the **root provider** of the current runtime tree (e.g. global modules/services), use `Logix.Root.resolve(Tag)`:
 
 ```ts
-import * as Logix from "@logix/core"
-import { useRuntime } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { useRuntime } from "@logixjs/react"
 
 const runtime = useRuntime()
 const auth = runtime.runSync(Logix.Root.resolve(GlobalAuth.tag))
@@ -150,7 +150,7 @@ const auth = runtime.runSync(Logix.Root.resolve(GlobalAuth.tag))
 Inside Logic, if you want to explicitly read the root provider singleton, use `yield* $.root.resolve(Tag)`:
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect } from "effect"
 
 const MyLogic = MyModule.logic(($) =>
@@ -226,7 +226,7 @@ In scripts, demos, or CLI tools, you often want a single entry that:
 - runs the main program;
 - releases resources after it ends (close Scope / run finalizers).
 
-For these scenarios, use the program runner from `@logix/core`:
+For these scenarios, use the program runner from `@logixjs/core`:
 
 - `Runtime.runProgram(root, main, options?)`: one-shot entry (boot → main → release)
 - `Runtime.openProgram(root, options?)`: resourceful entry (returns `ctx`, good for interactive scripts and multi-stage execution)
@@ -236,7 +236,7 @@ For these scenarios, use the program runner from `@logix/core`:
 The runner does **not** infer “when to exit” automatically. Many module logics register long-lived listeners (watchers / subscriptions / Links) that won’t end naturally. You must express an exit condition explicitly in `main` (e.g. wait for a state condition, wait for a signal, or allow Ctrl+C to trigger shutdown).
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect, Stream } from "effect"
 import { AppRoot } from "./app-root"
 

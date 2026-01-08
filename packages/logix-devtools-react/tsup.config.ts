@@ -10,7 +10,7 @@ export default defineConfig({
   format: ['cjs', 'esm'],
   dts: true,
   clean: true,
-  external: ['react', 'react-dom', 'effect', '@logix/core', '@logix/react'],
+  external: ['react', 'react-dom', 'effect', '@logixjs/core', '@logixjs/react'],
   onSuccess: async () => {
     await mkdir(resolve(packageDir, 'dist'), { recursive: true })
     await copyFile(resolve(packageDir, 'src/style.css'), resolve(packageDir, 'dist/style.css'))

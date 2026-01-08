@@ -17,7 +17,7 @@ description: API reference for Module definition and implementation.
 Use `Logix.Module` to define the module “shape” (contract).
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 // 1. Define the State schema

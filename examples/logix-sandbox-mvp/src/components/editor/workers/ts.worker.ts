@@ -5,7 +5,7 @@ type ExtraLib = { readonly content: string; readonly version: number }
 type ExtraLibs = Record<string, ExtraLib>
 
 const LOGIX_PRELUDE_FILE = 'file:///__logix_sandbox_prelude__.d.ts'
-const LOGIX_PRELUDE_CONTENT = `declare const Logix: typeof import('@logix/core')\n`
+const LOGIX_PRELUDE_CONTENT = `declare const Logix: typeof import('@logixjs/core')\n`
 
 const crash = (error: unknown): never => {
   const err = error instanceof Error ? error : new Error(String(error))

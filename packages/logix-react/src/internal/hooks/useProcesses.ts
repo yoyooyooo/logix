@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useRef } from 'react'
 import { Effect, Exit, Scope } from 'effect'
 import type { ManagedRuntime } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeContext } from '../provider/ReactContext.js'
 import { isDevEnv } from '../provider/env.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'

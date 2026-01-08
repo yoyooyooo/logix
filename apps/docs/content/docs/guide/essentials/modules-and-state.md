@@ -57,7 +57,7 @@ const Actions = {
 Now, combine State and Actions into a Module.
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export const CounterDef = Logix.Module.make('Counter', {
   state: State,

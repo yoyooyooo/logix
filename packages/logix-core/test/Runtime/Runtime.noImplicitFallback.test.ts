@@ -17,7 +17,7 @@ describe('Runtime (048): no implicit fallback', () => {
 
     const runtime = Logix.Runtime.make(program, {
       layer: Layer.mergeAll(
-        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logix/core-ng' }),
+        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
         Logix.Kernel.fullCutoverGateModeLayer('fullCutover'),
         Logix.Kernel.runtimeServicesRegistryLayer({ implsByServiceId: {} }),
         Logix.Kernel.runtimeDefaultServicesOverridesLayer(

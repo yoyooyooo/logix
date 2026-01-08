@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import type { ManagedRuntime } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { isDevEnv } from '../provider/env.js'
 import { makeModuleActions, makeModuleDispatchers, type ModuleDispatchersOfShape, type ModuleRef } from './ModuleRef.js'
 

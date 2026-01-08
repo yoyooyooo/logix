@@ -1,9 +1,9 @@
 import React from 'react'
 import { Effect, Schema, type Layer } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector } from '@logix/react'
-import * as Form from '@logix/form'
-import { useField, useFieldArray, useFormState } from '@logix/form/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useSelector } from '@logixjs/react'
+import * as Form from '@logixjs/form'
+import { useField, useFieldArray, useFormState } from '@logixjs/form/react'
 
 const ValuesSchema = Schema.Struct({
   profile: Schema.Struct({
@@ -273,7 +273,7 @@ const ComplexFormView: React.FC = () => {
     <div className="space-y-6">
       <div className="border-b border-gray-200 dark:border-gray-800 pb-4">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          ComplexForm · @logix/form（derived + rules + list）
+          ComplexForm · @logixjs/form（derived + rules + list）
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">
           这个示例把表单建模为 Form Module：values 只关心业务字段；联动/聚合写在 derived；校验写在 rules 并落到 errors

@@ -1,4 +1,4 @@
-// TraitLifecycle: shared lower-level interface for Form/Query (@logix/core/TraitLifecycle, Phase 2 placeholder).
+// TraitLifecycle: shared lower-level interface for Form/Query (@logixjs/core/TraitLifecycle, Phase 2 placeholder).
 //
 // - Exposes serializable FieldRef and unified request protocols.
 // - Concrete implementation lives in internal/trait-lifecycle/*; this module provides public API + type exports.

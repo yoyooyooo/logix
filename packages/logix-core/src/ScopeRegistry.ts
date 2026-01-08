@@ -41,7 +41,7 @@ export interface ScopeRegistry {
   readonly clearAll: () => void
 }
 
-export class ScopeRegistryTag extends Context.Tag('@logix/core/ScopeRegistry')<ScopeRegistryTag, ScopeRegistry>() {}
+export class ScopeRegistryTag extends Context.Tag('@logixjs/core/ScopeRegistry')<ScopeRegistryTag, ScopeRegistry>() {}
 
 /**
  * Stores a "ManagedRuntime handle for a scope" in ScopeRegistry.
@@ -49,7 +49,7 @@ export class ScopeRegistryTag extends Context.Tag('@logix/core/ScopeRegistry')<S
  * Typical use case: reusing the same runtime scope (Env/Scope/FiberRef) across React subtrees / independent roots
  * by registering the runtime under a scopeId and retrieving it elsewhere.
  */
-export class ScopedRuntimeTag extends Context.Tag('@logix/core/ScopeRegistry/ScopedRuntime')<
+export class ScopedRuntimeTag extends Context.Tag('@logixjs/core/ScopeRegistry/ScopedRuntime')<
   ScopedRuntimeTag,
   ManagedRuntime.ManagedRuntime<any, any>
 >() {}

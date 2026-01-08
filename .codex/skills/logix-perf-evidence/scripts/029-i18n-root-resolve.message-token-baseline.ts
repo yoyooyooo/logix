@@ -92,11 +92,11 @@ const main = Effect.gen(function* () {
     tokenBaseline(key, rawOptions)
   })
 
-  let i18nTokenEff: Effect.Effect<void> = Effect.die(new Error('[MissingApi] @logix/i18n is not available'))
+  let i18nTokenEff: Effect.Effect<void> = Effect.die(new Error('[MissingApi] @logixjs/i18n is not available'))
 
   const mod: any = yield* Effect.tryPromise({
     try: async () => {
-      return await import('@logix/i18n')
+      return await import('@logixjs/i18n')
     },
     catch: () => undefined,
   }).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
@@ -129,7 +129,7 @@ const main = Effect.gen(function* () {
 
   const cases = yield* Effect.all([
     runBench('baseline token (canonicalize)', ITERS, baselineEff),
-    runBench('@logix/i18n token (canonicalize)', ITERS, i18nTokenEff),
+    runBench('@logixjs/i18n token (canonicalize)', ITERS, i18nTokenEff),
   ])
 
   return {

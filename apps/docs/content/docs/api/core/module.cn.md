@@ -17,7 +17,7 @@ description: Module 定义与实现的 API 参考。
 使用 `Logix.Module` 定义模块的“形状”（Shape）和契约。
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 // 1. 定义 State Schema

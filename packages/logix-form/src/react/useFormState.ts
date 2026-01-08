@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
-import type * as Logix from '@logix/core'
-import * as LogixReact from '@logix/react'
+import type * as Logix from '@logixjs/core'
+import * as LogixReact from '@logixjs/react'
 import type { FormAction, FormState } from '../Form.js'
 import type { FormView } from '../FormView.js'
 import { getFormView } from '../FormView.js'

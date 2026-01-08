@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { ReactPlatformLayer } from '../../src/Platform.js'
 
 describe('ReactPlatformLayer lifecycle integration', () => {

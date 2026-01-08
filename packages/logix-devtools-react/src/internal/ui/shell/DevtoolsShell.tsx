@@ -1,6 +1,6 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { useDevtoolsState, useDevtoolsDispatch } from '../hooks/DevtoolsHooks.js'
 import { Sidebar } from '../sidebar/Sidebar.js'
 import { EffectOpTimelineView } from '../timeline/EffectOpTimelineView.js'

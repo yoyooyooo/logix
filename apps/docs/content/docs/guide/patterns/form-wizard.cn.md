@@ -16,7 +16,7 @@ description: 使用 Logix 实现多步骤表单向导模式。
 ## 状态设计
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 const WizardDef = Logix.Module.make('Wizard', {
@@ -188,9 +188,9 @@ function Wizard() {
 }
 ```
 
-## 使用 @logix/form 的增强版
+## 使用 @logixjs/form 的增强版
 
-如果每个步骤的表单较复杂，可以结合 `@logix/form`：
+如果每个步骤的表单较复杂，可以结合 `@logixjs/form`：
 
 ```ts
 // 为每个步骤创建独立的 Form

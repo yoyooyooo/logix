@@ -112,10 +112,10 @@ const main = async () => {
     'fast-check',
 
     // logix
-    '@logix/core',
-    '@logix/react',
-    '@logix/sandbox',
-    '@logix/form',
+    '@logixjs/core',
+    '@logixjs/react',
+    '@logixjs/sandbox',
+    '@logixjs/form',
     'mutative',
     'use-sync-external-store',
 
@@ -125,22 +125,22 @@ const main = async () => {
     'csstype',
   ])
 
-  const workspaceDistPackages = new Set<string>(['@logix/core', '@logix/react', '@logix/sandbox'])
-  const workspaceSrcPackages = new Set<string>(['@logix/form'])
+  const workspaceDistPackages = new Set<string>(['@logixjs/core', '@logixjs/react', '@logixjs/sandbox'])
+  const workspaceSrcPackages = new Set<string>(['@logixjs/form'])
 
   const workspaceRoots: Record<string, string> = {
-    '@logix/core': path.join(repoRoot, 'packages/logix-core'),
-    '@logix/react': path.join(repoRoot, 'packages/logix-react'),
-    '@logix/sandbox': path.join(repoRoot, 'packages/logix-sandbox'),
-    '@logix/form': path.join(repoRoot, 'packages/logix-form'),
+    '@logixjs/core': path.join(repoRoot, 'packages/logix-core'),
+    '@logixjs/react': path.join(repoRoot, 'packages/logix-react'),
+    '@logixjs/sandbox': path.join(repoRoot, 'packages/logix-sandbox'),
+    '@logixjs/form': path.join(repoRoot, 'packages/logix-form'),
   }
 
   const seeds = [
     'effect',
-    '@logix/core',
-    '@logix/react',
-    '@logix/sandbox',
-    '@logix/form',
+    '@logixjs/core',
+    '@logixjs/react',
+    '@logixjs/sandbox',
+    '@logixjs/form',
     '@types/react',
     '@types/react-dom',
   ]

@@ -31,7 +31,7 @@ export class NoopPlatform implements Service {
 /**
  * NoopPlatformLayer:
  * - Mounts NoopPlatform on Platform.tag.
- * - The default `@logix/core` layer; apps typically override it with a real platform implementation.
+ * - The default `@logixjs/core` layer; apps typically override it with a real platform implementation.
  */
 export const NoopPlatformLayer = Layer.succeed(tag, new NoopPlatform())
 

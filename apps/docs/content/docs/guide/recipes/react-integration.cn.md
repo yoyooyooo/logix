@@ -3,7 +3,7 @@ title: 在 React 中使用 Logix
 description: 如何在 React 应用中接入 Logix Runtime，并通过 Hooks 使用模块状态与动作。
 ---
 
-本篇从“业务开发者”的视角，演示如何在一个普通的 React 应用中接入 Logix，并通过 `@logix/react` 提供的组件和 Hooks 读取/更新状态。
+本篇从“业务开发者”的视角，演示如何在一个普通的 React 应用中接入 Logix，并通过 `@logixjs/react` 提供的组件和 Hooks 读取/更新状态。
 
 > 如果只想快速看结论，可以记住两件事：
 >
@@ -27,7 +27,7 @@ description: 如何在 React 应用中接入 Logix Runtime，并通过 Hooks 使
 
 ## 0. 能力地图（先掌握这些）
 
-在 `@logix/react` 里，建议把能力拆成几条正交轴：
+在 `@logixjs/react` 里，建议把能力拆成几条正交轴：
 
 1. **解析句柄**：`useModule` / `useLocalModule` → 得到 `ModuleRef`
 2. **订阅渲染**：`useSelector(handle, selector[, equalityFn])`
@@ -41,7 +41,7 @@ description: 如何在 React 应用中接入 Logix Runtime，并通过 Hooks 使
 先在任意目录下定义一个最简单的计数器 Module：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 export const CounterDef = Logix.Module.make('Counter', {
@@ -59,7 +59,7 @@ export const CounterLogic = CounterDef.logic(($) =>
 在你的应用入口，为这个 Module 构造一个 Root program module（或其 `ModuleImpl`），并通过 `Logix.Runtime.make` 组装 Runtime：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
 import { CounterDef, CounterLogic } from './CounterModule'
 
@@ -81,7 +81,7 @@ export const AppRuntime = Logix.Runtime.make(CounterModule, {
 
 ```tsx
 // App.tsx
-import { RuntimeProvider } from '@logix/react'
+import { RuntimeProvider } from '@logixjs/react'
 import { AppRuntime } from './runtime'
 import { Router } from './Router'
 
@@ -107,7 +107,7 @@ export function App() {
 在任意组件里，通过 Hook 读取 Module 的状态：
 
 ```tsx
-import { useModule, useSelector } from '@logix/react'
+import { useModule, useSelector } from '@logixjs/react'
 import { CounterDef } from '../runtime/CounterModule'
 
 export function CounterValue() {
@@ -123,7 +123,7 @@ export function CounterValue() {
 
 推荐在大多数场景中使用 `useSelector` 订阅切片状态，而不是把完整 `state` 传给组件，这样可以避免不必要的重渲染。
 
-> `useSelector(handle, selector, equalityFn)` 默认用 `Object.is` 比较选中值；当 selector 返回数组/对象时，建议传入 `shallow`（`@logix/react` 内置）来避免“内容不变但引用变化”导致的无意义重渲染。
+> `useSelector(handle, selector, equalityFn)` 默认用 `Object.is` 比较选中值；当 selector 返回数组/对象时，建议传入 `shallow`（`@logixjs/react` 内置）来避免“内容不变但引用变化”导致的无意义重渲染。
 
 > 注意：`useModule(Module)` 本身**不会订阅状态**，因此不会因为状态更新自动触发组件重渲染。
 >
@@ -135,7 +135,7 @@ export function CounterValue() {
 要改变状态，只需要派发一个符合 Action Schema 的对象：
 
 ```tsx
-import { useDispatch, useModule } from '@logix/react'
+import { useDispatch, useModule } from '@logixjs/react'
 import { CounterDef } from '../runtime/CounterModule'
 
 export function CounterButton() {
@@ -167,7 +167,7 @@ export function CounterButton() {
 在 React 事件处理函数里，你可以直接用 `dispatch.batch / dispatch.lowPriority`；或者用 `useRuntime()` 更白盒地执行 Effect。
 
 ```tsx
-import { useDispatch, useModule, useSelector } from '@logix/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 
 export function Form() {
   const form = useModule(FormModule)
@@ -202,8 +202,8 @@ export function Form() {
 对于仅在单个页面或组件中使用的状态（例如临时表单、向导），可以用 `useLocalModule` 创建一个“局部模块实例”：
 
 ```tsx
-import { useDispatch, useLocalModule, useSelector } from '@logix/react'
-import * as Logix from '@logix/core'
+import { useDispatch, useLocalModule, useSelector } from '@logixjs/react'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 const LocalForm = Logix.Module.make('LocalForm', {
@@ -238,7 +238,7 @@ export function LocalFormComponent() {
 示例：
 
 ```tsx
-import { useDispatch, useModule, useSelector } from '@logix/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { HostImpl, ChildModule } from './modules'
 
 export function Page() {
@@ -491,13 +491,13 @@ function Widget() {
 ## 8. ModuleImpl 的同步 / 异步模式（高级）
 
 在实际项目中，你更推荐通过 `ModuleImpl` 暴露模块实现，然后在 React 里用 `useModule(Impl)` 来消费。
-`@logix/react` 为 ModuleImpl 提供了两种模式：
+`@logixjs/react` 为 ModuleImpl 提供了两种模式：
 
 1. **默认：同步模式（简单、直接）**
 
 ```tsx
 // CounterModule 由 CounterDef.implement(...) 生成（program module，带 `.impl`）
-import { useModule, useSelector, useDispatch } from '@logix/react'
+import { useModule, useSelector, useDispatch } from '@logixjs/react'
 import { CounterModule } from '../runtime/counter'
 
 export function LocalCounter() {
@@ -519,7 +519,7 @@ export function LocalCounter() {
 
 ```tsx
 import { useId, Suspense } from 'react'
-import { useModule, useSelector } from '@logix/react'
+import { useModule, useSelector } from '@logixjs/react'
 import { AsyncImpl } from '../runtime/asyncModule'
 
 function AsyncWidgetInner({ userId }: { userId: string }) {

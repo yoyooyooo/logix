@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
-import * as Logix from '@logix/core'
-import { useDispatch, useLocalModule, useSelector } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { useDispatch, useLocalModule, useSelector } from '@logixjs/react'
 import { Schema } from 'effect'
 
 const StableBusyStateSchema = Schema.Struct({

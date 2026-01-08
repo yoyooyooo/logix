@@ -1,7 +1,7 @@
 import React from 'react'
 import { Effect, Layer, ManagedRuntime, Schema, Logger } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, ReactPlatformLayer } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, ReactPlatformLayer } from '@logixjs/react'
 
 // 异步局部 ModuleImpl 示例：演示 suspend:true + ModuleImpl.layer 内部存在异步初始化逻辑
 
@@ -164,7 +164,7 @@ export const AsyncLocalModuleLayout: React.FC = () => {
               <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
                 ModuleRuntime
               </code>
-              。这依赖于 @logix/react 内部的{' '}
+              。这依赖于 @logixjs/react 内部的{' '}
               <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
                 ModuleCache
               </code>{' '}

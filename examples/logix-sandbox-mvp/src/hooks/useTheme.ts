@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useDispatch, useModule, useSelector } from '@logix/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { ThemeDef, type Theme } from '../modules/ThemeModule'
 
 export type { Theme } from '../modules/ThemeModule'

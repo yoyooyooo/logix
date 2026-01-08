@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { createSandboxClient, type MockManifest } from '@logix/sandbox'
+import { createSandboxClient, type MockManifest } from '@logixjs/sandbox'
 import { startKernelMock } from './msw/kernel-mock.js'
 
 const hasWorker = typeof Worker !== 'undefined'
@@ -22,7 +22,7 @@ testFn(
 
     const code = `
       import { Effect } from "effect";
-      import * as Logix from "@logix/core";
+      import * as Logix from "@logixjs/core";
 
       const program = Effect.gen(function* () {
         // Trigger a Debug trace:* event; the worker maps it to TRACE(kind:"logix-debug").

@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { CRUDModule } from '@logix/domain'
+import { CRUDModule } from '@logixjs/domain'
 
 export const OrderSchema = Schema.Struct({
   id: Schema.String,

@@ -9,9 +9,9 @@
     "typecheck": "pnpm run check:pattern-reuse && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@logix/core": "workspace:*",
-    "@logix/i18n": "workspace:*",
-    "@logix/query": "workspace:*",
+    "@logixjs/core": "workspace:*",
+    "@logixjs/i18n": "workspace:*",
+    "@logixjs/query": "workspace:*",
     "@tanstack/query-core": "^5.90.12",
     "effect": "^3.19.8",
     "zod": "^3.23.8"

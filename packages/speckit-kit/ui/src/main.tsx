@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { RuntimeProvider } from '@logix/react'
+import { RuntimeProvider } from '@logixjs/react'
 import { BrowserRouter } from 'react-router-dom'
 
 import App from './app/App'

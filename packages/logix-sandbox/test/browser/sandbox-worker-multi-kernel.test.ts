@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { createSandboxClient } from '@logix/sandbox'
+import { createSandboxClient } from '@logixjs/sandbox'
 import { startKernelMocks } from './msw/kernel-mock.js'
 
 const hasWorker = typeof Worker !== 'undefined'
@@ -23,7 +23,7 @@ const makeKernelSource = (kernelId: 'core' | 'core-ng'): string => {
             configKeys: [],
             missingServices: [],
             missingConfigKeys: [],
-            kernelImplementationRef: { kernelId: "${kernelId}", packageName: "@logix/core" },
+            kernelImplementationRef: { kernelId: "${kernelId}", packageName: "@logixjs/core" },
           },
         }),
     };

@@ -3,8 +3,8 @@ import React from 'react'
 import { describe, expect, it, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, waitFor, screen, cleanup } from '@testing-library/react'
 import { Effect, Schema, Layer } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logixjs/react'
 import { LogixDevtools } from '../../src/LogixDevtools.js'
 import {
   devtoolsLayer,
@@ -14,7 +14,7 @@ import {
 } from '../../src/DevtoolsLayer.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
 
-// A minimal Counter Module used to verify integration behavior across @logix/core + @logix/react + devtools.
+// A minimal Counter Module used to verify integration behavior across @logixjs/core + @logixjs/react + devtools.
 const CounterModule = Logix.Module.make('DevtoolsTestCounter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
@@ -62,7 +62,7 @@ const CounterView: React.FC = () => {
   )
 }
 
-describe('@logix/devtools-react integration with @logix/react', () => {
+describe('@logixjs/devtools-react integration with @logixjs/react', () => {
   beforeAll(() => {
     if (typeof window !== 'undefined') {
       // Add a minimal `matchMedia` polyfill for jsdom to avoid theme detection failures in DevtoolsShell.

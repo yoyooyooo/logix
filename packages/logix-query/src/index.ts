@@ -1,6 +1,6 @@
-// Public barrel for @logix/query
+// Public barrel for @logixjs/query
 // Recommended usage:
-//   import * as Query from "@logix/query"
+//   import * as Query from "@logixjs/query"
 // Then Query exposes namespaces like make / traits / Engine / TanStack.
 
 export { make } from './Query.js'

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
-import type * as Logix from '@logix/core'
-import * as LogixReact from '@logix/react'
+import type * as Logix from '@logixjs/core'
+import * as LogixReact from '@logixjs/react'
 import type { FormAction, FormState } from '../Form.js'
 import { getAtPath } from '../internal/form/path.js'
 import { toErrorsPath, toManualErrorsPath, toSchemaErrorsPath, toUiPath } from '../Path.js'

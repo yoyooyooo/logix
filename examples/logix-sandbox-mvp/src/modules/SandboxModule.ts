@@ -1,6 +1,6 @@
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
-import type { LogEntry, TraceSpan, SandboxErrorInfo } from '@logix/sandbox'
+import * as Logix from '@logixjs/core'
+import type { LogEntry, TraceSpan, SandboxErrorInfo } from '@logixjs/sandbox'
 
 // ============================================================================
 // Data Schemas
@@ -52,7 +52,7 @@ export const SandboxStatusSchema = Schema.Union(
 export type SandboxStatus = Schema.Schema.Type<typeof SandboxStatusSchema>
 
 // ============================================================================
-// Runtime-related Schemas (aligned with @logix/sandbox types)
+// Runtime-related Schemas (aligned with @logixjs/sandbox types)
 // ============================================================================
 
 const LogLevelSchema = Schema.Union(
@@ -72,7 +72,7 @@ export const LogEntrySchema = Schema.Struct({
 })
 
 export type LogEntryState = Schema.Schema.Type<typeof LogEntrySchema>
-// 确保与 @logix/sandbox 中的 LogEntry 形状兼容
+// 确保与 @logixjs/sandbox 中的 LogEntry 形状兼容
 type _LogEntryCompat = LogEntry extends LogEntryState ? true : never
 
 export const TraceSpanSchema = Schema.Struct({

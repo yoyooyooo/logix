@@ -1,5 +1,5 @@
 import { Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { readConvergeControlPlaneFromEnv } from './converge-runtime.js'
 import { makePerfKernelLayer, silentDebugLayer } from './harness.js'
 

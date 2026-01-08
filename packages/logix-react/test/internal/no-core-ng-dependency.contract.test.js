@@ -8,7 +8,7 @@ const readLogixReactPackageJson = () => {
     const candidate = resolve(dir, 'package.json')
     if (existsSync(candidate)) {
       const pkg = readJson(candidate)
-      if (pkg?.name === '@logix/react') return pkg
+      if (pkg?.name === '@logixjs/react') return pkg
     }
     const parent = dirname(dir)
     if (parent === dir) break
@@ -16,12 +16,12 @@ const readLogixReactPackageJson = () => {
   }
   return readJson(resolve(process.cwd(), 'packages/logix-react/package.json'))
 }
-describe('contracts (045): @logix/react should not depend on @logix/core-ng', () => {
-  it('should not declare @logix/core-ng in dependencies', () => {
+describe('contracts (045): @logixjs/react should not depend on @logixjs/core-ng', () => {
+  it('should not declare @logixjs/core-ng in dependencies', () => {
     const pkg = readLogixReactPackageJson()
-    expect(pkg.dependencies?.['@logix/core-ng']).toBeUndefined()
-    expect(pkg.devDependencies?.['@logix/core-ng']).toBeUndefined()
-    expect(pkg.peerDependencies?.['@logix/core-ng']).toBeUndefined()
-    expect(pkg.optionalDependencies?.['@logix/core-ng']).toBeUndefined()
+    expect(pkg.dependencies?.['@logixjs/core-ng']).toBeUndefined()
+    expect(pkg.devDependencies?.['@logixjs/core-ng']).toBeUndefined()
+    expect(pkg.peerDependencies?.['@logixjs/core-ng']).toBeUndefined()
+    expect(pkg.optionalDependencies?.['@logixjs/core-ng']).toBeUndefined()
   })
 })

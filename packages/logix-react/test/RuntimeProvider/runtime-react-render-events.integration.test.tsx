@@ -4,7 +4,7 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useModule } from '../../src/index.js'
 
 const Counter = Logix.Module.make('ReactRenderCounter', {
@@ -21,7 +21,7 @@ const Impl = Counter.implement({
   initial: { count: 0 },
 })
 
-describe('@logix/react · react-render Debug events', () => {
+describe('@logixjs/react · react-render Debug events', () => {
   it('emits component-level react-render events and selector-level react-selector metadata', async () => {
     const events: Logix.Debug.Event[] = []
 

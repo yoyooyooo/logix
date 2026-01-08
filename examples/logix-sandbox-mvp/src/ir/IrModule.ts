@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { IR_PRESETS } from './IrPresets'
 import { sandboxKernelRegistry } from '../sandboxClientConfig'
 

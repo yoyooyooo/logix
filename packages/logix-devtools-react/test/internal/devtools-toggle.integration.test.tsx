@@ -21,7 +21,7 @@ if (typeof window !== 'undefined') {
   })
 }
 
-describe('@logix/devtools-react · toggle behavior', () => {
+describe('@logixjs/devtools-react · toggle behavior', () => {
   it('opens the panel when clicking the floating Logix Devtools button', () => {
     render(<LogixDevtools position="bottom-left" />)
 

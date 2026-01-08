@@ -53,7 +53,7 @@ export type I18nService = {
   ) => Effect.Effect<string, never, never>
 }
 
-export class I18nTag extends Context.Tag('@logix/i18n/I18n')<I18nTag, I18nService>() {}
+export class I18nTag extends Context.Tag('@logixjs/i18n/I18n')<I18nTag, I18nService>() {}
 
 const asNonEmptyString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined

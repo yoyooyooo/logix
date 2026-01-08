@@ -1,7 +1,7 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
-import * as EffectOp from '@logix/core/EffectOp'
+import * as EffectOp from '@logixjs/core/EffectOp'
 import type { Engine as QueryEngine } from '../src/Engine.js'
 import * as Query from '../src/index.js'
 

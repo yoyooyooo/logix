@@ -1,8 +1,8 @@
 import React from 'react'
 import { Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule } from '@logix/react'
-import * as Middleware from '@logix/core/Middleware'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule } from '@logixjs/react'
+import * as Middleware from '@logixjs/core/Middleware'
 
 // ---------------------------------------------------------------------------
 // 1. Module：最小计数器模块

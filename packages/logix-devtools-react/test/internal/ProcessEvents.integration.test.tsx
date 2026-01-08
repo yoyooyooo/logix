@@ -2,7 +2,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { waitFor } from '@testing-library/react'
 import { Effect, Schema, Layer } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { clearDevtoolsEvents, devtoolsLayer, getDevtoolsSnapshot } from '../../src/DevtoolsLayer.js'
 
 const Source = Logix.Module.make('DevtoolsProcessEventsSource', {
@@ -40,7 +40,7 @@ const RootImpl = Root.implement({
   processes: [Proc],
 })
 
-describe('@logix/devtools-react: process:* events', () => {
+describe('@logixjs/devtools-react: process:* events', () => {
   beforeEach(() => {
     clearDevtoolsEvents()
   })

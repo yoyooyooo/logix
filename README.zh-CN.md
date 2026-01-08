@@ -23,7 +23,7 @@ Logix 是一个 **Effect-native 的前端状态与业务逻辑运行时**。
 ## 最小示例
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 export const CounterDef = Logix.Module.make('Counter', {
@@ -72,11 +72,11 @@ pnpm -C apps/docs dev
 
 ## 包结构
 
-- `packages/logix-core` → `@logix/core`（内核：Module / Logic / Flow / Runtime / `$`）
-- `packages/logix-react` → `@logix/react`（React 适配：`RuntimeProvider`、hooks）
-- `packages/logix-devtools-react` → `@logix/devtools-react`（Devtools UI）
-- `packages/logix-sandbox` → `@logix/sandbox`（浏览器 Worker Sandbox）
-- `packages/logix-test` → `@logix/test`（测试工具）
+- `packages/logix-core` → `@logixjs/core`（内核：Module / Logic / Flow / Runtime / `$`）
+- `packages/logix-react` → `@logixjs/react`（React 适配：`RuntimeProvider`、hooks）
+- `packages/logix-devtools-react` → `@logixjs/devtools-react`（Devtools UI）
+- `packages/logix-sandbox` → `@logixjs/sandbox`（浏览器 Worker Sandbox）
+- `packages/logix-test` → `@logixjs/test`（测试工具）
 
 扩展与能力包：`packages/logix-form`、`packages/logix-query`、`packages/i18n`、`packages/domain`。
 

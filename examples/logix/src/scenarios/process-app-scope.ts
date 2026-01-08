@@ -11,7 +11,7 @@
  */
 
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const Source = Logix.Module.make('ProcessAppScopeSource', {
   state: Schema.Void,

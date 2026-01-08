@@ -8,7 +8,7 @@
  */
 
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export const TraitsReuseStateSchema = Schema.Struct({
   base: Schema.Number,

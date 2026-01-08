@@ -1,6 +1,6 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Chunk, Effect, Layer, Stream } from 'effect'
-import type { CrudApi, CrudDefaultQueryInput } from '@logix/domain'
+import type { CrudApi, CrudDefaultQueryInput } from '@logixjs/domain'
 import { OrdersCrud, type Order } from './crud.business.module.js'
 
 const apiInMemory = (): CrudApi<Order, CrudDefaultQueryInput, string> => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react'
-import { useDispatch, useModule, useSelector } from '@logix/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { Link, useMatch, useNavigate } from 'react-router-dom'
 
 import { SpecColumn } from '../components/SpecColumn'

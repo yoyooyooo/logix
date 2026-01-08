@@ -45,7 +45,7 @@ export interface ReplayLogService {
   }) => Effect.Effect<ResourceSnapshotEvent | undefined>
 }
 
-export class ReplayLog extends Context.Tag('@logix/core/ReplayLog')<ReplayLog, ReplayLogService>() {}
+export class ReplayLog extends Context.Tag('@logixjs/core/ReplayLog')<ReplayLog, ReplayLogService>() {}
 
 export const make = (initial?: ReadonlyArray<ReplayLogEvent>): ReplayLogService => {
   const events: Array<ReplayLogEvent> = initial ? Array.from(initial) : []

@@ -10,8 +10,8 @@ description: API Reference for LogixProvider
 ## Usage
 
 ```tsx
-import { RuntimeProvider } from '@logix/react'
-import * as Logix from '@logix/core'
+import { RuntimeProvider } from '@logixjs/react'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
 import { RootImpl } from './root-module'
 

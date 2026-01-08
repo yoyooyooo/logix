@@ -1,5 +1,5 @@
 {
-  "name": "@logix/react",
+  "name": "@logixjs/react",
   "version": "0.1.0",
   "files": [
     "dist/**"
@@ -46,7 +46,7 @@
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
-    "@logix/core": "workspace:*",
+    "@logixjs/core": "workspace:*",
     "effect": "^3.19.8",
     "use-sync-external-store": "^1.2.0"
   },

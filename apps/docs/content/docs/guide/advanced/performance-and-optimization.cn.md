@@ -13,7 +13,7 @@ Logix Runtime 默认以“可观测性优先”的方式工作：
 
 ### 适合谁
 
-- 已经在项目中使用 Logix Runtime / `@logix/react`，并开启了 Devtools；
+- 已经在项目中使用 Logix Runtime / `@logixjs/react`，并开启了 Devtools；
 - 希望在高频交互、复杂表单或长列表场景下保持良好响应速度。
 
 ### 前置知识
@@ -116,7 +116,7 @@ Logix 在内部使用 `StateTransaction` 封装一次逻辑入口下的全部状
 你可以在 Runtime 级或单个 Module 级别配置观测策略：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // 应用级默认观测策略
 const runtime = Logix.Runtime.make(RootImpl, {
@@ -176,7 +176,7 @@ export const HeavyFormImpl = HeavyFormModule.impl
 如果你想更“确定”地控制观测开销（而不是只靠 UI 开关），可以从 Runtime 配置入手：
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   // 不传 devtools 或设为 false：Devtools 相关观测不会启用（更省）
@@ -209,7 +209,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 示例：为某个 Runtime 显式启用 `sampled`（并配置采样频率与热点 Top-K 上限）
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
 
 const runtime = Logix.Runtime.make(RootImpl, {
@@ -239,7 +239,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 - 导出的 `EvidencePackage.summary` 能回答“当前实例启用了哪些运行时策略/覆写”，并提供可比较的 IR 摘要。
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect } from "effect"
 
 const result = await Effect.runPromise(
@@ -454,7 +454,7 @@ reducers: {
 
 4. **在 React 侧只订阅“你真正需要的状态切片”**
    - 避免订阅整棵 values/errors；优先用 selector 订阅聚合后的视图状态（例如 `canSubmit/isSubmitting/isValid/isDirty/submitCount`）。
-   - `@logix/form/react` 提供 `useFormState(form, selector)`，能在不扫描大树的前提下稳定获取这些状态。
+   - `@logixjs/form/react` 提供 `useFormState(form, selector)`，能在不扫描大树的前提下稳定获取这些状态。
 
 5. **长列表/嵌套数组：尽量提供稳定身份**
    - 对于“千行表单”或“虚拟滚动”场景，建议每行都有稳定的业务 ID，并在领域层/trait 配置中提供 `trackBy` 提示；

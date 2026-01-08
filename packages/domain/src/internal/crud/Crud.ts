@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Context, Effect, Option, Schema } from 'effect'
 
 const DefaultQueryInputSchema = Schema.Struct({

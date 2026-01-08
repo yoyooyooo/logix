@@ -13,7 +13,7 @@ export * from './internal/LogicMiddleware.js'
 export const RuntimeTag: Context.Tag<any, Logix.ModuleRuntime<any, any>> = Context.GenericTag<
   any,
   Logix.ModuleRuntime<any, any>
->('@logix/Runtime')
+>('@logixjs/Runtime')
 
 // Public Platform alias (equivalent to internal/platform/Platform.Service).
 export type Platform = PlatformInternal.Service

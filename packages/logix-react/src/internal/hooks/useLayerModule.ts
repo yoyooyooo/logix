@@ -1,6 +1,6 @@
 import React from 'react'
 import { Context, Effect, Layer } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { useLocalModule } from './useLocalModule.js'
 import type { ModuleRef } from '../store/ModuleRef.js'
 

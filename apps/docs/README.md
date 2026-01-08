@@ -8,7 +8,7 @@
 文档内容包括：
 
 - **Guide**：从入门到进阶的使用指南（快速上手、Essentials、Learn、Advanced、Recipes）；
-- **API**：`@logix/core` / `@logix/react` 的 API 参考；
+- **API**：`@logixjs/core` / `@logixjs/react` 的 API 参考；
 - **示例与教程**：表单、复杂列表、跨模块协作等典型场景。
 
 ## 本地开发

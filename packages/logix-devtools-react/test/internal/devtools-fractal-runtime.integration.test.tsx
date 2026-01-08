@@ -6,7 +6,7 @@ import { FractalRuntimeLayout } from '../../../../examples/logix-react/src/demos
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
 import { getDevtoolsSnapshot, clearDevtoolsEvents } from '../../src/DevtoolsLayer.js'
 
-describe('@logix/devtools-react · FractalRuntimeLayout integration', () => {
+describe('@logixjs/devtools-react · FractalRuntimeLayout integration', () => {
   it('collects events and exposes FractalRuntimeDemo runtime in Devtools', async () => {
     // Ensure the test starts from a clean window.
     clearDevtoolsEvents()

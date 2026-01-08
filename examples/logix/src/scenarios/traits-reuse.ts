@@ -7,7 +7,7 @@
  */
 
 import { Effect } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { makeTraitsReuseLogicPattern, makeTraitsReuseModule } from '../patterns/traits-reuse.js'
 
 const runOne = (id: string, initialBase: number) =>

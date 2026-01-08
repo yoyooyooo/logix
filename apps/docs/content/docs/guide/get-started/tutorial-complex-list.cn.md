@@ -34,7 +34,7 @@ description: 构建一个包含筛选、分页、加载状态和自动重置的�
 
 ```typescript
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // 1. 定义用户实体
 const User = Schema.Struct({
@@ -205,7 +205,7 @@ export const UserListDef = Logix.Module.make('UserList', {
 UI 层变得非常简单，只需要负责渲染和触发简单的状态变更。
 
 ```tsx
-	import { useModule, useSelector } from '@logix/react'
+	import { useModule, useSelector } from '@logixjs/react'
 	import { UserListModule } from './module'
 
 	export function UserListPage() {

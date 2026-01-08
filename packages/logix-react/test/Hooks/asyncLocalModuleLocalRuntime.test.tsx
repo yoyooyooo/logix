@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import React, { Suspense } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
 

@@ -8,7 +8,7 @@ description: 理解 Logix 中的模块概念。
 ## 定义模块
 
 ```typescript
-	import * as Logix from '@logix/core'
+	import * as Logix from '@logixjs/core'
 	import { Schema } from 'effect'
 
 	export const CounterDef = Logix.Module.make('Counter', {
@@ -81,7 +81,7 @@ export const CounterImpl = CounterModule.impl
 推荐使用 `useModule` Hook 消费模块对象（或 `ModuleImpl`）：
 
 ```tsx
-import { useModule, useSelector, useDispatch } from '@logix/react'
+import { useModule, useSelector, useDispatch } from '@logixjs/react'
 
 	function CounterComponent() {
 	  // 自动处理依赖注入与生命周期

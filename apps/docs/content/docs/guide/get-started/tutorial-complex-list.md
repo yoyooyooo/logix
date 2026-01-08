@@ -34,7 +34,7 @@ Create `src/features/users/schema.ts`:
 
 ```typescript
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // 1) Define the user entity
 const User = Schema.Struct({
@@ -200,7 +200,7 @@ Create `src/features/users/logic.ts`:
 The UI becomes very simple: it only renders and triggers straightforward state changes.
 
 ```tsx
-	import { useModule, useSelector } from '@logix/react'
+	import { useModule, useSelector } from '@logixjs/react'
 	import { UserListModule } from './module'
 
 	export function UserListPage() {

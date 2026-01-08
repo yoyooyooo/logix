@@ -1,5 +1,5 @@
 import { Config, Data, Effect, Schema, SubscriptionRef, Duration } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：审批场景的 State / Action

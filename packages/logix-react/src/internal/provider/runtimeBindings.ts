@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Layer, ManagedRuntime, Exit, Context, Effect, Cause, Runtime, FiberRef, LogLevel, Scope } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type * as HashSet from 'effect/HashSet'
 import type * as Logger from 'effect/Logger'
 import { isDevEnv } from './env.js'

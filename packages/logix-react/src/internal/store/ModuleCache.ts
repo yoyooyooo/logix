@@ -1,5 +1,5 @@
 import type React from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Cause, Effect, Exit, Fiber, ManagedRuntime, Option, Scope } from 'effect'
 import type { ReactConfigSnapshot } from '../provider/config.js'
 import { isDevEnv } from '../provider/env.js'

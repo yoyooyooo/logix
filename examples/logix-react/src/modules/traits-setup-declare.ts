@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // Demo: 023 Logic Traits in Setup
 // - Module 不声明 module-level traits；

@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 import { autoTrigger } from './internal/logics/auto-trigger.js'
 import { invalidate } from './internal/logics/invalidate.js'

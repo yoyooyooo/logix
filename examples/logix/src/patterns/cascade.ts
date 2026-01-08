@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 /**
  * @pattern Cascade (级联加载)

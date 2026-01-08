@@ -28,7 +28,7 @@ export interface RunSession {
   readonly local: RunSessionLocalState
 }
 
-class RunSessionTagImpl extends Context.Tag('@logix/core/RunSession')<RunSessionTagImpl, RunSession>() {}
+class RunSessionTagImpl extends Context.Tag('@logixjs/core/RunSession')<RunSessionTagImpl, RunSession>() {}
 
 export const RunSessionTag = RunSessionTagImpl
 
@@ -43,7 +43,7 @@ export interface EvidenceSink {
   readonly clear: () => void
 }
 
-const NEXT_RUN_SEQ_KEY = Symbol.for('@logix/core/runSession/nextRunSeq')
+const NEXT_RUN_SEQ_KEY = Symbol.for('@logixjs/core/runSession/nextRunSeq')
 let fallbackNextRunSeq = 0
 
 const nextRunSeq = (): number => {

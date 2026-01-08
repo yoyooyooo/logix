@@ -30,7 +30,7 @@ export interface KernelImplementationRef {
 
 export const defaultKernelImplementationRef = {
   kernelId: 'core',
-  packageName: '@logix/core',
+  packageName: '@logixjs/core',
 } as const satisfies KernelImplementationRef
 
 export const isKernelImplementationRef = (value: unknown): value is KernelImplementationRef => {
@@ -84,7 +84,7 @@ export const normalizeKernelImplementationRef = (
   }
 }
 
-class KernelImplementationRefTagImpl extends Context.Tag('@logix/core/KernelImplementationRef')<
+class KernelImplementationRefTagImpl extends Context.Tag('@logixjs/core/KernelImplementationRef')<
   KernelImplementationRefTagImpl,
   KernelImplementationRef
 >() {}
@@ -97,7 +97,7 @@ export const resolveKernelImplementationRef = (): Effect.Effect<KernelImplementa
     return normalizeKernelImplementationRef(Option.isSome(opt) ? opt.value : undefined)
   })
 
-const KERNEL_IMPLEMENTATION_REF = Symbol.for('@logix/core/kernelImplementationRef')
+const KERNEL_IMPLEMENTATION_REF = Symbol.for('@logixjs/core/kernelImplementationRef')
 
 const defineHidden = (target: object, key: symbol, value: unknown): void => {
   Object.defineProperty(target, key, {

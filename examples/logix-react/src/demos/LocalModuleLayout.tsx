@@ -1,7 +1,7 @@
 import React from 'react'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule } from '@logixjs/react'
 
 // 局部 ModuleImpl 示例：模块不注册到应用级 Runtime 的全局 modules 中，状态随组件生命周期销毁
 

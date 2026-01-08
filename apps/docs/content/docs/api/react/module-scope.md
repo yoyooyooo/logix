@@ -15,7 +15,7 @@ It mainly solves two problems:
 ## Usage
 
 ```ts
-import { ModuleScope } from '@logix/react'
+import { ModuleScope } from '@logixjs/react'
 import { RouteHost } from './modules'
 
 export const RouteHostScope = ModuleScope.make(RouteHost.impl, { gcTime: 0 })

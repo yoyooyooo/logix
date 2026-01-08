@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import React from 'react'
 import { renderHook, waitFor } from '@testing-library/react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema, ManagedRuntime, Layer, ConfigProvider, Effect, FiberRef, LogLevel, Logger } from 'effect'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
 import { useRuntime, useModule, useSelector } from '../../../src/Hooks.js'

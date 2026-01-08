@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { useRuntime } from './useRuntime.js'
 import { ReactModuleHandle, useModuleRuntime } from './useModuleRuntime.js'
 import type { Dispatch, ModuleRef } from '../store/ModuleRef.js'

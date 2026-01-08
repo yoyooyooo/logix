@@ -10,7 +10,7 @@
  */
 
 import { Data, Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：与 optimistic-toggle.ts 场景保持一致的 State / Action 形状

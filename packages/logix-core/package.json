@@ -1,5 +1,5 @@
 {
-  "name": "@logix/core",
+  "name": "@logixjs/core",
   "version": "0.0.1",
   "description": "The pure logic engine for Logix",
   "files": [

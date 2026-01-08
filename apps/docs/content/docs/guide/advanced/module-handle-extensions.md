@@ -5,7 +5,7 @@ description: Add ergonomic call sites to a custom Module (works in both Logic `$
 
 This is an **author-side enhancement** for custom Modules: when you build a reusable module (e.g. a domain package or infrastructure package), you can let callers receive extra fields like `controller` and `services` on the module handle.
 
-Some modules expose `controller.*` (for example `@logix/form`). This is not “another state machine”. It is simply bundling common composed operations into convenient methods, and it still works via standard capabilities like `dispatch/read/changes`.
+Some modules expose `controller.*` (for example `@logixjs/form`). This is not “another state machine”. It is simply bundling common composed operations into convenient methods, and it still works via standard capabilities like `dispatch/read/changes`.
 
 Typical goals:
 
@@ -52,7 +52,7 @@ Then:
 ## A full example: custom module + services + controller (author-side)
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Context, Effect, Schema } from "effect"
 
 class Api extends Context.Tag("Todo.Api")<Api, { readonly load: () => Effect.Effect<ReadonlyArray<string>> }>() {}

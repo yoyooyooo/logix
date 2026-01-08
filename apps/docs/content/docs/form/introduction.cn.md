@@ -5,7 +5,7 @@ description: 先建立清晰的心智模型，再开始写 Demo。
 
 ## 1) Form 是什么
 
-`@logix/form` 提供 `Form.make(id, config)`：它返回一个 **Form Module**（模块定义对象），可以直接被 Runtime / React 消费。
+`@logixjs/form` 提供 `Form.make(id, config)`：它返回一个 **Form Module**（模块定义对象），可以直接被 Runtime / React 消费。
 
 - **Runtime**：可以直接 `Logix.Runtime.make(FormModule, ...)` 启动（无需手动拆出 `FormModule.impl`）。
 - **React**：可以直接 `useForm(FormModule)` 获取表单视图与默认 `controller`（如 `handleSubmit/validate/reset/...`）。

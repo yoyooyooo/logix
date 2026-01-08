@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { AuthImpl } from './auth.module'
 import { ProjectGroupsImpl } from './project-groups.module'
 import { ProjectMembersImpl } from './project-members.module'

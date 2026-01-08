@@ -1,5 +1,5 @@
 import React from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { useRuntime } from './useRuntime.js'
 import { useModuleRuntime } from './useModuleRuntime.js'
 import type { ModuleDispatchersOfShape, ModuleRef } from '../store/ModuleRef.js'

@@ -11,7 +11,7 @@
  */
 
 import { Effect, Schema, Stream } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // 1. Region Module (Simplified)

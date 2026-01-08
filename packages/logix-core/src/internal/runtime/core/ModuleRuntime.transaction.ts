@@ -19,7 +19,7 @@ import type { ResolvedTraitConvergeConfig } from './ModuleRuntime.traitConvergeC
 import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
 import { StateTransactionOverridesTag, type StateTransactionOverrides } from './env.js'
 
-const DIRTY_ALL_SET_STATE_HINT = Symbol.for('@logix/core/dirtyAllSetStateHint')
+const DIRTY_ALL_SET_STATE_HINT = Symbol.for('@logixjs/core/dirtyAllSetStateHint')
 
 const readDeferredFlushSlice = (details: unknown): { readonly start: number; readonly end: number } | undefined => {
   if (!details || typeof details !== 'object') return undefined

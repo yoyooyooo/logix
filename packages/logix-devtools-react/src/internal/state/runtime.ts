@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
 import { devtoolsSnapshotLayer } from '../snapshot/index.js'
 import { DevtoolsLogic } from './logic.js'

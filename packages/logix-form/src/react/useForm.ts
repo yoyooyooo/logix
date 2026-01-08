@@ -1,4 +1,4 @@
-import * as LogixReact from '@logix/react'
+import * as LogixReact from '@logixjs/react'
 import type { FormAction, FormHandleExt, FormModule, FormState } from '../Form.js'
 
 export const useForm = <Id extends string, TValues extends object>(

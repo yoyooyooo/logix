@@ -8,7 +8,7 @@ description: Understand the Module concept in Logix.
 ## Define a module
 
 ```typescript
-	import * as Logix from '@logix/core'
+	import * as Logix from '@logixjs/core'
 	import { Schema } from 'effect'
 
 	export const CounterDef = Logix.Module.make('Counter', {
@@ -80,7 +80,7 @@ Key points:
 Use the `useModule` hook to consume a module object (or a `ModuleImpl`):
 
 ```tsx
-import { useModule, useSelector, useDispatch } from '@logix/react'
+import { useModule, useSelector, useDispatch } from '@logixjs/react'
 
 	function CounterComponent() {
 	  // Automatically handles dependency injection and lifecycle

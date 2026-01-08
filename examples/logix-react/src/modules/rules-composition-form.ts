@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import * as Form from '@logix/form'
+import * as Form from '@logixjs/form'
 
 // Rules 可组合性示例（Decl DSL only）：
 // - 把 rules 拆成多个“规则片段”（按领域/子模块划分）

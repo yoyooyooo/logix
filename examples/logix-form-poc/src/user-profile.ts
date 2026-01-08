@@ -1,4 +1,4 @@
-import type * as LogixCore from '@logix/core'
+import type * as LogixCore from '@logixjs/core'
 import type { Effect } from 'effect/Effect'
 import type { Schema } from 'effect/Schema'
 

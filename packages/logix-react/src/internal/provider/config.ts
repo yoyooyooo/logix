@@ -16,7 +16,7 @@ export interface ReactConfigSnapshot {
 }
 
 // Runtime-grade Config Tag for overriding default React runtime behavior via Layer.
-export class ReactRuntimeConfigTag extends Context.Tag('@logix/react/RuntimeConfig')<
+export class ReactRuntimeConfigTag extends Context.Tag('@logixjs/react/RuntimeConfig')<
   ReactRuntimeConfigTag,
   ReactRuntimeConfigShape
 >() {}
@@ -96,7 +96,7 @@ const ReactModuleConfigFromEnv = {
 /**
  * React module-runtime-related config keys.
  *
- * - Internal to @logix/react; not exposed as public API.
+ * - Internal to @logixjs/react; not exposed as public API.
  * - Callers provide values via ConfigProvider (fromEnv/fromMap, etc.).
  * - If missing, use defaults defined here or treat as "disabled".
  */

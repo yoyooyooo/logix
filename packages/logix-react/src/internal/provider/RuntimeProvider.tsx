@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { Layer, ManagedRuntime, Effect, Cause, FiberRef, Context, Scope } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeContext, ReactRuntimeContextValue } from './ReactContext.js'
 import { DEFAULT_CONFIG_SNAPSHOT, ReactRuntimeConfigSnapshot, type ReactConfigSnapshot } from './config.js'
 import { isDevEnv } from './env.js'

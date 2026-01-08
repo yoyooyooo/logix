@@ -16,7 +16,7 @@ Pagination is a foundational pattern for list-like UIs. This page shows two comm
 ## Cursor-based pagination
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 const ListDef = Logix.Module.make('List', {

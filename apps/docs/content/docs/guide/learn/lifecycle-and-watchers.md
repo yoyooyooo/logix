@@ -169,11 +169,11 @@ Meaning of these hooks:
 ### 3.1 Enable platform lifecycle in React
 
 To make `onSuspend/onResume/onReset` work, provide a Platform implementation in the Runtime environment.
-`@logix/react` ships an out-of-the-box Layer:
+`@logixjs/react` ships an out-of-the-box Layer:
 
 ```ts
-import * as Logix from "@logix/core"
-import { ReactPlatformLayer, RuntimeProvider } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { ReactPlatformLayer, RuntimeProvider } from "@logixjs/react"
 import { Layer } from "effect"
 
 const RootModule = Logix.Module.make("Root", { state: RootState, actions: RootActions })

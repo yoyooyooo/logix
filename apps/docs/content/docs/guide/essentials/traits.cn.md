@@ -43,7 +43,7 @@ Logix 的基本保证是：**单入口 = 单事务 = 单次对外提交**。也�
 
 ## 3) Traits 与 Form：你大概率不需要“手写表单状态”
 
-`@logix/form` 是最典型的“基于 traits 的领域包”：
+`@logixjs/form` 是最典型的“基于 traits 的领域包”：
 
 - `derived`（computed/link/source）会被编译为 StateTrait 的派生/联动/资源快照规则
 - `rules` 会被编译为校验规则（增量触发依赖于 `deps` 契约与列表 identity）

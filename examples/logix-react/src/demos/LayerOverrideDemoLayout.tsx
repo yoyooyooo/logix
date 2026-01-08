@@ -1,7 +1,7 @@
 import React from 'react'
 import { Context, Effect, Layer, ManagedRuntime } from 'effect'
-import { RuntimeProvider, useModule, useRuntime } from '@logix/react'
-import * as Logix from '@logix/core'
+import { RuntimeProvider, useModule, useRuntime } from '@logixjs/react'
+import * as Logix from '@logixjs/core'
 import { StepCounterDef, StepCounterModule } from '../modules/stepCounter'
 
 interface StepConfig {

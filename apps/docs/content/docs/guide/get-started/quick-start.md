@@ -24,7 +24,7 @@ This guide walks you through building a minimal, runnable counter app from scrat
 ## 1. Install
 
 ```bash
-npm install @logix/core @logix/react effect
+npm install @logixjs/core @logixjs/react effect
 ```
 
 ## 2. Define a Module (State and Actions)
@@ -33,7 +33,7 @@ First, define the simplest possible counter Module in any directory:
 
 ```typescript
 // counter.module.ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Schema } from "effect"
 
 export const CounterDef = Logix.Module.make('Counter', {
@@ -101,7 +101,7 @@ At your app entry, you need to:
 
 ```tsx
 // runtime.ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Layer } from "effect"
 import { CounterModule } from "./counter.impl"
 
@@ -113,7 +113,7 @@ export const AppRuntime = Logix.Runtime.make(CounterModule, {
 
 ```tsx
 // App.tsx (or any app entry)
-import { RuntimeProvider } from "@logix/react"
+import { RuntimeProvider } from "@logixjs/react"
 import { AppRuntime } from "./runtime"
 import { CounterView } from "./CounterView"
 
@@ -132,7 +132,7 @@ Finally, use `useModule` and `useSelector` / `useDispatch` inside a component to
 
 ```tsx
 // CounterView.tsx
-import { useModule, useSelector, useDispatch } from "@logix/react"
+import { useModule, useSelector, useDispatch } from "@logixjs/react"
 import { CounterDef } from "./counter.module"
 
 export function CounterView() {

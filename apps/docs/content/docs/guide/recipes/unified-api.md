@@ -57,7 +57,7 @@ A state-aware Pattern that depends on Store state and explicitly accepts `$: Bou
 ```typescript
 // patterns/cascade.ts
 import { Effect } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 /**
  * @pattern Cascade

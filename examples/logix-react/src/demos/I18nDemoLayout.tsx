@@ -1,9 +1,9 @@
 import React from 'react'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useDispatch, useModule, useSelector } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useDispatch, useModule, useSelector } from '@logixjs/react'
 import i18next from 'i18next'
 import { I18nextProvider, initReactI18next, useTranslation } from 'react-i18next'
-import { I18n, type I18nDriver } from '@logix/i18n'
+import { I18n, type I18nDriver } from '@logixjs/i18n'
 import { I18nDemoDef, I18nDemoModule } from '../modules/i18n-demo'
 
 const i18n = i18next.createInstance()

@@ -1,8 +1,8 @@
 import { Effect, FiberRef } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export const EXEC_VM_EVIDENCE_TRACE_TYPE = 'trace:exec-vm' as const
-export const EXEC_VM_EVIDENCE_MODULE_ID = '@logix/core-ng' as const
+export const EXEC_VM_EVIDENCE_MODULE_ID = '@logixjs/core-ng' as const
 export const EXEC_VM_EVIDENCE_INSTANCE_ID = 'kernel:core-ng' as const
 
 export type ExecVmMissReasonCode = 'not_implemented' | 'missing_capability' | 'disabled'

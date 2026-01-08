@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import * as Form from '@logix/form'
+import * as Form from '@logixjs/form'
 
 // Rules 可组合性示例（Mixed：Node DSL + Decl DSL）：
 // - Node DSL：适合“结构化写一棵子树”（配合 z.at(prefix)）

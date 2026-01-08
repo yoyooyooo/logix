@@ -1,5 +1,5 @@
 import React from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { useDevtoolsDispatch } from '../hooks/DevtoolsHooks.js'
 import { getDevtoolsSnapshotOverrideInfo } from '../../snapshot/index.js'
 

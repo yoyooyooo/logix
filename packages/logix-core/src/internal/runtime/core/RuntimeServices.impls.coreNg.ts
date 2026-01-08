@@ -20,7 +20,7 @@ const makeBuiltinAlias = (
 
 /**
  * coreNgRuntimeServicesRegistry：
- * - Built-in placeholder for the `core-ng` implementation shipped by `@logix/core`: currently implemented as builtin aliases
+ * - Built-in placeholder for the `core-ng` implementation shipped by `@logixjs/core`: currently implemented as builtin aliases
  *   to close the loop for 048 default switching and the full cutover gate.
  * - Assembly-time selection only (non-serializable); selection evidence is still produced/exported by RuntimeServicesEvidence.
  */

@@ -27,7 +27,7 @@ describe('Dual runtime isolation (core vs core-ng)', () => {
           handleSignals: false,
         }).pipe(Scope.extend(scope)),
         Logix.Runtime.openProgram(ProgramCoreNg, {
-          layer: Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logix/core-ng' }),
+          layer: Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
           handleSignals: false,
         }).pipe(Scope.extend(scope)),
       ])

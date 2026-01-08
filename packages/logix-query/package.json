@@ -1,5 +1,5 @@
 {
-  "name": "@logix/query",
+  "name": "@logixjs/query",
   "version": "0.0.1",
   "description": "Query domain package for Logix v3 Trait system",
   "files": [
@@ -46,7 +46,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@logix/core": "workspace:*",
+    "@logixjs/core": "workspace:*",
     "@tanstack/query-core": "^5.90.12",
     "effect": "^3.19.8"
   },
@@ -57,7 +57,7 @@
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
-    "@logix/core": "workspace:*",
+    "@logixjs/core": "workspace:*",
     "effect": "^3.19.8",
     "react": ">=18.0.0"
   }

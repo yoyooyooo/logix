@@ -43,7 +43,7 @@ description: 通过 Runtime/模块/Provider 覆盖，限制并行 watcher/task �
 ### 配方 A：全局调小默认并发（更稳）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   concurrencyPolicy: {
@@ -55,7 +55,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### 配方 B：只对某个模块止血（推荐）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   concurrencyPolicy: {
@@ -70,7 +70,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### 配方 C：运行时热切换某个模块（排查/止血）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", { concurrencyLimit: 4 })
 // 取消覆盖：传 undefined
@@ -80,8 +80,8 @@ Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", undefined)
 ### 配方 D：在 Provider 子树范围内覆盖（页面级试探）
 
 ```tsx
-import * as Logix from "@logix/core"
-import { RuntimeProvider } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
 
 const overrides = Logix.Runtime.concurrencyPolicyOverridesLayer({
   concurrencyLimit: 8,
@@ -102,7 +102,7 @@ export function App({ runtime }: { runtime: Logix.ManagedRuntime<any, any> }) {
 ### 配方 E：显式启用无上限并发（谨慎）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   concurrencyPolicy: {

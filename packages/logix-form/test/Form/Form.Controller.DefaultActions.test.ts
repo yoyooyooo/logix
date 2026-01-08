@@ -1,7 +1,7 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('Form controller default actions', () => {

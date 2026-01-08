@@ -1,5 +1,5 @@
 import { Effect, Stream } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { CustomerDetailDef } from '../customerDetail.def.js'
 import { CustomerSearchDef } from '../customerSearch.def.js'
 

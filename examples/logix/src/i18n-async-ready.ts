@@ -8,10 +8,10 @@
  * 运行：
  *   pnpm -C examples/logix exec tsx src/i18n-async-ready.ts
  */
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema, SubscriptionRef } from 'effect'
 import { fileURLToPath } from 'node:url'
-import { I18n, I18nSnapshotSchema, I18nTag, type I18nDriver } from '@logix/i18n'
+import { I18n, I18nSnapshotSchema, I18nTag, type I18nDriver } from '@logixjs/i18n'
 
 const makeAsyncInitDriver = (initial: { readonly language: string; readonly initialized: boolean }) => {
   let language = initial.language

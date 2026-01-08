@@ -14,7 +14,7 @@ description: 从父模块实例的 imports scope 解析子模块实例
 ## Usage
 
 ```tsx
-import { useImportedModule, useModule, useSelector } from '@logix/react'
+import { useImportedModule, useModule, useSelector } from '@logixjs/react'
 import { HostImpl, ChildModule } from './modules'
 
 function Page() {

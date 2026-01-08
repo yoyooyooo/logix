@@ -1,11 +1,11 @@
 ---
-title: 什么时候用 @logix/form？
-description: 帮助你判断是否需要使用 @logix/form 而不是普通 Module。
+title: 什么时候用 @logixjs/form？
+description: 帮助你判断是否需要使用 @logixjs/form 而不是普通 Module。
 ---
 
-# 什么时候用 @logix/form？
+# 什么时候用 @logixjs/form？
 
-`@logix/form` 是专门为表单场景设计的领域包。但不是所有涉及输入的场景都需要它。
+`@logixjs/form` 是专门为表单场景设计的领域包。但不是所有涉及输入的场景都需要它。
 
 ## 用普通 Module 即可
 
@@ -23,11 +23,11 @@ const SearchModule = Logix.Module.make('Search', {
 })
 ```
 
-## 推荐使用 @logix/form
+## 推荐使用 @logixjs/form
 
-当你的表单具备以下特征时，`@logix/form` 会让你更轻松：
+当你的表单具备以下特征时，`@logixjs/form` 会让你更轻松：
 
-| 特征                     | 普通 Module           | @logix/form              |
+| 特征                     | 普通 Module           | @logixjs/form              |
 | ------------------------ | --------------------- | ------------------------ |
 | **多字段**（3+ 字段）    | 手写状态合并          | 内置管理                 |
 | **字段级校验**           | 手写校验逻辑          | Rules DSL + 内置错误树   |
@@ -37,7 +37,7 @@ const SearchModule = Logix.Module.make('Search', {
 
 ## 典型场景
 
-### ✅ 用 @logix/form
+### ✅ 用 @logixjs/form
 
 - 用户注册表单（姓名、邮箱、密码 + 校验）
 - 商品编辑表单（多字段 + 图片列表）
@@ -55,7 +55,7 @@ const SearchModule = Logix.Module.make('Search', {
 你可以在同一个应用中混合使用：
 
 - **普通 Module**：管理页面/路由/全局状态
-- **@logix/form**：管理表单区域
+- **@logixjs/form**：管理表单区域
 
 ```ts
 // PageModule 管理页面状态

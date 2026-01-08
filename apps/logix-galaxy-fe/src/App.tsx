@@ -1,11 +1,11 @@
 import { Suspense, lazy } from 'react'
-import { useDispatch, useModule } from '@logix/react'
+import { useDispatch, useModule } from '@logixjs/react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { AuthDef } from './galaxy/auth.module'
 
 const Devtools = import.meta.env.DEV
   ? lazy(async () => {
-      const mod = await import('@logix/devtools-react')
+      const mod = await import('@logixjs/devtools-react')
       return { default: mod.LogixDevtools }
     })
   : null

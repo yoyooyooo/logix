@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import type * as LogixCore from '@logix/core'
+import type * as LogixCore from '@logixjs/core'
 
 // 基础 Form 类型出口（库级别）。
 // 仅包含接口与类型别名，不包含任何具体实现。

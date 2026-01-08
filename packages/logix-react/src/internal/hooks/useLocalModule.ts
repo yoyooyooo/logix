@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Context, Effect, Layer, Scope } from 'effect'
 import { useRuntime } from './useRuntime.js'
 import { getModuleCache, type ModuleCacheFactory, stableHash } from '../store/ModuleCache.js'

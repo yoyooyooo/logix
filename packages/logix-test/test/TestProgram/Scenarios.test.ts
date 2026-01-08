@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Effect, Layer, Schema, Context, Schedule, TestClock } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { runTest } from '../../src/TestRuntime.js'
 import * as Execution from '../../src/Execution.js'
 import * as TestProgram from '../../src/TestProgram.js'
@@ -182,7 +182,7 @@ interface SelectionService {
   readonly getSelectedIds: () => Effect.Effect<ReadonlyArray<string>>
 }
 
-const SelectionServiceTag = Context.GenericTag<SelectionService>('@logix/test/SelectionService')
+const SelectionServiceTag = Context.GenericTag<SelectionService>('@logixjs/test/SelectionService')
 
 interface BulkOperationService {
   readonly applyToMany: (input: {
@@ -191,14 +191,14 @@ interface BulkOperationService {
   }) => Effect.Effect<void>
 }
 
-const BulkOperationServiceTag = Context.GenericTag<BulkOperationService>('@logix/test/BulkOperationService')
+const BulkOperationServiceTag = Context.GenericTag<BulkOperationService>('@logixjs/test/BulkOperationService')
 
 interface NotificationService {
   readonly info: (message: string) => Effect.Effect<void>
   readonly error: (message: string) => Effect.Effect<void>
 }
 
-const NotificationServiceTag = Context.GenericTag<NotificationService>('@logix/test/NotificationService')
+const NotificationServiceTag = Context.GenericTag<NotificationService>('@logixjs/test/NotificationService')
 
 const BulkModule = Logix.Module.make('BulkModule', {
   state: Schema.Struct({
@@ -342,7 +342,7 @@ const DirtyFormLogic = DirtyFormModule.logic((api) =>
 // Scenario: SearchModule · fromState + debounce + filter + runLatest
 // ---------------------------------------------------------------------------
 
-class SearchApi extends Context.Tag('@logix/test/SearchApi')<SearchApi, SearchApi.Service>() {}
+class SearchApi extends Context.Tag('@logixjs/test/SearchApi')<SearchApi, SearchApi.Service>() {}
 
 namespace SearchApi {
   export interface Service {
@@ -402,7 +402,7 @@ const SearchLogic = SearchModule.logic(($) =>
 // Tests (grouped by capability)
 // ---------------------------------------------------------------------------
 
-describe('@logix/test · TestProgram capability scenarios', () => {
+describe('@logixjs/test · TestProgram capability scenarios', () => {
   it('Optimistic Update: TestProgram + ExecutionResult should capture rollback', async () => {
     const program = ToggleModule.implement({
       initial: { flags: { 'feature-a': false } },

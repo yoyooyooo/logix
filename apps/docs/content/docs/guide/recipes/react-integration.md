@@ -3,7 +3,7 @@ title: Using Logix in React
 description: How to integrate Logix Runtime into a React app and use module state and actions via hooks.
 ---
 
-This guide demonstrates how to integrate Logix into a typical React application from an “app developer” perspective, and how to read/update state with the components and hooks from `@logix/react`.
+This guide demonstrates how to integrate Logix into a typical React application from an “app developer” perspective, and how to read/update state with the components and hooks from `@logixjs/react`.
 
 > If you only want the quick conclusion, remember two things:
 >
@@ -30,7 +30,7 @@ This guide demonstrates how to integrate Logix into a typical React application 
 First define a minimal counter Module in any directory:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 export const CounterDef = Logix.Module.make('Counter', {
@@ -48,7 +48,7 @@ export const CounterLogic = CounterDef.logic(($) =>
 In your app entry, build a Root program module (or its `ModuleImpl`) and assemble the Runtime via `Logix.Runtime.make`:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
 import { CounterDef, CounterLogic } from './CounterModule'
 
@@ -70,7 +70,7 @@ In your React app root component, wrap routes/pages with `RuntimeProvider`:
 
 ```tsx
 // App.tsx
-import { RuntimeProvider } from '@logix/react'
+import { RuntimeProvider } from '@logixjs/react'
 import { AppRuntime } from './runtime'
 import { Router } from './Router'
 
@@ -96,7 +96,7 @@ If your project already creates a Runtime elsewhere, you can pass it via the `ru
 In any component, read module state via hooks:
 
 ```tsx
-import { useModule, useSelector } from '@logix/react'
+import { useModule, useSelector } from '@logixjs/react'
 import { CounterDef } from '../runtime/CounterModule'
 
 export function CounterValue() {
@@ -112,7 +112,7 @@ export function CounterValue() {
 
 In most scenarios, prefer `useSelector` over passing the full `state` to a component. It avoids unnecessary re-renders.
 
-> `useSelector(handle, selector, equalityFn)` uses `Object.is` by default. When your selector returns arrays/objects, pass `shallow` (built into `@logix/react`) to avoid useless re-renders caused by “same content, different reference”.
+> `useSelector(handle, selector, equalityFn)` uses `Object.is` by default. When your selector returns arrays/objects, pass `shallow` (built into `@logixjs/react`) to avoid useless re-renders caused by “same content, different reference”.
 
 > Note: `useModule(Module)` itself does **not** subscribe to state, so state updates will not automatically re-render the component.
 >
@@ -124,7 +124,7 @@ In most scenarios, prefer `useSelector` over passing the full `state` to a compo
 To change state, dispatch an object that conforms to the Action schema:
 
 ```tsx
-import { useDispatch, useModule } from '@logix/react'
+import { useDispatch, useModule } from '@logixjs/react'
 import { CounterDef } from '../runtime/CounterModule'
 
 export function CounterButton() {
@@ -154,7 +154,7 @@ You can explicitly use two “fallback knobs”:
 In React event handlers, you can use `dispatch.batch / dispatch.lowPriority` (sugar), or call `useRuntime()` and run Effects manually (more white-box).
 
 ```tsx
-import { useModule, useSelector, useDispatch } from "@logix/react"
+import { useModule, useSelector, useDispatch } from "@logixjs/react"
 
 export function Form() {
   const form = useModule(FormModule)
@@ -189,8 +189,8 @@ export function Form() {
 For state used only within a single page/component (temporary forms, wizards, etc.), you can use `useLocalModule` to create a “local module instance”:
 
 ```tsx
-import { useLocalModule } from '@logix/react'
-import * as Logix from '@logix/core'
+import { useLocalModule } from '@logixjs/react'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 const LocalForm = Logix.Module.make('LocalForm', {
@@ -228,7 +228,7 @@ Use either of these equivalent forms:
 Example:
 
 ```tsx
-import { useDispatch, useModule, useSelector } from '@logix/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { HostImpl, ChildModule } from './modules'
 
 export function Page() {
@@ -474,13 +474,13 @@ The `useEffect` left in components is usually only:
 ## 8. Synchronous vs async ModuleImpl modes (advanced)
 
 In real projects, prefer exposing module implementations via `ModuleImpl`, and consume them in React via `useModule(Impl)`.  
-`@logix/react` provides two modes for ModuleImpl:
+`@logixjs/react` provides two modes for ModuleImpl:
 
 1. **Default: synchronous mode (simple, direct)**
 
 ```tsx
 // CounterModule is produced by CounterDef.implement(...) (program module, with `.impl`)
-import { useModule, useSelector, useDispatch } from '@logix/react'
+import { useModule, useSelector, useDispatch } from '@logixjs/react'
 import { CounterModule } from '../runtime/counter'
 
 export function LocalCounter() {
@@ -502,7 +502,7 @@ When ModuleImpl construction depends on async initialization (IndexedDB / remote
 
 ```tsx
 import { useId, Suspense } from 'react'
-import { useModule, useSelector } from '@logix/react'
+import { useModule, useSelector } from '@logixjs/react'
 import { AsyncImpl } from '../runtime/asyncModule'
 
 function AsyncWidgetInner({ userId }: { userId: string }) {

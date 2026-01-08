@@ -1,5 +1,5 @@
-import * as Logix from '@logix/core'
-import { StateTrait } from '@logix/core'
+import * as Logix from '@logixjs/core'
+import { StateTrait } from '@logixjs/core'
 import { Schema } from 'effect'
 
 // 1) State Schema：包含原始字段 + computed 字段 + 资源字段

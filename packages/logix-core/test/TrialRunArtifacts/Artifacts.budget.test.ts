@@ -7,7 +7,7 @@ describe('TrialRunArtifacts.collect: budget', () => {
     const exporters: ReadonlyArray<TrialRunArtifactExporter> = [
       {
         exporterId: 'big',
-        artifactKey: '@logix/demo.big@v1',
+        artifactKey: '@logixjs/demo.big@v1',
         export: () => ({ text: 'x'.repeat(10_000) }),
       },
     ]
@@ -27,7 +27,7 @@ describe('TrialRunArtifacts.collect: budget', () => {
     expect(artifacts2).toBeDefined()
     expect(JSON.stringify(artifacts1)).toBe(JSON.stringify(artifacts2))
 
-    const env = (artifacts1 as any)['@logix/demo.big@v1']
+    const env = (artifacts1 as any)['@logixjs/demo.big@v1']
     expect(env.ok).toBe(true)
     expect(env.truncated).toBe(true)
     expect(env.budgetBytes).toBe(200)

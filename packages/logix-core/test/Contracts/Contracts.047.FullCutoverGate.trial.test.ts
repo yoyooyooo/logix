@@ -18,7 +18,7 @@ describe('contracts (047): Full Cutover Gate (trial)', () => {
 
       const layer = Layer.mergeAll(
         Logix.Kernel.fullCutoverGateModeLayer('trial'),
-        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logix/core-ng' }),
+        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
         Logix.Kernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: '__missing__', notes: 'test: trigger fallback in trial mode' },
         }),

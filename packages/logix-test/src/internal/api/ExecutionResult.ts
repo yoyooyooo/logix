@@ -1,5 +1,5 @@
 import { Chunk } from 'effect'
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 
 export interface ExecutionResult<Sh extends Logix.AnyModuleShape> {
   readonly trace: ReadonlyArray<TraceEvent<Sh>>

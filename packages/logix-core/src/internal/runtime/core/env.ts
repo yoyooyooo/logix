@@ -77,7 +77,7 @@ export interface StateTransactionRuntimeConfig {
   readonly txnLanesOverridesByModuleId?: Readonly<Record<string, TxnLanesPatch>>
 }
 
-class StateTransactionConfigTagImpl extends Context.Tag('@logix/core/StateTransactionRuntimeConfig')<
+class StateTransactionConfigTagImpl extends Context.Tag('@logixjs/core/StateTransactionRuntimeConfig')<
   StateTransactionConfigTagImpl,
   StateTransactionRuntimeConfig
 >() {}
@@ -86,7 +86,7 @@ export const StateTransactionConfigTag = StateTransactionConfigTagImpl
 
 export type ReadQueryStrictGateRuntimeConfig = ReadQueryStrictGateConfig
 
-class ReadQueryStrictGateConfigTagImpl extends Context.Tag('@logix/core/ReadQueryStrictGateRuntimeConfig')<
+class ReadQueryStrictGateConfigTagImpl extends Context.Tag('@logixjs/core/ReadQueryStrictGateRuntimeConfig')<
   ReadQueryStrictGateConfigTagImpl,
   ReadQueryStrictGateRuntimeConfig
 >() {}
@@ -99,7 +99,7 @@ export interface ReplayModeConfig {
   readonly mode: ReplayMode
 }
 
-class ReplayModeConfigTagImpl extends Context.Tag('@logix/core/ReplayModeConfig')<
+class ReplayModeConfigTagImpl extends Context.Tag('@logixjs/core/ReplayModeConfig')<
   ReplayModeConfigTagImpl,
   ReplayModeConfig
 >() {}
@@ -184,7 +184,7 @@ export interface StateTransactionOverrides {
   readonly txnLanesOverridesByModuleId?: Readonly<Record<string, TxnLanesPatch>>
 }
 
-class StateTransactionOverridesTagImpl extends Context.Tag('@logix/core/StateTransactionOverrides')<
+class StateTransactionOverridesTagImpl extends Context.Tag('@logixjs/core/StateTransactionOverrides')<
   StateTransactionOverridesTagImpl,
   StateTransactionOverrides
 >() {}
@@ -216,7 +216,7 @@ export interface ConcurrencyPolicy extends ConcurrencyPolicyPatch {
   readonly overridesByModuleId?: Readonly<Record<string, ConcurrencyPolicyPatch>>
 }
 
-class ConcurrencyPolicyTagImpl extends Context.Tag('@logix/core/ConcurrencyPolicy')<
+class ConcurrencyPolicyTagImpl extends Context.Tag('@logixjs/core/ConcurrencyPolicy')<
   ConcurrencyPolicyTagImpl,
   ConcurrencyPolicy
 >() {}
@@ -232,7 +232,7 @@ export interface ConcurrencyPolicyOverrides extends ConcurrencyPolicyPatch {
   readonly overridesByModuleId?: Readonly<Record<string, ConcurrencyPolicyPatch>>
 }
 
-class ConcurrencyPolicyOverridesTagImpl extends Context.Tag('@logix/core/ConcurrencyPolicyOverrides')<
+class ConcurrencyPolicyOverridesTagImpl extends Context.Tag('@logixjs/core/ConcurrencyPolicyOverrides')<
   ConcurrencyPolicyOverridesTagImpl,
   ConcurrencyPolicyOverrides
 >() {}

@@ -62,7 +62,7 @@ If you want to **get a demo running as quickly as possible**, read in this order
 
 > [!TIP]
 > If you’re building real forms (multiple fields, validations, dynamic arrays), don’t hand-roll form state in Get Started.
-> Follow the `@logix/form` track instead—it’s faster and the boundaries are already baked in.
+> Follow the `@logixjs/form` track instead—it’s faster and the boundaries are already baked in.
 >
 > - [When to use Form](../../form/when-to-use)
 > - [Form Quick Start](../../form/quick-start)

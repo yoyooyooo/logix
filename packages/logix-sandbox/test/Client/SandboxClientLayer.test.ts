@@ -9,7 +9,7 @@ import {
   type TraceSpan,
   type SandboxErrorInfo,
   type RunResult,
-} from '@logix/sandbox'
+} from '@logixjs/sandbox'
 
 describe('SandboxClientLayer', () => {
   it('exposes events stream and basic methods', async () => {

@@ -40,7 +40,7 @@ export interface LogixSandboxKernelPluginOptions {
  * logixSandboxKernelPlugin
  *
  * Only for Vite projects:
- * - dev: serve effect.js / logix-core.js / esbuild.wasm on-demand from @logix/sandbox's public directory
+ * - dev: serve effect.js / logix-core.js / esbuild.wasm on-demand from @logixjs/sandbox's public directory
  * - build: emit those files as static assets into the build output
  */
 export function logixSandboxKernelPlugin(options: LogixSandboxKernelPluginOptions = {}): VitePlugin {

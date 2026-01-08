@@ -16,7 +16,7 @@ description: 使用 Logix 实现乐观更新与回滚策略。
 ## 基础实现
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 const TodoDef = Logix.Module.make('Todo', {

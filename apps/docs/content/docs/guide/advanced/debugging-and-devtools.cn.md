@@ -55,7 +55,7 @@ Logix 在运行时会为「模块生命周期、Action 派发、状态更新、�
 要在开发/测试环境中查看运行轨迹，可以在构建 Runtime 时加入内置的 `Debug.layer`：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
 
 // RootImpl 为你的 Root ModuleImpl
@@ -70,7 +70,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 也可以直接使用 `Runtime.make` 的 `debug` 选项（等价于手动合并 `Logix.Debug.layer(...)`）：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const runtime = Logix.Runtime.make(RootImpl, {
   layer: AppInfraLayer,
@@ -182,7 +182,7 @@ type Event =
 你可以在自定义 sink 里把宿主内事件转成 `RuntimeDebugEventRef` 后再上报：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect } from 'effect'
 
 const sink: Logix.Debug.Sink = {
@@ -203,7 +203,7 @@ const sink: Logix.Debug.Sink = {
 启用 Devtools（`devtools: true` 或手动叠加 `Debug.devtoolsHubLayer`）后，你可以把最近一段窗口导出为证据包：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const pkg = Logix.Debug.exportEvidencePackage({
   source: { host: 'browser', label: 'my-run' },
@@ -214,7 +214,7 @@ const json = JSON.stringify(pkg)
 证据包可在另一处导入（例如离线分析/回归用例）：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const pkg2 = Logix.Observability.importEvidencePackage(JSON.parse(json))
 ```
@@ -233,7 +233,7 @@ const pkg2 = Logix.Observability.importEvidencePackage(JSON.parse(json))
 如果你需要更完整的收敛证据（例如 dirty roots 的宽度），可以在构建 Runtime 时显式提高导出档位：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const runtime = Logix.Runtime.make(RootImpl, {
   layer: AppInfraLayer,
@@ -294,7 +294,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### 3.1 基于 Layer 的自定义 DebugLayer
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Layer } from 'effect'
 
 const CustomDebugLayer = Logix.Debug.replace([
@@ -346,11 +346,11 @@ const runtime = Logix.Runtime.make(RootImpl, {
   - `effect`：真正要执行的 Effect 程序。
 - Runtime 在执行这些边界事件前，会先把它们包装成 EffectOp，并交给一条 `MiddlewareStack`（运行时中间件链）统一处理。
 
-在应用入口处，你可以通过 `Runtime.make(..., { middleware })` 配置这条总线，并使用 `@logix/core/Middleware` 提供的预设函数快速挂载调试能力：
+在应用入口处，你可以通过 `Runtime.make(..., { middleware })` 配置这条总线，并使用 `@logixjs/core/Middleware` 提供的预设函数快速挂载调试能力：
 
 ```ts
-import * as Logix from '@logix/core'
-import * as Middleware from '@logix/core/Middleware'
+import * as Logix from '@logixjs/core'
+import * as Middleware from '@logixjs/core/Middleware'
 import { Effect, Layer } from 'effect'
 
 const timingMiddleware: Middleware.Middleware = (op) =>
@@ -395,9 +395,9 @@ const runtime = Logix.Runtime.make(RootImpl, {
 
 ```ts
 import { Effect, Layer } from 'effect'
-import * as Logix from '@logix/core'
-import * as Middleware from '@logix/core/Middleware'
-import * as EffectOp from '@logix/core/EffectOp'
+import * as Logix from '@logixjs/core'
+import * as Middleware from '@logixjs/core/Middleware'
+import * as EffectOp from '@logixjs/core/EffectOp'
 
 const guard: Middleware.Middleware = (op) => {
   if (op.kind === 'action' && op.name === 'action:dispatch') {
@@ -421,7 +421,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 
 ## 5. DevTools 集成：推荐组合
 
-Logix 已经提供了官方 DevTools（通过 `@logix/devtools-react` 等包集成），它会复用本文介绍的同一条 Debug 事件管道，并在浏览器里渲染：
+Logix 已经提供了官方 DevTools（通过 `@logixjs/devtools-react` 等包集成），它会复用本文介绍的同一条 Debug 事件管道，并在浏览器里渲染：
 
 - 时间轴（Timeline）：按时间顺序浏览 Action / State / EffectOp 事件；
 - 模块视图：查看当前有哪些模块实例在运行、各自的状态；
@@ -432,7 +432,7 @@ Logix 已经提供了官方 DevTools（通过 `@logix/devtools-react` 等包集�
 1. **在 React 根节点挂上 DevTools 组件**
 
    ```tsx
-   import { LogixDevtools } from '@logix/devtools-react'
+   import { LogixDevtools } from '@logixjs/devtools-react'
 
    export function App() {
      return (
@@ -447,7 +447,7 @@ Logix 已经提供了官方 DevTools（通过 `@logix/devtools-react` 等包集�
 2. **在 Runtime 上一键启用 DevTools**
 
    ```ts
-   import * as Logix from '@logix/core'
+   import * as Logix from '@logixjs/core'
 
    const runtime = Logix.Runtime.make(RootImpl, {
      label: 'AppRuntime',

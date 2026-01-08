@@ -68,7 +68,7 @@ Important: **time-slicing does not automatically mark anything as deferred**. On
 The switch lives under `stateTransaction` (off by default):
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
@@ -151,7 +151,7 @@ If you’re unsure, search your codebase for `Module.make("OrderForm"` or `Modul
 ### Recipe A: emulate a “stable baseline” (full converge)
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
@@ -165,7 +165,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 When “only one page/module is janky”, prefer this local rollback: other modules keep the default strategy.
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
@@ -180,8 +180,8 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### Recipe C: probe defaults within a React subtree (page-level tuning)
 
 ```tsx
-import * as Logix from "@logix/core"
-import { RuntimeProvider } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
 
 const overrides = Logix.Runtime.stateTransactionOverridesLayer({
   traitConvergeMode: "auto",
@@ -203,7 +203,7 @@ export function App({ runtime }: { runtime: Logix.ManagedRuntime<any, any> }) {
 ### Recipe D: hot switch one module at runtime (for diagnosis; avoid frequent releases)
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", { traitConvergeMode: "full" })
 // Remove override: pass undefined
@@ -215,7 +215,7 @@ Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", undefined)
 ### Recipe E: enable time-slicing for one module (large-N, high-frequency input rollback)
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
@@ -234,7 +234,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 > Only derivations that can temporarily read stale values should be deferred (e.g. display text, formatting, non-critical stats). Keep key business fields immediate.
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const Traits = Logix.StateTrait.from(State)({
   // immediate (default): converge within the same window

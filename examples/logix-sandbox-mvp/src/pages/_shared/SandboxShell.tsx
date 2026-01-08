@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { type SandboxStatus, type LogEntry, type TraceSpan, type UiIntentPacket } from '@logix/sandbox'
+import { type SandboxStatus, type LogEntry, type TraceSpan, type UiIntentPacket } from '@logixjs/sandbox'
 import { ThemeToggle } from '../../components/ThemeToggle'
 
 const shouldShowFlickerDiagnostics = (): boolean => {
@@ -151,7 +151,7 @@ export function Header({
             {codegen ? (
               <label
                 className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-300"
-                title='编译前自动注入：import * as Logix from "@logix/core"'
+                title='编译前自动注入：import * as Logix from "@logixjs/core"'
               >
                 <input
                   type="checkbox"

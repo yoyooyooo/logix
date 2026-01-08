@@ -1,9 +1,9 @@
 import React from 'react'
 import { Duration, Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector } from '@logix/react'
-import * as Form from '@logix/form'
-import { useField, useFieldArray } from '@logix/form/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useSelector } from '@logixjs/react'
+import * as Form from '@logixjs/form'
+import { useField, useFieldArray } from '@logixjs/form/react'
 import type { FormCaseLink } from './types'
 import { GhostButton, JsonCard, PrimaryButton, SectionTitle, ResourceSnapshotSchema } from './shared'
 

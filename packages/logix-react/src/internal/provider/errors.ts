@@ -6,7 +6,7 @@ export class RuntimeProviderNotFoundError extends Error {
         'Fix:\n' +
         '- Wrap your app (or the calling component subtree) with <RuntimeProvider runtime={runtime}>.\n' +
         '- If using nested providers, ensure an ancestor RuntimeProvider provides `runtime`.\n' +
-        '- If you intended to call this hook outside React, use @logix/core directly.\n',
+        '- If you intended to call this hook outside React, use @logixjs/core directly.\n',
     )
     this.name = 'RuntimeProviderNotFoundError'
   }

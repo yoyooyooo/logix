@@ -1,4 +1,4 @@
-import type * as EffectOp from '@logix/core/EffectOp'
+import type * as EffectOp from '@logixjs/core/EffectOp'
 import { Context, Effect, Layer, Option } from 'effect'
 import { middleware as middlewareImpl, type MiddlewareConfig } from './internal/middleware/middleware.js'
 
@@ -42,7 +42,7 @@ export interface Engine {
   }) => Effect.Effect<Option.Option<A>, never, any>
 }
 
-class EngineTagImpl extends Context.Tag('@logix/query/Engine')<EngineTagImpl, Engine>() {}
+class EngineTagImpl extends Context.Tag('@logixjs/query/Engine')<EngineTagImpl, Engine>() {}
 
 export const Engine = Object.assign(EngineTagImpl, {
   layer: (engine: Engine): Layer.Layer<EngineTagImpl, never, never> => Layer.succeed(EngineTagImpl, engine),

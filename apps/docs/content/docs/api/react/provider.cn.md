@@ -15,13 +15,13 @@ description: 在 React 中提供 Logix Runtime 上下文
 - imports scope：`handle.imports.get` / `useImportedModule`
 - 逃生口：`useRuntime`（需要直接跑 Effect/调试时）
 
-> 所有 `@logix/react` hooks 都必须在 `RuntimeProvider` 子树内调用。
+> 所有 `@logixjs/react` hooks 都必须在 `RuntimeProvider` 子树内调用。
 
 ## 最小用法
 
 ```tsx
-	import { RuntimeProvider } from '@logix/react'
-	import * as Logix from '@logix/core'
+	import { RuntimeProvider } from '@logixjs/react'
+	import * as Logix from '@logixjs/core'
 	import { Layer } from 'effect'
 import { RootImpl } from './root-module'
 

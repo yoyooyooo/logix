@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 import type { FormModule } from '../../src/Form.js'
 

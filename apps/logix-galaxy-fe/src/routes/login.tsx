@@ -1,4 +1,4 @@
-import { useDispatch, useModule } from '@logix/react'
+import { useDispatch, useModule } from '@logixjs/react'
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthDef } from '../galaxy/auth.module'

@@ -28,6 +28,6 @@
     "bench:029:i18n-root-resolve": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/029-i18n-root-resolve.root-resolve-baseline.ts"
   },
   "dependencies": {
-    "@logix/core": "workspace:*"
+    "@logixjs/core": "workspace:*"
   }
 }

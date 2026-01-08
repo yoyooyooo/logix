@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { shallow, useDispatch, useModule, useSelector } from '@logix/react'
+import { shallow, useDispatch, useModule, useSelector } from '@logixjs/react'
 import { SandboxDef } from '../../modules/SandboxModule'
 import type { SandboxRuntime, SandboxTab } from '../../modules/SandboxRuntime'
 import { SpecNavigation } from '../../components/SpecNavigation'

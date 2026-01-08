@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo } from 'react'
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeContext } from '../provider/ReactContext.js'
 import { ReactModuleHandle, useModuleRuntime } from './useModuleRuntime.js'
 import { isDevEnv } from '../provider/env.js'

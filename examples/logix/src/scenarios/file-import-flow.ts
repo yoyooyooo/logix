@@ -10,7 +10,7 @@
  */
 
 import { Effect, Schema, Stream } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import {
   FileImportPatternError,
   FileUploadService,

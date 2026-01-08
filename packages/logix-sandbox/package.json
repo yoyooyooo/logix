@@ -1,5 +1,5 @@
 {
-  "name": "@logix/sandbox",
+  "name": "@logixjs/sandbox",
   "version": "0.0.1",
   "description": "Sandbox runtime for running Logix/Effect code in a browser Worker",
   "files": [

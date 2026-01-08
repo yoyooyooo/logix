@@ -1,7 +1,7 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { makeFormModule } from '../fixtures/listScopeCheck.js'
 
 describe('Form list-scope uniqueWarehouse (onChange, no submit)', () => {

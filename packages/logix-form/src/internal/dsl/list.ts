@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type { NodeSpec } from './traits.js'
 
 export type List<Item = unknown> = Logix.StateTrait.StateTraitList<Item>

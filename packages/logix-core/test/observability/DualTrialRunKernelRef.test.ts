@@ -23,7 +23,7 @@ describe('Dual trial-run kernel ref', () => {
         runId: 'run:test:dual-trial-run-kernel-ref-core-ng',
         buildEnv: { hostKind: 'node', config: {} },
         diagnosticsLevel: 'off',
-        layer: Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logix/core-ng' }),
+        layer: Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
       })
 
       expect(reportCore.ok).toBe(true)

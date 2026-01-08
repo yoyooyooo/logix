@@ -1,5 +1,5 @@
 import { Config, Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const State = Schema.Struct({
   a: Schema.Number,

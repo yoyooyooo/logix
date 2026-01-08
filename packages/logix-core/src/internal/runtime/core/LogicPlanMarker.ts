@@ -1,8 +1,8 @@
 export type PhaseRef = { current: 'setup' | 'run' }
 
-const LOGIC_PLAN_EFFECT = Symbol.for('@logix/core/logicPlanEffect')
-const LOGIC_PHASE_REF = Symbol.for('@logix/core/logicPhaseRef')
-const LOGIC_SKIP_RUN = Symbol.for('@logix/core/logicSkipRun')
+const LOGIC_PLAN_EFFECT = Symbol.for('@logixjs/core/logicPlanEffect')
+const LOGIC_PHASE_REF = Symbol.for('@logixjs/core/logicPhaseRef')
+const LOGIC_SKIP_RUN = Symbol.for('@logixjs/core/logicSkipRun')
 
 const defineHidden = (target: object, key: symbol, value: unknown): void => {
   Object.defineProperty(target, key, {

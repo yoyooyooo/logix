@@ -142,7 +142,7 @@ const otherModule = yield* $.use(OtherModule);
 
 ## 结构化匹配 (Pattern Matching)
 
-提供 Fluent 风格的轻量模式匹配（由 `@logix/core` 内部 helper 实现），约定 handler 返回 `Effect`。
+提供 Fluent 风格的轻量模式匹配（由 `@logixjs/core` 内部 helper 实现），约定 handler 返回 `Effect`。
 
 - **`match(value)`**: 对值进行匹配。
 - **`matchTag(value)`**: 对带有 `_tag` 字段的联合类型进行匹配。

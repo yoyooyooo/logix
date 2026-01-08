@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import type { ManagedRuntime } from 'effect'
 import { Effect } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type { RuntimeProviderPolicyMode } from './policy.js'
 import { isDevEnv } from './env.js'
 import { getFallbackWarningDocsPrefixEnv, getFallbackWarningDocsUrl } from './docs.js'

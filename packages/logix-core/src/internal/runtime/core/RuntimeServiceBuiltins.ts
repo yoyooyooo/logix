@@ -10,7 +10,7 @@ export interface RuntimeServiceBuiltins {
   readonly getBuiltinMake: (serviceId: string) => Effect.Effect<unknown, never, any>
 }
 
-export class RuntimeServiceBuiltinsTag extends Context.Tag('@logix/core/RuntimeServiceBuiltins')<
+export class RuntimeServiceBuiltinsTag extends Context.Tag('@logixjs/core/RuntimeServiceBuiltins')<
   RuntimeServiceBuiltinsTag,
   RuntimeServiceBuiltins
 >() {}

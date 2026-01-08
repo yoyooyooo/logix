@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 import { getDevtoolsSnapshot } from '../snapshot/index.js'
 import { computeDevtoolsState } from './compute.js'

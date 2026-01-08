@@ -12,7 +12,7 @@
  */
 
 import { Context, Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // 场景一：搜索框输入 → 防抖 + latest 搜索（Fluent + Service）

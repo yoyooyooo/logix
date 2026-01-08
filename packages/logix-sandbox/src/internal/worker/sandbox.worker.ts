@@ -345,7 +345,7 @@ type LogixSandboxBridge = {
   readonly emitSpy: (payload: Record<string, unknown>) => void
 }
 
-const LOGIX_SANDBOX_BRIDGE = Symbol.for('@logix/sandbox/bridge')
+const LOGIX_SANDBOX_BRIDGE = Symbol.for('@logixjs/sandbox/bridge')
 
 const defineHidden = (target: object, key: PropertyKey, value: unknown): void => {
   Object.defineProperty(target, key, {
@@ -469,12 +469,12 @@ async function handleInit(wasmUrl?: string, kernelUrl?: string): Promise<void> {
     const res = await fetch(manifestUrl)
     if (!res.ok) {
       throw new Error(
-        `加载 @logix/core 子路径清单失败: ${String(res.status)} ${String(res.statusText)} (${manifestUrl})`,
+        `加载 @logixjs/core 子路径清单失败: ${String(res.status)} ${String(res.statusText)} (${manifestUrl})`,
       )
     }
     const json: any = await res.json()
     if (!json || !Array.isArray(json.specifiers)) {
-      throw new Error(`@logix/core 子路径清单格式非法: ${manifestUrl}`)
+      throw new Error(`@logixjs/core 子路径清单格式非法: ${manifestUrl}`)
     }
     setLogixCoreSubpaths(json.specifiers)
     postReady(true)

@@ -25,14 +25,14 @@ description: Logix 常见问题解答，帮助你快速找到答案。
 
 两者可以结合使用：用 XState 管理流程状态机，用 Logix 管理业务数据。
 
-### 什么时候用 @logix/form 而不是普通 Module？
+### 什么时候用 @logixjs/form 而不是普通 Module？
 
 **用普通 Module**：
 
 - 单字段输入（搜索框、开关）
 - 不需要复杂校验
 
-**用 @logix/form**：
+**用 @logixjs/form**：
 
 - 多字段表单（3+ 字段）
 - 需要字段级校验 + 错误展示
@@ -66,7 +66,7 @@ yield* $.onAction('save').run(() =>
    ```
 2. 在 React 应用中添加 DevTools 组件：
    ```tsx
-   import { LogixDevtools } from '@logix/devtools-react'
+   import { LogixDevtools } from '@logixjs/devtools-react'
    ;<LogixDevtools position="bottom-left" />
    ```
 3. 打开浏览器，在时间线中查看 Action 事件

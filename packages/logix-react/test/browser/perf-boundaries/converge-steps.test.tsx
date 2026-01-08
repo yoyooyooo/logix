@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { Effect } from 'effect'
-import matrix from '@logix/perf-evidence/assets/matrix.json'
+import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { emitPerfReport, type PerfReport } from './protocol.js'
 import { getProfileConfig, runMatrixSuite, summarizeMs, withNodeEnv } from './harness.js'
 import {

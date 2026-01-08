@@ -17,7 +17,7 @@
  */
 
 import { Effect, Schema, Context, Stream } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // 模块一：全局搜索 (Search Module)

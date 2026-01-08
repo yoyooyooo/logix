@@ -10,7 +10,7 @@ export default mergeConfig(
       include: ['test/**/*.test.ts'],
       alias: {
         ...(sharedConfig.test.alias ?? {}),
-        '@logix/form': path.resolve(__dirname, '../../packages/logix-form/src'),
+        '@logixjs/form': path.resolve(__dirname, '../../packages/logix-form/src'),
       },
     },
   }),

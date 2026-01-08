@@ -7,7 +7,7 @@ describe('TrialRunArtifacts.collect: truncation diff', () => {
     const exporters: ReadonlyArray<TrialRunArtifactExporter> = [
       {
         exporterId: 'big',
-        artifactKey: '@logix/demo.big@v1',
+        artifactKey: '@logixjs/demo.big@v1',
         export: () => ({ blob: 'x'.repeat(50_000) }),
       },
     ]
@@ -21,7 +21,7 @@ describe('TrialRunArtifacts.collect: truncation diff', () => {
     expect(artifacts).toBeDefined()
     expect(() => JSON.stringify(artifacts)).not.toThrow()
 
-    const env: any = (artifacts as any)['@logix/demo.big@v1']
+    const env: any = (artifacts as any)['@logixjs/demo.big@v1']
     expect(env.ok).toBe(true)
     expect(env.truncated).toBe(true)
     expect(env.value?._tag).toBe('oversized')

@@ -84,7 +84,7 @@ export interface LogicPhaseService {
   readonly current: 'setup' | 'run'
 }
 
-export const LogicPhaseServiceTag = Context.GenericTag<LogicPhaseService>('@logix/LogicPhaseService')
+export const LogicPhaseServiceTag = Context.GenericTag<LogicPhaseService>('@logixjs/LogicPhaseService')
 
 /**
  * LogicUnitService:
@@ -101,7 +101,7 @@ export interface LogicUnitService {
   readonly path?: string
 }
 
-export class LogicUnitServiceTag extends Context.Tag('@logix/LogicUnitService')<
+export class LogicUnitServiceTag extends Context.Tag('@logixjs/LogicUnitService')<
   LogicUnitServiceTag,
   LogicUnitService
 >() {}

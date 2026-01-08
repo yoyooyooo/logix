@@ -1,4 +1,4 @@
-declare module '@logix/core-ng' {
+declare module '@logixjs/core-ng' {
   import type { Layer } from 'effect'
 
   export interface CoreNgKernelLayerOptions {

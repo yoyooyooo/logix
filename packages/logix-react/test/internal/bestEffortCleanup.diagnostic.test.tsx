@@ -3,7 +3,7 @@
 import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { Effect, Layer, Scope, Schema, ManagedRuntime } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { render } from '@testing-library/react'
 import { ModuleCache } from '../../src/internal/store/ModuleCache.js'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'

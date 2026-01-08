@@ -8,7 +8,7 @@
  */
 
 import { Effect, Schema, Context } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // 1. Schema Definition

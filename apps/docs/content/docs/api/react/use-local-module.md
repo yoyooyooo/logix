@@ -16,8 +16,8 @@ Properties:
 ## Usage (recommended: ModuleTag form)
 
 ```tsx
-import * as Logix from '@logix/core'
-import { useDispatch, useLocalModule, useSelector } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { useDispatch, useLocalModule, useSelector } from '@logixjs/react'
 import { Schema } from 'effect'
 
 const LocalForm = Logix.Module.make('LocalForm', {

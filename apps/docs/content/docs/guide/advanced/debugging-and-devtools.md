@@ -53,7 +53,7 @@ By default, Logix does not print debug information to the console.
 To inspect runtime traces in development/testing, add the built-in `Debug.layer` when constructing the Runtime:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
 
 // RootImpl is your Root ModuleImpl
@@ -153,7 +153,7 @@ When an event contains non-serializable data (cycles, BigInt, functions, etc.) o
 You can convert in-host events into `RuntimeDebugEventRef` inside a custom sink and report those:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect } from 'effect'
 
 const sink: Logix.Debug.Sink = {
@@ -174,7 +174,7 @@ const sink: Logix.Debug.Sink = {
 After enabling DevTools (`devtools: true` or manually stacking `Debug.devtoolsHubLayer`), you can export the recent window as an evidence package:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const pkg = Logix.Debug.exportEvidencePackage({
   source: { host: 'browser', label: 'my-run' },
@@ -185,7 +185,7 @@ const json = JSON.stringify(pkg)
 You can import the package elsewhere (e.g. offline analysis / regression cases):
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const pkg2 = Logix.Observability.importEvidencePackage(JSON.parse(json))
 ```
@@ -204,7 +204,7 @@ If you hit a performance/correctness regression related to “trait converge”,
 If you need more complete converge evidence (e.g. the width of dirty roots), raise the export level explicitly when constructing the Runtime:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
 
 const runtime = Logix.Runtime.make(RootImpl, {
@@ -269,7 +269,7 @@ If you want to send debug events into your own logging system or monitoring plat
 ### 3.1 A custom DebugLayer via Layer
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Layer } from 'effect'
 
 const CustomDebugLayer = Logix.Debug.replace([
@@ -321,11 +321,11 @@ So far we focused on the DebugSink “debug event pipeline”. Logix also provid
   - `effect`: the actual Effect program to execute
 - Before executing these boundary events, Runtime wraps them into EffectOps and runs them through a `MiddlewareStack` (the runtime middleware chain).
 
-At your application entry, configure this bus via `Runtime.make(..., { middleware })`, and use presets from `@logix/core/Middleware` to quickly attach debugging capabilities:
+At your application entry, configure this bus via `Runtime.make(..., { middleware })`, and use presets from `@logixjs/core/Middleware` to quickly attach debugging capabilities:
 
 ```ts
-import * as Logix from '@logix/core'
-import * as Middleware from '@logix/core/Middleware'
+import * as Logix from '@logixjs/core'
+import * as Middleware from '@logixjs/core/Middleware'
 import { Effect, Layer } from 'effect'
 
 const timingMiddleware: Middleware.Middleware = (op) =>
@@ -370,9 +370,9 @@ If you need authorization/risk/quota style decisions (“can this run?”), impl
 
 ```ts
 import { Effect, Layer } from 'effect'
-import * as Logix from '@logix/core'
-import * as Middleware from '@logix/core/Middleware'
-import * as EffectOp from '@logix/core/EffectOp'
+import * as Logix from '@logixjs/core'
+import * as Middleware from '@logixjs/core/Middleware'
+import * as EffectOp from '@logixjs/core/EffectOp'
 
 const guard: Middleware.Middleware = (op) => {
   if (op.kind === 'action' && op.name === 'action:dispatch') {
@@ -396,7 +396,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 
 ## 5. DevTools integration: recommended setup
 
-Logix provides official DevTools (via packages like `@logix/devtools-react`). It reuses the same Debug event pipeline described above and renders it in the browser:
+Logix provides official DevTools (via packages like `@logixjs/devtools-react`). It reuses the same Debug event pipeline described above and renders it in the browser:
 
 - Timeline: browse Action / State / EffectOp events in time order
 - Module view: inspect which module instances are running and their states
@@ -407,7 +407,7 @@ For most frontend + React projects, use this setup:
 1. **Mount the DevTools component near the React root**
 
    ```tsx
-   import { LogixDevtools } from '@logix/devtools-react'
+   import { LogixDevtools } from '@logixjs/devtools-react'
 
    export function App() {
      return (
@@ -422,7 +422,7 @@ For most frontend + React projects, use this setup:
 2. **Enable DevTools on the Runtime**
 
    ```ts
-   import * as Logix from '@logix/core'
+   import * as Logix from '@logixjs/core'
 
    const runtime = Logix.Runtime.make(RootImpl, {
      label: 'AppRuntime',

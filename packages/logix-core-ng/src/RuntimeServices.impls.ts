@@ -1,5 +1,5 @@
 import { Config, Effect } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { recordExecVmEvidence } from './ExecVmEvidence.js'
 
 export const CORE_NG_IMPL_ID = 'core-ng' as const
@@ -125,7 +125,7 @@ const makeBuiltinAlias = (
 /**
  * coreNgRuntimeServicesRegistry：
  * - Registers only optional implementations on the core-ng side (no serialized override; only used at assembly time).
- * - Selection evidence is still produced and exported by @logix/core's RuntimeServicesEvidence.
+ * - Selection evidence is still produced and exported by @logixjs/core's RuntimeServicesEvidence.
  */
 export const coreNgRuntimeServicesRegistry: Logix.Kernel.RuntimeServicesRegistry = {
   implsByServiceId: {

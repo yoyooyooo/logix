@@ -1,16 +1,16 @@
 ---
 title: Query
-description: Build replayable query modules with @logix/query, and optionally plug in cache/dedup engines.
+description: Build replayable query modules with @logixjs/query, and optionally plug in cache/dedup engines.
 ---
 
 # Query
 
-`@logix/query` turns “query params → resource loading → result snapshots” into a regular module. `params` / `ui` / result snapshots all live in module state, so they are subscribable, debuggable, and replayable.
+`@logixjs/query` turns “query params → resource loading → result snapshots” into a regular module. `params` / `ui` / result snapshots all live in module state, so they are subscribable, debuggable, and replayable.
 
 ## 0) Mental model (≤ 5 keywords)
 
-- `single entry`: all query capabilities come from `@logix/query`.
-- `same-shaped API`: `Query.make(...)` plus controller handle extensions (isomorphic to how `@logix/form` is used).
+- `single entry`: all query capabilities come from `@logixjs/query`.
+- `same-shaped API`: `Query.make(...)` plus controller handle extensions (isomorphic to how `@logixjs/form` is used).
 - `explicit injection`: external engines are injected via `Query.Engine.layer(...)`; enabling `Query.Engine.middleware()` without injection fails explicitly (no silent fallback).
 - `replaceable engine`: TanStack is the recommended default, but the engine is a swappable contract (Engine).
 - `replayable diagnostics`: query pipelines emit slim, serializable evidence for explanation and replay.
@@ -35,8 +35,8 @@ When diagnostics are enabled, snapshots/events carry at least these fields to an
 
 ```ts
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
-import * as Query from '@logix/query'
+import * as Logix from '@logixjs/core'
+import * as Query from '@logixjs/query'
 
 export const SearchSpec = Logix.Resource.make({
   id: 'demo/user/search',
@@ -81,9 +81,9 @@ Query modules can be imported via `imports` like any other module. In React, pre
 If you want “cache / in-flight dedup / invalidation / optional fast-read (reduce loading flicker)” to be handled by an external engine:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
-import * as Query from '@logix/query'
+import * as Query from '@logixjs/query'
 import { QueryClient } from '@tanstack/query-core'
 
 export const runtime = Logix.Runtime.make(RootImpl, {

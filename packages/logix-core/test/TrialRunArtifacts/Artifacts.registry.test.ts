@@ -14,7 +14,7 @@ describe('TrialRunArtifacts.registry', () => {
 
       Logix.Observability.registerTrialRunArtifactExporter(M.tag as any, {
         exporterId: 'dummy@v1',
-        artifactKey: '@logix/demo.dummy@v1',
+        artifactKey: '@logixjs/demo.dummy@v1',
         export: () => ({ hello: 'world' }) as const,
       })
 
@@ -27,7 +27,7 @@ describe('TrialRunArtifacts.registry', () => {
       })
 
       expect(report.artifacts).toBeDefined()
-      const env: any = (report.artifacts as any)['@logix/demo.dummy@v1']
+      const env: any = (report.artifacts as any)['@logixjs/demo.dummy@v1']
       expect(env.ok).toBe(true)
       expect(env.value).toEqual({ hello: 'world' })
     }),

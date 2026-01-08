@@ -34,7 +34,7 @@
 
 - SDD 映射与顶层方法论：`docs/specs/sdd-platform/ssot/concepts/00-sdd-mapping.md`，明确「SPECIFY/PLAN/TASKS/IMPLEMENT ↔ L0–L3/Intent/Logix/Runtime Alignment Lab」的关系。
 - Playground / Sandbox / Alignment Lab 术语与职责：统一以 `docs/specs/sdd-platform/ssot/foundation/02-glossary.md` 中的定义为准（含 Universal Spy / Semantic UI Mock 的全称与简称）。
-- 当改动 `@logix/sandbox` 或 `docs/specs/drafts/topics/sandbox-runtime/*` 时，默认把它视为 **Playground/Runtime Alignment Lab 的基础设施**，同时参考 `65-playground-as-executable-spec.md`，避免只做“代码 Runner”而丢掉 Spec/Intent 对齐视角。
+- 当改动 `@logixjs/sandbox` 或 `docs/specs/drafts/topics/sandbox-runtime/*` 时，默认把它视为 **Playground/Runtime Alignment Lab 的基础设施**，同时参考 `65-playground-as-executable-spec.md`，避免只做“代码 Runner”而丢掉 Spec/Intent 对齐视角。
 
 ## 仓库愿景与决策原则（当前）
 
@@ -221,7 +221,7 @@
     - 纯同步、纯数据结构或简单 helper（如部分 internal 工具）的测试，可以继续写成普通 Vitest 风格（测试体返回 `void`/`Promise`，必要时局部使用 `Effect.runPromise`），不强制包上一层 `it.effect`。
   - `packages/logix-test`：
     - 测试与示例一律按“测试即 Effect”写法组织，默认 runner 是 `@effect/vitest` 的 `it.effect` / `it.scoped`，`runTest` 仅在非 Vitest 环境或过渡脚本中使用。
-    - 保持拓扑：`@logix/test` 可以依赖 `@logix/core`，但 core/runtime 自身测试不得反向依赖 `@logix/test`（避免循环依赖），与 `.codex/skills/project-guide/references/runtime-logix/logix-test/01-test-kit-design.md` 的说明保持一致。
+    - 保持拓扑：`@logixjs/test` 可以依赖 `@logixjs/core`，但 core/runtime 自身测试不得反向依赖 `@logixjs/test`（避免循环依赖），与 `.codex/skills/project-guide/references/runtime-logix/logix-test/01-test-kit-design.md` 的说明保持一致。
   - `packages/logix-sandbox`：
     - 视为 Runtime Alignment Lab 基础设施的一部分，内部大量使用 Effect / Layer / Stream，新增或重构测试时优先迁向 `@effect/vitest` 风格。
     - 推荐模式：用 `it.effect` + `it.layer(SandboxClientLayer)`/专用测试 Layer，代替在每个用例中手动 `Effect.runPromise(program.pipe(Effect.provide(layer)))`。
@@ -269,9 +269,9 @@
 
 ## Active Technologies
 
-- TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`） + pnpm workspace、`effect` v3（override 3.19.13）、`@logix/core`、`@logix/react`、`@logix/sandbox`、Vite、React 19、Monaco Editor (061-playground-editor-intellisense)
+- TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`） + pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、Vite、React 19、Monaco Editor (061-playground-editor-intellisense)
 - N/A（类型 bundle 作为前端构建产物；不引入持久化） (061-playground-editor-intellisense)
 
 ## Recent Changes
 
-- 061-playground-editor-intellisense: Added TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`） + pnpm workspace、`effect` v3（override 3.19.13）、`@logix/core`、`@logix/react`、`@logix/sandbox`、Vite、React 19、Monaco Editor
+- 061-playground-editor-intellisense: Added TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`） + pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、Vite、React 19、Monaco Editor

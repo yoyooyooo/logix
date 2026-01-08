@@ -1,4 +1,4 @@
-import type * as EffectOp from '@logix/core/EffectOp'
+import type * as EffectOp from '@logixjs/core/EffectOp'
 import { Effect, Option } from 'effect'
 import { Engine } from '../../Engine.js'
 import type { Engine as EngineService } from '../../Engine.js'

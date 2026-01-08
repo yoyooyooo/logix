@@ -1,8 +1,8 @@
 import type React from 'react'
-import * as Logix from '@logix/core'
-import { ReactPlatformLayer, RuntimeProvider } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { ReactPlatformLayer, RuntimeProvider } from '@logixjs/react'
 import { Layer } from 'effect'
-import { SandboxClientLayer } from '@logix/sandbox'
+import { SandboxClientLayer } from '@logixjs/sandbox'
 import { GalaxyRootModule } from './galaxy/root.module'
 
 // Minimal runtime layer that wires Logix Debug tooling and Sandbox client.

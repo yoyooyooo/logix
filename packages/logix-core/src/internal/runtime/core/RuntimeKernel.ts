@@ -23,7 +23,7 @@ export interface RuntimeServicesRuntimeConfig {
   readonly servicesByModuleId?: Readonly<Record<string, RuntimeServicesOverrides>>
 }
 
-class RuntimeServicesRuntimeConfigTagImpl extends Context.Tag('@logix/core/RuntimeServicesRuntimeConfig')<
+class RuntimeServicesRuntimeConfigTagImpl extends Context.Tag('@logixjs/core/RuntimeServicesRuntimeConfig')<
   RuntimeServicesRuntimeConfigTagImpl,
   RuntimeServicesRuntimeConfig
 >() {}
@@ -37,14 +37,14 @@ export interface RuntimeServicesProviderOverrides {
   readonly servicesByModuleId?: Readonly<Record<string, RuntimeServicesOverrides>>
 }
 
-class RuntimeServicesProviderOverridesTagImpl extends Context.Tag('@logix/core/RuntimeServicesProviderOverrides')<
+class RuntimeServicesProviderOverridesTagImpl extends Context.Tag('@logixjs/core/RuntimeServicesProviderOverrides')<
   RuntimeServicesProviderOverridesTagImpl,
   RuntimeServicesProviderOverrides
 >() {}
 
 export const RuntimeServicesProviderOverridesTag = RuntimeServicesProviderOverridesTagImpl
 
-class RuntimeServicesInstanceOverridesTagImpl extends Context.Tag('@logix/core/RuntimeServicesInstanceOverrides')<
+class RuntimeServicesInstanceOverridesTagImpl extends Context.Tag('@logixjs/core/RuntimeServicesInstanceOverrides')<
   RuntimeServicesInstanceOverridesTagImpl,
   RuntimeServicesOverrides
 >() {}
@@ -61,7 +61,7 @@ export const RuntimeServicesInstanceOverridesTag = RuntimeServicesInstanceOverri
  */
 export type FullCutoverGateMode = 'trial' | 'fullCutover'
 
-class FullCutoverGateModeTagImpl extends Context.Tag('@logix/core/FullCutoverGateMode')<
+class FullCutoverGateModeTagImpl extends Context.Tag('@logixjs/core/FullCutoverGateMode')<
   FullCutoverGateModeTagImpl,
   FullCutoverGateMode
 >() {}
@@ -170,7 +170,7 @@ export interface RuntimeServicesRegistry {
   readonly implsByServiceId: Readonly<Record<string, ReadonlyArray<RuntimeServiceImpl<any>>>>
 }
 
-class RuntimeServicesRegistryTagImpl extends Context.Tag('@logix/core/RuntimeServicesRegistry')<
+class RuntimeServicesRegistryTagImpl extends Context.Tag('@logixjs/core/RuntimeServicesRegistry')<
   RuntimeServicesRegistryTagImpl,
   RuntimeServicesRegistry
 >() {}
@@ -279,7 +279,7 @@ export const makeRuntimeServicesEvidence = (args: {
   }
 }
 
-const RUNTIME_SERVICES_EVIDENCE = Symbol.for('@logix/core/runtimeServicesEvidence')
+const RUNTIME_SERVICES_EVIDENCE = Symbol.for('@logixjs/core/runtimeServicesEvidence')
 
 const defineHidden = (target: object, key: symbol, value: unknown): void => {
   Object.defineProperty(target, key, {

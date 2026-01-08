@@ -28,10 +28,10 @@ importers:
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.1
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:packages/logix-core
-      '@logix/core-ng':
+      '@logixjs/core-ng':
         specifier: workspace:*
         version: link:packages/logix-core-ng
       '@types/prompts':
@@ -103,7 +103,7 @@ importers:
 
   .codex/skills/logix-perf-evidence:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../../../packages/logix-core
 
@@ -252,16 +252,16 @@ importers:
 
   apps/logix-galaxy-fe:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../../packages/logix-core
-      '@logix/devtools-react':
+      '@logixjs/devtools-react':
         specifier: workspace:*
         version: link:../../packages/logix-devtools-react
-      '@logix/react':
+      '@logixjs/react':
         specifier: workspace:*
         version: link:../../packages/logix-react
-      '@logix/sandbox':
+      '@logixjs/sandbox':
         specifier: workspace:*
         version: link:../../packages/logix-sandbox
       effect:
@@ -381,10 +381,10 @@ importers:
 
   apps/studio-fe:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:^
         version: link:../../packages/logix-core
-      '@logix/react':
+      '@logixjs/react':
         specifier: workspace:^
         version: link:../../packages/logix-react
       '@radix-ui/react-slot':
@@ -506,13 +506,13 @@ importers:
 
   examples/logix:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../../packages/logix-core
-      '@logix/i18n':
+      '@logixjs/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@logix/query':
+      '@logixjs/query':
         specifier: workspace:*
         version: link:../../packages/logix-query
       '@tanstack/query-core':
@@ -537,7 +537,7 @@ importers:
 
   examples/logix-form-poc:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../../packages/logix-core
       effect:
@@ -556,25 +556,25 @@ importers:
 
   examples/logix-react:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../../packages/logix-core
-      '@logix/devtools-react':
+      '@logixjs/devtools-react':
         specifier: workspace:*
         version: link:../../packages/logix-devtools-react
-      '@logix/form':
+      '@logixjs/form':
         specifier: workspace:*
         version: link:../../packages/logix-form
-      '@logix/i18n':
+      '@logixjs/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@logix/query':
+      '@logixjs/query':
         specifier: workspace:^
         version: link:../../packages/logix-query
-      '@logix/react':
+      '@logixjs/react':
         specifier: workspace:*
         version: link:../../packages/logix-react
-      '@logix/test':
+      '@logixjs/test':
         specifier: workspace:*
         version: link:../../packages/logix-test
       '@tanstack/query-core':
@@ -626,16 +626,16 @@ importers:
 
   examples/logix-sandbox-mvp:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../../packages/logix-core
-      '@logix/form':
+      '@logixjs/form':
         specifier: workspace:*
         version: link:../../packages/logix-form
-      '@logix/react':
+      '@logixjs/react':
         specifier: workspace:*
         version: link:../../packages/logix-react
-      '@logix/sandbox':
+      '@logixjs/sandbox':
         specifier: workspace:*
         version: link:../../packages/logix-sandbox
       '@monaco-editor/react':
@@ -711,7 +711,7 @@ importers:
 
   packages/domain:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../logix-core
       effect:
@@ -733,7 +733,7 @@ importers:
 
   packages/i18n:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../logix-core
       effect:
@@ -777,7 +777,7 @@ importers:
 
   packages/logix-core-ng:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../logix-core
       effect:
@@ -799,7 +799,7 @@ importers:
 
   packages/logix-devtools-react:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../logix-core
       clsx:
@@ -815,7 +815,7 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
     devDependencies:
-      '@logix/react':
+      '@logixjs/react':
         specifier: workspace:*
         version: link:../logix-react
       '@tailwindcss/cli':
@@ -854,10 +854,10 @@ importers:
 
   packages/logix-form:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../logix-core
-      '@logix/react':
+      '@logixjs/react':
         specifier: workspace:*
         version: link:../logix-react
       effect:
@@ -885,7 +885,7 @@ importers:
 
   packages/logix-query:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../logix-core
       '@tanstack/query-core':
@@ -913,7 +913,7 @@ importers:
 
   packages/logix-react:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../logix-core
       effect:
@@ -981,7 +981,7 @@ importers:
 
   packages/logix-test:
     dependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../logix-core
       effect:
@@ -1040,10 +1040,10 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
     devDependencies:
-      '@logix/core':
+      '@logixjs/core':
         specifier: workspace:*
         version: link:../logix-core
-      '@logix/react':
+      '@logixjs/react':
         specifier: workspace:*
         version: link:../logix-react
       '@tailwindcss/vite':
@@ -10568,7 +10568,7 @@ snapshots:
       eslint: 9.39.1(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.1(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.1(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.39.1(jiti@2.6.1))
       eslint-plugin-react-hooks: 7.0.1(eslint@9.39.1(jiti@2.6.1))
@@ -10601,7 +10601,7 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.1(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -10616,7 +10616,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.1(jiti@2.6.1)):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9

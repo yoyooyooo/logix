@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type { Schema } from 'effect'
 import type { RulesSpec } from '../dsl/rules.js'
 import { traits as traitsDsl } from '../dsl/traits.js'

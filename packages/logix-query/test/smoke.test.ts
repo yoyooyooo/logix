@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-describe('@logix/query', () => {
+describe('@logixjs/query', () => {
   it('smoke', () => {
     expect(true).toBe(true)
   })

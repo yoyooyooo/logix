@@ -9,7 +9,7 @@ import { fnv1a32, stableStringify } from '../../digest.js'
 import { summarizeSchema } from './schemaSummary.js'
 
 export const PORT_SPEC_PROTOCOL_VERSION = 'v1' as const
-export const PORT_SPEC_ARTIFACT_KEY = '@logix/module.portSpec@v1' as const
+export const PORT_SPEC_ARTIFACT_KEY = '@logixjs/module.portSpec@v1' as const
 
 export type PortSpecAction = {
   readonly key: string

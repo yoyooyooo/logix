@@ -21,7 +21,7 @@ description: 用 Host(imports) 组织“限定 scope 的全局”：路由内弹
 ### 1) 定义弹框模块（各自独立）
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 export const ModalADef = Logix.Module.make('ModalA', {
@@ -54,7 +54,7 @@ export const RouteHost = RouteHostDef.implement({
 ### 3) 路由组件创建 Host 实例（scope 锚点）
 
 ```tsx
-import { useModule } from '@logix/react'
+import { useModule } from '@logixjs/react'
 
 export function RoutePage() {
   const host = useModule(RouteHost.impl, {
@@ -71,7 +71,7 @@ export function RoutePage() {
 ### 4) 弹框组件只从 host.imports 取子模块句柄
 
 ```tsx
-import { useSelector } from '@logix/react'
+import { useSelector } from '@logixjs/react'
 import { ModalA } from './modules'
 
 export function ModalAView({ host }: { host: any }) {
@@ -96,10 +96,10 @@ export function ModalAView({ host }: { host: any }) {
 
 ### 4.1) 避免 props 透传：用路由内 Context 承载 host（推荐）
 
-如果弹框组件离路由组件很远（中间有多层组件），推荐使用 `@logix/react` 提供的 `ModuleScope.make(...)`，把“创建 host 实例 + Context Provider + useHost()”打包成一个可复用的 Scope。
+如果弹框组件离路由组件很远（中间有多层组件），推荐使用 `@logixjs/react` 提供的 `ModuleScope.make(...)`，把“创建 host 实例 + Context Provider + useHost()”打包成一个可复用的 Scope。
 
 ```tsx
-import { ModuleScope } from '@logix/react'
+import { ModuleScope } from '@logixjs/react'
 import { RouteHost } from './modules'
 
 export const RouteHostScope = ModuleScope.make(RouteHost.impl, { gcTime: 0 })
@@ -125,7 +125,7 @@ export function RoutePage() {
 弹框里直接拿到“属于该路由 host 实例”的子模块句柄：
 
 ```tsx
-import { useSelector } from '@logix/react'
+import { useSelector } from '@logixjs/react'
 import { ModalA } from './modules'
 
 export function ModalAView() {

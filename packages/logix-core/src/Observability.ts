@@ -1,4 +1,4 @@
-// Observability Protocol (@logix/core/Observability).
+// Observability Protocol (@logixjs/core/Observability).
 
 import * as Evidence from './internal/observability/evidence.js'
 export * from './internal/observability/trialRun.js'

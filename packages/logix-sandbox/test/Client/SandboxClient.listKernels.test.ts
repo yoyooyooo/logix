@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createSandboxClient } from '@logix/sandbox'
+import { createSandboxClient } from '@logixjs/sandbox'
 
 describe('SandboxClient (058): listKernels', () => {
   it('returns stable kernels order and defaultKernelId (registry mode)', () => {

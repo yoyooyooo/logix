@@ -1,11 +1,11 @@
 ---
-title: When should you use @logix/form?
-description: Decide whether you need @logix/form or a plain Module.
+title: When should you use @logixjs/form?
+description: Decide whether you need @logixjs/form or a plain Module.
 ---
 
-# When should you use @logix/form?
+# When should you use @logixjs/form?
 
-`@logix/form` is a domain package designed specifically for forms. But not every “input” scenario needs it.
+`@logixjs/form` is a domain package designed specifically for forms. But not every “input” scenario needs it.
 
 ## A plain Module is enough
 
@@ -23,11 +23,11 @@ const SearchModule = Logix.Module.make('Search', {
 })
 ```
 
-## Prefer @logix/form
+## Prefer @logixjs/form
 
-When your form has these characteristics, `@logix/form` tends to make life easier:
+When your form has these characteristics, `@logixjs/form` tends to make life easier:
 
-| Characteristic                       | Plain Module              | @logix/form                         |
+| Characteristic                       | Plain Module              | @logixjs/form                         |
 | ----------------------------------- | ------------------------- | ----------------------------------- |
 | **Multiple fields** (3+ fields)     | manual state merging      | built-in management                 |
 | **Field-level validation**          | hand-written validation   | Rules DSL + built-in error tree     |
@@ -37,7 +37,7 @@ When your form has these characteristics, `@logix/form` tends to make life easie
 
 ## Typical scenarios
 
-### ✅ Use @logix/form
+### ✅ Use @logixjs/form
 
 - Registration form (name/email/password + validation)
 - Product edit form (many fields + image list)
@@ -55,7 +55,7 @@ When your form has these characteristics, `@logix/form` tends to make life easie
 You can mix both in one app:
 
 - **Plain Modules**: page/route/global state
-- **@logix/form**: form areas
+- **@logixjs/form**: form areas
 
 ```ts
 // PageModule manages page state

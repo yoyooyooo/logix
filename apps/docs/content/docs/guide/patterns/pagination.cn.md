@@ -16,7 +16,7 @@ description: 使用 Logix 实现分页/无限滚动加载模式。
 ## Cursor 分页实现
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 const ListDef = Logix.Module.make('List', {

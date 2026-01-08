@@ -1,16 +1,16 @@
 ---
 title: 查询（Query）
-description: 用 @logix/query 构建可回放的查询模块，并按需接入缓存/去重引擎。
+description: 用 @logixjs/query 构建可回放的查询模块，并按需接入缓存/去重引擎。
 ---
 
 # 查询（Query）
 
-`@logix/query` 把“查询参数 → 资源加载 → 结果快照”收口成一个普通模块：`params/ui/结果快照` 都存放在模块 state 上，因此可以被订阅、被调试、被回放。
+`@logixjs/query` 把“查询参数 → 资源加载 → 结果快照”收口成一个普通模块：`params/ui/结果快照` 都存放在模块 state 上，因此可以被订阅、被调试、被回放。
 
 ## 0) 心智模型（≤5 关键词）
 
-- `单一入口`：所有 Query 相关能力都从 `@logix/query` 进入。
-- `同形 API`：`Query.make(...)` + controller 句柄扩展（与 `@logix/form` 的使用方式同构）。
+- `单一入口`：所有 Query 相关能力都从 `@logixjs/query` 进入。
+- `同形 API`：`Query.make(...)` + controller 句柄扩展（与 `@logixjs/form` 的使用方式同构）。
 - `显式注入`：外部引擎通过 `Query.Engine.layer(...)` 注入；启用 `Query.Engine.middleware()` 但缺失注入会显式失败（避免静默退化）。
 - `可替换引擎`：默认推荐 TanStack，但引擎是可替换的契约（Engine）。
 - `可回放诊断`：查询链路输出 Slim 且可序列化的证据，用于解释与回放。
@@ -35,8 +35,8 @@ description: 用 @logix/query 构建可回放的查询模块，并按需接入�
 
 ```ts
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
-import * as Query from '@logix/query'
+import * as Logix from '@logixjs/core'
+import * as Query from '@logixjs/query'
 
 export const SearchSpec = Logix.Resource.make({
   id: 'demo/user/search',
@@ -81,9 +81,9 @@ Query 模块可以像其他模块一样被 `imports` 引入。React 中推荐通
 当你希望把“缓存 / in-flight 去重 / 失效 / 可选快读（避免 loading 抖动）”交给外部引擎时：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
-import * as Query from '@logix/query'
+import * as Query from '@logixjs/query'
 import { QueryClient } from '@tanstack/query-core'
 
 export const runtime = Logix.Runtime.make(RootImpl, {

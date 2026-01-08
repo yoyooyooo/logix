@@ -3,7 +3,7 @@
 import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Deferred, Effect, Schema } from 'effect'
 import { RuntimeProvider, useModule, useRuntime } from '../../src/index.js'
 

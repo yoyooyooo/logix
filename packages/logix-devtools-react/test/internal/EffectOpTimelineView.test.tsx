@@ -3,8 +3,8 @@ import React from 'react'
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, screen, waitFor, cleanup } from '@testing-library/react'
 import { Effect, Schema, Layer } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logixjs/react'
 import { LogixDevtools } from '../../src/LogixDevtools.js'
 import { devtoolsLayer, clearDevtoolsEvents, clearDevtoolsSnapshotOverride } from '../../src/DevtoolsLayer.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
@@ -127,7 +127,7 @@ const CounterView: React.FC = () => {
   )
 }
 
-describe('@logix/devtools-react · EffectOpTimelineView & Inspector behavior', () => {
+describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior', () => {
   it('shows latest event details by default, and toggles to selected event details on click', async () => {
     render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>

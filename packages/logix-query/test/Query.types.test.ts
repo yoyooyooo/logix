@@ -3,7 +3,7 @@ export {}
 
 import { describe, it } from 'vitest'
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import * as Query from '../src/index.js'
 
 type Extends<A, B> = A extends B ? true : false

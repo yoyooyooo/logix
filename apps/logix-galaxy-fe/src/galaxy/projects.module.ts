@@ -1,5 +1,5 @@
 import { Effect, Schema, Stream } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { galaxyApi } from '../galaxy-api/client'
 import { AuthDef, AuthImpl } from './auth.module'
 

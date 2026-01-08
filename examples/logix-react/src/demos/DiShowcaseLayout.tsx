@@ -1,7 +1,7 @@
 import React from 'react'
 import { Context, Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useImportedModule, useModule, useRuntime, useSelector } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useImportedModule, useModule, useRuntime, useSelector } from '@logixjs/react'
 import { CounterDef, CounterImpl } from '../modules/counter'
 import { CounterMultiDef, CounterMultiImpl } from '../modules/counterMulti'
 

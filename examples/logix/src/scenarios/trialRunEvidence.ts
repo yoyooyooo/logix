@@ -1,6 +1,6 @@
 import { Context, Effect, Exit, Layer, Schema } from 'effect'
 import { readFileSync } from 'node:fs'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const readJson = (url: URL): any => JSON.parse(readFileSync(url, 'utf8'))
 

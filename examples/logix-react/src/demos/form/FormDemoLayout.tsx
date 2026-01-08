@@ -1,9 +1,9 @@
 import React from 'react'
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule } from '@logix/react'
-import * as Form from '@logix/form'
-import { useField, useFormState } from '@logix/form/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule } from '@logixjs/react'
+import * as Form from '@logixjs/form'
+import { useField, useFormState } from '@logixjs/form/react'
 
 const ValuesSchema = Schema.Struct({
   value: Schema.String,

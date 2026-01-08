@@ -1,4 +1,4 @@
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 
 export type Dispatch<A> = ((action: A) => void) & {
   readonly batch: (actions: ReadonlyArray<A>) => void

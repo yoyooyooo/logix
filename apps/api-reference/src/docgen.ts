@@ -19,21 +19,21 @@ const distDir = Path.join(appDir, 'dist')
 const targets: ReadonlyArray<Target> = [
   {
     id: 'core',
-    displayName: '@logix/core',
+    displayName: '@logixjs/core',
     summary: '“Core runtime and DSL: Module / Runtime / Flow / Debug …”',
     entryPoint: Path.join(repoRoot, 'packages/logix-core/src/index.ts'),
     tsconfig: Path.join(repoRoot, 'packages/logix-core/tsconfig.json'),
   },
   {
     id: 'react',
-    displayName: '@logix/react',
+    displayName: '@logixjs/react',
     summary: '“React bindings: Provider / Hooks / ModuleScope …”',
     entryPoint: Path.join(repoRoot, 'packages/logix-react/src/index.ts'),
     tsconfig: Path.join(repoRoot, 'packages/logix-react/tsconfig.json'),
   },
   {
     id: 'sandbox',
-    displayName: '@logix/sandbox',
+    displayName: '@logixjs/sandbox',
     summary: '“Sandbox client and protocol: browser / worker runtime and integration.”',
     entryPoint: Path.join(repoRoot, 'packages/logix-sandbox/src/index.ts'),
     tsconfig: Path.join(repoRoot, 'packages/logix-sandbox/tsconfig.json'),

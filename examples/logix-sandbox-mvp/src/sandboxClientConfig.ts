@@ -1,4 +1,4 @@
-import type { KernelRegistry, SandboxClientConfig } from '@logix/sandbox'
+import type { KernelRegistry, SandboxClientConfig } from '@logixjs/sandbox'
 
 export const sandboxKernelRegistry: KernelRegistry = {
   kernels: [

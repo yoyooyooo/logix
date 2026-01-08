@@ -1,7 +1,7 @@
 import React from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect } from 'effect'
-import { RuntimeProvider, useModule, useSelector } from '@logix/react'
+import { RuntimeProvider, useModule, useSelector } from '@logixjs/react'
 import { CounterWithProfileDef, type CounterState } from '../modules/counter-with-profile.js'
 
 // 为 Devtools 提供一个带 StateTrait 图纸的示例模块（CounterWithProfile），

@@ -38,7 +38,7 @@ description: 从运行时视角理解 Logix 的核心抽象。
 
 ```ts
 // UserListModule.ts
-	import * as Logix from '@logix/core'
+	import * as Logix from '@logixjs/core'
 	import { Schema } from 'effect'
 
 	export const UserListDef = Logix.Module.make('UserList', {
@@ -147,14 +147,14 @@ export const UserListRuntime = Logix.Runtime.make(UserListModule, {
 在真实业务里，“表单”和“查询”往往是页面最核心的两类能力。Logix 推荐把它们也当成**普通模块**来组合：  
 它们以 `ModuleImpl` 的形式被 Root `imports` 引入，和其他模块共享同一套 Runtime、调试与回放能力，从而避免“表单状态”和“页面 Store 状态”割裂成两套事实源。
 
-### 5.1 表单：`@logix/form`
+### 5.1 表单：`@logixjs/form`
 
-`@logix/form` 提供 `Form.make(...)` 作为高层入口，它返回一个模块对象，其中 `impl` 可以直接被 imports 引入：
+`@logixjs/form` 提供 `Form.make(...)` 作为高层入口，它返回一个模块对象，其中 `impl` 可以直接被 imports 引入：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
-import * as Form from "@logix/form"
+import * as Form from "@logixjs/form"
 
 	export const UserForm = Form.make('UserForm', {
 	  values: Schema.Struct({ name: Schema.String }),
@@ -183,7 +183,7 @@ export const RootImpl = RootModule.impl
 在 React 中推荐用 selector 订阅表单“视图状态”，避免因为订阅整棵 values/errors 导致无谓重渲染：
 
 ```ts
-import { useForm, useFormState } from '@logix/form/react'
+import { useForm, useFormState } from '@logixjs/form/react'
 
 const form = useForm(UserForm)
 const canSubmit = useFormState(form, (v) => v.canSubmit)
@@ -191,13 +191,13 @@ const canSubmit = useFormState(form, (v) => v.canSubmit)
 
 更完整的表单文档主线见：[Form（表单）](../../form)。
 
-### 5.2 查询：`@logix/query`
+### 5.2 查询：`@logixjs/query`
 
-`@logix/query` 把“查询参数 → 资源加载 → 结果快照”收口为一个模块：查询结果存放在模块 state 上（可被订阅、可被调试、可被回放）。
+`@logixjs/query` 把“查询参数 → 资源加载 → 结果快照”收口为一个模块：查询结果存放在模块 state 上（可被订阅、可被调试、可被回放）。
 
 ```ts
 import { Schema } from 'effect'
-import * as Query from '@logix/query'
+import * as Query from '@logixjs/query'
 
 export const SearchQuery = Query.make('SearchQuery', {
   params: Schema.Struct({ q: Schema.String }),

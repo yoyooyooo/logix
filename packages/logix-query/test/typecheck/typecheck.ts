@@ -1,7 +1,7 @@
 // Type-level regression (compile-time assertions; no runtime logic).
 export {}
 
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 import type { QueryResourceKey, QuerySourceConfig } from '../../src/Traits.js'
 import type { QueryState } from '../../src/Query.js'
 

@@ -2,7 +2,7 @@
 title: React 集成（启动策略与冷启动优化）
 ---
 
-在 React 中使用 Logix 时，请先把 `RuntimeProvider` 放到组件树的边界（通常是 App 根或路由 Layout）。所有 `@logix/react` 的 hooks 都必须在 Provider 子树内调用。
+在 React 中使用 Logix 时，请先把 `RuntimeProvider` 放到组件树的边界（通常是 App 根或路由 Layout）。所有 `@logixjs/react` 的 hooks 都必须在 Provider 子树内调用。
 
 如果你现在只想知道“应该用哪些 hooks”，先记住这张能力地图：
 
@@ -97,12 +97,12 @@ const sessionB = useModule(SessionImpl, { key: 'SessionB' })
 
 ## 全局默认配置：ConfigProvider（`logix.react.*`）
 
-`@logix/react` 会从 Effect 的 `ConfigProvider` 读取一组全局默认配置（作用域是当前 `ManagedRuntime`）。你可以在创建 Runtime 时一次性注入：
+`@logixjs/react` 会从 Effect 的 `ConfigProvider` 读取一组全局默认配置（作用域是当前 `ManagedRuntime`）。你可以在创建 Runtime 时一次性注入：
 
 ```tsx
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { ConfigProvider, Layer } from 'effect'
-import { RuntimeProvider } from '@logix/react'
+import { RuntimeProvider } from '@logixjs/react'
 import { RootImpl } from './root-module'
 
 const ReactConfigLayer = Layer.setConfigProvider(

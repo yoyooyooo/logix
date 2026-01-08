@@ -1,5 +1,5 @@
 {
-  "name": "@logix/domain",
+  "name": "@logixjs/domain",
   "version": "0.0.1",
   "description": "Domain modules (based on Logix.Module.Manage) for Logix v3",
   "files": [
@@ -48,7 +48,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@logix/core": "workspace:*",
+    "@logixjs/core": "workspace:*",
     "effect": "^3.19.8"
   },
   "devDependencies": {
@@ -58,7 +58,7 @@
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
-    "@logix/core": "workspace:*",
+    "@logixjs/core": "workspace:*",
     "effect": "^3.19.8"
   }
 }

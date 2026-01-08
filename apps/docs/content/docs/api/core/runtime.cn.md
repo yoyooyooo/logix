@@ -12,12 +12,12 @@ Logix 的核心执行单元是 **Runtime**：它负责承载模块的状态、�
 在代码层面，Runtime 主要有两种形态：
 
 - `ManagedRuntime`（来自 `effect`）：一个可以运行 Effect 程序的执行环境，负责创建 Scope、管理资源；
-- `Logix.Runtime`（来自 `@logix/core`）：在 `ManagedRuntime` 之上包了一层，用 Root 模块（或 Root `ModuleImpl`）+ Layer 组合出一颗应用级运行树。
+- `Logix.Runtime`（来自 `@logixjs/core`）：在 `ManagedRuntime` 之上包了一层，用 Root 模块（或 Root `ModuleImpl`）+ Layer 组合出一颗应用级运行树。
 
 最常见的模式是：
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect, Layer } from "effect"
 
 const RootDef = Logix.Module.make("Root", { state: RootState, actions: RootActions })
@@ -61,10 +61,10 @@ export const AppRuntime = Logix.Runtime.make(RootImpl, {
 
 ## 2. 在 React 中挂载 Runtime：RuntimeProvider
 
-在 React 中，我们使用 `@logix/react` 提供的 `RuntimeProvider` 把 Runtime 挂到组件树上：
+在 React 中，我们使用 `@logixjs/react` 提供的 `RuntimeProvider` 把 Runtime 挂到组件树上：
 
 ```tsx
-import { RuntimeProvider } from "@logix/react"
+import { RuntimeProvider } from "@logixjs/react"
 import { AppRuntime } from "./runtime"
 import { Router } from "./Router"
 
@@ -96,7 +96,7 @@ export function App() {
 有时你希望在某个子树下增加一点“局部配置”或 Service，而不影响全局 Runtime。可以使用 `RuntimeProvider` 的 `layer` 属性：
 
 ```tsx
-import { RuntimeProvider } from "@logix/react"
+import { RuntimeProvider } from "@logixjs/react"
 import { Layer, Context } from "effect"
 
 // 一个简单的 Service 示例
@@ -140,8 +140,8 @@ export function Page() {
 如果你需要“固定读取当前 Runtime Tree 的根（root provider）”提供的单例（例如全局模块/服务），使用 `Logix.Root.resolve(Tag)`：
 
 ```ts
-import * as Logix from "@logix/core"
-import { useRuntime } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { useRuntime } from "@logixjs/react"
 
 const runtime = useRuntime()
 const auth = runtime.runSync(Logix.Root.resolve(GlobalAuth.tag))
@@ -150,7 +150,7 @@ const auth = runtime.runSync(Logix.Root.resolve(GlobalAuth.tag))
 在 Logic 内，如果你希望显式读取 root provider 单例，使用 `yield* $.root.resolve(Tag)`：
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect } from "effect"
 
 const MyLogic = MyModule.logic(($) =>
@@ -226,7 +226,7 @@ Runtime 的职责，就是把这些模块与流程组合成一棵可运行的树
 - 执行主流程；
 - 主流程结束后释放资源（关闭 Scope / 执行 finalizer）。
 
-这类场景推荐使用 `@logix/core` 的 program runner：
+这类场景推荐使用 `@logixjs/core` 的 program runner：
 
 - `Runtime.runProgram(root, main, options?)`：一次性入口（启动 → main → 释放）
 - `Runtime.openProgram(root, options?)`：资源化入口（返回 `ctx`，适合交互式脚本/多段运行）
@@ -236,7 +236,7 @@ Runtime 的职责，就是把这些模块与流程组合成一棵可运行的树
 Runner **不会自动推断“何时退出”**：很多模块逻辑会注册长期监听（watchers / subscriptions / Link），它们不会自然结束。你需要在 `main` 中显式表达退出条件（例如：等待某个状态达成、等待某个信号、或由 Ctrl+C 触发关闭）。
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect, Stream } from "effect"
 import { AppRoot } from "./app-root"
 

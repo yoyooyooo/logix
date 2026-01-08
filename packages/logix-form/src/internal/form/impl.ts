@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 import { mergeTraitSpecs, normalizeDerived, normalizeValidateOn, wrapTraitsForValidateOn } from './traits.js'
 import { makeFormReducers } from './reducer.js'

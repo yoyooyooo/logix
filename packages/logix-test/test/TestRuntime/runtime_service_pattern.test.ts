@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Effect, Schema, TestClock } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { runTest } from '../../src/TestRuntime.js'
 import * as TestProgram from '../../src/TestProgram.js'
 

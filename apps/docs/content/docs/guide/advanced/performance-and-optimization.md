@@ -13,7 +13,7 @@ This page provides an actionable performance tuning playbook from the perspectiv
 
 ### Who is this for
 
-- You’re already using Logix Runtime / `@logix/react`, and DevTools is enabled.
+- You’re already using Logix Runtime / `@logixjs/react`, and DevTools is enabled.
 - You want good responsiveness in high-frequency interaction, complex forms, or long-list scenarios.
 
 ### Prerequisites
@@ -105,7 +105,7 @@ The main knob is `stateTransaction.instrumentation`:
 Example: set an app-level default strategy on the Runtime:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // App-level default observability strategy
 const runtime = Logix.Runtime.make(RootImpl, {
@@ -164,7 +164,7 @@ When DevTools is enabled, overhead also depends on DevTools settings. Common swi
 If you want more “deterministic” control (not just UI toggles), tune Runtime config:
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   // if devtools is omitted or set to false, DevTools observability is not enabled (cheaper)
@@ -196,7 +196,7 @@ If your main concern is “converge linkage jank in complex forms/long lists”,
 Example: enable `sampled` on a Runtime with sampling frequency and Top-K cap:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
 
 const runtime = Logix.Runtime.make(RootImpl, {
@@ -226,7 +226,7 @@ When you need “refactor without regression” comparisons, prefer **TrialRun**
 - `EvidencePackage.summary` answers “what runtime strategies/overrides were enabled for this instance”, and provides comparable IR summaries.
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect } from "effect"
 
 const result = await Effect.runPromise(
@@ -400,7 +400,7 @@ If your page is dominated by “complex form linkage” or “parameterized quer
 
 4. **Subscribe only to the state slices you truly need in React**
    - Avoid subscribing to whole `values/errors`; prefer a derived view state selector (e.g. `canSubmit/isSubmitting/isValid/isDirty/submitCount`).
-   - `@logix/form/react` provides `useFormState(form, selector)` for stable access without scanning huge trees.
+   - `@logixjs/form/react` provides `useFormState(form, selector)` for stable access without scanning huge trees.
 
 5. **Long lists/nested arrays: provide stable identity**
    - For “thousand-row forms” or “virtual scrolling”, ensure each row has a stable business id, and provide `trackBy` hints in domain/trait config when available.

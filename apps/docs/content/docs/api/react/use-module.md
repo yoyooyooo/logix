@@ -11,7 +11,7 @@ It can both **create/manage a local ModuleRuntime** (when you pass a module obje
 ## Basic usage
 
 ```tsx
-import { useModule, useSelector } from '@logix/react'
+import { useModule, useSelector } from '@logixjs/react'
 import { CounterDef } from './modules/counter'
 
 function Counter() {

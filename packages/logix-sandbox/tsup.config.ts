@@ -5,5 +5,5 @@ export default defineConfig({
   format: ['cjs', 'esm'],
   dts: true,
   clean: true,
-  external: ['effect', '@logix/core'],
+  external: ['effect', '@logixjs/core'],
 })

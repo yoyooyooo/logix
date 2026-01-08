@@ -1,5 +1,5 @@
 {
-  "name": "@logix/test",
+  "name": "@logixjs/test",
   "version": "0.0.1",
   "description": "Testing utilities for Logix v3",
   "files": [
@@ -68,7 +68,7 @@
     "test:cache": "vitest run --cache"
   },
   "dependencies": {
-    "@logix/core": "workspace:*",
+    "@logixjs/core": "workspace:*",
     "effect": "^3.19.8"
   },
   "devDependencies": {
@@ -78,7 +78,7 @@
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
-    "@logix/core": "workspace:*",
+    "@logixjs/core": "workspace:*",
     "effect": "^3.19.8"
   }
 }

@@ -1,5 +1,5 @@
 import React from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { useDevtoolsState, useDevtoolsDispatch } from '../hooks/DevtoolsHooks.js'
 import { OverviewDetails, type OverviewDetailsSummary } from './OverviewDetails.js'
 

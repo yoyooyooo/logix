@@ -1,4 +1,4 @@
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 import * as Validators from './internal/validators/index.js'
 import type { CanonicalPath } from './internal/form/types.js'
 

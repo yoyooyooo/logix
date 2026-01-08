@@ -1,7 +1,7 @@
 import { Duration, Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { QueryClient } from '@tanstack/query-core'
-import * as Query from '@logix/query'
+import * as Query from '@logixjs/query'
 
 const SearchKeySchema = Schema.Struct({
   keyword: Schema.String,

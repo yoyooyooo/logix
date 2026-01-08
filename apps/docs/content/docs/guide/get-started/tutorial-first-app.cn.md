@@ -8,7 +8,7 @@ description: 用一个“搜索框 + 结果列表”体验防抖、自动取消�
 > [!NOTE]
 > 这是一个“单字段输入 + 异步查询”的场景，用普通 `Logix.Module` 就足够了。
 >
-> 如果你要做的是“多字段 + 校验 + 动态数组”的表单，请直接走 `@logix/form`：
+> 如果你要做的是“多字段 + 校验 + 动态数组”的表单，请直接走 `@logixjs/form`：
 > - [Form 什么时候用](../../form/when-to-use)
 > - [Form 快速开始](../../form/quick-start)
 
@@ -33,7 +33,7 @@ description: 用一个“搜索框 + 结果列表”体验防抖、自动取消�
 创建 `src/features/search/search.def.ts`：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 export const SearchState = Schema.Struct({
@@ -159,7 +159,7 @@ export const SearchLogic = SearchDef.logic<SearchApiTag>(($) =>
 创建 `src/features/search/search.module.ts`：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { SearchDef } from './search.def'
 import { SearchLogic } from './search.logic'
 import { SearchApiLive } from './search.service'
@@ -186,7 +186,7 @@ export const AppRuntime = Logix.Runtime.make(SearchModule, {
 在应用入口挂载 Runtime（任意位置皆可）：
 
 ```tsx
-import { RuntimeProvider } from '@logix/react'
+import { RuntimeProvider } from '@logixjs/react'
 import { AppRuntime } from './features/search/search.module'
 import { SearchView } from './features/search/SearchView'
 
@@ -202,7 +202,7 @@ export function App() {
 组件只负责渲染与派发意图：
 
 ```tsx
-import { useModule, useSelector } from '@logix/react'
+import { useModule, useSelector } from '@logixjs/react'
 import { SearchModule } from './search.module'
 
 export function SearchView() {

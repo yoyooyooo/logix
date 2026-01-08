@@ -5,7 +5,7 @@ description: 让 switch 并发不仅“丢弃旧结果”，还能真正取消�
 
 # 可中断 IO（取消与超时）
 
-在 Logix 里，查询/资源加载最终都会走到 `ResourceSpec.load`（Effect）。当你使用 `StateTrait.source`（以及基于它的 `@logix/query`）时，默认并发是 `switch`：新的 key 会让旧的 in-flight fiber 被中断。
+在 Logix 里，查询/资源加载最终都会走到 `ResourceSpec.load`（Effect）。当你使用 `StateTrait.source`（以及基于它的 `@logixjs/query`）时，默认并发是 `switch`：新的 key 会让旧的 in-flight fiber 被中断。
 
 但“中断 fiber”并不等于“网络层真正取消”。想做到真正取消（例如 axios 请求被 abort），需要 `load` 主动使用 Effect 提供的 `AbortSignal`。
 
@@ -22,7 +22,7 @@ Logix 默认保证第 1 点（通过 `keyHash` gate）；第 2 点需要你把 `
 
 ```ts
 import { Effect, Schema } from "effect"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 export const UserSpec = Logix.Resource.make({
   id: "demo/user/get",
@@ -41,7 +41,7 @@ export const UserSpec = Logix.Resource.make({
 ```ts
 import axios from "axios"
 import { Effect, Schema } from "effect"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 export const SearchSpec = Logix.Resource.make({
   id: "demo/user/search",

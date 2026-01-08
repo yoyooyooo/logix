@@ -64,7 +64,7 @@ const ItemsForm = Form.make("ItemsForm", {
 ## 2) 在 React 中操作数组：`useFieldArray`
 
 ```tsx
-import { useFieldArray } from "@logix/form/react"
+import { useFieldArray } from "@logixjs/form/react"
 
 const { fields, append, remove, swap, move } = useFieldArray(form, "items")
 ```

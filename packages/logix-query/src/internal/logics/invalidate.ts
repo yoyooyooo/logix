@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect } from 'effect'
 import { Engine, type InvalidateRequest } from '../../Engine.js'
 import type { QuerySourceConfig } from '../../Traits.js'

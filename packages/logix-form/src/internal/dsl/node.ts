@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type { RuleEntry } from '../../Rule.js'
 
 export type Node<Input = unknown, Ctx = unknown> = Logix.StateTrait.StateTraitNode<Input, Ctx>

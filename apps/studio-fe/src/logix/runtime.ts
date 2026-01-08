@@ -1,5 +1,5 @@
-import * as Logix from '@logix/core'
-import { ReactPlatformLayer } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { ReactPlatformLayer } from '@logixjs/react'
 
 import { CounterImpl } from './counter'
 

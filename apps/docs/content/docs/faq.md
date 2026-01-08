@@ -25,14 +25,14 @@ In short: if your app has complex async/concurrency logic, Logix tends to be a b
 
 They can also be used together: use XState for the workflow state machine, and Logix for business data.
 
-### When should I use `@logix/form` instead of a plain Module?
+### When should I use `@logixjs/form` instead of a plain Module?
 
 Use a plain Module when:
 
 - It’s a single-field input (search box, toggle).
 - You don’t need complex validation.
 
-Use `@logix/form` when:
+Use `@logixjs/form` when:
 
 - It’s a multi-field form (3+ fields).
 - You need field-level validation and error display.
@@ -62,7 +62,7 @@ Only when you need advanced capabilities (retries, timeouts, resource management
    ```
 2. Add the DevTools component in your React app:
    ```tsx
-   import { LogixDevtools } from '@logix/devtools-react'
+   import { LogixDevtools } from '@logixjs/devtools-react'
    ;<LogixDevtools position="bottom-left" />
    ```
 3. Open your browser and inspect Action events in the timeline.

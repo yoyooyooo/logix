@@ -1,6 +1,6 @@
-// Public barrel for @logix/core-ng
+// Public barrel for @logixjs/core-ng
 // Recommended usage:
-//   import * as CoreNg from "@logix/core-ng"
+//   import * as CoreNg from "@logixjs/core-ng"
 // Then CoreNg exposes namespaces like coreNgKernelLayer, etc.
 
 export { coreNgKernelLayer, coreNgFullCutoverLayer } from './CoreNgLayer.js'

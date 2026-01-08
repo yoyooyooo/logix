@@ -1,9 +1,9 @@
 /**
  * Bundle the built-in Sandbox runtime:
  * - effect (pinned version, used as the built-in runtime)
- * - @logix/core (kernel bundle, externalized to the co-located effect bundle)
+ * - @logixjs/core (kernel bundle, externalized to the co-located effect bundle)
  *
- * Usage: pnpm --filter @logix/sandbox bundle:kernel
+ * Usage: pnpm --filter @logixjs/sandbox bundle:kernel
  */
 
 import * as esbuild from 'esbuild'
@@ -121,14 +121,14 @@ async function bundle() {
     entryNames: '[dir]/[name]',
     chunkNames: 'chunks/[name]-[hash]',
     banner: {
-      js: `// effect runtime bundle for @logix/sandbox (v${EFFECT_VERSION})\n`,
+      js: `// effect runtime bundle for @logixjs/sandbox (v${EFFECT_VERSION})\n`,
     },
   })
   console.log(
     `✅ 打包完成: public/sandbox/effect.js (+ effect:${effectSubpaths.length} subpaths, @effect/platform:${platformSubpaths.length} subpaths)`,
   )
 
-  // 2) Bundle the @logix/core kernel (externalized to ./effect.js).
+  // 2) Bundle the @logixjs/core kernel (externalized to ./effect.js).
   const entry = join(sandboxRoot, '../logix-core/src/index.ts')
 
   const result = await esbuild.build({
@@ -143,7 +143,7 @@ async function bundle() {
     loader: { '.ts': 'ts' },
     plugins: [effectCdnPlugin],
     banner: {
-      js: `// @logix/core kernel bundle for @logix/sandbox
+      js: `// @logixjs/core kernel bundle for @logixjs/sandbox
 // effect is loaded from the co-located ./effect.js (v${EFFECT_VERSION})
 `,
     },
@@ -151,12 +151,12 @@ async function bundle() {
 
   console.log('✅ 打包完成: public/sandbox/logix-core.js')
 
-  // 2.5) Bundle @logix/core subpath modules (supports import "@logix/core/Runtime" / "@logix/core/Flow", etc.)
+  // 2.5) Bundle @logixjs/core subpath modules (supports import "@logixjs/core/Runtime" / "@logixjs/core/Flow", etc.)
   // Naming alignment with effect: subpath modules use PascalCase; non-canonical forms are rejected by the sandbox compiler.
   // To avoid mutable relative paths, all subpath outputs go to public/sandbox/logix-core/*.js (flatten multi-level paths with ".").
   // Example:
-  // - @logix/core/Runtime          -> /sandbox/logix-core/Runtime.js
-  // - @logix/core/StateTrait       -> /sandbox/logix-core/StateTrait.js
+  // - @logixjs/core/Runtime          -> /sandbox/logix-core/Runtime.js
+  // - @logixjs/core/StateTrait       -> /sandbox/logix-core/StateTrait.js
   const logixCoreSrcDir = join(sandboxRoot, '../logix-core/src')
   const walkTsFiles = (dir, relBase = '') => {
     const out = []
@@ -204,7 +204,7 @@ async function bundle() {
     join(outDir, 'logix-core.manifest.json'),
     JSON.stringify(
       {
-        kind: '@logix/core-subpath-manifest',
+        kind: '@logixjs/core-subpath-manifest',
         version: 1,
         generatedAt: new Date().toISOString(),
         specifiers: logixCoreSpecifiers,
@@ -239,7 +239,7 @@ async function bundle() {
       }),
     ],
     banner: {
-      js: `// @logix/core subpath bundles for @logix/sandbox\n`,
+      js: `// @logixjs/core subpath bundles for @logixjs/sandbox\n`,
     },
   })
   console.log(`✅ 打包完成: public/sandbox/logix-core/* (entries=${Object.keys(logixCoreEntryPoints).length})`)
@@ -258,7 +258,7 @@ async function bundle() {
     outfile: join(outDir, 'worker.js'),
     loader: { '.ts': 'ts' },
     banner: {
-      js: `// sandbox worker bundle for @logix/sandbox\n`,
+      js: `// sandbox worker bundle for @logixjs/sandbox\n`,
     },
   })
   console.log('✅ 打包完成: public/sandbox/worker.js')

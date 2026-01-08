@@ -55,7 +55,7 @@ function Counter() {
 ### After migrating to Logix
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 // 1) Define a Module (separate declaration and behavior)
@@ -96,7 +96,7 @@ const CounterModule = CounterDef.implement({
 
 ```tsx
 // React usage
-import { useModule, useSelector, useDispatch } from '@logix/react'
+import { useModule, useSelector, useDispatch } from '@logixjs/react'
 
 function Counter() {
   const counter = useModule(CounterModule)

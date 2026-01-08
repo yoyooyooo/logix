@@ -1,4 +1,4 @@
-// StateTrait namespace module (@logix/core/StateTrait):
+// StateTrait namespace module (@logixjs/core/StateTrait):
 // - Provides a DSL for trait specs (from/node/list/computed/source/link).
 // - build: normalizes the spec and produces Program/Graph/Plan.
 // - install: installs a Program into the runtime (registers source.refresh, runs converge/validate in txn windows).

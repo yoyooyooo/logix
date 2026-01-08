@@ -1,5 +1,5 @@
 import { Context, Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // Note: 本示例中的 `Logic.forShape` 写法仅作为“针对 SearchShape + SearchApi 预绑定的 Bound API `$`”
 // 的概念性缩写；当前 PoC 实现中，真实代码应在对应 Module 上通过 `Module.logic(($)=>...)` 注入 `$`。

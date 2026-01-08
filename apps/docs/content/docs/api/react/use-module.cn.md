@@ -19,7 +19,7 @@ description: API Reference for useModule hook
 ## 基本用法
 
 ```tsx
-import { useDispatch, useModule, useSelector } from '@logix/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { CounterDef } from './modules/counter'
 
 export function Counter() {
@@ -39,7 +39,7 @@ export function Counter() {
 - 避免同一组件里对同一个模块重复调用多次 `useModule(handle)`（通常没有收益）
 
 ```tsx
-import { shallow, useModule, useSelector } from '@logix/react'
+import { shallow, useModule, useSelector } from '@logixjs/react'
 
 const user = useModule(UserModule)
 const { name, age } = useSelector(user, (s) => ({ name: s.name, age: s.age }), shallow)

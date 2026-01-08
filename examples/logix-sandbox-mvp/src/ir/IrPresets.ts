@@ -159,7 +159,7 @@ const AppRoot = App.implement({
     id: 'p6',
     label: 'P6 Form Rules (Artifacts)',
     moduleExport: 'AppRoot',
-    moduleCode: `import * as Form from "@logix/form"
+    moduleCode: `import * as Form from "@logixjs/form"
 
 const Values = Schema.Struct({ name: Schema.String })
 const R = Form.rules(Values)

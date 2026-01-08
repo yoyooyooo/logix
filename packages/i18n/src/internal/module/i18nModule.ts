@@ -1,9 +1,9 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema, SubscriptionRef } from 'effect'
 
 import { I18nSnapshotSchema, I18nTag } from '../driver/i18n.js'
 
-const I18nModuleDef = Logix.Module.make('@logix/i18n/I18nModule', {
+const I18nModuleDef = Logix.Module.make('@logixjs/i18n/I18nModule', {
   state: Schema.Struct({ snapshot: I18nSnapshotSchema }),
   actions: {
     changeLanguage: Schema.String,

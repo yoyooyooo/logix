@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 // @vitest-environment happy-dom
 import { renderHook, act, waitFor } from '@testing-library/react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema, ManagedRuntime, Layer, Effect } from 'effect'
 import React from 'react'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'

@@ -5,7 +5,7 @@ description: Build a clear mental model first, then start writing demos.
 
 ## 1) What is a Form?
 
-`@logix/form` provides `Form.make(id, config)`, which returns a **Form Module** (a module definition object) that can be consumed directly by Runtime / React.
+`@logixjs/form` provides `Form.make(id, config)`, which returns a **Form Module** (a module definition object) that can be consumed directly by Runtime / React.
 
 - **Runtime**: you can start it with `Logix.Runtime.make(FormModule, ...)` directly (no need to manually extract `FormModule.impl`).
 - **React**: you can call `useForm(FormModule)` to get a form view and the default `controller` (e.g. `handleSubmit/validate/reset/...`).

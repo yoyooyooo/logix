@@ -40,7 +40,7 @@ describe('Runtime (048): kernel evidence serializable (diagnostics=off)', () => 
     }
 
     const coreNgFullCutoverLayer = Layer.mergeAll(
-      Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logix/core' }),
+      Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core' }),
       Logix.Kernel.fullCutoverGateModeLayer('fullCutover'),
       Logix.Kernel.runtimeServicesRegistryLayer(coreNgRuntimeServicesRegistry),
       Logix.Kernel.runtimeDefaultServicesOverridesLayer(

@@ -21,7 +21,7 @@ One-sentence mental model:
 ### 1) Define modal modules (independent)
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 export const ModalADef = Logix.Module.make('ModalA', {
@@ -54,7 +54,7 @@ export const RouteHost = RouteHostDef.implement({
 ### 3) Create the Host instance in the route component (scope anchor)
 
 ```tsx
-import { useModule } from '@logix/react'
+import { useModule } from '@logixjs/react'
 
 export function RoutePage() {
   const host = useModule(RouteHost.impl, {
@@ -72,7 +72,7 @@ export function RoutePage() {
 ### 4) Modal components resolve children only from `host.imports`
 
 ```tsx
-import { useSelector } from '@logix/react'
+import { useSelector } from '@logixjs/react'
 import { ModalA } from './modules'
 
 export function ModalAView({ host }: { host: any }) {
@@ -97,10 +97,10 @@ You can think of it as:
 
 ### 4.1) Avoid prop drilling: put host into route Context (recommended)
 
-If modals are far away from the route component (many component layers in-between), prefer `ModuleScope.make(...)` from `@logix/react`, which packages “create host instance + Context Provider + useHost()” as a reusable scope:
+If modals are far away from the route component (many component layers in-between), prefer `ModuleScope.make(...)` from `@logixjs/react`, which packages “create host instance + Context Provider + useHost()” as a reusable scope:
 
 ```tsx
-import { ModuleScope } from '@logix/react'
+import { ModuleScope } from '@logixjs/react'
 import { RouteHost } from './modules'
 
 export const RouteHostScope = ModuleScope.make(RouteHost.impl, { gcTime: 0 })
@@ -126,7 +126,7 @@ export function RoutePage() {
 In modal components, resolve the child module handle that belongs to this route host instance:
 
 ```tsx
-import { useSelector } from '@logix/react'
+import { useSelector } from '@logixjs/react'
 import { ModalA } from './modules'
 
 export function ModalAView() {

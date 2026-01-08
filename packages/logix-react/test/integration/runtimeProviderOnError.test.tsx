@@ -4,7 +4,7 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
 import { Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 
 describe('RuntimeProvider.onError (integration)', () => {

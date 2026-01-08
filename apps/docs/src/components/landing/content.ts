@@ -101,7 +101,7 @@ export const landingCopy: Record<LandingLang, LandingContent> = {
         {
           icon: BookOpen,
           title: 'API 参考',
-          description: '@logix/core 与 @logix/react。',
+          description: '@logixjs/core 与 @logixjs/react。',
           href: '/api',
         },
       ] satisfies ReadonlyArray<NextStepItem>,
@@ -207,7 +207,7 @@ export const landingCopy: Record<LandingLang, LandingContent> = {
         {
           icon: BookOpen,
           title: 'API Reference',
-          description: '@logix/core and @logix/react.',
+          description: '@logixjs/core and @logixjs/react.',
           href: '/api',
         },
       ] satisfies ReadonlyArray<NextStepItem>,

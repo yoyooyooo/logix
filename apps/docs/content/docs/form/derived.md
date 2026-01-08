@@ -11,7 +11,7 @@ description: Declare computed/link/source via Form.computed/link/source, with de
 - Linked fields (one field change updates another field)
 - Async resources (fetch options based on value deps and write a snapshot back into values)
 
-`@logix/form` puts boundaries around derived: by default it only allows writing back to `values` / `ui`, so you don’t accidentally turn validation/errors into a “second source of truth”.
+`@logixjs/form` puts boundaries around derived: by default it only allows writing back to `values` / `ui`, so you don’t accidentally turn validation/errors into a “second source of truth”.
 
 > [!TIP]
 > If you want to understand how traits converge inside a transaction window and guarantee “at most one commit per window”, start here:

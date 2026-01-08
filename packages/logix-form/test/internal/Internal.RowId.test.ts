@@ -2,7 +2,7 @@ import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { getFieldArrayItemId, getTrackByForListPath } from '../../src/internal/form/rowid.js'
 
-const RUNTIME_INTERNALS = Symbol.for('@logix/core/runtimeInternals')
+const RUNTIME_INTERNALS = Symbol.for('@logixjs/core/runtimeInternals')
 
 const setRuntimeInternals = (runtime: object, internals: unknown): void => {
   Object.defineProperty(runtime, RUNTIME_INTERNALS, {

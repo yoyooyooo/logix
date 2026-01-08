@@ -1,7 +1,7 @@
 import React from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type { Layer } from 'effect'
-import { RuntimeProvider, useModule } from '@logix/react'
+import { RuntimeProvider, useModule } from '@logixjs/react'
 import { TraitFormDef, TraitFormModule, type TraitFormState } from '../../modules/trait-form.js'
 
 // ToB 场景 1：表单脏标记由 Trait 统一管理

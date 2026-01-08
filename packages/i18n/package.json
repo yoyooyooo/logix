@@ -1,5 +1,5 @@
 {
-  "name": "@logix/i18n",
+  "name": "@logixjs/i18n",
   "version": "0.0.1",
   "description": "I18n domain package for Logix",
   "files": [
@@ -46,7 +46,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@logix/core": "workspace:*",
+    "@logixjs/core": "workspace:*",
     "effect": "^3.19.8"
   },
   "devDependencies": {
@@ -56,7 +56,7 @@
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
-    "@logix/core": "workspace:*",
+    "@logixjs/core": "workspace:*",
     "effect": "^3.19.8"
   }
 }

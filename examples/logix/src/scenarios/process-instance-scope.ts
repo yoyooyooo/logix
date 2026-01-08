@@ -11,7 +11,7 @@
  */
 
 import { Context, Effect, Exit, Layer, Scope, Schema, Stream } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const Source = Logix.Module.make('ProcessInstanceScopeSource', {
   state: Schema.Struct({ count: Schema.Number }),

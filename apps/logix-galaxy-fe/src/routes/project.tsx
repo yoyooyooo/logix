@@ -1,4 +1,4 @@
-import { useDispatch, useModule } from '@logix/react'
+import { useDispatch, useModule } from '@logixjs/react'
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ProjectGroupsDef } from '../galaxy/project-groups.module'

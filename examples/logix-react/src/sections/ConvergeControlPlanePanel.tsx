@@ -1,5 +1,5 @@
 import React from 'react'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type { Layer } from 'effect'
 
 type RequestedMode = 'auto' | 'full' | 'dirty'

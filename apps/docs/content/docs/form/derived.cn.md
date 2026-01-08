@@ -11,7 +11,7 @@ description: 用 Form.computed/link/source 声明 computed/link/source，并通�
 - 联动字段（一个字段变化同步到另一个字段）
 - 异步资源（按字段依赖拉取 options，并写回到 values 的 snapshot 字段）
 
-`@logix/form` 对 derived 做了边界约束：默认只允许写回 `values` / `ui`，避免业务把校验与错误树写成“第二套事实源”。
+`@logixjs/form` 对 derived 做了边界约束：默认只允许写回 `values` / `ui`，避免业务把校验与错误树写成“第二套事实源”。
 
 > [!TIP]
 > 如果你想了解 traits 如何在事务窗口内收敛并保证“一次窗口最多一次提交”，可先读：

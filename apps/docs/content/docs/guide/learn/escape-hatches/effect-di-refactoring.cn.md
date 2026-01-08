@@ -56,7 +56,7 @@ const loginLogic = Auth.logic(($) =>
 在应用启动时（或测试时），你需要用 Layer 把 Tag 对应的实现提供出去：
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Layer } from "effect"
 
 const EnvLayer = Layer.mergeAll(

@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export type RowIdStoreLike = {
   readonly getRowId: (listPath: string, index: number) => string | undefined

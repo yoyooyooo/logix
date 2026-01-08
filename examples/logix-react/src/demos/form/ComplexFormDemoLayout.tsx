@@ -1,9 +1,9 @@
 import React, { useMemo, useRef } from 'react'
 import { Effect, Layer, Schema, type Layer as FxLayer } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector } from '@logix/react'
-import * as Form from '@logix/form'
-import { useField, useFieldArray, useFormState } from '@logix/form/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useSelector } from '@logixjs/react'
+import * as Form from '@logixjs/form'
+import { useField, useFieldArray, useFormState } from '@logixjs/form/react'
 
 const ChannelSchema = Schema.Union(Schema.Literal('email'), Schema.Literal('phone'))
 

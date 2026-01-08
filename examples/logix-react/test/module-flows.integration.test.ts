@@ -1,7 +1,7 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
-import { TestProgram, Execution } from '@logix/test'
+import { TestProgram, Execution } from '@logixjs/test'
 
 import { CounterImpl } from '../src/modules/counter'
 import { CounterMultiImpl } from '../src/modules/counterMulti'

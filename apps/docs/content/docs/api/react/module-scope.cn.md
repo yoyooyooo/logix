@@ -21,7 +21,7 @@ description: 把 Host 实例变成可复用的 Scope（Provider + use + useImpor
 ## Usage
 
 ```ts
-import { ModuleScope } from '@logix/react'
+import { ModuleScope } from '@logixjs/react'
 import { RouteHost } from './modules'
 
 export const RouteHostScope = ModuleScope.make(RouteHost.impl, { gcTime: 0 })

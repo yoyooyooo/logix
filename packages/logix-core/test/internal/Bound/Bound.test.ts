@@ -387,7 +387,7 @@ describe('Bound API (public)', () => {
   })
 
   it('should construct services() and advanced onAction builders', () => {
-    const ServiceTag = Context.GenericTag<{ readonly label: string }>('@logix/test/BoundService')
+    const ServiceTag = Context.GenericTag<{ readonly label: string }>('@logixjs/test/BoundService')
 
     const AdvancedModule = Logix.Module.make('BoundAdvanced', {
       state: Schema.Struct({ count: Schema.Number }),

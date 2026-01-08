@@ -1,9 +1,9 @@
 import { Effect, Stream } from 'effect'
 import { SandboxDef } from './SandboxModule'
-import { SandboxClientTag, type MockManifest, type RunResult, type SandboxErrorInfo } from '@logix/sandbox'
+import { SandboxClientTag, type MockManifest, type RunResult, type SandboxErrorInfo } from '@logixjs/sandbox'
 import type { SpecFeature, SpecScenario, SpecStep } from '../types/spec'
 
-const LOGIX_AUTO_IMPORT_SNIPPET = `import * as Logix from "@logix/core"\n`
+const LOGIX_AUTO_IMPORT_SNIPPET = `import * as Logix from "@logixjs/core"\n`
 
 const shouldInjectLogixAutoImport = (code: string): boolean => {
   if (!/\bLogix\b/.test(code)) return false

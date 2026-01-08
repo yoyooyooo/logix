@@ -1,4 +1,4 @@
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 import { Effect, Fiber, Stream } from 'effect'
 import type { ManagedRuntime } from 'effect'
 

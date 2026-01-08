@@ -1,6 +1,6 @@
 import React from 'react'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useDispatch, useModule, useSelector } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useDispatch, useModule, useSelector } from '@logixjs/react'
 import { TaskRunnerDemoDef, TaskRunnerDemoModule, type TaskRunnerDemoState } from '../modules/task-runner-demo.js'
 
 const runtime = Logix.Runtime.make(TaskRunnerDemoModule, {

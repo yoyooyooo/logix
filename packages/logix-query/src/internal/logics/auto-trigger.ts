@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Duration, Effect, Fiber } from 'effect'
 import type { QuerySourceConfig, QueryTrigger } from '../../Traits.js'
 import { Engine } from '../../Engine.js'

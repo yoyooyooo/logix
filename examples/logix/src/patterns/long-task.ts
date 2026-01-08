@@ -7,7 +7,7 @@
  */
 
 import { Duration, Effect, Schema, SubscriptionRef } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：长任务场景的 State / Action

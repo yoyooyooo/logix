@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 type AnyStateTraitSpec = Record<string, unknown>
 

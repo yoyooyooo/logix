@@ -13,7 +13,7 @@ describe('contracts (045): Kernel activation判定', () => {
       const program = Root.implement({ initial: undefined, logics: [] })
 
       const layer = Layer.mergeAll(
-        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logix/core-ng' }),
+        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
         Logix.Kernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: '__missing__' },
         }),
@@ -46,7 +46,7 @@ describe('contracts (045): Kernel activation判定', () => {
       const program = Root.implement({ initial: undefined, logics: [] })
 
       const layer = Layer.mergeAll(
-        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logix/core-ng' }),
+        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
         Logix.Kernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: 'trace' },
         }),

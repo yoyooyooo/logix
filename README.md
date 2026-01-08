@@ -23,7 +23,7 @@ This README intentionally focuses on Logix; other directories may contain experi
 ## Minimal example
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 export const CounterDef = Logix.Module.make('Counter', {
@@ -72,11 +72,11 @@ pnpm -C apps/docs dev
 
 ## Packages
 
-- `packages/logix-core` → `@logix/core` (kernel: Module / Logic / Flow / Runtime / `$`)
-- `packages/logix-react` → `@logix/react` (React adapter: `RuntimeProvider`, hooks)
-- `packages/logix-devtools-react` → `@logix/devtools-react` (devtools UI)
-- `packages/logix-sandbox` → `@logix/sandbox` (run Logix/Effect in a browser Worker)
-- `packages/logix-test` → `@logix/test` (testing utilities)
+- `packages/logix-core` → `@logixjs/core` (kernel: Module / Logic / Flow / Runtime / `$`)
+- `packages/logix-react` → `@logixjs/react` (React adapter: `RuntimeProvider`, hooks)
+- `packages/logix-devtools-react` → `@logixjs/devtools-react` (devtools UI)
+- `packages/logix-sandbox` → `@logixjs/sandbox` (run Logix/Effect in a browser Worker)
+- `packages/logix-test` → `@logixjs/test` (testing utilities)
 
 Add-ons and feature kits live in `packages/logix-form`, `packages/logix-query`, `packages/i18n`, `packages/domain`.
 

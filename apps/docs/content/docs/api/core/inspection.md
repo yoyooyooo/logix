@@ -14,7 +14,7 @@ When you treat a `Module` as a “deliverable asset” that evolves over time, b
 
 ```ts
 import { writeFileSync } from 'node:fs'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 import { AppRoot } from './app.root.js'
 
@@ -29,7 +29,7 @@ writeFileSync('dist/module-manifest.json', JSON.stringify(manifest, null, 2))
 ## Diff manifests (CI / breaking-change checks)
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const diff = Logix.Reflection.diffManifest(before, after, {
   // Optional: only focus on allowed meta keys to avoid CI noise
@@ -49,7 +49,7 @@ Trial run starts the module within a **controlled window**, then **closes the Sc
 
 ```ts
 import { Effect } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { AppRoot } from './app.root.js'
 
 const main = Effect.gen(function* () {

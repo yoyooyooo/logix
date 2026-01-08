@@ -1,7 +1,7 @@
 import React from 'react'
 import { Effect, Fiber, Layer, ManagedRuntime } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useRuntime } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useRuntime } from '@logixjs/react'
 import {
   AuditDef,
   AuditModule,

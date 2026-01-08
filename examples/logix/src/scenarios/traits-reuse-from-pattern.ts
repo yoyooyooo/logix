@@ -4,7 +4,7 @@
  *   与 traits-reuse.ts 使用相同的 Pattern，但只导出 Module/Logic/Impl，便于在其它场景组合使用。
  */
 
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { TraitsReuseStateSchema, TraitsReuseActionMap, makeTraitsReuseLogicPattern } from '../patterns/traits-reuse.js'
 
 export const TraitsReuseDefFromPattern = Logix.Module.make('TraitsReuseFromPattern', {

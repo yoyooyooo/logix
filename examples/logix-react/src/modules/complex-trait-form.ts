@@ -1,4 +1,4 @@
-import { StateTrait, Module } from '@logix/core'
+import { StateTrait, Module } from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 // 复杂表单场景：

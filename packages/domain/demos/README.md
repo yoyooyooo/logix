@@ -1,4 +1,4 @@
-# @logix/domain · demos
+# @logixjs/domain · demos
 
 ## CRUDModule（业务侧最小 demo）
 

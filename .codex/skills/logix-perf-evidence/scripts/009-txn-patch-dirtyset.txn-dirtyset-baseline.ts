@@ -1,7 +1,7 @@
 import { Effect, Schema } from 'effect'
 import fs from 'node:fs'
 import { performance } from 'node:perf_hooks'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const now = () => performance.now()
 

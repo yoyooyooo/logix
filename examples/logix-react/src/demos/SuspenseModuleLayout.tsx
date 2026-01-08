@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react'
 import { Context, Effect, Layer, ManagedRuntime, Schema } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule } from '@logixjs/react'
 
 // 1. 定义一个需要“重型初始化”的服务
 interface HeavyService {

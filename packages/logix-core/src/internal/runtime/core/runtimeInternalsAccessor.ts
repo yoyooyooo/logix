@@ -1,9 +1,9 @@
 import { isDevEnv } from './env.js'
 import type { RuntimeInternals } from './RuntimeInternals.js'
 
-const RUNTIME_INTERNALS = Symbol.for('@logix/core/runtimeInternals')
-const BOUND_INTERNALS = Symbol.for('@logix/core/boundInternals')
-const MODULE_TRAITS_PROGRAM = Symbol.for('@logix/core/moduleTraitsProgram')
+const RUNTIME_INTERNALS = Symbol.for('@logixjs/core/runtimeInternals')
+const BOUND_INTERNALS = Symbol.for('@logixjs/core/boundInternals')
+const MODULE_TRAITS_PROGRAM = Symbol.for('@logixjs/core/moduleTraitsProgram')
 
 const defineHidden = (target: object, key: symbol, value: unknown): void => {
   Object.defineProperty(target, key, {

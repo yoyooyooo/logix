@@ -1,6 +1,6 @@
 import { Effect, Schema } from 'effect'
 import { describe } from 'vitest'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { itProgram } from '../../src/Vitest.js'
 
 const Counter = Logix.Module.make('VitestProgramCounter', {
@@ -16,7 +16,7 @@ const CounterLogic = Counter.logic(($) =>
   }),
 )
 
-describe('@logix/test · vitest helpers', () => {
+describe('@logixjs/test · vitest helpers', () => {
   itProgram(
     'itProgram should run program module and assert no errors',
     Counter.implement({

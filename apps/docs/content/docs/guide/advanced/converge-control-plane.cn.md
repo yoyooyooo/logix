@@ -68,7 +68,7 @@ time-slicing 的核心做法很简单：
 开关在 stateTransaction 下（默认关闭）：
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
@@ -151,7 +151,7 @@ const OrderForm = Logix.Module.make("OrderForm", { /* ... */ })
 ### 配方 A：模拟“旧基线”（全量收敛）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
@@ -165,7 +165,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 当你发现“只有某个页面/模块卡”，优先用这个方式止血：其它模块继续走默认策略。
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
@@ -180,8 +180,8 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### 配方 C：在 React 子树范围内试探默认值（页面级调参）
 
 ```tsx
-import * as Logix from "@logix/core"
-import { RuntimeProvider } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
 
 const overrides = Logix.Runtime.stateTransactionOverridesLayer({
   traitConvergeMode: "auto",
@@ -203,7 +203,7 @@ export function App({ runtime }: { runtime: Logix.ManagedRuntime<any, any> }) {
 ### 配方 D：运行时热切换某个模块（排查用，避免频繁发版）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", { traitConvergeMode: "full" })
 // 取消覆盖：传 undefined
@@ -215,7 +215,7 @@ Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", undefined)
 ### 配方 E：只对某个模块开启 time-slicing（大 N 高频输入止血）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
@@ -234,7 +234,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 > 只有“允许短暂读到旧值”的派生才适合 deferred（例如 UI 展示用文案、非关键统计）；关键业务字段请保持 immediate。
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const Traits = Logix.StateTrait.from(State)({
   // immediate（默认）：同窗口收敛

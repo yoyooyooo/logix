@@ -198,11 +198,11 @@ const PollingLogic = PollingModule.logic(($) => {
 ### 3.1 在 React 中启用平台生命周期
 
 要让 `onSuspend/onResume/onReset` 生效，需要在应用的 Runtime 环境中提供一个 Platform 实现。
-`@logix/react` 提供了一个开箱可用的 Layer：
+`@logixjs/react` 提供了一个开箱可用的 Layer：
 
 ```ts
-import * as Logix from "@logix/core"
-import { ReactPlatformLayer, RuntimeProvider } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { ReactPlatformLayer, RuntimeProvider } from "@logixjs/react"
 import { Layer } from "effect"
 
 const RootModule = Logix.Module.make("Root", { state: RootState, actions: RootActions })

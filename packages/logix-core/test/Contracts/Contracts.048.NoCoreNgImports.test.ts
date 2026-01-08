@@ -35,7 +35,7 @@ const walkFiles = (dirPath: string, out: Array<string>): void => {
 }
 
 const hasCoreNgImport = (source: string): boolean => {
-  if (!source.includes('@logix/core-ng')) return false
+  if (!source.includes('@logixjs/core-ng')) return false
   const patterns: ReadonlyArray<RegExp> = [
     /\bimport\s+[^;]*?\sfrom\s+['"]@logix\/core-ng['"]/,
     /\bimport\s+['"]@logix\/core-ng['"]/,
@@ -49,8 +49,8 @@ const isAllowed = (repoRelativePath: string): boolean =>
   repoRelativePath.startsWith('packages/logix-core-ng/') ||
   repoRelativePath === 'packages/logix-react/test/browser/perf-boundaries/harness.ts'
 
-describe('contracts (048): forbid importing @logix/core-ng in consumers', () => {
-  it('should not import @logix/core-ng outside allowlist', () => {
+describe('contracts (048): forbid importing @logixjs/core-ng in consumers', () => {
+  it('should not import @logixjs/core-ng outside allowlist', () => {
     const roots = ['packages', 'apps', 'examples', 'scripts'].map((p) => resolve(repoRoot, p))
     const files: Array<string> = []
     for (const root of roots) {

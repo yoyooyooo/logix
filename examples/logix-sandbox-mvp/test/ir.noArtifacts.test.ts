@@ -1,7 +1,7 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 describe('/ir: no artifacts', () => {
   it.effect('keeps artifacts undefined for non-kit modules', () =>

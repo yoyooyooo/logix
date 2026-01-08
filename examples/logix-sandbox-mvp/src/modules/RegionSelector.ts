@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect'
-import * as Module from '@logix/core/Module'
+import * as Module from '@logixjs/core/Module'
 
 // ============================================================================
 // Schema 定义

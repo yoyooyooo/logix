@@ -9,7 +9,7 @@
 
 import { Effect, Schema, Stream } from 'effect'
 import { fileURLToPath } from 'node:url'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：计数器带派生字段

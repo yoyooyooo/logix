@@ -1,4 +1,4 @@
-import { StateTrait, Module } from '@logix/core'
+import { StateTrait, Module } from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 // ToB 场景 1：表单脏标记与合法性由 Trait 管理

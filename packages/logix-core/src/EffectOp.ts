@@ -1,4 +1,4 @@
-// Public EffectOp API (@logix/core/EffectOp).
+// Public EffectOp API (@logixjs/core/EffectOp).
 // Note: implementation lives in `src/internal/effect-op.ts` to avoid internal importing root submodules.
 
 import * as Internal from './internal/effect-op.js'

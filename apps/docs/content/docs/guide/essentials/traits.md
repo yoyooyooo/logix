@@ -43,7 +43,7 @@ Related pages:
 
 ## 3) Traits and Form: you usually shouldn’t hand-roll form state
 
-`@logix/form` is the most typical “traits-based domain package”:
+`@logixjs/form` is the most typical “traits-based domain package”:
 
 - `derived` (computed/link/source) compiles into StateTrait rules for derivation/linkage/snapshots
 - `rules` compiles into validation rules (incremental triggers rely on `deps` contracts + list identity)

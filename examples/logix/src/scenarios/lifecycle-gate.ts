@@ -13,7 +13,7 @@
 
 import { Cause, Console, Context, Effect, Layer, Schema } from 'effect'
 import { fileURLToPath } from 'node:url'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const DemoState = Schema.Struct({
   ready: Schema.Boolean,

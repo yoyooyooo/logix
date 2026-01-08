@@ -43,7 +43,7 @@ Effective timing: takes effect from the **next transaction/op window** (it does 
 ### Recipe A: lower global default (more stable)
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   concurrencyPolicy: {
@@ -55,7 +55,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### Recipe B: rollback only for one module (recommended)
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   concurrencyPolicy: {
@@ -70,7 +70,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### Recipe C: hot switch one module at runtime (diagnosis/rollback)
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", { concurrencyLimit: 4 })
 // Remove override: pass undefined
@@ -80,8 +80,8 @@ Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", undefined)
 ### Recipe D: override within a Provider subtree (page-level experiment)
 
 ```tsx
-import * as Logix from "@logix/core"
-import { RuntimeProvider } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
 
 const overrides = Logix.Runtime.concurrencyPolicyOverridesLayer({
   concurrencyLimit: 8,
@@ -102,7 +102,7 @@ export function App({ runtime }: { runtime: Logix.ManagedRuntime<any, any> }) {
 ### Recipe E: explicitly enable unbounded concurrency (use with care)
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   concurrencyPolicy: {

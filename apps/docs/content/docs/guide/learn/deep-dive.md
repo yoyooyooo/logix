@@ -38,7 +38,7 @@ This page uses a CRM user list as an example to show roles of the runtime model.
 
 ```ts
 // UserListModule.ts
-	import * as Logix from '@logix/core'
+	import * as Logix from '@logixjs/core'
 	import { Schema } from 'effect'
 
 	export const UserListDef = Logix.Module.make('UserList', {
@@ -147,14 +147,14 @@ This Runtime can be mounted in React via `RuntimeProvider runtime={UserListRunti
 In real products, “forms” and “queries” are often the two core capabilities of a page. Logix recommends composing them as **regular modules** too:
 they are imported into the Root via `imports` as `ModuleImpl`s, sharing the same Runtime, debugging, and replay capability—so you don’t end up with “form state” and “page store state” as two competing sources of truth.
 
-### 5.1 Forms: `@logix/form`
+### 5.1 Forms: `@logixjs/form`
 
-`@logix/form` provides `Form.make(...)` as a high-level entry point. It returns a module object whose `impl` can be imported directly:
+`@logixjs/form` provides `Form.make(...)` as a high-level entry point. It returns a module object whose `impl` can be imported directly:
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
-import * as Form from "@logix/form"
+import * as Form from "@logixjs/form"
 
 	export const UserForm = Form.make('UserForm', {
 	  values: Schema.Struct({ name: Schema.String }),
@@ -183,7 +183,7 @@ Besides calling from React components, you can also use default actions in Logic
 In React, prefer subscribing to “view state” via selectors, to avoid unnecessary re-renders from subscribing to the entire values/errors tree:
 
 ```ts
-import { useForm, useFormState } from '@logix/form/react'
+import { useForm, useFormState } from '@logixjs/form/react'
 
 const form = useForm(UserForm)
 const canSubmit = useFormState(form, (v) => v.canSubmit)
@@ -191,13 +191,13 @@ const canSubmit = useFormState(form, (v) => v.canSubmit)
 
 For the full form documentation path, see: [Form](../../form).
 
-### 5.2 Queries: `@logix/query`
+### 5.2 Queries: `@logixjs/query`
 
-`@logix/query` collapses “query params → resource loading → result snapshots” into a module: results live in module state (subscribable, debuggable, replayable).
+`@logixjs/query` collapses “query params → resource loading → result snapshots” into a module: results live in module state (subscribable, debuggable, replayable).
 
 ```ts
 import { Schema } from 'effect'
-import * as Query from '@logix/query'
+import * as Query from '@logixjs/query'
 
 export const SearchQuery = Query.make('SearchQuery', {
   params: Schema.Struct({ q: Schema.String }),

@@ -7,6 +7,6 @@ export interface RootContext {
   readonly appModuleIds?: ReadonlyArray<string>
 }
 
-class RootContextTagImpl extends Context.Tag('@logix/core/RootContext')<RootContextTagImpl, RootContext>() {}
+class RootContextTagImpl extends Context.Tag('@logixjs/core/RootContext')<RootContextTagImpl, RootContext>() {}
 
 export const RootContextTag = RootContextTagImpl

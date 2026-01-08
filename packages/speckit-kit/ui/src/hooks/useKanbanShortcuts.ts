@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 import type { KanbanShape } from '../features/kanban'
 
 type KanbanAction = Logix.ActionOf<KanbanShape>

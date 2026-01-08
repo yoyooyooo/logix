@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { useModule, useSelector, useDispatch } from '@logix/react'
+import { useModule, useSelector, useDispatch } from '@logixjs/react'
 import { SandboxDef } from '../modules/SandboxModule'
 import type { SandboxRuntime, SandboxState } from '../modules/SandboxRuntime'
 import { Editor } from './Editor'

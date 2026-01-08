@@ -1,6 +1,6 @@
 import { Effect, Layer } from 'effect'
-import * as Logix from '@logix/core'
-import * as CoreNg from '@logix/core-ng'
+import * as Logix from '@logixjs/core'
+import * as CoreNg from '@logixjs/core-ng'
 
 export type Primitive = string | number | boolean
 export type Params = Record<string, Primitive>

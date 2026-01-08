@@ -16,7 +16,7 @@ Multi-step forms (wizards) are common for complex form flows: split a long form 
 ## State design
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 const WizardDef = Logix.Module.make('Wizard', {
@@ -183,9 +183,9 @@ function Wizard() {
 }
 ```
 
-## Enhanced version with `@logix/form`
+## Enhanced version with `@logixjs/form`
 
-If each step’s form is complex, you can combine with `@logix/form`:
+If each step’s form is complex, you can combine with `@logixjs/form`:
 
 ```ts
 // Create a dedicated Form for each step

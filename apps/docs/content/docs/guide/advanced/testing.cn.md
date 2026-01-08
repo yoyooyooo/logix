@@ -37,7 +37,7 @@ npm install @effect/vitest --save-dev
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, TestClock, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const Counter = Logix.Module.make('Counter', {
   state: Schema.Struct({ count: Schema.Number }),
@@ -127,7 +127,7 @@ it.scoped('should fetch user with mock', () =>
 测试 Logic 行为时，可以注入自定义 DebugSink 收集事件：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 it.scoped('should emit debug events', () =>
   Effect.gen(function* () {

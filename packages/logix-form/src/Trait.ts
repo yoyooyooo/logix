@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export type FieldPath<S extends object> = Logix.StateTrait.StateFieldPath<S>
 export type AtPath<S extends object, P extends FieldPath<S>> = Logix.StateTrait.StateAtPath<S, P>

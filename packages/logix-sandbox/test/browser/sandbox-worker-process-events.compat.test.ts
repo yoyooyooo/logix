@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { createSandboxClient } from '@logix/sandbox'
+import { createSandboxClient } from '@logixjs/sandbox'
 import { startKernelMock } from './msw/kernel-mock.js'
 
 const hasWorker = typeof Worker !== 'undefined'
@@ -21,7 +21,7 @@ testFn(
 
     const code = `
       import { Effect, Schema } from "effect";
-      import * as Logix from "@logix/core";
+      import * as Logix from "@logixjs/core";
 
       const Source = Logix.Module.make("SandboxProcessEventsSource", {
         state: Schema.Struct({ n: Schema.Number }),

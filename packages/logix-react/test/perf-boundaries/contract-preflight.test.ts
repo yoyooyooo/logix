@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
-import matrix from '@logix/perf-evidence/assets/matrix.json'
-import perfReportSchema from '@logix/perf-evidence/assets/schemas/perf-report.schema.json'
-import perfDiffSchema from '@logix/perf-evidence/assets/schemas/perf-diff.schema.json'
+import matrix from '@logixjs/perf-evidence/assets/matrix.json'
+import perfReportSchema from '@logixjs/perf-evidence/assets/schemas/perf-report.schema.json'
+import perfDiffSchema from '@logixjs/perf-evidence/assets/schemas/perf-diff.schema.json'
 
 const PREFLIGHT = process.env.LOGIX_PREFLIGHT === '1'
 

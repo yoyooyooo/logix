@@ -234,11 +234,11 @@ const remoteBundlePlugin: esbuild.Plugin = {
     }))
 
     build.onResolve({ filter: /^@logix\/core\// }, (args) => {
-      const rawSubpath = args.path.slice('@logix/core/'.length)
+      const rawSubpath = args.path.slice('@logixjs/core/'.length)
       const info = getLogixCoreSubpathInfo(rawSubpath)
       if (!info.normalized) {
         return {
-          errors: [{ text: `非法的 @logix/core 子路径：${args.path}` }],
+          errors: [{ text: `非法的 @logixjs/core 子路径：${args.path}` }],
         }
       }
 
@@ -247,7 +247,7 @@ const remoteBundlePlugin: esbuild.Plugin = {
         return {
           errors: [
             {
-              text: `禁止在 Sandbox 中 import "@logix/core/internal/*"：${args.path}`,
+              text: `禁止在 Sandbox 中 import "@logixjs/core/internal/*"：${args.path}`,
             },
           ],
         }
@@ -257,7 +257,7 @@ const remoteBundlePlugin: esbuild.Plugin = {
         return {
           errors: [
             {
-              text: `禁止在 Sandbox 中使用 "." 形式的 @logix/core 子路径：${args.path}；请使用 "/" 分隔（例如 "@logix/core/${info.normalized.replaceAll('.', '/')}"）`,
+              text: `禁止在 Sandbox 中使用 "." 形式的 @logixjs/core 子路径：${args.path}；请使用 "/" 分隔（例如 "@logixjs/core/${info.normalized.replaceAll('.', '/')}"）`,
             },
           ],
         }
@@ -267,7 +267,7 @@ const remoteBundlePlugin: esbuild.Plugin = {
         return {
           errors: [
             {
-              text: `Sandbox 内置 @logix/core 子路径清单未初始化，无法解析：${args.path}；请确保 /sandbox/logix-core.manifest.json 可访问`,
+              text: `Sandbox 内置 @logixjs/core 子路径清单未初始化，无法解析：${args.path}；请确保 /sandbox/logix-core.manifest.json 可访问`,
             },
           ],
         }
@@ -279,7 +279,7 @@ const remoteBundlePlugin: esbuild.Plugin = {
           return {
             errors: [
               {
-                text: `禁止在 Sandbox 中使用非规范 @logix/core 子路径：${args.path}；请改为 "@logix/core/${suggestion}"`,
+                text: `禁止在 Sandbox 中使用非规范 @logixjs/core 子路径：${args.path}；请改为 "@logixjs/core/${suggestion}"`,
               },
             ],
           }
@@ -287,7 +287,7 @@ const remoteBundlePlugin: esbuild.Plugin = {
         return {
           errors: [
             {
-              text: `未知的 @logix/core 子路径：${args.path}；请改用根导入（例如 "import * as Logix from \\"@logix/core\\""）或检查 kernel 是否已包含该子模块`,
+              text: `未知的 @logixjs/core 子路径：${args.path}；请改用根导入（例如 "import * as Logix from \\"@logixjs/core\\""）或检查 kernel 是否已包含该子模块`,
             },
           ],
         }
@@ -347,7 +347,7 @@ const remoteBundlePlugin: esbuild.Plugin = {
     })
 
     build.onResolve({ filter: /^[^./]/ }, (args) => {
-      if (args.path.startsWith('effect') || args.path.startsWith('@logix/core')) {
+      if (args.path.startsWith('effect') || args.path.startsWith('@logixjs/core')) {
         return null
       }
       const specifier = pinEffectScope(args.path)

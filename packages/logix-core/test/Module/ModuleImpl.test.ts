@@ -10,7 +10,7 @@ import * as Logix from '../../src/index.js'
  * - `ModuleDef.implement({ imports })` should layer extra Env (Layer or other ModuleImpl.layer) into ModuleImpl.layer.
  */
 
-const ServiceTag = Context.GenericTag<{ label: string }>('@logix/test/Service')
+const ServiceTag = Context.GenericTag<{ label: string }>('@logixjs/test/Service')
 
 const Consumer = Logix.Module.make('ModuleImplConsumer', {
   state: Schema.Struct({

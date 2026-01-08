@@ -1,4 +1,4 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import type { DevtoolsSnapshot } from '../snapshot/index.js'
 import type { DevtoolsSettings, DevtoolsState, OperationSummary, TimelineEntry } from './model.js'
 import { defaultSettings, emptyDevtoolsState, type DevtoolsSelectionOverride } from './model.js'

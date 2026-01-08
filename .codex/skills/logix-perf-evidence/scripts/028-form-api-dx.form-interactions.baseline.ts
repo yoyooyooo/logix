@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks'
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
-import * as Form from '@logix/form'
+import * as Logix from '@logixjs/core'
+import * as Form from '@logixjs/form'
 
 const now = () => performance.now()
 

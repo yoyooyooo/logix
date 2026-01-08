@@ -9,7 +9,7 @@ export default defineConfig({
   // Workspace packages export TS sources (not prebuilt dist). Excluding them from optimizeDeps
   // makes Vite treat them as source modules so changes are reflected during dev.
   optimizeDeps: {
-    exclude: ['@logix/core', '@logix/react', '@logix/devtools-react'],
+    exclude: ['@logixjs/core', '@logixjs/react', '@logixjs/devtools-react'],
   },
   server: {
     fs: {

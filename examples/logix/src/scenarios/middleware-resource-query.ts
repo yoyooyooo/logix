@@ -13,9 +13,9 @@
 import { Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import { fileURLToPath } from 'node:url'
-import * as Logix from '@logix/core'
-import * as EffectOp from '@logix/core/EffectOp'
-import * as Query from '@logix/query'
+import * as Logix from '@logixjs/core'
+import * as EffectOp from '@logixjs/core/EffectOp'
+import * as Query from '@logixjs/query'
 
 const KeySchema = Schema.Struct({
   id: Schema.String,

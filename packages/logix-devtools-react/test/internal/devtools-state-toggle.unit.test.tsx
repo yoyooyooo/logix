@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
 
-describe('@logix/devtools-react · DevtoolsModule state', () => {
+describe('@logixjs/devtools-react · DevtoolsModule state', () => {
   it('toggleOpen action flips the `open` flag in DevtoolsState', async () => {
     const getState = () =>
       devtoolsRuntime.runSync(devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>)

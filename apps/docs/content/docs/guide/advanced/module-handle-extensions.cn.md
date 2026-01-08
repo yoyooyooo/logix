@@ -5,7 +5,7 @@ description: 给自定义 Module 增加更好用的调用入口（在 Logic 的 
 
 这是一种**给自定义 Module 做“作者侧增强”**的玩法：当你在写一个可复用的模块（例如领域包/业务基建包），可以让调用方在拿到模块句柄时同时得到你提供的 `controller`、`services` 等字段。
 
-有些模块会暴露 `controller.*`（例如 `@logix/form`）。这不是“额外一套状态机”，而是把一组常用组合操作封装成更顺手的方法，最终仍然通过模块的 `dispatch/read/changes` 等标准能力工作。
+有些模块会暴露 `controller.*`（例如 `@logixjs/form`）。这不是“额外一套状态机”，而是把一组常用组合操作封装成更顺手的方法，最终仍然通过模块的 `dispatch/read/changes` 等标准能力工作。
 
 这类扩展的目标通常是：
 
@@ -52,7 +52,7 @@ const EXTEND_HANDLE = Symbol.for("logix.module.handle.extend")
 ## 一个完整例子：自定义模块 + services + controller（作者侧）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Context, Effect, Schema } from "effect"
 
 class Api extends Context.Tag("Todo.Api")<Api, { readonly load: () => Effect.Effect<ReadonlyArray<string>> }>() {}

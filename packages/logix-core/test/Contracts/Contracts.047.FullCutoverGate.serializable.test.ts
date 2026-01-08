@@ -28,7 +28,7 @@ describe('contracts (047): Full Cutover Gate (serializable)', () => {
         const after = {
           runId: 'run:test:047:after',
           layer: Layer.mergeAll(
-            Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logix/core-ng' }),
+            Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
             Logix.Kernel.runtimeDefaultServicesOverridesLayer({
               txnQueue: { implId: 'core-ng', notes: 'test: force fallback for serializable gate' },
             }),

@@ -1,7 +1,7 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, FiberId, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { CRUDModule, type CrudApi, type CrudDefaultQueryInput } from '../../src/index.js'
 
 describe('CRUDModule.basic', () => {

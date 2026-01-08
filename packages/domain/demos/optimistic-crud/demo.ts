@@ -1,6 +1,6 @@
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Chunk, Deferred, Effect, FiberId, Layer, Schema, Stream } from 'effect'
-import type { CrudApi, CrudDefaultQueryInput } from '@logix/domain'
+import type { CrudApi, CrudDefaultQueryInput } from '@logixjs/domain'
 import { makeOptimisticCrudModule } from './OptimisticCrudModule.js'
 
 const OrderSchema = Schema.Struct({

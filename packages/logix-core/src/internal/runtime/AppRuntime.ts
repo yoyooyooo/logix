@@ -314,7 +314,7 @@ export const provide = <Sh extends AnyModuleShape, R, E>(
  * Sugar: attach explicit ServiceTag metadata to an app module entry for tag collision detection.
  *
  * - serviceTags should include only services implemented by this module's layer.
- * - Internal-only helper: `@logix/core` blocks `./internal/*` in package exports, so this is not a public API surface.
+ * - Internal-only helper: `@logixjs/core` blocks `./internal/*` in package exports, so this is not a public API surface.
  */
 export const provideWithTags = <Sh extends AnyModuleShape, R, E>(
   module: ModuleTag<any, Sh>,

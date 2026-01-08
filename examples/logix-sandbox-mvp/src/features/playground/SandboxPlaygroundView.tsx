@@ -1,5 +1,5 @@
 import React from 'react'
-import { shallow, useDispatch, useSelector } from '@logix/react'
+import { shallow, useDispatch, useSelector } from '@logixjs/react'
 import { Editor } from '../../components/Editor'
 import type { SandboxRuntime, SandboxTab } from '../../modules/SandboxRuntime'
 import { useStableBusy } from '../../pages/_shared/useStableBusy'

@@ -21,7 +21,7 @@ export interface EvidenceCollector {
   readonly clear: () => void
 }
 
-class EvidenceCollectorTagImpl extends Context.Tag('@logix/core/EvidenceCollector')<
+class EvidenceCollectorTagImpl extends Context.Tag('@logixjs/core/EvidenceCollector')<
   EvidenceCollectorTagImpl,
   EvidenceCollector
 >() {}

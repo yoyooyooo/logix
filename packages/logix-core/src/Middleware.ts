@@ -1,4 +1,4 @@
-// Middleware namespace entry (@logix/core/Middleware).
+// Middleware namespace entry (@logixjs/core/Middleware).
 // - Helpers for EffectOp-based debugging/observation middleware.
 // - Query / DebugObserver capabilities extend from this namespace.
 

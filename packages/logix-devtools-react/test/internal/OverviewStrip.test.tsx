@@ -3,8 +3,8 @@ import React from 'react'
 import { describe, expect, it, afterEach } from 'vitest'
 import { render, fireEvent, waitFor, screen, cleanup } from '@testing-library/react'
 import { Effect, Schema, Layer } from 'effect'
-import * as Logix from '@logix/core'
-import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logix/react'
+import * as Logix from '@logixjs/core'
+import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logixjs/react'
 import { LogixDevtools } from '../../src/LogixDevtools.js'
 import { devtoolsLayer } from '../../src/DevtoolsLayer.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
@@ -62,7 +62,7 @@ afterEach(() => {
   Logix.Debug.clearDevtoolsEvents()
 })
 
-describe('@logix/devtools-react · OverviewStrip', () => {
+describe('@logixjs/devtools-react · OverviewStrip', () => {
   it('aggregates events into buckets and drives timeline range when clicking a bucket', async () => {
     render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>

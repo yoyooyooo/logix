@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export const ThemeSchema = Schema.Union(Schema.Literal('light'), Schema.Literal('dark'), Schema.Literal('system'))
 

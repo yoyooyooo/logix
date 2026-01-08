@@ -12,7 +12,7 @@
  */
 
 import { Context, Effect, Schema, Data } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { ConfirmServiceTag, type ConfirmService, runConfirmAndThenPattern } from '../patterns/confirm.js'
 import { NotificationServiceTag, type NotificationService, runNotifyOnResultPattern } from '../patterns/notification.js'
 

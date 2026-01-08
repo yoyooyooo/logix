@@ -370,7 +370,7 @@ export class SandboxClient {
         const effectiveKernelId = selection?.effectiveKernelId
         const derivedKernelImplementationRef =
           effectiveKernelId === 'core' || effectiveKernelId === 'core-ng'
-            ? { kernelId: effectiveKernelId, packageName: '@logix/core' }
+            ? { kernelId: effectiveKernelId, packageName: '@logixjs/core' }
             : undefined
         this.runKernelSelections.delete(runId)
         resolver.resolve({
@@ -627,13 +627,13 @@ export class SandboxClient {
 
     const wrapper = [
       `import { Effect } from "effect"`,
-      `import * as Logix from "@logix/core"`,
+      `import * as Logix from "@logixjs/core"`,
       ``,
       options.moduleCode,
       ``,
       `const __programModule = ${moduleExport}`,
       `const __kernelId = ${JSON.stringify(effectiveKernelId)}`,
-      `const __kernelLayer = (__kernelId === "core" || __kernelId === "core-ng") ? Logix.Kernel.kernelLayer({ kernelId: __kernelId, packageName: "@logix/core" }) : undefined`,
+      `const __kernelLayer = (__kernelId === "core" || __kernelId === "core-ng") ? Logix.Kernel.kernelLayer({ kernelId: __kernelId, packageName: "@logixjs/core" }) : undefined`,
       ``,
       `export default Effect.gen(function* () {`,
       `  const options = ${JSON.stringify(trialRunOptions, null, 2)}`,

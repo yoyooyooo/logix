@@ -16,7 +16,7 @@ Optimistic updates make the UI respond immediately to user actions while the rea
 ## Basic implementation
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
 const TodoDef = Logix.Module.make('Todo', {

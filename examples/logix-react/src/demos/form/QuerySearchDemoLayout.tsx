@@ -1,5 +1,5 @@
 import React from 'react'
-import { RuntimeProvider, useDispatch, useModule, useSelector } from '@logix/react'
+import { RuntimeProvider, useDispatch, useModule, useSelector } from '@logixjs/react'
 import {
   SearchQuery,
   SearchSpec,

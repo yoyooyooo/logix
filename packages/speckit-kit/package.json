@@ -31,8 +31,8 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
-    "@logix/core": "workspace:*",
-    "@logix/react": "workspace:*",
+    "@logixjs/core": "workspace:*",
+    "@logixjs/react": "workspace:*",
     "@tailwindcss/vite": "^4.1.17",
     "@types/node": "^22.19.1",
     "@types/react": "^19.2.2",

@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import React from 'react'
 import { render, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { Schema, ManagedRuntime, Layer, Effect, Context } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
 
@@ -32,7 +32,7 @@ describe('useModule(ModuleImpl, { key })', () => {
 
   it('reuses the same local instance for the same key across components', async () => {
     const runtime = makeRuntime()
-    const EnvTag = Context.GenericTag<{ readonly name: string }>('@logix/react-test/useModuleImplKeyed/env')
+    const EnvTag = Context.GenericTag<{ readonly name: string }>('@logixjs/react-test/useModuleImplKeyed/env')
     const EnvLayer = Layer.succeed(EnvTag, { name: 'env' })
 
     const Wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -139,7 +139,7 @@ describe('useModule(ModuleImpl, { key })', () => {
 
   it('does not share instances across different RuntimeProvider.layer scopes even with the same key', async () => {
     const runtime = makeRuntime()
-    const EnvTag = Context.GenericTag<{ readonly name: string }>('@logix/react-test/useModuleImplKeyed/scope-env')
+    const EnvTag = Context.GenericTag<{ readonly name: string }>('@logixjs/react-test/useModuleImplKeyed/scope-env')
     const LayerA = Layer.succeed(EnvTag, { name: 'A' })
     const LayerB = Layer.succeed(EnvTag, { name: 'B' })
 

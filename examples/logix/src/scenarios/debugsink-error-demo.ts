@@ -9,7 +9,7 @@
 
 import { Effect, Schema } from 'effect'
 import { fileURLToPath } from 'node:url'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // Module：简单计数模块，带一个会触发错误的 Action

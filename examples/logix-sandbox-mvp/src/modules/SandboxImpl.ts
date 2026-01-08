@@ -1,12 +1,12 @@
 import { SandboxDef } from './SandboxModule'
 import { SandboxLogic } from './SandboxLogic'
 
-const DEFAULT_CODE = `// 简易示例：使用 @logix/core 定义一个计数器 Module + Logic，并在 Runtime 中运行
+const DEFAULT_CODE = `// 简易示例：使用 @logixjs/core 定义一个计数器 Module + Logic，并在 Runtime 中运行
 // - 在 /playground 路由下可以直接运行本示例
 // - 你可以在此基础上改写 state / actions / logic，观察日志、Trace 与 stateSnapshot 的变化
 
 import { Effect, Schema } from "effect";
-import * as Logix from "@logix/core";
+import * as Logix from "@logixjs/core";
 
 const CounterState = Schema.Struct({ count: Schema.Number });
 const CounterActions = { inc: Schema.Void };

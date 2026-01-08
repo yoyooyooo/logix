@@ -9,13 +9,13 @@ A **Handle** is the “usable view” you get when consuming a dependency inside
 
 The goal is not to force everything into one interface, but to provide a stable vocabulary so you can consistently choose one of two shapes and keep consumption patterns aligned.
 
-In `@logix/core`, this concept lives in the `Logix.Handle` submodule (also available via `@logix/core/Handle`).
+In `@logixjs/core`, this concept lives in the `Logix.Handle` submodule (also available via `@logixjs/core/Handle`).
 
 ## 1) Two kinds of handles (two packaging directions)
 
 ### 1.1 ModuleHandle (a handle for a custom Module)
 
-When you model something as a custom Module (the primary shape of packages like `@logix/query` / `@logix/form`):
+When you model something as a custom Module (the primary shape of packages like `@logixjs/query` / `@logixjs/form`):
 
 - In business logic, you call `yield* $.use(OtherModule)` and get a `ModuleHandle`.
 - The base capabilities are stable: `read/changes/dispatch/actions`.
