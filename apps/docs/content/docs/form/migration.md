@@ -1,41 +1,41 @@
 ---
-title: 迁移指南（traits → rules）
-description: 把常规校验从 traits.check 迁移到 rules，并保留 traits 作为高级入口。
+title: Migration guide (traits -> rules)
+description: Move regular validation from traits.check to rules, and keep traits as an advanced entry.
 ---
 
-## 1) 迁移目标
+## 1) Goal
 
-推荐把表单的校验收敛到 `rules`：
+Recommended: converge form validation into `rules`:
 
-- 业务侧默认只写 `derived + rules`
-- `traits` 保留但更偏高级能力（computed/source/link 或底层对照）
+- Product code defaults to `derived + rules`
+- Keep `traits` for more advanced capabilities (computed/source/link or low-level comparisons)
 
-## 2) 字段校验：`traits.<path>.check` → `rules: z(z.field(...))`
+## 2) Field validation: `traits.<path>.check` -> `rules: z(z.field(...))`
 
-迁移前（traits）：
+Before (traits):
 
 ```ts
 traits: Form.traits(Values)({
   name: {
-    check: Form.Rule.make({ required: "必填" }),
+    check: Form.Rule.make({ required: "Required" }),
   },
 })
 ```
 
-迁移后（rules）：
+After (rules):
 
 ```ts
 const $ = Form.from(Values)
 const z = $.rules
 
 rules: z(
-  z.field("name", { required: "必填" }),
+  z.field("name", { required: "Required" }),
 )
 ```
 
-## 3) 对象级 refine：写回 `$self`，避免覆盖子字段错误
+## 3) Object-level refine: write to `$self` to avoid overwriting child errors
 
-当规则需要跨字段校验一个对象，建议写回 `errors.<path>.$self`：
+When a rule validates an object across fields, prefer writing to `errors.<path>.$self`:
 
 ```ts
 rules: z(
@@ -44,14 +44,14 @@ rules: z(
     {
       deps: ["password", "confirmPassword"],
       validate: (security: any) =>
-        security?.password === security?.confirmPassword ? undefined : "两次密码不一致",
+        security?.password === security?.confirmPassword ? undefined : "Passwords do not match",
     },
     { errorTarget: "$self" },
   ),
 )
 ```
 
-## 4) 列表校验：显式声明 identity + item/list 两个 scope
+## 4) List validation: declare identity + item/list scopes explicitly
 
 ```ts
 rules: z(
@@ -59,17 +59,17 @@ rules: z(
     identity: { mode: "trackBy", trackBy: "id" },
     item: {
       deps: ["name", "quantity"],
-      validate: (row: any) => (String(row?.name ?? "").trim() ? undefined : { name: "必填" }),
+      validate: (row: any) => (String(row?.name ?? "").trim() ? undefined : { name: "Required" }),
     },
     list: {
-      validate: (rows) => ({ $list: Array.isArray(rows) && rows.length > 0 ? undefined : "至少一行" }),
+      validate: (rows) => ({ $list: Array.isArray(rows) && rows.length > 0 ? undefined : "At least one row" }),
     },
   }),
 )
 ```
 
-## 5) 常见坑
+## 5) Common pitfalls
 
-- 忘了写 `deps`：跨字段/跨行依赖不会触发增量校验（看起来像“规则不生效”）。
-- 忘了写 list identity：动态数组会降级为不稳定 identity（重排时更容易出现错位）。
-- 仍在 `traits` 里写大量 `check`：建议迁移到 `rules`，把 `traits` 留给派生/资源或必要的高级声明。
+- Forgot `deps`: cross-field / cross-row dependencies won’t trigger incremental validation (looks like “the rule doesn’t work”).
+- Forgot list identity: dynamic arrays degrade to unstable identity (more drift under reorder).
+- Still writing lots of `check` in `traits`: migrate to `rules` and reserve `traits` for derivations/resources or necessary advanced declarations.

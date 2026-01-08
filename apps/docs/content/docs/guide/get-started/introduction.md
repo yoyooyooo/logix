@@ -1,66 +1,74 @@
 ---
-title: '介绍'
-description: 欢迎来到 Logix —— Effect-Native 的前端状态与业务逻辑运行时。
+title: Introduction
+description: Welcome to Logix — an Effect-native runtime for frontend state and business logic.
 ---
 
-欢迎来到 Logix。
+Welcome to Logix.
 
-Logix 是一个专为现代前端应用设计的 **Effect-Native 状态与业务逻辑运行时**。它深度集成了 **Effect** 生态系统，旨在解决复杂业务逻辑中的**异步编排**、**状态联动**和**类型安全**问题。
+Logix is an **Effect-native runtime for state and business logic** designed for modern frontend applications. It integrates deeply with the **Effect** ecosystem and is built to solve the hard parts of real-world business logic: **async orchestration**, **state linkage**, and **type safety**.
 
-## 这些场景让你头疼吗？
+## Do these situations hurt?
 
 > [!TIP]
-> 如果以下任意一条击中你，Logix 可能正是你需要的。
+> If any of these resonate with you, Logix might be what you need.
 
-1. **useEffect 竞态地狱**：快速切换 Tab，请求 A 的结果覆盖了请求 B，UI 闪烁混乱
-2. **状态同步噩梦**：跨组件传递状态，prop drilling 层层嵌套，Context 一改全 re-render
-3. **异步逻辑散落**：取消、重试、loading 状态分散在各处，bug 此起彼伏
-4. **表单联动调试**：字段 A 变化触发 B 校验再触发 C 禁用...链条断在哪？DevTools 看不见
+1. **useEffect race-condition hell**: you switch tabs quickly, response A overwrites response B, and the UI flickers.
+2. **State sync nightmare**: state is passed across components via prop drilling; one Context change causes a full re-render.
+3. **Scattered async logic**: cancellation, retries, and loading states live everywhere; bugs never stop.
+4. **Form linkage debugging**: field A changes → B validates → C becomes disabled… where did the chain break? DevTools can’t tell you.
 
-### 适合谁
+### Who is this for?
 
-- 有 React / Vue / 前端工程经验，希望找到比 `useState + useEffect` 更适合复杂业务的方案；
-- 从未接触过 Effect / 函数式编程，也不想一上来就被大量新名词劝退。
+- You have React / Vue / frontend engineering experience and want something better than `useState + useEffect` for complex business logic.
+- You’re new to Effect / functional programming and don’t want to be overwhelmed by new terminology on day one.
 
-### 前置知识
+### Prerequisites
 
-- 基本的 TypeScript 使用经验；
-- 理解组件、状态、事件处理等前端基础概念。
+- Basic TypeScript experience
+- Familiarity with core frontend concepts: components, state, event handling
 
-### 读完你将获得
+### What you’ll get
 
-- 知道 Logix 想解决什么问题，以及它与 Redux / MobX 等框架的区别；
-- 对 “Module / Logic / Runtime / Bound API `$`” 有一个直观印象；
-- 清晰的下一步学习路径（应该先读哪些文档、跑哪个示例）。
+- A clear sense of what Logix is built to solve, and how it differs from Redux / MobX.
+- An intuitive picture of “Module / Logic / Runtime / Bound API `$`”.
+- A concrete next-step learning path (what to read and which examples to run).
 
-## 为什么选择 Logix？
+## Why Logix?
 
-### 1. 意图优先 (Intent-First)
+### 1. Intent-first
 
-UI 组件只负责渲染和派发意图（Action），不再包含复杂的业务逻辑。
+UI components focus on rendering and dispatching intent (Actions), instead of embedding complex business logic.
 
-### 2. 响应式流 (Reactive Flows)
+### 2. Reactive flows
 
-使用声明式的 Flow API 处理异步竞态、防抖、节流和状态联动。告别 `useEffect` 瀑布流。
+Use declarative Flow APIs to handle async races, debouncing, throttling, and state linkage—without the `useEffect` waterfall.
 
-### 3. 类型安全 (Type-Safe)
+### 3. Type-safe
 
-基于 `effect/Schema` 的强类型定义，从 API 到 UI，享受极致的自动补全和类型检查。
+With strong typing based on `effect/Schema`, you get great autocomplete and type checking from API to UI.
 
-### 4. 模块化 (Modular)
+### 4. Modular
 
-将业务逻辑封装在独立的 Module 中，易于测试、复用和维护。
+Encapsulate business logic in independent Modules that are easy to test, reuse, and maintain.
 
-## 下一步：从哪里开始？
+## Next: where to start
 
-如果你想**最快速度跑起来一个 Demo**，推荐按下面顺序阅读：
+If you want to **get a demo running as quickly as possible**, read in this order:
 
-1. [快速开始：第一个应用](../get-started/quick-start) —— 用不到 30 分钟跑通一个计数器；
-2. [教程：第一个 Logix 表单](../get-started/tutorial-first-app) —— 体验字段联动与异步校验；
-3. [Modules & State](../essentials/modules-and-state) —— 系统地理解 Module / State / Action。
+1. [Quick Start: Your first app](../get-started/quick-start) — a counter app in under 30 minutes.
+2. [Tutorial: Your first business flow (cancelable search)](../get-started/tutorial-first-app) — debouncing, auto-cancel, and error handling.
+3. [Tutorial: Complex list query](../get-started/tutorial-complex-list) — production patterns for multi-source triggers, auto-reset, and race handling.
+4. [Modules & State](../essentials/modules-and-state) — a systematic model of Module / State / Action.
 
-如果你对“为什么要这么设计”感兴趣，可以在完成上面三步后，继续阅读：
+> [!TIP]
+> If you’re building real forms (multiple fields, validations, dynamic arrays), don’t hand-roll form state in Get Started.
+> Follow the `@logix/form` track instead—it’s faster and the boundaries are already baked in.
+>
+> - [When to use Form](../../form/when-to-use)
+> - [Form Quick Start](../../form/quick-start)
+
+If you’re interested in the “why” behind the design, continue after the three steps above:
 
 - [Thinking in Logix](../essentials/thinking-in-logix)
 - [Flows & Effects](../essentials/flows-and-effects)
-- [Effect 速成：只学你需要的 20%](../essentials/effect-basics)
+- [Effect basics: learn the 20% you need](../essentials/effect-basics)

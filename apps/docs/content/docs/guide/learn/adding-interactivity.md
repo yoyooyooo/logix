@@ -1,59 +1,58 @@
 ---
-title: 逻辑流 (Logic Flows)
-description: 使用 Effect 编写响应式的业务逻辑。
+title: Logic flows
+description: Write reactive business logic with Effect.
 ---
 
-在 Logix 中，业务逻辑不再是散落在组件中的回调函数，而是以 **Logic Flows** 的形式存在的。Flow 本质上是一个响应式的管道：
+In Logix, business logic is no longer scattered across component callbacks. Instead, it lives as **Logic Flows**. A Flow is essentially a reactive pipeline:
 
-`Event Source (事件源) -> Transformation (转换) -> Effect Execution (副作用执行)`
+`Event Source -> Transformation -> Effect Execution`
 
-### 适合谁
+### Who is this for?
 
-- 已经能写简单的 `$.onAction / $.onState`，希望掌握更复杂的“防抖 + 竞态 + 合流”模式；
-- 准备用 Logix 承载搜索、轮询、批处理等“持续运行的业务流程”。
+- You can already write simple `$.onAction / $.onState` logic and want more advanced patterns (debounce + race handling + merging).
+- You want to use Logix to host long-running business processes such as search, polling, and batching.
 
-### 前置知识
+### Prerequisites
 
-- 读过 [Flows & Effects](../essentials/flows-and-effects)，理解 `run / runLatest / runExhaust` 的基本语义；
-- 对 Effect 和 Stream 有基本直觉（可以先只看 Logic DSL/Flow API 两个 Tab，Raw Effect Tab 仅在需要深入时阅读）。
+- You’ve read [Flows & Effects](../essentials/flows-and-effects) and understand `run / runLatest / runExhaust`.
+- You have a basic intuition for Effect and Stream (start with the Logic DSL / Flow API tabs; read Raw Effect only when needed).
 
-### 读完你将获得
+### What you’ll get
 
-- 能够用 Fluent DSL 写出生产级的“监听状态变化 → 防抖 → 异步请求 → 更新状态”逻辑；
-- 理解同一段逻辑在 Logic DSL / Flow API / Raw Effect 三层的对应关系，为后续封装 Pattern 做准备。
+- Write production-grade logic: “watch state → debounce → async request → update state” using the Fluent DSL.
+- Understand the mapping between Logic DSL / Flow API / Raw Effect, preparing you to build reusable Patterns.
 
-## 核心 API
+## Core APIs
 
-Bound API (`$`) 提供了构建 Flow 的入口：
+The Bound API (`$`) is the entry point for building Flows:
 
-- **`$.onAction`**: 监听 Action 派发。
-- **`$.onState`**: 监听 State 变化。
-- **`$.flow`**: 提供流式操作符（如 `debounce`, `filter`）和执行策略（如 `run`, `runLatest`）。
+- **`$.onAction`**: watch Action dispatches
+- **`$.onState`**: watch State changes
+- **`$.flow`**: stream operators (e.g. `debounce`, `filter`) and execution strategies (e.g. `run`, `runLatest`)
 
-## 示例：搜索自动补全
+## Example: search autocomplete
 
-这是一个典型的“监听状态变化 -> 防抖 -> 竞态处理 -> 异步请求”的场景。
+This is a classic “watch state → debounce → handle races → async request” scenario.
 
 ```typescript tab="Logic DSL"
 import { Effect } from 'effect'
 
 SearchModule.logic(($) =>
   Effect.gen(function* () {
-    // 1. 监听 keyword 状态变化 (Logic DSL)
-    // $.onState 返回的是一个 Fluent Flow 对象，可以直接链式调用
-    yield* $.onState((s) => s.keyword)
-      .debounce(300) // 防抖 300ms
-      .filter((kw) => kw.length > 2) // 仅当长度 > 2 时触发
-      .runLatest((kw) =>
+    // 1) Watch keyword changes (Logic DSL)
+    // $.onState returns a Fluent Flow object you can chain directly.
+    yield* $.onState((s) => s.keyword).pipe(
+      $.flow.debounce(300), // debounce 300ms
+      $.flow.filter((kw) => kw.length > 2), // trigger only when length > 2
+      $.flow.runLatest((kw) =>
         Effect.gen(function* () {
-          // 使用 runLatest 处理竞态
+          // runLatest handles races
           const api = yield* $.use(SearchApi)
           const results = yield* api.search(kw)
-          yield* $.state.mutate((draft) => {
-            draft.results = results
-          })
+          yield* $.state.update((s) => ({ ...s, results }))
         }),
-      )
+      ),
+    )
   }),
 )
 ```
@@ -63,20 +62,18 @@ import { Effect } from 'effect'
 
 SearchModule.logic(($) =>
   Effect.gen(function* () {
-    // 1. 获取原始 Stream
+    // 1) Get the raw Stream
     const keyword$ = $.flow.fromState((s) => s.keyword)
 
-    // 2. 定义副作用
+    // 2) Define side effect
     const searchEffect = (kw: string) =>
       Effect.gen(function* () {
         const api = yield* $.use(SearchApi)
         const results = yield* api.search(kw)
-        yield* $.state.mutate((draft) => {
-          draft.results = results
-        })
+        yield* $.state.update((s) => ({ ...s, results }))
       })
 
-    // 3. 手动组装 Flow
+    // 3) Assemble the Flow manually
     yield* keyword$.pipe(
       $.flow.debounce(300),
       $.flow.filter((kw) => kw.length > 2),
@@ -89,51 +86,49 @@ SearchModule.logic(($) =>
 ```typescript tab="Raw Effect"
 import { Effect, Stream } from 'effect'
 
-// 这展示了 Logix 底层是如何使用 Effect Stream 实现的
+// This shows how Logix can be implemented with Effect Stream under the hood.
 SearchModule.logic(($) =>
   Effect.gen(function* () {
-    // 1. 从 State 获取 Stream
+    // 1) Get a Stream from State
     yield* Stream.fromEffect($.state.read).pipe(
       Stream.map((s) => s.keyword),
-      Stream.changes, // 仅在值变化时发射
+      Stream.changes, // emit only when value changes
       Stream.debounce('300 millis'),
       Stream.filter((kw) => kw.length > 2),
-      // runLatest 本质上就是 switch map
+      // runLatest is essentially a switch map
       Stream.flatMap(
         (kw) =>
           Effect.gen(function* () {
             const api = yield* $.use(SearchApi)
             const results = yield* api.search(kw)
-            yield* $.state.mutate((draft) => {
-              draft.results = results
-            })
+            yield* $.state.update((s) => ({ ...s, results }))
           }),
         { switch: true },
       ),
-      Stream.runDrain, // 执行流
+      Stream.runDrain, // run the stream
     )
   }),
 )
 ```
 
-## 执行策略 (Concurrency Strategies)
+## Concurrency strategies
 
-Logix 提供了多种执行策略来处理并发事件，这些策略直接对应 `FlowBuilder` 的实现：
+Logix provides multiple execution strategies for concurrent events. They map directly to the `FlowBuilder` implementation:
 
-| API               | 语义                   | 适用场景                                                           |
+| API               | Semantics              | Typical use cases                                                  |
 | :---------------- | :--------------------- | :----------------------------------------------------------------- |
-| **`run`**         | **串行 (Sequential)**  | 默认策略。前一个 Effect 执行完才执行下一个。适合大多数有序操作。   |
-| **`runParallel`** | **并行 (Unbounded)**   | 同时处理所有事件，互不阻塞。适合日志上报、独立埋点。               |
-| **`runLatest`**   | **最新优先 (Switch)**  | 新事件到来时，取消正在执行的 Effect。适合搜索、Tab 切换。          |
-| **`runExhaust`**  | **阻塞防重 (Exhaust)** | 前一个 Effect 未完成时，忽略新事件。适合表单提交（防止重复点击）。 |
-| （已移除）        |                        |                                                                    |
+| **`run`**         | **Sequential**         | Default. Runs one Effect at a time; good for ordered operations.   |
+| **`runParallel`** | **Unbounded parallel** | Run all events concurrently; good for independent logging/tracking.|
+| **`runLatest`**   | **Switch (latest wins)** | Cancel in-flight Effect on new events; good for search/tab switch. |
+| **`runExhaust`**  | **Exhaust**            | Ignore new events while running; good for submit (prevent double-click). |
+| (removed)         |                        |                                                                    |
 
-## 状态更新
+## State updates
 
-在 Flow 中，我们通常使用以下方式更新状态：
+In Flows, you typically update state with:
 
-- **`$.state.mutate(draft => ...)`**: 基于 `mutative` 的可变风格更新（推荐，默认优先）。
-- **`$.state.update(prev => next)`**: 纯函数整棵替换（通常会被视为全量写入，谨慎使用）。
+- **`$.state.update(prev => next)`**: pure functional update
+- **`$.state.mutate(draft => ...)`**: mutable Draft update (recommended; powered by `mutative`)
 
 ```typescript
 $.onAction('toggle').run(() =>
@@ -143,16 +138,16 @@ $.onAction('toggle').run(() =>
 )
 ```
 
-## 组合与复用
+## Composition and reuse
 
-由于 Logic 本质上是 `Effect`，你可以轻松地组合它们：
+Because Logic is an `Effect` under the hood, you can compose them easily:
 
 ```typescript
 const FeatureLogic = Effect.all([SearchLogic, PaginationLogic, FilterLogic])
 ```
 
-## 下一步
+## Next
 
-- 深入了解状态管理策略：[管理状态](./managing-state)
-- 学习模块生命周期与 Watcher 模式：[生命周期与 Watcher](./lifecycle-and-watchers)
-- 掌握跨模块通信：[跨模块通信](./cross-module-communication)
+- State management strategies: [Managing state](./managing-state)
+- Lifecycle and watcher patterns: [Lifecycle and watchers](./lifecycle-and-watchers)
+- Cross-module collaboration: [Cross-module communication](./cross-module-communication)

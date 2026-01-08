@@ -1,71 +1,71 @@
 ---
-title: 收敛调度控制面
-description: 通过 Runtime/Provider/模块级覆盖，控制 Trait 收敛策略（auto/full/dirty）与预算，支持止血回退与默认值调参。
+title: Converge scheduling control plane
+description: Control trait convergence strategy (auto/full/dirty) and budgets via Runtime/Provider/module overrides, with safe rollback and tunable defaults.
 ---
 
-# 收敛调度控制面
+# Converge scheduling control plane
 
-这是一份“能直接上手”的高级指南：教你在不理解底层细节的前提下，通过少量配置就能做到：
+This is a hands-on advanced guide: without knowing the implementation details, you can achieve the following with a small amount of configuration:
 
-- **止血**：当某个页面/模块突然变慢或不稳定时，快速回退到更稳妥的模式（只影响局部）。
-- **调参**：在不影响整体的情况下，逐步试探更合适的默认值（并能回滚）。
+- **Rollback (“stop the bleeding”)**: when a page/module suddenly becomes slow or unstable, quickly fall back to a safer mode (locally scoped).
+- **Tune**: gradually probe better defaults without impacting the whole app (and with rollback).
 
-## 适合谁
+## Who is this for?
 
-- 你在用 Logix 做表单联动/派生字段/规则计算，出现交互卡顿或一次升级后性能波动；
-- 你希望“不改业务逻辑”就能快速验证：问题是不是出在收敛策略上，并能安全回退。
+- You use Logix for form interactions / derived fields / rule computations and you see interaction jank or performance regression after an upgrade.
+- You want to quickly validate (without changing business logic) whether the issue is in convergence strategy and roll back safely.
 
-## 先用一句话理解「收敛」
+## “Converge” in one sentence
 
-你可以把 **收敛（converge）** 理解为：
+You can think of **convergence (converge)** as:
 
-> 当 state 发生变化后，运行时需要把一批“派生值 / 联动规则 / computed 字段”重新算一遍，让最终状态一致。
+> After state changes, the runtime recomputes a set of “derived values / linkage rules / computed fields” to make the final state consistent.
 
-收敛的核心矛盾只有一个：
+The core tradeoff is simple:
 
-- **全量重算**（稳，但可能浪费）；
-- **只重算受影响部分**（快，但需要更多判断/更依赖依赖关系准确）。
+- **Full recompute** (stable but can be wasteful)
+- **Recompute only affected parts** (faster but needs more decisions and accurate dependency relationships)
 
-控制面就是让你在这两者之间“可控地切换”。
+The control plane lets you switch between them in a controlled way.
 
-## 你能控制什么
+## What you can control
 
-### 1) 调度策略：`traitConvergeMode`
+### 1) Strategy: `traitConvergeMode`
 
-把它当成“三档开关”即可：
+Treat it as a three-position switch:
 
-- `"auto"`（默认）：运行时自己决定“这次用全量还是局部”，目标是在不牺牲稳定性的前提下尽量快。
-- `"full"`（最稳）：每次都做全量收敛，最适合当作“稳定基线/止血回退”。
-- `"dirty"`（更激进）：每次尽量只重算受影响部分。适合你非常确定写入是局部的、且联动依赖关系足够准确的模块。
+- `"auto"` (default): runtime decides “full vs partial” per transaction, aiming to be as fast as possible without sacrificing stability.
+- `"full"` (most stable): always do full convergence; great as a “stable baseline / rollback mode”.
+- `"dirty"` (more aggressive): always try to recompute only affected parts. Use when you’re confident writes are local and dependencies are accurate.
 
-### 2) 两个预算：`traitConvergeBudgetMs` / `traitConvergeDecisionBudgetMs`
+### 2) Two budgets: `traitConvergeBudgetMs` / `traitConvergeDecisionBudgetMs`
 
-你不需要知道具体怎么算，只要记住它们的“手感”：
+You don’t need to know the exact algorithm; just remember the “feel”:
 
-- `traitConvergeBudgetMs`：**这一笔交互最多愿意花多少时间做收敛**（越大越“肯算”，越小越“保响应”）。
-- `traitConvergeDecisionBudgetMs`：`auto` 在做“该不该局部重算”的判断时允许花的时间（越小越保守，越容易直接回退到 `"full"`）。
+- `traitConvergeBudgetMs`: **how much time you’re willing to spend converging for one interaction** (bigger = “compute more”, smaller = “protect responsiveness”).
+- `traitConvergeDecisionBudgetMs`: how much time `auto` can spend deciding “full vs partial” (smaller = more conservative, more likely to fall back to `"full"`).
 
-如果你完全不配：运行时会使用默认值（目前 `traitConvergeMode="auto"`、`traitConvergeBudgetMs=200ms`、`traitConvergeDecisionBudgetMs=0.5ms`）。
+If you configure nothing, runtime uses defaults (currently `traitConvergeMode="auto"`, `traitConvergeBudgetMs=200ms`, `traitConvergeDecisionBudgetMs=0.5ms`).
 
-### 3) time-slicing：`traitConvergeTimeSlicing`（显式 Opt-in）
+### 3) Time-slicing: `traitConvergeTimeSlicing` (explicit opt-in)
 
-当模块里 traits 数量很大（例如 1000+）且交互频繁时，你可能会遇到“每次输入都要检查/收敛一大堆派生”的硬上限。  
-这时可以考虑 time-slicing。
+When a module has many traits (e.g. 1000+) and interactions are frequent, you may hit a hard limit: “every keystroke needs to check/converge a lot of derivations”.
+That’s when you should consider time-slicing.
 
-先把几个概念讲清楚（不需要理解底层细节）：
+First, a few concepts (no implementation detail required):
 
-- **一次事务窗口 / 一笔交互窗口**：你可以粗略理解为“一次状态提交”（例如一次 `dispatch`、一次 `$.state.mutate(...)`、一次业务逻辑触发的状态写入）。运行时会把这个窗口内产生的所有写入合并成一次提交。
-- **immediate**：这个窗口结束时就必须是最新值（适合关键业务字段、校验、提交门控等）。
-- **deferred**：允许短时间滞后，先不在当前窗口算，之后会补算（适合 UI 展示/格式化/非关键统计等）。
+- **A transaction / interaction window**: roughly “one state commit” (e.g. one `dispatch`, one `$.state.mutate(...)`, one state write triggered by business logic). Runtime merges all writes in the window into one commit.
+- **immediate**: must be up-to-date by the end of the window (for key business fields, validation, submission gating, etc.).
+- **deferred**: allowed to lag briefly; skip computation in the current window and catch up later (good for UI display, formatting, non-critical stats).
 
-time-slicing 的核心做法很简单：
+The core idea of time-slicing is simple:
 
-- **把 traits 显式分两类**：`immediate`（必须同窗口收敛）与 `deferred`（允许短暂读到旧值）；
-- **每次窗口只收敛 immediate**，把 deferred 的工作合并到后续窗口里补算（带上界，避免饿死）。
+- **Split traits explicitly** into two groups: `immediate` (must converge within the same window) and `deferred` (may temporarily read stale values).
+- **Only converge immediate on each window**, and coalesce deferred work to be caught up later (bounded to avoid starvation).
 
-重要：**time-slicing 不会自动把任何 trait 变成 deferred**。只有你显式标了 `scheduling: "deferred"` 的 `computed/link` 才会被延后；没标的仍然按 immediate 处理。
+Important: **time-slicing does not automatically mark anything as deferred**. Only `computed/link` with explicit `scheduling: "deferred"` are deferred; everything else remains immediate.
 
-开关在 stateTransaction 下（默认关闭）：
+The switch lives under `stateTransaction` (off by default):
 
 ```ts
 import * as Logix from "@logix/core"
@@ -74,81 +74,81 @@ const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
     traitConvergeTimeSlicing: {
       enabled: true,
-      debounceMs: 16,   // “停下来多久才补算”（建议从 16ms/一帧开始）
-      maxLagMs: 200,    // “最晚多久必须补上”（避免 deferred 永远不补算）
+      debounceMs: 16, // "how long to wait before catching up" (start with 16ms / one frame)
+      maxLagMs: 200, // "latest time to catch up" (avoid deferred never catching up)
     },
   },
 })
 ```
 
-下面用更直白的话解释这三个字段：
+In plain terms:
 
-- `enabled`：是否启用 time-slicing（默认 `false`）。
-- `debounceMs`（合并窗口，单位 ms）：当你连续输入/连续触发事务时，运行时会先“攒一攒” deferred 的工作；**当你停止触发并持续 `debounceMs` 没有新事务**，就会补算一次 deferred（默认 `16`）。
-- `maxLagMs`（最大滞后上界，单位 ms）：从第一次“需要补算 deferred”开始计时，**即使你一直在连续输入**，也会在到达 `maxLagMs` 后强制补算一次（避免 deferred 永远不补算，默认 `200`）。  
-  你可以把它当成：deferred 值“允许过期”的最长时间。
+- `enabled`: whether to enable time-slicing (default `false`).
+- `debounceMs` (coalescing window, ms): during continuous input/transactions, runtime “batches” deferred work; **when there are no new transactions for `debounceMs`**, deferred work is caught up once (default `16`).
+- `maxLagMs` (max lag bound, ms): starting from the first time deferred work is needed, **even if input continues**, runtime forces a catch-up after `maxLagMs` (default `200`) so deferred work doesn’t starve.
+  Think of it as the maximum time deferred values are allowed to be stale.
 
-### 怎么理解「最大滞后上界（maxLagMs）」？
+### Understanding `maxLagMs`
 
-假设 `maxLagMs=200`：
+Assume `maxLagMs = 200`:
 
-- 你在输入框里持续打字：deferred 字段（例如展示用 `priceText`）可能会暂时保持旧值；
-- 但它**最晚**会在“第一次输入触发后”的 200ms 左右补上一次（中间可能因为你暂停输入更早补算）。
+- While you keep typing, deferred fields (e.g. display-only `priceText`) may stay stale temporarily.
+- But they will be caught up **no later than** ~200ms after the first trigger (or earlier if you pause input).
 
-你应该如何选它：
+How to choose:
 
-- UI 只要“别抖、别卡”，允许一点滞后：从 `200ms` 开始。
-- UI 必须更“跟手”：尝试 `100ms`，甚至更小（但补算更频繁，收益会变小）。
-- UI 可以明显晚一点也没关系（例如非关键统计、辅助提示）：可以 `300ms~500ms`，但注意用户是否会感到“数值不可信”。
+- If you mainly want “no jitter, no lag” and can tolerate a bit of staleness: start with `200ms`.
+- If UI must feel more “immediate”: try `100ms` or smaller (more frequent catch-ups; diminishing returns).
+- If UI can be noticeably delayed (non-critical stats, helper hints): use `300ms~500ms`, but watch whether users feel values are “untrustworthy”.
 
-### 什么时候建议开 time-slicing？
+### When should you enable time-slicing?
 
-- traits/派生很多（比如 1000+）且交互高频，明显感觉“每次输入都在做很多不必要的派生计算”。
-- 你能明确划分：哪些派生是“必须立刻一致”的（immediate），哪些是“允许短暂过期”的（deferred）。
+- You have many traits/derivations (1000+) with high-frequency interactions, and you clearly feel “every input recomputes too much”.
+- You can clearly classify which derivations must be immediate vs can be deferred.
 
-### 什么时候不建议开？
+### When should you avoid it?
 
-- 你没有把握哪些字段可以延后；或者业务强一致依赖派生结果（校验/提交/库存/金额等）。
-- 你希望“每次输入后 UI 立刻完全一致”，不能接受短暂过期（哪怕 100ms）。
+- You’re not confident which fields can be delayed; or business correctness strongly depends on derived results (validation/submission/inventory/amounts).
+- You require UI to be fully consistent after every input and cannot accept even brief staleness (e.g. 100ms).
 
-### 怎么调参（推荐流程）
+### How to tune (recommended flow)
 
-1. **只在一个卡顿的模块上试**（用模块级 override，见“配方 E”），不要全局一刀切。
-2. 先把最安全的一小批派生标成 `deferred`（例如展示文案、格式化、非关键统计），观察体验。
-3. 如果还卡：再逐步扩大 deferred 范围，或适当增大 `debounceMs`（更容易合并高频输入）。
-4. 如果“值更新太慢/用户不信任”：减小 `maxLagMs`，或把关键派生改回 immediate。
+1. **Try it on one problematic module first** (module-level override; see “Recipe E”), don’t apply globally.
+2. Start by marking a small, safest set as `deferred` (display text, formatting, non-critical stats), and observe UX.
+3. If still janky: gradually expand the deferred set or increase `debounceMs` (better coalescing under high-frequency input).
+4. If values feel “too slow / untrustworthy”: decrease `maxLagMs`, or move key derivations back to immediate.
 
-### 我怎么确认它真的生效了？
+### How do I confirm it’s actually working?
 
-最直接的判断方式是“行为差异”：
+The most direct check is behavioral difference:
 
-- 开启后：同一次输入/事务结束时，immediate 字段已更新，但 deferred 字段可能还没更新；在 `debounceMs`/`maxLagMs` 到达后会补上。
-- 未开启（或没有任何 deferred）：每次事务结束时，所有派生都应在同一窗口内完成更新（行为与以前一致）。
+- Enabled: at the end of one input/transaction, immediate fields are updated, but deferred fields might not be; they will catch up after `debounceMs`/`maxLagMs`.
+- Disabled (or no deferred traits): at the end of each transaction, all derivations update within the same window (same behavior as before).
 
-### 4) 覆盖范围：全局 / 模块级 / Provider 子树
+### 4) Override scopes: global / module-level / Provider subtree
 
-你可以在三个层级注入配置：
+You can inject config at three levels:
 
-1. **Runtime 默认**：全局生效（适合做“全局开关/默认值”）。
-2. **按模块覆盖**：只影响某个模块（最常用的止血方式）。
-3. **Provider 子树覆盖**：只影响某棵 React 子树（适合在页面级做试探，或只对某个业务域调参）。
+1. **Runtime default**: global (good for “global switches/defaults”).
+2. **Per-module override**: affects only one module (most common rollback).
+3. **Provider subtree override**: affects only a React subtree (page-level experiments or per-domain tuning).
 
-覆盖优先级为：`provider > runtime_module > runtime_default > builtin`，且配置会在**下一笔事务**开始时生效（不会打断一半的交互）。
+Precedence is `provider > runtime_module > runtime_default > builtin`, and config takes effect from the **next transaction** (does not interrupt an in-flight interaction).
 
-## 先解决一个现实问题：`moduleId` 到底填什么？
+## Practical question: what is `moduleId`?
 
-`moduleId` 就是你创建模块时传给 `Logix.Module.make(...)` 的那串字符串：
+`moduleId` is the string you passed to `Logix.Module.make(...)` when creating the module:
 
 ```ts
 const OrderForm = Logix.Module.make("OrderForm", { /* ... */ })
-// 这里的 "OrderForm" 就是 moduleId
+// "OrderForm" here is the moduleId
 ```
 
-如果你不确定：直接在代码里搜 `Module.make("OrderForm"` 或搜 `Module.make(` 看看有哪些 id。
+If you’re unsure, search your codebase for `Module.make("OrderForm"` or `Module.make(` to see available ids.
 
-## 常用配方
+## Common recipes
 
-### 配方 A：模拟“旧基线”（全量收敛）
+### Recipe A: emulate a “stable baseline” (full converge)
 
 ```ts
 import * as Logix from "@logix/core"
@@ -160,9 +160,9 @@ const runtime = Logix.Runtime.make(RootImpl, {
 })
 ```
 
-### 配方 B：只对某个模块止血回退（推荐）
+### Recipe B: rollback for one module only (recommended)
 
-当你发现“只有某个页面/模块卡”，优先用这个方式止血：其它模块继续走默认策略。
+When “only one page/module is janky”, prefer this local rollback: other modules keep the default strategy.
 
 ```ts
 import * as Logix from "@logix/core"
@@ -177,7 +177,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 })
 ```
 
-### 配方 C：在 React 子树范围内试探默认值（页面级调参）
+### Recipe C: probe defaults within a React subtree (page-level tuning)
 
 ```tsx
 import * as Logix from "@logix/core"
@@ -194,25 +194,25 @@ const overrides = Logix.Runtime.stateTransactionOverridesLayer({
 export function App({ runtime }: { runtime: Logix.ManagedRuntime<any, any> }) {
   return (
     <RuntimeProvider runtime={runtime} layer={overrides}>
-      {/* 这棵子树下生效 */}
+      {/* Effective within this subtree */}
     </RuntimeProvider>
   )
 }
 ```
 
-### 配方 D：运行时热切换某个模块（排查用，避免频繁发版）
+### Recipe D: hot switch one module at runtime (for diagnosis; avoid frequent releases)
 
 ```ts
 import * as Logix from "@logix/core"
 
 Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", { traitConvergeMode: "full" })
-// 取消覆盖：传 undefined
+// Remove override: pass undefined
 Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", undefined)
 ```
 
-> 提示：热切换是止血/排查工具，不建议把它当成长期配置系统；长期默认值应固化在 Runtime/Provider 配置中。
+> Tip: hot switching is a rollback/diagnosis tool; don’t treat it as a long-term configuration system. Long-term defaults should live in Runtime/Provider config.
 
-### 配方 E：只对某个模块开启 time-slicing（大 N 高频输入止血）
+### Recipe E: enable time-slicing for one module (large-N, high-frequency input rollback)
 
 ```ts
 import * as Logix from "@logix/core"
@@ -229,76 +229,76 @@ const runtime = Logix.Runtime.make(RootImpl, {
 })
 ```
 
-### 配方 F：如何把 trait 标成 deferred（必须显式声明）
+### Recipe F: mark a trait as deferred (must be explicit)
 
-> 只有“允许短暂读到旧值”的派生才适合 deferred（例如 UI 展示用文案、非关键统计）；关键业务字段请保持 immediate。
+> Only derivations that can temporarily read stale values should be deferred (e.g. display text, formatting, non-critical stats). Keep key business fields immediate.
 
 ```ts
 import * as Logix from "@logix/core"
 
 const Traits = Logix.StateTrait.from(State)({
-  // immediate（默认）：同窗口收敛
+  // immediate (default): converge within the same window
   priceWithTax: Logix.StateTrait.computed({
     deps: ["price"],
     get: (price) => price * 1.13,
   }),
 
-  // deferred：允许延后补算（需要先在 runtime 打开 traitConvergeTimeSlicing）
+  // deferred: allow delayed catch-up (requires traitConvergeTimeSlicing enabled in runtime)
   priceText: Logix.StateTrait.computed({
     deps: ["price"],
     scheduling: "deferred",
     get: (price) => `¥${price.toFixed(2)}`,
   }),
 
-  // link 同样支持 scheduling（示例：把某字段映射到展示字段）
+  // link also supports scheduling (example: map one field to a display field)
   displayPrice: Logix.StateTrait.link({ from: "price", scheduling: "deferred" }),
 })
 ```
 
-## 一套接地气的流程：止血 → 对比 → 回收
+## A practical workflow: rollback -> compare -> clean up
 
-### 1) 止血（先让业务能跑）
+### 1) Rollback (get the business running)
 
-优先按模块回退：
+Prefer per-module rollback:
 
-1. 找到变慢的模块 `moduleId`；
-2. 加一条 `traitConvergeOverridesByModuleId[moduleId].traitConvergeMode="full"`；
-3. 验证页面是否恢复（至少应该“更稳、更可预期”）；
-4. 记录这条覆盖（便于后续回收）。
+1. Identify the slow module `moduleId`.
+2. Add `traitConvergeOverridesByModuleId[moduleId].traitConvergeMode = "full"`.
+3. Verify the page recovers (at least “more stable and predictable”).
+4. Record the override (so you can clean it up later).
 
-### 2) 对比（确认问题是不是出在收敛策略）
+### 2) Compare (is it really convergence strategy?)
 
-你不需要精确测量也能做第一轮判断：
+You can do a first-pass judgment without precise measurements:
 
-- `"full"` 明显更稳：说明“自动/局部策略”可能需要调参或进一步排查。
-- `"full"` 和 `"auto"` 差不多：说明瓶颈可能不在收敛（转去看渲染/观测/业务逻辑）。
+- `"full"` is clearly more stable: “auto/partial” may need tuning or deeper investigation.
+- `"full"` and `"auto"` feel similar: the bottleneck may not be convergence (look at rendering/observability/business logic).
 
-### 3) 回收（根因修复后不要长期背覆盖）
+### 3) Clean up (don’t keep overrides forever)
 
-当问题修复或默认值调优后，移除模块级/子树级 override，回到默认策略。
+After fixing root causes or tuning defaults, remove module/subtree overrides and return to the default strategy.
 
-## 常见问题（FAQ）
+## FAQ
 
-### Q1：我只想“回到升级前的表现”，需要改哪些？
+### Q1: I just want “behavior like before the upgrade”. What should I change?
 
-只改一个就够：把 `traitConvergeMode` 固定为 `"full"`（全局或只对目标模块）。预算先别动。
+Only one change is enough: pin `traitConvergeMode` to `"full"` (globally or for the target module). Don’t touch budgets initially.
 
-### Q2：我设置了 override，但感觉没生效？
+### Q2: I set an override, but it doesn’t seem effective?
 
-最常见的三个原因：
+Three most common causes:
 
-1. **生效时机**：配置从**下一笔事务**开始生效（不会打断正在进行的交互）。
-2. **moduleId 写错**：确认它就是 `Logix.Module.make("...")` 的 id。
-3. **覆盖层级被更高优先级覆盖了**：例如子树里又包了一层 Provider override。
+1. **Effective timing**: config takes effect from the **next transaction** (it won’t interrupt an in-flight interaction).
+2. **Wrong moduleId**: verify it matches `Logix.Module.make("...")`.
+3. **Overridden by higher precedence**: e.g. another Provider override inside the subtree.
 
-### Q3：`traitConvergeBudgetMs` 能不能随便调小？
+### Q3: Can I just reduce `traitConvergeBudgetMs` aggressively?
 
-不建议一上来就调很小。它是“执行预算”，太小可能触发降级，让派生值/联动计算在极端事务里无法完整完成（表现为更保守、更稳，但不一定更快）。
+Not recommended initially. It’s an “execution budget”. Too small may trigger degradation, causing derivations/linkage computations to not fully complete in extreme transactions (more conservative/stable, but not necessarily faster).
 
-### Q4：我应该用 `"dirty"` 吗？
+### Q4: Should I use `"dirty"`?
 
-建议把 `"dirty"` 当成“实验档”：先用 `"full"` 做稳定基线，再用 `"auto"` 调到满意；只有当你非常确定写入是局部的、且联动依赖关系足够准确时，再考虑在少数模块上试 `"dirty"`。
+Treat `"dirty"` as “experimental”: use `"full"` as a stable baseline first, then tune `"auto"` to satisfaction; only when you’re very confident writes are local and dependencies are accurate should you try `"dirty"` on a small number of modules.
 
-## 常见误区
+## Common pitfalls
 
-- 把“止血覆盖”当成长期默认：覆盖应该是临时手段，最终要么修根因，要么把更好的默认值固化下来。
+- Treating “rollback overrides” as long-term defaults: overrides should be temporary. Ultimately you should either fix root causes or bake better defaults into configuration.

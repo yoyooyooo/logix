@@ -6,5 +6,5 @@ export default async function HomePage({
   params: Promise<{ lang: string }>
 }) {
   const { lang } = await params
-  return <LandingPage lang={lang === 'en' ? 'en' : 'zh'} />
+  return <LandingPage lang={lang === 'cn' ? 'cn' : 'en'} />
 }

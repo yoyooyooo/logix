@@ -1,33 +1,33 @@
 ---
-title: '常用配方'
-description: 常见 Logix 写法配方，可直接复用于实际业务。
+title: Common recipes
+description: Practical Logix patterns you can reuse in real products.
 ---
 
-本指南汇集了常见的 Logix 写法配方，涵盖字段联动、异步校验、多字段约束等场景，可直接复用于实际业务。
+This page collects common Logix recipes, covering field linkage, async validation, multi-field constraints, and more — ready to copy into production code.
 
-### 适合谁
+### Who is this for?
 
-- 已经掌握基本 Module/Logic 写法，希望直接套用成熟的“字段联动/异步校验/多字段约束”等模式；
-- 在团队中负责沉淀常用片段到内部组件库/脚手架的同学。
+- You already know the basics of Modules/Logic and want proven recipes for “field linkage / async validation / multi-field constraints”.
+- You maintain shared snippets in your team’s internal component library or scaffolding.
 
-### 前置知识
+### Prerequisites
 
-- 读过 [Flows & Effects](../essentials/flows-and-effects) 与相关 Learn 章节；
-- 能够看懂 `$.onState / $.flow.* / $.state.mutate` 的组合。
+- You’ve read [Flows & Effects](../essentials/flows-and-effects) and related Learn chapters.
+- You can read combinations like `$.onState / $.flow.* / $.state.mutate`.
 
-### 使用方式
+### How to use
 
-- 可以直接复制本页代码片段，替换成自己的 State/Service 类型；
-- 也可以将这些模式提炼成团队内部的 Pattern / Helper，统一复用。
+- Copy the snippets and adapt them to your own State/Service types.
+- Or extract them as team Patterns/Helpers for unified reuse.
 
-## 1. 字段联动与重置
+## 1. Field linkage and reset
 
-**场景**: 选中某个字段时，重置一批相关字段（如国家变化时重置省份/城市）。
+**Scenario**: when a field changes, reset a set of dependent fields (e.g. when country changes, reset province/city).
 
-**模式**: 使用 `flow.fromState` 监听源字段，在 `flow.run` 中通过 `state.mutate` 更新目标字段。
+**Pattern**: watch the source field via `flow.fromState`, then update target fields via `state.mutate` inside `flow.run`.
 
 ```typescript
-// 概念上，这里的 `$Form` 表示针对 FormShape 预绑定的 Bound API。
+// Conceptually, `$Form` is a Bound API pre-bound to a FormShape.
 const resetProvinceLogic = Effect.gen(function* () {
   const country$ = $Form.flow.fromState((s) => s.country)
 
@@ -42,14 +42,14 @@ const resetProvinceLogic = Effect.gen(function* () {
 })
 ```
 
-## 2. 异步校验与错误状态
+## 2. Async validation and error state
 
-**场景**: 字段变化触发异步校验（用户名重名检查），结果写回 `errors.xxx`。
+**Scenario**: field changes trigger async validation (e.g. username uniqueness). Write results into `errors.xxx`.
 
-**模式**: 使用 `flow.fromState` 监听，链式调用 `debounce` 和 `filter`，最后用 `runLatest` 执行包含 API 调用的 Effect，自动处理竞态。
+**Pattern**: `flow.fromState` + `debounce` + `filter`, then `runLatest` to execute an Effect that calls an API and automatically handles races.
 
 ```typescript
-// 概念上，这里的 `$Form` 表示针对 FormShape + UserApi 预绑定的 Bound API。
+// Conceptually, `$Form` is a Bound API pre-bound to FormShape + UserApi.
 const validateUsernameLogic = Effect.gen(function* () {
   const username$ = $Form.flow.fromState((s) => s.username)
 
@@ -57,7 +57,7 @@ const validateUsernameLogic = Effect.gen(function* () {
     $Form.flow.debounce(500),
     $Form.flow.filter((username) => username.length >= 3),
     $Form.flow.runLatest(
-      // 确保只处理最后一次输入
+      // Ensure only the latest input is processed
       Effect.gen(function* () {
         const api = yield* $Form.use(UserApi)
         const { username } = yield* $Form.state.read
@@ -71,14 +71,14 @@ const validateUsernameLogic = Effect.gen(function* () {
 })
 ```
 
-## 3. 多字段约束（如开始/结束时间）
+## 3. Multi-field constraints (e.g. start/end date)
 
-**场景**: 多个字段之间存在约束（开始时间必须早于结束时间）。
+**Scenario**: multiple fields have a constraint (start date must be before end date).
 
-**模式**: 使用 `flow.fromState` 监听一个包含多个字段的元组 `[s.startDate, s.endDate]`，然后在 `flow.run` 中执行校验逻辑。
+**Pattern**: `flow.fromState` over a tuple like `[s.startDate, s.endDate]`, then validate in `flow.run`.
 
 ```typescript
-// 概念上，这里的 `$Form` 表示针对 FormShape 预绑定的 Bound API。
+// Conceptually, `$Form` is a Bound API pre-bound to a FormShape.
 const validateDateRangeLogic = Effect.gen(function* () {
   const datePair$ = $Form.flow.fromState((s) => [s.startDate, s.endDate] as const)
 
@@ -96,19 +96,19 @@ const validateDateRangeLogic = Effect.gen(function* () {
 })
 ```
 
-## 4. 数组聚合计算（列表行内计算）
+## 4. Aggregate computation over arrays (inline list totals)
 
-**场景**: 商品列表中，任何行内字段变化时，都需要重新计算总价。
+**Scenario**: in a cart/list, any row field change requires recomputing totals.
 
-**模式**: 监听整个数组 `items` 的变化。在 `flow.run` 中，一次性完成所有派生状态（行内 `total` 和整体 `summary`）的计算，避免多次更新和重复渲染。
+**Pattern**: watch the entire `items` array. In `flow.run`, compute derived state in one pass (row `total` and overall `summary`) to avoid multiple updates and redundant renders.
 
 ```typescript
-// 概念上，这里的 `$Cart` 表示针对 CartShape 预绑定的 Bound API。
+// Conceptually, `$Cart` is a Bound API pre-bound to a CartShape.
 const calculateTotalsLogic = Effect.gen(function* () {
   const items$ = $Cart.flow.fromState((s) => s.items)
 
   yield* items$.pipe(
-    $Cart.flow.debounce(50), // 轻微防抖，应对批量操作
+    $Cart.flow.debounce(50), // light debounce for batch operations
     $Cart.flow.run(
       $Cart.state.mutate((draft) => {
         let totalAmount = 0
@@ -125,19 +125,19 @@ const calculateTotalsLogic = Effect.gen(function* () {
 })
 ```
 
-## 5. 初始化加载 (Init Load)
+## 5. Init load
 
-**场景**: Store 创建时自动加载一次数据（如详情页）。
+**Scenario**: automatically load data once when the Store is created (e.g. a detail page).
 
-**模式**: 在 Logic 程序的 `Effect.gen` 主体中，直接 `yield*` 一个加载数据的 Effect。这个 Effect 只会在 Logic 初始化时执行一次。
+**Pattern**: in the main body of `Effect.gen` inside Logic, directly `yield*` a loading Effect. It runs only once on Logic initialization.
 
 ```typescript
-// 概念上，这里的 `$Page` 表示针对 PageShape + PageApi 预绑定的 Bound API。
+// Conceptually, `$Page` is a Bound API pre-bound to PageShape + PageApi.
 const initialLoadLogic = Effect.gen(function* () {
   const api = yield* $Page.use(PageApi)
-  const pageId = (yield* $Page.state.read).pageId // 假设 pageId 已在初始状态中
+  const pageId = (yield* $Page.state.read).pageId // assume pageId is in initial state
 
-  // Logic 初始化时直接执行加载
+  // Execute load during Logic init
   yield* $Page.state.mutate((draft) => {
     draft.meta.isLoading = true
   })
@@ -147,25 +147,25 @@ const initialLoadLogic = Effect.gen(function* () {
     draft.meta.isLoading = false
   })
 
-  // 此处可以继续定义其他流式逻辑...
+  // You can define more flow logic below...
 })
 ```
 
-## 6. 外部源集成 (WebSocket / 轮询)
+## 6. External source integration (WebSocket / polling)
 
-**场景**: 订阅 WebSocket 消息或轮询任务状态。
+**Scenario**: subscribe to WebSocket messages or poll task status.
 
-**模式**: 将外部源（WebSocket 连接、定时器）作为 `Effect.Service` 注入到 `Logic` 的环境中。在 Logic 程序中，从服务中获取 `Stream`，并使用 `flow.run` 将其事件映射到状态更新。
+**Pattern**: inject the external source (WebSocket connection, timer) as an `Effect.Service` into Logic env. In Logic, read a `Stream` from the service and use `flow.run` to map events to state updates.
 
 ```typescript
-// 1. 定义服务
+// 1) Define a service
 class Ticker extends Context.Tag("Ticker")<Ticker, { readonly ticks$: Stream.Stream<number> }>() {}
 
-// 2. 在 Logic 中消费；`$Ticker` 概念上表示针对 TickerShape + Ticker 预绑定的 Bound API。
+// 2) Consume it in Logic; `$Ticker` conceptually means a Bound API pre-bound to TickerShape + Ticker.
 const tickerLogic = Effect.gen(function* () {
   const ticker = yield* $Ticker.use(Ticker)
 
-  // 将外部 ticks$ 流接入 Logix
+  // Bridge external ticks$ into Logix
   yield* ticker.ticks$.pipe(
     $Ticker.flow.run((tick) =>
       $Ticker.state.mutate((draft) => {
@@ -176,14 +176,14 @@ const tickerLogic = Effect.gen(function* () {
 })
 ```
 
-## 7. 用例级 Action 替代连续 dispatch
+## 7. Use-case Actions instead of dispatch + sleep + dispatch
 
-**场景**: 需要“先更新某个状态，再基于更新后的状态执行下一步”，很多人直觉会在调用方连续触发两次 dispatch，并通过 `setTimeout` / `sleep` 等方式“等一等再调第二次”。
+**Scenario**: you need “update state, then do the next step based on the updated state”. Many people instinctively dispatch twice from callers and insert `setTimeout` / `sleep` to “wait a bit”.
 
-**模式**: 将这两个步骤收敛为一个“用例级 Action”，在 Logic 内部顺序执行：先更新状态，再读取最新状态并执行后续副作用，调用方只需要 dispatch 一次。
+**Pattern**: collapse the sequence into one “use-case Action”, do “update state → read latest state → run follow-up effects” sequentially inside Logic. Callers dispatch only once.
 
 ```typescript
-// 1. 定义 Module，增加一个用例级动作 applyFilterAndReload
+// 1) Define a Module with a use-case Action applyFilterAndReload
 const Search = Logix.Module.make("Search", {
   state: Schema.Struct({
     filter: Schema.String,
@@ -196,33 +196,31 @@ const Search = Logix.Module.make("Search", {
   },
 })
 
-// 2. 在 Logic 中顺序完成“更新 filter + 触发加载”
+// 2) Orchestrate “update filter + reload” sequentially inside Logic
 const logic = Search.logic(($) =>
   $.onAction("applyFilterAndReload").run(({ payload }) =>
     Effect.gen(function* () {
-      // 第一步：写入最新的筛选条件
-      yield* $.state.mutate((draft) => {
-        draft.filter = payload.filter
-      })
+      // Step 1: write the latest filter
+      yield* $.state.update((s) => ({ ...s, filter: payload.filter }))
 
-      // 如有需要，可以读取一次最新状态
+      // Optionally read the latest state
       const state = yield* $.state.read
 
-      // 第二步：基于最新 filter 执行后续逻辑（调用接口 / 触发其他 Action 等）
+      // Step 2: run follow-up work based on the latest filter (API call / dispatch other Actions / etc.)
       yield* runSearchWithFilter(state.filter)
-      // 或者：yield* $.dispatchers.reload()
+      // Or: yield* $.actions.reload(undefined)
     }),
   ),
 )
 ```
 
-在这一模式下：
+With this pattern:
 
-- UI / 调用方只需触发一次 `applyFilterAndReload`，不需要自己关心“先 set 再 reload”以及中间的等待时机；
-- 顺序与依赖关系全部收敛在 Logic 内部，通过 `$.state.mutate` / `$.state.read` 自然保证“后一步总是看到前一步已经落地的状态”，避免在业务代码中堆叠 sleep 或魔法时间常数。
+- UI/callers dispatch only `applyFilterAndReload` once; they don’t need to reason about timing between “set then reload”.
+- Ordering is owned by Logic; `$.state.update` / `$.state.read` naturally guarantees “the next step always sees the committed previous step”, avoiding sleep hacks and magic delays.
 
-## 下一步
+## Next
 
-- 了解 React 集成的完整指南：[React 集成](./react-integration)
-- 查看 API 参考文档：[API 参考](../../api/)
-- 探索更多高级模式：[Unified API 示例](./unified-api)
+- Full React integration guide: [React integration](./react-integration)
+- API reference: [API Reference](../../api/)
+- More advanced patterns: [Unified API example](./unified-api)

@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { fadeUp, viewportOnce } from '@/lib/motion'
+import { withLocalePrefix } from '@/lib/localePath'
 import type { FinalCtaCopy, LandingLang } from './content'
 
 export function FinalCTASection({ lang, copy }: { lang: LandingLang; copy: FinalCtaCopy }) {
@@ -38,10 +39,10 @@ export function FinalCTASection({ lang, copy }: { lang: LandingLang; copy: Final
 
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <Button asChild size="lg" className="rounded-full">
-                <Link href={`/${lang}/docs`}>{copy.primaryCta}</Link>
+                <Link href={withLocalePrefix(lang, '/docs')}>{copy.primaryCta}</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="rounded-full">
-                <Link href={`/${lang}/docs/guide/get-started/quick-start`}>Quick Start</Link>
+                <Link href={withLocalePrefix(lang, '/docs/guide/get-started/quick-start')}>Quick Start</Link>
               </Button>
             </div>
           </CardHeader>

@@ -1,134 +1,128 @@
 ---
-title: 常见问题 (FAQ)
-description: Logix 常见问题解答，帮助你快速找到答案。
+title: FAQ
+description: Frequently asked questions about Logix, to help you find answers quickly.
 ---
 
-# 常见问题 (FAQ)
+# FAQ
 
-## 概念与选型
+## Concepts and choosing a solution
 
-### Logix 和 Redux/Zustand 有什么区别？
+### What’s the difference between Logix and Redux/Zustand?
 
-| 对比点   | Redux/Zustand            | Logix                       |
-| -------- | ------------------------ | --------------------------- |
-| 异步处理 | 需要中间件（thunk/saga） | 内置 Effect + Flow          |
-| 并发控制 | 手动管理                 | `runLatest/runExhaust` 内置 |
-| 类型安全 | 手动维护                 | Schema 自动推导             |
-| 可观测性 | 需配合 DevTools          | 内置事件管道                |
+| Dimension     | Redux/Zustand                   | Logix                              |
+| ------------- | ------------------------------- | ---------------------------------- |
+| Async         | Needs middleware (thunk/saga)   | Built-in Effect + Flow             |
+| Concurrency   | Managed manually                | Built-in `runLatest/runExhaust`    |
+| Type safety   | Maintained manually             | Derived automatically from Schema  |
+| Observability | Requires external DevTools      | Built-in event pipeline            |
 
-**简单来说**：如果你的业务有复杂的异步/并发逻辑，Logix 会更合适；如果只是简单的全局状态，Zustand 可能更轻量。
+In short: if your app has complex async/concurrency logic, Logix tends to be a better fit; if you only need simple global state, Zustand can be lighter.
 
-### Logix 和 XState 有什么区别？
+### What’s the difference between Logix and XState?
 
-- **XState** 适合需要严格状态机建模的场景（有限状态 + 明确转换）
-- **Logix** 适合数据驱动的业务逻辑（状态可以是任意结构 + 响应式流）
+- **XState** fits scenarios that require strict state machine modeling (finite states + explicit transitions).
+- **Logix** fits data-driven application logic (state can be any structure + reactive flows).
 
-两者可以结合使用：用 XState 管理流程状态机，用 Logix 管理业务数据。
+They can also be used together: use XState for the workflow state machine, and Logix for business data.
 
-### 什么时候用 @logix/form 而不是普通 Module？
+### When should I use `@logix/form` instead of a plain Module?
 
-**用普通 Module**：
+Use a plain Module when:
 
-- 单字段输入（搜索框、开关）
-- 不需要复杂校验
+- It’s a single-field input (search box, toggle).
+- You don’t need complex validation.
 
-**用 @logix/form**：
+Use `@logix/form` when:
 
-- 多字段表单（3+ 字段）
-- 需要字段级校验 + 错误展示
-- 动态数组（增删改排序）
-- 跨字段联动派生
+- It’s a multi-field form (3+ fields).
+- You need field-level validation and error display.
+- You need dynamic arrays (add/remove/update/reorder).
+- You need cross-field derived logic and linkage.
 
-### Effect 的学习曲线会不会很陡？
+### Is Effect’s learning curve steep?
 
-不需要一开始就学会 Effect 的所有概念。Logix 的 Bound API (`$`) 封装了大部分底层细节：
+You don’t need to learn every concept in Effect from day one. Logix’s Bound API (`$`) wraps most low-level details:
 
 ```ts
-// 不需要知道 Effect 细节，只需要知道：
-yield* $.onAction('save').run(() =>
-  $.state.mutate((draft) => {
-    draft.saved = true
-  }),
-)
+// You don't need to know Effect details—just this:
+yield* $.onAction('save').run(() => $.state.update((s) => ({ ...s, saved: true })))
 ```
 
-只有在需要高级能力（重试、超时、资源管理）时，再深入学习 Effect。
+Only when you need advanced capabilities (retries, timeouts, resource management) do you need to go deeper into Effect.
 
 ---
 
-## 使用与调试
+## Usage and debugging
 
-### 如何在 DevTools 中查看 Action 历史？
+### How do I view Action history in DevTools?
 
-1. 在 Runtime 配置中启用 DevTools：
+1. Enable DevTools in the Runtime config:
    ```ts
    const runtime = Logix.Runtime.make(RootImpl, { devtools: true })
    ```
-2. 在 React 应用中添加 DevTools 组件：
+2. Add the DevTools component in your React app:
    ```tsx
    import { LogixDevtools } from '@logix/devtools-react'
    ;<LogixDevtools position="bottom-left" />
    ```
-3. 打开浏览器，在时间线中查看 Action 事件
+3. Open your browser and inspect Action events in the timeline.
 
-### 为什么我的 watcher 没有触发？
+### Why didn’t my watcher trigger?
 
-常见原因：
+Common causes:
 
-1. **Selector 返回相同引用**：`$.onState(s => s)` 会在每次状态变化时触发，但 `$.onState(s => s.user)` 只在 `user` 变化时触发
-2. **watcher 位于 setup 段**：确保 `$.onAction/$.onState` 在 run 段（`Effect.gen` 内部）调用
-3. **Logic 未挂载**：检查 `implement({ logics: [...] })` 是否包含该 Logic
+1. **Your selector returns the same reference**: `$.onState((s) => s)` triggers on every state change, but `$.onState((s) => s.user)` only triggers when `user` changes.
+2. **Your watcher is in the setup phase**: make sure `$.onAction/$.onState` is called in the run phase (inside `Effect.gen`).
+3. **The Logic isn’t installed**: check that `implement({ logics: [...] })` includes the Logic.
 
-### 如何正确取消正在进行的请求？
+### How do I correctly cancel an in-flight request?
 
-使用 `runLatest`：
+Use `runLatest`:
 
 ```ts
-yield* $.onAction('search').runLatest(({ payload: keyword }) =>
+yield* $.onAction('search').runLatest((keyword) =>
   Effect.gen(function* () {
     const results = yield* api.search(keyword)
-    yield* $.state.mutate((draft) => {
-      draft.results = results
-    })
+    yield* $.state.update((s) => ({ ...s, results }))
   }),
 )
 ```
 
-当新的 `search` Action 到来时，之前的请求会被自动取消。
+When a new `search` Action arrives, the previous request is automatically cancelled.
 
 ---
 
-## 性能与生产
+## Performance and production
 
-### Logix 的性能开销是多少？
+### What is the overhead of Logix?
 
-- **状态更新**：使用 `SubscriptionRef`，变化检测是 O(1)
-- **派生计算**：支持脏检查，只重算受影响的 trait
-- **DevTools**：可通过 `diagnosticsLevel` 控制开销
+- **State updates**: based on `SubscriptionRef`, change detection is O(1).
+- **Derived computation**: supports dirty checking and only recomputes affected traits.
+- **DevTools**: overhead can be controlled via `diagnosticsLevel`.
 
-在大多数场景下，Logix 的开销可以忽略不计。如有性能敏感场景，参考 [性能与优化](./guide/advanced/performance-and-optimization)。
+In most scenarios the overhead is negligible. For performance-sensitive cases, see [Performance and optimization](./guide/advanced/performance-and-optimization).
 
-### 如何在生产环境关闭调试输出？
+### How do I disable debug output in production?
 
 ```ts
 const runtime = Logix.Runtime.make(RootImpl, {
   layer: Layer.mergeAll(
     AppInfraLayer,
-    Logix.Debug.layer({ mode: 'prod' }), // 生产模式
+    Logix.Debug.layer({ mode: 'prod' }), // production mode
   ),
-  devtools: false, // 关闭 DevTools
+  devtools: false, // disable DevTools
 })
 ```
 
-### SSR/RSC 支持情况如何？
+### What about SSR/RSC support?
 
-- **SSR**：通过 `Runtime.runPromise` 可以在服务端预渲染状态
-- **RSC**：目前不直接支持 Server Components 内运行 Module，推荐在 Client 边界使用
+- **SSR**: you can pre-render state on the server via `Runtime.runPromise`.
+- **RSC**: running Modules inside Server Components is not directly supported yet; prefer using Modules behind a Client boundary.
 
 ---
 
-## 更多资源
+## More resources
 
-- [常见问题排查](./guide/advanced/troubleshooting)：诊断代码与错误修复
-- [调试与 DevTools](./guide/advanced/debugging-and-devtools)：完整调试指南
-- [React 集成配方](./guide/recipes/react-integration)：常用模式
+- [Troubleshooting](./guide/advanced/troubleshooting): diagnostics and common fixes
+- [Debugging and DevTools](./guide/advanced/debugging-and-devtools): the full debugging guide
+- [React integration recipes](./guide/recipes/react-integration): common patterns

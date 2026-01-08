@@ -1,11 +1,11 @@
 ---
-title: 动态列表（Field Array）
-description: useFieldArray、row identity、rows 错误树与跨行校验。
+title: Field arrays
+description: useFieldArray, row identity, rows error tree, and cross-row validation.
 ---
 
-## 1) 声明一个数组字段（list trait）
+## 1) Declare an array field (list rule)
 
-在 `rules` 中显式把数组字段声明为 list，并为稳定 identity 提供 `trackBy`（推荐）：
+In `rules`, explicitly declare an array field as a list, and provide a stable identity via `trackBy` (recommended):
 
 ```ts
 const Values = Schema.Struct({
@@ -24,10 +24,10 @@ const ItemsForm = Form.make("ItemsForm", {
       item: {
         deps: ["name"],
         validateOn: ["onBlur"],
-        validate: (row: any) => (String(row?.name ?? "").trim() ? undefined : { name: "必填" }),
+        validate: (row: any) => (String(row?.name ?? "").trim() ? undefined : { name: "Required" }),
       },
       list: {
-        // 跨行校验：一次扫描 rows，写回 { rows: [...] }
+        // Cross-row validation: scan rows once and write back { rows: [...] }
         deps: ["name"],
         validateOn: ["onChange"],
         validate: (rows: ReadonlyArray<any>) => {
@@ -42,7 +42,7 @@ const ItemsForm = Form.make("ItemsForm", {
           const rowErrors: Array<Record<string, unknown> | undefined> = rows.map(() => undefined)
           for (const indices of by.values()) {
             if (indices.length <= 1) continue
-            for (const i of indices) rowErrors[i] = { name: "重复" }
+            for (const i of indices) rowErrors[i] = { name: "Duplicate" }
           }
           return rowErrors.some(Boolean) ? { rows: rowErrors } : undefined
         },
@@ -52,16 +52,16 @@ const ItemsForm = Form.make("ItemsForm", {
 })
 ```
 
-## 1.1) `useFieldArray` 和 list trait 的关系
+## 1.1) Relationship between `useFieldArray` and list rules
 
-- `useFieldArray(form, listPath)` 负责**增删/重排 values**（append/remove/swap/move），不要求你一定声明 list trait。
-- list 声明（`rules` 里的 `z.list(listPath, ...)`）负责表达“这是一个动态列表”的**领域语义**：
-  - Form 不会“自动猜测”某个字段需要按动态列表语义处理；只有写成 list 结构时才会启用 `trackBy`/`item.check`/`list.check`
-  - `identity.trackBy`：用业务字段生成稳定 row id（推荐），缺失时会降级为运行时 row id（再退回 index）
-  - `item`：行级校验（只看当前行）
-  - `list`：列表级/跨行校验（一次扫描，多行写回 `$list/rows[]`）
+- `useFieldArray(form, listPath)` handles **insert/remove/reorder values** (`append/remove/swap/move`). It does not require you to declare a list rule.
+- The list declaration (`z.list(listPath, ...)` in `rules`) expresses the **domain semantics** of “this is a dynamic list”:
+  - Form will not “guess” dynamic-list semantics automatically; only list rules enable `trackBy` / `item.check` / `list.check`.
+  - `identity.trackBy`: generate stable row ids from a business field (recommended). If missing, it degrades to runtime rowId, then to index.
+  - `item`: item-level validation (only the current row)
+  - `list`: list-level / cross-row validation (one scan, multi-row write-back to `$list/rows[]`)
 
-## 2) 在 React 中操作数组：`useFieldArray`
+## 2) Operate arrays in React: `useFieldArray`
 
 ```tsx
 import { useFieldArray } from "@logix/form/react"
@@ -69,13 +69,13 @@ import { useFieldArray } from "@logix/form/react"
 const { fields, append, remove, swap, move } = useFieldArray(form, "items")
 ```
 
-- `fields[index].id` 用于 React `key`（优先来自 `trackBy`，否则使用运行时维护的 rowId，再退回 index）
-- `append/remove/swap/move` 会同步维护 values/errors/ui 的数组对齐，避免错位
+- `fields[index].id` is used as React `key` (prefer `trackBy`; otherwise runtime rowId; then index).
+- `append/remove/swap/move` keeps values/errors/ui arrays aligned, avoiding drift.
 
-## 3) 错误树位置
+## 3) Error tree locations
 
-- 行内字段错误：`errors.items.rows.0.name`
-- 行级错误：`errors.items.rows.0.$item`
-- 列表级错误：`errors.items.$list`
+- Field error inside a row: `errors.items.rows.0.name`
+- Row-level error: `errors.items.rows.0.$item`
+- List-level error: `errors.items.$list`
 
-你通常不需要手动拼路径：`useField(form, "items.0.name")` 会自动读取正确的错误位置。
+You usually don’t need to hand-build paths: `useField(form, "items.0.name")` reads the correct error location automatically.

@@ -1,48 +1,48 @@
 ---
-title: 生命周期与 Watcher 模式
-description: 了解模块的启动/销毁、长逻辑 Watcher，以及它们与 React/平台生命周期的配合方式。
+title: Lifecycle and watcher patterns
+description: How module lifecycle, long-running watchers, and host platform lifecycle work together (React included).
 ---
 
-在 Logix 中，一段业务逻辑不再只是“被调用一次就结束”的函数，而是运行在 **模块生命周期 (Module Lifecycle)** 内的一组长期流程（Watcher）。
-这一节从产品开发者的视角，拆解三个层次：
+In Logix, business logic is not just a function that runs once and returns. It runs as a set of long-lived processes (watchers) inside a **module lifecycle**.
+From an app developer’s perspective, this page breaks it down into three layers:
 
-1. 模块本身的生命周期：何时初始化、何时清理；
-2. 长逻辑 Watcher：如何挂载、何时自动停止；
-3. 平台生命周期：页面前后台、会话保持等场景如何与模块协同。
+1. The module lifecycle itself: when instances initialize and when they dispose.
+2. Long-running watchers: how they are mounted and when they stop automatically.
+3. The host platform lifecycle: tab visibility, app background/foreground, session reset, and how these integrate with modules.
 
-### 适合谁
+### Who is this for?
 
-- 已经会写 `$.onAction / $.onState`，但不太确定这些 Watcher 何时开始、何时结束；
-- 正在把 Logix 接入 React / 多端应用，希望梳理“模块实例 vs 组件 vs 会话”的关系。
+- You can write `$.onAction / $.onState`, but you’re unsure when watchers start and stop.
+- You’re integrating Logix into React (or multi-platform apps) and want a clear model of “module instance vs component vs session”.
 
-### 前置知识
+### Prerequisites
 
-- 已阅读 [Lifecycle](../essentials/lifecycle) 与 [Flows & Effects](../essentials/flows-and-effects)；
-- 对 React 的组件挂载/卸载概念有基本了解。
+- You’ve read [Lifecycle](../essentials/lifecycle) and [Flows & Effects](../essentials/flows-and-effects).
+- You understand React component mount/unmount at a basic level.
 
-### 读完你将获得
+### What you’ll get
 
-- 清晰理解“模块生命周期”和“平台生命周期”分别负责什么；
-- 能在复杂页面中判断某段逻辑应该挂在哪个 Module、以何种 Watcher 形式运行；
-- 在做架构设计时，有一套可以用于评审的“生命周期与 Watcher”检查表。
+- A clear separation between “module lifecycle” vs “platform lifecycle”.
+- The ability to decide where a piece of logic belongs (which Module) and which watcher form to use in complex pages.
+- A practical checklist for architecture/code review around lifecycle and watchers.
 
-先给出一个快速对照表，帮助你在评审代码时判断“应该用哪一层”：
+Here’s a quick table to help you decide “which layer to use” during code review:
 
-| 关注点          | 推荐工具                                            | 典型场景                         |
-| --------------- | --------------------------------------------------- | -------------------------------- |
-| 模块何时存在    | `$.lifecycle.onInit/onDestroy`                      | 页面打开时加载一次配置 / 数据    |
-| 长期监听+响应   | `$.onAction/$.onState + .run*` Watcher              | 表单提交、轮询、字段联动         |
-| 宿主前后台/重置 | `$.lifecycle.onSuspend/onResume/onReset` + Platform | Tab 前后台切换、Logout、会话重置 |
+| Concern                         | Recommended tool                                      | Typical scenarios                                 |
+| ------------------------------- | ----------------------------------------------------- | ------------------------------------------------- |
+| When a module instance exists   | `$.lifecycle.onInit/onDestroy`                        | load config/data once on page open                |
+| Long-running listen + react     | `$.onAction/$.onState + .run*` watchers               | form submit, polling, field linkage               |
+| Host background/foreground/reset| `$.lifecycle.onSuspend/onResume/onReset` + Platform   | tab visibility, logout, session reset              |
 
-## 1. 模块生命周期：onInit / onDestroy
+## 1. Module lifecycle: onInit / onDestroy
 
-每个 Module 实例（ModuleRuntime）都有一条清晰的生命周期：
+Each Module instance (ModuleRuntime) has a clear lifecycle:
 
-- 创建时：模块被挂载到某个 Effect Scope 中；
-- 运行中：Logic 里的 Flow/Watcher 持续监听 State / Action；
-- 销毁时：Scope 关闭，所有相关资源一并被清理。
+- On create: the module is mounted into an Effect Scope.
+- While running: Flows/watchers in Logic keep observing State/Actions.
+- On dispose: the Scope closes and all associated resources are cleaned up.
 
-在 Logic 里，你可以通过 `$.lifecycle` 显式声明“启动/销毁”时机：
+In Logic, use `$.lifecycle` to explicitly declare init/destroy behavior:
 
 ```ts
 const Profile = Logix.Module.make('Profile', {
@@ -56,103 +56,81 @@ const Profile = Logix.Module.make('Profile', {
 })
 
 const ProfileLogic = Profile.logic(($) => {
-  // onInit：模块第一次启动时加载用户资料（setup-only 注册，Runtime 统一调度执行）
+  // onInit: load profile on first start (setup-only registration; scheduled by the Runtime)
   $.lifecycle.onInit(
     Effect.gen(function* () {
-      yield* $.state.mutate((draft) => {
-        draft.status = 'loading'
-      })
+      yield* $.state.update((s) => ({ ...s, status: 'loading' }))
       const detail = yield* UserService.getProfile()
-      yield* $.state.mutate((draft) => {
-        draft.status = 'ready'
-        draft.detail = detail
-      })
+      yield* $.state.update((s) => ({ ...s, status: 'ready', detail }))
     }),
   )
 
-  // onDestroy：模块实例销毁前做清理（可选）
+  // onDestroy: cleanup before instance disposal (optional)
   $.lifecycle.onDestroy(Effect.log('[Profile] module destroyed'))
 
   return Effect.void
 })
 ```
 
-使用要点：
+Key points:
 
-- `onInit` 中的逻辑在模块实例首次启动时执行一次，适合加载配置、初始化缓存等“一次性工作”；
-- `onDestroy` 用于释放资源（关闭连接、取消订阅等），不适合做业务写入（因为此时模块即将消失）；
-- 具体何时“启动/销毁”，由 Runtime 决定：
-  - 全局 Module（通过应用级 Runtime 提供）通常在应用启动/关闭时对应一次生命周期；
-  - 局部 ModuleImpl（例如通过 `useModule(Impl)` 创建）通常在组件挂载/卸载之间对应一次生命周期。
+- `onInit` runs once on the first start of the module instance; use it for “one-time work” like loading config or initializing caches.
+- `onDestroy` is for releasing resources (closing connections, unsubscribing, etc.). Avoid business writes here because the module is about to disappear.
+- The exact start/dispose timing is decided by the Runtime:
+  - Global modules (provided by an app-level Runtime) usually correspond to app start/stop.
+  - Local ModuleImpl instances (e.g. created via `useModule(Impl)`) usually correspond to component mount/unmount.
 
-> 提示：在 React 18 严格模式下，开发环境会有额外的挂载/卸载重试；Logix 在运行时层已经对 Scope 做了防抖和幂等处理，你只需要保证 `onInit` 内的逻辑对“重复调用”是安全的（比如不写入外部不可逆系统）。
+> Tip: in React 18 Strict Mode, dev builds perform extra mount/unmount retries. Logix makes Scope handling idempotent at runtime, but you should still keep `onInit` safe under repeated calls (e.g. avoid writing irreversible external side effects).
 
-## 2. Watcher：长逻辑的运行方式
+## 2. Watchers: how long-running logic runs
 
-大多数业务逻辑属于“持续监听并响应事件”的长流程，例如：
+Most business logic is a long-running “listen and react” process, for example:
 
-- 监听某个 Action 流，处理表单提交；
-- 监听状态变化，触发接口调用或级联更新；
-- 循环轮询某个服务状态。
+- watch an Action stream to handle form submit
+- watch state changes to trigger API calls or cascading updates
+- poll a service status in a loop
 
-在 Logix 中，这类逻辑通常写成 **Watcher**，背后是 `$.onAction/$.onState` + `$.flow.run/runFork` 等组合。
-在 `examples/logix-react` 中，你可以看到两种常见 Watcher 模式：
+In Logix, this is typically written as **watchers**, built with `$.onAction/$.onState` and execution helpers like `$.flow.run/runFork`.
+In `examples/logix-react`, you can see two common watcher patterns:
 
 ```ts
-// runFork：每条事件以独立 Fiber 方式执行，Watcher 本身作为一个长期挂载的“订阅者”
+// runFork: each event runs in its own Fiber; the watcher stays mounted as a long-lived subscriber
 const CounterRunForkLogic = Counter.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').runFork(
-      $.state.mutate((draft) => {
-        draft.value += 1
-      }),
-    )
+    yield* $.onAction('inc').runFork($.state.update((s) => ({ ...s, value: s.value + 1 })))
 
-    yield* $.onAction('dec').runFork(
-      $.state.mutate((draft) => {
-        draft.value -= 1
-      }),
-    )
+    yield* $.onAction('dec').runFork($.state.update((s) => ({ ...s, value: s.value - 1 })))
   }),
 )
 
-// Effect.all + run：一次性挂载多条 Watcher，每条用 run 串行处理事件
+// Effect.all + run: mount multiple watchers at once; each watcher handles events sequentially via run
 const CounterAllLogic = Counter.logic(($) =>
   Effect.all(
     [
-      $.onAction('inc').run(
-        $.state.mutate((draft) => {
-          draft.value += 1
-        }),
-      ),
-      $.onAction('dec').run(
-        $.state.mutate((draft) => {
-          draft.value -= 1
-        }),
-      ),
+      $.onAction('inc').run($.state.update((s) => ({ ...s, value: s.value + 1 }))),
+      $.onAction('dec').run($.state.update((s) => ({ ...s, value: s.value - 1 }))),
     ],
     { concurrency: 'unbounded' },
   ),
 )
 ```
 
-无论选择哪种写法，有两个不变量：
+No matter which style you choose, two invariants hold:
 
-- **挂载位置**：Watcher 只在对应 Module 实例存在期间运行；当 ModuleRuntime 的 Scope 被关闭时，这些 Watcher 会自动中断并清理资源，无需手动 unsubscribe；
-- **运行环境**：Watcher 运行在 Module 的 Logic Env 中，可以安全地使用 `$.state`、`$.actions` 和 `$.use` 等能力。
+- **Mounting scope**: watchers run only while the corresponding Module instance exists. When the ModuleRuntime Scope closes, watchers are interrupted and cleaned up automatically (no manual unsubscribe needed).
+- **Runtime environment**: watchers run inside the Module’s Logic environment, so it’s safe to use `$.state`, `$.actions`, `$.use`, etc.
 
-> 对 React 开发者而言，可以把 Watcher 理解成“挂在 Module 上的 useEffect”：
-> 区别在于它完全脱离组件树、不会造成 UI re-render，由 Runtime 管理生命周期。
+> If you come from React, think of a watcher as “a useEffect attached to the Module”. The key difference is that it is decoupled from the component tree, does not cause UI re-renders, and its lifecycle is managed by the Runtime.
 
-## 3. 平台生命周期：onSuspend / onResume / onReset
+## 3. Platform lifecycle: onSuspend / onResume / onReset
 
-除了模块本身的生命周期，很多场景还需要感知“宿主环境”的生命周期，例如：
+Beyond module lifecycle, many scenarios need the **host platform lifecycle**, for example:
 
-- 浏览器 Tab 从前台切到后台（页面不可见）；
-- App 进入后台/恢复前台；
-- 用户登出、清空会话等“软重置”行为。
+- browser tab goes background/hidden
+- app background/foreground transitions
+- logout / clear session (“soft reset”)
 
-对于这类需求，你可以在 Logic 中使用平台级生命周期钩子：
+For these, use platform-level lifecycle hooks in Logic:
 
 ```ts
 const PollingModule = Logix.Module.make('Polling', {
@@ -166,39 +144,32 @@ const PollingModule = Logix.Module.make('Polling', {
 })
 
 const PollingLogic = PollingModule.logic(($) => {
-  // 平台挂起/恢复：setup-only 注册（由宿主 Platform 信号触发）
-  $.lifecycle.onSuspend(
-    $.state.mutate((draft) => {
-      draft.paused = true
-    }),
-  )
-  $.lifecycle.onResume(
-    $.state.mutate((draft) => {
-      draft.paused = false
-    }),
-  )
+  // suspend/resume: setup-only registration (triggered by host Platform signals)
+  $.lifecycle.onSuspend($.state.update((s) => ({ ...s, paused: true })))
+  $.lifecycle.onResume($.state.update((s) => ({ ...s, paused: false })))
 
   return Effect.gen(function* () {
-    // 示例：简单定时触发 tick（实际项目中可通过 Link / 外部定时器驱动）
+    // Example: tick Action (in real apps, you may drive it via Link or an external timer)
     yield* $.onAction('tick').run(
-      $.state.mutate((draft) => {
-        draft.lastUpdatedAt = Date.now()
-      }),
+      $.state.update((s) => ({
+        ...s,
+        lastUpdatedAt: Date.now(),
+      })),
     )
   })
 })
 ```
 
-这些钩子的含义是：
+Meaning of these hooks:
 
-- `onSuspend`：宿主环境进入“后台/不可见”时触发（例如 Tab 隐藏、App 切后台）；
-- `onResume`：宿主环境重新变为“前台/可见”时触发；
-- `onReset`：用于表达业务上的“软重置”，如 Logout / Clear；通常由应用显式触发。
+- `onSuspend`: host enters “background/hidden” (tab hidden, app background, etc.).
+- `onResume`: host becomes “foreground/visible” again.
+- `onReset`: a business “soft reset” such as logout/clear; typically triggered explicitly by the app.
 
-### 3.1 在 React 中启用平台生命周期
+### 3.1 Enable platform lifecycle in React
 
-要让 `onSuspend/onResume/onReset` 生效，需要在应用的 Runtime 环境中提供一个 Platform 实现。
-`@logix/react` 提供了一个开箱可用的 Layer：
+To make `onSuspend/onResume/onReset` work, provide a Platform implementation in the Runtime environment.
+`@logix/react` ships an out-of-the-box Layer:
 
 ```ts
 import * as Logix from "@logix/core"
@@ -215,37 +186,37 @@ const appRuntime = Logix.Runtime.make(RootImpl, {
 export function App() {
   return (
     <RuntimeProvider runtime={appRuntime}>
-      {/* 你的路由 / 页面 */}
+      {/* your routes / pages */}
     </RuntimeProvider>
   )
 }
 ```
 
-`ReactPlatformLayer` 会在 Runtime 环境中提供一个 `Logic.Platform` 服务，使 `$.lifecycle.onSuspend/onResume/onReset` 可以被宿主触发。
-具体使用哪些浏览器/应用事件来触发这些钩子，由宿主应用或上层桥接组件决定。
+`ReactPlatformLayer` provides a `Logic.Platform` service in the Runtime environment so that the host can trigger `$.lifecycle.onSuspend/onResume/onReset`.
+Which browser/app events map to those hooks is up to the host app (or a bridge component).
 
-在 `examples/logix-react` 中，`SessionModuleLayout` 演示了一个简化的桥接方式：
+In `examples/logix-react`, `SessionModuleLayout` demonstrates a simplified bridge:
 
-- 在 Runtime 中合并 `ReactPlatformLayer`；
-- 在一个轻量的 React 组件中监听 `document.visibilitychange`，并在 Tab 前后台切换时，通过 `Logic.Platform` 调用 Platform 实现上的 `emitSuspend/emitResume`；
-- 模块内部使用 `$.lifecycle.onSuspend/onResume` 记录日志或切换状态。
+- Merge `ReactPlatformLayer` into the Runtime.
+- In a lightweight React component, listen to `document.visibilitychange`, and on tab visibility transitions, call `emitSuspend/emitResume` on the Platform implementation via `Logic.Platform`.
+- Inside modules, use `$.lifecycle.onSuspend/onResume` to log or update state.
 
-> 实际项目中，你可以根据需要选择接 Page Visibility、路由事件或移动端前后台事件，并在统一位置将它们映射到 Platform lifecycle。
+> In real projects, you can choose page visibility, route events, or mobile foreground/background events, and map them to Platform lifecycle in one place.
 
-## 4. 小结与推荐实践
+## 4. Summary and recommended practices
 
-- 用 `$.lifecycle.onInit/onDestroy` 表达“模块实例”的启动与销毁：加载配置、初始化资源、清理连接等；
-- 用 Watcher（`$.onAction/$.onState` + `$.flow.run/runFork`）表达“长期监听并响应事件”的逻辑，它们的生命周期自动绑定到 ModuleRuntime 的 Scope 上；
-- 用 `$.lifecycle.onSuspend/onResume/onReset` 表达“宿主环境”层面的生命周期，与宿主通过 Platform 实现（如 `ReactPlatformLayer`）协同处理页面前后台、会话重置等场景；
-- 在 React 中：
-  - 全局状态 → 应用级 Runtime + Module；
-  - 页面/组件级状态 → 局部 ModuleImpl + `useModule(Impl)`；
-  - 会话级状态保持 → 在 `useModule(Impl, { key, gcTime })` 中为会话选择合适的 `key` 与保活时间，再配合 Platform lifecycle 处理前后台行为。
+- Use `$.lifecycle.onInit/onDestroy` to express module instance start/dispose: load config, init resources, close connections, etc.
+- Use watchers (`$.onAction/$.onState` + `$.flow.run/runFork`) for long-running listen-and-react logic; their lifecycle is automatically bound to the ModuleRuntime Scope.
+- Use `$.lifecycle.onSuspend/onResume/onReset` for host-level lifecycle; coordinate with the host via a Platform implementation (e.g. `ReactPlatformLayer`) for visibility, session reset, and more.
+- In React:
+  - global state → app-level Runtime + Modules
+  - page/component state → local ModuleImpl + `useModule(Impl)`
+  - session-level state → choose a stable `key` and keep-alive (e.g. `useModule(Impl, { key, gcTime })`), and combine with platform lifecycle signals
 
-结合本章与「逻辑流」「管理状态」等章节，你可以逐步从“组件思维”切换到“模块 + 生命周期 + Watcher”思维，让复杂业务流程在 Logix 中保持可读、可调试、可回放。
+Together with “Logic flows” and “Managing state”, you can shift from “component thinking” to “modules + lifecycle + watchers”, keeping complex business flows readable, debuggable, and replayable in Logix.
 
-## 下一步
+## Next
 
-- 掌握跨模块通信：[跨模块通信](./cross-module-communication)
-- 深入了解运行时架构：[深度解析](./deep-dive)
-- 进入高级主题：[Suspense & Async](../advanced/suspense-and-async)
+- Cross-module communication: [Cross-module communication](./cross-module-communication)
+- Runtime architecture: [Deep dive](./deep-dive)
+- Advanced topic: [Suspense & Async](../advanced/suspense-and-async)

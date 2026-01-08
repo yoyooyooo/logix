@@ -1,38 +1,38 @@
 ---
 title: Thinking in Logix
-description: 理解 Logix 的核心心智模型：Intent, Flow, Effect.
+description: "Understand Logix’s core mental model: Intent, Flow, Effect."
 ---
 
 # Thinking in Logix
 
-如果你熟悉 React，你可能听说过 "Thinking in React" —— **UI 是状态的函数**。
+If you’re familiar with React, you’ve probably heard “Thinking in React” — **UI is a function of state**.
 
-Logix 将这一思想延伸到业务逻辑领域：**业务逻辑是围绕状态变化的流（Flow）**。
+Logix extends that idea into the business-logic layer: **business logic is a set of flows around state changes**.
 
-### 适合谁
+### Who is this for?
 
-- 已经读过「快速开始」和 Essentials 基本章节，想整体理解 Logix 的设计取舍；
-- 正在考虑在团队内推广 Logix，需要一份"可以拿去分享"的心智模型说明。
+- You’ve read “Get Started” and the Essentials pages and want to understand Logix’s design trade-offs end-to-end.
+- You want to adopt Logix across a team and need a mental model you can share.
 
-### 前置知识
+### Prerequisites
 
-- 了解什么是 Module / State / Action / Logic；
-- 粗略知道 Bound API (`$`) 的用途。
+- You know what Module / State / Action / Logic mean.
+- You have a rough idea what the Bound API (`$`) is for.
 
-### 读完你将获得
+### What you’ll get
 
-- 一套可以向别人解释 Logix 的"电梯介绍词"；
-- 对 Intent / Flow / Runtime 三个层次的分工有清晰认识；
-- 能在评审代码时判断"这段逻辑写在这里是否合适"。
+- An “elevator pitch” you can use to explain Logix to others
+- A clear separation of responsibilities across Intent / Flow / Runtime
+- The ability to judge during code review whether a piece of logic belongs where it is
 
 ---
 
-## 核心概念一：Intent (What)
+## Core idea 1: Intent (What)
 
-Intent 描述了"你想做什么"，而不是"怎么做"。在 Logix 中，Intent 主要体现为：
+Intent describes **what** you want to do, not **how** you do it. In Logix, Intent mainly shows up as:
 
-- **State Schema**: 数据长什么样。
-- **Action Schema**: 可以对数据做什么操作。
+- **State Schema**: what the data looks like
+- **Action Schema**: what operations can happen to that data
 
 ```ts
 const CounterModule = Logix.Module.make('Counter', {
@@ -41,37 +41,37 @@ const CounterModule = Logix.Module.make('Counter', {
 })
 ```
 
-> **类比**：Intent 就像餐厅的菜单，它告诉你有什么菜（State）、可以点什么菜（Action），但不涉及厨房如何烹饪。
+> Analogy: Intent is like a restaurant menu. It tells you what dishes exist (State) and what you can order (Action), but not how the kitchen cooks them.
 
 ---
 
-## 核心概念二：响应式流 (Flow)
+## Core idea 2: Reactive flows (Flow)
 
-业务逻辑往往不是线性的，而是充满异步、竞态和联动。Logix 使用 **Flow** 来声明这些关系。
+Business logic is rarely linear. It’s full of async work, races, and linkages. Logix uses **Flow** to declare these relationships.
 
-想象你的业务逻辑是一组管道：
+Think of your business logic as a set of pipelines:
 
-- **Input**: Action 流（点击、输入）或 State 流（数据变化）
-- **Transform**: 过滤、防抖、映射
-- **Effect**: 执行副作用（API 调用）并更新状态
+- **Input**: an Action stream (clicks, typing) or a State stream (data changes)
+- **Transform**: filter, debounce, map
+- **Effect**: run side effects (API calls) and write back to state
 
 ```typescript
-// "当用户名变化时，防抖 500ms，然后检查重名"
+// "When username changes, debounce 500ms, then check availability"
 $.onState((s) => s.username)
   .debounce(500)
   .runLatest(checkUsername)
 ```
 
-这种声明式的写法，比散落在 `useEffect` 或回调函数中的命令式代码更易读、更易维护。
+This declarative style is usually easier to read and maintain than imperative code scattered across `useEffect` hooks and callbacks.
 
 ---
 
-## 核心概念三：Logic (How)
+## Core idea 3: Logic (How)
 
-Logic 描述"如何响应 Intent"。它是纯粹的业务逻辑，不依赖具体的 UI 框架。
+Logic describes **how** to respond to Intent. It’s pure business logic and does not depend on a specific UI framework.
 
 ```ts
-// 定义主 reducer（同步、纯函数）
+// Define a primary reducer (sync, pure function)
 const CounterModule = Logix.Module.make('Counter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: { increment: Schema.Void },
@@ -80,35 +80,35 @@ const CounterModule = Logix.Module.make('Counter', {
   },
 })
 
-// 在 Logic 中只放联动 / 副作用 watcher
+// Keep only linkage / side-effect watchers in Logic
 const Logic = CounterModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onState((s) => s.count).runFork((count) => (count === 0 ? Effect.log('count is zero') : Effect.void))
+    yield* $.onState((s) => s.count).runFork((count) => $.state.update((s) => ({ ...s, isZero: count === 0 })))
   }),
 )
 ```
 
-这里有两个层次：
+There are two layers here:
 
-- **Primary Reducer（主 reducer）**：在 `Logix.Module` 的 `reducers` 中声明，由 Runtime 在 `dispatch` 时同步应用，负责核心的 State 变更；
-- **Watcher（监听器）**：在 Logic 中通过 `$.onAction / $.onState` 声明，只处理联动和副作用。
-
----
-
-## 核心概念四：Runtime (When & Where)
-
-Runtime 负责将 Intent 和 Logic 结合起来，并在特定的环境中运行。
-
-- **ModuleImpl**: 静态的装配蓝图（Module + 初始状态 + Logic）
-- **ModuleRuntime**: 运行时的活动实例
+- **Primary Reducer**: declared in `reducers` on `Logix.Module`. The Runtime applies it synchronously during `dispatch`, and it is responsible for core State transitions.
+- **Watcher**: declared in Logic via `$.onAction / $.onState`. It handles linkage and side effects only.
 
 ---
 
-## 数据流向
+## Core idea 4: Runtime (When & Where)
+
+The Runtime combines Intent and Logic and runs them in a specific environment.
+
+- **ModuleImpl**: a static assembly blueprint (Module + initial state + Logic)
+- **ModuleRuntime**: an active runtime instance
+
+---
+
+## Data flow
 
 ```mermaid
 graph LR
-    UI["UI 组件"] -->|"dispatch(action)"| A["Action"]
+    UI["UI component"] -->|"dispatch(action)"| A["Action"]
     A --> R["Primary Reducer"]
     R -->|"sync update"| S["State"]
     S -->|"trigger"| W["Watcher"]
@@ -117,24 +117,24 @@ graph LR
     S -->|"subscribe"| UI
 ```
 
-1. **UI 触发 Action**: 用户点击按钮，派发 `increment` Action。
-2. **Primary Reducer 更新 State**: Runtime 根据 `_tag` 找到主 reducer，同步计算新状态。
-3. **Watcher 响应变化**: 监听器捕获 Action 或 State 变化，执行联动或副作用。
-4. **UI 重绘**: React 组件感知到状态变化，重新渲染。
+1. **UI triggers an Action**: the user clicks a button and dispatches the `increment` Action.
+2. **Primary Reducer updates State**: the Runtime finds the reducer by `_tag` and synchronously computes the next state.
+3. **Watchers react**: watchers observe Action or State changes and run linkage or side effects.
+4. **UI re-renders**: React components observe state changes and render again.
 
 ---
 
-## 总结
+## Summary
 
-Thinking in Logix 意味着：
+Thinking in Logix means:
 
-1. **定义意图 (Schema)**，而不是编写过程。
-2. **描述流向 (Flow)**，而不是手动调度。
-3. **隔离副作用 (Effect)**，让核心逻辑保持纯粹。
+1. **Define intent (Schema)**, rather than writing procedures.
+2. **Describe flows (Flow)**, rather than manually orchestrating.
+3. **Isolate side effects (Effect)** to keep core logic pure.
 
-## 为什么选择 Logix？
+## Why Logix?
 
-- **类型安全**: 基于 Schema 的全链路类型推导。
-- **副作用管理**: 基于 Effect 的强大副作用控制（异步、重试、并发）。
-- **可测试性**: 逻辑与 UI 分离，易于单元测试。
-- **模块化**: 模块自包含，易于组合和复用。
+- **Type safety**: end-to-end type inference based on Schema.
+- **Side-effect management**: powerful control via Effect (async, retries, concurrency).
+- **Testability**: logic is separated from UI, enabling unit tests.
+- **Modularity**: modules are self-contained and easy to compose and reuse.

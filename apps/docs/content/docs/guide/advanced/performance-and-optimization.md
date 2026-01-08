@@ -1,137 +1,126 @@
 ---
-title: 性能与优化
-description: 调整 Logix Runtime 和 Devtools 的观测策略，在复杂场景下保持良好性能。
+title: Performance and Optimization
+description: Tune Logix Runtime and DevTools observability strategies to keep good performance in complex scenarios.
 ---
 
-# 性能与优化
+# Performance and Optimization
 
-Logix Runtime 默认以“可观测性优先”的方式工作：  
-在开发环境下会完整记录状态事务、Trait 行为和调试事件，配合 Devtools 提供时间线与时间旅行能力。  
-在生产环境下则自动收敛为更轻量的观测模式。
+Logix Runtime is “observability-first” by default.  
+In development it records full state transactions, trait behavior, and debug events, and DevTools provides a timeline and time travel.  
+In production it automatically converges to a lighter observability mode.
 
-本文从「日常业务开发者」视角，整理一套可操作的性能调优思路。
+This page provides an actionable performance tuning playbook from the perspective of everyday application development.
 
-### 适合谁
+### Who is this for
 
-- 已经在项目中使用 Logix Runtime / `@logix/react`，并开启了 Devtools；
-- 希望在高频交互、复杂表单或长列表场景下保持良好响应速度。
+- You’re already using Logix Runtime / `@logix/react`, and DevTools is enabled.
+- You want good responsiveness in high-frequency interaction, complex forms, or long-list scenarios.
 
-### 前置知识
+### Prerequisites
 
-- 了解 `Logix.Module` / `Module.logic` / `Module.live` 的基本用法；
-- 知道如何通过 `Logix.Runtime.make` 创建 Runtime，并在 React 中使用 `RuntimeProvider` / `useModule`。
+- Understand basic usage of `Logix.Module` / `Module.logic` / `Module.live`.
+- Know how to create a Runtime via `Logix.Runtime.make`, and use `RuntimeProvider` / `useModule` in React.
 
-### 读完你将获得
+### What you’ll get
 
-- 明白一次用户交互的主要成本落在哪些位置；
-- 能够通过 `stateTransaction.instrumentation` 和 Devtools 设置控制观测开销；
-- 在遇到“高 Trait 密度 / 高 watcher 数量”时，有一套分层优化 checklist。
+- Understand where the main costs of an interaction usually come from.
+- Control observability overhead via `stateTransaction.instrumentation` and DevTools settings.
+- A layered optimization checklist for “high trait density / lots of watchers”.
 
-## 0. 先记住 5 个关键词
+## 0. Remember 5 keywords
 
-1. **事务窗口**：一次同步入口的写入聚合边界，窗口结束最多一次对外提交。
-2. **影响域（dirtySet）**：这次写入影响到哪些字段；决定增量派生/校验范围与归因质量。
-3. **派生闭包**：提交前的同步收敛链（派生/校验写回），尽量留在同一事务内。
-4. **可见性调度（priority）**：提交对 UI 的通知节奏（normal/low），用于减少非必要渲染（不改变最终状态）。
-5. **证据链**：每次提交都能解释“谁触发 / 影响什么 / 为何这样调度 / 是否发生退化”。
+1. **Transaction window**: the write aggregation boundary of a synchronous entry; at most one outward commit at window end.
+2. **Impact scope (`dirtySet`)**: which fields were affected; it determines incremental derive/validation range and attribution quality.
+3. **Derivation closure**: the synchronous converge chain before commit (derive/validate write-backs), ideally kept within the same transaction.
+4. **Visibility scheduling (`priority`)**: the UI notification cadence of a commit (normal/low), used to reduce unnecessary renders (without changing final state).
+5. **Evidence chain**: every commit can explain “who triggered / what was affected / why it was scheduled this way / whether it degraded”.
 
-### 粗粒度成本模型（你在为哪些成本买单）
+### Coarse cost model (what you’re paying for)
 
-- **事务次数**：决定 UI 通知次数与派生/校验频率上界。
-- **dirtySet 质量**：越精确越容易走增量；`dirtyAll` 越多越容易退化全量。
-- **派生/校验规模**：规则越多、依赖越深，越依赖增量与计划缓存复用。
-- **React 渲染 fan-out**：订阅切片越粗、列表 identity 越不稳定，渲染压力越大。
-- **模块初始化**：模块启动时的 build/setup/install（包括 traits 汇总、合并与安装）会影响首屏/首次可用性。
-- **诊断等级**：证据越多越可解释，但启用时应有可预估的额外成本。
+- **Number of transactions**: bounds UI notifications and derive/validation frequency.
+- **`dirtySet` quality**: more precise means more incremental paths; more `dirtyAll` means more full recomputation degradation.
+- **Derive/validation scale**: more rules and deeper dependencies rely more on incremental and plan cache reuse.
+- **React render fan-out**: coarse subscriptions and unstable list identity increase render pressure.
+- **Module initialization**: build/setup/install at startup (including trait aggregation/merge/install) impacts first paint / first availability.
+- **Diagnostics level**: more evidence improves explainability, but should have a predictable cost.
 
-### Traits 组合的成本模型（`$.traits.declare` / Module `traits`）
+### Cost model for trait composition (`$.traits.declare` / Module `traits`)
 
-当你在模块中大量使用 traits（包括 Module-level `traits`，以及 Logic setup 中的 `$.traits.declare`）时，初始化阶段会多做几件事：
+If you use many traits in a module (both Module-level `traits` and `$.traits.declare` inside Logic setup), initialization does more work:
 
-1. **收集**：把 module-level 与每个 logicUnit 的声明汇总到同一个集合。
-2. **确定性合并**：按稳定规则合并为“最终 traits 集”（同输入不随组合顺序漂移）。
-3. **一致性校验**：检查重复 `traitId`、互斥/前置条件等配置问题；失败会在进入运行前暴露。
-4. **冻结 + 安装**：setup 完成后冻结 traits；并在初始化阶段一次性安装对应的行为 Program。
+1. **Collect**: aggregate module-level declarations and each logic unit’s declarations into one set.
+2. **Deterministic merge**: merge into the “final trait set” with stable rules (same input does not drift by composition order).
+3. **Consistency checks**: detect duplicate `traitId`, mutual exclusion / prerequisites; failures surface before runtime.
+4. **Freeze + install**: freeze traits after setup, then install corresponding behavior Programs during initialization.
 
-常见调优点：
+Common tuning levers:
 
-- **控制规模**：traits 数量越多，初始化越慢；优先把真正“通用且高复用”的规则抽成共享 Logic/Pattern，其余留在具体模块内。
-- **稳定标识**：给复用 Logic 提供稳定 `logicUnitId`，避免来源漂移导致对比/回放困难。
-- **按需观测**：性能敏感路径用默认（或显式）关闭诊断；排障时再切到 `light/full`，并用证据包对比 `digest/count`。
+- **Control scale**: more traits slows init; prioritize extracting truly reusable rules into shared Logic/Patterns, keep the rest local.
+- **Stable identity**: provide stable `logicUnitId` for reusable Logic to avoid provenance drift and replay/compare difficulty.
+- **Observe on demand**: keep diagnostics off (default or explicit) on performance-sensitive paths; switch to `light/full` when debugging, and compare evidence packages via `digest/count`.
 
-### 一条通用的优化梯子（从默认到拆分/重构）
+### A general optimization ladder (from default to split/refactor)
 
-当你遇到性能问题时，建议按下面顺序推进（越往后成本越高，但收益也更可控）：
+When you hit performance issues, proceed in this order (later steps cost more but are more controllable):
 
-1. **默认**：先用默认配置与声明式写法跑通，保持语义清晰。
-2. **观察**：开启 Devtools、导出证据包，先定位瓶颈属于“事务次数 / dirtySet / 派生规模 / 渲染 fan-out / 初始化”。
-3. **收窄写入**：优先用 `immerReducers` / `$.state.mutate`（或 `Module.Reducer.mutate/mutateMap` 作为 escape hatch）让运行时能采集更精确的影响域；避免无意义的全量 setState。
-4. **稳定标识**：为列表项/逻辑单元提供稳定的业务 ID（例如 list `trackBy`、logicUnitId），减少漂移与无谓重算/重渲染。
-5. **覆盖/调优**：只在热点模块上做局部 override（观测档位、调度/预算阈值等），并用证据包固化回归窗口。
-6. **拆分/重构**：当单个模块/逻辑密度过高时，拆分 Module / Logic / Trait 规则，回收复杂度与诊断可解释性。
+1. **Default**: start with default configs and declarative style; keep semantics clear.
+2. **Observe**: enable DevTools and export evidence; first classify the bottleneck: transactions / dirtySet / derive scale / render fan-out / init.
+3. **Narrow writes**: prefer `$.state.mutate` / `Module.Reducer.mutate` / `Module.Reducer.mutateMap` so Runtime can capture a precise impact scope; avoid meaningless full-tree setState.
+4. **Stable identity**: provide stable business ids for list items / logic units (e.g. list `trackBy`, `logicUnitId`) to reduce drift and avoid recompute/re-render.
+5. **Targeted overrides**: only override hotspots (observability level, scheduling/budget thresholds, etc.), and lock the regression window with evidence.
+6. **Split/refactor**: if a single module/logic becomes too dense, split Module / Logic / trait rules to reduce complexity and improve diagnosability.
 
-## 1. 一次交互的成本落在哪？
+## 1. Where does the cost of one interaction go?
 
-在 Logix 中，一次典型的用户交互（如输入、点击）大致会经历：
+In Logix, a typical user interaction (typing/clicking) goes through:
 
-1. **Action 派发**：`dispatch(action)`，触发一次 StateTransaction。
-2. **事务内部逻辑**：reducer / Trait / middleware 等在事务内多次读写 state。
-3. **状态提交**：事务 `commit`，对外只写一次状态并触发一次订阅通知。
-4. **React 渲染**：受影响的组件根据选择器结果重新渲染。
-5. **调试与 Devtools**：记录调试事件、更新 Devtools Timeline / 视图。
+1. **Action dispatch**: `dispatch(action)` starts a StateTransaction.
+2. **In-transaction logic**: reducer / trait / middleware reads/writes state multiple times within the transaction.
+3. **State commit**: the transaction `commit`s; outwardly, state is written once and subscribers are notified once.
+4. **React render**: affected components re-render based on selector results.
+5. **Debugging & DevTools**: record debug events and update DevTools timeline/views.
 
-通常来说：
+In most cases:
 
-- **真正的大头在 React 渲染和你自己写的业务逻辑**；
-- Logix Runtime 与调试层的开销主要来自：
-  - watcher / Trait 数量（fan-out 多时，每次事件要经过更多处理）；
-  - 观测策略（是否记录 Patch / 快照 / 细粒度调试事件）；
-  - Devtools 是否开启深度模式并显示大量事件。
+- **The biggest cost is React rendering and your own business logic.**
+- Runtime + debugging overhead mainly comes from:
+  - number of watchers/traits (higher fan-out means more work per event),
+  - observability strategy (whether to record patches/snapshots/fine-grained events),
+  - DevTools depth mode and how many events it renders.
 
-后续几节会分别介绍如何控制这些部分的成本。
+The next sections explain how to control these costs.
 
-## 2. 控制 StateTransaction 观测开销
+## 2. Control StateTransaction observability overhead
 
-Logix 在内部使用 `StateTransaction` 封装一次逻辑入口下的全部状态演进，并保证：
+Internally, Logix uses `StateTransaction` to wrap all state evolution within a logic entry, and it guarantees:
 
-- **单入口 = 单事务 = 单次状态提交**：  
-  一次交互只会产生一次 `state:update` 事件和一次外部订阅通知。
-- 所有 Patch / Trait 步骤都归属于同一个 `txnId`，方便在 Devtools 中分析事务。
+- **one entry = one transaction**
+- **one transaction = at most one outward commit**
 
-在此基础上，你可以通过 **观测策略（Instrumentation）** 控制记录的细节程度。
+The main knob is `stateTransaction.instrumentation`:
 
-### 2.1 观测级别：`"full"` vs `"light"`
+- `full`: record more structured information (patches/snapshots, better explainability)
+- `light`: record less (lower overhead)
 
-- `"full"`（默认用于本地开发 / 测试）
-  - 记录 Patch 列表、事务前后的状态快照；
-  - 在调试事件中附带 `patchCount` / `originKind` 等信息；
-  - 支持 Devtools 的事务视图、时间旅行和字段级 diff。
-- `"light"`（默认用于生产）
-  - 只保留必要的计时信息与最终状态；
-  - 不再构建 Patch / 快照，降低内存与 CPU 开销；
-  - 仍然保证“单事务 = 单次提交”的语义。
-
-### 2.2 配置入口与优先级
-
-你可以在 Runtime 级或单个 Module 级别配置观测策略：
+Example: set an app-level default strategy on the Runtime:
 
 ```ts
 import * as Logix from '@logix/core'
 
-// 应用级默认观测策略
+// App-level default observability strategy
 const runtime = Logix.Runtime.make(RootImpl, {
   stateTransaction: {
-    instrumentation: 'full', // 或 'light'
+    instrumentation: 'full', // or 'light'
   },
 })
 ```
 
-在少数高频模块（如拖拽、动画、频繁输入表单）上，可以单独降级为 `"light"`：
+For a few high-frequency modules (dragging/animation/heavy input forms), you can downgrade to `"light"` per module:
 
 ```ts
 // HeavyFormDef = Logix.Module.make(...)
 export const HeavyFormModule = HeavyFormDef.implement({
-  // 其他配置略
+  // other config omitted
   stateTransaction: {
     instrumentation: 'light',
   },
@@ -140,73 +129,71 @@ export const HeavyFormModule = HeavyFormDef.implement({
 export const HeavyFormImpl = HeavyFormModule.impl
 ```
 
-观测策略的优先级为：
+Priority order:
 
-1. **ModuleImpl 配置**：某个模块显式设置的值；
-2. **Runtime.make 配置**：Runtime 级默认观测策略；
-3. **环境默认值**：`NODE_ENV !== "production"` 时默认 `"full"`，生产环境默认 `"light"`。
+1. **ModuleImpl config** (explicit on the module)
+2. **Runtime.make config** (runtime-level default)
+3. **Environment default**: `"full"` in non-production (`NODE_ENV !== "production"`), `"light"` in production
 
-> 提示：  
-> 在排查性能问题时，可以短暂把某个模块或整个 Runtime 切到 `"light"`，对比一次交互的耗时与 React 渲染次数，帮助判断瓶颈是否来自观测层。
+> Tip: when investigating performance, temporarily switch a module or the whole Runtime to `"light"` and compare interaction latency and React render counts to determine whether observability is part of the budget.
 
-### 2.3 （可选）控制派生收敛的策略与预算
+### 2.3 (Optional) control converge strategy & budgets
 
-如果你的场景里有大量“派生字段 / 联动规则 / computed 值”，一次交互需要做较多联动计算，那么除了观测级别之外，还可以通过收敛调度控制面做两件事：
+If your scenario has lots of derived fields/linkage/computed values and each interaction triggers substantial linkage computation, beyond observability you can also use the converge scheduling control plane for:
 
-- 出现回归时快速止血回退到更稳妥的模式；
-- 在页面/模块范围内试探更合适的默认值（并可回滚）。
+- quick mitigations when regressions occur
+- experimenting with better defaults at page/module scope (with rollback)
 
-详见：[收敛调度控制面](./converge-control-plane)
+See: [Converge scheduling control plane](./converge-control-plane)
 
-## 3. 使用 Devtools 设置控制噪音
+## 3. Use DevTools settings to control noise
 
-在开启 Devtools 时，观测开销还与 Devtools 的设置有关。常用的几个开关：
+When DevTools is enabled, overhead also depends on DevTools settings. Common switches:
 
 - `mode: "basic" | "deep"`
-  - `basic`：只展示 Action / State / Service 等粗粒度事件，隐藏 Trait 细节和时间旅行控件，适合日常开发；
-  - `deep`：展示 Trait 级事件、React 渲染事件以及时间旅行按钮，适合深入排查。
+  - `basic`: shows coarse-grained events (Action/State/Service), hides trait details and time-travel controls; good for day-to-day work.
+  - `deep`: shows trait-level events, React render events, and time-travel buttons; good for deep debugging.
 - `showTraitEvents` / `showReactRenderEvents`
-  - 在高频渲染或大量 Trait 的场景下，可以暂时关闭某类事件，以减少时间线噪音。
+  - In high-frequency rendering or heavy-trait scenarios, you can temporarily disable a class of events to reduce timeline noise.
 - `eventBufferSize`
-  - 控制 Devtools 内部保留的事件数量（默认约 500 条）；
-  - 在极端调试场景下可以临时放大，但不建议长期设置为几千以上，以免 Devtools 自身占用过多内存。
+  - controls how many events DevTools keeps internally (default ~500)
+  - you can temporarily increase it for extreme debugging, but avoid keeping it in the thousands long-term to prevent DevTools itself from using too much memory.
 
-### 3.1 Runtime 级可调开关（除了收敛调度控制面以外）
+### 3.1 Runtime-level knobs (besides the converge scheduling control plane)
 
-如果你想更“确定”地控制观测开销（而不是只靠 UI 开关），可以从 Runtime 配置入手：
+If you want more “deterministic” control (not just UI toggles), tune Runtime config:
 
 ```ts
 import * as Logix from "@logix/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
-  // 不传 devtools 或设为 false：Devtools 相关观测不会启用（更省）
+  // if devtools is omitted or set to false, DevTools observability is not enabled (cheaper)
   devtools: {
-    bufferSize: 500,      // Devtools 事件窗口长度（越大越占内存）
-    observer: false,      // 关闭 effectop trace（需要时再打开）
-    sampling: { reactRenderSampleRate: 0.1 }, // 可选：降低 React 渲染事件采样率
+    bufferSize: 500, // DevTools event window length (bigger uses more memory)
+    observer: false, // disable effectop trace (enable when needed)
+    sampling: { reactRenderSampleRate: 0.1 }, // optional: lower sampling rate for React render events
   },
 })
 ```
 
-另外还有一个很常用但容易混淆的开关：
+Two commonly-confused switches:
 
-- **诊断分档**（`Debug.diagnosticsLevel`）：控制“是否输出/输出多少调试事件”（`off` 几乎零开销但完全失明；`sampled` 用低成本采样保留长尾定位能力；`light/full` 适合排查问题与解释链路）。
-- **事务观测级别**（`stateTransaction.instrumentation`）：控制“事务里是否记录 Patch/快照”等结构化信息（`full` 更好调试，`light` 更省）。
+- **Diagnostics level** (`Debug.diagnosticsLevel`): controls “whether/how much debug events are emitted” (`off` is near-zero overhead but blind; `sampled` keeps tail-latency tracing at low cost; `light/full` is for debugging and alignment).
+- **Transaction instrumentation** (`stateTransaction.instrumentation`): controls whether a transaction records structured info like patches/snapshots (`full` is better for debugging, `light` is cheaper).
 
-#### 诊断分档：off / sampled / light / full（怎么选）
+#### Diagnostics levels: off / sampled / light / full (how to choose)
 
-诊断分档影响的是「Devtools / TrialRun 等导出面」会生成/保留多少调试事件；  
-它不会改变你的业务逻辑语义，但会影响“你能看到多少证据”以及“额外开销有多大”。
+Diagnostics level affects how many debug events are generated/retained for export surfaces like DevTools / TrialRun.  
+It does not change business semantics, but it affects “how much evidence you can see” and “how much extra overhead you pay”.
 
-- `off`：几乎零开销，适合基准/极致性能确认；代价是几乎没有解释链路（Devtools/证据包会非常贫瘠）。
-- `sampled`：低成本保留定位能力（尤其是 Trait 收敛链的热点定位）。运行时会按事务做**确定性采样**，只在命中的事务里输出收敛链的 Top-K 热点摘要（payload 仍保持 slim）。
-- `light`：每次事务都输出 slim 事件，适合作为默认“可观测但不太贵”的档位；但不提供收敛链 step 级的热点摘要。
-- `full`：信息最全、也最“贵”，适合短时间深度排查与解释链路对齐。
+- `off`: near-zero overhead, good for benchmarks/extreme performance checks; you lose most explainability (DevTools/evidence packages become sparse).
+- `sampled`: keeps debugging capability at low cost (especially for hotspots in the trait converge chain). Runtime uses **deterministic sampling per transaction**, and only emits Top-K hotspot summaries for converge chains in sampled transactions (payload stays slim).
+- `light`: emits slim events for every transaction, good as a default “observable but not too expensive” tier; it doesn’t include step-level hotspot summaries.
+- `full`: the most complete and the most expensive; use it for short, deep debugging and explanation-chain alignment.
 
-如果你主要关心“复杂表单/长列表的联动收敛是否卡顿”，推荐优先用 `sampled`；  
-只有当 sampled 的摘要不足以定位问题时再切到 `full`。
+If your main concern is “converge linkage jank in complex forms/long lists”, prefer `sampled` first; only switch to `full` when the summary is insufficient.
 
-示例：为某个 Runtime 显式启用 `sampled`（并配置采样频率与热点 Top-K 上限）
+Example: enable `sampled` on a Runtime with sampling frequency and Top-K cap:
 
 ```ts
 import * as Logix from '@logix/core'
@@ -222,21 +209,21 @@ const runtime = Logix.Runtime.make(RootImpl, {
 })
 ```
 
-一个常见的实践是：
+A common practice:
 
-1. 初次开发某个模块时：`instrumentation = "full"` + `mode = "deep"`，完整观察事务与 Trait 行为；
-2. 模块稳定后：切回 `mode = "basic"`，仅保留关键事件；
-3. 遇到性能问题时：
-   - 先在 `"deep"` 模式下用 Overview Strip 与 Timeline 找到“噪声最多”的时间段；
-   - 再结合 `"light"` 观测策略和 `showReactRenderEvents` 开关，验证问题是否来自过多渲染或过多 Trait 事件。
+1. When first developing a module: `instrumentation = "full"` + `mode = "deep"` to fully observe transactions and trait behavior.
+2. After the module stabilizes: switch back to `mode = "basic"` and keep only key events.
+3. When performance issues appear:
+   - use Overview Strip and Timeline in `"deep"` to locate the noisiest window,
+   - then combine `"light"` instrumentation and `showReactRenderEvents` to validate whether it’s mostly render fan-out or trait event volume.
 
-### 3.2 TrialRun：离线采集证据与 IR（对比/回归用）
+### 3.2 TrialRun: offline evidence and IR collection (for diffs/regression)
 
-当你需要做“重构不回退”的对比时，推荐使用 **TrialRun** 在受控环境中跑一次程序，并导出可机器处理的证据包：
+When you need “refactor without regression” comparisons, prefer **TrialRun** to run a program in a controlled environment and export machine-processable evidence:
 
-- 你可以在 **不打开 Devtools UI** 的情况下收集关键证据；
-- 可以显式控制 `diagnosticsLevel` 与 `maxEvents`，避免“观测者效应”；
-- 导出的 `EvidencePackage.summary` 能回答“当前实例启用了哪些运行时策略/覆写”，并提供可比较的 IR 摘要。
+- You can collect key evidence **without opening DevTools UI**.
+- You can explicitly control `diagnosticsLevel` and `maxEvents` to avoid observer effects.
+- `EvidencePackage.summary` answers “what runtime strategies/overrides were enabled for this instance”, and provides comparable IR summaries.
 
 ```ts
 import * as Logix from "@logix/core"
@@ -251,172 +238,131 @@ const result = await Effect.runPromise(
   }),
 )
 
-// summary.runtime.services：运行时策略与覆写来源证据（Slim，可序列化）
-// summary.converge.staticIrByDigest：静态 IR 摘要（按 digest 去重，便于对比）
+// summary.runtime.services: evidence of runtime strategies and override provenance (slim, serializable)
+// summary.converge.staticIrByDigest: static IR summaries (deduped by digest, easy to diff)
 console.log(result.evidence.summary)
 ```
 
-实战建议：
+Practical steps:
 
-1. 先用同一份输入跑出一份“基线证据包”（保存起来作为对比）；
-2. 再在改动后用同样的输入跑一遍，比较 `summary` 的关键字段与事件密度；
-3. 如果你只关心性能，不关心解释链路：优先用 `diagnosticsLevel: "off"` + 更小的 `maxEvents` 做一次确认。
+1. Run once with the same inputs to produce a “baseline evidence package” (save it for comparison).
+2. Run again after changes with the same inputs, and compare key fields and event density in `summary`.
+3. If you only care about performance (not explainability), prefer `diagnosticsLevel: "off"` + smaller `maxEvents` for a quick check.
 
-## 4. Watcher 与 Trait 粒度建议
+## 4. Watcher and trait granularity guidelines
 
-Logix 允许你在同一 Module 内挂载大量 `$.onAction` / `$.onState` watcher 和 Trait 节点。  
-从实践经验看，下面的经验值可以作为参考：
+Logix allows many `$.onAction` / `$.onState` watchers and trait nodes within one Module.  
+From experience, these ballpark numbers can serve as guidance:
 
-- 单个 Module / 单段 Logic 内的 watcher 数量：
-  - 约 **≤ 128**：通常处于“安全区”，一次交互的延迟主要由业务逻辑和 React 决定；
-  - 约 **256**：需要留意是否有很多 watcher 同时命中、handler 做了较重的工作；
-  - **≥ 512**：建议优先考虑拆分 Module / Logic，或合并规则，而不是简单堆叠 watcher。
-- Trait 粒度：
-  - 对于高频更新的字段（如正在输入的表单项），尽量避免挂载过多层级的 computed/link；
-  - 对于只在提交时需要的统计信息，可以考虑延后到提交逻辑中计算，而不是每次输入都通过 Trait 维护；
-  - 在 TraitGraph 中观察某个字段周围的节点密度，如发现某些热点字段挂了过多 Trait，可以优先考虑简化。
+- Watcher count per Module / per Logic block:
+  - about **≤ 128**: usually “safe”; interaction latency is mostly decided by business logic and React.
+  - about **256**: watch for many watchers firing at once and handlers doing heavy work.
+  - **≥ 512**: prefer splitting Module/Logic or merging rules instead of stacking more watchers.
+- Trait granularity:
+  - for high-frequency fields (e.g. form inputs), avoid too many layers of computed/link nodes;
+  - for statistics only needed on submit, consider computing during submit logic instead of maintaining via traits on every input;
+  - inspect node density around a hot field in TraitGraph; if a hotspot field has too many attached traits, simplify first.
 
-简化粒度的常见手段包括：
+Common simplification tactics:
 
-- 合并多个相似规则为一条 watcher 内的结构化 match，而不是复制多条相似 watcher；
-- 将与 UI 无关的重计算下沉到 Service 或专用 Flow，而不是在 Trait / watcher 中同步完成；
-- 对于长列表或虚拟滚动场景，优先使用列表虚拟化组件，减少每次状态变更需要重新渲染的节点数量。
+- merge similar rules into structured matching within one watcher instead of duplicating many similar watchers;
+- move recomputation unrelated to UI down into Services or dedicated Flows instead of doing it synchronously in traits/watchers;
+- for long lists/virtual scrolling, prefer list virtualization components to reduce the number of nodes React needs to re-render per state change.
 
-### 4.1 高频 watcher 的写法建议
+### 4.1 Writing high-frequency watchers
 
-当你的页面里存在大量 `$.onAction / $.onState`（或少量但非常高频）时，优先遵循下面几条经验法则：
+If a page has many `$.onAction / $.onState` watchers (or a few but extremely high-frequency ones), follow these rules of thumb:
 
-- **把 watcher 当作“长期订阅”**：每一条 `.run* / .update / .mutate / .runFork` 都会启动一条长期运行的监听；数量越多，一次事件需要经过的处理链路就越长。
-- **让 handler 尽量快（尤其是高频事件）**：
-  - 把重计算/IO 尽量放到 Effect 内部，并用合适的执行策略限制吞吐（见下条）。
-  - 如果你观察到 dispatch 在高频场景下出现明显“等待/卡顿”，通常意味着事件产生速度超过了监听器的消费速度：优先做 debounce/throttle、合并 watcher、或降低单次 handler 的同步工作量。
-- **为不同语义选择合适的 `.run*` 策略**：
-  - **搜索/联想/输入驱动请求**：`debounce + runLatest`（新输入到来时取消旧请求，只保留最新）。
-  - **提交/保存/幂等操作**：`runExhaust`（忙时忽略新事件，避免重复提交）。
-  - **允许并发但要控量**：使用 `runParallel` 时要意识到并发度受 Runtime 并发策略影响；在性能敏感模块里避免“无限并发”的假设（详见 [并发控制面](./concurrency-control-plane)）。
-- **能用 reducer 就别用 watcher**：如果某个 Action 的结果只是纯同步地更新状态，优先用 `$.reducer(...)`（或 Module Reducer）承载它，把 watcher 留给需要 IO/复杂编排的场景。
-- **`onState` selector 返回“稳定值”**：
-  - selector 的变化去重通常以“值相等/引用相等”为基础；如果 selector 每次都返回新对象/新数组，会导致几乎每次提交都被视为“变化”，从而放大 watcher 压力。
-  - 优先返回 primitive、稳定引用，或拆成更细粒度的 selector（只订阅真正关心的字段）。
+- **Treat watchers as long-lived subscriptions**: each `.run* / .update / .mutate / .runFork` starts a long-running listener. More watchers means a longer processing chain per event.
+- **Keep handlers fast (especially for high-frequency events)**:
+  - push heavy computation/I/O into the Effect body, and use appropriate execution strategies to cap throughput (see next).
+  - if dispatch feels “blocked/janky” in high-frequency scenarios, event production is likely outpacing consumption—prefer debounce/throttle, merge watchers, or reduce per-handler synchronous work.
+- **Choose the right `.run*` strategy for the semantics**:
+  - **search/suggest/input-driven requests**: `debounce + runLatest` (cancel previous requests on new input; keep only the latest).
+  - **submit/save/idempotent ops**: `runExhaust` (ignore new events while busy; avoid duplicate submits).
+  - **allow concurrency but cap it**: when using `runParallel`, remember concurrency is constrained by the Runtime’s concurrency policy; avoid assuming “unbounded parallelism” in performance-sensitive modules (see [Concurrency control plane](./concurrency-control-plane)).
+- **Prefer reducers over watchers when possible**: if an Action only performs pure synchronous state updates, prefer `$.reducer(...)` (or Module Reducer) and reserve watchers for I/O or complex orchestration.
+- **Make `onState` selectors return stable values**:
+  - selector dedupe usually relies on value/reference equality; if you return a new object/array every time, it’s almost always considered “changed”, amplifying watcher pressure.
+  - prefer primitives, stable references, or narrower selectors (subscribe only to what you truly need).
 
-## 5. 高频场景调优 checklist
+## 5. High-frequency performance checklist
 
-在你感觉“这个页面有点卡”时，可以按照下面的顺序排查：
+When a page “feels janky”, check in this order:
 
-1. **确认事务语义是否正常**
-   - 打开 Devtools，检查一次交互是否只产生一条 `state:update` 事件；
-   - 如发现单次交互出现了多条提交，需要优先排查逻辑是否重复写入状态。
-2. **观察 React 渲染次数**
-   - 在 Timeline 中切换到 `react-render` 视图，查看一次事务触发了多少组件渲染；
-   - 结合 selector 优化（只订阅必要字段）和列表虚拟化，降低渲染 fan-out。
-3. **调整观测策略**
-   - 在本地把目标模块或 Runtime 切到 `instrumentation = "light"`，对比性能差异；
-   - 如果差异明显，说明观测层占用了一部分预算，可以在 Devtools 中适当关闭深度事件或缩小事件窗口。
-4. **梳理 watcher / Trait 数量**
-   - 查找高频 Action / 字段周围的 watcher 和 Trait 节点数量；
-   - 按前一节建议合并或下沉逻辑，减少一次事件需要经过的处理链路长度。
-5. **回到业务视角做权衡**
-   - 对于真正需要强观测能力的关键模块（如财务流水、风控流程），可以保留 `"full"` 观测与更细的 Trait 粒度；
-   - 对于只需“跑得快”的纯展示模块，可以大胆使用 `"light"` + `mode = "basic"` 组合，把更多预算留给 UI 动效和业务逻辑。
+1. **Confirm transaction semantics**
+   - In DevTools, verify a single interaction produces only one `state:update` event.
+   - If one interaction causes multiple commits, first find and fix duplicate state writes.
+2. **Observe React render counts**
+   - Switch the Timeline to `react-render` and see how many component renders one transaction triggers.
+   - Combine selector optimization (subscribe only to necessary fields) and list virtualization to reduce render fan-out.
+3. **Adjust observability strategy**
+   - Locally switch the target module or Runtime to `instrumentation = "light"` and compare performance.
+   - If the difference is significant, observability is consuming part of the budget; in DevTools, consider disabling deep events or shrinking the event window.
+4. **Review watcher / trait counts**
+   - Identify high-frequency Actions/fields and the nearby watcher and trait node counts.
+   - Merge rules or move logic down as suggested above to shorten the per-event processing chain.
+5. **Make trade-offs from the business perspective**
+   - For modules that truly require strong observability (e.g. financial flows, risk control), keep `"full"` instrumentation and fine-grained traits.
+   - For display-only modules that just need to be fast, use `"light"` + `mode = "basic"` and reserve budget for UI and business logic.
 
-## 6. 显式 Batch 与低优先级更新（高频兜底）
+## 6. Explicit batching and low-priority updates (high-frequency fallback)
 
-当你遇到“输入很频繁 / 同步 dispatch 太多 / React render 压力大”时，可以在不改变业务正确性的前提下，显式选择两种兜底策略：
+If you hit “very frequent input / too many synchronous dispatches / high render pressure”, you can choose two fallback strategies without changing business correctness:
 
-- **Batch（批处理窗口）**：把多次同步写入合并为一次可观察提交（一次订阅通知 + 一条 `state:update`）。
-- **低优先级更新**：把部分更新标记为可延迟/可合并，让 UI 把更多预算留给高优先级交互（仍保证最终必达）。
+- **Explicit batch**: `dispatchBatch([...])` merges multiple synchronous dispatches into one outward commit.
+- **Low-priority notifications**: `dispatchLowPriority(action)` keeps semantics but makes UI notifications merge more gently.
 
-### 6.1 Batch：合并多次 dispatch
+> Note: lowPriority is for UI notification cadence, not for delaying critical state semantics. Latency-sensitive UI (like dragging feedback) should not use lowPriority.
 
-如果你有“连发多个 Action 才能完成一次业务状态变更”的场景，优先使用 `dispatchBatch`：
-
-```ts
-const rt = runtime.runSync(MyModule as any)
-
-yield* rt.dispatchBatch([
-  { _tag: "setValue", payload: { path: "a", value: 1 } },
-  { _tag: "setValue", payload: { path: "b", value: 2 } },
-])
-```
-
-在 Devtools 中你会看到该次提交的 `state:update.commitMode = "batch"`。
-
-它的最佳实践与边界是：
-
-- **同一业务意图窗口**：把“同一次用户交互/同一次事件回调”里连续触发的多个 dispatch 收口到 batch（减少提交次数与 render 次数）。
-- **不依赖中间派生结果**：batch 会延迟 converge/validate 到最后一次提交；如果你期望 Action A 之后 computed/validate 立刻更新并被 Action B 读取，这类写法不适合 batch。
-- **不要把 IO 放进 batch**：batch 的收益来自“一个事务窗口内累积 dirty-set 并一次性收敛”，如果在中间等待 IO，会把实例级串行队列整体阻塞（Head-of-Line Blocking）。
-
-### 6.2 低优先级更新：减少非必要 render
-
-对于“不会影响当前输入手感/点击反馈，但又需要最终更新 UI”的场景（例如：实时统计、列表衍生摘要、非关键提示），可以使用 `dispatchLowPriority`：
-
-```ts
-yield* rt.dispatchLowPriority({ _tag: "recomputeSummary", payload: undefined } as any)
-```
-
-在 Devtools 中你会看到：
-
-- `state:update.commitMode = "lowPriority"`
-- `state:update.priority = "low"`
-
-React 侧会用更温和的调度策略合并通知（例如 `requestAnimationFrame` / timeout 兜底），以减少高频渲染压力。
-
-它的语义边界是：
-
-- **仍然会提交**：状态更新与派生/校验仍按正常事务提交，保证最终必达；
-- **只影响通知节奏**：低优先级只影响 React 订阅通知的调度（更晚、可合并），不改变模块内部的执行顺序；
-- **会被普通提交打断**：如果在低优先级通知尚未 flush 之前又发生了普通优先级提交，React 会优先 flush 普通提交，并取消待执行的 lowPriority flush；
-- **不适用于交互关键路径**：输入框 value/光标/拖拽反馈等需要“立刻更新”的 UI 不应使用 lowPriority。
-
-默认情况下：低优先级通知会近似“推迟到下一帧”（约 16ms），并有最大延迟上界（默认 50ms）。如需调整，可通过配置键：
+By default, low-priority notifications are roughly “deferred to the next frame” (~16ms) and have a maximum delay bound (default 50ms). You can tune it via:
 
 - `logix.react.low_priority_delay_ms`
 - `logix.react.low_priority_max_delay_ms`
 
-### 6.3 迁移指南（旧写法 → 新模式）
+### 6.3 Migration guide (old patterns → new modes)
 
-1. **多次同步 dispatch → `dispatchBatch`**
-   - 旧：连续 `dispatch(a1)`、`dispatch(a2)`，每次都会产生一次可观察提交。
-   - 新：把同一“业务意图”内的多次派发收敛到 `dispatchBatch([...])`。
+1. **Multiple synchronous dispatches → `dispatchBatch`**
+   - Old: `dispatch(a1)`, `dispatch(a2)`… each produces an observable commit.
+   - New: collapse multiple dispatches within one “business intent” into `dispatchBatch([...])`.
 
-2. **手写 setTimeout/raf 合并渲染 → `dispatchLowPriority`**
-   - 旧：在 UI 层用 `setTimeout`/`requestAnimationFrame` 手动合并 dispatch 或 setState。
-   - 新：把“可延迟”的那类更新显式标记为 lowPriority，让运行时与 React 适配层统一负责调度与上界。
+2. **Manual setTimeout/raf batching → `dispatchLowPriority`**
+   - Old: manually batch dispatch/setState in UI with `setTimeout` / `requestAnimationFrame`.
+   - New: explicitly mark “deferrable” updates as lowPriority and let Runtime + React adapter handle scheduling and bounds.
 
-3. **全量 update/setState → `immerReducers` / `$.state.mutate` / `$.onAction(...).mutate`（或 `Module.Reducer.mutate/mutateMap`）**
-   - 旧：`(s) => ({ ...s, a: s.a + 1 })`、`$.state.update((s) => ({ ...s, a: s.a + 1 }))` 这类“整棵替换”很难提供字段级影响域，派生/校验更容易退化为全量路径。
-   - 新：优先使用 `immerReducers`、`$.state.mutate(...)` 或 `$.onAction(...).mutate(...)`，让运行时自动采集“变更路径”，用于增量派生/校验；如果你想保留 `reducers` 字段，再用 `Logix.Module.Reducer.mutate/mutateMap` 包装。
+3. **Full update/setState → `Module.Reducer.mutate/mutateMap` / `$.state.mutate` / `$.onAction(...).mutate`**
+   - Old: full-tree replacements like `(s) => ({ ...s, a: s.a + 1 })` or `$.state.update((s) => ({ ...s, a: s.a + 1 }))` are hard to attribute at field-level, and derived/validation is more likely to degrade to full paths.
+   - New: prefer `Logix.Module.Reducer.mutate(...)` / `Logix.Module.Reducer.mutateMap({...})`, `$.state.mutate(...)`, or `$.onAction(...).mutate(...)` so Runtime can auto-capture “change paths” for incremental derive/validation.
 
-例如：在 `Module.make` 内直接定义 draft 风格 reducers（推荐）：
+For example, define draft-style reducers directly in `Module.make` (recommended):
 
 ```ts
 immerReducers: {
   inc: (draft) => {
     draft.count += 1
   },
-  add: (draft, payload) => {
-    draft.count += payload
+  add: (draft, action) => {
+    draft.count += action.payload
   },
 },
 ```
 
-如果你想保持 `reducers` 字段，也可以用 `Logix.Module.Reducer.mutateMap({...})` 批量包装：
+If you want to keep the `reducers` field, you can wrap them in bulk via `Logix.Module.Reducer.mutateMap({...})`:
 
 ```ts
 reducers: Logix.Module.Reducer.mutateMap({
   inc: (draft) => {
     draft.count += 1
   },
-  add: (draft, payload) => {
-    draft.count += payload
+  add: (draft, action) => {
+    draft.count += action.payload
   },
 }),
 ```
 
-类型提示：如果你发现 `mutateMap` 里 `draft/payload` 在 IDE 里退化成了 `any`，优先改用 `immerReducers`；或用 `satisfies Logix.Module.MutatorsFromMap<typeof State, typeof Actions>` 给 mutators 显式“挂上”类型约束。
+Type tip: if `draft/action` degrade to `any` in IDE inside `mutateMap`, prefer `immerReducers`; or use `satisfies Logix.Module.MutatorsFromMap<typeof State, typeof Actions>` to explicitly “attach” type constraints.
 
-同时需要“普通 reducer”时，可以同时提供 `immerReducers` 与 `reducers`（同名 key 以 `reducers` 为准）：
+If you need both “normal reducers” and draft reducers, you can provide both `immerReducers` and `reducers` (same key uses `reducers` as the winner):
 
 ```ts
 immerReducers: {
@@ -429,48 +375,48 @@ reducers: {
 },
 ```
 
-当你在开发环境看到 `state_transaction::dirty_all_fallback` 诊断时，通常意味着需要执行第 3 条迁移。
+When you see the `state_transaction::dirty_all_fallback` diagnostic in dev, it usually means you should apply migration step #3.
 
-## 7. 表单 / 查询专项建议
+## 7. Form / Query-specific recommendations
 
-当你的页面以“复杂表单联动”或“参数化查询”为主时，下面几条经验通常更有效：
+If your page is dominated by “complex form linkage” or “parameterized queries”, these tips often help:
 
-1. **把 `deps` 当成契约，而不是提示**
-   - 如果你在开发环境看到 `state_trait::deps_mismatch` 警告，优先修正 `deps`：
-     - 漏写会导致“该更新时不更新”；
-     - 写得过细会导致“无关变更也触发重算”。
-   - 如果规则确实依赖整棵对象，可以声明更粗粒度的 deps（例如依赖 `profile` 而不是 `profile.name`）。
+1. **Treat `deps` as a contract, not a hint**
+   - If you see `state_trait::deps_mismatch` warnings in dev, fix `deps` first:
+     - missing deps can cause “no update when it should update”;
+     - overly fine deps can cause “recompute on irrelevant changes”.
+   - If a rule truly depends on an entire object, declare a coarser dep (e.g. depend on `profile` instead of `profile.name`).
 
-2. **用 `validateOn / reValidateOn` 控制“每次输入”的校验工作量**
-   - 默认是“两阶段触发”：首次提交前倾向只在提交时校验；首次提交后再按 change/blur 做增量校验。
-   - 对于跨行校验、复杂依赖或高频输入表单：优先让 `validateOn` 更保守（例如只保留 `"onSubmit"`），必要时用 `controller.validatePaths(...)` 精确触发局部校验。
+2. **Use `validateOn / reValidateOn` to control validation workload per keystroke**
+   - Default is “two-phase”: before first submit it tends to validate on submit; after first submit it incrementally validates on change/blur.
+   - For cross-row validation, complex deps, or high-frequency forms: prefer a more conservative `validateOn` (e.g. only `"onSubmit"`), and use `controller.validatePaths(...)` to precisely trigger local validation when needed.
 
-3. **留意 Trait 的超预算降级**
-   - 如果你看到 `trait::budget_exceeded` 之类的警告，说明某次交互的派生计算超出预算。
-   - 常见处理方式：
-     - 将重型计算下沉到服务调用或异步任务（把同步派生变成可缓存的结果）；
-     - 给 computed 增加等价判定（避免无变化写回）；
-     - 拆分热点字段周围的规则，降低单次交互的派生 fan-out。
+3. **Watch for budget-triggered degradation in traits**
+   - If you see warnings like `trait::budget_exceeded`, it means linkage computation exceeded budget for an interaction.
+   - Common treatments:
+     - move heavy computation down into service calls or async tasks (turn synchronous derive into cached results);
+     - add equivalence checks to computed values (avoid write-back when nothing changes);
+     - split rules around hotspot fields to reduce per-interaction derive fan-out.
 
-4. **在 React 侧只订阅“你真正需要的状态切片”**
-   - 避免订阅整棵 values/errors；优先用 selector 订阅聚合后的视图状态（例如 `canSubmit/isSubmitting/isValid/isDirty/submitCount`）。
-   - `@logix/form/react` 提供 `useFormState(form, selector)`，能在不扫描大树的前提下稳定获取这些状态。
+4. **Subscribe only to the state slices you truly need in React**
+   - Avoid subscribing to whole `values/errors`; prefer a derived view state selector (e.g. `canSubmit/isSubmitting/isValid/isDirty/submitCount`).
+   - `@logix/form/react` provides `useFormState(form, selector)` for stable access without scanning huge trees.
 
-5. **长列表/嵌套数组：尽量提供稳定身份**
-   - 对于“千行表单”或“虚拟滚动”场景，建议每行都有稳定的业务 ID，并在领域层/trait 配置中提供 `trackBy` 提示；
-   - 这能提升缓存复用与异步写回的稳定性，减少因为插入/重排导致的无意义失效。
+5. **Long lists/nested arrays: provide stable identity**
+   - For “thousand-row forms” or “virtual scrolling”, ensure each row has a stable business id, and provide `trackBy` hints in domain/trait config when available.
+   - This improves cache reuse and async write-back stability and reduces meaningless invalidation due to insert/reorder.
 
-6. **查询场景：确认缓存引擎已注入并启用**
-   - 如果你希望 Query 具备缓存与 in-flight 去重，请确认 Runtime 作用域内已注入 QueryClient，并启用了对应的 Query 集成中间件；
-   - 若缺失注入，查询会以“配置错误”暴露出来，而不是静默退化为不缓存的行为（避免线上不可控差异）。
+6. **Query scenarios: ensure the cache engine is injected and enabled**
+   - If you expect caching and in-flight dedup, ensure QueryClient is injected in the Runtime scope and the corresponding Query integration middleware is enabled.
+   - If injection is missing, the query should fail with a config error rather than silently degrade to uncached behavior (avoids uncontrolled prod differences).
 
-通过以上分层策略，你可以在不牺牲调试体验的前提下，让 Logix 在复杂场景中保持可接受的性能表现。
+With these layered strategies, you can keep Logix performant in complex scenarios without sacrificing debugging experience.
 
-## 8. 常见反模式（高概率导致退化）
+## 8. Common anti-patterns (high chance of degradation)
 
-- 在事务窗口内做 IO/await（会把“同步窗口”变成不可预测的长事务）。
-- 使用不可追踪的写入方式，导致 `dirtySet.dirtyAll = true`，进而派生/校验全量。
-- 在高频交互（输入/拖拽）里频繁使用 `$.state.update` / `$.onAction(...).update` / `runtime.setState` 这类全量写入。
-- 在 UI 侧订阅整棵 state 或把大对象直接作为 props 传递，导致无谓重渲染。
-- 列表用 index 当 id（插入/重排会把小变更放大成大范围影响）。
-- 把重型计算写进同步派生/校验（建议下沉到服务/异步任务或拆分热点依赖）。
+- Doing IO/await inside a transaction window (turns a “sync window” into an unpredictable long transaction).
+- Using untrackable writes that cause `dirtySet.dirtyAll = true`, pushing derive/validation onto full paths.
+- In high-frequency interactions (typing/dragging), frequently using full writes like `$.state.update` / `$.onAction(...).update` / `runtime.setState`.
+- Subscribing to the whole state tree in UI or passing large objects directly as props, causing unnecessary re-renders.
+- Using list index as id (insert/reorder amplifies small changes into large impact).
+- Putting heavy computation into synchronous derive/validation (prefer moving to services/async tasks or splitting hotspot dependencies).

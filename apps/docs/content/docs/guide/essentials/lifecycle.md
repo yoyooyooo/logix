@@ -1,58 +1,56 @@
 ---
 title: Lifecycle
-description: 理解模块生命周期钩子以及它们与 Runtime/React 的关系。
+description: Understand lifecycle hooks and how they relate to Runtime and React.
 ---
 
 # Lifecycle
 
-Logix Module 的生命周期与 Effect 的 `Scope` 紧密绑定。
+A Logix Module’s lifecycle is tightly coupled to Effect’s `Scope`.
 
-### 适合谁
+### Who is this for?
 
-- 已经能编写基本 Logic，希望正确处理“初始化 / 清理 / 错误上报”等生命周期问题；
-- 在 React 项目里使用 Logix，想搞清楚 Module 与组件挂载/卸载之间的对应关系。
+- You can already write basic Logic and want to handle lifecycle concerns correctly (init / cleanup / error reporting).
+- You use Logix in React and want to understand how Module lifecycle maps to component mount/unmount.
 
-### 前置知识
+### Prerequisites
 
-- 了解 Module / Logic 的基本概念；
-- 读过 [Flows & Effects](./flows-and-effects)，知道什么是长逻辑 Watcher。
+- You know the basics of Module / Logic.
+- You’ve read [Flows & Effects](./flows-and-effects) and understand what long-running watchers are.
 
-### 读完你将获得
+### What you’ll get
 
-- 知道何时应该在 `onInit` 里做初始化，何时用 Watcher 监听 Action/State；
-- 理解 `onDestroy` 与 React 卸载之间的关系，以及它适合做哪些事情；
-- 能为模块设计合理的“启动/销毁”和错误上报策略。
+- Know when initialization belongs in `onInit` vs in watchers on Action/State.
+- Understand how `onDestroy` relates to React unmount, and what it is good for.
+- Design sensible start/destroy behavior and error reporting strategies.
 
-## 主要阶段
+## Main phases
 
-1.  **Mount (Init)**: 模块被挂载时。
-2.  **Running**: 模块运行中。
-3.  **Unmount (Destroy)**: 模块被卸载时。
+1.  **Mount (Init)**: the module is mounted.
+2.  **Running**: the module is running.
+3.  **Unmount (Destroy)**: the module is unmounted.
 
-## 钩子函数
+## Hooks
 
 ### `onInitRequired` / `onInit`
 
-必需初始化：决定实例可用性。适合做“必须先完成才能进入业务”的初始化请求（例如加载配置）。
+Required initialization: determines whether an instance becomes usable. Use it for initialization that must finish before entering the business flow (e.g. loading config).
 
-> `onInit` 是 legacy alias，语义等同于 `onInitRequired`。
+> `onInit` is a legacy alias; it is equivalent to `onInitRequired`.
 
-提示：`onInitRequired/onInit` 会在 Watcher 启动前执行，因此这里不适合 `dispatch` 一个“依赖 `$.onAction/$.onState` 处理”的 Action；如果想复用某段逻辑，建议把它提取成函数，并在 `onInitRequired` 与对应 Watcher 中分别调用。
+Tip: `onInitRequired/onInit` runs before watchers start, so it’s not a good place to `dispatch` an Action that relies on `$.onAction/$.onState` watchers. If you want to reuse logic, extract it as a function and call it both from `onInitRequired` and the corresponding watcher.
 
 ```ts
 $.lifecycle.onInitRequired(
   Effect.gen(function* () {
     yield* Effect.log('Module mounted')
-    yield* $.state.mutate((d) => {
-      d.ready = true
-    })
+    yield* $.state.update((s) => ({ ...s, ready: true }))
   }),
 )
 ```
 
 ### `onStart`
 
-启动任务：不阻塞实例可用性，适合启动轮询/订阅等后台行为；失败会进入同一条错误兜底链路。
+Start tasks: does not block instance availability. It’s a good place to start background work like polling/subscriptions. Failures go through the same error fallback chain.
 
 ```ts
 $.lifecycle.onStart(Effect.log('Start background tasks'))
@@ -60,7 +58,7 @@ $.lifecycle.onStart(Effect.log('Start background tasks'))
 
 ### `onDestroy`
 
-模块卸载时触发。适合做清理工作（尽管 Effect Scope 通常会自动处理）。
+Runs when the module is unmounted. Use it for cleanup (even though Effect Scope usually handles most cleanup automatically).
 
 ```ts
 $.lifecycle.onDestroy(Effect.log('Module unmounted'))
@@ -68,36 +66,36 @@ $.lifecycle.onDestroy(Effect.log('Module unmounted'))
 
 ### `onError`
 
-当后台逻辑发生未捕获错误时触发。
+Runs when background logic throws an unhandled error.
 
 ```ts
 $.lifecycle.onError((cause) => Effect.logError('Something went wrong', cause))
 ```
 
-## 编写 Logic 的启动顺序（避免初始化噪音）
+## Recommended Logic ordering (avoid init noise)
 
-Logix 的 Logic 会经历 **setup → run** 两个阶段：return 前的同步调用用于注册生命周期与 reducer，return 的 Effect 才会在 Env 就绪后以长期 Fiber 运行。推荐按以下顺序书写，避免在 Env 未就绪时读取 Service：
+Logix Logic has two phases: **setup → run**. Synchronous calls before `return` register lifecycle hooks and reducers; the returned Effect runs as a long-lived Fiber once the environment is ready. A recommended ordering (to avoid reading Services before Env is ready):
 
-1. 在 builder 顶部注册 `$.lifecycle.onError/onInit`；
-2. 如需动态 reducer，随后调用 `$.reducer`（确保目标 action 尚未 dispatch 过）；
-3. 在 `return Effect.gen(...)` 内挂载 `$.onAction/$.onState` 等 Watcher/Flow，并在此处读取 Env/Service。
+1. Register `$.lifecycle.onError/onInit` at the top of the builder.
+2. If you need dynamic reducers, call `$.reducer` next (make sure the target Action has not been dispatched yet).
+3. Inside `return Effect.gen(...)`, mount watchers/flows via `$.onAction/$.onState` and read Env/Services there.
 
-在开发模式下，如果在 setup 段访问 `$.use/$.onAction/$.onState`，或在 builder 顶层直接 `Effect.run*`，Runtime 会给出 `logic::invalid_phase` / `logic::setup_unsafe_effect` 诊断提示。
+In dev mode, if you access `$.use/$.onAction/$.onState` during setup, or call `Effect.run*` at the top level, the Runtime will emit diagnostics like `logic::invalid_phase` / `logic::setup_unsafe_effect`.
 
-## React 集成
+## React integration
 
-在 React 中，`useModule` 会自动管理生命周期：
+In React, `useModule` manages lifecycle automatically:
 
-- **组件挂载**: 创建 Module 实例，触发 `onInit`。
-- **组件卸载**: 销毁 Module 实例，触发 `onDestroy`。
+- **Mount**: create a Module instance and trigger `onInit`.
+- **Unmount**: dispose the Module instance and trigger `onDestroy`.
 
-> 注意：如果你使用的是全局单例 Module（未指定 `key` 且不是 Local Module），它通常只会在 App 启动时初始化一次。
+> Note: if you use a global singleton Module (no `key` and not a Local Module), it usually initializes only once at app startup.
 
-## 下一步
+## Next
 
-恭喜你完成了 Essentials 必备概念的学习！接下来可以：
+Congrats—you’ve finished the Essentials section. Next:
 
-- 进入核心概念深入学习：[描述模块](../learn/describing-modules)
-- 学习高级主题：[Suspense & Async](../advanced/suspense-and-async)
-- 学习错误处理：[错误处理](../advanced/error-handling)
-- 查看 React 集成指南：[React 集成](../recipes/react-integration)
+- Dive into core concepts: [Describing modules](../learn/describing-modules)
+- Advanced topic: [Suspense & Async](../advanced/suspense-and-async)
+- Error handling: [Error handling](../advanced/error-handling)
+- React integration recipes: [React integration](../recipes/react-integration)

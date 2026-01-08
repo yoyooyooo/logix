@@ -1,38 +1,38 @@
 ---
-title: Rules DSL（z）
-description: $.rules 的两种写法：Decl DSL（field/list/root）与 Node DSL（schema + object/array）。
+title: Rules DSL (z)
+description: "Two styles of $.rules: Decl DSL (field/list/root) and Node DSL (schema + object/array)."
 ---
 
-`rules` 是表单校验的推荐入口。统一先从 values Schema 派生出 `z`：
+`rules` is the recommended entry for form validation. Start by deriving `z` from the values Schema:
 
 ```ts
 const $ = Form.from(ValuesSchema)
 const z = $.rules
 ```
 
-你只需要记住一条：`Form.make({ rules })` 里的 `rules` 必须是 **RulesSpec**（也就是 `z(...)` 或 `z.schema(...)` 的返回值）。`z.field/z.list/z.root` 产出的是“decl”（声明），不能直接传给 `Form.make`。
+Remember one thing: the `rules` you pass to `Form.make({ rules })` must be a **RulesSpec** (i.e. the return value of `z(...)` or `z.schema(...)`). `z.field/z.list/z.root` produces “decls” (declarations) and cannot be passed to `Form.make` directly.
 
-## 1) Decl DSL：`rules: z(z.field / z.list / z.root)`
+## 1) Decl DSL: `rules: z(z.field / z.list / z.root)`
 
-Decl DSL 适合“把规则挂在某几个明确路径上”，类型会随 values Schema 收窄（路径、deps、validate 入参都会提示）。
+Decl DSL is great when you “attach rules to a few explicit paths”. Types narrow with the values Schema (paths, deps, validate arguments are type-assisted).
 
-### 1.1 字段：`z.field(valuePath, rule)`
+### 1.1 Field: `z.field(valuePath, rule)`
 
 ```ts
 rules: z(
-  z.field("contact.email", { required: "邮箱必填" }),
+  z.field("contact.email", { required: "Email is required" }),
   z.field("contact.phone", {
     deps: ["preferredChannel"],
     validate: (phone, ctx) => {
       const state = (ctx as any).state as any
       if (state.contact?.preferredChannel !== "phone") return undefined
-      return String(phone ?? "").trim() ? undefined : "当首选渠道为电话时，请填写手机号"
+      return String(phone ?? "").trim() ? undefined : "Phone is required when preferred channel is phone"
     },
   }),
 )
 ```
 
-当你在对象级做跨字段校验，并希望错误写回到 `errors.<path>.$self`，可以用 `errorTarget: "$self"`：
+For object-level cross-field validation, if you want errors to be written to `errors.<path>.$self`, use `errorTarget: "$self"`:
 
 ```ts
 rules: z(
@@ -41,14 +41,14 @@ rules: z(
     {
       deps: ["password", "confirmPassword"],
       validate: (security: any) =>
-        security?.password === security?.confirmPassword ? undefined : "两次密码不一致",
+        security?.password === security?.confirmPassword ? undefined : "Passwords do not match",
     },
     { errorTarget: "$self" },
   ),
 )
 ```
 
-### 1.2 动态列表：`z.list(listPath, { identity, item, list })`
+### 1.2 Field arrays: `z.list(listPath, { identity, item, list })`
 
 ```ts
 rules: z(
@@ -58,77 +58,77 @@ rules: z(
       deps: ["name", "quantity", "price"],
       validate: (row) => {
         const errors: Record<string, unknown> = {}
-        if (!String((row as any)?.name ?? "").trim()) errors.name = "名称必填"
-        if (!((row as any)?.quantity > 0)) errors.quantity = "数量需 > 0"
-        if (!((row as any)?.price >= 0)) errors.price = "价格需 ≥ 0"
+        if (!String((row as any)?.name ?? "").trim()) errors.name = "Name is required"
+        if (!((row as any)?.quantity > 0)) errors.quantity = "Quantity must be > 0"
+        if (!((row as any)?.price >= 0)) errors.price = "Price must be ≥ 0"
         return Object.keys(errors).length ? errors : undefined
       },
     },
     list: {
-      validate: (rows) => (Array.isArray(rows) && rows.length > 0 ? undefined : { $list: "至少一行" }),
+      validate: (rows) => (Array.isArray(rows) && rows.length > 0 ? undefined : { $list: "At least one row" }),
     },
   }),
 )
 ```
 
-- `item`：行级校验（只看当前行） → 写回 `errors.<list>.rows[i].* / .$item`
-- `list`：列表级/跨行校验（一次扫描 rows） → 写回 `errors.<list>.$list / .rows[i]`
+- `item`: item-level validation (current row only) → written to `errors.<list>.rows[i].* / .$item`
+- `list`: list-level / cross-row validation (scan rows once) → written to `errors.<list>.$list / .rows[i]`
 
-### 1.3 根规则：`z.root(rule)`
+### 1.3 Root rule: `z.root(rule)`
 
-当你需要“看整棵 values”做校验时，用 `z.root(...)`：
+When you need to validate “the whole values tree”, use `z.root(...)`:
 
 ```ts
 rules: z(
   z.root({
-    validate: (values) => (values ? undefined : "表单整体不合法"),
+    validate: (values) => (values ? undefined : "Form is invalid"),
   }),
 )
 ```
 
-> 提示：根规则通常用于“全局一致性约束/提交前兜底”。更细粒度的联动触发，优先落在字段/列表规则并显式声明 `deps`。
+> Tip: root rules are usually for “global consistency constraints / pre-submit safety nets”. For fine-grained triggers, prefer field/list rules with explicit `deps`.
 
-### 1.4 组合规则（推荐约定）
+### 1.4 Composing rules (recommended convention)
 
-`z(...)` 的入参既支持单条 decl，也支持 decl 数组（会做一层 flatten）。为了避免“写法自由度过高导致混乱”，建议在团队里约定：
+`z(...)` accepts both a single decl and arrays of decls (one-level flatten). To avoid “too much freedom leading to inconsistency”, a good team convention is:
 
-- 业务侧尽量只出现一种形态：`rules: z(...)`（Decl DSL），不要把 `z(...)` 和 `z.schema(...)` 混在同一个 rules 里。
-- 当需要拆分复用时，让“规则片段函数”统一返回 **decl 数组**，最后只在一个地方 `z(partA, partB, ...)` 合并。
-- 同一路径不要重复声明（会稳定报错）；需要“叠加校验”时，把多个校验合并到同一个 ruleInput 的 `validate` 里。
+- In product code, stick to one form: `rules: z(...)` (Decl DSL). Avoid mixing `z(...)` and `z.schema(...)` in the same form.
+- For reuse, make “rule fragment functions” return **arrays of decls**, then merge once with `z(partA, partB, ...)`.
+- Don’t declare the same path twice (it fails deterministically). If you need “stacked validation”, merge multiple checks inside one `validate`.
 
-## 2) Node DSL：`z.object / z.array / z.field(...)` + `z.schema(node)`
+## 2) Node DSL: `z.object / z.array / z.field(...)` + `z.schema(node)`
 
-Node DSL 更像 zod：你用 `z.object/z.array` 描述“嵌套结构”，最后用 `z.schema(...)` 一次性编译成 `rules`。
+Node DSL is closer to zod: describe a nested structure with `z.object/z.array`, then compile the whole thing into rules via `z.schema(...)`.
 
-### 2.1 `z.at(prefix)`：在某个 prefix 下写 Node DSL
+### 2.1 `z.at(prefix)`: write Node DSL under a prefix
 
-当前 `examples/` 里还没有 `z.at(...)` 的示例，但它在 Node DSL 里很好用：避免重复写长 prefix。
+There isn’t a `z.at(...)` example in `examples/` yet, but it’s handy in Node DSL to avoid repeating long prefixes:
 
 ```ts
 const zc = z.at("contact")
 
 const rules = zc.schema(
   zc.object({
-    email: zc.field({ required: "邮箱必填" }),
+    email: zc.field({ required: "Email is required" }),
     phone: zc.field({}),
   }),
 )
 ```
 
-> 对 Decl DSL 来说，`z.at(...)` 需要你传“相对路径”（如 `"email"`），但目前 TS 类型不会把 `"email"` 约束成相对路径集合；如果你想保留强类型路径提示，建议直接用 `z.field("contact.email", ...)` 这种全路径写法。
+> For Decl DSL, `z.at(...)` expects “relative paths” (like `"email"`), but TS types currently don’t constrain `"email"` to the set of relative paths. If you want strong type-assisted paths, prefer full paths like `z.field("contact.email", ...)`.
 
 ```ts
 const rules = z.schema(
   z.object({
     contact: z.object({
-      email: z.field({ required: "邮箱必填" }),
+      email: z.field({ required: "Email is required" }),
       preferredChannel: z.field({}),
       phone: z.field({
         deps: ["preferredChannel"],
         validate: (phone, ctx) => {
           const state = (ctx as any).state as any
           if (state.contact?.preferredChannel !== "phone") return undefined
-          return String(phone ?? "").trim() ? undefined : "当首选渠道为电话时，请填写手机号"
+          return String(phone ?? "").trim() ? undefined : "Phone is required when preferred channel is phone"
         },
       }),
     }),
@@ -136,13 +136,13 @@ const rules = z.schema(
       .array(
         z.object({
           id: z.field({}),
-          name: z.field({ required: "必填" }),
-          quantity: z.field({ min: { min: 1, message: "数量必须 > 0" } }),
+          name: z.field({ required: "Required" }),
+          quantity: z.field({ min: { min: 1, message: "Quantity must be > 0" } }),
         }),
         { identity: { mode: "trackBy", trackBy: "id" } },
       )
       .refine({
-        validate: (rows) => (Array.isArray(rows) && rows.length > 0 ? undefined : { $list: "至少一行" }),
+        validate: (rows) => (Array.isArray(rows) && rows.length > 0 ? undefined : { $list: "At least one row" }),
       }),
   }),
 )
@@ -150,20 +150,20 @@ const rules = z.schema(
 Form.make("MyForm", { values: ValuesSchema, initialValues, rules })
 ```
 
-## 3) 一致性建议：同一表单尽量只选一种 DSL
+## 3) Consistency recommendation: pick one DSL per form
 
-- **Decl DSL**：适合“按路径点挂规则”，类型提示更直接。
-- **Node DSL**：适合“整体结构化描述”，再通过 `z.schema` 编译。
-- `Form.Rule.make/merge` 是更低层的组织/复用工具；只有在需要复用/组合时再引入，避免和 `z.*` 混用增加心智负担。
+- **Decl DSL**: great for “attach rules at path points”, with direct type hints.
+- **Node DSL**: great for “describe the whole structure” and compile via `z.schema`.
+- `Form.Rule.make/merge` are lower-level organization/reuse tools; introduce them only when you truly need composition, to avoid mixing too many concepts with `z.*`.
 
-## 4) CanonicalPath vs ValuePath：为什么 rules 里不允许数字段
+## 4) CanonicalPath vs ValuePath: why numeric segments are disallowed in rules
 
-- **UI/读写具体行**：用 valuePath（运行时字符串），允许写 `items.0.name`（`useField(form, "items.0.name")` / `setValue({ path: "items.0.name" })`）。
-- **rules/依赖图（deps）**：用 canonical path（类型约束），禁止数字段；数组会“穿透数组项”，例如：
-  - `items.name` 表示“任意行的 name”（等价语义：`items.${number}.name`）
-  - `items.allocations.amount` 表示“任意行的 allocations 任意项的 amount”
-- **行级/跨行校验**：不要写 `z.field("items.name", ...)`；用 `z.list("items", { item/list })` 表达数组语义，`item.deps` 用相对字段（如 `"name"`），`list.validate(rows)` 拿到整段 rows 一次性扫描。
-- **为什么要这样设计**：
-  - 数组 index 会随插入/删除/重排漂移，`deps: ["items.0.name"]` 这类语义无法稳定（很容易“依赖错行”）。
-  - `deps` 的职责是表达“结构字段的触发契约”，而“某一行是谁”属于运行期 identity（`trackBy/rowId`）——两者必须分层，否则难以回放/解释。
-  - 依赖图只按 schema 形状增长，避免按 rows 数量膨胀，守住增量校验的性能边界。
+- **UI / reading/writing a concrete row**: uses valuePath (runtime strings), allows `items.0.name` (e.g. `useField(form, "items.0.name")` / `setValue({ path: "items.0.name" })`).
+- **rules / dependency graph (deps)**: uses canonical paths (type-restricted), disallows numeric segments. Arrays “pierce through items”, for example:
+  - `items.name` means “name of any row” (equivalent semantics: `items.${number}.name`)
+  - `items.allocations.amount` means “amount of allocations items for any row”
+- **Row-level / cross-row validation**: do not write `z.field("items.name", ...)`. Use `z.list("items", { item/list })` to express array semantics; `item.deps` uses relative fields like `"name"`, and `list.validate(rows)` gets the full rows slice for one-pass scanning.
+- **Why this design**:
+  - array indices drift under insert/remove/reorder; `deps: ["items.0.name"]` is not stable (easy to “depend on the wrong row”).
+  - deps expresses a structural trigger contract; “which row is which” is runtime identity (`trackBy/rowId`) — the two must be layered for replay/explainability.
+  - the dependency graph grows with schema shape, not with row counts, protecting incremental-validation performance boundaries.

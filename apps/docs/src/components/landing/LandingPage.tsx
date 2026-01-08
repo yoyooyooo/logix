@@ -15,7 +15,6 @@ import { MotionConfig } from 'framer-motion'
 import { Separator } from '@/components/ui/separator'
 import { landingCopy, type LandingLang } from './content'
 import { HeroSection } from './HeroSection'
-import { WordmarkLabSection } from './WordmarkLabSection'
 import { NextStepsSection } from './NextStepsSection'
 import { TimeTravelSection } from './TimeTravelSection'
 import { FeaturesSection } from './FeaturesSection'
@@ -32,7 +31,7 @@ function BackgroundDecor() {
 }
 
 export function LandingPage({ lang }: { lang: LandingLang }) {
-  const copy = lang === 'en' ? landingCopy.en : landingCopy.zh
+  const copy = lang === 'en' ? landingCopy.en : landingCopy.cn
 
   return (
     <MotionConfig reducedMotion="user">
@@ -40,7 +39,6 @@ export function LandingPage({ lang }: { lang: LandingLang }) {
         <BackgroundDecor />
 
         <HeroSection lang={lang} copy={copy.hero} />
-        <WordmarkLabSection lang={lang} copy={copy.wordmarkLab} />
         <NextStepsSection lang={lang} copy={copy.nextSteps} />
         <TimeTravelSection copy={copy.timeTravel} />
         <FeaturesSection copy={copy.features} />

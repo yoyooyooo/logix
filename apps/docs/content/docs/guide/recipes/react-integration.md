@@ -1,44 +1,33 @@
 ---
-title: 在 React 中使用 Logix
-description: 如何在 React 应用中接入 Logix Runtime，并通过 Hooks 使用模块状态与动作。
+title: Using Logix in React
+description: How to integrate Logix Runtime into a React app and use module state and actions via hooks.
 ---
 
-本篇从“业务开发者”的视角，演示如何在一个普通的 React 应用中接入 Logix，并通过 `@logix/react` 提供的组件和 Hooks 读取/更新状态。
+This guide demonstrates how to integrate Logix into a typical React application from an “app developer” perspective, and how to read/update state with the components and hooks from `@logix/react`.
 
-> 如果只想快速看结论，可以记住两件事：
+> If you only want the quick conclusion, remember two things:
 >
-> 1. 在应用根部用 `RuntimeProvider` 包住路由或页面；
-> 2. 在组件里只用 `useModule` / `useSelector` / `useDispatch`，不要再写 `useEffect + useState` 胶水。
+> 1. Wrap routes/pages with `RuntimeProvider` at the app root.
+> 2. In components, only use `useModule` / `useSelector` / `useDispatch`—don’t go back to `useEffect + useState` glue.
 
-### 适合谁
+### Who is this for
 
-- 正在将 Logix 接入现有 React 项目，或为新项目搭建基础骨架的前端工程师；
-- 希望弄清楚“RuntimeProvider + useModule/useSelector/useDispatch”这条链路的具体职责。
+- Frontend engineers integrating Logix into an existing React project, or setting up the baseline skeleton for a new project.
+- People who want to understand the responsibilities along the “RuntimeProvider + useModule/useSelector/useDispatch” chain.
 
-### 前置知识
+### Prerequisites
 
-- 熟悉 React Context / Hooks 的基本用法；
-- 了解 ModuleDef / program module / ModuleImpl / Runtime 的基础概念（可参考 Quick Start 与 Essentials）。
+- Familiar with React Context and Hooks.
+- Understand the basics of ModuleDef / program module / ModuleImpl / Runtime (see Quick Start and Essentials).
 
-### 读完你将获得
+### What you’ll get
 
-- 一套可直接复用的接入步骤：如何创建 Runtime、如何在根组件挂载 Provider、如何在组件中消费 Module；
-- 对全局 Module vs 局部 Module（`useLocalModule`）的适用场景有直观认识。
+- A reusable integration procedure: create a Runtime, mount a Provider at the root, consume Modules in components.
+- A practical understanding of when to use global Modules vs local Modules (`useLocalModule`).
 
-## 0. 能力地图（先掌握这些）
+## 1. Prepare a Logix Module
 
-在 `@logix/react` 里，建议把能力拆成几条正交轴：
-
-1. **解析句柄**：`useModule` / `useLocalModule` → 得到 `ModuleRef`
-2. **订阅渲染**：`useSelector(handle, selector[, equalityFn])`
-3. **派发动作**：`useDispatch(handle)`（或 `handle.dispatch(action)`）
-4. **imports scope**：`handle.imports.get(Child.tag)`（或 `useImportedModule` 作为 Hook 形态）
-
-> 本文后面会用到一些语法糖（如 `ref.dispatchers.*`、`useModule(handle, selector)`），它们只是写法更短，不引入新能力。
-
-## 1. 准备一个 Logix Module
-
-先在任意目录下定义一个最简单的计数器 Module：
+First define a minimal counter Module in any directory:
 
 ```ts
 import * as Logix from '@logix/core'
@@ -56,7 +45,7 @@ export const CounterLogic = CounterDef.logic(($) =>
 )
 ```
 
-在你的应用入口，为这个 Module 构造一个 Root program module（或其 `ModuleImpl`），并通过 `Logix.Runtime.make` 组装 Runtime：
+In your app entry, build a Root program module (or its `ModuleImpl`) and assemble the Runtime via `Logix.Runtime.make`:
 
 ```ts
 import * as Logix from '@logix/core'
@@ -71,13 +60,13 @@ export const CounterModule = CounterDef.implement({
 export const CounterImpl = CounterModule.impl
 
 export const AppRuntime = Logix.Runtime.make(CounterModule, {
-  layer: Layer.empty, // 也可以在这里合并各种服务 Layer
+  layer: Layer.empty, // you can merge service Layers here as well
 })
 ```
 
-## 2. 在 React 根组件中挂载 RuntimeProvider
+## 2. Mount RuntimeProvider at the React root
 
-在 React 应用根组件中，用 `RuntimeProvider` 包住你的路由/页面：
+In your React app root component, wrap routes/pages with `RuntimeProvider`:
 
 ```tsx
 // App.tsx
@@ -94,45 +83,45 @@ export function App() {
 }
 ```
 
-`RuntimeProvider` 会负责：
+`RuntimeProvider` is responsible for:
 
-- 托管并向下透传一个 Logix `ManagedRuntime`（通常由 `Logix.Runtime.make(...)` 创建）；
-- 把必要的 Context（Layer 提供的服务）注入到 Runtime 中；
-- 让子树里的所有 Hooks 都能访问到同一个 Runtime。
+- creating and hosting a Logix `ManagedRuntime`;
+- injecting the required Context (services provided by Layers) into the Runtime;
+- making the same Runtime accessible to all hooks in the subtree.
 
-如果你的项目已经自己创建了 Runtime，直接传入 `runtime` 即可。
+If your project already creates a Runtime elsewhere, you can pass it via the `runtime` prop directly.
 
-## 3. 在组件中读取状态：useModule / useSelector
+## 3. Read state in components: useModule / useSelector
 
-在任意组件里，通过 Hook 读取 Module 的状态：
+In any component, read module state via hooks:
 
 ```tsx
 import { useModule, useSelector } from '@logix/react'
 import { CounterDef } from '../runtime/CounterModule'
 
 export function CounterValue() {
-  // 获取模块句柄（包含 runtime / dispatch / actions 等能力）
+  // Get a module handle (with runtime / dispatch / actions, etc.)
   const counter = useModule(CounterDef)
 
-  // 或者只订阅某个字段，组件只会在该字段变化时重渲染
+  // Or subscribe to a single field; the component only re-renders when it changes
   const count = useSelector(counter, (s) => s.count)
 
   return <span>{count}</span>
 }
 ```
 
-推荐在大多数场景中使用 `useSelector` 订阅切片状态，而不是把完整 `state` 传给组件，这样可以避免不必要的重渲染。
+In most scenarios, prefer `useSelector` over passing the full `state` to a component. It avoids unnecessary re-renders.
 
-> `useSelector(handle, selector, equalityFn)` 默认用 `Object.is` 比较选中值；当 selector 返回数组/对象时，建议传入 `shallow`（`@logix/react` 内置）来避免“内容不变但引用变化”导致的无意义重渲染。
+> `useSelector(handle, selector, equalityFn)` uses `Object.is` by default. When your selector returns arrays/objects, pass `shallow` (built into `@logix/react`) to avoid useless re-renders caused by “same content, different reference”.
 
-> 注意：`useModule(Module)` 本身**不会订阅状态**，因此不会因为状态更新自动触发组件重渲染。
+> Note: `useModule(Module)` itself does **not** subscribe to state, so state updates will not automatically re-render the component.
 >
-> - 需要响应式渲染时：使用 `useSelector(handle, selector)`，或直接用 `useModule(Module, selector)`（语法糖）。
-> - 只需要派发动作时：可以用 `useDispatch(Module)`，或直接使用 `handle.dispatch`。
+> - For reactive rendering: use `useSelector(handle, selector)`, or use `useModule(Module, selector)` (syntactic sugar).
+> - For dispatch-only usage: use `useDispatch(Module)`, or call `handle.dispatch` directly.
 
-## 4. 在组件中派发动作：useDispatch
+## 4. Dispatch actions in components: useDispatch
 
-要改变状态，只需要派发一个符合 Action Schema 的对象：
+To change state, dispatch an object that conforms to the Action schema:
 
 ```tsx
 import { useDispatch, useModule } from '@logix/react'
@@ -140,56 +129,54 @@ import { CounterDef } from '../runtime/CounterModule'
 
 export function CounterButton() {
   const counter = useModule(CounterDef)
-  const dispatch = useDispatch(counter)
+  const dispatch = useDispatch(CounterDef)
 
-  return <button onClick={() => dispatch(CounterDef.actions.inc())}>+1</button>
+  return <button onClick={() => dispatch({ _tag: 'inc' })}>+1</button>
 }
 ```
 
-`useDispatch` 会自动使用当前的 Runtime 和对应的 ModuleRuntime，在内部调用 `runtime.runFork(moduleRuntime.dispatch(action))`，不需要你自己处理异步或错误通道。
+`useDispatch` automatically uses the current Runtime and the corresponding ModuleRuntime, and internally calls `runtime.runFork(moduleRuntime.dispatch(action))`. You don’t need to manage async or error channels manually.
 
-如果你更偏好“方法调用”风格，可以在拿到 `ModuleRef` 后使用 `ref.dispatchers.*`（语法糖，见下文「6.1 语法糖速查」）。
+### 4.1 (Optional) performance usage: batch and low-priority dispatch
 
-### 4.1 （可选）性能用法：批处理与低优先级派发
+In extreme high-frequency scenarios, you may run into:
 
-在极端高频交互场景中，你可能会遇到两类常见问题：
+- One “business intent” dispatches multiple Actions (multiple commits/notifications).
+- Some updates don’t affect the immediate input feel, but trigger many component renders (e.g. live stats, summaries, non-critical hints).
 
-- 一次业务意图需要连发多个 Action（导致多次提交/多次通知）。
-- 某些更新并不影响当前输入手感，但会触发大量组件渲染（例如：实时统计、摘要、非关键提示）。
+You can explicitly use two “fallback knobs”:
 
-这时可以显式使用两种“兜底旋钮”：
+- `dispatchBatch(actions)`: merge multiple synchronous dispatches into one observable commit.
+- `dispatchLowPriority(action)`: mark the commit’s **notification** as low priority (does not change correctness). React will merge notifications more gently (still guaranteed and bounded).
 
-- `dispatchBatch(actions)`：把多次同步派发合并成一次可观察提交。
-- `dispatchLowPriority(action)`：把本次提交的**通知**标记为低优先级（不改变事务提交正确性），React 会更温和地合并通知节奏（最终必达且有上界）。
+> Tip: Batch is best for “multiple dispatches within one intent” when you don’t depend on intermediate derived results. For boundaries and pitfalls, see “Performance and optimization”.
 
-> 提示：Batch 更适合“同一业务意图里连续派发多个 Action”且不依赖每一步的中间派生结果；更完整的边界与踩坑见“性能与优化”章节。
-
-在 React 事件处理函数里，你可以直接用 `dispatch.batch / dispatch.lowPriority`；或者用 `useRuntime()` 更白盒地执行 Effect。
+In React event handlers, you can use `dispatch.batch / dispatch.lowPriority` (sugar), or call `useRuntime()` and run Effects manually (more white-box).
 
 ```tsx
-import { useDispatch, useModule, useSelector } from '@logix/react'
+import { useModule, useSelector, useDispatch } from "@logix/react"
 
 export function Form() {
   const form = useModule(FormModule)
   const dispatch = useDispatch(form)
 
-  // ✅ 只订阅必要字段，减少无谓渲染
+  // ✅ subscribe only to what you need to reduce unnecessary renders
   const value = useSelector(form, (s) => s.value)
 
   const onBulkUpdate = () => {
     dispatch.batch([
-      FormModule.actions.setA(1),
-      FormModule.actions.setB(2),
+      { _tag: "setA", payload: 1 } as any,
+      { _tag: "setB", payload: 2 } as any,
     ])
   }
 
   const onRecomputeSummary = () => {
-    dispatch.lowPriority(FormModule.actions.recomputeSummary())
+    dispatch.lowPriority({ _tag: "recomputeSummary", payload: undefined } as any)
   }
 
   return (
     <>
-      <input value={value} onChange={(e) => dispatch(FormModule.actions.change(e.target.value))} />
+      <input value={value} onChange={(e) => dispatch({ _tag: "change", payload: e.target.value } as any)} />
       <button onClick={onBulkUpdate}>bulk</button>
       <button onClick={onRecomputeSummary}>summary</button>
     </>
@@ -197,12 +184,12 @@ export function Form() {
 }
 ```
 
-## 5. 局部状态：useLocalModule
+## 5. Local state: useLocalModule
 
-对于仅在单个页面或组件中使用的状态（例如临时表单、向导），可以用 `useLocalModule` 创建一个“局部模块实例”：
+For state used only within a single page/component (temporary forms, wizards, etc.), you can use `useLocalModule` to create a “local module instance”:
 
 ```tsx
-import { useDispatch, useLocalModule, useSelector } from '@logix/react'
+import { useLocalModule } from '@logix/react'
 import * as Logix from '@logix/core'
 import { Schema } from 'effect'
 
@@ -212,80 +199,76 @@ const LocalForm = Logix.Module.make('LocalForm', {
 })
 
 export function LocalFormComponent() {
-  const form = useLocalModule(LocalForm, { initial: { text: '' } })
-  const text = useSelector(form, (s) => s.text)
-  const dispatch = useDispatch(form)
+  const runtime = useLocalModule(LocalForm, { initial: { text: '' } })
+  const text = useSelector(runtime, (s) => s.text)
+  const dispatch = useDispatch(runtime)
 
-  return <input value={text} onChange={(e) => dispatch(LocalForm.actions.change(e.target.value))} />
+  return <input value={text} onChange={(e) => dispatch({ _tag: 'change', payload: e.target.value })} />
 }
 ```
 
-`useLocalModule` 会在组件挂载时创建一个新的 ModuleRuntime，并在组件卸载时自动关闭相关 Scope 和资源。
+`useLocalModule` creates a new ModuleRuntime on mount, and automatically closes related Scope/resources on unmount.
 
-> 提示：`useLocalModule` 在内部使用“资源缓存 + Scope 管理”机制，并且默认 **同步** 构建实例（不会触发 Suspense）。
+> Tip: `useLocalModule` uses “resource caching + scope management” internally, and builds instances **synchronously** by default (it does not trigger Suspense).
 >
-> - 适合局部 UI 状态（替代 `useState/useReducer`）；
-> - 需要异步初始化（读存储/请求数据等）时，把异步放进模块 Logic（Effect）里，或提升为 `useModule(Impl)` 并配合 `suspend/defer+preload`。
+> - Good for local UI state (as a replacement for `useState/useReducer`).
+> - For async initialization (storage reads, requests), move async into module Logic (Effect), or lift it to `useModule(Impl)` together with `suspend/defer+preload`.
 
-## 6. 分形模块（imports）：在父实例 scope 下读取/派发子模块
+## 6. Fractal modules (imports): read/dispatch child modules under the parent instance scope
 
-当一个模块通过 `imports` 组合了子模块时（例如：页面 Host 模块 imports 了一个 Query 模块），通常会出现一个很实际的问题：
+When a module composes child modules via `imports` (e.g. a page Host module imports a Query module), you often hit a practical question:
 
-> “子模块不是全局单例，而是**跟随父模块实例**一起创建的；组件侧要怎么拿到**属于这个父实例**的那一份子模块？”
+> “The child module isn’t a global singleton—it is created **together with the parent module instance**. How can the UI get the child module that belongs to **this parent instance**?”
 
-这件事的核心能力是“在父实例 scope 内解析子模块”。推荐直接用 `host.imports.get(...)`（稳定、无需额外 Hook）；如果你想把它写成 Hook 形态，也可以用 `useImportedModule(host, ChildModule.tag)`（等价语法糖）。
+Use either of these equivalent forms:
 
-示例：
+- `const child = useImportedModule(host, ChildModule.tag)` (explicit hook)
+- `const child = host.imports.get(ChildModule.tag)` (chainable sugar; preferred)
+
+Example:
 
 ```tsx
 import { useDispatch, useModule, useSelector } from '@logix/react'
 import { HostImpl, ChildModule } from './modules'
 
 export function Page() {
-  // 多实例场景用 key 区分（例如：SessionA / SessionB）
+  // use key for multi-instance scenarios (e.g. SessionA / SessionB)
   const host = useModule(HostImpl, { key: 'SessionA' })
 
-  // ✅ 解析到“属于这个 host 实例”的子模块
+  // ✅ resolves the child module that belongs to this host instance
   const child = host.imports.get(ChildModule.tag)
 
   const value = useSelector(child, (s) => s.value)
   const dispatch = useDispatch(child)
 
-  return <button onClick={() => dispatch(ChildModule.actions.refresh())}>{value}</button>
+  return <button onClick={() => dispatch({ _tag: 'refresh' })}>{value}</button>
 }
 ```
 
-注意：
+Notes:
 
-- 不要用 `useModule(ChildModule)` 来替代上面的写法：它表达的是“全局 Module（Tag）”语义，无法绑定到某个父实例，遇到多实例时容易串用；
-- `host.imports.get(...)` 返回稳定的句柄，可直接写在 render 中，不需要额外 `useMemo`。
-- 如果你的目标是“路由 scope 下多个弹框 keepalive，离开路由统一销毁”，推荐直接套用 [路由 Scope 下的弹框 Keepalive](./route-scope-modals) 这条配方。
-- 如果只是想“触发/编排”子模块行为（例如父动作转发到子 Query.refresh），优先把这件事放到父模块 Logic（`$.use(ChildModule)`）或 Link/Process 里，让 UI 仍只依赖父模块。
-- 当你发现 UI 需要链式访问多层 imports（`host.imports.get(A).imports.get(B)`）时，通常意味着依赖穿透过深：优先在边界处 resolve 一次并向下传 `ModuleRef`，或收敛为 Host 对外的 facade 状态/动作。
+- Don’t replace this with `useModule(ChildModule)`: that expresses “global Module (Tag)” semantics, cannot bind to a specific parent instance, and tends to mix instances in multi-instance cases.
+- `host.imports.get(...)` returns a stable handle; you can call it directly in render without extra `useMemo`.
+- If your goal is “multiple modals keep-alive under a route scope and destroy together when leaving the route”, apply the recipe: [Route-scoped modal keepalive](./route-scope-modals).
+- If you only want to “trigger/orchestrate” child behavior (e.g. forward parent actions to child `Query.refresh`), prefer doing it in the parent module’s Logic (`$.use(ChildModule)`) or in a Link/Process, so the UI depends only on the parent module.
+- If the UI needs to chain through many import layers (`host.imports.get(A).imports.get(B)`), it usually means dependency penetration is too deep: resolve once at a boundary and pass down a `ModuleRef`, or collapse into a Host-facing facade state/actions.
 
-## 6.1 语法糖速查（只为更短，不引入新能力）
+## 7. Migrating from useEffect / useRef to Logix
 
-- `useModule(handle, selector[, equalityFn])` 等价于：`useSelector(useModule(handle), selector[, equalityFn])`
-- `ref.dispatchers.<K>(payload)` 等价于：`dispatch(ModuleDef.actions.<K>(payload))`（其中 `dispatch = useDispatch(ref)`；`dispatchers` 只是语法糖，不保证 IDE 跳转到定义；需要稳定的“跳转/找引用/重命名”时，让代码里显式出现 `ModuleDef.actions.<K>`（或 `ref.def?.actions.<K>`）作为锚点）
-- `useImportedModule(parent, Child.tag)` 等价于：`parent.imports.get(Child.tag)`
-- `ModuleScope.make(Host.impl)` 等价于：在边界 `useModule(Host.impl, { key })` + React Context 传递（适合路由 scope / keepalive）
+When migrating existing React code to Logix, a common question is:
 
-## 7. 从 useEffect / useRef 迁移到 Logix
+> “This component uses a lot of `useEffect` / `useRef`. How do I rewrite it in a Logix style?”
 
-在把现有 React 代码迁到 Logix 时，常见的一类问题是：
+A simple rule of thumb:
 
-> “这个组件里有不少 `useEffect` / `useRef`，要怎么改成 Logix 的写法？”
+- **Business-logic mutable state** (affects branching/state/workflows) → model in Module `state` or as Effect flows inside Logic.
+- **Refs only for DOM/third-party instances** → keep them in React (or wrap in custom hooks). Treat them as view-layer details and don’t force them into Logix.
 
-一个简单的经验法则是：
+Two typical examples follow.
 
-- **业务逻辑相关的 mutable**（会影响分支、状态、流程）→ 收敛到 Module 的 `state` 或 Logic 内部的 Effect 流程；
-- **只跟 DOM/第三方组件实例有关的 ref** → 先保留在 React（或封装到自定义 Hook），视为“视图层细节”，不强行搬到 Logix。
+### 7.1 Logic-state `useRef`: move to Module state/Logic
 
-下面用两个典型例子来说明迁移方式。
-
-### 7.1 逻辑状态型 useRef：迁到 Module 状态/Logic
-
-很多组件里会用 `useRef` 记“上一帧的值”或某个 flag，例如：
+Many components use `useRef` to store “previous frame value” or a flag, e.g.:
 
 ```tsx
 function Counter() {
@@ -294,23 +277,23 @@ function Counter() {
 
   useEffect(() => {
     if (count > prevRef.current) {
-      console.log('上涨')
+      console.log('up')
     }
     prevRef.current = count
   }, [count])
 }
 ```
 
-这种 `prevRef` 本质是业务状态的一部分，可以直接迁到 Module：
+This `prevRef` is business state. Move it into the Module:
 
-- 在 Module 的 `state` 里显式加上 `prevCount` / `trend` 等字段；
-- 在 Logic 中用 `$.onState` / `$.state.mutate` 维护它们；
-- 组件只订阅最终状态，不再维护 `useRef`。
+- add fields like `prevCount` / `trend` to Module `state`;
+- maintain them in Logic via `$.onState` / `$.state.update`;
+- components only subscribe to the final state and stop managing `useRef`.
 
-迁移后的结构大致是：
+The migrated structure looks like:
 
 ```ts
-// 1）模块状态中显式建模“上一帧”的信息
+// 1) explicitly model “previous frame” info in module state
 const CounterState = Schema.Struct({
   count: Schema.Number,
   prevCount: Schema.Number,
@@ -326,7 +309,7 @@ export const CounterDef = Logix.Module.make("Counter", {
   actions: { inc: Schema.Void },
 })
 
-// 2）Logic 中用 onState 维护 trend/prevCount
+// 2) maintain trend/prevCount via onState in Logic
 export const CounterLogic = CounterDef.logic(($) => Effect.gen(function*(){
   return $.onState((s) => s.count).mutate((draft, count) => {
     if (count > draft.prevCount) draft.trend = "up"
@@ -338,7 +321,7 @@ export const CounterLogic = CounterDef.logic(($) => Effect.gen(function*(){
 })
 ```
 
-组件视角就只剩「读状态 + 派发动作」：
+From a component’s perspective, it becomes “read + dispatch” only:
 
 ```tsx
 function CounterView() {
@@ -350,11 +333,11 @@ function CounterView() {
 }
 ```
 
-> 经验：**只要某个 `useRef` 的变化会影响 UI 或业务分支，就把它当成状态建模到 Module 里，而不是继续藏在组件内部。**
+> Heuristic: if a `useRef` change affects UI or business branching, model it as Module state instead of hiding it in the component.
 
-### 7.2 Flow 控制型 useRef：迁到 Logic/Effect
+### 7.2 Flow-control `useRef`: move to Logic/Effect
 
-另一类常见用法是用 `useRef` 存定时器/请求句柄来做防抖、取消、重试，例如：
+Another common pattern is storing timers/request handles in `useRef` for debounce/cancel/retry, e.g.:
 
 ```tsx
 function SearchBox() {
@@ -373,13 +356,13 @@ function SearchBox() {
 }
 ```
 
-这类 mutable 并不属于业务状态，只是“控制流程”的工具，更适合放到 Logic/Effect 中：
+This mutable isn’t business state; it’s a flow-control tool. It fits better in Logic/Effect:
 
-- Module state 只表达 `keyword` / `isLoading` / `result` 等业务含义；
-- 防抖、并发控制、取消等交给 Effect：`$.onState` + `Effect.sleep` / `runLatest` / `runExhaust` 等；
-- 组件仍然只负责输入和展示。
+- Module state expresses only business meaning like `keyword` / `isLoading` / `result`.
+- Debounce/concurrency/cancel are expressed with Effect: `$.onState` + `Effect.sleep` / `runLatest` / `runExhaust`, etc.
+- The component remains responsible only for input and rendering.
 
-一个更 Logix 风格的写法是：
+A more Logix-style version:
 
 ```ts
 export const SearchModule = Logix.Module.make('Search', {
@@ -395,7 +378,7 @@ export const SearchModule = Logix.Module.make('Search', {
 
 export const SearchLogic = SearchModule.logic(($) =>
   Effect.gen(function* () {
-    // 1）监听 keyword 的变化，做防抖 + 请求
+    // 1) listen to keyword changes, debounce + request
     yield* $.onState((s) => s.keyword)
       .debounce(300)
       .runLatest((keyword) =>
@@ -424,7 +407,7 @@ export const SearchLogic = SearchModule.logic(($) =>
 )
 ```
 
-React 组件只需要：
+The React component becomes:
 
 ```tsx
 function SearchBox() {
@@ -433,30 +416,30 @@ function SearchBox() {
   const result = useModule(SearchModule, (s) => s.result)
   const dispatch = useDispatch(SearchModule)
 
-  // onChange 里只派发 changeKeyword，不再自己维护 timerRef
+  // onChange only dispatches changeKeyword; no timerRef needed
 }
 ```
 
-> 经验：**只为了“控制流程”的 `useRef`（定时器、AbortController 等），应该迁到 Logic/Effect 层，用 `$.onState` + Effect 的并发控制 API 表达，而不是继续在组件里手写。**
+> Heuristic: `useRef` used purely for flow control (timers, AbortController, etc.) should move to Logic/Effect and be expressed via `$.onState` + Effect’s concurrency primitives.
 
-### 7.3 还可以保留的 useRef：真·DOM/实例句柄
+### 7.3 `useRef` you can keep: true DOM/instance handles
 
-迁移时，有一小部分 `useRef` 是可以保留在组件里的：
+During migration, a small subset of `useRef` can stay in components:
 
-- 只用于拿到 DOM 句柄，例如 `inputRef` + `inputRef.current?.focus()`；
-- 只用于拿第三方 UI 组件的实例（图表、地图等），调用其暴露的 imperative API；
-- 不承载业务状态，也不做复杂的流程控制。
+- DOM handles like `inputRef` + `inputRef.current?.focus()`
+- third-party UI component instances (charts/maps) used via imperative APIs
+- no business state, no complex flow control
 
-推荐的做法是：
+Recommended approach:
 
-- 将这类逻辑尽量封装到专门的 UI 组件或自定义 Hook 中（例如 `useAutoFocus`、`useChart`），保持业务组件只关心「何时触发」而不是「具体怎么实现」；
-- 真正承载业务含义的部分（什么时候需要 focus、图表数据从哪里来等）仍然回到 Module/Logic 中，用状态和 Action 表达。
+- wrap them into dedicated UI components or small custom hooks (e.g. `useAutoFocus`, `useChart`), so business components trigger “when” rather than implement “how”.
+- business semantics (when to focus, where chart data comes from) still live in Module/Logic via state and Actions.
 
-> 一句话总结：**业务逻辑相关的 `useRef` 收编到 Logix，纯 UI/DOM 相关的 `useRef` 可以保留在 React，但建议封装在小而清晰的视图组件/Hook 里。**
+In short: business `useRef` belongs in Logix; pure UI/DOM `useRef` can stay in React (preferably encapsulated).
 
-### 7.4 组件生命周期型 useEffect：用局部 Module 表达
+### 7.4 Lifecycle `useEffect`: express via local modules
 
-还有一类常见的 `useEffect` 主要是为了表达“这个组件在的时候要做什么，组件卸载时要清什么”，例如：
+Some `useEffect` exists mainly to express “do something while this component is mounted, and clean up on unmount”, e.g.:
 
 ```tsx
 function Widget() {
@@ -469,39 +452,39 @@ function Widget() {
 }
 ```
 
-这类逻辑本质上是在表达一个**视图会话（view session）** 的生命周期，很适合迁到一个“局部 Module” 上，用 `$.lifecycle.onInit/onDestroy` 管理：
+This is really a **view session** lifecycle. It maps well to a “local Module” whose lifecycle is managed via `$.lifecycle.onInit/onDestroy`:
 
-- 为这个组件单独建一个 `WidgetModule` + `WidgetImpl`（或直接用 `useLocalModule`）；
-- 在 Logic 里写：
-  - `$.lifecycle.onInit(...)`：视图第一次挂载时启动订阅/轮询/初始请求；
-  - `$.lifecycle.onDestroy(...)`：最后一个持有者卸载时停止订阅/清理资源；
-- 组件里只需要 `useModule(WidgetImpl)` 或 `useLocalModule(WidgetModule, { initial, logics })`，不再自己写 `useEffect`。
+- create a dedicated `WidgetModule` + `WidgetImpl` (or use `useLocalModule`);
+- in Logic:
+  - `$.lifecycle.onInit(...)`: start subscriptions/polling/initial requests at first mount;
+  - `$.lifecycle.onDestroy(...)`: stop subscriptions/clean up when the last holder unmounts;
+- in the component, use `useModule(WidgetImpl)` or `useLocalModule(WidgetModule, { initial, logics })`, instead of hand-written `useEffect`.
 
-这种拆分有几个好处：
+Benefits:
 
-- 组件代码更“傻”：只负责渲染和发意图，生命周期细节全部落在 Logic 中，方便复用和测试；
-- 生命周期语义更明确：`onInit/onDestroy` 绑定的是“这棵局部 ModuleRuntime 的会话”，而不是某个具体的 React 组件实例；
-- 更贴近 Logix 的整体心智模型：**组件的生命周期 = 局部 Module 会话的生命周期**，而不是一堆分散的 `useEffect`。
+- components become “dumb”: render + dispatch intents; lifecycle details live in Logic, easy to reuse and test.
+- lifecycle semantics are explicit: `onInit/onDestroy` are tied to the local ModuleRuntime session, not a specific React component instance.
+- it matches the Logix mental model: **component lifecycle = local module session lifecycle**.
 
-仍然需要留在组件里的 `useEffect` 通常只剩两类：
+The `useEffect` left in components is usually only:
 
-- 把浏览器/第三方库的事件翻译成 Action（例如监听滚动再 `dispatch`）；
-- 极少数纯 UI 级别的副作用（例如修改 `<title>` 等），和业务流程无关。
+- translating browser/third-party events into Actions (e.g. scroll listeners dispatching Actions)
+- rare pure UI side effects (e.g. updating `<title>`) unrelated to business workflows
 
-## 8. ModuleImpl 的同步 / 异步模式（高级）
+## 8. Synchronous vs async ModuleImpl modes (advanced)
 
-在实际项目中，你更推荐通过 `ModuleImpl` 暴露模块实现，然后在 React 里用 `useModule(Impl)` 来消费。
-`@logix/react` 为 ModuleImpl 提供了两种模式：
+In real projects, prefer exposing module implementations via `ModuleImpl`, and consume them in React via `useModule(Impl)`.  
+`@logix/react` provides two modes for ModuleImpl:
 
-1. **默认：同步模式（简单、直接）**
+1. **Default: synchronous mode (simple, direct)**
 
 ```tsx
-// CounterModule 由 CounterDef.implement(...) 生成（program module，带 `.impl`）
+// CounterModule is produced by CounterDef.implement(...) (program module, with `.impl`)
 import { useModule, useSelector, useDispatch } from '@logix/react'
 import { CounterModule } from '../runtime/counter'
 
 export function LocalCounter() {
-  // 每个组件实例各自持有一份 CounterModule 的局部 ModuleRuntime
+  // each component instance holds its own local ModuleRuntime for CounterModule
   const runtime = useModule(CounterModule)
   const count = useSelector(runtime, (s) => s.count)
   const dispatch = useDispatch(runtime)
@@ -510,12 +493,12 @@ export function LocalCounter() {
 }
 ```
 
-- 适用场景：模块构建过程本身是同步的（纯内存、依赖已经通过 Layer 提前注入好）；
-- 优点：行为直观，调试简单，默认即可满足大多数页面/组件级状态需求。
+- Use when: module construction is synchronous (in-memory only; dependencies already injected via Layer).
+- Pros: intuitive behavior, easy debugging; works for most page/component-level state needs.
 
-2. **可选：Suspense 异步模式（需要显式 key）**
+2. **Optional: Suspense async mode (requires explicit key)**
 
-当 ModuleImpl 的构建依赖异步初始化（如 IndexedDB / 远程配置），可以开启 `suspend: true`：
+When ModuleImpl construction depends on async initialization (IndexedDB / remote config), enable `suspend: true`:
 
 ```tsx
 import { useId, Suspense } from 'react'
@@ -527,8 +510,8 @@ function AsyncWidgetInner({ userId }: { userId: string }) {
 
   const runtime = useModule(AsyncImpl, {
     suspend: true,
-    key: `AsyncWidget:${id}`, // 显式提供稳定 key
-    deps: [userId], // 依赖变化时会重建 ModuleRuntime
+    key: `AsyncWidget:${id}`, // explicitly provide a stable key
+    deps: [userId], // rebuild ModuleRuntime when deps change
   })
 
   const state = useSelector(runtime, (s) => s.state)
@@ -544,32 +527,32 @@ export function AsyncWidget(props: { userId: string }) {
 }
 ```
 
-为什么异步模式需要显式 `key`？
+Why does async mode require an explicit `key`?
 
-- React 在 StrictMode / 并发渲染 / 未提交分支中，渲染次数和顺序可能与直觉不同；
-- 对于内部的“资源缓存”来说，需要一个**由调用方控制的稳定标识**，才能在多次重试之间复用同一份异步资源；
-- 因此，当你开启 `suspend: true` 时，`useModule(Impl)` 要求必须传入一个稳定的 `key`，通常推荐用：
-  - `useId()` 作为组件级前缀；
-  - 再拼上业务 ID（如 `userId` / `formId`）。
+- Under StrictMode / concurrent rendering / uncommitted branches, render count and order can differ from intuition.
+- For the internal “resource cache”, a **caller-controlled stable identity** is required to reuse the same async resource across retries.
+- Therefore, when `suspend: true` is enabled, `useModule(Impl)` requires a stable `key`. A common pattern:
+  - use `useId()` as a component-level prefix,
+  - append a business id (like `userId` / `formId`).
 
-## 9. 会话级状态保持（Session Pattern）
+## 9. Session-level state retention (Session Pattern)
 
-在真实业务里，常见的一个需求是：
+In real products, a common requirement is:
 
-> “用户切换 Tab / 页面甚至短暂离开页面后，希望回来时还能看到刚才的页面状态（筛选条件、分页位置、临时结果等）。”
+> “After switching tabs/pages (or briefly leaving a page), users want to come back and see the previous page state (filters, pagination position, temporary results, etc.).”
 
-在 Logix + React 中，我们通过 **同一个 ModuleImpl + 显式 `key` + 可选的 `gcTime`** 来表达这类“会话级状态保持”：
+In Logix + React, express this with **the same ModuleImpl + an explicit `key` + optional `gcTime`**:
 
-- **组件级（默认）**：`useModule(Impl)` 每个组件实例各自持有一份运行时，组件卸载时状态会在一个很短的窗口后自动释放（默认约 500ms，用于应对 StrictMode 抖动，无需显式配置）；
-- **会话级（Session）**：`useModule(Impl, { key, gcTime })` 在同一个 Runtime 内，用 `key` 标识一份“会话状态”，在组件卸载后继续保留一段时间，期间只要有组件用同一个 `key` 重新挂载，就会复用同一份状态。
+- **Component-level (default)**: `useModule(Impl)` creates a runtime per component instance. When it unmounts, state is released after a short window (default ~500ms, to tolerate StrictMode jitter; no explicit config needed).
+- **Session-level**: `useModule(Impl, { key, gcTime })` uses `key` to identify a “session state” within the same Runtime. After unmount, it stays alive for a while; if a component remounts with the same `key` within the window, it reuses the same state.
 
-一个典型的 Tab 场景写法：
+A typical tab implementation:
 
 ```tsx
 function TabContent({ tabId }: { tabId: string }) {
   const runtime = useModule(PageImpl, {
     key: `tab:${tabId}`,
-    gcTime: 10 * 60 * 1000, // 10 分钟内如果再次使用相同 key，将复用同一份状态
+    gcTime: 10 * 60 * 1000, // reuse state if the same key is used again within 10 minutes
   })
 
   const state = useSelector(runtime, (s) => s)
@@ -579,26 +562,26 @@ function TabContent({ tabId }: { tabId: string }) {
 }
 ```
 
-在这个模式下：
+In this pattern:
 
-- 在同一个 `ManagedRuntime` 内，`key` 相同的 `useModule(Impl, { key })` 会共享一份 `ModuleRuntime`；
-- 当所有使用该 `key` 的组件都卸载后，状态不会立刻丢失，而是按照 `gcTime` 设定的时间窗口保留（默认来自 RuntimeProvider 配置快照，可通过 Runtime Layer `ReactRuntimeConfig.replace` 或 ConfigProvider 覆盖，未配置时约 500ms）；
-- 如果在窗口内重新挂载同一个 `key`，会话状态会被完整复用；如果超过窗口仍无人使用，该会话会被自动清理。
+- within the same `ManagedRuntime`, `useModule(Impl, { key })` with the same `key` shares one `ModuleRuntime`;
+- after all components using that `key` unmount, state is not dropped immediately; it’s retained according to `gcTime` (default comes from the RuntimeProvider config snapshot; override via Runtime Layer `ReactRuntimeConfig.replace` or ConfigProvider. Without explicit config it’s ~500ms);
+- if remounted within the window with the same `key`, the session state is fully reused; if no one uses it past the window, it’s cleaned up automatically.
 
-## 10. 全局 Module vs 局部 ModuleImpl：执行时机心智模型
+## 10. Global Module vs local ModuleImpl: an execution-time mental model
 
-在 React 集成里，经常会遇到两个看起来很像、但语义不同的写法：
+In React integration, two similar-looking forms have different semantics:
 
-- `useModule(CounterImpl)` —— 传入的是“带 `.impl` 的模块对象”（默认创建局部实例）；
-- `useModule(CounterDef)` 或 `useModule(CounterDef.tag)` —— 传入的是模块定义对象 / `ModuleTag`（接入全局实例）。
+- `useModule(CounterImpl)` — you pass a “module object with `.impl`” (creates a local instance by default).
+- `useModule(CounterDef)` or `useModule(CounterDef.tag)` — you pass a module definition or `ModuleTag` (connects to a global instance).
 
-理解这两种形态的差异，可以用一个简单的规则：
+Use this rule:
 
-> **谁创建 Runtime，谁管理生命周期；`useModule` 只在传入带 `.impl` 的句柄（模块对象 / ModuleImpl）时才负责“创建”。**
+> Whoever creates the Runtime manages lifecycle. `useModule` only “creates” when you pass a handle with `.impl` (module object / ModuleImpl).
 
-### 10.1 应用级 / 全局 Module（Runtime.make + useModule(Module)）
+### 10.1 App-level / global Module (Runtime.make + useModule(Module))
 
-典型写法：
+Typical code:
 
 ```ts
 // runtime.ts
@@ -617,27 +600,27 @@ export function App() {
   )
 }
 
-// 任意子组件
+// Any child component
 function CounterValue() {
   const count = useModule(CounterDef, (s) => s.count)
   // ...
 }
 ```
 
-在这种模式下：
+In this mode:
 
-- `CounterModule` 对应的 `ModuleRuntime` 由 `Runtime.make` 在应用级 Runtime 中统一创建和托管；
-- `useModule(CounterDef)`（或 `useModule(CounterDef.tag)`）只是把组件接到这份已经存在的全局 `ModuleRuntime` 上，不会再创建新的实例；
-- Counter Logic 的启动时机 ≈ 应用 Runtime 初始化时刻（通常在 App 启动时执行一次）。
+- the `ModuleRuntime` for `CounterModule` is created and hosted by `Runtime.make` in the app-level Runtime;
+- `useModule(CounterDef)` (or `useModule(CounterDef.tag)`) only connects to that existing global ModuleRuntime; it does not create a new instance;
+- the Counter Logic starts roughly when the app Runtime is initialized (usually once at app startup).
 
-适用场景：
+Good for:
 
-- 当前用户、全局配置、应用级路由状态等“只在应用生命周期内初始化一次”的状态；
-- 希望多个路由/组件天然共享同一份状态，不需要按 `key`/会话做拆分。
+- “initialize once per app lifecycle” state such as current user, global config, app-level routing state;
+- state that should naturally be shared by multiple routes/components without `key`-based splitting.
 
-### 10.2 组件级 / 会话级 Module（useModule(Impl, options?)）
+### 10.2 Component-level / session-level Module (useModule(Impl, options?))
 
-典型写法：
+Typical code:
 
 ```tsx
 function LocalCounter({ sessionId }: { sessionId: string }) {
@@ -649,25 +632,25 @@ function LocalCounter({ sessionId }: { sessionId: string }) {
 }
 ```
 
-在这种模式下：
+In this mode:
 
-- `useModule` 会以 `(Impl, key, depsHash)` 为粒度，通过内部资源缓存创建/复用 `ModuleRuntime`；
-- 第一次出现某个 `key` 时，组件就是这份 Runtime 的“创建者”，对应 Logic 也在这里启动；
-- 当持有该 `key` 的所有组件都卸载后，会在 `gcTime` 窗口结束后销毁 Runtime，并触发 `onDestroy`。
+- `useModule` creates/reuses a ModuleRuntime via an internal resource cache keyed by `(Impl, key, depsHash)`;
+- the first time a `key` appears, the component is the “creator”, and corresponding Logic starts here;
+- after all components holding that `key` unmount, the runtime is destroyed after the `gcTime` window, and `onDestroy` is triggered.
 
-适用场景：
+Good for:
 
-- 页签 / 会话：每个 Tab / 页面实例都有自己的状态，需要在一定时间内保活；
-- 局部向导 / 表单：组件树销毁时自然结束，不希望长期常驻。
+- tabs/sessions: each tab/page instance needs its own state, and you want it kept alive for a while;
+- local wizards/forms: naturally end when the component tree is destroyed, and should not stay resident.
 
-### 10.3 选择建议（全局 vs 局部）
+### 10.3 Choosing between global vs local
 
-- **局部表单 / 向导等仅在一处使用的状态** → 使用组件级 `useModule(Impl)` 或 `useLocalModule`；
-- **需要跨 Tab/页面短期保活的状态** → 使用 `useModule(Impl, { key, gcTime })` 设计会话级实例；
-- **需要全局长期存在的状态（例如当前用户、全局配置）** → 使用应用级 Root 模块 + `Logix.Runtime.make` 提供全局实例，在 React 中通过 `useModule(模块定义对象或 ModuleTag)` 访问。
+- **Local form/wizard state used in one place** → component-level `useModule(Impl)` or `useLocalModule`.
+- **State that should be kept alive across tab/page switches** → session-level `useModule(Impl, { key, gcTime })`.
+- **Long-lived global state (current user, global config)** → app-level Root module + `Logix.Runtime.make`, then read via `useModule(module definition or ModuleTag)` in React.
 
-## 11. 下一步
+## 11. Next steps
 
-- 回到总览：[可组合性地图](../advanced/composability)
-- 想了解更多 Logix API，可以继续阅读 [API 参考](../../api/index) 部分；
-- 想看更复杂的集成场景（多模块协作、异步流、远程服务），可以参考仓库中的 `examples/logix-react` 示例项目。
+- Back to the overview: [Composability map](../advanced/composability)
+- For more Logix APIs, continue to [API reference](../../api/index).
+- For more complex integration scenarios (multi-module collaboration, async flows, remote services), see `examples/logix-react` in this repository.

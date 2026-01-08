@@ -3,6 +3,7 @@ import '../global.css'
 import { Inter } from 'next/font/google'
 import { defineI18nUI } from 'fumadocs-ui/i18n'
 import { i18n } from '@/lib/i18n'
+import { notFound } from 'next/navigation'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -11,9 +12,15 @@ const inter = Inter({
 const { provider } = defineI18nUI(i18n, {
   translations: {
     en: { displayName: 'English' },
-    zh: { displayName: '中文' },
+    cn: { displayName: '中文' },
   },
 })
+
+type Locale = (typeof i18n.languages)[number]
+
+function isLocale(value: string): value is Locale {
+  return (i18n.languages as readonly string[]).includes(value)
+}
 
 export default async function Layout({
   params,
@@ -23,8 +30,9 @@ export default async function Layout({
   children: React.ReactNode
 }) {
   const { lang } = await params
+  if (!isLocale(lang)) notFound()
   return (
-    <html lang={lang} className={inter.className} suppressHydrationWarning>
+    <html lang={lang === 'cn' ? 'zh' : lang} className={inter.className} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         <RootProvider i18n={provider(lang)}>{children}</RootProvider>
       </body>

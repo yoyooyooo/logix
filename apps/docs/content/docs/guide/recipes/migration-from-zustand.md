@@ -1,29 +1,29 @@
 ---
-title: 从 Zustand 迁移
-description: 从 Zustand 迁移到 Logix 的完整指南。
+title: Migrating from Zustand
+description: A step-by-step guide to migrate from Zustand to Logix.
 ---
 
-# 从 Zustand 迁移到 Logix
+# Migrating from Zustand to Logix
 
-本指南帮助你将现有的 Zustand 状态管理逐步迁移到 Logix。
+This guide helps you migrate an existing Zustand-based state management setup to Logix incrementally.
 
-## 概念映射
+## Concept mapping
 
-| Zustand            | Logix                     | 说明               |
-| ------------------ | ------------------------- | ------------------ |
-| `createStore`      | `Logix.Module.make`       | 定义状态结构       |
-| Store              | Module                    | 状态容器           |
-| State              | State Schema              | 用 Schema 定义类型 |
-| Actions (in store) | Actions + Reducers/Logic  | 分离声明与实现     |
-| `set(state)`       | `$.state.mutate`（推荐）  | 状态更新           |
-| `get()`            | `$.state.read`            | 读取状态           |
-| Selectors          | `useSelector(module, fn)` | 派生与订阅         |
-| Middleware         | Logic + Flow              | 异步/副作用        |
-| `useStore`         | `useModule`               | React 集成         |
+| Zustand            | Logix                     | Notes                         |
+| ------------------ | ------------------------- | ----------------------------- |
+| `createStore`      | `Logix.Module.make`       | define state shape            |
+| Store              | Module                    | state container               |
+| State              | State Schema              | types defined via Schema      |
+| Actions (in store) | Actions + Reducers/Logic  | separate declaration/behavior |
+| `set(state)`       | `$.state.update/mutate`   | update state                  |
+| `get()`            | `$.state.read`            | read state                    |
+| Selectors          | `useSelector(module, fn)` | derive + subscribe            |
+| Middleware         | Logic + Flow              | async/effects                 |
+| `useStore`         | `useModule`               | React integration             |
 
-## 迁移示例
+## Migration example
 
-### Zustand 原代码
+### Original Zustand code
 
 ```ts
 import { create } from 'zustand'
@@ -45,20 +45,20 @@ const useCounterStore = create<CounterState>((set, get) => ({
   },
 }))
 
-// 使用
+// Usage
 function Counter() {
   const { count, increment } = useCounterStore()
   return <button onClick={increment}>{count}</button>
 }
 ```
 
-### Logix 迁移后
+### After migrating to Logix
 
 ```ts
 import * as Logix from '@logix/core'
 import { Effect, Schema } from 'effect'
 
-// 1. 定义 Module（分离声明与实现）
+// 1) Define a Module (separate declaration and behavior)
 const CounterDef = Logix.Module.make('Counter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
@@ -66,14 +66,14 @@ const CounterDef = Logix.Module.make('Counter', {
     decrement: Schema.Void,
     incrementAsync: Schema.Void,
   },
-  // 同步逻辑可直接用 reducers
+  // Sync logic can be expressed as reducers
   reducers: {
     increment: (s) => ({ ...s, count: s.count + 1 }),
     decrement: (s) => ({ ...s, count: s.count - 1 }),
   },
 })
 
-// 2. 异步逻辑放在 Logic 中
+// 2) Put async logic into Logic
 const CounterLogic = CounterDef.logic(($) =>
   Effect.gen(function* () {
     yield* $.onAction('incrementAsync').run(() =>
@@ -87,7 +87,7 @@ const CounterLogic = CounterDef.logic(($) =>
   }),
 )
 
-// 3. 组装
+// 3) Assemble
 const CounterModule = CounterDef.implement({
   initial: { count: 0 },
   logics: [CounterLogic],
@@ -95,7 +95,7 @@ const CounterModule = CounterDef.implement({
 ```
 
 ```tsx
-// React 使用
+// React usage
 import { useModule, useSelector, useDispatch } from '@logix/react'
 
 function Counter() {
@@ -107,82 +107,80 @@ function Counter() {
 }
 ```
 
-## 逐步迁移策略
+## Incremental migration strategy
 
-### 1. 并行运行
+### 1. Run in parallel
 
-保留 Zustand Store，新增 Logix Runtime 并行运行：
+Keep existing Zustand stores and introduce a Logix Runtime in parallel:
 
 ```tsx
 function App() {
   return (
     <RuntimeProvider runtime={logixRuntime}>
-      {/* 新模块用 Logix */}
+      {/* New features use Logix */}
       <NewFeature />
-      {/* 旧模块继续用 Zustand，逐步迁移 */}
+      {/* Legacy features keep using Zustand; migrate gradually */}
       <LegacyFeature />
     </RuntimeProvider>
   )
 }
 ```
 
-### 2. 逐个迁移
+### 2. Migrate one store at a time
 
-每次迁移一个 Store：
+For each store:
 
-1. 创建对应的 `Module.make` 定义
-2. 把 actions 实现迁移到 `reducers` + `Logic`
-3. 替换组件中的 `useStore` 为 `useModule`
-4. 测试验证后删除旧 Store
+1. Create the corresponding `Module.make` definition
+2. Move Action implementation into `reducers` + `Logic`
+3. Replace `useStore` with `useModule` in components
+4. After tests/verification, delete the old store
 
-### 3. 共享状态（过渡期）
+### 3. Shared state (transition period)
 
-如果需要在迁移期间共享状态：
+If you need to share state during migration:
 
 ```ts
-// 在 Logix Logic 中读取 Zustand
+// Read Zustand inside Logix Logic
 const BridgeLogic = NewModuleDef.logic(($) =>
   Effect.gen(function* () {
-	    yield* $.onAction('syncFromZustand').run(() =>
-	      Effect.sync(() => {
-	        const zustandState = useOldStore.getState()
-	        return $.state.mutate((d) => {
-	          d.legacy = zustandState
-	        })
-	      }),
-	    )
-	  }),
+    yield* $.onAction('syncFromZustand').run(() =>
+      Effect.sync(() => {
+        const zustandState = useOldStore.getState()
+        return $.state.update((s) => ({ ...s, legacy: zustandState }))
+      }),
+    )
+  }),
 )
 ```
 
-## 主要收益
+## Main benefits
 
-迁移后你将获得：
+After migrating you get:
 
-| 能力         | Zustand                  | Logix                       |
-| ------------ | ------------------------ | --------------------------- |
-| 异步竞态控制 | 手动管理                 | `runLatest/runExhaust` 内置 |
-| 取消请求     | 手动 AbortController     | Effect 自动处理             |
-| 类型安全     | 手动维护                 | Schema 自动推导             |
-| 调试工具     | 需要 devtools middleware | 内置 DevTools               |
-| 跨模块通信   | 手动依赖注入             | `$.use` / `Link.make`       |
+| Capability       | Zustand                    | Logix                              |
+| --------------- | -------------------------- | --------------------------------- |
+| Async race control | manual                    | built-in `runLatest/runExhaust`    |
+| Cancel requests  | manual AbortController      | handled via Effect semantics       |
+| Type safety      | manual                      | Schema-driven inference            |
+| Debug tooling    | devtools middleware needed  | built-in DevTools                  |
+| Cross-module communication | manual DI            | `$.use` / `Link.make`              |
 
-## 常见问题
+## FAQ
 
-### Q: 需要一次性全部迁移吗？
+### Q: Do we need to migrate everything at once?
 
-不需要。可以保持 Zustand 和 Logix 并行运行，逐个模块迁移。
+No. Keep Zustand and Logix running in parallel and migrate modules one by one.
 
-### Q: 性能有影响吗？
+### Q: Will performance be worse?
 
-Logix 使用 `SubscriptionRef` 实现细粒度订阅，性能与 Zustand 相当。
+Logix uses `SubscriptionRef` for fine-grained subscriptions; performance is comparable to Zustand.
 
-### Q: 团队学习成本大吗？
+### Q: Is the learning curve steep?
 
-基础用法（Module + Logic + useModule）与 Zustand 类似，可以在需要时再学习 Effect 高级能力。
+The basics (Module + Logic + useModule) are similar to Zustand. Learn advanced Effect capabilities only when needed.
 
-## 下一步
+## Next
 
 - [Thinking in Logix](../essentials/thinking-in-logix)
 - [Flows & Effects](../essentials/flows-and-effects)
-- [常见问题排查](../advanced/troubleshooting)
+- [Troubleshooting](../advanced/troubleshooting)

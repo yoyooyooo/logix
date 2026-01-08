@@ -17,6 +17,8 @@ import { ArrowRight, GitGraph, Sparkles, Terminal, TimerReset } from 'lucide-rea
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { fadeUp, stagger, viewportOnce } from '@/lib/motion'
+import { withLocalePrefix } from '@/lib/localePath'
+import { brandFont } from '@/lib/brandFont'
 import type { HeroCopy, LandingLang } from './content'
 
 export function HeroSection({ lang, copy }: { lang: LandingLang; copy: HeroCopy }) {
@@ -36,7 +38,7 @@ export function HeroSection({ lang, copy }: { lang: LandingLang; copy: HeroCopy 
         </motion.div>
 
         <motion.div variants={fadeUp} className="max-w-4xl">
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[0.95]">
+          <h1 className={`${brandFont.className} text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[0.95]`}>
             <span className="text-foreground">{titleHead}</span>
             <span className="bg-gradient-to-r from-primary to-foreground bg-clip-text text-transparent">{titleTail}</span>
           </h1>
@@ -49,7 +51,7 @@ export function HeroSection({ lang, copy }: { lang: LandingLang; copy: HeroCopy 
 
         <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-start gap-3">
           <Button asChild size="lg" className="rounded-full group">
-            <Link href={`/${lang}/docs`} className="gap-2">
+            <Link href={withLocalePrefix(lang, '/docs')} className="gap-2">
               {copy.docsCta}
               <ArrowRight className="transition-transform group-hover:translate-x-0.5" />
             </Link>

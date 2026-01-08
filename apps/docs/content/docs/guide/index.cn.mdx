@@ -1,0 +1,57 @@
+---
+title: 指南总览
+description: Logix 学习路径与文档导航。
+---
+
+Logix 指南面向“从未接触过 Effect 的前端 / 全栈开发者”，目标是让你按层递进地掌握：
+
+- 如何用 Module 管理状态；
+- 如何用 Logic 和 Bound API (`$`) 编写业务逻辑；
+- 何时需要了解 Effect / Stream 这些更底层的概念。
+
+## 推荐阅读顺序
+
+1. **快速上手（Get Started）**
+   - 适合：第一次听说 Logix，希望 30 分钟内跑起来一个 Demo。
+   - 路径：
+     1. [介绍](./get-started/introduction)
+     2. [快速开始：第一个应用](./get-started/quick-start)
+     3. [教程：第一个业务流（可取消搜索）](./get-started/tutorial-first-app)
+
+2. **Essentials · 必备概念**
+   - 适合：已经跑通第一个 Demo，想把 Module / Logic / Flow 用“对”的方式写好。
+   - 路径：
+     1. [Thinking in Logix](./essentials/thinking-in-logix)
+     2. [Modules & State](./essentials/modules-and-state)
+     3. [Flows & Effects](./essentials/flows-and-effects)
+     4. [Traits（能力声明与收敛）](./essentials/traits)
+     5. [Effect 速成：只学你需要的 20%](./essentials/effect-basics)
+     6. [Lifecycle](./essentials/lifecycle)
+
+3. **Learn · 深入理解**
+   - 适合：已经在项目中使用 Logix，开始遇到跨模块协作、复杂异步流等问题。
+   - 路径示例：
+     - [描述模块](./learn/describing-modules)
+     - [管理状态](./learn/managing-state)
+     - [生命周期与 watcher](./learn/lifecycle-and-watchers)
+     - [跨模块通信](./learn/cross-module-communication)
+     - [深度剖析](./learn/deep-dive)
+
+4. **Advanced / Recipes**
+   - 适合：对 Effect / FP 有一定基础，想在团队内推广统一模式或封装 Pattern。
+   - 可以从以下入口开始：
+     - [Suspense 与异步初始化](./advanced/suspense-and-async)
+     - [错误处理](./advanced/error-handling)
+     - [调试与 DevTools](./advanced/debugging-and-devtools)
+     - [测试](./advanced/testing)
+     - [React 集成配方](./recipes/react-integration)
+
+## 领域包：Form
+
+如果你正在做 ToB 表单或复杂动态列表，可以直接走 `@logix/form` 的主线（由浅入深）：
+
+- [Form 总览](../form)
+- [快速开始](../form/quick-start)
+- [动态列表](../form/field-arrays)
+
+> 提示：如果你对 Effect 完全陌生，可以先按入门路线走一遍，只把它当作“更强大的 `async/await`”，真正需要更细节时再回到 Essentials / Learn 中的相关章节。

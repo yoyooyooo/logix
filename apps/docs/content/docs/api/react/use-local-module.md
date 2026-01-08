@@ -5,19 +5,15 @@ description: API Reference for useLocalModule hook
 
 # useLocalModule
 
-`useLocalModule` 用于在组件内创建一个“局部模块实例”（每个组件实例独立），典型用来承载只在该组件/页面内使用的 UI 状态（替代 `useState` / `useReducer`）。
+`useLocalModule` creates a “local module instance” inside a component (one instance per component instance). It’s typically used to host UI state that only belongs to the component/page (as an alternative to `useState` / `useReducer`).
 
-它返回的是 `ModuleRef`：你仍然用 `useSelector` 订阅、用 `useDispatch` 派发，和全局模块完全一致。
+Properties:
 
-> 注意：`useLocalModule` 仍然需要在 `RuntimeProvider` 子树内调用（它要用到同一个 Effect Runtime 作为宿主）。
+- **Synchronous creation**: does not trigger React Suspense, and is not governed by `RuntimeProvider`’s `policy.mode`.
+- **Lifecycle bound to the component**: created on mount, disposed automatically on unmount (Scope/resources are closed together).
+- **No cross-component sharing**: even with the same `key`, different components will not reuse the same instance.
 
-特性：
-
-- **同步创建**：不会触发 React Suspense，也不受 `RuntimeProvider` 的 `policy.mode` 控制。
-- **生命周期绑定组件**：mount 创建，unmount 自动释放（Scope/资源一起关闭）。
-- **不跨组件共享**：即使传入相同 `key`，也不会让不同组件复用同一个实例。
-
-## Usage（推荐：ModuleTag 形式）
+## Usage (recommended: ModuleTag form)
 
 ```tsx
 import * as Logix from '@logix/core'
@@ -37,7 +33,7 @@ export function LocalFormComponent() {
   const text = useSelector(form, (s) => s.text)
   const dispatch = useDispatch(form)
 
-  return <input value={text} onChange={(e) => dispatch(LocalForm.actions.change(e.target.value))} />
+  return <input value={text} onChange={(e) => dispatch({ _tag: 'change', payload: e.target.value })} />
 }
 ```
 
@@ -45,18 +41,18 @@ export function LocalFormComponent() {
 
 ### `useLocalModule(module, options)`
 
-- `module`：`Logix.Module.make(...)` 的返回值（或其 `.tag`）
-- `options.initial`（必填）：初始状态
-- `options.logics`（可选）：额外安装的 `ModuleLogic` 列表
-- `options.deps`（可选）：用于“失效并重建实例”的依赖数组（推荐只放原始值）
-- `options.key`（可选）：在同一组件内区分多个局部实例/便于诊断；不会跨组件共享
+- `module`: the return value of `Logix.Module.make(...)` (or its `.tag`)
+- `options.initial` (required): initial state
+- `options.logics` (optional): extra `ModuleLogic` list to install
+- `options.deps` (optional): dependency array used to “invalidate and rebuild the instance” (prefer primitives only)
+- `options.key` (optional): distinguish multiple local instances within the same component / for diagnostics; not shared across components
 
 ### `useLocalModule(factory, deps?)`
 
-- `factory`：`() => Effect<ModuleRuntime, ...>`（必须能同步构建；不要在这里做 I/O）
-- `deps`：同 `options.deps`
+- `factory`: `() => Effect<ModuleRuntime, ...>` (must be synchronously constructible; do not do I/O here)
+- `deps`: same as `options.deps`
 
-## 何时不要用 useLocalModule
+## When not to use useLocalModule
 
-- **需要异步初始化 / 想用 defer+preload**：用 `useModule(Impl)`（必要时开启 `suspend: true` 并提供稳定 `key`），交给 `RuntimeProvider` 的策略控制（并配置 `logix.react.init_timeout_ms` 兜底）。
-- **需要跨组件共享同一实例**：用 `useModule(Impl, { key })`（或上移到路由/根组件创建并向下传递句柄）。
+- **You need async initialization / want defer+preload**: use `useModule(Impl)` or `useModuleRuntime(Tag)` and let `RuntimeProvider` policy handle it (configure `logix.react.init_timeout_ms` as a safety net).
+- **You need to share one instance across components**: use `useModule(Impl, { key })` (or lift instance creation to a route/root component and pass the handle down).

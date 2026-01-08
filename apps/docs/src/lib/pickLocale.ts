@@ -9,7 +9,7 @@ export function pickLocale(request: Request): string {
     .map((tag) => tag.toLowerCase())
 
   for (const tag of candidates) {
-    if (tag === 'zh' || tag.startsWith('zh-')) return 'zh'
+    if (tag === 'zh' || tag.startsWith('zh-')) return 'cn'
     if (tag === 'en' || tag.startsWith('en-')) return 'en'
   }
 

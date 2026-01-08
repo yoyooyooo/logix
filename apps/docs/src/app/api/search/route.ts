@@ -5,6 +5,6 @@ export const { GET } = createFromSource(source, {
   // https://docs.orama.com/docs/orama-js/supported-languages
   localeMap: {
     en: 'english',
-    zh: 'english',
+    cn: 'english',
   },
 })

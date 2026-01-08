@@ -1,40 +1,40 @@
 ---
-title: 深度解析：Runtime / Middleware / Lifecycle
-description: 从运行时视角理解 Logix 的核心抽象。
+title: "Deep dive: Runtime / Middleware / Lifecycle"
+description: Understand Logix core abstractions from a runtime perspective.
 ---
 
-在企业级应用开发中，一个复杂的页面（如用户管理列表或订单详情）可以被视为一个微应用。**Root ModuleImpl + Runtime（通常通过 `Logix.Runtime.make` 构造）** 正是这个微应用的“底座”。
+In enterprise apps, a complex page (e.g. a user management list or an order detail page) can be treated as a micro app. A **Root ModuleImpl + Runtime** (usually constructed via `Logix.Runtime.make`) is the “foundation” of that micro app.
 
-它负责：
+It is responsible for:
 
-1.  **组装** (`Module.make` + `Runtime.make`)：将 API、状态和 UI 能力组合在一起；
-2.  **生命周期** (`Lifecycle`)：页面加载时自动拉取数据，并在适当时机清理资源；
-3.  **防护**（中间件 / 约束）…：在用户交互过程中处理 Loading 状态、错误报告和权限校验。
-
----
-
-### 适合谁
-
-- 希望从 Runtime 视角理解 Logix 的“整页应用模型”（Root ModuleImpl + Runtime）的架构师/资深工程师；
-- 计划在团队内抽象出通用页面骨架（如后台列表、详情页、向导），并用 Logix 作为底座来承载。
-
-### 前置知识
-
-- 熟悉 Module / ModuleImpl / Runtime 的基本用法；
-- 读过 [Lifecycle](../essentials/lifecycle) 与 [生命周期与 Watcher 模式](./lifecycle-and-watchers)；
-- 对 Effect 与 Layer 有一定直觉（如何组合多个服务 Layer）。
-
-### 读完你将获得
-
-- 能够从“Root ModuleImpl + Runtime”的角度设计 ToB 页面骨架；
-- 知道在哪里挂载生命周期逻辑、通用中间件和调试/监控能力；
-- 为后续扩展 Runtime Adapter（CLI、微前端容器等）打下概念基础。
+1. **Assembly** (`Module.make` + `Runtime.make`): composing APIs, state, and UI capabilities.
+2. **Lifecycle** (`Lifecycle`): fetching data on page load and cleaning up resources at the right time.
+3. **Guards** (middleware / constraints): handling loading states, error reporting, and permission checks during user interactions.
 
 ---
 
-下文以 CRM 用户列表为例，展示 Runtime 模型中各部分的角色。如果你更关心如何一步步实现页面本身，请优先阅读「教程：复杂列表查询」；若你关心的是"这些代码在引擎视角如何拼装"，可以继续看本篇。
+### Who is this for?
 
-## 1. 定义 Module Schema
+- Architects/senior engineers who want to understand Logix’s “full-page app model” from the Runtime perspective (Root ModuleImpl + Runtime).
+- Teams that want to abstract reusable page skeletons (admin lists, detail pages, wizards) and use Logix as the foundation.
+
+### Prerequisites
+
+- You know basic usage of Module / ModuleImpl / Runtime.
+- You’ve read [Lifecycle](../essentials/lifecycle) and [Lifecycle and watcher patterns](./lifecycle-and-watchers).
+- You have some intuition for Effect and Layer (how to compose multiple service Layers).
+
+### What you’ll get
+
+- Design B2B page skeletons from the “Root ModuleImpl + Runtime” perspective.
+- Know where to mount lifecycle logic, shared middleware, and debugging/observability.
+- Build conceptual ground for future Runtime adapters (CLI, micro-frontend container, etc.).
+
+---
+
+This page uses a CRM user list as an example to show roles of the runtime model. If you care more about building the page step-by-step, start with “Tutorial: Complex list query”. If you care about “how the engine assembles these pieces”, keep reading.
+
+## 1. Define the Module schema
 
 ```ts
 // UserListModule.ts
@@ -54,59 +54,59 @@ description: 从运行时视角理解 Logix 的核心抽象。
 	})
 ```
 
-## 2. 定义 Lifecycle Logic
+## 2. Define lifecycle logic
 
 ```ts
 	// UserListLogic.ts
 	import { Effect } from 'effect'
 
-		export const LifecycleLogic = UserListDef.logic(($) => {
-		  // 页面初始化：拉取数据（setup-only 注册，Runtime 统一调度执行）
-		  $.lifecycle.onInit(
-		    Effect.gen(function* () {
-	      yield* $.state.mutate((d) => {
-	        d.loading = true
-	      })
-	
-	      const [users, roles] = yield* Effect.all([UserApi.list(), RoleApi.list()])
-	
-	      yield* $.state.mutate((d) => {
-	        d.list = users
-	        d.roles = roles
-	        d.loading = false
-	      })
-	    }),
-	  )
+	export const LifecycleLogic = UserListDef.logic(($) => {
+	  // page init: fetch data once (setup-only registration; scheduled by the Runtime)
+	  $.lifecycle.onInit(
+	    Effect.gen(function* () {
+      yield* $.state.update((s) => ({ ...s, loading: true }))
 
-  // 页面销毁：清理
-  $.lifecycle.onDestroy(Effect.log('页面已关闭，资源已清理'))
+      const [users, roles] = yield* Effect.all([UserApi.list(), RoleApi.list()])
+
+      yield* $.state.update((s) => ({
+        ...s,
+        list: users,
+        roles: roles,
+        loading: false,
+      }))
+    }),
+  )
+
+  // page destroy: cleanup
+  $.lifecycle.onDestroy(Effect.log('Page closed; resources cleaned up'))
 
   return Effect.void
 })
 ```
 
-## 3. 交互防护（EffectOp 总线 & Middleware）
+## 3. Interaction guards (EffectOp bus & middleware)
 
-交互逻辑（如删除用户）同样写在 Logic 中，并由 Middleware 进行防护。
+Interaction logic (e.g. deleting a user) also lives in Logic and is guarded by middleware.
 
 ```ts
-	// UserListLogic.ts (续)
+	// UserListLogic.ts (continued)
 	export const InteractionLogic = UserListDef.logic(($) =>
 	  Effect.gen(function* () {
     const delete$ = $.flow.fromAction('deleteUser')
 
-	    const deleteImpl = (userId: string) =>
-	      Effect.gen(function* () {
-	        yield* UserApi.delete(userId)
-	        yield* $.state.mutate((d) => {
-	          d.list = d.list.filter((u) => u.id !== userId)
-	        })
-	        yield* ToastService.success('删除成功')
-	      })
+    const deleteImpl = (userId: string) =>
+      Effect.gen(function* () {
+        yield* UserApi.delete(userId)
+        yield* $.state.update((s) => ({
+          ...s,
+          list: s.list.filter((u) => u.id !== userId),
+        }))
+        yield* ToastService.success('Deleted')
+      })
 
-    // 运行带防护的流程：
-    // - Runtime 会将每次 deleteImpl 执行提升为 EffectOp(kind = "flow")；
-    // - 全局 MiddlewareStack 可以在 EffectOp 层挂载错误 Toast / Loading 等横切能力。
+    // Run a guarded flow:
+    // - Runtime lifts each deleteImpl execution to an EffectOp(kind = "flow")
+    // - a global MiddlewareStack can attach cross-cutting concerns (error toast / loading, etc.) at the EffectOp layer
     yield* delete$.pipe(
       $.flow.run((userId) =>
         Effect.gen(function* () {
@@ -123,9 +123,9 @@ description: 从运行时视角理解 Logix 的核心抽象。
 )
 ```
 
-## 4. 生成运行时 (`ModuleDef.implement` + `Logix.Runtime.make`)
+## 4. Build the runtime (`ModuleDef.implement` + `Logix.Runtime.make`)
 
-最后，`ModuleDef.implement` 将所有部分组合在一起，而 `Logix.Runtime.make` 将 Root program module（或其 `ModuleImpl`）与基础设施 Layer 组合成可运行的 Runtime。
+Finally, `ModuleDef.implement` composes the pieces, and `Logix.Runtime.make` combines the root program module (or its `ModuleImpl`) with infrastructure Layers into a runnable Runtime.
 
 ```typescript
 export const UserListModule = UserListDef.implement({
@@ -140,16 +140,16 @@ export const UserListRuntime = Logix.Runtime.make(UserListModule, {
 })
 ```
 
-这个 `Runtime` 可以在 React 中通过 `RuntimeProvider runtime={UserListRuntime}` 挂载，也可以在测试环境中直接使用 `UserListRuntime.run*` 运行 Effect。
+This Runtime can be mounted in React via `RuntimeProvider runtime={UserListRuntime}`, and can also be used in tests by running Effects with `UserListRuntime.run*`.
 
-## 5. 领域模块：表单与查询（同源 imports）
+## 5. Domain modules: Form and Query (shared imports)
 
-在真实业务里，“表单”和“查询”往往是页面最核心的两类能力。Logix 推荐把它们也当成**普通模块**来组合：  
-它们以 `ModuleImpl` 的形式被 Root `imports` 引入，和其他模块共享同一套 Runtime、调试与回放能力，从而避免“表单状态”和“页面 Store 状态”割裂成两套事实源。
+In real products, “forms” and “queries” are often the two core capabilities of a page. Logix recommends composing them as **regular modules** too:
+they are imported into the Root via `imports` as `ModuleImpl`s, sharing the same Runtime, debugging, and replay capability—so you don’t end up with “form state” and “page store state” as two competing sources of truth.
 
-### 5.1 表单：`@logix/form`
+### 5.1 Forms: `@logix/form`
 
-`@logix/form` 提供 `Form.make(...)` 作为高层入口，它返回一个模块对象，其中 `impl` 可以直接被 imports 引入：
+`@logix/form` provides `Form.make(...)` as a high-level entry point. It returns a module object whose `impl` can be imported directly:
 
 ```ts
 import * as Logix from '@logix/core'
@@ -160,9 +160,9 @@ import * as Form from "@logix/form"
 	  values: Schema.Struct({ name: Schema.String }),
 	  initialValues: { name: '' },
 
-  // 两阶段触发（对标 RHF mode/reValidateMode）：
-  // - 首次提交前：按 validateOn 控制是否自动校验（默认 ["onSubmit"]）
-  // - 首次提交后：按 reValidateOn 控制是否自动校验（默认 ["onChange"]）
+  // Two-phase validation (similar to RHF mode/reValidateMode):
+  // - before first submit: controlled by validateOn (default ["onSubmit"])
+  // - after first submit: controlled by reValidateOn (default ["onChange"])
   validateOn: ['onSubmit'],
 	  reValidateOn: ['onChange'],
 	})
@@ -176,11 +176,11 @@ import * as Form from "@logix/form"
 export const RootImpl = RootModule.impl
 ```
 
-表单的错误树会被统一组织为 `$list/rows[]` 形态：数组字段 `a.0.x` 的错误路径会写到 `errors.a.rows.0.x`；列表级与行级错误分别写入 `errors.a.$list` 与 `errors.a.rows.0.$item`（便于跨行校验与行级提示同时存在）。
+The form error tree is normalized to the `$list/rows[]` shape: an array field error path like `a.0.x` is written to `errors.a.rows.0.x`. List-level and row-level errors go to `errors.a.$list` and `errors.a.rows.0.$item` respectively (so cross-row validation and per-row hints can coexist).
 
-除了 React 组件内调用，你也可以在 Logic 中通过 `$.use(UserForm)` 触发默认动作（React/Logic 一致）：`controller.validate` / `controller.validatePaths` / `controller.reset` / `controller.setError` / `controller.clearErrors` / `controller.handleSubmit`。
+Besides calling from React components, you can also use default actions in Logic via `$.use(UserForm)` (React/Logic are consistent): `controller.validate` / `controller.validatePaths` / `controller.reset` / `controller.setError` / `controller.clearErrors` / `controller.handleSubmit`.
 
-在 React 中推荐用 selector 订阅表单“视图状态”，避免因为订阅整棵 values/errors 导致无谓重渲染：
+In React, prefer subscribing to “view state” via selectors, to avoid unnecessary re-renders from subscribing to the entire values/errors tree:
 
 ```ts
 import { useForm, useFormState } from '@logix/form/react'
@@ -189,11 +189,11 @@ const form = useForm(UserForm)
 const canSubmit = useFormState(form, (v) => v.canSubmit)
 ```
 
-更完整的表单文档主线见：[Form（表单）](../../form)。
+For the full form documentation path, see: [Form](../../form).
 
-### 5.2 查询：`@logix/query`
+### 5.2 Queries: `@logix/query`
 
-`@logix/query` 把“查询参数 → 资源加载 → 结果快照”收口为一个模块：查询结果存放在模块 state 上（可被订阅、可被调试、可被回放）。
+`@logix/query` collapses “query params → resource loading → result snapshots” into a module: results live in module state (subscribable, debuggable, replayable).
 
 ```ts
 import { Schema } from 'effect'
@@ -212,25 +212,25 @@ export const SearchQuery = Query.make('SearchQuery', {
 })
 ```
 
-当你需要缓存/去重/失效等引擎能力时，可以在 Runtime scope 内注入外部引擎，并在 EffectOp 中间件层启用接管点。更完整的入门→高级主线见：[查询（Query）](./query)。
+When you need caching/dedup/invalidation, inject an external engine in the Runtime scope and enable takeover in the EffectOp middleware layer. For the full beginner → advanced path, see: [Query](./query).
 
-这样 Query 与 Form 都能在同一个“模块 → imports → Root Runtime”的组合链路里工作，保持 API 形状一致、调试方式一致。
+This way, Query and Form both work inside the same “modules → imports → root runtime” composition chain, keeping API shape and debugging workflow consistent.
 
-## 总结
+## Summary
 
-Logix 的“魔法”其实就是一组明确定义的转换：
+Logix’s “magic” is a set of well-defined transformations:
 
-1.  **Schema**：定义类型契约。
-2.  **Module**：定义标识符和依赖关系。
-3.  **Logic**：定义副作用和状态变更。
-4.  **Bound API**：连接 Logic 与 Runtime 的桥梁。
-5.  **实例**：`Module.implement` 组合状态与逻辑，形成 Root ModuleImpl。
-6.  **执行**：`Logix.Runtime.make` 组装并启动应用或页面 Runtime。
+1. **Schema**: define type contracts.
+2. **Module**: define identifiers and dependency relations.
+3. **Logic**: define side effects and state changes.
+4. **Bound API**: bridge between Logic and Runtime.
+5. **Instance**: `Module.implement` composes state and logic into a Root ModuleImpl.
+6. **Execution**: `Logix.Runtime.make` assembles and starts the application/page Runtime.
 
-## 下一步
+## Next
 
-恭喜你完成了 Learn 核心概念的学习！接下来可以：
+Congrats — you’ve completed the Learn core concepts. Next:
 
-- 进入高级主题：[Suspense & Async](../advanced/suspense-and-async)
-- 学习测试策略：[测试](../advanced/testing)
-- 查看 React 集成指南：[React 集成](../recipes/react-integration)
+- Advanced topic: [Suspense & Async](../advanced/suspense-and-async)
+- Testing strategy: [Testing](../advanced/testing)
+- React integration recipes: [React integration](../recipes/react-integration)

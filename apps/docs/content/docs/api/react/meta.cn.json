@@ -1,0 +1,4 @@
+{
+  "title": "React 集成",
+  "pages": ["provider", "use-module", "use-local-module", "use-imported-module", "module-scope"]
+}

@@ -1,22 +1,22 @@
 ---
-title: API 参考
-description: Logix 核心 API 参考手册。
+title: API Reference
+description: Reference for the Logix core APIs.
 ---
 
-本部分包含 Logix 运行时核心 API 的详细说明。
+This section contains detailed documentation for Logix runtime core APIs.
 
-## 目录
+## Contents
 
-- [**Runtime 与 ManagedRuntime**](./core/runtime): 如何构造应用级 Runtime，并在不同宿主环境中运行 Logix。
-- [**Bound API ($)**](./core/bound-api): 逻辑代码中最常用的 `$` 对象，提供访问状态、派发动作、监听事件和生命周期管理的能力。
-- [**Module 定义与实现**](./core/module): 如何定义 Module 的 Shape（Schema）、创建 Module 实例以及组装 ModuleImpl。
-- [**Flow API**](./core/flow): Fluent Flow 的底层 API 说明，与 `$.onAction / $.onState / $.on` 保持一一对应。
-- [**React 集成**](./react/provider): 在 React 应用中通过 `RuntimeProvider` / `useModule` / `useSelector` / `useDispatch` 使用 Logix。
+- [**Runtime and ManagedRuntime**](./core/runtime): how to build an app-level Runtime and run Logix in different host environments.
+- [**Bound API ($)**](./core/bound-api): the `$` object you use inside Logic to read/write state, dispatch actions, watch signals, and manage lifecycle.
+- [**Module definition and implementation**](./core/module): how to define a Module’s Shape (Schema), create instances, and assemble `ModuleImpl`.
+- [**Flow API**](./core/flow): low-level Fluent Flow APIs, matching `$.onAction / $.onState / $.on` one-to-one.
+- [**React integration**](./react/provider): using Logix in React via `RuntimeProvider` / `useModule` / `useSelector` / `useDispatch`.
 
-## 类型约定
+## Type conventions
 
-在阅读 API 文档时，你会经常看到以下泛型：
+You will frequently see the following type parameters in the API docs:
 
-- `Sh` (Shape): 表示 Module 的形状，包含 State Schema 和 Action Schema。
-- `R` (Requirements): 表示逻辑运行所需的依赖环境（Services）。
-- `E` (Error): 表示可能抛出的错误类型。
+- `Sh` (Shape): the Module shape, including State and Action schemas.
+- `R` (Requirements): the required dependency environment (Services) for running Logic.
+- `E` (Error): the error type a program may fail with.

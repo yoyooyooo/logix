@@ -22,18 +22,18 @@ pnpm dev
 
 ## 国际化（i18n）
 
-- 路由前缀：`/zh/*`、`/en/*`（默认语言为 `zh`，Middleware 会把无前缀访问重定向到合适语言）。
-- 内容组织：使用 Fumadocs `parser: "dot"`，英文内容通过同名文件加后缀区分，例如：
-  - `content/docs/index.mdx`（中文默认）
-  - `content/docs/index.en.mdx`（英文）
-  - `content/docs/meta.json`（中文默认）
-  - `content/docs/meta.en.json`（英文）
+- 路由前缀：默认语言为英文（无前缀），中文为 `/cn/*`（Fumadocs Middleware 会把无前缀请求 rewrite 到默认语言）。
+- 内容组织：使用 Fumadocs `parser: "dot"`，中文内容通过同名文件加 `.cn` 后缀区分，例如：
+  - `content/docs/index.mdx`（英文默认）
+  - `content/docs/index.cn.mdx`（中文）
+  - `content/docs/meta.json`（英文默认）
+  - `content/docs/meta.cn.json`（中文）
 
 ## 主要目录
 
 - `content/docs`：文档内容（Guide / API 等），是对外的用户文档 SSoT；
 - `source.config.ts`：Fumadocs Source 配置；
-- `src/app`：Next.js App 路由与布局（文档入口为 `/{lang}/docs`）。
+- `src/app`：Next.js App 路由与布局（文档入口为 `/docs`（英文）与 `/cn/docs`（中文））。
 - `src/components/ui`：shadcn/ui 基础组件（唯一基元来源）。
 - `src/components/landing`：docs 首页 Landing 的 Section 组件与文案配置。
 

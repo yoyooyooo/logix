@@ -1,24 +1,24 @@
 ---
-title: 可中断 IO（取消与超时）
-description: 让 switch 并发不仅“丢弃旧结果”，还能真正取消网络请求。
+title: Interruptible IO (Cancellation and Timeouts)
+description: Make `switch` concurrency not only drop old results, but also cancel network requests.
 ---
 
-# 可中断 IO（取消与超时）
+# Interruptible IO (Cancellation and Timeouts)
 
-在 Logix 里，查询/资源加载最终都会走到 `ResourceSpec.load`（Effect）。当你使用 `StateTrait.source`（以及基于它的 `@logix/query`）时，默认并发是 `switch`：新的 key 会让旧的 in-flight fiber 被中断。
+In Logix, queries/resource loading eventually goes through `ResourceSpec.load` (an Effect). When you use `StateTrait.source` (and `@logix/query` built on top of it), the default concurrency is `switch`: a new key interrupts the previous in-flight fiber.
 
-但“中断 fiber”并不等于“网络层真正取消”。想做到真正取消（例如 axios 请求被 abort），需要 `load` 主动使用 Effect 提供的 `AbortSignal`。
+But “interrupting a fiber” does not automatically mean “cancelling the network request”. If you want true cancellation (e.g. aborting an axios request), your `load` must actively use the `AbortSignal` provided by Effect.
 
-## 1) 你会遇到的两个问题
+## 1) The two problems you’ll run into
 
-1. **竞态正确性**：用户快速输入时，旧请求完成得更晚，不能覆盖新请求的结果。
-2. **资源浪费**：旧请求即使不会写回 UI，也不希望它继续占用网络与后端容量。
+1. **Race correctness**: when users type quickly, older requests may finish later and must not overwrite the newer result.
+2. **Resource waste**: even if old requests won’t be committed to UI, you still don’t want them consuming network and backend capacity.
 
-Logix 默认保证第 1 点（通过 `keyHash` gate）；第 2 点需要你把 `AbortSignal` 传给网络客户端。
+Logix guarantees (1) by default (via the `keyHash` gate). To get (2), you need to pass `AbortSignal` to your network client.
 
-## 2) 推荐写法：在 `ResourceSpec.load` 使用 `AbortSignal`
+## 2) Recommended: use `AbortSignal` inside `ResourceSpec.load`
 
-### 2.1 `fetch`（浏览器 / Node 18+）
+### 2.1 `fetch` (browser / Node 18+)
 
 ```ts
 import { Effect, Schema } from "effect"
@@ -36,7 +36,7 @@ export const UserSpec = Logix.Resource.make({
 })
 ```
 
-### 2.2 axios（v1+ 支持 `signal`）
+### 2.2 axios (`signal` supported in v1+)
 
 ```ts
 import axios from "axios"
@@ -55,18 +55,18 @@ export const SearchSpec = Logix.Resource.make({
 })
 ```
 
-> 反例：`Effect.tryPromise(() => axios.get(...))` 不接收 `signal`，所以 fiber 中断时无法真正取消网络请求，只能做到“旧结果不写回”。
+> Anti-example: `Effect.tryPromise(() => axios.get(...))` does not receive `signal`, so interrupting the fiber can’t truly cancel the request — you only get “old results won’t be committed”.
 
-## 3) 和 `switch` 的关系（你能得到什么）
+## 3) How it works with `switch` (what you get)
 
-- **默认就正确**：`switch` + `keyHash` gate 保证旧结果不会覆盖新 key（即使请求没取消成功）。
-- **可进一步省资源**：`load` 使用 `AbortSignal` 后，`switch` 中断旧 fiber 会触发 signal abort，从而真正取消网络请求（客户端/服务端都更省）。
+- **Correct by default**: `switch` + `keyHash` gate ensures old results never overwrite the new key (even if cancellation didn’t happen).
+- **Lower resource usage**: once `load` uses `AbortSignal`, `switch` interrupting the old fiber triggers an abort, and the network request can be truly cancelled (saving client and server resources).
 
-## 4) 常用补充（可选）
+## 4) Common add-ons (optional)
 
-- **超时**：对可能卡住的请求，建议在 `load` 的 Effect 上加超时（例如 `Effect.timeoutFail({ duration, onTimeout })`）。
-- **重试**：对偶发失败请求，建议用 `Effect.retry({ times })` 在 `load` 外侧统一包一层（不要散落在每个调用点）。
+- **Timeouts**: for requests that may hang, add a timeout on the `load` Effect (e.g. `Effect.timeoutFail({ duration, onTimeout })`).
+- **Retries**: for flaky failures, wrap retries around `load` with `Effect.retry({ times })` (don’t scatter retries at every call site).
 
-## 下一步
+## Next
 
-- Query 入口与引擎注入：见 [查询（Query）](../learn/query)。
+- Query entry and engine wiring: see [Query](../learn/query).

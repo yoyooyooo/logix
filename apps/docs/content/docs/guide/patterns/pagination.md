@@ -1,19 +1,19 @@
 ---
-title: 分页加载
-description: 使用 Logix 实现分页/无限滚动加载模式。
+title: Pagination loading
+description: Implement pagination and infinite scrolling with Logix.
 ---
 
-# 分页加载模式
+# Pagination loading pattern
 
-分页加载是列表类场景的基础模式，本文介绍 Cursor 和 Offset 两种实现。
+Pagination is a foundational pattern for list-like UIs. This page shows two common approaches: cursor-based and offset-based pagination.
 
-## 核心思路
+## Core idea
 
-1. **状态结构**：`items[]` + `cursor/page` + `hasMore` + `isLoading`
-2. **Action**：`loadMore` 触发加载
-3. **Flow**：防止重复请求（`runExhaust`），加载完成后追加数据
+1. **State shape**: `items[]` + `cursor/page` + `hasMore` + `isLoading`
+2. **Action**: `loadMore` triggers loading
+3. **Flow**: prevent duplicate requests (`runExhaust`), append data after the request finishes
 
-## Cursor 分页实现
+## Cursor-based pagination
 
 ```ts
 import * as Logix from '@logix/core'
@@ -36,58 +36,53 @@ const ListLogic = ListDef.logic(($) =>
   Effect.gen(function* () {
     const api = yield* $.use(ListApi)
 
-    yield* Effect.all(
-      [
-        // 使用 runExhaust 防止重复请求
-        $.onAction('loadMore').runExhaust(() =>
-          Effect.gen(function* () {
-            const state = yield* $.state.read
-            if (!state.hasMore || state.isLoading) return
+    // Use runExhaust to prevent duplicate requests
+    yield* $.onAction('loadMore').runExhaust(() =>
+      Effect.gen(function* () {
+        const state = yield* $.state.read
+        if (!state.hasMore || state.isLoading) return
 
-            yield* $.state.mutate((d) => {
-              d.isLoading = true
-            })
+        yield* $.state.mutate((d) => {
+          d.isLoading = true
+        })
 
-            const { items, nextCursor } = yield* api.fetch(state.cursor)
+        const { items, nextCursor } = yield* api.fetch(state.cursor)
 
-            yield* $.state.mutate((d) => {
-              d.items = [...d.items, ...items]
-              d.cursor = nextCursor
-              d.hasMore = nextCursor !== null
-              d.isLoading = false
-            })
-          }),
-        ),
+        yield* $.state.mutate((d) => {
+          d.items = [...d.items, ...items]
+          d.cursor = nextCursor
+          d.hasMore = nextCursor !== null
+          d.isLoading = false
+        })
+      }),
+    )
 
-	        // 重置列表
-	        $.onAction('reset').run(() =>
-	          $.state.mutate((d) => {
-	            d.items = []
-	            d.cursor = null
-	            d.hasMore = true
-	            d.isLoading = false
-	          }),
-	        ),
-	      ],
-	      { concurrency: 'unbounded' },
-	    )
+    // Reset list
+    yield* $.onAction('reset').run(() =>
+      $.state.update(() => ({
+        items: [],
+        cursor: null,
+        hasMore: true,
+        isLoading: false,
+      })),
+    )
   }),
 )
 ```
 
-## Offset 分页变体
+## Offset-based variant
 
 ```ts
 const state = Schema.Struct({
   items: Schema.Array(Schema.Unknown),
-  page: Schema.Number, // 当前页码
-  pageSize: Schema.Number, // 每页条数
-  total: Schema.Number, // 总条数
+  page: Schema.Number, // current page index
+  pageSize: Schema.Number, // page size
+  total: Schema.Number, // total items
   isLoading: Schema.Boolean,
 })
 ```
 
-## React 集成
+## React integration
 
 ```tsx
 function ItemList() {
@@ -103,7 +98,7 @@ function ItemList() {
 
       {hasMore && (
         <button onClick={() => dispatch({ _tag: 'loadMore' })} disabled={isLoading}>
-          {isLoading ? '加载中...' : '加载更多'}
+          {isLoading ? 'Loading...' : 'Load more'}
         </button>
       )}
     </div>
@@ -111,13 +106,13 @@ function ItemList() {
 }
 ```
 
-## 常见变体
+## Common variants
 
-- **下拉刷新**：`reset` 后立即 `loadMore`
-- **无限滚动**：监听滚动事件自动触发 `loadMore`
-- **预加载**：在接近底部时提前触发加载
+- **Pull to refresh**: `reset` then immediately `loadMore`
+- **Infinite scroll**: listen to scroll events and trigger `loadMore` automatically
+- **Prefetch**: load earlier when close to bottom
 
-## 相关模式
+## Related patterns
 
-- [乐观更新](./optimistic-update)
-- [搜索+详情联动](./search-detail)
+- [Optimistic update](./optimistic-update)
+- [Search + detail linkage](./search-detail)

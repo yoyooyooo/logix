@@ -1,79 +1,79 @@
 ---
-title: 什么时候用 @logix/form？
-description: 帮助你判断是否需要使用 @logix/form 而不是普通 Module。
+title: When should you use @logix/form?
+description: Decide whether you need @logix/form or a plain Module.
 ---
 
-# 什么时候用 @logix/form？
+# When should you use @logix/form?
 
-`@logix/form` 是专门为表单场景设计的领域包。但不是所有涉及输入的场景都需要它。
+`@logix/form` is a domain package designed specifically for forms. But not every “input” scenario needs it.
 
-## 用普通 Module 即可
+## A plain Module is enough
 
-以下场景，直接用 `Logix.Module` 管理状态就够了：
+For these cases, managing state with `Logix.Module` is sufficient:
 
-- **单字段输入**：搜索框、开关、简单筛选器
-- **无校验需求**：不需要字段级错误提示
-- **状态简单**：只是几个独立的值，没有复杂联动
+- **Single-field input**: search box, toggle, simple filters
+- **No validation needs**: no field-level error messages
+- **Simple state**: a few independent values without complex linkage
 
 ```ts
-// 简单搜索框，用普通 Module 就够了
+// A simple search box can be a plain Module
 const SearchModule = Logix.Module.make('Search', {
   state: Schema.Struct({ keyword: Schema.String }),
   actions: { setKeyword: Schema.String },
 })
 ```
 
-## 推荐使用 @logix/form
+## Prefer @logix/form
 
-当你的表单具备以下特征时，`@logix/form` 会让你更轻松：
+When your form has these characteristics, `@logix/form` tends to make life easier:
 
-| 特征                     | 普通 Module           | @logix/form              |
-| ------------------------ | --------------------- | ------------------------ |
-| **多字段**（3+ 字段）    | 手写状态合并          | 内置管理                 |
-| **字段级校验**           | 手写校验逻辑          | Rules DSL + 内置错误树   |
-| **动态数组**（增删排序） | 手写 key/索引管理     | 稳定 identity + 优化渲染 |
-| **跨字段联动派生**       | 手写 watcher          | Trait 声明式             |
-| **提交状态**             | 手写 loading/disabled | 内置 meta                |
+| Characteristic                       | Plain Module              | @logix/form                         |
+| ----------------------------------- | ------------------------- | ----------------------------------- |
+| **Multiple fields** (3+ fields)     | manual state merging      | built-in management                 |
+| **Field-level validation**          | hand-written validation   | Rules DSL + built-in error tree     |
+| **Dynamic arrays** (insert/delete/reorder) | manual key/index handling | stable identity + optimized rendering |
+| **Cross-field linkage/derivations** | hand-written watchers     | declarative trait rules             |
+| **Submit state**                    | manual loading/disabled   | built-in meta                       |
 
-## 典型场景
+## Typical scenarios
 
-### ✅ 用 @logix/form
+### ✅ Use @logix/form
 
-- 用户注册表单（姓名、邮箱、密码 + 校验）
-- 商品编辑表单（多字段 + 图片列表）
-- 动态问卷（可增删的题目列表）
-- 审批流配置（多步骤 + 字段联动）
+- Registration form (name/email/password + validation)
+- Product edit form (many fields + image list)
+- Dynamic questionnaire (add/remove question list)
+- Approval-flow configuration (multi-step + field linkage)
 
-### ⚠️ 可能不需要
+### ⚠️ Maybe not needed
 
-- 搜索框 + 筛选条件（用普通 Module）
-- 开关/Tab 切换（用普通 state）
-- 只读数据展示（不是表单）
+- Search box + simple filters (use a plain Module)
+- Toggle/Tab switching (use plain state)
+- Read-only data display (not a form)
 
-## 混合使用
+## Mixed usage
 
-你可以在同一个应用中混合使用：
+You can mix both in one app:
 
-- **普通 Module**：管理页面/路由/全局状态
-- **@logix/form**：管理表单区域
+- **Plain Modules**: page/route/global state
+- **@logix/form**: form areas
 
 ```ts
-// PageModule 管理页面状态
+// PageModule manages page state
 const PageModule = Logix.Module.make('OrderPage', {
   state: Schema.Struct({ activeTab: Schema.String }),
   // ...
 })
 
-// Form.make 管理表单
+// Form.make manages the form
 const OrderForm = Form.make({
   /* ... */
 })
 ```
 
-两者都运行在同一个 Runtime 中，共享调试、事务语义和 DevTools 能力。
+Both run in the same Runtime and share debugging, transaction semantics, and DevTools capabilities.
 
-## 下一步
+## Next
 
-- [Form 快速开始](./quick-start)
+- [Form quick start](./quick-start)
 - [Rules DSL](./rules)
-- [动态列表](./field-arrays)
+- [Field arrays](./field-arrays)

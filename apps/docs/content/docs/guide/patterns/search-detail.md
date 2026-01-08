@@ -1,19 +1,19 @@
 ---
-title: 搜索+详情联动
-description: 使用 Logix 实现列表搜索与详情面板的联动模式。
+title: Search + detail linkage
+description: Implement a master-detail pattern (search list + detail panel) with Logix.
 ---
 
-# 搜索+详情联动模式
+# Search + detail linkage pattern
 
-典型的 Master-Detail 场景：左侧搜索列表，右侧详情面板，选中项变化时自动加载详情。
+A classic master-detail UI: a searchable list on the left, a detail panel on the right. When selection changes, detail loads automatically.
 
-## 核心思路
+## Core idea
 
-1. **两个 Module**：`SearchModule`（列表）+ `DetailModule`（详情）
-2. **联动方式**：通过 `$.use` 或 `Link.make` 实现跨模块通信
-3. **竞态处理**：使用 `runLatest` 确保详情始终对应最新选中项
+1. **Two modules**: `SearchModule` (list) + `DetailModule` (detail)
+2. **Linkage**: cross-module communication via `$.use` or `Link.make`
+3. **Race handling**: use `runLatest` so detail always corresponds to the latest selection
 
-## 状态设计
+## State design
 
 ```ts
 // Search Module
@@ -44,14 +44,14 @@ const DetailDef = Logix.Module.make('Detail', {
 })
 ```
 
-## 搜索逻辑（防抖 + 取消旧请求）
+## Search logic (debounce + cancel old requests)
 
 ```ts
 const SearchLogic = SearchDef.logic(($) =>
   Effect.gen(function* () {
     const api = yield* $.use(SearchApi)
 
-    // 搜索：防抖 300ms + 取消旧请求
+    // Search: debounce 300ms + cancel old requests
     yield* $.onState((s) => s.keyword)
       .debounce(300)
       .runLatest((keyword) =>
@@ -77,16 +77,16 @@ const SearchLogic = SearchDef.logic(($) =>
 )
 ```
 
-## 详情联动（跨模块）
+## Detail linkage (cross-module)
 
-### 方式一：在 SearchLogic 中驱动
+### Option 1: drive it inside SearchLogic
 
 ```ts
 const SearchLogic = SearchDef.logic(($) =>
   Effect.gen(function* () {
     const Detail = yield* $.use(DetailModule)
 
-    // 选中项变化时，驱动详情加载
+    // When selection changes, trigger detail loading
     yield* $.onState((s) => s.selectedId)
       .filter((id): id is string => id !== null)
       .runLatest((id) => Detail.dispatch({ _tag: 'load', payload: id }))
@@ -94,7 +94,7 @@ const SearchLogic = SearchDef.logic(($) =>
 )
 ```
 
-### 方式二：使用 Link.make
+### Option 2: use Link.make
 
 ```ts
 const SyncSelectedToDetail = Logix.Link.make({ modules: [SearchDef, DetailDef] as const }, ($) =>
@@ -104,14 +104,14 @@ const SyncSelectedToDetail = Logix.Link.make({ modules: [SearchDef, DetailDef] a
   ),
 )
 
-// 在 Root 中挂载
+// Mount in Root
 const RootModule = RootDef.implement({
   imports: [SearchImpl, DetailImpl],
   processes: [SyncSelectedToDetail],
 })
 ```
 
-## React 组件
+## React components
 
 ```tsx
 function MasterDetail() {
@@ -147,7 +147,7 @@ function SearchPanel() {
 }
 ```
 
-## 相关模式
+## Related patterns
 
-- [分页加载](./pagination)
-- [跨模块通信](../learn/cross-module-communication)
+- [Pagination loading](./pagination)
+- [Cross-module communication](../learn/cross-module-communication)

@@ -1,0 +1,5 @@
+{
+  "title": "文档",
+  "root": true,
+  "pages": ["guide", "form", "api", "faq"]
+}

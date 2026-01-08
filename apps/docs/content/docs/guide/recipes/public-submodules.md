@@ -1,51 +1,51 @@
 ---
-title: Public Submodules 迁移与导入约定
-description: 选择稳定的 import 路径，避免依赖不受支持的子路径，并提供可复用的迁移模板。
+title: Public Submodules migration and import conventions
+description: Choose stable import paths, avoid unsupported subpaths, and use a reusable migration template.
 ---
 
-本篇给出一套可复用的“导入约定 + 迁移模板”，用于在升级 Logix 包对外入口时，统一团队的 import 形态并减少回归风险。
+This page provides a reusable “import convention + migration template” for upgrading Logix package entry points, so teams can standardize imports and reduce regression risk.
 
-## 你需要记住的 3 条规则
+## The 3 rules to remember
 
-1. 只从 `@logix/<pkg>` 或 `@logix/<pkg>/<Concept>` 导入；只使用文档明确允许的子路径入口（例如 `@logix/form/react`、`@logix/sandbox/vite`）。
-2. 禁止导入 `@logix/*/internal/*`，也不要通过任何“未被明确允许的子路径”绕过 exports 收口（例如试图直接 import `dist/*` / `src/*` 等）。
-3. 迁移后跑一轮验证：`pnpm verify:public-submodules`，并确保 `pnpm typecheck` / `pnpm lint` / `pnpm test` 通过。
+1. Only import from `@logix/<pkg>` or `@logix/<pkg>/<Concept>`. Only use subpath entry points explicitly allowed by docs (e.g. `@logix/form/react`, `@logix/sandbox/vite`).
+2. Never import `@logix/*/internal/*`, and never bypass exports via “unapproved subpaths” (e.g. importing `dist/*` / `src/*` directly).
+3. After migration, run verification: `pnpm verify:public-submodules`, and ensure `pnpm typecheck` / `pnpm lint` / `pnpm test` all pass.
 
-## 关键词（≤5）
+## Keywords (≤5)
 
-- **Public Submodule**：包对外稳定概念入口（可被 import 的契约单元）。
-- **Independent Entry Point**：独立子路径入口（例如 `@logix/form/react`、`@logix/sandbox/vite`）。
-- **Exports Policy**：`package.json#exports` 的收口策略（包含对 `internal` 路径的屏蔽）。
-- **Verify Gate**：结构治理验证命令 `pnpm verify:public-submodules`。
-- **Promotion Path**：当某个入口成长到需要独立演进时的“提升为独立子包”路径。
+- **Public Submodule**: a stable concept entry point exported by a package (an importable contract unit).
+- **Independent Entry Point**: an independent subpath entry (e.g. `@logix/form/react`, `@logix/sandbox/vite`).
+- **Exports Policy**: the consolidation policy in `package.json#exports` (including blocking `internal` paths).
+- **Verify Gate**: the structural governance check `pnpm verify:public-submodules`.
+- **Promotion Path**: the path to “promote into a standalone package” when an entry grows enough to evolve independently.
 
-## 常见迁移：旧 import → 新 import
+## Common migration: old import → new import
 
-> 下面示例只展示“入口形态变化”。如果你仍然从包根导入（`@logix/<pkg>`），通常无需改动。
+> Examples below only show “entry shape changes”. If you import from the package root (`@logix/<pkg>`), you usually don’t need changes.
 
 - `@logix/sandbox/client` → `@logix/sandbox/Client`
 - `@logix/sandbox/service` → `@logix/sandbox/Service`
-- `@logix/sandbox/vite` → `@logix/sandbox/vite`（保留；属于 Independent Entry Point）
+- `@logix/sandbox/vite` → `@logix/sandbox/vite` (kept; an Independent Entry Point)
 - `@logix/test/vitest` → `@logix/test/Vitest`
 - `@logix/domain/crud` → `@logix/domain/Crud`
-- `@logix/query/react` → 删除（该入口不再提供）
+- `@logix/query/react` → removed (this entry is no longer provided)
 
-## 迁移说明模板（复制即用）
+## Migration template (copy/paste)
 
 ```text
-标题：<包名> Public Submodules 迁移
+Title: <pkg> Public Submodules migration
 
-旧 import：
+Old imports:
 - ...
 
-新 import：
+New imports:
 - ...
 
-禁止项：
+Prohibited:
 - @logix/<pkg>/internal/*
-- 任何未被明确允许的子路径绕过（例如 dist/src 直连）
+- Any unapproved subpath bypass (e.g. dist/src direct imports)
 
-验证：
+Verification:
 - pnpm verify:public-submodules
 - pnpm typecheck
 - pnpm lint

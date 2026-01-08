@@ -11,7 +11,9 @@ export const source = loader({
   plugins: [lucideIconsPlugin()],
   url(slugs, locale) {
     const lang = locale ?? i18n.defaultLanguage
-    return '/' + [lang, 'docs', ...(slugs ?? [])].join('/')
+    const docsPath = ['docs', ...(slugs ?? [])].join('/')
+    const hideDefault = i18n.hideLocale === 'default-locale' && lang === i18n.defaultLanguage
+    return '/' + (hideDefault ? docsPath : [lang, docsPath].join('/'))
   },
 })
 

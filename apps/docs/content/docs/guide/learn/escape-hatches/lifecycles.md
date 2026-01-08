@@ -1,30 +1,30 @@
 ---
-title: ModuleRuntime 实例与生命周期
+title: ModuleRuntime Instances and Lifecycles
 ---
 
-这篇文档回答几个常见问题：
+This page answers a few common questions:
 
-- “同一个模块在不同地方用，是不是同一个实例？”
-- “`useModule(Impl)` 和在脚本里用 `Layer.build` 有什么区别？”
-- “如果我只想构建一次 Env，然后到处复用，应该怎么做？”
+- “If I use the same module in different places, is it the same instance?”
+- “What’s the difference between `useModule(Impl)` and `Layer.build` in a script?”
+- “If I want to build the Env once and reuse it everywhere, what should I do?”
 
-我们会用四个概念来串起来：
+We’ll tie this together with four concepts:
 
-- `ModuleDef`：模块定义对象（`Logix.Module.make(...)` 返回），只描述 State/Action 形状；它带 `.tag`（ModuleTag）用于依赖注入/实例解析；
-- `Module`：可运行模块对象 / program module（`ModuleDef.implement(...)` 返回），它带 `.impl`（ModuleImpl 蓝图）用于装配；
-- `ModuleImpl`：蓝图（在 `module.impl` 上），描述“在某个 Env 下如何构造/挂载这个 Module”；
-- `ModuleRuntime`：运行时实例，也可以理解为“Store 的一棵 live 实例”。
+- `ModuleDef`: the module definition object (returned by `Logix.Module.make(...)`) that only describes the shape of State/Actions; it exposes `.tag` (a ModuleTag) for DI/instance resolution.
+- `Module`: the runnable module object / program module (returned by `ModuleDef.implement(...)`); it exposes `.impl` (a ModuleImpl blueprint) for wiring.
+- `ModuleImpl`: a blueprint (on `module.impl`) describing “how to construct/mount this Module under a given Env”.
+- `ModuleRuntime`: the runtime instance — you can also think of it as “a live store tree instance”.
 
-## 1. 基本心智模型
+## 1. Basic mental model
 
 ```ts
-// 蓝图：只描述数据和事件形状
+// Blueprint: describes only data and event shapes
 export const RegionDef = Logix.Module.make("RegionModule", { state, actions })
 
-// 逻辑：描述在这个蓝图上如何处理事件/状态
+// Logic: describes how to handle events/state on this blueprint
 export const RegionLogic = RegionDef.logic<RegionService>(/* ... */)
 
-// 实装模块：把蓝图和逻辑绑定在一起
+// Program module: binds the blueprint and logic together
 export const RegionModule = RegionDef.implement({
   initial,
   logics: [RegionLogic],
@@ -33,32 +33,32 @@ export const RegionModule = RegionDef.implement({
 export const RegionImpl = RegionModule.impl
 ```
 
-- `RegionDef`：只描述 “Region 状态长什么样 / 有哪些 Action”；
-- `RegionLogic`：描述“Region 的行为逻辑”；
-- `RegionModule`：描述“在一个需要 `RegionService` 的环境里，这个模块如何挂到运行时上”（其中 `RegionModule.impl`/`RegionImpl` 是底层蓝图）——这里还没有具体实例；
-- `ModuleRuntime`：真正的实例（可以 `getState` / `dispatch` 的那一棵）。
+- `RegionDef`: only describes “what Region state looks like / what actions exist”.
+- `RegionLogic`: describes “Region behavior logic”.
+- `RegionModule`: describes “how this module mounts into the runtime in an Env that provides `RegionService`” (where `RegionModule.impl` / `RegionImpl` is the underlying blueprint) — there’s no concrete instance yet.
+- `ModuleRuntime`: the actual instance (the one you can `getState` / `dispatch` on).
 
-接下来所有例子，都围绕“如何构造 / 复用这棵 ModuleRuntime 实例”展开。
+All following examples focus on “how to construct / reuse this ModuleRuntime instance”.
 
-## 2. 脚本中：一次 Layer.build，多次使用 ModuleRuntime
+## 2. In scripts: build Layer once, reuse ModuleRuntime
 
-在脚本或后台任务中，最直接的方式是：
+In scripts or background jobs, the most direct approach is:
 
 ```ts
 const AppLayer = Layer.mergeAll(
-  RegionServiceLive,     // 提供 Service 实现
-  RegionImpl.layer,      // 模块实现 Layer
+  RegionServiceLive, // provide the Service implementation
+  RegionImpl.layer, // the module implementation layer
 )
 
 const main = Effect.scoped(
   Effect.gen(function* () {
-    // 1) 在当前 Scope 上构建一次 Env（Layer.buildWithScope）
+    // 1) Build the Env once on the current Scope (Layer.buildWithScope)
     const env = yield* Layer.buildWithScope(AppLayer, yield* Effect.scope)
 
-    // 2) 用 module Tag 从同一个 Env 中拿到 runtime
+    // 2) Get the runtime from the same Env via the module tag
     const region = Context.get(env, RegionDef.tag)
 
-    // 3) 后续所有操作都复用这同一个 region 实例
+    // 3) Reuse the same region instance for all subsequent operations
     yield* region.dispatch({ _tag: "region/init", payload: undefined })
     const state1 = yield* region.getState
     const state2 = yield* region.getState
@@ -68,13 +68,13 @@ const main = Effect.scoped(
 void Effect.runPromise(main)
 ```
 
-要点：
+Key points:
 
-- `Layer.buildWithScope(AppLayer, scope)` 只调用一次；
-- 在这个 `env` 里，`Context.get(env, RegionDef.tag)` 每次拿到的都是同一个 `ModuleRuntime`；
-- 后续只要复用这个 `env`，就是在操作同一棵实例。
+- `Layer.buildWithScope(AppLayer, scope)` is called only once.
+- In that `env`, `Context.get(env, RegionDef.tag)` always returns the same `ModuleRuntime`.
+- As long as you reuse the same `env`, you’re operating on the same instance.
 
-如果你更习惯用 `ManagedRuntime`，可以这样封装：
+If you prefer working with `ManagedRuntime`, you can wrap it like this:
 
 ```ts
 const AppLayer = Layer.mergeAll(RegionServiceLive, RegionImpl.layer)
@@ -82,21 +82,21 @@ const runtime = ManagedRuntime.make(AppLayer)
 
 const program = Effect.gen(function* () {
   const region = yield* RegionDef.tag
-  // 这里的 region 就是 AppLayer 里那一棵 ModuleRuntime
+  // region here is the ModuleRuntime instance from AppLayer
 })
 
 void runtime.runPromise(program)
 ```
 
-这里 `ManagedRuntime.make(AppLayer)` 内部会做一次 Layer.build，并托管 Scope；所有通过这个 runtime 跑的程序，都会共享同一组 ModuleRuntime 实例。
+`ManagedRuntime.make(AppLayer)` builds the layer once and manages the Scope; all programs run through this runtime share the same set of ModuleRuntime instances.
 
-## 3. React 中的两类实例：全局 vs 局部
+## 3. In React: global vs local instances
 
-在 React 中，有两种常见用法：
+In React, there are two common patterns:
 
-### 3.1 全局实例：在 App 层构建 Env
+### 3.1 Global instance: build Env at the App boundary
 
-如果你希望整个应用共享同一个 Region 实例，可以在 App 层组合 Layer：
+If you want the whole app to share one Region instance, compose the layer at the App boundary:
 
 ```ts
 const AppLayer = Layer.mergeAll(RegionServiceLive, Region.impl.layer)
@@ -109,83 +109,83 @@ root.render(
 )
 
 function RegionPageUsingModuleTag() {
-  // 这里用的是 Module/Tag 形式
-  const region = useModule(RegionModule)       // 或 Region.tag
+  // Using Module/Tag form here
+  const region = useModule(RegionModule) // or Region.tag
   const state = useSelector(region, (s) => s)
-  // 所有使用 RegionModule 的地方，都会共享 appRuntime 里的那一棵实例
+  // Everywhere using RegionModule shares the instance inside appRuntime
 }
 ```
 
-在这种模式下：
+In this mode:
 
-- `AppLayer` 只被构建一次；
-- `RegionModule`/`Region.tag` 都指向这个 env 中唯一的那棵 Region runtime；
-- 所有 `useModule(RegionModule)`（Tag 模式）共享同一实例。
+- `AppLayer` is built only once.
+- `RegionModule` / `Region.tag` points to the single Region runtime inside that env.
+- All `useModule(RegionModule)` (Tag mode) share the same instance.
 
-### 3.2 局部实例：用 ModuleImpl 在组件内构建局部 Scope
+### 3.2 Local instance: build a component-local Scope via ModuleImpl
 
-如果你希望**每个组件都有自己的 Region 实例**（类似组件局部 store），可以使用 ModuleImpl 形态：
+If you want **each component to have its own Region instance** (like a component-local store), use the ModuleImpl form:
 
 ```tsx
 function RegionSection() {
-  const region = useModule(Region)              // 默认等价：useModule(Region.impl)
+  const region = useModule(Region) // default: equivalent to useModule(Region.impl)
   const state = useSelector(region, (s) => s)
-  // 这个 region 实例只属于当前组件
+  // This region instance belongs only to this component
 }
 ```
 
-这条路径内部会：
+Internally, this path:
 
-1. 为当前组件创建一个局部 Scope；
-2. 在这个 Scope 中对 `Region.impl.layer` 进行一次 `Layer.build`；
-3. 用 `Region.tag` 从构建出的 Context 中拿到 runtime。
+1. creates a component-local Scope,
+2. builds `Region.impl.layer` within that Scope,
+3. gets the runtime from the built Context via `Region.tag`.
 
-每个调用 `useModule(Region)` 的组件都会得到一棵独立的 ModuleRuntime 实例，与 App 层的全局实例互不影响。
+Each component calling `useModule(Region)` gets an independent ModuleRuntime instance, and it does not affect the app-level global instance.
 
-## 4. 局部 Service + ModuleImpl：withLayer / withLayers
+## 4. Local services + ModuleImpl: withLayer / withLayers
 
-有时你想在局部区域直接绑定 Service 实现，而不依赖全局 `RuntimeProvider`。可以使用 `ModuleImpl.withLayer` / `withLayers`：
+Sometimes you want to bind Service implementations locally without relying on a global `RuntimeProvider`. Use `ModuleImpl.withLayer` / `withLayers`:
 
 ```ts
-// Service Layer
-const RegionServiceLive = Layer.succeed(RegionService, { /* ...实现... */ })
-const LoggerServiceLive = Layer.succeed(LoggerService, { /* ...实现... */ })
+// Service layers
+const RegionServiceLive = Layer.succeed(RegionService, { /* ...implementation... */ })
+const LoggerServiceLive = Layer.succeed(LoggerService, { /* ...implementation... */ })
 
-// 1) 单棵 Layer：module.withLayer
+// 1) One layer: module.withLayer
 export const RegionWithService = Region.withLayer(RegionServiceLive)
 
-// 2) 多棵 Layer：module.withLayers（语法糖）
+// 2) Multiple layers: module.withLayers (sugar)
 export const RegionWithMoreServices = Region.withLayers(
   RegionServiceLive,
   LoggerServiceLive,
 )
 ```
 
-在 React 中直接消费：
+Consume directly in React:
 
 ```tsx
 function RegionSection() {
-  // Impl 已经绑定好局部 Service Layer
+  // The Impl already includes local Service layers
   const region = useModule(RegionWithMoreServices)
   const state = useSelector(region, (s) => s)
 }
 ```
 
-这里的 Region 实例仍然是“每个组件一棵”，只是 Env 已经在 Impl 上预先提供好了。
+The Region instance is still “one per component”; the only difference is that the Env is pre-provided on the Impl.
 
-## 5. 小结：什么时候是“同一个实例”？
+## 5. Summary: when is it the “same instance”?
 
-可以这样记：
+You can remember it as:
 
-- **同一个 `Layer.build` + 同一个 `ModuleTag`（身份锚点）** → 同一个 `ModuleRuntime` 实例；
-- **不同的 `Layer.build`** → 不同实例，即使用的是同一个 `ModuleImpl`；
-- **React 中：**
-  - `useModule(RegionModule)`（Tag） + 全局 AppLayer → 共享 App 级实例；
-  - `useModule(Region)` → 每个组件一个局部实例；
-  - `useModule(RegionWithService)` → 每个组件一个局部实例，且模块自带 Service Env；
-  - 在同一 Runtime 链上嵌套多个 `RuntimeProvider layer={...}` 时，内层 Provider 的 `layer` 会在同名 Service Tag 上覆盖外层 Env（适合做“几乎相同但略有差异”的局部配置）。
+- **same `Layer.build` + same `ModuleTag` (identity anchor)** → same `ModuleRuntime` instance;
+- **different `Layer.build`** → different instances, even if you use the same `ModuleImpl`;
+- **in React**:
+  - `useModule(RegionModule)` (Tag) + global AppLayer → shared app-level instance;
+  - `useModule(Region)` → one local instance per component;
+  - `useModule(RegionWithService)` → one local instance per component, with Service Env built-in;
+  - when nesting multiple `RuntimeProvider layer={...}` in one runtime chain, the inner provider’s `layer` overrides outer env bindings for tags with the same identity (useful for local configuration that’s “almost the same but slightly different”).
 
-推荐实践：
+Recommended practice:
 
-- 想要“页面级/应用级单例 Store”——用 Tag 形式（`RegionModule` / `Region.tag`）+ App 级 Layer/Runtime。
-- 想要“组件级局部 Store”——用模块对象形态（`useModule(Region)` / `Region.withLayer(...)`）。
+- For a “page/app singleton store”: Tag form (`RegionModule` / `Region.tag`) + app-level Layer/Runtime.
+- For a “component-local store”: module-object form (`useModule(Region)` / `Region.withLayer(...)`).

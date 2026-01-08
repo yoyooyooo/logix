@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import { BookOpen, Brain, Code2, GitGraph, History, Puzzle, Rocket, ShieldCheck, Sparkles, TimerReset } from 'lucide-react'
 
-export type LandingLang = 'zh' | 'en'
+export type LandingLang = 'cn' | 'en'
 
 export type HeroCopy = {
   readonly badge: string
@@ -29,12 +29,6 @@ export type NextStepsCopy = {
   readonly title: string
   readonly description: string
   readonly items: ReadonlyArray<NextStepItem>
-}
-
-export type WordmarkLabCopy = {
-  readonly title: string
-  readonly description: string
-  readonly hint: string
 }
 
 export type TimeTravelCopy = {
@@ -71,7 +65,6 @@ export type FooterCopy = {
 export type LandingContent = {
   readonly hero: HeroCopy
   readonly nextSteps: NextStepsCopy
-  readonly wordmarkLab: WordmarkLabCopy
   readonly timeTravel: TimeTravelCopy
   readonly features: FeaturesCopy
   readonly faq: FAQCopy
@@ -80,7 +73,7 @@ export type LandingContent = {
 }
 
 export const landingCopy: Record<LandingLang, LandingContent> = {
-  zh: {
+  cn: {
     hero: {
       badge: '公开预览',
       title: 'Logix',
@@ -112,11 +105,6 @@ export const landingCopy: Record<LandingLang, LandingContent> = {
           href: '/api',
         },
       ] satisfies ReadonlyArray<NextStepItem>,
-    },
-    wordmarkLab: {
-      title: 'Logix 字标候选（可挑选）',
-      description: '把“字体 + 强调方式 + 动效”拆成多个组合，按从上到下排列，方便你直观看差异。',
-      hint: '建议先挑一个“字形/气质”，再决定动效是否需要更克制或更有记忆点。',
     },
     timeTravel: {
       title: '时间旅行调试',
@@ -223,11 +211,6 @@ export const landingCopy: Record<LandingLang, LandingContent> = {
           href: '/api',
         },
       ] satisfies ReadonlyArray<NextStepItem>,
-    },
-    wordmarkLab: {
-      title: 'Wordmark candidates (pick one)',
-      description: 'Combinations of font + emphasis + motion, stacked vertically for quick comparison.',
-      hint: 'Pick the shape first (vibe), then decide how subtle the motion should be.',
     },
     timeTravel: {
       title: 'Time-travel debugging',

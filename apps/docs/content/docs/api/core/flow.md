@@ -1,33 +1,33 @@
 ---
 title: Flow API
-description: Flow 与 Fluent DSL 的底层 API 参考。
+description: Low-level API reference for Flow and the Fluent DSL.
 ---
 
 # Flow API
 
-> **面向读者**：库作者、Pattern 作者、对 Fluent DSL (`$.onState/$.onAction`) 的底层实现感兴趣的同学。  
-> 日常业务开发通常直接使用 `$` 上的 Fluent API 即可，无需显式调用本页中的底层函数。
+> **Audience**: library authors, Pattern authors, and anyone interested in the underlying implementation of the Fluent DSL (`$.onState/$.onAction`).  
+> For everyday product code, you typically only need the Fluent API on `$` and do not need to call the low-level functions on this page.
 
-在 Logix 中，Flow API 是 Fluent DSL 的“底层乐高块”：
+In Logix, the Flow API is the set of “low-level Lego bricks” behind the Fluent DSL:
 
-- `$.onState(selector)` / `$.onAction(predicate)` 实际上会在内部调用 Flow API 构造 Stream 与执行策略；
-- Pattern / 库代码可以直接操作 Flow API，以复用同一套并发与时间语义。
+- `$.onState(selector)` / `$.onAction(predicate)` internally uses the Flow API to build Streams and execution strategies.
+- Pattern/library code can operate directly on the Flow API to reuse the same concurrency and timing semantics.
 
-## 1. fromState / fromAction：获取源流
+## 1. fromState / fromAction: get source streams
 
 ```ts
-// 从当前 Module 的状态派生出一个流
+// Derive a stream from the current Module state
 const keyword$ = $.flow.fromState((s) => s.keyword)
 
-// 从 Action 流中筛选出特定 Action
+// Filter a specific Action from the Action stream
 const submit$ = $.flow.fromAction(
   (a): a is { _tag: "submit" } => a._tag === "submit",
 )
 ```
 
-## 2. 流式算子：debounce / filter / map …
+## 2. Stream operators: debounce / filter / map …
 
-Flow API 暴露了一组与 `effect/Stream` 等价或近似的算子，以便在与 Bound API 解耦的场景下使用：
+Flow API exposes a set of operators equivalent or similar to `effect/Stream`, so you can use them in scenarios decoupled from the Bound API:
 
 ```ts
 yield* keyword$.pipe(
@@ -37,39 +37,39 @@ yield* keyword$.pipe(
 )
 ```
 
-这些算子的错误与环境语义与 `Stream` 保持一致，具体以类型定义为准。
+The error/environment semantics of these operators follow `Stream`; refer to types for exact behavior.
 
-## 3. 执行策略：run / runParallel / runLatest / runExhaust
+## 3. Execution strategies: run / runParallel / runLatest / runExhaust
 
-与 Fluent DSL 上的 `.run*` 一一对应：
+They map one-to-one to `.run*` on the Fluent DSL:
 
 ```ts
 yield* submit$.pipe(
-  $.flow.run(handleSubmit),        // 串行
+  $.flow.run(handleSubmit), // sequential
 )
 
 yield* keyword$.pipe(
   $.flow.debounce(300),
-  $.flow.runLatest(searchEffect),  // 最新优先
+  $.flow.runLatest(searchEffect), // latest wins
 )
 ```
 
-- `run`：按到达顺序串行执行 handler；
-- `runParallel`：为每次事件启动独立 Fiber，不做并发限制；
-- `runLatest`：新事件到来时取消当前执行中的 Fiber，仅保留最新；
-- `runExhaust`：当 handler 正在执行时，忽略新事件。
+- `run`: execute handlers sequentially in arrival order.
+- `runParallel`: fork one Fiber per event; no concurrency limit.
+- `runLatest`: cancel the in-flight Fiber when a new event arrives; keep only the latest.
+- `runExhaust`: ignore new events while the handler is running.
 
-## 4. 与 Fluent DSL 的关系
+## 4. Relation to the Fluent DSL
 
-从类型与语义上，Flow API 与 Fluent DSL 的关系可以概括为：
+In terms of types and semantics, the relationship can be summarized as:
 
 - `$.onState(selector).run(handler)` ≈ `$.flow.fromState(selector).pipe($.flow.run(handler))`；
 - `$.onAction(predicate).debounce(300).runLatest(handler)` ≈ `$.flow.fromAction(predicate).pipe($.flow.debounce(300), $.flow.runLatest(handler))`。
 
-在实现层面不要求逐条通过 Flow API 机械拼装 Fluent DSL，但**必须保证语义等价**，以便 DevTools/Intent Parser 能够在两层之间建立映射。
+Implementation-wise, you don’t have to mechanically build the Fluent DSL by composing Flow API calls line-by-line, but you **must preserve semantic equivalence** so DevTools/Intent parsing can map across the two layers.
 
 ### See Also
 
 - [Guide: Flows & Effects](../../guide/essentials/flows-and-effects)
-- [Guide: 逻辑流 (Logic Flows)](../../guide/learn/adding-interactivity)
+- [Guide: Logic flows](../../guide/learn/adding-interactivity)
 - [Guide: Error Handling](../../guide/advanced/error-handling)

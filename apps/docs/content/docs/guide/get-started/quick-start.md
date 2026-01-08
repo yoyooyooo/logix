@@ -1,35 +1,35 @@
 ---
-title: 快速开始
-description: 用不到 30 分钟构建你的第一个 Logix 应用。
+title: Quick Start
+description: Build your first Logix app in under 30 minutes.
 ---
 
-本指南将带你从零开始构建一个最小可运行的计数器应用。
+This guide walks you through building a minimal, runnable counter app from scratch.
 
-> **适合谁**
+> **Who is this for?**
 >
-> - 已经读过「介绍」，希望马上跑通一个 Demo；
-> - 熟悉 React 基本用法，但对 Logix / Effect 还比较陌生。
+> - You’ve read the “Introduction” and want to get a demo running immediately.
+> - You’re comfortable with React basics but still new to Logix / Effect.
 >
-> **前置知识**
+> **Prerequisites**
 >
-> - 会创建 React 应用（如 Vite / Next.js 等任一脚手架即可）；
-> - 会写简单的 TypeScript 组件。
+> - You can create a React app (Vite / Next.js, any scaffold is fine).
+> - You can write simple TypeScript components.
 >
-> **读完你将获得**
+> **What you’ll get**
 >
-> - 能在自己的项目中接入 Logix Runtime；
-> - 会定义一个最简单的 Module 和 Logic；
-> - 会在 React 组件中读取状态、派发动作。
+> - Wire a Logix Runtime into your project
+> - Define the simplest possible Module and Logic
+> - Read state and dispatch Actions from React
 
-## 1. 安装
+## 1. Install
 
 ```bash
 npm install @logix/core @logix/react effect
 ```
 
-## 2. 定义 Module（状态与动作）
+## 2. Define a Module (State and Actions)
 
-首先，我们在任意目录下定义一个最简单的计数器 Module：
+First, define the simplest possible counter Module in any directory:
 
 ```typescript
 // counter.module.ts
@@ -46,14 +46,14 @@ export const CounterDef = Logix.Module.make('Counter', {
 })
 ```
 
-这一步只做两件事：
+This step does only two things:
 
-- 用 Schema 描述状态结构：这里只有一个 `count: number`；
-- 定义可以发生的动作：这里只有一个不带参数的 `inc`。
+- Describe the State shape with Schema: a single `count: number`.
+- Define the Actions that can happen: a single `inc` with no payload.
 
-## 3. 编写 Logic（如何响应动作）
+## 3. Write Logic (how Actions are handled)
 
-接下来，我们为这个 Module 编写一段最简单的逻辑：每当收到 `inc` 动作时，把 `count` 加一。
+Next, write the simplest logic: whenever we receive an `inc` Action, increment `count` by 1.
 
 ```typescript
 // counter.logic.ts
@@ -62,7 +62,7 @@ import { CounterDef } from "./counter.module"
 
 export const CounterLogic = CounterDef.logic(($) =>
   Effect.gen(function* () {
-    // 监听 "inc" 动作，并更新当前 Module 的状态
+    // Listen to the "inc" action and update this Module's state.
     yield* $.onAction("inc").update((prev) => ({
       ...prev,
       count: prev.count + 1,
@@ -71,11 +71,11 @@ export const CounterLogic = CounterDef.logic(($) =>
 )
 ```
 
-这里你可以把 `Effect.gen` 理解为“用同步写法描述一段逻辑流程”，`yield*` 则可以粗暴看成 `await`。
+You can think of `Effect.gen` as “describing a program in synchronous-looking style”, and `yield*` as a rough equivalent of `await`.
 
-## 4. 组装 Module 实现（可复用的蓝图）
+## 4. Assemble a Module implementation (a reusable blueprint)
 
-在大多数真实项目中，我们会把 “ModuleDef + 初始状态 + 逻辑” 组装成一个可复用的 program module（它带 `.impl` 蓝图，供 Runtime/React 消费）：
+In most real projects, you’ll assemble “ModuleDef + initial state + logic” into a reusable program module (it includes the `.impl` blueprint, consumed by the Runtime and React):
 
 ```typescript
 // counter.impl.ts
@@ -90,14 +90,14 @@ export const CounterModule = CounterDef.implement({
 export const CounterImpl = CounterModule.impl
 ```
 
-后续无论是在 React 组件里，还是在测试里，你都可以拿着 `CounterModule`（或其 `CounterImpl`）创建运行时实例。
+From here on, you can use `CounterModule` (or its `CounterImpl`) to create runtime instances—both in React and in tests.
 
-## 5. 创建 Runtime，并在 React 中挂载
+## 5. Create a Runtime and mount it in React
 
-在应用入口，我们需要：
+At your app entry, you need to:
 
-1. 基于根 program module（或其 `ModuleImpl`）构造一个 Runtime；
-2. 用 `RuntimeProvider` 把 Runtime 挂到 React 根节点上。
+1. Construct a Runtime from a root program module (or its `ModuleImpl`).
+2. Provide it to the React tree via `RuntimeProvider`.
 
 ```tsx
 // runtime.ts
@@ -105,14 +105,14 @@ import * as Logix from "@logix/core"
 import { Layer } from "effect"
 import { CounterModule } from "./counter.impl"
 
-// 这里暂时没有额外服务依赖，用 Layer.empty 即可
+// No extra service dependencies yet; Layer.empty is enough.
 export const AppRuntime = Logix.Runtime.make(CounterModule, {
   layer: Layer.empty,
 })
 ```
 
 ```tsx
-// App.tsx（或任意应用入口）
+// App.tsx (or any app entry)
 import { RuntimeProvider } from "@logix/react"
 import { AppRuntime } from "./runtime"
 import { CounterView } from "./CounterView"
@@ -126,9 +126,9 @@ export function App() {
 }
 ```
 
-## 6. 在组件中读取状态并派发动作
+## 6. Read state and dispatch Actions in a component
 
-最后，我们在组件中使用 `useModule` + `useSelector` / `useDispatch` 读取状态、派发动作：
+Finally, use `useModule` and `useSelector` / `useDispatch` inside a component to read state and dispatch Actions:
 
 ```tsx
 // CounterView.tsx
@@ -136,13 +136,13 @@ import { useModule, useSelector, useDispatch } from "@logix/react"
 import { CounterDef } from "./counter.module"
 
 export function CounterView() {
-  // 获取对应 Module 的运行时实例
+  // Get the runtime instance for the Module.
   const counter = useModule(CounterDef)
 
-  // 只订阅 count 字段，避免不必要的重渲染
+  // Subscribe only to count to avoid unnecessary re-renders.
   const count = useSelector(counter, (s) => s.count)
 
-  // 派发动作
+  // Dispatch Actions
   const dispatch = useDispatch(CounterDef)
 
   return (
@@ -153,15 +153,16 @@ export function CounterView() {
 }
 ```
 
-到这里，你已经完成了一个完整的 Logix 流程：
+At this point, you’ve completed a full Logix flow:
 
-- 定义 Module（状态 + 动作）；
-- 在 Logic 中用 `$` 编排业务逻辑；
-- 创建 Runtime，并通过 React `RuntimeProvider` 提供它；
-- 在组件中通过 Hook 读取状态与派发动作。
+- Define a Module (State + Actions).
+- Orchestrate business logic with `$` inside Logic.
+- Create a Runtime and provide it via `RuntimeProvider`.
+- Read state and dispatch Actions via React hooks.
 
-接下来，推荐继续阅读：
+Next, consider reading:
 
-- [教程：第一个 Logix 表单](./tutorial-first-app)
+- [Tutorial: your first business flow (cancelable search)](./tutorial-first-app)
+- (Forms) [Form Quick Start](../../form/quick-start)
 - [Modules & State](../essentials/modules-and-state)
 - [Flows & Effects](../essentials/flows-and-effects)

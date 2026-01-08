@@ -1,8 +1,8 @@
 ---
-title: API Reference（自动生成）
-description: 自动生成的 API Reference 入口（签名与导出严格对齐）。
+title: API Reference (auto-generated)
+description: Entry point to the auto-generated API reference (signatures and exports strictly aligned).
 ---
 
-这里是 Logix 的 **API Reference（可当字典查）** 入口：它由 TypeScript 类型自动生成，避免手写文档与真实导出漂移。
+This is the entry to Logix’s **API Reference (treat it as a dictionary)**. It is generated from TypeScript types to avoid drift between hand-written docs and real exports.
 
-- 在线访问：[/api-reference](/api-reference)
+- Online: [/api-reference](/api-reference)

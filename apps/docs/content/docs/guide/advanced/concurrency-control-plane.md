@@ -1,25 +1,25 @@
 ---
-title: 并发控制面
-description: 通过 Runtime/模块/Provider 覆盖，限制并行 watcher/task 的并发上限，并在背压/饱和时给出可定位预警；支持显式启用无上限并发（含审计提示）。
+title: Concurrency control plane
+description: Limit concurrency for parallel watchers/tasks via Runtime/module/Provider overrides; emit actionable warnings under backpressure/saturation; allow explicit opt-in to unbounded concurrency (audited).
 ---
 
-# 并发控制面
+# Concurrency control plane
 
-这份指南解决两个现实问题：
+This guide addresses two practical problems:
 
-1. 你想用并行 watcher（例如 `runParallel`）提升吞吐，但不希望在突发流量下“任务越跑越多直至卡死”。
-2. 你偶尔确实需要“无上限并发”（例如一次性 fan-out），但希望它是**显式的、可审计的**，并且能被诊断信号捕捉到。
+1. You want to use parallel watchers (e.g. `runParallel`) to improve throughput, but you don’t want “more and more tasks until the app stalls” under burst traffic.
+2. You occasionally truly need “unbounded concurrency” (e.g. one-time fan-out), but you want it to be **explicit and auditable**, and visible to diagnostics.
 
-## 你将获得什么
+## What you get
 
-- **默认安全**：并行 watcher / 并行任务默认会被限制并发上限（默认 16）。
-- **必达背压**：压力下不会静默丢事件；当内部缓冲达到上界时会通过背压让入口变慢（而不是无限堆内存）。
-- **结构化预警**：当系统持续饱和/积压时输出 `concurrency::pressure`（含 `configScope` 等可定位信息）。
-- **无上限需要显式许可**：只有在显式 `allowUnbounded=true` 时，`concurrencyLimit="unbounded"` 才会生效；生效时会输出一次高严重度审计提示。
+- **Safe by default**: parallel watchers / tasks are bounded by a concurrency limit (default 16).
+- **Lossless backpressure**: under pressure, events aren’t silently dropped; when internal buffers reach the cap, backpressure slows the ingress (instead of unbounded memory growth).
+- **Structured warnings**: when the system is continuously saturated/backlogged, it emits `concurrency::pressure` (with locators like `configScope`).
+- **Unbounded requires explicit permission**: `concurrencyLimit: "unbounded"` only takes effect when `allowUnbounded: true`; when it takes effect, a one-time high-severity audit event is emitted.
 
-> 说明：本控制面主要约束 Logix 提供的并行入口（例如 Flow watcher 的并行模式与 TaskRunner 并行模式），不会自动改写你在业务代码里手写的并发（例如你自己写的 `Effect.all({ concurrency: "unbounded" })`）。
+> Note: this control plane primarily governs parallel entry points provided by Logix (e.g. Flow watcher parallel modes and TaskRunner parallel mode). It does not rewrite concurrency you manually create in business code (e.g. your own `Effect.all({ concurrency: "unbounded" })`).
 
-## 默认值（建议先记住这组）
+## Defaults (worth memorizing)
 
 - `concurrencyLimit = 16`
 - `allowUnbounded = false`
@@ -27,20 +27,20 @@ description: 通过 Runtime/模块/Provider 覆盖，限制并行 watcher/task �
 - `pressureWarningThreshold = { backlogCount: 1000, backlogDurationMs: 5000 }`
 - `warningCooldownMs = 30000`
 
-## 覆盖范围与优先级
+## Override scopes and precedence
 
-你可以在三层注入并发策略：
+You can inject concurrency policy at three levels:
 
-1. **Runtime 默认（runtime_default）**：全局默认值
-2. **按模块覆盖（runtime_module）**：只对某个 `moduleId` 生效（止血/灰度调参）
-3. **Provider 子树覆盖（provider）**：只对某棵子树生效（例如某个页面/会话范围）
+1. **Runtime default (`runtime_default`)**: global defaults
+2. **Per-module override (`runtime_module`)**: applies only to a specific `moduleId` (rollback/gradual tuning)
+3. **Provider subtree override (`provider`)**: applies only to a subtree (e.g. a page/session scope)
 
-优先级：`provider > runtime_module > runtime_default > builtin`  
-生效时机：从**下一笔事务/操作窗口**开始生效（不会打断正在执行的一笔交互）。
+Precedence: `provider > runtime_module > runtime_default > builtin`  
+Effective timing: takes effect from the **next transaction/op window** (it does not interrupt an in-flight interaction).
 
-## 常用配方
+## Common recipes
 
-### 配方 A：全局调小默认并发（更稳）
+### Recipe A: lower global default (more stable)
 
 ```ts
 import * as Logix from "@logix/core"
@@ -52,7 +52,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 })
 ```
 
-### 配方 B：只对某个模块止血（推荐）
+### Recipe B: rollback only for one module (recommended)
 
 ```ts
 import * as Logix from "@logix/core"
@@ -67,17 +67,17 @@ const runtime = Logix.Runtime.make(RootImpl, {
 })
 ```
 
-### 配方 C：运行时热切换某个模块（排查/止血）
+### Recipe C: hot switch one module at runtime (diagnosis/rollback)
 
 ```ts
 import * as Logix from "@logix/core"
 
 Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", { concurrencyLimit: 4 })
-// 取消覆盖：传 undefined
+// Remove override: pass undefined
 Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", undefined)
 ```
 
-### 配方 D：在 Provider 子树范围内覆盖（页面级试探）
+### Recipe D: override within a Provider subtree (page-level experiment)
 
 ```tsx
 import * as Logix from "@logix/core"
@@ -93,13 +93,13 @@ const overrides = Logix.Runtime.concurrencyPolicyOverridesLayer({
 export function App({ runtime }: { runtime: Logix.ManagedRuntime<any, any> }) {
   return (
     <RuntimeProvider runtime={runtime} layer={overrides}>
-      {/* 这棵子树下生效 */}
+      {/* Effective within this subtree */}
     </RuntimeProvider>
   )
 }
 ```
 
-### 配方 E：显式启用无上限并发（谨慎）
+### Recipe E: explicitly enable unbounded concurrency (use with care)
 
 ```ts
 import * as Logix from "@logix/core"
@@ -112,40 +112,40 @@ const runtime = Logix.Runtime.make(RootImpl, {
 })
 ```
 
-启用后会输出一次高严重度诊断事件 `concurrency::unbounded_enabled`（可审计）。  
-如果你只设置了 `concurrencyLimit="unbounded"` 但忘了 `allowUnbounded=true`，系统会回退到有界并发并输出 `concurrency::unbounded_requires_opt_in`。
+When enabled, a one-time high-severity audit diagnostic event `concurrency::unbounded_enabled` is emitted.  
+If you set `concurrencyLimit: "unbounded"` but forget `allowUnbounded: true`, the system falls back to bounded concurrency and emits `concurrency::unbounded_requires_opt_in`.
 
-## 诊断信号怎么读
+## Reading diagnostic signals
 
-### `concurrency::pressure`（warning）
+### `concurrency::pressure` (warning)
 
-表示出现背压/饱和（例如内部缓冲达到上界、或持续等待）。建议按这个顺序排查：
+This indicates backpressure/saturation (e.g. internal buffers hit the cap, or sustained waiting). Suggested troubleshooting order:
 
-1. 先降低触发频率（debounce/throttle/batch）
-2. 选择更合适的 watcher 模式（例如从“全并行”改为 `runLatest` 或 `runExhaust`）
-3. 再做调参（提高 `concurrencyLimit` / 调整背压上界与阈值）
+1. Reduce trigger frequency (debounce / throttle / batch)
+2. Choose a more appropriate watcher mode (e.g. switch from “fully parallel” to `runLatest` or `runExhaust`)
+3. Tune parameters (increase `concurrencyLimit` / adjust backpressure caps and thresholds)
 
-该事件的 `trigger.details` 至少包含：
+`trigger.details` includes at least:
 
-- `configScope`：当前生效配置来自哪个层级
-- `limit`：当前并发上限（整数或 `"unbounded"`）
-- 以及 `backlogCount/saturatedDurationMs/threshold/cooldownMs/degradeStrategy/suppressedCount` 等辅助字段（用于判断是否刷屏合并、以及压力持续程度）
+- `configScope`: which scope the effective config comes from
+- `limit`: the effective concurrency limit (number or `"unbounded"`)
+- plus fields like `backlogCount/saturatedDurationMs/threshold/cooldownMs/degradeStrategy/suppressedCount` (for dedup/merging and saturation duration)
 
-### `concurrency::unbounded_enabled`（error）
+### `concurrency::unbounded_enabled` (error)
 
-表示某个实例启用了无上限并发（审计提示，只提示一次）。  
-建议仅在“短时、可控、可取消”的 fan-out 场景使用，并确保上层有明确的流量边界。
+An instance has enabled unbounded concurrency (audit; emitted once).  
+Use only for “short-lived, controlled, cancelable” fan-out scenarios, and ensure there’s a clear upstream traffic boundary.
 
-### `concurrency::unbounded_requires_opt_in`（error）
+### `concurrency::unbounded_requires_opt_in` (error)
 
-表示请求了无上限并发，但未显式允许，因此系统回退到有界并发（只提示一次）。
+Unbounded concurrency was requested but not explicitly allowed, so the system fell back to bounded concurrency (emitted once).
 
-## 常见问题（FAQ）
+## FAQ
 
-### Q1：我设置了 override，但感觉没生效？
+### Q1: I set an override, but it doesn’t seem effective?
 
-最常见的原因：
+Most common causes:
 
-1. **生效时机**：从下一笔事务开始生效
-2. **moduleId 写错**：确认它就是 `Logix.Module.make("...")` 的 id
-3. **更高优先级覆盖了你**：例如子树内又包了一层 Provider override
+1. **Effective timing**: it takes effect from the next transaction.
+2. **Wrong moduleId**: verify it matches the id in `Logix.Module.make("...")`.
+3. **Overridden by a higher-precedence scope**: e.g. a Provider override inside the subtree.

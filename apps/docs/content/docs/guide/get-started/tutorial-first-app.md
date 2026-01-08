@@ -1,229 +1,239 @@
 ---
-title: '教程：第一个 Logix 表单'
-description: 手把手教你构建一个包含联动、校验和多字段约束的注册表单。
+title: 'Tutorial: Your first business flow (cancelable search)'
+description: Build a debounced, cancelable search box with dependency injection.
 ---
 
-本教程将带你从零开始，构建一个功能完整的用户注册表单。我们将涵盖以下核心场景：
+In this tutorial, you’ll build a small “cancelable search” app: as the user types, searches are **debounced**, and in-flight requests are **automatically canceled** so you always render the latest result.
 
-1.  **字段联动**：选择国家时，自动重置省份。
-2.  **异步校验**：输入用户名后，自动检查是否重名。
-3.  **多字段约束**：校验密码与确认密码是否一致。
+> [!NOTE]
+> This is a “single input + async query” scenario—plain `Logix.Module` is enough.
+>
+> If you’re building real forms (multiple fields, validations, dynamic arrays), don’t hand-roll form state here. Use `@logix/form` instead:
+> - [When to use Form](../../form/when-to-use)
+> - [Form Quick Start](../../form/quick-start)
 
-### 适合谁
+### Who is this for?
 
-- 已经完成「快速开始」中的计数器示例，希望体验更贴近日常业务的表单场景；
-- 想看看 Logix 在“字段联动 + 异步校验 + 多字段约束”上的完整写法。
+- You finished the counter example in “Quick Start” and want a more real-world async interaction.
+- You want a minimal reference for “move async complexity out of components”.
 
-### 前置知识
+### Prerequisites
 
-- 熟悉 TypeScript、React 基本用法；
-- 大致了解 Module / Logic / Bound API (`$`) 的概念。
+- Basic TypeScript and React
+- A rough understanding of Module / Logic / Bound API (`$`)
 
-### 读完你将获得
+### What you’ll get
 
-- 一套完整的“注册表单”示例，可以直接改造成自己项目的模板；
-- 对 `$.onState` + `$.flow.debounce` + `$.state.mutate` 的组合有实战体验；
-- 对“用 Module 承载表单状态、让 UI 变薄”的模式有直观认识。
+- A reusable template for “input → debounce → search → cancel old requests → render latest result”
+- An intuitive model of `$.onState(...).debounce(...).runLatest...`
+- A practical example of Service Tag + Layer injection for IO dependencies
 
-## 1. 定义数据结构 (Schema)
+## 1. Define a Module (State + Actions)
 
-首先，我们需要定义表单的“形状”（Shape）。在 Logix 中，我们使用 `effect/Schema` 来定义状态和动作。
+Create `src/features/search/search.def.ts`:
 
-创建 `src/features/register/schema.ts`：
-
-```typescript
-import { Schema } from 'effect'
+```ts
 import * as Logix from '@logix/core'
+import { Schema } from 'effect'
 
-// 1. 定义状态 (State)
-export const RegisterState = Schema.Struct({
-  username: Schema.String,
-  password: Schema.String,
-  confirmPassword: Schema.String,
-  country: Schema.String,
-  province: Schema.String,
-  // 错误信息
-  errors: Schema.Struct({
-    username: Schema.optional(Schema.String),
-    password: Schema.optional(Schema.String),
-  }),
-  // 元数据
-  meta: Schema.Struct({
-    isSubmitting: Schema.Boolean,
-    isValidating: Schema.Boolean,
-  }),
+export const SearchState = Schema.Struct({
+  keyword: Schema.String,
+  results: Schema.Array(Schema.String),
+  isSearching: Schema.Boolean,
+  errorMessage: Schema.optional(Schema.String),
 })
 
-// 2. 定义动作 (Actions)
-export const RegisterActions = {
-  updateField: Schema.Struct({ field: Schema.String, value: Schema.String }),
-  submit: Schema.Void,
-  reset: Schema.Void,
+export const SearchActions = {
+  setKeyword: Schema.String,
 }
 
-// 3. 定义模块 (ModuleDef)
-// Logix.Module.make 返回一个“模块定义对象”（ModuleDef）：它包含类型信息，并带有 `.tag`（ModuleTag）用于依赖注入/实例解析
-export const RegisterDef = Logix.Module.make('Register', {
-  state: RegisterState,
-  actions: RegisterActions,
+export const SearchDef = Logix.Module.make('Search', {
+  state: SearchState,
+  actions: SearchActions,
+  immerReducers: {
+    setKeyword: (draft, keyword) => {
+      draft.keyword = keyword
+    },
+  },
 })
-
-// 导出 Shape 类型 (可选，用于类型推导)
-export type RegisterShape = typeof RegisterDef.shape
 ```
 
-## 2. 编写业务逻辑 (Logic)
+The key idea: **reduce “input onChange” into a clear intent (Action)**, instead of scattering `useEffect` in components.
 
-接下来，我们使用 Fluent API 来编写业务逻辑。
+## 2. Define SearchApi (Service Tag + Layer)
 
-创建 `src/features/register/logic.ts`：
+Create `src/features/search/search.service.ts`:
 
-```typescript
-import { Effect } from 'effect'
-import { RegisterDef } from './schema' // 假设 ModuleDef 定义在 schema.ts 或 module.ts
-import { UserApi } from '../../services/UserApi'
+```ts
+import { Context, Data, Effect, Layer } from 'effect'
 
-export const RegisterLogic = RegisterDef.logic(($) =>
+export class SearchError extends Data.TaggedError('SearchError')<{
+  readonly message: string
+}> {}
+
+export interface SearchApi {
+  readonly search: (keyword: string) => Effect.Effect<ReadonlyArray<string>, SearchError>
+}
+
+export class SearchApiTag extends Context.Tag('@svc/SearchApi')<SearchApiTag, SearchApi>() {}
+
+export const SearchApiLive = Layer.succeed(SearchApiTag, {
+  search: (keyword) =>
+    Effect.gen(function* () {
+      yield* Effect.sleep('200 millis')
+      if (keyword === 'error') {
+        return yield* Effect.fail(new SearchError({ message: 'Mock: server error' }))
+      }
+      return [`${keyword} Result A`, `${keyword} Result B`, `${keyword} Result C`]
+    }),
+})
+```
+
+This keeps Logic dependent on an abstraction (`SearchApiTag`), which makes testing and swapping implementations straightforward.
+
+## 3. Write Logic (debounce + runLatest)
+
+Create `src/features/search/search.logic.ts`:
+
+```ts
+import { Cause, Effect, Option } from 'effect'
+import { SearchDef } from './search.def'
+import { SearchApiTag } from './search.service'
+
+export const SearchLogic = SearchDef.logic<SearchApiTag>(($) =>
   Effect.gen(function* () {
-    yield* Effect.all(
-      [
-        // --- 场景 1: 字段联动 ---
-        // 当 country 变化时，重置 province
-        $.onState((s) => s.country).run(() =>
-          $.state.mutate((draft) => {
-            draft.province = ''
-          }),
-        ),
+    yield* $.onState((s) => s.keyword).debounce(300).runLatestTask({
+      pending: (keyword) =>
+        $.state.mutate((draft) => {
+          const trimmed = keyword.trim()
+          draft.errorMessage = undefined
 
-        // --- 场景 2: 异步校验 ---
-        // 监听 username 变化 -> 防抖 -> 校验 -> 更新错误状态
-        $.onState((s) => s.username)
-          .debounce(500)
-          .filter((name) => name.length >= 3)
-          .runLatest((name) =>
-            Effect.gen(function* () {
-              yield* $.state.mutate((d) => {
-                d.meta.isValidating = true
-              })
+          if (trimmed.length === 0) {
+            draft.isSearching = false
+            draft.results = []
+            return
+          }
 
-              const api = yield* $.use(UserApi)
-              const isTaken = yield* api.checkUsername(name)
+          draft.isSearching = true
+        }),
 
-              yield* $.state.mutate((d) => {
-                d.meta.isValidating = false
-                d.errors.username = isTaken ? '用户名已被占用' : undefined
-              })
-            }),
-          ),
+      effect: (keyword) =>
+        Effect.gen(function* () {
+          const trimmed = keyword.trim()
+          if (trimmed.length === 0) {
+            return [] as ReadonlyArray<string>
+          }
 
-        // --- 场景 3: 多字段约束 ---
-        // 监听密码对变化 -> 校验一致性
-        $.onState((s) => [s.password, s.confirmPassword] as const).run(([pwd, confirm]) =>
-          $.state.mutate((draft) => {
-            if (confirm && pwd !== confirm) {
-              draft.errors.password = '两次输入的密码不一致'
-            } else {
-              delete draft.errors.password
-            }
-          }),
-        ),
+          const api = yield* $.use(SearchApiTag)
+          return yield* api.search(trimmed)
+        }),
 
-        // --- 处理提交 ---
-        $.onAction('submit').runExhaust(() =>
-          Effect.gen(function* () {
-            const state = yield* $.state.read
-            // 简单的校验拦截
-            if (state.errors.username || state.errors.password) return
+      success: (results) =>
+        $.state.mutate((draft) => {
+          draft.isSearching = false
+          draft.results = Array.from(results)
+        }),
 
-            yield* $.state.mutate((d) => {
-              d.meta.isSubmitting = true
-            })
-            // ... 提交逻辑 ...
-            yield* Effect.sleep('1 seconds') // 模拟请求
-            yield* $.state.mutate((d) => {
-              d.meta.isSubmitting = false
-            })
-          }),
-        ),
-      ],
-      { concurrency: 'unbounded' },
-    )
+      failure: (cause) =>
+        $.state.mutate((draft) => {
+          draft.isSearching = false
+
+          const failure = Cause.failureOption(cause)
+          draft.errorMessage =
+            Option.isSome(failure) && typeof (failure.value as any)?.message === 'string'
+              ? String((failure.value as any).message)
+              : 'Search failed'
+        }),
+    })
   }),
 )
 ```
 
-## 3. 组装模块 (Module)
+Key points:
 
-将 Schema 和 Logic 组装成一个可运行的 Module。
+- `debounce(300)`: don’t fire a request for every keystroke
+- `runLatestTask(...)`: keep only the latest search; old requests are automatically canceled
 
-创建 `src/features/register/module.ts`：
+## 4. Assemble Module and Runtime
 
-```typescript
-import { RegisterDef } from './schema'
-import { RegisterLogic } from './logic'
+Create `src/features/search/search.module.ts`:
 
-// 生成可运行 Module（wrap module，含 `.impl`；并可继续 withLayer/withLayers 注入 Env）
-export const RegisterModule = RegisterDef.implement({
+```ts
+import * as Logix from '@logix/core'
+import { SearchDef } from './search.def'
+import { SearchLogic } from './search.logic'
+import { SearchApiLive } from './search.service'
+
+export const SearchModule = SearchDef.implement({
   initial: {
-    username: '',
-    password: '',
-    confirmPassword: '',
-    country: 'CN',
-    province: '',
-    errors: {},
-    meta: { isSubmitting: false, isValidating: false },
+    keyword: '',
+    results: [],
+    isSearching: false,
+    errorMessage: undefined,
   },
-  logics: [RegisterLogic],
+  logics: [SearchLogic],
+})
+
+export const AppRuntime = Logix.Runtime.make(SearchModule, {
+  label: 'GetStartedSearch',
+  devtools: true,
+  layer: SearchApiLive,
 })
 ```
 
-## 4. 连接 UI (React)
+## 5. Wire up UI (React)
 
-最后，在 React 组件中使用它。
+Mount the runtime in your app entry:
 
 ```tsx
-import { useModule, useSelector } from '@logix/react'
-import { RegisterModule } from './module'
+import { RuntimeProvider } from '@logix/react'
+import { AppRuntime } from './features/search/search.module'
+import { SearchView } from './features/search/SearchView'
 
-export function RegisterForm() {
-  const register = useModule(RegisterModule)
-  const state = useSelector(register, (s) => s)
-  const actions = register.actions
-
+export function App() {
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        actions.submit()
-      }}
-    >
-      <div>
-        <label>用户名</label>
-        <input
-          value={state.username}
-          onChange={(e) => actions.updateField({ field: 'username', value: e.target.value })}
-        />
-        {state.meta.isValidating && <span>检查中...</span>}
-        {state.errors.username && <span style={{ color: 'red' }}>{state.errors.username}</span>}
-      </div>
-
-      {/* ... 其他字段 ... */}
-
-      <button type="submit" disabled={state.meta.isSubmitting}>
-        {state.meta.isSubmitting ? '提交中...' : '注册'}
-      </button>
-    </form>
+    <RuntimeProvider runtime={AppRuntime}>
+      <SearchView />
+    </RuntimeProvider>
   )
 }
 ```
 
-## 总结
+The component is now purely “render + dispatch intent”:
 
-通过这个例子，我们看到了 Logix 开发的四个标准步骤：
+```tsx
+import { useModule, useSelector } from '@logix/react'
+import { SearchModule } from './search.module'
 
-1.  **Schema**: 定义数据和动作。
-2.  **Logic**: 使用 Fluent API 声明业务规则。
-3.  **Module**: 组装并提供初始状态。
-4.  **UI**: 纯粹的视图渲染。
+export function SearchView() {
+  const search = useModule(SearchModule)
+  const keyword = useSelector(search, (s) => s.keyword)
+  const results = useSelector(search, (s) => s.results)
+  const isSearching = useSelector(search, (s) => s.isSearching)
+  const errorMessage = useSelector(search, (s) => s.errorMessage)
 
-这种分离确保了业务逻辑的可测试性和可复用性，同时让 UI 组件保持简洁。
+  return (
+    <div>
+      <input value={keyword} onChange={(e) => search.actions.setKeyword(e.target.value)} placeholder="Type keyword..." />
+
+      {isSearching && <div>Searching...</div>}
+      {errorMessage && <div style={{ color: 'red' }}>{errorMessage}</div>}
+
+      <ul>
+        {results.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+```
+
+> [!TIP]
+> Try typing `error` to see how failures are captured and written back into state by Logic.
+
+## Next
+
+- [Tutorial: Complex list query](./tutorial-complex-list) — merge multiple triggers into composable Flows
+- (Forms) [Form Quick Start](../../form/quick-start) — use the domain package for real forms
+

@@ -1,59 +1,51 @@
 ---
-title: 错误处理
-description: Logix 中的错误处理策略。
+title: Error handling
+description: Error-handling strategy in Logix.
 ---
 
-# 错误处理
+# Error handling
 
-在 Logix 中，推荐把失败分层处理：
+In Logix, a good default is to handle failures in layers:
 
-- **局部（Local）**：预期错误（业务可恢复）留在 Effect 的错误通道 `E`，就地捕获并转换为状态/返回值。
-- **模块（Module）**：未处理缺陷（Defect）走 `$.lifecycle.onError` 做“最后上报”（日志/监控/兜底清理）。
-- **全局（App/React）**：在 React 集成中用 `RuntimeProvider.onError` 统一接入上报系统，避免每个模块各写一套。
+- **Local**: expected, recoverable errors stay in Effect’s error channel `E`; catch them close to where they happen and convert them into state/return values.
+- **Module**: unhandled defects go through `$.lifecycle.onError` as a “last report” (logging/monitoring/fallback cleanup).
+- **Global (App/React)**: in React integration, use `RuntimeProvider.onError` as the single entry into your reporting system, instead of implementing one per module.
 
-另外两点也很关键：
+Two other points are critical:
 
-- **装配失败**（缺少 provider/imports）属于配置错误，应按错误提示修复装配，而不是在业务逻辑里吞掉。
-- **取消/中断**（interrupt）不是错误，不应进入错误兜底链路或告警系统。
+- **Wiring failures** (missing provider/imports) are configuration errors; fix the wiring per the error message instead of swallowing them in business logic.
+- **Cancellation/interrupt** is not an error; it should not enter error fallback chains or alerting systems.
 
-### 适合谁
+### Who is this for?
 
-- 已经在项目中使用 Logix，希望系统整理"业务错误 vs 系统缺陷"的处理策略；
-- 对 Effect 的错误通道（`E`）和 React Error Boundary 有基本了解，想在项目里统一用法。
+- You already use Logix in a project and want a systematic “expected business errors vs system defects” strategy.
+- You have basic understanding of Effect’s error channel (`E`) and React Error Boundaries, and want a unified approach.
 
-### 前置知识
+### Prerequisites
 
-- 读过 [Effect 速成](../essentials/effect-basics) 或对 `Effect.gen` 有基本直觉；
-- 了解 `$.lifecycle.onError` 用于兜底“未处理失败”的上报。
+- You’ve read [Effect basics](../essentials/effect-basics) or have a basic intuition for `Effect.gen`.
+- You know `$.lifecycle.onError` is used to report “unhandled failures” as a fallback.
 
-### 读完你将获得
+### What you’ll get
 
-- 一套可落地的"业务错误（Expected）"与"系统缺陷（Defect）"处理分层方案；
-- 在 Logix/React 组合场景下，如何在 Module 层、Runtime 层与 UI 层配合处理错误的示例。
+- A practical layered scheme for “expected errors” vs “defects”.
+- Examples of coordinating error handling across Module, Runtime, and UI layers in Logix+React.
 
-## 1. 预期错误 (Expected Errors)
+## 1. Expected errors
 
-预期错误是业务逻辑的一部分，例如"用户未找到"、"网络超时"。这些错误应该在 Effect 的错误通道（`E`）中处理。
+Expected errors are part of business logic, such as “user not found” or “network timeout”. Handle them via Effect’s error channel (`E`).
 
 ```ts
 const LoginLogic = LoginModule.logic(($) =>
   Effect.gen(function* () {
     yield* $.onAction('login').run(({ payload: credentials }) =>
       Effect.gen(function* () {
-        // 尝试登录
+        // Attempt login
         yield* loginApi(credentials).pipe(
-          // 捕获特定错误
-          Effect.catchTag('InvalidPassword', () =>
-            $.state.mutate((draft) => {
-              draft.error = '密码错误'
-            }),
-          ),
-          // 捕获其他错误
-          Effect.catchAll(() =>
-            $.state.mutate((draft) => {
-              draft.error = '登录失败'
-            }),
-          ),
+          // Catch a specific error
+          Effect.catchTag('InvalidPassword', () => $.state.update((s) => ({ ...s, error: 'Invalid password' }))),
+          // Catch other errors
+          Effect.catchAll(() => $.state.update((s) => ({ ...s, error: 'Login failed' }))),
         )
       }),
     )
@@ -61,13 +53,13 @@ const LoginLogic = LoginModule.logic(($) =>
 )
 ```
 
-## 2. 意外错误 (Defects)
+## 2. Defects
 
-意外错误是代码 bug 或不可恢复的系统错误。Logix 会自动捕获 Logic 中的 Defect，防止整个应用崩溃。
+Defects are code bugs or unrecoverable system failures. Logix catches defects inside Logic automatically to prevent the whole app from crashing.
 
-### `onError` 钩子
+### The `onError` hook
 
-你可以通过 `$.lifecycle.onError` 统一处理未捕获的错误（**setup-only 注册**）：
+You can handle unhandled errors uniformly via `$.lifecycle.onError` (**setup-only registration**):
 
 ```ts
 const AppLogic = AppModule.logic(($) => ({
@@ -76,7 +68,7 @@ const AppLogic = AppModule.logic(($) => ({
       Effect.logError({
         message: "Unhandled module error",
         cause,
-        context, // 含 moduleId/instanceId/phase/hook 等上下文
+        context, // includes moduleId/instanceId/phase/hook, etc.
       }),
     )
   }),
@@ -84,9 +76,9 @@ const AppLogic = AppModule.logic(($) => ({
 }))
 ```
 
-## 3. React 全局上报（RuntimeProvider.onError）
+## 3. Global reporting in React (`RuntimeProvider.onError`)
 
-在 React 应用里，推荐用 `RuntimeProvider.onError` 把“Layer 构建失败 / 模块未处理失败 / 错误级诊断”统一接入你的上报系统：
+In React apps, use `RuntimeProvider.onError` as the single entry for “Layer build failures / unhandled module failures / error-level diagnostics” into your reporting system:
 
 ```tsx
 <RuntimeProvider
@@ -103,9 +95,9 @@ const AppLogic = AppModule.logic(($) => ({
 </RuntimeProvider>
 ```
 
-## 4. Error Boundary 集成
+## 4. Error Boundary integration
 
-在 `useModule(..., { suspend: true, key })` 的 Suspense 模式下，如果初始化失败，错误会被抛出到 React 组件树，由 Error Boundary 捕获。
+In Suspense mode (`useModule(..., { suspend: true, key })`), if initialization fails, the error is thrown into the React tree and can be caught by an Error Boundary.
 
 ```tsx
 import { ErrorBoundary } from 'react-error-boundary'
@@ -121,15 +113,15 @@ function App() {
 }
 ```
 
-## 5. 恢复策略 (Retry)
+## 5. Recovery strategy (retry)
 
-Effect 提供了强大的重试机制：
+Effect provides powerful retry mechanisms:
 
 ```ts
-// 自动重试 3 次
+// Retry up to 3 times
 yield* fetchApi().pipe(Effect.retry({ times: 3 }))
 
-// 指数退避重试
+// Exponential-backoff retry
 yield*
   fetchApi().pipe(
     Effect.retry({
@@ -138,8 +130,8 @@ yield*
   )
 ```
 
-## 下一步
+## Next
 
-- 了解如何调试模块行为：[调试与 DevTools](./debugging-and-devtools)
-- 学习如何测试你的模块：[测试](./testing)
-- 查看常用模式与最佳实践：[常用模式](../recipes/common-patterns)
+- Debugging module behavior: [Debugging and Devtools](./debugging-and-devtools)
+- Testing your modules: [Testing](./testing)
+- Common patterns and best practices: [Common patterns](../recipes/common-patterns)

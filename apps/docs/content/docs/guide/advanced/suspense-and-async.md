@@ -5,78 +5,70 @@ description: Handling asynchronous data with React Suspense.
 
 # Suspense & Async
 
-Logix 支持在 React 中以**可选**方式使用 Suspense 来等待“模块初始化完成后再渲染”。
+Logix supports using React Suspense **optionally** to “wait for module initialization before rendering”.
 
-默认行为是**不挂起**：`useModule(Impl)` 会同步返回模块句柄，你可以用 state 渲染 loading/error；只有在显式启用 `suspend:true` 时，`useModule` 才会通过 Suspense 挂起组件。
+The default behavior is **non-suspending**: `useModule(Impl)` returns the module handle synchronously, and you render loading/error from state. Only when you explicitly enable `suspend: true` will `useModule` suspend the component via Suspense.
 
-### 适合谁
+### Who is this for?
 
-- 使用 React 18+，希望用 Suspense 处理“模块初始化加载中/失败”等状态；
-- 打算在 Logix Module 的 `onInit` 或异步 Layer 里做数据加载，需要知道它们与 Suspense / ErrorBoundary 的关系。
+- You use React 18+ and want to handle “module init loading/failure” via Suspense.
+- You plan to load data in a module’s `onInit` or via async Layer building and want to understand how it interacts with Suspense / ErrorBoundary.
 
-### 前置知识
+### Prerequisites
 
-- 熟悉 React Suspense / ErrorBoundary 的基本用法；
-- 读过 [Lifecycle](../essentials/lifecycle)，理解 `onInit` 与 Module 实例生命周期的含义。
+- Familiar with basic React Suspense / ErrorBoundary usage.
+- You’ve read [Lifecycle](../essentials/lifecycle) and understand what `onInit` means for a Module instance lifecycle.
 
-### 读完你将获得
+### What you’ll get
 
-- 能在项目里安全地给 Module 加上异步初始化，并配合 Suspense 使用；
-- 理解 `useModule` 在同步模式 vs Suspense 模式下的行为差异；
-- 清楚“加载失败时错误会流向哪里，以及谁应该负责展示 fallback”。
+- A safe way to add async initialization to a Module and use it with Suspense.
+- A clear mental model of `useModule` behavior in sync mode vs Suspense mode.
+- Clear ownership of “where errors go on init failure” and “who should render fallback”.
 
-## 1. 异步初始化
+## 1. Async initialization
 
-如果你的 Module 需要在初始化时加载数据，可以把它写在必需初始化里（`onInitRequired/onInit`）。
+If your Module needs to load data at initialization, put it in required initialization (`onInitRequired/onInit`).
 
-在 React 中需要区分两种策略：
+In React, distinguish two strategies:
 
-### 1.1 默认同步模式（不挂起）
+### 1.1 Default sync mode (no suspend)
 
-默认情况下 `useModule(Impl)` 会同步返回模块句柄，不会等待初始化完成；因此初始化阶段不应包含真正的异步等待（例如 `Effect.sleep` / 异步 Layer 构建）。
+By default, `useModule(Impl)` returns the handle synchronously without waiting for initialization; therefore the init phase should not include real async waiting (e.g. `Effect.sleep` / async Layer building).
 
-推荐写法是：先渲染初始态，用 `onStart` 或 Watcher 发起异步加载，并用 state（如 `isLoading/error`）驱动 UI。
+The recommended style is: render an initial state first; start async loading via `onStart` or a watcher; drive UI via state (e.g. `isLoading/error`).
 
 ```ts
 const UserLogic = UserModule.logic(($) => {
-  // onStart：此时 Watcher 已经挂载，可以触发一次加载
-  $.lifecycle.onStart($.dispatchers.refresh())
+  // onStart: watchers are mounted; kick off one load
+  $.lifecycle.onStart($.actions.refresh())
 
   return Effect.gen(function* () {
     yield* $.onAction('refresh').runLatest(() =>
       Effect.gen(function* () {
-        yield* $.state.mutate((draft) => {
-          draft.isLoading = true
-          draft.error = undefined
-        })
+        yield* $.state.update((s) => ({ ...s, isLoading: true, error: undefined }))
         const user = yield* fetchUser()
-        yield* $.state.mutate((draft) => {
-          draft.isLoading = false
-          draft.user = user
-        })
+        yield* $.state.update((s) => ({ ...s, isLoading: false, user }))
       }),
     )
   })
 })
 ```
 
-> 如果你在调用方试图用 `dispatch + sleep` 来“等完成”，通常意味着需要设计一个用例级 Action 或显式的完成信号；可以参考 [管理状态](../learn/managing-state)。
+> If callers try to “wait for completion” via `dispatch + sleep`, it usually means you need a use-case Action or an explicit completion signal. See [Managing state](../learn/managing-state).
 
-### 1.2 Suspense 模式（挂起等待）
+### 1.2 Suspense mode (suspend and wait)
 
-当你希望“初始化完成前不渲染 UI”，请配合下一节的 `suspend:true` 使用；这时 `onInitRequired/onInit` 可以安全地包含异步等待。
+When you want “do not render UI before initialization completes”, use `suspend: true` from the next section. In this mode, `onInitRequired/onInit` can safely include async waiting.
 
 ```ts
 const UserLogic = UserModule.logic(($) => {
-  // setup-only：注册初始化逻辑（Runtime 统一调度；与 Suspense/ErrorBoundary 配合）
+  // setup-only: register init logic (scheduled by the Runtime; works with Suspense/ErrorBoundary)
   $.lifecycle.onInitRequired(
     Effect.gen(function* () {
-      // 模拟异步加载
+      // Simulate async loading
       yield* Effect.sleep('1 seconds')
       const user = yield* fetchUser()
-      yield* $.state.mutate((draft) => {
-        draft.user = user
-      })
+      yield* $.state.update((s) => ({ ...s, user }))
     }),
   )
 
@@ -84,16 +76,16 @@ const UserLogic = UserModule.logic(($) => {
 })
 ```
 
-## 2. 在组件中使用 Suspense
+## 2. Using Suspense in components
 
-当你希望“初始化完成前不渲染 UI”，请显式启用 Suspense 模式：
+To “avoid rendering UI before initialization completes”, explicitly enable Suspense mode:
 
-- `suspend:true`：开启 Suspense 挂起；
-- `key`：必须提供稳定 key（用于复用/缓存该模块实例，避免挂起抖动）。
+- `suspend: true`: enable Suspense.
+- `key`: provide a stable key (to reuse/cache the instance and avoid suspend jitter).
 
 ```tsx
 function UserProfile() {
-  // suspend:true：初始化未完成时，这里会挂起（需要 Suspense 边界）
+  // suspend: true: suspends here until init completes (requires a Suspense boundary)
   const userModule = useModule(UserImpl, { suspend: true, key: 'user:current' })
   const user = useSelector(userModule, (s) => s.user)
 
@@ -109,30 +101,26 @@ function App() {
 }
 ```
 
-## 3. 交互期间的 Loading / Transition
+## 3. Loading / transitions during interactions
 
-很多时候你并不希望挂起组件树，而是希望在 Action 执行期间展示 Loading，并把错误收敛为 state。推荐做法是：在 Logic 中维护 `isLoading`/`error` 等状态，并在 UI 中渲染它们。
+Often you don’t want to suspend the whole tree. Instead, you want to show loading during an Action and fold errors into state. The recommended approach: maintain `isLoading`/`error` in Logic and render them in UI.
 
 ```ts
-// 在 Logic 中（UserLogic 的 run 段内）
+// In Logic (inside the run section of UserLogic)
 yield* $.onAction('refresh').runExhaust(() =>
   Effect.gen(function* () {
-    // 标记开始 loading
-    yield* $.state.mutate((draft) => {
-      draft.isLoading = true
-    })
+    // Mark loading start
+    yield* $.state.update((s) => ({ ...s, isLoading: true }))
 
-    // ... 加载数据 ...
+    // ... load data ...
 
-    // 标记结束 loading
-    yield* $.state.mutate((draft) => {
-      draft.isLoading = false
-    })
+    // Mark loading end
+    yield* $.state.update((s) => ({ ...s, isLoading: false }))
   }),
 )
 ```
 
-如果你想让 UI 更新更平滑，可以在组件中配合 `useTransition`（可选）：
+If you want smoother UI updates, you can optionally combine with `useTransition`:
 
 ```tsx
 const [isPending, startTransition] = useTransition()
@@ -144,9 +132,9 @@ const handleRefresh = () => {
 }
 ```
 
-## 4. 错误边界 (Error Boundaries)
+## 4. Error boundaries (Error Boundaries)
 
-在 `suspend:true` 模式下，如果初始化失败（例如异步 Layer 构建失败、必需初始化失败、或初始化超时），`useModule` 会将错误抛出到最近的 Error Boundary。
+In `suspend: true` mode, if initialization fails (e.g. async Layer build failure, required init failure, or init timeout), `useModule` throws the error to the nearest Error Boundary.
 
 ```tsx
 <ErrorBoundary fallback={<div>Failed to load</div>}>
@@ -156,8 +144,8 @@ const handleRefresh = () => {
 </ErrorBoundary>
 ```
 
-## 下一步
+## Next
 
-- 学习如何处理各类错误：[错误处理](./error-handling)
-- 了解如何调试模块行为：[调试与 DevTools](./debugging-and-devtools)
-- 学习如何测试你的模块：[测试](./testing)
+- Learn how to handle errors: [Error handling](./error-handling)
+- Debug module behavior: [Debugging and Devtools](./debugging-and-devtools)
+- Test your modules: [Testing](./testing)

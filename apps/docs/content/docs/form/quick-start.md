@@ -1,9 +1,9 @@
 ---
-title: 快速开始
-description: 从 0 到 1 跑起来一个可校验、可提交、可订阅的表单。
+title: Quick start
+description: "Go from 0 to 1: a form that validates, submits, and is subscribable."
 ---
 
-## 1) 定义 values Schema 与初始值
+## 1) Define the values Schema and initial values
 
 ```ts
 import { Schema } from "effect"
@@ -15,7 +15,7 @@ export const Values = Schema.Struct({
 export type ValuesT = Schema.Schema.Type<typeof Values>
 ```
 
-## 2) 创建 Form Module
+## 2) Create a Form Module
 
 ```ts
 import * as Form from "@logix/form"
@@ -27,23 +27,23 @@ export const UserForm = Form.make("UserForm", {
   values: Values,
   initialValues: { name: "" } satisfies ValuesT,
 
-  // 两阶段触发（提交前 / 提交后）
+  // Two-phase triggers (before submit / after first submit)
   validateOn: ["onSubmit"],
   reValidateOn: ["onChange"],
 
-  // 推荐入口：rules（字段/列表/根规则）
+  // Recommended entry: rules (field/list/root rules)
   rules: z(
     z.field("name", {
-      required: "请输入姓名",
-      minLength: { min: 2, message: "至少 2 个字符" },
+      required: "Name is required",
+      minLength: { min: 2, message: "At least 2 characters" },
     }),
   ),
 })
 ```
 
-`z` 的两套写法（Decl DSL vs Node DSL）与 `z.schema(...)` 的用法见：[Rules DSL（z）](./rules)。
+See [Rules DSL (z)](./rules) for the two styles (Decl DSL vs Node DSL) and how to use `z.schema(...)`.
 
-## 3) 在 React 中使用（RuntimeProvider + hooks）
+## 3) Use in React (RuntimeProvider + hooks)
 
 ```tsx
 import React from "react"
@@ -76,7 +76,7 @@ const Page = () => {
           )
         }
       >
-        提交
+        Submit
       </button>
     </div>
   )
@@ -89,6 +89,6 @@ export const App = () => (
 )
 ```
 
-`useFormState(form, selector)` 用于订阅“聚合后的表单视图状态”（例如 `canSubmit/isValid/isDirty`），避免在 UI 层订阅整棵 values/errors 导致无谓重渲染。
+`useFormState(form, selector)` subscribes to the “aggregated form view state” (e.g. `canSubmit/isValid/isDirty`) to avoid subscribing to the whole values/errors tree in UI and causing unnecessary re-renders.
 
-> 提示：`traits` 仍然保留，但作为高级入口（更适合 computed/source/link 或少量底层能力对照）。日常表单校验优先写在 `rules`。
+> Tip: `traits` still exists, but it’s an advanced entry (better for computed/source/link or low-level comparisons). For everyday form validation, prefer `rules`.

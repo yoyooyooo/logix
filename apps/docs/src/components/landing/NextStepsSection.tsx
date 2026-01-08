@@ -16,10 +16,11 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { fadeUp, stagger, viewportOnce } from '@/lib/motion'
+import { withLocalePrefix } from '@/lib/localePath'
 import type { LandingLang, NextStepsCopy } from './content'
 
 export function NextStepsSection({ lang, copy }: { lang: LandingLang; copy: NextStepsCopy }) {
-  const base = `/${lang}/docs`
+  const base = withLocalePrefix(lang, '/docs')
   const cta = lang === 'en' ? 'Open' : '打开'
 
   return (

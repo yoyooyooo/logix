@@ -1,37 +1,37 @@
 ---
-title: 查询（Query）
-description: 用 @logix/query 构建可回放的查询模块，并按需接入缓存/去重引擎。
+title: Query
+description: Build replayable query modules with @logix/query, and optionally plug in cache/dedup engines.
 ---
 
-# 查询（Query）
+# Query
 
-`@logix/query` 把“查询参数 → 资源加载 → 结果快照”收口成一个普通模块：`params/ui/结果快照` 都存放在模块 state 上，因此可以被订阅、被调试、被回放。
+`@logix/query` turns “query params → resource loading → result snapshots” into a regular module. `params` / `ui` / result snapshots all live in module state, so they are subscribable, debuggable, and replayable.
 
-## 0) 心智模型（≤5 关键词）
+## 0) Mental model (≤ 5 keywords)
 
-- `单一入口`：所有 Query 相关能力都从 `@logix/query` 进入。
-- `同形 API`：`Query.make(...)` + controller 句柄扩展（与 `@logix/form` 的使用方式同构）。
-- `显式注入`：外部引擎通过 `Query.Engine.layer(...)` 注入；启用 `Query.Engine.middleware()` 但缺失注入会显式失败（避免静默退化）。
-- `可替换引擎`：默认推荐 TanStack，但引擎是可替换的契约（Engine）。
-- `可回放诊断`：查询链路输出 Slim 且可序列化的证据，用于解释与回放。
+- `single entry`: all query capabilities come from `@logix/query`.
+- `same-shaped API`: `Query.make(...)` plus controller handle extensions (isomorphic to how `@logix/form` is used).
+- `explicit injection`: external engines are injected via `Query.Engine.layer(...)`; enabling `Query.Engine.middleware()` without injection fails explicitly (no silent fallback).
+- `replaceable engine`: TanStack is the recommended default, but the engine is a swappable contract (Engine).
+- `replayable diagnostics`: query pipelines emit slim, serializable evidence for explanation and replay.
 
-## 0.1 成本模型（粗粒度）
+## 0.1 Cost model (coarse-grained)
 
-- 每次刷新都会走一次 `key(...depsValues) -> keyHash` 的门控；当 `key` 为 `undefined` 时刷新会被跳过（no-op）。
-- 自动触发的“频率上限”由 `deps` + `debounceMs` 决定：`debounceMs` 越大，越能把高频输入收敛成更少的真实刷新。
-- `concurrency` 决定竞态语义：`switch` 会中断旧 in-flight（并通过 `keyHash` gate 丢弃旧结果），`exhaust`/trailing 会把中间变化合并到尾部一次执行（减少无意义写回）。
-- 启用外部引擎 + middleware 后：命中缓存时可以避免重复执行 `ResourceSpec.load`；diagnostics=off 的额外开销预算为 p95 ≤ +1%，diagnostics=full/light 预算为 p95 ≤ +5%。
+- Every refresh goes through `key(state) -> keyHash` gating. If `key` is `undefined`, refresh is skipped (no-op).
+- Auto-trigger frequency is bounded by `deps` + `debounceMs`: the larger `debounceMs`, the more high-frequency input is converged into fewer real refreshes.
+- `concurrency` defines race semantics: `switch` interrupts old in-flight work (and drops old results via the `keyHash` gate); `exhaust`/trailing coalesces intermediate changes into one trailing run (reducing meaningless write-backs).
+- With external engine + middleware enabled: cache hits can avoid repeated `ResourceSpec.load`. Budget: diagnostics=off adds p95 ≤ +1%, diagnostics=full/light adds p95 ≤ +5%.
 
-## 0.2 诊断字段（可解释链路）
+## 0.2 Diagnostic fields (explainable chain)
 
-当 diagnostics 打开时，查询快照/事件链路会携带至少这些信息，用来回答“为什么触发/为什么写回”：
+When diagnostics are enabled, snapshots/events carry at least these fields to answer “why did it trigger / why did it write back”:
 
-- `resourceId`：资源标识（来自 `ResourceSpec.id`）
-- `keyHash`：稳定键（由 key 计算得出）
-- `concurrency`：并发策略（例如 `switch`、`exhaust-trailing`）
-- `status`：`idle/loading/success/error`
+- `resourceId`: resource identifier (from `ResourceSpec.id`)
+- `keyHash`: stable key hash (computed from key)
+- `concurrency`: concurrency strategy (e.g. `switch`, `exhaust-trailing`)
+- `status`: `idle/loading/success/error`
 
-## 1) 最小用法：定义 Query Module
+## 1) Minimal usage: define a Query module
 
 ```ts
 import { Schema } from 'effect'
@@ -48,37 +48,37 @@ export const SearchQuery = Query.make('SearchQuery', {
   params: Schema.Struct({ q: Schema.String }),
   initialParams: { q: '' },
 
-  // ui：交互态命名空间（例如开关/面板状态），可参与 deps/key 计算
+  // ui: interaction-state namespace (toggles/panels/etc.); participates in deps/key
   ui: { query: { autoEnabled: true } },
 
-  queries: ($) => ({
-    list: $.source({
+  queries: {
+    list: {
       resource: SearchSpec,
       deps: ['params.q', 'ui.query.autoEnabled'],
-      triggers: ['onMount', 'onKeyChange'],
+      triggers: ['onMount', 'onValueChange'],
       concurrency: 'switch',
-      key: (q, autoEnabled) => (autoEnabled && q ? { q } : undefined),
-    }),
-  }),
+      key: (state) => (state.ui.query.autoEnabled && state.params.q ? { q: state.params.q } : undefined),
+    },
+  },
 })
 ```
 
-要点：
+Key points:
 
-- `params` 用于业务参数；`ui` 用于交互态（没有预设形状，但应保持可序列化/可回放）。
-- 每条 query 的结果会写回到模块 `state.queries[queryName]`（`ResourceSnapshot`：`idle/loading/success/error` + `keyHash`）。
-- TanStack v5 的 `status:"pending"` + `fetchStatus` 语义不直接搬进快照：Logix 只用 `ResourceSnapshot.status` 表达四态；“禁用/手动/参数未就绪”等由 `params/ui`（以及 `key(...depsValues)` 返回 undefined）表达。
-- `deps` 必须显式声明：它既是触发收敛的依据，也是调试/解释链路的一部分。
+- `params` are business parameters; `ui` is interaction state (no preset shape, but should stay serializable/replayable).
+- Each query result is written back to `state.queries[queryName]` (`ResourceSnapshot`: `idle/loading/success/error` + `keyHash`).
+- TanStack v5’s `status:"pending"` + `fetchStatus` semantics are not copied into the snapshot. Logix uses `ResourceSnapshot.status` as a 4-state model; “disabled/manual/params-not-ready” are expressed by `params/ui` (and `key(state)` returning `undefined`).
+- `deps` must be explicit: they are both the convergence basis and part of the explainability chain.
 
-## 2) 把 Query 当成普通子模块组合（推荐）
+## 2) Compose Query as a normal submodule (recommended)
 
-Query 模块可以像其他模块一样被 `imports` 引入。React 中推荐通过父模块实例的 scope 解析子模块 runtime，避免串实例：
+Query modules can be imported via `imports` like any other module. In React, prefer resolving the child runtime within the parent instance scope to avoid instance mismatches:
 
-- 参考：[跨模块协作（imports / $.use / useImportedModule）](./cross-module-communication)
+- See: [Cross-module communication (imports / $.use / useImportedModule)](./cross-module-communication)
 
-## 3) 外部引擎（缓存/去重）+ middleware（接管点）
+## 3) External engine (cache/dedup) + middleware (handoff point)
 
-当你希望把“缓存 / in-flight 去重 / 失效 / 可选快读（避免 loading 抖动）”交给外部引擎时：
+If you want “cache / in-flight dedup / invalidation / optional fast-read (reduce loading flicker)” to be handled by an external engine:
 
 ```ts
 import * as Logix from '@logix/core'
@@ -92,56 +92,60 @@ export const runtime = Logix.Runtime.make(RootImpl, {
 })
 ```
 
-组合语义（“引擎注入 × middleware”）：
+Composition semantics (“engine injection × middleware”):
 
-- 不注入 + 不启用：直接执行 `ResourceSpec.load`（无缓存/去重）。
-- 只注入：不接管 fetch（通常不推荐作为默认）。
-- 只启用：配置错误并提示注入（避免静默退化）。
-- 同时启用：启用缓存/去重（推荐，TanStack 为默认适配器）。
+- no injection + no middleware: run `ResourceSpec.load` directly (no cache/dedup)
+- injection only: no fetch takeover (usually not recommended as a default)
+- middleware only: config error with a hint to inject (avoid silent fallback)
+- both enabled: cache/dedup enabled (recommended; TanStack is the default adapter)
 
-### 3.1 失效（invalidate）与 tags（可选）
+### 3.1 Invalidation and tags (optional)
 
-- `invalidate({ kind: "byResource", resourceId })` / `invalidate({ kind: "byParams", resourceId, keyHash })`：精确失效。
-- `invalidate({ kind: "byTag", tag })`：按 tag 失效；为了避免退化为“全量刷新”，你可以在 query 配置里声明静态 `tags`：
+- `invalidate({ kind: "byResource", resourceId })` / `invalidate({ kind: "byParams", resourceId, keyHash })`: precise invalidation.
+- `invalidate({ kind: "byTag", tag })`: tag-based invalidation. To avoid degrading into “refresh everything”, declare static `tags` in your query config:
 
 ```ts
 queries: {
   list: {
     // ...
-    tags: ["user"],
+    tags: ['user'],
   },
 }
 ```
 
-### 3.2 竞态与取消（`switch` / `AbortSignal`）
+### 3.2 Races and cancellation (`switch` / `AbortSignal`)
 
-- `StateTrait.source` 的默认并发是 `switch`：新 key 会中断旧的 in-flight fiber；即使取消未能传导到网络层，旧结果也会被 `keyHash` gate 丢弃，不会覆盖新结果。
-- 如果你希望“网络层真正取消”（例如 axios 请求），请在 `ResourceSpec.load` 里使用 Effect 的 `AbortSignal`（例如 `Effect.tryPromise({ try: (signal) => axios.get(url, { signal }), catch: ... })`）。
-- 详见：[可中断 IO（取消与超时）](../advanced/resource-cancellation)
+- `StateTrait.source` defaults to `switch`: a new key interrupts old in-flight fibers. Even if cancellation doesn’t reach the network layer, old results are dropped by the `keyHash` gate and won’t overwrite newer results.
+- If you want “real network cancellation” (e.g. axios), use Effect’s `AbortSignal` in `ResourceSpec.load` (e.g. `Effect.tryPromise({ try: (signal) => axios.get(url, { signal }), catch: ... })`).
+- See: [Interruptible I/O (cancellation and timeout)](../advanced/resource-cancellation)
 
-### 3.3 优化阶梯（从简单到复杂）
+> [!TIP]
+> `StateTrait.source` is part of the traits system. If you’re new to “capability rules / convergence / transaction windows”, start here:
+> - [Traits (capability rules and convergence)](../essentials/traits)
 
-你可以按需“逐级增加能力”，而不是一开始就把所有复杂度引入：
+### 3.3 Optimization ladder (simple → advanced)
 
-1. **纯透传（最简单）**：只写 `Query.make(...)`，不注入引擎、不启用 middleware —— 每次刷新直接执行 `ResourceSpec.load`。
-2. **缓存/去重（推荐默认）**：注入 `Query.Engine.layer(Query.TanStack.engine(new QueryClient()))` 并启用 `Query.Engine.middleware()` —— 获得缓存、in-flight 去重与失效能力。
-3. **减少无意义刷新**：用 `key(...depsValues) => undefined` 表达“参数未就绪/禁用”，并确保 `deps` 只声明真正影响 key 的字段。
-4. **避免 loading 抖动（缓存命中快读）**：当引擎提供 `peekFresh` 时，Query 默认逻辑会在 refresh 前尝试命中 fresh cache，直接写入 `success` 快照。
-5. **真正取消/超时/重试**：在 `ResourceSpec.load` 中使用 `AbortSignal` + `Effect.timeoutFail` / `Effect.retry`，让 `switch` 不仅“丢弃旧结果”，还能真正取消网络层 IO。
+Add capabilities gradually instead of pulling in all complexity at once:
 
-### 3.4 长期运行进程的 cache 上限（TanStack engine）
+1. **Pure pass-through (simplest)**: write `Query.make(...)` only; no engine injection, no middleware — every refresh runs `ResourceSpec.load` directly.
+2. **Cache/dedup (recommended default)**: inject `Query.Engine.layer(Query.TanStack.engine(new QueryClient()))` and enable `Query.Engine.middleware()` — you get caching, in-flight dedup, and invalidation.
+3. **Reduce meaningless refresh**: express “params not ready / disabled” via `key(state) => undefined`, and ensure `deps` includes only fields that truly affect the key.
+4. **Avoid loading flicker (fast-read on cache hit)**: if the engine provides `peekFresh`, Query tries to hit fresh cache before refresh and writes a `success` snapshot directly.
+5. **Real cancel/timeout/retry**: in `ResourceSpec.load`, use `AbortSignal` + `Effect.timeoutFail` / `Effect.retry`, so `switch` can both drop old results and actually cancel network I/O.
 
-如果你的 key 空间可能无界增长（例如长时间运行的搜索输入），可以为 TanStack engine 设置本地快缓存的上限：
+### 3.4 Cache cap for long-running processes (TanStack engine)
+
+If your key space may grow without bound (e.g. a long-running search input), set an upper bound for TanStack engine’s local fast cache:
 
 ```ts
 Query.TanStack.engine(queryClient, { maxEntriesPerResource: 2000 })
 ```
 
-## 4) 依赖其他模块触发 refetch（两种方式都需要）
+## 4) Trigger refetch from other modules (two ways, both needed)
 
-### 4.1 推荐：由“拥有者模块”驱动 imports 子模块的刷新（作用域最稳）
+### 4.1 Recommended: the “owner module” drives refresh for an imported child (best scope semantics)
 
-当 `BModule` 通过 `imports` 引入了一个 `AQuery` 时，最稳的写法是：把“联动”写在 `BModule` 的 Logic 内（B 作为 owner），在 **B 的实例 scope** 下解析到被 imports 的 `AQuery` 句柄，然后显式触发刷新。
+When `BModule` imports an `AQuery`, the most robust approach is to keep linkage logic inside `BModule`’s Logic (B as owner). Resolve the imported `AQuery` handle within **B’s instance scope**, then trigger refresh explicitly.
 
 ```ts
 import { Effect } from 'effect'
@@ -150,24 +154,25 @@ export const BLogic = BModule.logic(($) =>
   Effect.gen(function* () {
     const q = yield* $.use(AQuery)
 
-    // B 的某个状态变化 -> 更新 AQuery params（让默认 auto-trigger 生效）
+    // state change in B -> update AQuery params (let auto-trigger work)
     yield* $.onState((s) => s.filters.keyword).runFork((keyword) => q.controller.setParams({ q: keyword }))
 
-    // 或者：强制 refetch（即使 params 未变化）
+    // or: force refetch even if params didn't change
     yield* $.onState((s) => s.filters.forceReloadToken).runFork(() => q.controller.refresh())
   }),
 )
 ```
 
-经验法则：
+Rules of thumb:
 
-- “谁 imports，谁负责驱动”：避免 Link/全局监听直接操纵子模块，导致多实例时刷错目标。
-- 能用 `setParams/setUi` 表达就优先用它（可解释、与 deps/keyHash 主线一致）；需要强制拉取再用 `refresh`。
+- “the importer owns the driving logic”: avoid Link/global listeners that manipulate child modules directly; multi-instance scenarios can refresh the wrong target.
+- Prefer `setParams/setUi` when possible (explainable and aligned with deps/keyHash); use `refresh` only when you truly need a forced fetch.
 
-### 4.2 当触发源来自别的模块：Link 只负责转发信号，刷新仍由 owner 执行
+### 4.2 When the trigger comes from another module: Link forwards signals, owner still refreshes
 
-如果触发源来自 `CModule`（不属于 B 的内部状态），可以用 `Link.make` 把信号转成 `B.actions.*`，再由 `BLogic` 在自己的 scope 内刷新 `AQuery`，保持封装与实例语义清晰。
+If the trigger source is `CModule` (not inside B’s own state), use `Link.make` to forward the signal into `B.actions.*`, and let `BLogic` refresh `AQuery` within B’s own scope—keeping encapsulation and instance semantics clear.
 
-### 4.3 高级：把 Query 快照字段收敛进主模块 state（需要更多手工接线）
+### 4.3 Advanced: collapse Query snapshot fields into a “host module” state (manual wiring)
 
-当你强约束“所有状态都必须存在一个主模块里”（或需要把多个 query 快照字段与业务 state 同构建图）时，可以用 `Query.traits(...)` 生成 `StateTraitSpec`，把 query snapshot 字段收口到主模块的 `state.queries.*`；但触发/失效/控制器等 wiring 需要你自己显式组织，因此只建议在确有必要时使用。
+If you strongly require “all state must live in one host module” (or you need to build a graph where multiple query snapshot fields are isomorphic to business state), you can use `Query.traits(...)` to generate `StateTraitSpec` and collapse query snapshot fields into `state.queries.*`.
+However, triggering/invalidation/controller wiring must be organized explicitly by you, so only do this when necessary.

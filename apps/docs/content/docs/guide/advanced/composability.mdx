@@ -1,74 +1,74 @@
 ---
-title: 可组合性地图
-description: 把 @logix/core + @logix/react 的组合方式收敛成默认路径与选型指南（Module / Logic / Runtime / React）。
+title: Composability Map
+description: A default-path guide to composing @logix/core + @logix/react (Module / Logic / Runtime / React).
 ---
 
-这篇不是“再加一套新写法”，而是把 Logix 已经存在的组合点串成一张地图，回答业务开发里最常见的几个问题：
+This page is not “yet another way to do things”. It’s a **map** of existing Logix composition points, answering the questions you’ll hit in real apps:
 
-- 我应该用 **单例** 还是 **多实例**？
-- 子模块应该跟随谁的生命周期？UI 应该怎么拿到“属于这个父实例”的子模块？
-- 跨模块协作应该写在模块里（`$.use`）还是写在模块外（`Process.link / Link.make`）？
-- 什么时候需要 `RuntimeProvider.layer` 这样的“局部差异化配置”？
+- Should this be a **singleton** or **multi-instance**?
+- If a module composes child modules, how does the UI get the child **within the parent instance scope**?
+- Should cross-module collaboration live **inside a module** (`$.use`) or **outside modules** (`Process.link / Link.make`)?
+- When do you need subtree overrides like `RuntimeProvider.layer`?
 
-## 一句话原则（默认路径优先）
+## One-sentence rules (prefer the default path)
 
-1. **单例/多实例要显式表达**：`useModule(ModuleDef/ModuleTag)` 是 Provider 环境里的单例；`useModule(Impl, { key })` 才是多实例。
-2. **父子组合优先用 imports（strict scope）**：子模块跟随父实例；Logic 用 `$.use(Child)`，UI 用 `host.imports.get(Child.tag)`。
-3. **跨模块胶水逻辑优先用 processes（Link/Process）**：当协作“属于 Runtime”而不是“属于某个模块”时，把它挂到 `processes`。
-4. **UI 默认只绑定 Host，一跳即可**：深层组件不要到处“爬 imports 树”；在边界 resolve 一次，把 `ModuleRef` 往下传。
+1. **Make singleton vs multi-instance explicit**: `useModule(ModuleDef/ModuleTag)` is a Provider-scoped singleton; `useModule(Impl, { key })` is multi-instance.
+2. **For parent-child composition, prefer imports (strict scope)**: children follow the parent instance; Logic uses `$.use(Child)`, UI uses `host.imports.get(Child.tag)`.
+3. **For “runtime-owned” glue logic, prefer processes**: when collaboration belongs to the runtime (not a single module), attach it via `processes`.
+4. **UI should bind to a Host by default**: don’t “climb the imports tree” everywhere; resolve once at the boundary and pass `ModuleRef` down.
 
-## 组合选型决策树（Mermaid）
+## Decision tree (Mermaid)
 
 <Mermaid
   colorize
   look="handDrawn"
   handDrawnSeed={7}
   chart={`flowchart TD
-Q0{状态属于哪里？}
-Q0 -->|组件内| L0["useLocalModule"]
-Q0 -->|页面/路由| Q1{需要多实例吗？}
-Q0 -->|全局单例| G0["Root + Runtime.make<br/>useModule(ModuleDef/Tag)"]
+Q0{Where does this state live?}
+Q0 -->|Component-local| L0["useLocalModule"]
+Q0 -->|Route/page| Q1{Need multiple instances?}
+Q0 -->|App singleton| G0["Root + Runtime.make<br/>useModule(ModuleDef/Tag)"]
 
-Q1 -->|是| I0["useModule(Impl, { key, gcTime })"]
-Q1 -->|否| I1["useModule(Impl)"]
+Q1 -->|Yes| I0["useModule(Impl, { key, gcTime })"]
+Q1 -->|No| I1["useModule(Impl)"]
 
-I0 --> Q2{子模块跟随父实例吗？}
+I0 --> Q2{Should children follow parent instance?}
 I1 --> Q2
 
-Q2 -->|是| C0["imports + $.use(Child)<br/>UI: host.imports.get(Child.tag)"]
-Q2 -->|否| Q3{需要运行时级胶水吗？}
+Q2 -->|Yes| C0["imports + $.use(Child)<br/>UI: host.imports.get(Child.tag)"]
+Q2 -->|No| Q3{Need runtime-owned glue?}
 
-Q3 -->|是| P0[processes: Process.link / Link.make]
-Q3 -->|否| Q4{需要固定 root 单例吗？}
+Q3 -->|Yes| P0["processes: Process.link / Link.make"]
+Q3 -->|No| Q4{Need fixed root singleton read?}
 
-Q4 -->|是| R0["Root.resolve(Tag)"]
-Q4 -->|否| E0["模块内：onAction/onState + Flow"]
+Q4 -->|Yes| R0["Root.resolve(Tag)"]
+Q4 -->|No| E0["Keep it in the module<br/>onAction/onState + Flow"]
 `}
 />
 
-## 组合点总表（你应该用哪一个？）
+## Composition cheat sheet (what should I use?)
 
-| 你要解决的事                                 | 推荐入口                                            | 作用域语义（直觉）                           | 典型落点                  | 深入阅读                                                                                                      |
-| -------------------------------------------- | --------------------------------------------------- | -------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| 组件内局部状态（替代 `useState/useReducer`） | `useLocalModule`                                    | 组件生命周期                                 | React 组件                | [React 集成](../recipes/react-integration)                                                                    |
-| 页面/会话级多实例（Tab/Session）             | `useModule(Impl, { key })`                          | `(Impl, key)` 一份实例                       | React 组件                | [React 集成](../recipes/react-integration)                                                                    |
-| 父子模块组合（子模块跟随父实例）             | `imports` + `$.use(Child)`                          | strict imports scope                         | ModuleImpl / Logic        | [跨模块协作](../learn/cross-module-communication)                                                             |
-| UI 访问“属于这个父实例”的子模块              | `host.imports.get(Child.tag)` / `useImportedModule` | 父实例 scope                                 | React 组件                | [useImportedModule](../../api/react/use-imported-module)、[路由弹框 keepalive](../recipes/route-scope-modals) |
-| 跨模块长期协作（模块外胶水）                 | `Process.link` / `Link.make`                        | runtime processes                            | Root `processes`          | [跨模块协作](../learn/cross-module-communication)、[Runtime](../../api/core/runtime)                          |
-| 固定 root 单例读取                           | `Logix.Root.resolve(Tag)`                           | 固定 root provider                           | Logic                     | [跨模块协作](../learn/cross-module-communication)                                                             |
-| 子树局部依赖覆盖（轻配置）                   | `RuntimeProvider layer={...}`                       | 子树 Env override                            | React 组件树              | [Runtime](../../api/core/runtime)                                                                             |
-| 调用方 DX（作者侧增强）                      | handle extensions                                   | 扩展 handle 字段                             | 模块作者代码              | [模块手柄扩展](./module-handle-extensions)                                                                    |
-| 复用“逻辑片段/流程模板”                      | Pattern 函数                                        | `(config) => Effect` 或 `($, config) => ...` | `guide/patterns` / 工具库 | [Pattern 示例](../patterns/optimistic-update)                                                                 |
+| What you’re solving | Recommended entry | Scope intuition | Where it lives | Read more |
+| --- | --- | --- | --- | --- |
+| Local UI state (replace `useState/useReducer`) | `useLocalModule` | component lifetime | React component | [React integration](../recipes/react-integration) |
+| Page/session multi-instance (tabs/sessions) | `useModule(Impl, { key })` | one instance per `(Impl, key)` | React component | [React integration](../recipes/react-integration) |
+| Parent-child composition (children follow parent) | `imports` + `$.use(Child)` | strict imports scope | ModuleImpl / Logic | [Cross-module communication](../learn/cross-module-communication) |
+| UI reads child within parent instance scope | `host.imports.get(Child.tag)` / `useImportedModule` | parent instance scope | React component | [useImportedModule](../../api/react/use-imported-module), [Route-scope modals](../recipes/route-scope-modals) |
+| Long-running cross-module collaboration (runtime glue) | `Process.link` / `Link.make` | runtime processes | Root `processes` | [Cross-module communication](../learn/cross-module-communication), [Runtime](../../api/core/runtime) |
+| Fixed root singleton read | `Logix.Root.resolve(Tag)` | fixed root provider | Logic | [Cross-module communication](../learn/cross-module-communication) |
+| Subtree env override (light config) | `RuntimeProvider layer={...}` | subtree env override | React tree | [Runtime](../../api/core/runtime) |
+| Caller DX (author-side) | handle extensions | extra handle fields | module author code | [Module handle extensions](./module-handle-extensions) |
+| Reuse “logic snippets / flow templates” | Pattern functions | `(config) => Effect` or `($, config) => ...` | `guide/patterns` / helpers | [Pattern example](../patterns/optimistic-update) |
 
-## 常见误用（直接避开）
+## Common footguns (avoid these)
 
-1. **把 imports 子模块当成全局单例去用**：在 UI 写 `useModule(Child)` / `useModule(Child.tag)`，但你其实要的是 `host.imports.get(Child.tag)`。
-2. **用 Link/Process 去“挑一个实例”**：processes 适合单例集合的胶水逻辑；多实例协作优先由拥有者模块在其 scope 内 `$.use(...)` 驱动。
-3. **深层组件到处爬树**：`host.imports.get(A).imports.get(B)...` 让依赖关系分散且难调试；在边界 resolve 一次往下传。
-4. **希望局部覆盖影响全局单例**：`Root.resolve` 读取的是固定 root provider，天然不吃局部 override；需要可覆盖语义时，改用 imports 或 `RuntimeProvider.layer`。
+1. **Treating an imports child as a global singleton**: writing `useModule(Child)` / `useModule(Child.tag)` when you actually need `host.imports.get(Child.tag)`.
+2. **Using Link/Process to “pick an instance”**: processes are for singleton sets; for multi-instance collaboration, let the owner module drive it within its instance scope via `$.use(...)`.
+3. **Climbing the imports tree everywhere**: `host.imports.get(A).imports.get(B)...` scatters dependencies; resolve once at the boundary and pass `ModuleRef` down.
+4. **Expecting local overrides to affect root singletons**: `Root.resolve` reads from the fixed root provider; if you need override semantics, use imports or `RuntimeProvider.layer`.
 
-## 下一步
+## Next
 
-- 想系统理解“imports / $.use / Link / Root.resolve”的语义差异：读 [跨模块协作](../learn/cross-module-communication)。
-- 想把“组合”落到 React 代码里：读 [在 React 中使用 Logix](../recipes/react-integration) 与 [路由 Scope 下的弹框 Keepalive](../recipes/route-scope-modals)。
-- 想把高频操作封装成更好用的调用入口：读 [模块手柄扩展](./module-handle-extensions)。
+- To understand the semantics of `imports / $.use / Link / Root.resolve`: read [Cross-module communication](../learn/cross-module-communication).
+- To apply composition in React code: read [React integration](../recipes/react-integration) and [Route-scope modals keepalive](../recipes/route-scope-modals).
+- To package high-frequency operations into ergonomic call sites: read [Module handle extensions](./module-handle-extensions).

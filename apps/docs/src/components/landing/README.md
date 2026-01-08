@@ -10,7 +10,6 @@
 Sections（SRP：一段只做一件事）：
 
 - `HeroSection`：首屏价值主张 + CTA
-- `WordmarkLabSection`：Logix 字标候选（字体/强调/动效）供挑选
 - `NextStepsSection`：三个文档入口
 - `TimeTravelSection`：可观测/回放能力示意
 - `FeaturesSection`：核心能力网格
