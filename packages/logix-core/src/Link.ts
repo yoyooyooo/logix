@@ -44,3 +44,15 @@ export function make<Ms extends readonly LinkModuleToken<string, AnyModuleShape>
   // Link.make is an alias; it delegates to Process.link (unifying the static surface and runtime recognition).
   return Process.link(config as any, logic as any) as Effect.Effect<void, E, R>
 }
+
+/**
+ * Link.makeDeclarative:
+ * - A controlled builder that generates DeclarativeLinkIR (ReadQuery/static deps -> dispatch only).
+ * - Strong consistency applies to this IR; prefer it when you need same-tick cross-module convergence.
+ */
+export function makeDeclarative<Ms extends readonly LinkModuleToken<string, AnyModuleShape>[]>(
+  config: LinkConfig<Ms>,
+  build: (args: any) => ReadonlyArray<any>,
+): Effect.Effect<void, never, never> {
+  return Process.linkDeclarative(config as any, build as any) as Effect.Effect<void, never, never>
+}

@@ -1,4 +1,4 @@
-import { Cause, Context, Effect, Exit, Fiber, Option } from 'effect'
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Option } from 'effect'
 import type { LogicPlan, ModuleRuntime as PublicModuleRuntime } from './module.js'
 import * as Lifecycle from './Lifecycle.js'
 import * as ReducerDiagnostics from './ReducerDiagnostics.js'
@@ -7,6 +7,7 @@ import * as LogicDiagnostics from './LogicDiagnostics.js'
 import * as LogicUnitMeta from './LogicUnitMeta.js'
 import * as Platform from './Platform.js'
 import * as LogicPlanMarker from './LogicPlanMarker.js'
+import { RootContextTag, type RootContext } from './RootContext.js'
 
 type PhaseRef = LogicPlanMarker.PhaseRef
 
@@ -56,6 +57,25 @@ export const runModuleLogics = <S, A, R>(args: {
 
       return Effect.provideService(withLogicUnit, LogicDiagnostics.LogicPhaseServiceTag, phaseService)
     }
+
+    const withRootEnvIfAvailable = <A2, E2, R2>(eff: Effect.Effect<A2, E2, R2>): Effect.Effect<A2, E2, R2> =>
+      Effect.gen(function* () {
+        const rootOpt = yield* Effect.serviceOption(RootContextTag)
+        if (Option.isNone(rootOpt)) {
+          return yield* eff
+        }
+        const root = rootOpt.value as RootContext
+        const rootEnv = root.context ?? (yield* Deferred.await(root.ready))
+
+        // IMPORTANT:
+        // - rootEnv contains the fully-assembled app Env (all modules/services), preventing "missing service due to early Env capture".
+        // - currentEnv contains Provider overlays (e.g. React RuntimeProvider.layer / useRuntime layers) and module-local overrides.
+        // Merge order: currentEnv overrides rootEnv for overlapping tags.
+        const currentEnv = (yield* Effect.context<R2>()) as Context.Context<any>
+        const mergedEnv = Context.merge(rootEnv as Context.Context<any>, currentEnv)
+
+        return yield* Effect.provide(eff as any, mergedEnv as any)
+      }) as any
 
     const formatSource = (source?: {
       readonly file: string
@@ -244,7 +264,7 @@ export const runModuleLogics = <S, A, R>(args: {
             Effect.sync(() => {
               planPhaseRef.current = 'run'
             }).pipe(
-              Effect.zipRight(Effect.forkScoped(runPhase.pipe(Effect.catchAllCause(handleLogicFailure)))),
+              Effect.zipRight(Effect.forkScoped(withRootEnvIfAvailable(runPhase).pipe(Effect.catchAllCause(handleLogicFailure)))),
               Effect.asVoid,
             ),
           )
@@ -260,7 +280,7 @@ export const runModuleLogics = <S, A, R>(args: {
 
       pendingRunForks.push(
         Effect.gen(function* () {
-          const runFiber = yield* Effect.forkScoped(runPhase)
+          const runFiber = yield* Effect.forkScoped(withRootEnvIfAvailable(runPhase))
 
           yield* Effect.forkScoped(
             Fiber.await(runFiber).pipe(
@@ -280,7 +300,11 @@ export const runModuleLogics = <S, A, R>(args: {
                           Effect.sync(() => {
                             phaseRef.current = 'run'
                           }).pipe(
-                            Effect.zipRight(Effect.forkScoped(runPlanPhase.pipe(Effect.catchAllCause(handleLogicFailure)))),
+                            Effect.zipRight(
+                              Effect.forkScoped(
+                                withRootEnvIfAvailable(runPlanPhase).pipe(Effect.catchAllCause(handleLogicFailure)),
+                              ),
+                            ),
                             Effect.asVoid,
                           ),
                         ),

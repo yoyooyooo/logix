@@ -16,6 +16,12 @@ const Counter = Logix.Module.make('Counter', {
   },
 })
 
+const makeRuntime = (layer: Layer.Layer<any, any, any>) => {
+  const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, never>
+  const runtimeLayer = Layer.mergeAll(tickServicesLayer, Layer.provide(layer, tickServicesLayer)) as Layer.Layer<any, any, never>
+  return ManagedRuntime.make(runtimeLayer)
+}
+
 describe('useModule', () => {
   it('should retrieve module from RuntimeProvider and update state', async () => {
     // Create a runtime with the Counter module
@@ -27,7 +33,7 @@ describe('useModule', () => {
         }),
       ),
     )
-    const runtime = ManagedRuntime.make(layer as import('effect').Layer.Layer<any, never, never>)
+    const runtime = makeRuntime(layer)
 
     // Wrapper component to provide runtime
     const wrapper = ({ children }: { children: React.ReactNode }) => (

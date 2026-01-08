@@ -2,6 +2,7 @@ import { Effect } from 'effect'
 import type { BoundApi } from '../runtime/core/module.js'
 import { getBoundInternals } from '../runtime/core/runtimeInternalsAccessor.js'
 import * as SourceRuntime from './source.js'
+import * as ExternalStoreRuntime from './external-store.js'
 import type {
   StateTraitProgram,
   StateTraitPlanStep,
@@ -54,8 +55,8 @@ export const install = <S>(
       return Effect.void
     }
 
-    if (step.kind !== 'source-refresh') {
-      // computed/link/check are handled by the runtime core within the transaction window; install keeps only source.refresh entrypoints.
+    if (step.kind !== 'source-refresh' && step.kind !== 'external-store-sync') {
+      // computed/link/check are handled by the runtime core within the transaction window; install keeps only source.refresh/externalStore sync entrypoints.
       return Effect.void
     }
 
@@ -65,13 +66,18 @@ export const install = <S>(
       return Effect.void
     }
 
-    const entry = candidates.find((e) => e.kind === 'source')
+    const entry =
+      step.kind === 'source-refresh'
+        ? candidates.find((e) => e.kind === 'source')
+        : candidates.find((e) => e.kind === 'externalStore')
 
     if (!entry) {
       return Effect.void
     }
 
-    return SourceRuntime.installSourceRefresh(bound, step, entry as any)
+    return step.kind === 'source-refresh'
+      ? SourceRuntime.installSourceRefresh(bound, step, entry as any)
+      : ExternalStoreRuntime.installExternalStoreSync(bound, step, entry as any)
   }
 
   return Effect.forEach(program.plan.steps, (step) => installStep(step)).pipe(Effect.asVoid)

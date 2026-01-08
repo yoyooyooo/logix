@@ -16,6 +16,8 @@
 - 公共出口：`packages/logix-core/src/index.ts`
 - Bound API：`packages/logix-core/src/Bound.ts`、`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
 - Flow：`packages/logix-core/src/Flow.ts`、`packages/logix-core/src/internal/runtime/core/FlowRuntime.ts`
+- ExternalStore：`packages/logix-core/src/ExternalStore.ts`
+- StateTrait：`packages/logix-core/src/StateTrait.ts`（含 `StateTrait.externalStore`）
 - Program Runner：`packages/logix-core/src/Runtime.ts`、`packages/logix-core/src/internal/runtime/runner/*`
 - Reflection：`packages/logix-core/src/Reflection.ts`、`packages/logix-core/src/internal/reflection/*`
 - Trial Run：`packages/logix-core/src/internal/observability/trialRunModule.ts`

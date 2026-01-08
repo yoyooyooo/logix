@@ -9,6 +9,7 @@ import {
   type StateTraitGraphNode,
   type StateTraitField,
   type StateTraitFieldTrait,
+  type StateTraitKind,
   type StateTraitPlan,
   type StateTraitPlanStep,
   type StateTraitResource,
@@ -34,6 +35,42 @@ const nowPerf = (): number =>
     : Date.now()
 
 type ConvergeWriter = Extract<StateTraitEntry<any, string>, { readonly kind: 'computed' | 'link' }>
+
+const collectMultipleWritersError = (
+  entries: ReadonlyArray<StateTraitEntry<any, string>>,
+): ConvergeStaticIrRegistry['configError'] | undefined => {
+  const kindsByFieldPath = new Map<string, Set<StateTraitKind>>()
+
+  for (const entry of entries) {
+    if (entry.kind !== 'computed' && entry.kind !== 'link' && entry.kind !== 'source' && entry.kind !== 'externalStore') {
+      continue
+    }
+    const set = kindsByFieldPath.get(entry.fieldPath) ?? new Set<StateTraitKind>()
+    set.add(entry.kind)
+    kindsByFieldPath.set(entry.fieldPath, set)
+  }
+
+  const conflicts: Array<{ readonly fieldPath: string; readonly kinds: ReadonlyArray<StateTraitKind> }> = []
+  for (const [fieldPath, kinds] of kindsByFieldPath.entries()) {
+    if (kinds.size <= 1) continue
+    conflicts.push({ fieldPath, kinds: Array.from(kinds).sort() })
+  }
+
+  if (conflicts.length === 0) return undefined
+
+  conflicts.sort((a, b) => a.fieldPath.localeCompare(b.fieldPath))
+  const fields = conflicts.map((c) => c.fieldPath)
+  const primary = conflicts[0]!
+  const kindSummary = primary.kinds.join(' + ')
+
+  return {
+    code: 'MULTIPLE_WRITERS',
+    message:
+      `[StateTrait.build] Multiple writers for field "${primary.fieldPath}" (${kindSummary}). ` +
+      'Only one of computed/link/source/externalStore can write a fieldPath.',
+    fields,
+  }
+}
 
 const getConvergeWriterDeps = (entry: ConvergeWriter): ReadonlyArray<string> => {
   if (entry.kind === 'computed') {
@@ -193,6 +230,8 @@ const buildConvergeIr = (
   const startedAt = nowPerf()
   const generation = 0
 
+  const multipleWritersError = collectMultipleWritersError(entries)
+
   const writers = entries.filter((e): e is ConvergeWriter => e.kind === 'computed' || e.kind === 'link')
 
   const writersKey = writers
@@ -214,7 +253,11 @@ const buildConvergeIr = (
     writerByPath.set(entry.fieldPath, entry)
   }
 
-  const topo = writers.length > 0 ? computeConvergeTopoOrder(writers) : { order: [] as ReadonlyArray<string> }
+  const topo = multipleWritersError
+    ? { order: [] as ReadonlyArray<string> }
+    : writers.length > 0
+      ? computeConvergeTopoOrder(writers)
+      : { order: [] as ReadonlyArray<string> }
   const stepsById: Array<ConvergeWriter> = topo.configError ? [] : topo.order.map((path) => writerByPath.get(path)!)
 
   const fieldPathTable = new Map<string, FieldPath>()
@@ -278,7 +321,7 @@ const buildConvergeIr = (
     fieldPathsKey,
     fieldPaths,
     fieldPathIdRegistry,
-    ...(topo.configError ? { configError: topo.configError } : null),
+    ...(multipleWritersError ? { configError: multipleWritersError } : topo.configError ? { configError: topo.configError } : null),
     stepsById,
     stepOutFieldPathIdByStepId,
     stepDepsFieldPathIdsByStepId,
@@ -466,6 +509,12 @@ const buildGraph = (
           })
         }
       }
+    } else if (entry.kind === 'externalStore') {
+      planSteps.push({
+        id: `external-store:${fieldPath}`,
+        kind: 'external-store-sync',
+        targetFieldPath: fieldPath,
+      })
     } else if (entry.kind === 'check') {
       planSteps.push({
         id: `check:${fieldPath}`,

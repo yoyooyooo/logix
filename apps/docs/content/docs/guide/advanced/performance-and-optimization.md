@@ -5,8 +5,8 @@ description: Tune Logix Runtime and DevTools observability strategies to keep go
 
 # Performance and Optimization
 
-Logix Runtime is “observability-first” by default.  
-In development it records full state transactions, trait behavior, and debug events, and DevTools provides a timeline and time travel.  
+Logix Runtime is “observability-first” by default.
+In development it records full state transactions, trait behavior, and debug events, and DevTools provides a timeline and time travel.
 In production it automatically converges to a lighter observability mode.
 
 This page provides an actionable performance tuning playbook from the perspective of everyday application development.
@@ -183,7 +183,7 @@ Two commonly-confused switches:
 
 #### Diagnostics levels: off / sampled / light / full (how to choose)
 
-Diagnostics level affects how many debug events are generated/retained for export surfaces like DevTools / TrialRun.  
+Diagnostics level affects how many debug events are generated/retained for export surfaces like DevTools / TrialRun.
 It does not change business semantics, but it affects “how much evidence you can see” and “how much extra overhead you pay”.
 
 - `off`: near-zero overhead, good for benchmarks/extreme performance checks; you lose most explainability (DevTools/evidence packages become sparse).
@@ -251,7 +251,7 @@ Practical steps:
 
 ## 4. Watcher and trait granularity guidelines
 
-Logix allows many `$.onAction` / `$.onState` watchers and trait nodes within one Module.  
+Logix allows many `$.onAction` / `$.onState` watchers and trait nodes within one Module.
 From experience, these ballpark numbers can serve as guidance:
 
 - Watcher count per Module / per Logic block:

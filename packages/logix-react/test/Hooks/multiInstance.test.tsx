@@ -29,10 +29,16 @@ describe('useModule multi-instance behavior', () => {
   afterEach(() => {
     cleanup()
   })
-  const makeTagRuntime = () =>
-    ManagedRuntime.make(Counter.live({ count: 0 }, CounterLogic) as Layer.Layer<any, never, never>)
+  const makeTagRuntime = () => {
+    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const counterLayer = Counter.live({ count: 0 }, CounterLogic) as Layer.Layer<any, never, any>
+    return ManagedRuntime.make(
+      Layer.mergeAll(tickServicesLayer, Layer.provide(counterLayer, tickServicesLayer)) as Layer.Layer<any, never, never>,
+    )
+  }
 
-  const makeImplRuntime = () => ManagedRuntime.make(Layer.empty as unknown as Layer.Layer<any, never, never>)
+  const makeImplRuntime = () =>
+    ManagedRuntime.make(Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, never>)
 
   it('Tag mode should share module instance across components', async () => {
     const runtime = makeTagRuntime()

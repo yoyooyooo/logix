@@ -17,6 +17,24 @@
   - 提供 DeclarativeLink IR（强一致可识别的跨模块依赖表达），并定义与 `Process.link` 黑盒的边界；
   - 稳定化（fixpoint）有预算与软降级，但必须产出 Slim、可序列化证据（`trace:tick`）。
 
+## 073 疏通：参考系 / 受限绑定 / 自由编排
+
+本特性一旦完成，Logix 的“同时性”与“因果链”将以 **tick** 为基准被重新裁决。为了避免后续能力（尤其 Action/Flow/时间算子）继续在旧心智里发散，本节把 073 的架构边界显式固化：
+
+- **观测参考系（Observation Frame）**：`RuntimeStore + tickSeq` 是 React/宿主唯一订阅真相源；同一次 render/commit 只能观测到同一 `tickSeq` 的快照（no-tearing）。
+- **受限绑定（Boundaries / Geometry）**：`StateTrait.externalStore` / `StateTrait.source` 属于“边界条件绑定”而不是自由工作流：
+  - 绑定必须可 IR 化、可预算、可诊断（Static IR + Dynamic Trace）；
+  - 写回必须进事务窗口并受治理（external-owned/单 writer/txn 禁 IO）。
+- **自由编排（Control Laws / Workflows）**：多步协议、分支、时间算子（delay/retry/timeout）、跨服务协调等属于“自由度”，不应被塞进 trait 的静态 meta。它们应由独立的 Flow/Action Program 表达，并通过 tick 的证据链（`trace:tick` + `EffectOp`）进入可回放、可解释、可预算的轨道。
+
+形式化工作模型（约束闭包 `C_T` / 控制律 `Π` / 事务 `Δ⊕` + tick 参考系）见 `docs/specs/intent-driven-ai-coding/97-effect-runtime-and-flow-execution.md` 的 “1.2 最小系统方程”。
+
+后续演进将按以上分层推进（本特性只负责“参考系 + 受限绑定”的主干闭环）：
+
+- 本特性不扩展/不固化 `StateTrait.source` 的 `meta.triggers/debounceMs` 反射式解释入口；后续由 `076-logix-source-auto-trigger-kernel` 收敛替换，避免 073 把 tick 参考系意外绑定到旧接口上。
+- 后续 spec：`075-logix-flow-program-ir`（Flow/Action 的可编译控制律），把时间算子与多步协议纳入 tick 参考系（避免黑盒 setTimeout/Promise 链断因果）。
+- 后续 spec：`076-logix-source-auto-trigger-kernel`（基于 `dirtyPaths + deps` 的 source 自动触发内核化），逐步消灭 Query/Form 的 action-wiring 胶水（保留 `manual` 作为显式 escape hatch）。
+
 ## Deepening Notes
 
 - Decision: React 订阅必须走 `RuntimeStore.topic(topicKey)` facade 分片，禁止订阅全局 store 造成跨模块 O(N) selector 执行（source: `spec.md#Clarifications`）
@@ -106,7 +124,7 @@
 ## Kernel support matrix
 
 - `core`: supported（本特性在 `@logix/core` 提供对外契约与默认实现）
-- `core-ng`: supported（实现需在 core-ng 提供等价语义或显式降级；consumer 仍只依赖 `@logix/core` 的对外契约）
+- `core-ng`: supported（本特性主要落在 `@logix/core` + `@logix/react`；core-ng 仅在 Kernel Runtime Services 层提供可选实现/别名，预计无需新增交付；若实现中引入新的 Kernel RuntimeService ID 或出现 core-ng 行为分歧，必须在 `tasks.md` 增补 core-ng 任务并作为 gate）
 
 ## Constitution Check
 
@@ -137,12 +155,12 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 > 若本特性触及 Logix Runtime 核心路径 / 渲染关键路径 / 对外性能边界：此节必须填写；否则标注 `N/A`。
 > 详细口径见：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
 
-Baseline 语义：代码前后（before=现状 per-module ExternalStore；after=runtimeStore + tick）
+Baseline 语义：策略 A/B（before=perModule adapter；after=runtimeStore adapter；由 perf boundary 里的 `VITE_LOGIX_PERF_RUNTIME_STORE_ADAPTER` 选择，避免依赖“旧代码版本”）
 
 - Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`
 - Budget 语义：本节 `timePerTickMs` 是 boundary 场景下 `tick flush -> notify` 的 **Total** 端到端开销（包含现有 commit/selector machinery 与新增调度/路由）；before/after diff 负责守“无回归”，首次实现完成后以 baseline 回写并按默认 20% 相对阈值设定回归门槛。
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
-- 采集隔离：硬结论的 before/after/diff 必须同环境同参数，且必须使用独立目录或 `git worktree` 隔离采集（混杂工作区结果只作线索不得宣称 Gate PASS）
+- 采集隔离：硬结论的 before/after/diff 必须同环境同参数；若是 adapter A/B（同一代码）对比，可在同一工作区采集，但必须保证采集期间不改代码/不切换 profile，并把 git dirty 状态写入 `specs/073-logix-external-store-tick/perf/README.md`
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`（并确保 before/after 的 `meta.matrixId/matrixHash` 一致）
 - 前提：以 `NODE_OPTIONS=--expose-gc` 运行采集（否则 heap 指标不可复现/不可比）
 - 环境元信息：硬结论采集必须把 env/versions/profile/runs/warmup/timeoutMs 等信息与证据文件名，记录到 `specs/073-logix-external-store-tick/perf/README.md`（避免“可比性争论”）
@@ -150,22 +168,32 @@ Baseline 语义：代码前后（before=现状 per-module ExternalStore；after=
 
 **Standard Workload（for `runtime-store-no-tearing` budget）**：
 
-- 模块数：`10`（至少 `2` 个模块在同一 tick 内同时变更，用于证明跨模块无 tearing）
-- 依赖深度：`3`（inputs → derived/computed → source/query-like 派生）
-- 外部输入：`5` 个 external sources；每 tick 批量触发 `5` 次变更（建议 `Runtime.batch` 包裹）
-- UI 订阅：`256` 个 selector watcher（分布到多个模块，包含“同组件同时读多模块”的组合）
-- 采样：每 run `50` ticks（warmup 按 matrix 配置丢弃），度量 `timePerTickMs/retainedHeapDeltaBytesAfterGc` 的 p95
+- 模块数：`10`
+- UI 订阅：`256` 个 watcher（均匀分布到 10 个模块 topic/selector topic；每模块至少 1 个 marker watcher 用于“全部通知已到达”的屏障）
+- Tick 驱动：每 tick 用 `Runtime.batch` 同步对 10 个模块各 dispatch 1 次 update；度量窗口仅覆盖 `flush -> notify`（不含 dispatch 本身）
+- 采样：`ticksPerRun=1`；runs/warmup/timeout 由 `matrix + profile` 决定（详见证据文件 meta 与 suite point stats）
 
-**Budgets（first cut, numeric hard ceilings）**：
+**Budgets（073 首版，baseline 回写后按 20% 回归阈值）**：
 
-> 说明：以下为“硬预算上限”（避免仅写 O(1) 流于形式）。首次实现完成后，仍需把实测 baseline 回写到本节，并以 baseline 为准设定回归阈值（默认 20%）。
+> 说明：matrix v1 对本特性当前 gate：
+> - `timePerTickMs`（suite=`runtimeStore.noTearing.tickNotify`，dispatch workload）
+> - `timePerIngestMs`（suite=`externalStore.ingest.tickNotify`，external input workload）
+> `click→paint` 仍作观测口径；`retainedHeapDeltaBytesAfterGc` 由 browser gate 测试硬门禁（见下文）。
 
 - Browser（React 订阅/notify + tick flush）：
-  - `timePerTickMs.p95 <= 0.30ms`（diagnostics=off）
-  - `retainedHeapDeltaBytesAfterGc.p95 <= 256KiB`（diagnostics=off，GC 后 retained heap Δ，用于限制常驻增长）
-  - `timePerTickMs.p95 <= 0.60ms`（diagnostics=on）
-  - `retainedHeapDeltaBytesAfterGc.p95 <= 768KiB`（diagnostics=on）
-  - 相对开销：`timePerTickMs.p95(on) / timePerTickMs.p95(off) <= 1.25`
+  - Baseline（2026-01-06 / darwin-arm64 / chromium-headless / profile=default / watchers=256）：
+    - Before（adapter=perModule）：`timePerTickMs.p95` off=2.00ms / full=1.90ms
+    - After（adapter=runtimeStore）：`timePerTickMs.p95` off=1.80ms / full=1.60ms
+  - 回归阈值（以 After baseline 为准，默认 +20%）：
+    - `timePerTickMs.p95 <= 2.16ms`（diagnostics=off）
+    - `timePerTickMs.p95 <= 1.92ms`（diagnostics=full）
+    - 相对开销：`timePerTickMs.p95(full) / timePerTickMs.p95(off) <= 1.25`（matrix v1）
+  - Baseline（ingest workload）：
+    - `externalStore.ingest.tickNotify`（watchers=256, modules=10）：
+      - r1（clean）：`timePerIngestMs.p95` off=1.70ms / full=1.80ms
+      - r2（clean）：`timePerIngestMs.p95` off=1.90ms / full=1.90ms
+      - baseline（conservative=max(r1,r2)）：`timePerIngestMs.p95` off=1.90ms / full=1.90ms
+      - 回归阈值（baseline +20%）：`timePerIngestMs.p95 <= 2.28ms`（off/full）
 
 指标口径澄清：
 
@@ -173,19 +201,31 @@ Baseline 语义：代码前后（before=现状 per-module ExternalStore；after=
 - 口径：以同一 workload 的“起止强制 GC 后 usedHeap 差值”作为常驻净增（越接近 0 越好）；不以 tick 过程的临时留存为目标指标。
 - GC 压力（allocation rate）若要 gate：在 `runtime-store-no-tearing` test 内新增 `allocatedBytes`/`peakHeapDeltaBeforeGc` 等可复现指标（可选，按 matrix 能力决定）。
 - `timePerTickMs`：仅覆盖 `tick flush -> notify`（含 scheduler/commit/notify 路径），**不包含** React render/commit；渲染相关的“跟手性”使用 `click→paint` 之类场景单独 gate（避免业务组件复杂度污染基线）。
+- `retainedHeapDeltaBytesAfterGc` gate：`packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx` 内置硬门禁（`MAX_DELTA_BYTES=10MB`），依赖 browser 启动参数 `--js-flags=--expose-gc` + `--enable-precise-memory-info`（由 `packages/logix-react/vitest.config.ts` 统一注入）。
 
-**Collect (Browser / runtimeStore-no-tearing)**：
+**Collect (Browser / runtimeStore-no-tearing + click→paint guard)**：
 
-- `NODE_OPTIONS=--expose-gc pnpm perf collect -- --profile default --out specs/073-logix-external-store-tick/perf/before.browser.runtimeStore.<sha>.<envId>.default.json --files test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx`
-- `NODE_OPTIONS=--expose-gc pnpm perf collect -- --profile default --out specs/073-logix-external-store-tick/perf/after.browser.runtimeStore.<sha|worktree>.<envId>.default.json --files test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx`
-- `pnpm perf validate -- --report specs/073-logix-external-store-tick/perf/before.browser.runtimeStore.<sha>.<envId>.default.json --allow-partial`
-- `pnpm perf validate -- --report specs/073-logix-external-store-tick/perf/after.browser.runtimeStore.<sha|worktree>.<envId>.default.json --allow-partial`
-- `pnpm perf diff -- --before specs/073-logix-external-store-tick/perf/before.browser.runtimeStore...json --after specs/073-logix-external-store-tick/perf/after.browser.runtimeStore...json --out specs/073-logix-external-store-tick/perf/diff.browser.runtimeStore.before...__after....json`
+- Before（adapter=perModule）：
+  - `NODE_OPTIONS=--expose-gc VITE_LOGIX_PERF_RUNTIME_STORE_ADAPTER=perModule pnpm perf collect -- --profile default --out specs/073-logix-external-store-tick/perf/browser.before.<sha>.<envId>.logix-browser-perf-matrix-v1.default.adapter=perModule.json --files test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx --files test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
+- After（adapter=runtimeStore）：
+  - `NODE_OPTIONS=--expose-gc VITE_LOGIX_PERF_RUNTIME_STORE_ADAPTER=runtimeStore pnpm perf collect -- --profile default --out specs/073-logix-external-store-tick/perf/browser.after.<sha>.<envId>.logix-browser-perf-matrix-v1.default.adapter=runtimeStore.json --files test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx --files test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
+- Validate：
+  - `pnpm perf validate -- --report <before.json> --allow-partial`
+  - `pnpm perf validate -- --report <after.json> --allow-partial`
+- Diff（hard conclusion）：  
+  - `pnpm perf diff -- --before <before.json> --after <after.json> --out specs/073-logix-external-store-tick/perf/diff.browser.adapter=perModule__runtimeStore.<sha>.<envId>.logix-browser-perf-matrix-v1.default.json`
 
-**Collect (Browser / perceived latency guard)**：
+**Collect (Browser / externalStore ingest + retained heap gate)**：
 
-- 同步跑一份 `click→paint` 场景作为“跟手性”防线（复用现有 perf suite）：`test/browser/perf-boundaries/diagnostics-overhead.test.tsx`（scenario=`watchers.clickToPaint`）。
-- 采集方式：把该文件纳入同一组 before/after collect（可单独 out），并确保 diagnostics=off 点位不出现显著回归（矩阵预算见 `.codex/skills/logix-perf-evidence/assets/matrix.json`）。
+- 采集（suite=`externalStore.ingest.tickNotify`，同时会跑 retained heap gate）：  
+  - `pnpm perf collect -- --profile default --out specs/073-logix-external-store-tick/perf/browser.<before|after>.<sha>.<envId>.logix-browser-perf-matrix-v1.default.suite=externalStore.ingest.tickNotify.<rN>.json --files test/browser/perf-boundaries/external-store-ingest.test.tsx`
+- Diff（同代码 r1/r2，用于确认可比性与稳定性）：  
+  - `pnpm perf diff -- --before <r1.json> --after <r2.json> --out specs/073-logix-external-store-tick/perf/diff.browser.suite=externalStore.ingest.tickNotify.r1__r2.<sha>.<envId>.logix-browser-perf-matrix-v1.default.json`
+
+**Perceived latency guard（click→paint）**：
+
+- 场景：`test/browser/perf-boundaries/diagnostics-overhead.test.tsx`（scenario=`watchers.clickToPaint`）
+- 口径：matrix v1 暂无 budgets（P3 观测点）；如需变成硬门禁，后续在 matrix 中补 budgets（例如限定 diagnosticsLevel=off 的 p95 上限或相对比值）。
 
 Failure Policy：任一 diff `meta.comparability.comparable=false` 或 `summary.regressions>0` → 不得下硬结论，必须复测并定位（profile 升级或缩小 files 子集）。
 

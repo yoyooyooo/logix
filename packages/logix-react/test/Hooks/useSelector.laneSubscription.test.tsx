@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import React from 'react'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
-import { ManagedRuntime, Schema } from 'effect'
+import { ManagedRuntime, Schema, Layer } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule, useSelector } from '../../src/Hooks.js'
 
@@ -23,7 +23,13 @@ const Counter = Logix.Module.make('useSelectorLaneSubscriptionCounter', {
 describe('useSelector(lane subscription)', () => {
   it('static lane avoids recompute on unrelated dirtyRoots, dynamic lane still recomputes', async () => {
     const layer = Counter.live({ count: 0, other: 0 })
-    const runtime = ManagedRuntime.make(layer as import('effect').Layer.Layer<any, never, never>)
+    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const runtime = ManagedRuntime.make(
+      Layer.mergeAll(
+        tickServicesLayer,
+        Layer.provide(layer as Layer.Layer<any, never, any>, tickServicesLayer),
+      ) as Layer.Layer<any, never, never>,
+    )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>

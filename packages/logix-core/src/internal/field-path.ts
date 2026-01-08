@@ -7,6 +7,7 @@ export type PatchReason =
   | 'reducer'
   | 'trait-computed'
   | 'trait-link'
+  | 'trait-external-store'
   | 'source-refresh'
   | 'devtools'
   | 'perf'
@@ -17,6 +18,7 @@ export const normalizePatchReason = (reason: unknown): PatchReason => {
     case 'reducer':
     case 'trait-computed':
     case 'trait-link':
+    case 'trait-external-store':
     case 'source-refresh':
     case 'devtools':
     case 'perf':

@@ -78,6 +78,22 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
   const onErrorRef = React.useRef(onError)
   onErrorRef.current = onError
 
+  const hasTickServices = useMemo(() => {
+    try {
+      Logix.InternalContracts.getRuntimeStore(baseRuntime)
+      return true
+    } catch {
+      return false
+    }
+  }, [baseRuntime])
+
+  const { binding: tickBinding } = useLayerBinding(
+    baseRuntime,
+    Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, never>,
+    !hasTickServices,
+    onErrorRef.current,
+  )
+
   const { binding: layerBinding } = useLayerBinding(baseRuntime, layer, Boolean(layer), onErrorRef.current)
 
   const onErrorSink = useMemo<Logix.Debug.Sink | null>(() => {
@@ -146,13 +162,13 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
   // causing `useModule(Impl,{ key })` to lose cross-component instance reuse.
   const runtimeWithBindings = useMemo(
     () =>
-      layerBinding || onErrorSink
+      tickBinding || layerBinding || onErrorSink
         ? createRuntimeAdapter(
             baseRuntime,
-            layerBinding ? [layerBinding.context] : [],
-            layerBinding ? [layerBinding.scope] : [],
-            layerBinding ? [layerBinding.loggers] : [],
-            layerBinding ? [layerBinding.logLevel] : [],
+            [...(tickBinding ? [tickBinding.context] : []), ...(layerBinding ? [layerBinding.context] : [])],
+            [...(tickBinding ? [tickBinding.scope] : []), ...(layerBinding ? [layerBinding.scope] : [])],
+            layerBinding ? [layerBinding.loggers] : tickBinding ? [tickBinding.loggers] : [],
+            layerBinding ? [layerBinding.logLevel] : tickBinding ? [tickBinding.logLevel] : [],
             [
               onErrorSink
                 ? ([onErrorSink, ...inheritedDebugSinks] as ReadonlyArray<Logix.Debug.Sink>)
@@ -162,7 +178,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
             ],
           )
         : baseRuntime,
-    [baseRuntime, inheritedDebugSinks, layerBinding, onErrorSink],
+    [baseRuntime, inheritedDebugSinks, layerBinding, onErrorSink, tickBinding],
   )
 
   const didReportSyncConfigSnapshotRef = React.useRef(false)
@@ -305,6 +321,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     [runtimeWithBindings, configState, resolvedPolicy],
   )
 
+  const isTickServicesReady = hasTickServices || tickBinding !== null
   const isLayerReady = !layer || layerBinding !== null
   const isConfigReady = configState.loaded
 
@@ -496,10 +513,11 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     }
   }, [resolvedPolicy.mode, deferReady])
 
-  const isReady = isLayerReady && isConfigReady && (resolvedPolicy.mode !== 'defer' || deferReady)
+  const isReady = isTickServicesReady && isLayerReady && isConfigReady && (resolvedPolicy.mode !== 'defer' || deferReady)
 
   if (!isReady) {
     const blockersList = [
+      isTickServicesReady ? null : 'tick',
       isLayerReady ? null : 'layer',
       isConfigReady ? null : 'config',
       resolvedPolicy.mode !== 'defer' || deferReady ? null : 'preload',

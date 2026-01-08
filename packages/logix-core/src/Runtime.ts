@@ -25,6 +25,7 @@ import {
 } from './internal/runtime/core/env.js'
 import * as Middleware from './Middleware.js'
 import { getRuntimeInternals } from './internal/runtime/core/runtimeInternalsAccessor.js'
+import { enterRuntimeBatch, exitRuntimeBatch } from './internal/runtime/core/TickScheduler.js'
 import * as ScopeRegistry from './ScopeRegistry.js'
 import {
   warnInvalidConcurrencyPolicyDevOnly,
@@ -279,6 +280,24 @@ export const make = (
 
   const app = AppRuntimeImpl.makeApp(appConfig)
   return app.makeRuntime() as ManagedRuntime.ManagedRuntime<any, never>
+}
+
+/**
+ * Runtime.batch：
+ * - Provides a stronger "tick boundary" for RuntimeStore/TickScheduler than the default microtask boundary.
+ * - Sync-only: nested batches flatten; only the outermost batch triggers the flush boundary.
+ * - NOT a transaction: no rollback; errors may result in partial commits, but the flush boundary is still released in finally.
+ *
+ * WARNING:
+ * - Do not `await` inside the batch callback expecting mid-flush; batch only establishes a synchronous boundary.
+ */
+export const batch = <A>(fn: () => A): A => {
+  enterRuntimeBatch()
+  try {
+    return fn()
+  } finally {
+    exitRuntimeBatch()
+  }
 }
 
 /**

@@ -79,9 +79,13 @@ const CounterManualForkLogic = Counter.logic<Scope.Scope>(($) =>
 describe('React watcher patterns integration', () => {
   it('runFork-based watcher should update state via React hooks', async () => {
     const layer = Counter.live({ value: 0 }, CounterRunForkLogic, CounterErrorLogic)
+    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
 
     const runtime = ManagedRuntime.make(
-      layer as Layer.Layer<Logix.ModuleRuntime<StateOf<CounterShape>, ActionOf<CounterShape>>, never, never>,
+      Layer.mergeAll(
+        tickServicesLayer,
+        Layer.provide(layer as Layer.Layer<any, never, any>, tickServicesLayer),
+      ) as Layer.Layer<any, never, never>,
     )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -124,9 +128,13 @@ describe('React watcher patterns integration', () => {
 
   it('Effect.all + run style watcher should update state via React hooks', async () => {
     const layer = Counter.live({ value: 0 }, CounterAllLogic, CounterErrorLogic)
+    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
 
     const runtime = ManagedRuntime.make(
-      layer as Layer.Layer<Logix.ModuleRuntime<StateOf<CounterShape>, ActionOf<CounterShape>>, never, never>,
+      Layer.mergeAll(
+        tickServicesLayer,
+        Layer.provide(layer as Layer.Layer<any, never, any>, tickServicesLayer),
+      ) as Layer.Layer<any, never, never>,
     )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -169,9 +177,13 @@ describe('React watcher patterns integration', () => {
 
   it('manual Effect.fork($.onAction().run(...)) watcher should behave like runFork', async () => {
     const layer = Counter.live({ value: 0 }, CounterManualForkLogic, CounterErrorLogic)
+    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
 
     const runtime = ManagedRuntime.make(
-      layer as Layer.Layer<Logix.ModuleRuntime<StateOf<CounterShape>, ActionOf<CounterShape>>, never, never>,
+      Layer.mergeAll(
+        tickServicesLayer,
+        Layer.provide(layer as Layer.Layer<any, never, any>, tickServicesLayer),
+      ) as Layer.Layer<any, never, never>,
     )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (

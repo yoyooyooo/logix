@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import { renderHook, waitFor, act } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
-import { Schema, ManagedRuntime, Effect } from 'effect'
+import { Schema, Effect } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
 import React from 'react'
@@ -16,15 +16,18 @@ const Counter = Logix.Module.make('Counter', {
 
 describe('useSelector', () => {
   it('should select state slice and update on change', async () => {
-    const layer = Counter.live(
-      { count: 10 },
-      Counter.logic<never>((api) =>
-        Effect.gen(function* () {
-          yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
-        }),
-      ),
+    const CounterLogic = Counter.logic<never>((api) =>
+      Effect.gen(function* () {
+        yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
+      }),
     )
-    const runtime = ManagedRuntime.make(layer as import('effect').Layer.Layer<any, never, never>)
+
+    const runtime = Logix.Runtime.make(
+      Counter.implement({
+        initial: { count: 10 },
+        logics: [CounterLogic],
+      }),
+    )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>
@@ -53,16 +56,18 @@ describe('useSelector', () => {
   })
 
   it('should invoke equalityFn when provided', async () => {
-    const layer = Counter.live(
-      { count: 0 },
-      Counter.logic<never>((api) =>
-        Effect.gen(function* () {
-          yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
-        }),
-      ),
+    const CounterLogic = Counter.logic<never>((api) =>
+      Effect.gen(function* () {
+        yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
+      }),
     )
 
-    const runtime = ManagedRuntime.make(layer as import('effect').Layer.Layer<any, never, never>)
+    const runtime = Logix.Runtime.make(
+      Counter.implement({
+        initial: { count: 0 },
+        logics: [CounterLogic],
+      }),
+    )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>

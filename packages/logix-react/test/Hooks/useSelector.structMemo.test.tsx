@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import React from 'react'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
-import { ManagedRuntime, Schema } from 'effect'
+import { ManagedRuntime, Schema, Layer } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
 
@@ -26,7 +26,13 @@ const Counter = Logix.Module.make('useSelectorStructMemoCounter', {
 describe('useSelector(struct memo)', () => {
   it('reuses object reference when unrelated fields change', async () => {
     const layer = Counter.live({ count: 0, age: 0, other: 0 })
-    const runtime = ManagedRuntime.make(layer as import('effect').Layer.Layer<any, never, never>)
+    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const runtime = ManagedRuntime.make(
+      Layer.mergeAll(
+        tickServicesLayer,
+        Layer.provide(layer as Layer.Layer<any, never, any>, tickServicesLayer),
+      ) as Layer.Layer<any, never, never>,
+    )
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>

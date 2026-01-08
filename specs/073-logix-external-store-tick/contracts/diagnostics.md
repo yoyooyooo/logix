@@ -151,3 +151,44 @@ Devtools 呈现建议（非合同约束）：
 - 回放必须以 tick 为最小可观察单位：强制对齐到 `tickSeq`（tick 边界）。
 - 允许回放到 `result.stable=false` 的 tick（partial fixpoint），但仍是“一个 tick 的对外快照”，UI 无 tearing 语义仍成立。
 - 不提供“回放到 tick 中间态并绑定 UI”的能力；如需排查中间态，仅允许 inspect/debug（不承诺 UI 不撕裂）。
+
+## 6) 优化阶梯（NFR-005）
+
+当引入预算/自动调度策略（tick 稳定化、coalesce 等）后，需要一条从“默认可用”到“可控可解释”的操作路径：**默认 → 观察 → 收敛 deps/selector → 调参/拆分**。本节把这条梯子固化为可执行的检查点，并明确每一步依赖哪些诊断证据。
+
+### 6.1 默认（不调参）
+
+- 以 `diagnostics=off` 为默认档：不产出 `trace:tick` 也不影响正确性；性能回归以 perf evidence gate 为准。
+- 仅在必须的 bug/边界情况下打开 `diagnostics=light`（例如定位 tearing / tick 不稳定 / notify 风暴）。
+
+### 6.2 观察（打开证据）
+
+- 打开 `diagnostics=light`，优先看同一 `tickSeq` 的 `trace:tick`（`start/settled/budgetExceeded`）三类信息：
+  - `budget.*`：时间/步数/txnCount 是否触顶；
+  - `backlog.*`：哪些工作被推迟（尤其 `backlog.deferredPrimary`）；
+  - `result.stable/degradeReason`：是否发生 partial fixpoint、原因是什么。
+- 若出现 `warn:priority-inversion`：先确认是否把“有 UI 订阅者的链路”错误标成 nonUrgent，或预算/合并策略过于激进（导致长期 deferred）。
+
+### 6.3 收敛依赖（减少 churn / 降低不必要唤醒）
+
+- 优先收敛 selector：
+  - `ReadQuery` static lane + 有 `readsDigest` 的 selector 才进入 selector-topic；否则回退到 module-topic（保证正确性，但不承诺零开销）。
+  - 尽量避免“动态 selector 在每次 render 变形”导致的 topic churn（会表现为 retained 增长/notify 风暴）。
+- ExternalStoreTrait：
+  - 优先使用 `select/equals` 限制写回抖动（只让“业务可见变化”进入 committed 写回）。
+  - listener 始终坚持 Signal Dirty（去重调度），避免把 payload 变成 task queue 风暴。
+
+### 6.4 调参（只动明确旋钮）
+
+- Lane：
+  - 默认 urgent（输入/交互触发、external input 写回）；仅把“可延后链路”显式降级为 nonUrgent。
+  - 预算降级只允许推迟 nonUrgent backlog；urgent 不得被推迟（否则会表现为 `warn:priority-inversion` 或长时间 deferred）。
+- Budget：
+  - 先调 `maxSteps/maxMs`（配合 `degradeReason`）验证“是否只是阈值过紧”；避免盲目扩大导致 UI 卡顿。
+- Coalesce：
+  - 仅允许在“写回层”做 pre-write 聚合：raw snapshot 允许变，committed 写回与 tick flush 才是对外可见单位；避免引入“未 notify 但可观测值已变化”的心智裂缝。
+
+### 6.5 拆分与结构治理（长期解法）
+
+- 若持续出现 `budgetExceeded` / backlog 常驻：优先拆分依赖链（减少跨模块依赖边数量、缩短 fixpoint 路径），而不是无限加预算。
+- 若出现 retained 增长：优先检查 topic facade 的生命周期（listeners=0 必须 detach + cache 移除），再考虑引入上限策略（LRU/TTL）并纳入 retained gate。

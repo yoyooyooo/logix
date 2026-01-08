@@ -472,15 +472,15 @@ Common entry points include:
 
 ### 6.2 Typical examples
 
-1. **A simple click (single transaction)**  
+1. **A simple click (single transaction)**
    Click button → `dispatch(increment)` → transaction #1: action → state commit
 
-2. **A request with loading (multiple transactions)**  
-   Click “Load profile” → `dispatch(load)` → transaction #1: commit `loading=true`  
+2. **A request with loading (multiple transactions)**
+   Click “Load profile” → `dispatch(load)` → transaction #1: commit `loading=true`
    Request completes → write back → transaction #2: commit results like `profile`/`error`
 
-3. **A common pitfall: stuffing a long chain into one entry**  
-   If you cross a long async boundary inside a single entry and keep updating state after waiting, you end up with a “stretched transaction”.  
+3. **A common pitfall: stuffing a long chain into one entry**
+   If you cross a long async boundary inside a single entry and keep updating state after waiting, you end up with a “stretched transaction”.
    Prefer splitting it into multiple explicit entries (e.g. one entry sets loading, another receives results and writes back). This makes transaction boundaries clearer and the DevTools timeline easier to read.
 
 ## Next steps

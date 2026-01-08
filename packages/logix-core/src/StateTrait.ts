@@ -6,6 +6,7 @@
 import type { Schema } from 'effect'
 import { Effect } from 'effect'
 import type { BoundApi } from './Bound.js'
+import type { ExternalStore as ExternalStoreType } from './ExternalStore.js'
 import * as Model from './internal/state-trait/model.js'
 import * as FieldPath from './internal/state-trait/field-path.js'
 import * as RowId from './internal/state-trait/rowid.js'
@@ -121,6 +122,25 @@ export const source = <
     meta: { ...input, key },
   } as StateTraitEntry<S, P>
 }
+
+/**
+ * StateTrait.externalStore:
+ * - Declares that a field is written back from an ExternalStore (external input or Module-as-Source).
+ * - The field is treated as external-owned: do not write to it from reducers/computed/link/source; use separate fields + derived traits.
+ */
+export const externalStore = <S extends object, P extends StateFieldPath<S>, T = StateAtPath<S, P>>(input: {
+  readonly store: ExternalStoreType<T>
+  readonly select?: (snapshot: T) => StateAtPath<S, P>
+  readonly equals?: (prev: StateAtPath<S, P>, next: StateAtPath<S, P>) => boolean
+  readonly coalesceWindowMs?: number
+  readonly priority?: Model.TraitLane
+  readonly meta?: Record<string, unknown>
+}): StateTraitEntry<S, P> =>
+  ({
+    fieldPath: undefined as unknown as P,
+    kind: 'externalStore',
+    meta: input as any,
+  }) as StateTraitEntry<S, P>
 
 /**
  * StateTrait.link:

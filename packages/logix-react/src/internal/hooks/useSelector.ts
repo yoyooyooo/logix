@@ -5,8 +5,7 @@ import { RuntimeContext } from '../provider/ReactContext.js'
 import { ReactModuleHandle, useModuleRuntime } from './useModuleRuntime.js'
 import { isDevEnv } from '../provider/env.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
-import { getModuleRuntimeExternalStore } from '../store/ModuleRuntimeExternalStore.js'
-import { getModuleRuntimeSelectorExternalStore } from '../store/ModuleRuntimeSelectorExternalStore.js'
+import { getRuntimeModuleExternalStore, getRuntimeReadQueryExternalStore } from '../store/RuntimeExternalStore.js'
 import type { ModuleRef } from '../store/ModuleRef.js'
 import { shallow } from './shallow.js'
 
@@ -55,21 +54,20 @@ export function useSelector<H extends ReactModuleHandle, V>(
     return selectorReadQuery?.equalsKind === 'shallowStruct' ? shallow : Object.is
   }, [equalityFn, selector, selectorReadQuery?.equalsKind])
 
-  const useStaticLane = typeof selector === 'function' && selectorReadQuery?.lane === 'static'
+  const selectorTopicEligible =
+    typeof selector === 'function' &&
+    selectorReadQuery?.lane === 'static' &&
+    selectorReadQuery.readsDigest != null &&
+    selectorReadQuery.fallbackReason == null
 
   const store = useMemo(
     () =>
-      useStaticLane && selectorReadQuery
-        ? getModuleRuntimeSelectorExternalStore(
-            runtime,
-            moduleRuntime,
-            selectorReadQuery,
-            {
-              lowPriorityDelayMs: runtimeContext.reactConfigSnapshot.lowPriorityDelayMs,
-              lowPriorityMaxDelayMs: runtimeContext.reactConfigSnapshot.lowPriorityMaxDelayMs,
-            },
-          )
-        : getModuleRuntimeExternalStore(
+      selectorTopicEligible && selectorReadQuery
+        ? getRuntimeReadQueryExternalStore(runtime, moduleRuntime, selectorReadQuery, {
+            lowPriorityDelayMs: runtimeContext.reactConfigSnapshot.lowPriorityDelayMs,
+            lowPriorityMaxDelayMs: runtimeContext.reactConfigSnapshot.lowPriorityMaxDelayMs,
+          })
+        : getRuntimeModuleExternalStore(
             runtime,
             moduleRuntime,
             {
@@ -83,15 +81,15 @@ export function useSelector<H extends ReactModuleHandle, V>(
       runtimeContext.reactConfigSnapshot.lowPriorityDelayMs,
       runtimeContext.reactConfigSnapshot.lowPriorityMaxDelayMs,
       selectorReadQuery,
-      useStaticLane,
+      selectorTopicEligible,
     ],
   )
 
   const selected = useSyncExternalStoreWithSelector<unknown, V>(
     store.subscribe,
     store.getSnapshot,
-    store.getSnapshot,
-    useStaticLane ? (snapshot) => snapshot as V : (snapshot) => actualSelector(snapshot as StateOfHandle<H>),
+    store.getServerSnapshot ?? store.getSnapshot,
+    selectorTopicEligible ? (snapshot) => snapshot as V : (snapshot) => actualSelector(snapshot as StateOfHandle<H>),
     actualEqualityFn,
   )
 
