@@ -1,5 +1,5 @@
 {
-  "name": "logix-perf-evidence",
+  "name": "@logixjs/perf-evidence",
   "version": "0.0.0",
   "private": true,
   "scripts": {

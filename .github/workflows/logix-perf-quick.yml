@@ -153,7 +153,14 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          # Some base commits may not have the Vite/Vitest alias for `@logixjs/perf-evidence`.
+          # Ensure the package import path resolves for browser perf tests regardless.
+          if [ ! -e node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
 
       - name: Install Playwright Chromium deps
         run: pnpm exec playwright install --with-deps chromium
@@ -178,6 +185,10 @@ jobs:
           mkdir -p .codex/skills/logix-perf-evidence/assets
           git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          if [ ! -e node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
           FILE_ARGS=()
           for f in "${PERF_FILES_ARRAY[@]}"; do
@@ -202,6 +213,10 @@ jobs:
           mkdir -p .codex/skills/logix-perf-evidence/assets
           git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          if [ ! -e node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
           FILE_ARGS=()
           for f in "${PERF_FILES_ARRAY[@]}"; do
