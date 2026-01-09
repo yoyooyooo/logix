@@ -1,7 +1,7 @@
 # Cheat Sheet: Form 校验背后运行链路（触发 / 增量 / 写回 / 诊断）
 
 > 目的：把“表单校验为什么是可控的、增量的、可解释的”固化成一份可查字典的小抄。  
-> 范围：028 推荐路径下的 `@logix/form` + `@logix/core`（StateTrait / TraitLifecycle）当前实现口径。
+> 范围：028 推荐路径下的 `@logixjs/form` + `@logixjs/core`（StateTrait / TraitLifecycle）当前实现口径。
 
 ## 0) 一屏 TL;DR（先记结论）
 

@@ -33,11 +33,11 @@
 
 **Why this priority**: 这是把 RulesManifest 纳入通用 inspection 心智模型的最短路径；一旦贯通，后续其它 kit 的补充 IR 也能复用这条链路。
 
-**Independent Test**: 选取一个包含表单 rules 的模块，在 sandbox 的 `/ir` 页面能直接看到 `@logix/form.rulesManifest@v1` 工件及其 warnings；对同一输入重复导出保持一致。
+**Independent Test**: 选取一个包含表单 rules 的模块，在 sandbox 的 `/ir` 页面能直接看到 `@logixjs/form.rulesManifest@v1` 工件及其 warnings；对同一输入重复导出保持一致。
 
 **Acceptance Scenarios**:
 
-1. **Given** 一个包含 `@logix/form` rules 的模块，**When** 通过 sandbox 执行一次 `/ir` 检查，**Then** TrialRunReport 中包含 `artifacts`，且包含键 `@logix/form.rulesManifest@v1`，其内容可 JSON 序列化并可被通用 JSON viewer 展示。
+1. **Given** 一个包含 `@logixjs/form` rules 的模块，**When** 通过 sandbox 执行一次 `/ir` 检查，**Then** TrialRunReport 中包含 `artifacts`，且包含键 `@logixjs/form.rulesManifest@v1`，其内容可 JSON 序列化并可被通用 JSON viewer 展示。
 2. **Given** 规则清单存在可行动告警（例如 deps 缺失、identity 缺失等），**When** 导出 RulesManifest artifact，**Then** artifact 同时携带 warnings，平台可直接展示或导出。
 3. **Given** 一个不使用表单 rules 的模块，**When** 执行 `/ir` 检查，**Then** `artifacts` 可以为空或缺省，但 `/ir` 展示不应报错。
 
@@ -90,13 +90,13 @@
 - **FR-002**: 系统 MUST 提供模块级扩展点，使 feature kit 能在 Trial Run 过程中导出 artifacts；新增 artifact 不应要求修改 core 的业务逻辑（符合 OCP）。
 - **FR-003**: 每个 artifact MUST 使用稳定且版本化的 key（例如 `@scope/name@vN`）；同 key 在同版本下的结构与语义必须稳定，便于平台长期存储与对比。
   - key 的命名空间必须 **概念化**：`@scope/name` 表达“契约域/概念域”，而不是实现包名；避免使用 `core/sandbox/react` 等实现层前缀。
-  - 允许 key 外观与 npm 包名相同（例如 `@logix/form.*`），但语义只视为“协议命名空间”，消费者不得据此推断 import 路径或实现落点。
+  - 允许 key 外观与 npm 包名相同（例如 `@logixjs/form.*`），但语义只视为“协议命名空间”，消费者不得据此推断 import 路径或实现落点。
 - **FR-004**: artifacts MUST 有明确的体积预算（默认每个 artifact ≤ 50KB），并在超过预算时以显式截断标记输出，而不是静默丢失或导致报告失败。
 - **FR-005**: artifacts 输出 MUST 具有确定性：字段顺序、数组顺序、枚举值等需保持稳定；不得包含时间戳/随机/机器特异信息。
 - **FR-006**: 当出现 artifact key 冲突时，系统 MUST 失败并输出可行动错误（包含冲突 key 与来源），避免静默覆盖。
 - **FR-007**: 当单个 artifact 导出失败（异常/不可序列化/超预算无法截断等）时，系统 MUST 仍尽可能产出 TrialRunReport（保留其它 IR 与 artifacts），并以结构化错误呈现失败原因。
-- **FR-008**: `@logix/form` MUST 在 Trial Run artifacts 中导出 RulesManifest（首个用例），并同时导出其 warnings：
-  - key: `@logix/form.rulesManifest@v1`
+- **FR-008**: `@logixjs/form` MUST 在 Trial Run artifacts 中导出 RulesManifest（首个用例），并同时导出其 warnings：
+  - key: `@logixjs/form.rulesManifest@v1`
   - payload: `{ manifest, warnings }`（均可 JSON 序列化）
 - **FR-009**: 平台侧（以 `examples/logix-sandbox-mvp` 作为最小平台）MUST 能在 `/ir` 展示 artifacts：至少提供一个通用 JSON viewer，能查看/复制/下载 artifact 内容。
 - **FR-010**: Trial Run 的反射/导出环境 MUST 受控且默认只读：artifacts 导出不得触发 IO/网络/随机/时间戳等非确定性来源；如发生违规，必须以结构化错误呈现（包含 moduleId、artifactKey、violationKind），并保持“单项失败不阻塞其它 artifacts”的语义。
@@ -112,7 +112,7 @@
 - **TrialRunReport**: 受控试运行的结果封装，供平台/CLI/devtools 消费。
 - **TrialRun Artifacts**: 以 `key → JSON` 的方式附加在 TrialRunReport 上的“补充静态 IR 摘要”集合。
 - **Supplemental Static IR**: 不参与执行热路径，但用于解释、告警、对照与 diff 的静态摘要工件。
-- **RulesManifest Artifact**: `@logix/form` 的补充静态 IR，描述规则清单（ruleId/scope/deps/validateOn/list identity 等）与 warnings。
+- **RulesManifest Artifact**: `@logixjs/form` 的补充静态 IR，描述规则清单（ruleId/scope/deps/validateOn/list identity 等）与 warnings。
 
 ### Assumptions & Scope Boundaries
 
@@ -124,7 +124,7 @@
 
 ### Measurable Outcomes
 
-- **SC-001**: 在 sandbox 的 `/ir` 页面，对一个包含表单 rules 的模块能看到 `@logix/form.rulesManifest@v1` artifact，且内容可 JSON 序列化并可展示。
+- **SC-001**: 在 sandbox 的 `/ir` 页面，对一个包含表单 rules 的模块能看到 `@logixjs/form.rulesManifest@v1` artifact，且内容可 JSON 序列化并可展示。
 - **SC-002**: 对同一模块重复导出 TrialRunReport，artifacts 输出保持一致（确定性）。
 - **SC-003**: 当 RulesManifest 接近或超过预算时，artifact 仍可导出且带显式截断标记；平台展示不崩溃。
 - **SC-004**: 新增一个非 form 的示例 artifact（最小 JSON）无需修改 core 业务逻辑即可出现在 TrialRunReport 中（验证扩展点有效）。

@@ -146,10 +146,10 @@ Dev Server 与 Runtime 的接口建议走“最小 Hook 原则”：
 
 # 6. 与 Builder / Parser 的关系
 
-在 v3 平台架构下，`@logix/builder` 与 Runtime 的分工已经约定：
+在 v3 平台架构下，`@logixjs/builder` 与 Runtime 的分工已经约定：
 
-- `@logix/core`：只负责 Runtime 行为，视 Fluent DSL 为普通 TS/Effect 代码，不内建 AST/Pattern 概念；
-- `@logix/builder`：把 `@logix/core` 视作“目标语言”，负责静态分析（AST）和出码。
+- `@logixjs/core`：只负责 Runtime 行为，视 Fluent DSL 为普通 TS/Effect 代码，不内建 AST/Pattern 概念；
+- `@logixjs/builder`：把 `@logixjs/core` 视作“目标语言”，负责静态分析（AST）和出码。
 
 `logix dev` 可以被理解为：
 

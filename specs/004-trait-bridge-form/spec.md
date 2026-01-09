@@ -13,7 +13,7 @@
 
 - 以 **Trait** 作为内核抽象，明确 Trait 的生命周期与桥接契约；
 - 以 **StateTrait** 作为“第一个支点 Trait”（最先跑通：数组、错误树、异步资源、可回放事务）；
-- 在此之上建立一套 **Form 领域系统**（`@logix/form`），并保证同一条链路未来可以自然扩展到更多 `xxxTrait`：  
+- 在此之上建立一套 **Form 领域系统**（`@logixjs/form`），并保证同一条链路未来可以自然扩展到更多 `xxxTrait`：  
   上层领域包只是在复用 Trait 的标准化桥接能力（install / refs / validate / cleanup），而不是发明第二套运行时或第二套心智。
 - 同时把 **Query 作为与 Form 平行的第二大领域**一起规划（先规划、后实现）：用于验证“同一套 kernel + bridge”是否能支撑另一类主心智（查询/缓存/竞态），避免 004 只在 Form 语境下自洽却无法外推。
 
@@ -22,18 +22,18 @@
 1) Form 领域需求（RHF≥：FieldArray、错误树、rules、schema/transform、异步约束）；  
 2) Trait 生态需求（标准桥接模式 + 最小 API 表面积 + 可回放/可生成/可诊断）。
 
-在 Query 领域的“自动查询”体验上，本 spec 选择与 TanStack Query 的核心心智对齐：优先采用 `@tanstack/query-core` 的 `QueryObserver` 驱动 enabled/queryKey 变化下的自动行为；Logix Runtime 仍以 state 作为可回放事实源，并在写回时执行 `keyHash` 门控以保证回放语义一致。实现上，由 `@logix/query` 的集成层为每条“Query 领域的 source 规则”在其 runtime scope 内维护一个 `QueryObserver`，并在 scope 结束时执行 cleanup；Form 的 `source` 不强依赖 QueryObserver，默认仍只需调用 `ResourceSpec.load` 并写回快照。
+在 Query 领域的“自动查询”体验上，本 spec 选择与 TanStack Query 的核心心智对齐：优先采用 `@tanstack/query-core` 的 `QueryObserver` 驱动 enabled/queryKey 变化下的自动行为；Logix Runtime 仍以 state 作为可回放事实源，并在写回时执行 `keyHash` 门控以保证回放语义一致。实现上，由 `@logixjs/query` 的集成层为每条“Query 领域的 source 规则”在其 runtime scope 内维护一个 `QueryObserver`，并在 scope 结束时执行 cleanup；Form 的 `source` 不强依赖 QueryObserver，默认仍只需调用 `ResourceSpec.load` 并写回快照。
 
 ## API Surface（最小集合）
 
 本 spec 的核心目标之一是“**把 Form 做成 Trait 生态的第一个示范，而不是额外一套体系**”。为此我们把对外 API 的所有权与表面积做如下分层收口（拒绝向后兼容，优先寻求新的完美点）：
 
-- **Trait Kernel（应归属 `@logix/core`）**
+- **Trait Kernel（应归属 `@logixjs/core`）**
   - `StateTrait`（支点 Trait）：`from/build/install` + kernel verbs（`computed/source/link`）与表单语义糖 `check`
   - `StateTrait.node / StateTrait.list / $root`：纯编译期组合子（build 阶段展开为 kernel entries）
   - `TraitLifecycle`：标准桥接 helper（`install / Ref / scoped validate / cleanup`），用于把上层领域事件（如表单 change/blur/unregister/submit）接到 Module/Logic 上执行
 
-- **Form 领域包（归属 `@logix/form`，业务默认入口，方案 B：Blueprint + Controller）**
+- **Form 领域包（归属 `@logixjs/form`，业务默认入口，方案 B：Blueprint + Controller）**
   - `Form.make(...)`：产出 FormBlueprint（组合 Module + 默认 logics + traits/bridge wiring），用于业务侧以最少样板代码创建表单模块
   - `Form.Controller.*`：把 ModuleRuntime 投影为业务可用的 Controller（field/array/submit/validate 等），并保持全双工事实源
   - `Form.traits(...)`：可选语法糖入口（输出可 spread 的 `StateTraitSpec` 片段，可与 raw `StateTrait.node/list` 混用）
@@ -41,7 +41,7 @@
   - `Form.Error.*`：ErrorTree 组合/映射 helper（例如 list/item/$list/$item 的辅助构造、SchemaError 映射）
   - （可选）re-export：`Form.install = TraitLifecycle.install`、`Form.Ref = TraitLifecycle.Ref`（仅为体验，不改变所有权）
 
-- **UI 适配层（如 `@logix/react`）**
+- **UI 适配层（如 `@logixjs/react`）**
   - 负责把真实 UI 事件（onChange/onBlur/…）映射为领域 action，并调用/触发 `TraitLifecycle` 维护 `state.ui` 与 scoped validate
   - 不得引入第二套不可回放“本地错误/交互态事实源”
 
@@ -75,7 +75,7 @@
 - Q: FieldError 的形状是否允许“多条命名错误”（对齐 RHF `types` / `criteriaMode="all"`）？ → A: 允许。`FieldError` 统一为 `string | Record<ruleName, string>`（无错误为 undefined）；默认返回 string（单条错误），需要多条/命名规则时返回对象以保留上限与 Devtools 可视化。
 - Q: kernel 的 check/computed 是否支持 `Record<ruleName, fn>` 作为命名规则集合（单函数为语法糖）？ → A: 支持。`check/computed` 同时允许单函数与 Record 形态；当使用 Record 形态时，ruleName 作为诊断/展示的一等信息进入 Devtools 与错误树 leaf（Record 形态）。
 - Q: 多条命名 check/computed 规则的执行顺序与合并语义是什么？ → A: 采用确定性深合并：Record 形态按 `ruleName` 字典序依次执行；返回 patch 做 deep‑merge。`check` 叶子若来自多条命名规则，合并为 `Record<ruleName, message>`（同名覆盖）；`computed` 叶子冲突时 last‑writer‑wins，dev 环境给出 warning。
-- Q: Form 场景声明的 source 是否默认自动触发？触发枚举叫什么，并为 React 的 onBlur 等事件预留扣子吗？ → A: 是。Form.traits 中声明的 source 默认启用自动触发，触发枚举命名为 `onKeyChange`（语义更准确：当 keySelector 推导得到的 key 发生变化时触发），并允许配置 `debounceMs`（仅对 onKeyChange 生效）；同时预留 `onBlur` 等 UI 事件触发位：短期可由 @logix/react 的表单绑定层在对应事件发生时显式调用 refresh，长期可将这些事件纳入统一的 triggers 语义。
+- Q: Form 场景声明的 source 是否默认自动触发？触发枚举叫什么，并为 React 的 onBlur 等事件预留扣子吗？ → A: 是。Form.traits 中声明的 source 默认启用自动触发，触发枚举命名为 `onKeyChange`（语义更准确：当 keySelector 推导得到的 key 发生变化时触发），并允许配置 `debounceMs`（仅对 onKeyChange 生效）；同时预留 `onBlur` 等 UI 事件触发位：短期可由 @logixjs/react 的表单绑定层在对应事件发生时显式调用 refresh，长期可将这些事件纳入统一的 triggers 语义。
 - Q: source 字段写回的值是否需要包含 loading/error（表单与 Devtools 可直接消费）？ → A: 需要。source 统一写回 `ResourceSnapshot`（`status: "idle" | "loading" | "success" | "error"` + `data?/error?`），而不是仅写回 raw data；表单/Devtools 直接读 snapshot，视图层再通过 computed/check 派生 options 与用户可见错误。
 - Q: `ResourceSnapshot` 是否需要携带本次请求参数（resource key）用于 Devtools/回放/排查？ → A: 需要。snapshot 必须携带 `key`（与 ResourceSpec.keySchema 对齐），用于识别“当前数据对应哪个 key”与处理 key 变化下的竞态。
 - Q: key selector 是否允许返回 undefined 表示“禁用/不触发”，并把 snapshot 置回 idle？ → A: 允许。key selector 返回 undefined 时视为“当前无有效 key”，不得触发 IO，目标字段写回 `{ status: "idle" }`（不携带 key）。
@@ -98,18 +98,18 @@
 - Q: keySelector 是否允许返回 undefined 作为通用的“禁用/无有效 key”语义（不仅 Form.traits）？ → A: 允许。kernel 的 `StateTrait.source` 允许 `keySelector` 返回 `undefined` 表示“当前无有效 key / 禁用”，此时不得触发 IO，并将目标字段写回为 idle 快照（Form 场景为 `{ status: "idle" }`）；Form.traits 只是默认给出更甜的 triggers，但 key=undefined 的禁用语义是 kernel 的通用能力。
 
 - Q: `check` 的返回值在不同作用域下是否必须是“相对 scope 的错误 patch”，还是一律从 `state.errors` 根写 GlobalErrorTree？ → A: 必须是相对 scope 的错误 patch：field/node 返回 FieldError；list.item 返回 ItemErrorTree；list.list 返回 ListErrorNode（数组节点，允许同时写 `$list` 与多行）；仅 `$root.check` 才返回 GlobalErrorTree（从 errors 根写入）。
-- Q: Form 领域糖（`Form.traits` / `Form.Rule`）的落点是新增包还是放在 core？ → A: 新增独立包 `@logix/form`：只承载“表单领域糖与 helper”（Rules / traits / 迁移映射），不引入第二套运行时；最终必须编译为等价的 `@logix/core` StateTraitSpec（kernel 主线仍是 StateTrait → Program/Txn/EffectOp/Resource）。
+- Q: Form 领域糖（`Form.traits` / `Form.Rule`）的落点是新增包还是放在 core？ → A: 新增独立包 `@logixjs/form`：只承载“表单领域糖与 helper”（Rules / traits / 迁移映射），不引入第二套运行时；最终必须编译为等价的 `@logixjs/core` StateTraitSpec（kernel 主线仍是 StateTrait → Program/Txn/EffectOp/Resource）。
 - Q: 跨行/列表级联动校验在 `list.list.check` 下的写入能力如何定义（只写 `$list` 还是也能写行级错误）？ → A: `list.list.check` 允许同时写 `$list` 与任意行/字段的错误（`errors.items[i].x` / `errors.items[i].$item`），以覆盖真实 ToB 场景；其返回值仍是相对 scope 的 ListErrorNode（数组节点 + `$list`），不要求回退到 `$root`。
 - Q: 嵌套数组（如 `sections[].items[]`）下的 ctx 如何提供最小且可扩展的定位信息（便于规则读取上下文）？ → A: 采用 `listIndexPath + index`：list ctx 固化 `listIndexPath`（list 实例锚点，如 `[sectionIndex]`）；item ctx 固化 `listIndexPath + index`（可拼出完整 indexPath），避免把所有层级都摊平进 ctx 字段，同时保持两层嵌套一等公民。
 - Q: `StateTrait.list` 的 `item/list` 两个 scope 是否必须同时声明？ → A: 不必须。`item` 与 `list` 都是可选的：默认只声明 `item`（每行规则/派生/资源）；只有在需要“跨行/列表级”规则或摘要（如唯一性、单调性、最少 N 行）时才补充 `list`，避免无谓的 API 表面积。
 - Q: `source.triggers` 的命名应更偏“状态语义”还是更贴近 UI 事件？ → A: kernel 统一使用状态语义命名：`onKeyChange`（保留 `onBlur`），避免与 UI 层事件混淆；React 适配层负责把 input 的 onChange/onBlur 映射为 onKeyChange/onBlur。
 - Q: 校验能力在 Rules（RHF rules 对标）与 Schema（effect/Schema）之间如何分工？ → A: 采用双轨但同构落盘：Rules 负责“输入体验/即时反馈”（field/item/list/root 的 check），Schema 负责“提交/边界校验 + transform”（decode 失败需可映射回同一套 ErrorTree）；两者产出的错误最终都落在同构的 `state.errors`，不要求开发者二选一。
-- Q: Schema 解码错误映射（helper）应归属到 `@logix/form` 的哪个命名空间？ → A: 归属到 `Form.Error`：`Form.Error.fromSchemaError(error)`，因为它本质是“错误结构与映射”，而不是校验规则本身；`Form.Rule` 只负责产出 `check`。
+- Q: Schema 解码错误映射（helper）应归属到 `@logixjs/form` 的哪个命名空间？ → A: 归属到 `Form.Error`：`Form.Error.fromSchemaError(error)`，因为它本质是“错误结构与映射”，而不是校验规则本身；`Form.Rule` 只负责产出 `check`。
 - Q: FieldError leaf 是否要支持 RHF `criteriaMode="all"` 那种“多条命名错误”（保留校验上限）？ → A: 支持。`FieldError` 固化为 `string | Record<ruleName, string> | undefined`（undefined 表示无错误）；默认简单场景返回 string，需要保留多条命名规则输出时返回 Record，以便 Devtools/Studio 可展示 ruleName。
-- Q: `ListErrorNode`（数组节点 + `$list`）在 TypeScript 中如何避免强转、写出“真实代码感”的构造方式？ → A: 保持错误模型“数组节点 + `$list`”不变，但在 `@logix/form` 提供极薄的 helper：`Form.Error.list(items, { list?: FieldError })`（或等价 API）用于构造 `ListErrorNode`，quickstart/用户文档推荐使用它避免 `as any`。
+- Q: `ListErrorNode`（数组节点 + `$list`）在 TypeScript 中如何避免强转、写出“真实代码感”的构造方式？ → A: 保持错误模型“数组节点 + `$list`”不变，但在 `@logixjs/form` 提供极薄的 helper：`Form.Error.list(items, { list?: FieldError })`（或等价 API）用于构造 `ListErrorNode`，quickstart/用户文档推荐使用它避免 `as any`。
 - Q: `Form.Error.list(items, opts)` 的 opts 是否应该暴露 `$list`（带 `$`），还是用更友好的入参名？ → A: opts 使用更友好的入参名：`{ list?: FieldError }`（不暴露 `$`）；helper 内部负责写入 `$list`。错误树的事实源仍然是 `errors.items.$list`，不改变 IR。
-- Q: 行级聚合错误（`$item`）是否也应提供对称的 helper，避免用户侧接触 `$`？ → A: 是。`@logix/form` SHOULD 提供对称 helper：`Form.Error.item(fields, { item?: FieldError })`，内部写入 `$item`；错误树事实源仍为 `errors.items[i].$item`，不改变 IR。
-- Q: touched/dirty/focus/blur/unregister/滚动到首错/局部校验等“表单交互态”是否需要进入全双工可回放链路？ → A: 需要。交互态 SHOULD 存放在 Module state 的 `state.ui`（或等价命名）的专用子树中，由 `@logix/form` 维护其更新（通过 action/reducer/logic），并与 StateTrait 的校验触发（validate）形成稳定配合；React 层仅负责把 DOM 事件映射为“值变化/失焦/注销”等领域事件，不在组件本地维护第二套不可回放的交互态事实源。
+- Q: 行级聚合错误（`$item`）是否也应提供对称的 helper，避免用户侧接触 `$`？ → A: 是。`@logixjs/form` SHOULD 提供对称 helper：`Form.Error.item(fields, { item?: FieldError })`，内部写入 `$item`；错误树事实源仍为 `errors.items[i].$item`，不改变 IR。
+- Q: touched/dirty/focus/blur/unregister/滚动到首错/局部校验等“表单交互态”是否需要进入全双工可回放链路？ → A: 需要。交互态 SHOULD 存放在 Module state 的 `state.ui`（或等价命名）的专用子树中，由 `@logixjs/form` 维护其更新（通过 action/reducer/logic），并与 StateTrait 的校验触发（validate）形成稳定配合；React 层仅负责把 DOM 事件映射为“值变化/失焦/注销”等领域事件，不在组件本地维护第二套不可回放的交互态事实源。
 - Q: `state.ui.touched/dirty` 的结构是走“同构值树/同构错误树/路径字典”哪一种？ → A: 采用与 FormView 值结构同构的布尔树：字段就是字段、数组就是数组（与 errors 的同构心智一致但不引入 `$list/$item`），便于按路径读写与 Devtools 可视化；实现层允许内部使用路径字典优化，但对外 SSoT 与 API 心智以同构树为准。
 
 ### Session 2025-12-13
@@ -118,8 +118,8 @@
 - Q: `computed/source` 能否通过 Proxy 自动收集依赖来免写 deps，并把该能力下沉到 kernel？ → A: 不下沉。Proxy 自动收集依赖最多作为 DSL/工具层的可选辅助（例如 dev-only 的“推导 deps → 生成显式 deps → 对比校验报警”）；最终 IR 仍必须落为显式 `deps`，运行时不得引入动态依赖追踪机制，避免依赖集合随分支/输入变化导致不可解释与正确性风险。
 - Q: 004 的“自动查询”实现，最终选择哪种？ → A: 选择方案 A：使用 `QueryObserver`（`@tanstack/query-core`）驱动自动行为（enabled/queryKey 变化），写回 state 前仍执行 `keyHash` 门控。
 - Q: `QueryObserver` 的生命周期/作用域我们定为哪种？ → A: 每条“Query 领域的 `StateTrait.source` 规则”在其 runtime scope 内各自维护一个 `QueryObserver`，scope 结束时统一 cleanup。
-- Q: 004 是否需要在本轮明确 `@logix/form` 的业务 API 形态（面向业务开发的默认入口），而不仅仅是 kernel/bridge/IR？ → A: 是。SSoT 仍以 TraitLifecycle + StateTrait IR（`node/list/source/computed/link/check`）为底，但同时选择方案 B：Blueprint + Controller（`Form.make`）；由 Form 领域包组合 Module + 默认 logics + traits/bridge wiring，React 侧只做投影与事件适配，不引入第二套事实源（详见 `references/06-form-business-api.md`）。
-- Q: Query 领域包是否也采用与 Form 一致的“Blueprint + Controller”业务入口（`Query.make`），并通过分形 Module 的 imports/useLocalModule 接入？ → A: 是。`@logix/query` 与 `@logix/form` 平行：业务默认入口均为 Blueprint + Controller，Query 的 TanStack 集成与触发/并发语义仍回落到 StateTrait/Resource 的主线约束（详见 `references/07-query-business-api.md`）。
+- Q: 004 是否需要在本轮明确 `@logixjs/form` 的业务 API 形态（面向业务开发的默认入口），而不仅仅是 kernel/bridge/IR？ → A: 是。SSoT 仍以 TraitLifecycle + StateTrait IR（`node/list/source/computed/link/check`）为底，但同时选择方案 B：Blueprint + Controller（`Form.make`）；由 Form 领域包组合 Module + 默认 logics + traits/bridge wiring，React 侧只做投影与事件适配，不引入第二套事实源（详见 `references/06-form-business-api.md`）。
+- Q: Query 领域包是否也采用与 Form 一致的“Blueprint + Controller”业务入口（`Query.make`），并通过分形 Module 的 imports/useLocalModule 接入？ → A: 是。`@logixjs/query` 与 `@logixjs/form` 平行：业务默认入口均为 Blueprint + Controller，Query 的 TanStack 集成与触发/并发语义仍回落到 StateTrait/Resource 的主线约束（详见 `references/07-query-business-api.md`）。
 
 ---
 
@@ -130,7 +130,7 @@
 >
 > 说明：  
 > - `StateTrait` 是本 spec 选定的“第一个支点 Trait”（率先跑通数组/错误树/异步资源/事务可回放），但它不是强制中间层；某些领域也可以走 **Trait → Form** 的直接链路。  
-> - Form 的目标不是“又一套表单运行时”，而是通过 `@logix/form` 提供自解释、可组合、可回放的 API 体系，并把可复用的“桥接玩法”下沉到 Trait 生命周期层（install/refs/validate/cleanup）。
+> - Form 的目标不是“又一套表单运行时”，而是通过 `@logixjs/form` 提供自解释、可组合、可回放的 API 体系，并把可复用的“桥接玩法”下沉到 Trait 生命周期层（install/refs/validate/cleanup）。
 
 ### User Story 1 - Trait 作者沉淀可复用的桥接玩法（P1）
 
@@ -159,7 +159,7 @@
 
 ### User Story 2 - Form 领域包提供自解释且自包含的 API（P1）
 
-作为 `@logix/form` 的使用者（业务前端/框架侧），我希望：
+作为 `@logixjs/form` 的使用者（业务前端/框架侧），我希望：
 
 - 我可以把“输入事件（change/blur/unregister/submit）”映射为少量领域 action，并通过 install 一次性接入（维护 `state.ui` + 触发 scoped validate + 写回 `state.errors`）；
 - 我能用 `Form.Error.*` / `Form.Rule.*` 组合出清晰的错误树与规则库，而不需要在 UI 层手动 `setError/clearError`；
@@ -395,7 +395,7 @@ Trait 链路一旦落实现，会牵动 StateSchema、TraitSpec、Runtime/Devtoo
   - 可选配置 `debounceMs`：默认仅对 `onKeyChange` 生效（onMount 不需要防抖）；  
   - keySelector 允许返回 undefined 表示“当前无有效 key / 禁用”：此时不得触发 IO，并将 snapshot 置为 `{ status: "idle" }`（该禁用语义是 kernel 的通用能力，不仅限于 Form.traits）；  
   - triggers 的命名以语义为准：`onKeyChange` 描述“keySelector 结果变化”而不是 UI 事件；UI 事件映射由 React 适配层负责；  
-  - 预留 `triggers: ["onBlur"]`（以及未来更多 UI 事件）的扩展位：本轮不强制实现自动 wiring，但用户文档必须给出在 @logix/react 中如何在 blur/submit 等事件上触发 refresh 的推荐模式（通过显式调用 refresh 或等价 helper）。
+  - 预留 `triggers: ["onBlur"]`（以及未来更多 UI 事件）的扩展位：本轮不强制实现自动 wiring，但用户文档必须给出在 @logixjs/react 中如何在 blur/submit 等事件上触发 refresh 的推荐模式（通过显式调用 refresh 或等价 helper）。
 
 - **FR-016 · source 的写回形态（ResourceSnapshot）**  
   为了让表单链路在不引入额外 ad-hoc 状态的前提下具备 loading/error 心智，本规范要求：  
@@ -433,11 +433,11 @@ Trait 链路一旦落实现，会牵动 StateSchema、TraitSpec、Runtime/Devtoo
 - **FR-020 · Form UI 交互态的全双工落点（state.ui）**  
   为了让表单在真实业务中具备可回放、可调试、可生成的“全过程”，规范 MUST 支持把表单交互态纳入全双工链路：  
   - 表单交互态（touched/dirty/blur/focus/unregister/submitCount 等）SHOULD 存放在 Module state 的专用子树中（推荐 `state.ui`）；  
-  - `@logix/form` MUST 提供把 UI 事件映射为领域事件并写入 `state.ui` 的标准方式（action/reducer/logic 皆可），而不是在 React 组件本地维护第二套不可回放的事实源；  
+  - `@logixjs/form` MUST 提供把 UI 事件映射为领域事件并写入 `state.ui` 的标准方式（action/reducer/logic 皆可），而不是在 React 组件本地维护第二套不可回放的事实源；  
   - Devtools/TimeTravel MUST 能回放 `state.ui` 的演进（至少与 `state.errors` 同等可观测），以支持“滚动到首错”“复现输入轨迹”等调试能力。
 
 - **FR-021 · TraitLifecycle：Trait 与上层领域的标准桥接 API（FieldRef + scoped validate + cleanup）**  
-  为了让上层（`@logix/form` / `@logix/react` / 未来更多 `xxxTrait`）能以最小 glue 实现 RHF 级体验，Trait kernel MUST 提供可组合的桥接能力（本 spec 暂称 `TraitLifecycle`）：  
+  为了让上层（`@logixjs/form` / `@logixjs/react` / 未来更多 `xxxTrait`）能以最小 glue 实现 RHF 级体验，Trait kernel MUST 提供可组合的桥接能力（本 spec 暂称 `TraitLifecycle`）：  
   - 必须存在一种可序列化的 FieldRef/FieldKey，能够唯一定位一个字段实例（至少包含 field path + listIndexPath/index 等数组定位信息），用于表达 blur/change/unregister/scroll-to-error 等目标；  
   - 必须支持对 `check` 的**局部**执行（scoped validate）：允许仅校验某个字段/某行/某个列表，或按策略触发（如 onSubmit 全量、onBlur 局部），而不是只能全量跑；  
   - 必须定义 unregister / 行删除 / 重排时的错误与资源清理语义：对应 scope 的 `errors` 子树必须被确定性清理；对应 source 需遵守 stale 丢弃/取消/回 idle 语义，避免“删行后请求回写到幽灵字段”。
@@ -548,7 +548,7 @@ $root: StateTrait.node({
   - 与 UI 组件的错误展示结构（如 RHF 中的 `errors.items[3].name`）存在明确映射关系。
 
 - **字段定位（FieldRef / ListRef）**  
-  - 用于唯一定位一个“字段实例”（而不仅是字段路径字符串），是 `@logix/form` / `@logix/react` 与 Runtime/StateTrait 的桥接货币；
+  - 用于唯一定位一个“字段实例”（而不仅是字段路径字符串），是 `@logixjs/form` / `@logixjs/react` 与 Runtime/StateTrait 的桥接货币；
   - 必须可序列化、可比较：至少包含字段 path，以及数组场景下的 `listIndexPath + index` 等定位信息；
   - 用于表达 blur/change/unregister、滚动到首错、以及 scoped validate 的 target。
 
@@ -560,7 +560,7 @@ $root: StateTrait.node({
 - **表单交互态（Form UI State / `state.ui`）**  
   - 表示 touched/dirty/submitCount 等交互态，属于全双工可回放链路；
   - 推荐以与 FormView 值结构同构的布尔树表达（字段=字段、数组=数组），不引入 `$list/$item`；
-  - 由 `@logix/form` 维护写入，Devtools/TimeTravel 可回放，用于驱动“何时展示错误/何时触发校验”的策略。
+  - 由 `@logixjs/form` 维护写入，Devtools/TimeTravel 可回放，用于驱动“何时展示错误/何时触发校验”的策略。
 
 ---
 

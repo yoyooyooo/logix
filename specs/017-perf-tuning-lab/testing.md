@@ -19,7 +19,7 @@
 
 017 的 sweep/推荐依赖 014 跑道中对 “PerfReport/thresholds” 的统一口径。
 
-- 跑道与矩阵：`@logix/perf-evidence/assets/matrix.json`
+- 跑道与矩阵：`@logixjs/perf-evidence/assets/matrix.json`
 - 采集与落盘：`pnpm perf collect`
 - 017 sweep：`pnpm perf tuning:recommend`
 

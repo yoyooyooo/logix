@@ -21,7 +21,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM），Node.js 20+  
-**Primary Dependencies**: `effect` v3、`@logix/core`、`@logix/react`（以及 Devtools 相关包作为诊断展示）  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`（以及 Devtools 相关包作为诊断展示）  
 **Storage**: N/A（纯运行时语义；以内存 Context/Scope 为主）  
 **Testing**: Vitest + `@effect/vitest`（一次性运行；不使用 watch）  
 **Target Platform**: Browser（React 适配）+ Node.js（测试）  

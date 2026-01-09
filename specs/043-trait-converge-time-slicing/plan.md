@@ -15,7 +15,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logix/core`、`@logix/react`（browser perf boundary）  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`（browser perf boundary）  
 **Storage**: N/A（纯内存态；无持久化引入）  
 **Testing**: Vitest（workspace）、`@effect/vitest`（Effect-heavy 单测）、Vitest browser（perf-boundaries）  
 **Target Platform**: Node.js 20+ + modern browsers（headless）  
@@ -35,7 +35,7 @@ _GATE: Must pass before implementation. Re-check after code + docs._
 - **Deterministic identity**：不引入随机/时间 id；延迟窗口的事务仍使用既有 `txnSeq/txnId` 规则；必要时使用 RunSession 的本地序号（opSeq）作为补算事件锚点。
 - **Transaction boundary**：事务窗口内仍只做同步计算与写回；延迟执行通过 txnQueue 在后续独立事务窗口运行（可含 sleep/debounce，但必须在事务外）。
 - **Internal contracts & trial runs**：不新增 magic fields；time-slicing 的状态（pending/backlog/scheduled）封装在 ModuleRuntime 内部 state（Ref/Deferred）中，可按实例隔离。
-- **Dual kernels（core + core-ng）**：该特性位于 StateTrait/ModuleRuntime 内，预期 core/core-ng 都支持；不引入 consumer 对 `@logix/core-ng` 直依赖。
+- **Dual kernels（core + core-ng）**：该特性位于 StateTrait/ModuleRuntime 内，预期 core/core-ng 都支持；不引入 consumer 对 `@logixjs/core-ng` 直依赖。
 - **Performance budget**：触及核心路径（每 txn 的 converge/dirty-check 决策）；必须提供 Browser 基线与回归用例。
 - **Diagnosability & explainability**：新增 time-slicing 摘要字段；`diagnostics=off` 下不做额外字符串/数组构造。
 - **User-facing mental model**：对外文档补充关键词与优化梯子（immediate/deferred、maxLag、forceFlush、overrides）。

@@ -61,7 +61,7 @@
 
 ### D02 — i18n 以“可注入服务契约”接入（每棵 tree 独立、可 mock）
 
-**Decision**：在 `@logix/i18n`（新领域特性包）中新增一个 i18n 领域服务（Tag），由宿主在创建 runtime tree 时注入（Layer），并在 Module Logic 内通过 `$.root.resolve(I18nTag)` 获取。  
+**Decision**：在 `@logixjs/i18n`（新领域特性包）中新增一个 i18n 领域服务（Tag），由宿主在创建 runtime tree 时注入（Layer），并在 Module Logic 内通过 `$.root.resolve(I18nTag)` 获取。  
 **Rationale**：满足“内外共享同一实例”的 DX，同时保证多 tree 隔离与可测试性（不依赖进程全局）。  
 **Alternative**：直接依赖 `i18next` 的进程级默认导出 → **拒绝**（多 tree 时无法隔离，且违反“禁止全局兜底作为正确性语义”）。
 
@@ -116,21 +116,21 @@
 **Rationale**：避免业务流程在异常环境下卡死，同时保持“多数调用点无样板”的 DX。  
 **Alternative**：默认无限等待 / 强制每次显式传 timeout → **拒绝**（前者风险大，后者 DX 差）。
 
-### D10 — 新增 `@logix/i18n` 领域特性包（core 保持最小内核）
+### D10 — 新增 `@logixjs/i18n` 领域特性包（core 保持最小内核）
 
-**Decision**：新增 `@logix/i18n` 子包承载 i18n 领域特性（I18n Service / I18nModule / message token / driver 最小形状等）；`@logix/core` 只保留通用运行时能力（如 `$.root.resolve` 与解析语义），不引入对特定 i18n 引擎/资源加载的强耦合。  
+**Decision**：新增 `@logixjs/i18n` 子包承载 i18n 领域特性（I18n Service / I18nModule / message token / driver 最小形状等）；`@logixjs/core` 只保留通用运行时能力（如 `$.root.resolve` 与解析语义），不引入对特定 i18n 引擎/资源加载的强耦合。  
 **Rationale**：与 form/query 一致：领域特性独立演进，core 保持稳定最小面；同时方便未来替换引擎与平台化接入。  
 **Alternative**：把 i18n 全部塞进 core → **拒绝**（core 膨胀、强耦合风险高）。
 
 ### D11 — driver-first：以最小形状（I18nDriver）作为 IoC/DI 注入面
 
-**Decision**：`@logix/i18n` 只约定最小形状（I18nDriver），宿主可直接注入 i18next 风格实例作为 driver；`@logix/i18n` 不依赖 i18next。  
+**Decision**：`@logixjs/i18n` 只约定最小形状（I18nDriver），宿主可直接注入 i18next 风格实例作为 driver；`@logixjs/i18n` 不依赖 i18next。  
 **Rationale**：保持 DX（用户可直接把现有 i18n 实例交给 Logix），同时保持隔离/可测试与避免引擎强绑定。  
-**Alternative**：在 `@logix/i18n` 内内置 i18next 适配/依赖 → **拒绝**（耦合与安装负担上升）。
+**Alternative**：在 `@logixjs/i18n` 内内置 i18next 适配/依赖 → **拒绝**（耦合与安装负担上升）。
 
-### D12 — 不新增 `@logix/i18n-react`（React 继续使用既有 i18n 订阅）
+### D12 — 不新增 `@logixjs/i18n-react`（React 继续使用既有 i18n 订阅）
 
-**Decision**：不新增 `@logix/i18n-react` 这类 React 专用适配包；React 侧继续使用 i18next-react 等既有 Provider/订阅机制驱动 re-render；Logix 侧只保证同一实例注入与 per-tree 隔离，并提供文档示例说明组合方式。  
+**Decision**：不新增 `@logixjs/i18n-react` 这类 React 专用适配包；React 侧继续使用 i18next-react 等既有 Provider/订阅机制驱动 re-render；Logix 侧只保证同一实例注入与 per-tree 隔离，并提供文档示例说明组合方式。  
 **Rationale**：避免重复封装成熟订阅体系，减少维护面；与“UI is Dumb”一致：UI 只负责订阅与渲染。  
 **Alternative**：另起一套 Logix 专用 i18n provider/hooks → **拒绝**（重复造轮子且容易产生并行事实源）。
 

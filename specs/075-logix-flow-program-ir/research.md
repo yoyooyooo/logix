@@ -2,7 +2,7 @@
 
 ## 现状证据（仓库内）
 
-- 既有动态能力：`@logix/core` 已有 `$.onAction().runLatest/runExhaust/runTask` 与 `FlowRuntime`（执行面已成熟），但缺少可导出的结构 IR（只能看运行时事件）。
+- 既有动态能力：`@logixjs/core` 已有 `$.onAction().runLatest/runExhaust/runTask` 与 `FlowRuntime`（执行面已成熟），但缺少可导出的结构 IR（只能看运行时事件）。
 - 073 的新裁决：tickSeq 是观测参考系；强一致只对可识别 IR 生效；事务窗口禁 IO；禁止影子真相源。
 - 领域胶水痛点：Query/Form 仍通过手写 watcher 把“触发 → IO → 写回/联动”串起来，导致依赖与因果链难以解释与治理。
 

@@ -24,7 +24,7 @@ related:
 
 ## 1. 核心理念：AOT Optimization
 
-在当前 `@logix/*` 运行时中，我们为了获得灵活性，在运行时做了大量“解释”工作：
+在当前 `@logixjs/*` 运行时中，我们为了获得灵活性，在运行时做了大量“解释”工作：
 
 - Runtime Parsing: `getAtPath(state, "user.profile.name")` 解析字符串路径。
 - Runtime Dependency Collection: `Proxy` 拦截 getter。
@@ -67,7 +67,7 @@ related:
 
 ```typescript
 // vite.config.ts
-import { logixCompiler } from "@logix/compiler";
+import { logixCompiler } from "@logixjs/compiler";
 
 export default defineConfig({
   plugins: [

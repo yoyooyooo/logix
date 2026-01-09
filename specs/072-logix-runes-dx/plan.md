@@ -13,12 +13,12 @@
 - 赋值语法糖仍走 Logix 的可追踪写入通道（不引入可写 Ref 逃逸口），Devtools 不断链（FR-005/007）。
 - 未启用 transform 或使用不支持语法时：fail-fast + 可操作的诊断（SC-002 / FR-004）。
 
-关键策略：**编译期改写（Vite 插件）+ 最小运行时（@logix/react）**。
+关键策略：**编译期改写（Vite 插件）+ 最小运行时（@logixjs/react）**。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（workspace）  
-**Primary Dependencies**: Vite（项目侧）+ React 19 + effect v3（3.19.13）+ `@logix/core` / `@logix/react`  
+**Primary Dependencies**: Vite（项目侧）+ React 19 + effect v3（3.19.13）+ `@logixjs/core` / `@logixjs/react`  
 **Storage**: N/A  
 **Testing**: Vitest（node/happy-dom）+（可选）浏览器集成测试在后续阶段再引入  
 **Target Platform**: 现代浏览器（Vite dev/build）  
@@ -68,8 +68,8 @@
 
 ### 1) 包与职责划分（SRP）
 
-- `@logix/runes`：只负责 **Vite transform**（编译期改写 + 报错诊断 + source map）。
-- `@logix/react`：只负责 **Runes Runtime（hook + 最小状态容器）**，并提供 `$state` 作为编译期 marker（未启用 transform 时 fail-fast）。
+- `@logixjs/runes`：只负责 **Vite transform**（编译期改写 + 报错诊断 + source map）。
+- `@logixjs/react`：只负责 **Runes Runtime（hook + 最小状态容器）**，并提供 `$state` 作为编译期 marker（未启用 transform 时 fail-fast）。
 
 ### 2) Transform 产物的基本形态
 
@@ -111,14 +111,14 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Intent → Flow/Logix → Code → Runtime**：
   - Intent：提升“局部状态”的 DX（spec 072）。
   - Flow/Logix：业务仍通过 Logix 的可追踪写入路径更新状态；不引入旁路状态机。
-  - Code：新增 `@logix/runes`（transform）与 `@logix/react` 的 runes runtime 入口。
+  - Code：新增 `@logixjs/runes`（transform）与 `@logixjs/react` 的 runes runtime 入口。
   - Runtime：复用现有 ModuleRuntime/dispatch 语义与诊断通道，不引入第二套运行时。（PASS）
 - **docs-first & SSoT**：本期先以 `specs/072-logix-runes-dx/*` 为事实源；若要把“赋值语法糖的语义边界/诊断协议”上升为长期规范，再回写到 `docs/specs/sdd-platform/ssot` 与 runtime references。（PASS）
-- **Effect/Logix contracts**：新增的是可选 DX 能力；不改变 `@logix/core` 的既有对外契约。（PASS）
+- **Effect/Logix contracts**：新增的是可选 DX 能力；不改变 `@logixjs/core` 的既有对外契约。（PASS）
 - **IR & anchors**：不修改统一最小 IR；新增的是编译期改写与可选的诊断事件。（PASS）
 - **Deterministic identity**：不引入随机/time 默认 id；复用 runtime 的稳定 instance/txn 锚点。（PASS）
 - **Transaction boundary**：写入仍经由 dispatch/transaction；不在事务窗口内执行 IO。（PASS）
-- **Dual kernels（core + core-ng）**：消费者不引入 `@logix/core-ng`；若未来需要对 core-ng 做适配，另开 spec。（PASS）
+- **Dual kernels（core + core-ng）**：消费者不引入 `@logixjs/core-ng`；若未来需要对 core-ng 做适配，另开 spec。（PASS）
 - **Performance budget**：不触及 Logix 核心热路径实现；主要风险在“事件频率上升/Devtools 噪声”。计划通过 opt-in + 语义收敛 + 证据基线控制。（PASS）
 - **Breaking changes（forward-only）**：预期为新增能力；无 breaking。若未来调整语义边界，用迁移说明替代兼容层。（PASS）
 - **Public submodules**：新包遵守 `src/index.ts` barrel；不暴露 internal。（PASS）
@@ -168,7 +168,7 @@ packages/logix-react/
     └── Runes/...
 ```
 
-**Structure Decision**: transform 与 runtime 分包，避免 `@logix/react` 绑定 Vite/编译链路，保持 SRP。
+**Structure Decision**: transform 与 runtime 分包，避免 `@logixjs/react` 绑定 Vite/编译链路，保持 SRP。
 
 ## Complexity Tracking
 

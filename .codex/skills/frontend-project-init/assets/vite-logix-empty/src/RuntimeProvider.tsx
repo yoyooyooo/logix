@@ -1,8 +1,8 @@
 import type React from 'react'
-import { Debug } from '@logix/core'
-import { RuntimeProvider } from '@logix/react'
+import { Debug } from '@logixjs/core'
+import { RuntimeProvider } from '@logixjs/react'
 import { Layer, ManagedRuntime } from 'effect'
-import { SandboxClientLayer } from '@logix/sandbox'
+import { SandboxClientLayer } from '@logixjs/sandbox'
 
 // Minimal runtime layer that wires Logix Debug tooling and Sandbox client.
 const ClientLayer = SandboxClientLayer()

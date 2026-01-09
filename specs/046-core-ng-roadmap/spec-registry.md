@@ -24,7 +24,7 @@
 - **perf matrix SSoT**：suites/budgets 统一以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT（至少覆盖 `priority=P1`）；硬结论至少 `profile=default`；before/after 必须 `matrixId+matrixHash` 一致（保证可比性）。
 - **AOT-ready, not AOT-required**：允许为未来编译期做准备，但默认运行路径不能被工具链绑死。
 - **不出现半成品态**：严禁“ID 化到一半又还原回 string/再 split/join”的中间态成为默认路径；需要阶段性合入必须保持旧路径默认并用显式开关隔离（详见 039 Guardrails）。
-- **ReadQuery ≠ Domain Query**：本路线图里的 “ReadQuery/SelectorSpec” 只描述“读状态依赖与投影”；不要与领域层 `@logix/query`（服务/缓存/请求）混用。
+- **ReadQuery ≠ Domain Query**：本路线图里的 “ReadQuery/SelectorSpec” 只描述“读状态依赖与投影”；不要与领域层 `@logixjs/query`（服务/缓存/请求）混用。
 - **读状态车道必须可观测**：无插件仍可用（JIT 默认）；dynamic 回退必须可证据化并可在 strict gate 下变为失败（避免把动态兜底当成黑盒默认）。
 
 ## 状态枚举（建议）
@@ -64,7 +64,7 @@
 
 | Spec | 主题 | 类型 | 证据门禁 | 备注 | Status |
 | ---- | ---- | ---- | -------- | ---- | ------ |
-| `specs/045-dual-kernel-contract/` | Kernel Contract + 对照验证跑道 | Foundation | `$logix-perf-evidence`（默认路径无回归） | 046 的分支点前置；上层只依赖 `@logix/core`；M0 已达标（证据见下） | done |
+| `specs/045-dual-kernel-contract/` | Kernel Contract + 对照验证跑道 | Foundation | `$logix-perf-evidence`（默认路径无回归） | 046 的分支点前置；上层只依赖 `@logixjs/core`；M0 已达标（证据见下） | done |
 | `specs/039-trait-converge-int-exec-evidence/` | 当前内核收敛热路径整型化 + 证据达标 | Pure-opt (no semantic change) | `$logix-perf-evidence`（Node + Browser） | 关键 guardrails 都在 039；证据汇总：`specs/039-trait-converge-int-exec-evidence/perf.md`；未来 core-ng 可复用口径拦截负优化 | done |
 | `specs/043-trait-converge-time-slicing/` | time-slicing/跨帧收敛 | Semantic change (opt-in) | `$logix-perf-evidence`（必须 Browser） | 明确不混入 039；若要推进需单独管理迁移口径 | done |
 | `specs/044-trait-converge-diagnostics-sampling/` | 诊断采样/新观测口径 | Observability semantics | `$logix-perf-evidence`（必须 Browser） | 明确不污染 039 的 off/light/full 心智模型 | done |

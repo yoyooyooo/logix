@@ -34,7 +34,7 @@
 
 ### 2) 多实例隔离：imports-scope 已经是 React 侧的默认严格语义
 
-`@logix/react` 明确区分两类句柄：
+`@logixjs/react` 明确区分两类句柄：
 
 - 全局单例语义：直接 `useModule(ModuleTag)`（依赖当前 RuntimeProvider 的全局 Env）；
 - 本地实例语义：`useModule(ModuleImpl, { key })` / `useLocalModule(...)`，并通过 imports-scope 解析子模块：
@@ -105,8 +105,8 @@ core 的 `ModuleRuntime` 已去随机化：`instanceId` 支持外部注入（`Mo
 
 当前契约（按实际实现）：
 
-- INIT：初始化 `esbuild-wasm`，并接收 `kernelUrl`（用于 externalize `@logix/core` 到 “kernel”）；
-- COMPILE：把用户代码编译成 ESM bundle（外部依赖走 `https://esm.sh/*`；`@logix/core` 走 `kernelUrl`）；
+- INIT：初始化 `esbuild-wasm`，并接收 `kernelUrl`（用于 externalize `@logixjs/core` 到 “kernel”）；
+- COMPILE：把用户代码编译成 ESM bundle（外部依赖走 `https://esm.sh/*`；`@logixjs/core` 走 `kernelUrl`）；
 - RUN：动态 import bundle（Blob URL），要求 `default` 导出是一个 `Effect` 程序，然后 `Effect.runPromise`；
 - 观测：
   - console proxy → `LOG`；

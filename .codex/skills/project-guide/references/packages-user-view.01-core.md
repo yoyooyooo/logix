@@ -1,4 +1,4 @@
-# 1) `@logix/core`（引擎：ModuleDef/Logic/Runtime/Debug/Resource）
+# 1) `@logixjs/core`（引擎：ModuleDef/Logic/Runtime/Debug/Resource）
 
 ## 你在什么情况下会用它
 

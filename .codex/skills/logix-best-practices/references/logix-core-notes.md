@@ -71,7 +71,7 @@ export const SomeLogic = SomeDef.logic<MyServiceTag>(($) => ({
 如果 **dev server 正常**，但在 **生产构建产物**里一运行就报 `LogicPhaseError(kind="use_in_setup")`（例如 `$.use is not allowed in setup phase`），不要只盯“业务写法”，优先按两类排查：
 
 - **写法**：`$.use` / `$.onAction*` / `$.onState*` 是否误写在 builder 顶层或 `setup` 段（见 1.1/1.2）。
-- **运行时相位传递（版本/打包形态差异）**：当 Logic 以“Effect 返回 `{ setup, run }`”的形态存在时，若运行时在解析/执行 plan 时相位上下文传递出错，run 段会“看起来像在 setup”。这通常不是业务代码问题：优先升级 `@logix/core`（或回退到已知稳定版本），并在问题单里附上最小复现与上述错误码。
+- **运行时相位传递（版本/打包形态差异）**：当 Logic 以“Effect 返回 `{ setup, run }`”的形态存在时，若运行时在解析/执行 plan 时相位上下文传递出错，run 段会“看起来像在 setup”。这通常不是业务代码问题：优先升级 `@logixjs/core`（或回退到已知稳定版本），并在问题单里附上最小复现与上述错误码。
 
 ## 3) Env/Service 泛型：写 Tag 类型本身，不要写 `typeof`
 

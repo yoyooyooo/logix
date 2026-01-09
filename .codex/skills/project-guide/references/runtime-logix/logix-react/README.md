@@ -1,4 +1,4 @@
-# `@logix/react` · 规范索引（渐进式披露）
+# `@logixjs/react` · 规范索引（渐进式披露）
 
 > **定位**：React 适配层的 SSoT（行为约束 + 推荐 API 形状），用于把 Logix Runtime 接入 React 组件树。
 

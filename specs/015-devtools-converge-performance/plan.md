@@ -15,7 +15,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（pnpm workspace）  
-**Primary Dependencies**: `@logix/devtools-react`、`@logix/core`、`effect` v3；依赖统一观测协议/聚合底座（Spec 005）  
+**Primary Dependencies**: `@logixjs/devtools-react`、`@logixjs/core`、`effect` v3；依赖统一观测协议/聚合底座（Spec 005）  
 **Storage**: N/A（内存聚合；离线证据包导入/导出由底座提供）  
 **Testing**: Vitest（UI 回归 + 纯函数 Audits 测试）  
 **Target Platform**: modern browsers（内嵌面板 + 离线导入）  

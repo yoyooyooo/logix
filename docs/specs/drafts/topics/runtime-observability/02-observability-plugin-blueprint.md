@@ -14,7 +14,7 @@ related:
 # Observability & Track Capability Blueprint
 
 > 核心观点：  
-> - **观测内核（Tracer / TraceBus / DebugSink）必须内置在 `@logix/core`，不可选**；  
+> - **观测内核（Tracer / TraceBus / DebugSink）必须内置在 `@logixjs/core`，不可选**；  
 > - **Track/Debug 作为能力插件，只负责“订阅/转码/输出”，而不是负责打点本身**。
 
 ## 1. 分层：内核观测 vs 能力插件

@@ -25,7 +25,7 @@
 
 ```typescript
 // features/counter/definition.ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 // 1. 定义形状 (Shape)
@@ -48,12 +48,12 @@ export const CounterLogic = (api: Logix.BoundApi<CounterShape>) =>
 
 ```typescript
 // features/counter/factory.ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { CounterState, CounterActions, CounterLogic } from './definition'
 
 // 工厂函数：接收唯一 ID，返回一个全新的 Module 实例
 export const createCounter = (id: string) => {
-  // 关键：Logix.Module 内部会创建一个新的 GenericTag(`@logix/Module/${id}`)
+  // 关键：Logix.Module 内部会创建一个新的 GenericTag(`@logixjs/Module/${id}`)
   // 这个 Tag 是全局唯一的，代表了这个特定的计数器实例
   const module = Logix.Module.make(id, {
     state: CounterState,
@@ -161,7 +161,7 @@ const { state } = useModule(TodoItemDef)
 **Item 组件 (TodoItem.tsx)**
 
 ```tsx
-import { useLocalModule, useSelector, useDispatch } from '@logix/react'
+import { useLocalModule, useSelector, useDispatch } from '@logixjs/react'
 import { TodoItemModule } from './definition'
 
 export const TodoItem = ({ id }: { id: string }) => {
@@ -187,7 +187,7 @@ import { TodoItem } from './TodoItem'
 
 ```tsx
 import React from 'react'
-import { useModuleList } from '@logix/react'
+import { useModuleList } from '@logixjs/react'
 import { createTodoItem } from './factory'
 import { TodoItem } from './TodoItem'
 

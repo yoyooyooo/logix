@@ -16,12 +16,12 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: pnpm workspace；`effect` v3；`@logix/*`（含 core/react/form/query/sandbox/test 等）  
+**Primary Dependencies**: pnpm workspace；`effect` v3；`@logixjs/*`（含 core/react/form/query/sandbox/test 等）  
 **Storage**: N/A（治理与结构收敛特性，不引入持久化）  
 **Testing**: Vitest（`vitest run`）；Effect-heavy 用例使用 `@effect/vitest`  
-**Target Platform**: Node.js 20+；现代浏览器（涉及 `@logix/react` / `@logix/sandbox`）  
+**Target Platform**: Node.js 20+；现代浏览器（涉及 `@logixjs/react` / `@logixjs/sandbox`）  
 **Project Type**: monorepo（`packages/*` + `examples/*` + `apps/docs/*`）  
-**Performance Goals**: 本特性不引入新的运行时语义；对 `@logix/core` 的改动若仅为文件移动/重命名/导出面收口，则不要求新增性能基线；若触及核心热路径逻辑，则必须补齐可复现基线并证明无回归，同时在 Constitution Check 中补齐确定性标识/事务边界/内部契约（Runtime Services）相关的回归验收口径与证据。  
+**Performance Goals**: 本特性不引入新的运行时语义；对 `@logixjs/core` 的改动若仅为文件移动/重命名/导出面收口，则不要求新增性能基线；若触及核心热路径逻辑，则必须补齐可复现基线并证明无回归，同时在 Constitution Check 中补齐确定性标识/事务边界/内部契约（Runtime Services）相关的回归验收口径与证据。  
 **Constraints**: 维持“性能与可诊断性优先、拒绝向后兼容”的宪法约束；保持 deterministic identity 与事务窗口边界不被结构治理改动破坏。  
 **Scale/Scope**: 覆盖 `packages/*` 全量子包；同时需要同步更新仓库内示例/文档/脚手架的推荐 import 形态。
 **Reference Baseline**: effect 仓库（本地 clone：`/Users/yoyo/Documents/code/community/effect`）的目录结构、exports 策略与 Tag 模式（用于对标与借鉴）。  

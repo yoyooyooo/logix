@@ -1,4 +1,4 @@
-# 8) `@logix/i18n`（Feature Kit：root 单例 i18n + message token）
+# 8) `@logixjs/i18n`（Feature Kit：root 单例 i18n + message token）
 
 ## 你在什么情况下会用它
 

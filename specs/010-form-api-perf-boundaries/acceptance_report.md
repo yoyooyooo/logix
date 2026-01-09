@@ -9,7 +9,7 @@
 | Dimension                | Status     | Notes                                                                 |
 | :----------------------- | :--------- | :-------------------------------------------------------------------- |
 | **Deliverables**         | ✅ Pass    | 关键文件与目录结构完整，导出口径一致。                                |
-| **Logic & Architecture** | ✅ Pass    | 逻辑正确下沉到 `@logix/core`，Form 层保持纯 DX 包装。                 |
+| **Logic & Architecture** | ✅ Pass    | 逻辑正确下沉到 `@logixjs/core`，Form 层保持纯 DX 包装。                 |
 | **Type Safety**          | ✅ Pass    | `Effect.Schema` 广泛使用，路径类型化（`FieldPath`）已落地。           |
 | **Tests**                | ✅ Pass    | 所有规划的回归测试与性能测试均通过。                                  |
 | **Performance**          | ✅ Pass    | Form 侧写回已提供字段级证据，不再触发 `dirty_all_fallback`。          |
@@ -30,7 +30,7 @@
 
 ### 🌟 Highlights
 
-1.  **架构分层清晰**: 核心的 list-scope 扫描、Graph 推导与 ReverseClosure 都在 `logix-core` 实现，`@logix/form` 极轻量，仅负责 Path 映射与 Wiring。
+1.  **架构分层清晰**: 核心的 list-scope 扫描、Graph 推导与 ReverseClosure 都在 `logix-core` 实现，`@logixjs/form` 极轻量，仅负责 Path 映射与 Wiring。
 2.  **Schema/Rules 统一**: `handleSubmit` 与 `controller.validate` 均实现了 Schema + Rules 的合并语义，且 `$list/rows[]` 错误树结构统一。
 3.  **可诊断性**: `trait:check` 事件在 `validate.ts` 中实现了 Slim 摘要，且包含 `ruleId`、`trigger` 与 `affectedRows`，完全符合 FR-005。
 

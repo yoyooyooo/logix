@@ -34,8 +34,8 @@ src/features/order/
 Form 产出模块蓝图（`UserForm.impl` 为 `ModuleImpl`）：直接被 Root `imports` 引入即可。
 
 ```ts
-import * as Logix from "@logix/core"
-import * as Form from "@logix/form"
+import * as Logix from "@logixjs/core"
+import * as Form from "@logixjs/form"
 import { Schema } from "effect"
 
 const Values = Schema.Struct({ name: Schema.String })

@@ -27,13 +27,13 @@
 - 从 `TrialRunReport.artifacts` 读取版本化工件，用通用 JSON viewer 展示/复制/下载；
 - 不关心具体 kit 的实现细节，只按 `artifactKey@vN` 做分组与验收入口。
 
-小提示：`IrPage` 已内置 `P6 Form Rules (Artifacts)` 预设，可直接看到 `@logix/form.rulesManifest@v1` 的输出。
+小提示：`IrPage` 已内置 `P6 Form Rules (Artifacts)` 预设，可直接看到 `@logixjs/form.rulesManifest@v1` 的输出。
 
 ## 2) Feature Kit 如何扩展导出（OCP）
 
 kit 想新增补充静态 IR（Supplemental Static IR）时：
 
-- 定义一个版本化的 `artifactKey`（概念域命名，建议与 kit 域一致，例如 `@logix/form.*`）
+- 定义一个版本化的 `artifactKey`（概念域命名，建议与 kit 域一致，例如 `@logixjs/form.*`）
 - 保证输出是 slim 的 `JsonValue`，并遵守确定性与预算/截断语义
 - 通过 031 的模块级扩展点注册导出者（避免修改 core 业务逻辑；注册点在模块 tag 上，随 module graph 一起被 trial-run 读取）
 
@@ -47,7 +47,7 @@ kit 想新增补充静态 IR（Supplemental Static IR）时：
 
 首个内置用例（Form rules）：
 
-- key：`@logix/form.rulesManifest@v1`
+- key：`@logixjs/form.rulesManifest@v1`
 - payload：`{ manifest, warnings }`（manifest schema 复用 028）
 
 ## 3) 与 036（Contract Suite）/Agent 的关系

@@ -13,18 +13,18 @@
 - 动态列表回填必须基于 `rowRef`（稳定 `$rowId`），禁止 index 语义渗漏
 - 正常运行不解释蓝图：蓝图通过 codegen 生成模块代码；验收通过 031/036 的 trial-run 工件闭环完成
 
-本特性会用统一协议域 `@logix/module.*` 固化语义层的核心资产：
+本特性会用统一协议域 `@logixjs/module.*` 固化语义层的核心资产：
 
-- `@logix/module.stageBlueprint@v1`：语义蓝图（节点=ModuleInstance，边=IntentRule）
-- `@logix/module.intentRule@v1`：事件→动作连线（ruleId + endpoints + mapping refs）
-- `@logix/module.rowRef@v1`：动态列表稳定定位（rowPath + rowId）
+- `@logixjs/module.stageBlueprint@v1`：语义蓝图（节点=ModuleInstance，边=IntentRule）
+- `@logixjs/module.intentRule@v1`：事件→动作连线（ruleId + endpoints + mapping refs）
+- `@logixjs/module.rowRef@v1`：动态列表稳定定位（rowPath + rowId）
 
 > 说明：映射/条件等表达式资产由 034 定义；端口/类型事实源由 035 定义；试运行工件槽位由 031 定义；统一验收口径由 036 定义。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logix/core`、`@logix/react`、`@logix/form`、`@logix/sandbox`  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/form`、`@logixjs/sandbox`  
 **Storage**: N/A（蓝图与资产作为可序列化 JSON，可由平台决定落盘方式）  
 **Testing**: Vitest（协议/归一化/diff 建议以纯函数 + 单测为主）  
 **Target Platform**: Node.js（codegen/CI）+ 现代浏览器（Workbench/Studio）  
@@ -58,7 +58,7 @@
 - **Diagnosability**
   - 语义边执行失败必须可解释（至少包含 source/sink、rowRef、映射摘要、失败分类）。
 - **Breaking changes**
-  - 蓝图协议演进通过 `@logix/module.*@vN` 版本化；破坏性变更以迁移说明替代兼容层。
+  - 蓝图协议演进通过 `@logixjs/module.*@vN` 版本化；破坏性变更以迁移说明替代兼容层。
 - **质量门槛（Pass 定义）**
   - 产物落地时：`pnpm typecheck`、`pnpm lint`、`pnpm test`（后续 tasks 阶段执行）
 
@@ -73,9 +73,9 @@
 ### Phase 1（Design & Contracts）：固化 StageBlueprint/IntentRule/RowRef schema
 
 - 在 `specs/033-module-stage-blueprints/contracts/schemas/` 固化：
-  - `stage-blueprint.schema.json`（`@logix/module.stageBlueprint@v1`）
-  - `intent-rule.schema.json`（`@logix/module.intentRule@v1`）
-  - `row-ref.schema.json`（`@logix/module.rowRef@v1`）
+  - `stage-blueprint.schema.json`（`@logixjs/module.stageBlueprint@v1`）
+  - `intent-rule.schema.json`（`@logixjs/module.intentRule@v1`）
+  - `row-ref.schema.json`（`@logixjs/module.rowRef@v1`）
 - 在 `data-model.md` 固化：
   - 节点类型（ModuleInstance）与端口引用方式（引用 035 的 PortSpec key 空间）
   - 语义边模型（event→action + mapping asset refs）

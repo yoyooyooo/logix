@@ -28,7 +28,7 @@
 
 ```ts
 import { Schema } from 'effect';
-import * as Logix from '@logix/core';
+import * as Logix from '@logixjs/core';
 
 // 领域资产（Module Asset）：计数器
 export const Counter = Logix.Module.make('Counter', {

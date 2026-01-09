@@ -20,7 +20,7 @@ related:
 
 范围：`Trait.source` 的运行时语义（refresh / keyHash gate / 并发 / 回放 / list.item）。
 
-不讨论 `@logix/query` 的完整设计；这里只关心 source 作为“资源快照写回”的底座能力。
+不讨论 `@logixjs/query` 的完整设计；这里只关心 source 作为“资源快照写回”的底座能力。
 
 ## 已落地事实（不要再写成 TODO）
 

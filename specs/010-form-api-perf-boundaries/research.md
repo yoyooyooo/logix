@@ -67,7 +67,7 @@
 ## Decision 8：Form API 收口（Rules/Errors 的产物必须“可直挂、可降解”）
 
 - **Decision**：
-  - 业务/示例/文档默认只使用 `@logix/form` 的领域入口：`Form.make({ traits, derived })` + `Form.traits/Form.Rule/Form.Error/Form.Trait`，而不是直接写 `@logix/core` 的 `StateTrait.*`；
+  - 业务/示例/文档默认只使用 `@logixjs/form` 的领域入口：`Form.make({ traits, derived })` + `Form.traits/Form.Rule/Form.Error/Form.Trait`，而不是直接写 `@logixjs/core` 的 `StateTrait.*`；
   - `Form.Rule.make(...)` 的返回值必须是**可直接挂到** `StateTrait.node({ check })` 的形态（即 `Record<ruleName, { deps, validate, meta? }>`），不得引入额外包壳（例如 `{ rules: ... }` 这种二次结构）；
   - `Form.Error.*` 只负责组织错误树形态（例如 `$list/rows[]`），不改变 kernel 语义，不引入第二套运行时；
   - `Form.Trait.*` 与 `StateTrait.*` 同形状，供 `derived` 声明联动/派生（默认写回 `values/ui`），仍可完全降解为 StateTraitSpec/IR；`Form.node/Form.list` 仅作为最小 escape hatch（示例默认用 `Form.traits` 组织片段）。

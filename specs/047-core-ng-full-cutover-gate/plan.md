@@ -21,13 +21,13 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、（实现阶段）`@logix/core-ng`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`  
 **Storage**: N/A（证据落盘到 `specs/047-*/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）  
 **Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
 **Performance Goals**: 在 matrix.json 的 `priority=P1` suites 上，core-ng Full Cutover 相对 core 默认不得出现 budget regression（`pnpm perf diff`：`comparability.comparable=true` 且 `summary.regressions==0`）  
-**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）+ 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；`diagnostics=off` 近零成本；上层不直接依赖 `@logix/core-ng`  
+**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）+ 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；`diagnostics=off` 近零成本；上层不直接依赖 `@logixjs/core-ng`  
 **Scale/Scope**: 本特性固化“达标门槛与验证矩阵”；实现阶段主要为 contract/cutover gate/证据跑道与少量必要的诊断字段补强
 
 ## Kernel support matrix
@@ -45,7 +45,7 @@
 - Kernel 选择（防误判）：
   - Browser：`VITE_LOGIX_PERF_KERNEL_ID=core-ng`（用于 after/core-ng 采集）；before/core 不设置该变量
   - Node：`LOGIX_PERF_KERNEL_ID=core-ng`（用于 after/core-ng 采集）；before/core 不设置该变量
-  - **Full Cutover 额外硬要求**：after 必须由 `@logix/core-ng` 的 layer（例如 `coreNgKernelLayer`）装配，并通过 Gate/证据证明 **无 fallback**；任何 “perf-only override（只替换单个 serviceId）” 的 after 结果不得作为 047 Gate 证据（只能当调参/线索）。
+  - **Full Cutover 额外硬要求**：after 必须由 `@logixjs/core-ng` 的 layer（例如 `coreNgKernelLayer`）装配，并通过 Gate/证据证明 **无 fallback**；任何 “perf-only override（只替换单个 serviceId）” 的 after 结果不得作为 047 Gate 证据（只能当调参/线索）。
 
 ## Constitution Check
 
@@ -60,7 +60,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Deterministic identity**：差异与证据锚点必须使用稳定 instanceId/txnSeq/opSeq；禁止随机/时间默认锚点。
 - **Transaction boundary**：禁止在事务窗口内引入 IO/async；Full Cutover Gate 只发生在 runtime 装配与验证层。
 - **Internal contracts & trial runs**：Full Cutover 的判定必须可通过 TrialRun/对照 harness 输出证据复核；不得依赖进程级全局单例。
-- **Dual kernels (core + core-ng)**：consumer 仅依赖 `@logix/core`；Full Cutover gate 不要求上层依赖 core-ng；计划必须定义 kernel support matrix，并在“宣称可切默认”时禁止 fallback。
+- **Dual kernels (core + core-ng)**：consumer 仅依赖 `@logixjs/core`；Full Cutover gate 不要求上层依赖 core-ng；计划必须定义 kernel support matrix，并在“宣称可切默认”时禁止 fallback。
 - **Performance budget**：强制 `$logix-perf-evidence`（Node + Browser）作为门槛；证据采集必须隔离（独立 `git worktree/单独目录`）；预算回归必须阻断。
 - **Diagnosability & explainability**：off 近零成本，且 Full Cutover Gate 必须在 `diagnostics=off` 下可运行并输出最小结果；light/full 下可解释“请求 kernelId / 实际 bindings / 是否 fallback / 失败原因”并补充细节。
 - **Breaking changes**：本特性主要是新增 gate/验证机制；如引入对外行为变化必须写迁移说明（但不保留兼容层）。
@@ -106,7 +106,7 @@ packages/logix-react/
 
 **Structure Decision**:
 
-- Gate/coverage matrix/验证入口优先落在 `@logix/core` 的契约层（避免 consumer 依赖 core-ng）。
+- Gate/coverage matrix/验证入口优先落在 `@logixjs/core` 的契约层（避免 consumer 依赖 core-ng）。
 - core-ng 只提供实现 layer；是否达标由 gate + 证据裁决，而不是靠口头宣称。
 
 ## Deliverables by Phase

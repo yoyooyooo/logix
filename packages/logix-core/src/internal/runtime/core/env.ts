@@ -262,7 +262,7 @@ export const runtimeStoreTestStubLayer = (store: RuntimeStoreService): Layer.Lay
 
 export interface HostSchedulerService extends HostScheduler {}
 
-export class HostSchedulerTag extends Context.Tag('@logix/core/HostScheduler')<
+export class HostSchedulerTag extends Context.Tag('@logixjs/core/HostScheduler')<
   HostSchedulerTag,
   HostSchedulerService
 >() {}

@@ -1,7 +1,7 @@
-# React API（@logix/form/react）
+# React API（@logixjs/form/react）
 
 > **Status**: Aligned (010-form-api-perf-boundaries)
-> **Layer**: React Bindings（thin wrapper on @logix/react）
+> **Layer**: React Bindings（thin wrapper on @logixjs/react）
 
 React 层的职责很单一：把 `FormBlueprint` 投影成 hooks，并把 DOM 事件适配为 Form 的 module actions（`setValue/blur/array*`）。
 
@@ -10,7 +10,7 @@ React 层的职责很单一：把 `FormBlueprint` 投影成 hooks，并把 DOM �
 ## 1) `useForm(blueprint)`：拿到 controller + runtime
 
 ```ts
-import { useForm } from "@logix/form/react"
+import { useForm } from "@logixjs/form/react"
 
 const form = useForm(UserForm) // UserForm 是 Form.make(...) 的 Blueprint
 // form.runtime：ModuleRuntime<FormState<...>, FormAction>

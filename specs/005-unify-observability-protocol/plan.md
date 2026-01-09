@@ -5,7 +5,7 @@
 
 ## Summary
 
-目标是把“宿主无关的观测协议 + 聚合引擎”下沉到 `@logix/core`，让不同宿主（组件/扩展/Worker/Sandbox）消费同一份输入时，得到一致的核心结论（顺序、计数、诊断），且默认不制造观察者效应。
+目标是把“宿主无关的观测协议 + 聚合引擎”下沉到 `@logixjs/core`，让不同宿主（组件/扩展/Worker/Sandbox）消费同一份输入时，得到一致的核心结论（顺序、计数、诊断），且默认不制造观察者效应。
 
 交付分两档：
 
@@ -33,7 +33,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript（pnpm workspace / monorepo）  
-**Primary Dependencies**: `effect` v3、`@logix/core` / `@logix/react` / `@logix/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3)  
+**Primary Dependencies**: `effect` v3、`@logixjs/core` / `@logixjs/react` / `@logixjs/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3)  
 **Storage**: N/A（证据包导出/导入以文件或剪贴板为主；运行中以内存 ring buffer / 聚合快照为主）  
 **Testing**: Vitest（含 `@effect/vitest` 约定）、TypeScript typecheck、ESLint  
 **Target Platform**: 浏览器（Chrome 及兼容环境），包含页面主线程与 Web Worker；扩展需要 MV3  
@@ -55,7 +55,7 @@ _GATE: Phase 0 研究前必须通过；Phase 1 设计后再次复查。_
   - Runtime 侧单一事实源：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.*.md`（RuntimeDebugEventRef/JsonValue/Recording Window/预算统计/“viewer 不得补造”）。
   - 传输层（P2）补充口径：建议在上述 debugging 文档中补充“Transport Profile v1（HELLO/SUBSCRIBE/BATCH/CONTROL/ACK）”的裁决链接，避免只存在于 feature spec。
 - **契约变更范围**
-  - 会新增/调整 “观测事件 envelope（runId/seq/version）” 与 “宿主无关聚合快照” 的公共契约；核心落点应在 `@logix/core`（引擎优先），并在 runtime-logix 文档中固化。
+  - 会新增/调整 “观测事件 envelope（runId/seq/version）” 与 “宿主无关聚合快照” 的公共契约；核心落点应在 `@logixjs/core`（引擎优先），并在 runtime-logix 文档中固化。
 - **稳定标识（Deterministic Identity）**
   - 生产端必须生成稳定 `seq/eventSeq/txnSeq`；查看器不得补造（对应 FR-002）。
   - `txnId/eventId` 仅允许确定性派生（例如 `${instanceId}::t${txnSeq}` / `${instanceId}::e${eventSeq}`），禁止随机/时间戳作为默认 id 源。
@@ -92,12 +92,12 @@ _GATE: Phase 0 研究前必须通过；Phase 1 设计后再次复查。_
 
 ### Phase 1（Design & Contracts）：core 打底 + 宿主适配
 
-- 在 `@logix/core` 定义并实现：
+- 在 `@logixjs/core` 定义并实现：
   - 宿主无关协议（事件/命令/证据包的最低必要结构，含 version/runId/seq/timestamp、Recording Window 语义、`pause`/`resume` 命令）。
   - 宿主无关聚合引擎：输入事件流/证据包，输出用于 Devtools 视图的聚合快照（含 txn span / signal lane 等，满足 FR-011/FR-012）。
   - Worker-first Boundary：定义 append-only 事件输入与快照输出的 Worker 边界（含节流/降级），并保证 Worker 不可用时可预测降级且对用户可见。
   - 与现有 DebugSink/DevtoolsHub 的适配层（把现有 Debug.Event、trace:\* 事件等装入统一 envelope）。
-- 在 `@logix/devtools-react` 抽离 “数据源适配”：
+- 在 `@logixjs/devtools-react` 抽离 “数据源适配”：
   - 组件形态：直接连接 page 内数据源；
   - 扩展离线形态：仅导入 EvidencePackage；
   - （P2）扩展实时形态：连接扩展通道的远程数据源；

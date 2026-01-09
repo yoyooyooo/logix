@@ -217,7 +217,7 @@ function renderScaffold(opts: Options, fieldPaths: string[]): string {
 
   return [
     `import { Schema } from "effect";`,
-    opts.kind === "form" ? `import * as Form from "@logix/form";` : `import * as Query from "@logix/query";`,
+    opts.kind === "form" ? `import * as Form from "@logixjs/form";` : `import * as Query from "@logixjs/query";`,
     "",
     `import { ${opts.schemaExport} as ${schemaVar} } from "${schemaImport}";`,
     "",

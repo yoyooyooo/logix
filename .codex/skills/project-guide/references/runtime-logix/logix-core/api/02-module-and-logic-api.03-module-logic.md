@@ -73,12 +73,12 @@ export const SomeLogic = SomeDef.logic<MyService>(($) => ({
 - **诊断字段**：`LogicPhaseError` 暴露 `kind/api/phase/moduleId`，DevTools 与平台可直接依赖结构化字段，无需字符串解析；其他诊断同样通过 `DebugSink` 以 `logic::* / reducer::* / lifecycle::*` code 形式对外广播。
 - **Env 缺失与 runSync 不变量**：Logic 构造阶段的错误（含 phase 违规）统一被收敛为诊断，不会破坏 `ModuleDef.live` / `Runtime.make` 的同步构造路径；只有在 Env 铺满后仍发生的 `Service not found` 才被视为硬错误。
 
-## 3.5 Field Capabilities 与 State Graph（StateTrait / `@logix/core` 的角色）
+## 3.5 Field Capabilities 与 State Graph（StateTrait / `@logixjs/core` 的角色）
 
-> 更新说明（2025-12-10）：早期草案中，字段能力与 State Graph 曾规划由独立包 `@logix/data` 承载。  
-> 随着 `specs/007-unify-trait-system` 设计收敛，当前主线改为由 `@logix/core` 内部的 StateTrait 模块统一承载字段能力与派生收敛；早期以独立 Topic 讨论“字段能力/State Graph”的文档仅作为历史参考，已不再维护。
+> 更新说明（2025-12-10）：早期草案中，字段能力与 State Graph 曾规划由独立包 `@logixjs/data` 承载。  
+> 随着 `specs/007-unify-trait-system` 设计收敛，当前主线改为由 `@logixjs/core` 内部的 StateTrait 模块统一承载字段能力与派生收敛；早期以独立 Topic 讨论“字段能力/State Graph”的文档仅作为历史参考，已不再维护。
 
-在当前模型中，字段层的响应式与联动能力（例如 Computed 字段、从外部资源加载的 Source 字段、跨字段 Link 字段）统一收敛到 `@logix/core` 内部的 StateTrait 实现。整体边界大致如下：
+在当前模型中，字段层的响应式与联动能力（例如 Computed 字段、从外部资源加载的 Source 字段、跨字段 Link 字段）统一收敛到 `@logixjs/core` 内部的 StateTrait 实现。整体边界大致如下：
 
 - **Schema / Traits 层（Layer 1）**：
   - Module 的 State Schema 使用 Effect 的 Schema 定义字段结构，computed / source / link 等能力通过 StateTrait DSL 声明，例如：
@@ -166,7 +166,7 @@ export const SomeLogic = SomeDef.logic<MyService>(($) => ({
 
 TraitLifecycle 的定位：
 
-- **向上**：被领域包（`@logix/form`、`@logix/query` 等）用于表达“校验/刷新/清理/失效”等高层意图；
+- **向上**：被领域包（`@logixjs/form`、`@logixjs/query` 等）用于表达“校验/刷新/清理/失效”等高层意图；
 - **向下**：在 Runtime 内部被解释为对 `StateTraitProgram` / `StateTransaction` / `ReplayLog` 的标准操作序列。
 
 核心 API（概览）：
@@ -182,6 +182,6 @@ TraitLifecycle 的定位：
 - 当调用发生在“已开启的事务窗口”内时，TraitLifecycle 会将请求 **挂到当前事务**（避免额外 commit）；
 - 当调用发生在事务窗口之外时，TraitLifecycle 会通过 Runtime 的统一入口 **开启一笔新事务** 来执行请求，从而保持“每次入口 = 一笔事务”的不变式。
 
-> 参考：TraitLifecycle 的请求结构与 FieldRef 语义见 `@logix/core` 导出 `TraitLifecycle`（以及 `specs/007-unify-trait-system` 的术语与约束）；其在提交前 flush 的执行顺序见 `../runtime/05-runtime-implementation.01-module-runtime-make.md#15-statetransaction-与状态提交路径`。
+> 参考：TraitLifecycle 的请求结构与 FieldRef 语义见 `@logixjs/core` 导出 `TraitLifecycle`（以及 `specs/007-unify-trait-system` 的术语与约束）；其在提交前 flush 的执行顺序见 `../runtime/05-runtime-implementation.01-module-runtime-make.md#15-statetransaction-与状态提交路径`。
 
 ---

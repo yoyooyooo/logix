@@ -290,11 +290,11 @@ _Rationale_: 保证规范、实现与工具链共用同一事实源，避免“�
 
 **双内核演进（core + core-ng）与契约边界（AOT-ready, not AOT-required）**
 
-- `@logix/core` MUST 是上层生态（`@logix/react` / Devtools / Sandbox / 平台侧）的唯一硬依赖；
+- `@logixjs/core` MUST 是上层生态（`@logixjs/react` / Devtools / Sandbox / 平台侧）的唯一硬依赖；
   除 `packages/logix-core-ng/**` 与少量测试/试跑/基准工具外，仓库内代码 MUST 不直接依赖
-  `@logix/core-ng`（避免生态分叉与重复迁移成本）。
+  `@logixjs/core-ng`（避免生态分叉与重复迁移成本）。
 - 所有需要“内核级替换/并行演进”的能力 MUST 通过显式内部契约表达（Runtime Services / Kernel Contract），
-  并由 `@logix/core` 导出契约类型与证据形态；禁止通过 `src/internal/**` 直连 import 或 magic 字段绕过契约。
+  并由 `@logixjs/core` 导出契约类型与证据形态；禁止通过 `src/internal/**` 直连 import 或 magic 字段绕过契约。
 - 任何触及内核/核心路径的新特性，`specs/<###-feature>/plan.md` MUST 显式声明
   “kernel support matrix”（core / core-ng：`supported` | `trial-only` | `not-yet`）与对应 gate
   （契约一致性验证 + `$logix-perf-evidence` 的 Node+Browser before/after/diff）。
@@ -352,7 +352,7 @@ _Rationale_: 保证规范、实现与工具链共用同一事实源，避免“�
     渲染结构；
   - 建议在 CI 中通过脚本或 lint 规则对 `packages/logix-devtools-react/src/ui/**`
     做文件行数检查，将 >300 行标记为 warning、>500 行标记为 error。
-- 该约束优先适用于 Devtools UI 与后续可能新增的 `@logix-devtools/*` 系列包；
+- 该约束优先适用于 Devtools UI 与后续可能新增的 `@logixjs/devtools-*` 系列包；
   对业务示例与 apps/docs UI 层同样推荐遵守，但不作为强制门槛。
 
 **packages 子包对外子模块铁律**

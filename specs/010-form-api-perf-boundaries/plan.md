@@ -8,7 +8,7 @@
 
 ## Summary
 
-本特性的目标是把 `@logix/form` 的 Form API（Rules/Errors/Path/Controller/Schema）与 runtime 的 list-scope 校验热路径一起收敛为**可推导、可诊断、可优化**的一等公民能力：
+本特性的目标是把 `@logixjs/form` 的 Form API（Rules/Errors/Path/Controller/Schema）与 runtime 的 list-scope 校验热路径一起收敛为**可推导、可诊断、可优化**的一等公民能力：
 
 - 产物拆解入口：`specs/010-form-api-perf-boundaries/tasks.md`（从 `docs/reviews/09-form-dx-vs-rhf.md` 的 Phase A–D 落到可交付清单）。
 - Phase A（热路径闭环）：删除专家开关、deps 归一化、`$list/rows[]` 写回、rowId 稳定、Slim 诊断事件与 100 行基线。
@@ -30,7 +30,7 @@
   - `traits` 支持“直写形态”：在 `traits.<path>.check`（含 list 的 `item.check/list.check`）中可直接用对象声明规则；需要复用/组合时再提取为 `Form.Rule.make/merge` 产物（不要求默认写法先 `Rule.make` 再塞回 `Form.make`）。
   - 可选语法糖：`Form.Rule.field(valuePath, fragment)` / `Form.Rule.fields(...decls | decl[])`，用于更可组合地构造 `traits` 片段（key= valuePath）并避免对象 spread 静默覆盖；重复 valuePath 稳定失败；支持扁平化输入以便组合“已有片段 + 新片段”而不手写 spread。
   - submit/root validate 始终执行（默认运行 Rules + Schema，且合并策略在 spec 中已固化）。
-  - `derived`：联动/派生入口（默认仅允许写回 `values/ui`），用于声明可完全降解为 trait `computed/link/source` 的能力；业务侧不直接写 `@logix/core` StateTrait。
+  - `derived`：联动/派生入口（默认仅允许写回 `values/ui`），用于声明可完全降解为 trait `computed/link/source` 的能力；业务侧不直接写 `@logixjs/core` StateTrait。
 - `Form.Rule.make/merge`：规则复用/组合工具（可完全降解为 kernel `CheckRule`），并提供对标 RHF `rules` 的内置校验器（required/minLength/maxLength/min/max/pattern 等）+ RHF 风格简写（`required:true`/`minLength:2` 等）以减少业务样板。
 - `Form.Trait.*`：对齐 `StateTrait.*` API 形状的薄包装（computed/link/source/check 等同形状；`computed.get` 采用 deps-as-args，不暴露 `(state)=>`），供 `derived` 使用；允许 form 层附加能力，但不得引入第二套 IR 或绕开 deps/事务/诊断约束。
 - `Form.Error.*`：只负责组织错误写回形态（尤其数组 `$list/rows[]`），不引入第二套错误真相源；rule 返回值必须对齐 scope，任意 valuePath→error 的 path-map 只允许走 controller `setError/clearErrors`。
@@ -39,7 +39,7 @@
 - `Form.FieldPath<TValues>` / `Form.FieldValue<TValues, P>`：TypeScript 路径类型化与值类型推导（对齐 TanStack Form 的“路径类型化”体验），并用于 `useField/useFieldArray` 的编译期约束（FR-010b）。
 - controller：唯一的默认动作命名空间（RHF 风格、React/Logic 一致），用于按 valuePath 精确写入/清理错误与触发校验（例如 `setError/clearErrors/validate/validatePaths/reset/handleSubmit`），避免把“任意 path-map”塞进 rule 返回形态；`$.use(Form.module)` 拿到的 handle 必须同样暴露 `controller.*`（内部可降解为 Module actions，actions 视为实现细节），以支持组件外在 Logic/Link 中触发校验与错误写入。
 - React 订阅：`useFormState(form, selector)`（或等价形态）作为唯一表单级衍生状态订阅入口（对标 TanStack Subscribe），禁止业务在 UI 层扫描 values/errors 大树（FR-007e）。
-- Form 消费 Query/外部快照：010 先只固化“模块内快照 + local deps”（`source`/Query traits 写回到本模块 `ui.*`/显式槽位）；跨模块显式投影与跨模块缓存/in-flight 去重后置到 `StateTrait.source`/`@logix/query` 跑道；禁止在 trait/rule 内直接访问全局 store/隐式 Context。
+- Form 消费 Query/外部快照：010 先只固化“模块内快照 + local deps”（`source`/Query traits 写回到本模块 `ui.*`/显式槽位）；跨模块显式投影与跨模块缓存/in-flight 去重后置到 `StateTrait.source`/`@logixjs/query` 跑道；禁止在 trait/rule 内直接访问全局 store/隐式 Context。
 - 非目标（本 spec 不做）：Focus management（自动聚焦/滚动到首个错误字段）等 DOM/渲染树耦合能力；如需该能力放到 UI/React 层实现（010 只保证错误树/Path/rowId 稳定且可枚举）。
 
 ### validateOn / deps（正交收敛）
@@ -60,7 +60,7 @@
   - 事务内同步联动：`derived + Form.Trait.computed/link`（可回放、可解释）；
   - debounce/IO：Task/source（事务外）→ 写回新事务（不混入校验/事务窗口）。
 - **persistent dirty / isDefaultValue**：010 选用 persistent dirty（热路径 O(写入量) 更新）；如需“改回默认就不 dirty”，用 `derived`/selector 显式对比 initialValues 计算（不在内核做 deep-compare）。
-- **createFormHook/withFieldGroup**：属于 React DX/生态脚手架，建议后置到 010 之后在 `@logix/form/react` 落地（不改变 010 的 IR/语义与最小表面积）。
+- **createFormHook/withFieldGroup**：属于 React DX/生态脚手架，建议后置到 010 之后在 `@logixjs/form/react` 落地（不改变 010 的 IR/语义与最小表面积）。
 
 ## Dependencies & Execution Order（013 先行）
 
@@ -73,7 +73,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+  
-**Primary Dependencies**: effect v3、`@logix/core`（trait/runtime 主线）、`@logix/form`（本特性默认入口）、`@logix/react`（消费/安装）  
+**Primary Dependencies**: effect v3、`@logixjs/core`（trait/runtime 主线）、`@logixjs/form`（本特性默认入口）、`@logixjs/react`（消费/安装）  
 **Storage**: N/A（内存态；errors/ui/diagnostics 均需可序列化）  
 **Testing**: Vitest + `@effect/vitest`（Effect-heavy 用例）；React 侧按既有 Testing Library 风格  
 **Target Platform**: Node.js 20+（runtime/test/基准）+ modern browsers（React/Devtools 消费）  
@@ -154,8 +154,8 @@ docs/reviews/                                             # breaking changes/roa
 
 **Core/Form 分层（落实）**（依据：`specs/010-form-api-perf-boundaries/references/pr.md`）
 
-- **下沉到 `@logix/core`（TraitLifecycle/StateTrait/Runtime）**：valuePath→FieldRef 解析、source 的 `onMount/onKeyChange` 默认 wiring、deps 命中归一化（含 `[]` pattern）、list-scope deps 默认语义（`deps:["x"] => list[].x`）与结构依赖补齐、rowIdStore、通用 cleanup 原语。
-- **留在 `@logix/form`（领域语义与 DX 外观）**：`$list/rows[]` 错误树与 `manual > rules > schema`、ValuePath↔ErrorsPath（数组插入 `rows`）映射、内置规则库与 RHF 风格简写、`controller.*` 统一动作命名空间、`Form.Path` 与类型化 FieldPath/FieldValue（含数组 index）。
+- **下沉到 `@logixjs/core`（TraitLifecycle/StateTrait/Runtime）**：valuePath→FieldRef 解析、source 的 `onMount/onKeyChange` 默认 wiring、deps 命中归一化（含 `[]` pattern）、list-scope deps 默认语义（`deps:["x"] => list[].x`）与结构依赖补齐、rowIdStore、通用 cleanup 原语。
+- **留在 `@logixjs/form`（领域语义与 DX 外观）**：`$list/rows[]` 错误树与 `manual > rules > schema`、ValuePath↔ErrorsPath（数组插入 `rows`）映射、内置规则库与 RHF 风格简写、`controller.*` 统一动作命名空间、`Form.Path` 与类型化 FieldPath/FieldValue（含数组 index）。
 - **实现纪律**：form 不再复制 path 解析 / source wiring / deps 命中逻辑；若 core 缺能力，优先补 core 而不是在 form 侧引入新的专家开关。
 
 ## Complexity Tracking

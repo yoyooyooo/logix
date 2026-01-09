@@ -78,7 +78,7 @@ export const ProjectState = Schema.Struct({
 
 ```typescript
 // (Generated) ProjectModule.generated.ts
-import { Action, Module } from "@logix/core";
+import { Action, Module } from "@logixjs/core";
 import { ProjectState } from "./ProjectState.design";
 
 // 1. 生成 ActionTokens (04)
@@ -136,11 +136,11 @@ $.onAction(PushCommit).run((commitId) => {
 
     - 实现 `Action.make` / `ActionToken`。
     - 改造 `ModuleRuntime` 的 `dispatch` 链路，支持识别 Token 并优先执行绑定的 pure reducer。
-    - _产出_：`@logix/core` vNext，支持 Token API。
+    - _产出_：`@logixjs/core` vNext，支持 Token API。
 
 2.  **Phase 2: Codegen MVP (Tooling)**
 
-    - 实现 `@logix/codegen`。
+    - 实现 `@logixjs/codegen`。
     - 解析 `logix/auto` 注解，生成 `Action.make` 代码。
     - _产出_：CLI 工具，输入 demo state，输出 working module。
 

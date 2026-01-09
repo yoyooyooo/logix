@@ -264,7 +264,7 @@ Logix.Module.make("Id", {
 1. 在 runtime-logix SSoT 中补充一节“Action / Reducer 模型”：
    - 明确：ActionMap 只描述 payload 形状，Primary Reducer 只在 TS 层实现；
    - 给出一个完整例子：StateSchema + ActionMap + ReducersFromMap + Logic 的组合。
-2. 在 `@logix/core` 中巩固现有类型工具：
+2. 在 `@logixjs/core` 中巩固现有类型工具：
    - 确认 `ActionsFromMap` / `ReducersFromMap` 的签名清晰、易被 LLM 理解和复用；
    - 在类型注释中明确说明“Reducer 返回类型固定为 StateOf<Sh>，不需要额外 Schema”。
 3. 在 examples / apps/docs 中挑一两个示例，显式展示：

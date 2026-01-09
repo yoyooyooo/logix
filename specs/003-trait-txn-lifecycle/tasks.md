@@ -7,7 +7,7 @@ description: 'Task list for 003-trait-txn-lifecycle implementation'
 **Input**: Design documents from `/specs/003-trait-txn-lifecycle/`
 **Prerequisites**: `plan.md`、`spec.md`、`research.md`、`data-model.md`、`contracts/`、`quickstart.md`
 
-**Tests**: 本特性落点在 `@logix/core` / `@logix/react` / `@logix-devtools-react` 三个核心包，测试视为必选：每个 user story 至少要有对应的单测 / 集成测试任务。
+**Tests**: 本特性落点在 `@logixjs/core` / `@logixjs/react` / `@logixjs/devtools-react` 三个核心包，测试视为必选：每个 user story 至少要有对应的单测 / 集成测试任务。
 
 **Organization**: 按 user story 分阶段拆解，保证每个故事都可以独立实现与验证。
 
@@ -65,7 +65,7 @@ description: 'Task list for 003-trait-txn-lifecycle implementation'
 - [x] T057 [P] [US1] 在 `packages/logix-core/src/internal/runtime/core/module.ts` 与 `packages/logix-core/src/internal/runtime/ModuleFactory.ts` 中扩展 `ModuleTag["implement"]` / `ModuleImpl` 类型与实现：在 `implement` 的 config 中新增可选 `stateTransaction?: { instrumentation?: "full" \| "light" }`，并在 `Module.implement` 内组合 ModuleImpl 级配置、Runtime 级配置与 `getDefaultStateTxnInstrumentation()` 计算模块的有效观测级别
 - [x] T058 [P] [US1] 在 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts` 中扩展 `ModuleRuntimeOptions`：新增 `stateTransaction?: { instrumentation?: "full" \| "light" }`，并在创建 `txnContext` 时优先使用该配置，未配置时依次回退到 Runtime 级默认与 `getDefaultStateTxnInstrumentation()`
 - [x] T059 [US1] 在 `packages/logix-core/test/ModuleRuntime.test.ts` 中新增一组 instrumentation 优先级单测：覆盖“仅 NODE_ENV 默认”、“Runtime 级覆盖 NODE_ENV”、“ModuleImpl 覆盖 Runtime”的三种情况，断言 StateTransaction 实际运行时的 `instrumentation` 与预期优先级一致
-- [x] T060 [US1] 复查 `@logix/react` 中的 `RuntimeProvider` / `LogixProvider`（`packages/logix-react/src/components/RuntimeProvider.tsx` 等），确保 props 不新增任何 StateTransaction 相关字段，仅接受 `runtime` 与可选 `layer`，并在实现注释中明确事务观测策略只能通过 Runtime.make / Module.implement 配置
+- [x] T060 [US1] 复查 `@logixjs/react` 中的 `RuntimeProvider` / `LogixProvider`（`packages/logix-react/src/components/RuntimeProvider.tsx` 等），确保 props 不新增任何 StateTransaction 相关字段，仅接受 `runtime` 与可选 `layer`，并在实现注释中明确事务观测策略只能通过 Runtime.make / Module.implement 配置
 - [x] T061 [US1] 在 `packages/logix-react/test` 中新增集成测试：在相同 `Logix.Runtime.make` instrumentation 配置下，对比“直接使用 Runtime.run\*”与“包裹 RuntimeProvider（含/不含 layer）后通过 hook 调用”的行为，验证两种路径产出的 Debug 事件中事务级别（`"full"` / `"light"`）及 Patch/快照记录行为保持一致
 - [x] T052 [US1] 在 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts` 中为每个 `moduleId + instanceId` 实现 StateTransaction 队列：确保任意时刻仅有一个活跃事务，新逻辑入口（dispatch/source-refresh/service-callback/devtools 操作）按 FIFO 排队，当前事务 commit/rollback 后再启动下一条
 - [x] T053 [P] [US1] 在 `packages/logix-core/test/ModuleRuntime.test.ts` 中增加队列与串行语义测试：验证同一实例快速多次 dispatch 时事务按顺序执行且状态演进顺序与 dispatch 顺序一致，不同实例之间可以并行执行事务
@@ -174,7 +174,7 @@ description: 'Task list for 003-trait-txn-lifecycle implementation'
 
 - [x] T041 [P] 整理并补全 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与 `impl/README.md` 中与 StateTransaction / Trait 生命周期 / RuntimeDebugEvent / Devtools 契约相关的文档描述
 - [x] T042 [P] 在 `specs/003-trait-txn-lifecycle/references/future-devtools-data-model.md` 中记录本轮实现与原设计之间的差异与后续扩展点（例如事务内部步级 time-travel、录制/回放）
-- [x] T043 在 `packages/logix-core` / `packages/logix-react` / `packages/logix-devtools-react` 中做一次轻量代码清理与注释整理：统一通过 `@logix/core/Env`（`packages/logix-core/src/internal/runtime/core/env.ts`）暴露 `getNodeEnv` / `isDevEnv`，在 `packages/logix-react/src/internal/env.ts` 中仅做 re-export，移除所有直接访问 `process.env.NODE_ENV` 的代码，并确保 dev-only 逻辑都有明确注释与 `isDevEnv()` 守卫
+- [x] T043 在 `packages/logix-core` / `packages/logix-react` / `packages/logix-devtools-react` 中做一次轻量代码清理与注释整理：统一通过 `@logixjs/core/Env`（`packages/logix-core/src/internal/runtime/core/env.ts`）暴露 `getNodeEnv` / `isDevEnv`，在 `packages/logix-react/src/internal/env.ts` 中仅做 re-export，移除所有直接访问 `process.env.NODE_ENV` 的代码，并确保 dev-only 逻辑都有明确注释与 `isDevEnv()` 守卫
 - [x] T044 跑通 `quickstart.md` 中列出的验证路径，按故事顺序检查：事务视图 → TraitGraph → 时间线游标 → 时间旅行 → 渲染事件 → 高 Trait 密度场景
 - [x] T045 [P] 在 `apps/docs/content/docs/guide/advanced/performance-and-optimization.md` 新增“Logix 性能与优化”专题页面，系统整理本特性涉及的事务观测策略（Instrumentation Policy）、Devtools 观测粒度开关、中间件层防抖/节流、Trait 粒度选择等可选优化手法，并以典型场景（高频输入表单、长时间运行模块、Devtools 打开/关闭对比等）分类说明
 - [x] T051 在 `examples/logix-react/src/demos/trait-txn-devtools-demo.tsx` 中新增 Demo Page：挂载 TraitForm/TraitFormAdvanced 模块与 Devtools 面板，展示事务视图、时间旅行、渲染事件与顶部时间轴总览条，作为业务开发者感知性能差异与观测模式的入口

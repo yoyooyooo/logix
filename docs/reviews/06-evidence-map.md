@@ -1,8 +1,8 @@
 # 证据地图（代码落点与调用链路）
 
-本文档是 `docs/reviews/*` 的“导航与证据入口”：把 `@logix/core` 的公共出口、运行时装配链路、事务/trait/诊断/React/Sandbox 的关键文件与符号串成一张可交接地图，方便后续做不兼容重构时逐点落地与验证。
+本文档是 `docs/reviews/*` 的“导航与证据入口”：把 `@logixjs/core` 的公共出口、运行时装配链路、事务/trait/诊断/React/Sandbox 的关键文件与符号串成一张可交接地图，方便后续做不兼容重构时逐点落地与验证。
 
-## 1) `@logix/core` 公共出口地图（以 `packages/logix-core/src/index.ts` 为准）
+## 1) `@logixjs/core` 公共出口地图（以 `packages/logix-core/src/index.ts` 为准）
 
 `packages/logix-core/src/index.ts` 以命名空间形式对外导出：
 
@@ -11,7 +11,7 @@
   - `ModuleTag.logic(($)=>...)`（`Module.make(...)` 返回值的 `.tag`）：在 Logic Effect 内 `yield* moduleTag` 获取 runtime，再 `BoundApiRuntime.make(...)` 构造 `$`
   - 重要漂移：`def.traits` 注释写“运行时尚未消费”，但实际会 `StateTrait.build(...)` 并自动注入安装逻辑（详见 `Module.ts`）
 - `Logic`：`packages/logix-core/src/Logic.ts`
-  - `RuntimeTag = Context.GenericTag("@logix/Runtime")`：**当前仅定义未使用**（仓库内唯一引用就是它自身）
+  - `RuntimeTag = Context.GenericTag("@logixjs/Runtime")`：**当前仅定义未使用**（仓库内唯一引用就是它自身）
   - 其余均为 `internal/runtime/core/LogicMiddleware.ts` 的类型/实现别名与 re-export
 - `Bound`：`packages/logix-core/src/Bound.ts`
   - 类型：`BoundApiPublic` / `RemoteBoundApi` / `ActionsApi`
@@ -28,7 +28,7 @@
   - Hub：`internal/runtime/core/DevtoolsHub.ts`
   - Devtools enable 开关：`Debug.isDevtoolsEnabled`
 - `Platform`：`packages/logix-core/src/Platform.ts`
-  - 平台 Service：`internal/runtime/core/Platform.ts`（注意：Tag 使用 `Context.GenericTag("@logix/Platform")`）
+  - 平台 Service：`internal/runtime/core/Platform.ts`（注意：Tag 使用 `Context.GenericTag("@logixjs/Platform")`）
   - 默认实现：`NoopPlatformLayer`
 - `Resource`：`packages/logix-core/src/Resource.ts`
   - `ResourceRegistryTag`：使用 **class Tag**（与 core 内大量 `GenericTag` 混用）
@@ -47,7 +47,7 @@
 核心路径（从“能跑起来”到“可扩展”）：
 
 - `internal/runtime/ModuleFactory.ts::Module(id, def)`
-  - 创建 Module Tag：`Context.GenericTag(\`@logix/Module/${id}\`)`
+  - 创建 Module Tag：`Context.GenericTag(\`@logixjs/Module/${id}\`)`
   - `logic(build)`：运行时从 Env `yield* tag` 拿到 runtime，再 `BoundApiRuntime.make(shape, runtime, options)` 生成 `$`
   - `live(initial, ...logics)`：`Layer.scoped(tag, ModuleRuntime.make(initial, {...}))`
   - `implement(config)`：生成 `ModuleImpl` 蓝图（imports/processes/stateTransaction 等）
@@ -153,7 +153,7 @@ react 的 imports-scope 解析（strict-only）：
 - 编译器：`packages/logix-sandbox/src/compiler.ts`
   - `esbuild-wasm` + `cdnResolvePlugin`
   - `effect@3.19.8` 与所有裸 specifier 默认 external 到 `https://esm.sh/*`
-  - `@logix/core` external 到 `kernelUrl`（由 INIT 注入）
+  - `@logixjs/core` external 到 `kernelUrl`（由 INIT 注入）
 - Worker：`packages/logix-sandbox/src/worker/sandbox.worker.ts`
   - 支持命令：INIT/COMPILE/RUN/UI_CALLBACK/TERMINATE
   - `RUN`：把 bundle Blob import 后，要求 `default` 导出为 Effect 程序并 `runPromise`
@@ -179,7 +179,7 @@ react 的 imports-scope 解析（strict-only）：
 
 ## 10) 值得继续深挖的“漂移/遗留/向后兼容点”（优先级建议）
 
-1. `Logic.RuntimeTag` 存在但仓库内完全未使用/未装配（`rg "@logix/Runtime"` 仅命中 `Logic.ts`）
+1. `Logic.RuntimeTag` 存在但仓库内完全未使用/未装配（`rg "@logixjs/Runtime"` 仅命中 `Logic.ts`）
 2. `Bound.ts` 注释仍写“默认基于 RuntimeTag 获取 runtime”，但实际工厂 `Bound.make(shape, runtime)` 必须显式传入 runtime
 3. `Module.make({ traits })` 注释写“尚未消费”，但实际会 build/注册/自动注入 install（属于 SSoT 漂移）
 4. 业务可写 `state.ref()`/`runtime.ref()` 逃逸，绕过事务闭包与诊断（导致性能与因果不可控）

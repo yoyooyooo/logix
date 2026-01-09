@@ -16,7 +16,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9.x（ESM；以仓库 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、`@logix/react`、（迁移包）`@logix/query`/`@logix/form`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、（迁移包）`@logixjs/query`/`@logixjs/form`  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；React 集成按需要走 browser）  
 **Target Platform**: Node.js 20+ + modern browsers  
 **Constraints**: 统一最小 IR（Static IR + Dynamic Trace）；稳定标识（tickSeq/instanceId/txnSeq/opSeq）；事务窗口禁 IO；禁止影子时间线与双真相源  

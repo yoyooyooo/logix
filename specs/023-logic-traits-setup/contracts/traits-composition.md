@@ -1,7 +1,7 @@
 # Contract: Logic-level Traits Composition
 
 **Status**: Draft  
-**Scope**: `@logix/core` 内部/公共 API 合约（非网络 API）
+**Scope**: `@logixjs/core` 内部/公共 API 合约（非网络 API）
 
 ## Goals
 

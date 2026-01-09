@@ -15,9 +15,9 @@
 **Alternatives considered**:
 - 解析 code fence meta（如 ```ts playground ...```）并在 `pre/code` 渲染层做条件替换：作者体验更像“代码块增强”，但需要更深的渲染管线理解与兼容性验证。
 
-## Decision 2: 运行底座复用 `@logix/sandbox` 的 TrialRun 能力
+## Decision 2: 运行底座复用 `@logixjs/sandbox` 的 TrialRun 能力
 
-**Decision**: 文档 Playground 运行使用 `@logix/sandbox` 的 `SandboxClient.trialRunModule(...)` 作为主入口（编译 + Worker 执行 + 结构化 RunResult 回传）。
+**Decision**: 文档 Playground 运行使用 `@logixjs/sandbox` 的 `SandboxClient.trialRunModule(...)` 作为主入口（编译 + Worker 执行 + 结构化 RunResult 回传）。
 
 **Rationale**:
 - 复用现有 Worker Sandbox、编译与试运行协议，避免再造“第二套 runner”；与仓库的 Playground/Alignment Lab 方向一致；

@@ -50,7 +50,7 @@
 
 **Decision**
 
-- `@logix/react` 的 `RuntimeProvider` **不引入新的 StateTransaction 模式或开关**，只透传底层 Runtime 与额外 Layer；
+- `@logixjs/react` 的 `RuntimeProvider` **不引入新的 StateTransaction 模式或开关**，只透传底层 Runtime 与额外 Layer；
 - 当传入 `runtime={ManagedRuntime}` 时，StateTransaction 观测策略完全由构造该 Runtime 的 `Logix.Runtime.make` 决定；
 - 当仅传入 `layer={Layer}` 时，Provider 只在 Env 维度叠加 Service（如 Logger / DebugSink），不能改变事务是否存在或其观测粒度。
 

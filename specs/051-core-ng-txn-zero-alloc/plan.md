@@ -26,7 +26,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、（实现阶段）`@logix/core-ng`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`  
 **Storage**: N/A（证据落盘到 `specs/051-core-ng-txn-zero-alloc/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）  

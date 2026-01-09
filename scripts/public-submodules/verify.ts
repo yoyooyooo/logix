@@ -28,8 +28,8 @@ type VerifyOptions = {
 };
 
 const browserProjectPackages = new Set<string>([
-  "@logix/react",
-  "@logix/sandbox",
+  "@logixjs/react",
+  "@logixjs/sandbox",
 ]);
 
 const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
@@ -429,7 +429,7 @@ const checkNoBypassImports = async (
     let match: RegExpExecArray | null;
     while ((match = specifierRe.exec(text)) !== null) {
       const spec = match[2];
-      if (/^@logix\/[^/]+\/internal\//.test(spec)) {
+      if (/^@logixjs\/[^/]+\/internal\//.test(spec)) {
         violations.push({
           code: "import_bypass_internal_subpath",
           filePath,

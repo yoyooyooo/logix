@@ -21,7 +21,7 @@
 ### 最小代码形态（伪代码）
 
 ```ts
-import { createSandboxClient } from '@logix/sandbox'
+import { createSandboxClient } from '@logixjs/sandbox'
 
 const client = createSandboxClient({
   kernelRegistry: {
@@ -51,12 +51,12 @@ result.kernelImplementationRef
 
 ## 资产与挂载提示（Vite）
 
-- 仓库内的 Vite 项目通常通过 `logixSandboxKernelPlugin()` 把 `@logix/sandbox/public/sandbox/*` 挂到 `/sandbox/*`。
+- 仓库内的 Vite 项目通常通过 `logixSandboxKernelPlugin()` 把 `@logixjs/sandbox/public/sandbox/*` 挂到 `/sandbox/*`。
 - 当前默认只提供 `/sandbox/logix-core.js`；如需做 `core`/`core-ng` 的“不同 kernelUrl”真实对照，需要在同目录准备第二份 kernel bundle（例如 `/sandbox/logix-core-ng.js`）。在资产未就绪前，可先将不同 `kernelId` 暂时映射到同一个 `kernelUrl`，仅用于验证 UI/证据字段链路。
 
 ## 迁移说明（占位）
 
-若本特性升级 `@logix/sandbox` 的配置/返回类型：
+若本特性升级 `@logixjs/sandbox` 的配置/返回类型：
 
 - 单内核用法应仍然可用（作为新设计的一等形态），但字段名/结构可能变化；
 - consumer 不应解析内部对象图：只读取 RunResult/TrialRunReport 中的可序列化摘要字段；

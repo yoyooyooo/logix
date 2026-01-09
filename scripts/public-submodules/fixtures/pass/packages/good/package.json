@@ -1,5 +1,5 @@
 {
-  "name": "@logix/fixture-good",
+  "name": "@logixjs/fixture-good",
   "type": "module",
   "exports": {
     "./package.json": "./package.json",

@@ -1,11 +1,11 @@
 # Form DX vs RHF（差距与极致方案）
 
-> 目标：让 `@logix/form` 成为“业务默认入口”，体验 **≥ RHF**，同时严格满足 Logix 的约束：  
+> 目标：让 `@logixjs/form` 成为“业务默认入口”，体验 **≥ RHF**，同时严格满足 Logix 的约束：  
 > **上层可完全降解到下层（统一最小 IR）**、**deps 唯一事实源**、**事务窗口禁 IO**、**稳定标识**、**诊断 Slim 可序列化**、**拒绝向后兼容**。
 
 ## 0. 结论（一句话）
 
-当前 `@logix/form` 的 DX 更像“把 Logix Module/Action/Reducer/Trait 打包成 Blueprint”，还没有达到 RHF 级“甜度”；要达成 **RHF≥**，关键不是新增一堆 API，而是把 **路径/类型/错误树/触发推导/提交语义** 收敛成唯一默认口径，并确保全链路可降解到 IR。
+当前 `@logixjs/form` 的 DX 更像“把 Logix Module/Action/Reducer/Trait 打包成 Blueprint”，还没有达到 RHF 级“甜度”；要达成 **RHF≥**，关键不是新增一堆 API，而是把 **路径/类型/错误树/触发推导/提交语义** 收敛成唯一默认口径，并确保全链路可降解到 IR。
 
 ## 1. 现状快照（以代码为准）
 
@@ -95,7 +95,7 @@
 
 **提案（最小可落地）**：
 
-- 在 `@logix/form` 提供类型工具：
+- 在 `@logixjs/form` 提供类型工具：
   - `Form.FieldPath<TValues>`：支持数组索引占位（`${number}`）与普通对象路径；
   - `Form.FieldValue<TValues, P>`：给定 path 推导 value 类型（含数组）。
 - 更新 React hooks 与 controller 的泛型签名（不改变运行时语义）：

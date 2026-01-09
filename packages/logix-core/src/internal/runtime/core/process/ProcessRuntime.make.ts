@@ -301,8 +301,8 @@ export const make = (options?: {
       for (const dep of requires) {
         if (typeof dep !== 'string' || dep.length === 0) continue
 
-        // ModuleTag key convention: `@logix/Module/${id}`; Tag identity is derived from the key, so we can construct it on demand.
-        const tag = Context.Tag(`@logix/Module/${dep}`)() as Context.Tag<any, any>
+        // ModuleTag key convention: `@logixjs/Module/${id}`; Tag identity is derived from the key, so we can construct it on demand.
+        const tag = Context.Tag(`@logixjs/Module/${dep}`)() as Context.Tag<any, any>
         const found = Context.getOption(installation.env, tag)
         if (Option.isNone(found)) {
           missing.push(dep)
@@ -496,7 +496,7 @@ export const make = (options?: {
 
           for (const moduleId of ids) {
             if (typeof moduleId !== 'string' || moduleId.length === 0) continue
-            const tag = Context.Tag(`@logix/Module/${moduleId}`)() as Context.Tag<any, any>
+            const tag = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
             const found = Context.getOption(baseEnv, tag)
             if (Option.isNone(found)) continue
             const runtime = found.value as any
@@ -572,7 +572,7 @@ export const make = (options?: {
             }
 
             if (spec.kind === 'moduleAction') {
-              const tag = Context.Tag(`@logix/Module/${spec.moduleId}`)() as Context.Tag<any, any>
+              const tag = Context.Tag(`@logixjs/Module/${spec.moduleId}`)() as Context.Tag<any, any>
               const found = Context.getOption(baseEnv, tag)
               if (Option.isNone(found)) {
                 return yield* Effect.fail(new Error(`Missing module runtime in scope: ${spec.moduleId}`))
@@ -634,7 +634,7 @@ export const make = (options?: {
             }
 
             // moduleStateChange
-            const tag = Context.Tag(`@logix/Module/${spec.moduleId}`)() as Context.Tag<any, any>
+            const tag = Context.Tag(`@logixjs/Module/${spec.moduleId}`)() as Context.Tag<any, any>
             const found = Context.getOption(baseEnv, tag)
             if (Option.isNone(found)) {
               return yield* Effect.fail(new Error(`Missing module runtime in scope: ${spec.moduleId}`))

@@ -83,13 +83,13 @@ const childRuntime = parentRuntime.fork({
 
 ## 4. 独立包与 Layer 注入
 
-在 v3 架构下，能力包（如 `@logix/retry`、`@logix/router`）作为**独立 npm 包**存在，不通过“扩展 `$`”的方式注入能力。
+在 v3 架构下，能力包（如 `@logixjs/retry`、`@logixjs/router`）作为**独立 npm 包**存在，不通过“扩展 `$`”的方式注入能力。
 
 ### 4.1 使用方式
 
 ```ts
 // 业务 Logic 中：显式导入 Helper，传入 $ 作为首个参数
-import { Retry } from '@logix/retry'
+import { Retry } from '@logixjs/retry'
 
 Effect.gen(function* () {
   yield* Retry.withPolicy($, { retries: 3 })

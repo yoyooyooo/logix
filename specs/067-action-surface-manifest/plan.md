@@ -44,7 +44,7 @@ Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-0
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: effect v3（override 3.19.13）、`@logix/core`、`@logix/react`、`@logix/sandbox`  
+**Primary Dependencies**: effect v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`  
 **Storage**: N/A（只产出 deterministic JSON 工件）  
 **Testing**: Vitest（`vitest run`）+ `@effect/vitest`（Effect-heavy 场景）  
 **Target Platform**: Node.js（Loader/CI/TrialRun）+ 现代浏览器（Devtools/Studio）  
@@ -63,7 +63,7 @@ Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-0
 - 稳定标识：`instanceId/txnSeq/txnId` 不引入随机/时间默认值（复用现有模型）。
 - 事务窗口禁止 IO；诊断载荷必须 Slim 且可序列化（`JsonValue`）。
 - IDE 跳转定义：`dispatch`/`onAction` 的推荐写法必须引用源码里的稳定 symbol（token），避免 Proxy/字符串成为主路径。
-- React（`@logix/react`）侧的对齐：UI 中用 `useDispatch(handle)` / `ModuleRef.dispatch` 承担“执行视图”（类比 `$.dispatchers`），用 `ModuleDef.actions.<K>`（ActionToken）生成 action object（类比 `$.actions`）；需要 IDE 重命名/找引用时避免依赖 `ModuleRef.actions.<K>`（其实现是字符串 Proxy 的便捷派发糖）。
+- React（`@logixjs/react`）侧的对齐：UI 中用 `useDispatch(handle)` / `ModuleRef.dispatch` 承担“执行视图”（类比 `$.dispatchers`），用 `ModuleDef.actions.<K>`（ActionToken）生成 action object（类比 `$.actions`）；需要 IDE 重命名/找引用时避免依赖 `ModuleRef.actions.<K>`（其实现是字符串 Proxy 的便捷派发糖）。
 - effects 必须事务外执行；setup 阶段只允许注册规则，不得提前执行 handler。
 
 **Scale/Scope**:
@@ -88,7 +88,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - Diagnosability & explainability：Action 事件仍走 `Debug.record → toRuntimeDebugEventRef`；新增字段必须可序列化且可裁剪。
 - User-facing performance mental model：本特性不改变默认策略（预期 N/A）；若引入新的默认采集/导出策略，再补 ≤5 关键词与优化梯子。
 - Breaking changes（forward-only）：若移除 `action.type` 兼容或升级 manifestVersion，必须在本 plan/tasks 中提供迁移说明（无兼容层/无弃用期）。
-- Public submodules：若新增 `ActionToken` 并进入 `@logix/core` 公共 API，按 `packages/logix-core/src/*.ts` 子模块规则落点，内部实现下沉 `src/internal/**`。
+- Public submodules：若新增 `ActionToken` 并进入 `@logixjs/core` 公共 API，按 `packages/logix-core/src/*.ts` 子模块规则落点，内部实现下沉 `src/internal/**`。
 - DX 与可解释性：`actions/dispatchers` 的“定义视图 vs 执行视图”必须在 quickstart 与 runtime-logix API 文档中固化，避免用户把 creator 当 dispatcher（或反之）。
 - Quality gates：合并前通过 `pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`；关键用例覆盖 manifest deterministic 与事件映射（含 unknown 降级）。
 
@@ -163,7 +163,7 @@ docs/specs/sdd-platform/workbench/
 └── 02/15/16...                                  # 本特性引用其裁决；若升级为平台协议再回写 SSoT
 ```
 
-**Structure Decision**: 核心契约与提取逻辑落在 `@logix/core`；消费与 UI 对齐优先落在 Devtools/Sandbox 的最小载体，避免平台侧过早锁死。
+**Structure Decision**: 核心契约与提取逻辑落在 `@logixjs/core`；消费与 UI 对齐优先落在 Devtools/Sandbox 的最小载体，避免平台侧过早锁死。
 
 ## Complexity Tracking
 

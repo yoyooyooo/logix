@@ -16,7 +16,7 @@
 
 ## 2) 最小消费方式（离线解释 / Workbench）
 
-1. 从一次 trial-run / evidence / 导出工件中获取 registry pack（建议作为可选 artifact：`@logix/schema.registry@v1`）。  
+1. 从一次 trial-run / evidence / 导出工件中获取 registry pack（建议作为可选 artifact：`@logixjs/schema.registry@v1`）。  
 2. 在工具侧加载 registry pack，并建立 `schemaId -> SchemaEntry` 的索引。  
 3. 当看到某条事件/IR/协议消息携带 `schemaRef.schemaId` 时：  
    - 能找到 → 用对应 schema 解释字段含义/约束/注解；  
@@ -31,7 +31,7 @@
 
 ## 4) 迁移/演进原则（不做兼容层）
 
-- 任意破坏性演进通过 `@logix/schema.*@vN` 与 `protocolVersion=vN` 承载；提供迁移说明替代兼容层。
+- 任意破坏性演进通过 `@logixjs/schema.*@vN` 与 `protocolVersion=vN` 承载；提供迁移说明替代兼容层。
 - schemaId 生成策略若升级（例如更强摘要算法），必须版本化并能在 diff/CI 中被清晰识别。
 
 ## References

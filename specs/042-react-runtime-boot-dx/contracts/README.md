@@ -3,7 +3,7 @@
 **Feature**: `042-react-runtime-boot-dx`  
 **Created**: 2025-12-27  
 
-本特性不新增 HTTP/Schema 等对外协议文件；对外契约体现为 `@logix/react` 的 TypeScript API（RuntimeProvider props / hooks options / 可注入配置 Tag）。
+本特性不新增 HTTP/Schema 等对外协议文件；对外契约体现为 `@logixjs/react` 的 TypeScript API（RuntimeProvider props / hooks options / 可注入配置 Tag）。
 
 实施阶段需要在以下位置完成“契约落点”与文档对齐：
 

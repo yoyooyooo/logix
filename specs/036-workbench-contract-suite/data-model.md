@@ -31,15 +31,15 @@
 
 **已知约束（影响 Workbench 路径）**：
 
-- 当前 `@logix/sandbox` 的编译器只内置 `@logix/core`（其它 `@logix/*` 会落到 `esm.sh` 并失败），因此该模块暂时更适合作为 CI/Node 入口样例；Workbench 想直接跑通需先扩展 sandbox kernel 支持 `@logix/form`。
+- 当前 `@logixjs/sandbox` 的编译器只内置 `@logixjs/core`（其它 `@logixjs/*` 会落到 `esm.sh` 并失败），因此该模块暂时更适合作为 CI/Node 入口样例；Workbench 想直接跑通需先扩展 sandbox kernel 支持 `@logixjs/form`。
 
 ## Artifact Keys（036 视角：验收时必须识别的 key/version）
 
 > 这里的 “artifactKey” 是 Contract Suite 的统一索引键；其语义与 schema 由对应 spec 负责（036 只消费/判定）。
 
-- `@logix/form.rulesManifest@v1`（031；Form rules 的 Supplemental Static IR）
-- `@logix/module.portSpec@v1`（035；ModulePortSpec@v1，端口与可引用空间）
-- `@logix/module.typeIr@v1`（035；TypeIR@v1，类型摘要/引用 IR）
+- `@logixjs/form.rulesManifest@v1`（031；Form rules 的 Supplemental Static IR）
+- `@logixjs/module.portSpec@v1`（035；ModulePortSpec@v1，端口与可引用空间）
+- `@logixjs/module.typeIr@v1`（035；TypeIR@v1，类型摘要/引用 IR）
 
 ## Entity: ContractSuiteVerdict@v1（治理输出）
 
@@ -116,16 +116,16 @@
 
 | artifactKey | status | 默认 verdict | 主要 reason code（建议） | 典型 action（建议） |
 | --- | --- | --- | --- | --- |
-| `@logix/form.rulesManifest@v1` | PRESENT | PASS | - | - |
-| `@logix/form.rulesManifest@v1` | SKIPPED | PASS | - | 模块不使用 form rules；无需产出 |
-| `@logix/form.rulesManifest@v1` | TRUNCATED | WARN | `artifact::truncated` | 调整 artifact budget；确保仍保留 `manifest + warnings` 摘要 |
-| `@logix/form.rulesManifest@v1` | MISSING/FAILED | FAIL | `artifact::rules_manifest_unavailable` | 确认模块确实使用 rules；修复 sandbox/CI 入口可加载 `@logix/form`；修复导出者异常/不可序列化 |
-| `@logix/module.portSpec@v1` | PRESENT | PASS | - | - |
-| `@logix/module.portSpec@v1` | TRUNCATED | WARN | `artifact::truncated` | 提高 budget 或输出更 slim 摘要；至少保留 key 空间（actions/exports/ports） |
-| `@logix/module.portSpec@v1` | MISSING/FAILED | FAIL | `artifact::portspec_unavailable` | 修复 035 导出；避免平台失去引用空间 SSoT |
-| `@logix/module.typeIr@v1` | PRESENT | PASS | - | - |
-| `@logix/module.typeIr@v1` | TRUNCATED | WARN | `artifact::typeir_truncated` | 提高 budget 或分层导出；保证 PortSpec 仍可用 |
-| `@logix/module.typeIr@v1` | MISSING/FAILED | WARN | `artifact::typeir_unavailable` | 降级为 key-level 校验（仅 PortSpec）；后续补齐 TypeIR 导出/预算 |
+| `@logixjs/form.rulesManifest@v1` | PRESENT | PASS | - | - |
+| `@logixjs/form.rulesManifest@v1` | SKIPPED | PASS | - | 模块不使用 form rules；无需产出 |
+| `@logixjs/form.rulesManifest@v1` | TRUNCATED | WARN | `artifact::truncated` | 调整 artifact budget；确保仍保留 `manifest + warnings` 摘要 |
+| `@logixjs/form.rulesManifest@v1` | MISSING/FAILED | FAIL | `artifact::rules_manifest_unavailable` | 确认模块确实使用 rules；修复 sandbox/CI 入口可加载 `@logixjs/form`；修复导出者异常/不可序列化 |
+| `@logixjs/module.portSpec@v1` | PRESENT | PASS | - | - |
+| `@logixjs/module.portSpec@v1` | TRUNCATED | WARN | `artifact::truncated` | 提高 budget 或输出更 slim 摘要；至少保留 key 空间（actions/exports/ports） |
+| `@logixjs/module.portSpec@v1` | MISSING/FAILED | FAIL | `artifact::portspec_unavailable` | 修复 035 导出；避免平台失去引用空间 SSoT |
+| `@logixjs/module.typeIr@v1` | PRESENT | PASS | - | - |
+| `@logixjs/module.typeIr@v1` | TRUNCATED | WARN | `artifact::typeir_truncated` | 提高 budget 或分层导出；保证 PortSpec 仍可用 |
+| `@logixjs/module.typeIr@v1` | MISSING/FAILED | WARN | `artifact::typeir_unavailable` | 降级为 key-level 校验（仅 PortSpec）；后续补齐 TypeIR 导出/预算 |
 
 ## References
 

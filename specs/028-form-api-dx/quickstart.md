@@ -83,7 +83,7 @@ const FormM = Form.make("MyForm", {
 
 ```ts
 import { Schema } from 'effect'
-import * as Form from '@logix/form'
+import * as Form from '@logixjs/form'
 
 const OptionSchema = Schema.Struct({
   id: Schema.String,
@@ -237,7 +237,7 @@ const rules = z.schema(
 
 ```ts
 import { Schema } from 'effect'
-import * as Form from '@logix/form'
+import * as Form from '@logixjs/form'
 
 const Email = Schema.String.pipe(
   Schema.minLength(1, { message: () => '请填写邮箱' }),

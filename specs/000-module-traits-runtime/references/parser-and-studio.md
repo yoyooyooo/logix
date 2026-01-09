@@ -69,7 +69,7 @@ spec 要求 `StateTrait.build` 是纯函数，只依赖：
   - 不依赖 RuntimeProvider / Layer 环境；  
   - 失败时只返回结构化错误或抛出同步错误。  
 - Parser / Studio 可通过两种方式复用该逻辑：
-  1. 在 Node 环境中直接 import `@logix/core/StateTrait`，对选定模块执行 build；  
+  1. 在 Node 环境中直接 import `@logixjs/core/StateTrait`，对选定模块执行 build；  
   2. 将 StateTrait 内核编译为可独立运行的 bundle（甚至 WASM），由 Studio 进程/浏览器侧调用。
 
 通过共享 `build`：

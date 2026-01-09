@@ -25,13 +25,13 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`（默认切换与证据导出）；`@logix/core-ng` 仅用于 tests/bench/trial-run 对照（consumer 禁止直接依赖）  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`（默认切换与证据导出）；`@logixjs/core-ng` 仅用于 tests/bench/trial-run 对照（consumer 禁止直接依赖）  
 **Storage**: N/A（证据落盘到 `specs/048-*/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+ + modern browsers  
 **Project Type**: pnpm workspace  
 **Performance Goals**: 在 matrix.json 的 `priority=P1` suites 上，切默认前/后不得出现 budget regression（`pnpm perf diff`：`comparability.comparable=true` 且 `summary.regressions==0`）  
-**Constraints**: 上层只依赖 `@logix/core`；统一最小 IR + 稳定锚点；事务窗口禁 IO；`diagnostics=off` 近零成本；禁止隐式 fallback  
+**Constraints**: 上层只依赖 `@logixjs/core`；统一最小 IR + 稳定锚点；事务窗口禁 IO；`diagnostics=off` 近零成本；禁止隐式 fallback  
 **Scale/Scope**: 本特性以“默认选择切换 + 迁移说明 + 证据落盘”为交付，不引入长期兼容层
 
 ## Kernel support matrix
@@ -65,7 +65,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性仅改变 runtime 装配阶段的默认选择（Kernel），不改变 DSL/Flow/业务语义。
 - **Docs-first & SSoT**：依赖 047（M3 gate）与 045（Kernel Contract）；切默认是治理动作，必须先在 specs 固化迁移说明与证据门槛。
-- **Contracts**：不新增对外业务 API；只在 `@logix/core` 的 runtime 创建入口固化默认选择策略与显式 override。
+- **Contracts**：不新增对外业务 API；只在 `@logixjs/core` 的 runtime 创建入口固化默认选择策略与显式 override。
 - **IR & anchors**：必须保持统一最小 IR + 稳定锚点；切默认前后证据可对比。
 - **Deterministic identity**：不得引入随机/时间默认锚点；切默认不影响 identity 口径。
 - **Transaction boundary**：不得引入事务内 IO/async；默认选择在装配期完成。
@@ -110,7 +110,7 @@ packages/logix-core/
 
 **Structure Decision**:
 
-- 默认选择策略必须固化在 `@logix/core` 的装配入口（避免 consumer 依赖 `@logix/core-ng`）。
+- 默认选择策略必须固化在 `@logixjs/core` 的装配入口（避免 consumer 依赖 `@logixjs/core-ng`）。
 - 回退只作为显式 override（排障/对照），不得成为隐式 fallback。
 - `packages/logix-core-ng/*` 的真实实现达标属于 047 Gate；048 不以“改 core-ng 包”为交付前提。
 

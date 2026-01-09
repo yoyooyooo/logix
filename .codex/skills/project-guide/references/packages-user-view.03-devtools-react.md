@@ -1,4 +1,4 @@
-# 3) `@logix/devtools-react`（Devtools UI）
+# 3) `@logixjs/devtools-react`（Devtools UI）
 
 ## 你在什么情况下会用它
 

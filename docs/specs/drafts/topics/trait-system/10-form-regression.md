@@ -27,7 +27,7 @@ related:
 
 - `examples/logix-react/src/demos/form/cases/case11-dynamic-list-cascading-exclusion.tsx`
 
-不引入 `DynamicList/Reactive` 等新 helper；仅允许在 `@logix/form` 现有 DSL 上迭代。
+不引入 `DynamicList/Reactive` 等新 helper；仅允许在 `@logixjs/form` 现有 DSL 上迭代。
 
 ## 写法裁决（必须遵守）
 
@@ -46,7 +46,7 @@ related:
 - “跨行唯一性/互斥”必须建模为 list-scope check（输入是整张表），一次扫描写回 `errors.<list>.rows[i]`。
 - 禁止在 item check 里通过“读取全表 state”做扫描（这会破坏 deps 口径与增量调度，且难以诊断）。
 
-### 4) 触发策略：wiring 统一由 `@logix/form` 承担
+### 4) 触发策略：wiring 统一由 `@logixjs/form` 承担
 
 - UI 侧只派发 action（setValue/blur/array*），不要用 `useEffect` 去触发 validate/refresh。
 - validate 与 source refresh 的默认 wiring：`packages/form/src/logics/install.ts`

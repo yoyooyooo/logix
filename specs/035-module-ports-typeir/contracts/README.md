@@ -4,8 +4,8 @@
 
 ## Artifact Keys（031 artifacts 槽位）
 
-- `@logix/module.portSpec@v1` → `ModulePortSpec@v1`
-- `@logix/module.typeIr@v1` → `TypeIr@v1`
+- `@logixjs/module.portSpec@v1` → `ModulePortSpec@v1`
+- `@logixjs/module.typeIr@v1` → `TypeIr@v1`
 
 > 说明：这些 payload 通过 `specs/031-trialrun-artifacts` 定义的 `TrialRunReport.artifacts` 输出，外层包裹 `ArtifactEnvelope`。
 
@@ -40,7 +40,7 @@
 
 ## Versioning Strategy
 
-- 外层 key 版本化：`@logix/module.*@vN` 是破坏性变更的唯一手段（不做兼容层）。
+- 外层 key 版本化：`@logixjs/module.*@vN` 是破坏性变更的唯一手段（不做兼容层）。
 - payload 内仍保留 `protocolVersion: "v1"` 作为字段级演进钩子（新增字段默认向前兼容）。
 
 ## Determinism Requirements（硬约束）

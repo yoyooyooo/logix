@@ -12,7 +12,7 @@
 - observe（可选）：订阅 queryKey 结果变化（仅高级场景需要）
 - peekFresh（可选）：只读快路径（用于避免 loading 抖动；不得触发 IO）
 
-### 1.2 `@logix/query` / Logix Runtime 负责什么
+### 1.2 `@logixjs/query` / Logix Runtime 负责什么
 
 - 统一 keySchema/keyHash：稳定、可回放、可比较
 - triggers/concurrency：何时触发、触发频率、switch/exhaust 体验语义
@@ -22,8 +22,8 @@
 
 ## 2) 注入边界（Effect DI）
 
-- `@logix/query` MUST 通过 `Query.Engine` 向宿主索取引擎服务（Effect Context.Tag）。
-- `@logix/query` MUST 提供便捷 Layer：`Query.Engine.layer(engine)`，语义等价于在 Runtime scope 内注册该实例。
+- `@logixjs/query` MUST 通过 `Query.Engine` 向宿主索取引擎服务（Effect Context.Tag）。
+- `@logixjs/query` MUST 提供便捷 Layer：`Query.Engine.layer(engine)`，语义等价于在 Runtime scope 内注册该实例。
 - 同一 Runtime scope SHOULD 只有一个引擎实例（保证缓存与去重语义一致）；不同 scope MAY 注入不同实例（缓存隔离），但 keyHash/写回门控语义必须保持一致。
 - TanStack 适配器 MUST 收敛在 `Query.TanStack.*`：推荐注入形状为 `Query.Engine.layer(Query.TanStack.engine(new QueryClient()))`。
 

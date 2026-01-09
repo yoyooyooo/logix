@@ -1,4 +1,4 @@
-# 6) `@logix/form`（Feature Kit：表单 = values/errors/ui/$form）
+# 6) `@logixjs/form`（Feature Kit：表单 = values/errors/ui/$form）
 
 ## 你在什么情况下会用它
 
@@ -14,7 +14,7 @@
 
 ## React 最小用法（推荐）
 
-- `useForm(FormModule)`：得到带 `controller` 的 ModuleRef（由 `@logix/react` handle-extend 机制提供）
+- `useForm(FormModule)`：得到带 `controller` 的 ModuleRef（由 `@logixjs/react` handle-extend 机制提供）
 - `useField(form, path)` / `useFieldArray(form, listPath)` / `useFormState(form, selector)`
 
 ## 文档与示例入口

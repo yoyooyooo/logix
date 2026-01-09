@@ -77,7 +77,7 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 >
 > 若遇到 auggie 偶发 `fetch failed`：优先改为**单次小查询**（不要并行批量问），并在问题里显式写出目标落点（例如 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`）再重试。
 
-- “`@logix/core` 的 Bound API `$` 类型/实现在哪里（`$.onState`/`$.state.mutate`/`$.use`）？”
+- “`@logixjs/core` 的 Bound API `$` 类型/实现在哪里（`$.onState`/`$.state.mutate`/`$.use`）？”
 - “`Runtime.make` 如何把 `ModuleImpl`/Layer/Devtools 组合起来？相关文件/符号在哪？”
 - “`LogicMiddleware` / `EffectOp middleware` 的注册点与执行链路在哪里？”
 - “`examples/logix` 里哪个场景最接近：表单联动/搜索+详情/长任务/审批流/跨模块协作？”

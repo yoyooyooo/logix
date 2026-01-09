@@ -38,7 +38,7 @@ interface MyAIService {
 }
 
 // After: 使用 Logix AI Abstraction
-import { AiServiceTag, Prompt } from "@logix/ai";
+import { AiServiceTag, Prompt } from "@logixjs/ai";
 
 const program = Effect.gen(function* () {
   // 1. Render Prompt Intent to abstract Input

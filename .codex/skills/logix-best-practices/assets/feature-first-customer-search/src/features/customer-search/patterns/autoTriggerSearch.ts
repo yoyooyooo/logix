@@ -1,5 +1,5 @@
 import { Cause, Effect, Option } from 'effect'
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 import type { CustomerSearchShape } from '../customerSearch.def.js'
 import type { CustomerSummary } from '../model.js'
 import { CustomerApiTag } from '../service.js'

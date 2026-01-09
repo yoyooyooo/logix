@@ -1,11 +1,11 @@
-# Contract: `@logix/router` Public API（草案）
+# Contract: `@logixjs/router` Public API（草案）
 
 > 目标：让业务代码只依赖 Router Contract；切换路由引擎只需替换“Router 实现”的注入层（`Router.layer(...)` 的参数）。
 
 ## 1) 推荐 import 形状
 
 ```ts
-import * as Router from '@logix/router'
+import * as Router from '@logixjs/router'
 ```
 
 ## 2) MUST 暴露的对外能力
@@ -109,7 +109,7 @@ export const SearchParams: {
 
 ## 4) 禁止事项（MUST NOT）
 
-- 不在 `@logix/core` 增加第二套对外 Router 入口（避免双协议）。
+- 不在 `@logixjs/core` 增加第二套对外 Router 入口（避免双协议）。
 - 不让 **Router Contract（`Router.Tag`/`RouteSnapshot`/`NavigationIntent`）** 依赖具体路由库类型；路由库的集成通过 `Router.ReactRouter` / `Router.TanStackRouter` 的 builder 收口。
 - 不导出名为 `RouterAdapter` 的对外类型（作为内部实现概念即可）。
 - 不依赖 process-global 单例（history/global router registry）。

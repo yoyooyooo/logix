@@ -36,7 +36,7 @@ Thumbs.db
 # Auto Claude data directory
 .auto-claude/
 
-# @logix/sandbox build assets (generated via bundle:kernel / prepack)
+# @logixjs/sandbox build assets (generated via bundle:kernel / prepack)
 packages/logix-sandbox/public/
 
 # apps/docs API Reference (generated from apps/api-reference/dist)

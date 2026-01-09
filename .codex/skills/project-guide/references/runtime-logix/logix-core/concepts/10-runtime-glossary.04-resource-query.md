@@ -1,6 +1,6 @@
 # 4. Resource / Query（逻辑资源与查询环境）
 
-> 注意：`specs/*` 中的 **ReadQuery / SelectorSpec** 指“读状态依赖与投影（selector）”的可编译协议；它不是这里的 **Query（服务/缓存/请求）**，也不等同于 `@logix/query`。
+> 注意：`specs/*` 中的 **ReadQuery / SelectorSpec** 指“读状态依赖与投影（selector）”的可编译协议；它不是这里的 **Query（服务/缓存/请求）**，也不等同于 `@logixjs/query`。
 
 - **Resource（逻辑资源规格）**
   - 概念上是「某类外部资源访问的规格说明」，由 ResourceSpec 描述：

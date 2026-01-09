@@ -25,7 +25,7 @@
 
 ## Phase 2: User Story 1 - 一键运行根模块（脚本/命令行友好） (Priority: P1) 🎯 MVP
 
-**Goal**: 提供 `@logix/core` 的 program runner：自动启动 program module、执行主流程、最终释放资源；并提供 `ctx.$` 以复用 `$.use(module)` + handle-extend（controller）。
+**Goal**: 提供 `@logixjs/core` 的 program runner：自动启动 program module、执行主流程、最终释放资源；并提供 `ctx.$` 以复用 `$.use(module)` + handle-extend（controller）。
 
 **Independent Test**: 在测试中构造一个包含常驻监听逻辑的 program module：用 program runner 执行主流程（显式退出条件）后能正常返回，且资源释放发生（Layer finalizer 被调用）。
 
@@ -55,9 +55,9 @@
 
 ## Phase 3: User Story 2 - 与测试运行时对齐（复用同一套心智模型） (Priority: P2)
 
-**Goal**: `@logix/test` 彻底切到 program runner 新模型：不再自建生命周期/装配（Scope/boot/释放），以 program module 为唯一输入复用 `Runtime.openProgram/runProgram` 内核，并在其之上叠加 trace/断言/TestClock；不提供兼容层，仓库内用例/示例同步迁移。
+**Goal**: `@logixjs/test` 彻底切到 program runner 新模型：不再自建生命周期/装配（Scope/boot/释放），以 program module 为唯一输入复用 `Runtime.openProgram/runProgram` 内核，并在其之上叠加 trace/断言/TestClock；不提供兼容层，仓库内用例/示例同步迁移。
 
-**Independent Test**: 同一个 program module：用 `Runtime.runProgram` 与 `@logix/test` 的入口分别跑，关键可观测行为（状态/动作时间线）一致；测试入口仍能提供额外断言与可控时钟。
+**Independent Test**: 同一个 program module：用 `Runtime.runProgram` 与 `@logixjs/test` 的入口分别跑，关键可观测行为（状态/动作时间线）一致；测试入口仍能提供额外断言与可控时钟。
 
 ### Tests for User Story 2
 
@@ -66,7 +66,7 @@
 
 ### Implementation for User Story 2
 
-- [x] T022 [US2] 重写 `@logix/test` 的测试入口（新模型）：以 program module 为唯一输入导出 `TestProgram.runProgram(programModule, body, options?)`（复用 `Runtime.openProgram/runProgram` 内核），在一次运行内收集 trace 并提供 `TestApi`（含 `api.ctx.$`/dispatch/assert/TestClock）；`Vitest.ts` 提供 `itProgram/itProgramResult` 语法糖；移除 `TestProgram.make(config)`/ScenarioBuilder：`packages/logix-test/src/api/TestProgram.ts`、`packages/logix-test/src/Vitest.ts`、`packages/logix-test/src/index.ts`
+- [x] T022 [US2] 重写 `@logixjs/test` 的测试入口（新模型）：以 program module 为唯一输入导出 `TestProgram.runProgram(programModule, body, options?)`（复用 `Runtime.openProgram/runProgram` 内核），在一次运行内收集 trace 并提供 `TestApi`（含 `api.ctx.$`/dispatch/assert/TestClock）；`Vitest.ts` 提供 `itProgram/itProgramResult` 语法糖；移除 `TestProgram.make(config)`/ScenarioBuilder：`packages/logix-test/src/api/TestProgram.ts`、`packages/logix-test/src/Vitest.ts`、`packages/logix-test/src/index.ts`
 - [x] T023 [US2] 删除旧生命周期内核与装配 hack：移除/合并 `packages/logix-test/src/Scenario.ts`、`packages/logix-test/src/runtime/TestRuntime.ts`，同时移除基于 `_op_layer` 的 env/process layer 分类；长期流程统一走 program module 的 `processes`（与 024 runner 对齐）
 
 ---
@@ -85,13 +85,13 @@
 
 - [x] T030 [P] [US3] 同步 runtime SSoT（收口阶段）：program runner 的语义、`module vs runtime` 区分、`ctx.scope/ctx.$` 的定位、`RuntimeOptions.onError` 顶级上报、`closeScopeTimeout` 释放收束、`handleSignals/args/exitCode/reportError`（CLI ergonomics）、退出策略不自动推断：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/05-runtime-and-runner.md`
 - [x] T032 [P] [US3] 同步 runtime glossary（收口阶段）：补齐 Program runner/ProgramRunContext/closeScopeTimeout/DisposeTimeout/handleSignals/exitCode/reportError 等术语：`.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/10-runtime-glossary.md`
-- [x] T033 [P] 同步 runtime SSoT/impl（收口阶段）：更新 `@logix/test` 的推荐入口与心智模型（删掉 `TestProgram.make/Scenario` 旧口径，改为 program module + core runner 复用）：`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/07-test-package.md`
+- [x] T033 [P] 同步 runtime SSoT/impl（收口阶段）：更新 `@logixjs/test` 的推荐入口与心智模型（删掉 `TestProgram.make/Scenario` 旧口径，改为 program module + core runner 复用）：`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/07-test-package.md`
 - [x] T034 [P] 同步 `docs/specs` 旧口径（收口阶段）：替换所有对 `TestProgram.make/itScenario/Scenario` 的过时描述，统一指向新模型与 `Runtime.runProgram/openProgram`：`docs/specs/review/runtime-logix-spec-todo.md`、`docs/specs/sdd-platform/ssot/implementation-status.md`、`specs/003-trait-txn-lifecycle/quickstart.md`
-- [x] T035 [P] 迁移验收（收口阶段）：在 `@logix/test` 源码范围（`packages/logix-test/src`）内旧 API / hack 不再出现（允许其它包/示例/规格出现同名 UI 术语或 `effect` 的 `_op_layer` 内部标记）；验收命令：`rg "TestProgram\\.make\\(" packages/logix-test/src`、`rg "\\bitScenario\\b" packages/logix-test/src`、`rg "\\bScenario(Config|Builder)?\\b" packages/logix-test/src`、`rg "\\bTestRuntime\\b" packages/logix-test/src`、`rg "_op_layer\\b" packages/logix-test/src`；确认 `handoff.md` 已包含关键迁移的 Before/After 代码对比；并确认 `contracts/api.md`、`quickstart.md`、runtime SSoT 与 examples 的用法口径一致
+- [x] T035 [P] 迁移验收（收口阶段）：在 `@logixjs/test` 源码范围（`packages/logix-test/src`）内旧 API / hack 不再出现（允许其它包/示例/规格出现同名 UI 术语或 `effect` 的 `_op_layer` 内部标记）；验收命令：`rg "TestProgram\\.make\\(" packages/logix-test/src`、`rg "\\bitScenario\\b" packages/logix-test/src`、`rg "\\bScenario(Config|Builder)?\\b" packages/logix-test/src`、`rg "\\bTestRuntime\\b" packages/logix-test/src`、`rg "_op_layer\\b" packages/logix-test/src`；确认 `handoff.md` 已包含关键迁移的 Before/After 代码对比；并确认 `contracts/api.md`、`quickstart.md`、runtime SSoT 与 examples 的用法口径一致
 - [x] T043 [P] 收口复核 runtime SSoT 链接与口径：更新 api/README.md 入口链接，并确认与 `contracts/api.md`、`quickstart.md`、025 引用点一致：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/README.md`
 - [x] T041 [P] 更新 `specs/024-root-runtime-runner/quickstart.md`：确保示例与最终 API/术语一致
 - [x] T040 记录并校验“启动耗时”证据（基于 `pnpm perf bench:024:boot` 与落点，manual vs new API，预算≤5%）；更新 `specs/024-root-runtime-runner/perf.md` 并提交 raw JSON：`specs/024-root-runtime-runner/perf.md`、`specs/024-root-runtime-runner/perf/`
-- [x] T042 [P] 更新 `specs/024-root-runtime-runner/handoff.md`：记录最终裁决、迁移要点与对齐结论（尤其 `@logix/test` 的调整）；必须包含“Before/After”代码对比（至少覆盖：单模块测试迁移、以及多模块+Link/长期流程迁移）
+- [x] T042 [P] 更新 `specs/024-root-runtime-runner/handoff.md`：记录最终裁决、迁移要点与对齐结论（尤其 `@logixjs/test` 的调整）；必须包含“Before/After”代码对比（至少覆盖：单模块测试迁移、以及多模块+Link/长期流程迁移）
 
 ---
 

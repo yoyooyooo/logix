@@ -8,7 +8,7 @@
 - [x] T002 Write `research.md` / `data-model.md` / `quickstart.md`
 - [x] T003 Write `contracts/*`（public-api/semantics/migration）
 
-## Phase 2: Implementation（@logix/core）
+## Phase 2: Implementation（@logixjs/core）
 
 - [ ] T010 Implement `ReadQuery.createSelector` in `packages/logix-core/src/internal/runtime/core/ReadQuery.ts` (per `contracts/semantics.md`)
 - [ ] T011 Export `createSelector` from `packages/logix-core/src/ReadQuery.ts`

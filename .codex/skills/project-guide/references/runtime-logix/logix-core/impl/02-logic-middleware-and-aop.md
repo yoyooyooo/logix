@@ -79,7 +79,7 @@ Runtime 构造时把 `middleware` 注入 Env（一次性）：
 
 公共辅助（便于业务/测试构造一致的拒绝错误）：
 
-- `@logix/core/EffectOp` 导出：
+- `@logixjs/core/EffectOp` 导出：
   - `OperationRejected`
   - `makeOperationRejected(...)`
 

@@ -3,7 +3,7 @@
 **Feature Branch**: `070-core-pure-perf-wins`  
 **Created**: 2025-12-31  
 **Status**: Draft  
-**Input**: User description: "在 @logix/core 中梳理并固化一批‘纯赚/近纯赚’性能优化：默认单内核模式零额外成本；生产模式默认诊断链路零开销（不构造/不记录/不分配）；对比/实验场景仍可启用多内核与详细诊断，并提供可复现的 perf evidence 与成功指标。"
+**Input**: User description: "在 @logixjs/core 中梳理并固化一批‘纯赚/近纯赚’性能优化：默认单内核模式零额外成本；生产模式默认诊断链路零开销（不构造/不记录/不分配）；对比/实验场景仍可启用多内核与详细诊断，并提供可复现的 perf evidence 与成功指标。"
 
 ## Terminology
 

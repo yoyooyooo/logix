@@ -26,8 +26,8 @@ description: 用于在 intent-flow 仓库内初始化前端项目，基于内置
   - 目录：`assets/vite-logix-empty/`
   - 关键特性：
     - 使用 `vite` + `@vitejs/plugin-react-swc` + `@tailwindcss/vite`。
-    - 内置 `@logix/sandbox/vite` 的 `logixSandboxKernelPlugin()`，预置 Sandbox 运行时内核配置。
-    - 依赖 workspace 内的 `@logix/core` / `@logix/react` / `@logix/sandbox` 包，适合作为 Logix Sandbox / Playground 类项目的起点。
+    - 内置 `@logixjs/sandbox/vite` 的 `logixSandboxKernelPlugin()`，预置 Sandbox 运行时内核配置。
+    - 依赖 workspace 内的 `@logixjs/core` / `@logixjs/react` / `@logixjs/sandbox` 包，适合作为 Logix Sandbox / Playground 类项目的起点。
 
 > 若需要新增模板（如纯 Vite + React、Studio 子应用空壳），应在本节追加模板 ID 与说明，并将对应代码放入 `assets/<template-id>/`。
 
@@ -87,7 +87,7 @@ description: 用于在 intent-flow 仓库内初始化前端项目，基于内置
 
 若类型检查或构建失败：
 
-- 首先检查 `package.json` 中 workspace 依赖（`@logix/core` / `@logix/react` / `@logix/sandbox` / `effect` / `vite` 等）是否满足当前仓库版本。
+- 首先检查 `package.json` 中 workspace 依赖（`@logixjs/core` / `@logixjs/react` / `@logixjs/sandbox` / `effect` / `vite` 等）是否满足当前仓库版本。
 - 如为 Logix 相关类型问题，优先参照 `project-guide`（含 Logix v3 速查与入口）或 `.codex/skills/project-guide/references/runtime-logix` 中的契约进行修正。
 
 ### 5. 可选：模板轻量化或自定义
@@ -103,6 +103,6 @@ description: 用于在 intent-flow 仓库内初始化前端项目，基于内置
 
 ## NOTES · 设计与约束
 
-- 模板默认假定在 intent-flow monorepo 内使用，依赖 `workspace:*` 形式的 `@logix/*` 包。
+- 模板默认假定在 intent-flow monorepo 内使用，依赖 `workspace:*` 形式的 `@logixjs/*` 包。
 - 在复制模板时，避免修改 Logix 运行时与 Vite 配置，除非已经在 `.codex/skills/project-guide/references/runtime-logix` 中更新对应规范。
 - 若未来需要为外部仓库提供前端模板，应单独设计不依赖 workspace 的变体，并在本 skill 中明确区分使用场景。

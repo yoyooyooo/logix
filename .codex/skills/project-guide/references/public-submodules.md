@@ -10,27 +10,27 @@ version: 1
 
 ## TL;DR（记住 3 条）
 
-1. **只依赖“对外入口”**：从 `@logix/<pkg>` 或 `@logix/<pkg>/<Concept>` 导入；只使用文档明确允许的子路径入口（例如 `@logix/form/react`、`@logix/sandbox/vite`）。
-2. **禁止绕过边界**：禁止导入 `@logix/*/internal/*`；也禁止通过路径绕过到 `packages/*/src/internal/**`。
+1. **只依赖“对外入口”**：从 `@logixjs/<pkg>` 或 `@logixjs/<pkg>/<Concept>` 导入；只使用文档明确允许的子路径入口（例如 `@logixjs/form/react`、`@logixjs/sandbox/vite`）。
+2. **禁止绕过边界**：禁止导入 `@logixjs/*/internal/*`；也禁止通过路径绕过到 `packages/*/src/internal/**`。
 3. **改动后跑验证门**：结构治理相关改动至少跑 `pnpm verify:public-submodules`；再跑 `pnpm typecheck` / `pnpm lint` / `pnpm test`。
 
 ## 术语（≤5 个关键词，统一口径）
 
-- **Public Submodule**：包对外稳定概念入口（可被 import 的契约单元），典型形态是 `@logix/<pkg>/<Concept>` 或 `@logix/<pkg>`（barrel）。
-- **Independent Entry Point**：独立子路径入口（subpath export，例如 `@logix/form/react`、`@logix/sandbox/vite`），视为独立契约管理。
+- **Public Submodule**：包对外稳定概念入口（可被 import 的契约单元），典型形态是 `@logixjs/<pkg>/<Concept>` 或 `@logixjs/<pkg>`（barrel）。
+- **Independent Entry Point**：独立子路径入口（subpath export，例如 `@logixjs/form/react`、`@logixjs/sandbox/vite`），视为独立契约管理。
 - **Exports Policy**：`package.json#exports` 的收口策略（含通配导出前置不变量与 `./internal/*: null` 屏蔽）。
 - **Verify Gate**：可执行质量门 `pnpm verify:public-submodules`，阻止结构/导出面回归。
 - **Promotion Path**：当某个子模块成长到需要独立演进时的“提升为独立子包”路径与迁移步骤。
 
 ## 推荐 import 形态
 
-- 业务侧：优先从包根（`@logix/<pkg>`）导入概念 API（避免依赖文件组织形态）。
-- 工具/细分概念：可从子模块入口导入（`@logix/<pkg>/<Concept>`），前提是该入口已被裁决为 Public Submodule。
-- 独立入口：只使用已登记且非空壳的子路径入口（例如 `@logix/form/react`、`@logix/sandbox/vite`）。
+- 业务侧：优先从包根（`@logixjs/<pkg>`）导入概念 API（避免依赖文件组织形态）。
+- 工具/细分概念：可从子模块入口导入（`@logixjs/<pkg>/<Concept>`），前提是该入口已被裁决为 Public Submodule。
+- 独立入口：只使用已登记且非空壳的子路径入口（例如 `@logixjs/form/react`、`@logixjs/sandbox/vite`）。
 
 ## 禁止 import 形态（强约束）
 
-- `@logix/*/internal/*`
+- `@logixjs/*/internal/*`
 - 任何包含 `packages/*/src/internal/**` 的绕过式路径 import
 - 未登记的子路径入口（尤其是“占位/空壳入口”）
 

@@ -94,7 +94,7 @@
 - **FR-007**: 系统 MUST 提供对接契约，使未来 UI/Layout Editor 可以仅通过“读取公开状态 + 派发事件/动作”对接语义层；不要求 UI editor 了解 runtime 内部实现细节。
 - **FR-008**: 系统 MUST 支持将语义蓝图与其依赖/映射关系固化为可 diff 的规范化表示（稳定排序、显式依赖、稳定标识），便于 CI 审阅与 AI/Agent 改写。
 - **FR-009**: 系统 MUST 定义 UI 投影的语义绑定协议（Binding Schema）：将逻辑端口/状态路径映射到 UI props/events；平台必须能基于导出的端口/类型信息对绑定做类型与边界校验，并支持“预览解释执行”与“生产编译出码”两种消费模式。
-- **FR-010**: 系统 MUST 提供 UI 组件库的“端口规格事实源”（`@logix/module.uiKitRegistry@v1`）：用于校验 `uiBlueprint.componentKey/propName/eventName` 并提供可补全的 props/events 列表；registry 必须支持 `tier=pro|ui|base` 等分层，以便平台按 Product/Dev 视图裁剪组件面板。
+- **FR-010**: 系统 MUST 提供 UI 组件库的“端口规格事实源”（`@logixjs/module.uiKitRegistry@v1`）：用于校验 `uiBlueprint.componentKey/propName/eventName` 并提供可补全的 props/events 列表；registry 必须支持 `tier=pro|ui|base` 等分层，以便平台按 Product/Dev 视图裁剪组件面板。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 

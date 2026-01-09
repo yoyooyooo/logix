@@ -49,9 +49,9 @@ related:
 
 ### Track B：并行推进 `core-ng`（不拖慢上层生态）
 
-- 目标：在 `@logix/core` 的 Kernel Contract 下，把 `@logix/core-ng` 作为可注入实现包跑起来，并能用契约验证 harness + 证据对照差异报告拦截风险。
+- 目标：在 `@logixjs/core` 的 Kernel Contract 下，把 `@logixjs/core-ng` 作为可注入实现包跑起来，并能用契约验证 harness + 证据对照差异报告拦截风险。
 - 主要 spec：`specs/045-dual-kernel-contract/`
-- 退出条件（推荐）：`@logix/react`/Devtools/Sandbox 不依赖 core-ng；能在同进程构造 core 与 core-ng 两棵 runtime 做对照；差异可被结构化 diff 定位；默认路径无性能回归证据。
+- 退出条件（推荐）：`@logixjs/react`/Devtools/Sandbox 不依赖 core-ng；能在同进程构造 core 与 core-ng 两棵 runtime 做对照；差异可被结构化 diff 定位；默认路径无性能回归证据。
 - 备注：早期允许在 `trial-run/test/dev` 按 serviceId 渐进替换，但“宣称可切默认/已切到 core-ng”必须全套切换（无 fallback），由证据判定。
 
 ### Track C：明确“会改变语义/口径”的探索（不要混进纯优化链路）

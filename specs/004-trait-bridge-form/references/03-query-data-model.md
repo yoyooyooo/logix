@@ -37,7 +37,7 @@ QueryKey 的来源通常是“参数对象”（filters/pagination/sort/searchTe
 
 ## 3. 缓存与作用域（runtime 维度）
 
-实现选择：`@logix/query` 内部使用 TanStack Query 作为缓存/去重引擎（QueryClient）。
+实现选择：`@logixjs/query` 内部使用 TanStack Query 作为缓存/去重引擎（QueryClient）。
 
 因此缓存作用域建议与 ResourceRegistry 一致（并与 QueryClient 的作用域对齐）：
 

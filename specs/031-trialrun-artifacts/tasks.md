@@ -7,7 +7,7 @@ description: "Task list for 031-trialrun-artifacts (TrialRunReport.artifacts + R
 **Input**: `specs/031-trialrun-artifacts/spec.md`  
 **Prerequisites**: `specs/031-trialrun-artifacts/plan.md`（required）, `specs/031-trialrun-artifacts/research.md`, `specs/031-trialrun-artifacts/data-model.md`, `specs/031-trialrun-artifacts/contracts/`, `specs/031-trialrun-artifacts/quickstart.md`
 
-**Tests**: 本特性触及 `@logix/core` 反射/试跑按需路径与跨宿主 JSON 工件输出；需要至少补齐 contracts/schema 预检 + 导出/失败/冲突/预算的单测，避免 Workbench/CI 口径漂移。
+**Tests**: 本特性触及 `@logixjs/core` 反射/试跑按需路径与跨宿主 JSON 工件输出；需要至少补齐 contracts/schema 预检 + 导出/失败/冲突/预算的单测，避免 Workbench/CI 口径漂移。
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -41,14 +41,14 @@ description: "Task list for 031-trialrun-artifacts (TrialRunReport.artifacts + R
 
 ## Phase 3: User Story 1 - 平台侧能看到 RulesManifest（Priority: P1）🎯 MVP
 
-**Goal**: `/ir` 一次检查即可看到 `@logix/form.rulesManifest@v1`（含 warnings），且不使用表单 rules 时不报错。  
+**Goal**: `/ir` 一次检查即可看到 `@logixjs/form.rulesManifest@v1`（含 warnings），且不使用表单 rules 时不报错。  
 **Independent Test**: `examples/logix-sandbox-mvp` 的 `/ir` 页面展示 artifacts，并能下载 JSON；同输入重复导出一致。
 
 - [x] T011 [US1] 在 form kit 实现 RulesManifest artifact 导出（复用 028 schema）到 `packages/logix-form/src/internal/form/artifacts.ts`
 - [x] T012 [US1] 将 form artifact 导出者接入 artifacts 收集链路（注册到 trial-run）到 `packages/logix-form/src/internal/form/impl.ts`
 - [x] T013 [US1] 让 sandbox workbench 的 trial-run 输出携带 artifacts 并可导出到 `examples/logix-sandbox-mvp/src/ir/IrPage.tsx`
 - [x] T014 [US1] 在 `/ir` 增加通用 artifacts viewer（按 artifactKey 分组 + 复制/下载）到 `examples/logix-sandbox-mvp/src/ir/ArtifactsPanel.tsx`
-- [x] T015 [P] [US1] 集成回归：含 rules 的代表性模块导出 `@logix/form.rulesManifest@v1` 到 `examples/logix-sandbox-mvp/test/ir.rulesManifest.test.ts`
+- [x] T015 [P] [US1] 集成回归：含 rules 的代表性模块导出 `@logixjs/form.rulesManifest@v1` 到 `examples/logix-sandbox-mvp/test/ir.rulesManifest.test.ts`
 - [x] T016 [P] [US1] 集成回归：无 rules 模块导出时 `artifacts` 缺省/为空且 UI 不报错到 `examples/logix-sandbox-mvp/test/ir.noArtifacts.test.ts`
 
 ---

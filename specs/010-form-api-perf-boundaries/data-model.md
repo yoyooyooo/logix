@@ -4,7 +4,7 @@
 
 ## 0) API 形态（终态草案）
 
-本特性的“用户侧 API”以 `@logix/form` 为默认入口；核心心智是三层配置：
+本特性的“用户侧 API”以 `@logixjs/form` 为默认入口；核心心智是三层配置：
 
 - `values` / `initialValues`：只描述**值树**（业务 values 的结构与初始值），不包含 `errors/ui`。
 - `traits`：统一的声明入口（对齐 `StateTraitSpec`），用于表达字段级校验（`check`）与数组字段的 list 语义（`{ identityHint, item, list }`），以及 `computed/link/source` 等能力。
@@ -104,7 +104,7 @@ validateOn/reValidateOn 语义（收敛心智）：
 
 ### 0.2.2 内置规则（对标 RHF `rules`）
 
-为减少业务样板并收敛“必填/长度/范围/正则”等常见校验写法，`@logix/form` SHOULD 在 `Form.Rule` 下提供一组与 RHF 命名习惯对齐的内置校验器（本质是 `validate` 里可复用的纯函数）：
+为减少业务样板并收敛“必填/长度/范围/正则”等常见校验写法，`@logixjs/form` SHOULD 在 `Form.Rule` 下提供一组与 RHF 命名习惯对齐的内置校验器（本质是 `validate` 里可复用的纯函数）：
 
 - `Form.Rule.required({ message?, trim? })`
 - `Form.Rule.minLength({ min, message? })` / `Form.Rule.maxLength({ max, message? })`

@@ -14,7 +14,7 @@ Logix Core 是 Logix 平台的运行时心脏。它是一个基于 **Effect-TS**
 ## 快速开始（Module-First）
 
 ```ts
-import * as Logix from '@logix/core';
+import * as Logix from '@logixjs/core';
 import { Schema, Effect } from 'effect';
 
 // 1. 定义领域 Module（返回 ModuleDef：纯定义，不含实例）

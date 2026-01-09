@@ -12,7 +12,7 @@ priority: next
 
 ## 2. 分层策略（复用 L4 草案思路）
 
-1) Kernel 层：`effect`、`@logix/core` 等核心包预打包 + Blob 注入，esbuild 插件重写 import。  
+1) Kernel 层：`effect`、`@logixjs/core` 等核心包预打包 + Blob 注入，esbuild 插件重写 import。  
 2) Utility 层：工具库 Allowlist，编译时重写到 `https://esm.sh/...`，利用浏览器缓存；禁止任意 npm 直通。  
 3) IO/SDK 层：默认走 Universal Spy（未在 Allowlist 的 import 统统重写），记录调用并按 MockManifest 返回模拟结果。  
 4) UI 库层：`antd`/`mui` 等重写到 Semantic UI Mock，发射 UI_INTENT 信号，主线程线框渲染。
@@ -35,7 +35,7 @@ priority: next
   - 在 Playground 中，这些 UI_INTENT 与 Spec/Scenario/IntentRule 对齐，用于验证「需求级交互意图是否被正确实现」（而不是验证像素级 UI）。
 
 > 当前 PoC 状态（intent-flow 仓库）：  
-> - 在 `@logix/sandbox` 中已经引入了最小版 HTTP Mock 实现：  
+> - 在 `@logixjs/sandbox` 中已经引入了最小版 HTTP Mock 实现：  
 >   - 在 `types.ts` 中定义了 PoC 版 `MockManifest`：  
 >     ```ts
 >     interface HttpMockRule {

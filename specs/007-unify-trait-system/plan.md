@@ -19,7 +19,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM），Node.js 20+  
-**Primary Dependencies**: `effect` v3、`@logix/core`、`@logix/react`、`@logix-devtools-react`、（Query 外部引擎）`@tanstack/query-core`  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`、（Query 外部引擎）`@tanstack/query-core`  
 **Storage**: N/A（内存状态 + 可回放事件日志；不要求持久化）  
 **Testing**: Vitest + `@effect/vitest`（一次性运行；不使用 watch）  
 **Target Platform**: Browser（React 场景/Devtools）+ Node.js（测试/基准）  
@@ -65,8 +65,8 @@ specs/007-unify-trait-system/
 
 ```text
 packages/logix-core/                  # Trait/StateTrait 内核、事务、诊断、回放基础能力（主落点）
-packages/logix-form/                 # @logix/form（Blueprint/Controller/Rules/ErrorMap；可选 form/react 薄糖）
-packages/logix-query/                # @logix/query（领域包入口；Query.Engine.layer + Query.Engine.middleware；默认 Query.TanStack.engine）
+packages/logix-form/                 # @logixjs/form（Blueprint/Controller/Rules/ErrorMap；可选 form/react 薄糖）
+packages/logix-query/                # @logixjs/query（领域包入口；Query.Engine.layer + Query.Engine.middleware；默认 Query.TanStack.engine）
 packages/logix-react/                # React 适配（RuntimeProvider/useLocalModule/useSelector 等）
 packages/logix-devtools-react/       # 诊断与回放 UI（txn 聚合视图、触发原因、成本摘要）
 

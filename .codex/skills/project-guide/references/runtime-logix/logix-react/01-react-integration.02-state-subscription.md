@@ -9,7 +9,7 @@
 类似 Zustand，你可以传入一个比较函数（如 `shallow`）来允许 Selector 返回新对象，只要内容没变就不重渲染。
 
 ```typescript
-import { shallow } from '@logix/react';
+import { shallow } from '@logixjs/react';
 
 // ✅ Safe: 虽然每次返回新对象，但 shallow 比较会发现内容没变，不会重渲染
 const userView = useSelector(runtime, s => ({

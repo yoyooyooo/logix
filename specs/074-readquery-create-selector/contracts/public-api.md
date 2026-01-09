@@ -2,12 +2,12 @@
 
 ## Module
 
-- `@logix/core` → `ReadQuery` 子模块
+- `@logixjs/core` → `ReadQuery` 子模块
 
 ## API
 
 ```ts
-import type { EqualsKind, ReadQuery, ReadQueryInput } from '@logix/core/ReadQuery'
+import type { EqualsKind, ReadQuery, ReadQueryInput } from '@logixjs/core/ReadQuery'
 
 export declare const createSelector: <S, Inputs extends ReadonlyArray<ReadQueryInput<S, any>>, V>(args: {
   readonly debugKey: string

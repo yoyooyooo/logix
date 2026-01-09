@@ -24,7 +24,7 @@ Spec 024 和 025 高度互补，结构对齐，共同构成了 **平台运行时
 - **024**: 将其视为一个需要 `ProgramRunContext` 才能运行的可执行载荷。
 - **025**: 将其视为一个可检查的主体，能产出 `ModuleManifest` 和 `EnvironmentIR`。
 - **对齐点**: 完美。025 明确将 024 的 program module 命名为“首个消费者”，确保了平台检查的对象（025）正是运行时执行的对象（024）。
-- **Manifest 字段对齐**: `ModuleManifest` 字段名/语义与 `@logix/core` 的 `ModuleDescriptor` 子集对齐（`moduleId/actionKeys/logicUnits/schemaKeys/meta/source`），避免平台/CI 侧引入映射层导致口径漂移。
+- **Manifest 字段对齐**: `ModuleManifest` 字段名/语义与 `@logixjs/core` 的 `ModuleDescriptor` 子集对齐（`moduleId/actionKeys/logicUnits/schemaKeys/meta/source`），避免平台/CI 侧引入映射层导致口径漂移。
 
 ### 生命周期协议
 
@@ -65,7 +65,7 @@ Spec 024 和 025 高度互补，结构对齐，共同构成了 **平台运行时
     - **点评**: 在 Context 中直接提供 `$` 是点睛之笔。在编写脚本或 CLI 工具时，开发者最痛的就是“我有 Runtime handle，但我还得自己去组装 `ModuleHandle` 甚至自己去 `Symbol.for` 拿扩展”。直接把 `ctx.$.use(MyModule)` 暴露出来，让脚本体验与业务代码体验一致，极大降低了编写测试脚本和运维脚本的门槛。
 
 3.  **对齐测试语义**
-    - **点评**: 明确提出与 `@logix/test` 共享心智模型非常有价值。长期以来，测试环境和生产环境的启动方式微妙不同是导致“测不准”的根源。统一 Runner 语义意味着测试只是 Runner 的一个特殊配置（带有 Mock 和 Spy 的 Runner）。
+    - **点评**: 明确提出与 `@logixjs/test` 共享心智模型非常有价值。长期以来，测试环境和生产环境的启动方式微妙不同是导致“测不准”的根源。统一 Runner 语义意味着测试只是 Runner 的一个特殊配置（带有 Mock 和 Spy 的 Runner）。
 
 ### ⚠️ 改进建议与探讨 (Suggestions)
 

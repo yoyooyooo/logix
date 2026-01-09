@@ -12,7 +12,7 @@
 
 代表一个 `packages/*` 子包。
 
-- `name`: string（例如 `@logix/core`）
+- `name`: string（例如 `@logixjs/core`）
 - `path`: string（例如 `packages/logix-core`）
 - `role`: `"core" | "adapter" | "tooling" | "infra" | "domain"`
 - `entrypoints`: ReadonlyArray<IndependentEntryPoint>
@@ -25,13 +25,13 @@
 - `name`: string（PascalCase 概念名，例如 `Runtime` / `Query` / `Form`）
 - `package`: Package（归属包）
 - `sourceFile`: string（例如 `src/Runtime.ts` 或 `src/RuntimeProvider.tsx`）
-- `importPath`: string（例如 `@logix/core/Runtime` 或 `@logix/react` 的命名导出约定）
+- `importPath`: string（例如 `@logixjs/core/Runtime` 或 `@logixjs/react` 的命名导出约定）
 - `kind`: `"namespace" | "component" | "hooks" | "service" | "types" | "protocol" | "middleware" | "other"`
 - `stability`: `"stable" | "experimental"`（若为 experimental，必须在清单中显式标注）
 
 ### IndependentEntryPoint
 
-代表一个子路径入口（subpath export），例如 `@logix/form/react`、`@logix/sandbox/vite`。
+代表一个子路径入口（subpath export），例如 `@logixjs/form/react`、`@logixjs/sandbox/vite`。
 
 - `subpath`: string（例如 `/react`、`/vite`）
 - `purpose`: string（该入口的稳定价值与使用场景）

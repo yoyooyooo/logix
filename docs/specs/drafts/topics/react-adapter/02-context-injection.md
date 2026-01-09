@@ -15,7 +15,7 @@
 
 ```tsx
 // App.tsx
-import { RuntimeProvider } from '@logix/react';
+import { RuntimeProvider } from '@logixjs/react';
 import { AppLayer } from './layers';
 
 function App() {

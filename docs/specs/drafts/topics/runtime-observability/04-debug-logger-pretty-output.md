@@ -235,7 +235,7 @@ Debug 目标模型（最终版）：
 - 事件与 Sink：
 
   ```ts
-  // @logix/core/Debug
+  // @logixjs/core/Debug
   export type Event = Internal.Event
   export interface Sink extends Internal.Sink {}
 

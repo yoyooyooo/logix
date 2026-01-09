@@ -9,7 +9,7 @@
 ## 1. 安装 (Installation)
 
 ```bash
-npm install @logix/core @logix/react effect
+npm install @logixjs/core @logixjs/react effect
 ```
 
 ## 2. 基础设置 (Basic Setup)
@@ -20,8 +20,8 @@ npm install @logix/core @logix/react effect
 
 ```tsx
 // src/App.tsx
-import { RuntimeProvider } from '@logix/react';
-import * as Logix from '@logix/core';
+import { RuntimeProvider } from '@logixjs/react';
+import * as Logix from '@logixjs/core';
 import { Layer } from 'effect';
 
 const UserDef = Logix.Module.make("User", { state: UserState, actions: UserActions });
@@ -47,7 +47,7 @@ export function App() {
 
 ```typescript
 // src/features/counter/module.ts
-import * as Logix from '@logix/core';
+import * as Logix from '@logixjs/core';
 import { Schema, Effect } from 'effect';
 
 export const CounterDef = Logix.Module.make('Counter', {
@@ -80,7 +80,7 @@ export const CounterModule = CounterDef.implement({
 
 ```tsx
 // src/features/counter/Counter.tsx
-import { useModule, useSelector, useDispatch } from '@logix/react';
+import { useModule, useSelector, useDispatch } from '@logixjs/react';
 import { CounterDef } from './module';
 
 export function Counter() {
@@ -115,11 +115,11 @@ Logix 的设计深受 Redux 启发，迁移路径相对平滑。
 Logix 可以与 React Query 共存。建议将 React Query 作为 Server State 管理器，而 Logix 负责 Client State 和复杂交互逻辑。
 
 - **模式**: 在组件中使用 `useQuery` 获取数据，通过 `useEffect` 将数据同步到某个 Logix Module 状态 (如果需要 Logix 处理联动)。
-- **未来**: Logix 计划推出 `@logix/query` 插件，直接在 Logic 层集成数据获取能力。
+- **未来**: Logix 计划推出 `@logixjs/query` 插件，直接在 Logic 层集成数据获取能力。
 
 ### 4.2 React Hook Form
 
-对于简单表单，React Hook Form 足够好用。对于复杂联动表单，建议使用 `@logix/form`。
+对于简单表单，React Hook Form 足够好用。对于复杂联动表单，建议使用 `@logixjs/form`。
 
 - **集成**: 可以通过 `useEffect` 监听 React Hook Form 的 `watch`，将变更同步到 Logix Module 状态。
 

@@ -15,8 +15,8 @@
 
 ```ts
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
-import { StateSchema } from '@logix/core'
+import * as Logix from '@logixjs/core'
+import { StateSchema } from '@logixjs/core'
 
 // ------------------------------------------------------------
 // 1) State Schema（嵌套 + 数组 + boolean）

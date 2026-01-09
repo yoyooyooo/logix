@@ -2,7 +2,7 @@
 
 **Feature**: `042-react-runtime-boot-dx`  
 **Created**: 2025-12-27  
-**Scope**: `@logix/react`（RuntimeProvider / useModule / ModuleCache / perf-boundaries）
+**Scope**: `@logixjs/react`（RuntimeProvider / useModule / ModuleCache / perf-boundaries）
 
 ## 1. 目标复盘（面向 DX）
 

@@ -4,7 +4,7 @@
 
 ## 1) 选择矩阵与运行档位
 
-- 矩阵 SSoT：`@logix/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
+- 矩阵 SSoT：`@logixjs/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
 - 默认 runs/warmup/timeout 与稳定性阈值：见 `matrix.json.defaults`
 
 ## 2) 运行浏览器集成测试（主跑道）
@@ -28,7 +28,7 @@
 
 ## 5) 复用与扩展
 
-- 新增/调整维度：只改 `@logix/perf-evidence/assets/matrix.json`（SSoT），报告与 diff 必须继续符合 `@logix/perf-evidence/assets/schemas/*`。
+- 新增/调整维度：只改 `@logixjs/perf-evidence/assets/matrix.json`（SSoT），报告与 diff 必须继续符合 `@logixjs/perf-evidence/assets/schemas/*`。
 - 负优化边界：优先跑 `negativeBoundaries.dirtyPattern`（含反直觉调度 + `uniquePatternPoolSize` 主轴），并检查 `requiredEvidence` 是否齐全。
 
 ### 作为“全仓性能证据框架”被其它 spec 复用（推荐）

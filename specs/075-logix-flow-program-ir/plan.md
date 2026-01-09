@@ -24,7 +24,7 @@
 -->
 
 **Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3，`@logix/core`（FlowRuntime/EffectOp），依赖 073 的 tick/contracts  
+**Primary Dependencies**: `effect` v3，`@logixjs/core`（FlowRuntime/EffectOp），依赖 073 的 tick/contracts  
 **Storage**: N/A  
 **Testing**: Vitest（涉及 tick/时间语义的测试优先 `@effect/vitest`）  
 **Target Platform**: Node.js + browsers  
@@ -63,7 +63,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
     process-global singletons?
   - Dual kernels (core + core-ng): if this feature touches kernel/hot paths or
     Kernel Contract / Runtime Services, does the plan define a kernel support
-    matrix (core vs core-ng), avoid direct @logix/core-ng dependencies in
+    matrix (core vs core-ng), avoid direct @logixjs/core-ng dependencies in
     consumers, and specify how contract verification + perf evidence gate changes?
   - Performance budget: which hot paths are touched, what metrics/baselines
     exist, and how will regressions be prevented?
@@ -144,7 +144,7 @@ packages/logix-react/
 └── test/browser/**                            # 如需验证 tickSeq 关联：复用 073 runtime-store 场景
 ```
 
-**Structure Decision**: FlowProgram 作为 `@logix/core` 的公共子模块对外暴露（DSL + 类型）；编译与 mount 下沉 `src/internal/runtime/core/FlowProgramRuntime.ts`，复用既有 FlowRuntime/EffectOp，并通过测试与 perf evidence 守住 tick 参考系与成本门控。
+**Structure Decision**: FlowProgram 作为 `@logixjs/core` 的公共子模块对外暴露（DSL + 类型）；编译与 mount 下沉 `src/internal/runtime/core/FlowProgramRuntime.ts`，复用既有 FlowRuntime/EffectOp，并通过测试与 perf evidence 守住 tick 参考系与成本门控。
 
 ## Complexity Tracking
 

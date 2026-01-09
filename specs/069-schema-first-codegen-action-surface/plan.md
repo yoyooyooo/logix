@@ -14,7 +14,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3.19.13、`@logix/core`（`packages/logix-core`）  
+**Primary Dependencies**: `effect` v3.19.13、`@logixjs/core`（`packages/logix-core`）  
 **Storage**: N/A  
 **Testing**: Vitest + `@effect/vitest`（Effect-heavy 用例优先）  
 **Target Platform**: Node.js 20+ / modern browsers（Logix Runtime）  
@@ -52,7 +52,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - Deterministic identity：蓝图不含随机/时间字段；派生 actionTag 默认由 `statePath + opName` 计算，允许显式 override。
 - Transaction boundary：蓝图解析/校验/编译发生在 Module.make 冷路径；生成的 reducer 必须纯同步且不产生 IO/async。
 - Internal contracts & trial runs：不引入隐式全局注册表；若需要导出“哪些字段 op 派生成功/为何失败”，以可序列化的 evidence/diagnostics 形式输出（不携带闭包）。
-- Dual kernels：N/A（不引入 `@logix/core-ng` 依赖）。
+- Dual kernels：N/A（不引入 `@logixjs/core-ng` 依赖）。
 - Performance budget：不触及 dispatch/txn 主路径算法；若实现过程中不得不修改 txn/patchPaths 机制，必须补 perf evidence（见下节）。
 - Diagnosability & explainability：失败 fast（明确指向 `statePath/opName` 与蓝图值）；可选补充轻量诊断事件用于 Devtools/CI 审计（Slim & 可序列化）。
 - User-facing performance mental model：本特性不改变默认性能边界（预期 N/A）。

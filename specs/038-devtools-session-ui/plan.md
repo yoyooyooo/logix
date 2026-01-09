@@ -35,7 +35,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: `effect` v3（workspace override 固定到 3.19.13）、`@logix/core`、`@logix/react`、`@logix/devtools-react`、React 19  
+**Primary Dependencies**: `effect` v3（workspace override 固定到 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`、React 19  
 **Storage**: N/A（Devtools 内存态；证据包 import/export 为 JSON 工件）  
 **Testing**: Vitest（`vitest run`）；Effect-heavy 用例优先 `@effect/vitest`；UI 交互测试使用现有 Vitest + DOM 环境能力  
 **Target Platform**: Node.js 20+（构建/测试）；现代浏览器（Devtools UI）  

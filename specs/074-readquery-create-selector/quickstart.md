@@ -5,7 +5,7 @@
 ## 1) 最小示例：组合两个静态输入
 
 ```ts
-import { ReadQuery } from '@logix/core'
+import { ReadQuery } from '@logixjs/core'
 
 type State = {
   user: { firstName: string; lastName: string }

@@ -28,7 +28,7 @@ export class ArticleServiceTag extends Context.Tag('ArticleService')<ArticleServ
 **Generated Code (React Component)**:
 ```tsx
 	// src/ui/LikeButton.tsx
-	import { useModule, useDispatch } from '@logix/react';
+	import { useModule, useDispatch } from '@logixjs/react';
 	import { ArticleModule } from '@/features/article/store'; // Corrected path to ArticleModule
 
 export const LikeButton = () => { // Kept component name as LikeButton for consistency with the example
@@ -59,7 +59,7 @@ export const LikeButton = () => { // Kept component name as LikeButton for consi
 ```typescript
 	// src/features/article/store.ts
 	import { Effect } from 'effect';
-	import * as Logix from '@logix/core';
+	import * as Logix from '@logixjs/core';
 	import { ArticleServiceTag } from '@/domain/article/service';
 	import { OptimisticToggle } from '@patterns/common';
 	

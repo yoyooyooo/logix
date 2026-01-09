@@ -71,7 +71,7 @@ RuntimeKernel 是该实例的“单一装配点”：承载共享依赖与子系
 
 **Responsibilities**
 - 暴露 lifecycle/transaction/traits/imports/devtools 等内部能力的最小接口；
-- 作为仓库内统一访问入口（例如 internal accessor），供 `@logix/react`、trait-lifecycle、state-trait 等内部消费方使用；
+- 作为仓库内统一访问入口（例如 internal accessor），供 `@logixjs/react`、trait-lifecycle、state-trait 等内部消费方使用；
 - 在迁移期可由 shim 实现桥接 legacy 字段，但新增能力必须只依赖该 Runtime Service。
 
 **Invariants**

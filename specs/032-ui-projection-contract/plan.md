@@ -11,19 +11,19 @@
 - 跨模块交互 **只允许** 通过语义边（事件 → 动作）表达（与 033 对齐），禁止 UI 直接跨模块写入。
 - 为“预览解释执行”与“生产编译出码”两条消费路径提供同一份 **Binding Schema 事实源**，避免语义漂移。
 
-本特性将用统一协议域 `@logix/module.*` 固化三个核心资产（都是可序列化、可 diff、可 versioned 的契约）：
+本特性将用统一协议域 `@logixjs/module.*` 固化三个核心资产（都是可序列化、可 diff、可 versioned 的契约）：
 
-- `@logix/module.presentationState@v1`：语义层的展示态模型（overlay/route/stack/focus/selection 等）
-- `@logix/module.bindingSchema@v1`：UI 插头（props/events）↔ 逻辑插座（PortSpec/exports）的绑定协议
-- `@logix/module.uiBlueprint@v1`：纯投影蓝图（布局/组件选择/坐标等），**不承载语义真相**
-- `@logix/module.uiKitRegistry@v1`：UI Kit 事实源（组件目录 + props/events 形状 + tier 分层），供平台/Agent 做组件面板与补全；默认来自 IMD 的 registry 抽取（pro/ui/base）。
+- `@logixjs/module.presentationState@v1`：语义层的展示态模型（overlay/route/stack/focus/selection 等）
+- `@logixjs/module.bindingSchema@v1`：UI 插头（props/events）↔ 逻辑插座（PortSpec/exports）的绑定协议
+- `@logixjs/module.uiBlueprint@v1`：纯投影蓝图（布局/组件选择/坐标等），**不承载语义真相**
+- `@logixjs/module.uiKitRegistry@v1`：UI Kit 事实源（组件目录 + props/events 形状 + tier 分层），供平台/Agent 做组件面板与补全；默认来自 IMD 的 registry 抽取（pro/ui/base）。
 
 > 说明：PortSpec/TypeIR 的事实源在 035；语义蓝图（Scenario/IntentRule）在 033。032 只定义 UI 投影边界与 binding 语义。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logix/core`、`@logix/react`、`@logix/sandbox`、React  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、React  
 **Storage**: N/A（以可序列化 JSON 资产为主；编辑器/平台可选择其存储形态）  
 **Testing**: Vitest（UI/交互测试可用普通 vitest；Effect-heavy 用 `@effect/vitest`）  
 **Target Platform**: 现代浏览器（Workbench/Studio）+ Node.js（CI/出码/合同守卫）  
@@ -55,7 +55,7 @@
 - **Diagnosability**
   - UI 绑定失败/越界引用必须可解释：至少包含 moduleId/instanceId、portRef 或 statePathRef、失败分类与修复建议。
 - **Breaking changes**
-  - 032 的协议演进一律通过 `@logix/module.*@vN` 版本化；不保留兼容层。
+  - 032 的协议演进一律通过 `@logixjs/module.*@vN` 版本化；不保留兼容层。
 - **质量门槛（Pass 定义）**
   - 产物落地时：`pnpm typecheck`、`pnpm lint`、`pnpm test`（后续 tasks 阶段执行）
 
@@ -64,16 +64,16 @@
 ### Phase 0（Research）：把“投影/绑定/展示态”变成可验收契约
 
 - 明确 PresentationState 的最小覆盖面与确定性策略（overlay/route/stack 的边界与恢复语义）。
-- 明确 BindingSchema 的“只读自身模块”约束：binding 的合法引用空间应仅来自 `@logix/module.portSpec@v1` 的 exports/ports（035）。
+- 明确 BindingSchema 的“只读自身模块”约束：binding 的合法引用空间应仅来自 `@logixjs/module.portSpec@v1` 的 exports/ports（035）。
 - 明确 UIBlueprint 与语义蓝图的关系：UIBlueprint 只允许通过 `instanceId` 绑定，不得携带跨模块依赖。
 
 ### Phase 1（Design & Contracts）：用 schema 固化 UI↔语义层边界
 
 - 在 `specs/032-ui-projection-contract/contracts/schemas/` 固化：
-  - `presentation-state.schema.json`（`@logix/module.presentationState@v1`）
-  - `binding-schema.schema.json`（`@logix/module.bindingSchema@v1`）
-  - `ui-blueprint.schema.json`（`@logix/module.uiBlueprint@v1`）
-  - `ui-kit-registry.schema.json`（`@logix/module.uiKitRegistry@v1`；含 tier）
+  - `presentation-state.schema.json`（`@logixjs/module.presentationState@v1`）
+  - `binding-schema.schema.json`（`@logixjs/module.bindingSchema@v1`）
+  - `ui-blueprint.schema.json`（`@logixjs/module.uiBlueprint@v1`）
+  - `ui-kit-registry.schema.json`（`@logixjs/module.uiKitRegistry@v1`；含 tier）
 - 在 `data-model.md` 固化：UI 插头/逻辑插座的最小对接模型、越界失败语义、动态列表渲染与 rowRef 约束。
 - 在 `quickstart.md` 写清：Workbench/平台如何用 PortSpec/TypeIR 生成补全与校验，并如何在解释执行与出码两条路径复用同一 BindingSchema。
 

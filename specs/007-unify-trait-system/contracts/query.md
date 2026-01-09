@@ -1,4 +1,4 @@
-# Contract: `@logix/query`（对照领域）× 外部查询引擎
+# Contract: `@logixjs/query`（对照领域）× 外部查询引擎
 
 > 目标：Query 作为 Form 的对照组用于压力测试 API 设计。允许把缓存/去重交给外部引擎，但 Logix 必须保住触发/并发/可回放/可解释的语义事实源。
 
@@ -53,8 +53,8 @@ Logix 必须负责：
 
 Query 领域必须通过 effect 的依赖注入向宿主索取“可替换的外部引擎实例”（默认 TanStack），并提供全局 Runtime 注入方式：
 
-- `@logix/query` MUST 暴露一个 Tag：`Query.Engine`，用于在运行时获取 Engine 实例。
-- `@logix/query` MUST 提供便捷 Layer：`Query.Engine.layer(engine)`，语义等价于 `Layer.succeed(Query.Engine, engine)`。
+- `@logixjs/query` MUST 暴露一个 Tag：`Query.Engine`，用于在运行时获取 Engine 实例。
+- `@logixjs/query` MUST 提供便捷 Layer：`Query.Engine.layer(engine)`，语义等价于 `Layer.succeed(Query.Engine, engine)`。
   - 供应用在 Root Runtime 层统一注入（例如合并到 `Runtime.make(..., { layer })` 或 RootImpl.layer）。
 - 作用域约束：
   - 同一 Runtime 作用域内 SHOULD 只有一个 Engine 实例（保证缓存/in-flight 去重语义一致）；

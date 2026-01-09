@@ -3,9 +3,9 @@
 `TestProgram` 是业务开发的推荐入口：通过 **声明式配置** 描述一个 Logix 场景，再在场景上运行一个 Effect 测试程序。
 
 ```ts
-import { TestProgram, Execution, runTest } from "@logix/test"
+import { TestProgram, Execution, runTest } from "@logixjs/test"
 import { Effect, Layer, Schema } from "effect"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const Counter = Logix.Module.make("Counter", {
   state: Schema.Struct({ count: Schema.Number }),

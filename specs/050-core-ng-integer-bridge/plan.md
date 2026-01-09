@@ -32,7 +32,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、（实现阶段）`@logix/core-ng`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`  
 **Storage**: N/A（证据落盘到 `specs/050-core-ng-integer-bridge/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）  
@@ -56,7 +56,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Internal contracts & trial runs**：必须能被 TrialRun/对照 harness 复核；失败必须结构化输出。
 - **Dual kernels (core + core-ng)**：
   - kernel support matrix（本 spec）：core=`supported`（可能需要契约放宽）、core-ng=`trial-only → supported`（以证据达标裁决）。
-  - consumer 不直接依赖 `@logix/core-ng`。
+  - consumer 不直接依赖 `@logixjs/core-ng`。
 - **Performance budget**：必须 Node + Browser 证据门禁，阻断负优化。
 - **Diagnosability & explainability**：off 近零成本；light/full 才输出 id 映射摘要（Slim、可序列化）。
 - **Breaking changes**：对业务对外语义保持不变；如影响对外行为必须另立 spec 并写迁移说明。
@@ -119,7 +119,7 @@ packages/logix-core-ng/
 
 **Structure Decision**:
 
-- 契约放宽与 id 口径优先落在 `@logix/core`（类型/证据出口）；core-ng 复用契约并提供实现。
+- 契约放宽与 id 口径优先落在 `@logixjs/core`（类型/证据出口）；core-ng 复用契约并提供实现。
 
 ## Design（关键机制与落点）
 

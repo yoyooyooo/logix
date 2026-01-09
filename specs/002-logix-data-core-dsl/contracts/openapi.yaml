@@ -33,7 +33,7 @@ components:
   schemas:
     Field:
       type: object
-      description: 单个模块字段的规范化描述，由 @logix/data 提供
+      description: 单个模块字段的规范化描述，由 @logixjs/data 提供
       properties:
         id:
           type: string
@@ -51,7 +51,7 @@ components:
 
     FieldCapability:
       type: object
-      description: 字段能力描述（Computed / Source / Link），来源于 @logix/data
+      description: 字段能力描述（Computed / Source / Link），来源于 @logixjs/data
       properties:
         fieldId:
           type: string

@@ -101,7 +101,7 @@ function RegionPage() {
 相比旧的 `useLocalModule(factory)`，`ModuleImpl` 模式让 UI 代码更干净，且类型推导更完整。
 
 ```tsx
-import { useModule, shallow } from "@logix/react"
+import { useModule, shallow } from "@logixjs/react"
 import { MyDef } from "./module"
 
 function MyComponent() {
@@ -134,7 +134,7 @@ function MyComponent() {
 - 推荐使用 `useImportedModule(parent, Child.tag)` 以显式绑定到父实例 scope。
 
 ```ts
-import { useModule, useImportedModule, useSelector } from "@logix/react"
+import { useModule, useImportedModule, useSelector } from "@logixjs/react"
 
 const host = useModule(HostModule, { key: "SessionA" })
 const child = useImportedModule(host, Child.tag)
@@ -145,7 +145,7 @@ const status = useSelector(child, (s) => s.status)
 也可以使用链式语法糖（推荐）：
 
 ```ts
-import { useModule, useSelector } from "@logix/react"
+import { useModule, useSelector } from "@logixjs/react"
 
 const host = useModule(HostModule, { key: "SessionA" })
 const child = host.imports.get(Child.tag)
@@ -156,7 +156,7 @@ const status = useSelector(child, (s) => s.status)
 如果 `host` 需要跨多层组件使用（例如“路由 Host + 多个弹框”），推荐用 `ModuleScope` 把 “创建 host 实例 + Context Provider + useHost()” 打包成可复用的 Scope，避免 props 透传：
 
 ```ts
-import { ModuleScope } from "@logix/react"
+import { ModuleScope } from "@logixjs/react"
 
 export const HostScope = ModuleScope.make(HostModule.impl, { gcTime: 0 })
 ```

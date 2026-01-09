@@ -3,7 +3,7 @@
 **Feature Branch**: `071-logix-router-bridge`  
 **Created**: 2026-01-02  
 **Status**: Draft  
-**Input**: User description: "Logix 引入 router 能力，使 logic 内部可读取并触发导航；路由引擎可替换；集成概念尽可能与 @logix/form、@logix/query 相似。"
+**Input**: User description: "Logix 引入 router 能力，使 logic 内部可读取并触发导航；路由引擎可替换；集成概念尽可能与 @logixjs/form、@logixjs/query 相似。"
 
 ## Terminology
 

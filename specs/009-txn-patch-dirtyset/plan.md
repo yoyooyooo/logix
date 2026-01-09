@@ -41,7 +41,7 @@ Deferred（不阻塞本轮实现，但建议后续补齐）：
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logix/core`（`@logix/react`/Devtools 作为消费方）  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`（`@logixjs/react`/Devtools 作为消费方）  
 **Storage**: N/A（内存态；必要时只输出可序列化证据包）  
 **Testing**: Vitest（Effect-heavy 用例优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+（测试/基准）+ modern browsers（React 侧消费）  

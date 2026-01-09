@@ -12,7 +12,7 @@ related:
 
 # Form Session: Draft Pattern 与表单引擎的交汇点
 
-> 核心想法：不把 Draft Pattern 做成全局 Runtime 能力，而是先在 `@logix/form` 中以 `FormSession` / `WizardSession` 形态落地 80% 事务特性。
+> 核心想法：不把 Draft Pattern 做成全局 Runtime 能力，而是先在 `@logixjs/form` 中以 `FormSession` / `WizardSession` 形态落地 80% 事务特性。
 
 ## 1. 问题重述
 
@@ -22,7 +22,7 @@ related:
 
 ## 2. 会合点设计
 
-- 在 `@logix/form` 中定义：
+- 在 `@logixjs/form` 中定义：
   - `FormSession`：针对单表单的交互事务封装，支持 rollback/commit、保留临时状态；
   - `WizardSession`：针对多步向导的长事务封装；
 - 内部可以借用 Draft Pattern 草案中的事务语义（Atomicity/Isolation），但对外只暴露 Form 语义；

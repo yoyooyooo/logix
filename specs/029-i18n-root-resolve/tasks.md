@@ -61,8 +61,8 @@
 
 ### Implementation for User Story 2
 
-- [x] T013 [US2] 创建新包 `@logix/i18n`（package.json/tsconfig/src/index.ts/test 基础设施），且不引入 i18next 依赖 `packages/i18n/package.json`
-- [x] T014 [US2] 在 `@logix/i18n` 中定义最小形状 `I18nDriver` + I18n Service/I18nTag（含 I18nSnapshot/语言切换入口/message token 类型），并定义 I18nModule（Root 单例模块，封装/转发）`packages/i18n/src/index.ts`
+- [x] T013 [US2] 创建新包 `@logixjs/i18n`（package.json/tsconfig/src/index.ts/test 基础设施），且不引入 i18next 依赖 `packages/i18n/package.json`
+- [x] T014 [US2] 在 `@logixjs/i18n` 中定义最小形状 `I18nDriver` + I18n Service/I18nTag（含 I18nSnapshot/语言切换入口/message token 类型），并定义 I18nModule（Root 单例模块，封装/转发）`packages/i18n/src/index.ts`
 - [x] T015 [US2] 实现 message token 构造 `token(key, options)` + canonicalize（预算先 soft，后续可升级 hard；抛 `InvalidI18nMessageTokenError`）`packages/i18n/src/index.ts`
 - [x] T016 [P] [US2] 实现 I18n 注入 Layer（类似 `Query.Engine.layer`，宿主可注入“符合 I18nDriver 最小形状”的外部实例）`packages/i18n/src/index.ts`
 - [x] T017 [US2] 新增示例：Module Logic 产出 token（写入 state/事件），展示边界渲染 token（两种语言），并演示语言切换 `examples/logix/src/i18n-message-token.ts`
@@ -100,11 +100,11 @@
 - [x] T024 [P] 更新 runtime SSoT：Bound API 新增 `$.root.resolve` 的语义边界与示例 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`
 - [x] T025 [P] 更新 runtime SSoT：`Root.resolve` 使用建议 + strict vs root 对比 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`
 - [x] T026 [P] 更新用户文档：root provider 解析与 `$.root.resolve` 示例 `apps/docs/content/docs/api/core/runtime.md`
-- [x] T027 [P] 新增用户文档：国际化接入模式（`@logix/i18n`/I18nDriver 最小形状注入/I18n Service + I18nModule/多 tree/语言切换/异步就绪/token）`apps/docs/content/docs/guide/patterns/i18n.md`
+- [x] T027 [P] 新增用户文档：国际化接入模式（`@logixjs/i18n`/I18nDriver 最小形状注入/I18n Service + I18nModule/多 tree/语言切换/异步就绪/token）`apps/docs/content/docs/guide/patterns/i18n.md`
 - [x] T028 [P] 更新 React 集成指南：如何把 `I18n.layer(...)` 合并进 `RuntimeProvider runtime={...}` 的 root layer `.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`
 - [x] T029 运行质量门并修复回归（typecheck/lint/test）`package.json`
 - [x] T030 校验演练：按 `specs/029-i18n-root-resolve/quickstart.md` 跑通示例与验收步骤 `specs/029-i18n-root-resolve/quickstart.md`
-- [x] T031 [P] 示例工程接入依赖：为 `examples/logix-react` 增加 `@logix/i18n` + `i18next` + `react-i18next` 依赖 `examples/logix-react/package.json`
+- [x] T031 [P] 示例工程接入依赖：为 `examples/logix-react` 增加 `@logixjs/i18n` + `i18next` + `react-i18next` 依赖 `examples/logix-react/package.json`
 - [x] T032 [P] 新增 i18n demo 模块：Module Logic 通过 `$.root.resolve(I18nTag)` 产出 token（`token(key, options)`），供 UI 渲染并随语言切换自动更新 `examples/logix-react/src/modules/i18n-demo.ts`
 - [x] T033 [P] 新增 demo page：在 `examples/logix-react` 接入 i18next（同一实例注入 `I18n.layer` + `I18nextProvider`），演示 language 切换 + token 渲染自动更新 `examples/logix-react/src/demos/I18nDemoLayout.tsx`
 - [x] T034 [P] 将 i18n demo 加入示例导航与路由（可从左侧列表进入）`examples/logix-react/src/App.tsx`

@@ -57,7 +57,7 @@ Logix 将消除这些模糊点。通过提供标准化的 `logic` 编排机制�
 4.  **唯一的状态机来源**  
     Logix 是唯一的状态与逻辑运行时，后续不得在 Form 或 React 适配层再发明第二套状态机或副作用系统（例如直接依赖 Zustand/自写 Hooks 维护核心业务状态）。
 5.  **表单只是第一个领域验证**
-    新 Form 库（`@logix/form`）明确被视为 Logix 的一个 Domain 实例，用来反向验证 Logix API 的合理性，而不是与 Logix 并行演进的另一套方案。
+    新 Form 库（`@logixjs/form`）明确被视为 Logix 的一个 Domain 实例，用来反向验证 Logix API 的合理性，而不是与 Logix 并行演进的另一套方案。
 
 ## 5. 核心原则 (Core Principles)
 

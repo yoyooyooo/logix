@@ -3,8 +3,8 @@
 为了在类型上表达“在某一类 Module 上运行的一段逻辑程序”，当前约定（以 `Logic.Of` 为主）：
 
 ```ts
-import { Logic } from '@logix/core';
-import * as Logix from '@logix/core';
+import { Logic } from '@logixjs/core';
+import * as Logix from '@logixjs/core';
 
 export type ModuleLogic<Sh extends Logix.ModuleShape<any, any>, R = unknown, E = never> =
   Logic.Of<Sh, R, unknown, E>

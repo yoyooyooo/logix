@@ -1,7 +1,7 @@
 # Quickstart: 008 层级 Injector（strict 默认 + 显式 root/global）
 
 > 本 quickstart 只演示“如何在正确 scope 下拿到正确实例”，不讨论业务逻辑。  
-> 说明：示例代码以“目标语义”为准；最终以 `@logix/core` / `@logix/react` 实现为准。
+> 说明：示例代码以“目标语义”为准；最终以 `@logixjs/core` / `@logixjs/react` 实现为准。
 
 ## 0. 你需要记住的三句话
 
@@ -13,8 +13,8 @@
 
 ```tsx
 import React from "react"
-import * as Logix from "@logix/core"
-import { useImportedModule, useModule, useSelector } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { useImportedModule, useModule, useSelector } from "@logixjs/react"
 
 // Host.impl 必须在 implement 时 imports Child.impl
 export function Panel() {
@@ -44,9 +44,9 @@ export function Panel() {
 两种常见写法（注意差异）：
 
 ```tsx
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import React from "react"
-import { useRuntime, useModule } from "@logix/react"
+import { useRuntime, useModule } from "@logixjs/react"
 
 const runtime = useRuntime()
 

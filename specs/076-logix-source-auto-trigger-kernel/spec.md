@@ -49,7 +49,7 @@
   - diagnostics=off 近零成本；
   - diagnostics=light/full 允许输出 Slim 事件：触发原因、受影响 source 数、debounce 合并统计等。
 - 迁移目标：
-  - `@logix/query` 不再需要 `auto-trigger` 逻辑；
+  - `@logixjs/query` 不再需要 `auto-trigger` 逻辑；
   - `TraitLifecycle.makeSourceWiring` 从“公共依赖点”退回为内部实现或被替换（避免下游反射 traits）。
 
 ### Out of Scope

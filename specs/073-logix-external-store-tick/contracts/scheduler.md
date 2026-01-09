@@ -82,7 +82,7 @@ type HostScheduler = {
 
 要求：
 
-- 提供一个测试辅助（建议落在 `@logix/test` 或 core internal testkit）：
+- 提供一个测试辅助（建议落在 `@logixjs/test` 或 core internal testkit）：
   - `flushAll()`：排空 runtime 的 tick 队列 + HostScheduler 的 microtask/macrotask 队列（直到稳定或显式上限）。
   - `advanceTicks(n)`：可选，用于稳定复现“多 tick”行为。
 - TestKit 必须与 HostScheduler 配套：测试中注入 deterministic HostScheduler（队列可控、可断言）。

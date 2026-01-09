@@ -12,7 +12,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2 + Node.js 22.x  
-**Primary Dependencies**: effect 3.19.13 + `@logix/*`（`@logix/core` / `@logix/devtools-react` / `@logix/sandbox`）  
+**Primary Dependencies**: effect 3.19.13 + `@logixjs/*`（`@logixjs/core` / `@logixjs/devtools-react` / `@logixjs/sandbox`）  
 **Storage**: N/A（无持久化存储）  
 **Testing**: Vitest + `@effect/vitest`（Effect-heavy 单测优先）  
 **Target Platform**: Node.js 22+ + 现代浏览器（React/Sandbox 场景）  

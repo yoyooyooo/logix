@@ -13,15 +13,15 @@
 - **只读自身模块**：BindingSchema 默认绑定一个 `instanceId`，天然禁止跨模块读写。
 - **确定性与可序列化**：默认不允许时间戳/随机作为语义输入；输出必须可 diff。
 
-## Protocols（统一 `@logix/module.*` 域）
+## Protocols（统一 `@logixjs/module.*` 域）
 
-### `@logix/module.presentationState@v1`
+### `@logixjs/module.presentationState@v1`
 
 语义层的展示态模型（不绑定 UI 技术栈），用于表达 overlay/route/stack 等“展示态真相源”。
 
 Canonical schema：`specs/032-ui-projection-contract/contracts/schemas/presentation-state.schema.json`
 
-### `@logix/module.bindingSchema@v1`
+### `@logixjs/module.bindingSchema@v1`
 
 UI 插头（props/events）与逻辑插座（PortSpec/exports）的连接协议。
 
@@ -30,7 +30,7 @@ UI 插头（props/events）与逻辑插座（PortSpec/exports）的连接协议�
 
 Canonical schema：`specs/032-ui-projection-contract/contracts/schemas/binding-schema.schema.json`
 
-### `@logix/module.uiBlueprint@v1`
+### `@logixjs/module.uiBlueprint@v1`
 
 纯投影蓝图：描述 UI 结构、布局、组件选择，以及“哪些 UI 节点产生哪些 uiPropKey/uiEventKey”。
 
@@ -39,7 +39,7 @@ Canonical schema：`specs/032-ui-projection-contract/contracts/schemas/binding-s
 
 Canonical schema：`specs/032-ui-projection-contract/contracts/schemas/ui-blueprint.schema.json`
 
-### `@logix/module.uiKitRegistry@v1`
+### `@logixjs/module.uiKitRegistry@v1`
 
 UI 组件库的“端口规格事实源”（UI 侧 PortSpec）：用于让平台在编辑/保存/验收时 **可校验、可补全、可解释**：
 

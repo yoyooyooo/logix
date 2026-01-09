@@ -21,7 +21,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+  
-**Primary Dependencies**: `effect@^3.19.8`、`@logix/core`、`@logix/react`、Vitest 4（`@vitest/browser` + `@vitest/browser-playwright` + Playwright Chromium）、`vitest-browser-react`  
+**Primary Dependencies**: `effect@^3.19.8`、`@logixjs/core`、`@logixjs/react`、Vitest 4（`@vitest/browser` + `@vitest/browser-playwright` + Playwright Chromium）、`vitest-browser-react`  
 **Storage**: 运行时无持久化；基线/报告以仓库内文件固化（`specs/014-browser-perf-boundaries/perf/*`）  
 **Testing**: Vitest browser mode（集成测试主跑道；不使用 watch）；可选 Node preflight（contract/schema + budget 语义回归，默认不作为 CI 门禁，仅在显式开关启用时运行，例如 `LOGIX_PREFLIGHT=1`）；必要时辅以少量 Node micro-benchmark（仅作辅证）  
 **Target Platform**: modern browsers（默认 Chromium headless）+ Node.js 20+（采集/对比脚本）  
@@ -62,7 +62,7 @@
 ### Answers (Pre-Implementation)
 
 - **Intent → Flow/Logix → Code → Runtime**：014 属于“回归防线基础设施”，目标是让任何 runtime 改动都能通过同一套浏览器端长链路用例输出可对比证据；不引入第二套运行时真相源。
-- **Docs-first & SSoT**：矩阵与报告 schema 的 SSoT 统一为 `@logix/perf-evidence/assets/*`（物理：`.codex/skills/logix-perf-evidence/assets/*`）；runtime 文档中已有的浏览器基线（watcher）明确作为其中一个维度示例（已互引）。
+- **Docs-first & SSoT**：矩阵与报告 schema 的 SSoT 统一为 `@logixjs/perf-evidence/assets/*`（物理：`.codex/skills/logix-perf-evidence/assets/*`）；runtime 文档中已有的浏览器基线（watcher）明确作为其中一个维度示例（已互引）。
 - **Contracts**：本特性的“结构化报告 JSON”本身是对外契约的一部分（字段语义稳定、可序列化）；后续以 feature 内 schema 文件固化并版本化。
 - **Performance budget**：预算以绝对 ms 与相对 ratio 两类表达，并要求在报告中给出阈值与越界档位定位；Before/After 对照以同机同配置为主。
 - **Negative boundary map**：将负优化对抗场景纳入矩阵，并要求输出资源上界证据（cache hit/miss/evict/invalidate/cut-off 等；不可得则显式标注）。
@@ -70,7 +70,7 @@
 
 ### Re-check (Post-Design)
 
-- 维度矩阵（含 stability 阈值、负优化主轴 `uniquePatternPoolSize` 与反直觉 patternKind）已固化到 `@logix/perf-evidence/assets/matrix.json`；report/diff schema 已固化到 `@logix/perf-evidence/assets/schemas/*` 并补齐 evidence/comparisons/recommendations 落点。
+- 维度矩阵（含 stability 阈值、负优化主轴 `uniquePatternPoolSize` 与反直觉 patternKind）已固化到 `@logixjs/perf-evidence/assets/matrix.json`；report/diff schema 已固化到 `@logixjs/perf-evidence/assets/schemas/*` 并补齐 evidence/comparisons/recommendations 落点。
 - research/data-model/quickstart 已生成，且 plan/spec 不存在未决 “NEEDS CLARIFICATION”；宪法门槛（可复现测量 + 本地基线 + 负优化边界地图）具备可执行落点。
 
 ## Project Structure
@@ -84,8 +84,8 @@ specs/014-browser-perf-boundaries/
 ├── plan.md
 ├── tasks.md
 ├── data-model.md           # Phase 1：报告/矩阵的数据实体与关系（schema 为最终裁决）
-├── matrix.json              # 镜像（SSoT：`@logix/perf-evidence/assets/matrix.json`）
-├── contracts/               # 镜像（SSoT：`@logix/perf-evidence/assets/schemas/*`）
+├── matrix.json              # 镜像（SSoT：`@logixjs/perf-evidence/assets/matrix.json`）
+├── contracts/               # 镜像（SSoT：`@logixjs/perf-evidence/assets/schemas/*`）
 ├── quickstart.md           # Phase 1：运行/落盘/对比的最短闭环说明
 ├── perf.md                 # 本地基线/上限指标记录模板（Before/After）
 ├── perf/                   # 固化的原始证据（JSON/TXT）；同机对照

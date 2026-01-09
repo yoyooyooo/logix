@@ -17,7 +17,7 @@ interface TagInfo {
   readonly ownerModuleId: string
   /**
    * Tag 来源（当前实现只做最小集合）：
-   * - "module"  ：模块自身的 Runtime Tag（例如 `@logix/Module/<id>`）；
+   * - "module"  ：模块自身的 Runtime Tag（例如 `@logixjs/Module/<id>`）；
    * - "service" ：模块显式声明“由该模块 layer 提供”的 Service Tag（仅用于冲突检测元信息，不影响运行时行为）。
    */
   readonly source: 'module' | 'service'

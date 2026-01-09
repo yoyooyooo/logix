@@ -69,15 +69,15 @@
 
 ### User Story 2 - 上层生态不被绑死在 core-ng (Priority: P1)
 
-作为平台/Devtools/Sandbox/Logix React 的维护者，我希望切默认不会迫使上层直接依赖 `@logix/core-ng`；上层仍只依赖 `@logix/core`，并通过统一最小 IR 与证据字段解释当前内核选择与回退。
+作为平台/Devtools/Sandbox/Logix React 的维护者，我希望切默认不会迫使上层直接依赖 `@logixjs/core-ng`；上层仍只依赖 `@logixjs/core`，并通过统一最小 IR 与证据字段解释当前内核选择与回退。
 
 **Why this priority**: 防止生态分叉与重复迁移成本。
 
-**Independent Test**: `@logix/react` 不依赖 core-ng；切默认后上层仍可运行并能导出/解释证据。
+**Independent Test**: `@logixjs/react` 不依赖 core-ng；切默认后上层仍可运行并能导出/解释证据。
 
 **Acceptance Scenarios**:
 
-1. **Given** 切默认完成，**When** 构建/运行上层包，**Then** 不需要引入 `@logix/core-ng` 的直接依赖。
+1. **Given** 切默认完成，**When** 构建/运行上层包，**Then** 不需要引入 `@logixjs/core-ng` 的直接依赖。
 
 ---
 
@@ -108,7 +108,7 @@
 - **FR-001**: 系统 MUST 将默认内核切换为 `core-ng`，且默认路径必须是 Full Cutover（无 fallback）；切默认必须以证据门禁裁决（不得口头宣称）。
 - **FR-002**: 系统 MUST 提供显式回退机制：允许在创建 runtime 时显式选择 `kernelId="core"`；该回退必须可解释且证据化，禁止隐式 fallback。
 - **FR-003**: 系统 MUST 把 “Full Cutover Gate 已通过” 作为切默认的前置条件（依赖 `specs/047-core-ng-full-cutover-gate/` 的验证矩阵与证据落盘）。
-- **FR-004**: 上层生态 MUST 继续只依赖 `@logix/core`：除少量测试/基准/试跑外，仓库内 consumer 不得直接依赖 `@logix/core-ng`。
+- **FR-004**: 上层生态 MUST 继续只依赖 `@logixjs/core`：除少量测试/基准/试跑外，仓库内 consumer 不得直接依赖 `@logixjs/core-ng`。
 - **FR-005**: 系统 MUST 更新迁移说明与导航回写：包含切默认步骤、回退步骤、风险提示与证据文件落点（不提供长期兼容层），并回写 046（M4 指向 048）与相关导航入口避免口径漂移。
 - **FR-006**: 系统 MUST 在默认/回退/失败（缺 bindings、请求不可用 kernel 等）场景下导出可序列化证据；失败至少输出最小可序列化证据锚点（`kernelId + missingServiceIds + moduleId/instanceId/txnSeq`，装配期允许 `txnSeq=0`）。
 

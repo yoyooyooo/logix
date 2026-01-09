@@ -9,7 +9,7 @@
 
 ## 1) API Surface
 
-`@logix/react` MUST 提供一个稳定的 public API（不得依赖 `./internal/*`）用于显式回收 ModuleCache 条目。契约以命名空间形式描述（具体导出形态由实现决定）：
+`@logixjs/react` MUST 提供一个稳定的 public API（不得依赖 `./internal/*`）用于显式回收 ModuleCache 条目。契约以命名空间形式描述（具体导出形态由实现决定）：
 
 ```ts
 type EvictReport = {

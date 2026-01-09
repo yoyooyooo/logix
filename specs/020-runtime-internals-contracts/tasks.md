@@ -64,7 +64,7 @@ description: 'Task list for 020-runtime-internals-contracts'
 
 **Goal**: 全链路内部消费方统一迁移到 RuntimeInternals/RuntimeKernel，消灭散落 `__*` 读写与参数爆炸接线点。
 
-**Independent Test**: 在不改对外行为的前提下，迁移 `BoundApiRuntime`/`trait-lifecycle`/`state-trait`/`@logix/react` 的内部依赖获取方式，并通过其各自回归用例。
+**Independent Test**: 在不改对外行为的前提下，迁移 `BoundApiRuntime`/`trait-lifecycle`/`state-trait`/`@logixjs/react` 的内部依赖获取方式，并通过其各自回归用例。
 
 - [X] T018 [US3] 迁移 BoundApiRuntime：用 internal accessor/RuntimeInternals 替代 `runtime.__runWithStateTransaction/__recordStatePatch/...` 直接读取：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
 - [X] T019 [US3] 消灭进程级 `globalLogicPhaseRef` 作为默认行为依赖（改为实例级 phase 或显式注入）：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
@@ -73,7 +73,7 @@ description: 'Task list for 020-runtime-internals-contracts'
 - [X] T022 [US3] 迁移 state-trait.source：用 internal accessor 替代 `bound.__recordStatePatch/__recordReplayEvent` 等：`packages/logix-core/src/internal/state-trait/source.ts`
 - [X] T023 [US3] 将 state-trait.source 的进程级 once/dedup 状态迁到 RunSession/实例作用域（避免跨会话污染）：`packages/logix-core/src/internal/state-trait/source.ts` + `packages/logix-core/src/internal/observability/runSession.ts`
 - [X] T024 [US3] 将试跑可观测的 opSeq/eventSeq 分配器从进程级 Map 迁到 RunSession/实例作用域（支持并行会话可对比）：`packages/logix-core/src/EffectOp.ts` + `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
-- [X] T025 [US3] 迁移 `@logix/react` strict imports：用 internal accessor 替代 `parentRuntime.__importsScope`：`packages/logix-react/src/internal/resolveImportedModuleRef.ts`
+- [X] T025 [US3] 迁移 `@logixjs/react` strict imports：用 internal accessor 替代 `parentRuntime.__importsScope`：`packages/logix-react/src/internal/resolveImportedModuleRef.ts`
 - [X] T026 [P] [US3] 增加“全链路无 `__*` 直读” lint/回归脚本（只对新增路径强制）：`scripts/checks/no-internal-magic-fields.ts`（仅检查变更文件集/允许白名单 shim；建议 Phase 2 完成后即引入作为 CI 门禁）
 
 ---
@@ -133,7 +133,7 @@ description: 'Task list for 020-runtime-internals-contracts'
 - [X] T047 同步 Sandbox kernel bundle：重新打包 `packages/logix-sandbox/public/sandbox/logix-core.js`（避免 Sandbox 仍依赖已移除的 `__stateTraitProgram` 等字段），并在 `packages/logix-sandbox/scripts/bundle-kernel.mjs`/README 中补充生成说明与约束
 - [X] T048 扩展 InternalContracts：为 repo 内集成方提供最小 txn/traits 辅助入口（`applyTransactionSnapshot`/`runWithStateTransaction`/`recordStatePatch`/`getRowIdStore`/`getStateTraitListConfigs`），并迁移以下直读点：`packages/logix-core/src/Runtime.ts` + `packages/logix-form/src/internal/rowid.ts` + `pnpm perf bench:009:txn-dirtyset` + `examples/logix-react/src/demos/PerfTuningLabLayout.tsx`
 - [X] T049 收敛内部实现 marker：将 `__logicPlan/__phaseRef/__skipRun`、`__dirtyAllSetStateHint` 等内部标记迁到 Symbol hidden slot（或 WeakMap），避免在非 shim 文件继续依赖字符串字段：`packages/logix-core/src/internal/runtime/core/LogicPlanMarker.ts` + `packages/logix-core/src/internal/runtime/ModuleFactory.ts` + `packages/logix-core/src/internal/runtime/ModuleRuntime.logics.ts` + `packages/logix-core/src/internal/runtime/ModuleRuntime.transaction.ts`（并同步更新相关测试）
-- [X] T050 Sandbox Worker 全局桥接 API 收口：将 `self.__logixSandboxUiIntent`/`self.__logixSandboxSpy` 改为显式 bridge（`globalThis.logixSandboxBridge` + `Symbol.for("@logix/sandbox/bridge")`），并给出迁移说明：`packages/logix-sandbox/src/worker/sandbox.worker.ts` + `packages/logix-sandbox/test/browser/sandbox-worker-observable.test.ts`
+- [X] T050 Sandbox Worker 全局桥接 API 收口：将 `self.__logixSandboxUiIntent`/`self.__logixSandboxSpy` 改为显式 bridge（`globalThis.logixSandboxBridge` + `Symbol.for("@logixjs/sandbox/bridge")`），并给出迁移说明：`packages/logix-sandbox/src/worker/sandbox.worker.ts` + `packages/logix-sandbox/test/browser/sandbox-worker-observable.test.ts`
 
 ---
 

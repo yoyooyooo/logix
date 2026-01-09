@@ -166,7 +166,7 @@ IR 最小字段集合（示意）：
 - 依赖图视图：dirtyRoots → 影响范围（reverse-closure）→ 实际执行 step
 - 资源时间线：keyHash gate、并发策略、replay 对齐
 
-## Devtools UI（`@logix/devtools-react`）对诊断契约的“真实依赖”
+## Devtools UI（`@logixjs/devtools-react`）对诊断契约的“真实依赖”
 
 这是“以实现为准”的依赖事实（决定你后续 IR/协议怎么定）：
 
@@ -176,7 +176,7 @@ IR 最小字段集合（示意）：
   - 依赖 `state:update.traitSummary.converge` 里携带 `outcome/budgetMs/top3/...` 来做 trait 收敛窗口统计（该结构由 `ModuleRuntime.ts` 构造）。
 - 时间旅行能力：`packages/logix-devtools-react/src/state/logic.ts`
   - 通过 `Logix.Runtime.applyTransactionSnapshot(moduleId, instanceId, txnId, mode)` 回放；
-  - `@logix/core` 内部按 `${moduleId}::${instanceId}` 维度索引 ModuleRuntime，确保 time travel 可按实例锚点精确定位。
+  - `@logixjs/core` 内部按 `${moduleId}::${instanceId}` 维度索引 ModuleRuntime，确保 time travel 可按实例锚点精确定位。
 
 结论：
 

@@ -63,7 +63,7 @@ interface EffectOp<T = any> {
 
 ### Phase 3: Platform Bridge (桥接 - The Effect)
 
-- **位置**：Platform Adapter (`@logix/react`, `@logix/cli`).
+- **位置**：Platform Adapter (`@logixjs/react`, `@logixjs/cli`).
 - **动作**：**Handler Registry Lookup**。
 - **实现**：
   - 在浏览器中：`Toast` Op 映射为 `AntDesign.message.success()`。

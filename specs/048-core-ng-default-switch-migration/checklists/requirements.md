@@ -9,7 +9,7 @@
 - [x] 聚焦“切默认 + 回退口径 + 证据落盘”，不混入 core-ng 优化细节
 - [x] 术语与边界清晰（默认内核/切默认/回退/Full Cutover Gate）
 - [x] 明确依赖：必须先通过 047（Full Cutover Gate），并复用 045 契约跑道
-- [x] 上层依赖边界清晰（consumer 仍只依赖 `@logix/core`）
+- [x] 上层依赖边界清晰（consumer 仍只依赖 `@logixjs/core`）
 
 ## Requirement Completeness
 

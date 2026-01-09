@@ -6,7 +6,7 @@ value: core
 priority: next
 ---
 
-> 草稿定位：React Adapter Topic（问题拆解为主，结论弱），聚焦于「如何在不破坏 Effect / React 不变量的前提下，为 `@logix/react` 提供**真正安全的 runtime 级 React 配置覆盖能力**」，是后续对 `ReactModuleConfig` / `ReactRuntimeConfigTag` / `RuntimeProvider` 组合方案的前置分析。
+> 草稿定位：React Adapter Topic（问题拆解为主，结论弱），聚焦于「如何在不破坏 Effect / React 不变量的前提下，为 `@logixjs/react` 提供**真正安全的 runtime 级 React 配置覆盖能力**」，是后续对 `ReactModuleConfig` / `ReactRuntimeConfigTag` / `RuntimeProvider` 组合方案的前置分析。
 
 ## 1. 背景：我们想要的“runtime 级覆盖”到底是什么
 
@@ -89,7 +89,7 @@ const appRuntime = Runtime.make(AppCounterImpl, {
 优点：
 
 - AppDemoLayout 这类 demo 在挂上 Debug.traceLayer 之后不再抛 AsyncFiberException；
-- `@logix/react` 内部的所有 `runSync` 都只包裹“确定可以同步结束的小 Effect”（读取全局 Config），符合 Effect 不变量。
+- `@logixjs/react` 内部的所有 `runSync` 都只包裹“确定可以同步结束的小 Effect”（读取全局 Config），符合 Effect 不变量。
 
 缺点（也是本草稿想解决的问题）：
 

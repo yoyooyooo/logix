@@ -58,7 +58,7 @@
 - [x] T012 [P] [US1] 新增单测：产出 `trait:converge` 事件且 `JSON.stringify` 不失败（light/full）并携带必要锚点字段在 `packages/logix-core/test/StateTrait.ConvergeAuto.TraceEvent.test.ts`
 - [x] T013 [P] [US1] 扩展 browser perf runtime：支持 `traitConvergeMode: "auto"`（若 runner 内部仍叫 convergeMode，需显式映射）并能跑同一矩阵输入在 `packages/logix-react/test/browser/perf-boundaries/converge-runtime.ts`
 - [x] T014 [US1] 扩展 converge perf matrix：覆盖 steps 规模与写入分布，增加 `auto/full <= 1.05` 断言；硬门槛绑定 014 的 `metricCategories.category=runtime`（`category=e2e` 仅记录），且默认用 `Diagnostics Level=off` 跑硬 gate（`light|full` 仅记录 overhead）在 `packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx`
-- [x] T015 [US1] 将 013 converge-auto 场景纳入 perf matrix 与报告口径：明确 `auto/full <= 1.05` gate 属于 `category=runtime`，且默认以 `Diagnostics Level=off` 作为硬 gate 环境（`light|full` 仅记录 overhead）在 `@logix/perf-evidence/assets/matrix.json` 与 `specs/014-browser-perf-boundaries/perf.md`
+- [x] T015 [US1] 将 013 converge-auto 场景纳入 perf matrix 与报告口径：明确 `auto/full <= 1.05` gate 属于 `category=runtime`，且默认以 `Diagnostics Level=off` 作为硬 gate 环境（`light|full` 仅记录 overhead）在 `@logixjs/perf-evidence/assets/matrix.json` 与 `specs/014-browser-perf-boundaries/perf.md`
 
 ### Implementation for User Story 1
 

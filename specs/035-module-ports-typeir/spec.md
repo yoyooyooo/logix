@@ -89,8 +89,8 @@
 
 - **FR-001**: 系统 MUST 定义版本化 artifact：`ModulePortSpec@v1` 与 `TypeIR@v1`，并通过 TrialRunReport.artifacts 导出；artifact 必须可 JSON 序列化。
   - artifact keys（稳定且版本化；**概念域命名**，不绑定实现包名）：
-    - `@logix/module.portSpec@v1`
-    - `@logix/module.typeIr@v1`
+    - `@logixjs/module.portSpec@v1`
+    - `@logixjs/module.typeIr@v1`
 - **FR-002**: `ModulePortSpec@v1` MUST 至少包含：可触发动作/事件 key、可引用输出 key、可公开读取的状态路径空间（exports），端口分类与稳定寻址信息，以及与 moduleId 的绑定信息。
 - **FR-003**: `TypeIR@v1` MUST 为 PortSpec 中涉及的端口 payload 与公开状态提供类型引用/摘要，并以“扁平、具体的类型投影”作为默认消费形态；超出预算时必须可截断并带显式标记。
 - **FR-004**: artifacts MUST 有预算与截断语义（字节/深度/节点数等）；平台必须能区分“完整”与“截断”并采取降级策略。

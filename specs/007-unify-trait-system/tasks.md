@@ -33,7 +33,7 @@
 - [x] T011 [P] 新增依赖图与计划模块骨架 `packages/logix-core/src/internal/state-trait/graph.ts`、`packages/logix-core/src/internal/state-trait/plan.ts`、`packages/logix-core/src/internal/state-trait/reverse-closure.ts`
 - [x] T012 [P] 在 Debug 事件模型中预留“Trait 收敛摘要/回放事件”字段，更新 `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 
-**Checkpoint**: `@logix/core` 能暴露 TraitLifecycle/StateTrait 的“可编译可引用”公共契约，领域包可以开始实现 Blueprint/Controller 的静态结构与 action 约定。
+**Checkpoint**: `@logixjs/core` 能暴露 TraitLifecycle/StateTrait 的“可编译可引用”公共契约，领域包可以开始实现 Blueprint/Controller 的静态结构与 action 约定。
 
 ---
 
@@ -63,7 +63,7 @@
 
 - [x] T023 [US1] 增补/更新复杂表单 Demo（Form-first 写法）：`examples/logix-react/src/demos/ComplexTraitFormDemoLayout.tsx`
 
-**Checkpoint**: 业务开发者仅使用 `@logix/form` 即可写出复杂表单；UI 层不维护第二套 touched/dirty/errors；表单可通过 Root `imports` 同源组合。
+**Checkpoint**: 业务开发者仅使用 `@logixjs/form` 即可写出复杂表单；UI 层不维护第二套 touched/dirty/errors；表单可通过 Root `imports` 同源组合。
 
 ---
 

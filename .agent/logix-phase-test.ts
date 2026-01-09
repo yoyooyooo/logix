@@ -1,5 +1,5 @@
 import { Context, Duration, Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 class Svc extends Context.Tag('Svc')<Svc, {}>() {}
 

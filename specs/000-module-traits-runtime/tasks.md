@@ -23,7 +23,7 @@ description: "Task list for 001-module-traits-runtime (StateTrait + EffectOp/Mid
 
 **Purpose**: 确认本特性文档与目录基础就绪，为后续实现提供稳定事实源。
 
-- [X] T001 更新 spec/plan 中对 @logix/data 的定位说明（标明为 PoC/历史方案）并指向 001-module-traits-runtime：`specs/000-module-traits-runtime/spec.md`
+- [X] T001 更新 spec/plan 中对 @logixjs/data 的定位说明（标明为 PoC/历史方案）并指向 001-module-traits-runtime：`specs/000-module-traits-runtime/spec.md`
 - [X] T002 在 research/data-model 中补齐 StateTrait / EffectOp / Resource / Query / Devtools / Parser 各部分的引用链接：`specs/000-module-traits-runtime/research.md`
 - [X] T003 [P] 确认并微调 StateTrait Core reference（API 列表与计划的 Phase 1 一致）：`specs/000-module-traits-runtime/references/state-trait-core.md`
 - [X] T004 [P] 确认并微调 EffectOp/Middleware reference（与 plan Phase 2 一致）：`specs/000-module-traits-runtime/references/effectop-and-middleware.md`
@@ -56,7 +56,7 @@ description: "Task list for 001-module-traits-runtime (StateTrait + EffectOp/Mid
 
 **Goal**: 为模块作者提供 `state + actions + traits` 图纸形态与 StateTrait DSL（from/computed/source/link），并通过示例模块验证类型与心智。
 
-**Independent Test**: 仅依赖 `@logix/core`，可在示例模块中：
+**Independent Test**: 仅依赖 `@logixjs/core`，可在示例模块中：
 - 用 `state` + `traits: StateTrait.from(StateSchema)({...})` 声明 computed/link/source 字段；  
 - 在 IDE 中获得字段路径与 derive 函数的类型提示；  
 - 运行示例测试验证 computed/link 行为无需额外 glue code。

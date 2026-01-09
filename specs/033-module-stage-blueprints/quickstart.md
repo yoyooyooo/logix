@@ -10,10 +10,10 @@
 
 ## 1) 最小资产集合
 
-- `@logix/module.stageBlueprint@v1`（语义蓝图）
-- `@logix/module.intentRule@v1`（连线；ruleId 稳定）
-- `@logix/module.rowRef@v1`（列表定位；默认唯一语义）
-- （可选）`@logix/module.uiBlueprint@v1` + `@logix/module.bindingSchema@v1`（投影与绑定；见 032）
+- `@logixjs/module.stageBlueprint@v1`（语义蓝图）
+- `@logixjs/module.intentRule@v1`（连线；ruleId 稳定）
+- `@logixjs/module.rowRef@v1`（列表定位；默认唯一语义）
+- （可选）`@logixjs/module.uiBlueprint@v1` + `@logixjs/module.bindingSchema@v1`（投影与绑定；见 032）
 
 ## 2) 验收闭环（IR-first）
 

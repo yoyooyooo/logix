@@ -53,8 +53,8 @@
 
 - 目标：抛开 React 树路径限制，让“不在同一路径的东西”也能共享同一个 scope。
 - 机制方向：
-  - `@logix/core` 提供按 runtime tree 隔离的 ScopeRegistry：`packages/logix-core/src/ScopeRegistry.ts`
-  - `@logix/react` 的 ModuleScope 可以在边界 Provider 挂载时以 `scopeId` 注册 “runtime + module runtime”，并在另一棵子树通过 Bridge 取回并重新提供。
+  - `@logixjs/core` 提供按 runtime tree 隔离的 ScopeRegistry：`packages/logix-core/src/ScopeRegistry.ts`
+  - `@logixjs/react` 的 ModuleScope 可以在边界 Provider 挂载时以 `scopeId` 注册 “runtime + module runtime”，并在另一棵子树通过 Bridge 取回并重新提供。
 - 风险点：
   - 必须有严格的注册/释放语义，避免泄漏与“拿到已 disposed 的 scope”；
   - 必须补齐单元测试（并发重入、缺注册时报错、释放顺序不确定性）。
@@ -68,7 +68,7 @@
 
 ```ts
 import { Context } from "effect"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 class RoutePortalTag extends Context.Tag("app/RoutePortal")<RoutePortalTag, HTMLElement>() {}
 
@@ -96,7 +96,7 @@ lease.release()
 
 ### D02 — Scope 工具化：Provider + hook，避免 props 透传
 
-**Decision**：在 `@logix/react` 增量提供 Scope 工具（Provider + hook）：
+**Decision**：在 `@logixjs/react` 增量提供 Scope 工具（Provider + hook）：
 
 - 让路由/页面边界只负责“挂一个 Provider”，而不是层层 props 透传 Host；
 - 子组件在任意深度都能稳定拿到 Host 句柄；

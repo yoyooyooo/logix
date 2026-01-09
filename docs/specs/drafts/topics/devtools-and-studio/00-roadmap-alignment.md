@@ -12,7 +12,7 @@ related:
 
 # Builder & Studio Roadmap Alignment
 
-> 核心想法：在 `implementation-status.md` 中给 Builder/@logix/builder 一段“可执行的小路线图”，把 Generative Language Server / Spec Studio / Platform Vision 中的远景拆成 2–3 个近期可落地的能力。
+> 核心想法：在 `implementation-status.md` 中给 Builder/@logixjs/builder 一段“可执行的小路线图”，把 Generative Language Server / Spec Studio / Platform Vision 中的远景拆成 2–3 个近期可落地的能力。
 
 ## 1. 现状
 

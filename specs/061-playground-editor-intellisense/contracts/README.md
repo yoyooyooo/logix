@@ -31,8 +31,8 @@
 ### Guarantees
 
 - `files` 至少覆盖：
-  - `effect` 与其被 `@logix/*` 的 d.ts 引用到的子路径
-  - `@logix/core`、`@logix/react`、`@logix/sandbox`、`@logix/form` 的发布 d.ts（以 `dist/*.d.ts` 为准）
+  - `effect` 与其被 `@logixjs/*` 的 d.ts 引用到的子路径
+  - `@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、`@logixjs/form` 的发布 d.ts（以 `dist/*.d.ts` 为准）
   - 让上述类型可解析的必要依赖（例如 `@standard-schema/spec`、`fast-check`、React JSX 类型）
 - bundle 安装是幂等的：重复进入编辑页不会导致重复注入与无界资源增长。
 
@@ -53,7 +53,7 @@
 
 - TS 模式默认采用 WebWorker 语义（`lib` 不包含 DOM），与 `spec.md` 的 FR-008 对齐。
 - “ready” 必须意味着：worker 已就绪 + bundle 已注入 + 语义边界已生效（避免“看似 ready 但补全/诊断漂移”）。
-- 为了便于文档/示例只展示“核心代码块”，TS Worker 额外注入一个全局 prelude：`declare const Logix: typeof import('@logix/core')`，使代码块可省略 `import * as Logix from '@logix/core'`（仅影响编辑器类型；运行时代码仍建议显式 import）。
+- 为了便于文档/示例只展示“核心代码块”，TS Worker 额外注入一个全局 prelude：`declare const Logix: typeof import('@logixjs/core')`，使代码块可省略 `import * as Logix from '@logixjs/core'`（仅影响编辑器类型；运行时代码仍建议显式 import）。
 
 ### Notes（易错点）
 

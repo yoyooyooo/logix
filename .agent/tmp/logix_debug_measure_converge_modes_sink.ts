@@ -1,6 +1,6 @@
 import { Effect, Layer, Schema } from 'effect'
 import { performance } from 'node:perf_hooks'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 process.env.NODE_ENV = 'production'
 

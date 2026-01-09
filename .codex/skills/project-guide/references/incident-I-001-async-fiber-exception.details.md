@@ -11,7 +11,7 @@
     - `(FiberFailure) AsyncFiberException: Fiber #X cannot be resolved synchronously. This is caused by using runSync on an effect that performs async work`
 - 已观测触发场景：
   - `examples/logix-react/src/demos/AppDemoLayout.tsx` 中，为 Runtime 挂上 `Debug.layer({ mode: 'dev' })` / `Debug.traceLayer(...)` 后，在 React 环境中渲染示例；
-  - `examples/logix-sandbox-mvp` 集成 `@logix/sandbox`（Worker + wasm）后，初次加载页面或触发运行。
+  - `examples/logix-sandbox-mvp` 集成 `@logixjs/sandbox`（Worker + wasm）后，初次加载页面或触发运行。
 
 > 直觉：只要在“看起来应该是同步初始化”的路径上，Effect 抱怨遇到了异步工作，就优先怀疑属于本条 Incident。
 

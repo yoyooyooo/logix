@@ -7,7 +7,7 @@
 
 - 一个用于脚本/demo/命令行的标准入口：自动完成 root runtime（以 program module 作为 root 装配）的启动与资源释放。
 - 一个统一的“脚本上下文”：在脚本里也能像 Logic 一样用 `$` 访问模块（`$.use(module)`）并获得 controller 等扩展。
-- 与 `@logix/test` 对齐的生命周期语义：测试在同一语义之上叠加 trace/断言/可控时钟。
+- 与 `@logixjs/test` 对齐的生命周期语义：测试在同一语义之上叠加 trace/断言/可控时钟。
 
 ## 2) 心智模型（≤5 关键词）
 
@@ -48,7 +48,7 @@
 ### 3.3 TypeScript 签名（示意）
 
 ```ts
-import type * as Logix from '@logix/core'
+import type * as Logix from '@logixjs/core'
 import type { Effect, ManagedRuntime, Scope } from 'effect'
 
 export interface ProgramRunContext<Sh extends Logix.AnyModuleShape> {
@@ -103,7 +103,7 @@ await Logix.Runtime.runProgram(AppRoot, main, {
 - 需要直接访问 module runtime：使用 `ctx.module`
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect, Stream } from "effect"
 
 // AppRoot：你的 program module（Module 或 ModuleImpl）
@@ -129,7 +129,7 @@ await Logix.Runtime.runProgram(AppRoot, ({ $ }) =>
 ### 4.2 资源化：复用同一棵 runtime（多段 program）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect } from "effect"
 
 const AppRoot = /* ... */
@@ -154,7 +154,7 @@ await Effect.runPromise(program)
 当 program module 内存在常驻逻辑（例如 `onAction` 监听）时，主进程不需要“等它自然结束”，而是用显式退出策略决定何时关闭 Scope；关闭 Scope 会统一 interrupt 后台监听并释放资源。
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect, Exit, Scope } from "effect"
 
 const AppRoot = /* ... */
@@ -180,14 +180,14 @@ ctx.runtime.runFork(Effect.never) // 代表你的常驻主循环；Ctrl+C 会触
 
 ## 6) 测试：与 program runner 对齐
 
-`@logix/test` 的职责是提供测试专用能力（trace/断言/可控时钟），但其启动/退出/释放语义应与 program runner 一致：
+`@logixjs/test` 的职责是提供测试专用能力（trace/断言/可控时钟），但其启动/退出/释放语义应与 program runner 一致：
 
 - 测试用例应能用同一个 program module 在“demo runner”与“test runner”下得到一致的可观测行为（状态变化/事件顺序）
 - 测试 runner 提供的额外能力不得隐式改变行为（除非用例显式使用）
 
 ## 7) 下一步
 
-进入 `$speckit tasks`：把 `@logix/core` 的 program runner API、`@logix/test` 对齐、最小回归测试与文档同步拆成可执行任务。
+进入 `$speckit tasks`：把 `@logixjs/core` 的 program runner API、`@logixjs/test` 对齐、最小回归测试与文档同步拆成可执行任务。
 
 ## 8) 与 025 的对齐（inspect pipeline，推荐）
 

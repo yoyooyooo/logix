@@ -18,12 +18,12 @@ related:
 ## 0. 现状小结（2025-12）
 
 - Debug 事件与快照：
-  - `@logix/core` 的 `ModuleRuntime` 已在以下时机通过 `Debug.record` 发送事件：
+  - `@logixjs/core` 的 `ModuleRuntime` 已在以下时机通过 `Debug.record` 发送事件：
     - `module:init` / `module:destroy`：携带 `moduleId` / `instanceId` / （可选）`runtimeLabel`；
     - `action:dispatch`：携带 `moduleId` / `instanceId` 以及原始 `action`；
     - `state:update`：携带 `moduleId` / `instanceId` 以及更新后的完整 `state`；
     - `lifecycle:error` / `diagnostic`：用于错误与诊断。
-  - `@logix/devtools-react` 的 `devtoolsLayer` 基于 Debug API 组合了一个内存快照：
+  - `@logixjs/devtools-react` 的 `devtoolsLayer` 基于 Debug API 组合了一个内存快照：
     - `ModuleRuntimeCounter`：按 `runtimeLabel::moduleId` 统计活跃实例数；
     - `RingBufferSink`：保留最近 N 条 Debug 事件（当前 500 条）；
     - `latestStates`：按 `runtimeLabel::moduleId::instanceId` 维度记录最近一次 `state:update` 的完整状态。
@@ -124,7 +124,7 @@ interface TimeTravelRegistry {
 ### 3.2 注册表的落点与生命周期
 
 - 落点建议：
-  - 类型与 Tag 放在 `@logix/core` 的 `Debug` 或 `internal/runtime/core` 命名空间中；
+  - 类型与 Tag 放在 `@logixjs/core` 的 `Debug` 或 `internal/runtime/core` 命名空间中；
   - 具体实现由 `devtoolsLayer` 提供，以避免在默认 Runtime 下引入额外开销。
 - 生命周期：
   - 在 `ModuleRuntime.make` 中：
@@ -227,7 +227,7 @@ $.onAction("jumpToEventIndex").run((action) =>
      - 不再在“用户选中事件”的情况下悄然 fallback 到 `latestStates`。
    - 验证示例：`examples/logix-react/src/demos/AppDemoLayout.tsx` 计数器，点击多次 +1 后，Timeline 上不同 `state:update` 事件应显示递增的 count。
 2. **阶段 2：引入 `TimeTravelRegistry`（不暴露到公开 API）**  
-   - 在 `@logix/core` internal 中增加 registry 接口与 Tag；
+   - 在 `@logixjs/core` internal 中增加 registry 接口与 Tag；
    - 在 `ModuleRuntime.make` 中注册/注销实例；
    - 在 `devtoolsLayer` 中提供一个默认实现，并验证 registry 与 DebugSnapshot 的 key 对齐。
 3. **阶段 3：DevtoolsModule & UI 支持 jump/resume**  

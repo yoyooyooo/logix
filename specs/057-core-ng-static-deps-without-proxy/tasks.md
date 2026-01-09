@@ -2,7 +2,7 @@
 
 **Input**: Design documents from `specs/057-core-ng-static-deps-without-proxy/`（`spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/*`/`quickstart.md`）
 
-**Tests**: 本特性会触及 `@logix/core` / `@logix/react` / `@logix/devtools-react` 的核心路径与诊断协议；默认视为 REQUIRED（除非在对应 task 内写清为何可缺失）。
+**Tests**: 本特性会触及 `@logixjs/core` / `@logixjs/react` / `@logixjs/devtools-react` 的核心路径与诊断协议；默认视为 REQUIRED（除非在对应 task 内写清为何可缺失）。
 
 ## Format: `[ID] [P?] [Story] Description`
 

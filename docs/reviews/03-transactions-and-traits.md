@@ -168,7 +168,7 @@ Patch 里有 `reason/stepId/traitNodeId`，Debug 事件里有 `txnId/originKind/
 
 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts` 维护了进程级 `runtimeRegistry`，`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts` 在 Env 查不到时会回退到全局 registry（并在 dev 里提示“多实例不稳定”）。
 
-与此同时，`@logix/react` + core 已经为“分形模块 / imports scope”收敛了严格语义（strict-only）：
+与此同时，`@logixjs/react` + core 已经为“分形模块 / imports scope”收敛了严格语义（strict-only）：
 
 - core：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`：为每个模块实例保存 `__importsScope`（最小 injector：ModuleToken → ModuleRuntime）；
 - react：`packages/logix-react/src/internal/resolveImportedModuleRef.ts`：strict-only 从 `parentRuntime.__importsScope` 解析子模块；root/global 单例语义统一走 `Root.resolve(Tag)`（或 `useModule(ModuleTag)` 的“当前运行环境单例”）。

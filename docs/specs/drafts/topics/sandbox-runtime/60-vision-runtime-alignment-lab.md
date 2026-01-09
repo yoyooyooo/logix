@@ -113,4 +113,4 @@ _目标：AI Closed Loop。_
 - 运行时：在 Sandbox 中执行，产出结构化 Trace/RunResult；  
 - 下游：在 Playground/Studio 中将这些结果与 Intent 对齐，形成可执行规范（Executable Spec）与 AI 反馈回路。
 
-MVP 阶段的 `examples/logix-sandbox-mvp` + `@logix/sandbox` 是这个 Lab 的第一个原型机（Prototype Mark I）。
+MVP 阶段的 `examples/logix-sandbox-mvp` + `@logixjs/sandbox` 是这个 Lab 的第一个原型机（Prototype Mark I）。

@@ -37,14 +37,14 @@ related:
    - 引擎内部不得随意增加「缺乏语义的临时字段」，新增事件类型必须经过草稿 → spec 的流程。
 
 2. **引擎不直接打印，只负责广播事件**  
-   - `@logix/core` 层不使用裸 `console.log`；所有调试/观测输出都通过 DebugSink / Effect.log* / 上层 DevTools 完成；
+   - `@logixjs/core` 层不使用裸 `console.log`；所有调试/观测输出都通过 DebugSink / Effect.log* / 上层 DevTools 完成；
    - 开发模式下的「Console 输出」应由 `ConsoleDebugLayer` 或其他 Sink 实现，而不是散落在运行时代码中。
 
 3. **分层清晰：Engine / DebugSink / Bridge / DevTools**  
    - Engine（ModuleRuntime / Logic / Flow DSL）只关心「何时产生什么事件」；
    - DebugSink 接收事件，并可做轻量缓冲 / 过滤，但不引入对外部系统的强耦合；
    - DevToolsBridge 负责把事件转成特定传输协议（postMessage/WebSocket/自定义 RPC）；
-   - DevTools（浏览器扩展 / CLI / 可视化）只消费 Bridge 暴露的协议，不直接依赖 `@logix/core`。
+   - DevTools（浏览器扩展 / CLI / 可视化）只消费 Bridge 暴露的协议，不直接依赖 `@logixjs/core`。
 
 4. **产线友好：可配置、可采样、可降级**  
    - 默认配置下，启用 DebugSink 不应显著拖慢引擎执行；需要支持「只采集错误」或「抽样部分 Trace」；
@@ -130,7 +130,7 @@ related:
 
 ### 4.3 DevToolsBridge 协议与参考实现
 
-- 定义 `DevToolsBridge` 接口（可放在 tooling 层 package 中，而非 `@logix/core`）：
+- 定义 `DevToolsBridge` 接口（可放在 tooling 层 package 中，而非 `@logixjs/core`）：
   - 接收 `DebugEvent` 流 + 可选的 Runtime Tree 快照；
   - 负责对事件做简单的转换/过滤，并通过指定的 transport 推送给 DevTools。
 - 约定一份轻量协议（草稿）：
@@ -175,7 +175,7 @@ related:
 结合当前实现状态，建议按以下顺序推进：
 
 1. 在本仓清理 `Debug.record` 中的裸 `console.log`，完成 Phase 1.2 的实现治理，并在 `09-debugging.md` 增补「设计原则」小节（对应本草案第 1 节的精简版）；  
-2. 为 `@logix/test` 抽出复用的 `TestDebugSinkLayer` 工具，并在一两个示例中演示如何将 DebugEvent 纳入测试 Trace；  
+2. 为 `@logixjs/test` 抽出复用的 `TestDebugSinkLayer` 工具，并在一两个示例中演示如何将 DebugEvent 纳入测试 Trace；  
 3. 以一个简单的 `DevToolsBridge` + 浏览器示例为目标，验证 Phase 2 的 Trace ID 和 Flow/Effekt 事件设计是否足够；  
 4. 在 Runtime Tree / TagIndex 方案更加稳定后，将本草案与 `runtime-logix-devtools-and-runtime-tree` 合并，收敛为 runtime-logix 的统一 observability 规范。
 
@@ -188,7 +188,7 @@ related:
 - 组件形态：  
   - `LogixDevtools`：React 组件，通常挂在应用根部（例如 `examples/logix-react/src/App.tsx` 中直接挂在主布局下方）；  
   - 默认固定在右下角显示一个小按钮（可通过 props 配置方位 / 是否默认展开）。
-- 最小可用能力（v1，当前 PoC 已实现在 `@logix/devtools-react` 中）：
+- 最小可用能力（v1，当前 PoC 已实现在 `@logixjs/devtools-react` 中）：
   - Runtime 列表：按 `runtimeLabel` 分组展示正在活动的 Runtime（例如 `AppDemoRuntime` / `GlobalRuntime` 等）；
   - Module 列表：在选中的 Runtime 下展示对应的 Module（moduleId）以及当前活跃实例数量；
   - 实例级视图：在 Events 列顶部按 `instanceId` 区分不同 Module 实例，并允许在实例之间切换；
@@ -204,7 +204,7 @@ related:
   - 在 Runtime 的 Layer 组合中附加 `devtoolsLayer`：
     - 内部基于 `Logix.Debug.makeModuleRuntimeCounterSink` 统计每个 `runtimeLabel::moduleId` 维度的活跃实例数量；
     - 同时使用 `Logix.Debug.makeRingBufferSink(capacity)` 将 DebugEvent 写入内存 ring buffer，并在内存中维护一份 `DevtoolsSnapshot`（instances + events + latestStates）。
-  - 在 `@logix/devtools-react` 内部，使用一个专门的 `DevtoolsModule` / `DevtoolsImpl` 作为 Devtools 自己的 Logix 模块：
+  - 在 `@logixjs/devtools-react` 内部，使用一个专门的 `DevtoolsModule` / `DevtoolsImpl` 作为 Devtools 自己的 Logix 模块：
     - Logic 从 `DevtoolsSnapshot` 计算出 Runtime / Module / Instance 视图与事件时间线（纯函数 `computeDevtoolsState`）；
     - React 面板通过一个局部 `ManagedRuntime` + `useSyncExternalStore` 订阅该模块的 state，实现“Logix 状态管理 + React 视图”的自洽闭环（即 Devtools 自己吃 Logix 的狗粮）。
 - Module 列表与状态快照：
@@ -221,4 +221,4 @@ related:
   - 面板中增加 Runtime Tree 视图，点击节点时可同时高亮相关 DebugEvent；  
   - 支持在 Devtools 中动态切换 Sink 配置（例如只看错误、调高/调低采样率）。  
 
-上述 Devtools 面板属于「工具层 UI」，未来实现时应优先作为 `examples/logix-react` 内的 PoC，待 Debug 协议与用户体验稳定后，再考虑抽离为独立的 `@logix/react-devtools` 包或集成到 Studio。
+上述 Devtools 面板属于「工具层 UI」，未来实现时应优先作为 `examples/logix-react` 内的 PoC，待 Debug 协议与用户体验稳定后，再考虑抽离为独立的 `@logixjs/react-devtools` 包或集成到 Studio。

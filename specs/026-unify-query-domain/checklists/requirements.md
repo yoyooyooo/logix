@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Query 收口到 @logix/query（与 Form 同形）
+# Specification Quality Checklist: Query 收口到 @logixjs/query（与 Form 同形）
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2025-12-23  
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- 本 checklist 将 `@logix/query` / `@logix/form` 视为“对外边界与入口命名”，而非实现细节；spec 未包含具体语言/框架/第三方引擎实现方案。
+- 本 checklist 将 `@logixjs/query` / `@logixjs/form` 视为“对外边界与入口命名”，而非实现细节；spec 未包含具体语言/框架/第三方引擎实现方案。
 - Items marked incomplete require spec updates before `$speckit clarify` or `$speckit plan`

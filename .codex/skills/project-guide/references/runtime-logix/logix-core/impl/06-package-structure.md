@@ -9,7 +9,7 @@
 ```
 packages/logix-core/
 ├── src/
-│   ├── index.ts                # Public barrel：推荐 `import * as Logix from '@logix/core'`
+│   ├── index.ts                # Public barrel：推荐 `import * as Logix from '@logixjs/core'`
 │   │
 │   ├── Module.ts               # Public submodule（必须有真实实现，不能纯 re-export）
 │   ├── ModuleTag.ts
@@ -63,7 +63,7 @@ packages/logix-core/
 
 ## 2. packages/logix-react
 
-React 适配层：依赖 `@logix/core` 与 `react`。
+React 适配层：依赖 `@logixjs/core` 与 `react`。
 
 ```
 packages/logix-react/
@@ -88,7 +88,7 @@ packages/logix-react/
 
 ## 3. packages/logix-devtools-react
 
-React Devtools UI：依赖 `@logix/core` 与 `@logix/react`。
+React Devtools UI：依赖 `@logixjs/core` 与 `@logixjs/react`。
 
 ```
 packages/logix-devtools-react/
@@ -136,7 +136,7 @@ packages/logix-sandbox/
 
 ## 5. packages/logix-test
 
-测试工具包：依赖 `@logix/core` 与 `effect`，统一“测试即 Effect”语义。
+测试工具包：依赖 `@logixjs/core` 与 `effect`，统一“测试即 Effect”语义。
 
 ```
 packages/logix-test/
@@ -160,7 +160,7 @@ packages/logix-test/
 ## 6. 关键实现约束
 
 - **构建**：各包使用 `tsup` 产出（ESM + CJS + d.ts）。
-- **Public/Internal 边界**：`@logix/core` 的 internal 实现不是公共 API（`./internal/*` 被 exports 阻断）。
+- **Public/Internal 边界**：`@logixjs/core` 的 internal 实现不是公共 API（`./internal/*` 被 exports 阻断）。
 - **分层规则**：public `src/*.ts` → `src/internal/**` → `src/internal/runtime/core/**` 必须保持单向依赖图。
 
 ## 7. 依赖拓扑（概念图）
@@ -188,9 +188,9 @@ graph TD
 
 | 包 | 状态 | 说明 |
 | :-- | :-- | :-- |
-| `@logix/core` | Core | 纯引擎（Effect-native runtime） |
-| `@logix/react` | Core Adapter | React 适配（Provider + hooks + strict imports-scope） |
-| `@logix/devtools-react` | Tooling | Devtools UI + 快照/回放消费侧 |
-| `@logix/sandbox` | Infra | Alignment Lab sandbox（compiler/protocol/worker/client） |
-| `@logix/test` | Infra | 测试工具（ProgramRunner 语义对齐） |
-| `@logix/form` / `@logix/query` | Domain | 领域包（长期目标：可完全降解到 Logix IR） |
+| `@logixjs/core` | Core | 纯引擎（Effect-native runtime） |
+| `@logixjs/react` | Core Adapter | React 适配（Provider + hooks + strict imports-scope） |
+| `@logixjs/devtools-react` | Tooling | Devtools UI + 快照/回放消费侧 |
+| `@logixjs/sandbox` | Infra | Alignment Lab sandbox（compiler/protocol/worker/client） |
+| `@logixjs/test` | Infra | 测试工具（ProgramRunner 语义对齐） |
+| `@logixjs/form` / `@logixjs/query` | Domain | 领域包（长期目标：可完全降解到 Logix IR） |

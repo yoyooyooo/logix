@@ -18,7 +18,7 @@ version: 1
 
 ## 1. 一页入口清单（先开这几个文件）
 
-### 1.1 `@logix/core`
+### 1.1 `@logixjs/core`
 
 - 公共导出裁决：`packages/logix-core/src/index.ts`
 - Module/Logic/Bound/Runtime（入口）：`packages/logix-core/src/Module.ts`、`packages/logix-core/src/Logic.ts`、`packages/logix-core/src/Bound.ts`、`packages/logix-core/src/Runtime.ts`
@@ -28,23 +28,23 @@ version: 1
 - Link/Replay/Resource：`packages/logix-core/src/Link.ts`、`packages/logix-core/src/Resource.ts`、`packages/logix-core/src/internal/runtime/core/ReplayLog.ts`
 - Debug/Devtools：`packages/logix-core/src/Debug.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
 
-### 1.2 `@logix/react`
+### 1.2 `@logixjs/react`
 
 - Provider：`packages/logix-react/src/components/RuntimeProvider.tsx`
 - hooks：`packages/logix-react/src/hooks/useModule.ts`、`packages/logix-react/src/hooks/useSelector.ts`、`packages/logix-react/src/hooks/useDispatch.ts`
 - 内部实现：`packages/logix-react/src/internal/ModuleCache.ts`、`packages/logix-react/src/internal/ModuleRuntimeExternalStore.ts`
 
-### 1.3 `@logix/devtools-react`
+### 1.3 `@logixjs/devtools-react`
 
 - UI 入口：`packages/logix-devtools-react/src/index.tsx`
 - 快照/时间旅行：`packages/logix-devtools-react/src/snapshot.ts`、`packages/logix-devtools-react/src/state/runtime.ts`
 
-### 1.4 `@logix/sandbox`
+### 1.4 `@logixjs/sandbox`
 
 - 协议与 types：`packages/logix-sandbox/src/protocol.ts`、`packages/logix-sandbox/src/types.ts`
 - Compiler/Client/Worker：`packages/logix-sandbox/src/compiler.ts`、`packages/logix-sandbox/src/client.ts`、`packages/logix-sandbox/src/worker/sandbox.worker.ts`
 
-### 1.5 `@logix/test`
+### 1.5 `@logixjs/test`
 
 - API：`packages/logix-test/src/index.ts`、`packages/logix-test/src/api/TestProgram.ts`
 - Runtime：`packages/logix-test/src/runtime/TestRuntime.ts`

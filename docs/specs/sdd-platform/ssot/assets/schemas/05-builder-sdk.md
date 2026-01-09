@@ -1,4 +1,4 @@
-# 5. Logix Builder SDK (`@logix/builder`)
+# 5. Logix Builder SDK (`@logixjs/builder`)
 
 为了支持 **pattern-style 长逻辑封装**，Logix 体系提供了一套基于 Store / Logic / Flow 的 Builder SDK。它不是另一个运行时，而是帮助开发者（或 LLM）更容易写出「可被平台理解的 `(input) => Effect` 函数」。
 

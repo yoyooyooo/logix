@@ -14,8 +14,8 @@
 
 ## Artifact Keys（通过 031 artifacts 槽位导出）
 
-- `@logix/module.portSpec@v1` → `ModulePortSpec@v1`
-- `@logix/module.typeIr@v1` → `TypeIR@v1`
+- `@logixjs/module.portSpec@v1` → `ModulePortSpec@v1`
+- `@logixjs/module.typeIr@v1` → `TypeIR@v1`
 
 ## Entity: PortAddress（寻址基元）
 

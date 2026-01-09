@@ -185,7 +185,7 @@ export const NoopIntent: IntentDevApi = {
 
 构建时通过 alias 切换：
 
-- dev：`import { DevIntent as $$ } from "@logix/core/intent-dev"`；
+- dev：`import { DevIntent as $$ } from "@logixjs/core/intent-dev"`；
 - prod：alias 到 `NoopIntent`，配合 `__LOGIX_INTENT_DEV__` 常量及 Tree-Shaking，最终不会保留任何实际调用。
 
 ### 3.3 AST 插件/Codemod（高级选项）

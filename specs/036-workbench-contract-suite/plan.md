@@ -15,14 +15,14 @@
 同时补进一个上帝视角的规划点：平台引入 Agent 后，Agent 最终一定要输出代码；但收敛过程不应依赖“LLM 自评”，而应依赖 **IR-first 的工具面**：
 
 - 平台把“可引用空间 / 资产依赖 / 预算约束 / 诊断证据”以稳定 JSON 工件喂给 Agent；
-- 平台可额外提供 `@logix/module.uiKitRegistry@v1`（组件目录 + tier）作为“可选事实源”，让 Agent 生成 UI 投影代码时不必读取组件库源码；
+- 平台可额外提供 `@logixjs/module.uiKitRegistry@v1`（组件目录 + tier）作为“可选事实源”，让 Agent 生成 UI 投影代码时不必读取组件库源码；
 - Agent 产出/改写代码；
 - 平台用 `trialRun + artifacts + diff + evidence` 形成可复现的判定与诊断，再驱动 Agent 迭代。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM；pnpm workspace）  
-**Primary Dependencies**: `effect` v3、`@logix/core`、`@logix/sandbox`、`@logix/react`、React（Workbench UI）  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/sandbox`、`@logixjs/react`、React（Workbench UI）  
 **Storage**: N/A（以可序列化 JSON 工件为主；Workbench 可导出下载，CI 可存档到 artifact store）  
 **Testing**: Vitest（含 `@effect/vitest` 约定）、TypeScript typecheck、ESLint  
 **Target Platform**: Node.js（CI/脚本）+ 现代浏览器（Workbench）  
@@ -46,7 +46,7 @@
   - 036 直接依赖 `specs/031-*` ～ `specs/035-*`，自身不新增协议字段（只定义集成验收口径）。
   - IR/TrialRun 链路实现视角参考：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/06-reflection-and-trial-run.md`、`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`。
 - **契约变更范围**
-  - 036 不要求修改 `@logix/core` 的公共契约；若需要新增“Contract Suite Verdict”作为可存档工件，应以版本化 schema 落在 `specs/036-*/contracts/schemas/*`，并明确其仅为治理层输出。
+  - 036 不要求修改 `@logixjs/core` 的公共契约；若需要新增“Contract Suite Verdict”作为可存档工件，应以版本化 schema 落在 `specs/036-*/contracts/schemas/*`，并明确其仅为治理层输出。
 - **IR & anchors（统一最小 IR + 稳定锚点）**
   - 不引入新的并行真相源：Integrated Verdict 必须完全可由 TrialRunReport/artifacts/PortSpec/TypeIR 等工件推导，并在输出中保留最小可解释指针（artifactKey/code/pointer）。
 - **Deterministic identity**

@@ -1,4 +1,4 @@
-# Quickstart: Query 收口到 `@logix/query`（与 Form 同形）
+# Quickstart: Query 收口到 `@logixjs/query`（与 Form 同形）
 
 **Date**: 2025-12-23
 **Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/026-unify-query-domain/spec.md`
@@ -13,8 +13,8 @@
 
 ## 1) 你将获得什么
 
-- Query 相关能力只有一个入口：`@logix/query`（仓库内不再出现 `@logix/core/Middleware/Query`）。
-- 与 `@logix/form` 同构的领域包形状：domain-module 工厂 + controller 句柄扩展 +（高级）traits/building blocks（含外部引擎集成）。
+- Query 相关能力只有一个入口：`@logixjs/query`（仓库内不再出现 `@logixjs/core/Middleware/Query`）。
+- 与 `@logixjs/form` 同构的领域包形状：domain-module 工厂 + controller 句柄扩展 +（高级）traits/building blocks（含外部引擎集成）。
 - 外部查询引擎注入边界清晰：启用需要引擎的能力时，缺失注入会给出可操作的配置错误（不再静默退化）。
 
 > 说明：与 Form 的“同形”只约束对外入口与 controller 句柄扩展，不强求 Query 去类比 Form 的 authoring DSL（`from/$.rules/derived`）。
@@ -23,8 +23,8 @@
 
 ```ts
 import { Layer } from "effect"
-import * as Logix from "@logix/core"
-import * as Query from "@logix/query"
+import * as Logix from "@logixjs/core"
+import * as Query from "@logixjs/query"
 // import { QueryClient } from "@tanstack/query-core"
 
 // 1) 定义 ResourceSpec（resourceId + keySchema + load）
@@ -107,8 +107,8 @@ export const runtime = Logix.Runtime.make(SearchQuery, {
 
 ```ts
 import { Schema } from "effect"
-import * as Logix from "@logix/core"
-import * as Query from "@logix/query"
+import * as Logix from "@logixjs/core"
+import * as Query from "@logixjs/query"
 
 // StateSchema：用于收窄可用字段路径（deps/key），运行时不会真的消费这个值。
 // 注意：这里的 `queries.search` 只是示意，真实项目可用更精确的 Schema 描述 ResourceSnapshot。
@@ -172,7 +172,7 @@ export const HostLogic = HostModule.logic(($) =>
 React 侧读取被 imports 的子模块状态：
 
 ```ts
-import { useImportedModule, useModule, useSelector } from "@logix/react"
+import { useImportedModule, useModule, useSelector } from "@logixjs/react"
 
 const host = useModule(HostModule)
 const query = useImportedModule(host, SearchQuery.tag)
@@ -190,8 +190,8 @@ const snapshot = useSelector(query, (s) => s.queries.search)
 
 期望结果：
 
-- 文档/示例/脚手架中不再出现 `@logix/core/Middleware/Query` 的引用；
-- 业务只需学习 `@logix/query` 的入口形状即可完成 Query 场景建模与运行。
+- 文档/示例/脚手架中不再出现 `@logixjs/core/Middleware/Query` 的引用；
+- 业务只需学习 `@logixjs/query` 的入口形状即可完成 Query 场景建模与运行。
 
 ### 场景 B：启用外部引擎但缺失注入时显式失败（FR-004 / Edge Case）
 

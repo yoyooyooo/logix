@@ -9,7 +9,7 @@
 > - **Test**: 已对齐 program runner（`TestProgram.runProgram` + `TestClock` + 多模块 imports/processes），不再使用 `Scenario/TestRuntime` 旧模型。
 > - **Builder**: 尚未启动。
 
-## 1. 核心引擎 · @logix/core
+## 1. 核心引擎 · @logixjs/core
 
 ### 1.5 `ModuleRuntime.ref(selector)` 与 `BoundApi.state.ref`
 
@@ -32,11 +32,11 @@
 
 - **当前状态**: **缺失**。
 - **TODO**:
-  - [ ] 创建 `@logix/core/test/compliance`。
+  - [ ] 创建 `@logixjs/core/test/compliance`。
   - [ ] 编写标准测试用例，覆盖 `getState`, `setState`, `dispatch` 及其时序约束。
   - [ ] 验证 `RemoteStoreAdapter` 等 PoC。
 
-## 2. React 适配层 · @logix/react & @logix/form
+## 2. React 适配层 · @logixjs/react & @logixjs/form
 
 ### 3.1 Form 核心模型 (FormShape)
 
@@ -58,15 +58,15 @@
 - **当前状态**: **MISSING**。
 - **TODO**:
   - [ ] 实现 `useForm`, `useField`, `useFieldArray`。
-  - [ ] 确保基于 `@logix/react` 的 `useModule` 构建。
+  - [ ] 确保基于 `@logixjs/react` 的 `useModule` 构建。
 
-## 4. 测试工具包 · @logix/test
+## 4. 测试工具包 · @logixjs/test
 
 ### 4.1 测试入口重构（TestProgram）
 
 - **当前状态**:
-  - `@logix/test` 以 **program module** 为唯一输入，提供 `TestProgram.runProgram(programModule, body, options?)`；
-  - 内核复用 `@logix/core` 的 `Runtime.openProgram/runProgram`（生命周期语义一致）；
+  - `@logixjs/test` 以 **program module** 为唯一输入，提供 `TestProgram.runProgram(programModule, body, options?)`；
+  - 内核复用 `@logixjs/core` 的 `Runtime.openProgram/runProgram`（生命周期语义一致）；
   - 多模块 / Link 场景通过 `imports` / `processes` 表达，不再通过 `Scenario` 聚合或 `_op_layer` 分类 hack；
   - `Execution` 已补充一批基于 Trace 的断言 helper（如 `expectActionSequence` / `expectNoActionTag`），可用于编排更可读的集成测试断言。
 - **TODO**:
@@ -74,7 +74,7 @@
   - [ ] 为平台 / AI 场景定义 ExecutionDump 结构（包含 Trace + 上下文快照）。
 
 
-## 5. Builder / 工具链 · @logix/builder
+## 5. Builder / 工具链 · @logixjs/builder
 
 - **当前状态**: **尚未创建**。
 - **TODO**:

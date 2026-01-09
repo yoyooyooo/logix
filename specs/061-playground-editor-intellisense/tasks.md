@@ -48,7 +48,7 @@
 
 ## Phase 4: User Story 2 - 示例项目允许依赖的全量补全 (Priority: P2)
 
-**Goal**: 对 `effect` / `@logix/*` / 以及其必要传递依赖，编辑器侧不出现“无法解析模块/类型”的基础阻断，并可解释当前 bundle 的覆盖范围与版本摘要。
+**Goal**: 对 `effect` / `@logixjs/*` / 以及其必要传递依赖，编辑器侧不出现“无法解析模块/类型”的基础阻断，并可解释当前 bundle 的覆盖范围与版本摘要。
 
 **Independent Test**: 按 `specs/061-playground-editor-intellisense/quickstart.md` 的第 1 步（导入 + 悬浮）与第 3 步（故意破坏加载）验证。
 

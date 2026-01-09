@@ -34,4 +34,4 @@ related:
 
 - P0：list.item scope 的 `computed/link` 需要“按行展开执行”（`items[].x` 不能只停留在 IR）。
 - P1：`Trait.source.refresh` 需要支持 `force`（参数未变但要重试/手动刷新）。
-- 已关闭：`Trait.source.key` 已升级为 **deps-as-args**（与 `computed.get` 对齐），并在 `@logix/query` 提供 builder 形态以避免类型推导退化。
+- 已关闭：`Trait.source.key` 已升级为 **deps-as-args**（与 `computed.get` 对齐），并在 `@logixjs/query` 提供 builder 形态以避免类型推导退化。

@@ -58,7 +58,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性属于“工程推进工具/本地看板”，不改变 Logix Runtime/IR/Flow 语义；产物落点以 `specs/064-*` 与 `packages/speckit-kit/*` 为主。
 - **docs-first & SSoT**：事实源以 `specs/064-speckit-kanban-timeline/*` 为准（spec/plan/contracts/quickstart）。
-- **Effect/Logix contracts**：不新增/变更 `@logix/*` 对外契约；仅新增一个 Effect 后端 app。
+- **Effect/Logix contracts**：不新增/变更 `@logixjs/*` 对外契约；仅新增一个 Effect 后端 app。
 - **IR & anchors / deterministic identity / txn boundary / dual kernels**：N/A（不触及 runtime 内核）。
 - **Performance budget**：不触及 runtime 核心路径；但本地工具仍需对目录扫描与解析设定可用性目标（见 Technical Context + spec NFR）。
 - **Diagnosability**：后端需提供最小结构化错误 `_tag/message` + 请求日志（路径、耗时、摘要）。

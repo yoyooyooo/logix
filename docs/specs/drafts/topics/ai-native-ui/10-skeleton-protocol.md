@@ -34,7 +34,7 @@ related: []
 
 ### 2.1 Import Path
 ```typescript
-import { S } from '@logix/ui';
+import { S } from '@logixjs/ui';
 ```
 
 ### 2.2 The Primitives (Core Set)
@@ -59,7 +59,7 @@ import { S } from '@logix/ui';
 ### 3.2 Usage Example
 
 ```tsx
-import { S } from '@logix/ui';
+import { S } from '@logixjs/ui';
 import { UserDraft } from './logic/user-draft';
 
 export const UserEditor = () => {

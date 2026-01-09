@@ -61,7 +61,7 @@ version: 1
 
 ## 5) auggie 查询模板
 
-- “`@logix/form` 的 rules-first 模式如何落到 `StateTrait` 的 computed/validate？触发策略在哪？”
-- “`@logix/query` 的 cache/invalidate 在 runtime 中怎么表达？TanStack adapter 的边界与责任在哪？”
-- “`@logix/i18n` 如何保证注入隔离？ready 语义如何避免 setup 阶段死锁？”
-- “`@logix/domain` 的 CRUD 模块如何组织 state/actions/reducers？默认的错误/证据口径是什么？”
+- “`@logixjs/form` 的 rules-first 模式如何落到 `StateTrait` 的 computed/validate？触发策略在哪？”
+- “`@logixjs/query` 的 cache/invalidate 在 runtime 中怎么表达？TanStack adapter 的边界与责任在哪？”
+- “`@logixjs/i18n` 如何保证注入隔离？ready 语义如何避免 setup 阶段死锁？”
+- “`@logixjs/domain` 的 CRUD 模块如何组织 state/actions/reducers？默认的错误/证据口径是什么？”

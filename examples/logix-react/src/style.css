@@ -2,7 +2,7 @@
 
 /* Tailwind v4 source scanning：
  * - 本示例只扫描本地 src；
- * - `@logix/devtools-react` 已自带预编译样式，无需额外 @source。
+ * - `@logixjs/devtools-react` 已自带预编译样式，无需额外 @source。
  */
 @source "./src";
 

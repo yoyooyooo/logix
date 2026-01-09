@@ -37,10 +37,10 @@ const walkFiles = (dirPath: string, out: Array<string>): void => {
 const hasCoreNgImport = (source: string): boolean => {
   if (!source.includes('@logixjs/core-ng')) return false
   const patterns: ReadonlyArray<RegExp> = [
-    /\bimport\s+[^;]*?\sfrom\s+['"]@logix\/core-ng['"]/,
-    /\bimport\s+['"]@logix\/core-ng['"]/,
-    /\bimport\(\s*['"]@logix\/core-ng['"]\s*\)/,
-    /\brequire\(\s*['"]@logix\/core-ng['"]\s*\)/,
+    /\bimport\s+[^;]*?\sfrom\s+['"]@logixjs\/core-ng['"]/,
+    /\bimport\s+['"]@logixjs\/core-ng['"]/,
+    /\bimport\(\s*['"]@logixjs\/core-ng['"]\s*\)/,
+    /\brequire\(\s*['"]@logixjs\/core-ng['"]\s*\)/,
   ]
   return patterns.some((re) => re.test(source))
 }

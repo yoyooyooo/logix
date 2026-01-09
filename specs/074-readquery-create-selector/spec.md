@@ -93,7 +93,7 @@
 
 ### Functional Requirements
 
-- **FR-001**: 系统 MUST 提供公共 API `ReadQuery.createSelector`（`@logix/core` 子模块 `ReadQuery`）。
+- **FR-001**: 系统 MUST 提供公共 API `ReadQuery.createSelector`（`@logixjs/core` 子模块 `ReadQuery`）。
 - **FR-002**: `createSelector` MUST 先对 inputs 调用 `ReadQuery.compile`，并在任一输入进入 dynamic lane 或缺失 `readsDigest` 时 fail-fast（默认）。
 - **FR-003**: 对于所有 inputs 为 static 的情况，`createSelector` MUST 产出一个新的 ReadQuery，且：
   - `reads = union(inputs.reads)`（归一化去重排序）；

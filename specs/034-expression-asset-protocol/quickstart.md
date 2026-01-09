@@ -10,7 +10,7 @@
 
 ## 1) 保存期（必须落盘的信息）
 
-保存一个 `@logix/module.codeAsset@v1` 时，最小必填：
+保存一个 `@logixjs/module.codeAsset@v1` 时，最小必填：
 
 - `source`：源码层（可读、可编辑）
 - `normalizedIr`：规范化 IR（parseable 或 blackbox）

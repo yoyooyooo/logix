@@ -37,7 +37,7 @@
 
 ### 4.5 领域包内部类型安全收敛（Form / Query）
 
-- **痛点**：为了快速迭代，`@logix/form` 与 `@logix/query` 的 reducers/logics/Controller 中存在较多 `any` 断言，重构时容易隐式 break。
+- **痛点**：为了快速迭代，`@logixjs/form` 与 `@logixjs/query` 的 reducers/logics/Controller 中存在较多 `any` 断言，重构时容易隐式 break。
 - **Todo**：
   - 为 Module 的 State/Action 推导提供可复用的 helper types（例如 `Reducer<S, A>` / `ActionOfTag<...>`），让 reducers 不再需要 `any`；
   - 让 `TValues/TParams` 在内部传递时保持约束，不退化为 `object/unknown`；
@@ -46,7 +46,7 @@
 ### 5. `Form.traits` 的“伪扁平”语法糖 (Sugar)
 
 - **痛点**：手写 `list({ item: ... })` 嵌套太深，视觉噪音大。
-- **Todo**：在 `@logix/form` 实现一个编译器宏或预处理 helper，允许：
+- **Todo**：在 `@logixjs/form` 实现一个编译器宏或预处理 helper，允许：
   ```ts
   Form.traits({
     'items.name': Form.Rule.required(), // Sugar

@@ -39,7 +39,7 @@
 > 说明：以下示例即为当前实现（落点：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts` 的覆盖解析与 `packages/logix-core/src/Runtime.ts` 的便捷 Layer 构造器）。
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 // key 是 Module.make("...") 的 moduleId
 // root 是 program module（ModuleDef.implement(...) 的产物）或其 `.impl`
@@ -76,8 +76,8 @@ const runtime = Logix.Runtime.make(root, {
 ```tsx
 import React from "react"
 import { Layer } from "effect"
-import * as Logix from "@logix/core"
-import { RuntimeProvider } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
 
 const providerConvergeOverride = Logix.Runtime.stateTransactionOverridesLayer({
   traitConvergeOverridesByModuleId: {

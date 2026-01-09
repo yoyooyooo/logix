@@ -16,12 +16,12 @@
 
 ## Summary
 
-在 StateTrait 派生收敛（converge）上引入默认开启的 `auto` 策略：通过 Module build/加载阶段的静态 Converge IR（整型 ID + topo order/邻接表等紧凑结构）与 module instance 范围内的 Execution Plan Cache（Dirty Pattern → Execution Plan），在任何写入分布下保证 `auto` 不劣于 `full`（默认噪声预算 5%），同时在稀疏写入下获得显著加速；并输出 Slim、可序列化的决策摘要（含缓存/失效/止损/配置来源证据），与 `specs/014-browser-perf-boundaries` 的边界地图同词汇对齐，形成可预测的对外性能心智模型与可回放解释链路。覆盖与止血路径遵循“更局部赢”：优先在 `@logix/react` 的 `RuntimeProvider.layer` 范围内覆盖 converge 配置（Layer/Tag，继承全局 runtime 再叠加差量）。本特性只负责“证据面与运行时契约”；Devtools 的 Audits/Timeline 等深挖能力将由后续独立 Devtools spec 在 `specs/005-unify-observability-protocol` 的宿主无关观测底座之上实现；同时对齐 `specs/016-serializable-diagnostics-and-identity` 的导出边界与稳定身份硬门，避免 `unknown/cause/state` 等对象图进入跨宿主链路导致导出崩溃。
+在 StateTrait 派生收敛（converge）上引入默认开启的 `auto` 策略：通过 Module build/加载阶段的静态 Converge IR（整型 ID + topo order/邻接表等紧凑结构）与 module instance 范围内的 Execution Plan Cache（Dirty Pattern → Execution Plan），在任何写入分布下保证 `auto` 不劣于 `full`（默认噪声预算 5%），同时在稀疏写入下获得显著加速；并输出 Slim、可序列化的决策摘要（含缓存/失效/止损/配置来源证据），与 `specs/014-browser-perf-boundaries` 的边界地图同词汇对齐，形成可预测的对外性能心智模型与可回放解释链路。覆盖与止血路径遵循“更局部赢”：优先在 `@logixjs/react` 的 `RuntimeProvider.layer` 范围内覆盖 converge 配置（Layer/Tag，继承全局 runtime 再叠加差量）。本特性只负责“证据面与运行时契约”；Devtools 的 Audits/Timeline 等深挖能力将由后续独立 Devtools spec 在 `specs/005-unify-observability-protocol` 的宿主无关观测底座之上实现；同时对齐 `specs/016-serializable-diagnostics-and-identity` 的导出边界与稳定身份硬门，避免 `unknown/cause/state` 等对象图进入跨宿主链路导致导出崩溃。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+  
-**Primary Dependencies**: effect v3、`@logix/core`（StateTransaction/StateTrait/Runtime）、`@logix/react`（Provider override 载体）、Devtools/Sandbox（诊断事件消费方）  
+**Primary Dependencies**: effect v3、`@logixjs/core`（StateTransaction/StateTrait/Runtime）、`@logixjs/react`（Provider override 载体）、Devtools/Sandbox（诊断事件消费方）  
 **Storage**: 内存态（Effect Context/Scope + SubscriptionRef/Ref），不引入持久化存储  
 **Testing**: Vitest + `@effect/vitest`（core/runtime 语义）；性能主跑道复用 `specs/014-browser-perf-boundaries` 的 Vitest Browser 模式集成压测  
 **Target Platform**: Node.js 20+（runtime/test）+ modern browsers（Devtools/014 基线）  

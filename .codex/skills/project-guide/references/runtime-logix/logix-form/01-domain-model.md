@@ -1,13 +1,13 @@
 # Form Domain Model（State / Actions / Paths）
 
 > **Status**: Aligned (010-form-api-perf-boundaries)
-> **Layer**: Form Core（@logix/form）
+> **Layer**: Form Core（@logixjs/form）
 
-本文档用于固化 `@logix/form` 的“工程内裁决口径”：Form 的状态形状、错误树分层、数组 `$list/rows[]` 映射，以及用于 reducer/hook/controller 的 action 协议。
+本文档用于固化 `@logixjs/form` 的“工程内裁决口径”：Form 的状态形状、错误树分层、数组 `$list/rows[]` 映射，以及用于 reducer/hook/controller 的 action 协议。
 
 ## 1) FormState：values + errors/ui/$form（同一 Module 状态）
 
-`@logix/form` 不引入第二套 Store：**表单就是一个 Module**，state 直接挂在 runtime 上。
+`@logixjs/form` 不引入第二套 Store：**表单就是一个 Module**，state 直接挂在 runtime 上。
 
 ```ts
 // packages/form/src/form.ts
@@ -54,7 +54,7 @@ export type FormState<TValues extends object> = TValues & {
 
 ## 2) Path 映射：数组统一 `$list/rows[]`
 
-`@logix/form` 把“数组索引”映射到 errors 的 `rows`：
+`@logixjs/form` 把“数组索引”映射到 errors 的 `rows`：
 
 - valuePath：`items.0.name`
 - errorsPath：`errors.items.rows.0.name`

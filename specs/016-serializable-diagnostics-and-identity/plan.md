@@ -17,7 +17,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+  
-**Primary Dependencies**: effect v3、`@logix/core`（DebugSink/DevtoolsHub/Runtime identity）、`@logix/react`（RuntimeProvider onError）、`specs/005`（协议 contracts）、`specs/009`（稳定标识与 trace）、`specs/011`（error summary + lifecycle status）、`specs/013`（trait:* 证据）  
+**Primary Dependencies**: effect v3、`@logixjs/core`（DebugSink/DevtoolsHub/Runtime identity）、`@logixjs/react`（RuntimeProvider onError）、`specs/005`（协议 contracts）、`specs/009`（稳定标识与 trace）、`specs/011`（error summary + lifecycle status）、`specs/013`（trait:* 证据）  
 **Storage**: N/A（内存态 ring buffer / 聚合快照；导出为 JSON evidence package）  
 **Testing**: Vitest（Effect-heavy 用例可用 `@effect/vitest` 风格）；React 侧沿用 Testing Library/集成用例  
 **Target Platform**: Node.js 20+（runtime/test/perf）+ modern browsers（React/Devtools 消费）  

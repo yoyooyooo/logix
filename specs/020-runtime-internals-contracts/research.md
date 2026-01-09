@@ -28,7 +28,7 @@
 **纳入（本次必须）**
 - `ModuleRuntime.*`：把 txnQueue/dispatch/transaction/runOperation/internalHooks 变成明确子系统（Runtime Services），并由 RuntimeKernel 统一装配。  
 - internal hooks 桥接：保留现有 `runtime.__*` 形态作为内部适配层，但其实现改为调用子系统服务（避免继续在 `installInternalHooks(...)` 传参接线）。
-- 全链路内部消费方迁移：`BoundApiRuntime`、trait-lifecycle、state-trait（install/source/validate 等）与 `@logix/react` strict imports 解析，必须统一迁移到内部契约入口（不再直接读散落的 `__*` 字段），否则“契约化”收益无法扩散到真实调用链。
+- 全链路内部消费方迁移：`BoundApiRuntime`、trait-lifecycle、state-trait（install/source/validate 等）与 `@logixjs/react` strict imports 解析，必须统一迁移到内部契约入口（不再直接读散落的 `__*` 字段），否则“契约化”收益无法扩散到真实调用链。
 
 **纳入（高 ROI，顺手改）**
 - `BoundApiRuntime` 的内部桥：把 `__runWithStateTransaction/__recordStatePatch/...` 的获取方式从“鸭子类型读属性”升级为“优先从 Env/Kernel 取内部能力”（仍保持对外 API 形状不变）。  

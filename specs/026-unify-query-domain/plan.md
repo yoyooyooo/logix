@@ -1,23 +1,23 @@
-# Implementation Plan: Query 收口到 `@logix/query`（与 Form 同形）
+# Implementation Plan: Query 收口到 `@logixjs/query`（与 Form 同形）
 
 **Branch**: `026-unify-query-domain` | **Date**: 2025-12-23 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/Users/yoyo/Documents/code/personal/intent-flow/specs/026-unify-query-domain/spec.md`
 
 ## Summary
 
-本特性目标是把“Query 相关”从历史多入口收敛为单一领域包 `@logix/query`，并与 `@logix/form` 保持同构的对外形状：
+本特性目标是把“Query 相关”从历史多入口收敛为单一领域包 `@logixjs/query`，并与 `@logixjs/form` 保持同构的对外形状：
 
-- 删除 `@logix/core/Middleware/Query` 这条早期占位入口（含导出、测试与示例引用），避免“双 Tag / 双协议 / 静默退化”。
-- 统一 Query 对外 API：以 `@logix/query` 为唯一入口，提供 domain-module 工厂 + controller 句柄扩展 +（高级）traits/building blocks（含外部引擎集成）。
+- 删除 `@logixjs/core/Middleware/Query` 这条早期占位入口（含导出、测试与示例引用），避免“双 Tag / 双协议 / 静默退化”。
+- 统一 Query 对外 API：以 `@logixjs/query` 为唯一入口，提供 domain-module 工厂 + controller 句柄扩展 +（高级）traits/building blocks（含外部引擎集成）。
 - “形状一致”定义更精确：对外是同构的 **domain-module 工厂 + controller 句柄扩展**；对内都降解到同一条 **StateTrait/EffectOp** 主线；`Module.Manage` 只是实现封装手段，不是形状本身。
 - 对齐边界（避免强求类比）：只对齐 Form 的“领域包外形与心智”，不强求 Query 去类比 Form 的 authoring DSL（`from/$.rules/derived`）与其 IR 形态。
 - 延后语法糖：本特性先把入口/注入/诊断/性能收口做实；“声明式跨模块联动（owner-wiring BindingSpec）”作为后续独立特性再做（避免破坏 deps 的单一事实源与多实例语义）。
 - 显式固化“外部查询引擎注入边界”：只有当启用需要外部引擎的能力（如 `Query.Engine.middleware` 引擎接管点）时才要求提供注入；缺失注入必须报可操作的配置错误。
 - 奥卡姆 + Effect-native 的注入与接管：对外只暴露一个 `Query.Engine`（Tag），并在其上提供 `Query.Engine.layer(...)` + `Query.Engine.middleware(...)`；禁止 `Query.EngineTag` / `Query.middleware` / `Query.layer` 等重复入口。
 - 默认推荐 TanStack：TanStack 适配层收敛在 `Query.TanStack.*`，并作为默认推荐实现；本特性将固化其注入方式、四种组合语义与测试/文档口径。
-- 同步更新文档/示例/脚手架：仓库内不再出现 `@logix/core/Middleware/Query` 的推荐使用方式，并提供迁移说明。
+- 同步更新文档/示例/脚手架：仓库内不再出现 `@logixjs/core/Middleware/Query` 的推荐使用方式，并提供迁移说明。
 - 迁移/删除 core 内与 Query 入口绑定的测试：core 仅验证通用内核；Query 领域集成测试归属 `packages/logix-query/test/*`，避免 core 反向依赖领域协议。
-- 目录命名治理：将 Query/Form 领域包目录统一为 `packages/logix-query` 与 `packages/logix-form`，对齐仓库 `logix-*` 目录命名约定（npm 包名 `@logix/query` / `@logix/form` 不变）。
+- 目录命名治理：将 Query/Form 领域包目录统一为 `packages/logix-query` 与 `packages/logix-form`，对齐仓库 `logix-*` 目录命名约定（npm 包名 `@logixjs/query` / `@logixjs/form` 不变）。
 - 建立可复现性能基线：对 Query 自动触发/刷新链路做 before/after 采样，确保收口与 API 调整不引入回退。
 - 类型尽可能完美（与声明式同等优先）：
   - `Query.make(...)` **对外一发返回 `Logix.Module.Module`**（与 Form 一致），但内部仍是 `Module.make → implement` 两步（只是不暴露给业务）；
@@ -27,7 +27,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2 + Node.js 22.x  
-**Primary Dependencies**: effect v3（workspace 以 `effect@^3.19.8` 为基准、pnpm override 固定到 3.19.13）+ `@logix/*`（涉及 `@logix/core` / `@logix/query` / `@logix/form`）+ `@tanstack/query-core`（Query 外部引擎默认实现）  
+**Primary Dependencies**: effect v3（workspace 以 `effect@^3.19.8` 为基准、pnpm override 固定到 3.19.13）+ `@logixjs/*`（涉及 `@logixjs/core` / `@logixjs/query` / `@logixjs/form`）+ `@tanstack/query-core`（Query 外部引擎默认实现）  
 **Storage**: N/A（本特性不引入持久化存储）  
 **Testing**: Vitest 4（`vitest run`）+ `@effect/vitest`（Effect-heavy 场景）  
 **Target Platform**: Node.js（测试/脚本） + 现代浏览器（React 示例/Devtools）  
@@ -48,7 +48,7 @@
   - 不引入“以闭包读取路径为 deps 的隐式推导”，保持 deps 作为唯一依赖事实源（对齐 deps-trace / reverse-closure）。
 - Dev 诊断（强约束）：StateTrait 全体系（computed/source/link/check）的目标字段必须在 `stateSchema` 中声明；dev 环境需对 “fieldPath/deps/link.from/check.writeback.path 不存在于 schema” 给出可定位的 warning，避免任何 traits 在宿主模块上静默写出新字段（Query.traits 只是其中一个高频场景）。
   **Scale/Scope**:
-- 影响范围以“对外入口与引用点收口”为主：`@logix/query` public barrel、少量示例/文档/脚手架、以及 `@logix/core` 的历史导出清理
+- 影响范围以“对外入口与引用点收口”为主：`@logixjs/query` public barrel、少量示例/文档/脚手架、以及 `@logixjs/core` 的历史导出清理
 - 目录命名治理属于结构性重排：先完成 Query/Form 领域包目录更名（落点 `packages/logix-query` / `packages/logix-form`），再继续落地本特性的实现任务（避免路径 churn 与并行真相源）。
 
 ## Type Strategy（极致：可读 + 可写 + 可校验）
@@ -122,7 +122,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - `Intent → Flow/Logix → Code → Runtime`：该特性属于“领域包入口与注入边界”的治理；影响业务如何表达 Query 意图（module factory/traits）以及 Runtime 如何装配外部引擎（Layer/middleware）。
 - docs-first & SSoT：不引入新的平台概念；对照契约以 `specs/007-unify-trait-system/contracts/query.md` 为准；收口导致的入口/迁移说明落在本特性 `contracts/*` 与 `quickstart.md`，并同步更新仓库旧 spec/示例中错误的引用。
-- Contract 变化：移除 `@logix/core/Middleware/Query`（public API breaking change）；统一 `@logix/query` 的对外入口形状（与 `@logix/form` 对齐）。需要在本特性 `contracts/public-api.md` 明确对外 API 与迁移路径。
+- Contract 变化：移除 `@logixjs/core/Middleware/Query`（public API breaking change）；统一 `@logixjs/query` 的对外入口形状（与 `@logixjs/form` 对齐）。需要在本特性 `contracts/public-api.md` 明确对外 API 与迁移路径。
 - IR & anchors：不新增/不改变统一最小 IR；Query 领域能力必须可降解为 StateTrait/Resource/EffectOp 主线（`Query.traits` → `StateTrait.source`），避免第二套真相源。
 - Deterministic identity：复用既有稳定字段（resourceId/keyHash + moduleId/instanceId/txnSeq/opSeq）；不引入随机/时间默认标识。
 - Transaction boundary：不把外部引擎调用塞进事务窗口；EffectOp 执行与资源加载仍在事务外侧完成，写回受 keyHash 门控。
@@ -132,7 +132,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - Diagnosability & dev feedback：补齐 `state_trait::schema_mismatch`（或等价）warning：当 StateTrait 全体系（computed/source/link/check）声明的 `fieldPath/deps/link.from/check.writeback.path` 不在 stateSchema 时给出提示（定位到 moduleId/fieldPath/declared vs schema），用于提前发现“写回字段未声明/字段被占用”等配置错误（Query.traits 只是其中一个典型触发点）。
 - 用户心智模型：关键词（≤5）= `单一入口` / `同形 API` / `显式注入` / `可替换引擎` / `迁移说明`；并在 quickstart/迁移文档中固化。
 - Form 对齐与奥卡姆：对齐仅限“模块工厂 + controller 句柄”外形；API 表面积保持最小（`Query.Engine`（含 middleware）+ `Query.TanStack.*`），不引入额外 DSL 或双入口。
-- Breaking changes：删除 `@logix/core/Middleware/Query` 导出；可能调整 `@logix/query` 的推荐 import 形状。通过迁移说明替代兼容层，仓库内示例与脚手架一次性升级。
+- Breaking changes：删除 `@logixjs/core/Middleware/Query` 导出；可能调整 `@logixjs/query` 的推荐 import 形状。通过迁移说明替代兼容层，仓库内示例与脚手架一次性升级。
 - Quality gates：`pnpm typecheck`、`pnpm lint`、`pnpm test`；以及本特性 perf 证据采集脚本（quick profile）用于 NFR/SC 验收。
 
 ## Project Structure
@@ -179,13 +179,13 @@ packages/logix-core/
 scripts/logix-codegen.ts        # 脚手架 import 形状对齐（Form vs Query）
 
 examples/logix/src/scenarios/
-└── middleware-resource-query.ts  # 示例引用迁移到 @logix/query
+└── middleware-resource-query.ts  # 示例引用迁移到 @logixjs/query
 
 apps/docs/content/docs/guide/learn/
 └── deep-dive.md                # 文档示例 import 形状与推荐入口对齐；并明确“外部引擎注入 × middleware”四种组合语义
 
 specs/000-module-traits-runtime/
-└── quickstart.md               # 历史示例引用迁移（不再出现 @logix/core/Middleware/Query）
+└── quickstart.md               # 历史示例引用迁移（不再出现 @logixjs/core/Middleware/Query）
 ```
 
-**Structure Decision**: Query 领域能力与对外入口统一收敛在 `@logix/query`；`@logix/core` 仅保留 trait/stateTrait/resource 等通用内核能力，不再承载 Query 领域入口或其 DI Tag。性能与诊断证据按本特性专用 perf/contract 文档闭环。
+**Structure Decision**: Query 领域能力与对外入口统一收敛在 `@logixjs/query`；`@logixjs/core` 仅保留 trait/stateTrait/resource 等通用内核能力，不再承载 Query 领域入口或其 DI Tag。性能与诊断证据按本特性专用 perf/contract 文档闭环。

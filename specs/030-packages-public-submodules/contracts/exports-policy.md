@@ -37,7 +37,7 @@
 
 以下情况允许使用“显式 exports 列表”替代通配导出：
 
-- 只希望暴露 `.` 单入口（不支持 `@logix/pkg/Foo` 形式的子模块 import）
+- 只希望暴露 `.` 单入口（不支持 `@logixjs/pkg/Foo` 形式的子模块 import）
 - 包内需要保留非 PascalCase 的 root 文件（但仍要避免其成为 public surface）
 - 需要精细控制 `.ts/.tsx` 混合导出、或对子路径入口做更强约束
 

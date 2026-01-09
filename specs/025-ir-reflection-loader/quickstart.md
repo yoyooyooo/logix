@@ -49,7 +49,7 @@ pnpm exec tsx scripts/ir/inspect-module.ts \
 ```ts
 import { Effect } from "effect"
 import { writeFileSync } from "node:fs"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 import { AppRoot } from "./app.root.js"
 
@@ -92,7 +92,7 @@ Effect.runPromise(main)
 
 ```ts
 import { Effect } from "effect"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { AppRoot } from "./app.root.js"
 
 const main = Effect.gen(function* () {

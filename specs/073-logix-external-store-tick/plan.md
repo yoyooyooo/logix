@@ -56,7 +56,7 @@
 - Decision: 模块内 storm：ReadQuery static lane 可选用 `selectorId/readsDigest` 进一步分片；dynamic selector 用 equality 兜底正确性（source: `spec.md#Clarifications`）
 - Decision: Module-as-Source：支持把模块 selector 结果当作 ExternalStore 来源（`ExternalStore.fromModule(...)`），并用 `StateTrait.externalStore` 声明式写回到下游模块字段；但必须被编译为 IR 可识别依赖（module readQuery → trait writeback）并参与同 tick 稳定化，禁止退化为 runtime 黑盒订阅（source: `spec.md#Clarifications` / FR-012 / SC-005）
 - Decision: `ExternalStore.fromModule` 不做值拷贝：Trait 写回存的是 selector 返回值本身（按引用共享，不深拷贝/不结构化拷贝）。因此禁止用 fromModule “镜像大状态”；保持 selector 小且稳定，必要时在 selector 内显式投影/拷贝并把成本计入预算（source: `spec.md#Clarifications`）
-- Decision: React 订阅单一真相源：`@logix/react` 必须只订阅 RuntimeStore topic facade，禁止直接订阅 `moduleRuntime.changes*`；per-module stores（`ModuleRuntimeExternalStore*`）在 cutover 后必须删除以避免双真相源/回归 tearing（source: `spec.md#Clarifications` / NFR-007）
+- Decision: React 订阅单一真相源：`@logixjs/react` 必须只订阅 RuntimeStore topic facade，禁止直接订阅 `moduleRuntime.changes*`；per-module stores（`ModuleRuntimeExternalStore*`）在 cutover 后必须删除以避免双真相源/回归 tearing（source: `spec.md#Clarifications` / NFR-007）
 - Decision: Trait 下沉边界：`StateTrait` 只负责“模块内字段能力 + 静态治理 + Static IR 导出”；`TickScheduler/RuntimeStore` 只消费 IR 做调度与快照一致性。禁止把 tick/React 订阅逻辑塞进 traits（SRP + no-dual-truth）。
 - Decision: 调度入口收敛：`queueMicrotask/setTimeout/requestAnimationFrame/MessageChannel/setImmediate` 等宿主调度 API 只允许在单一可注入 Runtime Service（`HostScheduler`）内使用；`TickScheduler/RuntimeStore/ExternalStore/DevtoolsHub` 等核心路径禁止散落直接调用，避免平台差异、链式 microtask 饥饿与测试不确定性。
 - Decision: 反饥饿（yield-to-host）：tick 的“合并触发”允许用 microtask，但任何 **超预算 / 连续无进展 / microtask 链过深** 的续跑必须切到 macrotask（MessageChannel/setImmediate fallback），确保渲染/IO 有机会推进；diagnostics=light/full 必须产出 Slim 证据（见 `contracts/scheduler.md` 与 `contracts/diagnostics.md`）。
@@ -122,7 +122,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9.x（ESM；以仓库 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、`@logix/core-ng`、`@logix/react`、`use-sync-external-store/shim/with-selector`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/core-ng`、`@logixjs/react`、`use-sync-external-store/shim/with-selector`  
 **Storage**: N/A（证据落盘到 `specs/073-logix-external-store-tick/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；React 集成含 Vitest browser）  
 **Target Platform**: Node.js 20+ + modern browsers（至少 1 组 headless browser perf evidence）  
@@ -134,8 +134,8 @@
 
 ## Kernel support matrix
 
-- `core`: supported（本特性在 `@logix/core` 提供对外契约与默认实现）
-- `core-ng`: supported（本特性主要落在 `@logix/core` + `@logix/react`；core-ng 仅在 Kernel Runtime Services 层提供可选实现/别名，预计无需新增交付；若实现中引入新的 Kernel RuntimeService ID 或出现 core-ng 行为分歧，必须在 `tasks.md` 增补 core-ng 任务并作为 gate）
+- `core`: supported（本特性在 `@logixjs/core` 提供对外契约与默认实现）
+- `core-ng`: supported（本特性主要落在 `@logixjs/core` + `@logixjs/react`；core-ng 仅在 Kernel Runtime Services 层提供可选实现/别名，预计无需新增交付；若实现中引入新的 Kernel RuntimeService ID 或出现 core-ng 行为分歧，必须在 `tasks.md` 增补 core-ng 任务并作为 gate）
 
 ## Constitution Check
 
@@ -149,12 +149,12 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Deterministic identity**：tickSeq 单调递增、无随机/时间默认；与 `instanceId/txnSeq/opSeq` 可关联（至少通过 `trace:tick` 的 anchor）。
 - **Transaction boundary**：externalStore 写回/派生收敛必须在事务窗口内完成；tick 稳定化期间不得引入 IO；IO 只能通过既有 `StateTrait.source` 两阶段语义（loading → async writeback）落地。
 - **Internal contracts & trial runs**：TickScheduler/RuntimeStore/ExternalStoreRegistry/HostScheduler 需要作为可注入 Runtime Service，支持测试替换与 trial-run 证据导出（避免 process-global 单例）。
-- **Dual kernels（core + core-ng）**：对外契约仅在 `@logix/core`；core-ng 通过 Kernel/RuntimeService 选择器实现等价行为（或显式降级），禁止 consumer 直接依赖 `@logix/core-ng`。
+- **Dual kernels（core + core-ng）**：对外契约仅在 `@logixjs/core`；core-ng 通过 Kernel/RuntimeService 选择器实现等价行为（或显式降级），禁止 consumer 直接依赖 `@logixjs/core-ng`。
 - **Performance budget**：触及热路径：state commit → react notify（ExternalStore）→ render；必须建立 perf evidence（diagnostics off/on，before/after diff 无回归）并固化预算。
 - **Diagnosability & explainability**：新增 `trace:tick` 与外部输入 ingest 相关证据（最小化字段、可关联）。diagnostics=off 必须接近零成本。
 - **用户心智模型（≤5 关键词）**：`externalStore` / `tick` / `runtimeStore` / `no-tearing` / `linkIR`
-- **Breaking changes（forward-only）**：`@logix/react` 订阅模型从 per-module store 迁移为 runtime store（内部实现变化，但语义升级为无 tearing）；对正常业务用法（`RuntimeProvider` + `useSelector/useModule`）目标是透明；任何依赖 internal 路径/自研 adapter 的集成需要人工介入；必须提供迁移说明（无兼容层/无弃用期，且不承诺 100% 自动迁移脚本）。
-- **Public submodules**：`@logix/core` 新增对外子模块需满足 `src/*.ts` 子模块铁律；实现下沉 `src/internal/**`；`exports` 不暴露 internal。
+- **Breaking changes（forward-only）**：`@logixjs/react` 订阅模型从 per-module store 迁移为 runtime store（内部实现变化，但语义升级为无 tearing）；对正常业务用法（`RuntimeProvider` + `useSelector/useModule`）目标是透明；任何依赖 internal 路径/自研 adapter 的集成需要人工介入；必须提供迁移说明（无兼容层/无弃用期，且不承诺 100% 自动迁移脚本）。
+- **Public submodules**：`@logixjs/core` 新增对外子模块需满足 `src/*.ts` 子模块铁律；实现下沉 `src/internal/**`；`exports` 不暴露 internal。
 - **Quality gates**：实现阶段至少通过 `pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`；并补齐本 spec 的单测/集成测与 perf evidence。
 
 ### Gate Result (Pre-Design)
@@ -325,7 +325,7 @@ docs/specs/**                         # 若对外术语/契约升级：同步更
 .codex/skills/project-guide/references/runtime-logix/**  # runtime SSoT 同步（docs-first）
 ```
 
-**Structure Decision**: 交付能力落在 `@logix/core`（契约 + 默认实现）与 `@logix/react`（runtime-store 订阅适配），其余实现细节下沉 `src/internal/**`；core-ng 通过 Runtime Services/Kernel 选择器保证等价语义或显式降级。
+**Structure Decision**: 交付能力落在 `@logixjs/core`（契约 + 默认实现）与 `@logixjs/react`（runtime-store 订阅适配），其余实现细节下沉 `src/internal/**`；core-ng 通过 Runtime Services/Kernel 选择器保证等价语义或显式降级。
 
 ## Large File Decomposition（≥1000 LOC）
 
@@ -489,7 +489,7 @@ N/A（本特性不以“引入额外复杂度”为目标；若实现阶段出�
 - HostScheduler：新增 internal Runtime Service `HostScheduler`（契约见 `contracts/scheduler.md`），提供 microtask/macrotask/raf/timeout 的统一调度入口与默认实现（browser/node），并为测试提供可控替身（deterministic）。
 - TickScheduler：把 “安排 tick” 与 “执行 tick” 解耦：microtask 只用于合并触发（Signal Dirty → schedule once）；tick 执行遇到超预算/循环/无进展时必须 yield-to-host（macrotask continuation），并在 `trace:tick` 中可解释（scheduleKind + reason）。
 - RuntimeStore topic notify：low-priority 节流（raf/timeout + maxDelay）也必须通过 HostScheduler 执行，避免 React adapter 自行选择宿主 API 造成双真相源与漂移。
-- 测试口径（act-like）：提供统一的 `Runtime.flushAll/advanceTick`（或 `@logix/test` 的 TestKit）来排空 tick + microtasks/macrotasks，避免在测试里散落 `sleep/flushMicrotasks`；行为参考 React `act`（但以 tickSeq 作为唯一观测锚点）。
+- 测试口径（act-like）：提供统一的 `Runtime.flushAll/advanceTick`（或 `@logixjs/test` 的 TestKit）来排空 tick + microtasks/macrotasks，避免在测试里散落 `sleep/flushMicrotasks`；行为参考 React `act`（但以 tickSeq 作为唯一观测锚点）。
 - 诊断：当出现 microtask 饥饿防线触发（forced macrotask）或 tick 因预算被切分为多段续跑时，diagnostics=light/full 产出 Slim Warn（不要求指到具体组件，但必须能指到 runtime/module/instance 的最小锚点）。
 - 生产巡检（可选）：在 `diagnostics=off` 下仍允许 opt-in 的低频遥测（sampled `onTickDegraded` / sampling log），用于统计 `stable=false / forced yield` 发生率（默认关闭，确保近零成本）。
 
@@ -508,6 +508,6 @@ N/A（本特性不以“引入额外复杂度”为目标；若实现阶段出�
 
 Phase 8 已完成 “HostScheduler 作为 internal Runtime Service + Layer” 的收敛；但为了避免业务/集成方直接依赖 internal Tag，同时又能在必要时替换宿主调度实现（例如 deterministic/平台差异/特殊宿主），需要补一个“稳定对外注入面”的裁决与落地（见 `tasks.md` 的 Phase 9：T066/T067）：
 
-- 方案 A（public submodule）：在 `@logix/core` 提供 `HostScheduler` public submodule（仅暴露 layer/默认实现/测试替身构造等最小面）。
+- 方案 A（public submodule）：在 `@logixjs/core` 提供 `HostScheduler` public submodule（仅暴露 layer/默认实现/测试替身构造等最小面）。
 - 方案 B（高层选项）：在 `Logix.Runtime.make` 增加 `hostScheduler` 选项（内部转换为 `Layer.succeed(HostSchedulerTag, ...)` 注入）。
 - 强约束：所有依赖 `HostSchedulerTag` 的服务（例如 TickScheduler）在 Layer build-time 会捕获依赖；因此 override/替换必须通过 `Layer.provide(hostLayer)` 进入依赖的 build 阶段，而不是仅 `Layer.mergeAll(hostLayer, ...)` 做最终 Env 覆盖。

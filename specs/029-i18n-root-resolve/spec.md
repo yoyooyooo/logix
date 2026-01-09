@@ -94,9 +94,9 @@
 - **FR-010**: 系统 MUST 将“语言/就绪变化信号”以 I18n Service 的可订阅快照（例如 I18nSnapshot/changes）作为单一事实源对外暴露；I18nModule 若提供额外语法糖/控制面，必须复用该变化信号（不得另起并行事实源）。默认推荐 message token + 展示边界翻译；若调用方选择把最终字符串落到 state，则必须显式依赖该变化信号触发重算（不提供隐式魔法）。
 - **FR-011**: `tReady(key, options, timeoutMs?)` MUST 设计为“永不失败”的等待翻译：默认等待上限为 5 秒（支持调用方通过 `timeoutMs` 覆盖）。当国际化初始化失败、一直未就绪或超过等待上限时，必须在可预期的时机返回可展示回退结果（优先 `options.defaultValue`，否则 key），同时通过 I18nSnapshot 标记 `init="failed"` 并产出结构化诊断信号。
 - **FR-012**: 系统 MUST 提供从 Logix 侧发起“请求切换语言”的能力，并以 I18n Service 作为主入口；I18nModule 若提供该能力，必须仅作为对 I18n Service 的封装/转发，且不得绕过 I18n Service 的变化事实源与 Tree 隔离语义。
-- **FR-013**: 系统 MUST 提供独立的领域特性包 `@logix/i18n`，承载 I18n Service / I18nModule / message token 等国际化能力；`@logix/core` 仅承载通用运行时能力（如 `$.root.resolve` 与解析语义），不得被国际化引擎/资源加载机制所耦合。
-- **FR-014**: `@logix/i18n` MUST 采用“driver-first”的对接策略：定义最小 I18nDriver（最小面、控制反转），并使宿主可直接把“符合该最小面”的外部 i18n 实例注入到 Runtime Tree（例如 i18next 风格的实例可直接作为注入值）；`@logix/i18n` 不得对特定引擎产生强耦合依赖。
-- **FR-015**: 系统 MUST 不要求新增 React 专用包（例如 `@logix/i18n-react`）。React 侧应继续使用既有国际化订阅/Provider（例如 i18next-react）驱动 re-render；Logix 侧只需保证同一外部实例可注入与 per-tree 隔离，并提供文档/示例说明如何组合使用。
+- **FR-013**: 系统 MUST 提供独立的领域特性包 `@logixjs/i18n`，承载 I18n Service / I18nModule / message token 等国际化能力；`@logixjs/core` 仅承载通用运行时能力（如 `$.root.resolve` 与解析语义），不得被国际化引擎/资源加载机制所耦合。
+- **FR-014**: `@logixjs/i18n` MUST 采用“driver-first”的对接策略：定义最小 I18nDriver（最小面、控制反转），并使宿主可直接把“符合该最小面”的外部 i18n 实例注入到 Runtime Tree（例如 i18next 风格的实例可直接作为注入值）；`@logixjs/i18n` 不得对特定引擎产生强耦合依赖。
+- **FR-015**: 系统 MUST 不要求新增 React 专用包（例如 `@logixjs/i18n-react`）。React 侧应继续使用既有国际化订阅/Provider（例如 i18next-react）驱动 re-render；Logix 侧只需保证同一外部实例可注入与 per-tree 隔离，并提供文档/示例说明如何组合使用。
 
 ### Assumptions & Dependencies
 
@@ -107,8 +107,8 @@
 ### Scope & Non-Goals
 
 - In scope：提供 root 解析语法糖；提供与外部国际化实例共享的注入与使用方式；提供 I18n Service 与 I18nModule 两种接入形态；提供可回放的 message token 形态与就绪语义。
-- Out of scope：不把完整语言包/词条数据写入可回放状态；不引入任何进程级全局兜底作为正确性语义；不强制业务迁移既有 UI 国际化调用方式；不在 `@logix/core` 内引入国际化引擎/资源加载的强耦合；`@logix/i18n` 不负责绑定/内置特定国际化引擎依赖（例如不强依赖 i18next），由宿主按需安装并以最小形状注入。
-- Out of scope：不引入 `@logix/i18n-react` 这类“重复封装 i18n 框架订阅”的适配层（除非后续有明确需求另开特性）。
+- Out of scope：不把完整语言包/词条数据写入可回放状态；不引入任何进程级全局兜底作为正确性语义；不强制业务迁移既有 UI 国际化调用方式；不在 `@logixjs/core` 内引入国际化引擎/资源加载的强耦合；`@logixjs/i18n` 不负责绑定/内置特定国际化引擎依赖（例如不强依赖 i18next），由宿主按需安装并以最小形状注入。
+- Out of scope：不引入 `@logixjs/i18n-react` 这类“重复封装 i18n 框架订阅”的适配层（除非后续有明确需求另开特性）。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 
@@ -134,7 +134,7 @@
 - **I18n Instance（外部国际化实例）**: 宿主应用既有的国际化实例（期望 UI、业务代码与 Logix 逻辑共享）。
 - **I18n Service（国际化服务）**: 注入到 Runtime Tree 的可替换能力（以 Tag/Layer 形态提供），对外暴露语言快照/翻译/构造 message token 等能力。
 - **I18nModule（国际化模块）**: Root 单例模块形态的国际化能力入口；用于承载额外的语法糖/控制面，并与 I18n Service 共享同一外部国际化实例。
-- **I18nDriver（国际化驱动）**: `@logix/i18n` 侧定义的最小引擎抽象（最小形状/控制反转），用于承载翻译/语言切换/就绪语义，并保持 per-tree 隔离与可测试性。
+- **I18nDriver（国际化驱动）**: `@logixjs/i18n` 侧定义的最小引擎抽象（最小形状/控制反转），用于承载翻译/语言切换/就绪语义，并保持 per-tree 隔离与可测试性。
 - **I18n Snapshot（国际化快照）**: 国际化的可订阅状态（至少包含当前语言、是否就绪、变化序列号）。
 - **Message Token（可延迟翻译的消息描述）**: 结构化值（key + 可序列化 options 子集，推荐使用 `defaultValue` 作为兜底文案），用于写入可回放状态并在展示时按当前语言生成最终文案。
 
@@ -162,4 +162,4 @@
 - Q: 语言变更的“持续监听/自动更新”主路径怎么定？ → A: 以 I18n Service 的 I18nSnapshot/changes 作为变化信号单一事实源；I18nModule 仅封装/复用；默认 token + 展示边界翻译；最终字符串落 state 时必须显式订阅触发重算。
 - Q: `tReady(key, options, timeoutMs?)` 的失败/超时语义怎么定？ → A: tReady 永不失败；默认等待上限 5 秒（支持覆盖）；初始化失败/一直未就绪/超时均返回 `options.defaultValue`（否则 key），并通过 I18nSnapshot 标记 `init="failed"` + 结构化诊断体现。
 - Q: “请求切换语言”的发起入口归属怎么定？ → A: 以 I18n Service 为主入口提供“请求切换语言”能力；I18nModule 可封装/转发但不得另起事实源或绕过 Tree 隔离语义。
-- Q: `@logix/i18n` 的包边界与耦合策略怎么定？ → A: 需要新增 `@logix/i18n` 作为 i18n 领域特性包；采用 driver-first（最小形状契约 + IoC/DI 注入），不依赖 i18next，且不新增 `@logix/i18n-react`（React 侧继续用 i18next-react）。
+- Q: `@logixjs/i18n` 的包边界与耦合策略怎么定？ → A: 需要新增 `@logixjs/i18n` 作为 i18n 领域特性包；采用 driver-first（最小形状契约 + IoC/DI 注入），不依赖 i18next，且不新增 `@logixjs/i18n-react`（React 侧继续用 i18next-react）。

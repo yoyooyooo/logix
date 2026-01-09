@@ -6,7 +6,7 @@
 
 **Chosen**：
 
-- 以 `@logix/core` 既有的 **RuntimeServices（RuntimeKernel）机制** 作为 Kernel Contract 的主要表达载体：
+- 以 `@logixjs/core` 既有的 **RuntimeServices（RuntimeKernel）机制** 作为 Kernel Contract 的主要表达载体：
   - `packages/logix-core/src/internal/runtime/core/RuntimeKernel.ts`
   - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts`
 - “内核替换”优先落到 **服务实现选择（serviceId → implId）**，且必须满足：
@@ -23,31 +23,31 @@
 
 **Implications**（面向实现阶段）：
 
-- `@logix/core-ng` 不直接替换 `@logix/core` 的公共 API；它通过 Layer/Tag 注入方式提供某些 runtime service 的实现（并由 `@logix/core` 在构造期选择）。
+- `@logixjs/core-ng` 不直接替换 `@logixjs/core` 的公共 API；它通过 Layer/Tag 注入方式提供某些 runtime service 的实现（并由 `@logixjs/core` 在构造期选择）。
 - 若未来 core-ng 需要替换更深的循环（例如 trait converge 内核/执行 VM），应通过“进一步拆分 serviceId”或“在 transaction service 内部替换子引擎”实现；但 045 本身只先固化契约与装配点，不强行预设全部切分粒度。
 
 ## Decision 1：包名与依赖拓扑（core / core-ng / react）
 
 **Chosen**：
 
-- `@logix/core` 继续是唯一对外入口（Module/Logic/Runtime/Debug/Observability 等 API + Kernel Contract）。
-- 新包 `@logix/core-ng` 只提供“另一套内核实现”的注入入口（Layer/工厂），不复制对外 DSL。
-- `@logix/react` 只依赖 `@logix/core`，运行时切换发生在“创建 runtime 时选择装配哪套内核实现”。
+- `@logixjs/core` 继续是唯一对外入口（Module/Logic/Runtime/Debug/Observability 等 API + Kernel Contract）。
+- 新包 `@logixjs/core-ng` 只提供“另一套内核实现”的注入入口（Layer/工厂），不复制对外 DSL。
+- `@logixjs/react` 只依赖 `@logixjs/core`，运行时切换发生在“创建 runtime 时选择装配哪套内核实现”。
 
 **Dependency DAG（硬约束）**：
 
-- `@logix/react` → `@logix/core`
-- `@logix/core-ng` → `@logix/core`
-- `@logix/core` ✗→ `@logix/core-ng`（禁止反向依赖；core-ng 必须是可选实现包）
+- `@logixjs/react` → `@logixjs/core`
+- `@logixjs/core-ng` → `@logixjs/core`
+- `@logixjs/core` ✗→ `@logixjs/core-ng`（禁止反向依赖；core-ng 必须是可选实现包）
 
 **Rationale**：
 
-- 把切换点压到“runtime 装配”而不是“业务 import”，迁移更轻；`@logix/react`/Devtools/Sandbox 不需要跟着选边。
+- 把切换点压到“runtime 装配”而不是“业务 import”，迁移更轻；`@logixjs/react`/Devtools/Sandbox 不需要跟着选边。
 - core-ng 作为可选依赖，允许并行演进但不会污染默认路径的心智模型与打包链路。
 
 **Alternatives considered**：
 
-- `@logix/core-ng` 做成 `@logix/core` 的平级克隆（同形 API、二选一 import）  
+- `@logixjs/core-ng` 做成 `@logixjs/core` 的平级克隆（同形 API、二选一 import）  
   Reject：会导致生态分裂（两套类型/入口），并把迁移成本扩散到所有上层包与示例。
 
 ## Decision 2：多内核“共存”的边界（避免额外浪费）
@@ -72,18 +72,18 @@
 
 ## Decision 3：是否需要拆一个更底层的包（服务 core 与 core-ng）
 
-**Chosen（当前阶段）**：不新拆 `@logix/core-contract` 之类的更底层包。
+**Chosen（当前阶段）**：不新拆 `@logixjs/core-contract` 之类的更底层包。
 
 **Rationale**：
 
 - 当前仓库仍在快速演进，拆包会引入额外的发布/导出/子模块治理与迁移成本。
-- `@logix/core-ng` 依赖 `@logix/core` 的“契约导出”（Tag/类型/schema）足够表达替换点；只要保持契约导出稳定，core-ng 不需要接触 core 的 internal 实现。
+- `@logixjs/core-ng` 依赖 `@logixjs/core` 的“契约导出”（Tag/类型/schema）足够表达替换点；只要保持契约导出稳定，core-ng 不需要接触 core 的 internal 实现。
 
 **Revisit triggers（出现任一项再考虑拆底层包）**：
 
-- `@logix/core-ng` 因依赖 `@logix/core` 被迫引入大量“当前内核实现代码”导致不可接受的 bundle 体积/启动成本；
+- `@logixjs/core-ng` 因依赖 `@logixjs/core` 被迫引入大量“当前内核实现代码”导致不可接受的 bundle 体积/启动成本；
 - 出现难以治理的循环依赖（尤其是 devtools/sandbox 侧）；
-- 需要把“契约版本”独立发布，并支持多实现包在不锁步升级 `@logix/core` 的情况下演进。
+- 需要把“契约版本”独立发布，并支持多实现包在不锁步升级 `@logixjs/core` 的情况下演进。
 
 ## Decision 4：Kernel Contract 的最小闭环（面向实现阶段）
 
@@ -113,4 +113,4 @@
 ## Open Questions（留到 plan/tasks，不阻塞本阶段）
 
 - core-ng 初期是否允许“能力不全但显式失败”，还是必须提供“显式回退到当前内核”的桥？（默认倾向：显式失败，避免静默漂移）
-- `@logix/sandbox` 的内核 bundle（`bundle-kernel.mjs`）是否要同步支持打包 `@logix/core-ng`？（可作为后续扩展点）
+- `@logixjs/sandbox` 的内核 bundle（`bundle-kernel.mjs`）是否要同步支持打包 `@logixjs/core-ng`？（可作为后续扩展点）

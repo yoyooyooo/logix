@@ -5,7 +5,7 @@
 
 ## 交付物（What shipped）
 
-- `@logix/core`：
+- `@logixjs/core`：
   - `Reflection.extractManifest` / `Reflection.exportStaticIr`：导出可序列化、可 diff 的 `ModuleManifest` / `StaticIR`（不读 AST）。
   - `Reflection.diffManifest`：结构化 diff（CI gate 与 UI 共享口径，含 verdict + changes[]）。
   - `Observability.trialRunModule`：在 BuildEnv 中对 module 做受控试跑，导出 `TrialRunReport`（Environment IR + 控制面证据 + 可选事件序列）。

@@ -10,7 +10,7 @@ related: []
 
 # React Adapter Specification
 
-> **Status**: Draft（部分内容已落地到 @logix/react 与 `.codex/skills/project-guide/references/runtime-logix/logix-react`）
+> **Status**: Draft（部分内容已落地到 @logixjs/react 与 `.codex/skills/project-guide/references/runtime-logix/logix-react`）
 > **Date**: 2025-11-21
 > **Layer**: Integration Layer
 

@@ -19,7 +19,7 @@
 -->
 
 **Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., effect v3, @logix/*, React, Next.js or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., effect v3, @logixjs/*, React, Next.js or NEEDS CLARIFICATION]  
 **Storage**: [if applicable, e.g., files / N/A]  
 **Testing**: [e.g., Vitest, @effect/vitest (for Effect-heavy tests) or NEEDS CLARIFICATION]  
 **Target Platform**: [e.g., Node.js 20+ + modern browsers]  
@@ -58,7 +58,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
     process-global singletons?
   - Dual kernels (core + core-ng): if this feature touches kernel/hot paths or
     Kernel Contract / Runtime Services, does the plan define a kernel support
-    matrix (core vs core-ng), avoid direct @logix/core-ng dependencies in
+    matrix (core vs core-ng), avoid direct @logixjs/core-ng dependencies in
     consumers, and specify how contract verification + perf evidence gate changes?
   - Performance budget: which hot paths are touched, what metrics/baselines
     exist, and how will regressions be prevented?

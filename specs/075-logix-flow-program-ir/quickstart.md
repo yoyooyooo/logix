@@ -11,7 +11,7 @@
 ## 示例 1：submit → API → success → router.push
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 // 假设：SubmitApiTag / RouterTag 为 Tag-only service（具体定义省略）
 

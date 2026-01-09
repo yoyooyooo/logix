@@ -1,9 +1,9 @@
-# @logix/form · Runtime 参考（Form 领域包）
+# @logixjs/form · Runtime 参考（Form 领域包）
 
 > **Status**: Aligned (010-form-api-perf-boundaries)
 > **Layer**: Domain package（thin adapter on logix-core）
 
-`@logix/form` 的定位很明确：**Form 不是另一套引擎**，它只是把“表单”收敛成一个普通的 `Logix.Module`（并提供 controller + React hooks），从而与其他业务模块共享同一套 Runtime 的事务语义、调试/回放与可观测证据链。
+`@logixjs/form` 的定位很明确：**Form 不是另一套引擎**，它只是把“表单”收敛成一个普通的 `Logix.Module`（并提供 controller + React hooks），从而与其他业务模块共享同一套 Runtime 的事务语义、调试/回放与可观测证据链。
 
 ## 0) 入口与导出（不使用 TypeScript namespace）
 

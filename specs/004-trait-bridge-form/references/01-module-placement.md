@@ -7,7 +7,7 @@
 
 ## 1. 三种产物形态（先定边界）
 
-### 1.1 `@logix/core`（Trait kernel）
+### 1.1 `@logixjs/core`（Trait kernel）
 
 如果一个能力满足以下任意一条，就应该下沉到 kernel：
 
@@ -17,7 +17,7 @@
 
 在 004 的语境里：`StateTrait.*` 与 `TraitLifecycle.*` 是 kernel 归属。
 
-### 1.2 `@logix/form`（领域包：Form）
+### 1.2 `@logixjs/form`（领域包：Form）
 
 如果一个能力满足以下全部/大部分特征，它属于 Form：
 
@@ -26,7 +26,7 @@
 - **交互态心智明确**：touched/dirty/submitCount 等（并且这些状态进入 `state.ui` 作为事实源）；
 - **迁移对标对象存在**：RHF / antd form / 内部表单体系；需要写法映射规则。
 
-`@logix/form` 的定位应是“**领域糖 + helper + 最佳实践协议**”，不是第二套运行时。
+`@logixjs/form` 的定位应是“**领域糖 + helper + 最佳实践协议**”，不是第二套运行时。
 
 ### 1.3 独立领域包（非 Form）
 
@@ -55,7 +55,7 @@
 
 ### 2.1 这是不是“可提交草稿”？
 
-- **是** → 倾向 `@logix/form`（或 `@logix/form-*` 上层扩展）
+- **是** → 倾向 `@logixjs/form`（或 `@logixjs/form-*` 上层扩展）
 - **否** → 倾向独立领域包（Query/Workflow/Builder/Grid…）
 
 ### 2.2 错误模型是否以“字段级定位”作为主要交互？
@@ -90,11 +90,11 @@
 
 | 领域 | 主心智 | 是否属于 Form？ | 推荐落点 | 对 004 的压力点 |
 |------|--------|------------------|----------|------------------|
-| 可编辑表格（Editable Grid） | 二维交互 + 批量编辑 | 不直接属于；更像 Form 的 UI 超集 | `@logix/form` 作为内核 + 上层 `@logix/grid`（或先最佳实践） | list.list 校验、批量粘贴触发 source 风暴、竞态策略、局部校验性能 |
-| 规则配置器 / 条件构建器（Builder） | AST 编辑 + 约束 + 解释 | 否 | 独立 `@logix/builder`（或 `@logix/rules`） | 嵌套 list（多层）、Ref 是否需要稳定 id、错误定位与可解释性（不是“字段错误”） |
-| 动态表单引擎（Schema-driven Form Engine） | 远端 schema → 渲染器 | 属于 Form 生态，但不是 Form 本体 | `@logix/form-engine`（构建在 `@logix/form` 之上） | 蓝图（schema）与实例（state）的边界；Schema transform 双向映射；运行时资源装配 |
-| 任务编排/队列面板（Task Runner / Queue） | 状态机 + 进度 + 重试/取消 | 否 | 独立 `@logix/task` / `@logix/workflow` | source 的并发/取消语义、时间线可解释性、Ref 是否稳定（按任务 id） |
-| 实时搜索 + 结果联动（Search/Facet + Detail） | 查询/缓存/竞态 | 否 | 独立 `@logix/query`（基于 Resource/EffectOp） | keyHash、switch/exhaust、去抖/节流、全双工 UI 状态（loading/error/selected facets） |
+| 可编辑表格（Editable Grid） | 二维交互 + 批量编辑 | 不直接属于；更像 Form 的 UI 超集 | `@logixjs/form` 作为内核 + 上层 `@logixjs/grid`（或先最佳实践） | list.list 校验、批量粘贴触发 source 风暴、竞态策略、局部校验性能 |
+| 规则配置器 / 条件构建器（Builder） | AST 编辑 + 约束 + 解释 | 否 | 独立 `@logixjs/builder`（或 `@logixjs/rules`） | 嵌套 list（多层）、Ref 是否需要稳定 id、错误定位与可解释性（不是“字段错误”） |
+| 动态表单引擎（Schema-driven Form Engine） | 远端 schema → 渲染器 | 属于 Form 生态，但不是 Form 本体 | `@logixjs/form-engine`（构建在 `@logixjs/form` 之上） | 蓝图（schema）与实例（state）的边界；Schema transform 双向映射；运行时资源装配 |
+| 任务编排/队列面板（Task Runner / Queue） | 状态机 + 进度 + 重试/取消 | 否 | 独立 `@logixjs/task` / `@logixjs/workflow` | source 的并发/取消语义、时间线可解释性、Ref 是否稳定（按任务 id） |
+| 实时搜索 + 结果联动（Search/Facet + Detail） | 查询/缓存/竞态 | 否 | 独立 `@logixjs/query`（基于 Resource/EffectOp） | keyHash、switch/exhaust、去抖/节流、全双工 UI 状态（loading/error/selected facets） |
 
 ---
 
@@ -122,14 +122,14 @@
 
 > “这些领域到底应归属 Form 体系下，还是直接 Module+Logic 最佳实践？”
 
-- **Form 体系（`@logix/form`）只收口“可提交草稿 + 字段错误 + touched/dirty”这一类强语义能力**  
+- **Form 体系（`@logixjs/form`）只收口“可提交草稿 + 字段错误 + touched/dirty”这一类强语义能力**  
   其余领域应该复用 TraitLifecycle/StateTrait 的“同源形状”，但用自己的领域包话术。
 
-- **可编辑表格**：先把它当作 **Form 的 UI 超集**，不要塞进 `@logix/form` 本体；更适合作为上层包或最佳实践，用它压力测试 list.list 校验/批量操作/竞态。
+- **可编辑表格**：先把它当作 **Form 的 UI 超集**，不要塞进 `@logixjs/form` 本体；更适合作为上层包或最佳实践，用它压力测试 list.list 校验/批量操作/竞态。
 
 - **规则配置器**：更适合独立领域包（Builder），它会强迫我们思考“Ref 的身份锚点（path vs id）”这类 kernel 课题，但不该让 Form 背锅。
 
-- **动态表单引擎**：属于 Form 生态的“应用层”，是验证“蓝图→Module”链路的最佳压测背景，但仍不应膨胀 `@logix/form` 的核心表面积。
+- **动态表单引擎**：属于 Form 生态的“应用层”，是验证“蓝图→Module”链路的最佳压测背景，但仍不应膨胀 `@logixjs/form` 的核心表面积。
 
 - **任务面板 / 实时搜索**：属于 Query/Workflow，应该逼我们把 resource/竞态/时间线解释做得更硬，但它们的语义不应该进 Form。
 

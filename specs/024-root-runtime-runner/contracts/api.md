@@ -3,14 +3,14 @@
 **Date**: 2025-12-23  
 **Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/024-root-runtime-runner/spec.md`
 
-> 本文件定义对外 API 与行为契约（以 `@logix/core` 为主事实源），用于后续实现与测试对齐。具体函数命名可在实现阶段微调，但必须满足下述语义。
+> 本文件定义对外 API 与行为契约（以 `@logixjs/core` 为主事实源），用于后续实现与测试对齐。具体函数命名可在实现阶段微调，但必须满足下述语义。
 >
 > **裁决**：对外“一次性运行入口”采用 `runProgram` 命名，以强调它运行的是“root module + mainFn”构成的程序，而不是仅做 boot。
 
 ## Terminology
 
 - **Root module / Program module**：作为“可运行程序”的根模块实现；运行时会将其作为 runtime 树入口（root）进行装配与启动。
-- **Program runner**：`@logix/core` 的标准入口（`Runtime.runProgram` / `Runtime.openProgram`），负责 boot 与释放，不提供隐式保活。
+- **Program runner**：`@logixjs/core` 的标准入口（`Runtime.runProgram` / `Runtime.openProgram`），负责 boot 与释放，不提供隐式保活。
 - **Boot**：触发 root module 实例化与启动（包含 logics 初始化与 run fibers/processes 启动）。
 - **Main program**：调用方提供的主流程；它显式表达退出条件（等待观测/外部信号/或直接结束）。
 - **Isolation（隔离）**：不同 root 实例在同一进程内运行时，至少在 Scope/instanceId/注册表/状态 上相互隔离；不得依赖或静默回退到进程级全局单例解析。
@@ -74,7 +74,7 @@
 
 ## Alignment API (test)
 
-> 本节固化 `@logix/test` 的最小对外表面积，用于仓库迁移与心智模型收敛。
+> 本节固化 `@logixjs/test` 的最小对外表面积，用于仓库迁移与心智模型收敛。
 
 ### `TestProgram.runProgram(programModule, body, options?)`
 
@@ -91,7 +91,7 @@
 
 **Behavior**:
 
-1. MUST 复用 `Runtime.openProgram/runProgram`（或其内部 ProgramRunner）完成 boot/释放；`@logix/test` 不得自建 Scope/boot/释放逻辑。
+1. MUST 复用 `Runtime.openProgram/runProgram`（或其内部 ProgramRunner）完成 boot/释放；`@logixjs/test` 不得自建 Scope/boot/释放逻辑。
 2. MUST 在一次运行内收集 `ExecutionResult`（state/actions/trace），并保证可序列化与可解释。
 3. MUST 提供 `TestApi`：
    - `api.ctx.$` 可用于 `$.use(module)` 与 handle-extend（与脚本/React 一致）
@@ -112,7 +112,7 @@
 ### Alignment guarantees（行为级）
 
 - 测试 runner 的“启动/退出/释放”语义必须与 `Runtime.runProgram/openProgram` 一致。
-- 对齐点必须是 core runner（而不是复制装配/释放逻辑）；当 runner 契约调整时，`@logix/test` 必须随之同步（以迁移说明替代兼容层）。
+- 对齐点必须是 core runner（而不是复制装配/释放逻辑）；当 runner 契约调整时，`@logixjs/test` 必须随之同步（以迁移说明替代兼容层）。
 
 ## Non-goals
 

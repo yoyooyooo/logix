@@ -2,7 +2,7 @@
 
 > 本文是本特性的对外 API 口径（面向业务/平台开发者）。实现细节与内部 Runtime Services 不在此文暴露。
 
-## 1) `@logix/core`：ExternalStore（对外子模块）
+## 1) `@logixjs/core`：ExternalStore（对外子模块）
 
 ### 1.1 `ExternalStore<T>`
 
@@ -36,7 +36,7 @@ type ExternalStore<T> = {
   - 仅当提供 `initial/current` 时允许；否则必须以 Runtime Error fail-fast（Stream 无 current）
   - ⚠️ `initial` 可能 stale（订阅时序导致）：若业务需要可靠 current，请优先用 `fromService/fromSubscriptionRef` 或直接手写 `ExternalStore<T>` 的 `getSnapshot()`
 
-## 2) `@logix/core`：StateTrait.externalStore（声明式接入）
+## 2) `@logixjs/core`：StateTrait.externalStore（声明式接入）
 
 ### 2.1 DSL 入口
 
@@ -77,7 +77,7 @@ const Traits = Logix.StateTrait.from(StateSchema)({
 })
 ```
 
-## 3) `@logix/core`：Runtime TickScheduler（对外配置口径）
+## 3) `@logixjs/core`：Runtime TickScheduler（对外配置口径）
 
 TickScheduler 是 Runtime 内部能力，但需要对外暴露“可控的配置入口”：
 
@@ -86,7 +86,7 @@ TickScheduler 是 Runtime 内部能力，但需要对外暴露“可控的配置
   - 预算/降级策略：可配置但必须可解释（见 diagnostics）
   - 使用约束：`Runtime.batch` 只作为同步边界；不要在 batch callback 内 `await` 期待 flush（扁平化语义只在 outermost 结束时 flush）
 
-## 4) `@logix/react`：React 集成口径（RuntimeStore 单一快照真理源）
+## 4) `@logixjs/react`：React 集成口径（RuntimeStore 单一快照真理源）
 
 对外目标：**不引入新用法**。
 

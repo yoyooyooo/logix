@@ -33,8 +33,8 @@ interface TestRuntime<Sh extends Logix.AnyModuleShape> {
 ```ts
 import { it, expect } from "@effect/vitest"
 import { Effect, Schema, Layer, TestClock } from "effect"
-import * as Logix from "@logix/core"
-import * as LogixTest from "@logix/test"
+import * as Logix from "@logixjs/core"
+import * as LogixTest from "@logixjs/test"
 
 const Counter = Logix.Module.make("Counter", {
   state: Schema.Struct({ count: Schema.Number }),

@@ -189,7 +189,7 @@
   - 当前实现可以按需要填充这些扩展字段，但规范层必须为它们明确语义，使后续能力可以在不破坏 Trait 主线的前提下平滑接入。
 - **FR-013**: 为了让 Trait + 事务下的 UI 行为可回放、可对比，系统必须对 Devtools 消费的 Debug 事件做一次统一标准化，并显式纳入「组件渲染事件」：
   - Runtime 必须为 Devtools 提供一个归一化的 RuntimeDebugEvent 视图（对应数据模型中的 `TraitRuntimeEventRef`），将现有的 `action:dispatch`、`state:update`、service 调用、Trait 派生步骤等事件统一映射为带 `eventId / moduleId / instanceId / txnId? / timestamp / kind / label / meta` 的结构；
-  - 在 React 集成层（`@logix/react`）必须新增一类 `kind = "react-render"` 的视图事件，用于记录组件渲染：至少包含组件标识（componentLabel）、关联的 Module / Instance 信息、关键 selector 或字段路径、是否处于 StrictMode 双调用阶段、以及若由某次 StateTransaction 提交触发时的 `txnId`；`txnId` 的赋值策略以 Runtime 显式事务上下文为主，在正常事务执行路径下通过上下文自动填充，当渲染发生在无事务上下文场景时由 Devtools 端以最近一次 `state:update` 事件的 `txnId` 作为兜底（若无法合理推断则可标记为未绑定事务的渲染事件）；
+  - 在 React 集成层（`@logixjs/react`）必须新增一类 `kind = "react-render"` 的视图事件，用于记录组件渲染：至少包含组件标识（componentLabel）、关联的 Module / Instance 信息、关键 selector 或字段路径、是否处于 StrictMode 双调用阶段、以及若由某次 StateTransaction 提交触发时的 `txnId`；`txnId` 的赋值策略以 Runtime 显式事务上下文为主，在正常事务执行路径下通过上下文自动填充，当渲染发生在无事务上下文场景时由 Devtools 端以最近一次 `state:update` 事件的 `txnId` 作为兜底（若无法合理推断则可标记为未绑定事务的渲染事件）；
   - Devtools 的时间线视图必须支持把这些 `react-render` 事件与同一事务下的 Trait / state 事件一起展示和过滤，使开发者可以直接看到“一次事务导致了哪些组件渲染”，并可按事件类别（action / trait / state / view-render / devtools 等）开启或关闭显示。
 - **FR-014**: 为方便业务开发者快速从“时间轴”角度理解系统行为，Devtools 除了事务视图外，还应提供一个以全局时间线为主体的第二视图（Origin-first Timeline View）：
   - 该视图以跨模块的“逻辑入口 / 业务事件 / Devtools 操作”（origin）为主轴按时间顺序展示，例如 `click: save`、`service: profileLoaded`、`devtools: timeTravel to Txn#42 AFTER` 等；
@@ -256,9 +256,9 @@
 > 本节用于约束本特性在「运行时环境判断」与「Devtools 辅助代码」上的实现策略，避免未来再出现多套 env 实现或无法裁剪的高噪音逻辑。若与 runtime-logix 文档冲突，以 runtime-logix 为准。
 
 - **统一环境检测入口**
-  - 所有 Runtime / React / Devtools 辅助代码必须通过 `@logix/core/Env` 导出的 `getNodeEnv` / `isDevEnv` 读取运行时环境：
+  - 所有 Runtime / React / Devtools 辅助代码必须通过 `@logixjs/core/Env` 导出的 `getNodeEnv` / `isDevEnv` 读取运行时环境：
     - 内部实现下沉到 `packages/logix-core/src/internal/runtime/core/env.ts`，通过 `globalThis.process.env.NODE_ENV` 观察调用方环境，避免 tsup 在构建库时提前内联；
-    - React 绑定层（`@logix/react`）不得再直接访问 `process.env` 或自行实现 getNodeEnv，而是通过 `packages/logix-react/src/internal/env.ts` 统一 re-export `@logix/core/Env`。
+    - React 绑定层（`@logixjs/react`）不得再直接访问 `process.env` 或自行实现 getNodeEnv，而是通过 `packages/logix-react/src/internal/env.ts` 统一 re-export `@logixjs/core/Env`。
   - Debug.layer 在 `mode: "auto"` 下，必须通过 `getNodeEnv()` 判断当前是 dev 还是 prod，而不是直接依赖 `process.env.NODE_ENV` 字面判断。
 
 - **Dev-only 行为与 Debug API 的边界**
@@ -268,7 +268,7 @@
   - 面向用户的 Debug 能力（`Logix.Debug.layer/traceLayer/record`、Debug 中间件等）不强行视为 dev-only：
     - 库侧只负责提供清晰的 API 与统一的 env 语义；
     - 是否在生产环境启用 Debug / 观测，由业务项目自行决定（在 Node/浏览器打包配置中选择合适的 Layer 与 DCE 策略）。
-  - `@logix-devtools/react` 整包视为 dev-only 依赖：
+  - `@logixjs/devtools-react` 整包视为 dev-only 依赖：
     - 规范层假定生产入口不主动渲染 `LogixDevtools` 时，该包可以完全被业务 bundler 摇掉；
     - 本特性密切相关的 RuntimeDebugEvent / StateTransaction / TraitGraph 语义必须在没有 Devtools 时也保持一致，以便未来接入其他观测工具。
   - 文档回写要求：本特性所有新增概念与契约在实现稳定后，必须同步补充到 SSoT 与用户文档：

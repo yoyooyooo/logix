@@ -17,7 +17,7 @@
 ### Session 2025-12-17
 
 - Q: 模块级覆盖/回退通过什么配置载体落地？ → A: 通过 Runtime 配置按 `moduleId` 覆盖（可热切换，下一笔事务生效；无需修改 Module 代码）
-- Q: 是否允许在 `@logix/react` 的 `RuntimeProvider` 范围内覆盖 converge 配置？ → A: 允许（更局部赢）；通过 `RuntimeProvider.layer`（Layer/Tag）做 Env 级覆盖，仅对子树生效；切换在下一笔事务生效；不得要求“新建 runtime 复制配置”
+- Q: 是否允许在 `@logixjs/react` 的 `RuntimeProvider` 范围内覆盖 converge 配置？ → A: 允许（更局部赢）；通过 `RuntimeProvider.layer`（Layer/Tag）做 Env 级覆盖，仅对子树生效；切换在下一笔事务生效；不得要求“新建 runtime 复制配置”
 - Q: Devtools 是否需要把 evidence 变成“下一步建议”（Lighthouse 风格）？ → A: 需要；Runtime 只产出 Slim、可序列化的证据；建议/Timeline 等深挖能力由后续独立 Devtools spec（基于 `specs/005`）落地，且其输入只能来自 evidence（避免执行器特判化）
 
 ### Session 2025-12-18
@@ -98,7 +98,7 @@
 
 ### Non-Goals（避免把 Form 语义污染进 converge 控制面）
 
-- 不引入任何 `@logix/form` 专属分支/特判：Form 领域语义（errors 写回、rowId、rules 合并等）由 010 负责，013 只提供与领域无关的控制面与可序列化证据。
+- 不引入任何 `@logixjs/form` 专属分支/特判：Form 领域语义（errors 写回、rowId、rules 合并等）由 010 负责，013 只提供与领域无关的控制面与可序列化证据。
 - 不接受/传播 index-path 作为运行时/证据口径：坚持 canonical FieldPath（无索引）；任何 index/row 语义只能通过稳定标识与范围字段表达。
 
 ## Requirements _(mandatory)_
@@ -166,7 +166,7 @@
 
 ### Functional Requirements
 
-- **FR-001**: 系统必须提供 `traitConvergeMode` 的三种模式：`full` / `dirty` / `auto`，并且支持 **Module 级覆盖**（通过 Runtime 配置按 `moduleId` 覆盖；可热切换，下一笔事务生效；无需修改 Module 代码；覆盖优先级高于 Runtime 级默认）；未显式配置时 Runtime 级默认值为 `auto`。同时系统必须支持 **Provider 范围覆盖**（更局部赢）：通过 `@logix/react` 的 `RuntimeProvider.layer`（Layer/Tag）覆盖 converge 相关配置，仅对子树生效。
+- **FR-001**: 系统必须提供 `traitConvergeMode` 的三种模式：`full` / `dirty` / `auto`，并且支持 **Module 级覆盖**（通过 Runtime 配置按 `moduleId` 覆盖；可热切换，下一笔事务生效；无需修改 Module 代码；覆盖优先级高于 Runtime 级默认）；未显式配置时 Runtime 级默认值为 `auto`。同时系统必须支持 **Provider 范围覆盖**（更局部赢）：通过 `@logixjs/react` 的 `RuntimeProvider.layer`（Layer/Tag）覆盖 converge 相关配置，仅对子树生效。
 - **FR-002**: `auto` 模式必须保证一个“full 下界”：在任何事务中，`auto` 的实际执行路径不得比 `full` 更慢超过可配置噪声预算（默认 5%），且当无法做出可靠判断时必须直接选择 `full`；每个 module instance 的第 1 笔事务视为冷启动，必须 `full` 并标注 “cold-start fallback”。
 - **FR-003**: `auto` 模式必须在稀疏写入场景自动选择增量路径，并且其执行 steps 数应与“受影响依赖范围”近似线性，而不是与“总 steps 数”线性。
 - **FR-004**: 系统必须提供模块级回退手段：业务可通过 FR-001 的 Module 级覆盖入口将某模块切回 `full`（或固定 `dirty`），且切换后下一笔事务立刻生效，不得污染其他模块或其他实例的策略状态。

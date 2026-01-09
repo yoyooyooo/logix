@@ -1,4 +1,4 @@
-# 7) `@logix/query`（Feature Kit：Query module + ResourceSnapshot 写回 state）
+# 7) `@logixjs/query`（Feature Kit：Query module + ResourceSnapshot 写回 state）
 
 ## 你在什么情况下会用它
 

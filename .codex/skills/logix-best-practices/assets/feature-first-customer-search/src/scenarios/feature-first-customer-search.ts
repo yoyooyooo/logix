@@ -11,7 +11,7 @@
  */
 
 import { Effect, Stream } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { CustomerDetailDef, CustomerSearchDef } from '../features/customer-search/index.js'
 import { RuntimeLayer } from '../runtime/layer.js'
 import { RootImpl } from '../runtime/root.impl.js'

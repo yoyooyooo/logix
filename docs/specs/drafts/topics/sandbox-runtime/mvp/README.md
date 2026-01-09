@@ -98,7 +98,7 @@ priority: now
 ### 4.1 技术切片
 
 - 切片 A：编译与 Kernel 预注入  
-  - 在 Worker 中完成：「esbuild-wasm + Kernel（effect + @logix/core）」组合；  
+  - 在 Worker 中完成：「esbuild-wasm + Kernel（effect + @logixjs/core）」组合；  
   - 支持将 RegionSelector 场景代码打成可执行 bundle；  
   - Kernel 通过 `kernelUrl` 以 HTTP(S) 形式注入，测试环境可用 MSW 拦截该 URL 并返回本地 Kernel bundle。
 - 切片 B：Sandbox RuntimeEnv  
@@ -114,17 +114,17 @@ priority: now
     - 一个固定的 RegionSelector 场景；  
     - 一个「Run」按钮；  
     - 三个简单面板：日志列表、Trace 列表、状态 JSON 视图（展示 `RunResult`）；  
-  - 前端 UI 与 Runtime 集成层优先使用 `@logix/react`（`RuntimeProvider` / `useModule` 等），在其之上通过 `@logix/sandbox` 适配 Worker 运行时，避免发明新的前端集成模式；  
+  - 前端 UI 与 Runtime 集成层优先使用 `@logixjs/react`（`RuntimeProvider` / `useModule` 等），在其之上通过 `@logixjs/sandbox` 适配 Worker 运行时，避免发明新的前端集成模式；  
   - 后续阶段会在此基础上叠加 Spec/IntentRule 视图与更丰富的 UI/UX，用于对齐 PM/Intent/代码/运行行为。
 
-> 代码落点：`packages/logix-sandbox` 作为 Effect-first 的沙箱包（内置 Worker/协议/编译器），业务侧示例放在 `examples/logix-sandbox-mvp`，通过 `@logix/sandbox` 提供的 Effect/Layer API 接入。
+> 代码落点：`packages/logix-sandbox` 作为 Effect-first 的沙箱包（内置 Worker/协议/编译器），业务侧示例放在 `examples/logix-sandbox-mvp`，通过 `@logixjs/sandbox` 提供的 Effect/Layer API 接入。
 
 > Mock 注入原则：对于 RegionSelector 场景，推荐通过 Effect Layer 注入 Mock 实现（例如 `RegionApi` Service + 基于 `MockManifest` 构造的 `RegionApiMockLayer`），而不是直接在构建阶段重写业务 `import`。esbuild 插件更多用于重写通用工具库 / UI 库到 Spy/Mock，实现业务代码的「无侵入沙箱化」。
 
 ### 4.2 实施步骤（建议顺序）
 
 1. 抽取或新写一版最小 RegionSelector 场景（`ModuleImpl + Logic`），放入 examples 或专用目录。  
-2. 按 [15-protocol-and-schema.md](../15-protocol-and-schema.md) 落地 `@logix/sandbox` 的协议类型与 Worker 端骨架。  
+2. 按 [15-protocol-and-schema.md](../15-protocol-and-schema.md) 落地 `@logixjs/sandbox` 的协议类型与 Worker 端骨架。  
 3. 在 Worker 端实现 Kernel 预注入 + 编译链路，只针对 RegionSelector 场景做一条 happy path。  
 4. 组合 Sandbox RuntimeEnv：ConsoleProxy + HttpProxy（仅支持地区接口）+ Tracer + DebugSinkLayer。  
 5. Host 侧实现一个最小页面/组件：固定绑定 RegionSelector 场景，提供 Run 按钮与三块输出视图。  
@@ -185,7 +185,7 @@ priority: now
     - `意图`：该 Step 期望出现的 UI_INTENT 形状、关键状态字段/HTTP 断言（只读或可编辑）；  
     - `规则`：关联 IntentRule / R-S-T（给开发/平台看）。
 - 下方 Runner（当前 MVP 已有）：  
-  - 使用 `@logix/sandbox` 在 Worker 中运行当前 Scenario 的 Logix/Effect 程序；  
+  - 使用 `@logixjs/sandbox` 在 Worker 中运行当前 Scenario 的 Logix/Effect 程序；  
   - 展示 Logs / Trace / HTTP / stateSnapshot；  
   - 基于 UI_INTENT 的 `meta.storyId/stepId` 计算 Step 的 covered/pending，并在 UI 中高亮“本次运行命中了哪些 Step”。
 

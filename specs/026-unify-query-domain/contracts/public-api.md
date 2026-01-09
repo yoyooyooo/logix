@@ -1,18 +1,18 @@
-# Contract: Query 对外入口收口（`@logix/query` × Form 同形）
+# Contract: Query 对外入口收口（`@logixjs/query` × Form 同形）
 
 ## 1) 唯一入口
 
-- 系统 MUST 将 Query 领域能力的对外入口收口为 `@logix/query`。
-- 系统 MUST 移除 `@logix/core/Middleware/Query` 这条对外导出路径；仓库内文档/示例/脚手架不得再推荐或使用该入口。
+- 系统 MUST 将 Query 领域能力的对外入口收口为 `@logixjs/query`。
+- 系统 MUST 移除 `@logixjs/core/Middleware/Query` 这条对外导出路径；仓库内文档/示例/脚手架不得再推荐或使用该入口。
 
-## 2) `@logix/query` 的领域包形状（与 `@logix/form` 同构）
+## 2) `@logixjs/query` 的领域包形状（与 `@logixjs/form` 同构）
 
 > 说明：这里的“同构”只约束 **对外入口与组织方式**（namespace import、module factory、handle.controller 扩展与 building blocks 的组织），不强求 Query 的 authoring DSL 去类比 Form 的 `from/$.rules/derived`（两者的问题域不同）。
 
 ### 推荐使用方式
 
 ```ts
-import * as Query from "@logix/query"
+import * as Query from "@logixjs/query"
 ```
 
 ### MUST 暴露的对外能力（概念级）
@@ -39,6 +39,6 @@ import * as Query from "@logix/query"
 
 ## 3) 禁止事项
 
-- Query 领域能力 MUST NOT 在 `@logix/core` 中保留第二套对外入口或第二套 DI Tag（避免双协议与语义漂移）。
+- Query 领域能力 MUST NOT 在 `@logixjs/core` 中保留第二套对外入口或第二套 DI Tag（避免双协议与语义漂移）。
 - Query 领域能力 MUST NOT 对外同时暴露 `Query.EngineTag` / `Query.middleware` / `Query.layer` 等重复入口（避免“同名但不同协议”与团队写法分裂）；对外唯一入口为 `Query.Engine` + `Query.Engine.layer/middleware`。
 - Query 领域能力 MUST NOT 对业务暴露不可回放的第二套状态事实源（params/ui/result 都必须落在模块 state 上）。

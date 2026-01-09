@@ -23,7 +23,7 @@
 - 在创建 Runtime 时提供默认策略（全局生效）。
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const runtime = Logix.Runtime.make(RootImpl, {
   concurrencyPolicy: {
@@ -41,7 +41,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 - 只对某个 `moduleId` 生效（止血/灰度调参）。
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 // 方案 1：在 runtime_default 里写 overridesByModuleId
 const runtime = Logix.Runtime.make(RootImpl, {
@@ -64,8 +64,8 @@ Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", undefined)
 - 优先级最高，下一笔事务/操作窗口生效。
 
 ```tsx
-import * as Logix from "@logix/core"
-import { RuntimeProvider } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
 
 const overridesLayer = Logix.Runtime.concurrencyPolicyOverridesLayer({
   concurrencyLimit: 8,

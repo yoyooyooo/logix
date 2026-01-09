@@ -18,7 +18,7 @@ superseded_by: ../topics/sandbox-runtime/05-architecture-and-boundary.md
 
 - `docs/specs/sdd-platform/impl/code-runner-and-sandbox.md`（平台层实现规划）；
 - `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与相关 impl 文档（前端 Runtime 契约与 Platform 集成）；
-- 未来的 `@logix/sandbox` 子包实现。
+- 未来的 `@logixjs/sandbox` 子包实现。
 
 核心问题是：在 intent-flow / Logix 平台内，如何为「Intent → Logix/Effect 代码 → 运行与验证」提供一套 **可回放、可观测、前端优先** 的沙箱运行时，并清晰划定与后端运行时、DevTools、Runtime Readiness 等其他规范的边界。
 
@@ -61,7 +61,7 @@ superseded_by: ../topics/sandbox-runtime/05-architecture-and-boundary.md
 在浏览器中无法使用 `node_modules` 的前提下，沙箱需要一套兼顾体验与安全性的依赖策略。本草案将原始设想整理为四层：
 
 1. Kernel 层（Effect + Logix 核心）：
-   - 包含 `effect`、`@logix/core` 等核心运行时代码；
+   - 包含 `effect`、`@logixjs/core` 等核心运行时代码；
    - 在平台构建时预打包为一个或多个 ESM Bundle，并以 Blob URL 形式注入 Worker；
    - Worker 侧通过 `esbuild` 插件重写对这些模块的 import，到对应的 Blob URL 上，从而避免在沙箱中频繁拉取核心依赖。
 2. Utility 层（通用工具库，如 `lodash`、`zod`、`date-fns` 等）：
@@ -138,9 +138,9 @@ superseded_by: ../topics/sandbox-runtime/05-architecture-and-boundary.md
    - 该机制鼓励开发者与 AI 关注「组件的状态与交互意图」（如打开/关闭、确认/取消、触发某个 Action），减少对具体 UI 库实现的绑定；
    - 有利于未来将 UI 意图统一抽象为 Behavior & Flow Intent 的一种来源，为 Intent → Logix 编译提供更清晰的输入。
 
-## 7. `@logix/sandbox` 子包草案
+## 7. `@logixjs/sandbox` 子包草案
 
-在工程实现上，本草案建议将 Sandbox 能力收敛为独立子包 `@logix/sandbox`，以便：
+在工程实现上，本草案建议将 Sandbox 能力收敛为独立子包 `@logixjs/sandbox`，以便：
 
 - 在 Studio/DevTools 中复用统一 SDK；
 - 便于在不同宿主（Web、Electron、CLI）中复用核心逻辑；
@@ -193,7 +193,7 @@ superseded_by: ../topics/sandbox-runtime/05-architecture-and-boundary.md
 ## 9. 与现有规范的关系与下一步
 
 1. 与 v3 平台规范：
-   - 本草案可视为 `platform/impl/code-runner-and-sandbox.md` 的「细化与补充」，特别是关于依赖治理、Universal Mock 与 Semantic UI Mocking、以及 @logix/sandbox 包结构的部分；
+   - 本草案可视为 `platform/impl/code-runner-and-sandbox.md` 的「细化与补充」，特别是关于依赖治理、Universal Mock 与 Semantic UI Mocking、以及 @logixjs/sandbox 包结构的部分；
    - 后续应在该规范中统一「前端优先」与「后端逃生舱」的术语与例子，避免多处定义分裂。
 2. 与 runtime-logix：
    - Sandbox 本身不改变 Logix Runtime 的核心契约，而是提供一个专门面向 DevTools/Studio 的运行环境；
@@ -206,6 +206,6 @@ superseded_by: ../topics/sandbox-runtime/05-architecture-and-boundary.md
 4. 待决问题（示例）：
    - Trace / UIIntent 的结构化 Schema 应由谁定义、沉淀在哪个 SSoT 文档中；
    - Deno 逃生舱与 Effect Flow Runtime 的职责边界，以及在平台 UI 中如何暴露「在 Sandbox 中只 Mock vs 在后端真实执行」的切换；
-   - @logix/sandbox 的公开 API 如何与 `@logix/react`、CLI/DevTools 插件形成一致的使用体验。
+   - @logixjs/sandbox 的公开 API 如何与 `@logixjs/react`、CLI/DevTools 插件形成一致的使用体验。
 
 本草案暂不回答上述问题，仅将其显式列出，作为后续推进 Sandbox 相关工作时的对齐清单。

@@ -28,10 +28,10 @@ related:
 
 范围仅包含当前仓库的“可运行事实源”：
 
-- `@logix/core`：`StateTrait`、事务（StateTransaction）、converge/validate/source、TraitLifecycle 桥接；
-- `@logix/form`：表单 DSL、动态列表样本、默认 wiring（validate / source refresh）。
+- `@logixjs/core`：`StateTrait`、事务（StateTransaction）、converge/validate/source、TraitLifecycle 桥接；
+- `@logixjs/form`：表单 DSL、动态列表样本、默认 wiring（validate / source refresh）。
 
-不在这里继续发明新的 Helper（例如 `@logix/reactive/DynamicList`）；若需要 sugar，只能以“可降解为 Trait + Logic”为前提。
+不在这里继续发明新的 Helper（例如 `@logixjs/reactive/DynamicList`）；若需要 sugar，只能以“可降解为 Trait + Logic”为前提。
 
 ## 关键约束（现状裁决）
 
@@ -83,7 +83,7 @@ related:
 - `computed` 的 deps-as-args（已落地，且有测试覆盖）。
 - `source.key` 的 deps-as-args（已落地：DSL 为 `key(...depsValues)`，内部 lower 为 `key(state)`；并补齐 callsite 迁移与类型回归断言）。
 - 事务窗口内 converge + scoped validate（已落地，且有诊断事件与降级策略）。
-- 动态列表（Form Array）的 list-scope check、RowId 归属与数组结构变更的默认 wiring（已在 `@logix/form` 中落地）。
+- 动态列表（Form Array）的 list-scope check、RowId 归属与数组结构变更的默认 wiring（已在 `@logixjs/form` 中落地）。
 - `Trait.source` 的并发/回放/keyHash gate/idle 收敛（已落地）。
 
 ## 仍值得做（保留项）

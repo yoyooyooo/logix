@@ -23,7 +23,7 @@
 
 ### Session 2025-12-28
 
-- Q: 这里的 ReadQuery/SelectorSpec 是否等同于领域层 `@logix/query`？ → A: 不等同。ReadQuery 只描述“读状态依赖与投影”，服务于渲染/派生/订阅与可解释性；领域 Query 仍负责“服务调用/缓存/请求”等。
+- Q: 这里的 ReadQuery/SelectorSpec 是否等同于领域层 `@logixjs/query`？ → A: 不等同。ReadQuery 只描述“读状态依赖与投影”，服务于渲染/派生/订阅与可解释性；领域 Query 仍负责“服务调用/缓存/请求”等。
 - Q: 不安装任何编译插件时是否仍可用？ → A: 必须可用。默认走 Runtime JIT；无法静态化时回退到 dynamic，但回退必须可观测/可审计，并在 strict gate 下可变为失败。
 - Q: 当 `StrictGate.mode='error'` 时，如果没有配置 `requireStatic`，strict gate 默认如何判定？ → A: 默认全局生效：任一 selector 一旦进入 `dynamic` lane 即 FAIL；`requireStatic` 仅用于缩小 gate 覆盖范围（否则视为全覆盖）。
 - Q: JIT 静态化的“可解析子集”是否需要同时支持 `=>` 与 `function (...) { return ... }` 两种等价形态？ → A: 需要。JIT 子集至少支持这两种形态（仍严格限定为安全的纯取路径/对象字面量投影子集），避免静态覆盖率被编译/转译形态放大影响。
@@ -95,7 +95,7 @@
 
 ### Functional Requirements
 
-- **FR-001**: 系统 MUST 定义对外可用的 ReadQuery/SelectorSpec 协议（`selectorId/deps/select/equals/debugKey`），并允许 `@logix/react` 与 `FlowRuntime.fromState` 使用该协议订阅状态变化。
+- **FR-001**: 系统 MUST 定义对外可用的 ReadQuery/SelectorSpec 协议（`selectorId/deps/select/equals/debugKey`），并允许 `@logixjs/react` 与 `FlowRuntime.fromState` 使用该协议订阅状态变化。
 - **FR-002**: 系统 MUST 支持“函数 selector 作为语法糖”：允许继续传函数 selector；若存在 AOT 插件产物/显式 ReadQuery，则优先进入 static；否则走 JIT 静态化；JIT 的最小子集限定为 “纯取路径（`s.a.b`）/对象字面量投影（`{ k: s.a, ... }`）”，并至少支持 `=>` 与 `function (...) { return ... }` 两种等价形态；超出子集必须回退 dynamic 且证据化 `fallbackReason`（避免隐式退化）。
 - **FR-003**: 系统 MUST 为 struct selector 提供默认 struct memo：对对象字面量投影使用 `equalsKind=shallowStruct`（字段按 `Object.is` 比较），字段未变则复用对象引用；以消除“对象字面量导致永远变化”的常见陷阱。
 - **FR-004**: 系统 MUST 引入 SelectorGraph（或等价机制）：以 commit meta（txnSeq/dirtyRoots/dirtyPaths）驱动精准重算与通知；不得以“每次 commit 重算所有 selector”作为长期默认策略。

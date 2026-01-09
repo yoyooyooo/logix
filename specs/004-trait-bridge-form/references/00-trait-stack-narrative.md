@@ -1,6 +1,6 @@
 # References: Trait/StateTrait → Module（Form/Query）→ UI（React）链路叙事（自底向上）
 
-> 目标：把「Trait（内核）→（可选）StateTrait（支点）→ 领域包（Form/Query/…）→ UI 适配层」这条链路，从底层到上层一层层讲清楚，并明确：`StateTrait.node / StateTrait.list` 属于 **StateTrait 基础体系**（`@logix/core`），不是 Form/Query 的私货。
+> 目标：把「Trait（内核）→（可选）StateTrait（支点）→ 领域包（Form/Query/…）→ UI 适配层」这条链路，从底层到上层一层层讲清楚，并明确：`StateTrait.node / StateTrait.list` 属于 **StateTrait 基础体系**（`@logixjs/core`），不是 Form/Query 的私货。
 
 ---
 
@@ -9,7 +9,7 @@
 - **你写的业务代码**最终都会变成：`Logix.Module`（state+actions+reducers+logics+traits）在 Runtime 里运行；  
 - **Trait/StateTrait**负责把“字段级声明（computed/source/link/check）”编译为可安装的 Program/Plan，并在 Runtime Scope 内安装 watcher/刷新入口；  
 - **领域包（Form/Query）**把“行业语义（表单交互、搜索触发、竞态策略…）”收敛成 Blueprint + Controller，业务侧默认不直接手写 wiring；  
-- **UI 适配层（@logix/react）**只负责投影订阅 + DOM/事件适配，不维护第二套状态。
+- **UI 适配层（@logixjs/react）**只负责投影订阅 + DOM/事件适配，不维护第二套状态。
 
 DX 原则（按优先级接触 API）：
 
@@ -19,13 +19,13 @@ DX 原则（按优先级接触 API）：
 
 ---
 
-## 1. Layer 0：Module/Runtime（`@logix/core` 的分形基础）
+## 1. Layer 0：Module/Runtime（`@logixjs/core` 的分形基础）
 
 ### 1.1 你最终要交付的“运行单元”是什么？
 
 - `ModuleDef`（模块定义对象）：`Logix.Module.make(...)` 的返回值（带 `.tag: ModuleTag`）  
 - `ModuleImpl`（模块装配蓝图/可 imports）：`module.impl`（由 `moduleDef.implement(...)` 或领域工厂产出 Module 后获得）  
-- `ModuleRuntime`（模块运行时实例）：由 Runtime/AppRuntime 或 `@logix/react` hooks 在 Scope 内构造并持有
+- `ModuleRuntime`（模块运行时实例）：由 Runtime/AppRuntime 或 `@logixjs/react` hooks 在 Scope 内构造并持有
 
 这三者是分形组合的核心：**领域包可以创建自己的 Module（定义对象），然后像普通模块一样被 import/live/useLocalModule。**
 
@@ -37,7 +37,7 @@ DX 原则（按优先级接触 API）：
 
 ---
 
-## 2. Layer 1：Trait Kernel（`@logix/core` 的“可安装声明”）
+## 2. Layer 1：Trait Kernel（`@logixjs/core` 的“可安装声明”）
 
 ### 2.1 Trait 的三段式生命周期（蓝图 / setup / run）
 
@@ -49,7 +49,7 @@ DX 原则（按优先级接触 API）：
 
 ---
 
-## 3. Layer 2：StateTrait 基础体系（`@logix/core`）
+## 3. Layer 2：StateTrait 基础体系（`@logixjs/core`）
 
 ### 3.1 StateTrait 的核心 IR：只保留三种 kind
 
@@ -71,7 +71,7 @@ DX 原则（按优先级接触 API）：
 - `StateTrait.node(...)`：统一承载同一作用域上的 `computed/source/link/check` 声明形状（便于生成、对比、Devtools 还原）
 - `StateTrait.list({ item, list })`：把“数组字段”一等公民化为 item/list 两个 scope（而不是靠字符串 path 在业务里手写约定）
 
-它们应该归属 `@logix/core/StateTrait`，原因：
+它们应该归属 `@logixjs/core/StateTrait`，原因：
 
 - **跨领域复用**：Form/Query/Permission/Workflow 都会遇到“列表 scope / 局部 scope”这类组织问题
 - **Devtools 解释性**：Graph/Plan 需要稳定的 scope 结构来对齐节点/边/步骤
@@ -102,7 +102,7 @@ DX 原则（按优先级接触 API）：
 - 提供 **Blueprint**：把 Module 图纸（含 traits）和默认 logics 一次性组装好
 - 提供 **Controller**：把 ModuleRuntime 投影为业务可用的操作集合（field/array/submit/refresh…）
 
-### 4.1 Form（`@logix/form`）
+### 4.1 Form（`@logixjs/form`）
 
 - Blueprint：`Form.make(...) -> Module`（内部持有 `form.tag: ModuleTag` + `form.impl`）
 - Module 集成：Root 侧引入 `form.impl`（或直接 `Runtime.make(form)` 统一拆壳）
@@ -110,7 +110,7 @@ DX 原则（按优先级接触 API）：
 
 详见：`references/06-form-business-api.md`
 
-### 4.2 Query（`@logix/query`）
+### 4.2 Query（`@logixjs/query`）
 
 同样采用 Blueprint + Controller：
 
@@ -121,7 +121,7 @@ DX 原则（按优先级接触 API）：
 
 ---
 
-## 5. Layer 4：UI 适配层（`@logix/react`）
+## 5. Layer 4：UI 适配层（`@logixjs/react`）
 
 UI 层只做两件事：
 

@@ -25,8 +25,8 @@
 
 ## Phase 3: Migrations（消灭胶水）
 
-- [ ] T020 GATE: Migrate `@logix/query` to rely on kernel auto-trigger; remove `packages/logix-query/src/internal/logics/auto-trigger.ts` usage; update `packages/logix-query/src/Traits.ts` lowering
-- [ ] T021 [P] Migrate `@logix/form` to rely on kernel auto-trigger; remove dependence on `TraitLifecycle.makeSourceWiring`
+- [ ] T020 GATE: Migrate `@logixjs/query` to rely on kernel auto-trigger; remove `packages/logix-query/src/internal/logics/auto-trigger.ts` usage; update `packages/logix-query/src/Traits.ts` lowering
+- [ ] T021 [P] Migrate `@logixjs/form` to rely on kernel auto-trigger; remove dependence on `TraitLifecycle.makeSourceWiring`
 - [ ] T022 [P] Add regression tests in `packages/logix-query/test/*` covering debounce + cache-peek skip-loading under kernel triggering
 
 ## Phase 4: Evidence & Gates

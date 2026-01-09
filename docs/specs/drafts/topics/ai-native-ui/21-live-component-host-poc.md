@@ -11,12 +11,12 @@ related:
 
 # LiveComponent Host: React Adapter 与 AI Native UI 的桥接 PoC
 
-> 核心想法：在现有 `@logix/react` 能力基础上，做一个最小的 `LiveComponent` 宿主 PoC，用来验证 AI Native UI 草案里的运行时接口形状。
+> 核心想法：在现有 `@logixjs/react` 能力基础上，做一个最小的 `LiveComponent` 宿主 PoC，用来验证 AI Native UI 草案里的运行时接口形状。
 
 ## 1. 背景
 
 - `ai-native-ui/20-live-component-runtime.md` 设计了一套 LiveComponent Host：根据 Intent 动态构造 Draft + 编译 Skeleton TSX，再注入 Runtime；
-- `@logix/react` 已经提供 `RuntimeProvider`、`useLocalModule`、`useSelector`、`useDispatch` 等能力，可以承载一个精简版 Host。
+- `@logixjs/react` 已经提供 `RuntimeProvider`、`useLocalModule`、`useSelector`、`useDispatch` 等能力，可以承载一个精简版 Host。
 
 ## 2. PoC 思路
 

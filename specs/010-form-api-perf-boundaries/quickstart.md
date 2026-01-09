@@ -3,7 +3,7 @@
 本 quickstart 用 `case11-dynamic-list-cascading-exclusion` 的“仓库跨行互斥（uniqueWarehouse）”演示如何用 list-scope Rule 一次扫描产出一致错误，并删除 `listValidateOnChange` 开关。
 
 > 注意：本文档同时记录「终态 DX 目标」与「当前 worktree 已实现基线」。
-> - 当前 `@logix/form` 的主入口仍是 `Form.make({ values, initialValues, validateOn, reValidateOn, debounceMs, traits })`（直接声明 traits/StateTraitSpec）。
+> - 当前 `@logixjs/form` 的主入口仍是 `Form.make({ values, initialValues, validateOn, reValidateOn, debounceMs, traits })`（直接声明 traits/StateTraitSpec）。
 > - 早期草案提过 `rules/fieldArrays` 作为更高层配置入口；当前实现已把它们收敛为 `traits`（非数组字段 `traits.<path>.check`；数组字段 `traits.<listPath> = { identityHint, item, list }`），不再需要额外 `fieldArrays/Form.fieldArray`。
 
 ## 0) 终态 DX（一眼看完）
@@ -14,7 +14,7 @@
 - **FieldArray 稳定 rowId**：`useFieldArray(form, "userList").fields[i].id` 与 runtime rowId 对齐，增删/重排不漂移；错误与 UI 状态跟随 rowId 而不是 index。
 - **跨行规则是一等公民**：跨行互斥/唯一性通过在 `traits` 的数组字段上声明 list 结构（`identityHint.trackBy` + `item.check/list.check`）来完成；一次扫描、多行写回、所有冲突行都标错；不允许 UI 手写全表扫描。
 - **触发语义完全自动**：删除 `listValidateOnChange`；触发范围只由 deps/IR 推导（对齐 009 的 patch/dirty-set），结构变更（insert/remove/reorder）也会触发跨行规则刷新。
-- **联动/派生也是一等公民**：级联清理、字段联动、可选项派生等必须以 `computed/link` 这类“事务内派生收敛”表达（产出 patch/dirty-set，可回放可解释），禁止在 UI 里串多个 `setValue` 手写联动；并且业务侧应只用 `@logix/form` 的领域包装来声明这些能力（保持可降解，不直接写 `@logix/core` 的 StateTrait）。
+- **联动/派生也是一等公民**：级联清理、字段联动、可选项派生等必须以 `computed/link` 这类“事务内派生收敛”表达（产出 patch/dirty-set，可回放可解释），禁止在 UI 里串多个 `setValue` 手写联动；并且业务侧应只用 `@logixjs/form` 的领域包装来声明这些能力（保持可降解，不直接写 `@logixjs/core` 的 StateTrait）。
 - **提交/校验/重置有默认语义**：提供 `validate/reset/handleSubmit`（事务内无 IO；IO 必须通过 Task/事务外）；Schema/Rules 的错误写回与清理语义统一。
 - **可解释且可回放**：当 `Diagnostics Level=light|full` 时，每次校验输出 Slim 可序列化 `trait:check` 事件（复用 009 DynamicTrace；`off` 不产出），支持 Devtools/平台解释“哪个规则、因何触发、影响了哪些行”。
 
@@ -37,7 +37,7 @@
 示意（终态推荐：业务侧只写 `Form.make` 的领域配置；`Form.make` 内部会把它编译为 StateTraitSpec/IR）：
 
 ```ts
-import * as Form from "@logix/form"
+import * as Form from "@logixjs/form"
 import { Schema } from 'effect'
 
 const ValuesSchema = Schema.Struct({
@@ -357,7 +357,7 @@ const listRules = Form.Rule.make<ReadonlyArray<Row>>({
 - 可诊断：能输出“写回由谁触发/写回了什么”的 Slim 证据；
 - 可优化：未来可结合 patch/dirty-set 做增量派生，而不是每次 UI render 扫全表。
 
-终态目标：业务侧只 import `@logix/form`，用 Form 领域层的包装声明 `computed/link`，而不是直接写 `@logix/core` 的 `StateTrait`。
+终态目标：业务侧只 import `@logixjs/form`，用 Form 领域层的包装声明 `computed/link`，而不是直接写 `@logixjs/core` 的 `StateTrait`。
 
 **示例：派生一份 UI 用的“已选仓库集合”，避免 UI 自己扫大树**
 
@@ -456,7 +456,7 @@ listPath 为 `userList` 时：
 目标：在 UI 侧只写 valuePath（`userList.0.warehouseId`），不关心 `$list/rows[]` 的内部错误树形态；增删/重排后错误不漂移。
 
 ```tsx
-import { useField, useFieldArray, useForm, useFormState } from '@logix/form/react'
+import { useField, useFieldArray, useForm, useFormState } from '@logixjs/form/react'
 
 function RowEditor(props: {
   readonly index: number
@@ -590,7 +590,7 @@ export function Demo() {
 当 Form 作为 Host 的 `imports` 子模块装配时，你可以在 Host 的 Logic 中通过 `$.use(DemoForm.module)` 拿到该 Form 的 ModuleHandle，并在组件外触发校验（对齐“逻辑独立于组件”的目标）。
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 import { DemoForm } from './DemoForm'
 

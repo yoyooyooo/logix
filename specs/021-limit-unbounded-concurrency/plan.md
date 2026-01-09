@@ -16,7 +16,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2 + Node.js 22.21.1  
-**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logix/*`（核心落点 `@logix/core`）  
+**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logixjs/*`（核心落点 `@logixjs/core`）  
 **Storage**: N/A（本特性不引入持久化存储）  
 **Testing**: Vitest 4 (`vitest run`) + `@effect/vitest`（Effect-heavy 场景）  
 **Target Platform**: Node.js（测试/脚本） + 现代浏览器（React/Devtools 场景）  
@@ -92,4 +92,4 @@ packages/logix-core/test/
 └── (新增) ConcurrencyPolicy.*.test.ts
 ```
 
-**Structure Decision**: Runtime hot-path 改动集中在 `@logix/core`；对外说明与最佳实践落在 `apps/docs`；测试以 core 单测为主，性能证据复用 014 跑道。
+**Structure Decision**: Runtime hot-path 改动集中在 `@logixjs/core`；对外说明与最佳实践落在 `apps/docs`；测试以 core 单测为主，性能证据复用 014 跑道。

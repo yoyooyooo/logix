@@ -22,7 +22,7 @@
 - **概念入口单文件**：`src/<Concept>.ts(x)` 承载对外 API；实现细节在 internal。
 - **实现聚拢**：建议按概念下沉到 `src/internal/<concept>/**`（或同等分区），避免实现散落在包内各处。
 - **禁止跨概念 internal 互相 import**：概念之间只能通过各自的 Public Submodule API/Tag/Layer 交互（否则剥离时会撕裂）。
-- **subpath 视为 proto-package**：例如 `@logix/form/react`、`@logix/sandbox/vite` 必须有独立契约与边界；其实现也应保持自洽（便于未来搬到独立包）。
+- **subpath 视为 proto-package**：例如 `@logixjs/form/react`、`@logixjs/sandbox/vite` 必须有独立契约与边界；其实现也应保持自洽（便于未来搬到独立包）。
 
 这些约束不要求一次到位，但应通过 verify gate 持续逼近（否则“未来可剥离”会沦为空话）。
 
@@ -48,7 +48,7 @@
 
 ## 5) 常见候选形态（示例，不是裁决）
 
-- `@logix/form/react`：如果 React 生态能力显著膨胀，可考虑独立为 `@logix/form-react`（或等价命名）以隔离 React 依赖与发布节奏。
-- `@logix/sandbox/vite`：若 Vite 插件/静态资源管线持续演进，可考虑独立为 `@logix/sandbox-vite`。
-- `@logix/core/<SomeConcept>`：当某概念对外契约稳定、但实现迭代频繁且冲突面大时，可考虑提升为独立包（例如 observability/reflection 等方向）。
+- `@logixjs/form/react`：如果 React 生态能力显著膨胀，可考虑独立为 `@logixjs/form-react`（或等价命名）以隔离 React 依赖与发布节奏。
+- `@logixjs/sandbox/vite`：若 Vite 插件/静态资源管线持续演进，可考虑独立为 `@logixjs/sandbox-vite`。
+- `@logixjs/core/<SomeConcept>`：当某概念对外契约稳定、但实现迭代频繁且冲突面大时，可考虑提升为独立包（例如 observability/reflection 等方向）。
 

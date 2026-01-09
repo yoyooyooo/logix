@@ -38,8 +38,8 @@
 ## Type Bundle 内容范围（初始）
 
 - 必选：
-  - `effect`（包含常用子路径，满足 `@logix/*` 的 d.ts 依赖）
-  - `@logix/core`、`@logix/react`、`@logix/sandbox`、`@logix/form`
+  - `effect`（包含常用子路径，满足 `@logixjs/*` 的 d.ts 依赖）
+  - `@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、`@logixjs/form`
 - 必要依赖（用于让上述包的 d.ts 可被完整解析）：
   - `@standard-schema/spec`
   - `fast-check`

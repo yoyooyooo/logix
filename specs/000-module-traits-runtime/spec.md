@@ -215,7 +215,7 @@ EffectOp Timeline 视图应提供“事件列表 + 详情区域”的布局：�
 - **FR-003**: 系统必须能够基于 Module 图纸中的 `state + traits` 调用 StateTrait 引擎 `build` 生成 StateTraitProgram，Program 应至少包含：原始 State Schema、StateTraitSpec、StateTraitGraph 以及供 Runtime 使用的 StateTraitPlan（执行计划）。对于 `kind = "source"` 的 StateTraitEntry，Program 需保留其 `resourceId` 与 key 规则（`key: (state) => ...`），但不直接嵌入具体 HTTP/DB/RPC 逻辑。
 - **FR-004**: Runtime 必须能够在 ModuleRuntime / Logic 初始化阶段，通过统一的 `StateTrait.install($, program)` 钩子消费 StateTraitProgram，将 computed / source / link 等行为安装到 Bound API 上，而不是在多个路径中重复实现这些逻辑。
 - **FR-005**: Devtools / Studio / 平台必须能够通过约定接口获取某模块的 StateTraitProgram 与 StateTraitGraph，用于可视化、诊断与版本 diff；后续引入的其他 Trait 家族（例如 ActionTrait / FlowTrait / ModuleTrait）应尽量复用同样的“Spec → Program → mount”生命周期与 Graph 思路。
-- **FR-006**: 在对外 API 层面，应逐步淡化历史上规划的 `@logix/data` 独立包定位，将其中已有的字段/能力/图结构 IR 收敛进 `@logix/core` 的 StateTrait 内核（internal state-trait 模块），对最终用户只暴露 Trait / StateTrait 概念与 `state / actions / traits` 图纸形态，不再引入新的 `@logix/data` 发布或对外依赖；既有与 `@logix/data` 相关的规范（如 `specs/000-implement-logix-data`、`specs/002-logix-data-core-dsl`）统一视为 PoC / 历史方案，仅供参考，本特性（`specs/000-module-traits-runtime`）为新的主线入口。
+- **FR-006**: 在对外 API 层面，应逐步淡化历史上规划的 `@logixjs/data` 独立包定位，将其中已有的字段/能力/图结构 IR 收敛进 `@logixjs/core` 的 StateTrait 内核（internal state-trait 模块），对最终用户只暴露 Trait / StateTrait 概念与 `state / actions / traits` 图纸形态，不再引入新的 `@logixjs/data` 发布或对外依赖；既有与 `@logixjs/data` 相关的规范（如 `specs/000-implement-logix-data`、`specs/002-logix-data-core-dsl`）统一视为 PoC / 历史方案，仅供参考，本特性（`specs/000-module-traits-runtime`）为新的主线入口。
 - **FR-007**: 本特性的设计必须与 Runtime Middleware & EffectOp 蓝图保持兼容：StateTrait.install 的实现应预留通过 EffectOp/Middleware 总线执行 Plan 的路径，后续可将 StateTraitPlan 中与运行策略相关的部分降解为 Middleware 配置，而不改 Module 图纸与 StateTraitSpec。
 - **FR-008**: 系统必须在 Runtime 中提供一个统一的 EffectOp/Middleware 中间件总线，用于对 Action / Flow / State / Lifecycle / Service 等边界挂载 Observer / Runner / Guard 能力，并提供配置模型（例如 RuntimeConfig / ModuleMeta），使这些中间件可以按环境和模块粒度进行启用/关闭与组合，而不侵入业务逻辑；EffectOp 同时作为这些边界上所有运行时行为（Action 派发、状态更新、外部服务调用、生命周期事件等）的唯一事件事实源。
 - **FR-009**: Debug / Observability 能力（包括 DebugSink、日志钩子、状态快照等）必须视 EffectOp 为唯一运行时事件事实源，通过基于 EffectOp 的 Observer 中间件接入，并以 StateTraitProgram / StateTraitGraph 为结构事实源，用于绘制结构拓扑与解释事件时间线；旧有零散 Debug 接口必须在实现层被封装为基于 EffectOp 的适配层或直接移除，对外不再作为扩展点，本特性之后不允许引入绕过 EffectOp 总线的直接 Debug 通道。
@@ -232,7 +232,7 @@ EffectOp Timeline 视图应提供“事件列表 + 详情区域”的布局：�
   - 默认模式为 `manual`：除非业务/领域 DSL 显式调用 refresh，否则 Runtime 不得隐式执行 source‑refresh；  
   - Kernel DSL **允许**在 source 的 meta 中通过 `mode/trigger` 配置显式开启自动模式（如 `onMount` / `onKeyChange` / `debounceMs` 等）。自动模式的实现必须复用同一 refresh 入口，并在事务模型下产生可观测的 EffectOp 事件；  
   - 若未显式启用自动模式，则保持原有“只显式触发”的语义，以避免资源风暴与隐藏副作用。
-- **FR-021**: 在与 React 等 UI 框架集成时，本特性必须对 Trait/Runtime 层的多次状态更新做合并与去重：在典型开发与生产环境中，每次用户输入（例如一次受控输入的 change 事件）允许触发的组件实际 render 次数上限为 2 次（不含 React StrictMode 的额外检查）；StateTrait.install 及其在 `@logix/react` 中的适配层需要通过批处理、事务或差分订阅等方式，将同一“逻辑输入”产生的多次内部 update 事件压缩为有限次数的 UI 层更新，避免 Devtools 中大量事件导致实际 UI 渲染频率失控。
+- **FR-021**: 在与 React 等 UI 框架集成时，本特性必须对 Trait/Runtime 层的多次状态更新做合并与去重：在典型开发与生产环境中，每次用户输入（例如一次受控输入的 change 事件）允许触发的组件实际 render 次数上限为 2 次（不含 React StrictMode 的额外检查）；StateTrait.install 及其在 `@logixjs/react` 中的适配层需要通过批处理、事务或差分订阅等方式，将同一“逻辑输入”产生的多次内部 update 事件压缩为有限次数的 UI 层更新，避免 Devtools 中大量事件导致实际 UI 渲染频率失控。
 
 - **FR-020**: Devtools 面板中的 EffectOp Timeline 视图在交互上必须满足：默认状态下不选中任何事件，当 Timeline 中没有选中事件时，时间线右侧或相邻的详情区域应跟随并展示最近一条 EffectOp 事件的信息；当用户在 Timeline 中点击某个事件时，该事件进入“选中”状态，详情区域展示其完整详情；再次点击同一事件应取消选中并恢复到“跟随最新事件”的默认展示模式。
 

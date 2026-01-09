@@ -2,7 +2,7 @@
 
 > 只放“文件/符号/一句话结论”，避免长文。
 
-## Core（@logix/core）
+## Core（@logixjs/core）
 
 - `packages/logix-core/src/internal/runtime/core/RuntimeStore.ts`：runtime 级单一快照源（tickSeq + topicVersion/priority + topic subscribe）。
 - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`：microtask tick flush + 预算/软降级 + `trace:tick`/`warn:priority-inversion`。
@@ -24,7 +24,7 @@
 - `packages/logix-core/test/internal/runtime/ModuleAsSource.tick.test.ts`：Module-as-Source 跨模块同 tick 稳定化语义（无 tearing）。
 - `packages/logix-core/test/internal/runtime/ModuleAsSource.recognizability.test.ts`：Module-as-Source 可识别门禁（moduleId/selectorId/readsDigest）。
 
-## React（@logix/react）
+## React（@logixjs/react）
 
 - `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`：runtime 级 topic facade（按 `(runtime, topicKey)` 缓存；listeners=0 detach+delete；保留 low-priority throttling）。
 - `packages/logix-react/src/internal/hooks/useSelector.ts`：选择 module-topic vs selector-topic（static lane + readsDigest + 无 fallbackReason 才走 selector-topic）。

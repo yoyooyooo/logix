@@ -29,7 +29,7 @@ const appRuntime = Logix.Runtime.make(RootModule, {
 对于页面级或组件级状态，使用 `useLocalModule` 在当前组件下创建并持有 Module：
 
 ```ts
-import { useLocalModule } from '@logix/react';
+import { useLocalModule } from '@logixjs/react';
 
 function UserForm({ userId }: { userId: string }) {
   // factory 需返回 Effect<ModuleRuntime>；deps 控制复用/重建
@@ -105,7 +105,7 @@ const editor = useLocalModule(EditorModule, {
 >   - 在 **Suspense 边界外层** 调用 `useId()`，并通过 props 传给内部组件，作为组件级前缀；
 >   - 再结合业务 ID（如 `userId` / `formId` / layout slot id）和 `deps`，构造出能在重渲染与重试之间保持稳定的 Key。
 >
-> 实现说明（当前 @logix/react 状态）：
+> 实现说明（当前 @logixjs/react 状态）：
 >
 > - 自 L9 重构后，`useModule(Impl, { suspend: true })` 在 **开发/测试环境中若省略 `key` 会立即抛出运行时错误**，提示调用方必须显式提供 `options.key`；
 > - 这一行为旨在防止异步局部 Module 在 StrictMode + Suspense 下因为资源 key 抖动而出现“无限重建资源、永远 pending”的隐蔽问题；

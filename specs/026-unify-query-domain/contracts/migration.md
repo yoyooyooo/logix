@@ -1,4 +1,4 @@
-# Migration: 从历史 Query 入口迁移到 `@logix/query`
+# Migration: 从历史 Query 入口迁移到 `@logixjs/query`
 
 > 本仓库拒绝向后兼容：以迁移说明替代兼容层。本文档覆盖“入口/注入/行为差异”三类典型改动点（对齐 spec SC-002）。
 
@@ -6,16 +6,16 @@
 
 ### Before
 
-- `@logix/core/Middleware/Query`
+- `@logixjs/core/Middleware/Query`
 
 ### After
 
-- `@logix/query`
+- `@logixjs/query`
 
 推荐统一写法（与 Form 同形）：
 
 ```ts
-import * as Query from "@logix/query"
+import * as Query from "@logixjs/query"
 ```
 
 ## 2) 注入迁移（Runtime scope）

@@ -1,7 +1,7 @@
 # Quickstart: Trait→StateTrait（支点）→Form（领域包）——数组/校验/异步/可回放（RHF≥）
 
 > 本文以 **Trait→StateTrait（支点）** 为主线，展示如何在不引入第二套运行时的前提下构建 Form 领域系统：  
-> 规则/错误树/异步约束由 StateTrait（node/list/check/source）承载；Form 领域包（`@logix/form`）只提供语法糖与 helper；Trait 生命周期的桥接能力（install/refs/validate/cleanup）下沉为可复用能力，未来更多 `xxxTrait` 也可复用同一形状。
+> 规则/错误树/异步约束由 StateTrait（node/list/check/source）承载；Form 领域包（`@logixjs/form`）只提供语法糖与 helper；Trait 生命周期的桥接能力（install/refs/validate/cleanup）下沉为可复用能力，未来更多 `xxxTrait` 也可复用同一形状。
 >
 > 备注：`StateTrait` 是本 spec 选定的“第一个支点 Trait”，但不是强制中间层；未来某些领域也可以直接走 **Trait → Form（领域包）** 的链路。
 >
@@ -34,13 +34,13 @@
 > 本节按真实业务开发流程走一遍完整链路：  
 > **创建 FormBlueprint（组件外）→ 在页面/组件内懒启动 ModuleRuntime → React 投影订阅 + 事件派发 → Devtools/回放（可选）**。  
 >
-> 关键点：`StateTrait.node / StateTrait.list` 属于 **StateTrait 基础体系（@logix/core）**；`@logix/form` 只负责把它们装配成“业务默认入口”（Blueprint + Controller），并提供少量领域糖与 helper。
+> 关键点：`StateTrait.node / StateTrait.list` 属于 **StateTrait 基础体系（@logixjs/core）**；`@logixjs/form` 只负责把它们装配成“业务默认入口”（Blueprint + Controller），并提供少量领域糖与 helper。
 
 ### 0.1 创建 FormBlueprint（组件外定义，不会偷跑运行时）
 
 ```ts
-import { StateTrait } from "@logix/core"
-import * as Form from "@logix/form"
+import { StateTrait } from "@logixjs/core"
+import * as Form from "@logixjs/form"
 import { Schema } from "effect"
 
 const ValuesSchema = Schema.Struct({
@@ -63,11 +63,11 @@ export const EmailForm = Form.make("EmailForm", {
 })
 ```
 
-### 0.2 React（局部表单）：推荐用 `@logix/form/react`（薄投影），底层仍是 `@logix/react`
+### 0.2 React（局部表单）：推荐用 `@logixjs/form/react`（薄投影），底层仍是 `@logixjs/react`
 
 ```tsx
 import React from "react"
-import { useForm, useField } from "@logix/form/react"
+import { useForm, useField } from "@logixjs/form/react"
 import { EmailForm } from "./emailForm"
 
 export function EmailFormView() {
@@ -118,8 +118,8 @@ const RootImpl = Root.implement({
 **推荐写法：StateTrait.list（kernel）**
 
 ```ts
-import { StateTrait } from "@logix/core"
-import * as Form from "@logix/form"
+import { StateTrait } from "@logixjs/core"
+import * as Form from "@logixjs/form"
 import { Schema } from "effect"
 
 interface OrderItem {
@@ -138,7 +138,7 @@ interface OrderFormState {
       $item?: string
     } | undefined> & { $list?: string })
   }
-  // 表单交互态（全双工可回放）：由 @logix/form 维护（示意）
+  // 表单交互态（全双工可回放）：由 @logixjs/form 维护（示意）
   ui?: unknown
 }
 
@@ -197,8 +197,8 @@ export const OrderTraits = StateTrait.from(OrderFormStateSchema)({
 在真实项目中，可以用 `Form.Rule.make` 组合常用校验规则，再挂到 kernel 的 `check` 槽位上：
 
 ```ts
-import { StateTrait } from "@logix/core"
-import * as Form from "@logix/form"
+import { StateTrait } from "@logixjs/core"
+import * as Form from "@logixjs/form"
 
 const orderItemCheck = Form.Rule.make<OrderItem>({
   validate: {
@@ -255,7 +255,7 @@ export const OrderTraitsWithRules = StateTrait.from(OrderFormStateSchema)({
 **kernel 写法：meta 用字段级 computed，行内用 list.item.node**
 
 ```ts
-import { StateTrait } from "@logix/core"
+import { StateTrait } from "@logixjs/core"
 import { Schema } from "effect"
 
 interface LanguageItem {
@@ -357,7 +357,7 @@ UI 层只需读取：
 **kernel 写法：list.item.node.source + computed**
 
 ```ts
-import { Resource, StateTrait } from "@logix/core"
+import { Resource, StateTrait } from "@logixjs/core"
 import { Effect, Schema } from "effect"
 
 interface SupplierInfo {
@@ -556,7 +556,7 @@ const FormToDomainOrderItem = Schema.transform(FormOrderItemSchema, DomainOrderI
 
 ```ts
 import { Effect, Schema } from "effect"
-import * as Form from "@logix/form"
+import * as Form from "@logixjs/form"
 
 // 提交时：FormView -> 后端模型
 const submit = (formItem: unknown) =>
@@ -580,7 +580,7 @@ Traits / Rules 只面对 FormView 字段名；字段名映射与深度业务校�
 Form 场景的 Traits 仍然是 Module 图纸 traits 槽位的一部分：
 
 ```ts
-import { Module, StateTrait } from "@logix/core"
+import { Module, StateTrait } from "@logixjs/core"
 import { Schema } from "effect"
 
 const OrderFormStateSchema = Schema.Struct({
@@ -617,8 +617,8 @@ export const OrderModule = Module.make("OrderModule", {
 > 说明：以下代码按本 spec 的规划给出“真实项目会怎么写”的代码形状：**动作（Action）是 UI→Runtime 的唯一入口**，TraitLifecycle 负责把动作桥接为 `state.ui` 与 scoped validate（写回 `state.errors`）。
 
 ```ts
-import { Module, StateTrait, TraitLifecycle } from "@logix/core"
-import * as Form from "@logix/form"
+import { Module, StateTrait, TraitLifecycle } from "@logixjs/core"
+import * as Form from "@logixjs/form"
 import { Schema } from "effect"
 
 interface State {

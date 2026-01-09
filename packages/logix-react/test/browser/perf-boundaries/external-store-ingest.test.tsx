@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
-import matrix from '@logix/perf-evidence/assets/matrix.json'
+import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { getRuntimeModuleExternalStore, getRuntimeReadQueryExternalStore } from '../../../src/internal/store/RuntimeExternalStore.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
 import { getProfileConfig, makePerfKernelLayer, runMatrixSuite, silentDebugLayer, summarizeMs, withNodeEnv } from './harness.js'

@@ -55,7 +55,7 @@
 
 ### Edge Cases
 
-- **多入口子路径**：存在额外入口（例如 `@logix/form/react`、`@logix/sandbox/vite`）时，如何裁决它们是“子模块”还是“独立入口”，以及是否允许继续新增。
+- **多入口子路径**：存在额外入口（例如 `@logixjs/form/react`、`@logixjs/sandbox/vite`）时，如何裁决它们是“子模块”还是“独立入口”，以及是否允许继续新增。
 - **UI 适配层形态差异**：当包需要对外暴露组件/Hooks 等 UI 适配能力时，如何保持“概念子模块化”而不把实现目录误当 public surface。
 - **回归/类型断言文件**：如仅用于编译期回归或内部校验的文件（例如 typecheck/fixtures），如何避免出现在 public surface。
 - **历史通配导出**：当包使用 `./*` 通配导出时，如何在迁移期避免“临时文件变 public”。
@@ -92,12 +92,12 @@
 ### Definitions
 
 - **Public Submodule**：对外稳定概念的入口；命名需与核心概念对齐（PascalCase），并且在清单中有明确的职责边界与推荐 import 形态。
-- **Independent Entry Point（子路径入口）**：例如 `@logix/form/react`、`@logix/sandbox/vite`；它不是“随意拆分的目录”，而是一个需要被当作对外契约管理的稳定概念入口。
+- **Independent Entry Point（子路径入口）**：例如 `@logixjs/form/react`、`@logixjs/sandbox/vite`；它不是“随意拆分的目录”，而是一个需要被当作对外契约管理的稳定概念入口。
 - **Internal Implementation**：为实现服务的文件/目录；可以自由重构，不得被当作 public surface 依赖（默认在 `src/internal/**`）。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 
-- **NFR-001**: 若迁移涉及 Logix Runtime 核心路径（例如 `@logix/core`），系统 MUST 在实现前记录可复现的性能基线，并在实现后证明无可观测回归。
+- **NFR-001**: 若迁移涉及 Logix Runtime 核心路径（例如 `@logixjs/core`），系统 MUST 在实现前记录可复现的性能基线，并在实现后证明无可观测回归。
 - **NFR-002**: 系统 MUST 保持可诊断性：对外概念的裁决应与 Devtools/诊断事件的解释链路一致，且在诊断关闭时保持近零额外开销。
 - **NFR-003**: 系统 MUST 继续使用确定性标识（instanceId/txnSeq/opSeq 等）支撑可回放与可解释链路，不引入随机/时间默认作为标识来源。
 - **NFR-004**: 系统 MUST 保持事务窗口边界：事务内禁止 IO/异步，禁止绕过事务边界的写逃逸口（实现期若触及相关代码，必须同步回归验证）。

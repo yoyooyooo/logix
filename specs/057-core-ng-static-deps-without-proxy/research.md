@@ -23,7 +23,7 @@
 
 ## Decision 4：SelectorGraph 放在 module instance 内核层，并复用 dirtyPaths 作为输入
 
-- Decision：SelectorGraph 属于 module instance 的内部结构，放在 `@logix/core` internal/runtime/core；输入使用现有 `StateTransaction.dirtyPaths`（必要时降级 dirtyAll）。
+- Decision：SelectorGraph 属于 module instance 的内部结构，放在 `@logixjs/core` internal/runtime/core；输入使用现有 `StateTransaction.dirtyPaths`（必要时降级 dirtyAll）。
 - Rationale：复用已有 dirty-set 体系（trait converge 已在用），避免引入第二套“影响域”协议。
 - Alternatives considered：
   - React 侧各算各的 selector：重复计算/重复比较、难以解释“为何重算”。

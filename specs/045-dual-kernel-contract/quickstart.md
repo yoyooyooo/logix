@@ -4,7 +4,7 @@
 
 ## 1) 验证目标（对应 spec.md）
 
-- `@logix/react` 只依赖 `@logix/core`，不需要依赖 `@logix/core-ng`。
+- `@logixjs/react` 只依赖 `@logixjs/core`，不需要依赖 `@logixjs/core-ng`。
 - 业务侧在创建 runtime 时选择“当前内核”或“core-ng”，完成轻量迁移后行为一致。
 - 证据链路仍然走统一最小 IR（Static IR + Dynamic Trace），事件 Slim 且可序列化。
 - 能解释“当前 runtime 生效的内核是什么/为何如此选择”：至少包含 `KernelImplementationRef` 与（或）`RuntimeServicesEvidence`（serviceId → implId 选择证据）。

@@ -16,7 +16,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（workspace）+ Node.js 22.x  
-**Primary Dependencies**: `effect` v3（workspace override 固定到 `3.19.13`）、`@logix/core`、`@logix/sandbox`（以及 Devtools/Workbench 消费方）  
+**Primary Dependencies**: `effect` v3（workspace override 固定到 `3.19.13`）、`@logixjs/core`、`@logixjs/sandbox`（以及 Devtools/Workbench 消费方）  
 **Storage**: N/A（以可序列化 JSON 工件导出/导入，不引入持久化存储）  
 **Testing**: Vitest（Effect-heavy 场景优先用 `@effect/vitest`）  
 **Target Platform**: Node.js（CI/脚本/试跑）+ 现代浏览器（Sandbox Worker / Workbench）  
@@ -90,7 +90,7 @@
 ### Phase 1（Design & Contracts）：固化数据模型与 schema（040 的可验收事实源）
 
 - 在 `specs/040-schemaast-layered-upgrade/contracts/schemas/` 固化：
-  - `schema-registry-pack.schema.json`（registry 导出工件；概念域 `@logix/schema.registry@v1`）
+  - `schema-registry-pack.schema.json`（registry 导出工件；概念域 `@logixjs/schema.registry@v1`）
   - `schema-ref.schema.json`（事件/IR/协议引用 schema 的最小基元）
   - `schema-diff.schema.json`（schema 变更影响摘要的最小形态）
 - 在 `data-model.md` 固化：
@@ -148,7 +148,7 @@ docs/specs/sdd-platform/ssot/
 **Structure Decision**：
 
 - 040 的交付以“可序列化工件 + 版本化 schema + schemaId 锚点”为裁判；具体 UI/Runner 形态属于消费者实现，可替换。
-- 对外 API 的新增优先以 `@logix/core` public submodule 暴露；共享实现下沉到 `src/internal/**`，避免内部实现泄露到 exports。
+- 对外 API 的新增优先以 `@logixjs/core` public submodule 暴露；共享实现下沉到 `src/internal/**`，避免内部实现泄露到 exports。
 
 ## Complexity Tracking
 

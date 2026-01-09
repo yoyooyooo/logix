@@ -10,7 +10,7 @@
 
 **Decision**
 - `Form.make` 的配置顶层新增 `rules`（推荐路径默认只配 `rules + derived`），`traits` 仍保留但明确定位为“底层/高级入口”。  
-- `rules` 的目标不是引入第二套运行时：它必须可完全编译/降解为等价的 `StateTraitSpec`（最终仍由 `@logix/core` 的 state-trait build/validate 执行）。  
+- `rules` 的目标不是引入第二套运行时：它必须可完全编译/降解为等价的 `StateTraitSpec`（最终仍由 `@logixjs/core` 的 state-trait build/validate 执行）。  
 - 推荐引入 schema-scope 的入口 `Form.from(ValuesSchema)`：把 `derived/rules/traits` 的“类型收窄、路径提示、语法糖”统一挂在同一个 `$` 上（对齐 `Logix.StateTrait.from` 的命名习惯）。  
 - `Form.make` 内部仍采用“合并后的 trait spec + validateOn wrapper + install wiring”链路（现有链路在 `packages/logix-form/src/form.ts` 已存在），只是把“规则声明入口”从 `traits.<path>.check` 的深嵌套组织，提升为 `rules` 的独立概念。
 
@@ -77,7 +77,7 @@
 - `install` 的 wiring 处于热路径（高频输入），保持触发策略稳定更利于基线对齐（NFR-001）。
 
 **Alternatives considered**
-1) **不做 wrapper，完全在 validate 引擎里按 metadata 过滤**：需要深入修改 `@logix/core` 的 state-trait validate hot path，风险更高；不符合“先收敛 API、后逐步优化”的增量策略。  
+1) **不做 wrapper，完全在 validate 引擎里按 metadata 过滤**：需要深入修改 `@logixjs/core` 的 state-trait validate hot path，风险更高；不符合“先收敛 API、后逐步优化”的增量策略。  
 2) **让 UI 侧（React）用 useEffect 主动触发 validate**：会把运行时语义散落到 UI，破坏“可回放与可解释”的链路。
 
 ## Decision 5: 错误树契约保持单一；优先级与合并策略必须确定
@@ -121,7 +121,7 @@
 **Decision**
 - 在 `rules.schema` 的 object 节点上提供 `.refine(...) / .superRefine(...)`，表示“对当前对象节点本身挂规则”（输入为该对象；常用于跨字段校验/对象级约束）。  
 - 对象级 refine 的错误写回语义固定为：`errors.<objectPath>.$self`，而不是 `errors.<objectPath>`；避免对象级错误覆盖/抹掉同一对象下的字段级错误树。  
-- 为支持该语义，`@logix/core` 的 check 引擎需要支持 `CheckMeta.writeback.path`（当前 `CheckMeta.writeback` 已存在，但 validate 写回仍硬编码 `errors.${scopeFieldPath}`）；028 将补齐“按 writeback.path 写回”的能力，且不改变对外 public API。
+- 为支持该语义，`@logixjs/core` 的 check 引擎需要支持 `CheckMeta.writeback.path`（当前 `CheckMeta.writeback` 已存在，但 validate 写回仍硬编码 `errors.${scopeFieldPath}`）；028 将补齐“按 writeback.path 写回”的能力，且不改变对外 public API。
 
 **Rationale**
 - “对象级 refine / 跨字段校验”是表单最常见的真实需求之一（例如两次密码一致、区间合法、组合必填）。  
@@ -146,7 +146,7 @@
 
 **Rationale**
 - 028 的 Edge Cases 已明确包含“嵌套列表与跨层依赖”；真实 ToB 业务常见“大 form 套小 form”，深层数组是必然形态，若只支持单层 list 将迫使业务回退到 UI 手写扫描与 setError（破坏可回放/可解释/性能边界）。  
-- Spec 010 已预留 `ValidateTarget.listIndexPath` 与 `TraitLifecycle.Ref.fromValuePath(...)` 的多层 index 解析能力，但 `@logix/core` 当前的 state-trait validate 尚未消费 listIndexPath（且 rowIdStore / list runtime 仅支持单层）；028 直接把这条链路补齐即可实现“递归 list scope”而不引入第二套运行时。  
+- Spec 010 已预留 `ValidateTarget.listIndexPath` 与 `TraitLifecycle.Ref.fromValuePath(...)` 的多层 index 解析能力，但 `@logixjs/core` 当前的 state-trait validate 尚未消费 listIndexPath（且 rowIdStore / list runtime 仅支持单层）；028 直接把这条链路补齐即可实现“递归 list scope”而不引入第二套运行时。  
 
 **Alternatives considered**
 1) **要求业务把深层数组拆为多个独立 Form 模块**：组合成本高、提交/回放链路碎片化、跨层依赖表达更困难（形成第二套“编排”真相源）。  

@@ -4,7 +4,7 @@
 
 ### 0.1 React 侧：每模块一个 ExternalStore（潜在跨模块 tearing）
 
-- `@logix/react` 当前通过 `useSyncExternalStoreWithSelector` 订阅模块运行时：
+- `@logixjs/react` 当前通过 `useSyncExternalStoreWithSelector` 订阅模块运行时：
   - `packages/logix-react/src/internal/hooks/useSelector.ts`
   - store 实现为 per-module 缓存：
     - `packages/logix-react/src/internal/store/ModuleRuntimeExternalStore.ts`
@@ -60,7 +60,7 @@
 
 ### D3：React 订阅点必须唯一：RuntimeStore（单一 ExternalStore）
 
-**Decision**：`@logix/react` 的订阅从 per-module ExternalStore 迁移为 RuntimeStore（单一订阅点），`useSelector` 读取同一 `tickSeq` 的 runtime snapshot。
+**Decision**：`@logixjs/react` 的订阅从 per-module ExternalStore 迁移为 RuntimeStore（单一订阅点），`useSelector` 读取同一 `tickSeq` 的 runtime snapshot。
 
 **Rationale**：
 

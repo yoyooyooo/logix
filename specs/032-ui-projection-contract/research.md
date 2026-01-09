@@ -21,14 +21,14 @@
 **Rationale**：让 UI 投影可替换且 diff 噪音最小；语义校验集中在 BindingSchema（可用 035 事实源做 autocomplete 与 lint）。  
 **Implication**：BindingSchema 默认“一模块实例一份”，天然禁止跨模块读取。
 
-### D003：协议统一放在 `@logix/module.*` 概念域
+### D003：协议统一放在 `@logixjs/module.*` 概念域
 
-**Decision**：presentationState/bindingSchema/uiBlueprint 统一使用 `@logix/module.*@vN` 版本化命名。  
+**Decision**：presentationState/bindingSchema/uiBlueprint 统一使用 `@logixjs/module.*@vN` 版本化命名。  
 **Rationale**：UI 投影是平台基础设施能力，不应绑定具体实现包名或组件库。
 
 ### D004：UI Kit Registry 作为 UI 侧端口规格事实源
 
-**Decision**：平台不从 UI 代码/运行时行为“推断”组件可用 props/events；而是显式引入 `@logix/module.uiKitRegistry@v1` 作为 UI 侧 PortSpec。  
+**Decision**：平台不从 UI 代码/运行时行为“推断”组件可用 props/events；而是显式引入 `@logixjs/module.uiKitRegistry@v1` 作为 UI 侧 PortSpec。  
 **Rationale**：这是把“语义化 UI”真正变成可编辑、可补全、可校验的前提；同时能为 Agent 提供稳定、可机器校验的 UI 插口面。  
 **Links**：
 

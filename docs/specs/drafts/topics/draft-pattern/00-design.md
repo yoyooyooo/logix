@@ -83,7 +83,7 @@ stateDiagram-v2
 我们采用 **Schema-First** 的定义方式，利用 TypeScript 的推导能力实现极致的类型安全。
 
 ```typescript
-import { Draft, Schema, Effect } from "@logix/core";
+import { Draft, Schema, Effect } from "@logixjs/core";
 
 // 1. Define Schema
 const WizardState = Schema.Struct({
@@ -243,7 +243,7 @@ yield* $.draft.start(WizardDraft, {
 
 ```tsx
 // WizardComponent.tsx
-import { useDraft } from "@logix/react";
+import { useDraft } from "@logixjs/react";
 import { WizardDraft } from "./logic";
 
 export const WizardComponent = () => {

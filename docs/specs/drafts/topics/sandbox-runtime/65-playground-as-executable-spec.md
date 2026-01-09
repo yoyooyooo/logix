@@ -22,7 +22,7 @@ priority: later
 - 给「Playground」一个 **平台级角色定义**，避免它退化成单纯的 Code Runner；  
 - 把 SDD 的四个阶段（SPECIFY / PLAN / TASKS / IMPLEMENT）映射到本平台已有/规划中的资产：  
   - Spec 文档 / Intent 模型 / IntentRule / Logix / Runtime；  
-- 明确：`@logix/sandbox` 与 `examples/logix-sandbox-mvp` 只是这个实验室的**运行时底座与第一个原型**，不是最终产品形态。
+- 明确：`@logixjs/sandbox` 与 `examples/logix-sandbox-mvp` 只是这个实验室的**运行时底座与第一个原型**，不是最终产品形态。
 
 ### 1.2 范围与不做的事
 
@@ -70,7 +70,7 @@ priority: later
 
 - 角色：开发者 / LLM Agent；  
 - 形式：  
-  - `@logix/core` Module / Logic / Flow / Runtime；  
+  - `@logixjs/core` Module / Logic / Flow / Runtime；  
   - 具体的 TypeScript 实现与测试。  
 - 输出：  
   - 一组 Logix/Effect 程序（例如 `RegionSelectorModule` + Logic + `Runtime.make`），是 IntentRule 的实现载体；  
@@ -82,10 +82,10 @@ priority: later
 
 - 角色：CI/CD / DevTools / AI Agent / 人类审核；  
 - 形式：  
-  - 运行环境：浏览器 + Web Worker Sandbox (`@logix/sandbox`)、未来的 Deno 逃生舱等；  
+  - 运行环境：浏览器 + Web Worker Sandbox (`@logixjs/sandbox`)、未来的 Deno 逃生舱等；  
   - 观测物：日志 / Trace / Error / stateSnapshot。  
 - 输出：  
-  - `RunResult`：例如 `@logix/sandbox` 中的 `{ runId, duration, logs, traces, stateSnapshot }`；  
+  - `RunResult`：例如 `@logixjs/sandbox` 中的 `{ runId, duration, logs, traces, stateSnapshot }`；  
   - 将 RunResult 与 Spec/IntentRule 对比之后产生的 **对齐报告 (Alignment Report)**。
 
 > Playground 关联：Playground 是 IMPLEMENT 阶段的「人类/AI可视入口」，承载执行、观测与初步比对。
@@ -122,7 +122,7 @@ priority: later
   - kernelUrl / wasmUrl  
   - env（RegionApi mock、国家/语言等）  
   - actions / inputSequence（用于模拟 Given/When）
-- `RunResult`（当前 `@logix/sandbox` 已有）  
+- `RunResult`（当前 `@logixjs/sandbox` 已有）  
   - runId / duration  
   - logs: LogEntry[]  
   - traces: TraceSpan[]  
@@ -170,7 +170,7 @@ Playground 在 UI 上可以用非常简单的方式呈现：
   - 下方/侧边的规则列表（IntentRule / R-S-T）；  
   - 一条「Run Scenario」按钮，可以验证这条场景。
 - 当点击 Run：  
-  - Playground 调用 `@logix/sandbox` 在 Worker 中执行对应的 Logix 程序；  
+  - Playground 调用 `@logixjs/sandbox` 在 Worker 中执行对应的 Logix 程序；  
   - 返回 RunResult 与 AlignmentReport；  
   - PM 可以直观看到“期望行为”与“实际行为”的差异（比如：城市列表没有按 Spec 要求刷新）。
 
@@ -215,13 +215,13 @@ Playground 在 UI 上可以用非常简单的方式呈现：
 
 当前已经落地的部分（2025-12）：
 
-- `@logix/sandbox` 子包：  
+- `@logixjs/sandbox` 子包：  
   - 提供 `SandboxClient` 与 Effect Service 封装；  
   - 实现 Web Worker + esbuild-wasm 编译/执行链路；  
   - 定义了 RunResult（logs/traces/stateSnapshot）。
 - `examples/logix-sandbox-mvp`：  
   - 实现了 RegionSelector 场景的 Module + Logic；  
-  - 使用 `@logix/react` + `@logix/sandbox` 搭起了一个最小 UI + Run 面板；  
+  - 使用 `@logixjs/react` + `@logixjs/sandbox` 搭起了一个最小 UI + Run 面板；  
   - Browser 模式测试中用 MSW 注入 Kernel（`/sandbox/logix-core.js`）与 esbuild-wasm。
   - 引入了 `ScenarioBuilder + MockUiPreview`：PM 可以通过意图脚本（`/select` / `/button`）生成场景步骤与语义 UI 组件，右侧 UI_INTENT Tab 中的线框 Mock UI 支持真实点击，形成一条从「场景意图 → 语义 UI → UI_INTENT/TRACE」的最小 Executable Spec 链路。
 
@@ -239,7 +239,7 @@ Playground 在 UI 上可以用非常简单的方式呈现：
 
 ## 6. 小结
 
-- 从 SDD 的角度，本仓的 v3 模型 + runtime-logix + @logix/sandbox 已经分别对应了 Spec / Plan / Tasks / Implement 四层中的大部分内容；  
+- 从 SDD 的角度，本仓的 v3 模型 + runtime-logix + @logixjs/sandbox 已经分别对应了 Spec / Plan / Tasks / Implement 四层中的大部分内容；  
 - 真正缺的是一个把这四层「对齐起来」的实验场：  
   - 既能让 PM/设计用 Spec/Scenario 说清需求；  
   - 又能让 IntentRule / Logix 实现与运行时行为在同一视图里被观察与验证；  

@@ -2,7 +2,7 @@
 
 > 本文定义对外 API 口径；实现细节下沉 `packages/*/src/internal/**`。
 
-## 1) `@logix/core`：FlowProgram（公共子模块）
+## 1) `@logixjs/core`：FlowProgram（公共子模块）
 
 目标：用“声明式 Program”表达自由工作流（Control Laws），并可被 mount 为 ModuleLogic。
 

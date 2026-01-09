@@ -16,17 +16,17 @@
 - **可诊断**：在启用诊断时，能解释“谁发起了导航 → 意图是什么 → 最终快照如何变化”（SC-003），且诊断关闭时开销接近零（NFR-002）。
 - **事务窗口禁止 IO**：导航与路由变更与外部交互必须在事务外完成（NFR-003）。
 
-技术路线（对齐 `@logix/query`/`@logix/form` 的注入心智，但不扩展 `$`）：
+技术路线（对齐 `@logixjs/query`/`@logixjs/form` 的注入心智，但不扩展 `$`）：
 
-- 新建领域包 `@logix/router`（workspace: `packages/logix-router`），对外推荐 `import * as Router from '@logix/router'`。
+- 新建领域包 `@logixjs/router`（workspace: `packages/logix-router`），对外推荐 `import * as Router from '@logixjs/router'`。
 - 对外暴露稳定抽象（Router Contract）与注入入口（Layer），不绑定任一路由库：
   - `Router.Tag`（Effect `Context.Tag`）：contract 的唯一入口；
   - `Router.layer(service)`：把具体路由库绑定为 `RouterService` 并注入到 runtime scope；
   - `Router.ReactRouter.make(...)` / `Router.TanStackRouter.make(...)`：路由库集成的 builder，产出 `RouterService`；
   - `Router.Memory`（测试夹具）：纯内存 + history stack 实现，可驱动 route change 且可断言导航意图（覆盖 back）。
 - 诊断策略：对“由 logic 发起的导航”事件化（低频），并能关联到导航后产生的 snapshot：
-  - `@logix/router` 通过 `Router.use($)` 绑定 `$`（Bound API），在 `navigate/controller.*` 内使用 `Logix.TraitLifecycle.scopedExecute` 事件化（核心负责采集 moduleId/instanceId）。
-  - 事件载荷使用可扩展的 trace 请求（Json/unknown payload；Slim & 可序列化），避免 `@logix/core` 反向依赖 `@logix/router` 类型（见 Q002）。
+  - `@logixjs/router` 通过 `Router.use($)` 绑定 `$`（Bound API），在 `navigate/controller.*` 内使用 `Logix.TraitLifecycle.scopedExecute` 事件化（核心负责采集 moduleId/instanceId）。
+  - 事件载荷使用可扩展的 trace 请求（Json/unknown payload；Slim & 可序列化），避免 `@logixjs/core` 反向依赖 `@logixjs/router` 类型（见 Q002）。
   - 关联策略：每次导航分配 `navSeq`；先记录 `navigate:start`（before+intent），再异步记录 `navigate:settled`（after），不阻塞业务逻辑（见 Q003）。
 
 设计产物（已落盘）：
@@ -42,7 +42,7 @@
 
 **Batch A（2026-01-03）**：
 
-- Q001（txn 检测契约）：core 通过 `Logix.InternalContracts` 暴露只读的“是否在同步事务窗口内”检查，供 `@logix/router` 显式防御（避免不可实现的设计）。
+- Q001（txn 检测契约）：core 通过 `Logix.InternalContracts` 暴露只读的“是否在同步事务窗口内”检查，供 `@logixjs/router` 显式防御（避免不可实现的设计）。
 - Q002（ExecuteRequest 扩展）：保留封闭 union，但新增通用 `trace` 变体（`name: string` + 载荷），避免 core 为每个领域包枚举具体 kind。
 - Q003（after snapshot）：`trace:router:navigate` 拆为 start/settled 两次事件（同 `navSeq`），after 以异步方式采样与记录，避免阻塞或记录错误值。
 - Q004（Query Params DX）：提供官方 SearchParams utils（不把 Query Params 塞进 `params`），减少业务侧重复解析。
@@ -85,7 +85,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（workspace） + Node.js v22.21.1（本机）  
-**Primary Dependencies**: effect v3（固定 3.19.13）+ `@logix/core` / `@logix/react`（依赖注入与逻辑运行时）  
+**Primary Dependencies**: effect v3（固定 3.19.13）+ `@logixjs/core` / `@logixjs/react`（依赖注入与逻辑运行时）  
 **Storage**: N/A（不引入持久化）  
 **Testing**: Vitest（`vitest run`）+ `@effect/vitest`（Effect-heavy 用例）  
 **Target Platform**: Node.js（单测/脚本） + 现代浏览器（React runtime 注入场景）  
@@ -113,13 +113,13 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - `Intent → Flow/Logix → Code → Runtime`：
   - Intent：`spec.md` 定义 “读/订阅/导航 + 可替换 + 可诊断” 的 WHAT。
   - Flow/Logix：业务 logic 通过 Router Contract（Tag + helper）表达导航意图与基于路由的联动。
-  - Code：能力落在 `@logix/router`；具体引擎通过 `Router.layer(...)` 注入。
+  - Code：能力落在 `@logixjs/router`；具体引擎通过 `Router.layer(...)` 注入。
   - Runtime：只负责提供 DI scope（Layer）与诊断通道；不引入第二套路由引擎。（PASS）
 - docs-first & SSoT：
   - 本特性为具体交付单：规格与方案以 `specs/071-logix-router-bridge/*` 为事实源（已具备）。
   - 若需要固化“领域包注入 + 诊断事件协议”到 runtime SSoT：在实现阶段回写到 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.03-module-logic.md` 的 TraitLifecycle 段落（避免领域包各写各的协议）。（PASS）
 - Effect/Logix contracts：
-  - 新增 `@logix/router` 的对外 contract（见 `contracts/public-api.md`）。
+  - 新增 `@logixjs/router` 的对外 contract（见 `contracts/public-api.md`）。
   - 诊断协议：通过 `Logix.TraitLifecycle.scopedExecute` 统一事件化（在 core 的 TraitLifecycle ExecuteRequest 中新增通用 `trace` 变体：`{ kind: 'trace'; name: string; data?: unknown }`，由 router 以 `name='router:navigate'` 使用；避免 core 反向依赖 router 类型）。（PASS，带实现任务）
 - IR & anchors：
   - 不改变统一最小 Static IR；新增的是可序列化的“导航诊断事件”载荷（Dynamic Trace），用于解释链路。（PASS）
@@ -131,7 +131,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - Internal contracts & DI：
   - Router 以 Tag + Layer 注入，不引入隐式全局 registry；各路由实现（ReactRouter/TanStackRouter/Memory）可 per runtime 替换与 mock。（PASS）
 - Dual kernels（core + core-ng）：
-  - 领域包 `@logix/router` 以 `@logix/core` 为唯一内核依赖；不直接依赖 `@logix/core-ng`。
+  - 领域包 `@logixjs/router` 以 `@logixjs/core` 为唯一内核依赖；不直接依赖 `@logixjs/core-ng`。
   - core-ng 支持矩阵：Phase 1 仅保证“无硬耦合”，若 core-ng 需要等价 TraitLifecycle 扩展则后续单独开 spec。（PASS）
 - Performance budget：
   - 热路径不在 txn/selector/trait converge；重点约束为“未消费时无后台 work + diagnostics off 近零成本”。（PASS）
@@ -157,7 +157,7 @@ Minimal（required）
 
 本特性虽然不改动 txn/selector/trait converge 等核心 hot path，但会：
 
-- 改动 `@logix/core`（TraitLifecycle + InternalContracts），并新增通用 `trace` 请求；
+- 改动 `@logixjs/core`（TraitLifecycle + InternalContracts），并新增通用 `trace` 请求；
 - 为 Router `navigate` 引入可选的两阶段 trace（`navSeq + phase`）。
 
 因此仍需提供可复现的最小性能/诊断开销证据，并将“预算/结论”固化为后续回归基线（对齐宪章：诊断默认近零成本、启用成本可预估）。

@@ -1,19 +1,19 @@
 ---
-title: '@logix/sandbox Package API Design'
+title: '@logixjs/sandbox Package API Design'
 status: draft
 version: 2025-12-07
 value: core
 priority: next
 ---
 
-# @logix/sandbox Package API Design
+# @logixjs/sandbox Package API Design
 
-> 本文档定义 `@logix/sandbox` 子包的结构与公开 API 设计。
+> 本文档定义 `@logixjs/sandbox` 子包的结构与公开 API 设计。
 
 ## 1. 包结构
 
 ```
-@logix/sandbox/
+@logixjs/sandbox/
 ├── src/                           # SSoT（当前实现）
 │   ├── Client.ts                  # Host SDK（创建 Worker / init / compile / run / trialRunModule）
 │   ├── Protocol.ts                # Host↔Worker 协议类型
@@ -42,7 +42,7 @@ import type {
   MockManifest,
   RunResult,
   SandboxClientState,
-} from '@logix/sandbox'
+} from '@logixjs/sandbox'
 
 export interface SandboxClientConfig {
   readonly workerUrl?: string
@@ -102,7 +102,7 @@ export class SandboxClient {
 
 ### 2.3 当前 PoC 实现对齐情况（本仓约定）
 
-> 说明：本节描述的是 **intent-flow 仓库内当前 @logix/sandbox 的 PoC 状态**，用于约束实现与文档的一致性；如与上文理想形态冲突，以本节与代码为准，再迭代 Spec。
+> 说明：本节描述的是 **intent-flow 仓库内当前 @logixjs/sandbox 的 PoC 状态**，用于约束实现与文档的一致性；如与上文理想形态冲突，以本节与代码为准，再迭代 Spec。
 
 - 配置形态（SSoT=代码）：  
   - 当前实现位于 `packages/logix-sandbox/src/Client.ts`，支持单 `kernelUrl` 与多内核 `kernelRegistry`；  
@@ -191,7 +191,7 @@ function useSandboxClient(): SandboxClient
 
 ---
 
-## 4. 与 @logix/core 的集成
+## 4. 与 @logixjs/core 的集成
 
 ### 4.1 RuntimeEnv 构造
 
@@ -200,7 +200,7 @@ Worker 内通过 Layer 组合构造运行环境：
 ```typescript
 // worker/runtime.ts
 import { Layer } from 'effect'
-import { Platform } from '@logix/core'
+import { Platform } from '@logixjs/core'
 
 const SandboxRuntimeEnv = Layer.mergeAll(
   // 基础设施
@@ -258,12 +258,12 @@ const runModule = (moduleCode: string, manifest: MockManifest): Effect.Effect<Ru
 - Worker 入口仅调用 `SandboxRuntime.run(code, manifest)` 一类的 Effect API，不直接操作 `esbuild` / `Logger` / `postMessage`；  
 - 所有 Mock/Spy/UI_INTENT 行为通过 Tag/Layer 注入，方便未来在 Deno 逃生舱或测试环境中复用相同的契约。
 
-### 4.4 当前 PoC 默认行为（@logix/sandbox 已内置）
+### 4.4 当前 PoC 默认行为（@logixjs/sandbox 已内置）
 
 - HTTP Mock：Host 在 `COMPILE` 时传入 `mockManifest.http`，Worker 会在最近一次编译产物上安装 fetch 代理，命中规则则返回 mock 响应并写入 `TRACE(kind:"http")`，未命中则真实发起并记录。  
-- UI Intent：Worker 暴露 `globalThis.logixSandboxBridge.emitUiIntent(packet)`（并同时挂载到 `Symbol.for("@logix/sandbox/bridge")`），Semantic UI Mock 或用户代码调用后会发出 `UI_INTENT` 事件，Host 负责渲染与交互。  
-- Spy：Worker 暴露 `globalThis.logixSandboxBridge.emitSpy(payload)`（并同时挂载到 `Symbol.for("@logix/sandbox/bridge")`），将 payload 写入 `TRACE(kind:"spy")`，可供未来的 Universal Spy 或自定义 SDK Hook 复用。  
-- Logix Debug：若 `kernelUrl` 可访问 `@logix/core`，Worker 默认提供 DebugSink（source=`logix`），把 Debug 事件写入 LOG；`trace:*` 事件同时映射到 `TRACE(kind:"logix-debug")`，与页面 Debug 面板对齐。  
+- UI Intent：Worker 暴露 `globalThis.logixSandboxBridge.emitUiIntent(packet)`（并同时挂载到 `Symbol.for("@logixjs/sandbox/bridge")`），Semantic UI Mock 或用户代码调用后会发出 `UI_INTENT` 事件，Host 负责渲染与交互。  
+- Spy：Worker 暴露 `globalThis.logixSandboxBridge.emitSpy(payload)`（并同时挂载到 `Symbol.for("@logixjs/sandbox/bridge")`），将 payload 写入 `TRACE(kind:"spy")`，可供未来的 Universal Spy 或自定义 SDK Hook 复用。  
+- Logix Debug：若 `kernelUrl` 可访问 `@logixjs/core`，Worker 默认提供 DebugSink（source=`logix`），把 Debug 事件写入 LOG；`trace:*` 事件同时映射到 `TRACE(kind:"logix-debug")`，与页面 Debug 面板对齐。  
 - 职责边界：Host/业务示例负责生成 MockManifest、决定是否展示内置 Debug/HTTP/UI 视图；包内只提供协议、Worker 管线与默认桥接。
 
 ---

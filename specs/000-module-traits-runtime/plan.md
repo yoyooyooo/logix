@@ -5,17 +5,17 @@
 
 ## Summary
 
-本特性负责把「模块图纸中的 `state + actions + traits` → StateTraitProgram → Runtime EffectOp/Middleware 总线」这条链路打通，并替代早期基于 `@logix/data` 的字段能力方案。  
+本特性负责把「模块图纸中的 `state + actions + traits` → StateTraitProgram → Runtime EffectOp/Middleware 总线」这条链路打通，并替代早期基于 `@logixjs/data` 的字段能力方案。  
 核心目标：
 
 - 为模块作者提供稳定的 StateTrait DSL（`StateTrait.from(StateSchema)({ ... })`），统一表达 computed / source / link 能力；
-- 在 `@logix/core` 内部实现 StateTraitProgram（含 Graph/Plan），并在 Runtime 中通过 `StateTrait.install($, program)` 将其挂载到 Bound API；
+- 在 `@logixjs/core` 内部实现 StateTraitProgram（含 Graph/Plan），并在 Runtime 中通过 `StateTrait.install($, program)` 将其挂载到 Bound API；
 - 通过 EffectOp/Middleware 总线把 Trait 行为与 Debug / Resource / Query / Devtools 视图打通。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM 输出）+ Node.js 20+，面向现代浏览器（Chromium/Firefox/Safari 最近两个大版本）  
-**Primary Dependencies**: `effect` v3、`@logix/core`（StateTrait/Runtime 内核）、`@logix/react` / `@logix-devtools-react`（用于示例与端到端验证）  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`（StateTrait/Runtime 内核）、`@logixjs/react` / `@logixjs/devtools-react`（用于示例与端到端验证）  
 **Storage**: N/A（本特性仅管理内存中的 Module/StateTrait 程序与运行时状态，不直接接入外部存储）  
 **Testing**: Vitest（含 `@effect/vitest`），通过 `pnpm typecheck`、`pnpm typecheck:test` 与 `pnpm test --filter logix-core`/`--filter logix-react` 作为主要质量门  
 **Target Platform**: Node.js 20+（开发与测试环境）、现代浏览器（Logix React 示例与 Devtools 集成）  
@@ -34,7 +34,7 @@
 - Intent → Flow/Logix → Code → Runtime 映射：  
   - Intent 层由 v3 SDD 文档定义 Module 图纸与 Trait 能力；  
   - Flow/Logix 层通过 StateTraitProgram + Logic/Flow API 将「图纸」映射为 Effect 程序；  
-  - Code/Runtime 层由 `@logix/core` ModuleRuntime + EffectOp/Middleware 统一执行业务与横切能力。  
+  - Code/Runtime 层由 `@logixjs/core` ModuleRuntime + EffectOp/Middleware 统一执行业务与横切能力。  
 - 依赖 / 修改的上游 specs：  
   - `docs/specs/sdd-platform/ssot/*` 中关于 Module 图纸与 Traits 的章节；  
   - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md` / `03-logic-and-flow.md` / `06-platform-integration.md` 中的 StateTrait / EffectOp / Middleware 契约。  
@@ -75,7 +75,7 @@ examples/
 ```
 
 **Structure Decision**:  
-- 不新增独立的 `@logix/data` 包作为字段能力宿主，相关实现与规范统一归档为历史 PoC；  
+- 不新增独立的 `@logixjs/data` 包作为字段能力宿主，相关实现与规范统一归档为历史 PoC；  
 - 以 `packages/logix-core` 为唯一 StateTrait/EffectOp 承载位置，通过 TypeScript 类型与 runtime-logix 文档保持 SSoT 一致。
 
 ## Complexity Tracking

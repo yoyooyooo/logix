@@ -12,7 +12,7 @@
 
 > 方向认可，但不进入 010 核心交付面；等 010/013/014 的主线落稳后再做。
 
-- `[DEFER]` **工程脚手架（createFormHook / withFieldGroup）**：更偏 React DX/生态层，建议后置到 `@logix/form/react`（不改变 010 的 IR/语义）。
+- `[DEFER]` **工程脚手架（createFormHook / withFieldGroup）**：更偏 React DX/生态层，建议后置到 `@logixjs/form/react`（不改变 010 的 IR/语义）。
 - `[DEFER]` **onSubmitMeta（多按钮/附加提交语义）**：可作为 controller/handleSubmit 的后续 DX；010 先固化事务内/事务外边界与默认动作语义。
 - `[DEFER]` **Schema transform output**：TanStack 的 Standard Schema 不返回 transform 后值；010 当前不把“schema 产出值”纳入核心交付面，避免扩大热路径与契约复杂度。
 

@@ -1,6 +1,6 @@
 ---
 name: logix-best-practices
-description: Logix（@logix/core + effect）业务开发工程最佳实践的自包含技能包。用于新建/重构 Logix feature 的目录结构（feature-first）、编写 ModuleDef/Logic/ModuleImpl、用 Process.link 进行跨模块协作、用 Tag-only Service + Layer 注入依赖、提炼可复用 Pattern 并通过脚本做复用门禁与健康检查。
+description: Logix（@logixjs/core + effect）业务开发工程最佳实践的自包含技能包。用于新建/重构 Logix feature 的目录结构（feature-first）、编写 ModuleDef/Logic/ModuleImpl、用 Process.link 进行跨模块协作、用 Tag-only Service + Layer 注入依赖、提炼可复用 Pattern 并通过脚本做复用门禁与健康检查。
 ---
 
 # logix-best-practices

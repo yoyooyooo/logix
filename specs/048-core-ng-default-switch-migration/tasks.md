@@ -50,14 +50,14 @@
 
 ## Phase 4: User Story 2 - 上层生态不被绑死在 core-ng (Priority: P1)
 
-**Goal**: 上层 consumer 不直接依赖 `@logix/core-ng`；只依赖 `@logix/core` 即可解释当前 kernel 选择与回退。
+**Goal**: 上层 consumer 不直接依赖 `@logixjs/core-ng`；只依赖 `@logixjs/core` 即可解释当前 kernel 选择与回退。
 
 **Independent Test**: `packages/logix-react/test/internal/no-core-ng-dependency.contract.test.ts`
 
-- [x] T018 [P] [US2] 合同测试：@logix/react 不声明 @logix/core-ng 依赖 `packages/logix-react/test/internal/no-core-ng-dependency.contract.test.ts`
-- [x] T019 [P] [US2] 合同测试：禁止在非允许范围 import `@logix/core-ng`（仅允许 `packages/logix-core-ng/**` 与少量 tests/bench/trial-run）`packages/logix-core/test/Contracts/Contracts.048.NoCoreNgImports.test.ts`
-- [x] T020 [P] [US2] 审计 packages consumer：确认未引入 @logix/core-ng 直接依赖（如存在则移除）`packages/logix-devtools-react/package.json`、`packages/logix-sandbox/package.json`、`packages/logix-form/package.json`、`packages/logix-query/package.json`
-- [x] T021 [P] [US2] 审计 apps/examples consumer：确认未引入 @logix/core-ng 直接依赖（如存在则移除）`apps/logix-galaxy-fe/package.json`、`apps/studio-fe/package.json`、`apps/logix-galaxy-api/package.json`、`examples/logix/package.json`、`examples/logix-react/package.json`、`examples/logix-sandbox-mvp/package.json`、`examples/logix-form-poc/package.json`、`examples/effect-api/package.json`
+- [x] T018 [P] [US2] 合同测试：@logixjs/react 不声明 @logixjs/core-ng 依赖 `packages/logix-react/test/internal/no-core-ng-dependency.contract.test.ts`
+- [x] T019 [P] [US2] 合同测试：禁止在非允许范围 import `@logixjs/core-ng`（仅允许 `packages/logix-core-ng/**` 与少量 tests/bench/trial-run）`packages/logix-core/test/Contracts/Contracts.048.NoCoreNgImports.test.ts`
+- [x] T020 [P] [US2] 审计 packages consumer：确认未引入 @logixjs/core-ng 直接依赖（如存在则移除）`packages/logix-devtools-react/package.json`、`packages/logix-sandbox/package.json`、`packages/logix-form/package.json`、`packages/logix-query/package.json`
+- [x] T021 [P] [US2] 审计 apps/examples consumer：确认未引入 @logixjs/core-ng 直接依赖（如存在则移除）`apps/logix-galaxy-fe/package.json`、`apps/studio-fe/package.json`、`apps/logix-galaxy-api/package.json`、`examples/logix/package.json`、`examples/logix-react/package.json`、`examples/logix-sandbox-mvp/package.json`、`examples/logix-form-poc/package.json`、`examples/effect-api/package.json`
 
 ---
 

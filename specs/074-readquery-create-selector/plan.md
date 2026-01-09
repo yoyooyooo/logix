@@ -7,7 +7,7 @@
 
 交付一个“显式 deps 的静态选择器组合器”：
 
-- `@logix/core` 新增 `ReadQuery.createSelector`（公共 API），用于把多个 **静态** ReadQuery 组合成一个新的 ReadQuery：
+- `@logixjs/core` 新增 `ReadQuery.createSelector`（公共 API），用于把多个 **静态** ReadQuery 组合成一个新的 ReadQuery：
   - `reads = union(inputs.reads)`，并产出稳定 `readsDigest`；
   - 任一输入退化 dynamic 或缺失 `readsDigest` → 默认 fail-fast（防止伪静态）；
   - 支持 `equalsKind`（默认 `objectIs`，可选 `shallowStruct/custom`）。
@@ -25,7 +25,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3，`@logix/core`  
+**Primary Dependencies**: `effect` v3，`@logixjs/core`  
 **Storage**: N/A  
 **Testing**: Vitest（logix-core tests）  
 **Target Platform**: Node.js + browsers（纯 TS runtime）  
@@ -36,7 +36,7 @@
 
 ## Kernel support matrix
 
-- `core`: supported（公共 API 在 `@logix/core`）
+- `core`: supported（公共 API 在 `@logixjs/core`）
 - `core-ng`: supported（不引入 core-ng 直接依赖；Static IR 结构沿用现有 ReadQueryStaticIr）
 
 ## Constitution Check

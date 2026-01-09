@@ -274,8 +274,8 @@ When to pass `hostScheduler`:
 Recommended: inject it once when constructing the Runtime:
 
 ```ts
-import * as Logix from "@logix/core"
-import * as LogixTest from "@logix/test"
+import * as Logix from "@logixjs/core"
+import * as LogixTest from "@logixjs/test"
 import { Layer } from "effect"
 
 const hostScheduler = LogixTest.Act.makeTestHostScheduler()

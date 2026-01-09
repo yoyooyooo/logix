@@ -41,7 +41,7 @@
 
 - 概念入口位于 `src/` 根目录（`src/index.ts(x)` 除外），文件名为 PascalCase。
 - 非概念实现下沉 `src/internal/**`，不得作为推荐 import 入口。
-- 子路径入口（如 `@logix/form/react`、`@logix/sandbox/vite`）必须被视为独立对外契约：需要命名、职责、准入条件与例外登记；不得保留空壳入口。
+- 子路径入口（如 `@logixjs/form/react`、`@logixjs/sandbox/vite`）必须被视为独立对外契约：需要命名、职责、准入条件与例外登记；不得保留空壳入口。
 
 **Rationale**: 目录结构本质是 public surface 的一部分；对外概念收敛后，internal 才能自由重构且不牵动用户代码。
 
@@ -76,7 +76,7 @@
 
 ### D5. 对外模块的“命名空间导出”风格（对标 effect）
 
-**Decision**: 对支持 `import * as Pkg from "@logix/xxx"` 的包（core/domain/infra），`src/index.ts` 采用 effect 风格的“命名空间导出”组织对外概念：
+**Decision**: 对支持 `import * as Pkg from "@logixjs/xxx"` 的包（core/domain/infra），`src/index.ts` 采用 effect 风格的“命名空间导出”组织对外概念：
 
 - 以 Public Submodule 为单位导出：`export * as Runtime from "./Runtime.js"` 这类形态；
 - 避免把 `src/internal/**` 或实现目录（`hooks/**`、`components/**` 等）作为直接导出源；如需对外暴露能力，先收敛成概念入口（Public Submodule）再导出。

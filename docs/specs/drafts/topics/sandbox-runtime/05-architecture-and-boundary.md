@@ -67,8 +67,8 @@ graph TB
 
 在本仓当前 PoC 中，Host 侧还有两个重要落点：
 
-- `@logix/sandbox` 提供的 `SandboxClient` / `SandboxClientLayer`：以 Effect-Native 的 Service Tag 形式封装 Worker 生命周期与协议交互；  
-- `@logix/sandbox/vite` 提供的 `logixSandboxKernelPlugin`：在 dev/build 阶段将 Kernel/wasm 静态资源挂载到约定的 HTTP 路径上，为 `kernelUrl` / `wasmUrl` 提供一条开箱即用的默认实现。
+- `@logixjs/sandbox` 提供的 `SandboxClient` / `SandboxClientLayer`：以 Effect-Native 的 Service Tag 形式封装 Worker 生命周期与协议交互；  
+- `@logixjs/sandbox/vite` 提供的 `logixSandboxKernelPlugin`：在 dev/build 阶段将 Kernel/wasm 静态资源挂载到约定的 HTTP 路径上，为 `kernelUrl` / `wasmUrl` 提供一条开箱即用的默认实现。
 
 ### 2.2 Sandbox（Web Worker）
 
@@ -131,7 +131,7 @@ graph TB
 ## 5. 参见
 
 - [15-protocol-and-schema.md](./15-protocol-and-schema.md) — 完整协议定义
-- [25-sandbox-package-api.md](./25-sandbox-package-api.md) — `@logix/sandbox` API 设计
+- [25-sandbox-package-api.md](./25-sandbox-package-api.md) — `@logixjs/sandbox` API 设计
 - [10-runtime-baseline.md](./10-runtime-baseline.md) — Worker 运行时基线
 - [20-dependency-and-mock-strategy.md](./20-dependency-and-mock-strategy.md) — 依赖治理策略
 

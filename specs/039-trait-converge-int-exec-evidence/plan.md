@@ -16,7 +16,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（pnpm workspace）
-**Primary Dependencies**: `effect` v3、`@logix/core`、`mutative`（draft/produce）
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`mutative`（draft/produce）
 **Storage**: N/A
 **Testing**: Vitest（必要时 `@effect/vitest`）
 **Target Platform**: Node.js 22.x + modern browsers

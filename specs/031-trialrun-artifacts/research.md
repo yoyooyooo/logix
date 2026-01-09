@@ -12,7 +12,7 @@
 
 **Decision**：`artifactKey` 是协议命名空间（契约域），不得使用实现包名前缀（如 `core/sandbox/react`）。  
 **Rationale**：避免“实现迁移导致 key 漂移”，让 Workbench/CI/Agent 只认稳定契约。  
-**Example**：`@logix/form.rulesManifest@v1`、`@logix/module.portSpec@v1`。
+**Example**：`@logixjs/form.rulesManifest@v1`、`@logixjs/module.portSpec@v1`。
 
 ## Decision 2：artifacts 采用 Envelope，显式表达 ok/error/truncation
 
@@ -24,7 +24,7 @@
 
 ## Decision 3：RulesManifest 的 schema 复用 028（单一事实源）
 
-**Decision**：`@logix/form.rulesManifest@v1` 的 `manifest` 字段直接 `$ref` 到 028 的 RulesManifest schema。  
+**Decision**：`@logixjs/form.rulesManifest@v1` 的 `manifest` 字段直接 `$ref` 到 028 的 RulesManifest schema。  
 **Rationale**：避免在 031 重复定义 rules 的静态 IR 口径，保持 rules-first 体系单一事实源。
 
 **Link**：`specs/028-form-api-dx/contracts/schemas/rules-manifest.schema.json`

@@ -119,7 +119,7 @@ priority: next
 ### 3.3 AI Agent 视角：迭代 Intent → Code → Run 的闭环
 
 1. 从 Spec/Scenario（或用户输入）生成或修改 Logix/Effect 代码；  
-2. 请求 Playground 执行特定场景（通过 API 调用 @logix/sandbox / Playground 后端）；  
+2. 请求 Playground 执行特定场景（通过 API 调用 @logixjs/sandbox / Playground 后端）；  
 3. 解析 RunResult（stateSnapshot/logs/traces/UI_INTENT），与 Spec/IntentRule 对比：  
    - 若存在违背 Spec 的行为，生成诊断和下一轮代码 patch；  
 4. 重复，直到 Alignment 满足平台的阈值。
@@ -165,12 +165,12 @@ priority: next
    - 左侧展示场景名称与简要说明（可以先用纯文案）；  
    - 不必一开始就引入完整 ScenarioSpec/IntentRule UI，但代码里可以先有对应的结构。
 2. 运行控制：  
-   - 提供 Run 按钮，调用 `@logix/sandbox` 的 `init/compile/run` 链路；  
+   - 提供 Run 按钮，调用 `@logixjs/sandbox` 的 `init/compile/run` 链路；  
    - Run 成功后在右侧展示 RunResult（State/Logs/Trace）；  
    - 出错时展示错误信息（ERROR 事件），保持页面可恢复。
 3. UI 视图：  
    - MVP 阶段可以：  
-     - 先用真实 RegionSelector 表单（使用 @logix/react），或者  
+     - 先用真实 RegionSelector 表单（使用 @logixjs/react），或者  
      - 直接用一组简单控件模拟（不必一开始接入 Semantic UI Mock）；  
    - 关键是：**用户可以通过 Playground 触发“选择省/市”等行为**，并立即在 State/Logs 中看到效果。
 4. 观测面：  

@@ -1,4 +1,4 @@
-# References: `@logix/query` × TanStack Query 集成契约
+# References: `@logixjs/query` × TanStack Query 集成契约
 
 > 目标：明确 “各司其职” 的边界：  
 > - TanStack Query 负责缓存与请求层面的工程复杂度；  
@@ -60,7 +60,7 @@ TanStack Query 的两个核心体验：
 
 在 004 的链路里两者都能做到，并且应当分别归属到：
 
-- **领域语义（`@logix/query`）**：什么叫 enabled、何时算 queryKey 变化、是否要 debounce、是否要 manual；
+- **领域语义（`@logixjs/query`）**：什么叫 enabled、何时算 queryKey 变化、是否要 debounce、是否要 manual；
 - **kernel 正确性（Logix runtime）**：写回 state 前的 keyHash 门控（stale 丢弃）与可观测性（EffectOp + patch）。
 
 推荐映射：
@@ -77,13 +77,13 @@ TanStack Query 的两个核心体验：
 
 ---
 
-## 3. `@logix/query` 需要提供的最小集成点（建议）
+## 3. `@logixjs/query` 需要提供的最小集成点（建议）
 
 > 这里只定义“领域包需要提供什么”，不规定具体代码结构。
 
 ### 3.1 引擎注入（Layer/Provider）
 
-`@logix/query` SHOULD 提供：
+`@logixjs/query` SHOULD 提供：
 
 - `Query.Engine`（Effect Context.Tag）
 - `Query.Engine.layer(engine)`（在某个 runtime 作用域内提供 Engine 实例）
@@ -95,7 +95,7 @@ TanStack Query 的两个核心体验：
 
 ### 3.2 Effect 封装（fetch/ensure/invalidate）
 
-`@logix/query` SHOULD 提供把常用 QueryClient 操作封装为 Effect 的 helper，例如：
+`@logixjs/query` SHOULD 提供把常用 QueryClient 操作封装为 Effect 的 helper，例如：
 
 - `Query.TanStack.fetch({ resourceId, keyNormalized, keyHash, queryFn, options })`
 - `Query.TanStack.invalidate({ resourceId | keyHash | tag })`
@@ -112,7 +112,7 @@ TanStack Query 的两个核心体验：
 2) Runtime 在触发 refresh 前：
    - `keySchema` decode/normalize 得到 `keyNormalized`
    - 计算 `keyHash`
-3) 调用 `@logix/query` 的 TanStack helper：
+3) 调用 `@logixjs/query` 的 TanStack helper：
    - QueryClient.fetchQuery 负责缓存/in-flight 去重
 4) 结果返回后写回 state：
    - **必须先比较“当前最新 keyHash”**，不一致则丢弃（stale）

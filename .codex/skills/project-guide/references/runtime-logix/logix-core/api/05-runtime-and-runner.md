@@ -1,4 +1,4 @@
-# `@logix/core` · Runtime / Program Runner
+# `@logixjs/core` · Runtime / Program Runner
 
 > **定位**：补齐「根模块运行入口」的 API 语义与心智模型（Node 脚本 / CLI / 测试 / 平台 Runner 的统一表面积）。  
 > **代码落点**：`packages/logix-core/src/Runtime.ts`、`packages/logix-core/src/internal/runtime/runner/*`。  
@@ -94,7 +94,7 @@ Runner 需要区分三个阶段：
 ## 7. 对齐关系（避免漂移）
 
 - **025 Trial Run**：必须复用 `Runtime.openProgram` 的 boot 内核（不复制装配逻辑），在其上叠加窗口控制与证据导出。
-- **`@logix/test`**：测试入口必须复用 `@logix/core` runner 语义：
+- **`@logixjs/test`**：测试入口必须复用 `@logixjs/core` runner 语义：
   - 输入应是 **program module**（`ModuleDef.implement(...)` 的产物），而不是独立的 Scenario 生命周期模型；
   - 多模块/Link 场景通过 `imports` / `processes` 表达，不通过 `_op_layer` 分类 hack；
   - service mock 通过 `RuntimeOptions.layer` 注入。

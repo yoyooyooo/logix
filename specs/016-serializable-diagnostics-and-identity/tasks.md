@@ -42,7 +42,7 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 
 ## Phase 2: Foundational（Core Hardening, Blocking Prerequisites）
 
-**Purpose**: 先把 `@logix/core` 的“可序列化 + 单锚点”拉齐（不做 Devtools 组件/插件交付）
+**Purpose**: 先把 `@logixjs/core` 的“可序列化 + 单锚点”拉齐（不做 Devtools 组件/插件交付）
 
 **⚠️ CRITICAL**: 本阶段完成前不得开始任何 Devtools 交付面（组件/Chrome 插件/015 面板）工作
 
@@ -71,7 +71,7 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 - [X] T023 （Moved → 011）示例的 setup-only 迁移由 011 执行：见 `specs/011-upgrade-lifecycle/tasks.md`（T021）
 - [X] T024 （Moved → 011）用户文档示例的 setup-only 迁移由 011 执行：见 `specs/011-upgrade-lifecycle/tasks.md`（T022/T036/T052）
 
-**Checkpoint**: `@logix/core` 的 Debug/Hub 快照可 `JSON.stringify`；事件主锚点已切到 `instanceId`
+**Checkpoint**: `@logixjs/core` 的 Debug/Hub 快照可 `JSON.stringify`；事件主锚点已切到 `instanceId`
 
 ---
 

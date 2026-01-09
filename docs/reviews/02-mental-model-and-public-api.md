@@ -3,13 +3,13 @@
 本报告聚焦两件事：
 
 1. 业务开发者“应该怎么想”（概念是否最小完备、是否存在多套等价写法导致协作混乱）；
-2. `@logix/core` 对外 API 的表面积/一致性/分层是否合理（并给出不兼容收敛建议）。
+2. `@logixjs/core` 对外 API 的表面积/一致性/分层是否合理（并给出不兼容收敛建议）。
 
 ## 现状：公共出口与概念集合
 
-### `@logix/core` 的公开入口
+### `@logixjs/core` 的公开入口
 
-当前推荐使用：`import * as Logix from "@logix/core"`，并在 `packages/logix-core/src/index.ts` 下暴露：
+当前推荐使用：`import * as Logix from "@logixjs/core"`，并在 `packages/logix-core/src/index.ts` 下暴露：
 
 - `Module`：领域模块定义、实现蓝图、Reducer 工具
 - `Logic`：Env/Of/IntentBuilder（DSL 类型别名与运行时 Tag）
@@ -182,7 +182,7 @@
 
 ### 2) `Logic.RuntimeTag` 当前不在装配链路中提供（疑似遗留）
 
-`packages/logix-core/src/Logic.ts` 导出 `RuntimeTag = Context.GenericTag("@logix/Runtime")`，而当前 `Module.logic`/`ModuleRuntime.make` 的装配主要提供的是“模块自身的 Tag（ModuleTag）”，并未看到对 `@logix/Runtime` 的注入。
+`packages/logix-core/src/Logic.ts` 导出 `RuntimeTag = Context.GenericTag("@logixjs/Runtime")`，而当前 `Module.logic`/`ModuleRuntime.make` 的装配主要提供的是“模块自身的 Tag（ModuleTag）”，并未看到对 `@logixjs/Runtime` 的注入。
 
 结果：任何依赖 `yield* Logic.RuntimeTag` 的写法在当前实现下都不成立（除非调用方手工 provide）。如果这是“未来意图”，需要立刻补齐装配；如果是遗留，应立即移除以减少表面积。
 

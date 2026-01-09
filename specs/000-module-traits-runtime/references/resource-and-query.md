@@ -100,14 +100,14 @@ export function layer(
 
 ---
 
-## 3. Query：外部引擎的可插拔接线（`@logix/query`）
+## 3. Query：外部引擎的可插拔接线（`@logixjs/query`）
 
-查询引擎接线由 `@logix/query` 提供：它把第三方引擎（默认 TanStack Query）的知识封装为一个可注入的 **Engine**，并通过 EffectOp middleware 作为唯一接管点。
+查询引擎接线由 `@logixjs/query` 提供：它把第三方引擎（默认 TanStack Query）的知识封装为一个可注入的 **Engine**，并通过 EffectOp middleware 作为唯一接管点。
 
-概念 API（以 `@logix/query` 的 public barrel 为准）：
+概念 API（以 `@logixjs/query` 的 public barrel 为准）：
 
 ```ts
-import * as Query from "@logix/query"
+import * as Query from "@logixjs/query"
 
 Query.Engine.layer(engine)                         // 注入 Engine 实例（缓存/去重/失效/可选快读）
 Query.Engine.middleware({ useFor?: (id) => true }) // Engine 接管点（EffectOp）

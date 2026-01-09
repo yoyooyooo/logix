@@ -12,9 +12,9 @@
 - **可治理**：deps/能力/预算显式可检查；黑盒资产不得“偷跑”。
 - **可验收**：不靠 LLM 自评，靠 trial-run 工件闭环（031/036）。
 
-## Protocols（统一 `@logix/module.*` 域）
+## Protocols（统一 `@logixjs/module.*` 域）
 
-### `@logix/module.codeAsset@v1`
+### `@logixjs/module.codeAsset@v1`
 
 统一承载两类资产（用 `kind` 区分）：
 
@@ -32,12 +32,12 @@
 
 Canonical schema：`specs/034-expression-asset-protocol/contracts/schemas/code-asset.schema.json`
 
-### `@logix/module.deps@v1`
+### `@logixjs/module.deps@v1`
 
 显式依赖清单：至少覆盖 `reads`（output/export）+ `services` + `configs`。  
 Canonical schema：`specs/034-expression-asset-protocol/contracts/schemas/deps.schema.json`
 
-### `@logix/module.reversibilityAnchor@v1`
+### `@logixjs/module.reversibilityAnchor@v1`
 
 可逆溯源锚点：允许携带 spec/block 指针、生成指纹与人类说明，用于 agent 重生成与 drift detection。  
 Canonical schema：`specs/034-expression-asset-protocol/contracts/schemas/reversibility-anchor.schema.json`

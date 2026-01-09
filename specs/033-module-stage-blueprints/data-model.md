@@ -37,11 +37,11 @@
 
 - 保存期固化 deps/digest；预览期可在 sandbox 受控运行；黑盒资产必须显式声明 deps/能力/预算。
 
-## Protocols（统一 `@logix/module.*` 域）
+## Protocols（统一 `@logixjs/module.*` 域）
 
-- `@logix/module.stageBlueprint@v1`：语义蓝图（包含 ModuleInstances 与 IntentRules）
-- `@logix/module.intentRule@v1`：连线（source/sink + mapping ref）
-- `@logix/module.rowRef@v1`：动态列表定位（rowPath 段 + rowId）
+- `@logixjs/module.stageBlueprint@v1`：语义蓝图（包含 ModuleInstances 与 IntentRules）
+- `@logixjs/module.intentRule@v1`：连线（source/sink + mapping ref）
+- `@logixjs/module.rowRef@v1`：动态列表定位（rowPath 段 + rowId）
 
 Canonical schemas：
 

@@ -157,7 +157,7 @@ description: "Tasks for 010-form-api-perf-boundaries"
 - [X] T061 [P] 更新 demo layout：用 `useFormState(form, selector)` 获取表单级衍生状态，避免 UI 扫描 values/errors 大树 `/Users/yoyo/Documents/code/personal/intent-flow/examples/logix-react/src/demos/form/FormDemoLayout.tsx`
 - [X] T062 实现只读 `FormView`（canSubmit/isSubmitting/isValid/isDirty/isPristine/submitCount）并保证引用稳定（结构共享/缓存；不扫 values/errors 大树）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/form-view.ts`
 - [X] T063 实现 `useFormState(form, selector)`：selector 入参为引用稳定的 `FormView`，仅在选中值变化时触发渲染 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/react/useFormState.ts`
-- [X] T064 导出 `useFormState`（`@logix/form/react`）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/react/index.ts`
+- [X] T064 导出 `useFormState`（`@logixjs/form/react`）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/react/index.ts`
 - [X] T065 实现 `Form.Trait.*`（computed/link/source/check 同形 `StateTrait.*`）作为 `derived` 的唯一入口（可完全降解到 StateTraitSpec/IR）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/trait.ts`
 - [X] T066 在 `Form.make` 支持 `derived` 槽位：默认仅允许写回 `values/ui`（禁止写 `errors`），并把 `Form.Trait.*` 产物收敛为 module traits `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/form.ts`
 - [X] T067 [P] 新增回归测试：`derived` 只能写回 `values/ui`，且可通过 `$.use(Form.module)` 的 handle 调用 `controller.*` 默认动作（React/Logic 一致）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/test/Form.Derived.Guardrails.test.ts`
@@ -169,7 +169,7 @@ description: "Tasks for 010-form-api-perf-boundaries"
 - [X] T073 实现 014 browser perf suite：动态列表（100 行）+ list-scope 跨行校验，输出 full vs auto 对比与 `trait:converge` 解释链路 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-react/test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 - [X] T074 固化 NFR-005 证据：更新 014 的 `interpretation.latest.md`（指出预算门槛、回退原因覆盖与证据文件路径）`/Users/yoyo/Documents/code/personal/intent-flow/specs/014-browser-perf-boundaries/perf/interpretation.latest.md`
 - [X] T075 记录并对齐“off/light/full”开销口径：补齐 010 的 perf-baseline（引用 014 evidence；说明 overhead 与 gate 环境）`/Users/yoyo/Documents/code/personal/intent-flow/specs/010-form-api-perf-boundaries/references/perf-baseline.md`
-- [X] T076 [P] 更新用户文档：`@logix/form` 新 API（`validateOn/reValidateOn`、`$list/rows[]`、controller 默认动作、selector 订阅）`/Users/yoyo/Documents/code/personal/intent-flow/apps/docs/content/docs/guide/learn/deep-dive.md`
+- [X] T076 [P] 更新用户文档：`@logixjs/form` 新 API（`validateOn/reValidateOn`、`$list/rows[]`、controller 默认动作、selector 订阅）`/Users/yoyo/Documents/code/personal/intent-flow/apps/docs/content/docs/guide/learn/deep-dive.md`
 - [X] T077 [P] 更新用户文档：把 010 的性能心智模型与“优化梯子”对齐到 `apps/docs`（避免术语/证据字段漂移）`/Users/yoyo/Documents/code/personal/intent-flow/apps/docs/content/docs/guide/advanced/performance-and-optimization.md`
 
 ---

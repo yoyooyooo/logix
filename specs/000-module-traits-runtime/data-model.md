@@ -1,7 +1,7 @@
 # Data Model: StateTrait / StateTraitProgram / Resource / Query
 
-> 作用：本文件从“概念实体 + 关系”的角度，把本特性引入的核心数据结构梳理清楚，作为 `@logix/core` 内部实现与 Devtools / 平台对接的共享蓝图。  
-> 优先面向：`@logix/core` 实现者、Runtime 维护者、Devtools / Studio 维护者。
+> 作用：本文件从“概念实体 + 关系”的角度，把本特性引入的核心数据结构梳理清楚，作为 `@logixjs/core` 内部实现与 Devtools / 平台对接的共享蓝图。  
+> 优先面向：`@logixjs/core` 实现者、Runtime 维护者、Devtools / Studio 维护者。
 
 > 相关 reference：
 > - StateTrait Core API 与 Program/Graph/Plan 入口：`references/state-trait-core.md`  
@@ -391,4 +391,4 @@ type StateTraitSpec<S> = {
 - Devtools 与 Debug 可以以 Graph 与 EffectOp 为事实源，构建统一的结构视图与时间线视图；
 - Resource / Query 集成在数据模型层面只通过 `resourceId + key` 与 StateTraitProgram 相连，保持 Trait 协议的纯度。
 
-后续在实现 `@logix/core` 的 StateTrait 内核时，应以本文件为数据/结构层的 SSoT，如需调整字段或实体关系，请先更新本文件与 `spec.md` / `research.md` 中对应描述。
+后续在实现 `@logixjs/core` 的 StateTrait 内核时，应以本文件为数据/结构层的 SSoT，如需调整字段或实体关系，请先更新本文件与 `spec.md` / `research.md` 中对应描述。

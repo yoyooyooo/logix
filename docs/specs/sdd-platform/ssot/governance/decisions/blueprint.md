@@ -23,9 +23,9 @@ status: living
 4.  **Debug**: 如果失败，将 Execution Dump (执行快照) 喂回给 AI，AI 分析 Trace 并自动修复代码。
 5.  **Deliver**: 循环直至全绿，交付最终代码。
 
-### 2.2 基础设施：`@logix/test`
+### 2.2 基础设施：`@logixjs/test`
 
-为了支撑这一愿景，我们需要构建官方测试套件 `@logix/test`。详细设计请参考：
+为了支撑这一愿景，我们需要构建官方测试套件 `@logixjs/test`。详细设计请参考：
 
 *   `.codex/skills/project-guide/references/runtime-logix/logix-test/01-test-kit-design.md`
 

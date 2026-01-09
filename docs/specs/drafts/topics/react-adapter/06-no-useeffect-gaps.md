@@ -64,7 +64,7 @@ priority: next
 当前状态：
 
 - `runtime-logix` 集成文档中仍建议「在组件里用 `useEffect` 监听第三方库的输出，再同步给 Logix Module」。
-- `@logix/query`、`@logix/form` 等插件体系尚在规划阶段，尚未为业务提供「纯 Logix 视角」的集成 API。
+- `@logixjs/query`、`@logixjs/form` 等插件体系尚在规划阶段，尚未为业务提供「纯 Logix 视角」的集成 API。
 
 潜在演进方向：
 
@@ -90,7 +90,7 @@ priority: next
 
 ## 三、React 适配层内部 vs 业务层的边界
 
-当前 `@logix/react` 内部仍有一些 `useEffect` 用于管理 Runtime/Layer/ModuleCache 生命周期，例如：
+当前 `@logixjs/react` 内部仍有一些 `useEffect` 用于管理 Runtime/Layer/ModuleCache 生命周期，例如：
 
 - `RuntimeProvider` 中用 `useEffect` 构建/清理 `Layer` 绑定与 `Scope`；
 - `useModule / useLocalModule` 中用 `useEffect` 配合 `ModuleCache` 做引用计数与 GC。
@@ -172,7 +172,7 @@ priority: next
   - `ViewHandles.register(id, handle)` / `unregister(id)`：由适配层在组件挂载/卸载时调用，注册真实句柄；
   - `ViewHandles.get(id)`：逻辑侧按需读取（通常包在 Effect 内部）；
   - `ViewHandles.with(id, f)`：语义化地“在有句柄时执行某个 Effect”。
-- 在 `@logix/react` 中提供标准 hooks 作为唯一合法的 `useRef` 入口，例如（示意）：
+- 在 `@logixjs/react` 中提供标准 hooks 作为唯一合法的 `useRef` 入口，例如（示意）：
 
   - `const ref = useViewHandle("usernameInput")`；  
   - 组件中 `<input ref={ref} ... />`；  
@@ -203,4 +203,4 @@ priority: next
   - Flow 资源 → Effect.Ref / Service；  
   - 视图/实例句柄 → Platform.ViewHandles + 官方 React hooks；  
   - 稳定回调 → Logix dispatch + 官方集成 hooks。
-- `useRef` 仍然可以在 `@logix/react` 内部、平台适配层、特定集成包（如 `@logix/query`、`@logix/form`）中作为实现细节使用，但应通过上述分类原则自检：确保最终对业务只暴露 Logix/Platform 抽象，而不是原生 React mutable。 
+- `useRef` 仍然可以在 `@logixjs/react` 内部、平台适配层、特定集成包（如 `@logixjs/query`、`@logixjs/form`）中作为实现细节使用，但应通过上述分类原则自检：确保最终对业务只暴露 Logix/Platform 抽象，而不是原生 React mutable。 

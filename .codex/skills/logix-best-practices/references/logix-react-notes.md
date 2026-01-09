@@ -36,7 +36,7 @@ title: Logix React 注意事项（useModule/useSelector 性能与语义）
 适合：多个字段分散使用、渲染树可拆分、想要最清晰的订阅边界。
 
 ```tsx
-import { shallow, useModule, useSelector } from '@logix/react'
+import { shallow, useModule, useSelector } from '@logixjs/react'
 
 const runtime = useModule(MyModule) // runtime 引用稳定，不订阅状态
 
@@ -59,7 +59,7 @@ const { name, age } = useSelector(runtime, (s) => ({ name: s.user.name, age: s.u
 - `useModule(handle, selector, shallow)`（当你不需要 runtime 或 runtime 已由其它 hook 提供时）
 
 ```tsx
-import { shallow, useModule } from '@logix/react'
+import { shallow, useModule } from '@logixjs/react'
 
 const { name, age } = useModule(
   MyModule,
@@ -83,7 +83,7 @@ const { name, age } = useModule(
 推荐：
 
 ```tsx
-import { useImportedModule, useModule, useSelector } from '@logix/react'
+import { useImportedModule, useModule, useSelector } from '@logixjs/react'
 
 const host = useModule(HostModule, { key: 'SessionA' })
 const child = useImportedModule(host, Child.tag)

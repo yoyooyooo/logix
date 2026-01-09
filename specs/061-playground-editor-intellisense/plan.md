@@ -11,10 +11,10 @@
 
 1. **编辑器内核**：使用 Monaco Editor（`monaco-editor`）作为唯一编辑器内核；React 适配使用 `@monaco-editor/react`。
 2. **TypeScript 语义能力**：使用 Monaco 内置 TypeScript worker 提供语义补全/诊断/跳转；编译选项对齐示例项目的 module/jsx/target（ESNext + TSX），但 `lib` 以 Sandbox 运行环境语义为准（默认不含 DOM）。
-3. **类型注入（全量补全的根因）**：通过“预生成 Type Bundle（d.ts + 必要的 package.json）→ TypeScript worker 初始化时注入 extraLibs”的方式，把 `effect`、`@logix/*` 与必要的依赖类型注入到 Monaco 的 TS 语言服务，使 `import ... from "effect"` / `import ... from "@logix/core"` 及其常见子路径在编辑器侧可解析（避免在主线程大规模 `addExtraLib` 导致卡顿）。
+3. **类型注入（全量补全的根因）**：通过“预生成 Type Bundle（d.ts + 必要的 package.json）→ TypeScript worker 初始化时注入 extraLibs”的方式，把 `effect`、`@logixjs/*` 与必要的依赖类型注入到 Monaco 的 TS 语言服务，使 `import ... from "effect"` / `import ... from "@logixjs/core"` 及其常见子路径在编辑器侧可解析（避免在主线程大规模 `addExtraLib` 导致卡顿）。
 4. **性能与稳定性**：Monaco 与 Type Bundle 均按路由懒加载；对 TS 语义能力提供明确状态（loading/ready/error）；必要时降级为当前 textarea 编辑器（仍可运行）。
 5. **一致性**：同一套 Editor 组件同时用于 `/playground` 与 `/ir`；非 TS 的编辑入口（例如 step intent script）默认不启用 TS 语义能力，避免无意义的开销与误诊断。
-6. **与 core-ng 路线解耦**：本特性仅改善“编辑体验”，默认只面向 `@logix/core` 的稳定 API 做类型感知；不引入 `core-ng`/多 kernel 选择能力。若未来要在浏览器侧做 `core`/`core-ng` 对照试跑或暴露 kernel 选择 UI，按 `specs/058-sandbox-multi-kernel/`（046 统筹的 Playground/Sandbox 基础设施）另立实施入口，与 061 解耦推进。
+6. **与 core-ng 路线解耦**：本特性仅改善“编辑体验”，默认只面向 `@logixjs/core` 的稳定 API 做类型感知；不引入 `core-ng`/多 kernel 选择能力。若未来要在浏览器侧做 `core`/`core-ng` 对照试跑或暴露 kernel 选择 UI，按 `specs/058-sandbox-multi-kernel/`（046 统筹的 Playground/Sandbox 基础设施）另立实施入口，与 061 解耦推进。
 
 ## Questions Digest（plan-from-questions）
 
@@ -37,18 +37,18 @@
 - Decision: 资源稳定验收口径显式化：warm-up 后 20 次切换 JS heap 不持续单调增长（source: spec clarify AUTO 2025-12-29）。
 - Decision: TS 语义边界默认采用 WebWorker 语义（不包含 DOM lib），避免补全污染与误导（source: spec clarify AUTO 2025-12-29）。
 - Decision: 提供基础自动格式化能力（基于 Monaco/TS），不引入 Prettier（source: spec clarify AUTO 2025-12-29）。
-- Decision: 不承诺非允许依赖与 `@logix/core-ng` 等专用 API 的类型感知；出现“无法解析模块/类型”的诊断属预期且不阻断闭环（source: spec clarify AUTO 2025-12-30）。
+- Decision: 不承诺非允许依赖与 `@logixjs/core-ng` 等专用 API 的类型感知；出现“无法解析模块/类型”的诊断属预期且不阻断闭环（source: spec clarify AUTO 2025-12-30）。
 
 ## Existing Foundations（直接复用）
 
 - 路由与页面：`examples/logix-sandbox-mvp/src/App.tsx`（`/playground`）与 `examples/logix-sandbox-mvp/src/ir/IrPage.tsx`（`/ir`）。
 - 当前编辑器：`examples/logix-sandbox-mvp/src/components/Editor.tsx`（textarea，非受控同步策略）。
-- 运行链路：`@logix/sandbox` Worker + esbuild-wasm 编译 + `import(blobUrl)` 运行；编辑器升级不改变运行路径。
+- 运行链路：`@logixjs/sandbox` Worker + esbuild-wasm 编译 + `import(blobUrl)` 运行；编辑器升级不改变运行路径。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`）  
-**Primary Dependencies**: pnpm workspace、`effect` v3（override 3.19.13）、`@logix/core`、`@logix/react`、`@logix/sandbox`、Vite、React 19、Monaco Editor  
+**Primary Dependencies**: pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、Vite、React 19、Monaco Editor  
 **Storage**: N/A（类型 bundle 作为前端构建产物；不引入持久化）  
 **Testing**: Vitest（示例项目已有 `@effect/vitest` 用例；本特性以手工验收为主，必要时补最小 smoke 用例）  
 **Target Platform**: modern browsers（Vite dev/preview） + Node.js 20+（生成 type bundle 的脚本）  
@@ -92,12 +92,12 @@
 - 显式设置 Monaco TypeScript 编译语义（满足 FR-008）：对齐示例项目的 module/jsx/target，但 `lib` 默认不包含 DOM（WebWorker 语义）。
 - 注意：示例工程自身 `tsconfig.json` 可能包含 DOM lib；此处不应直接复用 `lib`，以 Sandbox 运行环境语义（默认无 DOM）为准。
 
-### 3) Type Bundle：让 “import effect/@logix/*” 在编辑器里可解析
+### 3) Type Bundle：让 “import effect/@logixjs/*” 在编辑器里可解析
 
 选择：**预生成 Type Bundle（可复现构建产物；默认不提交 Git）**。
 
 - 输入：一组“允许/推荐在 Playground 中使用”的包：
-  - 必选：`effect`、`@logix/core`、`@logix/react`、`@logix/sandbox`、`@logix/form`
+  - 必选：`effect`、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、`@logixjs/form`
   - 必要依赖：`@standard-schema/spec`、`fast-check`、React JSX 相关类型（`@types/react` 等）
 - 收集策略：递归包含传递依赖 types（以“导入可达闭包”为准），避免出现大量 `any` / 缺失类型导致补全质量断崖（并允许手动 allow/deny list 控制异常依赖）。
 - 输出：一个可被浏览器直接 import 的模块（例如 `examples/logix-sandbox-mvp/src/components/editor/types/monacoTypeBundle.generated.ts`），包含：
@@ -128,7 +128,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Deterministic identity**：不涉及 runtime identity。
 - **Transaction boundary**：不涉及事务窗口；不引入 IO/async 进事务。
 - **Internal contracts & trial runs**：Type Bundle 作为显式、可替换的输入工件；不依赖进程级全局单例；失败时可解释并可降级。
-- **Dual kernels (core + core-ng)**：不触及核心内核与契约矩阵；消费者不引入 `@logix/core-ng` 依赖。
+- **Dual kernels (core + core-ng)**：不触及核心内核与契约矩阵；消费者不引入 `@logixjs/core-ng` 依赖。
 - **Performance budget**：主要是编辑体验性能（首进可输入/类型就绪/输入响应）。通过路由懒加载 + 状态可视化 + 降级路径避免“不可控变慢”。
 - **Diagnosability**：提供 UI 状态与 meta（包含哪些包/版本）用于排障；失败必须可定位原因与恢复建议。
 - **Breaking changes**：无 public API 变更；仅示例工程内部实现变化。

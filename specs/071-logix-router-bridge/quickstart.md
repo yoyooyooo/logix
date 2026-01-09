@@ -32,9 +32,9 @@
 ### 3.1 React Router（Data Router）
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
-import * as Router from '@logix/router'
+import * as Router from '@logixjs/router'
 import { createBrowserRouter } from 'react-router-dom'
 
 const dataRouter = createBrowserRouter(/* routes */)
@@ -49,9 +49,9 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### 3.2 TanStack Router
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
-import * as Router from '@logix/router'
+import * as Router from '@logixjs/router'
 import { createRouter } from '@tanstack/react-router'
 
 const router = createRouter(/* routeTree + history */)
@@ -66,9 +66,9 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### 3.3 Memory（测试/示例夹具）
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Layer } from 'effect'
-import * as Router from '@logix/router'
+import * as Router from '@logixjs/router'
 
 const runtime = Logix.Runtime.make(RootImpl, {
   layer: Layer.mergeAll(
@@ -83,7 +83,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 
 ```ts
 import { Effect } from 'effect'
-import * as Router from '@logix/router'
+import * as Router from '@logixjs/router'
 
 export const Logic = AppModule.logic(($) =>
   Effect.gen(function* () {

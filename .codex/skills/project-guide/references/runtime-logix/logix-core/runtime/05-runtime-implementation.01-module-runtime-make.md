@@ -78,7 +78,7 @@ function ModuleRuntime.make<Sh extends Logix.ModuleShape<any, any>>(
     )<EffectOpMiddlewareTag, EffectOpMiddlewareEnv>() {}
     ```
 
-  - 该 Service 由 `Logix.Runtime.make` 构造应用级 Runtime 时注入（见 `@logix/core` RuntimeOptions 中的 `middleware` 字段），所有需要走统一总线的运行时代码（例如 StateTrait.install、Resource/Query 中间件、调试中间件）都通过 `Effect.serviceOption(EffectOpMiddlewareTag)` 读取当前 stack。
+  - 该 Service 由 `Logix.Runtime.make` 构造应用级 Runtime 时注入（见 `@logixjs/core` RuntimeOptions 中的 `middleware` 字段），所有需要走统一总线的运行时代码（例如 StateTrait.install、Resource/Query 中间件、调试中间件）都通过 `Effect.serviceOption(EffectOpMiddlewareTag)` 读取当前 stack。
 
 - **Runtime.make 中的总线注入点（对外 API 层）**
   - Runtime 对业务侧暴露的配置约定为（简化签名）：
@@ -104,8 +104,8 @@ function ModuleRuntime.make<Sh extends Logix.ModuleShape<any, any>>(
     - Logic 级中间件用于表达“这段业务逻辑必须经过哪些守卫”；
     - EffectOp 总线用于保证“所有边界事件都在统一链路上可观测、可调优”。
 
-- **公共中间件模块（`@logix/core/Middleware`）**
-  - Runtime 并不直接依赖具体中间件实现，只依赖 `EffectOp.Middleware` / `MiddlewareStack` 抽象；具体中间件由调用方在 `@logix/core/Middleware` 命名空间下组合：
+- **公共中间件模块（`@logixjs/core/Middleware`）**
+  - Runtime 并不直接依赖具体中间件实现，只依赖 `EffectOp.Middleware` / `MiddlewareStack` 抽象；具体中间件由调用方在 `@logixjs/core/Middleware` 命名空间下组合：
     - 通用中间件：以 `Middleware.Middleware` 形式实现，例如计时 / 指标上报 / 限流 / 审计 / Query 适配等，对 `op.effect` 做包装但不直接触碰 DebugSink；
     - 调试中间件：推荐使用高层组合入口 `Middleware.withDebug(stack, options?)` 在现有 `MiddlewareStack` 上一次性追加 DebugLogger（日志）与 DebugObserver（`type = "trace:effectop"`）；
     - 底层原语：`Middleware.applyDebug` / `Middleware.applyDebugObserver` 仍然可用，用于需要精细控制中间件顺序或选择性启用 logger/observer 的高级场景；

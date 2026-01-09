@@ -6,7 +6,7 @@
 
 - **推荐路径**：`values/initialValues`（值树） + `derived`（派生/联动） + `rules`（校验）。（顶层概念 ≤ 4，满足 SC-002）  
 - **高级入口**：`traits`（直接注入底层 `StateTraitSpec`），用于 escape hatch；不作为默认文档路径。  
-- **不引入第二套运行时**：`rules/derived/traits` 必须可 100% 降解为 kernel `StateTraitSpec`，并通过 `@logix/core` 执行与产出 trace（Static IR + Dynamic Trace）。  
+- **不引入第二套运行时**：`rules/derived/traits` 必须可 100% 降解为 kernel `StateTraitSpec`，并通过 `@logixjs/core` 执行与产出 trace（Static IR + Dynamic Trace）。  
 - **事务边界**：规则/派生在同步事务窗口内执行；禁止 IO/await。
 
 ## 1) 路径模型：ValuePath vs FieldPath（索引语义分层）

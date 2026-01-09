@@ -9,15 +9,15 @@
 
 规划裁决（核心）：
 
-1. `@logix/core` 继续作为唯一对外入口：负责对外 API/语义、统一最小 IR、稳定标识、诊断档位语义与“内核装配点”。
-2. `@logix/core-ng` 作为**另一套内核实现包**：只实现 `@logix/core` 定义的内核契约（Runtime Services/Kernel），通过 Layer/装配注入成为可选内核。
-3. `@logix/react` 只依赖 `@logix/core`：它消费的是“已装配完成的 runtime”，不需要依赖 `@logix/core-ng`；业务侧切换内核仅发生在 runtime 创建/装配阶段。
+1. `@logixjs/core` 继续作为唯一对外入口：负责对外 API/语义、统一最小 IR、稳定标识、诊断档位语义与“内核装配点”。
+2. `@logixjs/core-ng` 作为**另一套内核实现包**：只实现 `@logixjs/core` 定义的内核契约（Runtime Services/Kernel），通过 Layer/装配注入成为可选内核。
+3. `@logixjs/react` 只依赖 `@logixjs/core`：它消费的是“已装配完成的 runtime”，不需要依赖 `@logixjs/core-ng`；业务侧切换内核仅发生在 runtime 创建/装配阶段。
 4. 多内核“共存”只作为迁移与验证手段：允许同进程创建多个 runtime（各自一棵 DI 树），用于对照/灰度/试运行；不追求跨内核共享实例。
 5. 性能与可诊断性以 `$logix-perf-evidence` 为硬门：任何抽象层引入的额外开销必须可复现、可量化，并在预算内。
 
 ## Existing Foundations（本特性直接复用的“现成地基”）
 
-本特性不会另起一套“内核选择协议”。在实现层面，Kernel Contract 优先以 `@logix/core` 已有的 RuntimeServices（RuntimeKernel）机制表达：
+本特性不会另起一套“内核选择协议”。在实现层面，Kernel Contract 优先以 `@logixjs/core` 已有的 RuntimeServices（RuntimeKernel）机制表达：
 
 - **RuntimeServices selection + evidence**：`packages/logix-core/src/internal/runtime/core/RuntimeKernel.ts`
   - serviceId → implId 的选择逻辑（含 runtime_default/provider/instance scopes）
@@ -39,7 +39,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（ESM）  
-**Primary Dependencies**: `effect` v3（workspace override 3.19.13）、pnpm workspace、`@logix/*`  
+**Primary Dependencies**: `effect` v3（workspace override 3.19.13）、pnpm workspace、`@logixjs/*`  
 **Storage**: N/A（内存态：Effect Context/Scope + Ref/SubscriptionRef）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+ + modern browsers（React 运行环境）  
@@ -60,7 +60,7 @@
 **Scale/Scope**:
 
 - 本特性重点在“装配/契约/切换门槛”，不直接承诺任何算法级优化收益。
-- 预计触及 `@logix/core` 的 Runtime 装配与内部服务边界；`@logix/react` 以“只吃 runtime”保持稳定。
+- 预计触及 `@logixjs/core` 的 Runtime 装配与内部服务边界；`@logixjs/react` 以“只吃 runtime”保持稳定。
 
 ## Perf Evidence Plan（MUST）
 
@@ -146,9 +146,9 @@ packages/logix-react/
 
 **Structure Decision**:
 
-- `@logix/core` 负责：对外 API + Kernel Contract + 默认内核实现；并提供“可注入装配点”。
-- `@logix/core-ng` 负责：作为可选依赖提供另一套内核实现 Layer；不复制对外 DSL。
-- `@logix/react` 负责：消费 runtime（ManagedRuntime）并提供 React 绑定；业务通过“创建 runtime 时选择内核”完成切换。
+- `@logixjs/core` 负责：对外 API + Kernel Contract + 默认内核实现；并提供“可注入装配点”。
+- `@logixjs/core-ng` 负责：作为可选依赖提供另一套内核实现 Layer；不复制对外 DSL。
+- `@logixjs/react` 负责：消费 runtime（ManagedRuntime）并提供 React 绑定；业务通过“创建 runtime 时选择内核”完成切换。
 
 ## Complexity Tracking
 
@@ -165,7 +165,7 @@ packages/logix-react/
 045 完成实现后，下一步不建议“直接全量重写内核”，而是沿两条主线并行推进（并保持证据门禁）：
 
 1. **把当前内核做到“够硬”**：以 `specs/039-trait-converge-int-exec-evidence/` 打通整型执行链路与证据达标（纯优化不改语义），让你可以放心继续做平台与上层生态。
-2. **并行推进 core-ng**：在 045 固化的 Kernel Contract 与对照验证 harness 之上，让 `@logix/core-ng` 逐步覆盖更多 runtime services；每一次关键切换都必须通过 `$logix-perf-evidence` 的 Node+Browser before/after/diff 与结构化差异报告。
+2. **并行推进 core-ng**：在 045 固化的 Kernel Contract 与对照验证 harness 之上，让 `@logixjs/core-ng` 逐步覆盖更多 runtime services；每一次关键切换都必须通过 `$logix-perf-evidence` 的 Node+Browser before/after/diff 与结构化差异报告。
 
 更长线的 NG 方向（AOT / Flat Memory / Wasm Planner）以 topic 草案为探索入口，统一收敛到：`docs/specs/drafts/topics/logix-ng-architecture/`（不作为裁决，裁决以新的 `specs/<NNN-*>/` 交付）。
 

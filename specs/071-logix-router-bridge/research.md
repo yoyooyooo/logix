@@ -4,11 +4,11 @@
 
 ## Decision 1：Router 以“能力包（Tag + Layer）”而不是“必选模块”交付
 
-**Decision**：新增 `@logix/router`，以 `Context.Tag` 作为 Router Contract，对外通过 `Router.layer(service)` 注入实现；路由库集成通过 `Router.ReactRouter.make(...)` / `Router.TanStackRouter.make(...)` 等 builder 产出 `service`。
+**Decision**：新增 `@logixjs/router`，以 `Context.Tag` 作为 Router Contract，对外通过 `Router.layer(service)` 注入实现；路由库集成通过 `Router.ReactRouter.make(...)` / `Router.TanStackRouter.make(...)` 等 builder 产出 `service`。
 
 **Rationale**：
 
-- 对齐 `@logix/query` 的注入模型：能力包只以 Layer 注入，不扩展 `$`，避免 God Object。
+- 对齐 `@logixjs/query` 的注入模型：能力包只以 Layer 注入，不扩展 `$`，避免 God Object。
 - 满足 `NFR-001`：未消费时不产生常驻后台工作；能力包可以做到“惰性订阅”（第一次 read/changes/navigate 才 acquire router listener）。
 - 满足 `FR-006/NFR-004`：Tag 天然是 scope-bound 的；多 runtime/多 router 不串线。
 

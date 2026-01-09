@@ -6,7 +6,7 @@
 
 - 应用运行时启用 Devtools/观测（示例语义）：
   - 创建 Runtime 时打开 devtools（例如启用 DebugObserver + DevtoolsHub/观测桥接）。
-  - 在页面中挂载 `@logix/devtools-react` 的面板组件。
+  - 在页面中挂载 `@logixjs/devtools-react` 的面板组件。
 - 验收要点：
   - 面板可展示时间线/概览/错误诊断；
   - 导出证据包后可在插件形态导入得到一致结论（见 `spec.md` 的 SC-002）。

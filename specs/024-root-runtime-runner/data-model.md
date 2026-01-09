@@ -3,7 +3,7 @@
 **Date**: 2025-12-23  
 **Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/024-root-runtime-runner/spec.md`
 
-> 本特性不引入业务数据与持久化实体；本文件用于固化“对外上下文对象/退出策略提示/错误分类/释放边界”等可交互对象的结构边界，便于在 `@logix/core` 与 `@logix/test` 之间保持一致语义。
+> 本特性不引入业务数据与持久化实体；本文件用于固化“对外上下文对象/退出策略提示/错误分类/释放边界”等可交互对象的结构边界，便于在 `@logixjs/core` 与 `@logixjs/test` 之间保持一致语义。
 
 ## Entity: ProgramRunContext
 

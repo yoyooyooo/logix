@@ -71,7 +71,7 @@ export const toRuntimeDebugEventRef: (
 ) => RuntimeDebugEventRef | undefined
 ```
 
-核心映射规则（实现层面细节见 `@logix/core` 的 `DebugSink.ts`）：
+核心映射规则（实现层面细节见 `@logixjs/core` 的 `DebugSink.ts`）：
 
 - `module:init` / `module:destroy` → `kind = "lifecycle"`，label 分别为 `"module:init"` / `"module:destroy"`。
 - 生命周期阶段事件（init/start/destroy/platform）→ `kind = "lifecycle"`，`meta` 中携带对齐 `specs/011-upgrade-lifecycle/contracts/schemas/lifecycle-event.schema.json` 的最小证据（必须可序列化且遵守事件预算）。
@@ -119,7 +119,7 @@ export const consoleLayer: Layer.Layer<never>
 export const browserConsoleLayer: Layer.Layer<never>
 ```
 
-Runtime 公共入口（`@logix/core/Debug`）实际暴露：
+Runtime 公共入口（`@logixjs/core/Debug`）实际暴露：
 
 ```ts
 export type Event = Internal.Event
@@ -154,7 +154,7 @@ export const noopLayer: Layer.Layer<any, never, never>
 业务侧推荐用法：
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Logger } from "effect"
 
 // 1) 在 Runtime.make 中按环境挂载 Debug + Logger.pretty：

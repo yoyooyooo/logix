@@ -15,6 +15,6 @@
 
 ## 3) 迁移提示（Query/Form）
 
-- `@logix/query`：删除/收敛 `auto-trigger` 默认逻辑；把 cache-peek skip-loading 下沉到 refresh 实现。
-- `@logix/form`：不再依赖 `TraitLifecycle.makeSourceWiring.refreshOnKeyChange` 的反射式解释入口。
+- `@logixjs/query`：删除/收敛 `auto-trigger` 默认逻辑；把 cache-peek skip-loading 下沉到 refresh 实现。
+- `@logixjs/form`：不再依赖 `TraitLifecycle.makeSourceWiring.refreshOnKeyChange` 的反射式解释入口。
 

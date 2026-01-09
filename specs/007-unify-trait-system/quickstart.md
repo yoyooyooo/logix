@@ -6,14 +6,14 @@
 > - UI 只做订阅投影 + 事件派发；
 > - 所有事实源（errors/resources/ui）都写回 `state`/`state.ui` 并可回放。
 >
-> 说明：示例代码以“目标 API 形状”为准；最终以 `@logix/core` / `@logix/form` / `@logix/query` 实现为准。
+> 说明：示例代码以“目标 API 形状”为准；最终以 `@logixjs/core` / `@logixjs/form` / `@logixjs/query` 实现为准。
 
 ## 0. Form：从 Blueprint 到 React（最小可用）
 
 ### 0.1 Blueprint（组件外定义）
 
 ```ts
-import * as Form from "@logix/form"
+import * as Form from "@logixjs/form"
 import { Schema } from "effect"
 
 const ValuesSchema = Schema.Struct({
@@ -40,7 +40,7 @@ export const EmailForm = Form.make("EmailForm", {
 
 要点：
 
-- 业务默认只使用 `@logix/form` 的领域入口（`Form.make({ rules, fieldArrays, derived })` + `Form.Rule/Form.Error/Form.Trait`），无需直接接触 StateTrait/Trait；
+- 业务默认只使用 `@logixjs/form` 的领域入口（`Form.make({ rules, fieldArrays, derived })` + `Form.Rule/Form.Error/Form.Trait`），无需直接接触 StateTrait/Trait；
 - 所有高层声明会 **完全降解** 到统一的最小中间表示（Trait IR），并在降解后仍执行一致的冲突检测与合并；
 - touched/dirty 等交互态写入 `state.ui`，不在组件内自建事实源；`check` 会回落为“写错误树”的派生语义糖。
 
@@ -48,7 +48,7 @@ export const EmailForm = Form.make("EmailForm", {
 
 ```tsx
 import React from "react"
-import { useForm, useField } from "@logix/form/react"
+import { useForm, useField } from "@logixjs/form/react"
 import { EmailForm } from "./emailForm"
 
 export function EmailFormView() {
@@ -90,7 +90,7 @@ const RootImpl = Root.implement({
 ### 1.1 定义 ResourceSpec（真实 IO 的唯一入口）
 
 ```ts
-import { Resource } from "@logix/core"
+import { Resource } from "@logixjs/core"
 import { Effect, Schema } from "effect"
 
 export const SearchResource = { id: "SearchResource" } as const
@@ -116,7 +116,7 @@ export const SearchSpec = Resource.make({
 ### 1.2 QueryBlueprint（组件外定义）
 
 ```ts
-import { Query } from "@logix/query"
+import { Query } from "@logixjs/query"
 import { Schema } from "effect"
 
 const ParamsSchema = Schema.Struct({
@@ -151,7 +151,7 @@ export const SearchQuery = Query.make("SearchQuery", {
 
 ```tsx
 import React from "react"
-import { useLocalModule, useSelector } from "@logix/react"
+import { useLocalModule, useSelector } from "@logixjs/react"
 import { SearchQuery } from "./searchQuery"
 
 export function SearchPage() {
@@ -196,9 +196,9 @@ const RootImpl = Root.implement({
 
 ```ts
 import { Layer } from "effect"
-import { Resource } from "@logix/core"
+import { Resource } from "@logixjs/core"
 import { QueryClient } from "@tanstack/query-core"
-import * as Query from "@logix/query"
+import * as Query from "@logixjs/query"
 
 export const AppLayer = Layer.mergeAll(
   Resource.layer([SearchSpec]),

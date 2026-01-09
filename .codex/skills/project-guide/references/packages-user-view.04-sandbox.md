@@ -1,4 +1,4 @@
-# 4) `@logix/sandbox`（Sandbox / Worker 运行时 + Vite 插件）
+# 4) `@logixjs/sandbox`（Sandbox / Worker 运行时 + Vite 插件）
 
 ## 你在什么情况下会用它
 
@@ -12,7 +12,7 @@
 
 ## Vite 集成
 
-- `@logix/sandbox/vite`：`logixSandboxKernelPlugin(...)`（入口：`packages/logix-sandbox/src/Vite.ts`）
+- `@logixjs/sandbox/vite`：`logixSandboxKernelPlugin(...)`（入口：`packages/logix-sandbox/src/Vite.ts`）
 - 真实示例：`examples/logix-sandbox-mvp/vite.config.ts`
 
 ## 真实示例

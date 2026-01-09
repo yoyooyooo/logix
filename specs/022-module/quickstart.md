@@ -154,7 +154,7 @@ void Effect.runPromise(form.controller.validate())
 ### 示例 F：普通 Module（state/actions/reducers，日常业务）
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Schema } from "effect"
 
 const Counter = Logix.Module.make("Counter", {
@@ -174,12 +174,12 @@ export const LiveCounter = Counter.implement({
 ### 示例 G：CRUDModule（模块工厂）如何提供与使用（库作者 vs 业务作者，Tag 由库提供）
 
 ```ts
-import * as Logix from "@logix/core"
-import { useModule } from "@logix/react"
+import * as Logix from "@logixjs/core"
+import { useModule } from "@logixjs/react"
 import { Context, Effect, Layer, Schema } from "effect"
 
 // ------------------------------------------------------------
-// @logix/domain（库作者）：实现一个“CRUDModule 模块工厂命名空间”
+// @logixjs/domain（库作者）：实现一个“CRUDModule 模块工厂命名空间”
 // ------------------------------------------------------------
 
 export interface CrudQueryApi<Entity> {

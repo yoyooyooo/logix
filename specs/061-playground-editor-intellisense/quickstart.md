@@ -25,11 +25,11 @@
 ### 1) `/playground`：Logix 能力补全与诊断（FR-001/003/005/007）
 
 - 看到编辑器的“类型感知状态”从 `loading` 进入 `ready`。
-- 免 import 写法（可选）：编辑器侧默认注入 `declare const Logix: typeof import('@logix/core')`，所以可以直接写 `Logix.xxx` 获得类型；运行时是否自动补 `import * as Logix from "@logix/core"` 由 Header 的 `Kernel` 区域 `autoImport` 开关控制。
+- 免 import 写法（可选）：编辑器侧默认注入 `declare const Logix: typeof import('@logixjs/core')`，所以可以直接写 `Logix.xxx` 获得类型；运行时是否自动补 `import * as Logix from "@logixjs/core"` 由 Header 的 `Kernel` 区域 `autoImport` 开关控制。
 - 在编辑器中输入并触发补全：
   - `Logix.`（应出现核心命名空间/模块入口）
   - `Logix.Module.`（应出现 `make` 等核心能力）
-- 验证悬浮与跳转（FR-001）：在任意来自 `effect` 或 `@logix/*` 的符号上悬浮应显示类型信息；“跳转到定义”应能打开声明（d.ts）。
+- 验证悬浮与跳转（FR-001）：在任意来自 `effect` 或 `@logixjs/*` 的符号上悬浮应显示类型信息；“跳转到定义”应能打开声明（d.ts）。
 - 验证 TS 语义边界（FR-008）：输入 `document.` 触发补全，应出现“无法解析 document / 找不到名称”的诊断（默认不包含 DOM lib）。
 - 验证导入错误诊断（FR-005 / US2）：写一个不存在的导入符号或明显错误的导入路径，应出现可定位错误（而不是静默失败）。
 - 触发一次格式化（Format Document / Selection），确认编辑器能对当前文档做基础排版（FR-009）。
@@ -60,7 +60,7 @@
 ## 常见问题
 
 - 补全不出现：优先看“类型感知状态”是否为 `ready`，以及错误提示中是否指出缺失的模块类型。
-- `@logix/core`（或其它 workspace 包）更新后提示仍是旧版本：本仓对 `@logix/core/@logix/react/@logix/sandbox` 的类型注入来自各自的 `dist/*.d.ts`，需先构建再重新生成 type bundle：
+- `@logixjs/core`（或其它 workspace 包）更新后提示仍是旧版本：本仓对 `@logixjs/core/@logixjs/react/@logixjs/sandbox` 的类型注入来自各自的 `dist/*.d.ts`，需先构建再重新生成 type bundle：
   - `pnpm -C packages/logix-core build`（必要时也对改动过的 `packages/logix-react` / `packages/logix-sandbox` 执行 `build`）
   - `pnpm -C examples/logix-sandbox-mvp gen:monaco:types -- --force`
   - 刷新页面（必要时硬刷新），让 TS worker 重新加载新的 `monacoTypeBundle.generated.files.json`

@@ -104,13 +104,13 @@ StateTrait 具备三类平台关键特性：
 
 ### 2.4 Devtools 有“图 + 时间线”的雏形（中强）
 
-`@logix/devtools-react` 已经把 `StateTraitGraph` 拉进 UI，具备平台“线路点亮”的雏形；核心缺口是事件协议仍未 IR-first（详见下文）。
+`@logixjs/devtools-react` 已经把 `StateTraitGraph` 拉进 UI，具备平台“线路点亮”的雏形；核心缺口是事件协议仍未 IR-first（详见下文）。
 
 证据入口：`packages/logix-devtools-react/src/ui/graph/StateTraitGraphView.tsx`、`packages/logix-core/src/Debug.ts`。
 
 ### 2.5 Sandbox 已经具备 Alignment Lab 的骨架（弱-中）
 
-`@logix/sandbox` 已经具备：
+`@logixjs/sandbox` 已经具备：
 
 - Worker 编译/运行闭环、`LOG/TRACE/UI_INTENT/COMPLETE` 事件上报；
 - `globalThis.logixSandboxBridge.emitUiIntent` / `globalThis.logixSandboxBridge.emitSpy` 这两个“未来双工协议”的桥接钩子。
@@ -241,7 +241,7 @@ StateTrait 具备三类平台关键特性：
 - **建议选择现实实现路线作为唯一白盒锚点**：
   `yield* $.onState/$.onAction/$.on(...).update/mutate/run*(...)`
   理由：
-  - 与 `@logix/core` 的真实类型与实现一致；
+  - 与 `@logixjs/core` 的真实类型与实现一致；
   - 与 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md` 的 Hard Constraints 一致；
   - 终端算子 `.run* / .update / .mutate` 语义更显式（比 `.then` 更利于诊断与平台推断）。
 
@@ -318,7 +318,7 @@ Sandbox 在平台体系中不是“代码 runner”，而是 **Executable Spec /
 
 但代码侧目前只有一个过时的解析脚本，没有可复用的 Builder/Parser 包，也没有“IR 的最小实现”。因此建议把平台能力拆成两块可交付的基础设施：
 
-- `@logix/builder`（或同等定位的包）：只做 “Code↔IR↔Patch” 的纯库能力（可被 CLI/DevServer/CI 复用）；
+- `@logixjs/builder`（或同等定位的包）：只做 “Code↔IR↔Patch” 的纯库能力（可被 CLI/DevServer/CI 复用）；
 - `logix dev`（Dev Server）：只做文件监听、缓存、增量推送、鉴权与协议封装（HTTP/WS/LSP）。
 
 并且必须在 Phase 1 就落下两类硬门槛：

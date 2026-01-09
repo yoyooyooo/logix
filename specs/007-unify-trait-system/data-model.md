@@ -111,7 +111,7 @@ type StateTraitNodeSpec<Input, Ctx> = {
 type StateTraitSpec<S> = Record<string, unknown> // 由 build 阶段归一化成 Entry
 ```
 
-> 注：具体 TypeScript 类型以 `@logix/core` 实现为准；此处仅定义“数据模型边界”与关键字段。
+> 注：具体 TypeScript 类型以 `@logixjs/core` 实现为准；此处仅定义“数据模型边界”与关键字段。
 
 ### 2.4 Program（编译后 IR）
 
@@ -355,8 +355,8 @@ type InvalidateRequest =
 
 DI 约束（全局 Runtime 注入）：
 
-- `@logix/query` 暴露 `Query.Engine`（Effect Tag）作为运行时依赖；
-- `@logix/query` 提供 `Query.Engine.layer(engine)` 便捷 Layer，用于宿主在全局 Runtime Layer 注入 Engine（默认 `Query.TanStack.engine(new QueryClient())`）；
+- `@logixjs/query` 暴露 `Query.Engine`（Effect Tag）作为运行时依赖；
+- `@logixjs/query` 提供 `Query.Engine.layer(engine)` 便捷 Layer，用于宿主在全局 Runtime Layer 注入 Engine（默认 `Query.TanStack.engine(new QueryClient())`）；
 - 同一 Runtime 作用域内 SHOULD 只有一个 Engine；跨 Runtime 作用域允许不同 Engine（缓存隔离），但 keyHash 门控与回放/诊断口径必须一致。
 
 ---

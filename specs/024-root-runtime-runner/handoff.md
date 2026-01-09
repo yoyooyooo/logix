@@ -1,6 +1,6 @@
 # 交接文档：024 · Root Runtime Runner（Program Runner）
 
-> 目标：为脚本/CLI/测试提供统一的“根模块运行入口”，并让 `@logix/test` 彻底复用同一套生命周期语义（不再维护独立的 Scenario/TestRuntime 模型）。
+> 目标：为脚本/CLI/测试提供统一的“根模块运行入口”，并让 `@logixjs/test` 彻底复用同一套生命周期语义（不再维护独立的 Scenario/TestRuntime 模型）。
 
 Date: 2025-12-25  
 Scope: `specs/024-root-runtime-runner/`
@@ -8,7 +8,7 @@ Scope: `specs/024-root-runtime-runner/`
 ## ✅ 当前状态
 
 - 入口裁决：`Runtime.openProgram`（scope-bound）+ `Runtime.runProgram`（一次性）
-- `@logix/test` 已切到新模型：只认 **program module**（`ModuleDef.implement(...)` 的产物）
+- `@logixjs/test` 已切到新模型：只认 **program module**（`ModuleDef.implement(...)` 的产物）
 - 迁移验收口径：以 `packages/logix-test/src` 为范围（见 `specs/024-root-runtime-runner/tasks.md` 的 T035）
 - 质量门与性能证据：见本 spec 的 `tasks.md` 后续任务（T040/T0xx）
 
@@ -23,7 +23,7 @@ Scope: `specs/024-root-runtime-runner/`
 - **释放收束**：`closeScopeTimeout` 默认 1000ms；超时抛 `DisposeTimeout`，并携带可行动提示（未 unregister listener / 未 join fiber / 未关闭资源句柄等）。
 - **错误分类（必须可解释）**：区分 `boot` / `main` / `dispose` 三段错误；载荷 Slim 且可序列化；至少可关联 `moduleId + instanceId`。
 
-### 0.2 `@logix/test`：对齐策略（彻底切新模型）
+### 0.2 `@logixjs/test`：对齐策略（彻底切新模型）
 
 - **输入唯一化**：只接受 program module（`ModuleDef.implement({ initial, logics, imports, processes })` 的产物），不再存在 `Scenario/TestProgram.make/TestRuntime` 生命周期模型。
 - **多模块协作**：靠 `imports` 表达（`program.implement({ imports: [...] })`），不通过 `Scenario` 聚合。
@@ -35,7 +35,7 @@ Scope: `specs/024-root-runtime-runner/`
 
 - core 入口：`packages/logix-core/src/Runtime.ts`
 - runner 内核：`packages/logix-core/src/internal/runtime/runner/ProgramRunner.ts`
-- `@logix/test` 新入口：`packages/logix-test/src/api/TestProgram.ts`、`packages/logix-test/src/Vitest.ts`
+- `@logixjs/test` 新入口：`packages/logix-test/src/api/TestProgram.ts`、`packages/logix-test/src/Vitest.ts`
 - runtime SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/05-runtime-and-runner.md`
 - test-package SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/07-test-package.md`
 
@@ -48,7 +48,7 @@ Scope: `specs/024-root-runtime-runner/`
 Before（旧模型示意）：
 
 ```ts
-import { TestProgram } from "@logix/test"
+import { TestProgram } from "@logixjs/test"
 
 const program = TestProgram.make({
   main: { module: RootModule, initial, logics: [RootLogic] },
@@ -63,8 +63,8 @@ const result = await program.run(async (api) => {
 After（新模型）：
 
 ```ts
-import * as Logix from "@logix/core"
-import { TestProgram } from "@logix/test"
+import * as Logix from "@logixjs/core"
+import { TestProgram } from "@logixjs/test"
 import { Effect } from "effect"
 
 const program = RootModule.implement({ initial, logics: [RootLogic] })
@@ -86,7 +86,7 @@ const result = await Effect.runPromise(
 Before（旧模型示意）：
 
 ```ts
-import { TestProgram } from "@logix/test"
+import { TestProgram } from "@logixjs/test"
 import { Layer } from "effect"
 
 const program = TestProgram.make({
@@ -101,8 +101,8 @@ const program = TestProgram.make({
 After（新模型）：
 
 ```ts
-import { TestProgram } from "@logix/test"
-import * as Logix from "@logix/core"
+import { TestProgram } from "@logixjs/test"
+import * as Logix from "@logixjs/core"
 
 const program = HostModule.implement({
   initial,
@@ -121,7 +121,7 @@ yield* TestProgram.runProgram(program, (api) => /* ... */)
 After（推荐）：
 
 ```ts
-import { itProgram } from "@logix/test/Vitest"
+import { itProgram } from "@logixjs/test/Vitest"
 
 itProgram("runs root program", RootProgram, (api) =>
   api.dispatch("increment"),

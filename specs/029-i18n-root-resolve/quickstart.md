@@ -16,19 +16,19 @@
 推荐模式（概念形态）：
 
 - 宿主创建（或异步初始化）外部 i18n 实例；
-- 从 `@logix/i18n` 导入 `I18n`，并在创建 runtime tree 时把 `I18n.layer(instance)` 合并进 root layer；
+- 从 `@logixjs/i18n` 导入 `I18n`，并在创建 runtime tree 时把 `I18n.layer(instance)` 合并进 root layer；
 - 这样 Module Logic 就能通过 root 入口读取该服务。
 
 > 说明：本特性只规定“注入契约”，不规定你如何加载语言包/连接平台。
 
 ### 1.1 React 集成示例（i18next + react-i18next）
 
-> 目标：**同一个 i18n 实例**同时给 UI（react-i18next）和 Logix（`@logix/i18n`）使用；避免出现“双实例”。
+> 目标：**同一个 i18n 实例**同时给 UI（react-i18next）和 Logix（`@logixjs/i18n`）使用；避免出现“双实例”。
 
 ```tsx
-import * as Logix from "@logix/core"
-import { RuntimeProvider } from "@logix/react"
-import { I18n } from "@logix/i18n"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
+import { I18n } from "@logixjs/i18n"
 import { Layer } from "effect"
 import { createInstance } from "i18next"
 import { initReactI18next, I18nextProvider } from "react-i18next"
@@ -83,7 +83,7 @@ void initI18n
 推荐：产出 token（可回放），UI 渲染时再翻译：
 
 - `const i18n = yield* $.root.resolve(I18nTag)`
-- `I18nTag` 来自 `@logix/i18n`（I18n 领域特性包）
+- `I18nTag` 来自 `@logixjs/i18n`（I18n 领域特性包）
 - `const token = i18n.token("form.required", { field: "name", defaultValue: "Name is required" })`
 - 把 `token` 写入 state（例如错误树）
 
@@ -91,7 +91,7 @@ void initI18n
 
 ```ts
 import { Effect } from "effect"
-import { I18nTag } from "@logix/i18n"
+import { I18nTag } from "@logixjs/i18n"
 
 const mkRequiredToken = ($, field) =>
   Effect.gen(function* () {
@@ -103,7 +103,7 @@ const mkRequiredToken = ($, field) =>
 ### 2.1 在 UI 渲染 message token（示例）
 
 ```tsx
-import type { I18nMessageToken } from "@logix/i18n"
+import type { I18nMessageToken } from "@logixjs/i18n"
 import { useTranslation } from "react-i18next"
 
 const renderToken = (t: (key: string, options?: any) => string, token: I18nMessageToken) => t(token.key, token.options)

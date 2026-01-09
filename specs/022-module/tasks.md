@@ -39,7 +39,7 @@
 - [X] T013 Support `Logix.Runtime.make(module)` in `packages/logix-core/src/Runtime.ts` (unwrap to `module.impl`; keep behavior equal to `Runtime.make(module.impl)`)
 - [X] T014 Support `useModule(module)` in `packages/logix-react/src/hooks/useModule.ts` (unwrap to `module.impl` by default; global usage stays `useModule(module.tag)` / ModuleTag)
 - [X] T015 [P] Implement handle-extend merge for React `useModule` in `packages/logix-react/src/hooks/useModule.ts` + `packages/logix-react/src/internal/ModuleRef.ts` (apply `Symbol.for(\"logix.module.handle.extend\")`; ref gains controller/services when available)
-- [X] T016 [P] Align `@logix/react` docs for Module consumption in `.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`
+- [X] T016 [P] Align `@logixjs/react` docs for Module consumption in `.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`
 - [X] T017 Implement `ModuleDescriptor` builder (pure + slim + serializable; include `moduleId/instanceId`; `logicUnits[].id` from resolved slot keys, and mark derived ids when applicable) in `packages/logix-core/src/Module.ts` (match `specs/022-module/contracts/schemas/module-descriptor.schema.json`)
 - [X] T018 Implement descriptor trace emission (when `diagnosticsLevel != \"off\"`; once-per-instance per RunSession; exportable via `trialRun` evidence) in `packages/logix-core/src/internal/runtime/BoundApiRuntime.ts` (MUST include `moduleId/instanceId`; `type: \"trace:module:descriptor\"`, `data` aligns `specs/022-module/contracts/schemas/module-event.schema.json`)
 - [X] T019 Implement dev diagnostic warning for `logicUnitId` override (default `last-write-wins`; record `Debug` event `type:\"diagnostic\" code:\"module_logic::override\" severity:\"warning\"` with resolved id + source anchors + order) in `packages/logix-core/src/Module.ts`
@@ -78,7 +78,7 @@
 
 **Independent Test**: 在 `packages/domain/test` 中验证：`CRUD.make()` 返回 Module；可 `Runtime.make(crud)` 与 `$.use(crud)`；并能与 Form 一起被同一套“unwrap 入口”消费（不写领域特化分支）
 
-- [X] T033 [P] [US2] Create new package scaffold for `@logix/domain` in `packages/domain/package.json` + `packages/domain/tsconfig.json` + `packages/domain/tsconfig.test.json` + `packages/domain/vitest.config.ts` + `packages/domain/tsup.config.ts`
+- [X] T033 [P] [US2] Create new package scaffold for `@logixjs/domain` in `packages/domain/package.json` + `packages/domain/tsconfig.json` + `packages/domain/tsconfig.test.json` + `packages/domain/vitest.config.ts` + `packages/domain/tsup.config.ts`
 - [X] T034 [US2] Implement minimal CRUD Module factory in `packages/domain/src/Crud.ts` (in-memory state + actionMap + controller.make(runtime) + `schemas/meta` reflection)
 - [X] T035 [US2] Export CRUD API from `packages/domain/src/index.ts`
 - [X] T036 [US2] Add CRUD Module smoke test in `packages/domain/test/CrudModule.basic.test.ts` (Runtime.make/$.use/withLogic basics)
@@ -156,7 +156,7 @@ Task: "Migrate FormBlueprint tests to Module shape in packages/logix-form/test/F
 ## Parallel Example: US2 (Package Scaffold vs Factory)
 
 ```text
-Task: "Create @logix/domain package scaffold in packages/domain/package.json"
+Task: "Create @logixjs/domain package scaffold in packages/domain/package.json"
 Task: "Implement CRUD Module factory in packages/domain/src/Crud.ts"
 ```
 

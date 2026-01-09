@@ -7,13 +7,13 @@
 
 ## Terminology
 
-- **当前内核（core）**：当前 `@logix/*` 正式包所使用的默认内核实现。
-- **下一代内核（core-ng）**：以 `@logix/core-ng` 为载体的下一代内核实现；与当前内核并行演进，最终可切换为默认实现。从 M2（trial-run/test/dev 渐进替换）起，core-ng 必须以独立包 `@logix/core-ng`（`packages/logix-core-ng/`）承载；内嵌在 `@logix/core` 的实现不计入 core-ng 证据与 Gate。
-- **Kernel Contract**：上层（`@logix/react`/Devtools/Sandbox/平台）与内核之间的稳定契约边界；由 `specs/045-dual-kernel-contract/` 固化。
-- **Sandbox kernel 资产（Browser kernel variant）**：`@logix/sandbox` Worker 使用的内核资产变体（`kernelId → kernelUrl`），用于 Browser trial-run/对照入口；相关选择/strict/fallback/错误摘要字段由 `specs/058-sandbox-multi-kernel/` 固化，并与 runtime 的 `KernelImplementationRef` 口径对齐。
+- **当前内核（core）**：当前 `@logixjs/*` 正式包所使用的默认内核实现。
+- **下一代内核（core-ng）**：以 `@logixjs/core-ng` 为载体的下一代内核实现；与当前内核并行演进，最终可切换为默认实现。从 M2（trial-run/test/dev 渐进替换）起，core-ng 必须以独立包 `@logixjs/core-ng`（`packages/logix-core-ng/`）承载；内嵌在 `@logixjs/core` 的实现不计入 core-ng 证据与 Gate。
+- **Kernel Contract**：上层（`@logixjs/react`/Devtools/Sandbox/平台）与内核之间的稳定契约边界；由 `specs/045-dual-kernel-contract/` 固化。
+- **Sandbox kernel 资产（Browser kernel variant）**：`@logixjs/sandbox` Worker 使用的内核资产变体（`kernelId → kernelUrl`），用于 Browser trial-run/对照入口；相关选择/strict/fallback/错误摘要字段由 `specs/058-sandbox-multi-kernel/` 固化，并与 runtime 的 `KernelImplementationRef` 口径对齐。
 - **证据门禁**：任何触及核心路径的改动必须以 `$logix-perf-evidence` 产出可复现的 Node + Browser before/after/diff，并用结构化证据阻断负优化；perf evidence 允许在 dev 工作区（git dirty）采集，但必须确保 `matrix/config/env` 一致，并在 diff 中保留 `git.dirty.*` warnings；若出现 `stabilityWarning` 或结论存疑，必须复测（必要时升级到 `profile=soak`）。
 - **NG-first（compiler-first）**：在“当前无真实业务包袱”的前提下，路线图优先服务 NG 的理想形态：更强静态化、更少运行期魔法、更可证据化；允许大范围 breaking。
-- **ReadQuery / SelectorSpec（状态读取查询）**：描述“读哪些状态/如何组合结果”的可编译协议；用于静态化与可解释性。注意：这不是领域层的 `@logix/query`（服务/缓存/请求）。
+- **ReadQuery / SelectorSpec（状态读取查询）**：描述“读哪些状态/如何组合结果”的可编译协议；用于静态化与可解释性。注意：这不是领域层的 `@logixjs/query`（服务/缓存/请求）。
 - **读状态车道（Read Lanes）**：三段式：AOT（可选编译插件）→ Runtime JIT（默认）→ Dynamic（兜底）。对外至少要可观测地区分 `static` 与 `dynamic`，并能解释降级原因。
 - **Strict Gate**：在 CI / perf gate 等关键验证场景，可把 “dynamic 回退” 视为失败（避免误以为已静态化）。
 - **Struct Memo（复用引用）**：对 `(s) => ({ a: s.a, b: s.b })` 这类 struct selector，字段未变则复用同一对象引用（默认不要求用户手写 shallow compare）。
@@ -32,12 +32,12 @@
 
 ### Session 2025-12-28
 
-- Q: 这里的 ReadQuery/SelectorSpec 是否等同于领域层 `@logix/query`？ → A: 不等同。ReadQuery 只描述“读状态依赖与投影”，用于渲染/派生/订阅的静态化与可解释性；领域 Query 仍负责“服务调用/缓存/请求”等。
+- Q: 这里的 ReadQuery/SelectorSpec 是否等同于领域层 `@logixjs/query`？ → A: 不等同。ReadQuery 只描述“读状态依赖与投影”，用于渲染/派生/订阅的静态化与可解释性；领域 Query 仍负责“服务调用/缓存/请求”等。
 - Q: 不安装任何编译插件时是否仍可用？ → A: 必须可用。默认走 Runtime JIT；无法静态化时可回退到 Dynamic，但回退必须可观测/可审计，并在 Strict Gate 下可变为失败。
 - Q: `$logix-perf-evidence` 的采集隔离要求怎么定？ → A: 允许在 dev 工作区采集（可为 git dirty），但必须确保 `matrix/config/env` 一致，并保留 `git.dirty.*` warnings；若出现 `stabilityWarning` 或结论存疑，必须复测（必要时 `profile=soak`）。
 - Q: perf evidence 的 suites/budgets 的单一事实源（SSoT）怎么定？ → A: 统一以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT（至少覆盖 `priority=P1`），并以 `matrixId+matrixHash` 保证可比性；硬结论至少 `profile=default`。
-- Q: 047 Full Cutover Gate 的 coverage matrix（必选 serviceId 列表）SSoT 落点？ → A: 以代码为 SSoT：在 `@logix/core`（优先 `packages/logix-core/src/Kernel.ts`）导出读取入口；测试/CI/harness 只读此处；spec/docs 仅解释口径。
-- Q: 从哪个里程碑开始强制要求以独立包 `@logix/core-ng` 承载 core-ng？ → A: M2 起强制（进入 trial-run/test/dev 渐进替换就必须是独立包；否则不计入 core-ng 证据与 Gate）。
+- Q: 047 Full Cutover Gate 的 coverage matrix（必选 serviceId 列表）SSoT 落点？ → A: 以代码为 SSoT：在 `@logixjs/core`（优先 `packages/logix-core/src/Kernel.ts`）导出读取入口；测试/CI/harness 只读此处；spec/docs 仅解释口径。
+- Q: 从哪个里程碑开始强制要求以独立包 `@logixjs/core-ng` 承载 core-ng？ → A: M2 起强制（进入 trial-run/test/dev 渐进替换就必须是独立包；否则不计入 core-ng 证据与 Gate）。
 - Q: 047 Full Cutover Gate 的 coverage 是否要求全覆盖 Kernel Contract 的可替换 services？ → A: 要求全覆盖：coverage 必须等于 Kernel Contract 当前所有可替换 `serviceId`；新增 `serviceId` 必须同步纳入，否则视为 Gate 失真。
 - Q: 047 Gate 失败输出的最小可序列化证据锚点必须包含哪些字段？ → A: `kernelId + missingServiceIds + moduleId/instanceId/txnSeq`（完整 runtimeServicesEvidence 仅 light/full）。
 
@@ -68,7 +68,7 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** 上层（react/devtools/sandbox）只依赖 `@logix/core`，**When** core-ng 并行演进，**Then** 路线图明确上层不需要直接依赖 core-ng，切换发生在 runtime 装配阶段，且必须可证据化。
+1. **Given** 上层（react/devtools/sandbox）只依赖 `@logixjs/core`，**When** core-ng 并行演进，**Then** 路线图明确上层不需要直接依赖 core-ng，切换发生在 runtime 装配阶段，且必须可证据化。
 
 ---
 
@@ -115,8 +115,8 @@
 ### Functional Requirements
 
 - **FR-001**: 路线图 MUST 固化为 `specs/` 下的正式交付物，并以“里程碑 + 门槛 + 边界”的形式表达，使读者不依赖草案也能做决策。
-- **FR-002**: 路线图 MUST 明确 045 的分支点作用：稳定 Kernel Contract，并定义“切换默认内核到 core-ng”的硬门槛（契约一致性验证 + 证据门禁 + 无 fallback/可解释）；其中 047 Full Cutover Gate 的 coverage matrix 必须以代码为单一事实源（`@logix/core` 导出，优先落点：`packages/logix-core/src/Kernel.ts`）。
-- **FR-002 (clarified)**: 路线图 MUST 明确：从 M2（trial-run/test/dev 渐进替换）起，core-ng 必须是独立包 `@logix/core-ng`（`packages/logix-core-ng/`）；否则不得将其作为 core-ng 证据或用于宣称 Gate PASS。
+- **FR-002**: 路线图 MUST 明确 045 的分支点作用：稳定 Kernel Contract，并定义“切换默认内核到 core-ng”的硬门槛（契约一致性验证 + 证据门禁 + 无 fallback/可解释）；其中 047 Full Cutover Gate 的 coverage matrix 必须以代码为单一事实源（`@logixjs/core` 导出，优先落点：`packages/logix-core/src/Kernel.ts`）。
+- **FR-002 (clarified)**: 路线图 MUST 明确：从 M2（trial-run/test/dev 渐进替换）起，core-ng 必须是独立包 `@logixjs/core-ng`（`packages/logix-core-ng/`）；否则不得将其作为 core-ng 证据或用于宣称 Gate PASS。
 - **FR-002 (clarified-2)**: 路线图 MUST 明确：047 Full Cutover Gate 的 coverage 必须全覆盖 Kernel Contract 当前所有可替换 `serviceId`；任何新增可替换 serviceId 必须同步纳入 coverage matrix（否则 Gate 语义失真）。
 - **FR-002 (clarified-3)**: 路线图 MUST 明确：047 Gate FAIL 时必须输出 Slim、可序列化的失败证据锚点，至少包含 `kernelId + missingServiceIds + moduleId/instanceId/txnSeq`；完整 `runtimeServicesEvidence` 只允许在 diagnostics=light/full 下输出。
 - **FR-003**: 路线图 MUST 给出 `specs/039-trait-converge-int-exec-evidence/` 的后续处置策略：它在“当前内核加固/NG 原则验证/core-ng 风险拦截”中的定位、以及何时可视为完成/冻结。

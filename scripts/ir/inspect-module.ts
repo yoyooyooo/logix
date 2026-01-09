@@ -3,7 +3,7 @@ import fs from "node:fs/promises"
 import path from "node:path"
 import process from "node:process"
 import { pathToFileURL } from "node:url"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 type DiagnosticsLevel = "off" | "light" | "full"
 

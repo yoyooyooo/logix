@@ -4,9 +4,9 @@
 
 ## Phase 1: Setup（shared）
 
-- 说明：从 046 的视角（M0=“分支点可用”），045 的核心价值是 **Kernel Contract + 对照验证跑道 + 默认路径无回归证据**。因此若你当前目标是先验证契约设计合理性，可以 **先做 Phase 2 的 T005–T013**；`@logix/core-ng` 包的 scaffolding（T001–T004）主要用于后续 US2/US3 的“可替换实现注入”，可以暂缓。
+- 说明：从 046 的视角（M0=“分支点可用”），045 的核心价值是 **Kernel Contract + 对照验证跑道 + 默认路径无回归证据**。因此若你当前目标是先验证契约设计合理性，可以 **先做 Phase 2 的 T005–T013**；`@logixjs/core-ng` 包的 scaffolding（T001–T004）主要用于后续 US2/US3 的“可替换实现注入”，可以暂缓。
 
-- [x] T001 创建 `packages/logix-core-ng/package.json`（`name=@logix/core-ng`，禁用 “v3” 残留叫法）
+- [x] T001 创建 `packages/logix-core-ng/package.json`（`name=@logixjs/core-ng`，禁用 “v3” 残留叫法）
 - [x] T002 创建 `packages/logix-core-ng/tsconfig.json` 与 `packages/logix-core-ng/tsconfig.test.json`
 - [x] T003 创建 `packages/logix-core-ng/src/index.ts`（先只导出最小入口：layer/工厂 + 版本信息）
 - [x] T004 创建 `packages/logix-core-ng/test/CoreNg.smoke.test.ts`（最小 smoke：可被 vitest 发现并运行）
@@ -15,7 +15,7 @@
 
 ## Phase 2: Foundational（Blocking）
 
-> 目标：把 “Kernel Contract” 收敛为 `@logix/core` 可导出的稳定契约点，并提供 `core-ng` 可注入的实现扩展点；默认路径热循环保持零分支/零分配变化。
+> 目标：把 “Kernel Contract” 收敛为 `@logixjs/core` 可导出的稳定契约点，并提供 `core-ng` 可注入的实现扩展点；默认路径热循环保持零分支/零分配变化。
 
 - [x] T005 定义 `KernelId`/`KernelImplementationRef`/Tag 与 helper layer 于 `packages/logix-core/src/Kernel.ts`
 - [x] T006 [P] 将 `Kernel` 作为 public submodule 导出：更新 `packages/logix-core/src/index.ts` 与 `packages/logix-core/package.json`（exports + publishConfig）
@@ -46,24 +46,24 @@
 
 ---
 
-## Phase 3: User Story 1（P1）- 上层生态仅依赖 @logix/core
+## Phase 3: User Story 1（P1）- 上层生态仅依赖 @logixjs/core
 
-**Goal**: `@logix/react`/Devtools/Sandbox 不依赖 `@logix/core-ng`；通过统一最小 IR 与证据能解释“用的哪个内核/为何如此选择”。
+**Goal**: `@logixjs/react`/Devtools/Sandbox 不依赖 `@logixjs/core-ng`；通过统一最小 IR 与证据能解释“用的哪个内核/为何如此选择”。
 
-**Independent Test**: 在不引入 `@logix/core-ng` 依赖的前提下，TrialRun/Devtools 仍可导出并解释 `KernelImplementationRef`（off）与 `RuntimeServicesEvidence`（light/full）。
+**Independent Test**: 在不引入 `@logixjs/core-ng` 依赖的前提下，TrialRun/Devtools 仍可导出并解释 `KernelImplementationRef`（off）与 `RuntimeServicesEvidence`（light/full）。
 
-- [x] T022 [P] [US1] 添加防回归测试：`packages/logix-react/package.json` 不得声明依赖 `@logix/core-ng`（`packages/logix-react/test/internal/no-core-ng-dependency.contract.test.ts`）
+- [x] T022 [P] [US1] 添加防回归测试：`packages/logix-react/package.json` 不得声明依赖 `@logixjs/core-ng`（`packages/logix-react/test/internal/no-core-ng-dependency.contract.test.ts`）
 - [x] T023 [US1] 将 “≤5 关键词心智模型” 写入 `specs/045-dual-kernel-contract/spec.md` 的 NFR-005（不引入新概念：`kernelId(requested)` + `servicesEvidence(actual)` + `fallback` + `diagnosticsLevel` + `budget`）
 
 ---
 
 ## Phase 4: User Story 2（P1）- core-ng 可并行演进 + 风险可拦截
 
-**Goal**: `@logix/core-ng` 可通过注入契约点提供实现；允许在 trial-run/test/dev 渐进替换（可混用 builtin 且可证据化），但“宣称可作为默认实现”必须全套切换（无 fallback）。
+**Goal**: `@logixjs/core-ng` 可通过注入契约点提供实现；允许在 trial-run/test/dev 渐进替换（可混用 builtin 且可证据化），但“宣称可作为默认实现”必须全套切换（无 fallback）。
 
 **Independent Test**: 用同一套 trial-run/contract harness 驱动 core 与 core-ng：能导出对照证据；当发生 fallback 时能被识别为“未达全套切换”。
 
-- [x] T024 [P] [US2] 在 `packages/logix-core-ng/src/CoreNgLayer.ts` 提供 `coreNgKernelLayer(...)`：注入 `KernelImplementationRefTag`（`kernelId='core-ng'`、`packageName='@logix/core-ng'`）
+- [x] T024 [P] [US2] 在 `packages/logix-core-ng/src/CoreNgLayer.ts` 提供 `coreNgKernelLayer(...)`：注入 `KernelImplementationRefTag`（`kernelId='core-ng'`、`packageName='@logixjs/core-ng'`）
 - [x] T025 [P] [US2] 在 `packages/logix-core-ng/src/RuntimeServices.impls.ts` 注册至少 1 个可替换 service 的实现（推荐先从 `txnQueue` 或 `operationRunner` 做 “等价实现/无额外分配”）
 - [x] T026 [US2] 在 `packages/logix-core-ng/src/index.ts` 导出 `coreNgKernelLayer`（以及未来扩展入口）
 - [x] T027 [P] [US2] 新增测试：当请求 `core-ng` 且覆盖某个 serviceId 时，`RuntimeServicesEvidence` 里 binding 的 implId=core-ng（`packages/logix-core-ng/test/RuntimeServicesSelection.test.ts`）
@@ -91,7 +91,7 @@
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [x] T035 [P] 修正 “v3” 残留叫法：`packages/logix-core/package.json` 的 `description` 与相关 docs（若涉及）统一为“当前 @logix/\*”口径
+- [x] T035 [P] 修正 “v3” 残留叫法：`packages/logix-core/package.json` 的 `description` 与相关 docs（若涉及）统一为“当前 @logixjs/\\*”口径
 - [x] T036 运行并校验 `specs/045-dual-kernel-contract/quickstart.md`（按文档闭环走一遍）
 
 ---

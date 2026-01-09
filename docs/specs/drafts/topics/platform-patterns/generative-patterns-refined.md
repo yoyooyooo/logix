@@ -28,7 +28,7 @@ related: []
 
 ```typescript
 // patterns/JobProcessor.ts
-import { Pattern, Slot } from '@logix/core';
+import { Pattern, Slot } from '@logixjs/core';
 import { Schema } from 'effect';
 
 // 1. 定义 Slot (空洞)

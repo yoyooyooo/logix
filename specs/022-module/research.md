@@ -95,7 +95,7 @@
 **Alternatives considered**:
 
 - 每个领域包手写命名空间：短期可行，但扩展点会在多个包之间漂移，后续治理成本高。
-- 在 `@logix/core` 里直接生成命名空间：会把领域演进点散落到 core，且更难按 kind 做治理。
+- 在 `@logixjs/core` 里直接生成命名空间：会把领域演进点散落到 core，且更难按 kind 做治理。
 
 ### 5.1.1) 业务侧扩展：actions/reducers 的合并语义（默认能力保留）
 

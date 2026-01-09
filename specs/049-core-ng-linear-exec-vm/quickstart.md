@@ -2,7 +2,7 @@
 
 ## 1) 我什么时候需要 049？
 
-- 你已经有 045 的 Kernel Contract 跑道，且 `@logix/core-ng` 可以被试跑注入；
+- 你已经有 045 的 Kernel Contract 跑道，且 `@logixjs/core-ng` 可以被试跑注入；
 - 你希望把 core-ng 的热路径执行形态推进到“线性 plan + 整型索引 + buffer 复用”。
 
 ## 2) 049 的验收方式是什么？

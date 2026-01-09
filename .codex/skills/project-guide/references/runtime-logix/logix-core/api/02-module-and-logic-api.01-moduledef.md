@@ -4,7 +4,7 @@
 
 ```ts
 import { Schema } from 'effect';
-import * as Logix from '@logix/core';
+import * as Logix from '@logixjs/core';
 
 export const CounterDef = Logix.Module.make('Counter', {
   state: Schema.Struct({
@@ -66,6 +66,6 @@ export const CounterDef = Logix.Module.make('Counter', {
 
 并且带 `CounterDef.tag` 作为 Runtime Tag（Tag 本身可被 `yield*` 消费；而 `$.use(CounterDef)` 等价于 `$.use(CounterDef.tag)`）。
 
-对应类型以 `@logix/core` 为准（公共出口：`packages/logix-core/src/index.ts`；Module 相关实现与类型在 `packages/logix-core/src/Module.ts` 与 `packages/logix-core/src/internal/module.ts`）。
+对应类型以 `@logixjs/core` 为准（公共出口：`packages/logix-core/src/index.ts`；Module 相关实现与类型在 `packages/logix-core/src/Module.ts` 与 `packages/logix-core/src/internal/module.ts`）。
 
 ---

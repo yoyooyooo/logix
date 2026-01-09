@@ -7,7 +7,7 @@ description: "Task list for 012-program-api (Process)"
 **Input**: Design documents from `specs/012-program-api/`
 **Prerequisites**: `specs/012-program-api/plan.md`, `specs/012-program-api/spec.md`, `specs/012-program-api/data-model.md`, `specs/012-program-api/contracts/`, `specs/012-program-api/research.md`, `specs/012-program-api/quickstart.md`
 
-**Tests**: 本特性触及 `packages/logix-core` 与 `packages/logix-react` 的核心路径（processes 运行承载 / 生命周期 / 并发语义 / 诊断事件），测试与回归防线视为必需（含 contracts/schema 预检 + 语义用例 + 性能/诊断基线）；同时遵循 030 Public Submodules gate：实现目录（如 hooks/components/worker）下沉 `src/internal/**`，任何直接 import `src/internal/**` 的测试应收敛到 `test/internal/**`（`@logix/react` / `@logix/sandbox` 的 `test/browser/**` 允许作为例外）。
+**Tests**: 本特性触及 `packages/logix-core` 与 `packages/logix-react` 的核心路径（processes 运行承载 / 生命周期 / 并发语义 / 诊断事件），测试与回归防线视为必需（含 contracts/schema 预检 + 语义用例 + 性能/诊断基线）；同时遵循 030 Public Submodules gate：实现目录（如 hooks/components/worker）下沉 `src/internal/**`，任何直接 import `src/internal/**` 的测试应收敛到 `test/internal/**`（`@logixjs/react` / `@logixjs/sandbox` 的 `test/browser/**` 允许作为例外）。
 
 **Traceability**: 每条任务应至少映射到一个编码点（FR/NFR/SC）或宪章条款；如为治理/文档/流程任务，用 `Trace: Constitution` 标注。
 

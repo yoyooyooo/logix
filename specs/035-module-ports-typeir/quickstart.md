@@ -12,8 +12,8 @@
 
 1. 对目标模块执行 trial-run（025；经由 031 的 artifacts 槽位输出）。
 2. 在 `TrialRunReport.artifacts` 里拿到：
-   - `@logix/module.portSpec@v1`（必需）
-   - `@logix/module.typeIr@v1`（可选；可截断）
+   - `@logixjs/module.portSpec@v1`（必需）
+   - `@logixjs/module.typeIr@v1`（可选；可截断）
 3. 平台用 PortSpec 生成“允许引用空间”（用于画布连线、绑定编辑器、lint）。
 
 ## 2) 降级策略（TypeIR 缺失/截断）

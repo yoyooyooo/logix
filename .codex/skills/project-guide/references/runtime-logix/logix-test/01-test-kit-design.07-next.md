@@ -21,5 +21,5 @@
 - 现有 `Scenario.ts` 可以下沉为 `api/TestProgram` 的内部实现，不再单独作为公共概念暴露；后续可以根据需要调整实现细节，而不影响上层使用。
 
 - 文档视角：
-  - 本文件作为 `@logix/test` 的 SSoT 规格；
+  - 本文件作为 `@logixjs/test` 的 SSoT 规格；
   - apps/docs 中则以「如何测试一个 Counter Module / 多模块联动场景」的教程形式出现，示例代码统一采用原生 Effect + `@effect/vitest` 写法，并在必要处引用本规格中的名词。

@@ -6,20 +6,13 @@ export const sharedConfig = {
   test: {
     globals: true,
     alias: {
-      // 统一指向各包的 src 目录，以便支持子路径导入（例如 @logix/core/Env）
-      "@logix/core": path.resolve(__dirname, "./packages/logix-core/src"),
-      "@logix/core-ng": path.resolve(__dirname, "./packages/logix-core-ng/src"),
-      "@logix/i18n": path.resolve(__dirname, "./packages/i18n/src"),
-      "@logix/sandbox": path.resolve(__dirname, "./packages/logix-sandbox/src"),
-      "@logix/test": path.resolve(__dirname, "./packages/logix-test/src"),
-      "@logix/perf-evidence": path.resolve(
-        __dirname,
-        "./.codex/skills/logix-perf-evidence"
-      ),
-      "@logixjs/perf-evidence": path.resolve(
-        __dirname,
-        "./.codex/skills/logix-perf-evidence"
-      ),
+      // 统一指向各包的 src 目录，以便支持子路径导入（例如 @logixjs/core/Env）
+      "@logixjs/core": path.resolve(__dirname, "./packages/logix-core/src"),
+      "@logixjs/core-ng": path.resolve(__dirname, "./packages/logix-core-ng/src"),
+      "@logixjs/i18n": path.resolve(__dirname, "./packages/i18n/src"),
+      "@logixjs/sandbox": path.resolve(__dirname, "./packages/logix-sandbox/src"),
+      "@logixjs/test": path.resolve(__dirname, "./packages/logix-test/src"),
+      "@logixjs/perf-evidence": path.resolve(__dirname, "./.codex/skills/logix-perf-evidence"),
     },
     exclude: [
       "**/node_modules/**",

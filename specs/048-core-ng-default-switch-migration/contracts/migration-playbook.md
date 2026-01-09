@@ -11,7 +11,7 @@
 
 ## Switch（切默认）
 
-- 在 `@logix/core` 的 runtime 装配入口切换默认 kernel implementation 到 `core-ng`（通过默认注入的 KernelImplementationRef/Layer 决定，而非 runtime options）
+- 在 `@logixjs/core` 的 runtime 装配入口切换默认 kernel implementation 到 `core-ng`（通过默认注入的 KernelImplementationRef/Layer 决定，而非 runtime options）
 - 确保默认路径为 full cutover（禁止隐式 fallback）
 
 ## Rollback（显式回退）

@@ -21,9 +21,9 @@
 
 Examples：
 
-- `@logix/form.rulesManifest@v1`
-- `@logix/module.portSpec@v1`
-- `@logix/module.typeIr@v1`
+- `@logixjs/form.rulesManifest@v1`
+- `@logixjs/module.portSpec@v1`
+- `@logixjs/module.typeIr@v1`
 
 ## Entity: ArtifactEnvelope
 
@@ -53,7 +53,7 @@ Fields（概要）：
 - 导出失败/不可序列化必须以 `error` 标注（而不是让 JSON.stringify 抛错）。
 - 截断必须显式（`truncated/budgetBytes/...`），平台可以据此降级。
 
-## Artifact: `@logix/form.rulesManifest@v1`
+## Artifact: `@logixjs/form.rulesManifest@v1`
 
 **Purpose**：Form rules 的 Supplemental Static IR（规则清单 + warnings）。  
 **Canonical schema**：`specs/031-trialrun-artifacts/contracts/schemas/form-rules-manifest-artifact.schema.json`

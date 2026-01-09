@@ -1,5 +1,5 @@
 {
-  "name": "@logix/fixture-src-root-violation",
+  "name": "@logixjs/fixture-src-root-violation",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

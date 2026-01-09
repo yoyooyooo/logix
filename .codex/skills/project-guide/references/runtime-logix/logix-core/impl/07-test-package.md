@@ -1,11 +1,11 @@
-# `@logix/test`（运行时对齐版）规范
+# `@logixjs/test`（运行时对齐版）规范
 
-> 目标：提供「测试即 Effect」的工具集，但 **生命周期语义必须与 `@logix/core` 的 Program Runner 一致**。  
+> 目标：提供「测试即 Effect」的工具集，但 **生命周期语义必须与 `@logixjs/core` 的 Program Runner 一致**。  
 > 关键裁决：不再维护独立的 `Scenario/TestRuntime/TestProgram.make` 生命周期模型；统一以 **program module** 为输入复用 `Runtime.openProgram/runProgram` 内核。
 
 ## 1. Overview
 
-`@logix/test` 的职责是：
+`@logixjs/test` 的职责是：
 
 - 在不改变业务语义的前提下，为测试叠加：
   - Trace（actions/state/lifecycle:error）收集；
@@ -36,7 +36,7 @@ packages/logix-test/
 ### 3.1 `TestProgram.runProgram(programModule, body, options?)`
 
 - 输入：**program module**（`ModuleDef.implement(...)` 的产物，含 imports/processes/layer）；
-- 内核：复用 `@logix/core` 的 `Runtime.openProgram`（boot + dispose 语义一致）；
+- 内核：复用 `@logixjs/core` 的 `Runtime.openProgram`（boot + dispose 语义一致）；
 - 附加：在一次运行内收集 trace，并提供 `TestApi`：
   - `api.ctx`：`ProgramRunContext`（含 `ctx.$`，可在测试里像 Logic 一样 `$.use(OtherModule)`）
   - `api.dispatch`：对主模块派发 action

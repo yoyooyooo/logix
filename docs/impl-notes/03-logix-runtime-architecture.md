@@ -236,7 +236,7 @@ Logix 运行时采用典型的分层架构，从上到下依次为：
 
 ### 5.2 React Interop (External Viewer)
 
-- **Package**: `@logix/react`
+- **Package**: `@logixjs/react`
 - **Mechanism**:
   - `useSelector(module, selector)` 订阅 `runtime.changes`。
   - 当 `SubscriptionRef` 更新时，React 组件收到通知并重绘。

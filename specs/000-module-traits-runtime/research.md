@@ -221,7 +221,7 @@
     - `Query.Engine.layer(engine)`：注册查询引擎实例（可由 `Query.TanStack.engine(queryClient)` 适配，也可自定义）；  
     - `Query.Engine.middleware(config)`：基于 `EffectOp(kind = "trait-source")` + `resourceId` + `keyHash` 决定哪些资源走查询引擎、如何做缓存/去重等策略。
   - Module/Trait 层只依赖 `resourceId + key` 的字面值与类型，完全不知道 Tag/Registry 的存在；  
-  - Resource/Query 命名空间所在模块归属于 `@logix/core`，作为 Runtime 基础设施的一部分。
+  - Resource/Query 命名空间所在模块归属于 `@logixjs/core`，作为 Runtime 基础设施的一部分。
 - **Rationale**:
   - 保持 Trait / Module 图纸层的 API 简洁、稳定，避免暴露内部 Tag/Registry 的实现细节；  
   - 让 Resource / Query 能够被 RuntimeProvider 在不同子树中灵活组合，同时不破坏 StateTrait 的“声明即事实源”属性；  

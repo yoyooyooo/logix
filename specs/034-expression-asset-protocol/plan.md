@@ -12,18 +12,18 @@
 - 预览期（sandbox）：确定性 + 预算/超时 + 可解释失败（非确定性/死循环/超大输出必须被拦截）
 - Agent 参与出码：资产必须可被“稳定改写并验收”（不靠 LLM 自评，靠 031/036 工件闭环）
 
-本特性将用统一协议域 `@logix/module.*` 固化一个可扩展的资产模型：
+本特性将用统一协议域 `@logixjs/module.*` 固化一个可扩展的资产模型：
 
-- `@logix/module.codeAsset@v1`：统一承载 expression/validator 两类资产（用 `kind` 区分）
-- `@logix/module.deps@v1`：显式依赖清单（ports/exports/services/config 等）
-- `@logix/module.reversibilityAnchor@v1`：可逆溯源锚点（可序列化；不影响运行语义）
+- `@logixjs/module.codeAsset@v1`：统一承载 expression/validator 两类资产（用 `kind` 区分）
+- `@logixjs/module.deps@v1`：显式依赖清单（ports/exports/services/config 等）
+- `@logixjs/module.reversibilityAnchor@v1`：可逆溯源锚点（可序列化；不影响运行语义）
 
 > 说明：可引用空间与类型事实源在 035（PortSpec/TypeIR）；语义边/连线模型在 033；试运行 artifacts 槽位在 031；统一验收与 Agent 工具面在 036。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logix/core`、`@logix/sandbox`、（表达式编辑器/平台侧）  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/sandbox`、（表达式编辑器/平台侧）  
 **Storage**: N/A（资产作为可序列化 JSON；平台可选择其存储与版本策略）  
 **Testing**: Vitest（解析/归一化/依赖提取/预算裁剪应以纯函数单测为主）  
 **Target Platform**: Node.js（CI/出码）+ 现代浏览器（预览/编辑）  
@@ -56,7 +56,7 @@
 - **Diagnosability**
   - 失败必须可解释：缺失依赖/越界引用/非确定性违规/超时/超预算等必须分类输出最小上下文。
 - **Breaking changes**
-  - 资产协议演进通过 `@logix/module.*@vN` 版本化；不保留兼容层。
+  - 资产协议演进通过 `@logixjs/module.*@vN` 版本化；不保留兼容层。
 - **质量门槛（Pass 定义）**
   - 产物落地时：`pnpm typecheck`、`pnpm lint`、`pnpm test`（后续 tasks 阶段执行）
 
@@ -71,9 +71,9 @@
 ### Phase 1（Design & Contracts）：固化 CodeAsset/Deps/Anchor schema
 
 - 在 `specs/034-expression-asset-protocol/contracts/schemas/` 固化：
-  - `code-asset.schema.json`（`@logix/module.codeAsset@v1`）
-  - `deps.schema.json`（`@logix/module.deps@v1`）
-  - `reversibility-anchor.schema.json`（`@logix/module.reversibilityAnchor@v1`）
+  - `code-asset.schema.json`（`@logixjs/module.codeAsset@v1`）
+  - `deps.schema.json`（`@logixjs/module.deps@v1`）
+  - `reversibility-anchor.schema.json`（`@logixjs/module.reversibilityAnchor@v1`）
 - 在 `data-model.md` 固化：
   - `CodeAsset` 的最小字段与语义（source/normalizedIr/deps/digest/budgets/capabilities）
   - deps 的地址空间与 035 PortSpec/TypeIR 的对齐方式

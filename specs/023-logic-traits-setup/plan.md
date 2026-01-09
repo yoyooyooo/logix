@@ -19,7 +19,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2 + Node.js 22.21.1  
-**Primary Dependencies**: `effect@^3.19.8` + `@logix/core`（Logix Runtime v3）  
+**Primary Dependencies**: `effect@^3.19.8` + `@logixjs/core`（Logix Runtime v3）  
 **Storage**: N/A（无持久化数据模型）  
 **Testing**: Vitest（`packages/logix-core/test/*`）+ `@effect/vitest`（Effect-heavy 用例）  
 **Target Platform**: Node.js（核心运行时）+ 现代浏览器（React/Sandbox/Devtools 消费诊断证据）  

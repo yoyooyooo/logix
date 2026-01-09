@@ -7,7 +7,7 @@
 
 本特性围绕「Trait + 状态事务 + Devtools」打通从 Runtime 到调试视图的完整链路，并为后续表单/复杂联动等高 Trait 密度场景打好运行时地基：
 
-- 在 `@logix/core` 中引入显式的 `StateTransaction / StateTxnContext` 内核，将一次逻辑入口（dispatch / traits.source.refresh / service 回写 / devtools 操作）视为一个状态事务，在事务内部聚合所有 Reducer / Trait / Middleware 的状态修改，只在 commit 时写入底层 store 并对订阅者发出一次聚合通知。
+- 在 `@logixjs/core` 中引入显式的 `StateTransaction / StateTxnContext` 内核，将一次逻辑入口（dispatch / traits.source.refresh / service 回写 / devtools 操作）视为一个状态事务，在事务内部聚合所有 Reducer / Trait / Middleware 的状态修改，只在 commit 时写入底层 store 并对订阅者发出一次聚合通知。
 - 将 StateTrait 生命周期拆分为「蓝图 → setup → run」三段：蓝图层只负责基于 stateSchema + traitsSpec 构建 Program/Graph/Plan，setup 层只做 Env 无关的结构接线（source 刷新入口、Debug/Devtools 锚点），run 层在 StateTransaction 内执行 Trait 步骤与 Effect 行为。
 - 在 Devtools 中以「Module → Instance → Transaction → Event」组织视图，提供 TraitGraph + 事务时间线 + 时间旅行能力，并引入事务观测策略（Instrumentation Policy）与性能观测/预警：
   - Runtime 支持 `"full"` / `"light"` 等观测强度配置，在不破坏“单入口 = 单事务 = 单次订阅通知”语义的前提下，按环境/模块调整 Patch/快照/Debug 事件的记录开销；
@@ -21,13 +21,13 @@
 **Language/Version**: TypeScript 5.x（ESM），Node.js 20+，React 18，effect v3  
 **Primary Dependencies**:
 
-- Runtime & React：`@logix/core`、`@logix/react`、`@logix-devtools-react`、`effect`、React Testing Library
+- Runtime & React：`@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`、`effect`、React Testing Library
 - Devtools UI：`shadcn/ui`、`@radix-ui/*`（基础组件与可访问性）、`recharts`（时间轴总览条 / 频率图表）
   - Devtools 配置持久化：浏览器 `localStorage`（仅限客户端；默认 dev/test 场景使用，但若业务显式开启 devtools 也可在 prod 生效；localStorage 不可用时必须优雅降级到内存态配置）  
     **Storage**: N/A（仅管理内存状态与 Devtools 视图模型，不引入持久化）  
     **Testing**: Vitest（单元 + 集成），通过 workspace 脚本与包内脚本组合：
 - 根脚本：`pnpm typecheck`、`pnpm lint`、`pnpm test`
-- 包内：`pnpm test --filter @logix/core` / `--filter @logix/react` / `--filter @logix-devtools-react`  
+- 包内：`pnpm test --filter @logixjs/core` / `--filter @logixjs/react` / `--filter @logixjs/devtools-react`  
   **Target Platform**: 浏览器（现代 Chromium/Firefox/Safari） + Node.js 20（测试与 Devtools host）  
   **Project Type**: Monorepo（runtime + React 绑定 + Devtools + 示例 + 文档）  
   **Performance Goals**:
@@ -39,7 +39,7 @@
 - 新增的 Debug/Devtools 观测结构默认仅在 dev/test 环境生效；但当调用方显式传入 `Logix.Runtime.make(..., { devtools: true | DevtoolsRuntimeOptions })` 时，视为强制 override，Runtime/React 必须无视 `isDevEnv()` 全量启用 Devtools Hub / DebugObserver / `trace:react-render` 采集；是否在生产环境启用由业务自行判断，用户文档需明确提示开销与风险；
 - Devtools 所有影响 Runtime 开销的观测开关（模式、Trait 明细、时间旅行控件、overview 维度等）必须通过统一的设置面板暴露给用户，并按浏览器 localStorage 持久化，localStorage 不可用时不得影响当前会话功能（回退到内存态）。
 - StateTransaction 的观测策略（Instrumentation）配置面 MUST 收敛到 Runtime / ModuleImpl 两层：
-  - 在 `@logix/core` 中通过 `Logix.Runtime.make(root, { stateTransaction?: { instrumentation?: "full" \| "light" } })` 提供应用级默认观测级别（`root` 可为 program module 或其 `.impl`）；
+  - 在 `@logixjs/core` 中通过 `Logix.Runtime.make(root, { stateTransaction?: { instrumentation?: "full" \| "light" } })` 提供应用级默认观测级别（`root` 可为 program module 或其 `.impl`）；
   - 在 `ModuleDef.implement({ initial, logics?, imports?, processes?, stateTransaction?: { instrumentation?: "full" \| "light" } })` 上允许为少数高频/性能敏感模块覆写观测级别；
   - 优先级约束：ModuleImpl 级配置 > Runtime.make 级配置 > `getDefaultStateTxnInstrumentation()`（基于 `NODE_ENV` 的默认值）；
   - React 层的 `RuntimeProvider` / `LogixProvider` 仅负责透传已构造好的 Runtime 与 Layer，不得在 Provider 级别引入新的事务观测模式或关闭事务模型。  
@@ -72,7 +72,7 @@ _GATE: 已在 Phase 0/1 级别完成自检，当前 Plan 对齐宪章约束。_
 
 - 质量门槛：在合并前会运行哪些脚本？什么算“通过”？
   - 最低门槛：`pnpm typecheck`、`pnpm lint` 必须通过；
-  - 核心包：`pnpm test --filter @logix/core`、`--filter @logix/react`、`--filter @logix-devtools-react` 三者在本特性范围内必须全部通过；
+  - 核心包：`pnpm test --filter @logixjs/core`、`--filter @logixjs/react`、`--filter @logixjs/devtools-react` 三者在本特性范围内必须全部通过；
   - 示例验证：按 `quickstart.md` 路径对 TraitForm Demo 进行手工验证，检查事务视图、TraitGraph、时间线游标、时间旅行、渲染事件与 overview strip 的表现；
   - 若某些 Devtools UI 细节暂时以软门槛处理（例如样式或图表细节），需在 `tasks.md` 与 PR 描述中标记，并在后续迭代中补齐。
 
@@ -106,7 +106,7 @@ packages/
 ├── logix-react/
 │   └── src/
 │       ├── hooks/useModule.ts        # React 绑定 + useSyncExternalStore + react-render 事件埋点
-│       ├── internal/env.ts           # re-export @logix/core/Env
+│       ├── internal/env.ts           # re-export @logixjs/core/Env
 │       └── ...                       # 其他 hooks / Provider
 ├── logix-devtools-react/
 │   └── src/
@@ -115,9 +115,9 @@ packages/
 │       │   ├── storage.ts            # layout/settings 的 localStorage 读写封装
 │       │   ├── compute.ts            # computeDevtoolsState / getAtPath 等纯函数
 │       │   ├── module.ts             # DevtoolsModule（actions/reducers，仅调用 compute + storage）
-│       │   ├── logic.ts              # DevtoolsLogic（订阅 @logix/core DevtoolsHub snapshot、拖拽、副作用）
+│       │   ├── logic.ts              # DevtoolsLogic（订阅 @logixjs/core DevtoolsHub snapshot、拖拽、副作用）
 │       │   └── runtime.ts            # DevtoolsImpl / devtoolsRuntime / devtoolsModuleRuntime
-│       ├── snapshot.ts               # （将被移除）snapshot/Hub 下沉至 @logix/core，Devtools UI 改为直接消费 Debug.getDevtoolsSnapshot/subscribe
+│       ├── snapshot.ts               # （将被移除）snapshot/Hub 下沉至 @logixjs/core，Devtools UI 改为直接消费 Debug.getDevtoolsSnapshot/subscribe
 │       ├── ui/
 │       │   ├── shell/
 │       │   │   ├── DevtoolsShell.tsx # 主面板布局容器（3 列布局 + header/overview）
@@ -155,7 +155,7 @@ apps/docs/
 
 **Structure Decision**:
 
-- 本特性主要落在三个核心包：`@logix/core`（事务 / Trait 生命周期 / DebugSink / DevtoolsHub + `Runtime.make({ devtools })` 一键启用）、`@logix/react`（React 渲染事件上报与 devtools 开关联动）、`@logix-devtools-react`（Devtools 视图模型与 UI，包括 overview strip；不再内置 snapshot/sink）。
+- 本特性主要落在三个核心包：`@logixjs/core`（事务 / Trait 生命周期 / DebugSink / DevtoolsHub + `Runtime.make({ devtools })` 一键启用）、`@logixjs/react`（React 渲染事件上报与 devtools 开关联动）、`@logixjs/devtools-react`（Devtools 视图模型与 UI，包括 overview strip；不再内置 snapshot/sink）。
 - 示例与手工验证集中在 `examples/logix-react`，不会新增新的运行时包；
 - 文档对齐通过本特性目录下的 spec/plan/research/data-model/contracts/quickstart，以及后续对 `.codex/skills/project-guide/references/runtime-logix` 与 `apps/docs` 的更新完成。
 
@@ -183,7 +183,7 @@ apps/docs/
   - 最低成本做法：core 暴露 `Debug.isDevtoolsEnabled()`（由 `devtoolsHubLayer` 打开全局标记），React 侧 gating 变为 `isDevEnv() || Debug.isDevtoolsEnabled()`；采样/限频依据 `DevtoolsRuntimeOptions` 与 DevtoolsSettings 回流后的值执行。
 
 - **devtools-react 退回纯 UI 消费者**
-  - `@logix/devtools-react` 不再内置 Sink/Store：删除或空实现原 `snapshot.ts`，改为直接消费 core 的 `Debug.getDevtoolsSnapshot/subscribe`。
+  - `@logixjs/devtools-react` 不再内置 Sink/Store：删除或空实现原 `snapshot.ts`，改为直接消费 core 的 `Debug.getDevtoolsSnapshot/subscribe`。
   - 对外入口维持 `<LogixDevtools />`，但不再要求调用方显式挂 `devtoolsLayer`；示例与用户文档统一迁移为 `Runtime.make(..., { devtools: true })` 写法。
   - `devtoolsLayer` 可暂时保留为薄别名（指向 `Debug.devtoolsHubLayer()`），用于过渡示例与避免心智断裂，但标记为 deprecated。
 
@@ -205,7 +205,7 @@ apps/docs/
   - 扩展 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts` 的 `ModuleRuntimeOptions`，增加可选 `stateTransaction?: { instrumentation?: "full" | "light" }`，并在构造 `txnContext` 时优先使用该配置；
   - 保留 `StateTransaction.StateTxnRuntimeConfig` / `makeContext` 现有字段，只调整默认值来源：若 ModuleRuntimeOptions 中未指定 instrumentation，则回退到 Runtime 级默认，再回退到 `getDefaultStateTxnInstrumentation()`。
 - **React 层与 RuntimeProvider 约束**
-  - 在 `@logix/react` 中复查 `RuntimeProvider` / `LogixProvider`：
+  - 在 `@logixjs/react` 中复查 `RuntimeProvider` / `LogixProvider`：
     - 确认其 props 不新增任何与 StateTransaction 相关的配置字段，仅接受 `runtime` 与可选 `layer`；
     - `layer` 仅用于注入 Env（Logger / DebugSink / 平台 Service 等），不得改变 StateTransaction 是否存在或其观测级别；
   - 在 `packages/logix-react/test` 中补充一组集成用例：

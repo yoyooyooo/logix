@@ -1,4 +1,4 @@
-# Logix Builder SDK Design (@logix/builder)
+# Logix Builder SDK Design (@logixjs/builder)
 
 > **Status**: Final Draft（Static Analysis Paradigm）
 > **Purpose**: 为 Logix 平台提供一套强类型的 DSL 契约与 pattern-style 长逻辑封装工具。它是连接“业务代码”与“平台资产”的桥梁，支持通过静态分析实现全双工意图显影。
@@ -14,7 +14,7 @@
 
 ## 2. 目标语言（Builder 视图）
 
-Builder SDK 不定义一整套独立的 `LogicDSL` 类型，而是围绕 Runtime Core 的原语提供更易分析的写法规范；换言之，**Builder 面向的“语言”就是 `@logix/core` 暴露的 Store / Logic / Flow API + 结构化控制流（Effect.\* + `$.match`/`$.matchTag`）**：
+Builder SDK 不定义一整套独立的 `LogicDSL` 类型，而是围绕 Runtime Core 的原语提供更易分析的写法规范；换言之，**Builder 面向的“语言”就是 `@logixjs/core` 暴露的 Store / Logic / Flow API + 结构化控制流（Effect.\* + `$.match`/`$.matchTag`）**：
 
 - 对状态：通过 `Logic.Api.state`（`read / update / mutate / ref`）操作 Store；
 - 对 Flow：统一使用 `flow.*` 算子构建触发源与时序输出；
@@ -50,7 +50,7 @@ export const runReliableSubmit = (input: {
 
 ```typescript
 import { Effect } from "effect";
-import { Logic } from "@logix/core";
+import { Logic } from "@logixjs/core";
 
 // Bound API：绑定当前 Shape 与 Env，提供 $ 作为 Logic 内的符号锚点
 // 概念性示意：`$` 是针对 OrderShape + OrderEnv 预绑定的 Bound API，
@@ -134,15 +134,15 @@ Parser 不执行代码，而是遍历 TypeScript AST：
 
 为避免“第二套 DSL”与职责混淆，当前主线约定如下边界：
 
-- `@logix/core`（Runtime Core）
+- `@logixjs/core`（Runtime Core）
   - 定义 Store / Logic / Flow 等运行时原语以及 `Logic.Api` 合同；结构化控制流直接使用 `Effect.*` + `$.match`/`$.matchTag`。
   - 只关心“如何编写 / 如何执行” Logic 程序，不内建任何 AST 解析或 PatternAsset 概念。
 
-- `@logix/builder`（Builder / Toolchain）
-  - 将 `@logix/core` 的 API 视为目标语言，负责静态分析（AST）和代码生成。
+- `@logixjs/builder`（Builder / Toolchain）
+  - 将 `@logixjs/core` 的 API 视为目标语言，负责静态分析（AST）和代码生成。
   - 提供用于产出 pattern-style `(input) => Effect` 函数、PatternAsset skeleton、场景脚手架的工具。
   - 本身不参与应用运行时，不提供第二套 Flow/Logic 运行时实现。
 
 - 应用 Runtime / Studio
-  - 业务代码与线上运行时仅依赖 `@logix/core`。
-  - Studio / CLI / 编译器等平台组件在构建阶段依赖 `@logix/builder`，用以“看懂”和“产出” Logix 代码。
+  - 业务代码与线上运行时仅依赖 `@logixjs/core`。
+  - Studio / CLI / 编译器等平台组件在构建阶段依赖 `@logixjs/builder`，用以“看懂”和“产出” Logix 代码。

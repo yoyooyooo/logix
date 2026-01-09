@@ -1,10 +1,10 @@
-# Contract: `@logix/form`（业务入口）→ StateTrait（中间表示）→ Trait（最小 IR）
+# Contract: `@logixjs/form`（业务入口）→ StateTrait（中间表示）→ Trait（最小 IR）
 
 > 目标：业务层尽快只接触 Form（高层抽象）。Form 提供“高表达但默认安全”的领域 DSL，并能完全降解到统一的最小中间表示（Trait IR）；降解后仍保持一致的冲突检测、合并与诊断口径。
 
 ## 0. API 分层原则（Form > StateTrait > Trait）
 
-- 业务层：只用 `@logix/form`（Blueprint/Controller/React 投影），不直接写 StateTrait/Trait。
+- 业务层：只用 `@logixjs/form`（Blueprint/Controller/React 投影），不直接写 StateTrait/Trait。
 - 中间层：StateTrait 作为“强表达但安全的领域语言”（最小集合、可组合、可诊断），供领域包实现与生成器使用。
 - 底层：Trait 最小 IR 作为实现细节，仅供工具链/生成器/内核使用；不得要求业务代码直接接触。
 
@@ -17,7 +17,7 @@ Blueprint SHOULD 包含：
 - `id`：业务标识
 - `valuesSchema`：values 的 Schema
 - `initialValues`
-- `traitsSpec`：由 `Form.make({ rules, fieldArrays, derived })` 的领域配置**编译**而来（业务默认只写 `@logix/form` 领域包装，不直接写 StateTrait/Trait）；必须可降解为 StateTraitSpec，再降解为统一 Trait IR（`Form.traits`/raw StateTrait 仅作为 escape hatch，文档示例不推荐使用）
+- `traitsSpec`：由 `Form.make({ rules, fieldArrays, derived })` 的领域配置**编译**而来（业务默认只写 `@logixjs/form` 领域包装，不直接写 StateTrait/Trait）；必须可降解为 StateTraitSpec，再降解为统一 Trait IR（`Form.traits`/raw StateTrait 仅作为 escape hatch，文档示例不推荐使用）
 - `module` / `impl` / `logics` / `controller`：按 Logix Module 标准入口暴露
 
 ### 1.1.1 Form 作为“特殊的 Module”（同源集成）
@@ -48,7 +48,7 @@ Blueprint SHOULD 包含：
 ## 1.3 可降解（统一 IR + 一致冲突检测/合并）
 
 - 所有 Form DSL 必须 **完全降解** 到统一 Trait IR（不引入第二套运行时）。
-- `@logix/form` MUST 产出可被 `StateTrait.from(schema)({ ... })` 直接 `spread` 的 kernel fragment（StateTraitSpec 片段）；Form 的 `rules/fieldArrays/derived`（含 `Form.Trait.*`）必须编译为等价的 StateTraitSpec，并允许与少量 raw StateTrait 片段混用（escape hatch）。
+- `@logixjs/form` MUST 产出可被 `StateTrait.from(schema)({ ... })` 直接 `spread` 的 kernel fragment（StateTraitSpec 片段）；Form 的 `rules/fieldArrays/derived`（含 `Form.Trait.*`）必须编译为等价的 StateTraitSpec，并允许与少量 raw StateTrait 片段混用（escape hatch）。
 - 降解后仍需支持一致的冲突检测与合并：
   - 路径重复定义必须可被检测；
   - 若允许覆盖，则覆盖优先级必须是显式且确定性的，并可被诊断解释；
@@ -85,7 +85,7 @@ Blueprint SHOULD 包含：
 
 ## 5. React 适配（薄投影）
 
-- `@logix/form/react` 仅做订阅投影与 DOM 事件适配（如 `useForm/useField`）；
+- `@logixjs/form/react` 仅做订阅投影与 DOM 事件适配（如 `useForm/useField`）；
 - 不得在组件内通过 `useEffect` 造第二套“自动触发/自动校验”事实源；
 - 触发/并发/竞态/回放语义由 Blueprint 默认 logics + runtime 约束保证。
 

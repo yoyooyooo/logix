@@ -10,7 +10,7 @@
 
 ### 1) SchemaAST 是 TypeIR 的上游实现材料，不是平台事实源
 
-- 平台的“引用空间事实源”仍是 035：`@logix/module.portSpec@v1` / `@logix/module.typeIr@v1`。  
+- 平台的“引用空间事实源”仍是 035：`@logixjs/module.portSpec@v1` / `@logixjs/module.typeIr@v1`。  
 - SchemaAST 可以用于 **生成/投影** TypeIR、以及更好的解释/错误消息，但 SchemaAST 本体不应该被平台当作可引用空间真相源，否则会产生并行真相源与漂移。
 
 现有代码先例：`packages/logix-core/src/internal/state-trait/converge.ts` 已使用 `effect/SchemaAST` 做路径静态判定与诊断（递归/union/transform 的降级策略可复用到 TypeIR 投影）。
@@ -19,7 +19,7 @@
 
 推荐把 SchemaRegistryPack 导出为可选 artifact：
 
-- key：`@logix/schema.registry@v1`
+- key：`@logixjs/schema.registry@v1`
 - 载体：`TrialRunReport.artifacts`（031）
 - 消费方：Workbench/CI/Agent（036 的 Contract Suite + Context Pack）
 
@@ -36,15 +36,15 @@
 
 ### 4) 与 032（UiKitRegistry）的交集：用 SchemaAST 生成“UI 端口 TypeIR”，但对外仍只暴露投影结果
 
-- 032 的 `@logix/module.uiKitRegistry@v1` 当前以 `props[].type` / `events[].payloadType` 这种 **string 摘要** 承载 UI 端口类型信息，这是有意的：平台需要“可提示/可校验/可 diff”，但不想把 SchemaAST 本体变成新的协议依赖。
+- 032 的 `@logixjs/module.uiKitRegistry@v1` 当前以 `props[].type` / `events[].payloadType` 这种 **string 摘要** 承载 UI 端口类型信息，这是有意的：平台需要“可提示/可校验/可 diff”，但不想把 SchemaAST 本体变成新的协议依赖。
 - 040 的 SchemaAST/registry 能把这些 string 摘要变得更稳定/更可解释：
   - 生成时：允许内部从 SchemaAST / TS 类型投影得到更一致的 `type`/`payloadType`（并可复用 schemaId 的稳定派生策略避免“同义不同字面”导致 diff 噪音）。
-  - 解释时：当 Workbench/Agent 需要更深解释（例如 prop 的 union/optional/约束），可以让 UiKitRegistry（未来 v2）携带 `SchemaRef` 或者让 ContextPack 同步携带 `@logix/schema.registry@v1`，从而把“string 摘要”升级为 schema-aware 的解释视图。
+  - 解释时：当 Workbench/Agent 需要更深解释（例如 prop 的 union/optional/约束），可以让 UiKitRegistry（未来 v2）携带 `SchemaRef` 或者让 ContextPack 同步携带 `@logixjs/schema.registry@v1`，从而把“string 摘要”升级为 schema-aware 的解释视图。
 
 ## 建议补进 040 spec.md 的内容（已做/或建议做）
 
 - **已做**：在 `specs/040-schemaast-layered-upgrade/spec.md` 增补：
-  - 可选 artifact：`@logix/schema.registry@v1`
+  - 可选 artifact：`@logixjs/schema.registry@v1`
   - 与 035（PortSpec/TypeIR）边界声明
   - Out of Scope：不走 TS AST 当事实源
 

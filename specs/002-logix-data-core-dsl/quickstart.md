@@ -1,9 +1,9 @@
-# Quickstart: 从模块作者视角使用 `@logix/core` + `@logix/data`（隶属已归档 spec，仅供参考）
+# Quickstart: 从模块作者视角使用 `@logixjs/core` + `@logixjs/data`（隶属已归档 spec，仅供参考）
 
-> 提示：本 Quickstart 隶属于已归档的 `specs/002-logix-data-core-dsl` 特性，描述的是早期「Module DSL ↔ `@logix/data`」集成路径。当前主线已由 StateTrait / `@logix/core` 统一承载字段能力，新示例请参考 `specs/000-module-traits-runtime/quickstart.md`。
+> 提示：本 Quickstart 隶属于已归档的 `specs/002-logix-data-core-dsl` 特性，描述的是早期「Module DSL ↔ `@logixjs/data`」集成路径。当前主线已由 StateTrait / `@logixjs/core` 统一承载字段能力，新示例请参考 `specs/000-module-traits-runtime/quickstart.md`。
 
 **目标读者**：模块作者 / 业务开发者  
-**前提**：已在仓库中安装并配置好 `@logix/core` 与 `@logix/data`，并使用 TypeScript + Effect v3。
+**前提**：已在仓库中安装并配置好 `@logixjs/core` 与 `@logixjs/data`，并使用 TypeScript + Effect v3。
 
 本 Quickstart 以“计数器模块 + 远程 Profile 资源”为例，展示模块作者如何在 **同一个 Module 定义中** 同时使用 core 和 data：
 
@@ -22,9 +22,9 @@
 ```ts
 // 示例路径：packages/logix-core/examples/CounterWithProfileModule.ts
 
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Schema } from "effect"
-import { Computed, Source, Link } from "@logix/data"
+import { Computed, Source, Link } from "@logixjs/data"
 
 // 1) 定义模块 State Schema
 const CounterWithProfileState = Schema.Struct({
@@ -44,7 +44,7 @@ export const CounterWithProfileModule = Logix.Module.make("CounterWithProfile", 
     increment: Schema.Void,
     loadProfile: Schema.String, // 用户 ID
   },
-  // 假设在实现阶段，我们会在这里接入 @logix/data 的字段能力 DSL：
+  // 假设在实现阶段，我们会在这里接入 @logixjs/data 的字段能力 DSL：
   // data: ({ field }) => ({
   //   counter: Computed.for({ ... }),
   //   profileResource: Source.field({ resource: "user/profile" }),
@@ -69,19 +69,19 @@ export const CounterWithProfileModule = Logix.Module.make("CounterWithProfile", 
 ```ts
 // 示例路径：examples/logix-react/src/CounterWithProfileApp.tsx
 
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { CounterWithProfileModule } from "./CounterWithProfileModule"
 
 // 创建 Runtime（简化示意）
 const runtime = Logix.Runtime.make(CounterWithProfileModule /*, { layer: ... } */)
 
-// 在 React 中使用（示意，实际由 @logix/react 提供 Hook）
+// 在 React 中使用（示意，实际由 @logixjs/react 提供 Hook）
 // const { state, dispatch } = useModule(runtime, CounterWithProfileModule)
 ```
 
 从用户视角要点：
 
-- 我不需要显式调用任何 `@logix/data` 的 API 来“挂载能力”——Runtime 会在内部自动调用 `@logix/data` 的扫描和 Plan；  
+- 我不需要显式调用任何 `@logixjs/data` 的 API 来“挂载能力”——Runtime 会在内部自动调用 `@logixjs/data` 的扫描和 Plan；  
 - 我只要用好 `Module` 和 Runtime / React hook 即可。
 
 ---
@@ -93,8 +93,8 @@ const runtime = Logix.Runtime.make(CounterWithProfileModule /*, { layer: ... } *
 ```ts
 // 示例路径：packages/logix-devtools-react/src/某个调试入口.ts
 
-import { makeStateGraph } from "@logix/data/graph"
-import { scanModuleSchema } from "@logix/data/internal" // 实际导出路径待实现阶段敲定
+import { makeStateGraph } from "@logixjs/data/graph"
+import { scanModuleSchema } from "@logixjs/data/internal" // 实际导出路径待实现阶段敲定
 
 // 假设 Runtime 提供了获取模块 State Schema 与能力声明的接口
 const { fields, capabilities } = scanModuleSchema({

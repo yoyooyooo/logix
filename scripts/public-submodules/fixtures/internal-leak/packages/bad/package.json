@@ -1,5 +1,5 @@
 {
-  "name": "@logix/fixture-internal-leak",
+  "name": "@logixjs/fixture-internal-leak",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

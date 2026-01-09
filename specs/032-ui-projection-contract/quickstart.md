@@ -10,17 +10,17 @@
 
 ## 1) 你会维护三份资产（都可序列化、可 diff）
 
-- `@logix/module.presentationState@v1`：语义层展示态真相源
-- `@logix/module.bindingSchema@v1`：UI 插头 ↔ 逻辑插座连接协议
-- `@logix/module.uiBlueprint@v1`：纯投影视图（布局/组件选择/绑定 key）
+- `@logixjs/module.presentationState@v1`：语义层展示态真相源
+- `@logixjs/module.bindingSchema@v1`：UI 插头 ↔ 逻辑插座连接协议
+- `@logixjs/module.uiBlueprint@v1`：纯投影视图（布局/组件选择/绑定 key）
 
 ## 2) 平台如何做补全与校验（不靠 UI 推断）
 
-1. 通过 trial-run artifacts 导出 `@logix/module.portSpec@v1`/`@logix/module.typeIr@v1`（035；经由 031 artifacts 槽位）。  
+1. 通过 trial-run artifacts 导出 `@logixjs/module.portSpec@v1`/`@logixjs/module.typeIr@v1`（035；经由 031 artifacts 槽位）。  
 2. 生成可引用空间（ports/exports）→ 用于：
    - 绑定编辑器的 autocomplete
    - 保存前的越界引用/类型不匹配拦截
-3. 读取 UI Kit Registry（`@logix/module.uiKitRegistry@v1`）→ 用于：
+3. 读取 UI Kit Registry（`@logixjs/module.uiKitRegistry@v1`）→ 用于：
    - 校验 `componentKey/propName/eventName`
    - UI 侧端口（插口）补全
 4. 保存 BindingSchema/UIBlueprint → 通过 036 Contract Suite 形成 IR-first 的验收闭环。

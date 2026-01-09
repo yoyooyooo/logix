@@ -45,7 +45,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@effect/platform(-node)`、`@effect/sql-pg`、`better-auth`（身份来源）、React 19、`react-router-dom`、`@logix/*`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@effect/platform(-node)`、`@effect/sql-pg`、`better-auth`（身份来源）、React 19、`react-router-dom`、`@logixjs/*`  
 **Storage**: PostgreSQL（`DATABASE_URL` 注入；BetterAuth 表在 schema `auth`，业务表在 `public`）  
 **Testing**: Vitest（以 handler-level tests 为主，通过 Layer 注入替身 Repo/Service）  
 **Target Platform**: Node.js 20+ + 现代浏览器（Vite dev）  

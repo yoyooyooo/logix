@@ -27,7 +27,7 @@
 - [X] 所有功能需求都有清晰的验收条件
 - [X] User Stories 覆盖主干流程
 - [X] 成功标准可在实现阶段验证（可观测/可回放/可对比）
-- [X] API 表面积与所有权分层明确（TraitLifecycle vs StateTrait vs @logix/form）
+- [X] API 表面积与所有权分层明确（TraitLifecycle vs StateTrait vs @logixjs/form）
 
 ## Notes
 

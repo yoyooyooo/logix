@@ -19,7 +19,7 @@
 
 ## Keys
 
-- `@logix/form.rulesManifest@v1`
+- `@logixjs/form.rulesManifest@v1`
   - Schema: `schemas/form-rules-manifest-artifact.schema.json`
 
 ## References

@@ -30,19 +30,19 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM；以仓库 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、（browser evidence）`@logix/react`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（browser evidence）`@logixjs/react`  
 **Storage**: N/A（证据落盘到 `specs/070-core-pure-perf-wins/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+ + modern browsers（至少 1 组 headless browser evidence）  
 **Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
 **Performance Goals**: 默认档（diagnostics=off + errorOnly-only）下关键 suite diff 无回归（见 SC-001）；若要主张“纯赚收益”，按 SC-004 补充可证据化收益。  
-**Constraints**: 默认零成本/接近零成本；统一最小 IR + 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；consumer 不直接依赖 `@logix/core-ng`  
+**Constraints**: 默认零成本/接近零成本；统一最小 IR + 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；consumer 不直接依赖 `@logixjs/core-ng`  
 **Scale/Scope**: 只改 Debug/trait converge 的门控与 fast-path，不改业务语义与对外 API
 
 ## Kernel support matrix
 
 - `core`: supported（默认档）
-- `core-ng`: supported（本特性落在 `@logix/core`，core-ng 试跑时同样受益；但是否可切默认仍由 046/047 裁决）
+- `core-ng`: supported（本特性落在 `@logixjs/core`，core-ng 试跑时同样受益；但是否可切默认仍由 046/047 裁决）
 
 ## Constitution Check
 
@@ -56,7 +56,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Deterministic identity**：不引入随机/时间锚点；既有 instanceId/txnSeq/opSeq 语义保持。
 - **Transaction boundary**：不引入事务窗口 IO/await；改动仅为门控与 fast-path。
 - **Internal contracts & trial runs**：不新增隐式 magic 协议；门控逻辑收敛在 `DebugSink`/trait converge 内部，保持可测试/可基准化。
-- **Dual kernels (core + core-ng)**：变更落在 `@logix/core`，不要求 consumer 依赖 core-ng；证据以 core 默认档为主。
+- **Dual kernels (core + core-ng)**：变更落在 `@logixjs/core`，不要求 consumer 依赖 core-ng；证据以 core 默认档为主。
 - **Performance budget**：强制 `$logix-perf-evidence`（Node + Browser）作为硬门；必要时补充单测/基准防线以拦截回归。
 - **Diagnosability & explainability**：off 档必须近零成本；light/full 下仍可导出 Slim 且可序列化的解释字段。
 - **Breaking changes**：目标不引入对外破坏性变更；如发现需要调整事件协议/诊断口径，必须另立迁移说明（forward-only）。

@@ -1,4 +1,4 @@
-# References: `@logix/form` 完整业务 API（方案 B：Blueprint + Controller）
+# References: `@logixjs/form` 完整业务 API（方案 B：Blueprint + Controller）
 
 > 本文是 `specs/004-trait-bridge-form/spec.md` 的辅助材料：把 “业务侧怎么用 Form” 的 API 形态定下来，同时保证所有语义都能回落到 TraitLifecycle + StateTrait IR（单一事实源），不引入第二套运行时/第二套事实源。
 
@@ -8,10 +8,10 @@
 
 ### Goals
 
-- 业务开发默认只需要面对 `@logix/form` 的 **高层入口**，而不是每次手写 `Logix.Module.make + actions + reducers + StateTrait.install wiring`。
+- 业务开发默认只需要面对 `@logixjs/form` 的 **高层入口**，而不是每次手写 `Logix.Module.make + actions + reducers + StateTrait.install wiring`。
 - Form 的 **values/errors/ui** 都落在 Module state 上，满足全双工可回放：不允许在 React 组件本地维护第二套错误/交互态事实源。
 - 允许可控的 escape hatch：可以局部插入 raw `StateTrait.node/list` 与自定义 Logic，但不破坏主线。
-- React 侧复用 `@logix/react`（`RuntimeProvider/useLocalModule/useSelector/useDispatch`），Form 不再发明新的 runtime/hook 基建。
+- React 侧复用 `@logixjs/react`（`RuntimeProvider/useLocalModule/useSelector/useDispatch`），Form 不再发明新的 runtime/hook 基建。
 
 ### Non-Goals
 
@@ -22,14 +22,14 @@
 
 ## 1. 分层（Layering）
 
-- **Layer 0 · Kernel（`@logix/core`）**  
+- **Layer 0 · Kernel（`@logixjs/core`）**  
   Module/Runtime/Flow/Bound + StateTrait IR（computed/source/link/check）+ Resource/EffectOp/Middleware。
 
-- **Layer 1 · Module（`@logix/form`）**  
+- **Layer 1 · Module（`@logixjs/form`）**  
   业务 API：`Form.make`（Blueprint）、`Form.Controller`、`Form.Rule/Form.Error/Form.Trait`（领域糖与 helper；默认入口是 `rules/fieldArrays/derived`）、默认 logics（可选）；`Form.traits/Form.node/Form.list` 仅作为最小 escape hatch（示例不推荐）。
 
-- **Layer 2 · React Bindings（`@logix/form/react` 或 `@logix/form` 的子导出）**  
-  `useForm/useField/useFieldArray`：只做订阅投影 + DOM 事件适配；内部复用 `@logix/react` hooks。
+- **Layer 2 · React Bindings（`@logixjs/form/react` 或 `@logixjs/form` 的子导出）**  
+  `useForm/useField/useFieldArray`：只做订阅投影 + DOM 事件适配；内部复用 `@logixjs/react` hooks。
 
 ---
 
@@ -45,7 +45,7 @@
 建议形状（不锁死最终字段命名，但必须满足语义）：
 
 ```ts
-import type * as Logix from "@logix/core"
+import type * as Logix from "@logixjs/core"
 import type { Schema } from "effect"
 
 export interface FormBlueprint<TValues> {
@@ -143,7 +143,7 @@ export interface FormController<TValues> {
 
 ---
 
-## 3. React API（薄投影，复用 @logix/react）
+## 3. React API（薄投影，复用 @logixjs/react）
 
 React 层不自建 store，只复用现有能力：
 
@@ -204,7 +204,7 @@ const RootModule = Root.implement({
 
 ### 5.3 React（局部表单）接入
 
-局部表单（组件级生命周期）直接复用 `@logix/react` 的 `useLocalModule`：
+局部表单（组件级生命周期）直接复用 `@logixjs/react` 的 `useLocalModule`：
 
 ```ts
 const runtime = useLocalModule(form.module, {

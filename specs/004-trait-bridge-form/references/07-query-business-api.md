@@ -1,4 +1,4 @@
-# References: `@logix/query` 业务 API（方案 B：Blueprint + Controller）
+# References: `@logixjs/query` 业务 API（方案 B：Blueprint + Controller）
 
 > 本文与 `references/06-form-business-api.md` 对齐：把 Query 领域包的“业务入口形态”固化为 Blueprint + Controller，确保 Query 仍然回落到 Trait/StateTrait/Resource 的单一运行时主线，不引入第二套引擎。
 
@@ -6,7 +6,7 @@
 
 ## 0. 目标与边界
 
-- 业务开发默认只面对 `@logix/query` 的高层入口（Blueprint/Controller），而不是手写“监听参数变化 + 竞态处理 + stale 丢弃 + 缓存去重 + UI 状态”。
+- 业务开发默认只面对 `@logixjs/query` 的高层入口（Blueprint/Controller），而不是手写“监听参数变化 + 竞态处理 + stale 丢弃 + 缓存去重 + UI 状态”。
 - Query 领域的 values（参数）、结果快照、以及交互态（autoEnabled/submitCount/lastTriggeredBy 等）都落在 Module state 上，全双工可回放。
 - TanStack Query 只承担缓存/in-flight 去重/（可选）取消；触发语义、并发语义、写回门控（keyHash）与可解释性仍遵循 004 的 StateTrait/Resource 约束。
 
@@ -22,7 +22,7 @@ Query Blueprint 的本质也是一个普通 `Logix.Module`：
 建议形状（只固化语义，不锁死最终字段命名）：
 
 ```ts
-import type * as Logix from "@logix/core"
+import type * as Logix from "@logixjs/core"
 import type { Schema } from "effect"
 
 export interface QueryBlueprint<TParams> {
@@ -110,7 +110,7 @@ const RootImpl = Root.implement({
 
 ### 2.2 React（局部模块）
 
-复用 `@logix/react` 的 `useLocalModule/useSelector/useDispatch`：
+复用 `@logixjs/react` 的 `useLocalModule/useSelector/useDispatch`：
 
 ```ts
 const runtime = useLocalModule(query.module, {
@@ -124,7 +124,7 @@ const controller = query.controller.make(runtime)
 
 ## 3. TanStack Query 的落点（不侵入 kernel）
 
-建议 `@logix/query` 自己提供 `Query.TanStack` 集成层（见 `references/05-query-tanstack-integration.md`）：
+建议 `@logixjs/query` 自己提供 `Query.TanStack` 集成层（见 `references/05-query-tanstack-integration.md`）：
 
 - 通过 Layer 注入 `QueryClient`；
 - 在 Query 的刷新/失效路径中使用 QueryClient 的能力（fetchQuery / invalidateQueries / refetchQueries 等）；

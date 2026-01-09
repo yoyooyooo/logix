@@ -10,7 +10,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logix/*`（runtime: `@logix/core`；perf: `@logix/perf-evidence` path-mapping）  
+**Primary Dependencies**: `effect` v3、`@logixjs/*`（runtime: `@logixjs/core`；perf: `@logixjs/perf-evidence` path-mapping）  
 **Storage**: N/A  
 **Testing**: Vitest + `@effect/vitest`（Effect-heavy 用例）  
 **Target Platform**: Node.js 20+ + Chromium headless（Vitest browser）  
@@ -45,7 +45,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
     process-global singletons?
   - Dual kernels (core + core-ng): if this feature touches kernel/hot paths or
     Kernel Contract / Runtime Services, does the plan define a kernel support
-    matrix (core vs core-ng), avoid direct @logix/core-ng dependencies in
+    matrix (core vs core-ng), avoid direct @logixjs/core-ng dependencies in
     consumers, and specify how contract verification + perf evidence gate changes?
   - Performance budget: which hot paths are touched, what metrics/baselines
     exist, and how will regressions be prevented?
@@ -132,7 +132,7 @@ specs/013-auto-converge-planner/
 └── contracts/schemas/trait-converge-*.schema.json
 ```
 
-**Structure Decision**: 本特性是 runtime observability + trait converge 诊断协议扩展；代码落在 `packages/logix-core`（DebugSink + converge），浏览器证据复用现有 perf boundary（`packages/logix-react/test/browser/perf-boundaries`）与 perf matrix SSoT（`@logix/perf-evidence/assets/matrix.json`）。
+**Structure Decision**: 本特性是 runtime observability + trait converge 诊断协议扩展；代码落在 `packages/logix-core`（DebugSink + converge），浏览器证据复用现有 perf boundary（`packages/logix-react/test/browser/perf-boundaries`）与 perf matrix SSoT（`@logixjs/perf-evidence/assets/matrix.json`）。
 
 ## Complexity Tracking
 

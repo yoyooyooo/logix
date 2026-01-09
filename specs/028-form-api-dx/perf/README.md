@@ -4,7 +4,7 @@
 
 推荐来源与口径：
 
-- 复用 `@logix/perf-evidence/assets/matrix.json` 的 suite（例如 `form.listScopeCheck`、`diagnostics.overhead.*`）。
+- 复用 `@logixjs/perf-evidence/assets/matrix.json` 的 suite（例如 `form.listScopeCheck`、`diagnostics.overhead.*`）。
 - 输出结构与 diff 语义以 014 的 `PerfReport/PerfDiff` 为准（可机器解析、可回归、可交接）。
 
 建议命名（按需调整）：

@@ -87,7 +87,7 @@
   - 由于该开关代表“明确开启 Devtools”，因此不受 `isDevEnv()` 裁剪。
 
 - React 渲染事件的 gating：
-  - `@logix/react` 的 `trace:react-render` 采集应满足：`isDevEnv() || Debug.isDevtoolsEnabled()`；
+  - `@logixjs/react` 的 `trace:react-render` 采集应满足：`isDevEnv() || Debug.isDevtoolsEnabled()`；
   - 这样在生产环境也可以在“业务显式开启 Devtools”时开启渲染观测，并保持默认情况下的开销可控。
 
 这一节的目标是帮助后续维护者在阅读 `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`、`packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` 与 `packages/logix-core/src/internal/runtime/core/DebugSink.ts` 时快速对齐设计意图，并在扩展 Devtools 契约（例如步级 time-travel、事务录制导出）时避免破坏现有不变量。

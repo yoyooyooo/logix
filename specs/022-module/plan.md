@@ -10,7 +10,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2 + Node.js 22.21.1  
-**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logix/*` + React（`packages/logix-react`/`packages/logix-form` 相关）  
+**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logixjs/*` + React（`packages/logix-react`/`packages/logix-form` 相关）  
 **Storage**: N/A（不引入持久化存储）  
 **Testing**: Vitest 4 (`vitest run`) + `@effect/vitest`（Effect-heavy 场景）  
 **Target Platform**: Node.js（测试/脚本） + 现代浏览器（React/Devtools 场景）  
@@ -93,4 +93,4 @@ scripts/codemod/                                # 迁移工具（临时；迁移
 └── fixtures/022-module-to-moduletag/           # before/after fixtures（典型场景 + 误伤保护）
 ```
 
-**Structure Decision**: 热路径与拆壳逻辑集中在 `@logix/core`；领域工厂（Form/CRUD）只负责产出 `Module`（定义对象）并固化 module actionMap（action tags）/可选 controller；示例与文档同步迁移以固化心智模型与可回归用例。
+**Structure Decision**: 热路径与拆壳逻辑集中在 `@logixjs/core`；领域工厂（Form/CRUD）只负责产出 `Module`（定义对象）并固化 module actionMap（action tags）/可选 controller；示例与文档同步迁移以固化心智模型与可回归用例。

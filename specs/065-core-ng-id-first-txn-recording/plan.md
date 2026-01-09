@@ -32,7 +32,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（ESM） + Node.js v22.21.1  
-**Primary Dependencies**: `effect@3.19.13`（pnpm override）、`pnpm@9.15.9`、`vitest@4.0.15`、`playwright@1.57.0`、`oxfmt`/`oxlint`/`eslint`、`turbo`、`@logix/core`/`@logix/core-ng`（workspace）  
+**Primary Dependencies**: `effect@3.19.13`（pnpm override）、`pnpm@9.15.9`、`vitest@4.0.15`、`playwright@1.57.0`、`oxfmt`/`oxlint`/`eslint`、`turbo`、`@logixjs/core`/`@logixjs/core-ng`（workspace）  
 **Storage**: N/A（纯运行时/证据落盘为文件）  
 **Testing**: `pnpm test`（`vitest run`；禁止 watch）、Effect-heavy 用例优先 `@effect/vitest`；Browser perf 用 Vitest Browser（Playwright）  
 **Target Platform**: Node（perf/node bench + devtools evidence）+ Chromium headless（browser perf matrix）  
@@ -99,9 +99,9 @@ _GATE：必须在 Phase 0/1 设计完成后再次复核；本计划在本阶段�
 
 ### 8) Dual Kernels（core + core-ng 支持矩阵）
 
-- `@logix/core`：提供 txn recording、dirty-set、Debug 事件投影与导出（包含 id-first 锚点字段）。
-- `@logix/core-ng`：只提供 `trace:exec-vm` evidence（`packages/logix-core-ng/src/ExecVmEvidence.ts`）；由 core 的 DebugSink 统一裁剪/序列化成本。
-- Gate：browser perf matrix 通过 `VITE_LOGIX_PERF_KERNEL_ID` 支持 core/core-ng 复跑；不得要求业务/消费者直接 import `@logix/core-ng` 才能触发 core 的 gate。
+- `@logixjs/core`：提供 txn recording、dirty-set、Debug 事件投影与导出（包含 id-first 锚点字段）。
+- `@logixjs/core-ng`：只提供 `trace:exec-vm` evidence（`packages/logix-core-ng/src/ExecVmEvidence.ts`）；由 core 的 DebugSink 统一裁剪/序列化成本。
+- Gate：browser perf matrix 通过 `VITE_LOGIX_PERF_KERNEL_ID` 支持 core/core-ng 复跑；不得要求业务/消费者直接 import `@logixjs/core-ng` 才能触发 core 的 gate。
 
 ### 9) Performance Budget（热路径与回归防线）
 

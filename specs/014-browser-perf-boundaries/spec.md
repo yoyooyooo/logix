@@ -16,7 +16,7 @@
 - **统一最小 IR**：以 `matrix.json + PerfReport + PerfDiff` 作为“性能证据”的统一最小 IR（可机器解析、可回归、可交接）。  
 - **Runner 可扩展**：014 的“证据协议”不强绑定浏览器；浏览器跑道是默认/权威的端到端口径，但其它跑道（Node/runtime 侧 micro）也应产出同一 `PerfReport` 结构，以便复用同一 diff 语义与门槛表达。
 - **结果归档位置**：014 提供口径与工具；具体 feature 的 Before/After/Diff 证据应优先固化到该 feature 自己的 `specs/<id>/perf/*`，避免把 014 的 `perf/` 目录变成“所有特性的杂货铺”。
-- **扩展方式**：需要新增场景/维度时，只做两件事：在 `@logix/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）增加 suite/轴/预算，并提供一个能输出 `LOGIX_PERF_REPORT` 的可执行用例（必须确定性、seed 固化、诊断证据 Slim + 可序列化）。
+- **扩展方式**：需要新增场景/维度时，只做两件事：在 `@logixjs/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）增加 suite/轴/预算，并提供一个能输出 `LOGIX_PERF_REPORT` 的可执行用例（必须确定性、seed 固化、诊断证据 Slim + 可序列化）。
 
 ## Clarifications
 
@@ -90,7 +90,7 @@
 
 ### Functional Requirements
 
-- **FR-001**: 系统必须定义一份“压力维度矩阵”（维度、档位、预算阈值、默认 runs/warmup/timeout、stability 阈值、相对预算 ref 约束表达）作为单一事实源，后续迭代必须复用该矩阵进行对比（SSoT：`@logix/perf-evidence/assets/matrix.json`）。
+- **FR-001**: 系统必须定义一份“压力维度矩阵”（维度、档位、预算阈值、默认 runs/warmup/timeout、stability 阈值、相对预算 ref 约束表达）作为单一事实源，后续迭代必须复用该矩阵进行对比（SSoT：`@logixjs/perf-evidence/assets/matrix.json`）。
 - **FR-002**: 系统必须为每个维度输出两类结果：曲线（档位→统计分布）与边界阈值（在指定预算下的最大可承受档位）。
 - **FR-003**: 系统必须输出结构化报告，包含环境元信息（浏览器/平台/配置）、样本策略（runs/warmup/统计口径）与各维度结果，便于长期对比与归档。
 - **FR-004**: 系统必须支持 Before/After 对比：给定两份结构化报告，能够输出差异摘要（边界提升/回归、最显著档位区间）。

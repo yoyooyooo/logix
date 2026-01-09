@@ -1,9 +1,9 @@
-# @logix/form · 实现备忘录：Form API → Rules/Derived → IR → Runtime 链路
+# @logixjs/form · 实现备忘录：Form API → Rules/Derived → IR → Runtime 链路
 
 > **Status**: Draft (028-form-api-dx)
 > **Audience**: Form 维护者 / 运行时实现者
 
-本文件用“从业务写法回溯到底层”的方式，把 `@logix/form` 的关键封装层次、编译产物（最小 IR）以及运行时 validate/writeback 链路说清楚，避免出现“用户文档一套、实现又一套”的并行真相源。
+本文件用“从业务写法回溯到底层”的方式，把 `@logixjs/form` 的关键封装层次、编译产物（最小 IR）以及运行时 validate/writeback 链路说清楚，避免出现“用户文档一套、实现又一套”的并行真相源。
 
 ---
 
@@ -82,7 +82,7 @@ Form 的 valuePath 约束是“点分段”：
 
 ## 3) 编译：RulesSpec → StateTraitSpec（不引入第二套运行时）
 
-核心目标：把 rules **编译为等价的 `@logix/core` StateTraitSpec**，让校验完全复用 runtime 的依赖图/增量 validate/诊断链路。
+核心目标：把 rules **编译为等价的 `@logixjs/core` StateTraitSpec**，让校验完全复用 runtime 的依赖图/增量 validate/诊断链路。
 
 编译入口：`packages/form/src/internal/form/rules.ts`（`compileRulesToTraitSpec`）
 

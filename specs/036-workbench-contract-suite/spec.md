@@ -3,7 +3,7 @@
 **Feature Branch**: `[036-workbench-contract-suite]`  
 **Created**: 2025-12-25  
 **Status**: Draft  
-**Input**: 建立一个统一管控 031-035 的集成规格（Contract Suite / Integration Track）：以 `examples/logix-sandbox-mvp` 作为最小平台 Workbench，串起 TrialRun artifacts（含 `@logix/form.rulesManifest@v1`）、UI 投影与语义绑定边界、Scenario Canvas 语义蓝图、表达式/校验资产协议、以及 Module 端口/类型 IR 导出，定义端到端可验收的集成闭环与版本化治理口径；不新增实现细节，仅提供统一的验收与依赖关系裁决，避免各子 spec 漂移。
+**Input**: 建立一个统一管控 031-035 的集成规格（Contract Suite / Integration Track）：以 `examples/logix-sandbox-mvp` 作为最小平台 Workbench，串起 TrialRun artifacts（含 `@logixjs/form.rulesManifest@v1`）、UI 投影与语义绑定边界、Scenario Canvas 语义蓝图、表达式/校验资产协议、以及 Module 端口/类型 IR 导出，定义端到端可验收的集成闭环与版本化治理口径；不新增实现细节，仅提供统一的验收与依赖关系裁决，避免各子 spec 漂移。
 
 ## Assumptions
 
@@ -54,7 +54,7 @@
 **Acceptance Scenarios**:
 
 1. **Given** 一个代表性模块（包含表单 rules 与跨模块事件→动作边），**When** 执行一次受控试运行/检查，**Then** 输出包含 TrialRunReport 与版本化 artifacts，并能展示/导出以供审阅与 diff。
-2. **Given** 模块包含表单 rules，**When** 执行检查，**Then** 输出包含 `@logix/form.rulesManifest@v1`（含 warnings），且可与 StaticIR/PortSpec 做同源对照。
+2. **Given** 模块包含表单 rules，**When** 执行检查，**Then** 输出包含 `@logixjs/form.rulesManifest@v1`（含 warnings），且可与 StaticIR/PortSpec 做同源对照。
 3. **Given** 某个子协议工件缺失或截断（例如 TypeIR 超预算），**When** 展示与验收，**Then** 系统仍能完成降级验收（例如仅基于 PortSpec 做引用合法性校验），并给出可行动提示。
 
 ---

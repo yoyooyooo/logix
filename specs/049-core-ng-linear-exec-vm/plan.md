@@ -28,7 +28,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、（实现阶段）`@logix/core-ng`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`  
 **Storage**: N/A（证据落盘到 `specs/049-core-ng-linear-exec-vm/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）  
@@ -52,11 +52,11 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Internal contracts & trial runs**：必须能在 TrialRun/对照 harness 下验证并导出证据；不得依赖全局单例。
 - **Dual kernels (core + core-ng)**：
   - kernel support matrix（本 spec）：core=`supported`（不要求改实现）、core-ng=`trial-only → supported`（以证据达标裁决）。
-  - consumer 不直接依赖 `@logix/core-ng`；切换发生在 runtime 装配阶段。
+  - consumer 不直接依赖 `@logixjs/core-ng`；切换发生在 runtime 装配阶段。
 - **Performance budget**：必须 `$logix-perf-evidence`（Node + Browser）拦截回归。
 - **Diagnosability & explainability**：off 近零成本；light/full 才输出 Exec VM 摘要字段（Slim、可序列化）。
 - **Breaking changes**：纯优化不改语义；若出现行为变化必须另立 spec。
-- **Public submodules**：实现阶段新增 `@logix/core-ng` 子模块需遵守 public submodules 规范。
+- **Public submodules**：实现阶段新增 `@logixjs/core-ng` 子模块需遵守 public submodules 规范。
 - **Quality gates**：实现阶段至少 `pnpm typecheck/lint/test` + perf evidence。
 
 ### Gate Result (Pre-Design)
@@ -78,7 +78,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - after（core-ng / execVm=on）采集时：
     - Browser：设置 `VITE_LOGIX_PERF_KERNEL_ID=core-ng`、`VITE_LOGIX_CORE_NG_EXEC_VM_MODE=on`
     - Node：设置 `LOGIX_PERF_KERNEL_ID=core-ng`、`LOGIX_CORE_NG_EXEC_VM_MODE=on`
-  - before/after 必须由 `@logix/core-ng` 的 layer（例如 `coreNgKernelLayer` / `coreNgFullCutoverLayer`）装配；任何 “perf-only override（只替换单个 serviceId）” 的结果只能当线索，不得作为 049 的达标证据
+  - before/after 必须由 `@logixjs/core-ng` 的 layer（例如 `coreNgKernelLayer` / `coreNgFullCutoverLayer`）装配；任何 “perf-only override（只替换单个 serviceId）” 的结果只能当线索，不得作为 049 的达标证据
 
 **Collect (Browser / matrix P1 minimal)**:
 
@@ -124,7 +124,7 @@ packages/logix-react/
 
 **Structure Decision**:
 
-- Exec VM 的实现主要落在 `@logix/core-ng`；`@logix/core` 只负责契约与证据出口，避免 consumer 依赖 core-ng。
+- Exec VM 的实现主要落在 `@logixjs/core-ng`；`@logixjs/core` 只负责契约与证据出口，避免 consumer 依赖 core-ng。
 
 ## Deliverables by Phase
 

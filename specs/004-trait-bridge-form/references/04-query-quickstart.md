@@ -15,7 +15,7 @@
 ### 0.1 定义 ResourceSpec（组件外，真实 IO 的唯一入口）
 
 ```ts
-import { Resource } from "@logix/core"
+import { Resource } from "@logixjs/core"
 import { Effect, Schema } from "effect"
 
 type SearchKey = {
@@ -58,7 +58,7 @@ export const SearchSpec = Resource.make({
 ### 0.2 定义 QueryBlueprint（组件外定义，不在组件里写 useEffect）
 
 ```ts
-import { Query } from "@logix/query"
+import { Query } from "@logixjs/query"
 import { Schema } from "effect"
 
 const ParamsSchema = Schema.Struct({
@@ -107,7 +107,7 @@ export const SearchQuery = Query.make("SearchQuery", {
 
 ```tsx
 import React from "react"
-import { useLocalModule, useSelector } from "@logix/react"
+import { useLocalModule, useSelector } from "@logixjs/react"
 import { SearchQuery } from "./searchQuery"
 
 export function SearchPage() {
@@ -164,9 +164,9 @@ const RootImpl = Root.implement({
 
 ```ts
 import { Layer } from "effect"
-import { Resource } from "@logix/core"
+import { Resource } from "@logixjs/core"
 import { QueryClient } from "@tanstack/query-core"
-import * as Query from "@logix/query"
+import * as Query from "@logixjs/query"
 
 export const QueryRuntimeLayer = Layer.mergeAll(
   Resource.layer([SearchSpec /*, DetailSpec */]),
@@ -213,7 +213,7 @@ Query 触发不再散落在组件 `useEffect`：
 
 ## 2. 深入：Query.make 如何回落到 StateTrait/Resource（给实现者）
 
-实现上，`@logix/query` 的 Blueprint/Controller/默认 logics 必须能被“降解”为同一条 kernel 主线：
+实现上，`@logixjs/query` 的 Blueprint/Controller/默认 logics 必须能被“降解”为同一条 kernel 主线：
 
 - Query 的“依赖声明”最终回落到 `StateTrait.source`（resourceId + key）；
 - Query 的“结果视图”最终回落到 `computed`（从快照派生 loading/error/data）；

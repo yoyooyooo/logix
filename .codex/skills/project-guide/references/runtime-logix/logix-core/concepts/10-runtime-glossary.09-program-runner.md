@@ -5,7 +5,7 @@
   - 运行时以它作为 Runtime Tree 的入口进行装配与启动。
 
 - **Program runner**
-  - 指 `@logix/core` 提供的标准根模块运行入口：`Runtime.openProgram` / `Runtime.runProgram`；
+  - 指 `@logixjs/core` 提供的标准根模块运行入口：`Runtime.openProgram` / `Runtime.runProgram`；
   - 负责 boot（启动实例与长期流程）与 dispose（释放收束），但不隐式推断退出策略。
 
 - **ProgramRunContext**

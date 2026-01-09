@@ -1,7 +1,7 @@
 # Perf Evidence: 014 浏览器压测基线与性能边界地图
 
 > 记录 014 的浏览器端性能基线（baseline）与上限/边界（limit）证据，用于后续迭代 Before/After 对照。
-> 统计口径以 `specs/014-browser-perf-boundaries/spec.md` 与矩阵 SSoT（`@logix/perf-evidence/assets/matrix.json`）为准（中位数 + p95；含 runs/warmup/timeout 元信息）。
+> 统计口径以 `specs/014-browser-perf-boundaries/spec.md` 与矩阵 SSoT（`@logixjs/perf-evidence/assets/matrix.json`）为准（中位数 + p95；含 runs/warmup/timeout 元信息）。
 
 ## 环境元信息（必填）
 

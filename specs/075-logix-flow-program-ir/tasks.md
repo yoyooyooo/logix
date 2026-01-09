@@ -13,7 +13,7 @@
 - [ ] T005 完成 `quickstart.md`（submit + delay 两个最小示例）
 - [ ] T006 完成 `contracts/tape.md`（可回放磁带：Record/Replay/Fork；覆盖 `Σ_t=(S_t,I_t)` 的在途态锚点）
 
-## Phase 2: Core Implementation（@logix/core）
+## Phase 2: Core Implementation（@logixjs/core）
 
 - [ ] T010 新增公共子模块 `packages/logix-core/src/FlowProgram.ts`（DSL + 类型导出）
 - [ ] T011 新增 internal `packages/logix-core/src/internal/runtime/core/FlowProgramRuntime.ts`（compile + mount）

@@ -8,7 +8,7 @@
 
 ## Summary
 
-为 `@logix/sandbox` 增加“多内核资产注册 + 单次运行选择”的基础能力：Host 可提供多个 kernel variant（例如 core / core-ng）与 `defaultKernelId`，每次 `trialRunModule`/`run` 可选择 `kernelId` 并在结果中明确标识 `requestedKernelId/effectiveKernelId` 与 `KernelImplementationRef`。默认 `strict=true`（strict by default），任何无法按 requested 运行都失败；仅在 `strict=false` 且显式允许 fallback 时，才允许降级到 `defaultKernelId`，并必须记录 `fallbackReason`，避免静默回退污染对照与门禁。
+为 `@logixjs/sandbox` 增加“多内核资产注册 + 单次运行选择”的基础能力：Host 可提供多个 kernel variant（例如 core / core-ng）与 `defaultKernelId`，每次 `trialRunModule`/`run` 可选择 `kernelId` 并在结果中明确标识 `requestedKernelId/effectiveKernelId` 与 `KernelImplementationRef`。默认 `strict=true`（strict by default），任何无法按 requested 运行都失败；仅在 `strict=false` 且显式允许 fallback 时，才允许降级到 `defaultKernelId`，并必须记录 `fallbackReason`，避免静默回退污染对照与门禁。
 
 补充：以 `examples/logix-sandbox-mvp` 作为 consumer/debug harness 接入 multi-kernel（注入 `kernelRegistry` + debug-only 的 `kernelId/strict/fallback` 选择 UI），并在结果面板展示 `requested/effective/fallbackReason/kernelImplementationRef`，用于验证对照链路不会漂移。
 
@@ -33,13 +33,13 @@
 -->
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、`@logix/sandbox`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/sandbox`  
 **Storage**: N/A（运行资产与结果仅内存态；Host 负责提供同源静态资源）  
 **Testing**: Vitest（`packages/logix-sandbox`）；必要时用 `@effect/vitest` 管理 Effect 环境  
 **Target Platform**: 现代浏览器（Web Worker）+ Node.js 20+（构建）  
 **Project Type**: pnpm workspace（`packages/*` + `apps/*` + `specs/*`）  
 **Performance Goals**: 单内核默认路径不新增额外常驻请求/分配；多内核仅在选择时额外加载对应内核资产；结果/证据有界（maxEvents/maxBytes）  
-**Constraints**: 可序列化 DTO、确定性 `runId`（Host 显式提供）、strict/fallback 可解释且可门禁、consumer 不直接依赖 `@logix/core-ng`  
+**Constraints**: 可序列化 DTO、确定性 `runId`（Host 显式提供）、strict/fallback 可解释且可门禁、consumer 不直接依赖 `@logixjs/core-ng`  
 **Scale/Scope**: P1 支持 `core`/`core-ng` 两个 kernel variant；P2 支持扩展到更多 variant（不要求任意版本管理/远程包解析）
 
 ## Constitution Check
@@ -66,7 +66,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
     process-global singletons?
   - Dual kernels (core + core-ng): if this feature touches kernel/hot paths or
     Kernel Contract / Runtime Services, does the plan define a kernel support
-    matrix (core vs core-ng), avoid direct @logix/core-ng dependencies in
+    matrix (core vs core-ng), avoid direct @logixjs/core-ng dependencies in
     consumers, and specify how contract verification + perf evidence gate changes?
   - Performance budget: which hot paths are touched, what metrics/baselines
     exist, and how will regressions be prevented?
@@ -86,14 +86,14 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 ### Answers (Pre-Design)
 
-- **Intent → Flow/Logix → Code → Runtime**：本特性位于 Sandbox/Playground 基础设施层：Host 选择 `kernelId` → Worker 按选定内核编译/执行 → 通过 `@logix/core` 的 TrialRun 产出可序列化报告（含 `KernelImplementationRef`）→ docs/debug/CI 消费并对照。
+- **Intent → Flow/Logix → Code → Runtime**：本特性位于 Sandbox/Playground 基础设施层：Host 选择 `kernelId` → Worker 按选定内核编译/执行 → 通过 `@logixjs/core` 的 TrialRun 产出可序列化报告（含 `KernelImplementationRef`）→ docs/debug/CI 消费并对照。
 - **Docs-first & SSoT**：协议与包 API 的裁决以 `packages/logix-sandbox/src/*` 为 SSoT；需要同步更新 `docs/specs/drafts/topics/sandbox-runtime/15-protocol-and-schema.md` 与 `docs/specs/drafts/topics/sandbox-runtime/25-sandbox-package-api.md`，避免协议口径漂移。
-- **Contracts**：新增/调整 `@logix/sandbox` 的公共契约（KernelVariant/KernelSelection/RunResult 字段）。实现引用与对照锚点复用 `specs/045-dual-kernel-contract/contracts/schemas/kernel-implementation-ref.schema.json`，避免重复定义。
-- **IR & anchors**：不改变统一最小 IR；仅要求把 `KernelImplementationRef` 与 `requested/effective kernelId` 作为可序列化摘要暴露给 consumer。`instanceId/txnSeq/opSeq` 等稳定锚点仍由 `@logix/core` 的诊断/证据提供，本特性不得破坏其可见性。
+- **Contracts**：新增/调整 `@logixjs/sandbox` 的公共契约（KernelVariant/KernelSelection/RunResult 字段）。实现引用与对照锚点复用 `specs/045-dual-kernel-contract/contracts/schemas/kernel-implementation-ref.schema.json`，避免重复定义。
+- **IR & anchors**：不改变统一最小 IR；仅要求把 `KernelImplementationRef` 与 `requested/effective kernelId` 作为可序列化摘要暴露给 consumer。`instanceId/txnSeq/opSeq` 等稳定锚点仍由 `@logixjs/core` 的诊断/证据提供，本特性不得破坏其可见性。
 - **Deterministic identity**：运行标识 `runId` 必须由 Host 显式提供（禁止默认 `Date.now()` 作为唯一标识）；strict/fallback 需要可序列化证据字段（`fallbackReason`）。
 - **Transaction boundary**：不引入事务窗口 IO/async；本特性只影响 Sandbox 初始化/编译/运行边界。
 - **Internal contracts & trial runs**：不新增 runtime magic 字段；复用 045 的 Kernel Contract/TrialRun 机制产出证据，不依赖进程级全局单例。
-- **Dual kernels (core + core-ng)**：kernel support matrix：core-ng=`default(supported)`，core=`explicit rollback/contrast`；consumer 只依赖 `@logix/core`，通过“可选择的 kernel 资产”进行对照试跑（不引入隐式 fallback）。
+- **Dual kernels (core + core-ng)**：kernel support matrix：core-ng=`default(supported)`，core=`explicit rollback/contrast`；consumer 只依赖 `@logixjs/core`，通过“可选择的 kernel 资产”进行对照试跑（不引入隐式 fallback）。
 - **Performance budget**：不触及 Logix Runtime 热路径；但触及 docs/Playground 的“进入可运行态”体验，必须保证单内核路径无额外网络请求/常驻分配，多内核仅在选择时加载对应资产。
 - **Diagnosability & explainability**：新增字段必须 Slim 且可序列化：`requestedKernelId/effectiveKernelId/fallbackReason/kernelImplementationRef`；错误摘要需面向读者并附恢复建议。
 - **Breaking changes**：若升级 Protocol/Types/Client API，必须在 `specs/058-sandbox-multi-kernel/quickstart.md` 给出迁移说明（不保留兼容层）；但“单内核默认用法”可作为新设计的一等形态保留。
@@ -174,7 +174,7 @@ specs/046-core-ng-roadmap/
 
 - SSoT 以 `packages/logix-sandbox/src/*` 为准，完成 multi-kernel 的公共 API/协议/类型。
 - Sandbox 协议与包 API 文档同步更新 `docs/specs/drafts/topics/sandbox-runtime/*`，避免“文档协议”与“代码协议”漂移。
-- consumer（例如 041）通过 `@logix/sandbox` 暴露的 `kernelId`/结果摘要字段完成对照展示，不直接依赖 `@logix/core-ng`。
+- consumer（例如 041）通过 `@logixjs/sandbox` 暴露的 `kernelId`/结果摘要字段完成对照展示，不直接依赖 `@logixjs/core-ng`。
 - `examples/logix-sandbox-mvp` 作为 debug harness：提供可视化 `kernelId` 选择与结果摘要展示，用于对照试跑与回归验证（不强依赖 core-ng 包）。
 
 ## Complexity Tracking

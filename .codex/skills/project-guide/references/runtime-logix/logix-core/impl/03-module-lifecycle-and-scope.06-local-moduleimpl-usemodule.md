@@ -46,7 +46,7 @@ function ModuleTag(id, def) {
   // 1. 为这个 Module 定义一个 Tag：
   //    - 既是 Context.Tag（Effect 里的“键”）；
   //    - 也是 ModuleTag 本身。
-  class ModuleTag extends Context.Tag(`@logix/Module/${id}`)<
+  class ModuleTag extends Context.Tag(`@logixjs/Module/${id}`)<
     ModuleTag,
     ModuleRuntime<StateOf<typeof shape>, ActionOf<typeof shape>>
   >() {}
@@ -121,7 +121,7 @@ const runtime = Context.get(env, Counter.tag) // ModuleRuntime
 在 React 集成层，`useModule` 对 ModuleImpl 的重载形态是：
 
 ```ts
-// @logix/react
+// @logixjs/react
 useModule(handle: ModuleImpl): ModuleRuntime
 ```
 
@@ -170,7 +170,7 @@ function useModule(impl: ModuleImpl, options) {
 
 ## 6.2 模块资源缓存：ModuleCache 与 Key 语义
 
-当前 @logix/react 中，局部 ModuleImpl 的核心实现落在 `ModuleCache` 上，关键点如下：
+当前 @logixjs/react 中，局部 ModuleImpl 的核心实现落在 `ModuleCache` 上，关键点如下：
 
 - 缓存维度：
   - 每个 `ManagedRuntime` 对应一个 `ModuleCache`（通过 WeakMap 关联）；

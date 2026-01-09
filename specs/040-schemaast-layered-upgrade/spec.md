@@ -106,7 +106,7 @@
 - **FR-009**: System MUST 提供 schema 变更影响分析：能够比较两个 schema 版本并识别破坏性变更（例如字段删除/类型收窄/语义约束增强），并生成可读摘要。
 - **FR-010**: System MUST 允许 Flow/Logic 节点参数与输入输出引用 schema，使工具能基于 schema 自动生成参数面板与校验，并在 schema 变更时提示影响范围。
 - **FR-011**: System MUST 允许服务边界（请求/响应）引用 schema，使工具能对入站/出站数据进行一致的校验与解释，并将契约信息纳入诊断证据链路。
-- **FR-012**: System SHOULD 允许将 Schema Registry pack 作为 TrialRun artifacts 的可选附属工件导出（推荐 key：`@logix/schema.registry@v1`），以便 Workbench/CI/Agent 在同一条 IR 链路中拿到“schemaId→schema”映射。
+- **FR-012**: System SHOULD 允许将 Schema Registry pack 作为 TrialRun artifacts 的可选附属工件导出（推荐 key：`@logixjs/schema.registry@v1`），以便 Workbench/CI/Agent 在同一条 IR 链路中拿到“schemaId→schema”映射。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 
@@ -160,7 +160,7 @@
 - Sandbox Host↔Worker 需要共享协议 schema，并在握手阶段明确兼容性与降级策略。
 - 证据包/回放消费者需要能够在离线环境加载 schema registry 并解释事件与最小 IR。
 - 与 IR-first 平台链路的组合建议外链到：`specs/036-workbench-contract-suite/reading-cheatsheet.md`（registry pack 可通过 artifacts 同链路导出，并进入 Contract Suite/Context Pack）。
-- 与 `@logix/module.portSpec@v1` / `@logix/module.typeIr@v1`（035）的边界：SchemaAST/registry 是“解释与校验支撑”，平台引用空间事实源仍以 PortSpec/TypeIR 为准；TypeIR 的实现可由 SchemaAST 投影，但 SchemaAST 本体不外泄为平台事实源。
+- 与 `@logixjs/module.portSpec@v1` / `@logixjs/module.typeIr@v1`（035）的边界：SchemaAST/registry 是“解释与校验支撑”，平台引用空间事实源仍以 PortSpec/TypeIR 为准；TypeIR 的实现可由 SchemaAST 投影，但 SchemaAST 本体不外泄为平台事实源。
 
 ## Out of Scope
 

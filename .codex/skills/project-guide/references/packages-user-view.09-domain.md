@@ -1,4 +1,4 @@
-# 9) `@logix/domain`（Feature Kit：CRUDModule 等领域模块）
+# 9) `@logixjs/domain`（Feature Kit：CRUDModule 等领域模块）
 
 ## 你在什么情况下会用它
 

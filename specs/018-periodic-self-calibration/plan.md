@@ -28,7 +28,7 @@
 -->
 
 **Language/Version**: TypeScript 5.x（ESM）
-**Primary Dependencies**: `effect` v3、`@logix/core` / `@logix/react` / `@logix/devtools-react`；示例场景使用 Vite + React
+**Primary Dependencies**: `effect` v3、`@logixjs/core` / `@logixjs/react` / `@logixjs/devtools-react`；示例场景使用 Vite + React
 **Storage**: 审计/校准产物均支持 JSON 导出；用户侧可选 localStorage 保存最近一次推荐与运行历史
 **Testing**: Vitest（Node）+ `@effect/vitest`（Effect-heavy）；Vitest browser mode（Playwright）用于浏览器 perf 跑道
 **Target Platform**: Node.js 20+（脚本/CI）+ 现代浏览器（校准运行环境）
@@ -99,7 +99,7 @@
 
 失效条件最小集合（必须可审计、可解释）：
 
-- **版本变化**：`@logix/*` 版本或应用 buildId 变化（避免跨版本误用旧推荐）。
+- **版本变化**：`@logixjs/*` 版本或应用 buildId 变化（避免跨版本误用旧推荐）。
 - **环境变化**：`userAgent` / `hardwareConcurrency` / `deviceMemory` 变化（或变化超阈）。
 - **观测信号**：连续 N 次无法完成校准（超时/无 idle 租约/失败），或推荐在轻量 smoke check 下触发 `Degraded` / 硬门失败 / 波动超阈。
 

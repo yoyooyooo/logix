@@ -1,4 +1,4 @@
-# 2) `@logix/react`（React 适配：RuntimeProvider + hooks）
+# 2) `@logixjs/react`（React 适配：RuntimeProvider + hooks）
 
 ## 你在什么情况下会用它
 

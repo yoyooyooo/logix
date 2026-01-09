@@ -7,17 +7,17 @@
 
 035 的目标是定义平台智能提示/依赖安全的唯一事实源：`ModulePortSpec@v1` 与 `TypeIR@v1`。
 
-它们通过 031 的 TrialRunReport.artifacts 槽位导出（按预算裁剪），并用统一协议域 `@logix/module.*` 版本化：
+它们通过 031 的 TrialRunReport.artifacts 槽位导出（按预算裁剪），并用统一协议域 `@logixjs/module.*` 版本化：
 
-- `@logix/module.portSpec@v1`：模块端口与可引用空间（actions/events/outputs/exports）
-- `@logix/module.typeIr@v1`：与 PortSpec 对齐的类型摘要/引用 IR（可截断）
+- `@logixjs/module.portSpec@v1`：模块端口与可引用空间（actions/events/outputs/exports）
+- `@logixjs/module.typeIr@v1`：与 PortSpec 对齐的类型摘要/引用 IR（可截断）
 
 平台（Scenario Canvas、表达式编辑器、lint/CI、Agent 工具面）必须 **只依赖** 这些 artifacts 做补全与校验，避免源码推断形成并行真相源。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logix/core`（导出端口与类型信息）、`@logix/sandbox`（作为最小消费者/执行壳）  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`（导出端口与类型信息）、`@logixjs/sandbox`（作为最小消费者/执行壳）  
 **Storage**: N/A（以可序列化 JSON 工件为主，可被平台/CI 存档）  
 **Testing**: Vitest（导出/归一化/diff 建议以纯函数 + 单测为主）  
 **Target Platform**: Node.js（CI/脚本）+ 现代浏览器（Workbench/Studio）  
@@ -51,7 +51,7 @@ _GATE: Phase 0 研究前必须通过；Phase 1 设计后再次复查。_
 - **Diagnosability**
   - 缺失/截断/失败必须给出结构化原因（moduleId + artifactKey + budget/失败分类）。
 - **Breaking changes**
-  - 协议演进通过 `@logix/module.*@vN`；破坏性变更必须能在 CI/Workbench diff 中被识别并审阅。
+  - 协议演进通过 `@logixjs/module.*@vN`；破坏性变更必须能在 CI/Workbench diff 中被识别并审阅。
 - **质量门槛（Pass 定义）**
   - 产物落地时：`pnpm typecheck`、`pnpm lint`、`pnpm test`（后续 tasks 阶段执行）
 
@@ -61,14 +61,14 @@ _GATE: Phase 0 研究前必须通过；Phase 1 设计后再次复查。_
 
 - 明确 PortSpec 的端口分类与寻址方式（action/event/output/export path），以及稳定排序规则。
 - 明确 TypeIR 的投影策略：默认“扁平、具体、可 diff”，超预算截断但仍可用于 key-level 校验。
-- 明确 TypeIR 的实现来源：允许内部利用 `effect/Schema` 的 `schema.ast`（SchemaAST）做类型投影，但 SchemaAST **不外泄为协议**；对外只有 `@logix/module.typeIr@v1`（与 040 对齐）。
+- 明确 TypeIR 的实现来源：允许内部利用 `effect/Schema` 的 `schema.ast`（SchemaAST）做类型投影，但 SchemaAST **不外泄为协议**；对外只有 `@logixjs/module.typeIr@v1`（与 040 对齐）。
 - 明确与 031 ArtifactEnvelope 的组合方式：payload schema 如何被消费者验证（只在 `ok=true` 时校验 `value`）。
 
 ### Phase 1（Design & Contracts）：固化 schema 与 diff 口径
 
 - 在 `specs/035-module-ports-typeir/contracts/schemas/` 固化：
-  - `module-port-spec.schema.json`（PortSpec payload；对应 key `@logix/module.portSpec@v1`）
-  - `type-ir.schema.json`（TypeIR payload；对应 key `@logix/module.typeIr@v1`）
+  - `module-port-spec.schema.json`（PortSpec payload；对应 key `@logixjs/module.portSpec@v1`）
+  - `type-ir.schema.json`（TypeIR payload；对应 key `@logixjs/module.typeIr@v1`）
   - `port-address.schema.json`（端口/路径寻址基元；供 032/033/034 引用）
 - 在 `data-model.md` 固化：
   - PortSpec/TypeIR 的字段语义与对齐规则

@@ -26,7 +26,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/*`（含 `@logix/core` / `@logix/react`）  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/*`（含 `@logixjs/core` / `@logixjs/react`）  
 **Storage**: N/A（本特性产物为 specs 文档；不引入持久化）  
 **Testing**: N/A（046 本身主要交付文档；验收采用人工 review：`specs/046-core-ng-roadmap/checklists/*`）。但 `Policy Update / 单内核默认（2025-12-31）` 触及 runtime 装配默认策略与 consumer 默认值：必须通过 `pnpm typecheck` / `pnpm lint` / `pnpm test`，并补齐 `$logix-perf-evidence`（默认路径 Node + Browser before/after/diff）  
 **Target Platform**: Node.js 20+ + modern browsers（证据门禁包含 ≥1 条 headless browser 跑道）  
@@ -51,7 +51,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Performance budget**：路线图把 `$logix-perf-evidence`（Node + Browser）作为硬门槛，并要求阻断“半成品态”负优化。
 - **Diagnosability & explainability**：要求 `diagnostics=off` 近零成本；若引入新的观测口径（例如采样）必须另立 spec（044）。
 - **Breaking changes**：允许轻量迁移；但路线图要求用迁移说明替代兼容层，并把“切默认内核”作为带门槛的动作。
-- **Public submodules**：本特性不改 `packages/*`；未来若新增 `@logix/core-ng` 能力扩面，必须遵守 public submodules 规范（由 045 已先行约束）。
+- **Public submodules**：本特性不改 `packages/*`；未来若新增 `@logixjs/core-ng` 能力扩面，必须遵守 public submodules 规范（由 045 已先行约束）。
 - **Quality gates**：路线图要求未来所有核心路径变更至少通过 workspace 质量门（typecheck/lint/test），并对关键切换追加 perf evidence。
 
 ### Gate Result (Pre-Design)
@@ -92,13 +92,13 @@ Guardrails（必须满足）：
 
 结论：
 
-- `specs/041-docs-inline-playground/` 的总体目标与 core-ng 路线 **不冲突**；其教学 MVP（US1/US2/US3）默认仍以 `@logix/sandbox` + `@logix/core` 为底座即可，不需要等待 core-ng。
+- `specs/041-docs-inline-playground/` 的总体目标与 core-ng 路线 **不冲突**；其教学 MVP（US1/US2/US3）默认仍以 `@logixjs/sandbox` + `@logixjs/core` 为底座即可，不需要等待 core-ng。
 - 但在 046/宪章的“双内核演进 + 证据门禁”约束明确后，041 的实现计划需要补齐两类对齐点：
   - **稳定标识 & 证据口径**：文档侧必须显式传入确定性 `runId`（避免 `Date.now()` 默认值），并在 debug 面板中优先展示/透传 `TrialRunReport.environment.kernelImplementationRef`（以及与 trace 关联的稳定锚点：`instanceId/txnSeq/opSeq`），避免新增并行真相源。
-  - **多 kernel 试跑能力（可选）**：若希望 041 的 debug 文档承担 core/core-ng 的对照演示，则需要 `@logix/sandbox` 支持“多 kernel 资产（或等价机制）+ 可选择运行内核”；这属于 M2（trial-run/test/dev 渐进替换）之前的基础设施整合，不是 041 MVP 的阻塞项。
+  - **多 kernel 试跑能力（可选）**：若希望 041 的 debug 文档承担 core/core-ng 的对照演示，则需要 `@logixjs/sandbox` 支持“多 kernel 资产（或等价机制）+ 可选择运行内核”；这属于 M2（trial-run/test/dev 渐进替换）之前的基础设施整合，不是 041 MVP 的阻塞项。
     - 现实约束：当前 `packages/logix-sandbox/src/Client.ts` 仅有 `kernelUrl`（单 kernel）；若要在 docs playground 中做 core/core-ng 选择，需先把 SandboxClientConfig 扩展为“多 kernel variant（`kernelId → kernelUrl`）+ defaultKernelId”形态（详见：`specs/058-sandbox-multi-kernel/`）。
     - 备注：`docs/specs/drafts/topics/sandbox-runtime/25-sandbox-package-api.md` 中的 `kernelBlobUrls` 可作为“更协议化”的后续演进方向，但不应阻塞 041 MVP。
-    - 建议：多 kernel 资产/选择能力应视为 Playground/Alignment Lab 的基础设施升级（`@logix/sandbox`），单独立 spec 承载并登记到 046 registry（见：`specs/058-sandbox-multi-kernel/`），避免把基础设施改造耦进 041 的 UI MVP。
+    - 建议：多 kernel 资产/选择能力应视为 Playground/Alignment Lab 的基础设施升级（`@logixjs/sandbox`），单独立 spec 承载并登记到 046 registry（见：`specs/058-sandbox-multi-kernel/`），避免把基础设施改造耦进 041 的 UI MVP。
 
 建议实施阶段（按 046 里程碑）：
 

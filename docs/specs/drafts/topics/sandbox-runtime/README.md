@@ -19,7 +19,7 @@ priority: next
 | 10     | [runtime-baseline](./10-runtime-baseline.md)                   | ⚡ 框架 | Worker 生命周期、Watchdog            |
 | **15** | [protocol-and-schema](./15-protocol-and-schema.md)             | ✅ 完整 | 协议与 Schema 定义                   |
 | 20     | [dependency-and-mock](./20-dependency-and-mock-strategy.md)    | ⚡ 框架 | 依赖治理、Mock 策略                  |
-| **25** | [sandbox-package-api](./25-sandbox-package-api.md)             | ✅ 完整 | `@logix/sandbox` API 设计            |
+| **25** | [sandbox-package-api](./25-sandbox-package-api.md)             | ✅ 完整 | `@logixjs/sandbox` API 设计            |
 | 30     | [intent-coverage](./30-intent-coverage-and-ai-feedback.md)     | 📝 占位 | Intent 覆盖与 AI 反馈                |
 | 40     | [multi-runtime-funnel](./40-multi-runtime-funnel.md)           | 📝 占位 | 多运行时漏斗                         |
 | 50     | [devtools-session-diff](./50-devtools-session-and-diff.md)     | 📝 占位 | DevTools Session 与 Diff             |
@@ -33,8 +33,8 @@ priority: next
 ### P0 — 当前阶段（基础运行时）
 
 - [ ] **协议落地**：按 [15-protocol-and-schema.md](./15-protocol-and-schema.md) 实现 TypeScript 类型
-- [ ] **Worker 入口**：创建 `@logix/sandbox` 包骨架
-- [ ] **Kernel 预注入**：`effect` + `@logix/core` 预打包 + Blob URL
+- [ ] **Worker 入口**：创建 `@logixjs/sandbox` 包骨架
+- [ ] **Kernel 预注入**：`effect` + `@logixjs/core` 预打包 + Blob URL
 - [ ] **Watchdog**：超时熔断 + Hard Reset
 
 > P0 的实际落地以「省市区联动」场景为唯一 MVP，用一个具体用例验证 Host↔Worker 协议、Kernel 预注入与基础可观测性是否满足平台需要，避免过早设计完整 Playground 形态。

@@ -76,8 +76,8 @@ description: This skill should be used when managing a tiered L1–L9 draft syst
 为便于跨主题决策和排期，每个草稿应在 frontmatter 中显式标注：
 
 - `value`: 从“对 SSoT/实现的结构性价值”角度分类，建议使用以下枚举值：
-  - `core`：直接影响 v3 / runtime-logix / 关键子包（如 `@logix/core`, `@logix/react`, `@logix/form`）的设计或实现，最终应沉淀到 `docs/specs` SSoT 与对应代码；
-  - `extension`：扩展能力、特定场景或子包（如 `@logix/query`、Draft Pattern、特定 ToB 场景）的设计，重要但不改变核心引擎契约；
+  - `core`：直接影响 v3 / runtime-logix / 关键子包（如 `@logixjs/core`, `@logixjs/react`, `@logixjs/form`）的设计或实现，最终应沉淀到 `docs/specs` SSoT 与对应代码；
+  - `extension`：扩展能力、特定场景或子包（如 `@logixjs/query`、Draft Pattern、特定 ToB 场景）的设计，重要但不改变核心引擎契约；
   - `vision`：中长期蓝图与方向性思考（例如平台终局形态、AI Native 愿景），用于指导但不直接约束当前实现；
   - `background`：调研对比、历史记录、外部启发等，如不再被引用可在后续合并或归档。
 

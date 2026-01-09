@@ -89,5 +89,5 @@ version: 1
 - “`applyTransactionSnapshot` 如何拿到 before/after 快照？为何 dev-only？ReplayLog 在哪记账？”
 - “`ProgramRunner` 如何处理 signals/exit code/closeScopeTimeout？哪些错误会上报到 Runtime.onError？”
 - “`logix-sandbox` 的 compiler/worker/protocol/client 是怎样串起来的？最小可回放证据从哪导出？”
-- “`@logix/test` 的 TestRuntime 如何收集 changes/debug 变成可断言的 trace？Scenario 的最小写法在哪？”
-- “`@logix/form`/`@logix/query` 的上层 DSL 是怎样落到 runtime trait/logic 的？React/TanStack adapter 的边界在哪？”
+- “`@logixjs/test` 的 TestRuntime 如何收集 changes/debug 变成可断言的 trace？Scenario 的最小写法在哪？”
+- “`@logixjs/form`/`@logixjs/query` 的上层 DSL 是怎样落到 runtime trait/logic 的？React/TanStack adapter 的边界在哪？”

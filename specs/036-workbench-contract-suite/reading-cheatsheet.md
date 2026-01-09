@@ -20,11 +20,11 @@
 3) 031：TrialRun artifacts 槽位（统一承载 Supplemental Static IR）  
 `specs/031-trialrun-artifacts/quickstart.md`  
 `specs/031-trialrun-artifacts/data-model.md`  
-你会拿到：`TrialRunReport.artifacts` 的统一 shape、预算/截断/单项失败语义，以及首个 kit 用例 `@logix/form.rulesManifest@v1`。
+你会拿到：`TrialRunReport.artifacts` 的统一 shape、预算/截断/单项失败语义，以及首个 kit 用例 `@logixjs/form.rulesManifest@v1`。
 
 4) 035：PortSpec/TypeIR（平台引用空间 SSoT）  
 `specs/035-module-ports-typeir/data-model.md`  
-你会拿到：画布连线/绑定/表达式编辑器需要的“逻辑插座”事实源：`@logix/module.portSpec@v1`、`@logix/module.typeIr@v1` + `PortAddress`（统一寻址基元）。
+你会拿到：画布连线/绑定/表达式编辑器需要的“逻辑插座”事实源：`@logixjs/module.portSpec@v1`、`@logixjs/module.typeIr@v1` + `PortAddress`（统一寻址基元）。
 
 实现提示：TypeIR 的一个现实实现路线是从 `effect/Schema` 的 `schema.ast`（SchemaAST）投影（SchemaAST 不直接外泄为协议）；现有可参考实现：`packages/logix-core/src/internal/state-trait/converge.ts` 的 `schemaHasPath`。
 
@@ -51,16 +51,16 @@
 
 ## 2) 画布节点都有什么（最小概念面）
 
-以统一概念域 `@logix/module.*` 为载体，画布配置面只保留三类“可被 LLM 可靠生成/校验”的对象：
+以统一概念域 `@logixjs/module.*` 为载体，画布配置面只保留三类“可被 LLM 可靠生成/校验”的对象：
 
-- `@logix/module.stageBlueprint@v1`：语义蓝图（模块实例图 + 规则边集合）
-- `@logix/module.intentRule@v1`：语义边（事件→动作；可选引用 `CodeAssetRef`）
-- `@logix/module.codeAsset@v1`：表达式/校验资产（固化 deps/digest；可解释失败与预算）
+- `@logixjs/module.stageBlueprint@v1`：语义蓝图（模块实例图 + 规则边集合）
+- `@logixjs/module.intentRule@v1`：语义边（事件→动作；可选引用 `CodeAssetRef`）
+- `@logixjs/module.codeAsset@v1`：表达式/校验资产（固化 deps/digest；可解释失败与预算）
 
 而“可引用空间/类型”必须来自 trial-run 导出（禁止手工配置）：
 
-- `@logix/module.portSpec@v1`
-- `@logix/module.typeIr@v1`
+- `@logixjs/module.portSpec@v1`
+- `@logixjs/module.typeIr@v1`
 
 ## 3) Agent 出码闭环（平台该怎么用这些 IR）
 
@@ -74,9 +74,9 @@
 ## 4) 常用 keys（背下来就够用）
 
 - 试运行/证据链：`TrialRunReport`（025；由 07 文档详述）
-- artifacts（031）：`@logix/form.rulesManifest@v1`
-- 引用空间/类型（035）：`@logix/module.portSpec@v1`、`@logix/module.typeIr@v1`
-- 画布语义（033）：`@logix/module.stageBlueprint@v1`、`@logix/module.intentRule@v1`、`@logix/module.rowRef@v1`
-- 投影/绑定（032）：`@logix/module.uiBlueprint@v1`、`@logix/module.bindingSchema@v1`、`@logix/module.presentationState@v1`
-- UI Kit Registry（032）：`@logix/module.uiKitRegistry@v1`
-- 资产（034）：`@logix/module.codeAsset@v1`、`CodeAssetRef`（digest）
+- artifacts（031）：`@logixjs/form.rulesManifest@v1`
+- 引用空间/类型（035）：`@logixjs/module.portSpec@v1`、`@logixjs/module.typeIr@v1`
+- 画布语义（033）：`@logixjs/module.stageBlueprint@v1`、`@logixjs/module.intentRule@v1`、`@logixjs/module.rowRef@v1`
+- 投影/绑定（032）：`@logixjs/module.uiBlueprint@v1`、`@logixjs/module.bindingSchema@v1`、`@logixjs/module.presentationState@v1`
+- UI Kit Registry（032）：`@logixjs/module.uiKitRegistry@v1`
+- 资产（034）：`@logixjs/module.codeAsset@v1`、`CodeAssetRef`（digest）

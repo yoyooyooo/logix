@@ -23,7 +23,7 @@ description: "028 Form API 收敛与 DX 提升（rules-first）任务清单"
 **Purpose**: 为 rules-first 入口与后续迁移建立最小的代码落点（不改变现有默认行为）
 
 - [X] T001 创建 rules DSL 模块骨架并在 public barrel 导出：`packages/logix-form/src/dsl/rules.ts`、`packages/logix-form/src/index.ts`
-- [X] T002 在 `@logix/form` public API 中新增 schema-scope 入口 `Form.from(ValuesSchema)`（统一 derived/rules/traits 的类型收窄与语法糖）并导出（不改现有调用方）：`packages/logix-form/src/dsl/from.ts`、`packages/logix-form/src/index.ts`
+- [X] T002 在 `@logixjs/form` public API 中新增 schema-scope 入口 `Form.from(ValuesSchema)`（统一 derived/rules/traits 的类型收窄与语法糖）并导出（不改现有调用方）：`packages/logix-form/src/dsl/from.ts`、`packages/logix-form/src/index.ts`
 
 ---
 
@@ -131,7 +131,7 @@ description: "028 Form API 收敛与 DX 提升（rules-first）任务清单"
 - [X] T045 支持嵌套列表的稳定 identity：RowIdStore 需支持“按父层 row identity 定位 list instance”，避免父层重排导致子列表 RowId 映射失效（降级为 index 必须可诊断）；补齐破坏性边界测试（父层 swap/move 后 errors/ui/rowId 不乱跳）：`packages/logix-core/src/internal/state-trait/rowid.ts`、`packages/logix-core/test/StateTrait.NestedList.RowId.Stability.test.ts`
 - [X] T046 schema→rules 桥接：对外只保留 `z.field(...)`（通过函数重载兼容 `schema` / `RuleConfig` / `RuleFn` 等写法）；`fieldFromSchema` 仅作为内部实现 helper（不导出、不在用户文档出现）；并通过类型/运行时 guard 明确区分“复用 Schema 校验逻辑”而非仅做类型提示；同字段重复约束时以 `manual > rules > schema` 与 `RULE_SKIP` 语义保持一致且可解释：`packages/logix-form/src/dsl/rules.ts`、`packages/logix-form/src/validators.ts`、`packages/logix-form/src/form.ts`、`specs/028-form-api-dx/quickstart.md`
 - [X] T047 [P] 为本特性创建 perf 证据归档目录与约定说明：`specs/028-form-api-dx/perf/README.md`
-- [X] T050 [P] 扩展 perf matrix：为 `form.listScopeCheck` 增加 `diagnosticsLevel=["off","light","full"]` 轴（避免引入新 suite），并把 `diagnostics.level` 加入 requiredEvidence（确保 Diff 可见）：`@logix/perf-evidence/assets/matrix.json`
+- [X] T050 [P] 扩展 perf matrix：为 `form.listScopeCheck` 增加 `diagnosticsLevel=["off","light","full"]` 轴（避免引入新 suite），并把 `diagnostics.level` 加入 requiredEvidence（确保 Diff 可见）：`@logixjs/perf-evidence/assets/matrix.json`
 - [X] T052 [P] 扩展 browser perf 用例：消费 `diagnosticsLevel` 轴，并用 `Logix.Debug.devtoolsHubLayer(base,{ diagnosticsLevel })` 切换 `currentDiagnosticsLevel`；缓存 key 需要包含 `diagnosticsLevel`（避免跨档位复用 runtime 污染）；同时确保 `requestedMode=auto` 仍可捕获 converge decision evidence：`packages/logix-react/test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 - [X] T053 [P] 在 `form.listScopeCheck` 的 report 内补齐“表单链路 overhead 摘要”：按 `{ requestedMode, rows }` 对比 `light/off` 与 `full/off` 的 `runtime.txnCommitMs`（ratio + delta），并以 slim 结构写入 suite 的 `comparisons` 字段（便于人工/脚本直接读取，不依赖二次计算）：`packages/logix-react/test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 - [X] T048 复用浏览器跑道采集 `form.listScopeCheck(diagnosticsLevel)` + diagnostics.overhead 子集并归档 After 报告：`pnpm perf collect`、`specs/028-form-api-dx/perf/014.after.worktree.<envId>.json`

@@ -1,6 +1,6 @@
 # 5. 常见失败与如何定位（从这条链路反推）
 
-- **`缺少 Observability.trialRunModule`**：通常是 sandbox kernel 没更新（`@logix/core` bundle 版本落后）；错误会在 wrapper 里直接抛出。
+- **`缺少 Observability.trialRunModule`**：通常是 sandbox kernel 没更新（`@logixjs/core` bundle 版本落后）；错误会在 wrapper 里直接抛出。
 - **`MissingDependency`**：`TrialRunReport.environment.missingServices/missingConfigKeys` 是你应当优先处理的事实源；修复通常是：
   - 在 `options.layer` 注入缺失服务（或把依赖访问移到 run 段）；或
   - 在 `buildEnv.config` 提供缺失 config（或为 Config 加默认值）。

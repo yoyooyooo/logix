@@ -8,7 +8,7 @@
 - [x] 人读阐述：`specs/046-core-ng-roadmap/spec-registry.md` 存在，且包含：状态枚举、证据门禁口径、kernel support matrix 约束。
 - [x] kernel 口径统一：`spec-registry.md` 明确区分 runtime kernel（045/047/048）与 Sandbox/Playground kernel（058），并写清 `defaultKernelId/availableKernelIds` 的归属与 M4 后生命周期。
 - [x] `spec-registry.json` 的 `status` 仅使用约定枚举：`idea|planned|draft|implementing|done|frozen`（无私货状态）。
-- [x] 明确区分：`ReadQuery/SelectorSpec`（读状态依赖与投影）≠ `@logix/query`（服务/缓存/请求）。
+- [x] 明确区分：`ReadQuery/SelectorSpec`（读状态依赖与投影）≠ `@logixjs/query`（服务/缓存/请求）。
 
 ## 2) 条目完整性（逐行扫表）
 

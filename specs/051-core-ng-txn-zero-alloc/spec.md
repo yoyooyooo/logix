@@ -27,7 +27,7 @@
 
 ### Session 2025-12-29
 
-- Q: 051 是否改变对外语义或引入新 API？ → A: 不改变；属于纯优化与契约收口，consumer 仍只依赖 `@logix/core`。
+- Q: 051 是否改变对外语义或引入新 API？ → A: 不改变；属于纯优化与契约收口，consumer 仍只依赖 `@logixjs/core`。
 - Q: “零分配”是否意味着整个事务完全无分配？ → A: 不是；允许 begin/commit 的常数级分配，但禁止热循环/调用点按 step/patch 增长的分配。
 - Q: 051 与 050 的边界？ → A: 050 定义 id/表示与可解释链路；051 只收口分配行为与分支形态（见 `specs/046-core-ng-roadmap/spec-registry.md` 的 P1 边界表）。
 
@@ -81,7 +81,7 @@
 
 - **FR-001**: 系统 MUST 在 `instrumentation=light` 下提供 argument-based recording：调用点不得创建 patch 对象；禁止 rest 参数；分支必须搬到 loop 外。
 - **FR-002**: 系统 MUST 在 txn 热路径避免字符串解析往返：不得在事务窗口内 `join/split`；txn 内 dirty roots/dirty-set 必须采用 **FieldPath segments（`FieldPath`）** 等“非字符串往返”表示，string path 仅允许在事务外/显示边界 materialize（对齐 050）。
-- **FR-003**: 系统 MUST 能在不改变 consumer 依赖的前提下收口 txn 内部实现：consumer 不直接依赖 `@logix/core-ng`。
+- **FR-003**: 系统 MUST 能在不改变 consumer 依赖的前提下收口 txn 内部实现：consumer 不直接依赖 `@logixjs/core-ng`。
 - **FR-004**: 系统 MUST 复用 `$logix-perf-evidence` 的证据门禁：Node + ≥1 条 headless browser before/after/diff 落盘并可对比。
 - **FR-005**: 系统 MUST 保持调用点零对象分配：即使 `instrumentation=full` 也不得要求调用点先 materialize patch/snapshot 对象；full 的对象 materialize 必须在 txn 聚合器边界完成，且不得污染 `instrumentation=light` 的热路径执行形态。
 

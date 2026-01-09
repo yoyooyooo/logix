@@ -32,7 +32,7 @@
   - 或 `test/<Concept>/*.test.ts`（概念较大，需要拆分）
 - internal 测试（确有必要覆盖内部行为时）放在：
   - `test/internal/<concept>/**`
-  - 且只允许在“同包内”用相对路径引用 internal；禁止跨包通过 `@logix/*/internal/*` 依赖内部实现。
+  - 且只允许在“同包内”用相对路径引用 internal；禁止跨包通过 `@logixjs/*/internal/*` 依赖内部实现。
 - 共享测试工具/断言放在 `test/utils/**`（对标 effect 的 `test/utils`）。
 - fixtures 统一放在 `test/fixtures/**`（允许存在 `test/typecheck/**` 作为编译期回归）。
 
@@ -54,7 +54,7 @@
 
 > 说明：这是目标目录蓝图，允许逐步迁移；迁移过程中以 verify gate + 质量门兜底，避免“边改边漂移”。
 
-### `@logix/core`
+### `@logixjs/core`
 
 - `test/Module/**`、`test/Runtime/**`、`test/Logic/**`、`test/Flow/**`
 - `test/StateTrait/**`、`test/TraitLifecycle/**`、`test/Resource/**`
@@ -63,46 +63,46 @@
 - `test/internal/runtime/**`、`test/internal/state-trait/**`（仅当必须测试 internal 语义时）
 - `test/fixtures/**`
 
-### `@logix/form`
+### `@logixjs/form`
 
 - `test/Form/**`、`test/Rule/**`、`test/Trait/**`、`test/Path/**`
 - `test/SchemaPathMapping.test.ts`、`test/SchemaErrorMapping.test.ts`（或分到对应概念目录）
 - `test/internal/**`（例如 rowid/path 等内部实现）
 - `test/fixtures/**`、`test/typecheck/**`
 
-### `@logix/query`
+### `@logixjs/query`
 
 - `test/Query/**`、`test/Engine/**`、`test/Traits/**`、`test/Middleware/**`、`test/TanStack/**`
 - `test/internal/**`（engine/tanstack/logics 等分区）
 
-### `@logix/react`
+### `@logixjs/react`
 
 - `test/RuntimeProvider/**`、`test/Hooks/**`、`test/Platform/**`、`test/ReactPlatform/**`
 - `test/integration/**`、`test/browser/**`、`test/perf/**`（保持现有分组语义，但目录命名与概念入口对齐）
 - `test/internal/**`（store/cache/bindings 等内部实现）
 
-### `@logix/devtools-react`
+### `@logixjs/devtools-react`
 
 - `test/LogixDevtools/**`、`test/DevtoolsLayer/**`、`test/StateTraitGraphView/**`
 - `test/internal/**`（ui/state/snapshot/theme 等分区）
 
-### `@logix/sandbox`
+### `@logixjs/sandbox`
 
 - `test/Client/**`、`test/Service/**`、`test/Protocol/**`、`test/Types/**`
 - `test/browser/**`（Worker/协议/资源挂载相关）
 - `test/internal/**`（worker/compiler/kernel 等）
 
-### `@logix/test`
+### `@logixjs/test`
 
 - `test/TestProgram/**`、`test/TestRuntime/**`、`test/Execution/**`、`test/Assertions/**`、`test/Vitest/**`
 - `test/internal/**`（api/runtime/utils 等）
 
-### `@logix/i18n`
+### `@logixjs/i18n`
 
 - `test/I18n/**`、`test/I18nModule/**`、`test/Token/**`
 - `test/internal/**`（driver/token/module 等）
 
-### `@logix/domain`
+### `@logixjs/domain`
 
 - `test/Crud/**`
 - `test/internal/**`（crud 内核实现）

@@ -26,7 +26,7 @@
   - 文件名为 PascalCase（与核心概念同名/同前缀）。
   - 文件内容必须承担对外概念职责（允许薄封装；禁止纯 re-export 作为长期形态）。
 - 所有非概念实现必须下沉到 `src/internal/**`（可自由重构）。
-- 若存在 Independent Entry Point（例如 `@logix/form/react`），允许出现对应的子入口目录（例如 `src/react/index.ts`），但必须满足：
+- 若存在 Independent Entry Point（例如 `@logixjs/form/react`），允许出现对应的子入口目录（例如 `src/react/index.ts`），但必须满足：
   - 该入口已在本文件中登记（见各包的 Independent Entry Points 与 2.5 Exception Registry）；
   - 该目录仅承载该入口的对外聚合（其余实现仍应下沉到 `src/internal/**` 或该入口自有 internal）。
 
@@ -57,16 +57,16 @@
 
 | Exception | Scope | Reason | Expiry | Mitigation |
 |----------|-------|--------|--------|------------|
-| `@logix/core/InternalContracts` | package | 仓库内协作契约需要统一入口，便于替代散落的 `runtime.__*` 魔法字段 | null | 标注为 repo-only/experimental；禁止在业务文档中作为推荐入口；必要时通过 gate 扫描阻止业务包依赖 |
-| `@logix/core/Reflection` | package | 平台/CI/Agent 需要 IR/试跑入口，但稳定性与依赖面需受控 | null | 标注为 experimental；限制依赖面（仅工具链/CI）；对外 import 形态在清单中显式裁决 |
-| `@logix/form/react` / `@logix/sandbox/vite` | repo | 生态惯例（React/Vite）倾向使用 lower-case 子路径；同时现有文档/示例大量使用 | null | 视为 Independent Entry Points（独立契约），必须非空壳、必须登记边界；长期可选迁移到独立包形态 |
+| `@logixjs/core/InternalContracts` | package | 仓库内协作契约需要统一入口，便于替代散落的 `runtime.__*` 魔法字段 | null | 标注为 repo-only/experimental；禁止在业务文档中作为推荐入口；必要时通过 gate 扫描阻止业务包依赖 |
+| `@logixjs/core/Reflection` | package | 平台/CI/Agent 需要 IR/试跑入口，但稳定性与依赖面需受控 | null | 标注为 experimental；限制依赖面（仅工具链/CI）；对外 import 形态在清单中显式裁决 |
+| `@logixjs/form/react` / `@logixjs/sandbox/vite` | repo | 生态惯例（React/Vite）倾向使用 lower-case 子路径；同时现有文档/示例大量使用 | null | 视为 Independent Entry Points（独立契约），必须非空壳、必须登记边界；长期可选迁移到独立包形态 |
 | `global.d.ts` | repo | TS 声明文件需要在包内可见，且不应被当作概念入口 | null | root 白名单；verify gate 允许但不计入 Public Submodule |
 
 ## 3) 包级裁决（对外概念清单）
 
 > 本清单描述“概念与入口”，不枚举实现目录与内部文件结构（实现细节属于 internal，可自由演进）。
 
-### `@logix/core`（core / runtime）
+### `@logixjs/core`（core / runtime）
 
 **Core Chain（核心链路摘要）**：
 
@@ -78,8 +78,8 @@
 
 **Public Surface（现状可 import 的入口）**：
 
-- 主入口（barrel）：`@logix/core`
-  - 推荐形态：`import * as Logix from "@logix/core"`（命名空间聚合）
+- 主入口（barrel）：`@logixjs/core`
+  - 推荐形态：`import * as Logix from "@logixjs/core"`（命名空间聚合）
   - 说明：barrel 上允许挂载少量“工具链/仓库协作”能力（例如 `Reflection`、`InternalContracts`），但必须在下方明确标注稳定性与使用边界。
 - 子模块入口（subpath exports；来自 `packages/logix-core/package.json#exports`）：
   - `Actions` / `Bound` / `Debug` / `EffectOp` / `Env`
@@ -114,10 +114,10 @@
 **Notes**:
 
 - 推荐 import：
-  - `import * as Logix from "@logix/core"`（主推荐，命名空间式）
-  - `import * as Runtime from "@logix/core/Runtime"`（子模块直导入，适合按概念拆分依赖）
+  - `import * as Logix from "@logixjs/core"`（主推荐，命名空间式）
+  - `import * as Runtime from "@logixjs/core/Runtime"`（子模块直导入，适合按概念拆分依赖）
 - `Foo/Bar` 等“子域”命名：优先收敛为概念级单入口（避免层级目录成为事实 API）；若保留子域入口，必须在 exports-policy 与回归门中显式允许并记录理由。
-- `Reflection` / `InternalContracts` 当前是 barrel 级概念但尚未提供 `@logix/core/<Concept>` 直导入口；后续需要裁决：补齐 exports key，或明确保持为 root-only（并在 gate 中限制依赖面）。
+- `Reflection` / `InternalContracts` 当前是 barrel 级概念但尚未提供 `@logixjs/core/<Concept>` 直导入口；后续需要裁决：补齐 exports key，或明确保持为 root-only（并在 gate 中限制依赖面）。
 
 **Target Public Submodule Map（文件 ↔ export key）**：
 
@@ -149,14 +149,14 @@
 
 | Concept | Import Shape | Status |
 |--------|--------------|--------|
-| Reflection | `import * as Logix from "@logix/core"; Logix.Reflection` | experimental / repo-only |
-| InternalContracts | `import * as Logix from "@logix/core"; Logix.InternalContracts` | experimental / repo-only |
+| Reflection | `import * as Logix from "@logixjs/core"; Logix.Reflection` | experimental / repo-only |
+| InternalContracts | `import * as Logix from "@logixjs/core"; Logix.InternalContracts` | experimental / repo-only |
 
-### `@logix/react`（adapter / React）
+### `@logixjs/react`（adapter / React）
 
 **Core Chain（核心链路摘要）**：
 
-- 适配目标：把 `@logix/core` 的 runtime/module 订阅投影到 React（hooks/组件）。
+- 适配目标：把 `@logixjs/core` 的 runtime/module 订阅投影到 React（hooks/组件）。
 - RuntimeProvider：以 Provider 方式注入 runtime，并统一管理订阅/派发边界。
 - Hooks：提供 `useRuntime/useModule/useSelector/useDispatch/...` 的最小集合，避免暴露实现细节。
 
@@ -173,7 +173,7 @@
 
 **推荐 import**：
 
-- React 业务侧：优先从 `@logix/react` 取组件/Hook（避免 deep import 实现目录）。
+- React 业务侧：优先从 `@logixjs/react` 取组件/Hook（避免 deep import 实现目录）。
 
 **Target Public Submodule Map（文件 ↔ export key）**：
 
@@ -185,12 +185,12 @@
 | Platform | `packages/logix-react/src/Platform.ts` | `./Platform`（via `./*`） |
 | ReactPlatform | `packages/logix-react/src/ReactPlatform.ts` | `./ReactPlatform`（via `./*`） |
 
-### `@logix/devtools-react`（tooling / Devtools UI）
+### `@logixjs/devtools-react`（tooling / Devtools UI）
 
 **Core Chain（核心链路摘要）**：
 
 - UI：渲染 runtime 的诊断/证据（快照、图、时间线）并提供交互入口。
-- 集成：通过 `DevtoolsLayer`/label 等最小 API 与 `@logix/core` 的 Debug/Observability 对接。
+- 集成：通过 `DevtoolsLayer`/label 等最小 API 与 `@logixjs/core` 的 Debug/Observability 对接。
 - 视图组件：`StateTraitGraphView` 等独立视图以 Public Submodule 形式对外暴露，避免实现目录成为事实 API。
 
 **Public Submodules（建议）**：
@@ -205,7 +205,7 @@
 
 **推荐 import**：
 
-- UI 集成：从 `@logix/devtools-react` 取 `LogixDevtools` 等概念入口（不依赖 `ui/**`）。
+- UI 集成：从 `@logixjs/devtools-react` 取 `LogixDevtools` 等概念入口（不依赖 `ui/**`）。
 
 **Target Public Submodule Map（文件 ↔ export key）**：
 
@@ -216,14 +216,14 @@
 | DevtoolsLayer | `packages/logix-devtools-react/src/DevtoolsLayer.tsx` | `./DevtoolsLayer`（via `./*` or explicit） |
 | StateTraitGraphView | `packages/logix-devtools-react/src/StateTraitGraphView.tsx` | `./StateTraitGraphView`（via `./*` or explicit） |
 
-### `@logix/sandbox`（infra / Alignment Lab）
+### `@logixjs/sandbox`（infra / Alignment Lab）
 
 **Core Chain（核心链路摘要）**：
 
 - Worker 沙盒：在浏览器 Worker 内编译/运行 Logix/Effect 程序，隔离宿主与用户代码。
 - 协议与类型：`Protocol/Types` 定义 command/event 与可序列化 Trace/Evidence 结构。
 - Client/Service：以 Tag/Layer 方式对外提供 `SandboxClient` 与集成入口。
-- Vite 插件：`@logix/sandbox/vite` 提供 kernel/wasm 静态资源挂载，形成可复现开发链路。
+- Vite 插件：`@logixjs/sandbox/vite` 提供 kernel/wasm 静态资源挂载，形成可复现开发链路。
 
 **Public Submodules（建议）**：
 
@@ -239,7 +239,7 @@
 
 **推荐 import**：
 
-- 业务/工具：从 `@logix/sandbox` 取 Client/Protocol/Types；Vite 项目从 `@logix/sandbox/vite` 取插件入口。
+- 业务/工具：从 `@logixjs/sandbox` 取 Client/Protocol/Types；Vite 项目从 `@logixjs/sandbox/vite` 取插件入口。
 
 **Target Public Submodule Map（文件 ↔ export key）**：
 
@@ -256,9 +256,9 @@
 
 | Import Path | Export Key | Target | Status |
 |------------|------------|--------|--------|
-| `@logix/sandbox/vite` | `./vite` | `packages/logix-sandbox/src/Vite.ts` | allowed |
+| `@logixjs/sandbox/vite` | `./vite` | `packages/logix-sandbox/src/Vite.ts` | allowed |
 
-### `@logix/test`（infra / test kit）
+### `@logixjs/test`（infra / test kit）
 
 **Core Chain（核心链路摘要）**：
 
@@ -276,7 +276,7 @@
 
 **推荐 import**：
 
-- 测试用例：从 `@logix/test` 取 `TestProgram/Assertions/Execution` 等概念入口（避免 deep import `api/**`/`runtime/**`）。
+- 测试用例：从 `@logixjs/test` 取 `TestProgram/Assertions/Execution` 等概念入口（避免 deep import `api/**`/`runtime/**`）。
 
 **Target Public Submodule Map（文件 ↔ export key）**：
 
@@ -289,14 +289,14 @@
 | Assertions | `packages/logix-test/src/Assertions.ts` | `./Assertions`（via `./*` or explicit） |
 | Vitest | `packages/logix-test/src/Vitest.ts` | `./Vitest`（via `./*` or explicit） |
 
-### `@logix/form`（domain / Form）
+### `@logixjs/form`（domain / Form）
 
 **Core Chain（核心链路摘要）**：
 
 - 领域目标：在不改变 core IR/事务语义的前提下，提供表单领域的概念 DSL 与 Trait 下沉接口。
 - Form 入口：`Form.make`/controller 等概念入口，驱动状态、校验、派发与订阅投影。
 - Rule/Trait/Path：以概念模块承载规则、字段能力（Trait）、路径与错误模型。
-- React 入口：`@logix/form/react` 仅做“订阅投影 + DOM 事件适配”的薄层（底层仍是 `@logix/react`）。
+- React 入口：`@logixjs/form/react` 仅做“订阅投影 + DOM 事件适配”的薄层（底层仍是 `@logixjs/react`）。
 
 **Public Submodules（建议，与 runtime-logix 约定一致）**：
 
@@ -307,12 +307,12 @@
 
 **Independent Entry Points**:
 
-- `@logix/form/react`：React hooks 入口（必须是稳定可用能力，不得空壳）
+- `@logixjs/form/react`：React hooks 入口（必须是稳定可用能力，不得空壳）
 
 **推荐 import**：
 
-- 领域写法：`import * as Form from "@logix/form"`（概念命名空间）
-- React 投影：`import { useForm, useField } from "@logix/form/react"`
+- 领域写法：`import * as Form from "@logixjs/form"`（概念命名空间）
+- React 投影：`import { useForm, useField } from "@logixjs/form/react"`
 
 **Target Public Submodule Map（文件 ↔ export key）**：
 
@@ -332,9 +332,9 @@
 
 | Import Path | Export Key | Target | Status |
 |------------|------------|--------|--------|
-| `@logix/form/react` | `./react` | `packages/logix-form/src/react/index.ts` | allowed |
+| `@logixjs/form/react` | `./react` | `packages/logix-form/src/react/index.ts` | allowed |
 
-### `@logix/query`（domain / Query）
+### `@logixjs/query`（domain / Query）
 
 **Core Chain（核心链路摘要）**：
 
@@ -353,11 +353,11 @@
 
 **Independent Entry Points**:
 
-- `@logix/query/react`：当前若无稳定能力则禁止保留空壳入口；如需要 React 集成，必须定义明确的对外概念与契约后再开放。
+- `@logixjs/query/react`：当前若无稳定能力则禁止保留空壳入口；如需要 React 集成，必须定义明确的对外概念与契约后再开放。
 
 **推荐 import**：
 
-- 领域写法：`import * as Query from "@logix/query"`（概念命名空间）
+- 领域写法：`import * as Query from "@logixjs/query"`（概念命名空间）
 
 **Target Public Submodule Map（文件 ↔ export key）**：
 
@@ -374,9 +374,9 @@
 
 | Import Path | Export Key | Status | Note |
 |------------|------------|--------|------|
-| `@logix/query/react` | `./react` | forbidden | 空壳入口必须移除；如未来需要 React 集成，先定义稳定契约再开放 |
+| `@logixjs/query/react` | `./react` | forbidden | 空壳入口必须移除；如未来需要 React 集成，先定义稳定契约再开放 |
 
-### `@logix/i18n`（domain / I18n）
+### `@logixjs/i18n`（domain / I18n）
 
 **Core Chain（核心链路摘要）**：
 
@@ -392,7 +392,7 @@
 
 **推荐 import**：
 
-- 业务侧：从 `@logix/i18n` 取 `I18n/I18nModule` 等概念入口（避免在业务侧直接依赖 driver 细节）。
+- 业务侧：从 `@logixjs/i18n` 取 `I18n/I18nModule` 等概念入口（避免在业务侧直接依赖 driver 细节）。
 
 **Target Public Submodule Map（文件 ↔ export key）**：
 
@@ -403,7 +403,7 @@
 | I18nModule | `packages/i18n/src/I18nModule.ts` | `./I18nModule`（via `./*`） |
 | Token | `packages/i18n/src/Token.ts` | `./Token`（via `./*`） |
 
-### `@logix/domain`（domain / module factory）
+### `@logixjs/domain`（domain / module factory）
 
 **Core Chain（核心链路摘要）**：
 
@@ -417,7 +417,7 @@
 
 **推荐 import**：
 
-- 领域模块：`import * as Domain from "@logix/domain"` 或按概念拆分 `@logix/domain/Crud`（视 exports 策略落地而定）。
+- 领域模块：`import * as Domain from "@logixjs/domain"` 或按概念拆分 `@logixjs/domain/Crud`（视 exports 策略落地而定）。
 
 **Target Public Submodule Map（文件 ↔ export key）**：
 

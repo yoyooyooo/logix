@@ -15,7 +15,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（ESM）
-**Primary Dependencies**: `effect` v3（当前 ^3.19.8）、`@logix/core`、`@logix/react`
+**Primary Dependencies**: `effect` v3（当前 ^3.19.8）、`@logixjs/core`、`@logixjs/react`
 **Storage**: N/A（内存态，状态载体为 `SubscriptionRef`）
 **Testing**: Vitest（`vitest run`）；Effect-heavy 用例优先 `@effect/vitest`
 **Target Platform**: Node.js 20+（脚本/基准）；现代浏览器（React/Devtools）

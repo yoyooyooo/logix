@@ -6,7 +6,7 @@
 
 将 Logix React 集成中“可能在渲染关键路径触发同步重活/冷启动”的行为收敛为可配置策略，并建立可复现性能基线与回归防线；使业务默认集成更少踩坑（错误可行动、策略可解释、性能可控）。
 
-本特性聚焦 `@logix/react` 的三类关键路径：
+本特性聚焦 `@logixjs/react` 的三类关键路径：
 
 1. `RuntimeProvider` 挂载阶段（运行时/配置快照/Layer 绑定）
 2. `useModule` / `useModuleRuntime` 的首次解析（ModuleImpl 构建 / ModuleTag 解析）
@@ -30,7 +30,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: `effect` v3（workspace override 固定 3.19.13）、`@logix/core`、`@logix/react`、React 19  
+**Primary Dependencies**: `effect` v3（workspace override 固定 3.19.13）、`@logixjs/core`、`@logixjs/react`、React 19  
 **Storage**: N/A（内存态）  
 **Testing**: Vitest（含浏览器 perf-boundaries 用例）  
 **Target Platform**: Node.js 22.x + 现代浏览器（Vitest browser）  
@@ -45,7 +45,7 @@ _GATE: PASS（本计划不引入宪法违例；若最终选择破坏性默认策
 
 - **Intent → Flow/Logix → Code → Runtime 映射**：此特性属于 Runtime 适配层（React Adapter）对 Runtime 行为的“启动/解析策略”治理；不改变业务 Intent/Flow 语义，但会改变运行时装配与模块解析的时序与可观测性。
 - **依赖/修改的 specs**：主落点是 `packages/logix-react`；如需对外文档心智模型与 DX 指引，后续需要补齐 `apps/docs` 的 React 集成指南（避免 “代码先变、文档漂移”）。
-- **契约变更**：预计会新增/调整 `@logix/react` 的“策略配置”契约（RuntimeProvider props / ReactRuntimeConfigTag 扩展 / hooks options）；必须同步更新 `.codex/skills/project-guide/references/runtime-logix/logix-react/*` 中的 SSoT（至少补齐策略语义、默认值与成本模型）。
+- **契约变更**：预计会新增/调整 `@logixjs/react` 的“策略配置”契约（RuntimeProvider props / ReactRuntimeConfigTag 扩展 / hooks options）；必须同步更新 `.codex/skills/project-guide/references/runtime-logix/logix-react/*` 中的 SSoT（至少补齐策略语义、默认值与成本模型）。
 - **IR & anchors**：不改变统一最小 IR；但会影响 Devtools 的解释链路“何时产生 trace/diagnostic”与事件序列，需要保持事件字段稳定且 Slim。
 - **Deterministic identity**：不引入随机/时间默认 ID；所有新增诊断字段须复用现有 instanceId/txn/op 体系。
 - **Transaction boundary**：不改变事务窗口语义；本特性只涉及 React adapter 的初始化/解析调度与外层可观测。
@@ -69,7 +69,7 @@ _GATE: PASS（本计划不引入宪法违例；若最终选择破坏性默认策
    - 若需要跨组件共享实例/分区语义：提供显式 `key`（例如业务 id / useId）。
 3. `defer` 的保证边界：仅保证 `policy.preload` 列表内模块在子树 mount 时就绪。
    - 若出现二次 fallback：补齐 `preload` 列表，或切回默认 `suspend`。
-4. 新增对外契约导出：`RuntimeProviderPolicy` / `YieldPolicy` / `YieldStrategy` / `ModuleHandle` 等从 `@logix/react` 导出（见 `packages/logix-react/src/RuntimeProvider.ts`）。
+4. 新增对外契约导出：`RuntimeProviderPolicy` / `YieldPolicy` / `YieldStrategy` / `ModuleHandle` 等从 `@logixjs/react` 导出（见 `packages/logix-react/src/RuntimeProvider.ts`）。
 
 ## Project Structure
 
@@ -157,7 +157,7 @@ examples/logix-react/      # 集成 demo（用于手工验收与场景回归）
 - **Yield 抖动风险（需要可控默认）**：yield 可能让“原本同步可用”的模块短暂进入 pending，造成极少数场景的 UI 闪烁；默认策略应偏保守：`sync` 模式不引入 yield，`suspend` 模式默认使用 `microtask`（可显式切换为 `none`/`macrotask`），并提供策略入口让调用方只在需要时启用更激进的让出。
 - **Yield 自适应语义（onlyWhenOverBudgetMs）**：`onlyWhenOverBudgetMs` 作为“自适应跳过 yield”的阈值：首次初始化默认仍执行 `microtask` yield（“首次”以 runtime/session 维度记忆，而不是组件 mount 维度），以确保能尽早进入 pending；后续基于历史统计（例如 p95）判断初始化是否稳定低于阈值，若是则可跳过 yield 以减少不必要的 fallback 闪烁。
 - **Perf 阈值口径**：perf-boundaries 的预算应优先使用“相对基线/相对阈值”（relative budgets），而非硬编码绝对值（例如固定 5ms），以减少不同设备/浏览器波动造成的误判。
-- **策略配置入口（可注入）**：在 `@logix/react` 的 RuntimeConfig（`packages/logix-react/src/internal/provider/config.ts`）基础上扩展一组“启动/解析策略”字段（通过 Layer 覆盖/ConfigProvider/调用点显式传参三段优先级模型），并在 `RuntimeProvider` 提供 props 级覆盖（局部 override）。
+- **策略配置入口（可注入）**：在 `@logixjs/react` 的 RuntimeConfig（`packages/logix-react/src/internal/provider/config.ts`）基础上扩展一组“启动/解析策略”字段（通过 Layer 覆盖/ConfigProvider/调用点显式传参三段优先级模型），并在 `RuntimeProvider` 提供 props 级覆盖（局部 override）。
 - **Provider 冷启动策略**：默认不在渲染期做不可控 `runSync`；若需要同步读取配置（例如避免闪烁），必须提供可配置的 `syncBudgetMs` 与诊断事件，超过预算时自动回退到 async（而不是继续卡住）。
 - **Module 解析策略**：在 `useModule`/`useModuleRuntime` 层提供“可选择的解析模式”（同步/挂起），并在 `defer` 模式下通过 Provider 级 preload+gating 把“首次解析”从渲染关键路径挪走；明确每种模式的约束（是否要求显式 key、是否允许异步 Layer、缺失 preload 时的默认行为）。
 - **defer 交付形态（收敛、避免心智分裂）**：`defer`（延后模式）不引入“返回半初始化句柄”的新 hook 语义；而是收敛为 **Provider 级 gating + 可选 preload**：Provider 在就绪前显示 `fallback`，并在 commit 后完成“配置快照稳定 +（可选）关键模块预初始化”，ready 后再 mount 业务子树，使业务组件拿到的一定是可用的 runtime/module 句柄。

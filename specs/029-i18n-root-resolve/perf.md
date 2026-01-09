@@ -38,7 +38,7 @@
 
 ## 变更前基线（Before）
 
-> 说明：Before 阶段只要求固化“现状能跑的 baseline”；尚未实现的能力（例如 `$.root.resolve` / `@logix/i18n`）允许在 JSON 里以 `ok:false` 形式记录缺失（作为“变更前”事实）。
+> 说明：Before 阶段只要求固化“现状能跑的 baseline”；尚未实现的能力（例如 `$.root.resolve` / `@logixjs/i18n`）允许在 JSON 里以 `ok:false` 形式记录缺失（作为“变更前”事实）。
 
 - Date: 2025-12-24T19:39:22+0800
 - Branch/Commit: `dev` / `30070c6654eb7abb069616a82d77730bdcbac648`
@@ -98,9 +98,9 @@
       "totalMs": 18.812833000000012,
       "nsPerOp": 940.6416500000006
     },
-    "@logix/i18n token (canonicalize)": {
+    "@logixjs/i18n token (canonicalize)": {
       "ok": false,
-      "error": "Error: [MissingApi] @logix/i18n is not available\n    at <anonymous> (/Users/yoyo/Documents/code/personal/intent-flow/scripts/perf/029-i18n-root-resolve.message-token-baseline.ts:102:5)"
+      "error": "Error: [MissingApi] @logixjs/i18n is not available\n    at <anonymous> (/Users/yoyo/Documents/code/personal/intent-flow/scripts/perf/029-i18n-root-resolve.message-token-baseline.ts:102:5)"
     }
   }
 }
@@ -153,7 +153,7 @@
 
 ---
 
-## US2 变更后（After US2：message token / `@logix/i18n`）
+## US2 变更后（After US2：message token / `@logixjs/i18n`）
 
 - Date: 2025-12-24T22:23:57+0800
 - Command: `pnpm perf bench:029:i18n-token`
@@ -174,7 +174,7 @@
       "totalMs": 19.875584000000003,
       "nsPerOp": 993.7792000000002
     },
-    "@logix/i18n token (canonicalize)": {
+    "@logixjs/i18n token (canonicalize)": {
       "ok": true,
       "iterations": 20000,
       "totalMs": 16.695334000000003,
@@ -249,7 +249,7 @@
       "totalMs": 21.575500000000034,
       "nsPerOp": 1078.7750000000017
     },
-    "@logix/i18n token (canonicalize)": {
+    "@logixjs/i18n token (canonicalize)": {
       "ok": true,
       "iterations": 20000,
       "totalMs": 19.06620799999996,

@@ -16,8 +16,8 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM），Node.js 20+，effect v3  
-**Primary Dependencies**: `@logix/core`、`@logix/react`、`@logix-devtools-react`、`effect`  
-**Testing**: Vitest（含 `@effect/vitest` 风格），质量门：`pnpm typecheck` / `pnpm lint` / `pnpm test --filter @logix/core`  
+**Primary Dependencies**: `@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`、`effect`  
+**Testing**: Vitest（含 `@effect/vitest` 风格），质量门：`pnpm typecheck` / `pnpm lint` / `pnpm test --filter @logixjs/core`  
 **Target Platform**: 浏览器（示例/Devtools 验收）+ Node.js（测试/基准运行）  
 **Project Type**: pnpm monorepo（核心改动主落点在 `packages/logix-core`，并联动 Devtools 与示例）
 
@@ -72,7 +72,7 @@ examples/logix-react/                 # 真实复杂表单基准（ComplexTraitF
 
 3. **把“真实复杂表单基准”固化为自动化回归用例**
    - 新增一个 headless integration/regression test：`examples/logix-react/test/complex-trait-form.baseline.integration.test.ts`。
-   - 测试体用 `@logix/test` 跑 `ComplexTraitFormModule + ComplexTraitFormImpl`，执行一段固定的 action 序列（模拟输入/增删行/修改价格等），并断言两类结果：
+   - 测试体用 `@logixjs/test` 跑 `ComplexTraitFormModule + ComplexTraitFormImpl`，执行一段固定的 action 序列（模拟输入/增删行/修改价格等），并断言两类结果：
      - **语义正确**：关键派生字段（如 `profile.fullName`、`shipping.*`、`validation/errors/summary`）与预期一致；
      - **结构指标**：对每个 action，`result.trace` 中 `_tag: "State"` 的增长量 ≤ 1（对应“每 Operation Window 0/1 次提交”的可观测近似）。
    - 该用例用于锁死“真实场景下的 0/1 commit 语义 + 派生正确性”，避免后续重构把性能换成不可解释的行为。

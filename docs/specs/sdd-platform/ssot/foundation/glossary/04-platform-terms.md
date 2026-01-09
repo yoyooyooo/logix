@@ -20,7 +20,7 @@
 - **Sandbox Runtime（沙箱运行时）**
   - 指基于 Web Worker / Deno 等隔离环境的 Logix/Effect 运行容器；  
   - 主要职责是：在受控环境中执行代码，并产出结构化的日志 / Trace / 状态快照；  
-  - 当前实现落点为 `@logix/sandbox` 子包（浏览器 Worker + esbuild-wasm + Mock 层）。
+  - 当前实现落点为 `@logixjs/sandbox` 子包（浏览器 Worker + esbuild-wasm + Mock 层）。
 
 - **Playground（意图 Playground）**
   - 指平台侧面向人类/AI 的交互视图，用于：  
@@ -59,11 +59,11 @@
 > 这些术语用于约束“仓库对外可依赖的入口形态”，减少实现细节成为事实 API，从而让平台/工具链只对稳定概念做消费与生成。
 
 - **Public Submodule（对外子模块）**
-  - 定义：某个包对外稳定暴露的“概念入口”（契约单元），对应稳定 import 形态（例如 `@logix/<pkg>` 或 `@logix/<pkg>/<Concept>`）。
+  - 定义：某个包对外稳定暴露的“概念入口”（契约单元），对应稳定 import 形态（例如 `@logixjs/<pkg>` 或 `@logixjs/<pkg>/<Concept>`）。
   - 目的：让“概念地图（Concept Map）”可验证、可审阅、可迁移，避免文件组织漂移导致 API 漂移。
 
 - **Independent Entry Point（独立子路径入口）**
-  - 定义：`package.json#exports` 中显式列出的独立 subpath（例如 `@logix/form/react`、`@logix/sandbox/vite`），视为独立契约管理。
+  - 定义：`package.json#exports` 中显式列出的独立 subpath（例如 `@logixjs/form/react`、`@logixjs/sandbox/vite`），视为独立契约管理。
   - 约束：禁止空壳入口；必须有清晰边界与示例/文档口径；禁止通过 `internal` 路径绕过边界。
 
 - **Promotion Path（入口提升路径）**

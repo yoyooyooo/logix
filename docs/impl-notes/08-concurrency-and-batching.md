@@ -175,7 +175,7 @@ sequenceDiagram
 
 ### 6.2 React：ExternalStore 根据 meta.priority 调度通知
 
-React 订阅侧：`@logix/react` 的 ExternalStore
+React 订阅侧：`@logixjs/react` 的 ExternalStore
 
 - 实现：`packages/logix-react/src/internal/ModuleRuntimeExternalStore.ts`
   - 订阅 `moduleRuntime.changesWithMeta(...)`，每次拿到 `{ value: nextState, meta }`。

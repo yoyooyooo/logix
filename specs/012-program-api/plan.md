@@ -13,7 +13,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+  
-**Primary Dependencies**: effect v3、`@logix/core`（运行时主线）、`@logix/react`（UI 子树作用域安装）、Devtools/Sandbox（作为诊断事件消费方）  
+**Primary Dependencies**: effect v3、`@logixjs/core`（运行时主线）、`@logixjs/react`（UI 子树作用域安装）、Devtools/Sandbox（作为诊断事件消费方）  
 **Storage**: 内存态（Effect Context/Scope + Ref/SubscriptionRef），不引入持久化存储  
 **Testing**: Vitest + `@effect/vitest`（Effect-heavy 用例）；React 侧用 Testing Library（按既有用例风格）  
 **Target Platform**: Node.js 20+（runtime/test/基准）+ modern browsers（React/Devtools 消费）  

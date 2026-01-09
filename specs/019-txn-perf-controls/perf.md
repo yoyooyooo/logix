@@ -40,12 +40,12 @@
 
 ## 质量门（交接必填）
 
-- `pnpm typecheck`: PASS（scoped: `@logix/core` + `@logix/react`）@ 2025-12-21 12:48 +0800
+- `pnpm typecheck`: PASS（scoped: `@logixjs/core` + `@logixjs/react`）@ 2025-12-21 12:48 +0800
   - `pnpm -C packages/logix-core typecheck:test` ✅
   - `pnpm -C packages/logix-react typecheck` ✅
-- `pnpm lint`: PASS（scoped: `@logix/react`）@ 2025-12-21 12:48 +0800
+- `pnpm lint`: PASS（scoped: `@logixjs/react`）@ 2025-12-21 12:48 +0800
   - `pnpm -C packages/logix-react lint` ✅
-- `pnpm test`: PASS（scoped: `@logix/core` + `@logix/react`）@ 2025-12-21 12:48 +0800
+- `pnpm test`: PASS（scoped: `@logixjs/core` + `@logixjs/react`）@ 2025-12-21 12:48 +0800
   - `pnpm -C packages/logix-core test` ✅
   - `pnpm -C packages/logix-react test -- --project unit` ✅
   - `pnpm -C packages/logix-react test -- --project browser` ✅

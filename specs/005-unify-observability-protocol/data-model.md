@@ -44,7 +44,7 @@
 
 ## Entity: RuntimeDebugEventRef（规范化 Debug 事件引用）
 
-用于在跨宿主/证据包场景中承载 `@logix/core` 的 Debug 事件，保证字段稳定、易聚合。
+用于在跨宿主/证据包场景中承载 `@logixjs/core` 的 Debug 事件，保证字段稳定、易聚合。
 
 来源：`packages/logix-core/src/internal/runtime/core/DebugSink.ts` 的 `RuntimeDebugEventRef`（由 `toRuntimeDebugEventRef` 生成）。
 

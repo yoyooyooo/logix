@@ -1,4 +1,4 @@
-# `@logix/core` · Reflection 与 Trial Run（IR/证据提取）
+# `@logixjs/core` · Reflection 与 Trial Run（IR/证据提取）
 
 > **定位**：面向 CI / Studio / Agent 的“可对比、可解释、可回放”提取能力（不读 AST），把模块结构与试跑证据统一降解为最小 IR（Static IR + Dynamic Trace）。
 

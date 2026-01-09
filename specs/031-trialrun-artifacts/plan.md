@@ -10,12 +10,12 @@
 - `TrialRunReport.artifacts?: Record<artifactKey, ArtifactEnvelope>`：承载各 feature kit 的补充静态 IR（首个用例：Form 的 RulesManifest）。
 - artifacts 必须满足：**可序列化（JsonValue）/确定性/预算受控/单项失败不阻塞**。
 - 平台侧（最小消费者：`examples/logix-sandbox-mvp` 的 `/ir`）能展示/导出 artifacts，为后续 036 Contract Suite 与 Agent 闭环提供事实源。
-- 后续同一槽位将承载“平台引用空间事实源”（如 035 的 `@logix/module.portSpec@v1`、`@logix/module.typeIr@v1`），避免平台侧用 AST/源码推断制造并行真相源。
+- 后续同一槽位将承载“平台引用空间事实源”（如 035 的 `@logixjs/module.portSpec@v1`、`@logixjs/module.typeIr@v1`），避免平台侧用 AST/源码推断制造并行真相源。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logix/core`、`@logix/form`、`@logix/sandbox`  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/form`、`@logixjs/sandbox`  
 **Storage**: N/A（以可序列化 JSON 工件为主，可导出/存档）  
 **Testing**: Vitest（必要时使用 `@effect/vitest`）  
 **Target Platform**: Node.js（CI/脚本）+ 现代浏览器（Sandbox Workbench）  
@@ -60,7 +60,7 @@
 ### Phase 1（Design & Contracts）
 
 - 固化 031 的 contracts（artifactKey / ArtifactEnvelope / TrialRunArtifacts）。
-- 固化 `@logix/form.rulesManifest@v1` artifact 的 schema（复用 028 的 RulesManifest）。
+- 固化 `@logixjs/form.rulesManifest@v1` artifact 的 schema（复用 028 的 RulesManifest）。
 - 写 quickstart：Workbench/CI 如何导出 artifacts 并展示。
 
 ### Phase 2（Tasks）

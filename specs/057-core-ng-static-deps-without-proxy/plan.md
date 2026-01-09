@@ -42,7 +42,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、`@logix/react`、Devtools/Sandbox（消费证据）  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、Devtools/Sandbox（消费证据）  
 **Storage**: N/A（内存态）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；禁止 watch）  
 **Target Platform**: Node.js 20+ + modern browsers  
@@ -85,7 +85,7 @@
 ## Kernel support matrix
 
 - `core`: supported
-- `core-ng`: supported（协议层）：ReadQuery 协议落在 `@logix/core`；本特性不要求存在 `@logix/core-ng` 实现包，但必须保证协议不绑定当前内核细节，便于未来通过 045 的内核注入机制替换实现
+- `core-ng`: supported（协议层）：ReadQuery 协议落在 `@logixjs/core`；本特性不要求存在 `@logixjs/core-ng` 实现包，但必须保证协议不绑定当前内核细节，便于未来通过 045 的内核注入机制替换实现
 
 ## Constitution Check
 
@@ -98,7 +98,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **IR & anchors**：本特性必须把 selector 的“读依赖与车道”协议化为 Static IR（`selectorId/reads/lane/producer/fallbackReason/equalsKind`）+ Dynamic Trace（eval 事件）；并能与事务锚点对齐（`moduleId/instanceId/txnSeq`；`opSeq` 可选）。
 - **Deterministic identity**：static lane 的 `selectorId` 必须可复现（禁止随机/时间）；无法产出稳定 id 时必须降级为 dynamic（并写入 `fallbackReason`），严格门禁下可失败。
 - **Transaction boundary**：JIT 编译/静态化必须发生在装配期或事务外；事务窗口内只允许纯计算与最小化事件写入（禁 IO/async）。
-- **Dual kernels**：ReadQuery 协议与 Debug/证据字段必须落在 `@logix/core`；core-ng 只能在不改变协议的前提下提供更优实现；消费方（react/devtools/sandbox）不得直接依赖 core-ng。
+- **Dual kernels**：ReadQuery 协议与 Debug/证据字段必须落在 `@logixjs/core`；core-ng 只能在不改变协议的前提下提供更优实现；消费方（react/devtools/sandbox）不得直接依赖 core-ng。
 - **Performance budget**：新增 SelectorGraph/默认 struct memo 会触及热路径；必须用 `$logix-perf-evidence`（Node+Browser）落盘 before/after/diff（suites/budgets SSoT=matrix.json，至少覆盖 `priority=P1`；硬结论至少 `profile=default`；before/after 需 `matrixId+matrixHash` 一致且 diff `comparability.comparable=true`，并要求 `summary.regressions==0`）；证据采集必须隔离（独立 `git worktree/单独目录`），否则不得用于宣称 Gate PASS；并能解释 lane 覆盖率变化与开销变化。
 - **Diagnosability & explainability**：Devtools 必须能回答“哪个 selector 走了哪条车道/为何降级/在什么 txn 上发生”；且 off 档位接近零成本、light/full 事件 Slim 可序列化。
 - **User-facing mental model**：对外需形成 ≤5 关键词：`lane`、`fallbackReason`、`strict gate`、`selectorId`、`struct memo`；并给出“默认写法 → 自动优化 → 观测 → 显式 ReadQuery/声明 deps → strict gate”优化梯子。
@@ -135,8 +135,8 @@ packages/logix-devtools-react/** (consumers)
 
 **Structure Decision**:
 
-- ReadQuery 协议对外落在 `@logix/core`（public submodule），避免在 react/devtools 侧形成并行真相源。
-- SelectorGraph 属于“module instance 内核结构”，默认放在 `@logix/core` 的 internal/runtime/core（不对外导出），由 commit/dirty-set 驱动。
+- ReadQuery 协议对外落在 `@logixjs/core`（public submodule），避免在 react/devtools 侧形成并行真相源。
+- SelectorGraph 属于“module instance 内核结构”，默认放在 `@logixjs/core` 的 internal/runtime/core（不对外导出），由 commit/dirty-set 驱动。
 - React 侧保持“用户仍可传函数 selector”的写法；是否进入 static lane 由 ReadQuery 编译器决定，并提供严格门禁兜底。
 
 ## Design（关键机制与落点）

@@ -39,7 +39,7 @@
      - 在 RuntimeDebugEventRef 视图中，对于该事务对应的 `txnId`，`kind = "state"` 的事件只有一条；
      - 开发模式下 React 仍可能因为 StrictMode 产生额外渲染，但这些渲染事件应指向同一个 `txnId`，不会改变“单事务 = 单次状态提交”的语义。
 
-> 补充：在测试层你也可以通过 `@logix/test` / `@logix/react` 进行自动化验证：
+> 补充：在测试层你也可以通过 `@logixjs/test` / `@logixjs/react` 进行自动化验证：
 >
 > - 使用 `TestProgram.runProgram(programModule, ...)` 或 React `RuntimeProvider` + `useModule/useDispatch` 驱动一次 `TraitForm` 交互；
 > - 通过挂载 DebugSink 并调用 `Logix.Debug.internal.toRuntimeDebugEventRef`，统计某个 `txnId` 下 `kind = "state"` 的事件数应为 1；
@@ -136,9 +136,9 @@
    - `pnpm typecheck`
    - `pnpm lint`
 2. 运行时与 React 层测试：
-   - `pnpm test --filter @logix/core`
-   - `pnpm test --filter @logix/react`
-   - （如有）`pnpm test --filter @logix/devtools-react`
+   - `pnpm test --filter @logixjs/core`
+   - `pnpm test --filter @logixjs/react`
+   - （如有）`pnpm test --filter @logixjs/devtools-react`
 3. 手工验证：
    - 打开带 Trait 的 Demo，确认：
      - 左侧可以从 Module → Instance → Transaction 逐级导航；

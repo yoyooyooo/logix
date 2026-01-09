@@ -203,6 +203,6 @@ yield* $.reducer("set", (state, action) => ({
    - ModuleRuntime `dispatch` 的新实现；
    - reducer map 的结构与扩展点；
    - 与现有 BoundApi/LogicBuilder 的兼容策略。
-4. 在 `@logix/core` 中逐步落地：
+4. 在 `@logixjs/core` 中逐步落地：
    - 先从简单场景（如 Counter Module）开始引入 reducers；
    - 保持现有 watcher 行为不变，逐步迁移主路径到 primary reducer。

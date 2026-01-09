@@ -1,4 +1,4 @@
-# Data Model: Query 收口到 `@logix/query`（与 Form 同形）
+# Data Model: Query 收口到 `@logixjs/query`（与 Form 同形）
 
 **Date**: 2025-12-23  
 **Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/026-unify-query-domain/spec.md`

@@ -6,7 +6,7 @@
 
 > 作用：从「概念实体 + 关系」角度，把本特性在 trait 内核链路上要固化的通用形状梳理清楚：  
 > - 以 **StateTrait** 作为支点跑通数组/错误树/资源/事务；  
-> - 在其上构建 **Form 领域系统**（`@logix/form`：Rules/Error helpers/迁移映射）；  
+> - 在其上构建 **Form 领域系统**（`@logixjs/form`：Rules/Error helpers/迁移映射）；  
 > - 同时把“trait 生命周期桥接”下沉成可复用能力，便于未来更多 `xxxTrait` 复用同一条链路（install / refs / validate / cleanup）。  
 > 优先面向：Trait/Runtime 实现者、Devtools / Studio 维护者。
 >
@@ -53,7 +53,7 @@ ModuleRuntime / StateTransaction / EffectOp
 - `Form.traits / Form.Rule / Form.Error` 只负责生成/组合 kernel 友好的 `StateTraitSpec` 片段与 ErrorTree helper；  
 - StateTrait.build/install 继续作为唯一的编译/安装入口；  
 - Runtime / Devtools 只感知 kernel（computed/source/link/check/list）与 EffectOp，不感知 Form 领域糖的存在。
-- `Form.*` 的落点为独立包 `@logix/form`（见 spec Clarifications 2025-12-12），以便把“表单领域能力”与 core kernel 解耦；`@logix/form` 只依赖 `@logix/core` 与 `effect`，不依赖 React 适配层。
+- `Form.*` 的落点为独立包 `@logixjs/form`（见 spec Clarifications 2025-12-12），以便把“表单领域能力”与 core kernel 解耦；`@logixjs/form` 只依赖 `@logixjs/core` 与 `effect`，不依赖 React 适配层。
 
 ---
 
@@ -82,7 +82,7 @@ type ResourceRef = {
 // DSL 层允许 string 或 ResourceRef；build 阶段必须归一化成 string resourceId。
 type ResourceIdLike = string | ResourceRef
 
-// 运行时约束（与 @logix/core/ResourceRegistry 对齐）：
+// 运行时约束（与 @logixjs/core/ResourceRegistry 对齐）：
 // - 在同一 Runtime 作用域内，resourceId MUST 唯一（重复注册且实现不一致应在 dev 下报错）；
 // - 跨 Runtime 作用域允许复用同一 resourceId（不同子树可注入不同实现），不视为冲突。
 //
@@ -343,7 +343,7 @@ FormCtx 仅用于根级 check（跨字段/跨列表校验）。
 
 ### 3.4 FieldRef / ListRef（上层桥接的可序列化定位）
 
-为了让 `@logix/form` / `@logix/react` 在不理解 kernel 内部实现细节的前提下，仍能做到 RHF 级别的局部校验、unregister、滚动到首错等能力，需要一套可序列化、可比较的“字段实例定位”。
+为了让 `@logixjs/form` / `@logixjs/react` 在不理解 kernel 内部实现细节的前提下，仍能做到 RHF 级别的局部校验、unregister、滚动到首错等能力，需要一套可序列化、可比较的“字段实例定位”。
 
 概念草图：
 
@@ -443,7 +443,7 @@ type GlobalErrorTree<S> = {
 - 数组字段错误节点直接是数组：`errors.items[i].field`；  
 - 列表级错误统一挂在同一节点下的 `$list`：`errors.items.$list`；  
 - `list.list.check` 允许返回“同时包含 `$list` 与多行错误”的 `ListErrorNode`：既能表达列表级摘要，也能准确落到具体行/字段（例如“orderNo 必须单调递增”需要标记若干行）；  
-- 为了让 `ListErrorNode` 在 TypeScript 中可读、可写、可复用，`@logix/form` SHOULD 提供 `Form.Error.list(items, { list?: FieldError })` 一类的 helper 用于构造该形状，避免业务代码中出现类型强转或对数组对象的“魔法挂属性”；  
+- 为了让 `ListErrorNode` 在 TypeScript 中可读、可写、可复用，`@logixjs/form` SHOULD 提供 `Form.Error.list(items, { list?: FieldError })` 一类的 helper 用于构造该形状，避免业务代码中出现类型强转或对数组对象的“魔法挂属性”；  
 - 为了避免用户侧 API 入参出现 `$`，该 helper 的 opts SHOULD 使用更友好的字段名（例如 `{ list?: FieldError }`），并在 helper 内部写入 `$list`；错误树事实源仍然是 `errors.items.$list`；  
 - 同理，行级聚合错误（`errors.items[i].$item`）也 SHOULD 提供对称 helper：`Form.Error.item(fields, { item?: FieldError })`，内部写入 `$item`，避免用户侧出现 `$item`；  
 - 根级错误可使用 `$form` 表达“整张表单无效”；  
@@ -508,7 +508,7 @@ Rules 与 Schema 不是“二选一”，而是分工协作：
 关键约束：
 
 - 后端模型 Schema decode 失败时，必须能把错误**映射回同一套 ErrorTree**，以便 UI 只消费 `state.errors` 一处事实源；
-- 该映射由 `@logix/form` 的 helper/适配层负责（例如 `Form.Error.fromSchemaError(...)`），输出形态为：
+- 该映射由 `@logixjs/form` 的 helper/适配层负责（例如 `Form.Error.fromSchemaError(...)`），输出形态为：
   - root 位置：`GlobalErrorTree<S>`（允许落到 `errors.$form`）；或
   - 字段位置：写入与 FormView 同构的 `errors.<fieldPath>`（优先）。
 
@@ -524,7 +524,7 @@ Rules 与 Schema 不是“二选一”，而是分工协作：
 
 - Devtools/TimeTravel 能回放 “用户如何一步步把表单弄到当前状态”（值变化 + 校验触发 + touched 变化）；
 - 校验触发策略（如 blur 才展示、submit 后改为 change 复校验）可以纯粹地由 `state.ui` 决定，而不是散落在 UI 组件本地状态里；
-- UI 层只负责把 DOM 事件映射为“值变化/失焦/注销”等领域事件，并由 `@logix/form` 将其写入 `state.ui`；kernel 不直接感知 DOM。
+- UI 层只负责把 DOM 事件映射为“值变化/失焦/注销”等领域事件，并由 `@logixjs/form` 将其写入 `state.ui`；kernel 不直接感知 DOM。
 
 概念草图（只表达“专用子树 + 同构树”的心智，不锁死字段清单）：
 
@@ -555,7 +555,7 @@ type StateWithFormUi<S> = S & {
 说明：
 
 - `BoolTree<S>` MUST 与 FormView 值结构“同构”：字段就是字段、数组就是数组；不引入 `$list/$item`。以便开发者按同一路径读写（字段/数组元素同构）与 Devtools 可视化；实现上允许内部用路径字典优化，但对外心智建议同构树。
-- `@logix/form` 负责维护 `state.ui` 的写入，以及在需要时触发 StateTrait 的局部/全量校验（validate）。
+- `@logixjs/form` 负责维护 `state.ui` 的写入，以及在需要时触发 StateTrait 的局部/全量校验（validate）。
 
 ---
 
@@ -586,7 +586,7 @@ namespace Form {
 
 本小节刻意把 “install” 从 Form 领域叙事里抽出来：它应该是 **Trait 生命周期**提供的通用桥接能力（见 spec FR-020/FR-021），用于把“上层领域事件”接到某个具体 ModuleRuntime 上执行。
 
-Form 只是第一个吃到这套桥接能力的领域包：`@logix/form` 可以选择性地 re-export 这一能力（例如 `Form.install = TraitLifecycle.install`），但 API 的语义与所有权属于更底层的 Trait 生命周期。
+Form 只是第一个吃到这套桥接能力的领域包：`@logixjs/form` 可以选择性地 re-export 这一能力（例如 `Form.install = TraitLifecycle.install`），但 API 的语义与所有权属于更底层的 Trait 生命周期。
 
 概念职责：
 

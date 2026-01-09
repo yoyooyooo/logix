@@ -11,25 +11,25 @@
 
 - **确定性与可序列化**：所有可导出的工件必须是 JsonValue；稳定排序、稳定字段，禁止时间戳/随机作为语义输入。
 - **Slim 事件，胖工件**：运行期事件只携带 `schemaId` 等引用锚点；需要结构解释时，通过 registry pack 按需加载。
-- **版本化协议域**：任何协议/工件都必须有 `@logix/*@vN` 概念域命名与 `protocolVersion` 字段；破坏性演进用版本号升级承载。
+- **版本化协议域**：任何协议/工件都必须有 `@logixjs/*@vN` 概念域命名与 `protocolVersion` 字段；破坏性演进用版本号升级承载。
 - **无全局单例**：registry/解码器等必须是可注入契约，可按实例/会话替换与 Mock。
 - **预算受控**：registry pack 的体积与导出策略必须可配置；超限需要显式截断与可解释原因。
 
-## Protocols（统一 `@logix/schema.*` 概念域）
+## Protocols（统一 `@logixjs/schema.*` 概念域）
 
-### `@logix/schema.registry@v1`（SchemaRegistryPack）
+### `@logixjs/schema.registry@v1`（SchemaRegistryPack）
 
 Schema Registry 的可序列化导出工件，用于离线解释与回放。
 
 Canonical schema：`specs/040-schemaast-layered-upgrade/contracts/schemas/schema-registry-pack.schema.json`
 
-### `@logix/schema.ref@v1`（SchemaRef）
+### `@logixjs/schema.ref@v1`（SchemaRef）
 
 事件/IR/协议引用 schema 的最小基元。
 
 Canonical schema：`specs/040-schemaast-layered-upgrade/contracts/schemas/schema-ref.schema.json`
 
-### `@logix/schema.diff@v1`（SchemaDiff）
+### `@logixjs/schema.diff@v1`（SchemaDiff）
 
 用于表达 schema 变更影响摘要（破坏性 vs 非破坏性），供 CI/评审/迁移说明使用。
 

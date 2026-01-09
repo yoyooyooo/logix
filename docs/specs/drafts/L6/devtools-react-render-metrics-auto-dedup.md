@@ -8,7 +8,7 @@ priority: later
 
 # 背景
 
-当前 `trace:react-render` 事件由 `@logix/react` 的 `useModule` 在 commit 后发出：
+当前 `trace:react-render` 事件由 `@logixjs/react` 的 `useModule` 在 commit 后发出：
 
 - 粒度是“每个 `useModule` 调用点每次 commit 一条”，不是“组件 render 次数”；
 - 同一组件内如果对同一模块调用多次 `useModule`，Devtools 中会表现为多条 `trace:react-render`；

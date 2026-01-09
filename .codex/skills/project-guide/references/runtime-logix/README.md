@@ -36,7 +36,7 @@
 ## 目录结构概览
 
 - `logix-core/`
-  - `@logix/core`（Logix Runtime 内核）的设计与实现：宣言、架构、API 契约、平台集成、实现架构、使用规范、场景与示例等。
+  - `@logixjs/core`（Logix Runtime 内核）的设计与实现：宣言、架构、API 契约、平台集成、实现架构、使用规范、场景与示例等。
   - 官方入口文档：`logix-core/README.md`（聚合各子文档的推荐阅读路径与分组）。
 
 - `apps/docs/`
@@ -44,11 +44,11 @@
   - 内容位于 `apps/docs/content/docs`，用于承载对外叙事与可复制示例。
 
 - `logix-react/`
-  - `@logix/react` 适配层的规范：生命周期管理、订阅模型、Context 注入、并发渲染与 Suspense 等。
+  - `@logixjs/react` 适配层的规范：生命周期管理、订阅模型、Context 注入、并发渲染与 Suspense 等。
   - 官方入口文档：`logix-react/README.md`。
 
 - `logix-form/`
-  - `@logix/form` 作为领域层客户端的规格：表单状态模型、事件协议与基于 React 的领域 Hooks。
+  - `@logixjs/form` 作为领域层客户端的规格：表单状态模型、事件协议与基于 React 的领域 Hooks。
   - 详细设计见 `logix-form/README.md` 及其子文档；示例包见 `examples/logix-form-poc`（历史目录名保留）。
 
 - `logix-form/impl/`
@@ -56,7 +56,7 @@
   - 面向 form 维护者使用，不作为对外 API 契约；关键裁决稳定后需同步回写到用户文档与 form 规格文档。
 
 - `logix-test/`
-  - `@logix/test` 测试工具包：提供 `TestRuntime`、`TestProgram` 与 `runTest` 等基础测试 API。当前实现已覆盖 Logic 场景编排与状态断言，高级能力（如基于 Trace 的断言 DSL、ExecutionDump 等）仍在演进中，设计见 `logix-test/01-test-kit-design.md`。
+  - `@logixjs/test` 测试工具包：提供 `TestRuntime`、`TestProgram` 与 `runTest` 等基础测试 API。当前实现已覆盖 Logic 场景编排与状态断言，高级能力（如基于 Trace 的断言 DSL、ExecutionDump 等）仍在演进中，设计见 `logix-test/01-test-kit-design.md`。
   - 官方入口文档：`logix-test/README.md`。
 
 - `logix-core/impl/`

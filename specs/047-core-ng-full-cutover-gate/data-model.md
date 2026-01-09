@@ -6,7 +6,7 @@
 
 ### CutoverCoverageMatrix
 
-- `serviceIds`: `ReadonlyArray<string>`（Kernel Contract 覆盖范围内的必选 serviceId 列表；SSoT=代码：由 `@logix/core` 导出读取入口提供）
+- `serviceIds`: `ReadonlyArray<string>`（Kernel Contract 覆盖范围内的必选 serviceId 列表；SSoT=代码：由 `@logixjs/core` 导出读取入口提供）
 - `version`: `string`（矩阵版本；用于审计）
 - `source`: `string`（单一事实源位置，必须可被测试读取）
 
@@ -20,7 +20,7 @@
 ### ContractDiffAllowlist
 
 - `entries`: `ReadonlyArray<{ metaKey: string; reason?: string }>`（允许差异条目；仅允许 op meta 的部分 key 差异；以 `metaKey` 为主键便于审计）
-- `source`: `string`（单一事实源位置；SSoT=代码：由 `@logix/core` 导出读取入口提供）
+- `source`: `string`（单一事实源位置；SSoT=代码：由 `@logixjs/core` 导出读取入口提供）
 
 ### CutoverGateResult
 

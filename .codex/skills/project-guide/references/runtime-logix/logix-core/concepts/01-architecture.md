@@ -3,7 +3,7 @@
 > **Status**: Definitive
 > **Date**: 2025-11-24
 > **Audience**: 应用/业务开发者、库作者与架构师的共同“地图”，从概念层俯视 Logix 引擎。
-> **Note**: 本文基于当前 Effect-Native 范式，描述了以 **Store / Logic / Flow** 为显式运行时原语、并以 Effect 原生结构化控制流（含 `$.match`/`$.matchTag`）表达分支/错误/并行结构的核心架构。`Pattern` 作为一种 `(input) => Effect` 的函数封装风格，在平台层被视为可复用的资产。类型以 `@logix/core`（`packages/logix-core/src`）为准，示例以 `examples/logix` 为准。
+> **Note**: 本文基于当前 Effect-Native 范式，描述了以 **Store / Logic / Flow** 为显式运行时原语、并以 Effect 原生结构化控制流（含 `$.match`/`$.matchTag`）表达分支/错误/并行结构的核心架构。`Pattern` 作为一种 `(input) => Effect` 的函数封装风格，在平台层被视为可复用的资产。类型以 `@logixjs/core`（`packages/logix-core/src`）为准，示例以 `examples/logix` 为准。
 
 ## 1. 总体架构分层
 
@@ -63,12 +63,12 @@ Logix 的核心能力，可以理解为一种基于 Effect-TS `Context` / `Tag` 
 
 ```text
 packages/
-  logix-core/           # Logix Runtime 内核（@logix/core）
-  logix-react/          # React 适配层（@logix/react）
-  logix-form/           # Form 领域包（@logix/form）
-  logix-test/           # Test kit（@logix/test）
-  logix-devtools-react/ # Devtools UI（@logix/devtools-react）
-  logix-sandbox/        # Alignment Lab / Sandbox 基础设施（@logix/sandbox）
+  logix-core/           # Logix Runtime 内核（@logixjs/core）
+  logix-react/          # React 适配层（@logixjs/react）
+  logix-form/           # Form 领域包（@logixjs/form）
+  logix-test/           # Test kit（@logixjs/test）
+  logix-devtools-react/ # Devtools UI（@logixjs/devtools-react）
+  logix-sandbox/        # Alignment Lab / Sandbox 基础设施（@logixjs/sandbox）
 examples/
   logix/                # 场景/Pattern 示例（推荐写法验证）
 ```

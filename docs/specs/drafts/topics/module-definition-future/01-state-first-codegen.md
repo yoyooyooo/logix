@@ -38,7 +38,7 @@ related:
      - `$.onAction('foo')` / `ModuleHandle.actions.foo` 等 API 仍然精准。
 
 3. **Runtime 保持朴素**  
-   - `@logix/core` 不做复杂 AST/元编程，只消费“生成好的 Module 实现”；
+   - `@logixjs/core` 不做复杂 AST/元编程，只消费“生成好的 Module 实现”；
    - 工具链（CLI / Vite 插件）负责把设计文件翻译成普通 TS 代码。
 
 4. **渐进引入**  
@@ -113,7 +113,7 @@ Generator 对每个设计文件生成一个对应的 Module 实现，如：
 ```ts
 // SandboxModule.generated.ts（由工具生成，禁止手动修改）
 import { Schema } from "effect"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { SandboxState, SandboxStatusSchema } from "./SandboxState.design"
 
 const actions = {
@@ -152,7 +152,7 @@ import { SandboxModule } from "./SandboxModule.generated"
 
 ```ts
 // SandboxModule.generated.d.ts（自动生成）
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import type { SandboxState } from "./SandboxState.design"
 
 export declare const SandboxModule: Logix.ModuleTagType<
@@ -244,7 +244,7 @@ export declare const SandboxModule: Logix.ModuleTagType<
      - 若显式指定 payload Schema，与字段 Schema 不兼容时给出告警。
 
 3. **Runtime 不再“猜类型”**
-   - `@logix/core` 不依赖 annotations 来推断任何类型；
+   - `@logixjs/core` 不依赖 annotations 来推断任何类型；
    - 所有类型信息都由生成物写死，Runtime 只执行纯 TS/JS 逻辑。
 
 ### 5.2 错误反馈原则
@@ -266,7 +266,7 @@ export declare const SandboxModule: Logix.ModuleTagType<
 
 ### Phase 1：只做 Auto Reducer（无 codegen）
 
-短期在 `@logix/core` 内部实现：
+短期在 `@logixjs/core` 内部实现：
 
 - 支持在 Module 定义时传入 `reducers`；
 - 新增工具：`Logix.Module.Reducer.fromStateAnnotations(stateSchema, actions)`：
@@ -278,7 +278,7 @@ export declare const SandboxModule: Logix.ModuleTagType<
 
 ### Phase 2：独立 generator（CLI / Node API）
 
-实现一个 `@logix/codegen` 包：
+实现一个 `@logixjs/codegen` 包：
 
 - 暴露：
   - `generateModules({ entries: string[] })`：从若干设计文件生成 `*.generated.ts` + `*.generated.d.ts`；

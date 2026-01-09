@@ -17,7 +17,7 @@ ExternalStore 的目标是把“外部输入（push）→ 状态写回 → 下�
 你把某个字段声明为“外部拥有（external-owned）”，由外部源写回：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 const State = Schema.Struct({

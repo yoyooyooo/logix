@@ -66,7 +66,7 @@
 -->
 
 **Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+  
-**Primary Dependencies**: effect v3（`effect@^3.19.8`）、`@logix/core`、`@logix/react`、Vitest（含 `@effect/vitest` 风格用例）  
+**Primary Dependencies**: effect v3（`effect@^3.19.8`）、`@logixjs/core`、`@logixjs/react`、Vitest（含 `@effect/vitest` 风格用例）  
 **Storage**: 内存态（Effect Context/Scope + Ref/SubscriptionRef），无持久化存储  
 **Testing**: Vitest 4 + `@effect/vitest`（Effect-heavy）、React 侧使用 Testing Library（按既有用例）  
 **Target Platform**: Node.js 20+；React 19（适配层）；Devtools 事件以进程内聚合为主（后续可桥接到 Sandbox）  

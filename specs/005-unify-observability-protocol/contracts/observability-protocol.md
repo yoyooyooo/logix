@@ -31,7 +31,7 @@
 
 | `type`         | `payload`（示例来源）                                                       | 说明                                                                          |
 | -------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `debug:event`  | `@logix/core` 的 `RuntimeDebugEventRef`（推荐）或 `DebugSink.Event`（原始） | 承载 `state:update` / `diagnostic` / `trace:*` 等，便于按 `txnSeq/txnId` 聚合 |
+| `debug:event`  | `@logixjs/core` 的 `RuntimeDebugEventRef`（推荐）或 `DebugSink.Event`（原始） | 承载 `state:update` / `diagnostic` / `trace:*` 等，便于按 `txnSeq/txnId` 聚合 |
 | `log:entry`    | `LogEntry`（sandbox/log）                                                   | console/effect/logix 等日志                                                   |
 | `trace:span`   | `TraceSpan`（sandbox/trace）                                                | Effect trace/span 的摘要表示                                                  |
 | `ui:intent`    | `UiIntentPacket`（sandbox/ui intent）                                       | 语义 UI 行为与 step/story meta                                                |

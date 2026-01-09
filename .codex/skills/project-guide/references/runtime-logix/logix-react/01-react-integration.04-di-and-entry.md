@@ -13,8 +13,8 @@ Logix 通过 `RuntimeProvider` 组件在 React 树中注入 Effect 运行时环�
 
 ```tsx
 // src/App.tsx
-import { RuntimeProvider } from '@logix/react';
-import * as Logix from '@logix/core';
+import { RuntimeProvider } from '@logixjs/react';
+import * as Logix from '@logixjs/core';
 import { Layer } from 'effect';
 
 const RootDef = Logix.Module.make("Root", { state: RootState, actions: RootActions });
@@ -53,7 +53,7 @@ function App() {
 
 ```tsx
 // src/pages/OrderPage.tsx
-import { RuntimeProvider, useLocalModule } from '@logix/react';
+import { RuntimeProvider, useLocalModule } from '@logixjs/react';
 import { Layer } from 'effect';
 
 function OrderPage({ userId }: { userId: string }) {
@@ -75,7 +75,7 @@ function OrderPage({ userId }: { userId: string }) {
 
 ## 4.3 示例：注入外部 i18n 实例（以 i18next 为例）
 
-当你希望在 UI（`react-i18next`）与 Logic（`@logix/i18n`）之间共享同一个 i18n 实例时，推荐做法是：
+当你希望在 UI（`react-i18next`）与 Logic（`@logixjs/i18n`）之间共享同一个 i18n 实例时，推荐做法是：
 
 1. UI 侧：继续使用 `I18nextProvider`；
 2. Logix 侧：用 `I18n.layer(driver)` 把该实例注入到 Runtime Tree 的 root provider；
@@ -84,9 +84,9 @@ function OrderPage({ userId }: { userId: string }) {
 概念性示例：
 
 ```tsx
-import { RuntimeProvider } from "@logix/react"
+import { RuntimeProvider } from "@logixjs/react"
 import { Layer } from "effect"
-import { I18n } from "@logix/i18n"
+import { I18n } from "@logixjs/i18n"
 import { I18nextProvider } from "react-i18next"
 import i18next from "i18next"
 
@@ -105,4 +105,4 @@ export function App() {
 }
 ```
 
-> 说明：`@logix/i18n` 不强绑定 i18next；只要外部实例满足 `I18nDriver` 的最小形状即可注入。若你在 Logic 中用的是 `$.root.resolve(I18nTag)`，请确保 `I18nLayer` 注入发生在 root provider（通常是最外层 `RuntimeProvider` 或 `Logix.Runtime.make(..., { layer })`）。
+> 说明：`@logixjs/i18n` 不强绑定 i18next；只要外部实例满足 `I18nDriver` 的最小形状即可注入。若你在 Logic 中用的是 `$.root.resolve(I18nTag)`，请确保 `I18nLayer` 注入发生在 root provider（通常是最外层 `RuntimeProvider` 或 `Logix.Runtime.make(..., { layer })`）。

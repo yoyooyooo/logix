@@ -186,7 +186,7 @@ related:
 
 ## 4. Studio ↔ Sandbox Worker：消息协议（引用上游）
 
-Worker 通道建议直接复用 `@logix/sandbox` 的协议定义（见 `../sandbox-runtime/15-protocol-and-schema.md`），本 Topic 只追加“与 Spec/Rule 的锚点对齐”要求：
+Worker 通道建议直接复用 `@logixjs/sandbox` 的协议定义（见 `../sandbox-runtime/15-protocol-and-schema.md`），本 Topic 只追加“与 Spec/Rule 的锚点对齐”要求：
 
 - `RunConfig` 必须包含：
   - `scenarioRevisionId`

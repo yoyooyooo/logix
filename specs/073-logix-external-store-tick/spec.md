@@ -10,7 +10,7 @@
 当前 Logix 在“外部数据源接入 + 多模块依赖”的一致性上存在两个结构性短板：
 
 1. **外部推送源接入仍偏胶水**：典型写法是 `$.use(Service)` + `$.on(service.changes).mutate(...)` 把外部事件写回 state；再通过 `$.onState(...).runFork(() => $.traits.source.refresh(...))` 触发下游 source/query。写法可行但模板代码多、依赖图不可解释、且容易出现初始化竞态（`getSnapshot` 与订阅之间漏事件）。
-2. **React 侧“多 ExternalStore”导致跨模块 tearing**：当前 `@logix/react` 是“每个 ModuleRuntime 一个 ExternalStore”，组件同时读多个模块时可能在同一 render/commit 中观察到不同步的快照（跨模块 tearing）。这会破坏 “Route → State → Query” 等链路的心智一致性，也让 Devtools 的 causal chain 不稳定。
+2. **React 侧“多 ExternalStore”导致跨模块 tearing**：当前 `@logixjs/react` 是“每个 ModuleRuntime 一个 ExternalStore”，组件同时读多个模块时可能在同一 render/commit 中观察到不同步的快照（跨模块 tearing）。这会破坏 “Route → State → Query” 等链路的心智一致性，也让 Devtools 的 causal chain 不稳定。
 
 本特性目标是把 Logix 推进到 “logic like react”：外部源接入/跨模块联动/React 渲染一致性都统一归一化到 **Tick** 这个调度与解释单位。
 

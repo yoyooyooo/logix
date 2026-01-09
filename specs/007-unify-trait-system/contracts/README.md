@@ -10,6 +10,6 @@
 
 - `specs/007-unify-trait-system/contracts/state-trait.md`：StateTrait（DSL→IR→install）与 deps/graph/validate/cleanup 契约
 - `specs/007-unify-trait-system/contracts/trait-lifecycle.md`：TraitLifecycle（install/ref/scoped validate/execute/cleanup）统一桥接契约（Form/Query 共用）
-- `specs/007-unify-trait-system/contracts/form.md`：`@logix/form` Blueprint/Controller/Errors/UIState/ValidateRequest 契约
-- `specs/007-unify-trait-system/contracts/query.md`：`@logix/query` Blueprint/Controller/Triggers/Invalidate/外部查询引擎边界 契约
+- `specs/007-unify-trait-system/contracts/form.md`：`@logixjs/form` Blueprint/Controller/Errors/UIState/ValidateRequest 契约
+- `specs/007-unify-trait-system/contracts/query.md`：`@logixjs/query` Blueprint/Controller/Triggers/Invalidate/外部查询引擎边界 契约
 - `specs/007-unify-trait-system/contracts/replay-and-diagnostics.md`：回放（re-emit）与诊断（txn 聚合/成本/原因）契约

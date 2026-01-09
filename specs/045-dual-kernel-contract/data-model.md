@@ -4,7 +4,7 @@
 
 ## 目标视图（高层）
 
-- **上层（`@logix/react`/平台/Devtools/Sandbox）**：只依赖 `@logix/core` 的公共 API 与 Kernel Contract（统一最小 IR + 稳定锚点）。
+- **上层（`@logixjs/react`/平台/Devtools/Sandbox）**：只依赖 `@logixjs/core` 的公共 API 与 Kernel Contract（统一最小 IR + 稳定锚点）。
 - **内核实现（当前内核 / core-ng）**：以“可注入的 Runtime Services/Kernel”形式被装配进 runtime。
 - **证据与对齐**：所有实现都必须产出同一套 Static IR + Dynamic Trace（Slim、可序列化、可裁剪），用于解释与 diff。
 
@@ -16,8 +16,8 @@
 
 - `KernelId`（string）
   - 约定值：
-    - `core`：当前内核（`@logix/core` 自带默认实现）
-    - `core-ng`：下一代内核（`@logix/core-ng` 提供实现）
+    - `core`：当前内核（`@logixjs/core` 自带默认实现）
+    - `core-ng`：下一代内核（`@logixjs/core-ng` 提供实现）
 
 ### 2) `KernelImplementationRef`
 
@@ -27,7 +27,7 @@
 > 是否发生 fallback/混用 builtin、是否满足“宣称已切到 core-ng/准备切换默认实现”的全套切换门槛，必须结合 `RuntimeServicesEvidence` 判定（见 `spec.md` Clarifications 与 FR-003/FR-008）。
 
 - `kernelId`: `KernelId`
-- `packageName`: string（例如 `@logix/core` / `@logix/core-ng`）
+- `packageName`: string（例如 `@logixjs/core` / `@logixjs/core-ng`）
 - `packageVersion`: string（可选；用于调试/证据包展示）
 - `buildId`: string（可选；用于本地/CI 对比时的可解释锚点）
 - `capabilities`: ReadonlyArray<string>（可选；仅用于解释“哪些能力已实现”，不能作为语义分岔的隐式开关）

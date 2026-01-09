@@ -11,7 +11,7 @@
 
 ### D001：PortSpec 是平台引用空间的唯一事实源（禁止并行推断）
 
-**Decision**：平台 autocomplete 与 lint 必须只依赖导出的 `@logix/module.portSpec@v1`（以及可选的 TypeIR），不得以源码推断作为真相源。  
+**Decision**：平台 autocomplete 与 lint 必须只依赖导出的 `@logixjs/module.portSpec@v1`（以及可选的 TypeIR），不得以源码推断作为真相源。  
 **Rationale**：源码推断不可控且易漂移；PortSpec 由 trial-run 从最终可运行形状导出，更能反映真实边界。
 
 ### D002：TypeIR 是 best-effort，可截断但必须显式
@@ -26,7 +26,7 @@
 
 ### D004：SchemaAST 与 TypeIR 的关系（可利用，但不外泄）
 
-**Decision**：`@logix/module.typeIr@v1` 的实现**可以**基于 `effect/Schema` 的 `Schema.ast`（SchemaAST）做投影，但 SchemaAST 本体**不得**作为协议输出或平台事实源。  
+**Decision**：`@logixjs/module.typeIr@v1` 的实现**可以**基于 `effect/Schema` 的 `Schema.ast`（SchemaAST）做投影，但 SchemaAST 本体**不得**作为协议输出或平台事实源。  
 **Rationale**：
 
 - SchemaAST 擅长表达“数据形状”，正好覆盖 TypeIR 的目标域；但它不是 `JsonValue`，也会随 effect 版本演进。

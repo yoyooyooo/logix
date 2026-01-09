@@ -21,7 +21,7 @@ scope: 演示在 EffectOp 总线下如何通过 Observer / Runner 组合出 "dev
 
 本题不追求完整代码，而是用伪代码展示关键设计点。
 
-> 实现状态对齐：当前 `@logix/core` 已落地的对外能力是 **Runtime 级** `EffectOp.MiddlewareStack`（见 `Logix.Runtime.make(..., { middleware })`）与 `devtools` 开关。本文第 3 节的 `RuntimeMiddlewareRegistry/Defaults/ModuleMeta` 属于草案抽象（用于阐述 DX 目标），不应被理解为已存在的公开 API；对应讨论请看 `docs/specs/drafts/topics/runtime-middleware-and-effectop/`。
+> 实现状态对齐：当前 `@logixjs/core` 已落地的对外能力是 **Runtime 级** `EffectOp.MiddlewareStack`（见 `Logix.Runtime.make(..., { middleware })`）与 `devtools` 开关。本文第 3 节的 `RuntimeMiddlewareRegistry/Defaults/ModuleMeta` 属于草案抽象（用于阐述 DX 目标），不应被理解为已存在的公开 API；对应讨论请看 `docs/specs/drafts/topics/runtime-middleware-and-effectop/`。
 
 ---
 
@@ -211,7 +211,7 @@ const CounterModuleMeta: ModuleMeta = {
 对业务开发者来说，**当前可用的实际入口**是：在 `Runtime.make` 时显式注入 Runtime 级 middleware stack，并按需开启 `devtools`：
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 const CounterDef = Logix.Module.make("Counter", shape)
 const CounterModule = CounterDef.implement({ initial: { count: 0 }, logics: [CounterLogic] })

@@ -2,7 +2,7 @@
 
 ## 1) 我什么时候需要看/用 047？
 
-- 你已经完成/接近完成 `specs/045-dual-kernel-contract/`，并开始把 `@logix/core-ng` 接入试跑。
+- 你已经完成/接近完成 `specs/045-dual-kernel-contract/`，并开始把 `@logixjs/core-ng` 接入试跑。
 - 你准备宣称“core-ng 已可切默认”，但需要一个硬门槛：无 fallback + 契约一致性 + Node+Browser 证据预算。
 
 ## 2) 我如何理解 Full Cutover Gate？

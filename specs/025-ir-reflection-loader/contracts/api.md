@@ -3,7 +3,7 @@
 **Date**: 2025-12-24  
 **Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/025-ir-reflection-loader/spec.md`
 
-> 本文件定义对外 API 与行为契约（以 `@logix/core` 为主事实源），用于后续实现与测试对齐。  
+> 本文件定义对外 API 与行为契约（以 `@logixjs/core` 为主事实源），用于后续实现与测试对齐。  
 > 具体函数命名可在实现阶段微调，但必须满足下述语义与确定性约束。
 
 ## Terminology

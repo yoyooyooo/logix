@@ -6,7 +6,7 @@
 
 ## Phase 1: Baseline（基准与指标口径固化）
 
-- [ ] T001 [US1] 固化“真实复杂表单基准”为自动化回归用例：新增 `examples/logix-react/test/complex-trait-form.baseline.integration.test.ts`，用 `@logix/test` 跑 `ComplexTraitFormModule + ComplexTraitFormImpl` 的固定 action 序列，并断言：语义正确 + 每个 action 对应的 State 变更通知次数（`result.trace` 中 `_tag: "State"` 增量）≤ 1
+- [ ] T001 [US1] 固化“真实复杂表单基准”为自动化回归用例：新增 `examples/logix-react/test/complex-trait-form.baseline.integration.test.ts`，用 `@logixjs/test` 跑 `ComplexTraitFormModule + ComplexTraitFormImpl` 的固定 action 序列，并断言：语义正确 + 每个 action 对应的 State 变更通知次数（`result.trace` 中 `_tag: "State"` 增量）≤ 1
 - [ ] T002 [P] [US1] 新增“可调合成压力基准”生成器（规则规模 + 数据规模；10x=单次输入触发依赖边数≈10x）并可重复运行：`examples/logix-react/src/demos/*` 或 `packages/logix-core/test/*`（按现有基准组织方式择一）
 
 **Checkpoint**: 能在同一版本上重复得到与 SC-001/SC-004/SC-007 对齐的指标读数，后续变更可做回归对比。
@@ -67,4 +67,4 @@
 ## Phase 6: Docs & Quality Gates（交接前必须完成）
 
 - [ ] T023 更新 runtime 规范文档：Trait 在 Operation Window 内收敛、失败/降级语义、诊断信号与 Devtools 对齐：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md`、`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
-- [ ] T024 质量门：`pnpm typecheck` / `pnpm lint` / `pnpm test --filter @logix/core`（全部通过）
+- [ ] T024 质量门：`pnpm typecheck` / `pnpm lint` / `pnpm test --filter @logixjs/core`（全部通过）

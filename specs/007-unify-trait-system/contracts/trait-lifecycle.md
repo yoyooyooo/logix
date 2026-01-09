@@ -8,7 +8,7 @@
 
 ## 1. Ownership & Layering
 
-- TraitLifecycle MUST 归属 `@logix/core`（kernel），是所有领域包（Form/Query/未来更多 `xxxTrait`）可复用的桥接能力。
+- TraitLifecycle MUST 归属 `@logixjs/core`（kernel），是所有领域包（Form/Query/未来更多 `xxxTrait`）可复用的桥接能力。
 - 领域包 MAY 为 DX re-export（例如 `Form.Ref = TraitLifecycle.Ref`、`Query.install = TraitLifecycle.install`），但语义与演进所有权仍在 kernel。
 
 ## 2. FieldRef（稳定定位字段实例）

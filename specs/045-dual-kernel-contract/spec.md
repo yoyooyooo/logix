@@ -3,11 +3,11 @@
 **Feature Branch**: `[045-dual-kernel-contract]`  
 **Created**: 2025-12-27  
 **Status**: Done  
-**Input**: User description: "打造可替换内核契约：现有 @logix/* 内核与 core-ng 并行；上层（Logix React/平台/Devtools/Sandbox）只依赖稳定的 Kernel Contract 与统一最小 IR；允许未来一次性切换内核；禁止使用历史版本号旧称；旧 specs 不改动，仅做关联引用。"
+**Input**: User description: "打造可替换内核契约：现有 @logixjs/* 内核与 core-ng 并行；上层（Logix React/平台/Devtools/Sandbox）只依赖稳定的 Kernel Contract 与统一最小 IR；允许未来一次性切换内核；禁止使用历史版本号旧称；旧 specs 不改动，仅做关联引用。"
 
 ## Terminology
 
-- **当前内核（Current Kernel）**：当前 `@logix/*` 体系所使用的内核实现（正式包的默认实现）。
+- **当前内核（Current Kernel）**：当前 `@logixjs/*` 体系所使用的内核实现（正式包的默认实现）。
 - **core-ng**：下一代内核实现的代号；与当前内核并行演进，最终可切换为默认实现。
 - **Kernel Contract**：上层（Logix React/平台/Devtools/Sandbox）与内核之间的稳定契约边界；上层只能依赖契约，不能穿透依赖内核内部结构。
 - **统一最小 IR（Static IR + Dynamic Trace）**：所有诊断/证据/回放链路的唯一事实源；禁止新增并行真相源。
@@ -98,7 +98,7 @@
 
 ## Assumptions
 
-- 用户侧/业务侧的写法与 API（`@logix/*` 面向使用者的表层能力）在可预见范围内保持稳定；本特性聚焦“内核契约与替换策略”。若确需调整表层 API，期望仅为轻量迁移（小范围、可一次性完成），且不引入长期兼容层。
+- 用户侧/业务侧的写法与 API（`@logixjs/*` 面向使用者的表层能力）在可预见范围内保持稳定；本特性聚焦“内核契约与替换策略”。若确需调整表层 API，期望仅为轻量迁移（小范围、可一次性完成），且不引入长期兼容层。
 - core-ng 的演进允许先覆盖核心闭环再扩面：在 `trial-run/test/dev` 允许按 `serviceId` 渐进替换（可混用 builtin，但必须记录并可对比）；当宣称“已切到 core-ng/准备切换默认实现”时，任何关键服务缺失/回退都必须视为失败（禁止静默漂移）。
 - 本特性不以“一次性替换当前内核”为交付目标；目标是先建立可替换地基，使替换变成可选择、可验证、可回退的动作。
 

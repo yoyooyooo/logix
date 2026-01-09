@@ -4,23 +4,23 @@ status: draft
 version: 2025-12-03
 ---
 
-# React Adapter · `@logix/react` 规范总览
+# React Adapter · `@logixjs/react` 规范总览
 
-> 作用：作为 `@logix/react` 的规范性说明，串联 RuntimeProvider、核心 Hooks 与 React 18 并发模型之间的契约。
+> 作用：作为 `@logixjs/react` 的规范性说明，串联 RuntimeProvider、核心 Hooks 与 React 18 并发模型之间的契约。
 > 读者：使用 Logix 编写 React 前端的业务工程师、运行时实现者与平台集成方。
 
-本节以当前 `@logix/react` 实现为事实源，约定 React 适配层的定位与 API 形态，并指向更详细的专题草案（见 `docs/specs/drafts/topics/react-adapter`）。
+本节以当前 `@logixjs/react` 实现为事实源，约定 React 适配层的定位与 API 形态，并指向更详细的专题草案（见 `docs/specs/drafts/topics/react-adapter`）。
 
 ## 1. 定位与职责边界
 
-- **定位**：`@logix/react` 是 Logix Runtime 的 React 适配层，对标 `react-redux` / `mobx-react`。
+- **定位**：`@logixjs/react` 是 Logix Runtime 的 React 适配层，对标 `react-redux` / `mobx-react`。
 - **核心职责**：
   - 生命周期管理：在 React 组件树生命周期内创建、复用和销毁 Logix Runtime / ModuleRuntime；
   - 订阅模型：基于 `useSyncExternalStore` 提供撕裂安全的状态订阅；
   - 事件桥接：将 React 事件桥接到 Logix Action/Flow；
   - 依赖注入：通过 Context 在组件树顶部注入 Layer/Runtime。
 - **非职责**：
-  - 不承载业务领域逻辑（如表单/列表）；这些应由 `@logix/form`、场景包或业务代码实现；
+  - 不承载业务领域逻辑（如表单/列表）；这些应由 `@logixjs/form`、场景包或业务代码实现；
   - 不定义 UI Intent / Skeleton 协议，这部分留给平台/Studio 与 UI 层规范。
 
 ## 2. RuntimeProvider 与 Runtime 注入
@@ -93,7 +93,7 @@ version: 2025-12-03
 
 ## 4. React 18 并发与高级特性（规划）
 
-当前 `@logix/react` 已经：
+当前 `@logixjs/react` 已经：
 
 - 基于 `useSyncExternalStore` 保证基本的撕裂安全；
 - 在 `useModule` / `useLocalModule` 中通过 `ModuleCache` (Resource Cache + Reference Counting) 管理资源，完美支持 StrictMode；
@@ -120,7 +120,7 @@ version: 2025-12-03
   - 再回退 ConfigProvider：`Config.option(Config.number("logix.react.init_timeout_ms"))`；
   - 未配置时视为“不开启初始化超时”，即保持默认无限等待。
 
-> 这些 Config 键是 `@logix/react` 的内部实现细节，主要面向 Runtime/Adapter 作者与基础设施工程师；  
+> 这些 Config 键是 `@logixjs/react` 的内部实现细节，主要面向 Runtime/Adapter 作者与基础设施工程师；  
 > 对普通业务开发者而言，只需记住：**默认情况下组件级 `useModule(Impl)` 会在卸载后短暂保活，Session 场景可以通过 `gcTime` 拉长保活时间，异步 ModuleImpl 则通过 `suspend: true + key (+ optional initTimeoutMs)` 显式声明行为。**
 
 仍在规划中的能力包括：
@@ -141,4 +141,4 @@ version: 2025-12-03
 
 1. 在 `docs/specs/drafts/topics/react-adapter` 中以草案形式演化设计；
 2. 待设计稳定后，先更新本规范文件和 `implementation-status.md`；
-3. 最后在 `@logix/react` 中实现，并通过 `examples/logix-react` 与 apps/docs 教程验证 DX。
+3. 最后在 `@logixjs/react` 中实现，并通过 `examples/logix-react` 与 apps/docs 教程验证 DX。

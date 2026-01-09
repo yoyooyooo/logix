@@ -31,7 +31,7 @@ description: "Task list for 035-module-ports-typeir (PortSpec / TypeIR as platfo
 - [ ] T003 定义 PortAddress 的 TS 工具函数（parse/format/normalize）到 `packages/logix-core/src/internal/reflection/ports/portAddress.ts`
 - [ ] T004 定义 PortSpec 导出器：从最终可运行 module 形状导出 actions/events/outputs/exports 到 `packages/logix-core/src/internal/reflection/ports/exportPortSpec.ts`
 - [ ] T005 定义 TypeIR 导出器（best-effort + 可截断）：与 PortSpec 对齐输出类型摘要到 `packages/logix-core/src/internal/reflection/ports/exportTypeIr.ts`
-- [ ] T006 将 PortSpec/TypeIR 挂接到 031 artifacts 槽位（key：`@logix/module.portSpec@v1`、`@logix/module.typeIr@v1`）到 `packages/logix-core/src/internal/observability/trialRunModule.ts`
+- [ ] T006 将 PortSpec/TypeIR 挂接到 031 artifacts 槽位（key：`@logixjs/module.portSpec@v1`、`@logixjs/module.typeIr@v1`）到 `packages/logix-core/src/internal/observability/trialRunModule.ts`
 - [ ] T007 定义 TypeIR 的截断与降级语义（truncated + 摘要）到 `packages/logix-core/src/internal/reflection/ports/typeIrBudget.ts`
 - [ ] T008 [P] 单测：PortSpec 导出确定性（稳定排序、同输入一致）到 `packages/logix-core/test/PortSpec/PortSpec.determinism.test.ts`
 - [ ] T009 [P] 单测：TypeIR 超预算截断可解释（且仍能 key-level 校验）到 `packages/logix-core/test/TypeIr/TypeIr.truncation.test.ts`
@@ -40,7 +40,7 @@ description: "Task list for 035-module-ports-typeir (PortSpec / TypeIR as platfo
 
 ## Phase 3: User Story 1 - 平台基于 PortSpec/TypeIR 做 autocomplete 与引用安全（Priority: P1）🎯 MVP
 
-**Goal**: 平台/Workbench 不读源码推断；只依赖 `@logix/module.portSpec@v1` + `@logix/module.typeIr@v1` 做补全与校验。  
+**Goal**: 平台/Workbench 不读源码推断；只依赖 `@logixjs/module.portSpec@v1` + `@logixjs/module.typeIr@v1` 做补全与校验。  
 **Independent Test**: 给定导出的 PortSpec/TypeIR，BindingSchema/CodeAsset 的引用越界会被静态拒绝并提示可行动修复。
 
 - [ ] T010 [US1] 在 Workbench 增加 PortSpec/TypeIR 的通用展示与下载（按 artifactKey 分组）到 `examples/logix-sandbox-mvp/src/ir/ArtifactsPanel.tsx`

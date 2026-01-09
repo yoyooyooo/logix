@@ -3,7 +3,7 @@
 在主线规范中，模块体系通过以下 API 暴露（概念层）：
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 
 export const UserDef = Logix.Module.make("User", { state: UserState, actions: UserActions })
 export const RootModule = UserDef.implement({ initial, logics, imports, processes })
@@ -22,5 +22,5 @@ export const AppRuntime = Logix.Runtime.make(RootModule, { layer })
 
 > 实现建议
 >
-> - 在 TS 层统一使用命名空间导入（例如 `import * as Logix from "@logix/core"`），以便解析器快速定位 Module 定义；
+> - 在 TS 层统一使用命名空间导入（例如 `import * as Logix from "@logixjs/core"`），以便解析器快速定位 Module 定义；
 > - 平台可以约定：所有 ModuleDef / program module / ModuleImpl / Runtime 入口使用 `export const XxxDef = Logix.Module.make(...)`、`export const XxxModule = XxxDef.implement(...)`、`export const XxxImpl = XxxModule.impl`、`export const XxxRuntime = Logix.Runtime.make(XxxModule /* or XxxImpl */, { ... })` 形式，避免运行时动态构造。

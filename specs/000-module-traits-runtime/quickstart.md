@@ -10,8 +10,8 @@
 
 ```ts
 // examples/logix-react/src/modules/counter-with-profile.ts
-import * as Logix from "@logix/core"
-import { StateTrait } from "@logix/core"
+import * as Logix from "@logixjs/core"
+import { StateTrait } from "@logixjs/core"
 import { Schema } from "effect"
 
 // 1) 定义 State Schema（computed 字段也当正式字段）
@@ -133,8 +133,8 @@ export const CounterWithProfile = Logix.Module.make("CounterWithProfile", {
 这些 EffectOp 会交给 Runtime 注入的 MiddlewareStack 执行；例如可以在构建 Runtime 时挂上 DebugLogger + DebugObserver 预设：
 
 ```ts
-import * as Logix from "@logix/core"
-import * as Middleware from "@logix/core/Middleware"
+import * as Logix from "@logixjs/core"
+import * as Middleware from "@logixjs/core/Middleware"
 
 const runtime = Logix.Runtime.make(impl, {
   layer: appLayer,
@@ -188,7 +188,7 @@ export const CounterWithProfile = Logix.Module.make("CounterWithProfile", {
 ```ts
 // packages/app-runtime/src/resources/user-profile.ts
 import { Effect, Schema } from "effect"
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { UserProfileService } from "./services/user-profile"
 
 // 用 Schema 描述 key 的形状，类似强类型 queryKey
@@ -211,10 +211,10 @@ export const UserProfileResource = Logix.Resource.make({
 
 ```ts
 // packages/app-runtime/src/runtime.ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Layer } from "effect"
 import { QueryClient } from "@tanstack/query-core"
-import * as Query from "@logix/query"
+import * as Query from "@logixjs/query"
 import { UserProfileLive } from "./services/user-profile"
 import { UserProfileResource } from "./resources/user-profile"
 
@@ -267,7 +267,7 @@ Devtools 则可以同时呈现：
 
 ## 示例对应的测试入口
 
-为了确保 Quickstart 示例与实际实现长期保持一致，本特性在 `@logix/core` 中提供了两组配套测试：
+为了确保 Quickstart 示例与实际实现长期保持一致，本特性在 `@logixjs/core` 中提供了两组配套测试：
 
 - `packages/logix-core/test/StateTrait.ComputedLink.test.ts`  
   验证在简单 State Schema 上使用 `StateTrait.from` + `computed/link` 时，类型与行为（基于 meta）符合预期。
@@ -298,7 +298,7 @@ profileResource: StateTrait.source({
 在未来的 Query 集成包中，我们可以提供一些**完全基于 StateTrait.source 的语法糖**，例如：
 
 ```ts
-import { StateTrait } from "@logix/core"
+import { StateTrait } from "@logixjs/core"
 
 export const CounterWithProfile = Logix.Module.make("CounterWithProfile", {
   state: StateSchema,

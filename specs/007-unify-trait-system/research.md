@@ -81,7 +81,7 @@
 - 触发语义（onMount/onKeyChange/manual）与并发策略选择；
 - keySchema/keyHash 规范化与写回 stale 门控；
 - 产出可回放事件与可解释诊断（外部引擎行为不得成为事实源）。  
-  并且通过 effect 的 DI 注入外部引擎实例：`@logix/query` 暴露 `Query.Engine`（Tag）并提供 `Query.Engine.layer(engine)`，由宿主在全局 Runtime Layer 注入（默认推荐 `Query.Engine.layer(Query.TanStack.engine(new QueryClient()))`）。  
+  并且通过 effect 的 DI 注入外部引擎实例：`@logixjs/query` 暴露 `Query.Engine`（Tag）并提供 `Query.Engine.layer(engine)`，由宿主在全局 Runtime Layer 注入（默认推荐 `Query.Engine.layer(Query.TanStack.engine(new QueryClient()))`）。  
   **Rationale**: 复用成熟引擎以降低工程成本，同时保住“可回放/可解释/生成友好”的核心价值。  
   **Alternatives considered**:
 - 手写缓存/去重引擎：成本高且偏离 007 目标；
@@ -97,7 +97,7 @@
 
 ### D09 — Schema 解码错误归属：errorMap 逃生舱
 
-**Decision**: 在 `@logix/form` 提供 `errorMap: (schemaError) => FieldPath[]` 纯函数钩子，用于复杂 transform 无法自动逆向时将错误归属到具体字段集合。  
+**Decision**: 在 `@logixjs/form` 提供 `errorMap: (schemaError) => FieldPath[]` 纯函数钩子，用于复杂 transform 无法自动逆向时将错误归属到具体字段集合。  
 **Rationale**: “结构变形越复杂，责任越要下放”，否则错误无法稳定展示与回放。  
 **Alternatives considered**:
 
@@ -108,9 +108,9 @@
 
 **Decision**: 维持分层：
 
-- `@logix/core`：Trait/StateTrait 内核、Resource/事务/诊断/回放基础能力；
-- `@logix/form` / `@logix/query`：领域 DSL + 默认 logics + helper（只编译到 kernel，不引入第二套运行时）；
-- `@logix/react`：UI 适配（订阅投影 + 事件派发）；`@logix/form/react` 仅作为薄糖。  
+- `@logixjs/core`：Trait/StateTrait 内核、Resource/事务/诊断/回放基础能力；
+- `@logixjs/form` / `@logixjs/query`：领域 DSL + 默认 logics + helper（只编译到 kernel，不引入第二套运行时）；
+- `@logixjs/react`：UI 适配（订阅投影 + 事件派发）；`@logixjs/form/react` 仅作为薄糖。  
   **Rationale**: 保持 SRP 与可替换性，符合 007 的“链路分层 SSoT”。  
   **Alternatives considered**:
 - 领域能力塞进 core：会扩大 core 表面积、降低可替换性与可维护性。

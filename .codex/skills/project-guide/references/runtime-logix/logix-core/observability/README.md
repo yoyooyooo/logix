@@ -1,4 +1,4 @@
-# `@logix/core` · 诊断与可观测性（渐进式披露）
+# `@logixjs/core` · 诊断与可观测性（渐进式披露）
 
 > **定位**：DebugSink / Devtools 契约与事件口径（SSoT）。
 

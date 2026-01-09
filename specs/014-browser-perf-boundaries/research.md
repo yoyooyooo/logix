@@ -63,6 +63,6 @@
 
 ## References
 
-- 矩阵 SSoT：`@logix/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
-- 报告 schema：`@logix/perf-evidence/assets/schemas/perf-report.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-report.schema.json`）
-- diff schema：`@logix/perf-evidence/assets/schemas/perf-diff.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-diff.schema.json`）
+- 矩阵 SSoT：`@logixjs/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
+- 报告 schema：`@logixjs/perf-evidence/assets/schemas/perf-report.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-report.schema.json`）
+- diff schema：`@logixjs/perf-evidence/assets/schemas/perf-diff.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-diff.schema.json`）

@@ -228,12 +228,12 @@ const remoteBundlePlugin: esbuild.Plugin = {
       return { path: toAtEffectPath(pkg, subpath), external: true }
     })
 
-    build.onResolve({ filter: /^@logix\/core$/ }, () => ({
+    build.onResolve({ filter: /^@logixjs\/core$/ }, () => ({
       path: kernelPath,
       external: true,
     }))
 
-    build.onResolve({ filter: /^@logix\/core\// }, (args) => {
+    build.onResolve({ filter: /^@logixjs\/core\// }, (args) => {
       const rawSubpath = args.path.slice('@logixjs/core/'.length)
       const info = getLogixCoreSubpathInfo(rawSubpath)
       if (!info.normalized) {

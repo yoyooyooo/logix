@@ -32,7 +32,7 @@ pnpm -C examples/logix exec tsx src/scenarios/lifecycle-gate.ts
 在模块逻辑中尽早声明统一的错误兜底，以保证初始化/后台/销毁/平台信号的失败都能被收敛并上报。
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect, Schema } from "effect"
 
 export const Demo = Logix.Module.make("Demo", {
@@ -135,7 +135,7 @@ export const DemoImpl = Demo.implement({
 ### 6.1 脚本中：构造 Runtime，然后运行 program
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect, Layer } from "effect"
 import { DemoImpl, Demo } from "./demo-module.js"
 
@@ -167,7 +167,7 @@ void runtime.runPromise(program)
 当你需要在应用生命周期内常驻一段逻辑（例如桥接平台事件、跨模块协同），可以把它挂到 RootImpl 的 `processes`：
 
 ```ts
-import * as Logix from "@logix/core"
+import * as Logix from "@logixjs/core"
 import { Effect } from "effect"
 
 export const CrossProcess = Effect.gen(function* () {

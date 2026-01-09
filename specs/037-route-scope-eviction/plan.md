@@ -26,7 +26,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM），Node.js 22.x  
-**Primary Dependencies**: `effect` v3、`@logix/core`、`@logix/react`  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`  
 **Storage**: N/A  
 **Testing**: Vitest（`vitest run`）+ `@testing-library/react` + jsdom（React 19）  
 **Target Platform**: 浏览器（React 适配）+ Node.js（测试）  
@@ -37,7 +37,7 @@
 **Constraints**:
   - strict 默认：imports-scope/多实例语义不得隐式回退到全局兜底（不引入任何进程级正确性依赖）。
   - 诊断事件必须 Slim 且可序列化；默认关闭时接近零成本。
-  - `@logix/react` 对外导出不得暴露 `./internal/*`；新增能力必须通过 public submodule 导出。
+  - `@logixjs/react` 对外导出不得暴露 `./internal/*`；新增能力必须通过 public submodule 导出。
 **Scale/Scope**: 单路由内 0–50 个潜在弹框模块；同一业务 scope 内的实例数量在可控范围内（避免“无边界全局缓存”）。
 
 ## Constitution Check
@@ -54,8 +54,8 @@
   - 对外文档：`apps/docs/content/docs/guide/recipes/react-integration.md`、`apps/docs/content/docs/guide/recipes/route-scope-modals.md`。
   - 运行时 SSoT（按需补齐）：`.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`。
 - Effect/Logix contracts 变更：
-  - 新增 `@logix/react` 的 Scope 工具（public API）。
-  - 新增 `@logix/core` 的 ScopeRegistry（按 runtime tree 隔离；不作为业务日常入口，仅支撑高级/实验性 Bridge）。
+  - 新增 `@logixjs/react` 的 Scope 工具（public API）。
+  - 新增 `@logixjs/core` 的 ScopeRegistry（按 runtime tree 隔离；不作为业务日常入口，仅支撑高级/实验性 Bridge）。
 - Deterministic identity：
   - 不引入随机/时间默认；scopeId/key 由业务提供并应稳定。
 - Transaction boundary：
@@ -101,7 +101,7 @@ apps/docs/content/docs/                                           # 用户文档
 - `quickstart.md`：给出“路由 scope + 弹框 keepalive”最小演练（不引入显式 eviction/clear）。
 - 用户文档：`apps/docs/content/docs/guide/recipes/route-scope-modals.md`（甜点区/高级区 + 反例与排错）。
 
-### Phase 1：`@logix/react` Scope 工具（实现与测试）
+### Phase 1：`@logixjs/react` Scope 工具（实现与测试）
 
 - 提供一个 public API：输入 Host ModuleImpl（+ defaults），产出 `{ Provider, use, useImported, Context }`。
 - Provider 行为：
@@ -114,8 +114,8 @@ apps/docs/content/docs/                                           # 用户文档
 
 ### Phase 2：（可选）跨 React 子树复用同一 scope（Bridge，实验性）
 
-- 在 `@logix/core` 提供 ScopeRegistry（按 runtime tree 隔离）。
-- 在 `@logix/react` 提供 Bridge：通过 scopeId 从 registry 取回 runtime + module runtime，并在另一棵子树重新提供 RuntimeProvider 与模块句柄。
+- 在 `@logixjs/core` 提供 ScopeRegistry（按 runtime tree 隔离）。
+- 在 `@logixjs/react` 提供 Bridge：通过 scopeId 从 registry 取回 runtime + module runtime，并在另一棵子树重新提供 RuntimeProvider 与模块句柄。
 - 风险与验收：
   - 必须补齐单测（注册/释放不泄漏、并发重入安全、缺注册时报错明确）；
   - 文档只能放在“高级区”，并明确其前提条件与推荐场景。

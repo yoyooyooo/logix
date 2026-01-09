@@ -1,4 +1,4 @@
-# `@logix/core` · Patterns（渐进式披露）
+# `@logixjs/core` · Patterns（渐进式披露）
 
 > **定位**：可复用写法与边界模式（按需阅读）。
 

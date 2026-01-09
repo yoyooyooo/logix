@@ -13,13 +13,13 @@
 2. **子系统可替换（Runtime Services）**：把调度/事务执行/dispatch/traits/诊断等拆成最小可替换契约，支持“按模块实例”覆写（默认 strict、零泄漏）。
 3. **内部 hooks 规范化（RuntimeInternals Runtime Service）**：将 runtime 上的隐式 `__*` 协作协议收敛为明确的内部契约与访问入口；仓库内集成方不再依赖散落的 magic 字段（必要时保留薄 shim 过渡）。
 4. **平台试运行底座（可 Mock、一次跑出证据/IR）**：支撑平台侧在浏览器/Node 环境做“受控试运行”，按会话/实例注入 Mock/覆写并导出可机器处理证据与关键 IR 摘要，且同进程并行不串扰。
-5. **全链路迁移与去耦（高 ROI）**：将 BoundApiRuntime、trait-lifecycle、state-trait、`@logix/react` strict imports 解析等内部消费方统一迁移到内部契约入口，避免“只改 ModuleRuntime 但周边仍靠 magic 字段”的半吊子结构。
+5. **全链路迁移与去耦（高 ROI）**：将 BoundApiRuntime、trait-lifecycle、state-trait、`@logixjs/react` strict imports 解析等内部消费方统一迁移到内部契约入口，避免“只改 ModuleRuntime 但周边仍靠 magic 字段”的半吊子结构。
 6. **性能与诊断门槛固化**：复用现有 perf runner（014/017/019），并为“服务化重构”补齐可解释的配置来源/生效策略证据（contracts‑first），确保 off 近零成本且不回退。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.2（ESM）  
-**Primary Dependencies**: `effect` v3（^3.19.8）、pnpm workspace（`@logix/*`）、Vitest  
+**Primary Dependencies**: `effect` v3（^3.19.8）、pnpm workspace（`@logixjs/*`）、Vitest  
 **Storage**: N/A（内存态：`SubscriptionRef`/`PubSub`/`Queue`/`FiberRef`）  
 **Testing**: Vitest（`vitest run`）；Effect-heavy 用例优先 `@effect/vitest`  
 **Target Platform**: Node.js 20+（脚本/测试/基线；当前本地 v22.21.1）+ 现代浏览器（React/Devtools）  
@@ -36,7 +36,7 @@
 - 仓库内“内部 hooks/内部协作协议”必须可被封装、可替换、可 Mock，并在并行试运行场景下保持隔离（避免全局单例/全局可变污染试跑结果）
 - RunSession 隔离必须覆盖 once 去重/序列号分配器等内部可变状态，避免跨会话污染导致证据缺失或不可解释差异
 - 资源释放机制必须显式：实例级资源统一绑定到 Effect `Scope`，通过 `Layer.scoped` / `Effect.acquireRelease` 注册 finalizer；实例销毁时必须自动释放队列/注册表/缓存并注销索引，避免跨实例泄漏
-**Scale/Scope**: 触及 runtime 核心热路径与装配路径；主要落点在 `packages/logix-core/src/internal/runtime/**` 与其直接依赖（traits/debug/effectop/task-runner），并按需联动 `@logix/react` 的消费侧语义（仅当保持对外行为需要）
+**Scale/Scope**: 触及 runtime 核心热路径与装配路径；主要落点在 `packages/logix-core/src/internal/runtime/**` 与其直接依赖（traits/debug/effectop/task-runner），并按需联动 `@logixjs/react` 的消费侧语义（仅当保持对外行为需要）
 
 ## Constitution Check
 
@@ -134,7 +134,7 @@ packages/logix-react/src/internal/resolveImportedModuleRef.ts
 ### 推荐迁移顺序（与 tasks 对齐）
 
 1. 先落地 Foundation：T004~T010（统一入口 + shim 迁移策略 + RunSession/EvidenceCollector 底座）。
-2. 再推进全链路消费方迁移：BoundApiRuntime → trait-lifecycle/state-trait → `@logix/react`（每段迁移必须带回归用例）。
+2. 再推进全链路消费方迁移：BoundApiRuntime → trait-lifecycle/state-trait → `@logixjs/react`（每段迁移必须带回归用例）。
 3. 尽早启用门禁：T026（禁止新增 `__*` 直读，白名单仅覆盖 shim 文件）。
 4. 收尾清理：T043（收窄白名单与遗留 `__*` 字段，仅保留被证明仍必要的 debug-only 能力）。
 5. 平台侧接入：T027~T038（TrialRun + Reflection + contracts/schema 校验 + 并行会话隔离）。

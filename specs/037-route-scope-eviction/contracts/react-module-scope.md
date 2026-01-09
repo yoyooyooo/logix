@@ -3,11 +3,11 @@
 **Branch**: `037-route-scope-eviction`  
 **Source Spec**: `specs/037-route-scope-eviction/spec.md`
 
-> 本契约描述 `@logix/react` 对外提供的“Scope 工具”能力：它如何把 Host 实例暴露给深层组件、如何合并 options、以及缺 Provider/缺注册时的错误口径。
+> 本契约描述 `@logixjs/react` 对外提供的“Scope 工具”能力：它如何把 Host 实例暴露给深层组件、如何合并 options、以及缺 Provider/缺注册时的错误口径。
 
 ## 1) API Surface
 
-`@logix/react` MUST 提供一个稳定的 public API（不得依赖 `./internal/*`）用于创建 scope 组合件：
+`@logixjs/react` MUST 提供一个稳定的 public API（不得依赖 `./internal/*`）用于创建 scope 组合件：
 
 - 输入：某个 Host `ModuleImpl`（以及可选 defaults）
 - 输出：`{ Provider, use, useImported, Context }`（可选：`Bridge`）
@@ -66,7 +66,7 @@ Bridge 用于“跨 React 子树 / 独立 root”复用同一个 scope。
 
 前提条件：
 
-- 当前 runtime tree 的 Env 中 MUST 提供 ScopeRegistry（由 `@logix/core` 提供）。
+- 当前 runtime tree 的 Env 中 MUST 提供 ScopeRegistry（由 `@logixjs/core` 提供）。
 - 某处 Provider（通常是路由/页面边界）已用同一个 `scopeId` 注册过该 scope 的 runtime + module runtime。
 
 行为：

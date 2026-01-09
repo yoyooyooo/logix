@@ -17,7 +17,7 @@ Query 的核心不是“提交草稿”，而是：
 
 实现选择（用于验证“集成第三方包”的能力）：
 
-- `@logix/query` **内部使用 TanStack Query**（建议基于 `@tanstack/query-core` 作为内核，React 侧用 `@tanstack/react-query` 适配层），由其负责缓存、in-flight 去重、staleTime/gcTime 等缓存策略；
+- `@logixjs/query` **内部使用 TanStack Query**（建议基于 `@tanstack/query-core` 作为内核，React 侧用 `@tanstack/react-query` 适配层），由其负责缓存、in-flight 去重、staleTime/gcTime 等缓存策略；
 - Logix Trait/Runtime 不重复实现缓存，但仍负责：
   - keySchema 规范化 + keyHash（稳定可回放、可比较）；
   - 触发语义（onMount/onKeyChange/manual）与并发策略（switch/exhaust）；
@@ -29,13 +29,13 @@ Query **不是**：
 - 一套新的运行时（仍然回落到 StateTrait 的 `source + computed/check`）；
 - 一套与 Resource 体系并行的“自建缓存/自建请求层”。
 
-一句话：`@logix/query` 是 **Resource/StateTrait 的领域糖 + 最佳实践协议**，与 `@logix/form` 平行。
+一句话：`@logixjs/query` 是 **Resource/StateTrait 的领域糖 + 最佳实践协议**，与 `@logixjs/form` 平行。
 
 ---
 
 ## 2. API Surface（最小集合）
 
-### 2.1 Kernel（归属 `@logix/core`）
+### 2.1 Kernel（归属 `@logixjs/core`）
 
 Query 与 Form 共享：
 
@@ -48,7 +48,7 @@ Query 与 Form 共享：
 > - `computed/check`：从快照派生 UI 视图或错误
 > - `TraitLifecycle`：把 UI 事件桥接为触发/刷新/取消/清理
 
-### 2.2 Query 领域包（归属 `@logix/query`）
+### 2.2 Query 领域包（归属 `@logixjs/query`）
 
 建议的最小表面积（与 Form 对齐但不共享语义）：
 
@@ -142,4 +142,4 @@ Query 与 Form 共享：
 
 ## 7. TanStack Query 集成契约（见外链）
 
-- `@logix/query` 与 TanStack Query 的职责边界与映射：`specs/004-trait-bridge-form/references/05-query-tanstack-integration.md`
+- `@logixjs/query` 与 TanStack Query 的职责边界与映射：`specs/004-trait-bridge-form/references/05-query-tanstack-integration.md`

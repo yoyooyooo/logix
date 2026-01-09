@@ -3,7 +3,7 @@
 `runTest` 是一个薄封装：提供 `TestContext` 后调用 `Effect.runPromise`。
 
 ```ts
-import { runTest } from "@logix/test"
+import { runTest } from "@logixjs/test"
 import { Effect, TestClock } from "effect"
 
 const program = Effect.gen(function* () {

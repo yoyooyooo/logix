@@ -33,14 +33,14 @@ version: 1
 
 > 建议在“已经定位到改动包”的前提下使用；否则直接跑 workspace 级 `pnpm test` 更稳。
 
-- `@logix/core`：`pnpm -C packages/logix-core typecheck`、`pnpm -C packages/logix-core typecheck:test`、`pnpm -C packages/logix-core test`
-- `@logix/react`：`pnpm -C packages/logix-react typecheck`、`pnpm -C packages/logix-react test`
-- `@logix/devtools-react`：`pnpm -C packages/logix-devtools-react typecheck:test`、`pnpm -C packages/logix-devtools-react test`
-- `@logix/sandbox`：`pnpm -C packages/logix-sandbox typecheck:test`、`pnpm -C packages/logix-sandbox test`
-- `@logix/form`：`pnpm -C packages/form typecheck:test`、`pnpm -C packages/form test`
-- `@logix/query`：`pnpm -C packages/query typecheck:test`、`pnpm -C packages/query test`
-- `@logix/i18n`：`pnpm -C packages/i18n typecheck:test`、`pnpm -C packages/i18n test`
-- `@logix/domain`：`pnpm -C packages/domain typecheck:test`、`pnpm -C packages/domain test`
+- `@logixjs/core`：`pnpm -C packages/logix-core typecheck`、`pnpm -C packages/logix-core typecheck:test`、`pnpm -C packages/logix-core test`
+- `@logixjs/react`：`pnpm -C packages/logix-react typecheck`、`pnpm -C packages/logix-react test`
+- `@logixjs/devtools-react`：`pnpm -C packages/logix-devtools-react typecheck:test`、`pnpm -C packages/logix-devtools-react test`
+- `@logixjs/sandbox`：`pnpm -C packages/logix-sandbox typecheck:test`、`pnpm -C packages/logix-sandbox test`
+- `@logixjs/form`：`pnpm -C packages/form typecheck:test`、`pnpm -C packages/form test`
+- `@logixjs/query`：`pnpm -C packages/query typecheck:test`、`pnpm -C packages/query test`
+- `@logixjs/i18n`：`pnpm -C packages/i18n typecheck:test`、`pnpm -C packages/i18n test`
+- `@logixjs/domain`：`pnpm -C packages/domain typecheck:test`、`pnpm -C packages/domain test`
 
 注意：
 

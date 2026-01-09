@@ -14,7 +14,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x（ESM）+ Node.js 20+  
-**Primary Dependencies**: `effect` v3、`@logix/core`（Runtime/Flow/Bound/EffectOp）、`@logix/react`/`@logix-devtools-react`（用于端到端验收）  
+**Primary Dependencies**: `effect` v3、`@logixjs/core`（Runtime/Flow/Bound/EffectOp）、`@logixjs/react`/`@logixjs/devtools-react`（用于端到端验收）  
 **Storage**: N/A（内存运行时，不引入持久化）  
 **Testing**: Vitest（含 `@effect/vitest` 风格用例），并以 `pnpm typecheck`、`pnpm lint`、`pnpm test --filter logix-core` 作为质量门  
 **Target Platform**: Node.js 20+（开发/测试），现代浏览器（用于示例与 Devtools 观测验收）  
@@ -91,7 +91,7 @@
 
 实施要点：
 
-- 在 `@logix/core` 的运行时内核提供唯一的 “runOperation” 入口；所有边界执行点只能调用它；
+- 在 `@logixjs/core` 的运行时内核提供唯一的 “runOperation” 入口；所有边界执行点只能调用它；
 - 该入口负责：补齐 meta（moduleId/instanceId/txnId/linkId/trace...）、串行化（如适用）、并执行 middleware stack（空 stack 直通）；
 - 任何直接 `Effect.run*`、直接执行用户 effect 的路径都视为 bug（除纯构造/纯数据函数外）。
 

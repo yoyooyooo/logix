@@ -1,40 +1,40 @@
-# Research: Query 收口到 `@logix/query`（与 Form 同形）
+# Research: Query 收口到 `@logixjs/query`（与 Form 同形）
 
 **Date**: 2025-12-23  
 **Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/026-unify-query-domain/spec.md`  
-**Goal**: 统一 Query 领域入口与协议，消除 `@logix/core` 中的历史占位实现，让 Query 只以 `@logix/query` 的“领域包形状”存在，并给出可迁移、可测量、可诊断的落地路径。
+**Goal**: 统一 Query 领域入口与协议，消除 `@logixjs/core` 中的历史占位实现，让 Query 只以 `@logixjs/query` 的“领域包形状”存在，并给出可迁移、可测量、可诊断的落地路径。
 
-## Decision 1：删除 `@logix/core/Middleware/Query`，Query 入口只保留 `@logix/query`
+## Decision 1：删除 `@logixjs/core/Middleware/Query`，Query 入口只保留 `@logixjs/query`
 
-**Decision**: 将 `packages/logix-core/src/Middleware.Query.ts`（以及 `packages/logix-core/package.json` 的 `./Middleware/Query` 导出）视为历史占位入口并删除；仓库内所有 Query 相关使用（示例/文档/脚手架/测试）统一迁移到 `@logix/query`。
+**Decision**: 将 `packages/logix-core/src/Middleware.Query.ts`（以及 `packages/logix-core/package.json` 的 `./Middleware/Query` 导出）视为历史占位入口并删除；仓库内所有 Query 相关使用（示例/文档/脚手架/测试）统一迁移到 `@logixjs/query`。
 
 **Rationale**:
 
-- 目前存在两套不兼容的注入 Tag 与语义：历史 `@logix/core/Middleware/Query` 的注入口 vs `@logix/query` 的 `Query.Engine`，会导致“同名 Query，但不是同一条协议”的隐性踩坑。
-- `@logix/query` 已形成明确的领域包边界与契约（参考 `specs/007-unify-trait-system/contracts/query.md`）：module factory + controller 句柄扩展 + traits 降解 + 外部引擎注入 + 失效事件化。
-- `@logix/core/Middleware/Query` 的行为包含“静默退化”路径，容易在缺少注入时让缓存/去重语义失效且不易诊断；与“显式注入/可解释配置错误”的宪章倾向冲突。
+- 目前存在两套不兼容的注入 Tag 与语义：历史 `@logixjs/core/Middleware/Query` 的注入口 vs `@logixjs/query` 的 `Query.Engine`，会导致“同名 Query，但不是同一条协议”的隐性踩坑。
+- `@logixjs/query` 已形成明确的领域包边界与契约（参考 `specs/007-unify-trait-system/contracts/query.md`）：module factory + controller 句柄扩展 + traits 降解 + 外部引擎注入 + 失效事件化。
+- `@logixjs/core/Middleware/Query` 的行为包含“静默退化”路径，容易在缺少注入时让缓存/去重语义失效且不易诊断；与“显式注入/可解释配置错误”的宪章倾向冲突。
 
 **Alternatives considered**:
 
-- 保留 `@logix/core/Middleware/Query`，并在内部 re-export 到 `@logix/query`：仍会留下第二条入口与历史心智负担，且容易在迁移过程中出现“到底该 import 哪个”的分裂。
-- 将其改为 `@logix/core/internal/*`：仍然会被示例/文档误用；收口目标明确要求“Query 相关只在 `@logix/query`”。
+- 保留 `@logixjs/core/Middleware/Query`，并在内部 re-export 到 `@logixjs/query`：仍会留下第二条入口与历史心智负担，且容易在迁移过程中出现“到底该 import 哪个”的分裂。
+- 将其改为 `@logixjs/core/internal/*`：仍然会被示例/文档误用；收口目标明确要求“Query 相关只在 `@logixjs/query`”。
 
-## Decision 2：`@logix/query` 对外形状对齐 `@logix/form`（推荐 `import * as Query from "@logix/query"`）
+## Decision 2：`@logixjs/query` 对外形状对齐 `@logixjs/form`（推荐 `import * as Query from "@logixjs/query"`）
 
-**Decision**: 调整 `@logix/query` 的 public barrel，使其与 `@logix/form` 同构：
+**Decision**: 调整 `@logixjs/query` 的 public barrel，使其与 `@logixjs/form` 同构：
 
-- 推荐使用：`import * as Query from "@logix/query"`
+- 推荐使用：`import * as Query from "@logixjs/query"`
 - 以同名导出提供 `Query.make` / `Query.traits` / `Query.Engine`（Tag，含 `layer/middleware`）/ `Query.TanStack`（命名空间式组织），其中 `Query.make` 返回“模块资产”，并通过 ModuleHandle 扩展暴露默认 `controller`。
 
 **Rationale**:
 
-- Form 已在仓库内形成稳定心智（文档/示例大量使用 `import * as Form from "@logix/form"`）；Query 作为对照领域应尽量复用同一模式，降低跨领域学习成本（spec FR-003 / SC-003）。
+- Form 已在仓库内形成稳定心智（文档/示例大量使用 `import * as Form from "@logixjs/form"`）；Query 作为对照领域应尽量复用同一模式，降低跨领域学习成本（spec FR-003 / SC-003）。
 - 脚手架（`scripts/logix-codegen.ts`）可采用同构的 import 形状生成代码，减少差异化分支与认知负担。
 - “同形”的边界需要被写清：仅对齐 **领域包外形**（module factory + controller 句柄扩展 + building blocks 组织），不强求 Query 的 authoring DSL 去类比 Form 的 `from/$.rules/derived`（问题域不同，强求会增加 API 表面积与概念数量）。
 
 **Alternatives considered**:
 
-- 维持当前 `import { Query } from "@logix/query"` 的对象式入口：与 Form 不同构，且容易在“收口后只剩一个入口”的目标下继续产生二义性（Form 是 namespace import，Query 是 named import）。
+- 维持当前 `import { Query } from "@logixjs/query"` 的对象式入口：与 Form 不同构，且容易在“收口后只剩一个入口”的目标下继续产生二义性（Form 是 namespace import，Query 是 named import）。
 - 同时支持两种形状：会让团队与文档出现两套写法，难以收敛“唯一推荐路径”。
 
 ## Decision 3：只在启用引擎接管点时强制引擎（避免静默退化）
@@ -63,11 +63,11 @@
 **Rationale**:
 
 - core 的职责是提供通用内核（StateTrait/Resource/EffectOp/Debug），不应绑定 Query 领域入口或其 DI Tag。
-- 将测试落到 `@logix/query` 可避免循环依赖，也更贴合“领域包应能降解到同一条 kernel 主线”的验收方式。
+- 将测试落到 `@logixjs/query` 可避免循环依赖，也更贴合“领域包应能降解到同一条 kernel 主线”的验收方式。
 
 **Alternatives considered**:
 
-- 保留 core 测试并改为使用 `@logix/query`：会让 core 的测试依赖领域包，破坏分层与包拓扑（core 不应依赖 query）。
+- 保留 core 测试并改为使用 `@logixjs/query`：会让 core 的测试依赖领域包，破坏分层与包拓扑（core 不应依赖 query）。
 
 ## Decision 5：为本特性新增专用 perf 基线脚本与证据落点
 
@@ -89,7 +89,7 @@
 
 **Decision**:
 
-- `@logix/query` 对外只暴露一个引擎入口：`Query.Engine`（Effect Context.Tag）。
+- `@logixjs/query` 对外只暴露一个引擎入口：`Query.Engine`（Effect Context.Tag）。
 - 引擎注入与接管能力统一挂在 `Query.Engine.*` 上：
   - `Query.Engine.layer(engine)`：注入外部引擎服务；
   - `Query.Engine.middleware(config?)`：引擎接管点（EffectOp middleware）。

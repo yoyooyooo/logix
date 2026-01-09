@@ -54,7 +54,7 @@ export type Middleware<Sh, R, A, E> = (
 整体语义：
 
 - 安全约束作用在“每一次边界执行”上，任何入口都不可绕过总线；
-- 守卫拒绝（Guard Reject）以 Error 通道表现；推荐返回标准化的 `OperationRejected`（见 `@logix/core/EffectOp`），且在用户 Effect 运行前生效，确保“显式失败 + 无副作用”；
+- 守卫拒绝（Guard Reject）以 Error 通道表现；推荐返回标准化的 `OperationRejected`（见 `@logixjs/core/EffectOp`），且在用户 Effect 运行前生效，确保“显式失败 + 无副作用”；
 - 纯观测类能力（如 DebugObserver）可通过局部策略 `meta.policy.disableObservers` 关闭，但守卫不可被局部关闭。
 
 ---

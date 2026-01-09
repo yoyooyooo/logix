@@ -9,7 +9,7 @@
 
 - **全套切换（Full Cutover）**：在“宣称可切默认/准备切默认”的语义下，运行时的 Kernel Contract 覆盖范围内 **所有** serviceId 都必须绑定到 `core-ng` 的实现，且 **禁止 fallback** 到 builtin/core。
 - **fallback**：当请求 `core-ng` 但某个 serviceId 的实现缺失/不达标，运行时退回 builtin/core 的行为；在 `trial-run/test/dev` 可允许（并必须证据化），但在 Full Cutover Gate 下必须视为失败。
-- **Kernel Contract**：由 `specs/045-dual-kernel-contract/` 固化的“上层只依赖 `@logix/core`”的可替换内核契约与证据形态。
+- **Kernel Contract**：由 `specs/045-dual-kernel-contract/` 固化的“上层只依赖 `@logixjs/core`”的可替换内核契约与证据形态。
 - **证据门禁**：任何触及核心路径的变更必须以 `$logix-perf-evidence` 产出 Node + ≥1 条 headless browser 的 before/after/diff，并用结构化证据阻断负优化；证据采集必须隔离（独立 `git worktree/单独目录`），混杂工作区结果仅作线索不得用于宣称 Gate PASS。
 
 ## Related (read-only references)
@@ -31,18 +31,18 @@
 ### Session 2025-12-28
 
 - Q: `$logix-perf-evidence` 的采集隔离要求怎么定？ → A: 必须隔离：在独立 `git worktree/单独目录` 中采集；混杂工作区结果只能作为线索，不得作为 Gate 达标证据。
-- Q: Full Cutover 的 coverage matrix（必选 serviceId 列表）SSoT 落点？ → A: 以代码为 SSoT：在 `@logix/core`（优先 `packages/logix-core/src/Kernel.ts`）导出读取入口；测试/CI/harness 只读此处；spec/docs 仅解释口径。
+- Q: Full Cutover 的 coverage matrix（必选 serviceId 列表）SSoT 落点？ → A: 以代码为 SSoT：在 `@logixjs/core`（优先 `packages/logix-core/src/Kernel.ts`）导出读取入口；测试/CI/harness 只读此处；spec/docs 仅解释口径。
 - Q: Full Cutover 的 coverage 是否要求全覆盖 Kernel Contract 的可替换 services？ → A: 要求全覆盖：coverage 必须等于 Kernel Contract 当前所有可替换 `serviceId`；新增 `serviceId` 必须同步纳入，否则视为 Gate 失真。
 - Q: Gate 失败输出的最小可序列化证据锚点必须包含哪些字段？ → A: `kernelId + missingServiceIds + moduleId/instanceId/txnSeq`（完整 runtimeServicesEvidence 仅 light/full）。
 - Q: Full Cutover Gate 若在装配期就失败（缺 serviceId），此时可能还没有真实 txnSeq；最小失败锚点里的 txnSeq 怎么定义？ → A: 允许 `txnSeq=0`（约定 `0=assembly`），仍满足最小锚点字段集合。
-- Q: 若引入“允许差异白名单”（contract diff allowlist），其单一事实源（SSoT）落点？ → A: 以代码为 SSoT：在 `@logix/core` 导出读取入口；测试/CI/harness 只读此处；spec/docs 仅解释口径。
+- Q: 若引入“允许差异白名单”（contract diff allowlist），其单一事实源（SSoT）落点？ → A: 以代码为 SSoT：在 `@logixjs/core` 导出读取入口；测试/CI/harness 只读此处；spec/docs 仅解释口径。
 - Q: 当 diff 命中 allowlist 时，Full Cutover Gate 结果如何表达？ → A: 仍算 PASS，但输出 `allowedDiffs` 的最小摘要（Slim/可序列化），用于审计与复核。
-- Q: Full Cutover Gate 的运行入口最小要求？ → A: 提供 `@logix/core` 的一键入口（例如 `Reflection.verifyFullCutoverGate`），CI/TrialRun/Agent 统一调用。
+- Q: Full Cutover Gate 的运行入口最小要求？ → A: 提供 `@logixjs/core` 的一键入口（例如 `Reflection.verifyFullCutoverGate`），CI/TrialRun/Agent 统一调用。
 - Q: Full Cutover Gate 的默认 diagnostics 档位要求？ → A: 必须在 `diagnostics=off` 下也可运行并给出最小结果（Slim/可序列化）；light/full 仅用于补充细节。
 - Q: contract diff allowlist 的粒度/作用域如何定义？ → A: allowlist 仅允许 “op meta 的部分 key” 差异（以 `metaKey` 作为条目）；任何 op 增删、模块/种类/名称变化、以及非 allowlist metaKey 的差异都必须 FAIL（避免掩盖语义漂移）。
 - Q: perf evidence 的 suites/budgets 的单一事实源（SSoT）怎么定？ → A: 统一以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT（`priority/suites/budgets`），并以 `matrixId+matrixHash` 保证可比性；spec/plan 只声明“至少覆盖 P1 + profile=default”。
 - Q: perf evidence 的 profile 门槛是否需要定死？ → A: 需要。Gate PASS 的硬结论至少要求 `profile=default`；`soak` 作为更稳的可选复核档；`quick` 仅作迭代线索，不得用于宣称达标。
-- Q: allowlist 的 SSoT 落点与结构如何定义？ → A: SSoT=代码：在 `@logix/core` 导出读取入口（例如 `KernelContractMetaAllowlist: ReadonlyArray<{ metaKey; reason? }>`）；验证器仅用它限制 op.meta 的可比较 key（避免 spec/CI 漂移）。
+- Q: allowlist 的 SSoT 落点与结构如何定义？ → A: SSoT=代码：在 `@logixjs/core` 导出读取入口（例如 `KernelContractMetaAllowlist: ReadonlyArray<{ metaKey; reason? }>`）；验证器仅用它限制 op.meta 的可比较 key（避免 spec/CI 漂移）。
 - Q: Gate PASS 是否允许 `allowedDiffs` 非空（命中 allowlist）？ → A: 允许仍算 PASS，但必须在结论/quickstart 中显式标注“带 allowlist 通过”，并输出 `allowedDiffs` 最小摘要供人工复核与审计。
 - Q: allowlist 的默认值策略是什么？ → A: 默认禁用（空 allowlist）；仅在明确需要时才显式开启并逐条记录 reason（避免无意放行）。
 
@@ -104,10 +104,10 @@
 ### Functional Requirements
 
 - **FR-001**: 系统 MUST 定义并实现 Full Cutover Gate：在 gate 模式下请求 `core-ng` 时，Kernel Contract 覆盖范围内任何 serviceId 的 fallback 都必须导致结构化失败（不得静默退回）。
-- **FR-002**: 系统 MUST 提供“覆盖矩阵（coverage matrix）”的单一事实源（SSoT=代码）：在 `@logix/core` 导出可读取入口（优先 `packages/logix-core/src/Kernel.ts`），供对照验证 harness 与测试读取；coverage MUST 等于 Kernel Contract 当前所有可替换 `serviceId`（新增/扩展必须同步纳入，避免并行真相源与漏判）。
+- **FR-002**: 系统 MUST 提供“覆盖矩阵（coverage matrix）”的单一事实源（SSoT=代码）：在 `@logixjs/core` 导出可读取入口（优先 `packages/logix-core/src/Kernel.ts`），供对照验证 harness 与测试读取；coverage MUST 等于 Kernel Contract 当前所有可替换 `serviceId`（新增/扩展必须同步纳入，避免并行真相源与漏判）。
 - **FR-003**: 系统 MUST 基于 045 的对照验证 harness，提供 core vs core-ng 的契约一致性验证入口；差异报告必须是机器可读、可序列化，并带稳定锚点（instanceId/txnSeq/opSeq）。
 - **FR-004**: 系统 MUST 在证据中可解释“请求的 kernelId”与“实际 bindings（serviceId→implId）”以及是否发生 fallback；Full Cutover Gate 的 PASS/FAIL 必须可被证据复核（不依赖日志），FAIL 至少包含 `kernelId + missingServiceIds + moduleId/instanceId/txnSeq` 的最小可序列化锚点；若在装配期失败，则 `txnSeq=0` 代表 assembly。
-- **FR-005**: 系统 MUST 明确允许差异的口径（如需白名单）：允许差异必须显式登记并可审计；若引入 allowlist，则其 SSoT MUST 为代码（`@logix/core` 导出读取入口，供测试/CI/harness 读取），避免并行真相源；allowlist 仅允许 “op meta 的部分 key” 差异（以 `metaKey` 为条目），不得放行 op 增删/重排、以及任何结构性差异；命中 allowlist 时 Gate 仍可 PASS，但必须在结果中输出 `allowedDiffs` 的最小摘要（Slim/可序列化）；禁止差异（语义/锚点漂移/事务边界破坏）必须导致失败。
+- **FR-005**: 系统 MUST 明确允许差异的口径（如需白名单）：允许差异必须显式登记并可审计；若引入 allowlist，则其 SSoT MUST 为代码（`@logixjs/core` 导出读取入口，供测试/CI/harness 读取），避免并行真相源；allowlist 仅允许 “op meta 的部分 key” 差异（以 `metaKey` 为条目），不得放行 op 增删/重排、以及任何结构性差异；命中 allowlist 时 Gate 仍可 PASS，但必须在结果中输出 `allowedDiffs` 的最小摘要（Slim/可序列化）；禁止差异（语义/锚点漂移/事务边界破坏）必须导致失败。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 

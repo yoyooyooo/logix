@@ -10,7 +10,7 @@
 示例（概念性）：
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 const manifest = Logix.Reflection.extractManifest(MyModule, {
   budgets: { maxBytes: 64 * 1024 },
@@ -30,7 +30,7 @@ const manifest = Logix.Reflection.extractManifest(MyModule, {
 ### 3.1 定义：`actions` 使用 schema map（定义点）
 
 ```ts
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 
 export const Counter = Logix.Module.make('Counter', {

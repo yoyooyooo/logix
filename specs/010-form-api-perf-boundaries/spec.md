@@ -35,7 +35,7 @@
 
 ### Session 2025-12-18
 
-- Q: 联动/派生是否必须通过 Form 领域包装声明（而非业务直接写 StateTrait） → A: 是（业务侧只写 `@logix/form`；Form 领域包装可完全降解到 StateTraitSpec/IR）
+- Q: 联动/派生是否必须通过 Form 领域包装声明（而非业务直接写 StateTrait） → A: 是（业务侧只写 `@logixjs/form`；Form 领域包装可完全降解到 StateTraitSpec/IR）
 - Q: `Form.Trait` 与 `StateTrait` 的 API 形状是否保持一致 → A: 一致（Form 侧薄包装对齐形状；允许在 form 层附加能力但不引入第二套 IR）
 - Q: 组件外/Logic 内如何触发 Form 校验（对标 RHF `trigger`） → A: 默认动作语义必须在 `$.use(Form.module)` 返回的 handle 上暴露为 `controller.validate/validatePaths`（React/Logic 一致的唯一入口）；内部可降解为 Module actions（如 `actions.validate/validatePaths`），actions 视为实现细节
 - Q: 校验触发策略是否对齐 RHF（`validateOn/reValidateOn`） → A: 对齐；`validateOn` 默认 `["onSubmit"]`（首提前不自动校验），`reValidateOn` 默认 `["onChange"]`（首提后按 change 触发 scoped validate；可选 onBlur）
@@ -48,7 +48,7 @@
 - Q: rowIdStore 的 `$rowId` 是否要求去随机化 → A: 是（禁止 `Date.now/Math.random`；使用 per-instance 单调序号；口径对齐 `instanceId/txnSeq/opSeq/eventSeq` 的稳定标识生成）
 - Q: 是否提供 `Form.Rule.field/fields` 作为规则挂载语法糖 → A: 是（规则包保持“无挂载点”以便复用；通过 `field(valuePath, ruleGroup)` 绑定展示锚点，再用 `fields(...decls | decl[])` 扁平化合成 `rules`；重复 valuePath 稳定失败；不在 ruleGroup 内重复声明 path/fieldName 以避免双真相源）
 - Q: Trait 的 `computed.get` 是否升级为 deps-as-args（不再暴露 `(state)=>`） → A: 是（业务侧 `get(...depsValues)` 仅接收按 deps 注入的参数，禁止读取未声明依赖；Form.Trait 与 StateTrait 形状一致；内部允许降解为 `derive(state)` 但 derive 的读集必须等于 deps，避免隐式依赖与不可诊断漂移）
-- Q: Form 消费 Query/外部快照的合规路径 → A: 010 先只固化“模块内快照 + local deps”（推荐：`source`/Query traits 将 ResourceSnapshot 写回到本模块 `ui.*`/显式槽位）；跨模块显式投影与跨模块缓存/in-flight 去重后置到 `StateTrait.source`/`@logix/query` 跑道；禁止在 trait/rule 内直接访问全局 store/隐式 Context
+- Q: Form 消费 Query/外部快照的合规路径 → A: 010 先只固化“模块内快照 + local deps”（推荐：`source`/Query traits 将 ResourceSnapshot 写回到本模块 `ui.*`/显式槽位）；跨模块显式投影与跨模块缓存/in-flight 去重后置到 `StateTrait.source`/`@logixjs/query` 跑道；禁止在 trait/rule 内直接访问全局 store/隐式 Context
 - Q: 同路径 value 变更时是否自动清理 Schema 错误 → A: 是（自动清理对应 Schema 错误，不重跑 Schema）
 - Q: SC-002 的验收诊断档位 → A: 仅在 `Diagnostics Level=off` 下验收；`light|full` 只验收可量化/可解释的 overhead（对齐 NFR-002/NFR-005）
 
@@ -153,7 +153,7 @@
   - `validateOn/reValidateOn` 与 `deps` 正交：`deps` 决定依赖图/最小执行集，`validateOn` 决定当前自动阶段是否执行该 rule。
 - **FR-007d**: Rule 的返回值必须与其 scope 对齐（row-scope 返回行内 patch；list-scope 返回 `$list/rows[]` 结构化 patch），不得在 rule 中返回任意 valuePath→error 的 path-map；如需命令式按 valuePath 写入错误，必须通过 controller API（例如 `setError/clearErrors`）完成。
 - **FR-007e**: 系统必须提供低成本的表单级衍生状态订阅能力（例如 `useFormState(form, selector)` 或等价形态），以便 UI 以 selector 订阅 `canSubmit/isSubmitting/isValid/isDirty/isPristine/submitCount` 等最小视图；selector 的入参必须是引用稳定的只读 `FormView`（可缓存/结构共享），禁止业务在 UI 层扫描 values/errors 大树计算这些衍生状态（避免渲染 churn 与不可诊断的性能退化）。
-- **FR-007f**: 系统必须提供 Form 领域的 Trait 包装（`Form.Trait.*`），且其 API 形状必须与 `@logix/core` 的 `StateTrait.*` 保持一致（computed/link/source/check 等同形状）；业务侧的联动/派生必须通过 Form 领域入口声明（例如 `derived` 槽位），并可完全降解为 StateTraitSpec/IR；Form 领域包装允许附加能力，但不得引入第二套 IR 或绕开 deps/事务/诊断约束。
+- **FR-007f**: 系统必须提供 Form 领域的 Trait 包装（`Form.Trait.*`），且其 API 形状必须与 `@logixjs/core` 的 `StateTrait.*` 保持一致（computed/link/source/check 等同形状）；业务侧的联动/派生必须通过 Form 领域入口声明（例如 `derived` 槽位），并可完全降解为 StateTraitSpec/IR；Form 领域包装允许附加能力，但不得引入第二套 IR 或绕开 deps/事务/诊断约束。
 - **FR-007g**: 系统必须提供一组对标 RHF `rules` 的内置校验器（例如 required/minLength/maxLength/min/max/pattern），以减少业务样板并统一错误语义；它们必须是纯函数、无 IO，且返回 `ErrorValue | undefined`（可序列化、Slim、有体积上界：JSON 序列化后 ≤256B），并可直接用于规则函数/自定义 `validate` 中（或被简写展开）。
 - **FR-007h**: Rules 声明必须支持“直写形态”：在 `Form.traits(valuesSchema)({ ... })` 的 `check`（含 list 的 `item.check/list.check`）中可直接用对象声明规则，而不要求先 `Form.Rule.make(...)`；并支持 RHF 风格的内置规则简写（例如 `required:true` / `required:{ message?, trim? }` / `minLength: 2` / `pattern: /.../` 等作为顶层字段），在 build 阶段统一展开/归一化为等价的内置纯函数（不改变 deps/执行范围推导与 scope 写回约束）。当需要条件逻辑/跨字段分支时仍使用函数式 `validate` 表达。
   - 可选提供“规则挂载语法糖”：`Form.Rule.field(valuePath, ruleGroup)` / `Form.Rule.fields(...decls | decl[])`，用于更可组合地构造 `rules`（避免对象 spread 的静默覆盖；重复 valuePath 稳定失败；支持扁平化输入以便组合“已有规则集 + 新规则”而不手写 spread）。该语法糖仅改变输入形态，不改变 deps/执行范围推导/写回点；ruleGroup 内不得再重复声明 path/fieldName（避免双真相源）。
@@ -197,14 +197,14 @@
 - **A-003（依赖）**：事务 IR + Patch/Dirty-set（Spec 009）已落地；本特性的诊断事件与 path 口径必须复用 009 的协议（以 009 的 FieldPath 段数组与 DynamicTrace 事件信封为准，不再发明另一套 string path / 双锚点字段）。
 - **A-004（依赖）**：auto converge planner（Spec 013）会先行实施并在 `Diagnostics Level=light|full` 下提供事务级最小可序列化摘要（`requestedMode/executedMode/reasons/decisionBudgetMs`、cache 证据与回退原因等）与 `trait:converge` 事件；本特性需复用 013 的证据口径解释“为何命中这次列表级校验与其范围”，不得自定义第二套 auto 证据字段。
 - **A-005（依赖）**：010 的代表性性能矩阵点复用 Spec 014 的跑道与统计口径；010 只补充必要的“动态列表/跨行校验”场景输入与断言，不新增第二套跑道。
-- **A-006（依赖）**：运行时 trait 基础设施会提供统一的 valuePath 解析/归一化能力（见 FR-010c），供 form/react/logic 共用；010 的实现必须以“补齐基础设施”为优先，而不是在 `@logix/form` 侧加专家开关或复制逻辑。
+- **A-006（依赖）**：运行时 trait 基础设施会提供统一的 valuePath 解析/归一化能力（见 FR-010c），供 form/react/logic 共用；010 的实现必须以“补齐基础设施”为优先，而不是在 `@logixjs/form` 侧加专家开关或复制逻辑。
 
 ### Scope
 
 **In scope**:
 
 - 列表级规则的声明、触发与结果写回（含列表级与行级错误）。
-- Form API（`@logix/form`）作为默认入口的规则组织与错误/路径映射收口（Rules/Errors/Path）。
+- Form API（`@logixjs/form`）作为默认入口的规则组织与错误/路径映射收口（Rules/Errors/Path）。
 - Form 领域层的联动/派生声明（`derived` + `Form.Trait.*`），并可完全降解为 trait 的 `computed/link/source`（业务侧不直接写 StateTrait）；默认写回点只允许 `values/ui`，不允许写 `errors`（错误仍由 `rules/schema/$manual` 管）。
 - Form 消费外部数据快照（如 Query 的 ResourceSnapshot）：010 只保证“本模块 source 写回快照 → local deps 消费”的闭环（例如写回 `ui.$query.*`）；禁止在 rule/trait 内直接访问全局 store/隐式 Context。
 - `Form.traits(valuesSchema)`：允许在数组字段路径上声明 list 结构（`{ identityHint, item, list }`）作为“动态列表语义”入口（rowId/结构触发/校验 scope）；不再需要额外的 `fieldArrays/Form.fieldArray` 表面。
@@ -219,7 +219,7 @@
 - 异步数据加载与 options 获取（它们不属于“校验规则”的职责）。
 - UI 交互细节（例如具体组件如何禁用选项），但错误结果必须足以支撑 UI 做确定性渲染。
 - Focus management（自动聚焦/滚动到首个错误字段）等 DOM/渲染树耦合能力：010 不提供内置实现与对外 API；如需该能力，放到 UI/React 层按宿主环境实现（不影响本 spec 的统一错误树/Path/稳定归属）。
-- 跨模块 Form 消费 Query 的示例/脚手架，以及按 `resourceId+keyHash` 的跨模块缓存/in-flight 去重：后续在 `StateTrait.source`/`@logix/query` 跑道单独加强并补齐示例（010 仅固化模块内闭环）。
+- 跨模块 Form 消费 Query 的示例/脚手架，以及按 `resourceId+keyHash` 的跨模块缓存/in-flight 去重：后续在 `StateTrait.source`/`@logixjs/query` 跑道单独加强并补齐示例（010 仅固化模块内闭环）。
 
 ### RHF / TanStack Form 对齐（吸收 / 转化 / 不采纳）
 
@@ -250,7 +250,7 @@
 
 **后置（不进 010，但保留方向）**
 
-- TanStack 的 `createFormHook`/`withFieldGroup` 等“工程级脚手架”更偏 React 生态层：可在 010 之后把推荐写法固化为 `@logix/form/react` 的脚手架（不改变内核 IR/语义）。
+- TanStack 的 `createFormHook`/`withFieldGroup` 等“工程级脚手架”更偏 React 生态层：可在 010 之后把推荐写法固化为 `@logixjs/form/react` 的脚手架（不改变内核 IR/语义）。
 
 ### Key Entities _(include if feature involves data)_
 

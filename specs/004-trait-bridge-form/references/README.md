@@ -12,6 +12,6 @@
 - `02-query-module-plan.md`：Query 领域规划（定位/US/FR-Qxx）
 - `03-query-data-model.md`：Query 数据模型（QuerySnapshot/keyHash/invalidate/ui）
 - `04-query-quickstart.md`：Query Quickstart（搜索 + 联动示例）
-- `05-query-tanstack-integration.md`：`@logix/query` × TanStack Query 集成契约（各司其职）
-- `06-form-business-api.md`：`@logix/form` 完整业务 API（方案 B：Blueprint + Controller）
-- `07-query-business-api.md`：`@logix/query` 业务 API（方案 B：Blueprint + Controller）
+- `05-query-tanstack-integration.md`：`@logixjs/query` × TanStack Query 集成契约（各司其职）
+- `06-form-business-api.md`：`@logixjs/form` 完整业务 API（方案 B：Blueprint + Controller）
+- `07-query-business-api.md`：`@logixjs/query` 业务 API（方案 B：Blueprint + Controller）

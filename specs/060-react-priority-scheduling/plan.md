@@ -32,7 +32,7 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3（override 3.19.13）、`@logix/core`、`@logix/react`  
+**Primary Dependencies**: pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`  
 **Storage**: N/A（纯内存态；证据落盘到 `specs/060-*/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；React 行为/浏览器 perf 用 Vitest browser）  
 **Target Platform**: Node.js 20+ + modern browsers（headless）  
@@ -47,7 +47,7 @@
 - 统一最小 IR（Static IR + Dynamic Trace）；诊断事件 Slim 且可序列化（JsonValue）。
 - 稳定锚点去随机化：`moduleId/instanceId/txnSeq/opSeq` 可复现（不引入 random/time default）。
 - 事务窗口禁 IO/async；禁止写逃逸（业务不可写 SubscriptionRef 等）。
-- 双内核演进：consumer 不直接依赖 `@logix/core-ng`；core/core-ng 支持矩阵与证据门槛必须显式。
+- 双内核演进：consumer 不直接依赖 `@logixjs/core-ng`；core/core-ng 支持矩阵与证据门槛必须显式。
 
 **Scale/Scope**:
 
@@ -95,7 +95,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Deterministic identity**：不引入 random/time 默认锚点；若需要“补算批次”标识，使用实例内的递增序号并可被证据解释。
 - **Transaction boundary**：事务窗口内仍禁止 IO/async；延后/合并/补算只能通过事务外调度窗口实现，并最终仍以事务提交对外暴露（0/1 commit 语义保持）。
 - **Internal contracts & trial runs**：调度策略以可注入配置/服务表达（避免 magic fields）；必须可在 TrialRun/RunSession 下隔离并导出证据（不依赖进程级全局单例）。
-- **Dual kernels（core + core-ng）**：计划明确 kernel support matrix；consumer 不引入 `@logix/core-ng` 直依赖；core-ng 路径必须通过 045/047 的验证/证据跑道证明一致性与预算。
+- **Dual kernels（core + core-ng）**：计划明确 kernel support matrix；consumer 不引入 `@logixjs/core-ng` 直依赖；core-ng 路径必须通过 045/047 的验证/证据跑道证明一致性与预算。
 - **Performance budget**：触及核心路径（每 txn 的决策与后续调度）；必须有 Node+Browser 证据门禁与回归防线。
 - **Diagnosability & explainability**：新增 LaneEvidence（backlog/预算/饥饿保护/原因摘要）；`diagnostics=off` 近零成本。
 - **User-facing performance mental model**：对外文档给出 ≤5 关键词、粗成本模型与优化梯子，并与证据字段对齐（防术语漂移）。

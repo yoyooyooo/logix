@@ -10,9 +10,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@logix/core": "workspace:*",
-    "@logix/react": "workspace:*",
-    "@logix/sandbox": "workspace:*",
+    "@logixjs/core": "workspace:*",
+    "@logixjs/react": "workspace:*",
+    "@logixjs/sandbox": "workspace:*",
     "effect": "^3.19.8",
     "esbuild-wasm": "^0.27.1",
     "react": "^19.2.0",

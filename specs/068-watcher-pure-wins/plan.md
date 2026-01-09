@@ -20,13 +20,13 @@
 ## Technical Context
 
 **Language/Version**: TypeScript 5.8.x（ESM；以仓库 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logix/core`、（browser evidence）`@logix/react`  
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（browser evidence）`@logixjs/react`  
 **Storage**: N/A（证据落盘到 `specs/068-watcher-pure-wins/perf/*`）  
 **Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
 **Target Platform**: Node.js 20+ + modern browsers  
 **Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
 **Performance Goals**: watcher 压力回归无退化；Action/State 的 fan-out 在对照场景中有可判定改善；编译期优化 on/off 行为一致且可解释回退（见 `spec.md` 的 SC-001~SC-005）。  
-**Constraints**: 默认近零诊断税；统一最小 IR + 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；AOT-ready but not AOT-required（无构建期插件也能用，启用编译期优化仅做保守正确的增强）；consumer 不直接依赖 `@logix/core-ng`  
+**Constraints**: 默认近零诊断税；统一最小 IR + 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；AOT-ready but not AOT-required（无构建期插件也能用，启用编译期优化仅做保守正确的增强）；consumer 不直接依赖 `@logixjs/core-ng`  
 **Scale/Scope**: 聚焦 watcher 分发与订阅传播，不引入“丢弃/重排/合并 Action”的隐式语义
 
 ## Kernel support matrix
@@ -46,7 +46,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Deterministic identity**：不引入随机/时间锚点；既有 instanceId/txnSeq/opSeq 语义保持，并用于回归用例与证据锚点。
 - **Transaction boundary**：不引入事务窗口 IO/await；任何 publish/背压等待必须保持在事务窗口之外。
 - **Internal contracts & trial runs**：若引入 Action topic-index / ReadQuery 路由，需要收敛为内部可替换契约并可测；不得形成 magic fields 或 process-global 单例依赖。
-- **Dual kernels (core + core-ng)**：变更落在 `@logix/core`，不要求 consumer 依赖 core-ng；证据以 core 默认档为主，并保持 FullCutoverGate 等装配期门禁不进入热路径。
+- **Dual kernels (core + core-ng)**：变更落在 `@logixjs/core`，不要求 consumer 依赖 core-ng；证据以 core 默认档为主，并保持 FullCutoverGate 等装配期门禁不进入热路径。
 - **Performance budget**：强制 `$logix-perf-evidence`（Node + Browser 至少各 1 条）作为硬门；必要时补充单测/计数器回归防线以拦截泄漏。
 - **Diagnosability & explainability**：默认档近零成本；启用时提供可序列化、可解释的“为何降级/为何回退/为何触达”原因码。
 - **Breaking changes**：不引入破坏性语义变更；如需要改变 `$.onState` 的“等价判定”或 Action 分发语义，必须显式 opt-in 并提供迁移说明（forward-only）。

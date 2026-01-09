@@ -104,7 +104,7 @@
 - **FR-009**: 系统 MUST 支持平台侧的“受控试运行”能力：允许在会话/实例范围内注入 Mock/覆写并导出可机器处理的证据与关键 IR 摘要，用于对比、回放与自动化校验。
 - **FR-010**: 系统 MUST 覆盖运行时全链路的内部契约化改造范围：Runtime 组装（Runtime.make/AppRuntime）、模块实例构建（ModuleFactory）、Bound API 与 Traits/生命周期等内部消费方，都应通过同一套可注入契约获取所需能力，避免形成“只改 ModuleRuntime 但其他链路仍靠 magic 字段”的半吊子结构。
 - **FR-011**: 系统 MUST 将“证据导出/IR 摘要采集”从 Devtools 全局单例中解耦出来，支持按 RunSession/Scope 注入证据采集器，并保证并行试运行时证据隔离；DevtoolsHub 仅作为可选 consumer，不得成为试运行导出的必要依赖。
-- **FR-012**: 系统 MUST 将仓库内对 internal hooks 的访问收敛到统一入口（例如 internal accessor/RuntimeInternals），并逐步迁移 `@logix/react` 的 imports 解析、trait-lifecycle、state-trait 等内部模块，避免在多个包里散落对 `runtime.__*` / `bound.__*` 的直接读取。
+- **FR-012**: 系统 MUST 将仓库内对 internal hooks 的访问收敛到统一入口（例如 internal accessor/RuntimeInternals），并逐步迁移 `@logixjs/react` 的 imports 解析、trait-lifecycle、state-trait 等内部模块，避免在多个包里散落对 `runtime.__*` / `bound.__*` 的直接读取。
 - **FR-013**: 系统 MUST 支持“构建态反射（Reflection）”：在受控构建环境中运行一次 Builder，导出静态 IR（如 traits 结构/依赖/资源元信息与模块拓扑摘要），用于平台侧的可逆工程与漂移检测底座。
 - **FR-014**: 系统 MUST 定义并强制“构建态依赖约束”：构建阶段只能依赖少量可 Mock 的基础能力（例如配置/平台信息/文件系统），禁止在构建阶段隐式依赖任意业务 Service；若违反必须快速失败并给出可行动诊断。
 - **FR-015**: 系统 MUST 在导出的 Static IR / Evidence Summary 中携带并保留可扩展的“语义锚点/注解”（例如 trait meta 的 label/description/tags/docsUrl 等），用于支撑未来的 Phantom Source、语义压缩与漂移检测；该锚点/注解必须 Slim、可序列化且可裁剪。

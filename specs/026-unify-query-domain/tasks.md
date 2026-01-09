@@ -1,4 +1,4 @@
-# Tasks: Query 收口到 `@logix/query`（026，与 Form 同形）
+# Tasks: Query 收口到 `@logixjs/query`（026，与 Form 同形）
 
 **Input**: `specs/026-unify-query-domain/spec.md` + `specs/026-unify-query-domain/plan.md`（并参考 `research.md` / `data-model.md` / `contracts/*` / `quickstart.md`）
 
@@ -12,8 +12,8 @@
 
 ## Phase 0: Repo Structure（目录命名治理）
 
-- [x] T000 重命名目录：`packages/logix-query`（保持 npm 包名 `@logix/query` 不变）`packages/logix-query`
-- [x] T000a 重命名目录：`packages/logix-form`（保持 npm 包名 `@logix/form` 不变）`packages/logix-form`
+- [x] T000 重命名目录：`packages/logix-query`（保持 npm 包名 `@logixjs/query` 不变）`packages/logix-query`
+- [x] T000a 重命名目录：`packages/logix-form`（保持 npm 包名 `@logixjs/form` 不变）`packages/logix-form`
 - [x] T000b [P] 更新仓库内硬编码目录路径引用（`packages/logix-query`/`packages/logix-form`）`specs/*`, `apps/docs/content/docs/*`, `scripts/*`
 
 ---
@@ -21,7 +21,7 @@
 ## Phase 1: Setup（SSoT 与落点对齐）
 
 - [x] T001 [P] 回写 SSoT：统一 Query 合同口径与命名到 026（去掉 Blueprint/EngineTag/Query.middleware 等过时表述）`specs/007-unify-trait-system/contracts/query.md`
-- [x] T002 [P] 回写 SSoT：更新包级速查中 `@logix/query` 的推荐入口/注入语义到 026 `.codex/skills/project-guide/references/packages-user-view.md`
+- [x] T002 [P] 回写 SSoT：更新包级速查中 `@logixjs/query` 的推荐入口/注入语义到 026 `.codex/skills/project-guide/references/packages-user-view.md`
 
 ---
 
@@ -33,15 +33,15 @@
 
 ## Phase 3: User Story 1 - 查询能力只有一个入口（P1）🎯 MVP
 
-**Goal**: 仓库内 Query 入口只剩 `@logix/query`，不再出现 `@logix/core/Middleware/Query` 的推荐/引用。
+**Goal**: 仓库内 Query 入口只剩 `@logixjs/query`，不再出现 `@logixjs/core/Middleware/Query` 的推荐/引用。
 
-**Independent Test**: `rg "@logix/core/Middleware/Query"` / `rg "Middleware.Query"` 在仓库文档/示例/脚手架中 0 命中；Query 相关示例能只通过 `@logix/query` 入口表达。
+**Independent Test**: `rg "@logixjs/core/Middleware/Query"` / `rg "Middleware.Query"` 在仓库文档/示例/脚手架中 0 命中；Query 相关示例能只通过 `@logixjs/query` 入口表达。
 
 - [x] T004 [US1] 移除 core 的 `./Middleware/Query` exports `packages/logix-core/package.json`
 - [x] T005 [US1] 删除历史占位入口实现（不保留兼容层）`packages/logix-core/src/Middleware.Query.ts`
 - [x] T006 [US1] 清理 core public barrel 中与 Query 入口绑定的导出/引用 `packages/logix-core/src/index.ts`
-- [x] T007 [P] [US1] 迁移脚手架生成的 Query import 形状（统一 `import * as Query from "@logix/query"`）`scripts/logix-codegen.ts`
-- [x] T008 [P] [US1] 迁移示例到 `@logix/query` 入口 `examples/logix/src/scenarios/middleware-resource-query.ts`
+- [x] T007 [P] [US1] 迁移脚手架生成的 Query import 形状（统一 `import * as Query from "@logixjs/query"`）`scripts/logix-codegen.ts`
+- [x] T008 [P] [US1] 迁移示例到 `@logixjs/query` 入口 `examples/logix/src/scenarios/middleware-resource-query.ts`
 - [x] T009 [P] [US1] 迁移旧 spec 引用（不再出现 core Query 入口）`specs/000-module-traits-runtime/spec.md`
 - [x] T010 [P] [US1] 迁移旧 quickstart 引用（不再出现 core Query 入口）`specs/000-module-traits-runtime/quickstart.md`
 - [x] T011 [P] [US1] 迁移旧 research 引用（不再出现 core Query 入口）`specs/000-module-traits-runtime/research.md`
@@ -56,11 +56,11 @@
 
 ## Phase 4: User Story 2 - Query 与 Form 的领域形状一致（P2）
 
-**Goal**: `@logix/query` 以 Form 同构的“模块工厂 + controller 句柄扩展”作为唯一推荐写法，并把类型做到尽可能完美（FR-006/SC-006）。
+**Goal**: `@logixjs/query` 以 Form 同构的“模块工厂 + controller 句柄扩展”作为唯一推荐写法，并把类型做到尽可能完美（FR-006/SC-006）。
 
 **Independent Test**: `Query.make(..., { queries })` 的 `queries` key union 会贯穿到 `state.queries[queryName]` 与 `controller.refresh(queryName?)`；`deps` 受 `StateFieldPath<{ params; ui }>` 约束；`useModule(QueryModule)` / `$.use(QueryModule)` 拿到强类型 controller。
 
-- [x] T018 [US2] 固化 `@logix/query` public barrel：只保留 `make/traits/Engine/TanStack`，移除重复入口（`EngineTag`/`Query.layer`/`Query.middleware`）`packages/logix-query/src/index.ts`
+- [x] T018 [US2] 固化 `@logixjs/query` public barrel：只保留 `make/traits/Engine/TanStack`，移除重复入口（`EngineTag`/`Query.layer`/`Query.middleware`）`packages/logix-query/src/index.ts`
 - [x] T019 [US2] 将引擎 Tag 与注入入口收敛为 `Query.Engine` + `Query.Engine.layer(...)`（Effect-native）`packages/logix-query/src/Engine.ts`
 - [x] T020 [US2] 将外部引擎接管点收敛为 `Query.Engine.middleware(...)`（不再暴露顶层 `Query.middleware`）`packages/logix-query/src/Engine.ts`, `packages/logix-query/src/Middleware.ts`
 - [x] T021 [US2] 让 `Query.make` 对外一发返回 `Logix.Module.Module`（内部仍 `Module.make → implement`），并携带可组合的 `.impl` `packages/logix-query/src/Query.ts`

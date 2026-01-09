@@ -17,17 +17,17 @@
 1. **入侵性与样板**：为了“跑起来/不退出”，不得不引入 Host/Deferred 模式，示例可读性与可交接性下降。
 2. **能力不对齐**：脚本侧若直接 `yield* Module.tag` 只能拿到 `ModuleRuntime`，无法自然获得 `$.use(module)` 才会合并的 handle-extend（controller 等）扩展；导致 demo 与业务侧心智模型割裂。
 
-## Decision 1：root runner 属于 `@logix/core`
+## Decision 1：root runner 属于 `@logixjs/core`
 
-**Decision**: 提供标准化 root runner 作为 `@logix/core` 的公共能力。  
+**Decision**: 提供标准化 root runner 作为 `@logixjs/core` 的公共能力。  
 **Rationale**:
 
-- 这是生产场景能力（脚本/CLI/demo/平台试运行）而非测试专属；不应要求业务侧依赖 `@logix/test`。
-- `@logix/test` 更适合在 core 能力之上叠加测试专用能力（观测、断言、可控时钟），保持职责单一。
+- 这是生产场景能力（脚本/CLI/demo/平台试运行）而非测试专属；不应要求业务侧依赖 `@logixjs/test`。
+- `@logixjs/test` 更适合在 core 能力之上叠加测试专用能力（观测、断言、可控时钟），保持职责单一。
 
 **Alternatives considered**:
 
-- 仅放在 `@logix/test`：会迫使 demo/脚本依赖测试包，且无法作为平台/真实业务工具链入口，拒绝。
+- 仅放在 `@logixjs/test`：会迫使 demo/脚本依赖测试包，且无法作为平台/真实业务工具链入口，拒绝。
 
 ## Decision 2：提供“两层入口”（资源化 + 一次性）
 
@@ -82,9 +82,9 @@
 
 - “当没有活跃 fiber 时自动退出”：会与 Effect 的 scope/fork 语义冲突且不可预测，拒绝。
 
-## Decision 6：以新视角审视并对齐 `@logix/test`
+## Decision 6：以新视角审视并对齐 `@logixjs/test`
 
-**Decision**: `@logix/test` 的 runner 语义以本特性的 root runner 为基线对齐；若早期设定冲突，允许推翻并迁移。  
+**Decision**: `@logixjs/test` 的 runner 语义以本特性的 root runner 为基线对齐；若早期设定冲突，允许推翻并迁移。  
 **Rationale**:
 
 - 测试与 demo 若在启动/释放/作用域上语义不一致，会制造长期误判与维护成本。

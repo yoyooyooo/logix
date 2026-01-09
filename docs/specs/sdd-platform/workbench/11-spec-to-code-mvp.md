@@ -99,7 +99,7 @@ related:
 **目标**：在浏览器中以最简单方式跑通 RegionSelector 场景，并用红/绿信号反馈给用户。
 
 - 功能范围：  
-  - `@logix/sandbox` 中的 MVP 路线：  
+  - `@logixjs/sandbox` 中的 MVP 路线：  
     - Worker 内加载 RegionSelector 代码（使用 Mock Env / Mock HTTP）；  
     - 主线程提供一个线框 UI（可点击选择省份/城市）；  
     - 运行一次 Scenario：模拟用户选择一个省份，检查城市列表是否更新。  

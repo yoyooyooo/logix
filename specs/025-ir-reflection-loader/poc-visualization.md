@@ -54,7 +54,7 @@
 
 #### 模式 A 的实现：Sandbox Provider（浏览器侧试运行 + 预设 recipes）
 
-可以（也推荐）把 POC 的示例数据直接来源于 `@logix/sandbox` 的浏览器侧试运行：
+可以（也推荐）把 POC 的示例数据直接来源于 `@logixjs/sandbox` 的浏览器侧试运行：
 
 - **核心思路**：在 Worker 里执行一段“IR 采集脚本”（preset recipe），最终返回一份**纯 JSON 工件**（manifest/staticIr/trialRunReport/evidence…），交给 P0–P4 视图渲染。
 - **关键约束**：不要把 `RunSession` / `Exit` / `ModuleRuntime` 之类运行时对象跨 `postMessage` 回传（含方法/闭包的对象不可结构化克隆）；recipe 必须只返回符合 schema 的 JSON。

@@ -4,7 +4,7 @@
 >
 > 本文档作为 Logix 实施进度的单一事实源，替代旧版 TODO 清单。
 
-## 1. 核心引擎 · @logix/core
+## 1. 核心引擎 · @logixjs/core
 
 **整体状态**: ✅ **Stable** (关键路径已打通，观测性已落地)
 
@@ -32,12 +32,12 @@
 - [ ] **Performance**: 大规模 Action 吞吐下的性能优化。
 - [ ] **Remote**: `RemoteStoreAdapter`（未收敛）。
 
-## 2. 测试工具包 · @logix/test
+## 2. 测试工具包 · @logixjs/test
 
 **整体状态**: ✅ **Usable** (支持 TestClock / ExecutionResult，多模块场景已可覆盖日常用例)
 
 - [x] `TestProgram.runProgram(programModule, body, options?)` / `runTest`（推荐入口，返回 `ExecutionResult`）
-- [x] 测试入口对齐 program runner（复用 `@logix/core` 的 `Runtime.openProgram/runProgram` 生命周期内核）
+- [x] 测试入口对齐 program runner（复用 `@logixjs/core` 的 `Runtime.openProgram/runProgram` 生命周期内核）
 - [x] **TestClock Integration**:
   - [x] 去除硬编码 `Effect.sleep`，通过 `TestClock.adjust` + `waitUntil` 控制时间推进。
   - [x] `assertState` / `assertSignal` 统一使用确定性等待 helper。
@@ -49,7 +49,7 @@
   - [x] Link / 长期流程通过 `programModule.implement({ processes: [...] })` 表达（不再依赖 `_op_layer` 分类）。
   - [x] service mock 通过 `options.layer` 注入（透传给 core Runtime），避免引入第二套装配语义。
 
-## 3. React 适配层 · @logix/react & @logix/form
+## 3. React 适配层 · @logixjs/react & @logixjs/form
 
 **整体状态**: ⚠️ **Partial** (基础 Hooks 可用，高级特性与表单引擎缺失)
 
@@ -60,14 +60,14 @@
 - [ ] **Advanced Features**:
   - [ ] **Suspense**: 支持异步 State 读取挂起。
   - [ ] **Concurrent Mode**: 验证 React 18+ 并发渲染兼容性。
-  - [x] **Scope Isolation**: 多 `RuntimeProvider` 嵌套场景验证（含 `runtime` 覆盖与 `layer` Env 叠加/覆盖），实现细节见 `.codex/skills/project-guide/references/runtime-logix/logix-react/README.md` 与 `@logix/react` hooks 测试。
-- [ ] **Form Engine (@logix/form)**: **CRITICAL MISSING**
+  - [x] **Scope Isolation**: 多 `RuntimeProvider` 嵌套场景验证（含 `runtime` 覆盖与 `layer` Env 叠加/覆盖），实现细节见 `.codex/skills/project-guide/references/runtime-logix/logix-react/README.md` 与 `@logixjs/react` hooks 测试。
+- [ ] **Form Engine (@logixjs/form)**: **CRITICAL MISSING**
   - [ ] `FormShape` 定义 (Values + UI State)。
   - [ ] `FormModule` 工厂。
   - [ ] `useForm` / `useField` Hooks。
   - [ ] 内置验证逻辑 (`validate`, `dirty`, `touched`)。
 
-## 4. Builder / 工具链 · @logix/builder
+## 4. Builder / 工具链 · @logixjs/builder
 
 **整体状态**: 🛑 **Not Started**
 
@@ -77,6 +77,6 @@
 
 ## 优先级建议 (Next Steps)
 
-1.  **@logix/test 升级**: 引入 `TestClock` 和 `ExecutionResult`，消除测试中的不确定性 (Flakiness)，为后续复杂场景测试打底。
+1.  **@logixjs/test 升级**: 引入 `TestClock` 和 `ExecutionResult`，消除测试中的不确定性 (Flakiness)，为后续复杂场景测试打底。
 2.  **React 高级特性验证**: 补充 Suspense/Concurrent 测试，确保 UI 层健壮。
-3.  **Form 引擎启动**: 实现 `@logix/form`，这是 ToB 业务最核心的场景。
+3.  **Form 引擎启动**: 实现 `@logixjs/form`，这是 ToB 业务最核心的场景。

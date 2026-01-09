@@ -2,7 +2,7 @@
 
 > 本仓库采用 forward-only evolution：无兼容层/无弃用期。本文件记录破坏性变更与迁移口径。
 
-## 1) `@logix/react`：从 per-module ExternalStore → RuntimeStore（单订阅点）
+## 1) `@logixjs/react`：从 per-module ExternalStore → RuntimeStore（单订阅点）
 
 ### 影响面
 
@@ -12,7 +12,7 @@
 
 ### 迁移建议
 
-- 若业务代码依赖了 `@logix/react` 的 internal 路径（例如直接 import `ModuleRuntimeExternalStore`），需要改为使用公开 API（`useSelector/useModule/useRuntime`），或在本特性落地后按新内部路径重构（不保证 internal 稳定）。
+- 若业务代码依赖了 `@logixjs/react` 的 internal 路径（例如直接 import `ModuleRuntimeExternalStore`），需要改为使用公开 API（`useSelector/useModule/useRuntime`），或在本特性落地后按新内部路径重构（不保证 internal 稳定）。
 - 不提供 “先留一个 minor 版本的 deprecated shim” 过渡：forward-only，删即删；迁移以文档与类型检查为准。
 - 对正常业务用法（`RuntimeProvider` + `useSelector/useModule`），本次迁移目标是 **完全透明**（无需改动调用点/Provider 形态）。若应用存在自研 React Adapter 或绕过 `RuntimeProvider/RuntimeContext` 的定制集成，需要人工介入调整。
 - forward-only：不提供 100% 自动迁移脚本的承诺；若需要 codemod，只能作为辅助工具（以最终类型检查为准）。

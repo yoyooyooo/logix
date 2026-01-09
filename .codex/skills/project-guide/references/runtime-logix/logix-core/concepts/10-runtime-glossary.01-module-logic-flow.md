@@ -22,5 +22,5 @@
   - 概念上是「围绕 Effect 的结构化控制流工具集」：
     - 回答「触发之后怎么执行？有哪些分支/错误域/并发结构？」；
     - branch / tryCatch / parallel 等。
-  - **实现对齐（重要）**：当前实现无独立 `Control` 模块/命名空间；这里的 Control 仅指结构化控制流概念层：Effect 原生算子（`Effect.catch*` / `Effect.all` 等）+ `@logix/core` 的 `$.match`/`$.matchTag` helper。
+  - **实现对齐（重要）**：当前实现无独立 `Control` 模块/命名空间；这里的 Control 仅指结构化控制流概念层：Effect 原生算子（`Effect.catch*` / `Effect.all` 等）+ `@logixjs/core` 的 `$.match`/`$.matchTag` helper。
   - 对平台而言，这些算子是构建 Logic Graph 的结构锚点。

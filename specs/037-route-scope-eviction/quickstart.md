@@ -9,7 +9,7 @@
 3) **关闭弹框 ≠ 销毁状态**：别用组件级默认 key 承载“希望保留的状态”。  
 4) **离开路由必须结束 scope**：路由 unmount 自动结束；keep-alive/离开但不卸载场景，需要通过“卸载/替换边界 Provider 或切换稳定 scopeId”显式结束 scope。
 
-> 说明：下文默认你已经在更外层挂了 `@logix/react` 的 `RuntimeProvider`（即：有一个 app runtime）。
+> 说明：下文默认你已经在更外层挂了 `@logixjs/react` 的 `RuntimeProvider`（即：有一个 app runtime）。
 
 ## 1) Host(imports)（甜点区，默认推荐）
 
@@ -79,7 +79,7 @@ export function RouteRoot({ routeKey }: { routeKey: string }) {
 
 ```tsx
 import { createRoot } from "react-dom/client"
-import { RuntimeProvider } from "@logix/react"
+import { RuntimeProvider } from "@logixjs/react"
 import { appRuntime } from "./runtime"
 
 createRoot(document.getElementById("app")!).render(

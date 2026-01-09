@@ -54,7 +54,7 @@ StateTraitGraph 提供了字段级别的依赖拓扑信息，Devtools 可以据�
 
 ### 2.1 数据入口与结构视图协议
 
-- `@logix/core` 暴露内部调试 API：`Logix.Debug.getModuleTraits(module)`：
+- `@logixjs/core` 暴露内部调试 API：`Logix.Debug.getModuleTraits(module)`：
 
   ```ts
   interface ModuleTraitsDebug {
@@ -95,13 +95,13 @@ EffectOp 流携带了运行时的所有关键事件（Action/Flow/State/Service/
 
 ### 3.1 DebugObserver 中间件的实现形态（v001）
 
-在当前实现中，EffectOp → DebugSink 的桥接通过 `@logix/core/Middleware` 命名空间下的 DebugObserver 完成，并视为接入 Debug/Devtools 的**唯一**运行时事件入口：
+在当前实现中，EffectOp → DebugSink 的桥接通过 `@logixjs/core/Middleware` 命名空间下的 DebugObserver 完成，并视为接入 Debug/Devtools 的**唯一**运行时事件入口：
 
 - 入口文件：`packages/logix-core/src/Middleware.ts`
 - 公共 API：
 
   ```ts
-  import * as Middleware from "@logix/core/Middleware"
+  import * as Middleware from "@logixjs/core/Middleware"
 
   // DebugObserver：将 EffectOp 流统一收口为 trace:* Debug 事件
   const observer = Middleware.makeDebugObserver({

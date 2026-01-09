@@ -1,6 +1,6 @@
 # 3. 当前浏览器压测结果
 
-为了建立一个可操作的数量级基线，我们在 `@logix/react` 包中添加了一条基线测试：
+为了建立一个可操作的数量级基线，我们在 `@logixjs/react` 包中添加了一条基线测试：
 
 - 用例位置：`packages/logix-react/test/browser/watcher-browser-perf.test.tsx`
 - 场景：

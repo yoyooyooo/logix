@@ -1,9 +1,9 @@
 # Form Wiring & Controller（当前实现语义）
 
 > **Status**: Aligned (010-form-api-perf-boundaries)
-> **Layer**: Form Core（@logix/form）
+> **Layer**: Form Core（@logixjs/form）
 
-本文件记录 `@logix/form` 的“默认 wiring 与 controller 语义”，用于在改动/诊断时快速对齐：哪些触发在 logic 层做，哪些在 reducer/controller 层做。
+本文件记录 `@logixjs/form` 的“默认 wiring 与 controller 语义”，用于在改动/诊断时快速对齐：哪些触发在 logic 层做，哪些在 reducer/controller 层做。
 
 ## 1) wiring：install logic（UI 事件 → scopedValidate / source refresh）
 

@@ -52,7 +52,7 @@
 
 - AUTO: Q: 本 spec 的 Chrome 扩展形态在 P1 是否必须支持实时连接页面会话？ → A: P1 仅要求扩展面板支持离线导入 EvidencePackage 并展示一致视图；实时连接与命令回路作为 P2（Deferred）。
 - AUTO: Q: 跨宿主实时传输的最小消息集合与裁决源是什么？ → A: 使用 TransportMessage v1（HELLO/SUBSCRIBE/OBSERVATION_BATCH/CONTROL/CONTROL_ACK），schema 以 `specs/005-unify-observability-protocol/contracts/schemas/transport-message.schema.json` 为准。
-- AUTO: Q: v1 的 `protocolVersion` 字符串取值是什么？ → A: 固定为 `"v1"`（对齐 `@logix/core` 的 `Observability.protocolVersion`）。
+- AUTO: Q: v1 的 `protocolVersion` 字符串取值是什么？ → A: 固定为 `"v1"`（对齐 `@logixjs/core` 的 `Observability.protocolVersion`）。
 - AUTO: Q: ControlCommand/ControlAck 的最小字段与回执语义是什么？ → A: `ControlCommand` 必须携带 `protocolVersion + commandSeq + type (+ runId?)`，并且每条命令必须返回 `ControlAck`（`accepted` + 可选 `reason`）；不支持时必须明确拒绝（`accepted=false`）。
 - AUTO: Q: `RuntimeDebugEventRef` 是否纳入可选 `linkId` 作为因果链锚点？ → A: 是；`linkId` 为可选字段（生产者在可用时填充，消费端不得依赖其必然存在），以便把跨边界的一组相关事件串成可解释链路。
 - AUTO: Q: 跨宿主实时传输/证据包中的 `payload` 是否允许非 `JsonValue`？ → A: 不允许；跨宿主实时链路与 `EvidencePackage` 必须满足 `JsonValue` 硬门，宿主内原始对象仅限同进程使用，跨宿主/导出前必须投影/降级并标记原因。
@@ -139,7 +139,7 @@
    - Record/Stop 不应创建新的 `runId`：证据包允许只包含录制窗口内事件，且 `seq` 可能不从 1 开始/可有间隙；导入端不得假设 `seq` 连续。
 2. **Given** 生成了包含大量事件的时间轴，**When** 用户在 Overview 条带上拖拽框选（Brush），**Then** 下方的主详情视图应实时更新为该选区范围的内容，且支持火焰图（Flamegraph）力度的深度查看。
 3. **Given** 导入了一份包含 Replay Log 的证据包，**When** 用户在 Timeline 上移动游标（Seek），**Then** 若 Runtime 支持，被测应用或预览容器应同步展示该时间戳对齐的界面快照或状态树。
-   - 参考落点：`@logix/core` 的 `applyTransactionSnapshot(moduleId, instanceId, txnId, mode)`（若未启用时间旅行能力则允许 no-op，但必须行为可预测）。
+   - 参考落点：`@logixjs/core` 的 `applyTransactionSnapshot(moduleId, instanceId, txnId, mode)`（若未启用时间旅行能力则允许 no-op，但必须行为可预测）。
 
 ---
 

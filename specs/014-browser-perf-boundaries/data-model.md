@@ -9,7 +9,7 @@
 
 ### 1) PerfMatrix（SSoT）
 
-**File**: `@logix/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
+**File**: `@logixjs/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
 
 - `schemaVersion:number`：矩阵格式版本
 - `id:string`：矩阵标识（report `meta.matrixId` 需引用）
@@ -32,7 +32,7 @@ SuiteSpec（核心字段）：
 
 ### 2) PerfReport（边界地图报告）
 
-**Schema**: `@logix/perf-evidence/assets/schemas/perf-report.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-report.schema.json`）
+**Schema**: `@logixjs/perf-evidence/assets/schemas/perf-report.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-report.schema.json`）
 
 - `schemaVersion:number`
 - `meta:Meta`
@@ -89,7 +89,7 @@ ComparisonResult（跨点对比派生结果）：
 
 ### 3) PerfDiff（Before/After 差异摘要）
 
-**Schema**: `@logix/perf-evidence/assets/schemas/perf-diff.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-diff.schema.json`）
+**Schema**: `@logixjs/perf-evidence/assets/schemas/perf-diff.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-diff.schema.json`）
 
 - `schemaVersion:number`
 - `meta:{ createdAt, from:ReportRef, to:ReportRef }`

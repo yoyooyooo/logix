@@ -4,7 +4,7 @@ description: "Research notes and decisions for 016-serializable-diagnostics-and-
 
 # Research: 016 可序列化诊断与稳定身份（Observability Hardening）
 
-> 目标：为 005/011/013 的横切硬约束提供统一“落地口径”，先把 `@logix/core` 的可序列化与稳定锚点做稳；Devtools 交付（组件/015/Chrome 插件）延后。
+> 目标：为 005/011/013 的横切硬约束提供统一“落地口径”，先把 `@logixjs/core` 的可序列化与稳定锚点做稳；Devtools 交付（组件/015/Chrome 插件）延后。
 
 ## Decision 1: 导出边界落点（Host 内原始事件 vs 可导出事件）
 

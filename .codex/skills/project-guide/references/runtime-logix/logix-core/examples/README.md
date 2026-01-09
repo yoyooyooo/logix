@@ -1,4 +1,4 @@
-# `@logix/core` · 示例索引（渐进式披露）
+# `@logixjs/core` · 示例索引（渐进式披露）
 
 > **定位**：用“可运行的小片段”帮助快速建立直觉；真实业务写法优先参考 `examples/logix/src/scenarios/*` 与 `examples/logix/src/patterns/*`。
 

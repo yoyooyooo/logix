@@ -9,7 +9,7 @@
 
 **Rationale**:
 - 复用现有 Worker 逻辑：Worker 当前以 `kernelUrl` 推导 `effectUrl` 与 manifest URL，最小改动即可扩展到多变体；
-- consumer 不需要直接依赖 `@logix/core-ng`：只通过选择 kernel 资产完成对照；
+- consumer 不需要直接依赖 `@logixjs/core-ng`：只通过选择 kernel 资产完成对照；
 - 保持可复现与可审计：默认推荐同源静态资源（docs/playground 场景）。
 
 **Alternatives considered**:

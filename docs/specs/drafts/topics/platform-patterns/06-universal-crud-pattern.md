@@ -13,22 +13,22 @@ related:
 > "差异化只靠 Service 外包出去，发挥 Effect 的能力"
 
 本文档描述如何利用 Logix v3 的 **Fractal Runtime** 和 **Effect Context** 能力，构建一套“万能 CRUD 模板”。
-在这种模式下，UI 交互（Loading / Error / Optimistic UI / Pagination）被标准化为通用逻辑，封装在 `@logix/template` 中；而具体的领域差异（API 路径、数据转换）则通过 **Route-Level RuntimeProvider** 注入。
+在这种模式下，UI 交互（Loading / Error / Optimistic UI / Pagination）被标准化为通用逻辑，封装在 `@logixjs/template` 中；而具体的领域差异（API 路径、数据转换）则通过 **Route-Level RuntimeProvider** 注入。
 
 ## 1. 核心思想
 
 我们将 CRUD 拆解为三个层次：
 
 1.  **Generic Contract (Service)**: 定义“增删改查”的标准接口形状（Tag）。
-2.  **Generic Logic (Template)**: 针对上述接口编写的通用 UI 交互逻辑，位于 `@logix/template`。
+2.  **Generic Logic (Template)**: 针对上述接口编写的通用 UI 交互逻辑，位于 `@logixjs/template`。
 3.  **Specific Implementation (Layer)**: 针对具体领域（User/Product）的适配层，在路由层注入。
 
 ## 2. The Universal Contract & Template
 
-假设这些代码位于 `@logix/template/crud` 包中。
+假设这些代码位于 `@logixjs/template/crud` 包中。
 
 ```typescript
-// @logix/template/crud/service.ts
+// @logixjs/template/crud/service.ts
 import { Context, Effect } from 'effect'
 
 // 1. 定义通用的 CRUD 能力接口
@@ -46,8 +46,8 @@ export const makeCrudTag = <T, C, U>(key: string) =>
 ```
 
 ```typescript
-// @logix/template/crud/module.ts
-import * as Logix from '@logix/core'
+// @logixjs/template/crud/module.ts
+import * as Logix from '@logixjs/core'
 import { Context, Effect, Option, Schema } from 'effect'
 
 // 通用状态结构
@@ -139,7 +139,7 @@ export const makeCrudModule = <T, C, U>(
 
 ```typescript
 // src/module/user.ts
-import { makeCrudTag } from '@logix/template/crud'
+import { makeCrudTag } from '@logixjs/template/crud'
 
 export const UserSchema = Schema.Struct({ id: Schema.String, name: Schema.String })
 export type User = Schema.Schema.Type<typeof UserSchema>
@@ -164,8 +164,8 @@ export const UserServiceLive = Layer.succeed(UserService, {
 
 ```tsx
 // src/routes/UserRoute.tsx
-import { RuntimeProvider, useModule } from '@logix/react'
-import { makeCrudModule } from '@logix/template/crud'
+import { RuntimeProvider, useModule } from '@logixjs/react'
+import { makeCrudModule } from '@logixjs/template/crud'
 import { Option } from 'effect'
 import { UserService, UserSchema } from '@/domain/user'
 import { UserServiceLive } from '@/infra/user.live'

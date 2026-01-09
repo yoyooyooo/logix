@@ -36,7 +36,7 @@
 
 **Goal**：把外部输入从“订阅胶水”升级为 declarative trait，保证初始化无竞态，并且写回进入事务窗口。
 
-- [x] T009 [US2] Harden StateTrait deps contract: change `StateTrait.source({ key })` from `key(state)` to **deps-as-args** `key(...depsValues)` (DSL lowers into internal `key(state)`); migrate all callsites + `@logix/query` trait lowering + runtime SSoT docs under `.codex/skills/project-guide/references/runtime-logix/logix-core/**` (align with computed; reduces deps mismatch risk and makes Static IR dependency story tighter)
+- [x] T009 [US2] Harden StateTrait deps contract: change `StateTrait.source({ key })` from `key(state)` to **deps-as-args** `key(...depsValues)` (DSL lowers into internal `key(state)`); migrate all callsites + `@logixjs/query` trait lowering + runtime SSoT docs under `.codex/skills/project-guide/references/runtime-logix/logix-core/**` (align with computed; reduces deps mismatch risk and makes Static IR dependency story tighter)
 - [x] T010 [US2] Define `ExternalStore<T>` public contract in `packages/logix-core/src/ExternalStore.ts` (`getSnapshot/subscribe` + optional `getServerSnapshot` for SSR) (FR-001)
 - [x] T011 [P] Implement ExternalStore sugars in `packages/logix-core/src/ExternalStore.ts` (`fromService` / `fromSubscriptionRef` / `fromStream` / `fromModule`) (FR-002; `fromStream` missing `initial/current` must Runtime Error fail-fast; `fromSubscriptionRef` assumes pure read; all sugars must carry an internal **descriptor** for trait build/IR export; `fromModule` descriptor MUST include resolvable moduleId + `ReadQueryStaticIr` so Module-as-Source is IR-recognizable (no blackbox subscribe): moduleId must resolve, selectorId must be stable (deny `unstableSelectorId`), otherwise fail-fast; include stale-start + purity + module-as-source warnings in docstring + quickstart)
 - [x] T012 [P] Export `ExternalStore` as a public submodule in `packages/logix-core/src/index.ts` and satisfy `scripts/public-submodules/verify.ts` (plan.md#Project Structure)
@@ -151,7 +151,7 @@
 > 说明：Phase 8 已把 HostScheduler 做成 **internal Runtime Service + Layer**（T060 已完成）；本 Phase 关注“是否需要对外暴露/稳定化注入面”，避免把 internal Tag 直接变成业务依赖。
 
 - [x] T066 [P] Decide & implement **public** HostScheduler injection surface (one of):
-  - A) `@logix/core` 新增 public submodule `HostScheduler`（提供 `layer(...)` / `makeDefault...` / `makeDeterministic...` *仅测试*）；或
+  - A) `@logixjs/core` 新增 public submodule `HostScheduler`（提供 `layer(...)` / `makeDefault...` / `makeDeterministic...` *仅测试*）；或
   - B) `Logix.Runtime.make(..., { hostScheduler })` 形式的高层选项（内部用 `Layer.succeed(HostSchedulerTag, ...)` 注入，并确保 build-time 依赖正确）。
   - 同步更新 runtime SSoT + 用户文档（明确 internal-only vs public）。
   - Non-goals：不暴露 TickScheduler/RuntimeStore internal Tag 给业务层（除非另开 spec）。
