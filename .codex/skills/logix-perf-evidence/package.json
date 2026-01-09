@@ -1,5 +1,6 @@
 {
   "name": "logix-perf-evidence",
+  "version": "0.0.0",
   "private": true,
   "scripts": {
     "collect": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/collect.ts",
