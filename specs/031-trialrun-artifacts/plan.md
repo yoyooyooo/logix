@@ -36,8 +36,8 @@
 
 - **链路映射（Intent → Flow/Logix → Code → Runtime）**：本特性属于“Runtime/平台的反射与证据链”层，连接模块代码 → Trial Run → 可序列化 artifacts（供 Studio/CI/Agent 消费）。
 - **依赖/修改的 SSoT（docs-first）**：
-  - 统一最小 IR 与 TrialRun/Reflection：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/06-reflection-and-trial-run.md`
-  - 端到端链路（IrPage）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+  - 统一最小 IR 与 TrialRun/Reflection：`docs/ssot/runtime/logix-core/api/06-reflection-and-trial-run.md`
+  - 端到端链路（IrPage）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
   - RulesManifest schema 事实源：`specs/028-form-api-dx/contracts/schemas/rules-manifest.schema.json`
 - **IR & anchors**：artifacts 本质是 Supplemental Static IR，必须可被 036 的 Integrated Verdict 消费；key/version 必须稳定。
 - **Deterministic identity**：artifacts 不引入新的随机 id；如需 digest，必须由结构字段稳定派生。

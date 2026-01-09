@@ -7,8 +7,8 @@ priority: next
 layer: Runtime
 related:
   - docs/specs/drafts/topics/logix-ng-architecture/README.md
-  - docs/specs/sdd-platform/ssot/contracts/00-execution-model.md
-  - docs/specs/sdd-platform/ssot/foundation/02-glossary.md
+  - docs/ssot/platform/contracts/00-execution-model.md
+  - docs/ssot/platform/foundation/02-glossary.md
   - specs/045-dual-kernel-contract/spec.md
   - specs/046-core-ng-roadmap/spec.md
   - specs/049-core-ng-linear-exec-vm/spec.md

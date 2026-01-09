@@ -85,12 +85,12 @@
 
 **Independent Test**:
 
-- 诊断：`off/light/full` 行为符合既有约束（off 不导出、light Slim、full 可解释）；
-- 开销：Node+browser 基线里能量化 off→light/full 的 overhead，且满足 `spec.md` 的阈值（`SC-005`）。
+- 诊断：`off/light/sampled/full` 行为符合既有约束（off 不导出、light Slim、sampled 仅采样摘要、full 可解释）；
+- 开销：Node+browser 基线里能量化 off→light/sampled/full 的 overhead，且满足 `spec.md` 的阈值（`SC-005`）。
 
 ### Tests (US2)
 
-- [x] T026 [US2] 补齐/加严 diagnostics 分档回归（off/light/full 的导出与裁剪口径稳定）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DiagnosticsLevels.test.ts`
+- [x] T026 [US2] 补齐/加严 diagnostics 分档回归（off、light、full 的导出与裁剪口径稳定；sampled 见 044）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DiagnosticsLevels.test.ts`
 - [x] T027 [US2] 补齐/加严 converge evidence shape 回归（确保与 013 schema 对齐且可序列化），并显式覆盖“静态配置错误硬失败”（cycle/multiple writers）与“不得被 cache/self-protection 吞掉”的边界 `packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.EvidenceShape.test.ts`、`packages/logix-core/test/StateTrait/StateTrait.ConfigErrors.test.ts`、`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.CorrectnessInvariants.test.ts`
 - [x] T028 [US2] 新增事务窗口边界回归：converge/txn 窗口内禁止 IO/async；任何 escape 必须可检测并产出最小证据（`FR-002/NFR-004`）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.TransactionBoundary.test.ts`
 - [x] T029 [US2] 新增稳定标识回归：`instanceId/txnSeq/opSeq` 去随机化且可预测（无 random/time default；`NFR-003`）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DeterministicIds.test.ts`
@@ -98,8 +98,8 @@
 ### Implementation (US2)
 
 - [x] T030 [US2] 在 converge 热路径增加“诊断分配闸门”+“预算检查采样快路径”（diagnostics=off：不分配 steps 数组、不做 stepLabel/traceKey 拼接、不做 topN；同时避免 per-step `ctx.now()`：用 stepOps + mask 采样读 clock；需要 top3 时用 O(n)（linear scan / small heap）替代 `slice().sort()`）`packages/logix-core/src/internal/state-trait/converge.ts`
-- [x] T031 [US2] 若证据字段/裁剪策略发生变化：同步更新 013 converge schema + runtime 投影裁剪 + Devtools 协议文档（禁止在 039 复制 schema）`specs/013-auto-converge-planner/contracts/schemas/trait-converge-*.schema.json`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
-- [x] T032 [US2] 在 perf runner 中加入 diagnostics overhead 维度（off/light/full）并输出可对比的 ratio/delta 结果（用于门禁）`.codex/skills/logix-perf-evidence/scripts/bench.traitConverge.node.ts`、`packages/logix-react/test/browser/perf-boundaries/converge-runtime.ts`、`packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx`
+- [x] T031 [US2] 若证据字段/裁剪策略发生变化：同步更新 013 converge schema + runtime 投影裁剪 + Devtools 协议文档（禁止在 039 复制 schema）`specs/013-auto-converge-planner/contracts/schemas/trait-converge-*.schema.json`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`docs/ssot/runtime/logix-core/observability/09-debugging.md`
+- [x] T032 [US2] 在 perf runner 中加入 diagnostics overhead 维度（off、light、full；sampled 见 044）并输出可对比的 ratio/delta 结果（用于门禁）`.codex/skills/logix-perf-evidence/scripts/bench.traitConverge.node.ts`、`packages/logix-react/test/browser/perf-boundaries/converge-runtime.ts`、`packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx`
 
 **Checkpoint**: 发生回归时可以用 `trait:converge` 证据解释“为什么走 full/dirty、是否 cache 命中、是否 budget cutoff”，并且 off 档位开销可量化且达标。
 

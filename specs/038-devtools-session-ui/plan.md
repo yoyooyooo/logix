@@ -63,8 +63,8 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - 依赖/对齐的 specs 与草案：
   - `docs/specs/drafts/topics/devtools-and-studio/07-devtools-vision-rethink.md`、`08-devtools-ui-design.md`（范式与 UI 结构裁决）
   - `specs/016-serializable-diagnostics-and-identity`（`RuntimeDebugEventRef`/稳定标识/可序列化事件）
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.02-eventref.md`（事件协议单一事实源）
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/10-runtime-glossary.05-effectop.md`（`linkId` 语义）
+  - `docs/ssot/runtime/logix-core/observability/09-debugging.02-eventref.md`（事件协议单一事实源）
+  - `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.05-effectop.md`（`linkId` 语义）
 - Effect/Logix contracts：本计划优先通过 `specs/038-devtools-session-ui/contracts/schemas/*` 固化“会话/Advisor 输出口径”。若需要补齐 `RuntimeDebugEventRef.linkId` 等锚点字段，必须同步更新 runtime‑logix 的事件协议文档与序列化测试（加字段、保序列化、保持 Slim）。
 - IR & anchors：会话/树/Advisor 必须可由 `DevtoolsSnapshot.events` 重建；必要时只扩展 `RuntimeDebugEventRef` 的小字段（`linkId` 等），不引入并行聚合事实源。
 - Deterministic identity：
@@ -114,7 +114,7 @@ packages/logix-core/src/internal/runtime/core/DebugSink.ts            # 可选�
 packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts          # 参考：snapshotToken/ring buffer 语义（尽量不改）
 packages/logix-core/src/internal/runtime/core/ModuleRuntime.*.ts      # 可选：在 action/state 事件上注入 linkId 等锚点
 
-.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.02-eventref.md
+docs/ssot/runtime/logix-core/observability/09-debugging.02-eventref.md
 ```
 
 **Structure Decision**: 本特性属于“Devtools UI + 可诊断性协议/锚点补齐”交付：主要改动在 `packages/logix-devtools-react` 的视图与派生计算；若现有 Debug 事件缺少必要锚点（例如 action/state 事件缺 `linkId` 导致无法稳定归因），则以“最小协议扩展”的方式在 `packages/logix-core` 补齐，并同步更新 runtime‑logix 的事件协议文档（不做兼容层）。

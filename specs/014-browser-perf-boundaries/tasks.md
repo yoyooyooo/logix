@@ -46,7 +46,8 @@
 - [x] T009 [P] 抽出 browser perf harness（统计、warmup 丢弃、timeout、报告聚合）`packages/logix-react/test/browser/perf-boundaries/harness.ts`
 - [x] T010 [P] 将 watcher 维度（现有示例）纳入矩阵：改造/复用 `packages/logix-react/test/browser/watcher-browser-perf.test.tsx` 输出机器可解析报告（同时保留可选人类摘要）
 - [x] T011 [P] 新增 converge/steps 维度用例：构造 trait-heavy 模块与可控 dirty-roots 写入分布，在浏览器端测量“事务提交/派生收敛”相关口径 `packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx`
-- [x] T012 [P] 新增 diagnostics 维度用例：同一场景在 `off/light/full` 下产出三条曲线，并以 `suites[].comparisons` 量化相对 off 的 overhead（ratio/delta；同时记录是否存在输出/采样污染）`packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
+- [x] T012 [P] 新增 diagnostics 维度用例：同一场景在 `off`、`light`、`full` 下产出三条曲线，并以 `suites[].comparisons` 量化相对 off 的 overhead（ratio/delta；同时记录是否存在输出/采样污染）`packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
+- [ ] T012a 新增 diagnostics 采样档位：补齐 `sampled` 曲线（确定性采样策略 + 可解释 meta），并把 `diagnostics.overhead.e2e` 扩展为 `off/light/sampled/full` 四档对比 `packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
 - [x] T013 实现边界阈值计算：在给定预算（绝对 ms 或相对 ratio）下求最大可承受档位，并把失败档位原因写入报告（timeout/fail/越界）`packages/logix-react/test/browser/perf-boundaries/harness.ts`
 - [x] T014 确保测量可自动结束：为每个档位设置最大耗时与安全跳过策略；不得出现浏览器假死导致全套压测挂死 `packages/logix-react/test/browser/perf-boundaries/*`
 
@@ -72,7 +73,7 @@
 
 **Goal**: 压测结果主要反映运行时与渲染成本；诊断成本可量化且有上界；噪声可解释。
 
-**Independent Test**: 同一场景 off/light/full 三档运行，报告能输出 overhead 区间，并给出噪声来源提示（浏览器/负载/配置差异）。
+**Independent Test**: 同一场景 off、light、full（以及 sampled）运行，报告能输出 overhead 区间，并给出噪声来源提示（浏览器/负载/配置差异）。
 
 ### Implementation
 
@@ -89,7 +90,7 @@
 
 - **Note**: T027/T028 为可选 Node preflight（contract/semantics），默认不作为 CI 门禁；建议通过显式开关启用（例如 `LOGIX_PREFLIGHT=1`），用于本地快速回归。
 
-- [x] T021 更新/校对互引：runtime 文档中的 browser 基线说明明确以 `@logixjs/perf-evidence/assets/*` 为 SSoT（并确认链接有效）`.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`、`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/04-watcher-performance-and-flow.md`
+- [x] T021 更新/校对互引：runtime 文档中的 browser 基线说明明确以 `@logixjs/perf-evidence/assets/*` 为 SSoT（并确认链接有效）`docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`、`docs/ssot/runtime/logix-core/impl/04-watcher-performance-and-flow.md`
 - [x] T022 在 `specs/014-browser-perf-boundaries/perf.md` 写清楚“如何生成/更新基线与上限指标”的流程与命名约定（Before/After、envId、预算口径）
 - [x] T029 固化运行入口：在 `.codex/skills/logix-perf-evidence/package.json` 增加 perf 相关 scripts，并在 014 文档中统一采集/diff 命令入口 `specs/014-browser-perf-boundaries/quickstart.md`、`specs/014-browser-perf-boundaries/perf.md`
 - [x] T023 跑通质量门禁并记录一次基线：`pnpm typecheck`、`pnpm lint`、`pnpm -C packages/logix-react test -- --project browser`（不使用 watch）

@@ -32,7 +32,7 @@ description: "Task list for 005-unify-observability-protocol implementation"
 
 **Purpose**: docs-first 对齐 + 代码落点占位
 
-- [x] T001 更新 SSoT：在 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 固化 005 的协议/导出导入/Worker-first/Recording Window 语义
+- [x] T001 更新 SSoT：在 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 固化 005 的协议/导出导入/Worker-first/Recording Window 语义
 - [x] T002 建立 core 公共入口：新增 `packages/logix-core/src/Observability.ts` 并在 `packages/logix-core/src/index.ts` 导出为 `Logix.Observability`
 
 ---

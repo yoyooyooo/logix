@@ -57,5 +57,5 @@
 ## Relationships
 
 - TxnLanePolicy 影响 lane-aware queue 与 Work loop：决定 nonUrgent 的预算/合并/上界策略。
-- TxnBacklogState 是 per-instance 的内部状态，但其摘要必须可被 TxnLaneEvidence 解释（在 diagnostics=light/full 或 sampled 下）。
+- TxnBacklogState 是 per-instance 的内部状态，但其摘要必须可被 TxnLaneEvidence 解释（在 diagnostics=light/sampled/full 下）。
 - TxnLaneEvidence 必须与统一锚点体系对齐（016）：能用 `moduleId/instanceId/txnSeq/opSeq` 关联到 `state:update` 与 trait converge trace。

@@ -17,7 +17,7 @@ superseded_by: ../topics/sandbox-runtime/05-architecture-and-boundary.md
 本草案尝试把当前关于「Sandbox Architecture Strategy: The Verifiable Intent Engine」的一组想法，抽象为与 v3 规范兼容的中立方案，用于后续收敛到：
 
 - `docs/specs/sdd-platform/impl/code-runner-and-sandbox.md`（平台层实现规划）；
-- `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与相关 impl 文档（前端 Runtime 契约与 Platform 集成）；
+- `docs/ssot/runtime/logix-core/*` 与相关 impl 文档（前端 Runtime 契约与 Platform 集成）；
 - 未来的 `@logixjs/sandbox` 子包实现。
 
 核心问题是：在 intent-flow / Logix 平台内，如何为「Intent → Logix/Effect 代码 → 运行与验证」提供一套 **可回放、可观测、前端优先** 的沙箱运行时，并清晰划定与后端运行时、DevTools、Runtime Readiness 等其他规范的边界。
@@ -162,7 +162,7 @@ superseded_by: ../topics/sandbox-runtime/05-architecture-and-boundary.md
 - `react/`（主线程 React 适配）
   - `useSandbox`：封装 Worker 生命周期管理、状态同步与超时熔断逻辑，以 Hook 形式暴露给 UI 层。
 
-上述结构暂不对具体 API 形态（函数签名、类型参数）做最终结论，但可作为后续在 `.codex/skills/project-guide/references/runtime-logix` 与 `apps/docs` 中设计用户级 API 时的参考。
+上述结构暂不对具体 API 形态（函数签名、类型参数）做最终结论，但可作为后续在 `docs/ssot/runtime` 与 `apps/docs` 中设计用户级 API 时的参考。
 
 ## 8. 风险与边界：Sandbox Risk Assessment 摘要
 
@@ -195,9 +195,9 @@ superseded_by: ../topics/sandbox-runtime/05-architecture-and-boundary.md
 1. 与 v3 平台规范：
    - 本草案可视为 `platform/impl/code-runner-and-sandbox.md` 的「细化与补充」，特别是关于依赖治理、Universal Mock 与 Semantic UI Mocking、以及 @logixjs/sandbox 包结构的部分；
    - 后续应在该规范中统一「前端优先」与「后端逃生舱」的术语与例子，避免多处定义分裂。
-2. 与 runtime-logix：
+2. 与 runtime SSoT：
    - Sandbox 本身不改变 Logix Runtime 的核心契约，而是提供一个专门面向 DevTools/Studio 的运行环境；
-   - 需要在 `.codex/skills/project-guide/references/runtime-logix/logix-core` 或 `.codex/skills/project-guide/references/runtime-logix/logix-core/impl` 文档中明确：
+   - 需要在 `docs/ssot/runtime/logix-core` 或 `docs/ssot/runtime/logix-core/impl` 文档中明确：
      - Sandbox 运行时如何复用 `Platform.Service` / Tracer / Observability 插件；
      - Logix Module 在 Sandbox 中运行时的限制（如禁止使用某些 Tag/Service）。
 3. 与 drafts topics 的对接：

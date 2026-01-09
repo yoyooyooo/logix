@@ -80,7 +80,7 @@ priority: next
 **优点：**
 
 - 日志输出路径更加统一（都走 Logger），便于与 Effect 生态的其他工具集成（如 structured logger / tracing）；
-- Debug 的实现更「effect-native」，符合 runtime-logix 以 Effect/Layer/Logger 为一等公民的设计目标。
+- Debug 的实现更「effect-native」，符合 runtime SSoT 以 Effect/Layer/Logger 为一等公民的设计目标。
 
 **缺点：**
 
@@ -197,7 +197,7 @@ Debug 目标模型（最终版）：
     - 构建 Layer 时捕获 FiberRef.currentLoggers + currentDebugSinks 的 snapshot，与 logger 一起放入 `ReactRuntimeContextValue`；
     - 在 `createRuntimeAdapter` 内统一用 `Effect.locally` 把 logger + debug sinks 应用到所有 run* 调用。
 - 文档：
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`：
+  - `docs/ssot/runtime/logix-core/observability/09-debugging.md`：
     - 明确“业务日志（Logger） vs 运行时诊断（Debug）”两条通路；
     - 示例统一使用 Logger 风格的组合：
       - `Layer.merge(Logger.pretty, Debug.layer({ mode: 'dev' }), Debug.traceLayer(...))`。
@@ -442,4 +442,4 @@ Debug 目标模型（最终版）：
 
 ---
 
-> 当前实现已经满足本稿 5.x 节定义的目标蓝图；后续若再演进 Debug/Logger 模型，应先更新本稿与 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`，再调整代码与用户文档。***
+> 当前实现已经满足本稿 5.x 节定义的目标蓝图；后续若再演进 Debug/Logger 模型，应先更新本稿与 `docs/ssot/runtime/logix-core/observability/09-debugging.md`，再调整代码与用户文档。***

@@ -8,7 +8,7 @@ priority: 1800
 related:
   - ./03-debug-roadmap.md
   - ./04-devtools-and-runtime-tree.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md
+  - docs/ssot/runtime/logix-core/observability/09-debugging.md
 ---
 
 # Logix Devtools Time Travel & Replay（草案）
@@ -236,7 +236,7 @@ $.onAction("jumpToEventIndex").run((action) =>
      - 点击 Jump 后，业务 UI（计数器）能跳回对应 count；
      - 点击 Back to live 后，状态回到最新值。
 4. **阶段 4：文档与规范收敛**  
-   - 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 中补充：  
+   - 在 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 中补充：  
      - Debug 事件与 TimeTravelRegistry 的约束与语义；  
      - Time Travel 模式的边界与风险提醒。  
    - 在 devtools roadmap 草案中将本文件的结论合并为一个「Time Travel & Replay」小节。

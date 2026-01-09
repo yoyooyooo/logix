@@ -139,8 +139,8 @@
 
 **Decision**：
 
-- 同步更新 Runtime SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md` 补齐 `traitConvergeMode=auto` 的语义口径（requested vs executed、下界门槛、决策预算止损、cache 证据与失效/自保护）。
-- 同步更新 Debug 协议 SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 固化 converge 的最小证据形态（推荐以 `trait:converge` 事件/summary schema 表达），并对齐 `off|light|full` 分档裁剪规则。
+- 同步更新 Runtime SSoT：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md` 补齐 `traitConvergeMode=auto` 的语义口径（requested vs executed、下界门槛、决策预算止损、cache 证据与失效/自保护）。
+- 同步更新 Debug 协议 SSoT：`docs/ssot/runtime/logix-core/observability/09-debugging.md` 固化 converge 的最小证据形态（推荐以 `trait:converge` 事件/summary schema 表达），并对齐 `off|light|full` 分档裁剪规则。
 - 同步更新用户文档：`apps/docs/content/docs/**` 补齐默认 `auto`、模块级覆盖/回退、以及“如何用证据字段定位回归与调参”的稳定心智模型。
 - 标注/更新历史 spec 口径：`specs/007-unify-trait-system/review.md` 等仍以 `full|dirty` 默认与枚举为主的描述，需明确被 013 更新/替代的范围，避免读者误用。
 - 明确迁移口径：若业务需要维持旧行为，显式设置 `traitConvergeMode="full"`；迁移说明写入 `specs/013-auto-converge-planner/quickstart.md` 与对应文档章节（不提供兼容层）。

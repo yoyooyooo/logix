@@ -5,7 +5,7 @@
 **Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/032-ui-projection-contract/plan.md`
 
 > 本文件只固化“关键裁决/权衡”，避免 032 漂移为某个 UI 框架的实现细节。  
-> runtime/IR 证据链外链：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+> runtime/IR 证据链外链：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 
 ## Decisions
 

@@ -46,7 +46,7 @@
   - 033 StageBlueprint/IntentRule：`specs/033-module-stage-blueprints/spec.md`
   - 035 PortSpec/TypeIR：`specs/035-module-ports-typeir/spec.md`
   - 031 TrialRun artifacts：`specs/031-trialrun-artifacts/spec.md`
-  - IR vs AST（Agent 出码闭环）：`.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/04-ir-vs-ast-and-agent-coding.md`
+  - IR vs AST（Agent 出码闭环）：`docs/ssot/runtime/logix-core/concepts/04-ir-vs-ast-and-agent-coding.md`
 - **IR & anchors**
   - 规范化 IR 必须可降解到统一最小 IR（至少能被 artifacts/ContextPack 消费），并保留 stable anchor 以支持 drift detection。
 - **Deterministic identity**

@@ -89,7 +89,7 @@
 - Answer the following BEFORE starting research, and re-check after Phase 1:
   - How does this feature map to the `Intent → Flow/Logix → Code → Runtime` chain?
   - Which `docs/specs/*` specs does it depend on or modify, and are they updated first (docs-first & SSoT)?
-  - Does it introduce or change any Effect/Logix contracts? If yes, which `.codex/skills/project-guide/references/runtime-logix/*` docs capture the new contract?
+  - Does it introduce or change any Effect/Logix contracts? If yes, which `docs/ssot/runtime/*` docs capture the new contract?
   - IR & anchors: does it change the unified minimal IR or the Platform-Grade subset/anchors; are parser/codegen + docs updated together (no drift)?
   - Deterministic identity: are instance/txn/op IDs stable and reproducible (no random/time defaults); is the identity model documented?
   - Transaction boundary: is any IO/async work occurring inside a transaction window; are write-escape hatches prevented and diagnosed?
@@ -102,13 +102,13 @@
 ### Answers (Pre-Research)
 
 - **Intent → Flow/Logix → Code → Runtime**：用户意图是“用 Form API 声明动态列表规则与默认动作语义，并在 onChange 下得到一致、可解释、可优化的结果”；落地为 trait deps→scoped validate 的可推导执行范围（ReverseClosure），并把结果与诊断降解为统一最小 IR/事件协议供 Devtools/Sandbox 消费。
-- **Docs-first & SSoT**：先固化本特性 `specs/010-form-api-perf-boundaries/*` 与相关 runtime SSoT（`.codex/skills/project-guide/references/runtime-logix/*`），再落地到 `packages/logix-core`/`packages/logix-form`/`packages/logix-react`；用户文档同步到 `apps/docs`（不出现“PoC/内部实现”等表述）。
+- **Docs-first & SSoT**：先固化本特性 `specs/010-form-api-perf-boundaries/*` 与相关 runtime SSoT（`docs/ssot/runtime/*`），再落地到 `packages/logix-core`/`packages/logix-form`/`packages/logix-react`；用户文档同步到 `apps/docs`（不出现“PoC/内部实现”等表述）。
 - **Contracts**：本特性会强化/新增 trait:check 诊断事件、scoped validate 请求与数组错误树（`$list/rows[]`）的协议；协议以 `specs/010-form-api-perf-boundaries/contracts/*` 与 `data-model.md` 固化，并在实现前回写 runtime SSoT（尤其 debugging/flow 文档）。
 - **IR & anchors**：依赖事实源收敛为 deps + canonical FieldPath（段数组），数组索引不进入 canonical path；行级范围通过 rowId/index 兜底表达；Form Path 工具必须不发明第二套 path 口径。
 - **Deterministic identity**：rowId 优先 trackBy；缺失时 runtime rowIdStore 保持常见数组操作稳定；整体替换且无 trackBy 允许重建但必须 degraded 诊断；instance/txn/op/event 标识对齐 009（禁止 random/time 默认 id）。
 - **Transaction boundary**：validate/converge/写回必须纯同步；Schema 默认不进入 onChange/onBlur 热路径；任何 IO/async 通过 Task/事务外完成。
 - **Performance budget**：热路径是“setValue/array action → deps 推导 → list-scope 扫描/最小写回 → selector/render”；必须提供 100 行基线与“避免等价 churn”的写回计数证据；Schema onChange/onBlur 若开启必须提供性能证据与诊断解释。
-- **Diagnosability budgets**：诊断事件 Slim 且可序列化（off/light/full 分档）；`trait:check` 仅在 `Diagnostics Level=light|full` 产出（off 不产出）。每次 list-scope check 的事件包含 ruleId/trigger/rowIdMode/受影响范围与错误 diff 摘要（对齐 009 DynamicTrace 信封）。`off` 的验收阈值：相对同脚本 `off` 基线，`light`/`full` 的额外开销必须可量化并可解释；`off` 本身不得引入 O(n) 扫描与事件对象分配，且其时间开销必须可证明地“接近零成本”（默认门槛：p95 ≤ +5%）。
+- **Diagnosability budgets**：诊断事件 Slim 且可序列化（off/light/sampled/full 分档）；`trait:check` 仅在 `Diagnostics Level=light|sampled|full` 产出（off 不产出）。每次 list-scope check 的事件包含 ruleId/trigger/rowIdMode/受影响范围与错误 diff 摘要（对齐 009 DynamicTrace 信封）。`off` 的验收阈值：相对同脚本 `off` 基线，`light`/`sampled`/`full` 的额外开销必须可量化并可解释；`off` 本身不得引入 O(n) 扫描与事件对象分配，且其时间开销必须可证明地“接近零成本”（默认门槛：p95 ≤ +5%）。
 - **User-facing performance mental model（≤5 关键词 + 成本模型 + 优化梯子）**：
   - 关键词（≤5）：`deps` / `scan` / `writeback` / `churn` / `diagnostics`
   - 粗粒度成本模型：一次输入的主要成本为 `O(|dirty| + |affectedRules| + scannedRows + changedKeys)`；其中 scannedRows 来自 list-scope 必要扫描，changedKeys 由“最小写回 + 结构共享”控制；Schema onChange/onBlur 视为额外全量成本（默认关闭）。
@@ -146,7 +146,7 @@ packages/logix-form/src/schema-path-mapping.ts            # Schema error path �
 packages/logix-form/src/schema-error-mapping.ts           # Schema error → errorsPath 写回（需适配 rows 映射与合并策略）
 packages/logix-form/src/react/useField.ts                 # valuePath → errorsPath（数组插入 rows 段）
 examples/logix-react/src/demos/form/cases/                # demo 收敛：uniqueWarehouse 迁到 list-scope check
-.codex/skills/project-guide/references/runtime-logix/                                 # 对外契约 SSoT 回写
+docs/ssot/runtime/                                 # 对外契约 SSoT 回写
 docs/reviews/                                             # breaking changes/roadmap 证据
 ```
 
@@ -154,7 +154,7 @@ docs/reviews/                                             # breaking changes/roa
 
 **Core/Form 分层（落实）**（依据：`specs/010-form-api-perf-boundaries/references/pr.md`）
 
-- **下沉到 `@logixjs/core`（TraitLifecycle/StateTrait/Runtime）**：valuePath→FieldRef 解析、source 的 `onMount/onKeyChange` 默认 wiring、deps 命中归一化（含 `[]` pattern）、list-scope deps 默认语义（`deps:["x"] => list[].x`）与结构依赖补齐、rowIdStore、通用 cleanup 原语。
+- **下沉到 `@logixjs/core`（TraitLifecycle/StateTrait/Runtime）**：valuePath→FieldRef 解析、source 的 `autoRefresh`（onMount/onDepsChange + debounceMs）默认 wiring、deps 命中归一化（含 `[]` pattern）、list-scope deps 默认语义（`deps:["x"] => list[].x`）与结构依赖补齐、rowIdStore、通用 cleanup 原语。
 - **留在 `@logixjs/form`（领域语义与 DX 外观）**：`$list/rows[]` 错误树与 `manual > rules > schema`、ValuePath↔ErrorsPath（数组插入 `rows`）映射、内置规则库与 RHF 风格简写、`controller.*` 统一动作命名空间、`Form.Path` 与类型化 FieldPath/FieldValue（含数组 index）。
 - **实现纪律**：form 不再复制 path 解析 / source wiring / deps 命中逻辑；若 core 缺能力，优先补 core 而不是在 form 侧引入新的专家开关。
 
@@ -183,7 +183,7 @@ No violations identified for this feature at planning time.
 
 ### Phase 1 - Constitution Re-check (Post-Design)
 
-- 确认 contracts 已固化稳定标识、事件 Slim/可序列化与预算上界（off/light/full）。
+- 确认 contracts 已固化稳定标识、事件 Slim/可序列化与预算上界（off/light/sampled/full）。
 - 确认 onChange/onBlur 热路径不引入 Schema 默认开销；Schema onChange/onBlur 作为显式 opt-in 且可诊断。
 - 确认 valuePath→errorsPath（数组插入 rows）与 `$list/rows[]` 错误树在数据模型与 quickstart 中一致（无双写口径）。
 - 确认 breaking changes 的迁移说明落点明确（reviews + quickstart + 示例）。
@@ -201,7 +201,7 @@ No violations identified for this feature at planning time.
 - **Phase D（Schema 收敛）**：把 SchemaErrorMapping 写回对齐 `$list/rows[]` 与 errorsPath 映射；submit 合并时 Rules 覆盖 Schema；Schema 默认不在 onChange/onBlur 跑；同路径 value 变更时自动清理对应 Schema 错误（不重跑 Schema，FR-012c）；如开启 Schema onChange/onBlur 必须输出性能证据与诊断解释。
 - **Tests & perf**：
   - 覆盖 AC/FR/SC 场景（跨行冲突、多行清理、删行/重排不漂移、映射一致、reset 语义、Schema 合并优先级）。
-  - 补充可复现基线脚本并记录结果（按 009 口径），并包含诊断开关 off/light/full 的 overhead 对比（至少时间/分配其一，确保 off 近零成本）。
+  - 补充可复现基线脚本并记录结果（按 009 口径），并包含诊断开关 off/light/sampled/full 的 overhead 对比（至少时间/分配其一，确保 off 近零成本）。
   - `SC-002` 的 50ms 门槛在 `Diagnostics Level=off` 下验收；`light/full` 以 NFR-002 的 overhead 口径单独验收，避免口径混淆。
   - 在 Spec 013 默认 `traitConvergeMode=auto` 下，提供 `requestedMode=full` vs `requestedMode=auto`（可选补充 `dirty`）的对比证据，并在 `Diagnostics Level=light|full` 下用 013 的 `trait:converge` evidence 解释决策（`executedMode` 仅 `full|dirty`，并包含 `cache_hit/cache_miss/budget_cutoff` 等原因字段）；默认“full 下界噪声预算”以 `FR-009` 的 5% 为门槛，对齐 NFR-005。 
 

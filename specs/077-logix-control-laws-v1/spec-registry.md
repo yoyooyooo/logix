@@ -4,7 +4,7 @@
 
 ## SSoT
 
-- 公式/分层裁决（最高层）：`docs/specs/sdd-platform/ssot/foundation/01-the-one.md`
+- 公式/分层裁决（最高层）：`docs/ssot/platform/foundation/01-the-one.md`
 - 成员关系（机器可读）：`specs/077-logix-control-laws-v1/spec-registry.json`
 - 索引式执行清单：`specs/077-logix-control-laws-v1/checklists/group.registry.md`
 
@@ -12,8 +12,8 @@
 
 - 073 `specs/073-logix-external-store-tick/`
   - 交付：`RuntimeStore + tickSeq`（React 单订阅点，no-tearing）+ `trace:tick`
-- 075 `specs/075-logix-flow-program-ir/`
-  - 交付：FlowProgram IR（可编译控制律：Action→Action + 时间算子）
+- 075 `specs/075-flow-program-codegen-ir/`
+  - 交付：FlowProgram 出码 IR（AI/平台专属 DSL：Canonical AST → Static IR；时间算子进入证据链）
 - 076 `specs/076-logix-source-auto-trigger-kernel/`
   - 交付：source 自动触发内核化（dirtyPaths+depsIndex），消灭 Query/Form watcher 胶水
 

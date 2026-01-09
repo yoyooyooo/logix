@@ -12,7 +12,7 @@
 - `packages/logix-react/src/internal/provider/config.ts`
 - `packages/logix-react/src/internal/provider/RuntimeProvider.tsx`（Provider boot/gating/preload 的内部实现）
 - `packages/logix-react/src/internal/store/ModuleCache.ts`（为 preload 增补非 Suspense 的加载路径）
-- `.codex/skills/project-guide/references/runtime-logix/logix-react/*`（SSoT）
+- `docs/ssot/runtime/logix-react/*`（SSoT）
 
 ### 本轮新增/调整的对外契约（摘要）
 

@@ -34,7 +34,7 @@ allocs(optional)=
 notes=StateTrait.ListScopeCheck.Perf.off.test.ts (iters=30,warmup=5)
 ```
 
-## 3) “off/light/full” 开销对齐（填写）
+## 3) “off/light/sampled/full” 开销对齐（填写）
 
 > T075：引用 014 的 browser perf evidence，并说明 gate 环境与口径差异。
 

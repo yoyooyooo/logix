@@ -28,8 +28,8 @@
   - Flow/Logix 侧：业务仍用 `traits` 槽位声明规则；
   - Runtime 侧：在 `ModuleRuntime.dispatch` 的 StateTransaction 内完成派生收敛与一次性提交；Devtools 以 txnId 作为窗口锚点观测。
 - 需要同步更新的事实源（docs-first）：
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md`（Trait/事务收敛语义、失败语义、预算/降级）；
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`（Operation Window 诊断信号与 Devtools 展示约定）。
+  - `docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md`（Trait/事务收敛语义、失败语义、预算/降级）；
+  - `docs/ssot/runtime/logix-core/observability/09-debugging.md`（Operation Window 诊断信号与 Devtools 展示约定）。
 - 质量门：以类型检查、lint、核心包测试作为 merge 前强制门槛，并新增针对 SC-001/SC-004/SC-005/SC-008 的用例与基准。
 
 ## Project Structure
@@ -54,7 +54,7 @@ packages/logix-core/
 
 packages/logix-devtools-react/        # 消费诊断信号：Timeline/OverviewStrip/Inspector
 examples/logix-react/                 # 真实复杂表单基准（ComplexTraitForm…）+ 合成压力基准
-.codex/skills/project-guide/references/runtime-logix/             # 规范与实现语义更新
+docs/ssot/runtime/             # 规范与实现语义更新
 ```
 
 ## Implementation Steps（分阶段实施方案）

@@ -6,7 +6,7 @@ value: core
 priority: now
 related:
   - ./10-requirements-and-mvp.md
-  - ../../../sdd-platform/ssot/roadmap-logix-platform.md
+  - ../../../docs/ssot/platform/roadmap-logix-platform.md
   - ../sdd-platform/11-spec-to-code-mvp.md
   - ../sandbox-runtime/60-vision-runtime-alignment-lab.md
 ---
@@ -94,7 +94,7 @@ related:
 - `docs/specs/drafts/topics/sandbox-runtime/15-protocol-and-schema.md`：RunConfig/RunResult 与 scenarioRevisionId/ruleId/stepId 的锚点对齐要求
 - `docs/specs/drafts/topics/sandbox-runtime/30-intent-coverage-and-ai-feedback.md`：AlignmentReport/覆盖率/AI Context Pack 的最小结构（保持 Slim + 可序列化）
 - `docs/specs/sdd-platform/workbench/05-intent-pipeline.md`：Pipeline 视图的 UI 形态与 traceability 约束（若收敛出明确模板）
-- `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`：资产层级的 `derivedFrom/anchors` 约束（若确定为平台通用机制）
+- `docs/ssot/platform/assets/00-assets-and-schemas.md`：资产层级的 `derivedFrom/anchors` 约束（若确定为平台通用机制）
 
 ## 4. 下一步行动（建议顺序）
 

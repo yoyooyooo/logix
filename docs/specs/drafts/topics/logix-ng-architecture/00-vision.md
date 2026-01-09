@@ -3,7 +3,7 @@ title: Logix NG Vision - Database Internals & Compiled Reactivity
 status: draft
 layer: Runtime
 related:
-  - docs/specs/sdd-platform/ssot/foundation/02-glossary.md
+  - docs/ssot/platform/foundation/02-glossary.md
   - specs/039-trait-converge-int-exec-evidence/spec.md
   - specs/043-trait-converge-time-slicing/spec.md
   - specs/044-trait-converge-diagnostics-sampling/spec.md

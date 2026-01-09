@@ -5,7 +5,7 @@
 **Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/031-trialrun-artifacts/plan.md`
 
 > 本 quickstart 只描述“你会得到什么，以及最小消费者怎么用”。  
-> IR/trial-run 的实现链路与字段语义外链到：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+> IR/trial-run 的实现链路与字段语义外链到：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 
 ## 0) 你会得到什么
 
@@ -58,7 +58,7 @@ kit 想新增补充静态 IR（Supplemental Static IR）时：
 
 ## References
 
-- IR 全链路（IrPage→Sandbox→TrialRun）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+- IR 全链路（IrPage→Sandbox→TrialRun）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 - 025 IR schemas（Manifest/StaticIR/TrialRunReport/Diff）：`specs/025-ir-reflection-loader/contracts/schemas/*`
 - RulesManifest schema（Form 事实源）：`specs/028-form-api-dx/contracts/schemas/rules-manifest.schema.json`
 - JsonValue / SerializableErrorSummary：`specs/005-unify-observability-protocol/contracts/schemas/json-value.schema.json`、`specs/016-serializable-diagnostics-and-identity/contracts/schemas/serializable-error-summary.schema.json`

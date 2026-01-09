@@ -23,7 +23,7 @@
 
 ## Constitution Check（总控口径）
 
-- 本 group 的 SSoT：`docs/specs/sdd-platform/ssot/foundation/01-the-one.md`
+- 本 group 的 SSoT：`docs/ssot/platform/foundation/01-the-one.md`
 - 参考系（Einstein）：先完成 073 M1（`RuntimeStore + tickSeq` 单一订阅点，no-tearing）再谈更高层 Π。
 - 控制律（Newton+）：任何自由编排必须进入 `Π`（FlowProgram），不得回退到 trait meta + 反射式解释。
 - 受限控制律：source 的默认自动触发属于 `Π_source`，必须内核化并可解释；复杂时序升级到 075。

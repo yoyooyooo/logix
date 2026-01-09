@@ -85,7 +85,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Which `docs/specs/*` specs does it depend on or modify, and are they
     updated first (docs-first & SSoT)?
   - Does it introduce or change any Effect/Logix contracts? If yes, which
-    `.codex/skills/project-guide/references/runtime-logix/*` docs capture the new contract?
+    `docs/ssot/runtime/*` docs capture the new contract?
   - IR & anchors: does it change the unified minimal IR or the Platform-Grade
     subset/anchors; are parser/codegen + docs updated together (no drift)?
   - Deterministic identity: are instance/txn/op IDs stable and reproducible
@@ -112,7 +112,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - `Intent → Flow/Logix → Code → Runtime`：本特性落在 Runtime 这一环，补齐“脚本/CLI 运行入口”的缺口；同时通过提供 `$`（Bound API）把“在脚本里也能用 `$.use` 获取 ModuleHandle（含扩展）”这条链路补齐，避免业务侧自造 Host/Deferred 样板。
-- Docs-first & SSoT：对外契约更新必须同步更新 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与 `apps/docs/content/docs/api/core/runtime.md`；若需要新增术语/心智模型，优先更新 runtime glossary（runtime 侧 SSoT）。
+- Docs-first & SSoT：对外契约更新必须同步更新 `docs/ssot/runtime/logix-core/*` 与 `apps/docs/content/docs/api/core/runtime.md`；若需要新增术语/心智模型，优先更新 runtime glossary（runtime 侧 SSoT）。
 - Effect/Logix contracts：新增的 program runner 是对现有 `Logix.Runtime.make(...)` 的组合入口，不改变 `ModuleRuntime/ModuleHandle/Root.resolve` 的语义；对齐 `@logixjs/test` 时如需推翻早期抽象，必须提供迁移说明与回归测试覆盖。
 - IR & anchors：不引入新的 IR；尽量复用既有 Debug/RunSession 证据导出链路；失败信息应保持可序列化（错误分类/entrypoint 等）。
 - Deterministic identity：runner 不生成新的随机/时间身份锚点；实例 identity 仍由 ModuleRuntime 机制提供并保持稳定可关联；错误载荷/诊断至少可关联 `moduleId + instanceId`。
@@ -169,7 +169,7 @@ packages/logix-test/src/
 perf（证据跑道，统一入口：`pnpm perf`）
 └── `pnpm perf bench:024:boot`            # 启动耗时基线脚本（manual vs new API），输出 JSON 证据到 specs/024-*/perf/
 
-.codex/skills/project-guide/references/runtime-logix/
+docs/ssot/runtime/
 └── logix-core/
    └── api/
       └── 05-runtime-and-runner.md        # 补齐“program runner”对外契约与心智模型（并在 api/README.md 里链接）

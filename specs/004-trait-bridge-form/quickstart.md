@@ -463,13 +463,12 @@ export const ContractTraits = StateTrait.from(ContractFormStateSchema)({
 		        supplierInfo: {
 		          deps: ["supplierCode"],
 		          resource: SupplierInfoResource,
-		          triggers: ["onMount", "onKeyChange"],
-		          debounceMs: 300,
+		          autoRefresh: { onMount: true, onDepsChange: true, debounceMs: 300 },
 		          // 默认 switch：以“最新 key”为准（尽量取消旧 in-flight，且无论是否可取消都必须丢弃 stale）。
 		          // 若该资源请求成本高/需限流，可改用 exhaust：in-flight 期间合并触发，结束后补一次最新 key 的刷新。
 		          concurrency: "switch",
 		          key: (supplierCode) => (supplierCode ? { supplierCode } : undefined),
-	        },
+		        },
 	      },
 
       // 3) （可选）基于资源结果派生错误

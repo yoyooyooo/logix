@@ -11,7 +11,7 @@
   - DebugSink 在 `errorOnly` 单 sink 场景对高频事件走 fast-path（不读取 diagnosticsLevel/runtimeLabel/linkId，不调用 sink.record）
   - Trait converge 在默认档（diagnostics=off + errorOnly-only）下不生成 decision/dirtySummary/topK/hotspots 等观测 payload；当 sinks 非 errorOnly-only 时仅生成 slim decision，重字段由 diagnosticsLevel 门控
 - 显式观测档：
-  - diagnostics=light/full（或 sampled）时仍可导出 Slim、可序列化事件，并解释裁剪/降级原因
+  - diagnostics=light/sampled/full 时仍可导出 Slim、可序列化事件，并解释裁剪/降级原因
 - kernelId：
   - 保持“请求内核族”语义；FullCutoverGate 只做装配期判定，不进入运行期热路径
 
@@ -51,7 +51,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ### Answers (Pre-Design)
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性属于 Runtime 性能/诊断治理层：不改业务 Flow/DSL，仅移除默认税与明确门控语义。
-- **Docs-first & SSoT**：不新增平台术语；若诊断协议字段/语义发生变化，必须同步更新 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`（本特性目标是“零税”，原则上不改协议）。
+- **Docs-first & SSoT**：不新增平台术语；若诊断协议字段/语义发生变化，必须同步更新 `docs/ssot/runtime/logix-core/observability/09-debugging.md`（本特性目标是“零税”，原则上不改协议）。
 - **IR & anchors**：不改变统一最小 IR 与稳定锚点；只改变“何时生成可导出事件/decision”以确保 off 近零成本。
 - **Deterministic identity**：不引入随机/时间锚点；既有 instanceId/txnSeq/opSeq 语义保持。
 - **Transaction boundary**：不引入事务窗口 IO/await；改动仅为门控与 fast-path。

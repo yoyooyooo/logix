@@ -66,7 +66,7 @@ priority: next
 | --------------------- | ---------------------------------------------------- | ---------------------------- |
 | v3 规范               | `v3/platform/impl/code-runner-and-sandbox.md`        | 决策依据（Frontend First）   |
 | L4 草案               | `L4/logix-sandbox-verifiable-intent-architecture.md` | 已下沉到本 topic             |
-| runtime-logix         | `.codex/skills/project-guide/references/runtime-logix`                           | Sandbox 复用 Platform/Tracer |
+| runtime SSoT         | `docs/ssot/runtime`                           | Sandbox 复用 Platform/Tracer |
 | runtime-observability | `topics/runtime-observability`                       | DebugSink/TraceBus 对接      |
 | devtools-and-studio   | `topics/devtools-and-studio`                         | Waterfall/线框视图消费       |
 | **Vision**            | `60-vision-runtime-alignment-lab.md`                 | 总体愿景 & 演进哲学          |

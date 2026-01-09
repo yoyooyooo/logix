@@ -79,8 +79,8 @@ yield* $.onAction("submit")
 - Runtime/API 通过“**可解析性**”获得更强的长期可维护性（Studio 反向约束代码质量）。
 
 > 对应规范落点（未来）：  
-> - `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`：补充“Parsable Logic Pattern”一节；  
-> - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`：把“推荐 Fluent 写法 + Parsable 子集”写死。
+> - `docs/ssot/platform/assets/00-assets-and-schemas.md`：补充“Parsable Logic Pattern”一节；  
+> - `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`：把“推荐 Fluent 写法 + Parsable 子集”写死。
 
 ## 1.3 可观测性即调试器 (Observability as Debugger)
 
@@ -292,13 +292,13 @@ yield* $.onAction("submit")
 本草稿与以下规范/草稿直接相关（后续应作为它们之间的“桥梁”而不是平行体系）：
 
 - Intent / 平台规划：
-  - `docs/specs/sdd-platform/ssot/foundation/00-overview.md`：整体 Intent-Driven 平台蓝图；
-  - `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`：IntentRule / LogicNode IR 与 R-S-T 链路；
+  - `docs/ssot/platform/foundation/00-overview.md`：整体 Intent-Driven 平台蓝图；
+  - `docs/ssot/platform/assets/00-assets-and-schemas.md`：IntentRule / LogicNode IR 与 R-S-T 链路；
   - `docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`：Universe / Galaxy / UI & Module Studio / Pattern Studio / IntentRule Explorer 等平台视图，以及 Level 0–3 资产链路（业务需求 → 需求意图 → 开发意图 → 实现）的规划；
   - `docs/specs/drafts/topics/spec-studio/*`（如存在）：Spec Studio / Galaxy Canvas 相关草稿。
 - Runtime / 观测性与 DevTools：
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`：Flow / Logic API 形态与 Parsable 子集约定，是“代码 ↔ IR”往返的硬边界；
-  - `.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`：`Logix.Runtime.make` / `RuntimeProvider` 等 Composition Root 约定，是 Runtime↔Studio 连接的自然挂载点；
+  - `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`：Flow / Logic API 形态与 Parsable 子集约定，是“代码 ↔ IR”往返的硬边界；
+  - `docs/ssot/runtime/logix-react/01-react-integration.md`：`Logix.Runtime.make` / `RuntimeProvider` 等 Composition Root 约定，是 Runtime↔Studio 连接的自然挂载点；
   - `docs/specs/drafts/topics/devtools-and-studio/04-devtools-and-runtime-tree.md`：Runtime Tree / TagIndex / DevTools 挂载面规划；
   - `docs/specs/drafts/topics/runtime-v3-core/README.md`：Runtime 核心不变量与门禁（事务/锚点/Diagnostics/014），为 Studio 解释链路提供底座。
 
@@ -310,7 +310,7 @@ yield* $.onAction("submit")
 
 后续若方向稳定，应：
 
-1. 在 `runtime-logix` 规范中补充“Runtime Introspection & Observability”章节，明确 Debug 事件模型（事件类型、字段、订阅方式）与 RuntimeAdapter/ManagedRuntime 如何暴露这些事件给外部 Studio / DevTools；
+1. 在 `runtime SSoT` 规范中补充“Runtime Introspection & Observability”章节，明确 Debug 事件模型（事件类型、字段、订阅方式）与 RuntimeAdapter/ManagedRuntime 如何暴露这些事件给外部 Studio / DevTools；
 2. 在 Intent v3 / 平台规范中完善“Parsable Logic Subset & Code ↔ IntentRule Roundtrip”约束，并给出 Code→IR→Code 的简单示例（例如 debounce 参数修改回写代码）；
 3. 为 Spec Studio / Runtime Studio 建立统一 Topic（如 `docs/specs/drafts/topics/spec-studio/`），将本草稿与 Runtime DevTools / Galaxy Canvas 相关 L9/L5 草稿收编，形成“平台视角 + Runtime 视角”的集中事实源。
 
@@ -337,7 +337,7 @@ yield* $.onAction("submit")
 
 ## 6.2 下一步建议
 
-1. 在 `runtime-logix` 中先确定一版 **Debug/Trace 事件模型 PoC**，并接到现有 `DebugSink` 上；
+1. 在 `runtime SSoT` 中先确定一版 **Debug/Trace 事件模型 PoC**，并接到现有 `DebugSink` 上；
 2. 在小范围（单 Feature 目录）内实现“Fluent DSL → IR → 画布”的单向链路 PoC（Code → Studio）；
 3. 设计一组最小可用的 AST 变更操作（例如“修改 debounce 参数”、“切换 run → runLatest”），做一个 Studio → Code 回写 PoC；
 4. 在 CLI 中预留 `logix dev` / `logix lsp` 命令入口，即便暂时只打印日志，为后续 Language Server 演进留钩子；

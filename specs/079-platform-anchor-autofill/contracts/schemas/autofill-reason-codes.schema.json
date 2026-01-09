@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/079/autofill-reason-codes.schema.json",
+  "title": "AutofillReasonCode@v1",
+  "type": "string",
+  "enum": [
+    "already_declared",
+    "unsafe_to_patch",
+    "unsupported_shape",
+    "no_confident_usage",
+    "dynamic_or_ambiguous_usage",
+    "unresolvable_service_id",
+    "missing_location"
+  ]
+}
+

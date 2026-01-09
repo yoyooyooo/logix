@@ -97,7 +97,7 @@
 
 - `controller.refresh(queryName)`：只刷新指定 query（若 key 不可用则 no-op，并提供可解释原因）。
 - `controller.refresh()`：刷新模块内所有 query（等价于逐个 `refresh(queryName)`）。
-- 成本边界：`refresh()` 可能触发多条 query 的 IO，应在用户文档中给出“粗成本模型 + 优化梯子”，并建议在大模块中优先用显式 target 或收窄 queries/triggers。
+- 成本边界：`refresh()` 可能触发多条 query 的 IO，应在用户文档中给出“粗成本模型 + 优化梯子”，并建议在大模块中优先用显式 target 或收窄 queries/autoRefresh。
 
 ### 7) `queries` 的保留关键字（防止 state 冲突）
 
@@ -164,7 +164,7 @@ packages/logix-query/src/
 └── internal/
    ├── engine/tanstack.ts       # TanStack Engine 适配器
    ├── middleware/middleware.ts # EffectOp 接管点实现
-   ├── logics/auto-trigger.ts   # onMount/onKeyChange 统一触发逻辑
+	   ├── logics/auto-trigger.ts   # LEGACY: 历史 onMount/onKeyChange 触发逻辑；新口径由 076 的 StateTrait.source.autoRefresh 内核化后应删除/收敛
    ├── logics/invalidate.ts     # invalidate 事件化 +（可选）engine.invalidate + source.refresh
    └── tanstack/observer.ts     # observe（可选）
 

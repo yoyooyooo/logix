@@ -197,7 +197,7 @@ const appRuntime = Runtime.make(AppCounterImpl, {
      - ModuleCache 不重复初始化，仅依赖 snapshot + version 控制 GC。
 
 5) 文档与 API 一致性  
-   - 本稿与 `.codex/skills/project-guide/references/runtime-logix/logix-react/90-adapter-runtime-integration.md`、`apps/docs` 中的 React 集成章节在以下方面保持一致：  
+   - 本稿与 `docs/ssot/runtime/logix-react/90-adapter-runtime-integration.md`、`apps/docs` 中的 React 集成章节在以下方面保持一致：  
      - 三层配置模型（默认 / ConfigProvider / Runtime override）；  
      - RuntimeProvider → snapshot → useModule / ModuleCache 的单向依赖；  
      - 不在 render 阶段调用 runSync 的约束。  

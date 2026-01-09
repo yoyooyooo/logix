@@ -46,7 +46,7 @@
 
 ### Rationale
 
-- 符合之前在 field-capabilities 与 runtime-logix 文档中的角色划分：data 作为统一数据层，core 作为执行层；
+- 符合之前在 field-capabilities 与 runtime SSoT 文档中的角色划分：data 作为统一数据层，core 作为执行层；
 - 避免形成难以拆解的循环依赖，保证未来可以独立演进 Devtools / 平台侧对 data IR 的消费方式。
 
 ### Alternatives considered
@@ -70,7 +70,7 @@
 
 ### Rationale
 
-- 将字段能力视为对 ModuleRuntime 构建流程的“编译扩展”，符合 runtime-logix 文档中 Capability Plugin 的思路；
+- 将字段能力视为对 ModuleRuntime 构建流程的“编译扩展”，符合 runtime SSoT 文档中 Capability Plugin 的思路；
 - 便于在测试中隔离：可以针对 Plan → Flow 转换做单元测试，而不耦合上层 UI 或 Devtools。
 
 ### Alternatives considered

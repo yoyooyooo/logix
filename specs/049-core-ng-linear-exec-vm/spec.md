@@ -62,16 +62,16 @@
 
 ### User Story 2 - 可诊断、可对照、off 近零成本 (Priority: P1)
 
-作为平台/Devtools/Sandbox 维护者，我希望 Exec VM 的引入不破坏统一最小 IR 与可解释链路：diagnostics=off 近零成本；diagnostics=light/full 能解释“是否命中 Exec IR/plan/访问器表、发生了什么降级/回退、预算为何触发”。
+作为平台/Devtools/Sandbox 维护者，我希望 Exec VM 的引入不破坏统一最小 IR 与可解释链路：diagnostics=off 近零成本；diagnostics=light/sampled/full 能解释“是否命中 Exec IR/plan/访问器表、发生了什么降级/回退、预算为何触发”。
 
 **Why this priority**: 没有可解释性，性能优化不可持续；而额外诊断分配会反噬热路径。
 
-**Independent Test**: 在 off/light/full 三档下跑同一套 suites，输出证据字段可序列化、可裁剪，且 off 不引入显著开销。
+**Independent Test**: 在 off/light/sampled/full 四档下跑同一套 suites，输出证据字段可序列化、可裁剪，且 off 不引入显著开销。
 
 **Acceptance Scenarios**:
 
 1. **Given** diagnostics=off，**When** 执行 converge/txn suites，**Then** 诊断机制本身不引入显著额外分配或 O(n) 扫描。
-2. **Given** diagnostics=light/full，**When** 执行同一 suites，**Then** 证据能解释 Exec VM 是否生效（命中/未命中原因、plan/缓存摘要、预算结果），且字段 Slim 可序列化。
+2. **Given** diagnostics=light/sampled/full，**When** 执行同一 suites，**Then** 证据能解释 Exec VM 是否生效（命中/未命中原因、plan/缓存摘要、预算结果），且字段 Slim 可序列化。
 
 ---
 

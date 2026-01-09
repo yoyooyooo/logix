@@ -11,7 +11,7 @@
 
 ## 使用方式
 
-- 当我们在讨论 **平台与 runtime 的集成协议** 时（例如 App/Module/Store 模块树 → Universe View、IntentRule ←→ TS 代码、AOP 中间件在平台 UI 中的配置方式），除了更新主规范（`docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`、`docs/specs/sdd-platform/ssot/ir/00-codegen-and-parser.md` 等），还应在本目录下补一份「平台实现视角」的技备文档：
+- 当我们在讨论 **平台与 runtime 的集成协议** 时（例如 App/Module/Store 模块树 → Universe View、IntentRule ←→ TS 代码、AOP 中间件在平台 UI 中的配置方式），除了更新主规范（`docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`、`docs/ssot/platform/ir/00-codegen-and-parser.md` 等），还应在本目录下补一份「平台实现视角」的技备文档：
   - 描述解析/生成的核心数据流与关键 AST Pattern；
   - 明确哪些代码写法被视为“可解析子集”，哪些会退化为 Gray/Black Box；
   - 记录与 Logix Runtime 的耦合点（例如：如何利用 `ModuleDef.imports/providers/exports/processes/middlewares` 构建 Universe View）。
@@ -41,7 +41,7 @@
 
 ## Fluent Intent / Universal $ 的平台实现注意事项
 
-结合 `docs/specs/sdd-platform/ssot/ir/00-codegen-and-parser.md` 与 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`，平台侧在实现解析与出码时需要特别注意以下硬约束：
+结合 `docs/ssot/platform/ir/00-codegen-and-parser.md` 与 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`，平台侧在实现解析与出码时需要特别注意以下硬约束：
 
 1. **解析入口：以 `$` 与 Module 为中心**
    - 解析器不再围绕 `Flow.from().pipe(...)`，而是以以下结构作为主入口：
@@ -97,8 +97,8 @@
      - StoreHandle 无跨 Store 写接口（只有 `read/changes/dispatch`），保证 IR 中“谁写谁”的关系可靠；
      - Fluent 链在运行时等价于 Flow/Effect 组合，不会引入额外的隐形控制流。
      - 若实现中需要突破上述约束（例如新增新的 `$.on*` 变种或新的白盒终端），必须同步更新：
-     - `docs/specs/sdd-platform/ssot/ir/00-codegen-and-parser.md`（解析规则）；
-     - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`（Bound API 契约）；
+     - `docs/ssot/platform/ir/00-codegen-and-parser.md`（解析规则）；
+     - `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`（Bound API 契约）；
      - 本 README（平台实现备忘）。
 
 以上条目旨在保证：**只要业务代码遵守 Fluent DSL 的写法，平台就能在可控复杂度下提供稳定的 Graph ↔ Code 双向同步；一旦业务脱离这套写法，平台则有清晰的降级策略，而不会“半懂半不懂”。**

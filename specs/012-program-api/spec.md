@@ -159,7 +159,7 @@
 ### Non-Functional Requirements (Performance & Diagnosability)
 
 - **NFR-001**: 系统 MUST 在实现前后提供可复现的性能基线；并为“关键热路径”（模块事件分发、Process 触发与调度、作用域启停）定义明确预算，确保引入 Process 后无可见回退。
-- **NFR-002**: 诊断能力 MUST 默认低成本；默认诊断级别为 `off`，按需开启；在约定基准场景下，diagnostics=`off` 时 Process 引入的 p95 额外开销目标 ≤ 1%（工程预算），并能对比 `off/light/full` 给出代价证据。
+- **NFR-002**: 诊断能力 MUST 默认低成本；默认诊断级别为 `off`，按需开启；在约定基准场景下，diagnostics=`off` 时 Process 引入的 p95 额外开销目标 ≤ 1%（工程预算），并能对比 `off/light/sampled/full` 给出代价证据。
 - **NFR-003**: Process/实例/作用域的标识 MUST 稳定且可预测，不得默认使用随机或时间戳作为唯一识别方式；同一输入下应生成一致的标识与诊断关联。
 - **NFR-004**: 系统 MUST 保持同步事务边界：在事务窗口内禁止 IO/异步工作；Process 触发的跨模块驱动不得破坏该边界（避免出现“事务内 IO”或“越界写入”的逃逸）。
 

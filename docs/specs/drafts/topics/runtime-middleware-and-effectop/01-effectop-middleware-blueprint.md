@@ -8,8 +8,8 @@ related:
   - ./README.md
   - ../runtime-observability/README.md
   - ../runtime-v3-core/README.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/api/04-logic-middleware.md
+  - docs/ssot/runtime/logix-core/api/03-logic-and-flow.md
+  - docs/ssot/runtime/logix-core/api/04-logic-middleware.md
 ---
 
 # EffectOp-Based Middleware Pipeline Blueprint
@@ -672,14 +672,14 @@ function runStateChangeWithMiddlewares<S, A, E, R>(
 
 1. **EffectOpMeta 字段集**  
    - 目前只列出最基本字段（kind/name/moduleId/tags/payload/stateBefore）；  
-   - 需要结合 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 与 Observability Topic，确定 traceId/tenantId/requestId 等字段的归属与生成方式。
+   - 需要结合 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 与 Observability Topic，确定 traceId/tenantId/requestId 等字段的归属与生成方式。
 
 2. **类型层面的 A/E/R 约束**  
    - 是否需要对 Middleware 在泛型层面做更严格的 Endomorphism 约束；  
    - Guard/Runner 在改变错误类型或环境 R 时的类型表达方式（AdvancedMiddleware？）。
 
 3. **与 Bound API / Flow DSL 的映射**  
-   - 需要在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md` 中明确 `$.onAction().run*` / `$.state.*` / `$.lifecycle.*` 等 API 与 EffectOp 包装的关系；  
+   - 需要在 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md` 中明确 `$.onAction().run*` / `$.state.*` / `$.lifecycle.*` 等 API 与 EffectOp 包装的关系；  
    - 确保 DSL 对业务开发者仍然简洁，不暴露 `EffectOp` 细节。
 
 4. **与现有实现的迁移路径**  
@@ -697,8 +697,8 @@ function runStateChangeWithMiddlewares<S, A, E, R>(
 
 后续工作：
 
-- 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/04-logic-middleware.md` 中抽象出与本草案一致的规范性描述；  
-- 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/impl/README.md` 中固化实现约束；  
+- 在 `docs/ssot/runtime/logix-core/api/04-logic-middleware.md` 中抽象出与本草案一致的规范性描述；  
+- 在 `docs/ssot/runtime/logix-core/impl/README.md` 中固化实现约束；  
 - 在 `topics/runtime-observability` 中对 DebugSink / TraceBus 与 EffectOp 的集成细化事件模型；  
 - 在本 Topic 下补充配置与 registry 细节：定义 `RuntimeMiddlewareRegistry` / `RuntimeMiddlewareDefaults` / `ModuleMiddlewareGroups` / `FlowMiddlewareOverride` 的最终形状与使用示例；  
 - 在本 Topic 下补充典型组合示例：例如 `devtools + persist` 套餐中间件（见 `02-devtools-and-persist-example.md`），验证第三方中间件包和预设的设计 ergonomics；  

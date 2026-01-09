@@ -33,8 +33,8 @@
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - 本特性映射链路：文档作者意图（教学/观察点）→ PlaygroundBlock 配置 → Sandbox 试运行（Worker）→ RunResult（logs/traces/结果摘要）→ 文档内展示与学习反馈。
-- Docs-first/SSoT：用户文档能力落点在 `apps/docs`；Sandbox/Playground 的定位与约束以 `docs/specs/drafts/topics/sandbox-runtime/*` 与 `docs/specs/sdd-platform/ssot/*` 为参考，避免“只做代码 runner”。
-- 合同/契约：优先复用 `@logixjs/sandbox` 既有 TrialRun 能力；如需扩展（例如取消/事件上限/更好的错误定位），必须以显式协议/配置项落地，并同步回写到对应的 Sandbox 主题文档与 runtime-logix 备忘。
+- Docs-first/SSoT：用户文档能力落点在 `apps/docs`；Sandbox/Playground 的定位与约束以 `docs/specs/drafts/topics/sandbox-runtime/*` 与 `docs/ssot/platform/*` 为参考，避免“只做代码 runner”。
+- 合同/契约：优先复用 `@logixjs/sandbox` 既有 TrialRun 能力；如需扩展（例如取消/事件上限/更好的错误定位），必须以显式协议/配置项落地，并同步回写到对应的 Sandbox 主题文档与 runtime SSoT 备忘。
 - IR/锚点：本特性不改变统一最小 IR；仅在高级/Debug 示例中消费现有 trace/事件并提供解释视图。
 - 稳定标识：文档内运行必须显式传入确定性的 `runId`（避免默认 `Date.now()` 生成）；必要时为示例块引入稳定 blockId 与本地序号。
 - 双内核演进（core + core-ng）：文档 Playground 作为 consumer 默认只依赖 `@logixjs/core` + `@logixjs/sandbox`；默认请求 kernel=core（单内核默认策略），`core-ng` 仅作为**显式**对照/试跑选项；kernel 选择 UI 仅在 `level=debug` 的文档/块中启用，且 strict by default（不引入隐式 fallback）；不直接 import `@logixjs/core-ng`。

@@ -15,7 +15,7 @@
 ### 1.2 `@logixjs/query` / Logix Runtime 负责什么
 
 - 统一 keySchema/keyHash：稳定、可回放、可比较
-- triggers/concurrency：何时触发、触发频率、switch/exhaust 体验语义
+- autoRefresh/concurrency：何时触发、触发频率、switch/exhaust 体验语义
 - 写回事实源：ResourceSnapshot 写回模块 state（不引入并行真相源）
 - stale 丢弃：写回前按 keyHash 门控（只认最新）
 - 可解释链路：触发原因 → keyHash → 并发策略 → 写回结果（Slim 且可序列化）
@@ -107,7 +107,7 @@ export interface EngineService {
 
 ## 6) CacheHook（`peekFresh`）与“避免 loading 抖动”
 
-- Query 自动触发（onMount/onKeyChange）在发起 refresh 前 MAY 先走一次 `engine.peekFresh(...)`：
+- Query 自动触发（autoRefresh：onMount/onDepsChange）在发起 refresh 前 MAY 先走一次 `engine.peekFresh(...)`：
   - 若命中 fresh success，则允许直接把 success snapshot 写回模块 state，并记录可回放事件（例如 `query:cache-hit`）。
   - 若未命中，则正常走 refresh → middleware → engine.fetch 路径。
 

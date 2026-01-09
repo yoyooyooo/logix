@@ -8,7 +8,7 @@
 在不改变对外语义的前提下，把整型化从 converge 热路径扩展到 **txn dirty-set / patch recording / state:update 诊断链路**，形成 **id-first（FieldPathId/StepId）** 的端到端闭环；字符串仅在 **序列化/显示** 边界 materialize。交付内容包含：
 
 - txn 热路径：dirty-set 与 patch recording 以整型锚点驱动，禁止 split/join 往返与隐式降级；
-- 可解释链路：diagnostics=light/full 输出 Slim 且可序列化的 id 锚点，可基于 Static IR（`staticIrDigest`）反解为可读摘要；
+- 可解释链路：diagnostics=light/sampled/full 输出 Slim 且可序列化的 id 锚点，可基于 Static IR（`staticIrDigest`）反解为可读摘要；
 - 长期门禁：Browser perf matrix + Node bench 的 before/after 证据与 hard gates，默认 `comparable=true && regressions==0 && budgetViolations==0` 才允许合入。
 
 ## Deepening Notes
@@ -17,7 +17,7 @@
 - Decision: `StepId` 指 `ConvergeStepId`（converge steps table 整数下标；非 converge patch 不填）(source: spec clarify AUTO)
 - Decision: dirty-set 对外形态为 `{ dirtyAll, reason? } | { rootIds, rootCount, keyHash, keySize }`，`rootIds` 必须 prefix-free 且稳定排序 (source: spec clarify AUTO)
 - Decision: `rootPaths` 仅在显示/序列化边界反解；当 `staticIrDigest` 缺失或不匹配时不得反解（避免展示错误信息）(source: spec clarify AUTO + review)
-- Decision: diagnostics bounded：`rootIds` TopK（light=3、full=32）+ `rootIdsTruncated`；full patch records ≤256（超限必须裁剪并可解释）(source: spec clarify AUTO)
+- Decision: diagnostics bounded：`rootIds` TopK（light=3、sampled/full=32）+ `rootIdsTruncated`；sampled/full patch records ≤256（超限必须裁剪并可解释）(source: spec clarify AUTO)
 - Decision: `DirtyAllReason`/`PatchReason` 必须稳定枚举（`PatchReason` 允许 `unknown` 兜底）(source: spec clarify AUTO)
 - Decision: Hard gates 覆盖 Browser `converge.txnCommit`/`form.listScopeCheck` + Node `bench:027:devtools-txn`/`bench:009:txn-dirtyset` (source: spec clarify AUTO)
 - Decision: string path 仅用于无歧义 dot-separated 边界输入；无法映射必须 `dirtyAll=true` 且 `reason=fallbackPolicy` (source: spec clarify AUTO)
@@ -64,12 +64,12 @@ _GATE：必须在 Phase 0/1 设计完成后再次复核；本计划在本阶段�
 
 ### 2) 依赖/修改的 SSoT（docs-first）
 
-- 方法论/术语基线：`docs/specs/sdd-platform/ssot/foundation/02-glossary.md`
-- Runtime SSoT 导览：`.codex/skills/project-guide/references/runtime-logix/README.md`
-- Trait 静态治理与溯源（Static IR digest / 锚点）：`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/05-trait-provenance-and-static-governance.md`
+- 方法论/术语基线：`docs/ssot/platform/foundation/02-glossary.md`
+- Runtime SSoT 导览：`docs/ssot/runtime/README.md`
+- Trait 静态治理与溯源（Static IR digest / 锚点）：`docs/ssot/runtime/logix-core/impl/05-trait-provenance-and-static-governance.md`
 - Perf evidence 与门禁口径：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
 - 本特性实现后需要回写（避免事实源漂移）：
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/impl/README.md`（新增：txn recording id-first、PatchReason/DirtyAllReason 收敛、state:update payload 约束与成本模型）
+  - `docs/ssot/runtime/logix-core/impl/README.md`（新增：txn recording id-first、PatchReason/DirtyAllReason 收敛、state:update payload 约束与成本模型）
 
 ### 3) Effect/Logix 契约变化（Contracts）
 
@@ -163,7 +163,7 @@ _GATE：必须在 Phase 0/1 设计完成后再次复核；本计划在本阶段�
   - 判定：`meta.comparability.comparable=true` 且 `summary.regressions==0`（并同时要求 `summary.budgetViolations==0`）。
 - 重点关注 suites：
   - `converge.txnCommit`（P1，直接覆盖 txn commit/decision 热路径）
-  - `form.listScopeCheck`（P2，覆盖 diagnosticsLevel=off/light/full 的开销曲线）
+  - `form.listScopeCheck`（P2，覆盖 diagnosticsLevel=off/light/sampled/full 的开销曲线）
 
 ### Node（bench）证据
 

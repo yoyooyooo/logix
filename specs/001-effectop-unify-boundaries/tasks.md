@@ -44,7 +44,7 @@
 ## Phase 5: 001a 回查与对齐（FR-007/SC-004）
 
 - [x] T017 [US3] 回查 `specs/001a-module-traits-runtime/*` 中与 EffectOp/Middleware 相关承诺，输出“已覆盖/需修订/延期”清单：写入 `specs/001-effectop-unify-boundaries/research.md`
-- [x] T018 [US3] 需要修订的规范/用户文档同步修订（只做叙事与契约对齐，不引入新概念）：`.codex/skills/project-guide/references/runtime-logix/**`、`apps/docs/**`
+- [x] T018 [US3] 需要修订的规范/用户文档同步修订（只做叙事与契约对齐，不引入新概念）：`docs/ssot/runtime/**`、`apps/docs/**`
 
 ---
 

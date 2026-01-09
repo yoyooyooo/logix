@@ -6,7 +6,7 @@ value: core
 priority: next
 related:
   - specs/007-unify-trait-system/contracts/replay-and-diagnostics.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md
+  - docs/ssot/runtime/logix-core/observability/09-debugging.md
   - ../devtools-and-studio/01-cli-and-dev-server.md
   - ../devtools-and-studio/02-full-duplex-digital-twin.md
 ---
@@ -25,7 +25,7 @@ related:
   - watcher 触发（source）；  
   - Effect 运行开始/结束、错误、取消；  
   - 能力调用入口/出口（如 `$.query` / `$.router`）。
-- 将这些事件统一映射为 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 中定义的 **DebugEvent** 形状，并通过 `DebugSinkTag` 广播；  
+- 将这些事件统一映射为 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 中定义的 **DebugEvent** 形状，并通过 `DebugSinkTag` 广播；  
 - 在实现层可以将 DebugSink 视为“TraceBus”的当前具体形态：  
   - DebugSink 是对外暴露的事件接口；  
   - 内部仍可用更细粒度的 Tracer/TraceService 组合实现事件收集与处理。  

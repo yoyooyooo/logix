@@ -67,7 +67,7 @@
 
 **Title**: `[030] Writeback: Runtime SSoT + Glossary + 用户文档 recipes`  
 **Tasks**: T073, T074, T075  
-**Done Criteria**: `.codex/skills/project-guide/references/*` 与 `apps/docs` 口径一致
+**Done Criteria**: `docs/ssot/handbook/*` 与 `apps/docs` 口径一致
 
 ## 可选：按 Task 逐条创建 Issue
 

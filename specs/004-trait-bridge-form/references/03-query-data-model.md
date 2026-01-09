@@ -53,19 +53,23 @@ QueryKey 的来源通常是“参数对象”（filters/pagination/sort/searchTe
 
 ---
 
-## 4. 触发与并发（triggers + concurrency）
+## 4. 自动触发与并发（autoRefresh + concurrency）
 
-沿用 004 data-model 的约束：
+沿用 076/004 的统一口径：触发策略不再使用 `triggers` 枚举，而是通过 `autoRefresh` policy 描述受限控制律。
 
 ```ts
-type QueryTrigger = "manual" | "onMount" | "onKeyChange" | "onBlur"
+type SourceAutoRefresh =
+  | { readonly onMount?: boolean; readonly onDepsChange?: boolean; readonly debounceMs?: number }
+  | false // manual-only
+
 type QueryConcurrency = "switch" | "exhaust"
 ```
 
 补充约束（Query 语义）：
 
-- `manual` MUST 独占（不与其他触发混用），避免“既自动又手动”的歧义；
-- `onKeyChange` 可以配置 `debounceMs`；`onMount` 通常不需要；
+- `autoRefresh` 未提供：等价于 `{ onMount: true, onDepsChange: true, debounceMs: 0 }`；
+- `autoRefresh: false` 表示仅显式 refresh（manual-only），与 `autoRefresh: { ... }` 互斥；
+- `debounceMs` 主要用于合并高频 depsChange 触发（onMount 通常不需要）；
 - 并发策略不改变正确性：stale 丢弃必须做；并发策略只影响“是否取消/是否合并触发”的体验与成本。
 
 ---
@@ -94,7 +98,7 @@ type InvalidateRequest =
 Query 的 UI 状态建议进入 `state.ui.query`（结构由领域包定义），典型字段：
 
 - `autoEnabled: boolean`（是否允许自动触发）
-- `lastTriggeredBy: "mount" | "valueChange" | "manual" | "retry"`
+- `lastTriggeredBy: "mount" | "depsChange" | "manual" | "retry"`
 - `submitCount: number`（手动触发次数）
 - `pendingParams?: unknown`（未规范化参数草稿；或仅用于输入框）
 

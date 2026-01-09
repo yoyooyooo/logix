@@ -97,11 +97,11 @@
 
 **Purpose**: 文档与演练收口，保证对外心智模型一致（strict vs root、注入、异步就绪、token）。
 
-- [x] T024 [P] 更新 runtime SSoT：Bound API 新增 `$.root.resolve` 的语义边界与示例 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`
-- [x] T025 [P] 更新 runtime SSoT：`Root.resolve` 使用建议 + strict vs root 对比 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`
+- [x] T024 [P] 更新 runtime SSoT：Bound API 新增 `$.root.resolve` 的语义边界与示例 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
+- [x] T025 [P] 更新 runtime SSoT：`Root.resolve` 使用建议 + strict vs root 对比 `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
 - [x] T026 [P] 更新用户文档：root provider 解析与 `$.root.resolve` 示例 `apps/docs/content/docs/api/core/runtime.md`
 - [x] T027 [P] 新增用户文档：国际化接入模式（`@logixjs/i18n`/I18nDriver 最小形状注入/I18n Service + I18nModule/多 tree/语言切换/异步就绪/token）`apps/docs/content/docs/guide/patterns/i18n.md`
-- [x] T028 [P] 更新 React 集成指南：如何把 `I18n.layer(...)` 合并进 `RuntimeProvider runtime={...}` 的 root layer `.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`
+- [x] T028 [P] 更新 React 集成指南：如何把 `I18n.layer(...)` 合并进 `RuntimeProvider runtime={...}` 的 root layer `docs/ssot/runtime/logix-react/01-react-integration.md`
 - [x] T029 运行质量门并修复回归（typecheck/lint/test）`package.json`
 - [x] T030 校验演练：按 `specs/029-i18n-root-resolve/quickstart.md` 跑通示例与验收步骤 `specs/029-i18n-root-resolve/quickstart.md`
 - [x] T031 [P] 示例工程接入依赖：为 `examples/logix-react` 增加 `@logixjs/i18n` + `i18next` + `react-i18next` 依赖 `examples/logix-react/package.json`

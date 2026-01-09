@@ -124,7 +124,7 @@ type TraceTick = {
 
 推荐策略：
 
-- diagnostics=light/full：仅记录“合并后的一次 ingest”（每 tick 每 store 最多 1 条）
+- diagnostics=light/sampled/full：仅记录“合并后的一次 ingest”（每 tick 每 store 最多 1 条）
 - diagnostics=off：默认不记录
 
 载荷建议（概念）：
@@ -148,7 +148,7 @@ type TraceExternalStoreIngest = {
 
 约束：
 
-- 只在 diagnostics=light/full 发出（diagnostics=off 不引入任何成本）。
+- 只在 diagnostics=light/sampled/full 发出（diagnostics=off 不引入任何成本）。
 - 不要求定位到具体组件（避免在渲染路径做昂贵采样），但必须能指到 module/instance/selectorId（若有）。
 
 概念载荷：
@@ -175,7 +175,7 @@ Devtools 呈现建议（非合同约束）：
 
 约束：
 
-- 只在 diagnostics=light/full 发出（diagnostics=off 不引入任何成本）。
+- 只在 diagnostics=light/sampled/full 发出（diagnostics=off 不引入任何成本）。
 - 不要求定位到具体组件，但必须能指到 runtime/module/instance 的最小锚点（若可得）。
 
 概念载荷：

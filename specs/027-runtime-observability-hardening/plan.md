@@ -50,9 +50,9 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
     - 本特性属于 Runtime/Tooling 层：通过 FiberRef/Runtime Services 传播诊断作用域，保证 Flow/Logix 的边界操作与事务执行在 Devtools/证据导出中可被稳定串联与解释。
   - Which `docs/specs/*` specs does it depend on or modify, and are they
     updated first (docs-first & SSoT)?
-    - 依赖并需要同步校对：`/Users/yoyo/Documents/code/personal/intent-flow/.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`（DevtoolsHub/DevtoolsSnapshot/订阅契约）。如涉及导出协议字段，将对齐 `specs/005-unify-observability-protocol/contracts/*` 的裁决口径。
+    - 依赖并需要同步校对：`/Users/yoyo/Documents/code/personal/intent-flow/docs/ssot/runtime/logix-core/observability/09-debugging.md`（DevtoolsHub/DevtoolsSnapshot/订阅契约）。如涉及导出协议字段，将对齐 `specs/005-unify-observability-protocol/contracts/*` 的裁决口径。
   - Does it introduce or change any Effect/Logix contracts? If yes, which
-    `.codex/skills/project-guide/references/runtime-logix/*` docs capture the new contract?
+    `docs/ssot/runtime/*` docs capture the new contract?
     - 是：将新增/固化“快照变更检测契约”（例如变更令牌/版本号）与“事务队列作用域传播”口径；需要在 `.../observability/09-debugging.md` 追加说明与示例用法。
   - IR & anchors: does it change the unified minimal IR or the Platform-Grade
     subset/anchors; are parser/codegen + docs updated together (no drift)?
@@ -113,7 +113,7 @@ packages/logix-core/src/internal/runtime/EffectOpCore.ts
 packages/logix-core/test/* (新增/补齐覆盖：链路贯穿、窗口性能与清理语义)
 packages/logix-devtools-react/src/snapshot.ts (如需补齐外部订阅安全的用法示例)
 
-.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md (契约与心智模型更新)
+docs/ssot/runtime/logix-core/observability/09-debugging.md (契约与心智模型更新)
 ```
 
 **Structure Decision**: 本特性主要改动集中在 `packages/logix-core` 的 Runtime/Devtools 热路径；如快照订阅契约对 UI 有影响，`packages/logix-devtools-react` 仅做薄适配与用例覆盖；对外口径以 09-debugging 为准。

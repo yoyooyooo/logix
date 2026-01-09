@@ -128,8 +128,8 @@
 ## Phase N: Polish & Regression Defenses（Required）
 
 - [ ] T040 [P] 增加性能基线脚本（schemaId 归一化/缓存命中/导出 pack），并落证据到 specs（统一纳入 `logix-perf-evidence`，入口建议：`pnpm perf bench:040:schema-registry`）：`specs/040-schemaast-layered-upgrade/perf/baseline.json`（Refs: NFR-001, SC-005）
-- [ ] T041 [P] 文档回写（docs-first）：补齐 schemaId/registry pack/schemaRef 术语与约束（避免并行真相源漂移）：`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`、`docs/specs/sdd-platform/ssot/foundation/02-glossary.md`（Refs: FR-001, FR-002, NFR-005）
-- [ ] T042 [P] runtime SSoT 回写：SchemaRegistry API 与诊断事件 schemaRef 字段口径（含 Slim/预算/降级说明）：`.codex/skills/project-guide/references/runtime-logix/logix-core/*`（Refs: FR-007, NFR-002, NFR-005）
+- [ ] T041 [P] 文档回写（docs-first）：补齐 schemaId/registry pack/schemaRef 术语与约束（避免并行真相源漂移）：`docs/ssot/platform/assets/00-assets-and-schemas.md`、`docs/ssot/platform/foundation/02-glossary.md`（Refs: FR-001, FR-002, NFR-005）
+- [ ] T042 [P] runtime SSoT 回写：SchemaRegistry API 与诊断事件 schemaRef 字段口径（含 Slim/预算/降级说明）：`docs/ssot/runtime/logix-core/*`（Refs: FR-007, NFR-002, NFR-005）
 - [ ] T043 [P] 迁移说明：若新增/调整 public API 或 Sandbox ERROR payload，提供迁移文档（不做兼容层）：`specs/040-schemaast-layered-upgrade/migrations.md`（Refs: NFR-005）
 - [ ] T044 质量门：通过 `pnpm typecheck`、`pnpm lint`、`pnpm test`（一次性运行，禁止 watch）：`package.json`（Refs: —，质量门）
 

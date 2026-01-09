@@ -16,10 +16,10 @@
 本 plan 的关键裁决（避免实现漂移）：
 
 1. **端口与环境**：服务端口默认 `7001`；数据库仅用于开发/演示环境，是否启用由 `DATABASE_URL` 决定。
-2. **表结构 SSoT**：`todos` 表结构与字段语义作为“开发环境数据库协议”沉淀到 SSoT：`docs/specs/sdd-platform/ssot/examples/02-logix-galaxy-api-postgres.md`。
+2. **表结构 SSoT**：`todos` 表结构与字段语义作为“开发环境数据库协议”沉淀到 SSoT：`docs/ssot/platform/examples/02-logix-galaxy-api-postgres.md`。
 3. **对外契约**：HTTP API 用 OpenAPI 3.1 固化为 `specs/062-galaxy-api-postgres/contracts/openapi.yaml`，作为平台侧/生成器侧的稳定消费面。
 4. **测试口径**：默认测试以“WebHandler 级别”覆盖 `/health` 与 Todo CRUD 的主要行为；数据库连通性仅在可选 smoke 中验证。
-5. **可复用模板沉淀**：以 `apps/logix-galaxy-api` 为参考实现，沉淀一份 CRUD 写法模板（目录结构、测试用例、表设计与契约工件）到 SSoT：`docs/specs/sdd-platform/ssot/examples/03-effect-httpapi-postgres-crud-template.md`。
+5. **可复用模板沉淀**：以 `apps/logix-galaxy-api` 为参考实现，沉淀一份 CRUD 写法模板（目录结构、测试用例、表设计与契约工件）到 SSoT：`docs/ssot/platform/examples/03-effect-httpapi-postgres-crud-template.md`。
 
 ## Existing Foundations（直接复用）
 
@@ -52,7 +52,7 @@
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性位于“平台/Playground 的真实网络边界验证”链路上，交付一个可运行的 API 示例服务；不改变 Logix Runtime/Flow 的语义，仅提供真实 HTTP 边界下的可测契约。
-- **docs-first & SSoT**：数据库表结构与语义作为 SSoT 文档沉淀到 `docs/specs/sdd-platform/ssot/examples/02-logix-galaxy-api-postgres.md`，并通过本 spec 的 `contracts/openapi.yaml` 固化接口形状，避免并行真相源。
+- **docs-first & SSoT**：数据库表结构与语义作为 SSoT 文档沉淀到 `docs/ssot/platform/examples/02-logix-galaxy-api-postgres.md`，并通过本 spec 的 `contracts/openapi.yaml` 固化接口形状，避免并行真相源。
 - **Effect/Logix contracts**：不新增/修改对外的 Effect/Logix runtime 契约；仅新增“示例服务的网络契约/DB schema”文档与工件。
 - **IR & anchors**：不涉及统一最小 IR、锚点协议、parser/codegen。
 - **Deterministic identity**：不涉及 runtime identity；示例服务层不引入随机/时间作为业务身份（`createdAt` 为数据字段，不作为 identity）。
@@ -123,7 +123,7 @@ apps/logix-galaxy-api/
         ├── todo.repo.ts
         └── todo.repo.live.ts
 
-docs/specs/sdd-platform/ssot/examples/
+docs/ssot/platform/examples/
 ├── README.md
 └── 02-logix-galaxy-api-postgres.md
 └── 03-effect-httpapi-postgres-crud-template.md

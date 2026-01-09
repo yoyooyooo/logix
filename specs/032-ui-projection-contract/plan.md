@@ -45,7 +45,7 @@
 - **依赖/修改的 SSoT（docs-first）**
   - 端口/可引用空间事实源：`specs/035-module-ports-typeir/spec.md`
   - 语义蓝图与语义边：`specs/033-module-stage-blueprints/spec.md`
-  - trial-run/IR/evidence 链路：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+  - trial-run/IR/evidence 链路：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 - **IR & anchors（统一最小 IR + 稳定锚点）**
   - UI 投影协议不得引入第二套“语义真相源”；任何需要解释/回放的锚点必须可回指到语义蓝图（ruleId/instanceId/rowRef）。
 - **Deterministic identity**

@@ -21,7 +21,7 @@
 - [x] `packages/logix-form/src/logics/install.ts` (Wiring & Triggers)
 - [x] `packages/logix-form/src/path.ts` (Path Mapping)
 - [x] `packages/logix-form/src/react/index.ts` (Exports)
-- [x] runtime SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-form/*`
+- [x] runtime SSoT：`docs/ssot/runtime/logix-form/*`
 - [x] 用户文档：`apps/docs/content/docs/form/*`
 - [x] 性能记录：`specs/010-form-api-perf-boundaries/references/perf-baseline.md`
 - [x] Tests (`Writeback`, `ListScope`, `Install`, `RowId`, `Perf`)
@@ -53,7 +53,7 @@
   - List-scope unique check (Cross-row consistency)
   - RowId error ownership (Remove/Move stability)
   - ValidateOn/ReValidateOn triggers
-  - Diagnostics levels (off/light/full)
+  - Diagnostics levels (off/light/sampled/full)
   - Performance check (List scope writeback)
 
 ## 5. 结论 (Conclusion)

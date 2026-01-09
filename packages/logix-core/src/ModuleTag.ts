@@ -37,7 +37,7 @@ type NoInfer_<T> = [T][T extends any ? 0 : never]
 /**
  * Public exports for core type definitions such as ModuleTag / ModuleRuntime / ModuleImpl.
  *
- * Kept aligned with `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`.
+ * Kept aligned with `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`.
  * Concrete type definitions live in internal/module.ts; this module wires the factory implementation.
  */
 export type {

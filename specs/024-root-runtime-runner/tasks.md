@@ -12,7 +12,7 @@
 **Purpose**: 在进入任意用户故事实现前，先固化“对外契约 + 错误分类 + 测试基座 + 性能证据跑道”。
 
 - [x] T001 固化 program runner 对外契约（以 contracts 为准，允许微调命名但不得改变语义）：`specs/024-root-runtime-runner/contracts/api.md`
-- [x] T002 [P] 列出 runtime SSoT 需同步的落点清单（不在本阶段改 SSoT 内容；留待 Phase N 收口）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/05-runtime-and-runner.md`、`.codex/skills/project-guide/references/runtime-logix/logix-core/api/README.md`
+- [x] T002 [P] 列出 runtime SSoT 需同步的落点清单（不在本阶段改 SSoT 内容；留待 Phase N 收口）：`docs/ssot/runtime/logix-core/api/05-runtime-and-runner.md`、`docs/ssot/runtime/logix-core/api/README.md`
 - [x] T003 设计并锁定错误分类与可行动提示（Boot/Main/DisposeTimeout 可区分；包含退出策略提示字段；错误载荷需 Slim、可序列化，并包含稳定 id；DisposeTimeout 必须包含可行动建议，例如“检查未 unregister 的 event listener / 未 join 的 fiber / 未关闭资源句柄”）：`packages/logix-core/src/internal/runtime/runner/ProgramRunner.errors.ts`、`packages/logix-core/src/Runtime.ts`（对外类型与行为约束）
 - [x] T004 [P] 建立“启动耗时”基线脚本与证据跑道（入口：`pnpm perf bench:024:boot`；输出 JSON；目录与 `perf.md` 落点齐备；不要求本任务内产出结论数据）：`specs/024-root-runtime-runner/perf.md`、`specs/024-root-runtime-runner/perf/`
 - [x] T005 固化事务边界约束（runner 不进入事务窗口、不引入 IO/async、不提供写逃逸通道），写入契约并在实现处补最小防线：`specs/024-root-runtime-runner/contracts/api.md`、`packages/logix-core/src/Runtime.ts`
@@ -83,12 +83,12 @@
 
 ## Phase N: Polish & Regression Defenses（Required）
 
-- [x] T030 [P] [US3] 同步 runtime SSoT（收口阶段）：program runner 的语义、`module vs runtime` 区分、`ctx.scope/ctx.$` 的定位、`RuntimeOptions.onError` 顶级上报、`closeScopeTimeout` 释放收束、`handleSignals/args/exitCode/reportError`（CLI ergonomics）、退出策略不自动推断：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/05-runtime-and-runner.md`
-- [x] T032 [P] [US3] 同步 runtime glossary（收口阶段）：补齐 Program runner/ProgramRunContext/closeScopeTimeout/DisposeTimeout/handleSignals/exitCode/reportError 等术语：`.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/10-runtime-glossary.md`
-- [x] T033 [P] 同步 runtime SSoT/impl（收口阶段）：更新 `@logixjs/test` 的推荐入口与心智模型（删掉 `TestProgram.make/Scenario` 旧口径，改为 program module + core runner 复用）：`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/07-test-package.md`
-- [x] T034 [P] 同步 `docs/specs` 旧口径（收口阶段）：替换所有对 `TestProgram.make/itScenario/Scenario` 的过时描述，统一指向新模型与 `Runtime.runProgram/openProgram`：`docs/specs/review/runtime-logix-spec-todo.md`、`docs/specs/sdd-platform/ssot/implementation-status.md`、`specs/003-trait-txn-lifecycle/quickstart.md`
+- [x] T030 [P] [US3] 同步 runtime SSoT（收口阶段）：program runner 的语义、`module vs runtime` 区分、`ctx.scope/ctx.$` 的定位、`RuntimeOptions.onError` 顶级上报、`closeScopeTimeout` 释放收束、`handleSignals/args/exitCode/reportError`（CLI ergonomics）、退出策略不自动推断：`docs/ssot/runtime/logix-core/api/05-runtime-and-runner.md`
+- [x] T032 [P] [US3] 同步 runtime glossary（收口阶段）：补齐 Program runner/ProgramRunContext/closeScopeTimeout/DisposeTimeout/handleSignals/exitCode/reportError 等术语：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`
+- [x] T033 [P] 同步 runtime SSoT/impl（收口阶段）：更新 `@logixjs/test` 的推荐入口与心智模型（删掉 `TestProgram.make/Scenario` 旧口径，改为 program module + core runner 复用）：`docs/ssot/runtime/logix-core/impl/07-test-package.md`
+- [x] T034 [P] 同步 `docs/specs` 旧口径（收口阶段）：替换所有对 `TestProgram.make/itScenario/Scenario` 的过时描述，统一指向新模型与 `Runtime.runProgram/openProgram`：`docs/specs/review/runtime-ssot-spec-todo.md`、`docs/ssot/platform/implementation-status.md`、`specs/003-trait-txn-lifecycle/quickstart.md`
 - [x] T035 [P] 迁移验收（收口阶段）：在 `@logixjs/test` 源码范围（`packages/logix-test/src`）内旧 API / hack 不再出现（允许其它包/示例/规格出现同名 UI 术语或 `effect` 的 `_op_layer` 内部标记）；验收命令：`rg "TestProgram\\.make\\(" packages/logix-test/src`、`rg "\\bitScenario\\b" packages/logix-test/src`、`rg "\\bScenario(Config|Builder)?\\b" packages/logix-test/src`、`rg "\\bTestRuntime\\b" packages/logix-test/src`、`rg "_op_layer\\b" packages/logix-test/src`；确认 `handoff.md` 已包含关键迁移的 Before/After 代码对比；并确认 `contracts/api.md`、`quickstart.md`、runtime SSoT 与 examples 的用法口径一致
-- [x] T043 [P] 收口复核 runtime SSoT 链接与口径：更新 api/README.md 入口链接，并确认与 `contracts/api.md`、`quickstart.md`、025 引用点一致：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/README.md`
+- [x] T043 [P] 收口复核 runtime SSoT 链接与口径：更新 api/README.md 入口链接，并确认与 `contracts/api.md`、`quickstart.md`、025 引用点一致：`docs/ssot/runtime/logix-core/api/README.md`
 - [x] T041 [P] 更新 `specs/024-root-runtime-runner/quickstart.md`：确保示例与最终 API/术语一致
 - [x] T040 记录并校验“启动耗时”证据（基于 `pnpm perf bench:024:boot` 与落点，manual vs new API，预算≤5%）；更新 `specs/024-root-runtime-runner/perf.md` 并提交 raw JSON：`specs/024-root-runtime-runner/perf.md`、`specs/024-root-runtime-runner/perf/`
 - [x] T042 [P] 更新 `specs/024-root-runtime-runner/handoff.md`：记录最终裁决、迁移要点与对齐结论（尤其 `@logixjs/test` 的调整）；必须包含“Before/After”代码对比（至少覆盖：单模块测试迁移、以及多模块+Link/长期流程迁移）

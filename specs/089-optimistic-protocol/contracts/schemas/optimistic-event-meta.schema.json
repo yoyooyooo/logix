@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/089-optimistic-protocol/contracts/schemas/optimistic-event-meta.schema.json",
+  "title": "OptimisticEventMeta",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "phase", "optimisticId"],
+  "properties": {
+    "type": { "const": "optimistic" },
+    "phase": { "type": "string", "enum": ["apply", "confirm", "rollback"] },
+    "optimisticId": { "type": "string", "minLength": 1 },
+    "reason": { "type": "string", "enum": ["success", "failure", "cancel", "override", "unknown"] },
+    "coalesced": { "type": "boolean" },
+    "affectedPathCount": { "type": "integer", "minimum": 0 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "phase": { "const": "rollback" } } },
+      "then": { "required": ["reason"] }
+    }
+  ]
+}
+

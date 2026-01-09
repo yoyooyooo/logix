@@ -8,7 +8,7 @@ related:
   - ./30-system-architecture.md
   - ./32-collaboration-and-permissions.md
   - ./33-alignment-and-diagnostics.md
-  - ../../../sdd-platform/ssot/assets/00-assets-and-schemas.md
+  - ../../../docs/ssot/platform/assets/00-assets-and-schemas.md
   - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
   - ../sandbox-runtime/65-playground-as-executable-spec.md
 ---

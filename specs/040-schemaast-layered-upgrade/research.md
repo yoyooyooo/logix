@@ -5,7 +5,7 @@
 **Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/040-schemaast-layered-upgrade/plan.md`
 
 > 本文件只固化“关键裁决/权衡”，避免实现细节漂移为某个宿主/工具的特殊规则。  
-> 诊断事件口径以 runtime SSoT 为准：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+> 诊断事件口径以 runtime SSoT 为准：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 
 ## Decisions
 
@@ -141,5 +141,5 @@
 
 - effect d.ts（本地裁决源）：`node_modules/effect/dist/dts/Schema.d.ts`、`node_modules/effect/dist/dts/SchemaAST.d.ts`、`node_modules/effect/dist/dts/JSONSchema.d.ts`
 - 稳定摘要工具：`packages/logix-core/src/internal/digest.ts`
-- 诊断事件 SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- 诊断事件 SSoT：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - 031 artifacts 槽位（可选承载 registry pack）：`specs/031-trialrun-artifacts/spec.md`

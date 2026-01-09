@@ -9,7 +9,7 @@
 - `id`
 - `params` + `initialParams`
 - `ui`（例如 `ui.query.autoEnabled`）
-- `queries`：一个或多个 query 定义（resource + deps + triggers + concurrency + key(state)）
+- `queries`：一个或多个 query 定义（resource + deps + autoRefresh + concurrency + key(state)）
 - controller：通过 `Symbol.for("logix.module.handle.extend")` 扩展到 handle 上，做到 React/Logic 两端同一写法（例如 `controller.setParams/refresh/invalidate`）。
 
 并且：
@@ -19,13 +19,13 @@
 - `Query.TanStack` SHOULD 存在作为外部引擎集成层：把 QueryClient 的 fetch/invalidate/（可选）observer 订阅封装为可解释、可回放的执行路径。
 - 禁止出现第二条对外入口（避免同名不同协议）：不得再暴露 `Query.EngineTag` / `Query.layer` / `Query.middleware` 等重复入口。
 
-## 2. Triggers（触发语义）
+## 2. autoRefresh（触发语义）
 
 至少支持：
 
 - `onMount`：初始触发
-- `onKeyChange`：参数变化触发（可选 debounce）
-- `manual`：仅手动触发（必须独占）
+- `onDepsChange`：参数/依赖变化触发（可选 debounce）
+- `autoRefresh: false`：仅手动触发（manual-only）
 
 触发来源必须可被诊断与回放复现。
 
@@ -66,7 +66,7 @@ Query 领域必须通过 effect 的依赖注入向宿主索取“可替换的外
 ## 6. TraitLifecycle（统一下沉接口）
 
 - Query 的默认 logics MUST 基于 TraitLifecycle 的 scoped execute（见 `contracts/trait-lifecycle.md`）：
-  - 自动触发（onMount/onKeyChange）与手动触发（manual）都必须能被降解为同一条“触发 → 并发控制 → keyHash 门控 → 写回快照”的内核执行链路；
+  - 自动触发（autoRefresh：onMount/onDepsChange）与手动触发（autoRefresh: false）都必须能被降解为同一条“触发 → 并发控制 → keyHash 门控 → 写回快照”的内核执行链路；
   - 失效/刷新必须以可回放事件进入日志，回放时按录制事实重赛（不重发真实请求）。
 
 ## 7. InvalidateRequest（失效/刷新）

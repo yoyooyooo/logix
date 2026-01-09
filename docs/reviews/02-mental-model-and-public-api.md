@@ -21,7 +21,7 @@
 
 ### 关键漂移点：文档结构 vs 代码结构
 
-`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/06-package-structure.md` 仍描述 `src/api|dsl|runtime` 的分层，但当前实际实现以 `src/*.ts` + `src/internal/**` 为核心，且大量关键逻辑直接落在 `internal/runtime/*`。
+`docs/ssot/runtime/logix-core/impl/06-package-structure.md` 仍描述 `src/api|dsl|runtime` 的分层，但当前实际实现以 `src/*.ts` + `src/internal/**` 为核心，且大量关键逻辑直接落在 `internal/runtime/*`。
 
 结论：**SSoT 漂移** 会直接破坏团队协作（尤其是 AI 时代依赖文档生成/校验/对齐的工作流）。
 
@@ -37,7 +37,7 @@
   - `examples/logix/src/scenarios/agent-fluent-with-control.ts`（debounce + latest + service）
   - `packages/logix-core/test/Bound.test.ts`（onAction/update/mutate/run 等覆盖）
 - Flow API 风格（与 Fluent 功能重叠）：`flow.fromState/fromAction` + `flow.run*`
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/examples/05-matrix-basic.md` 明确以 `flow.fromState(...).pipe(flow.run(state.mutate(...)))` 作为“v3 标准模式”
+  - `docs/ssot/runtime/logix-core/examples/05-matrix-basic.md` 明确以 `flow.fromState(...).pipe(flow.run(state.mutate(...)))` 作为“v3 标准模式”
 
 结论：**两套入口表达同一件事（订阅变化 + 触发处理），团队将不可避免地产生分裂**：有人偏 Fluent，有人偏 Flow，最终无法收敛到“唯一最佳实践”。
 
@@ -64,7 +64,7 @@
 - 手工拆分：`refresh` 入口 fork IO，再 dispatch success/failure action 走第二笔/第三笔事务写回
 - `run*Task` 语法糖：同样的 pending→IO→writeback，但由引擎统一编排
 
-两套写法在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md` 中同时出现，并明确写了“等价”。
+两套写法在 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md` 中同时出现，并明确写了“等价”。
 
 结论：这类“等价双写法”会导致：
 
@@ -173,7 +173,7 @@
 
 ### 1) 文档中的 DSL 名称与真实 API 不一致（会直接误导用户/LLM）
 
-- specs/文档中大量出现 `.then(...)` 链式写法（例如 `docs/specs/sdd-platform/ssot/03-module-assets.md`、部分 scenario 注释），但当前 `IntentBuilder` 实际暴露的是 `.run/.update/.mutate/...` 与 `.andThen`（并且 `andThen` 还带 arity 隐式分派）。
+- specs/文档中大量出现 `.then(...)` 链式写法（例如 `docs/ssot/platform/03-module-assets.md`、部分 scenario 注释），但当前 `IntentBuilder` 实际暴露的是 `.run/.update/.mutate/...` 与 `.andThen`（并且 `andThen` 还带 arity 隐式分派）。
 
 建议（不兼容）：
 

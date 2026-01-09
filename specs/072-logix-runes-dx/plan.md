@@ -113,7 +113,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Flow/Logix：业务仍通过 Logix 的可追踪写入路径更新状态；不引入旁路状态机。
   - Code：新增 `@logixjs/runes`（transform）与 `@logixjs/react` 的 runes runtime 入口。
   - Runtime：复用现有 ModuleRuntime/dispatch 语义与诊断通道，不引入第二套运行时。（PASS）
-- **docs-first & SSoT**：本期先以 `specs/072-logix-runes-dx/*` 为事实源；若要把“赋值语法糖的语义边界/诊断协议”上升为长期规范，再回写到 `docs/specs/sdd-platform/ssot` 与 runtime references。（PASS）
+- **docs-first & SSoT**：本期先以 `specs/072-logix-runes-dx/*` 为事实源；若要把“赋值语法糖的语义边界/诊断协议”上升为长期规范，再回写到 `docs/ssot/platform` 与 runtime references。（PASS）
 - **Effect/Logix contracts**：新增的是可选 DX 能力；不改变 `@logixjs/core` 的既有对外契约。（PASS）
 - **IR & anchors**：不修改统一最小 IR；新增的是编译期改写与可选的诊断事件。（PASS）
 - **Deterministic identity**：不引入随机/time 默认 id；复用 runtime 的稳定 instance/txn 锚点。（PASS）

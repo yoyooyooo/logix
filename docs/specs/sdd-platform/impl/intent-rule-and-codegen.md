@@ -1,6 +1,6 @@
 # IntentRule 与出码（LLM 薄入口）
 
-本文件只保留导航；正文拆分到同目录分节文档中，按需加载。IntentRule 的运行时契约与证据口径以 `.codex/skills/project-guide/references/runtime-logix/logix-core/platform/06-platform-integration.md` 为准。
+本文件只保留导航；正文拆分到同目录分节文档中，按需加载。IntentRule 的运行时契约与证据口径以 `docs/ssot/runtime/logix-core/platform/06-platform-integration.md` 为准。
 
 ## 最短链路
 

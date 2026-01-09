@@ -25,7 +25,7 @@ priority: next
   - ERROR：`{ code, message, stack? }`；  
   - COMPLETE：`{ runId, duration, stateSnapshot? }`；  
   - UI_INTENT（预留）：后续用于 UI/UX 意图回传。  
-- 衔接文档：`platform/impl/code-runner-and-sandbox.md` 中已有初稿；需在 runtime-logix 侧明确 TRACE / UI_INTENT 的公共 Schema（待后续 Intent 覆盖阶段解决）。
+- 衔接文档：`platform/impl/code-runner-and-sandbox.md` 中已有初稿；需在 runtime SSoT 侧明确 TRACE / UI_INTENT 的公共 Schema（待后续 Intent 覆盖阶段解决）。
 
 ## 3. Worker 生命周期与 Watchdog
 

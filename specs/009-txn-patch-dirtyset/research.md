@@ -161,7 +161,7 @@
 
 对应任务：T004/T005/T016/T017。
 
-### A3. 诊断分档 off/light/full（NFR-005）
+### A3. 诊断分档 off/light/sampled/full（NFR-005）
 
 已实现 `off`/`light`/`full` 分档：`off` 不写入诊断缓冲区；`light` 仅 txn 摘要；`full` 才采集 `trace:effectop` SlimOp 与完整 patch 序列。
 

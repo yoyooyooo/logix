@@ -76,24 +76,23 @@ export const SearchQuery = Query.make("SearchQuery", {
   ui: { query: { autoEnabled: true } },
 
   queries: ($) => ({
-    search: $.source({
-      resource: SearchResource,
-      // 004 硬语义：必须显式声明 deps（用于触发收敛/图构建/可解释性）
-      deps: ["params.q", "params.filters", "params.page", "ui.query.autoEnabled"],
-      triggers: ["onMount", "onKeyChange"],
-      debounceMs: 200,
-      concurrency: "switch",
-      key: (q, filters, page, autoEnabled) => (autoEnabled ? { q, filters, page } : undefined),
-    }),
+	    search: $.source({
+	      resource: SearchResource,
+	      // 004 硬语义：必须显式声明 deps（用于触发收敛/图构建/可解释性）
+	      deps: ["params.q", "params.filters", "params.page", "ui.query.autoEnabled"],
+	      autoRefresh: { onMount: true, onDepsChange: true, debounceMs: 200 },
+	      concurrency: "switch",
+	      key: (q, filters, page, autoEnabled) => (autoEnabled ? { q, filters, page } : undefined),
+	    }),
 
-    detail: $.source({
-      resource: { id: "DetailResource" } as const,
-      deps: ["params.selectedId"],
-      triggers: ["onKeyChange"],
-      concurrency: "switch",
-      key: (selectedId) => (selectedId ? { id: selectedId } : undefined),
-    }),
-  }),
+	    detail: $.source({
+	      resource: { id: "DetailResource" } as const,
+	      deps: ["params.selectedId"],
+	      autoRefresh: { onDepsChange: true },
+	      concurrency: "switch",
+	      key: (selectedId) => (selectedId ? { id: selectedId } : undefined),
+	    }),
+	  }),
 })
 ```
 
@@ -201,13 +200,13 @@ export const QueryRuntimeLayer = Layer.mergeAll(
 - `exhaust`：in-flight 期间合并触发；结束后补一次最新 key 的刷新；
 - 无论哪种并发策略，**写回都必须按 keyHash 丢弃 stale**。
 
-### 1.3 触发语义：`onMount` / `onKeyChange` / `manual`
+### 1.3 触发语义：`autoRefresh`（`onMount` / `onDepsChange` / `debounceMs`）
 
 Query 触发不再散落在组件 `useEffect`：
 
 - `onMount`：用于初始同步（已有参数时）；
-- `onKeyChange`：参数变化触发（可 debounce）；
-- `manual`：仅手动触发（通过 Controller.refresh / invalidate）。
+- `onDepsChange`：参数/依赖变化触发（可通过 `debounceMs` 合并高频触发）；
+- `autoRefresh: false`：仅手动触发（通过 Controller.refresh / invalidate）。
 
 ---
 

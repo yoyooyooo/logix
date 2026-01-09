@@ -25,7 +25,7 @@
 - Decision: perf evidence 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `comparable=true && regressions==0` 为硬门（source: spec clarify AUTO）
 - Decision: perf evidence 允许在 dev 工作区（git dirty）采集，但必须确保 `matrix/config/env` 一致，并保留 `git.dirty.*` warnings；结论存疑时必须复测（source: spec clarify AUTO）
 - Decision: 动态/异常路径允许存在，但必须显式降级 `dirtyAll=true` + `DirtyAllReason` 且在 Perf Gate 覆盖场景中视为 FAIL（source: spec clarify AUTO）
-- Decision: diagnostics=light/full 允许 materialize 可读映射，但不得落在 txn hot loop；off 下不 materialize（source: spec clarify AUTO）
+- Decision: diagnostics=light/sampled/full 允许 materialize 可读映射，但不得落在 txn hot loop；off 下不 materialize（source: spec clarify AUTO）
 - Decision: bitset 清零默认用简单策略（如 `fill(0)`），只有证据显示清零主导才引入更复杂优化（source: spec clarify AUTO）
 - Decision: 半成品态（id→string→split / split/join 往返）必须有守护测试/微基准兜底，出现即 Gate FAIL（source: spec clarify AUTO）
 
@@ -58,7 +58,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - kernel support matrix（本 spec）：core=`supported`（可能需要契约放宽）、core-ng=`trial-only → supported`（以证据达标裁决）。
   - consumer 不直接依赖 `@logixjs/core-ng`。
 - **Performance budget**：必须 Node + Browser 证据门禁，阻断负优化。
-- **Diagnosability & explainability**：off 近零成本；light/full 才输出 id 映射摘要（Slim、可序列化）。
+- **Diagnosability & explainability**：off 近零成本；light/sampled/full 才输出 id 映射摘要（Slim、可序列化）。
 - **Breaking changes**：对业务对外语义保持不变；如影响对外行为必须另立 spec 并写迁移说明。
 - **Public submodules**：实现阶段新增导出点遵守 public submodules。
 - **Quality gates**：实现阶段至少 `pnpm typecheck/lint/test` + perf evidence。

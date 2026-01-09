@@ -9,7 +9,7 @@
 
 - `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/research.md` 已裁决关键方案
 - 观测协议与可序列化口径：`/Users/yoyo/Documents/code/personal/intent-flow/specs/005-unify-observability-protocol/contracts/observability-protocol.md`
-- Debug 事件 SSoT：`/Users/yoyo/Documents/code/personal/intent-flow/.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- Debug 事件 SSoT：`/Users/yoyo/Documents/code/personal/intent-flow/docs/ssot/runtime/logix-core/observability/09-debugging.md`
 
 ## Format: `- [ ] T### [P?] Description with file path`
 
@@ -36,7 +36,7 @@
 - [x] T021 [P1] 对外 API：显式导出 `type SnapshotToken = number` + `getDevtoolsSnapshotToken(): SnapshotToken`（供 `useSyncExternalStore` 直接订阅 token）于 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/index.ts`
 - [x] T022 [P1] React 适配：提供基于 token 的订阅与 `useSyncExternalStore` 推荐用法（避免“快照对象引用恒定导致漏更新”）于 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-devtools-react/src/snapshot.ts`
 - [x] T023 [P2] 单测：订阅者仅依赖 token 判断变化时漏更率为 0（允许通知合并）于 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/test/DevtoolsHub.SnapshotToken.test.ts`
-- [x] T024 [P2] 校对并补齐契约文档：SnapshotToken、Recording Window、累计计数、通知合并语义与延迟上界于 `/Users/yoyo/Documents/code/personal/intent-flow/.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [x] T024 [P2] 校对并补齐契约文档：SnapshotToken、Recording Window、累计计数、通知合并语义与延迟上界于 `/Users/yoyo/Documents/code/personal/intent-flow/docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [x] T025 [P2] 回归：确保新增 token 不破坏 JsonValue/序列化与 evidence 导出上界（FR-008），并补齐对应测试断言于 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/test/DevtoolsHub.test.ts`
 - [x] T026 [P2] 单测：验证“token 不变期间快照视图稳定”的不变量（至少覆盖 events/instances/latest\*/exportBudget 任一字段变化都会 bump token）于 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/test/DevtoolsHub.SnapshotToken.test.ts`
 

@@ -5,13 +5,13 @@ version: 2025-12-19
 value: vision
 priority: later
 related:
-  - docs/specs/sdd-platform/ssot/README.md
+  - docs/ssot/platform/README.md
 ---
 
 # Platform Vision · Topic Overview
 
 > 定位：平台终局形态的“愿景集合”，用于长期对齐与讨论。  
-> 说明：该 Topic 不作为近期实现指令；若形成可交付决策，应下沉到 `docs/specs/sdd-platform/ssot` 或 `specs/<id>/`。
+> 说明：该 Topic 不作为近期实现指令；若形成可交付决策，应下沉到 `docs/ssot/platform` 或 `specs/<id>/`。
 
 ## 文档列表（建议顺序）
 

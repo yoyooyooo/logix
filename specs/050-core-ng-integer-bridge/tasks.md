@@ -52,10 +52,10 @@
 
 **Goal**: id 分配可复核、可解释；对照验证与证据链不漂移（primary anchors 仍以 `instanceId/txnSeq/opSeq` 为准）。
 
-**Independent Test**: 045 对照验证/差异锚点可对齐；`diagnostics=light/full` 下可导出最小可序列化 mapping 摘要，off 下不 materialize。
+**Independent Test**: 045 对照验证/差异锚点可对齐；`diagnostics=light/sampled/full` 下可导出最小可序列化 mapping 摘要，off 下不 materialize。
 
 - [x] T015 [P] [US2] 固化 FieldPathId/StepId 的稳定性策略（不得依赖随机/时间；同 Static IR 可重复对齐）`packages/logix-core/src/internal/state-trait/converge-ir.ts`
-- [x] T016 [P] [US2] 增补可序列化的 id→readable 摘要导出（仅 light/full；off 近零成本）`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
+- [x] T016 [P] [US2] 增补可序列化的 id→readable 摘要导出（仅 light/sampled/full；off 近零成本）`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - [x] T017 [P] [US2] 已存在稳定性回归测试（同输入可重复对齐）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DeterministicIds.test.ts`
 - [x] T018 [P] [US2] 扩展 045 kernel contract verification：覆盖 integer bridge 的 anchors/mapping 摘要对齐（core vs core-ng）`packages/logix-core/test/Contracts/Contracts.045.KernelContractVerification.test.ts`
 

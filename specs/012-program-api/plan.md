@@ -32,7 +32,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Which `docs/specs/*` specs does it depend on or modify, and are they
     updated first (docs-first & SSoT)?
   - Does it introduce or change any Effect/Logix contracts? If yes, which
-    `.codex/skills/project-guide/references/runtime-logix/*` docs capture the new contract?
+    `docs/ssot/runtime/*` docs capture the new contract?
   - IR & anchors: does it change the unified minimal IR or the Platform-Grade
     subset/anchors; are parser/codegen + docs updated together (no drift)?
   - Deterministic identity: are instance/txn/op IDs stable and reproducible
@@ -51,7 +51,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ### Answers (Pre-Research)
 
 - **Intent → Flow/Logix → Code → Runtime**：用户意图是表达“长期运行 + 跨模块协作”的业务规则；Process 作为声明/装配单元，降解为运行时容器中可安装的长生命周期 `processes`，并通过触发源监听 + 并发策略 + 错误策略 + 跨模块动作驱动实现协作；运行时在作用域生命周期内监督启停与诊断事件采集。
-- **Docs-first & SSoT**：先对齐 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 中关于“模块/作用域/长效逻辑”的契约，再落地到 `packages/logix-core` 与 `packages/logix-react`；用户侧文档同步到 `apps/docs/content/docs/*`。
+- **Docs-first & SSoT**：先对齐 `docs/ssot/runtime/logix-core/*` 中关于“模块/作用域/长效逻辑”的契约，再落地到 `packages/logix-core` 与 `packages/logix-react`；用户侧文档同步到 `apps/docs/content/docs/*`。
 - **Contracts**：会新增/调整 Process 的对外契约（安装点、并发/错误策略、稳定标识、诊断事件）；协议以本特性的 `specs/012-program-api/contracts/*` 与 `data-model.md` 固化，并在实现前回写到 runtime SSoT（尤其 `core/09-debugging.md`）。
 - **IR & anchors**：不引入第二套 IR；Process 的观测面作为 Dynamic Trace 的事件扩展，必须保持 Slim/可序列化，并以稳定标识串起“触发→调度→跨模块驱动”链路。
 - **Deterministic identity**：Process 必须具备稳定 `processId`；其安装与运行实例必须可确定性派生标识（基于作用域锚点与单调序号），禁止默认随机/时间 id；该模型在 `data-model.md` 与 schema 中固化。
@@ -98,12 +98,12 @@ packages/logix-react/
 packages/logix-devtools-react/                       # Process 事件展示（如协议新增）
 packages/logix-sandbox/                              # Process 事件/协议对齐（如需要）
 
-.codex/skills/project-guide/references/runtime-logix/                            # SSoT（语义与契约）
+docs/ssot/runtime/                            # SSoT（语义与契约）
 apps/docs/content/docs/                              # 用户文档（产品视角）
 examples/                                            # 可运行示例（验收/回归）
 ```
 
-**Structure Decision**: Process 的核心语义与运行承载（`processes`）优先落在 `packages/logix-core`；UI 子树安装点落在 `packages/logix-react`；协议与文档以 `.codex/skills/project-guide/references/runtime-logix/*` 为主事实源并同步 `apps/docs` 与 `examples`。
+**Structure Decision**: Process 的核心语义与运行承载（`processes`）优先落在 `packages/logix-core`；UI 子树安装点落在 `packages/logix-react`；协议与文档以 `docs/ssot/runtime/*` 为主事实源并同步 `apps/docs` 与 `examples`。
 
 ## Complexity Tracking
 
@@ -151,4 +151,4 @@ No violations identified for this feature at planning time.
 - **Diagnosability budgets**：事件类型与字段已在 `specs/012-program-api/contracts/schemas/process-event.schema.json` 固化为 Slim/可序列化载荷；预算上界与裁剪要求在 `specs/012-program-api/data-model.md` 的 Budgets 中明确。
 - **Transaction boundary**：事务窗口禁 IO/await 与“跨模块影响必须通过动作协议”已在 `specs/012-program-api/spec.md`（FR/NFR/Edge Cases）与 `specs/012-program-api/research.md`（Decision 3/4/5）固化。
 - **Performance budget**：关键路径预算与基线口径已在 `specs/012-program-api/plan.md` 的 Technical Context 与 `specs/012-program-api/research.md`（Decision 8）明确；实现阶段按该口径复测。
-- **Breaking changes**：迁移原则已写入 `specs/012-program-api/quickstart.md`；实现阶段需同步更新 `.codex/skills/project-guide/references/runtime-logix/*`、`apps/docs/content/docs/*` 与 `docs/reviews/99-roadmap-and-breaking-changes.md`（不提供兼容层）。
+- **Breaking changes**：迁移原则已写入 `specs/012-program-api/quickstart.md`；实现阶段需同步更新 `docs/ssot/runtime/*`、`apps/docs/content/docs/*` 与 `docs/reviews/99-roadmap-and-breaking-changes.md`（不提供兼容层）。

@@ -7,8 +7,8 @@ priority: 2150
 related:
   - ../runtime-v3-core/README.md
   - ./04-devtools-and-runtime-tree.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/impl/01-app-runtime-and-modules.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md
+  - docs/ssot/runtime/logix-core/impl/01-app-runtime-and-modules.md
+  - docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md
   - docs/specs/sdd-platform/impl/app-and-universe-view.md
 ---
 
@@ -78,7 +78,7 @@ related:
 
 - App 级 TagIndex 只观察 `AppModuleEntry[]`，对于 Root ModuleImpl.imports 内部的 Service Tag 完全不可见；
 - Universe 视图规划（`app-and-universe-view.md`）更多基于未来的静态 `ModuleDef`，尚未与当前的 ModuleImpl 组合方式做一次“桥接方案”；
-- DevTools 草案（`runtime-logix-devtools-and-runtime-tree.md`）没有明确 TagIndex 的来源与结构，只是笼统提到“基于 TagIndex 构建拓扑”。
+- DevTools 草案（`./04-devtools-and-runtime-tree.md`）没有明确 TagIndex 的来源与结构，只是笼统提到“基于 TagIndex 构建拓扑”。
 
 > 本草案接下来的所有设计，都在“Root ModuleImpl → 分形 ModuleImpl 树 → TagIndex / 拓扑 JSON”这条路径上展开，不直接触碰 AST 与 Layer 内部细节。
 
@@ -119,7 +119,7 @@ interface FractalTagIndexSnapshot {
 - 提供一个 **运行时内部 API**（不暴露到业务层）：
 
 ```ts
-// 伪接口：具体挂载位置待定（可在 runtime-logix impl 或内部 DevTools hook 中）
+// 伪接口：具体挂载位置待定（可在 runtime SSoT impl 或内部 DevTools hook 中）
 function buildFractalTagIndex(rootImpl: ModuleImpl<any, AnyModuleShape, any>): FractalTagIndexSnapshot
 ```
 
@@ -159,7 +159,7 @@ function buildFractalTagIndex(rootImpl: ModuleImpl<any, AnyModuleShape, any>): F
 ### Phase 3：DevTools / Universe 深度集成（可视化 + 调试）
 
 **目标**：将 TagIndex/拓扑视图与 Runtime 调试能力打通，形成 Universe/Runtime Tree 的统一 DevTools 入口。  
-这阶段的内容主要留给 `runtime-logix-devtools-and-runtime-tree.md` 和 Studio 规划细化，本草案只做占位：
+这阶段的内容主要留给 `./04-devtools-and-runtime-tree.md` 和 Studio 规划细化，本草案只做占位：
 
 - 在浏览器 DevTools 或 CLI 中提供：
   - 实时查看当前 Runtime 的 FractalTagIndexSnapshot；
@@ -188,11 +188,11 @@ function buildFractalTagIndex(rootImpl: ModuleImpl<any, AnyModuleShape, any>): F
 
 ## 5. 路线图与任务拆分（建议）
 
-> 本节给未来实现者一个可执行的 checklist，具体归档到 `runtime-logix-core-gaps-and-production-readiness.md` 与 Studio 相关 Plan 中。
+> 本节给未来实现者一个可执行的 checklist，具体归档到 `../runtime-v3-core/README.md` 与 Studio 相关 Plan 中。
 
 **Phase 1（ModuleImpl 树级 TagIndex · CLI 起步）**
 
-- [ ] 在 runtime-logix impl 层定义 `FractalModuleNode / FractalTagIndexSnapshot` 类型（只在内部使用）；
+- [ ] 在 runtime SSoT impl 层定义 `FractalModuleNode / FractalTagIndexSnapshot` 类型（只在内部使用）；
 - [ ] 提供 `buildFractalTagIndex(rootImpl)` 的实现草图：
   - [ ] 递归遍历 `rootImpl.imports` 构建分形 ModuleImpl 树；
   - [ ] 为每个节点收集 Module Tag + 显式 Service Tag（接口形式与现有 AppRuntime `TagInfo` 保持一致）；  
@@ -213,7 +213,7 @@ function buildFractalTagIndex(rootImpl: ModuleImpl<any, AnyModuleShape, any>): F
 
 **Phase 3（DevTools 深度集成）**
 
-- [ ] 在 `runtime-logix-devtools-and-runtime-tree.md` 中补充：
+- [ ] 在 `./04-devtools-and-runtime-tree.md` 中补充：
   - [ ] FractalTagIndexSnapshot 与 RuntimeMeta 的集成点；
   - [ ] 在浏览器 DevTools/CLI 中动态获取/刷新 TagIndex 的策略；
   - [ ] 与 DebugSink / Lifecycle / App 级 events$ 的联合使用场景。

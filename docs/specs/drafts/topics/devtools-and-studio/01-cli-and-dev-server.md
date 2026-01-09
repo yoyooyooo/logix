@@ -82,7 +82,7 @@ related:
 
 1. **不重复实现 Runtime**
    - Dev Server 不运行 Logix Runtime 本身，不重新实现 Flow/Effect 行为；
-   - 它只消费 Runtime 暴露的 Debug/Introspection 接口（参考 `runtime-core-evolution` / DevTools 草稿）。
+  - 它只消费 Runtime 暴露的 Debug/Introspection 接口（参考 `../runtime-v3-core/README.md` / DevTools 草稿）。
 
 2. **不持久化“第二份真相”**
    - 不把逻辑存成 JSON 再编译回代码；  
@@ -130,7 +130,7 @@ related:
 Dev Server 与 Runtime 的接口建议走“最小 Hook 原则”：
 
 1. **Debug 事件流**
-   - 参考 `runtime-core-evolution` 与 `runtime-logix-devtools-and-runtime-tree` 草稿，Runtime 应暴露：
+  - 参考 `../runtime-v3-core/README.md` 与 `./04-devtools-and-runtime-tree.md` 草稿，Runtime 应暴露：
      - `DebugSink` 或类似 Tag，接受结构化事件（action / state / effect / error）；
      - 可选的 RuntimeMeta / RuntimeTree 查询接口。
    - Dev Server 只负责订阅和转发，不改 Runtime 行为。
@@ -216,5 +216,5 @@ Dev Server 与 Runtime 的接口建议走“最小 Hook 原则”：
 ## 8.2 后续建议
 
 1. 在 `platform/impl` 目录下补一篇更细的 `logix-cli-and-dev-server-impl.md`，记录具体协议、端口、配置项与安全策略；  
-2. 在 `runtime-logix` 规范中明确 Debug 事件流与 RuntimeAdapter 的对外接口，为 Dev Server / DevTools 提供稳定挂接点；  
+2. 在 `runtime SSoT` 规范中明确 Debug 事件流与 RuntimeAdapter 的对外接口，为 Dev Server / DevTools 提供稳定挂接点；  
 3. 在 `builder-studio-roadmap-alignment` 草稿中，用本文件作为“Builder & Studio 首期可交付能力”的蓝本，列出 2–3 个近期可实现的子目标。 

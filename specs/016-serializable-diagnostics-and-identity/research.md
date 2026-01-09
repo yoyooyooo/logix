@@ -70,7 +70,7 @@ description: "Research notes and decisions for 016-serializable-diagnostics-and-
 
 - A) 继续使用 now+random：实现简单，但无法回放对比，且跨宿主对齐困难。
 
-## Decision 5: 诊断分档与预算（off/light/full）
+## Decision 5: 诊断分档与预算（off/light/sampled/full）
 
 **Decision**:
 

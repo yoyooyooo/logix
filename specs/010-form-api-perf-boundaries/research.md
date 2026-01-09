@@ -61,7 +61,7 @@
 ## Decision 7：稳定标识（rowId/instanceId/txnSeq/opSeq/eventSeq）与依赖关系（对齐 009）
 
 - **rowId**：优先用 `identityHint.trackBy` 派生（字符串化或稳定 hash），避免 `Date.now/Math.random`；缺失 trackBy 时用可重建的单调序号（绑定到 runtime instance）。
-- **instanceId/txnSeq/opSeq/eventSeq**：完全对齐 Spec 009：`instanceId` 必须外部注入；`txnSeq` 为 instance 内单调递增；`opSeq` 为 txn 内单调递增；`eventSeq` 为 instance 内单调递增；`txnId/opId/eventId` 必须可由上述字段确定性重建；诊断分档 `off/light/full` 的“是否写入缓冲区/载荷预算”以 009 为准。
+- **instanceId/txnSeq/opSeq/eventSeq**：完全对齐 Spec 009：`instanceId` 必须外部注入；`txnSeq` 为 instance 内单调递增；`opSeq` 为 txn 内单调递增；`eventSeq` 为 instance 内单调递增；`txnId/opId/eventId` 必须可由上述字段确定性重建；诊断分档 `off/light/sampled/full` 的“是否写入缓冲区/载荷预算”以 009 为准。
 - **nodeId/ruleId**：`nodeId` 必须可映射到 Static IR 节点；`ruleId` 建议稳定为 `<scope>#<ruleName>`（展示形态可用 `userList#uniqueWarehouse`）；`trait:check` 事件以 009 DynamicTrace.events 形式输出（`kind="trait:check"`），并在 payload 中携带 Trigger（kind+path+op）与 summary（scanned/affected/changed）。
 
 ## Decision 8：Form API 收口（Rules/Errors 的产物必须“可直挂、可降解”）

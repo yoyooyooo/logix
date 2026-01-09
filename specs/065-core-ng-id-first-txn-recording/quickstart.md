@@ -12,6 +12,7 @@
 - diagnostics 分档：
   - `off`：近零成本（不输出反解结果，不输出 patch 序列）；
   - `light`：只输出摘要（`dirty.rootIds` TopK=3 + `rootIdsTruncated`、`patchCount`、必要锚点）；
+  - `sampled`：确定性采样；仅在采样命中时允许输出 patch records（默认最多 256 条；超限裁剪并标记 `patchesTruncated`）与 `dirty.rootIds` TopK=32 + `rootIdsTruncated`，未命中时等价于 `light`；
   - `full`：允许输出 patch records（默认最多 256 条；超限裁剪并标记 `patchesTruncated`），并输出 `dirty.rootIds` TopK=32 + `rootIdsTruncated`。
 - 任何不可追踪写入都必须显式降级为 `dirtyAll=true` + `DirtyAllReason`（不允许静默回退）。
 
@@ -27,7 +28,7 @@
 - 本次 `dirtyAll` 是 true 还是 false？
 - 如果 dirtyAll=true，原因码是什么（`nonTrackablePatch` / `fallbackPolicy` / ...）？
 - 如果 dirtyAll=false，`rootIds` 是哪些（可在 Devtools 侧基于 `staticIrDigest` 反解为 rootPaths）？
-- diagnostics=off/light/full 下事件载荷是否符合预算（off 不应携带重字段）？
+- diagnostics=off/light/sampled/full 下事件载荷是否符合预算（off 不应携带重字段）？
 - 如果 `staticIrDigest` 缺失或不匹配，是否明确“不反解 rootPaths”，只展示 id 与摘要（避免展示错误信息）？
 
 ## 4) Perf evidence（Browser matrix + Node bench）

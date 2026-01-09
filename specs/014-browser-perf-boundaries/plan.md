@@ -55,7 +55,7 @@
 
 - 本特性把“性能预算与回归防线”变成可执行资产：维度矩阵 + 报告 schema + 本地基线文件（Before/After 可对比）。
 - 术语与证据字段必须与对外心智模型一致：014 的报告口径与 013 的关键词集合共用，不得同义词漂移。
-- 默认零/近零成本诊断：off/light/full 分档的测量必须能区分并量化 overhead；关闭时不得被输出噪声污染。
+- 默认零/近零成本诊断：off/light/sampled/full 分档的测量必须能区分并量化 overhead；关闭时不得被输出噪声污染。
 - 负优化边界地图：高基数/低命中率、重复 pattern 命中、图变化失效、列表/动态行归一化等场景必须可执行覆盖。
 - 无隐藏魔法值：预算/阈值/样本策略/超时策略必须可配置且写入报告元信息。
 
@@ -110,7 +110,7 @@ packages/logix-react/
 ├── scripts/diff.ts                          # 对比：Before/After diff + 回归定位摘要（pnpm script: diff）
 └── scripts/tuning.recommend.ts              # 调参实验场（pnpm script: tuning:best/recommend）
 
-.codex/skills/project-guide/references/runtime-logix/
+docs/ssot/runtime/
 └── logix-core/
     ├── api/03-logic-and-flow.md            # 互引 014（已补）
     └── impl/04-watcher-performance-and-flow.md # 互引 014（已补）
@@ -140,5 +140,5 @@ packages/logix-react/
 ### Phase 3：负优化边界扩展 + 可诊断性收口
 
 - 扩展矩阵覆盖负优化对抗场景（高基数/低命中率/失效/列表归一化等），并要求输出资源上界证据。
-- 明确诊断分档对测量的影响：off/light/full 的 overhead 曲线与上界；输出污染提示字段。
+- 明确诊断分档对测量的影响：off/light/sampled/full 的 overhead 曲线与上界；输出污染提示字段。
 - 可选增加 Node preflight：对 report/diff schema、矩阵关键不变量、以及相对预算配对/stability/阈值语义做快速回归（默认需显式开关启用，如 `LOGIX_PREFLIGHT=1`；不纳入 CI 门禁）。

@@ -39,7 +39,7 @@ pnpm dev
 
 在修改 Logix 行为或 API 形状时，建议同步更新：
 
-- 规范文档：`.codex/skills/project-guide/references/runtime-logix` / `docs/specs/intent-driven-ai-coding`；
+- 规范文档：`docs/ssot/runtime` / `docs/specs/intent-driven-ai-coding`；
 - 用户文档：本目录下的相关 MDX 页面。
 
 ## 首页 Landing 约束（硬约束）

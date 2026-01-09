@@ -31,7 +31,7 @@
 ## Constitution Check（对齐口径）
 
 - Intent→Flow/Logix→Code→Runtime：本特性属于 Runtime/Logix 内核（source 绑定的受限控制律）。
-- SSoT：形式化模型与分层裁决见 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md` 的 “1.2 最小系统方程”。
+- SSoT：形式化模型与分层裁决见 `docs/ssot/platform/contracts/00-execution-model.md` 的 “1.2 最小系统方程”。
 - IR：source 的 policy 必须可导出为 Static IR（用于解释与 diff），动态只输出锚点与摘要（见 `contracts/ir.md`）。
 - 时间语义：debounce 必须可观测/可回放（timer schedule/cancel/fired 进入 trace 或能归因 tickSeq）。
 - 性能：禁止 per-commit 扫描所有 source；禁止在热路径分配大对象；需要 perf evidence。
@@ -56,7 +56,7 @@
   - 按 policy 触发 refresh（含 debounce 合并/可取消）。
 - 诊断事件：
   - diagnostics=off：不产生 trace；
-  - diagnostics=light/full：输出 Slim 事件（reason + affectedCount + debounceStats + tickSeq）。
+  - diagnostics=light/sampled/full：输出 Slim 事件（reason + affectedCount + debounceStats + tickSeq）。
 
 ### Phase 3: Migrations（消灭胶水）
 
@@ -121,4 +121,3 @@ packages/logix-query/
 └── test/
     └── Query.AutoTriggerKernel.*.test.ts
 ```
-

@@ -45,7 +45,7 @@
   - React 层的 `RuntimeProvider` / `LogixProvider` 仅负责透传已构造好的 Runtime 与 Layer，不得在 Provider 级别引入新的事务观测模式或关闭事务模型。  
     **Scale/Scope**:
 - 首批覆盖 `examples/logix-react` 中 TraitForm 等 Demo（包括高 Trait 密度版本）；
-- 作为 runtime-logix 文档与未来 Studio 的基础能力，为后续表单 Helper / ResourceField / Origin-first Timeline / **长链路 Task Runner（run\*Task）** 等特性预留扩展空间，但本轮不直接实现这些上层语法糖。
+- 作为 runtime SSoT 文档与未来 Studio 的基础能力，为后续表单 Helper / ResourceField / Origin-first Timeline / **长链路 Task Runner（run\*Task）** 等特性预留扩展空间，但本轮不直接实现这些上层语法糖。
 
 ## Constitution Check
 
@@ -59,16 +59,16 @@ _GATE: 已在 Phase 0/1 级别完成自检，当前 Plan 对齐宪章约束。_
 
 - 依赖或修改哪些 `docs/specs/*` 规范？是否已按文档先行更新？
   - 直接依赖：
-    - `.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/10-runtime-glossary.md`（StateTransaction / Trait 生命周期 / Devtools 术语需在实现后登记）；
-    - `.codex/skills/project-guide/references/runtime-logix/logix-core/*`（Module / Logic / State / Debug 契约）；
-    - `.codex/skills/project-guide/references/runtime-logix/logix-core/impl/README.md`（运行时实现要点）；
+    - `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`（StateTransaction / Trait 生命周期 / Devtools 术语需在实现后登记）；
+    - `docs/ssot/runtime/logix-core/*`（Module / Logic / State / Debug 契约）；
+    - `docs/ssot/runtime/logix-core/impl/README.md`（运行时实现要点）；
     - `docs/specs/drafts/topics/trait-system/*`（作为高 Trait 场景参考与回归样本清单）。
-  - 本 feature 目录下的 spec/plan/research/data-model/contracts/quickstart 已先行更新，后续在实现稳定后会通过 T041 将经验回写到 runtime-logix SSoT 文档。
+  - 本 feature 目录下的 spec/plan/research/data-model/contracts/quickstart 已先行更新，后续在实现稳定后会通过 T041 将经验回写到 runtime SSoT SSoT 文档。
 
 - 是否引入/修改 Effect/Logix 契约？相关规范是否同步？
   - 引入：`StateTransaction / StateTxnContext / StatePatch / RuntimeDebugEventRef` 契约，以及 Devtools 与 Runtime 之间的 `listTransactions` / `getTransactionDetail` / `subscribeEffectOp` / `applyTransactionSnapshot` 接口；
   - 修改：对 Trait 生命周期（蓝图/setup/run）的约束、对 ModuleRuntime 订阅语义（以事务 commit 为粒度）的约束。
-  - 契约细节已在本 feature 的 `data-model.md` 与 `contracts/devtools-runtime-contracts.md` 中定义，并将在落地后同步融入 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与 `impl/README.md`。
+  - 契约细节已在本 feature 的 `data-model.md` 与 `contracts/devtools-runtime-contracts.md` 中定义，并将在落地后同步融入 `docs/ssot/runtime/logix-core/*` 与 `impl/README.md`。
 
 - 质量门槛：在合并前会运行哪些脚本？什么算“通过”？
   - 最低门槛：`pnpm typecheck`、`pnpm lint` 必须通过；
@@ -157,7 +157,7 @@ apps/docs/
 
 - 本特性主要落在三个核心包：`@logixjs/core`（事务 / Trait 生命周期 / DebugSink / DevtoolsHub + `Runtime.make({ devtools })` 一键启用）、`@logixjs/react`（React 渲染事件上报与 devtools 开关联动）、`@logixjs/devtools-react`（Devtools 视图模型与 UI，包括 overview strip；不再内置 snapshot/sink）。
 - 示例与手工验证集中在 `examples/logix-react`，不会新增新的运行时包；
-- 文档对齐通过本特性目录下的 spec/plan/research/data-model/contracts/quickstart，以及后续对 `.codex/skills/project-guide/references/runtime-logix` 与 `apps/docs` 的更新完成。
+- 文档对齐通过本特性目录下的 spec/plan/research/data-model/contracts/quickstart，以及后续对 `docs/ssot/runtime` 与 `apps/docs` 的更新完成。
 
 ### Devtools 一键启用与 Hub 下沉（FR-018 增量）
 

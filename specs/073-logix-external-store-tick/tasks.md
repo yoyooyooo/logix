@@ -22,7 +22,7 @@
 ## Phase 1: Setup（Docs / Baselines）
 
 - [x] T001 Create perf evidence folder `specs/073-logix-external-store-tick/perf/` (per `plan.md#Perf Evidence Plan`)
-- [x] T002 [P] Sync Runtime SSoT entry points (if public API changes): `.codex/skills/project-guide/references/runtime-logix/logix-core/api/*` + `.codex/skills/project-guide/references/runtime-logix/logix-react/*`
+- [x] T002 [P] Sync Runtime SSoT entry points (if public API changes): `docs/ssot/runtime/logix-core/api/*` + `docs/ssot/runtime/logix-react/*`
 - [x] T003 [P] Write user docs (减少 useEffect 数据胶水) for ExternalStore + StateTrait.externalStore + Module-as-Source in `apps/docs/content/docs/guide/recipes/external-store.md` and add it to `apps/docs/content/docs/guide/recipes/meta.json` (user-doc style; avoid内部术语；include “何时用 ReadQuery vs fromModule vs externalStore vs link” decision guide)
 - [x] T004 [P] Add API doc page for ExternalStore in `apps/docs/content/docs/api/core/external-store.md` and update `apps/docs/content/docs/api/core/meta.json` (focus on usage + constraints: sync getSnapshot, Signal Dirty, SSR getServerSnapshot, fromStream fail-fast, fromModule IR-recognizable)
 - [x] T005 [P] Decompose `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` (1500+ LOC) into mutually-exclusive `ModuleRuntime.*.ts` flat modules per `plan.md#Large File Decomposition` (no behavior change; keep public surface stable)
@@ -36,7 +36,7 @@
 
 **Goal**：把外部输入从“订阅胶水”升级为 declarative trait，保证初始化无竞态，并且写回进入事务窗口。
 
-- [x] T009 [US2] Harden StateTrait deps contract: change `StateTrait.source({ key })` from `key(state)` to **deps-as-args** `key(...depsValues)` (DSL lowers into internal `key(state)`); migrate all callsites + `@logixjs/query` trait lowering + runtime SSoT docs under `.codex/skills/project-guide/references/runtime-logix/logix-core/**` (align with computed; reduces deps mismatch risk and makes Static IR dependency story tighter)
+- [x] T009 [US2] Harden StateTrait deps contract: change `StateTrait.source({ key })` from `key(state)` to **deps-as-args** `key(...depsValues)` (DSL lowers into internal `key(state)`); migrate all callsites + `@logixjs/query` trait lowering + runtime SSoT docs under `docs/ssot/runtime/logix-core/**` (align with computed; reduces deps mismatch risk and makes Static IR dependency story tighter)
 - [x] T010 [US2] Define `ExternalStore<T>` public contract in `packages/logix-core/src/ExternalStore.ts` (`getSnapshot/subscribe` + optional `getServerSnapshot` for SSR) (FR-001)
 - [x] T011 [P] Implement ExternalStore sugars in `packages/logix-core/src/ExternalStore.ts` (`fromService` / `fromSubscriptionRef` / `fromStream` / `fromModule`) (FR-002; `fromStream` missing `initial/current` must Runtime Error fail-fast; `fromSubscriptionRef` assumes pure read; all sugars must carry an internal **descriptor** for trait build/IR export; `fromModule` descriptor MUST include resolvable moduleId + `ReadQueryStaticIr` so Module-as-Source is IR-recognizable (no blackbox subscribe): moduleId must resolve, selectorId must be stable (deny `unstableSelectorId`), otherwise fail-fast; include stale-start + purity + module-as-source warnings in docstring + quickstart)
 - [x] T012 [P] Export `ExternalStore` as a public submodule in `packages/logix-core/src/index.ts` and satisfy `scripts/public-submodules/verify.ts` (plan.md#Project Structure)

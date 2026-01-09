@@ -165,7 +165,7 @@ yield* $.reducer("set", (state, action) => ({
      - 若业务需要捕获中间所有状态，应在 watcher 层针对 `stateRef.changes` 自行处理，而不是依赖派生 selector。
 
 4. Parser & IR
-   - 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/` 对应规范中：
+   - 在 `docs/ssot/runtime/logix-core/` 对应规范中：
      - 将 primary reducer 明确为 L0/L1 层的“主路径”；
      - watcher (`$.onAction/onState`) 明确为 L1/L2 的联动规则；
    - IR 层区分：
@@ -195,11 +195,11 @@ yield* $.reducer("set", (state, action) => ({
 
 ## 后续工作建议
 
-1. 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md` 中补充 primary reducer 概念与 API 草案；
-2. 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md` 中：
+1. 在 `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md` 中补充 primary reducer 概念与 API 草案；
+2. 在 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md` 中：
    - 把 `$.reducer` 与 `$.onAction/onState` 的职责边界写清楚；
    - 更新 watcher 性能基线，注明 primary reducer 不计入 watcher 数量统计。
-3. 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/impl/04-watcher-performance-and-flow.md` 及新建的 impl 文档中细化：
+3. 在 `docs/ssot/runtime/logix-core/impl/04-watcher-performance-and-flow.md` 及新建的 impl 文档中细化：
    - ModuleRuntime `dispatch` 的新实现；
    - reducer map 的结构与扩展点；
    - 与现有 BoundApi/LogicBuilder 的兼容策略。

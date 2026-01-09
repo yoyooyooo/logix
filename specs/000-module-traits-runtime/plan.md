@@ -22,7 +22,7 @@
 **Project Type**: pnpm monorepo；本特性主要落在 `packages/logix-core`，并通过 `packages/logix-react` / `packages/logix-devtools-react` 与示例应用验证  
 **Performance Goals**: 在维持现有 Logix Runtime 性能基线的前提下，引入 StateTrait/EffectOp 不产生明显额外开销；高频 Path 需保持「类型推导友好 + 调试可观测」  
 **Constraints**:  
-- Trait/Runtime 契约必须与 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 中的描述保持一致（文档为 SSoT）；  
+- Trait/Runtime 契约必须与 `docs/ssot/runtime/logix-core/*` 中的描述保持一致（文档为 SSoT）；  
 - StateTraitProgram/Graph/Plan 需保持可序列化/可调试，便于 Devtools 与平台消费；  
 - 中间件执行只能通过 EffectOp 总线落地，避免新增 ad-hoc Hook。  
 **Scale/Scope**:  
@@ -36,11 +36,11 @@
   - Flow/Logix 层通过 StateTraitProgram + Logic/Flow API 将「图纸」映射为 Effect 程序；  
   - Code/Runtime 层由 `@logixjs/core` ModuleRuntime + EffectOp/Middleware 统一执行业务与横切能力。  
 - 依赖 / 修改的上游 specs：  
-  - `docs/specs/sdd-platform/ssot/*` 中关于 Module 图纸与 Traits 的章节；  
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md` / `03-logic-and-flow.md` / `06-platform-integration.md` 中的 StateTrait / EffectOp / Middleware 契约。  
+  - `docs/ssot/platform/*` 中关于 Module 图纸与 Traits 的章节；  
+  - `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md` / `03-logic-and-flow.md` / `06-platform-integration.md` 中的 StateTrait / EffectOp / Middleware 契约。  
 - Effect/Logix 契约变更落点：  
   - 新增 StateTraitProgram/Graph/Plan/EffectOp 数据结构与运行时行为；  
-  - 所有变更需先在 runtime-logix 文档中明确，再下沉到 `packages/logix-core` 实现。  
+  - 所有变更需先在 runtime SSoT 文档中明确，再下沉到 `packages/logix-core` 实现。  
 - 质量门：  
   - merge 前必须通过 `pnpm typecheck`、`pnpm typecheck:test`、`pnpm lint` 与 `pnpm test --filter logix-core`；  
   - Phase N 阶段需额外补齐高风险路径的类型/行为测试（Graph/Plan 构造、EffectOp 中间件组合、Resource/Query 集成）。
@@ -76,7 +76,7 @@ examples/
 
 **Structure Decision**:  
 - 不新增独立的 `@logixjs/data` 包作为字段能力宿主，相关实现与规范统一归档为历史 PoC；  
-- 以 `packages/logix-core` 为唯一 StateTrait/EffectOp 承载位置，通过 TypeScript 类型与 runtime-logix 文档保持 SSoT 一致。
+- 以 `packages/logix-core` 为唯一 StateTrait/EffectOp 承载位置，通过 TypeScript 类型与 runtime SSoT 文档保持 SSoT 一致。
 
 ## Complexity Tracking
 

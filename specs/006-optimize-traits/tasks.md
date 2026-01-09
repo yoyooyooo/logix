@@ -66,5 +66,5 @@
 
 ## Phase 6: Docs & Quality Gates（交接前必须完成）
 
-- [ ] T023 更新 runtime 规范文档：Trait 在 Operation Window 内收敛、失败/降级语义、诊断信号与 Devtools 对齐：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md`、`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [ ] T023 更新 runtime 规范文档：Trait 在 Operation Window 内收敛、失败/降级语义、诊断信号与 Devtools 对齐：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md`、`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [ ] T024 质量门：`pnpm typecheck` / `pnpm lint` / `pnpm test --filter @logixjs/core`（全部通过）

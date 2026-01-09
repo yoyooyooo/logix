@@ -120,7 +120,7 @@ description: 'Task list for 019-txn-perf-controls'
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [x] T033 [P] 同步 runtime SSoT（诊断协议）：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [x] T033 [P] 同步 runtime SSoT（诊断协议）：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [x] T034 [P] 记录/更新性能基线数据与解读：`specs/019-txn-perf-controls/perf.md`（引用 `specs/019-txn-perf-controls/perf/*.json`）
 - [x] T035 将质量门结果固化到交接材料：`specs/019-txn-perf-controls/perf.md`（记录 `pnpm typecheck`/`pnpm lint`/`pnpm test` 的结论与时间戳）
 

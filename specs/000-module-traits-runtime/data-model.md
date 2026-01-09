@@ -316,7 +316,7 @@ type StateTraitSpec<S> = {
 - 在 `StateTrait.install($, program)` 中，根据 Plan 生成 watcher / Flow / EffectOp 调用；
 - 在 Middleware 层，作为策略配置的输入（例如按 kind / resourceId / fieldPath 做分组处理）。
 
-> v001 约束：`"source-refresh"` 步骤本身只描述“一次刷新该字段”所需的信息（resourceId、keySelector 等），实际执行时机由 Bound API / Runtime 提供的显式入口（如 `$.traits.source.refresh(field)`）控制，不在 Plan 中编码 onMount / onKeyChange 等隐式触发策略。
+> v001 约束：`"source-refresh"` 步骤本身只描述“一次刷新该字段”所需的信息（resourceId、keySelector 等），实际执行时机由 Bound API / Runtime 提供的统一入口（如 `$.traits.source.refresh(field)`）与 `StateTrait.source.autoRefresh` policy（对齐 076）共同决定，不在 Plan steps 中编码旧的 onMount/onKeyChange 反射式触发策略。
 
 ---
 

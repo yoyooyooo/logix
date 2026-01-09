@@ -10,8 +10,8 @@ related:
   - ../../../sdd-platform/workbench/08-alignment-lab-and-sandbox.md
   - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
   - ../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md
-  - ../../../sdd-platform/ssot/assets/00-assets-and-schemas.md
-  - ../../../sdd-platform/ssot/roadmap-logix-platform.md
+  - ../../../docs/ssot/platform/assets/00-assets-and-schemas.md
+  - ../../../docs/ssot/platform/roadmap-logix-platform.md
   - ../../../sdd-platform/impl/README.md
   - ../sandbox-runtime/65-playground-as-executable-spec.md
 ---
@@ -33,7 +33,7 @@ related:
 因此，本 Topic 的目标是：
 
 - 在不重写上游 SSoT 的前提下，把“平台侧规划”补齐到 **可推进实现的粒度**；
-- 明确哪些内容应当最终沉淀回 `docs/specs/sdd-platform/ssot`，哪些长期留在 drafts。
+- 明确哪些内容应当最终沉淀回 `docs/ssot/platform`，哪些长期留在 drafts。
 
 ## 2. 范围与不做的事
 
@@ -45,7 +45,7 @@ related:
 
 ### 2.2 本 Topic 不覆盖（保持上游裁决）
 
-- 不重新定义 Intent 模型与术语（以 `../../../sdd-platform/ssot/foundation/02-glossary.md` 为准）。
+- 不重新定义 Intent 模型与术语（以 `../../../docs/ssot/platform/foundation/02-glossary.md` 为准）。
 - 不重新发明第二套 IR；统一以 `IntentRule`（R-S-T + `source/pipeline/sink`）作为平台侧规则 IR。
 - 不把 Sandbox/Playground 简化为“在线跑代码”；它必须服务“Executable Spec Lab”闭环。
 
@@ -64,11 +64,11 @@ related:
 
 ### 3.2 平台 SSoT（v3 specs）
 
-目录：`../../../sdd-platform/ssot/`
+目录：`../../../docs/ssot/platform/`
 
 - `docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`：平台顶层模块拆分 + `IntentRule`（R-S-T）的统一模型（平台交互骨架索引）
 - `docs/specs/sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md`：Universe/Galaxy/Planet 的视角与交互原则（“配置优于连线，代码优于图形”）
-- `docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md`：资产分层（Level0-3）与 Schema/Graph 的“平台语义”落点
+- `docs/ssot/platform/assets/00-assets-and-schemas.md`：资产分层（Level0-3）与 Schema/Graph 的“平台语义”落点
 - `roadmap-logix-platform.md`：平台→出码、可解析子集、解析器/生成器的阶段性节奏
 
 ### 3.3 平台实现备忘（sdd-platform/impl）

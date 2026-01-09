@@ -56,11 +56,10 @@ debounceState: Map<SourceFieldPathId, { deadlineAtMs: number, pending: boolean }
 
 建议事件（概念）：
 
-- `trace:source.auto`（diagnostics=light/full）
+- `trace:source.auto`（diagnostics=light/sampled/full）
   - `tickSeq`
   - `reason`: `mount | depsChange`
   - `affectedCount`
   - `debounce`: `{ scheduled, cancelled, fired }`（摘要计数即可）
 
 事件必须 Slim、可序列化，且带稳定锚点（instanceId/txnSeq/opSeq/tickSeq）。
-

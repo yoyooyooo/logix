@@ -3,8 +3,8 @@ title: Logix NG Architecture (Drafts)
 status: draft
 layer: Runtime
 related:
-  - docs/specs/sdd-platform/ssot/foundation/02-glossary.md
-  - docs/specs/sdd-platform/ssot/contracts/00-execution-model.md
+  - docs/ssot/platform/foundation/02-glossary.md
+  - docs/ssot/platform/contracts/00-execution-model.md
   - specs/045-dual-kernel-contract/spec.md
   - specs/046-core-ng-roadmap/spec.md
   - specs/048-core-ng-default-switch-migration/spec.md
@@ -24,7 +24,7 @@ related:
 ## 定位与对齐
 
 - 本 Topic 只做“方向/约束/候选架构”的探索，不直接定义对外语义，也不作为实现裁决的唯一来源。
-- 任何会影响对外 API/语义、诊断协议、证据口径的内容，需要回写到 SSoT（`docs/specs/sdd-platform/ssot/*` 与 `.codex/skills/project-guide/references/runtime-logix/*`）并以 `specs/<NNN-*>/` 形式交付。
+- 任何会影响对外 API/语义、诊断协议、证据口径的内容，需要回写到 SSoT（`docs/ssot/platform/*` 与 `docs/ssot/runtime/*`）并以 `specs/<NNN-*>/` 形式交付。
 - NG 路线的“可交付事实源/调度入口”以 `specs/046-core-ng-roadmap/` 为准（里程碑、硬门槛、后续 specs 清单、证据门禁）。
 - 默认内核的**当前裁决**以 `specs/046-core-ng-roadmap/roadmap.md` 的 `Policy Update / 单内核默认（2025-12-31）` 为准；`specs/048-core-ng-default-switch-migration/` 仅保留为历史迁移 spec（不作为当前默认行为裁决）。
 

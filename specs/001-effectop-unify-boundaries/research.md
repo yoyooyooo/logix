@@ -41,7 +41,7 @@
 ## Notes / Implications
 
 - 本次允许破坏性重构：为实现守卫拒绝语义与“总线不可绕过”，可能需要调整若干公共 API 的错误通道/返回类型；以“单一事实源 + 单一执行入口”为优先。
-- 文档迁移是必需品：`apps/docs` 与 `.codex/skills/project-guide/references/runtime-logix` 必须同步改写，避免旧入口/旧叙事继续误导使用者。
+- 文档迁移是必需品：`apps/docs` 与 `docs/ssot/runtime` 必须同步改写，避免旧入口/旧叙事继续误导使用者。
 
 ## Boundary Execution Points（覆盖矩阵草图）
 

@@ -146,7 +146,7 @@
 
 ### D9：反饥饿策略（yield-to-host）
 
-**Decision**：tick 的“合并触发”允许使用 microtask（同一 microtask 内 schedule-once），但当出现 `budgetExceeded/cycle_detected/microtaskChainDepth` 等风险信号时，tick 必须 yield-to-host：将后续 backlog 的续跑切到 macrotask（MessageChannel/setImmediate fallback），并在 diagnostics=light/full 下给出 Slim 证据（`trace:tick.schedule`/`warn:*`）。
+**Decision**：tick 的“合并触发”允许使用 microtask（同一 microtask 内 schedule-once），但当出现 `budgetExceeded/cycle_detected/microtaskChainDepth` 等风险信号时，tick 必须 yield-to-host：将后续 backlog 的续跑切到 macrotask（MessageChannel/setImmediate fallback），并在 diagnostics=light/sampled/full 下给出 Slim 证据（`trace:tick.schedule`/`warn:*`）。
 
 补充约束（避免实现跑偏）：
 

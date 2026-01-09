@@ -1,6 +1,6 @@
 # Logix Form PoC Package
 
-> 仅用于 `.codex/skills/project-guide/references/runtime-logix/logix-form` 相关规范的 PoC；不作为正式运行时代码。
+> 仅用于 `docs/ssot/runtime/logix-form` 相关规范的 PoC；不作为正式运行时代码。
 
 目标：
 

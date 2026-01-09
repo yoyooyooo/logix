@@ -5,8 +5,8 @@ version: 0.1.0
 value: vision
 priority: 200
 related:
-  - docs/specs/sdd-platform/ssot/roadmap-logix-platform.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/README.md
+  - docs/ssot/platform/roadmap-logix-platform.md
+  - docs/ssot/runtime/logix-core/README.md
   - ../platform-vision/00-generative-language-server.md
 ---
 

@@ -118,7 +118,7 @@
 - **FR-002**: 路线图 MUST 明确 045 的分支点作用：稳定 Kernel Contract，并定义“切换默认内核到 core-ng”的硬门槛（契约一致性验证 + 证据门禁 + 无 fallback/可解释）；其中 047 Full Cutover Gate 的 coverage matrix 必须以代码为单一事实源（`@logixjs/core` 导出，优先落点：`packages/logix-core/src/Kernel.ts`）。
 - **FR-002 (clarified)**: 路线图 MUST 明确：从 M2（trial-run/test/dev 渐进替换）起，core-ng 必须是独立包 `@logixjs/core-ng`（`packages/logix-core-ng/`）；否则不得将其作为 core-ng 证据或用于宣称 Gate PASS。
 - **FR-002 (clarified-2)**: 路线图 MUST 明确：047 Full Cutover Gate 的 coverage 必须全覆盖 Kernel Contract 当前所有可替换 `serviceId`；任何新增可替换 serviceId 必须同步纳入 coverage matrix（否则 Gate 语义失真）。
-- **FR-002 (clarified-3)**: 路线图 MUST 明确：047 Gate FAIL 时必须输出 Slim、可序列化的失败证据锚点，至少包含 `kernelId + missingServiceIds + moduleId/instanceId/txnSeq`；完整 `runtimeServicesEvidence` 只允许在 diagnostics=light/full 下输出。
+- **FR-002 (clarified-3)**: 路线图 MUST 明确：047 Gate FAIL 时必须输出 Slim、可序列化的失败证据锚点，至少包含 `kernelId + missingServiceIds + moduleId/instanceId/txnSeq`；完整 `runtimeServicesEvidence` 只允许在 diagnostics=light/sampled/full 下输出。
 - **FR-003**: 路线图 MUST 给出 `specs/039-trait-converge-int-exec-evidence/` 的后续处置策略：它在“当前内核加固/NG 原则验证/core-ng 风险拦截”中的定位、以及何时可视为完成/冻结。
 - **FR-004**: 路线图 MUST 回答工具链问题：core-ng 的进阶不以 Vite/AOT 为前置条件；若未来引入 AOT/编译工具链，必须明确触发条件、失败回退口径与证据门禁，并要求另立 feature spec 承载。
 - **FR-005**: 路线图 MUST 明确哪些探索属于“语义改变/新口径”（例如 time-slicing、采样诊断）并指向独立 spec（避免混入纯优化链路）。

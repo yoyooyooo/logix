@@ -131,4 +131,4 @@
 
 - 025 IR Reflection Loader（schemas 基线）：`specs/025-ir-reflection-loader/contracts/schemas/`
 - EvidencePackage / JsonValue：`specs/020-runtime-internals-contracts/contracts/schemas/runtime-evidence-package.schema.json`、`specs/005-unify-observability-protocol/contracts/schemas/json-value.schema.json`
-- IrPage→IR 全链路（字段含义）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+- IrPage→IR 全链路（字段含义）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`

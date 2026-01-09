@@ -8,7 +8,7 @@
 ## Assumptions
 
 - diagnostics=off 仍代表“近零成本”：不开启任何采样/计时/对象分配。
-- “采样诊断”是对现有 `off/light/full` 的补充能力：在比 full 更低的开销下，保留对性能长尾的可观测性（不追求逐 step 完整解释）。
+- 本 spec 引入 `diagnostics=sampled` 档位，与既有 `off`/`light`/`full` 一起形成 `off/light/sampled/full` 四档：在比 full 更低的开销下，保留对性能长尾的可观测性（不追求逐 step 完整解释）。
 - 采样结果必须可序列化、可对比、可被 Devtools 消费，并使用稳定标识（`instanceId/txnSeq/opSeq` 等）。
 
 ## Out of Scope
@@ -19,7 +19,7 @@
 
 ## Dependencies
 
-- 至少一个可复现的浏览器基线，用于量化 sampled vs off/light/full 的 overhead 曲线。
+- 至少一个可复现的浏览器基线，用于量化 off/light/sampled/full 四档的 overhead 曲线（重点关注 sampled 相对 off/full 的收益）。
 - 既有 `trait:*` 证据链路可用于承载采样摘要（或提供明确迁移方案）。
 
 ## User Scenarios & Testing _(mandatory)_

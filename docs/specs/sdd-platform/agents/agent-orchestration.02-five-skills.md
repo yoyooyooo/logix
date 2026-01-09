@@ -39,4 +39,4 @@
 > Agent 视角下，这五个技能是等价的一等公民：
 > **不要只会写 `$.onState` / `$.onAction` / `$.on` 和 `$.state`，却把所有结构层逻辑埋在裸 `if/else` 和 `try/catch` 里。**
 
-> 与 runtime-logix（SSoT）的对齐说明：这里的“感知/策略/行动”等技能，正好对应 Bound API `$` 内部的几个子域——`$.on*` 负责感知 (Perception)、`$.flow.*` 负责策略 (Strategy，时间轴与并发)、`$.state / $.actions` 负责行动 (Actuation)、`$.use` 与 `$.match` 分别承担协作与结构层职责。Agent 在写代码时应始终沿着这条链路思考，而不是把它们当成三套割裂的 API。
+> 与 runtime SSoT（SSoT）的对齐说明：这里的“感知/策略/行动”等技能，正好对应 Bound API `$` 内部的几个子域——`$.on*` 负责感知 (Perception)、`$.flow.*` 负责策略 (Strategy，时间轴与并发)、`$.state / $.actions` 负责行动 (Actuation)、`$.use` 与 `$.match` 分别承担协作与结构层职责。Agent 在写代码时应始终沿着这条链路思考，而不是把它们当成三套割裂的 API。

@@ -54,18 +54,18 @@
 
 ## Phase 4: User Story 2（P2）- 可解释链路：稳定 id + 可反解的最小 IR
 
-**Goal**: diagnostics=off 近零成本；light/full 输出 Slim/可序列化锚点，并基于 Static IR（staticIrDigest）可控反解
+**Goal**: diagnostics=off 近零成本；light/sampled/full 输出 Slim/可序列化锚点，并基于 Static IR（staticIrDigest）可控反解
 
 **Independent Test**: 两次独立运行产生的 staticIrDigest 一致；消费侧在 digest 缺失/不匹配时不反解（避免展示错误信息）
 
-- [x] T030 [US2] DebugSink 投影：按 off/light/full 预算输出 `state:update`（TopK=3/32 + `rootIdsTruncated`，full 有界 patches）`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
+- [x] T030 [US2] DebugSink 投影：按 off/light/sampled/full 预算输出 `state:update`（TopK=3/32 + `rootIdsTruncated`，sampled/full 有界 patches）`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - [x] T031 [US2] 消费侧 digest gate：`staticIrDigest` 缺失/不匹配时禁止 `rootIds → rootPaths` 反解，仅展示 id 与摘要 `packages/logix-devtools-react/src/internal/state/compute.ts`
 - [x] T032 [P] [US2] 更新/补齐可解释链路文档：`state:update.dirtySet` 的 id-first 语义与降级原因码 `apps/docs/content/docs/guide/advanced/debugging-and-devtools.md`
 
 **Tests（US2）**
 
 - [x] T033 [P] [US2] 补齐测试：同一输入两次运行的 `staticIrDigest` 稳定（并可对齐 FieldPathId/StepId 语义）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DeterministicIds.test.ts`
-- [x] T034 [P] [US2] 补齐测试：diagnostics=off/light/full 的 payload 成本约束（off 不输出重字段；light/full bounded）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DiagnosticsLevels.test.ts`
+- [x] T034 [P] [US2] 补齐测试：diagnostics=off/light/sampled/full 的 payload 成本约束（off 不输出重字段；light/sampled/full bounded）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DiagnosticsLevels.test.ts`
 
 ---
 
@@ -88,7 +88,7 @@
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [x] T050 [P] 回写 runtime SSoT：txn recording id-first + 原因码收敛 + state:update 成本模型 `/.codex/skills/project-guide/references/runtime-logix/logix-core/impl/README.md`
+- [x] T050 [P] 回写 runtime SSoT：txn recording id-first + 原因码收敛 + state:update 成本模型 `/docs/ssot/runtime/logix-core/impl/README.md`
 - [x] T051 [P] 回写 046 roadmap registry：补齐 065 状态与证据链接 `specs/046-core-ng-roadmap/spec-registry.md`
 - [x] T052 运行质量门并修复回归：`pnpm typecheck` / `pnpm lint` / `pnpm test:turbo` `package.json`
 

@@ -210,7 +210,7 @@ description: "Task list for 001-module-traits-runtime (StateTrait + EffectOp/Mid
 
 - [X] T066 [P] 清理并标记 `packages/logix-data` 相关实现为 PoC/废弃状态，确保对外不再新增依赖：`packages/logix-data`
 - [X] T067 [P] 对 `specs/001-implement-logix-data` 等旧 spec 做归档/注释更新，指向本特性作为主线：`specs/001-implement-logix-data`
-- [X] T068 整理 `.codex/skills/project-guide/references/runtime-logix` 与 v3 SDD 文档中与 Trait/Runtime/Middleware 相关的章节，使其与本特性最终实现保持对齐：`.codex/skills/project-guide/references/runtime-logix`
+- [X] T068 整理 `docs/ssot/runtime` 与 v3 SDD 文档中与 Trait/Runtime/Middleware 相关的章节，使其与本特性最终实现保持对齐：`docs/ssot/runtime`
 - [X] T069 [P] 对 `packages/logix-core` 做一次命名与 API 审视（含 StateTrait/Resource/Query/Middleware），根据奥卡姆剃刀原则精简多余概念：`packages/logix-core/src`
 - [X] T070 补足缺失的单元测试与类型测试（围绕高风险路径：Graph/Plan 构造、EffectOp 中间件组合、Resource/Query 集成）：`packages/logix-core/test`
 - [X] T071 在 `specs/000-module-traits-runtime/checklists/requirements.md` 中逐项勾选并记录残余风险或 TODO：`specs/000-module-traits-runtime/checklists/requirements.md`
@@ -288,4 +288,4 @@ description: "Task list for 001-module-traits-runtime (StateTrait + EffectOp/Mid
 - 所有任务行遵循 `- [ ] TXXX [P?] [US?] 描述 + 路径` 规范，便于 LLM 或人类逐项执行。  
 - `packages/logix-core` 相关任务默认需要配套测试，优先补齐高风险路径（Graph/Plan 构造、EffectOp/Middleware、Resource/Query）。  
 - 在每个 Phase 结束时建议更新 `specs/000-module-traits-runtime/checklists/requirements.md` 与 spec/research/references，保持文档为单一事实源。  
-- 任意时刻如发现 Trait / Runtime 契约与 v3 / runtime-logix 上游文档冲突，应先调整上游设计文档，再回改本特性实现与 spec。  
+- 任意时刻如发现 Trait / Runtime 契约与 v3 / runtime SSoT 上游文档冲突，应先调整上游设计文档，再回改本特性实现与 spec。  

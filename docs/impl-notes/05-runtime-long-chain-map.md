@@ -2,12 +2,12 @@
 
 > **目标**：让维护者/LLM 在不通读所有文档的情况下，先建立“广度脉络”，并知道每条链路该去哪里深挖。
 >
-> **注意**：本文是实现视角小抄（非 SSoT）。对外契约与口径以 `.codex/skills/project-guide/references/runtime-logix` 为准。
+> **注意**：本文是实现视角小抄（非 SSoT）。对外契约与口径以 `docs/ssot/runtime` 为准。
 
 ## 0. 最短入口（先读哪 3 个点）
 
-1. Runtime 契约（SSoT 总览）：`.codex/skills/project-guide/references/runtime-logix/README.md`
-2. Module/Logic/Flow 编程模型：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`、`.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`
+1. Runtime 契约（SSoT 总览）：`docs/ssot/runtime/README.md`
+2. Module/Logic/Flow 编程模型：`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`、`docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
 3. 代码真实落点：`packages/logix-core/src/index.ts`（导出裁决）→ `packages/logix-core/src/internal/runtime/**`（实现内核）
 
 ---
@@ -16,7 +16,7 @@
 
 ### 入口（按阅读顺序）
 
-- 运行时 SSoT（概念/契约）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`
+- 运行时 SSoT（概念/契约）：`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
 - 公共入口：`packages/logix-core/src/Module.ts`、`packages/logix-core/src/Runtime.ts`
 - 组装容器：`packages/logix-core/src/internal/runtime/AppRuntime.ts`
 
@@ -38,7 +38,7 @@
 
 ### 入口（按阅读顺序）
 
-- SSoT（契约/非法用法矩阵）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`
+- SSoT（契约/非法用法矩阵）：`docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
 - Logic 归一与 Bound API 注入：`packages/logix-core/src/internal/runtime/ModuleFactory.ts`
 - setup/run 执行与监督：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`
 - Phase Guard（setup-only/run-only）：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
@@ -65,7 +65,7 @@
 
 ### 入口（按阅读顺序）
 
-- SSoT（事务窗口/约束）：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md`
+- SSoT（事务窗口/约束）：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md`
 - ModuleRuntime（队列/事务驱动）：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`
 - 事务内核：`packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
 - Trait 收敛：`packages/logix-core/src/internal/state-trait/converge.ts`
@@ -110,7 +110,7 @@
 
 ### 入口（按阅读顺序）
 
-- SSoT（strict/root/link 语义）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`
+- SSoT（strict/root/link 语义）：`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
 - Bound API 侧 resolve：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
 - Root：`packages/logix-core/src/Root.ts`、`packages/logix-core/src/internal/runtime/core/RootContext.ts`
 - Link：`packages/logix-core/src/Link.ts`
@@ -155,7 +155,7 @@
 
 ### 入口（按阅读顺序）
 
-- SSoT（事件类型/口径）：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- SSoT（事件类型/口径）：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - 公共 Debug API：`packages/logix-core/src/Debug.ts`
 - DebugSink 内核：`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - DevtoolsHub（聚合/订阅）：`packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
@@ -173,7 +173,7 @@
 
 ### 入口（按阅读顺序）
 
-- SSoT（React 集成）：`.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`
+- SSoT（React 集成）：`docs/ssot/runtime/logix-react/01-react-integration.md`
 - hooks：`packages/logix-react/src/hooks/useModule.ts`、`packages/logix-react/src/hooks/useSelector.ts`
 - external store：`packages/logix-react/src/internal/ModuleRuntimeExternalStore.ts`
 - runtime provider：`packages/logix-react/src/components/RuntimeProvider.tsx`

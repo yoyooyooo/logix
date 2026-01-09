@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/088-async-action-coordinator/contracts/schemas/async-action-event.schema.json",
+  "title": "AsyncActionEvent",
+  "allOf": [
+    {
+      "$ref": "../../../005-unify-observability-protocol/contracts/schemas/runtime-debug-event-ref.schema.json"
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "label", "linkId", "meta"],
+      "properties": {
+        "kind": { "const": "action" },
+        "label": { "const": "async-action" },
+        "linkId": { "type": "string", "minLength": 1 },
+        "meta": { "$ref": "./async-action-event-meta.schema.json" }
+      }
+    }
+  ]
+}
+

@@ -46,7 +46,7 @@
 - [x] T014 [US2] 用户文档配方：路由 scope 下弹框 keepalive（甜点区/高级区/常见坑）`apps/docs/content/docs/guide/recipes/route-scope-modals.md`
 - [x] T015 [P] API 文档：新增 ModuleScope 页面并加入导航 `apps/docs/content/docs/api/react/module-scope.md`, `apps/docs/content/docs/api/react/meta.json`
 - [x] T016 [P] API 文档：useImportedModule 指路 ModuleScope `apps/docs/content/docs/api/react/use-imported-module.md`
-- [x] T017 [P] Runtime SSoT：React integration guide 补 ModuleScope 指引 `.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`
+- [x] T017 [P] Runtime SSoT：React integration guide 补 ModuleScope 指引 `docs/ssot/runtime/logix-react/01-react-integration.md`
 - [x] T018 [P] 文档：补齐 Bridge（实验性）段落（前提/失败模式/不进入甜点区）`apps/docs/content/docs/api/react/module-scope.md`, `specs/037-route-scope-eviction/contracts/react-module-scope.md`
 
 ---

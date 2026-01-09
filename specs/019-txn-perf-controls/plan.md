@@ -39,7 +39,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - `Intent → Flow/Logix → Code → Runtime` 映射：Intent/交互（高频输入/联动）→ Flow/Logix（dispatch + traits converge/validate）→ Code（`ModuleRuntime`/`StateTransaction`/traits + React 外部订阅）→ Runtime（txnQueue 串行化 + 0/1 commit + 诊断事件/trace）。
 - 依赖/对齐的 specs：`specs/009-txn-patch-dirtyset`（dirty-set/patch/trace contract）、`specs/013-auto-converge-planner`（converge 事件与缓存证据）、`specs/016-serializable-diagnostics-and-identity`（可序列化诊断与稳定标识）、`specs/015-devtools-converge-performance`（devtools/性能口径）、`specs/014-browser-perf-boundaries`（浏览器侧基线口径）。
-- Effect/Logix contracts 变更：若新增“显式 batch/低优先级”公共入口或诊断协议，必须同步更新 `.codex/skills/project-guide/references/runtime-logix/logix-core/*`（observability/runtime）与 `apps/docs` 对应章节；本计划在 Phase 1 先用 `contracts/*` 固化协议，再进入代码实现。
+- Effect/Logix contracts 变更：若新增“显式 batch/低优先级”公共入口或诊断协议，必须同步更新 `docs/ssot/runtime/logix-core/*`（observability/runtime）与 `apps/docs` 对应章节；本计划在 Phase 1 先用 `contracts/*` 固化协议，再进入代码实现。
 - IR & anchors：不引入第二套真相源；以 009 的 unified minimal IR（Static IR + Dynamic Trace）为底座，通过本特性 `contracts/*` 扩展 trace 元信息（commitMode/priority/dirtyAll 等），避免漂移。
 - Deterministic identity：沿用现有 `instanceId + txnSeq` 模型（见 `StateTransaction.beginTransaction`），补齐必要的 `opSeq/eventSeq`（如需）也必须是单调序列且可注入/可复现。
 - Transaction boundary：batch/低优先级只允许包裹“纯同步写入”；任何 IO/async 必须在事务外执行并以独立写回事务表达；对违规路径提供可行动诊断。

@@ -24,7 +24,7 @@ Evidence（实现/验证主入口）：
 - 释放收束：`packages/logix-core/src/internal/runtime/runner/ProgramRunner.closeScope.ts`
 - 错误分类：`packages/logix-core/src/internal/runtime/runner/ProgramRunner.errors.ts`
 - 测试：`packages/logix-core/test/Runtime.runProgram.*.test.ts`、`packages/logix-core/test/Runtime.openProgram.*.test.ts`
-- 文档：`apps/docs/content/docs/api/core/runtime.md`、`.codex/skills/project-guide/references/runtime-logix/logix-core/api/05-runtime-and-runner.md`
+- 文档：`apps/docs/content/docs/api/core/runtime.md`、`docs/ssot/runtime/logix-core/api/05-runtime-and-runner.md`
 - 性能证据：`pnpm perf bench:024:boot`、`specs/024-root-runtime-runner/perf.md`
 
 | Code | Type | Status | Evidence / Verification |
@@ -46,7 +46,7 @@ Evidence（实现/验证主入口）：
 | NFR-002 | NFR | PASS | `packages/logix-core/src/internal/runtime/runner/ProgramRunner.errors.ts`（Boot/Main/Dispose 分类） |
 | NFR-003 | NFR | PASS | `packages/logix-core/src/internal/runtime/runner/ProgramRunner.errors.ts`（`moduleId/instanceId`） |
 | NFR-004 | NFR | PASS | `packages/logix-core/src/internal/runtime/runner/ProgramRunner.ts`（`TaskRunner.isInSyncTransaction()` guard）+ `packages/logix-core/test/Runtime.runProgram.transactionGuard.test.ts` |
-| NFR-005 | NFR | PASS | `apps/docs/content/docs/api/core/runtime.md` + `.codex/skills/project-guide/references/runtime-logix/logix-core/api/05-runtime-and-runner.md` |
+| NFR-005 | NFR | PASS | `apps/docs/content/docs/api/core/runtime.md` + `docs/ssot/runtime/logix-core/api/05-runtime-and-runner.md` |
 | NFR-006 | NFR | PASS | `packages/logix-test/src/api/TestProgram.ts`（不复制 boot/释放） |
 | NFR-007 | NFR | PASS | `specs/024-root-runtime-runner/perf.md` |
 | SC-001 | SC | PASS | `specs/024-root-runtime-runner/quickstart.md` |

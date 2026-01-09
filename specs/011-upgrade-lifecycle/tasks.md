@@ -23,9 +23,9 @@ description: "Task list for 011-upgrade-lifecycle implementation"
 
 **Purpose**: 先把“目标语义/裁决源/验收口径”固化到 SSoT/文档与 contracts，避免实现跑偏
 
-- [X] T001 更新 Runtime SSoT：生命周期语义（initRequired vs start、destroy LIFO、setup-only、可等待获取）在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`
-- [X] T002 [P] 更新 Bound API SSoT：`$.lifecycle.*` 的 setup/run 边界、错误分层提示与反例在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`
-- [X] T003 [P] 更新 Debug/诊断 SSoT：lifecycle 事件位、错误摘要与预算（≤20 events/instance、≤4KB/event）在 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [X] T001 更新 Runtime SSoT：生命周期语义（initRequired vs start、destroy LIFO、setup-only、可等待获取）在 `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
+- [X] T002 [P] 更新 Bound API SSoT：`$.lifecycle.*` 的 setup/run 边界、错误分层提示与反例在 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
+- [X] T003 [P] 更新 Debug/诊断 SSoT：lifecycle 事件位、错误摘要与预算（≤20 events/instance、≤4KB/event）在 `docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [X] T004 [P] 复核 contracts 与 data-model 一致性（identity/status/outcome/error）：`specs/011-upgrade-lifecycle/contracts/schemas/*.schema.json` 与 `specs/011-upgrade-lifecycle/data-model.md`
 - [X] T005 [P] 对齐 quickstart 的“目标语义示例”到 tasks 产出（setup-only 写法、错误分层、可等待获取）在 `specs/011-upgrade-lifecycle/quickstart.md`
 - [X] T006 [P] 复核 perf 口径与脚手架（create/init/destroy、off vs on budget）在 `pnpm perf bench:011:lifecycle` 与 `specs/011-upgrade-lifecycle/perf.md`
@@ -114,7 +114,7 @@ description: "Task list for 011-upgrade-lifecycle implementation"
 
 - [X] T033 [US4] 在 lifecycle/logic failure 处理链路中区分 defect vs interrupt（interrupt 不上报为 error）在 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts`
 - [X] T034 [US4] 固化错误分类（expected/defect/assembly/interrupt/diagnostic）与默认处理策略，并同步诊断事件 code/严重级别在 `packages/logix-core/src/internal/runtime/core/LifecycleDiagnostics.ts`
-- [X] T035 [US4] 更新内部规范：错误处理三层模型与反例（全局/模块/局部）在 `.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/11-error-handling.md`
+- [X] T035 [US4] 更新内部规范：错误处理三层模型与反例（全局/模块/局部）在 `docs/ssot/runtime/logix-core/runtime/11-error-handling.md`
 - [X] T036 [US4] 更新用户文档：错误处理指南与可达性（≤2 次跳转）在 `apps/docs/content/docs/guide/advanced/error-handling.md`
 
 **Checkpoint**: 四类场景（预期错误/缺陷/取消/装配失败）对外语义一致且可解释，文档可直接指导接线

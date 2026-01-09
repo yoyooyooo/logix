@@ -5,7 +5,7 @@
 **Status**: Draft  
 **Input**: 073 完成后的新视角（tick=观测参考系）+ 当前 Query/Form 的 source 触发胶水痛点（反射式解释 triggers）。
 
-**Model (SSoT)**: `docs/specs/sdd-platform/ssot/foundation/01-the-one.md`（把 source auto-trigger 视为受限 `Π_source`）。
+**Model (SSoT)**: `docs/ssot/platform/foundation/01-the-one.md`（把 source auto-trigger 视为受限 `Π_source`）。
 
 ## Context
 
@@ -47,14 +47,14 @@
   - 禁止在 feature 包里通过黑盒 `setTimeout/Promise` 链实现 debounce（影子时间线）。
 - 诊断与可解释性：
   - diagnostics=off 近零成本；
-  - diagnostics=light/full 允许输出 Slim 事件：触发原因、受影响 source 数、debounce 合并统计等。
+  - diagnostics=light/sampled/full 允许输出 Slim 事件：触发原因、受影响 source 数、debounce 合并统计等。
 - 迁移目标：
   - `@logixjs/query` 不再需要 `auto-trigger` 逻辑；
   - `TraitLifecycle.makeSourceWiring` 从“公共依赖点”退回为内部实现或被替换（避免下游反射 traits）。
 
 ### Out of Scope
 
-- 通用的 Action→Action 多步协议/分支/补偿/重试/超时：由 `075-logix-flow-program-ir` 提供（Π 的通用形态）。
+- 通用的 Action→Action 多步协议/分支/补偿/重试/超时：由 `075-flow-program-codegen-ir` 提供（Π 的通用形态）。
 - “onMount delay 3s 再 refresh”这类自由时序：应通过 FlowProgram 表达（或在本特性完成后作为独立扩展节点进入 075）。
 - ExternalStore / TickScheduler / React 无 tearing（观测参考系的建立与切换）：由 073 负责。
 

@@ -58,8 +58,9 @@ export interface QuerySourceConfig<TParams, TUI = unknown> {
    * - 允许先粗后细：不确定时可先写 ["params", "ui"]，再逐步收敛到最小 deps。
    */
   readonly deps: ReadonlyArray<string>
-  readonly triggers?: ReadonlyArray<"onMount" | "onKeyChange" | "manual">
-  readonly debounceMs?: number
+  readonly autoRefresh?:
+    | { readonly onMount?: boolean; readonly onDepsChange?: boolean; readonly debounceMs?: number }
+    | false
   readonly concurrency?: "switch" | "exhaust"
   // args 顺序与 deps 一致（推荐用 builder 写法保留 tuple，从而让 key 入参类型可推导）
   readonly key: (...depsValues: ReadonlyArray<unknown>) => unknown | undefined
@@ -88,7 +89,7 @@ export declare const make: <Id extends string, TParams, TUI = unknown>(
 说明：
 
 - 结果快照建议落为 `ResourceSnapshot/QuerySnapshot`（见 `references/03-query-data-model.md`），并遵循 keySchema + keyHash 门控与 stale 丢弃语义。
-- 触发策略（onMount/onKeyChange/manual）与并发策略（switch/exhaust）由 Blueprint 的默认 logics/traits 协议提供，并由内核约束其语义一致性。
+- 触发策略（autoRefresh：onMount/onDepsChange + debounce；以及 autoRefresh=false 的 manual-only）与并发策略（switch/exhaust）由 Blueprint 的默认 logics/traits 协议提供，并由内核约束其语义一致性。
 
 ---
 

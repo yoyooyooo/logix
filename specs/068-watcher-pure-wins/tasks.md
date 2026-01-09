@@ -87,7 +87,7 @@
 
 ## Phase 8: Evidence, Docs & Polish
 
-- [ ] T026 [P] Update watcher docs to reflect topic-index + ReadQuery routing in `.codex/skills/project-guide/references/runtime-logix/logix-core/impl/04-watcher-performance-and-flow.01-dispatch-to-handler.md`
+- [ ] T026 [P] Update watcher docs to reflect topic-index + ReadQuery routing in `docs/ssot/runtime/logix-core/impl/04-watcher-performance-and-flow.01-dispatch-to-handler.md`
 - [ ] T027 [P] Update draft perf regression suite to include 068 coverage in `docs/specs/drafts/topics/runtime-v3-core/03-perf-regression-suite.md`
 - [ ] T028 Collect before Node perf evidence to `specs/068-watcher-pure-wins/perf/before.node.watcher.fanout.<envId>.default.json`
 - [ ] T029 Collect after Node perf evidence to `specs/068-watcher-pure-wins/perf/after.node.watcher.fanout.<envId>.default.json`

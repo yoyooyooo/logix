@@ -103,7 +103,7 @@ description: "Tasks for 010-form-api-perf-boundaries"
 - [X] T032 [US2] 移除 `listValidateOnChange` 安装逻辑分支，并用 `TraitLifecycle.Ref.fromValuePath` 统一解析 validate target（删除 form 内自造 parser）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/logics/install.ts`
 - [X] T033 [US2] arrayAppend/Prepend/Remove/Swap/Move 必须触发 list target 的 scopedValidate（结构变更也刷新跨行规则）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/logics/install.ts`
 - [X] T034 [US2] 移除 demo 中的 `listValidateOnChange/mode` 配置，改用 `validateOn/reValidateOn`，并保持跨行规则默认正确 `/Users/yoyo/Documents/code/personal/intent-flow/examples/logix-react/src/demos/form/cases/case11-dynamic-list-cascading-exclusion.tsx`
-- [X] T035 [US2] 将 source 的 `onMount/onKeyChange` 默认 wiring 下沉到 TraitLifecycle（form 不再扫描 program.entries）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/trait-lifecycle/index.ts`
+- [X] T035 [US2] 将 source 的 `autoRefresh`（onMount/onDepsChange + debounceMs）默认 wiring 下沉到 TraitLifecycle（form 不再扫描 program.entries）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/trait-lifecycle/index.ts`
 - [X] T036 [US2] 删除/收敛 form install 内的 source 扫描与 refreshAffectedSources（改为调用 TraitLifecycle 能力或完全移除）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/logics/install.ts`
 
 **Checkpoint**: US2 达成（无专家开关、结构变更也触发 list-scope）
@@ -144,7 +144,7 @@ description: "Tasks for 010-form-api-perf-boundaries"
 - [X] T048 同路径 value 变更自动清理 Schema 错误（不重跑 Schema，FR-012c）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/logics/install.ts`
 - [X] T049 更新 SchemaPath/SchemaErrorMapping 测试到新错误树与 `$schema` 分层 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/test/SchemaErrorMapping.test.ts`
 - [X] T050 更新 breaking changes 文档（errors 树迁移、开关移除、示例迁移）`/Users/yoyo/Documents/code/personal/intent-flow/docs/reviews/99-roadmap-and-breaking-changes.md`
-- [X] T051 更新 runtime SSoT（Form 推荐写法/错误树/Path 口径）`/Users/yoyo/Documents/code/personal/intent-flow/.codex/skills/project-guide/references/runtime-logix/logix-form/README.md`
+- [X] T051 更新 runtime SSoT（Form 推荐写法/错误树/Path 口径）`/Users/yoyo/Documents/code/personal/intent-flow/docs/ssot/runtime/logix-form/README.md`
 - [X] T052 实现规则挂载语法糖：新增 `Form.Rule.field/fields`（`fields` 支持 decl/decl[] 扁平化输入；重复 valuePath 稳定失败；不改变 IR/执行语义）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/rule.ts`
 - [X] T053 [P] 新增单测：`Form.Rule.field/fields` 合成 rules 时重复 valuePath 必须失败 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/test/Form.Rule.FieldMount.test.ts`
 - [X] T054 逐条验证并同步 quickstart 与示例代码（避免文档-实现漂移）`/Users/yoyo/Documents/code/personal/intent-flow/specs/010-form-api-perf-boundaries/quickstart.md`
@@ -168,7 +168,7 @@ description: "Tasks for 010-form-api-perf-boundaries"
 - [X] T072 将“动态列表/跨行校验”纳入 perf matrix（SSoT）：新增 suite（含 `requestedMode=full|auto` 对比预算与必要 evidence 字段）`/Users/yoyo/Documents/code/personal/intent-flow/.codex/skills/logix-perf-evidence/assets/matrix.json`
 - [X] T073 实现 014 browser perf suite：动态列表（100 行）+ list-scope 跨行校验，输出 full vs auto 对比与 `trait:converge` 解释链路 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-react/test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 - [X] T074 固化 NFR-005 证据：更新 014 的 `interpretation.latest.md`（指出预算门槛、回退原因覆盖与证据文件路径）`/Users/yoyo/Documents/code/personal/intent-flow/specs/014-browser-perf-boundaries/perf/interpretation.latest.md`
-- [X] T075 记录并对齐“off/light/full”开销口径：补齐 010 的 perf-baseline（引用 014 evidence；说明 overhead 与 gate 环境）`/Users/yoyo/Documents/code/personal/intent-flow/specs/010-form-api-perf-boundaries/references/perf-baseline.md`
+- [X] T075 记录并对齐“off/light/sampled/full”开销口径：补齐 010 的 perf-baseline（引用 014 evidence；说明 overhead 与 gate 环境）`/Users/yoyo/Documents/code/personal/intent-flow/specs/010-form-api-perf-boundaries/references/perf-baseline.md`
 - [X] T076 [P] 更新用户文档：`@logixjs/form` 新 API（`validateOn/reValidateOn`、`$list/rows[]`、controller 默认动作、selector 订阅）`/Users/yoyo/Documents/code/personal/intent-flow/apps/docs/content/docs/guide/learn/deep-dive.md`
 - [X] T077 [P] 更新用户文档：把 010 的性能心智模型与“优化梯子”对齐到 `apps/docs`（避免术语/证据字段漂移）`/Users/yoyo/Documents/code/personal/intent-flow/apps/docs/content/docs/guide/advanced/performance-and-optimization.md`
 

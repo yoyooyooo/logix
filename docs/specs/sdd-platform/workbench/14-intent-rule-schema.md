@@ -8,8 +8,8 @@ topic: sdd-platform
 > **定位**: IntentRule 是连接 **Visual Galaxy（设计态）** 与 **Code Generator（实现态）** 的 wiring 协议：它描述 “What connects to what”，用于生成/回写代码与驱动 Studio 交互。
 >
 > **边界**：
-> - IntentRule 不是运行时事件协议；运行时证据以 RunResult 为准：`docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`
-> - IntentRule 不是 `Π` 的唯一形态：复杂控制律应编译为 Program（例如 FlowProgram），而不是在 Rule 里塞时间/并发黑魔法（参照 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`）
+> - IntentRule 不是运行时事件协议；运行时证据以 RunResult 为准：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`
+> - IntentRule 不是 `Π` 的唯一形态：复杂控制律应编译为 Program（例如 FlowProgram），而不是在 Rule 里塞时间/并发黑魔法（参照 `docs/ssot/platform/contracts/00-execution-model.md`）
 
 ## 1. 核心模型: IntentRule
 
@@ -115,7 +115,7 @@ type RuleOp =
 运行时证据以 RunResult 为准；IntentRule 只提供“设计态锚点”。两者的映射需要一个中间层（Dev Server / Loader / Parser）：
 
 - **Rule Anchor**：Codegen/Parser 需要把 `ruleId`（或等价 digest）注入到运行时可导出的事件元数据里（例如 `RuntimeDebugEventRef.meta.intentRuleId`）。
-- **Evidence**：Studio 消费 RunResult 的 `evidence.events`（ObservationEnvelope），并通过 `tickSeq/instanceId/txnSeq/opSeq/linkId` 与 `intentRuleId`（可选）把事件回溯到画布节点/边（口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）。
+- **Evidence**：Studio 消费 RunResult 的 `evidence.events`（ObservationEnvelope），并通过 `tickSeq/instanceId/txnSeq/opSeq/linkId` 与 `intentRuleId`（可选）把事件回溯到画布节点/边（口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。
 - **Visual Feedback**:
   - 当 `Link{ruleId}` 激活时，Galaxy 上的对应 **连线 (Edge)** 高亮闪烁。
   - 当 Pattern 执行时，对应的 **节点 (Node)** 显示 Loading/Success 状态。

@@ -28,19 +28,19 @@ priority: later
 
 - 本稿只讨论「Playground / Alignment Lab」在 **平台架构** 与 **意图对齐链路** 中的角色，不下沉到具体 UI 像素级交互；  
 - 不讨论完整的 Universe/Galaxy/Studio 信息架构，只描述 Playground 如何与这些视图挂钩；  
-- 不设计新的 IntentRule 语法与 Spec DSL，只在概念上占位，具体语法仍以 v3 文档与 runtime-logix 为主事实源。
+- 不设计新的 IntentRule 语法与 Spec DSL，只在概念上占位，具体语法仍以 v3 文档与 runtime SSoT 为主事实源。
 
 > 关联文档：  
-> - `docs/specs/sdd-platform/ssot/foundation/00-overview.md`（平台整体愿景）  
+> - `docs/ssot/platform/foundation/00-overview.md`（平台整体愿景）  
 > - `docs/specs/sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md`（Universe/Galaxy/Studio 视图）  
 > - `docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`（IntentRule / R-S-T 模型）  
-> - `.codex/skills/project-guide/references/runtime-logix/logix-core/*`（Module / Logic / Flow / Runtime 契约）  
+> - `docs/ssot/runtime/logix-core/*`（Module / Logic / Flow / Runtime 契约）  
 > - `docs/specs/drafts/topics/sandbox-runtime/00-overview.md`（Playground & Sandbox 概览）  
 > - `docs/specs/drafts/topics/sandbox-runtime/mvp/README.md`（Playground/Sandbox MVP · 省市区联动）
 
 ## 2. SDD 四阶段在本平台中的映射
 
-以 SDD 的四个阶段为骨架，结合当前 v3 模型 + runtime-logix，我们可以粗略对齐为：
+以 SDD 的四个阶段为骨架，结合当前 v3 模型 + runtime SSoT，我们可以粗略对齐为：
 
 ### 2.1 SPECIFY：需求意图（Spec / Scenario）
 
@@ -239,7 +239,7 @@ Playground 在 UI 上可以用非常简单的方式呈现：
 
 ## 6. 小结
 
-- 从 SDD 的角度，本仓的 v3 模型 + runtime-logix + @logixjs/sandbox 已经分别对应了 Spec / Plan / Tasks / Implement 四层中的大部分内容；  
+- 从 SDD 的角度，本仓的 v3 模型 + runtime SSoT + @logixjs/sandbox 已经分别对应了 Spec / Plan / Tasks / Implement 四层中的大部分内容；  
 - 真正缺的是一个把这四层「对齐起来」的实验场：  
   - 既能让 PM/设计用 Spec/Scenario 说清需求；  
   - 又能让 IntentRule / Logix 实现与运行时行为在同一视图里被观察与验证；  

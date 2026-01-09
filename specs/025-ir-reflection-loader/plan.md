@@ -61,7 +61,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Which `docs/specs/*` specs does it depend on or modify, and are they
     updated first (docs-first & SSoT)?
   - Does it introduce or change any Effect/Logix contracts? If yes, which
-    `.codex/skills/project-guide/references/runtime-logix/*` docs capture the new contract?
+    `docs/ssot/runtime/*` docs capture the new contract?
   - IR & anchors: does it change the unified minimal IR or the Platform-Grade
     subset/anchors; are parser/codegen + docs updated together (no drift)?
   - Deterministic identity: are instance/txn/op IDs stable and reproducible
@@ -89,7 +89,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - `Intent → Flow/Logix → Code → Runtime`：本特性位于 “Code → Runtime（可试跑导出证据）” 与 “Code → Platform（Manifest）” 的交界：通过动态 import + 反射/试跑，把运行时代码的“最终对象形状”投影成平台可消费 IR。
 - Docs-first & SSoT：平台侧思路参考 `docs/specs/sdd-platform/workbench/15-module-runtime-reflection-loader.md`；本特性的对外契约与证据协议必须与 `specs/020-runtime-internals-contracts/*` 对齐（schema/口径复用），必要时先更新 SSoT 再落代码。
-- Effect/Logix contracts：优先复用 `@logixjs/core/Observability.trialRun` + EvidencePackage；若新增 `ModuleManifest` 导出或“依赖收集器”协议，必须同步更新 `.codex/skills/project-guide/references/runtime-logix/logix-core/*`（runtime 侧 SSoT）与 `apps/docs`（用户文档，避免平台内部术语泄漏）。
+- Effect/Logix contracts：优先复用 `@logixjs/core/Observability.trialRun` + EvidencePackage；若新增 `ModuleManifest` 导出或“依赖收集器”协议，必须同步更新 `docs/ssot/runtime/logix-core/*`（runtime 侧 SSoT）与 `apps/docs`（用户文档，避免平台内部术语泄漏）。
 - IR & anchors：Manifest IR 是对 `ModuleDescriptor`/Module 反射字段的 **静态投影**（不引入新的并行真相源）；TrialRun IR 复用 EvidencePackage 的 `summary.runtime.services`（`RuntimeServicesEvidence`）与 `summary.converge`（如存在），保持最小 IR 口径一致。
 - Deterministic identity：CI/平台场景必须显式提供 `runId`（Trial Run / RunSession 会话），不得依赖 RunSession 默认 `Date.now()`/进程序号作为对比锚点；`runId` 与 runtime `instanceId` 分离，导出对齐键至少携带 `runId + moduleId + instanceId`。实例/txn/op 等稳定标识仍由既有 Runtime Identity Model 提供（本 feature 不引入新的随机 id）。
 - Transaction boundary：trial run/manifest 提取不在事务窗口内执行 IO；任何“构建态副作用/违规访问”属于违规并应可解释失败（本期以缺失服务为主信号；通用 IO 禁止策略作为后续扩展，不作为 025 验收项）。

@@ -6,14 +6,14 @@ layer: L9
 value: core
 priority: 2000
 related:
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md
+  - docs/ssot/runtime/logix-core/observability/09-debugging.md
   - ./04-devtools-and-runtime-tree.md
   - ../runtime-v3-core/README.md
 ---
 
 # Logix Debugging & DevTools Roadmap (Draft)
 
-> 草稿目的：把当前 DebugSink / Debug.record 的实现现状梳理清楚，给出一条从「简单事件广播」演进到「完整 Trace + DevTools + 产线观测」的分阶段路线图，为后续 runtime-logix 规范与实现演化提供锚点。
+> 草稿目的：把当前 DebugSink / Debug.record 的实现现状梳理清楚，给出一条从「简单事件广播」演进到「完整 Trace + DevTools + 产线观测」的分阶段路线图，为后续 runtime SSoT 规范与实现演化提供锚点。
 
 ## 0. 现状梳理（2025-12）
 
@@ -25,7 +25,7 @@ related:
   - `packages/logix-test/src/runtime/TestRuntime.ts` 通过监听 `actions$` / `changes(...)` 构造 `TraceEvent`，并额外通过提供 `DebugSinkTag` 实现捕获 `lifecycle:error` 事件；
   - Trace 目前仅用于测试内部断言与回放，尚未形成统一的 Trace ID / 因果链路语义。
 - 规范层：
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 已定义了 DebugSink 接口与基础事件类型，并提出「Action Trace 全链路追踪」与 Trace ID / Causality Graph 的目标，但尚属 Draft；
+  - `docs/ssot/runtime/logix-core/observability/09-debugging.md` 已定义了 DebugSink 接口与基础事件类型，并提出「Action Trace 全链路追踪」与 Trace ID / Causality Graph 的目标，但尚属 Draft；
   - `docs/specs/drafts/topics/devtools-and-studio/04-devtools-and-runtime-tree.md` 聚焦 Runtime Tree / TagIndex / DevTools 观测面，与 Debug/Trace 事件流存在交集但仍需进一步对齐。
 
 当前可以粗略认为：**DebugSink 是引擎级「事件广播接口」，TestRuntime/DevTools 是其主要消费者**，但缺少一条清晰的演进路线和分层边界。
@@ -70,7 +70,7 @@ related:
    - 目标：把 TagIndex / Runtime Tree / Debug 事件统一到一个观测面中，为 Studio / 产线观测系统提供稳定接入点；
    - 范围：Runtime Tree 导出接口、与 TagIndex 对齐的 ID 体系、Exporter Sink（如上报到 OpenTelemetry/自研监控）。
 
-后续可以视实现进度，将 Phase 1–2 的稳定部分并入 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`，Phase 3 与 `runtime-logix-devtools-and-runtime-tree` 草案合并。
+后续可以视实现进度，将 Phase 1–2 的稳定部分并入 `docs/ssot/runtime/logix-core/observability/09-debugging.md`，Phase 3 与 `./04-devtools-and-runtime-tree.md` 草案合并。
 
 ## 3. Phase 1：DebugSink v1.1 · 近期落地项
 
@@ -80,7 +80,7 @@ related:
   - 明确 `moduleId` 的来源：优先使用用户在 `Logix.Module.make('Id', ...)` 层声明的 Id；未提供时允许为空或使用内部生成的占位符；
   - 补充 `instanceId: string`：用于区分不同模块实例（对外唯一实例锚点）；
   - 对 `lifecycle:error` 的 `cause` 字段约定为「可序列化，但允许包含 Effect Cause」，DevTools 可选择性截断/摘要。
-- 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 中补充一小节「DebugEvent 语义约定」，明确哪些字段可以在未来扩展，哪些字段一旦稳定就视为协议的一部分。
+- 在 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 中补充一小节「DebugEvent 语义约定」，明确哪些字段可以在未来扩展，哪些字段一旦稳定就视为协议的一部分。
 
 ### 3.2 实现治理与内置 Sink
 
@@ -97,7 +97,7 @@ related:
 
 ### 3.3 使用约定与文档
 
-- 在 runtime-logix 规范中增加「Engine vs Sink vs DevTools」的分层示意图；
+- 在 runtime SSoT 规范中增加「Engine vs Sink vs DevTools」的分层示意图；
 - 在 examples 中提供一个 `debugsink-console-demo`：
   - 使用 `ConsoleDebugLayer` 观察 `module:init` / `action:dispatch` / `state:update` 事件；
   - 文档中示范如何在开发环境/产线之间切换不同 Sink 组合。
@@ -124,7 +124,7 @@ related:
   - `flow:trigger`：当某个 Flow 被触发时发送，字段包括 `flowId` / `trigger`（来自 Action 或 State 条件）；
   - `effect:start` / `effect:end`：用于标记关键副作用起止，字段包括 `effectId` / `description` / `durationMs`（结束时）；
   - 这些事件应尽量通过 DSL/工具函数自动产生，而不是要求业务手写 `Debug.record`。
-- 更新 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 中的「通信协议」小节：
+- 更新 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 中的「通信协议」小节：
   - 把上述 Flow / Effect 事件作为「建议实现」或「扩展级」事件记录下来；
   - 明确哪些事件是所有引擎实现必须具备的（如 Module / Action / State / Lifecycle），哪些可以视场景选择性实现。
 
@@ -145,7 +145,7 @@ related:
 
 ### 5.1 与 Runtime Tree / TagIndex 的对齐
 
-- 基于 `runtime-logix-devtools-and-runtime-tree` 草稿，补充以下设计点：
+- 基于 `./04-devtools-and-runtime-tree.md` 草稿，补充以下设计点：
   - 为每个 Runtime 节点定义稳定的 `runtimeNodeId`，并在 DebugEvent 中增加可选字段；
   - 使 `moduleId` / `runtimeNodeId` / TagIndex 中的 Tag 标识互相可导航；
   - 提供只读查询 API：例如 `AppRuntime.inspect()` 返回当前 Runtime Tree + TagIndex 快照。
@@ -177,7 +177,7 @@ related:
 1. 在本仓清理 `Debug.record` 中的裸 `console.log`，完成 Phase 1.2 的实现治理，并在 `09-debugging.md` 增补「设计原则」小节（对应本草案第 1 节的精简版）；  
 2. 为 `@logixjs/test` 抽出复用的 `TestDebugSinkLayer` 工具，并在一两个示例中演示如何将 DebugEvent 纳入测试 Trace；  
 3. 以一个简单的 `DevToolsBridge` + 浏览器示例为目标，验证 Phase 2 的 Trace ID 和 Flow/Effekt 事件设计是否足够；  
-4. 在 Runtime Tree / TagIndex 方案更加稳定后，将本草案与 `runtime-logix-devtools-and-runtime-tree` 合并，收敛为 runtime-logix 的统一 observability 规范。
+4. 在 Runtime Tree / TagIndex 方案更加稳定后，将本草案与 `./04-devtools-and-runtime-tree.md` 合并，收敛为 runtime SSoT 的统一 observability 规范。
 
 ## 7. React Devtools 面板（TanStack Query 风格草案）
 

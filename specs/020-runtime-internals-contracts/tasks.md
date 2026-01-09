@@ -113,8 +113,8 @@ description: 'Task list for 020-runtime-internals-contracts'
 **Purpose**: 文档与迁移说明、清理遗留 shim、以及性能/诊断门槛收口。
 
 - [X] T039 迁移说明：校对并完善 `specs/020-runtime-internals-contracts/plan.md` 的 Migration Guide（结合实际落地代码，补齐迁移对照、白名单策略与常见坑）
-- [X] T040 [P] 更新运行时 SSoT（内部契约/试跑证据导出/Reflection 基线）：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md`
-- [X] T041 [P] 更新可观测性 SSoT（EvidencePackage.summary 约定、RunSession、Reflection IR 摘要）：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [X] T040 [P] 更新运行时 SSoT（内部契约/试跑证据导出/Reflection 基线）：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md`
+- [X] T041 [P] 更新可观测性 SSoT（EvidencePackage.summary 约定、RunSession、Reflection IR 摘要）：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [X] T042 [P] 用户文档补齐“高性能最佳实践：试跑证据/IR 的用法与解释口径”：`apps/docs/content/docs/guide/advanced/performance-and-optimization.md`
 - [X] T043 清理迁移期 shim 的白名单与遗留 `__*` 字段（仅保留被证明仍必要的 debug-only 能力）：`packages/logix-core/src/internal/runtime/ModuleRuntime.internalHooks.ts` + `packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
 - [X] T044 [P] 更新示例索引（发现性）：在 `examples/logix/README.md` 补充 `trialRunEvidence.ts` / `reflectStaticIr.ts` 场景入口，并在 `examples/logix-react/src/App.tsx`（或等价 demo 路由入口）挂载 `TrialRunEvidenceDemo` 的访问入口

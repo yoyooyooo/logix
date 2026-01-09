@@ -147,8 +147,8 @@
 > 背景：013 引入/强化了 `traitConvergeMode=auto`、`requestedMode vs executedMode`、决策预算与可解释证据等契约。为了避免“规范/实现/文档各说各话”，本特性必须把已识别的漂移面一次性收敛，并给出清晰迁移口径。
 
 - **已识别的漂移面（必须在本特性内收敛）**：
-  - **Runtime SSoT（行为语义）**：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md` 当前 converge 策略仅描述 `full|dirty`，需补齐 `auto`（requested vs executed）、下界门槛、决策预算止损、cache 证据与失效/自保护的语义口径。
-  - **Debug 协议 SSoT（证据字段）**：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 的 `traitSummary` 目前是“预留不锁死结构”，本特性需固化最小可用的 converge 证据形态（例如 `trait:converge` 事件/summary schema）并对齐 `off|light|full` 分档裁剪规则。
+  - **Runtime SSoT（行为语义）**：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md` 当前 converge 策略仅描述 `full|dirty`，需补齐 `auto`（requested vs executed）、下界门槛、决策预算止损、cache 证据与失效/自保护的语义口径。
+  - **Debug 协议 SSoT（证据字段）**：`docs/ssot/runtime/logix-core/observability/09-debugging.md` 的 `traitSummary` 目前是“预留不锁死结构”，本特性需固化最小可用的 converge 证据形态（例如 `trait:converge` 事件/summary schema）并对齐 `off|light|full` 分档裁剪规则。
   - **用户文档（产品视角）**：`apps/docs/content/docs/**` 中涉及 `traitConvergeMode`/converge/Devtools 的章节需更新：默认 `auto`、如何模块级回退 `full|dirty`、以及如何通过证据字段定位回归与调参。
   - **运行时对外 API / 类型裁决**：`packages/logix-core/src/Runtime.ts`、`packages/logix-core/src/internal/runtime/core/env.ts`、`packages/logix-core/src/internal/runtime/ModuleRuntime.ts` 当前 `traitConvergeMode` 仅 `full|dirty` 且默认 `full`，需升级为 `full|dirty|auto` 且默认 `auto`，并新增 `traitConvergeDecisionBudgetMs` 以及模块级覆盖的可配置入口。
   - **历史 Spec 口径**：`specs/007-unify-trait-system/review.md` 等文档仍以 `traitConvergeMode="full"|"dirty"` 作为默认口径，需明确标注被 013 更新/替代的部分，避免读者误用旧默认与枚举约束。
@@ -170,11 +170,15 @@
 - **FR-002**: `auto` 模式必须保证一个“full 下界”：在任何事务中，`auto` 的实际执行路径不得比 `full` 更慢超过可配置噪声预算（默认 5%），且当无法做出可靠判断时必须直接选择 `full`；每个 module instance 的第 1 笔事务视为冷启动，必须 `full` 并标注 “cold-start fallback”。
 - **FR-003**: `auto` 模式必须在稀疏写入场景自动选择增量路径，并且其执行 steps 数应与“受影响依赖范围”近似线性，而不是与“总 steps 数”线性。
 - **FR-004**: 系统必须提供模块级回退手段：业务可通过 FR-001 的 Module 级覆盖入口将某模块切回 `full`（或固定 `dirty`），且切换后下一笔事务立刻生效，不得污染其他模块或其他实例的策略状态。
-- **FR-005**: 决策与执行必须可解释：当 `Diagnostics Level=light|full` 时，每次事务提交的可序列化摘要中必须包含 “请求模式 / 实际执行模式 / 决策原因（含受影响 steps、总 steps、成本估算或回退原因）”；其中执行模式枚举为 `full|dirty`（`auto` 仅出现在请求模式），`dirtyAll` 用单独 flag/原因字段表达。`Diagnostics Level=off` 时允许不产出该摘要（见 Clarifications 2025-12-18 与 NFR-013）。
+- **FR-005**: 决策与执行必须可解释：当 `Diagnostics Level=light|sampled|full` 时，每次事务提交的可序列化摘要中必须包含 “请求模式 / 实际执行模式 / 决策原因（含受影响 steps、总 steps、成本估算或回退原因）”；其中执行模式枚举为 `full|dirty`（`auto` 仅出现在请求模式），`dirtyAll` 用单独 flag/原因字段表达。`Diagnostics Level=off` 时允许不产出该摘要（见 Clarifications 2025-12-18 与 NFR-013）。
 - **FR-006**: 决策过程必须满足事务窗口约束：不得在事务窗口内引入 IO/异步等待；决策逻辑必须纯同步（不得引入 `Promise`/`Effect.async`/`Effect.promise`/`Effect.tryPromise` 等异步边界），并提供测试或静态扫描断言该约束；不得引入不可控的全量扫描；决策开销必须有明确上界并可测量，并支持“超过 `traitConvergeDecisionBudgetMs` 即立刻回退 full”的止损机制（模块级可配置，默认 0.5ms）；收敛执行仍受 `traitConvergeBudgetMs` 约束（执行预算）。
 - **FR-007**: 现有正确性语义不得被破坏：未知写入必须退回全量；多写者/环必须硬失败并阻止提交；列表/动态行的路径归一化口径与 009 保持一致且可解释。
 - **FR-008**: 诊断与回放面必须保持确定性：事务/事件/步骤相关标识不得依赖随机数或时间戳作为默认（沿用稳定 instanceId/txnSeq/opSeq/eventSeq 的约束）。
-- **FR-009**: 若系统仍保留 `dirty-set`/patch/trace 等诊断能力，则 `auto` 的决策与执行摘要必须在 `off/light/full` 分档下满足各自的“零或近零成本”要求（关闭时不得产生额外保留数据）；分档语义：`off` 禁止保留 patch/operation，`light` 仅保留事务摘要与聚合计数（不记录单条 operation），`full` 记录时间线与 SlimOp（仍需可序列化）。
+- **FR-009**: 若系统仍保留 `dirty-set`/patch/trace 等诊断能力，则 `auto` 的决策与执行摘要必须在 `off/light/sampled/full` 分档下满足各自的“零或近零成本”要求（关闭时不得产生额外保留数据）；分档语义：
+  - `off`：禁止保留 patch/operation，不进入诊断缓冲区；
+  - `light`：仅保留事务摘要与聚合计数（不记录单条 operation）；
+  - `sampled`：仅在确定性采样命中时追加少量 per-step 计时/Top-N hotspots 摘要（Slim、可序列化、有界），未命中时等价于 `light`；
+  - `full`：记录时间线与 SlimOp（仍需可序列化、可裁剪、有界）。
 - **FR-010**: Devtools/平台消费侧必须能够稳定消费 `auto` 的最小决策摘要；当 `light` 模式缺失 patch 序列或细粒度 trace 时，展示层必须显式降级（提示/占位），不得因字段缺失导致白屏或错误展示。
 - **FR-011**: 系统必须对“重复出现的 dirty-pattern”复用决策结果以降低热路径开销，并提供安全失效条件：当模块的派生图/依赖关系发生变化时，历史决策不得被错误复用（必须自动失效或显式隔离到新版本）。
 - **FR-012**: 系统必须提供一种“结构化的路径/依赖标识”以降低热路径上的分配与比较成本，使 `auto` 的决策开销随模块规模增长时仍保持可控；该标识应支持 build 阶段静态分配的整型 ID，并支持紧凑集合表示（如 bitmask/bitset/typed array）用于依赖重叠判断；同时必须可映射回可解释的路径表示，保证诊断与回放不丢信息。
@@ -239,7 +243,7 @@
 ### Assumptions & Dependencies
 
 - 本文中的三位数编号（如 005/009/014/016）均指 `specs/<三位数>-*` 下的对应 spec；如存在歧义，以目录名为准。
-- 本特性以 009 已确立的稳定标识、诊断分档（`off/light/full`）与路径归一化口径为前提，不重新定义这些契约。
+- 本特性以 009 已确立的稳定标识、诊断分档（`off/light/sampled/full`）与路径归一化口径为前提，不重新定义这些契约。
 - 上层依赖链路（Runtime V3 加固集群视角）：`016（可序列化证据与稳定身份）` → `011（Lifecycle 容器/严格屏障）` → `013（Planner 控制面）` → `010（Form 场景验收）`。013 不直接依赖 010 的领域语义，但会被 010 的高压矩阵点反向验证与驱动补齐边界用例。
 - 运行时侧的微优化落地模式（Dirty Pattern/Plan Cache、Structural ID、决策预算止损、SlimOp、Integer-only 等）参考 `docs/impl-notes/01-micro-optimizations.md`，但以本 spec 的 FR/NFR 为最终裁决。
 - Devtools/平台消费侧需要能够消费并展示 `auto` 的最小决策摘要（即便在 `light` 下缺失细节也必须可用）。

@@ -75,7 +75,7 @@
 
 ## 6. 产品侧意图语言与 IntentRule 映射
 
-为了让产品 / 设计 / 架构角色也能在平台侧直接表达业务意图，同时与 Logix / Effect Runtime 严格对齐，本平台在「画布视图 → 规则 IR → TypeScript Intent API」之间引入了统一的中间表示 `IntentRule`（见 `.codex/skills/project-guide/references/runtime-logix/logix-core/platform/06-platform-integration.md`）。
+为了让产品 / 设计 / 架构角色也能在平台侧直接表达业务意图，同时与 Logix / Effect Runtime 严格对齐，本平台在「画布视图 → 规则 IR → TypeScript Intent API」之间引入了统一的中间表示 `IntentRule`（见 `docs/ssot/runtime/logix-core/platform/06-platform-integration.md`）。
 
 ### 6.1 业务积木 → IntentRule → Intent API
 

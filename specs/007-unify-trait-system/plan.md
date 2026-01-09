@@ -38,11 +38,11 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Code：主要落点在 `packages/logix-core`（StateTrait build/graph/plan、StateTransaction/dispatch、诊断/回放事件）；领域包落点在 `packages/logix-form` 与（新增）`packages/logix-query`；React 适配在 `packages/logix-react` 与领域包的 `*/react` 薄糖；Devtools 在 `packages/logix-devtools-react`。
   - Runtime：所有派生/刷新/清理必须进入同一 Operation Window 的事务草稿，最终 0/1 次提交；回放以事件重赛而非重发请求。
 - 依赖或修改的 `docs/specs/*`（docs-first & SSoT）：
-  - 需要把 007 的关键契约回写到 runtime SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md`（事务内收敛、deps/graph、预算/降级）与 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`（txn 聚合诊断、触发原因/输入快照/patch 口径）。
-  - 若新增/调整对外公共术语（如 FieldRef、Reverse Closure、Replay Log），需要同步到 `.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/10-runtime-glossary.md`（以该处为术语裁决）。
+  - 需要把 007 的关键契约回写到 runtime SSoT：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md`（事务内收敛、deps/graph、预算/降级）与 `docs/ssot/runtime/logix-core/observability/09-debugging.md`（txn 聚合诊断、触发原因/输入快照/patch 口径）。
+  - 若新增/调整对外公共术语（如 FieldRef、Reverse Closure、Replay Log），需要同步到 `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`（以该处为术语裁决）。
 - Effect/Logix 契约变更与落档：
-  - `StateTrait` 的“显式 deps + Graph + Reverse Closure + 事务内收敛”需要在 `.codex/skills/project-guide/references/runtime-logix` 的实现与调试章节固化后再落代码。
-  - `TraitLifecycle` 作为 kernel 新公共契约，需要在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md` 或新增对应章节中明确其定位与与 ModuleLogic 的关系。
+  - `StateTrait` 的“显式 deps + Graph + Reverse Closure + 事务内收敛”需要在 `docs/ssot/runtime` 的实现与调试章节固化后再落代码。
+  - `TraitLifecycle` 作为 kernel 新公共契约，需要在 `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md` 或新增对应章节中明确其定位与与 ModuleLogic 的关系。
 - 质量门（merge 前必须通过）：
   - `pnpm typecheck`、`pnpm lint`、`pnpm test`（一次性运行）；并按变更范围至少跑 `packages/logix-core` 与 `packages/logix-react` 的相关测试集。
 
@@ -71,7 +71,7 @@ packages/logix-react/                # React 适配（RuntimeProvider/useLocalMo
 packages/logix-devtools-react/       # 诊断与回放 UI（txn 聚合视图、触发原因、成本摘要）
 
 examples/logix-react/                # 真实复杂表单基准 + 合成压力/查询基准（用于 SC 验收）
-.codex/skills/project-guide/references/runtime-logix/            # Runtime SSoT（契约落档）
+docs/ssot/runtime/            # Runtime SSoT（契约落档）
 apps/docs/content/docs/              # 用户文档（产品视角；不出现“PoC/内部实现”措辞）
 ```
 
@@ -107,7 +107,7 @@ apps/docs/content/docs/              # 用户文档（产品视角；不出现�
 
 ### Phase 4：Docs（SSoT 回写）与用户文档体验
 
-- 将 007 的关键契约回写到 `.codex/skills/project-guide/references/runtime-logix/*` 并与 Devtools/示例对齐。
+- 将 007 的关键契约回写到 `docs/ssot/runtime/*` 并与 Devtools/示例对齐。
 - 在 `apps/docs` 增补“Form/Query 作为特殊 Module（imports 同源）”的用户指南与最佳实践（不出现内部阶段性措辞）。
 
 ### 非阻塞项（Spec 为 SHOULD，可延后）

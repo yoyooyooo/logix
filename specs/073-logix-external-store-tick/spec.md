@@ -104,11 +104,11 @@
 - AUTO: Q: 高频外部 emit 是否会导致队列风暴/任务积压？ → A: ExternalStore 的 listener 必须是 **Signal Dirty（Pull-based）**：幂等地点亮 dirty 并确保同一 microtask 内最多调度一次 tick；tick flush 时统一 `getSnapshot()` pull 最新 raw（不得把每次 emit 变成 payload task 入队）。
 - AUTO: Q: `ExternalStore.fromStream` 若缺少 `initial/current`，是 Type Error 还是 Runtime Error？ → A: 必须 fail-fast 为 **Runtime Error**（TS 仅作辅助）。
 - AUTO: Q: `Runtime.batch(...)` 是否允许 async/await 观察中间态？ → A: 不支持；batch 仅作为同步边界，扁平化语义只在 outermost 结束时 flush（文档警告）。
-- AUTO: Q: nonUrgent external input 因降级被推迟时是否有提示？ → A: diagnostics=light/full 必须给出显式 Warn 证据（tick/deferred 摘要 + primary sample）；diagnostics=off 不引入成本。
+- AUTO: Q: nonUrgent external input 因降级被推迟时是否有提示？ → A: diagnostics=light/sampled/full 必须给出显式 Warn 证据（tick/deferred 摘要 + primary sample）；diagnostics=off 不引入成本。
 - AUTO: Q: `ExternalStore.fromSubscriptionRef(ref)` 是否允许副作用/IO？ → A: 不允许；`getSnapshot()` 必须纯读、无 IO；fromSubscriptionRef 仅适用于纯 ref（否则视为 defect/不支持）。
 - AUTO: Q: SSR 下 `getServerSnapshot` 未提供时默认行为？ → A: React adapter 使用 `getServerSnapshot ?? getSnapshot` 作为 server snapshot（fallback；宿主负责 hydration 一致性）。
 - AUTO: Q: Module 是否可以作为 ExternalStore 来源，被其它模块“声明式订阅”？ → A: 可以；但必须作为 **可识别依赖** 纳入统一最小 IR（Static IR + Dynamic Trace），让 TickScheduler 在同 tick 内稳定化它（而不是 runtime 黑盒 subscribe）。对外心智是 `ExternalStore.fromModule(...) + StateTrait.externalStore(...)`，对内会被编译为 “跨模块依赖边（module readQuery → trait writeback）”。
-- AUTO: Q: `fromModule` 如果遇到“动态 moduleRef / 动态 selector”导致 moduleId/selectorId 不可识别怎么办？ → A: 必须实现可识别性门禁：moduleId 必须可解析且 selectorId 必须稳定（deny `unstableSelectorId`），否则 fail-fast；selector 若缺少 readsDigest 允许退化为 module-topic edge（仍 IR 可识别，不是黑盒订阅）并在 diagnostics=light/full 下 Warn。
+- AUTO: Q: `fromModule` 如果遇到“动态 moduleRef / 动态 selector”导致 moduleId/selectorId 不可识别怎么办？ → A: 必须实现可识别性门禁：moduleId 必须可解析且 selectorId 必须稳定（deny `unstableSelectorId`），否则 fail-fast；selector 若缺少 readsDigest 允许退化为 module-topic edge（仍 IR 可识别，不是黑盒订阅）并在 diagnostics=light/sampled/full 下 Warn。
 - AUTO: Q: `ExternalStore.fromModule` 用来“镜像大状态”时，写回对象会是同一个引用还是拷贝？ → A: 不拷贝；写回的是 selector 返回值本身（按引用共享）。因此禁止用 fromModule 做全量 state 镜像；保持 selector 小且稳定，或改用 ReadQuery 做只读跨模块；如确需隔离只能在 selector 内显式投影/拷贝（并把成本计入预算）。
 - AUTO: Q: `StateTrait.externalStore` / Module-as-Source 背后会不会引入“watcher 爆炸”？ → A: 不应随组件数量增长；watcher 的数量应与“安装的 trait / 外部源 / 可识别依赖边”成正比。每个 ExternalStoreTrait 在每个模块实例中至多维护一条订阅（listener 仅 Signal Dirty），Module-as-Source 依赖通过 IR/调度边表达（避免 N 条 runtime 黑盒订阅 fiber）。
 - AUTO: Q: external-owned 字段是否提供静态门禁（eslint/类型检查）？ → A: 以 build/install 时的冲突检测 + 运行期 txn-window guard 为主并配套测试；不引入 eslint/类型层静态写入分析（成本高且不可靠）。

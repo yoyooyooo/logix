@@ -79,7 +79,7 @@
 **Acceptance Scenarios**:
 
 1. **Given** dirtyRoots 不与某 selector 的 deps 重叠，**When** commit，**Then** 该 selector 必须零计算/零重算。
-2. **Given** deps 受影响，**When** commit，**Then** selector 至多重算一次并更新缓存；同时可输出 Slim 的 cost 摘要（在 diagnostics=light/full）。
+2. **Given** deps 受影响，**When** commit，**Then** selector 至多重算一次并更新缓存；同时可输出 Slim 的 cost 摘要（在 diagnostics=light/sampled/full）。
 
 ---
 

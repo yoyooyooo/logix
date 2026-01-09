@@ -39,7 +39,7 @@
 ### Non-Functional Requirements
 
 - **NFR-001** PASS（guardrail）  
-  Evidence：`packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`（`diagnostics=light/full/sampled` 才采集 eval cost）、`packages/logix-react/src/internal/hooks/useSelector.ts`（仅 dev/test 或 devtools enabled 才 emit trace）
+  Evidence：`packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`（`diagnostics=light/sampled/full` 才采集 eval cost）、`packages/logix-react/src/internal/hooks/useSelector.ts`（仅 dev/test 或 devtools enabled 才 emit trace）
 - **NFR-002** PASS（guardrail）  
   Evidence：`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`（编译/静态化发生在装配期；commit 内只执行已编译 select）、`specs/057-core-ng-static-deps-without-proxy/spec.md`
 - **NFR-003** PASS  
@@ -53,4 +53,3 @@
   Evidence：`packages/logix-react/src/internal/hooks/useSelector.ts`（lane/fallbackReason/readsDigest 等）、`packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`（`trace:selector:eval` + `evalMs`）、`packages/logix-core/test/Runtime/ModuleRuntime/SelectorGraph.test.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - **SC-003** PASS  
   Evidence：`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`、`packages/logix-core/test/ReadQuery/ReadQuery.strictGate.test.ts`
-

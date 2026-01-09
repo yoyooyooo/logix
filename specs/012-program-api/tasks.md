@@ -85,7 +85,7 @@ description: "Task list for 012-program-api (Process)"
 - [x] T031 [P] [US3] 增加触发源用例：platformEvent（通过 InternalContracts 投递事件触发 Process）（Trace: FR-006）：`packages/logix-core/test/Process/Process.Trigger.PlatformEvent.test.ts`
 - [x] T032 [P] [US3] 增加触发源用例：timer（可控的间隔触发；与并发策略组合可验收）（Trace: FR-006）：`packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`
 - [x] T033 [P] [US3] 增加触发源用例：moduleStateChange（`path` 必须为 dot-path；非法 path 失败并给出可修复提示；复用 `ModuleRuntime.changes(selector)`/`ModuleHandle.changes(selector)`，按 path/selector 变化触发；不引入全量 diff/轮询）（Trace: FR-005/FR-006）：`packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.test.ts`
-- [x] T049 [P] [US3] 增加 selector 性能/频率告警：仅在 dev/test 或 diagnostics=light/full 下，对 moduleStateChange selector 的耗时与触发频率做采样统计并产出 warning 事件（diagnostics=off 必须近零成本）（Trace: NFR-002/FR-006）：`packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.ts`, `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`
+- [x] T049 [P] [US3] 增加 selector 性能/频率告警：仅在 dev/test 或 diagnostics=light/sampled/full 下，对 moduleStateChange selector 的耗时与触发频率做采样统计并产出 warning 事件（diagnostics=off 必须近零成本）（Trace: NFR-002/FR-006）：`packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.ts`, `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`
 - [x] T034 [US3] 在 ProcessRuntime 内实现触发模型（moduleAction/moduleStateChange/platformEvent/timer），其中 moduleStateChange 需包含 dot-path 解析/校验与可修复错误事件；并统一为 Trigger → Schedule → Dispatch 链路事件（Trace: FR-006/FR-005）：`packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.ts`
 - [x] T035 [US3] 在 ProcessRuntime 内实现并发策略与取消/背压语义（复用 TaskRunner 的 latest/exhaust/parallel 语义；serial 默认 `maxQueue=unlimited`，超限护栏默认 failStop（`process::serial_queue_overflow`）且可诊断：队列峰值/当前长度/策略证据）（Trace: FR-006/NFR-001）：`packages/logix-core/src/internal/runtime/core/process/concurrency.ts`
 - [x] T036 [US3] 在 ProcessRuntime 内实现事件预算与降级（maxEvents/maxBytes；超限产出摘要事件并累计预算计数）（Trace: NFR-002/FR-008）：`packages/logix-core/src/internal/runtime/core/process/events.ts`
@@ -96,11 +96,11 @@ description: "Task list for 012-program-api (Process)"
 
 **Purpose**: 文档/迁移说明、Devtools/Sandbox 对齐、以及性能/诊断基线收口。
 
-- [x] T037 [P] 更新运行时 SSoT：补齐 Process 语义、三种安装点、并发/错误策略与事件协议（Trace: Constitution 文档先行 & SSoT）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`, `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [x] T037 [P] 更新运行时 SSoT：补齐 Process 语义、三种安装点、并发/错误策略与事件协议（Trace: Constitution 文档先行 & SSoT）：`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`, `docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [x] T038 [P] 更新用户文档（产品视角，避免 v3/PoC 术语）（Trace: Constitution 迁移与用户文档）：`apps/docs/content/docs/api/core/runtime.md`
 - [x] T039 更新破坏性变更与迁移说明（Program→Process；processes 语义收口；无兼容层）（Trace: Constitution 迁移说明）：`docs/reviews/99-roadmap-and-breaking-changes.md`
 - [x] T040 [P] 增加可运行示例（AC-1/AC-2/AC-6 最小闭环）（Trace: SC-001/SC-002/FR-003）：`examples/logix/src/scenarios/process-app-scope.ts`, `examples/logix/src/scenarios/process-instance-scope.ts`, `examples/logix-react/src/demos/ProcessSubtreeDemo.tsx`
-- [x] T041 增加性能基线采集脚本（对齐 NFR-001/NFR-002：diagnostics off/light/full；重复运行口径与落盘位置；产物必须给出 PASS/FAIL，阈值以 `specs/012-program-api/perf/README.md` 为准）。脚本统一纳入 `logix-perf-evidence` 并以 `pnpm perf bench:012:process-baseline`（或等价命名）暴露入口（Trace: NFR-001/NFR-002/SC-005/SC-006）：`specs/012-program-api/perf/README.md`
+- [x] T041 增加性能基线采集脚本（对齐 NFR-001/NFR-002：diagnostics off/light/sampled/full；重复运行口径与落盘位置；产物必须给出 PASS/FAIL，阈值以 `specs/012-program-api/perf/README.md` 为准）。脚本统一纳入 `logix-perf-evidence` 并以 `pnpm perf bench:012:process-baseline`（或等价命名）暴露入口（Trace: NFR-001/NFR-002/SC-005/SC-006）：`specs/012-program-api/perf/README.md`
 - [x] T042 [P] 增加 UI 子树安装点（useProcesses）回归用例（挂载即启、卸载即停；StrictMode double-invoke 下不重复副作用；必要时实现 provider-scope refCount + 延迟 stop/GC；Suspense 不泄漏）（Trace: FR-003）：`packages/logix-react/src/internal/hooks/useProcesses.ts`, `packages/logix-react/src/Hooks.ts`, `packages/logix-react/test/Hooks/useProcesses.test.tsx`
 - [x] T043 [P] 校对并验证 `specs/012-program-api/quickstart.md` 的“安装点/默认策略/迁移口径”与最终 API 一致（必要时回写 quickstart）（Trace: FR-001/Constitution 迁移义务）：`specs/012-program-api/quickstart.md`
 - [x] T044 [P] 收尾更新 agent context（以最终 API/目录结构为准再同步一次）（Trace: Constitution 并行真相源治理）：`.specify/scripts/bash/update-agent-context.sh codex`
@@ -108,7 +108,7 @@ description: "Task list for 012-program-api (Process)"
 - [x] T046 [P] Sandbox 兼容性验证：确认 Worker 的 Logix DebugSink 对 `process:*` 事件处理稳定（作为 LOG；不要求 UI 展示），必要时补最小回归测试（Trace: FR-008）：`packages/logix-sandbox/src/internal/worker/sandbox.worker.ts`, `packages/logix-sandbox/test/browser/sandbox-worker-process-events.compat.test.ts`
 - [x] T047 [P] Dogfooding 迁移示例：将现有跨模块 Link 场景重构为“应用级 Process（processes 承载）”写法，并对照 quickstart 的默认策略口径（Trace: FR-001/Constitution）：`examples/logix/src/scenarios/cross-module-link.ts`
 - [x] T050 [P] 增加 schema-based selector：为 moduleStateChange 提供 SchemaAST 驱动的路径解析与安全读取，替换 ProcessRuntime 内 selectByDotPath 的动态访问（Trace: FR-005/FR-006）：`packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.ts`, `packages/logix-core/src/internal/runtime/core/process/selectorSchema.ts`
-- [x] T051 [P] 补充 action payload 反射说明与回归用例：明确 unknown payload 的诊断提取规则并确保异常 payload 不影响链路（Trace: FR-008/SC-004）：`packages/logix-core/test/Process/Process.Diagnostics.Chain.test.ts`, `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [x] T051 [P] 补充 action payload 反射说明与回归用例：明确 unknown payload 的诊断提取规则并确保异常 payload 不影响链路（Trace: FR-008/SC-004）：`packages/logix-core/test/Process/Process.Diagnostics.Chain.test.ts`, `docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [x] T052 [P] 补齐 SC-003 的“2 分钟可修复”量化验证：在 quickstart 增加可复现场景与计时标准（必要时补充脚本化示例）（Trace: SC-003）：`specs/012-program-api/quickstart.md`
 
 ---

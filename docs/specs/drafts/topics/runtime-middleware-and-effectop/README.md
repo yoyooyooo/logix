@@ -7,9 +7,9 @@ priority: now
 related:
   - ../runtime-observability/README.md
   - ../runtime-v3-core/README.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/api/04-logic-middleware.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md
+  - docs/ssot/runtime/logix-core/api/03-logic-and-flow.md
+  - docs/ssot/runtime/logix-core/api/04-logic-middleware.md
+  - docs/ssot/runtime/logix-core/observability/09-debugging.md
 ---
 
 # Runtime Middleware & EffectOp · 概览
@@ -36,7 +36,7 @@ related:
 - 与其他能力的关系  
   - 与 Runtime Observability Topic 的边界：DebugSink / TraceBus 作为 Observer 的具体实现；  
   - 与 Runtime Readiness Topic 的协同：Runner / Guard 在可靠性与合规要求中的角色；  
-  - 与 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 规范的映射路径：如何从本 Topic 的草案反推 v3/v4 的正式 API。
+  - 与 `docs/ssot/runtime/logix-core/*` 规范的映射路径：如何从本 Topic 的草案反推 v3/v4 的正式 API。
 
 不在本 Topic 的范围内：
 
@@ -80,8 +80,8 @@ related:
   - 提供高 ROI 的性能回归用例清单与 React ModuleCache 约束；  
   - 本 Topic 为其提供统一的中间件总线抽象与落地路径（EffectOp → MiddlewareStack → Debug/Devtools 事件流）。
 
-- `.codex/skills/project-guide/references/runtime-logix/logix-core/*`  
-  - 本 Topic 中的 `EffectOp` / `Middleware` / 边界枚举应成为后续 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/04-logic-middleware.md` 等规范的设计输入；  
+- `docs/ssot/runtime/logix-core/*`  
+  - 本 Topic 中的 `EffectOp` / `Middleware` / 边界枚举应成为后续 `docs/ssot/runtime/logix-core/api/04-logic-middleware.md` 等规范的设计输入；  
   - v3/v4 的 `BoundApi` / Flow / Lifecycle / Service API 都应在“边界包装层”上统一调用本 Topic 定义的总线，而不是各自造轮子。
 
 ## 4. 计划文档
@@ -108,6 +108,6 @@ related:
 
 本 Topic 当前状态仍为 **draft / active**，未来可将稳定结论前移至：
 
-- `.codex/skills/project-guide/references/runtime-logix/logix-core/api/04-logic-middleware.md`（核心规范）；  
-- `.codex/skills/project-guide/references/runtime-logix/logix-core/impl/README.md`（实现约束备忘）；  
+- `docs/ssot/runtime/logix-core/api/04-logic-middleware.md`（核心规范）；  
+- `docs/ssot/runtime/logix-core/impl/README.md`（实现约束备忘）；  
 - `apps/docs` 中面向使用者的“中间件与观测”章节。

@@ -29,7 +29,7 @@
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性不改变 Runtime 行为；消费 Runtime 导出的证据事件并产出可解释的 Devtools 视图与行动建议，属于 Tooling 层。
-- **Docs-first & SSoT**：依赖并遵守 runtime 调试事件 SSoT（`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`）与观测协议底座（`specs/005-unify-observability-protocol`）；converge 证据字段来自 converge 特性（013）。
+- **Docs-first & SSoT**：依赖并遵守 runtime 调试事件 SSoT（`docs/ssot/runtime/logix-core/observability/09-debugging.md`）与观测协议底座（`specs/005-unify-observability-protocol`）；converge 证据字段来自 converge 特性（013）。
 - **Contracts**：本特性不修改 Runtime 对外协议；仅新增 Devtools 侧“审计输出/代码片段”的可序列化结构（在本 spec 的 `contracts/` 固化），便于回归测试与未来导出。
 - **IR & anchors**：不引入第二套真相源；排序与窗口聚合遵守既有锚点/序号语义；缺失时必须降级并提示，不做补造。
 - **Deterministic identity**：面板展示依赖稳定锚点（模块/实例/事务/事件序号）；缺少全局排序键时退回实例内单调序号，保证重放一致。
@@ -70,7 +70,7 @@ specs/005-unify-observability-protocol/
 specs/013-auto-converge-planner/
 └── contracts/               # converge evidence schema（本特性输入契约）
 
-.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md
+docs/ssot/runtime/logix-core/observability/09-debugging.md
 ```
 
 **Structure Decision**: 015 只实现 converge pane 与 Audits，所有数据源/导入/排序/聚合能力依赖 005；所有事件语义与分档依赖 09-debugging；所有 converge 证据字段依赖 013。

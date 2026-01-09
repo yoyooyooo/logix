@@ -19,7 +19,7 @@
 
 - 跑 core-ng 的最小验证用例：`pnpm -C packages/logix-core-ng test ExecVm`
 - 预期：
-  - `diagnostics=light/full`：能看到 `trace:exec-vm` 事件（payload.meta.hit=true）
+  - `diagnostics=light/sampled/full`：能看到 `trace:exec-vm` 事件（payload.meta.hit=true）
   - `diagnostics=off`：不导出 `trace:exec-vm`（近零成本）
 - 手动验证“未命中/禁用”：设置 `LOGIX_CORE_NG_EXEC_VM_MODE=off`，预期 `hit=false` 且 `reasonCode=disabled`
 

@@ -5,7 +5,7 @@
 **Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/034-expression-asset-protocol/plan.md`
 
 > 本文件只固化“关键裁决/权衡”，避免资产协议漂移成某个表达式语言的实现细节。  
-> IR vs AST（上帝视角）外链：`.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/04-ir-vs-ast-and-agent-coding.md`
+> IR vs AST（上帝视角）外链：`docs/ssot/runtime/logix-core/concepts/04-ir-vs-ast-and-agent-coding.md`
 
 ## Decisions
 

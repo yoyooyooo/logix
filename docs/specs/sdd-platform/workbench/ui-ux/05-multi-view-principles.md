@@ -14,7 +14,7 @@ version: 1.0 (Extracted from Platform Shapes)
   - L0：FeatureSpec / ScenarioSpec / Story（需求层）；
   - L1：Blueprint / Intent（屏幕–模块–服务与交互拓扑）；
   - L2：Implementation Contract（Schema / Traits / IntentRule / JSON Definition）；
-  - L3：Code & Runtime（TS/Effect 源码、RunResult/Alignment；RunResult 口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）。
+  - L3：Code & Runtime（TS/Effect 源码、RunResult/Alignment；RunResult 口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。
 - **视图层次（按职责变化）**：
   - **Product View（需求视图）**：对同一工件做抽象/自然语言投影，只暴露与需求录入、拆解、关联相关的部分；
   - **Architect View（架构视图）**：在不落入实现细节的前提下，完成“边界裁决/模块归属/依赖关系/风险与质量约束”的建模与签字；

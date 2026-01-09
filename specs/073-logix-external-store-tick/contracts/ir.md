@@ -34,7 +34,7 @@ ExternalStoreTrait 必须进入 `StateTraitProgram` 的静态图谱（Graph/Plan
 
 - `moduleId` 必须在 trait install/build 阶段可解析；若无法解析（例如“动态 moduleRef/宿主黑盒句柄”），必须 **fail-fast**（Runtime Error），禁止静默降级为黑盒订阅。
 - `selectorId` 必须稳定可复现：`ReadQuery.compile(selector)` 若落到 `fallbackReason="unstableSelectorId"`，必须 **fail-fast**（否则 Static IR 的锚点不可比对/不可回放）。
-- 若 selector 无法产出 `readsDigest`（dynamic lane 或缺 deps），允许退化为 “module-topic edge”（依赖整模块变更而非 selector-topic），但仍必须保持 IR 可识别（`moduleId + selectorId` 可导出），并在 diagnostics=light/full 下给出 Warn（提示性能可能退化）；不得变成 runtime 黑盒 subscribe。
+- 若 selector 无法产出 `readsDigest`（dynamic lane 或缺 deps），允许退化为 “module-topic edge”（依赖整模块变更而非 selector-topic），但仍必须保持 IR 可识别（`moduleId + selectorId` 可导出），并在 diagnostics=light/sampled/full 下给出 Warn（提示性能可能退化）；不得变成 runtime 黑盒 subscribe。
 
 概念形态：
 

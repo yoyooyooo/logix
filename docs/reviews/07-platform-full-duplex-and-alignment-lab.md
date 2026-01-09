@@ -128,11 +128,11 @@ StateTrait 具备三类平台关键特性：
 同一件事（Fluent 规则白盒解析）在仓库内至少出现了两套互斥的锚点约束：
 
 - 约束 A（旧）：`...then(...)` / `.when(...)`
-  - `docs/specs/sdd-platform/ssot/ir/00-codegen-and-parser.md`
+  - `docs/ssot/platform/ir/00-codegen-and-parser.md`
   - `docs/specs/sdd-platform/impl/README.md`
   - `scripts/intent-fluent-parser.ts`（已删除）
 - 约束 B（现行实现）：`...update/mutate/run*(...)`
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`（Hard Constraints 明确写 `.update/mutate/run*`）
+  - `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`（Hard Constraints 明确写 `.update/mutate/run*`）
   - `packages/logix-core` 真实类型与实现（IntentBuilder 不存在 `.then`）
 
 后果：平台 Parser/Codegen 无法“同时满足两套约束”，必然出现：
@@ -171,7 +171,7 @@ StateTrait 具备三类平台关键特性：
 - 运行时根据 `handler.length` 自动分派到 `.update` 或 `.run`；
 - 这对平台静态分析而言是“不可判定/不可解释”的（AST 级别无法稳定推断语义）。
 
-目前 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md` 已经把 `andThen` 定位为非白盒子集（Gray/Black Box），但它仍然属于 `IntentBuilder` 的公开接口：一旦业务使用，就会把平台的全双工能力打回黑盒。
+目前 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md` 已经把 `andThen` 定位为非白盒子集（Gray/Black Box），但它仍然属于 `IntentBuilder` 的公开接口：一旦业务使用，就会把平台的全双工能力打回黑盒。
 
 结论：如果全双工是平台硬目标，**公开 API 必须强制无歧义**（要么移除，要么明确隔离到工具链/生成器接口）。
 
@@ -242,12 +242,12 @@ StateTrait 具备三类平台关键特性：
   `yield* $.onState/$.onAction/$.on(...).update/mutate/run*(...)`
   理由：
   - 与 `@logixjs/core` 的真实类型与实现一致；
-  - 与 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md` 的 Hard Constraints 一致；
+  - 与 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md` 的 Hard Constraints 一致；
   - 终端算子 `.run* / .update / .mutate` 语义更显式（比 `.then` 更利于诊断与平台推断）。
 
 随之必须执行的“不兼容清理”：
 
-- 更新/重写 `docs/specs/sdd-platform/ssot/ir/00-codegen-and-parser.md` 与 `docs/specs/sdd-platform/impl/README.md`：移除 `when/then` 约束，统一为 `.run*/update/mutate`；
+- 更新/重写 `docs/ssot/platform/ir/00-codegen-and-parser.md` 与 `docs/specs/sdd-platform/impl/README.md`：移除 `when/then` 约束，统一为 `.run*/update/mutate`；
 - 删除或重写 `scripts/intent-fluent-parser.ts`：以 `.onState/.onAction/.on + 终端 run*` 为解析锚点；
 - 清理 examples 中仍保留的 `then/when` 注释与旧 IR 示例，避免误导团队协作。
 
@@ -338,7 +338,7 @@ Sandbox 在平台体系中不是“代码 runner”，而是 **Executable Spec /
 
 - 统一 Platform-Grade 子集的唯一写法（建议以 `.run*/update/mutate` 为终端锚点）；
 - 移除 `andThen` 或隔离为内部 API；
-- 修订关键 specs（`docs/specs/sdd-platform/ssot/ir/00-codegen-and-parser.md`、`docs/specs/sdd-platform/impl/README.md` 等）与示例注释，保证“写法/规范/解析器”三者一致。
+- 修订关键 specs（`docs/ssot/platform/ir/00-codegen-and-parser.md`、`docs/specs/sdd-platform/impl/README.md` 等）与示例注释，保证“写法/规范/解析器”三者一致。
 
 ### Step 2：落地最小 IR 与 Parser（可用即可）
 

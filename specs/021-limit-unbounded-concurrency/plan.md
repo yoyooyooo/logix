@@ -42,7 +42,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - `Intent → Flow/Logix → Code → Runtime`：该特性属于 Runtime 调度策略与诊断协议的扩展；直接影响 Flow/Task 的并发执行语义与诊断输出。
 - 依赖与文档优先：控制面语义与覆盖优先级复用 013 的“控制面”口径；用户侧文档落点预计在 `apps/docs/content/docs/guide/advanced/*`（与性能/优化梯子保持一致）。
-- 契约变化：引入新的“并发控制面”配置与诊断信号（属于 Runtime 公共 API + 诊断协议）；需要在 runtime-logix 文档中固化新的契约与最佳实践入口。
+- 契约变化：引入新的“并发控制面”配置与诊断信号（属于 Runtime 公共 API + 诊断协议）；需要在 runtime SSoT 文档中固化新的契约与最佳实践入口。
 - IR & anchors：不新增第二套 IR；诊断信号复用既有 Debug/diagnostic 事件通道与稳定 identity 字段。
 - Deterministic identity：事件必须包含 moduleId/instanceId，并补充 `configScope`；不引入随机/时间作为 identity（时间仅作为时间戳）。
 - Transaction boundary：并发护栏与预警不得在事务窗口内引入长耗时等待；若需要采样/统计，必须可在 diagnostics off 时近零开销。

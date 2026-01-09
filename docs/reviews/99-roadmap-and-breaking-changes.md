@@ -27,7 +27,7 @@
 - Converge 默认策略变更（破坏性）：`stateTransaction.traitConvergeMode` 默认从 `full` → `auto`（见 `specs/013-auto-converge-planner`）；如需维持旧行为，显式设置 `traitConvergeMode="full"`（迁移说明优先于兼容层）。
 - 回放闭环（E2E）：补齐 Record → Serialize(JSON) → Replay → Verify 的端到端测试与最小 `EvidencePack`，让 Devtools/平台可以对外承诺“证据包可复现”（参考 `specs/007-unify-trait-system/review.md`）。
 - （已完成：008）strict injector：删除 core 的进程级 runtime registry fallback，统一为 “Nearest Wins + 缺失提供者稳定失败”；root/global 单例统一用 `Root.resolve`（证据：`specs/008-hierarchical-injector/perf.md`；回归：`packages/logix-core/test/hierarchicalInjector.*`、`packages/logix-react/test/hooks/useImportedModule.hierarchical.test.tsx`；评审：`specs/008-hierarchical-injector/review.md`）。
-- （008 收口）全仓统一 root/global 的示例写法为 `Logix.Root.resolve(Tag)`（避免“Root 未导入/歧义符号”导致的二次心智噪音），并确保 React 错误 fix 文案与 `.codex/skills/project-guide/references/runtime-logix/*`、`apps/docs/*` 的推荐写法一致。
+- （008 收口）全仓统一 root/global 的示例写法为 `Logix.Root.resolve(Tag)`（避免“Root 未导入/歧义符号”导致的二次心智噪音），并确保 React 错误 fix 文案与 `docs/ssot/runtime/*`、`apps/docs/*` 的推荐写法一致。
 
 ### Phase 1 的实施要点：把成本压到最低且避免“负优化”
 

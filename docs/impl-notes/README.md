@@ -6,8 +6,8 @@
 
 如 `docs/impl-notes` 与规范/类型不一致，按以下顺序裁决：
 
-1. 概念/术语/平台定位：`docs/specs/sdd-platform/ssot`
-2. Runtime 契约/语义/诊断口径：`.codex/skills/project-guide/references/runtime-logix`
+1. 概念/术语/平台定位：`docs/ssot/platform`
+2. Runtime 契约/语义/诊断口径：`docs/ssot/runtime`
 3. 代码类型与真实导出：`packages/logix-core/src/index.ts`（以及实际实现）
 
 ## 10 分钟快速建立脉络（推荐顺序）
@@ -18,7 +18,7 @@
 
 ## 目录索引
 
-- `.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/02-long-chain-tour.md`：**SSoT 侧的高层长链路导览**（更短、更“规范视角”）。
+- `docs/ssot/runtime/logix-core/concepts/02-long-chain-tour.md`：**SSoT 侧的高层长链路导览**（更短、更“规范视角”）。
 - `docs/impl-notes/05-runtime-long-chain-map.md`：**LLM/维护者首读**，把“从哪进、往哪挖”说清楚。
 - `docs/impl-notes/03-logix-runtime-architecture.md`：全链路架构图 + 事务窗口机制（实现现状）。
 - `docs/impl-notes/00-performance-moc.md`：性能/优化的 Map of Content（长链路组合型优化导航）。

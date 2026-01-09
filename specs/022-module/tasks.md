@@ -39,7 +39,7 @@
 - [X] T013 Support `Logix.Runtime.make(module)` in `packages/logix-core/src/Runtime.ts` (unwrap to `module.impl`; keep behavior equal to `Runtime.make(module.impl)`)
 - [X] T014 Support `useModule(module)` in `packages/logix-react/src/hooks/useModule.ts` (unwrap to `module.impl` by default; global usage stays `useModule(module.tag)` / ModuleTag)
 - [X] T015 [P] Implement handle-extend merge for React `useModule` in `packages/logix-react/src/hooks/useModule.ts` + `packages/logix-react/src/internal/ModuleRef.ts` (apply `Symbol.for(\"logix.module.handle.extend\")`; ref gains controller/services when available)
-- [X] T016 [P] Align `@logixjs/react` docs for Module consumption in `.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`
+- [X] T016 [P] Align `@logixjs/react` docs for Module consumption in `docs/ssot/runtime/logix-react/01-react-integration.md`
 - [X] T017 Implement `ModuleDescriptor` builder (pure + slim + serializable; include `moduleId/instanceId`; `logicUnits[].id` from resolved slot keys, and mark derived ids when applicable) in `packages/logix-core/src/Module.ts` (match `specs/022-module/contracts/schemas/module-descriptor.schema.json`)
 - [X] T018 Implement descriptor trace emission (when `diagnosticsLevel != \"off\"`; once-per-instance per RunSession; exportable via `trialRun` evidence) in `packages/logix-core/src/internal/runtime/BoundApiRuntime.ts` (MUST include `moduleId/instanceId`; `type: \"trace:module:descriptor\"`, `data` aligns `specs/022-module/contracts/schemas/module-event.schema.json`)
 - [X] T019 Implement dev diagnostic warning for `logicUnitId` override (default `last-write-wins`; record `Debug` event `type:\"diagnostic\" code:\"module_logic::override\" severity:\"warning\"` with resolved id + source anchors + order) in `packages/logix-core/src/Module.ts`
@@ -94,8 +94,8 @@
 
 **Independent Test**: 更新后的 `examples/logix-react` 表单 demos 不再依赖显式 `.module/.impl` 拆壳即可跑通；文档能解释“入口直接吃 Module”默认是局部还是全局
 
-- [X] T038 [P] [US3] Update core API docs for Module/ModuleTag in `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md` and runtime glossary in `.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/10-runtime-glossary.md`
-- [X] T039 [P] [US3] Document `$.use(module)` / `$.self` semantics in `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`
+- [X] T038 [P] [US3] Update core API docs for Module/ModuleTag in `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md` and runtime glossary in `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`
+- [X] T039 [P] [US3] Document `$.use(module)` / `$.self` semantics in `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
 - [X] T040 [P] [US3] Update user docs for Form Module migration in `apps/docs/content/docs/form/quick-start.md` and `apps/docs/content/docs/form/introduction.md`
 - [X] T041 [US3] Migrate React form demos to consume Module directly in `examples/logix-react/src/demos/form/FormDemoLayout.tsx` and `examples/logix-react/src/demos/form/TraitFormDemoLayout.tsx`
 - [X] T042 [P] [US3] Migrate remaining form demo layouts to Module in `examples/logix-react/src/demos/form/FormCasesDemoLayout.tsx` and `examples/logix-react/src/demos/form/ComplexTraitFormDemoLayout.tsx`
@@ -142,7 +142,7 @@ Task: "Add useModule(module) support in packages/logix-react/src/hooks/useModule
 ## Parallel Example: US3 (Docs vs Demos)
 
 ```text
-Task: "Update core API docs in .codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md"
+Task: "Update core API docs in docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md"
 Task: "Migrate React form demos in examples/logix-react/src/demos/form/FormDemoLayout.tsx"
 ```
 

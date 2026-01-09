@@ -30,7 +30,7 @@
 - **FR-003** PASS  
   Evidence：`packages/logix-react/src/ModuleScope.ts`、`packages/logix-react/test/Hooks/moduleScope.test.tsx`、`apps/docs/content/docs/api/react/module-scope.md`
 - **FR-004** PASS  
-  Evidence：`apps/docs/content/docs/guide/recipes/route-scope-modals.md`、`apps/docs/content/docs/api/react/use-imported-module.md`、`.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`
+  Evidence：`apps/docs/content/docs/guide/recipes/route-scope-modals.md`、`apps/docs/content/docs/api/react/use-imported-module.md`、`docs/ssot/runtime/logix-react/01-react-integration.md`
 - **FR-005** PASS  
   Evidence：`specs/037-route-scope-eviction/quickstart.md`、`apps/docs/content/docs/guide/recipes/route-scope-modals.md`
 

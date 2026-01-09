@@ -7,7 +7,7 @@
 ### TxnAllocGate
 
 - `mode`: `'light' | 'full'`
-- `violations`: `ReadonlyArray<string>`（仅 diagnostics=light/full；off 不输出）
+- `violations`: `ReadonlyArray<string>`（仅 diagnostics=light/sampled/full；off 不输出）
 
 ### TxnPerfEvidenceSet
 

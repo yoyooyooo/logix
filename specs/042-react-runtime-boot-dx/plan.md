@@ -45,7 +45,7 @@ _GATE: PASS（本计划不引入宪法违例；若最终选择破坏性默认策
 
 - **Intent → Flow/Logix → Code → Runtime 映射**：此特性属于 Runtime 适配层（React Adapter）对 Runtime 行为的“启动/解析策略”治理；不改变业务 Intent/Flow 语义，但会改变运行时装配与模块解析的时序与可观测性。
 - **依赖/修改的 specs**：主落点是 `packages/logix-react`；如需对外文档心智模型与 DX 指引，后续需要补齐 `apps/docs` 的 React 集成指南（避免 “代码先变、文档漂移”）。
-- **契约变更**：预计会新增/调整 `@logixjs/react` 的“策略配置”契约（RuntimeProvider props / ReactRuntimeConfigTag 扩展 / hooks options）；必须同步更新 `.codex/skills/project-guide/references/runtime-logix/logix-react/*` 中的 SSoT（至少补齐策略语义、默认值与成本模型）。
+- **契约变更**：预计会新增/调整 `@logixjs/react` 的“策略配置”契约（RuntimeProvider props / ReactRuntimeConfigTag 扩展 / hooks options）；必须同步更新 `docs/ssot/runtime/logix-react/*` 中的 SSoT（至少补齐策略语义、默认值与成本模型）。
 - **IR & anchors**：不改变统一最小 IR；但会影响 Devtools 的解释链路“何时产生 trace/diagnostic”与事件序列，需要保持事件字段稳定且 Slim。
 - **Deterministic identity**：不引入随机/时间默认 ID；所有新增诊断字段须复用现有 instanceId/txn/op 体系。
 - **Transaction boundary**：不改变事务窗口语义；本特性只涉及 React adapter 的初始化/解析调度与外层可观测。
@@ -179,6 +179,6 @@ examples/logix-react/      # 集成 demo（用于手工验收与场景回归）
 4. `configVersion` 与 cache invalidation 解耦（仅 cache-critical 触发）+ 回归用例：Provider 配置更新不会单纯导致 ModuleImpl 实例重建/remount
 5. perf-boundaries 新用例 + 阈值 gate（relative budgets）+ 证据输出口径
 6. DX Guardrails（render 阶段超阈值同步阻塞告警）+ 对应用例覆盖
-7. 文档与示例同步（runtime-logix SSoT + apps/docs + examples）
+7. 文档与示例同步（runtime SSoT SSoT + apps/docs + examples）
 8. `defer` 模式：Provider gating + preload（不泄漏半初始化句柄）+ 用例验证 `defer+preload` 下子组件 `useModule` 不再触发二次 fallback/suspend + 诊断/基线/回归用例
 9. `onlyWhenOverBudgetMs` 的“首次运行”记忆实现：以 runtime/session 维度持久化（对 HMR/remount 鲁棒）+ 对应用例

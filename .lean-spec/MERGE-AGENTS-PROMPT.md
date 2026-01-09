@@ -68,10 +68,10 @@ Consolidate the existing AGENTS.md with LeanSpec instructions into a single, coh
 - **引擎优先**：先把 Intent/Flow/Logix/Effect 的契约和幂等出码引擎打磨稳定，再考虑 Studio/画布等交互体验；遇到冲突，一律保证引擎正确、可回放、可追踪。
 - **Effect 作为统一运行时**：默认使用 `effect`（effect-ts v3 系列）承载行为与流程执行，出码后的业务流程应以 `.flow.ts` + Effect/Logix 程序为落点；其他运行时只作为 PoC，而不是第二套正式栈。
 - **Logix dogfooding（简称 Logix fooding）**：本仓所有上层应用（如 `examples/*`、`packages/logix-devtools-react` 等）在可行范围内，一律以 Logix Runtime（Flow/Effect/Logix）作为主要运行时与状态管理方式，不再引入第二套 ad-hoc 状态机或流程引擎，以便在真实场景中持续“吃自己狗粮”、验证和打磨 Logix 本身。
-- **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/specs/intent-driven-ai-coding` 与 `.codex/skills/project-guide/references/runtime-logix` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
+- **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/specs/intent-driven-ai-coding` 与 `docs/ssot/runtime` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
   - 对于已经确定、但实现细节容易跑偏的技术决策（例如 Store.Spec / Universal Bound API / Fluent DSL / Parser 约束），**需要同时在实现备忘中固化**：
     - 平台侧：`docs/specs/intent-driven-ai-coding/platform/impl/README.md`；
-    - runtime 侧：`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/README.md`。
+    - runtime 侧：`docs/ssot/runtime/logix-core/impl/README.md`。
   - 后续在实现阶段若遇到取舍冲突，优先回看上述两个 impl/README 中的约束说明，再决定是否调整规范或实现。
 
 ### logix-core 目录结构铁律（给 Agent 的简版）
@@ -203,7 +203,7 @@ Consolidate the existing AGENTS.md with LeanSpec instructions into a single, coh
     - 纯同步、纯数据结构或简单 helper（如部分 internal 工具）的测试，可以继续写成普通 Vitest 风格（测试体返回 `void`/`Promise`，必要时局部使用 `Effect.runPromise`），不强制包上一层 `it.effect`。
   - `packages/logix-test`：
     - 测试与示例一律按“测试即 Effect”写法组织，默认 runner 是 `@effect/vitest` 的 `it.effect` / `it.scoped`，`runTest` 仅在非 Vitest 环境或过渡脚本中使用。
-    - 保持拓扑：`@logixjs/test` 可以依赖 `@logixjs/core`，但 core/runtime 自身测试不得反向依赖 `@logixjs/test`（避免循环依赖），与 `.codex/skills/project-guide/references/runtime-logix/logix-test/01-test-kit-design.md` 的说明保持一致。
+    - 保持拓扑：`@logixjs/test` 可以依赖 `@logixjs/core`，但 core/runtime 自身测试不得反向依赖 `@logixjs/test`（避免循环依赖），与 `docs/ssot/runtime/logix-test/01-test-kit-design.md` 的说明保持一致。
   - `packages/logix-sandbox`：
     - 视为 Runtime Alignment Lab 基础设施的一部分，内部大量使用 Effect / Layer / Stream，新增或重构测试时优先迁向 `@effect/vitest` 风格。
     - 推荐模式：用 `it.effect` + `it.layer(SandboxClientLayer)`/专用测试 Layer，代替在每个用例中手动 `Effect.runPromise(program.pipe(Effect.provide(layer)))`。

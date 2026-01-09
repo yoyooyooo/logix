@@ -36,6 +36,6 @@
 
 ## References
 
-- 诊断事件 SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- 诊断事件 SSoT：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - JsonValue 硬门：`specs/005-unify-observability-protocol/contracts/schemas/json-value.schema.json`
 - artifacts 体系：`specs/031-trialrun-artifacts/spec.md`

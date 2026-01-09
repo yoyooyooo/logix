@@ -10,7 +10,7 @@ priority: later
 
 > 本文档描述 SDD 平台的**北极星方向**：未来如何在 **代码 (Code)**、**可视化编辑器 (Studio)** 与 **运行时 (Runtime)** 三者之间建立双向、尽可能无损的同步关系。
 >
-> 口径：运行时主时间轴以 `tickSeq`（逻辑时间）为参考系；wall-clock 仅用于 UI 展示。形式化模型见 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`。
+> 口径：运行时主时间轴以 `tickSeq`（逻辑时间）为参考系；wall-clock 仅用于 UI 展示。形式化模型见 `docs/ssot/platform/contracts/00-execution-model.md`。
 
 ## 0. 现实约束与阶段性承诺
 
@@ -178,9 +178,9 @@ interface GraphUpdate {
   - `timestamp`：仅用于 UI 展示/统计
 - 默认 payload：`RuntimeDebugEventRef`（`specs/005-unify-observability-protocol/contracts/schemas/runtime-debug-event-ref.schema.json`）
   - 必须满足 JSON 可序列化；错误用 `errorSummary`，禁止透传 `unknown/Error/Cause` 对象图
-- 参考系与锚点：`docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`（`tickSeq/txnSeq/opSeq/linkId + program/run/timer/call anchors`）
+- 参考系与锚点：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`（`tickSeq/txnSeq/opSeq/linkId + program/run/timer/call anchors`）
 
-> 直观理解：Studio 消费的是 RunResult 的 `evidence.events[]`，而不是“运行时内部对象”。当需要更强能力（回放/分叉）时，再通过 `tape` 增强（见 `specs/075-logix-flow-program-ir/contracts/tape.md`）。
+> 直观理解：Studio 消费的是 RunResult 的 `evidence.events[]`，而不是“运行时内部对象”。当需要更强能力（回放/分叉）时，再通过 `tape` 增强（见 `specs/075-flow-program-codegen-ir/contracts/tape.md`）。
 
 ### 4.2 Graph 联动
 
@@ -258,7 +258,7 @@ Dev Server（`logix dev` / CLI 代理）在平台侧承担三重职责：
 两个硬约束（避免“第二套真相源”）：
 
 - **Parsability as a Feature**：需要结构化 DSL/IR 的地方必须可解析（`traits`、`FlowProgram.make` 等）；逃生舱（任意 Effect/Stream）可以存在，但必须被标记为 Gray/Black Box（可展示、不可精细编辑、且回放能力受限）。
-- **Observability as a Contract**：平台消费的是 RunResult（`EvidencePackage + optional Tape + snapshots`），而不是运行时内部对象；排序以 `runId + seq` 为唯一权威，`tickSeq` 只作为参考系锚点（口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）。
+- **Observability as a Contract**：平台消费的是 RunResult（`EvidencePackage + optional Tape + snapshots`），而不是运行时内部对象；排序以 `runId + seq` 为唯一权威，`tickSeq` 只作为参考系锚点（口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。
 
 ## 7. 部署模式
 

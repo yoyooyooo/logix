@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/090-suspense-resource-query/contracts/schemas/resource-event-meta.schema.json",
+  "title": "ResourceEventMeta",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "phase", "resourceKey", "generation"],
+  "properties": {
+    "type": { "const": "resource" },
+    "phase": { "type": "string", "enum": ["start", "resolve", "reject", "cancel", "invalidate"] },
+    "resourceKey": { "type": "string", "minLength": 1 },
+    "generation": { "type": "integer", "minimum": 0 },
+    "cacheHit": { "type": "boolean" },
+    "tagCount": { "type": "integer", "minimum": 0 },
+    "tags": { "type": "array", "items": { "type": "string", "minLength": 1 }, "maxItems": 16 },
+    "consumerCount": { "type": "integer", "minimum": 0 },
+    "cancelReason": { "type": "string", "enum": ["override", "invalidated", "no-subscribers", "timeout", "unknown"] },
+    "invalidateReason": { "type": "string", "enum": ["key", "tag", "manual", "unknown"] },
+    "initiatorLinkId": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "phase": { "const": "cancel" } } },
+      "then": { "required": ["cancelReason"] }
+    },
+    {
+      "if": { "properties": { "phase": { "const": "invalidate" } } },
+      "then": { "required": ["invalidateReason"] }
+    }
+  ]
+}
+

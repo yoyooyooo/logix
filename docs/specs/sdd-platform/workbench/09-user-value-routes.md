@@ -36,7 +36,7 @@ related:
 - **主链路**：
   - 本地启动 `logix dev`，Dev Server 扫描现有仓库并构建 Module/Traits/Program/IntentRule 索引（见 `02-full-duplex-architecture.md#6`）；  
   - 基于 Traits/IntentRule/Program 的静态 IR，构建 Universe/Galaxy 视图与字段级数据流视图（见 `01-module-traits-integration.md`）；  
-  - 连接运行中的 Runtime，将 `evidence.events`（ObservationEnvelope）与静态 IR 锚点绑定，形成“动态 Universe”视图（见 `02-full-duplex-architecture.md` 与 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）。  
+  - 连接运行中的 Runtime，将 `evidence.events`（ObservationEnvelope）与静态 IR 锚点绑定，形成“动态 Universe”视图（见 `02-full-duplex-architecture.md` 与 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。  
 - **关键依赖**：Parsable 的 Fluent DSL/Traits、Runtime Debug 事件契约、Dev Server 与 Studio 的协议。
 
 ## 3. 从「字段能力设计」到「跨模块数据治理」
@@ -56,7 +56,7 @@ related:
 - **核心承诺**：每一个失败用例都能被平台结构化记录、自动定位到 Intent/逻辑/字段规则，并驱动 AI 或开发者完成自愈。  
 - **主链路**：
   - 在 Spec 层定义/维护 ScenarioSpec（`ui-ux/03-spec-studio.md`）；  
-  - Alignment Lab 调用 Sandbox 运行场景，并产生 RunResult + AlignmentReport（见 `08-alignment-lab-and-sandbox.md`；RunResult 口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）；  
+  - Alignment Lab 调用 Sandbox 运行场景，并产生 RunResult + AlignmentReport（见 `08-alignment-lab-and-sandbox.md`；RunResult 口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）；  
   - 将 Scenario、Graph、`evidence.events`（ObservationEnvelope）、TraitDelta 等打包成 Context Pack，供 Coder Agent 生成补丁或给开发者建议；  
   - 补丁经 Review/Sign-off 后，自动更新 Intent/Blueprint/Code（闭环回到 SDD 的 TASKS & IMPLEMENT）。  
 - **关键依赖**：AlignmentReport 模型、Trait/IntentRule 锚点、Dev Server 提供的双向编辑能力。

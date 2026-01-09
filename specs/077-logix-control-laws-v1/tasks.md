@@ -16,8 +16,9 @@
 
 ## Phase 3: Drift Guards（公式驱动）
 
-- [ ] T020 Ensure 075/076 specs explicitly reference `docs/specs/sdd-platform/ssot/foundation/01-the-one.md` (avoid local re-definitions)
+- [ ] T020 Ensure 075/076 specs explicitly reference `docs/ssot/platform/foundation/01-the-one.md` (avoid local re-definitions)
 - [ ] T021 Ensure 073/075/076 all keep “no shadow timeline / no dual truth source / txn 禁 IO” as hard constraints (docs-first)
+- [ ] T022 Spec drift audit：对所有涉及 **控制律（Π）/时间语义/自动触发/Watcher** 的 specs，用 `spec.md` 的“三问裁决”逐个判定，并把结论沉淀成可执行清单（哪些仅需微调，哪些必须重构/拆分/暂停）
 
 ## Phase 4: Integrated Acceptance（只做派发）
 

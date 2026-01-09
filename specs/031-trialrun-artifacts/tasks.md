@@ -79,7 +79,7 @@ description: "Task list for 031-trialrun-artifacts (TrialRunReport.artifacts + R
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [x] T025 [P] 文档回链：在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md` 增补 artifacts 槽位说明
+- [x] T025 [P] 文档回链：在 `docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md` 增补 artifacts 槽位说明
 - [x] T026 Run `specs/031-trialrun-artifacts/quickstart.md` 的步骤自检并补齐缺口到 `specs/031-trialrun-artifacts/quickstart.md`
 
 ---

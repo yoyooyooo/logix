@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/090-suspense-resource-query/contracts/schemas/resource-event.schema.json",
+  "title": "ResourceEvent",
+  "allOf": [
+    {
+      "$ref": "../../../005-unify-observability-protocol/contracts/schemas/runtime-debug-event-ref.schema.json"
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "label", "meta"],
+      "properties": {
+        "kind": { "const": "service" },
+        "label": { "const": "resource" },
+        "meta": { "$ref": "./resource-event-meta.schema.json" }
+      }
+    }
+  ]
+}
+

@@ -19,7 +19,7 @@ related:
   - ../sandbox-runtime/35-playground-product-view.md
   - ../sandbox-runtime/65-playground-as-executable-spec.md
   - ../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md
-  - ../../../sdd-platform/ssot/assets/00-assets-and-schemas.md
+  - ../../../docs/ssot/platform/assets/00-assets-and-schemas.md
 ---
 
 # 23 · Live Spec 与 Scenario 编辑器（Platform Workbench PRD）

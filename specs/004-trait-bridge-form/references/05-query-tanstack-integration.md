@@ -19,7 +19,7 @@
 ### 1.2 Logix（StateTrait + TraitLifecycle + EffectOp）负责什么
 
 - keySchema 规范化与 keyHash：稳定、可回放、可比较
-- triggers/concurrency：何时触发、触发频率、switch/exhaust 的体验语义
+- autoRefresh/concurrency：何时触发、触发频率、switch/exhaust 的体验语义
 - 写回 state 的快照（QuerySnapshot / ResourceSnapshot）：作为全双工事实源
 - stale 丢弃：写回前必须按 keyHash 门控（只认最新）
 - Devtools 可解释性：每次触发/取消/丢弃/命中缓存都应落在可观测事件上（EffectOp timeline + state patch）
@@ -159,4 +159,4 @@ TanStack Query 的两个核心体验：
 
 1) 验证 Trait/Runtime 的“第三方集成能力”是否自然：是否只需要 Layer + helper 即可，不需要侵入 kernel
 2) 验证“全双工事实源”的原则是否稳：缓存不等于事实源，state 仍然是回放与解释的基准
-3) 验证 triggers/concurrency 的必要性：TanStack 解决缓存，但不解决“何时触发/用户语义”，这仍是 TraitLifecycle/领域协议要做的
+3) 验证 autoRefresh/concurrency 的必要性：TanStack 解决缓存，但不解决“何时触发/用户语义”，这仍是 TraitLifecycle/领域协议要做的

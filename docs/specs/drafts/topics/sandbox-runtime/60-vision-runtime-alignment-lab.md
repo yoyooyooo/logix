@@ -96,7 +96,7 @@ _目标：AI Closed Loop。_
 
 ## 4. 架构影响
 
-这对 `runtime-logix` 和 `platform` 提出了新的要求：
+这对 `runtime SSoT` 和 `platform` 提出了新的要求：
 
 1.  **Intent 必须携带验证元数据**：L2/L3 Intent 不仅要描述 "做什么"，还要描述 "如何验证"（Verifiable Intent）。
 2.  **Runtime 必须暴露内部状态**：Logix Core 需要通过 `DebugSink` 或 `Tracer` 暴露足够的 hook，而不仅仅是黑盒运行。

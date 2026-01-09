@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/092-e2e-latency-trace/contracts/schemas/e2e-trace-segment-meta.schema.json",
+  "title": "E2ETraceSegmentMeta",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "segmentKind", "startMonoMs", "durationMs"],
+  "properties": {
+    "type": { "const": "e2e-trace" },
+    "segmentKind": {
+      "type": "string",
+      "enum": [
+        "action:pending",
+        "io:wait",
+        "txn:commit",
+        "notify:scheduled",
+        "notify:flush",
+        "react:commit",
+        "action:settle",
+        "paint"
+      ]
+    },
+    "startMonoMs": { "type": "number", "minimum": 0 },
+    "durationMs": { "type": "number", "minimum": 0 },
+    "reasonCode": { "type": "string", "minLength": 1 },
+    "snapshotToken": { "type": "integer", "minimum": 0 },
+    "tickSeq": { "type": "integer", "minimum": 0 },
+    "linkIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "maxItems": 4 },
+    "droppedLinkIdCount": { "type": "integer", "minimum": 0 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "segmentKind": { "const": "react:commit" } } },
+      "then": { "properties": { "linkIds": { "maxItems": 4 } } }
+    }
+  ]
+}

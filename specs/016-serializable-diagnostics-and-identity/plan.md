@@ -36,7 +36,7 @@
   - Which `docs/specs/*` specs does it depend on or modify, and are they
     updated first (docs-first & SSoT)?
   - Does it introduce or change any Effect/Logix contracts? If yes, which
-    `.codex/skills/project-guide/references/runtime-logix/*` docs capture the new contract?
+    `docs/ssot/runtime/*` docs capture the new contract?
   - IR & anchors: does it change the unified minimal IR or the Platform-Grade
     subset/anchors; are parser/codegen + docs updated together (no drift)?
   - Deterministic identity: are instance/txn/op IDs stable and reproducible
@@ -55,15 +55,15 @@
 ### Answers (Current)
 
 - **Intent → Flow/Logix → Code → Runtime**：目标是把“观测协议与诊断事件”从宿主内不受控对象图，收敛为可推导、可序列化、可回放的最小事件形态；落点是 `DebugSink` 归一化 + `DevtoolsHub` 只持有可导出事件 + evidence package（后续）导出导入。
-- **Docs-first & SSoT**：先固化 `specs/016/*`（contracts/data-model/migration/perf）与 runtime SSoT（`.codex/skills/project-guide/references/runtime-logix/*`），再进入 `packages/logix-*` 实现；协议层以 `specs/005` 的 schema 为唯一裁决源。
+- **Docs-first & SSoT**：先固化 `specs/016/*`（contracts/data-model/migration/perf）与 runtime SSoT（`docs/ssot/runtime/*`），再进入 `packages/logix-*` 实现；协议层以 `specs/005` 的 schema 为唯一裁决源。
 - **Contracts**：会修改/扩展 `RuntimeDebugEventRef` 的可导出形态（JsonValue 硬门、errorSummary/downgrade、单锚点），并对齐 `module-instance-identity`/`error-summary`（复用 011 schema）。
 - **IR & anchors**：不引入第二套锚点/并行真相源；导出/跨宿主只认 `moduleId + instanceId`；事务/事件标识对齐 009（`txnSeq/opSeq/eventSeq` + 可确定性派生 id）。
 - **Deterministic identity**：禁止默认随机/时间作为主标识；`instanceId` 可注入且缺省为单调序号兜底；`txnId/eventId` 必须由序号确定性派生（或显式携带序号字段作为等价集合）。
 - **Transaction boundary**：任何进入事务窗口的路径保持纯同步（无 IO/await）；诊断归一化/JsonValue 投影不得在 off 档位进入热路径。
 - **Performance budget**：热路径包括 `Debug.record → toRuntimeDebugEventRef`、`DevtoolsHub` ring buffer 写入、（启用诊断时）JsonValue 投影/裁剪；基线与阈值以 `perf.md` 的脚手架与结果为准，默认 off 档位门槛 p95 ≤ +5%。
-- **Diagnosability & explainability**：新增/强化 `errorSummary/downgrade`、非法 lifecycle phase 的 `logic::invalid_phase` 诊断、以及 off/light/full 分档的 dropped/oversized 统计（并保证载荷 Slim 且可序列化）。
+- **Diagnosability & explainability**：新增/强化 `errorSummary/downgrade`、非法 lifecycle phase 的 `logic::invalid_phase` 诊断、以及 off/light/sampled/full 分档的 dropped/oversized 统计（并保证载荷 Slim 且可序列化）。
 - **Breaking changes**：移除双锚点字段；`$.lifecycle.*` 调整为 setup-only 注册；迁移说明写入 `specs/016-serializable-diagnostics-and-identity/migration.md`（不提供兼容层）。
-- **Quality gates**：至少运行 `pnpm typecheck`、`pnpm lint`、`pnpm test`；触及核心路径的变更需补齐 `perf.md` 中的可复现基线与对比结果（off/light/full）。
+- **Quality gates**：至少运行 `pnpm typecheck`、`pnpm lint`、`pnpm test`；触及核心路径的变更需补齐 `perf.md` 中的可复现基线与对比结果（off/light/sampled/full）。
 
 ## Project Structure
 

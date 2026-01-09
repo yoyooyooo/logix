@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/092-e2e-latency-trace/contracts/schemas/e2e-trace-segment-event.schema.json",
+  "title": "E2ETraceSegmentEvent",
+  "allOf": [
+    {
+      "$ref": "../../../005-unify-observability-protocol/contracts/schemas/runtime-debug-event-ref.schema.json"
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "label", "linkId", "meta"],
+      "properties": {
+        "kind": { "const": "devtools" },
+        "label": { "const": "trace:e2e" },
+        "linkId": { "type": "string", "minLength": 1 },
+        "meta": { "$ref": "./e2e-trace-segment-meta.schema.json" }
+      }
+    }
+  ]
+}
+

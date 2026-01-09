@@ -11,7 +11,7 @@
 事件必须能用于：
 
 - stale 丢弃解释（resourceId + keyHash + 当前 keyHash）
-- 触发来源解释（onMount/onKeyChange/manual）
+- 触发来源解释（mount/depsChange/manual）
 - txn 聚合（txnId）
 - 失效/刷新重赛（InvalidateRequest）
 
@@ -24,7 +24,7 @@
 
 ## 3. 诊断等级与保留窗口
 
-- 至少两档（例如 full/light），并明确各自的开销边界；
+- 至少四档（off/light/sampled/full），并明确各自的开销边界；
 - 默认保留窗口 60s（允许配置）；
 - 必须能回答：本次窗口触发了哪些规则、哪些跳过、最高成本规则是谁、以及降级/失败原因。
 - 开发/调试模式应提供 deps 一致性诊断：当规则的实际读取范围与声明 deps 不一致时，必须给出可操作提示，避免“漏写 deps 导致静默不更新”的隐蔽问题。

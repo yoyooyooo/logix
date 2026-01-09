@@ -82,6 +82,6 @@ version: 1.0 (Extracted from Platform Shapes)
 
 - Spec/Blueprint/Definition 确定语义组件树与接线（UiPort/UiBinding/UiSignal）；
 - 在 Sandbox 中，Semantic UI Mock 将这些组件变成 UI_INTENT 流；
-- RunResult 中同时包含：`evidence.events`（ObservationEnvelope/RuntimeDebugEventRef）、StateSnapshot/Patch、UI_INTENT 流（口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）；
+- RunResult 中同时包含：`evidence.events`（ObservationEnvelope/RuntimeDebugEventRef）、StateSnapshot/Patch、UI_INTENT 流（口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）；
 - Alignment Lab 使用 ScenarioSpec 的 Step/Rule 对 UI_INTENT + StateSnapshot 做断言，生成 AlignmentReport；
 - Report 再驱动开发/AI 调整 Blueprint/接线/逻辑，实现 UI 层与 Intent 的自愈。

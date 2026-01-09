@@ -79,7 +79,7 @@
 
 - [x] T023 [P] 跑通并落盘 perf evidence：按 `specs/067-action-surface-manifest/plan.md` 的 Perf Evidence Plan 生成 before/after/diff（要求 `meta.comparability.comparable=true`；若不可比则复测/缩小 files 子集）
 - [x] T024 [P] 回写 `specs/067-action-surface-manifest/perf/README.md`：填入 envId、profile、before/after/diff 路径与 PASS/FAIL 结论（含 `meta.matrixId/matrixHash`）
-- [x] T025 [P] 更新 runtime-logix 文档：固化 `actions/dispatchers/effects` 的对外语义与示例（按 plan.md 的 Constitution Check 指示路径）
+- [x] T025 [P] 更新 runtime SSoT 文档：固化 `actions/dispatchers/effects` 的对外语义与示例（按 plan.md 的 Constitution Check 指示路径）
 - [x] T026 跑通质量门：`pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`
 
 ---

@@ -229,9 +229,9 @@ EffectOp Timeline 视图应提供“事件列表 + 详情区域”的布局：�
 - **FR-017**: 本特性默认假定 Devtools 面板与详尽日志仅在开发/测试环境中供开发者使用，不在本轮引入字段级脱敏或隐私策略；在这些环境中，StateTraitProgram / StateTraitGraph 与 EffectOp Timeline 中的 State/Action/Service payload 可以完整展示原始数据，访问与隔离由环境与平台配置控制。若未来需要面向生产或更高敏感等级的场景，将通过额外特性引入脱敏与权限模型，而不在本轮强加约束。
 - **FR-018**: 为保证 StateTraitProgram / StateTraitGraph 的可移植性与静态分析能力，StateTrait DSL 下用于声明字段行为的函数（包括但不限于 computed 的 derive、source 的 key 以及 link 相关的路径/映射函数）在本轮特性中必须被视为同步纯函数：只依赖传入的 state 与闭包中的常量，不得直接执行 IO、访问运行时环境或触发 Effect；所有外部依赖与副作用必须通过 StateTrait.source + Resource/Query + Middleware 所承载的 EffectOp 通路表达。
 - **FR-019**: StateTrait.source 生成的 `source-refresh` 计划必须至少提供显式入口触发：`StateTrait.install($, program)` 需为每个 source 字段在 Bound API / Runtime 上提供标准加载入口（例如 `$.traits.source.refresh(field)`）。  
-  - 默认模式为 `manual`：除非业务/领域 DSL 显式调用 refresh，否则 Runtime 不得隐式执行 source‑refresh；  
-  - Kernel DSL **允许**在 source 的 meta 中通过 `mode/trigger` 配置显式开启自动模式（如 `onMount` / `onKeyChange` / `debounceMs` 等）。自动模式的实现必须复用同一 refresh 入口，并在事务模型下产生可观测的 EffectOp 事件；  
-  - 若未显式启用自动模式，则保持原有“只显式触发”的语义，以避免资源风暴与隐藏副作用。
+  - 默认模式遵循 `StateTrait.source.autoRefresh` policy（对齐 `076-logix-source-auto-trigger-kernel`）：`autoRefresh` 未提供等价于 `{ onMount: true, onDepsChange: true, debounceMs: 0 }`，Runtime 会在合适时机自动调用同一 `source.refresh` 入口；  
+  - `autoRefresh: false` 表示 manual-only：除非业务/领域 DSL 显式调用 refresh，否则 Runtime 不得隐式执行 source‑refresh；  
+  - 自动模式的实现必须复用同一 refresh 入口，并在事务模型下产生可观测的 EffectOp 事件；旧的 `meta.triggers/debounceMs` / `mode/trigger` 反射式配置口径不再作为主路径。
 - **FR-021**: 在与 React 等 UI 框架集成时，本特性必须对 Trait/Runtime 层的多次状态更新做合并与去重：在典型开发与生产环境中，每次用户输入（例如一次受控输入的 change 事件）允许触发的组件实际 render 次数上限为 2 次（不含 React StrictMode 的额外检查）；StateTrait.install 及其在 `@logixjs/react` 中的适配层需要通过批处理、事务或差分订阅等方式，将同一“逻辑输入”产生的多次内部 update 事件压缩为有限次数的 UI 层更新，避免 Devtools 中大量事件导致实际 UI 渲染频率失控。
 
 - **FR-020**: Devtools 面板中的 EffectOp Timeline 视图在交互上必须满足：默认状态下不选中任何事件，当 Timeline 中没有选中事件时，时间线右侧或相邻的详情区域应跟随并展示最近一条 EffectOp 事件的信息；当用户在 Timeline 中点击某个事件时，该事件进入“选中”状态，详情区域展示其完整详情；再次点击同一事件应取消选中并恢复到“跟随最新事件”的默认展示模式。

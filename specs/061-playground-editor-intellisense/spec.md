@@ -2,7 +2,7 @@
 
 **Feature Branch**: `061-playground-editor-intellisense`  
 **Created**: 2025-12-29  
-**Status**: Draft  
+**Status**: Done  
 **Input**: User discussion: "examples/logix-sandbox-mvp 的 /playground 路由，编辑器升级为具备完整智能补全能力的编辑器，并且对 Logix 能力尽可能做到可补全/可诊断。"
 
 ## Context

@@ -48,7 +48,7 @@
   - 032 UI 投影边界：`specs/032-ui-projection-contract/spec.md`
   - 034 表达式/校验资产协议：`specs/034-expression-asset-protocol/spec.md`
   - 035 Module 端口/类型 IR：`specs/035-module-ports-typeir/spec.md`
-  - IR 全链路（IrPage→TrialRun）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+  - IR 全链路（IrPage→TrialRun）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 - **IR & anchors（统一最小 IR + 稳定锚点）**
   - `ruleId` 必须可映射到动态 Trace（后续由 runtime/Devtools 建立锚点映射），避免 UI 只靠位置高亮造成漂移。
 - **Deterministic identity**

@@ -29,7 +29,7 @@
 
 - 业务型（Browser，P1）：suiteId=`form.listScopeCheck`（矩阵与采集口径以 `$logix-perf-evidence` 为裁决）。
 - 合成型（Node + Browser，P1）：suiteId=`converge.txnCommit`（同上）。
-- 诊断开销（Browser，P3）：suiteId=`diagnostics.overhead.e2e`（同上；用于量化 diagnostics off/light/full 的开销曲线，满足 `NFR-002` 的“可测量”要求）。
+- 诊断开销（Browser，P3）：suiteId=`diagnostics.overhead.e2e`（同上；用于量化 diagnostics off/light/sampled/full 的开销曲线，满足 `NFR-002` 的“可测量”要求）。
 - 术语映射（用于 `SC-002/SC-003`）：
   - “10× scale”：`converge.txnCommit.steps=2000`（相对 `steps=200`）
   - “local/dirty case”：`dirtyRootsRatio=0.05`

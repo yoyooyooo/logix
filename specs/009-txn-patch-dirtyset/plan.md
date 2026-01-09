@@ -47,7 +47,7 @@ Deferred（不阻塞本轮实现，但建议后续补齐）：
 **Target Platform**: Node.js 20+（测试/基准）+ modern browsers（React 侧消费）  
 **Project Type**: pnpm workspace monorepo  
 **Performance Goals**: 事务增量调度与 trait converge 在 dirty 模式下不引入全量扫描；提供可复现基线与对比（时间/执行步数/分配三者至少一类）  
-**Constraints**: 统一最小 IR；稳定标识去随机化（instanceId/txnSeq/opSeq/eventSeq）；事务窗口禁止 IO；事件 Slim 且可序列化（含预算与裁剪：`TxnOrigin.details` 2KB / 单事件 4KB / `payloadSummary` 256 chars）；诊断分档 off/light/full 且 off 近零成本  
+**Constraints**: 统一最小 IR；稳定标识去随机化（instanceId/txnSeq/opSeq/eventSeq）；事务窗口禁止 IO；事件 Slim 且可序列化（含预算与裁剪：`TxnOrigin.details` 2KB / 单事件 4KB / `payloadSummary` 256 chars）；诊断分档 off/light/sampled/full 且 off 近零成本  
 **Scale/Scope**: 单模块实例内 steps 规模 ≥100 的真实场景（Form/Query 类）；多实例并存（key）与 devtools/sandbox 观测并存
 
 ## Constitution Check
@@ -60,15 +60,15 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Code：以统一最小 IR（Static IR + Dynamic Trace）作为唯一事实源被平台/Devtools/Sandbox 消费；
   - Runtime：`dirty-set` 驱动增量收敛；patch/trace 负责解释与回放；遇到未知写入必须显式降级。
 - SSoT（docs-first）：
-  - 运行时契约与概念：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md`（事务闭包、trait 执行窗）
-  - Debug/IR/回放：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
-  - 业务写法与边界：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md` -（必要时）在 `.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/10-runtime-glossary.md` 补齐 Patch/Dirty-set/IR 术语裁决
+  - 运行时契约与概念：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md`（事务闭包、trait 执行窗）
+  - Debug/IR/回放：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
+  - 业务写法与边界：`docs/ssot/runtime/logix-core/api/03-logic-and-flow.md` -（必要时）在 `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md` 补齐 Patch/Dirty-set/IR 术语裁决
 - IR & anchors：本特性会推进“统一最小 IR”，同时要求 Platform-Grade 子集的写入范围可推导（避免黑盒写入导致 `dirtyAll` 常态化）。
 - Deterministic identity：本特性要求实例/事务/步骤/操作具备稳定标识并可重建（禁止随机/时间作为默认唯一 id）。
 - Identity fields：`instanceId` 外部注入；`txnSeq` instance 内单调；`opSeq` txn 内单调；`eventSeq` instance 内单调；`stepId/writerId` 可映射到 Static IR 节点；`txnId/opId/eventId` 必须可确定性派生与重建。
 - Transaction boundary：同步事务窗口禁止 IO；任何异步必须通过 Task/事务外运行再写回，且违反要稳定失败并可解释。
 - Performance budget：热路径集中在事务提交、trait converge/validate/source 的调度与依赖索引；必须提供基线与回归防线（benchmark + 关键计数）。
-- Diagnosability：诊断事件必须 Slim 且可序列化；诊断分档 off/light/full，off 不进入 ring buffer；关闭诊断时不得引入显著额外分配或全量扫描。
+- Diagnosability：诊断事件必须 Slim 且可序列化；诊断分档 off/light/sampled/full，off 不进入 ring buffer；关闭诊断时不得引入显著额外分配或全量扫描。
 - Breaking changes：允许不兼容（不提供兼容层）；迁移说明写入 `docs/reviews/99-roadmap-and-breaking-changes.md`（Phase 1/2 对应条目）并同步到 runtime SSoT。
 - Quality gates：`pnpm typecheck`、`pnpm test` 作为最低通过线；涉及核心路径变更时补一条可复现基准脚本与结果记录。
 
@@ -95,7 +95,7 @@ packages/logix-core/src/internal/runtime/core/     # StateTransaction / DebugSin
 packages/logix-core/src/internal/state-trait/      # build/converge/validate/source（增量调度的主要消费者）
 packages/logix-devtools-react/                     # 作为诊断协议的消费者（必要时更新对齐）
 packages/logix-sandbox/                            # 作为 IR/trace 协议的消费者（必要时更新对齐）
-.codex/skills/project-guide/references/runtime-logix/logix-core/                     # 对外契约 SSoT
+docs/ssot/runtime/logix-core/                     # 对外契约 SSoT
 docs/reviews/                                      # 评审与路线图证据
 ```
 
@@ -108,7 +108,7 @@ docs/reviews/                                      # 评审与路线图证据
 - 明确 `dirty-set`/`patch` 的最小语义集合与边界（何时必须有、何时可选、如何降级）。
 - 明确“build 阶段”应预编译哪些索引（depRoot→affectedSteps、topo order、path normalize）以及负优化阀门触发条件。
 - 明确冲突检测/合并的裁决口径（单写者；Static IR 多写者默认构建期失败；事务内重复写入仅允许同一 stepId；跨 stepId 冲突失败）。
-- 明确“诊断级别”（off/light/full）下的事件载荷与成本预算（Slim & serializable；off 不进入 ring buffer；light 仅摘要；full 才保留完整 patch 序列）。
+- 明确“诊断级别”（off/light/sampled/full）下的事件载荷与成本预算（Slim & serializable；off 不进入 ring buffer；light 仅摘要；sampled 仅采样命中才保留少量细节；full 才保留完整 patch 序列）。
 
 ## Phase 1：Design（数据模型 + 契约）
 

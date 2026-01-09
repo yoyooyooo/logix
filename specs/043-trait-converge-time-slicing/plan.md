@@ -29,7 +29,7 @@
 _GATE: Must pass before implementation. Re-check after code + docs._
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性属于 Runtime 执行面（StateTransaction → TraitConverge）调度策略扩展；不改业务侧 Intent/Flow 表达，仅提供可选策略与证据链路。
-- **Docs-first & SSoT**：契约与诊断字段以 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 与 `specs/013-auto-converge-planner/contracts/schemas/*` 为锚；新增字段与口径必须同步更新。
+- **Docs-first & SSoT**：契约与诊断字段以 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 与 `specs/013-auto-converge-planner/contracts/schemas/*` 为锚；新增字段与口径必须同步更新。
 - **Contracts**：新增/扩展 Runtime 的 stateTransaction 旋钮（time-slicing 相关）；对外 API 为新增字段/新 DSL 参数（加法），默认行为不变。
 - **IR & anchors**：不改变统一最小 IR，仅在 Dynamic Trace（`trace:trait:converge`）增加可序列化摘要字段；稳定锚点继续使用 `moduleId/instanceId/txnSeq/opSeq`。
 - **Deterministic identity**：不引入随机/时间 id；延迟窗口的事务仍使用既有 `txnSeq/txnId` 规则；必要时使用 RunSession 的本地序号（opSeq）作为补算事件锚点。

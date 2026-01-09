@@ -5,7 +5,7 @@
 **Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/035-module-ports-typeir/plan.md`
 
 > 本文件只固化关键裁决，避免 035 漂移成“平台侧源码推断规则”。  
-> IR/trial-run 工件链路外链：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+> IR/trial-run 工件链路外链：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 
 ## Decisions
 

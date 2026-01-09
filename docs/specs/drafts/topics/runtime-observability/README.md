@@ -7,9 +7,9 @@ priority: next
 related:
   - ../devtools-and-studio/01-cli-and-dev-server.md
   - ../devtools-and-studio/02-full-duplex-digital-twin.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/impl/README.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md
+  - docs/ssot/runtime/logix-core/impl/README.md
+  - docs/ssot/runtime/logix-core/api/03-logic-and-flow.md
+  - docs/ssot/runtime/logix-core/observability/09-debugging.md
 ---
 
 # Runtime Observability & Debug · 概览

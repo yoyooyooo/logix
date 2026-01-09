@@ -4,7 +4,7 @@
 
 ## 1) 先读唯一公式（SSoT）
 
-- 打开 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md` 的 “1.2 最小系统方程”。
+- 打开 `docs/ssot/platform/contracts/00-execution-model.md` 的 “1.2 最小系统方程”。
 
 ## 2) 再看索引式清单（执行入口）
 

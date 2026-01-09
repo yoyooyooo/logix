@@ -5,8 +5,8 @@
 **Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/031-trialrun-artifacts/plan.md`
 
 > 本文件只固化“关键裁决/权衡”，详细实现链路外链到 runtime SSoT：  
-> `.codex/skills/project-guide/references/runtime-logix/logix-core/api/06-reflection-and-trial-run.md`  
-> `.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+> `docs/ssot/runtime/logix-core/api/06-reflection-and-trial-run.md`  
+> `docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 
 ## Decision 1：artifacts 必须是“概念域命名”，不绑定实现包
 

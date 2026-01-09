@@ -88,8 +88,8 @@
 
 ## Phase 6: Docs / SSoT Alignment（Required if API/diagnostics change）
 
-- [X] T050 [P] 更新 runtime SSoT：Module/Logic API 中 `$.traits.declare` 的语义、冻结与 provenance：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`
-- [X] T051 [P] 更新 runtime SSoT：traits 合并/冲突/证据事件的协议与字段：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [X] T050 [P] 更新 runtime SSoT：Module/Logic API 中 `$.traits.declare` 的语义、冻结与 provenance：`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
+- [X] T051 [P] 更新 runtime SSoT：traits 合并/冲突/证据事件的协议与字段：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [X] T052 [P] 更新用户文档：补齐 `$.traits.declare` 的语义/边界/常见踩坑（setup-only、冻结、provenance 稳定策略）：`apps/docs/content/docs/api/core/bound-api.md`
 - [X] T053 [P] 更新用户文档：补齐 traits 组合的成本模型与优化梯子（默认→观察→收窄写入→稳定标识→覆盖/调优→拆分/重构）：`apps/docs/content/docs/guide/advanced/performance-and-optimization.md`
 - [X] T054 [P] 补齐 React 示例模块：在 `LogicPlan.setup` 内通过 `$.traits.declare(...)` 贡献 traits（不做页面集成，仅 module 文件）：`examples/logix-react/src/modules/traits-setup-declare.ts`

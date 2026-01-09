@@ -88,8 +88,8 @@
 
 - [x] T024 [US2] 落地覆盖载体：runtime 的按 `moduleId` 覆盖（可更新、可观测；下一笔事务读取最新值）+ Provider override 的差量覆盖（Layer/Tag，不新建 runtime 复制 middleware/layer）在 `packages/logix-core/src/internal/runtime/core/env.ts`、`packages/logix-core/src/internal/runtime/ModuleRuntime.ts` 与 `packages/logix-core/src/Runtime.ts`
 - [x] T025 [US2] 扩展 `Planner Evidence`：把“本次使用的阈值/预算/触发原因/配置来源（`configScope`）”写入 evidence（覆盖导致模式变化时含 `module_override` reason）在 `packages/logix-core/src/internal/state-trait/converge.ts`
-- [x] T026 [P] [US2] 更新 Runtime SSoT：补齐 converge 的 `auto` 语义口径（requested/executed、下界、止损、缓存证据）在 `.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md`
-- [x] T027 [P] [US2] 更新 Debug 协议 SSoT：固化 `trait:converge` 事件/`traitSummary.converge` 摘要的最小可用结构与分档裁剪规则在 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [x] T026 [P] [US2] 更新 Runtime SSoT：补齐 converge 的 `auto` 语义口径（requested/executed、下界、止损、缓存证据）在 `docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md`
+- [x] T027 [P] [US2] 更新 Debug 协议 SSoT：固化 `trait:converge` 事件/`traitSummary.converge` 摘要的最小可用结构与分档裁剪规则在 `docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [x] T028 [P] [US2] 更新用户文档：默认 auto、Provider/module 覆盖优先级与作用域、如何读证据字段、以及如何从证据推导“止血→纳入边界地图→回收覆盖”的闭环在 `apps/docs/content/docs/guide/advanced/debugging-and-devtools.md`
 
 **Checkpoint**: US2 可独立验收（解释/回退/文档齐备）
@@ -171,7 +171,7 @@
 并行写法示例（不同文件）：
 
 - [P] [US2] packages/logix-core/test/StateTrait.ConvergeAuto.ModuleOverride.test.ts
-- [P] [US2] .codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md
+- [P] [US2] docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md
 - [P] [US2] apps/docs/content/docs/guide/advanced/debugging-and-devtools.md
 ```
 

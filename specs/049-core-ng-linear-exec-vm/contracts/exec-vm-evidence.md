@@ -5,8 +5,8 @@
 ## Required
 
 - diagnostics=off：不得引入额外分配；允许仅输出 `KernelImplementationRef`（045）与最小开关摘要。
-- diagnostics=light/full：必须能解释：
+- diagnostics=light/sampled/full：必须能解释：
   - 是否命中 Exec VM（hit）
-- 未命中原因码（`reasonCode`，稳定枚举码；可选 `reasonDetail` 补充）
+  - 未命中原因码（`reasonCode`，稳定枚举码；可选 `reasonDetail` 补充）
   - 关键摘要（例如 plan/cache/预算结果的最小字段）
 - 字段必须 Slim、可序列化、可裁剪；禁止把闭包/大型对象图塞进事件。

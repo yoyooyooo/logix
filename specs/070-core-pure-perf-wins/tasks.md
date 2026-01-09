@@ -52,7 +52,7 @@
 
 **Independent Test**:
 
-- diagnostics=light/full 下，DevtoolsHub snapshot/evidence 可序列化且包含 trait converge 的解释字段（或 trace 事件）
+- diagnostics=light/sampled/full 下，DevtoolsHub snapshot/evidence 可序列化且包含 trait converge 的解释字段（或 trace 事件）
 - diagnostics=off 下，不导出纯观测 payload（保持零成本口径）
 
 - [ ] T016 [P] [US2] 扩展或新增单测（推荐扩展）`packages/logix-core/test/Debug/DevtoolsHub.test.ts`：在 `devtoolsHubLayer + diagnosticsLevel=full` 下跑一次 trait converge，并断言 snapshot/evidence 包含与 converge 决策相关的可序列化字段

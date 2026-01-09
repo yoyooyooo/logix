@@ -9,11 +9,11 @@ version: 1
 > 本文是 `sdd-platform` 主题的**总入口**：用最短的方式定义平台闭环、角色分工、以及“哪些是不可变的物理口径（SSoT）”。
 
 > **运行时物理模型（SSoT）**：平台侧的一切“可视化 / 可回放 / 可自纠错”都必须落在统一的执行口径上：
-> - 最小系统方程与符号表：`docs/specs/sdd-platform/ssot/foundation/01-the-one.md`（`S/E/t/Π/Ops/Δ⊕/C_T/Tape_t`）
-> - 运行时执行模型：`docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`
-> - 时间旅行交互：`docs/specs/sdd-platform/ssot/contracts/02-time-travel.md`
-> - RunResult 契约（平台 Grounding）：`docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`
-> - Program 的 Tape 最小契约（回放磁带）：`specs/075-logix-flow-program-ir/contracts/tape.md`
+> - 最小系统方程与符号表：`docs/ssot/platform/foundation/01-the-one.md`（`S/E/t/Π/Ops/Δ⊕/C_T/Tape_t`）
+> - 运行时执行模型：`docs/ssot/platform/contracts/00-execution-model.md`
+> - 时间旅行交互：`docs/ssot/platform/contracts/02-time-travel.md`
+> - RunResult 契约（平台 Grounding）：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`
+> - Program 的 Tape 最小契约（回放磁带）：`specs/075-flow-program-codegen-ir/contracts/tape.md`
 
 ## 1. 平台闭环（最小链路）
 
@@ -28,17 +28,17 @@ Spec（Feature/Scenario） → Blueprint/Contracts（C_T + Π） → Code（TS/E
 关键裁决：
 
 - **Spec 是“可执行真相”**：必须有场景与断言（Given/When/Then），而不是静态 PRD。
-- **Contracts 负责约束**：`C_T`（Traits）只表达静态约束闭包；`Π`（Programs/Flow）只表达动态控制律；禁止“从静态推断动态”（见 `docs/specs/sdd-platform/ssot/foundation/01-the-one.md`）。
-- **RunResult 是唯一 Grounding**：平台/Devtools/Agent 只消费 RunResult（`EvidencePackage + optional Tape + snapshots + anchors`），不消费运行时内部对象（见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）。
+- **Contracts 负责约束**：`C_T`（Traits）只表达静态约束闭包；`Π`（Programs/Flow）只表达动态控制律；禁止“从静态推断动态”（见 `docs/ssot/platform/foundation/01-the-one.md`）。
+- **RunResult 是唯一 Grounding**：平台/Devtools/Agent 只消费 RunResult（`EvidencePackage + optional Tape + snapshots + anchors`），不消费运行时内部对象（见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。
 
 ## 1.1 现实约束（平台必须诚实）
 
 闭环图看起来“很美”，落地必然撞上物理与工程折扣；平台侧必须把这些折扣显式化为预算/降级策略与验收口径：
 
-- **收敛不是无限的**：`Close_{C_T}` 允许预算、分帧、partial fixpoint，但必须可解释/可诊断/可回放（口径：`docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`）。
-- **诊断不可能零成本**：Diagnostics=Off 只能追求“可忽略/可控”，不能承诺绝对 0 开销；必须用预算与分层通道治理（口径：`docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`）。
-- **IO 不能真正时间旅行**：Live 运行最多只读回放；Replay/Fork 需要 Tape 把不确定性注入为事件（口径：`docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md` + `specs/075-logix-flow-program-ir/contracts/tape.md`）。
-- **精准更新有陷阱**：自动触发/依赖比较会在“深比较 vs 过敏触发”间权衡；粗粒度刷新可能是 MVP 必选（口径：`specs/076-logix-source-auto-trigger-kernel/spec.md` + `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`）。
+- **收敛不是无限的**：`Close_{C_T}` 允许预算、分帧、partial fixpoint，但必须可解释/可诊断/可回放（口径：`docs/ssot/platform/contracts/00-execution-model.md`）。
+- **诊断不可能零成本**：Diagnostics=Off 只能追求“可忽略/可控”，不能承诺绝对 0 开销；必须用预算与分层通道治理（口径：`docs/ssot/platform/contracts/00-execution-model.md`）。
+- **IO 不能真正时间旅行**：Live 运行最多只读回放；Replay/Fork 需要 Tape 把不确定性注入为事件（口径：`docs/ssot/platform/contracts/01-runresult-trace-tape.md` + `specs/075-flow-program-codegen-ir/contracts/tape.md`）。
+- **精准更新有陷阱**：自动触发/依赖比较会在“深比较 vs 过敏触发”间权衡；粗粒度刷新可能是 MVP 必选（口径：`specs/076-logix-source-auto-trigger-kernel/spec.md` + `docs/ssot/platform/contracts/00-execution-model.md`）。
 - **人类 DX 需要语法糖**：IR/Program 允许显式与结构化，但必须提供糖衣让业务写法不被“定义墙”吓退（口径：`11` 竖切优先交付）。
 
 ## 2. 角色分工（面向交接 + Agent 四阶段）

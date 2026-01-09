@@ -33,5 +33,4 @@
 
 - [ ] T030 Collect perf evidence (before/after) per `plan.md#Perf Evidence Plan` (must show no per-commit linear scan regression)
 - [ ] T031 Run workspace gates (typecheck/lint/test)
-- [ ] T032 Ensure migration notes are accurate in `specs/076-logix-source-auto-trigger-kernel/contracts/migration.md` (forward-only; no shim)
-
+- [ ] T032 Ensure migration notes are accurate in `specs/076-logix-source-auto-trigger-kernel/contracts/migration.md` (forward-only; no shim); add post-076 “next patterns to consider” pointer to `docs/ssot/platform/appendix/concepts/01-frontend-pattern-landscape.md`

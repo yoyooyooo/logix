@@ -85,7 +85,7 @@
   - Which `docs/specs/*` specs does it depend on or modify, and are they
     updated first (docs-first & SSoT)?
   - Does it introduce or change any Effect/Logix contracts? If yes, which
-    `.codex/skills/project-guide/references/runtime-logix/*` docs capture the new contract?
+    `docs/ssot/runtime/*` docs capture the new contract?
   - IR & anchors: does it change the unified minimal IR or the Platform-Grade
     subset/anchors; are parser/codegen + docs updated together (no drift)?
   - Deterministic identity: are instance/txn/op IDs stable and reproducible
@@ -104,8 +104,8 @@
 ### Answers (Pre-Research)
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性聚焦在 `Bound API $.lifecycle`（Logix 入口）与 `ModuleRuntime`（Runtime 执行与 Scope）之间的契约，使“生命周期意图”可声明、可调度、可诊断。
-- **Docs-first & SSoT**：先更新/对齐 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md` 的生命周期语义与消费模式，再同步 `apps/docs` 的用户教程与示例；实现细节落到 `packages/logix-core` 与 `packages/logix-react`。
-- **Contracts**：会变更/补齐 `BoundApi.lifecycle` 的语义（注册 vs 执行、初始化门禁、销毁顺序、错误策略）与 Debug/诊断事件字段；对应文档以 `.codex/skills/project-guide/references/runtime-logix/*` 为主事实源。
+- **Docs-first & SSoT**：先更新/对齐 `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md` 的生命周期语义与消费模式，再同步 `apps/docs` 的用户教程与示例；实现细节落到 `packages/logix-core` 与 `packages/logix-react`。
+- **Contracts**：会变更/补齐 `BoundApi.lifecycle` 的语义（注册 vs 执行、初始化门禁、销毁顺序、错误策略）与 Debug/诊断事件字段；对应文档以 `docs/ssot/runtime/*` 为主事实源。
 - **IR & anchors**：不引入第二套 IR；生命周期的观测面作为 Dynamic Trace 的事件扩展，必须使用稳定标识并保持可序列化（与 Debug/Devtools 统一）。
 - **Deterministic identity**：移除随机/时间作为默认 id 来源，改为稳定的 `instanceId + txnSeq + opSeq`（并由此派生 `txnId/opId/eventId/linkId` 等确定性标识），并在本特性 contracts 与 data-model 中固化。
 - **Transaction boundary**：生命周期任务不得在事务窗口内执行会阻塞/等待的工作；事务内写入仍必须通过统一事务机制进入 dirty-set/patch；违反边界需输出可行动诊断。
@@ -144,7 +144,7 @@ packages/logix-react/
 packages/logix-query/            # 既有 $.lifecycle 用例（迁移样板）
 packages/logix-form/             # 既有 $.lifecycle 用例（迁移样板）
 
-.codex/skills/project-guide/references/runtime-logix/         # SSoT（语义与契约）
+docs/ssot/runtime/         # SSoT（语义与契约）
 apps/docs/content/docs/           # 用户文档（产品视角）
 examples/                         # 可运行示例（回归/验收）
 ```
@@ -186,13 +186,13 @@ No violations identified for this feature at planning time.
 
 > 实现完成后的扫尾阶段：用最少动作消除“契约/实现/示例/用户文档”的漂移，不引入兼容层。
 
-- 回填并校对 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与 `apps/docs/content/docs/*`：确保错误分类、取消语义、生命周期门禁/销毁顺序等描述与实现一致。
+- 回填并校对 `docs/ssot/runtime/logix-core/*` 与 `apps/docs/content/docs/*`：确保错误分类、取消语义、生命周期门禁/销毁顺序等描述与实现一致。
 - 更新 `examples/*`：补至少 1 个可运行场景覆盖“必需初始化门禁 + 启动任务 + 终止清理 + 错误兜底”。
 - 将 quickstart 中标注的“目标语义示例”替换为可运行示例（或明确保留为概念示例并链接到可运行代码）。
 
 ## Constitution Re-check (Post-Design Results)
 
-- **Docs-first & SSoT**：本计划的契约面已落在 `specs/011-upgrade-lifecycle/contracts/*` 与 `specs/011-upgrade-lifecycle/data-model.md`；后续实现前应先回填/对齐 `.codex/skills/project-guide/references/runtime-logix/*` 与 `apps/docs/*`（见 Summary 与 Project Structure）。
+- **Docs-first & SSoT**：本计划的契约面已落在 `specs/011-upgrade-lifecycle/contracts/*` 与 `specs/011-upgrade-lifecycle/data-model.md`；后续实现前应先回填/对齐 `docs/ssot/runtime/*` 与 `apps/docs/*`（见 Summary 与 Project Structure）。
 - **IR & anchors**：未引入新 IR；生命周期事件被建模为可序列化的诊断/trace 事件（见 `contracts/schemas/lifecycle-event.schema.json`）。
 - **Deterministic identity**：已在 data-model 与 contracts 中固化 `moduleId + instanceId` 作为实例锚点，并为 `txnSeq/opSeq` 留出字段与派生规则（见 `specs/011-upgrade-lifecycle/data-model.md`）。
 - **Transaction boundary**：已在 spec/plan 中明确“事务窗口禁止等待/阻塞”，并将其纳入边界用例与需求追踪（见 `specs/011-upgrade-lifecycle/spec.md` 的 Edge Cases 与 FR-010）。

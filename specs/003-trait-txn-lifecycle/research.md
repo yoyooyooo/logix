@@ -23,7 +23,7 @@
 - 仅在 Module.implement 上配置，Runtime 不给全局默认：
   - 会把“整体环境是 debug 还是 performance-first”的信息下沉到每个模块，破坏配置集中度；
 - 在 React RuntimeProvider 上暴露独立开关：
-  - 容易引入第三套事务模式（React-only），与 runtime-logix 契约冲突，被否决。
+  - 容易引入第三套事务模式（React-only），与 runtime SSoT 契约冲突，被否决。
 
 ## 2. 高频交互（拖拽）下的事务语义
 
@@ -56,7 +56,7 @@
 
 **Rationale**
 
-- 保持 runtime-logix 的契约单一：观测策略的来源集中在 Runtime 与 ModuleImpl，而不是在 React 层再加一层配置；
+- 保持 runtime SSoT 的契约单一：观测策略的来源集中在 Runtime 与 ModuleImpl，而不是在 React 层再加一层配置；
 - 避免出现“代码层配置是 full，但 React 层偷偷降为 light”这类难以排查的问题；
 - RuntimeProvider 本身已经承担了 Scope 管理与 Layer 叠加职责，再托管事务策略会让其职责过重。
 
@@ -100,7 +100,7 @@ export interface ModuleImplementConfig<R> {
 
 - 复用已有 `StateTxnInstrumentationLevel`，避免在不同层出现类似但不完全一致的字符串字面量；
 - 将 RuntimeOptions / Module.implement 的配置形状限制为最小集合（仅 instrumentation），避免在外层暴露过多 StateTransaction 内部实现细节；
-- 通过统一的类型别名方便在 runtime-logix 文档与代码之间对照。
+- 通过统一的类型别名方便在 runtime SSoT 文档与代码之间对照。
 
 **Alternatives considered**
 

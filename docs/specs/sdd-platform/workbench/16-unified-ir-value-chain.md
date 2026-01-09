@@ -16,7 +16,7 @@ related:
 > Root Runtime Runner (024) 不仅仅是一个“运行入口”，它是**软件制造工厂的流水线探针**。
 > 通过“Loader Pattern 试运行”，我们把如果不运行就看不见的**“暗物质”**（动态依赖、副作用轨迹、环境需求）显性化为**结构化 IR**，从而支撑起 Low-Code Studio、Agentic Coding 与 Quality Guardian 的上层建筑。
 >
-> 口径基线：运行时参考系与证据链模型以 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md` 为准（`tickSeq`、`C_T/Π`、`Trace vs Tape`、`Σ_t=(S_t,I_t)`）。
+> 口径基线：运行时参考系与证据链模型以 `docs/ssot/platform/contracts/00-execution-model.md` 为准（`tickSeq`、`C_T/Π`、`Trace vs Tape`、`Σ_t=(S_t,I_t)`）。
 
 ## 1. The 3 Existing IRs (Infrastructure)
 
@@ -45,8 +45,8 @@ related:
     - 权威顺序：`runId + seq`（允许间隙）
     - 参考系锚点：`tickSeq`（可作为 `trace:tick` 事件，或作为 `debug:event.payload.meta.tickSeq` 等 Slim 字段出现）
     - 稳定实例锚点：`moduleId + instanceId`（参照 `specs/016-serializable-diagnostics-and-identity/spec.md`）
-  - `Tape`：复用 075 的 `TapeRecordV1`（`specs/075-logix-flow-program-ir/contracts/tape.md`），用于 deterministic replay/fork（环境=oracle）。
-  - RunResult 的统一口径与锚点表见：`docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`（避免平台侧再定义“另一套 TraceNode”）。
+  - `Tape`：复用 075 的 `TapeRecordV1`（`specs/075-flow-program-codegen-ir/contracts/tape.md`），用于 deterministic replay/fork（环境=oracle）。
+  - RunResult 的统一口径与锚点表见：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`（避免平台侧再定义“另一套 TraceNode”）。
 - **Value**:
   - **Auto-Bug Report**: 用户报错时一键上传 Trace（解释链），开发者可在 Sandbox/Test 中用 Tape 做确定性回放/分叉推演（生产环境通常只做只读回放与局部模拟）。
   - **AI Behavior Cloning**: 把人工操作产生的 Trace 喂给 Agent，训练它“学会这个业务流程”。

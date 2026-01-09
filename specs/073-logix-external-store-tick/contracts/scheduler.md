@@ -63,7 +63,7 @@ type HostScheduler = {
 
 - 先完成 urgent lane 的最小 flush（保证 no-tearing 的 snapshot 可观测）。
 - 将剩余 nonUrgent/backlog 通过 `scheduleMacrotask` 续跑（分段稳定化）。
-- 在 diagnostics=light/full 下输出 Slim 证据（见 `contracts/diagnostics.md`）：本 tick 是否发生 yield、续跑的 scheduleKind、以及触发原因。
+- 在 diagnostics=light/sampled/full 下输出 Slim 证据（见 `contracts/diagnostics.md`）：本 tick 是否发生 yield、续跑的 scheduleKind、以及触发原因。
 
 ### 3.3 与 requestAnimationFrame 的关系（明确边界）
 
@@ -74,7 +74,7 @@ type HostScheduler = {
 ### 3.4 `microtaskChainDepth` 的实现要求（必须自维护）
 
 - 原生 `queueMicrotask` 不提供深度信息；`microtaskChainDepth` 必须由 TickScheduler/HostScheduler 在运行时维护计数（best-effort）。
-- 推荐实现：在每次“同一段 microtask 链中的 flush continuation”递增计数，在进入 macrotask（yield continuation）时重置；并把该值写入 `trace:tick.schedule.microtaskChainDepth`（diagnostics=light/full）。
+- 推荐实现：在每次“同一段 microtask 链中的 flush continuation”递增计数，在进入 macrotask（yield continuation）时重置；并把该值写入 `trace:tick.schedule.microtaskChainDepth`（diagnostics=light/sampled/full）。
 
 ## 4) 测试口径（act-like）
 

@@ -12,7 +12,7 @@ related:
 
 > 本文在 `sdd-platform` 视角下，吸收 `topics/sandbox-runtime/mvp/README.md` 中的 MVP 思路，解释 Sandbox/Playground 在 SDD 平台中的位置：它是 Runtime Alignment Lab 的前端实现之一。
 >
-> 口径基线：运行时参考系与证据链模型以 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md` 为准（`tickSeq`、`C_T/Π`、`Trace vs Tape`）；RunResult 契约见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`。
+> 口径基线：运行时参考系与证据链模型以 `docs/ssot/platform/contracts/00-execution-model.md` 为准（`tickSeq`、`C_T/Π`、`Trace vs Tape`）；RunResult 契约见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`。
 
 ## 1. 在 SDD 链路中的位置
 

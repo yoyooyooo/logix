@@ -10,9 +10,9 @@
 确定性高、作为事实源（SSoT）使用的核心规范。
 
 - **[SDD Platform](./sdd-platform/README.md)**
-  - 平台侧主线：需求→规格→出码→运行证据→对齐回流（含 `ssot/` 与 `workbench/`）。
+  - 平台侧主线：需求→规格→出码→运行证据→对齐回流（含 `docs/ssot/platform/` 与 `docs/specs/sdd-platform/workbench/`）。
 - **Runtime SSoT（只读）**
-  - `.codex/skills/project-guide/references/runtime-logix/**`（以真实类型/实现为裁决；与 `packages/logix-*` 同步）。
+  - `docs/ssot/runtime/**`（以真实类型/实现为裁决；与 `packages/logix-*` 同步）。
 
 ## 2. Drafts & Topics (The Lab)
 

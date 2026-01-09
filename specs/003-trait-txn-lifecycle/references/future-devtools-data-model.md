@@ -15,7 +15,7 @@
   - Origin-first 跨模块时间线、跨实例对比视图，以及事务/事件的持久化存储。
 - 因此，可以将本文件剩余章节理解为：**在当前实现基础上的扩展路线图**。若未来实现这些能力，需要同时检查：
   - 是否仍沿用现有 `StateTransaction + StatePatch + RuntimeDebugEventRef` 结构；
-  - 是否与 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与 Devtools 合同（`contracts/devtools-runtime-contracts.md`）保持一致。
+  - 是否与 `docs/ssot/runtime/logix-core/*` 与 Devtools 合同（`contracts/devtools-runtime-contracts.md`）保持一致。
 
 ## 1. 更细粒度的 Patch / Snapshot 策略
 

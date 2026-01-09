@@ -396,8 +396,8 @@ state: Schema.Struct({
 
 ## 八、相关文档
 
-- `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`
-- `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`
+- `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
+- `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
 - [topics/trait-system/](../topics/trait-system/)（007 之后的 Trait/StateTrait 主线收敛与场景清单）
 
 ---

@@ -137,7 +137,7 @@ ScenarioSpec.Steps
     ↓ 执行
 Sandbox Runtime
     ↓ 产出
-RunResult（Trace/Tape/Snapshot + Static IR anchors；口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）
+RunResult（Trace/Tape/Snapshot + Static IR anchors；口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）
     ↓ 对比
 Alignment Report
 ```
@@ -241,7 +241,7 @@ Studio 可直接消费 `StateTraitGraph`：
 
 ### 6.2 下游缺口：Resource/Query 契约 + Alignment + Delta 治理
 
-- **Resource/Query 契约**：`StateTrait.source` 必须绑定已注册的 `resourceId`，并通过 `key(...)` 把 depsValues 映射为领域输入；触发/时间/并发等动态律（`Π`）不得塞进 trait meta（口径见 `docs/specs/sdd-platform/ssot/foundation/01-the-one.md` 与 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`，以及 `specs/076`/`specs/075`）。
+- **Resource/Query 契约**：`StateTrait.source` 必须绑定已注册的 `resourceId`，并通过 `key(...)` 把 depsValues 映射为领域输入；触发/时间/并发等动态律（`Π`）不得塞进 trait meta（口径见 `docs/ssot/platform/foundation/01-the-one.md` 与 `docs/ssot/platform/contracts/00-execution-model.md`，以及 `specs/076`/`specs/075`）。
 - **Alignment Lab 集成**：Sandbox 运行 Scenario 时，除 `StateTraitGraph` 外必须输出 RunResult（`evidence.events` + snapshots + anchors）；AlignmentReport 以 RunResult 为唯一 Grounding 对比 `ScenarioSpec.Then`。
 - **TraitDelta 治理**：Graph Diff 产出 `TraitDelta`，平台应驱动“同步回 Blueprint/Intent/Spec”的任务，而不是允许在代码里绕过治理直接改 traits（避免并行真相源）。
 

@@ -67,7 +67,7 @@ _Rationale_: 只有在“声明式 + 可推导”的前提下，运行时才可�
 - 每一项特性或改动 MUST 能沿着「业务需求 / Intent → Flow / Logix → 代码 → 运行行为」
   这条链路被追踪与回放，避免只存在于局部实现或一次性脚本中。
 - 任何可复用能力 MUST 在 `docs/specs/intent-driven-ai-coding/*` 与
-  `.codex/skills/project-guide/references/runtime-logix` 中拥有对应的 Intent / Flow / Runtime 契约描述，
+  `docs/ssot/runtime` 中拥有对应的 Intent / Flow / Runtime 契约描述，
   禁止只在代码里“先跑起来”再补文档。
 - 当 PoC / 脚本演进为长期使用能力时，MUST 将其升级为规范化资产：
   将规则抽象为 IntentRule / Module / Store / Flow，并在规范与用户文档中登记。
@@ -92,10 +92,10 @@ _Rationale_: 默认维护者是「LLM + 工具链」，人类更多做审阅与�
 - 当「引擎正确性 / 性能 / 可回放 / 可诊断性」与「Studio / Playground / Demo 体验」
   发生冲突时，前者 MUST 优先。
 - 新能力优先落地在 `packages/logix-core` / `packages/logix-react`
-  与 `.codex/skills/project-guide/references/runtime-logix` 中：先稳定 Module / Logic / Flow / IntentRule
+  与 `docs/ssot/runtime` 中：先稳定 Module / Logic / Flow / IntentRule
   契约，再扩展 Sandbox / Studio / 可视化。
 - 任何会改变 Module / Logic / Flow / IntentRule 契约的改动 MUST
-  先在 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与 `impl/README.md` 中达成共识，再在
+  先在 `docs/ssot/runtime/logix-core/*` 与 `impl/README.md` 中达成共识，再在
   运行时代码中实现，并同步更新相关示例与用户文档。
 
 _Rationale_: Logix 作为运行时引擎是一切上层能力的基座，必须先保证正确、幂等、
@@ -122,7 +122,7 @@ _Rationale_: 通过统一的 Effect 运行时约束行为与错误语义，保�
 
 - 任何影响 Intent 模型、Flow DSL、Logix / Effect 契约的决策 MUST
   先更新 `docs/specs/intent-driven-ai-coding` 与
-  `.codex/skills/project-guide/references/runtime-logix` 中的规范，再在子包中实现。
+  `docs/ssot/runtime` 中的规范，再在子包中实现。
 - `docs/specs` 是规范层单一事实源（SSoT），`apps/docs`
   是最终产品用户文档；两者内容不一致时 MUST 先修正 `docs/specs`，再同步
   `apps/docs`。
@@ -250,7 +250,7 @@ _Rationale_: 保证规范、实现与工具链共用同一事实源，避免“�
   - 可关联：事件之间可用 stable id 串起因果链（触发源、Flow、状态变更、effect）；
   - 可裁剪：不同级别（开发/生产）可选择性启用；
   - 可回放：关键路径事件可用于重建与解释运行行为。
-- Devtools / Debug 能力的协议与语义 MUST 以 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- Devtools / Debug 能力的协议与语义 MUST 以 `docs/ssot/runtime/logix-core/observability/09-debugging.md`
   为单一事实源；如协议调整，必须同步更新该文档与 `apps/docs` 相关章节。
 - 诊断事件载荷 MUST Slim & 可序列化：禁止把 `Effect` 本体、闭包或大型对象图塞进事件并进入
   DevtoolsHub/Sandbox 的 ring buffer；需要携带的仅为结构化元信息与可引用的 id。
@@ -434,7 +434,7 @@ _Rationale_: 保证规范、实现与工具链共用同一事实源，避免“�
     「Intent → Flow / Logix → 代码 → Runtime」链路？
   - 涉及哪些 `docs/specs/*` 规范文档？是否已按「文档先行」更新或补充草稿？
   - 是否会引入 / 修改 Effect / Logix 契约？若是，是否已在
-    `.codex/skills/project-guide/references/runtime-logix` 中达成共识？
+    `docs/ssot/runtime` 中达成共识？
   - IR 与锚点：是否新增/调整统一最小 IR 或 Platform-Grade 子集？是否存在 specs/scripts/examples 漂移点？
   - 稳定标识：instanceId/txnId/opId 是否可确定重建？是否引入随机/时间作为默认 identity？
   - 事务边界：是否引入事务窗口 IO、或写入逃逸（可写 SubscriptionRef/Ref）？是否有硬约束与诊断兜底？

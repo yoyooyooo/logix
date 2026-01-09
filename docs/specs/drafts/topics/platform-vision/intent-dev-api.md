@@ -206,6 +206,6 @@ export const NoopIntent: IntentDevApi = {
    - Parser 的白盒子集仍定义在 `$` 上，不会因为引入 `$$` 而扩展；  
    - 所有 `$$.*` 调用在 IR 层直接视为 IR/注解来源，无需执行代码。
 3. **后续规范化工作**  
-   - 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/platform/06-platform-integration.md` 中补充“Intent Dev API/注解层”的角色描述；  
+   - 在 `docs/ssot/runtime/logix-core/platform/06-platform-integration.md` 中补充“Intent Dev API/注解层”的角色描述；  
    - 在 `v3/platform/impl/intent-rule-and-codegen.md` 中定义 `$$.rule` 产生的 IR 形状及与 Fluent 解析结果的合并策略；  
    - 按本草案设计一个最小可用的 `IntentDevApi` 类型与 dev-only 实现，后续视真实场景演进。

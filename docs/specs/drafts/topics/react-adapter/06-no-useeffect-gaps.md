@@ -63,7 +63,7 @@ priority: next
 
 当前状态：
 
-- `runtime-logix` 集成文档中仍建议「在组件里用 `useEffect` 监听第三方库的输出，再同步给 Logix Module」。
+- `runtime SSoT` 集成文档中仍建议「在组件里用 `useEffect` 监听第三方库的输出，再同步给 Logix Module」。
 - `@logixjs/query`、`@logixjs/form` 等插件体系尚在规划阶段，尚未为业务提供「纯 Logix 视角」的集成 API。
 
 潜在演进方向：
@@ -114,7 +114,7 @@ priority: next
 
 下一步可以考虑：
 
-- 在 `.codex/skills/project-guide/references/runtime-logix` / React Adapter topic 下，把上述三类场景整理为明确的「能力空位」；
+- 在 `docs/ssot/runtime` / React Adapter topic 下，把上述三类场景整理为明确的「能力空位」；
 - 为每一类空位设计对应的 Platform/Plugin/Service 形状，并按「插件优先、React 组件只做挂载」的原则推进实现；
 - 将现有文档中建议使用 `useEffect` 的集成方案，逐步改写为 Logix 原生能力的示例，收紧对业务侧 `useEffect` 的需求。
 

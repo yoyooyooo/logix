@@ -24,7 +24,7 @@
 
 - [x] T005 在 `RuntimeDebugEventRef` 增加 `linkId?: string` 字段于 `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - [x] T006 在 `Debug.record` 对 `trace:effectop` 注入当前 Fiber 的 `linkId`（读取 `EffectOpCore.currentLinkId`），并在 `toRuntimeDebugEventRef` 将 `linkId` 提拔为一等字段（`trace:*` 支持从 `data.meta.linkId` 兜底提取）于 `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
-- [x] T007 [P] 更新事件协议文档：`RuntimeDebugEventRef` 增加 `linkId` 的字段与语义于 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.02-eventref.md`
+- [x] T007 [P] 更新事件协议文档：`RuntimeDebugEventRef` 增加 `linkId` 的字段与语义于 `docs/ssot/runtime/logix-core/observability/09-debugging.02-eventref.md`
 - [ ] T008 [P] 补齐序列化回归：确保 `RuntimeDebugEventRef.linkId` 可 JSON 导出（至少覆盖 `trace:effectop`，并验证 `trace:*` 的 meta 兜底提取路径）于 `packages/logix-core/test/Debug/Debug.RuntimeDebugEventRef.Serialization.test.ts`
 - [x] T009 将 OverviewStrip 的 txnKey 兜底归并从 “掏 `ref.meta.meta.linkId`” 迁移为优先使用 `ref.linkId`（必要时保留兼容兜底）于 `packages/logix-devtools-react/src/internal/ui/overview/OverviewStrip.tsx`
 

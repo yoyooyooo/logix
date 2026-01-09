@@ -2,7 +2,7 @@
 
 本文档基于 `packages/logix-core` 009 Implementation 现状，梳理 Logix 运行时从定义、构建、启动到事务执行的全链路机制，用于帮助维护者快速建立实现脉络（**不是 SSoT**）。
 
-- 运行时 SSoT（契约/语义口径）：`.codex/skills/project-guide/references/runtime-logix`
+- 运行时 SSoT（契约/语义口径）：`docs/ssot/runtime`
 - 长链路地图（从入口快速定位到源码）：`docs/impl-notes/05-runtime-long-chain-map.md`
 
 如本文与 SSoT 或 TypeScript 类型提示不一致，以 SSoT + 代码类型为准。

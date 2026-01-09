@@ -44,9 +44,9 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - `Intent → Flow/Logix → Code → Runtime` 映射：Intent/平台诉求（可替换与可解释的内部架构）→ Flow/Logix（不改变业务写法与执行语义）→ Code（内部服务化与装配点重构）→ Runtime（稳定可回放的执行与诊断）。
 - docs/specs 依赖与对齐：
-  - 运行时实现/装配 SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md`、`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/01-app-runtime-and-modules.md`
+  - 运行时实现/装配 SSoT：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md`、`docs/ssot/runtime/logix-core/impl/01-app-runtime-and-modules.md`
   - 性能基线口径：`specs/014-browser-perf-boundaries/*`（runner + 报告结构），以及 `specs/017-perf-tuning-lab/*`（解释与建议体系）
-  - 诊断协议 SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+  - 诊断协议 SSoT：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - Effect/Logix contracts 变更：
   - 对外 contract：不变（本特性硬约束）
   - 对内 contract：新增/固化“RuntimeKernel + Runtime Services”的内部契约；必须在 `contracts/*` 与 runtime impl 文档同步登记，避免实现漂移。

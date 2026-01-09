@@ -166,7 +166,7 @@
 
 - 无 Process 安装时：触发判定路径应接近零成本（不引入额外全量扫描/分配）。
 - 少量 Process（例如 5 个）时：每次触发的额外开销 p95 ≤ 5%（诊断关闭时 ≤ 1%）。
-- 诊断分档对比：off/light/full 的时间/分配开销差异具备可解释证据（至少一类指标）。
+- 诊断分档对比：off/light/sampled/full 的时间/分配开销差异具备可解释证据（至少一类指标）。
 
 **Rationale**:
 
@@ -212,14 +212,14 @@
 - `moduleStateChange` 的事件载荷保持 Slim：仅携带必要锚点（moduleId/instanceId/selectorName 或 fieldPath）与稳定的 `triggerSeq`，禁止把整段 state/大型对象图塞进事件。
 - 需要正视 selector 的 DX/性能陷阱（这是复用订阅模型的代价）：
   - selector 必须是 **纯函数 + 低成本 + 返回稳定值**（优先 primitive/tuple；避免每次返回新对象导致 `Stream.changes` 去重失效）；
-  - 仅在 dev/test 或 diagnostics=light/full 下，对 selector 的耗时与触发频率做采样告警（warning 事件），避免把测量开销引入 diagnostics=off 热路径。
+- 仅在 dev/test 或 diagnostics=light/sampled/full 下，对 selector 的耗时与触发频率做采样告警（warning 事件），避免把测量开销引入 diagnostics=off 热路径。
 
 ## Decision 11: Process 必须显式遵守事务边界（事务内禁止 IO/await，违规需可诊断）
 
 **Decision**: Process 的触发与调度必须始终发生在同步事务窗口之外；若在事务窗口（或等价的“同步事务 fiber”）内触发了 Process 的调度入口，系统必须：
 
 - 以稳定、可解释的方式 **阻止执行**（避免死锁/卡队列）；
-- 在 dev/test（或 diagnostics=light/full）下产出结构化诊断信号（指出触发来源与修复建议），而不是静默吞掉。
+- 在 dev/test（或 diagnostics=light/sampled/full）下产出结构化诊断信号（指出触发来源与修复建议），而不是静默吞掉。
 
 **Rationale**:
 

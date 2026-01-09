@@ -138,12 +138,12 @@ StateTrait.source 的职责非常窄：
 
 Runtime 侧的责任：
 
-1. StateTrait.install 依据 Plan 在**显式入口被调用时**触发 source-refresh（v001）：  
+1. StateTrait.install 依据 Plan 在**统一入口被调用时**触发 source-refresh（v001）：  
    - 为每个 source 字段在 Bound API / Runtime 上生成一个标准的加载入口（例如 `$.traits.source.refresh("profileResource")`），该入口在被调用时执行一次对应的 `source-refresh` 计划；  
    - 从当前 State 计算 key；若 keySelector 返回 `undefined`，则视为“当前无有效 key / 禁用”，不触发 IO；  
    - 计算稳定 `keyHash`（用于门控与可解释锚点），并构造 `EffectOp(kind = "trait-source", meta.resourceId, meta.keyHash, meta.fieldPath = ...)`；  
    - 把该 EffectOp 丢给 Middleware 总线。  
-   - 默认情况下，StateTrait.install 不在模块挂载或任意 State 变化时隐式触发 source-refresh；若未来引入 `onMount` / `onKeyChange` 等自动模式，必须通过 traits 配置与 Runtime/Middleware 显式启用（见 FR-019）。
+   - 当 `StateTrait.source.autoRefresh` 启用时（对齐 076；默认未提供等价于开启 onMount+onDepsChange），Runtime 会在合适时机自动调用同一入口；当 `autoRefresh: false` 时仅允许显式调用入口（manual-only）。
 2. Middleware 总线：
    - Resource 中间件：路由到 ResourceSpec.load（key 由 source 侧计算并进入执行链路；keyHash 用于门控与诊断锚点）；  
    - Query 中间件（可选）：在有 `Query.Engine.layer + Query.Engine.middleware` 的范围内由 Engine 接管。

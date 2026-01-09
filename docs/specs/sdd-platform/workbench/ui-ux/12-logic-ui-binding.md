@@ -10,7 +10,7 @@ related:
   - ../08-alignment-lab-and-sandbox.md
   - ../14-intent-rule-schema.md
   - ./04-semantic-ui-modeling.md
-  - ../../../../sdd-platform/ssot/contracts/01-runresult-trace-tape.md
+  - docs/ssot/platform/contracts/01-runresult-trace-tape.md
 ---
 
 # UI ↔ Logic 语义绑定协议（Semantic Binding）
@@ -71,7 +71,7 @@ type BindingV1 = {
 Binding 的价值只有在 “可运行 + 可回流” 下才成立：
 
 - UI 在 Sandbox 中不必渲染真实 DOM：可用 Semantic UI Mock 产出 `ui:intent` 事件流（见 `ui-ux/04-semantic-ui-modeling.md`）。
-- Logic 在 Worker 内运行 Logix Runtime；所有行为通过 RunResult 输出（见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）。
+- Logic 在 Worker 内运行 Logix Runtime；所有行为通过 RunResult 输出（见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。
 
 对齐要点：
 
@@ -98,4 +98,4 @@ Binding 协议必须支持“逐级跳伞（Ejection）”，否则无法长期�
 
 - IntentRule（连线协议）数据模型：`docs/specs/sdd-platform/workbench/14-intent-rule-schema.md`
 - Semantic UI Mock 与 UI_INTENT：`docs/specs/sdd-platform/workbench/ui-ux/04-semantic-ui-modeling.md`
-- RunResult/证据链口径：`docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`
+- RunResult/证据链口径：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`

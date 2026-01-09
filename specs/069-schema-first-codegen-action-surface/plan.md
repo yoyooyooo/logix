@@ -46,7 +46,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 结论：PASS（plan 阶段）。
 
 - Intent → Flow/Logix → Code → Runtime：将 “StateSchema（作者入口）→ Static Blueprint（Schema.annotations）→ 派生 actions/reducers（Runtime Capability）” 链路固化为可解释的编译步骤；调用点以 `$.fields` 直接回链到 state schema 的字段/op 定义。
-- docs/specs：本特性以 `specs/069-*` 交付；若后续把 `"logix/stateOps"` 作为跨平台协议/资产，将同步回写到 `docs/specs/sdd-platform/ssot/*`（不在本阶段强制）。
+- docs/specs：本特性以 `specs/069-*` 交付；若后续把 `"logix/stateOps"` 作为跨平台协议/资产，将同步回写到 `docs/ssot/platform/*`（不在本阶段强制）。
 - Effect/Logix contracts：新增/扩展点在 `Logix.Module.make` 的定义期装配（冷路径）与 reducers 生成策略；公共 API 的最小化新增应遵守 `packages/logix-core/src/*.ts` 子模块规则。
 - IR & anchors：蓝图是 Static（可序列化、可 diff）；锚点在 state schema 字段/op 定义行（IDE 可跳转）。不引入第二套“生成器真相源”。
 - Deterministic identity：蓝图不含随机/时间字段；派生 actionTag 默认由 `statePath + opName` 计算，允许显式 override。

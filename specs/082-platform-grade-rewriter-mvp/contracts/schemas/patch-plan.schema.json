@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/082/patch-plan.schema.json",
+  "title": "PatchPlan@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "mode", "operations", "summary"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "kind": { "type": "string", "const": "PatchPlan" },
+    "mode": { "type": "string", "enum": ["report", "write"] },
+    "operations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/PatchOperation" }
+    },
+    "summary": { "$ref": "#/$defs/Summary" }
+  },
+  "$defs": {
+    "Pos": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "column", "offset"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "offset": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "Span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "$ref": "#/$defs/Pos" },
+        "end": { "$ref": "#/$defs/Pos" }
+      }
+    },
+    "PropertyWrite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "valueCode"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "valueCode": { "type": "string", "minLength": 1 }
+      }
+    },
+    "PatchOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opKey", "file", "kind", "targetSpan", "property", "decision", "reasonCodes"],
+      "properties": {
+        "opKey": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["AddObjectProperty"] },
+        "targetSpan": { "$ref": "#/$defs/Span" },
+        "property": { "$ref": "#/$defs/PropertyWrite" },
+        "expectedFileDigest": { "type": "string", "minLength": 1 },
+        "decision": { "type": "string", "enum": ["write", "skip", "fail"] },
+        "reasonCodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "Summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operationsTotal", "writableTotal", "skippedTotal", "failedTotal"],
+      "properties": {
+        "operationsTotal": { "type": "integer", "minimum": 0 },
+        "writableTotal": { "type": "integer", "minimum": 0 },
+        "skippedTotal": { "type": "integer", "minimum": 0 },
+        "failedTotal": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

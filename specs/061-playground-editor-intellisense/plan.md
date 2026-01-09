@@ -122,7 +122,7 @@
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性作用于“Code 编辑”一环；不改变 Flow/Runtime 执行语义，只缩短“写代码→发现错误”的反馈回路。
-- **docs-first & SSoT**：不修改平台 SSoT（`docs/specs/*`）与 runtime SSoT（runtime-logix references）；所有决策落在本 spec 的 `plan.md`/`contracts/`，并以示例应用为验收场。
+- **docs-first & SSoT**：不修改平台 SSoT（`docs/specs/*`）与 runtime SSoT（runtime SSoT references）；所有决策落在本 spec 的 `plan.md`/`contracts/`，并以示例应用为验收场。
 - **Effect/Logix contracts**：不新增/修改对外运行时契约；新增的仅是“编辑器类型注入”内部约定（见 `contracts/README.md`）。
 - **IR & anchors**：不涉及统一最小 IR；不新增锚点协议。
 - **Deterministic identity**：不涉及 runtime identity。

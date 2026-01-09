@@ -1,7 +1,7 @@
 # Tasks: 042 - React 集成冷启动策略与 DX 优化
 
 **Input**: `specs/042-react-runtime-boot-dx/`（`spec.md` / `plan.md` / `research.md` / `data-model.md` / `quickstart.md` / `contracts/`）
-**Scope**: `packages/logix-react`（RuntimeProvider / hooks / ModuleCache / perf-boundaries）+ 文档同步（runtime-logix SSoT、apps/docs、examples）
+**Scope**: `packages/logix-react`（RuntimeProvider / hooks / ModuleCache / perf-boundaries）+ 文档同步（runtime SSoT SSoT、apps/docs、examples）
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -17,7 +17,7 @@
 - [x] T002 [P] 采集并落盘“变更前 baseline evidence”（browser perf-boundaries / 关键指标口径）：`specs/042-react-runtime-boot-dx/perf/before.${GIT_SHA}.${ENV_ID}.json`
 - [x] T003 定义 `RuntimeProvider` 的 `policy` 契约（`mode: sync|suspend|defer` + `preload`）并对外导出：`packages/logix-react/src/internal/provider/RuntimeProvider.tsx`、`packages/logix-react/src/RuntimeProvider.ts`
 - [x] T004 [P] 扩展 Provider Context 承载“解析后的策略快照”（供 hooks 默认读取）：`packages/logix-react/src/internal/provider/ReactContext.ts`
-- [x] T005 [P] 在 runtime-logix SSoT 中固化对外心智模型与默认值（含 `defer+preload` 与边界）：`.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.01-core-hooks.md`
+- [x] T005 [P] 在 runtime SSoT SSoT 中固化对外心智模型与默认值（含 `defer+preload` 与边界）：`docs/ssot/runtime/logix-react/01-react-integration.01-core-hooks.md`
 
 ---
 

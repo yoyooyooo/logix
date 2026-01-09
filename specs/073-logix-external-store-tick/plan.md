@@ -41,7 +41,7 @@
 后续演进将按以上分层推进（本特性只负责“参考系 + 受限绑定”的主干闭环）：
 
 - 本特性不扩展/不固化 `StateTrait.source` 的 `meta.triggers/debounceMs` 反射式解释入口；后续由 `076-logix-source-auto-trigger-kernel` 收敛替换，避免 073 把 tick 参考系意外绑定到旧接口上。
-- 后续 spec：`075-logix-flow-program-ir`（Flow/Action 的可编译控制律），把时间算子与多步协议纳入 tick 参考系（避免黑盒 setTimeout/Promise 链断因果）。
+- 后续 spec：`075-flow-program-codegen-ir`（FlowProgram 出码 IR），把时间算子与多步协议纳入 tick 参考系（避免黑盒 setTimeout/Promise 链断因果）。
 - 后续 spec：`076-logix-source-auto-trigger-kernel`（基于 `dirtyPaths + deps` 的 source 自动触发内核化），逐步消灭 Query/Form 的 action-wiring 胶水（保留 `manual` 作为显式 escape hatch）。
 
 ## Deepening Notes
@@ -59,7 +59,7 @@
 - Decision: React 订阅单一真相源：`@logixjs/react` 必须只订阅 RuntimeStore topic facade，禁止直接订阅 `moduleRuntime.changes*`；per-module stores（`ModuleRuntimeExternalStore*`）在 cutover 后必须删除以避免双真相源/回归 tearing（source: `spec.md#Clarifications` / NFR-007）
 - Decision: Trait 下沉边界：`StateTrait` 只负责“模块内字段能力 + 静态治理 + Static IR 导出”；`TickScheduler/RuntimeStore` 只消费 IR 做调度与快照一致性。禁止把 tick/React 订阅逻辑塞进 traits（SRP + no-dual-truth）。
 - Decision: 调度入口收敛：`queueMicrotask/setTimeout/requestAnimationFrame/MessageChannel/setImmediate` 等宿主调度 API 只允许在单一可注入 Runtime Service（`HostScheduler`）内使用；`TickScheduler/RuntimeStore/ExternalStore/DevtoolsHub` 等核心路径禁止散落直接调用，避免平台差异、链式 microtask 饥饿与测试不确定性。
-- Decision: 反饥饿（yield-to-host）：tick 的“合并触发”允许用 microtask，但任何 **超预算 / 连续无进展 / microtask 链过深** 的续跑必须切到 macrotask（MessageChannel/setImmediate fallback），确保渲染/IO 有机会推进；diagnostics=light/full 必须产出 Slim 证据（见 `contracts/scheduler.md` 与 `contracts/diagnostics.md`）。
+- Decision: 反饥饿（yield-to-host）：tick 的“合并触发”允许用 microtask，但任何 **超预算 / 连续无进展 / microtask 链过深** 的续跑必须切到 macrotask（MessageChannel/setImmediate fallback），确保渲染/IO 有机会推进；diagnostics=light/sampled/full 必须产出 Slim 证据（见 `contracts/scheduler.md` 与 `contracts/diagnostics.md`）。
 
 ## Questions Digest（$speckit plan-from-questions）
 
@@ -100,7 +100,7 @@
   - Q002：Topic facade 回收必须 **显式清理缓存键**：listeners=0 时必须 detach + `Map.delete(topicKey)`，避免 topicKey 字符串残留导致隐性 retained；缓存容器优先 `WeakMap(runtime, Map<topicKey,...>)`（runtime 销毁自动释放整组），并禁止 render 路径反复拼接长 topicKey。
   - Q003：`ExternalStore.fromStream(stream, { initial })` 若缺少 `initial/current`，必须抛出 **Runtime Error**（fail-fast），不能只依赖 TS 类型。
   - Q004：`Runtime.batch` 的扁平化语义会破坏“await nextTick 观察中间态”的假设：batch 只作为 **同步边界**，不支持在 batch 内部 `await` 期望触发 flush；需要异步时序的流程必须在 batch 之外显式组织（文档警告）。
-  - Q005：若 nonUrgent external input 因预算/循环降级被推迟，必须在 diagnostics=light/full 下给出 **显式 Warn 证据**（例如 `trace:tick` 的 deferred 摘要 + primary sample），让 Devtools 能回答“关键数据为何延迟”；diagnostics=off 不引入成本。
+  - Q005：若 nonUrgent external input 因预算/循环降级被推迟，必须在 diagnostics=light/sampled/full 下给出 **显式 Warn 证据**（例如 `trace:tick` 的 deferred 摘要 + primary sample），让 Devtools 能回答“关键数据为何延迟”；diagnostics=off 不引入成本。
   - Q006：SSR：React adapter 在 server render 时使用 `getServerSnapshot ?? getSnapshot`（fallback，而非 `undefined/throw`），宿主负责 hydration 一致性。
   - Q007：Perf 指标口径：`timePerTickMs` 只度量 `tick flush -> notify`（不含 React render/commit）；“跟手性”用独立 `click→paint` guard 覆盖，避免业务组件复杂度污染基线。
   - Q008：`ExternalStore.fromSubscriptionRef(ref)` 以“同步纯读”为前提：`SubscriptionRef.get(ref)` 必须是纯读、无 IO/副作用；否则视为 defect/不支持（不把副作用藏进 `getSnapshot()`）。
@@ -114,7 +114,7 @@
   - Q004：DeclarativeLinkIR 的 “readQuery 节点”必须复用 `ReadQueryStaticIr`（含 `selectorId/readsDigest/lane/producer/equalsKind`），禁止平行定义另一份 selector-like Static IR；读依赖只接受 static lane。
   - Q005：循环防卡死以 hard cap 为主（maxSteps/maxMs/maxTxnCount），`cycle_detected` 作为 best-effort 诊断：在同 tick 内反复 requeue/无进展时提前标注并中断；跨 tick 的反馈环允许存在（最终一致），但需在 `trace:tick` 中可解释（stable=false + degradeReason）。
   - Q006：T035 的目的仅是把现有 SelectorGraph 的“dirty roots → selectorId”增量能力迁到 RuntimeStore 的 selector-topic version（保持性能同级）；`[P]` 仅表示可并行实现，**不是可选**，属于 cutover 阻断项。
-  - Q007：加入 priority inversion 诊断：当 nonUrgent backlog 被推迟且存在对应 React 订阅者时，diagnostics=light/full 产出 Slim Warn（不要求定位到具体组件，但至少能指到 module/instance/selectorId）。
+  - Q007：加入 priority inversion 诊断：当 nonUrgent backlog 被推迟且存在对应 React 订阅者时，diagnostics=light/sampled/full 产出 Slim Warn（不要求定位到具体组件，但至少能指到 module/instance/selectorId）。
   - Q008：不提供 legacy shim：forward-only，cutover 后删除 per-module stores（无兼容层/无弃用期），避免双真相源。
   - Q009：external-owned 以运行期/装配期 fail-fast 为主（build-time 冲突检测 + txn-window guard + 测试），不引入 eslint/类型层静态写入分析（成本高且不可靠）。
   - Q010：Module-as-Source 的可识别性必须可 gate：`fromModule` 的 moduleId 必须可解析且 selectorId 必须稳定（deny `unstableSelectorId`），否则 fail-fast；selector 若缺少 readsDigest，允许退化为 module-topic edge（仍 IR 可识别，不是黑盒订阅）并在 diagnostics 下 Warn。
@@ -144,7 +144,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ### Answers (Pre-Design)
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性属于 Runtime 一致性/调度层：将外部输入与跨模块联动纳入统一 tick 语义，并对齐 React external store 心智。
-- **Docs-first & SSoT**：依赖/对齐既有 specs：`007-unify-trait-system`、`057-core-ng-static-deps-without-proxy`（ReadQuery/static lane）、`060-react-priority-scheduling`（priority notify/lanes）、`027-runtime-observability-hardening`（token/订阅不变量）。若新增对外契约与诊断协议，需同步更新 `.codex/skills/project-guide/references/runtime-logix/**` 的 runtime SSoT。
+- **Docs-first & SSoT**：依赖/对齐既有 specs：`007-unify-trait-system`、`057-core-ng-static-deps-without-proxy`（ReadQuery/static lane）、`060-react-priority-scheduling`（priority notify/lanes）、`027-runtime-observability-hardening`（token/订阅不变量）。若新增对外契约与诊断协议，需同步更新 `docs/ssot/runtime/**` 的 runtime SSoT。
 - **IR & anchors**：新增 ExternalStoreTrait 的 Static IR 与 DeclarativeLink IR（强一致可识别）；动态链路新增 `trace:tick` 事件（Slim & 可序列化）。`tickSeq` 作为新的稳定锚点必须在事件与运行时快照中贯通。
 - **Deterministic identity**：tickSeq 单调递增、无随机/时间默认；与 `instanceId/txnSeq/opSeq` 可关联（至少通过 `trace:tick` 的 anchor）。
 - **Transaction boundary**：externalStore 写回/派生收敛必须在事务窗口内完成；tick 稳定化期间不得引入 IO；IO 只能通过既有 `StateTrait.source` 两阶段语义（loading → async writeback）落地。
@@ -322,7 +322,7 @@ packages/logix-react/
     └── runtime-store-no-tearing.test.tsx        # NEW: perf + semantic assertion (tickSeq一致)
 
 docs/specs/**                         # 若对外术语/契约升级：同步更新（docs-first）
-.codex/skills/project-guide/references/runtime-logix/**  # runtime SSoT 同步（docs-first）
+docs/ssot/runtime/**  # runtime SSoT 同步（docs-first）
 ```
 
 **Structure Decision**: 交付能力落在 `@logixjs/core`（契约 + 默认实现）与 `@logixjs/react`（runtime-store 订阅适配），其余实现细节下沉 `src/internal/**`；core-ng 通过 Runtime Services/Kernel 选择器保证等价语义或显式降级。
@@ -417,7 +417,7 @@ N/A（本特性不以“引入额外复杂度”为目标；若实现阶段出�
 - SSR：ExternalStore 可选 `getServerSnapshot()`（同步、无 IO）；React adapter 在 server render 时优先用它（否则回退到 `getSnapshot()`），宿主负责 hydration 一致性（本特性不做自动注水/rehydrate）。
 - 容错：ExternalStore.getSnapshot() 同步抛错必须被 trait 层捕获；熔断该 trait（保留 last committed 值），并通过 diagnostics 记录 Warn（不得崩溃整个 runtime）。
 - Module-as-Source：提供 `ExternalStore.fromModule(module, selector)`（或等价）把模块 selector 结果归一到 ExternalStore；但其依赖必须可被 IR 识别并由 TickScheduler 参与同 tick 稳定化，禁止实现为“黑盒订阅 + 事件驱动写回”。
-- 可识别性门禁（必须实现）：`fromModule` 的 moduleId 必须可解析且 selectorId 必须稳定（deny `unstableSelectorId`），否则 fail-fast；selector 若缺少 readsDigest，允许退化为 module-topic edge（仍 IR 可识别，不是黑盒订阅）并在 diagnostics=light/full 下 Warn。
+- 可识别性门禁（必须实现）：`fromModule` 的 moduleId 必须可解析且 selectorId 必须稳定（deny `unstableSelectorId`），否则 fail-fast；selector 若缺少 readsDigest，允许退化为 module-topic edge（仍 IR 可识别，不是黑盒订阅）并在 diagnostics=light/sampled/full 下 Warn。
 - `StateTrait.externalStore` 只负责“写回 state field”，派生/联动用 `computed/link/source` 表达（保持 SRP）。
 - Trait 下沉（做到位，避免“Runtime 猜语义”）：
   - `ExternalStore` sugar 必须携带内部 descriptor（至少 `kind="module"` 时包含 `moduleId + ReadQueryStaticIr`），供 trait build/IR export/门禁消费（不允许在 runtime 侧通过 subscribe 黑盒识别）。
@@ -490,7 +490,7 @@ N/A（本特性不以“引入额外复杂度”为目标；若实现阶段出�
 - TickScheduler：把 “安排 tick” 与 “执行 tick” 解耦：microtask 只用于合并触发（Signal Dirty → schedule once）；tick 执行遇到超预算/循环/无进展时必须 yield-to-host（macrotask continuation），并在 `trace:tick` 中可解释（scheduleKind + reason）。
 - RuntimeStore topic notify：low-priority 节流（raf/timeout + maxDelay）也必须通过 HostScheduler 执行，避免 React adapter 自行选择宿主 API 造成双真相源与漂移。
 - 测试口径（act-like）：提供统一的 `Runtime.flushAll/advanceTick`（或 `@logixjs/test` 的 TestKit）来排空 tick + microtasks/macrotasks，避免在测试里散落 `sleep/flushMicrotasks`；行为参考 React `act`（但以 tickSeq 作为唯一观测锚点）。
-- 诊断：当出现 microtask 饥饿防线触发（forced macrotask）或 tick 因预算被切分为多段续跑时，diagnostics=light/full 产出 Slim Warn（不要求指到具体组件，但必须能指到 runtime/module/instance 的最小锚点）。
+- 诊断：当出现 microtask 饥饿防线触发（forced macrotask）或 tick 因预算被切分为多段续跑时，diagnostics=light/sampled/full 产出 Slim Warn（不要求指到具体组件，但必须能指到 runtime/module/instance 的最小锚点）。
 - 生产巡检（可选）：在 `diagnostics=off` 下仍允许 opt-in 的低频遥测（sampled `onTickDegraded` / sampling log），用于统计 `stable=false / forced yield` 发生率（默认关闭，确保近零成本）。
 
 明确不做（避免语义漂移）：

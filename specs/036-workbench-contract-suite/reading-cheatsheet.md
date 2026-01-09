@@ -10,11 +10,11 @@
 ## 1) 主线阅读顺序（建议照着点开）
 
 1) IR 全链路（从页面反推到 runtime）  
-`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`  
+`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`  
 你会拿到：`IrPage → sandbox compile/run → Observability.trialRunModule → TrialRunReport/Manifest/StaticIR/Evidence` 的实现落点与各 IR 字段语义。
 
 2) IR vs AST（上帝视角：表达能力/可逆性/Agent 出码闭环）  
-`.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/04-ir-vs-ast-and-agent-coding.md`  
+`docs/ssot/runtime/logix-core/concepts/04-ir-vs-ast-and-agent-coding.md`  
 你会拿到：为什么 IR 不是“比 AST 高级”，以及“IR 做裁判、AST/patch 做编辑载体”的组合拳结论。
 
 3) 031：TrialRun artifacts 槽位（统一承载 Supplemental Static IR）  

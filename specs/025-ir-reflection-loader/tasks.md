@@ -145,7 +145,7 @@
 ## Phase N: Polish & Regression Defenses（Required）
 
 - [x] T050 增加“试跑开销”基线脚本与证据落点（N 次 trialRunModule + scope close，记录 wall time/事件数）：`pnpm perf bench:025:trialRunModule`、`specs/025-ir-reflection-loader/perf.md`、`specs/025-ir-reflection-loader/perf/` （Refs: NFR-001, SC-005）
-- [x] T051 [P] 同步 runtime SSoT（Reflection/TrialRunReport/Environment IR/控制面证据口径）：`.codex/skills/project-guide/references/runtime-logix/logix-core/*` （Refs: FR-001, FR-005, FR-009, FR-010, NFR-005）
+- [x] T051 [P] 同步 runtime SSoT（Reflection/TrialRunReport/Environment IR/控制面证据口径）：`docs/ssot/runtime/logix-core/*` （Refs: FR-001, FR-005, FR-009, FR-010, NFR-005）
 - [x] T052 [P] 同步用户文档（apps/docs）：说明 manifest/试跑产物与“为什么必须显式 runId/Scope close”（避免平台内部术语泄漏）：`apps/docs/content/docs/*` （Refs: NFR-005, SC-001, SC-003）
 - [x] T053 [P] 更新 `specs/025-ir-reflection-loader/quickstart.md`：确保示例与最终 API/字段一致 （Refs: FR-001, FR-005, SC-001, SC-003）
 - [x] T054 [P] 补齐 `specs/025-ir-reflection-loader/handoff.md`：记录最终裁决、非目标、迁移与下一步 （Refs: —，交接记录）

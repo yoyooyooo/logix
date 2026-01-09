@@ -8,7 +8,7 @@ related:
   - ../sdd-platform/00-overview.md
   - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
   - ../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md
-  - ../../../sdd-platform/ssot/assets/00-assets-and-schemas.md
+  - ../../../docs/ssot/platform/assets/00-assets-and-schemas.md
   - ../sandbox-runtime/35-playground-product-view.md
   - ../devtools-and-studio/README.md
 ---
@@ -19,7 +19,7 @@ related:
 
 ## 约束（继承上游裁决）
 
-- 平台的统一 IR：`IntentRule`（R-S-T + `source/pipeline/sink`），详见：`../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md` 与 `.codex/skills/project-guide/references/runtime-logix/logix-core/platform/06-platform-integration.md`。
+- 平台的统一 IR：`IntentRule`（R-S-T + `source/pipeline/sink`），详见：`../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md` 与 `docs/ssot/runtime/logix-core/platform/06-platform-integration.md`。
 - Playground/Alignment Lab 是“Executable Spec Lab”，不是纯 Code Runner（参考：`../sandbox-runtime/65-playground-as-executable-spec.md`）。
 - Full‑Duplex（Intent ↔ Code）优先走“可解析子集 + 明确降级（Gray/Black Box）”，避免半懂半不懂（参考：`../../../sdd-platform/impl/README.md`）。
 

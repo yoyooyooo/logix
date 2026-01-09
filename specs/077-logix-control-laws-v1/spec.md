@@ -22,7 +22,7 @@
 
 形式化工作模型的 SSoT 在：
 
-- `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md` 的 “1.2 最小系统方程”
+- `docs/ssot/platform/contracts/00-execution-model.md` 的 “1.2 最小系统方程”
 
 本 group spec 只做落地映射与分层裁决复述（不新增第二套公式）：
 
@@ -37,7 +37,7 @@ S_{t+1}= Close_{C_T}( S_t ⊕ Δ(Ops_t) )
 Obs_t  = Ω_F(S_t)
 ```
 
-注：SSoT 在 `docs/specs/sdd-platform/ssot/foundation/01-the-one.md` 中进一步扩展为 `Σ_t=(S_t,I_t)`（开放系统/并发/定时器/背压等在途态，见 “3.1”）。本 group 默认采用该扩展心智，不另写第二套公式。
+注：SSoT 在 `docs/ssot/platform/foundation/01-the-one.md` 中进一步扩展为 `Σ_t=(S_t,I_t)`（开放系统/并发/定时器/背压等在途态，见 “3.1”）。本 group 默认采用该扩展心智，不另写第二套公式。
 
 裁决（防漂移）：
 
@@ -57,9 +57,9 @@ Obs_t  = Ω_F(S_t)
 
 对应契约入口：
 
-- 长期模型：`docs/specs/sdd-platform/ssot/foundation/01-the-one.md`
-- 时间旅行交互/愿景：`docs/specs/sdd-platform/ssot/contracts/02-time-travel.md`
-- Program 侧 Tape 口径（可回放最小记录）：`specs/075-logix-flow-program-ir/contracts/tape.md`
+- 长期模型：`docs/ssot/platform/foundation/01-the-one.md`
+- 时间旅行交互/愿景：`docs/ssot/platform/contracts/02-time-travel.md`
+- Program 侧 Tape 口径（可回放最小记录）：`specs/075-flow-program-codegen-ir/contracts/tape.md`
 
 ## Members（本 group 调度的 specs）
 
@@ -67,8 +67,26 @@ Obs_t  = Ω_F(S_t)
 人读阐述：`specs/077-logix-control-laws-v1/spec-registry.md`。
 
 - `specs/073-logix-external-store-tick/`：建立参考系 `F`（`RuntimeStore + tickSeq`，no-tearing）
-- `specs/075-logix-flow-program-ir/`：建立通用控制律 `Π_general`（FlowProgram IR：Action→Action + 时间算子）
+- `specs/075-flow-program-codegen-ir/`：建立通用控制律 `Π_general`（FlowProgram Codegen IR：出码层 + 时间算子进入证据链）
 - `specs/076-logix-source-auto-trigger-kernel/`：建立受限控制律 `Π_source`（source 自动触发内核化，消灭 Query/Form 胶水）
+
+## Spec 快速裁决（三问，避免“只做微调”的幻觉）
+
+当你在评审/推进任何与 **控制律（Π）/时间语义/自动触发/Watcher** 相关的 spec 时，先用三问做裁决：
+
+1. **能否降解到统一最小 IR？**（Static IR + Slim Trace/Tape；纯数据可序列化；无运行期闭包；tickSeq 可归因）
+2. **是否引入并行真相源？**（第二套 ID/IR/时间线/推断规则/缓存真相源；或“静态里塞动态再反射解释”）
+3. **默认档是否近零成本且不线性退化？**（`diagnostics=off` 近零成本；不会因 programs/watchers 增长而线性扫描/线性订阅；Action fan-out 与路由对齐 `specs/068-watcher-pure-wins/` 的约束）
+
+裁决规则：
+
+- 任一题回答为“否”，就不应以“文案拉齐/小修小补”推进；应拆分/重构/暂停，直到三问都能给出可证据化的“是”。
+
+### 反模式清单（新定位下应降级到 v2/backlog 或直接停掉）
+
+- 把 075 FlowProgram 当作“人类主写 DSL”去做 DX：大量语法糖/重载、闭包映射、v1 就引入 service 结果数据流、自动派生 stepKey、邻接推断分支等 —— 这些会与“IR 可导出/可回放/性能门槛”硬冲突。
+- 继续投资 trait meta/feature 包里的反射式工作流（把触发/时间/分支塞回 meta 再解释）：会制造并行控制律与影子时间线；应由 076（受限 Π_source）+ 075（通用 Π_general）接管。
+- 任何导致 watcher 数量随 programs 增长、或 dispatch/commit 需要线性扫描全量的设计：必须回到 068 的 fan-out/topic-index 约束重新设计，而不是事后补丁。
 
 ## User Scenarios & Testing _(mandatory)_
 

@@ -29,7 +29,7 @@
 - Q: core-ng 选择策略：允许与 builtin 混用还是必须全套切换？ → A: 仅在 `trial-run/test/dev` 允许按 `serviceId` 渐进替换（可混用 builtin，但必须记录并可对比）；当宣称“已切到 core-ng/准备切换默认实现”时，必须全套切换，否则视为未达标。
 - Q: core/core-ng 的选择粒度：按 runtime / module / instance？ → A: 按 `ManagedRuntime`（一棵 DI 树）选择：同一棵 runtime 下所有 `ModuleRuntime` 共享同一 `kernelId`（`core`/`core-ng`）；仅在 `trial-run/test/dev` 才允许按 `serviceId` 细粒度混用并记录证据。
 - Q: 是否允许引入新的对外概念/API 来控制切换与对照？ → A: 不新增面向业务的概念/API；切换仅发生在 runtime 装配阶段（`kernelId` 选择），并通过 `KernelImplementationRef + RuntimeServicesEvidence` 进入统一最小 IR/证据链路。
-- Q: 选择证据在不同诊断档位的要求？ → A: 分档位：diagnostics=off 必须至少包含 `KernelImplementationRef` 的极小摘要；diagnostics=light/full 必须包含 `RuntimeServicesEvidence`（serviceId→implId 选择证据）。
+- Q: 选择证据在不同诊断档位的要求？ → A: 分档位：diagnostics=off 必须至少包含 `KernelImplementationRef` 的极小摘要；diagnostics=light/sampled/full 必须包含 `RuntimeServicesEvidence`（serviceId→implId 选择证据）。
 - Q: `KernelImplementationRef.kernelId` 的语义：表示“请求的内核族”还是“实际全套生效的内核族”？ → A: 表示“请求的内核族”；即使部分 `serviceId` fallback 到 builtin，仍保持 `core-ng`。是否已达“全套切换/可作为默认实现”由 `RuntimeServicesEvidence`（及其 fallback 记录）判定。
 
 ### Session 2025-12-28

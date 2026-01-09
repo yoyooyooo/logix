@@ -1,7 +1,7 @@
 # Data Model: 062 logix-galaxy-api（PostgreSQL 开发环境样例）
 
 **Feature**: `specs/062-galaxy-api-postgres/spec.md`  
-**SSoT**: `docs/specs/sdd-platform/ssot/examples/02-logix-galaxy-api-postgres.md`  
+**SSoT**: `docs/ssot/platform/examples/02-logix-galaxy-api-postgres.md`  
 **Date**: 2025-12-30
 
 ## 1) 范围

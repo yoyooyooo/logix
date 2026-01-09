@@ -22,16 +22,16 @@
 - [x] T007 定义 `RuntimeServicesEvidence` 的对外读取入口（不暴露 `src/internal/*`）：在 `packages/logix-core/src/Kernel.ts` 或 `packages/logix-core/src/internal/InternalContracts.ts` 增加最小 accessor
 - [x] T008 引入“可注入实现注册表”契约：在 `packages/logix-core/src/internal/runtime/core/RuntimeKernel.ts` 定义 Registry Tag（serviceId → impls），并在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` 合并 builtin + registry impls 后再 `selectRuntimeService(...)`
 - [x] T009 将 “按 `ManagedRuntime` 选择内核” 固化为装配点：在 `packages/logix-core/src/Runtime.ts`（或 `packages/logix-core/src/Kernel.ts`）提供构造 layer 的最小 helper（runtime_default scope），禁止按 moduleId 选择作为默认路径
-- [x] T010 实现证据采集分档：在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` 对 `EvidenceCollectorTag.setRuntimeServicesEvidence(...)` 加闸门（diagnostics=off 不写入；light/full 写入）
+- [x] T010 实现证据采集分档：在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` 对 `EvidenceCollectorTag.setRuntimeServicesEvidence(...)` 加闸门（diagnostics=off 不写入；light/sampled/full 写入）
 - [x] T011 扩展证据采集：为 `KernelImplementationRef` 增加 collector 通道并写入 EvidencePackage.summary（`packages/logix-core/src/internal/observability/evidenceCollector.ts`）
-- [x] T012 更新 TrialRun 报告的环境摘要：`packages/logix-core/src/internal/observability/trialRunModule.ts` 在 diagnostics=off 输出 `kernelImplementationRef`（极小摘要），在 light/full 才输出 `runtimeServicesEvidence`
+- [x] T012 更新 TrialRun 报告的环境摘要：`packages/logix-core/src/internal/observability/trialRunModule.ts` 在 diagnostics=off 输出 `kernelImplementationRef`（极小摘要），在 light/sampled/full 才输出 `runtimeServicesEvidence`
 - [x] T013 [P] 补齐 JSON 可序列化与 schema 对齐检查：为 `KernelImplementationRef` 增加最小 runtime validator（位置：`packages/logix-core/src/internal/observability/jsonValue.ts` 或 `packages/logix-core/src/Kernel.ts`）
 
 **Tests（Foundational）**
 
 - [x] T014 [P] 新增测试：diagnostics=off 时 EvidencePackage.summary 不包含 `runtime.services`（`packages/logix-core/test/observability/Evidence.summary.runtimeServices.off.test.ts`）
 - [x] T015 [P] 新增测试：diagnostics=off 时 TrialRunReport.environment 包含 `kernelImplementationRef`（且默认 `kernelId="core"`）但不包含 `runtimeServicesEvidence`（`packages/logix-core/test/observability/TrialRunReport.kernelRef.off.test.ts`）
-- [x] T016 [P] 新增测试：diagnostics=light/full 时 TrialRunReport.environment 包含 `runtimeServicesEvidence`（`packages/logix-core/test/observability/TrialRunReport.runtimeServices.light.test.ts`）
+- [x] T016 [P] 新增测试：diagnostics=light/sampled/full 时 TrialRunReport.environment 包含 `runtimeServicesEvidence`（`packages/logix-core/test/observability/TrialRunReport.runtimeServices.light.test.ts`）
 
 **Contract Verification Harness（Foundational）**
 
@@ -50,7 +50,7 @@
 
 **Goal**: `@logixjs/react`/Devtools/Sandbox 不依赖 `@logixjs/core-ng`；通过统一最小 IR 与证据能解释“用的哪个内核/为何如此选择”。
 
-**Independent Test**: 在不引入 `@logixjs/core-ng` 依赖的前提下，TrialRun/Devtools 仍可导出并解释 `KernelImplementationRef`（off）与 `RuntimeServicesEvidence`（light/full）。
+**Independent Test**: 在不引入 `@logixjs/core-ng` 依赖的前提下，TrialRun/Devtools 仍可导出并解释 `KernelImplementationRef`（off）与 `RuntimeServicesEvidence`（light/sampled/full）。
 
 - [x] T022 [P] [US1] 添加防回归测试：`packages/logix-react/package.json` 不得声明依赖 `@logixjs/core-ng`（`packages/logix-react/test/internal/no-core-ng-dependency.contract.test.ts`）
 - [x] T023 [US1] 将 “≤5 关键词心智模型” 写入 `specs/045-dual-kernel-contract/spec.md` 的 NFR-005（不引入新概念：`kernelId(requested)` + `servicesEvidence(actual)` + `fallback` + `diagnosticsLevel` + `budget`）

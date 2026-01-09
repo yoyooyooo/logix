@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/078/module-manifest.schema.json",
+  "title": "ModuleManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifestVersion", "moduleId", "actionKeys", "actions", "digest"],
+  "properties": {
+    "manifestVersion": { "type": "string", "minLength": 1 },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "actionKeys": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "actions": {
+      "type": "array",
+      "items": { "$ref": "../../../067-action-surface-manifest/contracts/schemas/module-manifest-action.schema.json" }
+    },
+    "effects": {
+      "type": "array",
+      "items": { "$ref": "../../../067-action-surface-manifest/contracts/schemas/module-manifest-effect.schema.json" }
+    },
+    "schemaKeys": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "logicUnits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "id"],
+        "properties": {
+          "kind": { "type": "string", "minLength": 1 },
+          "id": { "type": "string", "minLength": 1 },
+          "derived": { "type": "boolean" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "servicePorts": {
+      "type": "array",
+      "items": { "$ref": "./module-manifest-service-port.schema.json" }
+    },
+    "source": { "$ref": "../../../067-action-surface-manifest/contracts/schemas/dev-source.schema.json" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+    },
+    "staticIr": { "$ref": "../../../025-ir-reflection-loader/contracts/schemas/static-ir.schema.json" },
+    "digest": { "type": "string", "minLength": 1 }
+  }
+}

@@ -58,7 +58,7 @@ US1 之后的主线：
   - 补齐 `sampleRate/droppedCount` 字段位（当前默认 `sampleRate=1`、`droppedCount=0`）。
 - 文档同步：
   - 用户文档新增并接入导航：`apps/docs/content/docs/guide/advanced/concurrency-control-plane.md`、`apps/docs/content/docs/guide/advanced/meta.json`
-  - runtime SSoT 补齐并发诊断 code 与 details schema 口径：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+  - runtime SSoT 补齐并发诊断 code 与 details schema 口径：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 
 ## 已确认可复用/已实现的 020 相关落点（对 021 直接有用）
 

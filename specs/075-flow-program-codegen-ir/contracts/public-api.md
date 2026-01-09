@@ -1,0 +1,102 @@
+# Contracts: Public API（FlowProgram）
+
+> 本文定义对外 API 口径；实现细节下沉 `packages/*/src/internal/**`。
+
+## 1) `@logixjs/core`：FlowProgram（公共子模块）
+
+目标：用“声明式 Program”表达自由工作流（Control Laws），并可被 mount 为 ModuleLogic。
+
+> **定位裁决（v1）**：FlowProgram 是 AI/平台专属的 **出码层（IR DSL）**，核心目标是稳定、可序列化、可校验、可 diff、可解释；人类直接手写的舒适性不是第一约束。
+>
+> 因此对外 API 必须以“纯数据 + 可编译”为中心：所有语义在导出/编译期确定，运行时只消费编译产物。
+
+### 1.1 入口（概念）
+
+- `FlowProgram.make(programId, spec)`：定义一个 Program（声明式 Spec；**禁止闭包**；可导出形态为 Static IR）
+- `program.install(moduleTag)`：把 Program 绑定到 module 并编译+mount（产出 ModuleLogic）
+  - 推荐 DX sugar：`Module.withFlow(program)`（内部等价于 `Module.withLogic(program.install(Module.tag))`）
+- **推荐（平台/AI 出码 + 性能门槛）**：`Module.withFlows(programs)`（批量安装多个 programs，并保证每个 module instance 只产生 1 条 actions$ watcher Fiber；内部做 `actionTag -> programs[]` 路由）
+- `program.exportStaticIr()`：导出 JSON 可序列化 Static IR（供 Devtools/Alignment Lab 可视化与 diff）
+- `program.validate()`：导出/安装前的强校验入口（fail-fast；错误可机器修复；运行时不承担校验成本）
+
+说明（避免“差点味道”的三条硬边界）：
+
+- **Spec ≠ Static IR**：`FlowProgramSpec` 是作者输入（声明式），Static IR 才是可序列化/可对比的单一真相源。
+- **Canonical AST（唯一规范形）**：在 Spec 与 Static IR 之间存在 Canonical AST：无语法糖、默认值落地、分支显式、`stepKey` 完整；所有前端（Recipe/AI/Studio/TS DSL）必须先归一到 Canonical AST，再编译为 Static IR。
+- **Tag-only serviceCall**：`serviceCall` 只接受 `Context.Tag`；Static IR 中只保留 `serviceId: string`（由 Tag 派生，算法对齐 `specs/078-module-service-manifest/contracts/service-id.md`，必须单点实现）。
+- **无用户闭包进入运行期**：Program 内不允许“运行时求值”的 user closure；复杂映射/条件下沉到 service/pattern（Program 只编排边界与策略）。
+
+### 1.2 触发源（最小集合）
+
+- `FlowProgram.onAction(actionTag)`
+- `FlowProgram.onStart()` / `FlowProgram.onInit()`
+
+### 1.3 步骤（最小集合）
+
+- `dispatch(actionTag, payload?, options?)`：默认写侧（可追踪）
+  - `options.key?`：可选稳定 key（用于生成稳定 nodeId / source 映射；组合/重构友好）
+- `serviceCall(serviceTag, options?)`：事务窗口外执行 IO；可产生 success/failure 分支
+  - `options.input?`：缺省时，Action 触发的 Program 默认传入 `action.payload`；其它触发源则为 `undefined`（如需复杂输入映射，请下沉到 service/pattern）
+  - `options.key?`：可选稳定 key（用于生成稳定 nodeId / source 映射；组合/重构友好）
+  - `options.timeoutMs?` / `options.retry?`：时间语义必须进入 tick 参考系，并出现在可导出的 Static IR（不是运行时黑盒参数）
+  - `serviceTag` 建议代表“单一 operation 的 service port”（而不是一个包含多个方法的大而全 service）：
+    - FlowProgram 的 IR 只记录 `serviceId`（稳定字符串）而不记录 methodName；因此多操作应拆分为多个 Tag（每个 Tag 对应一个 port/操作）
+    - 目标：最大化类型安全、可解释性与 IR 的稳定可比性（避免再引入 methodName 字符串造成第二套身份/分支）
+- `onSuccess(steps)` / `onFailure(steps)`：结构化分支（authoring sugar）
+  - 仅允许紧跟在 `serviceCall(...)` 之后；编译后必须映射为 IR 的节点/边（图结构），并保持可解释的取消语义
+  - **v1 硬裁决**：不允许邻接推断作为真相源；Canonical AST 中分支必须显式结构化（例如 `serviceCall.{success,failure}` 或等价结构字段）
+- `delay(ms, options?)`：必须进入 tick 参考系（禁止影子 setTimeout）
+  - `options.key?`：可选稳定 key（用于生成稳定 nodeId / source 映射；组合/重构友好）
+- `traits.source.refresh(fieldPath, options?)`：显式触发 source 刷新（用于 manual-only source 或工作流中的强制刷新；写回仍走事务窗口）
+  - `options.key?`：可选稳定 key（用于生成稳定 nodeId / source 映射；组合/重构友好）
+
+### 1.3.1 输入映射 DSL（v1，最小）
+
+FlowProgram v1 允许在不引入 user closure 的前提下，表达最小“结构映射”，用于 `serviceCall.input` 与 `dispatch(payload)`：
+
+- **允许**：`payload`、`payload.path`（JSON Pointer）、`const`、`object`、`merge`
+- **禁止**：读取 state/traits、条件/循环/算术、引用 `serviceCall` 返回值
+
+> 该 DSL 的目标是服务“平台/AI 出码”，并保证编译与校验可完全前置；复杂映射继续下沉到 service/pattern。
+
+### 1.4 策略
+
+- 并发：`latest | exhaust | parallel`（与既有 FlowRuntime 语义一致）
+- priority：`urgent | nonUrgent`（与 073 lanes 对齐）
+
+### 1.5 组合（Build-time Composition）
+
+目标：在不引入运行时闭包的前提下，增强 DSL 的表达能力与组合性；组合的产物仍必须可被编译为单一 Static IR。
+
+- `FlowProgram.fragment(fragmentId, steps)`：定义可复用片段（fragment）
+  - fragment 是 build-time 结构单元：用于复用/组合；编译后 fragment 边界可映射到 IR 节点的 `source.fragmentId`（或等价可序列化字段）
+- `FlowProgram.compose(...parts)`：组合步骤与片段，生成 `steps`（序列化的结构 AST，而不是运行时函数管道）
+- `FlowProgram.withPolicy(policy, stepsOrFragment)`：为一段结构附加策略（例如默认并发/时间策略）
+
+明确不做（避免歧义）：
+
+- 不把 `Effect.pipe/map/flatMap` 作为 FlowProgram 的结构 DSL：这些 API 以任意函数闭包为中心，无法可靠 IR 化/序列化；Effect 仅用于运行时解释执行（FlowRuntime/IO/Timer 之下的执行层）。
+
+## 2) 约束（必须）
+
+- Program 必须可导出为 Static IR（JSON 可序列化，带 version+digest）。
+- 写侧默认仅允许 dispatch；禁止把 direct state write 作为 Program step（避免写逃逸）。
+- 时间算子必须可回放/可解释：timer 触发必须能归因到 tickSeq。
+
+## 3) Recipe（压缩前端）与 Canonical AST（规范形）
+
+v1 引入 Recipe 作为“压缩输入”形态：它不是另一套语义语言，而是可确定性展开为 Canonical AST 的模板层。
+
+### 3.1 Recipe 的职责
+
+- 输入：少量参数（触发、调用的 service、策略、成功/失败处理…），且必须纯数据（JSON 可序列化）
+- 输出：Canonical AST（唯一规范形；无语法糖；分支显式；`stepKey` 完整）
+- 目标：让业务侧/AI 以更短的描述获得“少胶水”的 workflow，同时不牺牲 IR 的稳定性与可诊断性
+
+### 3.2 Canonical AST 的职责（关键不变量）
+
+- 同一语义只有一种表示：去 sugar、补默认、显式分支、稳定 key
+- 所有 step 必须具备 `stepKey`（缺失 fail-fast）
+- `serviceCall` v1 只表达控制流（success/failure），不提供结果数据流
+
+> Canonical AST 的精确定义与示例见 `data-model.md`。

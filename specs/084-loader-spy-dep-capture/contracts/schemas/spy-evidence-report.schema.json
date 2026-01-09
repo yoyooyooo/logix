@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/084/spy-evidence-report.schema.json",
+  "title": "SpyEvidenceReport@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "mode", "runId", "usedServices", "rawMode", "coverage", "violations", "summary"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "kind": { "type": "string", "const": "SpyEvidenceReport" },
+    "mode": { "type": "string", "const": "loader" },
+    "runId": { "type": "string", "minLength": 1 },
+    "usedServices": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ServiceUseEvidence" }
+    },
+    "rawMode": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/RawModeEntry" }
+    },
+    "diff": { "$ref": "#/$defs/Diff" },
+    "coverage": { "$ref": "#/$defs/CoverageMarker" },
+    "violations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ViolationEntry" }
+    },
+    "summary": { "$ref": "#/$defs/SpyEvidenceSummary" }
+  },
+  "$defs": {
+    "JsonValue": {
+      "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+    },
+    "ServiceUseEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serviceId"],
+      "properties": {
+        "serviceId": { "type": "string", "minLength": 1 },
+        "moduleId": { "type": "string", "minLength": 1 },
+        "logicKey": { "type": "string", "minLength": 1 },
+        "occurrences": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "RawModeEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reasonCodes"],
+      "properties": {
+        "reasonCodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "moduleId": { "type": "string", "minLength": 1 },
+        "tagName": { "type": "string", "minLength": 1 }
+      }
+    },
+    "Diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["usedButNotDeclared", "declaredButNotUsed"],
+      "properties": {
+        "usedButNotDeclared": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "declaredButNotUsed": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "CoverageMarker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "completeness", "limitations"],
+      "properties": {
+        "stage": { "type": "string", "const": "loader" },
+        "completeness": { "type": "string", "const": "best-effort" },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "ViolationEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "details": { "$ref": "#/$defs/JsonValue" }
+      }
+    },
+    "SpyEvidenceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["usedServicesTotal", "rawModeTotal", "violationsTotal"],
+      "properties": {
+        "usedServicesTotal": { "type": "integer", "minimum": 0 },
+        "rawModeTotal": { "type": "integer", "minimum": 0 },
+        "violationsTotal": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
+

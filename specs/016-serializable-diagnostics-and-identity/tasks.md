@@ -32,7 +32,7 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 
 **Purpose**: 先把“导出边界/锚点/降级规则”固化为 SSoT 与 schemas，避免实现跑偏
 
-- [X] T001 更新 Debug SSoT：固化“宿主内原始事件 vs 可导出事件”边界、JsonValue 硬门、`instanceId` 单锚点与降级口径在 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [X] T001 更新 Debug SSoT：固化“宿主内原始事件 vs 可导出事件”边界、JsonValue 硬门、`instanceId` 单锚点与降级口径在 `docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [X] T002 （Moved → 011）Lifecycle setup-only 的 SSoT/示例口径由 011 执行与验收：见 `specs/011-upgrade-lifecycle/tasks.md`（T001/T002/T022）
 - [X] T003 对齐 005 RuntimeDebugEventRef schema：补齐 `errorSummary`/`downgrade` 字段、稳定标识字段（对齐 009 的 `txnSeq/eventSeq` 或等价集合），并移除双锚点字段，在 `specs/005-unify-observability-protocol/contracts/schemas/runtime-debug-event-ref.schema.json` 与 `specs/005-unify-observability-protocol/contracts/observability-protocol.md`
 - [X] T004 统一 016/005 的 Debug 事件契约：消除重复定义（以 005 schema 为主，016 schema 仅做 ref 或 allOf 收敛）在 `specs/016-serializable-diagnostics-and-identity/contracts/schemas/exportable-runtime-debug-event-ref.schema.json` 与 `specs/016-serializable-diagnostics-and-identity/contracts/README.md`

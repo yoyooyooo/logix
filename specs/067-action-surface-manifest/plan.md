@@ -52,7 +52,7 @@ Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-0
 **Performance Goals**:
 
 - diagnostics=off：`dispatch` 热路径保持近零额外成本（不新增 JsonValue 投影，不新增 O(n) 扫描）。
-- diagnostics=light/full：Action 事件追加的 `actionTag/actionRef` 计算为 O(1)，额外分配可控；manifest 提取属于冷路径。
+- diagnostics=light/sampled/full：Action 事件追加的 `actionTag/actionRef` 计算为 O(1)，额外分配可控；manifest 提取属于冷路径。
 - manifest 输出：默认 `maxBytes ≤ 64KB`；超限时 deterministic 裁剪并以 `meta.__logix.truncated` 给出可解释证据。
 - `$.dispatchers` 构造：不得为每个 bound instance 生成 O(n actions) 的闭包函数；优先复用 token 符号（或等价的零/低分配视图），避免“actions 多 → 绑定成本爆炸”。
 - effects 装配：同一 actionTag 只允许一个底层 watcher/订阅链路，handler 以列表 fan-out；dispatch 未命中 effects 时不得引入额外成本。
@@ -74,10 +74,10 @@ Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-0
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-结论：PASS（plan 阶段）。Phase 1 设计完成后需要复核：manifestVersion/字段语义、裁剪顺序、以及事件对齐说明是否已回写到 runtime-logix 文档。
+结论：PASS（plan 阶段）。Phase 1 设计完成后需要复核：manifestVersion/字段语义、裁剪顺序、以及事件对齐说明是否已回写到 runtime SSoT 文档。
 
 - Intent → Flow/Logix → Code → Runtime：把 ActionRef 作为 Dynamic Trace（RuntimeDebugEventRef）与 Static 摘要（ModuleManifest.actions）的连接点。
-- docs/specs：本特性以 `specs/067-*` 交付；若裁决升级为平台协议，将同步回写到 `docs/specs/sdd-platform/ssot/*` 与 runtime-logix 事件协议文档。
+- docs/specs：本特性以 `specs/067-*` 交付；若裁决升级为平台协议，将同步回写到 `docs/ssot/platform/*` 与 runtime SSoT 事件协议文档。
 - Effect/Logix contracts：扩展 ModuleManifest 的 schema（actions + effects）；事件侧优先复用既有 `RuntimeDebugEventRef`（避免另起炉灶的 on-wire 协议）。
 - IR & anchors：新增 ActionAnchor/ActionDescriptor（platform-grade 子集），字段语义固化到本 feature 的 contracts + quickstart（避免平台/运行时双真相源）。
 - Deterministic identity：ActionRef 不含随机字段；实例/事务锚点沿用现有 `instanceId/txnSeq/txnId`。
@@ -89,7 +89,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - User-facing performance mental model：本特性不改变默认策略（预期 N/A）；若引入新的默认采集/导出策略，再补 ≤5 关键词与优化梯子。
 - Breaking changes（forward-only）：若移除 `action.type` 兼容或升级 manifestVersion，必须在本 plan/tasks 中提供迁移说明（无兼容层/无弃用期）。
 - Public submodules：若新增 `ActionToken` 并进入 `@logixjs/core` 公共 API，按 `packages/logix-core/src/*.ts` 子模块规则落点，内部实现下沉 `src/internal/**`。
-- DX 与可解释性：`actions/dispatchers` 的“定义视图 vs 执行视图”必须在 quickstart 与 runtime-logix API 文档中固化，避免用户把 creator 当 dispatcher（或反之）。
+- DX 与可解释性：`actions/dispatchers` 的“定义视图 vs 执行视图”必须在 quickstart 与 runtime SSoT API 文档中固化，避免用户把 creator 当 dispatcher（或反之）。
 - Quality gates：合并前通过 `pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`；关键用例覆盖 manifest deterministic 与事件映射（含 unknown 降级）。
 
 ## Perf Evidence Plan（MUST）

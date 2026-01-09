@@ -134,11 +134,11 @@ type StateTraitSourceSpec<Input, Ctx> = {
   readonly resource: ResourceIdLike
   // 允许返回 undefined 表示“当前无有效 key”：不触发 IO，snapshot 回到 idle。
   readonly key: (...depsValues: Array<unknown>) => unknown | undefined
-  // 触发集合：Form.traits 默认 ["onMount", "onKeyChange"]；kernel 默认 ["manual"]。
-  // 约束：若包含 "manual"，则必须严格等于 ["manual"]（与其它 trigger 互斥）。
-  // 说明：kernel 统一用“状态语义”命名，避免与 UI 层事件混淆；UI 适配层可把 onChange/onBlur 映射为 onKeyChange/onBlur。
-  readonly triggers?: ReadonlyArray<"manual" | "onMount" | "onKeyChange" | "onBlur">
-  readonly debounceMs?: number
+  // 自动触发策略（对齐 076）：默认 autoRefresh 未提供即开启 onMount+onDepsChange；如需仅显式 refresh，使用 autoRefresh: false。
+  // 注意：UI 事件（blur/submit）不进入内核枚举，应由 UI 适配层显式调用同一 refresh 入口接入。
+  readonly autoRefresh?:
+    | { readonly onMount?: boolean; readonly onDepsChange?: boolean; readonly debounceMs?: number }
+    | false
   readonly concurrency?: "switch" | "exhaust"
 }
 

@@ -28,7 +28,7 @@ date: 2025-12-26
   - `UiSignal`：event → module(action/intent)
 - Sandbox 中的 Mock 分层：`docs/specs/drafts/topics/sandbox-runtime/20-dependency-and-mock-strategy.md`
 - 多视图原则（同一工件多投影）：`docs/specs/sdd-platform/workbench/ui-ux/05-multi-view-principles.md`
-- 平台术语裁决（Universal Spy / Semantic UI Mock / UI_INTENT）：`docs/specs/sdd-platform/ssot/foundation/02-glossary.md`
+- 平台术语裁决（Universal Spy / Semantic UI Mock / UI_INTENT）：`docs/ssot/platform/foundation/02-glossary.md`
 
 ## 2) 与 032/033/035 的“插座/插口”映射（不引入新协议）
 
@@ -115,7 +115,7 @@ Semantic UI Mock 在 Sandbox 里会产出 `UI_INTENT`（PoC 已有 `UiIntentPack
 
 ## 4) 与旧 UIIntentNode 口径的关系（避免并行真相源）
 
-`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md` 中的 `UIIntentNode` 是早期口径：
+`docs/ssot/platform/assets/00-assets-and-schemas.md` 中的 `UIIntentNode` 是早期口径：
 
 - 可作为“历史叙事/概念背景”
 - 不建议继续扩展为平台事实源协议

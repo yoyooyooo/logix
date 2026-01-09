@@ -44,7 +44,7 @@
   - 本特性属于平台/治理的“验收与证据链”层：以 TrialRun/Artifacts 的 IR 作为事实源，连接“模块代码形态 → 可运行形态 → 可解释证据 → 可审阅判定”。
 - **依赖/修改的 SSoT 文档（docs-first）**
   - 036 直接依赖 `specs/031-*` ～ `specs/035-*`，自身不新增协议字段（只定义集成验收口径）。
-  - IR/TrialRun 链路实现视角参考：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/06-reflection-and-trial-run.md`、`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`。
+  - IR/TrialRun 链路实现视角参考：`docs/ssot/runtime/logix-core/api/06-reflection-and-trial-run.md`、`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`。
 - **契约变更范围**
   - 036 不要求修改 `@logixjs/core` 的公共契约；若需要新增“Contract Suite Verdict”作为可存档工件，应以版本化 schema 落在 `specs/036-*/contracts/schemas/*`，并明确其仅为治理层输出。
 - **IR & anchors（统一最小 IR + 稳定锚点）**

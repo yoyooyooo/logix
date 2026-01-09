@@ -179,10 +179,22 @@ const main = async () => {
 
     if (isWorkspaceDist) {
       const distDir = path.join(pkgRoot, 'dist')
-      const typeFiles = await listFilesRecursive(distDir, (abs) => abs.endsWith('.d.ts') || abs.endsWith('.d.cts'))
-      for (const abs of typeFiles.sort()) {
-        const rel = path.relative(pkgRoot, abs)
-        files[virtualNodeModulesPath(name, rel)] = await fs.readFile(abs, 'utf-8')
+      if (await exists(distDir)) {
+        const typeFiles = await listFilesRecursive(distDir, (abs) => abs.endsWith('.d.ts') || abs.endsWith('.d.cts'))
+        for (const abs of typeFiles.sort()) {
+          const rel = path.relative(pkgRoot, abs)
+          files[virtualNodeModulesPath(name, rel)] = await fs.readFile(abs, 'utf-8')
+        }
+      } else {
+        const srcDir = path.join(pkgRoot, 'src')
+        const srcFiles = await listFilesRecursive(
+          srcDir,
+          (abs) => abs.endsWith('.ts') || abs.endsWith('.tsx') || abs.endsWith('.d.ts') || abs.endsWith('.d.cts'),
+        )
+        for (const abs of srcFiles.sort()) {
+          const rel = path.relative(pkgRoot, abs)
+          files[virtualNodeModulesPath(name, rel)] = await fs.readFile(abs, 'utf-8')
+        }
       }
       continue
     }

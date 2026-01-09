@@ -18,7 +18,7 @@
   - Strategy：如何流动？（过滤、防抖、并发、错误、Scope）
   - Target：最后作用在哪？（本 Store 状态、本/他 Store Action、Service 调用等）
 
-- **IntentRule（IR）**：平台侧的统一规则表示（详见 `.codex/skills/project-guide/references/runtime-logix/logix-core/platform/06-platform-integration.md`）：
+- **IntentRule（IR）**：平台侧的统一规则表示（详见 `docs/ssot/runtime/logix-core/platform/06-platform-integration.md`）：
   - `source`: `{ context, type, selector }`
   - `pipeline`: `[{ op, args }]`
   - `sink`: `{ context, type, handler }`
@@ -104,7 +104,7 @@
   - 明确哪些积木仅生成 L1（单 Store 同步联动）、哪些生成 L2（跨 Store 协作），哪些生成 L2/L3 组合（React/Flow/Pattern）。
 
 2. **跨文档对齐**
-   - 将本目录中的模块拆分点与 `.codex/skills/project-guide/references/runtime-logix/logix-core/*`、`docs/specs/sdd-platform/ssot/foundation/03-trinity-and-layers.md`、`docs/specs/sdd-platform/ssot/assets/00-assets-and-schemas.md` 等文档建立交叉链接，保证“Intent 模型 → Runtime → 平台 UI”三线一致。
+   - 将本目录中的模块拆分点与 `docs/ssot/runtime/logix-core/*`、`docs/ssot/platform/foundation/03-trinity-and-layers.md`、`docs/ssot/platform/assets/00-assets-and-schemas.md` 等文档建立交叉链接，保证“Intent 模型 → Runtime → 平台 UI”三线一致。
 
 3. **PM 视角意图语言（草案）**
    - 基于 IntentRule 设计一套轻量的业务 DSL / 文本描述规范（可选），与画布操作互通；

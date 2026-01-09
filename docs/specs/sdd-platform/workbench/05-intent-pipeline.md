@@ -13,7 +13,7 @@ related:
 
 > 本文只负责一件事：把 “Spec‑Driven” 变成可执行的**上下文供应链**（Context Supply Chain），让每个阶段都产出可被下一阶段消费的 Artifact/Contract，并且能在失败时回传最小 RunResult Slice 进行自愈。
 >
-> SDD 四阶段与角色分工的总览以 `00-overview.md` 为准；RunResult 的唯一口径以 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md` 为准。
+> SDD 四阶段与角色分工的总览以 `00-overview.md` 为准；RunResult 的唯一口径以 `docs/ssot/platform/contracts/01-runresult-trace-tape.md` 为准。
 
 ## 1. Pipeline 的最小产物（按可执行性排序）
 
@@ -40,13 +40,13 @@ related:
 - `packages/*` / `examples/*` 下的 TypeScript（Effect/Logix），包含：
   - Module（schema/actions/reducers/traits）
   - Logic/Flow（可能是 Fluent DSL、也可能是 FlowProgram）
-- 约束：Runtime 不再“从静态推断动态”，动态律必须显式化为 `Π`（参照 `docs/specs/sdd-platform/ssot/foundation/01-the-one.md` 与 `docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`）
+- 约束：Runtime 不再“从静态推断动态”，动态律必须显式化为 `Π`（参照 `docs/ssot/platform/foundation/01-the-one.md` 与 `docs/ssot/platform/contracts/00-execution-model.md`）
 
 5) **RunResult（Grounding）**
 
 - `EvidencePackage(events: ObservationEnvelope[]) + optional Tape + snapshots + anchors`
 - 用途：Alignment、Devtools、Agent Self‑Correction（切片回传）
-- 唯一口径：`docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`
+- 唯一口径：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`
 
 ## 2. Context Pack：给 Agent 的最小输入面
 
@@ -80,4 +80,4 @@ Pipeline 只在一种情况下“可闭环”：所有产物共享同一套锚�
 - 结构侧：`moduleId/instanceId`、`traitPath`、`programId/nodeId`
 - 运行侧：`tickSeq/txnSeq/opSeq/linkId`（证据链锚点）
 
-锚点与排序的裁决见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`。
+锚点与排序的裁决见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`。

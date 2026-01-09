@@ -252,7 +252,7 @@ related: []
     - 只允许访问 Env 中显式注册的 Tag/Spec；
     - 将服务实例与执行 metadata 一并注入（便于日志和 Trace）。
 - **建议动作**：
-  - 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/impl` 下补充一份 “Env/Scope/DI/Sandbox” 的实现规范（execution metadata 的字段约定 + `$.use` 的行为边界）；
+  - 在 `docs/ssot/runtime/logix-core/impl` 下补充一份 “Env/Scope/DI/Sandbox” 的实现规范（execution metadata 的字段约定 + `$.use` 的行为边界）；
   - 在 `examples/logix` 或 `examples/logix-react` 中做一个小 PoC：打印 Env 中的 execution metadata 与 `$.use` 获取的服务，验证 Env 形状与约定一致（可参考 `examples/logix/src/scenarios/region-cascade.ts` 与 `examples/logix-react/src/demos/DiShowcaseLayout.tsx` 的 DI/$.use 用法）。
 
 ### 6.4 类型注入与编辑器集成 → Bound API / Spec / Schema 的 d.ts 生成

@@ -7,12 +7,12 @@ related:
   - ../00-overview.md
   - ../14-intent-rule-schema.md
   - ./03-spec-studio.md
-  - ../../../../sdd-platform/ssot/contracts/01-runresult-trace-tape.md
+  - docs/ssot/platform/contracts/01-runresult-trace-tape.md
 ---
 
 > **核心价值**：把非结构化的业务规则压缩为结构化、可审阅、可生成、可验证的意图资产（产品侧呈现为“规则表/条件/动作/示例”；内部可落为 IntentRule/Binding 等），并在设计时提供强校验（减少“看起来对但跑不通”）。
 >
-> **定位**：面向需求录入者（PM/架构师）的 L0→L1 工作台。它只负责生成/维护设计时资产；运行时验证一律通过 RunResult/Alignment 完成（口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）。
+> **定位**：面向需求录入者（PM/架构师）的 L0→L1 工作台。它只负责生成/维护设计时资产；运行时验证一律通过 RunResult/Alignment 完成（口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。
 
 ## 1. 界面布局概览 (Layout)
 

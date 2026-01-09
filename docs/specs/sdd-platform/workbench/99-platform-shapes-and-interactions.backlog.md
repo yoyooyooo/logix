@@ -303,12 +303,12 @@ related:
 - 本地代理模式：  
   - 组织不希望代码/数据离开内网时：  
     - 平台仅下发 Scenario/Spec/Blueprint 的 ID 和运行配置给 CLI；  
-    - CLI 在本地执行 Sandbox Run，生成 RunResult + AlignmentReport（RunResult 口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）；  
+    - CLI 在本地执行 Sandbox Run，生成 RunResult + AlignmentReport（RunResult 口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）；  
     - 只上传脱敏后的结构化指标（通过/失败、差异摘要、Graph 级 diff），不上传完整日志/数据。  
 
 **Backing Contracts**：
 
-- ScenarioRunConfig / RunResult / AlignmentReport Schema：其中 RunResult 以 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md` 为 SSoT（事件壳复用 005 EvidencePackage；Tape 口径复用 075）；  
+- ScenarioRunConfig / RunResult / AlignmentReport Schema：其中 RunResult 以 `docs/ssot/platform/contracts/01-runresult-trace-tape.md` 为 SSoT（事件壳复用 005 EvidencePackage；Tape 口径复用 075）；  
 - “云端 Runner” 与 “本地 Runner” 的统一接口（平台不关心具体运行位置，只关心结果形式）；  
 - 数据脱敏/隐私策略：哪些字段/日志可以回传平台、哪些只能本地查看。
 
@@ -326,7 +326,7 @@ related:
   - L0：FeatureSpec / ScenarioSpec / Story（需求层）；  
   - L1：Blueprint / Intent（屏幕–模块–服务与交互拓扑）；  
   - L2：Implementation Contract（Schema / Traits / IntentRule / JSON Definition）；  
-  - L3：Code & Runtime（TS/Effect 源码、RunResult/Alignment；RunResult 口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）。  
+  - L3：Code & Runtime（TS/Effect 源码、RunResult/Alignment；RunResult 口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。  
 - 视图层次（按角色变化）：  
   - Product View：对同一工件做抽象/自然语言投影，只暴露与需求表达相关的部分；  
   - Dev View：展示技术细节（Schema/Traits/IntentRule/运行结果），并保持与 Product View 的锚点。
@@ -470,7 +470,7 @@ Blueprint 只有一份；产品把它当“功能地图”，开发把它当“�
 
 - Spec/Blueprint/Definition 确定语义组件树与接线（UiPort/UiBinding/UiSignal）；  
 - 在 Sandbox 中，Semantic UI Mock 将这些组件变成 UI_INTENT 流；  
-- RunResult 中同时包含：`evidence.events`（ObservationEnvelope/RuntimeDebugEventRef）、StateSnapshot/Patch、UI_INTENT 流（口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）；  
+- RunResult 中同时包含：`evidence.events`（ObservationEnvelope/RuntimeDebugEventRef）、StateSnapshot/Patch、UI_INTENT 流（口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）；  
 - Alignment Lab 使用 ScenarioSpec 的 Step/Rule 对 UI_INTENT + StateSnapshot 做断言，生成 AlignmentReport；  
 - Report 再驱动开发/AI 调整 Blueprint/接线/逻辑，实现 UI 层与 Intent 的自愈。
 
@@ -516,7 +516,7 @@ Blueprint 只有一份；产品把它当“功能地图”，开发把它当“�
 
 后续若要正式规格化这一块，可以在：
 
-- `docs/specs/sdd-platform/ssot` 中补充 UI Intent / UiPort / UI_INTENT 的 Schema；  
+- `docs/ssot/platform` 中补充 UI Intent / UiPort / UI_INTENT 的 Schema；  
 - `sandbox-runtime` 主题中将 Semantic UI Mock 从“依赖治理草案”提升为 UI 模型的一部分。 
 
 ---

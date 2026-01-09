@@ -5,7 +5,7 @@
 **Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/036-workbench-contract-suite/plan.md`
 
 > 本文件只固化“关键裁决/原则/权衡”，用于避免 036 在实现阶段漂移成“只为 Workbench UI 服务的 demo”。  
-> IR/TrialRun 的实现链路与字段语义，直接外链到 runtime SSoT（避免重复叙事）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`。
+> IR/TrialRun 的实现链路与字段语义，直接外链到 runtime SSoT（避免重复叙事）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`。
 
 ## Decisions
 
@@ -25,8 +25,8 @@
 
 **Links**：
 
-- Reflection/TrialRun（API 语义）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/06-reflection-and-trial-run.md`
-- IrPage→Sandbox→TrialRun 全链路（字段语义）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+- Reflection/TrialRun（API 语义）：`docs/ssot/runtime/logix-core/api/06-reflection-and-trial-run.md`
+- IrPage→Sandbox→TrialRun 全链路（字段语义）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 - 025 的 schema 基线（Manifest/StaticIR/TrialRunReport/Diff）：`specs/025-ir-reflection-loader/contracts/schemas/`
 
 ### D002：AST 不是裁判，只能是“编辑工具”

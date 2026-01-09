@@ -91,7 +91,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ### Answers (Pre-Design)
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性把“内核”显式化为 Runtime Services/Kernel Contract；上层 DSL/Module/Logic 写法保持为输入侧（Flow/Logix），内核只负责执行与观测（Runtime）。
-- **Docs-first & SSoT**：观测协议以 `specs/005-unify-observability-protocol/` 为裁决；稳定身份与可序列化以 `specs/016-serializable-diagnostics-and-identity/` 为裁决；运行时装配与 scope 语义以 `.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md` 为裁决。
+- **Docs-first & SSoT**：观测协议以 `specs/005-unify-observability-protocol/` 为裁决；稳定身份与可序列化以 `specs/016-serializable-diagnostics-and-identity/` 为裁决；运行时装配与 scope 语义以 `docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md` 为裁决。
 - **Contracts**：本特性会新增/固化“内核选择/装配点”的内部契约（Kernel Contract/Runtime Services），并要求能通过现有 Debug/Observability 链路解释当前生效内核。
 - **IR & anchors**：不改变“统一最小 IR”原则；如需新增字段，只能作为 Static IR 摘要字段或 Dynamic Trace 的 Slim 字段扩展，并必须可序列化且可裁剪。
 - **Deterministic identity**：继续使用稳定 `instanceId/txnSeq/opSeq`；禁止随机/时间作为默认主锚点来源。

@@ -5,7 +5,7 @@
 
 ## Summary
 
-在不破坏 `diagnostics=off` 近零成本语义的前提下，增加一种面向生产/近生产的“采样诊断”能力：以确定性采样策略（基于稳定 `txnSeq`）在少量事务上开启 per-step 计时，输出 Slim、可序列化的 `top3` hotspots（以及采样配置摘要），用于 Devtools 定位长尾慢点；并用 browser 基线量化 `sampled vs off/light/full` 的 overhead 曲线。
+在不破坏 `diagnostics=off` 近零成本语义的前提下，增加一种面向生产/近生产的“采样诊断”能力：以确定性采样策略（基于稳定 `txnSeq`）在少量事务上开启 per-step 计时，输出 Slim、可序列化的 `top3` hotspots（以及采样配置摘要），用于 Devtools 定位长尾慢点；并用 browser 基线量化 off/light/sampled/full 的 overhead 曲线。
 
 ## Technical Context
 
@@ -31,7 +31,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Which `docs/specs/*` specs does it depend on or modify, and are they
     updated first (docs-first & SSoT)?
   - Does it introduce or change any Effect/Logix contracts? If yes, which
-    `.codex/skills/project-guide/references/runtime-logix/*` docs capture the new contract?
+    `docs/ssot/runtime/*` docs capture the new contract?
   - IR & anchors: does it change the unified minimal IR or the Platform-Grade
     subset/anchors; are parser/codegen + docs updated together (no drift)?
   - Deterministic identity: are instance/txn/op IDs stable and reproducible
@@ -70,7 +70,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Contracts**：扩展 `TraitConvergeDecisionSummary` 的可选采样摘要字段，并为 `DynamicTrace.level` 增加 `sampled`；同时更新对应 schema。
 - **Deterministic identity**：采样决策基于稳定 `txnSeq`（同一 instance 单调），避免 random/time；证据仍以 `instanceId/txnSeq` 作为锚点。
 - **Transaction boundary**：采样仅增加同步计时与少量对象创建；不得引入 IO/async。
-- **Performance budget**：通过 `.codex/skills/logix-perf-evidence/assets/matrix.json` 的 `diagnostics.overhead.e2e` suite 验证 `sampled vs off/light/full`。
+- **Performance budget**：通过 `.codex/skills/logix-perf-evidence/assets/matrix.json` 的 `diagnostics.overhead.e2e` suite 验证 off/light/sampled/full 四档开销曲线。
 - **Breaking changes / docs**：新增 diagnostics 档位/字段属于“用户可见口径”（Devtools/平台侧）；需要在用户文档中补充 sampled 的定位与开销心智模型。
 - **Quality gates**：`pnpm typecheck:test` + `pnpm test:turbo` +（按需）`pnpm -C packages/logix-react test -- --project browser --run test/browser/perf-boundaries/diagnostics-overhead.test.tsx`；并用 `$logix-perf-evidence` 产出 browser before/after/diff（至少 quick 探路 + default 结论）。
 

@@ -55,7 +55,7 @@ function Counter() {
 
 ## 文档与规划
 
-详细规范见 `.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`，关键目标包括：
+详细规范见 `docs/ssot/runtime/logix-react/01-react-integration.md`，关键目标包括：
 
 1. React 组件只负责意图事件，所有状态/流程逻辑收敛到 Logix 模块；
 2. Hooks 必须兼容 Concurrent Mode（`useSyncExternalStore`）并提供稳定 Runtime 引用；

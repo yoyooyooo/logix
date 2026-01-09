@@ -5,8 +5,8 @@ version: 2025-12-19
 value: core
 priority: next
 related:
-  - docs/specs/sdd-platform/ssot/README.md
-  - docs/specs/sdd-platform/ssot/foundation/02-glossary.md
+  - docs/ssot/platform/README.md
+  - docs/ssot/platform/foundation/02-glossary.md
 ---
 
 # SDD Platform · Topic Overview
@@ -14,10 +14,10 @@ related:
 > 定位：本 Topic 收敛“Spec‑Driven Development（SDD）如何在 Logix 平台落地”的**草案与工程化路线**：我们不在这里重新定义平台 SSoT，而是把平台侧实现拆成可执行的文档模块，并确保所有模块共享同一套运行时物理口径与证据链契约。
 >
 > 上游口径（必读，SSoT）：
-> - 最小系统方程与符号表（The One）：`docs/specs/sdd-platform/ssot/foundation/01-the-one.md`
-> - 运行时物理模型（系统方程/符号表）：`docs/specs/sdd-platform/ssot/contracts/00-execution-model.md`
-> - RunResult/Trace/Tape 契约（平台 Grounding）：`docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`
-> - 时间旅行交互（愿景/模式）：`docs/specs/sdd-platform/ssot/contracts/02-time-travel.md`
+> - 最小系统方程与符号表（The One）：`docs/ssot/platform/foundation/01-the-one.md`
+> - 运行时物理模型（系统方程/符号表）：`docs/ssot/platform/contracts/00-execution-model.md`
+> - RunResult/Trace/Tape 契约（平台 Grounding）：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`
+> - 时间旅行交互（愿景/模式）：`docs/ssot/platform/contracts/02-time-travel.md`
 
 ## 按角色阅读（最短路径）
 
@@ -69,10 +69,10 @@ related:
 | `00-overview.md` | 平台闭环与角色分工 | 具体协议/schema 细节 |
 | `02-full-duplex-architecture.md` | 北极星：Code↔Studio↔Runtime 全双工架构 | MVP 交付与排期承诺 |
 | `05-intent-pipeline.md` | Context Supply Chain + Artifact/Pack 边界 | UI 交互稿与具体页面设计 |
-| `08-alignment-lab-and-sandbox.md` | Verify 回路与 Sandbox 边界 | 重述 RunResult/Tape 细节（引用 `ssot/contracts/01-runresult-trace-tape.md` 与 `specs/075-logix-flow-program-ir/contracts/tape.md`） |
+| `08-alignment-lab-and-sandbox.md` | Verify 回路与 Sandbox 边界 | 重述 RunResult/Tape 细节（引用 `docs/ssot/platform/contracts/01-runresult-trace-tape.md` 与 `specs/075-flow-program-codegen-ir/contracts/tape.md`） |
 | `11-spec-to-code-mvp.md` | MVP 竖切与验收路径 | 长期平台形态讨论 |
 | `01-module-traits-integration.md` | Traits（`C_T`）在平台闭环的位置与治理 | 动态控制律（`Π`）设计 |
-| `14-intent-rule-schema.md` | IntentRule（wiring 协议）草案 | RunResult/证据链口径（引用 `ssot/contracts/01-runresult-trace-tape.md`） |
+| `14-intent-rule-schema.md` | IntentRule（wiring 协议）草案 | RunResult/证据链口径（引用 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`） |
 | `15-module-runtime-reflection-loader.md` | Loader Pattern（免 AST 的结构提取） | Studio UX 细节 |
 | `17-project-governance-and-lean-context.md` | 多 Track 治理与 Lean Context | 具体 IR/Runtime 协议细节 |
 

@@ -15,7 +15,7 @@
 
 - `linkId`：用于贯穿“同一业务触发”的链路标识。
 - `runtimeLabel`：运行时分组标签（用于 Devtools/证据聚合）。
-- `diagnosticsLevel`：诊断分档（off/light/full）。
+- `diagnosticsLevel`：诊断分档（off/light/sampled/full）。
 - `debugSinks`：调用点局部追加的输出通道集合（用于“只在某段 scope 内额外采集/输出”）。
 - `transactionOverrides`：事务覆盖（如存在），用于在队列边界保持语义一致。
 

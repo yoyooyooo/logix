@@ -11,7 +11,7 @@
 
 - Q: 同一事务内对同一路径多次写入时的语义与 `patch` 合并规则是什么？ → A: 仅允许同一 `stepId` 内对同一目标路径重复写入（最终值=按事务内单调序号 `opSeq` 的最后一次写入）；跨 `stepId` 的重复写入视为冲突并使事务稳定失败（可解释）；`patch` 在 `full` 诊断级别记录完整写入序列，在 `light` 下仅保留合并结果与计数摘要。
 - Q: 对列表/动态行写入（如 `items[index].name`），`dirty-set` 的路径归一化口径是什么？ → A: 去除索引、保留字段段：`items[index].name → items.name`；插入/删除/重排等结构变更统一记为 `items` 根。
-- Q: 诊断等级如何分档（`off`/`light`/`full`），各档保留哪些信息？ → A: 三档：`off`/`light`/`full`。`off` 不记录 trace/patch（仅保留运行正确性所需的瞬时数据，不进入诊断缓冲区）；`light` 记录可序列化事务摘要（例如 `txnId`、`dirtyRootCount/patchCount`、`dirtyAll`、降级/冲突摘要、Top-cost steps 摘要），不保留完整 patch 序列；`full` 记录完整可序列化 Dynamic Trace（事务→步骤→op 因果链）与 patch 写入序列（含 `from/to/reason/stepId/opSeq/...`），并支持 ring buffer 上限与裁剪策略配置。
+- Q: 诊断等级如何分档（`off`/`light`/`sampled`/`full`），各档保留哪些信息？ → A: 四档：`off`/`light`/`sampled`/`full`。`off` 不记录 trace/patch（仅保留运行正确性所需的瞬时数据，不进入诊断缓冲区）；`light` 记录可序列化事务摘要（例如 `txnId`、`dirtyRootCount/patchCount`、`dirtyAll`、降级/冲突摘要、Top-cost steps 摘要），不保留完整 patch 序列；`sampled` 采用确定性采样（基于稳定锚点，如 `txnSeq`）：未命中时等价于 `light`，命中时允许记录**有界**的 patch/trace 细节（例如有界 patch 序列与少量 per-step 计时摘要），用于低成本定位长尾；`full` 记录完整可序列化 Dynamic Trace（事务→步骤→op 因果链）与 patch 写入序列（含 `from/to/reason/stepId/opSeq/...`），并支持 ring buffer 上限与裁剪策略配置。
 - Q: 当 Static IR 中出现“两个规则/trait 声明写入同一路径”时，默认裁决是什么？ → A: 构建 Static IR 即稳定失败（默认单写者），并输出冲突详情（`path` + 涉及 `writerId/stepId`）。
 - Q: 事务/步骤/写入 op 的稳定标识模型具体采用哪套字段？ → A: `instanceId` 必须外部注入；`txnSeq` 为 instance 内单调递增；`opSeq` 为 txn 内单调递增；`stepId/writerId` 必须可映射到 Static IR 节点；`txnId/opId` 仅作为确定性派生编码（由上述字段可重建）。
 - Q: `patch` / `dirty-set` / Static IR 中的 `path` 使用哪种 canonical 表示？ → A: 段数组（例如 `["profile","name"]`）作为唯一 canonical 表示；展示层可渲染为点分字符串用于阅读。
@@ -25,7 +25,7 @@
 - Q: 当事务因“跨 `stepId` 重复写入冲突 / 事务窗口 IO”等原因稳定失败时，提交语义与诊断记录口径选哪种？ → A: 原子 abort（不提交任何写入）；仅在 `light/full` 记录可序列化的 `txn.abort`（含原因/冲突证据）；`off` 不写入诊断缓冲区，仅抛错。
 - Q: 在 `full` 诊断级别记录 `Patch.from/to` 时，如果值不可 `JSON.stringify`（函数/循环引用/class 实例等），应采用哪种口径？ → A: 强约束可序列化：`from/to` 仅允许可 `JSON.stringify` 的值；否则直接省略 `from/to`（保留 `path/reason/stepId/opSeq` 等证据）。
 - Q: `trace:effectop` 的 SlimOp 里，`payloadSummary`/`meta` 的默认裁剪与预算口径选哪种？ → A: `payloadSummary` 仅短字符串（默认 <=256 chars，超出截断）；`meta` 仅允许原始类型/小对象白名单；单事件默认软上限 4KB（按 JSON 字符串长度估算），超限必须截断/丢字段。
-- Q: `trace:effectop` 事件在诊断等级 `off/light/full` 的默认采集范围选哪种？ → A: `full` 才采集 `trace:effectop`；`light` 只记录事务摘要/计数/Top-cost steps（无 per-op 事件）；`off` 不进入诊断缓冲区。
+- Q: `trace:effectop` 事件在诊断等级 `off/light/sampled/full` 的默认采集范围选哪种？ → A: `full` 才默认采集 `trace:effectop`；`sampled` 仅在采样命中时允许采集（仍需 SlimOp + 预算/裁剪），未命中时不采集；`light` 只记录事务摘要/计数/Top-cost steps（无 per-op 事件）；`off` 不进入诊断缓冲区。
 - Q: 负优化降级阀门（`dirtyAll`）的默认阈值选哪套？ → A: 默认：`dirtyRootCount > 32` 或 `affectedSteps/totalSteps > 0.5` 即降级（可配置）。
 
 ## User Scenarios & Testing *(mandatory)*
@@ -150,7 +150,7 @@
 - **NFR-002**: 在关闭诊断时，系统不得引入显著额外分配或全量扫描；在开启诊断时，成本必须可预估且可裁剪（例如 ring buffer 上限与裁剪策略、单事件 payload 预算与截断策略）。
 - **NFR-003**: 任何对外可见的标识必须确定性生成（禁止随机/时间作为默认唯一标识），并支持回放与对比；其中 `instanceId` 必须外部注入，`txnSeq/opSeq` 必须单调序号，`txnId/opId` 必须可由 `(instanceId, txnSeq, opSeq, stepId/...)` 确定性重建。
 - **NFR-004**: 默认行为必须避免负优化：当 dirty-set 过滤的成本可能超过收益时，应提供显式降级阀门并可解释；默认实现必须同时支持 `dirtyRootCount` 阈值与 `affectedSteps/totalSteps` 阈值（任一触发即自动降级为 `dirtyAll`），并在 trace 中记录触发原因与阈值；默认阈值：`dirtyRootCount > 32` 或 `affectedSteps/totalSteps > 0.5`；阈值需可配置。
-- **NFR-005**: 系统必须提供三档诊断等级：`off`/`light`/`full`。`off` 不记录 trace/patch，且不得向 DevtoolsHub/ring buffer 写入任何 txn 摘要/事件（`dirty-set`/计数仅事务内临时使用，commit/abort 后立即释放）；`light` 仅记录可序列化事务摘要与计数（不保留完整 patch 序列，且不得记录 per-op 事件如 `trace:effectop`）；`full` 记录完整可序列化 Dynamic Trace 与 patch 写入序列（含 `trace:effectop` SlimOp）；并支持 ring buffer 上限与裁剪策略配置。
+- **NFR-005**: 系统必须提供四档诊断等级：`off`/`light`/`sampled`/`full`。`off` 不记录 trace/patch，且不得向 DevtoolsHub/ring buffer 写入任何 txn 摘要/事件（`dirty-set`/计数仅事务内临时使用，commit/abort 后立即释放）；`light` 仅记录可序列化事务摘要与计数（不保留完整 patch 序列，且不得记录 per-op 事件如 `trace:effectop`）；`sampled` 采用确定性采样：未命中时等价于 `light`，命中时允许记录有界的 patch/trace 细节（并保持 Slim/可序列化/可裁剪）；`full` 记录完整可序列化 Dynamic Trace 与 patch 写入序列（含 `trace:effectop` SlimOp）；并支持 ring buffer 上限与裁剪策略配置。
 
 ### Assumptions & Scope Boundaries
 

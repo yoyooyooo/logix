@@ -104,7 +104,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ### Answers (Pre-Design)
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性聚焦 Runtime 内核的派生收敛执行面；对外仍以 Trait/Txn/Devtools 的统一链路表现为验收边界，优化必须能被基线与证据解释。
-- **Docs-first & SSoT**：converge 证据协议以 `specs/013-auto-converge-planner/contracts/` 为裁决；trace 事件语义以 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 为裁决；性能证据框架以 `$logix-perf-evidence`（PerfReport/PerfDiff + matrix + collect/diff）为单一事实源。
+- **Docs-first & SSoT**：converge 证据协议以 `specs/013-auto-converge-planner/contracts/` 为裁决；trace 事件语义以 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 为裁决；性能证据框架以 `$logix-perf-evidence`（PerfReport/PerfDiff + matrix + collect/diff）为单一事实源。
 - **Contracts**：本特性默认不修改 `trait:converge` 事件 shape；如确需新增字段，必须同步更新 013 的 schema（而不是在 039 复制一份）并更新对应 runtime 文档。
 - **IR & anchors**：继续使用现有 `ConvergeStaticIrRegistry`（FieldPathId/steps/topo）；新增的“执行 IR/访问器表”仅作为 internal 加速层，不成为新的对外真相源；Static IR 导出仍保持 Slim 且可序列化。
 - **Deterministic identity**：诊断与 EffectOp meta 继续使用稳定 `instanceId/txnSeq/opSeq`；禁止引入随机/时间默认值作为排序锚点。
@@ -170,7 +170,7 @@ specs/013-auto-converge-planner/contracts/
 - 明确“整型一路打通”的分层边界：Static IR（build）/ Planner（dirty plan）/ Exec IR（访问器表）/ Driver loop（draft+bitset）/ Evidence（trace）。
 - 盘点并量化“字符串往返”的入口热点：`mutative` patch `pathAsArray → join('.')`、txn/commit 的 `dirtyPaths(Set<string>) → split/normalize/canonicalize`；在 Node + browser 基线中验证其是否主导 p95/分配与 GC 抖动。
 - 核实 `mutative.create(base)` 的 “draft + finalize” 复用模式在当前版本（仓库实际依赖）下行为稳定，并验证其在 Node 与浏览器宿主上的一致性与收益。
-- 统一基线口径：time + heap/alloc delta（warmup/runs/样本裁剪/元信息）；明确 Diagnostics off/light/full 的对比矩阵。
+- 统一基线口径：time + heap/alloc delta（warmup/runs/样本裁剪/元信息）；明确 Diagnostics off/light/sampled/full 的对比矩阵。
 - 明确 contracts 归属：`trait:converge` schema 的变化只能在 013 做；039 只写引用与本特性的 evidence 约束补充。
 - 盘点并消除“整型链路内的重复分配点”（纯赚）：例如每次 dirtyAll 分支 `Int32Array.from(ir.topoOrder)`、plan 生成阶段 `number[] → Int32Array.from(plan)`、cache key 的 `Int32Array.from(rootIds)`；优先通过“预生成/复用 TypedArray + 明确只读约束”消除。
 
@@ -213,7 +213,7 @@ specs/013-auto-converge-planner/contracts/
   - 约束：禁止使用 rest 参数（`recordPatch(...args)`）以免产生隐藏数组分配；应使用显式参数或预绑定 `recordPatchFull/recordPatchLight` 并把分支搬到 loop 外。
 - 对 trait 写回（computed/link）这条内生链路：优先从 `stepOutPathId` 直接更新 `dirtyPrefixBitset` / `rootBitset`，避免再经过 `path` 字符串回环。
 - plan cache key：避免每次 converge 都 `Int32Array.from(rootIds)` 分配；优先让 cache 接受 `ReadonlyArray<number>` 或复用 `Int32Array` key（保持 per-module-instance cache 语义 + 低命中率保护）。
-- patch/trace 的 stepId：热路径内部只使用 `stepId:number`（Static IR 的 step index），仅在 instrumentation=full 或 diagnostics=light/full 需要序列化时才生成可读 string（避免每次 `computed:${fieldPath}` 拼接）。
+- patch/trace 的 stepId：热路径内部只使用 `stepId:number`（Static IR 的 step index），仅在 instrumentation=full 或 diagnostics=light/sampled/full 需要序列化时才生成可读 string（避免每次 `computed:${fieldPath}` 拼接）。
 
 > 边界（明确暂不做）：把整个 `StateTransaction` 的通用 patch/dirty 体系完全替换为 pathId（包含 reducer/devtools/customMutation 的全链路迁移）属于更大范围的协议/工具联动，先在本特性中以“converge 入口 + trait 内生写回直通”为主，后续再按证据决定是否扩面。
 
@@ -233,11 +233,11 @@ specs/013-auto-converge-planner/contracts/
 ### 4) Performance Baseline（可复现证据）
 
 - 新增 converge 专项 runner（Node）并落证据文件到 `specs/039-trait-converge-int-exec-evidence/perf/*`：
-  - 场景维度：local dirty / near-full / dirtyAll、diagnostics off/light/full、不同 step 数量档位。
+  - 场景维度：local dirty / near-full / dirtyAll、diagnostics off/light/sampled/full、不同 step 数量档位。
   - 输出：统计（p50/p95）+ heap/alloc delta + 运行元信息（runs/warmup/版本/commit/dirty）。
 - 新增至少 1 个 headless browser run（自动化）：
   - browser 基线必须同时覆盖：1 个业务型场景（`form.listScopeCheck`）+ 1 个可调合成场景（`converge.txnCommit`），用于满足 `FR-003/SC-001`；
-  - 诊断开销证据（`NFR-002`）：复用 `diagnostics.overhead.e2e` suite（P3），用于量化 diagnostics off/light/full 的开销曲线；
+  - 诊断开销证据（`NFR-002`）：复用 `diagnostics.overhead.e2e` suite（P3），用于量化 diagnostics off/light/sampled/full 的开销曲线；
   - 优先复用 `$logix-perf-evidence` 的 collect/diff；其中 P1（converge+form）可合并为同一份 report，而 diagnostics overhead 建议单独采集为独立 report（避免不同 suite 采用不同 runs/warmup 口径导致 meta 混淆）。
 
 ### 5) Plan Cache 生命周期与内存边界

@@ -57,8 +57,8 @@ version: 1.1 (Chinese)
 - **定位**：运行时验证、调试与对齐分析（以 RunResult 为唯一 Grounding）。
 - **对应意图**：**Verification / Alignment**（RunResult + AlignmentReport）。
 - **核心对象**：
-  - **RunResult**：`EvidencePackage + optional Tape + snapshots + anchors`（口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）。
-  - **Time Travel**：历史回溯/分叉（口径见 `docs/specs/sdd-platform/ssot/contracts/02-time-travel.md`）。
+  - **RunResult**：`EvidencePackage + optional Tape + snapshots + anchors`（口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。
+  - **Time Travel**：历史回溯/分叉（口径见 `docs/ssot/platform/contracts/02-time-travel.md`）。
   - **Alignment Matrix**：针对 Specs 的验证结果矩阵。
 - **交互方式**：
   - **回放 (Replay)**：拖动时间轴重现状态。

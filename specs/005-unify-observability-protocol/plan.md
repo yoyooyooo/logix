@@ -28,7 +28,7 @@
 - Decision: 跨宿主/证据包的 `payload` 必须满足 `JsonValue` 硬门；降级/丢弃必须可见（downgrade.reason + 会话级预算统计 + batch droppedCount）（source: spec Clarifications Session 2025-12-31 AUTO + FR-006）。
 - Decision: 断线重连以 `runId + afterSeq` 为锚点尽力补发；不足必须提示并引导改用 EvidencePackage 导入（source: spec Clarifications Session 2025-12-31 AUTO）。
 - Decision: `RuntimeDebugEventRef` 纳入可选 `linkId` 作为因果链锚点（source: spec Clarifications Session 2025-12-31 AUTO + `packages/logix-core/src/internal/runtime/core/DebugSink.ts`）。
-- Decision: 查看器不得补造稳定键；移除 `packages/logix-devtools-react/src/internal/snapshot/index.ts` 的 `normalizeDevtoolsSnapshot`“补造”逻辑，并把缺失字段视为生产端 bug/降级提示（source: FR-002 + `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.02-eventref.md`）。
+- Decision: 查看器不得补造稳定键；移除 `packages/logix-devtools-react/src/internal/snapshot/index.ts` 的 `normalizeDevtoolsSnapshot`“补造”逻辑，并把缺失字段视为生产端 bug/降级提示（source: FR-002 + `docs/ssot/runtime/logix-core/observability/09-debugging.02-eventref.md`）。
 
 ## Technical Context
 
@@ -52,10 +52,10 @@ _GATE: Phase 0 研究前必须通过；Phase 1 设计后再次复查。_
 - **链路映射（Intent → Flow/Logix → Code → Runtime）**
   - 本特性属于 Runtime 可观测性契约：将 Logix/Effect 运行行为抽象为可传输的观测事件流，并由聚合引擎生成可视化所需快照；Devtools/插件/Playground 都是该契约的消费者。
 - **依赖/修改的 SSoT 文档（docs-first）**
-  - Runtime 侧单一事实源：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.*.md`（RuntimeDebugEventRef/JsonValue/Recording Window/预算统计/“viewer 不得补造”）。
+  - Runtime 侧单一事实源：`docs/ssot/runtime/logix-core/observability/09-debugging.*.md`（RuntimeDebugEventRef/JsonValue/Recording Window/预算统计/“viewer 不得补造”）。
   - 传输层（P2）补充口径：建议在上述 debugging 文档中补充“Transport Profile v1（HELLO/SUBSCRIBE/BATCH/CONTROL/ACK）”的裁决链接，避免只存在于 feature spec。
 - **契约变更范围**
-  - 会新增/调整 “观测事件 envelope（runId/seq/version）” 与 “宿主无关聚合快照” 的公共契约；核心落点应在 `@logixjs/core`（引擎优先），并在 runtime-logix 文档中固化。
+  - 会新增/调整 “观测事件 envelope（runId/seq/version）” 与 “宿主无关聚合快照” 的公共契约；核心落点应在 `@logixjs/core`（引擎优先），并在 runtime SSoT 文档中固化。
 - **稳定标识（Deterministic Identity）**
   - 生产端必须生成稳定 `seq/eventSeq/txnSeq`；查看器不得补造（对应 FR-002）。
   - `txnId/eventId` 仅允许确定性派生（例如 `${instanceId}::t${txnSeq}` / `${instanceId}::e${eventSeq}`），禁止随机/时间戳作为默认 id 源。
@@ -138,7 +138,7 @@ packages/
 examples/
 └── logix-sandbox-mvp/          # Worker 场景验证（可选）
 
-.codex/skills/project-guide/references/runtime-logix/
+docs/ssot/runtime/
 └── logix-core/observability/   # 观测/调试契约（SSoT）
 ```
 

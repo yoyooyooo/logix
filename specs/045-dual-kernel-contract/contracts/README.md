@@ -19,7 +19,7 @@
 - 是否发生 fallback/混用 builtin、是否满足“宣称已切到 core-ng/准备切换默认实现”的全套切换门槛，必须结合 `RuntimeServicesEvidence` 判定（见 `specs/045-dual-kernel-contract/spec.md` 的 Clarifications 与 FR-003/FR-008）。
 - 诊断分档：
   - diagnostics=off：至少导出 `KernelImplementationRef`（极小摘要），不得默认导出 `RuntimeServicesEvidence`。
-  - diagnostics=light/full：导出 `RuntimeServicesEvidence` 以支撑解释链路与对照 diff。
+  - diagnostics=light/sampled/full：导出 `RuntimeServicesEvidence` 以支撑解释链路与对照 diff。
 
 schemas：
 

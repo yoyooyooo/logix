@@ -298,7 +298,7 @@
 - Rule/Trait/Path：以概念模块承载规则、字段能力（Trait）、路径与错误模型。
 - React 入口：`@logixjs/form/react` 仅做“订阅投影 + DOM 事件适配”的薄层（底层仍是 `@logixjs/react`）。
 
-**Public Submodules（建议，与 runtime-logix 约定一致）**：
+**Public Submodules（建议，与 runtime SSoT 约定一致）**：
 
 - `Form`（`make` / controller 等领域入口）
 - `Rule` / `Error` / `Trait` / `Path`

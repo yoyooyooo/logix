@@ -21,7 +21,7 @@
 ## 4) 能做到全整型吗？
 
 - 可以做到“热路径全整型”：converge 的 plan/exec loop 以 `FieldPathId/StepId` + TypedArray 驱动，事务窗口内禁止 `id→string→split` 与 `join→split` 往返。
-- 做不到、也不应追求“全域全整型”：输入/显示/序列化边界仍会接收/输出字符串；`diagnostics=light/full` 才会 materialize 可读映射；动态/异常路径会显式降级 `dirtyAll=true`（且在 perf gate 覆盖场景中视为 FAIL）。
+- 做不到、也不应追求“全域全整型”：输入/显示/序列化边界仍会接收/输出字符串；`diagnostics=light/sampled/full` 才会 materialize 可读映射；动态/异常路径会显式降级 `dirtyAll=true`（且在 perf gate 覆盖场景中视为 FAIL）。
 
 ## 5) 当前证据结论（Node + Browser）
 

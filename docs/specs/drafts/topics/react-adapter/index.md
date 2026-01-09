@@ -7,7 +7,7 @@ related: []
 
 # Logix React Adapter Specs (L3 Draft)
 
-本目录包含 Logix React Adapter 的详细设计草案。这些文档原计划位于 `.codex/skills/project-guide/references/runtime-logix/logix-react`，现根据 Drafts Tiered System 迁移至此进行孵化。
+本目录包含 Logix React Adapter 的详细设计草案。这些文档原计划位于 `docs/ssot/runtime/logix-react`，现根据 Drafts Tiered System 迁移至此进行孵化。
 
 ## 目录索引
 

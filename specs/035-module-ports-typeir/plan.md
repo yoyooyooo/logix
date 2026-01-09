@@ -41,7 +41,7 @@ _GATE: Phase 0 研究前必须通过；Phase 1 设计后再次复查。_
 - **依赖/修改的 SSoT（docs-first）**
   - 031 artifacts 槽位与 Envelope：`specs/031-trialrun-artifacts/spec.md`
   - 036 集成验收口径：`specs/036-workbench-contract-suite/spec.md`
-  - IR 全链路（IrPage→TrialRun）：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/07-ir-pipeline-from-irpage.md`
+  - IR 全链路（IrPage→TrialRun）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 - **IR & anchors**
   - PortSpec/TypeIR 必须可与 Manifest/StaticIR 同源对照（moduleId/actionKeys 对齐），避免 drift。
 - **Deterministic identity**

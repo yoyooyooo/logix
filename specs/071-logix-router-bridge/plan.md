@@ -117,7 +117,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Runtime：只负责提供 DI scope（Layer）与诊断通道；不引入第二套路由引擎。（PASS）
 - docs-first & SSoT：
   - 本特性为具体交付单：规格与方案以 `specs/071-logix-router-bridge/*` 为事实源（已具备）。
-  - 若需要固化“领域包注入 + 诊断事件协议”到 runtime SSoT：在实现阶段回写到 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.03-module-logic.md` 的 TraitLifecycle 段落（避免领域包各写各的协议）。（PASS）
+  - 若需要固化“领域包注入 + 诊断事件协议”到 runtime SSoT：在实现阶段回写到 `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.03-module-logic.md` 的 TraitLifecycle 段落（避免领域包各写各的协议）。（PASS）
 - Effect/Logix contracts：
   - 新增 `@logixjs/router` 的对外 contract（见 `contracts/public-api.md`）。
   - 诊断协议：通过 `Logix.TraitLifecycle.scopedExecute` 统一事件化（在 core 的 TraitLifecycle ExecuteRequest 中新增通用 `trace` 变体：`{ kind: 'trace'; name: string; data?: unknown }`，由 router 以 `name='router:navigate'` 使用；避免 core 反向依赖 router 类型）。（PASS，带实现任务）

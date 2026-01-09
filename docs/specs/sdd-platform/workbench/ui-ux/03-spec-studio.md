@@ -62,7 +62,7 @@ related:
 
 - **Define（需求录入视角）**：在文本中插入 Entity/Logic/Scenario 块，结合 AI 辅助完成建模；  
 - **Implement（Dev 视角）**：在 Dev Studio/CLI 中基于这些 Block 生成 Module/Logic/Test 骨架（单向流 v0，可以只标记“Doc→Code 版本锚点”）；  
-- **Verify（Runtime 视角）**：在 Playground/Alignment Lab 中以 Scenario Block 为入口运行场景，RunResult/AlignmentReport 回写到文档（RunResult 口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`；例如在某个 Scenario Block 上显示“已通过/未通过”的状态）。
+- **Verify（Runtime 视角）**：在 Playground/Alignment Lab 中以 Scenario Block 为入口运行场景，RunResult/AlignmentReport 回写到文档（RunResult 口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`；例如在某个 Scenario Block 上显示“已通过/未通过”的状态）。
 
 ## 5. 迁移说明
 

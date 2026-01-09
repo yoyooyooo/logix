@@ -5,7 +5,7 @@
 
 ## 0) 五个关键词（≤5）
 
-1. **queries**：规则声明（deps/triggers/key/concurrency）
+1. **queries**：规则声明（deps/autoRefresh/key/concurrency）
 2. **keyHash**：稳定键（门控/诊断锚点）
 3. **engine**：外部引擎（缓存/去重/失效/可选快读）
 4. **middleware**：引擎接管点（EffectOp）
@@ -43,9 +43,8 @@ export const SearchQuery = Query.make("SearchQuery", {
     search: $.source({
       resource: SearchSpec,
       deps: ["params.q", "ui.query.autoEnabled"],
-      triggers: ["onMount", "onKeyChange"],
+      autoRefresh: { onMount: true, onDepsChange: true, debounceMs: 200 },
       concurrency: "switch",
-      debounceMs: 200,
       key: (q, autoEnabled) => (autoEnabled ? { q } : undefined),
     }),
   }),
@@ -88,7 +87,7 @@ export const runtime = Logix.Runtime.make(SearchQuery, {
 - 组件里用 `useStore` 取出一些 state（例如 `q/filters/sort/page`）；
 - 把它们拼成 `queryKey` 交给 `useQuery`；参数变化时 `useQuery` 自动重跑并更新 `data/loading/error`。
 
-在 Logix 体系里，“参数变化自动刷新”仍然是声明式的：它由 `StateTrait.source` 的 `deps/triggers/key/concurrency` 驱动（Query 领域只是把这套能力组织得更像 TanStack/更好用）。  
+在 Logix 体系里，“参数变化自动刷新”仍然是声明式的：它由 `StateTrait.source` 的 `deps/autoRefresh/key/concurrency` 驱动（Query 领域只是把这套能力组织得更像 TanStack/更好用）。  
 不同的是：当 Query 作为 `imports` 子模块时，组件必须先选中“具体是哪一个实例”，所以才会出现 `useImportedModule(...)` 这一步（这是把 TanStack 的“隐式全局缓存语义”显式化）。
 
 下面给出两种等价组织方式：
@@ -101,7 +100,7 @@ export const runtime = Logix.Runtime.make(SearchQuery, {
 
 - 把“查询参数”作为模块 state 的一部分（推荐命名为 `params`，与 Query 约定同名）；
 - 用 `Query.traits({ queries })` 直接在该模块上声明 source 字段（每个 queryName 对应 `state.queries[queryName]` 的一个 `ResourceSnapshot` 字段）；
-- 业务更新 `state.params` 时，会按 triggers 自动刷新（不需要组件里再写 `refresh()`）。
+- 业务更新 `state.params` 时，会按 autoRefresh 自动刷新（不需要组件里再写 `refresh()`）。
 
 概念示例（只展示关键段落）：
 
@@ -126,8 +125,7 @@ export const Traits = Logix.StateTrait.from(StateSchema)({
 	      search: {
 	        resource: SearchSpec,
 	        deps: ["params.q", "ui.query.autoEnabled"],
-	        triggers: ["onMount", "onKeyChange"],
-	        debounceMs: 200,
+	        autoRefresh: { onMount: true, onDepsChange: true, debounceMs: 200 },
 	        concurrency: "switch",
 	        key: (q, autoEnabled) => (autoEnabled && q ? { q } : undefined),
 	      },
@@ -140,7 +138,7 @@ React 侧读写体验（类比 `useStore + useQuery`）：
 
 - 读 params：`useSelector(ModuleRef, (s) => s.params.q)`
 - 读快照：`useSelector(ModuleRef, (s) => s.queries.search)`（`idle/loading/success/error`）
-- 改参数：通过模块 action/controller 更新 `params`（随后由 triggers 自动刷新）
+- 改参数：通过模块 action/controller 更新 `params`（随后由 autoRefresh 自动刷新）
 
 #### B) `Query.make` + `imports`：Query 作为独立子模块（复用/封装更强）
 
@@ -150,7 +148,7 @@ React 侧读写体验（类比 `useStore + useQuery`）：
 
 - Host 模块通过 `imports` 引入 Query 模块实例；
 - Host 负责把自己的 state 投影到 Query 的 `params/ui`（只做**状态同步**）；
-- Query 模块内部依然靠 `deps/triggers/key` 自动刷新；组件只订阅快照即可。
+- Query 模块内部依然靠 `deps/autoRefresh/key` 自动刷新；组件只订阅快照即可。
 
 Logic 侧 owner-wiring（把 Host 的 `filters.q` 写入子模块 params；示意）：
 
@@ -161,7 +159,7 @@ export const HostLogic = HostModule.logic(($) =>
   Effect.gen(function* () {
     const q = yield* $.use(SearchQuery)
 
-    // host state -> query params（只做 state 同步；刷新由 SearchQuery 自己的 triggers 完成）
+    // host state -> query params（只做 state 同步；刷新由 SearchQuery 自己的 autoRefresh 完成）
     yield* $.onState((s) => s.filters.q).runFork((qValue) =>
       q.controller.setParams({ q: qValue }),
     )
@@ -210,7 +208,7 @@ const snapshot = useSelector(query, (s) => s.queries.search)
 ## 4) 性能证据（NFR-001 / NFR-002）
 
 - 粗成本模型（直觉）：`key(state)` 计算与 deps 追踪发生在 `deps` 命中的 state 字段变更时；真正的 IO 发生在 `ResourceSpec.load`（无引擎）或 `Engine.fetch`（有引擎）阶段；诊断关闭时应接近零成本。
-- 优化梯子（默认 → 可行动）：先用 `debounceMs`/收窄 triggers/选择并发策略，再注入 `Engine` + 启用 `Query.Engine.middleware()` 获取缓存/去重；需要避免 loading 抖动时再启用 `peekFresh`（只读快路径）。
+- 优化梯子（默认 → 可行动）：先用 `autoRefresh.debounceMs`/收窄 autoRefresh/选择并发策略，再注入 `Engine` + 启用 `Query.Engine.middleware()` 获取缓存/去重；需要避免 loading 抖动时再启用 `peekFresh`（只读快路径）。
 - 本特性需要提供 Query 代表性链路的 before/after 采样（p95 时间与 heap 分配），以及 diagnostics off/on 的额外开销证据。
 - 证据以 JSON 形式落在：`specs/026-unify-query-domain/perf/*`（脚本与字段口径沿用 `logix-perf-evidence`）。
 

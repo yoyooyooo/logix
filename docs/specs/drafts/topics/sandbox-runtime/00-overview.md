@@ -10,7 +10,7 @@ priority: next
 
 - 范围：**Intent Playground / Runtime Alignment Lab** 的整体规划，其中 Web Worker Sandbox 只是底层运行时承载。覆盖主线程 Host、Web Worker Sandbox、（可选）Deno 逃生舱，以及与 DevTools/Studio 的交互。
 - 目标：先打牢「前端优先沙箱」的可运行基础，再把它升级为面向 **Spec → Intent → Logix → Runtime 行为** 的 Playground/实验室，分阶段扩展 Intent 覆盖率、AI 反馈、漏斗化多运行时对齐、Session Diff 等能力。
-- 依赖：以 v3「Frontend First」为前提，沿用 `platform/impl/code-runner-and-sandbox.md` 的决策，并与 runtime-logix 的 Platform/Tracer/Observability 契约对齐。
+- 依赖：以 v3「Frontend First」为前提，沿用 `platform/impl/code-runner-and-sandbox.md` 的决策，并与 runtime SSoT 的 Platform/Tracer/Observability 契约对齐。
 
 ## 2. 分阶段路线（建议顺序）
 
@@ -52,7 +52,7 @@ priority: next
 ## 6. 与 Spec-Driven / Intent-Driven 平台的关系（Playground 视角）
 
 - 上游：平台在 `/specify` / `/plan` 阶段会产出 **需求意图 (Spec)** 与 **细粒度 IntentRule / R-S-T 规则**。
-- 中层：Logix/Effect 代码是这些 IntentRule 的实现载体（见 `.codex/skills/project-guide/references/runtime-logix/logix-core` 与 v3 文档）。
+- 中层：Logix/Effect 代码是这些 IntentRule 的实现载体（见 `docs/ssot/runtime/logix-core` 与 v3 文档）。
 - Playground + Sandbox：
   - Sandbox Runtime 提供隔离的执行环境与统一的 `RunResult`（logs/traces/stateSnapshot）；
   - Playground 负责将 **Spec/IntentRule → Logix 实现 → Runtime 行为** 对齐起来，形成可回放、可验证的闭环。

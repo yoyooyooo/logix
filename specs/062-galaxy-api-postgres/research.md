@@ -15,7 +15,7 @@
 
 ## Decision 2：表结构作为 SSoT 资产沉淀
 
-- **Decision**：`todos` 表结构与字段语义沉淀为 SSoT：`docs/specs/sdd-platform/ssot/examples/02-logix-galaxy-api-postgres.md`，并在实现中保持一致。
+- **Decision**：`todos` 表结构与字段语义沉淀为 SSoT：`docs/ssot/platform/examples/02-logix-galaxy-api-postgres.md`，并在实现中保持一致。
 - **Rationale**：
   - 表结构是“契约的一部分”（对 API 形状与回归测试都有影响），应当有可追溯的单一事实源。
   - 便于平台侧/生成器侧对齐“预期数据形状”。

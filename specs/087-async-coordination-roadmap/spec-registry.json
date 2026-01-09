@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "group": "087-async-coordination-roadmap",
+  "statusEnum": ["idea", "planned", "draft", "implementing", "done", "frozen"],
+  "entries": [
+    {
+      "id": "088",
+      "dir": "specs/088-async-action-coordinator",
+      "status": "draft",
+      "dependsOn": []
+    },
+    {
+      "id": "089",
+      "dir": "specs/089-optimistic-protocol",
+      "status": "draft",
+      "dependsOn": ["088"]
+    },
+    {
+      "id": "090",
+      "dir": "specs/090-suspense-resource-query",
+      "status": "draft",
+      "dependsOn": ["088"]
+    },
+    {
+      "id": "091",
+      "dir": "specs/091-busy-indicator-policy",
+      "status": "draft",
+      "dependsOn": ["088"]
+    },
+    {
+      "id": "092",
+      "dir": "specs/092-e2e-latency-trace",
+      "status": "draft",
+      "dependsOn": ["088", "089", "090"]
+    }
+  ]
+}

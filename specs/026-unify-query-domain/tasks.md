@@ -21,7 +21,7 @@
 ## Phase 1: Setup（SSoT 与落点对齐）
 
 - [x] T001 [P] 回写 SSoT：统一 Query 合同口径与命名到 026（去掉 Blueprint/EngineTag/Query.middleware 等过时表述）`specs/007-unify-trait-system/contracts/query.md`
-- [x] T002 [P] 回写 SSoT：更新包级速查中 `@logixjs/query` 的推荐入口/注入语义到 026 `.codex/skills/project-guide/references/packages-user-view.md`
+- [x] T002 [P] 回写 SSoT：更新包级速查中 `@logixjs/query` 的推荐入口/注入语义到 026 `docs/ssot/handbook/packages-user-view.md`
 
 ---
 

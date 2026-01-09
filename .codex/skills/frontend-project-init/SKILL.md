@@ -88,7 +88,7 @@ description: 用于在 intent-flow 仓库内初始化前端项目，基于内置
 若类型检查或构建失败：
 
 - 首先检查 `package.json` 中 workspace 依赖（`@logixjs/core` / `@logixjs/react` / `@logixjs/sandbox` / `effect` / `vite` 等）是否满足当前仓库版本。
-- 如为 Logix 相关类型问题，优先参照 `project-guide`（含 Logix v3 速查与入口）或 `.codex/skills/project-guide/references/runtime-logix` 中的契约进行修正。
+- 如为 Logix 相关类型问题，优先参照 `project-guide`（含 Logix v3 速查与入口）或 `docs/ssot/runtime` 中的契约进行修正。
 
 ### 5. 可选：模板轻量化或自定义
 
@@ -104,5 +104,5 @@ description: 用于在 intent-flow 仓库内初始化前端项目，基于内置
 ## NOTES · 设计与约束
 
 - 模板默认假定在 intent-flow monorepo 内使用，依赖 `workspace:*` 形式的 `@logixjs/*` 包。
-- 在复制模板时，避免修改 Logix 运行时与 Vite 配置，除非已经在 `.codex/skills/project-guide/references/runtime-logix` 中更新对应规范。
+- 在复制模板时，避免修改 Logix 运行时与 Vite 配置，除非已经在 `docs/ssot/runtime` 中更新对应规范。
 - 若未来需要为外部仓库提供前端模板，应单独设计不依赖 workspace 的变体，并在本 skill 中明确区分使用场景。

@@ -18,11 +18,11 @@
 **Storage**: N/A（内存运行时，不引入持久化）  
 **Testing**: Vitest（含 `@effect/vitest` 风格用例），并以 `pnpm typecheck`、`pnpm lint`、`pnpm test --filter logix-core` 作为质量门  
 **Target Platform**: Node.js 20+（开发/测试），现代浏览器（用于示例与 Devtools 观测验收）  
-**Project Type**: pnpm monorepo；改动主落点在 `packages/logix-core`，并联动 `apps/docs` 与 `.codex/skills/project-guide/references/runtime-logix`  
+**Project Type**: pnpm monorepo；改动主落点在 `packages/logix-core`，并联动 `apps/docs` 与 `docs/ssot/runtime`  
 **Performance Goals**: 中间件总线对高频边界不引入显著额外开销；默认路径应为“零配置接近零成本”（空 stack 走直通）  
 **Constraints**:
 
-- docs-first：任何对 Runtime 契约的改变需同步更新 `.codex/skills/project-guide/references/runtime-logix` 与 `apps/docs`；
+- docs-first：任何对 Runtime 契约的改变需同步更新 `docs/ssot/runtime` 与 `apps/docs`；
 - Effect 契约：严格遵守 `Effect.Effect<A, E, R>` 泛型顺序与 Tag/Layer 注入范式；
 - 不允许出现“可绕过总线”的 ad-hoc 执行入口；
 - 测试禁止 watch 模式（一次性 `vitest run` / `pnpm test`）。
@@ -33,12 +33,12 @@
 ## Constitution Check
 
 - Intent → Flow/Logix → Code → Runtime 映射：
-  - Intent/规范侧：`.codex/skills/project-guide/references/runtime-logix` 与 `specs/001-effectop-unify-boundaries/spec.md` 定义“边界操作统一模型”；
+  - Intent/规范侧：`docs/ssot/runtime` 与 `specs/001-effectop-unify-boundaries/spec.md` 定义“边界操作统一模型”；
   - Flow/Logix 侧：业务通过 Flow/Bound 等 API 触发操作；
   - Code/Runtime 侧：所有操作统一提升为 EffectOp 并进入 middleware stack，形成可回放/可观测链路（含操作链路 id）。
 - 依赖 / 修改的上游 specs（文档先行）：
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/04-logic-middleware.md`（将“统一总线”作为唯一主线叙事）；
-  - `.codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md` 与相关 impl 备忘（记录接线与防呆约束）；
+  - `docs/ssot/runtime/logix-core/api/04-logic-middleware.md`（将“统一总线”作为唯一主线叙事）；
+  - `docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md` 与相关 impl 备忘（记录接线与防呆约束）；
   - `specs/001a-module-traits-runtime/*`（回查 EffectOp/Middleware 总线的承诺与当前实现一致性）。
 - Effect/Logix 契约变更落点：
   - 统一的 Operation/Meta（包含操作链路 id）、全局/局部策略优先级、守卫拒绝语义；
@@ -75,7 +75,7 @@
 │   ├── logix-react          # 端到端验收：业务侧写法稳定性 + 运行时观测
 │   └── logix-devtools-react # 数据消费方：验证 trace/链路关联可视化需求
 ├── apps/docs/               # 用户文档：移除旧叙事，统一到 EffectOp 总线
-└── .codex/skills/project-guide/references/runtime-logix # 规范文档：把总线收敛为唯一主线
+└── docs/ssot/runtime # 规范文档：把总线收敛为唯一主线
 ```
 
 **Structure Decision**:
@@ -187,7 +187,7 @@
 
 5. 001a 回查与对齐（FR-007/SC-004）
 
-- 对照 `specs/001a-module-traits-runtime/*` 与 `.codex/skills/project-guide/references/runtime-logix/*`：
+- 对照 `specs/001a-module-traits-runtime/*` 与 `docs/ssot/runtime/*`：
   - 标注哪些承诺已由本次实现覆盖；
   - 哪些需要修订文字/迁移示例；
   - 哪些属于后续主题（明确延期理由与锚点）。
@@ -200,7 +200,7 @@
   - `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/data-model.md`（数据模型与不变量）
   - `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/quickstart.md`（端到端 DoD）
 - Intent → Flow/Logix → Code → Runtime 链路：已明确“边界起点创建 linkId、嵌套复用；所有边界统一进入总线”作为硬约束，并将其转化为测试验收点。
-- Effect/Logix 契约变更：已将全局/局部策略优先级与拒绝语义写死为可测试约束，后续实现必须以此为准并同步更新 `.codex/skills/project-guide/references/runtime-logix/*` 与 `apps/docs/*`。
+- Effect/Logix 契约变更：已将全局/局部策略优先级与拒绝语义写死为可测试约束，后续实现必须以此为准并同步更新 `docs/ssot/runtime/*` 与 `apps/docs/*`。
 - 质量门：计划在实现阶段以类型检查、lint 与核心测试作为强制门槛，并新增“不可绕过总线”的关键用例，作为防呆兜底。
 
 ## Complexity Tracking

@@ -134,7 +134,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - 稳定标识：校准 runId/seq 必须可重建（localStorage 单调序号即可）；不得以随机/时间作为唯一锚点（时间仅作元信息）。
   - 事务边界：校准本身不进入事务窗口；任何 IO（持久化/导出）必须在事务外；不允许引入 SubscriptionRef 可写逃逸。
   - 性能预算：默认关闭无额外开销；如需在核心路径补齐证据字段或事件，将提供可复现的基线与测量方式，并把成本写入 `logix-perf-evidence` 的证据产物与本 plan。
-  - 可诊断性：新增校准调度/结果事件必须 Slim & 可序列化；并声明 `off/light/full` 诊断级别下的额外成本。
+  - 可诊断性：新增校准调度/结果事件必须 Slim & 可序列化；并声明 `off/light/sampled/full` 诊断级别下的额外成本。
   - 对外心智模型：关键词（≤5）+ 粗成本模型 + 优化梯子（默认 → 观测 → 缩小写入 → 稳定 rowId → 覆盖/调参 → 拆分/重构）必须与跑道/证据口径一致（统一在 `logix-perf-evidence` 内维护）。
   - Breaking changes：不引入对外 API 破坏；若 schema/字段口径调整，必须提供迁移说明（不做兼容层）。
   - Quality gates：`pnpm typecheck`、相关包 `pnpm -C packages/logix-core typecheck:test && pnpm -C packages/logix-core test`、`pnpm -C packages/logix-react typecheck:test && pnpm -C packages/logix-react test`（浏览器项目按需跑）。

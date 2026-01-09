@@ -6,8 +6,8 @@ layer: L9
 value: extension
 priority: 2200
 related:
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md
-  - .codex/skills/project-guide/references/runtime-logix/logix-core/runtime/05-runtime-implementation.md
+  - docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md
+  - docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md
   - ../runtime-v3-core/README.md
   - ./05-fractal-tagindex.md
 ---
@@ -22,7 +22,7 @@ related:
 
 - 定义每颗 Runtime 的最小可观测元信息（RuntimeMeta）；
 - 基于 TagIndex 构建 Env 拓扑视图（Module / Service / Tag 关系）：
-  - v3 核心实现中，AppRuntime 已维护一份内部 TagIndex（`TagInfo` / `TagCollision` / `TagCollisionError`），在构建阶段用于 Tag 冲突检测（见 `.codex/skills/project-guide/references/runtime-logix/logix-core/impl/01-app-runtime-and-modules.md` 与 `AppRuntime.makeApp` 实现）；
+  - v3 核心实现中，AppRuntime 已维护一份内部 TagIndex（`TagInfo` / `TagCollision` / `TagCollisionError`），在构建阶段用于 Tag 冲突检测（见 `docs/ssot/runtime/logix-core/impl/01-app-runtime-and-modules.md` 与 `AppRuntime.makeApp` 实现）；
   - 本草案关注如何在不影响核心运行时行为的前提下，将这份 TagIndex 暴露为 DevTools / Universe 可消费的观测面（例如只读查询 API 或事件流），并在后续 ModuleDef / 分形 Module 树 flatten 时扩展其覆盖范围。
 - 提供 Debug API 或 DevTools Hook，以便在浏览器/CLI 中查看 Runtime Tree；
 - 不直接影响 Runtime 核心行为，仅作为观测与调试层。

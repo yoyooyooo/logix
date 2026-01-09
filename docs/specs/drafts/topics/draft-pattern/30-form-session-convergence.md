@@ -30,6 +30,6 @@ related:
 
 ## 3. 后续动作（供未来整合用）
 
-- 在 runtime-logix/form 规范中加入一节「Form Session & Draft Pattern」，明确：
+- 在 `docs/ssot/runtime/logix-form/README.md` 中加入一节「Form Session & Draft Pattern」，明确：
   - Form Session 是 Draft Pattern 在表单领域的具体化；
   - Draft Pattern 的通用形态是否需要、何时需要由后续演进决定。

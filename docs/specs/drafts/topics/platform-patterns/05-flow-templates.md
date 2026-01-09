@@ -29,5 +29,5 @@ related:
 ## 3. 与 SSoT 的关系
 
 - 若后续确认这一方向，将：
-  - 在 `docs/specs/sdd-platform/ssot` 中增加 Pattern 作为资产类型的正式定义；
-  - 在 runtime-logix 中明确 Pattern 只是 Logic/Flow 的模板，不引入新的运行时原语。
+  - 在 `docs/ssot/platform` 中增加 Pattern 作为资产类型的正式定义；
+  - 在 runtime SSoT 中明确 Pattern 只是 Logic/Flow 的模板，不引入新的运行时原语。

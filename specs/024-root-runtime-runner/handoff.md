@@ -36,8 +36,8 @@ Scope: `specs/024-root-runtime-runner/`
 - core 入口：`packages/logix-core/src/Runtime.ts`
 - runner 内核：`packages/logix-core/src/internal/runtime/runner/ProgramRunner.ts`
 - `@logixjs/test` 新入口：`packages/logix-test/src/api/TestProgram.ts`、`packages/logix-test/src/Vitest.ts`
-- runtime SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/api/05-runtime-and-runner.md`
-- test-package SSoT：`.codex/skills/project-guide/references/runtime-logix/logix-core/impl/07-test-package.md`
+- runtime SSoT：`docs/ssot/runtime/logix-core/api/05-runtime-and-runner.md`
+- test-package SSoT：`docs/ssot/runtime/logix-core/impl/07-test-package.md`
 
 ## 2. 迁移指南（必须包含 Before/After）
 

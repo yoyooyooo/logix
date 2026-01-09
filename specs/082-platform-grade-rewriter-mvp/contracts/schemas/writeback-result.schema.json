@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/082/writeback-result.schema.json",
+  "title": "WriteBackResult@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "mode", "modifiedFiles", "skipped", "failed"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "kind": { "type": "string", "const": "WriteBackResult" },
+    "mode": { "type": "string", "enum": ["report", "write"] },
+    "modifiedFiles": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ModifiedFile" }
+    },
+    "skipped": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Outcome" }
+    },
+    "failed": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Outcome" }
+    }
+  },
+  "$defs": {
+    "ModifiedFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "changeKind"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "changeKind": { "type": "string", "enum": ["updated", "created"] }
+      }
+    },
+    "Outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opKey", "reasonCodes"],
+      "properties": {
+        "opKey": { "type": "string", "minLength": 1 },
+        "reasonCodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

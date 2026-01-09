@@ -10,7 +10,7 @@ related: []
 > **Status**: L3 (Proposed Contract)
 > **Context**: `v3/effect-runtime`
 
-本草稿旨在“钉死” Draft Pattern 的核心类型定义与运行时行为契约，为后续进入 `runtime-logix` 实现层做准备。
+本草稿旨在“钉死” Draft Pattern 的核心类型定义与运行时行为契约，为后续进入 `runtime SSoT` 实现层做准备。
 
 ## 1. Core Type Definitions
 

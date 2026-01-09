@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "group": "080-full-duplex-prelude",
+  "statusEnum": ["idea", "planned", "draft", "implementing", "done", "frozen"],
+  "entries": [
+    {
+      "id": "005",
+      "dir": "specs/005-unify-observability-protocol",
+      "status": "draft",
+      "dependsOn": []
+    },
+    {
+      "id": "016",
+      "dir": "specs/016-serializable-diagnostics-and-identity",
+      "status": "draft",
+      "dependsOn": ["005"]
+    },
+    {
+      "id": "025",
+      "dir": "specs/025-ir-reflection-loader",
+      "status": "draft",
+      "dependsOn": ["016"]
+    },
+    {
+      "id": "031",
+      "dir": "specs/031-trialrun-artifacts",
+      "status": "draft",
+      "dependsOn": ["025"]
+    },
+    {
+      "id": "035",
+      "dir": "specs/035-module-ports-typeir",
+      "status": "draft",
+      "dependsOn": ["031"]
+    },
+    {
+      "id": "040",
+      "dir": "specs/040-schemaast-layered-upgrade",
+      "status": "draft",
+      "dependsOn": []
+    },
+    {
+      "id": "061",
+      "dir": "specs/061-playground-editor-intellisense",
+      "status": "done",
+      "dependsOn": []
+    },
+    {
+      "id": "086",
+      "dir": "specs/086-platform-visualization-lab",
+      "status": "draft",
+      "dependsOn": ["025"]
+    },
+    {
+      "id": "067",
+      "dir": "specs/067-action-surface-manifest",
+      "status": "draft",
+      "dependsOn": ["016", "025"]
+    },
+    {
+      "id": "078",
+      "dir": "specs/078-module-service-manifest",
+      "status": "draft",
+      "dependsOn": ["025"]
+    },
+    {
+      "id": "081",
+      "dir": "specs/081-platform-grade-parser-mvp",
+      "status": "planned",
+      "dependsOn": []
+    },
+    {
+      "id": "082",
+      "dir": "specs/082-platform-grade-rewriter-mvp",
+      "status": "planned",
+      "dependsOn": ["081"]
+    },
+    {
+      "id": "079",
+      "dir": "specs/079-platform-anchor-autofill",
+      "status": "draft",
+      "dependsOn": ["078", "082"]
+    },
+    {
+      "id": "085",
+      "dir": "specs/085-logix-cli-node-only",
+      "status": "planned",
+      "dependsOn": ["025", "081", "082", "079"]
+    },
+    {
+      "id": "083",
+      "dir": "specs/083-named-logic-slots",
+      "status": "planned",
+      "dependsOn": ["081"]
+    },
+    {
+      "id": "084",
+      "dir": "specs/084-loader-spy-dep-capture",
+      "status": "planned",
+      "dependsOn": ["016", "025"]
+    }
+  ]
+}

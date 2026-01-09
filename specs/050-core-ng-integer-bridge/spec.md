@@ -36,7 +36,7 @@
 - AUTO: Q: perf evidence 采集是否允许在 dev 工作区（git dirty）完成？ → A: 允许（当前阶段）；但必须确保 `matrix/config/env` 一致，并在 diff 中保留 `git.dirty.*` warnings；若出现 `stabilityWarning` 或结论存疑，必须复测（必要时升级到 `profile=soak`）。
 - AUTO: Q: 动态路径/无法整型化的写入如何处理？ → A: 允许，但必须在 txn 内仍以 FieldPath segments 进入 registry；若出现异常/超出容量，必须显式降级为 `dirtyAll=true` 并带 `DirtyAllReason`（Slim、可序列化），且该降级在 Perf Gate 覆盖场景中视为 FAIL（必须先收敛/证据化）。
 - AUTO: Q: FieldPathId/StepId 的“稳定”要求到什么程度？ → A: 必须在同一 Static IR/同一交互序列下可重复对齐；id 分配不得依赖随机/时间，且 diff/对照验证的 primary anchors 仍以 `instanceId/txnSeq/opSeq` +（可解释的）path/step 锚点为准；mapping 必须可导出以复核。
-- AUTO: Q: diagnostics=light/full 是否允许 materialize 可读字符串？ → A: 允许，但仅在事务外或 loop 外的缓存/摘要边界；不得在热循环里对每次操作做 join/split；`diagnostics=off` 下不 materialize。
+- AUTO: Q: diagnostics=light/sampled/full 是否允许 materialize 可读字符串？ → A: 允许，但仅在事务外或 loop 外的缓存/摘要边界；不得在热循环里对每次操作做 join/split；`diagnostics=off` 下不 materialize。
 - AUTO: Q: bitset 清零与稀疏 id 的默认策略是什么？ → A: 默认先采用最简单可证据化策略（例如 `fill(0)` 清零），只有当 perf evidence 显示清零主导时才引入 touched-words 等优化；并补充 microbench 证明收益。
 - AUTO: Q: “半成品态”如何被守护？ → A: 必须有守护测试/微基准能在 txn/exec 热点检测到 `split/join` 往返（至少禁止 `id→string→split`）；一旦出现视为 Gate FAIL。
 - AUTO: Q: Perf evidence 必须覆盖哪些档位？ → A: P1 suites 必须覆盖 `diagnostics=off`；light/full 仅作为开销曲线或诊断链路验证，不作为默认 Gate baseline。
@@ -64,7 +64,7 @@
 
 **Why this priority**: 如果 id 不稳定或不可解释，会破坏证据链与回放，导致优化不可持续。
 
-**Independent Test**: 045 对照验证 harness 的差异锚点不漂移；证据字段可序列化且能映射回可读信息（至少在 diagnostics=light/full）。
+**Independent Test**: 045 对照验证 harness 的差异锚点不漂移；证据字段可序列化且能映射回可读信息（至少在 diagnostics=light/sampled/full）。
 
 **Acceptance Scenarios**:
 
@@ -96,7 +96,7 @@
 - **FR-001**: 系统 MUST 提供 FieldPath 的“源头零拷贝”表示（segments/FieldPath），并允许事务流水线透传该表示直到 commit/证据边界；不得在事务窗口内反复 join→split。
 - **FR-002**: 系统 MUST 提供 argument-based patch recording（至少在 light 档位）：调用点不得创建 patch 对象；分支必须搬到 loop 外；禁止 rest 参数隐式数组分配。
 - **FR-003**: 系统 MUST 在执行链路中使用整型 id 驱动访问器与计划（pathId/stepId/reasonCode），禁止 id→string→split 的半成品态进入默认路径。
-- **FR-004**: 系统 MUST 为 FieldPathId/StepId/ReasonCode 提供可解释映射：diagnostics=light/full 可映射回可读信息；off 档位近零成本且不强制 materialize strings。
+- **FR-004**: 系统 MUST 为 FieldPathId/StepId/ReasonCode 提供可解释映射：diagnostics=light/sampled/full 可映射回可读信息；off 档位近零成本且不强制 materialize strings。
 - **FR-005**: 系统 MUST 复用 045 的 Kernel Contract 与对照验证跑道：整型化不得破坏统一最小 IR 与稳定锚点；差异报告必须仍可对齐与解释。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
@@ -118,4 +118,4 @@
 
 - **SC-001**: 在关键热路径（converge/txn）中，事务窗口热循环内不再出现 split/join 往返热点（通过证据与守护测试/微基准复核）。
 - **SC-002**: Node `converge.txnCommit` 与 Browser `converge.txnCommit` 的 before/after perf diff 满足 `meta.comparability.comparable=true` 且 `summary.regressions==0`；如要主张“纯赚收益”，补充至少 1 条可证据化收益（例如 `p95` 下降 ≥20% 或 heap/alloc 明显改善）。
-- **SC-003**: diagnostics=light/full 下 id 可映射回可读信息且可序列化；diagnostics=off 下近零成本。
+- **SC-003**: diagnostics=light/sampled/full 下 id 可映射回可读信息且可序列化；diagnostics=off 下近零成本。

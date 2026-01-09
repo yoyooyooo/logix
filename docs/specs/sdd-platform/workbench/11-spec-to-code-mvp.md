@@ -109,7 +109,7 @@ related:
       - 该 Scenario 是否通过（绿勾/红叉）；  
       - 如失败，列出简单诊断（例如“cityOptions 未包含预期城市”）。  
 - 输出契约：  
-  - RunResult 至少包含：tickSeq 锚定的事件流（Trace；必要时包含 Tape）+ StateSnapshot/Patch + Static IR anchors（口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）；  
+  - RunResult 至少包含：tickSeq 锚定的事件流（Trace；必要时包含 Tape）+ StateSnapshot/Patch + Static IR anchors（口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）；  
   - AlignmentReport 针对单个 Scenario 给出通过/失败 + 文本诊断，并将状态回写到对应 Scenario Block。
 
 ## 7. 验收标准（MVP Done 的定义）

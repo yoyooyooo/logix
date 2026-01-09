@@ -253,7 +253,7 @@
 
 ## Implementation Notes & Env / Debug Policy _(supporting information)_
 
-> 本节用于约束本特性在「运行时环境判断」与「Devtools 辅助代码」上的实现策略，避免未来再出现多套 env 实现或无法裁剪的高噪音逻辑。若与 runtime-logix 文档冲突，以 runtime-logix 为准。
+> 本节用于约束本特性在「运行时环境判断」与「Devtools 辅助代码」上的实现策略，避免未来再出现多套 env 实现或无法裁剪的高噪音逻辑。若与 runtime SSoT 文档冲突，以 runtime SSoT 为准。
 
 - **统一环境检测入口**
   - 所有 Runtime / React / Devtools 辅助代码必须通过 `@logixjs/core/Env` 导出的 `getNodeEnv` / `isDevEnv` 读取运行时环境：
@@ -272,7 +272,7 @@
     - 规范层假定生产入口不主动渲染 `LogixDevtools` 时，该包可以完全被业务 bundler 摇掉；
     - 本特性密切相关的 RuntimeDebugEvent / StateTransaction / TraitGraph 语义必须在没有 Devtools 时也保持一致，以便未来接入其他观测工具。
   - 文档回写要求：本特性所有新增概念与契约在实现稳定后，必须同步补充到 SSoT 与用户文档：
-    - SSoT 侧：在 `.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/10-runtime-glossary.md` 中登记 StateTransaction / StateTxnContext / Trait 生命周期 / Devtools 事务视图 / RuntimeDebugEvent 等术语及其跨层关系，并在 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与 `impl/README.md` 中补充对应运行时契约与实现要点；
+    - SSoT 侧：在 `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md` 中登记 StateTransaction / StateTxnContext / Trait 生命周期 / Devtools 事务视图 / RuntimeDebugEvent 等术语及其跨层关系，并在 `docs/ssot/runtime/logix-core/*` 与 `impl/README.md` 中补充对应运行时契约与实现要点；
     - 用户文档侧：在 `apps/docs/content/docs/guide/advanced/debugging-and-devtools.md` 及相关 API 文档中增加“按事务调试 Trait + 使用时间旅行 + 观察渲染事件”的示例与推荐实践，保持对最终业务开发者友好的叙事，不暴露 PoC 内部实现细节。
 
 - **测试策略与 001 特性的承接**
@@ -295,7 +295,7 @@
   - 目标：保持“事务边界显式、入口级”这一内核不变量不变，同时为业务提供更线性的长链路写法，避免在每个模块里手写 `refreshSuccess/refreshFailed` 等结果 Action。
     - 稳定不变量（业务心智只需记三条）：
       1.  每次进入入口 API（dispatch / source.refresh / devtools / service-callback）必然开启一笔 StateTransaction；引擎不根据 `Effect.sleep/HTTP` 等异步边界隐式切事务。
-      - 补充：若某个 source 通过 kernel DSL 开启 `onMount` / `onKeyChange` 等自动模式，Runtime 会在合适的时机**自动调用同一 `source.refresh` 入口**；因此自动模式并不改变“入口级事务”的不变量，只是把入口触发从业务侧迁移到 Runtime 侧。
+      - 补充：若某个 source 通过 kernel DSL 启用 `autoRefresh`（例如 `onMount` / `onDepsChange`），Runtime 会在合适的时机**自动调用同一 `source.refresh` 入口**；因此自动模式并不改变“入口级事务”的不变量，只是把入口触发从业务侧迁移到 Runtime 侧。
       2.  单笔事务窗口只覆盖同步计算 + 状态写入，不跨真实 IO；事务内允许多次 `$.state.update/mutate`，对外只在 commit 时可见。
       3.  长链路（pending → IO → result）= 多次逻辑入口（多笔事务），但该拆分应由高层 API 自动完成。
   - 方案（后续演进，非本轮必达）：在 Bound/Flow 层提供 `runTask` 系列语法糖，API 与现有 Flow `run*` 语义一一镜像，内部自动按多入口模式拆分事务：

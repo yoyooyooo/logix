@@ -73,7 +73,7 @@
 - [x] T022 [US2] 在 AppRuntime 构建时注入 RootContextTag `packages/logix-core/src/internal/runtime/AppRuntime.ts`
 - [x] T023 [US2] 提供显式 root/global 解析入口：新增 `Logix.Root.resolve(Tag)` 并基于 RootContextTag 解析 ServiceTag/ModuleTag（ModuleTag 只返回 root 单例）`packages/logix-core/src/Root.ts`
 - [x] T024 [US2] React 侧移除 `useImportedModule/host.imports.get` 的 global mode 语义与分支，保持 strict-only（root/global 单例通过 `Root.resolve` 获取）`packages/logix-react/src/internal/resolveImportedModuleRef.ts`
-- [x] T025 [US2] 修正文档演练与注释：`$.use`=strict、跨模块协作使用 `Link.make`、root/global 使用 `Root.resolve`（含 Root Mock 策略、`Root.resolve(ModuleTag)` 语义边界；补充 “Angular `providedIn:\"root\"` ↔ root layer + `Root.resolve`/`useModule(ModuleTag)`” 心智模型）`.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`
+- [x] T025 [US2] 修正文档演练与注释：`$.use`=strict、跨模块协作使用 `Link.make`、root/global 使用 `Root.resolve`（含 Root Mock 策略、`Root.resolve(ModuleTag)` 语义边界；补充 “Angular `providedIn:\"root\"` ↔ root layer + `Root.resolve`/`useModule(ModuleTag)`” 心智模型）`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
 - [x] T026 [P] [US2] 新增测试：`Root.resolve` 不受 `RuntimeProvider.layer` 覆盖影响（同时覆盖“如何 mock root provider”的测试形态）`packages/logix-core/test/hierarchicalInjector.root-resolve.override.test.ts`
 
 **Checkpoint**: US2 用例通过：显式 global/root 不受 override 影响；strict 不静默降级。
@@ -95,7 +95,7 @@
 
 - [x] T029 [US3] 统一 core 错误 name 与字段，并确保载荷 Slim（不包含 Context/Effect/闭包）`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
 - [x] T030 [US3] 统一 react 错误信息与字段（补 entrypoint/mode/startScope 等可读信息）`packages/logix-react/src/internal/resolveImportedModuleRef.ts`
-- [x] T031 [US3] 将错误口径沉淀为 Debugging SSoT（不引入新协议则注明“仅错误文本”）`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [x] T031 [US3] 将错误口径沉淀为 Debugging SSoT（不引入新协议则注明“仅错误文本”）`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 
 **Checkpoint**: 三个入口（`$.use` / `Link.make` / `useImportedModule`）的错误可读且可修复；断言用例通过。
 
@@ -109,8 +109,8 @@
 - [x] T033 [P] 同步用户文档：跨模块协作从 `$.useRemote` 迁移到 `Link.make`（含最小示例与语义对比表）`apps/docs/content/docs/guide/learn/cross-module-communication.md`
 - [x] T034 [P] 同步评审文档：移除/更新 `$.useRemote` 的公共 API 表述（保持与 008 一致）`docs/reviews/02-mental-model-and-public-api.md`
 - [x] T035 [P] 新增迁移辅助脚本（best-effort）：扫描 `$.useRemote` 与“`$.use(Module)` 但未声明 imports”的常见误用并输出提示 `scripts/migrate/008-hierarchical-injector.scan.ts`
-- [x] T036 [P] 更新 runtime SSoT：作用域边界与最佳实践（UI 默认只绑定 Host，一跳 imports 直连；深层模块通过投影/边界 resolve 一次并透传 ModuleRef；必要时把常用模块提升为 Host 的直接 imports）`.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`
-- [x] T037 [P] 更新多实例最佳实践（如需补充）：strict 与 global 的使用边界 `.codex/skills/project-guide/references/runtime-logix/logix-core/patterns/10-pattern-multi-instance.md`
+- [x] T036 [P] 更新 runtime SSoT：作用域边界与最佳实践（UI 默认只绑定 Host，一跳 imports 直连；深层模块通过投影/边界 resolve 一次并透传 ModuleRef；必要时把常用模块提升为 Host 的直接 imports）`docs/ssot/runtime/logix-react/01-react-integration.md`
+- [x] T037 [P] 更新多实例最佳实践（如需补充）：strict 与 global 的使用边界 `docs/ssot/runtime/logix-core/patterns/10-pattern-multi-instance.md`
 - [x] T038 [P] 同步用户文档：补齐“组件侧读子模块”的推荐心智（Host 一跳、提升 imports、边界 resolve 一次） `apps/docs/content/docs/api/core/runtime.md`
 - [x] T039 [P] 同步用户文档：`useModule/useLocalModule` 的单例/多实例心智与与最佳实践（UI 默认只拿 Host）`apps/docs/content/docs/api/react/use-module.md`
 - [x] T040 [P] 同步用户文档：`useImportedModule`/`imports.get` 的推荐用法（最多一跳；深层用透传 ModuleRef/投影）与错误示例 `apps/docs/content/docs/api/react/use-imported-module.md`

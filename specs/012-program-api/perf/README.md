@@ -47,7 +47,7 @@
 报告必须包含（可为 JSON/Markdown，或脚本落盘产物的摘要）：
 
 - 场景（S0/S1）与 Process 数量
-- diagnostics 等级（off/light/full）
+- diagnostics 等级（off/light/sampled/full）
 - `p50/p95` 时间与分配指标
 - 与 baseline 的 `deltaPct`
 - PASS/FAIL 总结（按本文件第 4 节）

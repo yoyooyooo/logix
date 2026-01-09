@@ -20,7 +20,7 @@ Query 的核心不是“提交草稿”，而是：
 - `@logixjs/query` **内部使用 TanStack Query**（建议基于 `@tanstack/query-core` 作为内核，React 侧用 `@tanstack/react-query` 适配层），由其负责缓存、in-flight 去重、staleTime/gcTime 等缓存策略；
 - Logix Trait/Runtime 不重复实现缓存，但仍负责：
   - keySchema 规范化 + keyHash（稳定可回放、可比较）；
-  - 触发语义（onMount/onKeyChange/manual）与并发策略（switch/exhaust）；
+  - 触发语义（autoRefresh：onMount/onDepsChange + debounce；以及 autoRefresh=false 的 manual-only）与并发策略（switch/exhaust）；
   - 把“快照（QuerySnapshot）”写回 state，作为全双工事实源与 time travel 的可回放依据；
   - EffectOp timeline 的可解释性（为什么触发/为什么丢弃/为什么取消）。
 
@@ -102,12 +102,11 @@ Query 与 Form 共享：
 - **FR-Q02a · 缓存职责（TanStack Query）**  
   Query 的缓存与 in-flight 去重 SHOULD 由 TanStack Query 负责；Logix Runtime 不重复实现缓存层，仅在写回 state 时做 keyHash 门控（stale 丢弃）。
 
-- **FR-Q03 · 触发策略（triggers + debounce）**  
-  Query MUST 支持触发语义：
-  - `onMount`：用于初始同步（已有参数时）
-  - `onKeyChange`：参数变化触发（可 debounce）
-  - `manual`：仅手动触发（独占）
-  UI 层事件（onChange/onBlur/enter/submit）由 UI 适配层映射到“参数变化/手动触发”。
+- **FR-Q03 · 触发策略（autoRefresh）**  
+  Query MUST 支持受限自动触发策略（对齐 076）：`autoRefresh?: { onMount?: boolean; onDepsChange?: boolean; debounceMs?: number } | false`。
+  - `autoRefresh` 未提供：等价于 `{ onMount: true, onDepsChange: true, debounceMs: 0 }`
+  - `autoRefresh: false`：仅手动触发（manual-only），但仍允许显式 refresh
+  UI 层事件（onChange/onBlur/enter/submit）不得进入 kernel 枚举，应由 UI 适配层映射为“参数写入（depsChange）”或显式 refresh。
 
 - **FR-Q04 · 并发策略（switch/exhaust）**  
   Query MUST 至少支持：

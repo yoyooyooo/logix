@@ -11,7 +11,7 @@ related:
   - ../sdd-platform/11-spec-to-code-mvp.md
   - ../intent-studio-ux/00-overview.md
   - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
-  - ../../../sdd-platform/ssot/roadmap-logix-platform.md
+  - ../../../docs/ssot/platform/roadmap-logix-platform.md
   - ../sandbox-runtime/35-playground-product-view.md
 ---
 

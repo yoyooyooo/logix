@@ -16,7 +16,7 @@ description: 'Task list for 003-trait-txn-lifecycle implementation'
 **Purpose**: 对齐 feature 分支环境与文档入口，保证后续任务落点清晰。
 
 - [x] T001 确认 feature 分支与规范文件存在（`003-trait-txn-lifecycle` / `spec.md` / `plan.md`）
-- [x] T002 [P] 在 `.codex/skills/project-guide/references/runtime-logix/logix-core` 下定位需更新的文档条目并加上 TODO 标记（如 02-module-and-logic-api.md、03-logic-and-flow.md）
+- [x] T002 [P] 在 `docs/ssot/runtime/logix-core` 下定位需更新的文档条目并加上 TODO 标记（如 02-module-and-logic-api.md、03-logic-and-flow.md）
 - [x] T003 [P] 在 `packages/logix-core`、`packages/logix-react`、`packages/logix-devtools-react` 目录下运行一次 `pnpm test` / `pnpm typecheck`，记录当前基线状态
 
 ---
@@ -172,17 +172,17 @@ description: 'Task list for 003-trait-txn-lifecycle implementation'
 
 **Purpose**: 收尾工作、性能/文档/对齐细节。
 
-- [x] T041 [P] 整理并补全 `.codex/skills/project-guide/references/runtime-logix/logix-core/*` 与 `impl/README.md` 中与 StateTransaction / Trait 生命周期 / RuntimeDebugEvent / Devtools 契约相关的文档描述
+- [x] T041 [P] 整理并补全 `docs/ssot/runtime/logix-core/*` 与 `impl/README.md` 中与 StateTransaction / Trait 生命周期 / RuntimeDebugEvent / Devtools 契约相关的文档描述
 - [x] T042 [P] 在 `specs/003-trait-txn-lifecycle/references/future-devtools-data-model.md` 中记录本轮实现与原设计之间的差异与后续扩展点（例如事务内部步级 time-travel、录制/回放）
 - [x] T043 在 `packages/logix-core` / `packages/logix-react` / `packages/logix-devtools-react` 中做一次轻量代码清理与注释整理：统一通过 `@logixjs/core/Env`（`packages/logix-core/src/internal/runtime/core/env.ts`）暴露 `getNodeEnv` / `isDevEnv`，在 `packages/logix-react/src/internal/env.ts` 中仅做 re-export，移除所有直接访问 `process.env.NODE_ENV` 的代码，并确保 dev-only 逻辑都有明确注释与 `isDevEnv()` 守卫
 - [x] T044 跑通 `quickstart.md` 中列出的验证路径，按故事顺序检查：事务视图 → TraitGraph → 时间线游标 → 时间旅行 → 渲染事件 → 高 Trait 密度场景
 - [x] T045 [P] 在 `apps/docs/content/docs/guide/advanced/performance-and-optimization.md` 新增“Logix 性能与优化”专题页面，系统整理本特性涉及的事务观测策略（Instrumentation Policy）、Devtools 观测粒度开关、中间件层防抖/节流、Trait 粒度选择等可选优化手法，并以典型场景（高频输入表单、长时间运行模块、Devtools 打开/关闭对比等）分类说明
 - [x] T051 在 `examples/logix-react/src/demos/trait-txn-devtools-demo.tsx` 中新增 Demo Page：挂载 TraitForm/TraitFormAdvanced 模块与 Devtools 面板，展示事务视图、时间旅行、渲染事件与顶部时间轴总览条，作为业务开发者感知性能差异与观测模式的入口
-- [x] T052 在 Resource/Query reference 与 runtime-logix 用户文档的 best-practices 中补充约定：在 StateTrait.source 等 DSL 中，推荐通过 `ResourceRef`（或 `ResourceRef.id`）为 resourceId 赋值，而不是散落字符串常量；并在示例中给出统一写法：`specs/001a-module-traits-runtime/references/resource-and-query.md`, `.codex/skills/project-guide/references/runtime-logix`
+- [x] T052 在 Resource/Query reference 与 runtime SSoT 用户文档的 best-practices 中补充约定：在 StateTrait.source 等 DSL 中，推荐通过 `ResourceRef`（或 `ResourceRef.id`）为 resourceId 赋值，而不是散落字符串常量；并在示例中给出统一写法：`specs/001a-module-traits-runtime/references/resource-and-query.md`, `docs/ssot/runtime`
 - [x] T074 在 `apps/docs/content/docs/guide/advanced/debugging-and-devtools.md`（或相邻 Runtime 指南）中增加面向业务开发者的「事务边界与逻辑入口心智」小节：
   - 用非 PoC 语言解释“什么时候会开一笔新的 StateTransaction”：至少覆盖“逻辑入口（dispatch / traits.source.refresh / service-callback / devtools 操作）”、“新 Runtime/实例首次进入”、“每次 dispatch 都是一次入口”等规则；
   - 配合 2–3 个典型示例（简单点击、带 loading 的请求、错误使用：在单个 Effect.gen 中跨异步直接 update state），分别标出事务 1/2/… 的边界与执行顺序；
-  - 明确推荐心智：用户只需记住“所有业务入口都是显式事务窗口，异步边界不会自动拆事务；长链路用多入口或 Task Runner（未来）表达”，并在文档中链接回 runtime-logix SSoT 的详细设计章节。
+  - 明确推荐心智：用户只需记住“所有业务入口都是显式事务窗口，异步边界不会自动拆事务；长链路用多入口或 Task Runner（未来）表达”，并在文档中链接回 runtime SSoT SSoT 的详细设计章节。
 - [x] T075 在 `packages/logix-core/src/internal/runtime/core` 下新增 DevtoolsHub 全局单例与 Hub Sink，实现 Debug 事件的进程/页面级聚合（对齐 FR-018）：
   - 将 `packages/logix-devtools-react/src/snapshot.ts` 中 ring buffer / instance counter / latestStates / instanceLabels 等能力下沉为 core internal（如 `DevtoolsHub.ts`）；
   - 在 `packages/logix-core/src/Debug.ts` 暴露 `Debug.getDevtoolsSnapshot / subscribeDevtoolsSnapshot / clearDevtoolsEvents / setInstanceLabel / getInstanceLabel` 等只读 API；
@@ -221,7 +221,7 @@ description: 'Task list for 003-trait-txn-lifecycle implementation'
   - 用产品视角说明 `Runtime.make({ devtools: true })` 自动做了什么（Hub + Observer + react-render）；
   - 明确 devtools 为显式 override，是否在生产环境启用由用户自行判断，并提示开销/风险；
   - 更新示例代码与 quickstart 链接。
-- [x] T085 [P] SSoT 回写：在 `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md` 与 `.codex/skills/project-guide/references/runtime-logix/logix-core/impl/README.md` 中补充 DevtoolsHub 与一键启用契约说明（不影响 apps/docs 的产品叙事）。
+- [x] T085 [P] SSoT 回写：在 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 与 `docs/ssot/runtime/logix-core/impl/README.md` 中补充 DevtoolsHub 与一键启用契约说明（不影响 apps/docs 的产品叙事）。
 - [x] T057 [P] 在 `packages/logix-devtools-react/src/state/compute.ts` 中基于 `RuntimeDebugEventRef` 增加“操作窗口”统计逻辑：
   - 从关键逻辑入口事件（如 `action:dispatch` / `devtools` 操作）起，维护一个短时间窗口（默认 1000ms，可读取/复用现有 `DevtoolsSettings.eventBufferSize` 配置），收集窗口内的所有相关事件（action/state/service/`react-render` 等），在无新事件进入的 1000ms 之后归并为一次“操作摘要”；
   - 抽象出纯函数（例如 `groupEventsIntoOperationWindows(events, settings)`）便于单元测试，不在 UI 层直接操作原始事件数组。
@@ -301,7 +301,7 @@ description: 'Task list for 003-trait-txn-lifecycle implementation'
   - `$.onAction("refresh").runLatestTask(...)` 的 loading/写回视觉行为；
   - 与现有事务/渲染事件对齐不回归。
 - [x] T073 [Future] 文档回写：
-  - 在 `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md` 增加长链路 Task Runner 的心智模型与正反例；
+  - 在 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md` 增加长链路 Task Runner 的心智模型与正反例；
   - 在 `apps/docs/content/docs` 增加面向业务开发者的 `run*Task` 使用指南（无 PoC 术语）。
 
 ---

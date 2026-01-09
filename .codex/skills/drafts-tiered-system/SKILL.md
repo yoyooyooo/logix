@@ -11,7 +11,7 @@ description: This skill should be used when managing a tiered L1–L9 draft syst
 ## 1. 背景与目的
 
 - 草稿用于承载「尚未完全定稿，但有潜在价值」的方案、调研、对话摘录和对外项目启发；
-- 正式规范（例如 `docs/specs/sdd-platform/ssot`、`.codex/skills/project-guide/references/runtime-logix`）只收敛稳定结论；
+- 正式规范（例如 `docs/ssot/platform`、`docs/ssot/runtime`）只收敛稳定结论；
 - L1–L9 数字越小代表成熟度越高，新草稿默认放在 L9，随整理逐步前移；
 - 通过该体系，支持后续“集中梳理草稿 → 融合方案 → 更新正式规格”的工作流。
 
@@ -76,7 +76,7 @@ description: This skill should be used when managing a tiered L1–L9 draft syst
 为便于跨主题决策和排期，每个草稿应在 frontmatter 中显式标注：
 
 - `value`: 从“对 SSoT/实现的结构性价值”角度分类，建议使用以下枚举值：
-  - `core`：直接影响 v3 / runtime-logix / 关键子包（如 `@logixjs/core`, `@logixjs/react`, `@logixjs/form`）的设计或实现，最终应沉淀到 `docs/specs` SSoT 与对应代码；
+  - `core`：直接影响 v3 / runtime SSoT / 关键子包（如 `@logixjs/core`, `@logixjs/react`, `@logixjs/form`）的设计或实现，最终应沉淀到 `docs/specs` SSoT 与对应代码；
   - `extension`：扩展能力、特定场景或子包（如 `@logixjs/query`、Draft Pattern、特定 ToB 场景）的设计，重要但不改变核心引擎契约；
   - `vision`：中长期蓝图与方向性思考（例如平台终局形态、AI Native 愿景），用于指导但不直接约束当前实现；
   - `background`：调研对比、历史记录、外部启发等，如不再被引用可在后续合并或归档。

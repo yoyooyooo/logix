@@ -69,5 +69,5 @@ version: 1.0 (Extracted from Platform Shapes)
 - **本地代理模式**：
   - 组织不希望代码/数据离开内网时：
     - 平台仅下发 Scenario/Spec/Blueprint 的 ID 和运行配置给 CLI；
-    - CLI 在本地执行 Sandbox Run，生成 RunResult + AlignmentReport（RunResult 口径见 `docs/specs/sdd-platform/ssot/contracts/01-runresult-trace-tape.md`）；
+    - CLI 在本地执行 Sandbox Run，生成 RunResult + AlignmentReport（RunResult 口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）；
     - 只上传脱敏后的结构化指标（通过/失败、差异摘要、Graph 级 diff），不上传完整日志/数据。

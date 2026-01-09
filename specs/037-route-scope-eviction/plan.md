@@ -52,7 +52,7 @@
 - 依赖或修改的规格/事实源（docs-first & SSoT）：
   - 依赖：`specs/022-module/*`（useModule/多实例/key 语义）、`specs/008-hierarchical-injector/*`（strict/default 解析口径）。
   - 对外文档：`apps/docs/content/docs/guide/recipes/react-integration.md`、`apps/docs/content/docs/guide/recipes/route-scope-modals.md`。
-  - 运行时 SSoT（按需补齐）：`.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`。
+  - 运行时 SSoT（按需补齐）：`docs/ssot/runtime/logix-react/01-react-integration.md`。
 - Effect/Logix contracts 变更：
   - 新增 `@logixjs/react` 的 Scope 工具（public API）。
   - 新增 `@logixjs/core` 的 ScopeRegistry（按 runtime tree 隔离；不作为业务日常入口，仅支撑高级/实验性 Bridge）。

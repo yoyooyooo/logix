@@ -101,7 +101,7 @@ description: 'Task list for 021-limit-unbounded-concurrency'
 
 - [x] T028 [US3] 完善 `concurrency::pressure` 的可解释字段（`degradeStrategy/suppressedCount/sampleRate/droppedCount`），并实现冷却窗口合并策略：`packages/logix-core/src/internal/runtime/core/ConcurrencyDiagnostics.ts`
 - [x] T029 [US3] 将并发控制面写入用户文档并接入导航（明确字段名与默认值：`concurrencyLimit=16`、`losslessBackpressureCapacity=4096`、`pressureWarningThreshold={ backlogCount:1000, backlogDurationMs:5000 }`、`warningCooldownMs=30000`；解释 `configScope=builtin/runtime_default/runtime_module/provider`；补充 cost model/optimization ladder/迁移说明）：`apps/docs/content/docs/guide/advanced/concurrency-control-plane.md`, `apps/docs/content/docs/guide/advanced/meta.json`
-- [x] T030 [P] [US3] 同步 runtime SSoT（新增诊断 code 与 payload 口径）：`.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`
+- [x] T030 [P] [US3] 同步 runtime SSoT（新增诊断 code 与 payload 口径）：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -149,7 +149,7 @@ Task: "T018 [US1] packages/logix-core/src/internal/runtime/ModuleRuntime.dispatc
 
 ```bash
 Task: "T029 [US3] apps/docs/content/docs/guide/advanced/concurrency-control-plane.md"
-Task: "T030 [US3] .codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md"
+Task: "T030 [US3] docs/ssot/runtime/logix-core/observability/09-debugging.md"
 ```
 
 ---

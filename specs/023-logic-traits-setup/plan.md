@@ -85,7 +85,7 @@ packages/
     │           └── ModuleTraitsRegistry.ts        # Devtools-only Program 索引（dev 环境）
     └── test/
         └── *.test.ts                              # 组合/冲突/证据稳定性回归用例（将新增或扩展）
-.codex/skills/project-guide/references/runtime-logix/logix-core/api/
+docs/ssot/runtime/logix-core/api/
 └── 02-module-and-logic-api.md                     # API/语义对齐（实现阶段需同步更新）
 ```
 
@@ -104,4 +104,4 @@ packages/
 - 产物齐全：`research.md`、`data-model.md`、`contracts/*`、`quickstart.md`、`tasks.md` 均已生成，且已对齐 `specs/022-module/spec.md` 的 `logicUnitId/descriptor` 稳定锚点口径。
 - 未引入并行真相源：规划仍以既有 `StateTraitProgram`/`StateTrait.exportStaticIr` 为最小 IR 落点，新增仅限“贡献收集/合并/冲突/来源”与证据桥接。
 - 诊断与稳定标识约束可落地：traits 来源锚点以 resolved `logicUnitId` 为主，derived 明确降级；诊断事件保持 Slim 且可序列化；事务窗口仍禁止 IO。
-- 性能基线（Diagnostics=off）：`packages/logix-core/test/LogicTraits.Setup.Perf.off.test.ts`（traits=100、contribs=4、iters=30）测得 p50=3.98ms、p95=5.18ms；后续以该基线约束“新增开销 ≤1%”，并在 diagnostics=light/full 下量化额外 trace 事件的成本。
+- 性能基线（Diagnostics=off）：`packages/logix-core/test/LogicTraits.Setup.Perf.off.test.ts`（traits=100、contribs=4、iters=30）测得 p50=3.98ms、p95=5.18ms；后续以该基线约束“新增开销 ≤1%”，并在 diagnostics=light/sampled/full 下量化额外 trace 事件的成本。

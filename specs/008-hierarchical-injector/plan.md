@@ -41,12 +41,12 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Runtime：多实例/多 root 下不得串 runtime；任何 fallback 语义都必须可解释、可测试。
 - 依赖或修改的 `docs/specs/*`（docs-first & SSoT）：
   - 需要把“strict 默认 + 显式 root/global + 最近 wins”的对外契约回写到：
-    - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`（`$.use` 与 `Link.make`/跨模块协作 的语义边界）
-    - `.codex/skills/project-guide/references/runtime-logix/logix-react/01-react-integration.md`（`useModule/useLocalModule/useImportedModule` 的推荐用法与错误语义）
-    - `.codex/skills/project-guide/references/runtime-logix/logix-core/observability/09-debugging.md`（缺失提供者/作用域不匹配的诊断口径）
-  - 如新增/调整公开术语（例如 “imports-scope / root provider / strict/global” 的裁决口径），需要同步到 `.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/10-runtime-glossary.md`。
+    - `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`（`$.use` 与 `Link.make`/跨模块协作 的语义边界）
+    - `docs/ssot/runtime/logix-react/01-react-integration.md`（`useModule/useLocalModule/useImportedModule` 的推荐用法与错误语义）
+    - `docs/ssot/runtime/logix-core/observability/09-debugging.md`（缺失提供者/作用域不匹配的诊断口径）
+  - 如新增/调整公开术语（例如 “imports-scope / root provider / strict/global” 的裁决口径），需要同步到 `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`。
 - Effect/Logix 契约变更与落档：
-  - 若改变 `$.use(ModuleTag)` 的默认解析（从“可能回退全局注册表”变为 strict），属于对外行为变更，必须先在 runtime-logix 文档落档并提供迁移说明。
+  - 若改变 `$.use(ModuleTag)` 的默认解析（从“可能回退全局注册表”变为 strict），属于对外行为变更，必须先在 runtime SSoT 文档落档并提供迁移说明。
 - 性能预算与回归防线：
   - 热点：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`（`resolveModuleRuntime`）、`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`（注册表）、`packages/logix-react/src/internal/resolveImportedModuleRef.ts`（imports 解析与缓存）。
   - 方式：新增最小“多 root + 多实例 + 深 imports”集成测试锁死语义；并提供可复现 micro-benchmark（仅测解析/订阅开销），基线/对比记录在 `specs/008-hierarchical-injector/perf.md`（入口：`pnpm perf bench:008:resolve-module-runtime`）。
@@ -57,7 +57,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - 本特性新增/调整的 scope 标识（rootScopeId/startScopeId 等）必须来源于“可注入/可重建”的稳定信息（例如 moduleId + React key/hostKey），不得引入新的 `Math.random()/Date.now()` 作为 id 源。
   - `RootContextTag` 必须以“每棵 runtime tree 一份”隔离（禁止跨 root 全局缓存），避免把其他 root 的标识/实例误串到当前解析中。
 - Breaking changes 与迁移说明：
-  - strict 默认会让“之前依赖全局 fallback 的误用”暴露为错误，这是预期的破坏性演进；迁移说明放在本特性 `tasks.md`（后续生成）与相关 runtime-logix 文档中。
+  - strict 默认会让“之前依赖全局 fallback 的误用”暴露为错误，这是预期的破坏性演进；迁移说明放在本特性 `tasks.md`（后续生成）与相关 runtime SSoT 文档中。
 - 质量门（merge 前必须通过）：
   - `pnpm typecheck`、`pnpm lint`、`pnpm test`（一次性运行）；至少覆盖 `packages/logix-core` 与 `packages/logix-react` 的相关用例。
 
@@ -83,7 +83,7 @@ packages/logix-core/                  # Bound API、ModuleRuntime、跨模块/�
 packages/logix-react/                 # React 适配：useModule/useLocalModule/useImportedModule、imports-scope 桥接
 packages/logix-devtools-react/        # 诊断展示（如需要补充错误事件可视化）
 
-.codex/skills/project-guide/references/runtime-logix/             # Runtime SSoT（契约落档）
+docs/ssot/runtime/             # Runtime SSoT（契约落档）
 apps/docs/content/docs/               # 用户文档（产品视角；必要时外链到 runtime SSoT）
 examples/                             # 示例验收（如需补一个“多实例 + 深 imports”演练）
 ```
@@ -119,5 +119,5 @@ examples/                             # 示例验收（如需补一个“多实�
 
 ### Phase 3：Docs / Migration
 
-- 回写 runtime SSoT（`.codex/skills/project-guide/references/runtime-logix/*`）与用户文档（`apps/docs`），补齐“最佳实践：优先在边界 resolve 一次、组件传递 ModuleRef”的推荐写法。
+- 回写 runtime SSoT（`docs/ssot/runtime/*`）与用户文档（`apps/docs`），补齐“最佳实践：优先在边界 resolve 一次、组件传递 ModuleRef”的推荐写法。
 - 为 breaking 行为提供迁移说明与示例修订（不保留兼容层）。

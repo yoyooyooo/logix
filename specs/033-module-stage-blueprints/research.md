@@ -5,7 +5,7 @@
 **Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/033-module-stage-blueprints/plan.md`
 
 > 本文件只固化关键裁决，避免 033 漂移成“UI 画布实现细节”或“runtime 解释器”。  
-> IR-first / Agent 出码闭环原则外链：`.codex/skills/project-guide/references/runtime-logix/logix-core/concepts/04-ir-vs-ast-and-agent-coding.md`
+> IR-first / Agent 出码闭环原则外链：`docs/ssot/runtime/logix-core/concepts/04-ir-vs-ast-and-agent-coding.md`
 
 ## Decisions
 

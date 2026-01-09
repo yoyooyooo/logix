@@ -74,8 +74,7 @@ Query 的 params/result/ui 必须全部落在模块 state 上，以保证可回�
 
 - `resource`：资源引用（ResourceSpec 或 { id }）。
 - `deps`：依赖字段路径数组（如 `params.q` / `ui.query.autoEnabled`），用于图构建与触发收敛；类型建议收窄为 `StateTrait.StateFieldPath<TState>`（`TState` 为模块 state；深度上限 4）。
-- `triggers`：触发语义（`onMount` / `onKeyChange` / `manual`）。
-- `debounceMs`（可选）：onKeyChange 的去抖（ms）。
+- `autoRefresh`：受限自动触发策略（对齐 076）：`{ onMount?: boolean; onDepsChange?: boolean; debounceMs?: number } | false`。
 - `concurrency`：并发语义（如 `switch` / `exhaust`）。
 - `key(state)`：从模块 state 计算 key；返回 undefined 表示当前不应触发请求。
 
@@ -83,7 +82,7 @@ Query 的 params/result/ui 必须全部落在模块 state 上，以保证可回�
 
 **Validation Rules**:
 
-- `triggers=["manual"]` 必须独占（否则属于配置错误）。
+- `autoRefresh: false` 表示 manual-only（仅显式 refresh）。
 - `deps` 必须显式声明，不允许隐式推导导致“不可解释依赖”。
 - key 的结果必须可稳定 hash 为 `keyHash`（由 kernel/Resource.keyHash 统一口径）。
 

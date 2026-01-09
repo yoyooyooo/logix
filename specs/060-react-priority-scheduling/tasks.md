@@ -86,5 +86,5 @@
 > 目标：仅在现代浏览器可用时利用额外信号提升吞吐/延迟折中；不作为核心依赖，不阻塞 P1 闭环。
 
 - [x] T027 [P] 引入可注入的 `shouldYieldNonUrgent` 判定（默认纯时间预算；可选读取 `navigator.scheduling.isInputPending`），并确保保留硬上界（定期让出以避免饿死渲染）`packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts`（或抽到 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnLanes.shouldYield.ts`）
-- [x] T028 [P] 证据字段补齐：在 diagnostics=light/full 的 `TxnLaneEvidence` 里记录“本次切片让路判定来源/原因”（例如 `reason=input_pending` / `reason=budget_exceeded` / `reason=forced_frame_yield`），方便在 Devtools 中解释“为什么此刻让路/为什么没让路”`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`specs/060-react-priority-scheduling/contracts/schemas/txn-lane-evidence.schema.json`
+- [x] T028 [P] 证据字段补齐：在 diagnostics=light/sampled/full 的 `TxnLaneEvidence` 里记录“本次切片让路判定来源/原因”（例如 `reason=input_pending` / `reason=budget_exceeded` / `reason=forced_frame_yield`），方便在 Devtools 中解释“为什么此刻让路/为什么没让路”`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`specs/060-react-priority-scheduling/contracts/schemas/txn-lane-evidence.schema.json`
 - [x] T029 [P] Browser perf boundary 增加对照维度：同一 workload 下比较 `shouldYieldNonUrgent=baseline` vs `inputPending`（重点看 backlog 追平速度与 urgent p95 是否回归），并将结果落盘到 060 perf 目录 `packages/logix-react/test/browser/perf-boundaries/txn-lanes.test.tsx`、`specs/060-react-priority-scheduling/perf/*`

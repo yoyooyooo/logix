@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/088-async-action-coordinator/contracts/schemas/async-action-event-meta.schema.json",
+  "title": "AsyncActionEventMeta",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "phase", "actionId"],
+  "properties": {
+    "type": { "const": "async-action" },
+    "phase": { "type": "string", "enum": ["trigger", "pending", "settle"] },
+    "actionId": { "type": "string", "minLength": 1 },
+    "concurrencyPolicy": { "type": "string", "enum": ["latest-wins", "queue", "allow-concurrent"] },
+    "lane": { "type": "string", "enum": ["urgent", "nonUrgent"] },
+    "status": { "type": "string", "enum": ["pending", "success", "failure", "cancelled"] },
+    "cancelReason": { "type": "string", "enum": ["override", "user", "navigation", "timeout", "unknown"] },
+    "durationMs": { "type": "number", "minimum": 0 },
+    "txnSeqs": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "maxItems": 8 },
+    "droppedTxnSeqCount": { "type": "integer", "minimum": 0 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "phase": { "const": "settle" } } },
+      "then": { "required": ["status"] }
+    }
+  ]
+}

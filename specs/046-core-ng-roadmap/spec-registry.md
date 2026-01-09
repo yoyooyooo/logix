@@ -67,7 +67,7 @@
 | `specs/045-dual-kernel-contract/` | Kernel Contract + 对照验证跑道 | Foundation | `$logix-perf-evidence`（默认路径无回归） | 046 的分支点前置；上层只依赖 `@logixjs/core`；M0 已达标（证据见下） | done |
 | `specs/039-trait-converge-int-exec-evidence/` | 当前内核收敛热路径整型化 + 证据达标 | Pure-opt (no semantic change) | `$logix-perf-evidence`（Node + Browser） | 关键 guardrails 都在 039；证据汇总：`specs/039-trait-converge-int-exec-evidence/perf.md`；未来 core-ng 可复用口径拦截负优化 | done |
 | `specs/043-trait-converge-time-slicing/` | time-slicing/跨帧收敛 | Semantic change (opt-in) | `$logix-perf-evidence`（必须 Browser） | 明确不混入 039；若要推进需单独管理迁移口径 | done |
-| `specs/044-trait-converge-diagnostics-sampling/` | 诊断采样/新观测口径 | Observability semantics | `$logix-perf-evidence`（必须 Browser） | 明确不污染 039 的 off/light/full 心智模型 | done |
+| `specs/044-trait-converge-diagnostics-sampling/` | 诊断采样/新观测口径 | Observability semantics | `$logix-perf-evidence`（必须 Browser） | 明确不改变 039 的 off、light、full 基础语义；新增 sampled 档位（见 044） | done |
 | `specs/065-core-ng-id-first-txn-recording/` | txn/recording id-first（dirty-set + patch recording） | Observability semantics | `$logix-perf-evidence`（Node + Browser；hard gates） | 证据：`specs/065-core-ng-id-first-txn-recording/quickstart.md` + `specs/065-core-ng-id-first-txn-recording/perf/*` | implementing |
 
 ---

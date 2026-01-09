@@ -63,7 +63,7 @@
 - **SC-002** PASS  
   Evidence：`specs/030-packages-public-submodules/contracts/public-submodules.md`、`specs/030-packages-public-submodules/contracts/gap-report.md`
 - **SC-003** PASS  
-  Evidence：`specs/030-packages-public-submodules/contracts/public-submodules.md`、`.codex/skills/project-guide/references/public-submodules.md`
+  Evidence：`specs/030-packages-public-submodules/contracts/public-submodules.md`、`docs/ssot/handbook/public-submodules.md`
 - **SC-004** PASS  
   Evidence：`specs/030-packages-public-submodules/contracts/gap-report.md`、`specs/030-packages-public-submodules/contracts/migration.md`
 - **SC-005** PASS（guardrail）  

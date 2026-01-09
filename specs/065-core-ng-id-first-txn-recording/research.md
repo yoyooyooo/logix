@@ -82,7 +82,7 @@
 
 - 继续允许自由字符串但只在 debug 侧裁剪：拒绝（原因码本身就是 gate 的锚点，必须稳定）。
 
-## Decision 5：诊断分档 off/light/full 的成本边界必须被硬门守住
+## Decision 5：诊断分档 off/light/sampled/full 的成本边界必须被硬门守住
 
 **Decision**：
 

@@ -98,7 +98,7 @@
 - **FR-006**: 系统必须覆盖至少以下类别的压力维度（可按子集分阶段交付）：
   - 端到端交互延迟（用户可感：click-to-paint/交互到稳定 UI）；
   - 事务提交/派生收敛成本（steps、dirty-roots、写入分布）；
-  - 诊断分档 overhead（off/light/full）；
+  - 诊断分档 overhead（off/light/sampled/full）；
   - 并发/挂起相关路径（严格模式/挂起恢复导致的抖动）。
 - **FR-007**: 报告必须能提供最小化归因线索：至少区分端到端延迟与运行时内部提交耗时等口径，避免把不同成本混为一谈。
 - **FR-008**: 压测矩阵必须显式覆盖“负优化边界”类场景（至少包含）：
@@ -135,7 +135,7 @@
   - 阈值输出：相对预算同样按 `where` 分组输出阈值；`where` 只描述“配对所需相同的 params 子空间”（通常不包含 ref 轴本身），以便 diff 稳定定位“从哪个档位开始越界”。
 - **可复现的对抗场景**：涉及“随机/噪声注入”的对抗场景必须可复现：使用固定 seed 的确定性生成器，并将 seed 作为 `params` 或元信息写入报告；不得依赖真正随机或不可控的时间噪声来构造高基数场景。
 - **噪声容忍阈值（stability）**：对同一 suite+params+metric 的两次运行（前一次为 baseline），若 `absΔp95Ms <= max(maxP95DeltaMs, baselineP95Ms * maxP95DeltaRatio)` 则认为在容忍范围内，否则判定超出并输出噪声提示（后台负载/浏览器版本/电源模式/tab 切换等）。阈值必须固化在 `matrix.json` defaults，并写入 report `meta.config.stability`；diff 结果需在 `SuiteDiff.notes` 中给出 `stabilityWarning`。
-- **诊断开销（diagnostics overhead）**：当同一场景在 `off/light/full` 下运行时，报告必须能表达 “相对 off 的开销上界”（例如 `full/off` 的 `p95` 比值或 `p95` 差值），并保证可机器解析（不依赖人读日志）；不同指标的观测口径（端到端 e2e / runtime / diagnostics）必须通过 `SuiteResult.metricCategories` 标注，diff 在阈值变化描述中需带上 `category=e2e|runtime|diagnostics` 前缀。
+- **诊断开销（diagnostics overhead）**：当同一场景在 `off/light/sampled/full` 下运行时，报告必须能表达 “相对 off 的开销上界”（例如 `sampled/off` 或 `full/off` 的 `p95` 比值或 `p95` 差值），并保证可机器解析（不依赖人读日志）；不同指标的观测口径（端到端 e2e / runtime / diagnostics）必须通过 `SuiteResult.metricCategories` 标注，diff 在阈值变化描述中需带上 `category=e2e|runtime|diagnostics` 前缀。
 
 ### Key Entities *(include if feature involves data)*
 

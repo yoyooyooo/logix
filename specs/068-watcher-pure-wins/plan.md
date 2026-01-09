@@ -41,7 +41,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ### Answers (Pre-Design)
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性属于 Runtime 执行面/订阅传播面的性能治理：不改变业务 Flow 语义，只减少无关触达与无谓重算，并把回归门禁固化。
-- **Docs-first & SSoT**：不新增平台术语；与 watcher 性能心智模型相关的契约应同步更新 runtime-logix 的 watcher/Flow 文档，避免事实源漂移。
+- **Docs-first & SSoT**：不新增平台术语；与 watcher 性能心智模型相关的契约应同步更新 runtime SSoT 的 watcher/Flow 文档，避免事实源漂移。
 - **IR & anchors**：不改变统一最小 IR；传播 IR 仅新增最小“可序列化表结构”契约，且必须能降解并与现有 trace 锚点对齐。
 - **Deterministic identity**：不引入随机/时间锚点；既有 instanceId/txnSeq/opSeq 语义保持，并用于回归用例与证据锚点。
 - **Transaction boundary**：不引入事务窗口 IO/await；任何 publish/背压等待必须保持在事务窗口之外。

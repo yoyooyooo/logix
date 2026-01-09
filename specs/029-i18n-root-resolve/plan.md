@@ -52,8 +52,8 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - 依赖或修改的规格/事实源（docs-first & SSoT）：
   - 解析语义依赖：`specs/008-hierarchical-injector/contracts/resolution.md`（strict 默认 + 显式 root/global 的裁决口径）。
   - Runtime SSoT（需要补齐/更新的契约落档点）：
-    - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/03-logic-and-flow.md`（Bound API `$`：新增 `$.root.resolve` 的语义边界与推荐用法）
-    - `.codex/skills/project-guide/references/runtime-logix/logix-core/api/02-module-and-logic-api.md`（Root provider / `Root.resolve` 的使用建议与 strict 对比）
+    - `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`（Bound API `$`：新增 `$.root.resolve` 的语义边界与推荐用法）
+    - `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`（Root provider / `Root.resolve` 的使用建议与 strict 对比）
     - 如新增国际化领域特性公共 API，需要在同目录补一个 i18n 专章或在现有“横切能力”章节中落档（避免仅存在于代码）。
 - Effect/Logix 契约变更：
   - 新增对外 API：`$.root.resolve(Tag)`（显式 root/global 解析语义）；属于增量能力但必须保持 strict 默认不变（避免隐式兜底）。
@@ -100,7 +100,7 @@ specs/029-i18n-root-resolve/
 packages/logix-core/                                               # `$`/Root 语义（运行时内核）
 packages/i18n/                                                     # `@logixjs/i18n` 领域特性包（Service/Module/token/driver）
 packages/logix-react/                                              # React 适配（如需补齐示例/Hook 语义）
-.codex/skills/project-guide/references/runtime-logix/              # Runtime SSoT（契约落档）
+docs/ssot/runtime/              # Runtime SSoT（契约落档）
 apps/docs/content/docs/                                            # 用户文档（如需要面向业务开发者的使用指南）
 examples/                                                          # 最小演练与验收场景（建议补一个 i18n + 多 tree 演练）
 ```
@@ -138,7 +138,7 @@ examples/                                                          # 最小演�
   - strict vs root 的入口同构：缺失提供者/多 tree 隔离/override 不影响 root；
   - i18n：共享同一实例、语言切换传播、ready 两档语义与失败降级。
 - 示例与文档：
-  - 更新 runtime SSoT（`.codex/skills/project-guide/references/runtime-logix/*`）确保新入口与 i18n 契约有单一事实源；
+  - 更新 runtime SSoT（`docs/ssot/runtime/*`）确保新入口与 i18n 契约有单一事实源；
   - 增补最小示例（`examples/*` 或 `apps/docs`）用于“零 useEffect”场景验收与 DX 验证。
 
 ## Constitution Re-check（Post Phase 1 Design）

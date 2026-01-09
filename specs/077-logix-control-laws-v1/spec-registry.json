@@ -11,7 +11,7 @@
     },
     {
       "id": "075",
-      "dir": "specs/075-logix-flow-program-ir",
+      "dir": "specs/075-flow-program-codegen-ir",
       "status": "draft",
       "dependsOn": ["073"]
     },
@@ -23,4 +23,3 @@
     }
   ]
 }
-

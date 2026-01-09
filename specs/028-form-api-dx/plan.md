@@ -39,7 +39,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - `Intent → Flow/Logix → Code → Runtime` 映射：Intent（表单作者声明 values/derived/rules/list 语义）→ Flow/Logix（traits build + scoped validate wiring）→ Code（`packages/logix-form` 的 DSL/normalize/wrap + reducer/controller + React hooks）→ Runtime（`@logixjs/core` state-trait build/validate 与诊断事件链路）。
 - 依赖/对齐的 specs：本特性以现有 `@logixjs/form`/traits 体系为底座，并参考历史裁决 `specs/010-form-api-perf-boundaries/*`（RuleSet 形态与性能边界）；若本特性对外口径发生更新，以 `apps/docs/content/docs/form/*` 与本特性的 `contracts/*` 为单一事实源，避免“旧 spec 与新文档”漂移。
-- Effect/Logix contracts：默认不改 `@logixjs/core` 公共契约；若需要调整 state-trait list configs/rowId store/诊断事件字段，必须同步更新对应 runtime 参考文档（`.codex/skills/project-guide/references/runtime-logix/*`）并在 `contracts/*` 固化字段口径（JsonValue）。
+- Effect/Logix contracts：默认不改 `@logixjs/core` 公共契约；若需要调整 state-trait list configs/rowId store/诊断事件字段，必须同步更新对应 runtime 参考文档（`docs/ssot/runtime/*`）并在 `contracts/*` 固化字段口径（JsonValue）。
 - IR & anchors：`rules` 必须被编译到现有 `StateTrait.node/list({ check })` 与 `RuleEntry` 形态（不引入二次包壳）；`$self` 需要落到 check 的 `writeback.path`（写回 `errors.<path>.$self`，避免覆盖子树）；list scope/rowId 策略必须进入可序列化 trace/evidence，保证 Devtools 可解释链路稳定。IR/trace 的导出策略必须是 **lazy**：默认不生成、不记录；仅在显式请求时导出，并具备体积预算与有界缓存策略。
 - Deterministic identity：实例/事务/操作序列沿用 runtime 的稳定 id；列表行身份以显式 `trackBy/rowIdStore` 策略为主，必要时可降级为 index，但必须输出可解释诊断（包含降级原因与采用的策略）。
 - Transaction boundary：Form 内部仅在事务内执行纯同步派生/校验与最小写回；任何 IO/async 必须在事务外表达并回写。
