@@ -16,6 +16,10 @@ export const sharedConfig = {
         __dirname,
         "./.codex/skills/logix-perf-evidence"
       ),
+      "@logixjs/perf-evidence": path.resolve(
+        __dirname,
+        "./.codex/skills/logix-perf-evidence"
+      ),
     },
     exclude: [
       "**/node_modules/**",

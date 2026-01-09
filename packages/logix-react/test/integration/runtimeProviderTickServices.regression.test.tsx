@@ -3,7 +3,7 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { render, fireEvent, screen, waitFor } from '@testing-library/react'
 import { Context, Effect, Layer, ManagedRuntime, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useModule, useRuntime, useSelector } from '../../src/index.js'
 
 const CounterDef = Logix.Module.make('T073.RuntimeProviderTickServices.Counter', {

@@ -1,5 +1,5 @@
 import { Effect, Layer } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export type DeterministicHostScheduler = Logix.InternalContracts.DeterministicHostScheduler
 export type TickSchedulerConfig = Logix.InternalContracts.TickSchedulerConfig

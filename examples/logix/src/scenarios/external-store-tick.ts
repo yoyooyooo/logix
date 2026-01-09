@@ -14,7 +14,7 @@
  *   pnpm -C examples/logix exec tsx src/scenarios/external-store-tick.ts
  */
 import { Context, Effect, Layer, Queue, Schema, Stream, SubscriptionRef } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 
 export class UsersRepo extends Effect.Service<UsersRepo>()('Accounts/UsersRepo', {
   effect: Effect.gen(function* () {

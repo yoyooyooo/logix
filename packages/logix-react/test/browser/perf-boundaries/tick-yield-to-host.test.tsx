@@ -1,6 +1,6 @@
 import { test } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
-import * as Logix from '@logix/core'
+import * as Logix from '@logixjs/core'
 import matrix from '@logix/perf-evidence/assets/matrix.json'
 import { getRuntimeModuleExternalStore } from '../../../src/internal/store/RuntimeExternalStore.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
@@ -310,4 +310,3 @@ test(
     })
   },
 )
-

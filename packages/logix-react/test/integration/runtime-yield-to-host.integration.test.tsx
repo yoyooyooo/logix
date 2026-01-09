@@ -3,8 +3,8 @@ import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import { render, fireEvent, screen, waitFor } from '@testing-library/react'
 import { Effect, Schema } from 'effect'
-import * as Logix from '@logix/core'
-import * as LogixTest from '@logix/test'
+import * as Logix from '@logixjs/core'
+import * as LogixTest from '@logixjs/test'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
 

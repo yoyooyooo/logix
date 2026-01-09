@@ -6,7 +6,8 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "@logix/perf-evidence/*": [".codex/skills/logix-perf-evidence/*"]
+      "@logix/perf-evidence/*": [".codex/skills/logix-perf-evidence/*"],
+      "@logixjs/perf-evidence/*": [".codex/skills/logix-perf-evidence/*"]
     },
     "jsx": "react-jsx",
     "strict": true,

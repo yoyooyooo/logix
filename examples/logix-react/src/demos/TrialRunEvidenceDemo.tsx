@@ -40,7 +40,7 @@ export const TrialRunEvidenceDemo: React.FC = () => {
     const runId = `run-browser-${Date.now()}`
 
     const program = Effect.gen(function* () {
-      const ctx = yield* Effect.scoped(TrialRunModule.impl.layer.pipe(Layer.build))
+      const ctx = yield* TrialRunModule.impl.layer.pipe(Layer.build)
       const runtime = Context.get(ctx, TrialRunDef.tag)
 
       yield* runtime.dispatch({ _tag: 'noop', payload: undefined })
@@ -50,15 +50,17 @@ export const TrialRunEvidenceDemo: React.FC = () => {
     })
 
     Effect.runPromise(
-      Logix.Observability.trialRun(program, {
-        runId,
-        source: { host: 'browser', label: 'TrialRunEvidenceDemo' },
-        diagnosticsLevel: 'full',
-        runtimeServicesInstanceOverrides: {
-          txnQueue: { implId: 'trace', notes: 'demo: browser instance override' },
-        },
-        maxEvents: 300,
-      }),
+      Effect.scoped(
+        Logix.Observability.trialRun(program, {
+          runId,
+          source: { host: 'browser', label: 'TrialRunEvidenceDemo' },
+          diagnosticsLevel: 'full',
+          runtimeServicesInstanceOverrides: {
+            txnQueue: { implId: 'trace', notes: 'demo: browser instance override' },
+          },
+          maxEvents: 300,
+        }),
+      ),
     )
       .then((result) => {
         if (Exit.isFailure(result.exit)) {
@@ -99,7 +101,7 @@ export const TrialRunEvidenceDemo: React.FC = () => {
         <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
           Evidence Summary (JSON)
         </div>
-        <pre className="text-xs bg-gray-50 dark:bg-gray-800 rounded p-3 overflow-auto max-h-[360px]">
+        <pre className="text-xs bg-gray-50 dark:bg-gray-800 rounded p-3 overflow-auto max-h-[calc(100vh-200px)]">
           {evidenceJson}
         </pre>
       </div>
