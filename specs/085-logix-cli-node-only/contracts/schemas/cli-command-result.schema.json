@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/085/cli-command-result.schema.json",
+  "title": "CommandResult@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "runId", "command", "ok", "artifacts"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "kind": { "type": "string", "const": "CommandResult" },
+    "runId": { "type": "string", "minLength": 1 },
+    "command": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "enum": ["report", "write"] },
+    "ok": { "type": "boolean" },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ArtifactOutput" }
+    },
+    "error": {
+      "$ref": "../../../016-serializable-diagnostics-and-identity/contracts/schemas/serializable-error-summary.schema.json"
+    }
+  },
+  "$defs": {
+    "JsonValue": {
+      "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json"
+    },
+    "ArtifactOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outputKey", "kind", "ok"],
+      "properties": {
+        "outputKey": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "schemaVersion": { "type": "integer", "minimum": 0 },
+        "ok": { "type": "boolean" },
+        "file": { "type": "string", "minLength": 1 },
+        "inline": { "$ref": "#/$defs/JsonValue" },
+        "truncated": { "type": "boolean" },
+        "budgetBytes": { "type": "integer", "minimum": 0 },
+        "actualBytes": { "type": "integer", "minimum": 0 },
+        "digest": { "type": "string", "minLength": 1 },
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "error": {
+          "$ref": "../../../016-serializable-diagnostics-and-identity/contracts/schemas/serializable-error-summary.schema.json"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+          "then": {
+            "anyOf": [{ "required": ["file"] }, { "required": ["inline"] }],
+            "not": { "required": ["error"] }
+          }
+        },
+        {
+          "if": { "properties": { "ok": { "const": false } }, "required": ["ok"] },
+          "then": {
+            "required": ["error"],
+            "not": { "required": ["inline"] }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+      "then": { "not": { "required": ["error"] } }
+    },
+    {
+      "if": { "properties": { "ok": { "const": false } }, "required": ["ok"] },
+      "then": { "required": ["error"] }
+    }
+  ]
+}
+

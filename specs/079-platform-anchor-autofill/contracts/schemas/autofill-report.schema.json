@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/079/autofill-report.schema.json",
+  "title": "AutofillReport@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "mode", "runId", "ok", "summary", "changes"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "kind": { "type": "string", "const": "AutofillReport" },
+    "mode": { "type": "string", "enum": ["report", "write"] },
+    "runId": { "type": "string", "minLength": 1 },
+    "ok": { "type": "boolean" },
+    "summary": { "$ref": "#/$defs/Summary" },
+    "changes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FileChange" }
+    }
+  },
+  "$defs": {
+    "JsonValue": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+    "ReasonCode": { "$ref": "./autofill-reason-codes.schema.json" },
+    "SkipReason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "$ref": "#/$defs/ReasonCode" },
+        "message": { "type": "string", "minLength": 1 },
+        "details": { "$ref": "#/$defs/JsonValue" }
+      }
+    },
+    "DecisionWritten": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "changes"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "const": "written" },
+        "changes": { "$ref": "#/$defs/JsonValue" }
+      }
+    },
+    "DecisionSkipped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "reason"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "const": "skipped" },
+        "reason": { "$ref": "#/$defs/SkipReason" }
+      }
+    },
+    "Decision": {
+      "oneOf": [{ "$ref": "#/$defs/DecisionWritten" }, { "$ref": "#/$defs/DecisionSkipped" }]
+    },
+    "FileChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "decisions"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "moduleId": { "type": "string", "minLength": 1 },
+        "decisions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Decision" }
+        }
+      }
+    },
+    "SummaryReasonCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "count"],
+      "properties": {
+        "code": { "$ref": "#/$defs/ReasonCode" },
+        "count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "Summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filesTouched", "modulesWritten", "modulesSkipped", "reasons"],
+      "properties": {
+        "filesTouched": { "type": "integer", "minimum": 0 },
+        "modulesWritten": { "type": "integer", "minimum": 0 },
+        "modulesSkipped": { "type": "integer", "minimum": 0 },
+        "reasons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SummaryReasonCount" }
+        }
+      }
+    }
+  }
+}
+
