@@ -180,6 +180,10 @@ jobs:
             mkdir -p node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
           fi
+          if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
 
       - name: Install Playwright Chromium deps
         run: pnpm exec playwright install --with-deps chromium
@@ -207,6 +211,10 @@ jobs:
           if [ ! -e node_modules/@logixjs/perf-evidence ]; then
             mkdir -p node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
+          if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
@@ -237,6 +245,10 @@ jobs:
           if [ ! -e node_modules/@logixjs/perf-evidence ]; then
             mkdir -p node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
+          if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
