@@ -176,6 +176,11 @@ jobs:
           mkdir -p "$(dirname "$PINNED_MATRIX")"
           cp .codex/skills/logix-perf-evidence/assets/matrix.json "$PINNED_MATRIX"
           echo "PERF_PINNED_MATRIX=$PINNED_MATRIX" >> "$GITHUB_ENV"
+          # Base commits may lag behind Vite/Vitest alias changes.
+          # Pin the head `vitest.shared.ts` so base/head use the same module resolution rules.
+          PINNED_VITEST_SHARED="$RUNNER_TEMP/vitest.shared.ts"
+          cp vitest.shared.ts "$PINNED_VITEST_SHARED"
+          echo "PERF_PINNED_VITEST_SHARED=$PINNED_VITEST_SHARED" >> "$GITHUB_ENV"
 
       - name: Collect (base)
         run: |
@@ -185,6 +190,7 @@ jobs:
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
           fi
+          cp "$PERF_PINNED_VITEST_SHARED" vitest.shared.ts
           # Ensure base run uses the SAME matrix spec as head (tests import it).
           mkdir -p .codex/skills/logix-perf-evidence/assets
           git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
@@ -218,6 +224,7 @@ jobs:
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
           fi
+          cp "$PERF_PINNED_VITEST_SHARED" vitest.shared.ts
           mkdir -p .codex/skills/logix-perf-evidence/assets
           git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
