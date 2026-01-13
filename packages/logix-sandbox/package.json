@@ -1,6 +1,7 @@
 {
   "name": "@logixjs/sandbox",
   "version": "0.0.1",
+  "license": "Apache-2.0",
   "description": "Sandbox runtime for running Logix/Effect code in a browser Worker",
   "files": [
     "dist/**",

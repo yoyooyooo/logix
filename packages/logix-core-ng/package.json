@@ -1,6 +1,7 @@
 {
   "name": "@logixjs/core-ng",
   "version": "0.0.1",
+  "license": "Apache-2.0",
   "description": "Next-gen kernel implementation package for Logix",
   "files": [
     "dist/**"

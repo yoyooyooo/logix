@@ -1,6 +1,7 @@
 {
   "name": "@logixjs/core",
   "version": "0.0.1",
+  "license": "Apache-2.0",
   "description": "The pure logic engine for Logix",
   "files": [
     "dist/**"

@@ -69,9 +69,9 @@
 # Agent Context for `intent-flow`
 
 - 仓库定位：意图驱动 + Effect 运行时 PoC 实验场，用于在平台化之前把 **Intent 模型 / Flow DSL / effect 运行时 / ToB 典型场景** 练透。
-- 上游依赖（只读）：
-  - IMD 组件库：`/Users/yoyo/projj/git.imile.com/ux/imd`（UI/Pro Pattern 与 registry）；
-  - best-practice 仓库：`/Users/yoyo/projj/git.imile.com/ux/best-practice`（文件/状态/服务层规范与代码片段）。
+- 上游依赖（可选，私有/只读）：
+  - IMD 组件库：`<path-to-imd-repo>`（UI/Pro Pattern 与 registry）；
+  - best-practice 仓库：`<path-to-best-practice-repo>`（文件/状态/服务层规范与代码片段）。
 - 本仓库结构：
   - `docs/specs/sdd-platform/ssot`：平台/意图模型与协议（SSoT）；
   - `docs/specs/sdd-platform/ssot/decisions/history-and-lessons.md`：历史提炼（从早期探索吸纳的结论与反模式）；

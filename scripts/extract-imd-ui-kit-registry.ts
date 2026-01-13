@@ -64,7 +64,7 @@ function usage(): never {
       "  pnpm tsx scripts/extract-imd-ui-kit-registry.ts --imd-root /path/to/imd --out path/to/output.json",
       "",
       "参数:",
-      "  --imd-root <path>         IMD 仓库根目录（例如 /Users/yoyo/projj/git.imile.com/ux/imd）",
+      "  --imd-root <path>         IMD 仓库根目录（例如 /path/to/imd）",
       "  --registry-dir <path>     可选，默认 <imd-root>/apps/www2/registry/default/ui",
       "  --kit-id <string>         可选，默认 imd/default-ui",
       "  --component-key-prefix <string> 可选，默认 imd/",

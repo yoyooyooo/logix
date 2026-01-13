@@ -1,6 +1,7 @@
 {
   "name": "@logixjs/domain",
   "version": "0.0.1",
+  "license": "Apache-2.0",
   "description": "Domain modules (based on Logix.Module.Manage) for Logix v3",
   "files": [
     "dist/**"
