@@ -3,8 +3,6 @@ title: useLocalModule
 description: API Reference for useLocalModule hook
 ---
 
-# useLocalModule
-
 `useLocalModule` creates a “local module instance” inside a component (one instance per component instance). It’s typically used to host UI state that only belongs to the component/page (as an alternative to `useState` / `useReducer`).
 
 Properties:

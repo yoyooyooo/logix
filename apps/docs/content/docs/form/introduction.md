@@ -1,5 +1,5 @@
 ---
-title: "Overview: the Form model"
+title: Overview - the Form model
 description: Build a clear mental model first, then start writing demos.
 ---
 

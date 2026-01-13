@@ -1,4 +1,19 @@
 {
   "title": "Core Concepts",
-  "pages": ["runtime", "module", "bound-api", "flow", "inspection"]
+  "pages": [
+    "runtime",
+    "module",
+    "handle",
+    "bound-api",
+    "flow",
+    "match-builder",
+    "read-query",
+    "state-trait",
+    "link",
+    "process",
+    "external-store",
+    "debug",
+    "observability",
+    "inspection"
+  ]
 }

@@ -3,8 +3,6 @@ title: Modules & State
 description: Learn how to define state and actions in Logix.
 ---
 
-# Modules & State
-
 In Logix, everything is a Module. A Module is the container for State, Actions, and Logic.
 
 This guide walks you through building a simple counter module from scratch.

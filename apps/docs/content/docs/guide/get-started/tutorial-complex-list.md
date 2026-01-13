@@ -1,5 +1,5 @@
 ---
-title: 'Tutorial: Complex List Query'
+title: Tutorial - Complex List Query
 description: Build a production-grade list page with filters, pagination, loading, and automatic reset.
 ---
 
@@ -87,96 +87,175 @@ This is the core of the tutorial. We’ll use Logix’s streaming programming mo
 Create `src/features/users/logic.ts`:
 
 ```typescript tab="Logic DSL"
-	import { Effect, Stream } from 'effect'
-	import { UserListDef } from './schema'
-	import { UserApi } from '../../services/UserApi'
+import { Effect, Stream } from 'effect'
+import { UserListDef } from './schema'
+import { UserApi } from '../../services/UserApi'
 
-	export const UserListLogic = UserListDef.logic(($) => {
-  // --- setup-only: register lifecycle ---
-  const loadEffect = Effect.gen(function* () {
-    // ... (loading logic omitted; same as above) ...
-    const { filters, pagination } = yield* $.state.read
-    yield* $.state.mutate((d) => {
-      d.meta.isLoading = true
-      d.meta.error = undefined
+export const UserListLogic = UserListDef.logic(($) =>
+  Effect.gen(function* () {
+    // --- setup-only: define lifecycle ---
+    const loadEffect = Effect.gen(function* () {
+      // ... (loading logic omitted; same as above) ...
+      const { filters, pagination } = yield* $.state.read
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = true
+        d.meta.error = undefined
+      })
+      const api = yield* $.use(UserApi)
+      const result = yield* Effect.tryPromise(() =>
+        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
+      ).pipe(Effect.either)
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = false
+        if (result._tag === 'Left') d.meta.error = 'Failed to load'
+        else {
+          d.list = result.right.items
+          d.pagination.total = result.right.total
+        }
+      })
     })
-    const api = yield* $.use(UserApi)
-    const result = yield* Effect.tryPromise(() =>
-      api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
-    ).pipe(Effect.either)
-    yield* $.state.mutate((d) => {
-      d.meta.isLoading = false
-      if (result._tag === 'Left') d.meta.error = 'Failed to load'
-      else {
-        d.list = result.right.items
-        d.pagination.total = result.right.total
-      }
-    })
-  })
 
-  $.lifecycle.onInit(loadEffect)
+    $.lifecycle.onInit(loadEffect)
 
-  // --- run: mount watchers/flows ---
-  return Effect.gen(function* () {
-    // --- 1) Define trigger sources ---
-    // Use .toStream() to convert DSL objects into Streams so we can merge them.
+    // --- 1) Define trigger sources (as Streams) ---
     const filters$ = $.onState((s) => s.filters).toStream()
     const pagination$ = $.onState((s) => s.pagination).toStream()
     const refresh$ = $.onAction('refresh').toStream()
 
-    // --- 2) Automatically reset page index ---
-    yield* $.onState((s) => s.filters).run(() =>
-      $.state.mutate((d) => {
-        d.pagination.page = 1
-      }),
-    )
-
-    // --- 3) Merge load signals ---
+    // --- 2) Merge load signals ---
     const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
 
-    // --- 4) Execute load logic ---
-    // Use $.on(...) to wrap the merged Stream back into a DSL pipeline.
-    yield* $.on(loadTrigger$).debounce(50).runLatest(loadEffect)
-  })
-})
+    // --- 3) Mount flows ---
+    yield* Effect.all(
+      [
+        // Reset page index when filters change.
+        $.onState((s) => s.filters).run(() =>
+          $.state.mutate((d) => {
+            d.pagination.page = 1
+          }),
+        ),
+
+        // Execute load logic (debounced, latest wins).
+        $.on(loadTrigger$).debounce(50).runLatest(loadEffect),
+      ],
+      { concurrency: 'unbounded' },
+    )
+  }),
+)
 ```
 
-    ```typescript tab="Flow API"
-    import { Effect, Stream } from 'effect'
-    import { UserListDef } from './schema'
+```typescript tab="Flow API"
+import { Effect, Stream } from 'effect'
+import { UserListDef } from './schema'
+import { UserApi } from '../../services/UserApi'
 
-    export const UserListLogic = UserListDef.logic(($) =>
-      Effect.gen(function* () {
-    // --- 1) Use low-level APIs to get Streams ---
+export const UserListLogic = UserListDef.logic(($) =>
+  Effect.gen(function* () {
+    const loadEffect = Effect.gen(function* () {
+      // ... same loadEffect as above ...
+      const { filters, pagination } = yield* $.state.read
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = true
+        d.meta.error = undefined
+      })
+      const api = yield* $.use(UserApi)
+      const result = yield* Effect.tryPromise(() =>
+        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
+      ).pipe(Effect.either)
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = false
+        if (result._tag === 'Left') d.meta.error = 'Failed to load'
+        else {
+          d.list = result.right.items
+          d.pagination.total = result.right.total
+        }
+      })
+    })
+
+    $.lifecycle.onInit(loadEffect)
+
     const filters$ = $.flow.fromState((s) => s.filters)
     const pagination$ = $.flow.fromState((s) => s.pagination)
     const refresh$ = $.flow.fromAction((a): a is { _tag: 'refresh' } => (a as any)._tag === 'refresh')
 
-    // --- 2) Automatically reset page index ---
-    yield* filters$.pipe(
-      $.flow.run(() =>
-        $.state.mutate((d) => {
-          d.pagination.page = 1
-        }),
-      ),
-    )
-
-    // --- 3) Merge load signals ---
     const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
 
-    // --- 4) Execute load logic ---
-    // Use Stream operators directly.
-    yield* loadTrigger$.pipe(
-      $.flow.debounce(50),
-      $.flow.runLatest(loadEffect), // loadEffect is defined above
+    yield* Effect.all(
+      [
+        filters$.pipe(
+          $.flow.run(() =>
+            $.state.mutate((d) => {
+              d.pagination.page = 1
+            }),
+          ),
+        ),
+        loadTrigger$.pipe($.flow.debounce(50), $.flow.runLatest(loadEffect)),
+      ],
+      { concurrency: 'unbounded' },
     )
-
-    // ...
-
-}),
+  }),
 )
+```
 
-````
+```typescript tab="Raw Effect"
+import { Effect, Stream } from 'effect'
+import { UserListDef } from './schema'
+import { UserApi } from '../../services/UserApi'
+
+export const UserListLogic = UserListDef.logic(($) =>
+  Effect.gen(function* () {
+    const loadEffect = Effect.gen(function* () {
+      // ... same loadEffect as above ...
+      const { filters, pagination } = yield* $.state.read
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = true
+        d.meta.error = undefined
+      })
+      const api = yield* $.use(UserApi)
+      const result = yield* Effect.tryPromise(() =>
+        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
+      ).pipe(Effect.either)
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = false
+        if (result._tag === 'Left') d.meta.error = 'Failed to load'
+        else {
+          d.list = result.right.items
+          d.pagination.total = result.right.total
+        }
+      })
+    })
+
+    $.lifecycle.onInit(loadEffect)
+
+    const filters$ = $.flow.fromState((s) => s.filters)
+    const pagination$ = $.flow.fromState((s) => s.pagination)
+    const refresh$ = $.flow.fromAction((a): a is { _tag: 'refresh' } => (a as any)._tag === 'refresh')
+
+    const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
+
+    yield* Effect.all(
+      [
+        // Reset page index on filter changes.
+        filters$.pipe(
+          Stream.runForEach(() =>
+            $.state.mutate((d) => {
+              d.pagination.page = 1
+            }),
+          ),
+        ),
+
+        // Debounce + switch(latest) loadEffect.
+        loadTrigger$.pipe(
+          Stream.debounce('50 millis'),
+          Stream.flatMap(() => Stream.fromEffect(loadEffect), { switch: true }),
+          Stream.runDrain,
+        ),
+      ],
+      { concurrency: 'unbounded' },
+    )
+  }),
+)
+```
 
 ## 3. Assemble the Module
 

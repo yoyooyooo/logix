@@ -1,5 +1,5 @@
 ---
-title: "Bound API ($)"
+title: Bound API ($)
 description: The core context object for writing Logix logic.
 ---
 

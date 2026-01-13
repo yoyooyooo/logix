@@ -3,8 +3,6 @@ title: Concurrency control plane
 description: Limit concurrency for parallel watchers/tasks via Runtime/module/Provider overrides; emit actionable warnings under backpressure/saturation; allow explicit opt-in to unbounded concurrency (audited).
 ---
 
-# Concurrency control plane
-
 This guide addresses two practical problems:
 
 1. You want to use parallel watchers (e.g. `runParallel`) to improve throughput, but you don’t want “more and more tasks until the app stalls” under burst traffic.

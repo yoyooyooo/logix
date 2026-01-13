@@ -3,8 +3,6 @@ title: useImportedModule
 description: Resolve a child module instance from the parent instance's imports scope.
 ---
 
-# useImportedModule
-
 When a module composes child modules via `imports`, the UI often needs to read/dispatch the child module **within the parent instance scope** (e.g. Query, sub-forms, sub-features).
 
 `useImportedModule(parent, childModule)` solves this: it resolves `childModule` from the imports scope of the `parent` instance and returns a `ModuleRef` that you can pass directly to `useSelector` / `useDispatch`.

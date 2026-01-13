@@ -3,8 +3,6 @@ title: Error handling
 description: Error-handling strategy in Logix.
 ---
 
-# Error handling
-
 In Logix, a good default is to handle failures in layers:
 
 - **Local**: expected, recoverable errors stay in Effect’s error channel `E`; catch them close to where they happen and convert them into state/return values.

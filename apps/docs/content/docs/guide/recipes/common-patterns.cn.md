@@ -1,5 +1,5 @@
 ---
-title: '常用配方'
+title: 常用配方
 description: 常见 Logix 写法配方，可直接复用于实际业务。
 ---
 

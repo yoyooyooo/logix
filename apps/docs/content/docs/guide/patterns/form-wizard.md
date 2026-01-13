@@ -3,8 +3,6 @@ title: Form wizard
 description: Implement a multi-step form wizard pattern with Logix.
 ---
 
-# Form wizard pattern
-
 Multi-step forms (wizards) are common for complex form flows: split a long form into steps, validate each step independently, and finally submit the aggregated result.
 
 ## Core idea
@@ -205,3 +203,10 @@ const WizardModule = WizardDef.implement({
 
 - [Validation and errors](../../form/validation)
 - [Pagination loading](./pagination)
+
+## Runnable examples
+
+- Index: [Runnable examples](../recipes/runnable-examples)
+- Closest form-heavy demos:
+  - `examples/logix-react/src/modules/trait-form.ts`
+  - `examples/logix-react/src/modules/complex-trait-form.ts`

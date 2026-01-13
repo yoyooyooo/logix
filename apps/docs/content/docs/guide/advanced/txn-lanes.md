@@ -3,8 +3,6 @@ title: Transaction Lanes (Txn Lanes)
 description: Prioritize critical interactions; keep background follow-ups from tailing, with explainability and rollback.
 ---
 
-# Transaction Lanes (Txn Lanes)
-
 When you hit “obvious jank during frequent input/clicks” and the jank is mostly caused by a backlog of **non-critical recompute/derivations/notifications**, Txn Lanes turns that work into a *non-urgent lane* that is “deferrable but bounded”, so critical-interaction p95 is no longer dragged by tail work.
 
 ## One-sentence mental model

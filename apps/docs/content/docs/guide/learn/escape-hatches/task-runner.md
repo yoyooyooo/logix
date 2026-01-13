@@ -1,5 +1,5 @@
 ---
-title: "Task Runner (long chain: pending → IO → writeback)"
+title: Task Runner (long chain - pending → IO → writeback)
 ---
 
 When you need a “long-chain interaction” (e.g. click → enter loading immediately → wait for request → write back success/failure), prefer the `run*Task` family of APIs.

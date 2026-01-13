@@ -3,8 +3,6 @@ title: Thinking in Logix
 description: 理解 Logix 的核心心智模型：Intent, Flow, Effect.
 ---
 
-# Thinking in Logix
-
 如果你熟悉 React，你可能听说过 "Thinking in React" —— **UI 是状态的函数**。
 
 Logix 将这一思想延伸到业务逻辑领域：**业务逻辑是围绕状态变化的流（Flow）**。
@@ -131,6 +129,10 @@ Thinking in Logix 意味着：
 1. **定义意图 (Schema)**，而不是编写过程。
 2. **描述流向 (Flow)**，而不是手动调度。
 3. **隔离副作用 (Effect)**，让核心逻辑保持纯粹。
+
+## 从 Redux/Zustand 迁移
+
+- 推荐先读：[从 Zustand 迁移](../recipes/migration-from-zustand)
 
 ## 为什么选择 Logix？
 

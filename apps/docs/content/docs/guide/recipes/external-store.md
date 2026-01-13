@@ -1,20 +1,20 @@
 ---
-title: ExternalStore：减少 useEffect 数据胶水
-description: 用 ExternalStore + StateTrait.externalStore 把外部推送源/跨模块依赖声明式接入状态图，减少手写订阅胶水并避免 tearing。
+title: ExternalStore - reduce useEffect glue
+description: Use ExternalStore + StateTrait.externalStore to declaratively wire external push sources (or cross-module selectors) into your state graph and avoid tearing.
 ---
 
-ExternalStore 的目标是把“外部输入（push）→ 状态写回 → 下游派生/渲染”的链路，从手写 `useEffect + useState`/watcher 胶水升级为 **声明式 trait**，让依赖关系更可维护、更可解释。
+ExternalStore lets you upgrade the chain “external input (push) → state writeback → downstream derivation/rendering” from hand-written `useEffect + useState` / watcher glue into a **declarative trait**, so dependencies are easier to maintain and explain.
 
-## 1) 什么时候需要它？
+## 1) When do you need it?
 
-典型场景：
+Typical cases:
 
-- **外部推送源**：路由 location、登录态/session、feature flags、websocket 消息、宿主事件等（值会变，但不适合放在 reducer 手动写回）。
-- **跨模块读一致性**：组件同时读多个模块，希望同一次渲染观察到的快照来自同一“观察窗口”（避免“模块 A 新/模块 B 旧”的 tearing 组合）。
+- **External push sources**: route location, session/auth state, feature flags, websocket messages, host events… (values change, but don’t belong in reducers as manual writeback).
+- **Cross-module read consistency**: a component reads multiple modules and you want snapshots observed in one render to come from the same observation window (avoid “module A new / module B old” tearing).
 
-## 2) 基本用法：StateTrait.externalStore
+## 2) Basic usage: `StateTrait.externalStore`
 
-你把某个字段声明为“外部拥有（external-owned）”，由外部源写回：
+Declare a field as “external-owned” and have an external source write it back:
 
 ```ts
 import * as Logix from '@logixjs/core'
@@ -22,7 +22,7 @@ import { Schema } from 'effect'
 
 const State = Schema.Struct({
   location: Schema.String,
-  // 其它业务字段...
+  // other business fields...
 })
 
 export const AppDef = Logix.Module.make('App', {
@@ -31,24 +31,24 @@ export const AppDef = Logix.Module.make('App', {
   traits: Logix.StateTrait.from(State)({
     location: Logix.StateTrait.externalStore({
       store: Logix.ExternalStore.fromService(LocationService, (svc) => svc.locationStore),
-      // 可选：把 snapshot 映射到字段类型
+      // optional: map the snapshot into the field type
       select: (loc) => String(loc),
-      // 可选：合并抖动（例如高频事件）
+      // optional: coalesce bursts (e.g. high-frequency events)
       coalesceWindowMs: 16,
     }),
   }),
 })
 ```
 
-关键约束：
+Key constraints:
 
-- `getSnapshot()` 必须是同步、纯读（不要把 IO/Promise 藏进去）。
-- `subscribe(listener)` 必须在值变化时触发 listener（不要漏通知）。
-- 被 `externalStore` 拥有的字段不要再在 reducer/computed/link/source 里写入；需要派生请用其它字段 + `computed/link` 生成。
+- `getSnapshot()` must be synchronous and pure (don’t hide IO/Promises inside).
+- `subscribe(listener)` must call the listener on every change (don’t miss notifications).
+- Don’t write an external-owned field from reducers/computed/link/source; derive into a different field via `computed/link` if needed.
 
-## 3) Module-as-Source：从另一个模块“读出来”当作外部源
+## 3) Module-as-Source: treat another module as the source
 
-当你确实需要“模块 B 的字段由模块 A 的某个 selector 驱动”，推荐用 Module-as-Source：
+If you really need “module B’s field is driven by a selector from module A”, use Module-as-Source:
 
 ```ts
 traits: Logix.StateTrait.from(BState)({
@@ -58,15 +58,19 @@ traits: Logix.StateTrait.from(BState)({
 })
 ```
 
-注意：
+Notes:
 
-- `fromModule` 需要能解析到稳定的 `moduleId`（不要传只读的 ModuleHandle）。
-- selector 需要稳定的 selectorId（不稳定会 fail-fast）。
+- `fromModule` requires a resolvable, stable `moduleId` (don’t pass a read-only ModuleHandle).
+- The selector must have a stable selectorId (otherwise it will fail fast).
 
-## 4) 决策指南：ReadQuery vs fromModule vs externalStore vs link
+## 4) Decision guide: ReadQuery vs fromModule vs externalStore vs link
 
-- `ReadQuery`：**读**。给 UI/逻辑提供稳定的 selector（细粒度订阅/性能优化）。
-- `StateTrait.link`：**模块内联动**。字段 B 由字段 A 推导/搬运（同一模块内）。
-- `StateTrait.externalStore`：**外部推送写回**。字段值来自模块外部（service/ref/stream/模块 selector）。
-- `ExternalStore.fromModule`：**跨模块依赖**。把另一个模块的 selector 作为外部源写回（用于跨模块强一致/避免 tearing 的关键链路；能不用就不用，优先考虑把状态/派生收敛到同一模块）。
+- `ReadQuery`: **read**. Stable selectors for UI/logic (fine-grained subscriptions / performance).
+- `StateTrait.link`: **in-module linkage**. Field B is derived/moved from field A (within one module).
+- `StateTrait.externalStore`: **external push writeback**. The field value is owned by something outside the module (service/ref/stream/module selector).
+- `ExternalStore.fromModule`: **cross-module dependency**. Use another module’s selector as an external source for writeback (powerful for strong consistency / avoiding tearing; prefer consolidating state/derivations into one module when possible).
 
+## Runnable example
+
+- Index: [Runnable examples](./runnable-examples)
+- Code: `examples/logix/src/scenarios/external-store-tick.ts`

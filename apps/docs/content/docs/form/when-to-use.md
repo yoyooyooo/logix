@@ -3,8 +3,6 @@ title: When should you use @logixjs/form?
 description: Decide whether you need @logixjs/form or a plain Module.
 ---
 
-# When should you use @logixjs/form?
-
 `@logixjs/form` is a domain package designed specifically for forms. But not every “input” scenario needs it.
 
 ## A plain Module is enough

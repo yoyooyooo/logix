@@ -1,5 +1,5 @@
 ---
-title: '与 Effect Flow Runtime 协同'
+title: 与 Effect Flow Runtime 协同
 description: 在前端 Logix 中触发服务侧 Flow 并管理状态反馈。
 ---
 

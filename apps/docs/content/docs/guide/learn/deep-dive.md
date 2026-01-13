@@ -1,5 +1,5 @@
 ---
-title: "Deep dive: Runtime / Middleware / Lifecycle"
+title: Deep dive - Runtime / Middleware / Lifecycle
 description: Understand Logix core abstractions from a runtime perspective.
 ---
 

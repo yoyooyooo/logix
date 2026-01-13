@@ -3,8 +3,6 @@ title: Search + detail linkage
 description: Implement a master-detail pattern (search list + detail panel) with Logix.
 ---
 
-# Search + detail linkage pattern
-
 A classic master-detail UI: a searchable list on the left, a detail panel on the right. When selection changes, detail loads automatically.
 
 ## Core idea
@@ -151,3 +149,11 @@ function SearchPanel() {
 
 - [Pagination loading](./pagination)
 - [Cross-module communication](../learn/cross-module-communication)
+
+## Runnable examples
+
+- Index: [Runnable examples](../recipes/runnable-examples)
+- Code:
+  - `examples/logix/src/scenarios/search-with-debounce-latest.ts`
+  - `examples/logix/src/scenarios/cross-module-link.ts`
+  - `examples/logix-react/src/modules/querySearchDemo.ts`

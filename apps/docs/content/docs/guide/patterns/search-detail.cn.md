@@ -3,8 +3,6 @@ title: 搜索+详情联动
 description: 使用 Logix 实现列表搜索与详情面板的联动模式。
 ---
 
-# 搜索+详情联动模式
-
 典型的 Master-Detail 场景：左侧搜索列表，右侧详情面板，选中项变化时自动加载详情。
 
 ## 核心思路
@@ -151,3 +149,11 @@ function SearchPanel() {
 
 - [分页加载](./pagination)
 - [跨模块通信](../learn/cross-module-communication)
+
+## 可运行示例
+
+- 索引：[可运行示例索引](../recipes/runnable-examples)
+- 代码：
+  - `examples/logix/src/scenarios/search-with-debounce-latest.ts`
+  - `examples/logix/src/scenarios/cross-module-link.ts`
+  - `examples/logix-react/src/modules/querySearchDemo.ts`

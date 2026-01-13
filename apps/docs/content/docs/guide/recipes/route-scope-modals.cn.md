@@ -1,5 +1,5 @@
 ---
-title: '路由 Scope 下的弹框 Keepalive'
+title: 路由 Scope 下的弹框 Keepalive
 description: 用 Host(imports) 组织“限定 scope 的全局”：路由内弹框保状态，离开路由统一销毁。
 ---
 

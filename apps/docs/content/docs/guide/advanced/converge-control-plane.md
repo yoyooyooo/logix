@@ -3,8 +3,6 @@ title: Converge scheduling control plane
 description: Control trait convergence strategy (auto/full/dirty) and budgets via Runtime/Provider/module overrides, with safe rollback and tunable defaults.
 ---
 
-# Converge scheduling control plane
-
 This is a hands-on advanced guide: without knowing the implementation details, you can achieve the following with a small amount of configuration:
 
 - **Rollback (“stop the bleeding”)**: when a page/module suddenly becomes slow or unstable, quickly fall back to a safer mode (locally scoped).

@@ -3,8 +3,6 @@ title: useLocalModule
 description: API Reference for useLocalModule hook
 ---
 
-# useLocalModule
-
 `useLocalModule` 用于在组件内创建一个“局部模块实例”（每个组件实例独立），典型用来承载只在该组件/页面内使用的 UI 状态（替代 `useState` / `useReducer`）。
 
 它返回的是 `ModuleRef`：你仍然用 `useSelector` 订阅、用 `useDispatch` 派发，和全局模块完全一致。

@@ -3,8 +3,6 @@ title: Optimistic updates
 description: Implement optimistic updates and rollback strategies with Logix.
 ---
 
-# Optimistic update pattern
-
 Optimistic updates make the UI respond immediately to user actions while the real request runs in the background. If the request fails, you roll back to the previous state.
 
 ## Core idea
@@ -114,3 +112,11 @@ yield*
 
 - [Pagination loading](./pagination)
 - [Search + detail linkage](./search-detail)
+
+## Runnable examples
+
+- Index: [Runnable examples](../recipes/runnable-examples)
+- Code:
+  - `examples/logix/src/scenarios/optimistic-toggle.ts`
+  - `examples/logix/src/scenarios/optimistic-toggle-from-pattern.ts`
+  - `examples/logix/src/patterns/optimistic-toggle.ts`

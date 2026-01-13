@@ -3,8 +3,6 @@ title: Module
 description: API reference for Module definition and implementation.
 ---
 
-# Module
-
 `Module` is the core unit in Logix. It encapsulates state, logic, and dependencies.
 
 > **Note for product developers**

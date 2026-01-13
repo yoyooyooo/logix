@@ -3,8 +3,6 @@ title: Handle（消费面）
 description: 在 `.logic()` 内消费依赖的统一概念：ModuleHandle 与 ServiceHandle，以及封装取舍指南。
 ---
 
-# Handle（消费面）
-
 `Handle` 指的是：**在 `.logic()` 内消费一个依赖时拿到的“可用视图”**。它的目标不是“把所有东西统一成同一个接口”，而是提供一套稳定语言，指导你把能力沉淀成两种形态之一，并让消费方式尽量趋同。
 
 在代码层，`@logixjs/core` 提供 `Logix.Handle` 子模块（也可用子路径 `@logixjs/core/Handle`）来承载这套概念与少量工具函数。

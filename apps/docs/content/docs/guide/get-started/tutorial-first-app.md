@@ -1,5 +1,5 @@
 ---
-title: 'Tutorial: Your first business flow (cancelable search)'
+title: Tutorial - Your first business flow (cancelable search)
 description: Build a debounced, cancelable search box with dependency injection.
 ---
 
@@ -236,4 +236,3 @@ export function SearchView() {
 
 - [Tutorial: Complex list query](./tutorial-complex-list) — merge multiple triggers into composable Flows
 - (Forms) [Form Quick Start](../../form/quick-start) — use the domain package for real forms
-

@@ -3,8 +3,6 @@ title: Suspense & Async
 description: Handling asynchronous data with React Suspense.
 ---
 
-# Suspense & Async
-
 Logix supports using React Suspense **optionally** to “wait for module initialization before rendering”.
 
 The default behavior is **non-suspending**: `useModule(Impl)` returns the module handle synchronously, and you render loading/error from state. Only when you explicitly enable `suspend: true` will `useModule` suspend the component via Suspense.

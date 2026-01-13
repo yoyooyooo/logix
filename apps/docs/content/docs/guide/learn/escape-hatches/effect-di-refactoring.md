@@ -1,5 +1,5 @@
 ---
-title: 'Effect DI: Move Infrastructure Out of Business Logic'
+title: Effect DI - Move Infrastructure Out of Business Logic
 description: Inject dependencies with Tag + Layer to make Logix Logic reusable and testable.
 ---
 

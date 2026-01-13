@@ -3,8 +3,6 @@ title: Debugging and DevTools
 description: Observe module behavior with Logix’s debug event pipeline and DevTools panel.
 ---
 
-# Debugging and DevTools
-
 At runtime, Logix produces structured debug events for module lifecycle, Action dispatching, state updates, and logic errors. These events can:
 
 - be rendered into UI (timeline, module view, etc.) via the DevTools panel;

@@ -3,8 +3,6 @@ title: Performance and Optimization
 description: Tune Logix Runtime and DevTools observability strategies to keep good performance in complex scenarios.
 ---
 
-# Performance and Optimization
-
 Logix Runtime is “observability-first” by default.
 In development it records full state transactions, trait behavior, and debug events, and DevTools provides a timeline and time travel.
 In production it automatically converges to a lighter observability mode.

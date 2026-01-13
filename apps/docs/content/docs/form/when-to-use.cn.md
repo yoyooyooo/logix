@@ -3,8 +3,6 @@ title: 什么时候用 @logixjs/form？
 description: 帮助你判断是否需要使用 @logixjs/form 而不是普通 Module。
 ---
 
-# 什么时候用 @logixjs/form？
-
 `@logixjs/form` 是专门为表单场景设计的领域包。但不是所有涉及输入的场景都需要它。
 
 ## 用普通 Module 即可

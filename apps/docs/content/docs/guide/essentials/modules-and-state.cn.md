@@ -3,8 +3,6 @@ title: Modules & State
 description: Learn how to define state and actions in Logix.
 ---
 
-# Modules & State
-
 在 Logix 中，一切皆 Module。Module 是状态、动作和逻辑的容器。
 
 本指南将带你从零开始构建一个简单的计数器模块。

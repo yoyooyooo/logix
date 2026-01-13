@@ -1,5 +1,5 @@
 ---
-title: 'Effect DI：把“基础设施”从业务逻辑里拿出去'
+title: Effect DI：把“基础设施”从业务逻辑里拿出去
 description: 用 Tag + Layer 注入依赖，让 Logix Logic 更可复用、更好测试。
 ---
 

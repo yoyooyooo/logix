@@ -3,8 +3,6 @@ title: 表单向导
 description: 使用 Logix 实现多步骤表单向导模式。
 ---
 
-# 表单向导模式
-
 多步骤表单（Wizard）是复杂表单场景的常见模式：将长表单拆分为多个步骤，每步独立校验，最终汇总提交。
 
 ## 核心思路
@@ -210,3 +208,10 @@ const WizardModule = WizardDef.implement({
 
 - [校验与错误](../../form/validation)
 - [分页加载](./pagination)
+
+## 可运行示例
+
+- 索引：[可运行示例索引](../recipes/runnable-examples)
+- 最接近的 form-heavy demos：
+  - `examples/logix-react/src/modules/trait-form.ts`
+  - `examples/logix-react/src/modules/complex-trait-form.ts`

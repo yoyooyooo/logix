@@ -3,8 +3,6 @@ title: Pagination loading
 description: Implement pagination and infinite scrolling with Logix.
 ---
 
-# Pagination loading pattern
-
 Pagination is a foundational pattern for list-like UIs. This page shows two common approaches: cursor-based and offset-based pagination.
 
 ## Core idea
@@ -116,3 +114,9 @@ function ItemList() {
 
 - [Optimistic update](./optimistic-update)
 - [Search + detail linkage](./search-detail)
+
+## Runnable examples
+
+- Index: [Runnable examples](../recipes/runnable-examples)
+- Tutorial: [Complex list tutorial](../get-started/tutorial-complex-list)
+- Code: `examples/logix-react/src/modules/querySearchDemo.ts`

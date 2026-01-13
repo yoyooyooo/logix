@@ -1,5 +1,5 @@
 {
   "title": "API Reference",
   "root": true,
-  "pages": ["core", "react"]
+  "pages": ["reference", "core", "react"]
 }

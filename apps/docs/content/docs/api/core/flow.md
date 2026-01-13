@@ -3,8 +3,6 @@ title: Flow API
 description: Low-level API reference for Flow and the Fluent DSL.
 ---
 
-# Flow API
-
 > **Audience**: library authors, Pattern authors, and anyone interested in the underlying implementation of the Fluent DSL (`$.onState/$.onAction`).  
 > For everyday product code, you typically only need the Fluent API on `$` and do not need to call the low-level functions on this page.
 

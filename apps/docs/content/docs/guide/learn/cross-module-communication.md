@@ -3,8 +3,6 @@ title: Cross-module communication
 description: Understand how modules collaborate via imports / $.use / Link.make, and avoid circular dependencies.
 ---
 
-# Cross-module communication
-
 In real products, modules rarely fight alone: orders need product prices, users need auth state, and search needs to trigger detail refresh.
 
 Logix’s goals for cross-module collaboration are:

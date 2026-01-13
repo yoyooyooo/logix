@@ -3,8 +3,6 @@ title: Lifecycle
 description: 理解模块生命周期钩子以及它们与 Runtime/React 的关系。
 ---
 
-# Lifecycle
-
 Logix Module 的生命周期与 Effect 的 `Scope` 紧密绑定。
 
 ### 适合谁

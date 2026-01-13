@@ -1,5 +1,5 @@
 ---
-title: 'Effect Basics: learn the 20% you need'
+title: Effect Basics - learn the 20% you need
 description: A practical Effect cheat sheet for Logix users.
 ---
 

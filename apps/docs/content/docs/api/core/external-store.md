@@ -1,9 +1,9 @@
 ---
 title: ExternalStore
-description: ExternalStore 是一个最小的“同步快照 + 变更通知”契约，用于把外部推送源（或模块 selector）声明式接入 StateTrait.externalStore。
+description: A minimal “sync snapshot + change notification” contract for feeding external push sources (or module selectors) into StateTrait.externalStore.
 ---
 
-`ExternalStore<T>` 是一个最小契约：
+`ExternalStore<T>` is a minimal contract:
 
 ```ts
 export type ExternalStore<T> = {
@@ -13,15 +13,15 @@ export type ExternalStore<T> = {
 }
 ```
 
-它的设计重点是 **同步快照** 与 **显式变更通知**：
+The design focuses on **synchronous snapshots** and **explicit change notifications**:
 
-- `getSnapshot()`：同步返回“当前值”（不要做 IO/Promise，不要产生副作用）。
-- `subscribe(listener)`：当值发生变化时触发 `listener()`；返回取消订阅函数。
-- `getServerSnapshot?()`：SSR 场景可选；缺省时会回退到 `getSnapshot()`。
+- `getSnapshot()`: synchronously return the current value (no IO/Promise; no side effects).
+- `subscribe(listener)`: call `listener()` whenever the value changes, and return an unsubscribe function.
+- `getServerSnapshot?()`: optional for SSR; when omitted, it falls back to `getSnapshot()`.
 
-## 与 StateTrait.externalStore 配合使用
+## Using it with `StateTrait.externalStore`
 
-推荐把 ExternalStore 作为 `StateTrait.externalStore({ store })` 的输入（由 trait 安装/运行期负责解析与写回），而不是直接在 React 里手写订阅胶水。
+Prefer passing ExternalStore into `StateTrait.externalStore({ store })` (traits handle install/runtime resolution and writeback), instead of hand-writing subscription glue in React.
 
 ```ts
 traits: Logix.StateTrait.from(StateSchema)({
@@ -31,31 +31,30 @@ traits: Logix.StateTrait.from(StateSchema)({
 })
 ```
 
-## 内置构造器（sugars）
+## Built-in constructors
 
 ### 1) `ExternalStore.fromService(tag, map)`
 
-从 Effect Context 里解析 service，再映射成 ExternalStore。常用于把“宿主/基础设施的订阅源”注入到模块里。
+Resolve a service from Effect Context, then map it into an ExternalStore. Useful for injecting “host/infrastructure subscriptions” into a module.
 
-约束：这个 store 会在 install/runtime 阶段解析；不要在 install 之外直接调用它的 `getSnapshot/subscribe`。
+Constraint: this store is resolved during install/runtime; don’t call its `getSnapshot/subscribe` outside that lifecycle.
 
 ### 2) `ExternalStore.fromSubscriptionRef(ref)`
 
-从 `SubscriptionRef` 创建 ExternalStore：
+Create an ExternalStore from a `SubscriptionRef`:
 
-- `getSnapshot()` 通过 `SubscriptionRef.get(ref)` 同步读（要求是纯读）。
-- `subscribe()` 订阅 `ref.changes`，并用 microtask 合并通知（同一 microtask 多次更新只触发一次 notify）。
+- `getSnapshot()` reads synchronously via `SubscriptionRef.get(ref)` (must be pure).
+- `subscribe()` listens to `ref.changes` and coalesces notifications via microtasks (multiple updates in the same microtask trigger only one notify).
 
 ### 3) `ExternalStore.fromStream(stream, { initial | current })`
 
-Stream 没有“同步 current”，所以必须提供 `{ initial }` 或 `{ current }`，否则会 **fail-fast**。
+Streams don’t have a synchronous “current”, so you must provide `{ initial }` or `{ current }` — otherwise it fails fast.
 
-适用：你能接受初始值可能是“启动时的近似值”；更可靠的“当前值”建议用 `fromService/fromSubscriptionRef`。
+Use it when an approximate startup value is acceptable; if you need a reliable “current”, prefer `fromService/fromSubscriptionRef`.
 
 ### 4) `ExternalStore.fromModule(module, selector)`
 
-把“模块 selector”当作外部源（Module-as-Source），用于跨模块依赖链路：
+Treat a module selector as an external source (Module-as-Source), typically for cross-module dependency chains:
 
-- `moduleId` 必须可解析（不要传只读 ModuleHandle）。
-- selectorId 必须稳定（不稳定会 fail-fast）。
-
+- `moduleId` must be resolvable (don’t pass a read-only ModuleHandle).
+- selectorId must be stable (unstable selectors fail fast).

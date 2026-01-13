@@ -3,8 +3,6 @@ title: Module inspection
 description: Manifest extraction and dependency preflight (trial run) APIs.
 ---
 
-# Module inspection (Manifest and trial run)
-
 When you treat a `Module` as a “deliverable asset” that evolves over time, beyond running it you typically need two additional capabilities:
 
 - **Manifest**: export key module information (schema/actions/traits, etc.) into diffable JSON for CI and review.

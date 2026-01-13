@@ -3,8 +3,6 @@ title: 常见问题 (FAQ)
 description: Logix 常见问题解答，帮助你快速找到答案。
 ---
 
-# 常见问题 (FAQ)
-
 ## 概念与选型
 
 ### Logix 和 Redux/Zustand 有什么区别？

@@ -1,5 +1,5 @@
 ---
-title: 'Effect 速成：只学你需要的 20%'
+title: Effect 速成：只学你需要的 20%
 description: 面向 Logix 用户的 Effect 入门速查表。
 ---
 

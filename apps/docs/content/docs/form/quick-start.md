@@ -1,6 +1,6 @@
 ---
 title: Quick start
-description: "Go from 0 to 1: a form that validates, submits, and is subscribable."
+description: Go from 0 to 1 - a form that validates, submits, and is subscribable.
 ---
 
 ## 1) Define the values Schema and initial values

@@ -3,8 +3,6 @@ title: Testing
 description: How to test Logix modules with @effect/vitest.
 ---
 
-# Testing
-
 Logix is designed to be test-friendly. Since Logic is pure Effect, you can use the official Effect test runner `@effect/vitest` for both unit tests and integration tests.
 
 ### Who is this for?

@@ -3,8 +3,6 @@ title: 乐观更新
 description: 使用 Logix 实现乐观更新与回滚策略。
 ---
 
-# 乐观更新模式
-
 乐观更新让 UI 立即响应用户操作，同时在后台执行实际请求。如果请求失败，则回滚到之前的状态。
 
 ## 核心思路
@@ -114,3 +112,11 @@ yield*
 
 - [分页加载](./pagination)
 - [搜索+详情联动](./search-detail)
+
+## 可运行示例
+
+- 索引：[可运行示例索引](../recipes/runnable-examples)
+- 代码：
+  - `examples/logix/src/scenarios/optimistic-toggle.ts`
+  - `examples/logix/src/scenarios/optimistic-toggle-from-pattern.ts`
+  - `examples/logix/src/patterns/optimistic-toggle.ts`

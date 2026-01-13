@@ -3,8 +3,6 @@ title: useModule
 description: API Reference for useModule hook
 ---
 
-# useModule
-
 `useModule` 是 React 中消费 Logix Module 的主要 Hook。  
 它既可以**创建/管理局部 ModuleRuntime**（传入带 `.impl` 的模块对象或 `ModuleImpl`），也可以**接入已经存在的全局 ModuleRuntime**（传入模块定义对象、`ModuleTag` 或 `ModuleRuntime` 本身）。无论哪种形态，最终返回的都是一个 `ModuleRef`（包含 `runtime` / `dispatch` / `dispatchers` / `imports` 等能力）。
 

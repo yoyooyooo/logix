@@ -3,8 +3,6 @@ title: Module
 description: Module 定义与实现的 API 参考。
 ---
 
-# Module
-
 `Module` 是 Logix 的核心单元，用于封装状态、逻辑和依赖。
 
 > **业务开发者提示**：

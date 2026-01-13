@@ -3,8 +3,6 @@ title: Query
 description: Build replayable query modules with @logixjs/query, and optionally plug in cache/dedup engines.
 ---
 
-# Query
-
 `@logixjs/query` turns “query params → resource loading → result snapshots” into a regular module. `params` / `ui` / result snapshots all live in module state, so they are subscribable, debuggable, and replayable.
 
 ## 0) Mental model (≤ 5 keywords)

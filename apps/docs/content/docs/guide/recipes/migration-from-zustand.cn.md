@@ -3,8 +3,6 @@ title: 从 Zustand 迁移
 description: 从 Zustand 迁移到 Logix 的完整指南。
 ---
 
-# 从 Zustand 迁移到 Logix
-
 本指南帮助你将现有的 Zustand 状态管理逐步迁移到 Logix。
 
 ## 概念映射

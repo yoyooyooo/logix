@@ -1,5 +1,5 @@
 ---
-title: "Bound API ($)"
+title: Bound API ($)
 description: Logix 逻辑编写的核心上下文对象。
 ---
 

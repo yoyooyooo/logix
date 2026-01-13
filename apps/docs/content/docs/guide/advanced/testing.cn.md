@@ -3,8 +3,6 @@ title: 测试
 description: 如何使用 @effect/vitest 测试 Logix 模块。
 ---
 
-# 测试
-
 Logix 的设计天然支持测试。由于 Logic 是纯粹的 Effect，我们可以利用 Effect 官方的 `@effect/vitest` 进行单元测试和集成测试。
 
 ### 适合谁

@@ -2,6 +2,7 @@
   "title": "Recipes",
   "pages": [
     "common-patterns",
+    "runnable-examples",
     "unified-api",
     "public-submodules",
     "react-integration",

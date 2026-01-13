@@ -1,9 +1,7 @@
 ---
 title: Thinking in Logix
-description: "Understand Logix’s core mental model: Intent, Flow, Effect."
+description: Understand Logix’s core mental model - Intent, Flow, Effect.
 ---
-
-# Thinking in Logix
 
 If you’re familiar with React, you’ve probably heard “Thinking in React” — **UI is a function of state**.
 
@@ -131,6 +129,10 @@ Thinking in Logix means:
 1. **Define intent (Schema)**, rather than writing procedures.
 2. **Describe flows (Flow)**, rather than manually orchestrating.
 3. **Isolate side effects (Effect)** to keep core logic pure.
+
+## If you’re migrating from Redux/Zustand
+
+- Start with: [Migration from Zustand](../recipes/migration-from-zustand)
 
 ## Why Logix?
 

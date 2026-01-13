@@ -3,8 +3,6 @@ title: Flows & Effects
 description: 学会用 Fluent Flow + Effect 处理副作用与异步逻辑。
 ---
 
-# Flows & Effects
-
 在真实业务里，“逻辑代码”几乎都离不开副作用：
 
 - 发送网络请求；
@@ -126,16 +124,40 @@ yield* $.onAction("submit").runExhaust(() =>
 很多时候，我们并不是直接监听 Action，而是“当某个字段变化时，触发后续逻辑”。  
 这在 Logix 中对应 `$.onState(selector)`：
 
-```ts
-// 当 userId 变化时，自动重新加载数据，并做 300ms 防抖
-yield* $.onState((s) => s.userId)
-  .debounce(300)
-  .run((userId) =>
-    Effect.gen(function* () {
-      if (!userId) return
-      yield* $.dispatch({ _tag: "fetchUser", payload: userId })
-    }),
-  )
+```ts tab="Logic DSL"
+import { Effect } from 'effect'
+
+// 当 userId 变化时，300ms 防抖后触发 fetchUser。
+yield* $.onState((s) => s.userId).pipe(
+  $.flow.debounce(300),
+  $.flow.filter((userId) => Boolean(userId)),
+  $.flow.run((userId) => $.actions.dispatch({ _tag: 'fetchUser', payload: userId })),
+)
+```
+
+```ts tab="Flow API"
+import { Effect } from 'effect'
+
+const userId$ = $.flow.fromState((s) => s.userId)
+
+yield* userId$.pipe(
+  $.flow.debounce(300),
+  $.flow.filter((userId) => Boolean(userId)),
+  $.flow.run((userId) => $.actions.dispatch({ _tag: 'fetchUser', payload: userId })),
+)
+```
+
+```ts tab="Raw Effect"
+import { Stream } from 'effect'
+
+// 心智模型：selector 在底层就是 Stream。
+yield* Stream.fromEffect($.state.read).pipe(
+  Stream.map((s) => s.userId),
+  Stream.changes,
+  Stream.debounce('300 millis'),
+  Stream.filter((userId) => Boolean(userId)),
+  Stream.runForEach((userId) => $.actions.dispatch({ _tag: 'fetchUser', payload: userId })),
+)
 ```
 
 可以把它类比为：

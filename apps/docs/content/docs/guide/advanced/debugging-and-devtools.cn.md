@@ -3,8 +3,6 @@ title: 调试与 DevTools
 description: 使用 Logix 的调试事件管道和 DevTools 面板观察模块行为。
 ---
 
-# 调试与 DevTools
-
 Logix 在运行时会为「模块生命周期、Action 派发、状态更新、逻辑错误」产生结构化的调试事件。
 这些事件可以：
 

@@ -3,8 +3,6 @@ title: Suspense & Async
 description: Handling asynchronous data with React Suspense.
 ---
 
-# Suspense & Async
-
 Logix 支持在 React 中以**可选**方式使用 Suspense 来等待“模块初始化完成后再渲染”。
 
 默认行为是**不挂起**：`useModule(Impl)` 会同步返回模块句柄，你可以用 state 渲染 loading/error；只有在显式启用 `suspend:true` 时，`useModule` 才会通过 Suspense 挂起组件。

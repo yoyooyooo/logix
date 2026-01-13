@@ -3,8 +3,6 @@ title: 分页加载
 description: 使用 Logix 实现分页/无限滚动加载模式。
 ---
 
-# 分页加载模式
-
 分页加载是列表类场景的基础模式，本文介绍 Cursor 和 Offset 两种实现。
 
 ## 核心思路
@@ -121,3 +119,9 @@ function ItemList() {
 
 - [乐观更新](./optimistic-update)
 - [搜索+详情联动](./search-detail)
+
+## 可运行示例
+
+- 索引：[可运行示例索引](../recipes/runnable-examples)
+- 教程：[复杂列表教程](../get-started/tutorial-complex-list)
+- 代码：`examples/logix-react/src/modules/querySearchDemo.ts`

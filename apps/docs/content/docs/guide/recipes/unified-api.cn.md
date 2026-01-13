@@ -1,5 +1,5 @@
 ---
-title: 'Pattern 模式示例'
+title: Pattern 模式示例
 description: 展示如何使用 BoundApi Pattern 和 Functional Pattern 编写可复用的业务逻辑。
 ---
 

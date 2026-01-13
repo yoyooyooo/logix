@@ -3,8 +3,6 @@ title: useModule
 description: API Reference for useModule hook
 ---
 
-# useModule
-
 `useModule` is the primary Hook for consuming Logix Modules in React.  
 It can both **create/manage a local ModuleRuntime** (when you pass a module object with `.impl` or a `ModuleImpl`), and **connect to an existing global ModuleRuntime** (when you pass a module definition object, a `ModuleTag`, or a `ModuleRuntime` itself).
 

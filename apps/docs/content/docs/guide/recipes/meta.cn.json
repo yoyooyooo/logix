@@ -2,9 +2,11 @@
   "title": "常用配方",
   "pages": [
     "common-patterns",
+    "runnable-examples",
     "unified-api",
     "public-submodules",
     "react-integration",
+    "external-store",
     "route-scope-modals",
     "migration-from-zustand"
   ]

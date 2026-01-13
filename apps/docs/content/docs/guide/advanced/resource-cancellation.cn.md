@@ -3,8 +3,6 @@ title: 可中断 IO（取消与超时）
 description: 让 switch 并发不仅“丢弃旧结果”，还能真正取消网络请求。
 ---
 
-# 可中断 IO（取消与超时）
-
 在 Logix 里，查询/资源加载最终都会走到 `ResourceSpec.load`（Effect）。当你使用 `StateTrait.source`（以及基于它的 `@logixjs/query`）时，默认并发是 `switch`：新的 key 会让旧的 in-flight fiber 被中断。
 
 但“中断 fiber”并不等于“网络层真正取消”。想做到真正取消（例如 axios 请求被 abort），需要 `load` 主动使用 Effect 提供的 `AbortSignal`。

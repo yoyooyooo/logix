@@ -1,9 +1,7 @@
 ---
 title: Handle (consumption side)
-description: "A unified way to consume dependencies inside `.logic()`: ModuleHandle vs ServiceHandle, plus practical trade-offs."
+description: A unified way to consume dependencies inside `.logic()` - ModuleHandle vs ServiceHandle, plus practical trade-offs.
 ---
-
-# Handle (consumption side)
 
 A **Handle** is the “usable view” you get when consuming a dependency inside `.logic()`.
 

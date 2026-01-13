@@ -1,4 +1,14 @@
 {
   "title": "React 集成",
-  "pages": ["provider", "use-module", "use-local-module", "use-imported-module", "module-scope"]
+  "pages": [
+    "provider",
+    "use-module",
+    "use-selector",
+    "use-dispatch",
+    "use-local-module",
+    "use-imported-module",
+    "use-processes",
+    "use-module-list",
+    "module-scope"
+  ]
 }

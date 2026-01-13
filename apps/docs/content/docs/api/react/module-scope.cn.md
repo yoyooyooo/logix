@@ -3,8 +3,6 @@ title: ModuleScope
 description: 把 Host 实例变成可复用的 Scope（Provider + use + useImported）
 ---
 
-# ModuleScope
-
 `ModuleScope` 用来把“创建 Host 模块实例 + Context Provider + useHost()”打包成一个可复用的 Scope。
 
 它不引入新的运行时能力，只是把这些能力组合成一个更顺手的入口：

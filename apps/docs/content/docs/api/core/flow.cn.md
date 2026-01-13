@@ -3,8 +3,6 @@ title: Flow API
 description: Flow 与 Fluent DSL 的底层 API 参考。
 ---
 
-# Flow API
-
 > **面向读者**：库作者、Pattern 作者、对 Fluent DSL (`$.onState/$.onAction`) 的底层实现感兴趣的同学。  
 > 日常业务开发通常直接使用 `$` 上的 Fluent API 即可，无需显式调用本页中的底层函数。
 

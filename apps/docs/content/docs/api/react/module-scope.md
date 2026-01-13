@@ -3,8 +3,6 @@ title: ModuleScope
 description: Turn a Host instance into a reusable scope (Provider + use + useImported).
 ---
 
-# ModuleScope
-
 `ModuleScope` packages “create a Host module instance + a Context Provider + useHost()” into a reusable scope.
 
 It mainly solves two problems:

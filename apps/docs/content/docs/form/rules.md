@@ -1,6 +1,6 @@
 ---
 title: Rules DSL (z)
-description: "Two styles of $.rules: Decl DSL (field/list/root) and Node DSL (schema + object/array)."
+description: Two styles of $.rules - Decl DSL (field/list/root) and Node DSL (schema + object/array).
 ---
 
 `rules` is the recommended entry for form validation. Start by deriving `z` from the values Schema:

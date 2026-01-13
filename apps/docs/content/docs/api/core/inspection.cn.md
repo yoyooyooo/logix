@@ -3,8 +3,6 @@ title: 模块检查
 description: 模块结构摘要（Manifest）与依赖预检（试运行）API。
 ---
 
-# 模块检查（Manifest 与试运行）
-
 当你想把一个 `Module` 当作“可交付资产”来长期演进时，除了直接运行它，通常还需要两类能力：
 
 - **结构摘要（Manifest）**：把模块的 schema/actions/traits 等关键信息导出成可 diff 的 JSON，用于 CI 与审阅。

@@ -1,5 +1,5 @@
 ---
-title: '教程：复杂列表查询'
+title: 教程：复杂列表查询
 description: 构建一个包含筛选、分页、加载状态和自动重置的复杂列表页面。
 ---
 
@@ -87,101 +87,175 @@ export const UserListDef = Logix.Module.make('UserList', {
 创建 `src/features/users/logic.ts`：
 
 ```typescript tab="Logic DSL"
-	import { Effect, Stream } from 'effect'
-	import { UserListDef } from './schema'
-	import { UserApi } from '../../services/UserApi'
+import { Effect, Stream } from 'effect'
+import { UserListDef } from './schema'
+import { UserApi } from '../../services/UserApi'
 
-	export const UserListLogic = UserListDef.logic(($) => {
-  // --- setup-only：注册生命周期 ---
-  const loadEffect = Effect.gen(function* () {
-    // ... (省略加载逻辑，与之前相同) ...
-    const { filters, pagination } = yield* $.state.read
-    yield* $.state.mutate((d) => {
-      d.meta.isLoading = true
-      d.meta.error = undefined
+export const UserListLogic = UserListDef.logic(($) =>
+  Effect.gen(function* () {
+    // --- setup-only：定义生命周期 ---
+    const loadEffect = Effect.gen(function* () {
+      // ...（省略加载逻辑，与之前相同）...
+      const { filters, pagination } = yield* $.state.read
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = true
+        d.meta.error = undefined
+      })
+      const api = yield* $.use(UserApi)
+      const result = yield* Effect.tryPromise(() =>
+        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
+      ).pipe(Effect.either)
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = false
+        if (result._tag === 'Left') d.meta.error = '加载失败'
+        else {
+          d.list = result.right.items
+          d.pagination.total = result.right.total
+        }
+      })
     })
-    const api = yield* $.use(UserApi)
-    const result = yield* Effect.tryPromise(() =>
-      api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
-    ).pipe(Effect.either)
-    yield* $.state.mutate((d) => {
-      d.meta.isLoading = false
-      if (result._tag === 'Left') d.meta.error = '加载失败'
-      else {
-        d.list = result.right.items
-        d.pagination.total = result.right.total
-      }
-    })
-  })
 
-  $.lifecycle.onInit(loadEffect)
+    $.lifecycle.onInit(loadEffect)
 
-  // --- run 段：挂载 Watcher/Flow ---
-  return Effect.gen(function* () {
-    // --- 1. 定义触发源 ---
-    // 使用 .toStream() 将 DSL 对象转换为 Stream 以便合并
+    // --- 1) 定义触发源（Stream）---
     const filters$ = $.onState((s) => s.filters).toStream()
     const pagination$ = $.onState((s) => s.pagination).toStream()
     const refresh$ = $.onAction('refresh').toStream()
 
-    // --- 3. 汇聚加载信号 ---
+    // --- 2) 汇聚加载信号 ---
     const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
 
+    // --- 3) 挂载 flows ---
     yield* Effect.all(
       [
-        // --- 2. 自动重置页码 ---
+        // 当 filters 变化时自动重置页码。
         $.onState((s) => s.filters).run(() =>
           $.state.mutate((d) => {
             d.pagination.page = 1
           }),
         ),
 
-        // --- 4. 执行加载逻辑 ---
-        // 使用 $.on(...) 将合并后的 Stream 重新包装回 DSL
+        // 执行加载逻辑（防抖 + latest wins）。
         $.on(loadTrigger$).debounce(50).runLatest(loadEffect),
       ],
       { concurrency: 'unbounded' },
     )
-  })
-})
+  }),
+)
 ```
 
-    ```typescript tab="Flow API"
-    import { Effect, Stream } from 'effect'
-    import { UserListDef } from './schema'
+```typescript tab="Flow API"
+import { Effect, Stream } from 'effect'
+import { UserListDef } from './schema'
+import { UserApi } from '../../services/UserApi'
 
-    export const UserListLogic = UserListDef.logic(($) =>
-      Effect.gen(function* () {
-    // --- 1. 使用底层 API 获取 Stream ---
+export const UserListLogic = UserListDef.logic(($) =>
+  Effect.gen(function* () {
+    const loadEffect = Effect.gen(function* () {
+      // ... loadEffect 同上 ...
+      const { filters, pagination } = yield* $.state.read
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = true
+        d.meta.error = undefined
+      })
+      const api = yield* $.use(UserApi)
+      const result = yield* Effect.tryPromise(() =>
+        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
+      ).pipe(Effect.either)
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = false
+        if (result._tag === 'Left') d.meta.error = '加载失败'
+        else {
+          d.list = result.right.items
+          d.pagination.total = result.right.total
+        }
+      })
+    })
+
+    $.lifecycle.onInit(loadEffect)
+
     const filters$ = $.flow.fromState((s) => s.filters)
     const pagination$ = $.flow.fromState((s) => s.pagination)
     const refresh$ = $.flow.fromAction((a): a is { _tag: 'refresh' } => (a as any)._tag === 'refresh')
 
-    // --- 2. 自动重置页码 ---
-    yield* filters$.pipe(
-      $.flow.run(() =>
-        $.state.mutate((d) => {
-          d.pagination.page = 1
-        }),
-      ),
-    )
-
-    // --- 3. 汇聚加载信号 ---
     const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
 
-    // --- 4. 执行加载逻辑 ---
-    // 直接使用 Stream 操作符
-    yield* loadTrigger$.pipe(
-      $.flow.debounce(50),
-      $.flow.runLatest(loadEffect), // loadEffect 定义同上
+    yield* Effect.all(
+      [
+        filters$.pipe(
+          $.flow.run(() =>
+            $.state.mutate((d) => {
+              d.pagination.page = 1
+            }),
+          ),
+        ),
+        loadTrigger$.pipe($.flow.debounce(50), $.flow.runLatest(loadEffect)),
+      ],
+      { concurrency: 'unbounded' },
     )
-
-    // ...
-
-}),
+  }),
 )
+```
 
-````
+```typescript tab="Raw Effect"
+import { Effect, Stream } from 'effect'
+import { UserListDef } from './schema'
+import { UserApi } from '../../services/UserApi'
+
+export const UserListLogic = UserListDef.logic(($) =>
+  Effect.gen(function* () {
+    const loadEffect = Effect.gen(function* () {
+      // ... loadEffect 同上 ...
+      const { filters, pagination } = yield* $.state.read
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = true
+        d.meta.error = undefined
+      })
+      const api = yield* $.use(UserApi)
+      const result = yield* Effect.tryPromise(() =>
+        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
+      ).pipe(Effect.either)
+      yield* $.state.mutate((d) => {
+        d.meta.isLoading = false
+        if (result._tag === 'Left') d.meta.error = '加载失败'
+        else {
+          d.list = result.right.items
+          d.pagination.total = result.right.total
+        }
+      })
+    })
+
+    $.lifecycle.onInit(loadEffect)
+
+    const filters$ = $.flow.fromState((s) => s.filters)
+    const pagination$ = $.flow.fromState((s) => s.pagination)
+    const refresh$ = $.flow.fromAction((a): a is { _tag: 'refresh' } => (a as any)._tag === 'refresh')
+
+    const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
+
+    yield* Effect.all(
+      [
+        // filters 变化时重置页码。
+        filters$.pipe(
+          Stream.runForEach(() =>
+            $.state.mutate((d) => {
+              d.pagination.page = 1
+            }),
+          ),
+        ),
+
+        // 防抖 + switch(latest) 执行 loadEffect。
+        loadTrigger$.pipe(
+          Stream.debounce('50 millis'),
+          Stream.flatMap(() => Stream.fromEffect(loadEffect), { switch: true }),
+          Stream.runDrain,
+        ),
+      ],
+      { concurrency: 'unbounded' },
+    )
+  }),
+)
+```
 
 ## 3. 组装 Module
 

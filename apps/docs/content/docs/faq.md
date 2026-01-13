@@ -3,8 +3,6 @@ title: FAQ
 description: Frequently asked questions about Logix, to help you find answers quickly.
 ---
 
-# FAQ
-
 ## Concepts and choosing a solution
 
 ### What’s the difference between Logix and Redux/Zustand?

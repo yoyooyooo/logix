@@ -3,8 +3,6 @@ title: 查询（Query）
 description: 用 @logixjs/query 构建可回放的查询模块，并按需接入缓存/去重引擎。
 ---
 
-# 查询（Query）
-
 `@logixjs/query` 把“查询参数 → 资源加载 → 结果快照”收口成一个普通模块：`params/ui/结果快照` 都存放在模块 state 上，因此可以被订阅、被调试、被回放。
 
 ## 0) 心智模型（≤5 关键词）

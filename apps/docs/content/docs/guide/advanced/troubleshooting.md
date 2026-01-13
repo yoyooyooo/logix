@@ -3,8 +3,6 @@ title: Troubleshooting
 description: Logix diagnostic codes explained, with common failure scenarios and fixes.
 ---
 
-# Troubleshooting
-
 This page collects diagnostic codes emitted by the Logix Runtime, common failure scenarios, and how to fix them.
 
 ### Who is this for?

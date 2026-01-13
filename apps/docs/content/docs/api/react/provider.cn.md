@@ -3,8 +3,6 @@ title: RuntimeProvider
 description: 在 React 中提供 Logix Runtime 上下文
 ---
 
-# RuntimeProvider
-
 `RuntimeProvider` 是 React 侧唯一的“能力注入点”：把 Logix `ManagedRuntime` 注入到 React Context，让下层 hooks 能解析模块、订阅状态、派发动作。
 
 ## 先记住这张能力地图

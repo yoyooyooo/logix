@@ -1,6 +1,6 @@
 ---
 title: Route-scoped modal keepalive
-description: "Use a Host(imports) to model “scoped globals”: keep modal state within a route, dispose everything when leaving the route."
+description: Use a Host(imports) to model “scoped globals” and keep modal state within a route; dispose everything when leaving the route.
 ---
 
 This recipe solves a very common UX requirement:

@@ -3,8 +3,6 @@ title: LogixProvider
 description: API Reference for LogixProvider
 ---
 
-# LogixProvider (RuntimeProvider)
-
 `LogixProvider` (also known as `RuntimeProvider`) is the root component for a Logix app. It provides the Runtime context to the component subtree.
 
 ## Usage

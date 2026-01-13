@@ -1,5 +1,5 @@
 ---
-title: 'Working with Effect Flow Runtime'
+title: Working with Effect Flow Runtime
 description: Trigger server-side Flows from frontend Logix and manage state feedback.
 ---
 

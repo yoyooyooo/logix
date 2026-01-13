@@ -3,8 +3,6 @@ title: Migrating from Zustand
 description: A step-by-step guide to migrate from Zustand to Logix.
 ---
 
-# Migrating from Zustand to Logix
-
 This guide helps you migrate an existing Zustand-based state management setup to Logix incrementally.
 
 ## Concept mapping

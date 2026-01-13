@@ -3,8 +3,6 @@ title: useImportedModule
 description: 从父模块实例的 imports scope 解析子模块实例
 ---
 
-# useImportedModule
-
 当一个模块通过 `imports` 组合了子模块时，组件侧经常需要在 **父实例 scope 内** 读取/派发子模块（例如：Query、子表单、子 Feature）。
 
 `useImportedModule(parent, childModule)` 用来解决这件事：它会从 `parent` 对应实例的 imports scope 中解析出 `childModule` 的运行时句柄，并返回一个可直接交给 `useSelector` / `useDispatch` 的 `ModuleRef`。

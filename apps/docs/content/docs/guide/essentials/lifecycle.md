@@ -3,8 +3,6 @@ title: Lifecycle
 description: Understand lifecycle hooks and how they relate to Runtime and React.
 ---
 
-# Lifecycle
-
 A Logix Module’s lifecycle is tightly coupled to Effect’s `Scope`.
 
 ### Who is this for?

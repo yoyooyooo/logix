@@ -3,8 +3,6 @@ title: 性能与优化
 description: 调整 Logix Runtime 和 Devtools 的观测策略，在复杂场景下保持良好性能。
 ---
 
-# 性能与优化
-
 Logix Runtime 默认以“可观测性优先”的方式工作：  
 在开发环境下会完整记录状态事务、Trait 行为和调试事件，配合 Devtools 提供时间线与时间旅行能力。  
 在生产环境下则自动收敛为更轻量的观测模式。

@@ -3,8 +3,6 @@ title: Flows & Effects
 description: Handle side effects and async logic with Fluent Flow + Effect.
 ---
 
-# Flows & Effects
-
 In real-world apps, “logic code” is almost never free of side effects:
 
 - sending network requests
@@ -122,16 +120,40 @@ Semantics: until the current submit flow finishes, any later `"submit"` clicks a
 Often you don’t watch Actions directly. Instead, you want “when a field changes, run follow-up logic”.  
 In Logix, that is `$.onState(selector)`:
 
-```ts
-// When userId changes, reload automatically with 300ms debounce
-yield* $.onState((s) => s.userId)
-  .debounce(300)
-  .run((userId) =>
-    Effect.gen(function* () {
-      if (!userId) return
-      yield* $.actions.dispatch({ _tag: "fetchUser", payload: userId })
-    }),
-  )
+```ts tab="Logic DSL"
+import { Effect } from 'effect'
+
+// When userId changes, debounce 300ms, then dispatch fetchUser.
+yield* $.onState((s) => s.userId).pipe(
+  $.flow.debounce(300),
+  $.flow.filter((userId) => Boolean(userId)),
+  $.flow.run((userId) => $.actions.dispatch({ _tag: 'fetchUser', payload: userId })),
+)
+```
+
+```ts tab="Flow API"
+import { Effect } from 'effect'
+
+const userId$ = $.flow.fromState((s) => s.userId)
+
+yield* userId$.pipe(
+  $.flow.debounce(300),
+  $.flow.filter((userId) => Boolean(userId)),
+  $.flow.run((userId) => $.actions.dispatch({ _tag: 'fetchUser', payload: userId })),
+)
+```
+
+```ts tab="Raw Effect"
+import { Stream } from 'effect'
+
+// Mental model: selectors are just Streams under the hood.
+yield* Stream.fromEffect($.state.read).pipe(
+  Stream.map((s) => s.userId),
+  Stream.changes,
+  Stream.debounce('300 millis'),
+  Stream.filter((userId) => Boolean(userId)),
+  Stream.runForEach((userId) => $.actions.dispatch({ _tag: 'fetchUser', payload: userId })),
+)
 ```
 
 You can think of it as:

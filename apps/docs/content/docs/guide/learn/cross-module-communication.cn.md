@@ -3,8 +3,6 @@ title: 跨模块协作（Cross-Module Communication）
 description: 理解模块之间如何通过 imports / $.use / Link.make 协作，并避免循环依赖
 ---
 
-# 跨模块协作（Cross-Module Communication）
-
 在真实业务里，模块很少是“单机作战”的：订单要读商品价格、用户要读认证状态、搜索要驱动详情刷新。
 
 Logix 对跨模块协作的目标是同时满足：
