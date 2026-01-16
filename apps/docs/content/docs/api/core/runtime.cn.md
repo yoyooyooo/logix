@@ -80,11 +80,24 @@ export function App() {
 在这个例子里：
 
 - `RuntimeProvider runtime={AppRuntime}` 会：
-  - 持有 `AppRuntime` 的 Scope，并在 React 应用卸载时清理资源；
   - 通过 React Context 把 Runtime 传递给子树中的 Hook（`useModule` / `useSelector` / `useDispatch` 等）；
+  - 当你使用 `RuntimeProvider.layer` 时，为每个 `layer` 创建一个 Scope，并在 Provider 卸载/变更时关闭它，避免资源泄漏；
 - 子组件只需要关心“用哪个 Module”，不需要自己 new Runtime 或管理释放时机。
 
 如果你的项目已经在别处创建了 `ManagedRuntime`，也可以直接把它传给 `RuntimeProvider`，效果类似。
+
+> 注意：`RuntimeProvider` 不会自动调用 `runtime.dispose()`（runtime 可能被多处共享）。如果你的宿主需要“卸载即释放”（微前端/多次 mount/unmount/测试），请在“创建 runtime 的宿主边界”显式调用 `runtime.dispose()`；在 Node/CLI 场景里推荐直接使用 `Runtime.runProgram/openProgram`，它会在结束时关闭 Scope 并执行 finalizer。
+
+例如（微前端 / 需要显式卸载的宿主）：由同一个边界负责创建与释放 runtime。
+
+```tsx
+export function mount(el: HTMLElement) {
+  const runtime = makeRuntime()
+  const root = createRoot(el)
+  root.render(<RuntimeProvider runtime={runtime}><App /></RuntimeProvider>)
+  return () => { root.unmount(); void runtime.dispose() }
+}
+```
 
 > 当某个模块通过 `imports` 组合了子模块（例如 Host imports 了一个 Query），组件侧若要在“父实例 scope”下读取/派发该子模块，使用 `useImportedModule(parent, childModule)` 或 `parent.imports.get(childModule)`：
 >

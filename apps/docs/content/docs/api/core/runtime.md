@@ -80,11 +80,24 @@ export function App() {
 In this example:
 
 - `RuntimeProvider runtime={AppRuntime}` will:
-  - hold the Scope of `AppRuntime`, and clean up resources when the React app unmounts;
   - pass the Runtime down via React Context to hooks (`useModule` / `useSelector` / `useDispatch`, etc.);
+  - when you use `RuntimeProvider.layer`, create a Scope for each `layer` and close it on Provider unmount/change to avoid leaks;
 - child components only need to care about which Module they use; they don’t need to construct a Runtime or manage disposal.
 
 If your project already creates a `ManagedRuntime` elsewhere, you can also pass it to `RuntimeProvider` directly with similar behavior.
+
+> Note: `RuntimeProvider` does not automatically call `runtime.dispose()` (a runtime may be shared across multiple roots). If your host needs “unmount = release” (micro-frontends / repeated mount-unmount / tests), call `runtime.dispose()` at the host boundary that created the runtime. In Node/CLI, prefer `Runtime.runProgram/openProgram`, which closes the Scope and runs finalizers automatically.
+
+Example (micro-frontend / explicit teardown): the same boundary should own creation and disposal.
+
+```tsx
+export function mount(el: HTMLElement) {
+  const runtime = makeRuntime()
+  const root = createRoot(el)
+  root.render(<RuntimeProvider runtime={runtime}><App /></RuntimeProvider>)
+  return () => { root.unmount(); void runtime.dispose() }
+}
+```
 
 > When a module composes child modules via `imports` (e.g. a Host imports a Query), and the UI wants to read/dispatch the child module under the **parent instance scope**, use `useImportedModule(parent, childModule)` or `parent.imports.get(childModule)`:
 >

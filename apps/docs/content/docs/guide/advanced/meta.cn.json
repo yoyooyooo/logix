@@ -6,6 +6,7 @@
     "converge-control-plane",
     "txn-lanes",
     "concurrency-control-plane",
+    "scope-and-resource-lifetime",
     "suspense-and-async",
     "resource-cancellation",
     "error-handling",
