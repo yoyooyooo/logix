@@ -13,7 +13,7 @@ import type { ModuleRef } from '../store/ModuleRef.js'
  */
 export function useLayerModule<Id extends string, Sh extends Logix.AnyModuleShape>(
   module: Logix.ModuleTagType<Id, Sh>,
-  layer: Layer.Layer<Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>, never, any>,
+  layer: Layer.Layer<Logix.ModuleRuntimeOfShape<Sh>, never, any>,
   deps: React.DependencyList = [],
 ): ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>> {
   const factory = React.useCallback(

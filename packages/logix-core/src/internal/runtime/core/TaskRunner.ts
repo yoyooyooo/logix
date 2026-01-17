@@ -2,7 +2,7 @@ import { Cause, Effect, Fiber, FiberRef, Ref, Stream } from 'effect'
 import * as Debug from './DebugSink.js'
 import { isDevEnv } from './env.js'
 import type * as Logic from './LogicMiddleware.js'
-import type { AnyModuleShape } from './module.js'
+import type { AnyModuleShape, LogicEffect } from './module.js'
 import type { RuntimeInternalsResolvedConcurrencyPolicy } from './RuntimeInternals.js'
 import type { StateTxnOrigin } from './StateTransaction.js'
 
@@ -66,12 +66,12 @@ export interface TaskRunnerOrigins {
 }
 
 type TaskHandler<Payload, Sh extends AnyModuleShape, R> =
-  | Logic.Of<Sh, R, void, never>
-  | ((payload: Payload) => Logic.Of<Sh, R, void, never>)
+  | LogicEffect<Sh, R, void, never>
+  | ((payload: Payload) => LogicEffect<Sh, R, void, never>)
 
 type TaskEffect<Payload, Sh extends AnyModuleShape, R, A, E> =
-  | Logic.Of<Sh, R, A, E>
-  | ((payload: Payload) => Logic.Of<Sh, R, A, E>)
+  | LogicEffect<Sh, R, A, E>
+  | ((payload: Payload) => LogicEffect<Sh, R, A, E>)
 
 export interface TaskRunnerConfig<Payload, Sh extends AnyModuleShape, R, A = void, E = never> {
   /**
@@ -95,14 +95,14 @@ export interface TaskRunnerConfig<Payload, Sh extends AnyModuleShape, R, A = voi
   /**
    * success: success writeback (separate transaction entry).
    */
-  readonly success?: (result: A, payload: Payload) => Logic.Of<Sh, R, void, never>
+  readonly success?: (result: A, payload: Payload) => LogicEffect<Sh, R, void, never>
 
   /**
    * failure: failure writeback (separate transaction entry).
    *
    * Note: takes a Cause to preserve defect/interrupt semantics; interrupts do not trigger failure writeback by default.
    */
-  readonly failure?: (cause: Cause.Cause<E>, payload: Payload) => Logic.Of<Sh, R, void, never>
+  readonly failure?: (cause: Cause.Cause<E>, payload: Payload) => LogicEffect<Sh, R, void, never>
 
   /**
    * origin: optional override for the three transaction origins.

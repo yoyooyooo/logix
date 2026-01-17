@@ -72,7 +72,7 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
   },
 ): LogixModuleTag<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>> {
   const shape: ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap> = {
-    stateSchema: def.state,
+    stateSchema: def.state as any,
     actionSchema: Schema.Union(
       ...Object.entries(def.actions).map(([tag, token]) => {
         const payload = (token as Action.AnyActionToken).schema as AnySchema
@@ -89,7 +89,7 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
         )
       }),
     ) as unknown as Schema.Schema<ActionsFromMap<AMap>>,
-    actionMap: def.actions,
+    actionMap: def.actions as any,
   }
 
   type ShapeState = StateOf<typeof shape>

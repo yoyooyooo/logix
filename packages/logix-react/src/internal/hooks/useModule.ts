@@ -1,7 +1,8 @@
 import React from 'react'
 import * as Logix from '@logixjs/core'
 import { Context, Effect, Layer, Scope } from 'effect'
-import { ReactModuleHandle, useModuleRuntime } from './useModuleRuntime.js'
+import type { ActionOfHandle, ReactModuleHandle, StateOfHandle } from './useModuleRuntime.js'
+import { useModuleRuntime } from './useModuleRuntime.js'
 import { useSelector } from './useSelector.js'
 import { useRuntime } from './useRuntime.js'
 import { isDevEnv } from '../provider/env.js'
@@ -16,11 +17,24 @@ import {
   type Dispatch,
   type ModuleDispatchersOfShape,
   type ModuleRef,
+  type ModuleRefOfDef,
+  type ModuleRefOfModule,
+  type ModuleRefOfTag,
 } from '../store/ModuleRef.js'
 import { resolveImportedModuleRef } from '../store/resolveImportedModuleRef.js'
 import { useStableId } from './useStableId.js'
 
-export type { ModuleActions, ModuleDispatchers, ModuleDispatchersOfShape, ModuleRef } from '../store/ModuleRef.js'
+export type {
+  ModuleActions,
+  ModuleDispatchers,
+  ModuleDispatchersOfShape,
+  ModuleActionTagsOfShape,
+  ModuleRef,
+  ModuleRefOfShape,
+  ModuleRefOfDef,
+  ModuleRefOfModule,
+  ModuleRefOfTag,
+} from '../store/ModuleRef.js'
 
 // Sync mode options: default behavior; does not trigger React Suspense.
 interface ModuleImplSyncOptions {
@@ -80,79 +94,31 @@ const isModule = (handle: unknown): handle is Logix.Module.Module<string, Logix.
 const isModuleDef = (handle: unknown): handle is ModuleDef<string, Logix.AnyModuleShape, any> =>
   Logix.Module.is(handle) && (handle as { readonly _kind?: unknown })._kind === 'ModuleDef'
 
-type StateOfHandle<H> =
-  H extends ModuleRef<infer S, infer _A>
-    ? S
-    : H extends Logix.ModuleRuntime<infer S, infer _A>
-      ? S
-      : H extends Logix.ModuleTagType<string, infer Sh>
-        ? Logix.StateOf<Sh>
-        : never
-
-type ActionOfHandle<H> =
-  H extends ModuleRef<infer _S, infer A>
-    ? A
-    : H extends Logix.ModuleRuntime<infer _S, infer A>
-      ? A
-      : H extends Logix.ModuleTagType<string, infer Sh>
-        ? Logix.ActionOf<Sh>
-        : never
-
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, R = never>(
   handle: Logix.ModuleImpl<Id, Sh, R>,
-): ModuleRef<
-  Logix.StateOf<Sh>,
-  Logix.ActionOf<Sh>,
-  keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>,
-  ModuleDispatchersOfShape<Sh>
->
+): ModuleRefOfTag<Id, Sh>
 
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, R = never>(
   handle: Logix.ModuleImpl<Id, Sh, R>,
   options: ModuleImplOptions,
-): ModuleRef<
-  Logix.StateOf<Sh>,
-  Logix.ActionOf<Sh>,
-  keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>,
-  ModuleDispatchersOfShape<Sh>
->
+): ModuleRefOfTag<Id, Sh>
 
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object, R = never>(
   handle: Logix.Module.Module<Id, Sh, Ext, R>,
-): ModuleRef<
-  Logix.StateOf<Sh>,
-  Logix.ActionOf<Sh>,
-  keyof Sh['actionMap'] & string,
-  Logix.Module.Module<Id, Sh, Ext, R>
-> &
-  Ext
+): ModuleRefOfModule<Id, Sh, Ext, R>
 
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object, R = never>(
   handle: Logix.Module.Module<Id, Sh, Ext, R>,
   options: ModuleImplOptions,
-): ModuleRef<
-  Logix.StateOf<Sh>,
-  Logix.ActionOf<Sh>,
-  keyof Sh['actionMap'] & string,
-  Logix.Module.Module<Id, Sh, Ext, R>
-> &
-  Ext
+): ModuleRefOfModule<Id, Sh, Ext, R>
 
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}>(
   handle: ModuleDef<Id, Sh, Ext>,
-): ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>, keyof Sh['actionMap'] & string, ModuleDef<Id, Sh, Ext>> & Ext
+): ModuleRefOfDef<Id, Sh, Ext>
 
 export function useModule<Id extends string, Sh extends Logix.AnyModuleShape>(
   handle: Logix.ModuleTagType<Id, Sh>,
-): ModuleRef<
-  Logix.StateOf<Sh>,
-  Logix.ActionOf<Sh>,
-  keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>,
-  ModuleDispatchersOfShape<Sh>
->
+): ModuleRefOfTag<Id, Sh>
 
 export function useModule<H extends ReactModuleHandle>(handle: H): ModuleRef<StateOfHandle<H>, ActionOfHandle<H>>
 

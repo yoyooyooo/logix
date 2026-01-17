@@ -13,8 +13,8 @@ const isModuleRuntime = (value: unknown): value is Logix.ModuleRuntime<any, any>
 
 export type ReactModuleHandle = Logix.ModuleRuntime<any, any> | Logix.ModuleTagType<any, any> | ModuleRef<any, any>
 
-type StateOfHandle<H> =
-  H extends ModuleRef<infer S, any>
+export type StateOfHandle<H> =
+  H extends ModuleRef<infer S, any, any, any, any>
     ? S
     : H extends Logix.ModuleRuntime<infer S, any>
       ? S
@@ -22,8 +22,8 @@ type StateOfHandle<H> =
         ? Logix.StateOf<Sh>
         : never
 
-type ActionOfHandle<H> =
-  H extends ModuleRef<any, infer A>
+export type ActionOfHandle<H> =
+  H extends ModuleRef<any, infer A, any, any, any>
     ? A
     : H extends Logix.ModuleRuntime<any, infer A>
       ? A

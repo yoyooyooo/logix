@@ -2,7 +2,7 @@ import React from 'react'
 import * as Logix from '@logixjs/core'
 import { useRuntime } from './useRuntime.js'
 import { useModuleRuntime } from './useModuleRuntime.js'
-import type { ModuleDispatchersOfShape, ModuleRef } from '../store/ModuleRef.js'
+import type { ModuleRef, ModuleRefOfTag } from '../store/ModuleRef.js'
 import { resolveImportedModuleRef } from '../store/resolveImportedModuleRef.js'
 
 /**
@@ -16,13 +16,7 @@ import { resolveImportedModuleRef } from '../store/resolveImportedModuleRef.js'
 export function useImportedModule<Id extends string, Sh extends Logix.AnyModuleShape>(
   parent: Logix.ModuleRuntime<any, any> | ModuleRef<any, any>,
   module: Logix.ModuleTagType<Id, Sh>,
-): ModuleRef<
-  Logix.StateOf<Sh>,
-  Logix.ActionOf<Sh>,
-  keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>,
-  ModuleDispatchersOfShape<Sh>
-> {
+): ModuleRefOfTag<Id, Sh> {
   const runtime = useRuntime()
   const parentRuntime = useModuleRuntime(parent)
 

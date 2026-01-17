@@ -1,18 +1,8 @@
 import { useMemo } from 'react'
-import * as Logix from '@logixjs/core'
 import { useRuntime } from './useRuntime.js'
-import { ReactModuleHandle, useModuleRuntime } from './useModuleRuntime.js'
-import type { Dispatch, ModuleRef } from '../store/ModuleRef.js'
-
-// Infers the Action type from the handle: supports ModuleRuntime and ModuleTag (Tag).
-type ActionOfHandle<H> =
-  H extends ModuleRef<any, infer A>
-    ? A
-    : H extends Logix.ModuleRuntime<any, infer A>
-      ? A
-      : H extends Logix.ModuleTagType<any, infer Sh>
-        ? Logix.ActionOf<Sh>
-        : never
+import type { ActionOfHandle, ReactModuleHandle } from './useModuleRuntime.js'
+import { useModuleRuntime } from './useModuleRuntime.js'
+import type { Dispatch } from '../store/ModuleRef.js'
 
 export function useDispatch<H extends ReactModuleHandle>(handle: H): Dispatch<ActionOfHandle<H>> {
   const runtime = useRuntime()

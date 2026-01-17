@@ -19,7 +19,7 @@ export type BoundApiPublic<Sh extends Logix.AnyModuleShape, R = never> = Logix.B
 
 export function make<Sh extends Logix.AnyModuleShape, R = never>(
   shape: Sh,
-  runtime: Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>,
+  runtime: Logix.ModuleRuntimeOfShape<Sh>,
 ): BoundApiPublic<Sh, R> {
   return BoundApiRuntime.make(shape, runtime) as BoundApiPublic<Sh, R>
 }

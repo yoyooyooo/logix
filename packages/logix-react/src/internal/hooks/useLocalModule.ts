@@ -5,7 +5,7 @@ import { useRuntime } from './useRuntime.js'
 import { getModuleCache, type ModuleCacheFactory, stableHash } from '../store/ModuleCache.js'
 import { RuntimeContext } from '../provider/ReactContext.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
-import { makeModuleActions, makeModuleDispatchers, type Dispatch, type ModuleRef } from '../store/ModuleRef.js'
+import { makeModuleActions, makeModuleDispatchers, type Dispatch, type ModuleRef, type ModuleRefOfDef, type ModuleRefOfTag } from '../store/ModuleRef.js'
 import { resolveImportedModuleRef } from '../store/resolveImportedModuleRef.js'
 import { useStableId } from './useStableId.js'
 
@@ -37,17 +37,12 @@ export function useLocalModule<S, A>(factory: LocalModuleFactory<S, A>, deps?: R
 export function useLocalModule<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}>(
   module: ModuleDef<Id, Sh, Ext>,
   options: ModuleTagOptions<Sh>,
-): ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>, keyof Sh['actionMap'] & string, ModuleDef<Id, Sh, Ext>> & Ext
+): ModuleRefOfDef<Id, Sh, Ext>
 
 export function useLocalModule<Sh extends Logix.AnyModuleShape>(
   module: Logix.ModuleTagType<string, Sh>,
   options: ModuleTagOptions<Sh>,
-): ModuleRef<
-  Logix.StateOf<Sh>,
-  Logix.ActionOf<Sh>,
-  keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<string, Sh>
->
+): ModuleRefOfTag<string, Sh>
 
 export function useLocalModule(source: unknown, second?: unknown): ModuleRef<unknown, unknown> {
   const runtime = useRuntime()

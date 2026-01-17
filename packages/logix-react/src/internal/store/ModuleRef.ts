@@ -23,6 +23,30 @@ type ActionTokenPayload<T> = T extends Logix.Action.ActionToken<any, infer P, an
 
 export type ModuleDispatchersOfShape<Sh extends Logix.AnyModuleShape> = Sh['actionMap']
 
+export type ModuleActionTagsOfShape<Sh extends Logix.AnyModuleShape> = keyof Sh['actionMap'] & string
+
+export type ModuleRefOfShape<
+  Sh extends Logix.AnyModuleShape,
+  Def = unknown,
+  Dispatchers = ModuleDispatchersOfShape<Sh>,
+> = ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>, ModuleActionTagsOfShape<Sh>, Def, Dispatchers>
+
+export type ModuleRefOfTag<Id extends string, Sh extends Logix.AnyModuleShape> = ModuleRefOfShape<
+  Sh,
+  Logix.ModuleTagType<Id, Sh>,
+  ModuleDispatchersOfShape<Sh>
+>
+
+export type ModuleRefOfModule<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}, R = never> =
+  ModuleRefOfShape<Sh, Logix.Module.Module<Id, Sh, Ext, R>, ModuleDispatchersOfShape<Sh>> & Ext
+
+export type ModuleRefOfDef<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}> = ModuleRefOfShape<
+  Sh,
+  Logix.Module.ModuleDef<Id, Sh, Ext>,
+  ModuleDispatchersOfShape<Sh>
+> &
+  Ext
+
 export type ModuleActions<A, Tags extends string = ActionTags<A>> = {
   readonly dispatch: Dispatch<A>
 } & ([ActionTags<A>] extends [never]
@@ -55,13 +79,7 @@ export type ModuleDispatchers<A, Tags extends string = ActionTags<A>, Def = unkn
 export interface ModuleImports {
   readonly get: <Id extends string, Sh extends Logix.AnyModuleShape>(
     module: Logix.ModuleTagType<Id, Sh>,
-  ) => ModuleRef<
-    Logix.StateOf<Sh>,
-    Logix.ActionOf<Sh>,
-    keyof Sh['actionMap'] & string,
-    Logix.ModuleTagType<Id, Sh>,
-    ModuleDispatchersOfShape<Sh>
-  >
+  ) => ModuleRefOfTag<Id, Sh>
 }
 
 export interface ModuleRef<
@@ -80,11 +98,11 @@ export interface ModuleRef<
   readonly dispatch: Dispatch<A>
   readonly actions: ModuleActions<A, Tags>
   readonly dispatchers: Dispatchers
-  /**
-   * Fractal module imports sugar:
-   * - host.imports.get(ChildModule) resolves a child module instance within the host instance scope.
-   * - strict by default: throws when scope is missing, avoiding accidentally routing to a global instance.
-   */
+   /**
+    * Fractal module imports sugar:
+    * - host.imports.get(ChildModule.tag) resolves a child module instance within the host instance scope.
+    * - strict by default: throws when scope is missing, avoiding accidentally routing to a global instance.
+    */
   readonly imports: ModuleImports
   readonly getState: Logix.ModuleRuntime<S, A>['getState']
   readonly setState: Logix.ModuleRuntime<S, A>['setState']

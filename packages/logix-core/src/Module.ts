@@ -11,12 +11,14 @@ import type {
   AnyModuleShape,
   AnySchema,
   BoundApi,
+  LogicEffect,
   ModuleLike,
   ModuleHandle,
   ModuleImpl,
   ModuleImplementStateTransactionOptions,
   ModuleLogic,
   ModuleRuntime,
+  ModuleRuntimeOfShape,
   ModuleTag,
   ModuleShape,
   MutatorsFromMap,
@@ -44,6 +46,7 @@ export type {
   ModuleLogic,
   ModuleImpl,
   ModuleRuntime,
+  ModuleRuntimeOfShape,
   ModuleHandle,
   ModuleTag,
   StateOf,
@@ -52,6 +55,17 @@ export type {
   MutatorsFromMap,
   ReducersFromMap,
   BoundApi,
+  LogicEffect,
+  DispatchEffect,
+  ActionForTag,
+  BoundApiRootApi,
+  BoundApiStateApi,
+  BoundApiDispatchersApi,
+  BoundApiDispatchApi,
+  BoundApiLifecycleApi,
+  BoundApiUseApi,
+  BoundApiTraitsApi,
+  BoundApiReducerApi,
   StateCommitMode,
   StateCommitPriority,
   StateCommitMeta,
@@ -94,9 +108,20 @@ export interface ModuleDescriptor {
 }
 
 export type HandleExtendFn<Sh extends AnyModuleShape, Ext extends object> = (
-  runtime: ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>,
+  runtime: ModuleRuntimeOfShape<Sh>,
   base: ModuleHandle<Sh>,
 ) => Ext | (ModuleHandle<Sh> & Ext) | null | undefined
+
+export type ModuleSelfHandleEffect<Sh extends AnyModuleShape, R = never, Ext extends object = {}> = LogicEffect<
+  Sh,
+  R,
+  ModuleHandle<Sh> & Ext,
+  never
+>
+
+export type ModuleLogicApi<Sh extends AnyModuleShape, R = never, Ext extends object = {}> = BoundApi<Sh, R> & {
+  readonly self: ModuleSelfHandleEffect<Sh, R, Ext>
+}
 
 type LogicUnitMeta = LogicUnitMetaInternal.LogicUnitMeta
 const attachLogicUnitMeta = <L extends object>(logic: L, meta: LogicUnitMeta): L =>
@@ -163,16 +188,14 @@ type ModuleDefBase<
   readonly live: <R = never, E = never>(
     initial: StateOf<Sh>,
     ...logics: Array<ModuleLogic<Sh, R, E>>
-  ) => Layer.Layer<ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>, E, R>
+  ) => Layer.Layer<ModuleRuntimeOfShape<Sh>, E, R>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, unknown>
   readonly services?: Record<string, Context.Tag<any, any>>
   readonly dev?: ModuleDev
   readonly logic: <R = never, E = unknown>(
     build: (
-      api: BoundApi<Sh, R> & {
-        readonly self: Logic.Of<Sh, R, ModuleHandle<Sh> & Ext, never>
-      },
+      api: ModuleLogicApi<Sh, R, Ext>,
     ) => ModuleLogic<Sh, R, E>,
     options?: LogicUnitOptions,
   ) => ModuleLogic<Sh, R, E>
@@ -495,9 +518,7 @@ const makeLogicFactory = <Id extends string, Sh extends AnyModuleShape, Ext exte
   const tag = selfModule.tag
   return (build, options) => {
     const eff = tag.logic((api) => {
-      const withSelf = Object.create(api) as BoundApi<Sh, any> & {
-        readonly self: Logic.Of<Sh, any, ModuleHandle<Sh> & Ext, never>
-      }
+      const withSelf = Object.create(api) as ModuleLogicApi<Sh, any, Ext>
       ;(withSelf as any).self = Effect.suspend(() => (api as any).use(selfModule as any))
       return build(withSelf as any)
     }) as ModuleLogic<Sh, any, any>
@@ -684,10 +705,16 @@ const mergeMakeDef = <
 
 export const Reducer = ModuleTagNS.Reducer
 
-export type Shape<S extends AnySchema, M extends Action.ActionDefs> = ModuleShape<
-  S,
-  Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<M>>>,
-  Action.NormalizedActionTokens<M>
+export type ActionTokenMap<ADefs extends Action.ActionDefs> = Action.NormalizedActionTokens<ADefs>
+
+export type ActionUnionOf<ADefs extends Action.ActionDefs> = ActionsFromMap<ActionTokenMap<ADefs>>
+
+export type ActionSchemaOf<ADefs extends Action.ActionDefs> = Schema.Schema<ActionUnionOf<ADefs>>
+
+export type Shape<SSchema extends AnySchema, ADefs extends Action.ActionDefs> = ModuleShape<
+  SSchema,
+  ActionSchemaOf<ADefs>,
+  ActionTokenMap<ADefs>
 >
 
 export function make<
@@ -698,15 +725,7 @@ export function make<
 >(
   id: Id,
   def: MakeDef<Id, SSchema, AMap>,
-): ModuleDef<
-  Id,
-  ModuleShape<
-    SSchema,
-    Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<AMap>>>,
-    Action.NormalizedActionTokens<AMap>
-  >,
-  Ext
->
+): ModuleDef<Id, Shape<SSchema, AMap>, Ext>
 
 export function make<
   Id extends string,
@@ -718,15 +737,7 @@ export function make<
   id: Id,
   def: MakeDef<Id, SSchema, AMap>,
   extend: MakeExtendDef<SSchema, NoInfer_<AMap>, ExtActions>,
-): ModuleDef<
-  Id,
-  ModuleShape<
-    SSchema,
-    Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<MergeActionMap<AMap, ExtActions>>>>,
-    Action.NormalizedActionTokens<MergeActionMap<AMap, ExtActions>>
-  >,
-  Ext
->
+): ModuleDef<Id, Shape<SSchema, MergeActionMap<AMap, ExtActions>>, Ext>
 
 export function make(id: any, def: any, extend?: any): any {
   const merged = mergeMakeDef(def as any, extend as any)

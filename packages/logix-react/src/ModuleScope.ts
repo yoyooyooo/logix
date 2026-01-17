@@ -1,6 +1,6 @@
 import React from 'react'
 import * as Logix from '@logixjs/core'
-import type { ModuleDispatchersOfShape, ModuleRef } from './internal/store/ModuleRef.js'
+import type { ModuleRef, ModuleRefOfModule, ModuleRefOfTag } from './internal/store/ModuleRef.js'
 import { useModule } from './internal/hooks/useModule.js'
 import { RuntimeProvider } from './internal/provider/RuntimeProvider.js'
 import { useRuntime } from './internal/hooks/useRuntime.js'
@@ -46,13 +46,7 @@ export type ModuleScope<Ref> = {
    */
   readonly useImported: <Id extends string, Sh extends Logix.AnyModuleShape>(
     module: Logix.ModuleTagType<Id, Sh>,
-  ) => ModuleRef<
-    Logix.StateOf<Sh>,
-    Logix.ActionOf<Sh>,
-    keyof Sh['actionMap'] & string,
-    Logix.ModuleTagType<Id, Sh>,
-    ModuleDispatchersOfShape<Sh>
-  >
+  ) => ModuleRefOfTag<Id, Sh>
   readonly Context: React.Context<Ref | null>
   /**
    * Bridge: reuse the same scope across React subtrees / separate roots.
@@ -70,22 +64,8 @@ export type ModuleScope<Ref> = {
 const makeModuleScope = <Id extends string, Sh extends Logix.AnyModuleShape, R = never>(
   handle: Logix.ModuleImpl<Id, Sh, R>,
   defaults?: ModuleScopeOptions,
-): ModuleScope<
-  ModuleRef<
-    Logix.StateOf<Sh>,
-    Logix.ActionOf<Sh>,
-    keyof Sh['actionMap'] & string,
-    Logix.ModuleTagType<Id, Sh>,
-    ModuleDispatchersOfShape<Sh>
-  >
-> => {
-  type Ref = ModuleRef<
-    Logix.StateOf<Sh>,
-    Logix.ActionOf<Sh>,
-    keyof Sh['actionMap'] & string,
-    Logix.ModuleTagType<Id, Sh>,
-    ModuleDispatchersOfShape<Sh>
-  >
+): ModuleScope<ModuleRefOfTag<Id, Sh>> => {
+  type Ref = ModuleRefOfTag<Id, Sh>
 
   const Context = React.createContext<Ref | null>(null)
 
@@ -160,10 +140,7 @@ const makeModuleScope = <Id extends string, Sh extends Logix.AnyModuleShape, R =
 
     const registry = getRegistryOrThrow(runtime, '[ModuleScope.Bridge]')
     const scopedRuntime = registry.get(scopeId, Logix.ScopeRegistry.ScopedRuntimeTag as any)
-    const moduleRuntime = registry.get<Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>>(
-      scopeId,
-      moduleToken as any,
-    )
+    const moduleRuntime = registry.get<Logix.ModuleRuntimeOfShape<Sh>>(scopeId, moduleToken as any)
 
     if (!scopedRuntime || !moduleRuntime) {
       throw new Error(
@@ -184,7 +161,7 @@ const makeModuleScope = <Id extends string, Sh extends Logix.AnyModuleShape, R =
     Context,
     children,
   }: {
-    readonly moduleRuntime: Logix.ModuleRuntime<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>
+    readonly moduleRuntime: Logix.ModuleRuntimeOfShape<Sh>
     readonly Context: React.Context<Ref | null>
     readonly children?: React.ReactNode
   }) => {
@@ -200,11 +177,11 @@ export const ModuleScope = {
     <Id extends string, Sh extends Logix.AnyModuleShape, R = never>(
       handle: Logix.ModuleImpl<Id, Sh, R>,
       defaults?: ModuleScopeOptions,
-    ): ModuleScope<ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>>>
+    ): ModuleScope<ModuleRefOfTag<Id, Sh>>
 
     <Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object, R = never>(
       handle: Logix.Module.Module<Id, Sh, Ext, R>,
       defaults?: ModuleScopeOptions,
-    ): ModuleScope<ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>> & Ext>
+    ): ModuleScope<ModuleRefOfModule<Id, Sh, Ext, R>>
   },
 } as const

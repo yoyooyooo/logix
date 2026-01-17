@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import type { ManagedRuntime } from 'effect'
 import * as Logix from '@logixjs/core'
 import { isDevEnv } from '../provider/env.js'
-import { makeModuleActions, makeModuleDispatchers, type ModuleDispatchersOfShape, type ModuleRef } from './ModuleRef.js'
+import { makeModuleActions, makeModuleDispatchers, type ModuleRef, type ModuleRefOfTag } from './ModuleRef.js'
 
 type RuntimeKey = object
 type ParentRuntimeKey = object
@@ -25,13 +25,7 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
   parentRuntime: Logix.ModuleRuntime<any, any>,
   module: Logix.ModuleTagType<Id, Sh>,
-): ModuleRef<
-  Logix.StateOf<Sh>,
-  Logix.ActionOf<Sh>,
-  keyof Sh['actionMap'] & string,
-  Logix.ModuleTagType<Id, Sh>,
-  ModuleDispatchersOfShape<Sh>
-> => {
+): ModuleRefOfTag<Id, Sh> => {
   const byParent = getOrCreateWeakMap(
     cacheByRuntime,
     runtime as unknown as RuntimeKey,
@@ -44,13 +38,7 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
   )
   const cached = byModule.get(module as unknown as ModuleKey)
   if (cached) {
-    return cached as ModuleRef<
-      Logix.StateOf<Sh>,
-      Logix.ActionOf<Sh>,
-      keyof Sh['actionMap'] & string,
-      Logix.ModuleTagType<Id, Sh>,
-      ModuleDispatchersOfShape<Sh>
-    >
+    return cached as ModuleRefOfTag<Id, Sh>
   }
 
   const importsScope = Logix.InternalContracts.getImportsScope(parentRuntime as any)
@@ -79,20 +67,15 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
     const actions = makeModuleActions(dispatch)
     const dispatchers = makeModuleDispatchers(dispatch, module.actions)
 
-    const ref: ModuleRef<
-      Logix.StateOf<Sh>,
-      Logix.ActionOf<Sh>,
-      keyof Sh['actionMap'] & string,
-      Logix.ModuleTagType<Id, Sh>,
-      ModuleDispatchersOfShape<Sh>
-    > = {
+    const ref: ModuleRefOfTag<Id, Sh> = {
       def: module,
       runtime: childRuntime as any,
       dispatch,
       actions,
       dispatchers,
       imports: {
-        get: (m: any) => resolveImportedModuleRef(runtime, childRuntime, m),
+        get: <Id2 extends string, Sh2 extends Logix.AnyModuleShape>(m: Logix.ModuleTagType<Id2, Sh2>) =>
+          resolveImportedModuleRef(runtime, childRuntime, m),
       },
       getState: childRuntime.getState,
       setState: childRuntime.setState,

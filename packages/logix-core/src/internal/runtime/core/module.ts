@@ -13,6 +13,16 @@ import type { ReadQueryInput } from './ReadQuery.js'
  */
 export type AnySchema = any
 
+type NormalizeSchema<S> = S extends Schema.Schema<infer A, any, any> ? Schema.Schema<A, any, any> : S
+
+type NormalizeActionToken<T> = T extends Action.ActionToken<infer Tag, infer Payload, any>
+  ? Action.ActionToken<Tag, Payload, Schema.Schema<any, any, any>>
+  : T
+
+type NormalizeActionMap<AMap extends Record<string, Action.AnyActionToken>> = {
+  readonly [K in keyof AMap]: NormalizeActionToken<AMap[K]>
+}
+
 /**
  * The "schema shape" of a Module: only cares about stateSchema / actionSchema,
  * not runtime configuration details (initialState / services / logic, etc.).
@@ -22,9 +32,9 @@ export interface ModuleShape<
   ASchema extends AnySchema,
   AMap extends Record<string, Action.AnyActionToken> = Record<string, never>,
 > {
-  readonly stateSchema: SSchema
-  readonly actionSchema: ASchema
-  readonly actionMap: AMap
+  readonly stateSchema: NormalizeSchema<SSchema>
+  readonly actionSchema: NormalizeSchema<ASchema>
+  readonly actionMap: NormalizeActionMap<AMap>
 }
 
 /**
@@ -36,9 +46,13 @@ export type StateOf<Sh extends AnyModuleShape> = Schema.Schema.Type<Sh['stateSch
 
 export type ActionOf<Sh extends AnyModuleShape> = Schema.Schema.Type<Sh['actionSchema']>
 
+export type ModuleRuntimeOfShape<Sh extends AnyModuleShape> = ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>
+
 type ActionArgs<P> = [P] extends [void] ? [] | [P] : [P]
-type ActionFn<P, Out> = (...args: ActionArgs<P>) => Out
-type ActionPayload<T> = T extends Action.ActionToken<any, infer P, any> ? P : never
+type ActionPayloadOfToken<T> = T extends Action.ActionToken<any, infer P, any> ? P : never
+type ActionCallable<P, Out> = {
+  (payload: P): Out
+} & ([P] extends [void] ? { (): Out } : {})
 
 export interface ModuleImplementStateTransactionOptions {
   readonly instrumentation?: StateTransactionInstrumentation
@@ -134,7 +148,7 @@ export interface ModuleRuntime<S, A> {
  * - The Id type is not important for this PoC, so we use `any`.
  * - The Service type is fixed to the Runtime for the current Shape.
  */
-export type ModuleRuntimeTag<Sh extends AnyModuleShape> = Context.Tag<any, ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>>
+export type ModuleRuntimeTag<Sh extends AnyModuleShape> = Context.Tag<any, ModuleRuntimeOfShape<Sh>>
 
 /**
  * Module handle union:
@@ -145,7 +159,7 @@ export type ModuleRuntimeTag<Sh extends AnyModuleShape> = Context.Tag<any, Modul
  * Higher-level APIs may accept ModuleHandle<Sh> and branch internally on tag vs instance.
  */
 export type ModuleHandleUnion<Sh extends AnyModuleShape> =
-  | ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>
+  | ModuleRuntimeOfShape<Sh>
   | ModuleRuntimeTag<Sh>
 
 /**
@@ -162,7 +176,10 @@ export interface ModuleHandle<Sh extends AnyModuleShape> {
   readonly changes: <V>(selector: (s: StateOf<Sh>) => V) => Stream.Stream<V, never, never>
   readonly dispatch: (action: ActionOf<Sh>) => Effect.Effect<void, never, never>
   readonly actions: {
-    [K in keyof Sh['actionMap']]: ActionFn<ActionPayload<Sh['actionMap'][K]>, Effect.Effect<void, never, never>>
+    [K in keyof Sh['actionMap']]: ActionCallable<
+      ActionPayloadOfToken<Sh['actionMap'][K]>,
+      Effect.Effect<void, never, never>
+    >
   }
   readonly actions$: Stream.Stream<ActionOf<Sh>, never, never>
 }
@@ -214,9 +231,91 @@ type ModuleExtOf<M> = M extends ModuleLike<any, any, infer Ext> ? Ext : never
  * - After the runtime-logix L4 drafts converge, we will gradually adopt a real two-phase execution model.
  */
 export interface LogicPlan<Sh extends AnyModuleShape, R = unknown, E = unknown> {
-  readonly setup: Logic.Of<Sh, R, void, never>
-  readonly run: Logic.Of<Sh, R, unknown, E>
+  readonly setup: DispatchEffect<Sh, R>
+  readonly run: LogicEffect<Sh, R, unknown, E>
 }
+
+export type LogicEffect<Sh extends AnyModuleShape, R = never, A = void, E = never> = Logic.Of<Sh, R, A, E>
+
+export type DispatchEffect<Sh extends AnyModuleShape, R = never> = LogicEffect<Sh, R, void, never>
+
+export type ActionForTag<Sh extends AnyModuleShape, K extends keyof Sh['actionMap']> = Extract<
+  ActionOf<Sh>,
+  { _tag: K } | { type: K }
+>
+
+export type BoundApiRootApi<Sh extends AnyModuleShape, R = never> = {
+  readonly resolve: <Svc, Id = unknown>(tag: Context.Tag<Id, Svc>) => LogicEffect<Sh, R, Svc, never>
+}
+
+export type BoundApiStateApi<Sh extends AnyModuleShape, R = never> = {
+  readonly read: LogicEffect<Sh, R, StateOf<Sh>, never>
+  readonly update: (f: (prev: StateOf<Sh>) => StateOf<Sh>) => DispatchEffect<Sh, R>
+  readonly mutate: (f: (draft: Logic.Draft<StateOf<Sh>>) => void) => DispatchEffect<Sh, R>
+  readonly ref: {
+    <V = StateOf<Sh>>(selector?: (s: StateOf<Sh>) => V): SubscriptionRef.SubscriptionRef<V>
+  }
+}
+
+export type BoundApiDispatchersApi<Sh extends AnyModuleShape, R = never> = {
+  readonly [K in keyof Sh['actionMap']]: ActionCallable<
+    ActionPayloadOfToken<Sh['actionMap'][K]>,
+    DispatchEffect<Sh, R>
+  >
+}
+
+export type BoundApiDispatchApi<Sh extends AnyModuleShape, R = never> = {
+  (action: ActionOf<Sh>): DispatchEffect<Sh, R>
+  <K extends keyof Sh['actionMap']>(
+    token: Sh['actionMap'][K],
+    ...args: ActionArgs<ActionPayloadOfToken<Sh['actionMap'][K]>>
+  ): DispatchEffect<Sh, R>
+  <K extends keyof Sh['actionMap']>(
+    tag: K,
+    ...args: ActionArgs<ActionPayloadOfToken<Sh['actionMap'][K]>>
+  ): DispatchEffect<Sh, R>
+}
+
+export type BoundApiLifecycleApi<Sh extends AnyModuleShape, R = never> = {
+  readonly onInitRequired: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
+  readonly onStart: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
+  readonly onInit: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
+  readonly onDestroy: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
+  readonly onError: (
+    handler: (cause: import('effect').Cause.Cause<unknown>, context: import('./Lifecycle.js').ErrorContext) => Effect.Effect<void, never, R>,
+  ) => DispatchEffect<Sh, R>
+  readonly onSuspend: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
+  readonly onResume: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
+  readonly onReset: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
+}
+
+export type BoundApiUseApi<Sh extends AnyModuleShape, R = never> = {
+  <M extends ModuleLike<string, AnyModuleShape, any>>(module: M): LogicEffect<
+    Sh,
+    R,
+    ModuleHandle<ModuleShapeOf<M>> & ModuleExtOf<M>,
+    never
+  >
+  <Sh2 extends AnyModuleShape>(module: ModuleTag<string, Sh2>): LogicEffect<Sh, R, ModuleHandle<Sh2>, never>
+  <Svc, Id = unknown>(tag: Context.Tag<Id, Svc>): LogicEffect<Sh, R, Svc, never>
+}
+
+export type BoundApiTraitsApi<Sh extends AnyModuleShape, R = never> = {
+  readonly declare: (traits: ModuleTraits.TraitSpec) => void
+  readonly source: {
+    readonly refresh: (
+      fieldPath: string,
+      options?: {
+        readonly force?: boolean
+      },
+    ) => DispatchEffect<Sh, R>
+  }
+}
+
+export type BoundApiReducerApi<Sh extends AnyModuleShape, R = never> = <K extends keyof Sh['actionMap']>(
+  tag: K,
+  reducer: (state: StateOf<Sh>, action: ActionForTag<Sh, K>) => StateOf<Sh>,
+) => DispatchEffect<Sh, R>
 
 /**
  * Bound API: creates pre-bound accessors for a given Store shape + Env.
@@ -225,32 +324,11 @@ export interface LogicPlan<Sh extends AnyModuleShape, R = unknown, E = unknown> 
  * - The public Bound.ts exports a same-named type alias to keep the public API consistent.
  */
 export interface BoundApi<Sh extends AnyModuleShape, R = never> {
-  readonly root: {
-    readonly resolve: <Svc, Id = unknown>(tag: Context.Tag<Id, Svc>) => Logic.Of<Sh, R, Svc, never>
-  }
-  readonly state: {
-    readonly read: Logic.Of<Sh, R, StateOf<Sh>, never>
-    readonly update: (f: (prev: StateOf<Sh>) => StateOf<Sh>) => Logic.Of<Sh, R, void, never>
-    readonly mutate: (f: (draft: Logic.Draft<StateOf<Sh>>) => void) => Logic.Of<Sh, R, void, never>
-    readonly ref: {
-      <V = StateOf<Sh>>(selector?: (s: StateOf<Sh>) => V): SubscriptionRef.SubscriptionRef<V>
-    }
-  }
+  readonly root: BoundApiRootApi<Sh, R>
+  readonly state: BoundApiStateApi<Sh, R>
   readonly actions: Sh['actionMap']
-  readonly dispatchers: {
-    readonly [K in keyof Sh['actionMap']]: ActionFn<ActionPayload<Sh['actionMap'][K]>, Logic.Of<Sh, R, void, never>>
-  }
-  readonly dispatch: {
-    (action: ActionOf<Sh>): Logic.Of<Sh, R, void, never>
-    <K extends keyof Sh['actionMap']>(
-      token: Sh['actionMap'][K],
-      ...args: ActionArgs<ActionPayload<Sh['actionMap'][K]>>
-    ): Logic.Of<Sh, R, void, never>
-    <K extends keyof Sh['actionMap']>(
-      tag: K,
-      ...args: ActionArgs<ActionPayload<Sh['actionMap'][K]>>
-    ): Logic.Of<Sh, R, void, never>
-  }
+  readonly dispatchers: BoundApiDispatchersApi<Sh, R>
+  readonly dispatch: BoundApiDispatchApi<Sh, R>
   /**
    * effect：
    * - Register a side-effect handler for a specific Action token.
@@ -262,45 +340,27 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
    */
   readonly effect: <K extends keyof Sh['actionMap']>(
     token: Sh['actionMap'][K],
-    handler: (payload: ActionPayload<Sh['actionMap'][K]>) => Logic.Of<Sh, R, void, any>,
-  ) => Logic.Of<Sh, R, void, never>
+    handler: (payload: ActionPayloadOfToken<Sh['actionMap'][K]>) => LogicEffect<Sh, R, void, any>,
+  ) => DispatchEffect<Sh, R>
   readonly flow: import('./FlowRuntime.js').Api<Sh, R>
   readonly match: <V>(value: V) => Logic.FluentMatch<V>
   readonly matchTag: <V extends { _tag: string }>(value: V) => Logic.FluentMatchTag<V>
-  readonly lifecycle: {
-    readonly onInitRequired: (eff: Logic.Of<Sh, R, void, never>) => Logic.Of<Sh, R, void, never>
-    readonly onStart: (eff: Logic.Of<Sh, R, void, never>) => Logic.Of<Sh, R, void, never>
-    readonly onInit: (eff: Logic.Of<Sh, R, void, never>) => Logic.Of<Sh, R, void, never>
-    readonly onDestroy: (eff: Logic.Of<Sh, R, void, never>) => Logic.Of<Sh, R, void, never>
-    readonly onError: (
-      handler: (
-        cause: import('effect').Cause.Cause<unknown>,
-        context: import('./Lifecycle.js').ErrorContext,
-      ) => Effect.Effect<void, never, R>,
-    ) => Logic.Of<Sh, R, void, never>
-    readonly onSuspend: (eff: Logic.Of<Sh, R, void, never>) => Logic.Of<Sh, R, void, never>
-    readonly onResume: (eff: Logic.Of<Sh, R, void, never>) => Logic.Of<Sh, R, void, never>
-    readonly onReset: (eff: Logic.Of<Sh, R, void, never>) => Logic.Of<Sh, R, void, never>
-  }
-  readonly use: {
-    <M extends ModuleLike<string, AnyModuleShape, any>>(
-      module: M,
-    ): Logic.Of<Sh, R, ModuleHandle<ModuleShapeOf<M>> & ModuleExtOf<M>, never>
-    <Sh2 extends AnyModuleShape>(module: ModuleTag<string, Sh2>): Logic.Of<Sh, R, ModuleHandle<Sh2>, never>
-    <Svc, Id = unknown>(tag: Context.Tag<Id, Svc>): Logic.Of<Sh, R, Svc, never>
-  }
+  readonly lifecycle: BoundApiLifecycleApi<Sh, R>
+  readonly use: BoundApiUseApi<Sh, R>
   readonly onAction: {
     <T extends ActionOf<Sh>>(predicate: (a: ActionOf<Sh>) => a is T): Logic.IntentBuilder<T, Sh, R>
     <K extends keyof Sh['actionMap']>(
       tag: K,
-    ): Logic.IntentBuilder<Extract<ActionOf<Sh>, { _tag: K } | { type: K }>, Sh, R>
+    ): Logic.IntentBuilder<ActionForTag<Sh, K>, Sh, R>
     <A extends ActionOf<Sh> & ({ _tag: string } | { type: string })>(value: A): Logic.IntentBuilder<A, Sh, R>
     <Sc extends AnySchema>(
       schema: Sc,
     ): Logic.IntentBuilder<Extract<ActionOf<Sh>, Schema.Schema.Type<Sc>>, Sh, R>
-    <K extends keyof Sh['actionMap']>(token: Sh['actionMap'][K]): Logic.IntentBuilder<ActionPayload<Sh['actionMap'][K]>, Sh, R>
+    <K extends keyof Sh['actionMap']>(
+      token: Sh['actionMap'][K],
+    ): Logic.IntentBuilder<ActionPayloadOfToken<Sh['actionMap'][K]>, Sh, R>
   } & {
-    [K in keyof Sh['actionMap']]: Logic.IntentBuilder<Extract<ActionOf<Sh>, { _tag: K } | { type: K }>, Sh, R>
+    [K in keyof Sh['actionMap']]: Logic.IntentBuilder<ActionForTag<Sh, K>, Sh, R>
   }
   readonly onState: <V>(selector: (s: StateOf<Sh>) => V) => Logic.IntentBuilder<V, Sh, R>
   readonly on: <V>(source: Stream.Stream<V>) => Logic.IntentBuilder<V, Sh, R>
@@ -310,27 +370,7 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
    * - source.refresh(fieldPath): trigger an explicit refresh of a source field.
    * - Concrete behavior is mounted at runtime by StateTrait.install.
    */
-  readonly traits: {
-    /**
-     * declare：
-     * - setup-only: contributes trait declarations during the Logic setup phase (pure data/declarative).
-     * - Final merge / conflict detection / freezing is done during Runtime initialization (023).
-     */
-    readonly declare: (traits: ModuleTraits.TraitSpec) => void
-    readonly source: {
-      readonly refresh: (
-        fieldPath: string,
-        options?: {
-          /**
-           * Forced refresh: re-fetch even if keyHash is unchanged and a non-idle snapshot already exists.
-           * - Used for explicit refresh / invalidate where "same key still re-fetch" is desired.
-           * - Auto-trigger chains SHOULD keep the default (false/undefined) to avoid duplicate IO and meaningless writebacks.
-           */
-          readonly force?: boolean
-        },
-      ) => Logic.Of<Sh, R, void, never>
-    }
-  }
+  readonly traits: BoundApiTraitsApi<Sh, R>
   /**
    * Primary reducer definition entrypoint:
    * - Semantics: register a synchronous, pure state transform reducer for an Action tag.
@@ -340,10 +380,7 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
    * - At most one primary reducer per Action tag; duplicate registration is an error.
    * - The reducer must be pure: no Env, no Effect.
    */
-  readonly reducer: <K extends keyof Sh['actionMap'], A extends Extract<ActionOf<Sh>, { _tag: K } | { type: K }>>(
-    tag: K,
-    reducer: (state: StateOf<Sh>, action: A) => StateOf<Sh>,
-  ) => Logic.Of<Sh, R, void, never>
+  readonly reducer: BoundApiReducerApi<Sh, R>
 }
 
 /**
@@ -354,7 +391,7 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
  */
 export interface ModuleTag<Id extends string, Sh extends AnyModuleShape> extends Context.Tag<
   any,
-  ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>
+  ModuleRuntimeOfShape<Sh>
 > {
   readonly _kind: 'ModuleTag'
   readonly id: Id
@@ -379,7 +416,7 @@ export interface ModuleTag<Id extends string, Sh extends AnyModuleShape> extends
   readonly live: <R = never, E = never>(
     initial: StateOf<Sh>,
     ...logics: Array<ModuleLogic<Sh, R, E>>
-  ) => Layer.Layer<ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>, E, R>
+  ) => Layer.Layer<ModuleRuntimeOfShape<Sh>, E, R>
 
   /**
    * implement: build a ModuleImpl blueprint from Module definition + initial state + a set of logics.
@@ -406,7 +443,7 @@ export interface ModuleTag<Id extends string, Sh extends AnyModuleShape> extends
 export interface ModuleImpl<Id extends string, Sh extends AnyModuleShape, REnv = any> {
   readonly _tag: 'ModuleImpl'
   readonly module: ModuleTag<Id, Sh>
-  readonly layer: Layer.Layer<ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>, never, REnv>
+  readonly layer: Layer.Layer<ModuleRuntimeOfShape<Sh>, never, REnv>
   readonly processes?: ReadonlyArray<Effect.Effect<void, any, any>>
   readonly stateTransaction?: ModuleImplementStateTransactionOptions
   readonly withLayer: (layer: Layer.Layer<any, never, any>) => ModuleImpl<Id, Sh, REnv>

@@ -47,6 +47,7 @@ export type {
   ModuleLogic,
   ModuleImpl,
   ModuleRuntime,
+  ModuleRuntimeOfShape,
   ModuleTag,
   ModuleHandle,
   ModuleHandleUnion,
@@ -55,6 +56,17 @@ export type {
   ReducersFromMap,
   BoundApi,
   ActionOf,
+  LogicEffect,
+  DispatchEffect,
+  ActionForTag,
+  BoundApiRootApi,
+  BoundApiStateApi,
+  BoundApiDispatchersApi,
+  BoundApiDispatchApi,
+  BoundApiLifecycleApi,
+  BoundApiUseApi,
+  BoundApiTraitsApi,
+  BoundApiReducerApi,
   StateCommitMode,
   StateCommitPriority,
   StateCommitMeta,
@@ -137,11 +149,22 @@ export const Reducer = {
  * A simplified Shape definition helper, designed for Action Maps.
  * @example type MyShape = Shape<typeof MyState, typeof MyActionMap>
  */
-export type Shape<S extends AnySchema, M extends Record<string, AnySchema>> = ModuleShape<
-  S,
-  Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<M & Action.ActionDefs>>>,
-  Action.NormalizedActionTokens<M & Action.ActionDefs>
+export type ActionTokenMap<ADefs extends Action.ActionDefs> = Action.NormalizedActionTokens<ADefs>
+
+export type ActionUnionOf<ADefs extends Action.ActionDefs> = ActionsFromMap<ActionTokenMap<ADefs>>
+
+export type ActionSchemaOf<ADefs extends Action.ActionDefs> = Schema.Schema<ActionUnionOf<ADefs>>
+
+export type Shape<SSchema extends AnySchema, ADefs extends Action.ActionDefs> = ModuleShape<
+  SSchema,
+  ActionSchemaOf<ADefs>,
+  ActionTokenMap<ADefs>
 >
+
+export type ShapeFromActionTokenMap<
+  SSchema extends AnySchema,
+  AMap extends Record<string, Action.AnyActionToken>,
+> = ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>
 
 const makeImpl = <Id extends string, SSchema extends AnySchema, AMap extends Record<string, Action.AnyActionToken>>(
   id: Id,
@@ -150,8 +173,8 @@ const makeImpl = <Id extends string, SSchema extends AnySchema, AMap extends Rec
     readonly actions: AMap
     readonly reducers?: ReducersFromMap<SSchema, AMap>
   },
-): ModuleTag<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>> =>
-  ModuleFactory.Module(id, def) as ModuleTag<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>>
+): ModuleTag<Id, ShapeFromActionTokenMap<SSchema, AMap>> =>
+  ModuleFactory.Module(id, def) as ModuleTag<Id, ShapeFromActionTokenMap<SSchema, AMap>>
 
 /**
  * ModuleTag.make：
@@ -176,26 +199,15 @@ export const make = <Id extends string, SSchema extends AnySchema, ADefs extends
      */
     readonly traits?: unknown
   },
-): ModuleTag<
-  Id,
-  ModuleShape<
-    SSchema,
-    Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<ADefs>>>,
-    Action.NormalizedActionTokens<ADefs>
-  >
-> => {
+): ModuleTag<Id, Shape<SSchema, ADefs>> => {
   const actions = Action.normalizeActions(def.actions)
-  const moduleTag = makeImpl(id, {
+  const moduleTag: ModuleTag<Id, Shape<SSchema, ADefs>> = makeImpl(id, {
     state: def.state,
     actions,
     reducers: def.reducers as any,
   })
 
-  type Sh = ModuleShape<
-    SSchema,
-    Schema.Schema<ActionsFromMap<Action.NormalizedActionTokens<ADefs>>>,
-    Action.NormalizedActionTokens<ADefs>
-  >
+  type Sh = Shape<SSchema, ADefs>
 
   const stateSchema = def.state as Schema.Schema<any, any>
   const moduleTraitsSpec = def.traits as StateTrait.StateTraitSpec<any> | undefined

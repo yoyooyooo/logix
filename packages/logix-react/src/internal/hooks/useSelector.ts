@@ -2,22 +2,12 @@ import { useContext, useEffect, useMemo } from 'react'
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
 import * as Logix from '@logixjs/core'
 import { RuntimeContext } from '../provider/ReactContext.js'
-import { ReactModuleHandle, useModuleRuntime } from './useModuleRuntime.js'
+import type { ReactModuleHandle, StateOfHandle } from './useModuleRuntime.js'
+import { useModuleRuntime } from './useModuleRuntime.js'
 import { isDevEnv } from '../provider/env.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
 import { getRuntimeModuleExternalStore, getRuntimeReadQueryExternalStore } from '../store/RuntimeExternalStore.js'
-import type { ModuleRef } from '../store/ModuleRef.js'
 import { shallow } from './shallow.js'
-
-// Infers the State type from the handle: supports both ModuleRuntime and ModuleTag (Tag).
-type StateOfHandle<H> =
-  H extends ModuleRef<infer S, any>
-    ? S
-    : H extends Logix.ModuleRuntime<infer S, any>
-      ? S
-      : H extends Logix.ModuleTagType<any, infer Sh>
-        ? Logix.StateOf<Sh>
-        : never
 
 export function useSelector<H extends ReactModuleHandle>(handle: H): StateOfHandle<H>
 
