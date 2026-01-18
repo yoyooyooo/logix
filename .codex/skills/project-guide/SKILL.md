@@ -28,6 +28,7 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 - 位置：`docs/specs/sdd-platform/*`
 - 入口：`docs/specs/sdd-platform/README.md`
 - 平台 SSoT：`docs/ssot/platform/README.md`
+- SSoT 聚合根：`docs/ssot/README.md`
 - 平台 Workbench（平台闭环草案）：`docs/specs/sdd-platform/workbench/README.md`
 - 典型产物：最小系统方程与符号表（`docs/ssot/platform/foundation/01-the-one.md`）、术语与边界（`docs/ssot/platform/foundation/02-glossary.md`）、资产与 Schema（`docs/ssot/platform/assets/00-assets-and-schemas.md`）、执行模型（`docs/ssot/platform/contracts/00-execution-model.md`）
 
@@ -50,13 +51,14 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 ## 新会话最短启动（建议顺序）
 
 1. 用 auggie 定位你要改的“符号/能力/包”在哪（优先于 `rg`）。
-2. 读导航入口：`docs/specs/sdd-platform/README.md`
-3. 读概念与术语：`docs/ssot/platform/foundation/02-glossary.md`
-4. 读 runtime 编程模型：`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
-5. 读 `$`/Flow/IntentBuilder：`docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
-6. 看类型裁决与真实导出：`packages/logix-core/src/index.ts`
-7. 看示例场景与 Pattern：`docs/ssot/handbook/examples-logix-index.md`（再下钻到 `examples/logix/src/scenarios/*` / `examples/logix/src/patterns/*`）
-8. （可选）需要长链路导览/定位：`docs/ssot/runtime/logix-core/concepts/02-long-chain-tour.md`；需要总小抄：`docs/ssot/handbook/long-chain-cheatsheet.md`；需要 A–K 索引：`docs/ssot/handbook/long-chain-index.md`
+2. 读 SSoT 聚合根与裁决优先级：`docs/ssot/README.md`
+3. 读导航入口：`docs/specs/sdd-platform/README.md`
+4. 读概念与术语：`docs/ssot/platform/foundation/02-glossary.md`
+5. 读 runtime 编程模型：`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
+6. 读 `$`/Flow/IntentBuilder：`docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
+7. 看类型裁决与真实导出：`packages/logix-core/src/index.ts`
+8. 看示例场景与 Pattern：`docs/ssot/handbook/examples-logix-index.md`（再下钻到 `examples/logix/src/scenarios/*` / `examples/logix/src/patterns/*`）
+9. （可选）需要长链路导览/定位：`docs/ssot/runtime/logix-core/concepts/02-long-chain-tour.md`；需要总小抄：`docs/ssot/handbook/long-chain-cheatsheet.md`；需要 A–K 索引：`docs/ssot/handbook/long-chain-index.md`
 
 ## 常见任务场景（先读 → 再下钻）
 
@@ -84,6 +86,7 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 
 ## Logix 速查（下钻前先开这 4 个入口）
 
+- SSoT 聚合根：`docs/ssot/README.md`
 - references 总导航：`docs/ssot/handbook/README.md`
 - Runtime SSoT 导览：`docs/ssot/runtime/README.md`
 - 总骨架/不变量/关键机制：`docs/ssot/handbook/long-chain-cheatsheet.md`

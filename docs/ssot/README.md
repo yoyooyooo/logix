@@ -19,8 +19,13 @@ status: living
 4. `docs/specs/sdd-platform/impl/**` / `docs/specs/sdd-platform/agents/**`（实现备忘）
 5. `examples/**`
 
-## 其它入口
+## 其它入口（非裁决来源）
+
+以下目录均为非裁决来源；如与 SSoT 冲突，以 SSoT 为准并回写。
 
 - 未定稿探索：`docs/specs/drafts/**`
 - 单特性交付：`specs/<id>/**`
 - 对外用户文档：`apps/docs/content/docs/**`
+- 实现视角导航：`docs/impl-notes/**`
+- 设计哲学与原则叙事：`docs/philosophy/**`
+- 评审与证据/差距复盘：`docs/reviews/**`

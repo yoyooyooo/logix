@@ -4,6 +4,7 @@
 
 ## 最短链路（按任务）
 
+- 运行时原则与约束：`00-principles.md`
 - 写业务 Module-first：`logix-core/api/02-module-and-logic-api.md` → `logix-core/api/03-logic-and-flow.md` → `logix-core/examples/`
 - 拼装 Root/Runtime：`logix-core/api/02-module-and-logic-api.md`（runtime container 分节）→ `logix-core/runtime/05-runtime-implementation.md`
 - React 集成：`logix-react/01-react-integration.md`
