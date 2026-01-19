@@ -30,11 +30,13 @@
 - 定义并固化“模块输入服务依赖”的可枚举表示（命名端口 + 稳定服务标识），并纳入平台可消费的 Manifest/IR。
 - 让平台能够构建 Module↔Service 关系视图，并用于试运行、诊断与回放对齐（含差异报告）。
 - 让服务关系的变化可以被稳定 diff 与门禁捕获（避免“隐式变更导致回放/诊断漂移”）。
+- 覆盖“内核端口（KernelPorts）”与 workflow 调用的依赖对齐：任何进入 `Π` 的 `call(serviceId)` 都必须能通过 `servicePorts` 对齐到环境（缺失可解释/可门禁化）。
 
 ### Out of Scope
 
 - 自动从代码推断服务依赖（本特性以显式声明为准，不做反编译/静态分析推断）。
 - 为历史形态保留兼容层或弃用期（forward-only evolution）。
+- 决定 KernelPorts 的最终命名与拆分策略（本 spec 只要求“必须可被稳定标识为 ServiceId 且进入对齐链路”；具体命名空间若引发争议需单独裁决）。
 
 ## Assumptions & Dependencies
 
@@ -112,6 +114,7 @@
 - **FR-007**: 系统 MUST 支持“静态声明（Manifest）↔ 实际运行时环境（Evidence）”的对齐检查，并能导出可序列化的差异结果用于门禁与 Devtools 展示。
 - **FR-008**: 系统 MUST 支持显式声明“可选服务依赖”（optional=true）：缺失可选依赖不得导致试运行/对齐 hard-fail，但必须可解释可定位。
 - **FR-009**: 系统 MUST 对显式声明的 `services` 做 `ServiceId` 稳定性校验：若无法得到稳定 `ServiceId` 必须失败并输出可行动诊断；不得把不稳定标识写入 IR。
+- **FR-010**: 系统 MUST 将 Workflow/Π 的 `call(serviceId)` 依赖纳入同一对齐语言：运行期 `callId/serviceId` 必须能回链到 `servicePorts`（通过 `ServiceId`），否则视为不可回放/不可门禁化的黑洞。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 

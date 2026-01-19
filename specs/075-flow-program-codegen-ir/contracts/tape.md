@@ -127,4 +127,4 @@ Tape 的价值不在“记录”，在“可控执行模式”：
 - **Replay Mode**：禁止真实 IO/真实 timer；所有 `io.result`/`timer.fire`/`externalStore.snapshot` 由 tape 驱动（环境变成 oracle）。
 - **Fork Mode**：从某个 `tickSeq/opSeq` 切出分支，替换部分 `io.result`/`timer.fire`/`externalStore.snapshot`，在新沙箱中运行并产出新 tape（主时间线不污染）。
 
-本特性的硬要求：`FlowProgram.delay/serviceCall` 必须走可注入的运行时服务（Clock/Timer/IO Driver），使 record/replay/fork 成为可能；禁止影子 `setTimeout/Promise` 链绕开这些边界。
+本特性的硬要求：`FlowProgram.delay/call` 必须走可注入的运行时服务（Clock/Timer/IO Driver），使 record/replay/fork 成为可能；禁止影子 `setTimeout/Promise` 链绕开这些边界。

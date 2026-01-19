@@ -4,6 +4,7 @@
 
 - `AutofillReport@v1`：保守补全的结构化报告（report-only / write-back 共用的解释输出）
 - `AutofillReasonCode@v1`：跳过/降级原因枚举（forward-only）
+- `WorkflowStepKeyAutofill@v1`：WorkflowDef 的 `stepKey`（`steps[*].key`）保守补全规则（对齐 075；Platform-Grade 子集）
 
 ## Schemas
 
@@ -18,4 +19,3 @@
   - Title: `AutofillReasonCode@v1`
   - Invariants:
     - 枚举受控；新增/改名属于 breaking（需迁移说明，forward-only）
-

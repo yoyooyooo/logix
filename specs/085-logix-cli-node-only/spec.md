@@ -36,6 +36,7 @@
   2. 执行受控试跑并导出 TrialRunReport
   3. 扫描仓库构建 AnchorIndex（Platform-Grade 子集索引）
   4. 生成 AutofillReport，并可选择写回源码（宁可漏不乱补）
+- CLI 的 IR 导出与试跑输出必须对齐控制面 Root IR：当 `workflowSurface`（Π slice）可用时，CLI 必须能导出并在输出中引用 `workflowSurfaceDigest`（避免出现“Program IR”并行命名）。
 - 输出必须可 JSON 序列化、确定性、可 diff，并包含必要的 reason codes（失败/跳过/降级原因）。
 - CLI 作为 Node-only 能力的集成测试跑道：命令本身可在 CI 直接跑通并对比输出工件。
 
@@ -113,7 +114,7 @@
 
 ### Key Entities _(include if feature involves data)_
 
-- **CLI Output Artifacts**: 由 CLI 导出的版本化 JSON 工件（Manifest/StaticIR/Artifacts/TrialRunReport/AnchorIndex/AutofillReport…）。
+- **CLI Output Artifacts**: 由 CLI 导出的版本化 JSON 工件（ControlSurfaceManifest + workflowSurface/Artifacts/TrialRunReport/AnchorIndex/PatchPlan/WriteBackResult/AutofillReport…）。
 - **Reason Codes**: 失败/跳过/降级原因枚举，用于门禁化与解释链路。
 - **Write-Back Patch**: 可审阅的最小源码补丁（或等价写回结果摘要）。
 

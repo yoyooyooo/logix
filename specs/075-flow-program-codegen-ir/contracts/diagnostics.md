@@ -21,7 +21,7 @@ FlowProgram v1 明确采用分级门控，避免把可解释性成本常态化�
 
 - `trace:tick`：来自 073（start/settled/budgetExceeded）
 - `EffectOp(kind='flow')`：FlowProgram watcher 的运行（meta 至少含 `programId/nodeId/tickSeq`）
-- `EffectOp(kind='service')`：serviceCall 的边界（meta 至少含 `serviceId/programId/tickSeq`）
+- `EffectOp(kind='service')`：call 的边界（meta 至少含 `serviceId/programId/tickSeq`）
   - `serviceId` 必须是稳定字符串：按 `specs/078-module-service-manifest/contracts/service-id.md` 从 `Context.Tag` 派生（单点 helper）
 
 ## off/light/sampled/full 的最小字段承诺（v1）
@@ -49,7 +49,7 @@ FlowProgram 的动态语义天然会引入 “in-flight 状态”：
 
 - `delay` 的 timer schedule/cancel/fired
 - `latest/exhaust` 的 run 替换/忽略/取消
-- `serviceCall` 的 pending/timeout/retry/backoff
+- `call` 的 pending/timeout/retry/backoff
 - （可选）背压队列/lanes 的水位与延迟
 
 这些都属于长期公式里的 `I_t`（不是业务数据 `S_t`，但决定“下一步会发生什么”）。因此当 diagnostics 打开时，必须能用 Slim、可序列化字段解释：

@@ -73,8 +73,9 @@ description: "Task list for 078-module-service-manifest (servicePorts in ModuleM
 ## Phase 6: Docs（用户文档与 runtime SSoT 回链）
 
 - [ ] T021 [P] 更新 `quickstart.md`：对齐真实 API 路径与最小验收步骤 `specs/078-module-service-manifest/quickstart.md`
-- [ ] T022 [P] 更新 runtime SSoT 参考文档：固化 `services`/`servicePorts`/TrialRun 对齐口径 `docs/ssot/runtime/logix-core/**`
-- [ ] T023 [P] 更新用户文档：在 inspection 文档中补充 `servicePorts`（避免引入内部术语）`apps/docs/content/docs/api/core/inspection.cn.md`
+- [ ] T022 [P] 既有文档措辞同步（延后到本需求收尾阶段）：更新 runtime SSoT 参考文档，固化 `services`/`servicePorts`/TrialRun 对齐口径 `docs/ssot/runtime/logix-core/**`
+- [ ] T023 [P] 既有文档措辞同步（延后到本需求收尾阶段）：更新用户文档，在 inspection 文档中补充 `servicePorts`（避免引入内部术语）`apps/docs/content/docs/api/core/inspection.cn.md`
+- [ ] T024 [P] 同步 `KernelPorts` 口径：补充 “KernelPorts 也是 service ports，必须具备稳定 ServiceId，并进入 TrialRun 对齐链路” 的说明与示例 `specs/078-module-service-manifest/quickstart.md`
 
 ---
 

@@ -32,6 +32,7 @@
 1. **服务依赖锚点声明**：模块对其输入服务依赖的显式声明（例如模块定义中的 `services` 映射）。
 2. **装配依赖锚点声明**：模块装配/组合关系的显式声明（例如实现/装配配置中的 `imports` 或等价机制）。
 3. **定位锚点元数据**：用于解释链路与 code link 的定位元数据（例如模块的 `dev.source`、动作定义的 `source` 或等价元数据）。
+4. **Workflow stepKey 锚点声明**：WorkflowDef（例如 `FlowProgram.make({ ... })`）中每个 step 的 `key`（稳定地址）；缺失/冲突会直接破坏全双工/门禁化（对齐 075）。
 
 ## Related Work（与现有规划/特性的关系）
 
@@ -43,6 +44,7 @@
 - 不尝试推断业务语义别名（例如自动把 `ArchiveServiceTag` 命名为 `archiver`）；端口命名默认按 `FR-011`。
 - 不把运行期证据当作长期权威事实源（TrialRun/Loader 采集仅作为建议/校验输入；权威永远是源码中的锚点声明）。
 - 不覆盖“语义反射”类能力（例如具名逻辑插槽/Intent Rules）；应拆为独立特性以避免与锚点补全耦合。
+- 不尝试“从运行期数据推断 stepKey”：stepKey 补全只在 Platform-Grade 子集内、且能确定性定位 step 节点时进行；不确定必须跳过并报告（宁可错过不可乱补）。
 
 ## Full-Duplex Deviation Reporting（报告范围，默认不自动改写）
 
@@ -151,6 +153,7 @@
 - **FR-010**: 用户 MUST 能以“只报告不改动”的方式运行该能力，以便在写回前审阅补全结果与跳过原因。
 - **FR-011**: 自动补全写入服务依赖锚点时，系统 MUST 使用确定性的端口命名策略；默认以稳定服务标识作为端口名（`port = serviceId`），不得尝试推断业务别名。
 - **FR-012**: 系统 MUST 支持识别“全双工受限子集”的写法偏离，并在补全报告中给出可解释的定位与建议；默认不得自动改写业务逻辑语句以避免语义风险。
+- **FR-013**: 系统 MUST 支持 Workflow stepKey 的保守补全：当 WorkflowDef 的 step 缺少 `key` 且可被确定性补全时，补齐缺失字段；若存在重复 key 或无法确定性补全，MUST 不写回并输出 reason codes（对齐 `specs/075-flow-program-codegen-ir/contracts/ir.md` 与 `contracts/workflow-stepkey-autofill.md`）。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 

@@ -15,10 +15,9 @@
 约束：
 
 - `autoRefresh` 只影响“是否触发 refresh”，不改变 source refresh 的 keyHash gating 与并发语义；
-- 更复杂的时序（delay/retry/timeout）不进入此 API，升级到 FlowProgram（075）。
+- 更复杂的时序（delay/retry/timeout/分支）不进入此 API，升级到 Workflow（075；权威输入 `WorkflowDef`，DX 入口 `FlowProgram`），并通过 `callById('logix/kernel/sourceRefresh')` 触发 refresh（保持 `serviceId` 锚点与 tick 证据链；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
 
 ## 2) `@logixjs/query` / `@logixjs/form`：降级依赖
 
 - Query/Form 不应再依赖 “监听 action → 决策 refresh” 的默认逻辑；
 - 仅保留显式的 `refresh` action 或 controller API 作为手动入口。
-

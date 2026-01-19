@@ -40,7 +40,7 @@ UI 底部展示一个类似视频剪辑软件的时间轴：
 ### 2.2 状态透视 (State Inspection)
 
 点击时间轴上的任意 Span，右侧面板显示：
-*   **Input/Outcome**: 该节点的输入与结果（例如 serviceCall 的 outcome、timer 的 schedule/cancel/fired）。
+*   **Input/Outcome**: 该节点的输入与结果（例如 call 的 outcome、timer 的 schedule/cancel/fired）。
 *   **State Patch ($\Delta$)**: 该 tick/txn 的 patch（以及 dirtyPaths 摘要）。
 *   **Code Link**: 点击直接跳转到对应的源码位置。
 

@@ -27,11 +27,11 @@ v1 输入映射仅支持 `payload/const/object/merge`，禁止读取 state/trait
    - 明确标注为"快照读取"（读取时刻固定在 Program run 开始）
    - 进入 Static IR 供 Devtools 展示依赖关系
 
-## 2. serviceCall 结果数据流的演进
+## 2. call（原 serviceCall）结果数据流的演进
 
 ### 问题
 
-v1 裁决 `serviceCall` 不提供结果数据流，当需要基于 service 结果计算后续 payload 时，必须通过 action 串联。典型链路变成：
+v1 裁决 `call`（原 `serviceCall`）不提供结果数据流，当需要基于 service 结果计算后续 payload 时，必须通过 action 串联。典型链路变成：
 
 ```
 submit → API → submitSucceeded({ result }) → reducer 写入 state → 后续 Program 从 state 读
@@ -43,20 +43,22 @@ submit → API → submitSucceeded({ result }) → reducer 写入 state → 后�
 
 1. **先不动 v1（遵守硬裁决）**：v1 明确不提供结果数据流（包括“结果透传”），避免把 service 结果依赖引入 Program 层导致 IR/回放/预算复杂度失控。
 2. **v2/backlog（非 v1）**：如确需“结果透传”，可讨论一种受限表达：
-   - 只允许在 `onSuccess` 分支内引用“最近一次 serviceCall 的返回值”
+   - 只允许在 `onSuccess` 分支内引用“最近一次 call 的返回值”
    - Static IR 必须显式标注来源（`callId`/`nodeId`），并把“结果大小/序列化”纳入预算治理
 
 3. **在 data-model.md 补充透传语法**（若采纳，且必须是 v2 版本化演进）：
 
    ```ts
    type InputExprV1 =
-     | { readonly kind: 'serviceResult' }  // 新增：引用最近 serviceCall 的返回值
+     | { readonly kind: 'serviceResult' }  // 新增：引用最近 call 的返回值
      | ...
    ```
 
 4. **约束**：`serviceResult` 只能在 `onSuccess` 分支内使用；IR 中必须显式标注来源 `callId`
 
 ## 3. Fragment/Compose 组合模型细节
+
+> 更新：组合模型细节已固化于 `data-model.md#flowprogram-composition`（fragmentId 规则、compose 顺序语义、stepKey 冲突 fail-fast、withPolicy 合并优先级）。
 
 ### 问题
 
@@ -182,7 +184,7 @@ spec 对错误路径的诊断描述较少，仅提到"结构化错误 code + pro
 
 2. **错误归因到步骤**：每个错误必须携带 `source.stepKey`，便于 Devtools 定位
 
-3. **defect vs 业务错误**：明确 `serviceCall` 抛出 defect（运行时异常）与业务错误（Effect 错误通道）的不同处理路径
+3. **defect vs 业务错误**：明确 `call` 抛出 defect（运行时异常）与业务错误（Effect 错误通道）的不同处理路径
 
 ## 7. 任务优先级调整建议
 
@@ -212,7 +214,7 @@ spec 对错误路径的诊断描述较少，仅提到"结构化错误 code + pro
 
 - 076 处理"deps 变更 → source 刷新"的自动链路
 - 075 处理"Action → 多步工作流"的显式编排
-- 需要明确：`sourceRefresh` step 是否复用 076 的内核实现，还是独立路径？
+- `source refresh` 不作为独立 core step：以 `callById('logix/kernel/sourceRefresh')` 作为 Platform-Grade/LLM 出码规范形表达（TS sugar：`call(KernelPorts.SourceRefresh)`；KernelPort 作为普通 service port，具备稳定 `serviceId`）；076 负责自动触发主线
 
 ### 建议
 

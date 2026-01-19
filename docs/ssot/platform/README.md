@@ -20,11 +20,12 @@
 3. `foundation/01-the-one.md`：最小系统方程与符号表（The One）
 4. `contracts/00-execution-model.md`：执行口径（$C_T/\Pi/\Delta\oplus$、tick 参考系、预算与降级）
 5. `contracts/01-runresult-trace-tape.md`：RunResult（Trace/Tape/Anchors 的 Grounding）
-6. `foundation/02-glossary.md`：平台术语裁决入口（必要时再下钻 `foundation/glossary/*`）
-7. `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`：运行时术语裁决（Runtime Glossary SSoT）
-8. `foundation/03-trinity-and-layers.md`：UI / Logic / Module 三位一体模型
-9. `assets/00-assets-and-schemas.md`：资产映射与 Schema 定义（必要时下钻 `assets/schemas/*`）
-10. `ir/00-codegen-and-parser.md`：可解析子集与锚点系统（平台的 Code/IR 边界）
+6. `contracts/03-control-surface-manifest.md`：控制面 Root IR（actions/services/traits/workflows/opaque 的收口工件）
+7. `foundation/02-glossary.md`：平台术语裁决入口（必要时再下钻 `foundation/glossary/*`）
+8. `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`：运行时术语裁决（Runtime Glossary SSoT）
+9. `foundation/03-trinity-and-layers.md`：UI / Logic / Module 三位一体模型
+10. `assets/00-assets-and-schemas.md`：资产映射与 Schema 定义（必要时下钻 `assets/schemas/*`）
+11. `ir/00-codegen-and-parser.md`：可解析子集与锚点系统（平台的 Code/IR 边界）
 
 ## 裁决矩阵（遇到分歧先查哪里）
 
@@ -33,6 +34,7 @@
 | 最小系统方程/符号解释 | `foundation/01-the-one.md` | 先修符号表，再改下游文档与实现 |
 | 执行口径（tick/事务/预算/降级） | `contracts/00-execution-model.md` | 不一致时以 runtime 类型/实现为准并回写 |
 | Trace vs Tape 与 RunResult 形态 | `contracts/01-runresult-trace-tape.md` | 平台只消费 RunResult，不消费内部对象 |
+| 控制面 Root IR（actions/services/traits/workflows/opaque） | `contracts/03-control-surface-manifest.md` | 平台/Devtools/Alignment Lab 消费的静态工件；动态事件只携带锚点与 digest 引用 |
 | Time Travel（愿景/边界/可实现性） | `contracts/02-time-travel.md` | Live 只能只读回放；Replay/Fork 受控 |
 | 资产结构与 Schema | `assets/00-assets-and-schemas.md`、`assets/10-module-assets.md` | 先修资产层，再落 IR/出码/实现 |
 | 术语、边界、命名（平台概念） | `foundation/02-glossary.md` | 先修术语，再改其它文档/代码 |

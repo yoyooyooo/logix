@@ -10,6 +10,7 @@
 `080`（Full‑Duplex Prelude）跑通后，平台侧将同时拥有：
 
 - Static IR：`ModuleManifest`、`StaticIr`、`Artifacts`、（未来）`servicePorts`、`PortSpec/TypeIR`
+- Static IR（控制面）：`ControlSurfaceManifest`（Root IR）+ `workflowSurface`（Π slice；`workflowSurfaceDigest` 锚点）
 - Dynamic Evidence：TrialRun / EvidencePackage、（未来）Spy evidence
 - Platform‑Grade 工具链工件：`AnchorIndex@v1`、`PatchPlan@v1`、`WriteBackResult@v1`（Node-only 产出）
 
@@ -29,6 +30,7 @@
 - AUTO: Q: `Manifest Diff Viewer` 在“模块选择模式”下如何保持 before/after 可比？ → A: before/after 共用同一组选项（`includeStaticIr`/`maxBytes`），避免因参数不同导致噪音 diff。
 - AUTO: Q: JSON 粘贴输入的校验与失败处理口径？ → A: 仅做最小字段校验；解析/校验失败时阻止计算并显示错误（不得崩溃/空白）。
 - AUTO: Q: 缺失的未来字段（例如 `servicePorts`）如何提示？ → A: UI 固定展示 pending 清单（078/031/035/081/082/085），并标注“当前 core `ModuleManifest.manifestVersion=067` 尚未包含”。
+  - 更新：pending 清单需包含 `075`（workflowSurface/stepKey）与 `079`（stepKey autofill），避免 workflow 变成“能导出但不可解释”的灰区。
 - AUTO: Q: Raw JSON 视图是否需要一键复制？ → A: 需要；提供一键复制 pretty JSON（2 spaces），并显示复制成功/失败反馈。
 
 ## Goals / Scope
@@ -41,6 +43,7 @@
   - TrialRun Evidence Inspector（复用/包装现有 TrialRun 示例）
 - UI 只消费 JSON-safe 的工件/输出；不引入 Node-only 依赖（`ts-morph/swc/fs` 等）。
 - 为后续 `servicePorts` / `AnchorIndex` / `PatchPlan` 等工件预留“展示占位”与信息架构（但不要求本特性实现其生产链路）。
+- 为后续 `workflowSurfaceDigest` / `workflowSurface`（Π slice）预留展示占位：Root IR 的 workflow slice 能被加载并在 UI 中可视化/定位（不要求本特性生产该 slice）。
 
 ### Out of Scope
 
@@ -137,7 +140,7 @@
   - Raw JSON 视图（pretty JSON + 一键复制）
   - 可选参数：`includeStaticIr`、`budgets.maxBytes`
 - **FR-003**: `Manifest Diff Viewer` 页面 MUST 支持两类 before/after 输入：选择预置模块（内部 `extractManifest`）或粘贴 `ModuleManifest` JSON；页面 MUST 调用 `Logix.Reflection.diffManifest` 并展示 verdict/summary/changes，且 Raw JSON 可见。
-- **FR-004**: 页面 MUST 对缺失的可选字段做显式提示（例如 `servicePorts` 尚未实现时展示“pending 078”），不得静默吞掉或导致崩溃；并提供固定的“pending spec 清单”（078/031/035/081/082/085）以避免误解为 bug。
+- **FR-004**: 页面 MUST 对缺失的可选字段做显式提示（例如 `servicePorts`/`workflowSurface` 尚未实现时展示 pending），不得静默吞掉或导致崩溃；并提供固定的“pending spec 清单”（075/078/079/031/035/081/082/085）以避免误解为 bug。
 - **FR-005**: 该特性 MUST NOT 引入 Node-only 依赖（`ts-morph/swc/fs` 等）进入浏览器 bundle；仅消费 `@logixjs/core`/`@logixjs/react`/`@logixjs/devtools-react` 的运行时 API 与 JSON 工件。
 
 ### Non-Functional Requirements (Performance & Diagnosability)

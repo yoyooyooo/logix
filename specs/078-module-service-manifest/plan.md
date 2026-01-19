@@ -31,6 +31,7 @@
 - Decision: 端口名默认约定 `port = serviceId`，仅在需要更强解释/语义区分时再使用短别名（例如 `archiver` / `backupSvc`）。
 - Decision: 默认运行档位不付反射税：Manifest/对齐检查/索引都应为显式调用或 dev-only 注册；prod 默认不常驻增长内存。
 - Decision: Manifest 变更以 `manifestVersion` bump + digest 变更作为“可门禁化”的硬锚点；diff 输出必须稳定（排序/去重/字段裁剪一致）。
+- Decision: KernelPorts 与 workflow `call(serviceId)` 不引入第二套依赖系统：KernelPorts 必须具备稳定 `ServiceId`，并像普通 service 一样进入 `servicePorts`/TrialRun 对齐；平台/Devtools 的解释链只认 `ServiceId`。
 
 ## Technical Context
 

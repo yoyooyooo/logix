@@ -11,10 +11,9 @@
 
 - 当你要完全自定义触发策略（例如 “onMount 后 delay 3s 再 refresh”），把 source 设为 manual-only：
   - `autoRefresh: false`
-- 然后用 FlowProgram（075）表达自由时序，并在 program 内显式触发 `traits.source.refresh(fieldPath)`。
+- 然后用 Workflow（075；权威输入 `WorkflowDef`，DX 入口 `FlowProgram`）表达自由时序，并通过 `callById('logix/kernel/sourceRefresh')` 显式触发 refresh（保证 tick 证据链与 `serviceId` 锚点；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
 
 ## 3) 迁移提示（Query/Form）
 
 - `@logixjs/query`：删除/收敛 `auto-trigger` 默认逻辑；把 cache-peek skip-loading 下沉到 refresh 实现。
 - `@logixjs/form`：不再依赖 `TraitLifecycle.makeSourceWiring.refreshOnKeyChange` 的反射式解释入口。
-

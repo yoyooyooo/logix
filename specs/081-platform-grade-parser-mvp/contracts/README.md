@@ -12,5 +12,4 @@
   - Invariants:
     - JSON-safe、确定性、稳定排序
     - 子集外显式 `rawMode[]` + `reasonCodes`
-    - 缺口点通过 `missing.*.insertSpan` 提供“只改缺失字段”的插入锚点
-
+    - 缺口点通过 `missing.*.insertSpan` 提供“只改缺失字段”的插入锚点（包含 `missing.workflowStepKey`）

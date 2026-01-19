@@ -63,19 +63,64 @@
       "additionalProperties": false,
       "properties": {
         "services": { "$ref": "#/$defs/MissingField" },
-        "devSource": { "$ref": "#/$defs/MissingField" }
+        "devSource": { "$ref": "#/$defs/MissingField" },
+        "workflowStepKey": { "$ref": "#/$defs/MissingField" }
       }
     },
-    "AnchorEntry": {
+    "EntryBase": {
       "type": "object",
       "additionalProperties": false,
       "required": ["entryKey", "kind", "file", "span"],
       "properties": {
         "entryKey": { "type": "string", "minLength": 1 },
-        "kind": {
-          "type": "string",
-          "enum": ["ModuleDef", "LogicDef", "ServiceUse", "AutofillTarget"]
+        "kind": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "minLength": 1 },
+        "span": { "$ref": "#/$defs/Span" },
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "ModuleDefEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryKey", "kind", "file", "span", "moduleIdLiteral"],
+      "properties": {
+        "entryKey": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "const": "ModuleDef" },
+        "file": { "type": "string", "minLength": 1 },
+        "span": { "$ref": "#/$defs/Span" },
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
         },
+        "moduleIdLiteral": { "type": "string", "minLength": 1 }
+      }
+    },
+    "LogicDefEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryKey", "kind", "file", "span"],
+      "properties": {
+        "entryKey": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "const": "LogicDef" },
+        "file": { "type": "string", "minLength": 1 },
+        "span": { "$ref": "#/$defs/Span" },
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "moduleIdLiteral": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ServiceUseEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryKey", "kind", "file", "span", "tagSymbol"],
+      "properties": {
+        "entryKey": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "const": "ServiceUse" },
         "file": { "type": "string", "minLength": 1 },
         "span": { "$ref": "#/$defs/Span" },
         "reasonCodes": {
@@ -83,10 +128,92 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "moduleIdLiteral": { "type": "string", "minLength": 1 },
-        "serviceIdLiteral": { "type": "string", "minLength": 1 },
         "tagSymbol": { "$ref": "#/$defs/TagSymbol" },
+        "serviceIdLiteral": { "type": "string", "minLength": 1 }
+      }
+    },
+    "WorkflowDefEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryKey", "kind", "file", "span", "workflowLocalIdLiteral"],
+      "properties": {
+        "entryKey": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "const": "WorkflowDef" },
+        "file": { "type": "string", "minLength": 1 },
+        "span": { "$ref": "#/$defs/Span" },
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "moduleIdLiteral": { "type": "string", "minLength": 1 },
+        "workflowLocalIdLiteral": { "type": "string", "minLength": 1 }
+      }
+    },
+    "WorkflowCallUseEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryKey", "kind", "file", "span", "workflowLocalIdLiteral", "serviceIdLiteral"],
+      "properties": {
+        "entryKey": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "const": "WorkflowCallUse" },
+        "file": { "type": "string", "minLength": 1 },
+        "span": { "$ref": "#/$defs/Span" },
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "moduleIdLiteral": { "type": "string", "minLength": 1 },
+        "workflowLocalIdLiteral": { "type": "string", "minLength": 1 },
+        "serviceIdLiteral": { "type": "string", "minLength": 1 }
+      }
+    },
+    "AutofillTargetModule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "moduleIdLiteral"],
+      "properties": {
+        "kind": { "type": "string", "const": "module" },
+        "moduleIdLiteral": { "type": "string", "minLength": 1 }
+      }
+    },
+    "AutofillTargetWorkflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "workflowLocalIdLiteral"],
+      "properties": {
+        "kind": { "type": "string", "const": "workflow" },
+        "workflowLocalIdLiteral": { "type": "string", "minLength": 1 }
+      }
+    },
+    "AutofillTargetRef": {
+      "oneOf": [{ "$ref": "#/$defs/AutofillTargetModule" }, { "$ref": "#/$defs/AutofillTargetWorkflow" }]
+    },
+    "AutofillTargetEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryKey", "kind", "file", "span", "target", "missing"],
+      "properties": {
+        "entryKey": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "const": "AutofillTarget" },
+        "file": { "type": "string", "minLength": 1 },
+        "span": { "$ref": "#/$defs/Span" },
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "target": { "$ref": "#/$defs/AutofillTargetRef" },
         "missing": { "$ref": "#/$defs/Missing" }
       }
+    },
+    "AnchorEntry": {
+      "oneOf": [
+        { "$ref": "#/$defs/ModuleDefEntry" },
+        { "$ref": "#/$defs/LogicDefEntry" },
+        { "$ref": "#/$defs/ServiceUseEntry" },
+        { "$ref": "#/$defs/WorkflowDefEntry" },
+        { "$ref": "#/$defs/WorkflowCallUseEntry" },
+        { "$ref": "#/$defs/AutofillTargetEntry" }
+      ]
     },
     "RawModeEntry": {
       "type": "object",
@@ -111,7 +238,9 @@
         "rawModeTotal",
         "modulesTotal",
         "serviceUsesTotal",
-        "autofillTargetsTotal"
+        "autofillTargetsTotal",
+        "workflowsTotal",
+        "workflowCallUsesTotal"
       ],
       "properties": {
         "filesScanned": { "type": "integer", "minimum": 0 },
@@ -119,7 +248,9 @@
         "rawModeTotal": { "type": "integer", "minimum": 0 },
         "modulesTotal": { "type": "integer", "minimum": 0 },
         "serviceUsesTotal": { "type": "integer", "minimum": 0 },
-        "autofillTargetsTotal": { "type": "integer", "minimum": 0 }
+        "autofillTargetsTotal": { "type": "integer", "minimum": 0 },
+        "workflowsTotal": { "type": "integer", "minimum": 0 },
+        "workflowCallUsesTotal": { "type": "integer", "minimum": 0 }
       }
     }
   }

@@ -46,7 +46,7 @@ description: "Task list for 085-logix-cli-node-only (Node-only logix CLI)"
 **Independent Test**: 对一个代表性入口重复运行两次，输出工件可 JSON 序列化且稳定；缺依赖时给出可行动错误。
 
 - [ ] T011 [US1] 迁移 `scripts/ir/inspect-module.ts` 的入口加载逻辑（modulePath/exportName）到 CLI 内部 `packages/logix-cli/src/internal/loadProgramModule.ts`
-- [ ] T012 [US1] 实现 `logix ir export`：调用 `Logix.Reflection.extractManifest` 并落盘 `manifest.json` `packages/logix-cli/src/internal/commands/irExport.ts`
+- [ ] T012 [US1] 实现 `logix ir export`：导出 ControlSurfaceManifest（含 `workflowSurfaceDigest` 等）并落盘 `control-surface.manifest.json`（可选导出 `workflow.surface.json`）`packages/logix-cli/src/internal/commands/irExport.ts`
 - [ ] T013 [US1] 实现 `logix trialrun`：调用 `Logix.Observability.trialRunModule` 并落盘 `trialrun.report.json` `packages/logix-cli/src/internal/commands/trialRun.ts`
 - [ ] T014 [P] [US1] 集成用例：对固定入口跑 `ir export` 与 `trialrun` 并校验输出 shape `packages/logix-cli/test/Integration/cli.ir-and-trialrun.test.ts`
 
@@ -68,7 +68,7 @@ description: "Task list for 085-logix-cli-node-only (Node-only logix CLI)"
 **Goal**: CLI 输出可在 CI 直接 diff/门禁：确定性、可序列化、reason codes 可行动。  
 **Independent Test**: 同一输入两次运行字节级一致（忽略可选的耗时字段）；变更发生时 diff 聚焦语义差异。
 
-- [ ] T018 [US3] 增加 `--out` 目录命名与工件文件名规范（manifest/trialrun/anchor/patch/writeback/autofill）`packages/logix-cli/src/internal/output.ts`
+- [ ] T018 [US3] 增加 `--out` 目录命名与工件文件名规范（control-surface/workflowSurface/trialrun/anchor/patch/writeback/autofill）`packages/logix-cli/src/internal/output.ts`
 - [ ] T019 [P] [US3] 单测：同一输入两次运行输出一致（含 artifacts 列表排序）`packages/logix-cli/test/Integration/cli.determinism.test.ts`
 - [ ] T020 [US3] 在 quickstart 固化 CI 用法样例（report-only gate 与显式 write-back）`specs/085-logix-cli-node-only/quickstart.md`
 - [ ] T023 [US3] 增加 cold start 测量脚本（`logix --help` < 500ms，且不加载 `ts-morph`）并把测量结果/基线写入 `specs/085-logix-cli-node-only/quickstart.md` `packages/logix-cli/scripts/measure-startup.mjs`
@@ -86,3 +86,9 @@ description: "Task list for 085-logix-cli-node-only (Node-only logix CLI)"
 
 - Phase 1 → Phase 2（BLOCKS all user stories）
 - US1（IR/TrialRun）可先做 MVP；US2 依赖 `packages/logix-anchor-engine`（081/082/079）完成基础 API；US3 在 US1/US2 可用后补齐确定性回归与 CI 样例。
+
+---
+
+## Phase 7: 既有文档措辞同步（延后到本需求收尾阶段）
+
+- [ ] T024 同步 SSoT/既有文档：补齐 CLI 作为“Node-only 集成测试跑道”的官方导航入口与工件命名约定 `docs/ssot/platform/**` 与 `docs/ssot/handbook/**`（仅措辞/导航对齐）

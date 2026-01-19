@@ -45,7 +45,7 @@ priority: later
 │          │                                    │                     │
 │          │    ┌──────────────────────────────┐                      │
 │          │    │ Unified Static IR (C_T + Π)  │                      │
-│          └───▶│ Traits IR + FlowProgram IR   │◀─────────────────────┘
+│          └───▶│ Traits IR + Workflow Static IR│◀─────────────────────┘
 │               └──────────────────────────────┘                      │
 │                          │                                          │
 │                          │ install()                                │
@@ -107,7 +107,7 @@ Studio Canvas (Nodes + Edges)
 | 代码类型                      | 可解析程度    | 处理方式                                     |
 | :---------------------------- | :------------ | :------------------------------------------- |
 | `traits` 对象                 | ✅ 完全可解析 | 提取为 Graph 节点与边                        |
-| `FlowProgram.make/install`    | ✅ 完全可解析 | 提取为 Program IR（Π）并联动画布节点/边      |
+| `FlowProgram.make/install`    | ✅ 完全可解析 | 提取为 Workflow Static IR（Π slice）并联动画布节点/边 |
 | `Logic.run()` 中的 Fluent API | ⚠️ 部分可解析 | 识别 `$.onAction/onState`，标记为 IntentRule |
 | 任意 Effect 编排              | ❌ 黑盒       | 标记为 "Escape Hatch"，不可视化细节          |
 

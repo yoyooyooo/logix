@@ -67,7 +67,7 @@ Obs_t  = Ω_F(S_t)
 人读阐述：`specs/077-logix-control-laws-v1/spec-registry.md`。
 
 - `specs/073-logix-external-store-tick/`：建立参考系 `F`（`RuntimeStore + tickSeq`，no-tearing）
-- `specs/075-flow-program-codegen-ir/`：建立通用控制律 `Π_general`（FlowProgram Codegen IR：出码层 + 时间算子进入证据链）
+- `specs/075-flow-program-codegen-ir/`：建立通用控制律 `Π_general`（WorkflowDef → Π slice：出码层 + 时间算子进入证据链；DX 入口为 FlowProgram）
 - `specs/076-logix-source-auto-trigger-kernel/`：建立受限控制律 `Π_source`（source 自动触发内核化，消灭 Query/Form 胶水）
 
 ## Spec 快速裁决（三问，避免“只做微调”的幻觉）
@@ -110,7 +110,7 @@ Obs_t  = Ω_F(S_t)
 **Acceptance Scenarios**（集成验收由 member specs 分别落测试，本 group 只定义口径）：
 
 1. **Given** 页面同时读 Router 模块与 Query 模块，**When** Router 外部输入变化并触发下游 source/query，**Then** UI 观测到同 tickSeq 的一致快照，无闪动中间态。
-2. **Given** 声明式 submit Program，**When** dispatch submit，**Then** serviceCall→success branch→navigate/refresh 的因果链可归因到同一条 tick 证据链。
+2. **Given** 声明式 submit Program，**When** dispatch submit，**Then** call→success branch→navigate/refresh 的因果链可归因到同一条 tick 证据链。
 
 ---
 
@@ -140,5 +140,5 @@ Obs_t  = Ω_F(S_t)
 ## Success Criteria _(mandatory)_
 
 - **SC-001**: 完成 073 M1 后，React 多模块读取无 tearing（同 tickSeq 快照）。
-- **SC-002**: 完成 075 后，至少 1 条 submit 工作流不再依赖 watcher 胶水，并能导出 FlowProgram Static IR。
+- **SC-002**: 完成 075 后，至少 1 条 submit 工作流不再依赖 watcher 胶水，并能导出 Workflow Static IR（Π slice）。
 - **SC-003**: 完成 076 后，Query/Form 的默认自动刷新不再需要 “监听 action → 反查 trait → refresh”。

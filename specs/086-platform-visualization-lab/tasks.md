@@ -49,3 +49,9 @@
 
 - [ ] T050 确认本特性未引入 Node-only 依赖到浏览器 bundle（避免 `ts-morph/swc/fs` 等 import）（Refs: FR-005）
 - [ ] T051 跑通 `examples/logix-react` 的类型检查（Refs: —，质量门）
+
+---
+
+## 既有文档措辞同步（延后到本需求收尾阶段）
+
+- [ ] T060 同步 SSoT/既有文档：补齐 Visualization Lab 的定位与导航入口（Manifest/Diff/TrialRun/Workflow slices）到平台文档索引 `docs/ssot/platform/**`（Refs: —，仅措辞/导航对齐）

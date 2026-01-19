@@ -12,7 +12,7 @@
 当前仓库里，“source 自动刷新”的语义处于一个尴尬的夹层：
 
 - `StateTrait.source` 的声明是 **静态绑定事实**（resource + deps + key + concurrency），但 Query/Form 仍需要在 Logic 层写大量 wiring：
-  - `packages/logix-query/src/internal/logics/auto-trigger.ts`：监听 Action（`setParams/setUi`）→ 计算 keyHash → debounce → 决定是否 `$.traits.source.refresh(...)`。
+  - `packages/logix-query/src/internal/logics/auto-trigger.ts`：监听 Action（`setParams/setUi`）→ 计算 keyHash → debounce → 决定是否触发 refresh（当前写法是 `$.traits.source.refresh(...)`；目标口径是 `callById('logix/kernel/sourceRefresh')` 进入可解释链路；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
   - `packages/logix-core/src/internal/trait-lifecycle/index.ts#makeSourceWiring`：运行时反查 traits entries（`meta.triggers/meta.deps`）→ onStart + refreshOnKeyChange（线性扫描）。
 - 结果是 “把动态流程写死在静态 meta 里，然后再反射式地解释它”：
   - 动态能力被困在 `onMount/onKeyChange/debounceMs` 这种不完整的集合里；
@@ -29,7 +29,7 @@
 Π_source : (mount + dirtyPaths_t, S_t, t) -> Ops_t
 ```
 
-- 它只做一件事：在“deps 可能影响 key”的情况下触发 `source.refresh(fieldPath)`；
+- 它只做一件事：在“deps 可能影响 key”的情况下触发 `source refresh`（通过 `callById('logix/kernel/sourceRefresh')` 进入可 IR 化/可回放链路；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）；
 - 它的可表达性必须受限（避免把通用 Flow 重新塞回 trait meta）；
 - 但它必须被内核化：可 IR 化、可诊断、可预算、可回放，并对齐 tick 参考系。
 
@@ -55,7 +55,7 @@
 ### Out of Scope
 
 - 通用的 Action→Action 多步协议/分支/补偿/重试/超时：由 `075-flow-program-codegen-ir` 提供（Π 的通用形态）。
-- “onMount delay 3s 再 refresh”这类自由时序：应通过 FlowProgram 表达（或在本特性完成后作为独立扩展节点进入 075）。
+- “onMount delay 3s 再 refresh”这类自由时序：应通过 Workflow 表达（075；对外 DX 入口为 `FlowProgram`）。
 - ExternalStore / TickScheduler / React 无 tearing（观测参考系的建立与切换）：由 073 负责。
 
 ## User Scenarios & Testing _(mandatory)_
@@ -70,14 +70,14 @@
 - 配置 debounce 后，同一 tick/短窗口内多次 deps 变化只触发一次 refresh；
 - diagnostics=light 下可解释：`trace:source.auto`（或等价 EffectOp meta）带 `tickSeq` 与 `reason=depsChange`。
 
-### User Story 2 - 只保留“受限自由度”，复杂工作流升级到 FlowProgram（Priority: P1）
+### User Story 2 - 只保留“受限自由度”，复杂工作流升级到 Workflow（Priority: P1）
 
 作为业务开发者，我希望当 refresh 策略超出 “onMount/onDepsChange + debounce” 能力时，有明确的升级路径：
 
 - 关闭 source auto-trigger；
-- 用 FlowProgram 表达更复杂的时序（delay/retry/timeout/分支），同时保持 tick 参考系与可解释链路不破。
+- 用 Workflow 表达更复杂的时序（delay/retry/timeout/分支），同时保持 tick 参考系与可解释链路不破（显式通过 `callById('logix/kernel/sourceRefresh')` 触发 refresh；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
 
-**Independent Test**：关闭 auto-trigger 后，source 不会被自动刷新；通过 FlowProgram 显式触发 refresh 能正常工作且可关联 tickSeq。
+**Independent Test**：关闭 auto-trigger 后，source 不会被自动刷新；通过 Workflow（FlowProgram/WorkflowDef）显式触发 refresh 能正常工作且可关联 tickSeq。
 
 ### User Story 3 - 性能：大量 source + 高频输入下不退化（Priority: P2）
 

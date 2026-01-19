@@ -22,8 +22,12 @@ reason codes 用于把“不确定性”显式化，避免工具暗自猜测导�
 
 - `missing_location`：无法获得可靠的定位信息（极少见；通常为工具链输入问题）。
 
+### workflow stepKey 补全
+
+- `duplicate_step_key`：workflow 内已存在重复 stepKey（必须人工修复；工具拒绝写回）。
+- `unresolvable_step_key`：无法为缺失 key 的 step 生成确定性候选（关键字段缺失或不可解析）。
+
 ## 约束
 
 - 每个 code 必须有可行动的 message（指导作者如何显式声明/如何迁移写法）。
 - codes 的新增/改名属于 breaking：需要迁移说明（forward-only）。
-

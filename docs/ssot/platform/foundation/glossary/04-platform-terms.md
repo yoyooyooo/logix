@@ -71,3 +71,79 @@
   - 目的：避免在单一包内无限膨胀并扩大破坏面；把稳定契约与演进节奏收敛到更清晰的 ownership 与发布边界。
 
 > 本仓关于上述术语的工程化约束、验证门与迁移模板的当前裁决落点：`specs/030-packages-public-submodules/contracts/public-submodules.md`。
+
+## 4.6 Control Surface Manifest（控制面 Root IR）
+
+> 这些术语用于把 “Action/Service/Traits/Workflows/Blackboxes” 收口为平台可消费的单一静态工件，作为 Devtools/Alignment Lab 的结构事实源。
+
+- **Control Surface（控制面）**
+  - 定义：系统对输入（Action/Lifecycle/External/Timer）作出响应并产生行为的“可治理表面”。
+  - 在 The One 方程里对应：约束闭包 $C_T$ + 控制律 $\Pi$（执行口径见 `docs/ssot/platform/contracts/00-execution-model.md`）。
+
+- **Control Surface Manifest（控制面 Manifest / Root Static IR）**
+  - 定义：平台/Devtools/Alignment Lab 消费的 Root Static IR（单一可交换工件），收口 actions、services、traits 静态形态、结构化 workflows，以及允许存在的 opaque effects。
+  - 裁决口径见：`docs/ssot/platform/contracts/03-control-surface-manifest.md`。
+
+- **Governed vs Opaque**
+  - `governed`：可 IR 化/可序列化/可 diff 的结构化控制面资产（进入 Root IR）。
+  - `opaque`：无法可靠 IR 化的手写 watcher/effect；允许存在但必须显式登记，并在 Devtools 中标注为黑盒（禁止静默降级）。
+
+## 4.7 Codegen IR / Evidence Pipeline（控制面出码与证据链术语）
+
+> 目标：把“出码工件（静态）/运行证据（动态）/锚点（稳定标识）”三者的名称收口到可对齐的最小集合，避免并行真相源。
+
+### 4.7.1 静态工件（Build/Export Artifacts）
+
+- **Recipe（压缩输入，可选）**
+  - 用途：让平台/AI 以更短输入描述常见 workflow；必须可确定性展开。
+  - 展开结果必须归一到 Canonical AST（禁止 Recipe 自带第二套语义）。
+
+- **Canonical AST（唯一规范形）**
+  - 用途：语义规范形（去语法糖/默认值落地/分支显式/stepKey 完整）。
+  - 约束：同一语义必须只有一种表示；缺失 stepKey 视为契约违规（fail-fast）。
+
+- **Workflow Static IR（Π slice）**
+  - 用途：可导出/可 diff/可审阅的结构化工作流 IR（nodes/edges + version + digest）。
+  - 关系：作为 Root IR 的 `workflowSurface` slice 被引用（Root IR 不内嵌整图到事件流）。
+
+- **FlowProgram（对外 authoring 入口，当前命名）**
+  - 用途：`@logixjs/core` 的公共子模块；承载 validate/export/install 的冷路径能力（平台/AI 出码入口）。
+  - 关系：导出 `FlowProgramStaticIr`（即 Workflow Static IR / Π slice）；运行时执行消费的是 internal `RuntimePlan`（不以 IR 扫描替代热路径索引）。
+
+- **ControlSurfaceManifest（Root Static IR）**
+  - 用途：平台/Devtools/Alignment Lab 消费的单一可交换工件（actions/services/traits/workflows/opaque 收口）。
+  - 关系：以 digest + slices/index 为主；执行性能来自 internal RuntimePlan（不在 Root IR 内）。
+
+- **RuntimePlan（运行时执行计划，internal）**
+  - 用途：热路径用的索引/路由表/预解析产物（例如 actionTag→programs 路由表）。
+  - 约束：不得成为平台消费工件；不得以 Root IR 扫描/哈希替代 RuntimePlan。
+
+### 4.7.2 动态证据（Runtime Evidence）
+
+- **Trace（解释链）**
+  - 用途：回答“为什么发生了什么”；Slim、可采样、可丢弃；以 tickSeq 为参考系锚点。
+  - 约束：不得携带 Static IR 全量；只携带锚点与 digest 引用。
+
+- **Tape（回放磁带）**
+  - 用途：回答“如何 deterministic replay/fork”；记录开放系统边界的不确定性交换（IO outcome / timer fire / external snapshot）。
+  - 约束：受控环境开启（Sandbox/Test）；live 默认不必常开。
+
+- **RunResult（平台 Grounding）**
+  - 用途：一次 Playground/Scenario Run 的输出（EvidencePackage + 可选 tape/snapshots/static digests）。
+  - 关键字段：`static.controlSurfaceDigest`（优先；Root IR 全局入口）。
+
+### 4.7.3 关键流程名（Pipelines）
+
+- **expand/normalize**：Recipe/DSL/平台输入 → Canonical AST（纯数据，确定性）
+- **validate（fail-fast）**：版本/稳定标识/stepKey 唯一性/serviceId 可解析性/预算裁剪
+- **compileRuntimePlan**：Canonical AST/Static IR → RuntimePlan（internal；冷路径）
+- **export**：输出 Static IR / ControlSurfaceManifest（Stable JSON + digest）
+- **mount/route/interpret**：RuntimePlan 驱动执行（单订阅 + O(1+k) 路由）
+- **record / replay / fork**：Tape 模式下的确定性运行（按 tickSeq 主轴）
+
+### 4.7.4 锚点与稳定标识（Anchors）
+
+- **静态锚点**：`moduleId`、`actionTag`、`serviceId`、`programId`、`nodeId`、`stepKey`、`fragmentId`、`sourceKey`、`digest`
+- **动态锚点**：`instanceId`、`tickSeq`、`txnSeq`、`opSeq`、`runId`、`timerId`、`callId`、`linkId`
+
+> 规则：静态工件只包含静态锚点；动态证据必须能通过静态锚点回链到 Root IR（禁止第二套身份系统）。

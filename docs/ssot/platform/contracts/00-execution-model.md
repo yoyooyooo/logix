@@ -85,6 +85,7 @@ status: living
 
 ## 7) 与 073/075/076 的关系（主线落点）
 
+- `docs/ssot/platform/contracts/03-control-surface-manifest.md`：控制面 Root IR（actions/services/traits/workflows/opaque 的单一静态工件），用于把 $C_T$ 与 $\Pi$ 收口为平台可消费的单一事实源。
 - `specs/073-logix-external-store-tick/`：建立 `tickSeq` 参考系与 no-tearing 观测语义（$S_t$ 的一致快照）。
-- `specs/075-flow-program-codegen-ir/`：把 $\Pi$ 落成可编译的 FlowProgram 出码 IR（时间算子进入证据链）。
+- `specs/075-flow-program-codegen-ir/`：把 $\Pi$ 落成 `WorkflowDef → Workflow Static IR（Π slice）` 的闭环（对外 DX 入口为 `FlowProgram` 值对象；时间算子进入证据链）。
 - `specs/076-logix-source-auto-trigger-kernel/`：把 source 的自动触发从 trait meta 移出，作为受限 $\Pi_{source}$ 内核化，消灭 Query/Form 胶水。

@@ -10,7 +10,8 @@
     "no_confident_usage",
     "dynamic_or_ambiguous_usage",
     "unresolvable_service_id",
-    "missing_location"
+    "missing_location",
+    "duplicate_step_key",
+    "unresolvable_step_key"
   ]
 }
-

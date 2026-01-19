@@ -8,6 +8,7 @@
 ## 文档（人读）
 
 - `contracts/service-id.md`：`Context.Tag` → `ServiceId` 的权威规则（必须单点实现）
+- `contracts/kernel-ports.md`：KernelPorts 作为 service ports 的口径（命名空间 + 对齐链路）
 - `contracts/module-manifest-service-ports.md`：`ModuleManifest.servicePorts` 的语义与约束
 - `contracts/trial-run-service-ports-alignment.md`：试运行对齐报告的端口级缺失定位
 - `contracts/devtools-module-services-surface.md`：Devtools 展示/查询建议（dev-only 辅助解释）

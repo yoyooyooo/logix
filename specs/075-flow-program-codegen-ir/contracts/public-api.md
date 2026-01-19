@@ -10,20 +10,41 @@
 >
 > 因此对外 API 必须以“纯数据 + 可编译”为中心：所有语义在导出/编译期确定，运行时只消费编译产物。
 
+命名关系（避免误解）：
+
+- `FlowProgram`：对外 authoring/装配入口（定义/组合/validate/export/install）。
+- `FlowProgramStaticIr`（又称 Workflow Static IR / Π slice）：`FlowProgram.exportStaticIr()` 的导出工件；平台/Devtools 通过 `ControlSurfaceManifest.workflowSurface` 消费它。
+- `RuntimePlan`：内部热路径执行计划（索引/路由/预解析）；不对外交换，不进入 Root IR，不得以 IR 扫描替代。
+
+## 1.0 DX 裁决：SSoT 分化 + Effect-native 一体化
+
+本子模块对外同时提供两层形态（语义同一、无第二真相源）：
+
+- **权威工件（SSoT）**：`WorkflowDef`（纯 JSON、可落盘、可 Schema 校验、版本化），是平台/LLM/Studio 的单一事实源。
+- **值对象（DX）**：`FlowProgram` 是一个 Effect 风格的值：它携带 `WorkflowDef`，并提供冷路径方法（`validate/exportStaticIr/install`）。
+
+约束：
+
+- `FlowProgram` 的 `toJSON()` MUST 只导出 `WorkflowDef`（纯 JSON）；不得把 Tag/Effect/Fiber/闭包序列化进工件。
+- `FlowProgram.fromJSON(def)`（或等价静态方法）用于把 `WorkflowDef` 恢复为值对象形态（补齐方法能力）。
+- Platform-Grade/LLM 出码 MUST 以 `callById('<serviceId>')`（字面量）表达 service 调用；TS 侧允许写 `call(serviceTag)` 作为语法糖，但落盘/导出时一律解析为 `serviceId: string`（复用 078 的单点 helper；不要求 Parser/Autofill 解析 Tag）。
+
 ### 1.1 入口（概念）
 
-- `FlowProgram.make(programId, spec)`：定义一个 Program（声明式 Spec；**禁止闭包**；可导出形态为 Static IR）
+- `FlowProgram.make(def)`：构造一个 Program 值对象（输入为 `WorkflowDef` 或等价的 def-like 形态；**禁止闭包**）
 - `program.install(moduleTag)`：把 Program 绑定到 module 并编译+mount（产出 ModuleLogic）
   - 推荐 DX sugar：`Module.withFlow(program)`（内部等价于 `Module.withLogic(program.install(Module.tag))`）
 - **推荐（平台/AI 出码 + 性能门槛）**：`Module.withFlows(programs)`（批量安装多个 programs，并保证每个 module instance 只产生 1 条 actions$ watcher Fiber；内部做 `actionTag -> programs[]` 路由）
 - `program.exportStaticIr()`：导出 JSON 可序列化 Static IR（供 Devtools/Alignment Lab 可视化与 diff）
 - `program.validate()`：导出/安装前的强校验入口（fail-fast；错误可机器修复；运行时不承担校验成本）
+- `program.toJSON()`：导出 `WorkflowDef`（单一事实源，纯 JSON）
+- `FlowProgram.fromJSON(def)`：从 `WorkflowDef` 恢复值对象（提供方法能力）
 
 说明（避免“差点味道”的三条硬边界）：
 
-- **Spec ≠ Static IR**：`FlowProgramSpec` 是作者输入（声明式），Static IR 才是可序列化/可对比的单一真相源。
+- **Def ≠ Static IR**：`WorkflowDef` 是 authoring 输入（声明式、可落盘），Static IR 才是可序列化/可对比的单一真相源。
 - **Canonical AST（唯一规范形）**：在 Spec 与 Static IR 之间存在 Canonical AST：无语法糖、默认值落地、分支显式、`stepKey` 完整；所有前端（Recipe/AI/Studio/TS DSL）必须先归一到 Canonical AST，再编译为 Static IR。
-- **Tag-only serviceCall**：`serviceCall` 只接受 `Context.Tag`；Static IR 中只保留 `serviceId: string`（由 Tag 派生，算法对齐 `specs/078-module-service-manifest/contracts/service-id.md`，必须单点实现）。
+- **Tag-only call（推荐名）**：`call` 的 TS 语法糖只接受 `Context.Tag`；Static IR 中只保留 `serviceId: string`（由 Tag 派生，算法对齐 `specs/078-module-service-manifest/contracts/service-id.md`，必须单点实现）。
 - **无用户闭包进入运行期**：Program 内不允许“运行时求值”的 user closure；复杂映射/条件下沉到 service/pattern（Program 只编排边界与策略）。
 
 ### 1.2 触发源（最小集合）
@@ -33,29 +54,27 @@
 
 ### 1.3 步骤（最小集合）
 
-- `dispatch(actionTag, payload?, options?)`：默认写侧（可追踪）
-  - `options.key?`：可选稳定 key（用于生成稳定 nodeId / source 映射；组合/重构友好）
-- `serviceCall(serviceTag, options?)`：事务窗口外执行 IO；可产生 success/failure 分支
-  - `options.input?`：缺省时，Action 触发的 Program 默认传入 `action.payload`；其它触发源则为 `undefined`（如需复杂输入映射，请下沉到 service/pattern）
-  - `options.key?`：可选稳定 key（用于生成稳定 nodeId / source 映射；组合/重构友好）
-  - `options.timeoutMs?` / `options.retry?`：时间语义必须进入 tick 参考系，并出现在可导出的 Static IR（不是运行时黑盒参数）
+v1 采用 **对象式 step 构造**（更像“定义工件”，避免链式执行错觉），并把 `stepKey` 前移为必填字段：
+
+- `dispatch({ key, actionTag, payload? })`：默认写侧（可追踪）
+- `callById({ key, serviceId, input?, timeoutMs?, retry?, onSuccess, onFailure })`：事务窗口外执行 IO；可产生 success/failure 分支（Platform-Grade/LLM 规范形）
+  - `serviceId` 必须为字符串字面量（与 078 的规范化算法对齐；Static IR 只存 `serviceId: string`）
+- `call({ key, service, input?, timeoutMs?, retry?, onSuccess, onFailure })`：等价 TS sugar
+  - `service` 只接受 `Context.Tag`；落盘/导出时解析为 `serviceId`（不要求 Parser/Autofill 解析 Tag）
+  - `input`：缺省时，Action 触发默认传入 `payload`；其它触发源为 `undefined`
+  - `timeoutMs/retry`：时间语义必须进入 tick 参考系，并体现在可导出的 Static IR
   - `serviceTag` 建议代表“单一 operation 的 service port”（而不是一个包含多个方法的大而全 service）：
-    - FlowProgram 的 IR 只记录 `serviceId`（稳定字符串）而不记录 methodName；因此多操作应拆分为多个 Tag（每个 Tag 对应一个 port/操作）
-    - 目标：最大化类型安全、可解释性与 IR 的稳定可比性（避免再引入 methodName 字符串造成第二套身份/分支）
-- `onSuccess(steps)` / `onFailure(steps)`：结构化分支（authoring sugar）
-  - 仅允许紧跟在 `serviceCall(...)` 之后；编译后必须映射为 IR 的节点/边（图结构），并保持可解释的取消语义
-  - **v1 硬裁决**：不允许邻接推断作为真相源；Canonical AST 中分支必须显式结构化（例如 `serviceCall.{success,failure}` 或等价结构字段）
-- `delay(ms, options?)`：必须进入 tick 参考系（禁止影子 setTimeout）
-  - `options.key?`：可选稳定 key（用于生成稳定 nodeId / source 映射；组合/重构友好）
-- `traits.source.refresh(fieldPath, options?)`：显式触发 source 刷新（用于 manual-only source 或工作流中的强制刷新；写回仍走事务窗口）
-  - `options.key?`：可选稳定 key（用于生成稳定 nodeId / source 映射；组合/重构友好）
+    - Static IR 只记录 `serviceId` 而不记录 methodName；多操作应拆分为多个 Tag（每个 Tag 对应一个 port/操作）
+- `delay({ key, ms })`：必须进入 tick 参考系（禁止影子 `setTimeout`）
+
+> 关于“看起来像 Traits 的能力”（例如 `source.refresh`）：不进入 core steps。推荐通过 `callById('logix/kernel/<port>')`（TS sugar：`call(KernelPorts.<Port>)`）表达；如确需语法糖，一律进入 `FlowProgram.Ext.*` 并走版本化/预算/诊断门控（见 2) 约束）。
 
 ### 1.3.1 输入映射 DSL（v1，最小）
 
-FlowProgram v1 允许在不引入 user closure 的前提下，表达最小“结构映射”，用于 `serviceCall.input` 与 `dispatch(payload)`：
+FlowProgram v1 允许在不引入 user closure 的前提下，表达最小“结构映射”，用于 `call.input` 与 `dispatch(payload)`：
 
 - **允许**：`payload`、`payload.path`（JSON Pointer）、`const`、`object`、`merge`
-- **禁止**：读取 state/traits、条件/循环/算术、引用 `serviceCall` 返回值
+- **禁止**：读取 state/traits、条件/循环/算术、引用 `call` 返回值
 
 > 该 DSL 的目标是服务“平台/AI 出码”，并保证编译与校验可完全前置；复杂映射继续下沉到 service/pattern。
 
@@ -73,6 +92,8 @@ FlowProgram v1 允许在不引入 user closure 的前提下，表达最小“结
 - `FlowProgram.compose(...parts)`：组合步骤与片段，生成 `steps`（序列化的结构 AST，而不是运行时函数管道）
 - `FlowProgram.withPolicy(policy, stepsOrFragment)`：为一段结构附加策略（例如默认并发/时间策略）
 
+组合细节（v1 硬口径：stepKey 唯一性、compose 语义、withPolicy 合并优先级）见 `data-model.md#flowprogram-composition`。
+
 明确不做（避免歧义）：
 
 - 不把 `Effect.pipe/map/flatMap` 作为 FlowProgram 的结构 DSL：这些 API 以任意函数闭包为中心，无法可靠 IR 化/序列化；Effect 仅用于运行时解释执行（FlowRuntime/IO/Timer 之下的执行层）。
@@ -82,6 +103,8 @@ FlowProgram v1 允许在不引入 user closure 的前提下，表达最小“结
 - Program 必须可导出为 Static IR（JSON 可序列化，带 version+digest）。
 - 写侧默认仅允许 dispatch；禁止把 direct state write 作为 Program step（避免写逃逸）。
 - 时间算子必须可回放/可解释：timer 触发必须能归因到 tickSeq。
+- **表面语法糖自由，但语义不自由**：任何 sugar MUST 100% 可确定性降糖到 Canonical AST；禁止隐式降级为 opaque。
+- **stepKey 必填**：除 Recipe 的确定性补全外，缺失/冲突必须 fail-fast（并产出可机器修复的结构化错误）。
 
 ## 3) Recipe（压缩前端）与 Canonical AST（规范形）
 
@@ -97,6 +120,6 @@ v1 引入 Recipe 作为“压缩输入”形态：它不是另一套语义语言
 
 - 同一语义只有一种表示：去 sugar、补默认、显式分支、稳定 key
 - 所有 step 必须具备 `stepKey`（缺失 fail-fast）
-- `serviceCall` v1 只表达控制流（success/failure），不提供结果数据流
+- `call`（原 `serviceCall`）v1 只表达控制流（success/failure），不提供结果数据流
 
 > Canonical AST 的精确定义与示例见 `data-model.md`。

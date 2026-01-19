@@ -28,6 +28,8 @@
 - Decision: 解析期不执行用户代码；所有输入只来自源码文本与 tsconfig（source: spec Clarifications AUTO）。
 - Decision: `$.use(Tag)` 是唯一可识别的服务依赖使用点；`yield* Tag`（Effect Env 读取）不纳入（source: spec Clarifications AUTO + Q016）。
 - Decision: 确定性优先：AnchorIndex 默认不输出耗时字段；如需性能摘要，必须可配置关闭且不影响字节级确定性（source: spec Clarifications AUTO）。
+- Decision: Workflow（Π）进入全双工闭环：在 Platform-Grade 子集内识别 `FlowProgram.make/fromJSON({ ... })` 的 WorkflowDef，并对 `steps[*].key`（stepKey）缺失/重复给出可定位缺口/冲突信息，供 079/082 做保守补全/回写或门禁化（对子集外统一 Raw Mode）。
+- Decision: Platform-Grade WorkflowDef 的 identity 字段必须为字符串字面量（非字面量一律 Raw Mode）；Workflow service call 只收录字面量 `serviceId`（对应 `callById('<serviceId>')`）；step kind 限定为 `dispatch/call/delay`（其它 kind 统一 Raw Mode）。
 
 ## Technical Context
 
@@ -55,10 +57,10 @@
 
 - 契约落点：`specs/081-platform-grade-parser-mvp/contracts/schemas/anchor-index.schema.json`
 - 输出必须包含：
-  - `entries[]`：至少覆盖 ModuleDef/LogicDef/ServiceUse/AutofillTarget；
+  - `entries[]`：至少覆盖 ModuleDef/LogicDef/ServiceUse/WorkflowDef/WorkflowCallUse/AutofillTarget；
   - `rawMode[]`：对子集外/不确定项的显式降级记录；
   - `reasonCodes[]`：每个 skipped/降级项必须带可枚举原因；
-  - `summary`：输入规模与计数摘要（不含时间戳；允许包含耗时 ms 但必须可配置关闭，默认不输出以保持字节级确定性）。
+  - `summary`：输入规模与计数摘要（不含时间戳；允许包含耗时 ms 但必须可配置关闭，默认不输出以保持字节级确定性；必须包含 workflow 计数切片）。
 
 ### 2) ServiceId/ModuleId 的“静态可确定”解析策略
 
@@ -72,6 +74,12 @@
   - 仅当 `$.use(<TagSymbol>)` 且 TagSymbol 可追溯到 `Context.Tag("<string literal>")` 时，输出 `serviceIdLiteral`；
   - 其它情况一律不输出 serviceId，并在 entry 上标注 reason（unresolved_tag_symbol / non_literal_tag_key / dynamic_tag_expr）。
 
+补充（Workflow 侧）：
+
+- WorkflowDef `callById(serviceIdLiteral)`：
+  - 仅当 `serviceId` 为字符串字面量时，输出 `serviceIdLiteral`（可被 079 收集用于 services 补全）；
+  - `call(Tag)` 语法糖不在 MVP 静态可确定范围内：无法解析稳定 `ServiceId` 时必须降级并报告（避免推断漂移）。
+
 ### 3) 缺口点（AutofillTarget）定位策略
 
 - 仅对可识别的 `Module.make(..., <object literal>)` 输出缺口点：
@@ -79,6 +87,12 @@
   - `missing.devSource`：当缺少 `dev.source` 且可安全插入时提供插入点；
   - 已存在 `services: {}` 视为“已声明”，禁止输出缺口（避免覆盖作者意图）。
 - 插入点必须可复现：基于 object literal 的稳定 span + 规则化插入策略（例如按字典序或固定锚点字段后插入）。
+
+补充（Workflow stepKey）：
+
+- 仅对可识别的 WorkflowDef 输出缺口/冲突点：
+  - `missing.workflowStepKey`：当某个 step 对象字面量缺少 `key` 时输出插入点（精确到该 step 对象）；
+  - `duplicate_step_key`：当同一 workflow 内出现重复 `key` 时输出冲突定位（不提供插入点，供 079/082 拒绝写回并报告）。
 
 ## Perf Evidence Plan
 

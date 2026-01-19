@@ -1,17 +1,17 @@
 # Migration Notes（forward-only）
 
-本特性新增 FlowProgram API，用于把“手写 watcher 工作流”升级为“可编译控制律”。
+本特性新增 WorkflowDef/FlowProgram API，用于把“手写 watcher 工作流”升级为“可编译控制律（Π）”。
 
 ## 定位更新（v1）
 
-FlowProgram v1 已明确为 AI/平台专属的出码层（IR DSL）。因此迁移的核心不是“把业务手写 DSL 改得更顺手”，而是：
+FlowProgram v1 已明确为 AI/平台专属的出码层（IR DSL；权威输入为 `WorkflowDef`）。因此迁移的核心不是“把业务手写 DSL 改得更顺手”，而是：
 
 - 把高频 workflow 收敛到可出码/可校验/可导出的结构形态（Recipe/AI/Studio → Canonical AST → Static IR）
 - 把时间/并发/取消语义纳入 tick 参考系，并保证解释链与回放对齐
 
 ## 建议迁移
 
-- 把关键工作流（submit/跳转/刷新/重试）逐步迁到 FlowProgram：
+- 把关键工作流（submit/跳转/刷新/重试）逐步迁到 WorkflowDef/FlowProgram：
   - 使时间算子进入 tick 参考系（避免影子 setTimeout/Promise 链导致 replay/解释断链）
   - 使结构 IR 可导出（便于 Devtools/审查/diff）
 

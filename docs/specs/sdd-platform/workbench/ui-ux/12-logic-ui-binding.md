@@ -64,7 +64,7 @@ type BindingV1 = {
 - `state.path` 必须可类型检查（靠 type projection / compiler）。
 - 复杂条件/映射（例如 `!canSubmit`、`payload = results[0].id`）不进入 V1 Binding；应上升为：
   - Pattern 注意力（`intentRule`/pattern config），或
-  - Program（`Π`）的一部分（FlowProgram）。
+  - Workflow（`Π`）：权威输入为 `WorkflowDef`，DX 入口可为 `FlowProgram` 值对象。
 
 ## 3) Sandbox/Alignment 中的可观测闭环
 

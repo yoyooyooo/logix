@@ -10,21 +10,36 @@
 
 交付一个“可导出、可编译、可诊断”的 FlowProgram 能力：
 
-- 业务用声明式 DSL 描述“触发源（action/lifecycle）→ 步骤（dispatch/serviceCall/delay）→ 并发策略”；
+- 业务用声明式 DSL 描述“触发源（action/lifecycle）→ 步骤（dispatch/call/delay）→ 并发策略”；
 - 编译为运行期 watcher（复用现有 FlowRuntime/EffectOp），且严格遵守 txn-window 禁 IO；
 - 以 073 的 tick 作为观测参考系：时间算子必须可归因到 tickSeq（禁止影子 setTimeout/Promise 链）；
 - 导出 JSON 可序列化 Static IR（版本号 + digest），供 Devtools/Alignment Lab 可视化与 diff。
+
+## Optimization Ladder（对齐 NFR-005：可操作的“默认→观察→收敛→调参/拆分”阶梯）
+
+本特性必须交付一份“可执行的优化阶梯”，用于把性能/诊断问题从“拍脑袋调参”变成可复现、可门禁的推进路径：
+
+- **默认（baseline）**：`diagnostics=off` + `tape=off`，保证近零成本与确定性输出。
+- **观察（observe）**：打开 `diagnostics=light/sampled`，只输出 Slim meta（programId/runId/tickSeq/serviceId/cancel reason），用于定位“是谁触发/为何慢/为何取消”。
+- **收敛触发源与 selector（converge）**：把触发源/路由从“散落 watcher”收敛到 `Module.withFlows` 的单订阅 + `O(1+k)` action 路由；必要时拆分触发源（按 actionTag/phase）。
+- **调参/拆分 Program（tune/split）**：按证据（perf report + trace）调整并发策略与步骤粒度；将热点拆成更小 program/fragment 并保持 stepKey 稳定锚点。
+
+验收：该阶梯必须在 `tasks.md` 里有明确交付物（文档 + 示例/最小用例），并可通过 perf evidence 与 trace 输出“按阶梯推进”的证据闭环。
 
 ## Design Decisions（对齐本次 API 结论）
 
 为避免实现阶段“口径漂移”，本特性明确采纳以下裁决：
 
-- **分层**：`FlowProgramSpec`（作者输入）≠ `FlowProgramStaticIr`（单一真相源）。可序列化/可 diff 的对象是 Static IR，而不是 authoring spec。
+- **分层**：`WorkflowDef`（权威输入，纯 JSON）≠ `FlowProgramStaticIr`（单一真相源）。可序列化/可 diff 的对象是 Static IR，而不是 authoring 输入。
+- **SSoT 分化 + DX 一体化（Effect-native）**：
+  - SSoT：唯一权威输入收敛为 `WorkflowDef`（纯 JSON、可落盘、可校验、版本化），是平台/LLM/Studio 的事实源；
+  - DX：对外提供“值对象”`FlowProgram`（未来可更名为 `Workflow`），其 `toJSON()` 导出 `WorkflowDef`，并提供 `validate/exportStaticIr/install` 等冷路径方法；
+  - 任何 TS DSL/Recipe 都只能生成 `WorkflowDef`，不得直接携带运行时语义（闭包）或形成第二语义源。
 - **出码层定位**：FlowProgram 定位为 AI/平台专属的出码层（IR DSL），而非以“人类手写舒适”为第一目标；业务侧“少胶水”主要来自 Recipe/Studio/AI 生成或更高层 Pattern。
 - **Canonical AST（唯一规范形）**：引入 Canonical AST 作为语义规范形：无语法糖、默认值落地、分支显式、`stepKey` 完整；Static IR 是 Canonical AST 的可导出投影（version+digest+nodes/edges）。
 - **组合发生在 build-time**：提供 fragment/compose/withPolicy 等组合器来生成 Spec/IR；运行时仍由 Effect 承载执行。**不**把 `Effect.pipe/map/flatMap` 作为结构 DSL 的 authoring API（避免任意闭包导致不可 IR 化/不可序列化）。
-- **无用户闭包进入运行期**：Program 内禁止“运行时求值”的 user closure（包括 `serviceCall(builder)` 形态）。复杂映射/条件下沉到 service/pattern。
-- **Service 身份单一真相源**：`serviceCall` 走 Tag-only API；Static IR/Trace/Tape 中只存 `serviceId: string`，并按 `specs/078-module-service-manifest/contracts/service-id.md` 的算法从 Tag 派生（必须单点 helper，禁止各处自写）。
+- **无用户闭包进入运行期**：Program 内禁止“运行时求值”的 user closure（包括 `call(builder)` 形态）。复杂映射/条件下沉到 service/pattern。
+- **Service 身份单一真相源**：`call`（原 `serviceCall`）走 Tag-only API；Static IR/Trace/Tape 中只存 `serviceId: string`，并按 `specs/078-module-service-manifest/contracts/service-id.md` 的算法从 Tag 派生（必须单点 helper，禁止各处自写）。
 - **分支是图，不是约定**：`onSuccess/onFailure` 允许作为 authoring sugar，但编译后必须显式落到 IR 的节点/边（包含 success/failure 边），用于解释链路与 diff。
 - **时间语义进 IR**：`timeout/retry/delay` 等时间算子必须进入 tick 参考系；其中 `timeout/retry` 不得只作为运行时黑盒参数，必须体现在可导出的 Static IR 中。
 - **入口收敛**：推荐入口为 `Module.withFlows(programs)`（平台/AI 出码）与 `Module.withFlow(program)`（人类/小规模）；`program.install(Module.tag)` 仅作为高级装配接口保留。
@@ -33,7 +48,7 @@
 
 与 `spec.md#Hard Decisions` 保持一致，本计划实现时以以下硬裁决为门槛（fail-fast）：
 
-- `serviceCall` v1 不提供结果数据流：只表达控制流（success/failure）与策略；基于结果的 payload/分支下沉到 service 或拆分多个 Program。
+- `call` v1 不提供结果数据流：只表达控制流（success/failure）与策略；基于结果的 payload/分支下沉到 service 或拆分多个 Program。
 - 输入映射 DSL v1：仅 `payload/payload.path/const/object/merge`；不读 state/traits；无条件/循环/算术。
 - Canonical AST 强制 `stepKey` 必填：缺失即 validate/export 失败；禁止顺序派生。
 - 分支必须显式结构：禁止邻接推断作为真相源。
@@ -78,9 +93,9 @@
 
 - 禁止影子 `setTimeout/Promise` 链：delay/timeout/retry 必须走可注入的宿主能力（例如 `HostScheduler.scheduleTimeout` / Effect Clock）。
 - timer schedule/cancel/fired 的 bookkeeping 必须是 `O(1)`；latest 替换必须可中断旧 timer。
-- 解释链必须能把 timer 事件锚定到 `programId/runId`，并最终落到某次 `tickSeq`（由后续 dispatch/sourceRefresh 触发的提交承载）。
+- 解释链必须能把 timer 事件锚定到 `programId/runId`，并最终落到某次 `tickSeq`（由后续 dispatch 或 KernelPort call 触发的提交承载）。
 
-### P5: serviceCall（IO 边界与背压）
+### P5: call（IO 边界与背压）
 
 - IO 必须发生在事务窗口外；不得阻塞 txnQueue consumer（参照 `ModuleRuntime.dispatch` 的 publish 注释：publish 必须在 txn 外且避免 deadlock）。
 - 可诊断性必须通过既有边界复用（`EffectOp(kind='flow'|'service')`），并以 diagnostics 分级门控成本。
@@ -100,6 +115,11 @@
 2. `validate`：fail-fast（重复 stepKey/非法 InputExpr/未知 version）
 3. `compileStaticIr`：计算 `programId/nodeId/digest/nodes/edges/source`
 4. `compileRuntimePlan`：把 steps 编译为紧凑执行结构（数组 + 预编译 InputExpr + 预解析 service）
+
+补充（DX 一体化落点）：
+
+- `WorkflowDef` 是 normalize 的唯一入口形态：TS DSL/Recipe/Studio 必须先产出 def，再进入 `normalize/validate/...`。
+- `FlowProgram.toJSON()` 输出 def；`FlowProgram.fromJSON(def)`（或等价静态方法）恢复值对象形态并提供冷路径方法。
 
 ### 2) 运行时挂载形态（避免 watcher 膨胀）
 
@@ -158,11 +178,11 @@ type FlowProgramRegistryV1 = {
 v1 的解释器只需要处理：
 
 - `dispatch`：构造 `{ _tag: actionTag, payload }` 并调用 `runtime.dispatch`（写侧默认路径）
-- `serviceCall`：通过 `serviceId` 解析入口并执行（事务窗口外），结果只走 success/failure 控制流（不暴露结果数据流）
+- `call`：通过 `serviceId` 解析入口并执行（事务窗口外），结果只走 success/failure 控制流（不暴露结果数据流）
 - `delay`：通过可注入 time service 做 sleep，并确保取消可中断（latest 替换时必须能 cancel）
-- `sourceRefresh`：调用 trait/source refresh（作为显式 escape hatch；自动触发主线由 076 负责）
+- KernelPorts（例如 source refresh）：以 `callById('logix/kernel/<port>')` 作为 Platform-Grade/LLM 出码规范形表达（TS sugar：`call(KernelPorts.<Port>)`；KernelPort 只是普通 service port；必须具备稳定 `serviceId`；自动触发主线由 076 负责）
 
-#### serviceCall 解析（避免热路径字符串查表）
+#### call 解析（避免热路径字符串查表）
 
 - install/compile 期：把 `serviceId` 解析为可调用入口并缓存到 compiled step（缺失直接 fail-fast）
 - run 期：直接调用缓存入口，禁止每次 call 再做 `Map.get(serviceId)` / 字符串拼装
@@ -181,12 +201,6 @@ v1 的解释器只需要处理：
 - tape：record/replay/fork 时才记录边界事件；记录体积超阈值时优先 digest + 外挂存储（record 中锚点必须完整）
 
 ## Technical Context
-
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
 
 **Language/Version**: TypeScript 5.9.x（ESM）  
 **Primary Dependencies**: `effect` v3，`@logixjs/core`（FlowRuntime/EffectOp），依赖 073 的 tick/contracts  
@@ -273,8 +287,8 @@ Baseline 语义（MUST-1）：
 
 测量点位（P1，必须至少覆盖两条链路）：
 
-- `flowProgram.submit.tickNotify`：submit 工作流（`serviceCall + dispatch + success/failure`）在 `diagnostics=off` 下的 tick→notify p95 / 分配（对比 manual vs flowProgram）。
-- `flowProgram.delay.timer`：delay→dispatch（或 delay→sourceRefresh）链路，验证不引入影子时间线，且解释链可归因到 tickSeq（对比 manual vs flowProgram）。
+- `flowProgram.submit.tickNotify`：submit 工作流（`call + dispatch + success/failure`）在 `diagnostics=off` 下的 tick→notify p95 / 分配（对比 manual vs flowProgram）。
+- `flowProgram.delay.timer`：delay→dispatch（或 delay→KernelPort call）链路，验证不引入影子时间线，且解释链可归因到 tickSeq（对比 manual vs flowProgram）。
 
 预算策略（Hard Gate，按 073 口径）：
 
@@ -303,17 +317,11 @@ specs/075-flow-program-codegen-ir/
     ├── ir.md
     ├── diagnostics.md
     ├── tape.md
+    ├── optimization-ladder.md
     └── migration.md
 ```
 
 ### Source Code (repository root)
-
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 
 ```text
 packages/logix-core/

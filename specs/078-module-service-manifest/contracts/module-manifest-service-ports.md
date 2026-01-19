@@ -38,6 +38,16 @@ type ModuleManifest = {
 - 默认约定：`port = serviceId`，仅在需要更强解释/语义区分时，再使用更短的业务别名（例如 `archiver` / `backupSvc`）。
 - 端口名的选择属于“解释层”资产：应保证稳定可 diff；变更端口名必须能在 diff 中被解释为“端口名变更”（而非依赖漂移）。
 
+## KernelPorts（内核端口）
+
+KernelPorts 视为普通 service ports：
+
+- `serviceId` 在 `logix/kernel/*` 命名空间下（例如 `logix/kernel/sourceRefresh`）；
+- 必须进入 `servicePorts` 才能被 TrialRun/回放/Devtools 稳定对齐；
+- Workflow/Π 的 `call(serviceId)` 调用到 KernelPorts 时，Trace/Tape 里同样只携带 `serviceId` 锚点（避免“手写特权路径”）。
+
+权威约束见：`contracts/kernel-ports.md`。
+
 ## 来源与一致性
 
 来源：

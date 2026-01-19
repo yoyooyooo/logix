@@ -19,9 +19,10 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 
 ## Phase 1: Setup（契约固化 + 预检）
 
-- [ ] T001 补齐 079 contracts 的 schema 目录与 README（AutofillReport@v1 + reason codes）`specs/079-platform-anchor-autofill/contracts/README.md`
+- [ ] T001 补齐 079 contracts 的 schema 目录与 README（AutofillReport@v1 + reason codes + stepKey autofill contract）`specs/079-platform-anchor-autofill/contracts/README.md`
 - [ ] T002 [P] 固化 AutofillReport@v1 JSON schema（Slim/确定性/可 diff）`specs/079-platform-anchor-autofill/contracts/schemas/autofill-report.schema.json`
 - [ ] T003 [P] 固化 reason codes schema（enum，forward-only）`specs/079-platform-anchor-autofill/contracts/schemas/autofill-reason-codes.schema.json`
+- [ ] T003.1 [P] 固化 Workflow stepKey autofill contract（v1 规则；对齐 075）`specs/079-platform-anchor-autofill/contracts/workflow-stepkey-autofill.md`
 - [ ] T004 [P] 增加 contracts 预检测试（079 schemas JSON 可解析 + $ref 可解析）`packages/logix-anchor-engine/test/Contracts/Contracts.079.AutofillContracts.test.ts`
 
 ---
@@ -45,7 +46,7 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 **Independent Test**: 对“缺失 services 且存在高置信度 use”样例，report-only 产生可审阅计划；write-back 后幂等且只改缺失字段。
 
 - [ ] T010 [P] [US1] fixture：缺失 services 且存在 `yield* $.use(Tag)` 的 Platform-Grade 模块 `packages/logix-anchor-engine/test/fixtures/repo-autofill-services/*`
-- [ ] T011 [US1] 从 AnchorIndex 聚合“模块→服务使用证据”（仅高置信度 serviceIdLiteral；动态/歧义跳过）`packages/logix-anchor-engine/src/internal/autofill/collectServiceUses.ts`
+- [ ] T011 [US1] 从 AnchorIndex 聚合“模块→服务使用证据”（高置信度 `$.use(Tag)` + WorkflowDef `callById(serviceIdLiteral)`；动态/歧义跳过）`packages/logix-anchor-engine/src/internal/autofill/collectServiceUses.ts`
 - [ ] T012 [US1] 生成 `services` 字段写回候选（默认 `port = serviceId`；稳定排序；去重）`packages/logix-anchor-engine/src/internal/autofill/buildServicesPatch.ts`
 - [ ] T013 [P] [US1] 单测：同一模块内多处 use 去重且 keys 稳定排序 `packages/logix-anchor-engine/test/Autofill/Autofill.services.dedup-sort.test.ts`
 - [ ] T014 [P] [US1] 单测：动态/歧义 use 不生成候选（宁可漏）`packages/logix-anchor-engine/test/Autofill/Autofill.services.degrade.test.ts`
@@ -94,7 +95,26 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 
 ---
 
+## Phase 8: Workflow StepKey Autofill（对齐 075；全双工硬前置） (Priority: P1)
+
+**Goal**: 对 Platform-Grade WorkflowDef 缺失 `steps[*].key` 的场景生成确定性补全候选，并通过 082 产出 PatchPlan/WriteBackResult；对重复 key 必须拒绝写回并可解释。  
+**Independent Test**: report-only 输出缺失 key 定位与候选；write-back 后幂等；重复 key 场景不写回且 reason code=duplicate_step_key。
+
+- [ ] T028 [P] fixture：WorkflowDef 缺失 stepKey（FlowProgram.make/fromJSON + steps array literal）`packages/logix-anchor-engine/test/fixtures/repo-autofill-workflow-stepkey/*`
+- [ ] T029 从 AnchorIndex 聚合 Workflow steps 并识别缺失/重复 key `packages/logix-anchor-engine/src/internal/autofill/collectWorkflowSteps.ts`
+- [ ] T030 生成 stepKey 写回候选（确定性 baseKey + 冲突后缀）`packages/logix-anchor-engine/src/internal/autofill/buildWorkflowStepKeyPatch.ts`
+- [ ] T031 [P] 单测：stepKey 补全幂等与最小 diff `packages/logix-anchor-engine/test/Autofill/Autofill.workflow.stepKey.idempotent.test.ts`
+- [ ] T032 [P] 单测：重复 stepKey 拒绝写回并输出 `duplicate_step_key` `packages/logix-anchor-engine/test/Autofill/Autofill.workflow.stepKey.duplicate.test.ts`
+
+---
+
 ## Dependencies & Execution Order
 
 - 本 spec 依赖 081（AnchorIndex）与 082（Rewriter）；建议实现顺序：081 → 082 → 079。
 - Phase 1（契约）→ Phase 2（policy/report 骨架）→ US1/US2（候选生成）→ US3（串联回写）→ US4（显式声明门禁回归）。
+
+---
+
+## Phase 9: 既有文档措辞同步（延后到本需求收尾阶段）
+
+- [ ] T040 同步平台 SSoT：补齐“Autofill 只补缺失字段/宁可漏不乱补/stepKey 门禁化”的统一口径与导航入口 `docs/ssot/platform/**`（仅措辞/导航对齐）

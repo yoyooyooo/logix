@@ -50,6 +50,7 @@ description: "Task list for 082-platform-grade-rewriter-mvp (PatchPlan@v1 / Writ
 - [ ] T013 [P] [US1] 单测：缺失字段被新增且不重排其它字段 `packages/logix-anchor-engine/test/Rewriter/Rewriter.addObjectProperty.minimal-diff.test.ts`
 - [ ] T014 [P] [US1] 单测：`services: {}` 视为已声明 → operation 必须 skip `packages/logix-anchor-engine/test/Rewriter/Rewriter.skip.explicit-empty-services.test.ts`
 - [ ] T015 [P] [US1] 单测：幂等（写回后再次运行 no-op）`packages/logix-anchor-engine/test/Rewriter/Rewriter.idempotent.test.ts`
+- [ ] T015.1 [P] [US1] 单测：支持对嵌套对象（例如 Workflow steps 的 step 对象）写入缺失字段且最小 diff `packages/logix-anchor-engine/test/Rewriter/Rewriter.addObjectProperty.nested-object.test.ts`
 
 ---
 
@@ -89,3 +90,9 @@ description: "Task list for 082-platform-grade-rewriter-mvp (PatchPlan@v1 / Writ
 - Phase 1 → Phase 2（BLOCKS all user stories）
 - US1（最小补丁）与 US3（report-only）共享同一回写骨架；US2（显式失败）必须在进入 write-back 之前完成并覆盖关键歧义场景
 - 本 spec 的输入通常来自 081 AnchorIndex/079 AutofillPolicy，但单测应允许使用最小 fixture（不强耦合 081 实现）
+
+---
+
+## Phase 7: 既有文档措辞同步（延后到本需求收尾阶段）
+
+- [ ] T026 同步平台 SSoT：补齐“Platform-Grade 回写/最小 diff/幂等/write-back 竞态防线”的统一口径与导航入口 `docs/ssot/platform/**`（仅措辞/导航对齐）

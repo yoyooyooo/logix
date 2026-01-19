@@ -56,7 +56,7 @@
 
 以“基础能力验证”为目标，MVP 子命令建议（名称可在实现阶段微调，但语义保持稳定）：
 
-- `logix ir export`：导出 Manifest/StaticIR/Artifacts（不执行完整业务交互）
+- `logix ir export`：导出控制面 Root IR（ControlSurfaceManifest + 可选 slices，例如 `workflowSurface`）与辅助工件（Artifacts；不执行完整业务交互）
 - `logix trialrun`：输出 TrialRunReport（受控窗口 + 资源收束）
 - `logix anchor index`：输出 AnchorIndex@v1（081）
 - `logix anchor autofill`：输出 PatchPlan/WriteBackResult（082），并在 `--write` 时写回源码锚点字段（079 规则）
@@ -68,7 +68,7 @@
 原则：既能“脚本化抓 stdout”，也能“稳定落盘供 CI diff / 平台消费”。
 
 - stdout：统一输出单个 JSON（`CommandResult@v1`），避免各子命令格式漂移；不输出时间戳/随机字段。
-- files：支持 `--out <dir>`；文件命名策略必须稳定且可预测（例如 `manifest.json`、`trialrun.report.json`、`anchor.index.json`、`writeback.result.json`）。
+- files：支持 `--out <dir>`；文件命名策略必须稳定且可预测（例如 `control-surface.manifest.json`、`workflow.surface.json`、`trialrun.report.json`、`anchor.index.json`、`patch.plan.json`、`writeback.result.json`、`autofill.report.json`）。
 
 ### 3) 复用/迁移现有脚本（DRY）
 

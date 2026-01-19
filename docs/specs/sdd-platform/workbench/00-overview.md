@@ -49,7 +49,7 @@ Spec（Feature/Scenario） → Blueprint/Contracts（C_T + Π） → Code（TS/E
 
 | 角色 | 做什么 | 交接物（面向下游） | 不要求掌握 |
 | --- | --- | --- | --- |
-| 需求录入者（PM/架构师） | 写清 Feature/Scenario/验收口径；做最小拆解与关联（范围、关键路径、示例数据） | `FeatureSpec` + `ScenarioSpec`（可执行规格） | Schema/Trait/FlowProgram 等实现术语 |
+| 需求录入者（PM/架构师） | 写清 Feature/Scenario/验收口径；做最小拆解与关联（范围、关键路径、示例数据） | `FeatureSpec` + `ScenarioSpec`（可执行规格） | Schema/Trait/WorkflowDef 等实现术语 |
 | 架构师（裁决者） | 决定模块边界/依赖、质量约束与验收方式；把 Spec 映射到 Blueprint/Contracts | Blueprint + Contracts（`C_T + Π`）+ 风险/预算说明 | 具体实现细节与代码组织 |
 | 开发（实施者） | 消费 Spec/Blueprint/Contracts，拆成可验收的任务并实现 | Task Pack + Code + 可解释 RunResult | 平台内部可视化实现细节 |
 

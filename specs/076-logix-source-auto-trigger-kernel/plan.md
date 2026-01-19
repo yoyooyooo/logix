@@ -10,12 +10,12 @@
 - 以 `dirtyPaths + depsIndex` 增量定位受影响 sources（避免线性扫描）；
 - 将 onMount/onDepsChange + debounce 的受限控制律固化为内核语义（可诊断/可回放/可预算，且对齐 tick 参考系）；
 - 迁移 `@logixjs/query`/`@logixjs/form`：删除/收敛默认 auto-trigger 逻辑，只保留显式手动 refresh 作为 escape hatch；
-- 明确边界：复杂工作流（delay/retry/timeout/分支）升级到 075 FlowProgram（不强塞进 trait meta）。
+- 明确边界：复杂工作流（delay/retry/timeout/分支）升级到 075 Workflow（对外 DX 入口 `FlowProgram`；不强塞进 trait meta）。
 
 ## 073/075 对齐（防漂移）
 
 - 参考系：以 073 的 `tickSeq` 定义“同时性”；任何自动触发/时间语义必须能归因到 tick 证据链（禁止影子时间线）。
-- 分层：Trait 描述绑定事实（受限几何）；Source Auto-Trigger 是内核提供的 `Π_source`；通用 `Π_general` 由 075 FlowProgram 提供。
+- 分层：Trait 描述绑定事实（受限几何）；Source Auto-Trigger 是内核提供的 `Π_source`；通用 `Π_general` 由 075 Workflow 提供（权威输入 `WorkflowDef`，DX 入口 `FlowProgram`）。
 - 事务：事务窗口禁 IO；auto-trigger 只能 enqueue/dispatch；真正 IO 由 source refresh runtime 在窗口外执行。
 
 ## Technical Context
@@ -44,7 +44,7 @@
 - 定义 `StateTrait.source` 的 auto-trigger policy（替代现有 `triggers/debounceMs` 的反射式解释口径）。
 - 统一触发语义与默认值：
   - 默认开启 onMount + onDepsChange；
-  - `autoRefresh: false` 表示 manual-only（仍允许显式 `traits.source.refresh`）。
+  - `autoRefresh: false` 表示 manual-only（仍允许显式触发 refresh；Platform-Grade/LLM 出码推荐通过 `callById('logix/kernel/sourceRefresh')` 保持可解释锚点；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
 - 在 StateTrait Static IR 中补齐 policy 输出（复用 `policy` 字段，不新增平行 IR）。
 
 ### Phase 2: Core Implementation（depsIndex + kernel）

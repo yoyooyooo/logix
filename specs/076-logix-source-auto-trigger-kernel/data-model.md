@@ -15,7 +15,7 @@ type SourceAutoRefresh =
 默认值：
 
 - `autoRefresh` 未提供：等价于 `{ onMount: true, onDepsChange: true, debounceMs: 0 }`
-- `autoRefresh: false`：关闭自动触发，但允许显式 `traits.source.refresh(fieldPath)`
+- `autoRefresh: false`：关闭自动触发，但允许显式触发 refresh；Platform-Grade/LLM 出码推荐通过 `callById('logix/kernel/sourceRefresh')`（避免形成不可对齐的“手写特权路径”；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）
 
 ## 2) depsIndex（增量定位）
 

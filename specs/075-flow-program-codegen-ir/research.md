@@ -22,7 +22,7 @@
 ## 设计裁决（本 spec 的最小集合）
 
 - FlowProgram 是“自由编排”的结构化表示：它不是 StateTrait 的一种 meta（避免语义混装）。
-- FlowProgram 的最小节点集先收敛为：trigger(action/lifecycle) + step(dispatch/serviceCall/delay) + concurrencyPolicy；timer fire 属于 `delay/timeout/retry` 等时间算子的内部调度结果（需进入 tick 参考系与 trace/tape）。
+- FlowProgram 的最小节点集先收敛为：trigger(action/lifecycle) + step(dispatch/call/delay) + concurrencyPolicy；timer fire 属于 `delay/timeout/retry` 等时间算子的内部调度结果（需进入 tick 参考系与 trace/tape）。
 - 时间算子必须通过可注入的时间源调度（例如 `HostScheduler.scheduleTimeout` / Effect `Clock`；测试可注入 TestClock/DeterministicHostScheduler），禁止默认 `setTimeout`。
 
 ## Open Questions
@@ -30,7 +30,7 @@
 - ✅ API 落点：v1 先做可挂载的 `ModuleLogic`（推荐 `Module.withFlow(program)` / 底层 `program.install(Module.tag)`）；蓝图 `flows` 槽位作为后续 DX 演进（forward-only）。
 - ✅ ServiceCall 的抽象：采用 Tag-only（`Context.Tag`），并将稳定 `serviceId` 按 `specs/078-module-service-manifest/contracts/service-id.md` 派生进入 Static IR/Trace/Tape（单点 helper）。
 - ✅ 分支表达：v1 先做 success/failure 二分（authoring sugar `onSuccess/onFailure`），但编译后必须显式落到图结构（节点/边），为 Devtools/diff/解释链提供单一真相源。
-- 取消/补偿：是否需要显式 compensation 节点，或先依赖业务 action 的 reducer + state 表达两阶段？
+- ✅ 取消/补偿：v1 不引入 compensation 节点；取消语义先以 `cancelReason/cancelledByRunId` + 业务 action/reducer（或 service 自己 dispatch）表达；compensation 作为 v2/backlog 议题（需先定义可回放/可预算的最小语义）。
 
 ## 依赖规格（SSoT）
 

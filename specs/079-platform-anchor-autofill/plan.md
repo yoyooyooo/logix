@@ -32,6 +32,7 @@
 - Decision: 端口命名默认 `port = serviceId`；不推断业务语义别名（如 `archiver`/`backupSvc`）。
 - Decision: 静态识别以 `docs/ssot/platform/ir/00-codegen-and-parser.md` 的 Platform-Grade AST 规则为准；Loader/TrialRun 只作为证据/校验输入。
 - Decision: 幂等与最小改动面：补全只写入缺失字段；稳定排序与去重；重复运行以“字节级无变化”为判定标准（无新 diff）。
+- Decision: Workflow stepKey 是全双工/门禁化的核心稳定锚点：在 Platform-Grade 子集内允许保守补全 `WorkflowDef.steps[*].key`（只补缺失，确定性、幂等）；发现重复 key 必须拒绝写回并报告（reason codes），避免 silent corruption。
 
 ## Technical Context
 
@@ -126,6 +127,11 @@ docs/specs/sdd-platform/
 - 能识别到至少一个确定的服务 Tag 使用点（优先 Platform-Grade 子集 `yield* $.use(ServiceTag)`）；
 - 能为该 Tag 推导出稳定 `serviceId`（例如能解析到 `Context.Tag("...")` 的字符串字面量；无法确定则跳过）。
 
+补充（Workflow 侧）：
+
+- 若模块包含 Platform-Grade 的 Workflow 定义（`FlowProgram.make/fromJSON`）且 WorkflowDef 以 `serviceId` 字符串字面量表达 `callById(serviceId)`，则可将这些 `serviceId` 视为“确定性使用点”并作为 `services` 补全候选来源之一。
+- 若 Workflow 定义使用 `call(Tag)` 语法糖且无法静态解析出稳定 `serviceId`，必须跳过并报告（宁可漏不乱补）。
+
 **写回形态**：
 
 - 写入 `services: { [serviceId]: ServiceTag, ... }`（稳定排序、去重）。
@@ -149,6 +155,15 @@ docs/specs/sdd-platform/
 - 写入 `dev: { source: { file, line, column } }`（或在既有 `dev` 上补齐 `source`）。
 
 说明：定位锚点应不进入“结构 digest”（避免代码移动导致 CI diff 噪声）；如当前 digestBase 已排除 `source`，则保持该约束不变。
+
+### 3.1) Workflow stepKey（`steps[*].key`）补全策略（对齐 075）
+
+目标：把 Workflow（`Π`）的稳定地址 `stepKey` 从“可缺省”提升为“可回写/可门禁化”的工程事实。
+
+- 仅在 Platform-Grade 子集内补全：`FlowProgram.make/fromJSON({ ... })` + `steps:[...]` 数组字面量 + step 对象字面量。
+- 只补缺失字段：step 已显式声明 `key` 必须跳过（reason: `already_declared`）。
+- 冲突即拒绝：workflow 内存在重复 `key` 必须拒绝写回（reason: `duplicate_step_key`），只报告冲突定位与修复建议。
+- 候选 key 生成与冲突消解规则以 contract 为准：`contracts/workflow-stepkey-autofill.md`（确定性、幂等、最小 diff）。
 
 ### 4) 装配依赖锚点（imports / assembly）分阶段
 

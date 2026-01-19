@@ -50,6 +50,7 @@ Prelude = 为下一阶段“试跑 + 可视化 + 可回写”打通的最小基�
 
 - **单一真相源**：权威永远是源码中的显式锚点声明；TrialRun/Loader/Spy 只作证据与校验输入。
 - **稳定标识去随机化**：所有锚点必须稳定、可序列化、可 diff；禁止随机/时间戳作为默认锚点来源。
+- **Workflow 锚点必须可回写**：任何进入 `Π` 的 Workflow 都必须具备稳定锚点（至少 `programId + stepKey`），并能进入 Platform-Grade 子集的 Parser/Autofill/Rewriter 闭环；否则 Workflow 永远停留在 Raw/Gray Box，无法门禁化与全双工回写。
 - **诊断事件 Slim 且可序列化**：平台/Devtools 只消费 JSON-safe 负载；超限必须可解释降级。
 - **事务窗口禁止 IO**：任何 IO 必须事务外执行；试跑也必须可控、副作用可治理。
 
@@ -66,6 +67,7 @@ Prelude = 为下一阶段“试跑 + 可视化 + 可回写”打通的最小基�
 - SchemaAST 分层与 registry（解释/校验底座）：`specs/040-schemaast-layered-upgrade/`
 - Playground Editor Intellisense（可选增强，不计入里程碑门槛）：`specs/061-playground-editor-intellisense/`
 - Action Surface manifest（动作锚点）：`specs/067-action-surface-manifest/`
+- Workflow/Π surface（WorkflowDef → Π slice）：`specs/075-flow-program-codegen-ir/`
 - Module↔Service（servicePorts）纳入 Manifest：`specs/078-module-service-manifest/`
 - 保守自动补全锚点声明（回写源码）：`specs/079-platform-anchor-autofill/`
 - Platform Visualization Lab（可选增强，不计入里程碑门槛）：`specs/086-platform-visualization-lab/`

@@ -14,7 +14,7 @@ FlowProgram v1 明确定位为 **AI/平台专属出码层（IR DSL）**：
 
 - 人类日常不需要手写完整 Program 图；推荐通过 Recipe（压缩输入）或 Studio/AI 直接产出 Canonical AST。
 - Canonical AST 是语义规范形：无语法糖、分支显式、`stepKey` 必填；Static IR 是其可导出投影（version+digest+nodes/edges）。
-- `serviceCall` v1 不提供结果数据流；若需要“基于结果计算后续 payload/分支”，必须下沉到 service 或拆分多个 Program 通过 action 串联。
+- `call` v1 不提供结果数据流；若需要“基于结果计算后续 payload/分支”，必须下沉到 service 或拆分多个 Program 通过 action 串联。
 
 ## 示例 1：submit → API → success（Recipe → Canonical AST）
 
@@ -43,7 +43,7 @@ const SubmitCanonicalAst = {
   steps: [
     { kind: 'dispatch', key: 'started', actionTag: 'submitStarted' },
     {
-      kind: 'serviceCall',
+      kind: 'call',
       key: 'call',
       serviceId: 'Checkout.SubmitOrder',
       input: { kind: 'payload' },
@@ -51,7 +51,14 @@ const SubmitCanonicalAst = {
       retry: { times: 2 },
       onSuccess: [
         { kind: 'dispatch', key: 'succeeded', actionTag: 'submitSucceeded' },
-        { kind: 'sourceRefresh', key: 'refresh.profile', fieldPath: 'profile' },
+        {
+          kind: 'call',
+          key: 'kernel.sourceRefresh.profile',
+          serviceId: 'logix/kernel/sourceRefresh',
+          input: { kind: 'object', fields: { fieldPath: { kind: 'const', value: 'profile' } } },
+          onSuccess: [],
+          onFailure: [],
+        },
       ],
       onFailure: [{ kind: 'dispatch', key: 'failed', actionTag: 'submitFailed' }],
     },
@@ -85,7 +92,14 @@ const RefreshCanonicalAst = {
   trigger: { kind: 'lifecycle', phase: 'onStart' },
   steps: [
     { kind: 'delay', key: 'delay', ms: 3000 },
-    { kind: 'sourceRefresh', key: 'refresh.profile', fieldPath: 'profile' },
+    {
+      kind: 'call',
+      key: 'kernel.sourceRefresh.profile',
+      serviceId: 'logix/kernel/sourceRefresh',
+      input: { kind: 'object', fields: { fieldPath: { kind: 'const', value: 'profile' } } },
+      onSuccess: [],
+      onFailure: [],
+    },
   ],
 } as const
 ```
@@ -105,7 +119,7 @@ const TypeaheadCanonicalAst = {
   steps: [
     { kind: 'delay', key: 'debounce', ms: 200 },
     {
-      kind: 'serviceCall',
+      kind: 'call',
       key: 'call',
       serviceId: 'Search.Suggest',
       input: { kind: 'object', fields: { q: { kind: 'payload.path', pointer: '' } } },
@@ -133,7 +147,7 @@ const ToggleFavoriteCanonicalAst = {
   steps: [
     { kind: 'dispatch', key: 'optimistic', actionTag: 'favoriteOptimisticApplied' },
     {
-      kind: 'serviceCall',
+      kind: 'call',
       key: 'call',
       serviceId: 'Item.ToggleFavorite',
       input: { kind: 'payload' },
@@ -160,7 +174,7 @@ const ImportCanonicalAst = {
   steps: [
     { kind: 'dispatch', key: 'started', actionTag: 'importStarted' },
     {
-      kind: 'serviceCall',
+      kind: 'call',
       key: 'call',
       serviceId: 'Import.Pipeline',
       input: { kind: 'payload' },
@@ -216,5 +230,5 @@ FlowProgram 覆盖的是“值得被 IR 化/治理”的控制律（`Π`），�
 FlowProgram 看起来像 workflow，这是刻意的：它只覆盖那些**值得被 IR 化/可解释/可预算**的控制律（`Π`）。
 
 - 不替代 `$.logic`：复杂或一次性的逻辑仍可用 `module.logic(($) => ...)` 写代码；只是这类黑盒逻辑很难被导出为结构 IR（Devtools 只能看到边界事件/trace 锚点）。
-- 限制是能力：写侧默认走 `dispatch`，IO 只能通过 `serviceCall`（事务窗口外），时间算子必须对齐 tick（避免影子时间线）。
-- 最佳扩展姿势：把复杂算法/集成细节封装成 service/pattern，在 FlowProgram 里用 `serviceCall` 调用（既保留表达力，也保留结构与诊断边界）。
+- 限制是能力：写侧默认走 `dispatch`，IO 只能通过 `call`（事务窗口外），时间算子必须对齐 tick（避免影子时间线）。
+- 最佳扩展姿势：把复杂算法/集成细节封装成 service/pattern，在 FlowProgram 里用 `call` 调用（既保留表达力，也保留结构与诊断边界）。

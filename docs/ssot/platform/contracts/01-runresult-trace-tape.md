@@ -9,6 +9,7 @@ status: living
 
 - 形式化基线（系统方程与符号表）：`docs/ssot/platform/foundation/01-the-one.md`
 - 时间旅行交互（愿景与模式）：`docs/ssot/platform/contracts/02-time-travel.md`
+- 控制面 Root IR（actions/services/traits/workflows/opaque）：`docs/ssot/platform/contracts/03-control-surface-manifest.md`
 - 观测协议壳（跨宿主序列化/排序）：`specs/005-unify-observability-protocol/contracts/observability-protocol.md`
   - `ObservationEnvelope` / `EvidencePackage` schemas：`specs/005-unify-observability-protocol/contracts/schemas/*`
 - 序列化硬门与稳定身份（instanceId 单一锚点）：`specs/016-serializable-diagnostics-and-identity/spec.md`
@@ -57,9 +58,11 @@ type RunResultV1 = {
 
   // Static IR anchors：把运行行为锚定回结构（C_T/Π）
   readonly static?: {
+    /** Preferred: single Root Static IR digest for Control Surface Manifest. */
+    readonly controlSurfaceDigest?: string
     readonly moduleDescriptorsDigest?: string
     readonly traitIrDigest?: string
-    readonly programIrDigest?: string
+    readonly workflowSurfaceDigest?: string
   }
 }
 ```
@@ -69,6 +72,7 @@ type RunResultV1 = {
 - **`evidence` 是 RunResult 的核心**：它复用 `EvidencePackage(events: ObservationEnvelope[])`，以 `runId + seq` 作为唯一权威顺序。
 - `tape` 是可选增强：在 `mode=replay/fork` 或明确开启 record 时才要求存在；其最小口径以 `specs/075-flow-program-codegen-ir/contracts/tape.md` 为准（字段可迭代，但锚点必须稳定）。
 - `snapshots` 是对齐层的“最小可用证据”，不是长期存储；体积超阈值时允许只存 digest / patch 摘要。
+- `static.controlSurfaceDigest` 为首选：指向控制面 Root IR（`docs/ssot/platform/contracts/03-control-surface-manifest.md`）；若同时提供 `moduleDescriptorsDigest/traitIrDigest/workflowSurfaceDigest`，它们 MUST 为可从 Root IR 确定性导出的 slices（禁止并行真相源）。
 
 ## 3) 锚点与排序（防漂移硬约束）
 
