@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-19T23:15:55.013Z",
+    "from": {
+      "file": "specs/075-workflow-codegen-ir/perf/browser.before.54992122-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=manualWatcher.json",
+      "commit": "54992122276365b90869b089fe1b3c56e5de85b9"
+    },
+    "to": {
+      "file": "specs/075-workflow-codegen-ir/perf/browser.after.54992122-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=workflow.json",
+      "commit": "54992122276365b90869b089fe1b3c56e5de85b9"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "workflow.delay.timer",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=1 unavailable=0 missing=0] after[value=0 ok=1 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=off ok=1 unavailable=0 missing=0] after[value=off ok=1 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workflow.mode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "manualWatcher"
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "workflow"
+          },
+          "message": "workflow.mode(points) unit=count: before[value=manualWatcher ok=1 unavailable=0 missing=0] after[value=workflow ok=1 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=1 unavailable=0 missing=0] after[value=core ok=1 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.watchers",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 256
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 256
+          },
+          "message": "workload.watchers(points) unit=count: before[value=256 ok=1 unavailable=0 missing=0] after[value=256 ok=1 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "timePerDelayMs",
+          "unit": "ms",
+          "compared": 1,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [],
+          "topImprovements": [
+            {
+              "params": {
+                "watchers": 256,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 0.7999999970197678,
+                "p95Ms": 5.699999988079071
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 1.2000000029802322,
+                "p95Ms": 5.5
+              },
+              "deltaMs": {
+                "medianMs": 0.4000000059604645,
+                "p95Ms": -0.19999998807907104
+              },
+              "ratio": {
+                "median": 1.5000000093132257,
+                "p95": 0.9649122827197633
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workflow.submit.tickNotify",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=1 unavailable=0 missing=0] after[value=0 ok=1 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=off ok=1 unavailable=0 missing=0] after[value=off ok=1 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workflow.mode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "manualWatcher"
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "workflow"
+          },
+          "message": "workflow.mode(points) unit=count: before[value=manualWatcher ok=1 unavailable=0 missing=0] after[value=workflow ok=1 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=1 unavailable=0 missing=0] after[value=core ok=1 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.watchers",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 256
+          },
+          "after": {
+            "ok": 1,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 256
+          },
+          "message": "workload.watchers(points) unit=count: before[value=256 ok=1 unavailable=0 missing=0] after[value=256 ok=1 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "timePerSubmitMs",
+          "unit": "ms",
+          "compared": 1,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [],
+          "topImprovements": [
+            {
+              "params": {
+                "watchers": 256,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 1,
+                "p95Ms": 1.2999999970197678
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 0.6000000089406967,
+                "p95Ms": 1
+              },
+              "deltaMs": {
+                "medianMs": -0.3999999910593033,
+                "p95Ms": -0.29999999701976776
+              },
+              "ratio": {
+                "median": 0.6000000089406967,
+                "p95": 0.7692307709942202
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

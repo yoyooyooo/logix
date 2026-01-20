@@ -15,7 +15,7 @@
 ## 3) 推荐推进顺序
 
 - 先做 073 的 **M1（Reference Frame Cutover）**：把 tickSeq 参考系立住（React 单订阅点/no-tearing）。
-- 再做 075：把自由编排升级为 FlowProgram（时间算子进入 tick 证据链）。
+- 再做 075：把自由编排升级为 Workflow（时间算子进入 tick 证据链）。
 - 再做 076：消灭 Query/Form 的 watcher 胶水（source auto-trigger 内核化）。
 
 ## 4) 做到哪里算“交付”

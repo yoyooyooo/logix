@@ -28,7 +28,7 @@
 - Decision: 解析期不执行用户代码；所有输入只来自源码文本与 tsconfig（source: spec Clarifications AUTO）。
 - Decision: `$.use(Tag)` 是唯一可识别的服务依赖使用点；`yield* Tag`（Effect Env 读取）不纳入（source: spec Clarifications AUTO + Q016）。
 - Decision: 确定性优先：AnchorIndex 默认不输出耗时字段；如需性能摘要，必须可配置关闭且不影响字节级确定性（source: spec Clarifications AUTO）。
-- Decision: Workflow（Π）进入全双工闭环：在 Platform-Grade 子集内识别 `FlowProgram.make/fromJSON({ ... })` 的 WorkflowDef，并对 `steps[*].key`（stepKey）缺失/重复给出可定位缺口/冲突信息，供 079/082 做保守补全/回写或门禁化（对子集外统一 Raw Mode）。
+- Decision: Workflow（Π）进入全双工闭环：在 Platform-Grade 子集内识别 `Workflow.make/fromJSON({ ... })` 的 WorkflowDef，并对 `steps[*].key`（stepKey）缺失/重复给出可定位缺口/冲突信息，供 079/082 做保守补全/回写或门禁化（对子集外统一 Raw Mode）。
 - Decision: Platform-Grade WorkflowDef 的 identity 字段必须为字符串字面量（非字面量一律 Raw Mode）；Workflow service call 只收录字面量 `serviceId`（对应 `callById('<serviceId>')`）；step kind 限定为 `dispatch/call/delay`（其它 kind 统一 Raw Mode）。
 
 ## Technical Context

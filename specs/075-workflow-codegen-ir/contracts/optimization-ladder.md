@@ -11,7 +11,7 @@
   - 近零诊断成本（不得引入 O(programNodes) 扫描或额外常驻分配）
   - 行为只由 `WorkflowDef/Static IR` 决定（无运行时闭包语义）
 - 证据：
-  - 075 perf suite（`flowProgram.*`）满足预算（见 `specs/075-flow-program-codegen-ir/perf/*`）
+  - 075 perf suite（`workflow.*`）满足预算（见 `specs/075-workflow-codegen-ir/perf/*`）
 
 ### L1：观察（observe）
 
@@ -25,7 +25,7 @@
 ### L2：收敛（converge）
 
 - 触发源收敛：
-  - 推荐 `Module.withFlows(programs)`，保证单订阅 + `O(1+k)` action 路由
+  - 推荐 `Module.withWorkflows(programs)`，保证单订阅 + `O(1+k)` action 路由
   - 拒绝扩散性 watcher（避免每个 Flow 一套黑盒调度）
 - 服务引用收敛：
   - `call`/IR/Trace/Tape 只存 `serviceId: string`（来源 078 单点 helper）

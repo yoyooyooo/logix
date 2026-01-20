@@ -184,12 +184,13 @@ const toJsonValueInternal = (
     return truncateString(String(input), options.maxStringLength, stats)
   }
 
-  const entries = Object.entries(input)
-  const limit = Math.min(entries.length, options.maxObjectKeys)
+  const keys = Object.keys(input).sort((a, b) => a.localeCompare(b))
+  const limit = Math.min(keys.length, options.maxObjectKeys)
   const out: Record<string, JsonValue> = {}
 
   for (let i = 0; i < limit; i++) {
-    const [rawKey, rawValue] = entries[i]!
+    const rawKey = keys[i]!
+    const rawValue = (input as any)[rawKey]
     const key = truncateString(rawKey, options.maxStringLength, stats)
     if (rawValue === undefined) {
       stats.dropped += 1
@@ -198,9 +199,9 @@ const toJsonValueInternal = (
     out[key] = toJsonValueInternal(rawValue, options, stats, seen, depth + 1)
   }
 
-  if (entries.length > limit) {
+  if (keys.length > limit) {
     stats.oversized += 1
-    out.__truncatedKeys = entries.length - limit
+    out.__truncatedKeys = keys.length - limit
   }
 
   return out

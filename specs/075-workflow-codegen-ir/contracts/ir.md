@@ -1,6 +1,6 @@
-# Contracts: IR（FlowProgramStaticIr）
+# Contracts: IR（WorkflowStaticIr）
 
-> 本文固化 FlowProgram 的 Static IR 口径；Dynamic Trace 只携带锚点与摘要（见 diagnostics）。
+> 本文固化 Workflow 的 Static IR 口径；Dynamic Trace 只携带锚点与摘要（见 diagnostics）。
 
 ## 1) Static IR（V1）
 
@@ -10,7 +10,7 @@
 - 必须图结构：success/failure 分支必须显式映射为节点/边（不得依赖隐式约定）
 - 可选 source 映射：允许在 node 上附带可序列化的 `source`（例如 fragmentId/stepKey），用于 Devtools 定位与组合溯源；不得携带闭包/函数/IR 全量
 
-概念形态见 `specs/075-flow-program-codegen-ir/data-model.md#flowprogram-static-ir`。
+概念形态见 `specs/075-workflow-codegen-ir/data-model.md#workflow-static-ir`。
 
 ## 1.1 From Canonical AST → Static IR（规范化映射）
 

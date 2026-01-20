@@ -116,8 +116,8 @@ _GATE：必须在 Phase 0/1 设计完成后再次复核；本计划在本阶段�
 ### 10) Diagnosability & Explainability（诊断事件与成本）
 
 - diagnostics=off：不输出 id→path 的反解结果；state:update 等高频事件应尽可能被短路（无 sinks 时直接丢弃）。
-- diagnostics=light：保留最小摘要（`patchCount`、`dirty.rootIds` TopK=3、`rootIdsTruncated`、`dirtyAll+reason`、必要锚点如 `staticIrDigest/instanceId/txnSeq/opSeq`），不得携带 `from/to` 等重字段。
-- diagnostics=full：允许输出可序列化的 patch records（默认最多 256 条；超限必须裁剪并标记 `patchesTruncated=true` 且 `patchesTruncatedReason="max_patches"`），`dirty.rootIds` TopK=32 并携带 `rootIdsTruncated`；仍需保证 payload Slim & 可序列化（不可序列化字段必须省略/裁剪）。
+- diagnostics=light/sampled/full：保留最小摘要（`patchCount`、`dirty.rootIds` TopK=light:3、sampled/full:32、`rootIdsTruncated`、`dirtyAll+reason`、必要锚点如 `staticIrDigest/instanceId/txnSeq/opSeq`），不得携带 `from/to` 等重字段；sampled：采样命中才产出，否则等价 off。
+- diagnostics=sampled/full：允许输出可序列化的 patch records（默认最多 256 条；超限必须裁剪并标记 `patchesTruncated=true` 且 `patchesTruncatedReason="max_patches"`）；仍需保证 payload Slim & 可序列化（不可序列化字段必须省略/裁剪）。
 - Devtools/Sandbox/平台消费侧：当 `staticIrDigest` 缺失或不匹配时，必须不反解 `rootIds → rootPaths`（避免展示错误信息），仅展示 id 与摘要字段。
 
 ### 11) 用户侧性能心智模型（≤5 关键词）

@@ -83,7 +83,7 @@ Source Code (.ts)
     ▼
 AST Analysis
     │
-    │ Pattern Matching (StateTrait.xxx / FlowProgram.make)
+    │ Pattern Matching (StateTrait.xxx / Workflow.make)
     ▼
 IntentRule IR
     │
@@ -107,7 +107,7 @@ Studio Canvas (Nodes + Edges)
 | 代码类型                      | 可解析程度    | 处理方式                                     |
 | :---------------------------- | :------------ | :------------------------------------------- |
 | `traits` 对象                 | ✅ 完全可解析 | 提取为 Graph 节点与边                        |
-| `FlowProgram.make/install`    | ✅ 完全可解析 | 提取为 Workflow Static IR（Π slice）并联动画布节点/边 |
+| `Workflow.make/install`    | ✅ 完全可解析 | 提取为 Workflow Static IR（Π slice）并联动画布节点/边 |
 | `Logic.run()` 中的 Fluent API | ⚠️ 部分可解析 | 识别 `$.onAction/onState`，标记为 IntentRule |
 | 任意 Effect 编排              | ❌ 黑盒       | 标记为 "Escape Hatch"，不可视化细节          |
 
@@ -180,7 +180,7 @@ interface GraphUpdate {
   - 必须满足 JSON 可序列化；错误用 `errorSummary`，禁止透传 `unknown/Error/Cause` 对象图
 - 参考系与锚点：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`（`tickSeq/txnSeq/opSeq/linkId + program/run/timer/call anchors`）
 
-> 直观理解：Studio 消费的是 RunResult 的 `evidence.events[]`，而不是“运行时内部对象”。当需要更强能力（回放/分叉）时，再通过 `tape` 增强（见 `specs/075-flow-program-codegen-ir/contracts/tape.md`）。
+> 直观理解：Studio 消费的是 RunResult 的 `evidence.events[]`，而不是“运行时内部对象”。当需要更强能力（回放/分叉）时，再通过 `tape` 增强（见 `specs/075-workflow-codegen-ir/contracts/tape.md`）。
 
 ### 4.2 Graph 联动
 
@@ -257,7 +257,7 @@ Dev Server（`logix dev` / CLI 代理）在平台侧承担三重职责：
 
 两个硬约束（避免“第二套真相源”）：
 
-- **Parsability as a Feature**：需要结构化 DSL/IR 的地方必须可解析（`traits`、`FlowProgram.make` 等）；逃生舱（任意 Effect/Stream）可以存在，但必须被标记为 Gray/Black Box（可展示、不可精细编辑、且回放能力受限）。
+- **Parsability as a Feature**：需要结构化 DSL/IR 的地方必须可解析（`traits`、`Workflow.make` 等）；逃生舱（任意 Effect/Stream）可以存在，但必须被标记为 Gray/Black Box（可展示、不可精细编辑、且回放能力受限）。
 - **Observability as a Contract**：平台消费的是 RunResult（`EvidencePackage + optional Tape + snapshots`），而不是运行时内部对象；排序以 `runId + seq` 为唯一权威，`tickSeq` 只作为参考系锚点（口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）。
 
 ## 7. 部署模式

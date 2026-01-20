@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-19T23:15:07.890Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-01-19",
+    "matrixHash": "8cab05a2c67eb95c9f5d764c100ca4f34675d11b3c8553e847751ae158a2e517",
+    "git": {
+      "branch": "075-from-specs",
+      "commit": "54992122276365b90869b089fe1b3c56e5de85b9",
+      "dirty": true
+    },
+    "config": {
+      "runs": 10,
+      "warmupDiscard": 2,
+      "timeoutMs": 30000,
+      "headless": true,
+      "profile": "default",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "workflow.submit.tickNotify",
+      "title": "workflow: submit→notify baseline (manualWatcher vs workflow)",
+      "priority": "P1",
+      "primaryAxis": "watchers",
+      "budgets": [
+        {
+          "id": "off.p95<=1.37ms (baseline@watchers=256 manualWatcher * 1.05)",
+          "type": "absolute",
+          "metric": "timePerSubmitMs",
+          "p95Ms": 1.37
+        }
+      ],
+      "metricCategories": {
+        "timePerSubmitMs": "workflow"
+      },
+      "points": [
+        {
+          "params": {
+            "diagnosticsLevel": "off",
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerSubmitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1,
+                "p95Ms": 1.4000000059604645
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "workflow.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "manualWatcher"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "workload.watchers",
+              "unit": "count",
+              "status": "ok",
+              "value": 256
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "off.p95<=1.37ms (baseline@watchers=256 manualWatcher * 1.05)",
+            "type": "absolute",
+            "metric": "timePerSubmitMs",
+            "p95Ms": 1.37
+          },
+          "where": {
+            "diagnosticsLevel": "off"
+          },
+          "maxLevel": null,
+          "firstFailLevel": 256,
+          "reason": "budgetExceeded"
+        }
+      ]
+    },
+    {
+      "id": "workflow.delay.timer",
+      "title": "workflow: delay(timer)→notify baseline (manualWatcher vs workflow)",
+      "priority": "P1",
+      "primaryAxis": "watchers",
+      "budgets": [
+        {
+          "id": "off.p95<=6.09ms (baseline@watchers=256 manualWatcher * 1.05)",
+          "type": "absolute",
+          "metric": "timePerDelayMs",
+          "p95Ms": 6.09
+        }
+      ],
+      "metricCategories": {
+        "timePerDelayMs": "workflow"
+      },
+      "points": [
+        {
+          "params": {
+            "diagnosticsLevel": "off",
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerDelayMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.7000000029802322,
+                "p95Ms": 5.700000002980232
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "workflow.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "manualWatcher"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "workload.watchers",
+              "unit": "count",
+              "status": "ok",
+              "value": 256
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "off.p95<=6.09ms (baseline@watchers=256 manualWatcher * 1.05)",
+            "type": "absolute",
+            "metric": "timePerDelayMs",
+            "p95Ms": 6.09
+          },
+          "where": {
+            "diagnosticsLevel": "off"
+          },
+          "maxLevel": 256,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

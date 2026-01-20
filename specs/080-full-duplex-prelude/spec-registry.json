@@ -65,7 +65,7 @@
     },
     {
       "id": "075",
-      "dir": "specs/075-flow-program-codegen-ir",
+      "dir": "specs/075-workflow-codegen-ir",
       "status": "draft",
       "dependsOn": ["067", "078"]
     },

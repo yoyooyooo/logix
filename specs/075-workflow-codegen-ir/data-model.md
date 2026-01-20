@@ -1,10 +1,10 @@
-# Data Model: FlowProgram IR（统一最小 IR：Static IR + Dynamic Trace）
+# Data Model: Workflow IR（统一最小 IR：Static IR + Dynamic Trace）
 
-> 本文定义 FlowProgram 的“统一最小 IR”口径：Static IR 可导出/可比对；Dynamic Trace Slim 且可序列化，并以 tickSeq 作为参考系锚点。
+> 本文定义 Workflow 的“统一最小 IR”口径：Static IR 可导出/可比对；Dynamic Trace Slim 且可序列化，并以 tickSeq 作为参考系锚点。
 
 ## 0) 分层（必读）
 
-FlowProgram v1 采用固定分层以服务 AI/平台出码，并保证可比对与可解释：
+Workflow v1 采用固定分层以服务 AI/平台出码，并保证可比对与可解释：
 
 - **Recipe（压缩输入，可选）**：少量参数的模板层，必须可确定性展开
 - **Canonical AST（唯一规范形）**：无语法糖/默认值落地/分支显式/`stepKey` 完整（语义规范形）
@@ -21,16 +21,16 @@ FlowProgram v1 采用固定分层以服务 AI/平台出码，并保证可比对�
 - 分支必须显式结构；禁止邻接推断作为真相源
 - `nodeId` 以稳定 hash 为主锚点；可读性通过 `source(stepKey/fragmentId)`
 
-## 1) Canonical AST（FlowProgramCanonicalAstV1）
+## 1) Canonical AST（WorkflowDefV1）
 
 > Canonical AST 是所有前端（Recipe/AI/Studio/TS DSL）的统一规范形：同一语义只有一种表示。
 
 ### 1.1 触发与策略
 
 ```ts
-type CanonicalAstVersion = 1
+type WorkflowAstVersion = 1
 
-type FlowProgramLocalId = string
+type WorkflowLocalId = string
 type StepKey = string
 type JsonValue =
   | null
@@ -40,11 +40,11 @@ type JsonValue =
   | ReadonlyArray<JsonValue>
   | { readonly [k: string]: JsonValue }
 
-type CanonicalTriggerV1 =
+type WorkflowTriggerV1 =
   | { readonly kind: 'action'; readonly actionTag: string }
   | { readonly kind: 'lifecycle'; readonly phase: 'onStart' | 'onInit' }
 
-type CanonicalPolicyV1 = {
+type WorkflowPolicyV1 = {
   readonly concurrency?: 'latest' | 'exhaust' | 'parallel'
   readonly priority?: 'urgent' | 'nonUrgent'
 }
@@ -68,7 +68,7 @@ type InputExprV1 =
 裁决：Canonical AST 中不得出现 `onSuccess/onFailure` 这类邻接 sugar；分支必须是结构字段。
 
 ```ts
-type CanonicalStepV1 =
+type WorkflowStepV1 =
   | { readonly kind: 'dispatch'; readonly key: StepKey; readonly actionTag: string; readonly payload?: InputExprV1 }
   | { readonly kind: 'delay'; readonly key: StepKey; readonly ms: number }
   | {
@@ -78,16 +78,16 @@ type CanonicalStepV1 =
       readonly input?: InputExprV1
       readonly timeoutMs?: number
       readonly retry?: { readonly times: number }
-      readonly onSuccess: ReadonlyArray<CanonicalStepV1>
-      readonly onFailure: ReadonlyArray<CanonicalStepV1>
+      readonly onSuccess: ReadonlyArray<WorkflowStepV1>
+      readonly onFailure: ReadonlyArray<WorkflowStepV1>
     }
 
-type FlowProgramCanonicalAstV1 = {
-  readonly astVersion: CanonicalAstVersion
-  readonly localId: FlowProgramLocalId
-  readonly trigger: CanonicalTriggerV1
-  readonly policy?: CanonicalPolicyV1
-  readonly steps: ReadonlyArray<CanonicalStepV1>
+type WorkflowDefV1 = {
+  readonly astVersion: WorkflowAstVersion
+  readonly localId: WorkflowLocalId
+  readonly trigger: WorkflowTriggerV1
+  readonly policy?: WorkflowPolicyV1
+  readonly steps: ReadonlyArray<WorkflowStepV1>
   /** 非语义字段：用于把 stepKey 映射回 fragment（Devtools/溯源/组合诊断） */
   readonly sources?: { readonly [stepKey: string]: { readonly fragmentId?: string } }
   readonly meta?: { readonly generator?: JsonValue } // 可选：记录 recipe/ai/studio 来源（纯 JSON）
@@ -103,11 +103,11 @@ type FlowProgramCanonicalAstV1 = {
 
 ## 1.5 Recipe（压缩输入）到 Canonical AST 的展开
 
-Recipe 不是另一套语义：它只是“更短的输入”，最终必须确定性展开为 `FlowProgramCanonicalAstV1`。
+Recipe 不是另一套语义：它只是“更短的输入”，最终必须确定性展开为 `WorkflowDefV1`。
 
 > v1 推荐 Recipe 最小集合（submit/typeahead/refreshOnLifecycle/refreshOnAction/delayThen/call），其 schema 与展开规则详见 `contracts/public-api.md` 的说明（后续可在本文件补齐为独立小节）。
 
-<a id="flowprogram-composition"></a>
+<a id="workflow-composition"></a>
 
 ## 1.6 Build-time Composition（Fragments / Compose / withPolicy）
 
@@ -118,11 +118,11 @@ Recipe 不是另一套语义：它只是“更短的输入”，最终必须确�
 Fragment 是 build-time 的结构单元：用于复用/组合；它本身不携带运行时语义（语义由最终 Canonical AST/Static IR 承载）。
 
 ```ts
-type FlowFragmentId = string
+type WorkflowFragmentId = string
 
-type FlowFragmentV1 = {
-  readonly fragmentId: FlowFragmentId
-  readonly steps: ReadonlyArray<CanonicalStepV1>
+type WorkflowFragmentV1 = {
+  readonly fragmentId: WorkflowFragmentId
+  readonly steps: ReadonlyArray<WorkflowStepV1>
 }
 ```
 
@@ -136,10 +136,10 @@ type FlowFragmentV1 = {
 裁决：`compose` 的语义为 **顺序拼接（sequential concatenation）**；不隐式引入并行/条件语义。
 
 ```ts
-type FlowPartV1 = ReadonlyArray<CanonicalStepV1> | FlowFragmentV1
+type WorkflowPartV1 = ReadonlyArray<WorkflowStepV1> | WorkflowFragmentV1
 
-type ComposeResultV1 = {
-  readonly steps: ReadonlyArray<CanonicalStepV1>
+type WorkflowComposeResultV1 = {
+  readonly steps: ReadonlyArray<WorkflowStepV1>
   readonly sources?: { readonly [stepKey: string]: { readonly fragmentId?: string } }
 }
 ```
@@ -155,7 +155,7 @@ Canonical AST 的硬裁决：`stepKey` 必须全局唯一（包含 `call.onSucce
 
 - 当 `compose/normalize` 发现重复 `stepKey`，MUST fail-fast（禁止静默覆盖或自动改名）。
 - 错误必须携带最小可修复信息（纯 JSON）：
-  - `code: 'FLOW_PROGRAM_DUPLICATE_STEP_KEY'`
+  - `code: 'WORKFLOW_DUPLICATE_STEP_KEY'`
   - `detail.duplicateKey: string`
   - `detail.owners?: Array<{ stepKey: string; fragmentId?: string }>`（若可得）
 
@@ -165,7 +165,7 @@ Canonical AST 的硬裁决：`stepKey` 必须全局唯一（包含 `call.onSucce
 
 v1 策略集合（最小完备）：
 
-- `policy.concurrency/priority`：只允许作为 program 级默认（最终落到 `FlowProgramCanonicalAstV1.policy`）。
+- `policy.concurrency/priority`：只允许作为 program 级默认（最终落到 `WorkflowDefV1.policy`）。
 - `timeoutMs/retry.times`：只允许作为 `call` 的默认（仅在 step 未显式设置时填充）。
 
 合并优先级（从强到弱）：
@@ -175,26 +175,26 @@ v1 策略集合（最小完备）：
 3. program 级默认（若存在）
 4. 运行时默认（最后兜底；不建议依赖）
 
-<a id="flowprogram-static-ir"></a>
+<a id="workflow-static-ir"></a>
 
-## 2) Static IR（FlowProgramStaticIrV1）
+## 2) Static IR（WorkflowStaticIrV1）
 
 ### 2.1 最小形态（V1）
 
 ```ts
-type FlowProgramId = string
-type FlowNodeId = string
-type FlowFragmentId = string
-type FlowSource = { readonly fragmentId?: FlowFragmentId; readonly stepKey?: string }
-type FlowEdgeKind = 'next' | 'success' | 'failure'
-type FlowEdge = { readonly from: FlowNodeId; readonly to: FlowNodeId; readonly kind?: FlowEdgeKind }
+type WorkflowProgramId = string
+type WorkflowNodeId = string
+type WorkflowFragmentId = string
+type WorkflowSource = { readonly fragmentId?: WorkflowFragmentId; readonly stepKey?: string }
+type WorkflowEdgeKind = 'next' | 'success' | 'failure'
+type WorkflowEdge = { readonly from: WorkflowNodeId; readonly to: WorkflowNodeId; readonly kind?: WorkflowEdgeKind }
 
-type FlowTrigger =
+type WorkflowStaticTrigger =
   | { readonly kind: 'action'; readonly actionTag: string }
   | { readonly kind: 'lifecycle'; readonly phase: 'onStart' | 'onInit' }
 
-type FlowStep =
-  | { readonly kind: 'dispatch'; readonly actionTag: string }
+type WorkflowStaticStep =
+  | { readonly kind: 'dispatch'; readonly actionTag: string; readonly payload?: InputExprV1 }
   | {
       readonly kind: 'call'
       readonly serviceId: string
@@ -205,22 +205,22 @@ type FlowStep =
     }
   | { readonly kind: 'delay'; readonly ms: number }
 
-type ConcurrencyPolicy = 'latest' | 'exhaust' | 'parallel'
+type WorkflowConcurrencyPolicy = 'latest' | 'exhaust' | 'parallel'
 
-type FlowProgramStaticIrV1 = {
+type WorkflowStaticIrV1 = {
   readonly version: 1
-  readonly programId: FlowProgramId
+  readonly programId: WorkflowProgramId
   readonly digest: string
   readonly nodes: ReadonlyArray<{
-    readonly id: FlowNodeId
+    readonly id: WorkflowNodeId
     readonly kind: 'trigger' | 'step'
-    readonly trigger?: FlowTrigger
-    readonly step?: FlowStep
-    readonly source?: FlowSource // 可选：来源映射（用于 Devtools 展示/定位；必须可序列化）
+    readonly trigger?: WorkflowStaticTrigger
+    readonly step?: WorkflowStaticStep
+    readonly source?: WorkflowSource // 可选：来源映射（用于 Devtools 展示/定位；必须可序列化）
   }>
-  readonly edges: ReadonlyArray<FlowEdge>
+  readonly edges: ReadonlyArray<WorkflowEdge>
   readonly policy?: {
-    readonly concurrency?: ConcurrencyPolicy
+    readonly concurrency?: WorkflowConcurrencyPolicy
     readonly priority?: 'urgent' | 'nonUrgent'
   }
   readonly meta?: Record<string, unknown> // JSON 可序列化（白名单）
@@ -236,7 +236,7 @@ type FlowProgramStaticIrV1 = {
 
 ## 3) Dynamic Trace（Slim，tickSeq 关联）
 
-FlowProgram 运行期事件不新增“巨型事件流”，原则是复用既有边界：
+Workflow 运行期事件不新增“巨型事件流”，原则是复用既有边界：
 
 - `EffectOp(kind='flow')`：Program watcher 的每次触发/运行
 - `EffectOp(kind='service')`：call 的边界（成功/失败由错误通道/诊断字段表达）
@@ -250,29 +250,29 @@ FlowProgram 运行期事件不新增“巨型事件流”，原则是复用既�
 
 ### 3.1 在途态 I_t 的可解释锚点（不等于业务状态）
 
-长期公式把系统状态扩展为 `Σ_t=(S_t, I_t)`，其中 `I_t` 是 in-flight（timers/fibers/backlog…）。FlowProgram 的运行期必须至少提供“锚点级”的可解释字段来覆盖 `I_t` 的关键分量：
+长期公式把系统状态扩展为 `Σ_t=(S_t, I_t)`，其中 `I_t` 是 in-flight（timers/fibers/backlog…）。Workflow 的运行期必须至少提供“锚点级”的可解释字段来覆盖 `I_t` 的关键分量：
 
 ```ts
-type FlowRunId = string
-type FlowTimerId = string
+type WorkflowRunId = string
+type WorkflowTimerId = string
 
-type FlowRunAnchor = {
+type WorkflowRunAnchor = {
   readonly programId: string
-  readonly runId: FlowRunId
+  readonly runId: WorkflowRunId
   readonly instanceId: string
   readonly tickSeq: number
 }
 
-type FlowTimerAnchor = {
-  readonly timerId: FlowTimerId
-  readonly runId: FlowRunId
+type WorkflowTimerAnchor = {
+  readonly timerId: WorkflowTimerId
+  readonly runId: WorkflowRunId
   readonly ms: number
 }
 
-type FlowCancelAnchor = {
-  readonly runId: FlowRunId
+type WorkflowCancelAnchor = {
+  readonly runId: WorkflowRunId
   readonly reason: 'latest.replaced' | 'exhaust.ignored' | 'shutdown' | 'timeout'
-  readonly cancelledByRunId?: FlowRunId
+  readonly cancelledByRunId?: WorkflowRunId
 }
 ```
 

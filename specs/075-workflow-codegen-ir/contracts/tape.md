@@ -6,7 +6,7 @@
 
 ## 0) 三种产物必须区分（避免漂移）
 
-- **Static IR（结构）**：`FlowProgramStaticIr` 描述 “可能发生什么”（节点/边/策略）。用于可视化、diff、审查。
+- **Static IR（结构）**：`WorkflowStaticIr` 描述 “可能发生什么”（节点/边/策略）。用于可视化、diff、审查。
 - **Tape（回放）**：描述 “实际发生了什么” 且 **足以 deterministic replay**（给定 tape，重放不依赖真实 IO/真实时间/随机）。
 - **Trace（解释）**：Slim 的诊断事件流（可采样/可丢弃/可合并），用于回答“为什么”，但 **不保证可回放完整性**。
 
@@ -31,7 +31,7 @@ Logix runtime 是开放系统：它与环境交换信息（外部输入、IO 结
 - `tickSeq`：观测参考系（同一次 UI render/commit 只能观测同一 tick）
 - `instanceId`：模块实例锚点
 - `txnSeq/opSeq`：事务与操作序号（可回放因果链）
-- `programId/nodeId`：FlowProgram 结构锚点（来自 Static IR）
+- `programId/nodeId`：Workflow 结构锚点（来自 Static IR）
 - `runId/timerId/callId`：在途态锚点（`I_t` 的最小可解释载体）
 
 ### 2.2 Record 形态
@@ -127,4 +127,4 @@ Tape 的价值不在“记录”，在“可控执行模式”：
 - **Replay Mode**：禁止真实 IO/真实 timer；所有 `io.result`/`timer.fire`/`externalStore.snapshot` 由 tape 驱动（环境变成 oracle）。
 - **Fork Mode**：从某个 `tickSeq/opSeq` 切出分支，替换部分 `io.result`/`timer.fire`/`externalStore.snapshot`，在新沙箱中运行并产出新 tape（主时间线不污染）。
 
-本特性的硬要求：`FlowProgram.delay/call` 必须走可注入的运行时服务（Clock/Timer/IO Driver），使 record/replay/fork 成为可能；禁止影子 `setTimeout/Promise` 链绕开这些边界。
+本特性的硬要求：`Workflow.delay/call` 必须走可注入的运行时服务（Clock/Timer/IO Driver），使 record/replay/fork 成为可能；禁止影子 `setTimeout/Promise` 链绕开这些边界。

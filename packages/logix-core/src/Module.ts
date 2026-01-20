@@ -2,7 +2,9 @@ import { Context, Effect, FiberRef, Layer, Schema } from 'effect'
 import * as Debug from './Debug.js'
 import * as Logic from './Logic.js'
 import * as ModuleTagNS from './ModuleTag.js'
+import type { Workflow } from './Workflow.js'
 import * as Action from './internal/action.js'
+import * as WorkflowRuntime from './internal/runtime/core/WorkflowRuntime.js'
 import { isDevEnv } from './internal/runtime/core/env.js'
 import * as LogicUnitMetaInternal from './internal/runtime/core/LogicUnitMeta.js'
 import type {
@@ -153,6 +155,8 @@ type LogicOverrideWarning = {
   }
 }
 
+type WorkflowDef = Workflow['def']
+
 type ModuleInternal<Id extends string, Sh extends AnyModuleShape> = {
   readonly initial: StateOf<Sh>
   readonly imports?: ReadonlyArray<Layer.Layer<any, any, any> | ModuleImpl<any, AnyModuleShape, any>>
@@ -161,6 +165,7 @@ type ModuleInternal<Id extends string, Sh extends AnyModuleShape> = {
   readonly mounted: ReadonlyArray<MountedLogicUnit<Sh>>
   readonly overrides: ReadonlyArray<LogicOverrideWarning>
   readonly layers: ReadonlyArray<Layer.Layer<any, never, any>>
+  readonly workflowDefs: ReadonlyArray<WorkflowDef>
   readonly rebuild: () => ModuleImpl<Id, Sh, any>
 }
 
@@ -223,6 +228,8 @@ export type Module<Id extends string, Sh extends AnyModuleShape, Ext extends obj
   readonly impl: ModuleImpl<Id, Sh, R>
   readonly withLogic: (logic: ModuleLogic<Sh, any, any>, options?: LogicUnitOptions) => Module<Id, Sh, Ext, R>
   readonly withLogics: (...inputs: ReadonlyArray<MountInput<Sh>>) => Module<Id, Sh, Ext, R>
+  readonly withWorkflow: (workflow: Workflow) => Module<Id, Sh, Ext, R>
+  readonly withWorkflows: (workflows: ReadonlyArray<Workflow>) => Module<Id, Sh, Ext, R>
   readonly withLayer: (layer: Layer.Layer<any, never, any>) => Module<Id, Sh, Ext, R>
   readonly withLayers: (...layers: ReadonlyArray<Layer.Layer<any, never, any>>) => Module<Id, Sh, Ext, R>
 }
@@ -233,6 +240,8 @@ export type ModuleDef<Id extends string, Sh extends AnyModuleShape, Ext extends 
   Ext
 > & {
   readonly _kind: 'ModuleDef'
+  readonly withWorkflow: (workflow: Workflow) => ModuleDef<Id, Sh, Ext>
+  readonly withWorkflows: (workflows: ReadonlyArray<Workflow>) => ModuleDef<Id, Sh, Ext>
   readonly implement: <R = never>(config: {
     readonly initial: StateOf<Sh>
     readonly logics?: Array<ModuleLogic<Sh, R, any>>
@@ -784,6 +793,9 @@ export function make(id: any, def: any, extend?: any): any {
     const imports = config.imports as any
     const processes = config.processes as any
     const stateTransaction = config.stateTransaction as any
+    const workflowDefs: ReadonlyArray<WorkflowDef> = Array.isArray(config.__logix_workflowDefs)
+      ? (config.__logix_workflowDefs as ReadonlyArray<WorkflowDef>)
+      : []
 
     const mountedResult = (config.logics ?? []).reduce(
       (
@@ -800,6 +812,7 @@ export function make(id: any, def: any, extend?: any): any {
       readonly mounted: ReadonlyArray<MountedLogicUnit<any>>
       readonly overrides: ReadonlyArray<LogicOverrideWarning>
       readonly layers: ReadonlyArray<Layer.Layer<any, never, any>>
+      readonly workflowDefs: ReadonlyArray<WorkflowDef>
     }
 
     const buildImpl = (state: State): ModuleImpl<any, AnyModuleShape, any> => {
@@ -831,6 +844,7 @@ export function make(id: any, def: any, extend?: any): any {
         mounted: state.mounted,
         overrides: state.overrides,
         layers: state.layers,
+        workflowDefs: state.workflowDefs,
         rebuild: () => buildImpl(state),
       }
 
@@ -862,6 +876,7 @@ export function make(id: any, def: any, extend?: any): any {
           mounted: next.mounted,
           overrides: next.overrides,
           layers: current.layers,
+          workflowDefs: current.workflowDefs,
         })
       }
 
@@ -871,11 +886,45 @@ export function make(id: any, def: any, extend?: any): any {
           mounted: current.mounted,
           overrides: current.overrides,
           layers: [...current.layers, layer],
+          workflowDefs: current.workflowDefs,
         })
       }
 
       mod.withLayers = (...layers: ReadonlyArray<Layer.Layer<any, never, any>>) =>
         layers.reduce((acc, layer) => acc.withLayer(layer), mod as any)
+
+      mod.withWorkflow = (workflow: Workflow) => {
+        const install = (workflow as any)?.install
+        const logic =
+          typeof install === 'function'
+            ? install(mod.tag)
+            : WorkflowRuntime.installOne({ moduleTag: mod.tag as any, program: workflow as any })
+
+        const current = (mod as any)[MODULE_INTERNAL] as ModuleInternal<any, AnyModuleShape>
+        const next = mountLogicUnit(current.mounted, current.overrides, { logic } as any)
+        const nextWorkflowDefs = [...current.workflowDefs, (workflow as any).def as WorkflowDef]
+        return createModule({
+          mounted: next.mounted,
+          overrides: next.overrides,
+          layers: current.layers,
+          workflowDefs: nextWorkflowDefs,
+        })
+      }
+
+      mod.withWorkflows = (workflows: ReadonlyArray<Workflow>) => {
+        if (!Array.isArray(workflows) || workflows.length === 0) return mod as any
+        const logic = WorkflowRuntime.mountAll({ moduleTag: mod.tag as any, programs: workflows as any })
+        const current = (mod as any)[MODULE_INTERNAL] as ModuleInternal<any, AnyModuleShape>
+        const next = mountLogicUnit(current.mounted, current.overrides, { logic } as any)
+        const nextWorkflowDefs = [...current.workflowDefs, ...workflows.map((w) => (w as any).def as WorkflowDef)]
+
+        return createModule({
+          mounted: next.mounted,
+          overrides: next.overrides,
+          layers: current.layers,
+          workflowDefs: nextWorkflowDefs,
+        })
+      }
 
       return mod as any
     }
@@ -884,8 +933,47 @@ export function make(id: any, def: any, extend?: any): any {
       mounted: mountedResult.mounted,
       overrides: mountedResult.overrides,
       layers: [],
+      workflowDefs,
     })
   }
+
+  const baseImplement = base.implement
+
+  const withExtraLogics = (
+    extraLogics: ReadonlyArray<ModuleLogic<any, any, any>>,
+    extraWorkflowDefs: ReadonlyArray<WorkflowDef>,
+  ): any => {
+    const next: any = { ...base }
+
+    next.withWorkflow = (workflow: Workflow) => {
+      const install = (workflow as any)?.install
+      const logic =
+        typeof install === 'function'
+          ? install(next.tag)
+          : WorkflowRuntime.installOne({ moduleTag: next.tag as any, program: workflow as any })
+      return withExtraLogics([...extraLogics, logic as any], [...extraWorkflowDefs, (workflow as any).def as WorkflowDef])
+    }
+
+    next.withWorkflows = (workflows: ReadonlyArray<Workflow>) => {
+      if (!Array.isArray(workflows) || workflows.length === 0) return next as any
+      const logic = WorkflowRuntime.mountAll({ moduleTag: next.tag as any, programs: workflows as any })
+      return withExtraLogics(
+        [...extraLogics, logic as any],
+        [...extraWorkflowDefs, ...workflows.map((w) => (w as any).def as WorkflowDef)],
+      )
+    }
+
+    next.implement = (config: any) => {
+      const mergedLogics = [...(config.logics ?? []), ...extraLogics]
+      return baseImplement({ ...config, logics: mergedLogics, __logix_workflowDefs: extraWorkflowDefs })
+    }
+
+    return next as any
+  }
+
+  base.withWorkflow = (workflow: Workflow) => withExtraLogics([], []).withWorkflow(workflow)
+
+  base.withWorkflows = (workflows: ReadonlyArray<Workflow>) => withExtraLogics([], []).withWorkflows(workflows)
 
   return base
 }

@@ -1,4 +1,4 @@
-# Quickstart: FlowProgram IR（最小示例）
+# Quickstart: Workflow IR（最小示例）
 
 > 本文件用“可读的伪代码”展示目标 DX；具体 TypeScript 类型以实现为准。
 
@@ -10,7 +10,7 @@
 
 ## v1 定位（先读）
 
-FlowProgram v1 明确定位为 **AI/平台专属出码层（IR DSL）**：
+Workflow v1 明确定位为 **AI/平台专属出码层（IR DSL）**：
 
 - 人类日常不需要手写完整 Program 图；推荐通过 Recipe（压缩输入）或 Studio/AI 直接产出 Canonical AST。
 - Canonical AST 是语义规范形：无语法糖、分支显式、`stepKey` 必填；Static IR 是其可导出投影（version+digest+nodes/edges）。
@@ -75,13 +75,13 @@ const SubmitCanonicalAst = {
 
 1) 为什么有 `install(Module.tag)` 这种“看起来重复”的 API？
 
-- `FlowProgram` 被设计成“可复用的 Program 定义”，不强绑定某个 Module：因此需要 `install(moduleTag)` 这一步来完成“绑定模块形状 + 编译挂载”。
-- 大多数业务推荐只用 `Module.withFlow(program)`；平台/AI 出码（大量 programs）推荐用 `Module.withFlows(programs)` 避免 watcher 订阅膨胀；`install(tag)` 主要留给“在模块外部装配/复用 Program”的高级场景。
+- `Workflow` 被设计成“可复用的 Program 定义”，不强绑定某个 Module：因此需要 `install(moduleTag)` 这一步来完成“绑定模块形状 + 编译挂载”。
+- 大多数业务推荐只用 `Module.withWorkflow(program)`；平台/AI 出码（大量 programs）推荐用 `Module.withWorkflows(programs)` 避免 watcher 订阅膨胀；`install(tag)` 主要留给“在模块外部装配/复用 Program”的高级场景。
 
 2) `trigger: onAction('submit')` 是不是“定义了一个 action”？
 
 - 不是。`onAction('submit')` 表示**订阅这个模块的 action 流**里 `_tag === 'submit'` 的事件；`submit` 必须已经存在于 `Module.make(..., { actions })` 的 actions 里。
-- 触发来自任意地方的 dispatch：例如 UI 调用 `module.actions.submit(payload)`（或其它逻辑 dispatch），FlowProgram watcher 才会运行。
+- 触发来自任意地方的 dispatch：例如 UI 调用 `module.actions.submit(payload)`（或其它逻辑 dispatch），Workflow watcher 才会运行。
 
 ## 示例 2：onStart 后 delay 3 秒 refresh
 
@@ -219,7 +219,7 @@ const Traits = Logix.StateTrait.from(StateSchema)({
 
 ## 覆盖范围（v1 心智）
 
-FlowProgram 覆盖的是“值得被 IR 化/治理”的控制律（`Π`），不是替代所有代码。
+Workflow 覆盖的是“值得被 IR 化/治理”的控制律（`Π`），不是替代所有代码。
 
 - **强覆盖**：submit 工作流、typeahead（debounce+latest）、防重复提交（exhaust）、补偿回滚、timeout/retry、显式 refresh（manual-only）。
 - **与 076 协同**：常见 “deps 变更 → source 刷新” 交给内核 `Π_source`，不必为每个 source 写 Program。
@@ -227,8 +227,8 @@ FlowProgram 覆盖的是“值得被 IR 化/治理”的控制律（`Π`），�
 
 ## 是否会“过于限制”？
 
-FlowProgram 看起来像 workflow，这是刻意的：它只覆盖那些**值得被 IR 化/可解释/可预算**的控制律（`Π`）。
+Workflow 看起来像 workflow，这是刻意的：它只覆盖那些**值得被 IR 化/可解释/可预算**的控制律（`Π`）。
 
 - 不替代 `$.logic`：复杂或一次性的逻辑仍可用 `module.logic(($) => ...)` 写代码；只是这类黑盒逻辑很难被导出为结构 IR（Devtools 只能看到边界事件/trace 锚点）。
 - 限制是能力：写侧默认走 `dispatch`，IO 只能通过 `call`（事务窗口外），时间算子必须对齐 tick（避免影子时间线）。
-- 最佳扩展姿势：把复杂算法/集成细节封装成 service/pattern，在 FlowProgram 里用 `call` 调用（既保留表达力，也保留结构与诊断边界）。
+- 最佳扩展姿势：把复杂算法/集成细节封装成 service/pattern，在 Workflow 里用 `call` 调用（既保留表达力，也保留结构与诊断边界）。

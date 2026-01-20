@@ -1,6 +1,6 @@
 # specs/ 未完成需求索引（Backlog Index）
 
-> 目的：快速回答三件事：**还有哪些 spec 没做完**、**它们怎么串起来**、**建议先做哪条主线**。  
+> 目的：快速回答三件事：**还有哪些 spec 没做完**、**它们怎么串起来**、**建议先做哪条主线**。
 > 备注：本文是导航与排期辅助，不是裁决来源；具体语义以各 spec 目录内的 `spec.md/plan.md/tasks.md` 为准。
 
 ## 状态口径
@@ -14,6 +14,22 @@
 ## 关系总览（建议顺序＝“先打地基，再做出码跑道”）
 
 行业模式地图（用于把“页面常见问题域”映射到本仓落点）：`docs/ssot/platform/appendix/concepts/01-frontend-pattern-landscape.md`
+
+### 路线总控（真理→路线：先收口“调度 spec”，再展开实现）
+
+- 控制律主线总控：[`077-logix-control-laws-v1`](./077-logix-control-laws-v1)（调度 073/075/076；避免 tick/时间语义/控制律漂移成双真相源）
+- 全双工前置总控：[`080-full-duplex-prelude`](./080-full-duplex-prelude)（调度 078/075/081/082/079/085/…；以 M0–M3 门槛推进回写闭环）
+
+### 实施路线（v1，按 080 的 M0–M3 里程碑门槛推进）
+
+> 下面是“可执行的顺序建议”；更细的门槛/风险标记以 `specs/080-full-duplex-prelude/spec-registry.md` 为准。
+
+1. **M0（锚点与证据硬门）**：先把可序列化/去随机化与 TrialRun 输出打实（优先 `016`、`025`；必要时补 `005/031` 的协议与 artifacts 槽位）。
+2. **M1（结构可见）**：让平台能枚举并对齐 actions/servicePorts/ports&typeIR（优先 `067`、`078`、`035`）；同时把 `Π` 的 workflow slice（`075`）与 `078.servicePorts` 对齐，避免 workflow 的 `serviceId` 变成灰区字符串。
+3. **M1 的可复现验收跑道**：先做 `085` 的 US1（IR 导出 + TrialRun 的统一 CLI 入口），作为后续门禁与对照的最小“跑道”。
+4. **M2（保守回写闭环）**：按 `081 → 082 → 079` 打通 Platform-Grade 子集的可逆闭环（AnchorIndex → PatchPlan → WriteBack → 源码锚点），并把 workflow `stepKey` 纳入同一回写门槛。
+5. **M3（语义与证据增强，可选）**：在 M2 达标后再推进 `083/084`（能看见/能建议之前先确保能写回，避免演进死角）。
+6. **消费者回归面（可选增强）**：`086` 作为 Manifest/Diff/TrialRun/Workflow slices 的可视化试验场与 UI 回归面，字段缺失必须显式提示（不作为 M0–M3 硬门槛）。
 
 ### 主线 A：Runtime 一致性 + `Π_source`（受限机制）
 
@@ -37,9 +53,11 @@
 ### 主线 C：平台化出码/回写跑道（Parser/Rewrite/Anchors/Manifest）
 
 ```text
-079 锚点声明与保守自动补全 → 081 受限解析（锚点索引） → 082 受限重写（最小补丁回写）
-  → 083 具名逻辑插槽（结构/语义可见） → 078 Module↔Service Manifest（平台可诊断/可回放）
-  → 080 Full-Duplex Prelude（统一最小 IR + 回写前置） → 086 可视化实验室 → 085 CLI 跑道
+078 Module↔Service Manifest（servicePorts/ServiceId/TrialRun 对齐） ↔ 075 workflowSurface（Π slice）
+  → 085 CLI 跑道（先做 US1：IR 导出 + TrialRun）
+  → 081 受限解析（AnchorIndex） → 082 受限重写（PatchPlan→WriteBack） → 079 保守自动补全（只补缺失字段）
+  → 083 具名逻辑插槽（语义可见） / 084 Loader Spy（证据采集；不作权威）
+  ↘（可选）086 可视化实验室（消费者回归面：Manifest/Diff/TrialRun/Workflow slices）
 ```
 
 定位：让“生成/审查/回写”有单一真相源（统一最小 IR），并为 Alignment Lab/Devtools 提供可解释链路。
@@ -95,7 +113,7 @@
 - [`068-watcher-pure-wins`](./068-watcher-pure-wins)（Draft）— watcher fan-out 纯赚性能地基
 - [`076-logix-source-auto-trigger-kernel`](./076-logix-source-auto-trigger-kernel)（Draft）— source 自动触发内核（dirtyPaths + depsIndex）
 - [`070-core-pure-perf-wins`](./070-core-pure-perf-wins)（Draft）— core 纯赚/近纯赚性能优化（默认零成本诊断）
-- [`075-flow-program-codegen-ir`](./075-flow-program-codegen-ir)（Draft）— FlowProgram Codegen IR（Canonical AST + Static IR）
+- [`075-workflow-codegen-ir`](./075-workflow-codegen-ir)（Draft）— Workflow Codegen IR（Canonical AST + Static IR）
 - [`077-logix-control-laws-v1`](./077-logix-control-laws-v1)（Draft）— 控制律 v1（UI→React，Logic→Logix）
 - [`078-module-service-manifest`](./078-module-service-manifest)（Draft）— Module↔Service 关系纳入 Manifest IR
 - [`079-platform-anchor-autofill`](./079-platform-anchor-autofill)（Draft）— Platform-Grade 锚点声明与保守自动补全（单一真相源）

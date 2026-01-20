@@ -30,5 +30,5 @@
 ## 关联裁决
 
 - ServiceId 单点算法：`specs/078-module-service-manifest/contracts/service-id.md`
-- Workflow/Π 的 call 语义与锚点：`specs/075-flow-program-codegen-ir/contracts/public-api.md`
+- Workflow/Π 的 call 语义与锚点：`specs/075-workflow-codegen-ir/contracts/public-api.md`
 - Root IR 回链与锚点去随机化：`docs/ssot/platform/contracts/03-control-surface-manifest.md`

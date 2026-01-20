@@ -223,11 +223,11 @@ specs/013-auto-converge-planner/contracts/
 - dirtyPrefixSet 从 `Set<number>` 升级为 bitset（TypedArray），并预计算 prefix-id 列表，降低 trie Map 查找成本。
   - 约束：本仓 `FieldPathIdRegistry` 的 id 是按表顺序 0..N-1 分配（稠密），bitset 不会出现“稀疏导致浪费”的典型问题；仍需为极端 N 提供上界与降级路径（例如退回 Set）。
 - 执行预算检查改为“快路径友好”：在 diagnostics=off 等快路径下避免 per-step 读 clock，用 step 计数器 + mask 采样读取 `now()`；仅在发生降级/接近预算或 diagnostics 需要逐步计时时才提高检查频率。
-- 收敛 summary/topN：仅在需要时收集（例如 diagnostics=full 或发生降级），避免默认构造长数组与排序。
+- 收敛 summary/topN：仅在需要时收集（例如 diagnostics=sampled/full 或发生降级），避免默认构造长数组与排序。
 
 ### 3) Evidence 与诊断开销控制
 
-- `trait:converge` 事件保持现有字段语义，并在 diagnostics=light 下继续裁剪重字段（以 `DebugSink` 的 JsonValue 投影为准）。
+- `trait:converge` 事件保持现有字段语义，并在 diagnostics=light/sampled/full 下继续裁剪重字段（以 `DebugSink` 的 JsonValue 投影为准）。
 - 明确“诊断开启的代价”测量方式，并把开销纳入基线对比。
 
 ### 4) Performance Baseline（可复现证据）

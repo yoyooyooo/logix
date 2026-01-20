@@ -25,7 +25,7 @@
 
 - 本 group 的 SSoT：`docs/ssot/platform/foundation/01-the-one.md`
 - 参考系（Einstein）：先完成 073 M1（`RuntimeStore + tickSeq` 单一订阅点，no-tearing）再谈更高层 Π。
-- 控制律（Newton+）：任何自由编排必须进入 `Π`（FlowProgram），不得回退到 trait meta + 反射式解释。
+- 控制律（Newton+）：任何自由编排必须进入 `Π`（Workflow），不得回退到 trait meta + 反射式解释。
 - 受限控制律：source 的默认自动触发属于 `Π_source`，必须内核化并可解释；复杂时序升级到 075。
 - 证据链：IR/Trace Slim、可序列化、稳定锚点；diagnostics=off 近零成本。
 
@@ -33,7 +33,7 @@
 
 - **M0（SSoT 固化）**：公式与分层裁决在 SSoT 显眼处可查（已落：`docs/specs/.../97#1.2`），且 073/075/076 互相引用避免漂移。
 - **M1（Reference Frame Cutover）**：073 完成 `RuntimeStore + tickSeq` 的 React 单一订阅点（no-tearing）与 `trace:tick` 证据闭环。
-- **M2（Program First）**：075 提供 FlowProgram IR（含时间算子）并与 tickSeq 证据链打通；至少 1 条 submit 工作流可声明式表达。
+- **M2（Program First）**：075 提供 Workflow IR（含时间算子）并与 tickSeq 证据链打通；至少 1 条 submit 工作流可声明式表达。
 - **M3（Glue Elimination）**：076 以内核 auto-trigger 取代 Query/Form 的 watcher 胶水与反射式解释入口。
 - **M4（Integrated Acceptance）**：用一个端到端场景证明 “React 只渲染 / Logix 只编排”，并能导出 IR/Trace 解释链路。
 

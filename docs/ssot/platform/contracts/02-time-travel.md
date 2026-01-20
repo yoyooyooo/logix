@@ -23,7 +23,7 @@ status: living
 - “时间”必须以 **tickSeq（逻辑时间）** 为参考系锚点；wall-clock 只能以可观测事件的形式进入 tape；
 - 禁止影子时间线：`setTimeout/Promise` 链绕开 tick/record 会让回放天然不确定。
 
-> Tape 的最小口径（program 侧）见：`specs/075-flow-program-codegen-ir/contracts/tape.md`。
+> Tape 的最小口径（program 侧）见：`specs/075-workflow-codegen-ir/contracts/tape.md`。
 
 ## 2. 可视化交互 (Visual Interaction)
 

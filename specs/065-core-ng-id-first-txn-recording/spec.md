@@ -47,7 +47,7 @@
 **Acceptance Scenarios**:
 
 1. **Given** 相同的 converge 结构输入，**When** 分别在两次独立运行中生成 Static IR，**Then** Static IR digest 必须一致，且同一 digest 下 FieldPathId/StepId 的语义映射可重复对齐。
-2. **Given** diagnostics=light（或 full）且发生 converge，**When** 输出诊断事件，**Then** 事件中必须包含稳定锚点（instance/txn/op）与必要的 id 信息，并可在不引入并行真相源的前提下反解出可读摘要。
+2. **Given** diagnostics=light/sampled/full 且发生 converge（sampled：采样命中才产出，否则等价 off），**When** 输出诊断事件，**Then** 事件中必须包含稳定锚点（instance/txn/op）与必要的 id 信息，并可在不引入并行真相源的前提下反解出可读摘要。
 
 ---
 

@@ -36,7 +36,7 @@
   - Module 定义点（例如 `Module.make(...)`）与其配置对象的稳定字段；
   - Logic 定义点（例如 `logic(($) => ...)`）与其结构单元边界；
   - 依赖使用点（例如 `$.use(Tag)`）的可枚举引用形态；
-  - Workflow 定义点（例如 `FlowProgram.make({...})` / `FlowProgram.fromJSON({...})`）与其 `localId/trigger/steps[*].key` 等稳定锚点字段（用于后续 stepKey 门禁与保守补全）。
+  - Workflow 定义点（例如 `Workflow.make({...})` / `Workflow.fromJSON({...})`）与其 `localId/trigger/steps[*].key` 等稳定锚点字段（用于后续 stepKey 门禁与保守补全）。
   - Workflow 内 `callById('<serviceId>')` 的可枚举使用点（仅字面量形态；用于后续保守补全与可解释展示）。
 - 可回写锚点字段的缺口位置（用于 `079/082` 做“只改缺失字段”的最小补丁）。
 - 输出结构化、可序列化、确定性的 AnchorIndex，并携带“降级/跳过原因”。
@@ -62,8 +62,8 @@
   - `def` 必须为“就地对象字面量”（非对象字面量或经变量中转一律 Raw Mode）
 
 - Workflow 定义点（WorkflowDef in TS，Platform-Grade 子集）：
-  - `const W = FlowProgram.make({ ... })`
-  - `export const W = FlowProgram.fromJSON({ ... })`
+  - `const W = Workflow.make({ ... })`
+  - `export const W = Workflow.fromJSON({ ... })`
 - 约束：
   - def MUST 为“就地对象字面量”（非对象字面量/变量中转/spread/条件拼装一律 Raw Mode）
   - identity 字段必须为字符串字面量（非字面量一律 Raw Mode）：
@@ -78,7 +78,7 @@
 - 变量中转/动态组合：`const def = {...}; Logix.Module.make(id, def)`、spread/条件拼装等
 - re-export/barrel 的“导出链追踪”（Parser 只扫描定义文件；入口选择交给 CLI/平台）
 - Service Use 的 `yield* Tag`（Effect Env 读取）：MVP 只识别 `$.use(Tag)` 形态（见 Q016）
-- WorkflowDef 的动态组合/组合器：`FlowProgram.compose/fragment/withPolicy`、`FlowProgram.make(defFromFn())` 等（MVP 不尝试解出结构；统一 Raw Mode）
+- WorkflowDef 的动态组合/组合器：`Workflow.compose/fragment/withPolicy`、`Workflow.make(defFromFn())` 等（MVP 不尝试解出结构；统一 Raw Mode）
 
 ## User Scenarios & Testing _(mandatory)_
 

@@ -1,4 +1,4 @@
-# Review: FlowProgram Codegen IR
+# Review: Workflow Codegen IR
 
 > 本文聚焦于后续方案需要优化的细节，不赘述现状分析。
 
@@ -58,11 +58,11 @@ submit → API → submitSucceeded({ result }) → reducer 写入 state → 后�
 
 ## 3. Fragment/Compose 组合模型细节
 
-> 更新：组合模型细节已固化于 `data-model.md#flowprogram-composition`（fragmentId 规则、compose 顺序语义、stepKey 冲突 fail-fast、withPolicy 合并优先级）。
+> 更新：组合模型细节已固化于 `data-model.md#workflow-composition`（fragmentId 规则、compose 顺序语义、stepKey 冲突 fail-fast、withPolicy 合并优先级）。
 
 ### 问题
 
-`FlowProgram.fragment/compose/withPolicy` 在 public-api.md 中只有概念描述，缺少：
+`Workflow.fragment/compose/withPolicy` 在 public-api.md 中只有概念描述，缺少：
 
 - fragmentId 的生成规则与唯一性约束
 - 嵌套 fragment 的 stepKey 冲突检测策略
@@ -119,8 +119,8 @@ plan.md 中 Perf Evidence Plan 较模糊（"timer 触发 + submit 两条链路�
      })
    )
 
-   // after：FlowProgram
-   FlowProgram.make('submit', { ... })
+   // after：Workflow
+   Workflow.make('submit', { ... })
    ```
 
 2. **量化预算**（建议值）：
@@ -159,7 +159,7 @@ spec 要求 `delay/timeout` 必须由 TickScheduler 解释，但未明确：
    ```ts
    // 测试时通过 Layer 注入 TestClock
    const TestLayer = Layer.succeed(ClockService, TestClock.make())
-   // FlowProgramRuntime 必须通过 ClockService 而不是 Effect.sleep
+   // WorkflowRuntime 必须通过 ClockService 而不是 Effect.sleep
    ```
 
 3. **replay 语义**：tape 中的 `timer.fire` 记录必须包含 `tickSeq`，replay 时按 tickSeq 顺序触发（而不是 wall-clock）
@@ -175,7 +175,7 @@ spec 对错误路径的诊断描述较少，仅提到"结构化错误 code + pro
 1. **定义错误分类**：
 
    ```ts
-   type FlowProgramError =
+   type WorkflowError =
      | { readonly code: 'INVALID_STEP_KEY'; readonly detail: { duplicateKey: string } }
      | { readonly code: 'SERVICE_TIMEOUT'; readonly detail: { serviceId: string; timeoutMs: number } }
      | { readonly code: 'RETRY_EXHAUSTED'; readonly detail: { serviceId: string; attempts: number } }

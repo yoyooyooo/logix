@@ -67,7 +67,7 @@ Prelude = 为下一阶段“试跑 + 可视化 + 可回写”打通的最小基�
 - SchemaAST 分层与 registry（解释/校验底座）：`specs/040-schemaast-layered-upgrade/`
 - Playground Editor Intellisense（可选增强，不计入里程碑门槛）：`specs/061-playground-editor-intellisense/`
 - Action Surface manifest（动作锚点）：`specs/067-action-surface-manifest/`
-- Workflow/Π surface（WorkflowDef → Π slice）：`specs/075-flow-program-codegen-ir/`
+- Workflow/Π surface（WorkflowDef → Π slice）：`specs/075-workflow-codegen-ir/`
 - Module↔Service（servicePorts）纳入 Manifest：`specs/078-module-service-manifest/`
 - 保守自动补全锚点声明（回写源码）：`specs/079-platform-anchor-autofill/`
 - Platform Visualization Lab（可选增强，不计入里程碑门槛）：`specs/086-platform-visualization-lab/`

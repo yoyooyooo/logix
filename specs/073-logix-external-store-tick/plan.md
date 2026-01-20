@@ -41,7 +41,7 @@
 后续演进将按以上分层推进（本特性只负责“参考系 + 受限绑定”的主干闭环）：
 
 - 本特性不扩展/不固化 `StateTrait.source` 的 `meta.triggers/debounceMs` 反射式解释入口；后续由 `076-logix-source-auto-trigger-kernel` 收敛替换，避免 073 把 tick 参考系意外绑定到旧接口上。
-- 后续 spec：`075-flow-program-codegen-ir`（FlowProgram 出码 IR），把时间算子与多步协议纳入 tick 参考系（避免黑盒 setTimeout/Promise 链断因果）。
+- 后续 spec：`075-workflow-codegen-ir`（Workflow 出码 IR），把时间算子与多步协议纳入 tick 参考系（避免黑盒 setTimeout/Promise 链断因果）。
 - 后续 spec：`076-logix-source-auto-trigger-kernel`（基于 `dirtyPaths + deps` 的 source 自动触发内核化），逐步消灭 Query/Form 的 action-wiring 胶水（保留 `manual` 作为显式 escape hatch）。
 
 ## Deepening Notes

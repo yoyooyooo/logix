@@ -100,7 +100,7 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 **Goal**: 对 Platform-Grade WorkflowDef 缺失 `steps[*].key` 的场景生成确定性补全候选，并通过 082 产出 PatchPlan/WriteBackResult；对重复 key 必须拒绝写回并可解释。  
 **Independent Test**: report-only 输出缺失 key 定位与候选；write-back 后幂等；重复 key 场景不写回且 reason code=duplicate_step_key。
 
-- [ ] T028 [P] fixture：WorkflowDef 缺失 stepKey（FlowProgram.make/fromJSON + steps array literal）`packages/logix-anchor-engine/test/fixtures/repo-autofill-workflow-stepkey/*`
+- [ ] T028 [P] fixture：WorkflowDef 缺失 stepKey（Workflow.make/fromJSON + steps array literal）`packages/logix-anchor-engine/test/fixtures/repo-autofill-workflow-stepkey/*`
 - [ ] T029 从 AnchorIndex 聚合 Workflow steps 并识别缺失/重复 key `packages/logix-anchor-engine/src/internal/autofill/collectWorkflowSteps.ts`
 - [ ] T030 生成 stepKey 写回候选（确定性 baseKey + 冲突后缀）`packages/logix-anchor-engine/src/internal/autofill/buildWorkflowStepKeyPatch.ts`
 - [ ] T031 [P] 单测：stepKey 补全幂等与最小 diff `packages/logix-anchor-engine/test/Autofill/Autofill.workflow.stepKey.idempotent.test.ts`

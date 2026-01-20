@@ -5,6 +5,12 @@ import type { StaticIr } from './internal/state-trait/ir.js'
 import type { ExtractManifestOptions, ModuleManifest } from './internal/reflection/manifest.js'
 import * as Manifest from './internal/reflection/manifest.js'
 import * as StaticIrExport from './internal/reflection/staticIr.js'
+import type {
+  ExportControlSurfaceOptions,
+  ExportControlSurfaceResult,
+  ExportedWorkflowSurface,
+} from './internal/reflection/controlSurface.js'
+import * as ControlSurfaceExport from './internal/reflection/controlSurface.js'
 import type { DiffManifestOptions, ModuleManifestDiff } from './internal/reflection/diff.js'
 import * as ManifestDiff from './internal/reflection/diff.js'
 import type {
@@ -24,6 +30,9 @@ export type {
   DiffManifestOptions,
   KernelContractVerificationResult,
   VerifyKernelContractOptions,
+  ExportControlSurfaceOptions,
+  ExportControlSurfaceResult,
+  ExportedWorkflowSurface,
 }
 
 type AnyModuleLike = { readonly impl: ModuleImpl<any, AnyModuleShape, any> }
@@ -184,6 +193,18 @@ export const diffManifest = (
  */
 export const exportStaticIr = (module: ModuleImpl<any, AnyModuleShape, any> | AnyModule): StaticIr | undefined =>
   StaticIrExport.exportStaticIr(module)
+
+/**
+ * Reflection.exportControlSurface
+ *
+ * Exports the ControlSurfaceManifest (Root IR) and slice attachments (e.g. workflowSurface) from configured modules.
+ *
+ * Note: currently requires `AnyModule` (the configured module object returned by `ModuleDef.implement(...)`).
+ */
+export const exportControlSurface = (
+  modules: ReadonlyArray<AnyModule>,
+  options?: ExportControlSurfaceOptions,
+): ExportControlSurfaceResult => ControlSurfaceExport.exportControlSurface(modules as any, options)
 
 /**
  * Reflection.verifyKernelContract

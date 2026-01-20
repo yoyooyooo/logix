@@ -129,7 +129,7 @@ docs/specs/sdd-platform/
 
 补充（Workflow 侧）：
 
-- 若模块包含 Platform-Grade 的 Workflow 定义（`FlowProgram.make/fromJSON`）且 WorkflowDef 以 `serviceId` 字符串字面量表达 `callById(serviceId)`，则可将这些 `serviceId` 视为“确定性使用点”并作为 `services` 补全候选来源之一。
+- 若模块包含 Platform-Grade 的 Workflow 定义（`Workflow.make/fromJSON`）且 WorkflowDef 以 `serviceId` 字符串字面量表达 `callById(serviceId)`，则可将这些 `serviceId` 视为“确定性使用点”并作为 `services` 补全候选来源之一。
 - 若 Workflow 定义使用 `call(Tag)` 语法糖且无法静态解析出稳定 `serviceId`，必须跳过并报告（宁可漏不乱补）。
 
 **写回形态**：
@@ -160,7 +160,7 @@ docs/specs/sdd-platform/
 
 目标：把 Workflow（`Π`）的稳定地址 `stepKey` 从“可缺省”提升为“可回写/可门禁化”的工程事实。
 
-- 仅在 Platform-Grade 子集内补全：`FlowProgram.make/fromJSON({ ... })` + `steps:[...]` 数组字面量 + step 对象字面量。
+- 仅在 Platform-Grade 子集内补全：`Workflow.make/fromJSON({ ... })` + `steps:[...]` 数组字面量 + step 对象字面量。
 - 只补缺失字段：step 已显式声明 `key` 必须跳过（reason: `already_declared`）。
 - 冲突即拒绝：workflow 内存在重复 `key` 必须拒绝写回（reason: `duplicate_step_key`），只报告冲突定位与修复建议。
 - 候选 key 生成与冲突消解规则以 contract 为准：`contracts/workflow-stepkey-autofill.md`（确定性、幂等、最小 diff）。

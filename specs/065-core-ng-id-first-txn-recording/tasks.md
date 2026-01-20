@@ -48,7 +48,7 @@
 
 - [x] T027 [P] [US1] 新增/补齐测试：`dirtyAll=false` 时 `rootIds` 必须 prefix-free + 稳定排序，且不得出现隐式 `dirtyAll=true` `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`
 - [x] T028 [P] [US1] 新增/补齐测试：不可映射/歧义 string path 必须显式降级为 `dirtyAll=true` 且 reason 为稳定枚举 `packages/logix-core/test/internal/FieldPath/FieldPath.DirtySetReason.test.ts`
-- [x] T029 [P] [US1] 新增/补齐测试：diagnostics=full 下 patch records ≤256 且裁剪标记可解释 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`
+- [x] T029 [P] [US1] 新增/补齐测试：diagnostics=sampled/full 下 patch records ≤256 且裁剪标记可解释 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`
 
 ---
 

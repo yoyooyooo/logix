@@ -9,7 +9,7 @@ topic: sdd-platform
 >
 > **边界**：
 > - IntentRule 不是运行时事件协议；运行时证据以 RunResult 为准：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`
-> - IntentRule 不是 `Π`：任何动态律（时间/并发/取消/重试/分支）必须编译为 Workflow（权威输入 `WorkflowDef`，导出 `Workflow Static IR（Π slice）`；对外 DX 入口可为 `FlowProgram` 值对象），而不是在 Rule 里塞“表达式/计时器/并发黑魔法”（参照 `docs/ssot/platform/contracts/00-execution-model.md` 与 `specs/075-flow-program-codegen-ir/contracts/public-api.md`）
+> - IntentRule 不是 `Π`：任何动态律（时间/并发/取消/重试/分支）必须编译为 Workflow（权威输入 `WorkflowDef`，导出 `Workflow Static IR（Π slice）`；对外 DX 入口可为 `Workflow` 值对象），而不是在 Rule 里塞“表达式/计时器/并发黑魔法”（参照 `docs/ssot/platform/contracts/00-execution-model.md` 与 `specs/075-workflow-codegen-ir/contracts/public-api.md`）
 > - IntentRule 不承载闭包：不得出现不可校验/不可落盘的函数/字符串表达式；需要复杂映射/条件时，必须上升为 Pattern（纯数据 config → 编译到 `C_T/Π`）或 Service（把复杂性下沉到可替换端口）
 
 ## 1. 核心模型: IntentRule

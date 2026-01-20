@@ -102,13 +102,26 @@
   - 用途：语义规范形（去语法糖/默认值落地/分支显式/stepKey 完整）。
   - 约束：同一语义必须只有一种表示；缺失 stepKey 视为契约违规（fail-fast）。
 
+- **WorkflowDef（权威输入，纯 JSON）**
+  - 用途：Workflow 的权威输入（可落盘/可 diff/可出码），不得携带闭包/Tag 本体/Effect 本体。
+  - 关系：`Workflow.toJSON()/fromJSON(...)` 是 TS/DX 入口；在 Root IR/Static IR/Trace/Tape 中只保留稳定锚点（例如 `serviceId`），禁止双真相源。
+
 - **Workflow Static IR（Π slice）**
   - 用途：可导出/可 diff/可审阅的结构化工作流 IR（nodes/edges + version + digest）。
   - 关系：作为 Root IR 的 `workflowSurface` slice 被引用（Root IR 不内嵌整图到事件流）。
+  - Slice digest：RunResult 可选输出 `workflowSurfaceDigest`，但它必须是可从 Root IR 确定性导出的 slice（禁止并行真相源）。
 
-- **FlowProgram（对外 authoring 入口，当前命名）**
+- **Workflow（对外 authoring 入口，当前命名）**
   - 用途：`@logixjs/core` 的公共子模块；承载 validate/export/install 的冷路径能力（平台/AI 出码入口）。
-  - 关系：导出 `FlowProgramStaticIr`（即 Workflow Static IR / Π slice）；运行时执行消费的是 internal `RuntimePlan`（不以 IR 扫描替代热路径索引）。
+  - 关系：导出 `WorkflowStaticIr`（即 Workflow Static IR / Π slice）；运行时执行消费的是 internal `RuntimePlan`（不以 IR 扫描替代热路径索引）。
+
+- **call / callById（Service ports 入口）**
+  - `callById('<serviceId>')`：Platform-Grade/LLM 出码推荐形（字面量 serviceId，稳定锚点）。
+  - `call(Tag)`：TS sugar（本地 DX）；install/export 期必须 fail-fast 并派生同一个 `serviceId`（禁止要求消费者解析 Tag 才能建立锚点）。
+
+- **KernelPorts（内核端口作为 service ports）**
+  - 用途：把内核能力以普通 service port 的方式暴露（稳定 `serviceId='logix/kernel/<port>'`），避免第二套“隐式内核 API”。
+  - 关系：在 Workflow 中以 `callById('logix/kernel/<port>')` 作为规范形表达；TS 允许 `call(KernelPorts.<Port>)` 作为糖衣。
 
 - **ControlSurfaceManifest（Root Static IR）**
   - 用途：平台/Devtools/Alignment Lab 消费的单一可交换工件（actions/services/traits/workflows/opaque 收口）。

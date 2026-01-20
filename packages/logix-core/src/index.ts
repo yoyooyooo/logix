@@ -21,6 +21,7 @@ export * as Handle from './Handle.js'
 
 // Flow & DSL: fluent orchestration tools for application code
 export * as Flow from './Flow.js'
+export * as Workflow from './Workflow.js'
 export * as MatchBuilder from './MatchBuilder.js'
 
 // ReadQuery: protocolized state reads (selectorId/deps/lane/strict gate entry point)
@@ -64,6 +65,7 @@ export * as Debug from './Debug.js'
 export * from './Debug.js'
 export type { SnapshotToken } from './Debug.js'
 export { getDevtoolsSnapshotToken } from './Debug.js'
+export * as Middleware from './Middleware.js'
 export * as Platform from './Platform.js'
 
 // Observability protocol: exportable evidence package and envelope across hosts (see specs/005-*)

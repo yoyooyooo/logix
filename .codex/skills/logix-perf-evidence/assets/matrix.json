@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "logix-browser-perf-matrix-v1",
-  "updatedAt": "2026-01-07",
+  "updatedAt": "2026-01-19",
   "defaults": {
     "runs": 30,
     "warmupDiscard": 5,
@@ -520,6 +520,48 @@
         "budget.cutOffCount"
       ],
       "notes": "external callback → trait writeback → runtimeStore notify（不含 React render/commit），用于 073 externalStore ingest 的 baseline 与回归门禁。"
+    },
+    {
+      "id": "workflow.submit.tickNotify",
+      "priority": "P1",
+      "title": "workflow: submit→notify baseline (manualWatcher vs workflow)",
+      "primaryAxis": "watchers",
+      "axes": {
+        "watchers": [256],
+        "diagnosticsLevel": ["off", "full"]
+      },
+      "metrics": ["timePerSubmitMs"],
+      "budgets": [
+        {
+          "id": "off.p95<=1.58ms (baseline@watchers=256 manualWatcher * 1.05)",
+          "type": "absolute",
+          "metric": "timePerSubmitMs",
+          "p95Ms": 1.58
+        }
+      ],
+      "requiredEvidence": ["diagnostics.level", "workflow.mode", "workload.watchers", "budget.cutOffCount"],
+      "notes": "submit → call → success/failure dispatch → notify：对比手写 watcher（baseline）与 WorkflowRuntime（075）的开销与诊断门控。"
+    },
+    {
+      "id": "workflow.delay.timer",
+      "priority": "P1",
+      "title": "workflow: delay(timer)→notify baseline (manualWatcher vs workflow)",
+      "primaryAxis": "watchers",
+      "axes": {
+        "watchers": [256],
+        "diagnosticsLevel": ["off", "full"]
+      },
+      "metrics": ["timePerDelayMs"],
+      "budgets": [
+        {
+          "id": "off.p95<=6.09ms (baseline@watchers=256 manualWatcher * 1.05)",
+          "type": "absolute",
+          "metric": "timePerDelayMs",
+          "p95Ms": 6.09
+        }
+      ],
+      "requiredEvidence": ["diagnostics.level", "workflow.mode", "workload.watchers", "budget.cutOffCount"],
+      "notes": "delay(timer) → dispatch → notify：覆盖 timer schedule/fire/cancel 热路径，并对比手写 watcher vs WorkflowRuntime（075）。"
     },
     {
       "id": "tickScheduler.yieldToHost.backlog",

@@ -2,7 +2,7 @@
 
 **Group**: `specs/077-logix-control-laws-v1`
 **Derived From**: `registry`
-**Members**: `specs/073-logix-external-store-tick`, `specs/075-flow-program-codegen-ir`, `specs/076-logix-source-auto-trigger-kernel`
+**Members**: `specs/073-logix-external-store-tick`, `specs/075-workflow-codegen-ir`, `specs/076-logix-source-auto-trigger-kernel`
 **Created**: 2026-01-05
 
 > 本文件是“执行索引清单”：只做跳转与 gate 归纳，不复制成员 spec 的实现 tasks（避免并行真相源）。
@@ -10,7 +10,7 @@
 ## Members
 
 - [ ] `073-logix-external-store-tick` 已按其 tasks/quickstart 达标（入口：`specs/073-logix-external-store-tick/tasks.md`、`specs/073-logix-external-store-tick/quickstart.md`）
-- [ ] `075-flow-program-codegen-ir` 已按其 tasks/quickstart 达标（入口：`specs/075-flow-program-codegen-ir/tasks.md`、`specs/075-flow-program-codegen-ir/quickstart.md`）
+- [ ] `075-workflow-codegen-ir` 已按其 tasks/quickstart 达标（入口：`specs/075-workflow-codegen-ir/tasks.md`、`specs/075-workflow-codegen-ir/quickstart.md`）
 - [ ] `076-logix-source-auto-trigger-kernel` 已按其 tasks/quickstart 达标（入口：`specs/076-logix-source-auto-trigger-kernel/tasks.md`、`specs/076-logix-source-auto-trigger-kernel/quickstart.md`）
 
 ## Notes

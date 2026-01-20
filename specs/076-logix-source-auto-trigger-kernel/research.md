@@ -45,5 +45,5 @@
 裁决：选择 C。
 
 - 内核固化少量、稳定、可解释的默认触发语义（onMount/onDepsChange + debounce）；
-- 同时提供明确升级路径：关闭 auto-trigger → 用 Workflow（WorkflowDef/FlowProgram）取代；
+- 同时提供明确升级路径：关闭 auto-trigger → 用 Workflow（WorkflowDef/Workflow）取代；
 - 且必须对齐 073 tick：任何“时间”都要进入证据链，避免影子时间线。

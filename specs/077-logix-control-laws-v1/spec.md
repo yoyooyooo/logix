@@ -59,7 +59,7 @@ Obs_t  = Ω_F(S_t)
 
 - 长期模型：`docs/ssot/platform/foundation/01-the-one.md`
 - 时间旅行交互/愿景：`docs/ssot/platform/contracts/02-time-travel.md`
-- Program 侧 Tape 口径（可回放最小记录）：`specs/075-flow-program-codegen-ir/contracts/tape.md`
+- Program 侧 Tape 口径（可回放最小记录）：`specs/075-workflow-codegen-ir/contracts/tape.md`
 
 ## Members（本 group 调度的 specs）
 
@@ -67,7 +67,7 @@ Obs_t  = Ω_F(S_t)
 人读阐述：`specs/077-logix-control-laws-v1/spec-registry.md`。
 
 - `specs/073-logix-external-store-tick/`：建立参考系 `F`（`RuntimeStore + tickSeq`，no-tearing）
-- `specs/075-flow-program-codegen-ir/`：建立通用控制律 `Π_general`（WorkflowDef → Π slice：出码层 + 时间算子进入证据链；DX 入口为 FlowProgram）
+- `specs/075-workflow-codegen-ir/`：建立通用控制律 `Π_general`（WorkflowDef → Π slice：出码层 + 时间算子进入证据链；DX 入口为 Workflow）
 - `specs/076-logix-source-auto-trigger-kernel/`：建立受限控制律 `Π_source`（source 自动触发内核化，消灭 Query/Form 胶水）
 
 ## Spec 快速裁决（三问，避免“只做微调”的幻觉）
@@ -84,7 +84,7 @@ Obs_t  = Ω_F(S_t)
 
 ### 反模式清单（新定位下应降级到 v2/backlog 或直接停掉）
 
-- 把 075 FlowProgram 当作“人类主写 DSL”去做 DX：大量语法糖/重载、闭包映射、v1 就引入 service 结果数据流、自动派生 stepKey、邻接推断分支等 —— 这些会与“IR 可导出/可回放/性能门槛”硬冲突。
+- 把 075 Workflow 当作“人类主写 DSL”去做 DX：大量语法糖/重载、闭包映射、v1 就引入 service 结果数据流、自动派生 stepKey、邻接推断分支等 —— 这些会与“IR 可导出/可回放/性能门槛”硬冲突。
 - 继续投资 trait meta/feature 包里的反射式工作流（把触发/时间/分支塞回 meta 再解释）：会制造并行控制律与影子时间线；应由 076（受限 Π_source）+ 075（通用 Π_general）接管。
 - 任何导致 watcher 数量随 programs 增长、或 dispatch/commit 需要线性扫描全量的设计：必须回到 068 的 fan-out/topic-index 约束重新设计，而不是事后补丁。
 

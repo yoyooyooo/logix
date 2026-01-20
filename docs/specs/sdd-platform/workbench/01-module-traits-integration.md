@@ -249,4 +249,4 @@ Studio 可直接消费 `StateTraitGraph`：
 
 1. **先参考系**：完成 073 的 tick 参考系（no‑tearing + tickSeq 证据链锚点）。
 2. **再受限自动律**：把最常见的“deps 变更 → source 刷新”收敛为内核能力（`specs/076`，`Π_source`），消灭 Query/Form 的反射式胶水。
-3. **最后自由编排**：把多步工作流与时间算子收敛为 Workflow（`specs/075`，通用 `Π`；权威输入 `WorkflowDef`，DX 入口 `FlowProgram`），并通过 RunResult 证据链对齐到平台。
+3. **最后自由编排**：把多步工作流与时间算子收敛为 Workflow（`specs/075`，通用 `Π`；权威输入 `WorkflowDef`，DX 入口 `Workflow`），并通过 RunResult 证据链对齐到平台。

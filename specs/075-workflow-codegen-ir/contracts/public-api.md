@@ -1,19 +1,19 @@
-# Contracts: Public API（FlowProgram）
+# Contracts: Public API（Workflow）
 
 > 本文定义对外 API 口径；实现细节下沉 `packages/*/src/internal/**`。
 
-## 1) `@logixjs/core`：FlowProgram（公共子模块）
+## 1) `@logixjs/core`：Workflow（公共子模块）
 
 目标：用“声明式 Program”表达自由工作流（Control Laws），并可被 mount 为 ModuleLogic。
 
-> **定位裁决（v1）**：FlowProgram 是 AI/平台专属的 **出码层（IR DSL）**，核心目标是稳定、可序列化、可校验、可 diff、可解释；人类直接手写的舒适性不是第一约束。
+> **定位裁决（v1）**：Workflow 是 AI/平台专属的 **出码层（IR DSL）**，核心目标是稳定、可序列化、可校验、可 diff、可解释；人类直接手写的舒适性不是第一约束。
 >
 > 因此对外 API 必须以“纯数据 + 可编译”为中心：所有语义在导出/编译期确定，运行时只消费编译产物。
 
 命名关系（避免误解）：
 
-- `FlowProgram`：对外 authoring/装配入口（定义/组合/validate/export/install）。
-- `FlowProgramStaticIr`（又称 Workflow Static IR / Π slice）：`FlowProgram.exportStaticIr()` 的导出工件；平台/Devtools 通过 `ControlSurfaceManifest.workflowSurface` 消费它。
+- `Workflow`：对外 authoring/装配入口（定义/组合/validate/export/install）。
+- `WorkflowStaticIr`（又称 Workflow Static IR / Π slice）：`Workflow.exportStaticIr()` 的导出工件；平台/Devtools 通过 `ControlSurfaceManifest.workflowSurface` 消费它。
 - `RuntimePlan`：内部热路径执行计划（索引/路由/预解析）；不对外交换，不进入 Root IR，不得以 IR 扫描替代。
 
 ## 1.0 DX 裁决：SSoT 分化 + Effect-native 一体化
@@ -21,24 +21,24 @@
 本子模块对外同时提供两层形态（语义同一、无第二真相源）：
 
 - **权威工件（SSoT）**：`WorkflowDef`（纯 JSON、可落盘、可 Schema 校验、版本化），是平台/LLM/Studio 的单一事实源。
-- **值对象（DX）**：`FlowProgram` 是一个 Effect 风格的值：它携带 `WorkflowDef`，并提供冷路径方法（`validate/exportStaticIr/install`）。
+- **值对象（DX）**：`Workflow` 是一个 Effect 风格的值：它携带 `WorkflowDef`，并提供冷路径方法（`validate/exportStaticIr/install`）。
 
 约束：
 
-- `FlowProgram` 的 `toJSON()` MUST 只导出 `WorkflowDef`（纯 JSON）；不得把 Tag/Effect/Fiber/闭包序列化进工件。
-- `FlowProgram.fromJSON(def)`（或等价静态方法）用于把 `WorkflowDef` 恢复为值对象形态（补齐方法能力）。
+- `Workflow` 的 `toJSON()` MUST 只导出 `WorkflowDef`（纯 JSON）；不得把 Tag/Effect/Fiber/闭包序列化进工件。
+- `Workflow.fromJSON(def)`（或等价静态方法）用于把 `WorkflowDef` 恢复为值对象形态（补齐方法能力）。
 - Platform-Grade/LLM 出码 MUST 以 `callById('<serviceId>')`（字面量）表达 service 调用；TS 侧允许写 `call(serviceTag)` 作为语法糖，但落盘/导出时一律解析为 `serviceId: string`（复用 078 的单点 helper；不要求 Parser/Autofill 解析 Tag）。
 
 ### 1.1 入口（概念）
 
-- `FlowProgram.make(def)`：构造一个 Program 值对象（输入为 `WorkflowDef` 或等价的 def-like 形态；**禁止闭包**）
+- `Workflow.make(def)`：构造一个 Program 值对象（输入为 `WorkflowDef` 或等价的 def-like 形态；**禁止闭包**）
 - `program.install(moduleTag)`：把 Program 绑定到 module 并编译+mount（产出 ModuleLogic）
-  - 推荐 DX sugar：`Module.withFlow(program)`（内部等价于 `Module.withLogic(program.install(Module.tag))`）
-- **推荐（平台/AI 出码 + 性能门槛）**：`Module.withFlows(programs)`（批量安装多个 programs，并保证每个 module instance 只产生 1 条 actions$ watcher Fiber；内部做 `actionTag -> programs[]` 路由）
+  - 推荐 DX sugar：`Module.withWorkflow(program)`（内部等价于 `Module.withLogic(program.install(Module.tag))`）
+- **推荐（平台/AI 出码 + 性能门槛）**：`Module.withWorkflows(programs)`（批量安装多个 programs，并保证每个 module instance 只产生 1 条 actions$ watcher Fiber；内部做 `actionTag -> programs[]` 路由）
 - `program.exportStaticIr()`：导出 JSON 可序列化 Static IR（供 Devtools/Alignment Lab 可视化与 diff）
 - `program.validate()`：导出/安装前的强校验入口（fail-fast；错误可机器修复；运行时不承担校验成本）
 - `program.toJSON()`：导出 `WorkflowDef`（单一事实源，纯 JSON）
-- `FlowProgram.fromJSON(def)`：从 `WorkflowDef` 恢复值对象（提供方法能力）
+- `Workflow.fromJSON(def)`：从 `WorkflowDef` 恢复值对象（提供方法能力）
 
 说明（避免“差点味道”的三条硬边界）：
 
@@ -49,8 +49,8 @@
 
 ### 1.2 触发源（最小集合）
 
-- `FlowProgram.onAction(actionTag)`
-- `FlowProgram.onStart()` / `FlowProgram.onInit()`
+- `Workflow.onAction(actionTag)`
+- `Workflow.onStart()` / `Workflow.onInit()`
 
 ### 1.3 步骤（最小集合）
 
@@ -67,11 +67,11 @@ v1 采用 **对象式 step 构造**（更像“定义工件”，避免链式执
     - Static IR 只记录 `serviceId` 而不记录 methodName；多操作应拆分为多个 Tag（每个 Tag 对应一个 port/操作）
 - `delay({ key, ms })`：必须进入 tick 参考系（禁止影子 `setTimeout`）
 
-> 关于“看起来像 Traits 的能力”（例如 `source.refresh`）：不进入 core steps。推荐通过 `callById('logix/kernel/<port>')`（TS sugar：`call(KernelPorts.<Port>)`）表达；如确需语法糖，一律进入 `FlowProgram.Ext.*` 并走版本化/预算/诊断门控（见 2) 约束）。
+> 关于“看起来像 Traits 的能力”（例如 `source.refresh`）：不进入 core steps。推荐通过 `callById('logix/kernel/<port>')`（TS sugar：`call(KernelPorts.<Port>)`）表达；如确需语法糖，一律进入 `Workflow.Ext.*` 并走版本化/预算/诊断门控（见 2) 约束）。
 
 ### 1.3.1 输入映射 DSL（v1，最小）
 
-FlowProgram v1 允许在不引入 user closure 的前提下，表达最小“结构映射”，用于 `call.input` 与 `dispatch(payload)`：
+Workflow v1 允许在不引入 user closure 的前提下，表达最小“结构映射”，用于 `call.input` 与 `dispatch(payload)`：
 
 - **允许**：`payload`、`payload.path`（JSON Pointer）、`const`、`object`、`merge`
 - **禁止**：读取 state/traits、条件/循环/算术、引用 `call` 返回值
@@ -87,16 +87,16 @@ FlowProgram v1 允许在不引入 user closure 的前提下，表达最小“结
 
 目标：在不引入运行时闭包的前提下，增强 DSL 的表达能力与组合性；组合的产物仍必须可被编译为单一 Static IR。
 
-- `FlowProgram.fragment(fragmentId, steps)`：定义可复用片段（fragment）
+- `Workflow.fragment(fragmentId, steps)`：定义可复用片段（fragment）
   - fragment 是 build-time 结构单元：用于复用/组合；编译后 fragment 边界可映射到 IR 节点的 `source.fragmentId`（或等价可序列化字段）
-- `FlowProgram.compose(...parts)`：组合步骤与片段，生成 `steps`（序列化的结构 AST，而不是运行时函数管道）
-- `FlowProgram.withPolicy(policy, stepsOrFragment)`：为一段结构附加策略（例如默认并发/时间策略）
+- `Workflow.compose(...parts)`：组合步骤与片段，生成 `steps`（序列化的结构 AST，而不是运行时函数管道）
+- `Workflow.withPolicy(policy, stepsOrFragment)`：为一段结构附加策略（例如默认并发/时间策略）
 
-组合细节（v1 硬口径：stepKey 唯一性、compose 语义、withPolicy 合并优先级）见 `data-model.md#flowprogram-composition`。
+组合细节（v1 硬口径：stepKey 唯一性、compose 语义、withPolicy 合并优先级）见 `data-model.md#workflow-composition`。
 
 明确不做（避免歧义）：
 
-- 不把 `Effect.pipe/map/flatMap` 作为 FlowProgram 的结构 DSL：这些 API 以任意函数闭包为中心，无法可靠 IR 化/序列化；Effect 仅用于运行时解释执行（FlowRuntime/IO/Timer 之下的执行层）。
+- 不把 `Effect.pipe/map/flatMap` 作为 Workflow 的结构 DSL：这些 API 以任意函数闭包为中心，无法可靠 IR 化/序列化；Effect 仅用于运行时解释执行（FlowRuntime/IO/Timer 之下的执行层）。
 
 ## 2) 约束（必须）
 

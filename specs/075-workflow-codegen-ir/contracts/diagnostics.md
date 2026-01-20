@@ -1,14 +1,14 @@
-# Contracts: Diagnostics（FlowProgram 与 tick 关联）
+# Contracts: Diagnostics（Workflow 与 tick 关联）
 
 ## 原则
 
-- 复用既有边界事件：FlowProgram 不引入“巨型事件流”。
+- 复用既有边界事件：Workflow 不引入“巨型事件流”。
 - diagnostics=off 近零成本：不得常态分配/扫全量 Program。
 - 解释链以 tickSeq 为参考系：能回答“为何发生这次 dispatch/跳转/刷新”。
 
 ## 诊断分级（v1 硬裁决）
 
-FlowProgram v1 明确采用分级门控，避免把可解释性成本常态化：
+Workflow v1 明确采用分级门控，避免把可解释性成本常态化：
 
 - **off**：不新增 Program 级运行期 trace；不得在 tick/触发路径扫描 IR；仅在 fail-fast 错误路径产出结构化错误（含最小锚点）。
 - **light**：在复用的边界事件上附带最小锚点 meta（不携带 IR）：用于把因果链串到 tickSeq。
@@ -20,7 +20,7 @@ FlowProgram v1 明确采用分级门控，避免把可解释性成本常态化�
 ## 事件口径（最小）
 
 - `trace:tick`：来自 073（start/settled/budgetExceeded）
-- `EffectOp(kind='flow')`：FlowProgram watcher 的运行（meta 至少含 `programId/nodeId/tickSeq`）
+- `EffectOp(kind='flow')`：Workflow watcher 的运行（meta 至少含 `programId/nodeId/tickSeq`）
 - `EffectOp(kind='service')`：call 的边界（meta 至少含 `serviceId/programId/tickSeq`）
   - `serviceId` 必须是稳定字符串：按 `specs/078-module-service-manifest/contracts/service-id.md` 从 `Context.Tag` 派生（单点 helper）
 
@@ -45,7 +45,7 @@ FlowProgram v1 明确采用分级门控，避免把可解释性成本常态化�
 
 ## 在途态 I_t（长期公式 Σ_t 的落点）
 
-FlowProgram 的动态语义天然会引入 “in-flight 状态”：
+Workflow 的动态语义天然会引入 “in-flight 状态”：
 
 - `delay` 的 timer schedule/cancel/fired
 - `latest/exhaust` 的 run 替换/忽略/取消

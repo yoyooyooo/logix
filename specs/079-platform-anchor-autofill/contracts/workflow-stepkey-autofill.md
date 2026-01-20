@@ -12,7 +12,7 @@
 
 本 contract 只覆盖“可高置信度定位与改写”的形态：
 
-- `FlowProgram.make({ ... })` / `FlowProgram.fromJSON({ ... })` 的 `WorkflowDef` 就地对象字面量；
+- `Workflow.make({ ... })` / `Workflow.fromJSON({ ... })` 的 `WorkflowDef` 就地对象字面量；
 - `steps` 为数组字面量；
 - step 为对象字面量；
 - `kind`/关键字段为可解析形态（字面量优先）。
@@ -55,5 +55,5 @@
 
 ## 关联裁决
 
-- 075：`stepKey` 必填、冲突 fail-fast、不可随机化：`specs/075-flow-program-codegen-ir/contracts/ir.md`
+- 075：`stepKey` 必填、冲突 fail-fast、不可随机化：`specs/075-workflow-codegen-ir/contracts/ir.md`
 - Root IR：`programId/nodeId/stepKey` 去随机化：`docs/ssot/platform/contracts/03-control-surface-manifest.md`

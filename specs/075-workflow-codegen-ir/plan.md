@@ -1,14 +1,14 @@
-# Implementation Plan: FlowProgram Codegen IR（出码层：Canonical AST + Static IR）
+# Implementation Plan: Workflow Codegen IR（出码层：Canonical AST + Static IR）
 
-**Branch**: `075-flow-program-codegen-ir` | **Date**: 2026-01-05 | **Spec**: `specs/075-flow-program-codegen-ir/spec.md`  
-**Input**: Feature specification from `specs/075-flow-program-codegen-ir/spec.md`
+**Branch**: `075-workflow-codegen-ir` | **Date**: 2026-01-05 | **Spec**: `specs/075-workflow-codegen-ir/spec.md`  
+**Input**: Feature specification from `specs/075-workflow-codegen-ir/spec.md`
 
 **Note**: This template is copied into `specs/[###-feature-name]/plan.md` by
 `.specify/scripts/bash/setup-plan.sh` (invoked by the feature workflow).
 
 ## Summary
 
-交付一个“可导出、可编译、可诊断”的 FlowProgram 能力：
+交付一个“可导出、可编译、可诊断”的 Workflow 能力：
 
 - 业务用声明式 DSL 描述“触发源（action/lifecycle）→ 步骤（dispatch/call/delay）→ 并发策略”；
 - 编译为运行期 watcher（复用现有 FlowRuntime/EffectOp），且严格遵守 txn-window 禁 IO；
@@ -21,7 +21,7 @@
 
 - **默认（baseline）**：`diagnostics=off` + `tape=off`，保证近零成本与确定性输出。
 - **观察（observe）**：打开 `diagnostics=light/sampled`，只输出 Slim meta（programId/runId/tickSeq/serviceId/cancel reason），用于定位“是谁触发/为何慢/为何取消”。
-- **收敛触发源与 selector（converge）**：把触发源/路由从“散落 watcher”收敛到 `Module.withFlows` 的单订阅 + `O(1+k)` action 路由；必要时拆分触发源（按 actionTag/phase）。
+- **收敛触发源与 selector（converge）**：把触发源/路由从“散落 watcher”收敛到 `Module.withWorkflows` 的单订阅 + `O(1+k)` action 路由；必要时拆分触发源（按 actionTag/phase）。
 - **调参/拆分 Program（tune/split）**：按证据（perf report + trace）调整并发策略与步骤粒度；将热点拆成更小 program/fragment 并保持 stepKey 稳定锚点。
 
 验收：该阶梯必须在 `tasks.md` 里有明确交付物（文档 + 示例/最小用例），并可通过 perf evidence 与 trace 输出“按阶梯推进”的证据闭环。
@@ -30,19 +30,19 @@
 
 为避免实现阶段“口径漂移”，本特性明确采纳以下裁决：
 
-- **分层**：`WorkflowDef`（权威输入，纯 JSON）≠ `FlowProgramStaticIr`（单一真相源）。可序列化/可 diff 的对象是 Static IR，而不是 authoring 输入。
+- **分层**：`WorkflowDef`（权威输入，纯 JSON）≠ `WorkflowStaticIr`（单一真相源）。可序列化/可 diff 的对象是 Static IR，而不是 authoring 输入。
 - **SSoT 分化 + DX 一体化（Effect-native）**：
   - SSoT：唯一权威输入收敛为 `WorkflowDef`（纯 JSON、可落盘、可校验、版本化），是平台/LLM/Studio 的事实源；
-  - DX：对外提供“值对象”`FlowProgram`（未来可更名为 `Workflow`），其 `toJSON()` 导出 `WorkflowDef`，并提供 `validate/exportStaticIr/install` 等冷路径方法；
+  - DX：对外提供“值对象”`Workflow`，其 `toJSON()` 导出 `WorkflowDef`，并提供 `validate/exportStaticIr/install` 等冷路径方法；
   - 任何 TS DSL/Recipe 都只能生成 `WorkflowDef`，不得直接携带运行时语义（闭包）或形成第二语义源。
-- **出码层定位**：FlowProgram 定位为 AI/平台专属的出码层（IR DSL），而非以“人类手写舒适”为第一目标；业务侧“少胶水”主要来自 Recipe/Studio/AI 生成或更高层 Pattern。
+- **出码层定位**：Workflow 定位为 AI/平台专属的出码层（IR DSL），而非以“人类手写舒适”为第一目标；业务侧“少胶水”主要来自 Recipe/Studio/AI 生成或更高层 Pattern。
 - **Canonical AST（唯一规范形）**：引入 Canonical AST 作为语义规范形：无语法糖、默认值落地、分支显式、`stepKey` 完整；Static IR 是 Canonical AST 的可导出投影（version+digest+nodes/edges）。
 - **组合发生在 build-time**：提供 fragment/compose/withPolicy 等组合器来生成 Spec/IR；运行时仍由 Effect 承载执行。**不**把 `Effect.pipe/map/flatMap` 作为结构 DSL 的 authoring API（避免任意闭包导致不可 IR 化/不可序列化）。
 - **无用户闭包进入运行期**：Program 内禁止“运行时求值”的 user closure（包括 `call(builder)` 形态）。复杂映射/条件下沉到 service/pattern。
 - **Service 身份单一真相源**：`call`（原 `serviceCall`）走 Tag-only API；Static IR/Trace/Tape 中只存 `serviceId: string`，并按 `specs/078-module-service-manifest/contracts/service-id.md` 的算法从 Tag 派生（必须单点 helper，禁止各处自写）。
 - **分支是图，不是约定**：`onSuccess/onFailure` 允许作为 authoring sugar，但编译后必须显式落到 IR 的节点/边（包含 success/failure 边），用于解释链路与 diff。
 - **时间语义进 IR**：`timeout/retry/delay` 等时间算子必须进入 tick 参考系；其中 `timeout/retry` 不得只作为运行时黑盒参数，必须体现在可导出的 Static IR 中。
-- **入口收敛**：推荐入口为 `Module.withFlows(programs)`（平台/AI 出码）与 `Module.withFlow(program)`（人类/小规模）；`program.install(Module.tag)` 仅作为高级装配接口保留。
+- **入口收敛**：推荐入口为 `Module.withWorkflows(programs)`（平台/AI 出码）与 `Module.withWorkflow(program)`（人类/小规模）；`program.install(Module.tag)` 仅作为高级装配接口保留。
 
 ### Hard Decisions（v1 硬裁决）
 
@@ -58,20 +58,20 @@
 
 ## Performance Guardrails（硬门：默认不显著回退）
 
-> 原则：**默认路径（diagnostics=off + tape=off）必须接近“没有 FlowProgram”时的成本**；任何额外成本必须可解释、可关、可量化，并在 perf evidence 中可对比。
+> 原则：**默认路径（diagnostics=off + tape=off）必须接近“没有 Workflow”时的成本**；任何额外成本必须可解释、可关、可量化，并在 perf evidence 中可对比。
 
 ### P0: 默认开关与成本分层
 
-- 默认：`diagnostics=off`、`tape=off`（FlowProgram 不能隐式常开采样/记录）。
+- 默认：`diagnostics=off`、`tape=off`（Workflow 不能隐式常开采样/记录）。
 - `diagnostics=light/sampled/full` 才允许输出 Program 级锚点；且只输出 Slim meta（禁止把 Static IR 全量塞进事件流）。
 - tape 仅在 record/replay/fork 模式开启；live 默认不记录（避免常态序列化/存储开销）。
 
 ### P1: 触发路由复杂度（热路径硬约束）
 
 - Action trigger 必须满足：`O(1 + k)`（`k`=命中该 `actionTag` 的 program 数），禁止每次 action 扫描全量 programs。
-- 每个 `ModuleRuntime(instanceId)` 的 FlowProgram watcher **最多 1 条**长期 Fiber（单订阅 `actions$`，内部按 `actionTag` 路由）。
+- 每个 `ModuleRuntime(instanceId)` 的 Workflow watcher **最多 1 条**长期 Fiber（单订阅 `actions$`，内部按 `actionTag` 路由）。
   - 目标：避免 “program 数量增长 → watcher 订阅数增长 → PubSub 广播/Stream.filter 成本线性增长”。
-- 与 `specs/068-watcher-pure-wins/` 的 Action fan-out / topic-index 方向对齐：FlowProgram 的 action 路由应复用同一套 topic/index 基建，避免并行实现。
+- 与 `specs/068-watcher-pure-wins/` 的 Action fan-out / topic-index 方向对齐：Workflow 的 action 路由应复用同一套 topic/index 基建，避免并行实现。
 
 ### P2: 编译期预计算（把冷路径留在 install/export）
 
@@ -119,15 +119,15 @@
 补充（DX 一体化落点）：
 
 - `WorkflowDef` 是 normalize 的唯一入口形态：TS DSL/Recipe/Studio 必须先产出 def，再进入 `normalize/validate/...`。
-- `FlowProgram.toJSON()` 输出 def；`FlowProgram.fromJSON(def)`（或等价静态方法）恢复值对象形态并提供冷路径方法。
+- `Workflow.toJSON()` 输出 def；`Workflow.fromJSON(def)`（或等价静态方法）恢复值对象形态并提供冷路径方法。
 
 ### 2) 运行时挂载形态（避免 watcher 膨胀）
 
 目标：无论安装多少个 programs，都只产生一条 actions$ 订阅 Fiber：
 
-- `FlowProgramRuntime.mountAll(programs[]) -> Logic`：一次性挂载并内部做 `actionTag -> programs[]` 索引
+- `WorkflowRuntime.mountAll(programs[]) -> Logic`：一次性挂载并内部做 `actionTag -> workflows[]` 索引
 - `program.install(moduleTag)` 仍保留，但实现上应委托给 `mountAll`（把单个 program 装配到同一个 registry，而不是每个 program 单独起 watcher）
-- 对外推荐入口：`Module.withFlows(programs)`（平台/AI 出码）与 `Module.withFlow(program)`（人类/小规模），最终都应落到同一条 actions$ 订阅与同一套路由机制
+- 对外推荐入口：`Module.withWorkflows(programs)`（平台/AI 出码）与 `Module.withWorkflow(program)`（人类/小规模），最终都应落到同一条 actions$ 订阅与同一套路由机制
 
 > 这一条是性能门槛：否则平台/AI 出码“很多 program”会线性放大 PubSub 广播与 Stream.filter 成本。
 
@@ -160,7 +160,7 @@ type ProgramRuntimeStateV1 =
   | { readonly mode: 'exhaust'; busy: boolean }
   | { readonly mode: 'parallel' } // concurrency 限制来自 runtime（避免每 program 自己再造一套 limiter）
 
-type FlowProgramRegistryV1 = {
+type WorkflowRegistryV1 = {
   readonly byActionTag: ReadonlyMap<string, ReadonlyArray<{ readonly program: CompiledProgramV1; readonly state: ProgramRuntimeStateV1 }>>
   readonly onStart: ReadonlyArray<{ readonly program: CompiledProgramV1; readonly state: ProgramRuntimeStateV1 }>
   readonly onInit: ReadonlyArray<{ readonly program: CompiledProgramV1; readonly state: ProgramRuntimeStateV1 }>
@@ -273,8 +273,8 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Baseline 语义（MUST-1）：
 
-- 首选：**同一份代码下的策略 A/B**（类似 073 的 adapter A/B），在 perf suite 内提供 `mode=manualWatcher|flowProgram` 参数，避免必须切回旧 commit 才能采 before。
-- 备选：代码前后（commit A→B）。仅在 A/B 难以实现时采用，且必须把 before 的 commit 与环境元信息写入 `specs/075-flow-program-codegen-ir/perf/README.md`。
+- 首选：**同一份代码下的策略 A/B**（类似 073 的 adapter A/B），在 perf suite 内提供 `mode=manualWatcher|workflow` 参数，避免必须切回旧 commit 才能采 before。
+- 备选：代码前后（commit A→B）。仅在 A/B 难以实现时采用，且必须把 before 的 commit 与环境元信息写入 `specs/075-workflow-codegen-ir/perf/README.md`。
 
 交付档位（MUST-0）：
 
@@ -283,12 +283,12 @@ Baseline 语义（MUST-1）：
 可比性锁定（MUST-2）：
 
 - before/after 必须同机同环境、同 matrixId、同 profile、同 sampling 参数；否则 diff 仅作 triage 线索，不下“已回归/已达标”结论。
-- 产物落点：`specs/075-flow-program-codegen-ir/perf/*`（before/after/diff + 环境元信息 README）。
+- 产物落点：`specs/075-workflow-codegen-ir/perf/*`（before/after/diff + 环境元信息 README）。
 
 测量点位（P1，必须至少覆盖两条链路）：
 
-- `flowProgram.submit.tickNotify`：submit 工作流（`call + dispatch + success/failure`）在 `diagnostics=off` 下的 tick→notify p95 / 分配（对比 manual vs flowProgram）。
-- `flowProgram.delay.timer`：delay→dispatch（或 delay→KernelPort call）链路，验证不引入影子时间线，且解释链可归因到 tickSeq（对比 manual vs flowProgram）。
+- `workflow.submit.tickNotify`：submit 工作流（`call + dispatch + success/failure`）在 `diagnostics=off` 下的 tick→notify p95 / 分配（对比 manual vs workflow）。
+- `workflow.delay.timer`：delay→dispatch（或 delay→KernelPort call）链路，验证不引入影子时间线，且解释链可归因到 tickSeq（对比 manual vs workflow）。
 
 预算策略（Hard Gate，按 073 口径）：
 
@@ -302,7 +302,7 @@ Failure Policy：同 073（`meta.comparability.comparable=false` 或 `summary.re
 ### Documentation (this feature)
 
 ```text
-specs/075-flow-program-codegen-ir/
+specs/075-workflow-codegen-ir/
 ├── spec.md
 ├── plan.md
 ├── tasks.md
@@ -326,20 +326,20 @@ specs/075-flow-program-codegen-ir/
 ```text
 packages/logix-core/
 ├── src/
-│   ├── FlowProgram.ts                         # NEW: public module (DSL + types)
-│   ├── Module.ts                              # UPDATE: add `Module.withFlow(program)` sugar (canonical install entry)
+│   ├── Workflow.ts                            # NEW: public module (DSL + types)
+│   ├── Module.ts                              # UPDATE: add `Module.withWorkflow(program)` sugar (canonical install entry)
 │   └── internal/
 │       └── runtime/core/
-│           ├── FlowProgramRuntime.ts          # NEW: compiler + mount (uses FlowRuntime/EffectOp)
+│           ├── WorkflowRuntime.ts             # NEW: compiler + mount (uses FlowRuntime/EffectOp)
 │           └── ServiceId.ts                   # NEW/REUSE: single-point `ServiceId.fromTag` (align 078 contract)
 └── test/
-    └── internal/runtime/FlowProgram.*.test.ts # NEW: semantics (submit/delay/cancel) + trace anchors
+    └── internal/runtime/Workflow.*.test.ts    # NEW: semantics (submit/delay/cancel) + trace anchors
 
 packages/logix-react/
 └── test/browser/**                            # 如需验证 tickSeq 关联：复用 073 runtime-store 场景
 ```
 
-**Structure Decision**: FlowProgram 作为 `@logixjs/core` 的公共子模块对外暴露（DSL + 类型）；编译与 mount 下沉 `src/internal/runtime/core/FlowProgramRuntime.ts`，复用既有 FlowRuntime/EffectOp，并通过测试与 perf evidence 守住 tick 参考系与成本门控。
+**Structure Decision**: Workflow 作为 `@logixjs/core` 的公共子模块对外暴露（DSL + 类型）；编译与 mount 下沉 `src/internal/runtime/core/WorkflowRuntime.ts`，复用既有 FlowRuntime/EffectOp，并通过测试与 perf evidence 守住 tick 参考系与成本门控。
 
 ## Complexity Tracking
 

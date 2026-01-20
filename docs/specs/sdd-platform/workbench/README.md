@@ -69,7 +69,7 @@ related:
 | `00-overview.md` | 平台闭环与角色分工 | 具体协议/schema 细节 |
 | `02-full-duplex-architecture.md` | 北极星：Code↔Studio↔Runtime 全双工架构 | MVP 交付与排期承诺 |
 | `05-intent-pipeline.md` | Context Supply Chain + Artifact/Pack 边界 | UI 交互稿与具体页面设计 |
-| `08-alignment-lab-and-sandbox.md` | Verify 回路与 Sandbox 边界 | 重述 RunResult/Tape 细节（引用 `docs/ssot/platform/contracts/01-runresult-trace-tape.md` 与 `specs/075-flow-program-codegen-ir/contracts/tape.md`） |
+| `08-alignment-lab-and-sandbox.md` | Verify 回路与 Sandbox 边界 | 重述 RunResult/Tape 细节（引用 `docs/ssot/platform/contracts/01-runresult-trace-tape.md` 与 `specs/075-workflow-codegen-ir/contracts/tape.md`） |
 | `11-spec-to-code-mvp.md` | MVP 竖切与验收路径 | 长期平台形态讨论 |
 | `01-module-traits-integration.md` | Traits（`C_T`）在平台闭环的位置与治理 | 动态控制律（`Π`）设计 |
 | `14-intent-rule-schema.md` | IntentRule（wiring 协议）草案 | RunResult/证据链口径（引用 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`） |

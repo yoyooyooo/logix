@@ -45,7 +45,7 @@ related:
     - 权威顺序：`runId + seq`（允许间隙）
     - 参考系锚点：`tickSeq`（可作为 `trace:tick` 事件，或作为 `debug:event.payload.meta.tickSeq` 等 Slim 字段出现）
     - 稳定实例锚点：`moduleId + instanceId`（参照 `specs/016-serializable-diagnostics-and-identity/spec.md`）
-  - `Tape`：复用 075 的 `TapeRecordV1`（`specs/075-flow-program-codegen-ir/contracts/tape.md`），用于 deterministic replay/fork（环境=oracle）。
+  - `Tape`：复用 075 的 `TapeRecordV1`（`specs/075-workflow-codegen-ir/contracts/tape.md`），用于 deterministic replay/fork（环境=oracle）。
   - RunResult 的统一口径与锚点表见：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`（避免平台侧再定义“另一套 TraceNode”）。
 - **Value**:
   - **Auto-Bug Report**: 用户报错时一键上传 Trace（解释链），开发者可在 Sandbox/Test 中用 Tape 做确定性回放/分叉推演（生产环境通常只做只读回放与局部模拟）。

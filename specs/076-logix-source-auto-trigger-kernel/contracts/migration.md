@@ -14,7 +14,7 @@
    - 删除/收敛 `TraitLifecycle.makeSourceWiring` 的对外使用点。
 3. 若业务需要更复杂的时序：
    - `autoRefresh: false`
-   - 用 Workflow（075；对外 DX 入口 `FlowProgram`）显式触发 refresh：通过 `callById('logix/kernel/sourceRefresh')`（保持 tick 证据链与 `serviceId` 锚点；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
+   - 用 Workflow（075；对外 DX 入口 `Workflow`）显式触发 refresh：通过 `callById('logix/kernel/sourceRefresh')`（保持 tick 证据链与 `serviceId` 锚点；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
 
 ## 不提供兼容层
 

@@ -33,13 +33,13 @@ related:
 
 - Module 图纸（state/actions/traits 的结构草稿，`C_T` 侧）：见 `01-module-traits-integration.md`
 - IntentRule（连线协议，Design‑time/Visual ↔ Codegen/Runtime）：见 `14-intent-rule-schema.md`
-- Workflow（可 IR 化的控制律，`Π` 侧）：权威输入为 `WorkflowDef`，导出 `Workflow Static IR（Π slice）`；DX 入口为 `FlowProgram` 值对象（例如 `specs/075`/`specs/076`）
+- Workflow（可 IR 化的控制律，`Π` 侧）：权威输入为 `WorkflowDef`，导出 `Workflow Static IR（Π slice）`；DX 入口为 `Workflow` 值对象（例如 `specs/075`/`specs/076`）
 
 4) **Code（可执行投影）**
 
 - `packages/*` / `examples/*` 下的 TypeScript（Effect/Logix），包含：
   - Module（schema/actions/reducers/traits）
-  - Logic/Flow（可能是 Fluent DSL、也可能是 `FlowProgram` 值对象/`WorkflowDef`）
+  - Logic/Flow（可能是 Fluent DSL、也可能是 `Workflow` 值对象/`WorkflowDef`）
 - 约束：Runtime 不再“从静态推断动态”，动态律必须显式化为 `Π`（参照 `docs/ssot/platform/foundation/01-the-one.md` 与 `docs/ssot/platform/contracts/00-execution-model.md`）
 
 5) **RunResult（Grounding）**

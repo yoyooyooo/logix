@@ -54,8 +54,8 @@
 
 ### Out of Scope
 
-- 通用的 Action→Action 多步协议/分支/补偿/重试/超时：由 `075-flow-program-codegen-ir` 提供（Π 的通用形态）。
-- “onMount delay 3s 再 refresh”这类自由时序：应通过 Workflow 表达（075；对外 DX 入口为 `FlowProgram`）。
+- 通用的 Action→Action 多步协议/分支/补偿/重试/超时：由 `075-workflow-codegen-ir` 提供（Π 的通用形态）。
+- “onMount delay 3s 再 refresh”这类自由时序：应通过 Workflow 表达（075；对外 DX 入口为 `Workflow`）。
 - ExternalStore / TickScheduler / React 无 tearing（观测参考系的建立与切换）：由 073 负责。
 
 ## User Scenarios & Testing _(mandatory)_
@@ -77,7 +77,7 @@
 - 关闭 source auto-trigger；
 - 用 Workflow 表达更复杂的时序（delay/retry/timeout/分支），同时保持 tick 参考系与可解释链路不破（显式通过 `callById('logix/kernel/sourceRefresh')` 触发 refresh；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
 
-**Independent Test**：关闭 auto-trigger 后，source 不会被自动刷新；通过 Workflow（FlowProgram/WorkflowDef）显式触发 refresh 能正常工作且可关联 tickSeq。
+**Independent Test**：关闭 auto-trigger 后，source 不会被自动刷新；通过 Workflow（Workflow/WorkflowDef）显式触发 refresh 能正常工作且可关联 tickSeq。
 
 ### User Story 3 - 性能：大量 source + 高频输入下不退化（Priority: P2）
 

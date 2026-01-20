@@ -26,8 +26,8 @@ Root IR 的职责是“可判定/可对比/可解释/可回放锚点化”，不
 - ServiceId（稳定标识算法）：`specs/078-module-service-manifest/contracts/service-id.md`
 - KernelPorts（内核端口作为 service ports）：`specs/078-module-service-manifest/contracts/kernel-ports.md`
 - Tick/HostScheduler/trace:tick（参考系与诊断门控）：`specs/073-logix-external-store-tick/contracts/*`
-- Workflow（结构化控制律 Π）最小 IR：`specs/075-flow-program-codegen-ir/contracts/ir.md`、`specs/075-flow-program-codegen-ir/contracts/diagnostics.md`
-  - 命名对齐：对外 authoring 概念当前使用 `FlowProgram`（`@logixjs/core` 公共子模块）；其导出工件 `FlowProgramStaticIr` 即这里的 Workflow Static IR（Π slice），并由 `workflowSurface` 收口引用。
+- Workflow（结构化控制律 Π）最小 IR：`specs/075-workflow-codegen-ir/contracts/ir.md`、`specs/075-workflow-codegen-ir/contracts/diagnostics.md`
+  - 命名对齐：对外 authoring 概念当前使用 `Workflow`（`@logixjs/core` 公共子模块）；其导出工件 `WorkflowStaticIr` 即这里的 Workflow Static IR（Π slice），并由 `workflowSurface` 收口引用。
 
 ## 1) 定义：什么是 Control Surface Manifest
 

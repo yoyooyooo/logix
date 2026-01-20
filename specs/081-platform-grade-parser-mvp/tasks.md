@@ -82,11 +82,11 @@ description: "Task list for 081-platform-grade-parser-mvp (AnchorIndex@v1)"
 
 ## Phase 6: Workflow Anchors（WorkflowDef/stepKey 纳入 AnchorIndex） (Priority: P1)
 
-**Goal**: 识别 Platform-Grade `FlowProgram.make/fromJSON({ ... })` 的 WorkflowDef 定义点，并提供：`callById(serviceIdLiteral)` 的可枚举使用点、缺失 `steps[*].key` 的插入点、重复 key 的冲突定位。  
+**Goal**: 识别 Platform-Grade `Workflow.make/fromJSON({ ... })` 的 WorkflowDef 定义点，并提供：`callById(serviceIdLiteral)` 的可枚举使用点、缺失 `steps[*].key` 的插入点、重复 key 的冲突定位。  
 **Independent Test**: fixture 中包含 1 个可解析 workflow、1 个子集外 workflow；输出确定性；缺失 key 输出 `missing.workflowStepKey`；重复 key 输出 `duplicate_step_key`。
 
 - [ ] T029 [P] 构造 workflow fixture：Platform-Grade WorkflowDef（缺失 key + 重复 key + callById(serviceIdLiteral)）`packages/logix-anchor-engine/test/fixtures/repo-workflow-def/*`
-- [ ] T030 [US?] 识别 `FlowProgram.make/fromJSON({ ... })` 定义点并输出 WorkflowDef entry `packages/logix-anchor-engine/src/internal/scanWorkflowDef.ts`
+- [ ] T030 [US?] 识别 `Workflow.make/fromJSON({ ... })` 定义点并输出 WorkflowDef entry `packages/logix-anchor-engine/src/internal/scanWorkflowDef.ts`
 - [ ] T031 [US?] 扫描 workflow steps，输出 `WorkflowCallUse`（serviceIdLiteral）与 `missing.workflowStepKey` 插入点 `packages/logix-anchor-engine/src/internal/scanWorkflowSteps.ts`
 - [ ] T032 [P] 单测：workflow serviceIdLiteral 与缺失 stepKey 插入点稳定 `packages/logix-anchor-engine/test/Parser/Parser.workflowDef.anchors.test.ts`
 - [ ] T033 [P] 单测：重复 stepKey 被识别并输出冲突定位（reason: `duplicate_step_key`；不产生插入点）`packages/logix-anchor-engine/test/Parser/Parser.workflowDef.duplicate-stepKey.test.ts`

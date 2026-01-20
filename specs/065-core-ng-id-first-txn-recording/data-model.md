@@ -49,7 +49,7 @@
 - `perf`
 - `unknown`（兜底：任何不在白名单内的输入都归一化为 unknown）
 
-### 3.2 TxnPatchRecord（full 诊断下的可序列化形态）
+### 3.2 TxnPatchRecord（sampled/full 诊断下的可序列化形态）
 
 - `opSeq: number`（事务内单调递增；用于排序/回放）
 - `pathId?: FieldPathId`（能映射时必须填写；缺失时通常伴随 `dirtyAll=true`）
@@ -57,7 +57,7 @@
 - `stepId?: number`（ConvergeStepId；对齐 Static IR 的 step table）
 - `traitNodeId?: string`（可选：作为调试锚点；不得替代 stepId/staticIrDigest）
 - `from?: unknown` / `to?: unknown`
-  - 仅在 diagnostics=full 下保留；
+  - 仅在 diagnostics=sampled/full 下保留；
   - 必须可 JSON 序列化；不可序列化时必须省略或裁剪（以保证 DebugSink 的 JsonValue 硬门）。
 
 > 显示边界可派生：`path = fieldPaths[pathId]`；不得在 txn 热路径携带 `FieldPath`/string path 作为证据载荷。

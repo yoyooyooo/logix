@@ -20,6 +20,7 @@
     "./ExternalStore": "./src/ExternalStore.ts",
     "./Env": "./src/Env.ts",
     "./Flow": "./src/Flow.ts",
+    "./Workflow": "./src/Workflow.ts",
     "./Kernel": "./src/Kernel.ts",
     "./Handle": "./src/Handle.ts",
     "./Link": "./src/Link.ts",
@@ -82,6 +83,11 @@
         "types": "./dist/Flow.d.ts",
         "import": "./dist/Flow.js",
         "require": "./dist/Flow.cjs"
+      },
+      "./Workflow": {
+        "types": "./dist/Workflow.d.ts",
+        "import": "./dist/Workflow.js",
+        "require": "./dist/Workflow.cjs"
       },
       "./Kernel": {
         "types": "./dist/Kernel.d.ts",

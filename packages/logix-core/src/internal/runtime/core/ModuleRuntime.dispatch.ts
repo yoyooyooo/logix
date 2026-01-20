@@ -1,9 +1,10 @@
-import { Effect, PubSub } from 'effect'
+import { Effect, FiberRef, PubSub } from 'effect'
 import type { StateChangeWithMeta, StateCommitMeta, StateCommitMode, StateCommitPriority } from './module.js'
 import * as Debug from './DebugSink.js'
 import type { ConcurrencyDiagnostics } from './ConcurrencyDiagnostics.js'
 import * as ReducerDiagnostics from './ReducerDiagnostics.js'
 import * as StateTransaction from './StateTransaction.js'
+import { currentTxnOriginOverride, type TxnOriginOverride } from './TxnOriginOverride.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { RunWithStateTransaction, SetStateInternal } from './ModuleRuntime.transaction.js'
 import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
@@ -169,9 +170,9 @@ export const makeDispatchOps = <S, A>(args: {
     )
   }
 
-  const makeActionOrigin = (originName: string, action: A): StateTransaction.StateTxnOrigin => ({
-    kind: 'action',
-    name: originName,
+  const makeActionOrigin = (originName: string, action: A, override?: TxnOriginOverride): StateTransaction.StateTxnOrigin => ({
+    kind: override?.kind ?? 'action',
+    name: override?.name ?? originName,
     details: {
       _tag: resolveActionTag(action) ?? 'unknown',
       path: typeof (action as any)?.payload?.path === 'string' ? ((action as any).payload.path as string) : undefined,
@@ -234,7 +235,7 @@ export const makeDispatchOps = <S, A>(args: {
       }
     })
 
-  const runDispatch = (action: A): Effect.Effect<void> =>
+  const runDispatch = (action: A, override?: TxnOriginOverride): Effect.Effect<void> =>
     runOperation(
       'action',
       'action:dispatch',
@@ -242,10 +243,10 @@ export const makeDispatchOps = <S, A>(args: {
         payload: action,
         meta: { moduleId: optionsModuleId, instanceId },
       },
-      runWithStateTransaction(makeActionOrigin('dispatch', action), () => dispatchInTransaction(action)),
+      runWithStateTransaction(makeActionOrigin('dispatch', action, override), () => dispatchInTransaction(action)),
     ).pipe(Effect.asVoid)
 
-  const runDispatchLowPriority = (action: A): Effect.Effect<void> =>
+  const runDispatchLowPriority = (action: A, override?: TxnOriginOverride): Effect.Effect<void> =>
     runOperation(
       'action',
       'action:dispatchLowPriority',
@@ -253,7 +254,7 @@ export const makeDispatchOps = <S, A>(args: {
         payload: action,
         meta: { moduleId: optionsModuleId, instanceId },
       },
-      runWithStateTransaction(makeActionOrigin('dispatchLowPriority', action), () =>
+      runWithStateTransaction(makeActionOrigin('dispatchLowPriority', action, override), () =>
         Effect.gen(function* () {
           if (txnContext.current) {
             ;(txnContext.current as any).commitMode = 'lowPriority' as StateCommitMode
@@ -264,7 +265,7 @@ export const makeDispatchOps = <S, A>(args: {
       ),
     ).pipe(Effect.asVoid)
 
-  const runDispatchBatch = (actions: ReadonlyArray<A>): Effect.Effect<void> => {
+  const runDispatchBatch = (actions: ReadonlyArray<A>, override?: TxnOriginOverride): Effect.Effect<void> => {
     if (actions.length === 0) return Effect.void
 
     return runOperation(
@@ -274,16 +275,18 @@ export const makeDispatchOps = <S, A>(args: {
         payload: actions,
         meta: { moduleId: optionsModuleId, instanceId },
       },
-      runWithStateTransaction({ kind: 'action', name: 'dispatchBatch', details: { count: actions.length } }, () =>
-        Effect.gen(function* () {
-          if (txnContext.current) {
-            ;(txnContext.current as any).commitMode = 'batch' as StateCommitMode
-            ;(txnContext.current as any).priority = 'normal' as StateCommitPriority
-          }
-          for (const action of actions) {
-            yield* dispatchInTransaction(action)
-          }
-        }),
+      runWithStateTransaction(
+        { kind: override?.kind ?? 'action', name: override?.name ?? 'dispatchBatch', details: { count: actions.length } } as any,
+        () =>
+          Effect.gen(function* () {
+            if (txnContext.current) {
+              ;(txnContext.current as any).commitMode = 'batch' as StateCommitMode
+              ;(txnContext.current as any).priority = 'normal' as StateCommitPriority
+            }
+            for (const action of actions) {
+              yield* dispatchInTransaction(action)
+            }
+          }),
       ),
     ).pipe(Effect.asVoid)
   }
@@ -312,16 +315,28 @@ export const makeDispatchOps = <S, A>(args: {
     // Note: publish is a lossless/backpressure channel and may wait.
     // Must run outside the transaction window (FR-012) and must not block the txnQueue consumer fiber (avoid deadlock).
     dispatch: (action) =>
-      enqueueTransaction(runDispatch(action)).pipe(
-        Effect.zipRight(publishWithPressureDiagnostics('publish', PubSub.publish(actionHub, action))),
+      FiberRef.get(currentTxnOriginOverride).pipe(
+        Effect.flatMap((override) =>
+          enqueueTransaction(runDispatch(action, override)).pipe(
+            Effect.zipRight(publishWithPressureDiagnostics('publish', PubSub.publish(actionHub, action))),
+          ),
+        ),
       ),
     dispatchBatch: (actions) =>
-      enqueueTransaction(runDispatchBatch(actions)).pipe(
-        Effect.zipRight(publishWithPressureDiagnostics('publishAll', PubSub.publishAll(actionHub, actions))),
+      FiberRef.get(currentTxnOriginOverride).pipe(
+        Effect.flatMap((override) =>
+          enqueueTransaction(runDispatchBatch(actions, override)).pipe(
+            Effect.zipRight(publishWithPressureDiagnostics('publishAll', PubSub.publishAll(actionHub, actions))),
+          ),
+        ),
       ),
     dispatchLowPriority: (action) =>
-      enqueueTransaction(runDispatchLowPriority(action)).pipe(
-        Effect.zipRight(publishWithPressureDiagnostics('publish', PubSub.publish(actionHub, action))),
+      FiberRef.get(currentTxnOriginOverride).pipe(
+        Effect.flatMap((override) =>
+          enqueueTransaction(runDispatchLowPriority(action, override)).pipe(
+            Effect.zipRight(publishWithPressureDiagnostics('publish', PubSub.publish(actionHub, action))),
+          ),
+        ),
       ),
   }
 }
