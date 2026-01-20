@@ -205,7 +205,15 @@ const resolveEffects = (input: unknown): ReadonlyArray<ModuleManifestEffect> | u
   }
 
   deduped.sort((a, b) =>
-    a.actionTag < b.actionTag ? -1 : a.actionTag > b.actionTag ? 1 : a.sourceKey.localeCompare(b.sourceKey),
+    a.actionTag < b.actionTag
+      ? -1
+      : a.actionTag > b.actionTag
+        ? 1
+        : a.sourceKey < b.sourceKey
+          ? -1
+          : a.sourceKey > b.sourceKey
+            ? 1
+            : 0,
   )
   return deduped.length > 0 ? deduped : undefined
 }
@@ -259,7 +267,7 @@ const resolveLogicUnits = (input: unknown): ReadonlyArray<ModuleManifestLogicUni
     out.push({ kind, id, derived, name })
   }
 
-  out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : a.kind.localeCompare(b.kind)))
+  out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0))
   return out.length > 0 ? out : undefined
 }
 

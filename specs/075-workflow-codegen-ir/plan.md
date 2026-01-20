@@ -216,55 +216,49 @@ v1 的解释器只需要处理：
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-- Answer the following BEFORE starting research, and re-check after Phase 1:
-  - How does this feature map to the
-    `Intent → Flow/Logix → Code → Runtime` chain?
-  - Which `docs/specs/*` specs does it depend on or modify, and are they
-    updated first (docs-first & SSoT)?
-  - Does it introduce or change any Effect/Logix contracts? If yes, which
-    `docs/ssot/runtime/*` docs capture the new contract?
-  - IR & anchors: does it change the unified minimal IR or the Platform-Grade
-    subset/anchors; are parser/codegen + docs updated together (no drift)?
-  - Deterministic identity: are instance/txn/op IDs stable and reproducible
-    (no random/time defaults); is the identity model documented?
-  - Transaction boundary: is any IO/async work occurring inside a transaction
-    window; are write-escape hatches (writable refs) prevented and diagnosed?
-  - React consistency (no tearing): if this touches React integration or external
-    reactive sources, is there a single snapshot anchor (e.g. `tickSeq`) for
-    `useSyncExternalStore` consumers, with no dual truth source and no data-glue
-    `useEffect` syncing state?
-  - External sources (signal dirty): are subscriptions pull-based (signal dirty +
-    deduped scheduling) rather than payload/queue based (no thundering herd)?
-  - Internal contracts & trial runs: does this feature introduce/modify internal
-    hooks or implicit collaboration protocols; are they encapsulated as explicit
-    injectable Runtime Services (no magic fields / parameter explosion), mockable
-    per instance/session, and able to export evidence/IR without relying on
-    process-global singletons?
-  - Dual kernels (core + core-ng): if this feature touches kernel/hot paths or
-    Kernel Contract / Runtime Services, does the plan define a kernel support
-    matrix (core vs core-ng), avoid direct @logixjs/core-ng dependencies in
-    consumers, and specify how contract verification + perf evidence gate changes?
-  - Performance budget: which hot paths are touched, what metrics/baselines
-    exist, and how will regressions be prevented?
-  - Diagnosability & explainability: what diagnostic events/Devtools surfaces
-    are added or changed, and what is the cost when diagnostics are enabled?
-  - User-facing performance mental model: if this changes runtime performance
-    boundaries or an automatic policy, are the (≤5) keywords, coarse cost model,
-    and “optimization ladder” documented and aligned across docs/benchmarks/diagnostics?
-  - Breaking changes (forward-only evolution): does this change any public API/behavior/event protocol;
-    where is the migration note documented (no compatibility layer / no deprecation period)?
-  - Public submodules: if this touches any `packages/*`, does it preserve the
-    `src/index.ts` barrel + PascalCase public submodules (top-level `src/*.ts`,
-    except `index.ts`/`global.d.ts`), move non-submodule code into
-    `src/internal/**`, and keep `package.json#exports` from exposing internals?
-  - Large modules/files (decomposition): if this touches any existing file/module
-    that is ≥1000 LOC (or is expected to exceed the threshold), does the plan
-    include a decomposition brief with mutually exclusive submodules, chosen
-    structure (flat `*.*.ts` vs directory), one-way dependency topology, and an
-    incremental rollout + verification strategy (keep refactor separate from
-    semantic changes)?
-  - What quality gates (typecheck / lint / test) will be run before merge,
-    and what counts as “pass” for this feature?
+- Answers（已复核，按 075 终态口径）：
+  - Intent → Flow/Logix → Code → Runtime
+    - 口径：平台/AI/LLM 出码产物为 `WorkflowDefV1`（Canonical AST，纯 JSON）→ 冷路径编译 `compileWorkflowStaticIrV1` 得到可导出 Π slice（`WorkflowStaticIrV1`/`workflowSurface`）→ 运行期由 `WorkflowRuntime` 预编译 runtime plan 并挂载（单订阅 action 路由）→ 执行通过 EffectOp/TaskRunner/txn 管理 → Root IR（`ControlSurfaceManifest`）+ Slim Trace 形成可解释链路。
+    - Refs：`specs/075-workflow-codegen-ir/contracts/public-api.md`、`specs/075-workflow-codegen-ir/contracts/ir.md`、`packages/logix-core/src/Workflow.ts`、`packages/logix-core/src/internal/workflow/compiler.ts`、`packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`、`packages/logix-core/src/internal/observability/controlSurfaceManifest.ts`
+  - 依赖/修改的 specs（docs-first & SSoT）
+    - 依赖：073 tick 参考系/观测锚点、067 control surface/manifest 口径、078 serviceId（Tag-only）派生口径（仅复用既有裁决，不新增并行真相源）。
+    - 已同步：平台侧裁决落在 `docs/ssot/platform/contracts/*`；runtime 侧补齐术语与“可合并性 rationale”，见 `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`。
+  - Effect/Logix contract 变更
+    - 新增：Workflow authoring + mount（`Workflow`/`Module.withWorkflow(s)`）与 Root IR 导出入口（`Reflection.exportControlSurface`）。
+    - runtime 口径：见 `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`（与本 spec 的 contracts 对齐）。
+  - IR & anchors（统一最小 IR / Platform-Grade subset）
+    - Static IR：`WorkflowStaticIrV1`（version+digest+nodes/edges/source）作为可导出 Π slice；Root IR：`ControlSurfaceManifestV1` 仅持 digest+最小索引，slices 按需加载（禁止把执行成本转嫁给 Root）。
+    - Refs：`docs/ssot/platform/contracts/03-control-surface-manifest.md`、`specs/075-workflow-codegen-ir/contracts/ir.md`、`packages/logix-core/src/internal/observability/workflowSurface.ts`
+  - Deterministic identity（稳定可复现）
+    - 稳定锚点：沿用 073 的 `instanceId/txnSeq/opSeq/tickSeq` 参考系；本特性新增的静态 digest 使用 `stableStringify + fnv1a32`，并确保所有进入 digest/IR 的排序均与 locale 无关（消除 `localeCompare` 漂移风险）。
+    - Refs：`docs/ssot/platform/contracts/03-control-surface-manifest.md`、`packages/logix-core/src/internal/digest.ts`
+  - Transaction boundary（txn window 禁 IO）
+    - 约束：Workflow 的 install/compile/export 全部走冷路径；运行期执行复用既有 TaskRunner/txn 管线，`call` 的 service port 解析在 install/compile 期完成，缺失直接 fail-fast。
+    - Refs：`specs/075-workflow-codegen-ir/spec.md`、`packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`
+  - React consistency（no tearing）
+    - N/A：本特性不新增第二套 snapshot；仍以 tick 参考系为唯一观测锚点（073）。
+  - External sources（signal dirty）
+    - N/A：本特性不引入新的外部订阅源模型。
+  - Internal contracts & trial runs
+    - Root IR 与 slices 导出为纯数据结构（可序列化、可 diff），且 moduleId/anchors fail-fast（禁止 `'unknown'` 回退），避免“非确定锚点”污染证据链。
+    - Refs：`packages/logix-core/src/internal/reflection/controlSurface.ts`
+  - Dual kernels（core + core-ng）
+    - 约束：未引入 `@logixjs/core-ng` 依赖；沿用现有 Kernel Contract/Runtime Services 验证与 perf evidence 门禁。
+  - Performance budget
+    - 已落盘：`specs/075-workflow-codegen-ir/perf/*`（A/B 同代码对比），并在 `perf/README.md` 固化 budgets（off=baseline*1.05）。
+  - Diagnosability & explainability
+    - 诊断门控：`diagnostics=off` 近零成本；light/sampled/full 逐级增加 Slim trace 锚点，不携带整图 IR。
+    - Refs：`specs/075-workflow-codegen-ir/contracts/diagnostics.md`
+  - User-facing performance mental model（optimization ladder）
+    - 已交付：`specs/075-workflow-codegen-ir/contracts/optimization-ladder.md`
+  - Breaking changes（forward-only）
+    - 本特性为 forward-only：已将 `FlowProgram*` 全量统一为 `Workflow*`，无兼容层；迁移说明见 `specs/075-workflow-codegen-ir/contracts/migration.md`。
+  - Public submodules / exports topology
+    - 已遵守：`packages/logix-core/src/Workflow.ts` 为 public submodule；实现下沉到 `packages/logix-core/src/internal/**`；exports 不暴露 internals。
+  - Large modules/files（decomposition）
+    - N/A：本次未引入 ≥1000 LOC 的单体文件；新增核心实现已放入 `src/internal/runtime/core/**` 分层。
+  - Quality gates（merge 前门禁）
+    - 必跑：`pnpm typecheck`、`pnpm typecheck:test`、`pnpm lint`、`pnpm test:turbo`；以全绿为 PASS。
 
 ## Perf Evidence Plan（MUST）
 

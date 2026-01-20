@@ -145,7 +145,7 @@ const normalizeMetaPortEntries = (
   }
   const dedup = new Map<string, PortSpecEvent | PortSpecOutput>()
   for (const item of out) dedup.set(item.key, item)
-  return Array.from(dedup.values()).sort((a, b) => a.key.localeCompare(b.key))
+  return Array.from(dedup.values()).sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
 }
 
 const normalizeMetaExportEntries = (value: unknown): ReadonlyArray<PortSpecExport> => {
@@ -167,7 +167,7 @@ const normalizeMetaExportEntries = (value: unknown): ReadonlyArray<PortSpecExpor
   }
   const dedup = new Map<string, PortSpecExport>()
   for (const item of out) dedup.set(item.path, item)
-  return Array.from(dedup.values()).sort((a, b) => a.path.localeCompare(b.path))
+  return Array.from(dedup.values()).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
 }
 
 const normalizeExportPath = (path: string): string | undefined => {
@@ -250,7 +250,7 @@ const collectExportPathsFromSchema = (schema: unknown): ReadonlyArray<string> =>
     seen: new Set(),
     out,
   })
-  return Array.from(out).sort((a, b) => a.localeCompare(b))
+  return Array.from(out).sort()
 }
 
 export const exportPortSpec = (params: {
@@ -283,7 +283,7 @@ export const exportPortSpec = (params: {
     exportsMap.set('$root', { path: '$root' })
   }
 
-  const exports = Array.from(exportsMap.values()).sort((a, b) => a.path.localeCompare(b.path))
+  const exports = Array.from(exportsMap.values()).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
 
   const base = {
     protocolVersion: PORT_SPEC_PROTOCOL_VERSION,

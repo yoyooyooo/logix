@@ -110,7 +110,7 @@ const parseMissingConfigKeys = (message: string): ReadonlyArray<string> => {
     }
   }
 
-  return Array.from(new Set(out)).sort((a, b) => a.localeCompare(b))
+  return Array.from(new Set(out)).sort()
 }
 
 const parseMissingServiceIds = (message: string): ReadonlyArray<string> => {
@@ -121,7 +121,7 @@ const parseMissingServiceIds = (message: string): ReadonlyArray<string> => {
     const id = match[1]?.replace(/[,:.;]+$/, '')
     if (typeof id === 'string' && id.length > 0) out.push(id)
   }
-  return Array.from(new Set(out)).sort((a, b) => a.localeCompare(b))
+  return Array.from(new Set(out)).sort()
 }
 
 const parseMissingDependencyFromCause = (
@@ -184,8 +184,8 @@ const parseMissingDependencyFromCause = (
   }
 
   return {
-    missingServices: Array.from(new Set(missingServices)).sort((a, b) => a.localeCompare(b)),
-    missingConfigKeys: Array.from(new Set(missingConfigKeys)).sort((a, b) => a.localeCompare(b)),
+    missingServices: Array.from(new Set(missingServices)).sort(),
+    missingConfigKeys: Array.from(new Set(missingConfigKeys)).sort(),
   }
 }
 
@@ -198,19 +198,17 @@ const buildEnvironmentIr = (params: {
 }): EnvironmentIr => {
   const providedConfigKeys = Object.keys(params.buildEnvConfig ?? {})
     .filter((k) => k.length > 0 && (params.buildEnvConfig as any)[k] !== undefined)
-    .sort((a, b) => a.localeCompare(b))
+    .sort()
 
-  const missingServices = Array.from(new Set(params.missingServices ?? [])).sort((a, b) => a.localeCompare(b))
-  const missingConfigKeys = Array.from(new Set(params.missingConfigKeys ?? [])).sort((a, b) => a.localeCompare(b))
+  const missingServices = Array.from(new Set(params.missingServices ?? [])).sort()
+  const missingConfigKeys = Array.from(new Set(params.missingConfigKeys ?? [])).sort()
 
   const runtimeServiceIds =
     params.runtimeServicesEvidence?.bindings?.map((b) => b.serviceId).filter((s) => typeof s === 'string') ?? []
 
-  const tagIds = Array.from(new Set([...runtimeServiceIds, ...missingServices])).sort((a, b) => a.localeCompare(b))
+  const tagIds = Array.from(new Set([...runtimeServiceIds, ...missingServices])).sort()
 
-  const configKeys = Array.from(new Set([...providedConfigKeys, ...missingConfigKeys])).sort((a, b) =>
-    a.localeCompare(b),
-  )
+  const configKeys = Array.from(new Set([...providedConfigKeys, ...missingConfigKeys])).sort()
 
   return {
     tagIds,

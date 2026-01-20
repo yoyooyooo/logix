@@ -2,6 +2,7 @@ import { fnv1a32, stableStringify } from '../digest.js'
 import { isJsonValue, projectJsonValue, type JsonValue } from '../observability/jsonValue.js'
 import { makeWorkflowError } from './errors.js'
 import type {
+  InputExprV1,
   StepKey,
   WorkflowDefV1,
   WorkflowStepV1,
@@ -40,10 +41,11 @@ export const normalizeWorkflowDefV1 = (input: WorkflowDefV1): WorkflowDefV1 => {
   const normalizeSteps = (steps: ReadonlyArray<WorkflowStepV1>): ReadonlyArray<WorkflowStepV1> =>
     steps.map((s) => {
       if (s.kind !== 'call') return s
+      const raw = s as unknown as { readonly onSuccess?: unknown; readonly onFailure?: unknown }
       return {
         ...s,
-        onSuccess: Array.isArray((s as any).onSuccess) ? s.onSuccess : [],
-        onFailure: Array.isArray((s as any).onFailure) ? s.onFailure : [],
+        onSuccess: Array.isArray(raw.onSuccess) ? s.onSuccess : [],
+        onFailure: Array.isArray(raw.onFailure) ? s.onFailure : [],
       }
     })
 
@@ -53,12 +55,20 @@ export const normalizeWorkflowDefV1 = (input: WorkflowDefV1): WorkflowDefV1 => {
   }
 }
 
-export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly moduleId?: string }): void => {
+export function validateWorkflowDefV1(def: unknown, options?: { readonly moduleId?: string }): asserts def is WorkflowDefV1 {
+  if (!isRecord(def)) {
+    throw makeWorkflowError({
+      code: 'WORKFLOW_INVALID_DEF',
+      message: 'WorkflowDef must be an object.',
+      detail: { def },
+    })
+  }
+
   if (def.astVersion !== 1) {
     throw makeWorkflowError({
       code: 'WORKFLOW_UNSUPPORTED_VERSION',
       message: 'Unsupported workflow astVersion.',
-      detail: { astVersion: (def as any).astVersion },
+      detail: { astVersion: def.astVersion },
     })
   }
 
@@ -66,21 +76,28 @@ export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly m
     throw makeWorkflowError({
       code: 'WORKFLOW_INVALID_DEF',
       message: 'WorkflowDef.localId must be a non-empty string.',
-      detail: { localId: (def as any).localId },
+      detail: { localId: def.localId },
     })
   }
 
-  const trigger = def.trigger as WorkflowTriggerV1
-  if (trigger?.kind === 'action') {
-    if (!asNonEmptyString((trigger as any).actionTag)) {
+  const trigger = def.trigger
+  if (!isRecord(trigger)) {
+    throw makeWorkflowError({
+      code: 'WORKFLOW_INVALID_TRIGGER',
+      message: 'Workflow trigger must be an object.',
+      detail: { trigger },
+    })
+  }
+  if (trigger.kind === 'action') {
+    if (!asNonEmptyString(trigger.actionTag)) {
       throw makeWorkflowError({
         code: 'WORKFLOW_INVALID_TRIGGER',
         message: 'Workflow trigger.actionTag must be a non-empty string.',
         detail: { trigger },
       })
     }
-  } else if (trigger?.kind === 'lifecycle') {
-    const phase = (trigger as any).phase
+  } else if (trigger.kind === 'lifecycle') {
+    const phase = trigger.phase
     if (phase !== 'onStart' && phase !== 'onInit') {
       throw makeWorkflowError({
         code: 'WORKFLOW_INVALID_TRIGGER',
@@ -96,14 +113,31 @@ export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly m
     })
   }
 
+  if (!Array.isArray(def.steps)) {
+    throw makeWorkflowError({
+      code: 'WORKFLOW_INVALID_DEF',
+      message: 'WorkflowDef.steps must be an array.',
+      detail: { steps: def.steps },
+    })
+  }
+
   const seenKeys = new Set<string>()
-  const visit = (step: WorkflowStepV1, fragmentId?: string): void => {
-    const key = asNonEmptyString((step as any).key)
+  const visit = (step: unknown, fragmentId?: string): void => {
+    if (!isRecord(step)) {
+      throw makeWorkflowError({
+        code: 'WORKFLOW_INVALID_STEP',
+        message: 'Workflow step must be an object.',
+        detail: { step },
+        source: fragmentId ? { fragmentId } : undefined,
+      })
+    }
+
+    const key = asNonEmptyString(step.key)
     if (!key) {
       throw makeWorkflowError({
         code: 'WORKFLOW_INVALID_STEP',
         message: 'Workflow step.key must be a non-empty string.',
-        detail: { stepKey: (step as any).key, kind: (step as any).kind },
+        detail: { stepKey: step.key, kind: step.kind },
         source: fragmentId ? { fragmentId } : undefined,
       })
     }
@@ -119,48 +153,48 @@ export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly m
     seenKeys.add(key)
 
     if (step.kind === 'dispatch') {
-      if (!asNonEmptyString((step as any).actionTag)) {
+      if (!asNonEmptyString(step.actionTag)) {
         throw makeWorkflowError({
           code: 'WORKFLOW_INVALID_STEP',
           message: 'dispatch.actionTag must be a non-empty string.',
           source: { stepKey: key, ...(fragmentId ? { fragmentId } : null) },
-          detail: { actionTag: (step as any).actionTag },
+          detail: { actionTag: step.actionTag },
         })
       }
-      const payload = (step as any).payload
+      const payload = step.payload
       if (payload !== undefined) {
-        validateInputExpr(payload as any, { stepKey: key })
+        validateInputExpr(payload, { stepKey: key })
       }
       return
     }
 
     if (step.kind === 'delay') {
-      const ms = asNonNegInt((step as any).ms)
+      const ms = asNonNegInt(step.ms)
       if (ms === undefined) {
         throw makeWorkflowError({
           code: 'WORKFLOW_INVALID_STEP',
           message: 'delay.ms must be a non-negative integer.',
           source: { stepKey: key, ...(fragmentId ? { fragmentId } : null) },
-          detail: { ms: (step as any).ms },
+          detail: { ms: step.ms },
         })
       }
       return
     }
 
     if (step.kind === 'call') {
-      if (!asNonEmptyString((step as any).serviceId)) {
+      if (!asNonEmptyString(step.serviceId)) {
         throw makeWorkflowError({
           code: 'WORKFLOW_INVALID_SERVICE_ID',
           message: 'call.serviceId must be a non-empty string.',
           source: { stepKey: key, ...(fragmentId ? { fragmentId } : null) },
-          detail: { serviceId: (step as any).serviceId },
+          detail: { serviceId: step.serviceId },
         })
       }
-      const inputExpr = (step as any).input
+      const inputExpr = step.input
       if (inputExpr !== undefined) {
-        validateInputExpr(inputExpr as any, { stepKey: key })
+        validateInputExpr(inputExpr, { stepKey: key })
       }
-      const timeoutMsRaw = (step as any).timeoutMs
+      const timeoutMsRaw = step.timeoutMs
       if (timeoutMsRaw !== undefined && asPosInt(timeoutMsRaw) === undefined) {
         throw makeWorkflowError({
           code: 'WORKFLOW_INVALID_STEP',
@@ -169,9 +203,9 @@ export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly m
           detail: { timeoutMs: timeoutMsRaw },
         })
       }
-      const retryRaw = (step as any).retry
+      const retryRaw = step.retry
       if (retryRaw !== undefined) {
-        const times = asPosInt((retryRaw as any)?.times)
+        const times = isRecord(retryRaw) ? asPosInt(retryRaw.times) : undefined
         if (times === undefined) {
           throw makeWorkflowError({
             code: 'WORKFLOW_INVALID_STEP',
@@ -182,8 +216,8 @@ export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly m
         }
       }
 
-      const onSuccess = Array.isArray((step as any).onSuccess) ? ((step as any).onSuccess as WorkflowStepV1[]) : []
-      const onFailure = Array.isArray((step as any).onFailure) ? ((step as any).onFailure as WorkflowStepV1[]) : []
+      const onSuccess = Array.isArray(step.onSuccess) ? step.onSuccess : []
+      const onFailure = Array.isArray(step.onFailure) ? step.onFailure : []
       for (const inner of onSuccess) visit(inner, fragmentId)
       for (const inner of onFailure) visit(inner, fragmentId)
       return
@@ -193,7 +227,7 @@ export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly m
       code: 'WORKFLOW_INVALID_STEP',
       message: 'Unknown step kind.',
       source: { stepKey: key, ...(fragmentId ? { fragmentId } : null) },
-      detail: { kind: (step as any).kind },
+      detail: { kind: step.kind },
     })
   }
 
@@ -201,18 +235,18 @@ export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly m
   const fragmentByStepKey = new Map<string, string | undefined>()
   if (sources && typeof sources === 'object') {
     for (const [k, v] of Object.entries(sources)) {
-      fragmentByStepKey.set(k, isRecord(v) ? asNonEmptyString((v as any).fragmentId) : undefined)
+      fragmentByStepKey.set(k, isRecord(v) ? asNonEmptyString(v.fragmentId) : undefined)
     }
   }
 
   for (const step of def.steps) {
-    const key = asNonEmptyString((step as any).key)
+    const key = isRecord(step) ? asNonEmptyString(step.key) : undefined
     const fragmentId = key ? fragmentByStepKey.get(key) : undefined
     visit(step, fragmentId)
   }
 
   // meta.generator must stay JSON-only.
-  const generator = (def as any)?.meta?.generator
+  const generator = isRecord(def.meta) ? def.meta.generator : undefined
   if (generator !== undefined && !isJsonValue(generator)) {
     throw makeWorkflowError({
       code: 'WORKFLOW_INVALID_DEF',
@@ -222,7 +256,7 @@ export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly m
   }
 
   // policy validation (minimal)
-  const policy = def.policy as any
+  const policy = isRecord(def.policy) ? def.policy : undefined
   if (policy) {
     const concurrency = policy.concurrency
     if (concurrency !== undefined && concurrency !== 'latest' && concurrency !== 'exhaust' && concurrency !== 'parallel') {
@@ -247,8 +281,8 @@ export const validateWorkflowDefV1 = (def: WorkflowDefV1, options?: { readonly m
 }
 
 const validateInputExpr = (expr: unknown, options?: { readonly stepKey?: string }): void => {
-  const visit = (e: any): void => {
-    if (!e || typeof e !== 'object') {
+  const visit = (e: unknown): void => {
+    if (!isRecord(e)) {
       throw makeWorkflowError({
         code: 'WORKFLOW_INVALID_INPUT_EXPR',
         message: 'InputExpr must be an object.',
@@ -285,14 +319,14 @@ const validateInputExpr = (expr: unknown, options?: { readonly stepKey?: string 
       }
       case 'object': {
         const fields = e.fields
-        if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
+        if (!isRecord(fields)) {
           throw makeWorkflowError({
             code: 'WORKFLOW_INVALID_INPUT_EXPR',
             message: 'InputExpr.object.fields must be a record.',
             source: { stepKey: options?.stepKey },
           })
         }
-        for (const v of Object.values(fields as Record<string, unknown>)) {
+        for (const v of Object.values(fields)) {
           visit(v)
         }
         return
@@ -321,7 +355,7 @@ const validateInputExpr = (expr: unknown, options?: { readonly stepKey?: string 
     }
   }
 
-  visit(expr as any)
+  visit(expr)
 }
 
 // ---- Static IR compilation ----
@@ -335,35 +369,25 @@ const makeStepNodeId = (programId: string, stepKey: StepKey, kind: string): Work
 
 const budgetJsonValue = (value: JsonValue): JsonValue => projectJsonValue(value).value
 
-const budgetInputExpr = (expr: unknown): unknown => {
-  if (!expr || typeof expr !== 'object') return expr
-
-  const kind = (expr as any).kind
-  switch (kind) {
+const budgetInputExpr = (expr: InputExprV1): InputExprV1 => {
+  switch (expr.kind) {
     case 'payload':
     case 'payload.path':
       return expr
     case 'const': {
-      const value = (expr as any).value
+      const value: unknown = expr.value
       if (!isJsonValue(value)) return expr
-      return { ...expr, value: budgetJsonValue(value) }
+      return { ...expr, value: budgetJsonValue(expr.value) }
     }
     case 'object': {
-      const fields = (expr as any).fields
-      if (!isRecord(fields)) return expr
-      const out: Record<string, unknown> = {}
-      for (const k of Object.keys(fields).sort((a, b) => a.localeCompare(b))) {
-        out[k] = budgetInputExpr(fields[k])
+      const out: { [k: string]: InputExprV1 } = {}
+      for (const k of Object.keys(expr.fields).sort()) {
+        out[k] = budgetInputExpr(expr.fields[k]!)
       }
       return { ...expr, fields: out }
     }
-    case 'merge': {
-      const items = (expr as any).items
-      if (!Array.isArray(items)) return expr
-      return { ...expr, items: items.map(budgetInputExpr) }
-    }
-    default:
-      return expr
+    case 'merge':
+      return { ...expr, items: expr.items.map(budgetInputExpr) }
   }
 }
 
@@ -373,7 +397,7 @@ const toStaticStep = (step: WorkflowStepV1): WorkflowStaticStep => {
       return {
         kind: 'dispatch',
         actionTag: step.actionTag,
-        ...(step.payload ? { payload: budgetInputExpr(step.payload) as any } : null),
+        ...(step.payload ? { payload: budgetInputExpr(step.payload) } : null),
       }
     case 'delay':
       return { kind: 'delay', ms: step.ms }
@@ -388,7 +412,7 @@ const toStaticStep = (step: WorkflowStepV1): WorkflowStaticStep => {
       return {
         kind: 'call',
         serviceId: step.serviceId,
-        ...(step.input ? { input: budgetInputExpr(step.input) as any } : null),
+        ...(step.input ? { input: budgetInputExpr(step.input) } : null),
         ...(policy ? { policy } : null),
       }
     }
@@ -408,7 +432,7 @@ export const compileWorkflowStaticIrV1 = (args: {
   const fragmentByStepKey = new Map<string, string | undefined>()
   if (normalized.sources && typeof normalized.sources === 'object') {
     for (const [k, v] of Object.entries(normalized.sources)) {
-      fragmentByStepKey.set(k, isRecord(v) ? asNonEmptyString((v as any).fragmentId) : undefined)
+      fragmentByStepKey.set(k, isRecord(v) ? asNonEmptyString(v.fragmentId) : undefined)
     }
   }
 
@@ -430,7 +454,7 @@ export const compileWorkflowStaticIrV1 = (args: {
     {
       id: triggerNodeId,
       kind: 'trigger',
-      trigger: normalized.trigger as any,
+      trigger: normalized.trigger,
     },
   ]
 
@@ -525,11 +549,14 @@ export const compileWorkflowStaticIrV1 = (args: {
   compileBlock({ steps: normalized.steps, entryFrom: [triggerNodeId], entryKind: 'next', continuation: undefined })
 
   // Stable ordering (for diff/digest).
-  nodes.sort((a, b) => a.id.localeCompare(b.id))
+  nodes.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   edges.sort((a, b) => {
-    if (a.from !== b.from) return a.from.localeCompare(b.from)
-    if (a.to !== b.to) return a.to.localeCompare(b.to)
-    return String(a.kind ?? '').localeCompare(String(b.kind ?? ''))
+    if (a.from !== b.from) return a.from < b.from ? -1 : 1
+    if (a.to !== b.to) return a.to < b.to ? -1 : 1
+    const ak = String(a.kind ?? '')
+    const bk = String(b.kind ?? '')
+    if (ak !== bk) return ak < bk ? -1 : 1
+    return 0
   })
 
   const meta: Record<string, JsonValue> | undefined = (() => {

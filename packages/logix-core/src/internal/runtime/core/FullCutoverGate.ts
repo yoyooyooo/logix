@@ -65,7 +65,7 @@ const parseFallbackServiceIds = (overridesApplied: ReadonlyArray<string>): Reado
     const serviceId = entry.slice(colon + 1, eq)
     if (serviceId.length > 0) out.add(serviceId)
   }
-  return Array.from(out).sort((a, b) => a.localeCompare(b))
+  return Array.from(out).sort()
 }
 
 const collectMissingServiceIds = (args: {

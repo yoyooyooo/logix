@@ -43,9 +43,7 @@ type Collected = {
 }
 
 const makeConflictEnvelope = (artifactKey: ArtifactKey, exporterIds: ReadonlyArray<string>): Collected => {
-  const ids = Array.from(new Set(exporterIds.map((s) => String(s)).filter((s) => s.length > 0))).sort((a, b) =>
-    a.localeCompare(b),
-  )
+  const ids = Array.from(new Set(exporterIds.map((s) => String(s)).filter((s) => s.length > 0))).sort()
   return {
     artifactKey,
     envelope: {
@@ -93,7 +91,7 @@ export const collectTrialRunArtifacts = (options: CollectTrialRunArtifactsOption
     if (ka > kb) return 1
     const ia = String(a?.exporterId ?? '')
     const ib = String(b?.exporterId ?? '')
-    return ia.localeCompare(ib)
+    return ia < ib ? -1 : ia > ib ? 1 : 0
   })
 
   const conflicts = new Map<ArtifactKey, Array<string>>()
@@ -182,13 +180,13 @@ export const collectTrialRunArtifacts = (options: CollectTrialRunArtifactsOption
     }
   }
 
-  for (const conflictKey of Array.from(conflictKeys).sort((a, b) => a.localeCompare(b))) {
+  for (const conflictKey of Array.from(conflictKeys).sort()) {
     collected.push(makeConflictEnvelope(conflictKey, conflicts.get(conflictKey) ?? []))
   }
 
   if (collected.length === 0) return undefined
 
-  collected.sort((a, b) => a.artifactKey.localeCompare(b.artifactKey))
+  collected.sort((a, b) => (a.artifactKey < b.artifactKey ? -1 : a.artifactKey > b.artifactKey ? 1 : 0))
 
   return Object.fromEntries(collected.map((c) => [c.artifactKey, c.envelope])) satisfies TrialRunArtifacts
 }

@@ -8,8 +8,27 @@ import { flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } 
 
 class SubmitPort extends Context.Tag('WorkflowRuntime.075.SubmitPort')<
   SubmitPort,
-  (input: boolean) => Effect.Effect<void, unknown, never>
+  (input: unknown) => Effect.Effect<void, unknown, never>
 >() {}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const getTraceName = (event: Debug.Event): string | undefined => {
+  const record = event as unknown as Record<string, unknown>
+  const data = record.data
+  if (!isRecord(data)) return undefined
+  const name = data.name
+  return typeof name === 'string' && name.length > 0 ? name : undefined
+}
+
+const getTraceMeta = (event: Debug.Event): Record<string, unknown> | undefined => {
+  const record = event as unknown as Record<string, unknown>
+  const data = record.data
+  if (!isRecord(data)) return undefined
+  const meta = data.meta
+  return isRecord(meta) ? meta : undefined
+}
 
 describe('WorkflowRuntime (075)', () => {
   it.effect('T200: submit → call → success/failure', () =>
@@ -19,10 +38,10 @@ describe('WorkflowRuntime (075)', () => {
         actions: { submit: Schema.Boolean, ok: Schema.Void, bad: Schema.Void },
         reducers: {
           ok: Logix.Module.Reducer.mutate((draft) => {
-            ;(draft as any).ok += 1
+            ;(draft as { ok: number; bad: number }).ok += 1
           }),
           bad: Logix.Module.Reducer.mutate((draft) => {
-            ;(draft as any).bad += 1
+            ;(draft as { ok: number; bad: number }).bad += 1
           }),
         },
       })
@@ -47,8 +66,8 @@ describe('WorkflowRuntime (075)', () => {
       const runtime = Logix.Runtime.make(impl, {
         layer: Layer.mergeAll(
           testHostSchedulerLayer(hostScheduler),
-          Layer.succeed(SubmitPort, (shouldFail) => (shouldFail ? Effect.fail(new Error('boom')) : Effect.void)),
-        ) as Layer.Layer<any, never, never>,
+          Layer.succeed(SubmitPort, (input) => (input === true ? Effect.fail(new Error('boom')) : Effect.void)),
+        ),
       })
 
       try {
@@ -57,14 +76,14 @@ describe('WorkflowRuntime (075)', () => {
             Effect.gen(function* () {
               const rt = yield* M.tag
 
-              yield* rt.dispatch({ _tag: 'submit', payload: false } as any)
+              yield* rt.dispatch({ _tag: 'submit', payload: false })
               yield* flushAllHostScheduler(hostScheduler)
 
-              yield* rt.dispatch({ _tag: 'submit', payload: true } as any)
+              yield* rt.dispatch({ _tag: 'submit', payload: true })
               yield* flushAllHostScheduler(hostScheduler)
 
               expect(yield* rt.getState).toEqual({ ok: 1, bad: 1 })
-            }) as any,
+            }),
           ),
         )
       } finally {
@@ -80,7 +99,7 @@ describe('WorkflowRuntime (075)', () => {
         actions: { start: Schema.Number, done: Schema.Number },
         reducers: {
           done: Logix.Module.Reducer.mutate((draft, payload: number) => {
-            ;(draft as any).done = payload
+            ;(draft as { done: number }).done = payload
           }),
         },
       })
@@ -88,8 +107,9 @@ describe('WorkflowRuntime (075)', () => {
       const gate1 = yield* Deferred.make<void>()
       const gate2 = yield* Deferred.make<void>()
 
-      const port = (n: number) =>
+      const port = (input: unknown) =>
         Effect.gen(function* () {
+          const n = typeof input === 'number' ? input : 0
           if (n === 1) {
             yield* Deferred.await(gate1)
             return
@@ -123,10 +143,10 @@ describe('WorkflowRuntime (075)', () => {
         middleware: [Middleware.makeDebugObserver()],
         layer: Layer.mergeAll(
           testHostSchedulerLayer(hostScheduler),
-          Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+          Debug.replace([ring.sink]),
           Debug.diagnosticsLevel('light'),
-          Layer.succeed(SubmitPort, port as any),
-        ) as Layer.Layer<any, never, never>,
+          Layer.succeed(SubmitPort, port),
+        ),
       })
 
       try {
@@ -135,10 +155,10 @@ describe('WorkflowRuntime (075)', () => {
             Effect.gen(function* () {
               const rt = yield* M.tag
 
-              yield* rt.dispatch({ _tag: 'start', payload: 1 } as any)
+              yield* rt.dispatch({ _tag: 'start', payload: 1 })
               yield* flushAllHostScheduler(hostScheduler)
 
-              yield* rt.dispatch({ _tag: 'start', payload: 2 } as any)
+              yield* rt.dispatch({ _tag: 'start', payload: 2 })
               yield* flushAllHostScheduler(hostScheduler)
 
               yield* Deferred.succeed(gate2, undefined)
@@ -151,10 +171,10 @@ describe('WorkflowRuntime (075)', () => {
               expect(yield* rt.getState).toEqual({ done: 2 })
 
               const trace = ring.getSnapshot().filter((e) => e.type === 'trace:effectop') as Array<Debug.Event>
-              const cancels = trace.filter((e: any) => e.data?.name === 'workflow.cancel')
+              const cancels = trace.filter((e) => getTraceName(e) === 'workflow.cancel')
               expect(cancels.length).toBeGreaterThanOrEqual(1)
-              expect((cancels[0] as any)?.data?.meta?.reason).toBe('latest')
-            }) as any,
+              expect(getTraceMeta(cancels[0]!)?.reason).toBe('latest')
+            }),
           ),
         )
       } finally {
@@ -170,14 +190,14 @@ describe('WorkflowRuntime (075)', () => {
         actions: { start: Schema.Number, done: Schema.Number },
         reducers: {
           done: Logix.Module.Reducer.mutate((draft, payload: number) => {
-            ;(draft as any).done = payload
+            ;(draft as { done: number }).done = payload
           }),
         },
       })
 
       const gate = yield* Deferred.make<void>()
 
-      const port = (_n: number) => Deferred.await(gate)
+      const port = (_input: unknown) => Deferred.await(gate)
 
       const program = Logix.Workflow.make({
         localId: 'exhaust',
@@ -202,10 +222,10 @@ describe('WorkflowRuntime (075)', () => {
         middleware: [Middleware.makeDebugObserver()],
         layer: Layer.mergeAll(
           testHostSchedulerLayer(hostScheduler),
-          Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+          Debug.replace([ring.sink]),
           Debug.diagnosticsLevel('light'),
-          Layer.succeed(SubmitPort, port as any),
-        ) as Layer.Layer<any, never, never>,
+          Layer.succeed(SubmitPort, port),
+        ),
       })
 
       try {
@@ -214,11 +234,11 @@ describe('WorkflowRuntime (075)', () => {
             Effect.gen(function* () {
               const rt = yield* M.tag
 
-              yield* rt.dispatch({ _tag: 'start', payload: 1 } as any)
+              yield* rt.dispatch({ _tag: 'start', payload: 1 })
               yield* flushAllHostScheduler(hostScheduler)
 
               // second start should be dropped while the first is waiting on gate
-              yield* rt.dispatch({ _tag: 'start', payload: 2 } as any)
+              yield* rt.dispatch({ _tag: 'start', payload: 2 })
               yield* flushAllHostScheduler(hostScheduler)
 
               yield* Deferred.succeed(gate, undefined)
@@ -227,10 +247,10 @@ describe('WorkflowRuntime (075)', () => {
               expect(yield* rt.getState).toEqual({ done: 1 })
 
               const trace = ring.getSnapshot().filter((e) => e.type === 'trace:effectop') as Array<Debug.Event>
-              const drops = trace.filter((e: any) => e.data?.name === 'workflow.drop')
+              const drops = trace.filter((e) => getTraceName(e) === 'workflow.drop')
               expect(drops.length).toBeGreaterThanOrEqual(1)
-              expect((drops[0] as any)?.data?.meta?.reason).toBe('exhaust')
-            }) as any,
+              expect(getTraceMeta(drops[0]!)?.reason).toBe('exhaust')
+            }),
           ),
         )
       } finally {
@@ -246,7 +266,7 @@ describe('WorkflowRuntime (075)', () => {
         actions: { start: Schema.Number, done: Schema.Number },
         reducers: {
           done: Logix.Module.Reducer.mutate((draft, payload: number) => {
-            ;(draft as any).done = payload
+            ;(draft as { done: number }).done = payload
           }),
         },
       })
@@ -269,9 +289,9 @@ describe('WorkflowRuntime (075)', () => {
         middleware: [Middleware.makeDebugObserver()],
         layer: Layer.mergeAll(
           testHostSchedulerLayer(hostScheduler),
-          Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+          Debug.replace([ring.sink]),
           Debug.diagnosticsLevel('full'),
-        ) as Layer.Layer<any, never, never>,
+        ),
       })
 
       const flushOnlyMicrotasksUntil = (predicate: () => boolean): Effect.Effect<void> =>
@@ -292,18 +312,18 @@ describe('WorkflowRuntime (075)', () => {
             Effect.gen(function* () {
               const rt = yield* M.tag
 
-              yield* rt.dispatch({ _tag: 'start', payload: 1 } as any)
+              yield* rt.dispatch({ _tag: 'start', payload: 1 })
 
               yield* flushOnlyMicrotasksUntil(() => {
-                const hasSchedule = ring.getSnapshot().some((e: any) => e?.data?.name === 'workflow.timer.schedule')
+                const hasSchedule = ring.getSnapshot().some((e) => getTraceName(e) === 'workflow.timer.schedule')
                 const hasPendingTimer = hostScheduler.getQueueSize().macrotasks > 0
                 return hasSchedule && hasPendingTimer
               })
 
-              // cancel the first run before running any macrotasks (timers)
-              yield* rt.dispatch({ _tag: 'start', payload: 2 } as any)
+              // cancel the first run before running macrotasks (timers)
+              yield* rt.dispatch({ _tag: 'start', payload: 2 })
               yield* flushOnlyMicrotasksUntil(() =>
-                ring.getSnapshot().some((e: any) => e?.data?.name === 'workflow.timer.cancel'),
+                ring.getSnapshot().some((e) => getTraceName(e) === 'workflow.timer.cancel'),
               )
 
               yield* flushAllHostScheduler(hostScheduler)
@@ -311,14 +331,14 @@ describe('WorkflowRuntime (075)', () => {
               expect(yield* rt.getState).toEqual({ done: 2 })
 
               const trace = ring.getSnapshot().filter((e) => e.type === 'trace:effectop') as Array<Debug.Event>
-              const scheduleCount = trace.filter((e: any) => e.data?.name === 'workflow.timer.schedule').length
-              const cancelCount = trace.filter((e: any) => e.data?.name === 'workflow.timer.cancel').length
-              const firedCount = trace.filter((e: any) => e.data?.name === 'workflow.timer.fired').length
+              const scheduleCount = trace.filter((e) => getTraceName(e) === 'workflow.timer.schedule').length
+              const cancelCount = trace.filter((e) => getTraceName(e) === 'workflow.timer.cancel').length
+              const firedCount = trace.filter((e) => getTraceName(e) === 'workflow.timer.fired').length
 
               expect(scheduleCount).toBeGreaterThanOrEqual(1)
               expect(cancelCount).toBeGreaterThanOrEqual(1)
               expect(firedCount).toBeGreaterThanOrEqual(1)
-            }) as any,
+            }),
           ),
         )
       } finally {
@@ -334,7 +354,7 @@ describe('WorkflowRuntime (075)', () => {
         actions: { start: Schema.Void, done: Schema.Void },
         reducers: {
           done: Logix.Module.Reducer.mutate((draft) => {
-            ;(draft as any).done += 1
+            ;(draft as { done: number }).done += 1
           }),
         },
       })
@@ -350,15 +370,12 @@ describe('WorkflowRuntime (075)', () => {
 
       const ring = Debug.makeRingBufferSink(256)
       const hostScheduler = makeTestHostScheduler()
-      const debugLayer = Debug.devtoolsHubLayer(Debug.replace([ring.sink]) as Layer.Layer<any, never, never>, {
+      const debugLayer = Debug.devtoolsHubLayer(Debug.replace([ring.sink]), {
         diagnosticsLevel: 'full',
-      }) as Layer.Layer<any, never, never>
+      }) as unknown as Layer.Layer<unknown, never, never>
       const runtime = Logix.Runtime.make(impl, {
         middleware: [Middleware.makeDebugObserver()],
-        layer: Layer.mergeAll(
-          testHostSchedulerLayer(hostScheduler),
-          debugLayer,
-        ) as Layer.Layer<any, never, never>,
+        layer: Layer.mergeAll(testHostSchedulerLayer(hostScheduler), debugLayer),
       })
 
       try {
@@ -366,17 +383,24 @@ describe('WorkflowRuntime (075)', () => {
           runtime.runPromise(
             Effect.gen(function* () {
               const rt = yield* M.tag
-              yield* rt.dispatch({ _tag: 'start' } as any)
+              yield* rt.dispatch({ _tag: 'start' })
               yield* flushAllHostScheduler(hostScheduler)
               expect(yield* rt.getState).toEqual({ done: 1 })
-            }) as any,
+            }),
           ),
         )
 
         const ticks = ring.getSnapshot().filter((e) => e.type === 'trace:tick') as Array<Debug.Event>
-        const timerTick = ticks.find((e: any) =>
-          Array.isArray(e.data?.triggerSummary?.kinds) && e.data.triggerSummary.kinds.some((k: any) => k?.kind === 'timer'),
-        )
+        const timerTick = ticks.find((e) => {
+          const record = e as unknown as Record<string, unknown>
+          const data = record.data
+          if (!isRecord(data)) return false
+          const triggerSummary = data.triggerSummary
+          if (!isRecord(triggerSummary)) return false
+          const kinds = triggerSummary.kinds
+          if (!Array.isArray(kinds)) return false
+          return kinds.some((k) => isRecord(k) && k.kind === 'timer')
+        })
         expect(timerTick).toBeDefined()
       } finally {
         yield* Effect.promise(() => runtime.dispose())
@@ -391,7 +415,7 @@ describe('WorkflowRuntime (075)', () => {
         actions: { start: Schema.Number, done: Schema.Number },
         reducers: {
           done: Logix.Module.Reducer.mutate((draft, payload: number) => {
-            ;(draft as any).done = payload
+            ;(draft as { done: number }).done = payload
           }),
         },
       })
@@ -419,10 +443,10 @@ describe('WorkflowRuntime (075)', () => {
           middleware: [Middleware.makeDebugObserver()],
           layer: Layer.mergeAll(
             testHostSchedulerLayer(hostScheduler),
-            Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+            Debug.replace([ring.sink]),
             Debug.diagnosticsLevel(diagnosticsLevel),
             Layer.succeed(SubmitPort, (_input: unknown) => Effect.void),
-          ) as Layer.Layer<any, never, never>,
+          ),
         })
 
         try {
@@ -430,13 +454,13 @@ describe('WorkflowRuntime (075)', () => {
             Effect.gen(function* () {
               const rt = yield* M.tag
               for (let i = 0; i < n; i += 1) {
-                yield* rt.dispatch({ _tag: 'start', payload: i + 1 } as any)
+                yield* rt.dispatch({ _tag: 'start', payload: i + 1 })
                 yield* flushAllHostScheduler(hostScheduler)
               }
 
               const trace = ring.getSnapshot().filter((e) => e.type === 'trace:effectop') as Array<Debug.Event>
-              return trace.filter((e: any) => String(e.data?.name ?? '').startsWith('workflow.')).length
-            }) as any,
+              return trace.filter((e) => (getTraceName(e) ?? '').startsWith('workflow.')).length
+            }),
           )
         } finally {
           await runtime.dispose()
@@ -459,7 +483,7 @@ describe('WorkflowRuntime (075)', () => {
         actions: { a1: Schema.Void, a2: Schema.Void, inc: Schema.Number },
         reducers: {
           inc: Logix.Module.Reducer.mutate((draft, payload: number) => {
-            ;(draft as any).n += payload
+            ;(draft as { n: number }).n += payload
           }),
         },
       })
@@ -479,7 +503,7 @@ describe('WorkflowRuntime (075)', () => {
 
       const hostScheduler = makeTestHostScheduler()
       const runtime = Logix.Runtime.make(impl, {
-        layer: Layer.mergeAll(testHostSchedulerLayer(hostScheduler), Layer.empty) as Layer.Layer<any, never, never>,
+        layer: Layer.mergeAll(testHostSchedulerLayer(hostScheduler), Layer.empty),
       })
 
       try {
@@ -490,19 +514,19 @@ describe('WorkflowRuntime (075)', () => {
 
               // wait until the run fiber (watcher) has started
               for (let i = 0; i < 32; i += 1) {
-                if (__unsafeGetWatcherStartCount(rt as any) === 1) break
+                if (__unsafeGetWatcherStartCount(rt) === 1) break
                 yield* Effect.yieldNow()
               }
 
-              expect(__unsafeGetWatcherStartCount(rt as any)).toBe(1)
+              expect(__unsafeGetWatcherStartCount(rt)).toBe(1)
 
-              yield* rt.dispatch({ _tag: 'a1', payload: undefined } as any)
-              yield* rt.dispatch({ _tag: 'a2', payload: undefined } as any)
+              yield* rt.dispatch({ _tag: 'a1' })
+              yield* rt.dispatch({ _tag: 'a2' })
               yield* flushAllHostScheduler(hostScheduler)
 
               expect(yield* rt.getState).toEqual({ n: 3 })
-              expect(__unsafeGetWatcherStartCount(rt as any)).toBe(1)
-            }) as any,
+              expect(__unsafeGetWatcherStartCount(rt)).toBe(1)
+            }),
           ),
         )
       } finally {

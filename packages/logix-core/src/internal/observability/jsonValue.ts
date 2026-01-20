@@ -184,7 +184,7 @@ const toJsonValueInternal = (
     return truncateString(String(input), options.maxStringLength, stats)
   }
 
-  const keys = Object.keys(input).sort((a, b) => a.localeCompare(b))
+  const keys = Object.keys(input).sort()
   const limit = Math.min(keys.length, options.maxObjectKeys)
   const out: Record<string, JsonValue> = {}
 

@@ -1,8 +1,12 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
+import type { InputExpr, WorkflowStaticIr } from '../../../src/Workflow.js'
 
-const makeOversizedObject = (order: 'asc' | 'desc'): any => {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const makeOversizedObject = (order: 'asc' | 'desc'): Record<string, string> => {
   const keys = Array.from({ length: 32 }, (_, i) => `k${String(i).padStart(2, '0')}`)
   if (order === 'desc') keys.reverse()
 
@@ -13,9 +17,10 @@ const makeOversizedObject = (order: 'asc' | 'desc'): any => {
   return out
 }
 
-const findDispatchConstPayload = (ir: any): any => {
-  const node = ir.nodes.find((n: any) => n.kind === 'step' && n.step?.kind === 'dispatch')
-  return node?.step?.payload
+const findDispatchConstPayload = (ir: WorkflowStaticIr): InputExpr | undefined => {
+  const node = ir.nodes.find((n) => n.kind === 'step' && n.step.kind === 'dispatch')
+  if (!node || node.kind !== 'step' || node.step.kind !== 'dispatch') return undefined
+  return node.step.payload
 }
 
 describe('ControlSurfaceManifest + workflowSurface (075)', () => {
@@ -54,9 +59,15 @@ describe('ControlSurfaceManifest + workflowSurface (075)', () => {
 
     expect(payloadA?.kind).toBe('const')
     expect(payloadB?.kind).toBe('const')
-    expect(payloadA.value?._tag).toBe('oversized')
-    expect(payloadB.value?._tag).toBe('oversized')
-    expect(payloadA.value?.preview).toBe(payloadB.value?.preview)
+    if (!payloadA || payloadA.kind !== 'const' || !payloadB || payloadB.kind !== 'const') {
+      throw new Error('Expected both payloads to be InputExpr.const')
+    }
+    if (!isRecord(payloadA.value) || !isRecord(payloadB.value)) {
+      throw new Error('Expected oversized const payload to be an object')
+    }
+    expect(payloadA.value._tag).toBe('oversized')
+    expect(payloadB.value._tag).toBe('oversized')
+    expect(payloadA.value.preview).toBe(payloadB.value.preview)
   })
 
   it('FR-001/FR-007: Reflection.exportControlSurface wires workflowSurface digest + effectsIndex', () => {
@@ -89,8 +100,12 @@ describe('ControlSurfaceManifest + workflowSurface (075)', () => {
     expect(manifestModule.moduleId).toBe('ControlSurface.075')
     expect(manifestModule.workflowSurface?.digest).toBe(surface.surface.digest)
     expect(manifestModule.effectsIndex.length).toBeGreaterThanOrEqual(1)
-    expect((manifestModule.effectsIndex[0] as any)?.kind).toBe('workflow')
-    expect((manifestModule.effectsIndex[0] as any)?.programId).toBe('ControlSurface.075.p')
+    const entry0 = manifestModule.effectsIndex[0]
+    expect(entry0?.kind).toBe('workflow')
+    if (!entry0 || entry0.kind !== 'workflow') {
+      throw new Error('Expected effectsIndex[0] to be a workflow entry')
+    }
+    expect(entry0.programId).toBe('ControlSurface.075.p')
 
     const expectedIr = program.exportStaticIr('ControlSurface.075')
     expect(surface.surface.programs[0]?.digest).toBe(expectedIr.digest)

@@ -2,7 +2,7 @@ import { Context } from 'effect'
 import type { JsonValue } from './internal/observability/jsonValue.js'
 import { fromTag as serviceIdFromTag } from './internal/serviceId.js'
 import { makeWorkflowError } from './internal/workflow/errors.js'
-import type { ModuleLogic, ModuleTag } from './internal/module.js'
+import type { AnyModuleShape, ModuleLogic, ModuleTag } from './internal/module.js'
 import type {
   InputExprV1,
   WorkflowComposeResultV1,
@@ -17,23 +17,114 @@ import type {
 import { compileWorkflowStaticIrV1, normalizeWorkflowDefV1, validateWorkflowDefV1 } from './internal/workflow/compiler.js'
 import * as WorkflowRuntime from './internal/runtime/core/WorkflowRuntime.js'
 
-export type WorkflowDef = WorkflowDefV1
-export type WorkflowTrigger = WorkflowTriggerV1
+export type ActionTagsOfModule<M> = M extends { readonly actions: infer A } ? Extract<keyof A, string> : string
+
+export type WorkflowTrigger<ActionTag extends string = string> =
+  | { readonly kind: 'action'; readonly actionTag: ActionTag }
+  | { readonly kind: 'lifecycle'; readonly phase: 'onStart' | 'onInit' }
+
 export type WorkflowPolicy = WorkflowPolicyV1
-export type WorkflowStep = WorkflowStepV1
+
+export type WorkflowStep<ActionTag extends string = string> =
+  | { readonly kind: 'dispatch'; readonly key: string; readonly actionTag: ActionTag; readonly payload?: InputExprV1 }
+  | { readonly kind: 'delay'; readonly key: string; readonly ms: number }
+  | {
+      readonly kind: 'call'
+      readonly key: string
+      readonly serviceId: string
+      readonly input?: InputExprV1
+      readonly timeoutMs?: number
+      readonly retry?: { readonly times: number }
+      readonly onSuccess: ReadonlyArray<WorkflowStep<ActionTag>>
+      readonly onFailure: ReadonlyArray<WorkflowStep<ActionTag>>
+    }
+
+export type WorkflowDef<ActionTag extends string = string> = {
+  readonly astVersion: 1
+  readonly localId: string
+  readonly trigger: WorkflowTrigger<ActionTag>
+  readonly policy?: WorkflowPolicyV1
+  readonly steps: ReadonlyArray<WorkflowStep<ActionTag>>
+  readonly sources?: WorkflowDefV1['sources']
+  readonly meta?: { readonly generator?: JsonValue }
+}
+
 export type WorkflowStaticIr = WorkflowStaticIrV1
 export type InputExpr = InputExprV1
-export type WorkflowFragment = WorkflowFragmentV1
-export type WorkflowComposeResult = WorkflowComposeResultV1
+
+export type WorkflowFragment<ActionTag extends string = string> = {
+  readonly fragmentId: string
+  readonly steps: ReadonlyArray<WorkflowStep<ActionTag>>
+  readonly sources?: WorkflowDefV1['sources']
+  readonly policy?: WorkflowPolicyV1
+}
+
+export type WorkflowComposeResult<ActionTag extends string = string> = {
+  readonly steps: ReadonlyArray<WorkflowStep<ActionTag>>
+  readonly sources?: WorkflowDefV1['sources']
+  readonly policy?: WorkflowPolicyV1
+}
+
+export type WorkflowPart<ActionTag extends string = string> =
+  | ReadonlyArray<WorkflowStep<ActionTag>>
+  | WorkflowFragment<ActionTag>
+  | WorkflowComposeResult<ActionTag>
 
 class KernelSourceRefreshPortTagImpl extends Context.Tag('logix/kernel/sourceRefresh')<
   KernelSourceRefreshPortTagImpl,
-  any
+  unknown
 >() {}
 
 export const KernelPorts = {
   sourceRefresh: KernelSourceRefreshPortTagImpl,
 } as const
+
+export const forModule = <M extends { readonly actions: Record<string, unknown> }>(_module: M) => {
+  type ActionTag = ActionTagsOfModule<M>
+
+  return {
+    onAction: (actionTag: ActionTag) => onAction(actionTag),
+    onStart,
+    onInit,
+    payload,
+    payloadPath,
+    constValue,
+    object,
+    merge,
+    dispatch: (args: { readonly key: string; readonly actionTag: ActionTag; readonly payload?: InputExpr }) => dispatch(args),
+    delay,
+    callById: (args: {
+      readonly key: string
+      readonly serviceId: string
+      readonly input?: InputExpr
+      readonly timeoutMs?: number
+      readonly retry?: { readonly times: number }
+      readonly onSuccess?: ReadonlyArray<WorkflowStep<ActionTag>>
+      readonly onFailure?: ReadonlyArray<WorkflowStep<ActionTag>>
+    }) => callById<ActionTag>(args),
+    call: <Id, Svc>(args: {
+      readonly key: string
+      readonly service: Context.Tag<Id, Svc>
+      readonly input?: InputExpr
+      readonly timeoutMs?: number
+      readonly retry?: { readonly times: number }
+      readonly onSuccess?: ReadonlyArray<WorkflowStep<ActionTag>>
+      readonly onFailure?: ReadonlyArray<WorkflowStep<ActionTag>>
+    }) => call(args),
+    fragment: (fragmentId: string, steps: ReadonlyArray<WorkflowStep<ActionTag>>) => fragment<ActionTag>(fragmentId, steps),
+    withPolicy: (patch: WithPolicyPatch, part: WorkflowPart<ActionTag>) => withPolicy<ActionTag>(patch, part),
+    compose: (...parts: ReadonlyArray<WorkflowPart<ActionTag>>) => compose<ActionTag>(...parts),
+    make: (input: {
+      readonly astVersion?: 1
+      readonly localId: string
+      readonly trigger: WorkflowTrigger<ActionTag>
+      readonly policy?: WorkflowPolicy
+      readonly steps: WorkflowStepsInput<ActionTag>
+      readonly meta?: { readonly generator?: JsonValue }
+    }) => make<M>(input),
+    fromJSON: (def: WorkflowDef<ActionTag>) => fromJSON<ActionTag>(def),
+  } as const
+}
 
 export type WithPolicyPatch = {
   readonly concurrency?: WorkflowPolicyV1['concurrency']
@@ -44,10 +135,10 @@ export type WithPolicyPatch = {
   readonly retry?: { readonly times: number }
 }
 
-type StepsInput =
-  | ReadonlyArray<WorkflowStepV1>
-  | (WorkflowComposeResultV1 & {
-      readonly steps: ReadonlyArray<WorkflowStepV1>
+export type WorkflowStepsInput<ActionTag extends string = string> =
+  | ReadonlyArray<WorkflowStep<ActionTag>>
+  | (WorkflowComposeResult<ActionTag> & {
+      readonly steps: ReadonlyArray<WorkflowStep<ActionTag>>
     })
 
 export interface Workflow {
@@ -56,11 +147,13 @@ export interface Workflow {
   readonly toJSON: () => WorkflowDefV1
   readonly validate: () => void
   readonly exportStaticIr: (moduleId: string) => WorkflowStaticIrV1
-  readonly install: (moduleTag: ModuleTag<any, any>) => ModuleLogic<any, any, never>
+  readonly install: (moduleTag: ModuleTag<string, AnyModuleShape>) => ModuleLogic<AnyModuleShape, unknown, never>
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isReadonlyArray = (value: unknown): value is ReadonlyArray<unknown> => Array.isArray(value)
 
 const asNonEmptyString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
@@ -110,7 +203,7 @@ const resolveStepsInput = (input: unknown): WorkflowComposeResultV1 => {
   if (Array.isArray(input)) {
     return { steps: input as ReadonlyArray<WorkflowStepV1> }
   }
-  if (isRecord(input) && Array.isArray((input as any).steps)) {
+  if (isRecord(input) && Array.isArray(input.steps)) {
     return input as WorkflowComposeResultV1
   }
   throw makeWorkflowError({
@@ -131,11 +224,20 @@ const recordSourcesForFragment = (
   for (const inner of step.onFailure) recordSourcesForFragment(sources, fragmentId, inner)
 }
 
-export const onAction = (actionTag: string): WorkflowTriggerV1 => ({ kind: 'action', actionTag })
+export const onAction = <ActionTag extends string>(actionTag: ActionTag): Extract<WorkflowTrigger<ActionTag>, { kind: 'action' }> => ({
+  kind: 'action',
+  actionTag,
+})
 
-export const onStart = (): WorkflowTriggerV1 => ({ kind: 'lifecycle', phase: 'onStart' })
+export const onStart = (): { readonly kind: 'lifecycle'; readonly phase: 'onStart' } => ({
+  kind: 'lifecycle',
+  phase: 'onStart',
+})
 
-export const onInit = (): WorkflowTriggerV1 => ({ kind: 'lifecycle', phase: 'onInit' })
+export const onInit = (): { readonly kind: 'lifecycle'; readonly phase: 'onInit' } => ({
+  kind: 'lifecycle',
+  phase: 'onInit',
+})
 
 export const payload = (): InputExprV1 => ({ kind: 'payload' })
 
@@ -147,32 +249,32 @@ export const object = (fields: Record<string, InputExprV1>): InputExprV1 => ({ k
 
 export const merge = (items: ReadonlyArray<InputExprV1>): InputExprV1 => ({ kind: 'merge', items })
 
-export const dispatch = (args: {
+export const dispatch = <ActionTag extends string>(args: {
   readonly key: string
-  readonly actionTag: string
+  readonly actionTag: ActionTag
   readonly payload?: InputExprV1
-}): WorkflowStepV1 => ({
+}): Extract<WorkflowStep<ActionTag>, { kind: 'dispatch' }> => ({
   kind: 'dispatch',
   key: args.key,
   actionTag: args.actionTag,
   ...(args.payload ? { payload: args.payload } : null),
 })
 
-export const delay = (args: { readonly key: string; readonly ms: number }): WorkflowStepV1 => ({
+export const delay = (args: { readonly key: string; readonly ms: number }): Extract<WorkflowStep, { kind: 'delay' }> => ({
   kind: 'delay',
   key: args.key,
   ms: args.ms,
 })
 
-export const callById = (args: {
+export const callById = <ActionTag extends string = never>(args: {
   readonly key: string
   readonly serviceId: string
   readonly input?: InputExprV1
   readonly timeoutMs?: number
   readonly retry?: { readonly times: number }
-  readonly onSuccess?: ReadonlyArray<WorkflowStepV1>
-  readonly onFailure?: ReadonlyArray<WorkflowStepV1>
-}): WorkflowStepV1 => ({
+  readonly onSuccess?: ReadonlyArray<WorkflowStep<ActionTag>>
+  readonly onFailure?: ReadonlyArray<WorkflowStep<ActionTag>>
+}): Extract<WorkflowStep<ActionTag>, { kind: 'call' }> => ({
   kind: 'call',
   key: args.key,
   serviceId: args.serviceId,
@@ -183,47 +285,62 @@ export const callById = (args: {
   onFailure: args.onFailure ?? [],
 })
 
-export const call = (args: {
+export const call = <Id, Svc, ActionTag extends string = never>(args: {
   readonly key: string
-  readonly service: Context.Tag<any, any>
+  readonly service: Context.Tag<Id, Svc>
   readonly input?: InputExprV1
   readonly timeoutMs?: number
   readonly retry?: { readonly times: number }
-  readonly onSuccess?: ReadonlyArray<WorkflowStepV1>
-  readonly onFailure?: ReadonlyArray<WorkflowStepV1>
-}): WorkflowStepV1 => {
+  readonly onSuccess?: ReadonlyArray<WorkflowStep<ActionTag>>
+  readonly onFailure?: ReadonlyArray<WorkflowStep<ActionTag>>
+}): Extract<WorkflowStep<ActionTag>, { kind: 'call' }> => {
   const serviceId = serviceIdFromTag(args.service)
   if (!serviceId) {
     throw makeWorkflowError({
       code: 'WORKFLOW_INVALID_SERVICE_ID',
       message: 'call(service): serviceId derived from tag must be a non-empty string (see 078 ServiceId contract).',
-      detail: { tag: String((args.service as any)?.toString?.() ?? 'tag') },
+      detail: { tag: String(args.service) },
     })
   }
 
-  return callById({
+  return callById<ActionTag>({
     ...args,
     serviceId,
   })
 }
 
-export const fragment = (fragmentId: string, steps: ReadonlyArray<WorkflowStepV1>): WorkflowFragmentV1 => ({
+export const fragment = <ActionTag extends string = never>(
+  fragmentId: string,
+  steps: ReadonlyArray<WorkflowStep<ActionTag>>,
+): WorkflowFragment<ActionTag> => ({
   fragmentId,
   steps,
 })
 
-export const withPolicy = (patch: WithPolicyPatch, part: WorkflowPartV1): WorkflowComposeResultV1 => {
-  const normalized = (() => {
-    if (Array.isArray(part)) return { steps: part } as WorkflowComposeResultV1
-    if (isRecord(part) && Array.isArray((part as any).steps)) return part as WorkflowComposeResultV1
-    throw makeWorkflowError({
-      code: 'WORKFLOW_INVALID_DEF',
-      message: 'withPolicy: invalid workflow part (expected steps[] / fragment / composeResult).',
-      detail: { part },
-    })
-  })()
+export const withPolicy = <ActionTag extends string = never>(
+  patch: WithPolicyPatch,
+  part: WorkflowPart<ActionTag>,
+): WorkflowComposeResult<ActionTag> => {
+  let normalized: WorkflowComposeResult<ActionTag>
+  if (isReadonlyArray(part)) {
+    normalized = { steps: part }
+  } else {
+    const partUnknown: unknown = part
+    if (!isRecord(partUnknown) || !isReadonlyArray(partUnknown.steps)) {
+      throw makeWorkflowError({
+        code: 'WORKFLOW_INVALID_DEF',
+        message: 'withPolicy: invalid workflow part (expected steps[] / fragment / composeResult).',
+        detail: { part },
+      })
+    }
+    normalized = {
+      steps: part.steps,
+      ...(part.sources ? { sources: part.sources } : null),
+      ...(part.policy ? { policy: part.policy } : null),
+    }
+  }
 
-  const steps = applyCallDefaults(normalized.steps, patch)
+  const steps = applyCallDefaults(normalized.steps as ReadonlyArray<WorkflowStepV1>, patch) as ReadonlyArray<WorkflowStep<ActionTag>>
   const patchPolicy: WorkflowPolicyV1 | undefined = (() => {
     const concurrency = patch.concurrency
     const priority = patch.priority
@@ -240,8 +357,10 @@ export const withPolicy = (patch: WithPolicyPatch, part: WorkflowPartV1): Workfl
   }
 }
 
-export const compose = (...parts: ReadonlyArray<WorkflowPartV1>): WorkflowComposeResultV1 => {
-  const steps: WorkflowStepV1[] = []
+export const compose = <ActionTag extends string = never>(
+  ...parts: ReadonlyArray<WorkflowPart<ActionTag>>
+): WorkflowComposeResult<ActionTag> => {
+  const steps: Array<WorkflowStep<ActionTag>> = []
   const sources: Record<string, { readonly fragmentId?: string }> = {}
   let policy: WorkflowPolicyV1 | undefined = undefined
 
@@ -254,7 +373,7 @@ export const compose = (...parts: ReadonlyArray<WorkflowPartV1>): WorkflowCompos
   }
 
   const recordOwners = (
-    step: WorkflowStepV1,
+    step: WorkflowStep<ActionTag>,
     resolveFragmentId: (stepKey: string) => string | undefined,
   ): void => {
     recordOwner(step.key, resolveFragmentId(step.key))
@@ -264,50 +383,45 @@ export const compose = (...parts: ReadonlyArray<WorkflowPartV1>): WorkflowCompos
   }
 
   for (const part of parts) {
-    if (Array.isArray(part)) {
+    if (isReadonlyArray(part)) {
       steps.push(...part)
       for (const step of part) recordOwners(step, () => undefined)
       continue
     }
 
-    // fragment / composeResult
-    const partSteps = (part as any).steps as ReadonlyArray<WorkflowStepV1> | undefined
-    if (Array.isArray(partSteps)) {
-      steps.push(...partSteps)
-    }
+    // fragment / composeResult (both carry `steps`)
+    const partSteps = part.steps
+    steps.push(...partSteps)
 
-    const partSources = (part as any).sources as WorkflowDefV1['sources'] | undefined
+    const partSources = part.sources
     if (partSources && typeof partSources === 'object') {
       for (const k of Object.keys(partSources).sort()) {
-        sources[k] = { ...(partSources as any)[k] }
+        sources[k] = { ...partSources[k]! }
       }
     }
 
-    const fragmentId = (part as any).fragmentId
-    if (typeof fragmentId === 'string' && fragmentId.length > 0 && Array.isArray(partSteps)) {
-      for (const step of partSteps) {
+    const fragmentId = 'fragmentId' in part ? part.fragmentId : undefined
+    if (typeof fragmentId === 'string' && fragmentId.length > 0) {
+      for (const step of partSteps as ReadonlyArray<WorkflowStepV1>) {
         recordSourcesForFragment(sources, fragmentId, step)
       }
     }
 
-    if (Array.isArray(partSteps)) {
-      const resolveFragmentIdForPart = (stepKey: string): string | undefined => {
-        if (typeof fragmentId === 'string' && fragmentId.length > 0) return fragmentId
-        const fromSources = partSources?.[stepKey]?.fragmentId
-        return typeof fromSources === 'string' && fromSources.length > 0 ? fromSources : undefined
-      }
-      for (const step of partSteps) recordOwners(step, resolveFragmentIdForPart)
+    const resolveFragmentIdForPart = (stepKey: string): string | undefined => {
+      if (typeof fragmentId === 'string' && fragmentId.length > 0) return fragmentId
+      const fromSources = partSources?.[stepKey]?.fragmentId
+      return typeof fromSources === 'string' && fromSources.length > 0 ? fromSources : undefined
     }
+    for (const step of partSteps) recordOwners(step, resolveFragmentIdForPart)
 
-    const partPolicy = (part as any).policy as WorkflowPolicyV1 | undefined
-    policy = mergePolicy(policy, partPolicy)
+    policy = mergePolicy(policy, part.policy)
   }
 
   const finalSources: WorkflowDefV1['sources'] | undefined = Object.keys(sources).length > 0 ? sources : undefined
   const duplicateKeys = Array.from(ownersByKey.entries())
     .filter(([, owners]) => owners.length > 1)
     .map(([k]) => k)
-    .sort((a, b) => a.localeCompare(b))
+    .sort()
   if (duplicateKeys.length > 0) {
     const k = duplicateKeys[0]!
     throw makeWorkflowError({
@@ -325,12 +439,12 @@ export const compose = (...parts: ReadonlyArray<WorkflowPartV1>): WorkflowCompos
   }
 }
 
-export const make = (input: {
+export const make = <M = unknown>(input: {
   readonly astVersion?: 1
   readonly localId: string
-  readonly trigger: WorkflowTriggerV1
+  readonly trigger: WorkflowTrigger<ActionTagsOfModule<M>>
   readonly policy?: WorkflowPolicyV1
-  readonly steps: StepsInput
+  readonly steps: WorkflowStepsInput<ActionTagsOfModule<M>>
   readonly meta?: { readonly generator?: JsonValue }
 }): Workflow => {
   const localId = asNonEmptyString(input.localId)
@@ -371,13 +485,13 @@ export const make = (input: {
     },
     install: (moduleTag) =>
       WorkflowRuntime.installOne({
-        moduleTag: moduleTag as any,
+        moduleTag: moduleTag as unknown as Parameters<typeof WorkflowRuntime.installOne>[0]['moduleTag'],
         program: { _tag: 'Workflow', def },
-      }) as any,
+      }),
   } satisfies Workflow
 }
 
-export const fromJSON = (def: WorkflowDefV1): Workflow =>
+export const fromJSON = <ActionTag extends string = string>(def: WorkflowDef<ActionTag>): Workflow =>
   make({
     localId: def.localId,
     trigger: def.trigger,

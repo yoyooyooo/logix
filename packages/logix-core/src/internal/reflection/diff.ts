@@ -52,7 +52,7 @@ const SEVERITY_RANK: Record<ManifestDiffSeverity, number> = {
 
 const uniqSorted = (input: ReadonlyArray<string>): ReadonlyArray<string> => {
   const out = Array.from(new Set(input.filter((x) => typeof x === 'string' && x.length > 0)))
-  out.sort((a, b) => a.localeCompare(b))
+  out.sort()
   return out
 }
 
@@ -67,13 +67,13 @@ const diffStringKeys = (
   for (const k of beforeSet) {
     if (!afterSet.has(k)) removed.push(k)
   }
-  removed.sort((a, b) => a.localeCompare(b))
+  removed.sort()
 
   const added: string[] = []
   for (const k of afterSet) {
     if (!beforeSet.has(k)) added.push(k)
   }
-  added.sort((a, b) => a.localeCompare(b))
+  added.sort()
 
   return { removed, added }
 }
@@ -174,8 +174,8 @@ export const diffManifest = (
       if (!beforeById.has(id)) added.push(id)
     }
 
-    removed.sort((a, b) => a.localeCompare(b))
-    added.sort((a, b) => a.localeCompare(b))
+    removed.sort()
+    added.sort()
 
     for (const id of beforeById.keys()) {
       const b = beforeById.get(id)
@@ -192,8 +192,8 @@ export const diffManifest = (
       if (fields.length > 0) riskyChanged.push({ id, fields })
     }
 
-    kindChanged.sort((x, y) => x.id.localeCompare(y.id))
-    riskyChanged.sort((x, y) => x.id.localeCompare(y.id))
+    kindChanged.sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0))
+    riskyChanged.sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0))
 
     if (removed.length > 0) {
       changes.push({
@@ -317,11 +317,11 @@ export const diffManifest = (
     const ra = SEVERITY_RANK[a.severity]
     const rb = SEVERITY_RANK[b.severity]
     if (ra !== rb) return ra - rb
-    const ca = a.code.localeCompare(b.code)
-    if (ca !== 0) return ca
+    if (a.code !== b.code) return a.code < b.code ? -1 : 1
     const pa = a.pointer ?? ''
     const pb = b.pointer ?? ''
-    return pa.localeCompare(pb)
+    if (pa !== pb) return pa < pb ? -1 : 1
+    return 0
   })
 
   const summary: ModuleManifestDiffSummary = {

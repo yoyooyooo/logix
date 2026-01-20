@@ -104,10 +104,8 @@ In most scenarios the overhead is negligible. For performance-sensitive cases, s
 
 ```ts
 const runtime = Logix.Runtime.make(RootImpl, {
-  layer: Layer.mergeAll(
-    AppInfraLayer,
-    Logix.Debug.layer({ mode: 'prod' }), // production mode
-  ),
+  layer: AppInfraLayer,
+  debug: { mode: 'prod' }, // production mode
   devtools: false, // disable DevTools
 })
 ```

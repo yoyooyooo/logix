@@ -274,7 +274,7 @@ export function linkDeclarative<Ms extends readonly LinkModuleToken<string, AnyM
     .sort((a, b) => {
       const ak = `${a.from.moduleId}:${a.from.readQuery.staticIr.selectorId}->${a.to.moduleId}:${a.to.actionTag}`
       const bk = `${b.from.moduleId}:${b.from.readQuery.staticIr.selectorId}->${b.to.moduleId}:${b.to.actionTag}`
-      return ak.localeCompare(bk)
+      return ak < bk ? -1 : ak > bk ? 1 : 0
     })
 
   const program: Effect.Effect<void, never, any> = Effect.gen(function* () {

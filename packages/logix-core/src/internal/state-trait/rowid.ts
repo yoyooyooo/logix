@@ -442,14 +442,14 @@ export class RowIdStore {
     }
 
     // roots first (and deterministic traversal)
-    const roots = (childrenByParent.get(undefined) ?? []).slice().sort((a, b) => a.localeCompare(b))
+    const roots = (childrenByParent.get(undefined) ?? []).slice().sort()
 
     const visit = (listPath: string, parentRowId: RowId | undefined, listValue: unknown): void => {
       const cfg = cfgByPath.get(listPath)
       const items = Array.isArray(listValue) ? (listValue as ReadonlyArray<unknown>) : []
       const ids = this.ensureList(listPath, items, cfg?.trackBy, parentRowId)
 
-      const children = (childrenByParent.get(listPath) ?? []).slice().sort((a, b) => a.localeCompare(b))
+      const children = (childrenByParent.get(listPath) ?? []).slice().sort()
       if (children.length === 0) return
 
       for (let i = 0; i < items.length; i++) {

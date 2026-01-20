@@ -188,7 +188,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 
 另外还有一个很常用但容易混淆的开关：
 
-- **诊断分档**（`Debug.diagnosticsLevel`）：控制“是否输出/输出多少调试事件”（`off` 几乎零开销但完全失明；`sampled` 用低成本采样保留长尾定位能力；`light/full` 适合排查问题与解释链路）。
+- **诊断分档**（Runtime 的 `devtools.diagnosticsLevel` / `debug.diagnosticsLevel`）：控制“是否输出/输出多少可导出的调试证据”（`off` 几乎零开销但完全失明；`sampled` 用低成本采样保留长尾定位能力；`light/full` 适合排查问题与解释链路）。
 - **事务观测级别**（`stateTransaction.instrumentation`）：控制“事务里是否记录 Patch/快照”等结构化信息（`full` 更好调试，`light` 更省）。
 
 #### 诊断分档：off / sampled / light / full（怎么选）
@@ -208,15 +208,12 @@ const runtime = Logix.Runtime.make(RootImpl, {
 
 ```ts
 import * as Logix from '@logixjs/core'
-import { Layer } from 'effect'
 
 const runtime = Logix.Runtime.make(RootImpl, {
-  layer: Layer.mergeAll(
-    Logix.Debug.devtoolsHubLayer({
-      diagnosticsLevel: 'sampled',
-      traitConvergeDiagnosticsSampling: { sampleEveryN: 32, topK: 3 },
-    }),
-  ),
+  devtools: {
+    diagnosticsLevel: 'sampled',
+    traitConvergeDiagnosticsSampling: { sampleEveryN: 32, topK: 3 },
+  },
 })
 ```
 

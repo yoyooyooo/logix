@@ -51,10 +51,10 @@ const stableJson = (value: unknown): string => JSON.stringify(value) ?? ''
 const diffMetaKeys = (before: unknown, after: unknown): ReadonlyArray<string> => {
   const b = isRecord(before) ? before : {}
   const a = isRecord(after) ? after : {}
-  const keys = Array.from(new Set([...Object.keys(b), ...Object.keys(a)])).sort((x, y) => x.localeCompare(y))
+  const keys = Array.from(new Set([...Object.keys(b), ...Object.keys(a)])).sort()
   const changed: string[] = []
   for (const k of keys) {
-    if (stableJson((b as any)[k]) !== stableJson((a as any)[k])) {
+    if (stableJson(b[k]) !== stableJson(a[k])) {
       changed.push(k)
     }
   }
@@ -123,7 +123,7 @@ const tryAllowlistKernelContractDiff = (args: {
       count,
       ...(allow.get(metaKey) ? { reason: allow.get(metaKey) } : {}),
     }))
-    .sort((a, b) => a.metaKey.localeCompare(b.metaKey))
+    .sort((a, b) => (a.metaKey < b.metaKey ? -1 : a.metaKey > b.metaKey ? 1 : 0))
 
   return { verdict: 'PASS', allowedDiffs }
 }
@@ -204,7 +204,7 @@ export const exportStaticIr = (module: ModuleImpl<any, AnyModuleShape, any> | An
 export const exportControlSurface = (
   modules: ReadonlyArray<AnyModule>,
   options?: ExportControlSurfaceOptions,
-): ExportControlSurfaceResult => ControlSurfaceExport.exportControlSurface(modules as any, options)
+): ExportControlSurfaceResult => ControlSurfaceExport.exportControlSurface(modules, options)
 
 /**
  * Reflection.verifyKernelContract

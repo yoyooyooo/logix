@@ -8,6 +8,9 @@ const decodePointerToken = (raw: string): string => raw.replace(/~1/g, '/').repl
 
 const isIndexToken = (token: string): boolean => token === '0' || (!token.startsWith('0') && /^\d+$/.test(token))
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
 export const parseJsonPointer = (pointer: string): ReadonlyArray<JsonPointerToken> => {
   if (pointer === '') return []
   if (!pointer.startsWith('/')) {
@@ -51,7 +54,7 @@ export const compileInputExpr = (expr: InputExprV1, pathForError?: { readonly st
       return { kind: 'payload.path', pointer, tokens: parseJsonPointer(pointer) }
     }
     case 'const': {
-      const value = (expr as any).value
+      const value: unknown = expr.value
       if (!isJsonValue(value)) {
         throw makeWorkflowError({
           code: 'WORKFLOW_INVALID_INPUT_EXPR',
@@ -63,7 +66,7 @@ export const compileInputExpr = (expr: InputExprV1, pathForError?: { readonly st
       return { kind: 'const', value }
     }
     case 'object': {
-      const fields = (expr as any).fields
+      const fields: unknown = expr.fields
       if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
         throw makeWorkflowError({
           code: 'WORKFLOW_INVALID_INPUT_EXPR',
@@ -71,14 +74,14 @@ export const compileInputExpr = (expr: InputExprV1, pathForError?: { readonly st
           source: { stepKey: pathForError?.stepKey },
         })
       }
-      const entries = Object.entries(fields as Record<string, InputExprV1>).sort(([a], [b]) => a.localeCompare(b))
+      const entries = Object.entries(fields as Record<string, InputExprV1>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       return {
         kind: 'object',
         fields: entries.map(([k, v]) => [k, compileInputExpr(v, pathForError)] as const),
       }
     }
     case 'merge': {
-      const items = (expr as any).items
+      const items: unknown = expr.items
       if (!Array.isArray(items)) {
         throw makeWorkflowError({
           code: 'WORKFLOW_INVALID_INPUT_EXPR',
@@ -89,12 +92,13 @@ export const compileInputExpr = (expr: InputExprV1, pathForError?: { readonly st
 
       // Hard gate: merge.items must all be object (enforced at compile-time; runtime should not branch).
       for (const item of items) {
-        if (!item || typeof item !== 'object' || (item as any).kind !== 'object') {
+        const kind = isRecord(item) ? item.kind : undefined
+        if (kind !== 'object') {
           throw makeWorkflowError({
             code: 'WORKFLOW_INVALID_MERGE_ITEMS',
             message: 'InputExpr.merge.items must all be InputExpr.object.',
             source: { stepKey: pathForError?.stepKey },
-            detail: { kind: (item as any)?.kind },
+            detail: { kind },
           })
         }
       }
@@ -115,15 +119,16 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
 }
 
 const evalPointer = (root: unknown, tokens: ReadonlyArray<JsonPointerToken>): unknown => {
-  let current: any = root
+  let current: unknown = root
   for (const token of tokens) {
     if (current == null) return undefined
     if (Array.isArray(current) && typeof token === 'number') {
       current = current[token]
       continue
     }
+    if (typeof current !== 'object') return undefined
     const key = typeof token === 'number' ? String(token) : token
-    current = (current as any)[key]
+    current = (current as Record<string, unknown>)[key]
   }
   return current
 }

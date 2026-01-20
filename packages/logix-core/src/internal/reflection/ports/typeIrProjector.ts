@@ -152,14 +152,18 @@ const buildRoots = (
   entries: ReadonlyArray<{ readonly key: string; readonly typeId: string }>,
 ): Record<string, string> =>
   Object.fromEntries(
-    entries.map((entry) => [entry.key, entry.typeId] as const).sort((a, b) => a[0].localeCompare(b[0])),
+    entries
+      .map((entry) => [entry.key, entry.typeId] as const)
+      .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)),
   )
 
 const buildRootPaths = (
   entries: ReadonlyArray<{ readonly path: string; readonly typeId: string }>,
 ): Record<string, string> =>
   Object.fromEntries(
-    entries.map((entry) => [entry.path, entry.typeId] as const).sort((a, b) => a[0].localeCompare(b[0])),
+    entries
+      .map((entry) => [entry.path, entry.typeId] as const)
+      .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)),
   )
 
 const actionNodeId = (key: string): string => `port:action:${key}`
@@ -242,7 +246,7 @@ export const defaultTypeIrProjector: TypeIrProjector = {
       exportRoots.push({ path: entry.path, typeId: node.id })
     }
 
-    const types = Array.from(nodes.values()).sort((a, b) => a.id.localeCompare(b.id))
+    const types = Array.from(nodes.values()).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 
     const roots = {
       actions: buildRoots(actionRoots),
@@ -275,7 +279,7 @@ export const runTypeIrProjectors = (
   }
 
   return {
-    types: Array.from(types.values()).sort((a, b) => a.id.localeCompare(b.id)),
+    types: Array.from(types.values()).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
     ...(roots !== undefined ? { roots } : {}),
     ...(notes !== undefined ? { notes } : {}),
   }

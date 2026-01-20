@@ -40,6 +40,18 @@
 - `program.toJSON()`：导出 `WorkflowDef`（单一事实源，纯 JSON）
 - `Workflow.fromJSON(def)`：从 `WorkflowDef` 恢复值对象（提供方法能力）
 
+### 1.1.1 TS-only：actionTag 类型“手动挡”
+
+`Workflow` 默认以 `actionTag: string` 为中心（平台/LLM 出码友好）。但在业务侧手写 workflow 时，可以选择启用**类型手动挡**来避免把 workflow 挂到错误 module、或 dispatch 到不存在的 action：
+
+- `Workflow.make<typeof M>(...)`：当显式提供 `typeof M` 时，`trigger.actionTag` 与 `dispatch.actionTag` 会被约束为 `keyof M.actions`（编译期错误；运行时语义不变）。
+- `Workflow.forModule(M)`：语法糖。返回一组“绑定了 `keyof M.actions`”的 DSL（`onAction/dispatch/make/...`），避免反复书写 `typeof M`。
+
+约束（必须明确）：
+
+- 该能力只影响 TypeScript 类型层；`WorkflowDef` / Static IR 仍是纯 JSON，可序列化字段仍是 `string`。
+- 动态字符串（无法推导为字面量 union）在类型层仍会退化为 `string`，属于 TS 能力边界。
+
 说明（避免“差点味道”的三条硬边界）：
 
 - **Def ≠ Static IR**：`WorkflowDef` 是 authoring 输入（声明式、可落盘），Static IR 才是可序列化/可对比的单一真相源。

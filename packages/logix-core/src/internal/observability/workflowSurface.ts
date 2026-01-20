@@ -14,7 +14,9 @@ export type WorkflowSurface = WorkflowSurfaceV1
 const makeDigest = (value: unknown): string => `workflow_surface_v1:${fnv1a32(stableStringify(value))}`
 
 export const exportWorkflowSurface = (programs: ReadonlyArray<WorkflowStaticIrV1>): WorkflowSurfaceV1 => {
-  const sorted = Array.from(programs).sort((a, b) => a.programId.localeCompare(b.programId))
+  const sorted = Array.from(programs).sort((a, b) =>
+    a.programId < b.programId ? -1 : a.programId > b.programId ? 1 : 0,
+  )
   const base = { version: 1 as const, programs: sorted } as const
   return { ...base, digest: makeDigest(base) }
 }

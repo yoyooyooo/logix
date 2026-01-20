@@ -198,7 +198,7 @@ const sink: Logix.Debug.Sink = {
 
 ### 2.4 导出/导入证据包（JSON 硬门）
 
-启用 Devtools（`devtools: true` 或手动叠加 `Debug.devtoolsHubLayer`）后，你可以把最近一段窗口导出为证据包：
+启用 Devtools（推荐：`devtools: true` 或 `devtools: { ... }`）后，你可以把最近一段窗口导出为证据包：
 
 ```ts
 import * as Logix from '@logixjs/core'
@@ -476,6 +476,36 @@ Logix 已经提供了官方 DevTools（通过 `@logixjs/devtools-react` 等包�
 
 - 一个 Runtime 级组合点：`Logix.Runtime.make(..., { middleware })`，统一挂载通用中间件和 `Middleware.withDebug`；
 - 一个 Debug 级组合点：在应用根部组合 `Debug.layer` / 自定义 DebugLayer（如有需要），以及 DevTools 相关的桥接 Layer。这样既方便 DevTools 使用，也方便后续接入日志/监控系统。
+
+### 5.1 高级：手动组合 DevtoolsHub / DebugObserver（仅在你知道自己在做什么时）
+
+大多数情况下，**只用 `Runtime.make(..., { devtools })`** 就够了：它会同时处理“DevtoolsHub 聚合窗口”和“EffectOp 观测（`trace:effectop`）”，并且避免 Layer/FiberRef 组合顺序带来的坑。
+
+如果你确实需要手动组合（例如：只想要 DevtoolsHub 的 `EvidencePackage`，但不想打开 `trace:effectop`），建议遵循两条规则：
+
+1) **用“包裹式”组合 DevtoolsHub**：把你的 `baseLayer` 传给 `Logix.Debug.devtoolsHubLayer(baseLayer, options)`，不要把它当成一个普通 Layer 去并列 `Layer.mergeAll(...)`（FiberRef patch 可能互相覆盖，表现为“我明明配了 layer 但没生效”）。
+
+2) **EffectOp 观测要么交给 `devtools`，要么自己上**：
+   - `devtools: true` / `devtools: { ... }` 会自动接上 DebugObserver；
+   - 如果你不启用 `devtools`，但仍想要 `trace:effectop`，就需要自己在 `middleware` 里加 `Middleware.makeDebugObserver(...)`。
+
+示例：自定义 sinks + DevtoolsHub（不启用 effectop 观测）
+
+```ts
+import * as Logix from '@logixjs/core'
+import { Effect, Layer } from 'effect'
+
+const sink: Logix.Debug.Sink = { record: () => Effect.void }
+
+const baseLayer = Layer.mergeAll(
+  AppInfraLayer,
+  Logix.Debug.replace([sink]),
+)
+
+const runtime = Logix.Runtime.make(RootImpl, {
+  layer: Logix.Debug.devtoolsHubLayer(baseLayer, { bufferSize: 500, diagnosticsLevel: 'light' }),
+})
+```
 
 ## 6. 事务边界与逻辑入口（心智模型）
 

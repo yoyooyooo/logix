@@ -14,3 +14,4 @@
 - `10-runtime-glossary.08-scope-resolution.md`
 - `10-runtime-glossary.09-program-runner.md`
 - `10-runtime-glossary.10-reflection-trial-run.md`
+- `10-runtime-glossary.11-workflow-and-control-surface.md`

@@ -85,16 +85,18 @@ export interface ModuleTraitsSnapshot {
 const toProvenanceKey = (p: TraitProvenance): string =>
   `${p.originType}:${p.originId}:${p.originIdKind}:${p.originLabel}:${p.path ?? ''}`
 
+const compareString = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
+
 const compareProvenance = (a: TraitProvenance, b: TraitProvenance): number => {
-  const type = a.originType.localeCompare(b.originType)
+  const type = compareString(a.originType, b.originType)
   if (type !== 0) return type
-  const id = a.originId.localeCompare(b.originId)
+  const id = compareString(a.originId, b.originId)
   if (id !== 0) return id
-  const kind = a.originIdKind.localeCompare(b.originIdKind)
+  const kind = compareString(a.originIdKind, b.originIdKind)
   if (kind !== 0) return kind
-  const label = a.originLabel.localeCompare(b.originLabel)
+  const label = compareString(a.originLabel, b.originLabel)
   if (label !== 0) return label
-  return String(a.path ?? '').localeCompare(String(b.path ?? ''))
+  return compareString(String(a.path ?? ''), String(b.path ?? ''))
 }
 
 const originTypeOrder = (t: TraitOriginType): number => (t === 'module' ? 0 : 1)
@@ -105,9 +107,9 @@ const compareTraitIdByProvenance = (
 ): number => {
   const ta = originTypeOrder(a.provenance.originType) - originTypeOrder(b.provenance.originType)
   if (ta !== 0) return ta
-  const oa = a.provenance.originId.localeCompare(b.provenance.originId)
+  const oa = compareString(a.provenance.originId, b.provenance.originId)
   if (oa !== 0) return oa
-  return a.traitId.localeCompare(b.traitId)
+  return compareString(a.traitId, b.traitId)
 }
 
 const extractStringArray = (value: unknown): ReadonlyArray<string> => {
@@ -163,7 +165,7 @@ export const finalizeTraitContributions = (args: {
   for (const c of contributions) {
     const traits = c.traits
     if (!traits || typeof traits !== 'object') continue
-    for (const traitId of Object.keys(traits).sort((a, b) => a.localeCompare(b))) {
+    for (const traitId of Object.keys(traits).sort()) {
       const value = (traits as Record<string, unknown>)[traitId]
       if (value === undefined) continue
 
@@ -192,7 +194,7 @@ export const finalizeTraitContributions = (args: {
   }
 
   // 1) duplicate traitId conflicts
-  for (const traitId of Array.from(duplicateSources.keys()).sort((a, b) => a.localeCompare(b))) {
+  for (const traitId of Array.from(duplicateSources.keys()).sort()) {
     registerConflict({
       kind: 'duplicate_traitId',
       traitId,
@@ -243,7 +245,7 @@ export const finalizeTraitContributions = (args: {
         registerConflict({
           kind: 'missing_requires',
           traitId,
-          missing: Array.from(new Set(missing)).sort((a, b) => a.localeCompare(b)),
+          missing: Array.from(new Set(missing)).sort(),
           sources: [entry.provenance],
         })
       }
@@ -261,7 +263,7 @@ export const finalizeTraitContributions = (args: {
         registerConflict({
           kind: 'excludes_violation',
           traitId,
-          present: Array.from(new Set(presentExcluded)).sort((a, b) => a.localeCompare(b)),
+          present: Array.from(new Set(presentExcluded)).sort(),
           sources: [entry.provenance, ...otherSources],
         })
       }
@@ -277,7 +279,7 @@ export const finalizeTraitContributions = (args: {
     conflicts.sort((a, b) => {
       const k = kindOrder[a.kind] - kindOrder[b.kind]
       if (k !== 0) return k
-      return a.traitId.localeCompare(b.traitId)
+      return compareString(a.traitId, b.traitId)
     })
     throw new ModuleTraitsConflictError(args.moduleId, conflicts)
   }

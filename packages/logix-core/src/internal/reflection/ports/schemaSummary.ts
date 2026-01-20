@@ -41,7 +41,7 @@ export const summarizeAst = (ast: unknown): SchemaSummary => {
 }
 
 export const summarizeSchema = (schema: unknown): SchemaSummary => {
-  const ast = isRecord(schema) ? (schema as any).ast : undefined
+  const ast = isRecord(schema) ? schema.ast : undefined
   if (!ast) return {}
   return summarizeAst(ast)
 }

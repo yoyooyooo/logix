@@ -35,7 +35,7 @@ const uniqSortedStrings = (input: ReadonlyArray<string>): ReadonlyArray<string> 
     if (!v) continue
     set.add(v)
   }
-  return Array.from(set).sort((a, b) => a.localeCompare(b))
+  return Array.from(set).sort()
 }
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
@@ -114,7 +114,7 @@ export const sanitize = (input: unknown): TraitMeta | undefined => {
   // legacy: allow passing `x-*` keys at the top-level (untyped input), then normalize into `annotations`.
   const annotationKeys = Object.keys(record)
     .filter((k) => k.startsWith('x-'))
-    .sort((a, b) => a.localeCompare(b))
+    .sort()
   for (const key of annotationKeys) {
     const v = sanitizeJsonValue(record[key], 0)
     if (v !== undefined) annotations[key] = v
@@ -125,7 +125,7 @@ export const sanitize = (input: unknown): TraitMeta | undefined => {
   if (isPlainRecord(annotationsRaw)) {
     const keys = Object.keys(annotationsRaw)
       .filter((k) => k.startsWith('x-'))
-      .sort((a, b) => a.localeCompare(b))
+      .sort()
     for (const key of keys) {
       const v = sanitizeJsonValue(annotationsRaw[key], 0)
       if (v !== undefined) annotations[key] = v

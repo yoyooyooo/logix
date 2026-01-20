@@ -16,11 +16,11 @@
 > 交付硬结论必须使用 `profile=default`（必要时 `soak` 复测）；`quick` 仅用于探路。
 
 - Date：2026-01-20
-- Branch / commit（working tree 是否 dirty）：`075-from-specs` / `54992122`（dirty）
+- Branch / commit（working tree 是否 dirty）：`075-from-specs` / `3c7af47b`（dirty）
 - OS / arch / CPU / Memory：darwin / arm64 / Apple M2 Max / 64GB
 - Node.js / pnpm：v22.21.1 / 9.15.9
 - Browser（name/version/headless）（如为 browser 跑道）：chromium 143.0.7499.4（headless）
-- Matrix（matrixId/matrixHash）：`logix-browser-perf-matrix-v1` / `13fc9faaea39aec3581ebf2be9a0d93207ec1a4aea949859de257a68cc4b4d48`
+- Matrix（matrixId/matrixHash）：`logix-browser-perf-matrix-v1` / `5b637a7f6a69f6d760459b3fe90cb3f41060eee3bc26d9ebe90021d20ffaddfe`
 - Profile（quick/default/soak）：default
 - Sampling（runs/warmupDiscard/timeoutMs）（按 suite 记录）：10 / 2 / 30000ms
 - Notes：对比轴为 `VITE_LOGIX_PERF_WORKFLOW_MODE=manualWatcher|workflow`；suite 固定 `watchers=256`，覆盖 `diagnostics=off/full`。
@@ -31,15 +31,15 @@
 
 ### workflow.submit.tickNotify
 
-- Before（manualWatcher）：`browser.before.54992122-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=manualWatcher.json`
-- After（workflow）：`browser.after.54992122-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=workflow.json`
-- Diff：`diff.browser.mode=manualWatcher__workflow.54992122-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
+- Before（manualWatcher）：`browser.before.3c7af47b-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=manualWatcher.json`
+- After（workflow）：`browser.after.3c7af47b-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=workflow.json`
+- Diff：`diff.browser.mode=manualWatcher__workflow.3c7af47b-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
 
 ### workflow.delay.timer
 
-- Before（manualWatcher）：`browser.before.54992122-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=manualWatcher.json`
-- After（workflow）：`browser.after.54992122-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=workflow.json`
-- Diff：`diff.browser.mode=manualWatcher__workflow.54992122-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
+- Before（manualWatcher）：`browser.before.3c7af47b-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=manualWatcher.json`
+- After（workflow）：`browser.after.3c7af47b-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.mode=workflow.json`
+- Diff：`diff.browser.mode=manualWatcher__workflow.3c7af47b-dirty.darwin-arm64.logix-browser-perf-matrix-v1.default.json`
 
 ## 预算策略（Hard Gate）
 
@@ -52,5 +52,5 @@
 
 - Gate：PASS（`meta.comparability.comparable=true` 且 `summary.regressions==0` 且 `summary.budgetViolations==0`）
 - 关键指标（p95）：
-  - submit：manualWatcher 1.30ms → workflow 1.00ms（-0.30ms，×0.77）
-  - delay(timer)：manualWatcher 5.70ms → workflow 5.50ms（-0.20ms，×0.96）
+  - submit：manualWatcher 1.40ms → workflow 1.20ms（-0.20ms，×0.86）
+  - delay(timer)：manualWatcher 5.40ms → workflow 5.00ms（-0.40ms，×0.93）

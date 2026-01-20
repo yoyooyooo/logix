@@ -58,7 +58,7 @@ const collectMultipleWritersError = (
 
   if (conflicts.length === 0) return undefined
 
-  conflicts.sort((a, b) => a.fieldPath.localeCompare(b.fieldPath))
+  conflicts.sort((a, b) => (a.fieldPath < b.fieldPath ? -1 : a.fieldPath > b.fieldPath ? 1 : 0))
   const fields = conflicts.map((c) => c.fieldPath)
   const primary = conflicts[0]!
   const kindSummary = primary.kinds.join(' + ')
@@ -689,7 +689,7 @@ const collectSchemaPaths = (
   }
 
   return Array.from(byKey.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
     .map(([, v]) => v)
 }
 

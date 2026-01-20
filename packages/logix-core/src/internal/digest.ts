@@ -23,7 +23,7 @@ export const stableStringify = (value: unknown): string => {
 
   if (t === 'object') {
     const record = value as Record<string, unknown>
-    const keys = Object.keys(record).sort((a, b) => a.localeCompare(b))
+    const keys = Object.keys(record).sort()
     return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(record[k])}`).join(',')}}`
   }
 

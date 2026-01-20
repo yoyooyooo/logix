@@ -3,7 +3,7 @@ import * as EffectOpCore from './EffectOpCore.js'
 import * as Debug from './DebugSink.js'
 import * as LogicUnitMeta from './LogicUnitMeta.js'
 import { toSerializableErrorSummary } from './errorSummary.js'
-import type { LogicPlan, ModuleRuntime as PublicModuleRuntime } from './module.js'
+import type { AnyModuleShape, LogicPlan, ModuleRuntime as PublicModuleRuntime } from './module.js'
 import { HostSchedulerTag, TickSchedulerTag } from './env.js'
 import { currentTxnOriginOverride } from './TxnOriginOverride.js'
 import { getRuntimeInternals } from './runtimeInternalsAccessor.js'
@@ -15,7 +15,7 @@ import { compileWorkflowRuntimeStepsV1, type CompiledWorkflowStep } from '../../
 import { evalInputExpr, type CompiledInputExpr } from '../../workflow/inputExpr.js'
 import type { WorkflowDefV1, WorkflowTriggerV1 } from '../../workflow/model.js'
 
-type ModuleTag = Context.Tag<any, PublicModuleRuntime<any, any>>
+type ModuleTag = Context.Tag<unknown, PublicModuleRuntime<unknown, unknown>>
 
 export type WorkflowLike = {
   readonly _tag?: 'Workflow'
@@ -26,7 +26,7 @@ export type WorkflowLike = {
 type ConcurrencyMode = 'latest' | 'exhaust' | 'parallel'
 type Priority = 'urgent' | 'nonUrgent'
 
-type ServicePort = (input: unknown) => Effect.Effect<unknown, unknown, any>
+type ServicePort = (input: unknown) => Effect.Effect<unknown, unknown, unknown>
 
 type CompiledRuntimeStep =
   | { readonly kind: 'dispatch'; readonly key: string; readonly actionTag: string; readonly payload?: CompiledInputExpr }
@@ -75,12 +75,19 @@ type WorkflowRegistryV1 = {
 
 const WORKFLOW_REGISTRY = Symbol.for('@logixjs/core/workflowRegistry')
 
-const getRegistry = (runtime: object): WorkflowRegistryV1 | undefined => (runtime as any)[WORKFLOW_REGISTRY]
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isObjectLike = (value: unknown): value is Record<string, unknown> | ((...args: never[]) => unknown) =>
+  (typeof value === 'object' && value !== null) || typeof value === 'function'
+
+const getRegistry = (runtime: object): WorkflowRegistryV1 | undefined =>
+  (runtime as Record<PropertyKey, unknown>)[WORKFLOW_REGISTRY] as WorkflowRegistryV1 | undefined
 
 const resolveActionTag = (action: unknown): string | undefined => {
-  const tag = (action as any)?._tag
+  const tag = isObjectLike(action) ? (action as Record<string, unknown>)._tag : undefined
   if (typeof tag === 'string' && tag.length > 0) return tag
-  const type = (action as any)?.type
+  const type = isObjectLike(action) ? (action as Record<string, unknown>).type : undefined
   if (typeof type === 'string' && type.length > 0) return type
   if (tag != null) return String(tag)
   if (type != null) return String(type)
@@ -93,8 +100,8 @@ const asNonEmptyString = (value: unknown): string | undefined =>
 const KERNEL_PORT_SOURCE_REFRESH = 'logix/kernel/sourceRefresh'
 
 const resolveServicePort = (
-  runtime: PublicModuleRuntime<any, any>,
-  env: Context.Context<any>,
+  runtime: PublicModuleRuntime<unknown, unknown>,
+  env: Context.Context<unknown>,
   serviceId: string,
   programId: string,
   stepKey: string,
@@ -102,7 +109,7 @@ const resolveServicePort = (
   if (serviceId === KERNEL_PORT_SOURCE_REFRESH) {
     return (input) =>
       Effect.gen(function* () {
-        const fieldPath = asNonEmptyString((input as any)?.fieldPath)
+        const fieldPath = asNonEmptyString(isRecord(input) ? input.fieldPath : undefined)
         if (!fieldPath) {
           throw makeWorkflowError({
             code: 'WORKFLOW_INVALID_STEP',
@@ -113,17 +120,15 @@ const resolveServicePort = (
           })
         }
 
-        const internals = getRuntimeInternals(runtime as any)
-        const handler = internals.traits.getSourceRefreshHandler(fieldPath) as
-          | ((state: unknown) => Effect.Effect<void, never, any>)
-          | undefined
+        const internals = getRuntimeInternals(runtime)
+        const handler = internals.traits.getSourceRefreshHandler(fieldPath)
 
         // If no refresh handler is registered, treat it as a no-op (aligns with BoundApiRuntime behavior).
         if (!handler) {
           return
         }
 
-        const force = (input as any)?.force === true
+        const force = isRecord(input) && input.force === true
         const runHandler = (state: unknown) =>
           force ? Effect.locally(TaskRunner.forceSourceRefresh, true)(handler(state)) : handler(state)
 
@@ -138,18 +143,18 @@ const resolveServicePort = (
           {
             kind: 'source-refresh',
             name: fieldPath,
-          } as any,
+          },
           () =>
             Effect.gen(function* () {
               const state = yield* runtime.getState
               yield* runHandler(state)
             }),
         )
-      }) as any
+      })
   }
 
-  const tag = Context.GenericTag<any>(serviceId)
-  const opt = Context.getOption(env, tag as any)
+  const tag = Context.GenericTag<unknown>(serviceId)
+  const opt = Context.getOption(env, tag)
   if (Option.isNone(opt)) {
     throw makeWorkflowError({
       code: 'WORKFLOW_MISSING_SERVICE',
@@ -162,12 +167,14 @@ const resolveServicePort = (
 
   const value: unknown = opt.value
   if (typeof value === 'function') {
-    return (input) => (value as any)(input)
+    const fn = value as (input: unknown) => Effect.Effect<unknown, unknown, unknown>
+    return (input) => fn(input)
   }
 
-  const callFn = (value as any)?.call
+  const callFn = isObjectLike(value) ? (value as Record<string, unknown>).call : undefined
   if (typeof callFn === 'function') {
-    return (input) => (callFn as any).call(value as any, input)
+    const call = callFn as (this: unknown, input: unknown) => Effect.Effect<unknown, unknown, unknown>
+    return (input) => call.call(value, input)
   }
 
   throw makeWorkflowError({
@@ -232,15 +239,15 @@ const runBoundary = <A, E, R>(args: {
       meta: args.meta,
     })
     const stack = args.middleware?.stack ?? []
-    return yield* EffectOp.run(op as any, stack as any)
-  }) as any
+    return yield* EffectOp.run(op, stack)
+  }) as unknown as Effect.Effect<A, E, R>
 
 const makeTimer = (args: {
   readonly host: { readonly scheduleTimeout: (ms: number, cb: () => void) => () => void }
   readonly ms: number
-  readonly onCancel: Effect.Effect<void, never, any>
-}): Effect.Effect<void, never, any> =>
-  Effect.async<void, never, any>((resume) => {
+  readonly onCancel: Effect.Effect<void, never, unknown>
+}): Effect.Effect<void, never, unknown> =>
+  Effect.async<void, never, unknown>((resume) => {
     let fired = false
     const cancel = args.host.scheduleTimeout(args.ms, () => {
       fired = true
@@ -251,11 +258,11 @@ const makeTimer = (args: {
     }).pipe(Effect.zipRight(fired ? Effect.void : args.onCancel))
   })
 
-const ensureLimiterReady = (registry: WorkflowRegistryV1, runtime: PublicModuleRuntime<any, any>) =>
+const ensureLimiterReady = (registry: WorkflowRegistryV1, runtime: PublicModuleRuntime<unknown, unknown>) =>
   Effect.gen(function* () {
     if (registry.parallelLimiter !== undefined) return
 
-    const internals = getRuntimeInternals(runtime as any)
+    const internals = getRuntimeInternals(runtime)
     const policy = yield* internals.concurrency.resolveConcurrencyPolicy()
     const limit = policy.concurrencyLimit
     if (limit === 'unbounded') {
@@ -273,18 +280,18 @@ const withRootEnvIfAvailable = <A, E, R>(eff: Effect.Effect<A, E, R>): Effect.Ef
     if (Option.isNone(rootOpt)) {
       return yield* eff
     }
-    const root = rootOpt.value as RootContext
+    const root: RootContext = rootOpt.value
     const rootEnv = root.context ?? (yield* Deferred.await(root.ready))
 
-    const currentEnv = (yield* Effect.context<R>()) as Context.Context<any>
-    const mergedEnv = Context.merge(rootEnv as Context.Context<any>, currentEnv)
-    return yield* Effect.provide(eff as any, mergedEnv as any)
-  }) as any
+    const currentEnv = yield* Effect.context<unknown>()
+    const mergedEnv = Context.merge(rootEnv as unknown as Context.Context<unknown>, currentEnv)
+    return yield* (Effect.provide(eff as unknown as Effect.Effect<A, E, unknown>, mergedEnv) as unknown as Effect.Effect<A, E, R>)
+  }) as unknown as Effect.Effect<A, E, R>
 
 const ensurePortsResolved = (
   registry: WorkflowRegistryV1,
-  runtime: PublicModuleRuntime<any, any>,
-): Effect.Effect<void, unknown, any> =>
+  runtime: PublicModuleRuntime<unknown, unknown>,
+): Effect.Effect<void, unknown, unknown> =>
   Effect.gen(function* () {
     const done = yield* Deferred.isDone(registry.portsReady)
     if (done) {
@@ -298,7 +305,7 @@ const ensurePortsResolved = (
     }
 
     registry.portsResolving = true
-    const env = (yield* Effect.context<any>()) as Context.Context<any>
+    const env = yield* Effect.context<unknown>()
 
     yield* Effect.sync(() => {
       const portCache = new Map<string, ServicePort>()
@@ -338,12 +345,12 @@ const shouldObserveForRun = (diagnostics: Debug.DiagnosticsLevel, runSeq: number
 
 const startProgramRun = (args: {
   readonly entry: ProgramEntry
-  readonly runtime: PublicModuleRuntime<any, any>
+  readonly runtime: PublicModuleRuntime<unknown, unknown>
   readonly registry: WorkflowRegistryV1
   readonly trigger: { readonly kind: 'action'; readonly actionTag: string } | { readonly kind: 'lifecycle'; readonly phase: string }
   readonly payload: unknown
   readonly middleware: EffectOpCore.EffectOpMiddlewareEnv | undefined
-}): Effect.Effect<void, never, any> =>
+}): Effect.Effect<void, never, unknown> =>
   Effect.gen(function* () {
     const { entry, runtime, registry } = args
     const { program, state } = entry
@@ -438,7 +445,7 @@ const startProgramRun = (args: {
       const tick = yield* TickSchedulerTag
 
       if (!program.steps) {
-        const env = (yield* Effect.context<any>()) as Context.Context<any>
+        const env = yield* Effect.context<unknown>()
         const portCache = new Map<string, ServicePort>()
         const resolvePort = (serviceId: string, stepKey: string): ServicePort => {
           const cached = portCache.get(serviceId)
@@ -460,14 +467,14 @@ const startProgramRun = (args: {
 
       let timerTriggered = false
 
-      const runSteps = (steps: ReadonlyArray<CompiledRuntimeStep>): Effect.Effect<void, never, any> =>
+      const runSteps = (steps: ReadonlyArray<CompiledRuntimeStep>): Effect.Effect<void, never, unknown> =>
         Effect.gen(function* () {
           for (const step of steps) {
             if (!canWriteBack()) return
 
             if (step.kind === 'dispatch') {
               const payload = evalPayload(step.payload)
-              const action = { _tag: step.actionTag, payload } as any
+              const action = { _tag: step.actionTag, payload }
               const tickSeq = getTickSeq()
 
               const dispatchEffectBase =
@@ -684,9 +691,9 @@ type RegistryInit = {
   readonly registry: WorkflowRegistryV1
 }
 
-const ensureRegistry = (runtime: PublicModuleRuntime<any, any>): Effect.Effect<RegistryInit, never, any> =>
+const ensureRegistry = (runtime: PublicModuleRuntime<unknown, unknown>) =>
   Effect.gen(function* () {
-    const existing = getRegistry(runtime as any)
+    const existing = getRegistry(runtime)
     if (existing) {
       return {
         moduleId: runtime.moduleId,
@@ -721,10 +728,10 @@ const registerPrograms = (args: {
   readonly moduleTag: ModuleTag
   readonly programs: ReadonlyArray<WorkflowLike>
   readonly entryLabel: string
-}): Effect.Effect<void, never, any> =>
+}): Effect.Effect<void, never, unknown> =>
   Effect.gen(function* () {
     const runtime = yield* args.moduleTag
-    const { moduleId, instanceId, registry } = yield* ensureRegistry(runtime as any)
+    const { moduleId, instanceId, registry } = yield* ensureRegistry(runtime)
 
     // Lazily resolve the global parallel limiter once.
     if (registry.parallelLimiter === undefined) {
@@ -754,7 +761,7 @@ const registerPrograms = (args: {
       registry.byActionTag.set(actionTag, prev ? [...prev, entry] : [entry])
     }
 
-    const internals = getRuntimeInternals(runtime as any)
+    const internals = getRuntimeInternals(runtime)
 
     for (const program of args.programs) {
       const def = program.def
@@ -852,10 +859,10 @@ const registerPrograms = (args: {
 const startWatcherIfNeeded = (args: {
   readonly moduleTag: ModuleTag
   readonly entryLabel: string
-}): Effect.Effect<void, never, any> =>
+}): Effect.Effect<void, never, unknown> =>
   Effect.gen(function* () {
     const runtime = yield* args.moduleTag
-    const init = yield* ensureRegistry(runtime as any)
+    const init = yield* ensureRegistry(runtime)
     const registry = init.registry
 
     if (registry.watcherStarted) {
@@ -902,7 +909,7 @@ const startWatcherIfNeeded = (args: {
         const entries = registry.byActionTag.get(actionTag)
         if (!entries || entries.length === 0) return
 
-        const payload = (action as any)?.payload
+        const payload = isRecord(action) ? action.payload : undefined
 
         yield* Effect.forEach(
           entries,
@@ -948,13 +955,13 @@ const startWatcherIfNeeded = (args: {
 export const mountAll = (args: {
   readonly moduleTag: ModuleTag
   readonly programs: ReadonlyArray<WorkflowLike>
-}): LogicPlan<any, any, never> => {
-  const plan: LogicPlan<any, any, never> = {
+}): LogicPlan<AnyModuleShape, unknown, never> => {
+  const plan = {
     setup: registerPrograms({ moduleTag: args.moduleTag, programs: args.programs, entryLabel: 'mountAll' }),
     run: startWatcherIfNeeded({ moduleTag: args.moduleTag, entryLabel: 'mountAll' }),
-  }
+  } satisfies LogicPlan<AnyModuleShape, unknown, never>
 
-  LogicUnitMeta.attachLogicUnitMeta(plan as any, {
+  LogicUnitMeta.attachLogicUnitMeta(plan, {
     id: '__logix_internal:workflows',
     kind: 'internal',
     name: 'workflows',
@@ -966,14 +973,14 @@ export const mountAll = (args: {
 export const installOne = (args: {
   readonly moduleTag: ModuleTag
   readonly program: WorkflowLike
-}): LogicPlan<any, any, never> => {
+}): LogicPlan<AnyModuleShape, unknown, never> => {
   const localId = asNonEmptyString(args.program.def.localId) ?? 'unknown'
-  const plan: LogicPlan<any, any, never> = {
+  const plan = {
     setup: registerPrograms({ moduleTag: args.moduleTag, programs: [args.program], entryLabel: `install:${localId}` }),
     run: startWatcherIfNeeded({ moduleTag: args.moduleTag, entryLabel: `install:${localId}` }),
-  }
+  } satisfies LogicPlan<AnyModuleShape, unknown, never>
 
-  LogicUnitMeta.attachLogicUnitMeta(plan as any, {
+  LogicUnitMeta.attachLogicUnitMeta(plan, {
     id: `workflow:${localId}`,
     kind: 'workflow',
     name: localId,
@@ -985,6 +992,6 @@ export const installOne = (args: {
 // test-only probe: whether a watcher has started (for single-subscription gates).
 export const __unsafeGetWatcherStartCount = (runtime: unknown): number => {
   if (!runtime || typeof runtime !== 'object') return 0
-  const reg = getRegistry(runtime as any)
+  const reg = getRegistry(runtime)
   return reg ? reg.watcherStartCount : 0
 }

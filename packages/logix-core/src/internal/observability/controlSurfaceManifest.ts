@@ -60,19 +60,18 @@ export const exportWorkflowEffectsIndex = (args: {
 }): ReadonlyArray<ControlEffectIndexEntryV1> => {
   const moduleId = args.moduleId
   return Array.from(args.workflowSurface)
-    .sort((a, b) => a.programId.localeCompare(b.programId))
+    .sort((a, b) => (a.programId < b.programId ? -1 : a.programId > b.programId ? 1 : 0))
     .map((ir) => {
       const localId = ir.programId.startsWith(`${moduleId}.`) ? ir.programId.slice(moduleId.length + 1) : ir.programId
-      const trigger =
-        ir.nodes.find((n) => n.kind === 'trigger')?.trigger?.kind === 'action'
-          ? ({
-              kind: 'action',
-              action: { moduleId, actionTag: (ir.nodes.find((n) => n.kind === 'trigger') as any)?.trigger?.actionTag ?? 'unknown' },
-            } satisfies EffectTrigger)
-          : ({
+      const triggerNode = ir.nodes.find((n) => n.kind === 'trigger')
+      const trigger: EffectTrigger =
+        triggerNode?.kind === 'trigger' && triggerNode.trigger.kind === 'action'
+          ? { kind: 'action', action: { moduleId, actionTag: triggerNode.trigger.actionTag } }
+          : {
               kind: 'lifecycle',
-              phase: ((ir.nodes.find((n) => n.kind === 'trigger') as any)?.trigger?.phase ?? 'onStart') as 'onStart' | 'onInit',
-            } satisfies EffectTrigger)
+              phase:
+                triggerNode?.kind === 'trigger' && triggerNode.trigger.kind === 'lifecycle' ? triggerNode.trigger.phase : 'onStart',
+            }
 
       return {
         kind: 'workflow',
@@ -85,7 +84,7 @@ export const exportWorkflowEffectsIndex = (args: {
 }
 
 export const exportControlSurfaceManifest = (input: Omit<ControlSurfaceManifestV1, 'digest'>): ControlSurfaceManifestV1 => {
-  const modules = Array.from(input.modules).sort((a, b) => a.moduleId.localeCompare(b.moduleId))
+  const modules = Array.from(input.modules).sort((a, b) => (a.moduleId < b.moduleId ? -1 : a.moduleId > b.moduleId ? 1 : 0))
   const meta = input.meta
 
   const base = {

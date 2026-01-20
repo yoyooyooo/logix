@@ -169,7 +169,7 @@ const sink: Logix.Debug.Sink = {
 
 ### 2.4 Export/import evidence packages (strict JSON)
 
-After enabling DevTools (`devtools: true` or manually stacking `Debug.devtoolsHubLayer`), you can export the recent window as an evidence package:
+After enabling DevTools (recommended: `devtools: true` or `devtools: { ... }`), you can export the recent window as an evidence package:
 
 ```ts
 import * as Logix from '@logixjs/core'
@@ -203,14 +203,10 @@ If you need more complete converge evidence (e.g. the width of dirty roots), rai
 
 ```ts
 import * as Logix from '@logixjs/core'
-import { Layer } from 'effect'
 
 const runtime = Logix.Runtime.make(RootImpl, {
-  layer: Layer.mergeAll(
-    AppInfraLayer,
-    Logix.Debug.diagnosticsLevel('full'),
-  ),
-  devtools: true,
+  layer: AppInfraLayer,
+  devtools: { diagnosticsLevel: 'full' },
 })
 ```
 
@@ -450,6 +446,36 @@ When designing a new project, reserve two composition points early:
 
 - A Runtime-level composition point: `Logix.Runtime.make(..., { middleware })`, for mounting common middleware and `Middleware.withDebug`.
 - A Debug-level composition point: compose `Debug.layer` / custom DebugLayer (if needed) at your app root, plus any DevTools bridge Layers. This helps both DevTools usage and future logging/monitoring integrations.
+
+### 5.1 Advanced: manual wiring for DevtoolsHub / DebugObserver (use sparingly)
+
+In most cases, **use `Runtime.make(..., { devtools })`**. It wires both “DevtoolsHub aggregation window” and “EffectOp observation (`trace:effectop`)”, and avoids subtle Layer/FiberRef composition pitfalls.
+
+If you really need manual wiring (e.g. you only want DevtoolsHub evidence packages, but you don’t want `trace:effectop`), follow two rules:
+
+1) **Wrap DevtoolsHub**: pass your `baseLayer` into `Logix.Debug.devtoolsHubLayer(baseLayer, options)`. Avoid stacking it as a plain Layer in `Layer.mergeAll(...)` (FiberRef patches can override each other and look like “the layer did nothing”).
+
+2) **Choose who owns EffectOp observation**:
+   - `devtools: true` / `devtools: { ... }` wires DebugObserver automatically;
+   - without `devtools`, if you still want `trace:effectop`, you must add `Middleware.makeDebugObserver(...)` to `middleware` yourself.
+
+Example: custom sinks + DevtoolsHub (without effectop observation)
+
+```ts
+import * as Logix from '@logixjs/core'
+import { Effect, Layer } from 'effect'
+
+const sink: Logix.Debug.Sink = { record: () => Effect.void }
+
+const baseLayer = Layer.mergeAll(
+  AppInfraLayer,
+  Logix.Debug.replace([sink]),
+)
+
+const runtime = Logix.Runtime.make(RootImpl, {
+  layer: Logix.Debug.devtoolsHubLayer(baseLayer, { bufferSize: 500, diagnosticsLevel: 'light' }),
+})
+```
 
 ## 6. Transaction boundaries and logic entry points (mental model)
 

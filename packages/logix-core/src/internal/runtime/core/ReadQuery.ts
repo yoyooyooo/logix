@@ -61,7 +61,7 @@ const normalizeReads = (reads: ReadonlyArray<string | number>): ReadonlyArray<st
     seen.add(key)
     unique.push(r)
   }
-  return unique.slice().sort((a, b) => String(a).localeCompare(String(b)))
+  return unique.slice().sort()
 }
 
 const toHash32Number = (hex: string): number => Number.parseInt(hex, 16)
@@ -181,7 +181,7 @@ const tryParseSelectorSource = (source: string): ParsedSelector | undefined => {
     }
 
     // Sort entries to ensure a stable selectorId.
-    entries.sort((a, b) => a[0].localeCompare(b[0]))
+    entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
     return { kind: 'struct', entries }
   }
 

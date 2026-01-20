@@ -110,10 +110,8 @@ yield* $.onAction('search').runLatest(({ payload: keyword }) =>
 
 ```ts
 const runtime = Logix.Runtime.make(RootImpl, {
-  layer: Layer.mergeAll(
-    AppInfraLayer,
-    Logix.Debug.layer({ mode: 'prod' }), // 生产模式
-  ),
+  layer: AppInfraLayer,
+  debug: { mode: 'prod' }, // 生产模式
   devtools: false, // 关闭 DevTools
 })
 ```

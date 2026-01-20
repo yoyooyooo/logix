@@ -103,6 +103,8 @@
 
 - [x] T310 同步平台 SSoT：将 075 的终态口径（WorkflowDef 权威输入、`call`、KernelPorts、`workflowSurfaceDigest`）回链到 `docs/ssot/platform/contracts/*` 与术语表（仅措辞对齐）
 - [x] T311 同步平台 workbench：把“Π=Workflow（def+slice）/Workflow=DX 值对象”的表述统一到 `docs/specs/sdd-platform/workbench/*`（仅措辞对齐）
+- [x] T312 同步 runtime SSoT：补齐 Workflow 分层术语与“可合并性 rationale”（落点：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`；仅措辞对齐）
+- [x] T313 更新 runtime glossary 索引：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md` 增补 075 的分层术语入口
 
 ## Phase 6: Naming Unification（FlowProgram → Workflow，含证据链命名）
 
@@ -114,3 +116,19 @@
 - [x] T405 回归质量门：`pnpm typecheck`、`pnpm typecheck:test`、`pnpm lint`、`pnpm test:turbo`
 - [x] T406 验收扫尾：清理 075 specs 内残留的 `FlowProgram*` 命名（`data-model.md` / `contracts/*` / `plan.md` / `review.md`），统一对外口径为 `Workflow*`
 - [x] T407 验收扫尾：在 `specs/075-workflow-codegen-ir/` 内执行 `rg -n "FlowProgram" .` 仅允许命中“命名迁移任务描述”（Phase 6 本节）
+
+## Phase 7: Determinism & Anchors（验收加固：消除 locale 漂移 + 锚点 fail-fast）
+
+- [x] T408 确定性：移除 digest/可序列化 IR 相关路径中的 `localeCompare`，统一为 locale-independent 排序（含 `stableStringify`、Workflow IR/Root IR 导出、TypeIR/PortSpec 等）
+- [x] T409 Root IR：`exportControlSurface` moduleId 不可解析时 fail-fast（禁止 `'unknown'` 回退），错误信息需可操作（提示传入配置后的 Module/ModuleImpl）
+- [x] T410 计划落盘：补齐 `specs/075-workflow-codegen-ir/plan.md` 的 `Constitution Check`（逐条给出答案 + 交叉引用）
+
+## Phase 8: Type Safety Handbrake（Workflow 绑定 Module.actions）
+
+- [x] T411 Workflow 入口：支持 `Workflow.make<typeof M>(...)`，将 `trigger/dispatch.actionTag` 约束为 `keyof M.actions`（仅类型层；运行时/IR 仍为 `string`）
+- [x] T412 Workflow 糖衣：新增 `Workflow.forModule(M)` 返回绑定 actionTag 的 DSL（避免重复书写 `typeof M`）
+- [x] T413 类型用例：新增 `packages/logix-core/test/types/WorkflowActionTags.d.ts.test.ts` 覆盖两条入口（`make<typeof M>` / `forModule(M)`）
+
+## Phase 9: Type Hygiene（075 范围内尽量消除 `any`/`as any`）
+
+- [x] T414 清理 075 相关实现/示例中的 `any`/`as any`（优先用 `unknown` + 守卫；避免改语义/热路径结构）

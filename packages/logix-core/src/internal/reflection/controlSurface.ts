@@ -25,28 +25,44 @@ const MODULE_INTERNAL = Symbol.for('logix.module.internal')
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const resolveModuleId = (module: unknown): string => {
-  if (isRecord(module) && (module as any)?._tag === 'ModuleImpl') {
-    const tag = (module as any).module
-    const id = tag?.id
-    return typeof id === 'string' && id.length > 0 ? id : 'unknown'
+const isObjectLike = (value: unknown): value is Record<string, unknown> | ((...args: never[]) => unknown) =>
+  (typeof value === 'object' && value !== null) || typeof value === 'function'
+
+const asNonEmptyString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
+
+const resolveTagId = (tag: unknown): string | undefined => {
+  if (!isObjectLike(tag)) return undefined
+  return asNonEmptyString((tag as Record<string, unknown>).id)
+}
+
+const resolveModuleIdOrThrow = (module: unknown): string => {
+  if (isRecord(module) && module._tag === 'ModuleImpl') {
+    const id = resolveTagId(module.module)
+    if (id) return id
+    throw new Error(
+      '[ControlSurfaceManifest] Failed to resolve moduleId from ModuleImpl.module.id.\n' +
+        'Fix: pass a configured Module/ModuleImpl (has .id/.tag.id/.module.id), not a read-only handle.',
+    )
   }
 
   if (isRecord(module)) {
-    const id = (module as any).id
-    if (typeof id === 'string' && id.length > 0) return id
-    const tag = (module as any).tag
-    const tagId = tag?.id
-    if (typeof tagId === 'string' && tagId.length > 0) return tagId
+    const id = asNonEmptyString(module.id)
+    if (id) return id
+    const tagId = resolveTagId(module.tag)
+    if (tagId) return tagId
   }
 
-  return 'unknown'
+  throw new Error(
+    '[ControlSurfaceManifest] Failed to resolve moduleId.\n' +
+      'Fix: pass a configured Module/ModuleImpl (has .id/.tag.id/.module.id), not a read-only handle.',
+  )
 }
 
 const resolveWorkflowDefs = (module: unknown): ReadonlyArray<WorkflowDefV1> => {
-  if (!isRecord(module)) return []
-  const internal = (module as any)[MODULE_INTERNAL]
-  const defs = internal?.workflowDefs
+  if (!isObjectLike(module)) return []
+  const internal = (module as Record<PropertyKey, unknown>)[MODULE_INTERNAL]
+  const defs = isRecord(internal) ? internal.workflowDefs : undefined
   return Array.isArray(defs) ? (defs as ReadonlyArray<WorkflowDefV1>) : []
 }
 
@@ -60,7 +76,7 @@ export const exportControlSurface = (
   const seen = new Set<string>()
 
   for (const module of modules) {
-    const moduleId = resolveModuleId(module)
+    const moduleId = resolveModuleIdOrThrow(module)
     if (seen.has(moduleId)) {
       throw new Error(`[ControlSurfaceManifest] Duplicate moduleId "${moduleId}".`)
     }

@@ -154,7 +154,7 @@ const canonicalizeOpMeta = (opMetaRaw: unknown): JsonValue | undefined => {
     if (k === 'instanceId' || k === 'txnId' || k === 'runtimeLabel' || k === 'linkId') continue
 
     if ((k === 'deps' || k === 'trace' || k === 'tags') && Array.isArray(v) && v.every((x) => typeof x === 'string')) {
-      out[k] = (v as ReadonlyArray<string>).slice().sort((a, b) => a.localeCompare(b)) as unknown as JsonValue
+      out[k] = (v as ReadonlyArray<string>).slice().sort() as unknown as JsonValue
       continue
     }
 
@@ -208,7 +208,7 @@ const extractKernelContractTraceOps = (evidence: EvidencePackage): ReadonlyArray
   }
 
   ops.sort((a, b) => {
-    if (a.anchor.instanceId !== b.anchor.instanceId) return a.anchor.instanceId.localeCompare(b.anchor.instanceId)
+    if (a.anchor.instanceId !== b.anchor.instanceId) return a.anchor.instanceId < b.anchor.instanceId ? -1 : 1
     if (a.anchor.txnSeq !== b.anchor.txnSeq) return a.anchor.txnSeq - b.anchor.txnSeq
     return a.anchor.opSeq - b.anchor.opSeq
   })
@@ -237,7 +237,7 @@ const diffKernelContractTraceOps = (
     afterByKey.set(anchorKey(op.anchor), op)
   }
 
-  const allKeys = Array.from(new Set([...beforeByKey.keys(), ...afterByKey.keys()])).sort((a, b) => a.localeCompare(b))
+  const allKeys = Array.from(new Set([...beforeByKey.keys(), ...afterByKey.keys()])).sort()
 
   for (const key of allKeys) {
     const b = beforeByKey.get(key)

@@ -176,7 +176,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 
 Two commonly-confused switches:
 
-- **Diagnostics level** (`Debug.diagnosticsLevel`): controls “whether/how much debug events are emitted” (`off` is near-zero overhead but blind; `sampled` keeps tail-latency tracing at low cost; `light/full` is for debugging and alignment).
+- **Diagnostics level** (Runtime `devtools.diagnosticsLevel` / `debug.diagnosticsLevel`): controls “whether/how much exportable debug evidence is emitted” (`off` is near-zero overhead but blind; `sampled` keeps tail-latency tracing at low cost; `light/full` is for debugging and alignment).
 - **Transaction instrumentation** (`stateTransaction.instrumentation`): controls whether a transaction records structured info like patches/snapshots (`full` is better for debugging, `light` is cheaper).
 
 #### Diagnostics levels: off / sampled / light / full (how to choose)
@@ -195,15 +195,12 @@ Example: enable `sampled` on a Runtime with sampling frequency and Top-K cap:
 
 ```ts
 import * as Logix from '@logixjs/core'
-import { Layer } from 'effect'
 
 const runtime = Logix.Runtime.make(RootImpl, {
-  layer: Layer.mergeAll(
-    Logix.Debug.devtoolsHubLayer({
-      diagnosticsLevel: 'sampled',
-      traitConvergeDiagnosticsSampling: { sampleEveryN: 32, topK: 3 },
-    }),
-  ),
+  devtools: {
+    diagnosticsLevel: 'sampled',
+    traitConvergeDiagnosticsSampling: { sampleEveryN: 32, topK: 3 },
+  },
 })
 ```
 
