@@ -72,7 +72,7 @@ type RunResultV1 = {
 - **`evidence` 是 RunResult 的核心**：它复用 `EvidencePackage(events: ObservationEnvelope[])`，以 `runId + seq` 作为唯一权威顺序。
 - `tape` 是可选增强：在 `mode=replay/fork` 或明确开启 record 时才要求存在；其最小口径以 `specs/075-workflow-codegen-ir/contracts/tape.md` 为准（字段可迭代，但锚点必须稳定）。
 - `snapshots` 是对齐层的“最小可用证据”，不是长期存储；体积超阈值时允许只存 digest / patch 摘要。
-- `static.controlSurfaceDigest` 为首选：指向控制面 Root IR（`docs/ssot/platform/contracts/03-control-surface-manifest.md`）；若同时提供 `moduleDescriptorsDigest/traitIrDigest/workflowSurfaceDigest`，它们 MUST 为可从 Root IR 确定性导出的 slices（禁止并行真相源）。
+- `static.controlSurfaceDigest` 为首选：指向控制面 Root IR（Platform SSoT 的 Root 工件，`docs/ssot/platform/contracts/03-control-surface-manifest.md`）；若同时提供 `moduleDescriptorsDigest/traitIrDigest/workflowSurfaceDigest`，它们 MUST 为可从 Root IR 确定性导出的 slices（禁止并行真相源）。
 
 ## 3) 锚点与排序（防漂移硬约束）
 

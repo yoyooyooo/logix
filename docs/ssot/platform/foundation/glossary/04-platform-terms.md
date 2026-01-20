@@ -92,6 +92,13 @@
 
 > 目标：把“出码工件（静态）/运行证据（动态）/锚点（稳定标识）”三者的名称收口到可对齐的最小集合，避免并行真相源。
 
+### 4.7.0 双 SSoT：Authoring SSoT / Platform SSoT（统一字面标题）
+
+- **Authoring SSoT（可编辑）**：面向人/LLM/Studio 的权威输入工件（可落盘/可生成/可 Schema 校验/版本化；必须纯 JSON）。所有语法糖（TS DSL / Recipe / Studio）都必须先 materialize 到 Authoring SSoT。
+- **Platform SSoT（只读消费）**：面向平台/Devtools/CI gate/diff 的只读消费工件（Root Static IR + slices/index 的组合）。它必须从 Authoring SSoT **确定性编译**得到；禁止手改、禁止成为第二语义源。
+
+> 经验法则：Authoring SSoT 回答“你想让系统做什么”；Platform SSoT 回答“平台如何判定/对比/解释/回放你让系统做的事”（不承担热路径执行成本）。
+
 ### 4.7.1 静态工件（Build/Export Artifacts）
 
 - **Recipe（压缩输入，可选）**
@@ -102,7 +109,7 @@
   - 用途：语义规范形（去语法糖/默认值落地/分支显式/stepKey 完整）。
   - 约束：同一语义必须只有一种表示；缺失 stepKey 视为契约违规（fail-fast）。
 
-- **WorkflowDef（权威输入，纯 JSON）**
+- **WorkflowDef（Authoring SSoT 工件，纯 JSON）**
   - 用途：Workflow 的权威输入（可落盘/可 diff/可出码），不得携带闭包/Tag 本体/Effect 本体。
   - 关系：`Workflow.toJSON()/fromJSON(...)` 是 TS/DX 入口；在 Root IR/Static IR/Trace/Tape 中只保留稳定锚点（例如 `serviceId`），禁止双真相源。
 
@@ -123,7 +130,7 @@
   - 用途：把内核能力以普通 service port 的方式暴露（稳定 `serviceId='logix/kernel/<port>'`），避免第二套“隐式内核 API”。
   - 关系：在 Workflow 中以 `callById('logix/kernel/<port>')` 作为规范形表达；TS 允许 `call(KernelPorts.<Port>)` 作为糖衣。
 
-- **ControlSurfaceManifest（Root Static IR）**
+- **ControlSurfaceManifest（Platform SSoT：Root Static IR）**
   - 用途：平台/Devtools/Alignment Lab 消费的单一可交换工件（actions/services/traits/workflows/opaque 收口）。
   - 关系：以 digest + slices/index 为主；执行性能来自 internal RuntimePlan（不在 Root IR 内）。
 

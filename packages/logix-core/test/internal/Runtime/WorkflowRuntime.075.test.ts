@@ -11,6 +11,11 @@ class SubmitPort extends Context.Tag('WorkflowRuntime.075.SubmitPort')<
   (input: unknown) => Effect.Effect<void, unknown, never>
 >() {}
 
+class TimeoutPort extends Context.Tag('WorkflowRuntime.075.TimeoutPort')<
+  TimeoutPort,
+  (input: unknown) => Effect.Effect<void, unknown, never>
+>() {}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
@@ -402,6 +407,172 @@ describe('WorkflowRuntime (075)', () => {
           return kinds.some((k) => isRecord(k) && k.kind === 'timer')
         })
         expect(timerTick).toBeDefined()
+      } finally {
+        yield* Effect.promise(() => runtime.dispose())
+      }
+    }),
+  )
+
+  it.effect('SC-002: call timeout appears in trace:tick.triggerSummary (kind=timer)', () =>
+    Effect.gen(function* () {
+      const M = Logix.Module.make('WorkflowRuntime.075.TickTriggerSummary.Timeout', {
+        state: Schema.Struct({ done: Schema.Number, bad: Schema.Number }),
+        actions: { start: Schema.Void, done: Schema.Void, bad: Schema.Void },
+        reducers: {
+          done: Logix.Module.Reducer.mutate((draft) => {
+            ;(draft as { done: number }).done += 1
+          }),
+          bad: Logix.Module.Reducer.mutate((draft) => {
+            ;(draft as { bad: number }).bad += 1
+          }),
+        },
+      })
+
+      const program = Logix.Workflow.make({
+        localId: 'timeout',
+        trigger: Logix.Workflow.onAction('start'),
+        steps: [
+          Logix.Workflow.call({
+            key: 'call.timeout',
+            service: TimeoutPort,
+            timeoutMs: 10,
+            onSuccess: [Logix.Workflow.dispatch({ key: 'dispatch.done', actionTag: 'done' })],
+            onFailure: [Logix.Workflow.dispatch({ key: 'dispatch.bad', actionTag: 'bad' })],
+          }),
+        ],
+      })
+
+      const impl = M.withWorkflow(program).implement({ initial: { done: 0, bad: 0 } })
+
+      const ring = Debug.makeRingBufferSink(256)
+      const hostScheduler = makeTestHostScheduler()
+      const debugLayer = Debug.devtoolsHubLayer(Debug.replace([ring.sink]), {
+        diagnosticsLevel: 'full',
+      }) as unknown as Layer.Layer<unknown, never, never>
+      const runtime = Logix.Runtime.make(impl, {
+        middleware: [Middleware.makeDebugObserver()],
+        layer: Layer.mergeAll(
+          testHostSchedulerLayer(hostScheduler),
+          debugLayer,
+          Layer.succeed(TimeoutPort, (_input: unknown) => Effect.never),
+        ),
+      })
+
+      try {
+        yield* Effect.promise(() =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const rt = yield* M.tag
+              yield* rt.dispatch({ _tag: 'start' })
+              yield* flushAllHostScheduler(hostScheduler, { settleYields: 64 })
+              expect(yield* rt.getState).toEqual({ done: 0, bad: 1 })
+            }),
+          ),
+        )
+
+        const ticks = ring.getSnapshot().filter((e) => e.type === 'trace:tick') as Array<Debug.Event>
+        const timerTick = ticks.find((e) => {
+          const record = e as unknown as Record<string, unknown>
+          const data = record.data
+          if (!isRecord(data)) return false
+          const triggerSummary = data.triggerSummary
+          if (!isRecord(triggerSummary)) return false
+          const kinds = triggerSummary.kinds
+          if (!Array.isArray(kinds)) return false
+          return kinds.some((k) => isRecord(k) && k.kind === 'timer')
+        })
+        expect(timerTick).toBeDefined()
+      } finally {
+        yield* Effect.promise(() => runtime.dispose())
+      }
+    }),
+  )
+
+  it.effect('T202: retry attempts are observable (attempt meta + unique timerId)', () =>
+    Effect.gen(function* () {
+      const M = Logix.Module.make('WorkflowRuntime.075.Retry.Attempt', {
+        state: Schema.Struct({ done: Schema.Number, bad: Schema.Number }),
+        actions: { start: Schema.Void, done: Schema.Void, bad: Schema.Void },
+        reducers: {
+          done: Logix.Module.Reducer.mutate((draft) => {
+            ;(draft as { done: number }).done += 1
+          }),
+          bad: Logix.Module.Reducer.mutate((draft) => {
+            ;(draft as { bad: number }).bad += 1
+          }),
+        },
+      })
+
+      const program = Logix.Workflow.make({
+        localId: 'retry',
+        trigger: Logix.Workflow.onAction('start'),
+        steps: [
+          Logix.Workflow.call({
+            key: 'call.retry',
+            service: TimeoutPort,
+            timeoutMs: 10,
+            retry: { times: 1 },
+            onSuccess: [Logix.Workflow.dispatch({ key: 'dispatch.done', actionTag: 'done' })],
+            onFailure: [Logix.Workflow.dispatch({ key: 'dispatch.bad', actionTag: 'bad' })],
+          }),
+        ],
+      })
+
+      const impl = M.withWorkflow(program).implement({ initial: { done: 0, bad: 0 } })
+
+      const ring = Debug.makeRingBufferSink(512)
+      const hostScheduler = makeTestHostScheduler()
+
+      const calls = yield* Ref.make(0)
+      const port = (_input: unknown) =>
+        Effect.gen(function* () {
+          const n = yield* Ref.updateAndGet(calls, (i) => i + 1)
+          if (n === 1) {
+            return yield* Effect.never
+          }
+          // Ensure timeout fiber has a chance to schedule/cancel its timer.
+          yield* Effect.yieldNow()
+        })
+
+      const runtime = Logix.Runtime.make(impl, {
+        middleware: [Middleware.makeDebugObserver()],
+        layer: Layer.mergeAll(
+          testHostSchedulerLayer(hostScheduler),
+          Debug.replace([ring.sink]),
+          Debug.diagnosticsLevel('full'),
+          Layer.succeed(TimeoutPort, port),
+        ),
+      })
+
+      try {
+        yield* Effect.promise(() =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const rt = yield* M.tag
+              yield* rt.dispatch({ _tag: 'start' })
+              yield* flushAllHostScheduler(hostScheduler)
+              expect(yield* rt.getState).toEqual({ done: 1, bad: 0 })
+            }),
+          ),
+        )
+
+        const trace = ring.getSnapshot().filter((e) => e.type === 'trace:effectop') as Array<Debug.Event>
+
+        const callTraces = trace.filter((e) =>
+          (getTraceName(e) ?? '').startsWith('workflow.call:WorkflowRuntime.075.TimeoutPort'),
+        )
+        const attempts = callTraces
+          .map((e) => getTraceMeta(e)?.attempt)
+          .filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
+          .map((n) => Math.floor(n))
+        expect(new Set(attempts)).toEqual(new Set([1, 2]))
+
+        const schedules = trace.filter((e) => getTraceName(e) === 'workflow.timeout.schedule')
+        const timerIds = schedules
+          .map((e) => getTraceMeta(e)?.timerId)
+          .filter((x): x is string => typeof x === 'string' && x.length > 0)
+        expect(timerIds.length).toBeGreaterThanOrEqual(2)
+        expect(new Set(timerIds).size).toBe(timerIds.length)
       } finally {
         yield* Effect.promise(() => runtime.dispose())
       }

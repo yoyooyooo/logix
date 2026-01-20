@@ -13,6 +13,7 @@ export type WorkflowErrorCode =
   | 'WORKFLOW_INVALID_SERVICE_ID'
   | 'WORKFLOW_MISSING_SERVICE'
   | 'WORKFLOW_INVALID_SERVICE_PORT'
+  | 'WORKFLOW_CALL_TIMEOUT'
 
 export interface WorkflowError extends Error {
   readonly _tag: 'WorkflowError'

@@ -38,16 +38,23 @@ const asPosInt = (value: unknown): number | undefined => {
 export const normalizeWorkflowDefV1 = (input: WorkflowDefV1): WorkflowDefV1 => {
   // Fill trivial defaults (canonical shape):
   // - call.onSuccess/onFailure must be explicit arrays.
-  const normalizeSteps = (steps: ReadonlyArray<WorkflowStepV1>): ReadonlyArray<WorkflowStepV1> =>
-    steps.map((s) => {
-      if (s.kind !== 'call') return s
-      const raw = s as unknown as { readonly onSuccess?: unknown; readonly onFailure?: unknown }
-      return {
-        ...s,
-        onSuccess: Array.isArray(raw.onSuccess) ? s.onSuccess : [],
-        onFailure: Array.isArray(raw.onFailure) ? s.onFailure : [],
-      }
-    })
+  // - The normalization must be deep: nested call steps may come from def-like inputs and miss the arrays.
+  const normalizeStep = (step: WorkflowStepV1): WorkflowStepV1 => {
+    if (!isRecord(step)) return step
+    if (step.kind !== 'call') return step
+
+    const raw = step as unknown as { readonly onSuccess?: unknown; readonly onFailure?: unknown }
+    const onSuccessRaw = Array.isArray(raw.onSuccess) ? (raw.onSuccess as ReadonlyArray<WorkflowStepV1>) : []
+    const onFailureRaw = Array.isArray(raw.onFailure) ? (raw.onFailure as ReadonlyArray<WorkflowStepV1>) : []
+
+    return {
+      ...step,
+      onSuccess: onSuccessRaw.map(normalizeStep),
+      onFailure: onFailureRaw.map(normalizeStep),
+    }
+  }
+
+  const normalizeSteps = (steps: ReadonlyArray<WorkflowStepV1>): ReadonlyArray<WorkflowStepV1> => steps.map(normalizeStep)
 
   return {
     ...input,

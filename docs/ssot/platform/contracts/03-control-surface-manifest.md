@@ -17,6 +17,18 @@ status: living
 
 Root IR 的职责是“可判定/可对比/可解释/可回放锚点化”，不是运行时执行计划；执行性能来自 internal `RuntimePlan`，不得把运行时热路径成本转嫁到 Root IR。
 
+## 0.1 双 SSoT：Authoring SSoT / Platform SSoT（统一字面标题）
+
+为避免“同一概念两套权威口径”，本仓统一使用以下两类 SSoT：
+
+- **Authoring SSoT（可编辑）**：面向人/LLM/Studio 的权威输入工件（可落盘/可生成/可 Schema 校验/版本化；必须纯 JSON）。例如：`WorkflowDef`、以及其它可出码/可审查的 authoring 资产。
+- **Platform SSoT（只读消费）**：面向平台/Devtools/CI gate/diff 的只读消费工件（Root Static IR + slices/index）。`ControlSurfaceManifest` 即 Platform SSoT 的 Root 工件；其 `actionSurface/serviceSurface/traitSurface/workflowSurface/...` 为按需加载的 slices。
+
+硬约束：
+
+- Platform SSoT 必须从 Authoring SSoT **确定性编译**得到；禁止手改、禁止成为第二语义源。
+- 平台事件流只携带锚点与 digest 引用；禁止把 Root IR/Π slice 全量塞进事件流。
+
 ## 0) 上游裁决（先对齐口径）
 
 - 执行模型（$C_T/\Pi/\Delta\oplus$、tick 参考系）：`docs/ssot/platform/contracts/00-execution-model.md`

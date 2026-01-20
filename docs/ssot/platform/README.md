@@ -4,6 +4,11 @@
 
 > 裁决口径：平台概念与契约以本目录为准；运行时与类型语义以 `docs/ssot/runtime/**` 与 `packages/logix-*` 的真实导出为准。
 
+## 双 SSoT（统一字面标题）
+
+- **Authoring SSoT（可编辑）**：平台/AI/Studio 写入的权威输入工件（纯 JSON、版本化、可校验）。
+- **Platform SSoT（只读消费）**：平台/Devtools/CI gate/diff 消费的只读工件（Root Static IR + slices/index），必须从 Authoring SSoT 确定性编译得到。
+
 ## 目录分区（One -> Many）
 
 - `foundation/`：The One（最小系统方程/符号表/术语与边界/优先级）

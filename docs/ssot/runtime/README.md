@@ -2,6 +2,11 @@
 
 本目录汇总 **Logix Engine** 相关的规格与实现备忘录。为节约 token，多数长文已改为“薄入口 + 分节文件”；默认只读最短链路，按需下钻。
 
+## 双 SSoT（统一字面标题）
+
+- **Authoring SSoT（可编辑）**：面向人/LLM/Studio 的权威输入工件（纯 JSON、版本化、可校验）。
+- **Platform SSoT（只读消费）**：面向平台/Devtools/CI gate/diff 的只读工件（Root Static IR + slices/index），必须从 Authoring SSoT 确定性编译得到。
+
 ## 最短链路（按任务）
 
 - 运行时原则与约束：`00-principles.md`

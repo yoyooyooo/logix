@@ -28,6 +28,7 @@
 ## 规划对齐（简版）
 
 - SSoT 是“当前裁决的基线”，不是永恒不变的最高准则；当宪法/北极星/最新规划产生新裁决时，必须主动回写更新对应 SSoT 文档，避免并行真相源漂移。
+- 双 SSoT（两大阵营，统一字面标题）：Authoring SSoT / Platform SSoT；定义与权威入口见 `docs/ssot/README.md`（按需下钻：`docs/ssot/platform/foundation/glossary/04-platform-terms.md`、`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`）。
 - 目录地图、spec 分类、SSoT/落点导航：以 `project-guide` skill 为准。
 
 ### Spec-Driven & Playground 对齐（给 Agent 的简版）

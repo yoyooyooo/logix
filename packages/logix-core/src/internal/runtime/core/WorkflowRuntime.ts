@@ -243,7 +243,10 @@ const runBoundary = <A, E, R>(args: {
   }) as unknown as Effect.Effect<A, E, R>
 
 const makeTimer = (args: {
-  readonly host: { readonly scheduleTimeout: (ms: number, cb: () => void) => () => void }
+  readonly host: {
+    readonly scheduleMicrotask: (cb: () => void) => void
+    readonly scheduleTimeout: (ms: number, cb: () => void) => () => void
+  }
   readonly ms: number
   readonly onCancel: Effect.Effect<void, never, unknown>
 }): Effect.Effect<void, never, unknown> =>
@@ -251,7 +254,10 @@ const makeTimer = (args: {
     let fired = false
     const cancel = args.host.scheduleTimeout(args.ms, () => {
       fired = true
-      resume(Effect.void)
+      // Route resumption through a microtask boundary:
+      // - Improves determinism in tests (deterministic HostScheduler).
+      // - Avoids deep JS-microtask chains that are invisible to HostScheduler flushing.
+      args.host.scheduleMicrotask(() => resume(Effect.void))
     })
     return Effect.sync(() => {
       cancel()
@@ -570,55 +576,128 @@ const startProgramRun = (args: {
 
             // call
             const input = step.input ? evalInputExpr(step.input, args.payload) : defaultInputForCall()
-            const tickSeq = getTickSeq()
+            const maxRetries = step.retryTimes ?? 0
+            // Attempt id is 1-based and stable within a run.
+            let exit: Exit.Exit<unknown, unknown> | undefined
+            for (let attempt = 1; attempt <= maxRetries + 1; attempt += 1) {
+              const tickSeq = getTickSeq()
 
-            const base = runBoundary({
-              kind: 'service',
-              name: `workflow.call:${step.serviceId}`,
-              payload: { serviceId: step.serviceId },
-              meta: {
-                moduleId: runtime.moduleId,
-                instanceId: runtime.instanceId,
-                programId: program.programId,
-                runId,
-                stepKey: step.key,
-                serviceId: step.serviceId,
-                ...(tickSeq !== undefined ? { tickSeq } : null),
-                policy,
-              },
-              effect: step.port(input),
-              middleware: args.middleware,
-            })
+              const base = runBoundary({
+                kind: 'service',
+                name: `workflow.call:${step.serviceId}`,
+                payload: { serviceId: step.serviceId },
+                meta: {
+                  moduleId: runtime.moduleId,
+                  instanceId: runtime.instanceId,
+                  programId: program.programId,
+                  runId,
+                  stepKey: step.key,
+                  serviceId: step.serviceId,
+                  attempt,
+                  ...(tickSeq !== undefined ? { tickSeq } : null),
+                  policy,
+                },
+                effect: step.port(input),
+                middleware: args.middleware,
+              })
 
-            const withTimeout =
-              step.timeoutMs !== undefined
-                ? base.pipe(
-                    Effect.timeoutFail({
-                      duration: step.timeoutMs,
-                      onTimeout: () => new Error(`[WorkflowTimeout] serviceId=${step.serviceId} timeoutMs=${step.timeoutMs}`),
-                    }),
-                  )
-                : base
+              const withTimeout =
+                step.timeoutMs === undefined
+                  ? base
+                  : Effect.gen(function* () {
+                      const timeoutMs = step.timeoutMs
+                      if (timeoutMs === undefined) {
+                        // Defensive: TS doesn't keep narrowing across generator boundaries.
+                        return yield* base
+                      }
 
-            const withRetry =
-              step.retryTimes !== undefined ? withTimeout.pipe(Effect.retry({ times: step.retryTimes })) : withTimeout
+                      // Unique per attempt (otherwise retries would reuse the same timerId and break explainability).
+                      const timerId = emitTimerEvents ? `${runId}::timeout:${step.key}:a${attempt}` : undefined
 
-            const exit = yield* Effect.exit(withRetry)
+                      const recordTimeoutEvent = (name: string, patchMeta?: Record<string, unknown>) =>
+                        Effect.gen(function* () {
+                          const tickSeq = getTickSeq()
+                          yield* runBoundary({
+                            kind: 'flow',
+                            name,
+                            payload: { ms: timeoutMs },
+                            meta: {
+                              moduleId: runtime.moduleId,
+                              instanceId: runtime.instanceId,
+                              programId: program.programId,
+                              runId,
+                              stepKey: step.key,
+                              attempt,
+                              ...(timerId ? { timerId } : null),
+                              ...(tickSeq !== undefined ? { tickSeq } : null),
+                              policy,
+                              ...(patchMeta ?? null),
+                            },
+                            effect: Effect.void,
+                            middleware: args.middleware,
+                          })
+                        })
+
+                      const schedule = emitTimerEvents ? recordTimeoutEvent('workflow.timeout.schedule') : Effect.void
+                      const onCancel = emitTimerEvents
+                        ? recordTimeoutEvent('workflow.timeout.cancel', { reason: 'interrupt' })
+                        : Effect.void
+                      const fired = emitTimerEvents ? recordTimeoutEvent('workflow.timeout.fired') : Effect.void
+
+                      const timeoutError = makeWorkflowError({
+                        code: 'WORKFLOW_CALL_TIMEOUT',
+                        message: `Workflow call timed out (serviceId="${step.serviceId}", timeoutMs=${timeoutMs}).`,
+                        programId: program.programId,
+                        source: { stepKey: step.key },
+                        detail: { serviceId: step.serviceId, timeoutMs, attempt },
+                      })
+
+                      const timeoutFail = schedule.pipe(
+                        Effect.zipRight(makeTimer({ host, ms: timeoutMs, onCancel })),
+                        Effect.zipRight(fired),
+                        Effect.zipRight(Effect.fail(timeoutError)),
+                      )
+
+                      return yield* Effect.raceFirst(base, timeoutFail)
+                    })
+
+              const attemptExit = yield* Effect.exit(withTimeout)
+              exit = attemptExit
+
+              if (!canWriteBack() || Exit.isSuccess(attemptExit)) {
+                break
+              }
+
+              // Do not retry defects/interrupts; only retry failure-channel errors.
+              if (Cause.isInterrupted(attemptExit.cause) || Option.isNone(Cause.failureOption(attemptExit.cause))) {
+                break
+              }
+
+              // Retry if we still have remaining attempts.
+              if (attempt < maxRetries + 1) {
+                continue
+              }
+
+              break
+            }
+
+            // Defensive: attempt loop always runs at least once.
+            if (!exit) {
+              exit = Exit.succeed(undefined) as Exit.Exit<unknown, unknown>
+            }
 
             if (!canWriteBack()) return
 
             if (Exit.isSuccess(exit)) {
               yield* runSteps(step.onSuccess)
             } else {
-              // timeoutFail uses a timer; mark the continuation as timer-triggered (for trace:tick.triggerSummary)
+              // Timeout uses a timer; mark the continuation as timer-triggered (for trace:tick.triggerSummary).
               const failure = Option.getOrUndefined(Cause.failureOption(exit.cause))
               const isTimeout =
-                failure instanceof Error &&
-                typeof failure.message === 'string' &&
-                failure.message.includes('[WorkflowTimeout]')
-              if (isTimeout) {
-                timerTriggered = true
-              }
+                isObjectLike(failure) &&
+                (failure as Record<string, unknown>)._tag === 'WorkflowError' &&
+                (failure as Record<string, unknown>).code === 'WORKFLOW_CALL_TIMEOUT'
+              if (isTimeout) timerTriggered = true
               yield* runSteps(step.onFailure)
             }
           }

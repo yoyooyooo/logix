@@ -66,7 +66,12 @@ Runtime Execution Plan + Slim Trace（tickSeq 参考系锚点）
 为同时满足「平台/LLM 可落盘」与「Effect-native 的人类 DX」，v1 对外 API 采用“双层同心圆”：
 
 1. **裁决层（SSoT）**：存在唯一权威的 `WorkflowDef`（纯 JSON、可 Schema 校验、版本化），作为 authoring 的单一事实源；所有语法糖（TS DSL / Recipe / Studio）都必须先 materialize 到 `WorkflowDef`，再进入 `normalize/validate/compile/export`。
-2. **体验层（DX）**：对外暴露一个 Effect 风格的“值对象”`Workflow`，它本身可 `toJSON()` 导出 `WorkflowDef`，并提供冷路径方法 `validate()/exportStaticIr()/install(...)`。其方法只是对同一份 def 的编译操作，不引入第二语义。
+2. **体验层（DX）**：对外暴露一个 Effect 风格的“值对象”`Workflow`，它本身可 `toJSON()` 导出 `WorkflowDef`，并提供冷路径方法 `validate()/exportStaticIr(moduleId)/install(...)`。其方法只是对同一份 def 的编译操作，不引入第二语义（`moduleId` 用于把 `localId` 绑定为稳定的 `programId=moduleId.localId`）。
+
+> 关键澄清：这里存在两类“单一事实源”，服务不同消费者，避免语义漂移：
+>
+> - **Authoring SSoT**：`WorkflowDef`（可落盘/可编辑/可生成/可校验）。人/LLM/Studio 只应该写它。
+> - **Platform SSoT**：`ControlSurfaceManifest`（Root IR）+ `workflowSurface`（Π slice，包含 `WorkflowStaticIr`）。它们必须从 Authoring SSoT **确定性编译**得到，平台/Devtools/CI 只读消费，禁止手改。
 
 硬约束（避免“IR 固定但表面任意”导致漂移）：
 

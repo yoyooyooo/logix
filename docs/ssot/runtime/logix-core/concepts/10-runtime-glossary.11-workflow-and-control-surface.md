@@ -1,5 +1,9 @@
 # 11. Workflow / Π slice / Root IR / RuntimePlan（控制面分层与可合并性）
 
+- **双 SSoT：Authoring SSoT / Platform SSoT（统一字面标题）**
+  - **Authoring SSoT（可编辑）**：面向人/LLM/Studio 的权威输入工件（可落盘/可生成/可校验/版本化；纯 JSON）。例如：`WorkflowDef`。
+  - **Platform SSoT（只读消费）**：面向平台/Devtools/CI gate/diff 的只读消费工件（Root Static IR + slices/index；从 Authoring SSoT 确定性编译得到）。例如：`ControlSurfaceManifest` + `workflowSurface`。
+
 - **目标（runtime 视角）**
   - 同时满足：平台出码（可审查/可 diff）+ Root IR 收口（单一工件）+ 热路径性能（不扫 IR）+ 诊断证据（Slim 且可门控）。
   - 结论：分层必须存在，但并非每层都要“对外显式落盘”；以“是否跨边界被消费”决定工件化边界。
@@ -9,7 +13,7 @@
   - 可选原因：平台目标只要求最终落到 **`WorkflowDef`/Canonical**；Recipe 不是第二套语义语言，缺失不影响 Root IR / Π slice / RuntimePlan。
   - 规范：若存在，必须 `expand/normalize → WorkflowDef`（禁止 Recipe 自带语义分支）。
 
-- **WorkflowDef（权威输入工件，纯 JSON）**
+- **WorkflowDef（Authoring SSoT 工件，纯 JSON）**
   - 职责：跨边界的 authoring 工件（可落盘/可 diff/可被 Schema 校验/版本化）。
   - 约束：不得携带闭包/Effect/Fiber/Tag 本体；`call` 最终只保留稳定 `serviceId: string`（对齐 `specs/078-module-service-manifest/contracts/service-id.md`）。
   - 关系：TS 侧的 `Workflow` 值对象只是 DX 形态；`toJSON()/fromJSON(...)` 是 “值对象 ↔ 工件” 的桥。
@@ -27,7 +31,7 @@
   - 必要性：平台/Devtools/Alignment Lab 需要一个“可审查的结构真相源”；RuntimePlan 不能替代（它是 internal 且为性能裁剪）。
   - Root 对齐：Π slice 通过 `ControlSurfaceManifest.workflowSurface` 以 digest 引用收口（Root IR 不携带整图进事件流）。
 
-- **ControlSurfaceManifest（Root Static IR，可交换）**
+- **ControlSurfaceManifest（Platform SSoT：Root Static IR，可交换）**
   - 职责：平台消费的单一 Root 工件（digest + slices 引用 + 最小索引）。
   - 不可合并原因：
     - Root IR 不能膨胀为“全量 IR 仓库”，否则会把热路径成本（scan/hash/serialize）转嫁给运行期；
