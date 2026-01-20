@@ -3,6 +3,10 @@
 **Feature Branch**: `[###-feature-name]`  
 **Created**: [DATE]  
 **Status**: Draft  
+<!--
+  Status tracks implementation progress, not spec writing.
+  Recommended: Draft -> Planned -> Active -> Done (avoid regression).
+-->
 **Input**: User description: "$ARGUMENTS"
 
 ## User Scenarios & Testing _(mandatory)_

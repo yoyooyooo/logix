@@ -64,6 +64,10 @@ If `FEATURE_DIR/checklists/` exists:
   - Wait for user response.
 - If all checklists are complete (or no checklists dir), continue.
 
+### 2.5) Update spec status (monotonic, no regression)
+
+When you are actually going to execute tasks, run `SKILL_DIR/scripts/bash/update-spec-status.sh --ensure --status Active` (add `--feature <id>` if needed). This will move Planned → Active, and keep Done/Frozen/Superseded untouched.
+
 ### 3) Load minimal required context
 
 1. Read `TASKS` fully.

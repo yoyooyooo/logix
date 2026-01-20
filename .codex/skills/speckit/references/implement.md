@@ -47,6 +47,8 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 1. Run `SKILL_DIR/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. If you need to target a specific spec by number/id, add `--feature 025` (or `--feature 025-my-feature`). All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
+1.5 **Update spec status** (monotonic, no regression): Run `SKILL_DIR/scripts/bash/update-spec-status.sh --ensure --status Active` (add `--feature <id>` if needed). This will move Planned → Active when you start implementation, and keep Done/Frozen/Superseded untouched.
+
 2. **Check checklists status** (if FEATURE_DIR/checklists/ exists):
    - Scan all checklist files in the checklists/ directory
    - For each checklist, count:

@@ -78,6 +78,8 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Suggested MVP scope (typically just User Story 1)
    - Format validation: Confirm ALL tasks follow the checklist format (checkbox, ID, labels, file paths)
 
+6. **Update spec status** (monotonic, no regression): After tasks.md is executable, run `SKILL_DIR/scripts/bash/update-spec-status.sh --ensure --status Planned` (add `--feature <id>` if needed). This keeps Active/Done untouched.
+
 Context for task generation: $ARGUMENTS
 
 The tasks.md should be immediately executable - each task must be specific enough that an LLM can complete it without additional context.

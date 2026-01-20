@@ -119,8 +119,6 @@ Optionally (read-only), if the repo is a git repo:
 - Use `git diff --name-only` (and/or `git status`) to list changed files
 - Classify each changed file as “in-scope” (mentioned in tasks/plan) vs “out-of-scope” (potential drift / parallel work)
 
-Do **not** assume the diff equals the feature; treat tasks/plan as the feature boundary and flag mismatches.
-
 ### 6) Evidence Gathering Per Coded Point
 
 For **each** coded point (e.g., `FR-001`), collect (per spec):
@@ -177,6 +175,12 @@ Provide a prioritized list:
 Ask the user:
 
 “Do you want me to turn the top N gaps into concrete follow-up tasks (and where should they live: append to `tasks.md` vs a separate follow-up file)?”
+
+### 11) Optional: Mark spec as Done (only on PASS)
+
+If (and only if) acceptance has no FAIL/HIGH items and all required tasks are complete, update `spec.md` Status via:
+
+`SKILL_DIR/scripts/bash/update-spec-status.sh --ensure --status Done --feature <id>`
 
 ## Context
 

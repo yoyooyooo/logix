@@ -163,6 +163,7 @@ feature 选择（可选，但强烈建议明确指定以避免误选“最新 sp
 
 - `scripts/bash/create-new-feature.sh`：创建 `specs/<NNN-*>/spec.md`（从模板拷贝/或创建空文件），输出包含 `BRANCH_NAME`/`SPEC_FILE` 的 JSON；不做任何 VCS 操作。
 - `scripts/bash/setup-plan.sh`：确保 `specs/<feature>/plan.md` 存在（默认不覆盖，`--force` 才覆盖），输出包含 `FEATURE_SPEC`/`IMPL_PLAN` 的 JSON；不改动其它规格产物。
+- `scripts/bash/update-spec-status.sh`：更新 `specs/<feature>/spec.md` 顶部的 `**Status**:` 行；支持 `--ensure` 保持单调前进（Draft→Planned→Active→Done），避免回退。
 - `scripts/bash/setup-notes.sh`：确保 `specs/<feature>/notes/` 骨架存在（默认不覆盖；`--force` 才覆盖），输出包含 `NOTES_DIR`/`NOTES_README`/`SESSIONS_DIR` 的 JSON；支持 `--dry-run` 预览。
 - `scripts/bash/check-prerequisites.sh`：检查当前 feature 的必要文件是否存在并输出 JSON（可选要求 `tasks.md`）；不写入规格文件。
 - `scripts/bash/extract-user-stories.sh`：从 `spec.md` 提取 `User Story N` 清单（含 Priority 与 file+line 证据），支持 `--json`；只读。
