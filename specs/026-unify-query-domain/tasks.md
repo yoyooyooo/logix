@@ -114,6 +114,13 @@
 
 ---
 
+## Phase 8: 透明性（去糖化视图）与 meta 合同对齐（增量）
+
+- [x] T050 [P] quickstart 增补 De-sugared View：把 `Query.make/Query.traits` 展开到 `StateTrait.source`/`EffectOp` 主线，并明确“哪些字段会进入 IR/导出边界”与定位入口 `specs/026-unify-query-domain/quickstart.md`, `apps/docs/content/docs/guide/learn/query.md`
+- [x] T051 [P] Meta 口径对齐 016：将 Query 相关可导出 `meta` 的类型/文档统一指向 `TraitMeta/JsonValue`（裁剪规则不在 Query 自定义），并补齐迁移/指路说明 `packages/logix-query/src/Traits.ts`, `packages/logix-query/src/Query.ts`, `specs/026-unify-query-domain/contracts/*`
+
+---
+
 ## Dependencies & Execution Order
 
 - Phase 0（目录命名治理）应最先完成：后续任务的文件路径以 `packages/logix-query`/`packages/logix-form` 为准。

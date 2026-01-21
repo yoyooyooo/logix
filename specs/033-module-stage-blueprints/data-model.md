@@ -51,6 +51,6 @@ Canonical schemas：
 
 ## Cross-Spec References
 
-- 035 Port addressing（ports/exports 的地址基元）：`specs/035-module-ports-typeir/contracts/schemas/port-address.schema.json`
-- 034 CodeAssetRef（映射资产引用）：`specs/034-expression-asset-protocol/contracts/schemas/code-asset-ref.schema.json`
+- 035 Port addressing（ports/exports 的地址基元）：`specs/035-module-reference-space/contracts/schemas/port-address.schema.json`
+- 035 CodeAssetRef（映射资产引用）：`specs/035-module-reference-space/contracts/schemas/code-asset-ref.schema.json`
 - 032 UIBlueprint/BindingSchema（投影与绑定）：`specs/032-ui-projection-contract/contracts/schemas/*`

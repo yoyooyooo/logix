@@ -22,30 +22,26 @@
 `specs/031-trialrun-artifacts/data-model.md`  
 你会拿到：`TrialRunReport.artifacts` 的统一 shape、预算/截断/单项失败语义，以及首个 kit 用例 `@logixjs/form.rulesManifest@v1`。
 
-4) 035：PortSpec/TypeIR（平台引用空间 SSoT）  
-`specs/035-module-ports-typeir/data-model.md`  
-你会拿到：画布连线/绑定/表达式编辑器需要的“逻辑插座”事实源：`@logixjs/module.portSpec@v1`、`@logixjs/module.typeIr@v1` + `PortAddress`（统一寻址基元）。
+4) 035：模块引用空间事实源（PortSpec/TypeIR + CodeAsset 协议）  
+`specs/035-module-reference-space/data-model.md`  
+你会拿到：画布连线/绑定/表达式编辑器需要的“逻辑插座”事实源：`@logixjs/module.portSpec@v1`、`@logixjs/module.typeIr@v1` + `PortAddress`（统一寻址基元），以及 `CodeAsset/Deps/ReversibilityAnchor`（表达式/校验资产协议与治理边界）。
 
 实现提示：TypeIR 的一个现实实现路线是从 `effect/Schema` 的 `schema.ast`（SchemaAST）投影（SchemaAST 不直接外泄为协议）；现有可参考实现：`packages/logix-core/src/internal/state-trait/converge.ts` 的 `schemaHasPath`。
 
-5) 034：CodeAsset（表达式/校验资产协议）  
-`specs/034-expression-asset-protocol/data-model.md`  
-你会拿到：表达式/校验如何被固化为可治理资产：`normalizedIr + deps + digest + budgets + anchor`，以及 parseable vs blackbox 的降级语义。
-
-6) 033：StageBlueprint / IntentRule / RowRef（画布语义蓝图）  
+5) 033：StageBlueprint / IntentRule / RowRef（画布语义蓝图）  
 `specs/033-module-stage-blueprints/data-model.md`  
-你会拿到：画布的最小可配置面：节点=ModuleInstance、边=IntentRule（事件→动作）、列表定位=rowRef（稳定 `$rowId`），以及它们如何引用 034/035 的事实源。
+你会拿到：画布的最小可配置面：节点=ModuleInstance、边=IntentRule（事件→动作）、列表定位=rowRef（稳定 `$rowId`），以及它们如何引用 035 的事实源。
 
-7) 032：UI 投影与 BindingSchema（UI 只做投影）  
+6) 032：UI 投影与 BindingSchema（UI 只做投影）  
 `specs/032-ui-projection-contract/data-model.md`  
 你会拿到：UIBlueprint 与 BindingSchema 的边界：UI 不承载语义，绑定只允许读自身模块、交互只派发动作/事件。
 
-8) 036：Contract Suite（统一验收口径 + Agent Context Pack）  
+7) 036：Contract Suite（统一验收口径 + Agent Context Pack）  
 `specs/036-workbench-contract-suite/data-model.md`  
 `specs/036-workbench-contract-suite/quickstart.md`  
 你会拿到：PASS/WARN/FAIL 的统一判定输入域、降级矩阵、以及 `ContractSuiteContextPack@v1`（可选携带 `facts.inputs` 作为 Agent 的最小编辑上下文）。
 
-9) 语义化 UI × 画布编排（插座/插口打通的最小对齐）  
+8) 语义化 UI × 画布编排（插座/插口打通的最小对齐）  
 `specs/036-workbench-contract-suite/semantic-ui-port-bridge.md`  
 你会拿到：UiPort/UiBinding/UiSignal（草案）如何无缝映射到 `UiBlueprint/BindingSchema/PortSpec/IntentRule`，以及“UI 只接自己、跨模块只走语义边”的打通方案。
 

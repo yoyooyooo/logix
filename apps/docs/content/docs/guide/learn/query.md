@@ -29,6 +29,27 @@ When diagnostics are enabled, snapshots/events carry at least these fields to an
 - `concurrency`: concurrency strategy (e.g. `switch`, `exhaust-trailing`)
 - `status`: `idle/loading/success/error`
 
+## 0.3 De-sugared view (keep the primitives visible)
+
+This section exists to prevent “sugar-only mental models”. When you hit an edge case that `Query` doesn’t cover, you can always drop down to the kernel primitives.
+
+- `Query.make(id, config)` is essentially:
+  - a normal `Logix.Module.make(id, ...)` that owns `{ params; ui; queries }` in module state
+  - plus `Query.traits(...)` lowering into `StateTrait.source(...)` (writing back to `state.queries.<name>`)
+  - plus two default logics (`autoTrigger` and `invalidate`)
+  - plus a handle extension that exposes `controller.*` (same-shape DX as `@logixjs/form`)
+- `Query.traits({ queries })` lowers each query rule to:
+  - `{ ['queries.<name>']: Logix.StateTrait.source({ resource: ResourceSpec.id, deps, triggers, debounceMs, concurrency, key }) }`
+- `Query.Engine.middleware()` is just an EffectOp middleware:
+  - it intercepts `kind="trait-source"` ops with `meta.resourceId + meta.keyHash`
+  - delegates execution to the injected `Query.Engine.fetch(...)` (cache/dedup), while Logix still owns `keyHash` gating + write-back semantics
+
+What crosses the export boundary:
+
+- static/governable: `resourceId/deps/triggers/concurrency/...` (traits / Static IR / Control Surface slices)
+- never exported: `key(...)` (a runtime closure) — only its derived `keyHash` is recorded/exported
+- exportable `meta` must be slim `JsonValue` (pure JSON); functions/closures are invalid and will be dropped/downgraded
+
 ## 1) Minimal usage: define a Query module
 
 ```ts

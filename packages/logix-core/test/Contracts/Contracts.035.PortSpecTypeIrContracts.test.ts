@@ -24,14 +24,18 @@ const collectRefs = (value: unknown, out: string[] = []): string[] => {
   return out
 }
 
-describe('contracts (035): module ports & type-ir', () => {
+describe('contracts (035): module reference space', () => {
   it('parses all schemas and keeps title/$ref aligned', () => {
-    const schemasDirUrl = new URL('../../../../specs/035-module-ports-typeir/contracts/schemas/', import.meta.url)
+    const schemasDirUrl = new URL('../../../../specs/035-module-reference-space/contracts/schemas/', import.meta.url)
 
     const expectedTitles: Record<string, string> = {
       'port-address.schema.json': 'PortAddress',
       'module-port-spec.schema.json': 'ModulePortSpec',
       'type-ir.schema.json': 'TypeIr',
+      'code-asset.schema.json': 'CodeAsset',
+      'code-asset-ref.schema.json': 'CodeAssetRef',
+      'deps.schema.json': 'Deps',
+      'reversibility-anchor.schema.json': 'ReversibilityAnchor',
     }
 
     const schemaFiles = readdirSync(fileURLToPath(schemasDirUrl)).filter((f) => f.endsWith('.schema.json'))

@@ -3,7 +3,7 @@
 **Feature Branch**: `[036-workbench-contract-suite]`  
 **Created**: 2025-12-25  
 **Status**: Draft  
-**Input**: 建立一个统一管控 031-035 的集成规格（Contract Suite / Integration Track）：以 `examples/logix-sandbox-mvp` 作为最小平台 Workbench，串起 TrialRun artifacts（含 `@logixjs/form.rulesManifest@v1`）、UI 投影与语义绑定边界、Scenario Canvas 语义蓝图、表达式/校验资产协议、以及 Module 端口/类型 IR 导出，定义端到端可验收的集成闭环与版本化治理口径；不新增实现细节，仅提供统一的验收与依赖关系裁决，避免各子 spec 漂移。
+**Input**: 建立一个统一管控 031-035 的集成规格（Contract Suite / Integration Track）：以 `examples/logix-sandbox-mvp` 作为最小平台 Workbench，串起 TrialRun artifacts（含 `@logixjs/form.rulesManifest@v1`）、UI 投影与语义绑定边界、Scenario Canvas 语义蓝图、以及“模块引用空间事实源（PortSpec/TypeIR + CodeAsset 协议）”，定义端到端可验收的集成闭环与版本化治理口径；不新增实现细节，仅提供统一的验收与依赖关系裁决，避免各子 spec 漂移。
 
 ## Assumptions
 
@@ -11,8 +11,7 @@
   - 031 TrialRun artifacts（补充 IR 槽位 + RulesManifest 首用例）
   - 032 UI 投影契约（UI 只做投影 + Binding Schema 两种消费模式）
   - 033 Module 舞台语义蓝图（Scenario Canvas 语义模型 + codegen）
-  - 034 表达式/校验资产协议（规范化 IR + deps/digest + sandbox 约束）
-  - 035 Module 端口/类型 IR（PortSpec/TypeIR 作为可引用空间 SSoT）
+  - 035 模块引用空间事实源（PortSpec/TypeIR + CodeAsset 协议）
 - 本 spec 的依赖关系以 `depends_on` 的强语义理解：若上游 spec 的核心成功标准未满足，本 spec 视为不可签收。
 - 以 `examples/logix-sandbox-mvp` 作为“最小平台 Workbench”，只做消费者与验收跑通；正式平台未来可以无损替换。
 - 不保证向后兼容：若 031-035 的协议需要破坏式演进，以版本化 key/协议升级为准。
@@ -23,8 +22,7 @@
   - `specs/031-trialrun-artifacts/spec.md`
   - `specs/032-ui-projection-contract/spec.md`
   - `specs/033-module-stage-blueprints/spec.md`
-  - `specs/034-expression-asset-protocol/spec.md`
-  - `specs/035-module-ports-typeir/spec.md`
+  - `specs/035-module-reference-space/spec.md`
 
 ## Motivation / Background
 

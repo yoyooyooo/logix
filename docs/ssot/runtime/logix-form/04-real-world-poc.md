@@ -59,7 +59,7 @@ export const runtime = Logix.Runtime.make(RootModule, { devtools: true })
 - **values 结构动作**：`arrayAppend/remove/move/swap`
 - **辅助树同步搬运**：`ui.<listPath>` 与 `errors.<listPath>.rows`（以及 manual/schema rows）
 
-这就是 `packages/form/src/form.ts` 里 `syncAuxArrays` 存在的原因：防止删除/重排后出现 touched/dirty/错误“跟错行”。
+这就是 `packages/logix-form/src/internal/form/arrays.ts` 里 `syncAuxArrays` 存在的原因：防止删除/重排后出现 touched/dirty/错误“跟错行”。
 
 ## 5) 性能边界：update vs mutate（高频写回）
 
@@ -73,6 +73,6 @@ export const runtime = Logix.Runtime.make(RootModule, { devtools: true })
 
 相关实现与解释链路：
 
-- Form reducers：`packages/form/src/form.ts`
+- Form reducers：`packages/logix-form/src/internal/form/reducer.ts`
 - patchPaths 生成：`packages/logix-core/src/internal/runtime/core/mutativePatches.ts`
 - dirtyAll 退化点：`packages/logix-core/src/internal/runtime/ModuleRuntime.transaction.ts`

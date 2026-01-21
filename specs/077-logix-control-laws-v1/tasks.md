@@ -12,7 +12,7 @@
 
 - [ ] T010 Generate checklist via speckit script:
   - `SKILL_DIR=.codex/skills/speckit`
-  - `"$SKILL_DIR/scripts/bash/spec-group-checklist.sh" 077 --from registry --name group.registry --title "Control Laws v1: 073 → 075 → 076"`
+  - `"$SKILL_DIR/scripts/bash/spec-group-checklist.sh" 077 --from registry --name group.registry --title "Control Laws v1: Runtime Core Runway"`
 
 ## Phase 3: Drift Guards（公式驱动）
 
@@ -22,5 +22,5 @@
 
 ## Phase 4: Integrated Acceptance（只做派发）
 
-- [ ] T030 Run multi-spec acceptance (read-only output) for 073/075/076:
+- [ ] T030 Run multi-spec acceptance (read-only output) for the core chain (073/075/076):
   - `$speckit acceptance 073 075 076`

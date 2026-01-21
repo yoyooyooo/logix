@@ -35,6 +35,6 @@
 
 ## References
 
-- 035 PortSpec/TypeIR：`specs/035-module-ports-typeir/spec.md`
+- 035 模块引用空间事实源（PortSpec/TypeIR + CodeAsset）：`specs/035-module-reference-space/spec.md`
 - 033 StageBlueprint：`specs/033-module-stage-blueprints/spec.md`
 - 036 Contract Suite：`specs/036-workbench-contract-suite/spec.md`

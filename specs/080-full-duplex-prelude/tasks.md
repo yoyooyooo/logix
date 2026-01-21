@@ -42,7 +42,7 @@ description: "Task list for 080-full-duplex-prelude (Spec Group dispatch-only)"
 
 - [ ] T020 执行并验收 025（Reflection/BuildEnv/TrialRun 基础链路）`specs/025-ir-reflection-loader/tasks.md`、`specs/025-ir-reflection-loader/quickstart.md`
 - [ ] T021 执行并验收 031（TrialRun artifacts 槽位）`specs/031-trialrun-artifacts/tasks.md`、`specs/031-trialrun-artifacts/quickstart.md`
-- [ ] T022 执行并验收 035（PortSpec/TypeIR 导出）`specs/035-module-ports-typeir/tasks.md`、`specs/035-module-ports-typeir/quickstart.md`
+- [ ] T022 执行并验收 035（模块引用空间导出与协议）`specs/035-module-reference-space/tasks.md`、`specs/035-module-reference-space/quickstart.md`
 - [ ] T023 执行并验收 067（Action Surface manifest）`specs/067-action-surface-manifest/tasks.md`、`specs/067-action-surface-manifest/quickstart.md`
 - [ ] T024 执行并验收 078（Module↔ServicePorts 进入 Manifest）`specs/078-module-service-manifest/tasks.md`、`specs/078-module-service-manifest/quickstart.md`
 
@@ -82,4 +82,3 @@ description: "Task list for 080-full-duplex-prelude (Spec Group dispatch-only)"
 
 - Phase 2（M0）→ Phase 3（M1）→ Phase 4（M2）为主线；Phase 5（M3）建议在 M2 跑通后再进入。
 - Phase 6（证据回写）贯穿全程：每完成一个 member milestone，立即把验证入口回链到 `spec-registry.md`。
-

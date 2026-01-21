@@ -1,3 +1,5 @@
+import type { JsonValue } from '../observability/jsonValue.js'
+
 export type TraitMeta = Readonly<{
   readonly label?: string
   readonly description?: string
@@ -20,13 +22,46 @@ export type TraitMeta = Readonly<{
   readonly canonical?: boolean
 }>
 
+export type TraitMetaSanitizeReport = Readonly<{
+  /**
+   * invalidInput:
+   * - Input was not a plain object (e.g. string/array/function/etc).
+   */
+  readonly invalidInput?: boolean
+  /**
+   * unknownKeys:
+   * - Top-level keys that are ignored (not part of TraitMeta, and not `x-*` legacy annotations).
+   */
+  readonly unknownKeys?: ReadonlyArray<string>
+  readonly unknownKeyCount?: number
+  /**
+   * droppedKeys:
+   * - Known keys that exist but are dropped due to invalid value type (e.g. tags is not string/array).
+   */
+  readonly droppedKeys?: ReadonlyArray<string>
+  /**
+   * droppedTagItems:
+   * - Number of non-string/empty tag items dropped during normalization.
+   */
+  readonly droppedTagItems?: number
+  /**
+   * annotations:
+   * - Only accepts `x-*` keys; invalid keys/values are dropped.
+   */
+  readonly ignoredAnnotationKeys?: ReadonlyArray<string>
+  readonly ignoredAnnotationKeyCount?: number
+  readonly droppedAnnotationKeys?: ReadonlyArray<string>
+  readonly droppedAnnotationKeyCount?: number
+  readonly droppedAnnotationValues?: number
+  readonly droppedAnnotationNonSerializable?: number
+  readonly droppedAnnotationDepthExceeded?: number
+  readonly droppedAnnotationNonFiniteNumber?: number
+}>
+
 export type TraitMetaConflict = Readonly<{
   readonly origin: string
   readonly meta: TraitMeta
 }>
-
-export type JsonPrimitive = string | number | boolean | null
-export type JsonValue = JsonPrimitive | ReadonlyArray<JsonValue> | { readonly [key: string]: JsonValue }
 
 const uniqSortedStrings = (input: ReadonlyArray<string>): ReadonlyArray<string> => {
   const set = new Set<string>()
@@ -41,21 +76,38 @@ const uniqSortedStrings = (input: ReadonlyArray<string>): ReadonlyArray<string> 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const sanitizeJsonValue = (input: unknown, depth: number): JsonValue | undefined => {
+type SanitizeJsonValueStats = {
+  dropped: number
+  nonSerializable: number
+  depthExceeded: number
+  nonFiniteNumber: number
+}
+
+const sanitizeJsonValue = (input: unknown, depth: number, stats: SanitizeJsonValueStats): JsonValue | undefined => {
   if (input === null) return null
 
   if (typeof input === 'string') return input
   if (typeof input === 'boolean') return input
   if (typeof input === 'number') {
-    return Number.isFinite(input) ? input : undefined
+    if (!Number.isFinite(input)) {
+      stats.dropped += 1
+      stats.nonSerializable += 1
+      stats.nonFiniteNumber += 1
+      return undefined
+    }
+    return input
   }
 
-  if (depth >= 6) return undefined
+  if (depth >= 6) {
+    stats.dropped += 1
+    stats.depthExceeded += 1
+    return undefined
+  }
 
   if (Array.isArray(input)) {
     const out: Array<JsonValue> = []
     for (const item of input) {
-      const v = sanitizeJsonValue(item, depth + 1)
+      const v = sanitizeJsonValue(item, depth + 1, stats)
       if (v !== undefined) out.push(v)
     }
     return out
@@ -65,21 +117,61 @@ const sanitizeJsonValue = (input: unknown, depth: number): JsonValue | undefined
     const keys = Object.keys(input).sort()
     const out: Record<string, JsonValue> = {}
     for (const key of keys) {
-      const v = sanitizeJsonValue(input[key], depth + 1)
+      const v = sanitizeJsonValue(input[key], depth + 1, stats)
       if (v !== undefined) out[key] = v
     }
     return out
   }
 
+  stats.dropped += 1
+  stats.nonSerializable += 1
   return undefined
 }
 
-export const sanitize = (input: unknown): TraitMeta | undefined => {
-  if (input === null || input === undefined) return undefined
-  if (typeof input !== 'object' || Array.isArray(input)) return undefined
+const pushSample = (target: Array<string>, value: string, limit: number): void => {
+  if (target.length >= limit) return
+  target.push(value)
+}
+
+export const sanitizeWithReport = (input: unknown): Readonly<{
+  readonly meta?: TraitMeta
+  readonly report?: TraitMetaSanitizeReport
+}> => {
+  if (input === null || input === undefined) return {}
+  if (typeof input !== 'object' || Array.isArray(input)) {
+    return { report: { invalidInput: true } }
+  }
 
   const record = input as Record<string, unknown>
   const out: Record<string, unknown> = {}
+
+  const reportUnknownKeys: Array<string> = []
+  let unknownKeyCount = 0
+  const reportDroppedKeys: Array<string> = []
+  let droppedTagItems = 0
+
+  const reportIgnoredAnnotationKeys: Array<string> = []
+  let ignoredAnnotationKeyCount = 0
+  const reportDroppedAnnotationKeys: Array<string> = []
+  let droppedAnnotationKeyCount = 0
+  const stats: SanitizeJsonValueStats = { dropped: 0, nonSerializable: 0, depthExceeded: 0, nonFiniteNumber: 0 }
+
+  const allowed = new Set([
+    'label',
+    'description',
+    'group',
+    'docsUrl',
+    'cacheGroup',
+    'canonical',
+    'tags',
+    'annotations',
+  ])
+
+  for (const key of Object.keys(record)) {
+    if (allowed.has(key) || key.startsWith('x-')) continue
+    unknownKeyCount += 1
+    pushSample(reportUnknownKeys, key, 8)
+  }
 
   const pickString = (key: keyof TraitMeta): void => {
     const value = record[key as string]
@@ -96,7 +188,9 @@ export const sanitize = (input: unknown): TraitMeta | undefined => {
   pickString('cacheGroup')
 
   const canonical = record.canonical
-  if (typeof canonical === 'boolean') {
+  if (canonical !== undefined && canonical !== null && typeof canonical !== 'boolean') {
+    pushSample(reportDroppedKeys, 'canonical', 8)
+  } else if (typeof canonical === 'boolean') {
     out.canonical = canonical
   }
 
@@ -105,8 +199,14 @@ export const sanitize = (input: unknown): TraitMeta | undefined => {
     const tags = uniqSortedStrings([tagsRaw])
     if (tags.length > 0) out.tags = tags
   } else if (Array.isArray(tagsRaw)) {
-    const tags = uniqSortedStrings(tagsRaw.filter((x): x is string => typeof x === 'string'))
+    const raw = tagsRaw.filter((x): x is string => typeof x === 'string')
+    droppedTagItems += tagsRaw.length - raw.length
+    const tags = uniqSortedStrings(raw)
     if (tags.length > 0) out.tags = tags
+    // count empty/whitespace tags dropped by uniqSortedStrings
+    droppedTagItems += raw.length - tags.length
+  } else if (tagsRaw !== undefined && tagsRaw !== null) {
+    pushSample(reportDroppedKeys, 'tags', 8)
   }
 
   const annotations: Record<string, JsonValue> = {}
@@ -116,26 +216,92 @@ export const sanitize = (input: unknown): TraitMeta | undefined => {
     .filter((k) => k.startsWith('x-'))
     .sort()
   for (const key of annotationKeys) {
-    const v = sanitizeJsonValue(record[key], 0)
-    if (v !== undefined) annotations[key] = v
+    const v = sanitizeJsonValue(record[key], 0, stats)
+    if (v !== undefined) {
+      annotations[key] = v
+    } else {
+      droppedAnnotationKeyCount += 1
+      pushSample(reportDroppedAnnotationKeys, key, 8)
+    }
   }
 
   // preferred: typed `annotations` field (only accepts `x-*` keys).
   const annotationsRaw = record.annotations
-  if (isPlainRecord(annotationsRaw)) {
+  if (annotationsRaw !== undefined && annotationsRaw !== null && !isPlainRecord(annotationsRaw)) {
+    pushSample(reportDroppedKeys, 'annotations', 8)
+  } else if (isPlainRecord(annotationsRaw)) {
     const keys = Object.keys(annotationsRaw)
-      .filter((k) => k.startsWith('x-'))
       .sort()
     for (const key of keys) {
-      const v = sanitizeJsonValue(annotationsRaw[key], 0)
-      if (v !== undefined) annotations[key] = v
+      if (!key.startsWith('x-')) {
+        ignoredAnnotationKeyCount += 1
+        pushSample(reportIgnoredAnnotationKeys, key, 8)
+        continue
+      }
+
+      const v = sanitizeJsonValue(annotationsRaw[key], 0, stats)
+      if (v !== undefined) {
+        annotations[key] = v
+      } else {
+        droppedAnnotationKeyCount += 1
+        pushSample(reportDroppedAnnotationKeys, key, 8)
+      }
     }
   }
 
   if (Object.keys(annotations).length > 0) out.annotations = annotations
 
-  return Object.keys(out).length > 0 ? (out as TraitMeta) : undefined
+  // Dropped keys for invalid string fields (only track invalid types; empty string is ignored as low-signal).
+  for (const key of ['label', 'description', 'group', 'docsUrl', 'cacheGroup'] as const) {
+    const value = record[key]
+    if (value !== undefined && value !== null && typeof value !== 'string') {
+      pushSample(reportDroppedKeys, key, 8)
+    }
+  }
+
+  const meta = Object.keys(out).length > 0 ? (out as TraitMeta) : undefined
+
+  const report: TraitMetaSanitizeReport | undefined = (() => {
+    const hasUnknownKeys = unknownKeyCount > 0
+    const hasDroppedKeys = reportDroppedKeys.length > 0
+    const hasDroppedTagItems = droppedTagItems > 0
+    const hasIgnoredAnnotationKeys = ignoredAnnotationKeyCount > 0
+    const hasDroppedAnnotations = droppedAnnotationKeyCount > 0 || stats.dropped > 0
+
+    if (
+      !hasUnknownKeys &&
+      !hasDroppedKeys &&
+      !hasDroppedTagItems &&
+      !hasIgnoredAnnotationKeys &&
+      !hasDroppedAnnotations
+    ) {
+      return undefined
+    }
+
+    return {
+      ...(hasUnknownKeys ? { unknownKeys: reportUnknownKeys, unknownKeyCount } : {}),
+      ...(hasDroppedKeys ? { droppedKeys: uniqSortedStrings(reportDroppedKeys) } : {}),
+      ...(hasDroppedTagItems ? { droppedTagItems } : {}),
+      ...(hasIgnoredAnnotationKeys
+        ? { ignoredAnnotationKeys: uniqSortedStrings(reportIgnoredAnnotationKeys), ignoredAnnotationKeyCount }
+        : {}),
+      ...(hasDroppedAnnotations
+        ? {
+            droppedAnnotationKeys: uniqSortedStrings(reportDroppedAnnotationKeys),
+            droppedAnnotationKeyCount,
+            droppedAnnotationValues: stats.dropped,
+            droppedAnnotationNonSerializable: stats.nonSerializable,
+            droppedAnnotationDepthExceeded: stats.depthExceeded,
+            droppedAnnotationNonFiniteNumber: stats.nonFiniteNumber,
+          }
+        : {}),
+    } satisfies TraitMetaSanitizeReport
+  })()
+
+  return report ? { meta, report } : { meta }
 }
+
+export const sanitize = (input: unknown): TraitMeta | undefined => sanitizeWithReport(input).meta
 
 const stableStringify = (meta: TraitMeta): string => {
   const out: Record<string, unknown> = {}

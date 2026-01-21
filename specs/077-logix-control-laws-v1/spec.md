@@ -67,8 +67,13 @@ Obs_t  = Ω_F(S_t)
 人读阐述：`specs/077-logix-control-laws-v1/spec-registry.md`。
 
 - `specs/073-logix-external-store-tick/`：建立参考系 `F`（`RuntimeStore + tickSeq`，no-tearing）
+- `specs/070-core-pure-perf-wins/`：默认档位零诊断税 + 单内核边界（纯赚/近纯赚；热路径门禁）
+- `specs/074-readquery-create-selector/`：静态 selector 组合器（显式 deps；为 topic 分片与 watcher 降税打地基）
+- `specs/068-watcher-pure-wins/`：watcher fan-out 纯赚性能地基（Action/State 传播降到 O(k)）
+- `specs/006-optimize-traits/`：Trait converge 性能上限提升（`Close_{C_T}` 的热路径优化）
 - `specs/075-workflow-codegen-ir/`：建立通用控制律 `Π_general`（WorkflowDef → Π slice：出码层 + 时间算子进入证据链；DX 入口为 Workflow）
-- `specs/076-logix-source-auto-trigger-kernel/`：建立受限控制律 `Π_source`（source 自动触发内核化，消灭 Query/Form 胶水）
+- `specs/076-logix-source-auto-trigger-kernel/`：建立受限控制律 `Π_source`（source 自动触发内核化，消灭 Query/Form watcher 胶水）
+- `specs/018-periodic-self-calibration/`：默认值审计 + 运行时自校准（不影响默认档位；基于工作负载证据）
 
 ## Spec 快速裁决（三问，避免“只做微调”的幻觉）
 

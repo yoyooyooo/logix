@@ -41,6 +41,14 @@ export interface QuerySourceConfig<
   readonly deps: Deps & ReadonlyArray<QueryDepsPath<TParams, TUI>>
   readonly triggers?: ReadonlyArray<QueryTrigger>
   /**
+   * Optional exportable trait meta (Devtools / Static IR / docs).
+   *
+   * Constraints:
+   * - Must be serializable (JsonValue only); no closures/functions/Effect/DOM objects.
+   * - Keep it slim; use `annotations` with `x-*` keys for extension hints.
+   */
+  readonly meta?: Logix.StateTrait.TraitMeta
+  /**
    * Optional static tags for invalidate(byTag), used to narrow byTag from "refresh all" to a matched subset.
    * - Must be serializable (recommend: string constants only)
    * - If omitted, byTag conservatively falls back to refreshing everything
@@ -59,6 +67,7 @@ export type QueryBuilder<TParams, TUI> = {
     readonly resource: R
     readonly deps: Deps & ReadonlyArray<QueryDepsPath<TParams, TUI>>
     readonly triggers?: ReadonlyArray<QueryTrigger>
+    readonly meta?: Logix.StateTrait.TraitMeta
     readonly tags?: ReadonlyArray<string>
     readonly debounceMs?: number
     readonly concurrency?: QueryConcurrency
@@ -80,6 +89,7 @@ export const source = <
   readonly resource: R
   readonly deps: Deps & ReadonlyArray<QueryDepsPath<TParams, TUI>>
   readonly triggers?: ReadonlyArray<QueryTrigger>
+  readonly meta?: Logix.StateTrait.TraitMeta
   readonly tags?: ReadonlyArray<string>
   readonly debounceMs?: number
   readonly concurrency?: QueryConcurrency
@@ -122,6 +132,7 @@ export const toStateTraitSpec = <TParams, TUI>(
       debounceMs: q.debounceMs,
       concurrency: q.concurrency === 'exhaust' ? 'exhaust-trailing' : q.concurrency,
       key: (...depsValues: ReadonlyArray<any>) => (q.key as any)(...depsValues),
+      meta: q.meta,
     })
   }
 

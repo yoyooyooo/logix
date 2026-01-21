@@ -1,4 +1,5 @@
 import type * as EffectOp from '@logixjs/core/EffectOp'
+import type { JsonValue } from '@logixjs/core/Observability'
 import { Context, Effect, Layer, Option } from 'effect'
 import { middleware as middlewareImpl, type MiddlewareConfig } from './internal/middleware/middleware.js'
 
@@ -16,7 +17,7 @@ export interface Engine {
      * MUST be serializable and slim; recommended default is undefined (lazy),
      * and only populate it when diagnostics/devtools require it.
      */
-    readonly meta?: unknown
+    readonly meta?: JsonValue
   }) => Effect.Effect<A, unknown, any>
 
   /**
@@ -27,7 +28,7 @@ export interface Engine {
     resourceId: string,
     keyHash: string,
     effect: Effect.Effect<A, unknown, any>,
-    meta?: unknown,
+    meta?: JsonValue,
   ) => Effect.Effect<A, unknown, any>
 
   readonly invalidate: (request: InvalidateRequest) => Effect.Effect<void, unknown, any>

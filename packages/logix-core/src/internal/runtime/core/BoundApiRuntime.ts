@@ -12,6 +12,7 @@ import * as Lifecycle from './Lifecycle.js'
 import * as Debug from './DebugSink.js'
 import * as LogicDiagnostics from './LogicDiagnostics.js'
 import { isDevEnv } from './env.js'
+import type { JsonValue } from '../../observability/jsonValue.js'
 import { RunSessionTag } from '../../observability/runSession.js'
 import * as Root from '../../root.js'
 import type { RuntimeInternals } from './RuntimeInternals.js'
@@ -269,7 +270,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     readonly id: string
     readonly tag: Context.Tag<any, Logix.ModuleRuntime<any, any>>
     readonly schemas?: Record<string, unknown>
-    readonly meta?: Record<string, unknown>
+    readonly meta?: Record<string, JsonValue>
     readonly dev?: { readonly source?: { readonly file: string; readonly line: number; readonly column: number } }
   } =>
     Boolean(
@@ -316,7 +317,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       readonly id: string
       readonly tag: any
       readonly schemas?: Record<string, unknown>
-      readonly meta?: Record<string, unknown>
+      readonly meta?: Record<string, JsonValue>
       readonly dev?: { readonly source?: { readonly file: string; readonly line: number; readonly column: number } }
     },
     rt: Logix.ModuleRuntime<any, any>,

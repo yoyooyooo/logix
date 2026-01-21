@@ -63,7 +63,7 @@ Prelude = 为下一阶段“试跑 + 可视化 + 可回写”打通的最小基�
 - 基础锚点与可序列化诊断：`specs/016-serializable-diagnostics-and-identity/`
 - 反射与试跑（Manifest/EnvironmentIR/TrialRunReport）：`specs/025-ir-reflection-loader/`
 - TrialRun artifacts 槽位（补充 Static IR）：`specs/031-trialrun-artifacts/`
-- PortSpec/TypeIR（平台引用空间事实源）：`specs/035-module-ports-typeir/`
+- 模块引用空间事实源（PortSpec/TypeIR + CodeAsset）：`specs/035-module-reference-space/`
 - SchemaAST 分层与 registry（解释/校验底座）：`specs/040-schemaast-layered-upgrade/`
 - Playground Editor Intellisense（可选增强，不计入里程碑门槛）：`specs/061-playground-editor-intellisense/`
 - Action Surface manifest（动作锚点）：`specs/067-action-surface-manifest/`

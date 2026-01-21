@@ -4,6 +4,7 @@ import * as Logic from './Logic.js'
 import * as ModuleTagNS from './ModuleTag.js'
 import type { Workflow } from './Workflow.js'
 import * as Action from './internal/action.js'
+import type { JsonValue } from './internal/observability/jsonValue.js'
 import * as WorkflowRuntime from './internal/runtime/core/WorkflowRuntime.js'
 import { isDevEnv } from './internal/runtime/core/env.js'
 import * as LogicUnitMetaInternal from './internal/runtime/core/LogicUnitMeta.js'
@@ -105,7 +106,7 @@ export interface ModuleDescriptor {
   readonly actionKeys: ReadonlyArray<string>
   readonly logicUnits: ReadonlyArray<MountedLogicUnitSummary>
   readonly schemaKeys?: ReadonlyArray<string>
-  readonly meta?: Record<string, unknown>
+  readonly meta?: Record<string, JsonValue>
   readonly source?: DevSource
 }
 
@@ -195,7 +196,7 @@ type ModuleDefBase<
     ...logics: Array<ModuleLogic<Sh, R, E>>
   ) => Layer.Layer<ModuleRuntimeOfShape<Sh>, E, R>
   readonly schemas?: Record<string, unknown>
-  readonly meta?: Record<string, unknown>
+  readonly meta?: Record<string, JsonValue>
   readonly services?: Record<string, Context.Tag<any, any>>
   readonly dev?: ModuleDev
   readonly logic: <R = never, E = unknown>(
@@ -214,7 +215,7 @@ export type AnyModule = {
   readonly actions: Record<string, AnySchema>
   readonly reducers?: Record<string, unknown>
   readonly schemas?: Record<string, unknown>
-  readonly meta?: Record<string, unknown>
+  readonly meta?: Record<string, JsonValue>
   readonly services?: Record<string, Context.Tag<any, any>>
   readonly dev?: ModuleDev
 }
@@ -552,7 +553,7 @@ type MakeDef<Id extends string, SSchema extends AnySchema, AMap extends Action.A
   readonly effects?: EffectsFromMap<NoInfer_<AMap>>
   readonly traits?: unknown
   readonly schemas?: Record<string, unknown>
-  readonly meta?: Record<string, unknown>
+  readonly meta?: Record<string, JsonValue>
   readonly services?: Record<string, Context.Tag<any, any>>
   readonly dev?: ModuleDev
 }
@@ -593,7 +594,7 @@ export type MakeExtendDef<
   readonly immerReducers?: MutatorsFromMap<SSchema, MergeActionMap<BaseActions, ExtActions>>
   readonly effects?: EffectsFromMap<MergeActionMap<BaseActions, ExtActions>>
   readonly schemas?: Record<string, unknown>
-  readonly meta?: Record<string, unknown>
+  readonly meta?: Record<string, JsonValue>
   readonly services?: Record<string, Context.Tag<any, any>>
   readonly dev?: ModuleDev
 }

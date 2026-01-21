@@ -53,4 +53,4 @@
 - IR 全链路（IrPage → TrialRun）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 - IR vs AST（裁判 vs 编辑载体）：`docs/ssot/runtime/logix-core/concepts/04-ir-vs-ast-and-agent-coding.md`
 - 036 阅读小抄（统筹视角）：`specs/036-workbench-contract-suite/reading-cheatsheet.md`
-- 035（SchemaAST 与 TypeIR 的边界提示已回写）：`specs/035-module-ports-typeir/research.md`
+- 035（SchemaAST 与 TypeIR 的边界提示已回写）：`specs/035-module-reference-space/research.md`

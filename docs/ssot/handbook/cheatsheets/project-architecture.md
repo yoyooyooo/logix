@@ -39,3 +39,18 @@ version: 1
 ## 5. 最短入口（新会话）
 
 - `docs/specs/sdd-platform/README.md`：平台侧总入口（含 Workbench + SSoT）
+
+## 6. 项目与编码规范（入口，不新增真相源）
+
+> 本仓的“规范”主要以可执行门禁与 Agent 协议形态存在；这里仅做导航，避免重复写一份第二口径。
+
+- 质量门与验证（一次性、可在 CI 复现）：`quality-gates.md`
+- Public Submodules 与导入约定（避免深层 internal 漂移）：`public-submodules.md`
+- Agent 协议与并行开发安全约束：仓库根 `AGENTS.md`
+
+## 7. 架构指导（边界 / 依赖方向 / 演进）
+
+> 遇到“这能力属于哪个层/该落在哪个包/依赖方向是否允许”的问题，优先从这些入口下钻：
+
+- 长链路总索引（A–K，按 plane 分解）：`long-chain-index.md`
+- 子包用法速查（用户视角，帮助确定“该用哪个包”）：`packages-user-view.md`

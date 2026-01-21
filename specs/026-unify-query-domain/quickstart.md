@@ -80,6 +80,32 @@ export const runtime = Logix.Runtime.make(SearchQuery, {
 3. 无 `Query.Engine.layer` + 有 `Query.Engine.middleware`：配置错误，必须显式失败。
 4. 有 `Query.Engine.layer` + 有 `Query.Engine.middleware`：引擎接管 fetch（缓存/去重/失效），推荐默认（TanStack）。
 
+### 2.0 去糖化视图（De-sugared View / 透明性）
+
+> 目的：保证“语法糖不遮蔽真相源”。遇到 Kit/Query 覆盖不到的边缘场景时，你可以直接退回内核原语定位语义边界。
+
+- `Query.make(id, config)` 等价于：
+  - 用 `Logix.Module.make(id, ...)` 定义一个包含 `{ params; ui; queries }` 的模块 state；
+  - 把 `queries` 规则降解为 `StateTrait.source(...)`（写回 `state.queries.<name>` 的 `ResourceSnapshot` 字段）；
+  - 挂载两条默认 logic：`autoTrigger`（onMount/onKeyChange/手动 refresh）与 `invalidate`（事件化 + optional engine.invalidate + source.refresh）；
+  - 通过 handle 扩展把 `controller.*` 挂到模块句柄上（对齐 Form 的“同形 DX”）。
+  - 入口实现：`packages/logix-query/src/Query.ts`
+
+- `Query.traits({ queries })` 等价于（每条 query 一条 source 规则）：
+  - `{ ['queries.<name>']: Logix.StateTrait.source({ resource: ResourceSpec.id, deps, triggers, debounceMs, concurrency, key }) }`
+  - 入口实现：`packages/logix-query/src/Traits.ts`
+
+- `Query.Engine.middleware()` 等价于一条 EffectOp middleware：
+  - 命中 `kind="trait-source"` 且携带 `meta.resourceId + meta.keyHash` 的请求时，把执行委托给注入的 `Query.Engine.fetch(...)`（缓存/去重/失效由引擎负责）；
+  - 同时保持 Logix 的事实源语义：写回仍由 runtime 的 `keyHash` gate 保证（正确性不依赖“网络是否真正取消”）。
+  - 入口实现：`packages/logix-query/src/internal/middleware/middleware.ts`、`packages/logix-query/src/Engine.ts`
+
+哪些字段会进入 IR/导出边界（只列“关键口径”）：
+
+- **静态可治理**：`resourceId` / `deps` / `triggers` / `debounceMs` / `concurrency`（来自 traits；可进入 Static IR / ControlSurfaceManifest 的 slice）。
+- **运行时闭包（不导出）**：`key(...)` 是运行时函数，不进入 IR；只有其派生结果 `keyHash` 会进入 replay/诊断链路，并作为写回门控锚点。
+- **可导出 meta**：任何进入 IR/证据包/Devtools 的 `meta` 必须是 Slim `JsonValue`（纯 JSON）；口径对齐 `specs/016-serializable-diagnostics-and-identity` 与 `docs/ssot/platform/contracts/03-control-surface-manifest.md`。
+
 ### 2.1 典型迁移：`useStore(state) -> useQuery(queryKey)`（A/B 两种写法）
 
 你描述的旧场景（zustand + TanStack Query）通常长这样：

@@ -29,7 +29,7 @@
     },
     {
       "id": "035",
-      "dir": "specs/035-module-ports-typeir",
+      "dir": "specs/035-module-reference-space",
       "status": "draft",
       "dependsOn": ["031"]
     },

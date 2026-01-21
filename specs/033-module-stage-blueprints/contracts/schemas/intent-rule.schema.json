@@ -16,7 +16,7 @@
         "instanceId": { "type": "string", "minLength": 1 },
         "port": {
           "allOf": [
-            { "$ref": "../../../035-module-ports-typeir/contracts/schemas/port-address.schema.json" },
+            { "$ref": "../../../035-module-reference-space/contracts/schemas/port-address.schema.json" },
             { "type": "object", "properties": { "kind": { "enum": ["event"] } }, "required": ["kind"] }
           ]
         }
@@ -30,13 +30,13 @@
         "instanceId": { "type": "string", "minLength": 1 },
         "port": {
           "allOf": [
-            { "$ref": "../../../035-module-ports-typeir/contracts/schemas/port-address.schema.json" },
+            { "$ref": "../../../035-module-reference-space/contracts/schemas/port-address.schema.json" },
             { "type": "object", "properties": { "kind": { "enum": ["action"] } }, "required": ["kind"] }
           ]
         }
       }
     },
-    "mapping": { "$ref": "../../../034-expression-asset-protocol/contracts/schemas/code-asset-ref.schema.json" },
+    "mapping": { "$ref": "../../../035-module-reference-space/contracts/schemas/code-asset-ref.schema.json" },
     "meta": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
   }
 }

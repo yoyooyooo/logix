@@ -5,13 +5,14 @@
 
 ## Summary
 
-本 spec 是 **总控（Spec Group）**：它不直接交付 runtime 代码，而是把 073/075/076 绑成一个“可交付的系统升级”，并用统一的系统方程约束它们的接口、证据链与演进方向。
+本 spec 是 **总控（Spec Group）**：它不直接交付 runtime 代码，而是把 Runtime Core 的关键 specs 收口为一条“可交付的 runway”，并用统一的系统方程约束它们的接口、证据链与演进方向。
 
 核心目标：
 
 - UI 完全交给 React（只做 `Ω_F`）
 - 逻辑完全交给 Logix（`Π + Δ + Close_{C_T}`）
 - 编排从 watcher 胶水升级为声明式 Program（可编译/可导出 IR）
+- 默认档位近零成本：`diagnostics=off` 不为“会被丢弃的证据/事件”付费（纯赚/近纯赚）
 
 ## Technical Context
 
@@ -31,19 +32,27 @@
 
 ## Milestones（只定义“顺序与门槛”，不复制任务）
 
-- **M0（SSoT 固化）**：公式与分层裁决在 SSoT 显眼处可查（已落：`docs/specs/.../97#1.2`），且 073/075/076 互相引用避免漂移。
+- **M0（SSoT 固化）**：公式与分层裁决在 SSoT 显眼处可查（已落：`docs/specs/.../97#1.2`），且本 runway 的 specs 互相引用避免漂移。
 - **M1（Reference Frame Cutover）**：073 完成 `RuntimeStore + tickSeq` 的 React 单一订阅点（no-tearing）与 `trace:tick` 证据闭环。
-- **M2（Program First）**：075 提供 Workflow IR（含时间算子）并与 tickSeq 证据链打通；至少 1 条 submit 工作流可声明式表达。
-- **M3（Glue Elimination）**：076 以内核 auto-trigger 取代 Query/Form 的 watcher 胶水与反射式解释入口。
-- **M4（Integrated Acceptance）**：用一个端到端场景证明 “React 只渲染 / Logix 只编排”，并能导出 IR/Trace 解释链路。
+- **M2（Default Cost Law）**：070 固化默认档位零诊断税（`diagnostics=off` 近零成本）与单内核边界，为后续优化提供基线。
+- **M3（Fan-out Foundations）**：074（显式 deps selector）+ 068（watcher fan-out 纯赚）把 Action/State 传播从 O(N) 拉回到 O(k)。
+- **M4（Program First）**：075 提供 Workflow IR（含时间算子）并与 tickSeq 证据链打通；至少 1 条 submit 工作流可声明式表达。
+- **M5（Glue Elimination）**：076 以内核 auto-trigger 取代 Query/Form 的 watcher 胶水与反射式解释入口。
+- **M6（Close_{C_T} Perf）**：006 把 Trait converge 的成本上限与降级口径固化成可回归证据。
+- **M7（Calibration, Optional）**：018 基于 014/017 工作负载做默认值审计与用户侧自校准（不影响默认档位）。
 
 ## Perf Evidence Plan（Delegated）
 
 本 group spec 不直接产出 perf 证据；证据落点以各 member spec 为准：
 
 - 073：tick/notify 基线 + React perf boundary
+- 070：默认档位零诊断税（before/after/diff）
+- 074：selector 静态 lane 的回归防线（fail-fast + 读依赖可解释）
+- 068：watcher fan-out / state 通知链路的回归与证据
 - 075：Program watcher vs 手写 watcher 的 before/after
 - 076：大量 sources + 高频输入下 `O(|dirtyPaths|+|affected|)` 的证据
+- 006：Trait converge 的真实场景 + 合成压力场景（证据与阈值）
+- 018：默认值审计/自校准的证据输出（可复跑一致性）
 
 总控验收只检查：证据存在、可比（同 envId/profile/matrixHash）、并且结论已回写到各自 `plan.md`。
 

@@ -9,11 +9,13 @@
 - 我要看时间线/状态树/逻辑流：读 `09-debugging.08-views.md`
 - 我要理解诊断 code 与触发条件：读 `09-debugging.05-diagnostics.md`
 - 我要对齐 `trait:converge` 证据字段与 `light/full` 裁剪：看 `packages/logix-core/src/internal/runtime/core/DebugSink.ts`（`trace:trait:converge` 投影）与 `specs/013-auto-converge-planner/contracts/schemas/trait-converge-*.schema.json`
+- 我要理解“可导出 meta / 降级标记”的统一口径：看 `packages/logix-core/src/internal/observability/jsonValue.ts`（`projectJsonValue`）与 `packages/logix-core/src/internal/state-trait/meta.ts`（`TraitMeta.sanitize`）；导出边界约束以 `docs/ssot/platform/contracts/03-control-surface-manifest.md` 为准
 
 ## Process 诊断补充
 
 - moduleAction 触发仅从 action 对象反射 `actionId`（优先 `_tag`，其次 `type`），payload 视为 unknown，不进入诊断事件载荷。
 - payload 异常或不可序列化不会阻断 Process 链路，但可能导致 actionId 无法匹配（触发被忽略）。
+- 任何进入 DevtoolsSnapshot / Evidence 的 `meta` 都会被投影为 `JsonValue`；若发生裁剪/降级，必须以稳定枚举被观察到（例如 `non_serializable` / `oversized`），避免“静默丢失”造成解释断层。
 
 ## 分节索引
 

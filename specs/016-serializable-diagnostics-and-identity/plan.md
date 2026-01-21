@@ -11,6 +11,7 @@
 - `instanceId` 成为唯一实例锚点（移除双锚点）
 - 错误原因统一降级为 `SerializableErrorSummary`，并显式标记 `downgrade.reason`
 - 诊断分档 `off|light|full`：默认 off 近零成本；启用时可裁剪且有体积预算
+- 收口“可导出 meta”口径：仅承诺 Slim JsonValue（或结构化白名单），并提供开发态可行动的裁剪告警，避免 meta 成为“写了但导不出去”的隐形糖
 
 本特性是 005/011/013/016 的统筹入口：后续实施以 `specs/016-serializable-diagnostics-and-identity/tasks.md` 为唯一入口，避免多入口并行推进造成口径漂移与回放不可证。
 
@@ -91,6 +92,7 @@ packages/logix-core/src/internal/runtime/ModuleRuntime.ts         # instanceId �
 packages/logix-core/src/internal/runtime/BoundApiRuntime.ts       # lifecycle setup-only phase guard + 诊断事件
 packages/logix-core/src/internal/runtime/core/Lifecycle.ts        # initProgress + init/destroy 语义（对齐 011）
 packages/logix-core/src/internal/observability/jsonValue.ts       # JsonValue 投影/裁剪（预算/循环引用）
+packages/logix-core/src/internal/state-trait/meta.ts              # TraitMeta（Slim/可导出）+ sanitize（裁剪规则）
 packages/logix-react/src/components/RuntimeProvider.tsx           # onError context 单锚点（Deferred 交付面）
 packages/logix-devtools-react/src/state/compute.ts                # 消费面以 instanceId 聚合（Deferred 交付面）
 apps/docs/content/docs/**                                         # 用户文档迁移（Deferred 交付面）

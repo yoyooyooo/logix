@@ -43,7 +43,7 @@
 - **链路映射（Intent → Flow/Logix → Code → Runtime）**
   - 032 处于“平台语义层 ↔ UI 投影”边界：把 UI 行为收敛成“对语义层派发事件/动作”，并要求可回放/可验收（通过 031/036 的 trial-run 工件闭环）。
 - **依赖/修改的 SSoT（docs-first）**
-  - 端口/可引用空间事实源：`specs/035-module-ports-typeir/spec.md`
+  - 端口/可引用空间事实源：`specs/035-module-reference-space/spec.md`
   - 语义蓝图与语义边：`specs/033-module-stage-blueprints/spec.md`
   - trial-run/IR/evidence 链路：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 - **IR & anchors（统一最小 IR + 稳定锚点）**

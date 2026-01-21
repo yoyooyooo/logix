@@ -39,7 +39,7 @@
             },
             "codeAssets": {
               "type": "array",
-              "items": { "$ref": "../../../034-expression-asset-protocol/contracts/schemas/code-asset.schema.json" }
+              "items": { "$ref": "../../../035-module-reference-space/contracts/schemas/code-asset.schema.json" }
             }
           }
         },

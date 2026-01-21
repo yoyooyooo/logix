@@ -29,6 +29,27 @@ description: 用 @logixjs/query 构建可回放的查询模块，并按需接入
 - `concurrency`：并发策略（例如 `switch`、`exhaust-trailing`）
 - `status`：`idle/loading/success/error`
 
+## 0.3 去糖化视图（保持原语可见）
+
+本节用于避免“只会用糖，不知道真相源”的心智模型。遇到 `Query` 覆盖不到的边缘场景时，你可以直接退回内核原语定位语义边界。
+
+- `Query.make(id, config)` 本质上是：
+  - 一个普通的 `Logix.Module.make(id, ...)`（模块 state 拥有 `{ params; ui; queries }` 三个命名空间）
+  - 再叠加 `Query.traits(...)` 的降解：把每条 query 规则映射到 `StateTrait.source(...)`（写回到 `state.queries.<name>`）
+  - 再叠加两条默认 logic：`autoTrigger`（onMount/onKeyChange/手动 refresh）与 `invalidate`（事件化 + optional engine.invalidate + source.refresh）
+  - 再叠加 handle 扩展：对外暴露 `controller.*`（与 `@logixjs/form` 同形）
+- `Query.traits({ queries })` 的降解形态（每条 query → 一条 source）：
+  - `{ ['queries.<name>']: Logix.StateTrait.source({ resource: ResourceSpec.id, deps, triggers, debounceMs, concurrency, key }) }`
+- `Query.Engine.middleware()` 只是一个 EffectOp middleware：
+  - 拦截 `kind="trait-source"` 且携带 `meta.resourceId + meta.keyHash` 的请求
+  - 把执行委托给注入的 `Query.Engine.fetch(...)`（缓存/去重），同时 Logix 仍然拥有 `keyHash` 门控 + 写回语义
+
+导出边界（只列关键口径）：
+
+- 静态可治理：`resourceId/deps/triggers/concurrency/...`（来自 traits，可进入 Static IR / ControlSurface slices）
+- 永不导出：`key(...)`（运行时闭包）——只记录/导出其派生结果 `keyHash`
+- 可导出 `meta` 必须是 Slim `JsonValue`（纯 JSON）；函数/闭包无效，会被裁剪/降级并留下可解释标记
+
 ## 1) 最小用法：定义 Query Module
 
 ```ts

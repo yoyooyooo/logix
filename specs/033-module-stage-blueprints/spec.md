@@ -11,7 +11,7 @@
 - 平台侧以“Module 舞台”为基准能力：Form 是一种特化 Module（kit），但平台的编排与投影必须覆盖任意 Module。
 - 运行时不解释蓝图：蓝图通过 codegen 转换为可运行模块；正常运行路径不引入额外解释成本。
 - UI 是投影：UI 只读自身绑定模块状态，只派发自身模块事件/动作；跨模块交互只通过语义边表达（与 032 对齐）。
-- 本 spec 与以下规格对齐并互相依赖：`031-trialrun-artifacts`（试运行/验收 IR 工件）、`032-ui-projection-contract`（投影边界）、`034-expression-asset-protocol`（映射/校验资产协议）、`035-module-ports-typeir`（端口/类型 IR 事实源）。
+- 本 spec 与以下规格对齐并互相依赖：`031-trialrun-artifacts`（试运行/验收 IR 工件）、`032-ui-projection-contract`（投影边界）、`035-module-reference-space`（引用空间事实源：PortSpec/TypeIR + CodeAsset 协议）。
 - 语义蓝图必须具备强溯源：可将关键节点/边回指到上游 Spec/Scenario/Step 的稳定锚点（例如 trackId/blockId），以支撑回放、对照验收与 drift detection（但不要求 UI 暴露这些细节）。
 
 ## Motivation / Background

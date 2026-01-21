@@ -5,7 +5,7 @@
 
 React 层的职责很单一：把 `FormBlueprint` 投影成 hooks，并把 DOM 事件适配为 Form 的 module actions（`setValue/blur/array*`）。
 
-实现落点：`packages/form/src/react/*`
+实现落点：`packages/logix-form/src/react/*`
 
 ## 1) `useForm(blueprint)`：拿到 controller + runtime
 
@@ -19,7 +19,7 @@ const form = useForm(UserForm) // UserForm 是 Form.make(...) 的 Blueprint
 
 ## 2) `useField(form, valuePath)`：字段订阅与事件派发
 
-实现落点：`packages/form/src/react/useField.ts`
+实现落点：`packages/logix-form/src/react/useField.ts`
 
 返回值包含：
 
@@ -32,14 +32,14 @@ const form = useForm(UserForm) // UserForm 是 Form.make(...) 的 Blueprint
 
 ## 3) `useFieldArray(form, listPath)`：动态数组（fields + array actions）
 
-实现落点：`packages/form/src/react/useFieldArray.ts`
+实现落点：`packages/logix-form/src/react/useFieldArray.ts`
 
 - `fields[i].id`：根据 list 的 `trackBy` 与 rowIdStore 生成稳定 key
 - `append/prepend/remove/swap/move`：派发 `array*` actions
 
 ## 4) `useFormState(form, selector)`：订阅聚合视图（FormView）
 
-实现落点：`packages/form/src/react/useFormState.ts`
+实现落点：`packages/logix-form/src/react/useFormState.ts`
 
 `FormView` 是对 `$form/errors/ui` 的聚合视图，用于 UI 层 O(1) 推导：
 

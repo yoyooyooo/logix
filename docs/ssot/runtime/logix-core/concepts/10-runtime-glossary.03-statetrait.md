@@ -6,6 +6,7 @@
     - 生成结构化的 Graph 与 Plan，用于 Runtime 与 DevTools 消费；
     - 以 Module 维度作为边界，不跨模块偷偷引入隐式字段依赖。
   - 在实现层由 `@logixjs/core` 内部的 StateTrait 模块承载（见 `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md` 与 `specs/000-module-traits-runtime/*`），早期分离包 `@logixjs/data` 的方案已被统一收敛到 StateTrait。
+  - **去糖化视图（重要）**：`StateTrait.node/list/$root` 只是编译期组合子；build 后会展开为标准 entries（computed/source/link/check）。Runtime/Devtools/TrialRun 只消费展开后的 entries/graph/plan（示例与契约见 `specs/007-unify-trait-system/contracts/state-trait.md`）。
 - **StateTraitGraph / StateTraitPlan / StateTraitProgram**
   - Graph（图）：字段与能力的结构视图（节点 = 字段；边 = 计算/联动/资源依赖）；
   - Plan（计划）：Runtime 执行这些能力的步骤清单（何时重算 computed、何时刷新 source、何时进行 link 传播）；

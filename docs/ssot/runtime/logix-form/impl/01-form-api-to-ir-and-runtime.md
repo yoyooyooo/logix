@@ -21,8 +21,8 @@
 
 对应落点：
 
-- DSL：`packages/form/src/dsl/from.ts`（组装 `derived/rules/traits`）
-- Blueprint：`packages/form/src/form.impl.ts`（`Form.make` 主实现）
+- DSL：`packages/logix-form/src/internal/dsl/from.ts`（组装 `derived/rules/traits`）
+- Blueprint：`packages/logix-form/src/internal/form/impl.ts`（`Form.make` 主实现）
 
 ---
 
@@ -41,7 +41,7 @@ rules: z(
 ```
 
 - 产物：`RulesSpec`（`_tag: "FormRulesSpec"` + `decls: RulesDecl[]`）
-- decl 类型：`packages/form/src/rule.ts`（`FieldDecl/RootDecl/ListDecl`）
+- decl 类型：`packages/logix-form/src/Rule.ts`（`FieldDecl/RootDecl/ListDecl`）
 
 ### 1.2 Node DSL（zod-like 结构化 authoring）
 
@@ -57,9 +57,9 @@ const rules = z.schema(
 - Node：`RulesNode`（`RulesFieldNode/RulesObjectNode/RulesArrayNode`）
 - 编译：`compileSchema(...)` 把 node tree **降解为等价 decl list**（仍然回到 `RulesSpec.decls`）
 
-对应落点：`packages/form/src/dsl/rules.ts`
+对应落点：`packages/logix-form/src/internal/dsl/rules.ts`
 
-> 关键裁决：`RulesSpec.decls` 是 rules 的 **最小 IR**（最少嵌套、易 diff、易序列化、易做诊断清单）。Node DSL 只是 authoring 语法糖，最终必须回到同一份 decl list。
+> 关键裁决：`RulesSpec.decls` 是 rules 的 **最小规范形（Canonical Form）**（最少嵌套、易 diff、易静态分析）。它仍包含闭包（validate 函数），**不是** Root IR / Static IR 的一部分；可序列化的解释清单请看 `RulesManifest`（第 5 节）以及 logix-core 的 Debug/TrialRun 工件。
 
 ---
 
@@ -76,7 +76,7 @@ Form 的 valuePath 约束是“点分段”：
 - `CanonicalPath<T>` / `CanonicalValue<T, P>`
 - `CanonicalListPath<T>` / `CanonicalListItem<T, P>`
 
-对应落点：`packages/form/src/types.ts`
+对应落点：`packages/logix-form/src/internal/form/types.ts`
 
 ---
 
@@ -84,7 +84,7 @@ Form 的 valuePath 约束是“点分段”：
 
 核心目标：把 rules **编译为等价的 `@logixjs/core` StateTraitSpec**，让校验完全复用 runtime 的依赖图/增量 validate/诊断链路。
 
-编译入口：`packages/form/src/internal/form/rules.ts`（`compileRulesToTraitSpec`）
+编译入口：`packages/logix-form/src/internal/form/rules.ts`（`compileRulesToTraitSpec`）
 
 ### 3.1 field decl → StateTrait check entry
 
@@ -106,6 +106,23 @@ Form 的 valuePath 约束是“点分段”：
 - 编译到 `StateTrait.list({ identityHint, item, list })`
 - `identityHint.trackBy` 只用于 runtime 生成稳定 rowId（并参与诊断解释与降级）
 
+### 3.4 去糖化视图（RulesSpec ⇔ StateTraitSpec）
+
+这里的“去糖化”指的是：把 Form 的 rules/derived 写法**展开为等价的内核原语**，以便定位语义边界与真相源（避免“规则看起来是 JSON，其实藏了闭包/隐式行为”）。
+
+- `FieldDecl(path, rule, { errorTarget })` ⇒ 产出 `StateTraitEntry(kind="check")`：
+  - `fieldPath = path`（scope）
+  - `deps = rule.deps`（或按规则补齐前缀后的 deps）
+  - `meta.writeback.path = errors.<scope>`（例如 `errorTarget="$self"` ⇒ `errors.<path>.$self`）
+- `RootDecl(rule)` ⇒ 产出 `$root` scope 下的 `StateTraitEntry(kind="check")`（默认写回 `errors.$root`）
+- `ListDecl(listPath, { identity, item?, list? })` ⇒ 产出 `StateTrait.list({ identityHint, item, list })`：
+  - `identityHint.trackBy` 仅用于稳定 rowId（对外仍是 index 语义），并进入可解释链路
+
+**口径提醒**：
+
+- **结构可降解**：scope/deps/写回目标/identityHint 可进入可序列化的清单与 IR（如 `RulesManifest`、TraitGraph/Plan、TrialRun）。
+- **闭包不可导出**：`validate` 函数本体不会进入 Root IR；运行时通过 Debug/Trace 记录“触发了哪些规则、写回了哪些错误”，用于解释与回放。
+
 ---
 
 ## 4) 运行时：validate/写回/数组 rows 口径
@@ -114,7 +131,7 @@ Form 的 valuePath 约束是“点分段”：
 
 Form 的默认 wiring 把 UI 事件映射为“按 scope 增量 validate”：
 
-- 入口：`packages/form/src/logics/install.ts`
+- 入口：`packages/logix-form/src/internal/form/install.ts`
 - 语义：两阶段 gate（`validateOn/reValidateOn`）+ `debounceMs`
 
 更完整的触发口径见：`../02-logic-preset.md`
@@ -135,7 +152,7 @@ Form 的默认 wiring 把 UI 事件映射为“按 scope 增量 validate”：
 - values：`items.0.name`
 - errors：`errors.items.rows.0.name`
 
-路径映射工具：`packages/form/src/path.ts`
+路径映射工具：`packages/logix-form/src/Path.ts`
 
 同时，runtime validate 会在行级错误对象上写入 `$rowId`，用于 identity/诊断/对齐（避免重排后“错误跟错行”）。
 
@@ -145,16 +162,16 @@ Form 的默认 wiring 把 UI 事件映射为“按 scope 增量 validate”：
 
 为了让“规则是什么/依赖什么/在哪个 scope/采用什么 identity”可解释且可序列化，Form 提供了 RulesManifest：
 
-- 构建：`packages/form/src/internal/form/rules.ts`（`buildRulesManifest`）
+- 构建：`packages/logix-form/src/internal/form/rules.ts`（`buildRulesManifest`）
 - 形状：
   - `lists`: `{ path: string[]; identity: ListIdentityPolicy }[]`
-  - `rules`: `{ ruleId; scope; deps; validateOn?; meta? }[]`
+  - `rules`: `{ ruleId; scope; deps; validateOn?; meta? }[]`（当前 `meta` 主要用于记录来源：rules/traits/schema-bridge）
 
 对外暴露点（Form handle extension）：
 
 - `form.rulesManifest()`
 - `form.rulesManifestWarnings()`
 
-对应落点：`packages/form/src/form.impl.ts`
+对应落点：`packages/logix-form/src/internal/form/impl.ts`
 
 > 关系说明：RulesManifest 是 form 层的“规则清单 IR”；真正的执行计划、依赖图与动态 trace 仍由 logix-core 的 trait graph/validate 产出（DebugSink/DevtoolsHub）。两者应保持“同源可对照”，避免出现第二份不可回放的解释链路。

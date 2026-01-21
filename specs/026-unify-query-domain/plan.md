@@ -41,6 +41,7 @@
 - 诊断事件必须 slim、可序列化；diagnostics off 接近零成本
 - 稳定 identity：沿用 moduleId/instanceId/txnSeq/opSeq/keyHash，不引入随机/时间默认作为关键标识
 - 严格事务边界：事务窗口内禁止 IO/async；Query 的写回必须通过 trait/stateTrait 通道完成
+- 透明性与可导出 meta：所有 Query 语法糖必须可去糖化到 `StateTrait.source`/`EffectOp` 主线；进入 IR/导出边界的 `meta` 仅承诺 Slim JsonValue（或结构化白名单），口径对齐 `specs/016-serializable-diagnostics-and-identity`（避免各处自定义 meta 规则导致漂移）
 - 编译期一次性：Query 规则的 normalize/build SHOULD 在 `Query.make`（模块定义期）完成并可复用；运行期热路径不得重复解析/构图/生成规则结构（对齐 Form 028 的“定义期构建、运行期只执行”约束）
 - 类型与 DX（强约束，026 裁决）：
   - `deps` 的类型约束应尽可能收窄为 `StateTrait.StateFieldPath<{ params: TParams; ui: TUI }>`（深度上限 4，避免 TS Server 退化），从而让 `"params.*" / "ui.*"` 的路径拼写尽量在编译期暴露；

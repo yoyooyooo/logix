@@ -2,7 +2,7 @@
 
 **Group**: `specs/080-full-duplex-prelude`
 **Derived From**: `registry`
-**Members**: `specs/005-unify-observability-protocol`, `specs/016-serializable-diagnostics-and-identity`, `specs/025-ir-reflection-loader`, `specs/031-trialrun-artifacts`, `specs/035-module-ports-typeir`, `specs/040-schemaast-layered-upgrade`, `specs/061-playground-editor-intellisense`, `specs/067-action-surface-manifest`, `specs/078-module-service-manifest`, `specs/081-platform-grade-parser-mvp`, `specs/082-platform-grade-rewriter-mvp`, `specs/079-platform-anchor-autofill`, `specs/085-logix-cli-node-only`, `specs/083-named-logic-slots`, `specs/084-loader-spy-dep-capture`
+**Members**: `specs/005-unify-observability-protocol`, `specs/016-serializable-diagnostics-and-identity`, `specs/025-ir-reflection-loader`, `specs/031-trialrun-artifacts`, `specs/035-module-reference-space`, `specs/040-schemaast-layered-upgrade`, `specs/061-playground-editor-intellisense`, `specs/067-action-surface-manifest`, `specs/078-module-service-manifest`, `specs/081-platform-grade-parser-mvp`, `specs/082-platform-grade-rewriter-mvp`, `specs/079-platform-anchor-autofill`, `specs/085-logix-cli-node-only`, `specs/083-named-logic-slots`, `specs/084-loader-spy-dep-capture`
 **Created**: 2026-01-09
 
 > 本文件是“执行索引清单”：只做跳转与 gate 归纳，不复制成员 spec 的实现 tasks（避免并行真相源）。
@@ -13,7 +13,7 @@
 - [ ] `016-serializable-diagnostics-and-identity` 已按其 tasks/quickstart 达标（入口：`specs/016-serializable-diagnostics-and-identity/tasks.md`、`specs/016-serializable-diagnostics-and-identity/quickstart.md`）
 - [ ] `025-ir-reflection-loader` 已按其 tasks/quickstart 达标（入口：`specs/025-ir-reflection-loader/tasks.md`、`specs/025-ir-reflection-loader/quickstart.md`）
 - [ ] `031-trialrun-artifacts` 已按其 tasks/quickstart 达标（入口：`specs/031-trialrun-artifacts/tasks.md`、`specs/031-trialrun-artifacts/quickstart.md`）
-- [ ] `035-module-ports-typeir` 已按其 tasks/quickstart 达标（入口：`specs/035-module-ports-typeir/tasks.md`、`specs/035-module-ports-typeir/quickstart.md`）
+- [ ] `035-module-reference-space` 已按其 tasks/quickstart 达标（入口：`specs/035-module-reference-space/tasks.md`、`specs/035-module-reference-space/quickstart.md`）
 - [ ] `040-schemaast-layered-upgrade` 已按其 tasks/quickstart 达标（入口：`specs/040-schemaast-layered-upgrade/tasks.md`、`specs/040-schemaast-layered-upgrade/quickstart.md`）
 - [ ] `061-playground-editor-intellisense` 已按其 tasks/quickstart 达标（入口：`specs/061-playground-editor-intellisense/tasks.md`、`specs/061-playground-editor-intellisense/quickstart.md`）
 - [ ] `067-action-surface-manifest` 已按其 tasks/quickstart 达标（入口：`specs/067-action-surface-manifest/tasks.md`、`specs/067-action-surface-manifest/quickstart.md`）
@@ -29,4 +29,3 @@
 
 - 若需要跨 spec 联合验收：优先用 `$speckit acceptance <member...>`（multi-spec mode）。
 - 若需要查看成员 tasks 进度汇总：用 `extract-tasks.sh --json --feature ...`。
-

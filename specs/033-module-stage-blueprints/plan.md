@@ -46,8 +46,7 @@
 - **依赖/修改的 SSoT（docs-first）**
   - 031 TrialRun artifacts 槽位：`specs/031-trialrun-artifacts/spec.md`
   - 032 UI 投影边界：`specs/032-ui-projection-contract/spec.md`
-  - 034 表达式/校验资产协议：`specs/034-expression-asset-protocol/spec.md`
-  - 035 Module 端口/类型 IR：`specs/035-module-ports-typeir/spec.md`
+  - 035 模块引用空间事实源（PortSpec/TypeIR + CodeAsset 协议）：`specs/035-module-reference-space/spec.md`
   - IR 全链路（IrPage→TrialRun）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 - **IR & anchors（统一最小 IR + 稳定锚点）**
   - `ruleId` 必须可映射到动态 Trace（后续由 runtime/Devtools 建立锚点映射），避免 UI 只靠位置高亮造成漂移。

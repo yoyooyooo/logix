@@ -29,5 +29,4 @@
 ## References
 
 - 036 Contract Suite：`specs/036-workbench-contract-suite/spec.md`
-- 035 PortSpec/TypeIR：`specs/035-module-ports-typeir/spec.md`
-- 034 CodeAsset：`specs/034-expression-asset-protocol/spec.md`
+- 035 模块引用空间事实源（PortSpec/TypeIR + CodeAsset）：`specs/035-module-reference-space/spec.md`

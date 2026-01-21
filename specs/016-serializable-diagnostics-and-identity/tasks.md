@@ -147,6 +147,15 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 
 ---
 
+## Phase 7: Meta 透明性与“可导出 meta”合同（增量）
+
+**Purpose**: 把 `meta` 从“隐式对象图”收敛成可解释、可验证、可导出的 Slim 载荷；并为 Kit/Query/Form 等上层语法糖提供一致的去糖化锚点（避免语义漂移与双真相源）。
+
+- [X] T041 [P] 固化合同：Root IR / ControlSurfaceManifest / Static IR 中的可导出 `meta` 仅承诺 JsonValue（或结构化白名单），函数/闭包不会进入 IR（会被裁剪且可定位）；文档落点：`docs/ssot/platform/contracts/03-control-surface-manifest.md`、`specs/016-serializable-diagnostics-and-identity/contracts/README.md`、`docs/ssot/runtime/logix-core/observability/09-debugging.md`
+- [X] T042 [P] 收敛 `JsonValue` 类型真相源：统一以 `packages/logix-core/src/internal/observability/jsonValue.ts` 为唯一类型定义，并让 `packages/logix-core/src/internal/state-trait/meta.ts` 复用该类型（避免两处 `JsonValue` 漂移）
+- [X] T043 类型门禁：将“会进入 IR/导出边界”的 `meta` public surface 从 `Record<string, unknown>` 收敛到 `JsonValue`/`TraitMeta`（至少覆盖 `StateTrait`/`Module`/`BoundApiRuntime`），并一次性修复受影响调用点与示例：`packages/logix-core/src/StateTrait.ts`、`packages/logix-core/src/Module.ts`、`packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`
+- [X] T044 [P] 开发态告警：当 `TraitMeta.sanitize` 丢弃字段/值（或 JsonValue 投影发生 downgrade）时，发出 Slim 且可序列化的诊断事件并可在 Devtools/DebugSink 中定位；补齐单测覆盖：`packages/logix-core/src/internal/state-trait/meta.ts`、`packages/logix-core/src/internal/state-trait/ir.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`packages/logix-core/test/*`
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

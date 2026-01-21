@@ -7,7 +7,7 @@
 
 ## 1) wiring：install logic（UI 事件 → scopedValidate / source refresh）
 
-实现落点：`packages/form/src/logics/install.ts`
+实现落点：`packages/logix-form/src/internal/form/install.ts`
 
 职责：
 
@@ -24,7 +24,7 @@
 
 ## 2) controller：默认动作（React/Logic 一致）
 
-实现落点：`packages/form/src/form.ts`（`controller.make(runtime)`）
+实现落点：`packages/logix-form/src/internal/form/controller.ts`（`makeFormController`）
 
 - `validate()`：manual root validate（规则）+ Schema decode 写回 `errors.$schema`
 - `validatePaths(paths)`：对每个 path 做 manual scoped validate（field/list 分流）
@@ -33,7 +33,7 @@
 
 ## 3) 动态数组：为什么要同步 `ui.<listPath>` 与 `errors.<listPath>.rows`
 
-实现落点：`packages/form/src/form.ts`（`syncAuxArrays`）
+实现落点：`packages/logix-form/src/internal/form/arrays.ts`（`syncAuxArrays`）
 
 数组结构动作会导致 index 迁移，如果只更新 values，会出现“行错位”：上一行的 touched/dirty/错误显示到下一行。
 
@@ -47,7 +47,7 @@
 
 Form 的热点是“高频输入 + 大表单/大列表”。selector 只能减少 React 渲染，无法抵消 Runtime 的 converge/validate 成本。
 
-实现落点：`packages/form/src/form.ts` reducers 的第三参 `sink(path)`：
+实现落点：`packages/logix-form/src/internal/form/reducer.ts` reducers 的第三参 `sink(path)`：
 
 - 内置 reducers 显式标注受影响路径，避免事务退化为 `dirty_all_fallback`
 - 业务自定义逻辑若高频写回，优先 `$.state.mutate(...)` / `Form.Trait.*`（mutative 自动采集 patchPaths）

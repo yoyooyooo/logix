@@ -8,6 +8,7 @@ import { Effect } from 'effect'
 import type { BoundApi } from './Bound.js'
 import type { ExternalStore as ExternalStoreType } from './ExternalStore.js'
 import * as Model from './internal/state-trait/model.js'
+import type { TraitMeta as TraitMetaInternal } from './internal/state-trait/meta.js'
 import * as FieldPath from './internal/state-trait/field-path.js'
 import * as RowId from './internal/state-trait/rowid.js'
 import * as InternalBuild from './internal/state-trait/build.js'
@@ -23,6 +24,7 @@ export type StateTraitPlan = Model.StateTraitPlan
 export type StateTraitNode<Input = unknown, Ctx = unknown> = Model.StateTraitNode<Input, Ctx>
 export type StateTraitList<Item = unknown> = Model.StateTraitList<Item>
 export type CheckRule<Input = unknown, Ctx = unknown> = Model.CheckRule<Input, Ctx>
+export type TraitMeta = TraitMetaInternal
 
 export type StateFieldPath<S> = FieldPath.StateFieldPath<S>
 export type StateAtPath<S, P> = FieldPath.StateAtPath<S, P>
@@ -110,7 +112,7 @@ export const source = <
   /**
    * Serializable metadata for Devtools/docs (whitelisted fields are extracted during build).
    */
-  readonly meta?: Record<string, unknown>
+  readonly meta?: TraitMeta
 }): StateTraitEntry<S, P> => {
   const key = (state: Readonly<S>): unknown => {
     const args = (input.deps as ReadonlyArray<string>).map((dep) => RowId.getAtPath(state as any, dep))
@@ -134,7 +136,7 @@ export const externalStore = <S extends object, P extends StateFieldPath<S>, T =
   readonly equals?: (prev: StateAtPath<S, P>, next: StateAtPath<S, P>) => boolean
   readonly coalesceWindowMs?: number
   readonly priority?: Model.TraitLane
-  readonly meta?: Record<string, unknown>
+  readonly meta?: TraitMeta
 }): StateTraitEntry<S, P> =>
   ({
     fieldPath: undefined as unknown as P,

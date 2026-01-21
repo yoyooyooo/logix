@@ -6,13 +6,37 @@
     {
       "id": "073",
       "dir": "specs/073-logix-external-store-tick",
-      "status": "implementing",
+      "status": "done",
       "dependsOn": []
+    },
+    {
+      "id": "070",
+      "dir": "specs/070-core-pure-perf-wins",
+      "status": "draft",
+      "dependsOn": ["073"]
+    },
+    {
+      "id": "074",
+      "dir": "specs/074-readquery-create-selector",
+      "status": "draft",
+      "dependsOn": ["073"]
+    },
+    {
+      "id": "068",
+      "dir": "specs/068-watcher-pure-wins",
+      "status": "draft",
+      "dependsOn": ["073", "074", "070"]
+    },
+    {
+      "id": "006",
+      "dir": "specs/006-optimize-traits",
+      "status": "draft",
+      "dependsOn": ["073", "070"]
     },
     {
       "id": "075",
       "dir": "specs/075-workflow-codegen-ir",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["073"]
     },
     {
@@ -20,6 +44,12 @@
       "dir": "specs/076-logix-source-auto-trigger-kernel",
       "status": "draft",
       "dependsOn": ["073", "075"]
+    },
+    {
+      "id": "018",
+      "dir": "specs/018-periodic-self-calibration",
+      "status": "draft",
+      "dependsOn": ["070", "006"]
     }
   ]
 }

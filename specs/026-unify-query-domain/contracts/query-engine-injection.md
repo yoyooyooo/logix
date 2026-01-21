@@ -59,7 +59,7 @@ export interface EngineService {
     /** ResourceSpec.load 的 Effect（middleware 侧提供）。 */
     readonly effect: Effect.Effect<A, unknown, never>
     /** MUST 可序列化且 Slim；默认建议为 undefined（lazy）。 */
-    readonly meta?: unknown
+    readonly meta?: JsonValue
   }) => Effect.Effect<A, unknown, never>
 
   readonly invalidate: (request: InvalidateRequest) => Effect.Effect<void, unknown, never>

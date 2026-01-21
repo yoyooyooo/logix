@@ -44,6 +44,5 @@
 
 ## References
 
-- 035 PortSpec/TypeIR（引用空间事实源）：`specs/035-module-ports-typeir/spec.md`
+- 035 模块引用空间事实源（PortSpec/TypeIR + CodeAsset）：`specs/035-module-reference-space/spec.md`
 - 033 语义蓝图（语义事实源）：`specs/033-module-stage-blueprints/spec.md`
-- 034 资产协议（映射/条件表达式）：`specs/034-expression-asset-protocol/spec.md`

@@ -35,6 +35,7 @@
 - SnapshotToken/订阅：`DevtoolsSnapshot` 可保持稳定引用（mutable view，零拷贝）；任何对外可见变化必须推动 `snapshotToken` 单调变化，且不得出现“token 未变但快照对外可见字段发生变化”的情况。通知默认以 microtask 合并（延迟上界=一次 microtask flush）。
 - 事务窗口：同步边界，禁止异步边界与外部 IO；长链路必须拆分为多入口事务。
 - 可导出事件：载荷必须 Slim 且可序列化；诊断禁用时近零额外开销。
+- meta/JsonValue 合同：以 `specs/016-serializable-diagnostics-and-identity` 为裁决源；本特性不再发明第二套 `meta` 类型/裁剪规则，避免协议漂移。
 - 事件窗口/派生缓存：必须有容量上界与回收策略，避免无界增长。
   **Scale/Scope**:
 - 目标覆盖高频事件（≥ 100,000 条）与长时间运行（≥ 10,000 次实例 create/destroy）两类场景；

@@ -73,35 +73,36 @@
 
 ---
 
-## 建议实施路线（把“怎么做”说得更可执行）
+## Runtime：未实施完毕清单（整合后：三条跑道）
 
-> 说明：这里给的是**排期/实施视角**的建议顺序（便于一个个落地闭环），不是语义裁决；语义口径仍以各 spec 目录内 `spec.md/plan.md` 为准。
+> 口径：只收录“仍有未完成 tasks（`tasks.md` 内存在 `- [ ]`）”且与 Runtime 相关的 spec；并将其收口到少数跑道，避免概念/边界重叠与并行真相源。
 
-### Phase 0：先把“命名与真相源”收敛（阻断文档漂移）
+### 跑道 1：Runtime Core / Control Laws（总控：077）
 
-- 目标：平台/协议侧统一叫 `workflow`（Π），对外 DX 的 `FlowProgram` 收敛为 `Workflow`（不做兼容层，forward-only）。
-- 主要 specs：`075`（命名裁决）、`073`（分层口径与 pr.md）
-- 完成标志：`specs/073-logix-external-store-tick/pr.md` 的裁决点在 `specs/075-flow-program-codegen-ir/spec.md` 与对应 contracts/quickstart/tasks 中完成同步；平台 glossary/Workbench 术语不再混用。
+- [`077-logix-control-laws-v1`](./077-logix-control-laws-v1)（Group）— 参考系 + 控制律 + 热路径性能（成员关系 SSoT：`specs/077-logix-control-laws-v1/spec-registry.json`）
+  - 未完成成员：[`070-core-pure-perf-wins`](./070-core-pure-perf-wins)、[`074-readquery-create-selector`](./074-readquery-create-selector)、[`068-watcher-pure-wins`](./068-watcher-pure-wins)、[`006-optimize-traits`](./006-optimize-traits)、[`076-logix-source-auto-trigger-kernel`](./076-logix-source-auto-trigger-kernel)、[`018-periodic-self-calibration`](./018-periodic-self-calibration)
+- [`093-logix-kit-factory`](./093-logix-kit-factory)（Draft）— 语法糖机器（Kit/PortKit）：把端口型能力统一接到 Trait/Logic/Workflow（零副作用 + 稳定 identity；Router 只是实例）
 
-### Phase 1：Runtime 地基闭环（tick 参考系 + 受限绑定）
+### 跑道 2：Async Coordination（总控：087）
 
-- 目标：把“写侧证据（dirty-set）→ 事务内收敛（traits）→ 订阅增量（ReadQuery）→ no-tearing（tickSeq）”打通，并建立可复现的性能/诊断基线。
-- 主要 specs：`073` → `068` → `076`（必要时并行 `016/027/014/017`）
-- 完成标志：最小基线可复现（perf matrix + diff），且默认 `diagnostics=off` 不引入常态开销税；关键退化（dirtyAll/strictGate）都有 Slim 诊断与可回链锚点。
+- [`087-async-coordination-roadmap`](./087-async-coordination-roadmap)（Group）— 统一异步协调面（pending/optimistic/resource/busy/trace）
+  - 未完成成员：[`088-async-action-coordinator`](./088-async-action-coordinator)、[`089-optimistic-protocol`](./089-optimistic-protocol)、[`090-suspense-resource-query`](./090-suspense-resource-query)、[`091-busy-indicator-policy`](./091-busy-indicator-policy)、[`092-e2e-latency-trace`](./092-e2e-latency-trace)
 
-### Phase 2：出码/回写跑道闭环（从“可导出”到“可增量改写”）
+### 跑道 3：Observability Protocol + Devtools（协议真相源：005）
 
-- 目标：把 Root IR / workflow slice 做到可 cache / 可 diff / 可回写（Parser/Rewrite），并能落到可运行的最小工具链闭环。
-- 主要 specs：`075` → `079` → `081` → `082`（按需穿插 `080/083/078`）
-- 完成标志：同一仓库在不同环境导出一致 digest；Parser/Rewrite 能做“最小补丁”且有解释性 diff（无兼容层，改动以迁移说明替代）。
+- [`005-unify-observability-protocol`](./005-unify-observability-protocol)（Draft）— 观测协议与聚合引擎（跨宿主传输 + 证据包导入导出）
+- [`038-devtools-session-ui`](./038-devtools-session-ui)（Draft）— Devtools Session-First UI（消费 005 的协议与证据）
 
-### Phase 3：平台工具链最小可用（CLI + Alignment Lab）
+### Frozen：core-ng（tasks 未清零，但不排期）
 
-- 目标：让平台侧能够“读 IR → 跑对齐 → 出报告/回放”，不依赖手工读源码。
-- 主要 specs：`086` + `085`（并行补 `084/092` 形成端到端证据链）
-- 完成标志：CLI 可以一键跑通“导出 Root IR → trial run → 产出 RunResult/Trace/Tape（可选）”，并能被 CI/平台消费。
+- [`053-core-ng-aot-artifacts`](./053-core-ng-aot-artifacts)（Frozen）— core-ng AOT Artifacts（Static IR / Exec IR 工件化）
+- [`054-core-ng-wasm-planner`](./054-core-ng-wasm-planner)（Frozen）— core-ng Wasm Planner（可选极致路线）
+- [`055-core-ng-flat-store-poc`](./055-core-ng-flat-store-poc)（Frozen）— core-ng Flat Store PoC（arena/SoA/handle 化）
 
----
+### 已收口：Router 不再单列为 Runtime backlog
+
+- Route Snapshot：按 `073 ExternalStore` 作为外部输入源（避免单独 Router 真相源；见用户文档 `apps/docs/content/docs/guide/recipes/external-store.md`）。
+- Navigation Intent：以 `088 Async Action` 的“事务外 IO + 事务内回写”形态集成（需要时再新增/固化注入契约；不再单独维护 `071` 规划）。
 
 ## 未完成 specs（按主题分组）
 
@@ -148,6 +149,7 @@
 - [`031-trialrun-artifacts`](./031-trialrun-artifacts)（Draft）— TrialRun Artifacts（试运行 IR 工件槽位）
 - [`033-module-stage-blueprints`](./033-module-stage-blueprints)（Draft）— Module 舞台语义蓝图
 - [`060-react-priority-scheduling`](./060-react-priority-scheduling)（Draft）— Txn Lanes（可解释优先级调度；统一证据）
+- [`093-logix-kit-factory`](./093-logix-kit-factory)（Draft）— Kit Factory（语法糖机器）：用既有原语拼装可复用糖包，避免概念/边界重叠与双真相源
 
 ### C) 观测/证据/Devtools/Perf 跑道
 
@@ -156,19 +158,17 @@
 - [`017-perf-tuning-lab`](./017-perf-tuning-lab)（Active）— 调参实验场（消费 perf 跑道与控制面）
 - [`015-devtools-converge-performance`](./015-devtools-converge-performance)（Draft）— Devtools 性能面板
 - [`016-serializable-diagnostics-and-identity`](./016-serializable-diagnostics-and-identity)（Draft）— 可序列化诊断与稳定身份
-- [`027-runtime-observability-hardening`](./027-runtime-observability-hardening)（Draft）— 运行时可观测性加固（链路贯穿 + 聚合器性能/内存）
 - [`038-devtools-session-ui`](./038-devtools-session-ui)（Draft）— Devtools Session-First 界面重设计
 - [`044-trait-converge-diagnostics-sampling`](./044-trait-converge-diagnostics-sampling)（Planned）— Trait 诊断低成本采样（计时/统计）
 - [`092-e2e-latency-trace`](./092-e2e-latency-trace)（Draft）— E2E Latency Trace（action→txn→notify→commit）
 
-### D) 领域包与页面高频模式（Form/Query/Router/i18n + 协调/乐观/资源）
+### D) 领域包与页面高频模式（Form/Query/i18n + 协调/乐观/资源）
 
 - [`004-trait-bridge-form`](./004-trait-bridge-form)（Draft）— Trait 生命周期桥接 × Form
 - [`010-form-api-perf-boundaries`](./010-form-api-perf-boundaries)（Draft）— Form API（设计收敛与性能边界）
 - [`028-form-api-dx`](./028-form-api-dx)（Draft）— Form API 收敛与 DX 提升
 - [`026-unify-query-domain`](./026-unify-query-domain)（Draft）— Query 收口到 `@logixjs/query`（与 Form 同形）
 - [`074-readquery-create-selector`](./074-readquery-create-selector)（Draft）— ReadQuery.createSelector（显式 deps 的静态选择器）
-- [`071-logix-router-bridge`](./071-logix-router-bridge)（Draft）— Router Bridge（可注入 Router）
 - [`029-i18n-root-resolve`](./029-i18n-root-resolve)（Draft）— i18n 接入与 `Root.resolve` 语法糖
 - [`087-async-coordination-roadmap`](./087-async-coordination-roadmap)（Draft）— Async Coordination Roadmap
 - [`088-async-action-coordinator`](./088-async-action-coordinator)（Draft）— Async Action Coordinator（统一异步协调面）
@@ -180,8 +180,7 @@
 ### E) 平台/Workbench/Playground（协议、资产与教学跑道）
 
 - [`032-ui-projection-contract`](./032-ui-projection-contract)（Draft）— UI Projection Contract（语义编排与 UI 投影解耦）
-- [`034-expression-asset-protocol`](./034-expression-asset-protocol)（Draft）— Expression Asset Protocol（表达式/校验资产协议与 Sandbox 约束）
-- [`035-module-ports-typeir`](./035-module-ports-typeir)（Draft）— Module Ports & TypeIR（端口/类型 IR 作为平台 SSoT）
+- [`035-module-reference-space`](./035-module-reference-space)（Draft）— Module Reference Space（模块引用空间事实源：PortSpec/TypeIR + CodeAsset 协议；已吸收原 034/035-old）
 - [`036-workbench-contract-suite`](./036-workbench-contract-suite)（Draft）— Workbench Contract Suite（031-035 统一验收与治理）
 - [`040-schemaast-layered-upgrade`](./040-schemaast-layered-upgrade)（Draft）— SchemaAST 分层能力升级
 - [`041-docs-inline-playground`](./041-docs-inline-playground)（Draft）— 文档内联教学 Playground

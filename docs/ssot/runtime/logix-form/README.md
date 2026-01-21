@@ -7,8 +7,8 @@
 
 ## 0) 入口与导出（不使用 TypeScript namespace）
 
-- `packages/form/src/index.ts`：`Form.make`、`Form.traits/node/list`、`Form.Rule`、`Form.Error`、`Form.Trait`、`Form.Path`、`Form.Schema*`
-- `packages/form/src/react/index.ts`：`useForm` / `useField` / `useFieldArray` / `useFormState`
+- `packages/logix-form/src/index.ts`：`Form.make`、`Form.traits/node/list`、`Form.Rule`、`Form.Error`、`Form.Trait`、`Form.Path`、`Form.Schema*`
+- `packages/logix-form/src/react/index.ts`：`useForm` / `useField` / `useFieldArray` / `useFormState`
 
 ## 1) 核心模型（state / errors / ui / $form）
 
@@ -33,10 +33,12 @@ controller 默认动作：`validate` / `validatePaths` / `reset` / `setError` / 
 
 ## 3) wiring 与落点（实现在哪里）
 
-- reducer + controller：`packages/form/src/form.ts`
-- 自动触发 wiring（debounce / onChange / onBlur / submit）：`packages/form/src/logics/install.ts`
-- Path 映射与数组 `rows` 口径：`packages/form/src/path.ts`
-- React hooks：`packages/form/src/react/*`
+- Form.make 主实现（Blueprint/ModuleImpl 装配）：`packages/logix-form/src/internal/form/impl.ts`
+- reducer：`packages/logix-form/src/internal/form/reducer.ts`
+- controller：`packages/logix-form/src/internal/form/controller.ts`
+- 自动触发 wiring（debounce / onChange / onBlur / submit）：`packages/logix-form/src/internal/form/install.ts`
+- Path 映射与数组 `rows` 口径：`packages/logix-form/src/Path.ts`
+- React hooks：`packages/logix-form/src/react/*`
 
 ## 4) 性能边界（010 的核心心智）
 

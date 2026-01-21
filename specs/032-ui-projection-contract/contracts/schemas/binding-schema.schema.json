@@ -22,7 +22,7 @@
               "uiPropKey": { "type": "string", "minLength": 1 },
               "from": {
                 "allOf": [
-                  { "$ref": "../../../035-module-ports-typeir/contracts/schemas/port-address.schema.json" },
+                  { "$ref": "../../../035-module-reference-space/contracts/schemas/port-address.schema.json" },
                   { "type": "object", "properties": { "kind": { "enum": ["output", "export"] } }, "required": ["kind"] }
                 ]
               },
@@ -38,11 +38,11 @@
               "uiEventKey": { "type": "string", "minLength": 1 },
               "to": {
                 "allOf": [
-                  { "$ref": "../../../035-module-ports-typeir/contracts/schemas/port-address.schema.json" },
+                  { "$ref": "../../../035-module-reference-space/contracts/schemas/port-address.schema.json" },
                   { "type": "object", "properties": { "kind": { "enum": ["action", "event"] } }, "required": ["kind"] }
                 ]
               },
-              "mapping": { "$ref": "../../../034-expression-asset-protocol/contracts/schemas/code-asset-ref.schema.json" },
+              "mapping": { "$ref": "../../../035-module-reference-space/contracts/schemas/code-asset-ref.schema.json" },
               "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
             }
           }

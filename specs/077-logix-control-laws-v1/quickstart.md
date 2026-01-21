@@ -1,6 +1,6 @@
 # Quickstart: 077 Logix Control Laws v1（怎么用）
 
-这是一个“总控 spec”：只要记住 077，你就能找到 073/075/076 的执行入口与顺序。
+这是一个“总控 spec”：只要记住 077，你就能找到 Runtime Core runway 的执行入口与顺序（成员关系以 `spec-registry.json` 为 SSoT）。
 
 ## 1) 先读唯一公式（SSoT）
 
@@ -15,8 +15,10 @@
 ## 3) 推荐推进顺序
 
 - 先做 073 的 **M1（Reference Frame Cutover）**：把 tickSeq 参考系立住（React 单订阅点/no-tearing）。
-- 再做 075：把自由编排升级为 Workflow（时间算子进入 tick 证据链）。
-- 再做 076：消灭 Query/Form 的 watcher 胶水（source auto-trigger 内核化）。
+- 再做 070：把默认档位“零诊断税/单内核边界”固化下来（避免后续优化口径漂移）。
+- 并行打地基：074（显式 deps selector）+ 068（watcher fan-out 纯赚）+ 006（Trait converge 上限提升）。
+- 最后推进 076：把 Query/Form 的默认自动刷新从 watcher 胶水升级为内核 auto-trigger。
+- 018（可选）：基于工作负载做默认值审计/自校准（不影响默认档位）。
 
 ## 4) 做到哪里算“交付”
 
@@ -24,4 +26,3 @@
   - UI 只渲染（不写数据同步 useEffect）
   - 逻辑编排是声明式 Program（非 watcher 胶水）
   - 因果链可解释（IR + trace 锚点对齐 tickSeq）
-

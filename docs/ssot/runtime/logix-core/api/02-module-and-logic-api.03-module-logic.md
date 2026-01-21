@@ -176,6 +176,29 @@ TraitLifecycle 的定位：
 - `TraitLifecycle.cleanup(bound, request)`：结构变更下的确定性清理（典型：清理 `errors/ui` 子树）。
 - `TraitLifecycle.scopedExecute(bound, request)`：领域动作的统一执行入口（Phase 2 中先固化失效请求的记录与回放口径）。
 
+### 3.7.1 去糖化视图（等价调用）
+
+领域包/上层语法糖最终都应落到 TraitLifecycle 的**可序列化请求**上（否则“可降解”会变成黑盒承诺）。
+
+```ts
+// 字段级增量校验（等价于表单 controller.validatePaths([...]) 之类的高层入口）
+yield* Logix.TraitLifecycle.scopedValidate($, {
+  mode: "manual",
+  target: Logix.TraitLifecycle.Ref.field("contact.email"),
+})
+
+// 列表行字段（可表达嵌套 listIndexPath；此处省略）
+yield* Logix.TraitLifecycle.scopedValidate($, {
+  mode: "blur",
+  target: Logix.TraitLifecycle.Ref.item("items", 3, { field: "price" }),
+})
+```
+
+约束：
+
+- 进入 trace/evidence 的是 `ValidateRequest/FieldRef`（纯数据），而不是业务闭包本体；
+- “怎么调度/跑哪些规则/怎么写回”由 `StateTraitProgram + StateTransaction + ReplayLog` 决定，TraitLifecycle 只负责把意图标准化并挂到事务边界。
+
 与 `ModuleDef.logic` / StateTransaction 的关系：
 
 - TraitLifecycle 的调用应当发生在 **run 段**（Watcher/Flow/事件处理）中；setup 段只做注册，不直接触发校验/刷新等动作。

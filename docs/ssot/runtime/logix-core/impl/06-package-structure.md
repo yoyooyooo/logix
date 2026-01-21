@@ -193,4 +193,4 @@ graph TD
 | `@logixjs/devtools-react` | Tooling | Devtools UI + 快照/回放消费侧 |
 | `@logixjs/sandbox` | Infra | Alignment Lab sandbox（compiler/protocol/worker/client） |
 | `@logixjs/test` | Infra | 测试工具（ProgramRunner 语义对齐） |
-| `@logixjs/form` / `@logixjs/query` | Domain | 领域包（长期目标：可完全降解到 Logix IR） |
+| `@logixjs/form` / `@logixjs/query` | Domain | 领域包（长期目标：结构可降解为 Logix 最小 IR；闭包/实现通过 Slim Trace/Evidence 解释） |

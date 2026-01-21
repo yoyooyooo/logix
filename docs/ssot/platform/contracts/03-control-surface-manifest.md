@@ -71,6 +71,13 @@ Root IR 的职责是“可判定/可对比/可解释/可回放锚点化”，不
 - MUST 带 `version`（遇到未知版本必须 fail-fast；forward-only 无兼容层）。
 - MUST 带 `digest`（基于 Stable JSON：字段排序、默认值落地、去掉非语义 meta；同一语义同一 digest）。
 
+#### 2.1.1 可导出 `meta`（MUST）
+
+- Root IR / slices / Static IR 中的任何 `meta` 字段 MUST 为 `JsonValue`（纯 JSON 值），仅用于展示/解释，不参与语义与 `digest`。
+- `meta` 禁止携带闭包/函数/Effect/Fiber/Tag/DOM/循环引用/BigInt；若输入侧仍出现，必须在导出边界确定性裁剪，并以可解释的降级标记/诊断事件被观察到（对齐 `specs/016-serializable-diagnostics-and-identity`）。
+- `JsonValue` 的硬门与裁剪预算（权威实现）：`packages/logix-core/src/internal/observability/jsonValue.ts`
+- Trait 系统的 `TraitMeta` 白名单与 sanitize（权威实现）：`packages/logix-core/src/internal/state-trait/meta.ts`
+
 ### 2.2 稳定身份（Deterministic Identity）
 
 - `actionTag` MUST 等于 `actions` key（rename 即 breaking）：见 `specs/067-action-surface-manifest/spec.md`。

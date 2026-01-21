@@ -10,7 +10,7 @@
 `@logixjs/form` 不引入第二套 Store：**表单就是一个 Module**，state 直接挂在 runtime 上。
 
 ```ts
-// packages/form/src/form.ts
+// packages/logix-form/src/internal/form/impl.ts
 export type FormState<TValues extends object> = TValues & {
   readonly errors: unknown
   readonly ui: unknown
@@ -59,13 +59,13 @@ export type FormState<TValues extends object> = TValues & {
 - valuePath：`items.0.name`
 - errorsPath：`errors.items.rows.0.name`
 
-对应函数落点：`packages/form/src/path.ts`（`toErrorsPath/toManualErrorsPath/toSchemaErrorsPath/toUiPath`）。
+对应函数落点：`packages/logix-form/src/Path.ts`（`toErrorsPath/toManualErrorsPath/toSchemaErrorsPath/toUiPath`）。
 
 ## 3) Action 协议（Module actions）
 
 Form 的 Module actions 是实现细节，但会被 React hooks 与 controller 调用（通过 `dispatch` 派发）。
 
-实现落点：`packages/form/src/form.ts`（`FormActions`）。
+实现落点：`packages/logix-form/src/internal/form/impl.ts`（`FormActions`）。
 
 核心动作（概念分组）：
 

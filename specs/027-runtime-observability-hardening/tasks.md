@@ -48,3 +48,7 @@
 - [x] T031 [P1] 固化 before/after 基线输出（JSON）到 `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/perf/`（至少包含 1 次可复现 run 的结果）
 - [x] T032 [P2] 在本 spec 的 quickstart/plan 中补齐“如何运行基线脚本 + 如何解释指标”说明（对齐 SC-002/SC-005）于 `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/quickstart.md`
 - [x] T033 [P1] 将基线对比摘要（环境元信息 + 关键指标 + 是否满足 SC/NFR）回写到 `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/plan.md`（与 perf/ 原始 JSON 互相引用）
+
+## Phase 5: Alignment Notes（横切合同对齐）
+
+- [x] T034 [P2] 明确 meta/JsonValue 的单一裁决源：027 不另起裁剪/类型口径，统一依赖 `specs/016-serializable-diagnostics-and-identity` 在 `specs/027-runtime-observability-hardening/plan.md`

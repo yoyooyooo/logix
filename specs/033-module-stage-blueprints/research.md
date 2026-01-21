@@ -21,9 +21,9 @@
 
 - ModuleInstance（节点）
 - IntentRule（事件→动作连线）
-- CodeAsset（映射/条件；由 034 定义）
+- CodeAsset（映射/条件；由 035 模块引用空间协议定义）
 
-PortSpec/TypeIR（035）属于“事实源导出”，禁止手工配置以免并行真相源。  
+PortSpec/TypeIR（同属 035）属于“事实源导出”，禁止手工配置以免并行真相源。  
 **Rationale**：把可配置面缩到最小，才能让 Agent/CI 做可靠的审阅与回归。
 
 ### D003：rowRef 作为动态列表定位唯一默认语义
@@ -41,6 +41,5 @@ PortSpec/TypeIR（035）属于“事实源导出”，禁止手工配置以免�
 ## References
 
 - 032 UI 投影边界：`specs/032-ui-projection-contract/spec.md`
-- 034 资产协议：`specs/034-expression-asset-protocol/spec.md`
-- 035 PortSpec/TypeIR：`specs/035-module-ports-typeir/spec.md`
+- 035 模块引用空间事实源（PortSpec/TypeIR + CodeAsset）：`specs/035-module-reference-space/spec.md`
 - 036 统一验收：`specs/036-workbench-contract-suite/spec.md`
