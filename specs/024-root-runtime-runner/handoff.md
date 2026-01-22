@@ -34,7 +34,7 @@ Scope: `specs/024-root-runtime-runner/`
 ## 1. 关键落点（代码 / SSoT）
 
 - core 入口：`packages/logix-core/src/Runtime.ts`
-- runner 内核：`packages/logix-core/src/internal/runtime/runner/ProgramRunner.ts`
+- runner 内核：`packages/logix-core/src/internal/runtime/core/runner/ProgramRunner.ts`
 - `@logixjs/test` 新入口：`packages/logix-test/src/api/TestProgram.ts`、`packages/logix-test/src/Vitest.ts`
 - runtime SSoT：`docs/ssot/runtime/logix-core/api/05-runtime-and-runner.md`
 - test-package SSoT：`docs/ssot/runtime/logix-core/impl/07-test-package.md`

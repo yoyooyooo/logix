@@ -5,8 +5,6 @@
 **Status**: Complete  
 **Input**: User discussion: "NG-first / compiler-first；继续允许函数 selector（如 useSelector/fromState），但编译期尽可能静态化；对象字面量 selector 默认 struct memo 复用引用；三段式车道 AOT(可选)→JIT(默认)→Dynamic(兜底)；dynamic 回退必须可观测且可在 strict gate 下失败；Devtools 要清晰区分静态/动态车道。"
 
-**Acceptance**: `specs/057-core-ng-static-deps-without-proxy/acceptance.md`
-
 ## Terminology
 
 - **ReadQuery / SelectorSpec（状态读取查询）**：描述“读哪些状态依赖（deps/reads）+ 如何投影成结果（select）+ 如何比较（equals）”的可编译协议。
@@ -45,7 +43,7 @@
 - `specs/045-dual-kernel-contract/`（Kernel Contract：统一最小 IR + 证据门禁 + 对照验证跑道）
 - `specs/046-core-ng-roadmap/`（路线总控：里程碑与 spec registry）
 - `specs/016-serializable-diagnostics-and-identity/`（稳定锚点与可序列化证据）
-- `docs/reviews/07-phase3-react-1p1gt2.md`（concept：SelectorSpec/SelectorGraph 与 txn→selector→render 因果链）
+- `docs/ssot/handbook/reading-room/reviews/07-phase3-react-1p1gt2.md`（concept：SelectorSpec/SelectorGraph 与 txn→selector→render 因果链）
 
 ## User Scenarios & Testing _(mandatory)_
 

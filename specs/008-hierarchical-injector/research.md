@@ -91,7 +91,7 @@
 ### D09 — 收敛跨模块协作入口：删除 `$.useRemote`，统一为 `Link.make`
 
 **Decision**: 跨模块协作（读取对方 state、监听变化、触发对方 actions）的默认入口只保留 `Link.make`；`$.useRemote` 不再作为公共 API 暴露并将被删除。  
-**Rationale**: 与 `docs/reviews/02-mental-model-and-public-api.md` 的结论一致：双入口会导致“等价写法分裂”，且 `useRemote` 更容易被误用为隐式解析兜底。  
+**Rationale**: 与 `docs/ssot/handbook/reading-room/reviews/02-mental-model-and-public-api.md` 的结论一致：双入口会导致“等价写法分裂”，且 `useRemote` 更容易被误用为隐式解析兜底。  
 **Migration shape**:
 
 - 若目标模块实际上是“父模块 imports 的子模块”：用 `$.use(Child.module)` / `imports.get(Child.module)` 代替 `$.useRemote`（strict 默认，缺失提供者即失败）。

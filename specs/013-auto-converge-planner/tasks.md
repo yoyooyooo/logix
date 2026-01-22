@@ -127,7 +127,7 @@
 **Purpose**: 收尾迁移说明、历史文档漂移修复、证据固化
 
 - [x] T038 [P] 标注/更新历史 spec 默认口径（`full|dirty` → 013 引入 `auto` 默认）在 `specs/007-unify-trait-system/review.md`
-- [x] T039 [P] 记录 breaking change 与迁移路径（默认 auto、回退 full、证据字段/事件）在 `docs/reviews/99-roadmap-and-breaking-changes.md`
+- [x] T039 [P] 记录 breaking change 与迁移路径（默认 auto、回退 full、证据字段/事件）在 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md`
 - [x] T040 [P] 对齐并补充 quickstart 示例（覆盖 Provider override + moduleId override + `configScope` 等 evidence 字段）在 `specs/013-auto-converge-planner/quickstart.md`
 - [x] T041 固化 014 跑道证据包（更新 after 报告并保证可复现口径）在 `specs/014-browser-perf-boundaries/perf/after.worktree.json`
 - [x] T042 [P] 回归确认 SlimOp 截断/预算（NFR-009）：加固断言（full 档位 payload/meta 截断、事件预算上界、可 JSON.stringify）在 `packages/logix-core/test/Middleware.DebugObserver.test.ts` 与 `packages/logix-core/test/Debug.test.ts`

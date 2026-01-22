@@ -10,7 +10,7 @@
 
 本特性的目标是把 `@logixjs/form` 的 Form API（Rules/Errors/Path/Controller/Schema）与 runtime 的 list-scope 校验热路径一起收敛为**可推导、可诊断、可优化**的一等公民能力：
 
-- 产物拆解入口：`specs/010-form-api-perf-boundaries/tasks.md`（从 `docs/reviews/09-form-dx-vs-rhf.md` 的 Phase A–D 落到可交付清单）。
+- 产物拆解入口：`specs/010-form-api-perf-boundaries/tasks.md`（从 `docs/ssot/handbook/reading-room/reviews/09-form-dx-vs-rhf.md` 的 Phase A–D 落到可交付清单）。
 - Phase A（热路径闭环）：删除专家开关、deps 归一化、`$list/rows[]` 写回、rowId 稳定、Slim 诊断事件与 100 行基线。
 - Phase B（Path 收敛）：统一 ValuePath/ErrorsPath/FieldPath，并明确数组映射：`userList.0.x` → `errors.userList.rows.0.x`。
 - Phase C（Controller 默认语义）：补齐 `validate/validatePaths/reset/handleSubmit`，事务内纯同步、可回放、可诊断（reset 不隐式校验）。
@@ -114,7 +114,7 @@
   - 粗粒度成本模型：一次输入的主要成本为 `O(|dirty| + |affectedRules| + scannedRows + changedKeys)`；其中 scannedRows 来自 list-scope 必要扫描，changedKeys 由“最小写回 + 结构共享”控制；Schema onChange/onBlur 视为额外全量成本（默认关闭）。
   - 优化梯子：默认（deps 明确 + Schema 热路径关闭 + 最小写回）→ 打开 `Diagnostics Level=light` 观察 `trait:check`（受影响范围/changedRows）→ 缩小 deps/写回点（减少 scanned/changed）→ 提供/修复 `trackBy`（rowId 稳定，避免 degraded）→ 如仍超预算，回退/调参到更保守 `executedMode=full` 并用 013 的 `trait:converge` evidence 解释（避免不可诊断负优化）。
   - 对齐落点：基准/对比证据走 `specs/014-*` 跑道；诊断字段走 `trait:check`/`trait:converge` 合同；对外心智模型后续同步到 `apps/docs`（不出现 PoC/内部实现措辞）。
-- **Breaking changes**：删除 `listValidateOnChange` 等专家开关、errors 形态迁移到 `$list/rows[]`、valuePath→errorsPath 数组映射变更；迁移说明写入 `docs/reviews/99-roadmap-and-breaking-changes.md` 并同步示例/文档（不提供兼容层）。
+- **Breaking changes**：删除 `listValidateOnChange` 等专家开关、errors 形态迁移到 `$list/rows[]`、valuePath→errorsPath 数组映射变更；迁移说明写入 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md` 并同步示例/文档（不提供兼容层）。
 - **Quality gates**：实现阶段至少运行 `pnpm typecheck`、`pnpm lint`、`pnpm test`；涉及核心路径改动补充可复现基线脚本与结果记录（按 009 口径）。
 
 ## Project Structure
@@ -147,7 +147,7 @@ packages/logix-form/src/schema-error-mapping.ts           # Schema error → err
 packages/logix-form/src/react/useField.ts                 # valuePath → errorsPath（数组插入 rows 段）
 examples/logix-react/src/demos/form/cases/                # demo 收敛：uniqueWarehouse 迁到 list-scope check
 docs/ssot/runtime/                                 # 对外契约 SSoT 回写
-docs/reviews/                                             # breaking changes/roadmap 证据
+docs/ssot/handbook/reading-room/reviews/                                             # breaking changes/roadmap 证据
 ```
 
 **Structure Decision**: 以内核 `state-trait/build`（deps→图/范围推导）与 `state-trait/validate`（list-scope 扫描 + 最小写回）为核心落点；Form/React/demo 只做必要迁移，不新增“开关/手写扫描”语义。

@@ -98,7 +98,7 @@ description: "Task list for 012-program-api (Process)"
 
 - [x] T037 [P] 更新运行时 SSoT：补齐 Process 语义、三种安装点、并发/错误策略与事件协议（Trace: Constitution 文档先行 & SSoT）：`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`, `docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [x] T038 [P] 更新用户文档（产品视角，避免 v3/PoC 术语）（Trace: Constitution 迁移与用户文档）：`apps/docs/content/docs/api/core/runtime.md`
-- [x] T039 更新破坏性变更与迁移说明（Program→Process；processes 语义收口；无兼容层）（Trace: Constitution 迁移说明）：`docs/reviews/99-roadmap-and-breaking-changes.md`
+- [x] T039 更新破坏性变更与迁移说明（Program→Process；processes 语义收口；无兼容层）（Trace: Constitution 迁移说明）：`docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md`
 - [x] T040 [P] 增加可运行示例（AC-1/AC-2/AC-6 最小闭环）（Trace: SC-001/SC-002/FR-003）：`examples/logix/src/scenarios/process-app-scope.ts`, `examples/logix/src/scenarios/process-instance-scope.ts`, `examples/logix-react/src/demos/ProcessSubtreeDemo.tsx`
 - [x] T041 增加性能基线采集脚本（对齐 NFR-001/NFR-002：diagnostics off/light/sampled/full；重复运行口径与落盘位置；产物必须给出 PASS/FAIL，阈值以 `specs/012-program-api/perf/README.md` 为准）。脚本统一纳入 `logix-perf-evidence` 并以 `pnpm perf bench:012:process-baseline`（或等价命名）暴露入口（Trace: NFR-001/NFR-002/SC-005/SC-006）：`specs/012-program-api/perf/README.md`
 - [x] T042 [P] 增加 UI 子树安装点（useProcesses）回归用例（挂载即启、卸载即停；StrictMode double-invoke 下不重复副作用；必要时实现 provider-scope refCount + 延迟 stop/GC；Suspense 不泄漏）（Trace: FR-003）：`packages/logix-react/src/internal/hooks/useProcesses.ts`, `packages/logix-react/src/Hooks.ts`, `packages/logix-react/test/Hooks/useProcesses.test.tsx`

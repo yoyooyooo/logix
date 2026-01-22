@@ -1,6 +1,6 @@
 # Research: 013 Auto Converge Planner（无视场景的及格线）
 
-> 本文把 `specs/013-auto-converge-planner/spec.md`、`docs/impl-notes/01-micro-optimizations.md` 与相关 review 结论收敛为可落地的裁决与取舍，作为 Phase 1（data-model / contracts / quickstart）与后续实现拆分的依据。
+> 本文把 `specs/013-auto-converge-planner/spec.md`、`docs/ssot/handbook/reading-room/impl-notes/01-micro-optimizations.md` 与相关 review 结论收敛为可落地的裁决与取舍，作为 Phase 1（data-model / contracts / quickstart）与后续实现拆分的依据。
 
 ## Decision 1：Converge Static IR 必须在 build/加载阶段一次性生成（紧凑、整数化）
 

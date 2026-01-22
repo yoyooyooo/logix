@@ -5,8 +5,6 @@
 **Status**: Complete  
 **Input**: User description: "实现真实业务里的“限定 scope 的全局”：同一路由内多个弹框模块 keepalive（反复打开/关闭不丢状态），离开路由后统一销毁；补齐由浅入深的用户文档，并提供可复用的 Scope 工具减少 props 透传。"
 
-**Acceptance**: `specs/037-route-scope-eviction/acceptance.md`
-
 ## Assumptions
 
 - 不考虑向后兼容：允许调整或新增对外 API 与文档写法，但必须给出清晰的迁移/替代建议。

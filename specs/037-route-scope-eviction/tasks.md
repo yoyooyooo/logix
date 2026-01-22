@@ -54,7 +54,7 @@
 ## Phase 3: Polish & Cross-Cutting Concerns
 
 - [x] T019 质量门：`pnpm typecheck` + `pnpm lint` + `pnpm test`（一次性非 watch）`package.json`
-- [x] T020 验收：运行 `$speckit acceptance 037-route-scope-eviction` 并根据输出修正漂移点（若有）`specs/037-route-scope-eviction/spec.md`, `specs/037-route-scope-eviction/acceptance.md`, `specs/037-route-scope-eviction/tasks.md`
+- [x] T020 验收：运行 `$speckit acceptance 037-route-scope-eviction` 并根据输出修正漂移点（若有）`specs/037-route-scope-eviction/spec.md`, `specs/037-route-scope-eviction/tasks.md`
 
 ---
 

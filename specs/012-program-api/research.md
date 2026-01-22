@@ -182,7 +182,7 @@
 
 - 将历史长效逻辑入口映射为 Process（按安装点归类：应用级/实例级/子树级）；
 - 将跨模块依赖由隐式捕获/全局访问迁移为“作用域内可见依赖 + 动作协议驱动”；
-- 迁移说明写入 `quickstart.md` 并同步到 `docs/reviews/99-roadmap-and-breaking-changes.md`。
+- 迁移说明写入 `quickstart.md` 并同步到 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md`。
 
 **Rationale**:
 

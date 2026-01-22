@@ -245,7 +245,7 @@
 - 本文中的三位数编号（如 005/009/014/016）均指 `specs/<三位数>-*` 下的对应 spec；如存在歧义，以目录名为准。
 - 本特性以 009 已确立的稳定标识、诊断分档（`off/light/sampled/full`）与路径归一化口径为前提，不重新定义这些契约。
 - 上层依赖链路（Runtime V3 加固集群视角）：`016（可序列化证据与稳定身份）` → `011（Lifecycle 容器/严格屏障）` → `013（Planner 控制面）` → `010（Form 场景验收）`。013 不直接依赖 010 的领域语义，但会被 010 的高压矩阵点反向验证与驱动补齐边界用例。
-- 运行时侧的微优化落地模式（Dirty Pattern/Plan Cache、Structural ID、决策预算止损、SlimOp、Integer-only 等）参考 `docs/impl-notes/01-micro-optimizations.md`，但以本 spec 的 FR/NFR 为最终裁决。
+- 运行时侧的微优化落地模式（Dirty Pattern/Plan Cache、Structural ID、决策预算止损、SlimOp、Integer-only 等）参考 `docs/ssot/handbook/reading-room/impl-notes/01-micro-optimizations.md`，但以本 spec 的 FR/NFR 为最终裁决。
 - Devtools/平台消费侧需要能够消费并展示 `auto` 的最小决策摘要（即便在 `light` 下缺失细节也必须可用）。
 - 性能边界与回归对比的浏览器端基线优先复用 `specs/014-browser-perf-boundaries` 的维度矩阵与报告口径（跑道与固化流程以 014 为准）；本特性只在必要时补充 Node/micro-benchmark 作为辅助证据，不得替代主跑道。
 

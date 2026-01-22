@@ -1,6 +1,8 @@
 # `@logixjs/core` · Reflection 与 Trial Run（IR/证据提取）
 
 > **定位**：面向 CI / Studio / Agent 的“可对比、可解释、可回放”提取能力（不读 AST），把模块结构与试跑证据统一降解为最小 IR（Static IR + Dynamic Trace）。
+>
+> 更完整的 digest/diff/anchors 剧本集（偏教程/上手）见：`docs/ssot/handbook/tutorials/01-digest-diff-anchors.md`。
 
 ## 这块能力解决什么问题
 

@@ -49,7 +49,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Intelligent strategies**：时间/空间置换为（静态 IR + per-instance plan cache）换取热路径 O(1) 决策与执行范围缩小；baseline 下界为 full；刹车片包括：cold-start 必 full、`traitConvergeDecisionBudgetMs` 超时回退、cache 容量上界/逐出、低命中率自我保护、generation++ 严格失效与抖动保护、模块级覆盖/回退。
 - **No hidden magic values**：阈值/预算/容量必须可配置且可观测，且在摘要中输出“本次使用的阈值/预算 + 触发原因”（含决策预算/执行预算/dirtyAll 降级阈值/缓存容量等）。
 - **Negative boundary map**：对抗性场景必须覆盖高基数/低命中率、重复 pattern（应命中）、图变化（应失效）、列表/动态行写入（归一化/基数爆炸风险）与 generation 抖动；证据以 014 报告的 before/after diff 为准。
-- **Breaking changes**：默认 converge 模式从 `full` 调整为 `auto`；新增配置键与摘要字段；迁移说明写入 `specs/013-auto-converge-planner/quickstart.md`，并在实现阶段同步 `docs/reviews/99-roadmap-and-breaking-changes.md` 与用户文档（不提供兼容层）。
+- **Breaking changes**：默认 converge 模式从 `full` 调整为 `auto`；新增配置键与摘要字段；迁移说明写入 `specs/013-auto-converge-planner/quickstart.md`，并在实现阶段同步 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md` 与用户文档（不提供兼容层）。
 - **Quality gates**：合并前至少通过 `pnpm typecheck`、`pnpm lint`、`pnpm test`；并跑 014 的浏览器压测子集（覆盖 auto/full 下界、cache hit/miss、generation 失效、列表归一化、高基数低命中）。证据记录落点：`specs/013-auto-converge-planner/checklists/quality-gates.md`。
 
 ## Project Structure

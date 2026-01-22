@@ -32,7 +32,7 @@
 **Rationale**: 规则与裁决属于对外契约，必须可追溯、可验收、可交接；散落在 impl-note 会失去质量门与工作流约束。
 
 **Alternatives considered**:
-- 把裁决清单放到 `docs/impl-notes/*`：会与 SSoT 优先级冲突，且更新半衰期不可控。
+- 把裁决清单放到 `docs/ssot/handbook/reading-room/impl-notes/*`：会与 SSoT 优先级冲突，且更新半衰期不可控。
 - 只写在 README/口头约定：无法形成可验证的质量门。
 
 ### D2. Public Submodule 与 internal 的边界规则

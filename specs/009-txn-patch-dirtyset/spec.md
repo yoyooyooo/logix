@@ -3,7 +3,7 @@
 **Feature Branch**: `[009-txn-patch-dirtyset]`  
 **Created**: 2025-12-15  
 **Status**: Draft  
-**Input**: User description: "好现在我们把 docs/reviews/99-roadmap-and-breaking-changes.md 展开细节，梳理一个新需求"
+**Input**: User description: "好现在我们把 docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md 展开细节，梳理一个新需求"
 
 ## Clarifications
 

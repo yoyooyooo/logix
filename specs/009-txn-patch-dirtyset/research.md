@@ -1,6 +1,6 @@
 # Research: 009 事务 IR + Patch/Dirty-set 一等公民
 
-> 本文用于把 `docs/reviews/03-transactions-and-traits.md`、`docs/reviews/04-diagnostics-and-devtools.md`、`docs/reviews/07-platform-full-duplex-and-alignment-lab.md` 与 `docs/reviews/99-roadmap-and-breaking-changes.md` 的结论，收敛为可落地的裁决与取舍。
+> 本文用于把 `docs/ssot/handbook/reading-room/reviews/03-transactions-and-traits.md`、`docs/ssot/handbook/reading-room/reviews/04-diagnostics-and-devtools.md`、`docs/ssot/handbook/reading-room/reviews/07-platform-full-duplex-and-alignment-lab.md` 与 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md` 的结论，收敛为可落地的裁决与取舍。
 
 ## Decision 1：Dirty-set 永远是调度输入；Patch 是可选的证据载荷
 

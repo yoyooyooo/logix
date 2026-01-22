@@ -1,8 +1,10 @@
 # `@logixjs/core` · Runtime / Program Runner
 
 > **定位**：补齐「根模块运行入口」的 API 语义与心智模型（Node 脚本 / CLI / 测试 / 平台 Runner 的统一表面积）。  
-> **代码落点**：`packages/logix-core/src/Runtime.ts`、`packages/logix-core/src/internal/runtime/runner/*`。  
+> **代码落点**：`packages/logix-core/src/Runtime.ts`、`packages/logix-core/src/internal/runtime/ProgramRunner*.ts`（薄 re-export）、`packages/logix-core/src/internal/runtime/core/runner/*`（实现内核）。  
 > **相关规格**：`specs/024-root-runtime-runner/contracts/api.md`。
+>
+> 更详细的维护者教程/剧本集见：`docs/ssot/handbook/tutorials/02-runtime-lifecycle-and-scope.md`。
 
 ## 1. 为什么需要 Program Runner
 

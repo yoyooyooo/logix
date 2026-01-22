@@ -58,7 +58,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Transaction boundary**：Process 的长效任务可执行 IO，但不得发生在事务窗口内；跨模块驱动必须通过显式动作触发新的事务（不允许越界写入或事务内 await），违反边界必须稳定失败并可诊断。
 - **Performance budget**：触及热路径包括触发判定、调度队列与事件记录；Phase 0 先建立可复现基线与测量方式（见 Performance Goals），Phase 2 实现中以基准对比阻止回退。
 - **Diagnosability & explainability**：新增/对齐 Process 相关事件（start/stop/trigger/dispatch/error/restart 等）并保持事件载荷 Slim；诊断关闭近零成本，开启时成本需在 plan 与 contracts 中声明并可验收。
-- **Breaking changes**：属于破坏性升级；迁移说明写入本特性的 `quickstart.md`，并同步更新 `docs/reviews/99-roadmap-and-breaking-changes.md` 与用户文档（不提供兼容层）。
+- **Breaking changes**：属于破坏性升级；迁移说明写入本特性的 `quickstart.md`，并同步更新 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md` 与用户文档（不提供兼容层）。
 - **Quality gates**：合并前至少通过 `pnpm typecheck`、`pnpm lint`、`pnpm test`；新增 Process 用例覆盖应用级/实例级/子树级启停、并发策略差异、缺失依赖错误、诊断事件与稳定标识。
 
 ## Project Structure
@@ -151,4 +151,4 @@ No violations identified for this feature at planning time.
 - **Diagnosability budgets**：事件类型与字段已在 `specs/012-program-api/contracts/schemas/process-event.schema.json` 固化为 Slim/可序列化载荷；预算上界与裁剪要求在 `specs/012-program-api/data-model.md` 的 Budgets 中明确。
 - **Transaction boundary**：事务窗口禁 IO/await 与“跨模块影响必须通过动作协议”已在 `specs/012-program-api/spec.md`（FR/NFR/Edge Cases）与 `specs/012-program-api/research.md`（Decision 3/4/5）固化。
 - **Performance budget**：关键路径预算与基线口径已在 `specs/012-program-api/plan.md` 的 Technical Context 与 `specs/012-program-api/research.md`（Decision 8）明确；实现阶段按该口径复测。
-- **Breaking changes**：迁移原则已写入 `specs/012-program-api/quickstart.md`；实现阶段需同步更新 `docs/ssot/runtime/*`、`apps/docs/content/docs/*` 与 `docs/reviews/99-roadmap-and-breaking-changes.md`（不提供兼容层）。
+- **Breaking changes**：迁移原则已写入 `specs/012-program-api/quickstart.md`；实现阶段需同步更新 `docs/ssot/runtime/*`、`apps/docs/content/docs/*` 与 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md`（不提供兼容层）。

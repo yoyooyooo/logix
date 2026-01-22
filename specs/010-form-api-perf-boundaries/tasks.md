@@ -143,7 +143,7 @@ description: "Tasks for 010-form-api-perf-boundaries"
 - [X] T047 Schema submit/root 校验链路：schema decode → 写回 `$schema` → 合并策略（Rules 覆盖 Schema）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/schema-error-mapping.ts`
 - [X] T048 同路径 value 变更自动清理 Schema 错误（不重跑 Schema，FR-012c）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/logics/install.ts`
 - [X] T049 更新 SchemaPath/SchemaErrorMapping 测试到新错误树与 `$schema` 分层 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/test/SchemaErrorMapping.test.ts`
-- [X] T050 更新 breaking changes 文档（errors 树迁移、开关移除、示例迁移）`/Users/yoyo/Documents/code/personal/intent-flow/docs/reviews/99-roadmap-and-breaking-changes.md`
+- [X] T050 更新 breaking changes 文档（errors 树迁移、开关移除、示例迁移）`docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md`
 - [X] T051 更新 runtime SSoT（Form 推荐写法/错误树/Path 口径）`/Users/yoyo/Documents/code/personal/intent-flow/docs/ssot/runtime/logix-form/README.md`
 - [X] T052 实现规则挂载语法糖：新增 `Form.Rule.field/fields`（`fields` 支持 decl/decl[] 扁平化输入；重复 valuePath 稳定失败；不改变 IR/执行语义）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/src/rule.ts`
 - [X] T053 [P] 新增单测：`Form.Rule.field/fields` 合成 rules 时重复 valuePath 必须失败 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-form/test/Form.Rule.FieldMount.test.ts`

@@ -50,7 +50,7 @@
 - [x] T016 [US2] 扩展 DebugSink：统一投影 TxnLaneEvidence + `trace:react-selector` 的车道字段（Slim、可序列化、与 txn 对齐）`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - [x] T017 [US2] 更新 react-render/selector 集成测试与 DebugObserver 测试：断言车道字段完整且可对齐 `packages/logix-react/test/RuntimeProvider/runtime-react-render-events.integration.test.tsx`、`packages/logix-core/test/Middleware/Middleware.DebugObserver.test.ts`
 - [x] T018 [US2] Devtools UI：新增 lanes summary（Txn backlog + Selector lane 分布 + fallbackReason TopN），并补齐渲染测试 `packages/logix-devtools-react/src/internal/ui/overview/OverviewDetails.tsx`、`packages/logix-devtools-react/test/internal/EffectOpTimelineView.test.tsx`
-- [x] T019 [US2] 更新内部解释文档（并发/批处理/低优先级）补充 lane-aware queue 与 work loop 心智模型 `docs/impl-notes/08-concurrency-and-batching.md`
+- [x] T019 [US2] 更新内部解释文档（并发/批处理/低优先级）补充 lane-aware queue 与 work loop 心智模型 `docs/ssot/handbook/reading-room/impl-notes/08-concurrency-and-batching.md`
 
 ---
 

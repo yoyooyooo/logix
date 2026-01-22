@@ -57,8 +57,8 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 5. 读 runtime 编程模型：`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
 6. 读 `$`/Flow/IntentBuilder：`docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
 7. 看类型裁决与真实导出：`packages/logix-core/src/index.ts`
-8. 看示例场景与 Pattern：`docs/ssot/handbook/examples-logix-index.md`（再下钻到 `examples/logix/src/scenarios/*` / `examples/logix/src/patterns/*`）
-9. （可选）需要长链路导览/定位：`docs/ssot/runtime/logix-core/concepts/02-long-chain-tour.md`；需要总小抄：`docs/ssot/handbook/long-chain-cheatsheet.md`；需要 A–K 索引：`docs/ssot/handbook/long-chain-index.md`
+8. 看示例场景与 Pattern：`docs/ssot/handbook/cheatsheets/examples-logix-index.md`（再下钻到 `examples/logix/src/scenarios/*` / `examples/logix/src/patterns/*`）
+9. （可选）需要长链路导览/定位：`docs/ssot/runtime/logix-core/concepts/02-long-chain-tour.md`；需要总小抄：`docs/ssot/handbook/cheatsheets/long-chain/long-chain-cheatsheet.md`；需要 A–K 索引：`docs/ssot/handbook/cheatsheets/long-chain/long-chain-index.md`
 
 ## 常见任务场景（先读 → 再下钻）
 
@@ -66,16 +66,16 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 | --------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 新增/迭代 feature spec      | `specs/<NNN-*>/spec.md`                                                                          | `docs/specs/drafts/index.md`                                                                                                                            |
 | 改平台术语/方法论           | `docs/specs/sdd-platform/README.md`                                                              | `docs/ssot/platform/foundation/02-glossary.md`                                                                                                 |
-| 修复 logix-core runtime bug | `docs/ssot/handbook/troubleshooting.md`                                                                  | `docs/ssot/handbook/codebase-playbook.md`                                                                                                                       |
-| 定位长链路/热路径           | `docs/ssot/runtime/logix-core/concepts/02-long-chain-tour.md` | `docs/ssot/handbook/long-chain-index.md`                                                                                                                        |
-| 调整诊断/Devtools 协议      | `docs/ssot/runtime/logix-core/observability/09-debugging.md`  | `docs/ssot/handbook/diagnostics-perf-baseline.md`                                                                                                               |
+| 修复 logix-core runtime bug | `docs/ssot/handbook/playbooks/troubleshooting.md`                                                                  | `docs/ssot/handbook/cheatsheets/codebase-playbook.md`                                                                                                                       |
+| 定位长链路/热路径           | `docs/ssot/runtime/logix-core/concepts/02-long-chain-tour.md` | `docs/ssot/handbook/cheatsheets/long-chain/long-chain-index.md`                                                                                                                        |
+| 调整诊断/Devtools 协议      | `docs/ssot/runtime/logix-core/observability/09-debugging.md`  | `docs/ssot/handbook/playbooks/diagnostics-perf-baseline.md`                                                                                                               |
 | 做 React 集成/适配          | `docs/ssot/runtime/logix-react/01-react-integration.md`       | `packages/logix-react/*`                                                                                                                                |
-| 改 Sandbox / Alignment Lab  | `docs/ssot/handbook/long-chain-i-sandbox-alignment-lab.md`                                               | `packages/logix-sandbox/*`                                                                                                                              |
-| 写业务示例/Pattern          | `docs/ssot/handbook/examples-logix-index.md`                                                             | `examples/logix/src/scenarios/*`、`examples/logix/src/patterns/*`、`docs/ssot/runtime/logix-core/examples/README.md` |
+| 改 Sandbox / Alignment Lab  | `docs/ssot/handbook/reading-room/long-chain/long-chain-i-sandbox-alignment-lab.md`                                               | `packages/logix-sandbox/*`                                                                                                                              |
+| 写业务示例/Pattern          | `docs/ssot/handbook/cheatsheets/examples-logix-index.md`                                                             | `examples/logix/src/scenarios/*`、`examples/logix/src/patterns/*`、`docs/ssot/runtime/logix-core/examples/README.md` |
 
 ## 默认 auggie 查询模板（复制即用）
 
-> 更完整的“检索链路压缩包”（含 smoke test + 典型长链路的分步查询）见：`docs/ssot/handbook/auggie-playbook.md`。
+> 更完整的“检索链路压缩包”（含 smoke test + 典型长链路的分步查询）见：`docs/ssot/handbook/cheatsheets/auggie-playbook.md`。
 >
 > 若遇到 auggie 偶发 `fetch failed`：优先改为**单次小查询**（不要并行批量问），并在问题里显式写出目标落点（例如 `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`）再重试。
 
@@ -89,20 +89,20 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 - SSoT 聚合根：`docs/ssot/README.md`
 - references 总导航：`docs/ssot/handbook/README.md`
 - Runtime SSoT 导览：`docs/ssot/runtime/README.md`
-- 总骨架/不变量/关键机制：`docs/ssot/handbook/long-chain-cheatsheet.md`
-- 示例场景与 Pattern 索引：`docs/ssot/handbook/examples-logix-index.md`
+- 总骨架/不变量/关键机制：`docs/ssot/handbook/cheatsheets/long-chain/long-chain-cheatsheet.md`
+- 示例场景与 Pattern 索引：`docs/ssot/handbook/cheatsheets/examples-logix-index.md`
 - examples dogfooding 工程最佳实践（目录结构/Module 拆分/组合根）：`docs/ssot/platform/appendix/logix-best-practices/README.md`
 
 ## 子包用法速查（用户视角）
 
-- 每包的“核心概念 / 最小组合 / 示例入口 / 常见坑”：`docs/ssot/handbook/packages-user-view.md`
+- 每包的“核心概念 / 最小组合 / 示例入口 / 常见坑”：`docs/ssot/handbook/cheatsheets/packages-user-view/README.md`
 
 ## 质量门与验证（建议顺序）
 
 - Workspace 级最小闭环：`pnpm typecheck` → `pnpm lint` → `pnpm test`
 - 浏览器集成测试（按需）：`pnpm test:browser`（logix-react + logix-sandbox）
 - 构建（按需）：`pnpm build`（递归 build）/ `pnpm build:pkg`（turbo 只构建 packages）
-- 详解与包内命令矩阵：`docs/ssot/handbook/quality-gates.md`
+- 详解与包内命令矩阵：`docs/ssot/handbook/playbooks/quality-gates.md`
 
 ## 常见坑与排错（最短定位）
 
@@ -110,7 +110,7 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 - strict imports：`MissingModuleRuntimeError`（入口：`packages/logix-core/test/internal/Bound/BoundApi.MissingImport.test.ts`）
 - root provider：`MissingRootProviderError`（入口：`packages/logix-core/src/Root.ts`）
 - tag collision：`_tag: TagCollisionError`（入口：`packages/logix-core/test/internal/Runtime/AppRuntime.test.ts`）
-- 排错清单（症状→入口→修复）：`docs/ssot/handbook/troubleshooting.md`
+- 排错清单（症状→入口→修复）：`docs/ssot/handbook/playbooks/troubleshooting.md`
 
 ## 诊断与性能基线（runtime 核心路径）
 
@@ -118,26 +118,26 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 - Trait 静态治理与溯源（023）：`docs/ssot/runtime/logix-core/impl/05-trait-provenance-and-static-governance.md`
 - Runtime 诊断/预算旋钮：`packages/logix-core/src/Runtime.ts`（`devtools` / `stateTransaction` / `concurrencyPolicy`）
 - perf 基线脚本：`.codex/skills/logix-perf-evidence/package.json` 的 scripts（实现脚本目录：`.codex/skills/logix-perf-evidence/scripts/*`）
-- 详解与最小证据闭环：`docs/ssot/handbook/diagnostics-perf-baseline.md`
+- 详解与最小证据闭环：`docs/ssot/handbook/playbooks/diagnostics-perf-baseline.md`
 
 ## 长链路导航（实现视角，按需加载）
 
 - 导览（从业务写法到实现落点）：`docs/ssot/runtime/logix-core/concepts/02-long-chain-tour.md`
-- 正交分解（A–K）：`docs/ssot/handbook/long-chain-index.md`
-- 小抄（总骨架 / 不变量 / 关键机制 / auggie 模板）：`docs/ssot/handbook/long-chain-cheatsheet.md`
+- 正交分解（A–K）：`docs/ssot/handbook/cheatsheets/long-chain/long-chain-index.md`
+- 小抄（总骨架 / 不变量 / 关键机制 / auggie 模板）：`docs/ssot/handbook/cheatsheets/long-chain/long-chain-cheatsheet.md`
 - 冲突裁决：与规范/类型提示冲突时，以 SSoT + TypeScript 类型定义为准。
 
 ### A–K 快捷入口（一行索引）
 
-- A｜状态数据面：`docs/ssot/handbook/long-chain-a-data-plane.md`
-- B｜执行面：`docs/ssot/handbook/long-chain-b-execution-plane.md`
-- C｜模块图谱：`docs/ssot/handbook/long-chain-c-module-graph-plane.md`
-- D｜副作用总线：`docs/ssot/handbook/long-chain-d-effect-plane.md`
-- E/F/G｜观测/证据/回放：`docs/ssot/handbook/long-chain-efg-observability-evidence-replay.md`
-- H｜宿主生命周期：`docs/ssot/handbook/long-chain-h-program-runner.md`
-- I｜Sandbox / Alignment Lab：`docs/ssot/handbook/long-chain-i-sandbox-alignment-lab.md`
-- J｜测试面：`docs/ssot/handbook/long-chain-j-test-plane.md`
-- K｜业务能力包：`docs/ssot/handbook/long-chain-k-feature-kits.md`
+- A｜状态数据面：`docs/ssot/handbook/reading-room/long-chain/long-chain-a-data-plane.md`
+- B｜执行面：`docs/ssot/handbook/reading-room/long-chain/long-chain-b-execution-plane.md`
+- C｜模块图谱：`docs/ssot/handbook/reading-room/long-chain/long-chain-c-module-graph-plane.md`
+- D｜副作用总线：`docs/ssot/handbook/reading-room/long-chain/long-chain-d-effect-plane.md`
+- E/F/G｜观测/证据/回放：`docs/ssot/handbook/reading-room/long-chain/long-chain-efg-observability-evidence-replay.md`
+- H｜宿主生命周期：`docs/ssot/handbook/reading-room/long-chain/long-chain-h-program-runner.md`
+- I｜Sandbox / Alignment Lab：`docs/ssot/handbook/reading-room/long-chain/long-chain-i-sandbox-alignment-lab.md`
+- J｜测试面：`docs/ssot/handbook/reading-room/long-chain/long-chain-j-test-plane.md`
+- K｜业务能力包：`docs/ssot/handbook/reading-room/long-chain/long-chain-k-feature-kits.md`
 
 ## 常见任务落点（先定目录再动手）
 
@@ -152,7 +152,7 @@ description: 在 intent-flow 仓库做架构/规划/Runtime/示例/日常开发�
 
 ## 进一步阅读
 
-- `docs/ssot/handbook/project-architecture.md`：更细的目录地图与决策落点。
-- `docs/ssot/handbook/codebase-playbook.md`：源码导航压缩包（入口 → 内核 → 回归），用于快速定位实现与测试。
+- `docs/ssot/handbook/cheatsheets/project-architecture.md`：更细的目录地图与决策落点。
+- `docs/ssot/handbook/cheatsheets/codebase-playbook.md`：源码导航压缩包（入口 → 内核 → 回归），用于快速定位实现与测试。
 - `docs/ssot/platform/appendix/concepts/README.md`：方法论映射与概念补篇索引（渐进披露入口）。
-- `docs/ssot/handbook/long-chain-index.md`：长链路正交分解（A–K）索引与“分贝”指针（按需加载）。
+- `docs/ssot/handbook/cheatsheets/long-chain/long-chain-index.md`：长链路正交分解（A–K）索引与“分贝”指针（按需加载）。

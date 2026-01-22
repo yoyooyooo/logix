@@ -128,7 +128,7 @@
 
 **Purpose**: 质量门禁、文档互引与交接收口。
 
-- [x] T036 [P] 更新微观优化备忘（说明 Exec IR + bitset + draft 复用的边界与风险）`docs/impl-notes/01-micro-optimizations.md`
+- [x] T036 [P] 更新微观优化备忘（说明 Exec IR + bitset + draft 复用的边界与风险）`docs/ssot/handbook/reading-room/impl-notes/01-micro-optimizations.md`
 - [x] T037 写清楚“如何生成/更新 before/after/diff”的流程与命名约定 `specs/039-trait-converge-int-exec-evidence/perf.md`
 - [x] T038 跑通质量门禁（typecheck/lint/test + browser）并记录一次 after 证据 `package.json`、`specs/039-trait-converge-int-exec-evidence/perf.md`
 - [x] T039 [P] 若本特性改变了“性能边界/自动策略/可调旋钮”的对外口径：同步更新用户文档心智模型与优化梯子（本轮无对外口径变更，无需更新）`apps/docs/content/docs/guide/advanced/performance-and-optimization.md`、`apps/docs/content/docs/guide/advanced/converge-control-plane.md`

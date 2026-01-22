@@ -55,5 +55,5 @@ status: living
 
 ## 背景与证据（非裁决来源）
 
-- 设计哲学与价值判断：`docs/philosophy/**`（尤其 `04-developer-sovereignty.md`、`05-architecture-as-view.md`）
-- 实现评审与差距清单：`docs/reviews/**`（尤其 `08-philosophy-alignment.md`）
+- 设计哲学与价值判断：`docs/ssot/handbook/reading-room/philosophy/**`（尤其 `04-developer-sovereignty.md`、`05-architecture-as-view.md`）
+- 实现评审与差距清单：`docs/ssot/handbook/reading-room/reviews/**`（尤其 `08-philosophy-alignment.md`）

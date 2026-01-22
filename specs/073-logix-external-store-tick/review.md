@@ -1,14 +1,14 @@
 # 073 规划与设计审查报告 (Design Review)
 
-**Source**: `/Users/yoyo/.gemini/antigravity/brain/c31c9095-ed6f-49ab-a148-6b00d02b2b52/review_073_scheduler_design.md.resolved`（copied on 2026-01-07）
+**Source**: 外部审查材料（本地路径已移除；copied on 2026-01-07）
 
 **Digest**: DONE (2026-01-07)
 
-本报告针对 Phase 3/4/5 新增规划（[scheduler.md](file:///Users/yoyo/.gemini/antigravity/brain/c31c9095-ed6f-49ab-a148-6b00d02b2b52/review_073_scheduler.md), [diagnostics.md](file:///Users/yoyo/Documents/code/personal/intent-flow.worktrees/073/specs/073-logix-external-store-tick/contracts/diagnostics.md)）进行深度分析。
+本报告针对 Phase 3/4/5 新增规划（[scheduler.md](./contracts/scheduler.md), [diagnostics.md](./contracts/diagnostics.md)）进行深度分析。
 
 ## 1. 总体评价 (Executive Summary)
 
-新增的调度抽象（`HostScheduler` + [TickScheduler](file:///Users/yoyo/Documents/code/personal/intent-flow.worktrees/073/packages/logix-core/src/internal/runtime/core/TickScheduler.ts#39-49) Yield 机制）极大地提升了 Runtime 的健壮性。**"Yield-to-Host"（反饥饿）策略是本次规划的亮点**，它补全了纯 Microtask 调度方案在重负载下导致 UI 死锁的重大短板。
+新增的调度抽象（`HostScheduler` + [TickScheduler](/packages/logix-core/src/internal/runtime/core/TickScheduler.ts#L39-L49) Yield 机制）极大地提升了 Runtime 的健壮性。**"Yield-to-Host"（反饥饿）策略是本次规划的亮点**，它补全了纯 Microtask 调度方案在重负载下导致 UI 死锁的重大短板。
 
 设计显式区分了 **"逻辑一致性" (Tick/Fixpoint)** 与 **"宿主执行权" (Host Scheduling)**，并引入了完善的可观测性（`trace:tick`），符合 Logix "可解释、可诊断、高性能" 的北极星目标。
 
@@ -43,13 +43,13 @@
 ## 3. 改进建议 (Recommendations)
 
 1.  **明确 RAF 交互规范**：
-    在 [contracts/scheduler.md](file:///Users/yoyo/Documents/code/personal/intent-flow.worktrees/073/specs/073-logix-external-store-tick/contracts/scheduler.md) 中补充关于 `requestAnimationFrame` 场景的说明。如果 Logix 状态用于驱动动画（虽然不推荐），Yield 策略是否需要感知 Frame 边界？
+    在 [contracts/scheduler.md](./contracts/scheduler.md) 中补充关于 `requestAnimationFrame` 场景的说明。如果 Logix 状态用于驱动动画（虽然不推荐），Yield 策略是否需要感知 Frame 边界？
 
 2.  **强化测试规约**：
-    `HostScheduler` 的引入使得 "Deterministic Testing" 成为可能。建议在 [scheduler.md](file:///Users/yoyo/.gemini/antigravity/brain/c31c9095-ed6f-49ab-a148-6b00d02b2b52/review_073_scheduler.md) 或 `tasks.md` 中明确要求：**必须** 产出针对与 React 并发模式交互的集成测试（例如：Logix Yield 后，React 是否能插入高优先级更新）。
+    `HostScheduler` 的引入使得 "Deterministic Testing" 成为可能。建议在 [scheduler.md](./contracts/scheduler.md) 或 `tasks.md` 中明确要求：**必须** 产出针对与 React 并发模式交互的集成测试（例如：Logix Yield 后，React 是否能插入高优先级更新）。
 
 3.  **微任务深度实现指南**：
-    在 Implementation Note 中提示开发者：`microtaskChainDepth` 不能依赖宿主 API，必须在 [TickScheduler](file:///Users/yoyo/Documents/code/personal/intent-flow.worktrees/073/packages/logix-core/src/internal/runtime/core/TickScheduler.ts#39-49) 或 `HostScheduler` 内部维护 "当前连续微任务计数"。
+    在 Implementation Note 中提示开发者：`microtaskChainDepth` 不能依赖宿主 API，必须在 [TickScheduler](/packages/logix-core/src/internal/runtime/core/TickScheduler.ts#L39-L49) 或 `HostScheduler` 内部维护 "当前连续微任务计数"。
 
 4.  **生产环境遥测**：
     建议在 `RuntimeStore` 配置中增加 `onTickDegraded` 回调，允许业务层监控生产环境的 "Ejection" (Yield) 频率，作为性能质量红线的依据。
@@ -57,4 +57,3 @@
 ## 4. 结论
 
 该规划方向正确，架构清晰，解决了 Logix 作为一个通用状态运行时在 "协同多任务" 方面的核心痛点。建议按此规划推进，并在实现阶段重点关注上述的 RAF 交互与深度检测细节。
-

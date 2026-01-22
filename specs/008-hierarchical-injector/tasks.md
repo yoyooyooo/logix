@@ -107,7 +107,7 @@
 
 - [x] T032 删除 `$.useRemote` 作为公共 API（同步更新类型导出与内部用例；迁移推荐为 `$.use` 或 `Link.make`）`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
 - [x] T033 [P] 同步用户文档：跨模块协作从 `$.useRemote` 迁移到 `Link.make`（含最小示例与语义对比表）`apps/docs/content/docs/guide/learn/cross-module-communication.md`
-- [x] T034 [P] 同步评审文档：移除/更新 `$.useRemote` 的公共 API 表述（保持与 008 一致）`docs/reviews/02-mental-model-and-public-api.md`
+- [x] T034 [P] 同步评审文档：移除/更新 `$.useRemote` 的公共 API 表述（保持与 008 一致）`docs/ssot/handbook/reading-room/reviews/02-mental-model-and-public-api.md`
 - [x] T035 [P] 新增迁移辅助脚本（best-effort）：扫描 `$.useRemote` 与“`$.use(Module)` 但未声明 imports”的常见误用并输出提示 `scripts/migrate/008-hierarchical-injector.scan.ts`
 - [x] T036 [P] 更新 runtime SSoT：作用域边界与最佳实践（UI 默认只绑定 Host，一跳 imports 直连；深层模块通过投影/边界 resolve 一次并透传 ModuleRef；必要时把常用模块提升为 Host 的直接 imports）`docs/ssot/runtime/logix-react/01-react-integration.md`
 - [x] T037 [P] 更新多实例最佳实践（如需补充）：strict 与 global 的使用边界 `docs/ssot/runtime/logix-core/patterns/10-pattern-multi-instance.md`

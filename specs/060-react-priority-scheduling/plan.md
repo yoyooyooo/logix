@@ -27,7 +27,7 @@
 - 低优先级入口（只写 commit meta）：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts`（`dispatchLowPriority`）
 - React ExternalStore 低优先级通知调度：`packages/logix-react/src/internal/store/ModuleRuntimeExternalStore.ts`（基于 `meta.priority`）
 - 043 deferred converge time-slicing：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`、`packages/logix-core/src/internal/runtime/core/ModuleRuntime.traitConvergeConfig.ts`、`packages/logix-core/src/internal/state-trait/converge.ts`
-- 并发/批处理解释文档（已有 `dispatchBatch`/`dispatchLowPriority` 心智模型）：`docs/impl-notes/08-concurrency-and-batching.md`
+- 并发/批处理解释文档（已有 `dispatchBatch`/`dispatchLowPriority` 心智模型）：`docs/ssot/handbook/reading-room/impl-notes/08-concurrency-and-batching.md`
 
 ## Technical Context
 
@@ -166,7 +166,7 @@ apps/docs/content/docs/guide/advanced/
 apps/docs/content/docs/guide/essentials/
 └── react-integration.md
 
-docs/impl-notes/
+docs/ssot/handbook/reading-room/impl-notes/
 └── 08-concurrency-and-batching.md
 ```
 

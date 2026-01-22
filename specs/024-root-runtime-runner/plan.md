@@ -151,14 +151,16 @@ specs/024-root-runtime-runner/
 ```text
 packages/logix-core/src/
 ├── Runtime.ts                            # 顶层公开 API + 接线（尽量薄：make/runProgram/openProgram）
-└── internal/runtime/runner/               # 024 主要实现落点（internal 为主，避免散落在顶层模块）
-   ├── ProgramRunner.ts                   # runner 内核：boot/openProgram/runProgram/释放
-   ├── ProgramRunner.context.ts           # 构造 ProgramRunContext（scope/runtime/module/$）
-   ├── ProgramRunner.options.ts           # 归一化 options（closeScopeTimeout/args/handleSignals/exitCode/reportError）
-   ├── ProgramRunner.errors.ts            # Boot/Main/DisposeTimeout 分类 + Slim 可序列化错误载荷
-   ├── ProgramRunner.closeScope.ts        # closeScopeTimeout 的执行与超时可解释失败
-   ├── ProgramRunner.signals.ts           # Node-only：SIGINT/SIGTERM → graceful shutdown（可移除监听器）
-   └── ProgramRunner.exitCode.ts          # CLI mode：exitCode/reportError 策略（不强制 process.exit）
+└── internal/runtime/                      # 024 主要实现落点（internal 为主，避免散落在顶层模块）
+   ├── ProgramRunner*.ts                  # 对外接线保持薄：re-export 到 core/runner（避免引入深层路径到 public）
+   └── core/runner/                       # runner 实现内核：boot/openProgram/runProgram/释放
+      ├── ProgramRunner.ts
+      ├── ProgramRunner.context.ts
+      ├── ProgramRunner.options.ts
+      ├── ProgramRunner.errors.ts
+      ├── ProgramRunner.closeScope.ts
+      ├── ProgramRunner.signals.ts
+      └── ProgramRunner.exitCode.ts
 
 packages/logix-test/src/
 ├── index.ts                          # Public API exports（同步移除旧入口）

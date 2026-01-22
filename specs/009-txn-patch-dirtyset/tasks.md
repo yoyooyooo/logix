@@ -95,7 +95,7 @@
 ## Phase 7: Polish & Cross-Cutting Concerns
 
 - [x] T025 [P] 同步文档：`/Users/yoyo/Documents/code/personal/intent-flow/docs/ssot/runtime/logix-core/observability/09-debugging.md`、`/Users/yoyo/Documents/code/personal/intent-flow/apps/docs/content/docs/guide/advanced/debugging-and-devtools.md`（SlimOp + 诊断分档 + 可序列化约束；避免暗示可塞入完整 EffectOp）
-- [x] T026 [P] 同步路线图/迁移说明：`/Users/yoyo/Documents/code/personal/intent-flow/docs/reviews/99-roadmap-and-breaking-changes.md`（如有 breaking change；包含 Static IR 单写者/多写者冲突的常见修复指南）
+- [x] T026 [P] 同步路线图/迁移说明：`docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md`（如有 breaking change；包含 Static IR 单写者/多写者冲突的常见修复指南）
 - [x] T027 运行质量门并修复回归：按 `/Users/yoyo/Documents/code/personal/intent-flow/package.json` scripts 执行 `pnpm typecheck`、`pnpm test`（核心路径变更需补充 perf 证据）
 - [x] T028 [P] Devtools 消费侧对齐 SlimOp：更新 `trace:effectop` 相关过滤/展示逻辑以适配 SlimOp（禁止假定 `data=EffectOp`）`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-devtools-react/src/state/compute.ts`、`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-devtools-react/src/ui/inspector/Inspector.tsx`、`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-devtools-react/src/state/model.ts`
 - [x] T029 [P] React 集成层 best-effort 路径不再静默吞错：替换 `.catch(() => { })` 并在 dev/test 下输出可诊断信息 `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-react/src/components/RuntimeProvider.tsx`、`/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-react/src/internal/ModuleCache.ts`

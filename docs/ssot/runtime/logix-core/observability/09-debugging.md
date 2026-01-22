@@ -4,6 +4,7 @@
 
 ## 最短链路
 
+- 我想从 0→1 搞懂整条“观测/证据/回放”链路（维护者教程）：`docs/ssot/handbook/tutorials/04-observability-evidence-replay.md`
 - 我要启用/接入 Devtools：先读 `09-debugging.03-effectop-bridge.md`
 - 我要看时间线/状态树/逻辑流：读 `09-debugging.08-views.md`
 - 我要理解诊断 code 与触发条件：读 `09-debugging.05-diagnostics.md`

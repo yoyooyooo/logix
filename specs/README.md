@@ -55,6 +55,36 @@
 
 ---
 
+## 建议实施路线（把“怎么做”说得更可执行）
+
+> 说明：这里给的是**排期/实施视角**的建议顺序（便于一个个落地闭环），不是语义裁决；语义口径仍以各 spec 目录内 `spec.md/plan.md` 为准。
+
+### Phase 0：先把“命名与真相源”收敛（阻断文档漂移）
+
+- 目标：平台/协议侧统一叫 `workflow`（Π），对外 DX 的 `FlowProgram` 收敛为 `Workflow`（不做兼容层，forward-only）。
+- 主要 specs：`075`（命名裁决）、`073`（分层口径与 pr.md）
+- 完成标志：`specs/073-logix-external-store-tick/pr.md` 的裁决点在 `specs/075-flow-program-codegen-ir/spec.md` 与对应 contracts/quickstart/tasks 中完成同步；平台 glossary/Workbench 术语不再混用。
+
+### Phase 1：Runtime 地基闭环（tick 参考系 + 受限绑定）
+
+- 目标：把“写侧证据（dirty-set）→ 事务内收敛（traits）→ 订阅增量（ReadQuery）→ no-tearing（tickSeq）”打通，并建立可复现的性能/诊断基线。
+- 主要 specs：`073` → `068` → `076`（必要时并行 `016/027/014/017`）
+- 完成标志：最小基线可复现（perf matrix + diff），且默认 `diagnostics=off` 不引入常态开销税；关键退化（dirtyAll/strictGate）都有 Slim 诊断与可回链锚点。
+
+### Phase 2：出码/回写跑道闭环（从“可导出”到“可增量改写”）
+
+- 目标：把 Root IR / workflow slice 做到可 cache / 可 diff / 可回写（Parser/Rewrite），并能落到可运行的最小工具链闭环。
+- 主要 specs：`075` → `079` → `081` → `082`（按需穿插 `080/083/078`）
+- 完成标志：同一仓库在不同环境导出一致 digest；Parser/Rewrite 能做“最小补丁”且有解释性 diff（无兼容层，改动以迁移说明替代）。
+
+### Phase 3：平台工具链最小可用（CLI + Alignment Lab）
+
+- 目标：让平台侧能够“读 IR → 跑对齐 → 出报告/回放”，不依赖手工读源码。
+- 主要 specs：`086` + `085`（并行补 `084/092` 形成端到端证据链）
+- 完成标志：CLI 可以一键跑通“导出 Root IR → trial run → 产出 RunResult/Trace/Tape（可选）”，并能被 CI/平台消费。
+
+---
+
 ## 未完成 specs（按主题分组）
 
 > 说明：分组是“实施/排期视角”，不是语义层级裁决；同一 spec 可能与多条主线相关，这里按最主要落点归类。
@@ -156,4 +186,3 @@
 - [`053-core-ng-aot-artifacts`](./053-core-ng-aot-artifacts)（Frozen）— core-ng AOT Artifacts（Static IR / Exec IR 工件化）
 - [`054-core-ng-wasm-planner`](./054-core-ng-wasm-planner)（Frozen）— core-ng Wasm Planner（可选极致路线）
 - [`055-core-ng-flat-store-poc`](./055-core-ng-flat-store-poc)（Frozen）— core-ng Flat Store PoC（arena/SoA/handle 化）
-

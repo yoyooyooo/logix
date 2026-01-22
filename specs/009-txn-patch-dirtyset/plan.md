@@ -69,7 +69,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - Transaction boundary：同步事务窗口禁止 IO；任何异步必须通过 Task/事务外运行再写回，且违反要稳定失败并可解释。
 - Performance budget：热路径集中在事务提交、trait converge/validate/source 的调度与依赖索引；必须提供基线与回归防线（benchmark + 关键计数）。
 - Diagnosability：诊断事件必须 Slim 且可序列化；诊断分档 off/light/sampled/full，off 不进入 ring buffer；关闭诊断时不得引入显著额外分配或全量扫描。
-- Breaking changes：允许不兼容（不提供兼容层）；迁移说明写入 `docs/reviews/99-roadmap-and-breaking-changes.md`（Phase 1/2 对应条目）并同步到 runtime SSoT。
+- Breaking changes：允许不兼容（不提供兼容层）；迁移说明写入 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md`（Phase 1/2 对应条目）并同步到 runtime SSoT。
 - Quality gates：`pnpm typecheck`、`pnpm test` 作为最低通过线；涉及核心路径变更时补一条可复现基准脚本与结果记录。
 
 ## Project Structure
@@ -96,7 +96,7 @@ packages/logix-core/src/internal/state-trait/      # build/converge/validate/sou
 packages/logix-devtools-react/                     # 作为诊断协议的消费者（必要时更新对齐）
 packages/logix-sandbox/                            # 作为 IR/trace 协议的消费者（必要时更新对齐）
 docs/ssot/runtime/logix-core/                     # 对外契约 SSoT
-docs/reviews/                                      # 评审与路线图证据
+docs/ssot/handbook/reading-room/reviews/                                      # 评审与路线图证据
 ```
 
 **Structure Decision**: 本特性以 `packages/logix-core` 的事务闭包与 state-trait 增量调度为核心落点；docs-first 更新 runtime SSoT 与 reviews 证据，消费者侧（devtools/sandbox/react）只做必要的协议对齐。

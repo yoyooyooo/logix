@@ -71,9 +71,9 @@
 
 ## 实现视角补充（非 SSoT）
 
-- `docs/ssot/handbook/long-chain-index.md`：维护者/LLM 的长链路正交分解索引（A–K）与“分贝”指针。
+- `docs/ssot/handbook/cheatsheets/long-chain/long-chain-index.md`：维护者/LLM 的长链路正交分解索引（A–K）与“分贝”指针。
 
 ## 检索与源码导航（可选）
 
-- `docs/ssot/handbook/auggie-playbook.md`：auggie 检索链路压缩包（smoke test + 黄金链路分步查询）。
-- `docs/ssot/handbook/codebase-playbook.md`：源码导航压缩包（入口 → 内核 → 回归）。
+- `docs/ssot/handbook/cheatsheets/auggie-playbook.md`：auggie 检索链路压缩包（smoke test + 黄金链路分步查询）。
+- `docs/ssot/handbook/cheatsheets/codebase-playbook.md`：源码导航压缩包（入口 → 内核 → 回归）。

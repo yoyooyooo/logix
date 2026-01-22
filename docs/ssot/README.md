@@ -26,6 +26,6 @@ status: living
 - 未定稿探索：`docs/specs/drafts/**`
 - 单特性交付：`specs/<id>/**`
 - 对外用户文档：`apps/docs/content/docs/**`
-- 实现视角导航：`docs/impl-notes/**`
-- 设计哲学与原则叙事：`docs/philosophy/**`
-- 评审与证据/差距复盘：`docs/reviews/**`
+- 实现视角导航：`docs/ssot/handbook/reading-room/impl-notes/**`
+- 设计哲学与原则叙事：`docs/ssot/handbook/reading-room/philosophy/**`
+- 评审与证据/差距复盘：`docs/ssot/handbook/reading-room/reviews/**`

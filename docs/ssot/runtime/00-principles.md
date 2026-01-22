@@ -58,5 +58,5 @@ status: living
 
 ## 背景与证据（非裁决来源）
 
-- 设计哲学与价值判断：`docs/philosophy/**`（尤其 `01-safeguarding-ai-maintainability.md`、`03-logic-first-ui-agnostic.md`、`07-runtime-trinity-and-effect-native.md`）
-- 实现评审与差距清单：`docs/reviews/**`（尤其 `08-philosophy-alignment.md`）
+- 设计哲学与价值判断：`docs/ssot/handbook/reading-room/philosophy/**`（尤其 `01-safeguarding-ai-maintainability.md`、`03-logic-first-ui-agnostic.md`、`07-runtime-trinity-and-effect-native.md`）
+- 实现评审与差距清单：`docs/ssot/handbook/reading-room/reviews/**`（尤其 `08-philosophy-alignment.md`）

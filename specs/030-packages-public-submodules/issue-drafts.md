@@ -5,7 +5,6 @@
 > 说明：本特性任务已全部完成；若你仍需要在 tracker 留痕，可按本文件创建后直接关闭。
 
 **Source of Truth**: `specs/030-packages-public-submodules/tasks.md`  
-**Acceptance**: `specs/030-packages-public-submodules/acceptance.md`
 
 ## 推荐：按 Phase 合并成 10 个 Issue
 

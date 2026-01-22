@@ -5,6 +5,7 @@
 ## 建议阅读顺序
 
 1. `09-debugging.md`
+2. 维护者教程（how-to）：`docs/ssot/handbook/tutorials/04-observability-evidence-replay.md`
 
 ## 相关实现入口（代码）
 
