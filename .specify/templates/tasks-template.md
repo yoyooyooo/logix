@@ -95,6 +95,8 @@ Examples of foundational tasks (adjust based on your project):
 
 **Goal**: [Brief description of what this story delivers]
 
+**Traceability**: [optional: NS-?, KF-?]
+
 **Independent Test**: [How to verify this story works on its own]
 
 ### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
@@ -121,6 +123,8 @@ Examples of foundational tasks (adjust based on your project):
 
 **Goal**: [Brief description of what this story delivers]
 
+**Traceability**: [optional: NS-?, KF-?]
+
 **Independent Test**: [How to verify this story works on its own]
 
 ### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
@@ -142,6 +146,8 @@ Examples of foundational tasks (adjust based on your project):
 ## Phase 5: User Story 3 - [Title] (Priority: P3)
 
 **Goal**: [Brief description of what this story delivers]
+
+**Traceability**: [optional: NS-?, KF-?]
 
 **Independent Test**: [How to verify this story works on its own]
 

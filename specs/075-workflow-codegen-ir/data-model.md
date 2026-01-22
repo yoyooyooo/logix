@@ -182,7 +182,7 @@ v1 策略集合（最小完备）：
 ### 2.1 最小形态（V1）
 
 ```ts
-type WorkflowProgramId = string
+type WorkflowStableId = string
 type WorkflowNodeId = string
 type WorkflowFragmentId = string
 type WorkflowSource = { readonly fragmentId?: WorkflowFragmentId; readonly stepKey?: string }
@@ -209,7 +209,7 @@ type WorkflowConcurrencyPolicy = 'latest' | 'exhaust' | 'parallel'
 
 type WorkflowStaticIrV1 = {
   readonly version: 1
-  readonly programId: WorkflowProgramId
+  readonly programId: WorkflowStableId
   readonly digest: string
   readonly nodes: ReadonlyArray<{
     readonly id: WorkflowNodeId

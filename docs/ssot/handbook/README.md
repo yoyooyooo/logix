@@ -50,7 +50,7 @@ version: 1
 - Manifest 家族：ModuleManifest / ManifestDiff / 预算裁剪 / 影响面分析 教程（剧本集）：`tutorials/34-surface-manifests-and-impact-analysis.md`
 - Anchors / stepKey：稳定锚点协议与保守回写（最小 diff）教程（剧本集）：`tutorials/35-anchors-stepkey-and-rewriter-safety.md`
 - Parser / Rewriter：Platform-Grade 子集与正确性路线图 教程（剧本集）：`tutorials/36-parser-rewriter-correctness-roadmap.md`
-- FlowProgram vs Workflow：命名收敛、分层边界与 forward-only 改名路线 教程（剧本集）：`tutorials/37-flowprogram-vs-workflow-naming.md`
+- Workflow 命名收敛：分层边界与 forward-only 改名路线 教程（剧本集）：`tutorials/37-workflow-naming-unification.md`
 - SpecKit：spec→plan→tasks→implement→acceptance 的可交接闭环 教程（剧本集）：`tutorials/38-speckit-spec-driven-workflow.md`
 - logix-core 分层：src/*.ts 与 internal/** 的依赖拓扑铁律 教程（剧本集）：`tutorials/39-logix-core-layering-and-dependency-topology.md`
 - Effect v3：Tag/Layer/Scope/错误通道在本仓的标准姿势 教程（剧本集）：`tutorials/40-effect-v3-patterns-in-logix.md`

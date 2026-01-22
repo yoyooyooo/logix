@@ -43,6 +43,7 @@ description: 在采用 `.specify/` + `specs/` 的 Spec-Driven Development（Spec
 - 触发格式：`$speckit <stage> <text...>`
 - `<stage>` 只能取以下之一：
   - `constitution`
+  - `north-stars`
   - `specify`
   - `clarify`
   - `clarify-auto`
@@ -117,6 +118,7 @@ feature 选择（可选，但强烈建议明确指定以避免误选“最新 sp
 根据 `<stage>` 加载并执行对应 reference 文件（相对本 skill 目录）：
 
 - `constitution` → `SKILL_DIR/references/constitution.md`
+- `north-stars` → `SKILL_DIR/references/north-stars.md`
 - `specify` → `SKILL_DIR/references/specify.md`
 - `clarify` → `SKILL_DIR/references/clarify.md`
 - `clarify-auto` → `SKILL_DIR/references/clarify-auto.md`
@@ -162,6 +164,7 @@ feature 选择（可选，但强烈建议明确指定以避免误选“最新 sp
 ## 脚本能力（无需读源码）
 
 - `scripts/bash/create-new-feature.sh`：创建 `specs/<NNN-*>/spec.md`（从模板拷贝/或创建空文件），输出包含 `BRANCH_NAME`/`SPEC_FILE` 的 JSON；不做任何 VCS 操作。
+- `scripts/bash/setup-north-stars.sh`：初始化/同步 `.specify/memory/north-stars.md`（默认不覆盖；仅在显式 `--sync/--force` 时写入），输出 JSON；不改动任何 specs 产物。
 - `scripts/bash/setup-plan.sh`：确保 `specs/<feature>/plan.md` 存在（默认不覆盖，`--force` 才覆盖），输出包含 `FEATURE_SPEC`/`IMPL_PLAN` 的 JSON；不改动其它规格产物。
 - `scripts/bash/update-spec-status.sh`：更新 `specs/<feature>/spec.md` 顶部的 `**Status**:` 行；支持 `--ensure` 保持单调前进（Draft→Planned→Active→Done），避免回退。
 - `scripts/bash/setup-notes.sh`：确保 `specs/<feature>/notes/` 骨架存在（默认不覆盖；`--force` 才覆盖），输出包含 `NOTES_DIR`/`NOTES_README`/`SESSIONS_DIR` 的 JSON；支持 `--dry-run` 预览。

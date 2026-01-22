@@ -7,7 +7,7 @@ status: living
 
 本目录的目标不是“描述一切”，而是提供 **可长期引用的裁决口径**：当平台、运行时、出码、Devtools 出现分歧时，先知道“谁说了算”，并且能把分歧收敛到同一套符号与契约上。
 
-## 1) 北极星（不讨论实现，先定口径）
+## 1) 核心目标（不讨论实现，先定口径）
 
 - UI 交给 React：UI 只负责展示与交互采集，**不编排业务副作用**。
 - 逻辑交给 Logix：业务行为以 **显式控制律**（Program）表达，运行时负责执行与产出证据链。
@@ -58,4 +58,3 @@ status: living
 - **收敛不是无限的**：允许预算/分帧/partial fixpoint，但必须可解释与可诊断（见 `contracts/00-execution-model.md`）。
 - **诊断不可能零成本**：Diagnostics=Off 只能追求“可控/可忽略”，不能承诺绝对 0（见 `contracts/00-execution-model.md`）。
 - **IO 不能真正时间旅行**：Live 只能只读回放；Replay/Fork 需要 Tape 把不确定性注入为事件（见 `contracts/01-runresult-trace-tape.md`）。
-

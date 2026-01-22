@@ -106,16 +106,16 @@
 - [x] T312 同步 runtime SSoT：补齐 Workflow 分层术语与“可合并性 rationale”（落点：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`；仅措辞对齐）
 - [x] T313 更新 runtime glossary 索引：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md` 增补 075 的分层术语入口
 
-## Phase 6: Naming Unification（FlowProgram → Workflow，含证据链命名）
+## Phase 6: Naming Unification（历史命名 → Workflow，含证据链命名）
 
-- [x] T400 统一公共 API：`Logix.FlowProgram` → `Logix.Workflow`；`Module.withFlow(s)` → `Module.withWorkflow(s)`；同步 `packages/logix-core/package.json` exports（forward-only，无 shim）
-- [x] T401 统一 internal 命名与落点：`internal/flow-program/**` → `internal/workflow/**`；`FlowProgramRuntime` → `WorkflowRuntime`；`FLOW_PROGRAM_*` 错误与 `_tag` 口径同步到 `WORKFLOW_*`/`Workflow*`
-- [x] T402 统一诊断/事件/trace 命名：`flowProgram.*` → `workflow.*`（含 timer 事件、dispatch/cancel/drop、originKind 等），并同步更新对应测试断言
-- [x] T403 统一 perf suite 与维度命名：`flowProgram.*` suites + `flowProgram.mode` + `VITE_LOGIX_PERF_FLOW_PROGRAM_MODE` → `workflow.*` + `workflow.mode` + `VITE_LOGIX_PERF_WORKFLOW_MODE`；同步更新矩阵与已生成 evidence 文件名/内容
+- [x] T400 统一公共 API：值对象子模块统一为 `Workflow`；`Module.withFlow(s)` → `Module.withWorkflow(s)`；同步 `packages/logix-core/package.json` exports（forward-only，无 shim）
+- [x] T401 统一 internal 命名与落点：相关目录/类型/错误码/`_tag` 口径统一到 `Workflow*` 与 `WORKFLOW_*`
+- [x] T402 统一诊断/事件/trace 命名：统一到 `workflow.*` 前缀（含 timer 事件、dispatch/cancel/drop、originKind 等），并同步更新对应测试断言
+- [x] T403 统一 perf suite 与维度命名：统一到 `workflow.*` suites 与 `workflow.mode`（含 Vite env），并同步更新矩阵与已生成 evidence 文件名/内容
 - [x] T404 最后一步对齐 spec 目录与互引：确保目录为 `specs/075-workflow-codegen-ir/`，并全仓更新引用路径
 - [x] T405 回归质量门：`pnpm typecheck`、`pnpm typecheck:test`、`pnpm lint`、`pnpm test:turbo`
-- [x] T406 验收扫尾：清理 075 specs 内残留的 `FlowProgram*` 命名（`data-model.md` / `contracts/*` / `plan.md` / `review.md`），统一对外口径为 `Workflow*`
-- [x] T407 验收扫尾：在 `specs/075-workflow-codegen-ir/` 内执行 `rg -n "FlowProgram" .` 仅允许命中“命名迁移任务描述”（Phase 6 本节）
+- [x] T406 验收扫尾：清理 075 specs 内残留的历史命名（`data-model.md` / `contracts/*` / `plan.md` / `review.md`），统一对外口径为 `Workflow*`
+- [x] T407 验收扫尾：在 `specs/075-workflow-codegen-ir/` 内执行命名残留检索（仅允许命中“命名迁移任务描述”（Phase 6 本节））
 
 ## Phase 7: Determinism & Anchors（验收加固：消除 locale 漂移 + 锚点 fail-fast）
 

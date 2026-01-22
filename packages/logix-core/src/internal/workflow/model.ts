@@ -52,7 +52,7 @@ export type WorkflowDef = WorkflowDefV1
 
 export type WorkflowStaticIrVersion = 1
 
-export type WorkflowProgramId = string
+export type WorkflowStableId = string
 
 export type WorkflowNodeId = string
 
@@ -94,7 +94,7 @@ export type WorkflowStaticNode =
 
 export type WorkflowStaticIrV1 = {
   readonly version: WorkflowStaticIrVersion
-  readonly programId: WorkflowProgramId
+  readonly programId: WorkflowStableId
   readonly digest: string
   readonly nodes: ReadonlyArray<WorkflowStaticNode>
   readonly edges: ReadonlyArray<WorkflowEdge>

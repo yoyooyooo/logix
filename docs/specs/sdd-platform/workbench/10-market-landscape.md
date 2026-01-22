@@ -12,7 +12,7 @@ related:
 
 # 市场扫描：Spec-Driven 相关工具版图与机会窗口
 
-> 目的：回答“市面上有没有 spec 驱动思想实现的上层工具/应用/平台？机会在哪里？”并将结论映射到 Intent Flow 的差异化与落地路径。
+> 目的：回答“市面上有没有 spec 驱动思想实现的上层工具/应用/平台？机会在哪里？”并将结论映射到 Logix 的差异化与落地路径。
 
 ## 0. 术语澄清：市场上的 “Spec-Driven” 很不统一
 
@@ -22,7 +22,7 @@ related:
 2. **Contract/Schema 驱动**：把 API/schema 当作契约源头，并通过 mock/lint/diff/breaking checks 把契约落到 CI 门禁（偏“接口/类型资产治理”）。
 3. **Policy/Flow 驱动**：把策略/流程当作可执行规范，通过引擎运行/回放/审计（偏“运行时可解释 + 可靠执行”）。
 
-Intent Flow 的北极星更接近“**Executable Spec Engine**”：不仅管理 spec 文档，更要把 spec 收敛到**统一最小 IR（Static IR + Dynamic Trace）**，并用运行时 trace 作为可解释的合规证明与回放载体。
+Logix 的定位更接近“**Executable Spec Engine**”：不仅管理 spec 文档，更要把 spec 收敛到**统一最小 IR（Static IR + Dynamic Trace）**，并用运行时 trace 作为可解释的合规证明与回放载体。
 
 ## 1. 市场版图（按“spec 能否被机器验证/执行”排序）
 
@@ -97,7 +97,7 @@ Intent Flow 的北极星更接近“**Executable Spec Engine**”：不仅管理
 - **把 breaking change 治理从 schema 扩展到行为与流程**（把“行为兼容性”做成类似 Buf/Apollo Checks 的一等公民产品）。
 - **跨域规范的一致性**（API 契约、权限策略、UI schema、流程执行）有大量“并行真相源漂移”，缺少统一锚点与自动化检测。
 
-## 3. 对 Intent Flow 的产品化启示（可落地切入）
+## 3. 对 Logix 的产品化启示（可落地切入）
 
 ### 3.1 “Logix Checks”：面向 IR/Trace 的兼容性与合规门禁（类 Buf/Apollo Checks）
 
@@ -111,7 +111,7 @@ Intent Flow 的北极星更接近“**Executable Spec Engine**”：不仅管理
 
 ### 3.2 “Executable Spec Lab”：把 spec-first 工具链补上“运行时对齐”这一块
 
-定位：把 `spec-kit` 类工作流的“spec/plan/tasks”与 Intent Flow 的“Sandbox/Alignment Lab”硬连接，形成真正可回放的闭环。
+定位：把 `spec-kit` 类工作流的“spec/plan/tasks”与 Logix 的“Sandbox/Alignment Lab”硬连接，形成真正可回放的闭环。
 
 关键点：
 
@@ -130,4 +130,4 @@ Intent Flow 的北极星更接近“**Executable Spec Engine**”：不仅管理
 ## 4. 风险与反直觉点（避免走向“写更多文档”）
 
 - **SDD 工具的最大坑**往往不是生成能力，而是 review/维护成本：spec 变多、变散、变难以裁决。
-- 因此 Intent Flow 的路线应坚持：把“裁决点”下沉到 IR/Trace，可量化、可回放、可解释；文档是输入而非真相源。
+- 因此 Logix 的路线应坚持：把“裁决点”下沉到 IR/Trace，可量化、可回放、可解释；文档是输入而非真相源。

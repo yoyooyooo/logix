@@ -9,13 +9,6 @@
 - `packages/logix-sandbox`：Playground/Alignment Lab 基础设施
 - `examples/logix`：示例是否体现唯一推荐写法
 
-## 需要达成的契约（北极星）
-
-1. **事务 → 渲染批处理**：React 订阅以 txn 为边界收敛，避免一次 action 触发多次渲染抖动。
-2. **可诊断性**：组件渲染事件能与 txnId 对齐（DebugSink 已为此做了 lastTxnId 兜底，但需要强协议）。
-3. **选择器与依赖收敛**：React 侧 selector 必须可追踪、可缓存、可复用；禁止“每次 render 创建新 selector 导致订阅失效”。
-4. **开发体验**：默认开启的观测应足够解释性能问题，但生产环境必须可降级且无隐性开销。
-
 ## React 集成现状：已经接近“事务 → 渲染批处理”
 
 ### 1) 订阅模型：`useSyncExternalStore` + microtask batching

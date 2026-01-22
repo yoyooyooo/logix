@@ -431,7 +431,7 @@ version: 1
   - 一致：允许 deterministic replay；
   - 不一致：fail-fast 或显式进入“迁移/重录”流程（forward-only）。
 
-SSoT 入口：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`、`specs/075-flow-program-codegen-ir/contracts/tape.md`
+SSoT 入口：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`、`specs/075-workflow-codegen-ir/contracts/tape.md`
 
 ---
 

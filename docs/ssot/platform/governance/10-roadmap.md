@@ -168,3 +168,40 @@ status: living
   - 平台实现者在设计解析器与出码链路时，优先查阅这些实现备忘，并在方案确定后回写主规格（`docs/specs/sdd-platform/workbench/*` 与 `docs/ssot/runtime/logix-core/`）。
 
 目标是：**在规划阶段就把可能踩坑的点前移到文档中**，让后续实现工作尽量是在“有地基的施工”，而不是在开发中临时拍板核心架构决策。
+
+## 5. 长期里程碑（Kill Features · Vision）
+
+本节用于把“未来可解锁的 Kill Features”收敛为 Roadmap 的长期指路里程碑信号（不是当前阶段的硬交付清单）：
+
+- 北极星（含 Kill Features 矩阵、最小信号与口径）：`docs/ssot/platform/foundation/04-north-stars.md`
+- 用法：当我们在 067/073/075/078 等核心跑道上做取舍时，以这些里程碑的“可实现性/可解释性/可回写性”作为反向约束。
+
+### Milestone Signals（只列最小信号）
+
+1. **可稳定 diff 的 Root IR**
+   - `ControlSurfaceManifest.digest/diff` 作为构建产物，能稳定比较“意图/规则/工作流”的结构变化。
+2. **可回写的 Canonical AST**
+   - Parser 能把可解析子集的 TS 还原为 Canonical AST；Rewriter 能做保守补丁回写（roundtrip 不漂移）。
+3. **稳定锚点（stepKey）**
+   - 节点/步骤级稳定标识可跨重排/重构维持可追踪性，支撑图 diff、回放索引与迁移。
+4. **可计算依赖图（Surfaces）**
+   - `WorkflowSurface`/`ServiceSurface` 可输出依赖图与调用链，用于影响面分析与智能回归。
+5. **静态治理 + 语义门禁**
+   - `Static Governance` + `IntentRule` 映射可表达并执行“语义级 CI 门禁”（不是文本规则）。
+6. **可回放的 Dynamic Trace**
+   - `tickSeq`/Trace 能索引回 Root IR 与步骤锚点，支撑 Time-travel、ReplayLog 与生产证据链。
+7. **零开销可切换诊断**
+   - 诊断/Spy 能按需热开启并可序列化输出，默认近零开销。
+8. **Sandbox/Alignment Lab**
+   - `Sandbox Runtime` + `Semantic Mock` + Alignment Lab 能对任意切片做隔离试运行与对齐验证。
+
+### Kill Features Map（按优先级分组）
+
+- Priority 0：Visual Logic Review / Full-Duplex Visual Authoring
+  - 依赖：1/2/3；并要求“图形化差异视图”和“代码↔画布锚点”长期不漂移。
+- Priority 1：Intent Integrity Guardian / Precision Impact Analysis / Automated Concurrency Governor
+  - 依赖：4/5/（部分 1/6）；并要求治理规则可解释、可落地到 CI。
+- Priority 2：Time-Travel Workflow Debugging / Automated Refactoring & Migration / Zero-Overhead Diagnostics
+  - 依赖：2/3/6/7；并要求回放链路与重写能力在真实场景中闭环。
+- Priority 3：Living Documentation / Sandbox-as-a-Service
+  - 依赖：1/4/8；并要求 IR 与构建/运行时证据链联动，形成“活体资产”。

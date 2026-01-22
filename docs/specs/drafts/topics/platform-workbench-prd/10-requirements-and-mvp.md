@@ -11,23 +11,15 @@ related:
   - ../sdd-platform/11-spec-to-code-mvp.md
   - ../intent-studio-ux/00-overview.md
   - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
-  - ../../../docs/ssot/platform/roadmap-logix-platform.md
+  - docs/ssot/platform/governance/10-roadmap.md
   - ../sandbox-runtime/35-playground-product-view.md
 ---
 
 # 10 · 需求分解与 MVP（Platform Workbench PRD）
 
-## 1. 北极星（平台侧）
+## 1. 目标（平台侧）
 
-在一个真实业务仓库中，平台需要跑通并可回放一条闭环：
-
-> **Intent（需求/交互/约束） → Blueprint/IntentRule → Code（Logix/Effect） → Run（Sandbox/Runtime） → Alignment（诊断与回流）**
-
-其中关键不在“能生成代码”，而在于：
-
-- 能持续演进（版本化、审计、回放、治理）；
-- 能解释（把运行行为映射回 Spec/Rule/Code 的锚点）；
-- 能协作（人类与 Agent 都能在同一事实源上工作）。
+平台闭环口径与长期方向已收敛到单一事实源（北极星文档），本 PRD 不再重复定义；下文从 1.1 开始进入 SDD 对齐与 MVP 分解。
 
 ## 1.1 与 SDD 生命周期 / Intent Pipeline 的对齐（上游裁决映射）
 

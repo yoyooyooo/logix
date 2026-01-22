@@ -14,13 +14,6 @@
 4. **诊断协议还没“闭环”**：已经有 DebugSink/DevtoolsHub/StateTransaction/Patch/ReplayLog 的雏形，但“稳定标识 + 触发原因 + 输入快照 + 状态变更记录 + 依赖收敛范围”的组合仍不够一致；需要统一成一个最小 IR，确保所有高层抽象可完全降解并可合并冲突。
 5. **React 集成的性能潜力很大，但当前缺少“事务 → 渲染批处理”契约**：如果要达到你期待的 1+1>2，React adapter 必须能够以 txn 为边界做订阅收敛、优先级与采样，并与 Devtools 时间线对齐。
 
-## 推荐的“最终形态”（North Star）
-
-- **L0：最小 IR（可编译/可合并/可诊断）**：所有高层 DSL（Logic/Pattern/Trait/Task/Query/Form/…）必须 100% 降解到 IR；IR 支持冲突检测与确定性合并（重复路径、覆盖优先级、单写者规则等）。
-- **L1：事务执行引擎**：单实例 FIFO + 0/1 commit；支持自动批处理、稳定的 cause/trigger、可选的轻量/全量观测；dirty-set 作为第一公民。
-- **L2：声明式推导（Trait/Derived）**：以 deps 为唯一依赖事实源；支持增量调度、预算与降级策略；source 具备 keyHash gate + 并发语义 + replay。
-- **L3：业务友好 DSL（唯一推荐写法）**：对业务只暴露最少概念与固定组合方式，避免“同一问题多种写法”。
-
 ## 下一步阅读
 
 - 心智模型 / API：`02-mental-model-and-public-api.md`

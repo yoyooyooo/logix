@@ -13,7 +13,7 @@ version: 1
 ## 0. 最短阅读路径（10 分钟上手）
 
 1. 读 `docs/ssot/platform/foundation/glossary/04-platform-terms.md` 的 4.7（Canonical AST / Workflow Static IR / stepKey）。  
-2. 读 `specs/075-flow-program-codegen-ir/contracts/ir.md`：理解 “Canonical AST → Static IR” 映射里 stepKey 的地位。  
+2. 读 `specs/075-workflow-codegen-ir/contracts/ir.md`：理解 “Canonical AST → Static IR” 映射里 stepKey 的地位。  
 3. 读 `specs/079-platform-anchor-autofill/contracts/workflow-stepkey-autofill.md`：理解“缺失 stepKey 怎么保守补齐”。  
 4. 最后读「3.1/3.2」两个剧本：缺失 vs 重复（补全 vs 拒绝写回）。
 
@@ -88,7 +88,7 @@ Workflow（Π）的 steps 是一个“可重排、可重构”的序列。只要
 - `stepKey`：必填、同一 workflow 内唯一  
 - `serviceId`：可解析（callById 字面量优先；Tag sugar 在子集外可降级）
 
-上游裁决：`specs/075-flow-program-codegen-ir/contracts/ir.md`、`docs/ssot/platform/contracts/03-control-surface-manifest.md`。
+上游裁决：`specs/075-workflow-codegen-ir/contracts/ir.md`、`docs/ssot/platform/contracts/03-control-surface-manifest.md`。
 
 ### 2.3 Autofill：只在 Platform-Grade 子集内“确定性补齐缺失 stepKey”
 
@@ -172,7 +172,7 @@ Workflow（Π）的 steps 是一个“可重排、可重构”的序列。只要
 
 1. `docs/ssot/platform/foundation/glossary/04-platform-terms.md`：Canonical AST / Workflow Static IR / stepKey 的术语与边界。  
 2. `docs/ssot/platform/contracts/03-control-surface-manifest.md`：Root IR 的 identity 口径（programId/nodeId/stepKey 去随机化）。  
-3. `specs/075-flow-program-codegen-ir/contracts/ir.md`：Canonical AST → FlowProgramStaticIr 的映射规则（stepKey/source/nodeId/digest）。  
+3. `specs/075-workflow-codegen-ir/contracts/ir.md`：Canonical AST → WorkflowStaticIr 的映射规则（stepKey/source/nodeId/digest）。  
 4. `specs/079-platform-anchor-autofill/contracts/workflow-stepkey-autofill.md`：缺失 stepKey 的保守补全与幂等规则。  
 5. `specs/079-platform-anchor-autofill/contracts/reason-codes.md`：`duplicate_step_key/unresolvable_step_key/unsafe_to_patch/...`。  
 6. `specs/081-platform-grade-parser-mvp/spec.md`：Platform-Grade WorkflowDef 的可解析边界（对象字面量/字面量 identity）。  

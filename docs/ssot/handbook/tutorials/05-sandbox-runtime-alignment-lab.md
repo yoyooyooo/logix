@@ -123,7 +123,7 @@ Vite 项目通过 `logixSandboxKernelPlugin` 把这些资产在 dev 与 build �
 
 平台侧对 RunResult 的裁决是：**EvidencePackage 是核心**，并且主时间轴必须以 `tickSeq` 为参考系（wall-clock 只能用于展示）。
 
-当前 `@logixjs/sandbox` 的输出仍处在 PoC 阶段，但教程写作应始终以平台契约为北极星（避免 PoC 漂移变成事实协议）。
+当前 `@logixjs/sandbox` 的输出仍处在 PoC 阶段，但教程写作应始终以平台契约为裁决口径（避免 PoC 漂移变成事实协议）。
 
 契约锚点：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`
 
@@ -201,4 +201,3 @@ Vite 项目通过 `logixSandboxKernelPlugin` 把这些资产在 dev 与 build �
 - 允许绕过公共契约（例如 internal import）：短期看似方便，长期会制造并行真相源与不可治理面。
 - 把 wall-clock 当作主时间轴：时间旅行/对齐必须以 tickSeq 为参考系（否则不可证明）。
 - 只记 Trace 不记 Anchors：没有 stable anchors 的 trace 无法回链到 Root IR，也无法成为工具链输入。
-

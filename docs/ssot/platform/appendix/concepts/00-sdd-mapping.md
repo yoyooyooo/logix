@@ -1,24 +1,24 @@
 ---
-title: Spec-Driven Development (SDD) & Intent Flow
+title: Spec-Driven Development (SDD) & Logix
 status: living
 lastUpdated: 2025-12-08
 value: concept
 priority: high
 ---
 
-# Spec-Driven Development (SDD) in Intent Flow
+# Spec-Driven Development (SDD) in Logix
 
 > **Core Philosophy**: "Specification as the Executable Source of Truth."
-> 本文档定义了如何将业界 **Spec-Driven Development (SDD)** 方法论映射到 **Intent Flow** 架构中。
+> 本文档定义了如何将业界 **Spec-Driven Development (SDD)** 方法论映射到 **Logix** 架构中（历史名：Intent Flow）。
 
 ## 1. The Paradigm Shift
 
 在 AI Coding 时代，传统的 "Requirements -> Human Coding" 模式正在失效。我们需要转向 "Requirements -> Spec -> AI Implementation" 模式。
 SDD 强调 **Specification (Specs)** 不再是静态文档，而是 **Executable Contracts (可执行契约)**。
 
-在 Intent Flow 体系中，**Intent 是 Spec 的结构化、可执行表达**，是 SDD 中 Executable Spec 的主要承载形式。
+在 Logix 体系中，**Intent 是 Spec 的结构化、可执行表达**，是 SDD 中 Executable Spec 的主要承载形式。
 
-| Classic SDD Layer             | Intent Flow Mapping              | Artifact / Asset                     |
+| Classic SDD Layer             | Logix Mapping                    | Artifact / Asset                     |
 | :---------------------------- | :------------------------------- | :----------------------------------- |
 | **Governance / Constitution** | **Platform Manifesto & Rules**   | `docs/specs`, `IntentRule`           |
 | **Specify (/specify)**        | **L0: Requirement Intent**       | `UserJourney`, `BusinessGoal`        |
@@ -67,7 +67,7 @@ SDD 强调 **Specification (Specs)** 不再是静态文档，而是 **Executable
 
 ## 3. The Alignment Loop (Verification)
 
-SDD 强调 "Executable Specs"。在 Intent Flow 中，这意味着：
+SDD 强调 "Executable Specs"。在 Logix 中，这意味着：
 
 1.  **Intent is Verifiable**:
     - L2 Flow Intent 可以直接编译为 **Graph** 或 **State Machine** 进行静态分析。
@@ -88,4 +88,4 @@ SDD 强调 "Executable Specs"。在 Intent Flow 中，这意味着：
 
 ---
 
-> **结论**: Intent Flow 本质上是一个 **Native SDD Engine**。我们通过标准化的 Intent 模型，将 SDD 方法论固化为工具链，让 "Spec-Driven" 不再依赖人的自律，而成为系统的原生特性。
+> **结论**: Logix 本质上是一个 **Native SDD Engine**。我们通过标准化的 Intent 模型，将 SDD 方法论固化为工具链，让 "Spec-Driven" 不再依赖人的自律，而成为系统的原生特性。

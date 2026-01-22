@@ -22,15 +22,16 @@
 
 1. `00-principles.md`：平台原则入口（只收敛裁决点）
 2. `foundation/00-overview.md`：SSoT 优先级与边界（先知道“谁说了算”）
-3. `foundation/01-the-one.md`：最小系统方程与符号表（The One）
-4. `contracts/00-execution-model.md`：执行口径（$C_T/\Pi/\Delta\oplus$、tick 参考系、预算与降级）
-5. `contracts/01-runresult-trace-tape.md`：RunResult（Trace/Tape/Anchors 的 Grounding）
-6. `contracts/03-control-surface-manifest.md`：控制面 Root IR（actions/services/traits/workflows/opaque 的收口工件）
-7. `foundation/02-glossary.md`：平台术语裁决入口（必要时再下钻 `foundation/glossary/*`）
-8. `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`：运行时术语裁决（Runtime Glossary SSoT）
-9. `foundation/03-trinity-and-layers.md`：UI / Logic / Module 三位一体模型
-10. `assets/00-assets-and-schemas.md`：资产映射与 Schema 定义（必要时下钻 `assets/schemas/*`）
-11. `ir/00-codegen-and-parser.md`：可解析子集与锚点系统（平台的 Code/IR 边界）
+3. `foundation/04-north-stars.md`：北极星（长期能力形态、验收信号、裁决口径）
+4. `foundation/01-the-one.md`：最小系统方程与符号表（The One）
+5. `contracts/00-execution-model.md`：执行口径（$C_T/\Pi/\Delta\oplus$、tick 参考系、预算与降级）
+6. `contracts/01-runresult-trace-tape.md`：RunResult（Trace/Tape/Anchors 的 Grounding）
+7. `contracts/03-control-surface-manifest.md`：控制面 Root IR（actions/services/traits/workflows/opaque 的收口工件）
+8. `foundation/02-glossary.md`：平台术语裁决入口（必要时再下钻 `foundation/glossary/*`）
+9. `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`：运行时术语裁决（Runtime Glossary SSoT）
+10. `foundation/03-trinity-and-layers.md`：UI / Logic / Module 三位一体模型
+11. `assets/00-assets-and-schemas.md`：资产映射与 Schema 定义（必要时下钻 `assets/schemas/*`）
+12. `ir/00-codegen-and-parser.md`：可解析子集与锚点系统（平台的 Code/IR 边界）
 
 ## 裁决矩阵（遇到分歧先查哪里）
 

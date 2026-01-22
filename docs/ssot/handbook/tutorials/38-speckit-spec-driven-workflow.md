@@ -13,7 +13,7 @@ version: 1
 
 1. 读 `.codex/skills/speckit/SKILL.md` 的「什么时候触发 / 什么时候保持沉默」：理解 speckit 是“裁决回写器”。  
 2. 读 `docs/ssot/handbook/cheatsheets/project-architecture.md`：理解哪些裁决写进 SSoT，哪些写进 specs。  
-3. 读任意一个已成形的 spec 目录结构（例如 `specs/075-flow-program-codegen-ir/`）：对齐 `spec.md/plan.md/tasks.md/contracts/*` 的落点。
+3. 读任意一个已成形的 spec 目录结构（例如 `specs/075-workflow-codegen-ir/`）：对齐 `spec.md/plan.md/tasks.md/contracts/*` 的落点。
 
 ## 1. 心智模型（为什么要有 speckit）
 

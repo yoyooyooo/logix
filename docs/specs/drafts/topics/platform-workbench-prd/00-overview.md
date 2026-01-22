@@ -11,7 +11,7 @@ related:
   - ../../../sdd-platform/workbench/20-intent-rule-and-ux-planning.md
   - ../../../sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md
   - ../../../docs/ssot/platform/assets/00-assets-and-schemas.md
-  - ../../../docs/ssot/platform/roadmap-logix-platform.md
+  - docs/ssot/platform/governance/10-roadmap.md
   - ../../../sdd-platform/impl/README.md
   - ../sandbox-runtime/65-playground-as-executable-spec.md
 ---
@@ -69,7 +69,7 @@ related:
 - `docs/specs/sdd-platform/workbench/20-intent-rule-and-ux-planning.md`：平台顶层模块拆分 + `IntentRule`（R-S-T）的统一模型（平台交互骨架索引）
 - `docs/specs/sdd-platform/workbench/ui-ux/00-platform-ui-and-interactions.md`：Universe/Galaxy/Planet 的视角与交互原则（“配置优于连线，代码优于图形”）
 - `docs/ssot/platform/assets/00-assets-and-schemas.md`：资产分层（Level0-3）与 Schema/Graph 的“平台语义”落点
-- `roadmap-logix-platform.md`：平台→出码、可解析子集、解析器/生成器的阶段性节奏
+- `docs/ssot/platform/governance/10-roadmap.md`：平台路线图（含长期里程碑与北极星对齐）
 
 ### 3.3 平台实现备忘（sdd-platform/impl）
 

@@ -10,7 +10,7 @@ import type {
   WorkflowStaticNode,
   WorkflowStaticStep,
   WorkflowTriggerV1,
-  WorkflowProgramId,
+  WorkflowStableId,
   WorkflowNodeId,
   WorkflowEdge,
   WorkflowEdgeKind,
@@ -433,7 +433,7 @@ export const compileWorkflowStaticIrV1 = (args: {
   const normalized = normalizeWorkflowDefV1(args.def)
   validateWorkflowDefV1(normalized, { moduleId: args.moduleId })
 
-  const programId: WorkflowProgramId = `${args.moduleId}.${normalized.localId}`
+  const programId: WorkflowStableId = `${args.moduleId}.${normalized.localId}`
   const triggerNodeId = makeTriggerNodeId(programId)
 
   const fragmentByStepKey = new Map<string, string | undefined>()

@@ -2,10 +2,6 @@
 
 本章目标：让 Logix 在“逻辑编排层”获得 React 在“渲染层”同等级别的自动性能消化能力，并且在 React 并发/StrictMode/多实例场景下依然保持 **确定性、可诊断、可回放**。
 
-一句话北极星：
-
-> **React 不再“订阅整棵 state 并在组件里各自算 selector”，而是订阅“事务提交 + dirty-set”驱动的 SelectorGraph；每次事务只重算最小集合的 selector，并只通知真正受影响的组件，同时把 txn→selector→render 串成强因果链。**
-
 ---
 
 ## 0. 现状回顾（为了定位 1+1>2 的“差一刀”）

@@ -78,7 +78,7 @@
 
 作为本仓库贡献者，我希望在 `apps/logix-galaxy-fe` 中有可用页面与路由把 P1/P2 的能力串起来，并通过真实后端 API 联调跑通关键路径；同时前端的状态与请求流程必须由 Logix 承载（吃自己狗粮），以便后续把这些页面演进为 Spec Studio / Governance 的真实落点。
 
-**Why this priority**: 仅有后端接口无法验证“真实用户路径”；而本仓库的北极星要求通过 dogfooding 推动 Logix Runtime 形态收敛，前端必须从第一天就以 Logix 方式组织状态/流程/诊断。
+**Why this priority**: 仅有后端接口无法验证“真实用户路径”；而本仓库要求通过 dogfooding 推动 Logix Runtime 形态收敛，前端必须从第一天就以 Logix 方式组织状态/流程/诊断。
 
 **Independent Test**: 仅实现 P1 的最小页面闭环即可独立验收：项目列表 → 创建项目 → 进入项目 → 成员列表 → 添加成员/修改角色；样式不做精细化，只要布局清晰可操作。
 

@@ -22,8 +22,8 @@ related:
 ## 按角色阅读（最短路径）
 
 - 需求录入者（PM/架构师）：先看 `00-overview.md` → `ui-ux/03-spec-studio.md` → `ui-ux/05-multi-view-principles.md` → `11-spec-to-code-mvp.md`
-- 架构师（裁决者）：在上面基础上补 `05-intent-pipeline.md` → `08-alignment-lab-and-sandbox.md`；北极星方向可略读 `02-full-duplex-architecture.md`（先看 0 节）
-- 开发（实施者）：先看 `11-spec-to-code-mvp.md` → `01-module-traits-integration.md` → `08-alignment-lab-and-sandbox.md`；北极星方向可略读 `02-full-duplex-architecture.md`（先看 0 节）
+- 架构师（裁决者）：在上面基础上补 `05-intent-pipeline.md` → `08-alignment-lab-and-sandbox.md`；远期方向可略读 `02-full-duplex-architecture.md`（先看 0 节）
+- 开发（实施者）：先看 `11-spec-to-code-mvp.md` → `01-module-traits-integration.md` → `08-alignment-lab-and-sandbox.md`；远期方向可略读 `02-full-duplex-architecture.md`（先看 0 节）
 
 ## 你应该如何阅读（建议顺序）
 
@@ -33,9 +33,9 @@ related:
 - [08-alignment-lab-and-sandbox.md](./08-alignment-lab-and-sandbox.md)：Sandbox/Alignment 的边界与验证闭环（以 RunResult 为唯一 Grounding）。
 - [11-spec-to-code-mvp.md](./11-spec-to-code-mvp.md)：最小竖切（Spec → Code → Sandbox Run → Alignment）。
 
-### A.1 北极星方向（可选，远期）
+### A.1 远期方向（可选）
 
-- [02-full-duplex-architecture.md](./02-full-duplex-architecture.md)：Code ↔ Studio ↔ Runtime 的全双工架构（北极星；MVP 不交付；建议先读 0 节现实约束）。
+- [02-full-duplex-architecture.md](./02-full-duplex-architecture.md)：Code ↔ Studio ↔ Runtime 的全双工架构（远期方向；MVP 不交付；建议先读 0 节现实约束）。
 
 ### B. 资产与契约（让闭环可被编译/可被对齐）
 
@@ -67,7 +67,7 @@ related:
 | 文档 | 负责什么 | 不负责什么 |
 | --- | --- | --- |
 | `00-overview.md` | 平台闭环与角色分工 | 具体协议/schema 细节 |
-| `02-full-duplex-architecture.md` | 北极星：Code↔Studio↔Runtime 全双工架构 | MVP 交付与排期承诺 |
+| `02-full-duplex-architecture.md` | 远期：Code↔Studio↔Runtime 全双工架构 | MVP 交付与排期承诺 |
 | `05-intent-pipeline.md` | Context Supply Chain + Artifact/Pack 边界 | UI 交互稿与具体页面设计 |
 | `08-alignment-lab-and-sandbox.md` | Verify 回路与 Sandbox 边界 | 重述 RunResult/Tape 细节（引用 `docs/ssot/platform/contracts/01-runresult-trace-tape.md` 与 `specs/075-workflow-codegen-ir/contracts/tape.md`） |
 | `11-spec-to-code-mvp.md` | MVP 竖切与验收路径 | 长期平台形态讨论 |

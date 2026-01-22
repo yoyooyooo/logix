@@ -114,7 +114,7 @@ type EffectTrigger =
 
 type SliceRef = { readonly digest: Digest }
 
-type WorkflowProgramId = string
+type WorkflowStableId = string
 
 type WorkflowSurfaceRefV1 = SliceRef // MUST reference 075 workflow static IR bundle (versioned)
 type ActionSurfaceRefV1 = SliceRef // MUST reference 067/069 action surface (versioned)
@@ -127,7 +127,7 @@ type ControlEffectIndexEntryV1 =
       readonly effectId: string // stable (moduleId + localId)
       readonly trigger: EffectTrigger
       /** Stable program id for cross-artifact linking; full nodes/edges live in Workflow surface. */
-      readonly programId: WorkflowProgramId
+      readonly programId: WorkflowStableId
       /** Optional per-program digest for fast diff; MUST be derivable from workflow surface. */
       readonly programDigest?: Digest
     }
@@ -150,7 +150,7 @@ type ControlSurfaceManifestV1 = {
     readonly serviceSurface?: ServiceSurfaceRefV1
     /** C_T surfaces (073/076): traits/readQuery/declarative links, etc. */
     readonly traitSurface?: TraitSurfaceRefV1
-    /** Π surface (075): workflow programs static IR (nodes/edges/policy/input expr). */
+    /** Π surface (075): workflow static IR bundle (nodes/edges/policy/input expr). */
     readonly workflowSurface?: WorkflowSurfaceRefV1
     /** Minimal, budgeted index only; full payload lives in slices. */
     readonly effectsIndex: ReadonlyArray<ControlEffectIndexEntryV1>

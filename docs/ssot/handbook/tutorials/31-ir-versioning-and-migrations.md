@@ -29,7 +29,7 @@ version: 1
 - 迁移的承载物不是兼容层，而是：`migration.md`（迁移说明）+ diff 报告 + rewriter/脚本（若必要）；  
 - 版本治理的目标不是“永远不破”，而是“破坏也可控、可解释、可回放”。  
 
-参考（spec 裁决）：`specs/075-flow-program-codegen-ir/spec.md`（版本治理严格 fail-fast、无兼容层）。
+参考（spec 裁决）：`specs/075-workflow-codegen-ir/spec.md`（版本治理严格 fail-fast、无兼容层）。
 
 ### 1.2 四类版本：别把它们当成同一种“版本号”
 
@@ -189,7 +189,7 @@ version: 1
 迁移最小闭环建议始终包含：
 
 1. **Migration Notes（人读）**：说明“为什么变、变了什么、怎么迁”。  
-   - 例：`specs/075-flow-program-codegen-ir/contracts/migration.md`
+   - 例：`specs/075-workflow-codegen-ir/contracts/migration.md`
 2. **Diff Report（机读）**：让 CI/UI 能 gate、能生成 checklist。  
    - 例：`Reflection.diffManifest`（`packages/logix-core/src/internal/reflection/diff.ts`）
 3. **迁移工具（可选）**：当改动面太大或需要批量改写时，提供脚本/rewriter。  
@@ -238,7 +238,7 @@ version: 1
 12. `packages/logix-core/src/internal/observability/artifacts/collect.ts`：artifact budgets + deterministic truncate（digest 指向原始 stable JSON）。
 13. `packages/logix-core/src/internal/reflection/ports/exportPortSpec.ts`：`PORT_SPEC_PROTOCOL_VERSION` 与 `@logixjs/module.portSpec@v1`。
 14. `packages/logix-core/src/internal/reflection/kernelContract.ts`：KernelContract 的 v1 报告协议与 trace.digest（基于 EvidencePackage）。
-15. `specs/075-flow-program-codegen-ir/contracts/migration.md`：forward-only 迁移说明模板（出码层/Workflow IR）。
+15. `specs/075-workflow-codegen-ir/contracts/migration.md`：forward-only 迁移说明模板（出码层/Workflow IR）。
 16. `specs/073-logix-external-store-tick/contracts/ir.md`：版本升级策略（fail-fast/忽略未知字段/禁止猜测）。
 
 ## 6. 常见坑（Anti-patterns）

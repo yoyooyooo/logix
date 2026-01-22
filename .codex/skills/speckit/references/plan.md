@@ -40,7 +40,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 1.5 **Update spec status** (monotonic, no regression): Run `SKILL_DIR/scripts/bash/update-spec-status.sh --ensure --status Planned` (add `--feature <id>` if needed). This will move `**Status**` from Draft → Planned when planning is ready, and keep Active/Done untouched.
 
-2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Load IMPL_PLAN template (already copied).
+2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. If `.specify/memory/north-stars.md` is present, also read it (and optionally `docs/ssot/platform/foundation/04-north-stars.md`) so the plan can keep NS/KF traceability consistent with spec.md. If it is missing, do NOT create it implicitly here—proceed without it or suggest `$speckit north-stars` (init) / `$speckit north-stars sync` (generate the derived index). Load IMPL_PLAN template (already copied).
 
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")

@@ -8,7 +8,7 @@ priority: later
 
 # 全双工架构：Code ↔ Studio ↔ Runtime
 
-> 本文档描述 SDD 平台的**北极星方向**：未来如何在 **代码 (Code)**、**可视化编辑器 (Studio)** 与 **运行时 (Runtime)** 三者之间建立双向、尽可能无损的同步关系。
+> 本文档描述 SDD 平台的**远期方向**：未来如何在 **代码 (Code)**、**可视化编辑器 (Studio)** 与 **运行时 (Runtime)** 三者之间建立双向、尽可能无损的同步关系。
 >
 > 口径：运行时主时间轴以 `tickSeq`（逻辑时间）为参考系；wall-clock 仅用于 UI 展示。形式化模型见 `docs/ssot/platform/contracts/00-execution-model.md`。
 
@@ -266,7 +266,7 @@ Dev Server（`logix dev` / CLI 代理）在平台侧承担三重职责：
 
 ```
 Developer Machine
-├── VS Code + Intent Flow Extension
+├── VS Code + Logix Extension
 ├── logix lsp (Node.js process)
 │   ├── TypeScript Compiler
 │   ├── Graph Builder
@@ -289,7 +289,7 @@ Client Browser
 
 ## 8. 与 SDD 的关系
 
-全双工架构是 SDD 平台的**北极星技术底座（远期）**。MVP 阶段仍然可以只依赖其中的「证据链回流（RunResult）」+「少量静态 IR（`C_T`）导出」跑通闭环。
+全双工架构是 SDD 平台的**远期技术底座**。MVP 阶段仍然可以只依赖其中的「证据链回流（RunResult）」+「少量静态 IR（`C_T`）导出」跑通闭环。
 
 | SDD 阶段      | 全双工支撑                                                   |
 | :------------ | :----------------------------------------------------------- |

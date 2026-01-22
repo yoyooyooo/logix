@@ -1,43 +1,43 @@
 ---
-title: FlowProgram vs Workflow 教程 · 命名收敛、分层边界与 forward-only 改名路线（从 0 到 1）
+title: Workflow 命名收敛教程 · 分层边界与 forward-only 改名路线（从 0 到 1）
 status: draft
 version: 1
 ---
 
-# FlowProgram vs Workflow 教程 · 命名收敛、分层边界与 forward-only 改名路线（从 0 到 1）
+# Workflow 命名收敛教程 · 分层边界与 forward-only 改名路线（从 0 到 1）
 
 > **定位**：本文回答三个常见困惑：  
-> 1) `FlowProgram` 到底是“残留名”还是“分层设计”？  
+> 1) 为什么仓库里偶尔还能看到历史命名残留？它是残留名还是分层设计？  
 > 2) 为什么对外 API 看起来几乎没变，却引入了 workflow/IR 链路？  
-> 3) 如果要内外一致都叫 `Workflow`，会牵动哪些决策点？  
-> **裁决来源**：关于 Π/Workflow/Canonical AST 的命名与边界，最终以 `docs/ssot/platform/**` 与 `specs/075-flow-program-codegen-ir/**` 为准；本文负责把“命名与分层”讲成可执行的迁移/改名剧本。
+> 3) 如果要把“内外一致都叫 `Workflow`”做彻底（包括锚点字段），会牵动哪些需要裁决点？  
+> **裁决来源**：关于 Π/Workflow/Canonical AST 的命名与边界，最终以 `docs/ssot/platform/**` 与 `specs/075-workflow-codegen-ir/**` 为准；本文负责把“命名与分层”讲成可执行的迁移/对齐剧本。
 
 ## 0. 最短阅读路径（10 分钟上手）
 
-1. 读术语裁决：`docs/ssot/platform/foundation/glossary/04-platform-terms.md`（Canonical AST / Workflow Static IR / FlowProgram）。  
-2. 读 075 的定位：`specs/075-flow-program-codegen-ir/spec.md`（FlowProgram=平台/AI 出码入口）。  
+1. 读术语裁决：`docs/ssot/platform/foundation/glossary/04-platform-terms.md`（Canonical AST / WorkflowDef / Workflow Static IR / workflowSurface）。  
+2. 读 075 的定位：`specs/075-workflow-codegen-ir/spec.md`（Workflow=平台/AI 出码入口）。  
 3. 读 Root IR 对齐：`docs/ssot/platform/contracts/03-control-surface-manifest.md`（workflowSurface/stepKey）。  
 4. 如果你关心“改名会引出哪些需要裁决点”：看 `specs/073-logix-external-store-tick/pr.md`（改名提案）。
 
-## 1. 心智模型（为什么“内外一致”不是一句改名那么简单）
+## 1. 心智模型（为什么“命名收敛”不等于机械替换字符串）
 
 ### 1.1 目前的分层意图：authoring（值对象） vs canonical（规范形） vs runtime（执行计划）
 
-在 075 的设计里，三层对象有明确分工：
+在 075 的设计里，多层对象有明确分工：
 
-- **authoring 入口（对外 DX）**：`FlowProgram` 值对象  
-  - 目标：提供 `validate/export/install` 等冷路径能力，作为平台/AI 的出码入口；  
+- **authoring 入口（对外 DX）**：`Workflow` 值对象  
+  - 目标：提供 `validate/exportStaticIr/install` 等冷路径能力，作为平台/AI 的出码入口；  
   - 不追求“人类日常手写爽”，而是追求可 IR 化/可门禁/可回写。
 
 - **规范形（语义唯一）**：`Canonical AST`  
   - 目标：去语法糖/默认值落地/分支显式/`stepKey` 完整；  
   - 同一语义只有一种表示，便于 digest/diff 与稳定锚点。
 
-- **可导出 IR（Π slice）**：`Workflow Static IR`（也称 `FlowProgramStaticIr`）  
+- **可导出 IR（Π slice）**：`Workflow Static IR`（`WorkflowStaticIr`）  
   - 目标：可 diff/可审阅/可视化的结构化 IR；  
   - Root IR（ControlSurfaceManifest）只引用其 digest 与 slices/index，不把整图塞进事件流。
 
-> 结论：**FlowProgram 与 workflow（Π）在规格里是“共存”的：一个偏 authoring/DX，一个偏 canonical/IR。**
+> 结论：这里的“分层”不是“旧名 vs Workflow”，而是 `Workflow（值对象）` / `WorkflowDef（纯 JSON SSoT）` / `Canonical AST（规范形）` / `WorkflowStaticIr（Π slice）` / `RuntimePlan（internal 热路径）` 的分工。
 
 ### 1.2 为什么做完一系列需求后“内部更复杂了”，但对外 API 变化不大
 
@@ -59,22 +59,22 @@ version: 1
 - 人类手写可以存在，但必须显式登记为 governed 或 opaque（不能静默黑盒）。  
 - 对业务作者而言，最常用的仍是 Flow/Logic 的 watcher/Task 编排；workflow 作为“升级路线”（复杂时序/对齐需求）存在。
 
-## 2. FlowProgram 现在出现在 075 的很多地方：残留还是设计？
+## 2. 我还看到历史命名：残留还是设计？
 
-按当前 specs 的口径，它更接近“设计选择”，不是残留：
+按当前 specs 的口径，它更接近“历史名残留”，不是现行分层名：
 
-- 075 里明确写了：**对外 DX 入口为 `FlowProgram`（未来可更名为 `Workflow`）**。  
-- 其导出工件 `FlowProgramStaticIr` 就是 workflow 的 Π slice，并被 Root IR 的 `workflowSurface` 收口引用。  
+- 现行 075 已统一对外口径为 `Workflow`（public API/合同/数据模型均已收敛）。  
+- 如果你在仓库里仍看到历史词，通常来自：旧教程/旧 PRD/迁移说明中的历史措辞（应逐步消除，避免文档漂移）。
 
-换句话说：**FlowProgram（authoring）与 Workflow（Π）是分层名，不是同一层的重复名。**
+换句话说：**现行对外与对内统一用 Workflow。**
 
-## 3. 如果要“内外一致都叫 Workflow”，会引出哪些需要裁决的点
+## 3. 如果要把“内外一致都叫 Workflow”做彻底，会引出哪些需要裁决的点
 
 下面是实践中最容易被低估的牵引点（改名不是机械替换字符串）。
 
 ### 3.1 Public Submodule 与 import 形态（契约级）
 
-一旦 FlowProgram 是公共子模块（public submodule），改名就属于契约变更，必须同步：
+如果历史名曾作为公共子模块暴露，改名就属于契约变更，必须同步：
 
 - `specs/030-packages-public-submodules/contracts/public-submodules.md`（概念地图/exports 裁决）  
 - 文档与示例的 import 形态  
@@ -95,7 +95,7 @@ version: 1
 
 仓库里已经有 `Process`（长期进程）、`Flow`（watcher 编排）等概念：
 
-- 如果把 FlowProgram 改成 Workflow，是否会与“流程/流程图”的既有语义混淆？  
+- 如果把历史名收敛为 `Workflow`，是否会与“流程/流程图”的既有语义混淆？  
 - 是否需要同时在 glossary 里给出“Workflow（Π）≠ Flow（runtime 编排）≠ Process（长期进程）”的对照表？
 
 ### 3.4 迁移策略：forward-only（无兼容层）意味着什么
@@ -110,17 +110,17 @@ version: 1
 
 > 这是“教程视角的建议路线”，不是最终裁决；是否执行以对应 spec/SSoT 的裁决为准。
 
-1. **先在 SSoT/术语层拍板**：更新 `docs/ssot/platform/foundation/glossary/04-platform-terms.md` 的命名裁决（FlowProgram vs Workflow）。  
+1. **先在 SSoT/术语层拍板**：更新 `docs/ssot/platform/foundation/glossary/04-platform-terms.md` 的命名裁决（Workflow/WorkflowDef/WorkflowStaticIr/RuntimePlan）。  
 2. **更新 public-submodules 合同**：在 030 的 public-submodules 清单里改概念入口与 exports（避免“实现先跑、合同后补”）。  
 3. **同步迁移说明模板**：在相关 specs（例如 075/076）写 `contracts/migration.md`，用 pointer/anchors 指向改名点。  
 4. **最后再改实现与示例**（如果/当实现存在）：一次性全量替换，保持 forward-only。
 
 ## 5. 代码锚点（Spec / Doc Anchors）
 
-1. `docs/ssot/platform/foundation/glossary/04-platform-terms.md`：Canonical AST / Workflow Static IR / FlowProgram 的术语裁决。  
+1. `docs/ssot/platform/foundation/glossary/04-platform-terms.md`：Canonical AST / WorkflowDef / Workflow Static IR / workflowSurface 的术语裁决。  
 2. `docs/ssot/platform/contracts/03-control-surface-manifest.md`：workflowSurface 与 stepKey/identity 去随机化约束。  
-3. `specs/075-flow-program-codegen-ir/spec.md`：FlowProgram 的定位（平台/AI 出码入口）。  
-4. `specs/075-flow-program-codegen-ir/contracts/ir.md`：Canonical AST → Static IR 的锚点与 digest 口径。  
+3. `specs/075-workflow-codegen-ir/spec.md`：Workflow 的定位（平台/AI 出码入口）。  
+4. `specs/075-workflow-codegen-ir/contracts/ir.md`：Canonical AST → Static IR 的锚点与 digest 口径。  
 5. `specs/030-packages-public-submodules/contracts/public-submodules.md`：public submodule/exports 的契约约束。  
 6. `specs/073-logix-external-store-tick/pr.md`：改名提案（需要裁决点清单）。  
 

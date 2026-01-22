@@ -187,7 +187,7 @@
 **Rationale**：
 
 - 避免大杂烩：多个 scheduler 并存会造成双真相源与证据链断裂（尤其是 core 调度 vs adapter 调度 vs 测试调度）。
-- 与北极星一致：统一最小 IR + tickSeq 参考系要求“可见性/订阅/稳定化”必须在同一条时间线里解释。
+- 与总体目标一致：统一最小 IR + tickSeq 参考系要求“可见性/订阅/稳定化”必须在同一条时间线里解释。
 - 可治理：统一入口才能做“禁止散落宿主 API”的门禁、做 perf gate、做 deterministic 测试替身。
 
 **Alternatives considered**：

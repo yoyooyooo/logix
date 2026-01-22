@@ -94,7 +94,10 @@ INPUT_FEATURES = sys.argv[3:]
 
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 USER_STORY_PATTERN = re.compile(r"^User\s+Story\s+(?P<num>\d+)\b(?P<rest>.*)$", re.IGNORECASE)
-PRIORITY_PATTERN = re.compile(r"\(\s*Priority\s*:\s*(?P<priority>P\d+)\s*\)\s*$", re.IGNORECASE)
+PRIORITY_PATTERN = re.compile(r"[（(]\s*(?:Priority|优先级)\s*[:：]\s*(?P<priority>P\d+)\s*[)）]\s*$", re.IGNORECASE)
+
+TRACEABILITY_LINE_PATTERN = re.compile(r"^\s*\*\*Traceability\*\*\s*[:：]\s*(?P<value>.+?)\s*$", re.IGNORECASE)
+TRACEABILITY_TAG_PATTERN = re.compile(r"\b(?:NS|KF)-\d+\b")
 
 US_CODE_PATTERN = re.compile(r"\bUS(?P<num>\d+)\b")
 
@@ -169,6 +172,7 @@ def parse_user_stories(spec_path: Path) -> tuple[list[dict[str, Any]], list[dict
         canonical = defs[0]
         story = dict(canonical)
         story["references"] = []
+        story["traceability"] = []
         stories.append(story)
 
         if len(defs) > 1:
@@ -180,6 +184,22 @@ def parse_user_stories(spec_path: Path) -> tuple[list[dict[str, Any]], list[dict
             )
 
     by_code_story: dict[str, dict[str, Any]] = {s["code"]: s for s in stories}
+
+    # Extract traceability tags per story (optional).
+    ordered_stories = sorted(stories, key=lambda s: s["line"])
+    for i, story in enumerate(ordered_stories):
+        start_line = int(story["line"])
+        end_line = (int(ordered_stories[i + 1]["line"]) - 1) if i + 1 < len(ordered_stories) else len(lines)
+
+        tags: list[str] = []
+        for line in lines[start_line - 1 : end_line]:
+            m = TRACEABILITY_LINE_PATTERN.match(line)
+            if not m:
+                continue
+            for tag in TRACEABILITY_TAG_PATTERN.findall(m.group("value")):
+                if tag not in tags:
+                    tags.append(tag)
+        story["traceability"] = tags
 
     # Collect references (USn mentions) and orphan references (USn without heading).
     orphan_refs: dict[str, list[dict[str, Any]]] = {}
@@ -309,4 +329,3 @@ def main() -> int:
 if __name__ == "__main__":
     raise SystemExit(main())
 PY
-

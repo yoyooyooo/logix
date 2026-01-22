@@ -23,7 +23,7 @@ priority: next
 
 ### 1.1 核心问题
 
-在 Intent Flow 平台中，Playground/Alignment Lab 需要回答三类问题：
+在 Logix 平台中，Playground/Alignment Lab 需要回答三类问题：
 
 1. **需求意图是否被满足？**  
    - “省市区联动”这个需求，在当前实现下是否按 Spec 预期工作？  
@@ -231,7 +231,7 @@ priority: next
 
 ## 6. 小结
 
-- 从产品视角看，Playground/Alignment Lab 是 Intent Flow 平台中承接 **Spec/Intent → Logix → Runtime 行为** 的关键页面；  
+- 从产品视角看，Playground/Alignment Lab 是 Logix 平台中承接 **Spec/Intent → Logix → Runtime 行为** 的关键页面；  
 - 短期目标是：  
   - 用 RegionSelector 场景实现一个可运行的 Playground 原型；  
   - 让 PM/开发可以在这页上手动验证“级联逻辑是否按预期工作”；  

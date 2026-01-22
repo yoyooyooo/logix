@@ -15,7 +15,7 @@ version: 1
 
 1. 术语与分层（先把名字对齐）：`docs/ssot/platform/foundation/glossary/04-platform-terms.md`（4.6/4.7）
 2. Root IR 合同（平台只认什么工件）：`docs/ssot/platform/contracts/03-control-surface-manifest.md`
-3. 075 的分层与数据模型（Canonical AST/Static IR 的硬裁决）：`specs/075-flow-program-codegen-ir/spec.md` + `specs/075-flow-program-codegen-ir/data-model.md`
+3. 075 的分层与数据模型（Canonical AST/Static IR 的硬裁决）：`specs/075-workflow-codegen-ir/spec.md` + `specs/075-workflow-codegen-ir/data-model.md`
 4. digest/diff/anchors 的“为什么”（cache key / 回链 / 门禁）：`docs/ssot/handbook/tutorials/01-digest-diff-anchors.md`
 5. RunResult/Trace/Tape 的 grounding（静态 digest 如何进入运行结果）：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`
 
@@ -33,7 +33,7 @@ version: 1
 
 结论：**对业务侧的“日常手写 API”可以几乎不变**；变化主要发生在：
 
-- 新增一个“结构化工作流的 authoring 入口”（目前命名为 `FlowProgram`，未来可能收敛为 `Workflow`）。
+- 新增一个“结构化工作流的 authoring 入口”：对外公共子模块 `Workflow`（承载 `validate/exportStaticIr/install` 等冷路径能力）。
 - 业务侧“少胶水”的收益主要来自 **Recipe/Studio/AI 的出码**，而不是要求业务同学手写 IR 图。
 
 因此，外观上像是“多了一层 workflow”，但它的第一性目标是：让平台/工具链拿到一个可导出的 Π（控制律）slice，而不是替代 `$.onAction().runLatest(...)` 这种运行时 DSL。
@@ -43,7 +43,7 @@ version: 1
 是的。075 的定位是 **AI/平台专属出码层（IR DSL）**：
 
 - 平台/Devtools/Alignment Lab 的静态事实源是 `ControlSurfaceManifest`（Root IR），它只收口 slices（workflow/traits/services/actions/opaque）。
-- `FlowProgram/Workflow` 作为对外子模块存在，更多是为了提供 DX（validate/export/install），而不是让人类“日常手写爽”。
+- `Workflow` 作为对外子模块存在，更多是为了提供 DX（validate/export/install），而不是让人类“日常手写爽”。
 
 ## 2. 统一链路：从 authoring 到 Root IR，再到运行期证据（0→1 主线）
 
@@ -62,7 +62,7 @@ WorkflowDef（权威输入工件；纯 JSON，可落盘）
   ↓ normalize（去 sugar、补默认、补齐分支数组、补齐 sources 映射）
 Canonical AST（唯一规范形；语义规范形）
   ↓ compile（纯数据、确定性；图化）
-Workflow Static IR / FlowProgramStaticIr（Π slice；可导出/可 diff）
+Workflow Static IR / WorkflowStaticIr（Π slice；可导出/可 diff）
   ↓ bundle/index（按需：切片附件 + 索引）
 ControlSurfaceManifest（Root Static IR；平台单一事实源）
   ↓ compileRuntimePlan（internal；冷路径构建路由/索引）
@@ -77,7 +77,7 @@ RunResult（EvidencePackage + static digests + 可选 tape）
 
 - 术语与管线名：`docs/ssot/platform/foundation/glossary/04-platform-terms.md`
 - Root IR 合同：`docs/ssot/platform/contracts/03-control-surface-manifest.md`
-- 075 的数据模型与硬裁决：`specs/075-flow-program-codegen-ir/data-model.md`
+- 075 的数据模型与硬裁决：`specs/075-workflow-codegen-ir/data-model.md`
 - RunResult 静态 digest 字段：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`
 
 ### 2.2 每一层到底“负责什么”（以及为什么它不该被别的层吞掉）
@@ -90,7 +90,7 @@ Recipe 的存在只为一件事：**输入压缩**（让平台/AI 用更少 toke
 
 - 必要性：不是必须；可以直接产出 `WorkflowDef` 或 Canonical AST。
 - 禁区：Recipe 不能成为“第二套语义语言”，必须 100% 可确定性展开为 Canonical AST。
-- 主要文档：`specs/075-flow-program-codegen-ir/contracts/public-api.md`、`specs/075-flow-program-codegen-ir/quickstart.md`
+- 主要文档：`specs/075-workflow-codegen-ir/contracts/public-api.md`、`specs/075-workflow-codegen-ir/quickstart.md`
 
 #### B) WorkflowDef（权威输入工件，必须）
 
@@ -98,7 +98,7 @@ Recipe 的存在只为一件事：**输入压缩**（让平台/AI 用更少 toke
 
 - 必要性：必须。没有它，平台侧的“可交换工件”会退化为“只能理解 TypeScript AST / 只能理解运行时对象”。
 - 重点：`WorkflowDef` 不是 Static IR，它允许 authoring 的便利字段/语法糖存在，但必须能被归一到 Canonical AST。
-- 主要文档：`specs/075-flow-program-codegen-ir/contracts/public-api.md`（SSoT 分化 + DX 一体化）
+- 主要文档：`specs/075-workflow-codegen-ir/contracts/public-api.md`（SSoT 分化 + DX 一体化）
 
 #### C) Canonical AST（唯一规范形，必须）
 
@@ -109,9 +109,9 @@ Recipe 的存在只为一件事：**输入压缩**（让平台/AI 用更少 toke
   - **无语法糖**：邻接推断不是事实源，分支必须显式结构字段。
   - **默认值落地**：所有默认策略都要物化进 AST（避免运行时推导）。
   - **stepKey 必填且唯一**：缺失/冲突 fail-fast，禁止用数组顺序派生（重排不得漂移）。
-- 主要文档：`specs/075-flow-program-codegen-ir/data-model.md#1-canonical-ast-flowprogramcanonicalastv1`
+- 主要文档：`specs/075-workflow-codegen-ir/data-model.md`（Canonical AST / WorkflowDefV1）
 
-#### D) Workflow Static IR / FlowProgramStaticIr（Π slice，可导出投影，必须）
+#### D) Workflow Static IR / WorkflowStaticIr（Π slice，可导出投影，必须）
 
 这是平台/Devtools/Alignment Lab 交换与对比的工作流静态形态：`version + digest + nodes/edges`。
 
@@ -121,8 +121,8 @@ Recipe 的存在只为一件事：**输入压缩**（让平台/AI 用更少 toke
   - **冷路径编译**（internal RuntimePlan 的输入）
 - 注意：Static IR 必须是“可导出投影”，不能让运行时把 Canonical AST 当热路径真相源去扫描。
 - 主要文档：
-  - `specs/075-flow-program-codegen-ir/contracts/ir.md`
-  - `specs/075-flow-program-codegen-ir/data-model.md#2-static-ir-flowprogramstaticirv1`
+  - `specs/075-workflow-codegen-ir/contracts/ir.md`
+  - `specs/075-workflow-codegen-ir/data-model.md#workflow-static-ir`
 
 #### E) ControlSurfaceManifest（Root Static IR，必须）
 
@@ -201,7 +201,7 @@ Root IR 的目标是“把控制面收口为单一工件”，使平台/Devtools
 
 - `Reflection.diffManifest`：`docs/ssot/handbook/tutorials/01-digest-diff-anchors.md`（A2）
 
-Workflow IR 的 diff 口径（规划）：以 `FlowProgramStaticIr.digest` 触发，changes 按 `stepKey/programId/serviceId` 分级。
+Workflow IR 的 diff 口径（规划）：以 `WorkflowStaticIr.digest` 触发，changes 按 `stepKey/programId/serviceId` 分级。
 
 ### A3. Devtools 回链（主要消费：Root IR + 索引）
 
@@ -244,18 +244,15 @@ Workflow IR 的 diff 口径（规划）：以 `FlowProgramStaticIr.digest` 触�
 
 关联文档：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`（Trace vs Tape）与 075 `contracts/tape.md`
 
-### A7. FlowProgram vs Workflow 命名一致性（“改名”会牵引哪些决策）
+### A7. Workflow 命名与锚点一致性（已完成收敛）
 
-现状：
+现状（以 075/SSoT 为准）：
 
-- 对外子模块命名：`FlowProgram`
-- 平台/SSoT 术语：`Workflow`（Π slice / `workflowSurface`）
+- 对外子模块命名：`Workflow`
+- Root IR slice：`workflowSurface`（Π slice）
+- 仍存在的“历史词”主要是锚点字段：`programId/nodeId`（是否要进一步收敛为 `workflowId/stepId` 需要另开裁决）
 
-是否可以内外一致：可以，但会牵引一组需要显式裁决的点（不是简单替换字符串），例如：
-
-- public submodules 的导出名与迁移策略（030）
-- 运行时/平台协议字段是否改名（通常不改：例如 `workflowSurface` 已是平台真理源的一部分）
-- 文档/示例/索引的同步重命名（避免并行真相源）
+如果你在旧文档里看到历史别名，将其视为 `Workflow` 的历史名即可；相关改名提案与牵引点清单见：`specs/073-logix-external-store-tick/pr.md`。
 
 改名建议 PR（仅建议，不做兼容层）：`specs/073-logix-external-store-tick/pr.md`
 
@@ -266,7 +263,7 @@ Workflow IR 的 diff 口径（规划）：以 `FlowProgramStaticIr.digest` 触�
 - 术语与管线：`docs/ssot/platform/foundation/glossary/04-platform-terms.md`
 - Root IR 合同：`docs/ssot/platform/contracts/03-control-surface-manifest.md`
 - RunResult grounding：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`
-- 075 数据模型与合同：`specs/075-flow-program-codegen-ir/data-model.md`、`specs/075-flow-program-codegen-ir/contracts/ir.md`
+- 075 数据模型与合同：`specs/075-workflow-codegen-ir/data-model.md`、`specs/075-workflow-codegen-ir/contracts/ir.md`
 - digest：`packages/logix-core/src/internal/digest.ts`
 - manifest/diff：`packages/logix-core/src/internal/reflection/manifest.ts`、`packages/logix-core/src/internal/reflection/diff.ts`
 - trial-run：`packages/logix-core/src/internal/observability/trialRunModule.ts`
@@ -279,4 +276,3 @@ Workflow IR 的 diff 口径（规划）：以 `FlowProgramStaticIr.digest` 触�
 - 把运行时对象（Tag/Effect/Fiber/Error/Function）塞进可导出的 IR → 破坏可序列化硬门与跨宿主传输。
 - 让时间算子走影子 `setTimeout` → 脱离 tick 参考系，回放与解释断链。
 - 在事务窗口内执行 IO（call）→ 违反 txn-window 禁 IO，必须 fail-fast 并产出诊断。
-

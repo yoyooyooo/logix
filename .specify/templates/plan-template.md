@@ -10,6 +10,18 @@
 
 [Extract from feature spec: primary requirement + technical approach from research]
 
+## North Stars & Kill Features _(optional)_
+
+<!--
+  OPTIONAL: If this feature is explicitly motivated by a North Star (NS-*) or a
+  Kill Feature (KF-*), record the IDs here so plan/tasks/acceptance can keep
+  traceability consistent.
+  Source of truth: docs/ssot/platform/foundation/04-north-stars.md
+-->
+
+- **North Stars (NS)**: [e.g., NS-1, NS-4]
+- **Kill Features (KF)**: [e.g., KF-1]
+
 ## Technical Context
 
 <!--
@@ -33,6 +45,7 @@
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - Answer the following BEFORE starting research, and re-check after Phase 1:
+  - North Stars / Kill Features: if this spec claims alignment (NS/KF), are the IDs recorded in spec.md (user stories / FR/NFR/SC) and reflected here?
   - How does this feature map to the
     `Intent → Flow/Logix → Code → Runtime` chain?
   - Which `docs/specs/*` specs does it depend on or modify, and are they

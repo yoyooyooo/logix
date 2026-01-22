@@ -7,7 +7,7 @@ export type ControlSurfaceVersion = 1
 export type Digest = string
 export type ModuleId = string
 export type ActionTag = string
-export type WorkflowProgramId = string
+export type WorkflowStableId = string
 
 export type ActionRef = { readonly moduleId: ModuleId; readonly actionTag: ActionTag }
 
@@ -24,7 +24,7 @@ export type ControlEffectIndexEntryV1 =
       readonly kind: 'workflow'
       readonly effectId: string
       readonly trigger: EffectTrigger
-      readonly programId: WorkflowProgramId
+      readonly programId: WorkflowStableId
       readonly programDigest?: Digest
     }
   | {

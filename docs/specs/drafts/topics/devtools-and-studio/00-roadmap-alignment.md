@@ -5,7 +5,7 @@ version: 0.1.0
 value: vision
 priority: 200
 related:
-  - docs/ssot/platform/roadmap-logix-platform.md
+  - docs/ssot/platform/governance/10-roadmap.md
   - docs/ssot/runtime/logix-core/README.md
   - ../platform-vision/00-generative-language-server.md
 ---

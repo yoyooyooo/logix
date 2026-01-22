@@ -1,10 +1,10 @@
 ---
-title: 00 · SDD Platform Vision: Intent Flow as an Executable Spec Engine
+title: 00 · SDD Platform Vision: Logix as an Executable Spec Engine
 status: draft
 version: 1
 ---
 
-# SDD Platform Vision: Intent Flow as an Executable Spec Engine
+# SDD Platform Vision: Logix as an Executable Spec Engine
 
 > 本文是 `sdd-platform` 主题的**总入口**：用最短的方式定义平台闭环、角色分工、以及“哪些是不可变的物理口径（SSoT）”。
 
@@ -75,7 +75,7 @@ PM 的目标不是“写对实现”，而是把需求变成可执行验收：
 
 - Spec/交互：`ui-ux/03-spec-studio.md`
 - Contracts：`01-module-traits-integration.md`（`C_T`）/ `specs/075`/`specs/076`（`Π`）
-- 全双工底座（北极星；MVP 不交付）：`02-full-duplex-architecture.md`（建议先读 0 节现实约束）
+- 全双工底座（远期；MVP 不交付）：`02-full-duplex-architecture.md`（建议先读 0 节现实约束）
 - Verify：`08-alignment-lab-and-sandbox.md`
 - MVP 竖切：`11-spec-to-code-mvp.md`
 

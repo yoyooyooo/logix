@@ -30,8 +30,8 @@ version: 1
    - `specs/079-platform-anchor-autofill/contracts/source-anchor-autofill.md`
    - `specs/079-platform-anchor-autofill/contracts/workflow-stepkey-autofill.md`
 6. Workflow（Π）与 Canonical AST（075，stepKey 是核心锚点）：
-   - `specs/075-flow-program-codegen-ir/contracts/public-api.md`
-   - `specs/075-flow-program-codegen-ir/data-model.md`
+   - `specs/075-workflow-codegen-ir/contracts/public-api.md`
+   - `specs/075-workflow-codegen-ir/data-model.md`
 7. CLI 总控（085，Node-only 工具链跑道）：`specs/085-logix-cli-node-only/spec.md`
 
 ---
@@ -59,7 +59,7 @@ version: 1
   - `Logix.Module.make(...)` 的定义点（对象字面量）
   - `ModuleDef.logic(($) => ...)` 的入口（用于归属与索引）
   - `$.use(Tag)` 的依赖使用点（用于依赖锚点）
-  - WorkflowDef（`FlowProgram.make/fromJSON({ ... })`）的 identity/steps（用于 Π slice）
+  - WorkflowDef（`Workflow.make/fromJSON({ ... })`）的 identity/steps（用于 Π slice）
 - **Runtime-Grade**：不要求可逆；平台只做 best-effort 展示/灰盒观测；典型是任意 Effect/Stream 组合、动态拼装、复杂闭包等。
 
 ### 1.2 Anchors 的定义：不是“注释”，而是“可枚举 + 可定位 + 可回写”的结构事实
@@ -154,7 +154,7 @@ version: 1
 
 这条是平台跑道最关键的“可门禁化锚点”之一，因为它直接对齐 Root IR 的 Π slice（workflowSurface）：
 
-- 075 的硬裁决：stepKey 必填、唯一；缺失/冲突 fail-fast（见 `specs/075-flow-program-codegen-ir/data-model.md`）
+- 075 的硬裁决：stepKey 必填、唯一；缺失/冲突 fail-fast（见 `specs/075-workflow-codegen-ir/data-model.md`）
 - 079 允许在 Platform-Grade 子集内对缺失 stepKey 做确定性补齐（`dispatch.<actionTag>` / `call.<serviceId>` / `delay.<ms>ms`），并且冲突消解规则必须确定性（`.<n>` 后缀）
 - 但：**如果 workflow 内已经存在重复 stepKey，必须拒绝写回并报告**（reason: `duplicate_step_key`）
 
@@ -218,8 +218,8 @@ Exit code 规范（门禁化）：
 平台跑道的写回，不是为了“代码更漂亮”，而是为了让 Root IR（`ControlSurfaceManifest`）可构建、可 diff、可门禁：
 
 - Root IR 必须收口：`docs/ssot/platform/contracts/03-control-surface-manifest.md`
-- Π slice 的权威来源是 FlowProgram Static IR（`workflowSurface`）
-- FlowProgram 的语义规范形是 Canonical AST（stepKey 必须完整）：`specs/075-flow-program-codegen-ir/data-model.md`
+- Π slice 的权威来源是 `Workflow Static IR`（`workflowSurface`）
+- Workflow 的语义规范形是 Canonical AST（stepKey 必须完整）：`specs/075-workflow-codegen-ir/data-model.md`
 
 因此：
 
@@ -229,9 +229,9 @@ Exit code 规范（门禁化）：
    - 权威真相源仍然是源码锚点声明（单一真相源）
    - TrialRun/Spy 等只作为证据输入（帮助报告/校验），不能反向成为写回依据
 3. **命名对齐：平台消费的是 workflowSurface，而不是随意的新 IR 名称**
-   - 对外 authoring 概念当前用 `FlowProgram`
+   - 对外 authoring 概念是 `Workflow`（值对象）/`WorkflowDef`（纯 JSON SSoT）
    - 对外交换工件在 Root IR 中叫 `workflowSurface`（Π slice）
-   - 这是一条“避免并行真相源”的命名纪律：同一件事只有一个长期工件名字
+   - 锚点字段（例如 `programId/nodeId/stepKey`）是“回链协议”的一部分；是否进一步改名需另开裁决（避免 silent drift）
 
 ---
 
@@ -291,8 +291,8 @@ Parser / Rewriter / Autofill / CLI（spec contracts）：
 
 Workflow（Π slice）：
 
-- `specs/075-flow-program-codegen-ir/contracts/public-api.md`
-- `specs/075-flow-program-codegen-ir/data-model.md`
+- `specs/075-workflow-codegen-ir/contracts/public-api.md`
+- `specs/075-workflow-codegen-ir/data-model.md`
 
 现有脚本（迁移来源，非长期权威入口）：
 
@@ -322,4 +322,3 @@ Workflow（Π slice）：
 5. **写回时全文件 reprint/format**：会把“锚点补全”变成“格式化 PR”，破坏可控性；做不到最小 diff 就 fail 并给 reason codes。
 6. **stepKey 用数组下标或随机数生成**：会导致重排漂移、无法 diff；stepKey 必须稳定、可解释、可门禁化。
 7. **在 runtime 包里引入 ts-morph/swc**：违反 Node-only 边界，会把工具链成本带入运行时（080/085 明确禁止）。
-

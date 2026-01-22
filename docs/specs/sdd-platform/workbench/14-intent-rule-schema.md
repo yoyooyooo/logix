@@ -92,7 +92,7 @@ interface ServiceEndpoint {
 // 引用工作流（Π）：Rule 只“指向”一个 Workflow，不在 Rule 里定义控制律
 interface WorkflowEndpoint {
   kind: 'workflow'
-  programId: string // WorkflowProgramId（稳定锚点；来自 workflowSurface/静态 IR）
+  programId: string // WorkflowStableId（稳定锚点；来自 workflowSurface/静态 IR）
   input?: unknown // 推荐使用 075 的 InputExprV1（仅从 source payload 映射）
 }
 

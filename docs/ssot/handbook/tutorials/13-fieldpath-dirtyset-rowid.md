@@ -34,7 +34,7 @@ version: 1
 如果你只想“把状态改了”，那确实只需要 `SubscriptionRef.set`。  
 但 Logix 要做的是：**把“状态为何变化/哪些部分变化/变化是否可追踪/是否退化/能否重放/能否对比性能”变成可证明的事实源**。
 
-这要求状态证据满足四个硬约束（对齐北极星与宪法）：
+这要求状态证据满足四个硬约束（对齐总体目标与宪法）：
 
 1. **统一最小 IR**：Static IR + Dynamic Trace 双轨。  
    - Static IR：描述“可对齐的表”（fieldPaths/step tables）与其 digest。  
@@ -277,4 +277,3 @@ RowIdStore：
 4. **遇到不可追踪写入还假装精确**：必须显式降级 dirtyAll，并给出稳定 reason（解释不撒谎）。
 5. **RowId 用随机数/时间戳**：会破坏可回放与可对比；RowId 必须确定性（instance 内单调序列）。
 6. **列表重排仍用 index 定位 in-flight**：会写错行/产生 ghost write；需要 RowIdStore 对齐并在移除时清理。
-

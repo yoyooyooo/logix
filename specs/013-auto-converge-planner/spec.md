@@ -107,7 +107,7 @@
 
 > 目的：避免 `auto converge` 走向“补丁叠补丁”。本特性把所有不确定性收敛到少数可验证的边界，并把性能问题的修复路径收敛为：**加基准点 / 补证据字段 / 调策略参数或回退阀门**。
 
-#### North Star: Integer-only Runtime Kernel（终局：无字符串内核）
+#### 终态目标：Integer-only Runtime Kernel（无字符串内核）
 
 - **终局原则**：字符串 Path 仅存在于 I/O 边界（Schema 定义、Devtools 展示、持久化/导入导出）；核心循环（Transaction/DirtySet/Converge）应以整型 ID 运算，降低 GC/哈希与字符串比较成本。
 - **演进路线（Phase 1–4）**：

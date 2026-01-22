@@ -6,7 +6,7 @@ value: core
 priority: now
 related:
   - ./10-requirements-and-mvp.md
-  - ../../../docs/ssot/platform/roadmap-logix-platform.md
+  - docs/ssot/platform/governance/10-roadmap.md
   - ../sdd-platform/11-spec-to-code-mvp.md
   - ../sandbox-runtime/60-vision-runtime-alignment-lab.md
 ---

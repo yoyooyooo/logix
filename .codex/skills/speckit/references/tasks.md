@@ -48,7 +48,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 3. **Execute task generation workflow**:
    - Load plan.md and extract tech stack, libraries, project structure
-   - Load spec.md and extract user stories with their priorities (P1, P2, P3, etc.)
+   - Load spec.md and extract user stories with their priorities (P1, P2, P3, etc.) and traceability tags (NS-*/KF-*) if present
    - If data-model.md exists: Extract entities and map to user stories
    - If contracts/ exists: Map endpoints to user stories
    - If research.md exists: Extract decisions for setup tasks

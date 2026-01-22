@@ -10,7 +10,7 @@
 
 新增的调度抽象（`HostScheduler` + [TickScheduler](/packages/logix-core/src/internal/runtime/core/TickScheduler.ts#L39-L49) Yield 机制）极大地提升了 Runtime 的健壮性。**"Yield-to-Host"（反饥饿）策略是本次规划的亮点**，它补全了纯 Microtask 调度方案在重负载下导致 UI 死锁的重大短板。
 
-设计显式区分了 **"逻辑一致性" (Tick/Fixpoint)** 与 **"宿主执行权" (Host Scheduling)**，并引入了完善的可观测性（`trace:tick`），符合 Logix "可解释、可诊断、高性能" 的北极星目标。
+设计显式区分了 **"逻辑一致性" (Tick/Fixpoint)** 与 **"宿主执行权" (Host Scheduling)**，并引入了完善的可观测性（`trace:tick`），符合 Logix "可解释、可诊断、高性能" 的总体目标。
 
 ## 2. 详细设计分析 (Detailed Analysis)
 

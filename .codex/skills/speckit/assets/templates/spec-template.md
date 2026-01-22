@@ -9,6 +9,23 @@
 -->
 **Input**: User description: "$ARGUMENTS"
 
+## North Stars & Kill Features Traceability _(optional)_
+
+<!--
+  OPTIONAL (repo-specific): If this feature directly advances a known North Star
+  (NS-*) or a Kill Feature (KF-*), record the IDs here and tag the relevant
+  details below.
+  Source of truth: docs/ssot/platform/foundation/04-north-stars.md (index: .specify/memory/north-stars.md)
+
+  Recommended tagging convention in this repo:
+  - User Story: add a line `**Traceability**: NS-1, KF-1` inside the story section
+  - FR/NFR/SC: add tags AFTER the colon, e.g. `- **FR-001**: (NS-3) ...`
+  Do NOT put tags inside `**FR-001**` because it breaks speckit extractors.
+-->
+
+- **North Stars (NS)**: [e.g., NS-1, NS-4]
+- **Kill Features (KF)**: [e.g., KF-1]
+
 ## User Scenarios & Testing _(mandatory)_
 
 <!--
@@ -28,6 +45,8 @@
 
 [Describe this user journey in plain language]
 
+**Traceability**: [optional: NS-?, KF-?]
+
 **Why this priority**: [Explain the value and why it has this priority level]
 
 **Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
@@ -43,6 +62,8 @@
 
 [Describe this user journey in plain language]
 
+**Traceability**: [optional: NS-?, KF-?]
+
 **Why this priority**: [Explain the value and why it has this priority level]
 
 **Independent Test**: [Describe how this can be tested independently]
@@ -56,6 +77,8 @@
 ### User Story 3 - [Brief Title] (Priority: P3)
 
 [Describe this user journey in plain language]
+
+**Traceability**: [optional: NS-?, KF-?]
 
 **Why this priority**: [Explain the value and why it has this priority level]
 
@@ -88,8 +111,8 @@
 
 ### Functional Requirements
 
-- **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]
+- **FR-001**: [optional: (NS-?, KF-?)] System MUST [specific capability, e.g., "allow users to create accounts"]
+- **FR-002**: [optional: (NS-?, KF-?)] System MUST [specific capability, e.g., "validate email addresses"]
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
@@ -108,7 +131,7 @@ _Example of marking unclear requirements:_
   - Define what diagnostic events/Devtools surfaces exist and their overhead
 -->
 
-- **NFR-001**: System MUST define performance budgets for the affected hot paths
+- **NFR-001**: [optional: (NS-?, KF-?)] System MUST define performance budgets for the affected hot paths
   and record a measurable baseline (benchmark/profile) before implementation.
 - **NFR-002**: System MUST provide structured diagnostic signals for key state /
   flow transitions, and diagnostics MUST have near-zero overhead when disabled.
@@ -148,7 +171,7 @@ _Example of marking unclear requirements:_
 
 ### Measurable Outcomes
 
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
+- **SC-001**: [optional: (NS-?, KF-?)] [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]

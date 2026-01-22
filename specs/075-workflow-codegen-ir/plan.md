@@ -252,7 +252,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - User-facing performance mental model（optimization ladder）
     - 已交付：`specs/075-workflow-codegen-ir/contracts/optimization-ladder.md`
   - Breaking changes（forward-only）
-    - 本特性为 forward-only：已将 `FlowProgram*` 全量统一为 `Workflow*`，无兼容层；迁移说明见 `specs/075-workflow-codegen-ir/contracts/migration.md`。
+    - 本特性为 forward-only：已完成历史命名清理，统一对外口径为 `Workflow*`，无兼容层；迁移说明见 `specs/075-workflow-codegen-ir/contracts/migration.md`。
   - Public submodules / exports topology
     - 已遵守：`packages/logix-core/src/Workflow.ts` 为 public submodule；实现下沉到 `packages/logix-core/src/internal/**`；exports 不暴露 internals。
   - Large modules/files（decomposition）

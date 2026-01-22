@@ -63,6 +63,15 @@ Given that feature description, do this:
 4. Follow this execution flow:
    1. Parse user description from Input
       If empty: ERROR "No feature description provided"
+   1.5 If this repo has North Stars / Kill Features (SSoT), keep NS/KF IDs stable:
+      - If `.specify/memory/north-stars.md` exists: read it (derived index)
+      - If it does NOT exist: do NOT create it implicitly in this stage. Either read `docs/ssot/platform/foundation/04-north-stars.md` directly, or suggest the user run `$speckit north-stars` (init) / `$speckit north-stars sync` (generate the derived index).
+      - If you need details (signals/constraints), read `docs/ssot/platform/foundation/04-north-stars.md` (source of truth)
+      - When the feature clearly maps to a North Star (NS-*) and/or a Kill Feature (KF-*), record the IDs in spec.md:
+        - Fill `## North Stars & Kill Features Traceability (optional)`
+        - Add `**Traceability**: NS-..., KF-...` inside relevant User Stories
+        - For FR/NFR/SC, put tags AFTER the colon (e.g. `- **FR-001**: (NS-3) ...`) to avoid breaking speckit extractors
+      - Do NOT invent new NS/KF IDs; only choose from the SSoT list.
    2. Extract key concepts from description
       Identify: actors, actions, data, constraints
    3. For unclear aspects:
