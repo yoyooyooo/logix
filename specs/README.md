@@ -26,10 +26,42 @@
 
 1. **M0（锚点与证据硬门）**：先把可序列化/去随机化与 TrialRun 输出打实（优先 `016`、`025`；必要时补 `005/031` 的协议与 artifacts 槽位）。
 2. **M1（结构可见）**：让平台能枚举并对齐 actions/servicePorts/ports&typeIR（优先 `067`、`078`、`035`）；同时把 `Π` 的 workflow slice（`075`）与 `078.servicePorts` 对齐，避免 workflow 的 `serviceId` 变成灰区字符串。
-3. **M1 的可复现验收跑道**：先做 `085` 的 US1（IR 导出 + TrialRun 的统一 CLI 入口），作为后续门禁与对照的最小“跑道”。
-4. **M2（保守回写闭环）**：按 `081 → 082 → 079` 打通 Platform-Grade 子集的可逆闭环（AnchorIndex → PatchPlan → WriteBack → 源码锚点），并把 workflow `stepKey` 纳入同一回写门槛。
-5. **M3（语义与证据增强，可选）**：在 M2 达标后再推进 `083/084`（能看见/能建议之前先确保能写回，避免演进死角）。
-6. **消费者回归面（可选增强）**：`086` 作为 Manifest/Diff/TrialRun/Workflow slices 的可视化试验场与 UI 回归面，字段缺失必须显式提示（不作为 M0–M3 硬门槛）。
+3. **M2（下一阶段里程碑：Agent 自证跑道）**：以 `085` 收口 CLI 工具箱（Oracle/Gate/Transform），并把 `081 → 082 → 079` 的保守回写闭环接入同一跑道（含 workflow `stepKey`）；达标定义见下方「下一阶段里程碑」。
+4. **M3（语义与证据增强，可选）**：在回写闭环达标后再推进 `083/084`（能看见/能建议之前先确保能写回，避免演进死角）。
+5. **消费者回归面（可选增强）**：`086` 作为 Manifest/Diff/TrialRun/Workflow slices 的可视化试验场与 UI 回归面，字段缺失必须显式提示（不作为 M0–M3 硬门槛）。
+
+### 下一阶段里程碑：Agent 自证跑道（Oracle→Gate→(可选)Transform→WriteBack）
+
+```text
+085 logix CLI（Oracle：ir export/trialrun；Gate：ir validate/ir diff；Transform：transform module）
+  consumes: 078 Manifest + 075 workflowSurface（Root IR slices）
+  drives:   081 AnchorIndex → 082 PatchPlan/WriteBack → 079 保守 autofill（含 stepKey）
+  outputs:  可门禁确定性工件 + 可解释 reason codes + exit code（0/2/1）
+```
+
+达标定义（最小闭环）：
+
+- 同一输入重复执行输出一致（工件可 byte-level diff；非确定性字段不得进入门禁工件口径）。
+- 大改动后最少两条命令即可门禁：导出/试跑（Oracle）→ validate/diff（Gate），且失败原因可行动（reason code + pointer）。
+- 平台子集内可选 batch transform：report-only 产出 PatchPlan；`--mode write` 幂等写回；子集外一律拒绝写回并可解释。
+
+现状（已落地/可直接复用）：
+
+- `@logixjs/core` 已提供 Root IR/差异/试跑底座：`Reflection.exportControlSurface` / `Reflection.diffManifest` / `Observability.trialRunModule`。
+- Root IR 已支持 workflow slice 引用：`ControlSurfaceManifest.modules[*].workflowSurface.digest`（并已有回归测试）。
+- 过渡工具已存在：`scripts/ir/inspect-module.ts` 可做“导出 + 试跑 + diff”的一体化脚本验证（但尚未收敛到 085 的统一输出与 exit code 语义）。
+
+待实施（本里程碑交付清单，仍未落地）：
+
+- `packages/logix-cli` + `logix` bin：统一 `CommandResult@v1` 输出、`--mode report|write`、exit code（0/2/1）。
+- Gate：`logix ir validate` / `logix ir diff` 的结构化报告与 reason codes（可门禁）。
+- `ModuleManifest.servicePorts` + TrialRun 端口级缺失定位（078）。
+- `AnchorIndex@v1` / `PatchPlan@v1` / `WriteBackResult@v1` 的闭环（081/082/079），并接入 `logix anchor index/autofill` 与 `transform module`。
+- 确定性门禁口径：门禁工件默认不得包含 evidence 的 `createdAt/timestamp` 等噪音字段（否则无法 byte-level diff）。
+
+边界/风险（需提前对齐）：
+
+- Node-only 试跑遇到浏览器特有代码会失败：需要 Host 抽象/Mock Layer 或提供 browser runner（见你下面的问题与建议）。
 
 ### 主线 A：Runtime 一致性 + `Π_source`（受限机制）
 
@@ -54,13 +86,12 @@
 
 ```text
 078 Module↔Service Manifest（servicePorts/ServiceId/TrialRun 对齐） ↔ 075 workflowSurface（Π slice）
-  → 085 CLI 跑道（先做 US1：IR 导出 + TrialRun）
   → 081 受限解析（AnchorIndex） → 082 受限重写（PatchPlan→WriteBack） → 079 保守自动补全（只补缺失字段）
   → 083 具名逻辑插槽（语义可见） / 084 Loader Spy（证据采集；不作权威）
   ↘（可选）086 可视化实验室（消费者回归面：Manifest/Diff/TrialRun/Workflow slices）
 ```
 
-定位：让“生成/审查/回写”有单一真相源（统一最小 IR），并为 Alignment Lab/Devtools 提供可解释链路。
+定位：让“生成/审查/回写”有单一真相源（统一最小 IR），并为 Alignment Lab/Devtools 提供可解释链路；执行入口由 `085` 提供（Oracle/Gate/Transform）。
 
 ### 主线 D：页面高频 UX/协作模式（在 075/076 之上扩展）
 
@@ -73,7 +104,7 @@
 
 ---
 
-## Runtime：未实施完毕清单（整合后：三条跑道）
+## Runtime：未实施完毕清单（整合后：四条跑道）
 
 > 口径：只收录“仍有未完成 tasks（`tasks.md` 内存在 `- [ ]`）”且与 Runtime 相关的 spec；并将其收口到少数跑道，避免概念/边界重叠与并行真相源。
 
@@ -93,6 +124,12 @@
 - [`005-unify-observability-protocol`](./005-unify-observability-protocol)（Draft）— 观测协议与聚合引擎（跨宿主传输 + 证据包导入导出）
 - [`038-devtools-session-ui`](./038-devtools-session-ui)（Draft）— Devtools Session-First UI（消费 005 的协议与证据）
 
+### 跑道 4：Full-Duplex Toolchain / Agent 自证跑道（总控：080）
+
+- [`080-full-duplex-prelude`](./080-full-duplex-prelude)（Group）— 统一最小 IR + 回写前置（M0–M3 门槛）
+  - 下一阶段（M2）里程碑范围：[`085-logix-cli-node-only`](./085-logix-cli-node-only)、[`078-module-service-manifest`](./078-module-service-manifest)、[`075-workflow-codegen-ir`](./075-workflow-codegen-ir)、[`081-platform-grade-parser-mvp`](./081-platform-grade-parser-mvp)、[`082-platform-grade-rewriter-mvp`](./082-platform-grade-rewriter-mvp)、[`079-platform-anchor-autofill`](./079-platform-anchor-autofill)
+  - 可选消费者回归面：[`086-platform-visualization-lab`](./086-platform-visualization-lab)
+
 ### Frozen：core-ng（tasks 未清零，但不排期）
 
 - [`053-core-ng-aot-artifacts`](./053-core-ng-aot-artifacts)（Frozen）— core-ng AOT Artifacts（Static IR / Exec IR 工件化）
@@ -110,20 +147,31 @@
 
 ### A) 075 周边主线（出码 IR + 机制内核化 + 平台跑道）
 
+#### M2（Agent 自证跑道：下一阶段里程碑）
+
+- [`085-logix-cli-node-only`](./085-logix-cli-node-only)（Draft）— Node-only CLI 跑道（Oracle/Gate/Transform）
+- [`078-module-service-manifest`](./078-module-service-manifest)（Draft）— Module↔Service 关系纳入 Manifest IR（servicePorts）
+- [`075-workflow-codegen-ir`](./075-workflow-codegen-ir)（Draft）— Workflow Codegen IR（WorkflowDef → workflowSurface）
+- [`081-platform-grade-parser-mvp`](./081-platform-grade-parser-mvp)（Draft）— Platform-Grade Parser MVP（受限子集解析器）
+- [`082-platform-grade-rewriter-mvp`](./082-platform-grade-rewriter-mvp)（Draft）— Platform-Grade Rewriter MVP（受限子集重写器）
+- [`079-platform-anchor-autofill`](./079-platform-anchor-autofill)（Draft）— Platform-Grade 锚点声明与保守自动补全（单一真相源）
+
+#### 基础/依赖（控制律/性能/调度 + 总控）
+
+- [`080-full-duplex-prelude`](./080-full-duplex-prelude)（Draft）— Full-Duplex Prelude（统一最小 IR + 回写前置）
 - [`073-logix-external-store-tick`](./073-logix-external-store-tick)（Draft）— ExternalStore + TickScheduler（跨外部源/跨模块强一致）
 - [`068-watcher-pure-wins`](./068-watcher-pure-wins)（Draft）— watcher fan-out 纯赚性能地基
 - [`076-logix-source-auto-trigger-kernel`](./076-logix-source-auto-trigger-kernel)（Draft）— source 自动触发内核（dirtyPaths + depsIndex）
 - [`070-core-pure-perf-wins`](./070-core-pure-perf-wins)（Draft）— core 纯赚/近纯赚性能优化（默认零成本诊断）
-- [`075-workflow-codegen-ir`](./075-workflow-codegen-ir)（Draft）— Workflow Codegen IR（Canonical AST + Static IR）
 - [`077-logix-control-laws-v1`](./077-logix-control-laws-v1)（Draft）— 控制律 v1（UI→React，Logic→Logix）
-- [`078-module-service-manifest`](./078-module-service-manifest)（Draft）— Module↔Service 关系纳入 Manifest IR
-- [`079-platform-anchor-autofill`](./079-platform-anchor-autofill)（Draft）— Platform-Grade 锚点声明与保守自动补全（单一真相源）
-- [`080-full-duplex-prelude`](./080-full-duplex-prelude)（Draft）— Full-Duplex Prelude（统一最小 IR + 回写前置）
-- [`081-platform-grade-parser-mvp`](./081-platform-grade-parser-mvp)（Draft）— Platform-Grade Parser MVP（受限子集解析器）
-- [`082-platform-grade-rewriter-mvp`](./082-platform-grade-rewriter-mvp)（Draft）— Platform-Grade Rewriter MVP（受限子集重写器）
+
+#### M3（语义与证据增强，可选）
+
 - [`083-named-logic-slots`](./083-named-logic-slots)（Draft）— 具名逻辑插槽（结构可见→语义可见）
 - [`084-loader-spy-dep-capture`](./084-loader-spy-dep-capture)（Draft）— Loader Spy 依赖采集（加载态自描述证据）
-- [`085-logix-cli-node-only`](./085-logix-cli-node-only)（Draft）— Node-only CLI 跑道（集成验证）
+
+#### 可选消费者回归面
+
 - [`086-platform-visualization-lab`](./086-platform-visualization-lab)（Draft）— 可视化实验室（IR / Evidence / Gate）
 
 ### B) Kernel/Runtime 基建（Traits/Txn/Concurrency/Contracts）

@@ -36,7 +36,7 @@
 - [x] T103 [US3] Static IR 编译：`programId/nodeId/digest/nodes/edges/source` 全部在 export/install 期计算并缓存（禁止运行时 hash/JSON.stringify）(Refs: US3, FR-005, NFR-002, NFR-003)
 - [x] T104 [US1] Service 解析：`serviceId` 必须可解析为可调用入口（缺失 fail-fast）；IR/Trace/Tape 中只写 `serviceId`（禁止双真相源）(Refs: US1, FR-003, FR-007)
 - [x] T105 [US1] SSoT 分化 + DX 一体化：定义 `WorkflowDef`（纯 JSON）并实现 `Workflow.toJSON()/fromJSON(...)`（或等价静态方法），确保落盘形态无 Tag/闭包 (Refs: FR-001, FR-006)
-- [x] T106 [US3] Root IR 对齐点：导出 `workflowSurface` slice（含 `workflowSurfaceDigest`）与最小 `effectsIndex` 结构，供 `ControlSurfaceManifest` 收口引用 `packages/logix-core/src/internal/observability/workflowSurface.ts` + `packages/logix-core/src/internal/observability/controlSurfaceManifest.ts` (Refs: FR-001, FR-007)
+- [x] T106 [US3] Root IR 对齐点：导出 `workflowSurface` slice（其 digest 由 Root IR 通过 `ControlSurfaceManifest.modules[*].workflowSurface.digest` 引用）与最小 `effectsIndex` 结构，供 `ControlSurfaceManifest` 收口引用 `packages/logix-core/src/internal/observability/workflowSurface.ts` + `packages/logix-core/src/internal/observability/controlSurfaceManifest.ts` (Refs: FR-001, FR-007)
 
 ### 2.2 Mount / Routing（热路径：单订阅 + O(1+k)）
 
@@ -101,7 +101,7 @@
 
 > 规则：本 phase 只做“措辞/口径同步”（SSoT/已有文档），不引入新裁决；如需新增裁决必须回到 `spec.md/plan.md` 更新。
 
-- [x] T310 同步平台 SSoT：将 075 的终态口径（WorkflowDef 权威输入、`call`、KernelPorts、`workflowSurfaceDigest`）回链到 `docs/ssot/platform/contracts/*` 与术语表（仅措辞对齐）
+- [x] T310 同步平台 SSoT：将 075 的终态口径（WorkflowDef 权威输入、`call`、KernelPorts、`workflowSurface` slice 与 `ControlSurfaceManifest.modules[*].workflowSurface.digest` 引用口径）回链到 `docs/ssot/platform/contracts/*` 与术语表（仅措辞对齐）
 - [x] T311 同步平台 workbench：把“Π=Workflow（def+slice）/Workflow=DX 值对象”的表述统一到 `docs/specs/sdd-platform/workbench/*`（仅措辞对齐）
 - [x] T312 同步 runtime SSoT：补齐 Workflow 分层术语与“可合并性 rationale”（落点：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`；仅措辞对齐）
 - [x] T313 更新 runtime glossary 索引：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md` 增补 075 的分层术语入口

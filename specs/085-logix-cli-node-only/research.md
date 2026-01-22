@@ -33,3 +33,13 @@
 
 - 当前脚本已经跑通 `Effect` 组织方式与参数解析雏形（runId/config/timeout/budgets）。
 - CLI MVP 应该先把已有能力变成“可安装/可测试/可复用”的包入口，再逐步下沉公共逻辑。
+
+## Decision 5：面向 Agent 的工具箱定位（Oracle + Gate + 可选 Transform）
+
+**Rationale**：
+
+- Agent 最擅长直接写/改大量代码；真正的风险在于跨文件隐含约束、锚点稳定性与 IR/digest 漂移。
+- 因此 CLI 不应把 Agent 锁进细粒度命令序列里，而是提供：
+  - **Oracle**：导出可序列化且确定性的工件（Manifest/WorkflowSurface/TrialRunReport/AnchorIndex）。
+  - **Gate**：`ir validate/ir diff` 把门禁与对比变成机器可读输出（reason codes + exit code）。
+  - **Transform（可选）**：仅覆盖 Platform-Grade 子集内的机械改动，使用 batch `--ops` 减少多次往返，默认 report-only。

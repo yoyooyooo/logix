@@ -8,9 +8,11 @@
 交付一个 Node-only 的 `logix` CLI，作为平台落地前的“基础能力外壳 + 集成测试跑道”，串联：
 
 - IR 导出（Manifest/StaticIR/Artifacts）
+- Gate（`ir validate` / `ir diff`：可门禁、可 diff）
 - 受控试跑（TrialRunReport）
 - AnchorIndex 构建（081）
 - Autofill（report/write）（079/082）
+- 可选 Transform（`transform module --ops`：batch ops；默认 report-only）
 
 实现原则：尽可能用 `effect` 组织命令与依赖注入（同构）；输出工件 JSON-safe、确定性、可 diff；CLI 本身不接管 bundler/编译器，只做验证与导出。
 
@@ -57,11 +59,14 @@
 以“基础能力验证”为目标，MVP 子命令建议（名称可在实现阶段微调，但语义保持稳定）：
 
 - `logix ir export`：导出控制面 Root IR（ControlSurfaceManifest + 可选 slices，例如 `workflowSurface`）与辅助工件（Artifacts；不执行完整业务交互）
+- `logix ir validate`：对导出工件做门禁（schema/digest/budgets/Raw Mode 统计/锚点规则）
+- `logix ir diff`：对两份工件目录/文件做稳定 diff（输出 reason codes；用于 CI gate）
 - `logix trialrun`：输出 TrialRunReport（受控窗口 + 资源收束）
 - `logix anchor index`：输出 AnchorIndex@v1（081）
-- `logix anchor autofill`：输出 PatchPlan/WriteBackResult（082），并在 `--write` 时写回源码锚点字段（079 规则）
-  - 默认 `--report`（不写回）
-  - 明确 `--write`（才写回）
+- `logix anchor autofill`：输出 PatchPlan/WriteBackResult（082），并在 `--mode write` 时写回源码锚点字段（079 规则）
+  - 默认 `--mode report`（不写回）
+  - 明确 `--mode write`（才写回）
+- `logix transform module --ops <delta.json>`：对 Platform-Grade 子集内的 Module 做 batch ops（默认 report-only；门槛同 082）
 
 ### 2) 输出工件形态（stdout + files）
 
@@ -118,10 +123,15 @@ specs/085-logix-cli-node-only/
 ├── data-model.md
 ├── quickstart.md
 ├── contracts/
+│   ├── public-api.md
+│   ├── artifacts.md
+│   ├── safety.md
+│   ├── transform-ops.md
 │   └── schemas/
 │       └── cli-command-result.schema.json
 └── checklists/
-    └── requirements.md
+    ├── requirements.md
+    └── toolbox-requirements.md
 ```
 
 ### Source Code (repository root)

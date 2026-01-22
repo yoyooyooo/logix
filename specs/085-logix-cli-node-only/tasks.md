@@ -2,17 +2,17 @@
 description: "Task list for 085-logix-cli-node-only (Node-only logix CLI)"
 ---
 
-# Tasks: Logix CLI（085：Node-only 基础能力入口与集成验证跑道）
+# Tasks: Logix CLI（085：Node-only 工具箱与集成验证跑道）
 
 **Input**: `specs/085-logix-cli-node-only/spec.md`  
 **Prerequisites**: `specs/085-logix-cli-node-only/plan.md`（required）, `specs/085-logix-cli-node-only/research.md`, `specs/085-logix-cli-node-only/data-model.md`, `specs/085-logix-cli-node-only/contracts/`, `specs/085-logix-cli-node-only/quickstart.md`
 
-**Tests**: 本特性是“Node-only 能力集成测试跑道”；至少需要覆盖：IR 导出、trialrun、anchor index、anchor autofill（report-only）四条链路的最小集成用例。
+**Tests**: 本特性是“Node-only 能力集成测试跑道”；至少需要覆盖：IR 导出、trialrun、ir validate、ir diff、anchor index、anchor autofill（report-only）六条链路的最小集成用例。
 
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: 可并行（不同文件、无依赖）
-- **[US1]/[US2]/[US3]**: 对应 `spec.md` 的 User Story
+- **[US1]..[US5]**: 对应 `spec.md` 的 User Story
 - 任务描述必须包含明确文件路径
 
 ---
@@ -46,7 +46,7 @@ description: "Task list for 085-logix-cli-node-only (Node-only logix CLI)"
 **Independent Test**: 对一个代表性入口重复运行两次，输出工件可 JSON 序列化且稳定；缺依赖时给出可行动错误。
 
 - [ ] T011 [US1] 迁移 `scripts/ir/inspect-module.ts` 的入口加载逻辑（modulePath/exportName）到 CLI 内部 `packages/logix-cli/src/internal/loadProgramModule.ts`
-- [ ] T012 [US1] 实现 `logix ir export`：导出 ControlSurfaceManifest（含 `workflowSurfaceDigest` 等）并落盘 `control-surface.manifest.json`（可选导出 `workflow.surface.json`）`packages/logix-cli/src/internal/commands/irExport.ts`
+- [ ] T012 [US1] 实现 `logix ir export`：导出 ControlSurfaceManifest（含 `modules[*].workflowSurface.digest` 等）并落盘 `control-surface.manifest.json`（可选导出 `workflow.surface.json`）`packages/logix-cli/src/internal/commands/irExport.ts`
 - [ ] T013 [US1] 实现 `logix trialrun`：调用 `Logix.Observability.trialRunModule` 并落盘 `trialrun.report.json` `packages/logix-cli/src/internal/commands/trialRun.ts`
 - [ ] T014 [P] [US1] 集成用例：对固定入口跑 `ir export` 与 `trialrun` 并校验输出 shape `packages/logix-cli/test/Integration/cli.ir-and-trialrun.test.ts`
 
@@ -54,12 +54,12 @@ description: "Task list for 085-logix-cli-node-only (Node-only logix CLI)"
 
 ## Phase 4: User Story 2 - AnchorIndex + 保守回写（Priority: P1）
 
-**Goal**: 对仓库构建 AnchorIndex，并在安全边界内执行 `anchor autofill --report/--write`（写回幂等、只补缺失字段）。  
+**Goal**: 对仓库构建 AnchorIndex，并在安全边界内执行 `anchor autofill --mode report|write`（写回幂等、只补缺失字段）。  
 **Independent Test**: report-only 仅输出拟修改清单；write-back 后第二次运行无差异；不确定项全部跳过并有 reason codes。
 
 - [ ] T015 [US2] 实现 `logix anchor index`：调用 `@logixjs/anchor-engine` Parser 输出 `anchor.index.json`（子命令内 lazy-load `ts-morph`）`packages/logix-cli/src/internal/commands/anchorIndex.ts`
-- [ ] T016 [US2] 实现 `logix anchor autofill --report|--write`：调用 `@logixjs/anchor-engine`（079+082）输出 PatchPlan/WriteBackResult/AutofillReport（子命令内 lazy-load `ts-morph`）`packages/logix-cli/src/internal/commands/anchorAutofill.ts`
-- [ ] T017 [P] [US2] 集成用例：对 fixture repo 跑 `anchor index` 与 `anchor autofill --report`（不写回）`packages/logix-cli/test/Integration/cli.anchor.report-only.test.ts`
+- [ ] T016 [US2] 实现 `logix anchor autofill --mode report|write`：调用 `@logixjs/anchor-engine`（079+082）输出 PatchPlan/WriteBackResult/AutofillReport（子命令内 lazy-load `ts-morph`）`packages/logix-cli/src/internal/commands/anchorAutofill.ts`
+- [ ] T017 [P] [US2] 集成用例：对 fixture repo 跑 `anchor index` 与 `anchor autofill --mode report`（不写回）`packages/logix-cli/test/Integration/cli.anchor.report-only.test.ts`
 
 ---
 
@@ -72,6 +72,29 @@ description: "Task list for 085-logix-cli-node-only (Node-only logix CLI)"
 - [ ] T019 [P] [US3] 单测：同一输入两次运行输出一致（含 artifacts 列表排序）`packages/logix-cli/test/Integration/cli.determinism.test.ts`
 - [ ] T020 [US3] 在 quickstart 固化 CI 用法样例（report-only gate 与显式 write-back）`specs/085-logix-cli-node-only/quickstart.md`
 - [ ] T023 [US3] 增加 cold start 测量脚本（`logix --help` < 500ms，且不加载 `ts-morph`）并把测量结果/基线写入 `specs/085-logix-cli-node-only/quickstart.md` `packages/logix-cli/scripts/measure-startup.mjs`
+
+---
+
+## Phase 5.1: Gate - `ir validate` / `ir diff`（US4，P1）
+
+**Goal**: 把“我改完代码是否破坏锚点/IR/预算/确定性”的判断变成可机器消费门禁，并能对基线目录做稳定 diff。  
+**Independent Test**: 同一输入两次运行报告一致；存在差异/违规时 exit code=2（VIOLATION）。
+
+- [ ] T025 [US4] 实现 `logix ir validate`：产出结构化门禁报告 `packages/logix-cli/src/internal/commands/irValidate.ts`
+- [ ] T026 [P] [US4] 集成用例：对固定工件目录跑 validate 并校验输出 shape `packages/logix-cli/test/Integration/cli.ir-validate.test.ts`
+- [ ] T027 [US4] 实现 `logix ir diff`：对 `--before/--after` 做稳定 diff（reason codes + exit code）`packages/logix-cli/src/internal/commands/irDiff.ts`
+- [ ] T028 [P] [US4] 集成用例：diff 输出确定性（排序/裁剪口径固定）`packages/logix-cli/test/Integration/cli.ir-diff.determinism.test.ts`
+
+---
+
+## Phase 5.2: Transform - `transform module --ops`（US5，P1，optional）
+
+**Goal**: 对 Platform-Grade 子集内的 Module 做 batch ops 变更，默认 report-only 输出 PatchPlan，`mode=write` 幂等写回。  
+**Independent Test**: report-only 不写回且 PatchPlan 稳定；write 后二次运行 0 diff；子集外形态不写回并可解释。
+
+- [ ] T029 [US5] 实现 `logix transform module --ops <delta.json>`：生成 PatchPlan + TransformReport `packages/logix-cli/src/internal/commands/transformModule.ts`
+- [ ] T030 [P] [US5] 集成用例：report-only 不写回、PatchPlan 可复现 `packages/logix-cli/test/Integration/cli.transform-module.report-only.test.ts`
+- [ ] T031 [P] [US5] 集成用例：`mode=write` 幂等（第二次 0 diff）`packages/logix-cli/test/Integration/cli.transform-module.write-idempotent.test.ts`
 
 ---
 

@@ -129,7 +129,7 @@
 | Spec | 现状入口（已存在） | 主要缺口（要补的） | 最小验收入口（建议） |
 | ---- | ------------------ | ------------------ | -------------------- |
 | `078` | `ModuleDef.services` 字段已存在；Manifest/Diff/TrialRun 基础链路已存在 | 统一 `ServiceId`；`ModuleManifest.servicePorts` + `manifestVersion` bump；`diffManifest(servicePorts)`；TrialRun 端口级对齐（`moduleId+port+serviceId`） | `Logix.Reflection.extractManifest` 输出包含 `servicePorts` 且 digest/diff 可门禁；TrialRunReport 输出端口级缺失清单 |
-| `075` | 现阶段依赖 `FlowRuntime`/watchers 的手写形态为主 | `WorkflowDef` 权威输入 + `workflowSurface`（Π slice）导出；`stepKey` 必填与可回写；KernelPorts 作为 service ports（对齐 078） | 导出 `workflowSurfaceDigest` 可回链 Root IR；缺失/重复 stepKey 可门禁化并可在 Platform-Grade 子集内回写 |
+| `075` | 现阶段依赖 `FlowRuntime`/watchers 的手写形态为主 | `WorkflowDef` 权威输入 + `workflowSurface`（Π slice）导出；`stepKey` 必填与可回写；KernelPorts 作为 service ports（对齐 078） | 导出 `workflowSurface` slice，并在 Root IR（ControlSurfaceManifest）中通过 `modules[*].workflowSurface.digest` 回链；缺失/重复 stepKey 可门禁化并可在 Platform-Grade 子集内回写 |
 | `079` | 现阶段没有 `packages/logix-anchor-engine`（Node-only） | AutofillPolicy + reasonCodes + report-only；与 `082` 串联写回；严格“只补未声明/幂等/最小 diff/宁可漏” | `logix anchor autofill --report` 输出 PatchPlan/跳过原因；`--write` 后二次运行 0 diff |
 | `081` | workspace 已具备 `ts-morph`/`tsx` 依赖（Node-only 解析前提 OK） | 新增 `packages/logix-anchor-engine`，产出 `AnchorIndex@v1`（Platform-Grade 子集识别 + RawMode + 缺口点 insertSpan） | 同一 fixture 仓库重复扫描输出一致；RawMode 的 reasonCodes 稳定可门禁 |
 | `082` | 无现成写回引擎 | `PatchPlan@v1` + `WriteBackResult@v1`；支持 `AddObjectProperty` 最小写入；plan→write 竞态 fail-fast；report-only 与 write 等价 | 对 fixture：只新增缺失字段、不重排；重复运行幂等；歧义输入显式失败并给 reasonCodes |

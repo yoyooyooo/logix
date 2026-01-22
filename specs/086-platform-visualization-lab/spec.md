@@ -10,7 +10,7 @@
 `080`（Full‑Duplex Prelude）跑通后，平台侧将同时拥有：
 
 - Static IR：`ModuleManifest`、`StaticIr`、`Artifacts`、（未来）`servicePorts`、`PortSpec/TypeIR`
-- Static IR（控制面）：`ControlSurfaceManifest`（Root IR）+ `workflowSurface`（Π slice；`workflowSurfaceDigest` 锚点）
+- Static IR（控制面）：`ControlSurfaceManifest`（Root IR）+ `workflowSurface`（Π slice；锚点为 `ControlSurfaceManifest.modules[*].workflowSurface.digest`）
 - Dynamic Evidence：TrialRun / EvidencePackage、（未来）Spy evidence
 - Platform‑Grade 工具链工件：`AnchorIndex@v1`、`PatchPlan@v1`、`WriteBackResult@v1`（Node-only 产出）
 
@@ -43,7 +43,7 @@
   - TrialRun Evidence Inspector（复用/包装现有 TrialRun 示例）
 - UI 只消费 JSON-safe 的工件/输出；不引入 Node-only 依赖（`ts-morph/swc/fs` 等）。
 - 为后续 `servicePorts` / `AnchorIndex` / `PatchPlan` 等工件预留“展示占位”与信息架构（但不要求本特性实现其生产链路）。
-- 为后续 `workflowSurfaceDigest` / `workflowSurface`（Π slice）预留展示占位：Root IR 的 workflow slice 能被加载并在 UI 中可视化/定位（不要求本特性生产该 slice）。
+- 为后续 `workflowSurface`（Π slice）预留展示占位：Root IR 的 workflow slice 能被加载并在 UI 中可视化/定位（锚点为 `ControlSurfaceManifest.modules[*].workflowSurface.digest`；不要求本特性生产该 slice）。
 
 ### Out of Scope
 

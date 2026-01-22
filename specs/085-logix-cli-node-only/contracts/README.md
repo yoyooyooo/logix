@@ -3,6 +3,10 @@
 本目录固化 085 的 contracts（长期可存储、可 diff 的协议面），用于平台/CI/Devtools/脚本统一消费：
 
 - `CommandResult@v1`：CLI 输出 envelope（stdout + 落盘引用），承载各类 IR/报告工件
+- `public-api.md`：命令表与参数语义（稳定入口）
+- `artifacts.md`：工件命名与落盘策略（稳定可预测）
+- `safety.md`：report/write 安全边界与写回硬门槛（复用 082）
+- `transform-ops.md`：batch transform 的 delta.json 语义（纯数据、可版本化）
 
 ## Schemas
 

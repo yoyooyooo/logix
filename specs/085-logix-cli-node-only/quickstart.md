@@ -16,12 +16,15 @@
 由 `packages/logix-cli` 暴露 `logix` 命令（本 spec 只固化语义与工件形态）：
 
 - `logix ir export`：导出 Manifest/StaticIR/Artifacts（可落盘）
+- `logix ir validate`：对导出工件做门禁（锚点/预算/Raw Mode 统计）
+- `logix ir diff`：对两份工件做稳定 diff（用于 CI gate）
 - `logix trialrun`：导出 TrialRunReport（受控窗口 + 预算/超时）
 - `logix anchor index`：导出 `AnchorIndex@v1`（081）
-- `logix anchor autofill --report|--write`：导出 PatchPlan/WriteBackResult（082），并在 `--write` 时执行写回（079）
+- `logix anchor autofill --mode report|write`：导出 PatchPlan/WriteBackResult（082），并在 `mode=write` 时执行写回（079）
+- （可选）`logix transform module --ops <delta.json> --mode report|write`：对 Platform-Grade 子集内的 Module 做 batch ops（默认 report-only）
 
 ## 3) 安全边界（必须牢记）
 
 - 强制显式 `runId`；输出必须确定性、可序列化、可 diff。
-- `--write` 会修改源码：只补“未声明且高置信度”的锚点缺口；对子集外/歧义形态必须拒绝写回并给出 reason codes。
-
+- `--mode write` 会修改源码：只补“未声明且高置信度”的锚点缺口；对子集外/歧义形态必须拒绝写回并给出 reason codes。
+- 默认工作方式建议：先直接出码/重构，再用 `ir export/validate/diff` 做证据链与门禁；仅在“机械且高风险小改动”时才考虑 `transform module`。
