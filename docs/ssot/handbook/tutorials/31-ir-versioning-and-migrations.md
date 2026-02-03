@@ -15,7 +15,7 @@ version: 1
 ## 0. 最短阅读路径（10 分钟上手）
 
 1. 先读「1.2 四类版本」：不要把 `manifestVersion`、`digest`、`protocolVersion`、`@vN` 混成一个东西。  
-2. 再读「2.1 ModuleManifest（manifest:067）」与「2.2 Traits Static IR（stir:009）」：理解“版本字段 + digest 前缀”如何绑定。  
+2. 再读「2.1 ModuleManifest（manifest:083）」与「2.2 Traits Static IR（stir:009）」：理解“版本字段 + digest 前缀”如何绑定。  
 3. 最后读「3.1 何时 bump 版本」：把“触发条件清单”记住，就不会踩“静默漂移”的坑。  
 
 ## 1. 心智模型（版本是什么，不是什么）
@@ -36,10 +36,10 @@ version: 1
 在本仓里，“版本”至少分四类（每类解决的问题不同）：
 
 1. **IR Schema Version（字段口径版本）**  
-   例：`ModuleManifest.manifestVersion = '067'`、`StaticIr.version = '009'`。  
+   例：`ModuleManifest.manifestVersion = '083'`、`StaticIr.version = '009'`。  
    作用：告诉消费者“字段语义口径是什么”，并作为 digest base 的一部分。
 2. **Digest Prefix Version（内容寻址/判等前缀）**  
-   例：`manifest:067:<hash>`、`stir:009:<hash>`、`artifact:031:<hash>`。  
+   例：`manifest:083:<hash>`、`stir:009:<hash>`、`artifact:031:<hash>`。  
    作用：把“语义边界”压缩成稳定引用（stable reference）。前缀通常与 schema version 绑定（但不要求永远一致）。  
 3. **Protocol Version（跨系统交换协议版本）**  
    例：`OBSERVABILITY_PROTOCOL_VERSION = 'v1'`（EvidencePackage）。  
@@ -62,7 +62,7 @@ version: 1
 
 ## 2. 现状：仓库里有哪些版本化 IR/协议/工件（从 0 到 1 串起来）
 
-### 2.1 `ModuleManifest`（`manifestVersion=067` / `manifest:067:*`）
+### 2.1 `ModuleManifest`（`manifestVersion=083` / `manifest:083:*`）
 
 入口：
 
@@ -73,7 +73,7 @@ version: 1
 关键点（为什么这个设计对迁移友好）：
 
 - `digest` 是对 **digestBase** 做 `stableStringify + fnv1a32` 得到的：  
-  - `digestBase` 明确包含：`manifestVersion/moduleId/actionKeys/actions/effects/schemaKeys/logicUnits/staticIrDigest`  
+  - `digestBase` 明确包含：`manifestVersion/moduleId/actionKeys/actions/effects/schemaKeys/logicUnits/slots/slotFills/servicePorts/staticIrDigest`  
   - `digestBase` 明确排除：`source/meta/staticIr(本体)`  
   - 这让 `digest` 能作为 CI/cache 的 cheap gate，同时 `source/meta` 仍可作为 explainable diff 的附属信息。  
 - budgets（`maxBytes`）发生时会裁剪 manifest，但 digest 已经先算完：  
@@ -193,7 +193,7 @@ version: 1
 2. **Diff Report（机读）**：让 CI/UI 能 gate、能生成 checklist。  
    - 例：`Reflection.diffManifest`（`packages/logix-core/src/internal/reflection/diff.ts`）
 3. **迁移工具（可选）**：当改动面太大或需要批量改写时，提供脚本/rewriter。  
-   - 例：spec 025 提到的 inspect/diff 产物（`scripts/ir/inspect-module.ts`）用于复跑对比（若你要扩展它，建议把它当作工具链的一部分，而不是临时脚本）。
+   - 例：优先用 `logix` CLI（085）的 `ir export/validate/diff` 作为稳定入口；`scripts/ir/inspect-module.ts` 作为 legacy 迁移来源/底层参考保留（若你要扩展它，建议把它当作工具链的一部分，而不是临时脚本）。
 
 ### 4.2 一个标准的“版本 bump”步骤（推荐 checklist）
 
@@ -201,7 +201,7 @@ version: 1
 
 1. **先写迁移说明**：在对应 spec/contracts 下加 `migration.md`，明确 from→to 的语义差异与替代写法。  
 2. **改 exporter**：把新版本固化到导出端（`manifestVersion`/`StaticIr.version`/`PROTOCOL_VERSION`/`@vN`）。  
-3. **改 digest 前缀**：让 digest 把版本边界显式化（`manifest:067`/`stir:009`/`artifact:031`）。  
+3. **改 digest 前缀**：让 digest 把版本边界显式化（`manifest:083`/`stir:009`/`artifact:031`）。  
 4. **改消费者（parser）**：  
    - 先按 version 分发；  
    - 未知 version fail-fast（不要“猜字段”）；  
@@ -225,7 +225,7 @@ version: 1
 以下锚点足以覆盖本仓 IR 版本治理的主要事实源：
 
 1. `packages/logix-core/src/internal/digest.ts`：`stableStringify` / `fnv1a32`（全仓 digest 算法 SSoT）。
-2. `packages/logix-core/src/internal/reflection/manifest.ts`：`extractManifest` / `manifestVersion='067'` / `digestOf`（manifest:067）。
+2. `packages/logix-core/src/internal/reflection/manifest.ts`：`extractManifest` / `manifestVersion='083'` / `digestOf`（manifest:083）。
 3. `packages/logix-core/src/internal/reflection/diff.ts`：`diffManifest` / `ModuleManifestDiff.version='025'`（稳定 diff 口径）。
 4. `packages/logix-core/src/Reflection.ts`：公共入口 `Reflection.extractManifest/diffManifest/exportStaticIr`。
 5. `packages/logix-core/src/internal/state-trait/ir.ts`：`exportStaticIr` / `version='009'` / `stir:${version}:...`。

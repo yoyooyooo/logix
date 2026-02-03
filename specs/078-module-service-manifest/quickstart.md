@@ -8,6 +8,7 @@
 - 若不需要额外解释，推荐默认约定 `port = serviceId`，仅在需要更强语义时再改为短别名（见 `contracts/module-manifest-service-ports.md`）。
 - Tag 的稳定标识将成为 `ServiceId`（见 `contracts/service-id.md`）。
 - 若某服务为可选依赖，可显式声明为 `{ tag: ServiceTag, optional: true }`：缺失不会导致试跑 hard-fail，但仍会进入对齐报告用于解释。
+- `KernelPorts`（运行时内置端口）同样必须具备稳定 `ServiceId`，并进入 `servicePorts`/TrialRun 对齐链路（见 `contracts/kernel-ports.md`）。
 
 ## 2) 平台侧怎么导出 Manifest（含 servicePorts）？
 

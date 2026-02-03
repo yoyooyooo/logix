@@ -54,12 +54,15 @@
 证据闭环（MUST）：
 
 1. 新增一个最小 perf suite（聚焦 `$.use` 热路径与 disabled/enabled 两种模式），并纳入 perf collect 子集执行。
-2. 采集 before/after（同 profile/同参数/同 envId）并落盘到 `specs/084-loader-spy-dep-capture/perf/`：
-   - `pnpm perf collect -- --out specs/084-loader-spy-dep-capture/perf/before.local.<envId>.default.json --files packages/logix-core/test/perf/BoundApiRuntime.use.spy.perf.test.ts`
-   - `pnpm perf collect -- --out specs/084-loader-spy-dep-capture/perf/after.local.<envId>.default.json --files packages/logix-core/test/perf/BoundApiRuntime.use.spy.perf.test.ts`
-3. 生成可比 diff：
-   - `pnpm perf diff -- --before <before.json> --after <after.json> --out specs/084-loader-spy-dep-capture/perf/diff.local.<envId>.default.json`
-4. 结论写入本 spec 的 deliverables（或 handoff）中，必须以 diff 的 `meta.comparability` 为准；`comparable=false` 时不得下硬结论。
+2. 固化矩阵口径（同 `matrixId/matrixHash`）：`specs/084-loader-spy-dep-capture/perf/matrix.spy-use.node.v1.json`
+3. disabled（默认未注入）回归证据：采集 before/after（同 profile/同参数/同 envId）并落盘到 `specs/084-loader-spy-dep-capture/perf/`：
+   - before（改动前代码）：`LOGIX_SPY_COLLECTOR=off pnpm perf collect -- --profile default --matrix specs/084-loader-spy-dep-capture/perf/matrix.spy-use.node.v1.json --out specs/084-loader-spy-dep-capture/perf/before.node.spyUse.off.<baselineSha>.<envId>.default.json --files packages/logix-core/test/perf/BoundApiRuntime.use.spy.perf.test.ts`
+   - after（改动后代码）：`LOGIX_SPY_COLLECTOR=off pnpm perf collect -- --profile default --matrix specs/084-loader-spy-dep-capture/perf/matrix.spy-use.node.v1.json --out specs/084-loader-spy-dep-capture/perf/after.node.spyUse.off.<sha|worktree>.<envId>.default.json --files packages/logix-core/test/perf/BoundApiRuntime.use.spy.perf.test.ts`
+   - diff（disabled 回归门）：`pnpm perf diff -- --matrix specs/084-loader-spy-dep-capture/perf/matrix.spy-use.node.v1.json --before <before.off.json> --after <after.off.json> --out specs/084-loader-spy-dep-capture/perf/diff.disabled.<before>__<after>.json`
+4. enabled（注入 SpyCollector）开销证据：在同一份代码下对比 off/on（策略 A/B）：
+   - on：`LOGIX_SPY_COLLECTOR=on pnpm perf collect -- --profile default --matrix specs/084-loader-spy-dep-capture/perf/matrix.spy-use.node.v1.json --out specs/084-loader-spy-dep-capture/perf/after.node.spyUse.on.<sha|worktree>.<envId>.default.json --files packages/logix-core/test/perf/BoundApiRuntime.use.spy.perf.test.ts`
+   - diff（enabled 开销曲线）：`pnpm perf diff -- --matrix specs/084-loader-spy-dep-capture/perf/matrix.spy-use.node.v1.json --before <after.off.json> --after <after.on.json> --out specs/084-loader-spy-dep-capture/perf/diff.enabled.<afterOff>__<afterOn>.json`
+5. 结论以 diff 的 `meta.comparability` 为准；`comparable=false` 时不得下硬结论。
 
 资源上界（MUST）：采集 Harness 必须支持 timeout/最大记录数/最大字节数；超限时可解释截断或失败。
 

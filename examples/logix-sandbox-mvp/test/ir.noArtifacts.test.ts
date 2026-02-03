@@ -4,7 +4,7 @@ import { Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 
 describe('/ir: no artifacts', () => {
-  it.effect('keeps artifacts undefined for non-kit modules', () =>
+  it.effect('keeps artifacts minimal for non-kit modules', () =>
     Effect.gen(function* () {
       const M = Logix.Module.make('IrTest.NoArtifacts', {
         state: Schema.Struct({ ok: Schema.Boolean }),
@@ -21,7 +21,11 @@ describe('/ir: no artifacts', () => {
         closeScopeTimeout: 500,
       })
 
-      expect(report.artifacts).toBeUndefined()
+      const artifacts = report.artifacts
+      expect(artifacts).toBeDefined()
+      expect(Object.keys(artifacts ?? {}).sort()).toContain('@logixjs/module.portSpec@v1')
+      expect(Object.keys(artifacts ?? {}).sort()).toContain('@logixjs/module.typeIr@v1')
+      expect(Object.keys(artifacts ?? {}).sort()).not.toContain('@logixjs/form.rulesManifest@v1')
       expect(() => JSON.stringify(report)).not.toThrow()
     }),
   )

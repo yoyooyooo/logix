@@ -2,7 +2,7 @@
 
 **Feature Branch**: `085-logix-cli-node-only`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 在平台产品落地前，提供一个 Node-only 的 `logix` CLI：把“IR 导出 / 受控试跑 / Anchor 索引 / 保守回写 / Gate（validate/diff）/ 可选 Transform（batch ops）”串成一条可复现跑道，作为开发者、Agent 与 CI 的验证入口；输出必须确定性、可序列化、可 diff。
 
 ## Context
@@ -29,7 +29,7 @@
 ### Session 2026-01-09
 
 - AUTO: Q: stdout JSON 输出是否统一？→ A: 默认统一输出 `CommandResult@v1` envelope（无时间戳/随机；工件通过 `artifacts[]` 引用）。
-- AUTO: Q: Exit Code 规范？→ A: `0=PASS`、`2=VIOLATION`（门禁/差异/规则违反）、`1=ERROR`（运行失败/异常）。
+- AUTO: Q: Exit Code 规范？→ A: `0=SUCCESS`、`2=USER_ERROR`（参数/用法/输入不合法/门禁失败）、`1=INTERNAL`（运行失败/异常/defect）。
 - AUTO: Q: TS 入口加载与解析器依赖如何组织？→ A: 入口加载用 `tsx`；Parser/Rewriter 用 `ts-morph`（子命令内 lazy-load）；`packages/logix-core` 禁止引入 `ts-morph/swc`。
 
 ### Session 2026-01-21
@@ -48,6 +48,7 @@
   4. 生成 AutofillReport，并可选择写回源码（宁可漏不乱补）
   5. 对导出工件做门禁与对比：`ir validate` / `ir diff`（可门禁、可 diff、可行动 reason codes）
   6. 可选 Transform：`transform module --ops <delta.json>`（batch ops；默认 report-only；满足门槛才写回）
+  7. 集成验收入口：`contract-suite run`（036；trialrun + verdict/context pack；可选 `--includeAnchorAutofill` 在同一条命令里带上 079/082 的 report-only 缺口报告）
 - CLI 的 IR 导出与试跑输出必须对齐控制面 Root IR：当 `workflowSurface`（Π slice）可用时，CLI 必须能导出并在输出中引用 `manifest.modules[*].workflowSurface.digest`（避免出现“Program IR”并行命名）。
 - 输出必须可 JSON 序列化、确定性、可 diff，并包含必要的 reason codes（失败/跳过/降级原因）。
 - CLI 作为 Node-only 能力的集成测试跑道：命令本身可在 CI 直接跑通并对比输出工件。
@@ -139,9 +140,10 @@ Then：一次 `transform module --ops delta.json` 产出最小 PatchPlan（repor
 - **FR-003**: CLI MUST 支持 report-only 与 write-back 两种模式，并保证 write-back 的幂等性与最小改动面。
 - **FR-004**: CLI MUST 支持将输出工件落盘（稳定路径/稳定命名），以便 CI/平台/Devtools 消费与对比。
 - **FR-005**: CLI MUST 明确“单一真相源”：任何写回只能写入源码显式锚点字段；运行证据与 Spy 证据不得成为长期权威。
-- **FR-006**: CLI MUST 提供可门禁化的 Exit Code 规范：`0=PASS`、`2=VIOLATION`、`1=ERROR`。
+- **FR-006**: CLI MUST 提供可门禁化的 Exit Code 规范：`0=SUCCESS`、`2=USER_ERROR`（含 `@effect/cli` ValidationError、输入不合法与门禁失败）、`1=INTERNAL`。
 - **FR-007**: CLI MUST 提供 Gate 命令：`ir validate` 与 `ir diff`，其输出必须是结构化工件（可门禁、可行动 reason codes）。
 - **FR-008**: CLI MAY 提供 `transform module --ops <delta.json>`（batch ops）：默认 report-only；写回必须显式开启并遵守 082 的幂等与竞态防护。
+- **FR-009**: CLI MUST 提供 `contract-suite run`（036）作为“一键验收 + 最小事实包”入口：trialrun + `ContractSuiteVerdict@v1`，并按门禁需要输出 `ContractSuiteContextPack@v1`；可选 `--includeAnchorAutofill`（report-only）注入 `PatchPlan/AutofillReport` 以缩短 Agent 链路。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 

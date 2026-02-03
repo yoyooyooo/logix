@@ -200,10 +200,10 @@ CLI 的定位是：把 Parser/Rewriter/TrialRun/IR 导出串起来，作为开�
 
 权威 quickstart：`specs/085-logix-cli-node-only/quickstart.md`
 
-预期命令（注意：这是 spec 固化的语义，当前仓库可能尚未落地对应包实现）：
+当前仓库已落地 `packages/logix-cli`（085），常用命令：
 
 - `logix anchor index`：输出 `AnchorIndex@v1`（081）
-- `logix anchor autofill --report|--write`：输出 `PatchPlan@v1`/`WriteBackResult@v1`（082）与 AutofillReport（079）
+- `logix anchor autofill --mode report|write`：输出 `PatchPlan@v1`/`WriteBackResult@v1`（082）与 AutofillReport（079）
 
 Exit code 规范（门禁化）：
 

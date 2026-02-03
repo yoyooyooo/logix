@@ -21,7 +21,7 @@ pnpm exec tsx scripts/ir/inspect-module.ts \
   --module ./path/to/app.root.ts \
   --export AppRoot \
   --runId run:commit-<sha>:app \
-  --outDir dist/ir
+  --out dist/ir
 ```
 
 输出：
@@ -36,7 +36,7 @@ pnpm exec tsx scripts/ir/inspect-module.ts \
   --module ./path/to/app.root.ts \
   --export AppRoot \
   --runId run:commit-<sha>:app \
-  --outDir dist/ir.next \
+  --out dist/ir.next \
   --compareDir dist/ir
 ```
 

@@ -1,0 +1,34 @@
+---
+title: Playground
+description: 在文档里跑一次受控试运行，并观察缺失依赖。
+---
+
+这个 Playground 底层跑的是 `Observability.trialRunModule`。下面的示例声明了一个**必需**的输入服务端口，但没有提供实现，因此试运行应当 **FAIL**（用于教学：缺口可解释、可定位）。
+
+<Playground
+  id="form-playground-missing-required"
+  title="缺失必需服务依赖"
+  moduleExport="AppRoot"
+  observe={['trialrun 应 FAIL（MissingDependency）', 'missingRequired 应包含 svc/required']}
+  code={String.raw`import { Context, Effect, Schema } from "effect"
+import * as Logix from "@logixjs/core"
+
+class RequiredService extends Context.Tag("svc/required")<
+  RequiredService,
+  { readonly ping: Effect.Effect<void> }
+>() {}
+
+const Root = Logix.Module.make("Docs.Playground.MissingRequired", {
+  state: Schema.Struct({ ok: Schema.Boolean }),
+  actions: { noop: Schema.Void } as const,
+  services: {
+    required: RequiredService,
+  },
+})
+
+export const AppRoot = Root.implement({
+  initial: { ok: true },
+  logics: [],
+})`}
+/>
+

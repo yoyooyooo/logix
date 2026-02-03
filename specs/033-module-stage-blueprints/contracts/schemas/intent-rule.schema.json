@@ -36,7 +36,7 @@
         }
       }
     },
-    "mapping": { "$ref": "../../../035-module-reference-space/contracts/schemas/code-asset-ref.schema.json" },
+    "mapping": { "$ref": "../../../034-code-asset-protocol/contracts/schemas/code-asset-ref.schema.json" },
     "meta": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
   }
 }

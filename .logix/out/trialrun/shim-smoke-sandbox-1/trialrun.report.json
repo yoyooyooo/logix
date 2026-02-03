@@ -1,0 +1,1207 @@
+{
+  "artifacts": {
+    "@logixjs/form.rulesManifest@v1": {
+      "actualBytes": 195,
+      "artifactKey": "@logixjs/form.rulesManifest@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:cd1c6a92",
+      "ok": true,
+      "value": {
+        "manifest": {
+          "lists": [],
+          "moduleId": "CliPlayground.FormRules",
+          "rules": [
+            {
+              "deps": [],
+              "meta": {
+                "source": "rules"
+              },
+              "ruleId": "name#required",
+              "scope": {
+                "fieldPath": [
+                  "name"
+                ],
+                "kind": "field"
+              }
+            }
+          ]
+        },
+        "warnings": []
+      }
+    },
+    "@logixjs/module.portSpec@v1": {
+      "actualBytes": 930,
+      "artifactKey": "@logixjs/module.portSpec@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:61293ec8",
+      "ok": true,
+      "value": {
+        "actions": [
+          {
+            "key": "arrayAppend"
+          },
+          {
+            "key": "arrayMove"
+          },
+          {
+            "key": "arrayPrepend"
+          },
+          {
+            "key": "arrayRemove"
+          },
+          {
+            "key": "arraySwap"
+          },
+          {
+            "key": "blur"
+          },
+          {
+            "key": "clearErrors"
+          },
+          {
+            "key": "reset"
+          },
+          {
+            "key": "setError"
+          },
+          {
+            "key": "setSubmitting"
+          },
+          {
+            "key": "setValue"
+          },
+          {
+            "key": "submit"
+          },
+          {
+            "key": "submitAttempt"
+          },
+          {
+            "key": "validate"
+          },
+          {
+            "key": "validatePaths"
+          }
+        ],
+        "digest": "portspec:v1:f8e04474",
+        "events": [
+          {
+            "key": "arrayAppend"
+          },
+          {
+            "key": "arrayMove"
+          },
+          {
+            "key": "arrayPrepend"
+          },
+          {
+            "key": "arrayRemove"
+          },
+          {
+            "key": "arraySwap"
+          },
+          {
+            "key": "blur"
+          },
+          {
+            "key": "clearErrors"
+          },
+          {
+            "key": "reset"
+          },
+          {
+            "key": "setError"
+          },
+          {
+            "key": "setSubmitting"
+          },
+          {
+            "key": "setValue"
+          },
+          {
+            "key": "submit"
+          },
+          {
+            "key": "submitAttempt"
+          },
+          {
+            "key": "validate"
+          },
+          {
+            "key": "validatePaths"
+          }
+        ],
+        "exports": [
+          {
+            "path": "$form"
+          },
+          {
+            "path": "$form.errorCount"
+          },
+          {
+            "path": "$form.isDirty"
+          },
+          {
+            "path": "$form.isSubmitting"
+          },
+          {
+            "path": "$form.submitCount"
+          },
+          {
+            "path": "errors"
+          },
+          {
+            "path": "name"
+          },
+          {
+            "path": "ui"
+          }
+        ],
+        "moduleId": "CliPlayground.FormRules",
+        "outputs": [],
+        "protocolVersion": "v1"
+      }
+    },
+    "@logixjs/module.typeIr@v1": {
+      "actualBytes": 3805,
+      "artifactKey": "@logixjs/module.typeIr@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:7a810b98",
+      "ok": true,
+      "value": {
+        "budget": {
+          "maxDepth": 6,
+          "maxNodes": 200
+        },
+        "moduleId": "CliPlayground.FormRules",
+        "notes": {
+          "__logix": {
+            "projectorIds": [
+              "schema-ast@v1"
+            ]
+          }
+        },
+        "protocolVersion": "v1",
+        "roots": {
+          "actions": {
+            "arrayAppend": "port:action:arrayAppend",
+            "arrayMove": "port:action:arrayMove",
+            "arrayPrepend": "port:action:arrayPrepend",
+            "arrayRemove": "port:action:arrayRemove",
+            "arraySwap": "port:action:arraySwap",
+            "blur": "port:action:blur",
+            "clearErrors": "port:action:clearErrors",
+            "reset": "port:action:reset",
+            "setError": "port:action:setError",
+            "setSubmitting": "port:action:setSubmitting",
+            "setValue": "port:action:setValue",
+            "submit": "port:action:submit",
+            "submitAttempt": "port:action:submitAttempt",
+            "validate": "port:action:validate",
+            "validatePaths": "port:action:validatePaths"
+          },
+          "events": {
+            "arrayAppend": "port:event:arrayAppend",
+            "arrayMove": "port:event:arrayMove",
+            "arrayPrepend": "port:event:arrayPrepend",
+            "arrayRemove": "port:event:arrayRemove",
+            "arraySwap": "port:event:arraySwap",
+            "blur": "port:event:blur",
+            "clearErrors": "port:event:clearErrors",
+            "reset": "port:event:reset",
+            "setError": "port:event:setError",
+            "setSubmitting": "port:event:setSubmitting",
+            "setValue": "port:event:setValue",
+            "submit": "port:event:submit",
+            "submitAttempt": "port:event:submitAttempt",
+            "validate": "port:event:validate",
+            "validatePaths": "port:event:validatePaths"
+          },
+          "exports": {
+            "$form": "port:export:$form",
+            "$form.errorCount": "port:export:$form.errorCount",
+            "$form.isDirty": "port:export:$form.isDirty",
+            "$form.isSubmitting": "port:export:$form.isSubmitting",
+            "$form.submitCount": "port:export:$form.submitCount",
+            "errors": "port:export:errors",
+            "name": "port:export:name",
+            "ui": "port:export:ui"
+          },
+          "outputs": {}
+        },
+        "types": [
+          {
+            "id": "port:action:arrayAppend",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:arrayMove",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:arrayPrepend",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:arrayRemove",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:arraySwap",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:blur",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:clearErrors",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:reset",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:setError",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:setSubmitting",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:setValue",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:submit",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:submitAttempt",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:validate",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:validatePaths",
+            "kind": "action"
+          },
+          {
+            "id": "port:event:arrayAppend",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:arrayMove",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:arrayPrepend",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:arrayRemove",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:arraySwap",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:blur",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:clearErrors",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:reset",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:setError",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:setSubmitting",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:setValue",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:submit",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:submitAttempt",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:validate",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:validatePaths",
+            "kind": "event"
+          },
+          {
+            "digest": "schema:b50f0950",
+            "id": "port:export:$form",
+            "kind": "export",
+            "label": "TypeLiteral"
+          },
+          {
+            "digest": "schema:5515f628",
+            "id": "port:export:$form.errorCount",
+            "kind": "export",
+            "label": "NumberKeyword"
+          },
+          {
+            "digest": "schema:90ae7978",
+            "id": "port:export:$form.isDirty",
+            "kind": "export",
+            "label": "BooleanKeyword"
+          },
+          {
+            "digest": "schema:90ae7978",
+            "id": "port:export:$form.isSubmitting",
+            "kind": "export",
+            "label": "BooleanKeyword"
+          },
+          {
+            "digest": "schema:5515f628",
+            "id": "port:export:$form.submitCount",
+            "kind": "export",
+            "label": "NumberKeyword"
+          },
+          {
+            "digest": "schema:d5bfecc7",
+            "id": "port:export:errors",
+            "kind": "export",
+            "label": "UnknownKeyword"
+          },
+          {
+            "digest": "schema:6fd5949b",
+            "id": "port:export:name",
+            "kind": "export",
+            "label": "StringKeyword"
+          },
+          {
+            "digest": "schema:d5bfecc7",
+            "id": "port:export:ui",
+            "kind": "export",
+            "label": "UnknownKeyword"
+          }
+        ]
+      }
+    },
+    "@logixjs/schema.registry@v1": {
+      "actualBytes": 8494,
+      "artifactKey": "@logixjs/schema.registry@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:f0d6ba68",
+      "ok": true,
+      "value": {
+        "effectVersion": "3.19.13",
+        "notes": {
+          "__logix": {
+            "actions": {
+              "arrayAppend": "schema:55265da8",
+              "arrayMove": "schema:39eb4b38",
+              "arrayPrepend": "schema:55265da8",
+              "arrayRemove": "schema:70187bf0",
+              "arraySwap": "schema:e5f8b45c",
+              "blur": "schema:9d3b139c",
+              "clearErrors": "schema:d506840c",
+              "reset": "schema:887f3af4",
+              "setError": "schema:3544ee28",
+              "setSubmitting": "schema:90ae7978",
+              "setValue": "schema:55265da8",
+              "submit": "schema:482c4e18",
+              "submitAttempt": "schema:482c4e18",
+              "validate": "schema:482c4e18",
+              "validatePaths": "schema:0bad85c0"
+            },
+            "moduleId": "CliPlayground.FormRules",
+            "state": {
+              "schemaId": "schema:71bff85f"
+            }
+          }
+        },
+        "protocolVersion": "v1",
+        "schemas": [
+          {
+            "ast": {
+              "_tag": "TupleType",
+              "annotations": {},
+              "elements": [],
+              "isReadonly": true,
+              "rest": [
+                {
+                  "annotations": {},
+                  "type": {
+                    "_tag": "StringKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a string",
+                      "Symbol(effect/annotation/Title)": "string"
+                    }
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "action:validatePaths",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:0bad85c0",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "TypeLiteral",
+              "annotations": {},
+              "indexSignatures": [],
+              "propertySignatures": [
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "path",
+                  "type": {
+                    "_tag": "StringKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a string",
+                      "Symbol(effect/annotation/Title)": "string"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "error",
+                  "type": {
+                    "_tag": "UnknownKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Title)": "unknown"
+                    }
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "action:setError",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:3544ee28",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "TypeLiteral",
+              "annotations": {},
+              "indexSignatures": [],
+              "propertySignatures": [
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "path",
+                  "type": {
+                    "_tag": "StringKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a string",
+                      "Symbol(effect/annotation/Title)": "string"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "from",
+                  "type": {
+                    "_tag": "NumberKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a number",
+                      "Symbol(effect/annotation/Title)": "number"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "to",
+                  "type": {
+                    "_tag": "NumberKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a number",
+                      "Symbol(effect/annotation/Title)": "number"
+                    }
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "action:arrayMove",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:39eb4b38",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "VoidKeyword",
+              "annotations": {
+                "Symbol(effect/annotation/Title)": "void"
+              }
+            },
+            "meta": {
+              "tags": [
+                "action:submit",
+                "action:submitAttempt",
+                "action:validate",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ],
+              "title": "void"
+            },
+            "schemaId": "schema:482c4e18",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "TypeLiteral",
+              "annotations": {},
+              "indexSignatures": [],
+              "propertySignatures": [
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "path",
+                  "type": {
+                    "_tag": "StringKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a string",
+                      "Symbol(effect/annotation/Title)": "string"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "value",
+                  "type": {
+                    "_tag": "UnknownKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Title)": "unknown"
+                    }
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "action:arrayAppend",
+                "action:arrayPrepend",
+                "action:setValue",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:55265da8",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "TypeLiteral",
+              "annotations": {},
+              "indexSignatures": [],
+              "propertySignatures": [
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "path",
+                  "type": {
+                    "_tag": "StringKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a string",
+                      "Symbol(effect/annotation/Title)": "string"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "index",
+                  "type": {
+                    "_tag": "NumberKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a number",
+                      "Symbol(effect/annotation/Title)": "number"
+                    }
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "action:arrayRemove",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:70187bf0",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "TypeLiteral",
+              "annotations": {},
+              "indexSignatures": [],
+              "propertySignatures": [
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "name",
+                  "type": {
+                    "_tag": "StringKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a string",
+                      "Symbol(effect/annotation/Title)": "string"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "errors",
+                  "type": {
+                    "_tag": "UnknownKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Title)": "unknown"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "ui",
+                  "type": {
+                    "_tag": "UnknownKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Title)": "unknown"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "$form",
+                  "type": {
+                    "_tag": "TypeLiteral",
+                    "annotations": {},
+                    "indexSignatures": [],
+                    "propertySignatures": [
+                      {
+                        "annotations": {},
+                        "isOptional": false,
+                        "isReadonly": true,
+                        "name": "submitCount",
+                        "type": {
+                          "_tag": "NumberKeyword",
+                          "annotations": {
+                            "Symbol(effect/annotation/Description)": "a number",
+                            "Symbol(effect/annotation/Title)": "number"
+                          }
+                        }
+                      },
+                      {
+                        "annotations": {},
+                        "isOptional": false,
+                        "isReadonly": true,
+                        "name": "isSubmitting",
+                        "type": {
+                          "_tag": "BooleanKeyword",
+                          "annotations": {
+                            "Symbol(effect/annotation/Description)": "a boolean",
+                            "Symbol(effect/annotation/Title)": "boolean"
+                          }
+                        }
+                      },
+                      {
+                        "annotations": {},
+                        "isOptional": false,
+                        "isReadonly": true,
+                        "name": "isDirty",
+                        "type": {
+                          "_tag": "BooleanKeyword",
+                          "annotations": {
+                            "Symbol(effect/annotation/Description)": "a boolean",
+                            "Symbol(effect/annotation/Title)": "boolean"
+                          }
+                        }
+                      },
+                      {
+                        "annotations": {},
+                        "isOptional": false,
+                        "isReadonly": true,
+                        "name": "errorCount",
+                        "type": {
+                          "_tag": "NumberKeyword",
+                          "annotations": {
+                            "Symbol(effect/annotation/Description)": "a number",
+                            "Symbol(effect/annotation/Title)": "number"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "kind:state",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:71bff85f",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "Union",
+              "annotations": {},
+              "types": [
+                {
+                  "_tag": "UnknownKeyword",
+                  "annotations": {
+                    "Symbol(effect/annotation/Title)": "unknown"
+                  }
+                },
+                {
+                  "_tag": "UndefinedKeyword",
+                  "annotations": {
+                    "Symbol(effect/annotation/Title)": "undefined"
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "action:reset",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:887f3af4",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "BooleanKeyword",
+              "annotations": {
+                "Symbol(effect/annotation/Description)": "a boolean",
+                "Symbol(effect/annotation/Title)": "boolean"
+              }
+            },
+            "meta": {
+              "description": "a boolean",
+              "tags": [
+                "action:setSubmitting",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ],
+              "title": "boolean"
+            },
+            "schemaId": "schema:90ae7978",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "TypeLiteral",
+              "annotations": {},
+              "indexSignatures": [],
+              "propertySignatures": [
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "path",
+                  "type": {
+                    "_tag": "StringKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a string",
+                      "Symbol(effect/annotation/Title)": "string"
+                    }
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "action:blur",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:9d3b139c",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "Union",
+              "annotations": {},
+              "types": [
+                {
+                  "_tag": "TupleType",
+                  "annotations": {},
+                  "elements": [],
+                  "isReadonly": true,
+                  "rest": [
+                    {
+                      "annotations": {},
+                      "type": {
+                        "_tag": "StringKeyword",
+                        "annotations": {
+                          "Symbol(effect/annotation/Description)": "a string",
+                          "Symbol(effect/annotation/Title)": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "_tag": "UndefinedKeyword",
+                  "annotations": {
+                    "Symbol(effect/annotation/Title)": "undefined"
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "action:clearErrors",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:d506840c",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "TypeLiteral",
+              "annotations": {},
+              "indexSignatures": [],
+              "propertySignatures": [
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "path",
+                  "type": {
+                    "_tag": "StringKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a string",
+                      "Symbol(effect/annotation/Title)": "string"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "indexA",
+                  "type": {
+                    "_tag": "NumberKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a number",
+                      "Symbol(effect/annotation/Title)": "number"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "indexB",
+                  "type": {
+                    "_tag": "NumberKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a number",
+                      "Symbol(effect/annotation/Title)": "number"
+                    }
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "action:arraySwap",
+                "kind:action_payload",
+                "module:CliPlayground.FormRules"
+              ]
+            },
+            "schemaId": "schema:e5f8b45c",
+            "schemaIdSource": "derived"
+          }
+        ]
+      }
+    }
+  },
+  "environment": {
+    "configKeys": [],
+    "kernelImplementationRef": {
+      "kernelId": "core",
+      "packageName": "@logixjs/core"
+    },
+    "missingConfigKeys": [],
+    "missingServices": [],
+    "tagIds": []
+  },
+  "manifest": {
+    "actionKeys": [
+      "arrayAppend",
+      "arrayMove",
+      "arrayPrepend",
+      "arrayRemove",
+      "arraySwap",
+      "blur",
+      "clearErrors",
+      "reset",
+      "setError",
+      "setSubmitting",
+      "setValue",
+      "submit",
+      "submitAttempt",
+      "validate",
+      "validatePaths"
+    ],
+    "actions": [
+      {
+        "actionTag": "arrayAppend",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "arrayMove",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "arrayPrepend",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "arrayRemove",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "arraySwap",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "blur",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "clearErrors",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "reset",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "setError",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "setSubmitting",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "setValue",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "submit",
+        "payload": {
+          "kind": "nonVoid"
+        }
+      },
+      {
+        "actionTag": "submitAttempt",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "validate",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      },
+      {
+        "actionTag": "validatePaths",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      }
+    ],
+    "digest": "manifest:083:dc6840bc",
+    "logicUnits": [
+      {
+        "derived": true,
+        "id": "user#1",
+        "kind": "user",
+        "name": "user"
+      }
+    ],
+    "manifestVersion": "083",
+    "moduleId": "CliPlayground.FormRules",
+    "schemaKeys": [
+      "values"
+    ],
+    "staticIr": {
+      "digest": "stir:009:71aef584",
+      "edges": [
+        {
+          "edgeId": "check-dep:name->name",
+          "from": "name",
+          "kind": "check-dep",
+          "to": "name"
+        }
+      ],
+      "moduleId": "CliPlayground.FormRules",
+      "nodes": [
+        {
+          "kind": "check",
+          "nodeId": "check:name",
+          "reads": [
+            [
+              "name"
+            ]
+          ],
+          "writes": []
+        }
+      ],
+      "version": "009"
+    }
+  },
+  "ok": true,
+  "runId": "shim-smoke-sandbox-1",
+  "staticIr": {
+    "digest": "stir:009:71aef584",
+    "edges": [
+      {
+        "edgeId": "check-dep:name->name",
+        "from": "name",
+        "kind": "check-dep",
+        "to": "name"
+      }
+    ],
+    "moduleId": "CliPlayground.FormRules",
+    "nodes": [
+      {
+        "kind": "check",
+        "nodeId": "check:name",
+        "reads": [
+          [
+            "name"
+          ]
+        ],
+        "writes": []
+      }
+    ],
+    "version": "009"
+  }
+}

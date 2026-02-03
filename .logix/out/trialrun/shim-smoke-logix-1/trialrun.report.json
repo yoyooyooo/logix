@@ -1,0 +1,238 @@
+{
+  "artifacts": {
+    "@logixjs/module.portSpec@v1": {
+      "actualBytes": 224,
+      "artifactKey": "@logixjs/module.portSpec@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:c19876ff",
+      "ok": true,
+      "value": {
+        "actions": [
+          {
+            "key": "dec"
+          },
+          {
+            "key": "inc"
+          }
+        ],
+        "digest": "portspec:v1:f02706ac",
+        "events": [
+          {
+            "key": "dec"
+          },
+          {
+            "key": "inc"
+          }
+        ],
+        "exports": [
+          {
+            "path": "count"
+          },
+          {
+            "path": "hasValue"
+          }
+        ],
+        "moduleId": "CounterModule",
+        "outputs": [],
+        "protocolVersion": "v1"
+      }
+    },
+    "@logixjs/module.typeIr@v1": {
+      "actualBytes": 721,
+      "artifactKey": "@logixjs/module.typeIr@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:a4167860",
+      "ok": true,
+      "value": {
+        "budget": {
+          "maxDepth": 6,
+          "maxNodes": 200
+        },
+        "moduleId": "CounterModule",
+        "notes": {
+          "__logix": {
+            "projectorIds": [
+              "schema-ast@v1"
+            ]
+          }
+        },
+        "protocolVersion": "v1",
+        "roots": {
+          "actions": {
+            "dec": "port:action:dec",
+            "inc": "port:action:inc"
+          },
+          "events": {
+            "dec": "port:event:dec",
+            "inc": "port:event:inc"
+          },
+          "exports": {
+            "count": "port:export:count",
+            "hasValue": "port:export:hasValue"
+          },
+          "outputs": {}
+        },
+        "types": [
+          {
+            "id": "port:action:dec",
+            "kind": "action"
+          },
+          {
+            "id": "port:action:inc",
+            "kind": "action"
+          },
+          {
+            "id": "port:event:dec",
+            "kind": "event"
+          },
+          {
+            "id": "port:event:inc",
+            "kind": "event"
+          },
+          {
+            "digest": "schema:5515f628",
+            "id": "port:export:count",
+            "kind": "export",
+            "label": "NumberKeyword"
+          },
+          {
+            "digest": "schema:90ae7978",
+            "id": "port:export:hasValue",
+            "kind": "export",
+            "label": "BooleanKeyword"
+          }
+        ]
+      }
+    },
+    "@logixjs/schema.registry@v1": {
+      "actualBytes": 1092,
+      "artifactKey": "@logixjs/schema.registry@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:f82af320",
+      "ok": true,
+      "value": {
+        "effectVersion": "3.19.13",
+        "notes": {
+          "__logix": {
+            "actions": {
+              "dec": "schema:482c4e18",
+              "inc": "schema:482c4e18"
+            },
+            "moduleId": "CounterModule",
+            "state": {
+              "schemaId": "schema:223ca498"
+            }
+          }
+        },
+        "protocolVersion": "v1",
+        "schemas": [
+          {
+            "ast": {
+              "_tag": "TypeLiteral",
+              "annotations": {},
+              "indexSignatures": [],
+              "propertySignatures": [
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "count",
+                  "type": {
+                    "_tag": "NumberKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a number",
+                      "Symbol(effect/annotation/Title)": "number"
+                    }
+                  }
+                },
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "hasValue",
+                  "type": {
+                    "_tag": "BooleanKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a boolean",
+                      "Symbol(effect/annotation/Title)": "boolean"
+                    }
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "kind:state",
+                "module:CounterModule"
+              ]
+            },
+            "schemaId": "schema:223ca498",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "VoidKeyword",
+              "annotations": {
+                "Symbol(effect/annotation/Title)": "void"
+              }
+            },
+            "meta": {
+              "tags": [
+                "action:dec",
+                "action:inc",
+                "kind:action_payload",
+                "module:CounterModule"
+              ],
+              "title": "void"
+            },
+            "schemaId": "schema:482c4e18",
+            "schemaIdSource": "derived"
+          }
+        ]
+      }
+    }
+  },
+  "environment": {
+    "configKeys": [],
+    "kernelImplementationRef": {
+      "kernelId": "core",
+      "packageName": "@logixjs/core"
+    },
+    "missingConfigKeys": [],
+    "missingServices": [],
+    "tagIds": []
+  },
+  "manifest": {
+    "actionKeys": [
+      "dec",
+      "inc"
+    ],
+    "actions": [
+      {
+        "actionTag": "dec",
+        "payload": {
+          "kind": "nonVoid"
+        }
+      },
+      {
+        "actionTag": "inc",
+        "payload": {
+          "kind": "nonVoid"
+        }
+      }
+    ],
+    "digest": "manifest:083:1e824770",
+    "logicUnits": [
+      {
+        "derived": true,
+        "id": "user#1",
+        "kind": "user",
+        "name": "user"
+      }
+    ],
+    "manifestVersion": "083",
+    "moduleId": "CounterModule"
+  },
+  "ok": true,
+  "runId": "shim-smoke-logix-1"
+}

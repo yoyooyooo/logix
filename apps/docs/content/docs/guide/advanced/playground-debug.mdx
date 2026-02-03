@@ -1,0 +1,34 @@
+---
+title: Playground (Debug)
+description: Inspect trace events and kernel implementation details.
+---
+
+This page turns on **debug** mode for the Playground. You can open the **Trace** tab to see spans and structured packets emitted from the sandbox.
+
+<Playground
+  id="advanced-playground-debug"
+  title="Debug: trace + kernelImplementationRef"
+  level="debug"
+  defaultPanel="trace"
+  moduleExport="AppRoot"
+  observe={['trialrun should PASS', 'Trace should contain a spy span (emitSpy)']}
+  code={String.raw`import { Schema } from "effect"
+import * as Logix from "@logixjs/core"
+
+;(globalThis as any).logixSandboxBridge?.emitSpy({
+  name: "spy:docs-playground",
+  stepId: "step:demo",
+  note: "This should show up in Trace tab",
+})
+
+const Root = Logix.Module.make("Docs.Playground.Debug", {
+  state: Schema.Struct({ ok: Schema.Boolean }),
+  actions: { noop: Schema.Void } as const,
+})
+
+export const AppRoot = Root.implement({
+  initial: { ok: true },
+  logics: [],
+})`}
+/>
+

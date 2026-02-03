@@ -6,37 +6,37 @@
     {
       "id": "005",
       "dir": "specs/005-unify-observability-protocol",
-      "status": "draft",
+      "status": "done",
       "dependsOn": []
     },
     {
       "id": "016",
       "dir": "specs/016-serializable-diagnostics-and-identity",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["005"]
     },
     {
       "id": "025",
       "dir": "specs/025-ir-reflection-loader",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["016"]
     },
     {
       "id": "031",
       "dir": "specs/031-trialrun-artifacts",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["025"]
     },
     {
       "id": "035",
       "dir": "specs/035-module-reference-space",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["031"]
     },
     {
       "id": "040",
       "dir": "specs/040-schemaast-layered-upgrade",
-      "status": "draft",
+      "status": "done",
       "dependsOn": []
     },
     {
@@ -48,61 +48,61 @@
     {
       "id": "086",
       "dir": "specs/086-platform-visualization-lab",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["025"]
     },
     {
       "id": "067",
       "dir": "specs/067-action-surface-manifest",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["016", "025"]
     },
     {
       "id": "078",
       "dir": "specs/078-module-service-manifest",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["025"]
     },
     {
       "id": "075",
       "dir": "specs/075-workflow-codegen-ir",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["067", "078"]
     },
     {
       "id": "081",
       "dir": "specs/081-platform-grade-parser-mvp",
-      "status": "planned",
+      "status": "done",
       "dependsOn": []
     },
     {
       "id": "082",
       "dir": "specs/082-platform-grade-rewriter-mvp",
-      "status": "planned",
+      "status": "done",
       "dependsOn": ["081"]
     },
     {
       "id": "079",
       "dir": "specs/079-platform-anchor-autofill",
-      "status": "draft",
+      "status": "done",
       "dependsOn": ["078", "082"]
     },
     {
       "id": "085",
       "dir": "specs/085-logix-cli-node-only",
-      "status": "planned",
+      "status": "done",
       "dependsOn": ["025", "081", "082", "079"]
     },
     {
       "id": "083",
       "dir": "specs/083-named-logic-slots",
-      "status": "planned",
+      "status": "done",
       "dependsOn": ["081"]
     },
     {
       "id": "084",
       "dir": "specs/084-loader-spy-dep-capture",
-      "status": "planned",
+      "status": "done",
       "dependsOn": ["016", "025"]
     }
   ]

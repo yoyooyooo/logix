@@ -14,8 +14,12 @@
 - `anchor.index.json`
 - `trialrun.report.json`
 - `trace.slim.json`（可选）
+- `spy.evidence.report.json`（可选，084）
 - `ir.validate.report.json`
 - `ir.diff.report.json`
+- `contract-suite.verdict.json`（036）
+- `contract-suite.context-pack.json`（036，可选/失败时默认输出）
+- `manifest.diff.json`（036，可选：`--baseline`）
 - `patch.plan.json`
 - `transform.report.json`
 - `writeback.result.json`
@@ -26,4 +30,3 @@
 - artifact 列表排序必须稳定（按 `outputKey` 字典序）。
 - JSON 输出必须使用 stable stringify（同口径裁剪/排序）；digest 复算口径必须对齐 Root IR 合同。
 - 超预算截断必须显式标记 `truncated/budgetBytes/actualBytes`，且 digest 必须有统一口径（实现阶段固化，禁止混用“截断前/截断后”口径）。
-

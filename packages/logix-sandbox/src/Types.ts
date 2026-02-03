@@ -133,12 +133,26 @@ export interface RunResult {
 }
 
 // Error
-export type SandboxErrorCode = 'INIT_FAILED' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'WORKER_TERMINATED'
+export type SandboxErrorCode = 'INIT_FAILED' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'WORKER_TERMINATED' | 'PROTOCOL_ERROR'
+
+export interface SandboxProtocolIssue {
+  readonly path: string
+  readonly message: string
+  readonly expected?: string
+  readonly actual?: string
+}
+
+export interface SandboxProtocolErrorDetails {
+  readonly direction: 'HostToWorker' | 'WorkerToHost'
+  readonly messageType?: string
+  readonly issues: ReadonlyArray<SandboxProtocolIssue>
+}
 
 export interface SandboxErrorInfo {
   readonly code: SandboxErrorCode
   readonly message: string
   readonly stack?: string
+  readonly protocol?: SandboxProtocolErrorDetails
   readonly requestedKernelId?: KernelId
   readonly availableKernelIds?: ReadonlyArray<KernelId>
   readonly effectiveKernelId?: KernelId

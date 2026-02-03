@@ -46,7 +46,7 @@
 
 ## Decision 5: 协议/文档与代码 SSoT 对齐优先
 
-**Decision**: 协议与包 API 的裁决以 `packages/logix-sandbox/src/*` 为 SSoT；需要同步更新 `docs/specs/drafts/topics/sandbox-runtime/15-protocol-and-schema.md` 与 `25-sandbox-package-api.md`，把 multi-kernel 的字段与语义写清。
+**Decision**: 协议与包 API 的裁决以 `packages/logix-sandbox/src/*` 与 `docs/ssot/runtime/logix-sandbox/*` 为 SSoT；需要同步更新 `docs/ssot/runtime/logix-sandbox/15-protocol-and-schema.md` 与 `docs/ssot/runtime/logix-sandbox/25-sandbox-package-api.md`，把 multi-kernel 的字段与语义写清。
 
 **Rationale**:
 - 目前 docs 中存在 `kernelBlobUrls`（理想形态）与代码中 `kernelUrl`（PoC 形态）的差异；multi-kernel 会放大漂移风险；

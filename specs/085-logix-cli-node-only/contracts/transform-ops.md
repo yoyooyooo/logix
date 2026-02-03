@@ -22,7 +22,10 @@
 说明：
 
 - `moduleFile/exportName` 是“保守可定位”的入口；解析规则必须对齐 Platform-Grade 子集（081）。
-- `initialCode/payloadType` 在 v1 可先作为代码片段字符串（保持最小约束）；任何不确定写法必须跳过并给出 reason codes。
+- `initialCode` 在 v1 可先作为代码片段字符串（保持最小约束）；任何不确定写法必须跳过并给出 reason codes。
+- `type/payloadType` 在 v1 仅支持：
+  - primitives（`boolean|string|number|bigint|void|unknown|never` → 写入 `Schema.*`）；
+  - 或“标识符/点路径表达式”（例如 `UserPayloadSchema` / `Schema.String`），不支持函数调用/pipe/多行代码。
 
 ## 2) ops（v1 最小集合建议）
 
@@ -60,3 +63,10 @@
 - 任何写回必须生成 PatchPlan（可审阅），并遵守 082 的幂等与竞态防护。
 - 无法确定插入点/格式无法保持/子集外形态：必须跳过并输出 reason codes（宁可漏不乱补）。
 
+v1 形态门槛（实现约束，便于预期一致）：
+
+- `target.exportName` 必须解析为 `export const X = Logix.Module.make('literal', { ... })`（`moduleId` 必须是字符串字面量）。
+- `addState` 仅支持：
+  - `state: Schema.Struct({ ... })`（可同文件 const 引用）；
+  - 同文件存在且仅存在一处 `X.implement({ initial: { ... } })`（`initial` 可同文件 const 引用）。
+- `addAction` 仅支持：`actions: { ... }`（可同文件 const 引用）。

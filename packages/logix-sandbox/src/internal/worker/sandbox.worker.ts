@@ -9,6 +9,7 @@
  */
 
 import { compile, initCompiler, isInitialized, setKernelPath, setLogixCoreSubpaths } from '../compiler/index.js'
+import { decodeSandboxCommand, SANDBOX_PROTOCOL_VERSION } from '../../Protocol.js'
 import type {
   SandboxCommand,
   SandboxEvent,
@@ -18,8 +19,9 @@ import type {
   ErrorEvent,
   ReadyEvent,
   CompileResultEvent,
+  UiCallbackAckEvent,
 } from '../../Protocol.js'
-import type { LogEntry, TraceSpan, MockManifest, HttpMockRule, UiIntentPacket } from '../../Types.js'
+import type { LogEntry, TraceSpan, MockManifest, HttpMockRule, UiIntentPacket, SandboxErrorInfo } from '../../Types.js'
 
 const VERSION = '0.2.0'
 const DEFAULT_WASM_URL = '/esbuild.wasm'
@@ -90,24 +92,28 @@ const postEvent = (event: SandboxEvent): void => {
 
 const postReady = (compilerReady: boolean): void =>
   postEvent({
+    protocolVersion: SANDBOX_PROTOCOL_VERSION,
     type: 'READY',
     payload: { version: VERSION, compilerReady },
   } satisfies ReadyEvent)
 
 const postCompileResult = (success: boolean, bundle?: string, errors?: string[]): void =>
   postEvent({
+    protocolVersion: SANDBOX_PROTOCOL_VERSION,
     type: 'COMPILE_RESULT',
     payload: { success, bundle, errors },
   } satisfies CompileResultEvent)
 
 const postLog = (entry: LogEntry): void =>
   postEvent({
+    protocolVersion: SANDBOX_PROTOCOL_VERSION,
     type: 'LOG',
     payload: entry,
   } satisfies LogEvent)
 
 const postTrace = (span: TraceSpan): void =>
   postEvent({
+    protocolVersion: SANDBOX_PROTOCOL_VERSION,
     type: 'TRACE',
     payload: span,
   } satisfies TraceEvent)
@@ -115,23 +121,27 @@ const postTrace = (span: TraceSpan): void =>
 const postUiIntent = (packet: UiIntentPacket): void => {
   uiIntents.push(packet)
   postEvent({
+    protocolVersion: SANDBOX_PROTOCOL_VERSION,
     type: 'UI_INTENT',
     payload: packet,
   })
 }
 
 const postError = (
-  code: 'INIT_FAILED' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'WORKER_TERMINATED',
+  code: SandboxErrorInfo['code'],
   message: string,
   stack?: string,
+  protocol?: SandboxErrorInfo['protocol'],
 ): void =>
   postEvent({
+    protocolVersion: SANDBOX_PROTOCOL_VERSION,
     type: 'ERROR',
-    payload: { code, message, stack },
+    payload: { code, message, stack, ...(protocol ? { protocol } : null) },
   } satisfies ErrorEvent)
 
 const postComplete = (runId: string, duration: number, stateSnapshot?: unknown): void =>
   postEvent({
+    protocolVersion: SANDBOX_PROTOCOL_VERSION,
     type: 'COMPLETE',
     payload: { runId, duration, stateSnapshot },
   } satisfies CompleteEvent)
@@ -597,6 +607,7 @@ async function handleUiCallback(payload: {
       },
     })
     postEvent({
+      protocolVersion: SANDBOX_PROTOCOL_VERSION,
       type: 'UI_CALLBACK_ACK',
       payload: {
         runId: payload.runId,
@@ -604,9 +615,10 @@ async function handleUiCallback(payload: {
         callback: payload.callback,
         accepted: true,
       },
-    } as any)
+    } satisfies UiCallbackAckEvent)
   } catch (err) {
     postEvent({
+      protocolVersion: SANDBOX_PROTOCOL_VERSION,
       type: 'UI_CALLBACK_ACK',
       payload: {
         runId: payload.runId,
@@ -615,7 +627,7 @@ async function handleUiCallback(payload: {
         accepted: false,
         message: err instanceof Error ? err.message : String(err),
       },
-    } as any)
+    } satisfies UiCallbackAckEvent)
   }
 }
 
@@ -624,8 +636,22 @@ async function handleUiCallback(payload: {
 // ============================================================================ //
 
 // eslint-disable-next-line no-restricted-globals
-self.onmessage = async (e: MessageEvent<SandboxCommand>) => {
-  const command = e.data
+self.onmessage = async (e: MessageEvent<unknown>) => {
+  const decoded = decodeSandboxCommand(e.data)
+  if (!decoded.ok) {
+    const messageType =
+      e.data && typeof e.data === 'object' && 'type' in (e.data as any) && typeof (e.data as any).type === 'string'
+        ? ((e.data as any).type as string)
+        : undefined
+    postError('PROTOCOL_ERROR', '[Sandbox] 无法解析 Host 命令', undefined, {
+      direction: 'HostToWorker',
+      ...(messageType ? { messageType } : null),
+      issues: decoded.issues,
+    })
+    return
+  }
+
+  const command = decoded.value
   switch (command.type) {
     case 'INIT':
       await handleInit(command.payload?.wasmUrl, command.payload?.kernelUrl)

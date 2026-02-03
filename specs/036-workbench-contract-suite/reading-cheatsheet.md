@@ -22,9 +22,9 @@
 `specs/031-trialrun-artifacts/data-model.md`  
 你会拿到：`TrialRunReport.artifacts` 的统一 shape、预算/截断/单项失败语义，以及首个 kit 用例 `@logixjs/form.rulesManifest@v1`。
 
-4) 035：模块引用空间事实源（PortSpec/TypeIR + CodeAsset 协议）  
+4) 035：模块引用空间事实源（PortSpec/TypeIR + PortAddress）  
 `specs/035-module-reference-space/data-model.md`  
-你会拿到：画布连线/绑定/表达式编辑器需要的“逻辑插座”事实源：`@logixjs/module.portSpec@v1`、`@logixjs/module.typeIr@v1` + `PortAddress`（统一寻址基元），以及 `CodeAsset/Deps/ReversibilityAnchor`（表达式/校验资产协议与治理边界）。
+你会拿到：画布连线/绑定/表达式编辑器需要的“逻辑插座”事实源：`@logixjs/module.portSpec@v1`、`@logixjs/module.typeIr@v1` + `PortAddress`（统一寻址基元）。表达式/校验资产协议（`CodeAsset/Deps/ReversibilityAnchor`）已拆分为 034：`specs/034-code-asset-protocol/`。
 
 实现提示：TypeIR 的一个现实实现路线是从 `effect/Schema` 的 `schema.ast`（SchemaAST）投影（SchemaAST 不直接外泄为协议）；现有可参考实现：`packages/logix-core/src/internal/state-trait/converge.ts` 的 `schemaHasPath`。
 
@@ -63,7 +63,7 @@
 推荐的 IR-first 闭环（036 统筹口径）：
 
 1. 平台运行 Contract Suite：产出 TrialRunReport + artifacts + Verdict。  
-2. 平台生成 `ContractSuiteContextPack@v1`：`facts`（含可选 `facts.inputs`）+ `constraints` + `target`。  
+2. 平台生成 `ContractSuiteContextPack@v1`：`facts`（含可选 `facts.inputs`）+ `constraints` + `target`（Node-only 可用 `logix contract-suite run --inputs ... --includeContextPack`）。  
 3. Agent 只基于 Context Pack 输出 patch（AST patch / 文本 diff 都可以，AST 只是载体）。  
 4. 平台重跑 Contract Suite：用新工件与新 verdict 作为下一轮客观反馈（禁止“模型自评”当裁判）。
 
@@ -71,6 +71,7 @@
 
 - 试运行/证据链：`TrialRunReport`（025；由 07 文档详述）
 - artifacts（031）：`@logixjs/form.rulesManifest@v1`
+- Schema Registry（040，解释材料）：`@logixjs/schema.registry@v1`（SchemaRegistryPack，用于 action/state shape 的离线解释；不作为平台引用空间事实源）
 - 引用空间/类型（035）：`@logixjs/module.portSpec@v1`、`@logixjs/module.typeIr@v1`
 - 画布语义（033）：`@logixjs/module.stageBlueprint@v1`、`@logixjs/module.intentRule@v1`、`@logixjs/module.rowRef@v1`
 - 投影/绑定（032）：`@logixjs/module.uiBlueprint@v1`、`@logixjs/module.bindingSchema@v1`、`@logixjs/module.presentationState@v1`

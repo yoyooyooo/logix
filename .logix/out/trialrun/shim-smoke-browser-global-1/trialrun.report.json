@@ -1,0 +1,185 @@
+{
+  "artifacts": {
+    "@logixjs/module.portSpec@v1": {
+      "actualBytes": 190,
+      "artifactKey": "@logixjs/module.portSpec@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:e0dd2a28",
+      "ok": true,
+      "value": {
+        "actions": [
+          {
+            "key": "inc"
+          }
+        ],
+        "digest": "portspec:v1:6fa7039f",
+        "events": [
+          {
+            "key": "inc"
+          }
+        ],
+        "exports": [
+          {
+            "path": "count"
+          }
+        ],
+        "moduleId": "CliPlayground.BrowserGlobal",
+        "outputs": [],
+        "protocolVersion": "v1"
+      }
+    },
+    "@logixjs/module.typeIr@v1": {
+      "actualBytes": 476,
+      "artifactKey": "@logixjs/module.typeIr@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:56ced127",
+      "ok": true,
+      "value": {
+        "budget": {
+          "maxDepth": 6,
+          "maxNodes": 200
+        },
+        "moduleId": "CliPlayground.BrowserGlobal",
+        "notes": {
+          "__logix": {
+            "projectorIds": [
+              "schema-ast@v1"
+            ]
+          }
+        },
+        "protocolVersion": "v1",
+        "roots": {
+          "actions": {
+            "inc": "port:action:inc"
+          },
+          "events": {
+            "inc": "port:event:inc"
+          },
+          "exports": {
+            "count": "port:export:count"
+          },
+          "outputs": {}
+        },
+        "types": [
+          {
+            "id": "port:action:inc",
+            "kind": "action"
+          },
+          {
+            "id": "port:event:inc",
+            "kind": "event"
+          },
+          {
+            "digest": "schema:5515f628",
+            "id": "port:export:count",
+            "kind": "export",
+            "label": "NumberKeyword"
+          }
+        ]
+      }
+    },
+    "@logixjs/schema.registry@v1": {
+      "actualBytes": 878,
+      "artifactKey": "@logixjs/schema.registry@v1",
+      "budgetBytes": 51200,
+      "digest": "artifact:031:3764a6cb",
+      "ok": true,
+      "value": {
+        "effectVersion": "3.19.13",
+        "notes": {
+          "__logix": {
+            "actions": {
+              "inc": "schema:482c4e18"
+            },
+            "moduleId": "CliPlayground.BrowserGlobal",
+            "state": {
+              "schemaId": "schema:849fa088"
+            }
+          }
+        },
+        "protocolVersion": "v1",
+        "schemas": [
+          {
+            "ast": {
+              "_tag": "VoidKeyword",
+              "annotations": {
+                "Symbol(effect/annotation/Title)": "void"
+              }
+            },
+            "meta": {
+              "tags": [
+                "action:inc",
+                "kind:action_payload",
+                "module:CliPlayground.BrowserGlobal"
+              ],
+              "title": "void"
+            },
+            "schemaId": "schema:482c4e18",
+            "schemaIdSource": "derived"
+          },
+          {
+            "ast": {
+              "_tag": "TypeLiteral",
+              "annotations": {},
+              "indexSignatures": [],
+              "propertySignatures": [
+                {
+                  "annotations": {},
+                  "isOptional": false,
+                  "isReadonly": true,
+                  "name": "count",
+                  "type": {
+                    "_tag": "NumberKeyword",
+                    "annotations": {
+                      "Symbol(effect/annotation/Description)": "a number",
+                      "Symbol(effect/annotation/Title)": "number"
+                    }
+                  }
+                }
+              ]
+            },
+            "meta": {
+              "tags": [
+                "kind:state",
+                "module:CliPlayground.BrowserGlobal"
+              ]
+            },
+            "schemaId": "schema:849fa088",
+            "schemaIdSource": "derived"
+          }
+        ]
+      }
+    }
+  },
+  "environment": {
+    "configKeys": [],
+    "kernelImplementationRef": {
+      "kernelId": "core",
+      "packageName": "@logixjs/core"
+    },
+    "missingConfigKeys": [],
+    "missingServices": [],
+    "tagIds": []
+  },
+  "manifest": {
+    "actionKeys": [
+      "inc"
+    ],
+    "actions": [
+      {
+        "actionTag": "inc",
+        "payload": {
+          "kind": "nonVoid"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      }
+    ],
+    "digest": "manifest:083:01fae500",
+    "manifestVersion": "083",
+    "moduleId": "CliPlayground.BrowserGlobal"
+  },
+  "ok": true,
+  "runId": "shim-smoke-browser-global-1"
+}

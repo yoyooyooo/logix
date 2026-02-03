@@ -14,7 +14,10 @@ import * as LogicDiagnostics from './LogicDiagnostics.js'
 import { isDevEnv } from './env.js'
 import type { JsonValue } from '../../observability/jsonValue.js'
 import { RunSessionTag } from '../../observability/runSession.js'
+import type { SpyCollector } from '../../observability/spy/SpyCollector.js'
+import { SpyCollectorTag } from '../../observability/spy/SpyCollector.js'
 import * as Root from '../../root.js'
+import * as ServiceId from '../../serviceId.js'
 import type { RuntimeInternals } from './RuntimeInternals.js'
 import type * as ModuleTraits from './ModuleTraits.js'
 import { getRuntimeInternals, setBoundInternals } from './runtimeInternalsAccessor.js'
@@ -262,6 +265,35 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     )
 
   let cachedDiagnosticsLevel: Debug.DiagnosticsLevel | undefined
+  let cachedSpyCollector: { readonly _tag: 'none' } | { readonly _tag: 'some'; readonly value: SpyCollector } | undefined
+
+  const tagDisplayName = (tag: Context.Tag<any, any>): string | undefined => {
+    const anyTag = tag as any
+    const key = typeof anyTag.key === 'string' ? anyTag.key : undefined
+    const id = typeof anyTag.id === 'string' ? anyTag.id : undefined
+    const _id = typeof anyTag._id === 'string' ? anyTag._id : undefined
+    return key ?? id ?? _id
+  }
+
+  const recordServiceUse = (collector: SpyCollector, tag: Context.Tag<any, any>): void => {
+    const serviceId = ServiceId.fromTag(tag)
+    const moduleId = options?.moduleId ?? String(runtime.moduleId ?? 'unknown')
+    const logicKey = options?.logicUnit?.logicUnitId
+
+    try {
+      if (serviceId) {
+        collector.recordServiceUse({ serviceId, moduleId, logicKey })
+      } else {
+        collector.recordRawMode({
+          reasonCodes: ['spy.invalidServiceId'],
+          moduleId,
+          tagName: tagDisplayName(tag),
+        })
+      }
+    } catch {
+      // best-effort: spy must never affect business semantics.
+    }
+  }
 
   const isModuleLike = (
     value: unknown,
@@ -788,7 +820,29 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
           }
 
           // Regular service tag: read the service from Env.
-          return arg as unknown as Logic.Of<Sh, R, any, never>
+          if (cachedSpyCollector?._tag === 'none') {
+            return arg as unknown as Logic.Of<Sh, R, any, never>
+          }
+
+          if (cachedSpyCollector?._tag === 'some') {
+            const collector = cachedSpyCollector.value
+            return Effect.sync(() => recordServiceUse(collector, arg as any)).pipe(
+              Effect.zipRight(arg as any),
+            ) as unknown as Logic.Of<Sh, R, any, never>
+          }
+
+          return Effect.suspend(() =>
+            Effect.serviceOption(SpyCollectorTag).pipe(
+              Effect.tap((maybe) => {
+                cachedSpyCollector = Option.isSome(maybe) ? { _tag: 'some', value: maybe.value } : { _tag: 'none' }
+              }),
+              Effect.flatMap((maybe) =>
+                Option.isSome(maybe)
+                  ? Effect.sync(() => recordServiceUse(maybe.value, arg as any)).pipe(Effect.zipRight(arg as any))
+                  : (arg as any),
+              ),
+            ),
+          ) as unknown as Logic.Of<Sh, R, any, never>
         }
         return Effect.die('BoundApi.use: unsupported argument') as unknown as Logic.Of<Sh, R, any, never>
       },

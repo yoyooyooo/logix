@@ -2,7 +2,7 @@
 
 **Feature Branch**: `086-platform-visualization-lab`  
 **Created**: 2026-01-10  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 在 `examples/logix-react` 提供“独立颗粒度”的平台侧可视化 POC：把 `@logixjs/core` 已有/将有的 IR 与证据（Manifest/ManifestDiff/TrialRun 等）做成可玩的独立路由；优先验证这些可视化单独存在是否有价值，未来平台再做组合与画布化编排。
 
 ## Context
@@ -10,6 +10,7 @@
 `080`（Full‑Duplex Prelude）跑通后，平台侧将同时拥有：
 
 - Static IR：`ModuleManifest`、`StaticIr`、`Artifacts`、（未来）`servicePorts`、`PortSpec/TypeIR`
+- Static IR：`ModuleManifest`（含 `servicePorts`）、`StaticIr`、`Artifacts`、（未来）`PortSpec/TypeIR`
 - Static IR（控制面）：`ControlSurfaceManifest`（Root IR）+ `workflowSurface`（Π slice；锚点为 `ControlSurfaceManifest.modules[*].workflowSurface.digest`）
 - Dynamic Evidence：TrialRun / EvidencePackage、（未来）Spy evidence
 - Platform‑Grade 工具链工件：`AnchorIndex@v1`、`PatchPlan@v1`、`WriteBackResult@v1`（Node-only 产出）
@@ -29,8 +30,7 @@
 - AUTO: Q: `extractManifest` 的可调参数（`includeStaticIr` / `budgets.maxBytes`）怎么用？ → A: 两个页面都提供可选配置；默认 `includeStaticIr=off`、`maxBytes=off`；裁剪必须可解释（展示 `meta.__logix` 标记）。
 - AUTO: Q: `Manifest Diff Viewer` 在“模块选择模式”下如何保持 before/after 可比？ → A: before/after 共用同一组选项（`includeStaticIr`/`maxBytes`），避免因参数不同导致噪音 diff。
 - AUTO: Q: JSON 粘贴输入的校验与失败处理口径？ → A: 仅做最小字段校验；解析/校验失败时阻止计算并显示错误（不得崩溃/空白）。
-- AUTO: Q: 缺失的未来字段（例如 `servicePorts`）如何提示？ → A: UI 固定展示 pending 清单（078/031/035/081/082/085），并标注“当前 core `ModuleManifest.manifestVersion=067` 尚未包含”。
-  - 更新：pending 清单需包含 `075`（workflowSurface/stepKey）与 `079`（stepKey autofill），避免 workflow 变成“能导出但不可解释”的灰区。
+- AUTO: Q: 缺失的未来字段（例如 `PortSpec/TypeIR`）如何提示？ → A: UI 固定展示 pending 清单（以 `080` 的 spec-registry 为准），并标注“当前 core `ModuleManifest.manifestVersion=083` 仍未包含”。
 - AUTO: Q: Raw JSON 视图是否需要一键复制？ → A: 需要；提供一键复制 pretty JSON（2 spaces），并显示复制成功/失败反馈。
 
 ## Goals / Scope
@@ -80,7 +80,7 @@
 **Acceptance Scenarios**:
 
 1. **Given** 页面已打开，**When** 选择一个模块对象，**Then** 页面展示其 `ModuleManifest`（含 digest），并提供 Raw JSON 视图。
-2. **Given** 模块缺少可选字段（例如未实现 `servicePorts`），**When** 渲染 Manifest，**Then** 页面以可解释的方式显示“字段缺失/未来可用”，而不是崩溃或空白。
+2. **Given** 模块缺少可选字段（例如未实现 `PortSpec/TypeIR`），**When** 渲染 Manifest，**Then** 页面以可解释的方式显示“字段缺失/未来可用”，而不是崩溃或空白。
 
 ---
 
@@ -140,7 +140,7 @@
   - Raw JSON 视图（pretty JSON + 一键复制）
   - 可选参数：`includeStaticIr`、`budgets.maxBytes`
 - **FR-003**: `Manifest Diff Viewer` 页面 MUST 支持两类 before/after 输入：选择预置模块（内部 `extractManifest`）或粘贴 `ModuleManifest` JSON；页面 MUST 调用 `Logix.Reflection.diffManifest` 并展示 verdict/summary/changes，且 Raw JSON 可见。
-- **FR-004**: 页面 MUST 对缺失的可选字段做显式提示（例如 `servicePorts`/`workflowSurface` 尚未实现时展示 pending），不得静默吞掉或导致崩溃；并提供固定的“pending spec 清单”（075/078/079/031/035/081/082/085）以避免误解为 bug。
+- **FR-004**: 页面 MUST 对缺失的可选字段做显式提示（例如 `servicePorts` 未声明/`workflowSurface` 缺失等），不得静默吞掉或导致崩溃；并提供固定的“pending spec 清单”（以 `080` 的 spec-registry 为准）以避免误解为 bug。
 - **FR-005**: 该特性 MUST NOT 引入 Node-only 依赖（`ts-morph/swc/fs` 等）进入浏览器 bundle；仅消费 `@logixjs/core`/`@logixjs/react`/`@logixjs/devtools-react` 的运行时 API 与 JSON 工件。
 
 ### Non-Functional Requirements (Performance & Diagnosability)

@@ -117,7 +117,7 @@ StateTrait 具备三类平台关键特性：
 
 但协议与能力离 specs/drafts 的 Alignment Lab 目标还有明显差距（详见第 4 节）。
 
-证据入口：`packages/logix-sandbox/src/worker/sandbox.worker.ts`、`docs/specs/drafts/topics/sandbox-runtime/*`。
+证据入口：`packages/logix-sandbox/src/internal/worker/sandbox.worker.ts`、`docs/ssot/runtime/logix-sandbox/*`（协议/基线），以及 `docs/specs/drafts/topics/sandbox-runtime/*`（愿景/扩展）。
 
 ---
 
@@ -213,20 +213,17 @@ StateTrait 具备三类平台关键特性：
 
 对比：
 
-- 规范草案：`docs/specs/drafts/topics/sandbox-runtime/15-protocol-and-schema.md`
-- 当前实现：`packages/logix-sandbox/src/Protocol.ts` + `packages/logix-sandbox/src/worker/sandbox.worker.ts`
+- 规范 SSoT：`docs/ssot/runtime/logix-sandbox/15-protocol-and-schema.md`
+- 当前实现：`packages/logix-sandbox/src/Protocol.ts` + `packages/logix-sandbox/src/internal/worker/sandbox.worker.ts`
 
-关键差异（只列阻塞平台化的部分）：
+关键差异（面向 Alignment Lab，仍阻塞平台化的部分）：
 
-- INIT：
-  - 草案：`kernelBlobUrls: Record<string,string>`（多 kernel/多运行时），实现：`kernelUrl: string`（单 kernel）；
 - RUN：
-  - 草案：`env?: Record<string,unknown>`、`intentId?: string`（覆盖率统计），实现：无 `env/intentId`；
-  - 实现里 `RunCommand.actions` **未被消费**（Host 传 actions 不生效）；
-- TERMINATE：
-  - 草案目标是“可中断当前运行”，实现仅清空 `currentRunId`，不取消 fiber/Effect；
+  - `actions` 仍是 PoC：Host 传入的脚本化 actions 尚未形成稳定的“可回放 runner”口径（需要与 `ruleId/stepId` 等锚点对齐）。
 - UI_CALLBACK：
-  - 草案目标是“全双工 UI”，实现只记录 LOG/TRACE 并 ACK，不回注入用户程序。
+  - 协议已有字段，但当前实现仍偏“记录 + ACK”，尚未形成“回注入用户程序”的全双工 UI 形态（Semantic UI Mock 需要这一闭环）。
+- Trace/UI_INTENT：
+  - 事件仍缺少与 `scenarioRevisionId/ruleId/stepId` 的稳定锚定口径（需要在 payload/meta 中固化并保持 Slim/可序列化）。
 
 结论：现有 Sandbox 更像“runner + 事件采集”，尚不足以承载平台的 Alignment Lab（可回放、可覆盖、可对齐）。
 
@@ -294,7 +291,7 @@ StateTrait 具备三类平台关键特性：
 
 Sandbox 在平台体系中不是“代码 runner”，而是 **Executable Spec / Alignment Lab 的运行时底座**。因此它必须升级为“可对齐、可回放、可覆盖”的执行环境，最少需要做到：
 
-- **协议对齐到草案 SSoT**：以 `docs/specs/drafts/topics/sandbox-runtime/15-protocol-and-schema.md` 为准，至少补齐：
+- **协议对齐到 runtime SSoT**：以 `docs/ssot/runtime/logix-sandbox/15-protocol-and-schema.md` 为准，至少补齐：
   - INIT：从 `kernelUrl` 升级到 `kernelBlobUrls`（多 kernel/多版本/多运行时漏斗）；
   - RUN：补齐 `env` 与 `intentId`（覆盖率与对齐报告的锚点）；
   - TERMINATE：必须能取消正在运行的 Effect/Fiber（而不是仅清空 runId）；
@@ -306,7 +303,7 @@ Sandbox 在平台体系中不是“代码 runner”，而是 **Executable Spec /
   - `stateSnapshot`（或可配置的 state 选择器快照）、字段级 patch（或 dirtyPaths）、以及与 `intentId/storyId/stepId` 对齐的 Trace 索引；
   - 并具备 ring buffer/裁剪策略，避免观测导致负优化。
 
-证据入口：`packages/logix-sandbox/src/Protocol.ts`、`packages/logix-sandbox/src/Client.ts`、`packages/logix-sandbox/src/worker/sandbox.worker.ts`。
+证据入口：`packages/logix-sandbox/src/Protocol.ts`、`packages/logix-sandbox/src/Client.ts`、`packages/logix-sandbox/src/internal/worker/sandbox.worker.ts`。
 
 ### 4.7 Dev Server（logix dev）需要被当作“平台落地的第一等公民”（Phase 1）
 

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `080-full-duplex-prelude`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 以 `080` 作为 `$speckit group` 总控：把全双工前置中“理论可行且值得先做”的 IR/反射/锚点/回写能力统一规格化；对实现难度异常大的项显式标记，但先把规划到位。
 
 ## Why: 为什么要有一个 Group Spec

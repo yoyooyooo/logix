@@ -117,10 +117,10 @@ IR 校验可在 Studio 本地运行（即时反馈），也可在 Backend 运行
 
 ### 3.2 Plan/Code Flow（IR ↔ Code 的双向通道）
 
-1. Studio 请求 Dev Server：解析某个逻辑文件/模块 → 返回 IntentRule 投影 + 锚点
-2. Studio 在 Rule Explorer 中编辑（限白盒）→ 生成 IR Patch
-3. Dev Server 将 IR Patch 转成 AST Patch 写入代码，并返回 diff/诊断
-4. Studio 可再次解析回 IR，校验“结构不漂移”
+1. Studio 请求 Dev Server：通过 `dev.run` 调用 `logix`（085）导出/索引/试跑 → 返回版本化工件（含锚点/诊断）
+2. Studio 在 UI 中基于 `CommandResult@v1` 的工件做可解释展示/编辑（不引入第二事实源）
+3. Dev Server 通过 `dev.run` 调用写回类命令（079/082/Transform，默认 report-only）→ 返回 `PatchPlan/WriteBackResult`
+4. Studio 可再次 `dev.run` 做 Gate（validate/diff）或重导出，校验“结构不漂移”
 
 ### 3.3 Run/Align Flow（Scenario → RunResult → Alignment）
 
@@ -139,9 +139,9 @@ sequenceDiagram
   participant Dev as DevServer
   participant Repo as Workspace
 
-  Studio->>Dev: dev.parseIntentRules(entry, options)
+  Studio->>Dev: dev.run({ argv: ["anchor","index","--repoRoot","..."] })
   Dev->>Repo: read files / type projection
-  Dev-->>Studio: { rules, anchors, diagnostics, moduleGraph? }
+  Dev-->>Studio: { outcome: CommandResult@v1(anchorIndex/rawMode/diagnostics) }
 ```
 
 ### 3.4.2 IR → Code（生成并写回）
@@ -152,11 +152,11 @@ sequenceDiagram
   participant Dev as DevServer
   participant Repo as Workspace
 
-  Studio->>Dev: dev.generatePatchFromRules(ruleSetPatch, baseRevision)
-  Dev-->>Studio: { patch, diagnostics, preview }
-  Studio->>Dev: dev.applyPatch(patch)
+  Studio->>Dev: dev.run({ argv: ["anchor","autofill","--mode","report","--repoRoot","..."] })
+  Dev-->>Studio: { outcome: CommandResult@v1(patchPlan/autofillReport) }
+  Studio->>Dev: dev.run({ argv: ["anchor","autofill","--mode","write","--repoRoot","..."] })
   Dev->>Repo: write files
-  Dev-->>Studio: { applied, fileSummaries, diagnostics }
+  Dev-->>Studio: { outcome: CommandResult@v1(writeBackResult) }
 ```
 
 ### 3.4.3 Scenario → RunResult → Report（执行与回流）

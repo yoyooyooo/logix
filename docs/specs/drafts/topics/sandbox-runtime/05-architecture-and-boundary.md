@@ -1,13 +1,16 @@
 ---
 title: Sandbox Architecture & Boundary
-status: draft
+status: merged
 version: 2025-12-07
 value: core
 priority: next
 supersedes: ../../L4/logix-sandbox-verifiable-intent-architecture.md
+moved_to: ../../../../ssot/runtime/logix-sandbox/05-architecture-and-boundary.md
 ---
 
 # Sandbox Architecture & Boundary
+
+> ✅ 已收编到 runtime SSoT：`docs/ssot/runtime/logix-sandbox/05-architecture-and-boundary.md`（后续修改以 SSoT 版本为准）。
 
 > 本文档从 `L4/logix-sandbox-verifiable-intent-architecture.md` 下沉整理，作为 Sandbox 主题的架构基础。
 

@@ -24,15 +24,16 @@ version: 1
 ## 1) 三跳入口（src → worker → tests）
 
 - **src**
-  - `packages/logix-sandbox/src/compiler.ts`
-  - `packages/logix-sandbox/src/client.ts`
-  - `packages/logix-sandbox/src/protocol.ts`
-  - `packages/logix-sandbox/src/service.ts`
+  - `packages/logix-sandbox/src/Client.ts`
+  - `packages/logix-sandbox/src/Protocol.ts`
+  - `packages/logix-sandbox/src/Types.ts`
+  - `packages/logix-sandbox/src/Service.ts`
+  - `packages/logix-sandbox/src/Vite.ts`
 - **worker**
-  - `packages/logix-sandbox/src/worker/*`
+  - `packages/logix-sandbox/src/internal/worker/sandbox.worker.ts`
 - **tests**
-  - `packages/logix-sandbox/test/SandboxClientLayer.test.ts`
-  - `packages/logix-sandbox/test/browser/*`
+  - `packages/logix-sandbox/test/*`
+  - `packages/logix-sandbox/test/browser/*`（按需）
 
 ## 2) 编译链路（compiler）
 
@@ -62,7 +63,7 @@ version: 1
 - 错误必须结构化（不要只有字符串 message）。
 - 任何“安全策略/白名单/限额”都应体现在协议能力里，而不是隐式写在实现里。
 
-入口：`packages/logix-sandbox/src/protocol.ts`、`packages/logix-sandbox/src/types.ts`
+入口：`packages/logix-sandbox/src/Protocol.ts`、`packages/logix-sandbox/src/Types.ts`；规范口径见 `docs/ssot/runtime/logix-sandbox/15-protocol-and-schema.md`
 
 ## 5) 与证据包/观测的对齐点
 

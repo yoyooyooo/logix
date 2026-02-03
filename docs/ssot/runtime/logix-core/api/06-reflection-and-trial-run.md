@@ -34,7 +34,7 @@
 
 输出（概要）：
 
-- `moduleId/actionKeys/actions/effects?/schemaKeys/logicUnits/source/meta/staticIr/digest`
+- `moduleId/actionKeys/actions/effects?/schemaKeys/logicUnits/servicePorts?/source/meta/staticIr/digest`
 
 确定性口径：
 
@@ -67,6 +67,7 @@
 用途：在 BuildEnv 中对 `module` 做一次“装配/启动阶段”的受控试跑，导出 `TrialRunReport`：
 
 - `EnvironmentIr`：观测到的 `tagIds/configKeys` + 缺失依赖摘要（missingServices/missingConfigKeys）
+- `servicePortsAlignment?`：声明端口 ↔ 环境可 resolve 对齐（端口级定位：missingRequired/missingOptional）
 - `EvidencePackage`：可选事件序列（maxEvents 裁剪）+ summary（含控制面证据）
 - `manifest/staticIr`：尽可能携带，便于“失败也能解释”
 

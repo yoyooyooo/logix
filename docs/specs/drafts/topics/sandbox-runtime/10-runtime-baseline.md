@@ -1,12 +1,15 @@
 ---
 title: Sandbox Runtime Baseline (Web Worker)
-status: draft
+status: merged
 version: 2025-12-06
 value: core
 priority: next
+moved_to: ../../../../ssot/runtime/logix-sandbox/10-runtime-baseline.md
 ---
 
 ## 1. 目标
+
+> ✅ 已收编到 runtime SSoT：`docs/ssot/runtime/logix-sandbox/10-runtime-baseline.md`（后续修改以 SSoT 版本为准）。
 
 建立「前端优先」的可运行基线：Web Worker 内可编译/运行 Logix/Effect 代码，主线程可观测日志/Trace/UI 意图，并具备超时熔断与 Kernel 预注入能力。
 

@@ -16,10 +16,16 @@
 
 Rewriter 通常由 085 CLI 暴露：
 
-- `logix anchor autofill --report`：仅输出计划/报告，不写回源码。
-- `logix anchor autofill --write`：执行写回（仍输出同结构报告）。
+- `logix anchor autofill --mode report`：仅输出计划/报告，不写回源码。
+- `logix anchor autofill --mode write`：执行写回（仍输出同结构报告）。
 
 ## 3) 安全边界（必须牢记）
 
 - 只补“未声明”的锚点字段；`services: {}` 视为作者已声明，禁止覆盖。
 - 子集外/歧义/不确定：必须拒绝写回，并以 reason codes 可解释失败。
+
+## 4) 推荐验收步骤（最小闭环）
+
+1. `--mode report` 先生成 `PatchPlan@v1`，人工审阅（或在 CI 中门禁 `writableTotal/failedTotal`）。
+2. 明确切换到 `--mode write` 执行写回。
+3. 写回后再次执行一次 `--mode report`，确认 `writableTotal=0`（幂等）。

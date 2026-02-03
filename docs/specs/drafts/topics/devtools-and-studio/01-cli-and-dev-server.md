@@ -1,9 +1,13 @@
 ---
 title: Logix CLI & Dev Server · 本地桥接 Runtime 与 Studio
-status: superseded
+status: archived
 version: 0.1.0
 value: core
 priority: later
+superseded_by:
+  - docs/ssot/platform/contracts/04-devserver-protocol.md
+  - docs/specs/drafts/topics/platform-workbench-prd/40-protocols-and-apis.md
+  - specs/085-logix-cli-node-only/quickstart.md
 related:
   - ../../../sdd-platform/workbench/02-full-duplex-architecture.md
   - ../platform-vision/10-platform-deep-dive.md

@@ -1,4 +1,5 @@
 import { Context, Deferred, Effect, Layer, ManagedRuntime } from 'effect'
+import * as ServiceId from '../serviceId.js'
 import {
   ConcurrencyPolicyTag,
   ReadQueryStrictGateConfigTag,
@@ -95,17 +96,9 @@ interface TagCollisionError extends Error {
 }
 
 const getTagKey = (tag: Context.Tag<any, any>): string => {
-  const anyTag = tag as any
-  if (typeof anyTag.key === 'string') {
-    return anyTag.key
-  }
-  if (typeof anyTag._id === 'string') {
-    return anyTag._id
-  }
-  if (typeof anyTag.toString === 'function') {
-    return anyTag.toString()
-  }
-  return '[unknown-tag]'
+  return ServiceId.requireFromTag(tag, {
+    hint: 'Define the Tag with a stable string key, e.g. `class X extends Context.Tag("my-svc/x")<X, Service>() {}`.',
+  })
 }
 
 const buildTagIndex = (entries: ReadonlyArray<AppModuleEntry>): Map<string, TagInfo[]> => {

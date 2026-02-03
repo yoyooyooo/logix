@@ -104,7 +104,7 @@ docs/specs/sdd-platform/
 **Structure Decision**:
 
 - `079` 的“写回政策（policy）”落在 Node-only 引擎包 `packages/logix-anchor-engine`（与 `081/082` 同域），避免把 `ts-morph/swc` 等重依赖带入 runtime。
-- `085` CLI 作为统一入口与集成测试跑道：先 report-only，再显式 `--write` 写回。
+- `085` CLI 作为统一入口与集成测试跑道：先 report-only，再显式 `--mode write` 写回。
 - 现有 `scripts/ir/*` 可作为迁移来源，但不作为长期权威入口（单一真相源仍在源码锚点 + 版本化工件）。
 
 ## Design（关键机制）

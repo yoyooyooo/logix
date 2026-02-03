@@ -97,7 +97,7 @@ Guardrails（必须满足）：
   - **稳定标识 & 证据口径**：文档侧必须显式传入确定性 `runId`（避免 `Date.now()` 默认值），并在 debug 面板中优先展示/透传 `TrialRunReport.environment.kernelImplementationRef`（以及与 trace 关联的稳定锚点：`instanceId/txnSeq/opSeq`），避免新增并行真相源。
   - **多 kernel 试跑能力（可选）**：若希望 041 的 debug 文档承担 core/core-ng 的对照演示，则需要 `@logixjs/sandbox` 支持“多 kernel 资产（或等价机制）+ 可选择运行内核”；这属于 M2（trial-run/test/dev 渐进替换）之前的基础设施整合，不是 041 MVP 的阻塞项。
     - 现实约束：当前 `packages/logix-sandbox/src/Client.ts` 仅有 `kernelUrl`（单 kernel）；若要在 docs playground 中做 core/core-ng 选择，需先把 SandboxClientConfig 扩展为“多 kernel variant（`kernelId → kernelUrl`）+ defaultKernelId”形态（详见：`specs/058-sandbox-multi-kernel/`）。
-    - 备注：`docs/specs/drafts/topics/sandbox-runtime/25-sandbox-package-api.md` 中的 `kernelBlobUrls` 可作为“更协议化”的后续演进方向，但不应阻塞 041 MVP。
+    - 备注：`docs/ssot/runtime/logix-sandbox/25-sandbox-package-api.md` 的 `kernelRegistry`/`KernelVariant` 已是当前“更协议化”的多 kernel 形态；如需更强约束（例如协议层版本化/能力探测），再另起 spec 推进即可，但不应阻塞 041 MVP。
     - 建议：多 kernel 资产/选择能力应视为 Playground/Alignment Lab 的基础设施升级（`@logixjs/sandbox`），单独立 spec 承载并登记到 046 registry（见：`specs/058-sandbox-multi-kernel/`），避免把基础设施改造耦进 041 的 UI MVP。
 
 建议实施阶段（按 046 里程碑）：

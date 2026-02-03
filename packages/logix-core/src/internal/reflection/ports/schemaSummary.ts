@@ -7,7 +7,7 @@ export type SchemaSummary = {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
+  (typeof value === 'object' || typeof value === 'function') && value !== null && !Array.isArray(value)
 
 const normalizeText = (value: unknown): string | undefined => {
   const raw = typeof value === 'string' ? value.trim() : ''

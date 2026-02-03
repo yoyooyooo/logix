@@ -7,7 +7,13 @@ status: living
 > 在当前主线架构（Context is World）下，Parser 聚焦于识别 **Module + Fluent Intent 链**，并将其映射为稳定的 IntentRule IR。
 
 > 注：为保证 Platform-Grade 子集的可解析/可回写，`IntentBuilder.andThen`（按 handler 形态/参数数推断语义）已从公共 API 移除；业务/平台只允许显式终端 `.update/.mutate/.run*`。
-> 同时，早期 Parser PoC（`scripts/intent-fluent-parser.ts`）已删除；当前仓库暂无可执行 Parser CLI，本章描述的是目标约束与锚点系统。
+> 同时，早期 Parser PoC（`scripts/intent-fluent-parser.ts`）已删除。
+>
+> **现状**：仓库已提供 Node-only 的 `logix` CLI（`specs/085-logix-cli-node-only`）作为“全双工前置”的集成跑道，可导出 `AnchorIndex@v1`、生成 `PatchPlan@v1` 并执行最小写回（`WriteBackResult@v1`）。  
+> **但**：本章描述的“Fluent Intent 链 → IntentRule IR”仍属于目标约束与逐步落地路线；当前 CLI/Parser 的已落地部分以 081/079/082 的 contracts 与 `specs/085-logix-cli-node-only/quickstart.md` 为准。
+>
+> Dev Server（本地桥接进程）的协议与最小特权约束见：`docs/ssot/platform/contracts/04-devserver-protocol.md`
+
 
 ## 0. 全双工的边界：Platform-Grade vs Runtime-Grade
 

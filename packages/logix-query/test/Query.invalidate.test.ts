@@ -159,24 +159,33 @@ describe('Query.invalidate', () => {
         middleware: [Query.Engine.middleware()],
       })
 
+      const waitFor = (predicate: () => boolean, timeoutMs: number): Effect.Effect<void, never> =>
+        Effect.gen(function* () {
+          const deadline = Date.now() + timeoutMs
+          while (!predicate()) {
+            if (Date.now() >= deadline) return
+            yield* Effect.sleep(Duration.millis(20))
+          }
+        })
+
       const program = Effect.gen(function* () {
         const rt = yield* module.tag
         const controller = module.controller.make(rt)
 
         // onMount: both a & b load once
-        yield* Effect.sleep(Duration.millis(30))
+        yield* waitFor(() => loadCallsA >= 1 && loadCallsB >= 1, 1000)
         expect(loadCallsA).toBe(1)
         expect(loadCallsB).toBe(1)
 
         // Tag match: refresh `a` only
         yield* controller.controller.invalidate({ kind: 'byTag', tag: 'user' })
-        yield* Effect.sleep(Duration.millis(60))
+        yield* waitFor(() => loadCallsA >= 2, 1000)
         expect(loadCallsA).toBe(2)
         expect(loadCallsB).toBe(1)
 
         // No tag match: fall back to refreshing all
         yield* controller.controller.invalidate({ kind: 'byTag', tag: 'unknown' })
-        yield* Effect.sleep(Duration.millis(60))
+        yield* waitFor(() => loadCallsA >= 3 && loadCallsB >= 2, 1000)
         expect(loadCallsA).toBe(3)
         expect(loadCallsB).toBe(2)
 

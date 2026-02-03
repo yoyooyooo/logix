@@ -4,10 +4,11 @@ import type {
   InitCommand,
   CompileCommand,
   RunCommand,
-  TerminateCommand,
   UiCallbackCommand,
 } from './Protocol.js'
 import {
+  SANDBOX_PROTOCOL_VERSION,
+  decodeSandboxEvent,
   isReadyEvent,
   isCompileResultEvent,
   isLogEvent,
@@ -57,6 +58,15 @@ export interface SandboxClientConfig {
   readonly wasmUrl?: string
   readonly kernelUrl?: string
   readonly kernelRegistry?: KernelRegistry
+  /**
+   * Bounded caches for logs/traces/uiIntents collected from the Worker.
+   *
+   * Defaults are chosen to be safe for docs/playground usage (avoid unbounded growth),
+   * while still retaining enough context for debugging.
+   */
+  readonly maxLogs?: number
+  readonly maxTraces?: number
+  readonly maxUiIntents?: number
 }
 
 export interface SandboxClientState {
@@ -68,6 +78,8 @@ export interface SandboxClientState {
 }
 
 type StateListener = (state: SandboxClientState) => void
+
+const makeSandboxError = (info: SandboxErrorInfo): Error => Object.assign(new Error(info.message), { sandboxError: info })
 
 const toSiblingUrl = (baseUrl: string, fileName: string): string => {
   try {
@@ -115,6 +127,9 @@ export class SandboxClient {
   private readonly timeout: number
   private readonly wasmUrl: string
   private readonly kernelMode: KernelMode
+  private readonly maxLogs: number
+  private readonly maxTraces: number
+  private readonly maxUiIntents: number
   private notifyScheduled = false
   private runSeq = 0
   private activeKernelUrl: string | null = null
@@ -140,6 +155,12 @@ export class SandboxClient {
   } | null = null
 
   constructor(config: SandboxClientConfig = {}) {
+    const normalizeLimit = (value: number | undefined, fallback: number): number => {
+      if (value === undefined) return fallback
+      if (!Number.isFinite(value)) return fallback
+      return Math.max(0, Math.floor(value))
+    }
+
     const defaultKernelUrl =
       typeof window !== 'undefined' && window.location
         ? `${window.location.origin}/sandbox/logix-core.js`
@@ -148,6 +169,9 @@ export class SandboxClient {
     this.workerUrlOverride = config.workerUrl
     this.timeout = config.timeout ?? 10000
     this.wasmUrl = config.wasmUrl ?? '/esbuild.wasm'
+    this.maxLogs = normalizeLimit(config.maxLogs, 500)
+    this.maxTraces = normalizeLimit(config.maxTraces, 500)
+    this.maxUiIntents = normalizeLimit(config.maxUiIntents, 200)
 
     if (config.kernelRegistry) {
       const allowCrossOrigin = config.kernelRegistry.allowCrossOrigin ?? false
@@ -196,6 +220,32 @@ export class SandboxClient {
         kernel: { kernelId: 'default', kernelUrl, label: 'default' },
       }
     }
+  }
+
+  private appendLog(entry: LogEntry): ReadonlyArray<LogEntry> {
+    if (this.maxLogs <= 0) return this.state.logs.length === 0 ? this.state.logs : []
+    const next = [...this.state.logs, entry]
+    return next.length > this.maxLogs ? next.slice(next.length - this.maxLogs) : next
+  }
+
+  private appendUiIntent(packet: UiIntentPacket): ReadonlyArray<UiIntentPacket> {
+    if (this.maxUiIntents <= 0) return this.state.uiIntents.length === 0 ? this.state.uiIntents : []
+    const next = [...this.state.uiIntents, packet]
+    return next.length > this.maxUiIntents ? next.slice(next.length - this.maxUiIntents) : next
+  }
+
+  private upsertTrace(span: TraceSpan): ReadonlyArray<TraceSpan> {
+    if (this.maxTraces <= 0) return this.state.traces.length === 0 ? this.state.traces : []
+
+    const existingIndex = this.state.traces.findIndex((t) => t.spanId === span.spanId)
+    if (existingIndex >= 0) {
+      const next = [...this.state.traces]
+      next[existingIndex] = span
+      return next
+    }
+
+    const next = [...this.state.traces, span]
+    return next.length > this.maxTraces ? next.slice(next.length - this.maxTraces) : next
   }
 
   private flushListeners = (): void => {
@@ -323,28 +373,41 @@ export class SandboxClient {
     this.worker.postMessage(command)
   }
 
-  private handleEvent = (event: MessageEvent<SandboxEvent>): void => {
-    const e = event.data
+  private handleEvent = (event: MessageEvent<unknown>): void => {
+    const decoded = decodeSandboxEvent(event.data)
+    if (!decoded.ok) {
+      const messageType =
+        event.data && typeof event.data === 'object' && 'type' in (event.data as any) && typeof (event.data as any).type === 'string'
+          ? ((event.data as any).type as string)
+          : undefined
+      const error: SandboxErrorInfo = {
+        code: 'PROTOCOL_ERROR',
+        message: '[Sandbox] 无法解析 Worker 事件',
+        protocol: {
+          direction: 'WorkerToHost',
+          ...(messageType ? { messageType } : null),
+          issues: decoded.issues,
+        },
+      }
+      this.setState({ status: 'error', error })
+      this.disposeWorker(Object.assign(new Error(error.message), { sandboxError: error }))
+      return
+    }
+
+    const e = decoded.value
 
     if (isReadyEvent(e)) {
       this.setState({ status: 'ready' })
     } else if (isLogEvent(e)) {
-      this.setState({ logs: [...this.state.logs, e.payload] })
+      this.setState({ logs: this.appendLog(e.payload) })
     } else if (isTraceEvent(e)) {
-      const existingIndex = this.state.traces.findIndex((t) => t.spanId === e.payload.spanId)
-      if (existingIndex >= 0) {
-        const newTraces = [...this.state.traces]
-        newTraces[existingIndex] = e.payload
-        this.setState({ traces: newTraces })
-      } else {
-        this.setState({ traces: [...this.state.traces, e.payload] })
-      }
+      this.setState({ traces: this.upsertTrace(e.payload) })
     } else if (isUiIntentEvent(e)) {
-      this.setState({ uiIntents: [...this.state.uiIntents, e.payload] })
+      this.setState({ uiIntents: this.appendUiIntent(e.payload) })
     } else if (isUiCallbackAckEvent(e)) {
       // For now we only log; later this can be used to round-trip interaction state.
       this.setState({
-        logs: [...this.state.logs, { level: 'info', args: [e.payload], timestamp: Date.now(), source: 'logix' }],
+        logs: this.appendLog({ level: 'info', args: [e.payload], timestamp: Date.now(), source: 'logix' }),
       })
     } else if (isErrorEvent(e)) {
       this.setState({ status: 'error', error: e.payload })
@@ -404,6 +467,7 @@ export class SandboxClient {
     this.activeKernelUrl = null
     this.compiledKernelUrl = null
     this.compiledKernelSelection = null
+    this.runKernelSelections.clear()
 
     if (this.compileResolver) {
       this.compileResolver.reject(error ?? new Error('WORKER_TERMINATED'))
@@ -435,11 +499,14 @@ export class SandboxClient {
 
         worker.onmessage = this.handleEvent
         worker.onerror = (error) => {
-          this.setState({ status: 'error', error: { code: 'INIT_FAILED', message: error.message } })
-          reject(error)
+          const info: SandboxErrorInfo = { code: 'INIT_FAILED', message: error.message }
+          this.setState({ status: 'error', error: info })
+          this.disposeWorker(makeSandboxError(info))
+          reject(makeSandboxError(info))
         }
 
         const initCommand: InitCommand = {
+          protocolVersion: SANDBOX_PROTOCOL_VERSION,
           type: 'INIT',
           payload: { wasmUrl: this.wasmUrl, kernelUrl },
         }
@@ -447,8 +514,10 @@ export class SandboxClient {
 
         const timeoutId = setTimeout(() => {
           if (this.state.status !== 'ready') {
-            this.setState({ status: 'error', error: { code: 'TIMEOUT', message: '初始化超时' } })
-            reject(new Error('初始化超时'))
+            const info: SandboxErrorInfo = { code: 'TIMEOUT', message: '初始化超时' }
+            this.setState({ status: 'error', error: info })
+            this.disposeWorker(makeSandboxError(info))
+            reject(makeSandboxError(info))
           }
         }, this.timeout)
 
@@ -458,7 +527,9 @@ export class SandboxClient {
             resolve()
           } else if (this.state.status === 'error') {
             clearTimeout(timeoutId)
-            reject(new Error(this.state.error?.message ?? 'Init failed'))
+            const error = makeSandboxError(this.state.error ?? { code: 'INIT_FAILED', message: 'Init failed' })
+            this.disposeWorker(error)
+            reject(error)
           } else {
             setTimeout(checkReady, 50)
           }
@@ -501,8 +572,9 @@ export class SandboxClient {
 
           const timeout = setTimeout(() => {
             if (this.compileResolver) {
-              this.compileResolver.reject(new Error('编译超时'))
-              this.compileResolver = null
+              const info: SandboxErrorInfo = { code: 'TIMEOUT', message: '编译超时' }
+              this.setState({ status: 'error', error: info })
+              this.disposeWorker(makeSandboxError(info))
             }
           }, this.timeout)
 
@@ -516,7 +588,11 @@ export class SandboxClient {
             }
           }
 
-          const compileCommand: CompileCommand = { type: 'COMPILE', payload: { code, filename, mockManifest } }
+          const compileCommand: CompileCommand = {
+            protocolVersion: SANDBOX_PROTOCOL_VERSION,
+            type: 'COMPILE',
+            payload: { code, filename, mockManifest },
+          }
           this.postCommand(compileCommand)
         }),
     )
@@ -565,8 +641,16 @@ export class SandboxClient {
       this.runResolvers.set(runId, { resolve, reject })
       const timeout = setTimeout(() => {
         if (this.runResolvers.has(runId)) {
-          this.runResolvers.delete(runId)
-          reject(new Error('运行超时'))
+          const selection = resolved.selection
+          const info: SandboxErrorInfo = {
+            code: 'TIMEOUT',
+            message: '运行超时',
+            ...(selection.requestedKernelId ? { requestedKernelId: selection.requestedKernelId } : null),
+            ...(selection.effectiveKernelId ? { effectiveKernelId: selection.effectiveKernelId } : null),
+            ...(selection.fallbackReason ? { fallbackReason: selection.fallbackReason } : null),
+          }
+          this.setState({ status: 'error', error: info })
+          this.disposeWorker(makeSandboxError(info))
         }
       }, this.timeout)
 
@@ -579,7 +663,7 @@ export class SandboxClient {
         reject,
       })
 
-      const runCommand: RunCommand = { type: 'RUN', payload }
+      const runCommand: RunCommand = { protocolVersion: SANDBOX_PROTOCOL_VERSION, type: 'RUN', payload }
       this.postCommand(runCommand)
     })
   }
@@ -666,16 +750,15 @@ export class SandboxClient {
     if (!this.worker) {
       return Promise.reject(new Error('Worker 未初始化'))
     }
-    const command: UiCallbackCommand = { type: 'UI_CALLBACK', payload }
+    const command: UiCallbackCommand = { protocolVersion: SANDBOX_PROTOCOL_VERSION, type: 'UI_CALLBACK', payload }
     this.postCommand(command)
     return Promise.resolve()
   }
 
   terminate(): void {
-    if (this.worker) {
-      const command: TerminateCommand = { type: 'TERMINATE' }
-      this.postCommand(command)
-    }
+    const info: SandboxErrorInfo = { code: 'WORKER_TERMINATED', message: 'Worker 已终止' }
+    this.disposeWorker(makeSandboxError(info))
+    this.setState({ status: 'idle', logs: [], traces: [], error: null, uiIntents: [] })
   }
 }
 

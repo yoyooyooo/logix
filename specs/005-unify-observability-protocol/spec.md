@@ -2,7 +2,8 @@
 
 **Feature Branch**: `005-unify-observability-protocol`
 **Created**: 2025-12-13
-**Status**: Draft
+**Status**: Done
+**Scope**: 仅收口 Foundational（Envelope/EvidencePackage/Aggregation/ControlCommand）；Devtools UI/渲染/Chrome 扩展 transport 等形态交付由 `038` 或后续独立 spec 承接（见 `tasks.md`）。
 **Input**: User description: "统一组件/插件/平台协议层的观测协议与聚合引擎（Playground 可选验证）"
 
 ## Assumptions

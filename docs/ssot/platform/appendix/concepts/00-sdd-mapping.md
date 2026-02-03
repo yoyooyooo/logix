@@ -25,7 +25,7 @@ SDD 强调 **Specification (Specs)** 不再是静态文档，而是 **Executable
 | **Plan (/plan)**              | **L1: Module & L2: Flow Intent** | `ModuleSchema`, `Flow`, `Topology`   |
 | **Tasks (/tasks)**            | **L3: Step Intent**              | `Action`, `Step`, `TaskItem`         |
 | **Implement (/implement)**    | **Code Generation**              | `Logix Code`, `Effect Program`       |
-| **Verify / Loop**             | **Runtime Alignment Lab**        | `@logixjs/sandbox`, `RunResult`（Trace/Tape/Snapshot；口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）, Alignment Lab (`docs/specs/drafts/topics/sandbox-runtime/*`) |
+| **Verify / Loop**             | **Runtime Alignment Lab**        | `@logixjs/sandbox`, `RunResult`（Trace/Tape/Snapshot；口径见 `docs/ssot/platform/contracts/01-runresult-trace-tape.md`）, Alignment Lab SSoT（`docs/ssot/runtime/logix-sandbox/*`）/ Drafts（`docs/specs/drafts/topics/sandbox-runtime/*`） |
 
 ## 2. Phase Mapping & Execution
 

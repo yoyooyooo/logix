@@ -2,7 +2,7 @@
 
 **Feature Branch**: `025-ir-reflection-loader`  
 **Created**: 2025-12-23  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 通过“运行时反射 + 受控试运行”提取多类 IR（Manifest / Runtime / Construction），服务 Studio/CI/Agent；并要求 Logix 内核在不影响运行性能的前提下尽可能提前提供支撑。
 
 ## Clarifications

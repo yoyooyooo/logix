@@ -2,7 +2,7 @@
 
 **Feature Branch**: `075-workflow-codegen-ir`  
 **Created**: 2026-01-05  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 073 完成后的新视角：tick 是观测参考系；traits 是受限绑定；多步协议/时间算子属于自由编排，必须 IR 化并纳入 tick 证据链。
 
 **Model (SSoT)**:

@@ -24,6 +24,8 @@ const manifest = Logix.Reflection.extractManifest(AppRoot, {
 writeFileSync('dist/module-manifest.json', JSON.stringify(manifest, null, 2))
 ```
 
+`module-manifest.json` 中的 `servicePorts`（如存在）会列出模块声明的输入服务依赖：`{ port, serviceId, optional? }[]`（排序稳定，可用于 diff/门禁与解释）。
+
 ## 对比 Manifest（CI / Breaking 检测）
 
 ```ts
@@ -72,6 +74,8 @@ const main = Effect.gen(function* () {
 
 Effect.runPromise(main)
 ```
+
+若模块声明了 `services`，试运行报告的 `servicePortsAlignment`（如存在）会给出“声明端口 ↔ 环境可 resolve”的对齐结果（missingRequired/missingOptional），用于端口级定位缺失依赖。
 
 ## 为什么必须显式 `runId` / 关闭 `Scope`
 

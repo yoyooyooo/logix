@@ -2,7 +2,7 @@
 
 **Feature Branch**: `084-loader-spy-dep-capture`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 在加载态/构造态引入“Spy Context”证据采集能力：当逻辑在初始化阶段通过 `$.use(Tag)` 获取服务时，Spy 记录“被使用到的依赖”作为动态证据，用于建议生成、对齐校验与 Devtools 解释；但严格强调该证据 **不成为长期权威事实源**（单一真相源仍在源码显式声明）。
 
 ## Context

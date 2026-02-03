@@ -1,0 +1,36 @@
+---
+title: Playground
+description: 在文档里直接运行并修改一个最小 Logix Module。
+---
+
+这个页面允许你在浏览器里运行一段最小的 Logix 模块代码。你可以随意改动代码，然后再次点击“运行”观察结果。
+
+<Playground
+  id="get-started-playground-basic"
+  title="你的第一段可运行示例"
+  moduleExport="AppRoot"
+  observe={['trialrun 应 PASS', '尝试把代码改坏，观察 FAIL 与原因字段']}
+  code={String.raw`import { Schema } from "effect"
+import * as Logix from "@logixjs/core"
+
+const Counter = Logix.Module.make("Docs.Playground.Counter", {
+  state: Schema.Struct({ count: Schema.Number }),
+  actions: {
+    inc: Schema.Void,
+    set: Schema.Number,
+  },
+  immerReducers: {
+    inc: (draft) => {
+      draft.count += 1
+    },
+    set: (draft, n) => {
+      draft.count = n
+    },
+  },
+})
+
+export const AppRoot = Counter.implement({
+  initial: { count: 0 },
+  logics: [],
+})`}
+/>

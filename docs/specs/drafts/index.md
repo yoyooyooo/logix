@@ -16,7 +16,7 @@
 - [DevTools & Studio](./topics/devtools-and-studio/README.md) - CLI、DevTools 与 Studio 全双工集成
 - [React Adapter](./topics/react-adapter/README.md) - React 适配层规范（hooks、SSR、测试）
 - [Module Definition Future](./topics/module-definition-future/README.md) - 模块定义 API（Module.make / actions / reducers / primary reducer / watcher）的未来演进草案收敛
-- [Sandbox & Verifiable Intent](./topics/sandbox-runtime/README.md) - Web Worker Sandbox / Verifiable Intent Engine 主题（前端优先运行时、依赖治理、Mock、后续 Intent 覆盖/AI 反馈/多运行时漏斗）
+- [Sandbox & Verifiable Intent](./topics/sandbox-runtime/README.md) - Web Worker Sandbox / Verifiable Intent Engine 主题（前端优先运行时、依赖治理、Mock、后续 Intent 覆盖/AI 反馈/多运行时漏斗；P0/P1 基线已收编到 `docs/ssot/runtime/logix-sandbox`）
 - [Draft Pattern](./topics/draft-pattern/README.md) - Ephemeral Interaction / Draft 会话模式
 
 ### Vision / Long-Term Topics（愿景与远期规划）

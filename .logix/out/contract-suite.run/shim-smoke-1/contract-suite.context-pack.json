@@ -1,0 +1,202 @@
+{
+  "constraints": {},
+  "facts": {
+    "artifacts": [
+      {
+        "artifactKey": "@logixjs/module.portSpec@v1",
+        "status": "PRESENT"
+      },
+      {
+        "artifactKey": "@logixjs/module.typeIr@v1",
+        "status": "PRESENT"
+      },
+      {
+        "artifactKey": "@logixjs/schema.registry@v1",
+        "status": "PRESENT",
+        "value": {
+          "effectVersion": "3.19.13",
+          "notes": {
+            "__logix": {
+              "actions": {
+                "dec": "schema:482c4e18",
+                "inc": "schema:482c4e18"
+              },
+              "moduleId": "CounterModule",
+              "state": {
+                "schemaId": "schema:60d91ba8"
+              }
+            }
+          },
+          "protocolVersion": "v1",
+          "schemas": [
+            {
+              "ast": {
+                "_tag": "VoidKeyword",
+                "annotations": {
+                  "Symbol(effect/annotation/Title)": "void"
+                }
+              },
+              "meta": {
+                "tags": [
+                  "action:dec",
+                  "action:inc",
+                  "kind:action_payload",
+                  "module:CounterModule"
+                ],
+                "title": "void"
+              },
+              "schemaId": "schema:482c4e18",
+              "schemaIdSource": "derived"
+            },
+            {
+              "ast": {
+                "_tag": "TypeLiteral",
+                "annotations": {},
+                "indexSignatures": [],
+                "propertySignatures": [
+                  {
+                    "annotations": {},
+                    "isOptional": false,
+                    "isReadonly": true,
+                    "name": "value",
+                    "type": {
+                      "_tag": "NumberKeyword",
+                      "annotations": {
+                        "Symbol(effect/annotation/Description)": "a number",
+                        "Symbol(effect/annotation/Title)": "number"
+                      }
+                    }
+                  }
+                ]
+              },
+              "meta": {
+                "tags": [
+                  "kind:state",
+                  "module:CounterModule"
+                ]
+              },
+              "schemaId": "schema:60d91ba8",
+              "schemaIdSource": "derived"
+            }
+          ]
+        }
+      }
+    ],
+    "trialRunReport": {
+      "environment": {
+        "configKeys": [],
+        "kernelImplementationRef": {
+          "kernelId": "core",
+          "packageName": "@logixjs/core"
+        },
+        "missingConfigKeys": [],
+        "missingServices": [],
+        "runtimeServicesEvidence": {
+          "bindings": [
+            {
+              "implId": "builtin",
+              "implVersion": "v1",
+              "overridden": false,
+              "scope": "builtin",
+              "serviceId": "txnQueue"
+            },
+            {
+              "implId": "builtin",
+              "implVersion": "v1",
+              "overridden": false,
+              "scope": "builtin",
+              "serviceId": "operationRunner"
+            },
+            {
+              "implId": "builtin",
+              "implVersion": "v1",
+              "overridden": false,
+              "scope": "builtin",
+              "serviceId": "transaction"
+            },
+            {
+              "implId": "builtin",
+              "implVersion": "v1",
+              "overridden": false,
+              "scope": "builtin",
+              "serviceId": "dispatch"
+            }
+          ],
+          "instanceId": "i1",
+          "moduleId": "CounterModule",
+          "overridesApplied": [],
+          "scope": "builtin"
+        },
+        "tagIds": [
+          "dispatch",
+          "operationRunner",
+          "transaction",
+          "txnQueue"
+        ]
+      },
+      "manifest": {
+        "actionKeys": [
+          "dec",
+          "inc"
+        ],
+        "actions": [
+          {
+            "actionTag": "dec",
+            "payload": {
+              "kind": "nonVoid"
+            }
+          },
+          {
+            "actionTag": "inc",
+            "payload": {
+              "kind": "nonVoid"
+            }
+          }
+        ],
+        "digest": "manifest:083:1e824770",
+        "logicUnits": [
+          {
+            "derived": true,
+            "id": "user#1",
+            "kind": "user",
+            "name": "user"
+          }
+        ],
+        "manifestVersion": "083",
+        "moduleId": "CounterModule"
+      },
+      "ok": true,
+      "runId": "shim-smoke-1"
+    }
+  },
+  "protocolVersion": "v1",
+  "target": {
+    "kind": "investigate"
+  },
+  "verdict": {
+    "artifacts": [
+      {
+        "artifactKey": "@logixjs/module.portSpec@v1",
+        "status": "PRESENT"
+      },
+      {
+        "artifactKey": "@logixjs/module.typeIr@v1",
+        "status": "PRESENT"
+      },
+      {
+        "artifactKey": "@logixjs/schema.registry@v1",
+        "status": "PRESENT"
+      }
+    ],
+    "moduleId": "CounterModule",
+    "protocolVersion": "v1",
+    "reasons": [],
+    "runId": "shim-smoke-1",
+    "summary": {
+      "breaking": 0,
+      "info": 0,
+      "risky": 0
+    },
+    "verdict": "PASS"
+  }
+}

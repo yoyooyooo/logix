@@ -1,6 +1,6 @@
 # 035 Contracts: Module Reference Space
 
-本目录固化 **035 的协议合同（Contract）**：用于平台/Workbench/CI/Agent 侧校验并消费模块“引用空间事实源”（PortSpec/TypeIR）与 CodeAsset 相关协议。
+本目录固化 **035 的协议合同（Contract）**：用于平台/Workbench/CI/Agent 侧校验并消费模块“引用空间事实源”（PortSpec/TypeIR/PortAddress）。
 
 ## Artifact Keys（031 artifacts 槽位）
 
@@ -9,7 +9,7 @@
 
 > 说明：这些 payload 通过 `specs/031-trialrun-artifacts` 定义的 `TrialRunReport.artifacts` 输出，外层包裹 `ArtifactEnvelope`。
 
-> 说明：CodeAsset/Deps/Anchor 属于“输入资产协议”，不通过 031 artifacts 槽位导出（通常由平台保存并被 032/033/036 消费）。
+> 说明：CodeAsset/Deps/Anchor 属于“输入资产协议”，已拆分为 034：`specs/034-code-asset-protocol/`。
 
 ## Schemas
 
@@ -27,18 +27,6 @@
   - `TypeIr@v1` payload（best-effort）
   - 必含：`moduleId` + `types[]`
   - 可选：`truncated` + `budget` + `roots/notes`
-
-- `schemas/code-asset.schema.json`
-  - `CodeAsset@v1` payload（表达式/校验资产；可编辑源码层 + 规范化 IR + deps + digest）
-
-- `schemas/code-asset-ref.schema.json`
-  - `CodeAssetRef@v1` payload（引用锚点：`digest`）
-
-- `schemas/deps.schema.json`
-  - `Deps@v1` payload（显式依赖：`reads/services/configs`；其中 `reads` 仅允许 `output/export`）
-
-- `schemas/reversibility-anchor.schema.json`
-  - `ReversibilityAnchor@v1` payload（可逆溯源锚点；不影响运行语义）
 
 ## Budget / Truncation Semantics（两层裁剪）
 

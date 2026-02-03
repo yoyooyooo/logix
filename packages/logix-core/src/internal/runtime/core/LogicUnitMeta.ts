@@ -16,6 +16,12 @@ export type LogicUnitMeta = {
   readonly name?: string
   readonly source?: LogicUnitSource
   readonly moduleId?: string
+  /**
+   * Named logic slot (083):
+   * - Best-effort semantic role anchor for platform-grade tooling.
+   * - Authority: LogicUnitOptions.slotName (written into meta by Module.logic/withLogic).
+   */
+  readonly slotName?: string
 
   /**
    * Resolved id (the final logicUnitId after mounting):
@@ -27,6 +33,7 @@ export type LogicUnitMeta = {
   readonly resolvedKind?: string
   readonly resolvedName?: string
   readonly resolvedSource?: LogicUnitSource
+  readonly resolvedSlotName?: string
 }
 
 export const LOGIC_UNIT_META = Symbol.for('logix.module.logic.meta')

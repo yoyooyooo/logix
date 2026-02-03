@@ -10,16 +10,18 @@ priority: next
 
 > 本主题围绕「Logix Sandbox / Verifiable Intent Engine」形成体系化草稿，先夯实前端沙箱与基础设施，再分阶段扩展 Intent 覆盖、AI 反馈、后端逃生舱等高阶能力。
 
+> ✅ 其中 P0/P1 的“运行时基线/协议/API/依赖治理”已收编到 runtime SSoT：`docs/ssot/runtime/logix-sandbox`，本 Topic 保留为愿景/扩展与历史快照（以 SSoT 为准）。
+
 ## 文档导航
 
 | 编号   | 文档                                                           | 状态    | 说明                                 |
 | ------ | -------------------------------------------------------------- | ------- | ------------------------------------ |
 | 00     | [overview](./00-overview.md)                                   | ✅ 完整 | 分阶段路线图                         |
-| **05** | [architecture-and-boundary](./05-architecture-and-boundary.md) | ✅ 完整 | 架构与边界定义                       |
-| 10     | [runtime-baseline](./10-runtime-baseline.md)                   | ⚡ 框架 | Worker 生命周期、Watchdog            |
-| **15** | [protocol-and-schema](./15-protocol-and-schema.md)             | ✅ 完整 | 协议与 Schema 定义                   |
-| 20     | [dependency-and-mock](./20-dependency-and-mock-strategy.md)    | ⚡ 框架 | 依赖治理、Mock 策略                  |
-| **25** | [sandbox-package-api](./25-sandbox-package-api.md)             | ✅ 完整 | `@logixjs/sandbox` API 设计            |
+| **05** | [architecture-and-boundary](../../../../ssot/runtime/logix-sandbox/05-architecture-and-boundary.md) | ✅ SSoT | 架构与边界定义                       |
+| 10     | [runtime-baseline](../../../../ssot/runtime/logix-sandbox/10-runtime-baseline.md)                   | ✅ SSoT | Worker 生命周期、Watchdog            |
+| **15** | [protocol-and-schema](../../../../ssot/runtime/logix-sandbox/15-protocol-and-schema.md)             | ✅ SSoT | 协议与 Schema 定义                   |
+| 20     | [dependency-and-mock](../../../../ssot/runtime/logix-sandbox/20-dependency-and-mock-strategy.md)    | ✅ SSoT | 依赖治理、Mock 策略                  |
+| **25** | [sandbox-package-api](../../../../ssot/runtime/logix-sandbox/25-sandbox-package-api.md)             | ✅ SSoT | `@logixjs/sandbox` API 设计            |
 | 30     | [intent-coverage](./30-intent-coverage-and-ai-feedback.md)     | 📝 占位 | Intent 覆盖与 AI 反馈                |
 | 40     | [multi-runtime-funnel](./40-multi-runtime-funnel.md)           | 📝 占位 | 多运行时漏斗                         |
 | 50     | [devtools-session-diff](./50-devtools-session-and-diff.md)     | 📝 占位 | DevTools Session 与 Diff             |
@@ -32,7 +34,7 @@ priority: next
 
 ### P0 — 当前阶段（基础运行时）
 
-- [ ] **协议落地**：按 [15-protocol-and-schema.md](./15-protocol-and-schema.md) 实现 TypeScript 类型
+- [ ] **协议落地**：按 [15-protocol-and-schema.md](../../../../ssot/runtime/logix-sandbox/15-protocol-and-schema.md) 实现 TypeScript 类型
 - [ ] **Worker 入口**：创建 `@logixjs/sandbox` 包骨架
 - [ ] **Kernel 预注入**：`effect` + `@logixjs/core` 预打包 + Blob URL
 - [ ] **Watchdog**：超时熔断 + Hard Reset
@@ -41,7 +43,7 @@ priority: next
 
 ### P1 — 短期跟进
 
-- [ ] **SandboxClient API**：按 [25-sandbox-package-api.md](./25-sandbox-package-api.md) 实现核心方法
+- [ ] **SandboxClient API**：按 [25-sandbox-package-api.md](../../../../ssot/runtime/logix-sandbox/25-sandbox-package-api.md) 实现核心方法
 - [ ] **useSandbox Hook**：React 集成
 - [ ] **MockManifest 解析**：HTTP/SDK/UI Mock 配置处理
 

@@ -9,6 +9,7 @@
 
 - **纯 TS/JS 客户端**：`new SandboxClient()` → `init()` → `compile()` → `run()`（入口：`packages/logix-sandbox/src/Client.ts`）
 - **Effect/Layer 注入**：`SandboxClientLayer()` 提供 `SandboxClientTag`，在 Logic 中 `yield* $.use(SandboxClientTag)`（入口：`packages/logix-sandbox/src/Service.ts`）
+- 协议/基线/依赖治理的权威口径：`docs/ssot/runtime/logix-sandbox/README.md`
 
 ## Vite 集成
 

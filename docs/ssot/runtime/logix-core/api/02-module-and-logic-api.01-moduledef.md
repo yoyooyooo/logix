@@ -68,4 +68,23 @@ export const CounterDef = Logix.Module.make('Counter', {
 
 对应类型以 `@logixjs/core` 为准（公共出口：`packages/logix-core/src/index.ts`；Module 相关实现与类型在 `packages/logix-core/src/Module.ts` 与 `packages/logix-core/src/internal/module.ts`）。
 
+## 1.1 具名逻辑插槽（083：`slots`）
+
+> 目的：让平台不再把 `logics: []` 当黑盒数组，而能枚举“坑位语义 + 填充关系”，用于可解释组装/替换与门禁。
+
+在 `Module.make(..., def)` 中声明 `slots`：
+
+```ts
+export const M = Logix.Module.make('Demo.Slots', {
+  state: Schema.Void,
+  actions: {},
+  slots: {
+    Primary: { required: true, kind: 'single' },
+    Aspects: { kind: 'aspect' },
+  },
+})
+```
+
+填充关系通过 `LogicUnitOptions.slotName`（在 `Module.logic/withLogic/withLogics` 的 options 参数）表达；导出端通过 `Logix.Reflection.extractManifest` 的 `slots/slotFills` 字段提供平台消费。
+
 ---

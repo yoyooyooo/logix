@@ -1,0 +1,36 @@
+---
+title: Playground
+description: Run and tweak a small Logix module directly in the docs.
+---
+
+This page lets you run a tiny Logix module in the browser. Try editing the code and click “Run” again.
+
+<Playground
+  id="get-started-playground-basic"
+  title="Your first runnable snippet"
+  moduleExport="AppRoot"
+  observe={['trialrun should PASS', 'Try breaking the code and observe FAIL + reason fields']}
+  code={String.raw`import { Schema } from "effect"
+import * as Logix from "@logixjs/core"
+
+const Counter = Logix.Module.make("Docs.Playground.Counter", {
+  state: Schema.Struct({ count: Schema.Number }),
+  actions: {
+    inc: Schema.Void,
+    set: Schema.Number,
+  },
+  immerReducers: {
+    inc: (draft) => {
+      draft.count += 1
+    },
+    set: (draft, n) => {
+      draft.count = n
+    },
+  },
+})
+
+export const AppRoot = Counter.implement({
+  initial: { count: 0 },
+  logics: [],
+})`}
+/>

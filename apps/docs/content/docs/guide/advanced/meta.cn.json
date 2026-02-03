@@ -11,6 +11,7 @@
     "resource-cancellation",
     "error-handling",
     "debugging-and-devtools",
+    "playground-debug",
     "performance-and-optimization",
     "testing",
     "troubleshooting"

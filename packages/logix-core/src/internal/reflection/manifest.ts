@@ -1,8 +1,9 @@
-import { Schema } from 'effect'
+import { Context, Schema } from 'effect'
 import type { AnyModuleShape, ModuleImpl } from '../runtime/core/module.js'
 import * as Action from '../action.js'
 import { stableStringify, fnv1a32 } from '../digest.js'
 import { isJsonValue, type JsonValue } from '../observability/jsonValue.js'
+import * as ServiceId from '../serviceId.js'
 import { exportStaticIr } from './staticIr.js'
 
 export interface ManifestBudgets {
@@ -20,6 +21,18 @@ export interface ModuleManifestLogicUnit {
   readonly derived?: boolean
   readonly name?: string
 }
+
+export type ModuleManifestSlotKind = 'single' | 'aspect'
+
+export interface ModuleManifestSlotDef {
+  readonly required?: boolean
+  readonly unique?: boolean
+  readonly kind?: ModuleManifestSlotKind
+}
+
+export type ModuleManifestSlots = Record<string, ModuleManifestSlotDef>
+
+export type ModuleManifestSlotFills = Record<string, ReadonlyArray<string>>
 
 export interface ModuleManifestAction {
   readonly actionTag: string
@@ -47,6 +60,16 @@ export interface ModuleManifestEffect {
   }
 }
 
+export interface ModuleManifestServicePort {
+  readonly port: string
+  readonly serviceId: string
+  readonly optional?: boolean
+}
+
+export interface ResolvedServicePortDeclaration extends ModuleManifestServicePort {
+  readonly tag: Context.Tag<any, any>
+}
+
 export interface ModuleManifest {
   readonly manifestVersion: string
   readonly moduleId: string
@@ -55,6 +78,9 @@ export interface ModuleManifest {
   readonly effects?: ReadonlyArray<ModuleManifestEffect>
   readonly schemaKeys?: ReadonlyArray<string>
   readonly logicUnits?: ReadonlyArray<ModuleManifestLogicUnit>
+  readonly slots?: ModuleManifestSlots
+  readonly slotFills?: ModuleManifestSlotFills
+  readonly servicePorts?: ReadonlyArray<ModuleManifestServicePort>
   readonly source?: {
     readonly file: string
     readonly line: number
@@ -246,6 +272,93 @@ const resolveMeta = (input: unknown): Record<string, JsonValue> | undefined => {
   return Object.keys(out).length > 0 ? out : undefined
 }
 
+const resolveServicesRecord = (input: unknown): Record<string, unknown> | undefined => {
+  if (isModuleImpl(input)) {
+    const fromModule = (input.module as any)?.services
+    if (isRecord(fromModule)) return fromModule
+  }
+  if (!isRecord(input)) return undefined
+  const services = (input as any).services
+  if (!isRecord(services)) return undefined
+  return services
+}
+
+const resolveSlotsRecord = (input: unknown): Record<string, unknown> | undefined => {
+  if (isModuleImpl(input)) {
+    const fromModule = (input.module as any)?.slots
+    if (isRecord(fromModule)) return fromModule
+  }
+  if (!isRecord(input)) return undefined
+  const slots = (input as any).slots
+  if (!isRecord(slots)) return undefined
+  return slots
+}
+
+const resolveSlots = (input: unknown): ModuleManifestSlots | undefined => {
+  const slots = resolveSlotsRecord(input)
+  if (!slots) return undefined
+
+  const out: ModuleManifestSlots = {}
+  for (const slotName of Object.keys(slots).sort()) {
+    if (slotName.length === 0) continue
+    const rawDef = (slots as any)[slotName]
+    if (!isRecord(rawDef)) continue
+
+    const required = (rawDef as any).required === true ? true : undefined
+    const unique = (rawDef as any).unique === true ? true : undefined
+    const kind =
+      (rawDef as any).kind === 'single' || (rawDef as any).kind === 'aspect' ? (rawDef as any).kind : undefined
+
+    out[slotName] = {
+      ...(required ? { required: true } : null),
+      ...(unique ? { unique: true } : null),
+      ...(kind ? { kind } : null),
+    }
+  }
+
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
+export const resolveServicePortDeclarations = (input: unknown): ReadonlyArray<ResolvedServicePortDeclaration> | undefined => {
+  const services = resolveServicesRecord(input)
+  if (!services) return undefined
+
+  const out: Array<ResolvedServicePortDeclaration> = []
+
+  for (const port of Object.keys(services).sort()) {
+    if (port.length === 0) continue
+    const value = services[port]
+
+    let tag: Context.Tag<any, any> | undefined
+    let optional: true | undefined
+
+    if (Context.isTag(value as any)) {
+      tag = value as any
+    } else if (isRecord(value) && Context.isTag((value as any).tag)) {
+      tag = (value as any).tag as any
+      optional = (value as any).optional === true ? true : undefined
+    } else {
+      continue
+    }
+
+    if (!tag) continue
+
+    const serviceId = ServiceId.requireFromTag(tag, {
+      hint: `Invalid ServiceId for port "${port}". Define the Tag with a stable string key, e.g. \`class X extends Context.Tag("my-svc/x")<X, Service>() {}\`.`,
+    })
+
+    out.push({
+      port,
+      serviceId,
+      ...(optional ? { optional: true } : {}),
+      tag,
+    })
+  }
+
+  out.sort((a, b) => (a.port < b.port ? -1 : a.port > b.port ? 1 : a.serviceId < b.serviceId ? -1 : a.serviceId > b.serviceId ? 1 : 0))
+  return out.length > 0 ? out : undefined
+}
+
 const MODULE_INTERNAL = Symbol.for('logix.module.internal')
 
 const resolveLogicUnits = (input: unknown): ReadonlyArray<ModuleManifestLogicUnit> | undefined => {
@@ -271,6 +384,38 @@ const resolveLogicUnits = (input: unknown): ReadonlyArray<ModuleManifestLogicUni
   return out.length > 0 ? out : undefined
 }
 
+const resolveSlotFills = (input: unknown): ModuleManifestSlotFills | undefined => {
+  const target = isModuleImpl(input) ? (input.module as any) : input
+  if (!isRecord(target)) return undefined
+
+  const internal = (target as any)[MODULE_INTERNAL]
+  const mounted = internal?.mounted
+  if (!Array.isArray(mounted)) return undefined
+
+  const out: Record<string, Array<string>> = {}
+
+  for (const unit of mounted) {
+    if (!isRecord(unit)) continue
+    const slotName = (unit as any).slotName
+    const id = (unit as any).id
+    if (typeof slotName !== 'string' || slotName.length === 0) continue
+    if (typeof id !== 'string' || id.length === 0) continue
+    if (!out[slotName]) out[slotName] = []
+    out[slotName]!.push(id)
+  }
+
+  const keys = Object.keys(out).sort()
+  if (keys.length === 0) return undefined
+
+  const stable: ModuleManifestSlotFills = {}
+  for (const slotName of keys) {
+    const ids = out[slotName] ?? []
+    ids.sort()
+    stable[slotName] = ids
+  }
+  return stable
+}
+
 type DigestBase = {
   readonly manifestVersion: string
   readonly moduleId: string
@@ -279,10 +424,13 @@ type DigestBase = {
   readonly effects?: ReadonlyArray<ModuleManifestEffect>
   readonly schemaKeys?: ReadonlyArray<string>
   readonly logicUnits?: ReadonlyArray<ModuleManifestLogicUnit>
+  readonly slots?: ModuleManifestSlots
+  readonly slotFills?: ModuleManifestSlotFills
+  readonly servicePorts?: ReadonlyArray<ModuleManifestServicePort>
   readonly staticIrDigest?: string
 }
 
-const digestOf = (base: DigestBase): string => `manifest:067:${fnv1a32(stableStringify(base))}`
+const digestOf = (base: DigestBase): string => `manifest:${base.manifestVersion}:${fnv1a32(stableStringify(base))}`
 
 const utf8ByteLength = (value: unknown): number => {
   const json = JSON.stringify(value)
@@ -342,6 +490,12 @@ const applyMaxBytes = (manifest: ModuleManifest, maxBytes: number): ModuleManife
   dropField('logicUnits')
   if (utf8ByteLength(next) <= maxBytes) return next
 
+  dropField('slotFills')
+  if (utf8ByteLength(next) <= maxBytes) return next
+
+  dropField('slots')
+  if (utf8ByteLength(next) <= maxBytes) return next
+
   dropField('schemaKeys')
   if (utf8ByteLength(next) <= maxBytes) return next
 
@@ -396,7 +550,7 @@ const applyMaxBytes = (manifest: ModuleManifest, maxBytes: number): ModuleManife
 }
 
 export const extractManifest = (module: unknown, options?: ExtractManifestOptions): ModuleManifest => {
-  const manifestVersion = '067'
+  const manifestVersion = '083'
   const moduleId = resolveModuleId(module)
   const actionKeys = resolveActionKeys(module)
   const actions = resolveActions(module)
@@ -404,6 +558,9 @@ export const extractManifest = (module: unknown, options?: ExtractManifestOption
 
   const schemaKeys = resolveSchemaKeys(module)
   const logicUnits = resolveLogicUnits(module)
+  const slots = resolveSlots(module)
+  const slotFills = resolveSlotFills(module)
+  const servicePorts = resolveServicePortDeclarations(module)?.map(({ tag: _tag, ...rest }) => rest)
   const source = resolveSource(module)
   const meta = resolveMeta(module)
 
@@ -417,6 +574,9 @@ export const extractManifest = (module: unknown, options?: ExtractManifestOption
     effects,
     schemaKeys,
     logicUnits,
+    slots,
+    slotFills,
+    servicePorts,
     staticIrDigest: staticIr?.digest,
   }
 
@@ -430,6 +590,9 @@ export const extractManifest = (module: unknown, options?: ExtractManifestOption
     effects,
     schemaKeys,
     logicUnits,
+    slots,
+    slotFills,
+    servicePorts,
     source,
     meta,
     staticIr,

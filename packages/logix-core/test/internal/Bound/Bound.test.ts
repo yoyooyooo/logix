@@ -386,7 +386,7 @@ describe('Bound API (public)', () => {
     }
   })
 
-  it('should construct services() and advanced onAction builders', () => {
+  it('should construct services() and advanced onAction builders', async () => {
     const ServiceTag = Context.GenericTag<{ readonly label: string }>('@logixjs/test/BoundService')
 
     const AdvancedModule = Logix.Module.make('BoundAdvanced', {
@@ -496,7 +496,8 @@ describe('Bound API (public)', () => {
     const $ = Logix.Bound.make(AdvancedModule.shape, dummyRuntime)
 
     const svcEffect = $.use(ServiceTag)
-    expect(svcEffect).toBe(ServiceTag)
+    const svc = await Effect.runPromise(Effect.provideService(svcEffect as any, ServiceTag, { label: 'ok' }))
+    expect(svc).toEqual({ label: 'ok' })
 
     const builderProp = $.onAction.inc
     const builderValue = $.onAction({

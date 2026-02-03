@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "ModuleTransformDelta",
+  "target": {
+    "moduleFile": "src/entry.basic.ts",
+    "exportName": "Counter"
+  },
+  "ops": [
+    { "op": "addState", "key": "isReady", "type": "boolean", "initialCode": "false" },
+    { "op": "addAction", "actionTag": "reset", "payloadType": "void" }
+  ]
+}

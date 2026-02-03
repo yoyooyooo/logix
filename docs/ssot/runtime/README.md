@@ -65,6 +65,10 @@
   - `@logixjs/test` 测试工具包：提供 `TestRuntime`、`TestProgram` 与 `runTest` 等基础测试 API。当前实现已覆盖 Logic 场景编排与状态断言，高级能力（如基于 Trace 的断言 DSL、ExecutionDump 等）仍在演进中，设计见 `logix-test/01-test-kit-design.md`。
   - 官方入口文档：`logix-test/README.md`。
 
+- `logix-sandbox/`
+  - `@logixjs/sandbox`：Playground / Runtime Alignment Lab 的执行与隔离底座（Host↔Worker 协议、Kernel/编译链路、Mock/Spy、可观测事件）。
+  - 官方入口文档：`logix-sandbox/README.md`。
+
 - `logix-core/impl/`
   - 运行时实现备忘录与技术草图：围绕应用级 AppRuntime（内部基于 `AppRuntime.makeApp`）、`Logix.Module` / ModuleDef、Logic Middleware、Store 生命周期等复杂能力的具体实现思路与风险评估。
   - 面向 runtime 实现者使用，不作为对外 API 契约；关键决策一旦稳定，会同步回写到 `logix-core/` 规格文档。

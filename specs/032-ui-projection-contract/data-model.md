@@ -61,5 +61,5 @@ Extractor（从 IMD 生成）：`scripts/extract-imd-ui-kit-registry.ts`
 ## Cross-Spec References
 
 - 逻辑插座事实源：`specs/035-module-reference-space/contracts/schemas/module-port-spec.schema.json`（PortSpec）
-- 映射资产引用：`specs/035-module-reference-space/contracts/schemas/code-asset-ref.schema.json`
+- 映射资产引用：`specs/034-code-asset-protocol/contracts/schemas/code-asset-ref.schema.json`
 - 语义蓝图事实源：`specs/033-module-stage-blueprints/contracts/schemas/stage-blueprint.schema.json`

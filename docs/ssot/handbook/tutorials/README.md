@@ -75,6 +75,8 @@ version: 1
 43. `43-perf-evidence-framework-deep-dive.md`：性能证据框架：PerfReport/PerfDiff/perf matrix 的可比性门禁
 44. `44-sandbox-universal-spy-and-semantic-mock.md`：Sandbox：Universal Spy / Semantic UI Mock / Alignment
 45. `45-playground-as-executable-spec.md`：Playground-as-Executable-Spec：把教程变成可运行的合同
+46. `46-cli-oracle-gate-devserver-bridge.md`：CLI 跑道：用 logix 把改动变成“可门禁 + 可解释”的证据包（含 logix-devserver）
+    - 配套可运行递进教程：`examples/logix-cli-playground/tutorials/README.md`
 
 ---
 

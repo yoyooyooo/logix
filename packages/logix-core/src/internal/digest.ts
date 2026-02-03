@@ -11,23 +11,37 @@
  */
 
 export const stableStringify = (value: unknown): string => {
-  if (value === null) return 'null'
-  const t = typeof value
-  if (t === 'string') return JSON.stringify(value)
-  if (t === 'number') return Number.isFinite(value) ? String(value) : 'null'
-  if (t === 'boolean') return value ? 'true' : 'false'
+  const stack = new WeakSet<object>()
 
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(',')}]`
+  const loop = (input: unknown): string => {
+    if (input === null) return 'null'
+    const t = typeof input
+    if (t === 'string') return JSON.stringify(input)
+    if (t === 'number') return Number.isFinite(input) ? String(input) : 'null'
+    if (t === 'boolean') return input ? 'true' : 'false'
+
+    if (Array.isArray(input)) {
+      if (stack.has(input)) return JSON.stringify('[Circular]')
+      stack.add(input)
+      const out = `[${input.map(loop).join(',')}]`
+      stack.delete(input)
+      return out
+    }
+
+    if (t === 'object') {
+      const record = input as Record<string, unknown>
+      if (stack.has(record)) return JSON.stringify('[Circular]')
+      stack.add(record)
+      const keys = Object.keys(record).sort()
+      const out = `{${keys.map((k) => `${JSON.stringify(k)}:${loop(record[k])}`).join(',')}}`
+      stack.delete(record)
+      return out
+    }
+
+    return 'null'
   }
 
-  if (t === 'object') {
-    const record = value as Record<string, unknown>
-    const keys = Object.keys(record).sort()
-    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(record[k])}`).join(',')}}`
-  }
-
-  return 'null'
+  return loop(value)
 }
 
 /**

@@ -170,6 +170,43 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
 
   const program = getProgramForModule && selectedModule ? getProgramForModule(selectedModule) : undefined
 
+  const servicePorts = React.useMemo(
+    () => (selectedModule ? Logix.Debug.getModuleServicePortsById(selectedModule) : undefined),
+    [selectedModule],
+  )
+
+  const serviceIdIndex = React.useMemo(() => {
+    if (!selectedRuntime) return []
+    const runtimeView = runtimes.find((r) => r.runtimeLabel === selectedRuntime)
+    if (!runtimeView) return []
+
+    const byServiceId = new Map<string, Array<{ moduleId: string; port: string; optional?: boolean }>>()
+    for (const m of runtimeView.modules) {
+      const ports = Logix.Debug.getModuleServicePortsById(m.moduleId)
+      if (!ports) continue
+      for (const p of ports) {
+        const list = byServiceId.get(p.serviceId)
+        const item = { moduleId: m.moduleId, port: p.port, ...(p.optional ? { optional: true } : null) }
+        if (list) list.push(item)
+        else byServiceId.set(p.serviceId, [item])
+      }
+    }
+
+    const sortText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
+
+    const out = Array.from(byServiceId.entries()).map(([serviceId, consumers]) => ({
+      serviceId,
+      consumers: consumers.sort((a, b) => {
+        const c = sortText(a.moduleId, b.moduleId)
+        if (c !== 0) return c
+        return sortText(a.port, b.port)
+      }),
+    }))
+
+    out.sort((a, b) => sortText(a.serviceId, b.serviceId))
+    return out
+  }, [runtimes, selectedRuntime])
+
   const depsMismatches = React.useMemo(() => {
     const byKey = new Map<string, DepsMismatchView>()
     for (const entry of timeline) {
@@ -423,6 +460,83 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
             </div>
           </div>
         )}
+
+        <div className="border-b" style={{ borderColor: 'var(--dt-border)', backgroundColor: 'var(--dt-bg-root)' }}>
+          <div
+            className="px-4 py-2 border-b flex justify-between items-center"
+            style={{
+              backgroundColor: 'var(--dt-bg-header)',
+              borderColor: 'var(--dt-border)',
+            }}
+          >
+            <span className="text-[10px] font-mono" style={{ color: 'var(--dt-text-secondary)' }}>
+              Service Ports
+            </span>
+            <span className="text-[9px] font-mono" style={{ color: 'var(--dt-text-muted)' }}>
+              {servicePorts ? servicePorts.length : 'N/A'}
+            </span>
+          </div>
+          <div className="px-4 py-2 space-y-1 text-[10px] font-mono" style={{ color: 'var(--dt-text-secondary)' }}>
+            {!servicePorts && <div style={{ color: 'var(--dt-text-muted)' }}>Not registered (dev-only)</div>}
+            {servicePorts && servicePorts.length === 0 && (
+              <div style={{ color: 'var(--dt-text-muted)' }}>No declared ports</div>
+            )}
+            {servicePorts &&
+              servicePorts.length > 0 &&
+              servicePorts.map((p) => (
+                <div key={`${p.port}::${p.serviceId}`} className="flex items-center justify-between gap-2">
+                  <span style={{ color: 'var(--dt-text-primary)' }}>{p.port}</span>
+                  <span className="flex-1 text-right truncate" style={{ color: 'var(--dt-text-muted)' }}>
+                    {p.serviceId}
+                  </span>
+                  {p.optional && (
+                    <span
+                      className="px-1.5 py-0.5 rounded border text-[9px]"
+                      style={{
+                        borderColor: 'var(--dt-border-light)',
+                        backgroundColor: 'var(--dt-bg-element)',
+                        color: 'var(--dt-text-muted)',
+                      }}
+                      title="Optional port"
+                    >
+                      optional
+                    </span>
+                  )}
+                </div>
+              ))}
+
+            {serviceIdIndex.length > 0 && (
+              <div
+                className="mt-2 pt-2 border-t"
+                style={{
+                  borderColor: 'var(--dt-border)',
+                }}
+              >
+                <div className="text-[9px] uppercase" style={{ color: 'var(--dt-text-muted)' }}>
+                  ServiceId Index
+                </div>
+                <div className="mt-1 space-y-1">
+                  {serviceIdIndex.map((s) => (
+                    <div
+                      key={s.serviceId}
+                      className="flex items-center justify-between gap-2"
+                      title={s.consumers
+                        .map((c) => `${c.moduleId}:${c.port}${c.optional ? '?' : ''}`)
+                        .join('\n')}
+                    >
+                      <span className="flex-1 truncate" style={{ color: 'var(--dt-text-muted)' }}>
+                        {s.serviceId}
+                      </span>
+                      <span style={{ color: 'var(--dt-text-muted)' }}>
+                        {s.consumers.length} consumer{s.consumers.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="border-b" style={{ borderColor: 'var(--dt-border)', backgroundColor: 'var(--dt-bg-root)' }}>
           <div

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `[016-serializable-diagnostics-and-identity]`  
 **Created**: 2025-12-18  
-**Status**: Draft  
+**Status**: Done  
 **Input**: User description: "把 005/011/013 的横切问题收敛：诊断事件必须可序列化、锚点必须稳定且单一事实源（instanceId），避免双锚点/cause:unknown 污染证据包与跨宿主链路。"
 
 ## User Scenarios & Testing *(mandatory)*

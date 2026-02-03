@@ -110,6 +110,33 @@ packages/logix-anchor-engine/                             # Node-only：可回�
 - Platform-Grade 子集内：可生成最小补丁并写回（依赖 `081/082`）
 - 子集外：必须降级为 Raw Mode（只报告不回写）
 
+#### Platform-Grade 子集（可回写）· 最小约束口径
+
+> 目标：让 Parser/Rewriter 能以 **稳定、可推导、可 diff** 的方式识别 slots 声明与填充关系；在子集外宁可拒绝写回，也不做“猜测式改写”。
+
+**允许（可回写）**
+
+- `Module.make(id, { ..., slots: { <SlotName>: { required?: true, unique?: true, kind?: "single"|"aspect" } } })`
+  - `slots` 必须是对象字面量（Object literal）
+  - key 必须是静态字符串 key（不得 computed key）
+  - `SlotDef` 的字段必须是字面量（boolean literal / string literal）
+- `slotName` 必须由 `LogicUnitOptions.slotName` 表达，并且是可解析的字面量字符串：
+  - `module.logic(build, { ..., slotName: "Primary" })`
+  - `module.withLogic(logic, { ..., slotName: "Primary" })`
+  - `module.withLogics([logic, { slotName: "Primary" }], ...)`
+  - `module.implement({ logics: [module.logic(..., { slotName: "Primary" }), ...] })`
+
+**禁止（子集外 → Raw Mode）**
+
+- `slots` 使用动态 key、计算属性、外部变量、`...spread`/合并逻辑，导致 key/def 无法静态还原。
+- `slotName` 不是字符串字面量（例如变量、模板字符串、条件表达式、函数返回值）。
+- 单个 logic unit 通过任何方式表达“多个 slotName”（MVP 明确禁止）。
+
+**降级语义（Raw Mode）**
+
+- 平台/CLI 只报告 slots/slotName 的“解析失败点”与 reason codes，不生成 PatchPlan，不写回。
+- 允许继续导出 Manifest（Static IR），但写回链路必须拒绝（forward-only，无兼容层）。
+
 ## Deliverables by Phase
 
 - **Phase 0（design）**：固化 slots 的最小数据模型、校验语义与反射口径（本 plan）。

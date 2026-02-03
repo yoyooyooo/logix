@@ -41,3 +41,7 @@ packages/logix-sandbox/public/
 
 # apps/docs API Reference (generated from apps/api-reference/dist)
 apps/docs/public/api-reference/
+
+# apps/docs sandbox assets (synced from @logixjs/sandbox)
+apps/docs/public/sandbox/
+apps/docs/public/esbuild.wasm

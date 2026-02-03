@@ -24,6 +24,9 @@ import { DiShowcaseLayout } from './demos/DiShowcaseLayout'
 import { I18nDemoLayout } from './demos/I18nDemoLayout'
 import { PerfTuningLabLayout } from './demos/PerfTuningLabLayout'
 import { TrialRunEvidenceDemo } from './demos/TrialRunEvidenceDemo'
+import { PlatformVizIndex } from './demos/platform-viz/PlatformVizIndex'
+import { ManifestInspector } from './demos/platform-viz/ManifestInspector'
+import { ManifestDiffViewer } from './demos/platform-viz/ManifestDiffViewer'
 import { LogixDevtools } from '@logixjs/devtools-react'
 import './style.css'
 
@@ -372,6 +375,19 @@ export function App() {
                   </span>
                 </NavLink>
                 <NavLink
+                  to="/platform-viz"
+                  className={({ isActive }: { isActive: boolean }) =>
+                    `w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 block ${
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                    }`
+                  }
+                >
+                  Platform Viz Lab
+                  <span className="block text-[10px] opacity-80 font-normal mt-0.5">Manifest / Diff / Evidence 颗粒度试验场</span>
+                </NavLink>
+                <NavLink
                   to="/trait-txn-devtools-demo"
                   className={({ isActive }: { isActive: boolean }) =>
                     `w-full text-left px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 block ${
@@ -423,6 +439,10 @@ export function App() {
             <Route path="/counter-with-profile-demo" element={<CounterWithProfileDemo />} />
             {/* TrialRun：导出 EvidencePackage 与静态 IR 摘要 */}
             <Route path="/trial-run-evidence" element={<TrialRunEvidenceDemo />} />
+            {/* Platform Viz Lab：IR/Diff/Evidence 可视化 POC */}
+            <Route path="/platform-viz" element={<PlatformVizIndex />} />
+            <Route path="/platform-viz/manifest" element={<ManifestInspector />} />
+            <Route path="/platform-viz/manifest-diff" element={<ManifestDiffViewer />} />
             {/* ToB 表单场景：利用 StateTrait 管理脏标记与合法性 */}
             <Route path="/trait-form-demo" element={<TraitFormDemoLayout />} />
             {/* 复杂表单（推荐路径）：rules + derived */}

@@ -11,6 +11,8 @@ version: 1
 ## 最短链路
 
 - 只想写业务模块：`01-core.md` → `02-react.md`
+- 只想用 CLI 做门禁/写回：`10-cli.md`
+- 只想把 CLI 能力变成 WS 可调用：`11-devserver.md`
 - 只想跑 Sandbox/Alignment Lab：`04-sandbox.md`
 - 只想写 program 风格测试：`05-test.md`
 
@@ -26,3 +28,5 @@ version: 1
 - `07-query.md`
 - `08-i18n.md`
 - `09-domain.md`
+- `10-cli.md`
+- `11-devserver.md`

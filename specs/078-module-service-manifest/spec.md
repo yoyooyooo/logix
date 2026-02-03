@@ -2,7 +2,7 @@
 
 **Feature Branch**: `078-module-service-manifest`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 补齐平台终态 IR/反射：将 Module 与 Service 的关系纳入可序列化 Manifest/IR，用于试运行、Devtools 诊断与可回放
 
 ## Context
