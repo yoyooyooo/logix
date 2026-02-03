@@ -1,6 +1,8 @@
 # Research: 078 Module↔Service 关系纳入 Manifest IR（平台可诊断/可回放）
 
-## 现状与缺口
+> 状态：已落地（Manifest 已导出 `servicePorts`；当前 `manifestVersion='083'`，digest 前缀为 `manifest:083:*`）。下面的“背景”用于记录当时的缺口与裁决动机。
+
+## 背景：当时的现状与缺口（已解决）
 
 ### 1) Module 已经能“声明 services”，但 Manifest 没有把它导出为 IR
 
@@ -25,7 +27,7 @@
 ## 关键落点（代码事实）
 
 - Module 定义反射字段：`packages/logix-core/src/Module.ts`（`MakeDef.services` + `base.services = merged.services`）。
-- Manifest IR：`packages/logix-core/src/internal/reflection/manifest.ts`（`ModuleManifest` + `manifestVersion=067` + digest）。
+- Manifest IR：`packages/logix-core/src/internal/reflection/manifest.ts`（`ModuleManifest` + `manifestVersion='083'` + digest）。
 - Manifest diff：`packages/logix-core/src/internal/reflection/diff.ts`。
 - Trial Run：`packages/logix-core/src/internal/observability/trialRunModule.ts`（report/environment/missing services 解析）。
 - App assembly tag collision：`packages/logix-core/src/internal/runtime/AppRuntime.ts`（`provideWithTags` + `validateTags`）。

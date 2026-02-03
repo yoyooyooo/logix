@@ -1,0 +1,25 @@
+{
+  "stageBlueprint": {
+    "kind": "DemoStageBlueprint",
+    "note": "这是一个最小 inputs 示例：字段本身目前是 unknown（协议约束在上层），但会被 contract-suite context pack 带上，供 Agent/工具面消费。"
+  },
+  "uiBlueprints": [
+    {
+      "id": "DemoUIBlueprint",
+      "note": "placeholder"
+    }
+  ],
+  "bindingSchemas": [
+    {
+      "id": "DemoBindingSchema",
+      "note": "placeholder"
+    }
+  ],
+  "codeAssets": [
+    {
+      "id": "DemoCodeAsset",
+      "note": "placeholder"
+    }
+  ]
+}
+

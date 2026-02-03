@@ -26,7 +26,7 @@ date: 2025-12-26
   - `UiPort`：语义组件实例（type/slots/inputs/outputs）
   - `UiBinding`：prop ← module(state/view/trait)
   - `UiSignal`：event → module(action/intent)
-- Sandbox 中的 Mock 分层：`docs/specs/drafts/topics/sandbox-runtime/20-dependency-and-mock-strategy.md`
+- Sandbox 中的 Mock 分层：`docs/ssot/runtime/logix-sandbox/20-dependency-and-mock-strategy.md`
 - 多视图原则（同一工件多投影）：`docs/specs/sdd-platform/workbench/ui-ux/05-multi-view-principles.md`
 - 平台术语裁决（Universal Spy / Semantic UI Mock / UI_INTENT）：`docs/ssot/platform/foundation/02-glossary.md`
 

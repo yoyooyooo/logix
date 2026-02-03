@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "logix-node-perf-matrix.spy-use-v1",
+  "updatedAt": "2026-01-26",
+  "defaults": {
+    "runs": 30,
+    "warmupDiscard": 5,
+    "timeoutMs": 20000,
+    "profiles": {
+      "smoke": { "runs": 12, "warmupDiscard": 2, "timeoutMs": 12000 },
+      "quick": { "runs": 25, "warmupDiscard": 5, "timeoutMs": 15000 },
+      "default": { "runs": 30, "warmupDiscard": 5, "timeoutMs": 20000 },
+      "soak": { "runs": 80, "warmupDiscard": 10, "timeoutMs": 30000 }
+    }
+  },
+  "semantics": {
+    "refSyntax": "axis=value[&axis=value...]",
+    "relativeBudget": {
+      "pairing": "matchAllOtherParams",
+      "stat": "p95",
+      "unavailableOn": ["missing", "timeout", "failed", "metricUnavailable"]
+    }
+  },
+  "suites": [
+    {
+      "id": "core.boundApi.use.spyCollector",
+      "priority": "P1",
+      "title": "core: BoundApiRuntime.$.use overhead (spyCollector on/off via env)",
+      "primaryAxis": "iterations",
+      "axes": {
+        "iterations": [1, 10, 100, 1000, 10000],
+        "variant": ["directTag", "use"]
+      },
+      "metrics": ["runtime.useLoopMs"],
+      "notes": "注入模式由 env LOGIX_SPY_COLLECTOR=on 控制；disabled/enable 的 before/after 通过两次 collect + diff 产生。"
+    }
+  ]
+}
+

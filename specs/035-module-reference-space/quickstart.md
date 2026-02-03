@@ -23,22 +23,11 @@
 
 ## 3) 保存资产（CodeAsset：表达式/校验）
 
-保存一个 `@logixjs/module.codeAsset@v1` 时，最小必填：
-
-- `source`：源码层（可读、可编辑）
-- `normalizedIr`：规范化 IR（parseable 或 blackbox）
-- `deps`：显式依赖（对齐 PortSpec 的可引用空间）
-- `digest`：稳定摘要（用于引用与缓存）
-
-黑盒资产（不可解析/超子集）必须显式补齐 `deps/能力/预算`；否则拒绝保存。
+资产协议已拆分为 034：`specs/034-code-asset-protocol/`。
 
 ## 4) 预览期（sandbox 受控执行）
 
-预览执行必须受控：
-
-- 确定性：随机/时间/环境读取必须被拒绝或要求显式注入
-- 预算/超时：超限必须中断并输出可解释错误（而不是挂死）
-- 输出大小：超大对象必须裁剪或失败（并标注原因）
+预览执行（确定性/预算/超时/输出大小）属于 034 的后续实现跑道：`specs/034-code-asset-protocol/`。
 
 ## References
 

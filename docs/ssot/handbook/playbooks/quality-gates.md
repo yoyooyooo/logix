@@ -46,6 +46,18 @@ version: 1
 
 - `packages/logix-test/package.json` 的 `test` 脚本是 `vitest`（默认 watch）；在自动化/一次性验证里优先用 workspace `pnpm test`，或显式 `pnpm -C packages/logix-test exec vitest run`。
 
+## 2.1 Logix CLI 门禁（085：IR/Anchors/Contract Suite）
+
+> 当改动触及「IR 工件口径 / 锚点 / 回写闭环 / TrialRun artifacts / rulesManifest」时，除了 workspace 级 typecheck/test，建议补一轮 CLI 门禁以获取“可行动 reason codes + 最小事实包”。
+
+- 先确保 CLI 可执行：`pnpm -C packages/logix-cli build`
+- 一键验收（036）：`logix contract-suite run --runId <id> --entry <modulePath>#<exportName> --out <dir>`
+  - 需要最小事实包：加 `--includeContextPack`（或门禁失败时默认会输出）
+  - 需要顺带定位锚点缺口：加 `--includeAnchorAutofill`（report-only；会额外产出 `patch.plan.json` / `autofill.report.json`，并写入 context pack）
+- 仅做 IR 门禁/对比（更细粒度，可用于基线 diff）：
+  - `logix ir export` → `logix ir validate`
+  - `logix ir diff --before <baseline> --after <current>`
+
 ## 3. 触发条件建议（最小闭环）
 
 - 改 `A/B`（StateTransaction / FlowRuntime / Middleware / ConcurrencyPolicy 等）：至少 `pnpm typecheck` + `pnpm test`；再按需补 `diagnostics-perf-baseline.md` 的 perf/证据。

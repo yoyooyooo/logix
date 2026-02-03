@@ -9,9 +9,20 @@
 
 ## 2) 怎么运行（预期入口）
 
-本能力通常由 `085` CLI 或平台侧 Node 工具链暴露（报表默认 report-only）：
+本能力由 `085` 的 CLI 暴露（默认 report-only，不写回源码）：
 
-- 预期命令形态：`logix ... spy ...`（名称可在实现阶段微调，但输出工件必须保持 `SpyEvidenceReport@v1`）
+- 命令：`logix spy evidence --entry <modulePath>#<exportName> [--out <dir>]`
+- 产物：`<out>/spy.evidence.report.json`（`SpyEvidenceReport@v1`）
+
+示例（用 086 的 fixture 模块作为入口）：
+
+```bash
+logix spy evidence \
+  --entry examples/logix-react/src/demos/platform-viz/fixtures.ts#PlatformVizDemoModule \
+  --out .logix-artifacts \
+  --maxUsedServices 200 \
+  --maxRawMode 50
+```
 
 ## 3) 如何解读结果
 
@@ -19,4 +30,3 @@
 - `rawMode[]`：无法解析/歧义/子集外形态的显式降级（reason codes）。
 - `diff`（若提供）：用于提示“可能缺失 services 声明 / 声明冗余”（仅建议，不自动写回）。
 - `coverage`：覆盖局限标记；必须在 UI/CI 中一并展示，避免被误解为权威。
-

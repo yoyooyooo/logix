@@ -1,5 +1,7 @@
 import { Effect, FiberRef } from 'effect'
 import type { JsonValue } from '../../observability/jsonValue.js'
+import type { ControlAck, ControlCommand } from '../../observability/control.js'
+import { makeControlAck } from '../../observability/control.js'
 import type { EvidencePackage, EvidencePackageSource } from '../../observability/evidence.js'
 import { exportEvidencePackage, OBSERVABILITY_PROTOCOL_VERSION } from '../../observability/evidence.js'
 import type { ConvergeStaticIrExport } from '../../state-trait/converge-ir.js'
@@ -88,6 +90,7 @@ const nextRunId = (): string => {
 
 let currentRunId = nextRunId()
 let nextSeq = 1
+let recordingPaused = false
 
 let bufferSize = 500
 const ringBuffer: RuntimeDebugEventRef[] = []
@@ -208,6 +211,7 @@ export const setDevtoolsRunId = (runId: string): void => {
 export const startDevtoolsRun = (runId?: string): string => {
   currentRunId = typeof runId === 'string' && runId.length > 0 ? runId : nextRunId()
   nextSeq = 1
+  recordingPaused = false
   clearRuntimeDebugEventSeq()
   clearDevtoolsEvents()
   return currentRunId
@@ -219,6 +223,59 @@ export const clearDevtoolsEvents = (): void => {
   exportBudget.dropped = 0
   exportBudget.oversized = 0
   markSnapshotChanged()
+}
+
+export const isDevtoolsRecordingPaused = (): boolean => recordingPaused
+
+export const sendDevtoolsControlCommand = (command: ControlCommand): ControlAck => {
+  const commandSeq = typeof command.commandSeq === 'number' && Number.isFinite(command.commandSeq) ? Math.floor(command.commandSeq) : 0
+  if (commandSeq < 1) {
+    return makeControlAck({
+      protocolVersion: command.protocolVersion,
+      commandSeq: commandSeq >= 1 ? commandSeq : 1,
+      accepted: false,
+      runId: currentRunId,
+      reason: 'invalid_command_seq',
+    })
+  }
+
+  if (command.protocolVersion !== OBSERVABILITY_PROTOCOL_VERSION) {
+    return makeControlAck({
+      protocolVersion: command.protocolVersion,
+      commandSeq,
+      accepted: false,
+      runId: currentRunId,
+      reason: 'protocol_version_mismatch',
+    })
+  }
+
+  if (command.runId && command.runId !== currentRunId) {
+    return makeControlAck({
+      protocolVersion: command.protocolVersion,
+      commandSeq,
+      accepted: false,
+      runId: currentRunId,
+      reason: 'run_id_mismatch',
+    })
+  }
+
+  switch (command.type) {
+    case 'clear':
+      clearDevtoolsEvents()
+      return makeControlAck({ protocolVersion: command.protocolVersion, commandSeq, accepted: true, runId: currentRunId })
+    case 'pause':
+      if (!recordingPaused) {
+        recordingPaused = true
+        markSnapshotChanged()
+      }
+      return makeControlAck({ protocolVersion: command.protocolVersion, commandSeq, accepted: true, runId: currentRunId })
+    case 'resume':
+      if (recordingPaused) {
+        recordingPaused = false
+        markSnapshotChanged()
+      }
+      return makeControlAck({ protocolVersion: command.protocolVersion, commandSeq, accepted: true, runId: currentRunId })
+  }
 }
 
 export const setInstanceLabel = (instanceId: string, label: string): void => {
@@ -357,6 +414,13 @@ export const devtoolsHubSink: Sink = {
             changed = true
           }
         }
+      }
+
+      if (recordingPaused) {
+        if (changed) {
+          markSnapshotChanged()
+        }
+        return
       }
 
       let exportBudgetChanged = false

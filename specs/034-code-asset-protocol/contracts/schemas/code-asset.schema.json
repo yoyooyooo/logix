@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/034-code-asset-protocol/schemas/code-asset.schema.json",
+  "title": "CodeAsset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "kind", "source", "normalizedIr", "deps", "digest"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "kind": { "type": "string", "enum": ["expression", "validator"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lang", "code"],
+      "properties": {
+        "lang": { "type": "string", "enum": ["ts"] },
+        "code": { "type": "string" }
+      }
+    },
+    "normalizedIr": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parseable"],
+      "properties": {
+        "parseable": { "type": "boolean" },
+        "blackboxReason": { "type": "string" }
+      }
+    },
+    "deps": { "$ref": "./deps.schema.json" },
+    "digest": { "type": "string", "minLength": 1 },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxMs": { "type": "integer", "minimum": 0 },
+        "maxBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "capabilities": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" },
+    "anchor": { "$ref": "./reversibility-anchor.schema.json" },
+    "meta": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}
+

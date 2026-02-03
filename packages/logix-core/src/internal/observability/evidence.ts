@@ -1,15 +1,9 @@
 import { isJsonValue, type JsonValue } from './jsonValue.js'
+import { parseObservationEnvelope, type ObservationEnvelope } from './envelope.js'
 
 export const OBSERVABILITY_PROTOCOL_VERSION = 'v1'
 
-export interface ObservationEnvelope {
-  readonly protocolVersion: string
-  readonly runId: string
-  readonly seq: number
-  readonly timestamp: number
-  readonly type: string
-  readonly payload: JsonValue
-}
+export type { ObservationEnvelope } from './envelope.js'
 
 export interface EvidencePackageSource {
   readonly host: string
@@ -85,26 +79,19 @@ export const importEvidencePackage = (input: unknown): EvidencePackage => {
   const eventsRaw = Array.isArray(input.events) ? input.events : []
   const events: ObservationEnvelope[] = []
 
-  for (const e of eventsRaw) {
-    if (!isRecord(e)) continue
+  for (const raw of eventsRaw) {
+    const parsed = parseObservationEnvelope(raw, { protocolVersion, runId })
+    if (!parsed) continue
 
-    const seq = asPositiveInt(e.seq)
-    const timestamp = asFiniteNumber(e.timestamp)
-    const type = asNonEmptyString(e.type)
-    const payloadRaw = e.payload
-
-    if (!seq || timestamp === undefined || !type || !isJsonValue(payloadRaw)) {
+    // EvidencePackage invariant: events must belong to the same run + protocol version.
+    if (parsed.runId !== runId || parsed.protocolVersion !== protocolVersion) {
       continue
     }
 
-    events.push({
-      protocolVersion: asNonEmptyString(e.protocolVersion) ?? protocolVersion,
-      runId: asNonEmptyString(e.runId) ?? runId,
-      seq,
-      timestamp,
-      type,
-      payload: payloadRaw,
-    })
+    // Hard gate (defensive): ensure payload is JsonValue (parseObservationEnvelope already checks).
+    if (!isJsonValue(parsed.payload)) continue
+
+    events.push(parsed)
   }
 
   const summary = isJsonValue(input.summary) ? input.summary : undefined

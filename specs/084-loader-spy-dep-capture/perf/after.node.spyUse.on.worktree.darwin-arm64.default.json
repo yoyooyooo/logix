@@ -1,0 +1,438 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-26T21:40:51.408Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-node-perf-matrix.spy-use-v1",
+    "matrixUpdatedAt": "2026-01-26",
+    "matrixHash": "716b366e822130d067fb021510ab2dd777d9c9e52792ebf153407cd2ef88d85f",
+    "git": {
+      "branch": "pen",
+      "commit": "8f03e7f4e9636567c4edc70eb5c07b42a9a649af",
+      "dirty": true
+    },
+    "config": {
+      "runs": 30,
+      "warmupDiscard": 5,
+      "timeoutMs": 20000,
+      "headless": true,
+      "profile": "default"
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.21.1",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "node",
+        "headless": true
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "core.boundApi.use.spyCollector",
+      "title": "core: BoundApiRuntime.$.use serviceTag overhead (spy on/off)",
+      "priority": "P1",
+      "primaryAxis": "iterations",
+      "points": [
+        {
+          "params": {
+            "variant": "directTag",
+            "iterations": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.04066699999998491,
+                "p95Ms": 0.06254200000000765
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "directTag"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        },
+        {
+          "params": {
+            "variant": "directTag",
+            "iterations": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.04304100000001654,
+                "p95Ms": 0.052125000000046384
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "directTag"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        },
+        {
+          "params": {
+            "variant": "directTag",
+            "iterations": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.09616699999992306,
+                "p95Ms": 0.12925000000007003
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "directTag"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        },
+        {
+          "params": {
+            "variant": "directTag",
+            "iterations": 1000
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.20816600000000562,
+                "p95Ms": 0.33454199999994216
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 1000
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "directTag"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        },
+        {
+          "params": {
+            "variant": "directTag",
+            "iterations": 10000
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 1.8247920000000022,
+                "p95Ms": 1.9610829999999169
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 10000
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "directTag"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        },
+        {
+          "params": {
+            "variant": "use",
+            "iterations": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.02549999999996544,
+                "p95Ms": 0.04137500000001637
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "use"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        },
+        {
+          "params": {
+            "variant": "use",
+            "iterations": 10
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.035458000000062384,
+                "p95Ms": 0.04370799999992414
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "use"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        },
+        {
+          "params": {
+            "variant": "use",
+            "iterations": 100
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.1529170000000022,
+                "p95Ms": 0.19791699999996126
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "use"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        },
+        {
+          "params": {
+            "variant": "use",
+            "iterations": 1000
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.6831660000000284,
+                "p95Ms": 0.836832999999956
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 1000
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "use"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        },
+        {
+          "params": {
+            "variant": "use",
+            "iterations": 10000
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.useLoopMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 6.554249999999911,
+                "p95Ms": 6.68120799999997
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "workload.iterations",
+              "unit": "count",
+              "status": "ok",
+              "value": 10000
+            },
+            {
+              "name": "variant",
+              "unit": "string",
+              "status": "ok",
+              "value": "use"
+            },
+            {
+              "name": "spyCollectorMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "on"
+            }
+          ]
+        }
+      ],
+      "thresholds": [],
+      "comparisons": []
+    }
+  ]
+}

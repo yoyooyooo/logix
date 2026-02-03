@@ -1,12 +1,15 @@
 ---
 title: Host ↔ Worker Protocol & Schema
-status: draft
-version: 2025-12-07
+status: merged
+version: 2026-01-27
 value: core
 priority: now
+moved_to: ../../../../ssot/runtime/logix-sandbox/15-protocol-and-schema.md
 ---
 
 # Host ↔ Worker Protocol & Schema
+
+> ✅ 已收编到 runtime SSoT：`docs/ssot/runtime/logix-sandbox/15-protocol-and-schema.md`（后续修改以 SSoT 版本为准）。
 
 > 本文档定义 Sandbox 主线程（Host）与 Web Worker 之间的完整通信协议与 TypeScript Schema。
 
@@ -14,11 +17,16 @@ priority: now
 
 ```
 Host ────────────────────→ Worker
-      INIT / COMPILE / RUN / TERMINATE
+      INIT / COMPILE / RUN / UI_CALLBACK / TERMINATE
 
 Worker ──────────────────→ Host
-      READY / LOG / TRACE / UI_INTENT / ERROR / COMPLETE
+      READY / COMPILE_RESULT / LOG / TRACE / UI_INTENT / UI_CALLBACK_ACK / ERROR / COMPLETE
 ```
+
+### 1.1 协议版本（protocolVersion）
+
+- 所有 Host↔Worker 消息都允许携带 `protocolVersion?: 'v1'`（推荐始终携带）。
+- 兼容策略（forward-only）：当收到未知 `protocolVersion` 或结构不合法的消息时，接收方必须以 `ERROR` + `code=PROTOCOL_ERROR` 结构化失败，并提供最小可行动的 `protocol.issues`（不得静默忽略）。
 
 ---
 
@@ -30,6 +38,7 @@ Worker ──────────────────→ Host
 
 ```typescript
 interface InitCommand {
+  protocolVersion?: 'v1'
   type: 'INIT'
   payload?: {
     /** 可选：为 Worker 注入环境变量（供用户代码读取） */
@@ -56,6 +65,7 @@ interface InitCommand {
 
 ```typescript
 interface CompileCommand {
+  protocolVersion?: 'v1'
   type: 'COMPILE'
   payload: {
     /** 入口代码 */
@@ -74,6 +84,7 @@ interface CompileCommand {
 
 ```typescript
 interface RunCommand {
+  protocolVersion?: 'v1'
   type: 'RUN'
   payload: {
     /** 运行 ID（用于 Trace 关联） */
@@ -92,6 +103,7 @@ Host → Worker 触发 UI 回调（用于响应 `UI_INTENT`）。
 
 ```typescript
 interface UiCallbackCommand {
+  protocolVersion?: 'v1'
   type: 'UI_CALLBACK'
   payload: {
     runId: string
@@ -108,6 +120,7 @@ interface UiCallbackCommand {
 
 ```typescript
 interface TerminateCommand {
+  protocolVersion?: 'v1'
   type: 'TERMINATE'
 }
 ```
@@ -122,6 +135,7 @@ Worker 初始化完成。
 
 ```typescript
 interface ReadyEvent {
+  protocolVersion?: 'v1'
   type: 'READY'
   payload: {
     /** Worker 版本 */
@@ -138,6 +152,7 @@ interface ReadyEvent {
 
 ```typescript
 interface CompileResultEvent {
+  protocolVersion?: 'v1'
   type: 'COMPILE_RESULT'
   payload: {
     success: boolean
@@ -153,11 +168,13 @@ interface CompileResultEvent {
 
 ```typescript
 interface LogEvent {
+  protocolVersion?: 'v1'
   type: 'LOG'
   payload: {
     level: 'debug' | 'info' | 'warn' | 'error'
     args: unknown[]
     timestamp: number
+    source?: 'console' | 'effect' | 'logix'
   }
 }
 ```
@@ -168,6 +185,7 @@ Effect/Logix 执行 Trace。
 
 ```typescript
 interface TraceEvent {
+  protocolVersion?: 'v1'
   type: 'TRACE'
   payload: TraceSpan
 }
@@ -193,6 +211,7 @@ UI 组件意图信号（Semantic UI Mock 产出）。
 
 ```typescript
 interface UiIntentEvent {
+  protocolVersion?: 'v1'
   type: 'UI_INTENT'
   payload: UiIntentPacket
 }
@@ -236,6 +255,7 @@ Worker 对 UI 回调的确认（PoC）。
 
 ```typescript
 interface UiCallbackAckEvent {
+  protocolVersion?: 'v1'
   type: 'UI_CALLBACK_ACK'
   payload: {
     runId: string
@@ -253,11 +273,23 @@ interface UiCallbackAckEvent {
 
 ```typescript
 interface ErrorEvent {
+  protocolVersion?: 'v1'
   type: 'ERROR'
   payload: {
-    code: 'INIT_FAILED' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'WORKER_TERMINATED'
+    code: 'INIT_FAILED' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'WORKER_TERMINATED' | 'PROTOCOL_ERROR'
     message: string
     stack?: string
+    /**
+     * 当 code=PROTOCOL_ERROR 时，提供“协议问题”的最小可行动上下文。
+     * - direction: 哪个方向的消息解码失败
+     * - messageType: 尝试识别出的 type（若可得）
+     * - issues: 指向具体字段的结构化问题列表
+     */
+    protocol?: {
+      direction: 'HostToWorker' | 'WorkerToHost'
+      messageType?: string
+      issues: Array<{ path: string; message: string; expected?: string; actual?: string }>
+    }
   }
 }
 ```
@@ -268,6 +300,7 @@ interface ErrorEvent {
 
 ```typescript
 interface CompleteEvent {
+  protocolVersion?: 'v1'
   type: 'COMPLETE'
   payload: {
     runId: string

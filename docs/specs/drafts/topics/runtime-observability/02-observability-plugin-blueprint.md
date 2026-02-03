@@ -7,8 +7,8 @@ priority: next
 related:
   - specs/007-unify-trait-system/contracts/replay-and-diagnostics.md
   - docs/ssot/runtime/logix-core/observability/09-debugging.md
-  - ../devtools-and-studio/01-cli-and-dev-server.md
-  - ../devtools-and-studio/02-full-duplex-digital-twin.md
+  - docs/ssot/platform/contracts/04-devserver-protocol.md
+  - docs/ssot/platform/ir/00-codegen-and-parser.md
 ---
 
 # Observability & Track Capability Blueprint

@@ -1,0 +1,37 @@
+{
+  "name": "@logixjs/anchor-engine",
+  "version": "0.0.1",
+  "license": "Apache-2.0",
+  "description": "Node-only platform-grade parser engine (AnchorIndex@v1)",
+  "type": "module",
+  "files": [
+    "dist/**"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./Parser": "./src/Parser.ts",
+    "./internal/*": null
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "effect": "^3.19.13",
+    "fast-glob": "^3.3.2",
+    "ts-morph": "^25.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.1",
+    "tsup": "^8.5.1",
+    "typescript": "5.8.2",
+    "vitest": "^4.0.15"
+  },
+  "peerDependencies": {
+    "effect": "^3.19.13"
+  }
+}
+

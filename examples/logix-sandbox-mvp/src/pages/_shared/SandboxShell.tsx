@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { type SandboxStatus, type LogEntry, type TraceSpan, type UiIntentPacket } from '@logixjs/sandbox'
+import { type SandboxErrorInfo, type SandboxStatus, type LogEntry, type TraceSpan, type UiIntentPacket } from '@logixjs/sandbox'
 import { ThemeToggle } from '../../components/ThemeToggle'
 
 const shouldShowFlickerDiagnostics = (): boolean => {
@@ -319,6 +319,57 @@ export function AlertBox({
         {title}
       </div>
       {children}
+    </div>
+  )
+}
+
+export function SandboxErrorDetails({ error }: { error: SandboxErrorInfo }) {
+  return (
+    <div className="space-y-2">
+      <div className="font-mono text-xs whitespace-pre-wrap">{error.message}</div>
+
+      {error.protocol?.issues?.length ? (
+        <div className="space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">
+            Protocol · {error.protocol.direction}
+            {error.protocol.messageType ? ` · ${error.protocol.messageType}` : ''}
+          </div>
+          <div className="space-y-1 font-mono text-xs">
+            {error.protocol.issues.map((issue, idx) => (
+              <div key={`${issue.path}-${idx}`} className="rounded border border-current/10 bg-white/30 px-2 py-1">
+                <div className="whitespace-pre-wrap">
+                  <span className="opacity-80">{issue.path}</span>
+                  <span className="opacity-80">: </span>
+                  <span>{issue.message}</span>
+                </div>
+                {issue.expected || issue.actual ? (
+                  <div className="mt-0.5 opacity-80">
+                    {issue.expected ? `expected=${issue.expected}` : ''}
+                    {issue.expected && issue.actual ? ' ' : ''}
+                    {issue.actual ? `actual=${issue.actual}` : ''}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {error.requestedKernelId || error.availableKernelIds?.length || error.effectiveKernelId || error.fallbackReason ? (
+        <div className="text-[11px] font-mono opacity-80">
+          {error.requestedKernelId ? `requestedKernelId=${error.requestedKernelId}` : ''}
+          {error.requestedKernelId && (error.availableKernelIds?.length || error.effectiveKernelId || error.fallbackReason)
+            ? ' '
+            : ''}
+          {error.availableKernelIds?.length ? `availableKernelIds=[${error.availableKernelIds.join(', ')}]` : ''}
+          {error.availableKernelIds?.length && (error.effectiveKernelId || error.fallbackReason) ? ' ' : ''}
+          {error.effectiveKernelId ? `effectiveKernelId=${error.effectiveKernelId}` : ''}
+          {error.effectiveKernelId && error.fallbackReason ? ' ' : ''}
+          {error.fallbackReason ? `fallbackReason=${error.fallbackReason}` : ''}
+        </div>
+      ) : null}
+
+      {error.stack ? <div className="text-[11px] font-mono whitespace-pre-wrap opacity-80">{error.stack}</div> : null}
     </div>
   )
 }

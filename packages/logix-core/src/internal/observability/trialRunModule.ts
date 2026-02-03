@@ -18,7 +18,13 @@ import { appendConvergeStaticIrCollectors } from '../runtime/core/ConvergeStatic
 import type { SerializableErrorSummary } from '../runtime/core/errorSummary.js'
 import { toSerializableErrorSummary } from '../runtime/core/errorSummary.js'
 import { makeProgramRunnerKernel } from '../runtime/ProgramRunner.kernel.js'
-import { extractManifest, type ModuleManifest } from '../reflection/manifest.js'
+import {
+  extractManifest,
+  resolveServicePortDeclarations,
+  type ModuleManifest,
+  type ModuleManifestServicePort,
+  type ResolvedServicePortDeclaration,
+} from '../reflection/manifest.js'
 import { exportStaticIr } from '../reflection/staticIr.js'
 import * as Runtime from '../runtime/Runtime.js'
 import { collectTrialRunArtifacts } from './artifacts/collect.js'
@@ -38,9 +44,24 @@ export interface TrialRunReport {
   readonly staticIr?: ReturnType<typeof exportStaticIr>
   readonly artifacts?: TrialRunArtifacts
   readonly environment?: EnvironmentIr
+  readonly servicePortsAlignment?: ServicePortsAlignmentResult
   readonly evidence?: EvidencePackage
   readonly summary?: unknown
   readonly error?: SerializableErrorSummary
+}
+
+export interface ServicePortsAlignmentResult {
+  readonly moduleId: string
+  readonly declared: ReadonlyArray<ModuleManifestServicePort>
+  readonly missingRequired: ReadonlyArray<ModuleManifestServicePort>
+  readonly missingOptional?: ReadonlyArray<ModuleManifestServicePort>
+  readonly conflicts?: ReadonlyArray<{
+    readonly serviceId: string
+    readonly candidates: ReadonlyArray<{
+      readonly ownerModuleId: string
+      readonly source: 'module' | 'service'
+    }>
+  }>
 }
 
 export interface EnvironmentIr {
@@ -268,6 +289,10 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
 ): Effect.Effect<TrialRunReport, never, never> =>
   Effect.gen(function* () {
     const rootImpl = resolveRootImpl(root)
+    const moduleId =
+      typeof (rootImpl.module as any)?.id === 'string' && (rootImpl.module as any).id.length > 0
+        ? String((rootImpl.module as any).id)
+        : 'unknown'
 
     const session = makeRunSession({
       runId: options?.runId,
@@ -317,6 +342,62 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
     )
 
     const identity = kernel.identity
+
+    let servicePortsDeclarationError: SerializableErrorSummary | undefined
+    let declaredServicePorts: ReadonlyArray<ResolvedServicePortDeclaration> = []
+    let declaredPortsForReport: ReadonlyArray<ModuleManifestServicePort> = []
+
+    try {
+      declaredServicePorts = resolveServicePortDeclarations(root as any) ?? []
+      declaredPortsForReport = declaredServicePorts.map(({ tag: _tag, ...rest }) => rest)
+    } catch (cause) {
+      servicePortsDeclarationError = toErrorSummaryWithCode(
+        cause,
+        'InvalidServiceId',
+        'Invalid service port declaration: each Tag must have a stable ServiceId (tag.key/id/_id).',
+      )
+    }
+
+    const servicePortsAlignment: ServicePortsAlignmentResult | undefined =
+      servicePortsDeclarationError || declaredPortsForReport.length === 0
+        ? undefined
+        : yield* Effect.gen(function* () {
+            const missingRequired: ModuleManifestServicePort[] = []
+            const missingOptional: ModuleManifestServicePort[] = []
+
+            const check = (decl: ResolvedServicePortDeclaration): Effect.Effect<boolean, never, never> =>
+              Effect.tryPromise({
+                try: () => kernel.runtime.runPromise(decl.tag as any),
+                catch: (cause) => cause,
+              }).pipe(
+                Effect.as(true),
+                Effect.catchAll(() => Effect.succeed(false)),
+              )
+
+            for (const decl of declaredServicePorts) {
+              const ok = yield* check(decl)
+              if (ok) continue
+
+              const port: ModuleManifestServicePort = {
+                port: decl.port,
+                serviceId: decl.serviceId,
+                ...(decl.optional === true ? { optional: true } : {}),
+              }
+
+              if (decl.optional === true) {
+                missingOptional.push(port)
+              } else {
+                missingRequired.push(port)
+              }
+            }
+
+            return {
+              moduleId,
+              declared: declaredPortsForReport,
+              missingRequired,
+              ...(missingOptional.length > 0 ? { missingOptional } : {}),
+            }
+          })
 
     const bootFiber = kernel.runtime.runFork(rootImpl.module as any)
     const bootExit = yield* awaitFiberExitWithTimeout(bootFiber, options?.trialRunTimeoutMs)
@@ -461,6 +542,28 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
       }
     }
 
+    if (servicePortsDeclarationError) {
+      ok = false
+      if (!error) {
+        error = servicePortsDeclarationError
+      } else {
+        const prev = isRecord(summary) ? summary : {}
+        const prevLogix = isRecord((prev as any).__logix) ? ((prev as any).__logix as Record<string, unknown>) : {}
+        summary = { __logix: { ...prevLogix, servicePortsDeclarationError } }
+      }
+    }
+
+    if (servicePortsAlignment && servicePortsAlignment.missingRequired.length > 0) {
+      ok = false
+      if (!error) {
+        error = {
+          message: '[Logix] Missing required service ports (see servicePortsAlignment.missingRequired)',
+          code: 'MissingDependency',
+          hint: 'Provide a Layer mock/implementation via options.layer, or mark the port as optional.',
+        }
+      }
+    }
+
     const environment = buildEnvironmentIr({
       kernelImplementationRef,
       runtimeServicesEvidence,
@@ -468,11 +571,6 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
       missingServices,
       missingConfigKeys,
     })
-
-    const moduleId =
-      typeof (rootImpl.module as any)?.id === 'string' && (rootImpl.module as any).id.length > 0
-        ? String((rootImpl.module as any).id)
-        : (manifest?.moduleId ?? 'unknown')
 
     const artifacts = collectTrialRunArtifacts({
       exporters: getTrialRunArtifactExporters(rootImpl.module as any),
@@ -491,6 +589,7 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
       staticIr: staticIr as any,
       artifacts,
       environment,
+      servicePortsAlignment,
       evidence,
       summary,
       error,
@@ -504,6 +603,7 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
           runId: session.runId,
           ok: false,
           environment,
+          servicePortsAlignment,
           error: {
             message: `[Logix] TrialRunReport exceeded maxBytes (${originalBytes} > ${maxBytes})`,
             code: 'Oversized',

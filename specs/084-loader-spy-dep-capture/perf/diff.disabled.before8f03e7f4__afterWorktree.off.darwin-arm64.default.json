@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-01-26T21:41:05.003Z",
+    "from": {
+      "file": "specs/084-loader-spy-dep-capture/perf/before.node.spyUse.off.8f03e7f4.darwin-arm64.default.json",
+      "commit": "8f03e7f4e9636567c4edc70eb5c07b42a9a649af"
+    },
+    "to": {
+      "file": "specs/084-loader-spy-dep-capture/perf/after.node.spyUse.off.worktree.darwin-arm64.default.json",
+      "commit": "8f03e7f4e9636567c4edc70eb5c07b42a9a649af"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "core.boundApi.use.spyCollector",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 2
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 2
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=undefined ok=0 unavailable=0 missing=2] after[value=undefined ok=0 unavailable=0 missing=2]"
+        },
+        {
+          "name": "spyCollectorMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 10,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "after": {
+            "ok": 10,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "message": "spyCollectorMode(points) unit=count: before[value=off ok=10 unavailable=0 missing=0] after[value=off ok=10 unavailable=0 missing=0]"
+        },
+        {
+          "name": "variant",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 10,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "use"
+          },
+          "after": {
+            "ok": 10,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "use"
+          },
+          "message": "variant(points) unit=count: before[value=use ok=10 unavailable=0 missing=0] after[value=use ok=10 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.iterations",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 10,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 100
+          },
+          "after": {
+            "ok": 10,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 100
+          },
+          "message": "workload.iterations(points) unit=ratio: before[value=100 ok=10 unavailable=0 missing=0] after[value=100 ok=10 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "runtime.useLoopMs",
+          "unit": "ms",
+          "compared": 10,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [],
+          "topImprovements": [
+            {
+              "params": {
+                "iterations": 10000,
+                "variant": "directTag"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 1.988207999999986,
+                "p95Ms": 2.1302499999999327
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 1.821042000000034,
+                "p95Ms": 1.947541000000001
+              },
+              "deltaMs": {
+                "medianMs": -0.16716599999995196,
+                "p95Ms": -0.18270899999993162
+              },
+              "ratio": {
+                "median": 0.9159212718186663,
+                "p95": 0.9142311935219165
+              }
+            },
+            {
+              "params": {
+                "iterations": 10000,
+                "variant": "use"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 2.2737919999999576,
+                "p95Ms": 2.400875000000042
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 2.121499999999969,
+                "p95Ms": 2.236458999999968
+              },
+              "deltaMs": {
+                "medianMs": -0.15229199999998855,
+                "p95Ms": -0.16441600000007384
+              },
+              "ratio": {
+                "median": 0.9330228974330144,
+                "p95": 0.9315183006195362
+              }
+            },
+            {
+              "params": {
+                "iterations": 1000,
+                "variant": "use"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.23458300000004328,
+                "p95Ms": 0.26224999999999454
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.2131250000001046,
+                "p95Ms": 0.23604199999999764
+              },
+              "deltaMs": {
+                "medianMs": -0.021457999999938693,
+                "p95Ms": -0.0262079999999969
+              },
+              "ratio": {
+                "median": 0.9085270458646418,
+                "p95": 0.9000648236415731
+              }
+            },
+            {
+              "params": {
+                "iterations": 100,
+                "variant": "directTag"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.1155829999999014,
+                "p95Ms": 0.144457999999986
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.09591699999998582,
+                "p95Ms": 0.12308299999995143
+              },
+              "deltaMs": {
+                "medianMs": -0.019665999999915584,
+                "p95Ms": -0.02137500000003456
+              },
+              "ratio": {
+                "median": 0.8298538712446263,
+                "p95": 0.8520331168918535
+              }
+            },
+            {
+              "params": {
+                "iterations": 100,
+                "variant": "use"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.07041599999990922,
+                "p95Ms": 0.07829100000003564
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.05274999999994634,
+                "p95Ms": 0.06062499999995907
+              },
+              "deltaMs": {
+                "medianMs": -0.017665999999962878,
+                "p95Ms": -0.017666000000076565
+              },
+              "ratio": {
+                "median": 0.7491195182915011,
+                "p95": 0.7743546512361763
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

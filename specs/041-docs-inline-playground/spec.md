@@ -2,8 +2,8 @@
 
 **Feature Branch**: `[041-docs-inline-playground]`  
 **Created**: 2025-12-26  
-**Status**: Draft  
-**Input**: User description: "为用户文档增加在线运行 Playground（教学演示优先），读者可编辑代码后重新运行；高级/Debug 文档才展示 Timeline/Trace 等深度观测。"
+**Status**: Done  
+**Input**: User description: "为用户文档增加在线运行 Playground（教学演示优先），读者可编辑代码后重新运行；高级/Debug 文档才展示 Timeline/Trace 等深度观测。"  
 
 ## User Scenarios & Testing *(mandatory)*
 

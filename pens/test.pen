@@ -1,0 +1,28 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "type": "frame",
+      "id": "bi8Au",
+      "x": 0,
+      "y": 0,
+      "name": "Frame",
+      "clip": true,
+      "width": 800,
+      "height": 600,
+      "fill": "#FFFFFF",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "1afsw",
+          "x": 122,
+          "y": 175,
+          "fill": "#CCCCCC",
+          "width": 163,
+          "height": 119
+        }
+      ]
+    }
+  ]
+}

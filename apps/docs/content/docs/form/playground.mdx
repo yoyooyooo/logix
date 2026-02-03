@@ -1,0 +1,34 @@
+---
+title: Playground
+description: Run a controlled trialrun and observe missing dependencies.
+---
+
+This Playground runs `Observability.trialRunModule` under the hood. The snippet below declares a required service port but does not provide an implementation, so the trialrun should **FAIL**.
+
+<Playground
+  id="form-playground-missing-required"
+  title="Missing required service port"
+  moduleExport="AppRoot"
+  observe={['trialrun should FAIL (MissingDependency)', 'missingRequired should include svc/required']}
+  code={String.raw`import { Context, Effect, Schema } from "effect"
+import * as Logix from "@logixjs/core"
+
+class RequiredService extends Context.Tag("svc/required")<
+  RequiredService,
+  { readonly ping: Effect.Effect<void> }
+>() {}
+
+const Root = Logix.Module.make("Docs.Playground.MissingRequired", {
+  state: Schema.Struct({ ok: Schema.Boolean }),
+  actions: { noop: Schema.Void } as const,
+  services: {
+    required: RequiredService,
+  },
+})
+
+export const AppRoot = Root.implement({
+  initial: { ok: true },
+  logics: [],
+})`}
+/>
+

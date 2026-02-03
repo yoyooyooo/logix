@@ -1,12 +1,15 @@
 ---
 title: '@logixjs/sandbox Package API Design'
-status: draft
+status: merged
 version: 2025-12-07
 value: core
 priority: next
+moved_to: ../../../../ssot/runtime/logix-sandbox/25-sandbox-package-api.md
 ---
 
 # @logixjs/sandbox Package API Design
+
+> ✅ 已收编到 runtime SSoT：`docs/ssot/runtime/logix-sandbox/25-sandbox-package-api.md`（后续修改以 SSoT 版本为准）。
 
 > 本文档定义 `@logixjs/sandbox` 子包的结构与公开 API 设计。
 

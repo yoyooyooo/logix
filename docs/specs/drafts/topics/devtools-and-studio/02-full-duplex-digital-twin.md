@@ -1,9 +1,13 @@
 ---
 title: Runtime · Studio · 全双工数字孪生
-status: superseded
+status: archived
 version: 2025-12-03T00:00:00.000Z
 value: core
 priority: later
+superseded_by:
+  - docs/ssot/platform/ir/00-codegen-and-parser.md
+  - docs/ssot/platform/contracts/03-control-surface-manifest.md
+  - specs/080-full-duplex-prelude/spec-registry.md
 related:
   - ../../../sdd-platform/workbench/02-full-duplex-architecture.md
 ---

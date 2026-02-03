@@ -36,7 +36,6 @@
 
 ### D005：未来字段提示：固定 pending 清单（对齐 080）
 
-**Decision**：页面固定展示 pending spec 清单：`078 servicePorts`、`031 artifacts`、`035 portSpec/typeIr`、`081/082/085` 工件。  
-**Rationale**：当前 `ModuleManifest.manifestVersion=067` 还不包含上述字段；固定清单能避免用户把“尚未实现”误判为 bug。  
+**Decision**：页面固定展示 pending spec 清单（以 `080` 的 spec-registry 为准；优先覆盖 `035 portSpec/typeIr` 等仍未落地字段）。  
+**Rationale**：当前 `ModuleManifest.manifestVersion=083` 仍不包含上述字段；固定清单能避免用户把“尚未实现”误判为 bug。  
 **Alternatives considered**：只在字段出现时展示（现阶段无法表达“缺失但预期将来存在”的信息）。
-

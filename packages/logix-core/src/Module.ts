@@ -4,7 +4,13 @@ import * as Logic from './Logic.js'
 import * as ModuleTagNS from './ModuleTag.js'
 import type { Workflow } from './Workflow.js'
 import * as Action from './internal/action.js'
+import * as ModuleServicePortsRegistry from './internal/debug/ModuleServicePortsRegistry.js'
 import type { JsonValue } from './internal/observability/jsonValue.js'
+import { registerTrialRunArtifactExporter } from './internal/observability/artifacts/registry.js'
+import { resolveServicePortDeclarations } from './internal/reflection/manifest.js'
+import { makePortSpecArtifactExporter } from './internal/reflection/ports/exportPortSpec.js'
+import { makeTypeIrArtifactExporter } from './internal/reflection/ports/exportTypeIr.js'
+import { makeSchemaRegistryPackArtifactExporter } from './internal/schema-registry/exportSchemaRegistryPack.js'
 import * as WorkflowRuntime from './internal/runtime/core/WorkflowRuntime.js'
 import { isDevEnv } from './internal/runtime/core/env.js'
 import * as LogicUnitMetaInternal from './internal/runtime/core/LogicUnitMeta.js'
@@ -85,10 +91,21 @@ export interface ModuleDev {
   readonly source?: DevSource
 }
 
+export type SlotKind = 'single' | 'aspect'
+
+export interface SlotDef {
+  readonly required?: boolean
+  readonly unique?: boolean
+  readonly kind?: SlotKind
+}
+
+export type SlotsDeclaration = Record<string, SlotDef>
+
 export interface LogicUnitOptions {
   readonly id?: string
   readonly kind?: string
   readonly name?: string
+  readonly slotName?: string
   readonly source?: DevSource
 }
 
@@ -109,6 +126,15 @@ export interface ModuleDescriptor {
   readonly meta?: Record<string, JsonValue>
   readonly source?: DevSource
 }
+
+export type ServicePortDeclaration =
+  | Context.Tag<any, any>
+  | {
+      readonly tag: Context.Tag<any, any>
+      readonly optional?: true
+    }
+
+export type ServicesDeclaration = Record<string, ServicePortDeclaration>
 
 export type HandleExtendFn<Sh extends AnyModuleShape, Ext extends object> = (
   runtime: ModuleRuntimeOfShape<Sh>,
@@ -137,6 +163,7 @@ type MountedLogicUnit<Sh extends AnyModuleShape> = {
   readonly derived: boolean
   readonly kind: string
   readonly name?: string
+  readonly slotName?: string
   readonly source?: DevSource
   readonly logic: ModuleLogic<Sh, any, any>
   readonly origin?: {
@@ -197,7 +224,8 @@ type ModuleDefBase<
   ) => Layer.Layer<ModuleRuntimeOfShape<Sh>, E, R>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly slots?: SlotsDeclaration
+  readonly services?: ServicesDeclaration
   readonly dev?: ModuleDev
   readonly logic: <R = never, E = unknown>(
     build: (
@@ -216,7 +244,8 @@ export type AnyModule = {
   readonly reducers?: Record<string, unknown>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly slots?: SlotsDeclaration
+  readonly services?: ServicesDeclaration
   readonly dev?: ModuleDev
 }
 
@@ -335,6 +364,10 @@ const resolveLogicUnit = <Sh extends AnyModuleShape>(
   const name =
     options?.name ?? meta?.name ?? (typeof defaultId === 'string' && defaultId.length > 0 ? defaultId : undefined)
 
+  const slotNameRaw = options?.slotName ?? meta?.slotName
+  const slotName =
+    typeof slotNameRaw === 'string' && slotNameRaw.trim().length > 0 ? slotNameRaw.trim() : undefined
+
   const source = options?.source ?? meta?.source
 
   if (typeof explicitId === 'string' && explicitId.trim().length > 0) {
@@ -343,6 +376,7 @@ const resolveLogicUnit = <Sh extends AnyModuleShape>(
       derived: false,
       kind,
       name,
+      slotName,
       source,
       logic,
       origin: { explicitId: explicitId.trim(), defaultId },
@@ -355,6 +389,7 @@ const resolveLogicUnit = <Sh extends AnyModuleShape>(
       derived: false,
       kind,
       name,
+      slotName,
       source,
       logic,
       origin: { defaultId: defaultId.trim() },
@@ -375,6 +410,7 @@ const resolveLogicUnit = <Sh extends AnyModuleShape>(
     derived: true,
     kind,
     name: name ?? baseRaw,
+    slotName,
     source,
     logic,
     origin: { derivedBase: baseRaw },
@@ -397,6 +433,7 @@ const mountLogicUnit = <Sh extends AnyModuleShape>(
     resolvedKind: nextUnit.kind,
     resolvedName: nextUnit.name,
     resolvedSource: nextUnit.source as any,
+    resolvedSlotName: nextUnit.slotName,
   })
 
   const prevIndex = current.findIndex((u) => u.id === nextUnit.id)
@@ -427,6 +464,206 @@ const mountLogicUnit = <Sh extends AnyModuleShape>(
   ]
 
   return { mounted: nextMounted, overrides: nextOverrides }
+}
+
+const SLOT_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/
+
+const isValidSlotName = (name: string): boolean => SLOT_NAME_RE.test(name)
+
+const asSlotsDeclaration = (value: unknown): SlotsDeclaration | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  return value as SlotsDeclaration
+}
+
+type SlotsValidationError = Error & {
+  readonly name: 'SlotsValidationError'
+  readonly code: string
+  readonly moduleId: string
+  readonly pointer?: string
+  readonly slotName?: string
+  readonly logicUnitId?: string
+  readonly details?: Record<string, unknown>
+}
+
+const makeSlotsValidationError = (params: {
+  readonly code: string
+  readonly message: string
+  readonly moduleId: string
+  readonly pointer?: string
+  readonly slotName?: string
+  readonly logicUnitId?: string
+  readonly details?: Record<string, unknown>
+  readonly fix?: ReadonlyArray<string>
+}): SlotsValidationError => {
+  const message = isDevEnv()
+    ? [
+        `[SlotsValidationError] ${params.message}`,
+        '',
+        `code: ${params.code}`,
+        `moduleId: ${params.moduleId}`,
+        ...(params.slotName ? [`slotName: ${params.slotName}`] : []),
+        ...(params.logicUnitId ? [`logicUnitId: ${params.logicUnitId}`] : []),
+        ...(params.pointer ? [`pointer: ${params.pointer}`] : []),
+        ...(params.fix && params.fix.length > 0 ? ['', 'fix:', ...params.fix] : []),
+      ].join('\n')
+    : `[SlotsValidationError] ${params.message}`
+
+  const err = new Error(message) as SlotsValidationError
+  ;(err as any).name = 'SlotsValidationError'
+  ;(err as any).code = params.code
+  ;(err as any).moduleId = params.moduleId
+  ;(err as any).pointer = params.pointer
+  ;(err as any).slotName = params.slotName
+  ;(err as any).logicUnitId = params.logicUnitId
+  ;(err as any).details = params.details
+  return err
+}
+
+const validateNamedLogicSlots = (params: {
+  readonly moduleId: string
+  readonly slots: unknown
+  readonly mounted: ReadonlyArray<MountedLogicUnit<any>>
+}): void => {
+  const slots = asSlotsDeclaration(params.slots)
+  const slotNames = slots ? Object.keys(slots).sort() : []
+
+  const slotDefs: Record<string, SlotDef> = {}
+  for (const slotName of slotNames) {
+    if (!isValidSlotName(slotName)) {
+      throw makeSlotsValidationError({
+        code: 'slots.invalidSlotName',
+        message: `invalid slotName "${slotName}" (must match ${String(SLOT_NAME_RE)})`,
+        moduleId: params.moduleId,
+        pointer: `/slots/${slotName}`,
+        slotName,
+        fix: ['Use /^[A-Za-z][A-Za-z0-9_]*$/', 'Avoid empty string / whitespace / hyphens'],
+      })
+    }
+
+    const rawDef = (slots as any)[slotName]
+    if (!rawDef || typeof rawDef !== 'object' || Array.isArray(rawDef)) {
+      throw makeSlotsValidationError({
+        code: 'slots.invalidSlotDef',
+        message: `invalid SlotDef for "${slotName}" (expected an object)`,
+        moduleId: params.moduleId,
+        pointer: `/slots/${slotName}`,
+        slotName,
+        details: { got: rawDef === null ? null : typeof rawDef },
+      })
+    }
+
+    const required = (rawDef as any).required === true ? true : undefined
+    const unique = (rawDef as any).unique === true ? true : undefined
+    const kindRaw = (rawDef as any).kind
+    const kind = kindRaw === 'single' || kindRaw === 'aspect' ? (kindRaw as SlotKind) : undefined
+
+    if (kindRaw !== undefined && kind === undefined) {
+      throw makeSlotsValidationError({
+        code: 'slots.invalidSlotKind',
+        message: `invalid SlotDef.kind for "${slotName}" (expected "single" | "aspect")`,
+        moduleId: params.moduleId,
+        pointer: `/slots/${slotName}/kind`,
+        slotName,
+        details: { kind: kindRaw },
+      })
+    }
+
+    if (kind === 'aspect' && unique === true) {
+      throw makeSlotsValidationError({
+        code: 'slots.invalidSlotDef',
+        message: `slot "${slotName}" cannot be both kind="aspect" and unique=true`,
+        moduleId: params.moduleId,
+        pointer: `/slots/${slotName}`,
+        slotName,
+        fix: ['Remove unique=true for aspect slots', 'Or set kind="single" for unique slots'],
+      })
+    }
+
+    slotDefs[slotName] = {
+      ...(required ? { required: true } : null),
+      ...(unique ? { unique: true } : null),
+      ...(kind ? { kind } : null),
+    }
+  }
+
+  const fillsBySlot = new Map<string, string[]>()
+
+  for (const unit of params.mounted) {
+    const slotName = unit.slotName
+    if (!slotName) continue
+
+    if (!isValidSlotName(slotName)) {
+      throw makeSlotsValidationError({
+        code: 'slots.invalidSlotName',
+        message: `invalid slotName "${slotName}" on logicUnit "${unit.id}" (must match ${String(SLOT_NAME_RE)})`,
+        moduleId: params.moduleId,
+        pointer: `/logicUnits/${unit.id}`,
+        slotName,
+        logicUnitId: unit.id,
+        fix: ['Use /^[A-Za-z][A-Za-z0-9_]*$/', 'Avoid empty string / whitespace / hyphens'],
+      })
+    }
+
+    if (!slots) {
+      throw makeSlotsValidationError({
+        code: 'slots.missingSlotsDeclaration',
+        message: `logicUnit "${unit.id}" declares slotName "${slotName}" but module.slots is not declared`,
+        moduleId: params.moduleId,
+        pointer: `/logicUnits/${unit.id}`,
+        slotName,
+        logicUnitId: unit.id,
+        fix: ['Declare module.slots in Logix.Module.make(..., { slots: { ... } })', 'Or remove slotName from this logic unit'],
+      })
+    }
+
+    if (!(slotName in slots)) {
+      throw makeSlotsValidationError({
+        code: 'slots.undeclaredSlot',
+        message: `logicUnit "${unit.id}" declares slotName "${slotName}" which is not declared in module.slots`,
+        moduleId: params.moduleId,
+        pointer: `/logicUnits/${unit.id}`,
+        slotName,
+        logicUnitId: unit.id,
+        fix: ['Declare the slot in module.slots', 'Or fix the slotName on this logic unit'],
+      })
+    }
+
+    const arr = fillsBySlot.get(slotName) ?? []
+    arr.push(unit.id)
+    fillsBySlot.set(slotName, arr)
+  }
+
+  for (const slotName of slotNames) {
+    const def = slotDefs[slotName] ?? {}
+    const kind = def.kind ?? 'single'
+    const fills = fillsBySlot.get(slotName) ?? []
+
+    if (def.required === true && fills.length === 0) {
+      throw makeSlotsValidationError({
+        code: 'slots.requiredMissing',
+        message: `required slot "${slotName}" is not filled`,
+        moduleId: params.moduleId,
+        pointer: `/slots/${slotName}`,
+        slotName,
+        fix: ['Add a logic unit with options { slotName: "' + slotName + '" }'],
+      })
+    }
+
+    const unique = def.unique === true || kind === 'single'
+    const isAspect = kind === 'aspect'
+
+    if (unique && !isAspect && fills.length > 1) {
+      throw makeSlotsValidationError({
+        code: 'slots.uniqueConflict',
+        message: `unique slot "${slotName}" has multiple fills: ${fills.join(', ')}`,
+        moduleId: params.moduleId,
+        pointer: `/slots/${slotName}`,
+        slotName,
+        details: { fills },
+        fix: ['Ensure at most one logic unit uses slotName "' + slotName + '"', 'Use kind="aspect" for multi-fill slots'],
+      })
+    }
+  }
 }
 
 const formatSource = (source?: DevSource): string => {
@@ -537,6 +774,7 @@ const makeLogicFactory = <Id extends string, Sh extends AnyModuleShape, Ext exte
       id: options?.id,
       kind: options?.kind,
       name: options?.name,
+      slotName: options?.slotName,
       source: options?.source,
       moduleId: selfModule.id,
     }
@@ -554,7 +792,8 @@ type MakeDef<Id extends string, SSchema extends AnySchema, AMap extends Action.A
   readonly traits?: unknown
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly slots?: SlotsDeclaration
+  readonly services?: ServicesDeclaration
   readonly dev?: ModuleDev
 }
 
@@ -595,7 +834,8 @@ export type MakeExtendDef<
   readonly effects?: EffectsFromMap<MergeActionMap<BaseActions, ExtActions>>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly slots?: SlotsDeclaration
+  readonly services?: ServicesDeclaration
   readonly dev?: ModuleDev
 }
 
@@ -696,6 +936,40 @@ const mergeMakeDef = <
 
   const meta = base.meta || extend?.meta ? { ...(base.meta ?? {}), ...(extend?.meta ?? {}) } : undefined
 
+  const mergeSlots = (): SlotsDeclaration | undefined => {
+    const baseSlots = asSlotsDeclaration((base as any).slots) ?? {}
+    const extSlots = asSlotsDeclaration((extend as any)?.slots) ?? {}
+
+    const keys = Array.from(new Set([...Object.keys(baseSlots), ...Object.keys(extSlots)])).filter((k) => k.length > 0)
+    keys.sort()
+    if (keys.length === 0) return undefined
+
+    const fingerprint = (value: unknown): string => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return JSON.stringify(null)
+      const required = (value as any).required === true ? true : undefined
+      const unique = (value as any).unique === true ? true : undefined
+      const kind = (value as any).kind === 'single' || (value as any).kind === 'aspect' ? (value as any).kind : undefined
+      return JSON.stringify({ ...(required ? { required: true } : null), ...(unique ? { unique: true } : null), ...(kind ? { kind } : null) })
+    }
+
+    for (const key of Object.keys(extSlots)) {
+      if (key in baseSlots && fingerprint((baseSlots as any)[key]) !== fingerprint((extSlots as any)[key])) {
+        throw new Error(
+          `[Logix.Module.make] slot "${key}" already exists; overriding slot definitions is not supported (define a new slot instead).`,
+        )
+      }
+    }
+
+    const out: SlotsDeclaration = {}
+    for (const key of keys) {
+      out[key] = (key in extSlots ? (extSlots as any)[key] : (baseSlots as any)[key]) as any
+    }
+
+    return Object.keys(out).length > 0 ? out : undefined
+  }
+
+  const slots = mergeSlots()
+
   const services =
     base.services || extend?.services ? { ...(base.services ?? {}), ...(extend?.services ?? {}) } : undefined
 
@@ -708,6 +982,7 @@ const mergeMakeDef = <
     effects: effects as any,
     schemas,
     meta,
+    slots,
     services,
     dev,
   } as any
@@ -781,8 +1056,24 @@ export function make(id: any, def: any, extend?: any): any {
     live: tag.live,
     schemas: merged.schemas,
     meta: merged.meta,
+    slots: merged.slots,
     services: merged.services,
     dev: merged.dev,
+  }
+
+  registerTrialRunArtifactExporter(tag as any, makePortSpecArtifactExporter(base))
+  registerTrialRunArtifactExporter(tag as any, makeTypeIrArtifactExporter(base))
+  registerTrialRunArtifactExporter(tag as any, makeSchemaRegistryPackArtifactExporter(base))
+
+  if (isDevEnv()) {
+    try {
+      const ports = resolveServicePortDeclarations(base)?.map(({ tag: _tag, ...rest }) => rest)
+      if (ports && ports.length > 0) {
+        ModuleServicePortsRegistry.registerModuleServicePorts(id, ports)
+      }
+    } catch {
+      // Ignore invalid declarations; reflection/trial-run will surface structured errors.
+    }
   }
 
   base.logic = makeLogicFactory(base as any)
@@ -837,6 +1128,12 @@ export function make(id: any, def: any, extend?: any): any {
     }
 
     const createModule = (state: State): any => {
+      validateNamedLogicSlots({
+        moduleId: id,
+        slots: base.slots,
+        mounted: state.mounted,
+      })
+
       const internal: ModuleInternal<any, AnyModuleShape> = {
         initial,
         imports,

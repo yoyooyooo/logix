@@ -87,7 +87,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ### Answers (Pre-Design)
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性位于 Sandbox/Playground 基础设施层：Host 选择 `kernelId` → Worker 按选定内核编译/执行 → 通过 `@logixjs/core` 的 TrialRun 产出可序列化报告（含 `KernelImplementationRef`）→ docs/debug/CI 消费并对照。
-- **Docs-first & SSoT**：协议与包 API 的裁决以 `packages/logix-sandbox/src/*` 为 SSoT；需要同步更新 `docs/specs/drafts/topics/sandbox-runtime/15-protocol-and-schema.md` 与 `docs/specs/drafts/topics/sandbox-runtime/25-sandbox-package-api.md`，避免协议口径漂移。
+- **Docs-first & SSoT**：协议与包 API 的裁决以 `packages/logix-sandbox/src/*` 与 `docs/ssot/runtime/logix-sandbox/*` 为 SSoT；需要同步更新 `docs/ssot/runtime/logix-sandbox/15-protocol-and-schema.md` 与 `docs/ssot/runtime/logix-sandbox/25-sandbox-package-api.md`，避免协议口径漂移。
 - **Contracts**：新增/调整 `@logixjs/sandbox` 的公共契约（KernelVariant/KernelSelection/RunResult 字段）。实现引用与对照锚点复用 `specs/045-dual-kernel-contract/contracts/schemas/kernel-implementation-ref.schema.json`，避免重复定义。
 - **IR & anchors**：不改变统一最小 IR；仅要求把 `KernelImplementationRef` 与 `requested/effective kernelId` 作为可序列化摘要暴露给 consumer。`instanceId/txnSeq/opSeq` 等稳定锚点仍由 `@logixjs/core` 的诊断/证据提供，本特性不得破坏其可见性。
 - **Deterministic identity**：运行标识 `runId` 必须由 Host 显式提供（禁止默认 `Date.now()` 作为唯一标识）；strict/fallback 需要可序列化证据字段（`fallbackReason`）。
@@ -152,7 +152,7 @@ packages/logix-sandbox/
 ├── src/internal/compiler/*
 └── src/internal/worker/sandbox.worker.ts
 
-docs/specs/drafts/topics/sandbox-runtime/
+docs/ssot/runtime/logix-sandbox/
 ├── 15-protocol-and-schema.md
 └── 25-sandbox-package-api.md
 
@@ -173,7 +173,7 @@ specs/046-core-ng-roadmap/
 **Structure Decision**:
 
 - SSoT 以 `packages/logix-sandbox/src/*` 为准，完成 multi-kernel 的公共 API/协议/类型。
-- Sandbox 协议与包 API 文档同步更新 `docs/specs/drafts/topics/sandbox-runtime/*`，避免“文档协议”与“代码协议”漂移。
+- Sandbox 协议与包 API 文档同步更新 `docs/ssot/runtime/logix-sandbox/*`（必要时补充到 drafts topic 的愿景段落），避免“文档协议”与“代码协议”漂移。
 - consumer（例如 041）通过 `@logixjs/sandbox` 暴露的 `kernelId`/结果摘要字段完成对照展示，不直接依赖 `@logixjs/core-ng`。
 - `examples/logix-sandbox-mvp` 作为 debug harness：提供可视化 `kernelId` 选择与结果摘要展示，用于对照试跑与回归验证（不强依赖 core-ng 包）。
 

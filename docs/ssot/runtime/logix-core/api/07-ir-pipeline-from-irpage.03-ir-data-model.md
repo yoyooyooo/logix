@@ -8,21 +8,24 @@
 
 | 字段              | 类型                         | 含义                                   | 来源/规则                                                                                                                   |
 | ----------------- | ---------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `manifestVersion` | `string`                     | Manifest 协议版本                      | 当前实现固定 `"067"`                                                                                                        |
+| `manifestVersion` | `string`                     | Manifest 协议版本                      | 当前实现固定 `"083"`                                                                                                        |
 | `moduleId`        | `string`                     | 模块长期稳定 id（语义锚点）            | 优先来自 `ModuleImpl.module.id`；否则取 `module.id` / `module.tag.id`                                                       |
 | `actionKeys`      | `string[]`                   | 可 dispatch 的 action 列表（排序稳定） | `tag.shape.actionMap` 的 key，`sort()`                                                                                      |
 | `actions`         | `ModuleManifestAction[]`     | action 定义摘要（排序稳定）            | 从 `tag.shape.actionMap` 推导 `payload.kind`，并 best-effort 关联 primary reducer / source                                  |
 | `effects?`        | `ModuleManifestEffect[]`     | effects 摘要（排序稳定）               | 当前实现仅导出 `Module.make({ effects })` 的声明 effects，并按 `(actionTag, sourceKey)` 去重排序；无则省略                  |
 | `schemaKeys?`     | `string[]`                   | `module.schemas` 的 key（排序稳定）    | `Object.keys(schemas).sort()`；无则省略                                                                                     |
 | `logicUnits?`     | `{kind,id,derived?,name?}[]` | 已挂载的逻辑单元摘要（排序稳定）       | 从 `Symbol.for("logix.module.internal")` 的 `mounted` 里提取                                                                |
+| `slots?`          | `Record<string, { required?, unique?, kind? }>` | 命名逻辑槽位定义（排序稳定）           | 来自 `module.slots`；key 排序稳定；仅保留 `required/unique/kind("single"|"aspect")`                                         |
+| `slotFills?`      | `Record<string, string[]>`   | 各槽位当前填充的逻辑单元 id（排序稳定） | 从 `Symbol.for("logix.module.internal")` 的 `mounted` 聚合 `slotName → [logicUnitId]`；slotName/ids 均排序稳定              |
+| `servicePorts?`   | `{port,serviceId,optional?}[]` | 声明的输入服务依赖端口（排序稳定）     | 来自 `module.services`（端口名 → Tag）；ServiceId 通过统一 helper 规范化；按 `port/serviceId` 排序；无则省略               |
 | `source?`         | `{file,line,column}`         | 可追溯来源（仅用于解释/跳转）          | 读取 `module.dev.source`（必须是 1-based 正整数）                                                                           |
 | `meta?`           | `Record<string, JsonValue>`  | 业务/平台附加元信息（必须可序列化）    | 读取 `module.meta`，仅保留 `JsonValue`，key 排序                                                                            |
 | `staticIr?`       | `StaticIr`                   | 可选：内嵌 Static IR                   | 仅当 `includeStaticIr=true` 时填充（见 3.2）                                                                                |
-| `digest`          | `string`                     | **稳定摘要**（用于 diff/降噪）         | `manifest:067:${fnv1a32(stableStringify(digestBase))}`，且 **不包含** `meta/source/staticIr` 本体，只包含 `staticIr.digest` |
+| `digest`          | `string`                     | **稳定摘要**（用于 diff/降噪）         | `manifest:083:${fnv1a32(stableStringify(digestBase))}`，且 **不包含** `meta/source/staticIr` 本体，只包含 `staticIr.digest` |
 
 **预算裁剪（`options.budgets.maxBytes`）**：
 
-- 若 Manifest JSON 的 UTF-8 byte 长度超限，会按固定顺序裁剪：`meta → source → staticIr → logicUnits → schemaKeys → effects → actions(+actionKeys，二分截断)`。
+- 若 Manifest JSON 的 UTF-8 byte 长度超限，会按固定顺序裁剪：`meta → source → staticIr → logicUnits → slotFills → slots → schemaKeys → effects → actions(+actionKeys，二分截断)`。
 - 裁剪信息会写入 `meta.__logix = { truncated, maxBytes, originalBytes, dropped, truncatedArrays }`（用于解释“为什么缺字段”）。
 
 ## 3.2 `StaticIr`（StateTrait Static IR）
@@ -96,6 +99,7 @@
 | `staticIr?`    | `StaticIr`                 | best-effort：便于失败解释与 drift 对比                    |
 | `artifacts?`   | `TrialRunArtifacts`        | 031：补充静态 IR 槽位（`artifactKey → ArtifactEnvelope`） |
 | `environment?` | `EnvironmentIr`            | 依赖观测摘要（best-effort）                               |
+| `servicePortsAlignment?` | `{moduleId, declared, missingRequired, missingOptional?}` | 声明端口 ↔ 环境可 resolve 对齐检查（端口级定位）          |
 | `evidence?`    | `EvidencePackage`          | Dynamic Trace（可裁剪 maxEvents）                         |
 | `error?`       | `SerializableErrorSummary` | 失败分类（`code/hint` 是关键）                            |
 | `summary?`     | `unknown`                  | 预留位（当前主要用于 Oversized 的裁剪说明）               |

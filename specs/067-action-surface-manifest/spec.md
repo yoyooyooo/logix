@@ -2,7 +2,7 @@
 
 **Feature Branch**: `[067-action-surface-manifest]`  
 **Created**: 2026-01-01  
-**Status**: Draft  
+**Status**: Done  
 **Input**: User description: "为 SDD 平台的全双工链路提供 Action 级别的定义锚点与可序列化 Manifest（不依赖 AST）：Loader 能从模块反射中提取 action 列表/primary reducer 信息/源码锚点；Runtime → Studio 的事件可稳定指向 action 定义；并提供 token-first 的最小手写路径以获得 IDE 跳转与引用能力；同时把 action 的副作用面（effects）结构化为可治理的注册面。"
 
 ## Clarifications

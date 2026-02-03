@@ -2,8 +2,14 @@
 
 **Feature Branch**: `[040-schemaast-layered-upgrade]`  
 **Created**: 2025-12-26  
-**Status**: Draft  
+**Status**: Done  
 **Input**: User description: "那新建个需求吧，把可能可以利用 SchemaAST 的层面都加进去，我后续细化"
+
+## Scope Note（040 v1 的签收口径）
+
+本次签收的 040 **仅覆盖 US1**：导出 `SchemaRegistryPack@v1` 并以 TrialRun artifact（`@logixjs/schema.registry@v1`）进入 CLI 链路；同时该 artifact 的 `value` 会进入 036 Contract Suite 的 Context Pack（白名单机制），用于 Agent/工具侧离线解释 action/state 的 shape。
+
+US2/US3/US4 属于后续增量（已从 040 v1 范围中拆出，避免单体 spec 过大；见 `specs/040-schemaast-layered-upgrade/tasks.md` 的 Moved 记录）。
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -35,7 +41,7 @@
 
 ---
 
-### User Story 2 - 诊断/回放链路 Schema 化 (Priority: P2)
+### （Moved）User Story 2 - 诊断/回放链路 Schema 化 (Priority: P2)
 
 作为排障与性能调优的工程师，我希望诊断事件与回放证据能够引用 schema（而不是依赖非结构化的对象图），从而在不泄漏敏感信息/不放大开销的前提下，让 Devtools 给出一致、可解释、可对比的证据链路。
 
@@ -50,7 +56,7 @@
 
 ---
 
-### User Story 3 - Sandbox 协议可校验与可解释错误 (Priority: P3)
+### （Moved）User Story 3 - Sandbox 协议可校验与可解释错误 (Priority: P3)
 
 作为 Sandbox/对齐实验室的使用者，我希望 Host↔Worker 的双工协议有明确的 SchemaAST 定义，并且当协议消息不合法或版本不匹配时，系统能给出结构化、可定位、可解释的错误事件，而不是静默忽略或产生难以诊断的异常。
 
@@ -65,7 +71,7 @@
 
 ---
 
-### User Story 4 - Flow/Logic 节点与服务契约可资产化 (Priority: P3)
+### （Moved）User Story 4 - Flow/Logic 节点与服务契约可资产化 (Priority: P3)
 
 作为平台/业务侧的开发者与工具使用者，我希望 Flow/Logic 的节点参数、输入输出以及服务边界的请求/响应都能被 schema 描述并沉淀为可资产化工件，从而支持 UI 生成、契约校验、变更影响分析与复用。
 
@@ -117,12 +123,10 @@
   - Define what diagnostic events/Devtools surfaces exist and their overhead
 -->
 
-- **NFR-001**: System MUST 为 SchemaAST 引入所触及的核心路径定义性能预算，并在实现前记录可复现的基线（包含时间/分配/内存等维度），确保可对比。
-- **NFR-002**: System MUST 提供结构化诊断信号以支撑 schema-aware 的解释链路，并保证在诊断关闭时接近零额外开销。
-- **NFR-003**: System MUST 在诊断与回放表面使用确定性标识（包含 `schemaId`、实例/事务序列等），不得依赖随机数或时间默认值作为唯一锚点。
-- **NFR-004**: System MUST 保持同步事务边界：事务窗口内不得发生 IO/异步工作；任何需要 IO 的 schema registry 获取/导出必须在事务外完成。
-- **NFR-005**: 若 SchemaAST 体系改变了可观察性边界或引入自动化策略，System MUST 提供稳定的心智模型与成本模型（关键词 ≤ 5），并保持文档、基线与证据字段命名对齐。
-- **NFR-006**: 若该特性依赖内部钩子或跨模块协作协议，System MUST 将其封装为显式可注入契约，且支持导出 slim、可序列化的证据/IR 用于在不同宿主环境下的可控试跑。
+- **NFR-001**: 040 v1 不得进入 runtime 热路径或事务窗口；只允许按需导出（TrialRun artifacts / 工具链路径）。
+- **NFR-002**: 导出的 `SchemaRegistryPack@v1` 必须 JSON-safe、确定性、可 diff；失败必须降级为可解释的 JSON 值（不得崩溃）。
+- **NFR-003**: `schemaId` 必须跨运行稳定（注解优先，否则结构派生），并能被 CI/Contract Suite 作为解释材料消费。
+- **NFR-004**: SchemaRegistryPack 只作为“解释与校验支撑”，不得成为平台引用空间事实源（事实源仍为 035 PortSpec/TypeIR）。
 
 ### Key Entities *(include if feature involves data)*
 
@@ -142,12 +146,9 @@
 
 ### Measurable Outcomes
 
-- **SC-001**: 在一个包含状态与动作的代表性模块上，工具能够检索到其 schema 元数据（含 SchemaAST 与 `schemaId`），并在两次独立运行中保持 `schemaId` 不变。
-- **SC-002**: 对于一组代表性动作输入，工具能基于 schema 给出字段级校验结果与错误摘要（无需依赖实现细节）。
-- **SC-003**: 诊断/证据包中的所有事件均可 JSON 序列化，且每条事件引用的 `schemaId` 在证据包内可被 registry 解析（未知引用必须有明确降级策略）。
-- **SC-004**: Host↔Worker 协议对不合法消息的处理满足：不崩溃、产出结构化错误、并能定位到字段路径与失败原因。
-- **SC-005**: 在诊断关闭的默认配置下，SchemaAST 体系对核心运行路径的 p95 延迟与分配回归满足预设预算（预算由基线测量给出）。
-- **SC-006**: Devtools 能在离线环境对任一诊断事件给出 schema-aware 的解释视图，并能展示最小因果链路（触发源 → 行为 → 影响域摘要）。
+- **SC-001**: 对代表性模块执行一次 trialrun/Contract Suite 后，`TrialRunReport.artifacts['@logixjs/schema.registry@v1']` 可用且 JSON 可序列化，且同一输入两次运行 `schemaId` 不变。
+- **SC-002**: `logix contract-suite run` 在失败（或显式 `--includeContextPack`）时输出 `ContractSuiteContextPack@v1`，并默认携带 registry pack 的 `value` 供离线解释。
+- **SC-003**: 040 contracts（schema-ref / schema-registry-pack / schema-diff）均可解析，且 `$ref` 可解析（CI 守卫）。
 
 ## Assumptions
 
@@ -156,9 +157,9 @@
 
 ## Dependencies
 
-- Devtools/Playground 需要能够消费 schema registry 并提供 schema-aware 的事件/IR 解释视图。
-- Sandbox Host↔Worker 需要共享协议 schema，并在握手阶段明确兼容性与降级策略。
-- 证据包/回放消费者需要能够在离线环境加载 schema registry 并解释事件与最小 IR。
+- （Moved）Devtools/Playground 的 schema-aware 解释视图（事件/IR）属于后续增量。
+- （Moved）Sandbox Host↔Worker 协议 schema 校验与结构化错误属于后续增量。
+- （Moved）证据包/回放消费者对 schema registry 的离线解释属于后续增量。
 - 与 IR-first 平台链路的组合建议外链到：`specs/036-workbench-contract-suite/reading-cheatsheet.md`（registry pack 可通过 artifacts 同链路导出，并进入 Contract Suite/Context Pack）。
 - 与 `@logixjs/module.portSpec@v1` / `@logixjs/module.typeIr@v1`（035）的边界：SchemaAST/registry 是“解释与校验支撑”，平台引用空间事实源仍以 PortSpec/TypeIR 为准；TypeIR 的实现可由 SchemaAST 投影，但 SchemaAST 本体不外泄为平台事实源。
 
@@ -168,3 +169,4 @@
 - 具体 SchemaAST 的底层实现与选型细节（此处只约束对外可验收能力与质量门）。
 - 不以 SchemaAST 取代 035 的 PortSpec/TypeIR 作为平台引用空间事实源；SchemaAST 只作为实现侧结构来源与 registry pack 的解释材料。
 - 不引入“TS AST 作为裁判/事实源”的路线；如需 AST 仅作为代码编辑载体（patch）而非 IR/验收输入。
+- US2/US3/US4（诊断/协议/资产化）已从 040 v1 拆出，不阻塞本次签收。

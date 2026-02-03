@@ -1,6 +1,7 @@
 import { Context, Deferred, Effect, Layer } from 'effect'
 import { isDevEnv } from './runtime/core/env.js'
 import { RootContextTag, type RootContext } from './runtime/core/RootContext.js'
+import * as ServiceId from './serviceId.js'
 
 export type RootResolveEntrypoint = 'logic.root.resolve' | 'logic.$.root.resolve'
 
@@ -15,11 +16,7 @@ export interface RootResolveOptions {
 }
 
 const tagIdOf = (tag: Context.Tag<any, any>): string =>
-  typeof (tag as any)?.id === 'string'
-    ? String((tag as any).id)
-    : typeof (tag as any)?.key === 'string'
-      ? String((tag as any).key)
-      : '<unknown tag>'
+  ServiceId.fromTag(tag) ?? '<unknown tag>'
 
 const makeMissingRootProviderError = (
   tag: Context.Tag<any, any>,

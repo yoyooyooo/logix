@@ -6,7 +6,7 @@
 
 - Kernel Contract 与实现引用：`specs/045-dual-kernel-contract/contracts/`
 - `KernelImplementationRef` schema（复用 045）：`specs/045-dual-kernel-contract/contracts/schemas/kernel-implementation-ref.schema.json`
-- Sandbox/Playground 协议主题（概念与演进输入）：`docs/specs/drafts/topics/sandbox-runtime/`
+- Sandbox/Playground 协议 SSoT：`docs/ssot/runtime/logix-sandbox/`；概念与演进输入：`docs/specs/drafts/topics/sandbox-runtime/`
 
 ## 本特性新增/固化的契约点
 

@@ -15,6 +15,22 @@ describe('internal/digest · stableStringify', () => {
     expect(stableStringify([undefined, 1])).toBe('[null,1]')
     expect(stableStringify({ a: () => {} })).toBe('{"a":null}')
   })
+
+  it('should degrade circular references into a stable string marker', () => {
+    const selfRef: any = {}
+    selfRef.self = selfRef
+    expect(stableStringify(selfRef)).toBe('{"self":"[Circular]"}')
+
+    const selfArr: any[] = []
+    selfArr.push(selfArr)
+    expect(stableStringify(selfArr)).toBe('["[Circular]"]')
+
+    const a: any = {}
+    const b: any = {}
+    a.b = b
+    b.a = a
+    expect(stableStringify(a)).toBe('{"b":{"a":"[Circular]"}}')
+  })
 })
 
 describe('internal/digest · fnv1a32', () => {

@@ -45,17 +45,19 @@ version: 1
 - `stableStringify(value)`：对象 key 按字典序排序；`undefined/function/symbol` 等不可表示值降级为 `null`；数组顺序保持；非有限数（NaN/±Infinity）降级为 `null`。
 - `fnv1a32(input)`：32-bit FNV-1a（输出 8 位 hex）。**不是加密哈希**，仅用于短指纹；理论上可能碰撞，但适合用作“快速判等/索引 key”。
 
-### 2.1 `manifest:067:*`（ModuleManifest digest）
+### 2.1 `manifest:083:*`（ModuleManifest digest）
 
 入口：`packages/logix-core/src/internal/reflection/manifest.ts`
 
-- 输出：`ModuleManifest.digest = "manifest:067:<8hex>"`
+- 输出：`ModuleManifest.digest = "manifest:083:<8hex>"`
 - digest base（参与 hash 的字段）只包含“结构化契约字段”：
   - `moduleId`
   - `actionKeys/actions`（按 `actionTag` 稳定排序）
   - `effects`（含 `sourceKey`，稳定排序 + 去重）
   - `schemaKeys`
   - `logicUnits`
+  - `slots` / `slotFills`
+  - `servicePorts`
   - `staticIrDigest`（注意：只纳入 `staticIr.digest`，不纳入 `staticIr` 全量）
 - 明确不纳入（或会被预算裁剪影响的部分）：顶层 `meta/source/staticIr(本体)`
 
@@ -115,7 +117,7 @@ version: 1
 
 ### C. 维护者剧本（如何演进/如何避免漂移）
 
-- C1 何时 bump digest 版本前缀（manifest:067 / stir:009 / artifact:031）
+- C1 何时 bump digest 版本前缀（manifest:083 / stir:009 / artifact:031）
 - C2 如何避免 digest 抖动（stableStringify、排序、去随机化）
 - C3 meta 噪声治理（allowlist / 分级 / 裁剪）
 - C4 oversized/timeout/missingDependency 的排障套路（与 digest/diff 的关系）
@@ -435,7 +437,7 @@ SSoT 入口：`docs/ssot/platform/contracts/01-runresult-trace-tape.md`、`specs
 
 ---
 
-## C1. 何时 bump digest 版本前缀（manifest:067 / stir:009 / artifact:031）
+## C1. 何时 bump digest 版本前缀（manifest:083 / stir:009 / artifact:031）
 
 **原则**：当“同一语义是否应当得到同一 digest”的判定发生变化，就必须 bump 版本前缀；否则就是 silent drift。
 

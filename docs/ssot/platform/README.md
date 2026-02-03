@@ -18,6 +18,10 @@
 - `governance/`：演进策略、路线图与决策记录（只保留提炼后的结论）
 - `appendix/`：演练、补篇与长文（不作为首要裁决入口）
 
+## 消费者回归面（UI PoC）
+
+- `examples/logix-react` 的 `/platform-viz/*`：把 `ModuleManifest` / `ManifestDiff` / TrialRun Evidence 拆成独立页面，用于验证解释粒度与字段漂移；不引入 Node-only 依赖。
+
 ## 最短阅读路径（新会话）
 
 1. `00-principles.md`：平台原则入口（只收敛裁决点）

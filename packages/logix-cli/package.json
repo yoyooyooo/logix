@@ -1,0 +1,52 @@
+{
+  "name": "@logixjs/cli",
+  "version": "0.0.1",
+  "license": "Apache-2.0",
+  "description": "Node-only Logix CLI toolbox (IR export / trialrun / gates)",
+  "type": "module",
+  "bin": {
+    "logix": "dist/bin/logix.js",
+    "logix-devserver": "dist/bin/logix-devserver.js"
+  },
+  "files": [
+    "dist/**"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./Commands": "./src/Commands.ts",
+    "./internal/*": null
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed",
+    "test:cache": "vitest run --cache",
+    "measure:startup": "node ./scripts/measure-startup.mjs"
+  },
+  "dependencies": {
+    "@effect/cli": "0.73.1",
+    "@effect/platform-node": "0.104.0",
+    "@logixjs/anchor-engine": "workspace:*",
+    "@logixjs/core": "workspace:*",
+    "@logixjs/workbench": "workspace:*",
+    "effect": "^3.19.13",
+    "happy-dom": "^20.0.11",
+    "ts-morph": "^25.0.0",
+    "tsx": "^4.20.6",
+    "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.1",
+    "@types/ws": "^8.5.0",
+    "tsup": "^8.5.1",
+    "typescript": "5.8.2",
+    "vitest": "^4.0.15"
+  },
+  "peerDependencies": {
+    "@logixjs/core": "workspace:*",
+    "effect": "^3.19.13"
+  }
+}

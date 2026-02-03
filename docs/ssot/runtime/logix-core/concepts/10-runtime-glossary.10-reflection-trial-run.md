@@ -11,6 +11,7 @@
 - **Manifest IR / ModuleManifest**
   - 面向平台/CI 的模块结构摘要（JSON，可 diff）；
   - 必须可 `JSON.stringify`；不得包含 Schema/闭包/Effect 本体；
+  - 覆盖 `actions/effects/schemaKeys/logicUnits/servicePorts` 等结构字段；
   - `digest` 只由结构字段决定（不含 meta/source），用于 CI 降噪与快速对比。
 
 - **Static IR / StaticIR**
@@ -23,7 +24,7 @@
 
 - **TrialRunReport**
   - Trial Run 的可序列化输出体（JSON，可存档）；
-  - 核心字段：`ok/error` + `environment`（依赖观测摘要）+ `evidence`（可选事件序列与控制面摘要）。
+  - 核心字段：`ok/error` + `environment`（依赖观测摘要）+ `servicePortsAlignment?`（端口级缺失定位）+ `evidence`（可选事件序列与控制面摘要）。
 
 - **Environment IR / EnvironmentIr**
   - Trial Run 过程中观测到的依赖集合（best-effort）与违规摘要：

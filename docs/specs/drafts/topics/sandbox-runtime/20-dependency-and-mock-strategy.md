@@ -1,12 +1,15 @@
 ---
 title: Dependency Governance & Mock Strategy
-status: draft
+status: merged
 version: 2025-12-06
 value: core
 priority: next
+moved_to: ../../../../ssot/runtime/logix-sandbox/20-dependency-and-mock-strategy.md
 ---
 
 ## 1. 目标
+
+> ✅ 已收编到 runtime SSoT：`docs/ssot/runtime/logix-sandbox/20-dependency-and-mock-strategy.md`（后续修改以 SSoT 版本为准）。
 
 在浏览器 Worker 中建立可控的依赖与 Mock 治理闭环：核心依赖预注入、工具库 CDN 重写、未知 IO 通过 Universal Spy 观测，UI 库通过 Semantic Mock 降维，确保「能跑通 Logix/Effect 逻辑」而非「能跑所有 npm 包」。
 

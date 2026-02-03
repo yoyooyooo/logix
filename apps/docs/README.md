@@ -29,6 +29,15 @@ pnpm dev
   - `content/docs/meta.json`（英文默认）
   - `content/docs/meta.cn.json`（中文）
 
+## 文档内 Playground（可运行示例）
+
+文档页可用 `<Playground />` 嵌入一个“可编辑 + 可运行 + 可观察结果”的教学块：
+
+- 组件实现：`src/components/playground/Playground.tsx`（已在 `src/mdx-components.tsx` 注册）。
+- 推荐最小用法：传入稳定 `id`（同页唯一）与 `code`（`String.raw\`...\``），并指定 `moduleExport="AppRoot"`。
+- `level="debug"` 才会显示 Trace 面板（教学默认保持简洁）。
+- 运行底座：`@logixjs/sandbox`。静态资产（`public/sandbox/*` 与 `public/esbuild.wasm`）由 `scripts/sync-sandbox-assets.mjs` 同步；`pnpm dev/build` 会在 `predev/prebuild` 自动触发同步，保证同源可复现。
+
 ## 主要目录
 
 - `content/docs`：文档内容（Guide / API 等），是对外的用户文档 SSoT；

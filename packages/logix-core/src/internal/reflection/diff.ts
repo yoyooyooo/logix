@@ -1,6 +1,13 @@
 import { stableStringify } from '../digest.js'
 import type { JsonValue } from '../observability/jsonValue.js'
-import type { ModuleManifest, ModuleManifestLogicUnit } from './manifest.js'
+import type {
+  ModuleManifest,
+  ModuleManifestLogicUnit,
+  ModuleManifestServicePort,
+  ModuleManifestSlotDef,
+  ModuleManifestSlotFills,
+  ModuleManifestSlots,
+} from './manifest.js'
 
 export type ManifestDiffSeverity = 'BREAKING' | 'RISKY' | 'INFO'
 export type ManifestDiffVerdict = 'PASS' | 'WARN' | 'FAIL'
@@ -80,6 +87,36 @@ const diffStringKeys = (
 
 const eqJsonValue = (a: unknown, b: unknown): boolean => stableStringify(a) === stableStringify(b)
 
+const indexSlots = (input: ModuleManifestSlots | undefined): ReadonlyMap<string, ModuleManifestSlotDef> => {
+  const map = new Map<string, ModuleManifestSlotDef>()
+  if (!input || typeof input !== 'object') return map
+  for (const slotName of Object.keys(input).sort()) {
+    const def = (input as any)[slotName]
+    if (!slotName || !def || typeof def !== 'object') continue
+    map.set(slotName, def as ModuleManifestSlotDef)
+  }
+  return map
+}
+
+const asJsonSlotDef = (def: ModuleManifestSlotDef): JsonValue => {
+  const out: Record<string, JsonValue> = {}
+  if (def.required === true) out.required = true
+  if (def.unique === true) out.unique = true
+  if (def.kind) out.kind = def.kind
+  return out
+}
+
+const indexSlotFills = (input: ModuleManifestSlotFills | undefined): ReadonlyMap<string, ReadonlyArray<string>> => {
+  const map = new Map<string, ReadonlyArray<string>>()
+  if (!input || typeof input !== 'object') return map
+  for (const slotName of Object.keys(input).sort()) {
+    const ids = (input as any)[slotName]
+    if (!slotName || !Array.isArray(ids)) continue
+    map.set(slotName, ids.filter((x: unknown) => typeof x === 'string' && x.length > 0))
+  }
+  return map
+}
+
 const indexLogicUnits = (
   input: ReadonlyArray<ModuleManifestLogicUnit> | undefined,
 ): ReadonlyMap<string, ModuleManifestLogicUnit> => {
@@ -92,6 +129,31 @@ const indexLogicUnits = (
   }
   return map
 }
+
+const indexServicePorts = (
+  input: ReadonlyArray<ModuleManifestServicePort> | undefined,
+): ReadonlyMap<string, ModuleManifestServicePort> => {
+  const map = new Map<string, ModuleManifestServicePort>()
+  for (const port of input ?? []) {
+    if (!port || typeof port !== 'object') continue
+    const key = (port as any).port
+    if (typeof key !== 'string' || key.length === 0) continue
+    map.set(key, port)
+  }
+  return map
+}
+
+const asJsonServicePort = (port: ModuleManifestServicePort): JsonValue =>
+  port.optional === true
+    ? {
+        port: port.port,
+        serviceId: port.serviceId,
+        optional: true,
+      }
+    : {
+        port: port.port,
+        serviceId: port.serviceId,
+      }
 
 export const diffManifest = (
   before: ModuleManifest,
@@ -157,7 +219,198 @@ export const diffManifest = (
     }
   }
 
-  // logicUnits (slots)
+  // servicePorts
+  {
+    const beforeByPort = indexServicePorts(before.servicePorts)
+    const afterByPort = indexServicePorts(after.servicePorts)
+
+    const removed: ModuleManifestServicePort[] = []
+    const added: ModuleManifestServicePort[] = []
+
+    for (const port of Array.from(beforeByPort.keys()).sort()) {
+      if (!afterByPort.has(port)) {
+        const value = beforeByPort.get(port)
+        if (value) removed.push(value)
+      }
+    }
+    for (const port of Array.from(afterByPort.keys()).sort()) {
+      if (!beforeByPort.has(port)) {
+        const value = afterByPort.get(port)
+        if (value) added.push(value)
+      }
+    }
+
+    if (removed.length > 0) {
+      changes.push({
+        severity: 'BREAKING',
+        code: 'servicePorts.removed',
+        message: `servicePorts removed: ${removed.map((p) => p.port).join(', ')}`,
+        pointer: '/servicePorts',
+        details: { removed: removed.map(asJsonServicePort) },
+      })
+    }
+
+    if (added.length > 0) {
+      changes.push({
+        severity: 'INFO',
+        code: 'servicePorts.added',
+        message: `servicePorts added: ${added.map((p) => p.port).join(', ')}`,
+        pointer: '/servicePorts',
+        details: { added: added.map(asJsonServicePort) },
+      })
+    }
+
+    const serviceIdChanged: Array<{
+      readonly port: string
+      readonly before: ModuleManifestServicePort
+      readonly after: ModuleManifestServicePort
+    }> = []
+
+    const optionalChanged: Array<{
+      readonly port: string
+      readonly before: ModuleManifestServicePort
+      readonly after: ModuleManifestServicePort
+    }> = []
+
+    for (const port of beforeByPort.keys()) {
+      const b = beforeByPort.get(port)
+      const a = afterByPort.get(port)
+      if (!b || !a) continue
+      if (b.serviceId !== a.serviceId) {
+        serviceIdChanged.push({ port, before: b, after: a })
+      } else if ((b.optional === true) !== (a.optional === true)) {
+        optionalChanged.push({ port, before: b, after: a })
+      }
+    }
+
+    serviceIdChanged.sort((x, y) => (x.port < y.port ? -1 : x.port > y.port ? 1 : 0))
+    optionalChanged.sort((x, y) => (x.port < y.port ? -1 : x.port > y.port ? 1 : 0))
+
+    if (serviceIdChanged.length > 0) {
+      changes.push({
+        severity: 'BREAKING',
+        code: 'servicePorts.serviceIdChanged',
+        message: `servicePorts serviceId changed: ${serviceIdChanged.map((x) => x.port).join(', ')}`,
+        pointer: '/servicePorts',
+        details: {
+          changed: serviceIdChanged.map((x) => ({
+            port: x.port,
+            before: asJsonServicePort(x.before),
+            after: asJsonServicePort(x.after),
+          })),
+        },
+      })
+    }
+
+    if (optionalChanged.length > 0) {
+      const becomesRequired = optionalChanged.some((x) => x.before.optional === true && x.after.optional !== true)
+      changes.push({
+        severity: becomesRequired ? 'BREAKING' : 'INFO',
+        code: 'servicePorts.optionalChanged',
+        message: `servicePorts optional changed: ${optionalChanged.map((x) => x.port).join(', ')}`,
+        pointer: '/servicePorts',
+        details: {
+          changed: optionalChanged.map((x) => ({
+            port: x.port,
+            before: asJsonServicePort(x.before),
+            after: asJsonServicePort(x.after),
+          })),
+        },
+      })
+    }
+  }
+
+  // slots
+  {
+    const beforeByName = indexSlots(before.slots)
+    const afterByName = indexSlots(after.slots)
+
+    const removed: string[] = []
+    const added: string[] = []
+    const changed: JsonValue[] = []
+    const changedNames: string[] = []
+
+    for (const name of Array.from(beforeByName.keys()).sort()) {
+      if (!afterByName.has(name)) removed.push(name)
+    }
+    for (const name of Array.from(afterByName.keys()).sort()) {
+      if (!beforeByName.has(name)) added.push(name)
+    }
+
+    for (const name of Array.from(beforeByName.keys()).sort()) {
+      const b = beforeByName.get(name)
+      const a = afterByName.get(name)
+      if (!b || !a) continue
+      if (!eqJsonValue(b, a)) {
+        changedNames.push(name)
+        changed.push({
+          slotName: name,
+          before: asJsonSlotDef(b),
+          after: asJsonSlotDef(a),
+        })
+      }
+    }
+
+    if (removed.length > 0) {
+      changes.push({
+        severity: 'BREAKING',
+        code: 'slots.removed',
+        message: `slots removed: ${removed.join(', ')}`,
+        pointer: '/slots',
+        details: { removed },
+      })
+    }
+
+    if (added.length > 0) {
+      changes.push({
+        severity: 'INFO',
+        code: 'slots.added',
+        message: `slots added: ${added.join(', ')}`,
+        pointer: '/slots',
+        details: { added },
+      })
+    }
+
+    if (changed.length > 0) {
+      changes.push({
+        severity: 'RISKY',
+        code: 'slots.changed',
+        message: `slots changed: ${changedNames.join(', ')}`,
+        pointer: '/slots',
+        details: { changed },
+      })
+    }
+  }
+
+  // slotFills
+  {
+    const beforeByName = indexSlotFills(before.slotFills)
+    const afterByName = indexSlotFills(after.slotFills)
+
+    const changed: Array<{ readonly slotName: string; readonly before: ReadonlyArray<string>; readonly after: ReadonlyArray<string> }> =
+      []
+
+    const allNames = Array.from(new Set([...beforeByName.keys(), ...afterByName.keys()])).sort()
+    for (const name of allNames) {
+      const b = beforeByName.get(name) ?? []
+      const a = afterByName.get(name) ?? []
+      if (!eqJsonValue(b, a)) {
+        changed.push({ slotName: name, before: b, after: a })
+      }
+    }
+
+    if (changed.length > 0) {
+      changes.push({
+        severity: 'RISKY',
+        code: 'slotFills.changed',
+        message: `slotFills changed: ${changed.map((x) => x.slotName).join(', ')}`,
+        pointer: '/slotFills',
+        details: { changed },
+      })
+    }
+  }
+
+  // logicUnits
   {
     const beforeById = indexLogicUnits(before.logicUnits)
     const afterById = indexLogicUnits(after.logicUnits)

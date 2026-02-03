@@ -1,29 +1,33 @@
-# Quickstart: 组件 + Chrome 插件（目标用法）
+# Quickstart: 005 Foundational（Envelope / EvidencePackage / Aggregation / Commands）
 
-> 说明：本文描述“实现完成后的预期接入体验”，用于指导后续实现对齐与验收。
+> 本 quickstart 只覆盖 005 的收口范围：协议与聚合引擎闭环；不涉及 Devtools UI/Chrome 扩展形态。
 
-## 1) 组件形态（应用内嵌面板）
+## 1) 运行侧：导出 EvidencePackage（JSON hard gate）
 
-- 应用运行时启用 Devtools/观测（示例语义）：
-  - 创建 Runtime 时打开 devtools（例如启用 DebugObserver + DevtoolsHub/观测桥接）。
-  - 在页面中挂载 `@logixjs/devtools-react` 的面板组件。
-- 验收要点：
-  - 面板可展示时间线/概览/错误诊断；
-  - 导出证据包后可在插件形态导入得到一致结论（见 `spec.md` 的 SC-002）。
+目标：同一份证据包在 `JSON.stringify → JSON.parse → import` 后仍可稳定读取，且 `seq` 允许间隙/不从 1 开始（Recording Window）。
 
-## 2) 插件形态（Chrome Devtools 面板）
+参考实现与单测：
 
-- 在 Chrome 中加载未打包扩展（unpacked extension）后：
-  - 打开目标页面；
-  - 打开扩展 Devtools 面板；
-  - **P1（离线）**：在面板中导入由组件形态导出的 EvidencePackage，并展示一致视图。
-  - **P2（实时，Deferred）**：面板连接到当前页面并展示实时观测（需要 transport + 背压 + 命令回路）。
-- 验收要点：
-  - P1：导入由组件形态导出的证据包后，关键计数与顺序可复现（见 `spec.md` 的 SC-002）。
-  - P2：面板对被测页面的干扰明显低于内嵌面板（见 `spec.md` 的 SC-001 / FR-012）。
+- 导出：`Logix.Debug.exportEvidencePackage`（底层：`packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`）
+- JSON gate：`packages/logix-core/test/observability/Observability.EvidencePackage.JsonGate.test.ts`
+- Recording Window：`packages/logix-core/test/observability/EvidencePackage.test.ts`
 
-## 3) 可选：业务 Worker/Sandbox 验证
+## 2) 离线侧：导入 + 聚合（同输入同输出）
 
-> 注：这里的“业务 Worker”指被测运行时在 Worker 中执行的入口；与 Devtools 的“聚合 Worker（FR-012，Worker-first）”是两件事。
+目标：对同一份输入（相同 `runId` + 相同 envelopes 列表），聚合输出确定且可复现（同输入同输出）。
 
-- 在业务 Worker 运行入口中产出同样的观测 Envelope（含 `runId/seq`），并可被同一聚合引擎消费。
+参考实现与单测：
+
+- 导入：`Logix.Observability.importEvidencePackage`（底层：`packages/logix-core/src/internal/observability/evidence.ts`）
+- 聚合：`Logix.Observability.aggregateEvidencePackage` / `aggregateObservationEnvelopes`
+- 确定性：`packages/logix-core/test/observability/AggregationEngine.test.ts`
+
+## 3) 命令面：clear / pause / resume（运行侧可控录制窗口）
+
+目标：命令面可被宿主调用并返回结构化回执；`pause` 时不再向 recording window 写入新事件；`resume` 恢复；`clear` 清空窗口。
+
+参考实现与单测：
+
+- 命令：`Logix.Debug.sendControlCommand`（底层：`packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`）
+- 行为：`packages/logix-core/test/observability/ControlCommand.test.ts`
+

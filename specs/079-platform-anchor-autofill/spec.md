@@ -2,7 +2,7 @@
 
 **Feature Branch**: `079-platform-anchor-autofill`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 以编译期/构建期的保守补全方式，把“试跑/IR/全双工”所需的关键锚点缺口补齐，并回写到源码保持单一真相源（宁可错过不可乱补）
 
 ## Context

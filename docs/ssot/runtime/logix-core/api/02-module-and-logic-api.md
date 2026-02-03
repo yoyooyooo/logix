@@ -7,6 +7,7 @@
 - 我在写业务模块（Module-first）：读 `02-module-and-logic-api.01-moduledef.md` → `02-module-and-logic-api.03-module-logic.md` → `02-module-and-logic-api.05-bound-api.md`
 - 我在拼装 Runtime（root/imports/processes/layer）：读 `02-module-and-logic-api.06-runtime-container.md`
 - 我在理解 Live/Layer：读 `02-module-and-logic-api.04-live-layer.md`
+- 我在做具名逻辑插槽（083）：读 `02-module-and-logic-api.01-moduledef.md`（`slots`）→ `02-module-and-logic-api.03-module-logic.md`（`LogicUnitOptions.slotName`）→ `06-reflection-and-trial-run.md`（`extractManifest.slots/slotFills`）
 
 ## 分节索引
 

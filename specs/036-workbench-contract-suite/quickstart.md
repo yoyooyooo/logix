@@ -19,7 +19,7 @@
 
 ## 1) Workbench（浏览器）：人审 + 可导出
 
-入口（当前最小载体）：`examples/logix-sandbox-mvp`
+入口（可选消费者回归面）：优先用 `086` 的 `/platform-viz/*` 做 UI 回归与解释粒度试验；也可在未来把同一组工件接入 `examples/logix-sandbox-mvp` 做“最小平台 Workbench”。
 
 - 选择代表性模块 → 触发一次受控检查（trial-run + artifacts）。
 - UI 展示：工件（按 key/version 分组）+ verdict + reasons（可回指到工件字段）。
@@ -27,19 +27,53 @@
 
 ## 2) CI（Node）：机器判定 + 可存档
 
-入口（规划）：
+入口（已落地）：`logix contract-suite run`（085 CLI）
 
-- 对代表性模块执行同口径检查，产出同一组 JSON 工件（与 Workbench 一致）。
-- 对 `ContractSuiteVerdict@v1.verdict` 执行 gate：`FAIL` 阻断；`WARN` 可配置为告警/阻断。
-- 把工件存档到 CI artifacts（用于回放与审阅）。
+仓库内最小 demo：`examples/logix-cli-playground`（含 `cli:contract:*` scripts + `--inputs` 注入与 context pack 演示）。
+
+```bash
+# 一键跑 Contract Suite（含 trialrun + verdict；失败/或显式 --includeContextPack 时会输出 context pack）
+logix contract-suite run \
+  --runId cs1 \
+  --entry ./path/to/app.ts#AppRoot \
+  --out ./.logix/contract-suite/cs1 \
+  --requireRulesManifest
+
+# 可选：把 WARN 视为通过（exit code=0）
+logix contract-suite run ... --allowWarn
+
+# 可选：对比 baseline 目录（读取 <baseline>/trialrun.report.json），并输出 manifest.diff.json
+logix contract-suite run ... --baseline ./.logix/contract-suite/baseline
+
+# 可选：注入最小编辑上下文（facts.inputs）
+# - 默认会从 context pack 中剥离 uiKitRegistry（避免过大/泄露）；需要时显式加 --includeUiKitRegistry
+logix contract-suite run ... --inputs ./inputs.json --includeContextPack
+
+# 可选：把 Anchor Autofill（079+082）嵌入到本命令（report-only）
+# - 一次性拿到 `PatchPlan/AutofillReport`，并写入 context pack（也会写入 `--out` 目录）
+logix contract-suite run ... --includeAnchorAutofill --repoRoot .
+```
+
+门禁语义（CI 友好）：
+
+- exit code `0`：PASS（或 `--allowWarn` 下的 WARN）
+- exit code `2`：VIOLATION（FAIL；或 WARN 且未 allowWarn）
+- exit code `1`：ERROR（运行失败/异常/输入不可读）
+
+落盘工件（`--out`）常见文件：
+
+- `trialrun.report.json`（TrialRunReport，默认剥离 trace/evidence；可用 `--includeTrace` 输出 `trace.slim.json`）
+- `contract-suite.verdict.json`（ContractSuiteVerdict@v1）
+- `contract-suite.context-pack.json`（ContractSuiteContextPack@v1，失败时默认输出；或 `--includeContextPack` 强制输出）
+- `manifest.diff.json`（可选：提供 `--baseline` 时）
 
 ## 3) Agent：IR-first 迭代闭环（平台价值）
 
-推荐闭环（规划）：
+推荐闭环（已可用：用 CLI 串起来）：
 
-1. 平台生成 `ContractSuiteContextPack@v1`（facts + constraints + target）。
-2. Agent 输出代码 patch（文本 diff 或 AST patch；AST 仅是载体）。
-3. 平台重跑 Contract Suite：产出新工件 + 新 verdict，作为“客观反馈”驱动下一轮迭代。
+1. 运行 `logix contract-suite run`，拿到 `contract-suite.context-pack.json`（facts + constraints + target）。
+2. Agent 只基于 Context Pack 输出代码 patch（文本 diff 或 AST patch；AST 仅是载体）。
+3. 重跑 `logix contract-suite run`：用新工件 + 新 verdict 作为“客观反馈”驱动下一轮迭代。
 
 关键点：
 

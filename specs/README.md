@@ -26,11 +26,11 @@
 
 1. **M0（锚点与证据硬门）**：先把可序列化/去随机化与 TrialRun 输出打实（优先 `016`、`025`；必要时补 `005/031` 的协议与 artifacts 槽位）。
 2. **M1（结构可见）**：让平台能枚举并对齐 actions/servicePorts/ports&typeIR（优先 `067`、`078`、`035`）；同时把 `Π` 的 workflow slice（`075`）与 `078.servicePorts` 对齐，避免 workflow 的 `serviceId` 变成灰区字符串。
-3. **M2（下一阶段里程碑：Agent 自证跑道）**：以 `085` 收口 CLI 工具箱（Oracle/Gate/Transform），并把 `081 → 082 → 079` 的保守回写闭环接入同一跑道（含 workflow `stepKey`）；达标定义见下方「下一阶段里程碑」。
+3. **M2（已达标：Agent 自证跑道）**：以 `085` 收口 CLI 工具箱（Oracle/Gate/Transform），并把 `081 → 082 → 079` 的保守回写闭环接入同一跑道（含 workflow `stepKey`）；达标定义见下方「M2 里程碑」。
 4. **M3（语义与证据增强，可选）**：在回写闭环达标后再推进 `083/084`（能看见/能建议之前先确保能写回，避免演进死角）。
 5. **消费者回归面（可选增强）**：`086` 作为 Manifest/Diff/TrialRun/Workflow slices 的可视化试验场与 UI 回归面，字段缺失必须显式提示（不作为 M0–M3 硬门槛）。
 
-### 下一阶段里程碑：Agent 自证跑道（Oracle→Gate→(可选)Transform→WriteBack）
+### M2 里程碑：Agent 自证跑道（Oracle→Gate→(可选)Transform→WriteBack）
 
 ```text
 085 logix CLI（Oracle：ir export/trialrun；Gate：ir validate/ir diff；Transform：transform module）
@@ -49,19 +49,44 @@
 
 - `@logixjs/core` 已提供 Root IR/差异/试跑底座：`Reflection.exportControlSurface` / `Reflection.diffManifest` / `Observability.trialRunModule`。
 - Root IR 已支持 workflow slice 引用：`ControlSurfaceManifest.modules[*].workflowSurface.digest`（并已有回归测试）。
-- 过渡工具已存在：`scripts/ir/inspect-module.ts` 可做“导出 + 试跑 + diff”的一体化脚本验证（但尚未收敛到 085 的统一输出与 exit code 语义）。
+- 入口已收敛到 `packages/logix-cli`（`logix`/`logix-devserver`），不再保留独立 legacy 脚本；用 `logix ir export` + `logix trialrun` + `logix ir diff` 组合替代。
 
-待实施（本里程碑交付清单，仍未落地）：
+现状（本里程碑最小闭环已落地）：
 
-- `packages/logix-cli` + `logix` bin：统一 `CommandResult@v1` 输出、`--mode report|write`、exit code（0/2/1）。
-- Gate：`logix ir validate` / `logix ir diff` 的结构化报告与 reason codes（可门禁）。
-- `ModuleManifest.servicePorts` + TrialRun 端口级缺失定位（078）。
-- `AnchorIndex@v1` / `PatchPlan@v1` / `WriteBackResult@v1` 的闭环（081/082/079），并接入 `logix anchor index/autofill` 与 `transform module`。
-- 确定性门禁口径：门禁工件默认不得包含 evidence 的 `createdAt/timestamp` 等噪音字段（否则无法 byte-level diff）。
+- `packages/logix-cli` + `logix` bin：统一 stdout 单行 `CommandResult@v1`、exit code（0/2/1）；支持 `--mode report|write`、`--tsconfig`、`--out/--outRoot`，并支持 `logix.cli.json`（`--cliConfig/--profile`）收敛默认参数以缩短命令。
+- CLI 权威入口（命令表/工件/安全边界/Transform 语义）：`specs/085-logix-cli-node-only/contracts/public-api.md`、`specs/085-logix-cli-node-only/contracts/artifacts.md`、`specs/085-logix-cli-node-only/contracts/safety.md`、`specs/085-logix-cli-node-only/contracts/transform-ops.md`、`specs/085-logix-cli-node-only/quickstart.md`。
+- CLI 最小可运行 demo：`examples/logix-cli-playground`（含 `logix.cli.json`/profiles、`--inputs` 注入与 `--includeContextPack`/`--includeAnchorAutofill`）。
+- Gate：`logix ir validate` / `logix ir diff` 已提供结构化报告与可门禁 exit code。
+- Gate+Pack：`logix contract-suite run`（036）已提供“一键验收 + 最小事实包”，可选 `--includeAnchorAutofill` 在同一条命令里产出 `PatchPlan/AutofillReport` 并写入 context pack（report-only）。
+- 078：`ModuleManifest.servicePorts` + TrialRun 端口级对齐/缺失定位已落地（可用于门禁与解释）。
+- 081/082/079：`AnchorIndex@v1` → `PatchPlan@v1` → `WriteBackResult@v1` → 源码锚点闭环已接通，且 CLI 已提供 `logix anchor index/autofill`。
+- Dev Server 已落地：`logix-devserver`（Local WS：`dev.info/dev.workspace.snapshot/dev.run/dev.runChecks/dev.cancel/dev.stop` + state file：`status/health/stop` + 纯命令行 `call`；可选 `dev.event.trace.*`）；协议 SSoT：`docs/ssot/platform/contracts/04-devserver-protocol.md`；CLI 合同：`specs/094-devserver-local-bridge/contracts/public-api.md`。
+- 确定性门禁口径：`control-surface.manifest.json`/`workflow.surface.json` 走 digest 门禁；`trialrun.report.json`/`trace.slim.json` 标记为 non-gating（避免 timestamp 噪音进入 byte-level diff）。
+
+Transform（可选，已落地）：
+
+- `logix transform module --ops`：v1 支持 `ensureWorkflowStepKeys` + `addState/addAction`（Platform-Grade 子集；默认 report-only；`--mode write` 幂等写回）。
 
 边界/风险（需提前对齐）：
 
-- Node-only 试跑遇到浏览器特有代码会失败：需要 Host 抽象/Mock Layer 或提供 browser runner（见你下面的问题与建议）。
+- Node-only 试跑遇到浏览器特有代码会失败：已通过 099 的 Host adapters（`--host browser-mock`）解决；vNext 可扩展 Playwright/真实浏览器 runner（与 CI 成本/稳定性证据绑定）。
+
+### M2+（CLI/DevServer 下一阶段，Done）
+
+- [`099-cli-host-adapters`](./099-cli-host-adapters)（Done）— CLI Host 抽象与 Browser Mock Runner（解决 Node-only 试跑的浏览器代码失败）
+- [`100-devserver-project-awareness`](./100-devserver-project-awareness)（Done）— DevServer Project Awareness（workspace snapshot / cliConfig discovery）
+- [`101-devserver-safety-hardening`](./101-devserver-safety-hardening)（Done）— DevServer 安全硬化（readOnly/allowlist/state file 权限/写回门槛）
+- [`102-devserver-trace-bridge`](./102-devserver-trace-bridge)（Done）— DevServer Trace/Debug Bridge（trace slim / diagnostics chain stream）
+
+现状（M2+）：
+
+- 已落地：`099/100/101/102`（Host adapters + snapshot + 安全护栏 + trace 事件桥接）
+
+后续方向（vNext，非硬门槛）：
+
+1. Host adapters vNext：Playwright/真实浏览器 runner（与 CI 成本/稳定性证据绑定）
+2. Trace vNext：结构化 items / realtime streaming（当前 v1 为 JSON 文本 chunks）
+3. 安全治理 vNext：更细粒度 allowlist/capabilities（保持简单可审计）
 
 ### 主线 A：Runtime 一致性 + `Π_source`（受限机制）
 
@@ -121,14 +146,7 @@
 
 ### 跑道 3：Observability Protocol + Devtools（协议真相源：005）
 
-- [`005-unify-observability-protocol`](./005-unify-observability-protocol)（Draft）— 观测协议与聚合引擎（跨宿主传输 + 证据包导入导出）
 - [`038-devtools-session-ui`](./038-devtools-session-ui)（Draft）— Devtools Session-First UI（消费 005 的协议与证据）
-
-### 跑道 4：Full-Duplex Toolchain / Agent 自证跑道（总控：080）
-
-- [`080-full-duplex-prelude`](./080-full-duplex-prelude)（Group）— 统一最小 IR + 回写前置（M0–M3 门槛）
-  - 下一阶段（M2）里程碑范围：[`085-logix-cli-node-only`](./085-logix-cli-node-only)、[`078-module-service-manifest`](./078-module-service-manifest)、[`075-workflow-codegen-ir`](./075-workflow-codegen-ir)、[`081-platform-grade-parser-mvp`](./081-platform-grade-parser-mvp)、[`082-platform-grade-rewriter-mvp`](./082-platform-grade-rewriter-mvp)、[`079-platform-anchor-autofill`](./079-platform-anchor-autofill)
-  - 可选消费者回归面：[`086-platform-visualization-lab`](./086-platform-visualization-lab)
 
 ### Frozen：core-ng（tasks 未清零，但不排期）
 
@@ -147,18 +165,24 @@
 
 ### A) 075 周边主线（出码 IR + 机制内核化 + 平台跑道）
 
-#### M2（Agent 自证跑道：下一阶段里程碑）
-
-- [`085-logix-cli-node-only`](./085-logix-cli-node-only)（Draft）— Node-only CLI 跑道（Oracle/Gate/Transform）
-- [`078-module-service-manifest`](./078-module-service-manifest)（Draft）— Module↔Service 关系纳入 Manifest IR（servicePorts）
-- [`075-workflow-codegen-ir`](./075-workflow-codegen-ir)（Draft）— Workflow Codegen IR（WorkflowDef → workflowSurface）
-- [`081-platform-grade-parser-mvp`](./081-platform-grade-parser-mvp)（Draft）— Platform-Grade Parser MVP（受限子集解析器）
-- [`082-platform-grade-rewriter-mvp`](./082-platform-grade-rewriter-mvp)（Draft）— Platform-Grade Rewriter MVP（受限子集重写器）
-- [`079-platform-anchor-autofill`](./079-platform-anchor-autofill)（Draft）— Platform-Grade 锚点声明与保守自动补全（单一真相源）
-
 #### 基础/依赖（控制律/性能/调度 + 总控）
 
-- [`080-full-duplex-prelude`](./080-full-duplex-prelude)（Draft）— Full-Duplex Prelude（统一最小 IR + 回写前置）
+- [`080-full-duplex-prelude`](./080-full-duplex-prelude)（Done）— Full-Duplex Prelude（统一最小 IR + 回写前置）
+- [`075-workflow-codegen-ir`](./075-workflow-codegen-ir)（Done）— Workflow Codegen IR（WorkflowDef/Canonical AST + workflowSurface slice）
+- [`078-module-service-manifest`](./078-module-service-manifest)（Done）— Module↔Service Manifest（servicePorts + TrialRun 端口级对齐）
+- [`085-logix-cli-node-only`](./085-logix-cli-node-only)（Done）— Logix CLI（Node-only：Oracle/Gate/WriteBack/Transform）
+- [`094-devserver-local-bridge`](./094-devserver-local-bridge)（Done）— Dev Server Local Bridge（Local WS：`dev.info/dev.run/dev.runChecks`）
+- [`095-devserver-cli-client`](./095-devserver-cli-client)（Done）— DevServer CLI Client（纯命令行 call + state file 发现）
+- [`096-devserver-event-stream-cancel`](./096-devserver-event-stream-cancel)（Done）— DevServer Event Stream + Cancel（event + `dev.cancel`）
+- [`097-devserver-runchecks-diagnostics`](./097-devserver-runchecks-diagnostics)（Done）— DevServer RunChecks Diagnostics（`durationMs` + `diagnostics[]`）
+- [`098-devserver-process-governance`](./098-devserver-process-governance)（Done）— DevServer Process Governance（status/stop/health/token/state）
+- [`099-cli-host-adapters`](./099-cli-host-adapters)（Done）— CLI Host 抽象与 Browser Mock Runner（解锁浏览器依赖入口的导出/试跑）
+- [`100-devserver-project-awareness`](./100-devserver-project-awareness)（Done）— DevServer Project Awareness（workspace snapshot / cliConfig discovery）
+- [`101-devserver-safety-hardening`](./101-devserver-safety-hardening)（Done）— DevServer 安全硬化（readOnly/allowWrite/allowlist/capabilities）
+- [`102-devserver-trace-bridge`](./102-devserver-trace-bridge)（Done）— DevServer Trace/Debug Bridge（trace slim / event stream）
+- [`081-platform-grade-parser-mvp`](./081-platform-grade-parser-mvp)（Done）— Platform-Grade Parser（AnchorIndex@v1）
+- [`082-platform-grade-rewriter-mvp`](./082-platform-grade-rewriter-mvp)（Done）— Platform-Grade Rewriter（PatchPlan@v1 / WriteBackResult@v1）
+- [`079-platform-anchor-autofill`](./079-platform-anchor-autofill)（Done）— 保守 Autofill（只补缺失字段；report/write 幂等）
 - [`073-logix-external-store-tick`](./073-logix-external-store-tick)（Draft）— ExternalStore + TickScheduler（跨外部源/跨模块强一致）
 - [`068-watcher-pure-wins`](./068-watcher-pure-wins)（Draft）— watcher fan-out 纯赚性能地基
 - [`076-logix-source-auto-trigger-kernel`](./076-logix-source-auto-trigger-kernel)（Draft）— source 自动触发内核（dirtyPaths + depsIndex）
@@ -167,12 +191,9 @@
 
 #### M3（语义与证据增强，可选）
 
-- [`083-named-logic-slots`](./083-named-logic-slots)（Draft）— 具名逻辑插槽（结构可见→语义可见）
-- [`084-loader-spy-dep-capture`](./084-loader-spy-dep-capture)（Draft）— Loader Spy 依赖采集（加载态自描述证据）
-
-#### 可选消费者回归面
-
-- [`086-platform-visualization-lab`](./086-platform-visualization-lab)（Draft）— 可视化实验室（IR / Evidence / Gate）
+- [`083-named-logic-slots`](./083-named-logic-slots)（Done）— 具名逻辑插槽（Manifest/门禁可枚举）
+- [`084-loader-spy-dep-capture`](./084-loader-spy-dep-capture)（Done）— Loader Spy 依赖采集（证据≠权威；report-only）
+- [`086-platform-visualization-lab`](./086-platform-visualization-lab)（Done）— Platform Visualization Lab（`examples/logix-react` `/platform-viz/*`）
 
 ### B) Kernel/Runtime 基建（Traits/Txn/Concurrency/Contracts）
 
@@ -193,19 +214,19 @@
 - [`022-module`](./022-module)（Draft）— Module（定义对象）+ ModuleTag（身份锚点）
 - [`023-logic-traits-setup`](./023-logic-traits-setup)（Draft）— Logic Traits in Setup
 - [`024-root-runtime-runner`](./024-root-runtime-runner)（Draft）— Root Runtime Runner（根模块运行入口）
-- [`025-ir-reflection-loader`](./025-ir-reflection-loader)（Draft）— IR Reflection Loader（反射与试运行提取）
-- [`031-trialrun-artifacts`](./031-trialrun-artifacts)（Draft）— TrialRun Artifacts（试运行 IR 工件槽位）
+- [`025-ir-reflection-loader`](./025-ir-reflection-loader)（Done）— IR Reflection Loader（反射与试运行提取）
+- [`031-trialrun-artifacts`](./031-trialrun-artifacts)（Done）— TrialRun Artifacts（试运行 IR 工件槽位）
 - [`033-module-stage-blueprints`](./033-module-stage-blueprints)（Draft）— Module 舞台语义蓝图
 - [`060-react-priority-scheduling`](./060-react-priority-scheduling)（Draft）— Txn Lanes（可解释优先级调度；统一证据）
 - [`093-logix-kit-factory`](./093-logix-kit-factory)（Draft）— Kit Factory（语法糖机器）：用既有原语拼装可复用糖包，避免概念/边界重叠与双真相源
 
 ### C) 观测/证据/Devtools/Perf 跑道
 
-- [`005-unify-observability-protocol`](./005-unify-observability-protocol)（Draft）— 统一观测协议与聚合引擎（平台协议层优先）
+- [`005-unify-observability-protocol`](./005-unify-observability-protocol)（Done）— 统一观测协议与聚合引擎（平台协议层优先）
 - [`014-browser-perf-boundaries`](./014-browser-perf-boundaries)（Active）— 浏览器压测基线与性能边界地图
 - [`017-perf-tuning-lab`](./017-perf-tuning-lab)（Active）— 调参实验场（消费 perf 跑道与控制面）
 - [`015-devtools-converge-performance`](./015-devtools-converge-performance)（Draft）— Devtools 性能面板
-- [`016-serializable-diagnostics-and-identity`](./016-serializable-diagnostics-and-identity)（Draft）— 可序列化诊断与稳定身份
+- [`016-serializable-diagnostics-and-identity`](./016-serializable-diagnostics-and-identity)（Done）— 可序列化诊断与稳定身份
 - [`038-devtools-session-ui`](./038-devtools-session-ui)（Draft）— Devtools Session-First 界面重设计
 - [`044-trait-converge-diagnostics-sampling`](./044-trait-converge-diagnostics-sampling)（Planned）— Trait 诊断低成本采样（计时/统计）
 - [`092-e2e-latency-trace`](./092-e2e-latency-trace)（Draft）— E2E Latency Trace（action→txn→notify→commit）
@@ -228,14 +249,15 @@
 ### E) 平台/Workbench/Playground（协议、资产与教学跑道）
 
 - [`032-ui-projection-contract`](./032-ui-projection-contract)（Draft）— UI Projection Contract（语义编排与 UI 投影解耦）
-- [`035-module-reference-space`](./035-module-reference-space)（Draft）— Module Reference Space（模块引用空间事实源：PortSpec/TypeIR + CodeAsset 协议；已吸收原 034/035-old）
-- [`036-workbench-contract-suite`](./036-workbench-contract-suite)（Draft）— Workbench Contract Suite（031-035 统一验收与治理）
-- [`040-schemaast-layered-upgrade`](./040-schemaast-layered-upgrade)（Draft）— SchemaAST 分层能力升级
-- [`041-docs-inline-playground`](./041-docs-inline-playground)（Draft）— 文档内联教学 Playground
+- [`034-code-asset-protocol`](./034-code-asset-protocol)（Done）— Code Asset Protocol（CodeAsset/Deps/Digest/Anchor）
+- [`035-module-reference-space`](./035-module-reference-space)（Done）— Module Reference Space（模块引用空间事实源：PortSpec/TypeIr/PortAddress；CodeAsset/Deps/Anchor 协议见 034）
+- [`036-workbench-contract-suite`](./036-workbench-contract-suite)（Done）— Workbench Contract Suite（031/034/035 统一验收与治理）
+- [`040-schemaast-layered-upgrade`](./040-schemaast-layered-upgrade)（Done）— SchemaAST 分层能力升级（registry pack 已接入 trialrun artifacts）
+- [`041-docs-inline-playground`](./041-docs-inline-playground)（Done）— 文档内联教学 Playground
 - [`042-react-runtime-boot-dx`](./042-react-runtime-boot-dx)（Draft）— React 集成冷启动策略与 DX 优化
 - [`058-sandbox-multi-kernel`](./058-sandbox-multi-kernel)（Draft）— Sandbox 多内核试跑与对照（core/core-ng）
 - [`064-speckit-kanban-timeline`](./064-speckit-kanban-timeline)（Draft）— Specs Timeline Board（Kanban）
-- [`067-action-surface-manifest`](./067-action-surface-manifest)（Draft）— Action Surface 与 Manifest
+- [`067-action-surface-manifest`](./067-action-surface-manifest)（Done）— Action Surface 与 Manifest
 - [`069-schema-first-codegen-action-surface`](./069-schema-first-codegen-action-surface)（Draft）— Schema-first 派生 Action Surface
 
 ### F) 示例应用（Galaxy）

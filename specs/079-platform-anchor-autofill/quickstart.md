@@ -14,7 +14,7 @@
 
 运行补全工具但不改写源码（仅输出报告）：
 
-- `pnpm tsx scripts/ir/autofill-anchors.ts --mode report --root <dir-or-file>`
+- `logix anchor autofill --runId r1 --repoRoot <dir> --mode report --out ./.logix/anchor/r1`
 
 验收要点：
 
@@ -25,7 +25,7 @@
 
 审阅 report 后再写回：
 
-- `pnpm tsx scripts/ir/autofill-anchors.ts --mode write --root <dir-or-file>`
+- `logix anchor autofill --runId r2 --repoRoot <dir> --mode write --out ./.logix/anchor/r2`
 
 验收要点：
 
@@ -34,10 +34,13 @@
 
 ## 3) 如何与 TrialRun/Manifest 对齐（可选）
 
-对目标模块运行 `scripts/ir/inspect-module.ts`：
+对目标入口跑一遍 `logix trialrun`：
 
-- 导出 `module-manifest.json` 与 `trial-run-report.json` 作为对比输入。
-- 关注 `environment.missingServices/missingConfigKeys` 是否更易解释/收敛（并不要求完全为 0）。
+- `logix trialrun --runId r3 --entry <modulePath>#<exportName> --out ./.logix/anchor/r3`
+
+关注 `trialrun.report.json` 的 `environment.missingServices/missingConfigKeys` 是否更易解释/收敛（并不要求完全为 0）。
+
+如需把结构变化也纳入门禁，可配合 `logix ir export` 导出 `control-surface.manifest.json` 并用 `logix ir diff` 与基线对比。
 
 ## 4) 常见跳过原因（你需要手写声明的信号）
 
@@ -46,4 +49,3 @@
 - `dynamic_or_ambiguous_usage`：依赖来自动态表达式/中转变量/多候选；
 - `unresolvable_service_id`：Tag 无法解析出稳定 id；
 - `unsafe_to_patch`：定义形态无法安全改写（例如对象含 spread / 非字面量）。
-

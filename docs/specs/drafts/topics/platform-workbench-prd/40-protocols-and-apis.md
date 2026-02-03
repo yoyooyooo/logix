@@ -16,6 +16,8 @@ related:
 # 40 · API / 协议草案（Platform Workbench PRD）
 
 > 目标：把“平台/Dev Server/Sandbox/Agent”之间的通道收敛成少数几类协议面，先把契约立住，再进入实现细节。
+>
+> 注：其中 **Studio ↔ Dev Server（Local WS）** 的最小特权与消息信封已升格为平台 SSoT：`docs/ssot/platform/contracts/04-devserver-protocol.md`。本文件继续保留 PRD 视角的占位与扩展面（与 Backend/Sandbox/Agent 的整体拼图）。
 
 ## 1. 协议面一览
 
@@ -41,7 +43,7 @@ related:
   "protocol": "intent-flow.devserver.v1",
   "requestId": "uuid",
   "type": "request",
-  "method": "dev.parseIntentRules",
+  "method": "dev.info",
   "params": {}
 }
 ```
@@ -99,13 +101,14 @@ related:
 
 > 该通道负责把 “Repo/TS/类型/解析器” 暴露为平台可消费能力；协议应以“请求/响应 + 事件流”组织。
 
+> 注：v1 的“最小可交付方法集合”已在平台 SSoT 收口为 `dev.info/dev.run/dev.runChecks`（见 `docs/ssot/platform/contracts/04-devserver-protocol.md`）。
+> 本 PRD 里更细粒度的 `dev.parseIntentRules/dev.generatePatchFromRules/dev.applyPatch` 属于未来扩展设想（v2+），暂不作为 v1 contract。
+
 ### 3.1 基础能力
 
-- `dev.listModules`：列出可解析的 Module/Logic 清单（含 ids、文件路径、exports）
-- `dev.parseIntentRules`：解析某个逻辑文件/符号 → IntentRule[] + anchors + diagnostics
-- `dev.generatePatchFromRules`：输入 RuleSetPatch → 输出 AST Patch（文件级 diff）+ diagnostics
-- `dev.applyPatch`：将补丁写入工作区（返回写入结果与文件摘要）
-- `dev.runChecks`：按请求运行 typecheck/lint/test（返回结构化诊断，避免流式 log 污染 UI）
+- `dev.info`：返回 devserver 版本/协议/cwd（用于 UI/Agent 自检与排障）
+- `dev.run`：在 devserver 进程内调用 `logix` CLI（085），返回 `CommandResult@v1`
+- `dev.runChecks`：按请求运行 typecheck/lint/test（返回结构化摘要，避免流式 log 污染 UI）
 
 #### 3.1.1 `dev.parseIntentRules`（建议形状）
 

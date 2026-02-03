@@ -1,0 +1,30 @@
+{
+  "name": "@logixjs/workbench",
+  "version": "0.0.1",
+  "license": "Apache-2.0",
+  "description": "Workbench utilities: reference space diff + contract suite verdict/context-pack",
+  "type": "module",
+  "files": [
+    "dist/**"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./internal/*": null
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed",
+    "test:cache": "vitest run --cache"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.1",
+    "tsup": "^8.5.1",
+    "typescript": "5.8.2",
+    "vitest": "^4.0.15"
+  }
+}
+

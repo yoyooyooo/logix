@@ -13,11 +13,31 @@
   "types": "./src/index.ts",
   "exports": {
     "./package.json": "./package.json",
-    ".": "./src/index.ts",
-    "./Client": "./src/Client.ts",
-    "./Protocol": "./src/Protocol.ts",
-    "./Service": "./src/Service.ts",
-    "./Types": "./src/Types.ts",
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./Client": {
+      "types": "./src/Client.ts",
+      "import": "./dist/Client.js",
+      "require": "./dist/Client.cjs"
+    },
+    "./Protocol": {
+      "types": "./src/Protocol.ts",
+      "import": "./dist/Protocol.js",
+      "require": "./dist/Protocol.cjs"
+    },
+    "./Service": {
+      "types": "./src/Service.ts",
+      "import": "./dist/Service.js",
+      "require": "./dist/Service.cjs"
+    },
+    "./Types": {
+      "types": "./src/Types.ts",
+      "import": "./dist/Types.js",
+      "require": "./dist/Types.cjs"
+    },
     "./Vite": {
       "types": "./dist/Vite.d.ts",
       "import": "./dist/Vite.js",
@@ -78,9 +98,9 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
-    "test": "vitest run",
-    "test:changed": "vitest run --changed",
-    "test:cache": "vitest run --cache",
+    "test": "vitest run --project=!browser*",
+    "test:changed": "vitest run --changed --project=!browser*",
+    "test:cache": "vitest run --cache --project=!browser*",
     "test:browser": "pnpm bundle:kernel && vitest run --project browser",
     "test:watch": "vitest",
     "bundle:kernel": "node scripts/bundle-kernel.mjs",
@@ -89,6 +109,7 @@
     "prepack": "node scripts/bundle-kernel.mjs && tsup"
   },
   "dependencies": {
+    "@logixjs/workbench": "workspace:*",
     "effect": "^3.19.13",
     "esbuild-wasm": "^0.27.1"
   },

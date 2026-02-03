@@ -6,28 +6,28 @@
 
 ## 0) 目标一句话
 
-让 Logix 的状态/动作/协议/诊断具备“可解释 schema”：运行期只携带 `schemaId`（Slim），离线通过 registry pack 解释与校验（Fat）。
+让 Logix 的状态/动作具备“可解释 schema”：运行期导出稳定 `schemaId`，工具侧通过 registry pack 离线解释与校验（解释材料，不作为平台事实源）。
 
 ## 1) 你会拿到三类基础能力
 
-1. **schemaId**：同一语义的 schema 在不同运行中稳定一致，可作为事件/IR/协议的引用锚点。
-2. **Schema Registry（会话级）**：可查询、可导出/导入（JSON 可序列化），支持离线解释。
+1. **schemaId**：同一语义的 schema 在不同运行中稳定一致，可作为 IR/报告的引用锚点。
+2. **SchemaRegistryPack@v1**：导出为 TrialRun artifact（`@logixjs/schema.registry@v1`），内容 JSON-safe，可被工具离线索引。
 3. **contracts（JSON Schema）**：用于 CI/Workbench/跨语言消费者的契约守卫（`contracts/schemas/*`）。
 
-## 2) 最小消费方式（离线解释 / Workbench）
+## 2) 最小消费方式（CLI / Contract Suite）
 
-1. 从一次 trial-run / evidence / 导出工件中获取 registry pack（建议作为可选 artifact：`@logixjs/schema.registry@v1`）。  
-2. 在工具侧加载 registry pack，并建立 `schemaId -> SchemaEntry` 的索引。  
-3. 当看到某条事件/IR/协议消息携带 `schemaRef.schemaId` 时：  
-   - 能找到 → 用对应 schema 解释字段含义/约束/注解；  
-   - 找不到 → 降级为“安全摘要 + 缺失原因提示”，但仍可展示原始 JsonValue。
+推荐入口：用 036 的 Contract Suite 生成最小事实包（Context Pack），并默认携带 registry pack 的 `value`（白名单机制，避免全量泄露）。
 
-## 3) Sandbox 协议的最小收益（可解释失败）
+1. 运行 `logix contract-suite run ... --includeContextPack`，获得 `contract-suite.context-pack.json`。  
+2. 在工具侧加载 `ContractSuiteContextPack@v1.facts.trialRunReport.artifacts['@logixjs/schema.registry@v1'].value`。  
+3. 建立 `schemaId -> entry` 索引（`SchemaRegistryPack.schemas[]`）。  
+4. 当看到某条事实/报告引用 `schemaId`：能命中就解释；不能命中就降级为安全摘要（不阻塞 gate）。
 
-- 对 Host↔Worker 的消息，在边界解码时做 schema 校验：  
-  - 合法 → 继续处理；  
-  - 非法 → 产出结构化错误事件（字段路径 + 分类 + 最小上下文），并保持会话继续可用。  
-- 版本不兼容必须在握手阶段明确拒绝（携带双方版本与兼容性结论）。
+## 3) 本次 v1 不做什么（后续增量）
+
+- 诊断事件/证据链 schemaRef 化（US2）
+- Sandbox 协议 schema 校验与结构化错误事件（US3）
+- ServiceContract 等边界契约资产化（US4）
 
 ## 4) 迁移/演进原则（不做兼容层）
 

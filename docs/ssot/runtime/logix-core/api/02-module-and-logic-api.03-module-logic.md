@@ -22,6 +22,7 @@ export const CounterLogic = CounterDef.logic(($) =>
 
 - 由 ModuleDef 注入一个 Bound API `$`（见第 4 节），Env 类型自动推导为 `Logic.Env<Sh,R>`；
 - 返回值就是一段 Logic 程序（`Logic.Of<Sh,R>`），可以在 `ModuleDef.live` 中挂载，或作为 Pattern/模板返回值复用；
+- `ModuleDef.logic(build, options)` 的 `options` 可用于提供稳定锚点（`id/kind/name`）以及具名插槽（083：`slotName`），用于 Manifest/平台可解释链路；
 - 一个 ModuleDef 可以有多段 Logic（多次 `.logic` 调用），但通常约定在 Module 定义文件导出一个“主逻辑”，其余作为 Pattern/插件逻辑组合到 `.live` 中。
 
 ## 3.2 组合多个 Logic 程序

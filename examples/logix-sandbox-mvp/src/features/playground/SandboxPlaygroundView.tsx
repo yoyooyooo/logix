@@ -5,6 +5,7 @@ import type { SandboxRuntime, SandboxTab } from '../../modules/SandboxRuntime'
 import { useStableBusy } from '../../pages/_shared/useStableBusy'
 import {
   AlertBox,
+  SandboxErrorDetails,
   Header,
   HttpView,
   MemoConsoleView,
@@ -128,8 +129,8 @@ function PlaygroundOutputPanel({ runtime }: { runtime: SandboxRuntime }) {
         )}
 
         {error && error.code !== 'RUNTIME_ERROR' && (
-          <AlertBox title="System Error" type="error" className="mb-4">
-            <div className="font-mono text-xs">{error.message}</div>
+          <AlertBox title={`System Error · ${error.code}`} type="error" className="mb-4">
+            <SandboxErrorDetails error={error} />
           </AlertBox>
         )}
 

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `082-platform-grade-rewriter-mvp`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 为“全双工前置”建立 Platform-Grade 子集的最小回写能力：基于解析出的锚点索引与补全候选，生成最小且可解释的源码补丁；当存在歧义/冲突/风险时显式失败或降级为 report-only，避免 silent corruption。
 
 ## Context

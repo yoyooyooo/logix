@@ -77,13 +77,15 @@
 
 ### 085 · Logix CLI（Node-only 基础能力入口）
 
-- 定位：在平台产品落地前，提供统一命令入口串联 IR 导出/试跑/索引/回写；同时作为 Node-only 能力的集成测试跑道。
+- 定位：在平台产品落地前，提供统一命令入口串联 IR 导出/试跑/索引/回写；同时作为 Node-only 能力的集成测试跑道；并提供 Contract Suite 的 Node 入口（036）：`logix contract-suite run` 作为统一 gate。
 - 关键门槛：输出确定性、可序列化、可 diff；report-only/write-back 双模式；失败/跳过/降级必须可解释（reason codes）。
 
 ### 083 · Named Logic Slots（Medium→Hard）
 
 - 定位：从“结构可见”迈向“语义可见”的第一步：模块逻辑插槽语义化，支撑替换/组装。
 - 风险：容易与业务语义耦合；需要严格限定“插槽语义”的表达与治理边界（避免平台过度推断）。
+- 依赖口径：runtime 侧只负责 slots/slotName 元数据 + 校验 + Manifest 反射；任何写回都必须依赖 `081/082` 的 Platform-Grade Parser/Rewriter（子集外降级为 Raw Mode）。
+- 最小门槛：`slotName`/`slots` key 符合命名规范、required/unique/aspect 校验可门禁；`extractManifest` 导出 `slots/slotFills` 且确定性可 diff。
 
 ### 084 · Loader Spy 依赖采集（Hard/Spike）
 
@@ -114,28 +116,28 @@
 ## 078–085 落地对照（基于当前代码）
 
 > 目的：把 `080` 的“门槛/顺序”与仓库现实对齐，避免出现“规格写完才发现已有实现/关键缺口在别处”的漂移。  
-> 更新：2026-01-10（后续实现推进时应持续回写本节）。
+> 更新：2026-01-27（后续实现推进时应持续回写本节）。
 
 ### 已有基础设施（可复用）
 
 - 模块锚点字段已存在：`services` / `meta` / `dev.source`（`packages/logix-core/src/Module.ts`）。
-- Manifest IR 与确定性 digest/diff 已存在（但尚未包含 `servicePorts`）：`packages/logix-core/src/internal/reflection/manifest.ts`、`packages/logix-core/src/internal/reflection/diff.ts`、出口 `packages/logix-core/src/Reflection.ts`。
-- TrialRunReport 已能导出 `environment.missingServices` 等（但主要依赖错误文本解析，缺少端口级定位）：`packages/logix-core/src/internal/observability/trialRunModule.ts`。
+- Manifest IR 与确定性 digest/diff 已包含 `servicePorts`（078）：`packages/logix-core/src/internal/reflection/manifest.ts`、`packages/logix-core/src/internal/reflection/diff.ts`、出口 `packages/logix-core/src/Reflection.ts`。
+- TrialRunReport 已支持端口级对齐/缺失定位（078）：`packages/logix-core/src/internal/observability/trialRunModule.ts`。
 - `$.use(...)` 使用点大量存在，且核心实现入口明确（适合作为 Parser/Spy 的锚点）：`packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`。
-- Tag→string 的稳定 id 逻辑目前分散在多处：`packages/logix-core/src/internal/root.ts`、`packages/logix-core/src/internal/runtime/AppRuntime.ts`（需要被 078 收敛为 `ServiceId` 单点实现）。
+- Tag→string 的稳定 id 已收敛为单点实现（078）：`packages/logix-core/src/internal/serviceId.ts`。
 
 ### 成员 spec 对照表（最小验收入口）
 
 | Spec | 现状入口（已存在） | 主要缺口（要补的） | 最小验收入口（建议） |
 | ---- | ------------------ | ------------------ | -------------------- |
-| `078` | `ModuleDef.services` 字段已存在；Manifest/Diff/TrialRun 基础链路已存在 | 统一 `ServiceId`；`ModuleManifest.servicePorts` + `manifestVersion` bump；`diffManifest(servicePorts)`；TrialRun 端口级对齐（`moduleId+port+serviceId`） | `Logix.Reflection.extractManifest` 输出包含 `servicePorts` 且 digest/diff 可门禁；TrialRunReport 输出端口级缺失清单 |
+| `078` | `ModuleDef.services` + `ModuleManifest.servicePorts` + TrialRun 端口级对齐已落地 | （可选增强）把更多“声明缺口”迁移为 CI 门禁（由 079/085 驱动） | `Logix.Reflection.extractManifest` 输出包含 `servicePorts` 且 digest/diff 可门禁；TrialRunReport 输出端口级缺失清单 |
 | `075` | 现阶段依赖 `FlowRuntime`/watchers 的手写形态为主 | `WorkflowDef` 权威输入 + `workflowSurface`（Π slice）导出；`stepKey` 必填与可回写；KernelPorts 作为 service ports（对齐 078） | 导出 `workflowSurface` slice，并在 Root IR（ControlSurfaceManifest）中通过 `modules[*].workflowSurface.digest` 回链；缺失/重复 stepKey 可门禁化并可在 Platform-Grade 子集内回写 |
-| `079` | 现阶段没有 `packages/logix-anchor-engine`（Node-only） | AutofillPolicy + reasonCodes + report-only；与 `082` 串联写回；严格“只补未声明/幂等/最小 diff/宁可漏” | `logix anchor autofill --report` 输出 PatchPlan/跳过原因；`--write` 后二次运行 0 diff |
-| `081` | workspace 已具备 `ts-morph`/`tsx` 依赖（Node-only 解析前提 OK） | 新增 `packages/logix-anchor-engine`，产出 `AnchorIndex@v1`（Platform-Grade 子集识别 + RawMode + 缺口点 insertSpan） | 同一 fixture 仓库重复扫描输出一致；RawMode 的 reasonCodes 稳定可门禁 |
-| `082` | 无现成写回引擎 | `PatchPlan@v1` + `WriteBackResult@v1`；支持 `AddObjectProperty` 最小写入；plan→write 竞态 fail-fast；report-only 与 write 等价 | 对 fixture：只新增缺失字段、不重排；重复运行幂等；歧义输入显式失败并给 reasonCodes |
-| `085` | 可参考现有 CLI 形态：`packages/speckit-kit/src/bin/speckit-kit.ts`；IR/TrialRun API 已在 core 内 | 新增 `packages/logix-cli`；先落地 US1（IR 导出 + TrialRun + 统一输出 envelope），再接入 US2（anchor index/autofill） | `logix` 子命令输出确定性 `CommandResult@v1`；能落盘工件并以 exit code 门禁化 |
-| `084` | `$.use` 实现点明确且已有“diagnostics off 的零开销门禁”注释（`BoundApiRuntime.ts`） | 注入式 SpyCollector（默认缺席零成本）；导出 `SpyEvidenceReport@v1`；与声明对照 diff（证据不作权威）；补 perf evidence | disabled：行为与性能不变；enabled：能稳定采集 usedServices 且输出可 diff/可截断 |
-| `083` | `LogicUnitMeta` 已支持稳定 `resolvedId` 等锚点（`packages/logix-core/src/internal/runtime/core/LogicUnitMeta.ts`）；Manifest 已导出 `logicUnits` | slots/slotName 元数据与校验（required/unique）；Manifest 导出 slots 定义与 slot→logic 映射（确定性/可 diff） | `extractManifest` 可枚举 slots；违规时报错包含 slotName 与冲突逻辑锚点 |
+| `079` | `packages/logix-anchor-engine/src/Autofill.ts`（services/dev.source/workflow stepKey；串联 082 写回） | （可选增强）imports 只报告/后续再逐步开放写回；deviation 维度扩展 | `logix anchor autofill --mode report|write` 输出 PatchPlan/AutofillReport/WriteBackResult；`--mode write` 后二次运行 0 diff |
+| `081` | `packages/logix-anchor-engine/src/Parser.ts`（AnchorIndex@v1；RawMode + insertSpan） | tsconfig 选择/自动探测策略可继续增强（`--tsconfig` 已支持） | 同一 fixture 仓库重复扫描输出一致；RawMode 的 reasonCodes 稳定可门禁 |
+| `082` | `packages/logix-anchor-engine/src/Rewriter.ts`（PatchPlan@v1 + WriteBackResult@v1；最小写入 + 竞态防护） | 逐步扩展可写回 ops 子集（当前仅 AddObjectProperty） | 对 fixture：只新增缺失字段、不重排；重复运行幂等；歧义输入显式失败并给 reasonCodes |
+| `085` | `packages/logix-cli`（logix bin；Oracle/Gate/WriteBack 已接通） | `transform module` v1 已支持 `ensureWorkflowStepKeys` + `addState/addAction`（Platform-Grade 子集；其余 ops 仍按需扩展） | `logix` 子命令输出确定性 `CommandResult@v1`；能落盘工件并以 exit code 门禁化；anchor index/autofill 可形成 report→write→幂等复跑闭环 |
+| `084` | `$.use` 实现点明确且已有“diagnostics off 的零开销门禁”注释（`BoundApiRuntime.ts`） | —（已收口：SpyCollector 注入点 + `SpyEvidenceReport@v1` + declared-vs-used diff + CLI `logix spy evidence` + perf evidence） | disabled：行为与性能不变（见 perf diff）；enabled：能稳定采集 usedServices 且输出可 diff/可截断 |
+| `083` | `LogicUnitMeta` 已支持稳定 `resolvedId` 等锚点（`packages/logix-core/src/internal/runtime/core/LogicUnitMeta.ts`）；Manifest 已导出 `logicUnits` | —（已收口：`slots`/`slotFills` + required/unique 校验 + 确定性导出） | `extractManifest` 可枚举 slots；违规时报错包含 slotName 与冲突逻辑锚点 |
 
 ### 建议推进顺序（以最小闭环为目标）
 
@@ -149,4 +151,4 @@
 ### 风险提示（与现状强相关）
 
 - 目前在 `examples/*` 与 `packages/*` 里暂未检索到 `Logix.Module.make(..., { services: ... })` 的显式声明用法；大量依赖通过 `yield* $.use(ServiceTag)` 直接读取 Env。  
-  → 因此 **单独实现 `078` 会大量导出空 `servicePorts`**，价值释放需要配合 `079`（或先手工补声明）把“声明缺口”回填到源码。
+  → 因此 **即使 078 已完成，`servicePorts` 仍可能大量为空**；价值释放需要配合 `079`（或手工补声明）把“声明缺口”回填到源码，并在 CI/Devtools 中固化回归入口。

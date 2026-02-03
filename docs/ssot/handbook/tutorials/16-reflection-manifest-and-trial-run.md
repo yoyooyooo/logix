@@ -15,12 +15,13 @@ version: 1
 
 1. Runtime SSoT（权威口径）：`docs/ssot/runtime/logix-core/api/06-reflection-and-trial-run.md`
 2. 025 的 quickstart（最小可跑闭环）：`specs/025-ir-reflection-loader/quickstart.md`
-3. 一键落盘脚本（推荐入口）：`scripts/ir/inspect-module.ts`
-4. 最小平台消费者（/ir 页面）：`examples/logix-sandbox-mvp/src/ir/IrPage.tsx`
-5. 从 /ir 反推全链路（分节导航）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
-6. Artifacts 扩展位（实现）：`packages/logix-core/src/internal/observability/artifacts/*`
-7. Artifacts 首个用例（Form RulesManifest）：`packages/logix-form/src/internal/form/artifacts.ts`
-8. CLI 跑道（规划与契约）：`specs/085-logix-cli-node-only/spec.md`
+3. Node-only CLI（推荐入口）：`specs/085-logix-cli-node-only/quickstart.md`
+4. CLI Playground（可跑教程）：`examples/logix-cli-playground/tutorials/README.md`
+5. 最小平台消费者（/ir 页面）：`examples/logix-sandbox-mvp/src/ir/IrPage.tsx`
+6. 从 /ir 反推全链路（分节导航）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
+7. Artifacts 扩展位（实现）：`packages/logix-core/src/internal/observability/artifacts/*`
+8. Artifacts 首个用例（Form RulesManifest）：`packages/logix-form/src/internal/form/artifacts.ts`
+9. CLI 跑道（规划与契约）：`specs/085-logix-cli-node-only/spec.md`
 
 ---
 
@@ -188,21 +189,19 @@ Artifacts 的目标：让“kit-specific 的解释语义”能被平台/CLI/Devt
 
 ### 3.1 本地一键 inspect（推荐入口）
 
-如果你只想快速得到“可落盘、可对比”的工件，优先用现成脚本（它会强制要求 `--runId`）：
+如果你只想快速得到“可落盘、可对比”的工件，优先用 Node-only CLI（085，强制要求 `--runId`）：
 
-见：`specs/025-ir-reflection-loader/quickstart.md`（0) inspect program module）
+见：`specs/085-logix-cli-node-only/quickstart.md`
 
-代码：`scripts/ir/inspect-module.ts`
+它会落盘（示例）：
 
-它会落盘：
+- `control-surface.manifest.json`
+- `trialrun.report.json`
 
-- `module-manifest.json`
-- `trial-run-report.json`
+并配套 Gate：
 
-并支持：
-
-- `diffManifest` 输出 `module-manifest-diff.json`
-- TrialRunReport 的 normalize compare（determinism smoke）
+- `ir validate`（门禁）
+- `ir diff`（与基线目录稳定对比）
 
 ### 3.2 CI 契约防腐：把“破坏性变更”前移到 PR
 
@@ -360,7 +359,7 @@ Artifacts 的目标：让“kit-specific 的解释语义”能被平台/CLI/Devt
 ### 4.5 首个用例与最小平台
 
 - `packages/logix-form/src/internal/form/artifacts.ts`：RulesManifest artifact exporter
-- `scripts/ir/inspect-module.ts`：Node 侧一键落盘与 compare
+- `specs/085-logix-cli-node-only/quickstart.md`：Node-only CLI（`ir export`/`trialrun`/`ir validate`/`ir diff`）
 - `examples/logix-sandbox-mvp/src/ir/IrPage.tsx`：/ir 页面（平台最小消费者）
 
 ---
@@ -369,7 +368,11 @@ Artifacts 的目标：让“kit-specific 的解释语义”能被平台/CLI/Devt
 
 ### 5.1 生成工件（推荐）
 
-按 025 quickstart 跑一次 inspect（会落盘 manifest 与 trial-run-report）：
+按 085 quickstart 跑一次（会落盘 `control-surface.manifest.json` 与 `trialrun.report.json`）：
+
+- `specs/085-logix-cli-node-only/quickstart.md`
+
+补充（更偏 API 视角与背景说明）：
 
 - `specs/025-ir-reflection-loader/quickstart.md`
 
@@ -395,4 +398,3 @@ Artifacts 的目标：让“kit-specific 的解释语义”能被平台/CLI/Devt
 4. **让 artifacts 输出全量大对象**：预算默认 50KB；超预算要输出摘要/预览并保留 digest，而不是关掉预算。
 5. **缺失依赖当 warnings**：MissingDependency 必须失败（否则平台/CI 会把失败推迟到运行期且更难定位）。
 6. **收束模型不清**：DisposeTimeout 往往意味着资源没被 scope 管住；先回到“谁创建、谁 close”的基本原则。
-

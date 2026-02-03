@@ -17,8 +17,8 @@
 
 **Purpose**: 先把“协议口径/契约锚点”写死，避免实现阶段出现并行真相源。
 
-- [x] T002 [P] 对齐 Sandbox 协议文档（多内核语义、strict/fallback、结果摘要字段）：`docs/specs/drafts/topics/sandbox-runtime/15-protocol-and-schema.md`
-- [x] T003 [P] 对齐 Sandbox 包 API 文档（Config/Client API 的多内核形态与现状差异说明）：`docs/specs/drafts/topics/sandbox-runtime/25-sandbox-package-api.md`
+- [x] T002 [P] 对齐 Sandbox 协议文档（多内核语义、strict/fallback、结果摘要字段）：`docs/ssot/runtime/logix-sandbox/15-protocol-and-schema.md`
+- [x] T003 [P] 对齐 Sandbox 包 API 文档（Config/Client API 的多内核形态与现状差异说明）：`docs/ssot/runtime/logix-sandbox/25-sandbox-package-api.md`
 - [x] T004 [P] 固化契约引用关系（058 contracts README 引用 045 KernelImplementationRef schema）：`specs/058-sandbox-multi-kernel/contracts/README.md`
 
 **Checkpoint**: 文档与契约口径一致，可进入实现与测试。
@@ -92,7 +92,7 @@
 
 ## Phase N: Polish & Cross-Cutting Concerns
 
-- [x] T017 [P] 清理并固化 docs/协议口径（保证与代码一致）：`docs/specs/drafts/topics/sandbox-runtime/*`
+- [x] T017 [P] 清理并固化 docs/协议口径（保证与代码一致）：`docs/ssot/runtime/logix-sandbox/*`
 - [x] T018 质量门验证：`pnpm typecheck`、`pnpm lint`、`pnpm test`
 
 ---

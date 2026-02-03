@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intent-flow.local/specs/034-code-asset-protocol/schemas/deps.schema.json",
+  "title": "Deps",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "reads", "services", "configs"],
+  "properties": {
+    "protocolVersion": { "type": "string", "enum": ["v1"] },
+    "reads": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "../../../035-module-reference-space/contracts/schemas/port-address.schema.json" },
+          { "type": "object", "properties": { "kind": { "enum": ["output", "export"] } }, "required": ["kind"] }
+        ]
+      }
+    },
+    "services": { "type": "array", "items": { "type": "string" } },
+    "configs": { "type": "array", "items": { "type": "string" } },
+    "notes": { "$ref": "../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json" }
+  }
+}
+

@@ -29,13 +29,9 @@ describe('contracts (035): module reference space', () => {
     const schemasDirUrl = new URL('../../../../specs/035-module-reference-space/contracts/schemas/', import.meta.url)
 
     const expectedTitles: Record<string, string> = {
-      'port-address.schema.json': 'PortAddress',
       'module-port-spec.schema.json': 'ModulePortSpec',
+      'port-address.schema.json': 'PortAddress',
       'type-ir.schema.json': 'TypeIr',
-      'code-asset.schema.json': 'CodeAsset',
-      'code-asset-ref.schema.json': 'CodeAssetRef',
-      'deps.schema.json': 'Deps',
-      'reversibility-anchor.schema.json': 'ReversibilityAnchor',
     }
 
     const schemaFiles = readdirSync(fileURLToPath(schemasDirUrl)).filter((f) => f.endsWith('.schema.json'))
@@ -66,11 +62,7 @@ describe('contracts (035): module reference space', () => {
     )
 
     const typeIr = schemas.get('type-ir.schema.json')!.schema
-    expect(typeIr.properties?.roots?.$ref).toBe(
-      '../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json',
-    )
-    expect(typeIr.properties?.notes?.$ref).toBe(
-      '../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json',
-    )
+    expect(typeIr.properties?.roots?.$ref).toBe('../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json')
+    expect(typeIr.properties?.notes?.$ref).toBe('../../../005-unify-observability-protocol/contracts/schemas/json-value.schema.json')
   })
 })

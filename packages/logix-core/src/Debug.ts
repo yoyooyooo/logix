@@ -5,10 +5,11 @@ import * as Internal from './internal/runtime/core/DebugSink.js'
 import * as DevtoolsHub from './internal/runtime/core/DevtoolsHub.js'
 import * as ConvergeStaticIrCollector from './internal/runtime/core/ConvergeStaticIrCollector.js'
 import * as ModuleTraitsRegistry from './internal/debug/ModuleTraitsRegistry.js'
+import * as ModuleServicePortsRegistry from './internal/debug/ModuleServicePortsRegistry.js'
 import type * as ModuleTraits from './internal/runtime/core/ModuleTraits.js'
 import { getModuleTraitsProgram, getRuntimeInternals } from './internal/runtime/core/runtimeInternalsAccessor.js'
 import { getNodeEnv } from './internal/runtime/core/env.js'
-import type { EvidencePackage, EvidencePackageSource } from './Observability.js'
+import type { ControlAck, ControlCommand, EvidencePackage, EvidencePackageSource } from './Observability.js'
 
 // Public Debug API: a namespace-shaped facade for debugging capabilities used by apps and platforms.
 // The event model and core Layers live in internal/runtime/core/DebugSink.ts; this module provides ergonomic entry points.
@@ -40,11 +41,18 @@ export const getDevtoolsSnapshot = DevtoolsHub.getDevtoolsSnapshot
 export const getDevtoolsSnapshotToken = DevtoolsHub.getDevtoolsSnapshotToken
 export const subscribeDevtoolsSnapshot = DevtoolsHub.subscribeDevtoolsSnapshot
 export const clearDevtoolsEvents = DevtoolsHub.clearDevtoolsEvents
+export const isDevtoolsRecordingPaused = DevtoolsHub.isDevtoolsRecordingPaused
 export const getDevtoolsRunId = DevtoolsHub.getDevtoolsRunId
 export const setDevtoolsRunId = DevtoolsHub.setDevtoolsRunId
 export const startDevtoolsRun = DevtoolsHub.startDevtoolsRun
 export const setInstanceLabel = DevtoolsHub.setInstanceLabel
 export const getInstanceLabel = DevtoolsHub.getInstanceLabel
+export const sendControlCommand = (command: ControlCommand): ControlAck => DevtoolsHub.sendDevtoolsControlCommand(command)
+
+// 005: protocol-aligned naming (observation snapshot = current Devtools snapshot in the in-process host).
+export const getObservationSnapshot = getDevtoolsSnapshot
+export const subscribeObservationSnapshot = subscribeDevtoolsSnapshot
+export const getObservationSnapshotToken = getDevtoolsSnapshotToken
 
 export const exportEvidencePackage = (options?: {
   readonly runId?: string
@@ -408,6 +416,16 @@ export const getModuleTraitsById = (moduleId: string): ModuleTraitsDebug | undef
     plan: program.plan,
   }
 }
+
+export type ModuleServicePort = ModuleServicePortsRegistry.ModuleServicePort
+
+/**
+ * Get a module's declared service ports by moduleId (registered at Module.make time).
+ *
+ * Dev-only by default: returns undefined when not registered (e.g. production env).
+ */
+export const getModuleServicePortsById = (moduleId: string): ReadonlyArray<ModuleServicePort> | undefined =>
+  ModuleServicePortsRegistry.getModuleServicePortsById(moduleId)
 
 /**
  * Read the finalized traits snapshot (023) from a ModuleRuntime; undefined if not finalized.

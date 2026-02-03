@@ -105,12 +105,31 @@ const SandboxErrorCodeSchema = Schema.Union(
   Schema.Literal('RUNTIME_ERROR'),
   Schema.Literal('TIMEOUT'),
   Schema.Literal('WORKER_TERMINATED'),
+  Schema.Literal('PROTOCOL_ERROR'),
 )
+
+const SandboxProtocolIssueSchema = Schema.Struct({
+  path: Schema.String,
+  message: Schema.String,
+  expected: Schema.optional(Schema.String),
+  actual: Schema.optional(Schema.String),
+})
+
+const SandboxProtocolErrorDetailsSchema = Schema.Struct({
+  direction: Schema.Union(Schema.Literal('HostToWorker'), Schema.Literal('WorkerToHost')),
+  messageType: Schema.optional(Schema.String),
+  issues: Schema.Array(SandboxProtocolIssueSchema),
+})
 
 export const SandboxErrorInfoSchema = Schema.Struct({
   code: SandboxErrorCodeSchema,
   message: Schema.String,
   stack: Schema.optional(Schema.String),
+  protocol: Schema.optional(SandboxProtocolErrorDetailsSchema),
+  requestedKernelId: Schema.optional(Schema.String),
+  availableKernelIds: Schema.optional(Schema.Array(Schema.String)),
+  effectiveKernelId: Schema.optional(Schema.String),
+  fallbackReason: Schema.optional(Schema.String),
 })
 
 export type SandboxErrorInfoState = Schema.Schema.Type<typeof SandboxErrorInfoSchema>

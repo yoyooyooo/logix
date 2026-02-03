@@ -58,7 +58,7 @@ type PortSpecExportMetaEntry =
     }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
+  (typeof value === 'object' || typeof value === 'function') && value !== null && !Array.isArray(value)
 
 const normalizeText = (value: unknown): string | undefined => {
   const raw = typeof value === 'string' ? value.trim() : ''
@@ -93,7 +93,8 @@ const resolveActionMap = (tag: ModuleTag<string, AnyModuleShape> | undefined): R
   return isRecord(map) ? (map as Record<string, unknown>) : undefined
 }
 
-const resolveStateSchema = (tag: ModuleTag<string, AnyModuleShape> | undefined): unknown => (tag as any)?.stateSchema
+const resolveStateSchema = (tag: ModuleTag<string, AnyModuleShape> | undefined): unknown =>
+  (tag as any)?.shape?.stateSchema ?? (tag as any)?.stateSchema
 
 const resolveMetaPorts = (input: unknown): Record<string, unknown> | undefined => {
   if (!isRecord(input)) return undefined

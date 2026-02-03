@@ -18,19 +18,22 @@ version: 1
    - `docs/ssot/platform/foundation/02-glossary.md` → `docs/ssot/platform/foundation/glossary/04-platform-terms.md`（Playground/Sandbox/Alignment Lab、Universal Spy、Semantic UI Mock、RunResult/Root IR）
 2. 再读平台 Grounding 契约（RunResult 的单一事实源）：
    - `docs/ssot/platform/contracts/01-runresult-trace-tape.md`
-3. 看 Sandbox topic（为什么是 Executable Spec Lab，MVP 场景是什么）：
+3. 看 runtime SSoT（协议/基线/API/依赖治理的权威口径）：
+   - `docs/ssot/runtime/logix-sandbox/README.md`
+4. 看 Sandbox topic（愿景/扩展与 MVP 背景；非裁决来源）：
    - `docs/specs/drafts/topics/sandbox-runtime/00-overview.md`
    - `docs/specs/drafts/topics/sandbox-runtime/mvp/README.md`
-4. 看包 API 设计（Host/Worker/协议/最小入口）：
-   - `docs/specs/drafts/topics/sandbox-runtime/25-sandbox-package-api.md`
-5. 对照真实代码锚点（实现永远胜过文档想象）：
+5. 看包 API 设计（Host/Worker/协议/最小入口）：
+   - `docs/ssot/runtime/logix-sandbox/25-sandbox-package-api.md`
+   - `docs/ssot/runtime/logix-sandbox/15-protocol-and-schema.md`
+6. 对照真实代码锚点（实现永远胜过文档想象）：
    - Host SDK：`packages/logix-sandbox/src/Client.ts`
    - Host↔Worker 协议：`packages/logix-sandbox/src/Protocol.ts`
    - DTO（RunResult/MockManifest/Trace/UI_INTENT）：`packages/logix-sandbox/src/Types.ts`
    - Worker 入口：`packages/logix-sandbox/src/internal/worker/sandbox.worker.ts`
    - compiler：`packages/logix-sandbox/src/internal/compiler/index.ts`
    - Vite 静态资产挂载：`packages/logix-sandbox/src/internal/kernel/vitePlugin.ts`
-6. 看可运行样例（“省市区联动”）：`examples/logix-sandbox-mvp`
+7. 看可运行样例（“省市区联动”）：`examples/logix-sandbox-mvp`
 
 ## 1. 心智模型（Sandbox 的“存在理由”与边界）
 

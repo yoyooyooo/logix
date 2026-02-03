@@ -1,0 +1,34 @@
+---
+title: Playground（Debug）
+description: 查看 Trace 事件与 kernelImplementationRef 等调试信息。
+---
+
+这个页面把 Playground 切到 **debug** 模式：你可以打开 **Trace** 面板看到 sandbox 收集到的 spans/结构化事件（教学默认不展示这些复杂度）。
+
+<Playground
+  id="advanced-playground-debug"
+  title="Debug：Trace + kernelImplementationRef"
+  level="debug"
+  defaultPanel="trace"
+  moduleExport="AppRoot"
+  observe={['trialrun 应 PASS', 'Trace 面板应包含一条 spy span（emitSpy）']}
+  code={String.raw`import { Schema } from "effect"
+import * as Logix from "@logixjs/core"
+
+;(globalThis as any).logixSandboxBridge?.emitSpy({
+  name: "spy:docs-playground",
+  stepId: "step:demo",
+  note: "这条应出现在 Trace 面板里",
+})
+
+const Root = Logix.Module.make("Docs.Playground.Debug", {
+  state: Schema.Struct({ ok: Schema.Boolean }),
+  actions: { noop: Schema.Void } as const,
+})
+
+export const AppRoot = Root.implement({
+  initial: { ok: true },
+  logics: [],
+})`}
+/>
+

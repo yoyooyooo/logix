@@ -17,27 +17,43 @@ pnpm -C apps/docs dev
 
 ## 在 MDX 中添加一个可运行示例（建议写法，MVP）
 
-在目标页面（`apps/docs/content/docs/**/*.mdx`）中插入一个 Playground 组件（示例 API 以实现落地为准）：
+在目标页面（`apps/docs/content/docs/**/*.mdx`）中插入一个 Playground 组件：
 
 ```mdx
 <Playground
+  id="my-docs-playground-1"
   title="第一个可运行示例"
   level="basic"
   moduleExport="AppRoot"
+  defaultPanel="result"
   observe={[
     "运行后应看到：…",
     "修改 X 后应观察到：…",
   ]}
->
-{`
-// 示例代码：作者提供的初始版本
-export const AppRoot = ...
-`}
-</Playground>
+  code={String.raw`import { Schema } from "effect"
+import * as Logix from "@logixjs/core"
+
+const Root = Logix.Module.make("Docs.Playground.Basic", {
+  state: Schema.Struct({ ok: Schema.Boolean }),
+  actions: { noop: Schema.Void } as const,
+})
+
+export const AppRoot = Root.implement({
+  initial: { ok: true },
+  logics: [],
+})`}
+/>
 ```
 
 ## 推荐实践（作者侧）
 
 - 观察点保持 1–3 条，直接指向“运行后应该看哪里/如何判断是否符合预期”。  
-- 普通教程默认 `level="basic"`，不要暴露 Trace/时间线；高级/Debug 页面才用 `level="debug"`。  
+- `id` 必须稳定且在同一页面内唯一：它会参与生成确定性的 `runId = docs:<id>:<seq>`，用于避免跨运行串扰与便于排障。  
+- 普通教程默认 `level="basic"`，不要暴露 Trace 面板；高级/Debug 页面才用 `level="debug"`。  
 - 运行示例尽量避免依赖外部网络与不可控环境，以提高可复现性与学习体验稳定性。
+
+## 手动验收清单（同页多 Playground / 取消 / 重置）
+
+- 同一页面放 2 个 `<Playground />`：分别运行/编辑/重置，互不影响（输出不串扰，状态不共享）。
+- 单个 Playground：`Run → Cancel → 再 Run` 能正常恢复（Cancel 通过 terminate worker 实现）。
+- `Reset` 会恢复作者初始代码，同时清空上次结果/错误。

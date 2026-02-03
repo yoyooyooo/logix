@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "defaults": {
+    "outRoot": ".logix/out",
+    "repoRoot": ".",
+    "entry": "src/entry.basic.ts#AppRoot",
+    "diagnosticsLevel": "off",
+    "timeout": 2000
+  },
+  "profiles": {
+    "trace": {
+      "diagnosticsLevel": "full",
+      "maxEvents": 80,
+      "includeTrace": true
+    },
+    "contextPack": {
+      "includeContextPack": true
+    },
+    "autofill": {
+      "includeAnchorAutofill": true
+    },
+    "requireRules": {
+      "requireRulesManifest": true
+    }
+  }
+}
+

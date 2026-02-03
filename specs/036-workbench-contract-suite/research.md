@@ -70,7 +70,7 @@
 
 - 端口化打通小抄（036）：`specs/036-workbench-contract-suite/semantic-ui-port-bridge.md`
 - 语义 UI 草案：`docs/specs/sdd-platform/workbench/ui-ux/04-semantic-ui-modeling.md`
-- Semantic UI Mock 分层：`docs/specs/drafts/topics/sandbox-runtime/20-dependency-and-mock-strategy.md`
+- Semantic UI Mock 分层：`docs/ssot/runtime/logix-sandbox/20-dependency-and-mock-strategy.md`
 
 ## Open Questions（先落盘，后续再定优先级）
 

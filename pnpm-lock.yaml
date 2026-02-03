@@ -28,6 +28,9 @@ importers:
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.1
+      '@logixjs/cli':
+        specifier: workspace:*
+        version: link:packages/logix-cli
       '@logixjs/core':
         specifier: workspace:*
         version: link:packages/logix-core
@@ -118,6 +121,9 @@ importers:
 
   apps/docs:
     dependencies:
+      '@logixjs/sandbox':
+        specifier: workspace:*
+        version: link:../../packages/logix-sandbox
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -535,6 +541,28 @@ importers:
         specifier: ^5.6.3
         version: 5.8.2
 
+  examples/logix-cli-playground:
+    dependencies:
+      '@logixjs/cli':
+        specifier: workspace:*
+        version: link:../../packages/logix-cli
+      '@logixjs/core':
+        specifier: workspace:*
+        version: link:../../packages/logix-core
+      effect:
+        specifier: 3.19.13
+        version: 3.19.13
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.1
+        version: 22.19.1
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: 5.8.2
+        version: 5.8.2
+
   examples/logix-form-poc:
     dependencies:
       '@logixjs/core':
@@ -753,6 +781,80 @@ importers:
         specifier: ^4.0.15
         version: 4.0.15(@types/node@24.10.1)(@vitest/browser-playwright@4.0.15)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@24.0.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@24.10.1)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.2)
 
+  packages/logix-anchor-engine:
+    dependencies:
+      effect:
+        specifier: 3.19.13
+        version: 3.19.13
+      fast-glob:
+        specifier: ^3.3.2
+        version: 3.3.3
+      ts-morph:
+        specifier: ^25.0.0
+        version: 25.0.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.1
+        version: 22.19.1
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(@swc/core@1.15.3)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.8.2)(yaml@2.8.2)
+      typescript:
+        specifier: 5.8.2
+        version: 5.8.2
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@types/node@22.19.1)(@vitest/browser-playwright@4.0.15)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@24.0.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@22.19.1)(typescript@5.8.2))(tsx@4.20.6)(yaml@2.8.2)
+
+  packages/logix-cli:
+    dependencies:
+      '@effect/cli':
+        specifier: 0.73.1
+        version: 0.73.1(@effect/platform@0.94.0(effect@3.19.13))(@effect/printer-ansi@0.47.0(@effect/typeclass@0.38.0(effect@3.19.13))(effect@3.19.13))(@effect/printer@0.47.0(@effect/typeclass@0.38.0(effect@3.19.13))(effect@3.19.13))(effect@3.19.13)
+      '@effect/platform-node':
+        specifier: 0.104.0
+        version: 0.104.0(@effect/cluster@0.56.0(@effect/platform@0.94.0(effect@3.19.13))(@effect/rpc@0.73.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/sql@0.49.0(@effect/experimental@0.58.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/workflow@0.16.0(@effect/experimental@0.58.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/platform@0.94.0(effect@3.19.13))(@effect/rpc@0.73.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(effect@3.19.13))(effect@3.19.13))(@effect/platform@0.94.0(effect@3.19.13))(@effect/rpc@0.73.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/sql@0.49.0(@effect/experimental@0.58.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(effect@3.19.13)
+      '@logixjs/anchor-engine':
+        specifier: workspace:*
+        version: link:../logix-anchor-engine
+      '@logixjs/core':
+        specifier: workspace:*
+        version: link:../logix-core
+      '@logixjs/workbench':
+        specifier: workspace:*
+        version: link:../logix-workbench
+      effect:
+        specifier: 3.19.13
+        version: 3.19.13
+      happy-dom:
+        specifier: ^20.0.11
+        version: 20.0.11
+      ts-morph:
+        specifier: ^25.0.0
+        version: 25.0.1
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      ws:
+        specifier: ^8.0.0
+        version: 8.18.3
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.1
+        version: 22.19.1
+      '@types/ws':
+        specifier: ^8.5.0
+        version: 8.18.1
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(@swc/core@1.15.3)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.8.2)(yaml@2.8.2)
+      typescript:
+        specifier: 5.8.2
+        version: 5.8.2
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@types/node@22.19.1)(@vitest/browser-playwright@4.0.15)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@24.0.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@22.19.1)(typescript@5.8.2))(tsx@4.20.6)(yaml@2.8.2)
+
   packages/logix-core:
     dependencies:
       effect:
@@ -959,6 +1061,9 @@ importers:
 
   packages/logix-sandbox:
     dependencies:
+      '@logixjs/workbench':
+        specifier: workspace:*
+        version: link:../logix-workbench
       effect:
         specifier: 3.19.13
         version: 3.19.13
@@ -1006,6 +1111,21 @@ importers:
       vitest:
         specifier: ^4.0.15
         version: 4.0.15(@types/node@24.10.1)(@vitest/browser-playwright@4.0.15)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@24.0.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@24.10.1)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.2)
+
+  packages/logix-workbench:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.1
+        version: 22.19.1
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(@swc/core@1.15.3)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.8.2)(yaml@2.8.2)
+      typescript:
+        specifier: 5.8.2
+        version: 5.8.2
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@types/node@22.19.1)(@vitest/browser-playwright@4.0.15)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@24.0.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@22.19.1)(typescript@5.8.2))(tsx@4.20.6)(yaml@2.8.2)
 
   packages/speckit-kit:
     dependencies:
@@ -1271,6 +1391,14 @@ packages:
   '@dprint/typescript@0.91.8':
     resolution: {integrity: sha512-tuKn4leCPItox1O4uunHcQF0QllDCvPWklnNQIh2PiWWVtRAGltJJnM4Cwj5AciplosD1Hiz7vAY3ew3crLb3A==}
 
+  '@effect/cli@0.73.1':
+    resolution: {integrity: sha512-lKDNq1Dwb+f1aPbse+EPORbNhQSJvefkEeFiIdWQJB4YX/D/9cibGGA1rb4A1PHn8qJhrE376DG3d0TlszxR+w==}
+    peerDependencies:
+      '@effect/platform': 0.94.0
+      '@effect/printer': ^0.47.0
+      '@effect/printer-ansi': ^0.47.0
+      effect: 3.19.13
+
   '@effect/cluster@0.56.0':
     resolution: {integrity: sha512-ovhsC8jQkgoHkelpGL/EQtoQsPXG9hj7DHVc7A9Vyzptd/DaCP+W1aQKlJrJoe2W+KI/CjrYN8H89M5xiL6FBg==}
     peerDependencies:
@@ -1323,6 +1451,18 @@ packages:
     peerDependencies:
       effect: 3.19.13
 
+  '@effect/printer-ansi@0.47.0':
+    resolution: {integrity: sha512-tDEQ9XJpXDNYoWMQJHFRMxKGmEOu6z32x3Kb8YLOV5nkauEKnKmWNs7NBp8iio/pqoJbaSwqDwUg9jXVquxfWQ==}
+    peerDependencies:
+      '@effect/typeclass': ^0.38.0
+      effect: 3.19.13
+
+  '@effect/printer@0.47.0':
+    resolution: {integrity: sha512-VgR8e+YWWhMEAh9qFOjwiZ3OXluAbcVLIOtvp2S5di1nSrPOZxj78g8LE77JSvyfp5y5bS2gmFW+G7xD5uU+2Q==}
+    peerDependencies:
+      '@effect/typeclass': ^0.38.0
+      effect: 3.19.13
+
   '@effect/rpc@0.73.0':
     resolution: {integrity: sha512-iMPf6tTriz8sK0l5x4koFId8Hz5nFptHYg8WqyjHGIIVLTpZxuiSqhmXZG7FnAs5N2n6uCEws4wWGcIgXNUrFg==}
     peerDependencies:
@@ -1342,6 +1482,11 @@ packages:
     peerDependencies:
       '@effect/experimental': 0.58.0
       '@effect/platform': 0.94.0
+      effect: 3.19.13
+
+  '@effect/typeclass@0.38.0':
+    resolution: {integrity: sha512-lMUcJTRtG8KXhXoczapZDxbLK5os7M6rn0zkvOgncJW++A0UyelZfMVMKdT5R+fgpZcsAU/1diaqw3uqLJwGxA==}
+    peerDependencies:
       effect: 3.19.13
 
   '@effect/vitest@0.27.0':
@@ -3465,6 +3610,9 @@ packages:
   '@types/whatwg-mimetype@3.0.2':
     resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
 
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
+
   '@typescript-eslint/eslint-plugin@8.47.0':
     resolution: {integrity: sha512-fe0rz9WJQ5t2iaLfdbDc9T80GJy0AeO453q8C3YCilnGozvOyCG5t+EZtg7j7D88+c3FipfP/x+wzGnh1xp8ZA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -4978,6 +5126,10 @@ packages:
   imurmurhash@0.1.4:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
     engines: {node: '>=0.8.19'}
+
+  ini@4.1.3:
+    resolution: {integrity: sha512-X7rqawQBvfdjS10YU1y1YVreA3SsLrW9dX2CewP2EbBJM4ypVNLDkO5y04gejPwKIY9lR+7r9gn3rFPt/kmWFg==}
+    engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
   inline-style-parser@0.2.7:
     resolution: {integrity: sha512-Nb2ctOyNR8DqQoR0OwRG95uNWIC0C1lCgf5Naz5H6Ji72KZ8OcFZLz2P5sNgwlyoJ8Yif11oMuYs5pBQa86csA==}
@@ -6639,6 +6791,9 @@ packages:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
     engines: {node: '>=8.0'}
 
+  toml@3.0.0:
+    resolution: {integrity: sha512-y/mWCZinnvxjTKYhJ+pYxwD0mRLVvOtdS2Awbgxln6iEnt4rk0yBxeSBHkGJcPucRiG0e55mwWp+g/05rsrd6w==}
+
   totalist@3.0.1:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
     engines: {node: '>=6'}
@@ -7345,6 +7500,16 @@ snapshots:
 
   '@dprint/typescript@0.91.8': {}
 
+  '@effect/cli@0.73.1(@effect/platform@0.94.0(effect@3.19.13))(@effect/printer-ansi@0.47.0(@effect/typeclass@0.38.0(effect@3.19.13))(effect@3.19.13))(@effect/printer@0.47.0(@effect/typeclass@0.38.0(effect@3.19.13))(effect@3.19.13))(effect@3.19.13)':
+    dependencies:
+      '@effect/platform': 0.94.0(effect@3.19.13)
+      '@effect/printer': 0.47.0(@effect/typeclass@0.38.0(effect@3.19.13))(effect@3.19.13)
+      '@effect/printer-ansi': 0.47.0(@effect/typeclass@0.38.0(effect@3.19.13))(effect@3.19.13)
+      effect: 3.19.13
+      ini: 4.1.3
+      toml: 3.0.0
+      yaml: 2.8.2
+
   '@effect/cluster@0.56.0(@effect/platform@0.94.0(effect@3.19.13))(@effect/rpc@0.73.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/sql@0.49.0(@effect/experimental@0.58.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/workflow@0.16.0(@effect/experimental@0.58.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(@effect/platform@0.94.0(effect@3.19.13))(@effect/rpc@0.73.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13))(effect@3.19.13))(effect@3.19.13)':
     dependencies:
       '@effect/platform': 0.94.0(effect@3.19.13)
@@ -7404,6 +7569,17 @@ snapshots:
       msgpackr: 1.11.8
       multipasta: 0.2.7
 
+  '@effect/printer-ansi@0.47.0(@effect/typeclass@0.38.0(effect@3.19.13))(effect@3.19.13)':
+    dependencies:
+      '@effect/printer': 0.47.0(@effect/typeclass@0.38.0(effect@3.19.13))(effect@3.19.13)
+      '@effect/typeclass': 0.38.0(effect@3.19.13)
+      effect: 3.19.13
+
+  '@effect/printer@0.47.0(@effect/typeclass@0.38.0(effect@3.19.13))(effect@3.19.13)':
+    dependencies:
+      '@effect/typeclass': 0.38.0(effect@3.19.13)
+      effect: 3.19.13
+
   '@effect/rpc@0.73.0(@effect/platform@0.94.0(effect@3.19.13))(effect@3.19.13)':
     dependencies:
       '@effect/platform': 0.94.0(effect@3.19.13)
@@ -7430,6 +7606,10 @@ snapshots:
       '@effect/platform': 0.94.0(effect@3.19.13)
       effect: 3.19.13
       uuid: 11.1.0
+
+  '@effect/typeclass@0.38.0(effect@3.19.13)':
+    dependencies:
+      effect: 3.19.13
 
   '@effect/vitest@0.27.0(effect@3.19.13)(vitest@4.0.15)':
     dependencies:
@@ -9244,6 +9424,10 @@ snapshots:
 
   '@types/whatwg-mimetype@3.0.2': {}
 
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 24.10.1
+
   '@typescript-eslint/eslint-plugin@8.47.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2))(eslint@9.39.1(jiti@2.6.1))(typescript@5.8.2)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
@@ -9645,7 +9829,6 @@ snapshots:
     optionalDependencies:
       msw: 2.12.4(@types/node@22.19.1)(typescript@5.8.2)
       vite: 7.2.6(@types/node@22.19.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.6)(yaml@2.8.2)
-    optional: true
 
   '@vitest/mocker@4.0.15(msw@2.12.4(@types/node@24.10.1)(typescript@5.8.2))(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.6)(yaml@2.8.2))':
     dependencies:
@@ -11249,6 +11432,8 @@ snapshots:
       resolve-from: 4.0.0
 
   imurmurhash@0.1.4: {}
+
+  ini@4.1.3: {}
 
   inline-style-parser@0.2.7: {}
 
@@ -13370,6 +13555,8 @@ snapshots:
     dependencies:
       is-number: 7.0.0
 
+  toml@3.0.0: {}
+
   totalist@3.0.1: {}
 
   tough-cookie@4.1.4:
@@ -13820,7 +14007,6 @@ snapshots:
       - terser
       - tsx
       - yaml
-    optional: true
 
   vitest@4.0.15(@types/node@24.10.1)(@vitest/browser-playwright@4.0.15)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@24.0.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@24.10.1)(typescript@5.8.2))(tsx@4.20.6)(yaml@2.8.2):
     dependencies:

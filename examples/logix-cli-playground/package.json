@@ -1,0 +1,39 @@
+{
+  "name": "@examples/logix-cli-playground",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "cli:build": "pnpm -C ../../packages/logix-cli build",
+    "cli:ir:export": "pnpm -s cli:build && logix ir export --runId demo-ir",
+    "cli:ir:export:baseline": "pnpm -s cli:build && logix ir export --runId baseline-1 --entry src/entry.basic.ts#AppRoot --outRoot .logix/out",
+    "cli:ir:export:current1": "pnpm -s cli:build && logix ir export --runId current-1 --entry src/entry.basic.count1.ts#AppRoot --outRoot .logix/out",
+    "cli:ir:export:current2": "pnpm -s cli:build && logix ir export --runId current-2 --entry src/entry.basic.v2.ts#AppRoot --outRoot .logix/out",
+    "cli:ir:diff:pass": "pnpm -s cli:build && logix ir diff --runId diff-1 --before .logix/out/ir.export/baseline-1 --after .logix/out/ir.export/current-1 --outRoot .logix/out",
+    "cli:ir:diff:violation": "pnpm -s cli:build && logix ir diff --runId diff-2 --before .logix/out/ir.export/baseline-1 --after .logix/out/ir.export/current-2 --outRoot .logix/out",
+    "cli:ir:demo:pass": "pnpm -s cli:build && logix ir export --runId baseline-1 --entry src/entry.basic.ts#AppRoot --outRoot .logix/out && logix ir export --runId current-1 --entry src/entry.basic.count1.ts#AppRoot --outRoot .logix/out && logix ir diff --runId diff-1 --before .logix/out/ir.export/baseline-1 --after .logix/out/ir.export/current-1 --outRoot .logix/out",
+    "cli:ir:demo:violation": "pnpm -s cli:build && logix ir export --runId baseline-1 --entry src/entry.basic.ts#AppRoot --outRoot .logix/out && logix ir export --runId current-2 --entry src/entry.basic.v2.ts#AppRoot --outRoot .logix/out && logix ir diff --runId diff-2 --before .logix/out/ir.export/baseline-1 --after .logix/out/ir.export/current-2 --outRoot .logix/out",
+    "cli:trialrun": "pnpm -s cli:build && logix trialrun --runId demo-trialrun",
+    "cli:trialrun:host:node": "pnpm -s cli:build && logix trialrun --runId demo-host-node --entry src/entry.browser-global.ts#AppRoot",
+    "cli:trialrun:host:browser-mock": "pnpm -s cli:build && logix trialrun --runId demo-host-browser-mock --host browser-mock --entry src/entry.browser-global.ts#AppRoot",
+    "cli:trialrun:trace": "pnpm -s cli:build && logix trialrun --runId demo-trialrun-trace --profile trace",
+    "cli:contract:pass": "pnpm -s cli:build && logix contract-suite run --runId demo-contract-pass",
+    "cli:contract:with-autofill": "pnpm -s cli:build && logix contract-suite run --runId demo-contract-with-autofill --profile autofill",
+    "cli:contract:inputs": "pnpm -s cli:build && logix contract-suite run --runId demo-contract-inputs --profile contextPack --inputs ./inputs.demo.json",
+    "cli:contract:requireRules:fail": "pnpm -s cli:build && logix contract-suite run --runId demo-contract-requireRules-fail --profile requireRules",
+    "cli:contract:requireRules:pass": "pnpm -s cli:build && logix contract-suite run --runId demo-contract-requireRules-pass --profile requireRules --entry ../logix-sandbox-mvp/src/cli-entry.form-rules.ts#AppRoot",
+    "cli:transform:report": "pnpm -s cli:build && logix transform module --runId demo-transform-1 --ops tutorials/06-transform-module-report/delta.add-state-action.json --mode report --outRoot .logix/out",
+    "cli:devserver:start": "pnpm -s cli:build && logix-devserver --port 0 --shutdownAfterMs 120000 --stateFile .logix/out/devserver.state.json"
+  },
+  "dependencies": {
+    "@logixjs/cli": "workspace:*",
+    "@logixjs/core": "workspace:*",
+    "effect": "^3.19.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.1",
+    "tsx": "^4.20.6",
+    "typescript": "5.8.2"
+  }
+}

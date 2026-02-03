@@ -2,7 +2,7 @@
 
 **Feature Branch**: `[036-workbench-contract-suite]`  
 **Created**: 2025-12-25  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 建立一个统一管控 031-035 的集成规格（Contract Suite / Integration Track）：以 `examples/logix-sandbox-mvp` 作为最小平台 Workbench，串起 TrialRun artifacts（含 `@logixjs/form.rulesManifest@v1`）、UI 投影与语义绑定边界、Scenario Canvas 语义蓝图、以及“模块引用空间事实源（PortSpec/TypeIR + CodeAsset 协议）”，定义端到端可验收的集成闭环与版本化治理口径；不新增实现细节，仅提供统一的验收与依赖关系裁决，避免各子 spec 漂移。
 
 ## Assumptions
@@ -13,7 +13,8 @@
   - 033 Module 舞台语义蓝图（Scenario Canvas 语义模型 + codegen）
   - 035 模块引用空间事实源（PortSpec/TypeIR + CodeAsset 协议）
 - 本 spec 的依赖关系以 `depends_on` 的强语义理解：若上游 spec 的核心成功标准未满足，本 spec 视为不可签收。
-- 以 `examples/logix-sandbox-mvp` 作为“最小平台 Workbench”，只做消费者与验收跑通；正式平台未来可以无损替换。
+- 最小可执行入口以 Node-only 跑道为准（`logix contract-suite run`，085）：用于 CI/Agent 的稳定 gate 与工件落盘；浏览器 Workbench 作为可选消费者回归面（优先归入 086 的 `/platform-viz/*`，或未来接入 `examples/logix-sandbox-mvp`）。
+- Contract Suite 的 artifacts 空间允许被“派生治理工件”扩展：在不改动 031-035 协议字段的前提下，额外注入可序列化、版本化且确定性的工件（例如 079/082 的 `PatchPlan/AutofillReport`），用于缩短 Agent/CI 链路；典型入口是 `logix contract-suite run --includeAnchorAutofill`（report-only，不写回源码）。
 - 不保证向后兼容：若 031-035 的协议需要破坏式演进，以版本化 key/协议升级为准。
 
 ## Dependencies

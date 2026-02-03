@@ -18,6 +18,7 @@ This directory contains specialized **Skills** that extend the Agent's capabilit
 | **[unit-creator](./unit-creator/SKILL.md)**                   | 使用内置模板快速生成 IMD 新「单元」（UI 组件、业务 Block、Hook、lib 模块、模板片段）的标准骨架。                             |
 | **[frontend-project-init](./frontend-project-init/SKILL.md)** | 在 intent-flow 仓库内基于内置模板（首个为 Vite + Logix Sandbox）初始化前端项目骨架。                                         |
 | **[logix-best-practices](./logix-best-practices/SKILL.md)**   | 在 intent-flow 仓库内提炼与应用 Logix 工程最佳实践，用于 examples dogfooding、Module 拆分组合与 Pattern 提炼，并同步维护 SSoT。 |
+| **[logix-cli-agent](./logix-cli-agent/SKILL.md)**             | Logix CLI/DevServer 跑道：Oracle/Gate/ContextPack/（可选）WriteBack 的可复现门禁闭环。                                      |
 
 ## Usage
 

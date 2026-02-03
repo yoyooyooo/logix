@@ -5,8 +5,8 @@ version: 0.1.0
 value: core
 priority: next
 related:
-  - ../devtools-and-studio/01-cli-and-dev-server.md
-  - ../devtools-and-studio/02-full-duplex-digital-twin.md
+  - docs/ssot/platform/contracts/04-devserver-protocol.md
+  - specs/085-logix-cli-node-only/quickstart.md
   - docs/ssot/runtime/logix-core/impl/README.md
   - docs/ssot/runtime/logix-core/api/03-logic-and-flow.md
   - docs/ssot/runtime/logix-core/observability/09-debugging.md

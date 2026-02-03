@@ -34,7 +34,7 @@
 
 - SDD 映射与顶层方法论：`docs/ssot/platform/appendix/concepts/00-sdd-mapping.md`，明确「SPECIFY/PLAN/TASKS/IMPLEMENT ↔ L0–L3/Intent/Logix/Runtime Alignment Lab」的关系。
 - Playground / Sandbox / Alignment Lab 术语与职责：统一以 `docs/ssot/platform/foundation/02-glossary.md` 中的定义为准（含 Universal Spy / Semantic UI Mock 的全称与简称）。
-- 当改动 `@logixjs/sandbox` 或 `docs/specs/drafts/topics/sandbox-runtime/*` 时，默认把它视为 **Playground/Runtime Alignment Lab 的基础设施**，同时参考 `65-playground-as-executable-spec.md`，避免只做“代码 Runner”而丢掉 Spec/Intent 对齐视角。
+- 当改动 `@logixjs/sandbox`、`docs/ssot/runtime/logix-sandbox/*` 或 `docs/specs/drafts/topics/sandbox-runtime/*` 时，默认把它视为 **Playground/Runtime Alignment Lab 的基础设施**，同时参考 `docs/specs/drafts/topics/sandbox-runtime/65-playground-as-executable-spec.md`，避免只做“代码 Runner”而丢掉 Spec/Intent 对齐视角。
 
 ## 仓库愿景与决策原则（当前）
 

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `081-platform-grade-parser-mvp`  
 **Created**: 2026-01-09  
-**Status**: Draft  
+**Status**: Done  
 **Input**: 为“全双工前置”建立 Platform-Grade 子集的可解析能力：从源码识别关键声明点并产出可解释的锚点索引（AnchorIndex），用于可视化、lint、保守补全与回写的前置判定；对子集外形态必须显式降级。
 
 ## Context

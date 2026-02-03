@@ -1,0 +1,11 @@
+# Codex CLI interface metadata (optional).
+#
+# This file is safe to include even if a client ignores it.
+# Icons must be relative paths under ./assets/.
+[interface]
+display_name = "Logix CLI 跑道"
+short_description = "用 logix/logix-devserver 跑通可复现门禁闭环（Oracle/Gate/ContextPack/WriteBack）"
+# icon_small = "./assets/small-400px.png"
+# icon_large = "./assets/large-logo.svg"
+# brand_color = "#3B82F6"
+# default_prompt = "Optional surrounding prompt to use the skill with"
