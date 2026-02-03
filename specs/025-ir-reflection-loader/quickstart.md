@@ -9,7 +9,7 @@
 
 如果你已经在用 024 的 `Runtime.runProgram/openProgram` 跑一个 “program module”（例如 `AppRoot`），那么 025 的首个落地载体就是它：
 
-- **CI/平台侧**：对 `AppRoot` 运行 “inspect” 流程，产出 `module-manifest.json` 与 `trial-run-report.json`（可 diff）。
+- **CI/平台侧**：对 `AppRoot` 运行 “inspect” 流程，产出 `trialrun.report.json`（包含 `manifest/staticIr/artifacts/environment` 等，可用于 diff/门禁）；如需 Root IR，再配合 `ir export` 产出 `control-surface.manifest.json`（可选 `workflow.surface.json`）。
 - **本地开发**：先 inspect 再跑 `runProgram`，失败时能直接定位“缺失依赖/控制面覆写/traits 结构漂移”等原因。
 
 下面示例都用 `AppRoot` 表示该 program module（同一个对象也会被传给 024 的 program runner）。
@@ -17,27 +17,34 @@
 **推荐脚本（已提供）**
 
 ```bash
-pnpm exec tsx scripts/ir/inspect-module.ts \
-  --module ./path/to/app.root.ts \
-  --export AppRoot \
+pnpm -C packages/logix-cli build
+pnpm exec logix trialrun \
   --runId run:commit-<sha>:app \
+  --entry ./path/to/app.root.ts#AppRoot \
   --out dist/ir
 ```
 
 输出：
 
-- `dist/ir/module-manifest.json`
-- `dist/ir/trial-run-report.json`
+- `dist/ir/trialrun.report.json`（包含 `manifest/staticIr/artifacts/environment` 等；平台/CI 推荐直接消费这一份）
 
-可复跑比对（determinism smoke）：
+可复跑比对（结构面 determinism smoke，推荐用 Root IR 做字节级对比）：
 
 ```bash
-pnpm exec tsx scripts/ir/inspect-module.ts \
-  --module ./path/to/app.root.ts \
-  --export AppRoot \
+pnpm exec logix ir export \
   --runId run:commit-<sha>:app \
-  --out dist/ir.next \
-  --compareDir dist/ir
+  --entry ./path/to/app.root.ts#AppRoot \
+  --out dist/ir
+
+pnpm exec logix ir export \
+  --runId run:commit-<sha>:app \
+  --entry ./path/to/app.root.ts#AppRoot \
+  --out dist/ir.next
+
+pnpm exec logix ir diff \
+  --runId run:commit-<sha>:app \
+  --before dist/ir \
+  --after dist/ir.next
 ```
 
 ## 1) 导出 Manifest IR（结构摘要）

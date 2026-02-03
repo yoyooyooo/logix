@@ -49,7 +49,7 @@
 
 - `@logixjs/core` 已提供 Root IR/差异/试跑底座：`Reflection.exportControlSurface` / `Reflection.diffManifest` / `Observability.trialRunModule`。
 - Root IR 已支持 workflow slice 引用：`ControlSurfaceManifest.modules[*].workflowSurface.digest`（并已有回归测试）。
-- 过渡工具仍存在：`scripts/ir/inspect-module.ts` 可做“导出 + 试跑 + diff”的一体化脚本验证；`085` 已提供收敛后的 `logix` 命令作为统一入口。
+- 入口已收敛到 `packages/logix-cli`（`logix`/`logix-devserver`），不再保留独立 legacy 脚本；用 `logix ir export` + `logix trialrun` + `logix ir diff` 组合替代。
 
 现状（本里程碑最小闭环已落地）：
 

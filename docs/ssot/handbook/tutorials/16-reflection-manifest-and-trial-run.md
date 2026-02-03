@@ -16,7 +16,7 @@ version: 1
 1. Runtime SSoT（权威口径）：`docs/ssot/runtime/logix-core/api/06-reflection-and-trial-run.md`
 2. 025 的 quickstart（最小可跑闭环）：`specs/025-ir-reflection-loader/quickstart.md`
 3. Node-only CLI（推荐入口）：`specs/085-logix-cli-node-only/quickstart.md`
-4. 一键落盘脚本（legacy/迁移来源）：`scripts/ir/inspect-module.ts`
+4. CLI Playground（可跑教程）：`examples/logix-cli-playground/tutorials/README.md`
 5. 最小平台消费者（/ir 页面）：`examples/logix-sandbox-mvp/src/ir/IrPage.tsx`
 6. 从 /ir 反推全链路（分节导航）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 7. Artifacts 扩展位（实现）：`packages/logix-core/src/internal/observability/artifacts/*`
@@ -203,8 +203,6 @@ Artifacts 的目标：让“kit-specific 的解释语义”能被平台/CLI/Devt
 - `ir validate`（门禁）
 - `ir diff`（与基线目录稳定对比）
 
-> legacy：`scripts/ir/inspect-module.ts` 仍保留作为迁移来源/底层参考（输出文件名与 CLI 不同：`module-manifest.json`、`trial-run-report.json`），不建议作为长期入口继续扩展。
-
 ### 3.2 CI 契约防腐：把“破坏性变更”前移到 PR
 
 你可以把 CI gate 拆成两层（从快到慢）：
@@ -362,7 +360,6 @@ Artifacts 的目标：让“kit-specific 的解释语义”能被平台/CLI/Devt
 
 - `packages/logix-form/src/internal/form/artifacts.ts`：RulesManifest artifact exporter
 - `specs/085-logix-cli-node-only/quickstart.md`：Node-only CLI（`ir export`/`trialrun`/`ir validate`/`ir diff`）
-- `scripts/ir/inspect-module.ts`：legacy 脚本（迁移来源/底层参考）
 - `examples/logix-sandbox-mvp/src/ir/IrPage.tsx`：/ir 页面（平台最小消费者）
 
 ---
@@ -375,7 +372,7 @@ Artifacts 的目标：让“kit-specific 的解释语义”能被平台/CLI/Devt
 
 - `specs/085-logix-cli-node-only/quickstart.md`
 
-legacy（仍可用，但不建议作为长期入口扩展）：
+补充（更偏 API 视角与背景说明）：
 
 - `specs/025-ir-reflection-loader/quickstart.md`
 

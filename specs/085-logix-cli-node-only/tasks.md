@@ -45,7 +45,7 @@ description: "Task list for 085-logix-cli-node-only (Node-only logix CLI)"
 **Goal**: 开发者一条命令导出 Manifest/StaticIR/Artifacts 与 TrialRunReport，并在缺失依赖时结构化失败。  
 **Independent Test**: 对一个代表性入口重复运行两次，输出工件可 JSON 序列化且稳定；缺依赖时给出可行动错误。
 
-- [x] T011 [US1] 迁移 `scripts/ir/inspect-module.ts` 的入口加载逻辑（modulePath/exportName）到 CLI 内部 `packages/logix-cli/src/internal/loadProgramModule.ts`
+- [x] T011 [US1] 迁移 legacy inspect-module 的入口加载逻辑（modulePath/exportName）到 CLI 内部 `packages/logix-cli/src/internal/loadProgramModule.ts`
 - [x] T012 [US1] 实现 `logix ir export`：导出 ControlSurfaceManifest（含 `modules[*].workflowSurface.digest` 等）并落盘 `control-surface.manifest.json`（可选导出 `workflow.surface.json`）`packages/logix-cli/src/internal/commands/irExport.ts`
 - [x] T013 [US1] 实现 `logix trialrun`：调用 `Logix.Observability.trialRunModule` 并落盘 `trialrun.report.json` `packages/logix-cli/src/internal/commands/trialRun.ts`
 - [x] T014 [P] [US1] 集成用例：对固定入口跑 `ir export` 与 `trialrun` 并校验输出 shape `packages/logix-cli/test/Integration/cli.ir-and-trialrun.test.ts`

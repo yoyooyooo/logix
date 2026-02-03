@@ -27,12 +27,12 @@
 - 强制显式 `runId`（避免默认 `Date.now()`）。
 - stdout 与落盘文件内容必须稳定（固定字段顺序与稳定排序策略）。
 
-## Decision 4：先复用/迁移 `scripts/ir/inspect-module.ts`（DRY）
+## Decision 4：入口收敛到 `packages/logix-cli`（无过渡脚本）
 
 **Rationale**：
 
-- 当前脚本已经跑通 `Effect` 组织方式与参数解析雏形（runId/config/timeout/budgets）。
-- CLI MVP 应该先把已有能力变成“可安装/可测试/可复用”的包入口，再逐步下沉公共逻辑。
+- 过渡脚本会形成第二套事实源与文档漂移风险；入口应尽快收敛。
+- CLI 的能力通过子命令拆分（Oracle/Gate/Transform），并把共享逻辑下沉到稳定包（core/anchor-engine），保持 DRY。
 
 ## Decision 5：面向 Agent 的工具箱定位（Oracle + Gate + 可选 Transform）
 

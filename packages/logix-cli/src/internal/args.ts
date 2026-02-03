@@ -175,32 +175,17 @@ const configFlags = Options.keyValueMap('config').pipe(
 
 const parseEntryRefFromOptions = (opts: {
   readonly entry?: string
-  readonly module?: string
-  readonly export?: string
 }): Effect.Effect<EntryRef, ValidationError.ValidationError> => {
   const entryRaw = typeof opts.entry === 'string' ? opts.entry.trim() : undefined
-  const modulePath = typeof opts.module === 'string' ? opts.module.trim() : undefined
-  const exportName = typeof opts.export === 'string' ? opts.export.trim() : undefined
-
-  if (entryRaw && (modulePath || exportName)) {
-    return Effect.fail(ValidationError.invalidValue(HelpDoc.p('请仅提供 --entry 或 (--module/--export)，不要混用。')))
+  if (!entryRaw) {
+    return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少入口：请提供 --entry <modulePath>#<exportName>')))
   }
 
-  if (entryRaw) {
-    const hash = entryRaw.lastIndexOf('#')
-    if (hash > 0 && hash < entryRaw.length - 1) {
-      return Effect.succeed({ modulePath: entryRaw.slice(0, hash), exportName: entryRaw.slice(hash + 1) })
-    }
-    return Effect.fail(ValidationError.invalidValue(HelpDoc.p(`--entry 非法：${entryRaw}（期望 <modulePath>#<exportName>）`)))
+  const hash = entryRaw.lastIndexOf('#')
+  if (hash > 0 && hash < entryRaw.length - 1) {
+    return Effect.succeed({ modulePath: entryRaw.slice(0, hash), exportName: entryRaw.slice(hash + 1) })
   }
-
-  if (!modulePath) {
-    return Effect.fail(
-      ValidationError.missingFlag(HelpDoc.p('缺少入口：请提供 --entry <modulePath>#<exportName>（或 --module/--export）')),
-    )
-  }
-
-  return Effect.succeed({ modulePath, exportName: exportName && exportName.length > 0 ? exportName : 'default' })
+  return Effect.fail(ValidationError.invalidValue(HelpDoc.p(`--entry 非法：${entryRaw}（期望 <modulePath>#<exportName>）`)))
 }
 
 const parseIrValidateInputFromOptions = (opts: {
@@ -242,8 +227,6 @@ export type ParsedOptions = {
   readonly profile?: string
   readonly repoRoot: string
   readonly entry?: string
-  readonly module?: string
-  readonly export?: string
   readonly inDir?: string
   readonly artifact?: string
   readonly before?: string
@@ -325,8 +308,6 @@ const baseOptions: Options.Options<ParsedOptions> = Options.all({
   profile: optionalText('profile'),
   repoRoot: repoRootWithDefault,
   entry: optionalText('entry'),
-  module: optionalText('module'),
-  export: optionalText('export'),
   inDir: optionalText('in'),
   artifact: optionalText('artifact'),
   before: optionalText('before'),
@@ -522,14 +503,12 @@ const flagsWithValue = new Set([
   '--config',
   '--diagnosticsLevel',
   '--entry',
-  '--export',
   '--in',
   '--inputs',
   '--maxEvents',
   '--maxRawMode',
   '--maxUsedServices',
   '--mode',
-  '--module',
   '--ops',
   '--out',
   '--outRoot',

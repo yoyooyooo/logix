@@ -294,9 +294,9 @@ Workflow（Π slice）：
 - `specs/075-workflow-codegen-ir/contracts/public-api.md`
 - `specs/075-workflow-codegen-ir/data-model.md`
 
-现有脚本（迁移来源，非长期权威入口）：
+现有入口（推荐）：
 
-- `scripts/ir/inspect-module.ts`
+- `packages/logix-cli`：`logix anchor index/autofill`（081/079/082）、`logix ir export`、`logix trialrun`
 
 ---
 

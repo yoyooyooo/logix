@@ -89,7 +89,7 @@
 
 **Independent Test**: 未启用任何 IR 提取/试跑时，既有运行时路径行为与性能不回退；启用导出时，在不同进程/机器上对同一输入产物可复现（排序/digest 不依赖随机/时间）。
 
-- [x] T032 [P] [US3] 提供 `scripts/ir/inspect-module.ts`：对 program module 产出 manifest/trial-run-report 工件，并支持重复运行比对（跨进程确定性 smoke，用于 CI）：`scripts/ir/inspect-module.ts` （Refs: FR-003, NFR-002, SC-001）
+- [x] T032 [P] [US3] 提供可复跑的 Node-only 入口：优先用 `logix trialrun`/`logix ir export` 落盘工件，并用 `logix ir diff` 做跨进程确定性 smoke（CI）：`packages/logix-cli/*` （Refs: FR-003, NFR-002, SC-001）
 - [x] T033 [P] [US3] N/A（本特性未触及 `BoundApi.$.use` 等热路径）：暂不需要额外运行 `pnpm perf bench:useModule`；若后续改动 `$.use` 再补齐基线与对比写入 `specs/025-ir-reflection-loader/perf.md`。 （Refs: FR-008, NFR-001, SC-005）
 
 ---

@@ -12,7 +12,7 @@
 - PoC UI（demo）：
   - `examples/logix-sandbox-mvp` 新增 `/ir`：展示 Manifest/Diff/StaticIR/TrialRunReport/ControlPlane/Timeline，并支持 Import + presets + 一键重跑。
 - 脚本与证据：
-  - `scripts/ir/inspect-module.ts`：对 program module 产出 `module-manifest.json` + `trial-run-report.json`，支持 `--compareDir` 做可复跑比对（CI smoke）。
+  - Node-only CLI（`packages/logix-cli`）：用 `logix trialrun` 落盘 `trialrun.report.json`；用 `logix ir export/diff/validate` 做确定性工件与门禁（CI smoke）。
   - 性能基线：`pnpm perf bench:025:trialRunModule` + `specs/025-ir-reflection-loader/perf.md` + `specs/025-ir-reflection-loader/perf/after.worktree.json`。
 
 ## 关键裁决（Decisions）

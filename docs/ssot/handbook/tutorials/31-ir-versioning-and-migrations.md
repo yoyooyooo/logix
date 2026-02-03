@@ -193,7 +193,7 @@ version: 1
 2. **Diff Report（机读）**：让 CI/UI 能 gate、能生成 checklist。  
    - 例：`Reflection.diffManifest`（`packages/logix-core/src/internal/reflection/diff.ts`）
 3. **迁移工具（可选）**：当改动面太大或需要批量改写时，提供脚本/rewriter。  
-   - 例：优先用 `logix` CLI（085）的 `ir export/validate/diff` 作为稳定入口；`scripts/ir/inspect-module.ts` 作为 legacy 迁移来源/底层参考保留（若你要扩展它，建议把它当作工具链的一部分，而不是临时脚本）。
+   - 例：优先用 `logix` CLI（085）的 `ir export/validate/diff` 作为稳定入口；需要批量改写时用 `logix transform module` / `logix anchor autofill`（report→write 幂等）。
 
 ### 4.2 一个标准的“版本 bump”步骤（推荐 checklist）
 

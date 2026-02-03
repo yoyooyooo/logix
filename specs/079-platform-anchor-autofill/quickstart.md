@@ -34,10 +34,13 @@
 
 ## 3) 如何与 TrialRun/Manifest 对齐（可选）
 
-对目标模块运行 `scripts/ir/inspect-module.ts`：
+对目标入口跑一遍 `logix trialrun`：
 
-- 导出 `module-manifest.json` 与 `trial-run-report.json` 作为对比输入。
-- 关注 `environment.missingServices/missingConfigKeys` 是否更易解释/收敛（并不要求完全为 0）。
+- `logix trialrun --runId r3 --entry <modulePath>#<exportName> --out ./.logix/anchor/r3`
+
+关注 `trialrun.report.json` 的 `environment.missingServices/missingConfigKeys` 是否更易解释/收敛（并不要求完全为 0）。
+
+如需把结构变化也纳入门禁，可配合 `logix ir export` 导出 `control-surface.manifest.json` 并用 `logix ir diff` 与基线对比。
 
 ## 4) 常见跳过原因（你需要手写声明的信号）
 

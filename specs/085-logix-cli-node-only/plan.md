@@ -85,16 +85,9 @@
 - stdout：统一输出单个 JSON（`CommandResult@v1`），避免各子命令格式漂移；不输出时间戳/随机字段。
 - files：支持 `--out <dir>`；文件命名策略必须稳定且可预测（例如 `control-surface.manifest.json`、`workflow.surface.json`、`trialrun.report.json`、`contract-suite.verdict.json`、`contract-suite.context-pack.json`、`anchor.index.json`、`patch.plan.json`、`writeback.result.json`、`autofill.report.json`）。
 
-### 3) 复用/迁移现有脚本（DRY）
+### 3) 入口收敛（无过渡脚本）
 
-仓库现状已有 Node-only 脚本可复用：
-
-- `scripts/ir/inspect-module.ts`：已包含 `Effect` 组织与参数解析雏形（runId/config/timeout/budgets）。
-
-计划：
-
-- 先把脚本逻辑迁移为 `packages/logix-cli` 的子命令实现（保留行为不变）；
-- 再逐步把公共逻辑下沉到 `packages/logix-anchor-engine` 与 `@logixjs/core` 的稳定 API（避免重复实现）。
+原则：Node-only 工具链入口只保留 `packages/logix-cli`（`logix`/`logix-devserver`），不再维护独立脚本分叉；公共逻辑下沉到 `@logixjs/core` / `packages/logix-anchor-engine` 以避免重复实现。
 
 ### 4) Exit Code（CI 门禁友好）
 
@@ -155,7 +148,6 @@ packages/logix-cli/
 
 packages/logix-anchor-engine/     # 081/082（计划新增）
 packages/logix-core/              # IR/TrialRun/Manifest（已有）
-scripts/ir/inspect-module.ts      # 迁移来源（现状）
 ```
 
 **Structure Decision**:

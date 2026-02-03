@@ -44,7 +44,7 @@ description: "Task list for 036-workbench-contract-suite (Contract Suite / Integ
 
 **Goal**: 用 Node-only 跑道把 Contract Suite 变成可脚本化/可门禁的统一入口（不依赖浏览器 UI）。
 
-- [x] T011 [US2] 在 CI 侧提供统一入口脚本：产出/存档工件 + gate 到 `scripts/contract-suite/run.ts`
+- [x] T011 [US2] 在 CI 侧提供统一 Node 入口：产出/存档工件 + gate（已收敛到 `logix contract-suite run`；不再保留独立脚本）
 - [x] T012 [US2] CLI 入口：`logix contract-suite run`（085）到 `packages/logix-cli/src/internal/commands/contractSuiteRun.ts`
 - [x] T013 [P] CLI 集成用例：PASS/FAIL/ContextPack（含 schema registry value）到 `packages/logix-cli/test/Integration/cli.contract-suite.run.test.ts`
 - [x] T017 [P] CLI 可选链路：`logix contract-suite run --includeAnchorAutofill`（report-only）在同一条命令里注入 `PatchPlan/AutofillReport`，并写入 ContextPack 与 `--out` 目录 `packages/logix-cli/src/internal/commands/contractSuiteRun.ts`、`packages/logix-cli/src/internal/args.ts`、`packages/logix-cli/test/Integration/cli.contract-suite.run.test.ts`、`examples/logix-cli-playground/*`
