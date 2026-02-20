@@ -95,7 +95,7 @@ const value = useSelector(child, (s) => s.value)
 
 `useDispatch(handle | runtime)` 返回稳定的 `dispatch` 函数；当你希望把 dispatch 下传给子组件、或避免在 JSX 里捕获闭包时可用。
 
-## 6) 067 Action Surface 在 React 侧怎么落地（actions/dispatchers/def）
+## 6) Action Surface 在 React 侧怎么落地（actions/dispatchers/def）
 
 > 结论先行：在 React 组件里，“定义锚点”用 `Module.actions.<K>`，“执行派发”用 `ref.dispatchers.<K>`。
 
@@ -113,4 +113,4 @@ const value = useSelector(child, (s) => s.value)
 - **优先**把模块导出为 `Module`（或至少保留 `ModuleDef`），并在组件里 `useModule(MyModule)`（而不是只拿到 `MyModule.impl` 再传给 hook）。
 - 如果你确实只有 `impl` 可用：通常仍能拿到 `dispatchers` 的类型推导，但 IDE 跳转可能退化；这时用 `ref.def?.actions.<K>` 作为“手动锚点”定位定义。
 
-> 经验：action key 尽量用可点访问的标识符（如 `add/inc/setKeyword`），避免 `foo/bar` 这类必须 `['foo/bar']` 的写法，否则重命名与跳转体验都会变差。067 下 ActionRef = `moduleId + actionTag`，业务侧不需要把 moduleId 再塞进 actionTag。
+> 经验：action key 尽量用可点访问的标识符（如 `add/inc/setKeyword`），避免 `foo/bar` 这类必须 `['foo/bar']` 的写法，否则重命名与跳转体验都会变差。当前 ActionRef = `moduleId + actionTag`，业务侧不需要把 moduleId 再塞进 actionTag。

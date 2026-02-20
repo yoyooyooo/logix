@@ -8,4 +8,4 @@ export * from './customerDetail.logic.js'
 export * from './customerDetail.impl.js'
 export * from './patterns/autoTriggerSearch.js'
 export * from './processes/searchToDetail.process.js'
-
+export * from './processes/searchToDetail.declarative.process.js'

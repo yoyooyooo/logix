@@ -7,7 +7,7 @@ export const CustomerDetailStateSchema = Schema.Struct({
 })
 
 export const CustomerDetailActions = {
-  setSelected: CustomerSummarySchema,
+  syncSelected: Schema.UndefinedOr(CustomerSummarySchema),
   clear: Schema.Void,
 } as const
 
@@ -17,7 +17,7 @@ export const CustomerDetailDef = Logix.Module.make('CustomerDetail', {
   state: CustomerDetailStateSchema,
   actions: CustomerDetailActions,
   immerReducers: {
-    setSelected: (draft, selected) => {
+    syncSelected: (draft, selected) => {
       draft.selected = selected
     },
     clear: (draft) => {

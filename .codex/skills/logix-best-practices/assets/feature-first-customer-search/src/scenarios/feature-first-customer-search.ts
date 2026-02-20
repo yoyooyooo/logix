@@ -7,7 +7,10 @@
  *   - `src/scenarios/*` 提供单文件可运行入口。
  *
  * 运行：
+ *   npm exec tsx src/scenarios/feature-first-customer-search.ts
  *   pnpm exec tsx src/scenarios/feature-first-customer-search.ts
+ *   yarn dlx tsx src/scenarios/feature-first-customer-search.ts
+ *   bun x tsx src/scenarios/feature-first-customer-search.ts
  */
 
 import { Effect, Stream } from 'effect'

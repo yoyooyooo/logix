@@ -16,9 +16,12 @@ export const CustomerSearchToDetailProcess = Logix.Process.link(
         .changes((s) => s.results)
         .pipe(
           Stream.runForEach((results) =>
-            results.length > 0
-              ? detail.actions.setSelected(results[0]!)
-              : detail.actions.clear(),
+            Effect.gen(function* () {
+              // 演示 blackbox bridge：这里故意跨异步边界，语义是 best-effort。
+              yield* Effect.sleep('1 millis')
+              const nextSelected = results.length > 0 ? results[0] : undefined
+              yield* detail.actions.syncSelected(nextSelected)
+            }),
           ),
         )
     }),

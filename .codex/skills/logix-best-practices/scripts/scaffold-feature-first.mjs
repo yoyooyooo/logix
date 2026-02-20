@@ -23,7 +23,7 @@ const usage = () => {
   // eslint-disable-next-line no-console
   console.error('Usage:')
   // eslint-disable-next-line no-console
-  console.error('  node scaffold-feature-first.mjs --out /abs/path/to/your-repo/src')
+  console.error('  node scaffold-feature-first.mjs --out /abs/path/to/your-project/src')
   // eslint-disable-next-line no-console
   console.error('  node scaffold-feature-first.mjs --out ./src --dry-run')
   // eslint-disable-next-line no-console
@@ -127,4 +127,3 @@ const main = async () => {
 }
 
 await main()
-

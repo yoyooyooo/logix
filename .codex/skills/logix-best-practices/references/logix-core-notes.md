@@ -116,7 +116,7 @@ run: Effect.gen(function* () {
 - Action → State 的纯同步更新：优先 `Module.make(..., { immerReducers: { ... } })`（或 `$.reducer(tag, Logix.ModuleTag.Reducer.mutate(...))`）
 - 只有在你确实要“整棵替换/回滚”时才用 `$.state.update((prev) => next)`（当前实现会直接降级为 dirtyAll）
 
-补充（067 action surface）：
+补充（action surface）：
 
 - `immerReducers` / `Reducer.mutate(mutator)` 的 **mutator 回调**是 payload-first：`(draft, payload) => void`（不要写 `(draft, action) => ...`）。
 - `mutate` 返回的 reducer 仍然按 `(state, action, sink?) => state` 的形态运行：运行时会从 action 上提取 payload 并按需记录 patchPaths。
@@ -134,3 +134,31 @@ run: Effect.gen(function* () {
 
 - `run*Task` **禁止**在同步事务 body 内调用（如 reducer / `IntentBuilder.update/mutate` 的同步写入体内），会触发 `logic::invalid_usage` 并被 no-op。
 - 同步事务窗口内 **禁止** `dispatch/setState`（例如在 reducer、或 `IntentBuilder.update/mutate` 的同步写入体内触发 `$.dispatch/$.dispatchers/*`）。这会触发 `state_transaction::enqueue_in_transaction` 并直接失败；把 dispatch 移到事务外（或改成 multi-entry：pending → IO → writeback）。
+
+## 7) 跨模块协作：`Process.link` vs `Process.linkDeclarative`
+
+两者不是“语法偏好”，而是语义边界：
+
+- `Process.link`：blackbox 协作，**best-effort**，不承诺同 tick 强一致收敛。
+  - 诊断层会发 `process_link::blackbox_best_effort`（提示需要强一致时迁移 declarative）。
+- `Process.linkDeclarative`：受控 builder，面向同 tick 强一致与 IR 可解释链路。
+  - `read(selector)` 必须满足：`lane=static`、`readsDigest!=null`、`fallbackReason==null`，否则 fail-fast。
+  - `dispatch(actionTag)` 只接收非空字符串 actionTag。
+
+实务建议：
+
+- 能表达为静态 `read -> dispatch` 的协作，默认用 `Process.linkDeclarative`。
+- 只有在需要 async/external bridge 时，再使用 `Process.link`。
+
+## 8) 事务与诊断码速查（源码锚点）
+
+- `logic::invalid_phase`：setup/run 相位违规（`use_in_setup` / `traits_declare_in_run` 等）。
+  - 关注点：Bound API phase guard + 逻辑诊断转换层。
+- `logic::invalid_usage`：在同步事务窗口里调用 `run*Task`（会 no-op）。
+  - 关注点：TaskRunner 的 in-transaction guard。
+- `state_transaction::enqueue_in_transaction`：同步事务窗口内 dispatch/setState。
+  - 关注点：事务队列 enqueue guard。
+- `state_transaction::dirty_all_fallback`：缺失字段级 dirty-set 证据，退化为 dirtyAll。
+  - 关注点：reducer/setState 路径的 patchPaths 证据回退。
+- `state_transaction::async_escape`：事务体跨越异步边界（async/await/Promise）。
+  - 关注点：事务窗口 async escape 检测逻辑。
