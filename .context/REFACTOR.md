@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-selector-diagnostics-helper-20260222`
+> 分支：`refactor/logix-core-selector-diagnostics-sampling-helper-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -36,6 +36,7 @@
 - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.InvalidKind.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/test-helpers.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/Process/Process.SelectorDiagnostics.Helpers.test.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -54,7 +55,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`test-helpers.ts` 已深读并重构）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`test-helpers.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -116,6 +117,7 @@
   - `makeModuleStateChangeTriggerStream` 内 warning 决策、hint 拼装、sample reset 混在单个闭包中，可读性与后续扩展性受限。
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`
   - 需要作为 selector diagnostics 的单一语义入口维护（阈值、窗口、cooldown、hint 文案），避免未来在多个触发器实现中复制粘贴。
+  - 采样统计（calls/sampled/slow/max）若继续散落在调用方，容易造成 reset 时机与 hint 快照读取点漂移。
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
   - `RuntimeServiceBuiltins` 注入在 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 四处重复，容易出现新增服务时的维护漂移。
   - `currentOpSeq` 读取与归一化在 `onCommit` / `deferredConvergeFlush` 双点重复，锚点逻辑不易统一治理。
@@ -154,6 +156,13 @@
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`
   - 新增 `makeSelectorDiagnosticsConfig`、`initialSelectorDiagnosticsState`、`evaluateSelectorWarning`、`buildSelectorWarningHint`，将 moduleStateChange selector 诊断的阈值/决策/hint 文案抽离为单一 helper。
   - `ProcessRuntime.make.ts` 改为复用该 helper，仅保留采样计数与 warning 事件发射装配，保持 `process::selector_high_frequency` / `process::selector_slow` 判定与 hint 结构不变。
+  - 新增 `makeSelectorSamplingTracker`，将 selector 采样统计与窗口内 reset 语义收敛为同一 helper，避免调用侧重复维护采样状态字段。
+- `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
+  - `moduleStateChange` 触发器改为通过 `makeSelectorSamplingTracker` 维护采样计数，并在 warning 评估前使用单次 `snapshot`，保持判定输入与 hint 输出一致。
+  - warning 发射后沿用“仅重置 sampled/slow/max，不重置 calls”的既有语义，通过 `resetSampling` 显式表达。
+- `packages/logix-core/test/Process/Process.SelectorDiagnostics.Helpers.test.ts`
+  - 新增 helper 纯函数/状态机单测：覆盖 `evaluateSelectorWarning` 高频触发与 cooldown 抑制分支、`buildSelectorWarningHint` 文案关键字段、`makeSelectorSamplingTracker` 的采样掩码与 reset 语义。
+  - 增补 reset 后采样节奏断言：验证 `calls` 不重置时下一次采样命中位置延续（mask=0x3 场景在第 12 次调用命中）。
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`
   - 新增回归用例：非法 `timerId` 触发 `process:error`，并断言 `error.code === process::invalid_timer_id`、`hint` 包含 `DurationInput`。
   - 根据独立审查补强断言：非法 `timerId` 下 `process body` 不会被执行（`invokedCount === 0`），并增加一次额外 `yieldNow` 降低时序脆弱性。
@@ -248,6 +257,10 @@
   - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于当前 diff 只读审查
   - 结论：无阻塞问题，可合并（warning 判定、hint 文案、采样阈值与 reset 时机保持等价）
   - 残余风险：建议后续为 `evaluateSelectorWarning` / `buildSelectorWarningHint` 增补纯函数单测，降低 helper 演进时语义漂移风险
+- 2026-02-22（logix-core / selector diagnostics sampling tracker 轮次）
+  - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于当前 diff 只读审查
+  - 结论：无阻塞问题，可合并（sample mask / slow sample 统计 / warning 后 reset 语义保持）
+  - 残余风险：`snapshot()` 在诊断路径有一次额外对象分配；后续可按 perf 证据评估是否需要进一步压缩分配
 
 ## 未看过模块
 
@@ -256,5 +269,5 @@
 ## 下一步（第一轮）
 
 1. 将 `test-helpers.ts` 继续推广到 `Process.Trigger.PlatformEvent.test.ts` / `Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts` 等仍在手写 scope 采集的用例，进一步统一测试骨架。
-2. 评估是否把 moduleStateChange 的采样计数（`selectorCalls/samples/slow/max`）也收敛为更小的 helper（前提是不引入额外分配/性能回退）。
+2. 评估是否把 `selectorDiagnostics` helper 的纯函数测试进一步下沉到 internal/runtime 目录并补充窗口边界（window rollover）场景，以降低后续演进风险。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
