@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Ref, Scope, Schema, TestClock } from 'effect'
+import { Context, Effect, Ref, Schema, TestClock } from 'effect'
 import * as Logix from '../../src/index.js'
-import { collectProcessErrorEvent, withProcessRuntime } from './test-helpers.js'
+import { collectProcessErrorEvent, withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: trigger moduleStateChange', () => {
   it.scoped('should fail with actionable error when dot-path is invalid', () =>
@@ -76,29 +76,28 @@ describe('process: trigger moduleStateChange', () => {
       })
 
       const layer = withProcessRuntime(HostImpl.impl.layer)
+      yield* withProcessRuntimeScope({
+        layer,
+        run: ({ env }) =>
+          Effect.gen(function* () {
+            const host = Context.get(env, Host.tag)
 
-      const scope = yield* Scope.make()
-      try {
-        const env = yield* Layer.buildWithScope(layer, scope)
-        const host = Context.get(env, Host.tag)
+            yield* host.dispatch({ _tag: 'setName', payload: 'A' } as any)
+            yield* Effect.yieldNow()
+            yield* TestClock.adjust('10 millis')
+            yield* Effect.yieldNow()
 
-        yield* host.dispatch({ _tag: 'setName', payload: 'A' } as any)
-        yield* Effect.yieldNow()
-        yield* TestClock.adjust('10 millis')
-        yield* Effect.yieldNow()
+            yield* host.dispatch({ _tag: 'setName', payload: 'A' } as any)
+            yield* Effect.yieldNow()
+            yield* TestClock.adjust('10 millis')
+            yield* Effect.yieldNow()
 
-        yield* host.dispatch({ _tag: 'setName', payload: 'A' } as any)
-        yield* Effect.yieldNow()
-        yield* TestClock.adjust('10 millis')
-        yield* Effect.yieldNow()
-
-        yield* host.dispatch({ _tag: 'setName', payload: 'B' } as any)
-        yield* Effect.yieldNow()
-        yield* TestClock.adjust('10 millis')
-        yield* Effect.yieldNow()
-      } finally {
-        yield* Scope.close(scope, Exit.succeed(undefined))
-      }
+            yield* host.dispatch({ _tag: 'setName', payload: 'B' } as any)
+            yield* Effect.yieldNow()
+            yield* TestClock.adjust('10 millis')
+            yield* Effect.yieldNow()
+          }),
+      })
 
       expect(yield* Ref.get(invoked)).toBe(2)
     }),
