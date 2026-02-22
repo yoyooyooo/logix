@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-process-runtime-20260222`
+> 分支：`refactor/logix-core-module-runtime-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -30,6 +30,7 @@
 - `packages/logix-form/src/internal/form/impl.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -48,7 +49,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts` 已深读并重构）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`ModuleRuntime.impl.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -106,6 +107,9 @@
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
   - `process:dispatch` / `process:trigger` 事件构造在多处重复，eventSeq/timestamp 维护点分散。
   - `moduleAction` trigger 在 meta/non-meta 两条分支重复构造对象，维护成本高。
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
+  - `RuntimeServiceBuiltins` 注入在 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 四处重复，容易出现新增服务时的维护漂移。
+  - `currentOpSeq` 读取与归一化在 `onCommit` / `deferredConvergeFlush` 双点重复，锚点逻辑不易统一治理。
 
 ## 已完成重构项
 
@@ -134,6 +138,9 @@
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
   - 抽取 `nextProcessEventMeta`、`makeDispatchEvent`、`makeTriggerEvent`，统一 process 事件构造并保持 eventSeq/timestamp 语义不变。
   - 收敛 `moduleAction` trigger 重复构造为 `buildModuleActionTrigger`，保持 `actions$`/`actionsWithMeta$` 分支语义一致。
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
+  - 抽取 `withRuntimeServiceBuiltins`，统一 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 的 builtin 注入样板，保持 serviceId 与 builtinMake 映射语义不变。
+  - 抽取 `readCurrentOpSeq`，统一 `onCommit` 与 `deferredConvergeFlush` 的 opSeq 读取归一化逻辑，保持 non-negative integer 语义不变。
 
 ## 独立审查记录
 
@@ -161,6 +168,10 @@
   - 审查方式：1 个独立 subagent（default）基于最终改动做只读复核
   - 结论：无阻塞问题，可合并
   - 残余风险：`moduleAction` 在 diagnostics=off 路径仍固定 `txnSeq=1`（保持既有语义）
+- 2026-02-22（logix-core / ModuleRuntime 轮次）
+  - 审查方式：1 个独立 subagent（default）基于当前改动做只读审查
+  - 结论：无阻塞问题，可合并
+  - 残余风险：helper 收敛后建议补充更直接的定向测试（`RuntimeServiceBuiltins` 注入与 `deferredConvergeFlush.captureOpSeq`）
 
 ## 未看过模块
 
@@ -168,6 +179,6 @@
 
 ## 下一步（第一轮）
 
-1. 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts` 选择下一处中等强度结构重构点（优先 txn queue / diagnostics 链路）。
+1. 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts` 继续收敛 tickScheduler/rootContext 获取路径，减少 onCommit 与 enqueue-time 的重复分支。
 2. 继续收敛 `ProcessRuntime.make.ts` 剩余大函数（如 trigger stream 子分支）到局部 helper，保持语义不变。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
