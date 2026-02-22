@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema } from 'effect'
+import { Context, Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
+import { collectProcessErrorEvent, withProcessRuntime } from './test-helpers.js'
 
 type DiagnosticsLevel = 'off' | 'light'
 
@@ -43,45 +43,8 @@ const makeProcessLayer = (options: {
     initial: undefined,
     processes: [Proc],
   }).impl.withLayer(fakeTriggerModuleLayer)
-  return Layer.provideMerge(ProcessRuntime.layer())(hostImpl.layer)
+  return withProcessRuntime(hostImpl.layer)
 }
-
-const collectProcessErrorEvent = (
-  layer: Layer.Layer<any, any, any>,
-  processId: string,
-): Effect.Effect<{
-  readonly errorEvent: Logix.Process.ProcessEvent | undefined
-  readonly events: ReadonlyArray<Logix.Process.ProcessEvent>
-}> =>
-  Effect.gen(function* () {
-    const scope = yield* Scope.make()
-    try {
-      const env = yield* Layer.buildWithScope(layer, scope)
-      const rt = Context.get(
-        env as Context.Context<any>,
-        ProcessRuntime.ProcessRuntimeTag as any,
-      ) as ProcessRuntime.ProcessRuntime
-
-      let events: ReadonlyArray<Logix.Process.ProcessEvent> = []
-      for (let i = 0; i < 200; i++) {
-        events = (yield* rt.getEventsSnapshot()) as ReadonlyArray<Logix.Process.ProcessEvent>
-        const errorEvent = events.find(
-          (event) => event.type === 'process:error' && event.identity.identity.processId === processId,
-        )
-        if (errorEvent) {
-          return { errorEvent, events }
-        }
-        yield* Effect.yieldNow()
-      }
-
-      return {
-        errorEvent: undefined,
-        events,
-      }
-    } finally {
-      yield* Scope.close(scope, Exit.succeed(undefined))
-    }
-  })
 
 describe('process: trigger moduleAction missing streams', () => {
   it.scoped('should fail with process::missing_action_stream when diagnostics is off', () =>
@@ -94,7 +57,7 @@ describe('process: trigger moduleAction missing streams', () => {
         diagnosticsLevel: 'off',
       })
 
-      const { errorEvent, events } = yield* collectProcessErrorEvent(layer, processId)
+      const { errorEvent, events } = yield* collectProcessErrorEvent({ layer, processId })
       expect(errorEvent).toBeTruthy()
       expect(errorEvent?.error?.code).toBe('process::missing_action_stream')
       expect(errorEvent?.error?.hint).toContain(`moduleId=${triggerModuleId}`)
@@ -123,7 +86,7 @@ describe('process: trigger moduleAction missing streams', () => {
         diagnosticsLevel: 'light',
       })
 
-      const { errorEvent, events } = yield* collectProcessErrorEvent(layer, processId)
+      const { errorEvent, events } = yield* collectProcessErrorEvent({ layer, processId })
       expect(errorEvent).toBeTruthy()
       expect(errorEvent?.error?.code).toBe('process::missing_action_meta_stream')
       expect(errorEvent?.error?.hint).toContain(`moduleId=${triggerModuleId}`)
