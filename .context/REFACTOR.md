@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-selector-diagnostics-helper-20260222`
+> 分支：`refactor/logix-core-trigger-switch-assertnever-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -144,6 +144,7 @@
   - 抽取 `resolveModuleRuntime`、`makeTimerTriggerStream`、`makeModuleActionTriggerStream`，收敛 `makeTriggerStream` 分支结构并保持 timer/moduleAction/moduleStateChange 语义不变。
   - 抽取 `ModuleStateChangeTriggerSpec` 与 `makeModuleStateChangeTriggerStream`，将 moduleStateChange 全链路（schema selector、去重、selector diagnostics、warning 事件）从 `makeTriggerStream` 分发函数中剥离，保持行为与错误语义不变。
   - 在 `makeModuleStateChangeTriggerStream` 内继续抽取 `initialSelectorDiagnosticsState`、`evaluateSelectorWarning`、`buildSelectorWarningHint`、`resetSelectorSampling`，收敛 selector diagnostics 的决策/文案/重置逻辑，保持阈值与触发时机不变。
+  - 将 `makeTriggerStream` 从条件链改为 `switch(spec.kind)` 分发，并通过 `unreachableNonPlatformTriggerSpec(spec: never)` 建立编译期穷尽检查，降低未来新增 trigger kind 时遗漏分支的风险；对非类型安全输入显式返回 `process::invalid_trigger_kind`。
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`
   - 新增回归用例：非法 `timerId` 触发 `process:error`，并断言 `error.code === process::invalid_timer_id`、`hint` 包含 `DurationInput`。
   - 根据独立审查补强断言：非法 `timerId` 下 `process body` 不会被执行（`invokedCount === 0`），并增加一次额外 `yieldNow` 降低时序脆弱性。
@@ -206,6 +207,10 @@
   - 审查方式：1 个独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于最终 diff 做只读审查
   - 结论：无阻塞问题，可合并（warning 判定/hint/reset 语义保持）
   - 残余风险：建议将 `SelectorDiagnosticsState` / `SelectorWarningDecision` 视情况上提，减少函数内类型噪音
+- 2026-02-22（logix-core / trigger switch + assertNever 轮次）
+  - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）两次只读审查（初审 + 修正后复核）
+  - 结论：无阻塞问题，可合并（timer/moduleAction/moduleStateChange 行为保持，`switch` 穷尽分发成立）
+  - 残余风险：建议补“畸形 trigger kind（as any）”回归测试，锁定 `process::invalid_trigger_kind` 语义
 
 ## 未看过模块
 
@@ -213,6 +218,6 @@
 
 ## 下一步（第一轮）
 
-1. 将 `makeTriggerStream` 分发逻辑演进为 `switch + assertNever`，增强未来新增 trigger kind 的编译期防漏能力。
-2. 继续推进 `moduleAction` 缺失 stream 错误码/hint 定向回归测试（当前会先触发 `process::missing_dependency`，需先打通“同 scope 注入缺失流”的测试夹具）。
+1. 继续推进 `moduleAction` 缺失 stream 错误码/hint 定向回归测试（当前会先触发 `process::missing_dependency`，需先打通“同 scope 注入缺失流”的测试夹具）。
+2. 评估将 `SelectorDiagnosticsState` / `SelectorWarningDecision` 进一步外提到更稳定的浅层 helper，减少函数内类型噪音并维持行为不变。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。

@@ -114,6 +114,15 @@ type ModuleActionTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 
 type ModuleStateChangeTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'moduleStateChange' }>
 type ProcessDispatchPayload = NonNullable<ProcessEvent['dispatch']>
 
+const unreachableNonPlatformTriggerSpec = (
+  spec: never,
+): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
+  Effect.fail(
+    Object.assign(new Error(`[ProcessRuntime] unreachable non-platform trigger kind: ${String((spec as any)?.kind ?? 'unknown')}`), {
+      code: 'process::invalid_trigger_kind',
+    }),
+  )
+
 const deriveTxnAnchor = (event: ProcessEvent): { readonly txnSeq?: number; readonly txnId?: string } => {
   const trigger: any = event.trigger
   if (!trigger) return {}
@@ -853,15 +862,16 @@ export const make = (options?: {
 
         const makeTriggerStream = (spec: NonPlatformTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
           Effect.gen(function* () {
-            if (spec.kind === 'timer') {
-              return yield* makeTimerTriggerStream(spec)
+            switch (spec.kind) {
+              case 'timer':
+                return yield* makeTimerTriggerStream(spec)
+              case 'moduleAction':
+                return yield* makeModuleActionTriggerStream(spec)
+              case 'moduleStateChange':
+                return yield* makeModuleStateChangeTriggerStream(spec)
+              default:
+                return yield* unreachableNonPlatformTriggerSpec(spec)
             }
-
-            if (spec.kind === 'moduleAction') {
-              return yield* makeModuleActionTriggerStream(spec)
-            }
-
-            return yield* makeModuleStateChangeTriggerStream(spec)
           })
 
         const makeRun = (trigger: ProcessTrigger, fatal: Deferred.Deferred<Cause.Cause<any>>): Effect.Effect<void> =>
