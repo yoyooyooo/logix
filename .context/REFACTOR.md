@@ -27,6 +27,7 @@
 - `apps/logix-galaxy-fe/src/routes/project.tsx`：`DEEP_READ`（待拆分 UI 组件）
 - `packages/domain/src/internal/crud/Crud.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-query/src/Query.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-form/src/internal/form/impl.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -47,7 +48,7 @@
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
 - `packages/logix-core`（469 文件，核心运行时）：`UNREAD`
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
-- `packages/logix-form`（66 文件）：`UNREAD`
+- `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
 - `packages/logix-react`（113 文件）：`UNREAD`
 - `packages/logix-sandbox`（1153 文件，Playground 基础设施）：`UNREAD`
@@ -94,6 +95,9 @@
   - 重复模板导致后续扩展 CRUD 动作时容易漏掉一致性处理。
 - `packages/logix-query/src/Query.ts`
   - 构造流程可读性偏低（多段内联闭包与类型断言混杂），可拆分辅助函数降低认知负担。
+- `packages/logix-form/src/internal/form/impl.ts`
+  - `rules` 编译与 `manifest` 生成路径中重复存在依赖前缀处理逻辑，维护成本高且易漂移。
+  - 相同语义在多处闭包内重复实现，不利于后续扩展和一致性校验。
 
 ## 已完成重构项
 
@@ -110,6 +114,9 @@
 - `packages/logix-query/src/Query.ts`
   - 抽取 `buildRefreshTargetSchema` / `buildQueriesSchema` 等构造辅助函数，收敛 `make` 内部嵌套闭包。
   - 统一 query 名称收集与校验流程，清理控制器构建段落的结构噪音，保持行为与 API 不变。
+- `packages/logix-form/src/internal/form/impl.ts`
+  - 抽取共享 helper：`isRelativeRuleDep`、`prefixRuleDeps`、`prefixRuleInputDeps`。
+  - 统一 `rules` 编译与 `manifest` 路径中的 deps 前缀逻辑，并通过 `allowNumericRelativeDep` 显式保留原有差异语义。
 
 ## 独立审查记录
 
@@ -121,6 +128,10 @@
   - 审查方式：1 个独立 subagent（explorer）基于 `origin/main...HEAD` diff 做只读审查
   - 结论：无阻塞问题
   - 残余风险：无
+- 2026-02-22（logix-form 轮次）
+  - 审查方式：2 个独立 subagent（explorer）；第 1 次提示“数字 deps 语义漂移”，第 2 次基于 `origin/main` 对比复核确认无行为变化
+  - 结论：无阻塞问题
+  - 残余风险：共享 helper 的 `allowNumericRelativeDep` 选项若后续被误用，可能引入语义漂移
 
 ## 未看过模块
 
@@ -130,5 +141,5 @@
 
 1. 深读 `apps/logix-galaxy-fe/src/routes/project.tsx` 并拆分为多组件（渲染层与状态层解耦）。
 2. 选择一个 `apps/*-api` 模块继续收敛重复错误映射与鉴权模板。
-3. 评估 `packages/logix-form` 中大函数拆分机会（优先 `internal/form/impl.ts`）。
+3. 深读 `packages/logix-devtools-react` 或 `packages/logix-react`，寻找下一处低风险结构型重构点。
 4. 继续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。

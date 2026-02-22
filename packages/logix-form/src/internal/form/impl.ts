@@ -222,15 +222,68 @@ export const make = <Id extends string, TValues extends object>(
     throw new Error(`[Form.make] Invalid identity.mode for "${listPath}" (got "${String(mode)}")`)
   }
 
+  const isRelativeRuleDep = (dep: string, options?: { readonly allowNumericRelativeDep?: boolean }): boolean => {
+    const allowNumericRelativeDep = options?.allowNumericRelativeDep ?? true
+    if (dep === '$root') return false
+    if (dep.includes('[') || dep.includes(']') || dep.includes('.')) return false
+    if (!allowNumericRelativeDep && /^[0-9]+$/.test(dep)) return false
+    return true
+  }
+
+  const prefixRuleDeps = (
+    deps: unknown,
+    prefix: string,
+    options?: { readonly allowNumericRelativeDep?: boolean },
+  ): ReadonlyArray<string> | undefined => {
+    if (!Array.isArray(deps)) return undefined
+    const out: Array<string> = []
+    for (const raw of deps) {
+      if (typeof raw !== 'string') continue
+      const dep = raw.trim()
+      if (!dep) continue
+      out.push(isRelativeRuleDep(dep, options) && prefix ? `${prefix}.${dep}` : dep)
+    }
+    return out
+  }
+
+  const prefixRuleInputDeps = (
+    input: Rule.RuleInput<any, any>,
+    prefix: string,
+    options?: { readonly allowNumericRelativeDep?: boolean },
+  ): Rule.RuleInput<any, any> => {
+    if (!input || typeof input !== 'object') return input
+    if (Array.isArray(input)) return input
+
+    const anyInput = input as any
+    const deps = prefixRuleDeps(anyInput.deps, prefix, options)
+    const validate = anyInput.validate
+
+    if (typeof validate === 'function') {
+      return deps !== undefined ? { ...anyInput, deps } : input
+    }
+
+    if (validate && typeof validate === 'object' && !Array.isArray(validate)) {
+      const nextValidate: Record<string, unknown> = { ...(validate as any) }
+      for (const [name, raw] of Object.entries(validate as any)) {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
+        const entryDeps = prefixRuleDeps((raw as any).deps, prefix, options)
+        if (entryDeps !== undefined) {
+          nextValidate[name] = { ...(raw as any), deps: entryDeps }
+        }
+      }
+      return {
+        ...anyInput,
+        ...(deps !== undefined ? { deps } : {}),
+        validate: nextValidate,
+      }
+    }
+
+    return deps !== undefined ? { ...anyInput, deps } : input
+  }
+
   const compileRulesToTraitSpec = (rulesSpec: RulesSpec<TValues>): Logix.StateTrait.StateTraitSpec<TValues> => {
     if (!rulesSpec || (rulesSpec as any)._tag !== 'FormRulesSpec') {
       throw new Error(`[Form.make] "rules" must be a FormRulesSpec (from Form.rules(...)/rules.schema(...))`)
-    }
-
-    const joinPath = (prefix: string, suffix: string): string => {
-      if (!prefix) return suffix
-      if (!suffix) return prefix
-      return `${prefix}.${suffix}`
     }
 
     const dirnamePath = (path: string): string => {
@@ -238,59 +291,6 @@ export const make = <Id extends string, TValues extends object>(
       if (!p) return ''
       const idx = p.lastIndexOf('.')
       return idx >= 0 ? p.slice(0, idx) : ''
-    }
-
-    const isRelativeDep = (dep: unknown): dep is string => {
-      if (typeof dep !== 'string') return false
-      const d = dep.trim()
-      if (!d) return false
-      if (d === '$root') return false
-      if (d.includes('[') || d.includes(']')) return false
-      if (d.includes('.')) return false
-      return true
-    }
-
-    const prefixDeps = (deps: unknown, prefix: string): ReadonlyArray<string> | undefined => {
-      if (!Array.isArray(deps)) return undefined
-      const out: Array<string> = []
-      for (const raw of deps) {
-        if (typeof raw !== 'string') continue
-        const d = raw.trim()
-        if (!d) continue
-        out.push(isRelativeDep(d) ? joinPath(prefix, d) : d)
-      }
-      return out
-    }
-
-    const prefixRuleInputDeps = (input: Rule.RuleInput<any, any>, prefix: string): Rule.RuleInput<any, any> => {
-      if (!input || typeof input !== 'object') return input
-      if (Array.isArray(input)) return input
-
-      const anyInput = input as any
-      const deps = prefixDeps(anyInput.deps, prefix)
-      const validate = anyInput.validate
-
-      if (typeof validate === 'function') {
-        return deps !== undefined ? { ...anyInput, deps } : input
-      }
-
-      if (validate && typeof validate === 'object' && !Array.isArray(validate)) {
-        const nextValidate: Record<string, unknown> = { ...(validate as any) }
-        for (const [name, raw] of Object.entries(validate as any)) {
-          if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
-          const entryDeps = prefixDeps((raw as any).deps, prefix)
-          if (entryDeps !== undefined) {
-            nextValidate[name] = { ...(raw as any), deps: entryDeps }
-          }
-        }
-        return {
-          ...anyInput,
-          ...(deps !== undefined ? { deps } : {}),
-          validate: nextValidate,
-        }
-      }
-
-      return deps !== undefined ? { ...anyInput, deps } : input
     }
 
     const decls = Array.isArray((rulesSpec as any).decls) ? (rulesSpec as any).decls : []
@@ -518,52 +518,9 @@ export const make = <Id extends string, TValues extends object>(
                   return idx >= 0 ? valuePath.slice(0, idx) : ''
                 })()
 
-          const prefixDeps = (deps: unknown, prefix: string): ReadonlyArray<string> | undefined => {
-            if (!Array.isArray(deps)) return undefined
-            const out: Array<string> = []
-            for (const raw of deps) {
-              if (typeof raw !== 'string') continue
-              const d = raw.trim()
-              if (!d) continue
-              const isRelative =
-                d !== '$root' && !d.includes('[') && !d.includes(']') && !d.includes('.') && !/^[0-9]+$/.test(d)
-              out.push(isRelative && prefix ? `${prefix}.${d}` : d)
-            }
-            return out
-          }
-
-          const prefixRuleInputDeps = (input: Rule.RuleInput<any, any>, prefix: string): Rule.RuleInput<any, any> => {
-            if (!input || typeof input !== 'object') return input
-            if (Array.isArray(input)) return input
-
-            const anyInput = input as any
-            const deps = prefixDeps(anyInput.deps, prefix)
-            const validate = anyInput.validate
-
-            if (typeof validate === 'function') {
-              return deps !== undefined ? { ...anyInput, deps } : input
-            }
-
-            if (validate && typeof validate === 'object' && !Array.isArray(validate)) {
-              const nextValidate: Record<string, unknown> = { ...(validate as any) }
-              for (const [ruleName, raw] of Object.entries(validate as any)) {
-                if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
-                const entryDeps = prefixDeps((raw as any).deps, prefix)
-                if (entryDeps !== undefined) {
-                  nextValidate[ruleName] = { ...(raw as any), deps: entryDeps }
-                }
-              }
-              return {
-                ...anyInput,
-                ...(deps !== undefined ? { deps } : {}),
-                validate: nextValidate,
-              }
-            }
-
-            return deps !== undefined ? { ...anyInput, deps } : input
-          }
-
-          const ruleInput = prefixRuleInputDeps((decl as any).rule as any, depsPrefix)
+          const ruleInput = prefixRuleInputDeps((decl as any).rule as any, depsPrefix, {
+            allowNumericRelativeDep: false,
+          })
           const rules = Rule.make(ruleInput as any)
 
           emitRuleSet({
