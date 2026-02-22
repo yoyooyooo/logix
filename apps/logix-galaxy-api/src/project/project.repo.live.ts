@@ -114,6 +114,13 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         ),
       )
 
+    const requireProjectExists = (projectId: number) =>
+      projectExists(projectId).pipe(
+        Effect.flatMap((exists) =>
+          exists ? Effect.void : Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const),
+        ),
+      )
+
     const requireProject = (projectId: number) =>
       ensureReady.pipe(
         Effect.zipRight(
@@ -165,6 +172,47 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
                 : Effect.fail({ _tag: 'NotFoundError', message: 'Member not found' } as const),
             ),
           ),
+        ),
+      )
+
+    const groupExists = (projectId: number, groupId: number) =>
+      ensureReady.pipe(
+        Effect.zipRight(
+          queryOrDie<{ readonly ok: number }>`
+            select 1 as ok
+            from project_groups
+            where project_id = ${projectId} and group_id = ${groupId}
+            limit 1
+          `,
+        ),
+        Effect.map((rows) => rows.length > 0),
+      )
+
+    const requireGroupExists = (projectId: number, groupId: number) =>
+      groupExists(projectId, groupId).pipe(
+        Effect.flatMap((exists) =>
+          exists ? Effect.void : Effect.fail({ _tag: 'NotFoundError', message: 'Group not found' } as const),
+        ),
+      )
+
+    const countProjectOwners = (projectId: number) =>
+      ensureReady.pipe(
+        Effect.zipRight(
+          queryOrDie<{ readonly count: number }>`
+            select count(*)::int as count
+            from project_members
+            where project_id = ${projectId} and direct_role = 'owner'
+          `,
+        ),
+        Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].count) : Effect.dieMessage('count should return one row'))),
+      )
+
+    const ensureProjectHasAnotherOwner = (projectId: number) =>
+      countProjectOwners(projectId).pipe(
+        Effect.flatMap((owners) =>
+          owners <= 1
+            ? Effect.fail({ _tag: 'ConflictError', message: 'Project must have at least one owner' } as const)
+            : Effect.void,
         ),
       )
 
@@ -332,10 +380,7 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const projectGetForMember: ProjectRepoService['projectGetForMember'] = (input) =>
       Effect.gen(function* () {
-        const exists = yield* projectExists(input.projectId)
-        if (!exists) {
-          return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
-        }
+        yield* requireProjectExists(input.projectId)
         const rows = yield* ensureReady.pipe(
           Effect.zipRight(
             queryOrDie<ProjectRow>`
@@ -430,10 +475,7 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const accessMe: ProjectRepoService['accessMe'] = (input) =>
       Effect.gen(function* () {
-        const projectOk = yield* projectExists(input.projectId)
-        if (!projectOk) {
-          return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
-        }
+        yield* requireProjectExists(input.projectId)
 
         const directRole = yield* requireProjectMemberDirectRole(input.projectId, input.userId)
         const groupRoleKeys = yield* getGroupRoleKeysForUser(input.projectId, input.userId)
@@ -449,10 +491,7 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const memberList: ProjectRepoService['memberList'] = (input) =>
       Effect.gen(function* () {
-        const projectOk = yield* projectExists(input.projectId)
-        if (!projectOk) {
-          return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
-        }
+        yield* requireProjectExists(input.projectId)
 
         const groupRoles = yield* groupRoleKeysByUserId(input.projectId)
 
@@ -499,10 +538,7 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
     const memberAddByEmail: ProjectRepoService['memberAddByEmail'] = (input) =>
       Effect.gen(function* () {
         const email = yield* validateEmail(input.email)
-        const projectOk = yield* projectExists(input.projectId)
-        if (!projectOk) {
-          return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
-        }
+        yield* requireProjectExists(input.projectId)
 
         const user = yield* requireUserByEmail(email)
 
@@ -550,36 +586,12 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const memberUpdateRole: ProjectRepoService['memberUpdateRole'] = (input) =>
       Effect.gen(function* () {
-        const projectOk = yield* projectExists(input.projectId)
-        if (!projectOk) {
-          return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
-        }
+        yield* requireProjectExists(input.projectId)
 
-        const prevRole = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly directRole: string }>`
-              select direct_role as "directRole"
-              from project_members
-              where project_id = ${input.projectId} and user_id = ${input.userId}
-            `,
-          ),
-          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].directRole as any) : Effect.fail({ _tag: 'NotFoundError', message: 'Member not found' } as const))),
-        )
+        const prevRole = yield* requireProjectMemberDirectRoleOrNotFound(input.projectId, input.userId)
 
         if (prevRole === 'owner' && input.nextRoleKey !== 'owner') {
-          const owners = yield* ensureReady.pipe(
-            Effect.zipRight(
-              queryOrDie<{ readonly count: number }>`
-                select count(*)::int as count
-                from project_members
-                where project_id = ${input.projectId} and direct_role = 'owner'
-              `,
-            ),
-            Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].count) : Effect.dieMessage('count should return one row'))),
-          )
-          if (owners <= 1) {
-            return yield* Effect.fail({ _tag: 'ConflictError', message: 'Project must have at least one owner' } as const)
-          }
+          yield* ensureProjectHasAnotherOwner(input.projectId)
         }
 
         const createdAt = yield* ensureReady.pipe(
@@ -614,36 +626,12 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const memberRemove: ProjectRepoService['memberRemove'] = (input) =>
       Effect.gen(function* () {
-        const projectOk = yield* projectExists(input.projectId)
-        if (!projectOk) {
-          return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
-        }
+        yield* requireProjectExists(input.projectId)
 
-        const prevRole = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly directRole: string }>`
-              select direct_role as "directRole"
-              from project_members
-              where project_id = ${input.projectId} and user_id = ${input.userId}
-            `,
-          ),
-          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].directRole as any) : Effect.fail({ _tag: 'NotFoundError', message: 'Member not found' } as const))),
-        )
+        const prevRole = yield* requireProjectMemberDirectRoleOrNotFound(input.projectId, input.userId)
 
         if (prevRole === 'owner') {
-          const owners = yield* ensureReady.pipe(
-            Effect.zipRight(
-              queryOrDie<{ readonly count: number }>`
-                select count(*)::int as count
-                from project_members
-                where project_id = ${input.projectId} and direct_role = 'owner'
-              `,
-            ),
-            Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].count) : Effect.dieMessage('count should return one row'))),
-          )
-          if (owners <= 1) {
-            return yield* Effect.fail({ _tag: 'ConflictError', message: 'Project must have at least one owner' } as const)
-          }
+          yield* ensureProjectHasAnotherOwner(input.projectId)
         }
 
         yield* ensureReady.pipe(
@@ -663,8 +651,7 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const groupList: ProjectRepoService['groupList'] = (input) =>
       Effect.gen(function* () {
-        const ok = yield* projectExists(input.projectId)
-        if (!ok) return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
+        yield* requireProjectExists(input.projectId)
 
         const rows = yield* ensureReady.pipe(
           Effect.zipRight(
@@ -711,8 +698,7 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
     const groupCreate: ProjectRepoService['groupCreate'] = (input) =>
       Effect.gen(function* () {
         const name = yield* validateName(input.name)
-        const ok = yield* projectExists(input.projectId)
-        if (!ok) return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
+        yield* requireProjectExists(input.projectId)
 
         const dup = yield* ensureReady.pipe(
           Effect.zipRight(
@@ -755,8 +741,7 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const groupUpdate: ProjectRepoService['groupUpdate'] = (input) =>
       Effect.gen(function* () {
-        const ok = yield* projectExists(input.projectId)
-        if (!ok) return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
+        yield* requireProjectExists(input.projectId)
 
         const patchName = input.patch.name === undefined ? undefined : yield* validateName(input.patch.name)
 
@@ -825,21 +810,8 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const groupMemberList: ProjectRepoService['groupMemberList'] = (input) =>
       Effect.gen(function* () {
-        const ok = yield* projectExists(input.projectId)
-        if (!ok) return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
-
-        const groupOk = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly ok: number }>`
-              select 1 as ok
-              from project_groups
-              where project_id = ${input.projectId} and group_id = ${input.groupId}
-              limit 1
-            `,
-          ),
-          Effect.map((rows) => rows.length > 0),
-        )
-        if (!groupOk) return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Group not found' } as const)
+        yield* requireProjectExists(input.projectId)
+        yield* requireGroupExists(input.projectId, input.groupId)
 
         const rows = yield* ensureReady.pipe(
           Effect.zipRight(
@@ -865,21 +837,8 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const groupMemberAdd: ProjectRepoService['groupMemberAdd'] = (input) =>
       Effect.gen(function* () {
-        const ok = yield* projectExists(input.projectId)
-        if (!ok) return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const)
-
-        const groupOk = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly ok: number }>`
-              select 1 as ok
-              from project_groups
-              where project_id = ${input.projectId} and group_id = ${input.groupId}
-              limit 1
-            `,
-          ),
-          Effect.map((rows) => rows.length > 0),
-        )
-        if (!groupOk) return yield* Effect.fail({ _tag: 'NotFoundError', message: 'Group not found' } as const)
+        yield* requireProjectExists(input.projectId)
+        yield* requireGroupExists(input.projectId, input.groupId)
 
         const isProjectMember = yield* ensureReady.pipe(
           Effect.zipRight(
