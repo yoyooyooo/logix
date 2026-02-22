@@ -358,52 +358,42 @@ const defineCrud = <
   const install = module.logic(
     ($) =>
       Effect.gen(function* () {
-        yield* $.onAction('query').runFork((action) =>
+        const missingApiMessage = `[CRUDModule] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`
+
+        const runWithApi = (
+          dispatchFailed: (message: string) => Effect.Effect<void, never, any>,
+          run: (api: CrudApi<Entity, QueryInput, EntityId>) => Effect.Effect<unknown, unknown, any>,
+        ): Effect.Effect<void, never, any> =>
           Effect.gen(function* () {
             const apiOpt = yield* Effect.serviceOption(services.api)
             if (Option.isNone(apiOpt)) {
-              yield* $.dispatchers.queryFailed(
-                `[CRUDModule] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`,
-              )
+              yield* dispatchFailed(missingApiMessage)
               return
             }
-            const api = apiOpt.value
+            yield* run(apiOpt.value)
+          }).pipe(
+            Effect.catchAll((error) => dispatchFailed(toErrorMessage(error))),
+            Effect.asVoid,
+          )
 
-            const result = yield* api.list(action.payload as QueryInput)
-            yield* $.dispatchers.querySucceeded(result)
-          }).pipe(Effect.catchAll((e) => $.dispatchers.queryFailed(toErrorMessage(e)))),
+        yield* $.onAction('query').runFork((action) =>
+          runWithApi($.dispatchers.queryFailed, (api) =>
+            api.list(action.payload as QueryInput).pipe(Effect.flatMap((result) => $.dispatchers.querySucceeded(result))),
+          ),
         )
 
         yield* $.onAction('save').runFork((action) =>
-          Effect.gen(function* () {
-            const apiOpt = yield* Effect.serviceOption(services.api)
-            if (Option.isNone(apiOpt)) {
-              yield* $.dispatchers.saveFailed(
-                `[CRUDModule] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`,
-              )
-              return
-            }
-            const api = apiOpt.value
-
-            const entity = yield* api.save(action.payload as Entity)
-            yield* $.dispatchers.saveSucceeded(entity)
-          }).pipe(Effect.catchAll((e) => $.dispatchers.saveFailed(toErrorMessage(e)))),
+          runWithApi($.dispatchers.saveFailed, (api) =>
+            api.save(action.payload as Entity).pipe(Effect.flatMap((entity) => $.dispatchers.saveSucceeded(entity))),
+          ),
         )
 
         yield* $.onAction('remove').runFork((action) =>
-          Effect.gen(function* () {
-            const apiOpt = yield* Effect.serviceOption(services.api)
-            if (Option.isNone(apiOpt)) {
-              yield* $.dispatchers.removeFailed(
-                `[CRUDModule] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`,
-              )
-              return
-            }
-            const api = apiOpt.value
-
-            yield* api.remove(action.payload as EntityId)
-            yield* $.dispatchers.removeSucceeded(action.payload as EntityId)
-          }).pipe(Effect.catchAll((e) => $.dispatchers.removeFailed(toErrorMessage(e)))),
+          runWithApi($.dispatchers.removeFailed, (api) =>
+            api.remove(action.payload as EntityId).pipe(
+              Effect.zipRight($.dispatchers.removeSucceeded(action.payload as EntityId)),
+            ),
+          ),
         )
       }),
     { id: 'install' },
