@@ -109,6 +109,8 @@ const RUNTIME_BOOT_EVENT = 'runtime:boot' as const
 const deriveDebugModuleId = (processId: string): string => `process:${processId}`
 
 type NonPlatformTriggerSpec = Exclude<ProcessTriggerSpec, { readonly kind: 'platformEvent' }>
+type TimerTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'timer' }>
+type ModuleActionTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'moduleAction' }>
 type ProcessDispatchPayload = NonNullable<ProcessEvent['dispatch']>
 
 const deriveTxnAnchor = (event: ProcessEvent): { readonly txnSeq?: number; readonly txnId?: string } => {
@@ -569,91 +571,101 @@ export const make = (options?: {
           ...nextProcessEventMeta(),
         })
 
-        const makeTriggerStream = (spec: NonPlatformTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
+        const resolveModuleRuntime = (moduleId: string): Effect.Effect<any, Error> =>
           Effect.gen(function* () {
-            if (spec.kind === 'timer') {
-              const interval = Duration.decodeUnknown(spec.timerId)
-              if (Option.isNone(interval)) {
-                const err = new Error(`[ProcessRuntime] invalid timerId (expected DurationInput): ${spec.timerId}`)
-                ;(err as any).code = 'process::invalid_timer_id'
-                ;(err as any).hint =
-                  "timerId must be a valid DurationInput string, e.g. '10 millis', '1 seconds', '5 minutes'."
-                return yield* Effect.fail(err)
-              }
+            const tag = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
+            const found = Context.getOption(baseEnv, tag)
+            if (Option.isNone(found)) {
+              return yield* Effect.fail(new Error(`Missing module runtime in scope: ${moduleId}`))
+            }
+            return found.value as any
+          })
 
-              return Stream.tick(interval.value).pipe(
-                Stream.map(
-                  () =>
-                    ({
-                      kind: 'timer',
-                      name: spec.name,
-                      timerId: spec.timerId,
-                    }) satisfies ProcessTrigger,
-                ),
-              )
+        const makeTimerTriggerStream = (spec: TimerTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
+          Effect.gen(function* () {
+            const interval = Duration.decodeUnknown(spec.timerId)
+            if (Option.isNone(interval)) {
+              const err = new Error(`[ProcessRuntime] invalid timerId (expected DurationInput): ${spec.timerId}`)
+              ;(err as any).code = 'process::invalid_timer_id'
+              ;(err as any).hint =
+                "timerId must be a valid DurationInput string, e.g. '10 millis', '1 seconds', '5 minutes'."
+              return yield* Effect.fail(err)
             }
 
-            if (spec.kind === 'moduleAction') {
-              const tag = Context.Tag(`@logixjs/Module/${spec.moduleId}`)() as Context.Tag<any, any>
-              const found = Context.getOption(baseEnv, tag)
-              if (Option.isNone(found)) {
-                return yield* Effect.fail(new Error(`Missing module runtime in scope: ${spec.moduleId}`))
-              }
+            return Stream.tick(interval.value).pipe(
+              Stream.map(
+                () =>
+                  ({
+                    kind: 'timer',
+                    name: spec.name,
+                    timerId: spec.timerId,
+                  }) satisfies ProcessTrigger,
+              ),
+            )
+          })
 
-              const runtime = found.value as any
-              const buildModuleActionTrigger = (txnSeq: number): ProcessTrigger => ({
-                kind: 'moduleAction',
-                name: spec.name,
-                moduleId: spec.moduleId,
-                instanceId: runtime.instanceId as string,
-                actionId: spec.actionId,
-                txnSeq,
-              })
+        const makeModuleActionTriggerStream = (
+          spec: ModuleActionTriggerSpec,
+        ): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
+          Effect.gen(function* () {
+            const runtime = yield* resolveModuleRuntime(spec.moduleId)
+            const buildModuleActionTrigger = (txnSeq: number): ProcessTrigger => ({
+              kind: 'moduleAction',
+              name: spec.name,
+              moduleId: spec.moduleId,
+              instanceId: runtime.instanceId as string,
+              actionId: spec.actionId,
+              txnSeq,
+            })
 
-              // perf: when diagnostics=off, avoid subscribing to actionsWithMeta$ (published inside txns; more subscribers hurt hot paths).
-              // diagnostics=light/full needs txnSeq/txnId anchors, so only use actionsWithMeta$ when chain events are enabled.
-              if (!shouldRecordChainEvents) {
-                const stream = runtime.actions$ as Stream.Stream<any> | undefined
-                if (!stream) {
-                  const err = new Error('ModuleRuntime does not provide actions$ (required for moduleAction trigger).')
-                  ;(err as any).code = 'process::missing_action_stream'
-                  ;(err as any).hint = `moduleId=${spec.moduleId}`
-                  return yield* Effect.fail(err)
-                }
-
-                return stream.pipe(
-                  Stream.filter((action: any) => actionIdFromUnknown(action) === spec.actionId),
-                  Stream.map(() => buildModuleActionTrigger(1)),
-                )
-              }
-
-              const stream = runtime.actionsWithMeta$ as Stream.Stream<any> | undefined
+            // perf: when diagnostics=off, avoid subscribing to actionsWithMeta$ (published inside txns; more subscribers hurt hot paths).
+            // diagnostics=light/full needs txnSeq/txnId anchors, so only use actionsWithMeta$ when chain events are enabled.
+            if (!shouldRecordChainEvents) {
+              const stream = runtime.actions$ as Stream.Stream<any> | undefined
               if (!stream) {
-                const err = new Error(
-                  'ModuleRuntime does not provide actionsWithMeta$ (required for moduleAction trigger).',
-                )
-                ;(err as any).code = 'process::missing_action_meta_stream'
+                const err = new Error('ModuleRuntime does not provide actions$ (required for moduleAction trigger).')
+                ;(err as any).code = 'process::missing_action_stream'
                 ;(err as any).hint = `moduleId=${spec.moduleId}`
                 return yield* Effect.fail(err)
               }
 
               return stream.pipe(
-                Stream.filter((evt: any) => actionIdFromUnknown(evt.value) === spec.actionId),
-                Stream.map((evt: any) => {
-                  const txnSeq = evt?.meta?.txnSeq
-                  return buildModuleActionTrigger(typeof txnSeq === 'number' ? txnSeq : 1)
-                }),
+                Stream.filter((action: any) => actionIdFromUnknown(action) === spec.actionId),
+                Stream.map(() => buildModuleActionTrigger(1)),
               )
             }
 
-            // moduleStateChange
-            const tag = Context.Tag(`@logixjs/Module/${spec.moduleId}`)() as Context.Tag<any, any>
-            const found = Context.getOption(baseEnv, tag)
-            if (Option.isNone(found)) {
-              return yield* Effect.fail(new Error(`Missing module runtime in scope: ${spec.moduleId}`))
+            const stream = runtime.actionsWithMeta$ as Stream.Stream<any> | undefined
+            if (!stream) {
+              const err = new Error(
+                'ModuleRuntime does not provide actionsWithMeta$ (required for moduleAction trigger).',
+              )
+              ;(err as any).code = 'process::missing_action_meta_stream'
+              ;(err as any).hint = `moduleId=${spec.moduleId}`
+              return yield* Effect.fail(err)
             }
 
-            const runtime = found.value as any
+            return stream.pipe(
+              Stream.filter((evt: any) => actionIdFromUnknown(evt.value) === spec.actionId),
+              Stream.map((evt: any) => {
+                const txnSeq = evt?.meta?.txnSeq
+                return buildModuleActionTrigger(typeof txnSeq === 'number' ? txnSeq : 1)
+              }),
+            )
+          })
+
+        const makeTriggerStream = (spec: NonPlatformTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
+          Effect.gen(function* () {
+            if (spec.kind === 'timer') {
+              return yield* makeTimerTriggerStream(spec)
+            }
+
+            if (spec.kind === 'moduleAction') {
+              return yield* makeModuleActionTriggerStream(spec)
+            }
+
+            // moduleStateChange
+            const runtime = yield* resolveModuleRuntime(spec.moduleId)
             const schemaAst = resolveRuntimeStateSchemaAst(runtime)
             const selectorResult = makeSchemaSelector(spec.path, schemaAst)
             if (!selectorResult.ok) {
