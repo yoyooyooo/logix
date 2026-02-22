@@ -209,6 +209,79 @@ const mergeDrain = (base: RuntimeStorePendingDrain, next: RuntimeStorePendingDra
 
 const emptyDrain = (): RuntimeStorePendingDrain => ({ modules: new Map(), dirtyTopics: new Map() })
 
+type BudgetPartitionResult = {
+  readonly acceptedModules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit>
+  readonly deferredModules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit>
+  readonly urgentCapExceeded: boolean
+  readonly deferredNonUrgentCount: number
+}
+
+const partitionModulesForBudget = (args: {
+  readonly modules: ReadonlyMap<ModuleInstanceKey, RuntimeStoreModuleCommit>
+  readonly maxSteps: number
+  readonly urgentStepCap: number
+}): BudgetPartitionResult => {
+  let urgentCount = 0
+  for (const commit of args.modules.values()) {
+    if (toLane(commit.meta.priority) === 'urgent') {
+      urgentCount += 1
+    }
+  }
+
+  const urgentCap = Math.max(0, args.urgentStepCap)
+  const urgentCapExceeded = urgentCount > urgentCap
+  const nonUrgentBudget = Math.max(0, args.maxSteps)
+
+  let acceptedUrgentCount = 0
+  let deferredNonUrgentCount = 0
+
+  const acceptedModules = new Map<ModuleInstanceKey, RuntimeStoreModuleCommit>()
+  const deferredModules = new Map<ModuleInstanceKey, RuntimeStoreModuleCommit>()
+
+  for (const commit of args.modules.values()) {
+    if (toLane(commit.meta.priority) !== 'urgent') continue
+    if (urgentCapExceeded && acceptedUrgentCount >= urgentCap) {
+      deferredModules.set(commit.moduleInstanceKey, commit)
+      continue
+    }
+    acceptedModules.set(commit.moduleInstanceKey, commit)
+    acceptedUrgentCount += 1
+  }
+
+  if (urgentCapExceeded) {
+    for (const commit of args.modules.values()) {
+      if (toLane(commit.meta.priority) === 'urgent') continue
+      deferredModules.set(commit.moduleInstanceKey, commit)
+      deferredNonUrgentCount += 1
+    }
+    return {
+      acceptedModules,
+      deferredModules,
+      urgentCapExceeded,
+      deferredNonUrgentCount,
+    }
+  }
+
+  let acceptedNonUrgentCount = 0
+  for (const commit of args.modules.values()) {
+    if (toLane(commit.meta.priority) === 'urgent') continue
+    if (acceptedNonUrgentCount >= nonUrgentBudget) {
+      deferredModules.set(commit.moduleInstanceKey, commit)
+      deferredNonUrgentCount += 1
+      continue
+    }
+    acceptedModules.set(commit.moduleInstanceKey, commit)
+    acceptedNonUrgentCount += 1
+  }
+
+  return {
+    acceptedModules,
+    deferredModules,
+    urgentCapExceeded,
+    deferredNonUrgentCount,
+  }
+}
+
 export const makeTickScheduler = (args: {
   readonly runtimeStore: RuntimeStore
   readonly queue?: JobQueue
@@ -364,41 +437,19 @@ export const makeTickScheduler = (args: {
     }
 
     // Budget enforcement (defer nonUrgent only; urgent may be cut only in cycle safety-break).
-    const urgentModules: Array<RuntimeStoreModuleCommit> = []
-    const nonUrgentModules: Array<RuntimeStoreModuleCommit> = []
-
-    for (const commit of captured.accepted.modules.values()) {
-      if (toLane(commit.meta.priority) === 'urgent') {
-        urgentModules.push(commit)
-      } else {
-        nonUrgentModules.push(commit)
-      }
-    }
-
-    const urgentCapExceeded = urgentModules.length > config.urgentStepCap
-    const urgentAccepted = urgentCapExceeded ? urgentModules.slice(0, config.urgentStepCap) : urgentModules
-    const urgentDeferred = urgentCapExceeded ? urgentModules.slice(config.urgentStepCap) : []
-
-    const nonUrgentBudget = Math.max(0, config.maxSteps)
-    const nonUrgentAccepted = urgentCapExceeded ? [] : nonUrgentModules.slice(0, nonUrgentBudget)
-    const nonUrgentDeferred = urgentCapExceeded ? nonUrgentModules : nonUrgentModules.slice(nonUrgentBudget)
+    const { acceptedModules, deferredModules, urgentCapExceeded, deferredNonUrgentCount } = partitionModulesForBudget({
+      modules: captured.accepted.modules,
+      maxSteps: config.maxSteps,
+      urgentStepCap: config.urgentStepCap,
+    })
 
     if (urgentCapExceeded) {
       captured.stable = false
       captured.degradeReason = 'cycle_detected'
-    } else if (nonUrgentDeferred.length > 0) {
+    } else if (deferredNonUrgentCount > 0) {
       captured.stable = false
       captured.degradeReason = captured.degradeReason ?? 'budget_steps'
     }
-
-    const acceptedModules = new Map<ModuleInstanceKey, RuntimeStoreModuleCommit>()
-    const deferredModules = new Map<ModuleInstanceKey, RuntimeStoreModuleCommit>()
-
-    for (const c of urgentAccepted) acceptedModules.set(c.moduleInstanceKey, c)
-    for (const c of nonUrgentAccepted) acceptedModules.set(c.moduleInstanceKey, c)
-
-    for (const c of urgentDeferred) deferredModules.set(c.moduleInstanceKey, c)
-    for (const c of nonUrgentDeferred) deferredModules.set(c.moduleInstanceKey, c)
 
     const acceptedTopics = new Map<string, StateCommitPriority>()
     const deferredTopics = new Map<string, StateCommitPriority>()

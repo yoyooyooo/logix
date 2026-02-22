@@ -1,8 +1,8 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-process-test-helper-timer-module-statechange-20260223`
-> 基线来源：`origin/main`（同步时间：2026-02-22）
+> 分支：`refactor/logix-core-tickscheduler-partition-20260223`
+> 基线来源：`origin/main`（同步时间：2026-02-23）
 
 ## 状态定义
 
@@ -29,6 +29,7 @@
 - `packages/logix-query/src/Query.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-form/src/internal/form/impl.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
@@ -41,6 +42,7 @@
 - `packages/logix-core/test/Process/Process.ErrorPolicy.Supervise.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/test-helpers.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.SelectorDiagnostics.Helpers.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/internal/Runtime/TickScheduler.fixpoint.test.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -59,7 +61,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.ErrorPolicy.Supervise.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`test-helpers.ts` 已深读并重构）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`TickScheduler.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.ErrorPolicy.Supervise.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`TickScheduler.fixpoint.test.ts`、`test-helpers.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -114,6 +116,9 @@
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
   - `recordPatchFull` 的 patch record 构建使用内联对象扩展，分支噪音高且不利于后续字段扩展。
   - `commit` 同时承担 dirtySet 计算 + transaction 构建 + 提交流程，职责边界不够清晰。
+- `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
+  - `flushTick` 的预算分桶路径使用“先分数组再 slice 再回填 Map”，在高频 tick 下产生额外数组分配与多次遍历。
+  - `urgent/nonUrgent` 分桶规则分散在多个局部数组变量上，扩展预算策略时易引入语义漂移。
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
   - `process:dispatch` / `process:trigger` 事件构造在多处重复，eventSeq/timestamp 维护点分散。
   - `moduleAction` trigger 在 meta/non-meta 两条分支重复构造对象，维护成本高。
@@ -154,8 +159,13 @@
   - 抽取 `normalizePatchStepId` / `buildPatchRecord`，统一 patch 可选字段归一化，保持 full instrumentation 语义不变。
   - 抽取 `buildDirtySet` / `buildCommittedTransaction`，让 `commit` 聚焦事务提交流程与单次写入路径。
   - 性能证据：`.context/perf/logix-core-state-txn-20260222/before.local.default.json`、`.context/perf/logix-core-state-txn-20260222/after.local.default.json`、`.context/perf/logix-core-state-txn-20260222/summary.md`。
+- `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
+  - 新增 `partitionModulesForBudget`，将 `flushTick` 预算分桶改为“线性遍历直接写 accepted/deferred Map”，去除 `urgent/nonUrgent` 数组分组与 `slice` 的额外分配。
+  - 保持既有语义：`urgentStepCap` 超限仍优先触发 `cycle_detected`，否则仅在 nonUrgent backlog 溢出时标记 `budget_steps`。
 - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`
   - 新增回归用例：`StateTransaction full patch records should normalize optional metadata fields`，锁定 stepId/traitNodeId/from 的可选字段语义。
+- `packages/logix-core/test/internal/Runtime/TickScheduler.fixpoint.test.ts`
+  - 在 urgent safety 场景补充 low 优先级 commit：验证 `urgentStepCap` 触发时 low backlog 首 tick 必须 defer，后续 tick 正常补齐，锁定分桶语义。
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
   - 抽取 `nextProcessEventMeta`、`makeDispatchEvent`、`makeTriggerEvent`，统一 process 事件构造并保持 eventSeq/timestamp 语义不变。
   - 收敛 `moduleAction` trigger 重复构造为 `buildModuleActionTrigger`，保持 `actions$`/`actionsWithMeta$` 分支语义一致。
@@ -291,6 +301,10 @@
   - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于 `origin/main...HEAD` 最新 diff 只读审查
   - 结论：无阻塞问题，可合并（`after > before` 与 `invoked === 2` 断言语义保持）
   - 残余风险：`yieldNow + TestClock.adjust` 仍有低风险时序耦合，后续可继续收敛为统一等待 helper
+- 2026-02-23（logix-core / TickScheduler budget 分桶热路径优化轮次）
+  - 审查方式：1 个独立 subagent（explorer，`agent_id=019c8632-7072-7112-90f2-ce7aa0452499`）基于 `origin/main...HEAD` 当前 diff 只读审查
+  - 结论：无阻塞问题，可合并（热路径重构 + 回归测试补强）
+  - 残余风险：初审提示“accepted Map 顺序可能影响观察链路”；已按审查意见调整为“urgent 优先、nonUrgent 后置”的分桶写入顺序并复跑全量门禁，当前残余风险低
 
 ## 未看过模块
 
