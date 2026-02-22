@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Context, Effect, Exit, Layer, Ref, Scope, Schema, TestClock } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
+import { collectProcessErrorEvent, withProcessRuntime } from './test-helpers.js'
 
 describe('process: trigger moduleStateChange', () => {
   it.scoped('should fail with actionable error when dot-path is invalid', () =>
@@ -27,26 +27,11 @@ describe('process: trigger moduleStateChange', () => {
         processes: [Proc],
       })
 
-      const layer = Layer.provideMerge(ProcessRuntime.layer())(HostImpl.impl.layer)
-
-      let events: ReadonlyArray<Logix.Process.ProcessEvent> = []
-      const scope = yield* Scope.make()
-      try {
-        const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
-
-        yield* Effect.yieldNow()
-        events = (yield* rt.getEventsSnapshot()) as any
-      } finally {
-        yield* Scope.close(scope, Exit.succeed(undefined))
-      }
-
-      const errorEvent = events.find(
-        (e) => e.type === 'process:error' && e.identity.identity.processId === 'ProcessTriggerInvalidDotPath',
-      )
+      const layer = withProcessRuntime(HostImpl.impl.layer)
+      const { errorEvent } = yield* collectProcessErrorEvent({
+        layer,
+        processId: 'ProcessTriggerInvalidDotPath',
+      })
 
       expect(errorEvent).toBeTruthy()
       expect(errorEvent?.error?.code).toBe('process::invalid_dot_path')
@@ -90,7 +75,7 @@ describe('process: trigger moduleStateChange', () => {
         processes: [Proc],
       })
 
-      const layer = Layer.provideMerge(ProcessRuntime.layer())(HostImpl.impl.layer)
+      const layer = withProcessRuntime(HostImpl.impl.layer)
 
       const scope = yield* Scope.make()
       try {

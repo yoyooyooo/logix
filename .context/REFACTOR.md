@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-process-test-helper-20260222`
+> 分支：`refactor/logix-core-process-helper-adopt-more-tests-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -162,6 +162,7 @@
   - 抽取共享 helper：`withProcessRuntime`（统一组装 `ProcessRuntime.layer`）与 `collectProcessErrorEvent`（统一 `scope` 生命周期 + `process:error` 有上限轮询）。
   - `collectProcessErrorEvent` 支持 `onBeforeClose` 回调，允许在关闭 runtime scope 前采集额外观测值（如 `invokedCount`），避免测试严格性回退。
   - `Process.Trigger.ModuleAction.MissingStreams.test.ts` 与 `Process.Trigger.InvalidKind.test.ts` 改为复用 helper，减少重复样板并保持断言语义不变。
+  - `Process.Trigger.Timer.test.ts`（invalid timer 分支）与 `Process.Trigger.ModuleStateChange.test.ts`（invalid dot-path 分支）也迁移为复用 helper，统一错误事件采集路径并保持既有断言语义不变。
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
   - 抽取 `withRuntimeServiceBuiltins`，统一 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 的 builtin 注入样板，保持 serviceId 与 builtinMake 映射语义不变。
   - 抽取 `readCurrentOpSeq`，统一 `onCommit` 与 `deferredConvergeFlush` 的 opSeq 读取归一化逻辑，保持 non-negative integer 语义不变。
@@ -233,6 +234,10 @@
   - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于当前 diff 只读审查
   - 结论：无阻塞问题，可合并（可稳定命中 `process::invalid_trigger_kind` 且排除 `missing_dependency` 误命中）
   - 残余风险：轮询上限与错误文案断言存在低维护成本，后续可抽统一等待 helper 并收敛 message 断言策略
+- 2026-02-22（logix-core / process test helper 推广轮次）
+  - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于当前 diff 只读审查
+  - 结论：无阻塞问题，可合并（`invalid timer` / `invalid dot-path` 语义保持，helper 生命周期稳健）
+  - 残余风险：`yieldNow + attempts` 参数仍是经验值，后续若启动链路变慢需调高上限或补更显式等待条件
 
 ## 未看过模块
 
@@ -241,5 +246,5 @@
 ## 下一步（第一轮）
 
 1. 评估将 `SelectorDiagnosticsState` / `SelectorWarningDecision` 进一步外提到更稳定的浅层 helper，减少函数内类型噪音并维持行为不变。
-2. 将 `test-helpers.ts` 继续推广到 `Process.Trigger.Timer.test.ts` 与 `Process.Trigger.ModuleStateChange.test.ts`，进一步收敛重复采集样板。
+2. 将 `test-helpers.ts` 继续推广到 `Process.Trigger.PlatformEvent.test.ts` / `Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts` 等仍在手写 scope 采集的用例，进一步统一测试骨架。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
