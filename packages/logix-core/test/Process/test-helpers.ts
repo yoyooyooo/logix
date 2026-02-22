@@ -5,6 +5,30 @@ import * as ProcessRuntime from '../../src/internal/runtime/core/process/Process
 export const withProcessRuntime = (layer: Layer.Layer<any, any, any>): Layer.Layer<any, any, any> =>
   Layer.provideMerge(ProcessRuntime.layer())(layer)
 
+export const withProcessRuntimeScope = <A, E = never, R = never>(options: {
+  readonly layer: Layer.Layer<any, any, any>
+  readonly run: (params: {
+    readonly env: Context.Context<any>
+    readonly runtime: ProcessRuntime.ProcessRuntime
+  }) => Effect.Effect<A, E, R>
+}): Effect.Effect<A, E, R> =>
+  Effect.gen(function* () {
+    const scope = yield* Scope.make()
+    try {
+      const env = yield* Layer.buildWithScope(options.layer, scope)
+      const runtime = Context.get(
+        env as Context.Context<any>,
+        ProcessRuntime.ProcessRuntimeTag as any,
+      ) as ProcessRuntime.ProcessRuntime
+      return yield* options.run({
+        env: env as Context.Context<any>,
+        runtime,
+      })
+    } finally {
+      yield* Scope.close(scope, Exit.succeed(undefined))
+    }
+  })
+
 export const collectProcessErrorEvent = (options: {
   readonly layer: Layer.Layer<any, any, any>
   readonly processId: string

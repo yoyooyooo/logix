@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema, TestClock } from 'effect'
+import { Context, Effect, Schema, TestClock } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
+import { withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: trigger moduleStateChange selector diagnostics', () => {
   it.scoped('should emit a warning event when moduleStateChange triggers are too frequent', () =>
@@ -34,43 +34,38 @@ describe('process: trigger moduleStateChange selector diagnostics', () => {
         processes: [Proc],
       })
 
-      const layer = Layer.provideMerge(ProcessRuntime.layer())(HostImpl.impl.layer)
+      const layer = withProcessRuntime(HostImpl.impl.layer)
+      const events = yield* withProcessRuntimeScope({
+        layer,
+        run: ({ env, runtime }) =>
+          Effect.gen(function* () {
+            const host = Context.get(env, Host.tag)
 
-      let events: ReadonlyArray<Logix.Process.ProcessEvent> = []
-      const scope = yield* Scope.make()
-      try {
-        const env = yield* Layer.buildWithScope(layer, scope)
-        const host = Context.get(env, Host.tag)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+            for (let i = 0; i < 30; i++) {
+              yield* host.dispatch({ _tag: 'bump', payload: undefined } as any)
+              yield* Effect.yieldNow()
+            }
 
-        for (let i = 0; i < 30; i++) {
-          yield* host.dispatch({ _tag: 'bump', payload: undefined } as any)
-          yield* Effect.yieldNow()
-        }
+            yield* TestClock.adjust('20 millis')
+            yield* Effect.yieldNow()
 
-        yield* TestClock.adjust('20 millis')
-        yield* Effect.yieldNow()
+            let snapshot: ReadonlyArray<Logix.Process.ProcessEvent> = []
+            for (let i = 0; i < 200; i++) {
+              snapshot = yield* runtime.getEventsSnapshot()
+              const hasWarning = snapshot.some(
+                (e) =>
+                  e.identity.identity.processId === 'ProcessSelectorDiagnostics' &&
+                  e.type === 'process:trigger' &&
+                  e.severity === 'warning' &&
+                  e.error?.code === 'process::selector_high_frequency',
+              )
+              if (hasWarning) break
+              yield* Effect.yieldNow()
+            }
 
-        for (let i = 0; i < 200; i++) {
-          events = (yield* rt.getEventsSnapshot()) as any
-          const hasWarning = events.some(
-            (e) =>
-              e.identity.identity.processId === 'ProcessSelectorDiagnostics' &&
-              e.type === 'process:trigger' &&
-              e.severity === 'warning' &&
-              e.error?.code === 'process::selector_high_frequency',
-          )
-          if (hasWarning) break
-          yield* Effect.yieldNow()
-        }
-
-        events = (yield* rt.getEventsSnapshot()) as any
-      } finally {
-        yield* Scope.close(scope, Exit.succeed(undefined))
-      }
+            return yield* runtime.getEventsSnapshot()
+          }),
+      })
 
       const warning = events.find(
         (e) =>

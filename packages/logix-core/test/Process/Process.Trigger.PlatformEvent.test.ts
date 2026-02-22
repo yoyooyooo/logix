@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Ref, Scope, Schema } from 'effect'
+import { Effect, Ref, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
+import { withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: trigger platformEvent', () => {
   it.scoped('should run when platform event is delivered via InternalContracts', () =>
@@ -29,29 +29,26 @@ describe('process: trigger platformEvent', () => {
         processes: [Proc],
       })
 
-      const layer = Layer.provideMerge(ProcessRuntime.layer())(HostImpl.impl.layer)
+      const layer = withProcessRuntime(HostImpl.impl.layer)
 
-      const scope = yield* Scope.make()
-      try {
-        const env = yield* Layer.buildWithScope(layer, scope)
-        // Ensure ProcessRuntime is available for InternalContracts
-        Context.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any)
+      yield* withProcessRuntimeScope({
+        layer,
+        run: ({ env }) =>
+          Effect.gen(function* () {
+            yield* Effect.provide(
+              Logix.InternalContracts.deliverProcessPlatformEvent({
+                eventName: 'app:test',
+                payload: { ok: true },
+              } as any),
+              env,
+            )
 
-        yield* Effect.provide(
-          Logix.InternalContracts.deliverProcessPlatformEvent({
-            eventName: 'app:test',
-            payload: { ok: true },
-          } as any),
-          env as Context.Context<any>,
-        )
-
-        for (let i = 0; i < 100; i++) {
-          if ((yield* Ref.get(invoked)) === 1) break
-          yield* Effect.yieldNow()
-        }
-      } finally {
-        yield* Scope.close(scope, Exit.succeed(undefined))
-      }
+            for (let i = 0; i < 100; i++) {
+              if ((yield* Ref.get(invoked)) === 1) break
+              yield* Effect.yieldNow()
+            }
+          }),
+      })
 
       expect(yield* Ref.get(invoked)).toBe(1)
     }),
