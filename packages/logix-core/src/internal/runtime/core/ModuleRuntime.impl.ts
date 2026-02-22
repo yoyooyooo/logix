@@ -541,6 +541,25 @@ export const make = <S, A, R = never>(
     const tickSchedulerOpt = (yield* Effect.serviceOption(TickSchedulerTag)) as Option.Option<TickSchedulerService>
     let tickSchedulerCached: TickSchedulerService | undefined = Option.isSome(tickSchedulerOpt) ? tickSchedulerOpt.value : undefined
 
+    const readTickSchedulerFromRootContext = (root: RootContext | undefined): TickSchedulerService | undefined => {
+      if (!root?.context) {
+        return undefined
+      }
+
+      const fromRoot = Context.getOption(root.context, TickSchedulerTag as any) as Option.Option<TickSchedulerService>
+      return Option.isSome(fromRoot) ? fromRoot.value : undefined
+    }
+
+    const refreshTickSchedulerFromEnv = (): Effect.Effect<TickSchedulerService | undefined> =>
+      Effect.gen(function* () {
+        const refreshed = (yield* Effect.serviceOption(TickSchedulerTag)) as Option.Option<TickSchedulerService>
+        if (Option.isSome(refreshed)) {
+          tickSchedulerCached = refreshed.value
+          return refreshed.value
+        }
+        return undefined
+      })
+
     const enqueueTransaction: EnqueueTransaction = ((a0: any, a1?: any) =>
       Effect.gen(function* () {
         // Cache TickScheduler from the current fiber Env whenever possible:
@@ -548,13 +567,11 @@ export const make = <S, A, R = never>(
         //   visible during ModuleRuntime initialization.
         // - But it is often available at enqueue-time (callsite), and caching it ensures onCommit can publish into RuntimeStore.
         if (!tickSchedulerCached) {
-          const refreshed = (yield* Effect.serviceOption(TickSchedulerTag)) as Option.Option<TickSchedulerService>
-          if (Option.isSome(refreshed)) {
-            tickSchedulerCached = refreshed.value
-          } else if (rootContext?.context) {
-            const fromRoot = Context.getOption(rootContext.context, TickSchedulerTag as any) as Option.Option<TickSchedulerService>
-            if (Option.isSome(fromRoot)) {
-              tickSchedulerCached = fromRoot.value
+          const refreshed = yield* refreshTickSchedulerFromEnv()
+          if (!refreshed) {
+            const fromRoot = readTickSchedulerFromRootContext(rootContext)
+            if (fromRoot) {
+              tickSchedulerCached = fromRoot
             }
           }
         }
@@ -576,11 +593,7 @@ export const make = <S, A, R = never>(
           Effect.gen(function* () {
             let scheduler = tickSchedulerCached
             if (!scheduler) {
-              const refreshed = (yield* Effect.serviceOption(TickSchedulerTag)) as Option.Option<TickSchedulerService>
-              if (Option.isSome(refreshed)) {
-                scheduler = refreshed.value
-                tickSchedulerCached = refreshed.value
-              }
+              scheduler = yield* refreshTickSchedulerFromEnv()
             }
 
             let root = rootContext
@@ -591,11 +604,11 @@ export const make = <S, A, R = never>(
               }
             }
 
-            if (!scheduler && root?.context) {
-              const fromRoot = Context.getOption(root.context, TickSchedulerTag as any) as Option.Option<TickSchedulerService>
-              if (Option.isSome(fromRoot)) {
-                scheduler = fromRoot.value
-                tickSchedulerCached = fromRoot.value
+            if (!scheduler) {
+              const fromRoot = readTickSchedulerFromRootContext(root)
+              if (fromRoot) {
+                scheduler = fromRoot
+                tickSchedulerCached = fromRoot
               }
             }
 
