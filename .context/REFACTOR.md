@@ -16,6 +16,7 @@
 
 - `pr-32.md`：SelectorGraph 核心链路收敛与热路径判断优化
 - `refactor-logix-core-process-trigger-stream-factory-20260223.md`：ProcessRuntime 触发器流模块化（进行中）
+- `refactor-logix-core-runtime-kernel-selection-split-20260223.md`：RuntimeKernel 选择/证据纯函数模块化（进行中）
 
 ## 已看过模块
 
