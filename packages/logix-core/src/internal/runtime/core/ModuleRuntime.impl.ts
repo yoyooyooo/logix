@@ -422,6 +422,27 @@ export const make = <S, A, R = never>(
       return out
     }
 
+    const withRuntimeServiceBuiltins = <A, E, R>(
+      serviceId: string,
+      builtinMake: Effect.Effect<unknown, never, any>,
+      effect: Effect.Effect<A, E, R>,
+    ) =>
+      effect.pipe(
+        Effect.provideService(RuntimeServiceBuiltins.RuntimeServiceBuiltinsTag, {
+          getBuiltinMake: (candidateServiceId) =>
+            candidateServiceId === serviceId
+              ? (builtinMake as Effect.Effect<unknown, never, any>)
+              : Effect.dieMessage(`[Logix] builtin make not available: ${candidateServiceId}`),
+        } satisfies RuntimeServiceBuiltins.RuntimeServiceBuiltins),
+      )
+
+    const readCurrentOpSeq = (): Effect.Effect<number | undefined> =>
+      FiberRef.get(Debug.currentOpSeq).pipe(
+        Effect.map((opSeqRaw) =>
+          typeof opSeqRaw === 'number' && Number.isFinite(opSeqRaw) && opSeqRaw >= 0 ? Math.floor(opSeqRaw) : undefined,
+        ),
+      )
+
     const makeTxnQueueBuiltin = makeEnqueueTransaction({
       moduleId: options.moduleId,
       instanceId,
@@ -447,14 +468,7 @@ export const make = <S, A, R = never>(
       runtimeServicesOverrides,
     )
 
-    const enqueueTransactionBase = yield* enqueueTxnSel.impl.make.pipe(
-      Effect.provideService(RuntimeServiceBuiltins.RuntimeServiceBuiltinsTag, {
-        getBuiltinMake: (serviceId) =>
-          serviceId === 'txnQueue'
-            ? (makeTxnQueueBuiltin as Effect.Effect<unknown, never, any>)
-            : Effect.dieMessage(`[Logix] builtin make not available: ${serviceId}`),
-      } satisfies RuntimeServiceBuiltins.RuntimeServiceBuiltins),
-    )
+    const enqueueTransactionBase = yield* withRuntimeServiceBuiltins('txnQueue', makeTxnQueueBuiltin, enqueueTxnSel.impl.make)
 
     const makeOperationRunnerBuiltin = Effect.succeed(
       makeRunOperation({
@@ -476,13 +490,10 @@ export const make = <S, A, R = never>(
       runtimeServicesOverrides,
     )
 
-    const runOperation = yield* runOperationSel.impl.make.pipe(
-      Effect.provideService(RuntimeServiceBuiltins.RuntimeServiceBuiltinsTag, {
-        getBuiltinMake: (serviceId) =>
-          serviceId === 'operationRunner'
-            ? (makeOperationRunnerBuiltin as Effect.Effect<unknown, never, any>)
-            : Effect.dieMessage(`[Logix] builtin make not available: ${serviceId}`),
-      } satisfies RuntimeServiceBuiltins.RuntimeServiceBuiltins),
+    const runOperation = yield* withRuntimeServiceBuiltins(
+      'operationRunner',
+      makeOperationRunnerBuiltin,
+      runOperationSel.impl.make,
     )
 
     yield* runOperation(
@@ -626,9 +637,7 @@ export const make = <S, A, R = never>(
             )
 
             if (scheduler) {
-              const opSeqRaw = yield* FiberRef.get(Debug.currentOpSeq)
-              const opSeq =
-                typeof opSeqRaw === 'number' && Number.isFinite(opSeqRaw) && opSeqRaw >= 0 ? Math.floor(opSeqRaw) : undefined
+              const opSeq = yield* readCurrentOpSeq()
 
               yield* scheduler.onModuleCommit({
                 moduleId,
@@ -675,13 +684,10 @@ export const make = <S, A, R = never>(
       runtimeServicesOverrides,
     )
 
-    const { readState, setStateInternal, runWithStateTransaction } = yield* transactionSel.impl.make.pipe(
-      Effect.provideService(RuntimeServiceBuiltins.RuntimeServiceBuiltinsTag, {
-        getBuiltinMake: (serviceId) =>
-          serviceId === 'transaction'
-            ? (makeTransactionBuiltin as Effect.Effect<unknown, never, any>)
-            : Effect.dieMessage(`[Logix] builtin make not available: ${serviceId}`),
-      } satisfies RuntimeServiceBuiltins.RuntimeServiceBuiltins),
+    const { readState, setStateInternal, runWithStateTransaction } = yield* withRuntimeServiceBuiltins(
+      'transaction',
+      makeTransactionBuiltin,
+      transactionSel.impl.make,
     )
 
     let deferredFlushCoalescedCount = 0
@@ -732,10 +738,7 @@ export const make = <S, A, R = never>(
                 }
 
                 if (args.captureOpSeq) {
-                  const opSeqRaw = yield* FiberRef.get(Debug.currentOpSeq)
-                  if (typeof opSeqRaw === 'number' && Number.isFinite(opSeqRaw) && opSeqRaw >= 0) {
-                    capturedOpSeq = Math.floor(opSeqRaw)
-                  }
+                  capturedOpSeq = yield* readCurrentOpSeq()
                 }
 
                 if (!current) return
@@ -1133,14 +1136,7 @@ export const make = <S, A, R = never>(
       runtimeServicesOverrides,
     )
 
-    const dispatchOps = yield* dispatchSel.impl.make.pipe(
-      Effect.provideService(RuntimeServiceBuiltins.RuntimeServiceBuiltinsTag, {
-        getBuiltinMake: (serviceId) =>
-          serviceId === 'dispatch'
-            ? (makeDispatchBuiltin as Effect.Effect<unknown, never, any>)
-            : Effect.dieMessage(`[Logix] builtin make not available: ${serviceId}`),
-      } satisfies RuntimeServiceBuiltins.RuntimeServiceBuiltins),
-    )
+    const dispatchOps = yield* withRuntimeServiceBuiltins('dispatch', makeDispatchBuiltin, dispatchSel.impl.make)
 
     const runtimeServicesEvidence = RuntimeKernel.makeRuntimeServicesEvidence({
       moduleId: options.moduleId,
