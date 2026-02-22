@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-module-action-missing-stream-test-20260222-v2`
+> 分支：`test/logix-core-process-invalid-trigger-kind-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -33,6 +33,7 @@
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/Process/Process.Trigger.InvalidKind.test.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -51,7 +52,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts` 已深读并重构）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -153,6 +154,9 @@
   - 新增回归用例：通过 `ModuleImpl.withLayer` 注入“仅含 `instanceId` 的 fake module runtime”打通 strict scope 依赖门禁，定向命中 `moduleAction` 缺失 stream 分支。
   - 覆盖 `diagnosticsLevel='off'` 时 `process::missing_action_stream` 与 `diagnosticsLevel='light'` 时 `process::missing_action_meta_stream` 的错误码与 `moduleId` hint。
   - 用有上限轮询替代固定 `yieldNow`，并补充“同 processId 无 `process::missing_dependency`、仅一条 `process:error`、message 包含缺失 stream 名称”的稳定性断言。
+- `packages/logix-core/test/Process/Process.Trigger.InvalidKind.test.ts`
+  - 新增回归用例：以 `as any` 注入畸形 trigger kind，锁定 `makeTriggerStream` default 分支的 `process::invalid_trigger_kind` 失败语义。
+  - 断言错误 message 含原始 kind 值、同 processId 下不存在 `process::missing_dependency`、且 process body 不被执行（`invokedCount === 0`）。
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
   - 抽取 `withRuntimeServiceBuiltins`，统一 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 的 builtin 注入样板，保持 serviceId 与 builtinMake 映射语义不变。
   - 抽取 `readCurrentOpSeq`，统一 `onCommit` 与 `deferredConvergeFlush` 的 opSeq 读取归一化逻辑，保持 non-negative integer 语义不变。
@@ -220,6 +224,10 @@
   - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于当前 diff 只读审查
   - 结论：无阻塞问题，可合并（测试可稳定命中 `missing_action_stream` / `missing_action_meta_stream`）
   - 残余风险：低；若未来启动链路异步边界变化，建议继续沿用“有上限轮询 + processId 精准过滤”的等待模式
+- 2026-02-22（logix-core / invalid trigger kind 回归测试轮次）
+  - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于当前 diff 只读审查
+  - 结论：无阻塞问题，可合并（可稳定命中 `process::invalid_trigger_kind` 且排除 `missing_dependency` 误命中）
+  - 残余风险：轮询上限与错误文案断言存在低维护成本，后续可抽统一等待 helper 并收敛 message 断言策略
 
 ## 未看过模块
 
@@ -228,5 +236,5 @@
 ## 下一步（第一轮）
 
 1. 评估将 `SelectorDiagnosticsState` / `SelectorWarningDecision` 进一步外提到更稳定的浅层 helper，减少函数内类型噪音并维持行为不变。
-2. 补一条“畸形 trigger kind（as any）”回归测试，锁定 `process::invalid_trigger_kind` 的失败语义。
+2. 评估抽取 Process 触发器错误路径测试 helper（事件轮询/筛选），减少 `Process.Trigger.*.test.ts` 中重复样板。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
