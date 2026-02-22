@@ -24,6 +24,12 @@ import * as ProcessConcurrency from './concurrency.js'
 import * as ProcessEvents from './events.js'
 import * as Meta from './meta.js'
 import { makeSchemaSelector, resolveSchemaAst } from './selectorSchema.js'
+import {
+  buildSelectorWarningHint,
+  evaluateSelectorWarning,
+  initialSelectorDiagnosticsState,
+  makeSelectorDiagnosticsConfig,
+} from './selectorDiagnostics.js'
 import type {
   ProcessControlRequest,
   ProcessDefinition,
@@ -668,18 +674,6 @@ export const make = (options?: {
           spec: ModuleStateChangeTriggerSpec,
         ): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
           Effect.gen(function* () {
-            type SelectorDiagnosticsState = {
-              readonly windowStartedMs: number
-              readonly triggersInWindow: number
-              readonly lastWarningAtMs: number
-            }
-            type SelectorWarningDecision = {
-              readonly shouldWarn: boolean
-              readonly tooFrequent: boolean
-              readonly tooSlow: boolean
-              readonly triggersInWindow: number
-            }
-
             const runtime = yield* resolveModuleRuntime(spec.moduleId)
             const schemaAst = resolveRuntimeStateSchemaAst(runtime)
             const selectorResult = makeSchemaSelector(spec.path, schemaAst)
@@ -690,22 +684,13 @@ export const make = (options?: {
             const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
 
             const enableSelectorDiagnostics = shouldRecordChainEvents
-
-            const initialSelectorDiagnosticsState = (): SelectorDiagnosticsState => ({
-              windowStartedMs: Date.now(),
-              triggersInWindow: 0,
-              lastWarningAtMs: 0,
-            })
+            const selectorDiagnosticsConfig = makeSelectorDiagnosticsConfig(isDevEnv())
 
             const selectorDiagnosticsRef = enableSelectorDiagnostics
-              ? yield* Ref.make(initialSelectorDiagnosticsState())
+              ? yield* Ref.make(initialSelectorDiagnosticsState(Date.now()))
               : undefined
 
-            const sampleEveryMask = 0x7f // sample every 128 calls
-            const slowSampleThresholdMs = 4
-            const triggerWindowMs = 1000
-            const triggerWarningThreshold = isDevEnv() ? 20 : 200
-            const warningCooldownMs = 30_000
+            const { sampleEveryMask, slowSampleThresholdMs } = selectorDiagnosticsConfig
 
             let selectorCalls = 0
             let selectorSamples = 0
@@ -724,62 +709,6 @@ export const make = (options?: {
               }
               return Date.now()
             }
-
-            const evaluateSelectorWarning = (
-              state: SelectorDiagnosticsState,
-              now: number,
-            ): readonly [SelectorWarningDecision, SelectorDiagnosticsState] => {
-              const windowExpired = now - state.windowStartedMs >= triggerWindowMs
-              const windowStartedMs = windowExpired ? now : state.windowStartedMs
-              const triggersInWindow = windowExpired ? 1 : state.triggersInWindow + 1
-
-              const shouldCooldown = now - state.lastWarningAtMs < warningCooldownMs
-              const tooFrequent = triggersInWindow >= triggerWarningThreshold
-              const tooSlow = selectorMaxSampleMs >= slowSampleThresholdMs && selectorSamples > 0
-              const shouldWarn = !shouldCooldown && (tooFrequent || tooSlow)
-
-              const next: SelectorDiagnosticsState = shouldWarn
-                ? {
-                    windowStartedMs: now,
-                    triggersInWindow: 0,
-                    lastWarningAtMs: now,
-                  }
-                : {
-                    ...state,
-                    windowStartedMs,
-                    triggersInWindow,
-                  }
-
-              return [
-                {
-                  shouldWarn,
-                  tooFrequent,
-                  tooSlow,
-                  triggersInWindow,
-                },
-                next,
-              ] as const
-            }
-
-            const buildSelectorWarningHint = (decision: SelectorWarningDecision): string =>
-              [
-                `moduleId=${spec.moduleId}`,
-                `path=${spec.path}`,
-                `windowMs=${triggerWindowMs}`,
-                `triggersInWindow=${decision.triggersInWindow}`,
-                `threshold=${triggerWarningThreshold}`,
-                `cooldownMs=${warningCooldownMs}`,
-                '',
-                'selector sampling:',
-                `calls=${selectorCalls}`,
-                `sampled=${selectorSamples}`,
-                `slowSamples(>=${slowSampleThresholdMs}ms)=${selectorSlowSamples}`,
-                `maxSampleMs=${selectorMaxSampleMs.toFixed(2)}`,
-                '',
-                'notes:',
-                '- Ensure the selected value is stable (prefer primitive/tuple; avoid returning fresh objects).',
-                '- Narrow the path to reduce change frequency; avoid selecting large objects.',
-              ].join('\n')
 
             const selector = enableSelectorDiagnostics
               ? (state: unknown): unknown => {
@@ -812,14 +741,33 @@ export const make = (options?: {
               return Effect.gen(function* () {
                 const now = Date.now()
 
-                const decision = yield* Ref.modify(selectorDiagnosticsRef, (s) => evaluateSelectorWarning(s, now))
+                const decision = yield* Ref.modify(selectorDiagnosticsRef, (s) =>
+                  evaluateSelectorWarning(s, now, {
+                    config: selectorDiagnosticsConfig,
+                    sampling: {
+                      sampled: selectorSamples,
+                      maxSampleMs: selectorMaxSampleMs,
+                    },
+                  }),
+                )
 
                 if (!decision.shouldWarn) {
                   return
                 }
 
                 const code = decision.tooFrequent ? 'process::selector_high_frequency' : 'process::selector_slow'
-                const hint = buildSelectorWarningHint(decision)
+                const hint = buildSelectorWarningHint({
+                  moduleId: spec.moduleId,
+                  path: spec.path,
+                  decision,
+                  config: selectorDiagnosticsConfig,
+                  sampling: {
+                    calls: selectorCalls,
+                    sampled: selectorSamples,
+                    slowSamples: selectorSlowSamples,
+                    maxSampleMs: selectorMaxSampleMs,
+                  },
+                })
                 resetSelectorSampling()
 
                 yield* emit(
