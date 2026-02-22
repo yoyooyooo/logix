@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-module-runtime-20260222`
+> 分支：`refactor/logix-core-module-runtime-scheduler-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -141,6 +141,7 @@
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
   - 抽取 `withRuntimeServiceBuiltins`，统一 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 的 builtin 注入样板，保持 serviceId 与 builtinMake 映射语义不变。
   - 抽取 `readCurrentOpSeq`，统一 `onCommit` 与 `deferredConvergeFlush` 的 opSeq 读取归一化逻辑，保持 non-negative integer 语义不变。
+  - 抽取 `readTickSchedulerFromRootContext` 与 `refreshTickSchedulerFromEnv`，统一 enqueue-time / onCommit 的 tickScheduler 缓存与 fallback 解析流程，保持 diagnostics 触发条件与 fallback 顺序不变。
 
 ## 独立审查记录
 
@@ -172,6 +173,10 @@
   - 审查方式：1 个独立 subagent（default）基于当前改动做只读审查
   - 结论：无阻塞问题，可合并
   - 残余风险：helper 收敛后建议补充更直接的定向测试（`RuntimeServiceBuiltins` 注入与 `deferredConvergeFlush.captureOpSeq`）
+- 2026-02-22（logix-core / ModuleRuntime tickScheduler 轮次）
+  - 审查方式：1 个独立 subagent（default）基于当前改动做只读审查
+  - 结论：无阻塞问题，可合并（fallback 顺序与 diagnostics 触发条件保持不变）
+  - 残余风险：建议补充“fallback 顺序 + `tick_scheduler::missing_service` 触发条件”的定向测试
 
 ## 未看过模块
 
@@ -179,6 +184,6 @@
 
 ## 下一步（第一轮）
 
-1. 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts` 继续收敛 tickScheduler/rootContext 获取路径，减少 onCommit 与 enqueue-time 的重复分支。
-2. 继续收敛 `ProcessRuntime.make.ts` 剩余大函数（如 trigger stream 子分支）到局部 helper，保持语义不变。
+1. 继续收敛 `ProcessRuntime.make.ts` 剩余大函数（如 trigger stream 子分支）到局部 helper，保持语义不变。
+2. 为 `ModuleRuntime.impl.ts` 的 tickScheduler fallback 路径补充更直接的回归测试（重点覆盖 diagnostics 触发条件）。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
