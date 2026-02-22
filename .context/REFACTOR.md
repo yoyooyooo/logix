@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-process-trigger-timer-test-20260222`
+> 分支：`refactor/logix-core-process-modulestatechange-helper-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -108,6 +108,7 @@
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
   - `process:dispatch` / `process:trigger` 事件构造在多处重复，eventSeq/timestamp 维护点分散。
   - `moduleAction` trigger 在 meta/non-meta 两条分支重复构造对象，维护成本高。
+  - `moduleStateChange` trigger 逻辑长期内联在 `makeTriggerStream` 内，selector diagnostics 与触发流构建耦合，主分发函数可读性下降。
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
   - `RuntimeServiceBuiltins` 注入在 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 四处重复，容易出现新增服务时的维护漂移。
   - `currentOpSeq` 读取与归一化在 `onCommit` / `deferredConvergeFlush` 双点重复，锚点逻辑不易统一治理。
@@ -140,6 +141,7 @@
   - 抽取 `nextProcessEventMeta`、`makeDispatchEvent`、`makeTriggerEvent`，统一 process 事件构造并保持 eventSeq/timestamp 语义不变。
   - 收敛 `moduleAction` trigger 重复构造为 `buildModuleActionTrigger`，保持 `actions$`/`actionsWithMeta$` 分支语义一致。
   - 抽取 `resolveModuleRuntime`、`makeTimerTriggerStream`、`makeModuleActionTriggerStream`，收敛 `makeTriggerStream` 分支结构并保持 timer/moduleAction/moduleStateChange 语义不变。
+  - 抽取 `ModuleStateChangeTriggerSpec` 与 `makeModuleStateChangeTriggerStream`，将 moduleStateChange 全链路（schema selector、去重、selector diagnostics、warning 事件）从 `makeTriggerStream` 分发函数中剥离，保持行为与错误语义不变。
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`
   - 新增回归用例：非法 `timerId` 触发 `process:error`，并断言 `error.code === process::invalid_timer_id`、`hint` 包含 `DurationInput`。
   - 根据独立审查补强断言：非法 `timerId` 下 `process body` 不会被执行（`invokedCount === 0`），并增加一次额外 `yieldNow` 降低时序脆弱性。
@@ -194,6 +196,10 @@
   - 审查方式：同一独立 subagent（default）基于最终 diff 二次只读复核
   - 结论：无阻塞问题，可合并（`code/hint` 与 `invokedCount === 0` 覆盖有效）
   - 残余风险：`yieldNow` 次数固定仍属于低风险时序耦合，后续可演进为有上限轮询等待 helper
+- 2026-02-22（logix-core / ProcessRuntime moduleStateChange helper 轮次）
+  - 审查方式：1 个独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于最终 diff 做只读审查
+  - 结论：无阻塞问题，可合并（结构重排，语义保持）
+  - 残余风险：建议后续把 trigger kind 分发切为 `switch + assertNever`，降低未来新增 kind 时遗漏分支的概率
 
 ## 未看过模块
 
@@ -201,6 +207,6 @@
 
 ## 下一步（第一轮）
 
-1. 继续收敛 `ProcessRuntime.make.ts` 剩余大函数（优先 moduleStateChange selector diagnostics 段落）到局部 helper，保持语义不变。
+1. 继续收敛 `makeModuleStateChangeTriggerStream` 内部 selector diagnostics 段落到局部 helper（例如 warning 决策与 hint 构造），保持语义不变。
 2. 补 `moduleAction` 缺失 stream 的错误码/hint 定向回归测试（补齐上一轮独立审查建议）。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。

@@ -111,6 +111,7 @@ const deriveDebugModuleId = (processId: string): string => `process:${processId}
 type NonPlatformTriggerSpec = Exclude<ProcessTriggerSpec, { readonly kind: 'platformEvent' }>
 type TimerTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'timer' }>
 type ModuleActionTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'moduleAction' }>
+type ModuleStateChangeTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'moduleStateChange' }>
 type ProcessDispatchPayload = NonNullable<ProcessEvent['dispatch']>
 
 const deriveTxnAnchor = (event: ProcessEvent): { readonly txnSeq?: number; readonly txnId?: string } => {
@@ -654,17 +655,10 @@ export const make = (options?: {
             )
           })
 
-        const makeTriggerStream = (spec: NonPlatformTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
+        const makeModuleStateChangeTriggerStream = (
+          spec: ModuleStateChangeTriggerSpec,
+        ): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
           Effect.gen(function* () {
-            if (spec.kind === 'timer') {
-              return yield* makeTimerTriggerStream(spec)
-            }
-
-            if (spec.kind === 'moduleAction') {
-              return yield* makeModuleActionTriggerStream(spec)
-            }
-
-            // moduleStateChange
             const runtime = yield* resolveModuleRuntime(spec.moduleId)
             const schemaAst = resolveRuntimeStateSchemaAst(runtime)
             const selectorResult = makeSchemaSelector(spec.path, schemaAst)
@@ -831,6 +825,19 @@ export const make = (options?: {
             )
 
             return enableSelectorDiagnostics ? baseStream.pipe(Stream.tap(maybeWarnSelector)) : baseStream
+          })
+
+        const makeTriggerStream = (spec: NonPlatformTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
+          Effect.gen(function* () {
+            if (spec.kind === 'timer') {
+              return yield* makeTimerTriggerStream(spec)
+            }
+
+            if (spec.kind === 'moduleAction') {
+              return yield* makeModuleActionTriggerStream(spec)
+            }
+
+            return yield* makeModuleStateChangeTriggerStream(spec)
           })
 
         const makeRun = (trigger: ProcessTrigger, fatal: Deferred.Deferred<Cause.Cause<any>>): Effect.Effect<void> =>
