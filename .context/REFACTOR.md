@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`fix/logix-core-test-helper-typechecktest-20260222`
+> 分支：`refactor/logix-core-process-test-helper-timer-module-statechange-20260223`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -36,6 +36,7 @@
 - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.InvalidKind.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.PlatformEvent.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.ErrorPolicy.Supervise.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/test-helpers.ts`：`DEEP_READ` + `REFACTORED`
@@ -58,7 +59,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.ErrorPolicy.Supervise.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`test-helpers.ts` 已深读并重构）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.ErrorPolicy.Supervise.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`test-helpers.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -175,6 +176,7 @@
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`
   - 新增回归用例：非法 `timerId` 触发 `process:error`，并断言 `error.code === process::invalid_timer_id`、`hint` 包含 `DurationInput`。
   - 根据独立审查补强断言：非法 `timerId` 下 `process body` 不会被执行（`invokedCount === 0`），并增加一次额外 `yieldNow` 降低时序脆弱性。
+  - 继续收敛测试骨架：将可控 interval 场景改为复用 `withProcessRuntimeScope`，去除手写 scope 生命周期样板并保持 `after > before` 断言语义不变。
 - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`
   - 新增回归用例：通过 `ModuleImpl.withLayer` 注入“仅含 `instanceId` 的 fake module runtime”打通 strict scope 依赖门禁，定向命中 `moduleAction` 缺失 stream 分支。
   - 覆盖 `diagnosticsLevel='off'` 时 `process::missing_action_stream` 与 `diagnosticsLevel='light'` 时 `process::missing_action_meta_stream` 的错误码与 `moduleId` hint。
@@ -193,6 +195,8 @@
   - 改为复用 `withProcessRuntime` + `withProcessRuntimeScope`，去除手写 scope 生命周期样板，保持事件投递与 `invoked===1` 断言语义不变。
 - `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`
   - 改为复用 `withProcessRuntime` + `withProcessRuntimeScope`，保持 dispatch 次数、warning 轮询与 `process::selector_high_frequency` 断言语义不变。
+- `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.test.ts`
+  - 在“selected value changes”场景中改为复用 `withProcessRuntimeScope`，移除手写 `Scope.make/buildWithScope/close` 样板，保持 `invoked === 2` 断言与时序语义不变。
 - `packages/logix-core/test/Process/Process.ErrorPolicy.Supervise.test.ts`
   - 改为复用 `withProcessRuntime` + `withProcessRuntimeScope`，移除手写 scope 生命周期样板，保持 `runSeq` 重启/失败序列断言语义不变。
   - 将 runtime snapshot 轮询收敛到 helper 回调内，后续可与其他 Process 测试统一等待策略。
@@ -283,6 +287,10 @@
   - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于当前 diff 只读审查
   - 结论：无阻塞问题，可合并（scope 生命周期与 warning/平台事件断言语义保持）
   - 残余风险：测试仍依赖 `yieldNow` 固定轮询次数，极慢环境可能有低概率时序抖动
+- 2026-02-22（logix-core / Process.Trigger.Timer + ModuleStateChange 测试骨架收敛轮次）
+  - 审查方式：同一独立 subagent（default，`agent_id=019c850b-5174-7533-a09c-a04f7c5138bc`）基于 `origin/main...HEAD` 最新 diff 只读审查
+  - 结论：无阻塞问题，可合并（`after > before` 与 `invoked === 2` 断言语义保持）
+  - 残余风险：`yieldNow + TestClock.adjust` 仍有低风险时序耦合，后续可继续收敛为统一等待 helper
 
 ## 未看过模块
 

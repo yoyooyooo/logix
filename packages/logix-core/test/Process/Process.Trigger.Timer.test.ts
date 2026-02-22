@@ -1,8 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Ref, Scope, Schema, TestClock } from 'effect'
+import { Effect, Ref, Schema, TestClock } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
-import { collectProcessErrorEvent, withProcessRuntime } from './test-helpers.js'
+import { collectProcessErrorEvent, withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: trigger timer', () => {
   it.scoped('should tick in a controllable interval', () =>
@@ -31,22 +30,19 @@ describe('process: trigger timer', () => {
       })
 
       const layer = withProcessRuntime(HostImpl.impl.layer)
+      yield* withProcessRuntimeScope({
+        layer,
+        run: () =>
+          Effect.gen(function* () {
+            const before = yield* Ref.get(invoked)
+            yield* Effect.yieldNow()
+            yield* TestClock.adjust('50 millis')
+            yield* Effect.yieldNow()
+            const after = yield* Ref.get(invoked)
 
-      const scope = yield* Scope.make()
-      try {
-        const env = yield* Layer.buildWithScope(layer, scope)
-        Context.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any)
-
-        const before = yield* Ref.get(invoked)
-        yield* Effect.yieldNow()
-        yield* TestClock.adjust('50 millis')
-        yield* Effect.yieldNow()
-        const after = yield* Ref.get(invoked)
-
-        expect(after).toBeGreaterThan(before)
-      } finally {
-        yield* Scope.close(scope, Exit.succeed(undefined))
-      }
+            expect(after).toBeGreaterThan(before)
+          }),
+      })
     }),
   )
 
