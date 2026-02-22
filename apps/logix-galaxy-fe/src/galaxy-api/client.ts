@@ -197,131 +197,99 @@ const toQueryString = (params: Readonly<Record<string, string | number | undefin
 export const createGalaxyApiClient = (options?: { readonly baseUrl?: string }) => {
   const baseUrl = (options?.baseUrl ?? DefaultBaseUrl).replace(/\/$/, '')
 
+  const authHeaders = (token: string): Readonly<Record<string, string>> => ({
+    authorization: `Bearer ${token}`,
+  })
+
+  const authJsonHeaders = (token: string): Readonly<Record<string, string>> => ({
+    ...authHeaders(token),
+    'content-type': 'application/json',
+  })
+
+  const requestJson = <T>(path: string, method: NonNullable<RequestInit['method']>, payload: unknown) =>
+    request<T>(baseUrl, path, {
+      method,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+  const requestAuth = <T>(token: string, path: string, method: NonNullable<RequestInit['method']>) =>
+    request<T>(baseUrl, path, {
+      method,
+      headers: authHeaders(token),
+    })
+
+  const requestAuthJson = <T>(
+    token: string,
+    path: string,
+    method: NonNullable<RequestInit['method']>,
+    payload: unknown,
+  ) =>
+    request<T>(baseUrl, path, {
+      method,
+      headers: authJsonHeaders(token),
+      body: JSON.stringify(payload),
+    })
+
   return {
     baseUrl,
 
-    login: (payload: AuthLoginRequest) =>
-      request<AuthLoginResponse>(baseUrl, '/auth/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+    login: (payload: AuthLoginRequest) => requestJson<AuthLoginResponse>('/auth/login', 'POST', payload),
 
-    me: (token: string) =>
-      request<UserDto>(baseUrl, '/me', {
-        method: 'GET',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+    me: (token: string) => requestAuth<UserDto>(token, '/me', 'GET'),
 
-    logout: (token: string) =>
-      request<void>(baseUrl, '/auth/logout', {
-        method: 'POST',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+    logout: (token: string) => requestAuth<void>(token, '/auth/logout', 'POST'),
 
-    projectList: (token: string) =>
-      request<ReadonlyArray<ProjectDto>>(baseUrl, '/projects', {
-        method: 'GET',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+    projectList: (token: string) => requestAuth<ReadonlyArray<ProjectDto>>(token, '/projects', 'GET'),
 
     projectCreate: (token: string, payload: ProjectCreateRequest) =>
-      request<ProjectDto>(baseUrl, '/projects', {
-        method: 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+      requestAuthJson<ProjectDto>(token, '/projects', 'POST', payload),
 
-    projectGet: (token: string, projectId: number) =>
-      request<ProjectDto>(baseUrl, `/projects/${projectId}`, {
-        method: 'GET',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+    projectGet: (token: string, projectId: number) => requestAuth<ProjectDto>(token, `/projects/${projectId}`, 'GET'),
 
     projectUpdate: (token: string, projectId: number, payload: ProjectUpdateRequest) =>
-      request<ProjectDto>(baseUrl, `/projects/${projectId}`, {
-        method: 'PATCH',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+      requestAuthJson<ProjectDto>(token, `/projects/${projectId}`, 'PATCH', payload),
 
     projectAccessMe: (token: string, projectId: number) =>
-      request<ProjectAccessDto>(baseUrl, `/projects/${projectId}/access`, {
-        method: 'GET',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+      requestAuth<ProjectAccessDto>(token, `/projects/${projectId}/access`, 'GET'),
 
     projectMemberList: (token: string, projectId: number) =>
-      request<ReadonlyArray<ProjectMemberDto>>(baseUrl, `/projects/${projectId}/members`, {
-        method: 'GET',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+      requestAuth<ReadonlyArray<ProjectMemberDto>>(token, `/projects/${projectId}/members`, 'GET'),
 
     projectMemberAdd: (token: string, projectId: number, payload: ProjectMemberAddRequest) =>
-      request<ProjectMemberDto>(baseUrl, `/projects/${projectId}/members`, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+      requestAuthJson<ProjectMemberDto>(token, `/projects/${projectId}/members`, 'POST', payload),
 
     projectMemberUpdateRole: (token: string, projectId: number, userId: string, payload: ProjectMemberUpdateRoleRequest) =>
-      request<ProjectMemberDto>(baseUrl, `/projects/${projectId}/members/${encodeURIComponent(userId)}`, {
-        method: 'PATCH',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+      requestAuthJson<ProjectMemberDto>(
+        token,
+        `/projects/${projectId}/members/${encodeURIComponent(userId)}`,
+        'PATCH',
+        payload,
+      ),
 
     projectMemberRemove: (token: string, projectId: number, userId: string) =>
-      request<void>(baseUrl, `/projects/${projectId}/members/${encodeURIComponent(userId)}`, {
-        method: 'DELETE',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+      requestAuth<void>(token, `/projects/${projectId}/members/${encodeURIComponent(userId)}`, 'DELETE'),
 
     projectGroupList: (token: string, projectId: number) =>
-      request<ReadonlyArray<ProjectGroupDto>>(baseUrl, `/projects/${projectId}/groups`, {
-        method: 'GET',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+      requestAuth<ReadonlyArray<ProjectGroupDto>>(token, `/projects/${projectId}/groups`, 'GET'),
 
     projectGroupCreate: (token: string, projectId: number, payload: ProjectGroupCreateRequest) =>
-      request<ProjectGroupDto>(baseUrl, `/projects/${projectId}/groups`, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+      requestAuthJson<ProjectGroupDto>(token, `/projects/${projectId}/groups`, 'POST', payload),
 
     projectGroupUpdate: (token: string, projectId: number, groupId: number, payload: ProjectGroupUpdateRequest) =>
-      request<ProjectGroupDto>(baseUrl, `/projects/${projectId}/groups/${groupId}`, {
-        method: 'PATCH',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+      requestAuthJson<ProjectGroupDto>(token, `/projects/${projectId}/groups/${groupId}`, 'PATCH', payload),
 
     projectGroupDelete: (token: string, projectId: number, groupId: number) =>
-      request<void>(baseUrl, `/projects/${projectId}/groups/${groupId}`, {
-        method: 'DELETE',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+      requestAuth<void>(token, `/projects/${projectId}/groups/${groupId}`, 'DELETE'),
 
     projectGroupMemberList: (token: string, projectId: number, groupId: number) =>
-      request<ReadonlyArray<ProjectGroupMemberDto>>(baseUrl, `/projects/${projectId}/groups/${groupId}/members`, {
-        method: 'GET',
-        headers: { authorization: `Bearer ${token}` },
-      }),
+      requestAuth<ReadonlyArray<ProjectGroupMemberDto>>(token, `/projects/${projectId}/groups/${groupId}/members`, 'GET'),
 
     projectGroupMemberAdd: (token: string, projectId: number, groupId: number, payload: ProjectGroupMemberAddRequest) =>
-      request<ProjectGroupMemberDto>(baseUrl, `/projects/${projectId}/groups/${groupId}/members`, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+      requestAuthJson<ProjectGroupMemberDto>(token, `/projects/${projectId}/groups/${groupId}/members`, 'POST', payload),
 
     projectGroupMemberRemove: (token: string, projectId: number, groupId: number, userId: string) =>
-      request<void>(
-        baseUrl,
-        `/projects/${projectId}/groups/${groupId}/members/${encodeURIComponent(userId)}`,
-        { method: 'DELETE', headers: { authorization: `Bearer ${token}` } },
-      ),
+      requestAuth<void>(token, `/projects/${projectId}/groups/${groupId}/members/${encodeURIComponent(userId)}`, 'DELETE'),
 
     projectAuditEventList: (
       token: string,
@@ -335,8 +303,8 @@ export const createGalaxyApiClient = (options?: { readonly baseUrl?: string }) =
         readonly subjectGroupId?: number | undefined
       },
     ) =>
-      request<ReadonlyArray<ProjectAuditEventDto>>(
-        baseUrl,
+      requestAuth<ReadonlyArray<ProjectAuditEventDto>>(
+        token,
         `/projects/${projectId}/audit-events${toQueryString({
           from: query.from,
           to: query.to,
@@ -345,7 +313,7 @@ export const createGalaxyApiClient = (options?: { readonly baseUrl?: string }) =
           subjectUserId: query.subjectUserId,
           subjectGroupId: query.subjectGroupId,
         })}`,
-        { method: 'GET', headers: { authorization: `Bearer ${token}` } },
+        'GET',
       ),
 
     toMessage: (error: unknown): string => {
