@@ -2,6 +2,7 @@ import { describe, it, expect } from '@effect/vitest'
 import { Context, Effect, Exit, Layer, Ref, Scope, Schema, TestClock } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
+import { collectProcessErrorEvent, withProcessRuntime } from './test-helpers.js'
 
 describe('process: trigger timer', () => {
   it.scoped('should tick in a controllable interval', () =>
@@ -29,7 +30,7 @@ describe('process: trigger timer', () => {
         processes: [Proc],
       })
 
-      const layer = Layer.provideMerge(ProcessRuntime.layer())(HostImpl.impl.layer)
+      const layer = withProcessRuntime(HostImpl.impl.layer)
 
       const scope = yield* Scope.make()
       try {
@@ -73,29 +74,20 @@ describe('process: trigger timer', () => {
         processes: [Proc],
       })
 
-      const layer = Layer.provideMerge(ProcessRuntime.layer())(HostImpl.impl.layer)
-
-      let events: ReadonlyArray<Logix.Process.ProcessEvent> = []
+      const layer = withProcessRuntime(HostImpl.impl.layer)
       let invokedCount = -1
-      const scope = yield* Scope.make()
-      try {
-        const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+      const { errorEvent } = yield* collectProcessErrorEvent({
+        layer,
+        processId: 'ProcessTriggerInvalidTimer',
+        onBeforeClose: Ref.get(invoked).pipe(
+          Effect.flatMap((count) =>
+            Effect.sync(() => {
+              invokedCount = count
+            }),
+          ),
+        ),
+      })
 
-        yield* Effect.yieldNow()
-        yield* Effect.yieldNow()
-        events = (yield* rt.getEventsSnapshot()) as any
-        invokedCount = yield* Ref.get(invoked)
-      } finally {
-        yield* Scope.close(scope, Exit.succeed(undefined))
-      }
-
-      const errorEvent = events.find(
-        (e) => e.type === 'process:error' && e.identity.identity.processId === 'ProcessTriggerInvalidTimer',
-      )
       expect(errorEvent).toBeTruthy()
       expect(errorEvent?.error?.code).toBe('process::invalid_timer_id')
       expect(errorEvent?.error?.hint).toContain('DurationInput')
