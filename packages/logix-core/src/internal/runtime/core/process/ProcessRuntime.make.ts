@@ -109,6 +109,7 @@ const RUNTIME_BOOT_EVENT = 'runtime:boot' as const
 const deriveDebugModuleId = (processId: string): string => `process:${processId}`
 
 type NonPlatformTriggerSpec = Exclude<ProcessTriggerSpec, { readonly kind: 'platformEvent' }>
+type ProcessDispatchPayload = NonNullable<ProcessEvent['dispatch']>
 
 const deriveTxnAnchor = (event: ProcessEvent): { readonly txnSeq?: number; readonly txnId?: string } => {
   const trigger: any = event.trigger
@@ -510,21 +511,13 @@ export const make = (options?: {
                 const dispatchModuleId = typeof runtime.moduleId === 'string' ? runtime.moduleId : moduleId
                 const dispatchInstanceId = typeof runtime.instanceId === 'string' ? runtime.instanceId : 'unknown'
 
-                const evt: ProcessEvent = {
-                  type: 'process:dispatch',
-                  identity,
-                  trigger,
-                  dispatch: {
+                yield* emit(
+                  makeDispatchEvent(trigger, {
                     moduleId: dispatchModuleId,
                     instanceId: dispatchInstanceId,
                     actionId,
-                  },
-                  severity: 'info',
-                  eventSeq: instanceState.nextEventSeq++,
-                  timestampMs: Date.now(),
-                }
-
-                yield* emit(evt)
+                  }),
+                )
               })
 
             const wrapped = {
@@ -546,6 +539,35 @@ export const make = (options?: {
 
         const wrappedEnv = makeWrappedEnv()
         const providedProcess = Effect.provide(installation.process, wrappedEnv)
+
+        const nextProcessEventMeta = () => ({
+          identity,
+          eventSeq: instanceState.nextEventSeq++,
+          timestampMs: Date.now(),
+        })
+
+        const makeDispatchEvent = (
+          trigger: ProcessTrigger,
+          dispatch: ProcessDispatchPayload,
+        ): ProcessEvent => ({
+          type: 'process:dispatch',
+          trigger,
+          dispatch,
+          severity: 'info',
+          ...nextProcessEventMeta(),
+        })
+
+        const makeTriggerEvent = (
+          trigger: ProcessTrigger,
+          severity: ProcessEvent['severity'],
+          error?: SerializableErrorSummary,
+        ): ProcessEvent => ({
+          type: 'process:trigger',
+          trigger,
+          severity,
+          ...(error ? { error } : null),
+          ...nextProcessEventMeta(),
+        })
 
         const makeTriggerStream = (spec: NonPlatformTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
           Effect.gen(function* () {
@@ -579,6 +601,14 @@ export const make = (options?: {
               }
 
               const runtime = found.value as any
+              const buildModuleActionTrigger = (txnSeq: number): ProcessTrigger => ({
+                kind: 'moduleAction',
+                name: spec.name,
+                moduleId: spec.moduleId,
+                instanceId: runtime.instanceId as string,
+                actionId: spec.actionId,
+                txnSeq,
+              })
 
               // perf: when diagnostics=off, avoid subscribing to actionsWithMeta$ (published inside txns; more subscribers hurt hot paths).
               // diagnostics=light/full needs txnSeq/txnId anchors, so only use actionsWithMeta$ when chain events are enabled.
@@ -593,17 +623,7 @@ export const make = (options?: {
 
                 return stream.pipe(
                   Stream.filter((action: any) => actionIdFromUnknown(action) === spec.actionId),
-                  Stream.map(
-                    () =>
-                      ({
-                        kind: 'moduleAction',
-                        name: spec.name,
-                        moduleId: spec.moduleId,
-                        instanceId: runtime.instanceId as string,
-                        actionId: spec.actionId,
-                        txnSeq: 1,
-                      }) satisfies ProcessTrigger,
-                  ),
+                  Stream.map(() => buildModuleActionTrigger(1)),
                 )
               }
 
@@ -621,14 +641,7 @@ export const make = (options?: {
                 Stream.filter((evt: any) => actionIdFromUnknown(evt.value) === spec.actionId),
                 Stream.map((evt: any) => {
                   const txnSeq = evt?.meta?.txnSeq
-                  return {
-                    kind: 'moduleAction',
-                    name: spec.name,
-                    moduleId: spec.moduleId,
-                    instanceId: runtime.instanceId as string,
-                    actionId: spec.actionId,
-                    txnSeq: typeof txnSeq === 'number' ? txnSeq : 1,
-                  } satisfies ProcessTrigger
+                  return buildModuleActionTrigger(typeof txnSeq === 'number' ? txnSeq : 1)
                 }),
               )
             }
@@ -770,19 +783,13 @@ export const make = (options?: {
                 selectorSlowSamples = 0
                 selectorMaxSampleMs = 0
 
-                yield* emit({
-                  type: 'process:trigger',
-                  identity,
-                  trigger,
-                  severity: 'warning',
-                  eventSeq: instanceState.nextEventSeq++,
-                  timestampMs: Date.now(),
-                  error: {
+                yield* emit(
+                  makeTriggerEvent(trigger, 'warning', {
                     message: 'moduleStateChange selector diagnostics warning',
                     code,
                     hint,
-                  },
-                } satisfies ProcessEvent)
+                  }),
+                )
               })
             }
 
@@ -865,15 +872,7 @@ export const make = (options?: {
             return Effect.void
           }
 
-          const evt: ProcessEvent = {
-            type: 'process:trigger',
-            identity,
-            trigger,
-            severity,
-            eventSeq: instanceState.nextEventSeq++,
-            timestampMs: Date.now(),
-          }
-          return emit(evt)
+          return emit(makeTriggerEvent(trigger, severity))
         }
 
         const policy = installation.definition.concurrency
