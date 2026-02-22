@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-runtime-chain-20260222`
+> 分支：`refactor/logix-core-process-runtime-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -29,7 +29,7 @@
 - `packages/logix-query/src/Query.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-form/src/internal/form/impl.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：`DEEP_READ` + `REFACTORED`
-- `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`：`DEEP_READ`（本轮做链路分析，未改动）
+- `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -48,7 +48,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts` 已深读并重构；`ProcessRuntime.make.ts` 已深读分析）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -104,7 +104,8 @@
   - `recordPatchFull` 的 patch record 构建使用内联对象扩展，分支噪音高且不利于后续字段扩展。
   - `commit` 同时承担 dirtySet 计算 + transaction 构建 + 提交流程，职责边界不够清晰。
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
-  - `makeTriggerStream`/事件发布链路体量大，建议下一轮按 trigger 类型与 selector diagnostics 拆分局部 helper。
+  - `process:dispatch` / `process:trigger` 事件构造在多处重复，eventSeq/timestamp 维护点分散。
+  - `moduleAction` trigger 在 meta/non-meta 两条分支重复构造对象，维护成本高。
 
 ## 已完成重构项
 
@@ -130,6 +131,9 @@
   - 性能证据：`.context/perf/logix-core-state-txn-20260222/before.local.default.json`、`.context/perf/logix-core-state-txn-20260222/after.local.default.json`、`.context/perf/logix-core-state-txn-20260222/summary.md`。
 - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`
   - 新增回归用例：`StateTransaction full patch records should normalize optional metadata fields`，锁定 stepId/traitNodeId/from 的可选字段语义。
+- `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
+  - 抽取 `nextProcessEventMeta`、`makeDispatchEvent`、`makeTriggerEvent`，统一 process 事件构造并保持 eventSeq/timestamp 语义不变。
+  - 收敛 `moduleAction` trigger 重复构造为 `buildModuleActionTrigger`，保持 `actions$`/`actionsWithMeta$` 分支语义一致。
 
 ## 独立审查记录
 
@@ -149,6 +153,14 @@
   - 审查方式：1 个独立 subagent（explorer）基于当前分支改动做只读审查
   - 结论：无阻塞问题（行为一致性、optional 字段语义、commit/dirtySet 边界均通过）
   - 残余风险：perf 结果呈 mixed，当前样本不支持“确定性提升/回退”硬结论，后续可按更高采样参数复测
+- 2026-02-22（logix-core / ProcessRuntime 轮次）
+  - 审查方式：1 个独立 subagent（explorer）基于当前分支改动做只读审查
+  - 结论：无阻塞问题（事件序号/时间戳语义、moduleAction trigger 语义未漂移）
+  - 残余风险：diagnostics=off 场景仍固定 `txnSeq=1`（与既有语义一致），未来若需更强锚点需依赖 meta stream
+- 2026-02-22（logix-core / ProcessRuntime 轮次复核）
+  - 审查方式：1 个独立 subagent（default）基于最终改动做只读复核
+  - 结论：无阻塞问题，可合并
+  - 残余风险：`moduleAction` 在 diagnostics=off 路径仍固定 `txnSeq=1`（保持既有语义）
 
 ## 未看过模块
 
@@ -156,7 +168,6 @@
 
 ## 下一步（第一轮）
 
-1. 继续深读 `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`，优先拆分 trigger stream / selector diagnostics 局部实现。
-2. 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts` 选取一处中等强度结构重构点，并同步补 perf 证据。
-3. 视变更范围补充 runtime 诊断链路（debug event slim 序列化）一致性检查。
-4. 持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
+1. 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts` 选择下一处中等强度结构重构点（优先 txn queue / diagnostics 链路）。
+2. 继续收敛 `ProcessRuntime.make.ts` 剩余大函数（如 trigger stream 子分支）到局部 helper，保持语义不变。
+3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
