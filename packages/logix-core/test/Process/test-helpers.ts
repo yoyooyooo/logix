@@ -1,0 +1,55 @@
+import { Context, Effect, Exit, Layer, Scope } from 'effect'
+import * as Logix from '../../src/index.js'
+import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
+
+export const withProcessRuntime = (layer: Layer.Layer<any, any, any>): Layer.Layer<any, any, any> =>
+  Layer.provideMerge(ProcessRuntime.layer())(layer)
+
+export const collectProcessErrorEvent = (options: {
+  readonly layer: Layer.Layer<any, any, any>
+  readonly processId: string
+  readonly attempts?: number
+  readonly onBeforeClose?: Effect.Effect<void>
+}): Effect.Effect<{
+  readonly errorEvent: Logix.Process.ProcessEvent | undefined
+  readonly events: ReadonlyArray<Logix.Process.ProcessEvent>
+}> =>
+  Effect.gen(function* () {
+    const attempts = Math.max(1, options.attempts ?? 200)
+    const scope = yield* Scope.make()
+    try {
+      const env = yield* Layer.buildWithScope(options.layer, scope)
+      const rt = Context.get(
+        env as Context.Context<any>,
+        ProcessRuntime.ProcessRuntimeTag as any,
+      ) as ProcessRuntime.ProcessRuntime
+
+      let result: {
+        readonly errorEvent: Logix.Process.ProcessEvent | undefined
+        readonly events: ReadonlyArray<Logix.Process.ProcessEvent>
+      } = {
+        errorEvent: undefined,
+        events: [],
+      }
+      for (let i = 0; i < attempts; i++) {
+        const events = (yield* rt.getEventsSnapshot()) as ReadonlyArray<Logix.Process.ProcessEvent>
+        const errorEvent = events.find(
+          (event) => event.type === 'process:error' && event.identity.identity.processId === options.processId,
+        )
+        if (errorEvent) {
+          result = { errorEvent, events }
+          break
+        }
+        result = { errorEvent: undefined, events }
+        yield* Effect.yieldNow()
+      }
+
+      if (options.onBeforeClose) {
+        yield* options.onBeforeClose
+      }
+
+      return result
+    } finally {
+      yield* Scope.close(scope, Exit.succeed(undefined))
+    }
+  })

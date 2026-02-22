@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`test/logix-core-process-invalid-trigger-kind-20260222`
+> 分支：`refactor/logix-core-process-test-helper-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -34,6 +34,7 @@
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.InvalidKind.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/Process/test-helpers.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -52,7 +53,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts` 已深读并重构）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`test-helpers.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -157,6 +158,10 @@
 - `packages/logix-core/test/Process/Process.Trigger.InvalidKind.test.ts`
   - 新增回归用例：以 `as any` 注入畸形 trigger kind，锁定 `makeTriggerStream` default 分支的 `process::invalid_trigger_kind` 失败语义。
   - 断言错误 message 含原始 kind 值、同 processId 下不存在 `process::missing_dependency`、且 process body 不被执行（`invokedCount === 0`）。
+- `packages/logix-core/test/Process/test-helpers.ts`
+  - 抽取共享 helper：`withProcessRuntime`（统一组装 `ProcessRuntime.layer`）与 `collectProcessErrorEvent`（统一 `scope` 生命周期 + `process:error` 有上限轮询）。
+  - `collectProcessErrorEvent` 支持 `onBeforeClose` 回调，允许在关闭 runtime scope 前采集额外观测值（如 `invokedCount`），避免测试严格性回退。
+  - `Process.Trigger.ModuleAction.MissingStreams.test.ts` 与 `Process.Trigger.InvalidKind.test.ts` 改为复用 helper，减少重复样板并保持断言语义不变。
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
   - 抽取 `withRuntimeServiceBuiltins`，统一 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 的 builtin 注入样板，保持 serviceId 与 builtinMake 映射语义不变。
   - 抽取 `readCurrentOpSeq`，统一 `onCommit` 与 `deferredConvergeFlush` 的 opSeq 读取归一化逻辑，保持 non-negative integer 语义不变。
@@ -236,5 +241,5 @@
 ## 下一步（第一轮）
 
 1. 评估将 `SelectorDiagnosticsState` / `SelectorWarningDecision` 进一步外提到更稳定的浅层 helper，减少函数内类型噪音并维持行为不变。
-2. 评估抽取 Process 触发器错误路径测试 helper（事件轮询/筛选），减少 `Process.Trigger.*.test.ts` 中重复样板。
+2. 将 `test-helpers.ts` 继续推广到 `Process.Trigger.Timer.test.ts` 与 `Process.Trigger.ModuleStateChange.test.ts`，进一步收敛重复采集样板。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
