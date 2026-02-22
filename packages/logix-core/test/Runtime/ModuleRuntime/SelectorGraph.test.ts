@@ -90,6 +90,67 @@ describe('SelectorGraph', () => {
     ),
   )
 
+  it.effect('only recomputes selectors whose root keys overlap dirty roots in multi-selector mode', () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        let countCalls = 0
+        let otherCalls = 0
+
+        const selectCount = Object.assign(
+          (state: { readonly count: number; readonly other: number }) => {
+            countCalls += 1
+            return state.count
+          },
+          { fieldPaths: ['count'] },
+        )
+
+        const selectOther = Object.assign(
+          (state: { readonly count: number; readonly other: number }) => {
+            otherCalls += 1
+            return state.other
+          },
+          { fieldPaths: ['other'] },
+        )
+
+        const countQuery = Logix.ReadQuery.compile(selectCount as any)
+        const otherQuery = Logix.ReadQuery.compile(selectOther as any)
+        const registry = makeFieldPathIdRegistry([['count'], ['other']])
+
+        const graph = SelectorGraph.make<{ readonly count: number; readonly other: number }>({
+          moduleId: 'TestModule',
+          instanceId: 'i-test',
+          getFieldPathIdRegistry: () => registry,
+        })
+
+        const countEntry = yield* graph.ensureEntry(countQuery as any)
+        countEntry.subscriberCount = 1
+        const otherEntry = yield* graph.ensureEntry(otherQuery as any)
+        otherEntry.subscriberCount = 1
+
+        const countSubscription = yield* PubSub.subscribe(countEntry.hub)
+        const otherSubscription = yield* PubSub.subscribe(otherEntry.hub)
+        const takeOtherFiber = yield* Effect.fork(Queue.take(otherSubscription))
+
+        yield* graph.onCommit(
+          { count: 1, other: 10 },
+          { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+          dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+          'off',
+        )
+
+        const countEvent = yield* Queue.take(countSubscription)
+        yield* Effect.yieldNow()
+        const otherPolled = yield* Fiber.poll(takeOtherFiber)
+        yield* Fiber.interrupt(takeOtherFiber)
+
+        expect((countEvent as any).value).toBe(1)
+        expect(countCalls).toBe(1)
+        expect(otherCalls).toBe(0)
+        expect(Option.isNone(otherPolled)).toBe(true)
+      }),
+    ),
+  )
+
   it.effect('emits a slim trace:selector:eval cost summary in diagnostics=light', () =>
     Effect.scoped(
       Effect.gen(function* () {
