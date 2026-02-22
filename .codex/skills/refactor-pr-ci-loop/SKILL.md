@@ -13,7 +13,9 @@ description: 在 intent-flow 仓库执行连续重构时，使用“同步 main 
   - `pnpm test:turbo`
 - 本地默认不跑性能基线；性能交给 PR CI（除非用户明确要求本地性能证据）。
 - 合并前必须至少完成 1 次独立 subagent review。
-- 持续维护 `.context/REFACTOR.md`（已读模块、重构点、未读模块、review 记录）。
+- 重构记录采用“总览 + 分 PR”两层：
+  - `.context/REFACTOR.md` 仅保留轻量索引/总览；
+  - 每个重构 PR 的详细记录写入 `.context/prs/<pr-name-or-id>.md`（阅读范围、重构点、验证、独立审查结论、残余风险）。
 
 ## 标准步骤
 
@@ -29,11 +31,9 @@ git merge --ff-only origin/main
 ### 2) 实施重构
 
 - 聚焦单一可交付切片（一个核心点或一个中等风险点）。
-- 改动完成后更新 `.context/REFACTOR.md`：
-  - 读过哪些模块；
-  - 本轮重构点；
-  - 还没读的模块；
-  - 本轮独立审查记录。
+- 改动完成后维护文档：
+  - 创建/更新 `.context/prs/<pr-name-or-id>.md` 记录本轮详细信息（读取模块、改动摘要、验证命令、独立审查、风险）。
+  - 在 `.context/REFACTOR.md` 只追加/更新索引项（指向对应 PR 文档），避免总账文件膨胀。
 
 ### 3) 本地验证（默认口径）
 
@@ -63,4 +63,3 @@ pnpm test:turbo
 
 - 启动后台监听后，立即继续下一项重构任务。
 - 上一项 PR 的 CI/合并由后台 watcher 负责收口。
-

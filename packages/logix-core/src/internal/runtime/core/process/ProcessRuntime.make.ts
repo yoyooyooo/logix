@@ -2,7 +2,6 @@ import {
   Cause,
   Context,
   Deferred,
-  Duration,
   Effect,
   Fiber,
   FiberRef,
@@ -23,14 +22,8 @@ import * as Identity from './identity.js'
 import * as ProcessConcurrency from './concurrency.js'
 import * as ProcessEvents from './events.js'
 import * as Meta from './meta.js'
-import { makeSchemaSelector, resolveSchemaAst } from './selectorSchema.js'
-import {
-  buildSelectorWarningHint,
-  evaluateSelectorWarning,
-  initialSelectorDiagnosticsState,
-  makeSelectorDiagnosticsConfig,
-  makeSelectorSamplingTracker,
-} from './selectorDiagnostics.js'
+import { resolveSchemaAst } from './selectorSchema.js'
+import { makeNonPlatformTriggerStreamFactory, type NonPlatformTriggerSpec } from './triggerStreams.js'
 import type {
   ProcessControlRequest,
   ProcessDefinition,
@@ -115,20 +108,7 @@ const RUNTIME_BOOT_EVENT = 'runtime:boot' as const
 
 const deriveDebugModuleId = (processId: string): string => `process:${processId}`
 
-type NonPlatformTriggerSpec = Exclude<ProcessTriggerSpec, { readonly kind: 'platformEvent' }>
-type TimerTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'timer' }>
-type ModuleActionTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'moduleAction' }>
-type ModuleStateChangeTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'moduleStateChange' }>
 type ProcessDispatchPayload = NonNullable<ProcessEvent['dispatch']>
-
-const unreachableNonPlatformTriggerSpec = (
-  spec: never,
-): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
-  Effect.fail(
-    Object.assign(new Error(`[ProcessRuntime] unreachable non-platform trigger kind: ${String((spec as any)?.kind ?? 'unknown')}`), {
-      code: 'process::invalid_trigger_kind',
-    }),
-  )
 
 const deriveTxnAnchor = (event: ProcessEvent): { readonly txnSeq?: number; readonly txnId?: string } => {
   const trigger: any = event.trigger
@@ -588,218 +568,14 @@ export const make = (options?: {
           ...nextProcessEventMeta(),
         })
 
-        const resolveModuleRuntime = (moduleId: string): Effect.Effect<any, Error> =>
-          Effect.gen(function* () {
-            const tag = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
-            const found = Context.getOption(baseEnv, tag)
-            if (Option.isNone(found)) {
-              return yield* Effect.fail(new Error(`Missing module runtime in scope: ${moduleId}`))
-            }
-            return found.value as any
-          })
-
-        const makeTimerTriggerStream = (spec: TimerTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
-          Effect.gen(function* () {
-            const interval = Duration.decodeUnknown(spec.timerId)
-            if (Option.isNone(interval)) {
-              const err = new Error(`[ProcessRuntime] invalid timerId (expected DurationInput): ${spec.timerId}`)
-              ;(err as any).code = 'process::invalid_timer_id'
-              ;(err as any).hint =
-                "timerId must be a valid DurationInput string, e.g. '10 millis', '1 seconds', '5 minutes'."
-              return yield* Effect.fail(err)
-            }
-
-            return Stream.tick(interval.value).pipe(
-              Stream.map(
-                () =>
-                  ({
-                    kind: 'timer',
-                    name: spec.name,
-                    timerId: spec.timerId,
-                  }) satisfies ProcessTrigger,
-              ),
-            )
-          })
-
-        const makeModuleActionTriggerStream = (
-          spec: ModuleActionTriggerSpec,
-        ): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
-          Effect.gen(function* () {
-            const runtime = yield* resolveModuleRuntime(spec.moduleId)
-            const buildModuleActionTrigger = (txnSeq: number): ProcessTrigger => ({
-              kind: 'moduleAction',
-              name: spec.name,
-              moduleId: spec.moduleId,
-              instanceId: runtime.instanceId as string,
-              actionId: spec.actionId,
-              txnSeq,
-            })
-
-            // perf: when diagnostics=off, avoid subscribing to actionsWithMeta$ (published inside txns; more subscribers hurt hot paths).
-            // diagnostics=light/full needs txnSeq/txnId anchors, so only use actionsWithMeta$ when chain events are enabled.
-            if (!shouldRecordChainEvents) {
-              const stream = runtime.actions$ as Stream.Stream<any> | undefined
-              if (!stream) {
-                const err = new Error('ModuleRuntime does not provide actions$ (required for moduleAction trigger).')
-                ;(err as any).code = 'process::missing_action_stream'
-                ;(err as any).hint = `moduleId=${spec.moduleId}`
-                return yield* Effect.fail(err)
-              }
-
-              return stream.pipe(
-                Stream.filter((action: any) => actionIdFromUnknown(action) === spec.actionId),
-                Stream.map(() => buildModuleActionTrigger(1)),
-              )
-            }
-
-            const stream = runtime.actionsWithMeta$ as Stream.Stream<any> | undefined
-            if (!stream) {
-              const err = new Error(
-                'ModuleRuntime does not provide actionsWithMeta$ (required for moduleAction trigger).',
-              )
-              ;(err as any).code = 'process::missing_action_meta_stream'
-              ;(err as any).hint = `moduleId=${spec.moduleId}`
-              return yield* Effect.fail(err)
-            }
-
-            return stream.pipe(
-              Stream.filter((evt: any) => actionIdFromUnknown(evt.value) === spec.actionId),
-              Stream.map((evt: any) => {
-                const txnSeq = evt?.meta?.txnSeq
-                return buildModuleActionTrigger(typeof txnSeq === 'number' ? txnSeq : 1)
-              }),
-            )
-          })
-
-        const makeModuleStateChangeTriggerStream = (
-          spec: ModuleStateChangeTriggerSpec,
-        ): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
-          Effect.gen(function* () {
-            const runtime = yield* resolveModuleRuntime(spec.moduleId)
-            const schemaAst = resolveRuntimeStateSchemaAst(runtime)
-            const selectorResult = makeSchemaSelector(spec.path, schemaAst)
-            if (!selectorResult.ok) {
-              return yield* Effect.fail(withModuleHint(selectorResult.error, spec.moduleId))
-            }
-            const selectorBase = selectorResult.selector
-            const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
-
-            const enableSelectorDiagnostics = shouldRecordChainEvents
-            const selectorDiagnosticsConfig = makeSelectorDiagnosticsConfig(isDevEnv())
-
-            const selectorDiagnosticsRef = enableSelectorDiagnostics
-              ? yield* Ref.make(initialSelectorDiagnosticsState(Date.now()))
-              : undefined
-
-            const selectorSampling = makeSelectorSamplingTracker(selectorDiagnosticsConfig)
-
-            const nowMs = (): number => {
-              if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
-                return performance.now()
-              }
-              return Date.now()
-            }
-
-            const selector = enableSelectorDiagnostics
-              ? (state: unknown): unknown => {
-                  if (!selectorSampling.onSelectorCall()) {
-                    return selectorBase(state)
-                  }
-
-                  const t0 = nowMs()
-                  const value = selectorBase(state)
-                  const dt = nowMs() - t0
-
-                  selectorSampling.recordSample(dt)
-
-                  return value
-                }
-              : selectorBase
-
-            const maybeWarnSelector = (trigger: ProcessTrigger): Effect.Effect<void> => {
-              if (!selectorDiagnosticsRef) {
-                return Effect.void
-              }
-
-              return Effect.gen(function* () {
-                const now = Date.now()
-                const sampling = selectorSampling.snapshot()
-
-                const decision = yield* Ref.modify(selectorDiagnosticsRef, (s) =>
-                  evaluateSelectorWarning(s, now, {
-                    config: selectorDiagnosticsConfig,
-                    sampling: {
-                      sampled: sampling.sampled,
-                      maxSampleMs: sampling.maxSampleMs,
-                    },
-                  }),
-                )
-
-                if (!decision.shouldWarn) {
-                  return
-                }
-
-                const code = decision.tooFrequent ? 'process::selector_high_frequency' : 'process::selector_slow'
-                const hint = buildSelectorWarningHint({
-                  moduleId: spec.moduleId,
-                  path: spec.path,
-                  decision,
-                  config: selectorDiagnosticsConfig,
-                  sampling,
-                })
-                selectorSampling.resetSampling()
-
-                yield* emit(
-                  makeTriggerEvent(trigger, 'warning', {
-                    message: 'moduleStateChange selector diagnostics warning',
-                    code,
-                    hint,
-                  }),
-                )
-              })
-            }
-
-            const baseStream = (runtime.changesWithMeta(selector) as Stream.Stream<any>).pipe(
-              Stream.mapEffect((evt: any) =>
-                Ref.get(prevRef).pipe(
-                  Effect.flatMap((prev) => {
-                    if (Option.isSome(prev) && Object.is(prev.value, evt.value)) {
-                      return Effect.succeed(Option.none())
-                    }
-                    return Ref.set(prevRef, Option.some(evt.value)).pipe(Effect.as(Option.some(evt)))
-                  }),
-                ),
-              ),
-              Stream.filterMap((opt) => opt),
-              Stream.map((evt: any) => {
-                const txnSeq = evt?.meta?.txnSeq
-                return {
-                  kind: 'moduleStateChange',
-                  name: spec.name,
-                  moduleId: spec.moduleId,
-                  instanceId: runtime.instanceId as string,
-                  path: spec.path,
-                  txnSeq: typeof txnSeq === 'number' ? txnSeq : 1,
-                } satisfies ProcessTrigger
-              }),
-            )
-
-            return enableSelectorDiagnostics ? baseStream.pipe(Stream.tap(maybeWarnSelector)) : baseStream
-          })
-
-        const makeTriggerStream = (spec: NonPlatformTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
-          Effect.gen(function* () {
-            switch (spec.kind) {
-              case 'timer':
-                return yield* makeTimerTriggerStream(spec)
-              case 'moduleAction':
-                return yield* makeModuleActionTriggerStream(spec)
-              case 'moduleStateChange':
-                return yield* makeModuleStateChangeTriggerStream(spec)
-              default:
-                return yield* unreachableNonPlatformTriggerSpec(spec)
-            }
-          })
+        const makeTriggerStream = makeNonPlatformTriggerStreamFactory({
+          baseEnv,
+          shouldRecordChainEvents,
+          actionIdFromUnknown,
+          resolveRuntimeStateSchemaAst,
+          withModuleHint,
+          emitSelectorWarning: (trigger, warning) => emit(makeTriggerEvent(trigger, 'warning', warning)),
+        })
 
         const makeRun = (trigger: ProcessTrigger, fatal: Deferred.Deferred<Cause.Cause<any>>): Effect.Effect<void> =>
           Effect.locally(
