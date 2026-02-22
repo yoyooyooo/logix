@@ -196,8 +196,10 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
 
       const aKey = makeModuleInstanceKey('A', 'i-1')
       const bKey = makeModuleInstanceKey('B', 'i-1')
+      const lowKey = makeModuleInstanceKey('Low', 'i-1')
       store.registerModuleInstance({ moduleId: 'A', instanceId: 'i-1', moduleInstanceKey: aKey, initialState: { v: 0 } })
       store.registerModuleInstance({ moduleId: 'B', instanceId: 'i-1', moduleInstanceKey: bKey, initialState: { v: 0 } })
+      store.registerModuleInstance({ moduleId: 'Low', instanceId: 'i-1', moduleInstanceKey: lowKey, initialState: { v: 0 } })
 
       queue.enqueueModuleCommit({
         moduleId: 'A',
@@ -219,6 +221,16 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       })
       queue.markTopicDirty(bKey, 'normal')
 
+      queue.enqueueModuleCommit({
+        moduleId: 'Low',
+        instanceId: 'i-1',
+        moduleInstanceKey: lowKey,
+        state: { v: 1 },
+        meta: { txnSeq: 1, txnId: 'i-1::t1', commitMode: 'lowPriority', priority: 'low', originKind: 'dispatch', originName: 'low' },
+        opSeq: 3,
+      })
+      queue.markTopicDirty(lowKey, 'low')
+
       yield* scheduler.flushNow.pipe(
         Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 128 })),
@@ -227,6 +239,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       expect(store.getTickSeq()).toBe(1)
       expect(store.getModuleState(aKey)).toEqual({ v: 1 })
       expect(store.getModuleState(bKey)).toEqual({ v: 0 })
+      expect(store.getModuleState(lowKey)).toEqual({ v: 0 })
 
       const events = Logix.Debug.getDevtoolsSnapshot().events
       const budgetExceeded = events
@@ -246,6 +259,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
 
       expect(store.getTickSeq()).toBe(2)
       expect(store.getModuleState(bKey)).toEqual({ v: 1 })
+      expect(store.getModuleState(lowKey)).toEqual({ v: 1 })
     }),
   )
 })
