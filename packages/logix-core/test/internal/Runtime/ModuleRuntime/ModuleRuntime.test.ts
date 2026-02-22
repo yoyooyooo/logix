@@ -713,6 +713,38 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
+    it.scoped('StateTransaction full patch records should normalize optional metadata fields', () =>
+      Effect.gen(function* () {
+        type S = { value: number }
+
+        const ref = yield* SubscriptionRef.make<S>({ value: 0 })
+        const registry = makeFieldPathIdRegistry([['value']])
+
+        const ctx = StateTransaction.makeContext<S>({
+          moduleId: 'PatchMetaModule',
+          instanceId: 'patch-meta-instance',
+          instrumentation: 'full',
+          captureSnapshots: false,
+          getFieldPathIdRegistry: () => registry,
+          now: () => 1,
+        })
+
+        StateTransaction.beginTransaction(ctx, { kind: 'unit-test', name: 'patch-meta' }, { value: 0 })
+        StateTransaction.updateDraft(ctx, { value: 1 })
+        StateTransaction.recordPatch(ctx, ['value'], 'reducer', undefined, 1, '', -3)
+
+        const txn = yield* StateTransaction.commit(ctx, ref)
+        expect(txn).toBeDefined()
+        expect(txn?.patches).toHaveLength(1)
+        expect(txn?.patches[0]).toEqual({
+          opSeq: 0,
+          pathId: 0,
+          reason: 'reducer',
+          to: 1,
+        })
+      }),
+    )
+
     it.scoped('should support dev-only time-travel: applyTransactionSnapshot(before) restores previous state', () =>
       Effect.gen(function* () {
         const ring = Debug.makeRingBufferSink(32)

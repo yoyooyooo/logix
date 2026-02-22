@@ -26,6 +26,16 @@ export interface TxnPatchRecord {
   readonly to?: unknown
 }
 
+interface MutableTxnPatchRecord {
+  opSeq: number
+  pathId?: FieldPathId
+  reason: PatchReason
+  stepId?: number
+  traitNodeId?: string
+  from?: unknown
+  to?: unknown
+}
+
 export interface StateTxnOrigin {
   readonly kind: string
   readonly name?: string
@@ -118,8 +128,8 @@ interface StateTxnState<S> {
   initialStateSnapshot?: S
   readonly patches: Array<TxnPatchRecord>
   patchCount: number
-	patchesTruncated: boolean
-	fieldPathIdRegistry?: FieldPathIdRegistry
+  patchesTruncated: boolean
+  fieldPathIdRegistry?: FieldPathIdRegistry
   /**
    * dirtyPathIds：
    * - The set of FieldPathIds for all trackable writes within the transaction window (hot path records only integer anchors).
@@ -130,12 +140,101 @@ interface StateTxnState<S> {
   dirtyAllReason?: DirtyAllReason
 }
 
+const MAX_PATCHES_FULL = 256
+
 const defaultNow = () => {
   const perf = globalThis.performance
   if (perf && typeof perf.now === 'function') {
     return perf.now()
   }
   return Date.now()
+}
+
+const normalizePatchStepId = (stepId?: number): number | undefined => {
+  if (typeof stepId !== 'number' || !Number.isFinite(stepId) || stepId < 0) {
+    return undefined
+  }
+  return Math.floor(stepId)
+}
+
+const buildPatchRecord = (
+  opSeq: number,
+  pathId: FieldPathId | undefined,
+  reason: PatchReason,
+  from?: unknown,
+  to?: unknown,
+  traitNodeId?: string,
+  stepId?: number,
+): TxnPatchRecord => {
+  const record: MutableTxnPatchRecord = {
+    opSeq,
+    reason: normalizePatchReason(reason),
+  }
+
+  if (pathId != null) {
+    record.pathId = pathId
+  }
+  if (from !== undefined) {
+    record.from = from
+  }
+  if (to !== undefined) {
+    record.to = to
+  }
+  if (traitNodeId) {
+    record.traitNodeId = traitNodeId
+  }
+
+  const normalizedStepId = normalizePatchStepId(stepId)
+  if (normalizedStepId !== undefined) {
+    record.stepId = normalizedStepId
+  }
+
+  return record
+}
+
+const buildDirtySet = <S>(state: StateTxnState<S>): DirtySet => {
+  const registry = state.fieldPathIdRegistry
+  if (registry == null) {
+    return {
+      dirtyAll: true,
+      reason: state.dirtyAllReason ?? 'fallbackPolicy',
+      rootIds: [],
+      rootCount: 0,
+      keySize: 0,
+      keyHash: 0,
+    }
+  }
+  return dirtyPathsToRootIds({
+    dirtyPaths: state.dirtyPathIds,
+    registry,
+    dirtyAllReason: state.dirtyAllReason,
+  })
+}
+
+const buildCommittedTransaction = <S>(
+  ctx: StateTxnContext<S>,
+  state: StateTxnState<S>,
+  finalState: S,
+  endedAt: number,
+): StateTransaction<S> => {
+  const { config } = ctx
+  return {
+    txnId: state.txnId,
+    txnSeq: state.txnSeq,
+    origin: state.origin,
+    startedAt: state.startedAt,
+    endedAt,
+    durationMs: Math.max(0, endedAt - state.startedAt),
+    dirtySet: buildDirtySet(state),
+    patchCount: state.patchCount,
+    patchesTruncated: state.patchesTruncated,
+    ...(state.patchesTruncated ? { patchesTruncatedReason: 'max_patches' } : null),
+    initialStateSnapshot: state.initialStateSnapshot,
+    finalStateSnapshot: config.captureSnapshots ? finalState : undefined,
+    patches: config.instrumentation === 'full' ? state.patches.slice() : [],
+    moduleId: config.moduleId,
+    instanceId: config.instanceId,
+  }
 }
 
 export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
@@ -187,8 +286,6 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     resolveAndRecordDirtyPathId(state, path, _reason)
   }
 
-  const MAX_PATCHES_FULL = 256
-
   const recordPatchFull = (
     path: StatePatchPath | undefined,
     reason: PatchReason,
@@ -206,15 +303,7 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
       state.patchesTruncated = true
       return
     }
-    state.patches.push({
-      opSeq,
-      ...(pathId != null ? { pathId } : null),
-      ...(from !== undefined ? { from } : null),
-      ...(to !== undefined ? { to } : null),
-      reason: normalizePatchReason(reason),
-      ...(traitNodeId ? { traitNodeId } : null),
-      ...(typeof stepId === 'number' && Number.isFinite(stepId) && stepId >= 0 ? { stepId: Math.floor(stepId) } : null),
-    })
+    state.patches.push(buildPatchRecord(opSeq, pathId, reason, from, to, traitNodeId, stepId))
   }
 
   ctx.recordPatch = instrumentation === 'full' ? recordPatchFull : recordPatchLight
@@ -388,42 +477,7 @@ export const commit = <S>(
     yield* SubscriptionRef.set(stateRef, finalState)
 
     const endedAt = now()
-    const durationMs = Math.max(0, endedAt - state.startedAt)
-
-    const registry = state.fieldPathIdRegistry
-    const dirtySet: DirtySet =
-      registry == null
-        ? {
-            dirtyAll: true,
-            reason: state.dirtyAllReason ?? 'fallbackPolicy',
-            rootIds: [],
-            rootCount: 0,
-            keySize: 0,
-            keyHash: 0,
-          }
-        : dirtyPathsToRootIds({
-            dirtyPaths: state.dirtyPathIds,
-            registry,
-            dirtyAllReason: state.dirtyAllReason,
-          })
-
-    const transaction: StateTransaction<S> = {
-      txnId: state.txnId,
-      txnSeq: state.txnSeq,
-      origin: state.origin,
-      startedAt: state.startedAt,
-      endedAt,
-      durationMs,
-      dirtySet,
-      patchCount: state.patchCount,
-      patchesTruncated: state.patchesTruncated,
-      ...(state.patchesTruncated ? { patchesTruncatedReason: 'max_patches' } : null),
-      initialStateSnapshot: state.initialStateSnapshot,
-      finalStateSnapshot: config.captureSnapshots ? finalState : undefined,
-      patches: ctx.config.instrumentation === 'full' ? state.patches.slice() : [],
-      moduleId: config.moduleId,
-      instanceId: config.instanceId,
-    }
+    const transaction = buildCommittedTransaction(ctx, state, finalState, endedAt)
 
     // Clear the current transaction.
     ctx.current = undefined

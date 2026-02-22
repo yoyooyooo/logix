@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/module-audit-20260222`
+> 分支：`refactor/logix-core-runtime-chain-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -28,6 +28,8 @@
 - `packages/domain/src/internal/crud/Crud.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-query/src/Query.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-form/src/internal/form/impl.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`：`DEEP_READ`（本轮做链路分析，未改动）
 
 ## 模块清单与阅读进度
 
@@ -46,7 +48,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`UNREAD`
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts` 已深读并重构；`ProcessRuntime.make.ts` 已深读分析）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -98,6 +100,11 @@
 - `packages/logix-form/src/internal/form/impl.ts`
   - `rules` 编译与 `manifest` 生成路径中重复存在依赖前缀处理逻辑，维护成本高且易漂移。
   - 相同语义在多处闭包内重复实现，不利于后续扩展和一致性校验。
+- `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
+  - `recordPatchFull` 的 patch record 构建使用内联对象扩展，分支噪音高且不利于后续字段扩展。
+  - `commit` 同时承担 dirtySet 计算 + transaction 构建 + 提交流程，职责边界不够清晰。
+- `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
+  - `makeTriggerStream`/事件发布链路体量大，建议下一轮按 trigger 类型与 selector diagnostics 拆分局部 helper。
 
 ## 已完成重构项
 
@@ -117,6 +124,12 @@
 - `packages/logix-form/src/internal/form/impl.ts`
   - 抽取共享 helper：`isRelativeRuleDep`、`prefixRuleDeps`、`prefixRuleInputDeps`。
   - 统一 `rules` 编译与 `manifest` 路径中的 deps 前缀逻辑，并通过 `allowNumericRelativeDep` 显式保留原有差异语义。
+- `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
+  - 抽取 `normalizePatchStepId` / `buildPatchRecord`，统一 patch 可选字段归一化，保持 full instrumentation 语义不变。
+  - 抽取 `buildDirtySet` / `buildCommittedTransaction`，让 `commit` 聚焦事务提交流程与单次写入路径。
+  - 性能证据：`.context/perf/logix-core-state-txn-20260222/before.local.default.json`、`.context/perf/logix-core-state-txn-20260222/after.local.default.json`、`.context/perf/logix-core-state-txn-20260222/summary.md`。
+- `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`
+  - 新增回归用例：`StateTransaction full patch records should normalize optional metadata fields`，锁定 stepId/traitNodeId/from 的可选字段语义。
 
 ## 独立审查记录
 
@@ -132,6 +145,10 @@
   - 审查方式：2 个独立 subagent（explorer）；第 1 次提示“数字 deps 语义漂移”，第 2 次基于 `origin/main` 对比复核确认无行为变化
   - 结论：无阻塞问题
   - 残余风险：共享 helper 的 `allowNumericRelativeDep` 选项若后续被误用，可能引入语义漂移
+- 2026-02-22（logix-core / StateTransaction 轮次）
+  - 审查方式：1 个独立 subagent（explorer）基于当前分支改动做只读审查
+  - 结论：无阻塞问题（行为一致性、optional 字段语义、commit/dirtySet 边界均通过）
+  - 残余风险：perf 结果呈 mixed，当前样本不支持“确定性提升/回退”硬结论，后续可按更高采样参数复测
 
 ## 未看过模块
 
@@ -139,7 +156,7 @@
 
 ## 下一步（第一轮）
 
-1. 深读 `apps/logix-galaxy-fe/src/routes/project.tsx` 并拆分为多组件（渲染层与状态层解耦）。
-2. 选择一个 `apps/*-api` 模块继续收敛重复错误映射与鉴权模板。
-3. 深读 `packages/logix-devtools-react` 或 `packages/logix-react`，寻找下一处低风险结构型重构点。
-4. 继续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
+1. 继续深读 `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`，优先拆分 trigger stream / selector diagnostics 局部实现。
+2. 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts` 选取一处中等强度结构重构点，并同步补 perf 证据。
+3. 视变更范围补充 runtime 诊断链路（debug event slim 序列化）一致性检查。
+4. 持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
