@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-process-test-helper-platformevent-20260222`
+> 分支：`refactor/logix-core-process-test-helper-supervise-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -37,6 +37,7 @@
 - `packages/logix-core/test/Process/Process.Trigger.InvalidKind.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.PlatformEvent.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/Process/Process.ErrorPolicy.Supervise.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/test-helpers.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.SelectorDiagnostics.Helpers.test.ts`：`DEEP_READ` + `REFACTORED`
 
@@ -57,7 +58,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`test-helpers.ts` 已深读并重构）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.ErrorPolicy.Supervise.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`test-helpers.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -123,6 +124,9 @@
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
   - `RuntimeServiceBuiltins` 注入在 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 四处重复，容易出现新增服务时的维护漂移。
   - `currentOpSeq` 读取与归一化在 `onCommit` / `deferredConvergeFlush` 双点重复，锚点逻辑不易统一治理。
+- `packages/logix-core/test/Process/Process.ErrorPolicy.Supervise.test.ts`
+  - 手写 `Scope.make + Layer.buildWithScope + Scope.close` 与其他 Process 测试重复，易导致生命周期处理不一致。
+  - 手写轮询骨架与“取 runtime snapshot”逻辑分散，影响后续统一超时/重试策略演进。
 
 ## 已完成重构项
 
@@ -185,6 +189,9 @@
   - 改为复用 `withProcessRuntime` + `withProcessRuntimeScope`，去除手写 scope 生命周期样板，保持事件投递与 `invoked===1` 断言语义不变。
 - `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`
   - 改为复用 `withProcessRuntime` + `withProcessRuntimeScope`，保持 dispatch 次数、warning 轮询与 `process::selector_high_frequency` 断言语义不变。
+- `packages/logix-core/test/Process/Process.ErrorPolicy.Supervise.test.ts`
+  - 改为复用 `withProcessRuntime` + `withProcessRuntimeScope`，移除手写 scope 生命周期样板，保持 `runSeq` 重启/失败序列断言语义不变。
+  - 将 runtime snapshot 轮询收敛到 helper 回调内，后续可与其他 Process 测试统一等待策略。
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
   - 抽取 `withRuntimeServiceBuiltins`，统一 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 的 builtin 注入样板，保持 serviceId 与 builtinMake 映射语义不变。
   - 抽取 `readCurrentOpSeq`，统一 `onCommit` 与 `deferredConvergeFlush` 的 opSeq 读取归一化逻辑，保持 non-negative integer 语义不变。
@@ -279,6 +286,6 @@
 
 ## 下一步（第一轮）
 
-1. 将 `test-helpers.ts` 继续推广到 `Process.ErrorPolicy.Supervise.test.ts` 等仍在手写 scope + 轮询的 Process 用例，进一步统一测试骨架。
+1. 将 `test-helpers.ts` 继续推广到 `Process.Diagnostics.Chain.test.ts`、`Process.Events.Budget.Enforcement.test.ts` 等仍在手写 scope + 轮询的 Process 用例，进一步统一测试骨架。
 2. 评估是否把 `selectorDiagnostics` helper 的纯函数测试进一步下沉到 internal/runtime 目录并补充窗口边界（window rollover）场景，以降低后续演进风险。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
