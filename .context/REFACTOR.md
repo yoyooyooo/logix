@@ -26,7 +26,7 @@
 - `apps/logix-galaxy-fe/src/galaxy-api/client.ts`：`DEEP_READ` + `REFACTORED`
 - `apps/logix-galaxy-fe/src/routes/project.tsx`：`DEEP_READ`（待拆分 UI 组件）
 - `packages/domain/src/internal/crud/Crud.ts`：`DEEP_READ` + `REFACTORED`
-- `packages/logix-query/src/Query.ts`：`DEEP_READ`（待清理结构与可读性）
+- `packages/logix-query/src/Query.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -48,7 +48,7 @@
 - `packages/logix-core`（469 文件，核心运行时）：`UNREAD`
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`UNREAD`
-- `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读，待重构）
+- `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
 - `packages/logix-react`（113 文件）：`UNREAD`
 - `packages/logix-sandbox`（1153 文件，Playground 基础设施）：`UNREAD`
 - `packages/logix-test`（21 文件）：`UNREAD`
@@ -107,13 +107,20 @@
 - `packages/domain/src/internal/crud/Crud.ts`
   - 抽取 `runWithApi`，统一处理：服务注入缺失提示、业务异常到失败 action 的映射。
   - `query/save/remove` 三条动作链改为复用同一执行骨架，减少重复分支并提升可扩展性。
+- `packages/logix-query/src/Query.ts`
+  - 抽取 `buildRefreshTargetSchema` / `buildQueriesSchema` 等构造辅助函数，收敛 `make` 内部嵌套闭包。
+  - 统一 query 名称收集与校验流程，清理控制器构建段落的结构噪音，保持行为与 API 不变。
 
 ## 独立审查记录
 
-- 时间：2026-02-22
-- 审查方式：1 个独立 subagent（explorer）基于 `origin/main...HEAD` diff 做只读审查
-- 结论：无阻塞问题（未发现行为回归/边界错误）
-- 残余风险：`runWithApi` 成为 CRUD 动作链公共入口，后续扩展动作时建议补充针对 helper 路径的回归测试
+- 2026-02-22（domain 轮次）
+  - 审查方式：1 个独立 subagent（explorer）基于 `origin/main...HEAD` diff 做只读审查
+  - 结论：无阻塞问题（未发现行为回归/边界错误）
+  - 残余风险：`runWithApi` 成为 CRUD 动作链公共入口，后续扩展动作时建议补充针对 helper 路径的回归测试
+- 2026-02-22（logix-query 轮次）
+  - 审查方式：1 个独立 subagent（explorer）基于 `origin/main...HEAD` diff 做只读审查
+  - 结论：无阻塞问题
+  - 残余风险：无
 
 ## 未看过模块
 
@@ -122,6 +129,6 @@
 ## 下一步（第一轮）
 
 1. 深读 `apps/logix-galaxy-fe/src/routes/project.tsx` 并拆分为多组件（渲染层与状态层解耦）。
-2. 深读 `packages/logix-query/src/Query.ts`，拆分/收敛构造阶段辅助逻辑并补充最小回归。
-3. 选择一个 `apps/*-api` 模块继续收敛重复错误映射与鉴权模板。
+2. 选择一个 `apps/*-api` 模块继续收敛重复错误映射与鉴权模板。
+3. 评估 `packages/logix-form` 中大函数拆分机会（优先 `internal/form/impl.ts`）。
 4. 继续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。

@@ -140,6 +140,34 @@ const assertQueryName = (name: string): void => {
   }
 }
 
+const asUnionMembers = <A>(items: ReadonlyArray<A>): readonly [A, A, ...Array<A>] => {
+  if (items.length < 2) {
+    throw new Error(`[Query.make] internal error: expected at least 2 query names for union`)
+  }
+  return items as unknown as readonly [A, A, ...Array<A>]
+}
+
+const buildRefreshTargetSchema = <TQueries extends Record<string, AnyQuerySourceConfig<any, any>>>(
+  names: ReadonlyArray<QueryName<TQueries>>,
+): Schema.Schema<QueryName<TQueries>, any> => {
+  if (names.length === 0) {
+    return Schema.Never as unknown as Schema.Schema<QueryName<TQueries>, any>
+  }
+  if (names.length === 1) {
+    return Schema.Literal(names[0] as any) as unknown as Schema.Schema<QueryName<TQueries>, any>
+  }
+  const members = names.map((name) => Schema.Literal(name as any))
+  return Schema.Union(...asUnionMembers(members)) as unknown as Schema.Schema<QueryName<TQueries>, any>
+}
+
+const buildQueriesSchema = <TQueries extends Record<string, AnyQuerySourceConfig<any, any>>>(queries: TQueries) =>
+  Schema.Struct(
+    Object.fromEntries((Object.keys(queries) as Array<keyof TQueries>).map((key) => [key, Schema.Unknown])) as Record<
+      string,
+      Schema.Schema<any, any>
+    >,
+  )
+
 export const make = <
   Id extends string,
   TParams,
@@ -150,46 +178,28 @@ export const make = <
   config: QueryMakeConfig<TParams, TUI, TQueries> & EnsureQueries<TParams, TUI, TQueries>,
 ): QueryModule<Id, TParams, TUI, QueriesOf<TParams, TUI, TQueries>> => {
   type Queries = QueriesOf<TParams, TUI, TQueries>
+
   const queryBuilder: QueryBuilder<TParams, TUI> = {
     source: (q: any) => q,
   }
 
-	  const queries = ((): Queries => {
-	    const raw = config.queries
-	    if (!raw) return {} as Queries
-	    return raw(queryBuilder) as Queries
-	  })()
+  const queries = ((): Queries => {
+    const raw = config.queries
+    if (!raw) return {} as Queries
+    return raw(queryBuilder) as Queries
+  })()
 
   const queriesForTraits: Readonly<Record<string, AnyQuerySourceConfig<TParams, TUI>>> = queries
-  for (const name of Object.keys(queries)) {
+  const queryNames = Object.keys(queries) as Array<QueryName<Queries>>
+  for (const name of queryNames) {
     assertQueryName(name)
   }
 
-	  const RefreshTargetSchema = (() => {
-	    const names = Object.keys(queries) as Array<QueryName<Queries>>
-	    if (names.length === 0) return Schema.Never as unknown as Schema.Schema<QueryName<Queries>, any>
-	    if (names.length === 1) {
-	      return Schema.Literal(names[0] as any) as unknown as Schema.Schema<QueryName<Queries>, any>
-	    }
-    const asUnionMembers = <A>(items: ReadonlyArray<A>): readonly [A, A, ...Array<A>] => {
-      if (items.length < 2) {
-        throw new Error(`[Query.make] internal error: expected at least 2 query names for union`)
-      }
-      return items as unknown as readonly [A, A, ...Array<A>]
-    }
-
-	    const members = names.map((n) => Schema.Literal(n as any))
-	    return Schema.Union(...asUnionMembers(members)) as unknown as Schema.Schema<QueryName<Queries>, any>
-	  })()
+  const RefreshTargetSchema = buildRefreshTargetSchema<Queries>(queryNames)
 
   const UiSchema = Schema.Unknown as Schema.Schema<TUI, any>
 
-	  const QueriesSchema = Schema.Struct(
-	    Object.fromEntries((Object.keys(queries) as Array<keyof Queries>).map((k) => [k, Schema.Unknown])) as Record<
-	      string,
-	      Schema.Schema<any, any>
-	    >,
-	  )
+  const QueriesSchema = buildQueriesSchema<Queries>(queries)
 
   const StateSchema = Schema.Struct({
     params: config.params,
@@ -246,35 +256,34 @@ export const make = <
     ({
       params: params ?? config.initialParams,
       ui: (config.ui ?? ({} as unknown as TUI)) as TUI,
-      queries: Object.fromEntries(
-        (Object.keys(queries) as Array<keyof Queries>).map((k) => [k, Logix.Resource.Snapshot.idle()]),
-      ),
+      queries: Object.fromEntries((Object.keys(queries) as Array<keyof Queries>).map((key) => [key, Logix.Resource.Snapshot.idle()])),
     }) as QueryState<TParams, TUI, Queries>
 
-	  const controller: QueryModuleController<TParams, TUI, Queries> = {
-	    make: (
-	      runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, Queries>, QueryAction<TParams, TUI, Queries>>,
-	    ): QueryController<TParams, TUI, Queries> => {
-	      const dispatch = runtime.dispatch
-	      const actions = module.actions as unknown as {
-	        readonly setParams: (params: TParams) => QueryAction<TParams, TUI, Queries>
-	        readonly setUi: (ui: TUI) => QueryAction<TParams, TUI, Queries>
-	        readonly refresh: (target: QueryName<Queries> | undefined) => QueryAction<TParams, TUI, Queries>
-	        readonly invalidate: (request: InvalidateRequest) => QueryAction<TParams, TUI, Queries>
-	      }
-		      return {
-		        runtime,
-		        getState: runtime.getState as Effect.Effect<QueryState<TParams, TUI, Queries>>,
-		        dispatch,
-	        controller: {
-	          setParams: (params: TParams) => dispatch(actions.setParams(params)),
-	          setUi: (ui: TUI) => dispatch(actions.setUi(ui)),
-	          refresh: (target?: QueryName<Queries>) => dispatch(actions.refresh(target)),
-		          invalidate: (request: InvalidateRequest) => dispatch(actions.invalidate(request)),
-		        },
-		      } as QueryController<TParams, TUI, Queries>
-		    },
-		  }
+  const controller: QueryModuleController<TParams, TUI, Queries> = {
+    make: (
+      runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, Queries>, QueryAction<TParams, TUI, Queries>>,
+    ): QueryController<TParams, TUI, Queries> => {
+      const dispatch = runtime.dispatch
+      const actions = module.actions as unknown as {
+        readonly setParams: (params: TParams) => QueryAction<TParams, TUI, Queries>
+        readonly setUi: (ui: TUI) => QueryAction<TParams, TUI, Queries>
+        readonly refresh: (target: QueryName<Queries> | undefined) => QueryAction<TParams, TUI, Queries>
+        readonly invalidate: (request: InvalidateRequest) => QueryAction<TParams, TUI, Queries>
+      }
+
+      return {
+        runtime,
+        getState: runtime.getState as Effect.Effect<QueryState<TParams, TUI, Queries>>,
+        dispatch,
+        controller: {
+          setParams: (params: TParams) => dispatch(actions.setParams(params)),
+          setUi: (ui: TUI) => dispatch(actions.setUi(ui)),
+          refresh: (target?: QueryName<Queries>) => dispatch(actions.refresh(target)),
+          invalidate: (request: InvalidateRequest) => dispatch(actions.invalidate(request)),
+        },
+      } as QueryController<TParams, TUI, Queries>
+    },
+  }
 
   ;(module as any).controller = controller
 
