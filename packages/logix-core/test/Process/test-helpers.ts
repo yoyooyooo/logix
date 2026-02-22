@@ -38,42 +38,36 @@ export const collectProcessErrorEvent = (options: {
   readonly errorEvent: Logix.Process.ProcessEvent | undefined
   readonly events: ReadonlyArray<Logix.Process.ProcessEvent>
 }> =>
-  Effect.gen(function* () {
-    const attempts = Math.max(1, options.attempts ?? 200)
-    const scope = yield* Scope.make()
-    try {
-      const env = yield* Layer.buildWithScope(options.layer, scope)
-      const rt = Context.get(
-        env as Context.Context<any>,
-        ProcessRuntime.ProcessRuntimeTag as any,
-      ) as ProcessRuntime.ProcessRuntime
-
-      let result: {
-        readonly errorEvent: Logix.Process.ProcessEvent | undefined
-        readonly events: ReadonlyArray<Logix.Process.ProcessEvent>
-      } = {
-        errorEvent: undefined,
-        events: [],
-      }
-      for (let i = 0; i < attempts; i++) {
-        const events = (yield* rt.getEventsSnapshot()) as ReadonlyArray<Logix.Process.ProcessEvent>
-        const errorEvent = events.find(
-          (event) => event.type === 'process:error' && event.identity.identity.processId === options.processId,
-        )
-        if (errorEvent) {
-          result = { errorEvent, events }
-          break
+  withProcessRuntimeScope({
+    layer: options.layer,
+    run: ({ runtime }) =>
+      Effect.gen(function* () {
+        const attempts = Math.max(1, options.attempts ?? 200)
+        let result: {
+          readonly errorEvent: Logix.Process.ProcessEvent | undefined
+          readonly events: ReadonlyArray<Logix.Process.ProcessEvent>
+        } = {
+          errorEvent: undefined,
+          events: [],
         }
-        result = { errorEvent: undefined, events }
-        yield* Effect.yieldNow()
-      }
 
-      if (options.onBeforeClose) {
-        yield* options.onBeforeClose
-      }
+        for (let i = 0; i < attempts; i++) {
+          const events = (yield* runtime.getEventsSnapshot()) as ReadonlyArray<Logix.Process.ProcessEvent>
+          const errorEvent = events.find(
+            (event) => event.type === 'process:error' && event.identity.identity.processId === options.processId,
+          )
+          if (errorEvent) {
+            result = { errorEvent, events }
+            break
+          }
+          result = { errorEvent: undefined, events }
+          yield* Effect.yieldNow()
+        }
 
-      return result
-    } finally {
-      yield* Scope.close(scope, Exit.succeed(undefined))
-    }
+        if (options.onBeforeClose) {
+          yield* options.onBeforeClose
+        }
+
+        return result
+      }),
   })

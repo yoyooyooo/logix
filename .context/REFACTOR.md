@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-process-test-helper-supervise-20260222`
+> 分支：`fix/logix-core-test-helper-typechecktest-20260222`
 > 基线来源：`origin/main`（同步时间：2026-02-22）
 
 ## 状态定义
@@ -127,6 +127,9 @@
 - `packages/logix-core/test/Process/Process.ErrorPolicy.Supervise.test.ts`
   - 手写 `Scope.make + Layer.buildWithScope + Scope.close` 与其他 Process 测试重复，易导致生命周期处理不一致。
   - 手写轮询骨架与“取 runtime snapshot”逻辑分散，影响后续统一超时/重试策略演进。
+- `packages/logix-core/test/Process/test-helpers.ts`
+  - `collectProcessErrorEvent` 手写 scope/buildWithScope 路径在 `typecheck:test`（CI）下推导为 `Effect<..., any, any>`，与声明的 `Effect<..., never, never>` 不一致。
+  - helper 间职责重复：已存在 `withProcessRuntimeScope` 却未复用，导致生命周期与类型推导路径分叉。
 
 ## 已完成重构项
 
@@ -185,6 +188,7 @@
   - `Process.Trigger.ModuleAction.MissingStreams.test.ts` 与 `Process.Trigger.InvalidKind.test.ts` 改为复用 helper，减少重复样板并保持断言语义不变。
   - `Process.Trigger.Timer.test.ts`（invalid timer 分支）与 `Process.Trigger.ModuleStateChange.test.ts`（invalid dot-path 分支）也迁移为复用 helper，统一错误事件采集路径并保持既有断言语义不变。
   - 新增 `withProcessRuntimeScope`，统一封装 `Scope.make` + `Layer.buildWithScope` + `ProcessRuntimeTag` 解析与自动关闭，供“非 process:error”场景复用。
+  - `collectProcessErrorEvent` 改为复用 `withProcessRuntimeScope`，收敛 helper 生命周期路径并修复 `pnpm typecheck:test` 的 `Effect<any, any>` 推导偏差。
 - `packages/logix-core/test/Process/Process.Trigger.PlatformEvent.test.ts`
   - 改为复用 `withProcessRuntime` + `withProcessRuntimeScope`，去除手写 scope 生命周期样板，保持事件投递与 `invoked===1` 断言语义不变。
 - `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`
