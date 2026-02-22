@@ -659,6 +659,18 @@ export const make = (options?: {
           spec: ModuleStateChangeTriggerSpec,
         ): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
           Effect.gen(function* () {
+            type SelectorDiagnosticsState = {
+              readonly windowStartedMs: number
+              readonly triggersInWindow: number
+              readonly lastWarningAtMs: number
+            }
+            type SelectorWarningDecision = {
+              readonly shouldWarn: boolean
+              readonly tooFrequent: boolean
+              readonly tooSlow: boolean
+              readonly triggersInWindow: number
+            }
+
             const runtime = yield* resolveModuleRuntime(spec.moduleId)
             const schemaAst = resolveRuntimeStateSchemaAst(runtime)
             const selectorResult = makeSchemaSelector(spec.path, schemaAst)
@@ -670,12 +682,14 @@ export const make = (options?: {
 
             const enableSelectorDiagnostics = shouldRecordChainEvents
 
+            const initialSelectorDiagnosticsState = (): SelectorDiagnosticsState => ({
+              windowStartedMs: Date.now(),
+              triggersInWindow: 0,
+              lastWarningAtMs: 0,
+            })
+
             const selectorDiagnosticsRef = enableSelectorDiagnostics
-              ? yield* Ref.make({
-                  windowStartedMs: Date.now(),
-                  triggersInWindow: 0,
-                  lastWarningAtMs: 0,
-                })
+              ? yield* Ref.make(initialSelectorDiagnosticsState())
               : undefined
 
             const sampleEveryMask = 0x7f // sample every 128 calls
@@ -689,12 +703,74 @@ export const make = (options?: {
             let selectorSlowSamples = 0
             let selectorMaxSampleMs = 0
 
+            const resetSelectorSampling = (): void => {
+              selectorSamples = 0
+              selectorSlowSamples = 0
+              selectorMaxSampleMs = 0
+            }
+
             const nowMs = (): number => {
               if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
                 return performance.now()
               }
               return Date.now()
             }
+
+            const evaluateSelectorWarning = (
+              state: SelectorDiagnosticsState,
+              now: number,
+            ): readonly [SelectorWarningDecision, SelectorDiagnosticsState] => {
+              const windowExpired = now - state.windowStartedMs >= triggerWindowMs
+              const windowStartedMs = windowExpired ? now : state.windowStartedMs
+              const triggersInWindow = windowExpired ? 1 : state.triggersInWindow + 1
+
+              const shouldCooldown = now - state.lastWarningAtMs < warningCooldownMs
+              const tooFrequent = triggersInWindow >= triggerWarningThreshold
+              const tooSlow = selectorMaxSampleMs >= slowSampleThresholdMs && selectorSamples > 0
+              const shouldWarn = !shouldCooldown && (tooFrequent || tooSlow)
+
+              const next: SelectorDiagnosticsState = shouldWarn
+                ? {
+                    windowStartedMs: now,
+                    triggersInWindow: 0,
+                    lastWarningAtMs: now,
+                  }
+                : {
+                    ...state,
+                    windowStartedMs,
+                    triggersInWindow,
+                  }
+
+              return [
+                {
+                  shouldWarn,
+                  tooFrequent,
+                  tooSlow,
+                  triggersInWindow,
+                },
+                next,
+              ] as const
+            }
+
+            const buildSelectorWarningHint = (decision: SelectorWarningDecision): string =>
+              [
+                `moduleId=${spec.moduleId}`,
+                `path=${spec.path}`,
+                `windowMs=${triggerWindowMs}`,
+                `triggersInWindow=${decision.triggersInWindow}`,
+                `threshold=${triggerWarningThreshold}`,
+                `cooldownMs=${warningCooldownMs}`,
+                '',
+                'selector sampling:',
+                `calls=${selectorCalls}`,
+                `sampled=${selectorSamples}`,
+                `slowSamples(>=${slowSampleThresholdMs}ms)=${selectorSlowSamples}`,
+                `maxSampleMs=${selectorMaxSampleMs.toFixed(2)}`,
+                '',
+                'notes:',
+                '- Ensure the selected value is stable (prefer primitive/tuple; avoid returning fresh objects).',
+                '- Narrow the path to reduce change frequency; avoid selecting large objects.',
+              ].join('\n')
 
             const selector = enableSelectorDiagnostics
               ? (state: unknown): unknown => {
@@ -727,67 +803,15 @@ export const make = (options?: {
               return Effect.gen(function* () {
                 const now = Date.now()
 
-                const decision = yield* Ref.modify(selectorDiagnosticsRef, (s) => {
-                  const windowExpired = now - s.windowStartedMs >= triggerWindowMs
-                  const windowStartedMs = windowExpired ? now : s.windowStartedMs
-                  const triggersInWindow = windowExpired ? 1 : s.triggersInWindow + 1
-
-                  const shouldCooldown = now - s.lastWarningAtMs < warningCooldownMs
-                  const tooFrequent = triggersInWindow >= triggerWarningThreshold
-                  const tooSlow = selectorMaxSampleMs >= slowSampleThresholdMs && selectorSamples > 0
-                  const shouldWarn = !shouldCooldown && (tooFrequent || tooSlow)
-
-                  const next = shouldWarn
-                    ? {
-                        windowStartedMs: now,
-                        triggersInWindow: 0,
-                        lastWarningAtMs: now,
-                      }
-                    : {
-                        ...s,
-                        windowStartedMs,
-                        triggersInWindow,
-                      }
-
-                  return [
-                    {
-                      shouldWarn,
-                      tooFrequent,
-                      tooSlow,
-                      triggersInWindow,
-                    },
-                    next,
-                  ] as const
-                })
+                const decision = yield* Ref.modify(selectorDiagnosticsRef, (s) => evaluateSelectorWarning(s, now))
 
                 if (!decision.shouldWarn) {
                   return
                 }
 
                 const code = decision.tooFrequent ? 'process::selector_high_frequency' : 'process::selector_slow'
-
-                const hint = [
-                  `moduleId=${spec.moduleId}`,
-                  `path=${spec.path}`,
-                  `windowMs=${triggerWindowMs}`,
-                  `triggersInWindow=${decision.triggersInWindow}`,
-                  `threshold=${triggerWarningThreshold}`,
-                  `cooldownMs=${warningCooldownMs}`,
-                  '',
-                  'selector sampling:',
-                  `calls=${selectorCalls}`,
-                  `sampled=${selectorSamples}`,
-                  `slowSamples(>=${slowSampleThresholdMs}ms)=${selectorSlowSamples}`,
-                  `maxSampleMs=${selectorMaxSampleMs.toFixed(2)}`,
-                  '',
-                  'notes:',
-                  '- Ensure the selected value is stable (prefer primitive/tuple; avoid returning fresh objects).',
-                  '- Narrow the path to reduce change frequency; avoid selecting large objects.',
-                ].join('\n')
-
-                selectorSamples = 0
-                selectorSlowSamples = 0
-                selectorMaxSampleMs = 0
+                const hint = buildSelectorWarningHint(decision)
+                resetSelectorSampling()
 
                 yield* emit(
                   makeTriggerEvent(trigger, 'warning', {
