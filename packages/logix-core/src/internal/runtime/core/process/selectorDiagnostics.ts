@@ -26,6 +26,8 @@ export type SelectorDiagnosticsConfig = {
   readonly warningCooldownMs: number
 }
 
+type SelectorSamplingTrackerConfig = Pick<SelectorDiagnosticsConfig, 'sampleEveryMask' | 'slowSampleThresholdMs'>
+
 type SelectorWarningEvaluationOptions = {
   readonly config: SelectorDiagnosticsConfig
   readonly sampling: Pick<SelectorDiagnosticsSampling, 'sampled' | 'maxSampleMs'>
@@ -37,6 +39,13 @@ type SelectorWarningHintOptions = {
   readonly decision: SelectorWarningDecision
   readonly config: SelectorDiagnosticsConfig
   readonly sampling: SelectorDiagnosticsSampling
+}
+
+export type SelectorSamplingTracker = {
+  readonly onSelectorCall: () => boolean
+  readonly recordSample: (sampleMs: number) => void
+  readonly resetSampling: () => void
+  readonly snapshot: () => SelectorDiagnosticsSampling
 }
 
 export const makeSelectorDiagnosticsConfig = (isDevEnv: boolean): SelectorDiagnosticsConfig => ({
@@ -52,6 +61,40 @@ export const initialSelectorDiagnosticsState = (now: number): SelectorDiagnostic
   triggersInWindow: 0,
   lastWarningAtMs: 0,
 })
+
+export const makeSelectorSamplingTracker = (config: SelectorSamplingTrackerConfig): SelectorSamplingTracker => {
+  let calls = 0
+  let sampled = 0
+  let slowSamples = 0
+  let maxSampleMs = 0
+
+  return {
+    onSelectorCall: () => {
+      calls += 1
+      return (calls & config.sampleEveryMask) === 0
+    },
+    recordSample: (sampleMs) => {
+      sampled += 1
+      if (sampleMs >= config.slowSampleThresholdMs) {
+        slowSamples += 1
+      }
+      if (sampleMs > maxSampleMs) {
+        maxSampleMs = sampleMs
+      }
+    },
+    resetSampling: () => {
+      sampled = 0
+      slowSamples = 0
+      maxSampleMs = 0
+    },
+    snapshot: () => ({
+      calls,
+      sampled,
+      slowSamples,
+      maxSampleMs,
+    }),
+  }
+}
 
 export const evaluateSelectorWarning = (
   state: SelectorDiagnosticsState,

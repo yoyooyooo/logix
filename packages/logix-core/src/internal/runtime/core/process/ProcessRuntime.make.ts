@@ -29,6 +29,7 @@ import {
   evaluateSelectorWarning,
   initialSelectorDiagnosticsState,
   makeSelectorDiagnosticsConfig,
+  makeSelectorSamplingTracker,
 } from './selectorDiagnostics.js'
 import type {
   ProcessControlRequest,
@@ -690,18 +691,7 @@ export const make = (options?: {
               ? yield* Ref.make(initialSelectorDiagnosticsState(Date.now()))
               : undefined
 
-            const { sampleEveryMask, slowSampleThresholdMs } = selectorDiagnosticsConfig
-
-            let selectorCalls = 0
-            let selectorSamples = 0
-            let selectorSlowSamples = 0
-            let selectorMaxSampleMs = 0
-
-            const resetSelectorSampling = (): void => {
-              selectorSamples = 0
-              selectorSlowSamples = 0
-              selectorMaxSampleMs = 0
-            }
+            const selectorSampling = makeSelectorSamplingTracker(selectorDiagnosticsConfig)
 
             const nowMs = (): number => {
               if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
@@ -712,8 +702,7 @@ export const make = (options?: {
 
             const selector = enableSelectorDiagnostics
               ? (state: unknown): unknown => {
-                  selectorCalls += 1
-                  if ((selectorCalls & sampleEveryMask) !== 0) {
+                  if (!selectorSampling.onSelectorCall()) {
                     return selectorBase(state)
                   }
 
@@ -721,13 +710,7 @@ export const make = (options?: {
                   const value = selectorBase(state)
                   const dt = nowMs() - t0
 
-                  selectorSamples += 1
-                  if (dt >= slowSampleThresholdMs) {
-                    selectorSlowSamples += 1
-                  }
-                  if (dt > selectorMaxSampleMs) {
-                    selectorMaxSampleMs = dt
-                  }
+                  selectorSampling.recordSample(dt)
 
                   return value
                 }
@@ -740,13 +723,14 @@ export const make = (options?: {
 
               return Effect.gen(function* () {
                 const now = Date.now()
+                const sampling = selectorSampling.snapshot()
 
                 const decision = yield* Ref.modify(selectorDiagnosticsRef, (s) =>
                   evaluateSelectorWarning(s, now, {
                     config: selectorDiagnosticsConfig,
                     sampling: {
-                      sampled: selectorSamples,
-                      maxSampleMs: selectorMaxSampleMs,
+                      sampled: sampling.sampled,
+                      maxSampleMs: sampling.maxSampleMs,
                     },
                   }),
                 )
@@ -761,14 +745,9 @@ export const make = (options?: {
                   path: spec.path,
                   decision,
                   config: selectorDiagnosticsConfig,
-                  sampling: {
-                    calls: selectorCalls,
-                    sampled: selectorSamples,
-                    slowSamples: selectorSlowSamples,
-                    maxSampleMs: selectorMaxSampleMs,
-                  },
+                  sampling,
                 })
-                resetSelectorSampling()
+                selectorSampling.resetSampling()
 
                 yield* emit(
                   makeTriggerEvent(trigger, 'warning', {
