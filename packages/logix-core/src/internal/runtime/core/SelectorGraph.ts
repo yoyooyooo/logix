@@ -439,10 +439,16 @@ export const make = <S>(args: {
         if (candidates.length === 0) {
           continue
         }
+        const isRootLevelDirty = dirtyRootCandidate.path.length <= 1
 
         for (const candidate of candidates) {
           const { entry, selectorId, readsForRoot } = candidate
           if (entry.subscriberCount === 0 || entry.lastScheduledTxnSeq === meta.txnSeq) continue
+
+          if (isRootLevelDirty) {
+            yield* evaluateSubscribedEntry(entry, selectorId)
+            continue
+          }
 
           let overlapsDirtyRoot = false
           for (const read of readsForRoot) {
