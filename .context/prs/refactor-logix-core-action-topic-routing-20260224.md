@@ -36,6 +36,11 @@
 - `pnpm --filter @logixjs/core test -- test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts` ✅
 - `pnpm typecheck` ✅
 - `pnpm test:turbo` ✅
+- CI follow-up:
+  - `verify` 首轮失败：`typecheck:test` 报 TS2722（`actionsByTag$` 可选调用未收窄）。
+  - 已补充测试内的非空收窄绑定（`const actionsByTag = actionsByTag$!`）并复验：
+    - `pnpm --filter @logixjs/core typecheck:test` ✅
+    - `pnpm test:turbo` ✅
 
 ## 独立审查
 - Reviewer：subagent（`agent_id=019c8b59-5ee9-7160-b848-882754311412`）
