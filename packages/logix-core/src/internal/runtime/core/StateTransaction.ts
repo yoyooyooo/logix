@@ -79,6 +79,11 @@ export interface StateTransaction<S> {
   readonly instanceId?: string
 }
 
+export interface StateTransactionCommitResult<S> {
+  readonly transaction: StateTransaction<S>
+  readonly finalState: S
+}
+
 /**
  * StateTxnContext：
  * - Holds transaction state within a single ModuleRuntime.
@@ -444,18 +449,14 @@ export const recordPatch = <S>(
 }
 
 /**
- * Commits the transaction:
- * - Writes the final draft to SubscriptionRef exactly once.
- * - Returns the aggregated StateTransaction; returns undefined if there is no active transaction.
- *
- * Notes:
- * - Emitting Debug/Devtools events is decided by the caller based on the returned transaction.
- * - This module does not depend on DebugSink to avoid circular dependencies in core.
+ * commitWithState：
+ * - Commits current transaction and returns both aggregated transaction metadata and committed final state.
+ * - Used by runtime hot path to avoid an extra stateRef round-trip after commit.
  */
-export const commit = <S>(
+export const commitWithState = <S>(
   ctx: StateTxnContext<S>,
   stateRef: SubscriptionRef.SubscriptionRef<S>,
-): Effect.Effect<StateTransaction<S> | undefined> =>
+): Effect.Effect<StateTransactionCommitResult<S> | undefined> =>
   Effect.gen(function* () {
     const state = ctx.current
     if (!state) {
@@ -482,8 +483,26 @@ export const commit = <S>(
     // Clear the current transaction.
     ctx.current = undefined
 
-    return transaction
+    return {
+      transaction,
+      finalState,
+    }
   })
+
+/**
+ * Commits the transaction:
+ * - Writes the final draft to SubscriptionRef exactly once.
+ * - Returns the aggregated StateTransaction; returns undefined if there is no active transaction.
+ *
+ * Notes:
+ * - Emitting Debug/Devtools events is decided by the caller based on the returned transaction.
+ * - This module does not depend on DebugSink to avoid circular dependencies in core.
+ */
+export const commit = <S>(
+  ctx: StateTxnContext<S>,
+  stateRef: SubscriptionRef.SubscriptionRef<S>,
+): Effect.Effect<StateTransaction<S> | undefined> =>
+  commitWithState(ctx, stateRef).pipe(Effect.map((result) => result?.transaction))
 
 /**
  * abort：

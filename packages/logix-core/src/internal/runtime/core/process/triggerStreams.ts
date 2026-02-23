@@ -1,5 +1,6 @@
 import { Context, Duration, Effect, Option, Ref, Stream } from 'effect'
 import { isDevEnv } from '../env.js'
+import * as ReadQuery from '../ReadQuery.js'
 import { makeSchemaSelector } from './selectorSchema.js'
 import {
   buildSelectorWarningHint,
@@ -59,6 +60,19 @@ const nowMs = (): number => {
   }
   return Date.now()
 }
+
+const makeModuleStateChangeReadQuery = (args: {
+  readonly moduleId: string
+  readonly path: string
+  readonly selector: (state: unknown) => unknown
+}): ReadQuery.ReadQuery<unknown, unknown> =>
+  ReadQuery.make({
+    selectorId: `process:moduleStateChange:${args.moduleId}:${args.path}`,
+    debugKey: `process.moduleStateChange:${args.moduleId}.${args.path}`,
+    reads: [args.path],
+    select: args.selector,
+    equalsKind: 'objectIs',
+  })
 
 export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactoryOptions) => {
   const resolveModuleRuntime = (moduleId: string): Effect.Effect<any, Error> =>
@@ -142,8 +156,50 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
       }
 
       const selectorBase = selectorResult.selector
-      const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
+      const buildModuleStateChangeTrigger = (txnSeq: unknown): ProcessTrigger => ({
+        kind: 'moduleStateChange',
+        name: spec.name,
+        moduleId: spec.moduleId,
+        instanceId: runtime.instanceId as string,
+        path: spec.path,
+        txnSeq: typeof txnSeq === 'number' ? txnSeq : 1,
+      })
+
       const enableSelectorDiagnostics = options.shouldRecordChainEvents
+      if (!enableSelectorDiagnostics) {
+        const readQuery = makeModuleStateChangeReadQuery({
+          moduleId: spec.moduleId,
+          path: spec.path,
+          selector: selectorBase,
+        })
+        const changesReadQueryWithMeta = runtime.changesReadQueryWithMeta as
+          | ((input: ReadQuery.ReadQueryInput<unknown, unknown>) => Stream.Stream<any>)
+          | undefined
+
+        if (typeof changesReadQueryWithMeta === 'function') {
+          return changesReadQueryWithMeta(readQuery).pipe(
+            Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
+          )
+        }
+
+        const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
+        return (runtime.changesWithMeta(selectorBase) as Stream.Stream<any>).pipe(
+          Stream.mapEffect((evt: any) =>
+            Ref.get(prevRef).pipe(
+              Effect.flatMap((prev) => {
+                if (Option.isSome(prev) && Object.is(prev.value, evt.value)) {
+                  return Effect.succeed(Option.none())
+                }
+                return Ref.set(prevRef, Option.some(evt.value)).pipe(Effect.as(Option.some(evt)))
+              }),
+            ),
+          ),
+          Stream.filterMap((opt) => opt),
+          Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
+        )
+      }
+
+      const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
       const selectorDiagnosticsConfig = makeSelectorDiagnosticsConfig(isDevEnv())
       const selectorDiagnosticsRef = enableSelectorDiagnostics
         ? yield* Ref.make(initialSelectorDiagnosticsState(Date.now()))
@@ -218,20 +274,10 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
           ),
         ),
         Stream.filterMap((opt) => opt),
-        Stream.map((evt: any) => {
-          const txnSeq = evt?.meta?.txnSeq
-          return {
-            kind: 'moduleStateChange',
-            name: spec.name,
-            moduleId: spec.moduleId,
-            instanceId: runtime.instanceId as string,
-            path: spec.path,
-            txnSeq: typeof txnSeq === 'number' ? txnSeq : 1,
-          } satisfies ProcessTrigger
-        }),
+        Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
       )
 
-      return enableSelectorDiagnostics ? baseStream.pipe(Stream.tap(maybeWarnSelector)) : baseStream
+      return baseStream.pipe(Stream.tap(maybeWarnSelector))
     })
 
   return (spec: NonPlatformTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>

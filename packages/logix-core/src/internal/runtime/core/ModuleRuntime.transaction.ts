@@ -510,9 +510,11 @@ export const makeTransactionOps = <S>(args: {
                     const dirtyAllSetStateHint = !!(txnContext.current as any)
                       ? (txnContext.current as any)[DIRTY_ALL_SET_STATE_HINT] === true
                       : false
-                    const txn = yield* StateTransaction.commit(txnContext, stateRef)
+                    const commitResult = yield* StateTransaction.commitWithState(txnContext, stateRef)
 
-                    if (txn) {
+                    if (commitResult) {
+                      const txn = commitResult.transaction
+                      const nextState = commitResult.finalState
                       const shouldWarnDirtyAllSetState =
                         dirtyAllSetStateHint || (txn.origin.kind === 'state' && txn.origin.name === 'setState')
 
@@ -545,11 +547,6 @@ export const makeTransactionOps = <S>(args: {
                           }
                         }
                       }
-
-                      const nextState =
-                        txn.finalStateSnapshot !== undefined
-                          ? txn.finalStateSnapshot
-                          : yield* SubscriptionRef.get(stateRef)
 
                       // RowID virtual identity layer: align mappings after each observable commit
                       // so in-flight gates and cache reuse remain stable under insert/remove/reorder.

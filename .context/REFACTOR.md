@@ -17,6 +17,7 @@
 - `pr-32.md`：SelectorGraph 核心链路收敛与热路径判断优化
 - `refactor-logix-core-process-trigger-stream-factory-20260223.md`：ProcessRuntime 触发器流模块化（进行中）
 - `refactor-logix-core-runtime-kernel-selection-split-20260223.md`：RuntimeKernel 选择/证据纯函数模块化（进行中）
+- `refactor-logix-core-cross-module-perf-20260223.md`：事务提交回读消除 + moduleStateChange 静态 readQuery 通道（待提 PR）
 
 ## 已看过模块
 
@@ -38,8 +39,10 @@
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`：`DEEP_READ` + `REFACTORED`
@@ -52,6 +55,7 @@
 - `packages/logix-core/test/Process/Process.SelectorDiagnostics.Helpers.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/internal/Runtime/TickScheduler.fixpoint.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Runtime/ModuleRuntime/SelectorGraph.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -171,6 +175,17 @@
   - 抽取 `normalizePatchStepId` / `buildPatchRecord`，统一 patch 可选字段归一化，保持 full instrumentation 语义不变。
   - 抽取 `buildDirtySet` / `buildCommittedTransaction`，让 `commit` 聚焦事务提交流程与单次写入路径。
   - 性能证据：`.context/perf/logix-core-state-txn-20260222/before.local.default.json`、`.context/perf/logix-core-state-txn-20260222/after.local.default.json`、`.context/perf/logix-core-state-txn-20260222/summary.md`。
+- `packages/logix-core/src/internal/runtime/core/StateTransaction.ts` + `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
+  - 新增 `StateTransaction.commitWithState`，在保持 `commit` 对外语义不变的前提下返回已提交 `finalState`。
+  - `ModuleRuntime.transaction` 改为复用 `commitWithState`，移除提交后 `SubscriptionRef.get(stateRef)` 回读，减少一次热路径状态读取。
+- `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`
+  - `moduleStateChange` 在非诊断路径切换为 `changesReadQueryWithMeta(ReadQuery.make(...))` 静态通道，复用 `SelectorGraph` 增量评估与缓存，减少逐提交 selector 重算。
+  - 保留诊断路径（selector 采样/告警）既有实现与语义不变；仅在运行时不支持 `changesReadQueryWithMeta` 时回退旧路径。
+- `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.test.ts`
+  - 新增 `should ignore commits when unrelated paths change` 回归用例，锁定 `moduleStateChange(path)` 在非相关字段更新下不触发行为。
+- `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`
+  - 新增 `commitWithState` 与 `commit` 语义等价回归（事务元数据一致 + `finalState` 一致）。
+  - 新增 `0-commit` 语义回归（基于 `Object.is` 引用相等：`commit`/`commitWithState` 均返回 `undefined` 且清空 `ctx.current`）。
 - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
   - 新增 `partitionModulesForBudget`，将 `flushTick` 预算分桶改为“线性遍历直接写 accepted/deferred Map”，去除 `urgent/nonUrgent` 数组分组与 `slice` 的额外分配。
   - 保持既有语义：`urgentStepCap` 超限仍优先触发 `cycle_detected`，否则仅在 nonUrgent backlog 溢出时标记 `budget_steps`。
@@ -239,6 +254,10 @@
   - 审查方式：1 个独立 subagent（explorer，`agent_id=019c865e-f79d-7d33-8fb7-9a53d89bb7bf`）基于当前工作树 diff 做只读审查
   - 结论：无阻塞问题，可合并（单/多 selector 评估语义保持；`readRootKeySet` 为热路径常量优化；新增多 selector 回归测试覆盖关键边界）
   - 残余风险：建议后续补充 `dirtyAll` 与 registry 缺失路径的组合回归，持续监控 `dirtyPathsToRootIds` 与 registry 同步性
+- 2026-02-23（logix-core / cross-module perf 轮次）
+  - 审查方式：1 个独立 subagent（explorer，`agent_id=019c8913-60ca-7480-bfa1-d301eaf46445`）基于相对 `origin/main` 的 diff 做只读审查
+  - 结论：无阻塞问题，可合并
+  - 残余风险：fallback 路径首个无关提交可能误触发一次（仅无 `changesReadQueryWithMeta` 场景），后续可补 `prevRef` 预热与实现约束测试
 - 2026-02-22（domain 轮次）
   - 审查方式：1 个独立 subagent（explorer）基于 `origin/main...HEAD` diff 做只读审查
   - 结论：无阻塞问题（未发现行为回归/边界错误）

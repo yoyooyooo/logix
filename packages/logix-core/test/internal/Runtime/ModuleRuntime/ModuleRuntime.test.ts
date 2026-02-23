@@ -606,6 +606,87 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
+    it.scoped('StateTransaction.commitWithState should stay semantically equivalent to commit', () =>
+      Effect.gen(function* () {
+        type S = { count: number }
+
+        const makeContext = () =>
+          StateTransaction.makeContext<S>({
+            moduleId: 'TxnUnitModule',
+            instanceId: 'unit-instance',
+            instrumentation: 'full',
+            captureSnapshots: true,
+            now: () => 1,
+          })
+
+        const prepare = (ctx: StateTransaction.StateTxnContext<S>) => {
+          StateTransaction.beginTransaction(ctx, { kind: 'unit-test', name: 'commit-equivalence' }, { count: 0 })
+          StateTransaction.updateDraft(ctx, { count: 1 })
+          StateTransaction.recordPatch(ctx, 'count', 'reducer', 0, 1)
+          StateTransaction.updateDraft(ctx, { count: 2 })
+          StateTransaction.recordPatch(ctx, 'count', 'reducer', 1, 2)
+        }
+
+        const refByCommit = yield* SubscriptionRef.make<S>({ count: 0 })
+        const ctxByCommit = makeContext()
+        prepare(ctxByCommit)
+        const committedTxn = yield* StateTransaction.commit(ctxByCommit, refByCommit)
+
+        const refByCommitWithState = yield* SubscriptionRef.make<S>({ count: 0 })
+        const ctxByCommitWithState = makeContext()
+        prepare(ctxByCommitWithState)
+        const committedResult = yield* StateTransaction.commitWithState(ctxByCommitWithState, refByCommitWithState)
+
+        expect(committedTxn).toBeDefined()
+        expect(committedResult).toBeDefined()
+        expect(committedResult?.transaction).toEqual(committedTxn)
+
+        const stateFromCommit = yield* SubscriptionRef.get(refByCommit)
+        const stateFromCommitWithState = yield* SubscriptionRef.get(refByCommitWithState)
+        expect(committedResult?.finalState).toEqual(stateFromCommitWithState)
+        expect(stateFromCommitWithState).toEqual(stateFromCommit)
+      }),
+    )
+
+    it.scoped('StateTransaction.commit and commitWithState should both keep 0-commit semantics', () =>
+      Effect.gen(function* () {
+        type S = { count: number }
+
+        const makeContext = () =>
+          StateTransaction.makeContext<S>({
+            moduleId: 'TxnUnitModule',
+            instanceId: 'unit-instance',
+            instrumentation: 'full',
+            captureSnapshots: true,
+            now: () => 1,
+          })
+
+        const refByCommit = yield* SubscriptionRef.make<S>({ count: 0 })
+        const ctxByCommit = makeContext()
+        const baseByCommit = { count: 0 }
+        StateTransaction.beginTransaction(ctxByCommit, { kind: 'unit-test', name: 'zero-commit' }, baseByCommit)
+        StateTransaction.updateDraft(ctxByCommit, baseByCommit)
+        const committedTxn = yield* StateTransaction.commit(ctxByCommit, refByCommit)
+        expect(committedTxn).toBeUndefined()
+        expect(ctxByCommit.current).toBeUndefined()
+        expect(yield* SubscriptionRef.get(refByCommit)).toEqual({ count: 0 })
+
+        const refByCommitWithState = yield* SubscriptionRef.make<S>({ count: 0 })
+        const ctxByCommitWithState = makeContext()
+        const baseByCommitWithState = { count: 0 }
+        StateTransaction.beginTransaction(
+          ctxByCommitWithState,
+          { kind: 'unit-test', name: 'zero-commit-with-state' },
+          baseByCommitWithState,
+        )
+        StateTransaction.updateDraft(ctxByCommitWithState, baseByCommitWithState)
+        const committedResult = yield* StateTransaction.commitWithState(ctxByCommitWithState, refByCommitWithState)
+        expect(committedResult).toBeUndefined()
+        expect(ctxByCommitWithState.current).toBeUndefined()
+        expect(yield* SubscriptionRef.get(refByCommitWithState)).toEqual({ count: 0 })
+      }),
+    )
+
     it.scoped('StateTransaction should honor light instrumentation (no patches / snapshots)', () =>
       Effect.gen(function* () {
         type S = { value: number }
