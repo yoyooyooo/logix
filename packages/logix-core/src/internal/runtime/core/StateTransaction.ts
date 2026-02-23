@@ -1,7 +1,7 @@
 import { Effect, SubscriptionRef } from 'effect'
 import {
   getFieldPathId,
-  dirtyPathsToRootIds,
+  dirtyPathIdsToRootIds,
   normalizeFieldPath,
   normalizePatchReason,
   type FieldPathIdRegistry,
@@ -209,8 +209,8 @@ const buildDirtySet = <S>(state: StateTxnState<S>): DirtySet => {
       keyHash: 0,
     }
   }
-  return dirtyPathsToRootIds({
-    dirtyPaths: state.dirtyPathIds,
+  return dirtyPathIdsToRootIds({
+    dirtyPathIds: state.dirtyPathIds,
     registry,
     dirtyAllReason: state.dirtyAllReason,
   })

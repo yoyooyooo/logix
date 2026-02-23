@@ -220,20 +220,102 @@ export const hashFieldPathIds = (ids: ReadonlyArray<number>): number => {
   return hash >>> 0
 }
 
+const makeDirtyAllSet = (reason: DirtyAllReason): DirtySet => ({
+  dirtyAll: true,
+  reason,
+  rootIds: [],
+  rootCount: 0,
+  keySize: 0,
+  keyHash: 0,
+})
+
+const buildSpecificDirtySetFromIds = (
+  ids: ReadonlyArray<number>,
+  fieldPathsById: ReadonlyArray<FieldPath>,
+): DirtySet => {
+  const sorted = Array.from(ids)
+  sorted.sort((a, b) => {
+    const ap = fieldPathsById[a]
+    const bp = fieldPathsById[b]
+    if (!ap || !bp) return a - b
+    const cmp = compareFieldPath(ap, bp)
+    return cmp !== 0 ? cmp : a - b
+  })
+
+  const rootIds: Array<number> = []
+  let prev: FieldPath | undefined
+  for (let i = 0; i < sorted.length; i++) {
+    const id = sorted[i]!
+    const path = fieldPathsById[id]
+    if (!path) continue
+    if (prev && isPrefixOf(prev, path)) continue
+    rootIds.push(id)
+    prev = path
+  }
+
+  if (rootIds.length === 0) {
+    return makeDirtyAllSet('unknownWrite')
+  }
+
+  rootIds.sort((a, b) => a - b)
+  const keyHash = hashFieldPathIds(rootIds)
+  return {
+    dirtyAll: false,
+    rootIds,
+    rootCount: rootIds.length,
+    keySize: rootIds.length,
+    keyHash,
+  }
+}
+
+export const dirtyPathIdsToRootIds = (options: {
+  readonly dirtyPathIds?: Iterable<FieldPathId>
+  readonly registry: FieldPathIdRegistry
+  readonly dirtyAllReason?: DirtyAllReason
+}): DirtySet => {
+  if (options.dirtyAllReason) {
+    return makeDirtyAllSet(options.dirtyAllReason)
+  }
+
+  let hasInvalid = false
+  let missing = false
+  const ids: Array<number> = []
+
+  for (const raw of options.dirtyPathIds ?? []) {
+    if (!Number.isFinite(raw)) {
+      hasInvalid = true
+      continue
+    }
+    const id = Math.floor(raw)
+    if (id < 0) {
+      hasInvalid = true
+      continue
+    }
+    if (!options.registry.fieldPaths[id]) {
+      missing = true
+      continue
+    }
+    ids.push(id)
+  }
+
+  if (hasInvalid) {
+    return makeDirtyAllSet('nonTrackablePatch')
+  }
+
+  if (missing) {
+    return makeDirtyAllSet('fallbackPolicy')
+  }
+
+  return buildSpecificDirtySetFromIds(ids, options.registry.fieldPaths)
+}
+
 export const dirtyPathsToRootIds = (options: {
   readonly dirtyPaths?: Iterable<string | FieldPath | FieldPathId>
   readonly registry: FieldPathIdRegistry
   readonly dirtyAllReason?: DirtyAllReason
 }): DirtySet => {
   if (options.dirtyAllReason) {
-    return {
-      dirtyAll: true,
-      reason: options.dirtyAllReason,
-      rootIds: [],
-      rootCount: 0,
-      keySize: 0,
-      keyHash: 0,
-    }
+    return makeDirtyAllSet(options.dirtyAllReason)
   }
 
   let sawStar = false
@@ -293,82 +375,19 @@ export const dirtyPathsToRootIds = (options: {
   }
 
   if (hasInvalid) {
-    return {
-      dirtyAll: true,
-      reason: 'nonTrackablePatch',
-      rootIds: [],
-      rootCount: 0,
-      keySize: 0,
-      keyHash: 0,
-    }
+    return makeDirtyAllSet('nonTrackablePatch')
   }
 
   if (missing) {
-    return {
-      dirtyAll: true,
-      reason: 'fallbackPolicy',
-      rootIds: [],
-      rootCount: 0,
-      keySize: 0,
-      keyHash: 0,
-    }
+    return makeDirtyAllSet('fallbackPolicy')
   }
 
   // Any non-trackable write must explicitly degrade (do not "ignore *" when roots exist).
   if (sawStar) {
-    return {
-      dirtyAll: true,
-      reason: 'unknownWrite',
-      rootIds: [],
-      rootCount: 0,
-      keySize: 0,
-      keyHash: 0,
-    }
+    return makeDirtyAllSet('unknownWrite')
   }
 
-  const fieldPathsById = options.registry.fieldPaths
-  ids.sort((a, b) => {
-    const ap = fieldPathsById[a]
-    const bp = fieldPathsById[b]
-    if (!ap || !bp) return a - b
-    const cmp = compareFieldPath(ap, bp)
-    return cmp !== 0 ? cmp : a - b
-  })
-
-  const rootIds: Array<number> = []
-  let prev: FieldPath | undefined
-  for (let i = 0; i < ids.length; i++) {
-    const id = ids[i]!
-    const path = fieldPathsById[id]
-    if (!path) continue
-    if (prev && isPrefixOf(prev, path)) continue
-    rootIds.push(id)
-    prev = path
-  }
-
-  const hasSpecific = rootIds.length > 0
-
-  if (!hasSpecific) {
-    return {
-      dirtyAll: true,
-      reason: 'unknownWrite',
-      rootIds: [],
-      rootCount: 0,
-      keySize: 0,
-      keyHash: 0,
-    }
-  }
-
-  rootIds.sort((a, b) => a - b)
-
-  const keyHash = hashFieldPathIds(rootIds)
-  return {
-    dirtyAll: false,
-    rootIds,
-    rootCount: rootIds.length,
-    keySize: rootIds.length,
-    keyHash,
-  }
+  return buildSpecificDirtySetFromIds(ids, options.registry.fieldPaths)
 }
 
 const splitSegments = (path: string): Array<string> | undefined => {

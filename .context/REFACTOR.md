@@ -23,7 +23,8 @@
 - `refactor-logix-core-platform-event-index-20260223.md`：Process 平台事件分发索引化（已合并 PR #38）
 - `refactor-logix-core-module-statechange-dedupe-20260223.md`：moduleStateChange 去重路径 Ref.modify 收敛（已合并 PR #39）
 - `refactor-logix-core-selectorgraph-reads-by-root-20260223.md`：SelectorGraph 按 rootKey 分组 reads（已合并 PR #40）
-- `refactor-logix-core-module-statechange-readquery-diag-20260223.md`：moduleStateChange 诊断路径 readQuery 化（PR #41，等待 CI）
+- `refactor-logix-core-module-statechange-readquery-diag-20260223.md`：moduleStateChange 诊断路径 readQuery 化（已合并 PR #41）
+- `refactor-logix-core-dirtyset-id-fastpath-20260223.md`：StateTransaction dirtySet id-only 快路径（PR #42，等待 CI）
 
 ## 已看过模块
 
@@ -189,6 +190,11 @@
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts` + `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
   - 新增 `StateTransaction.commitWithState`，在保持 `commit` 对外语义不变的前提下返回已提交 `finalState`。
   - `ModuleRuntime.transaction` 改为复用 `commitWithState`，移除提交后 `SubscriptionRef.get(stateRef)` 回读，减少一次热路径状态读取。
+- `packages/logix-core/src/internal/field-path.ts` + `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
+  - 新增 `dirtyPathIdsToRootIds`（id-only fast path），并让 `StateTransaction.buildDirtySet` 直接走 numeric-id 专用分支，减少事务提交阶段对 string/path 输入类型的通用分支判定。
+  - 抽取 `makeDirtyAllSet` / `buildSpecificDirtySetFromIds`，统一 `dirtyPathsToRootIds` 与 fast path 的 root 收敛与 hash 计算逻辑，保持 `DirtyAllReason/rootIds/keyHash` 语义一致。
+- `packages/logix-core/test/internal/FieldPath/FieldPath.DirtySetReason.test.ts`
+  - 新增 fast path 回归：前缀收敛、invalid id→`nonTrackablePatch`、missing id→`fallbackPolicy`，锁定 id-only 分支与既有 dirty reason 语义一致。
 - `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`
   - `moduleStateChange` 在非诊断路径切换为 `changesReadQueryWithMeta(ReadQuery.make(...))` 静态通道，复用 `SelectorGraph` 增量评估与缓存，减少逐提交 selector 重算。
   - 保留诊断路径（selector 采样/告警）既有实现与语义不变；仅在运行时不支持 `changesReadQueryWithMeta` 时回退旧路径。
