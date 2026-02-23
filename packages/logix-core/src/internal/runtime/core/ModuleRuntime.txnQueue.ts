@@ -200,29 +200,33 @@ export const makeEnqueueTransaction = (args: {
             return
           }
 
-          const policy = yield* args.resolveConcurrencyPolicy()
-          const now = Date.now()
-          if (waitedFromMs === undefined) {
-            waitedFromMs = now
-          }
-          const saturatedDurationMs = now - waitedFromMs
+          yield* Effect.uninterruptibleMask((restore) =>
+            Effect.ensuring(
+              restore(
+                Effect.gen(function* () {
+                  const policy = yield* args.resolveConcurrencyPolicy()
+                  const now = Date.now()
+                  if (waitedFromMs === undefined) {
+                    waitedFromMs = now
+                  }
+                  const saturatedDurationMs = now - waitedFromMs
 
-          yield* diagnostics.emitPressureIfNeeded({
-            policy,
-            trigger: { kind: 'txnQueue', name: `enqueueTransaction.${lane}` },
-            backlogCount: attempt.backlogCount,
-            saturatedDurationMs,
-          })
+                  yield* diagnostics.emitPressureIfNeeded({
+                    policy,
+                    trigger: { kind: 'txnQueue', name: `enqueueTransaction.${lane}` },
+                    backlogCount: attempt.backlogCount,
+                    saturatedDurationMs,
+                  })
 
-          yield* Effect.acquireUseRelease(
-            Effect.succeed(attempt.signal),
-            (signal) => Deferred.await(signal),
-            () =>
+                  yield* Deferred.await(attempt.signal)
+                }),
+              ),
               Ref.update(stateRef, (s) => ({
                 backlogCount: s.backlogCount,
                 waiters: s.waiters > 0 ? s.waiters - 1 : 0,
                 signal: s.signal,
               })),
+            ),
           )
         }
       })
