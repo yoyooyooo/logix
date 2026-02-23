@@ -26,4 +26,8 @@
 - `pnpm test:turbo`
 
 ## 独立审查
-- 待补（创建 PR 后由独立 subagent review 并回填结论）。
+- Reviewer：subagent `019c8997-eeba-7e22-8b4e-662bb2194a41`
+- 结论：可合并（无阻塞问题）。
+- 非阻塞建议与处理：
+  - 建议补 “runtime 缺失 `changesReadQueryWithMeta` 时 fallback 仍生效” 的回归用例；本轮记入后续补强项，当前行为已保留 fallback 分支。
+  - 建议统一 diagnostics 相关测试中的时序等待 helper；本轮不扩 scope，仅在新增用例维持现有 `TestClock.adjust + yieldNow` 风格。
