@@ -24,7 +24,8 @@
 - `refactor-logix-core-module-statechange-dedupe-20260223.md`：moduleStateChange 去重路径 Ref.modify 收敛（已合并 PR #39）
 - `refactor-logix-core-selectorgraph-reads-by-root-20260223.md`：SelectorGraph 按 rootKey 分组 reads（已合并 PR #40）
 - `refactor-logix-core-module-statechange-readquery-diag-20260223.md`：moduleStateChange 诊断路径 readQuery 化（已合并 PR #41）
-- `refactor-logix-core-dirtyset-id-fastpath-20260223.md`：StateTransaction dirtySet id-only 快路径（PR #42，等待 CI）
+- `refactor-logix-core-dirtyset-id-fastpath-20260223.md`：StateTransaction dirtySet id-only 快路径（已合并 PR #42）
+- `refactor-logix-core-process-latest-mode-inplace-20260223.md`：Process/TaskRunner latest 运行槽统一 + serial/parallel 游标队列（PR 待创建）
 
 ## 已看过模块
 
@@ -47,6 +48,8 @@
 - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/concurrency.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/TaskRunner.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/LatestFiberSlot.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
@@ -221,6 +224,10 @@
   - serial/parallel 队列改为原地 `push/shift` + 原地状态更新，移除每次触发都复制队列数组的 O(n) 分配开销。
   - `drainSerial/drainParallel` 改为直接消费队头元素，保持 FIFO 与并发门限语义不变。
   - `peak/currentLength/queue overflow` 统计与告警语义保持不变。
+- `packages/logix-core/src/internal/runtime/core/process/concurrency.ts` + `packages/logix-core/src/internal/runtime/core/TaskRunner.ts`
+  - 引入 `LatestFiberSlot` 统一 latest 并发运行槽（`runId + fiber`），收敛两套并发取消/写回守卫实现。
+  - latest 路径改为原地 Ref 状态更新，移除对象扩散与 `Fiber.poll` 分支，保持“新触发中断旧 run”语义不变。
+  - serial/parallel 队列改为游标队列，避免 `Array.shift()` 导致的 O(n) 出队成本。
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`
   - 新增 `makeSelectorDiagnosticsConfig`、`initialSelectorDiagnosticsState`、`evaluateSelectorWarning`、`buildSelectorWarningHint`，将 moduleStateChange selector 诊断的阈值/决策/hint 文案抽离为单一 helper。
   - `ProcessRuntime.make.ts` 改为复用该 helper，仅保留采样计数与 warning 事件发射装配，保持 `process::selector_high_frequency` / `process::selector_slow` 判定与 hint 结构不变。

@@ -184,4 +184,67 @@ describe('process: concurrency latest vs serial', () => {
       expect(yield* Ref.get(maxActive)).toBe(1)
     }),
   )
+
+  it.scoped('serial should drain backlog without dropping triggers', () =>
+    Effect.gen(function* () {
+      const completed = yield* Ref.make(0)
+      // ProcessRuntime platform event intake currently uses a sliding queue with capacity 64.
+      const total = 64
+
+      const Host = Logix.Module.make('ProcessConcurrencySerialBacklogHost', {
+        state: Schema.Void,
+        actions: {},
+      })
+
+      const Proc = Logix.Process.make(
+        {
+          processId: 'ProcessConcurrencySerialBacklog',
+          triggers: [{ kind: 'platformEvent', platformEvent: 'test:serial:backlog' }],
+          concurrency: { mode: 'serial', maxQueue: 512 },
+          errorPolicy: { mode: 'failStop' },
+          diagnosticsLevel: 'off',
+        },
+        Effect.yieldNow().pipe(Effect.zipRight(Ref.update(completed, (n) => n + 1)), Effect.asVoid),
+      )
+
+      const HostImpl = Host.implement({
+        initial: undefined,
+        processes: [Proc],
+      })
+
+      const layer = Layer.provideMerge(ProcessRuntime.layer())(HostImpl.impl.layer)
+
+      const scope = yield* Scope.make()
+      try {
+        const env = yield* Layer.buildWithScope(layer, scope)
+        const rt = Context.get(
+          env as Context.Context<any>,
+          ProcessRuntime.ProcessRuntimeTag as any,
+        ) as ProcessRuntime.ProcessRuntime
+
+        for (let i = 0; i < 100; i++) {
+          const events = yield* rt.getEventsSnapshot()
+          const startedEvt = events.find(
+            (e) => e.type === 'process:start' && e.identity.identity.processId === 'ProcessConcurrencySerialBacklog',
+          )
+          if (startedEvt) break
+          yield* Effect.yieldNow()
+        }
+
+        for (let i = 0; i < total; i++) {
+          yield* rt.deliverPlatformEvent({ eventName: 'test:serial:backlog' })
+        }
+
+        for (let i = 0; i < 2000; i++) {
+          const n = yield* Ref.get(completed)
+          if (n === total) break
+          yield* Effect.yieldNow()
+        }
+      } finally {
+        yield* Scope.close(scope, Exit.succeed(undefined))
+      }
+
+      expect(yield* Ref.get(completed)).toBe(total)
+    }),
+  )
 })

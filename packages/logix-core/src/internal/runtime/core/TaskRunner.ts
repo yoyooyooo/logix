@@ -1,6 +1,7 @@
 import { Cause, Effect, Fiber, FiberRef, Ref, Stream } from 'effect'
 import * as Debug from './DebugSink.js'
 import { isDevEnv } from './env.js'
+import * as LatestFiberSlot from './LatestFiberSlot.js'
 import type * as Logic from './LogicMiddleware.js'
 import type { AnyModuleShape, LogicEffect } from './module.js'
 import type { RuntimeInternalsResolvedConcurrencyPolicy } from './RuntimeInternals.js'
@@ -284,26 +285,26 @@ export const makeTaskRunner = <Payload, Sh extends AnyModuleShape, R, A = void, 
 ): Effect.Effect<void, never, Logic.Env<Sh, R>> => {
   if (mode === 'latest') {
     return Effect.gen(function* () {
-      const taskIdRef = yield* Ref.make(0)
-      const currentFiberRef = yield* Ref.make<Fiber.RuntimeFiber<void, never> | undefined>(undefined)
+      const stateRef = yield* LatestFiberSlot.make()
 
       const start = (payload: Payload) =>
         Effect.gen(function* () {
-          const taskId = yield* Ref.updateAndGet(taskIdRef, (n) => n + 1)
+          const [prevFiber, prevRunningId, runId] = yield* LatestFiberSlot.beginRun(stateRef)
 
-          const prev = yield* Ref.get(currentFiberRef)
-          if (prev) {
-            // Do not wait for the old fiber to fully end (avoid blocking new triggers); writeback is guarded by taskId.
-            yield* Fiber.interruptFork(prev)
+          if (prevFiber && prevRunningId !== 0) {
+            // Do not wait for the old fiber to fully end (avoid blocking new triggers); writeback is guarded by runId.
+            yield* Fiber.interruptFork(prevFiber)
           }
 
-          const canWriteBack = Ref.get(taskIdRef).pipe(Effect.map((current) => current === taskId))
+          const canWriteBack = Ref.get(stateRef).pipe(Effect.map((state) => state.runningId === runId))
 
           const fiber = yield* Effect.fork(
-            runTaskLifecycle<Payload, Sh, R, A, E>(payload, runtime, config, canWriteBack),
+            runTaskLifecycle<Payload, Sh, R, A, E>(payload, runtime, config, canWriteBack).pipe(
+              Effect.ensuring(LatestFiberSlot.clearIfCurrent(stateRef, runId)),
+            ),
           )
 
-          yield* Ref.set(currentFiberRef, fiber)
+          yield* LatestFiberSlot.setFiberIfCurrent(stateRef, runId, fiber)
         })
 
       return yield* Stream.runForEach(stream, start)
