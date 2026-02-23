@@ -44,6 +44,8 @@ type ProcessInstanceId = string
 
 type ProcessInstallMode = 'switch' | 'exhaust'
 
+type PlatformEventTriggerSpec = Extract<ProcessTriggerSpec, { readonly kind: 'platformEvent' }>
+
 type InstallationState = {
   readonly identity: {
     readonly processId: string
@@ -55,6 +57,7 @@ type InstallationState = {
   forkScope: Scope.Scope
   readonly process: Effect.Effect<void, any, unknown>
   readonly kind: Meta.ProcessMeta['kind']
+  readonly platformEventTriggerIndex: ReadonlyMap<string, ReadonlyArray<PlatformEventTriggerSpec>>
   enabled: boolean
   installedAt?: string
   nextRunSeq: number
@@ -175,6 +178,37 @@ const actionIdFromUnknown = (action: unknown): string | undefined => {
   return undefined
 }
 
+const buildPlatformEventTriggerIndex = (
+  definition: ProcessDefinition,
+): ReadonlyMap<string, ReadonlyArray<PlatformEventTriggerSpec>> => {
+  const index = new Map<string, PlatformEventTriggerSpec[]>()
+  for (const trigger of definition.triggers) {
+    if (trigger.kind !== 'platformEvent') continue
+    const current = index.get(trigger.platformEvent)
+    if (current) {
+      current.push(trigger)
+    } else {
+      index.set(trigger.platformEvent, [trigger])
+    }
+  }
+  return index
+}
+
+const registerPlatformEventInstallations = (
+  installationKey: InstallationKey,
+  triggerIndex: ReadonlyMap<string, ReadonlyArray<PlatformEventTriggerSpec>>,
+  installationsByEventName: Map<string, Set<InstallationKey>>,
+): void => {
+  for (const eventName of triggerIndex.keys()) {
+    const current = installationsByEventName.get(eventName)
+    if (current) {
+      current.add(installationKey)
+    } else {
+      installationsByEventName.set(eventName, new Set([installationKey]))
+    }
+  }
+}
+
 export const make = (options?: {
   readonly maxEventHistory?: number
 }): Effect.Effect<ProcessRuntime, never, Scope.Scope> =>
@@ -188,6 +222,7 @@ export const make = (options?: {
         : 500
 
     const installations = new Map<InstallationKey, InstallationState>()
+    const installationsByPlatformEvent = new Map<string, Set<InstallationKey>>()
     const instances = new Map<ProcessInstanceId, InstanceState>()
 
     const eventsBuffer: ProcessEvent[] = []
@@ -922,6 +957,7 @@ export const make = (options?: {
           forkScope,
           process: derived as unknown as Effect.Effect<void, any, unknown>,
           kind: meta.kind ?? 'process',
+          platformEventTriggerIndex: buildPlatformEventTriggerIndex(meta.definition),
           enabled: options.enabled ?? true,
           installedAt: options.installedAt,
           nextRunSeq: 1,
@@ -930,6 +966,11 @@ export const make = (options?: {
         }
 
         installations.set(installationKey, installation)
+        registerPlatformEventInstallations(
+          installationKey,
+          installation.platformEventTriggerIndex,
+          installationsByPlatformEvent,
+        )
 
         if (installation.enabled) {
           yield* startInstallation(installationKey)
@@ -1023,27 +1064,37 @@ export const make = (options?: {
         })
         if (noop) return
 
-        const targets = Array.from(instances.values())
         const eventName = event.eventName
+        const installationKeys = installationsByPlatformEvent.get(eventName)
+        if (!installationKeys || installationKeys.size === 0) {
+          return
+        }
 
         yield* Effect.forEach(
-          targets,
-          (instance) =>
+          installationKeys,
+          (installationKey) =>
             Effect.suspend(() => {
-              if (instance.status.status !== 'starting' && instance.status.status !== 'running') {
-                return Effect.void
-              }
-
-              const installation = installations.get(instance.installationKey)
+              const installation = installations.get(installationKey)
               if (!installation) {
                 return Effect.void
               }
 
-              const specs = installation.definition.triggers.filter(
-                (t): t is Extract<ProcessTriggerSpec, { readonly kind: 'platformEvent' }> =>
-                  t.kind === 'platformEvent' && t.platformEvent === eventName,
-              )
-              if (specs.length === 0) {
+              const currentInstanceId = installation.currentInstanceId
+              if (!currentInstanceId) {
+                return Effect.void
+              }
+
+              const instance = instances.get(currentInstanceId)
+              if (!instance) {
+                return Effect.void
+              }
+
+              if (instance.status.status !== 'starting' && instance.status.status !== 'running') {
+                return Effect.void
+              }
+
+              const specs = installation.platformEventTriggerIndex.get(eventName)
+              if (!specs || specs.length === 0) {
                 return Effect.void
               }
 
