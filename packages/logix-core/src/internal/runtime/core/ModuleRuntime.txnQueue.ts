@@ -174,7 +174,6 @@ export const makeEnqueueTransaction = (args: {
 
         let waitedFromMs: number | undefined
         while (true) {
-          const policy = yield* args.resolveConcurrencyPolicy()
           const attempt = yield* Ref.modify(stateRef, (s): readonly [BacklogAcquireAttempt, BackpressureState] => {
             if (s.backlogCount < capacity) {
               return [
@@ -194,6 +193,7 @@ export const makeEnqueueTransaction = (args: {
             return
           }
 
+          const policy = yield* args.resolveConcurrencyPolicy()
           const now = Date.now()
           if (waitedFromMs === undefined) {
             waitedFromMs = now
