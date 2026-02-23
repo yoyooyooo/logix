@@ -125,6 +125,7 @@ export const makeEnqueueTransaction = (args: {
       waiters: 0,
       signal: initialNonUrgentSignal,
     })
+    const wakePendingRef = yield* Ref.make(false)
 
     const release = (stateRef: Ref.Ref<BackpressureState>) =>
       Effect.gen(function* () {
@@ -223,9 +224,18 @@ export const makeEnqueueTransaction = (args: {
         }
       })
 
+    const offerWakeIfNeeded = (): Effect.Effect<void> =>
+      Ref.modify(wakePendingRef, (isPending) => {
+        if (isPending) {
+          return [false, true] as const
+        }
+        return [true, true] as const
+      }).pipe(Effect.flatMap((shouldWake) => (shouldWake ? Queue.offer(wakeQueue, undefined) : Effect.void)))
+
     const consumerLoop: Effect.Effect<never, never, never> = Effect.forever(
       Effect.gen(function* () {
         yield* Queue.take(wakeQueue)
+        yield* Ref.set(wakePendingRef, true)
 
         while (true) {
           const urgent = yield* Queue.poll(urgentQueue)
@@ -237,6 +247,23 @@ export const makeEnqueueTransaction = (args: {
           const nonUrgent = yield* Queue.poll(nonUrgentQueue)
           if (Option.isSome(nonUrgent)) {
             yield* nonUrgent.value
+            continue
+          }
+
+          // Transition to sleep state, then re-check queues once to avoid missing a wake-up race.
+          yield* Ref.set(wakePendingRef, false)
+
+          const urgentAfterSleep = yield* Queue.poll(urgentQueue)
+          if (Option.isSome(urgentAfterSleep)) {
+            yield* Ref.set(wakePendingRef, true)
+            yield* urgentAfterSleep.value
+            continue
+          }
+
+          const nonUrgentAfterSleep = yield* Queue.poll(nonUrgentQueue)
+          if (Option.isSome(nonUrgentAfterSleep)) {
+            yield* Ref.set(wakePendingRef, true)
+            yield* nonUrgentAfterSleep.value
             continue
           }
 
@@ -275,7 +302,7 @@ export const makeEnqueueTransaction = (args: {
 
         // Important: slot is already acquired; offer must be uninterruptible to avoid leaking backlog counters.
         const targetQueue = lane === 'urgent' ? urgentQueue : nonUrgentQueue
-        yield* Effect.uninterruptible(Effect.all([Queue.offer(targetQueue, task), Queue.offer(wakeQueue, undefined)]))
+        yield* Effect.uninterruptible(Queue.offer(targetQueue, task).pipe(Effect.zipRight(offerWakeIfNeeded())))
 
         const exit = yield* Deferred.await(done)
         return yield* Exit.match(exit, {

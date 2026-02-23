@@ -1,6 +1,6 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
-import { Deferred, Effect, Fiber } from 'effect'
+import { Deferred, Effect, Fiber, Ref } from 'effect'
 import type { ConcurrencyDiagnostics } from '../../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
 import type { ResolvedConcurrencyPolicy } from '../../../../src/internal/runtime/ModuleRuntime.concurrencyPolicy.js'
 import { makeEnqueueTransaction } from '../../../../src/internal/runtime/ModuleRuntime.txnQueue.js'
@@ -83,6 +83,60 @@ describe('ModuleRuntime.txnQueue (lanes)', () => {
       expect(idxN2).toBeGreaterThanOrEqual(0)
       expect(idxN1End).toBeLessThan(idxUrgent)
       expect(idxUrgent).toBeLessThan(idxN2)
+    }),
+  )
+
+  it.scoped('drains burst enqueue after idle transition without losing wake-ups', () =>
+    Effect.gen(function* () {
+      const policy: ResolvedConcurrencyPolicy = {
+        concurrencyLimit: 16,
+        losslessBackpressureCapacity: 256,
+        allowUnbounded: false,
+        pressureWarningThreshold: {
+          backlogCount: 1000,
+          backlogDurationMs: 5000,
+        },
+        warningCooldownMs: 30_000,
+        configScope: 'builtin',
+        concurrencyLimitScope: 'builtin',
+        requestedConcurrencyLimit: 16,
+        requestedConcurrencyLimitScope: 'builtin',
+        allowUnboundedScope: 'builtin',
+      }
+
+      const diagnostics: ConcurrencyDiagnostics = {
+        emitPressureIfNeeded: () => Effect.void,
+        emitUnboundedPolicyIfNeeded: () => Effect.void,
+      }
+
+      const enqueueTransaction = yield* makeEnqueueTransaction({
+        moduleId: 'M',
+        instanceId: 'i-1',
+        resolveConcurrencyPolicy: () => Effect.succeed(policy),
+        diagnostics,
+      })
+
+      const completed = yield* Ref.make(0)
+      const total = 96
+
+      // Let consumer enter idle state first; then enqueue a burst across both lanes.
+      yield* Effect.yieldNow()
+
+      const tasks = Array.from({ length: total }, (_, i) =>
+        enqueueTransaction(
+          i % 4 === 0 ? 'nonUrgent' : 'urgent',
+          Effect.yieldNow().pipe(Effect.zipRight(Ref.update(completed, (n) => n + 1)), Effect.asVoid),
+        ),
+      )
+
+      yield* Effect.all(tasks, { concurrency: 32 }).pipe(
+        Effect.timeoutFail({
+          duration: '5 seconds',
+          onTimeout: () => new Error('txnQueue burst drain timeout'),
+        }),
+      )
+
+      expect(yield* Ref.get(completed)).toBe(total)
     }),
   )
 })
