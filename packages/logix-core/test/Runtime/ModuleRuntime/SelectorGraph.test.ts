@@ -212,6 +212,64 @@ describe('SelectorGraph', () => {
     ),
   )
 
+  it.effect('recomputes selectors under the same root when dirty path is root-level', () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        let themeCalls = 0
+        let localeCalls = 0
+
+        const selectTheme = Object.assign(
+          (state: { readonly settings: { readonly theme: string; readonly locale: string } }) => {
+            themeCalls += 1
+            return state.settings.theme
+          },
+          { fieldPaths: ['settings.theme'] },
+        )
+
+        const selectLocale = Object.assign(
+          (state: { readonly settings: { readonly theme: string; readonly locale: string } }) => {
+            localeCalls += 1
+            return state.settings.locale
+          },
+          { fieldPaths: ['settings.locale'] },
+        )
+
+        const themeQuery = Logix.ReadQuery.compile(selectTheme as any)
+        const localeQuery = Logix.ReadQuery.compile(selectLocale as any)
+        const registry = makeFieldPathIdRegistry([['settings'], ['settings', 'theme'], ['settings', 'locale']])
+
+        const graph = SelectorGraph.make<{ readonly settings: { readonly theme: string; readonly locale: string } }>({
+          moduleId: 'TestModule',
+          instanceId: 'i-test',
+          getFieldPathIdRegistry: () => registry,
+        })
+
+        const themeEntry = yield* graph.ensureEntry(themeQuery as any)
+        themeEntry.subscriberCount = 1
+        const localeEntry = yield* graph.ensureEntry(localeQuery as any)
+        localeEntry.subscriberCount = 1
+
+        const themeSubscription = yield* PubSub.subscribe(themeEntry.hub)
+        const localeSubscription = yield* PubSub.subscribe(localeEntry.hub)
+
+        yield* graph.onCommit(
+          { settings: { theme: 'dark', locale: 'en-US' } },
+          { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+          dirtyPathsToRootIds({ dirtyPaths: [['settings']], registry }),
+          'off',
+        )
+
+        const themeEvent = yield* Queue.take(themeSubscription)
+        const localeEvent = yield* Queue.take(localeSubscription)
+
+        expect((themeEvent as any).value).toBe('dark')
+        expect((localeEvent as any).value).toBe('en-US')
+        expect(themeCalls).toBe(1)
+        expect(localeCalls).toBe(1)
+      }),
+    ),
+  )
+
   it.effect('recomputes readless selector in multi-selector mode when registry is available', () =>
     Effect.scoped(
       Effect.gen(function* () {
