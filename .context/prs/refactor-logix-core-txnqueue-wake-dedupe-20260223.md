@@ -16,6 +16,7 @@
   - 新增 `offerWakeIfNeeded`：仅在 `wakePendingRef=false` 时发 wake，避免每次 enqueue 都额外 `Queue.offer(wakeQueue)`。
   - consumer loop 在尝试进入 idle 时增加“sleep 前重检”逻辑，规避 wake 去重后的漏唤醒竞态窗口。
   - enqueue 路径仍保持 uninterruptible（先入任务队列，再按需 wake），避免背压槽位泄露。
+  - `acquireBacklogSlot` 改为“先尝试抢槽、仅在阻塞时才解析并发策略用于诊断”，减少非阻塞路径一次 `resolveConcurrencyPolicy()` 调用。
 - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts`
   - 新增 `drains burst enqueue after idle transition without losing wake-ups` 回归用例。
   - 覆盖 idle 后混合 urgent/nonUrgent burst 入队 + 超时门禁，锁定不会丢任务/卡死。
