@@ -127,8 +127,12 @@ export const runProcessTriggerStream = (args: {
           if (state.running || state.queue.length === 0) {
             return [Option.none(), state] as const
           }
-          const [next, ...rest] = state.queue
-          return [Option.some(next), { ...state, running: true, queue: rest }] as const
+          const next = state.queue.shift()
+          if (next === undefined) {
+            return [Option.none(), state] as const
+          }
+          state.running = true
+          return [Option.some(next), state] as const
         }).pipe(
           Effect.flatMap((next) =>
             Option.match(next, {
@@ -138,7 +142,12 @@ export const runProcessTriggerStream = (args: {
                   args
                     .run(trigger)
                     .pipe(
-                      Effect.ensuring(Ref.update(serialStateRef, (s) => ({ ...s, running: false }))),
+                      Effect.ensuring(
+                        Ref.update(serialStateRef, (s) => {
+                          s.running = false
+                          return s
+                        }),
+                      ),
                       Effect.zipRight(drainSerial()),
                     ),
                 ).pipe(Effect.asVoid),
@@ -153,8 +162,12 @@ export const runProcessTriggerStream = (args: {
           if (state.active >= parallelLimit || state.queue.length === 0) {
             return [Option.none(), state] as const
           }
-          const [next, ...rest] = state.queue
-          return [Option.some(next), { ...state, active: state.active + 1, queue: rest }] as const
+          const next = state.queue.shift()
+          if (next === undefined) {
+            return [Option.none(), state] as const
+          }
+          state.active += 1
+          return [Option.some(next), state] as const
         }).pipe(
           Effect.flatMap((next) =>
             Option.match(next, {
@@ -163,10 +176,10 @@ export const runProcessTriggerStream = (args: {
                 Effect.forkScoped(
                   args.run(trigger).pipe(
                     Effect.ensuring(
-                      Ref.update(parallelStateRef, (s) => ({
-                        ...s,
-                        active: Math.max(0, s.active - 1),
-                      })),
+                      Ref.update(parallelStateRef, (s) => {
+                        s.active = Math.max(0, s.active - 1)
+                        return s
+                      }),
                     ),
                     Effect.zipRight(drainParallel()),
                   ),
@@ -195,8 +208,11 @@ export const runProcessTriggerStream = (args: {
 
         if (policy.mode === 'parallel') {
           const nextSize = yield* Ref.modify(parallelStateRef, (state) => {
-            const queue = [...state.queue, trigger]
-            return [queue.length, { ...state, queue, peak: Math.max(state.peak, queue.length) }] as const
+            state.queue.push(trigger)
+            if (state.queue.length > state.peak) {
+              state.peak = state.queue.length
+            }
+            return [state.queue.length, state] as const
           })
 
           if (nextSize > parallelQueueLimit.guard) {
@@ -217,8 +233,11 @@ export const runProcessTriggerStream = (args: {
 
         // serial
         const nextSize = yield* Ref.modify(serialStateRef, (state) => {
-          const queue = [...state.queue, trigger]
-          return [queue.length, { ...state, queue, peak: Math.max(state.peak, queue.length) }] as const
+          state.queue.push(trigger)
+          if (state.queue.length > state.peak) {
+            state.peak = state.queue.length
+          }
+          return [state.queue.length, state] as const
         })
 
         if (nextSize > serialQueueLimit.guard) {
