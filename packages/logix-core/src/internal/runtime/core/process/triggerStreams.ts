@@ -85,17 +85,6 @@ const makeModuleStateChangeReadQuery = (args: {
     equalsKind: 'objectIs',
   })
 
-const dedupeConsecutiveByValue = <T extends { readonly value: unknown }>(
-  prevRef: Ref.Ref<Option.Option<unknown>>,
-  event: T,
-): Effect.Effect<Option.Option<T>> =>
-  Ref.modify(prevRef, (prev) => {
-    if (Option.isSome(prev) && Object.is(prev.value, event.value)) {
-      return [Option.none(), prev] as const
-    }
-    return [Option.some(event), Option.some(event.value)] as const
-  })
-
 export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactoryOptions) => {
   const moduleRuntimeTagCache = new Map<string, Context.Tag<any, any>>()
   const moduleRuntimeCache = new Map<string, any>()
@@ -247,10 +236,18 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
             return yield* Effect.fail(makeMissingChangesStreamError(spec.moduleId))
           }
 
-          const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
+          let hasPrevValue = false
+          let prevValue: unknown
+
           return changesWithMeta(selector).pipe(
-            Stream.mapEffect((evt: any) => dedupeConsecutiveByValue(prevRef, evt)),
-            Stream.filterMap((opt) => opt),
+            Stream.filter((evt: any) => {
+              if (hasPrevValue && Object.is(prevValue, evt.value)) {
+                return false
+              }
+              hasPrevValue = true
+              prevValue = evt.value
+              return true
+            }),
             Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
           )
         })
