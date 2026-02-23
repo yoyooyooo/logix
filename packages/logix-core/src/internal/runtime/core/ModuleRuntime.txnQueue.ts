@@ -224,6 +224,9 @@ export const makeEnqueueTransaction = (args: {
         }
       })
 
+    // wakePendingRef contract:
+    // - false: consumer is sleeping, first enqueue must publish a wake token and set true.
+    // - true: consumer is active (or wake already queued), subsequent enqueues can skip duplicate wake tokens.
     const offerWakeIfNeeded = (): Effect.Effect<void> =>
       Ref.modify(wakePendingRef, (isPending) => {
         if (isPending) {

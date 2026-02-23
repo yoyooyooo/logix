@@ -26,6 +26,9 @@
 - `pnpm test:turbo`
 
 ## 独立审查
-- Reviewer：待创建 subagent
-- 结论：待补充
-- 建议与处理：待补充
+- Reviewer：subagent `019c8abd-1b8a-7611-ba18-b26a6f05b921`
+- 结论：无阻塞问题，可合并
+- 建议与处理：
+  - 建议补充 `wakePendingRef` 状态机注释，已处理。
+  - 建议提高 burst 回归用例对时序竞态的检出稳定性，已处理（改为双轮 burst）。
+  - 建议后续补“显式 idle 信号”版本测试，记为后续增强（本 PR 不扩 scope）。
