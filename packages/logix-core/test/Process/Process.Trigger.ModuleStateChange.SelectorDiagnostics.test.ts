@@ -118,6 +118,7 @@ describe('process: trigger moduleStateChange selector diagnostics', () => {
         run: ({ env, runtime }) =>
           Effect.gen(function* () {
             const host = Context.get(env, Host.tag)
+            expect(typeof (host as any).changesReadQueryWithMeta).toBe('function')
 
             for (let i = 0; i < 20; i++) {
               yield* host.dispatch({ _tag: 'bumpOther', payload: undefined } as any)
