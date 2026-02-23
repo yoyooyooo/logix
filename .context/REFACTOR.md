@@ -40,6 +40,7 @@
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/process/concurrency.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
@@ -53,6 +54,8 @@
 - `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.ErrorPolicy.Supervise.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/Process/Process.Concurrency.LatestVsSerial.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/Process/Process.Concurrency.DropVsParallel.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/test-helpers.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.SelectorDiagnostics.Helpers.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/internal/Runtime/TickScheduler.fixpoint.test.ts`：`DEEP_READ` + `REFACTORED`
@@ -77,7 +80,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`TickScheduler.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`SelectorGraph.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.ErrorPolicy.Supervise.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`TickScheduler.fixpoint.test.ts`、`Runtime/ModuleRuntime/SelectorGraph.test.ts`、`test-helpers.ts` 已深读并重构）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`TickScheduler.ts`、`ProcessRuntime.make.ts`、`process/concurrency.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`SelectorGraph.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.ErrorPolicy.Supervise.test.ts`、`Process.Concurrency.LatestVsSerial.test.ts`、`Process.Concurrency.DropVsParallel.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`TickScheduler.fixpoint.test.ts`、`Runtime/ModuleRuntime/SelectorGraph.test.ts`、`test-helpers.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -203,6 +206,10 @@
   - 抽取 `ModuleStateChangeTriggerSpec` 与 `makeModuleStateChangeTriggerStream`，将 moduleStateChange 全链路（schema selector、去重、selector diagnostics、warning 事件）从 `makeTriggerStream` 分发函数中剥离，保持行为与错误语义不变。
   - 在 `makeModuleStateChangeTriggerStream` 内继续抽取 `initialSelectorDiagnosticsState`、`evaluateSelectorWarning`、`buildSelectorWarningHint`、`resetSelectorSampling`，收敛 selector diagnostics 的决策/文案/重置逻辑，保持阈值与触发时机不变。
   - 将 `makeTriggerStream` 从条件链改为 `switch(spec.kind)` 分发，并通过 `unreachableNonPlatformTriggerSpec(spec: never)` 建立编译期穷尽检查，降低未来新增 trigger kind 时遗漏分支的风险；对非类型安全输入显式返回 `process::invalid_trigger_kind`。
+- `packages/logix-core/src/internal/runtime/core/process/concurrency.ts`
+  - serial/parallel 队列改为原地 `push/shift` + 原地状态更新，移除每次触发都复制队列数组的 O(n) 分配开销。
+  - `drainSerial/drainParallel` 改为直接消费队头元素，保持 FIFO 与并发门限语义不变。
+  - `peak/currentLength/queue overflow` 统计与告警语义保持不变。
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`
   - 新增 `makeSelectorDiagnosticsConfig`、`initialSelectorDiagnosticsState`、`evaluateSelectorWarning`、`buildSelectorWarningHint`，将 moduleStateChange selector 诊断的阈值/决策/hint 文案抽离为单一 helper。
   - `ProcessRuntime.make.ts` 改为复用该 helper，仅保留采样计数与 warning 事件发射装配，保持 `process::selector_high_frequency` / `process::selector_slow` 判定与 hint 结构不变。
@@ -271,6 +278,10 @@
   - 审查方式：1 个独立 subagent（explorer，`agent_id=019c8928-3959-7a11-ab25-40f82a31cc55`）基于相对 `origin/main` 的 diff 做只读审查
   - 结论：无阻塞问题，可合并
   - 残余风险：`effects::watcher_crashed` 当前使用 `actionTag='*'`，后续可增强为回传具体 tag
+- 2026-02-23（logix-core / process concurrency queue-mutation 轮次）
+  - 审查方式：1 个独立 subagent（default，`agent_id=019c894f-df72-75b0-9168-6802eaf562e3`）基于当前分支 diff 做只读审查
+  - 结论：无阻塞问题，可合并
+  - 残余风险：建议后续补齐 selectorgraph/runtime-kernel 相关缺口测试（非本轮改动范围）
 - 2026-02-22（domain 轮次）
   - 审查方式：1 个独立 subagent（explorer）基于 `origin/main...HEAD` diff 做只读审查
   - 结论：无阻塞问题（未发现行为回归/边界错误）
