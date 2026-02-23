@@ -74,6 +74,17 @@ const makeModuleStateChangeReadQuery = (args: {
     equalsKind: 'objectIs',
   })
 
+const dedupeConsecutiveByValue = <T extends { readonly value: unknown }>(
+  prevRef: Ref.Ref<Option.Option<unknown>>,
+  event: T,
+): Effect.Effect<Option.Option<T>> =>
+  Ref.modify(prevRef, (prev) => {
+    if (Option.isSome(prev) && Object.is(prev.value, event.value)) {
+      return [Option.none(), prev] as const
+    }
+    return [Option.some(event), Option.some(event.value)] as const
+  })
+
 export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactoryOptions) => {
   const resolveModuleRuntime = (moduleId: string): Effect.Effect<any, Error> =>
     Effect.gen(function* () {
@@ -184,16 +195,7 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
 
         const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
         return (runtime.changesWithMeta(selectorBase) as Stream.Stream<any>).pipe(
-          Stream.mapEffect((evt: any) =>
-            Ref.get(prevRef).pipe(
-              Effect.flatMap((prev) => {
-                if (Option.isSome(prev) && Object.is(prev.value, evt.value)) {
-                  return Effect.succeed(Option.none())
-                }
-                return Ref.set(prevRef, Option.some(evt.value)).pipe(Effect.as(Option.some(evt)))
-              }),
-            ),
-          ),
+          Stream.mapEffect((evt: any) => dedupeConsecutiveByValue(prevRef, evt)),
           Stream.filterMap((opt) => opt),
           Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
         )
@@ -263,16 +265,7 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
       }
 
       const baseStream = (runtime.changesWithMeta(selector) as Stream.Stream<any>).pipe(
-        Stream.mapEffect((evt: any) =>
-          Ref.get(prevRef).pipe(
-            Effect.flatMap((prev) => {
-              if (Option.isSome(prev) && Object.is(prev.value, evt.value)) {
-                return Effect.succeed(Option.none())
-              }
-              return Ref.set(prevRef, Option.some(evt.value)).pipe(Effect.as(Option.some(evt)))
-            }),
-          ),
-        ),
+        Stream.mapEffect((evt: any) => dedupeConsecutiveByValue(prevRef, evt)),
         Stream.filterMap((opt) => opt),
         Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
       )
