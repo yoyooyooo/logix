@@ -134,7 +134,6 @@ describe('process: trigger platformEvent', () => {
       expect(yield* Ref.get(invokedC)).toBe(2)
     }),
   )
-
   it.scoped('should refresh platformEvent index when re-install updates trigger definitions', () =>
     Effect.gen(function* () {
       const processId = 'ProcessTriggerPlatformEventReinstall'
