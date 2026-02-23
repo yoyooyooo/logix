@@ -212,6 +212,65 @@ describe('SelectorGraph', () => {
     ),
   )
 
+  it.effect('recomputes readless selector in multi-selector mode when registry is available', () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        let dynamicCalls = 0
+        let staticCalls = 0
+
+        const dynamicSelect = (state: { readonly count: number; readonly other: number }) => {
+          dynamicCalls += 1
+          return state.count + state.other
+        }
+
+        const staticSelect = Object.assign(
+          (state: { readonly count: number; readonly other: number }) => {
+            staticCalls += 1
+            return state.other
+          },
+          { fieldPaths: ['other'] },
+        )
+
+        const dynamicQuery = Logix.ReadQuery.compile(dynamicSelect as any)
+        const staticQuery = Logix.ReadQuery.compile(staticSelect as any)
+        const registry = makeFieldPathIdRegistry([['count'], ['other']])
+
+        const graph = SelectorGraph.make<{ readonly count: number; readonly other: number }>({
+          moduleId: 'TestModule',
+          instanceId: 'i-test',
+          getFieldPathIdRegistry: () => registry,
+        })
+
+        const dynamicEntry = yield* graph.ensureEntry(dynamicQuery as any)
+        dynamicEntry.subscriberCount = 1
+        const staticEntry = yield* graph.ensureEntry(staticQuery as any)
+        staticEntry.subscriberCount = 1
+
+        const dynamicSubscription = yield* PubSub.subscribe(dynamicEntry.hub)
+        const staticSubscription = yield* PubSub.subscribe(staticEntry.hub)
+        const takeStaticFiber = yield* Effect.fork(Queue.take(staticSubscription))
+
+        yield* graph.onCommit(
+          { count: 1, other: 0 },
+          { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+          dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+          'off',
+        )
+
+        const dynamicEvent = yield* Queue.take(dynamicSubscription)
+        yield* Effect.yieldNow()
+        const staticPolled = yield* Fiber.poll(takeStaticFiber)
+        yield* Fiber.interrupt(takeStaticFiber)
+
+        expect(dynamicQuery.reads.length).toBe(0)
+        expect((dynamicEvent as any).value).toBe(1)
+        expect(dynamicCalls).toBe(1)
+        expect(staticCalls).toBe(0)
+        expect(Option.isNone(staticPolled)).toBe(true)
+      }),
+    ),
+  )
+
   it.effect('does not recompute multi-root selector when dirty path is non-overlapping under same root', () =>
     Effect.scoped(
       Effect.gen(function* () {

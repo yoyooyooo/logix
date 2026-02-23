@@ -103,6 +103,20 @@ const shouldEvaluateEntryForDirtyRoots = <S>(args: {
   return false
 }
 
+const hasOverlapBetweenDirtyRootsAndReads = (
+  dirtyRoots: ReadonlyArray<FieldPath>,
+  readsForRoot: ReadonlyArray<FieldPath>,
+): boolean => {
+  for (const dirtyRoot of dirtyRoots) {
+    for (const read of readsForRoot) {
+      if (overlaps(dirtyRoot, read)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 const evaluateEntry = <S>(args: {
   readonly entry: SelectorEntry<S, any>
   readonly selectorId: string
@@ -188,6 +202,7 @@ export const make = <S>(args: {
 
   const selectorsById = new Map<string, SelectorEntry<S, any>>()
   const indexByReadRoot = new Map<ReadRootKey, Set<string>>()
+  const selectorsWithoutReads = new Set<string>()
 
   const ensureEntry: SelectorGraph<S>['ensureEntry'] = (readQuery) => {
     const existing = selectorsById.get(readQuery.selectorId)
@@ -213,12 +228,16 @@ export const make = <S>(args: {
         }
       }
       const readRootKeys = Array.from(readsByRootKey.keys())
-      for (const rootKey of readRootKeys) {
-        const set = indexByReadRoot.get(rootKey)
-        if (set) {
-          set.add(readQuery.selectorId)
-        } else {
-          indexByReadRoot.set(rootKey, new Set([readQuery.selectorId]))
+      if (readRootKeys.length === 0) {
+        selectorsWithoutReads.add(readQuery.selectorId)
+      } else {
+        for (const rootKey of readRootKeys) {
+          const set = indexByReadRoot.get(rootKey)
+          if (set) {
+            set.add(readQuery.selectorId)
+          } else {
+            indexByReadRoot.set(rootKey, new Set([readQuery.selectorId]))
+          }
         }
       }
 
@@ -246,6 +265,7 @@ export const make = <S>(args: {
     if (entry.subscriberCount > 0) return
 
     selectorsById.delete(selectorId)
+    selectorsWithoutReads.delete(selectorId)
     for (const rootKey of entry.readRootKeys) {
       const set = indexByReadRoot.get(rootKey)
       if (!set) continue
@@ -315,35 +335,49 @@ export const make = <S>(args: {
             if (entry.subscriberCount > 0) dirtySelectorIds.add(id)
           }
         } else {
+          for (const selectorId of selectorsWithoutReads) {
+            const entry = selectorsById.get(selectorId)
+            if (entry && entry.subscriberCount > 0) {
+              dirtySelectorIds.add(selectorId)
+            }
+          }
+
+          const dirtyRootsByKey = new Map<ReadRootKey, FieldPath[]>()
+          let hasUnknownDirtyRoot = false
+
           for (const dirtyRootId of dirtySet.rootIds) {
             const dirtyRoot = getDirtyRootPath(dirtyRootId)
             if (!dirtyRoot) {
-              for (const [id, entry] of selectorsById.entries()) {
-                if (entry.subscriberCount > 0) dirtySelectorIds.add(id)
-              }
+              hasUnknownDirtyRoot = true
               break
             }
 
             const rootKey = getReadRootKeyFromPath(dirtyRoot)
-            const candidates = indexByReadRoot.get(rootKey)
-            if (!candidates) continue
+            const bucket = dirtyRootsByKey.get(rootKey)
+            if (bucket) {
+              bucket.push(dirtyRoot)
+            } else {
+              dirtyRootsByKey.set(rootKey, [dirtyRoot])
+            }
+          }
 
-            for (const selectorId of candidates) {
-              if (dirtySelectorIds.has(selectorId)) continue
-              const entry = selectorsById.get(selectorId)
-              if (!entry || entry.subscriberCount === 0) continue
-              if (entry.reads.length === 0) {
-                dirtySelectorIds.add(selectorId)
-                continue
-              }
-              const readsForRoot = entry.readsByRootKey.get(rootKey)
-              if (!readsForRoot || readsForRoot.length === 0) {
-                continue
-              }
-              for (const read of readsForRoot) {
-                if (overlaps(dirtyRoot, read)) {
+          if (hasUnknownDirtyRoot) {
+            for (const [id, entry] of selectorsById.entries()) {
+              if (entry.subscriberCount > 0) dirtySelectorIds.add(id)
+            }
+          } else {
+            for (const [rootKey, dirtyRoots] of dirtyRootsByKey.entries()) {
+              const candidates = indexByReadRoot.get(rootKey)
+              if (!candidates || candidates.size === 0) continue
+
+              for (const selectorId of candidates) {
+                if (dirtySelectorIds.has(selectorId)) continue
+                const entry = selectorsById.get(selectorId)
+                if (!entry || entry.subscriberCount === 0) continue
+                const readsForRoot = entry.readsByRootKey.get(rootKey)
+                if (!readsForRoot || readsForRoot.length === 0) continue
+                if (hasOverlapBetweenDirtyRootsAndReads(dirtyRoots, readsForRoot)) {
                   dirtySelectorIds.add(selectorId)
-                  break
                 }
               }
             }
