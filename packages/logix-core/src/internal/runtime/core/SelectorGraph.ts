@@ -14,6 +14,7 @@ type SelectorEntry<S, V> = {
   readonly readRootKeys: ReadonlyArray<ReadRootKey>
   readonly hub: PubSub.PubSub<StateChangeWithMeta<V>>
   subscriberCount: number
+  lastScheduledTxnSeq: number
   cachedAtTxnSeq: number
   hasValue: boolean
   cachedValue: V | undefined
@@ -100,20 +101,6 @@ const shouldEvaluateEntryForDirtyRoots = <S>(args: {
     }
   }
 
-  return false
-}
-
-const hasOverlapBetweenDirtyRootsAndReads = (
-  dirtyRoots: ReadonlyArray<FieldPath>,
-  readsForRoot: ReadonlyArray<FieldPath>,
-): boolean => {
-  for (const dirtyRoot of dirtyRoots) {
-    for (const read of readsForRoot) {
-      if (overlaps(dirtyRoot, read)) {
-        return true
-      }
-    }
-  }
   return false
 }
 
@@ -249,6 +236,7 @@ export const make = <S>(args: {
         readRootKeys,
         hub,
         subscriberCount: 0,
+        lastScheduledTxnSeq: -1,
         cachedAtTxnSeq: 0,
         hasValue: false,
         cachedValue: undefined,
@@ -295,9 +283,34 @@ export const make = <S>(args: {
         return path && Array.isArray(path) ? path : undefined
       }
 
+      const evaluateSubscribedEntry = (entry: SelectorEntry<S, any>, selectorId: string): Effect.Effect<void> => {
+        if (entry.subscriberCount === 0) return Effect.void
+        if (entry.lastScheduledTxnSeq === meta.txnSeq) return Effect.void
+
+        // evaluateEntry is total (E=never): mark before execution to dedupe multi-root scans in the same txn.
+        entry.lastScheduledTxnSeq = meta.txnSeq
+        return evaluateEntry({
+          entry,
+          selectorId,
+          state,
+          meta,
+          emitEvalEvent,
+          moduleId,
+          instanceId,
+          onSelectorChanged,
+        })
+      }
+
+      const evaluateAllSubscribedSelectors = (): Effect.Effect<void, never, never> =>
+        Effect.gen(function* () {
+          for (const [selectorId, entry] of selectorsById.entries()) {
+            yield* evaluateSubscribedEntry(entry, selectorId)
+          }
+        })
+
       if (selectorsById.size === 1) {
         const entry = selectorsById.values().next().value
-        if (!entry || entry.subscriberCount === 0) return
+        if (!entry) return
 
         if (
           !shouldEvaluateEntryForDirtyRoots({
@@ -310,97 +323,56 @@ export const make = <S>(args: {
           return
         }
 
-        yield* evaluateEntry({
-          entry,
-          selectorId: entry.selectorId,
-          state,
-          meta,
-          emitEvalEvent,
-          moduleId,
-          instanceId,
-          onSelectorChanged,
-        })
+        yield* evaluateSubscribedEntry(entry, entry.selectorId)
         return
       }
 
-      const dirtySelectorIds: Set<string> = new Set()
-
       if (dirtySet.dirtyAll) {
-        for (const [id, entry] of selectorsById.entries()) {
-          if (entry.subscriberCount > 0) dirtySelectorIds.add(id)
-        }
-      } else {
-        if (!registry) {
-          for (const [id, entry] of selectorsById.entries()) {
-            if (entry.subscriberCount > 0) dirtySelectorIds.add(id)
-          }
-        } else {
-          for (const selectorId of selectorsWithoutReads) {
-            const entry = selectorsById.get(selectorId)
-            if (entry && entry.subscriberCount > 0) {
-              dirtySelectorIds.add(selectorId)
-            }
-          }
-
-          const dirtyRootsByKey = new Map<ReadRootKey, FieldPath[]>()
-          let hasUnknownDirtyRoot = false
-
-          for (const dirtyRootId of dirtySet.rootIds) {
-            const dirtyRoot = getDirtyRootPath(dirtyRootId)
-            if (!dirtyRoot) {
-              hasUnknownDirtyRoot = true
-              break
-            }
-
-            const rootKey = getReadRootKeyFromPath(dirtyRoot)
-            const bucket = dirtyRootsByKey.get(rootKey)
-            if (bucket) {
-              bucket.push(dirtyRoot)
-            } else {
-              dirtyRootsByKey.set(rootKey, [dirtyRoot])
-            }
-          }
-
-          if (hasUnknownDirtyRoot) {
-            for (const [id, entry] of selectorsById.entries()) {
-              if (entry.subscriberCount > 0) dirtySelectorIds.add(id)
-            }
-          } else {
-            for (const [rootKey, dirtyRoots] of dirtyRootsByKey.entries()) {
-              const candidates = indexByReadRoot.get(rootKey)
-              if (!candidates || candidates.size === 0) continue
-
-              for (const selectorId of candidates) {
-                if (dirtySelectorIds.has(selectorId)) continue
-                const entry = selectorsById.get(selectorId)
-                if (!entry || entry.subscriberCount === 0) continue
-                const readsForRoot = entry.readsByRootKey.get(rootKey)
-                if (!readsForRoot || readsForRoot.length === 0) continue
-                if (hasOverlapBetweenDirtyRootsAndReads(dirtyRoots, readsForRoot)) {
-                  dirtySelectorIds.add(selectorId)
-                }
-              }
-            }
-          }
-        }
+        yield* evaluateAllSubscribedSelectors()
+        return
       }
 
-      if (dirtySelectorIds.size === 0) return
+      if (!registry) {
+        yield* evaluateAllSubscribedSelectors()
+        return
+      }
 
-      for (const selectorId of dirtySelectorIds) {
+      for (const selectorId of selectorsWithoutReads) {
         const entry = selectorsById.get(selectorId)
-        if (!entry || entry.subscriberCount === 0) continue
+        if (!entry) continue
+        yield* evaluateSubscribedEntry(entry, selectorId)
+      }
 
-        yield* evaluateEntry({
-          entry,
-          selectorId,
-          state,
-          meta,
-          emitEvalEvent,
-          moduleId,
-          instanceId,
-          onSelectorChanged,
-        })
+      for (const dirtyRootId of dirtySet.rootIds) {
+        const dirtyRoot = getDirtyRootPath(dirtyRootId)
+        if (!dirtyRoot) {
+          yield* evaluateAllSubscribedSelectors()
+          return
+        }
+
+        const rootKey = getReadRootKeyFromPath(dirtyRoot)
+        const candidates = indexByReadRoot.get(rootKey)
+        if (!candidates || candidates.size === 0) {
+          continue
+        }
+
+        for (const selectorId of candidates) {
+          const entry = selectorsById.get(selectorId)
+          if (!entry || entry.subscriberCount === 0 || entry.lastScheduledTxnSeq === meta.txnSeq) continue
+          const readsForRoot = entry.readsByRootKey.get(rootKey)
+          if (!readsForRoot || readsForRoot.length === 0) continue
+
+          let overlapsDirtyRoot = false
+          for (const read of readsForRoot) {
+            if (overlaps(dirtyRoot, read)) {
+              overlapsDirtyRoot = true
+              break
+            }
+          }
+          if (!overlapsDirtyRoot) continue
+
+          yield* evaluateSubscribedEntry(entry, selectorId)
+        }
       }
     })
 

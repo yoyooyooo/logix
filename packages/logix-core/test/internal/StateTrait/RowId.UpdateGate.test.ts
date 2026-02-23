@@ -121,4 +121,40 @@ describe('RowId update gate', () => {
     })
     expect(shouldSync).toBe(true)
   })
+
+  it('should match only same-root list paths when multiple list roots exist', () => {
+    const registry = makeFieldPathIdRegistry([
+      ['profile', 'friends', 'name'],
+      ['orders', 'items', 'sku'],
+    ])
+
+    const shouldSync = shouldReconcileListConfigsByDirtySet({
+      dirtySet: makeDirtySet([0]),
+      listConfigs: [{ path: 'orders.items' }, { path: 'profile.friends' }],
+      fieldPathIdRegistry: registry,
+    })
+    expect(shouldSync).toBe(true)
+  })
+
+  it('should keep stable result when listConfigs contains duplicated paths', () => {
+    const registry = makeFieldPathIdRegistry([
+      ['orders', 'items', 'name'],
+      ['profile', 'name'],
+    ])
+    const listConfigs: ReadonlyArray<ListConfig> = [{ path: 'orders.items' }, { path: 'orders.items' }]
+
+    const first = shouldReconcileListConfigsByDirtySet({
+      dirtySet: makeDirtySet([0]),
+      listConfigs,
+      fieldPathIdRegistry: registry,
+    })
+    const second = shouldReconcileListConfigsByDirtySet({
+      dirtySet: makeDirtySet([0]),
+      listConfigs,
+      fieldPathIdRegistry: registry,
+    })
+
+    expect(first).toBe(true)
+    expect(second).toBe(true)
+  })
 })

@@ -505,6 +505,66 @@ export const collectListConfigs = (spec: Record<string, unknown>): ReadonlyArray
   return configs
 }
 
+type ListConfigDirtyMatchPlan = {
+  readonly fallbackToDirtyAll: boolean
+  readonly listPaths: ReadonlyArray<FieldPath>
+  readonly listPathsByRootKey: ReadonlyMap<string, ReadonlyArray<FieldPath>>
+}
+
+const listConfigDirtyMatchPlanCache = new WeakMap<ReadonlyArray<ListConfig>, ListConfigDirtyMatchPlan>()
+
+const getPathRootKey = (path: ReadonlyArray<string>): string => path[0] ?? ''
+
+const buildListConfigDirtyMatchPlan = (listConfigs: ReadonlyArray<ListConfig>): ListConfigDirtyMatchPlan => {
+  const listPaths: Array<FieldPath> = []
+  const listPathsByRootKey = new Map<string, Array<FieldPath>>()
+  const seen = new Set<string>()
+
+  for (const cfg of listConfigs) {
+    const rawPath = typeof cfg.path === 'string' ? cfg.path.trim() : ''
+    if (!rawPath) continue
+
+    const normalized = normalizeFieldPath(rawPath)
+    if (!normalized || normalized.length === 0) {
+      // Conservative fallback: unknown list path encoding must not skip RowID alignment.
+      return {
+        fallbackToDirtyAll: true,
+        listPaths: [],
+        listPathsByRootKey: new Map(),
+      }
+    }
+
+    const dedupeKey = JSON.stringify(normalized)
+    if (seen.has(dedupeKey)) continue
+    seen.add(dedupeKey)
+    listPaths.push(normalized)
+
+    const rootKey = getPathRootKey(normalized)
+    const bucket = listPathsByRootKey.get(rootKey)
+    if (bucket) {
+      bucket.push(normalized)
+    } else {
+      listPathsByRootKey.set(rootKey, [normalized])
+    }
+  }
+
+  return {
+    fallbackToDirtyAll: false,
+    listPaths,
+    listPathsByRootKey,
+  }
+}
+
+const getListConfigDirtyMatchPlan = (listConfigs: ReadonlyArray<ListConfig>): ListConfigDirtyMatchPlan => {
+  // Runtime keeps listConfigs identity stable between trait program rebuilds; cache keying by array reference is effective on hot commits.
+  const cached = listConfigDirtyMatchPlanCache.get(listConfigs)
+  if (cached) return cached
+
+  const next = buildListConfigDirtyMatchPlan(listConfigs)
+  listConfigDirtyMatchPlanCache.set(listConfigs, next)
+  return next
+}
+
 export const shouldReconcileListConfigsByDirtySet = (args: {
   readonly dirtySet: DirtySet
   readonly listConfigs: ReadonlyArray<ListConfig>
@@ -516,19 +576,9 @@ export const shouldReconcileListConfigsByDirtySet = (args: {
   if (dirtySet.rootIds.length === 0) return false
   if (!fieldPathIdRegistry) return true
 
-  const listPathSegments: Array<FieldPath> = []
-  for (const cfg of listConfigs) {
-    const rawPath = typeof cfg.path === 'string' ? cfg.path.trim() : ''
-    if (!rawPath) continue
-    const normalized = normalizeFieldPath(rawPath)
-    if (!normalized || normalized.length === 0) {
-      // Conservative fallback: unknown list path encoding must not skip RowID alignment.
-      return true
-    }
-    listPathSegments.push(normalized)
-  }
-
-  if (listPathSegments.length === 0) return false
+  const plan = getListConfigDirtyMatchPlan(listConfigs)
+  if (plan.fallbackToDirtyAll) return true
+  if (plan.listPaths.length === 0) return false
 
   const fieldPaths = fieldPathIdRegistry.fieldPaths
   for (const dirtyRootId of dirtySet.rootIds) {
@@ -538,7 +588,12 @@ export const shouldReconcileListConfigsByDirtySet = (args: {
       return true
     }
 
-    for (const listPath of listPathSegments) {
+    const candidates = plan.listPathsByRootKey.get(getPathRootKey(dirtyPath))
+    if (!candidates || candidates.length === 0) {
+      continue
+    }
+
+    for (const listPath of candidates) {
       if (overlapsPath(dirtyPath, listPath)) {
         return true
       }

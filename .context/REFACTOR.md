@@ -33,8 +33,9 @@
 - `refactor-logix-core-selectorgraph-readless-batching-20260223.md`：SelectorGraph readless 索引 + dirty root 按 rootKey 批处理（已合并 PR #49）
 - `refactor-logix-core-txnqueue-acquire-fastpath-20260223.md`：txnQueue 非阻塞抢槽 fast-path + blocked-waiter 原子注册（已合并 PR #47）
 - `refactor-logix-core-action-topic-routing-20260224.md`：`$.onAction(tag)` 走 action tag 主题流（已合并 PR #50）
-- `refactor-logix-core-dispatch-pressure-source-20260224.md`：dispatch 主/主题 hub 背压诊断来源细化（本轮进行中）
-- `refactor-logix-core-rowid-updateall-dirtyset-gate-20260224.md`：RowId updateAll 按 dirtySet 门控（本轮进行中）
+- `refactor-logix-core-dispatch-pressure-source-20260224.md`：dispatch 主/主题 hub 背压诊断来源细化（已合并 PR #51）
+- `refactor-logix-core-rowid-updateall-dirtyset-gate-20260224.md`：RowId updateAll 按 dirtySet 门控（已合并 PR #52）
+- `refactor-logix-core-selectorgraph-rowid-rootkey-plan-20260224.md`：SelectorGraph 提交扫描去分配 + RowId rootKey 匹配计划缓存（本轮进行中）
 
 ## 已看过模块
 

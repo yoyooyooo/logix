@@ -322,6 +322,62 @@ describe('SelectorGraph', () => {
     ),
   )
 
+  it.effect('recomputes at most once when one selector overlaps multiple dirty roots in the same txn', () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        let calls = 0
+
+        const selectSummary = Object.assign(
+          (state: {
+            readonly user: { readonly name: string }
+            readonly settings: { readonly theme: string }
+          }) => {
+            calls += 1
+            return `${state.user.name}:${state.settings.theme}`
+          },
+          { fieldPaths: ['user.name', 'settings.theme'] },
+        )
+
+        const readQuery = Logix.ReadQuery.compile(selectSummary as any)
+        const registry = makeFieldPathIdRegistry([['user', 'name'], ['settings', 'theme']])
+        const graph = SelectorGraph.make<{
+          readonly user: { readonly name: string }
+          readonly settings: { readonly theme: string }
+        }>({
+          moduleId: 'TestModule',
+          instanceId: 'i-test',
+          getFieldPathIdRegistry: () => registry,
+        })
+
+        const entry = yield* graph.ensureEntry(readQuery as any)
+        entry.subscriberCount = 1
+
+        const subscription = yield* PubSub.subscribe(entry.hub)
+
+        yield* graph.onCommit(
+          { user: { name: 'A' }, settings: { theme: 'dark' } },
+          { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+          dirtyPathsToRootIds({
+            dirtyPaths: [
+              ['user', 'name'],
+              ['settings', 'theme'],
+            ],
+            registry,
+          }),
+          'off',
+        )
+
+        const event = yield* Queue.take(subscription)
+        yield* Effect.yieldNow()
+        const maybeSecond = yield* Queue.poll(subscription)
+
+        expect((event as any).value).toBe('A:dark')
+        expect(calls).toBe(1)
+        expect(Option.isNone(maybeSecond)).toBe(true)
+      }),
+    ),
+  )
+
   it.effect('emits a slim trace:selector:eval cost summary in diagnostics=light', () =>
     Effect.scoped(
       Effect.gen(function* () {
