@@ -38,9 +38,15 @@
 - `pnpm test:turbo` ✅
 - CI follow-up:
   - `verify` 首轮失败：`typecheck:test` 报 TS2722（`actionsByTag$` 可选调用未收窄）。
-  - 已补充测试内的非空收窄绑定（`const actionsByTag = actionsByTag$!`）并复验：
+  - 已改为显式 guard helper（`requireActionsByTag(...)`）并复验：
     - `pnpm --filter @logixjs/core typecheck:test` ✅
     - `pnpm test:turbo` ✅
+
+## 性能与诊断证据
+- 性能基线来源：PR CI `perf-quick`（run `22316826705`，job `64564039178`，artifact `logix-perf-quick-50`）。
+- 可比性结论：`comparable=true`，`regressions=0`，`improvements=0`，`head budgetExceeded=0`（base `2b25b0b9` -> head `75c293e8`）。
+- 诊断/Devtools 影响：本轮未新增诊断事件；仍复用既有 `publishWithPressureDiagnostics` 路径与 `actionHub` trigger 语义。
+- 本地策略说明：按当前约定，本地仅做类型与测试门禁；性能测量统一以 PR CI 工件为准。
 
 ## 独立审查
 - Reviewer：subagent（`agent_id=019c8b59-5ee9-7160-b848-882754311412`）
@@ -58,3 +64,14 @@
 
 ## 备注
 - 按用户要求，已将“PR 合并前必须消化 CodeRabbit 评论并记录结论”的流程更新到：`.codex/skills/refactor-pr-ci-loop/SKILL.md`。
+
+## 机器人评论消化（CodeRabbit）
+- 评论：建议把 `refactor-pr-ci-loop` 本地默认验证改为 `typecheck -> lint -> test`。
+  - 处理：`暂不采纳`（与当前用户口径“本地只测类型和测试，性能交 PR CI”冲突）。
+  - 风险：lint 问题可能延后到 CI 暴露；当前由 PR CI 兜底。
+- 评论：指出性能与诊断证据缺失。
+  - 处理：`已采纳`，补充 CI `perf-quick` 可比性结论、artifact 标识与诊断事件影响说明（见“性能与诊断证据”）。
+- 评论：指出测试使用非空断言 `actionsByTag$!`。
+  - 处理：`已采纳`，改为显式 guard helper（`requireActionsByTag`）并通过 `typecheck:test` 复验。
+- 评论：建议为 topic hub 内存策略与 batch fan-out 顺序开后续 issue。
+  - 处理：`部分采纳`。已在本文档保留顺序风险与后续测试建议；topic hub 当前基于静态声明 action tags 预建，不存在运行期无限扩张路径，暂不单独开“内存上限”议题。
