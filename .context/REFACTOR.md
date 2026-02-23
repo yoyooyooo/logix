@@ -31,6 +31,7 @@
 - `refactor-logix-core-triggerstreams-coderabbit-hardening-20260223.md`：CodeRabbit follow-up：moduleStateChange fallback 缺流守卫 + diagnostics 分支收敛（已合并 PR #46）
 - `refactor-logix-core-platform-event-reregister-20260223.md`：CodeRabbit follow-up：platformEvent 重装索引同步与陈旧映射清理（PR #48，等待 CI）
 - `refactor-logix-core-selectorgraph-readless-batching-20260223.md`：SelectorGraph readless 索引 + dirty root 按 rootKey 批处理（PR 待创建）
+- `refactor-logix-core-txnqueue-acquire-fastpath-20260223.md`：txnQueue 非阻塞抢槽 fast-path + blocked-waiter 原子注册（PR #47，待合并）
 
 ## 已看过模块
 
