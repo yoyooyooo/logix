@@ -19,7 +19,7 @@
 - `refactor-logix-core-runtime-kernel-selection-split-20260223.md`：RuntimeKernel 选择/证据纯函数模块化（已合并 PR #34）
 - `refactor-logix-core-cross-module-perf-20260223.md`：事务提交回读消除 + moduleStateChange 静态 readQuery 通道（已合并 PR #35）
 - `refactor-logix-core-effects-single-watcher-20260223.md`：Effects 单 watcher 路由与 handler snapshot（已合并 PR #36）
-- `refactor-logix-core-process-concurrency-queue-20260223.md`：Process 并发队列原地更新（PR #37，等待 CI）
+- `refactor-logix-core-process-concurrency-queue-20260223.md`：Process 并发队列原地更新（已合并 PR #37）
 - `refactor-logix-core-platform-event-index-20260223.md`：Process 平台事件分发索引化（PR #38，等待 CI）
 
 ## 已看过模块
