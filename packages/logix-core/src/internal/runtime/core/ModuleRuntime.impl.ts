@@ -1116,6 +1116,63 @@ export const make = <S, A, R = never>(
       return new Set(Object.keys(actionMap))
     })()
 
+    const actionTopicHubCapacity = yield* resolveConcurrencyPolicy().pipe(
+      Effect.map((policy) => policy.losslessBackpressureCapacity),
+    )
+    const actionTagHubsByTag = new Map<string, PubSub.PubSub<A>>()
+    if (declaredActionTags && declaredActionTags.size > 0) {
+      const topicHubEntries = yield* Effect.forEach(
+        declaredActionTags,
+        (tag) =>
+          PubSub.bounded<A>(actionTopicHubCapacity).pipe(
+            Effect.map((hub) => [tag, hub] as const),
+          ),
+      )
+      for (const [tag, hub] of topicHubEntries) {
+        actionTagHubsByTag.set(tag, hub)
+      }
+    }
+
+    const actionTagOfUnknown = (action: unknown): string | undefined => {
+      const tag = (action as any)?._tag
+      if (typeof tag === 'string' && tag.length > 0) return tag
+      const type = (action as any)?.type
+      if (typeof type === 'string' && type.length > 0) return type
+      if (tag != null) return String(tag)
+      if (type != null) return String(type)
+      return undefined
+    }
+
+    const actionTopicTagsOfUnknown = (action: unknown): ReadonlyArray<string> => {
+      const tags: string[] = []
+
+      const tag = (action as any)?._tag
+      if (typeof tag === 'string' && tag.length > 0) {
+        tags.push(tag)
+      }
+
+      const type = (action as any)?.type
+      if (typeof type === 'string' && type.length > 0 && !tags.includes(type)) {
+        tags.push(type)
+      }
+
+      if (tags.length > 0) {
+        return tags
+      }
+
+      const normalized = actionTagOfUnknown(action)
+      return normalized ? [normalized] : []
+    }
+
+    const actionsStream: Stream.Stream<A> = Stream.fromPubSub(actionHub)
+    const actionsByTagStream = (tag: string): Stream.Stream<A> => {
+      const topicHub = actionTagHubsByTag.get(tag)
+      if (topicHub) {
+        return Stream.fromPubSub(topicHub)
+      }
+      return actionsStream.pipe(Stream.filter((action: A) => actionTopicTagsOfUnknown(action).includes(tag)))
+    }
+
     const makeDispatchBuiltin = Effect.sync(() =>
       makeDispatchOps<S, A>({
         optionsModuleId: options.moduleId,
@@ -1127,6 +1184,7 @@ export const make = <S, A, R = never>(
         setStateInternal,
         recordStatePatch,
         actionHub,
+        actionTagHubsByTag,
         actionCommitHub,
         diagnostics: concurrencyDiagnostics,
         enqueueTransaction,
@@ -1208,7 +1266,8 @@ export const make = <S, A, R = never>(
         dispatchOps.dispatch(action),
       dispatchBatch: (actions) => dispatchOps.dispatchBatch(actions),
       dispatchLowPriority: (action) => dispatchOps.dispatchLowPriority(action),
-      actions$: Stream.fromPubSub(actionHub),
+      actions$: actionsStream,
+      actionsByTag$: actionsByTagStream,
       actionsWithMeta$: Stream.fromPubSub(actionCommitHub),
       changes: <V>(selector: (s: S) => V) => Stream.map(stateRef.changes, selector).pipe(Stream.changes),
       changesWithMeta: <V>(selector: (s: S) => V) =>

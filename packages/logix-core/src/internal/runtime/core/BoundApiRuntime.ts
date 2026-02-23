@@ -256,6 +256,23 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   const createIntentBuilder = <T>(stream: Stream.Stream<T>, triggerName?: string) =>
     makeIntentBuilder(runtime)(stream, triggerName)
 
+  const actionMatchesTag = (action: unknown, tag: string): boolean => {
+    const actionTag = (action as any)?._tag
+    if (actionTag === tag) {
+      return true
+    }
+    const actionType = (action as any)?.type
+    return actionType === tag
+  }
+
+  const actionStreamByTag = (tag: string): Stream.Stream<Logix.ActionOf<Sh>> => {
+    const topicSelector = runtime.actionsByTag$
+    if (typeof topicSelector === 'function') {
+      return topicSelector(tag)
+    }
+    return runtime.actions$.pipe(Stream.filter((action: unknown) => actionMatchesTag(action, tag)))
+  }
+
   const onceInRunSession = (key: string): Effect.Effect<boolean, never, any> =>
     Effect.serviceOption(RunSessionTag).pipe(
       Effect.map((maybe) => (Option.isSome(maybe) ? maybe.value.local.once(key) : true)),
@@ -799,29 +816,18 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         const arg = args[0]
         if (Action.isActionToken(arg)) {
           const tag = arg.tag
-          return createIntentBuilder(
-            runtime.actions$.pipe(
-              Stream.filter((a: any) => a._tag === tag || a.type === tag),
-              Stream.map((a: any) => a.payload),
-            ),
-            tag,
-          )
+          return createIntentBuilder(actionStreamByTag(tag).pipe(Stream.map((action: any) => action.payload)), tag)
         }
         if (typeof arg === 'function') {
           return createIntentBuilder(runtime.actions$.pipe(Stream.filter(arg)))
         }
         if (typeof arg === 'string') {
-          return createIntentBuilder(
-            runtime.actions$.pipe(Stream.filter((a: any) => a._tag === arg || a.type === arg)),
-            arg,
-          )
+          return createIntentBuilder(actionStreamByTag(arg), arg)
         }
         if (typeof arg === 'object' && arg !== null) {
           if ('_tag' in arg) {
-            return createIntentBuilder(
-              runtime.actions$.pipe(Stream.filter((a: any) => a._tag === (arg as any)._tag)),
-              String((arg as any)._tag),
-            )
+            const tag = String((arg as any)._tag)
+            return createIntentBuilder(actionStreamByTag(tag), tag)
           }
           if (Schema.isSchema(arg)) {
             return createIntentBuilder(
@@ -839,10 +845,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       get: (_target, prop) => {
         guardRunOnly('use_in_setup', '$.onAction')
         if (typeof prop === 'string') {
-          return createIntentBuilder(
-            runtime.actions$.pipe(Stream.filter((a: any) => a._tag === prop || a.type === prop)),
-            prop,
-          )
+          return createIntentBuilder(actionStreamByTag(prop), prop)
         }
         return undefined
       },

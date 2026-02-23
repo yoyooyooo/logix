@@ -13,6 +13,7 @@ description: 在 intent-flow 仓库执行连续重构时，使用“同步 main 
   - `pnpm test:turbo`
 - 本地默认不跑性能基线；性能交给 PR CI（除非用户明确要求本地性能证据）。
 - 合并前必须至少完成 1 次独立 subagent review。
+- 每个 PR 合并前必须消化机器人 review 评论（至少包含 CodeRabbit），并把结论写入对应 `.context/prs/<pr-name-or-id>.md`。
 - 重构记录采用“总览 + 分 PR”两层：
   - `.context/REFACTOR.md` 仅保留轻量索引/总览；
   - 每个重构 PR 的详细记录写入 `.context/prs/<pr-name-or-id>.md`（阅读范围、重构点、验证、独立审查结论、残余风险）。
@@ -46,6 +47,20 @@ pnpm test:turbo
 
 - 至少拉起 1 个 subagent 做只读 review（基于当前 diff）。
 - 通过后提交并创建 PR。
+
+### 4.5) 消化机器人 Review（合并前）
+
+- PR 打开后拉取并处理机器人评论（至少 CodeRabbit）。
+- 推荐命令：
+
+```bash
+gh pr view <pr-number> --repo yoyooyooo/logix --comments
+```
+
+- 处理结果必须落盘到 `.context/prs/<pr-name-or-id>.md`：
+  - 已按评论修复；
+  - 暂不采纳（含理由与风险）；
+  - 后续 follow-up（若有）。
 
 ### 5) 后台监听 CI，全绿自动合并
 

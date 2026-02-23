@@ -110,6 +110,12 @@ export interface ModuleRuntime<S, A> {
   readonly dispatchBatch: (actions: ReadonlyArray<A>) => Effect.Effect<void>
   readonly dispatchLowPriority: (action: A) => Effect.Effect<void>
   readonly actions$: Stream.Stream<A>
+  /**
+   * Optional action-tag topic stream (hot-path optimization):
+   * - When provided, `$.onAction("tag")` can subscribe to a pre-routed stream instead of filtering `actions$`.
+   * - Missing tags may still fall back to `actions$` filtering at call sites.
+   */
+  readonly actionsByTag$?: (tag: string) => Stream.Stream<A>
   readonly actionsWithMeta$: Stream.Stream<StateChangeWithMeta<A>>
 
   // ----- Derived sources / utilities -----

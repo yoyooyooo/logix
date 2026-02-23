@@ -29,9 +29,10 @@
 - `refactor-logix-core-txnqueue-wake-dedupe-20260223.md`：txnQueue wake 通知去重 + 空闲切换防丢唤醒（已合并 PR #44）
 - `refactor-logix-core-fieldpath-coderabbit-followups-20260223.md`：CodeRabbit follow-up：field-path id fast-path 分支覆盖 + comparator 不变量显式化（已合并 PR #45）
 - `refactor-logix-core-triggerstreams-coderabbit-hardening-20260223.md`：CodeRabbit follow-up：moduleStateChange fallback 缺流守卫 + diagnostics 分支收敛（已合并 PR #46）
-- `refactor-logix-core-platform-event-reregister-20260223.md`：CodeRabbit follow-up：platformEvent 重装索引同步与陈旧映射清理（PR #48，等待 CI）
-- `refactor-logix-core-selectorgraph-readless-batching-20260223.md`：SelectorGraph readless 索引 + dirty root 按 rootKey 批处理（PR 待创建）
-- `refactor-logix-core-txnqueue-acquire-fastpath-20260223.md`：txnQueue 非阻塞抢槽 fast-path + blocked-waiter 原子注册（PR #47，待合并）
+- `refactor-logix-core-platform-event-reregister-20260223.md`：CodeRabbit follow-up：platformEvent 重装索引同步与陈旧映射清理（已合并 PR #48）
+- `refactor-logix-core-selectorgraph-readless-batching-20260223.md`：SelectorGraph readless 索引 + dirty root 按 rootKey 批处理（已合并 PR #49）
+- `refactor-logix-core-txnqueue-acquire-fastpath-20260223.md`：txnQueue 非阻塞抢槽 fast-path + blocked-waiter 原子注册（已合并 PR #47）
+- `refactor-logix-core-action-topic-routing-20260224.md`：`$.onAction(tag)` 走 action tag 主题流（本轮进行中）
 
 ## 已看过模块
 
@@ -59,6 +60,9 @@
 - `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/module.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnQueue.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.effects.ts`：`DEEP_READ` + `REFACTORED`
@@ -309,6 +313,10 @@
 
 ## 独立审查记录
 
+- 2026-02-24（logix-core / action topic routing 轮次）
+  - 审查方式：1 个独立 subagent（default，`agent_id=019c8b59-5ee9-7160-b848-882754311412`）基于当前工作树 diff 两轮只读审查（初审 + 修复后复审）
+  - 结论：初审发现 1 条中风险（`actionsByTag$` fallback 路径未保持 `_tag/type` OR 语义）；修复并补回归后复审通过，无阻塞问题，可合并
+  - 残余风险：建议后续补 `dispatchBatch` topic fan-out 顺序的定向回归测试，进一步锁定顺序兼容性
 - 2026-02-23（logix-core / SelectorGraph readless+batching 轮次）
   - 审查方式：1 个独立 subagent（default，`agent_id=019c8b07-a145-7380-86a6-98109815f3ce`）基于 `/Users/yoyo/Documents/code/personal/intent-flow.perf-core-loop10` 工作树 diff 做只读审查
   - 结论：无阻塞问题，可合并
