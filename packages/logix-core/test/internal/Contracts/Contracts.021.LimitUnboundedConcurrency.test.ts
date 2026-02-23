@@ -60,6 +60,24 @@ describe('contracts (021): limit unbounded concurrency', () => {
         const limit = record.limit
         expect(limit === 'unbounded' || (typeof limit === 'number' && limit >= 1)).toBe(true)
 
+        const source = record.source
+        if (source !== undefined) {
+          expect(source).toBeTypeOf('object')
+          expect(source).not.toBeNull()
+
+          const sourceSchema = diagnosticDetailsSchema.properties?.source ?? {}
+          const sourceAllowedKeys = new Set<string>(Object.keys(sourceSchema.properties ?? {}))
+          const sourceRequiredKeys = new Set<string>(sourceSchema.required ?? [])
+          const sourceRecord = source as Record<string, unknown>
+
+          for (const key of sourceRequiredKeys) {
+            expect(Object.prototype.hasOwnProperty.call(sourceRecord, key)).toBe(true)
+          }
+          for (const key of Object.keys(sourceRecord)) {
+            expect(sourceAllowedKeys.has(key)).toBe(true)
+          }
+        }
+
         // JSON-serialization hard gate (slim and exportable).
         const json = JSON.stringify(record)
         const parsed = JSON.parse(json)
@@ -95,7 +113,15 @@ describe('contracts (021): limit unbounded concurrency', () => {
               pressureWarningThreshold: { backlogCount: 1, backlogDurationMs: 1 },
               warningCooldownMs: 1,
             }),
-            trigger: { kind: 'txnQueue', name: 'enqueueTransaction' },
+            trigger: {
+              kind: 'actionHub',
+              name: 'publish',
+              details: {
+                dispatchEntry: 'dispatch',
+                channel: 'main',
+                fanoutCount: 0,
+              },
+            },
             backlogCount: 1,
             saturatedDurationMs: 1,
             inFlight: 0,

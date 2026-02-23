@@ -32,7 +32,8 @@
 - `refactor-logix-core-platform-event-reregister-20260223.md`：CodeRabbit follow-up：platformEvent 重装索引同步与陈旧映射清理（已合并 PR #48）
 - `refactor-logix-core-selectorgraph-readless-batching-20260223.md`：SelectorGraph readless 索引 + dirty root 按 rootKey 批处理（已合并 PR #49）
 - `refactor-logix-core-txnqueue-acquire-fastpath-20260223.md`：txnQueue 非阻塞抢槽 fast-path + blocked-waiter 原子注册（已合并 PR #47）
-- `refactor-logix-core-action-topic-routing-20260224.md`：`$.onAction(tag)` 走 action tag 主题流（本轮进行中）
+- `refactor-logix-core-action-topic-routing-20260224.md`：`$.onAction(tag)` 走 action tag 主题流（已合并 PR #50）
+- `refactor-logix-core-dispatch-pressure-source-20260224.md`：dispatch 主/主题 hub 背压诊断来源细化（本轮进行中）
 
 ## 已看过模块
 
@@ -61,6 +62,7 @@
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/ConcurrencyDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/module.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnQueue.ts`：`DEEP_READ` + `REFACTORED`
@@ -83,6 +85,10 @@
 - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/internal/Runtime/Effects.DedupeAndDiagnostics.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/internal/Runtime/ConcurrencyPolicy/ConcurrencyPolicy.PressureWarning.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/internal/Runtime/ConcurrencyPolicy/ConcurrencyPolicy.DiagnosticsDegrade.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/internal/Contracts/Contracts.021.LimitUnboundedConcurrency.test.ts`：`DEEP_READ` + `REFACTORED`
+- `specs/021-limit-unbounded-concurrency/contracts/concurrency-diagnostic-details.schema.json`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -250,6 +256,17 @@
 - `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`
   - `moduleStateChange` 的 diagnostics 路径改为优先复用 `changesReadQueryWithMeta(ReadQuery.make(...))`，让 selector 增量评估沿用 SelectorGraph 的 dirty-root 过滤与缓存。
   - 保留 fallback：当 runtime 不提供 `changesReadQueryWithMeta` 时，继续走 `changesWithMeta + dedupeConsecutiveByValue`，保持兼容语义。
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts` + `packages/logix-core/src/internal/runtime/core/ConcurrencyDiagnostics.ts`
+  - publish 背压诊断改为“延迟构建 trigger”，无压场景避免额外 trigger 对象构造（保持原行为）。
+  - action publish 链路按 `actionHub` 与 `actionTopicHub` 分别发射压力诊断触发源，并在 `trigger.details.source` 中补充 `dispatchEntry/channel/topicTag/fanoutCount/batchSize`。
+  - 保持事务窗口与 publish 顺序语义不变，仅增强可解释性与定位颗粒度。
+- `packages/logix-core/test/internal/Runtime/ConcurrencyPolicy/ConcurrencyPolicy.PressureWarning.test.ts`
+  - 增加主 hub 与 topic fan-out 两类压力路径断言，锁定 `concurrency::pressure` 的 trigger source 信息透出与兼容阈值行为。
+- `packages/logix-core/src/internal/runtime/core/ConcurrencyDiagnostics.ts` + `packages/logix-core/test/internal/Runtime/ConcurrencyPolicy/ConcurrencyPolicy.DiagnosticsDegrade.test.ts`
+  - `pressure cooldown` key 新增来源维度（`dispatchEntry/channel/topicTag/actionTag`），避免不同 topic 在同一窗口互相抑制。
+  - 新增回归：`actionTopicHub/publish` 在不同 `topicTag` 下都应发出独立 pressure 事件。
+- `specs/021-limit-unbounded-concurrency/contracts/concurrency-diagnostic-details.schema.json` + `packages/logix-core/test/internal/Contracts/Contracts.021.LimitUnboundedConcurrency.test.ts`
+  - 扩展并锁定 `concurrency::pressure` 的 `details.source` 合约字段，修复诊断契约漂移风险（保持 top-level `additionalProperties: false`）。
 - `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`
   - 新增回归用例：`should not trigger for unrelated path updates in diagnostics mode`，锁定 diagnostics 模式下非相关路径更新不会误触发 process/warning。
 - `packages/logix-core/test/Process/Process.SelectorDiagnostics.Helpers.test.ts`
