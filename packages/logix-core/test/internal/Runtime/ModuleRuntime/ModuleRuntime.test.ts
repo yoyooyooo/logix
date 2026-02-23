@@ -27,6 +27,15 @@ import { getBoundInternals } from '../../../../src/internal/runtime/core/runtime
 import { getDefaultStateTxnInstrumentation } from '../../../../src/internal/runtime/core/env.js'
 import { hashFieldPathIds, makeFieldPathIdRegistry } from '../../../../src/internal/field-path.js'
 
+const requireActionsByTag = <A>(
+  actionsByTag: ((tag: string) => Stream.Stream<A>) | undefined,
+): ((tag: string) => Stream.Stream<A>) => {
+  if (!actionsByTag) {
+    throw new Error('actionsByTag$ should be available for module with declared actions')
+  }
+  return actionsByTag
+}
+
 describe('ModuleRuntime (internal)', () => {
   describe('compliance basics', () => {
     it.scoped('should maintain state consistency and ref view', () =>
@@ -114,12 +123,8 @@ describe('ModuleRuntime (internal)', () => {
           },
         )
 
-        const actionsByTag$ = runtime.actionsByTag$
-        expect(typeof actionsByTag$).toBe('function')
-        if (!actionsByTag$) {
-          yield* Effect.dieMessage('actionsByTag$ should be available for module with declared actions')
-        }
-        const actionsByTag = actionsByTag$!
+        expect(typeof runtime.actionsByTag$).toBe('function')
+        const actionsByTag = requireActionsByTag(runtime.actionsByTag$)
 
         const incFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('inc'), 2)))
         const decFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('dec'), 1)))
@@ -155,12 +160,8 @@ describe('ModuleRuntime (internal)', () => {
           },
         )
 
-        const actionsByTag$ = runtime.actionsByTag$
-        expect(typeof actionsByTag$).toBe('function')
-        if (!actionsByTag$) {
-          yield* Effect.dieMessage('actionsByTag$ should be available for module with declared actions')
-        }
-        const actionsByTag = actionsByTag$!
+        expect(typeof runtime.actionsByTag$).toBe('function')
+        const actionsByTag = requireActionsByTag(runtime.actionsByTag$)
 
         const decFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('dec'), 1)))
         yield* Effect.yieldNow()
@@ -192,12 +193,8 @@ describe('ModuleRuntime (internal)', () => {
           },
         )
 
-        const actionsByTag$ = runtime.actionsByTag$
-        expect(typeof actionsByTag$).toBe('function')
-        if (!actionsByTag$) {
-          yield* Effect.dieMessage('actionsByTag$ should be available for module with declared actions')
-        }
-        const actionsByTag = actionsByTag$!
+        expect(typeof runtime.actionsByTag$).toBe('function')
+        const actionsByTag = requireActionsByTag(runtime.actionsByTag$)
 
         const legacyFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('legacy'), 1)))
         yield* Effect.yieldNow()
