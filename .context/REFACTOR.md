@@ -35,7 +35,7 @@
 - `refactor-logix-core-action-topic-routing-20260224.md`：`$.onAction(tag)` 走 action tag 主题流（已合并 PR #50）
 - `refactor-logix-core-dispatch-pressure-source-20260224.md`：dispatch 主/主题 hub 背压诊断来源细化（已合并 PR #51）
 - `refactor-logix-core-rowid-updateall-dirtyset-gate-20260224.md`：RowId updateAll 按 dirtySet 门控（已合并 PR #52）
-- `refactor-logix-core-selectorgraph-rowid-rootkey-plan-20260224.md`：SelectorGraph 提交扫描去分配 + RowId rootKey 匹配计划缓存（本轮进行中）
+- `refactor-logix-core-selectorgraph-rowid-rootkey-plan-20260224.md`：SelectorGraph 提交扫描去分配 + RowId rootKey 匹配计划缓存（PR #53，CI 中）
 
 ## 已看过模块
 
