@@ -1,3 +1,10 @@
+import {
+  normalizeFieldPath,
+  type DirtySet,
+  type FieldPath,
+  type FieldPathIdRegistry,
+} from '../field-path.js'
+
 export type RowId = string
 
 export interface ListConfig {
@@ -13,6 +20,16 @@ const parseSegments = (path: string): ReadonlyArray<Segment> => {
   if (!path) return []
   return path.split('.').map((seg) => (/^[0-9]+$/.test(seg) ? Number(seg) : seg))
 }
+
+const isPrefixPath = (prefix: ReadonlyArray<string>, full: ReadonlyArray<string>): boolean => {
+  if (prefix.length > full.length) return false
+  for (let i = 0; i < prefix.length; i++) {
+    if (prefix[i] !== full[i]) return false
+  }
+  return true
+}
+
+const overlapsPath = (a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolean => isPrefixPath(a, b) || isPrefixPath(b, a)
 
 export const getAtPath = (state: any, path: string): any => {
   if (!path || state == null) return state
@@ -486,4 +503,47 @@ export const collectListConfigs = (spec: Record<string, unknown>): ReadonlyArray
     })
   }
   return configs
+}
+
+export const shouldReconcileListConfigsByDirtySet = (args: {
+  readonly dirtySet: DirtySet
+  readonly listConfigs: ReadonlyArray<ListConfig>
+  readonly fieldPathIdRegistry?: FieldPathIdRegistry
+}): boolean => {
+  const { dirtySet, listConfigs, fieldPathIdRegistry } = args
+  if (listConfigs.length === 0) return false
+  if (dirtySet.dirtyAll) return true
+  if (dirtySet.rootIds.length === 0) return false
+  if (!fieldPathIdRegistry) return true
+
+  const listPathSegments: Array<FieldPath> = []
+  for (const cfg of listConfigs) {
+    const rawPath = typeof cfg.path === 'string' ? cfg.path.trim() : ''
+    if (!rawPath) continue
+    const normalized = normalizeFieldPath(rawPath)
+    if (!normalized || normalized.length === 0) {
+      // Conservative fallback: unknown list path encoding must not skip RowID alignment.
+      return true
+    }
+    listPathSegments.push(normalized)
+  }
+
+  if (listPathSegments.length === 0) return false
+
+  const fieldPaths = fieldPathIdRegistry.fieldPaths
+  for (const dirtyRootId of dirtySet.rootIds) {
+    const dirtyPath: FieldPath | undefined = fieldPaths[dirtyRootId]
+    if (!dirtyPath) {
+      // Conservative fallback: unknown rootId must not accidentally skip RowID alignment.
+      return true
+    }
+
+    for (const listPath of listPathSegments) {
+      if (overlapsPath(dirtyPath, listPath)) {
+        return true
+      }
+    }
+  }
+
+  return false
 }
