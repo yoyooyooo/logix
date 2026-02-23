@@ -186,7 +186,14 @@ export const makeEnqueueTransaction = (args: {
               ] as const
             }
 
-            return [{ _tag: 'wait', backlogCount: s.backlogCount, signal: s.signal }, s] as const
+            return [
+              { _tag: 'wait', backlogCount: s.backlogCount, signal: s.signal },
+              {
+                backlogCount: s.backlogCount,
+                waiters: s.waiters + 1,
+                signal: s.signal,
+              },
+            ] as const
           })
 
           if (attempt._tag === 'acquired') {
@@ -208,11 +215,7 @@ export const makeEnqueueTransaction = (args: {
           })
 
           yield* Effect.acquireUseRelease(
-            Ref.update(stateRef, (s) => ({
-              backlogCount: s.backlogCount,
-              waiters: s.waiters + 1,
-              signal: s.signal,
-            })).pipe(Effect.as(attempt.signal)),
+            Effect.succeed(attempt.signal),
             (signal) => Deferred.await(signal),
             () =>
               Ref.update(stateRef, (s) => ({
