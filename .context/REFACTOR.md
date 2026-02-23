@@ -18,6 +18,7 @@
 - `refactor-logix-core-process-trigger-stream-factory-20260223.md`：ProcessRuntime 触发器流模块化（进行中）
 - `refactor-logix-core-runtime-kernel-selection-split-20260223.md`：RuntimeKernel 选择/证据纯函数模块化（进行中）
 - `refactor-logix-core-cross-module-perf-20260223.md`：事务提交回读消除 + moduleStateChange 静态 readQuery 通道（待提 PR）
+- `refactor-logix-core-effects-single-watcher-20260223.md`：Effects 单 watcher 路由与 handler snapshot（待提 PR）
 
 ## 已看过模块
 
@@ -43,6 +44,7 @@
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.effects.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`：`DEEP_READ` + `REFACTORED`
@@ -56,6 +58,7 @@
 - `packages/logix-core/test/internal/Runtime/TickScheduler.fixpoint.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Runtime/ModuleRuntime/SelectorGraph.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/internal/Runtime/Effects.DedupeAndDiagnostics.test.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -247,6 +250,12 @@
   - 保持 `read_query::eval_error` 诊断与 `trace:selector:eval` 事件结构不变，仅做结构收敛与热路径常量优化。
 - `packages/logix-core/test/Runtime/ModuleRuntime/SelectorGraph.test.ts`
   - 新增回归用例：`only recomputes selectors whose root keys overlap dirty roots in multi-selector mode`，锁定多 selector 路径下根键索引与 overlap 过滤语义。
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.effects.ts`
+  - 将 effects 执行模型从“每 actionTag 一条 watcher”收敛为“单 watcher 路由”，每条 action 仅做一次 tag 解析与路由查找。
+  - 为每个 actionTag 维护 `handlerSnapshot`，注册时刷新，执行时直接复用，去除每次 action 的 `Array.from(handlers.values())` 分配。
+  - 保持既有契约：去重键 `(actionTag, sourceKey)`、run-phase 注册仅影响未来 action、handler 失败隔离诊断不变。
+- `packages/logix-core/test/internal/Runtime/Effects.DedupeAndDiagnostics.test.ts`
+  - 新增回归用例：`should route handlers by actionTag without cross-triggering`，锁定多 actionTag 路由语义。
 
 ## 独立审查记录
 
@@ -258,6 +267,10 @@
   - 审查方式：1 个独立 subagent（explorer，`agent_id=019c8913-60ca-7480-bfa1-d301eaf46445`）基于相对 `origin/main` 的 diff 做只读审查
   - 结论：无阻塞问题，可合并
   - 残余风险：fallback 路径首个无关提交可能误触发一次（仅无 `changesReadQueryWithMeta` 场景），后续可补 `prevRef` 预热与实现约束测试
+- 2026-02-23（logix-core / effects single-watcher 轮次）
+  - 审查方式：1 个独立 subagent（explorer，`agent_id=019c8928-3959-7a11-ab25-40f82a31cc55`）基于相对 `origin/main` 的 diff 做只读审查
+  - 结论：无阻塞问题，可合并
+  - 残余风险：`effects::watcher_crashed` 当前使用 `actionTag='*'`，后续可增强为回传具体 tag
 - 2026-02-22（domain 轮次）
   - 审查方式：1 个独立 subagent（explorer）基于 `origin/main...HEAD` diff 做只读审查
   - 结论：无阻塞问题（未发现行为回归/边界错误）

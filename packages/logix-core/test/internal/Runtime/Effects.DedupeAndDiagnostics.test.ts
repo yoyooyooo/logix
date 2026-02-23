@@ -112,6 +112,55 @@ describe('Runtime effects (US4)', () => {
     }),
   )
 
+  it.scoped('should route handlers by actionTag without cross-triggering', () =>
+    Effect.gen(function* () {
+      const State = Schema.Struct({ value: Schema.Number })
+
+      const M = Logix.Module.make('Runtime.Effects.MultiActionRouting', {
+        state: State,
+        actions: {
+          ping: Schema.Number,
+          pong: Schema.String,
+        } as const,
+      })
+
+      const pingObserved = yield* Ref.make<ReadonlyArray<number>>([])
+      const pongObserved = yield* Ref.make<ReadonlyArray<string>>([])
+
+      const L = M.logic(($) => ({
+        setup: Effect.gen(function* () {
+          yield* $.effect($.actions.ping, (payload) =>
+            Ref.update(pingObserved, (arr) => [...arr, payload as number]).pipe(Effect.asVoid),
+          )
+
+          yield* $.effect($.actions.pong, (payload) =>
+            Ref.update(pongObserved, (arr) => [...arr, payload as string]).pipe(Effect.asVoid),
+          )
+        }),
+        run: Effect.void,
+      }))
+
+      const impl = M.implement({ initial: { value: 0 }, logics: [L] })
+      const runtime = Logix.Runtime.make(impl)
+
+      const program = Effect.gen(function* () {
+        const rt = yield* M.tag
+        yield* Effect.sleep('50 millis')
+        yield* rt.dispatch({ _tag: 'ping', payload: 1 } as any)
+        yield* rt.dispatch({ _tag: 'pong', payload: 'A' } as any)
+        yield* rt.dispatch({ _tag: 'ping', payload: 2 } as any)
+        yield* Effect.sleep('50 millis')
+      })
+
+      yield* Effect.promise(() => runtime.runPromise(program as Effect.Effect<void, never, any>)).pipe(
+        Effect.ensuring(Effect.promise(() => runtime.dispose()).pipe(Effect.asVoid)),
+      )
+
+      expect(yield* Ref.get(pingObserved)).toEqual([1, 2])
+      expect(yield* Ref.get(pongObserved)).toEqual(['A'])
+    }),
+  )
+
   it.scoped('should isolate handler failures and emit handler_failure diagnostics', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ value: Schema.Number })
@@ -162,4 +211,3 @@ describe('Runtime effects (US4)', () => {
     }),
   )
 })
-
