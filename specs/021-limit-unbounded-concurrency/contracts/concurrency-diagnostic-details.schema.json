@@ -34,7 +34,26 @@
     },
     "suppressedCount": { "type": "integer", "minimum": 0 },
     "sampleRate": { "type": "number", "minimum": 0, "maximum": 1 },
-    "droppedCount": { "type": "integer", "minimum": 0 }
+    "droppedCount": { "type": "integer", "minimum": 0 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dispatchEntry": {
+          "type": "string",
+          "enum": ["dispatch", "dispatchBatch", "dispatchLowPriority"]
+        },
+        "channel": {
+          "type": "string",
+          "enum": ["main", "topic"]
+        },
+        "topicTag": { "type": "string" },
+        "actionTag": { "type": "string" },
+        "batchSize": { "type": "integer", "minimum": 1 },
+        "fanoutCount": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["dispatchEntry", "channel"]
+    }
   },
   "required": ["configScope", "limit"]
 }

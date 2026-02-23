@@ -10,6 +10,8 @@ import type { RunWithStateTransaction, SetStateInternal } from './ModuleRuntime.
 import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
 import type { ResolvedConcurrencyPolicy } from './ModuleRuntime.concurrencyPolicy.js'
 
+type DispatchEntryPoint = 'dispatch' | 'dispatchBatch' | 'dispatchLowPriority'
+
 export const makeDispatchOps = <S, A>(args: {
   readonly optionsModuleId: string | undefined
   readonly instanceId: string
@@ -314,7 +316,10 @@ export const makeDispatchOps = <S, A>(args: {
     ).pipe(Effect.asVoid)
   }
 
-  const publishWithPressureDiagnostics = (triggerName: string, publish: Effect.Effect<unknown>): Effect.Effect<void> =>
+  const publishWithPressureDiagnostics = (
+    publish: Effect.Effect<unknown>,
+    trigger: () => Debug.TriggerRef,
+  ): Effect.Effect<void> =>
     Effect.gen(function* () {
       const startedAt = Date.now()
       yield* publish
@@ -328,47 +333,86 @@ export const makeDispatchOps = <S, A>(args: {
       const policy = yield* resolveConcurrencyPolicy()
       yield* diagnostics.emitPressureIfNeeded({
         policy,
-        trigger: { kind: 'actionHub', name: triggerName },
+        trigger: trigger(),
         saturatedDurationMs: elapsedMs,
       })
     })
 
-  const publishActionToHubs = (action: A): Effect.Effect<void> =>
-    Effect.gen(function* () {
-      yield* PubSub.publish(actionHub, action)
-      if (!actionTagHubsByTag || actionTagHubsByTag.size === 0) {
-        return
+  const resolveTopicHubTargets = (action: A): ReadonlyArray<readonly [topicTag: string, topicHub: PubSub.PubSub<A>]> => {
+    if (!actionTagHubsByTag || actionTagHubsByTag.size === 0) {
+      return []
+    }
+    const targets: Array<readonly [string, PubSub.PubSub<A>]> = []
+    const topicTags = resolveActionTopicTags(action)
+    for (const topicTag of topicTags) {
+      const topicHub = actionTagHubsByTag.get(topicTag)
+      if (!topicHub) {
+        continue
       }
-      const topicTags = resolveActionTopicTags(action)
-      for (const topicTag of topicTags) {
-        const topicHub = actionTagHubsByTag.get(topicTag)
-        if (!topicHub) {
-          continue
-        }
-        yield* PubSub.publish(topicHub, action)
+      targets.push([topicTag, topicHub])
+    }
+    return targets
+  }
+
+  const publishActionToHubs = (action: A, dispatchEntry: DispatchEntryPoint): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const topicTargets = resolveTopicHubTargets(action)
+      yield* publishWithPressureDiagnostics(PubSub.publish(actionHub, action), () => ({
+        kind: 'actionHub',
+        name: 'publish',
+        details: {
+          dispatchEntry,
+          channel: 'main',
+          fanoutCount: topicTargets.length,
+        },
+      }))
+      for (const [topicTag, topicHub] of topicTargets) {
+        yield* publishWithPressureDiagnostics(PubSub.publish(topicHub, action), () => ({
+          kind: 'actionTopicHub',
+          name: 'publish',
+          details: {
+            dispatchEntry,
+            channel: 'topic',
+            topicTag,
+            fanoutCount: topicTargets.length,
+          },
+        }))
       }
     })
 
-  const publishBatchToHubs = (actions: ReadonlyArray<A>): Effect.Effect<void> =>
+  const publishBatchToHubs = (actions: ReadonlyArray<A>, dispatchEntry: DispatchEntryPoint): Effect.Effect<void> =>
     Effect.gen(function* () {
       if (actions.length === 0) {
         return
       }
 
-      yield* PubSub.publishAll(actionHub, actions)
-      if (!actionTagHubsByTag || actionTagHubsByTag.size === 0) {
-        return
-      }
+      yield* publishWithPressureDiagnostics(PubSub.publishAll(actionHub, actions), () => ({
+        kind: 'actionHub',
+        name: 'publishAll',
+        details: {
+          dispatchEntry,
+          channel: 'main',
+          batchSize: actions.length,
+        },
+      }))
 
       for (const action of actions) {
-        const topicTags = resolveActionTopicTags(action)
-        for (const topicTag of topicTags) {
-          const topicHub = actionTagHubsByTag.get(topicTag)
-          if (!topicHub) {
-            continue
-          }
+        const topicTargets = resolveTopicHubTargets(action)
+        const actionTag = resolveActionTag(action) ?? 'unknown'
+        for (const [topicTag, topicHub] of topicTargets) {
           // Keep original batch order when fan-outing to tag streams.
-          yield* PubSub.publish(topicHub, action)
+          yield* publishWithPressureDiagnostics(PubSub.publish(topicHub, action), () => ({
+            kind: 'actionTopicHub',
+            name: 'publish',
+            details: {
+              dispatchEntry,
+              channel: 'topic',
+              topicTag,
+              actionTag,
+              batchSize: actions.length,
+              fanoutCount: topicTargets.length,
+            },
+          }))
         }
       }
     })
@@ -381,7 +425,7 @@ export const makeDispatchOps = <S, A>(args: {
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) =>
           enqueueTransaction(runDispatch(action, override)).pipe(
-            Effect.zipRight(publishWithPressureDiagnostics('publish', publishActionToHubs(action))),
+            Effect.zipRight(publishActionToHubs(action, 'dispatch')),
           ),
         ),
       ),
@@ -389,7 +433,7 @@ export const makeDispatchOps = <S, A>(args: {
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) =>
           enqueueTransaction(runDispatchBatch(actions, override)).pipe(
-            Effect.zipRight(publishWithPressureDiagnostics('publishAll', publishBatchToHubs(actions))),
+            Effect.zipRight(publishBatchToHubs(actions, 'dispatchBatch')),
           ),
         ),
       ),
@@ -397,7 +441,7 @@ export const makeDispatchOps = <S, A>(args: {
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) =>
           enqueueTransaction(runDispatchLowPriority(action, override)).pipe(
-            Effect.zipRight(publishWithPressureDiagnostics('publish', publishActionToHubs(action))),
+            Effect.zipRight(publishActionToHubs(action, 'dispatchLowPriority')),
           ),
         ),
       ),

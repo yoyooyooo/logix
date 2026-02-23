@@ -9,8 +9,21 @@ type PressureCooldownState = {
   readonly suppressedCount: number
 }
 
-const keyOf = (trigger: Debug.TriggerRef): PressureKey =>
-  `${trigger.kind}::${typeof trigger.name === 'string' ? trigger.name : ''}`
+const keyOf = (trigger: Debug.TriggerRef): PressureKey => {
+  const name = typeof trigger.name === 'string' ? trigger.name : ''
+  const details = trigger.details
+  if (!details || typeof details !== 'object') {
+    return `${trigger.kind}::${name}`
+  }
+
+  const source = details as Record<string, unknown>
+  const dispatchEntry = typeof source.dispatchEntry === 'string' ? source.dispatchEntry : ''
+  const channel = typeof source.channel === 'string' ? source.channel : ''
+  const topicTag = typeof source.topicTag === 'string' ? source.topicTag : ''
+  const actionTag = typeof source.actionTag === 'string' ? source.actionTag : ''
+
+  return `${trigger.kind}::${name}::${dispatchEntry}::${channel}::${topicTag}::${actionTag}`
+}
 
 const nowMs = Effect.clockWith((clock) => clock.currentTimeMillis)
 
@@ -114,6 +127,18 @@ export const make = (args: {
         }
         if (typeof inArgs.inFlight === 'number' && Number.isFinite(inArgs.inFlight)) {
           details.inFlight = inArgs.inFlight
+        }
+        if (inArgs.trigger.details !== undefined) {
+          const projected = (() => {
+            try {
+              return JSON.parse(JSON.stringify(inArgs.trigger.details))
+            } catch {
+              return undefined
+            }
+          })()
+          if (projected && typeof projected === 'object') {
+            details.source = projected
+          }
         }
 
         yield* Debug.record({
