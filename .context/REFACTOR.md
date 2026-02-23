@@ -27,7 +27,8 @@
 - `refactor-logix-core-dirtyset-id-fastpath-20260223.md`：StateTransaction dirtySet id-only 快路径（已合并 PR #42）
 - `refactor-logix-core-process-latest-mode-inplace-20260223.md`：Process/TaskRunner latest 运行槽统一 + serial/parallel 游标队列（已合并 PR #43）
 - `refactor-logix-core-txnqueue-wake-dedupe-20260223.md`：txnQueue wake 通知去重 + 空闲切换防丢唤醒（已合并 PR #44）
-- `refactor-logix-core-fieldpath-coderabbit-followups-20260223.md`：CodeRabbit follow-up：field-path id fast-path 分支覆盖 + comparator 不变量显式化（PR #45，等待 CI）
+- `refactor-logix-core-fieldpath-coderabbit-followups-20260223.md`：CodeRabbit follow-up：field-path id fast-path 分支覆盖 + comparator 不变量显式化（已合并 PR #45）
+- `refactor-logix-core-triggerstreams-coderabbit-hardening-20260223.md`：CodeRabbit follow-up：moduleStateChange fallback 缺流守卫 + diagnostics 分支收敛（PR #46，等待 CI）
 
 ## 已看过模块
 
@@ -299,10 +300,17 @@
 
 ## 独立审查记录
 
+<<<<<<< HEAD
 - 2026-02-23（logix-core / field-path CodeRabbit follow-up 轮次）
   - 审查方式：1 个独立 subagent（explorer，`agent_id=019c8abc-4ae2-7a90-84c6-d9883da9f00f`）基于相对 `origin/main` 的 diff 做只读审查
   - 结论：无阻塞问题，可合并
   - 残余风险：若未来新增“未经过 registry 校验”的 `dirtyPathIds` 入口，`buildSpecificDirtySetFromIds` 的显式不变量会更早抛错，需要在新入口保持同等校验
+=======
+- 2026-02-23（logix-core / triggerStreams CodeRabbit follow-up 轮次）
+  - 审查方式：1 个独立 subagent（default，`agent_id=019c8ac9-aae3-7961-9378-12b836bcc6b5`）基于相对 `origin/main` 的 diff 做只读审查
+  - 结论：无阻塞问题，可合并
+  - 残余风险：guard 当前仅校验 `changesWithMeta` 是否为函数，缺流回归暂未覆盖 `diagnosticsLevel='off'` 场景
+>>>>>>> 04c1d76c (fix(logix-core): harden moduleStateChange trigger fallback)
 - 2026-02-23（logix-core / SelectorGraph 核心链路收敛轮次）
   - 审查方式：1 个独立 subagent（explorer，`agent_id=019c865e-f79d-7d33-8fb7-9a53d89bb7bf`）基于当前工作树 diff 做只读审查
   - 结论：无阻塞问题，可合并（单/多 selector 评估语义保持；`readRootKeySet` 为热路径常量优化；新增多 selector 回归测试覆盖关键边界）

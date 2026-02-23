@@ -54,6 +54,13 @@ const makeMissingActionMetaStreamError = (moduleId: string): Error => {
   return err
 }
 
+const makeMissingChangesStreamError = (moduleId: string): Error => {
+  const err = new Error('ModuleRuntime does not provide changesWithMeta (required for moduleStateChange trigger).')
+  ;(err as any).code = 'process::missing_changes_stream'
+  ;(err as any).hint = `moduleId=${moduleId}`
+  return err
+}
+
 const nowMs = (): number => {
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
     return performance.now()
@@ -178,7 +185,7 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
 
       const buildModuleStateChangeBaseStream = (
         selector: (state: unknown) => unknown,
-      ): Effect.Effect<Stream.Stream<ProcessTrigger>, never> =>
+      ): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
         Effect.gen(function* () {
           const readQuery = makeModuleStateChangeReadQuery({
             moduleId: spec.moduleId,
@@ -195,45 +202,41 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
             )
           }
 
+          const changesWithMeta = runtime.changesWithMeta as ((selector: (state: unknown) => unknown) => Stream.Stream<any>) | undefined
+          if (typeof changesWithMeta !== 'function') {
+            return yield* Effect.fail(makeMissingChangesStreamError(spec.moduleId))
+          }
+
           const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
-          return (runtime.changesWithMeta(selector) as Stream.Stream<any>).pipe(
+          return changesWithMeta(selector).pipe(
             Stream.mapEffect((evt: any) => dedupeConsecutiveByValue(prevRef, evt)),
             Stream.filterMap((opt) => opt),
             Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
           )
         })
 
-      const enableSelectorDiagnostics = options.shouldRecordChainEvents
-      if (!enableSelectorDiagnostics) {
+      if (!options.shouldRecordChainEvents) {
         return yield* buildModuleStateChangeBaseStream(selectorBase)
       }
 
       const selectorDiagnosticsConfig = makeSelectorDiagnosticsConfig(isDevEnv())
-      const selectorDiagnosticsRef = enableSelectorDiagnostics
-        ? yield* Ref.make(initialSelectorDiagnosticsState(Date.now()))
-        : undefined
+      const selectorDiagnosticsRef = yield* Ref.make(initialSelectorDiagnosticsState(Date.now()))
       const selectorSampling = makeSelectorSamplingTracker(selectorDiagnosticsConfig)
 
-      const selector = enableSelectorDiagnostics
-        ? (state: unknown): unknown => {
-            if (!selectorSampling.onSelectorCall()) {
-              return selectorBase(state)
-            }
-
-            const t0 = nowMs()
-            const value = selectorBase(state)
-            const dt = nowMs() - t0
-
-            selectorSampling.recordSample(dt)
-            return value
-          }
-        : selectorBase
-
-      const maybeWarnSelector = (trigger: ProcessTrigger): Effect.Effect<void> => {
-        if (!selectorDiagnosticsRef) {
-          return Effect.void
+      const selector = (state: unknown): unknown => {
+        if (!selectorSampling.onSelectorCall()) {
+          return selectorBase(state)
         }
 
+        const t0 = nowMs()
+        const value = selectorBase(state)
+        const dt = nowMs() - t0
+
+        selectorSampling.recordSample(dt)
+        return value
+      }
+
+      const maybeWarnSelector = (trigger: ProcessTrigger): Effect.Effect<void> => {
         return Effect.gen(function* () {
           const now = Date.now()
           const sampling = selectorSampling.snapshot()
