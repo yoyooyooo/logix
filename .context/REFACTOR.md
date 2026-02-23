@@ -301,9 +301,11 @@
   - 引入 `wakePendingRef` + `offerWakeIfNeeded`，将 wake 通知改为“有任务且未挂起 wake 时才发信号”，避免每次 enqueue 都 `Queue.offer(wakeQueue)`。
   - consumer loop 在切换 idle 前新增一次 “sleep 前重检” 路径，规避“队列刚变空时并发入队导致漏唤醒”的竞态窗口。
   - `acquireBacklogSlot` 改为“先抢槽、仅阻塞时才解析并发策略用于压力诊断”，降低非阻塞路径的策略解析开销。
+  - `acquireBacklogSlot` 的 `wait` 分支改为在单次 `Ref.modify` 内原子注册 `waiters + 1`，修复“阻塞判定与 waiter 注册分离”导致的漏唤醒窗口。
   - 保持不变量：单消费者串行执行、urgent 优先、nonUrgent 不饿死、背压计数与释放时机不变。
 - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts`
   - 新增回归用例：`drains burst enqueue after idle transition without losing wake-ups`，锁定 wake 去重后 burst 入队不会丢任务或卡死。
+  - 新增回归用例：`should not miss wake-up when release happens during blocked acquire diagnostics path`，锁定 blocked diagnostics 窗口中的 release/waiter 竞态。
 
 ## 独立审查记录
 
@@ -319,6 +321,10 @@
   - 审查方式：1 个独立 subagent（default，`agent_id=019c8ac9-aae3-7961-9378-12b836bcc6b5`）基于相对 `origin/main` 的 diff 做只读审查
   - 结论：无阻塞问题，可合并
   - 残余风险：guard 当前仅校验 `changesWithMeta` 是否为函数，缺流回归暂未覆盖 `diagnosticsLevel='off'` 场景
+- 2026-02-23（logix-core / txnQueue acquire fast-path 轮次）
+  - 审查方式：1 个独立 subagent（default，`agent_id=019c8ae8-116e-7100-92b7-5a3c32343533`）基于 `/Users/yoyo/Documents/code/personal/intent-flow.perf-core-loop9` 工作树 diff 做只读审查
+  - 结论：无阻塞问题，可合并
+  - 残余风险：建议后续补“blocked diagnostics 期间取消等待 fiber”场景，进一步锁定 `waiters` 计数回收边界
 - 2026-02-23（logix-core / SelectorGraph 核心链路收敛轮次）
   - 审查方式：1 个独立 subagent（explorer，`agent_id=019c865e-f79d-7d33-8fb7-9a53d89bb7bf`）基于当前工作树 diff 做只读审查
   - 结论：无阻塞问题，可合并（单/多 selector 评估语义保持；`readRootKeySet` 为热路径常量优化；新增多 selector 回归测试覆盖关键边界）

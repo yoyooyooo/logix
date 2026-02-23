@@ -143,4 +143,71 @@ describe('ModuleRuntime.txnQueue (lanes)', () => {
       expect(yield* Ref.get(completed)).toBe(burstSize * 2)
     }),
   )
+
+  it.scoped('should not miss wake-up when release happens during blocked acquire diagnostics path', () =>
+    Effect.gen(function* () {
+      const policy: ResolvedConcurrencyPolicy = {
+        concurrencyLimit: 16,
+        losslessBackpressureCapacity: 1,
+        allowUnbounded: false,
+        pressureWarningThreshold: {
+          backlogCount: 1000,
+          backlogDurationMs: 5000,
+        },
+        warningCooldownMs: 30_000,
+        configScope: 'builtin',
+        concurrencyLimitScope: 'builtin',
+        requestedConcurrencyLimit: 16,
+        requestedConcurrencyLimitScope: 'builtin',
+        allowUnboundedScope: 'builtin',
+      }
+
+      const enteredBlockedPath = yield* Deferred.make<void>()
+      const unblockBlockedPath = yield* Deferred.make<void>()
+      const diagnostics: ConcurrencyDiagnostics = {
+        emitPressureIfNeeded: () =>
+          Effect.gen(function* () {
+            yield* Deferred.succeed(enteredBlockedPath, undefined)
+            yield* Deferred.await(unblockBlockedPath)
+          }),
+        emitUnboundedPolicyIfNeeded: () => Effect.void,
+      }
+
+      const enqueueTransaction = yield* makeEnqueueTransaction({
+        moduleId: 'M',
+        instanceId: 'i-1',
+        resolveConcurrencyPolicy: () => Effect.succeed(policy),
+        diagnostics,
+      })
+
+      const gate = yield* Deferred.make<void>()
+      const runningStarted = yield* Deferred.make<void>()
+      const waitingExecuted = yield* Deferred.make<void>()
+
+      const running = enqueueTransaction(
+        'urgent',
+        Effect.gen(function* () {
+          yield* Deferred.succeed(runningStarted, undefined)
+          yield* Deferred.await(gate)
+        }),
+      )
+
+      const waiting = enqueueTransaction(
+        'urgent',
+        Deferred.succeed(waitingExecuted, undefined).pipe(Effect.asVoid),
+      )
+
+      const runningFiber = yield* Effect.fork(running)
+      yield* Deferred.await(runningStarted)
+
+      const waitingFiber = yield* Effect.fork(waiting)
+      yield* Deferred.await(enteredBlockedPath)
+
+      yield* Deferred.succeed(gate, undefined)
+      yield* Deferred.succeed(unblockBlockedPath, undefined)
+      yield* Deferred.await(waitingExecuted)
+      yield* Fiber.join(runningFiber)
+      yield* Fiber.join(waitingFiber)
+    }),
+  )
 })
