@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { dirtyPathsToRootIds, makeFieldPathIdRegistry } from '../../../src/internal/field-path.js'
+import { dirtyPathIdsToRootIds, dirtyPathsToRootIds, makeFieldPathIdRegistry } from '../../../src/internal/field-path.js'
 
 describe('field-path dirtyAll reason mapping', () => {
   test("wildcard '*' maps to unknownWrite", () => {
@@ -62,6 +62,29 @@ describe('field-path dirtyAll reason mapping', () => {
     const out = dirtyPathsToRootIds({ dirtyPaths: ['b', ['a[0][']], registry })
     expect(out.dirtyAll).toBe(true)
     expect(out.reason).toBe('nonTrackablePatch')
+    expect(out.rootIds).toEqual([])
+  })
+
+  test('id fast path keeps prefix canonicalization', () => {
+    const registry = makeFieldPathIdRegistry([['a'], ['a', 'b'], ['b0']])
+    const out = dirtyPathIdsToRootIds({ dirtyPathIds: [1, 0, 2, 1], registry })
+    expect(out.dirtyAll).toBe(false)
+    expect(out.rootIds).toEqual([0, 2])
+  })
+
+  test('id fast path maps invalid ids to nonTrackablePatch', () => {
+    const registry = makeFieldPathIdRegistry([['a']])
+    const out = dirtyPathIdsToRootIds({ dirtyPathIds: [0, Number.NaN], registry })
+    expect(out.dirtyAll).toBe(true)
+    expect(out.reason).toBe('nonTrackablePatch')
+    expect(out.rootIds).toEqual([])
+  })
+
+  test('id fast path maps missing ids to fallbackPolicy', () => {
+    const registry = makeFieldPathIdRegistry([['a']])
+    const out = dirtyPathIdsToRootIds({ dirtyPathIds: [1], registry })
+    expect(out.dirtyAll).toBe(true)
+    expect(out.reason).toBe('fallbackPolicy')
     expect(out.rootIds).toEqual([])
   })
 })
