@@ -13,7 +13,7 @@ import * as StateTraitConverge from '../../state-trait/converge.js'
 import * as StateTraitValidate from '../../state-trait/validate.js'
 import * as StateTraitSource from '../../state-trait/source.js'
 import { getConvergeStaticIrDigest } from '../../state-trait/converge-ir.js'
-import type * as RowId from '../../state-trait/rowid.js'
+import * as RowId from '../../state-trait/rowid.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { ResolvedTraitConvergeConfig } from './ModuleRuntime.traitConvergeConfig.js'
 import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
@@ -507,6 +507,7 @@ export const makeTransactionOps = <S>(args: {
                     const replayEvent = (txnContext.current as any)?.lastReplayEvent as unknown
                     const commitMode = ((txnContext.current as any)?.commitMode ?? 'normal') as StateCommitMode
                     const priority = ((txnContext.current as any)?.priority ?? 'normal') as StateCommitPriority
+                    const fieldPathIdRegistry = txnContext.current?.fieldPathIdRegistry
                     const dirtyAllSetStateHint = !!(txnContext.current as any)
                       ? (txnContext.current as any)[DIRTY_ALL_SET_STATE_HINT] === true
                       : false
@@ -551,7 +552,12 @@ export const makeTransactionOps = <S>(args: {
                       // RowID virtual identity layer: align mappings after each observable commit
                       // so in-flight gates and cache reuse remain stable under insert/remove/reorder.
                       const listConfigs = traitRuntime.getListConfigs()
-                      if (listConfigs.length > 0) {
+                      const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtySet({
+                        dirtySet: txn.dirtySet,
+                        listConfigs,
+                        fieldPathIdRegistry,
+                      })
+                      if (shouldSyncRowIds) {
                         traitRuntime.rowIdStore.updateAll(nextState as any, listConfigs)
                       }
 

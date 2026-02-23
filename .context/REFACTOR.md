@@ -34,6 +34,7 @@
 - `refactor-logix-core-txnqueue-acquire-fastpath-20260223.md`：txnQueue 非阻塞抢槽 fast-path + blocked-waiter 原子注册（已合并 PR #47）
 - `refactor-logix-core-action-topic-routing-20260224.md`：`$.onAction(tag)` 走 action tag 主题流（已合并 PR #50）
 - `refactor-logix-core-dispatch-pressure-source-20260224.md`：dispatch 主/主题 hub 背压诊断来源细化（本轮进行中）
+- `refactor-logix-core-rowid-updateall-dirtyset-gate-20260224.md`：RowId updateAll 按 dirtySet 门控（本轮进行中）
 
 ## 已看过模块
 
@@ -69,6 +70,7 @@
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.effects.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/state-trait/rowid.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.InvalidKind.test.ts`：`DEEP_READ` + `REFACTORED`
@@ -89,6 +91,7 @@
 - `packages/logix-core/test/internal/Runtime/ConcurrencyPolicy/ConcurrencyPolicy.DiagnosticsDegrade.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/internal/Contracts/Contracts.021.LimitUnboundedConcurrency.test.ts`：`DEEP_READ` + `REFACTORED`
 - `specs/021-limit-unbounded-concurrency/contracts/concurrency-diagnostic-details.schema.json`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/internal/StateTrait/RowId.UpdateGate.test.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -211,6 +214,12 @@
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts` + `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
   - 新增 `StateTransaction.commitWithState`，在保持 `commit` 对外语义不变的前提下返回已提交 `finalState`。
   - `ModuleRuntime.transaction` 改为复用 `commitWithState`，移除提交后 `SubscriptionRef.get(stateRef)` 回读，减少一次热路径状态读取。
+- `packages/logix-core/src/internal/state-trait/rowid.ts` + `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
+  - 新增 `shouldReconcileListConfigsByDirtySet`：基于 `dirtySet + fieldPathIdRegistry + listConfigs` 判定是否需要执行 `rowIdStore.updateAll`。
+  - `ModuleRuntime.transaction` 在 commit 热路径改为“命中相关 dirty roots 才做 RowId 全量对齐”，对 list-heavy 模块减少无关提交的 RowId 遍历成本。
+  - 保守语义：`dirtyAll` / 无 registry / 无法映射 rootId 时强制回退 `updateAll`，避免漏同步。
+- `packages/logix-core/test/internal/StateTrait/RowId.UpdateGate.test.ts`
+  - 新增 8 条纯函数回归，覆盖 dirtyAll、缺失 registry、祖先/后代路径命中、无关路径跳过、未知 rootId 保守回退等分支。
 - `packages/logix-core/src/internal/field-path.ts` + `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
   - 新增 `dirtyPathIdsToRootIds`（id-only fast path），并让 `StateTransaction.buildDirtySet` 直接走 numeric-id 专用分支，减少事务提交阶段对 string/path 输入类型的通用分支判定。
   - 抽取 `makeDirtyAllSet` / `buildSpecificDirtySetFromIds`，统一 `dirtyPathsToRootIds` 与 fast path 的 root 收敛与 hash 计算逻辑，保持 `DirtyAllReason/rootIds/keyHash` 语义一致。
