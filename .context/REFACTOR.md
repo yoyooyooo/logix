@@ -25,7 +25,8 @@
 - `refactor-logix-core-selectorgraph-reads-by-root-20260223.md`：SelectorGraph 按 rootKey 分组 reads（已合并 PR #40）
 - `refactor-logix-core-module-statechange-readquery-diag-20260223.md`：moduleStateChange 诊断路径 readQuery 化（已合并 PR #41）
 - `refactor-logix-core-dirtyset-id-fastpath-20260223.md`：StateTransaction dirtySet id-only 快路径（已合并 PR #42）
-- `refactor-logix-core-process-latest-mode-inplace-20260223.md`：Process/TaskRunner latest 运行槽统一 + serial/parallel 游标队列（PR #43，等待 CI）
+- `refactor-logix-core-process-latest-mode-inplace-20260223.md`：Process/TaskRunner latest 运行槽统一 + serial/parallel 游标队列（已合并 PR #43）
+- `refactor-logix-core-txnqueue-wake-dedupe-20260223.md`：txnQueue wake 通知去重 + 空闲切换防丢唤醒（PR #44，等待 CI）
 
 ## 已看过模块
 
@@ -53,6 +54,7 @@
 - `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnQueue.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.effects.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`：`DEEP_READ` + `REFACTORED`
@@ -70,6 +72,7 @@
 - `packages/logix-core/test/internal/Runtime/TickScheduler.fixpoint.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Runtime/ModuleRuntime/SelectorGraph.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/internal/Runtime/Effects.DedupeAndDiagnostics.test.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
@@ -286,6 +289,12 @@
   - 保持既有契约：去重键 `(actionTag, sourceKey)`、run-phase 注册仅影响未来 action、handler 失败隔离诊断不变。
 - `packages/logix-core/test/internal/Runtime/Effects.DedupeAndDiagnostics.test.ts`
   - 新增回归用例：`should route handlers by actionTag without cross-triggering`，锁定多 actionTag 路由语义。
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnQueue.ts`
+  - 引入 `wakePendingRef` + `offerWakeIfNeeded`，将 wake 通知改为“有任务且未挂起 wake 时才发信号”，避免每次 enqueue 都 `Queue.offer(wakeQueue)`。
+  - consumer loop 在切换 idle 前新增一次 “sleep 前重检” 路径，规避“队列刚变空时并发入队导致漏唤醒”的竞态窗口。
+  - 保持不变量：单消费者串行执行、urgent 优先、nonUrgent 不饿死、背压计数与释放时机不变。
+- `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts`
+  - 新增回归用例：`drains burst enqueue after idle transition without losing wake-ups`，锁定 wake 去重后 burst 入队不会丢任务或卡死。
 
 ## 独立审查记录
 
