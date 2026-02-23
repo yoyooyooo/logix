@@ -188,8 +188,7 @@ describe('process: concurrency latest vs serial', () => {
   it.scoped('serial should drain backlog without dropping triggers', () =>
     Effect.gen(function* () {
       const completed = yield* Ref.make(0)
-      // ProcessRuntime platform event intake currently uses a sliding queue with capacity 64.
-      const total = 64
+      const total = 48
 
       const Host = Logix.Module.make('ProcessConcurrencySerialBacklogHost', {
         state: Schema.Void,

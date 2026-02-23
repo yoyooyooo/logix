@@ -25,7 +25,7 @@
 - `refactor-logix-core-selectorgraph-reads-by-root-20260223.md`：SelectorGraph 按 rootKey 分组 reads（已合并 PR #40）
 - `refactor-logix-core-module-statechange-readquery-diag-20260223.md`：moduleStateChange 诊断路径 readQuery 化（已合并 PR #41）
 - `refactor-logix-core-dirtyset-id-fastpath-20260223.md`：StateTransaction dirtySet id-only 快路径（已合并 PR #42）
-- `refactor-logix-core-process-latest-mode-inplace-20260223.md`：Process/TaskRunner latest 运行槽统一 + serial/parallel 游标队列（PR 待创建）
+- `refactor-logix-core-process-latest-mode-inplace-20260223.md`：Process/TaskRunner latest 运行槽统一 + serial/parallel 游标队列（PR #43，等待 CI）
 
 ## 已看过模块
 

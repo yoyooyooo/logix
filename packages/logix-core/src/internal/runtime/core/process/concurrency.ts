@@ -5,6 +5,7 @@ import type { ProcessConcurrencyPolicy, ProcessTrigger } from './protocol.js'
 
 export const DEFAULT_SERIAL_QUEUE_GUARD_LIMIT = 4096
 export const DEFAULT_PARALLEL_LIMIT = 16
+const QUEUE_COMPACTION_MIN_CONSUMED = 64
 
 export const toTaskRunnerMode = (policy: ProcessConcurrencyPolicy): TaskRunnerMode => {
   switch (policy.mode) {
@@ -69,7 +70,7 @@ const compactQueueIfNeeded = (state: TriggerQueueState): void => {
   }
 
   // Keep dequeue O(1) on the hot path and compact only occasionally.
-  if (state.queueStart >= 64 && state.queueStart * 2 >= state.queue.length) {
+  if (state.queueStart >= QUEUE_COMPACTION_MIN_CONSUMED && state.queueStart * 2 >= state.queue.length) {
     state.queue = state.queue.slice(state.queueStart)
     state.queueStart = 0
   }
