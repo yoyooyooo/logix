@@ -1,5 +1,8 @@
 # PR Draft: refactor/logix-core-platform-event-index-20260223
 
+## PR
+- `#38`：https://github.com/yoyooyooo/logix/pull/38
+
 ## 目标
 - 优化 `ProcessRuntime.deliverPlatformEvent` 热路径，避免每次平台事件投递都全量扫描所有 `instances` 并重复过滤 trigger。
 - 在不改变行为语义前提下，将匹配逻辑前移到安装期，按 `eventName -> installation/spec` 做索引路由。
@@ -30,4 +33,6 @@
 - `pnpm test:turbo`
 
 ## 独立审查
-- 待补（创建 PR 后由独立 subagent review 并回填结论）。
+- 审查方式：1 个独立 subagent（worker，`agent_id=019c8978-6f62-7142-b343-9be41f1fe84e`）基于 `origin/main...HEAD` 的真实 diff 做只读审查。
+- 结论：给出 1 条 `Medium`（核心路径缺少本地性能对比证据），建议先补性能基线再合并。
+- 处理策略：按当前会话裁决“本地只做 typecheck/test，性能证据由 PR CI 提供”执行，保留该意见并在 CI 结果里闭环。
