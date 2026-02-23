@@ -30,6 +30,7 @@
 - `refactor-logix-core-fieldpath-coderabbit-followups-20260223.md`：CodeRabbit follow-up：field-path id fast-path 分支覆盖 + comparator 不变量显式化（已合并 PR #45）
 - `refactor-logix-core-triggerstreams-coderabbit-hardening-20260223.md`：CodeRabbit follow-up：moduleStateChange fallback 缺流守卫 + diagnostics 分支收敛（已合并 PR #46）
 - `refactor-logix-core-platform-event-reregister-20260223.md`：CodeRabbit follow-up：platformEvent 重装索引同步与陈旧映射清理（PR #48，等待 CI）
+- `refactor-logix-core-selectorgraph-readless-batching-20260223.md`：SelectorGraph readless 索引 + dirty root 按 rootKey 批处理（PR 待创建）
 
 ## 已看过模块
 
@@ -284,8 +285,11 @@
   - 抽取 `shouldEvaluateEntryForDirtyRoots` 与 `evaluateEntry`，统一单 selector / 多 selector 的评估语义，减少 `onCommit` 热路径重复逻辑。
   - 为 entry 预构建 `readRootKeySet` 并在脏根过滤阶段使用 `Set.has`，避免重复 `Array.includes` 线性匹配。
   - 保持 `read_query::eval_error` 诊断与 `trace:selector:eval` 事件结构不变，仅做结构收敛与热路径常量优化。
+  - 新增 `selectorsWithoutReads` 索引，显式维护 `reads=[]` selector，避免 `multi-selector + registry` 场景漏评估 readless selector。
+  - `onCommit` 在 registry 路径改为按 `rootKey` 聚合 dirty roots 再批处理候选 selector，减少同 rootKey 下重复候选扫描与 overlap 判断。
 - `packages/logix-core/test/Runtime/ModuleRuntime/SelectorGraph.test.ts`
   - 新增回归用例：`only recomputes selectors whose root keys overlap dirty roots in multi-selector mode`，锁定多 selector 路径下根键索引与 overlap 过滤语义。
+  - 新增回归用例：`recomputes readless selector in multi-selector mode when registry is available`，锁定 readless selector 在 registry 路径仍会评估且不会误触发无关 static selector。
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.effects.ts`
   - 将 effects 执行模型从“每 actionTag 一条 watcher”收敛为“单 watcher 路由”，每条 action 仅做一次 tag 解析与路由查找。
   - 为每个 actionTag 维护 `handlerSnapshot`，注册时刷新，执行时直接复用，去除每次 action 的 `Array.from(handlers.values())` 分配。
@@ -301,17 +305,18 @@
 
 ## 独立审查记录
 
-<<<<<<< HEAD
+- 2026-02-23（logix-core / SelectorGraph readless+batching 轮次）
+  - 审查方式：1 个独立 subagent（default，`agent_id=019c8b07-a145-7380-86a6-98109815f3ce`）基于 `/Users/yoyo/Documents/code/personal/intent-flow.perf-core-loop10` 工作树 diff 做只读审查
+  - 结论：无阻塞问题，可合并
+  - 残余风险：建议后续补 `releaseEntry` 清理路径与 unknown dirty root 回退分支的定向回归
 - 2026-02-23（logix-core / field-path CodeRabbit follow-up 轮次）
   - 审查方式：1 个独立 subagent（explorer，`agent_id=019c8abc-4ae2-7a90-84c6-d9883da9f00f`）基于相对 `origin/main` 的 diff 做只读审查
   - 结论：无阻塞问题，可合并
   - 残余风险：若未来新增“未经过 registry 校验”的 `dirtyPathIds` 入口，`buildSpecificDirtySetFromIds` 的显式不变量会更早抛错，需要在新入口保持同等校验
-=======
 - 2026-02-23（logix-core / triggerStreams CodeRabbit follow-up 轮次）
   - 审查方式：1 个独立 subagent（default，`agent_id=019c8ac9-aae3-7961-9378-12b836bcc6b5`）基于相对 `origin/main` 的 diff 做只读审查
   - 结论：无阻塞问题，可合并
   - 残余风险：guard 当前仅校验 `changesWithMeta` 是否为函数，缺流回归暂未覆盖 `diagnosticsLevel='off'` 场景
->>>>>>> 04c1d76c (fix(logix-core): harden moduleStateChange trigger fallback)
 - 2026-02-23（logix-core / SelectorGraph 核心链路收敛轮次）
   - 审查方式：1 个独立 subagent（explorer，`agent_id=019c865e-f79d-7d33-8fb7-9a53d89bb7bf`）基于当前工作树 diff 做只读审查
   - 结论：无阻塞问题，可合并（单/多 selector 评估语义保持；`readRootKeySet` 为热路径常量优化；新增多 selector 回归测试覆盖关键边界）
