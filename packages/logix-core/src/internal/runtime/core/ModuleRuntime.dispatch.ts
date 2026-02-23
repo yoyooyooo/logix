@@ -29,6 +29,7 @@ export const makeDispatchOps = <S, A>(args: {
     stepId?: number,
   ) => void
   readonly actionHub: PubSub.PubSub<A>
+  readonly actionTagHubsByTag?: ReadonlyMap<string, PubSub.PubSub<A>>
   readonly actionCommitHub: PubSub.PubSub<StateChangeWithMeta<A>>
   readonly diagnostics: ConcurrencyDiagnostics
   readonly enqueueTransaction: EnqueueTransaction
@@ -52,6 +53,7 @@ export const makeDispatchOps = <S, A>(args: {
     setStateInternal,
     recordStatePatch,
     actionHub,
+    actionTagHubsByTag,
     actionCommitHub,
     diagnostics,
     enqueueTransaction,
@@ -69,6 +71,27 @@ export const makeDispatchOps = <S, A>(args: {
     if (tag != null) return String(tag)
     if (type != null) return String(type)
     return undefined
+  }
+
+  const resolveActionTopicTags = (action: A): ReadonlyArray<string> => {
+    const tags: string[] = []
+
+    const tag = (action as any)?._tag
+    if (typeof tag === 'string' && tag.length > 0) {
+      tags.push(tag)
+    }
+
+    const type = (action as any)?.type
+    if (typeof type === 'string' && type.length > 0 && !tags.includes(type)) {
+      tags.push(type)
+    }
+
+    if (tags.length > 0) {
+      return tags
+    }
+
+    const normalized = resolveActionTag(action)
+    return normalized ? [normalized] : []
   }
 
   // Primary reducer map: initial values come from options.reducers and can be extended at runtime via internal hooks (for $.reducer sugar).
@@ -310,6 +333,46 @@ export const makeDispatchOps = <S, A>(args: {
       })
     })
 
+  const publishActionToHubs = (action: A): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      yield* PubSub.publish(actionHub, action)
+      if (!actionTagHubsByTag || actionTagHubsByTag.size === 0) {
+        return
+      }
+      const topicTags = resolveActionTopicTags(action)
+      for (const topicTag of topicTags) {
+        const topicHub = actionTagHubsByTag.get(topicTag)
+        if (!topicHub) {
+          continue
+        }
+        yield* PubSub.publish(topicHub, action)
+      }
+    })
+
+  const publishBatchToHubs = (actions: ReadonlyArray<A>): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      if (actions.length === 0) {
+        return
+      }
+
+      yield* PubSub.publishAll(actionHub, actions)
+      if (!actionTagHubsByTag || actionTagHubsByTag.size === 0) {
+        return
+      }
+
+      for (const action of actions) {
+        const topicTags = resolveActionTopicTags(action)
+        for (const topicTag of topicTags) {
+          const topicHub = actionTagHubsByTag.get(topicTag)
+          if (!topicHub) {
+            continue
+          }
+          // Keep original batch order when fan-outing to tag streams.
+          yield* PubSub.publish(topicHub, action)
+        }
+      }
+    })
+
   return {
     registerReducer,
     // Note: publish is a lossless/backpressure channel and may wait.
@@ -318,7 +381,7 @@ export const makeDispatchOps = <S, A>(args: {
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) =>
           enqueueTransaction(runDispatch(action, override)).pipe(
-            Effect.zipRight(publishWithPressureDiagnostics('publish', PubSub.publish(actionHub, action))),
+            Effect.zipRight(publishWithPressureDiagnostics('publish', publishActionToHubs(action))),
           ),
         ),
       ),
@@ -326,7 +389,7 @@ export const makeDispatchOps = <S, A>(args: {
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) =>
           enqueueTransaction(runDispatchBatch(actions, override)).pipe(
-            Effect.zipRight(publishWithPressureDiagnostics('publishAll', PubSub.publishAll(actionHub, actions))),
+            Effect.zipRight(publishWithPressureDiagnostics('publishAll', publishBatchToHubs(actions))),
           ),
         ),
       ),
@@ -334,7 +397,7 @@ export const makeDispatchOps = <S, A>(args: {
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) =>
           enqueueTransaction(runDispatchLowPriority(action, override)).pipe(
-            Effect.zipRight(publishWithPressureDiagnostics('publish', PubSub.publish(actionHub, action))),
+            Effect.zipRight(publishWithPressureDiagnostics('publish', publishActionToHubs(action))),
           ),
         ),
       ),

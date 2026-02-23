@@ -95,6 +95,118 @@ describe('ModuleRuntime (internal)', () => {
         expect(tags).toEqual(['DEC', 'INC'])
       }),
     )
+
+    it.scoped('should route actionsByTag$ without cross-tag noise', () =>
+      Effect.gen(function* () {
+        const TopicModule = Logix.Module.make('ActionTopicModule', {
+          state: Schema.Struct({ count: Schema.Number }),
+          actions: {
+            inc: Schema.Void,
+            dec: Schema.Void,
+          },
+        })
+
+        const runtime = yield* ModuleRuntime.make(
+          { count: 0 },
+          {
+            moduleId: 'action-topic-module',
+            tag: TopicModule.tag,
+          },
+        )
+
+        const actionsByTag$ = runtime.actionsByTag$
+        expect(typeof actionsByTag$).toBe('function')
+        if (!actionsByTag$) {
+          yield* Effect.dieMessage('actionsByTag$ should be available for module with declared actions')
+        }
+
+        const incFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag$('inc'), 2)))
+        const decFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag$('dec'), 1)))
+        yield* Effect.yieldNow()
+
+        yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
+        yield* runtime.dispatch({ _tag: 'dec', payload: undefined } as any)
+        yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
+
+        const incActions = Chunk.toReadonlyArray(yield* Fiber.join(incFiber)).map((action: any) => action._tag)
+        const decActions = Chunk.toReadonlyArray(yield* Fiber.join(decFiber)).map((action: any) => action._tag)
+
+        expect(incActions).toEqual(['inc', 'inc'])
+        expect(decActions).toEqual(['dec'])
+      }),
+    )
+
+    it.scoped('actionsByTag$ should keep _tag/type OR semantics for topic routing', () =>
+      Effect.gen(function* () {
+        const TopicModule = Logix.Module.make('ActionTopicLegacyCompatModule', {
+          state: Schema.Struct({ count: Schema.Number }),
+          actions: {
+            inc: Schema.Void,
+            dec: Schema.Void,
+          },
+        })
+
+        const runtime = yield* ModuleRuntime.make(
+          { count: 0 },
+          {
+            moduleId: 'action-topic-legacy-compat',
+            tag: TopicModule.tag,
+          },
+        )
+
+        const actionsByTag$ = runtime.actionsByTag$
+        expect(typeof actionsByTag$).toBe('function')
+        if (!actionsByTag$) {
+          yield* Effect.dieMessage('actionsByTag$ should be available for module with declared actions')
+        }
+
+        const decFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag$('dec'), 1)))
+        yield* Effect.yieldNow()
+
+        yield* runtime.dispatch({ _tag: 'inc', type: 'dec', payload: undefined } as any)
+
+        const decActions = Chunk.toReadonlyArray(yield* Fiber.join(decFiber))
+        expect(decActions).toHaveLength(1)
+        expect((decActions[0] as any)._tag).toBe('inc')
+        expect((decActions[0] as any).type).toBe('dec')
+      }),
+    )
+
+    it.scoped('actionsByTag$ fallback should keep _tag/type OR semantics for undeclared topics', () =>
+      Effect.gen(function* () {
+        const TopicModule = Logix.Module.make('ActionTopicFallbackLegacyCompatModule', {
+          state: Schema.Struct({ count: Schema.Number }),
+          actions: {
+            inc: Schema.Void,
+            dec: Schema.Void,
+          },
+        })
+
+        const runtime = yield* ModuleRuntime.make(
+          { count: 0 },
+          {
+            moduleId: 'action-topic-fallback-legacy-compat',
+            tag: TopicModule.tag,
+          },
+        )
+
+        const actionsByTag$ = runtime.actionsByTag$
+        expect(typeof actionsByTag$).toBe('function')
+        if (!actionsByTag$) {
+          yield* Effect.dieMessage('actionsByTag$ should be available for module with declared actions')
+        }
+
+        const legacyFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag$('legacy'), 1)))
+        yield* Effect.yieldNow()
+
+        yield* runtime.dispatch({ _tag: 'inc', type: 'legacy', payload: undefined } as any)
+
+        const legacyActions = Chunk.toReadonlyArray(yield* Fiber.join(legacyFiber))
+        expect(legacyActions).toHaveLength(1)
+        expect((legacyActions[0] as any)._tag).toBe('inc')
+        expect((legacyActions[0] as any).type).toBe('legacy')
+      }),
+    )
   })
 
   describe('debug integration', () => {
