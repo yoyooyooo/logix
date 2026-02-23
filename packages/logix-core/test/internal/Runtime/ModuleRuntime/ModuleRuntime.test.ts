@@ -119,9 +119,10 @@ describe('ModuleRuntime (internal)', () => {
         if (!actionsByTag$) {
           yield* Effect.dieMessage('actionsByTag$ should be available for module with declared actions')
         }
+        const actionsByTag = actionsByTag$!
 
-        const incFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag$('inc'), 2)))
-        const decFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag$('dec'), 1)))
+        const incFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('inc'), 2)))
+        const decFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('dec'), 1)))
         yield* Effect.yieldNow()
 
         yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
@@ -159,8 +160,9 @@ describe('ModuleRuntime (internal)', () => {
         if (!actionsByTag$) {
           yield* Effect.dieMessage('actionsByTag$ should be available for module with declared actions')
         }
+        const actionsByTag = actionsByTag$!
 
-        const decFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag$('dec'), 1)))
+        const decFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('dec'), 1)))
         yield* Effect.yieldNow()
 
         yield* runtime.dispatch({ _tag: 'inc', type: 'dec', payload: undefined } as any)
@@ -195,8 +197,9 @@ describe('ModuleRuntime (internal)', () => {
         if (!actionsByTag$) {
           yield* Effect.dieMessage('actionsByTag$ should be available for module with declared actions')
         }
+        const actionsByTag = actionsByTag$!
 
-        const legacyFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag$('legacy'), 1)))
+        const legacyFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('legacy'), 1)))
         yield* Effect.yieldNow()
 
         yield* runtime.dispatch({ _tag: 'inc', type: 'legacy', payload: undefined } as any)
