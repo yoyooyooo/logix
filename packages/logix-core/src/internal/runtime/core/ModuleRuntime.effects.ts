@@ -23,7 +23,7 @@ type LogicUnitState = {
 
 type ActionTagState = {
   readonly handlers: Map<string, HandlerEntry>
-  watcherStarted: boolean
+  handlerSnapshot: ReadonlyArray<HandlerEntry>
 }
 
 const resolveActionTag = (action: unknown): string | undefined => {
@@ -34,11 +34,6 @@ const resolveActionTag = (action: unknown): string | undefined => {
   if (tag != null) return String(tag)
   if (type != null) return String(type)
   return undefined
-}
-
-const matchesActionTag = (action: unknown, actionTag: string): boolean => {
-  const tag = resolveActionTag(action)
-  return tag === actionTag
 }
 
 const getOrCreateLogicUnitState = (states: Map<string, LogicUnitState>, logicUnitId: string): LogicUnitState => {
@@ -82,22 +77,33 @@ export const makeEffectsRegistry = (args: {
 
   const logicUnitStates = new Map<string, LogicUnitState>()
   const tagStates = new Map<string, ActionTagState>()
+  let watcherStarted = false
 
   const getOrCreateTagState = (actionTag: string): ActionTagState => {
     const existing = tagStates.get(actionTag)
     if (existing) return existing
-    const next: ActionTagState = { handlers: new Map(), watcherStarted: false }
+    const next: ActionTagState = { handlers: new Map(), handlerSnapshot: [] }
     tagStates.set(actionTag, next)
     return next
   }
 
-  const startWatcherIfNeeded = (actionTag: string, state: ActionTagState): Effect.Effect<void, never, any> => {
-    if (state.watcherStarted) return Effect.void
-    state.watcherStarted = true
+  const refreshHandlerSnapshot = (state: ActionTagState): void => {
+    state.handlerSnapshot = Array.from(state.handlers.values())
+  }
 
-    const program = Stream.runForEach(actions$.pipe(Stream.filter((a) => matchesActionTag(a, actionTag))), (action) =>
+  const startWatcherIfNeeded = (): Effect.Effect<void, never, any> => {
+    if (watcherStarted) return Effect.void
+    watcherStarted = true
+
+    const program = Stream.runForEach(actions$, (action) =>
       Effect.gen(function* () {
-        const entries = Array.from(state.handlers.values())
+        const actionTag = resolveActionTag(action)
+        if (!actionTag) return
+
+        const state = tagStates.get(actionTag)
+        if (!state) return
+
+        const entries = state.handlerSnapshot
         if (entries.length === 0) return
 
         const payload = (action as any)?.payload
@@ -146,9 +152,9 @@ export const makeEffectsRegistry = (args: {
           instanceId,
           code: 'effects::watcher_crashed',
           severity: 'error',
-          message: `Effect watcher crashed for actionTag="${actionTag}".`,
+          message: 'Effect watcher crashed while routing action handlers.',
           hint: toSerializableErrorSummary(cause).errorSummary.message,
-          actionTag,
+          actionTag: '*',
           kind: 'effect_watcher_crashed',
         }),
       ),
@@ -211,6 +217,7 @@ export const makeEffectsRegistry = (args: {
         logicUnitLabel,
         logicUnitPath,
       })
+      refreshHandlerSnapshot(tagState)
 
       if (params.phase === 'run') {
         yield* Debug.record({
@@ -231,7 +238,7 @@ export const makeEffectsRegistry = (args: {
         })
       }
 
-      yield* startWatcherIfNeeded(actionTag, tagState)
+      yield* startWatcherIfNeeded()
       return { sourceKey, duplicate: false } as const
     })
 
