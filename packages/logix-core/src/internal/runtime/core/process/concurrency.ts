@@ -1,4 +1,5 @@
 import { Effect, Fiber, Option, Ref, Scope, Stream } from 'effect'
+import * as LatestFiberSlot from '../LatestFiberSlot.js'
 import type { TaskRunnerMode } from '../TaskRunner.js'
 import type { ProcessConcurrencyPolicy, ProcessTrigger } from './protocol.js'
 
@@ -50,6 +51,51 @@ export type ProcessTriggerQueueOverflowInfo = {
   readonly policy: ProcessConcurrencyPolicy
 }
 
+type TriggerQueueState = {
+  queue: ProcessTrigger[]
+  queueStart: number
+  peak: number
+}
+
+const queueLength = (state: TriggerQueueState): number => state.queue.length - state.queueStart
+
+const compactQueueIfNeeded = (state: TriggerQueueState): void => {
+  if (state.queueStart === 0) return
+
+  if (state.queueStart >= state.queue.length) {
+    state.queue = []
+    state.queueStart = 0
+    return
+  }
+
+  // Keep dequeue O(1) on the hot path and compact only occasionally.
+  if (state.queueStart >= 64 && state.queueStart * 2 >= state.queue.length) {
+    state.queue = state.queue.slice(state.queueStart)
+    state.queueStart = 0
+  }
+}
+
+const enqueueTrigger = (state: TriggerQueueState, trigger: ProcessTrigger): number => {
+  state.queue.push(trigger)
+  const size = queueLength(state)
+  if (size > state.peak) {
+    state.peak = size
+  }
+  return size
+}
+
+const dequeueTrigger = (state: TriggerQueueState): ProcessTrigger | undefined => {
+  if (state.queueStart >= state.queue.length) {
+    state.queue = []
+    state.queueStart = 0
+    return undefined
+  }
+  const next = state.queue[state.queueStart]
+  state.queueStart += 1
+  compactQueueIfNeeded(state)
+  return next
+}
+
 export const runProcessTriggerStream = (args: {
   readonly stream: Stream.Stream<ProcessTrigger>
   readonly policy: ProcessConcurrencyPolicy
@@ -68,35 +114,23 @@ export const runProcessTriggerStream = (args: {
     const defaultQueueGuard = args.defaultQueueGuard ?? DEFAULT_SERIAL_QUEUE_GUARD_LIMIT
 
     if (policy.mode === 'latest') {
-      const stateRef = yield* Ref.make<{
-        readonly fiber?: Fiber.RuntimeFiber<void, never>
-        readonly runningId: number
-        readonly nextId: number
-      }>({ fiber: undefined, runningId: 0, nextId: 0 })
+      const stateRef = yield* LatestFiberSlot.make()
 
       const onTrigger = (trigger0: ProcessTrigger): Effect.Effect<void, never, Scope.Scope> =>
         Effect.gen(function* () {
           const trigger = args.assignTriggerSeq(trigger0)
 
-          const [prevFiber, prevRunningId, runId] = yield* Ref.modify(stateRef, (s) => {
-            const nextId = s.nextId + 1
-            return [[s.fiber, s.runningId, nextId] as const, { ...s, nextId, runningId: nextId }] as const
-          })
+          const [prevFiber, prevRunningId, runId] = yield* LatestFiberSlot.beginRun(stateRef)
 
           if (prevFiber && prevRunningId !== 0) {
-            const done = yield* Fiber.poll(prevFiber)
-            if (Option.isNone(done)) {
-              yield* Fiber.interruptFork(prevFiber)
-            }
+            yield* Fiber.interruptFork(prevFiber)
           }
 
           const fiber = yield* Effect.forkScoped(
-            args
-              .run(trigger)
-              .pipe(Effect.ensuring(Ref.update(stateRef, (s) => (s.runningId === runId ? { ...s, runningId: 0 } : s)))),
+            args.run(trigger).pipe(Effect.ensuring(LatestFiberSlot.clearIfCurrent(stateRef, runId))),
           )
 
-          yield* Ref.update(stateRef, (s) => ({ ...s, fiber }))
+          yield* LatestFiberSlot.setFiberIfCurrent(stateRef, runId, fiber)
         })
 
       return yield* Stream.runForEach(args.stream, onTrigger)
@@ -106,11 +140,13 @@ export const runProcessTriggerStream = (args: {
     const serialStateRef = yield* Ref.make({
       running: false,
       queue: [] as ProcessTrigger[],
+      queueStart: 0,
       peak: 0,
     })
     const parallelStateRef = yield* Ref.make({
       active: 0,
       queue: [] as ProcessTrigger[],
+      queueStart: 0,
       peak: 0,
     })
 
@@ -124,10 +160,10 @@ export const runProcessTriggerStream = (args: {
     const drainSerial = (): Effect.Effect<void, never, Scope.Scope> =>
       Effect.suspend(() =>
         Ref.modify(serialStateRef, (state) => {
-          if (state.running || state.queue.length === 0) {
+          if (state.running || queueLength(state) === 0) {
             return [Option.none(), state] as const
           }
-          const next = state.queue.shift()
+          const next = dequeueTrigger(state)
           if (next === undefined) {
             return [Option.none(), state] as const
           }
@@ -159,10 +195,10 @@ export const runProcessTriggerStream = (args: {
     const drainParallel = (): Effect.Effect<void, never, Scope.Scope> =>
       Effect.suspend(() =>
         Ref.modify(parallelStateRef, (state) => {
-          if (state.active >= parallelLimit || state.queue.length === 0) {
+          if (state.active >= parallelLimit || queueLength(state) === 0) {
             return [Option.none(), state] as const
           }
-          const next = state.queue.shift()
+          const next = dequeueTrigger(state)
           if (next === undefined) {
             return [Option.none(), state] as const
           }
@@ -207,20 +243,16 @@ export const runProcessTriggerStream = (args: {
         }
 
         if (policy.mode === 'parallel') {
-          const nextSize = yield* Ref.modify(parallelStateRef, (state) => {
-            state.queue.push(trigger)
-            if (state.queue.length > state.peak) {
-              state.peak = state.queue.length
-            }
-            return [state.queue.length, state] as const
+          const [nextSize, peak] = yield* Ref.modify(parallelStateRef, (state) => {
+            const size = enqueueTrigger(state, trigger)
+            return [[size, state.peak] as const, state] as const
           })
 
           if (nextSize > parallelQueueLimit.guard) {
-            const state = yield* Ref.get(parallelStateRef)
             yield* args.onQueueOverflow({
               mode: 'parallel',
               currentLength: nextSize,
-              peak: state.peak,
+              peak,
               limit: parallelQueueLimit,
               policy,
             })
@@ -232,20 +264,16 @@ export const runProcessTriggerStream = (args: {
         }
 
         // serial
-        const nextSize = yield* Ref.modify(serialStateRef, (state) => {
-          state.queue.push(trigger)
-          if (state.queue.length > state.peak) {
-            state.peak = state.queue.length
-          }
-          return [state.queue.length, state] as const
+        const [nextSize, peak] = yield* Ref.modify(serialStateRef, (state) => {
+          const size = enqueueTrigger(state, trigger)
+          return [[size, state.peak] as const, state] as const
         })
 
         if (nextSize > serialQueueLimit.guard) {
-          const state = yield* Ref.get(serialStateRef)
           yield* args.onQueueOverflow({
             mode: 'serial',
             currentLength: nextSize,
-            peak: state.peak,
+            peak,
             limit: serialQueueLimit,
             policy,
           })
