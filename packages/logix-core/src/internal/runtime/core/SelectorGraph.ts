@@ -10,8 +10,8 @@ type SelectorEntry<S, V> = {
   readonly selectorId: string
   readonly readQuery: ReadQueryCompiled<S, V>
   readonly reads: ReadonlyArray<FieldPath>
+  readonly readsByRootKey: ReadonlyMap<ReadRootKey, ReadonlyArray<FieldPath>>
   readonly readRootKeys: ReadonlyArray<ReadRootKey>
-  readonly readRootKeySet: ReadonlySet<ReadRootKey>
   readonly hub: PubSub.PubSub<StateChangeWithMeta<V>>
   subscriberCount: number
   cachedAtTxnSeq: number
@@ -88,11 +88,12 @@ const shouldEvaluateEntryForDirtyRoots = <S>(args: {
     if (!dirtyRoot) return true
 
     const dirtyRootKey = getReadRootKeyFromPath(dirtyRoot)
-    if (args.entry.readRootKeySet.size > 0 && !args.entry.readRootKeySet.has(dirtyRootKey)) {
+    const readsForRoot = args.entry.readsByRootKey.get(dirtyRootKey)
+    if (!readsForRoot || readsForRoot.length === 0) {
       continue
     }
 
-    for (const read of args.entry.reads) {
+    for (const read of readsForRoot) {
       if (overlaps(dirtyRoot, read)) {
         return true
       }
@@ -201,9 +202,17 @@ export const make = <S>(args: {
         .filter((x): x is string => typeof x === 'string')
         .map((raw) => normalizeFieldPath(raw))
         .filter((x): x is FieldPath => x != null)
-      const readRootKeys = Array.from(new Set(reads.map(getReadRootKeyFromPath)))
-      const readRootKeySet = new Set(readRootKeys)
-
+      const readsByRootKey = new Map<ReadRootKey, FieldPath[]>()
+      for (const read of reads) {
+        const rootKey = getReadRootKeyFromPath(read)
+        const bucket = readsByRootKey.get(rootKey)
+        if (bucket) {
+          bucket.push(read)
+        } else {
+          readsByRootKey.set(rootKey, [read])
+        }
+      }
+      const readRootKeys = Array.from(readsByRootKey.keys())
       for (const rootKey of readRootKeys) {
         const set = indexByReadRoot.get(rootKey)
         if (set) {
@@ -217,8 +226,8 @@ export const make = <S>(args: {
         selectorId: readQuery.selectorId,
         readQuery: readQuery as any,
         reads,
+        readsByRootKey,
         readRootKeys,
-        readRootKeySet,
         hub,
         subscriberCount: 0,
         cachedAtTxnSeq: 0,
@@ -327,7 +336,11 @@ export const make = <S>(args: {
                 dirtySelectorIds.add(selectorId)
                 continue
               }
-              for (const read of entry.reads) {
+              const readsForRoot = entry.readsByRootKey.get(rootKey)
+              if (!readsForRoot || readsForRoot.length === 0) {
+                continue
+              }
+              for (const read of readsForRoot) {
                 if (overlaps(dirtyRoot, read)) {
                   dirtySelectorIds.add(selectorId)
                   break

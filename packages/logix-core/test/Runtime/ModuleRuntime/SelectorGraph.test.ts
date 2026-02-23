@@ -151,6 +151,57 @@ describe('SelectorGraph', () => {
     ),
   )
 
+  it.effect('does not recompute multi-root selector when dirty path is non-overlapping under same root', () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        let calls = 0
+
+        const selectUserAndTheme = Object.assign(
+          (state: {
+            readonly user: { readonly name: string }
+            readonly settings: { readonly theme: string; readonly locale: string }
+          }) => {
+            calls += 1
+            return `${state.user.name}:${state.settings.theme}`
+          },
+          { fieldPaths: ['user.name', 'settings.theme'] },
+        )
+
+        const readQuery = Logix.ReadQuery.compile(selectUserAndTheme as any)
+        const registry = makeFieldPathIdRegistry([['user', 'name'], ['settings', 'theme'], ['settings', 'locale']])
+
+        const graph = SelectorGraph.make<{
+          readonly user: { readonly name: string }
+          readonly settings: { readonly theme: string; readonly locale: string }
+        }>({
+          moduleId: 'TestModule',
+          instanceId: 'i-test',
+          getFieldPathIdRegistry: () => registry,
+        })
+
+        const entry = yield* graph.ensureEntry(readQuery as any)
+        entry.subscriberCount = 1
+
+        const subscription = yield* PubSub.subscribe(entry.hub)
+        const takeOneFiber = yield* Effect.fork(Queue.take(subscription))
+
+        yield* graph.onCommit(
+          { user: { name: 'A' }, settings: { theme: 'dark', locale: 'en-US' } },
+          { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+          dirtyPathsToRootIds({ dirtyPaths: [['settings', 'locale']], registry }),
+          'off',
+        )
+
+        yield* Effect.yieldNow()
+        const polled = yield* Fiber.poll(takeOneFiber)
+        yield* Fiber.interrupt(takeOneFiber)
+
+        expect(calls).toBe(0)
+        expect(Option.isNone(polled)).toBe(true)
+      }),
+    ),
+  )
+
   it.effect('emits a slim trace:selector:eval cost summary in diagnostics=light', () =>
     Effect.scoped(
       Effect.gen(function* () {
