@@ -1,5 +1,9 @@
 # PR Draft: refactor/logix-core-rowid-updateall-dirtyset-gate-20260224
 
+- PR：`#52` https://github.com/yoyooyooo/logix/pull/52
+- 合并策略：`auto-merge(rebase)` 已开启（等待 required checks）
+- CI watcher：`.context/pr-ci-watch/pr-52-20260224-024026.log`
+
 ## 目标
 - 优化 `logix-core` 事务提交热路径：避免每次 commit 都对所有 list 配置执行 `rowIdStore.updateAll`。
 - 在不牺牲一致性的前提下，以 `dirtySet` 门控 RowId 对齐，减少无关字段提交时的遍历开销。
@@ -23,7 +27,7 @@
   - commit 热路径引入 RowId 对齐门控：由“有 list 配置就 updateAll”升级为“`shouldReconcileListConfigsByDirtySet` 为 true 才 updateAll”。
   - 保持事务窗口、commitHub 发布和 state:update 语义不变。
 - `packages/logix-core/test/internal/StateTrait/RowId.UpdateGate.test.ts`
-  - 新增 8 条回归：覆盖 dirtyAll、无 registry、未知 rootId 保守回退、祖先/后代路径重叠命中、无关路径跳过等关键分支。
+  - 新增 9 条回归：覆盖 dirtyAll、无 registry、未知 rootId 保守回退、祖先/后代路径重叠命中、无关路径跳过、归一化失败保守回退等关键分支。
 
 ## 验证
 - `pnpm --filter @logixjs/core test -- test/internal/StateTrait/RowId.UpdateGate.test.ts` ✅
