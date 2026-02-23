@@ -237,8 +237,7 @@ const buildSpecificDirtySetFromIds = (
   sorted.sort((a, b) => {
     const ap = fieldPathsById[a]
     const bp = fieldPathsById[b]
-    if (!ap || !bp) return a - b
-    const cmp = compareFieldPath(ap, bp)
+    const cmp = compareFieldPath(ap!, bp!)
     return cmp !== 0 ? cmp : a - b
   })
 
@@ -246,8 +245,7 @@ const buildSpecificDirtySetFromIds = (
   let prev: FieldPath | undefined
   for (let i = 0; i < sorted.length; i++) {
     const id = sorted[i]!
-    const path = fieldPathsById[id]
-    if (!path) continue
+    const path = fieldPathsById[id]!
     if (prev && isPrefixOf(prev, path)) continue
     rootIds.push(id)
     prev = path

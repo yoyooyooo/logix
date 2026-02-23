@@ -72,6 +72,30 @@ describe('field-path dirtyAll reason mapping', () => {
     expect(out.rootIds).toEqual([0, 2])
   })
 
+  test('id fast path maps empty input to unknownWrite', () => {
+    const registry = makeFieldPathIdRegistry([['a']])
+    const out = dirtyPathIdsToRootIds({ dirtyPathIds: [], registry })
+    expect(out.dirtyAll).toBe(true)
+    expect(out.reason).toBe('unknownWrite')
+    expect(out.rootIds).toEqual([])
+  })
+
+  test('id fast path maps negative ids to nonTrackablePatch', () => {
+    const registry = makeFieldPathIdRegistry([['a']])
+    const out = dirtyPathIdsToRootIds({ dirtyPathIds: [-1], registry })
+    expect(out.dirtyAll).toBe(true)
+    expect(out.reason).toBe('nonTrackablePatch')
+    expect(out.rootIds).toEqual([])
+  })
+
+  test('id fast path keeps dirtyAllReason short-circuit', () => {
+    const registry = makeFieldPathIdRegistry([['a']])
+    const out = dirtyPathIdsToRootIds({ dirtyPathIds: [0], dirtyAllReason: 'customMutation', registry })
+    expect(out.dirtyAll).toBe(true)
+    expect(out.reason).toBe('customMutation')
+    expect(out.rootIds).toEqual([])
+  })
+
   test('id fast path maps invalid ids to nonTrackablePatch', () => {
     const registry = makeFieldPathIdRegistry([['a']])
     const out = dirtyPathIdsToRootIds({ dirtyPathIds: [0, Number.NaN], registry })
@@ -85,6 +109,14 @@ describe('field-path dirtyAll reason mapping', () => {
     const out = dirtyPathIdsToRootIds({ dirtyPathIds: [1], registry })
     expect(out.dirtyAll).toBe(true)
     expect(out.reason).toBe('fallbackPolicy')
+    expect(out.rootIds).toEqual([])
+  })
+
+  test('id fast path keeps invalid precedence over missing ids', () => {
+    const registry = makeFieldPathIdRegistry([['a']])
+    const out = dirtyPathIdsToRootIds({ dirtyPathIds: [0, 999, Number.NaN], registry })
+    expect(out.dirtyAll).toBe(true)
+    expect(out.reason).toBe('nonTrackablePatch')
     expect(out.rootIds).toEqual([])
   })
 })
