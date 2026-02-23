@@ -151,6 +151,67 @@ describe('SelectorGraph', () => {
     ),
   )
 
+  it.effect('skips non-overlapping selector under same root in multi-selector mode', () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        let themeCalls = 0
+        let localeCalls = 0
+
+        const selectTheme = Object.assign(
+          (state: { readonly settings: { readonly theme: string; readonly locale: string } }) => {
+            themeCalls += 1
+            return state.settings.theme
+          },
+          { fieldPaths: ['settings.theme'] },
+        )
+
+        const selectLocale = Object.assign(
+          (state: { readonly settings: { readonly theme: string; readonly locale: string } }) => {
+            localeCalls += 1
+            return state.settings.locale
+          },
+          { fieldPaths: ['settings.locale'] },
+        )
+
+        const themeQuery = Logix.ReadQuery.compile(selectTheme as any)
+        const localeQuery = Logix.ReadQuery.compile(selectLocale as any)
+        const registry = makeFieldPathIdRegistry([['settings', 'theme'], ['settings', 'locale']])
+
+        const graph = SelectorGraph.make<{ readonly settings: { readonly theme: string; readonly locale: string } }>({
+          moduleId: 'TestModule',
+          instanceId: 'i-test',
+          getFieldPathIdRegistry: () => registry,
+        })
+
+        const themeEntry = yield* graph.ensureEntry(themeQuery as any)
+        themeEntry.subscriberCount = 1
+        const localeEntry = yield* graph.ensureEntry(localeQuery as any)
+        localeEntry.subscriberCount = 1
+
+        const themeSubscription = yield* PubSub.subscribe(themeEntry.hub)
+        const localeSubscription = yield* PubSub.subscribe(localeEntry.hub)
+        const takeThemeFiber = yield* Effect.fork(Queue.take(themeSubscription))
+
+        yield* graph.onCommit(
+          { settings: { theme: 'dark', locale: 'en-US' } },
+          { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+          dirtyPathsToRootIds({ dirtyPaths: [['settings', 'locale']], registry }),
+          'off',
+        )
+
+        const localeEvent = yield* Queue.take(localeSubscription)
+        yield* Effect.yieldNow()
+        const themePolled = yield* Fiber.poll(takeThemeFiber)
+        yield* Fiber.interrupt(takeThemeFiber)
+
+        expect((localeEvent as any).value).toBe('en-US')
+        expect(localeCalls).toBe(1)
+        expect(themeCalls).toBe(0)
+        expect(Option.isNone(themePolled)).toBe(true)
+      }),
+    ),
+  )
+
   it.effect('does not recompute multi-root selector when dirty path is non-overlapping under same root', () =>
     Effect.scoped(
       Effect.gen(function* () {
