@@ -117,26 +117,30 @@ describe('ModuleRuntime.txnQueue (lanes)', () => {
       })
 
       const completed = yield* Ref.make(0)
-      const total = 96
+      const burstSize = 96
 
-      // Let consumer enter idle state first; then enqueue a burst across both lanes.
+      const runBurst = (offset: number) =>
+        Effect.all(
+          Array.from({ length: burstSize }, (_, i) =>
+            enqueueTransaction(
+              (offset + i) % 4 === 0 ? 'nonUrgent' : 'urgent',
+              Effect.yieldNow().pipe(Effect.zipRight(Ref.update(completed, (n) => n + 1)), Effect.asVoid),
+            ),
+          ),
+          { concurrency: 32 },
+        ).pipe(
+          Effect.timeoutFail({
+            duration: '5 seconds',
+            onTimeout: () => new Error('txnQueue burst drain timeout'),
+          }),
+        )
+
+      // Run two rounds to cover both cold wake-up and post-idle wake-up paths.
+      yield* runBurst(0)
       yield* Effect.yieldNow()
+      yield* runBurst(burstSize)
 
-      const tasks = Array.from({ length: total }, (_, i) =>
-        enqueueTransaction(
-          i % 4 === 0 ? 'nonUrgent' : 'urgent',
-          Effect.yieldNow().pipe(Effect.zipRight(Ref.update(completed, (n) => n + 1)), Effect.asVoid),
-        ),
-      )
-
-      yield* Effect.all(tasks, { concurrency: 32 }).pipe(
-        Effect.timeoutFail({
-          duration: '5 seconds',
-          onTimeout: () => new Error('txnQueue burst drain timeout'),
-        }),
-      )
-
-      expect(yield* Ref.get(completed)).toBe(total)
+      expect(yield* Ref.get(completed)).toBe(burstSize * 2)
     }),
   )
 })
