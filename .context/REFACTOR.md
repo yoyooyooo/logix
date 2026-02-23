@@ -1,8 +1,9 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-selectorgraph-corepath-20260223`
+> 分支：`main`
 > 基线来源：`origin/main`（同步时间：2026-02-23）
+> 说明：自 2026-02-23 起，每个重构 PR 的详细记录单独放在 `.context/prs/*.md`，本文件只保留总览索引。
 
 ## 状态定义
 
@@ -10,6 +11,11 @@
 - `ENTRY_READ`：已阅读入口/主路由文件，完成初步定位。
 - `DEEP_READ`：已深入阅读核心实现与关键调用链。
 - `REFACTORED`：已完成重构并通过本地质量门。
+
+## PR 索引（详细记录见 `.context/prs/`）
+
+- `pr-32.md`：SelectorGraph 核心链路收敛与热路径判断优化
+- `refactor-logix-core-process-trigger-stream-factory-20260223.md`：ProcessRuntime 触发器流模块化（进行中）
 
 ## 已看过模块
 
