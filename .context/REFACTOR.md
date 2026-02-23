@@ -22,7 +22,8 @@
 - `refactor-logix-core-process-concurrency-queue-20260223.md`：Process 并发队列原地更新（已合并 PR #37）
 - `refactor-logix-core-platform-event-index-20260223.md`：Process 平台事件分发索引化（已合并 PR #38）
 - `refactor-logix-core-module-statechange-dedupe-20260223.md`：moduleStateChange 去重路径 Ref.modify 收敛（已合并 PR #39）
-- `refactor-logix-core-selectorgraph-reads-by-root-20260223.md`：SelectorGraph 按 rootKey 分组 reads（PR #40，等待 CI）
+- `refactor-logix-core-selectorgraph-reads-by-root-20260223.md`：SelectorGraph 按 rootKey 分组 reads（已合并 PR #40）
+- `refactor-logix-core-module-statechange-readquery-diag-20260223.md`：moduleStateChange 诊断路径 readQuery 化（PR #41，等待 CI）
 
 ## 已看过模块
 
@@ -221,6 +222,11 @@
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
   - `moduleStateChange` 触发器改为通过 `makeSelectorSamplingTracker` 维护采样计数，并在 warning 评估前使用单次 `snapshot`，保持判定输入与 hint 输出一致。
   - warning 发射后沿用“仅重置 sampled/slow/max，不重置 calls”的既有语义，通过 `resetSampling` 显式表达。
+- `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`
+  - `moduleStateChange` 的 diagnostics 路径改为优先复用 `changesReadQueryWithMeta(ReadQuery.make(...))`，让 selector 增量评估沿用 SelectorGraph 的 dirty-root 过滤与缓存。
+  - 保留 fallback：当 runtime 不提供 `changesReadQueryWithMeta` 时，继续走 `changesWithMeta + dedupeConsecutiveByValue`，保持兼容语义。
+- `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`
+  - 新增回归用例：`should not trigger for unrelated path updates in diagnostics mode`，锁定 diagnostics 模式下非相关路径更新不会误触发 process/warning。
 - `packages/logix-core/test/Process/Process.SelectorDiagnostics.Helpers.test.ts`
   - 新增 helper 纯函数/状态机单测：覆盖 `evaluateSelectorWarning` 高频触发与 cooldown 抑制分支、`buildSelectorWarningHint` 文案关键字段、`makeSelectorSamplingTracker` 的采样掩码与 reset 语义。
   - 增补 reset 后采样节奏断言：验证 `calls` 不重置时下一次采样命中位置延续（mask=0x3 场景在第 12 次调用命中）。

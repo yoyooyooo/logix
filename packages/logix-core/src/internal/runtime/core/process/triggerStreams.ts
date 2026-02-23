@@ -176,32 +176,38 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
         txnSeq: typeof txnSeq === 'number' ? txnSeq : 1,
       })
 
-      const enableSelectorDiagnostics = options.shouldRecordChainEvents
-      if (!enableSelectorDiagnostics) {
-        const readQuery = makeModuleStateChangeReadQuery({
-          moduleId: spec.moduleId,
-          path: spec.path,
-          selector: selectorBase,
-        })
-        const changesReadQueryWithMeta = runtime.changesReadQueryWithMeta as
-          | ((input: ReadQuery.ReadQueryInput<unknown, unknown>) => Stream.Stream<any>)
-          | undefined
+      const buildModuleStateChangeBaseStream = (
+        selector: (state: unknown) => unknown,
+      ): Effect.Effect<Stream.Stream<ProcessTrigger>, never> =>
+        Effect.gen(function* () {
+          const readQuery = makeModuleStateChangeReadQuery({
+            moduleId: spec.moduleId,
+            path: spec.path,
+            selector,
+          })
+          const changesReadQueryWithMeta = runtime.changesReadQueryWithMeta as
+            | ((input: ReadQuery.ReadQueryInput<unknown, unknown>) => Stream.Stream<any>)
+            | undefined
 
-        if (typeof changesReadQueryWithMeta === 'function') {
-          return changesReadQueryWithMeta(readQuery).pipe(
+          if (typeof changesReadQueryWithMeta === 'function') {
+            return changesReadQueryWithMeta(readQuery).pipe(
+              Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
+            )
+          }
+
+          const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
+          return (runtime.changesWithMeta(selector) as Stream.Stream<any>).pipe(
+            Stream.mapEffect((evt: any) => dedupeConsecutiveByValue(prevRef, evt)),
+            Stream.filterMap((opt) => opt),
             Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
           )
-        }
+        })
 
-        const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
-        return (runtime.changesWithMeta(selectorBase) as Stream.Stream<any>).pipe(
-          Stream.mapEffect((evt: any) => dedupeConsecutiveByValue(prevRef, evt)),
-          Stream.filterMap((opt) => opt),
-          Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
-        )
+      const enableSelectorDiagnostics = options.shouldRecordChainEvents
+      if (!enableSelectorDiagnostics) {
+        return yield* buildModuleStateChangeBaseStream(selectorBase)
       }
 
-      const prevRef = yield* Ref.make<Option.Option<unknown>>(Option.none())
       const selectorDiagnosticsConfig = makeSelectorDiagnosticsConfig(isDevEnv())
       const selectorDiagnosticsRef = enableSelectorDiagnostics
         ? yield* Ref.make(initialSelectorDiagnosticsState(Date.now()))
@@ -264,11 +270,7 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
         })
       }
 
-      const baseStream = (runtime.changesWithMeta(selector) as Stream.Stream<any>).pipe(
-        Stream.mapEffect((evt: any) => dedupeConsecutiveByValue(prevRef, evt)),
-        Stream.filterMap((opt) => opt),
-        Stream.map((evt: any) => buildModuleStateChangeTrigger(evt?.meta?.txnSeq)),
-      )
+      const baseStream = yield* buildModuleStateChangeBaseStream(selector)
 
       return baseStream.pipe(Stream.tap(maybeWarnSelector))
     })
