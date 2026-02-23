@@ -58,6 +58,7 @@ type InstallationState = {
   readonly process: Effect.Effect<void, any, unknown>
   readonly kind: Meta.ProcessMeta['kind']
   readonly platformEventTriggerIndex: ReadonlyMap<string, ReadonlyArray<PlatformEventTriggerSpec>>
+  readonly platformEventNames: ReadonlyArray<string>
   enabled: boolean
   installedAt?: string
   nextRunSeq: number
@@ -194,19 +195,32 @@ const buildPlatformEventTriggerIndex = (
   return index
 }
 
-const registerPlatformEventInstallations = (
+const syncPlatformEventInstallations = (options: {
   installationKey: InstallationKey,
-  triggerIndex: ReadonlyMap<string, ReadonlyArray<PlatformEventTriggerSpec>>,
-  installationsByEventName: Map<string, Set<InstallationKey>>,
-): void => {
-  for (const eventName of triggerIndex.keys()) {
-    const current = installationsByEventName.get(eventName)
-    if (current) {
-      current.add(installationKey)
-    } else {
-      installationsByEventName.set(eventName, new Set([installationKey]))
+  previousEventNames: ReadonlyArray<string>
+  nextTriggerIndex: ReadonlyMap<string, ReadonlyArray<PlatformEventTriggerSpec>>
+  installationsByEventName: Map<string, Set<InstallationKey>>
+}): ReadonlyArray<string> => {
+  for (const eventName of options.previousEventNames) {
+    const current = options.installationsByEventName.get(eventName)
+    if (!current) continue
+    current.delete(options.installationKey)
+    if (current.size === 0) {
+      options.installationsByEventName.delete(eventName)
     }
   }
+
+  const nextEventNames = Array.from(options.nextTriggerIndex.keys())
+  for (const eventName of nextEventNames) {
+    const current = options.installationsByEventName.get(eventName)
+    if (current) {
+      current.add(options.installationKey)
+    } else {
+      options.installationsByEventName.set(eventName, new Set([options.installationKey]))
+    }
+  }
+
+  return nextEventNames
 }
 
 export const make = (options?: {
@@ -865,29 +879,51 @@ export const make = (options?: {
         } as const
 
         const installationKey = Identity.installationKeyFromIdentity(identity)
+        const derived = Effect.suspend(() => process)
+        Meta.attachMeta(derived, {
+          ...meta,
+          installationScope: options.scope,
+        })
+
+        const nextPlatformEventTriggerIndex = buildPlatformEventTriggerIndex(meta.definition)
         const existing = installations.get(installationKey)
         if (existing) {
-          existing.env = env as Context.Context<any>
-          existing.forkScope = forkScope
-          existing.enabled = options.enabled ?? true
-          existing.installedAt = options.installedAt ?? existing.installedAt
-          if (!existing.enabled) {
-            existing.pendingStart = undefined
+          const updated: InstallationState = {
+            ...existing,
+            definition: meta.definition,
+            env: env as Context.Context<any>,
+            forkScope,
+            process: derived as unknown as Effect.Effect<void, any, unknown>,
+            kind: meta.kind ?? 'process',
+            platformEventTriggerIndex: nextPlatformEventTriggerIndex,
+            platformEventNames: syncPlatformEventInstallations({
+              installationKey,
+              previousEventNames: existing.platformEventNames,
+              nextTriggerIndex: nextPlatformEventTriggerIndex,
+              installationsByEventName: installationsByPlatformEvent,
+            }),
+            enabled: options.enabled ?? existing.enabled,
+            installedAt: options.installedAt ?? existing.installedAt,
+          }
+          installations.set(installationKey, updated)
+
+          if (!updated.enabled) {
+            updated.pendingStart = undefined
             return {
               identity,
-              enabled: existing.enabled,
-              installedAt: existing.installedAt,
+              enabled: updated.enabled,
+              installedAt: updated.installedAt,
             } satisfies ProcessInstallation
           }
 
-          const currentId = existing.currentInstanceId
+          const currentId = updated.currentInstanceId
           const current = currentId ? instances.get(currentId) : undefined
           const status = current?.status.status
 
           if (status === 'running' || status === 'starting') {
             const mode: ProcessInstallMode = options.mode ?? 'switch'
             if (mode === 'switch' && current && current.forkScope !== forkScope) {
-              existing.pendingStart = { forkScope }
+              updated.pendingStart = { forkScope }
               yield* Scope.addFinalizer(
                 forkScope,
                 Effect.sync(() => {
@@ -899,19 +935,19 @@ export const make = (options?: {
                 }),
               )
             } else {
-              existing.pendingStart = undefined
+              updated.pendingStart = undefined
             }
             return {
               identity,
-              enabled: existing.enabled,
-              installedAt: existing.installedAt,
+              enabled: updated.enabled,
+              installedAt: updated.installedAt,
             } satisfies ProcessInstallation
           }
 
           if (status === 'stopping') {
             const mode: ProcessInstallMode = options.mode ?? 'switch'
             if (mode === 'switch') {
-              existing.pendingStart = { forkScope }
+              updated.pendingStart = { forkScope }
               yield* Scope.addFinalizer(
                 forkScope,
                 Effect.sync(() => {
@@ -923,30 +959,29 @@ export const make = (options?: {
                 }),
               )
             } else {
-              existing.pendingStart = undefined
+              updated.pendingStart = undefined
             }
             return {
               identity,
-              enabled: existing.enabled,
-              installedAt: existing.installedAt,
+              enabled: updated.enabled,
+              installedAt: updated.installedAt,
             } satisfies ProcessInstallation
           }
 
-          existing.pendingStart = undefined
+          updated.pendingStart = undefined
           yield* startInstallation(installationKey)
           return {
             identity,
-            enabled: existing.enabled,
-            installedAt: existing.installedAt,
+            enabled: updated.enabled,
+            installedAt: updated.installedAt,
           } satisfies ProcessInstallation
         }
 
-        // Derive an effect for this installation to avoid overwriting meta on the original Effect (reused across scopes).
-        // Note: do not provide env eagerly; we may need to layer additional context per-trigger execution (e.g. dispatch chain diagnostics).
-        const derived = Effect.suspend(() => process)
-        Meta.attachMeta(derived, {
-          ...meta,
-          installationScope: options.scope,
+        const nextPlatformEventNames = syncPlatformEventInstallations({
+          installationKey,
+          previousEventNames: [],
+          nextTriggerIndex: nextPlatformEventTriggerIndex,
+          installationsByEventName: installationsByPlatformEvent,
         })
 
         const installation: InstallationState = {
@@ -957,7 +992,8 @@ export const make = (options?: {
           forkScope,
           process: derived as unknown as Effect.Effect<void, any, unknown>,
           kind: meta.kind ?? 'process',
-          platformEventTriggerIndex: buildPlatformEventTriggerIndex(meta.definition),
+          platformEventTriggerIndex: nextPlatformEventTriggerIndex,
+          platformEventNames: nextPlatformEventNames,
           enabled: options.enabled ?? true,
           installedAt: options.installedAt,
           nextRunSeq: 1,
@@ -966,11 +1002,6 @@ export const make = (options?: {
         }
 
         installations.set(installationKey, installation)
-        registerPlatformEventInstallations(
-          installationKey,
-          installation.platformEventTriggerIndex,
-          installationsByPlatformEvent,
-        )
 
         if (installation.enabled) {
           yield* startInstallation(installationKey)

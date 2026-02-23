@@ -28,7 +28,8 @@
 - `refactor-logix-core-process-latest-mode-inplace-20260223.md`：Process/TaskRunner latest 运行槽统一 + serial/parallel 游标队列（已合并 PR #43）
 - `refactor-logix-core-txnqueue-wake-dedupe-20260223.md`：txnQueue wake 通知去重 + 空闲切换防丢唤醒（已合并 PR #44）
 - `refactor-logix-core-fieldpath-coderabbit-followups-20260223.md`：CodeRabbit follow-up：field-path id fast-path 分支覆盖 + comparator 不变量显式化（已合并 PR #45）
-- `refactor-logix-core-triggerstreams-coderabbit-hardening-20260223.md`：CodeRabbit follow-up：moduleStateChange fallback 缺流守卫 + diagnostics 分支收敛（PR #46，等待 CI）
+- `refactor-logix-core-triggerstreams-coderabbit-hardening-20260223.md`：CodeRabbit follow-up：moduleStateChange fallback 缺流守卫 + diagnostics 分支收敛（已合并 PR #46）
+- `refactor-logix-core-platform-event-reregister-20260223.md`：CodeRabbit follow-up：platformEvent 重装索引同步与陈旧映射清理（PR #48，等待 CI）
 
 ## 已看过模块
 

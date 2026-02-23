@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Effect, Ref, Schema } from 'effect'
+import { Context, Effect, Ref, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 import { withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
@@ -132,6 +132,115 @@ describe('process: trigger platformEvent', () => {
       expect(yield* Ref.get(invokedA)).toBe(1)
       expect(yield* Ref.get(invokedB)).toBe(0)
       expect(yield* Ref.get(invokedC)).toBe(2)
+    }),
+  )
+
+  it.scoped('should refresh platformEvent index when re-install updates trigger definitions', () =>
+    Effect.gen(function* () {
+      const processId = 'ProcessTriggerPlatformEventReinstall'
+
+      const Host = Logix.Module.make('ProcessTriggerPlatformEventReinstallHost', {
+        state: Schema.Void,
+        actions: {},
+      })
+
+      const ProcOld = Logix.Process.make(
+        {
+          processId,
+          triggers: [{ kind: 'platformEvent', name: 'old', platformEvent: 'app:reregister:old' }],
+          concurrency: { mode: 'serial', maxQueue: 16 },
+          errorPolicy: { mode: 'failStop' },
+          diagnosticsLevel: 'light',
+        },
+        Effect.void,
+      )
+
+      const ProcNew = Logix.Process.make(
+        {
+          processId,
+          triggers: [{ kind: 'platformEvent', name: 'new', platformEvent: 'app:reregister:new' }],
+          concurrency: { mode: 'serial', maxQueue: 16 },
+          errorPolicy: { mode: 'failStop' },
+          diagnosticsLevel: 'light',
+        },
+        Effect.void,
+      )
+
+      const HostImpl = Host.implement({
+        initial: undefined,
+        processes: [ProcOld],
+      })
+
+      const layer = withProcessRuntime(HostImpl.impl.layer)
+
+      const events = yield* withProcessRuntimeScope({
+        layer,
+        run: ({ env, runtime }) =>
+          Effect.gen(function* () {
+            const host = Context.get(env, Host.tag) as any
+            const scope = {
+              type: 'moduleInstance',
+              moduleId: Host.id,
+              instanceId: host.instanceId as string,
+            } as const
+
+            const deliver = (eventName: string) =>
+              Effect.provide(
+                Logix.InternalContracts.deliverProcessPlatformEvent({
+                  eventName,
+                } as any),
+                env,
+              )
+
+            for (let i = 0; i < 200; i++) {
+              const snapshot = yield* runtime.getEventsSnapshot()
+              const bootReady = snapshot.some(
+                (event: any) =>
+                  event.type === 'process:trigger' &&
+                  event.identity.identity.processId === processId &&
+                  event.trigger?.kind === 'platformEvent' &&
+                  event.trigger.platformEvent === 'runtime:boot',
+              )
+              if (bootReady) break
+              yield* Effect.yieldNow()
+            }
+
+            yield* runtime.install(ProcNew, { scope, mode: 'switch' })
+            yield* deliver('app:reregister:new')
+            yield* deliver('app:reregister:old')
+
+            for (let i = 0; i < 200; i++) {
+              const snapshot = yield* runtime.getEventsSnapshot()
+              const hasNew = snapshot.some(
+                (event: any) =>
+                  event.type === 'process:trigger' &&
+                  event.identity.identity.processId === processId &&
+                  event.trigger?.kind === 'platformEvent' &&
+                  event.trigger.platformEvent === 'app:reregister:new',
+              )
+              if (hasNew) break
+              yield* Effect.yieldNow()
+            }
+
+            for (let i = 0; i < 20; i++) {
+              yield* Effect.yieldNow()
+            }
+
+            return yield* runtime.getEventsSnapshot()
+          }),
+      })
+
+      const countTrigger = (eventName: string): number =>
+        events.filter(
+          (event: any) =>
+            event.type === 'process:trigger' &&
+            event.identity.identity.processId === processId &&
+            event.trigger?.kind === 'platformEvent' &&
+            event.trigger.platformEvent === eventName,
+        ).length
+
+      expect(countTrigger('app:reregister:old')).toBe(0)
+      expect(countTrigger('app:reregister:new')).toBe(1)
     }),
   )
 })
