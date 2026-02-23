@@ -14,9 +14,11 @@
   - 在不阻塞的主路径上减少一次 `resolveConcurrencyPolicy()` 调用，保持阻塞路径诊断口径不变。
   - 将 `wait` 分支改为在同一 `Ref.modify` 内原子地完成 `waiters + 1` 注册，消除“判定等待与注册 waiter 非原子”的漏唤醒窗口。
   - 阻塞等待改为直接复用当轮 `attempt.signal`，避免重复写 `stateRef`。
+  - follow-up：blocked acquire 路径改为 `Effect.uninterruptibleMask + Effect.ensuring`，确保在 diagnostics/await 任意中断下都执行 `waiters` 回收，避免幽灵 waiter 计数。
 - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts`
   - 新增回归：`should not miss wake-up when release happens during blocked acquire diagnostics path`。
   - 使用 `Deferred` 双门闩固定竞态时序（先进入 blocked diagnostics，再触发 release，再放行 waiter），避免 `TestClock` 下 `Effect.sleep` 不推进导致的伪超时。
+  - follow-up：新增 `should keep queue usable after interrupted blocked acquire diagnostics path`，覆盖 blocked 路径中断场景，并断言中断 Exit 与后续队列可用性。
 
 ## 验证
 - `pnpm test -- test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.*.test.ts`（`packages/logix-core`）✅
@@ -25,7 +27,8 @@
 
 ## 独立审查
 - Reviewer：subagent（default，`agent_id=019c8ae8-116e-7100-92b7-5a3c32343533`）
-- 结论：无阻塞问题，可合并。
+- Reviewer：subagent（worker，`agent_id=019c8b38-9822-7260-8f72-4cc75a9b033d`）
+- 结论：无阻塞问题，可合并（仅低风险建议：中断返回值断言已补齐）。
 - 建议与处理：
   - 建议：补一个“blocked diagnostics 期间取消等待 fiber”的中断语义测试，进一步锁定 `waiters` 计数回收边界。
-  - 处理：本 PR 先聚焦漏唤醒竞态修复与主路径 fast-path，不在本轮扩展中断语义测试，记录为下一轮候选。
+  - 处理：已在本 PR follow-up 中补充对应测试与中断 Exit 断言。
