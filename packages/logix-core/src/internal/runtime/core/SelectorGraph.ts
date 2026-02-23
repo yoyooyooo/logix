@@ -11,6 +11,7 @@ type SelectorEntry<S, V> = {
   readonly readQuery: ReadQueryCompiled<S, V>
   readonly reads: ReadonlyArray<FieldPath>
   readonly readRootKeys: ReadonlyArray<ReadRootKey>
+  readonly readRootKeySet: ReadonlySet<ReadRootKey>
   readonly hub: PubSub.PubSub<StateChangeWithMeta<V>>
   subscriberCount: number
   cachedAtTxnSeq: number
@@ -72,6 +73,111 @@ const nowMs = (): number => {
   return Date.now()
 }
 
+const shouldEvaluateEntryForDirtyRoots = <S>(args: {
+  readonly entry: SelectorEntry<S, any>
+  readonly dirtySet: DirtySet
+  readonly getDirtyRootPath: (id: number) => FieldPath | undefined
+  readonly hasRegistry: boolean
+}): boolean => {
+  if (args.dirtySet.dirtyAll) return true
+  if (args.entry.reads.length === 0) return true
+  if (!args.hasRegistry) return true
+
+  for (const dirtyRootId of args.dirtySet.rootIds) {
+    const dirtyRoot = args.getDirtyRootPath(dirtyRootId)
+    if (!dirtyRoot) return true
+
+    const dirtyRootKey = getReadRootKeyFromPath(dirtyRoot)
+    if (args.entry.readRootKeySet.size > 0 && !args.entry.readRootKeySet.has(dirtyRootKey)) {
+      continue
+    }
+
+    for (const read of args.entry.reads) {
+      if (overlaps(dirtyRoot, read)) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+const evaluateEntry = <S>(args: {
+  readonly entry: SelectorEntry<S, any>
+  readonly selectorId: string
+  readonly state: S
+  readonly meta: StateCommitMeta
+  readonly emitEvalEvent: boolean
+  readonly moduleId: string
+  readonly instanceId: string
+  readonly onSelectorChanged?: (selectorId: string) => void
+}): Effect.Effect<void, never, never> =>
+  Effect.gen(function* () {
+    let next: any
+    const evalStartedAt = args.emitEvalEvent ? nowMs() : undefined
+
+    try {
+      next = args.entry.readQuery.select(args.state)
+    } catch {
+      if (args.emitEvalEvent) {
+        yield* Debug.record({
+          type: 'diagnostic',
+          moduleId: args.moduleId,
+          instanceId: args.instanceId,
+          txnSeq: args.meta.txnSeq,
+          txnId: args.meta.txnId,
+          code: 'read_query::eval_error',
+          severity: 'error',
+          message: 'ReadQuery selector threw during evaluation.',
+          hint: 'Selectors must be pure and not throw; check the selector implementation and inputs.',
+          kind: 'read_query_eval_error',
+          trigger: { kind: 'read_query', name: 'selector:eval', details: { selectorId: args.selectorId } },
+        })
+      }
+      return
+    }
+
+    const evalMs = args.emitEvalEvent && evalStartedAt != null ? Math.max(0, nowMs() - evalStartedAt) : undefined
+    const hadValue = args.entry.hasValue
+    const prev = args.entry.cachedValue as any
+    const equal = hadValue ? equalsValue(args.entry.readQuery as any, prev, next) : false
+    const changed = !hadValue || !equal
+
+    if (changed) {
+      args.entry.cachedValue = next
+      args.entry.hasValue = true
+      args.entry.cachedAtTxnSeq = args.meta.txnSeq
+      args.onSelectorChanged?.(args.selectorId)
+
+      yield* PubSub.publish(args.entry.hub as any, {
+        value: args.entry.cachedValue,
+        meta: args.meta,
+      } satisfies StateChangeWithMeta<any>)
+    }
+
+    if (!args.emitEvalEvent) {
+      return
+    }
+
+    yield* Debug.record({
+      type: 'trace:selector:eval',
+      moduleId: args.moduleId,
+      instanceId: args.instanceId,
+      txnSeq: args.meta.txnSeq,
+      txnId: args.meta.txnId,
+      data: {
+        selectorId: args.selectorId,
+        lane: args.entry.readQuery.lane,
+        producer: args.entry.readQuery.producer,
+        fallbackReason: args.entry.readQuery.fallbackReason,
+        readsDigest: args.entry.readQuery.readsDigest,
+        equalsKind: args.entry.readQuery.equalsKind,
+        changed,
+        evalMs,
+      },
+    })
+  })
+
 export const make = <S>(args: {
   readonly moduleId: string
   readonly instanceId: string
@@ -96,6 +202,7 @@ export const make = <S>(args: {
         .map((raw) => normalizeFieldPath(raw))
         .filter((x): x is FieldPath => x != null)
       const readRootKeys = Array.from(new Set(reads.map(getReadRootKeyFromPath)))
+      const readRootKeySet = new Set(readRootKeys)
 
       for (const rootKey of readRootKeys) {
         const set = indexByReadRoot.get(rootKey)
@@ -111,6 +218,7 @@ export const make = <S>(args: {
         readQuery: readQuery as any,
         reads,
         readRootKeys,
+        readRootKeySet,
         hub,
         subscriberCount: 0,
         cachedAtTxnSeq: 0,
@@ -162,89 +270,27 @@ export const make = <S>(args: {
         const entry = selectorsById.values().next().value
         if (!entry || entry.subscriberCount === 0) return
 
-        const isDirty = (() => {
-          if (dirtySet.dirtyAll) return true
-          if (entry.reads.length === 0) return true
-          if (!registry) return true
-          for (const dirtyRootId of dirtySet.rootIds) {
-            const dirtyRoot = getDirtyRootPath(dirtyRootId)
-            if (!dirtyRoot) return true
-            const dirtyRootKey = getReadRootKeyFromPath(dirtyRoot)
-            if (entry.readRootKeys.length > 0 && !entry.readRootKeys.includes(dirtyRootKey)) continue
-            for (const read of entry.reads) {
-              if (overlaps(dirtyRoot, read)) {
-                return true
-              }
-            }
-          }
-          return false
-        })()
-
-        if (!isDirty) {
-          return
-        }
-
-        let next: any
-        const evalStartedAt = emitEvalEvent ? nowMs() : undefined
-        try {
-          next = entry.readQuery.select(state)
-        } catch (err) {
-          if (emitEvalEvent) {
-            yield* Debug.record({
-              type: 'diagnostic',
-              moduleId,
-              instanceId,
-              txnSeq: meta.txnSeq,
-              txnId: meta.txnId,
-              code: 'read_query::eval_error',
-              severity: 'error',
-              message: 'ReadQuery selector threw during evaluation.',
-              hint: 'Selectors must be pure and not throw; check the selector implementation and inputs.',
-              kind: 'read_query_eval_error',
-              trigger: { kind: 'read_query', name: 'selector:eval', details: { selectorId: entry.selectorId } },
-            })
-          }
-          return
-        }
-        const evalMs = emitEvalEvent && evalStartedAt != null ? Math.max(0, nowMs() - evalStartedAt) : undefined
-
-        const hadValue = entry.hasValue
-        const prev = entry.cachedValue as any
-        const equal = hadValue ? equalsValue(entry.readQuery as any, prev, next) : false
-        const changed = !hadValue || !equal
-
-        if (changed) {
-          entry.cachedValue = next
-          entry.hasValue = true
-          entry.cachedAtTxnSeq = meta.txnSeq
-          onSelectorChanged?.(entry.selectorId)
-
-          yield* PubSub.publish(entry.hub as any, {
-            value: entry.cachedValue,
-            meta,
-          } satisfies StateChangeWithMeta<any>)
-        }
-
-        if (emitEvalEvent) {
-          yield* Debug.record({
-            type: 'trace:selector:eval',
-            moduleId,
-            instanceId,
-            txnSeq: meta.txnSeq,
-            txnId: meta.txnId,
-            data: {
-              selectorId: entry.selectorId,
-              lane: entry.readQuery.lane,
-              producer: entry.readQuery.producer,
-              fallbackReason: entry.readQuery.fallbackReason,
-              readsDigest: entry.readQuery.readsDigest,
-              equalsKind: entry.readQuery.equalsKind,
-              changed,
-              evalMs,
-            },
+        if (
+          !shouldEvaluateEntryForDirtyRoots({
+            entry,
+            dirtySet,
+            getDirtyRootPath,
+            hasRegistry: registry != null,
           })
+        ) {
+          return
         }
 
+        yield* evaluateEntry({
+          entry,
+          selectorId: entry.selectorId,
+          state,
+          meta,
+          emitEvalEvent,
+          moduleId,
+          instanceId,
+          onSelectorChanged,
+        })
         return
       }
 
@@ -270,23 +316,24 @@ export const make = <S>(args: {
             }
 
             const rootKey = getReadRootKeyFromPath(dirtyRoot)
-          const candidates = indexByReadRoot.get(rootKey)
-          if (!candidates) continue
-          for (const selectorId of candidates) {
-            if (dirtySelectorIds.has(selectorId)) continue
-            const entry = selectorsById.get(selectorId)
-            if (!entry || entry.subscriberCount === 0) continue
-            if (entry.reads.length === 0) {
-              dirtySelectorIds.add(selectorId)
-              continue
-            }
-            for (const read of entry.reads) {
-              if (overlaps(dirtyRoot, read)) {
+            const candidates = indexByReadRoot.get(rootKey)
+            if (!candidates) continue
+
+            for (const selectorId of candidates) {
+              if (dirtySelectorIds.has(selectorId)) continue
+              const entry = selectorsById.get(selectorId)
+              if (!entry || entry.subscriberCount === 0) continue
+              if (entry.reads.length === 0) {
                 dirtySelectorIds.add(selectorId)
-                break
+                continue
+              }
+              for (const read of entry.reads) {
+                if (overlaps(dirtyRoot, read)) {
+                  dirtySelectorIds.add(selectorId)
+                  break
+                }
               }
             }
-          }
           }
         }
       }
@@ -297,66 +344,16 @@ export const make = <S>(args: {
         const entry = selectorsById.get(selectorId)
         if (!entry || entry.subscriberCount === 0) continue
 
-        let next: any
-        const evalStartedAt = emitEvalEvent ? nowMs() : undefined
-        try {
-          next = entry.readQuery.select(state)
-        } catch (err) {
-          if (emitEvalEvent) {
-            yield* Debug.record({
-              type: 'diagnostic',
-              moduleId,
-              instanceId,
-              txnSeq: meta.txnSeq,
-              txnId: meta.txnId,
-              code: 'read_query::eval_error',
-              severity: 'error',
-              message: 'ReadQuery selector threw during evaluation.',
-              hint: 'Selectors must be pure and not throw; check the selector implementation and inputs.',
-              kind: 'read_query_eval_error',
-              trigger: { kind: 'read_query', name: 'selector:eval', details: { selectorId } },
-            })
-          }
-          continue
-        }
-        const evalMs = emitEvalEvent && evalStartedAt != null ? Math.max(0, nowMs() - evalStartedAt) : undefined
-
-        const hadValue = entry.hasValue
-        const prev = entry.cachedValue as any
-        const equal = hadValue ? equalsValue(entry.readQuery as any, prev, next) : false
-        const changed = !hadValue || !equal
-
-        if (changed) {
-          entry.cachedValue = next
-          entry.hasValue = true
-          entry.cachedAtTxnSeq = meta.txnSeq
-          onSelectorChanged?.(selectorId)
-
-          yield* PubSub.publish(entry.hub as any, {
-            value: entry.cachedValue,
-            meta,
-          } satisfies StateChangeWithMeta<any>)
-        }
-
-        if (emitEvalEvent) {
-          yield* Debug.record({
-            type: 'trace:selector:eval',
-            moduleId,
-            instanceId,
-            txnSeq: meta.txnSeq,
-            txnId: meta.txnId,
-            data: {
-              selectorId,
-              lane: entry.readQuery.lane,
-              producer: entry.readQuery.producer,
-              fallbackReason: entry.readQuery.fallbackReason,
-              readsDigest: entry.readQuery.readsDigest,
-              equalsKind: entry.readQuery.equalsKind,
-              changed,
-              evalMs,
-            },
-          })
-        }
+        yield* evaluateEntry({
+          entry,
+          selectorId,
+          state,
+          meta,
+          emitEvalEvent,
+          moduleId,
+          instanceId,
+          onSelectorChanged,
+        })
       }
     })
 

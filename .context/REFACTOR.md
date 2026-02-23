@@ -1,7 +1,7 @@
 # Refactor Ledger
 
 > 目标：在不破坏现有功能与测试的前提下，持续提升代码结构、可扩展性、可维护性与性能。
-> 分支：`refactor/logix-core-tickscheduler-partition-20260223`
+> 分支：`refactor/logix-core-selectorgraph-corepath-20260223`
 > 基线来源：`origin/main`（同步时间：2026-02-23）
 
 ## 状态定义
@@ -33,6 +33,7 @@
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/process/selectorDiagnostics.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.Timer.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.Trigger.InvalidKind.test.ts`：`DEEP_READ` + `REFACTORED`
@@ -43,6 +44,7 @@
 - `packages/logix-core/test/Process/test-helpers.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/Process/Process.SelectorDiagnostics.Helpers.test.ts`：`DEEP_READ` + `REFACTORED`
 - `packages/logix-core/test/internal/Runtime/TickScheduler.fixpoint.test.ts`：`DEEP_READ` + `REFACTORED`
+- `packages/logix-core/test/Runtime/ModuleRuntime/SelectorGraph.test.ts`：`DEEP_READ` + `REFACTORED`
 
 ## 模块清单与阅读进度
 
@@ -61,7 +63,7 @@
 - `packages/domain`（11 文件）：`ENTRY_READ`（`internal/crud/Crud.ts` 已深读并重构）
 - `packages/i18n`（12 文件）：`UNREAD`
 - `packages/logix-core-ng`（13 文件）：`UNREAD`
-- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`TickScheduler.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.ErrorPolicy.Supervise.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`TickScheduler.fixpoint.test.ts`、`test-helpers.ts` 已深读并重构）
+- `packages/logix-core`（469 文件，核心运行时）：`ENTRY_READ`（`StateTransaction.ts`、`TickScheduler.ts`、`ProcessRuntime.make.ts`、`process/selectorDiagnostics.ts`、`ModuleRuntime.impl.ts`、`SelectorGraph.ts`、`Process.Trigger.Timer.test.ts`、`Process.Trigger.PlatformEvent.test.ts`、`Process.Trigger.ModuleStateChange.test.ts`、`Process.Trigger.ModuleStateChange.SelectorDiagnostics.test.ts`、`Process.Trigger.ModuleAction.MissingStreams.test.ts`、`Process.Trigger.InvalidKind.test.ts`、`Process.ErrorPolicy.Supervise.test.ts`、`Process.SelectorDiagnostics.Helpers.test.ts`、`TickScheduler.fixpoint.test.ts`、`Runtime/ModuleRuntime/SelectorGraph.test.ts`、`test-helpers.ts` 已深读并重构）
 - `packages/logix-devtools-react`（48 文件）：`UNREAD`
 - `packages/logix-form`（66 文件）：`ENTRY_READ`（`internal/form/impl.ts` 已深读并重构）
 - `packages/logix-query`（23 文件）：`ENTRY_READ`（`Query.ts` 已深读并重构）
@@ -130,6 +132,9 @@
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
   - `RuntimeServiceBuiltins` 注入在 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 四处重复，容易出现新增服务时的维护漂移。
   - `currentOpSeq` 读取与归一化在 `onCommit` / `deferredConvergeFlush` 双点重复，锚点逻辑不易统一治理。
+- `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`
+  - 单 selector 快路径把“脏根判定 + selector eval + trace 发射”内联在 `onCommit`，与多 selector 路径重复维护，演进时容易出现语义漂移。
+  - 根键命中过滤使用 `Array.includes`，在 selector 高频提交链路存在可避免的线性匹配开销。
 - `packages/logix-core/test/Process/Process.ErrorPolicy.Supervise.test.ts`
   - 手写 `Scope.make + Layer.buildWithScope + Scope.close` 与其他 Process 测试重复，易导致生命周期处理不一致。
   - 手写轮询骨架与“取 runtime snapshot”逻辑分散，影响后续统一超时/重试策略演进。
@@ -214,9 +219,19 @@
   - 抽取 `withRuntimeServiceBuiltins`，统一 `txnQueue` / `operationRunner` / `transaction` / `dispatch` 的 builtin 注入样板，保持 serviceId 与 builtinMake 映射语义不变。
   - 抽取 `readCurrentOpSeq`，统一 `onCommit` 与 `deferredConvergeFlush` 的 opSeq 读取归一化逻辑，保持 non-negative integer 语义不变。
   - 抽取 `readTickSchedulerFromRootContext` 与 `refreshTickSchedulerFromEnv`，统一 enqueue-time / onCommit 的 tickScheduler 缓存与 fallback 解析流程，保持 diagnostics 触发条件与 fallback 顺序不变。
+- `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`
+  - 抽取 `shouldEvaluateEntryForDirtyRoots` 与 `evaluateEntry`，统一单 selector / 多 selector 的评估语义，减少 `onCommit` 热路径重复逻辑。
+  - 为 entry 预构建 `readRootKeySet` 并在脏根过滤阶段使用 `Set.has`，避免重复 `Array.includes` 线性匹配。
+  - 保持 `read_query::eval_error` 诊断与 `trace:selector:eval` 事件结构不变，仅做结构收敛与热路径常量优化。
+- `packages/logix-core/test/Runtime/ModuleRuntime/SelectorGraph.test.ts`
+  - 新增回归用例：`only recomputes selectors whose root keys overlap dirty roots in multi-selector mode`，锁定多 selector 路径下根键索引与 overlap 过滤语义。
 
 ## 独立审查记录
 
+- 2026-02-23（logix-core / SelectorGraph 核心链路收敛轮次）
+  - 审查方式：1 个独立 subagent（explorer，`agent_id=019c865e-f79d-7d33-8fb7-9a53d89bb7bf`）基于当前工作树 diff 做只读审查
+  - 结论：无阻塞问题，可合并（单/多 selector 评估语义保持；`readRootKeySet` 为热路径常量优化；新增多 selector 回归测试覆盖关键边界）
+  - 残余风险：建议后续补充 `dirtyAll` 与 registry 缺失路径的组合回归，持续监控 `dirtyPathsToRootIds` 与 registry 同步性
 - 2026-02-22（domain 轮次）
   - 审查方式：1 个独立 subagent（explorer）基于 `origin/main...HEAD` diff 做只读审查
   - 结论：无阻塞问题（未发现行为回归/边界错误）
