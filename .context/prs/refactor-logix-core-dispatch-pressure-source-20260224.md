@@ -1,5 +1,9 @@
 # PR Draft: refactor/logix-core-dispatch-pressure-source-20260224
 
+- PR：`#51` https://github.com/yoyooyooo/logix/pull/51
+- 合并策略：`auto-merge(rebase)` 已开启（等待 required checks）
+- CI watcher：`.context/pr-ci-watch/pr-51-20260224-021215.log`
+
 ## 目标
 - 提升 `logix-core` 核心 dispatch 链路的并发压力诊断可解释性：区分主 `actionHub` 与 topic fan-out 压力来源。
 - 在不改变事务窗口/发布顺序/外部 API 的前提下，降低无压场景的诊断开销。
