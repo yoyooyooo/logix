@@ -1145,25 +1145,21 @@ export const make = <S, A, R = never>(
       return undefined
     }
 
-    const actionTopicTagsOfUnknown = (action: unknown): ReadonlyArray<string> => {
-      const tags: string[] = []
-
+    const actionMatchesTopicTag = (action: unknown, topicTag: string): boolean => {
       const tag = (action as any)?._tag
       if (typeof tag === 'string' && tag.length > 0) {
-        tags.push(tag)
+        if (tag === topicTag) return true
+        const type = (action as any)?.type
+        return typeof type === 'string' && type.length > 0 && type === topicTag
       }
 
       const type = (action as any)?.type
-      if (typeof type === 'string' && type.length > 0 && !tags.includes(type)) {
-        tags.push(type)
-      }
-
-      if (tags.length > 0) {
-        return tags
+      if (typeof type === 'string' && type.length > 0) {
+        return type === topicTag
       }
 
       const normalized = actionTagOfUnknown(action)
-      return normalized ? [normalized] : []
+      return normalized != null && normalized.length > 0 && normalized === topicTag
     }
 
     const actionsStream: Stream.Stream<A> = Stream.fromPubSub(actionHub)
@@ -1172,7 +1168,7 @@ export const make = <S, A, R = never>(
       if (topicHub) {
         return Stream.fromPubSub(topicHub)
       }
-      return actionsStream.pipe(Stream.filter((action: A) => actionTopicTagsOfUnknown(action).includes(tag)))
+      return actionsStream.pipe(Stream.filter((action: A) => actionMatchesTopicTag(action, tag)))
     }
 
     const makeDispatchBuiltin = Effect.sync(() =>
