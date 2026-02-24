@@ -2,6 +2,7 @@ import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../../src/index.js'
+import type { DeclarativeLinkRuntime } from '../../../src/internal/runtime/core/DeclarativeLinkRuntime.js'
 import { getGlobalHostScheduler } from '../../../src/internal/runtime/core/HostScheduler.js'
 import { makeJobQueue } from '../../../src/internal/runtime/core/JobQueue.js'
 import { makeRuntimeStore, makeModuleInstanceKey } from '../../../src/internal/runtime/core/RuntimeStore.js'
@@ -66,6 +67,62 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       expect(ticks[0]?.result?.stable).toBe(true)
       expect(ticks[0]?.anchors?.txnSeq).toBe(1)
       expect(ticks[0]?.anchors?.opSeq).toBe(10)
+    }),
+  )
+
+  it.effect('capture merge: should keep latest commit and max priority across drain rounds', () =>
+    Effect.gen(function* () {
+      const store = makeRuntimeStore()
+      const queue = makeJobQueue()
+      const key = makeModuleInstanceKey('M', 'i-1')
+
+      let injectedFollowup = false
+      const declarativeLinkRuntime: DeclarativeLinkRuntime = {
+        registerModuleAsSourceLink: () => () => {},
+        registerDeclarativeLink: () => () => {},
+        applyForSources: ({ changedModuleInstanceKeys }) =>
+          Effect.sync(() => {
+            if (injectedFollowup || !changedModuleInstanceKeys.includes(key)) {
+              return { scheduled: false } as const
+            }
+            injectedFollowup = true
+            queue.enqueueModuleCommit({
+              moduleId: 'M',
+              instanceId: 'i-1',
+              moduleInstanceKey: key,
+              state: { v: 2 },
+              meta: { txnSeq: 2, txnId: 'i-1::t2', commitMode: 'normal', priority: 'normal', originKind: 'dispatch', originName: 'followup' },
+              opSeq: 2,
+            })
+            queue.markTopicDirty(key, 'normal')
+            return { scheduled: true } as const
+          }),
+      }
+
+      const scheduler = makeTickScheduler({
+        runtimeStore: store,
+        queue,
+        hostScheduler: getGlobalHostScheduler(),
+        declarativeLinkRuntime,
+        config: { maxSteps: 64, urgentStepCap: 64, maxDrainRounds: 4 },
+      })
+
+      store.registerModuleInstance({ moduleId: 'M', instanceId: 'i-1', moduleInstanceKey: key, initialState: { v: 0 } })
+      queue.enqueueModuleCommit({
+        moduleId: 'M',
+        instanceId: 'i-1',
+        moduleInstanceKey: key,
+        state: { v: 1 },
+        meta: { txnSeq: 1, txnId: 'i-1::t1', commitMode: 'lowPriority', priority: 'low', originKind: 'dispatch', originName: 'start' },
+        opSeq: 1,
+      })
+      queue.markTopicDirty(key, 'low')
+
+      yield* scheduler.flushNow
+
+      expect(store.getTickSeq()).toBe(1)
+      expect(store.getModuleState(key)).toEqual({ v: 2 })
+      expect(store.getTopicPriority(key)).toBe('normal')
     }),
   )
 
