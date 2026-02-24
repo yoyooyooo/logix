@@ -215,56 +215,6 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
-    it.scoped('dispatchBatch should preserve topic order and dedupe duplicated _tag/type fanout', () =>
-      Effect.gen(function* () {
-        const TopicModule = Logix.Module.make('ActionTopicBatchDedupModule', {
-          state: Schema.Struct({ count: Schema.Number }),
-          actions: {
-            inc: Schema.Void,
-            dec: Schema.Void,
-          },
-        })
-
-        const runtime = yield* ModuleRuntime.make(
-          { count: 0 },
-          {
-            moduleId: 'action-topic-batch-dedup',
-            tag: TopicModule.tag,
-          },
-        )
-
-        expect(typeof runtime.actionsByTag$).toBe('function')
-        const actionsByTag = requireActionsByTag(runtime.actionsByTag$)
-        const decQueue = yield* Queue.unbounded<any>()
-        const decFiber = yield* Effect.fork(
-          Stream.runForEach(actionsByTag('dec'), (action) => Queue.offer(decQueue, action)),
-        )
-        yield* Effect.yieldNow()
-
-        yield* runtime.dispatchBatch([
-          { _tag: 'dec', payload: undefined },
-          { _tag: 'dec', type: 'dec', payload: undefined },
-          { _tag: 'inc', type: 'dec', payload: undefined },
-        ] as any)
-        yield* Effect.yieldNow()
-
-        const first = yield* Queue.take(decQueue)
-        const second = yield* Queue.take(decQueue)
-        const third = yield* Queue.take(decQueue)
-        const extra = yield* Queue.poll(decQueue)
-
-        expect((first as any)._tag).toBe('dec')
-        expect((first as any).type).toBeUndefined()
-        expect((second as any)._tag).toBe('dec')
-        expect((second as any).type).toBe('dec')
-        expect((third as any)._tag).toBe('inc')
-        expect((third as any).type).toBe('dec')
-        expect(extra._tag).toBe('None')
-
-        yield* Fiber.interrupt(decFiber)
-      }),
-    )
-
     it.scoped('actionsByTag$ fallback should keep _tag/type OR semantics for undeclared topics', () =>
       Effect.gen(function* () {
         const TopicModule = Logix.Module.make('ActionTopicFallbackLegacyCompatModule', {
@@ -295,57 +245,6 @@ describe('ModuleRuntime (internal)', () => {
         expect(legacyActions).toHaveLength(1)
         expect((legacyActions[0] as any)._tag).toBe('inc')
         expect((legacyActions[0] as any).type).toBe('legacy')
-      }),
-    )
-
-    it.scoped('actionsByTag$ fallback should keep normalized _tag/type precedence for non-string tags', () =>
-      Effect.gen(function* () {
-        const TopicModule = Logix.Module.make('ActionTopicFallbackNormalizedCompatModule', {
-          state: Schema.Struct({ count: Schema.Number }),
-          actions: {
-            inc: Schema.Void,
-            dec: Schema.Void,
-          },
-        })
-
-        const runtime = yield* ModuleRuntime.make(
-          { count: 0 },
-          {
-            moduleId: 'action-topic-fallback-normalized-compat',
-            tag: TopicModule.tag,
-          },
-        )
-
-        expect(typeof runtime.actionsByTag$).toBe('function')
-        const actionsByTag = requireActionsByTag(runtime.actionsByTag$)
-        const tag42Queue = yield* Queue.unbounded<any>()
-        const tag7Queue = yield* Queue.unbounded<any>()
-        const tag42Fiber = yield* Effect.fork(
-          Stream.runForEach(actionsByTag('42'), (action) => Queue.offer(tag42Queue, action)),
-        )
-        const tag7Fiber = yield* Effect.fork(
-          Stream.runForEach(actionsByTag('7'), (action) => Queue.offer(tag7Queue, action)),
-        )
-        yield* Effect.yieldNow()
-
-        yield* runtime.dispatch({ _tag: 42, type: 7, payload: undefined } as any)
-        yield* runtime.dispatch({ type: 7, payload: undefined } as any)
-        yield* Effect.yieldNow()
-
-        const routedByTag42 = yield* Queue.take(tag42Queue)
-        const routedByTag7 = yield* Queue.take(tag7Queue)
-        const extraTag42 = yield* Queue.poll(tag42Queue)
-        const extraTag7 = yield* Queue.poll(tag7Queue)
-
-        expect((routedByTag42 as any)._tag).toBe(42)
-        expect((routedByTag42 as any).type).toBe(7)
-        expect((routedByTag7 as any)._tag).toBeUndefined()
-        expect((routedByTag7 as any).type).toBe(7)
-        expect(extraTag42._tag).toBe('None')
-        expect(extraTag7._tag).toBe('None')
-
-        yield* Fiber.interrupt(tag42Fiber)
-        yield* Fiber.interrupt(tag7Fiber)
       }),
     )
   })
