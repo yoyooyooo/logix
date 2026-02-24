@@ -15,7 +15,9 @@
 - `pnpm test:turbo`
 
 ## 独立审查
-- 待 PR 创建后执行并回填。
+- 审查 agent：`019c8fa1-e91c-7e13-8a18-deac6b9dbf64`（只读）
+- 结论：`no blocking findings`，建议通过
+- open question：建议补充可复现 perf baseline/diff 链接
 
 ## 机器人评论处理
 - CodeRabbit: 待 PR 创建后拉取评论并回填。
