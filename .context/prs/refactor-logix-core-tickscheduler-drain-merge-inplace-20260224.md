@@ -25,3 +25,8 @@
 - 本 PR 由独立 worker subagent 在独立 worktree 实施并自验证后提交。
 - 独立只读审查结论：无 blocker。
 - 审查建议（non-blocker）已吸收：补充 `normal -> low` 跨 rounds 同 key 合并测试，锁定“最新 state + 保留 normal priority”语义（提交 `68222579`）。
+
+## 机器人评论消化
+- CodeRabbit：当前为 rate-limit 提示（无有效语义评论）；后续若有新评论再增量处理。
+- Vercel：免费额度限制失败（非代码语义问题）。
+- CI：`verify/perf-quick` 正在跑或待完成，以 PR 检查面板为准。
