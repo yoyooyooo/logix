@@ -1,17 +1,12 @@
-import { Effect, Stream, Ref, Option } from 'effect'
+import { Effect, Stream, Ref, FiberRef } from 'effect'
 import type { AnyModuleShape, LogicEffect, ModuleRuntime, StateOf, ActionOf, ModuleShape } from './module.js'
 import type * as Logic from './LogicMiddleware.js'
 import * as EffectOp from '../../effect-op.js'
 import * as EffectOpCore from './EffectOpCore.js'
-import { RunSessionTag } from '../../observability/runSession.js'
 import type { RuntimeInternals } from './RuntimeInternals.js'
 import * as Debug from './DebugSink.js'
 import * as ReadQuery from './ReadQuery.js'
-
-const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
-  Effect.serviceOption(EffectOpCore.EffectOpMiddlewareTag).pipe(
-    Effect.map((maybe) => (Option.isSome(maybe) ? maybe.value.stack : [])),
-  )
+import { assignOperationOpSeq, resolveOperationRuntimeServices } from './ModuleRuntime.operation.js'
 
 const getRuntimeScope = (runtime: unknown): { readonly moduleId?: string; readonly instanceId?: string } => {
   if (!runtime) return {}
@@ -81,7 +76,11 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     options?: Logic.OperationOptions,
   ): LogicEffect<Sh, R & R2, A, E> =>
     Effect.gen(function* () {
-      const stack = yield* getMiddlewareStack()
+      const [{ middlewareStack, runSession }, existingLinkId] = yield* Effect.all([
+        resolveOperationRuntimeServices(),
+        FiberRef.get(EffectOpCore.currentLinkId),
+      ])
+
       const meta: any = {
         ...(options?.meta ?? {}),
         policy: options?.policy,
@@ -91,13 +90,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
         instanceId: scope.instanceId,
       }
 
-      if (!(typeof meta.opSeq === 'number' && Number.isFinite(meta.opSeq))) {
-        const sessionOpt = yield* Effect.serviceOption(RunSessionTag)
-        if (Option.isSome(sessionOpt)) {
-          const key = meta.instanceId ?? 'global'
-          meta.opSeq = sessionOpt.value.local.nextSeq('opSeq', key)
-        }
-      }
+      assignOperationOpSeq(meta, runSession)
 
       const op = EffectOp.make<A, E, any>({
         kind: 'flow',
@@ -106,7 +99,11 @@ export const make = <Sh extends AnyModuleShape, R = never>(
         effect: eff as any,
         meta,
       })
-      return yield* EffectOp.run(op, stack)
+      const metaLinkId = (meta as any).linkId
+      const linkId =
+        typeof metaLinkId === 'string' && metaLinkId.length > 0 ? metaLinkId : (existingLinkId ?? op.id)
+      const program = middlewareStack.length ? EffectOp.run(op, middlewareStack) : op.effect
+      return yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(program)
     }) as any
 
   const runEffect =
