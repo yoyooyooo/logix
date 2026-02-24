@@ -28,3 +28,8 @@
   - `commitTick` callback fast-path 改为“两阶段”（先收集快照，再统一回调），恢复旧语义；
   - callback 内部 best-effort 防护，单 listener 异常不打断 commit；
   - 新增多 topic 同 tick 与 callback 抛错场景回归测试。
+
+## 机器人评论消化
+- CodeRabbit：当前以 rate-limit/状态评论为主；核心语义问题已由独立审查提前发现并修复。
+- Vercel：免费额度限制失败（非代码语义问题）。
+- CI：`verify/perf-quick` 仍在进行或待触发，结果以 PR 检查面板为准。
