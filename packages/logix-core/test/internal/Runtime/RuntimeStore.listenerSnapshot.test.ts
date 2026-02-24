@@ -17,10 +17,8 @@ const commitTopic = (store: RuntimeStore, topicKey: TopicKey, tickSeq: number): 
   })
 
 const notify = (committed: RuntimeStoreCommitResult): void => {
-  for (const { listeners } of committed.changedTopics.values()) {
-    for (const listener of listeners) {
-      listener()
-    }
+  for (const listener of committed.changedTopicListeners) {
+    listener()
   }
 }
 
@@ -38,11 +36,11 @@ describe('RuntimeStore listener snapshots', () => {
     const unsubscribe = store.subscribeTopic(topicKey, () => {})
 
     try {
-      const first = commitTopic(store, topicKey, 1).changedTopics.get(topicKey)?.listeners
-      const second = commitTopic(store, topicKey, 2).changedTopics.get(topicKey)?.listeners
-      expect(first).toBeDefined()
-      expect(second).toBeDefined()
-      expect(second).toBe(first)
+      const first = commitTopic(store, topicKey, 1).changedTopicListeners
+      const second = commitTopic(store, topicKey, 2).changedTopicListeners
+      expect(first.length).toBe(1)
+      expect(second.length).toBe(1)
+      expect(second[0]).toBe(first[0])
     } finally {
       unsubscribe()
     }
