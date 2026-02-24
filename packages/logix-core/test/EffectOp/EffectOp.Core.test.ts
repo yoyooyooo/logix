@@ -65,4 +65,18 @@ describe('EffectOp core', () => {
     expect(result).toBe('boom')
     expect(errors).toEqual(['boom'])
   })
+
+  it('composeMiddleware should cache by stack identity and isolate different stacks', () => {
+    const mw: EffectOp.Middleware = (op) => op.effect
+
+    const stackA: EffectOp.MiddlewareStack = [mw]
+    const stackB: EffectOp.MiddlewareStack = [mw]
+
+    const composedA1 = EffectOp.composeMiddleware(stackA)
+    const composedA2 = EffectOp.composeMiddleware(stackA)
+    const composedB = EffectOp.composeMiddleware(stackB)
+
+    expect(composedA1).toBe(composedA2)
+    expect(composedA1).not.toBe(composedB)
+  })
 })

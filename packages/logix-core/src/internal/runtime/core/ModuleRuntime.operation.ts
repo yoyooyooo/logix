@@ -1,14 +1,51 @@
-import { Effect, FiberRef, Option } from 'effect'
+import { Context, Effect, FiberRef, Option } from 'effect'
 import type { StateTxnContext } from './StateTransaction.js'
 import * as Debug from './DebugSink.js'
 import * as EffectOpCore from './EffectOpCore.js'
 import * as EffectOp from '../../effect-op.js'
+import type { RunSession } from '../../observability/runSession.js'
 import { RunSessionTag } from '../../observability/runSession.js'
 
-export const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, never> =>
-  Effect.serviceOption(EffectOpCore.EffectOpMiddlewareTag).pipe(
-    Effect.map((maybe) => (Option.isSome(maybe) ? maybe.value.stack : [])),
+export interface OperationRuntimeServices {
+  readonly middlewareStack: EffectOp.MiddlewareStack
+  readonly runSession: RunSession | undefined
+}
+
+export const resolveOperationRuntimeServices = (): Effect.Effect<OperationRuntimeServices, never, any> =>
+  Effect.context<any>().pipe(
+    Effect.map((context) => {
+      const middlewareOpt = Context.getOption(context, EffectOpCore.EffectOpMiddlewareTag as any) as Option.Option<{
+        readonly stack: EffectOp.MiddlewareStack
+      }>
+      const runSessionOpt = Context.getOption(context, RunSessionTag as any) as Option.Option<RunSession>
+      return {
+        middlewareStack: Option.isSome(middlewareOpt) ? middlewareOpt.value.stack : [],
+        runSession: Option.isSome(runSessionOpt) ? runSessionOpt.value : undefined,
+      }
+    }),
   )
+
+export const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
+  resolveOperationRuntimeServices().pipe(Effect.map((runtimeServices) => runtimeServices.middlewareStack))
+
+export const assignOperationOpSeq = (
+  meta: EffectOp.EffectOp['meta'] | undefined,
+  runSession: RunSession | undefined,
+): number | undefined => {
+  const metaAny = meta as any
+  if (typeof metaAny?.opSeq === 'number' && Number.isFinite(metaAny.opSeq)) {
+    return Math.floor(metaAny.opSeq)
+  }
+
+  if (!runSession || !metaAny) {
+    return undefined
+  }
+
+  const key = metaAny.instanceId ?? 'global'
+  const opSeq = runSession.local.nextSeq('opSeq', key)
+  metaAny.opSeq = opSeq
+  return opSeq
+}
 
 export type RunOperation = <A, E, R>(
   kind: EffectOp.EffectOp['kind'],
@@ -37,12 +74,13 @@ export const makeRunOperation = (args: {
     eff: Effect.Effect<A2, E2, R2>,
   ): Effect.Effect<A2, E2, R2> =>
     Effect.gen(function* () {
-      const stack = yield* getMiddlewareStack()
+      const [{ middlewareStack, runSession }, existingLinkId, runtimeLabel] = yield* Effect.all([
+        resolveOperationRuntimeServices(),
+        FiberRef.get(EffectOpCore.currentLinkId),
+        FiberRef.get(Debug.currentRuntimeLabel),
+      ])
 
       const currentTxnId = txnContext.current?.txnId
-      const existingLinkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
-
-      const runtimeLabel = yield* FiberRef.get(Debug.currentRuntimeLabel)
 
       // NOTE: linkId is generated/propagated by the Runtime:
       // - Boundary entrypoints create a new linkId.
@@ -60,16 +98,9 @@ export const makeRunOperation = (args: {
         txnId: (params.meta as any)?.txnId ?? currentTxnId,
       }
 
-      const baseMetaAny = baseMeta as any
-      if (!(typeof baseMetaAny.opSeq === 'number' && Number.isFinite(baseMetaAny.opSeq))) {
-        const sessionOpt = yield* Effect.serviceOption(RunSessionTag)
-        if (Option.isSome(sessionOpt)) {
-          const key = baseMetaAny.instanceId ?? 'global'
-          baseMetaAny.opSeq = sessionOpt.value.local.nextSeq('opSeq', key)
-        }
-      }
+      const opSeq = assignOperationOpSeq(baseMeta, runSession)
 
-      const op0 = EffectOp.make<A2, E2, R2>({
+      const op = EffectOp.make<A2, E2, R2>({
         kind,
         name,
         payload: params.payload,
@@ -77,25 +108,10 @@ export const makeRunOperation = (args: {
         meta: baseMeta,
       })
 
-      const linkId = existingLinkId ?? op0.id
-      const op =
-        (op0.meta as any)?.linkId === linkId
-          ? op0
-          : ({
-              ...op0,
-              meta: {
-                ...(op0.meta ?? {}),
-                linkId,
-              },
-            } as typeof op0)
-
-      const program = stack.length ? EffectOp.run(op, stack) : op.effect
+      const linkId = existingLinkId ?? op.id
+      const program = middlewareStack.length ? EffectOp.run(op, middlewareStack) : op.effect
 
       // linkId: created at the boundary, reused for nested ops (shared across modules via a FiberRef).
-      const opSeq =
-        typeof baseMetaAny.opSeq === 'number' && Number.isFinite(baseMetaAny.opSeq)
-          ? Math.floor(baseMetaAny.opSeq)
-          : undefined
       return yield* Effect.locally(
         EffectOpCore.currentLinkId,
         linkId,
