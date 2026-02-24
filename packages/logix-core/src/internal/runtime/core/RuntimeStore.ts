@@ -61,6 +61,8 @@ export interface RuntimeStoreCommitResult {
   readonly changedTopicListeners: ReadonlyArray<() => void>
 }
 
+export type RuntimeStoreListenerCallback = (listener: () => void) => void
+
 interface TopicListenersState {
   readonly listeners: Set<() => void>
   snapshot: ReadonlyArray<() => void>
@@ -91,6 +93,7 @@ export interface RuntimeStore {
   readonly commitTick: (args: {
     readonly tickSeq: number
     readonly accepted: RuntimeStorePendingDrain
+    readonly onListener?: RuntimeStoreListenerCallback
   }) => RuntimeStoreCommitResult
 
   readonly dispose: () => void
@@ -184,11 +187,47 @@ export const makeRuntimeStore = (): RuntimeStore => {
     // Keep topic versions by default (helps debugging). Subscribers are expected to detach on module destroy.
   }
 
-  const commitTick = (args: { readonly tickSeq: number; readonly accepted: RuntimeStorePendingDrain }): RuntimeStoreCommitResult => {
+  const commitTick = (args: {
+    readonly tickSeq: number
+    readonly accepted: RuntimeStorePendingDrain
+    readonly onListener?: RuntimeStoreListenerCallback
+  }): RuntimeStoreCommitResult => {
     tickSeq = args.tickSeq
 
     for (const [key, commit] of args.accepted.modules) {
       moduleStates.set(key, commit.state)
+    }
+
+    if (args.onListener) {
+      let changedTopicSnapshots: Array<ReadonlyArray<() => void>> | undefined
+
+      for (const [topicKey, priority] of args.accepted.dirtyTopics) {
+        commitTopicBump(topicKey, priority)
+        const listeners = listenersByTopic.get(topicKey)?.snapshot ?? EMPTY_LISTENER_SNAPSHOT
+        if (listeners.length === 0) {
+          continue
+        }
+        if (!changedTopicSnapshots) {
+          changedTopicSnapshots = []
+        }
+        changedTopicSnapshots.push(listeners)
+      }
+
+      if (changedTopicSnapshots) {
+        for (const listeners of changedTopicSnapshots) {
+          for (const listener of listeners) {
+            try {
+              args.onListener(listener)
+            } catch {
+              // best-effort: never let listener callback break commit tick
+            }
+          }
+        }
+      }
+
+      return {
+        changedTopicListeners: NO_CHANGED_TOPIC_LISTENERS,
+      }
     }
 
     let changedTopicListeners: Array<() => void> | undefined
