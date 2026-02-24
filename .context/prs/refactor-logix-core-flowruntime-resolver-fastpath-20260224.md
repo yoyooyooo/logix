@@ -1,0 +1,24 @@
+# FlowRuntime effect resolver 预解析快路径（PR17）
+
+## Branch
+- `refactor/logix-core-perf-pr17-flowruntime-resolver-fastpath`
+- PR: `TBD`
+
+## 核心改动
+- `packages/logix-core/src/internal/runtime/core/FlowRuntime.ts`
+  - 增加 `preResolveEffectResolver`，在 `run*` 创建阶段预解析 effect resolver，避免每个 payload 重复 `typeof` 分支判断。
+  - 抽取共享 mapper，复用 `runAsFlowOp` 调用路径，降低闭包分配。
+  - `run/runParallel/runLatest/runExhaust` 语义保持不变。
+- `packages/logix-core/test/internal/Flow/FlowRuntime.test.ts`
+  - 新增静态 effect 输入回归，覆盖四种 run 模式语义一致性。
+
+## 验证
+- `pnpm typecheck`
+- `pnpm test:turbo`
+
+## 独立审查
+- 待 PR 创建后执行并回填。
+
+## 机器人评论处理
+- CodeRabbit: 待 PR 创建后拉取评论并回填。
+- Vercel: 仅部署额度提示（若出现）按非代码质量事件记录。
