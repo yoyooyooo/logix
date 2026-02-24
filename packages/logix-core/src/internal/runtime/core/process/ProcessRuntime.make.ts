@@ -110,6 +110,7 @@ const currentProcessTrigger = FiberRef.unsafeMake<ProcessTrigger | undefined>(un
 const currentProcessEventBudget = FiberRef.unsafeMake<Ref.Ref<ProcessEvents.ProcessRunEventBudgetState> | undefined>(
   undefined,
 )
+const RUNTIME_BOOT_EVENT = 'runtime:boot' as const
 const PROCESS_EVENT_HISTORY_MAX_CAPACITY = 0xffff_fffe
 
 const deriveDebugModuleId = (processId: string): string => `process:${processId}`
