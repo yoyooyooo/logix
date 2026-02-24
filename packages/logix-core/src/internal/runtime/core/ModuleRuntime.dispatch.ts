@@ -20,6 +20,10 @@ type ActionAnalysis = {
   readonly originOp: 'remove' | 'insert' | 'unset' | 'set'
 }
 
+const ACTION_ORIGIN_REMOVE_PATTERN = /Remove|remove/
+const ACTION_ORIGIN_INSERT_PATTERN = /Append|Prepend|Insert|Swap|Move|append|prepend|insert|swap|move/
+const ACTION_ORIGIN_UNSET_PATTERN = /Unset|unset/
+
 export const makeDispatchOps = <S, A>(args: {
   readonly optionsModuleId: string | undefined
   readonly instanceId: string
@@ -75,22 +79,9 @@ export const makeDispatchOps = <S, A>(args: {
   const hasTopicTagHubs = (actionTagHubsByTag?.size ?? 0) > 0
 
   const resolveActionOriginOp = (tag: string): ActionAnalysis['originOp'] => {
-    if (tag.includes('Remove') || tag.includes('remove')) return 'remove'
-    if (
-      tag.includes('Append') ||
-      tag.includes('Prepend') ||
-      tag.includes('Insert') ||
-      tag.includes('Swap') ||
-      tag.includes('Move') ||
-      tag.includes('append') ||
-      tag.includes('prepend') ||
-      tag.includes('insert') ||
-      tag.includes('swap') ||
-      tag.includes('move')
-    ) {
-      return 'insert'
-    }
-    if (tag.includes('Unset') || tag.includes('unset')) return 'unset'
+    if (ACTION_ORIGIN_REMOVE_PATTERN.test(tag)) return 'remove'
+    if (ACTION_ORIGIN_INSERT_PATTERN.test(tag)) return 'insert'
+    if (ACTION_ORIGIN_UNSET_PATTERN.test(tag)) return 'unset'
     return 'set'
   }
 
