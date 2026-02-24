@@ -433,6 +433,171 @@ const mergeDowngrade = (
   return 'unknown'
 }
 
+type ResolveConvergeStaticIr = (staticIrDigest: string) => ConvergeStaticIrExport | undefined
+
+const resolveStateUpdateDirtySetRootPaths = (
+  event: Extract<Event, { readonly type: 'state:update' }>,
+  resolveConvergeStaticIr?: ResolveConvergeStaticIr,
+): ReadonlyArray<JsonValue> | undefined => {
+  if (!resolveConvergeStaticIr) return undefined
+
+  const digest = event.staticIrDigest
+  if (typeof digest !== 'string' || digest.length === 0) return undefined
+
+  const dirtySet = event.dirtySet as any
+  if (!dirtySet || typeof dirtySet !== 'object' || Array.isArray(dirtySet)) return undefined
+
+  const rootIds = dirtySet.rootIds
+  if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
+
+  const ir = resolveConvergeStaticIr(digest) as ConvergeStaticIrExport | undefined
+  const fieldPaths = (ir as any)?.fieldPaths as unknown
+  if (!Array.isArray(fieldPaths) || fieldPaths.length === 0) return undefined
+
+  const out: Array<JsonValue> = []
+  for (const rawId of rootIds) {
+    if (typeof rawId !== 'number' || !Number.isFinite(rawId)) continue
+    const id = Math.floor(rawId)
+    if (id < 0) continue
+    const path = (fieldPaths as any)[id] as unknown
+    if (!Array.isArray(path) || path.length === 0) continue
+    if (!path.every((seg) => typeof seg === 'string' && seg.length > 0)) continue
+    out.push(path as any)
+  }
+
+  return out.length > 0 ? out : undefined
+}
+
+const withStateUpdateDirtySetRootPaths = (
+  event: Extract<Event, { readonly type: 'state:update' }>,
+  resolveConvergeStaticIr?: ResolveConvergeStaticIr,
+): unknown => {
+  const rootPaths = resolveStateUpdateDirtySetRootPaths(event, resolveConvergeStaticIr)
+  if (!rootPaths) return event.dirtySet
+
+  const dirtySet = event.dirtySet as any
+  if (!dirtySet || typeof dirtySet !== 'object' || Array.isArray(dirtySet)) return event.dirtySet
+
+  return { ...dirtySet, rootPaths }
+}
+
+const resolveTraitConvergeDirtyRootPaths = (args: {
+  readonly staticIrDigest: unknown
+  readonly rootIds: unknown
+  readonly resolveConvergeStaticIr?: ResolveConvergeStaticIr
+}): ReadonlyArray<JsonValue> | undefined => {
+  const resolveConvergeStaticIr = args.resolveConvergeStaticIr
+  if (!resolveConvergeStaticIr) return undefined
+
+  const digest = args.staticIrDigest
+  if (typeof digest !== 'string' || digest.length === 0) return undefined
+
+  const rootIds = args.rootIds
+  if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
+
+  const ir = resolveConvergeStaticIr(digest) as ConvergeStaticIrExport | undefined
+  const fieldPaths = (ir as any)?.fieldPaths as unknown
+  if (!Array.isArray(fieldPaths) || fieldPaths.length === 0) return undefined
+
+  const out: Array<JsonValue> = []
+  for (const id of rootIds) {
+    if (typeof id !== 'number' || !Number.isFinite(id)) continue
+    const idx = Math.floor(id)
+    if (idx < 0 || idx >= fieldPaths.length) continue
+    const path = fieldPaths[idx]
+    if (Array.isArray(path)) {
+      out.push(path as any)
+    }
+  }
+
+  return out.length > 0 ? out : undefined
+}
+
+const enrichTraitConvergeDirtyRootPaths = (
+  value: JsonValue,
+  resolveConvergeStaticIr?: ResolveConvergeStaticIr,
+): JsonValue => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+
+  const anyValue = value as any
+  const dirty = anyValue.dirty
+  if (!dirty || typeof dirty !== 'object' || Array.isArray(dirty)) return value
+
+  const dirtyRootPaths = resolveTraitConvergeDirtyRootPaths({
+    staticIrDigest: anyValue.staticIrDigest,
+    rootIds: dirty?.rootIds,
+    resolveConvergeStaticIr,
+  })
+  if (!dirtyRootPaths) return value
+
+  return {
+    ...anyValue,
+    dirty: {
+      ...(dirty as any),
+      rootPaths: dirtyRootPaths,
+    },
+  } as JsonValue
+}
+
+const stripTraitConvergeLight = (
+  value: JsonValue,
+  resolveConvergeStaticIr?: ResolveConvergeStaticIr,
+): JsonValue => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+
+  const anyValue = value as any
+  const dirty = anyValue.dirty
+  const dirtyRootPaths = resolveTraitConvergeDirtyRootPaths({
+    staticIrDigest: anyValue.staticIrDigest,
+    rootIds: dirty?.rootIds,
+    resolveConvergeStaticIr,
+  })
+  const dirtySlim =
+    dirty && typeof dirty === 'object' && !Array.isArray(dirty)
+      ? {
+          dirtyAll: (dirty as any).dirtyAll,
+          ...(typeof (dirty as any).reason === 'string' ? { reason: (dirty as any).reason } : null),
+          ...(Array.isArray((dirty as any).rootIds) ? { rootIds: (dirty as any).rootIds } : null),
+          ...(typeof (dirty as any).rootIdsTruncated === 'boolean'
+            ? { rootIdsTruncated: (dirty as any).rootIdsTruncated }
+            : null),
+          ...(dirtyRootPaths ? { rootPaths: dirtyRootPaths } : null),
+        }
+      : undefined
+
+  const { top3, dirtyRoots, ...rest } = anyValue
+  return (dirtySlim ? { ...rest, dirty: dirtySlim } : rest) as JsonValue
+}
+
+const stripTraitConvergeSampled = (value: JsonValue): JsonValue => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+
+  const anyValue = value as any
+  const dirty = anyValue.dirty
+  const dirtySlim =
+    dirty && typeof dirty === 'object' && !Array.isArray(dirty)
+      ? {
+          dirtyAll: (dirty as any).dirtyAll,
+          ...(typeof (dirty as any).reason === 'string' ? { reason: (dirty as any).reason } : null),
+        }
+      : undefined
+
+  const { dirtyRoots, ...rest } = anyValue
+  return (dirtySlim ? { ...rest, dirty: dirtySlim } : rest) as JsonValue
+}
+
+const stripTraitCheckLight = (value: JsonValue): JsonValue => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+
+  const anyValue = value as any
+  const degraded = anyValue.degraded
+  const degradedSlim =
+    degraded && typeof degraded === 'object' && !Array.isArray(degraded) ? { kind: (degraded as any).kind } : undefined
+
+  const { degraded: _degraded, ...rest } = anyValue
+  return (degradedSlim ? { ...rest, degraded: degradedSlim } : rest) as JsonValue
+}
+
 // In browsers, to reduce duplicated noise caused by React StrictMode, etc.,
 // de-duplicate lifecycle:error and diagnostic events: print the same moduleId+payload only once.
 const browserLifecycleSeen = new Set<string>()
@@ -994,45 +1159,7 @@ export const toRuntimeDebugEventRef = (
     }
     case 'state:update': {
       const e = event as Extract<Event, { readonly type: 'state:update' }>
-
-      const resolveDirtySetRootPaths = (): ReadonlyArray<JsonValue> | undefined => {
-        const resolve = options?.resolveConvergeStaticIr
-        if (!resolve) return undefined
-
-        const digest = e.staticIrDigest
-        if (typeof digest !== 'string' || digest.length === 0) return undefined
-
-        const dirtySet = e.dirtySet as any
-        if (!dirtySet || typeof dirtySet !== 'object' || Array.isArray(dirtySet)) return undefined
-
-        const rootIds = dirtySet.rootIds
-        if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
-
-        const ir = resolve(digest) as ConvergeStaticIrExport | undefined
-        const fieldPaths = (ir as any)?.fieldPaths as unknown
-        if (!Array.isArray(fieldPaths) || fieldPaths.length === 0) return undefined
-
-        const out: Array<JsonValue> = []
-        for (const rawId of rootIds) {
-          if (typeof rawId !== 'number' || !Number.isFinite(rawId)) continue
-          const id = Math.floor(rawId)
-          if (id < 0) continue
-          const path = (fieldPaths as any)[id] as unknown
-          if (!Array.isArray(path) || path.length === 0) continue
-          if (!path.every((seg) => typeof seg === 'string' && seg.length > 0)) continue
-          out.push(path as any)
-        }
-
-        return out.length > 0 ? out : undefined
-      }
-
-      const dirtySetWithRootPaths = (() => {
-        const rootPaths = resolveDirtySetRootPaths()
-        if (!rootPaths) return e.dirtySet
-        const dirtySet = e.dirtySet as any
-        if (!dirtySet || typeof dirtySet !== 'object' || Array.isArray(dirtySet)) return e.dirtySet
-        return { ...dirtySet, rootPaths }
-      })()
+      const dirtySetWithRootPaths = withStateUpdateDirtySetRootPaths(e, options?.resolveConvergeStaticIr)
 
       const metaInput = isLightLike
         ? {
@@ -1426,108 +1553,14 @@ export const toRuntimeDebugEventRef = (
 
       // trace:trait:converge: converge evidence must be exportable (JsonValue hard gate) and trims heavy fields in light tier.
       if (event.type === 'trace:trait:converge') {
-        const resolveDirtyRootPaths = (args: {
-          readonly staticIrDigest: unknown
-          readonly rootIds: unknown
-        }): ReadonlyArray<JsonValue> | undefined => {
-          const resolve = options?.resolveConvergeStaticIr
-          if (!resolve) return undefined
-          const digest = args.staticIrDigest
-          if (typeof digest !== 'string' || digest.length === 0) return undefined
-
-          const rootIds = args.rootIds
-          if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
-
-          const ir = resolve(digest) as ConvergeStaticIrExport | undefined
-          const fieldPaths = (ir as any)?.fieldPaths as unknown
-          if (!Array.isArray(fieldPaths) || fieldPaths.length === 0) return undefined
-
-          const out: Array<JsonValue> = []
-          for (const id of rootIds) {
-            if (typeof id !== 'number' || !Number.isFinite(id)) continue
-            const idx = Math.floor(id)
-            if (idx < 0 || idx >= fieldPaths.length) continue
-            const path = fieldPaths[idx]
-            if (Array.isArray(path)) {
-              out.push(path as any)
-            }
-          }
-
-          return out.length > 0 ? out : undefined
-        }
-
-        const enrichDirtyRootPaths = (value: JsonValue): JsonValue => {
-          if (!value || typeof value !== 'object' || Array.isArray(value)) return value
-
-          const anyValue = value as any
-          const dirty = anyValue.dirty
-          if (!dirty || typeof dirty !== 'object' || Array.isArray(dirty)) return value
-
-          const dirtyRootPaths = resolveDirtyRootPaths({
-            staticIrDigest: anyValue.staticIrDigest,
-            rootIds: dirty?.rootIds,
-          })
-          if (!dirtyRootPaths) return value
-
-          return {
-            ...anyValue,
-            dirty: {
-              ...(dirty as any),
-              rootPaths: dirtyRootPaths,
-            },
-          } as JsonValue
-        }
-
-        const stripHeavyLight = (value: JsonValue): JsonValue => {
-          if (!value || typeof value !== 'object' || Array.isArray(value)) return value
-
-          const anyValue = value as any
-          const dirty = anyValue.dirty
-          const dirtyRootPaths = resolveDirtyRootPaths({
-            staticIrDigest: anyValue.staticIrDigest,
-            rootIds: dirty?.rootIds,
-          })
-          const dirtySlim =
-            dirty && typeof dirty === 'object' && !Array.isArray(dirty)
-              ? {
-                  dirtyAll: (dirty as any).dirtyAll,
-                  ...(typeof (dirty as any).reason === 'string' ? { reason: (dirty as any).reason } : null),
-                  ...(Array.isArray((dirty as any).rootIds) ? { rootIds: (dirty as any).rootIds } : null),
-                  ...(typeof (dirty as any).rootIdsTruncated === 'boolean'
-                    ? { rootIdsTruncated: (dirty as any).rootIdsTruncated }
-                    : null),
-                  ...(dirtyRootPaths ? { rootPaths: dirtyRootPaths } : null),
-                }
-              : undefined
-
-          const { top3, dirtyRoots, ...rest } = anyValue
-          return (dirtySlim ? { ...rest, dirty: dirtySlim } : rest) as JsonValue
-        }
-
-        const stripHeavySampled = (value: JsonValue): JsonValue => {
-          if (!value || typeof value !== 'object' || Array.isArray(value)) return value
-
-          const anyValue = value as any
-          const dirty = anyValue.dirty
-          const dirtySlim =
-            dirty && typeof dirty === 'object' && !Array.isArray(dirty)
-              ? {
-                  dirtyAll: (dirty as any).dirtyAll,
-                  ...(typeof (dirty as any).reason === 'string' ? { reason: (dirty as any).reason } : null),
-                }
-              : undefined
-
-          const { dirtyRoots, ...rest } = anyValue
-          return (dirtySlim ? { ...rest, dirty: dirtySlim } : rest) as JsonValue
-        }
-
+        const resolveConvergeStaticIr = options?.resolveConvergeStaticIr
         const data = (event as Extract<Event, { readonly type: 'trace:trait:converge' }>).data
         const metaInput =
           diagnosticsLevel === 'light'
-            ? stripHeavyLight(data)
+            ? stripTraitConvergeLight(data, resolveConvergeStaticIr)
             : diagnosticsLevel === 'sampled'
-              ? stripHeavySampled(data)
-              : enrichDirtyRootPaths(data)
+              ? stripTraitConvergeSampled(data)
+              : enrichTraitConvergeDirtyRootPaths(data, resolveConvergeStaticIr)
         const metaProjection = projectJsonValue(metaInput)
         options?.onMetaProjection?.({
           stats: metaProjection.stats,
@@ -1545,21 +1578,8 @@ export const toRuntimeDebugEventRef = (
 
       // trace:trait:check: validation diagnostics must be exportable and stay slim in light tier (keep key fields).
       if (event.type === 'trace:trait:check') {
-        const stripHeavy = (value: JsonValue): JsonValue => {
-          if (!value || typeof value !== 'object' || Array.isArray(value)) return value
-          const anyValue = value as any
-          const degraded = anyValue.degraded
-          const degradedSlim =
-            degraded && typeof degraded === 'object' && !Array.isArray(degraded)
-              ? { kind: (degraded as any).kind }
-              : undefined
-
-          const { degraded: _degraded, ...rest } = anyValue
-          return (degradedSlim ? { ...rest, degraded: degradedSlim } : rest) as JsonValue
-        }
-
         const data = (event as Extract<Event, { readonly type: 'trace:trait:check' }>).data
-        const metaInput = isLightLike ? stripHeavy(data) : data
+        const metaInput = isLightLike ? stripTraitCheckLight(data) : data
         const metaProjection = projectJsonValue(metaInput)
         options?.onMetaProjection?.({
           stats: metaProjection.stats,
