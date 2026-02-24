@@ -31,5 +31,18 @@
 - 结论：
   - 当前实现保持原有 OR 语义与 batch 顺序语义，同时去除了重复 topic fanout，符合本轮 fastpath 目标。
 
-## 机器人评论消化（CodeRabbit）
-- 待 CI 与 review comments 到位后补充。
+## 独立审查
+- 结论：`non-blocker`，无阻塞问题，可合并。
+- 关注点：
+  - `dispatchBatch` 仍会为本批次分配一次 `analyses` 数组，属于可接受的批级开销；未发现语义回归。
+- 测试覆盖：
+  - 新增 `_tag/type` 重复 topic 去重回归；
+  - 既有 `actionsByTag$` fallback OR 语义回归保持通过。
+
+## 机器人评论处理（PR #73）
+- CodeRabbit：`Rate limit exceeded`（未给出具体代码修复建议）。
+- github-actions（logix-perf quick）：`status: ok`，`comparable=true`、`regressions=0`。
+- Vercel：`api-deployments-free-per-day` 配额失败（外部资源限制，非代码语义问题）。
+
+## CI watcher
+- `.context/pr-ci-watch/pr-73-20260224-163944.log`
