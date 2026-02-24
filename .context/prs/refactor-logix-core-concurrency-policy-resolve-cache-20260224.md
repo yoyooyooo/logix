@@ -1,8 +1,8 @@
 # PR Draft: refactor/logix-core-concurrency-policy-resolve-cache-20260224
 
-- PR：`待创建`
+- PR：`#56`（https://github.com/yoyooyooo/logix/pull/56）
 - 合并策略：创建后开启 `auto-merge(rebase)`
-- CI watcher：创建后补充 `.context/pr-ci-watch/pr-<id>-*.log`
+- CI watcher：`.context/pr-ci-watch/pr-56-20260224-131107.log`
 
 ## 目标
 - 降低 `ModuleRuntime` 核心链路中并发策略解析 (`resolveConcurrencyPolicy`) 的重复开销。
