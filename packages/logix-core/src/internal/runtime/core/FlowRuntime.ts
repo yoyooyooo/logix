@@ -99,8 +99,10 @@ export const make = <Sh extends AnyModuleShape, R = never>(
 
       const hasFiniteTemplateOpSeq =
         typeof metaTemplate.opSeq === 'number' && Number.isFinite(metaTemplate.opSeq)
-      const allocateOpSeq = Option.isSome(sessionOpt)
-        ? () => sessionOpt.value.local.nextSeq('opSeq', (metaTemplate.instanceId as string | undefined) ?? 'global')
+      const runSessionLocal = Option.isSome(sessionOpt) ? sessionOpt.value.local : undefined
+      const opSeqKey = (metaTemplate.instanceId as string | undefined) ?? 'global'
+      const allocateOpSeq = runSessionLocal
+        ? () => runSessionLocal.nextSeq('opSeq', opSeqKey)
         : undefined
 
       return {
