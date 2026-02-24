@@ -221,6 +221,7 @@ export const convergeInTransaction = <S extends object>(
     const AUTO_FLOOR_RATIO = 1.05
     const MAX_CACHEABLE_ROOT_IDS = 128
     const MAX_CACHEABLE_ROOT_RATIO = 0.5
+    const NO_CACHE_NEAR_FULL_STEP_THRESHOLD = 512
 
     const configScope: TraitConvergeConfigScope = ctx.configScope ?? 'builtin'
     const generationEvidence: TraitConvergeGenerationEvidence = ctx.generation ?? {
@@ -585,30 +586,41 @@ export const convergeInTransaction = <S extends object>(
           } else if (dirty.rootIds.length === 0) {
             mode = 'full'
             reasons.push('unknown_write')
-          } else if ((scopeStepCount > 0 ? dirty.rootCount / scopeStepCount : 1) >= nearFullRootRatioThreshold) {
-            mode = 'full'
-            reasons.push('near_full')
           } else {
-          const { plan, hit, budgetCutoff } = getOrComputePlan({
-            missReason: cacheMissReasonHint ?? 'not_cached',
-            stopOnDecisionBudget: decisionBudgetMs != null,
-          })
-          if (budgetCutoff) {
-            markDecisionBudgetCutoff()
-          }
-          if (!plan) {
-            mode = 'dirty'
-          } else {
-            planStepIds = plan
-            reasons.push(hit ? 'cache_hit' : 'cache_miss')
-            const ratio = scopeStepCount > 0 ? plan.length / scopeStepCount : 1
-            if (ratio >= NEAR_FULL_PLAN_RATIO_THRESHOLD) {
+            const dirtyRootRatio = scopeStepCount > 0 ? dirty.rootCount / scopeStepCount : 1
+            if (dirtyRootRatio >= nearFullRootRatioThreshold) {
+              mode = 'full'
+              reasons.push('near_full')
+            } else if (
+              !canUseCache &&
+              scopeStepCount >= NO_CACHE_NEAR_FULL_STEP_THRESHOLD &&
+              dirtyRootRatio >= nearFullRootRatioThreshold / AUTO_FLOOR_RATIO
+            ) {
+              // No reusable cache path + near-full roots on large graphs tends to pay decision cost without step pruning wins.
               mode = 'full'
               reasons.push('near_full')
             } else {
-              mode = 'dirty'
+              const { plan, hit, budgetCutoff } = getOrComputePlan({
+                missReason: cacheMissReasonHint ?? 'not_cached',
+                stopOnDecisionBudget: decisionBudgetMs != null,
+              })
+              if (budgetCutoff) {
+                markDecisionBudgetCutoff()
+              }
+              if (!plan) {
+                mode = 'dirty'
+              } else {
+                planStepIds = plan
+                reasons.push(hit ? 'cache_hit' : 'cache_miss')
+                const ratio = scopeStepCount > 0 ? plan.length / scopeStepCount : 1
+                if (ratio >= NEAR_FULL_PLAN_RATIO_THRESHOLD) {
+                  mode = 'full'
+                  reasons.push('near_full')
+                } else {
+                  mode = 'dirty'
+                }
+              }
             }
-          }
           }
         }
       }
