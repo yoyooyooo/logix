@@ -41,4 +41,5 @@
 - 回滚：撤销 `FlowOpContext` 预解析，将 middleware/session 读取恢复到 `runAsFlowOp` 内 per-payload 路径。
 
 ## 机器人评论消化（CodeRabbit）
-- 待 PR 创建后补充。
+- 已获取 PR #69 评论流：CodeRabbit 命中 hourly rate limit（需等待约 8m49s），当前暂无可执行审查建议。
+- 处理策略：限流窗口后触发  review 或在后续提交后继续自动审查，并在出结论后补充“采纳/暂不采纳+理由”。
