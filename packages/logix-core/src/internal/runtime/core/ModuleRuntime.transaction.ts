@@ -324,9 +324,9 @@ export const makeTransactionOps = <S>(args: {
                   const outcome = convergeExit.value
 
                   const dirtyAllReasonForDeferred: DirtyAllReason | undefined = (txnContext.current as any)?.dirtyAllReason
-                  const dirtyPathsSnapshotForDeferred: ReadonlyArray<StateTransaction.StatePatchPath> | undefined =
+                  const dirtyPathIdsForDeferred: ReadonlySet<StateTransaction.StatePatchPath> | undefined =
                     canTimeSlice && !isDeferredFlushTxn && !dirtyAllReasonForDeferred
-                      ? Array.from(txnContext.current.dirtyPathIds)
+                      ? txnContext.current.dirtyPathIds
                       : undefined
 
                   if (
@@ -334,7 +334,7 @@ export const makeTransactionOps = <S>(args: {
                     !isDeferredFlushTxn &&
                     outcome._tag !== 'Degraded' &&
                     (dirtyAllReasonForDeferred != null ||
-                      (dirtyPathsSnapshotForDeferred != null && dirtyPathsSnapshotForDeferred.length > 0))
+                      (dirtyPathIdsForDeferred != null && dirtyPathIdsForDeferred.size > 0))
                   ) {
                     const nowMs = Date.now()
                     traitConvergeTimeSlicing.firstPendingAtMs = traitConvergeTimeSlicing.firstPendingAtMs ?? nowMs
@@ -343,8 +343,8 @@ export const makeTransactionOps = <S>(args: {
                     if (dirtyAllReasonForDeferred != null) {
                       traitConvergeTimeSlicing.backlogDirtyAllReason = dirtyAllReasonForDeferred
                       traitConvergeTimeSlicing.backlogDirtyPaths.clear()
-                    } else if (!traitConvergeTimeSlicing.backlogDirtyAllReason && dirtyPathsSnapshotForDeferred) {
-                      for (const p of dirtyPathsSnapshotForDeferred) {
+                    } else if (!traitConvergeTimeSlicing.backlogDirtyAllReason && dirtyPathIdsForDeferred) {
+                      for (const p of dirtyPathIdsForDeferred) {
                         traitConvergeTimeSlicing.backlogDirtyPaths.add(p)
                       }
                     }
