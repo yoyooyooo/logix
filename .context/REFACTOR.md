@@ -478,4 +478,4 @@
 2. 评估是否把 `selectorDiagnostics` helper 的纯函数测试进一步下沉到 internal/runtime 目录并补充窗口边界（window rollover）场景，以降低后续演进风险。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
 
-- refactor-logix-core-flow-runtime-opseq-fastpath-20260224.md：Flow opSeq 上下文快路径（分支 refactor/logix-core-flow-runtime-opseq-fastpath，PR 待创建）
+- refactor-logix-core-flow-runtime-opseq-fastpath-20260224.md：Flow opSeq 上下文快路径（PR #68）
