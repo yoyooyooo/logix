@@ -7,21 +7,26 @@ sql_escape() {
   printf "%s" "$1" | sed "s/'/''/g"
 }
 
+default_global_db_path() {
+  printf "%s/.refactor-pr-ci-loop/state/shared-tasks.db" "$HOME"
+}
+
+resolve_legacy_repo_db_path() {
+  local common_git_dir
+  common_git_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+  if [[ -n "$common_git_dir" && "$common_git_dir" == */.git ]]; then
+    local repo_root="${common_git_dir%/.git}"
+    printf "%s/.codex/skills/refactor-pr-ci-loop/state/shared-tasks.db" "$repo_root"
+  fi
+}
+
 resolve_db_path() {
   if [[ -n "${REFACTOR_TASK_STATE_DB:-}" ]]; then
     printf "%s" "${REFACTOR_TASK_STATE_DB}"
     return
   fi
 
-  local common_git_dir
-  common_git_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
-  if [[ -n "$common_git_dir" && "$common_git_dir" == */.git ]]; then
-    local repo_root="${common_git_dir%/.git}"
-    printf "%s/.codex/skills/refactor-pr-ci-loop/state/shared-tasks.db" "$repo_root"
-    return
-  fi
-
-  printf "%s/../state/shared-tasks.db" "$SCRIPT_DIR"
+  default_global_db_path
 }
 
 usage() {
@@ -37,7 +42,7 @@ usage() {
   claimed | in_progress | review | blocked | done | merged | cancelled
 
 说明：
-  - 默认状态库：<git-common-dir>/../.codex/skills/refactor-pr-ci-loop/state/shared-tasks.db
+  - 默认状态库：~/.refactor-pr-ci-loop/state/shared-tasks.db
   - 可通过环境变量 REFACTOR_TASK_STATE_DB 覆盖。
 EOF
 }
@@ -49,6 +54,29 @@ command -v sqlite3 >/dev/null 2>&1 || {
 
 DB_PATH="$(resolve_db_path)"
 mkdir -p "$(dirname "$DB_PATH")"
+
+migrate_legacy_repo_db_if_needed() {
+  # 显式指定 DB 时不做自动迁移。
+  if [[ -n "${REFACTOR_TASK_STATE_DB:-}" ]]; then
+    return
+  fi
+
+  # 目标已存在，认为已完成迁移或已在使用。
+  if [[ -f "$DB_PATH" ]]; then
+    return
+  fi
+
+  local legacy_path
+  legacy_path="$(resolve_legacy_repo_db_path)"
+  if [[ -z "$legacy_path" || ! -f "$legacy_path" ]]; then
+    return
+  fi
+
+  if sqlite3 -cmd ".timeout 10000" "$legacy_path" ".backup '$DB_PATH'" >/dev/null 2>&1; then
+    echo "[refactor-task-state] migrated legacy db -> $DB_PATH"
+    echo "[refactor-task-state] legacy db kept at: $legacy_path"
+  fi
+}
 
 init_db() {
   sqlite3 -cmd ".timeout 10000" "$DB_PATH" >/dev/null <<'SQL'
@@ -89,6 +117,7 @@ current_worktree() {
   git rev-parse --show-toplevel 2>/dev/null || pwd
 }
 
+migrate_legacy_repo_db_if_needed
 init_db
 
 cmd="${1:-}"
