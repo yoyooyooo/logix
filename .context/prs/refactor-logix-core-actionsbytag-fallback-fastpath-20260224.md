@@ -25,5 +25,6 @@
 - open question：建议后续补充可复现 perf 基线链接（本 PR 尚未附性能报告）
 
 ## 机器人评论处理
-- CodeRabbit: 待 PR 创建后拉取评论并回填。
-- Vercel: 仅部署额度提示（若出现）按非代码质量事件记录。
+- CodeRabbit：已拉取评论（2026-02-24 11:47 UTC），内容为 rate-limit 提示，无有效语义评论；本轮无需代码改动。
+- `logix-perf (quick)`：已完成，`status: ok`，无回归。
+- Vercel：部署额度限制失败（`api-deployments-free-per-day`），非代码质量问题。
