@@ -22,3 +22,10 @@
 
 ## 独立审查
 - 本 PR 由独立 worker subagent 在独立 worktree 实施并自验证后提交。
+- 独立只读审查结论：无 blocker。
+- non-blocker 建议：可后续加强 `edges` 同引用原地变更场景约束（补测试或 build 阶段冻结）。
+
+## 机器人评论消化
+- CodeRabbit：当前为 rate-limit 提示（无有效语义评论）。
+- `logix-perf (quick)`：已完成且 `status: ok`。
+- Vercel：免费额度限制失败（非代码语义问题）。
