@@ -2,7 +2,7 @@
 
 ## Branch
 - `refactor/logix-core-perf-pr16-trait-timeslice-dirtypaths-no-array`
-- PR: `TBD`
+- PR: `#83` (https://github.com/yoyooyooo/logix/pull/83)
 
 ## 核心改动
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
