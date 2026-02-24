@@ -2,7 +2,8 @@
 
 ## Branch
 - `refactor/logix-core-perf-pr9-tickscheduler-drain-inplace`
-- PR: `TBD`
+- PR: #76 (https://github.com/yoyooyooo/logix/pull/76)
+- CI watcher: `.context/pr-ci-watch/pr-76-20260224-175812.log`
 
 ## 核心改动
 - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
@@ -22,3 +23,5 @@
 
 ## 独立审查
 - 本 PR 由独立 worker subagent 在独立 worktree 实施并自验证后提交。
+- 独立只读审查结论：无 blocker。
+- 审查建议（non-blocker）已吸收：补充 `normal -> low` 跨 rounds 同 key 合并测试，锁定“最新 state + 保留 normal priority”语义（提交 `68222579`）。
