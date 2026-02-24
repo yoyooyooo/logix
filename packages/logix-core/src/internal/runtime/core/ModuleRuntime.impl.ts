@@ -55,7 +55,7 @@ import {
 import { compareFieldPath, isPrefixOf, normalizeFieldPath, type DirtyAllReason, type FieldPath } from '../../field-path.js'
 import * as RowId from '../../state-trait/rowid.js'
 import * as StateTraitBuild from '../../state-trait/build.js'
-import { exportConvergeStaticIr } from '../../state-trait/converge-ir.js'
+import { exportConvergeStaticIr, getConvergeStaticIrDigest } from '../../state-trait/converge-ir.js'
 import { makeConvergeExecIr } from '../../state-trait/converge-exec-ir.js'
 import * as StateTraitConverge from '../../state-trait/converge.js'
 import * as StateTraitValidate from '../../state-trait/validate.js'
@@ -199,6 +199,7 @@ export const make = <S, A, R = never>(
     const convergePlanCacheCapacity = 128
     const traitState: TraitState = {
       program: undefined,
+      convergeStaticIrDigest: undefined,
       convergePlanCache: undefined,
       convergeGeneration: {
         generation: 0,
@@ -668,6 +669,7 @@ export const make = <S, A, R = never>(
         traitConvergeTimeSlicing: traitConvergeTimeSlicingState,
         traitRuntime: {
           getProgram: () => traitState.program,
+          getConvergeStaticIrDigest: () => traitState.convergeStaticIrDigest,
           getConvergePlanCache: () => traitState.convergePlanCache,
           getConvergeGeneration: () => traitState.convergeGeneration,
           getPendingCacheMissReason: () => traitState.pendingCacheMissReason,
@@ -1475,6 +1477,9 @@ export const make = <S, A, R = never>(
 
       const convergeExecIr =
         convergeIr && !(convergeIr as any).configError ? makeConvergeExecIr(convergeIr as any) : undefined
+
+      traitState.convergeStaticIrDigest =
+        convergeIr && !(convergeIr as any).configError ? getConvergeStaticIrDigest(convergeIr as any) : undefined
 
       traitState.program = {
         ...(program as any),

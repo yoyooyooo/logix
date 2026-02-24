@@ -80,6 +80,13 @@ const pickDecisionSummaries = (ring: Debug.RingBufferSink): ReadonlyArray<any> =
     )
     .map((e) => (e as any).data)
 
+const pickStateUpdateDigests = (ring: Debug.RingBufferSink): ReadonlyArray<string> =>
+  ring
+    .getSnapshot()
+    .filter((e): e is Extract<Debug.Event, { readonly type: 'state:update' }> => e.type === 'state:update')
+    .map((e) => (e as any).staticIrDigest)
+    .filter((digest): digest is string => typeof digest === 'string' && digest.length > 0)
+
 describe('StateTrait converge auto generation invalidation', () => {
   it.scoped('generation bump strictly invalidates cache (missReason=generation_bumped)', () =>
     Effect.gen(function* () {
@@ -134,6 +141,11 @@ describe('StateTrait converge auto generation invalidation', () => {
       expect(fourth.cache.missReason).toBe('generation_bumped')
       expect(fourth.generation.generationBumpCount).toBeGreaterThanOrEqual(1)
       expect(fourth.generation.lastBumpReason).toBe('writers_changed')
+
+      const digests = pickStateUpdateDigests(ring)
+      expect(digests.length).toBeGreaterThanOrEqual(4)
+      // t4 is emitted after registerStateTraitProgram(nextProgram), so staticIrDigest must switch.
+      expect(digests[digests.length - 1]).not.toBe(digests[digests.length - 2])
     }),
   )
 
