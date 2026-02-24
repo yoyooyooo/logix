@@ -2,6 +2,7 @@ import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import { getConvergeStaticIrDigest } from '../../src/internal/state-trait/converge-ir.js'
 
 describe('StateTrait.exportStaticIr (009)', () => {
   it.effect('should export minimal Static IR with canonical FieldPath segments', () =>
@@ -39,6 +40,28 @@ describe('StateTrait.exportStaticIr (009)', () => {
       expect(link?.reads).toEqual([['a']])
 
       expect(() => JSON.stringify(ir)).not.toThrow()
+    }),
+  )
+
+  it.effect('should precompute converge staticIrDigest on build and keep getter-compatible', () =>
+    Effect.sync(() => {
+      const State = Schema.Struct({ a: Schema.Number, b: Schema.Number })
+
+      const program = Logix.StateTrait.build(
+        State,
+        Logix.StateTrait.from(State)({
+          a: Logix.StateTrait.computed({
+            deps: ['b'],
+            get: (b) => b + 1,
+          }),
+        }),
+      )
+
+      const convergeIr: any = (program as any).convergeIr
+      expect(convergeIr).toBeDefined()
+      expect(typeof convergeIr.staticIrDigest).toBe('string')
+      expect(convergeIr.staticIrDigest.length).toBeGreaterThan(0)
+      expect(getConvergeStaticIrDigest(convergeIr)).toBe(convergeIr.staticIrDigest)
     }),
   )
 })

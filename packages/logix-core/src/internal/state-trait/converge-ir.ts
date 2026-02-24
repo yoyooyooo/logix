@@ -24,6 +24,12 @@ export interface ConvergeStaticIrRegistry {
    * - Precomputed at build time to avoid repeatedly stringifying large tables at runtime.
    */
   readonly fieldPathsKey: string
+  /**
+   * staticIrDigest：
+   * - Stable digest for this converge IR shape;
+   * - Computed on cold build/register paths and reused by hot runtime paths.
+   */
+  readonly staticIrDigest: string
   readonly fieldPaths: ReadonlyArray<FieldPath>
   readonly fieldPathIdRegistry: FieldPathIdRegistry
   readonly configError?: {
@@ -66,8 +72,11 @@ export interface ConvergeStaticIrExport {
  * - Enables aligning Static IR and integer mappings across runs/processes.
  */
 export const getConvergeStaticIrDigest = (
-  ir: Pick<ConvergeStaticIrRegistry, 'writersKey' | 'depsKey' | 'fieldPathsKey'>,
+  ir: Pick<ConvergeStaticIrRegistry, 'writersKey' | 'depsKey' | 'fieldPathsKey'> & { readonly staticIrDigest?: string },
 ): string => {
+  if (typeof ir.staticIrDigest === 'string' && ir.staticIrDigest.length > 0) {
+    return ir.staticIrDigest
+  }
   const hash = fnv1a32(
     stableStringify({ writersKey: ir.writersKey, depsKey: ir.depsKey, fieldPathsKey: ir.fieldPathsKey }),
   )

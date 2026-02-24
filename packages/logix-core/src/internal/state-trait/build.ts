@@ -27,7 +27,7 @@ import {
   type FieldPathId,
 } from '../field-path.js'
 import { fnv1a32, stableStringify } from '../digest.js'
-import type { ConvergeStaticIrRegistry } from './converge-ir.js'
+import { getConvergeStaticIrDigest, type ConvergeStaticIrRegistry } from './converge-ir.js'
 
 const nowPerf = (): number =>
   typeof globalThis.performance !== 'undefined' && typeof globalThis.performance.now === 'function'
@@ -286,6 +286,11 @@ const buildConvergeIr = (
   const fieldPaths = Array.from(fieldPathTable.values()).sort(compareFieldPath)
   const fieldPathIdRegistry = makeFieldPathIdRegistry(fieldPaths)
   const fieldPathsKey = fnv1a32(stableStringify(fieldPaths))
+  const staticIrDigest = getConvergeStaticIrDigest({
+    writersKey,
+    depsKey,
+    fieldPathsKey,
+  })
 
   const stepOutFieldPathIdByStepId: Array<FieldPathId> = []
   const stepDepsFieldPathIdsByStepId: Array<ReadonlyArray<FieldPathId>> = []
@@ -319,6 +324,7 @@ const buildConvergeIr = (
     writersKey,
     depsKey,
     fieldPathsKey,
+    staticIrDigest,
     fieldPaths,
     fieldPathIdRegistry,
     ...(multipleWritersError ? { configError: multipleWritersError } : topo.configError ? { configError: topo.configError } : null),
