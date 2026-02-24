@@ -491,75 +491,134 @@ export const makeTickScheduler = (args: {
     if (shouldEmitTrace) {
       startedAtMs = Date.now()
 
-      triggerSummary = (() => {
-        const triggers = Array.from(captured.accepted.modules.values())
-        const counts = new Map<TriggerKind, number>()
-        let primary: any = undefined
-        for (const t of triggers) {
-          const kind = toTriggerKind(t.meta.originKind)
-          counts.set(kind, (counts.get(kind) ?? 0) + 1)
-          if (!primary) {
-            primary = {
-              kind,
-              moduleId: t.moduleId,
-              instanceId: t.instanceId,
-              fieldPath: kind === 'externalStore' ? t.meta.originName : undefined,
-              actionTag: kind === 'dispatch' ? t.meta.originName : undefined,
+      let triggerTotal = 0
+      let triggerPrimary: any = undefined
+      let triggerAnchor: RuntimeStoreModuleCommit | undefined
+      const triggerKindsOrder: TriggerKind[] = []
+      let externalStoreCount = 0
+      let dispatchCount = 0
+      let timerCount = 0
+      let unknownCount = 0
+
+      for (const commit of captured.accepted.modules.values()) {
+        if (!triggerAnchor) {
+          triggerAnchor = commit
+        }
+        triggerTotal += 1
+
+        const kind = toTriggerKind(commit.meta.originKind)
+        if (!triggerPrimary) {
+          triggerPrimary = {
+            kind,
+            moduleId: commit.moduleId,
+            instanceId: commit.instanceId,
+            fieldPath: kind === 'externalStore' ? commit.meta.originName : undefined,
+            actionTag: kind === 'dispatch' ? commit.meta.originName : undefined,
+          }
+        }
+
+        switch (kind) {
+          case 'externalStore': {
+            if (externalStoreCount === 0) triggerKindsOrder.push(kind)
+            externalStoreCount += 1
+            break
+          }
+          case 'dispatch': {
+            if (dispatchCount === 0) triggerKindsOrder.push(kind)
+            dispatchCount += 1
+            break
+          }
+          case 'timer': {
+            if (timerCount === 0) triggerKindsOrder.push(kind)
+            timerCount += 1
+            break
+          }
+          default: {
+            if (unknownCount === 0) triggerKindsOrder.push(kind)
+            unknownCount += 1
+            break
+          }
+        }
+      }
+
+      const kinds: Array<{ kind: TriggerKind; count: number }> = []
+      for (const kind of triggerKindsOrder) {
+        switch (kind) {
+          case 'externalStore':
+            kinds.push({ kind, count: externalStoreCount })
+            break
+          case 'dispatch':
+            kinds.push({ kind, count: dispatchCount })
+            break
+          case 'timer':
+            kinds.push({ kind, count: timerCount })
+            break
+          default:
+            kinds.push({ kind, count: unknownCount })
+            break
+        }
+      }
+
+      triggerSummary = {
+        total: triggerTotal,
+        kinds,
+        primary: triggerPrimary,
+        coalescedCount: {
+          modules: coalescedModules,
+          topics: coalescedTopics,
+        },
+      }
+
+      if (triggerAnchor) {
+        anchor = {
+          moduleId: triggerAnchor.moduleId,
+          instanceId: triggerAnchor.instanceId,
+          txnSeq: triggerAnchor.meta.txnSeq,
+          txnId: triggerAnchor.meta.txnId,
+          ...(typeof triggerAnchor.opSeq === 'number' ? { opSeq: triggerAnchor.opSeq } : null),
+        }
+      }
+
+      const deferredWork = captured.deferred
+      if (deferredWork) {
+        const pendingDeferredWork = deferredWork.modules.size + deferredWork.dirtyTopics.size
+        let pendingExternalInputs = 0
+        let firstDeferred: RuntimeStoreModuleCommit | undefined
+        let firstExternalStoreDeferred: RuntimeStoreModuleCommit | undefined
+
+        for (const deferred of deferredWork.modules.values()) {
+          if (!firstDeferred) {
+            firstDeferred = deferred
+          }
+          const kind = toTriggerKind(deferred.meta.originKind)
+          if (kind === 'externalStore') {
+            pendingExternalInputs += 1
+            if (!firstExternalStoreDeferred) {
+              firstExternalStoreDeferred = deferred
             }
           }
         }
-        return {
-          total: triggers.length,
-          kinds: Array.from(counts.entries()).map(([kind, count]) => ({ kind, count })),
-          primary,
-          coalescedCount: {
-            modules: coalescedModules,
-            topics: coalescedTopics,
-          },
+
+        const primaryDeferred = firstExternalStoreDeferred ?? firstDeferred
+        let deferredPrimary: any = undefined
+        if (primaryDeferred) {
+          const kind = toTriggerKind(primaryDeferred.meta.originKind)
+          const isExternalStore = kind === 'externalStore'
+          deferredPrimary = {
+            kind: isExternalStore ? ('externalStore' as const) : ('unknown' as const),
+            moduleId: primaryDeferred.moduleId,
+            instanceId: primaryDeferred.instanceId,
+            fieldPath: isExternalStore ? primaryDeferred.meta.originName : undefined,
+            storeId: undefined,
+          }
         }
-      })()
 
-      anchor = (() => {
-        const first = captured.accepted.modules.values().next().value as RuntimeStoreModuleCommit | undefined
-        if (!first) return undefined
-        return {
-          moduleId: first.moduleId,
-          instanceId: first.instanceId,
-          txnSeq: first.meta.txnSeq,
-          txnId: first.meta.txnId,
-          ...(typeof first.opSeq === 'number' ? { opSeq: first.opSeq } : null),
-        }
-      })()
-
-      backlog = (() => {
-        const deferredWork = captured.deferred
-        if (!deferredWork) return undefined
-        const pendingDeferredWork = deferredWork.modules.size + deferredWork.dirtyTopics.size
-
-        const deferredModulesList = Array.from(deferredWork.modules.values())
-        const pendingExternalInputs = deferredModulesList.filter((m) => toTriggerKind(m.meta.originKind) === 'externalStore').length
-
-        const primaryDeferred =
-          deferredModulesList.find((m) => toTriggerKind(m.meta.originKind) === 'externalStore') ?? deferredModulesList[0]
-        const kind = primaryDeferred ? toTriggerKind(primaryDeferred.meta.originKind) : 'unknown'
-
-        const deferredPrimary =
-          primaryDeferred != null
-            ? {
-                kind: kind === 'externalStore' ? ('externalStore' as const) : ('unknown' as const),
-                moduleId: primaryDeferred.moduleId,
-                instanceId: primaryDeferred.instanceId,
-                fieldPath: kind === 'externalStore' ? primaryDeferred.meta.originName : undefined,
-                storeId: undefined,
-              }
-            : undefined
-
-        return {
+        backlog = {
           pendingExternalInputs,
           pendingDeferredWork,
           deferredPrimary,
         }
-      })()
+      }
 
       result = {
         stable: captured.stable,
@@ -634,13 +693,11 @@ export const makeTickScheduler = (args: {
     })
 
     // Notify changed topics after committing the snapshot token.
-    for (const { listeners } of committed.changedTopics.values()) {
-      for (const listener of listeners) {
-        try {
-          listener()
-        } catch {
-          // best-effort: never let a subscriber break the tick
-        }
+    for (const listener of committed.changedTopicListeners) {
+      try {
+        listener()
+      } catch {
+        // best-effort: never let a subscriber break the tick
       }
     }
 

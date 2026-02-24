@@ -119,7 +119,17 @@ export const isPrefixOf = (prefix: FieldPath, full: FieldPath): boolean => {
   return true
 }
 
-export const toKey = (path: FieldPath): string => JSON.stringify(path)
+export const toKey = (path: FieldPath): string => {
+  let key = ''
+  for (let i = 0; i < path.length; i++) {
+    if (i > 0) key += '|'
+    const seg = path[i]!
+    key += seg.length
+    key += ':'
+    key += seg
+  }
+  return key
+}
 
 export const toPathString = (path: FieldPath): string => path.join('.')
 
