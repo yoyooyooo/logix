@@ -102,7 +102,8 @@ gh pr view <pr-number> --repo yoyooyooo/logix --comments
 ## 共享任务状态（多 worktree）
 
 - 脚本：`.codex/skills/refactor-pr-ci-loop/scripts/refactor-task-state.sh`
-- 默认数据库：`<git-common-dir>/../.codex/skills/refactor-pr-ci-loop/state/shared-tasks.db`
-  - 这个路径对同一仓库的所有 worktree 一致，可用于跨窗口协同。
+- 默认数据库：`~/.refactor-pr-ci-loop/state/shared-tasks.db`
+  - 全局路径可跨仓库/跨 worktree 复用；同仓多窗口协作更稳定。
+  - 脚本会自动尝试从旧路径（仓库内 `.codex/skills/refactor-pr-ci-loop/state/shared-tasks.db`）迁移一次。
   - 可通过 `REFACTOR_TASK_STATE_DB` 覆盖。
 - 建议 task key 规范：`<module>/<topic>/<focus>`，例如 `logix-core/txn/concurrency-policy-cache`。
