@@ -378,6 +378,90 @@ describe('SelectorGraph', () => {
     ),
   )
 
+  it.effect('filters mixed reads and keeps root indexing aligned for scheduling', () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        let mixedCalls = 0
+        let otherCalls = 0
+
+        const selectMixed = Object.assign(
+          (state: {
+            readonly count: number
+            readonly settings: { readonly theme: string; readonly locale: string }
+            readonly other: number
+          }) => {
+            mixedCalls += 1
+            return `${state.count}:${state.settings.theme}`
+          },
+          { fieldPaths: ['count'] },
+        )
+
+        const selectOther = Object.assign(
+          (state: {
+            readonly count: number
+            readonly settings: { readonly theme: string; readonly locale: string }
+            readonly other: number
+          }) => {
+            otherCalls += 1
+            return state.other
+          },
+          { fieldPaths: ['other'] },
+        )
+
+        const baseMixedQuery = Logix.ReadQuery.compile(selectMixed as any)
+        const mixedQuery = {
+          ...baseMixedQuery,
+          selectorId: `${baseMixedQuery.selectorId}:mixed`,
+          reads: ['count', 1, '*', 'settings.theme', 'settings[]', '[]'],
+        } as any
+        const otherQuery = Logix.ReadQuery.compile(selectOther as any)
+        const registry = makeFieldPathIdRegistry([['count'], ['settings', 'theme'], ['settings', 'locale'], ['other']])
+
+        const graph = SelectorGraph.make<{
+          readonly count: number
+          readonly settings: { readonly theme: string; readonly locale: string }
+          readonly other: number
+        }>({
+          moduleId: 'TestModule',
+          instanceId: 'i-test',
+          getFieldPathIdRegistry: () => registry,
+        })
+
+        const mixedEntry = yield* graph.ensureEntry(mixedQuery)
+        mixedEntry.subscriberCount = 1
+        const otherEntry = yield* graph.ensureEntry(otherQuery as any)
+        otherEntry.subscriberCount = 1
+
+        expect(mixedEntry.reads).toEqual([['count'], ['settings', 'theme'], ['settings']])
+        expect(mixedEntry.readRootKeys).toEqual(['count', 'settings'])
+        expect(mixedEntry.readsByRootKey.get('count')).toEqual([['count']])
+        expect(mixedEntry.readsByRootKey.get('settings')).toEqual([['settings', 'theme'], ['settings']])
+        expect(mixedEntry.readRootKeys).toEqual(Array.from(mixedEntry.readsByRootKey.keys()))
+
+        const mixedSubscription = yield* PubSub.subscribe(mixedEntry.hub)
+        const otherSubscription = yield* PubSub.subscribe(otherEntry.hub)
+        const takeOtherFiber = yield* Effect.fork(Queue.take(otherSubscription))
+
+        yield* graph.onCommit(
+          { count: 1, settings: { theme: 'dark', locale: 'en-US' }, other: 7 },
+          { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+          dirtyPathsToRootIds({ dirtyPaths: [['settings', 'locale']], registry }),
+          'off',
+        )
+
+        const mixedEvent = yield* Queue.take(mixedSubscription)
+        yield* Effect.yieldNow()
+        const otherPolled = yield* Fiber.poll(takeOtherFiber)
+        yield* Fiber.interrupt(takeOtherFiber)
+
+        expect((mixedEvent as any).value).toBe('1:dark')
+        expect(mixedCalls).toBe(1)
+        expect(otherCalls).toBe(0)
+        expect(Option.isNone(otherPolled)).toBe(true)
+      }),
+    ),
+  )
+
   it.effect('emits a slim trace:selector:eval cost summary in diagnostics=light', () =>
     Effect.scoped(
       Effect.gen(function* () {

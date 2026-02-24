@@ -200,21 +200,24 @@ export const make = <S>(args: {
     return Effect.gen(function* () {
       const hub = yield* PubSub.unbounded<StateChangeWithMeta<any>>()
 
-      const reads = readQuery.reads
-        .filter((x): x is string => typeof x === 'string')
-        .map((raw) => normalizeFieldPath(raw))
-        .filter((x): x is FieldPath => x != null)
+      const reads: Array<FieldPath> = []
       const readsByRootKey = new Map<ReadRootKey, FieldPath[]>()
-      for (const read of reads) {
+      const readRootKeys: Array<ReadRootKey> = []
+      for (const rawRead of readQuery.reads) {
+        if (typeof rawRead !== 'string') continue
+        const read = normalizeFieldPath(rawRead)
+        if (read == null) continue
+
+        reads.push(read)
         const rootKey = getReadRootKeyFromPath(read)
         const bucket = readsByRootKey.get(rootKey)
         if (bucket) {
           bucket.push(read)
         } else {
           readsByRootKey.set(rootKey, [read])
+          readRootKeys.push(rootKey)
         }
       }
-      const readRootKeys = Array.from(readsByRootKey.keys())
       if (readRootKeys.length === 0) {
         selectorsWithoutReads.add(readQuery.selectorId)
       } else {
