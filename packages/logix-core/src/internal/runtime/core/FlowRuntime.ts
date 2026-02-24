@@ -64,6 +64,15 @@ const resolveEffect = <T, Sh extends AnyModuleShape, R, A, E>(
 ): LogicEffect<Sh, R, A, E> =>
   typeof eff === 'function' ? (eff as (p: T) => LogicEffect<Sh, R, A, E>)(payload) : eff
 
+interface FlowOpContext {
+  readonly stack: EffectOp.MiddlewareStack
+  readonly session: Option.Option<{
+    readonly local: {
+      readonly nextSeq: (namespace: string, key: string) => number
+    }
+  }>
+}
+
 export const make = <Sh extends AnyModuleShape, R = never>(
   runtime: ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>,
   runtimeInternals?: RuntimeInternals,
@@ -74,14 +83,20 @@ export const make = <Sh extends AnyModuleShape, R = never>(
       ? runtimeInternals.concurrency.resolveConcurrencyPolicy().pipe(Effect.map((p) => p.concurrencyLimit))
       : Effect.succeed(16)
 
+  const resolveFlowOpContext = (): Effect.Effect<FlowOpContext, never, any> =>
+    Effect.all({
+      stack: getMiddlewareStack(),
+      session: Effect.serviceOption(RunSessionTag),
+    }) as Effect.Effect<FlowOpContext, never, any>
+
   const runAsFlowOp = <A, E, R2, V>(
     name: string,
     payload: V,
     eff: LogicEffect<Sh, R & R2, A, E>,
+    context: FlowOpContext,
     options?: Logic.OperationOptions,
   ): LogicEffect<Sh, R & R2, A, E> =>
     Effect.gen(function* () {
-      const stack = yield* getMiddlewareStack()
       const meta: any = {
         ...(options?.meta ?? {}),
         policy: options?.policy,
@@ -92,10 +107,9 @@ export const make = <Sh extends AnyModuleShape, R = never>(
       }
 
       if (!(typeof meta.opSeq === 'number' && Number.isFinite(meta.opSeq))) {
-        const sessionOpt = yield* Effect.serviceOption(RunSessionTag)
-        if (Option.isSome(sessionOpt)) {
+        if (Option.isSome(context.session)) {
           const key = meta.instanceId ?? 'global'
-          meta.opSeq = sessionOpt.value.local.nextSeq('opSeq', key)
+          meta.opSeq = context.session.value.local.nextSeq('opSeq', key)
         }
       }
 
@@ -106,7 +120,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
         effect: eff as any,
         meta,
       })
-      return yield* EffectOp.run(op, stack)
+      return yield* EffectOp.run(op, context.stack)
     }) as any
 
   const runEffect =
@@ -122,9 +136,12 @@ export const make = <Sh extends AnyModuleShape, R = never>(
       options?: Logic.OperationOptions,
     ) =>
     (stream: Stream.Stream<T>): LogicEffect<Sh, R & R2, void, E> =>
-      Stream.runForEach(stream, (payload) =>
-        runAsFlowOp<A, E, R2, T>('flow.run', payload, runEffect<T, A, E, R2>(eff)(payload), options),
-      )
+      Effect.gen(function* () {
+        const context = yield* resolveFlowOpContext()
+        return yield* Stream.runForEach(stream, (payload) =>
+          runAsFlowOp<A, E, R2, T>('flow.run', payload, runEffect<T, A, E, R2>(eff)(payload), context, options),
+        )
+      }) as any
 
   const runStreamParallel =
     <T, A, E, R2>(
@@ -133,13 +150,20 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     ) =>
     (stream: Stream.Stream<T>): LogicEffect<Sh, R & R2, void, E> =>
       Effect.gen(function* () {
+        const context = yield* resolveFlowOpContext()
         const concurrency = yield* resolveConcurrencyLimit()
 
         return yield* Stream.runDrain(
           stream.pipe(
             Stream.mapEffect(
               (payload) =>
-                runAsFlowOp<A, E, R2, T>('flow.runParallel', payload, runEffect<T, A, E, R2>(eff)(payload), options),
+                runAsFlowOp<A, E, R2, T>(
+                  'flow.runParallel',
+                  payload,
+                  runEffect<T, A, E, R2>(eff)(payload),
+                  context,
+                  options,
+                ),
               { concurrency },
             ),
           ),
@@ -187,23 +211,28 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     runParallel: (eff, options) => (stream) => runStreamParallel<any, any, any, any>(eff, options)(stream),
 
     runLatest: (eff, options) => (stream) =>
-      Stream.runDrain(
-        Stream.map(stream, (payload) =>
-          runAsFlowOp<any, any, any, any>(
-            'flow.runLatest',
-            payload,
-            runEffect<any, any, any, any>(eff)(payload),
-            options,
+      Effect.gen(function* () {
+        const context = yield* resolveFlowOpContext()
+        return yield* Stream.runDrain(
+          Stream.map(stream, (payload) =>
+            runAsFlowOp<any, any, any, any>(
+              'flow.runLatest',
+              payload,
+              runEffect<any, any, any, any>(eff)(payload),
+              context,
+              options,
+            ),
+          ).pipe(
+            Stream.flatMap((effect) => Stream.fromEffect(effect), {
+              switch: true,
+            }),
           ),
-        ).pipe(
-          Stream.flatMap((effect) => Stream.fromEffect(effect), {
-            switch: true,
-          }),
-        ),
-      ),
+        )
+      }) as any,
 
     runExhaust: (eff, options) => (stream) =>
       Effect.gen(function* () {
+        const context = yield* resolveFlowOpContext()
         const concurrency = yield* resolveConcurrencyLimit()
         const busyRef = yield* Ref.make(false)
         const mapper = (payload: any) =>
@@ -219,6 +248,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
                 'flow.runExhaust',
                 payload,
                 runEffect<any, any, any, any>(eff)(payload),
+                context,
                 options,
               )
             } finally {

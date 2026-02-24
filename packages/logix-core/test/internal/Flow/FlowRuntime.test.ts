@@ -4,6 +4,7 @@ import { Chunk, Effect, Fiber, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
 import * as FlowRuntimeImpl from '../../../src/internal/runtime/FlowRuntime.js'
+import * as EffectOpCore from '../../../src/internal/runtime/core/EffectOpCore.js'
 
 const CounterState = Schema.Struct({ count: Schema.Number })
 const CounterActions = {
@@ -135,6 +136,61 @@ describe('FlowRuntime.make (internal kernel)', () => {
     await Effect.runPromise(program as Effect.Effect<void, never, never>)
 
     expect(events).toEqual([1])
+  })
+
+  it('run* should read middleware stack once per invocation instead of per payload', async () => {
+    const stackReads = {
+      run: 0,
+      runParallel: 0,
+      runLatest: 0,
+      runExhaust: 0,
+    }
+
+    const makeMiddlewareEnv = (key: keyof typeof stackReads) =>
+      ({
+        get stack() {
+          stackReads[key] += 1
+          return []
+        },
+      }) as any
+
+    const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
+      const flow = FlowRuntimeImpl.make<CounterShape, never>(undefined as any)
+      const payloads = () => Stream.fromIterable([1, 2, 3])
+
+      yield* Effect.provideService(
+        flow.run((n: number) => Effect.succeed(n))(payloads()),
+        EffectOpCore.EffectOpMiddlewareTag,
+        makeMiddlewareEnv('run'),
+      )
+
+      yield* Effect.provideService(
+        flow.runParallel((n: number) => Effect.succeed(n))(payloads()),
+        EffectOpCore.EffectOpMiddlewareTag,
+        makeMiddlewareEnv('runParallel'),
+      )
+
+      yield* Effect.provideService(
+        flow.runLatest((n: number) => Effect.succeed(n))(payloads()),
+        EffectOpCore.EffectOpMiddlewareTag,
+        makeMiddlewareEnv('runLatest'),
+      )
+
+      yield* Effect.provideService(
+        flow.runExhaust((n: number) => Effect.succeed(n))(payloads()),
+        EffectOpCore.EffectOpMiddlewareTag,
+        makeMiddlewareEnv('runExhaust'),
+      )
+    })
+
+    await Effect.runPromise(program as Effect.Effect<void, never, never>)
+
+    expect(stackReads).toEqual({
+      run: 1,
+      runParallel: 1,
+      runLatest: 1,
+      runExhaust: 1,
+    })
   })
 
   it('fromAction/fromState and debounce/throttle/filter should compose streams', async () => {
