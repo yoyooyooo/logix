@@ -44,6 +44,43 @@ describe('Debug (public API)', () => {
     }),
   )
 
+  it.effect('record should preserve sink failure propagation in multi-sink dispatch', () =>
+    Effect.gen(function* () {
+      const events: Logix.Debug.Event[] = []
+
+      const brokenSink: Logix.Debug.Sink = {
+        record: () =>
+          Effect.sync(() => {
+            throw new Error('sink failure')
+          }),
+      }
+
+      const healthySink: Logix.Debug.Sink = {
+        record: (event: Logix.Debug.Event) =>
+          Effect.sync(() => {
+            events.push(event)
+          }),
+      }
+
+      const exit = yield* Effect.exit(
+        Effect.locally(
+          Logix.Debug.internal.currentDiagnosticsLevel as any,
+          'full',
+        )(
+          Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [brokenSink, healthySink])(
+            Logix.Debug.record({
+              type: 'module:init',
+              moduleId: 'test-module',
+            }),
+          ),
+        ),
+      )
+
+      expect(exit._tag).toBe('Failure')
+      expect(events).toHaveLength(0)
+    }),
+  )
+
   it.effect('Debug.layer (dev) should be buildable as a Layer', () =>
     Effect.gen(function* () {
       const layer = Logix.Debug.layer({ mode: 'dev' })
