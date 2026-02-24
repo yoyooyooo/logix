@@ -693,13 +693,11 @@ export const makeTickScheduler = (args: {
     })
 
     // Notify changed topics after committing the snapshot token.
-    for (const { listeners } of committed.changedTopics.values()) {
-      for (const listener of listeners) {
-        try {
-          listener()
-        } catch {
-          // best-effort: never let a subscriber break the tick
-        }
+    for (const listener of committed.changedTopicListeners) {
+      try {
+        listener()
+      } catch {
+        // best-effort: never let a subscriber break the tick
       }
     }
 
