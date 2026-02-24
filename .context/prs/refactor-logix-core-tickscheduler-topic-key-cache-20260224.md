@@ -2,7 +2,7 @@
 
 ## Branch
 - refactor/logix-core-perf-pr7-tickscheduler-topickey-cache
-- PR: 待创建
+- PR: #74 (https://github.com/yoyooyooo/logix/pull/74)
 
 ## 核心改动
 - 在 `TickScheduler` 增加有界缓存：`topicKey -> moduleInstanceKey`（含 `null` 负缓存），避免同一 topicKey 在 tick 分流阶段重复解析。
