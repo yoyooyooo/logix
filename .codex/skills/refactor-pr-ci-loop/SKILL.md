@@ -17,6 +17,7 @@ description: 在 intent-flow 仓库执行连续重构时，使用“同步 main 
 - 重构记录采用“总览 + 分 PR”两层：
   - `.context/REFACTOR.md` 仅保留轻量索引/总览；
   - 每个重构 PR 的详细记录写入 `.context/prs/<pr-name-or-id>.md`（阅读范围、重构点、验证、独立审查结论、残余风险）。
+- 多 worktree 并行时，动手前必须先做“任务占用检查 + claim”，避免不同 agent 对同一优化点重复开工。
 
 ## 标准步骤
 
@@ -30,6 +31,19 @@ git merge --ff-only origin/main
 > 说明：仓库环境下优先用 SSH fetch（避免 https 443 偶发问题）。
 
 ### 2) 实施重构
+
+- 开始编码前，先在共享任务状态库里 claim（跨 worktree 共享）：
+
+```bash
+.codex/skills/refactor-pr-ci-loop/scripts/refactor-task-state.sh claim "<task-key>" "<summary>"
+```
+
+- 若 claim 冲突，先查看占用详情再决定是否换题：
+
+```bash
+.codex/skills/refactor-pr-ci-loop/scripts/refactor-task-state.sh check "<task-key>"
+.codex/skills/refactor-pr-ci-loop/scripts/refactor-task-state.sh list active
+```
 
 - 聚焦单一可交付切片（一个核心点或一个中等风险点）。
 - 改动完成后维护文档：
@@ -78,3 +92,17 @@ gh pr view <pr-number> --repo yoyooyooo/logix --comments
 
 - 启动后台监听后，立即继续下一项重构任务。
 - 上一项 PR 的 CI/合并由后台 watcher 负责收口。
+- 完成/放弃某个任务时，记得回写共享状态：
+
+```bash
+.codex/skills/refactor-pr-ci-loop/scripts/refactor-task-state.sh set "<task-key>" merged "PR #123 merged"
+# 或 done / cancelled / blocked
+```
+
+## 共享任务状态（多 worktree）
+
+- 脚本：`.codex/skills/refactor-pr-ci-loop/scripts/refactor-task-state.sh`
+- 默认数据库：`<git-common-dir>/../.codex/skills/refactor-pr-ci-loop/state/shared-tasks.db`
+  - 这个路径对同一仓库的所有 worktree 一致，可用于跨窗口协同。
+  - 可通过 `REFACTOR_TASK_STATE_DB` 覆盖。
+- 建议 task key 规范：`<module>/<topic>/<focus>`，例如 `logix-core/txn/concurrency-policy-cache`。
