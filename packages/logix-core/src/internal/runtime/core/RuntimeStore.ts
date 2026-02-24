@@ -61,6 +61,13 @@ export interface RuntimeStoreCommitResult {
   readonly changedTopics: ReadonlyMap<TopicKey, { readonly priority: StateCommitPriority; readonly listeners: ReadonlyArray<() => void> }>
 }
 
+interface TopicListenersState {
+  readonly listeners: Set<() => void>
+  snapshot: ReadonlyArray<() => void>
+}
+
+const EMPTY_LISTENER_SNAPSHOT: ReadonlyArray<() => void> = []
+
 export interface RuntimeStore {
   // ---- React-facing sync snapshot APIs ----
   readonly getTickSeq: () => number
@@ -98,7 +105,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
   const topicPriorities = new Map<TopicKey, StateCommitPriority>()
 
   // ---- Subscriptions ----
-  const listenersByTopic = new Map<TopicKey, Set<() => void>>()
+  const listenersByTopic = new Map<TopicKey, TopicListenersState>()
   const subscriberCountByModule = new Map<ModuleInstanceKey, number>()
 
   const getTopicVersion = (topicKey: TopicKey): number => topicVersions.get(topicKey) ?? 0
@@ -110,16 +117,21 @@ export const makeRuntimeStore = (): RuntimeStore => {
     topicPriorities.set(topicKey, priority)
   }
 
+  const refreshTopicSnapshot = (state: TopicListenersState): void => {
+    state.snapshot = Array.from(state.listeners)
+  }
+
   const subscribeTopic = (topicKey: TopicKey, listener: () => void): (() => void) => {
     const info = parseTopicKey(topicKey)
     const existing = listenersByTopic.get(topicKey)
-    const set = existing ?? new Set<() => void>()
-    const alreadyHas = set.has(listener)
+    const state = existing ?? { listeners: new Set<() => void>(), snapshot: EMPTY_LISTENER_SNAPSHOT }
+    const alreadyHas = state.listeners.has(listener)
     if (!alreadyHas) {
-      set.add(listener)
+      state.listeners.add(listener)
+      refreshTopicSnapshot(state)
     }
     if (!existing) {
-      listenersByTopic.set(topicKey, set)
+      listenersByTopic.set(topicKey, state)
     }
 
     if (!alreadyHas && info) {
@@ -128,9 +140,9 @@ export const makeRuntimeStore = (): RuntimeStore => {
     }
 
     return () => {
-      const current = listenersByTopic.get(topicKey)
-      if (!current) return
-      const deleted = current.delete(listener)
+      const currentState = listenersByTopic.get(topicKey)
+      if (!currentState) return
+      const deleted = currentState.listeners.delete(listener)
       if (deleted && info) {
         const prev = subscriberCountByModule.get(info.moduleInstanceKey) ?? 0
         const next = prev - 1
@@ -140,13 +152,15 @@ export const makeRuntimeStore = (): RuntimeStore => {
           subscriberCountByModule.set(info.moduleInstanceKey, next)
         }
       }
-      if (current.size === 0) {
+      if (currentState.listeners.size === 0) {
         listenersByTopic.delete(topicKey)
+      } else if (deleted) {
+        refreshTopicSnapshot(currentState)
       }
     }
   }
 
-  const getTopicSubscriberCount = (topicKey: TopicKey): number => listenersByTopic.get(topicKey)?.size ?? 0
+  const getTopicSubscriberCount = (topicKey: TopicKey): number => listenersByTopic.get(topicKey)?.listeners.size ?? 0
   const getModuleSubscriberCount = (moduleInstanceKey: ModuleInstanceKey): number => subscriberCountByModule.get(moduleInstanceKey) ?? 0
 
   const registerModuleInstance = (args: {
@@ -179,7 +193,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
 
     for (const [topicKey, priority] of args.accepted.dirtyTopics) {
       commitTopicBump(topicKey, priority)
-      const listeners = Array.from(listenersByTopic.get(topicKey) ?? [])
+      const listeners = listenersByTopic.get(topicKey)?.snapshot ?? EMPTY_LISTENER_SNAPSHOT
       if (listeners.length > 0) {
         changedTopics.set(topicKey, { priority, listeners })
       }
