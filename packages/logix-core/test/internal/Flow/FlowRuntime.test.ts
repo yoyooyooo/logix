@@ -2,9 +2,11 @@ import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Chunk, Effect, Fiber, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
+import * as EffectOp from '../../../src/EffectOp.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
-import * as FlowRuntimeImpl from '../../../src/internal/runtime/FlowRuntime.js'
 import * as EffectOpCore from '../../../src/internal/runtime/core/EffectOpCore.js'
+import * as FlowRuntimeImpl from '../../../src/internal/runtime/FlowRuntime.js'
+import { makeRunSession, RunSessionTag } from '../../../src/internal/observability/runSession.js'
 
 const CounterState = Schema.Struct({ count: Schema.Number })
 const CounterActions = {
@@ -70,6 +72,164 @@ describe('FlowRuntime.make (internal kernel)', () => {
     await Effect.runPromise(program as Effect.Effect<void, never, never>)
 
     expect(sum).toBe(6)
+  })
+
+  it('run should keep operation metadata semantics and allocate per-op opSeq in RunSession', async () => {
+    const events: Array<EffectOp.EffectOp<any, any, any>> = []
+    const middleware: EffectOp.Middleware = (op) =>
+      Effect.gen(function* () {
+        events.push(op)
+        return yield* op.effect
+      })
+
+    const runtime = {
+      moduleId: 'FlowRuntimeMeta',
+      instanceId: 'FlowRuntimeMeta#1',
+      actions$: Stream.empty,
+      changes: () => Stream.empty,
+    } as any
+
+    const flow = FlowRuntimeImpl.make<CounterShape, never>(runtime)
+    const session = makeRunSession({
+      runId: 'run-flow-metadata',
+      source: { host: 'vitest', label: 'FlowRuntime.test' },
+      startedAt: 1,
+    })
+
+    const program = flow.run(
+      (_n: number) => Effect.void,
+      {
+        policy: { disableObservers: true },
+        tags: ['flow-tag'],
+        trace: ['flow-trace'],
+        meta: { custom: 'value' },
+      },
+    )(Stream.fromIterable([1, 2]))
+
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.provideService(
+          Effect.provideService(program as any, EffectOpCore.EffectOpMiddlewareTag, { stack: [middleware] }),
+          RunSessionTag,
+          session,
+        ),
+      ) as Effect.Effect<void, never, never>,
+    )
+
+    expect(events).toHaveLength(2)
+
+    const first = events[0]!
+    const second = events[1]!
+
+    expect(first.kind).toBe('flow')
+    expect(first.name).toBe('flow.run')
+    expect(first.meta?.policy).toEqual({ disableObservers: true })
+    expect(first.meta?.tags).toEqual(['flow-tag'])
+    expect(first.meta?.trace).toEqual(['flow-trace'])
+    expect(first.meta?.custom).toBe('value')
+    expect(first.meta?.moduleId).toBe('FlowRuntimeMeta')
+    expect(first.meta?.instanceId).toBe('FlowRuntimeMeta#1')
+    expect(first.meta?.opSeq).toBe(1)
+    expect(second.meta?.opSeq).toBe(2)
+  })
+
+  it('runParallel/runLatest/runExhaust should keep metadata semantics and stable opSeq anchors', async () => {
+    const runtime = {
+      moduleId: 'FlowRuntimeMeta',
+      instanceId: 'FlowRuntimeMeta#1',
+      actions$: Stream.empty,
+      changes: () => Stream.empty,
+    } as any
+
+    const options = {
+      policy: { disableObservers: true },
+      tags: ['flow-tag'],
+      trace: ['flow-trace'],
+      meta: { custom: 'value' },
+    }
+
+    const runWithCapture = async (
+      runId: string,
+      runProgram: (flow: any) => Effect.Effect<void, never, any>,
+    ): Promise<Array<EffectOp.EffectOp<any, any, any>>> => {
+      const events: Array<EffectOp.EffectOp<any, any, any>> = []
+      const middleware: EffectOp.Middleware = (op) =>
+        Effect.gen(function* () {
+          events.push(op)
+          return yield* op.effect
+        })
+
+      const flow = FlowRuntimeImpl.make<CounterShape, never>(runtime)
+      const session = makeRunSession({
+        runId,
+        source: { host: 'vitest', label: 'FlowRuntime.test' },
+        startedAt: 1,
+      })
+
+      await Effect.runPromise(
+        Effect.scoped(
+          Effect.provideService(
+            Effect.provideService(runProgram(flow) as any, EffectOpCore.EffectOpMiddlewareTag, { stack: [middleware] }),
+            RunSessionTag,
+            session,
+          ),
+        ) as Effect.Effect<void, never, never>,
+      )
+
+      return events
+    }
+
+    const expectMetaAndOpSeq = (events: Array<EffectOp.EffectOp<any, any, any>>, name: string) => {
+      expect(events.length).toBeGreaterThan(0)
+      for (const event of events) {
+        expect(event.kind).toBe('flow')
+        expect(event.name).toBe(name)
+        expect(event.meta?.policy).toEqual({ disableObservers: true })
+        expect(event.meta?.tags).toEqual(['flow-tag'])
+        expect(event.meta?.trace).toEqual(['flow-trace'])
+        expect(event.meta?.custom).toBe('value')
+        expect(event.meta?.moduleId).toBe('FlowRuntimeMeta')
+        expect(event.meta?.instanceId).toBe('FlowRuntimeMeta#1')
+      }
+      const opSeqs = events.map((event) => Number(event.meta?.opSeq)).sort((a, b) => a - b)
+      expect(opSeqs).toEqual(Array.from({ length: opSeqs.length }, (_, index) => index + 1))
+    }
+
+    const parallelEvents = await runWithCapture('run-flow-metadata-parallel', (flow) =>
+      flow.runParallel(
+        () =>
+          Effect.gen(function* () {
+            yield* Effect.sleep('2 millis')
+          }),
+        options,
+      )(Stream.fromIterable([1, 2, 3])),
+    )
+    expect(parallelEvents).toHaveLength(3)
+    expectMetaAndOpSeq(parallelEvents, 'flow.runParallel')
+
+    const latestEvents = await runWithCapture('run-flow-metadata-latest', (flow) =>
+      flow.runLatest(
+        () =>
+          Effect.gen(function* () {
+            yield* Effect.sleep('20 millis')
+          }),
+        options,
+      )(Stream.fromIterable([1, 2, 3])),
+    )
+    expect(latestEvents).toHaveLength(3)
+    expectMetaAndOpSeq(latestEvents, 'flow.runLatest')
+
+    const exhaustEvents = await runWithCapture('run-flow-metadata-exhaust', (flow) =>
+      flow.runExhaust(
+        () =>
+          Effect.gen(function* () {
+            yield* Effect.sleep('20 millis')
+          }),
+        options,
+      )(Stream.fromIterable([1, 2, 3])),
+    )
+    expect(exhaustEvents).toHaveLength(1)
+    expectMetaAndOpSeq(exhaustEvents, 'flow.runExhaust')
   })
 
   it('runParallel should process all elements (order not guaranteed)', async () => {

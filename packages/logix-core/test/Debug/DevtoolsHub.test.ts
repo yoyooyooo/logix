@@ -130,6 +130,47 @@ describe('DevtoolsHub (core)', () => {
     }),
   )
 
+  it.effect('exportEvidencePackage should use RuntimeDebugEventRef.eventSeq and fallback safely when missing', () =>
+    Effect.gen(function* () {
+      Logix.Debug.startDevtoolsRun('run-export-seq')
+
+      const layer = Logix.Debug.devtoolsHubLayer({
+        bufferSize: 3,
+        diagnosticsLevel: 'light',
+      }) as Layer.Layer<any, never, never>
+
+      for (let i = 1; i <= 5; i++) {
+        yield* Logix.Debug.record({
+          type: 'trace:test',
+          moduleId: 'B',
+          instanceId: 'i-seq',
+          runtimeLabel: 'R',
+          data: { i },
+        } as any).pipe(Effect.provide(layer))
+      }
+
+      const snapshot = Logix.Debug.getDevtoolsSnapshot()
+      const eventSeqs = snapshot.events.map((event) => event.eventSeq)
+      expect(eventSeqs).toHaveLength(3)
+      expect(eventSeqs[0]).toBeGreaterThan(0)
+      expect(eventSeqs[1]).toBe(eventSeqs[0] + 1)
+      expect(eventSeqs[2]).toBe(eventSeqs[1] + 1)
+
+      const exported = Logix.Debug.exportEvidencePackage({
+        runId: 'run-export-seq',
+        source: { host: 'test' },
+      })
+      expect(exported.events.map((event) => event.seq)).toEqual(eventSeqs)
+
+      ;(snapshot.events[0] as any).eventSeq = undefined
+      const fallbackExported = Logix.Debug.exportEvidencePackage({
+        runId: 'run-export-seq-fallback',
+        source: { host: 'test' },
+      })
+      expect(fallbackExported.events.map((event) => event.seq)).toEqual([1, eventSeqs[1], eventSeqs[2]])
+    }),
+  )
+
   it.effect('startDevtoolsRun should reset per-instance eventSeq', () =>
     Effect.gen(function* () {
       Logix.Debug.startDevtoolsRun('run-test-1')

@@ -39,7 +39,8 @@
 - `refactor-logix-core-staticirdigest-cache-20260224.md`：converge staticIrDigest 冷路径缓存化（已合并 PR #54）
 - `refactor-logix-core-convergeir-precomputed-digest-20260224.md`：ConvergeStaticIr build 预计算 digest 并运行期复用（已合并 PR #55）
 - `refactor-logix-core-concurrency-policy-resolve-cache-20260224.md`：并发策略解析缓存化 + txnQueue/dispatch 解析复用（本轮进行中）
-- `refactor-logix-core-flowruntime-op-context-20260224.md`：FlowRuntime 运行上下文解析缓存化（本轮进行中）
+- `refactor-logix-core-debug-ring-buffer-o1-20260224.md`：Debug ring buffer 写入路径环形缓冲 O(1) 化（PR #70，独立审查无 blocker；CodeRabbit 限流待重跑）
+- `refactor-logix-core-runtime-store-listener-callback-20260224.md`：RuntimeStore commitTick listener callback fast-path，减少中间数组分配（PR #77）
 
 ## 已看过模块
 
@@ -478,3 +479,5 @@
 1. 将 `test-helpers.ts` 继续推广到 `Process.Diagnostics.Chain.test.ts`、`Process.Events.Budget.Enforcement.test.ts` 等仍在手写 scope + 轮询的 Process 用例，进一步统一测试骨架。
 2. 评估是否把 `selectorDiagnostics` helper 的纯函数测试进一步下沉到 internal/runtime 目录并补充窗口边界（window rollover）场景，以降低后续演进风险。
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
+
+- refactor-logix-core-devtoolshub-circular-ring-20260224.md：DevtoolsHub ringBuffer seq 与 eventSeq 收敛（PR #59）
