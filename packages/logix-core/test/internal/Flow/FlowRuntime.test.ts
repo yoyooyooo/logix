@@ -1,9 +1,12 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
-import { Chunk, Effect, Fiber, Schema, Stream } from 'effect'
+import { Chunk, Effect, Fiber, FiberRef, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
+import * as EffectOp from '../../../src/EffectOp.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
 import * as FlowRuntimeImpl from '../../../src/internal/runtime/FlowRuntime.js'
+import * as EffectOpCore from '../../../src/internal/runtime/core/EffectOpCore.js'
+import { makeRunSession, RunSessionTag } from '../../../src/internal/observability/runSession.js'
 
 const CounterState = Schema.Struct({ count: Schema.Number })
 const CounterActions = {
@@ -135,6 +138,128 @@ describe('FlowRuntime.make (internal kernel)', () => {
     await Effect.runPromise(program as Effect.Effect<void, never, never>)
 
     expect(events).toEqual([1])
+  })
+
+  it('run should preserve parent linkId when middleware stack is empty', async () => {
+    const captured: Array<string | undefined> = []
+
+    const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
+      const flow = FlowRuntimeImpl.make<CounterShape, never>({
+        instanceId: 'flow-runtime-empty-stack',
+      } as any)
+
+      const base = Stream.fromIterable([1, 2])
+
+      yield* Effect.locally(EffectOpCore.currentLinkId, 'parent-link')(
+        flow.run(() =>
+          Effect.gen(function* () {
+            const linkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
+            captured.push(linkId)
+          }),
+        )(base),
+      )
+    })
+
+    await Effect.runPromise(program as Effect.Effect<void, never, never>)
+    expect(captured).toEqual(['parent-link', 'parent-link'])
+  })
+
+  it('run should honor meta.linkId consistently with and without middleware', async () => {
+    const emptyStackCaptured: Array<string | undefined> = []
+    const middlewareCaptured: Array<string | undefined> = []
+
+    const captureMiddleware: EffectOp.Middleware = <A, E, R>(op: EffectOp.EffectOp<A, E, R>) =>
+      Effect.sync(() => {
+        middlewareCaptured.push(op.meta?.linkId as string | undefined)
+      }).pipe(Effect.zipRight(op.effect)) as Effect.Effect<A, EffectOp.OperationError<E>, R>
+
+    const emptyStackProgram: Effect.Effect<void, never, any> = Effect.gen(function* () {
+      const flow = FlowRuntimeImpl.make<CounterShape, never>({
+        instanceId: 'flow-runtime-meta-link-empty-stack',
+      } as any)
+
+      const base = Stream.fromIterable([1, 2])
+      yield* Effect.locally(EffectOpCore.currentLinkId, 'parent-link')(
+        flow.run(
+          () =>
+            Effect.gen(function* () {
+              const linkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
+              emptyStackCaptured.push(linkId)
+            }),
+          { meta: { linkId: 'meta-link' } },
+        )(base),
+      )
+    })
+
+    const middlewareProgram: Effect.Effect<void, never, any> = Effect.gen(function* () {
+      const flow = FlowRuntimeImpl.make<CounterShape, never>({
+        moduleId: 'FlowRuntimeMetaLinkModule',
+        instanceId: 'flow-runtime-meta-link-middleware',
+      } as any)
+
+      const base = Stream.fromIterable([1, 2])
+      yield* Effect.locally(EffectOpCore.currentLinkId, 'parent-link')(
+        flow.run(
+          () =>
+            Effect.gen(function* () {
+              const linkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
+              middlewareCaptured.push(linkId)
+            }),
+          { meta: { linkId: 'meta-link' } },
+        )(base),
+      )
+    }).pipe(Effect.provideService(EffectOpCore.EffectOpMiddlewareTag, { stack: [captureMiddleware] }))
+
+    await Effect.runPromise(emptyStackProgram as Effect.Effect<void, never, never>)
+    await Effect.runPromise(middlewareProgram as Effect.Effect<void, never, never>)
+
+    expect(emptyStackCaptured).toEqual(['meta-link', 'meta-link'])
+    expect(middlewareCaptured).toEqual(['meta-link', 'meta-link', 'meta-link', 'meta-link'])
+  })
+
+  it('run should keep middleware semantics and stable opSeq anchors', async () => {
+    const captured: Array<{ readonly name: string; readonly linkId: unknown; readonly opSeq: unknown }> = []
+    const captureMiddleware: EffectOp.Middleware = <A, E, R>(op: EffectOp.EffectOp<A, E, R>) =>
+      Effect.sync(() => {
+        captured.push({
+          name: op.name,
+          linkId: op.meta?.linkId,
+          opSeq: op.meta?.opSeq,
+        })
+      }).pipe(Effect.zipRight(op.effect)) as Effect.Effect<A, EffectOp.OperationError<E>, R>
+
+    const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
+      const flow = FlowRuntimeImpl.make<CounterShape, never>({
+        moduleId: 'FlowRuntimeMiddlewareModule',
+        instanceId: 'flow-runtime-middleware',
+      } as any)
+
+      const base = Stream.fromIterable([1, 2])
+
+      yield* Effect.locally(EffectOpCore.currentLinkId, 'parent-link')(
+        flow.run((n: number) =>
+          Effect.sync(() => {
+            void n
+          }),
+        )(base),
+      )
+    }).pipe(
+      Effect.provideService(EffectOpCore.EffectOpMiddlewareTag, { stack: [captureMiddleware] }),
+      Effect.provideService(
+        RunSessionTag,
+        makeRunSession({
+          runId: 'flow-runtime-test-run',
+          startedAt: 0,
+          source: { host: 'flow-runtime-test' },
+        }),
+      ),
+    )
+
+    await Effect.runPromise(program as Effect.Effect<void, never, never>)
+
+    expect(captured.map((entry) => entry.name)).toEqual(['flow.run', 'flow.run'])
+    expect(captured.map((entry) => entry.linkId)).toEqual(['parent-link', 'parent-link'])
+    expect(captured.map((entry) => entry.opSeq)).toEqual([1, 2])
   })
 
   it('fromAction/fromState and debounce/throttle/filter should compose streams', async () => {
