@@ -36,7 +36,7 @@
 - `refactor-logix-core-dispatch-pressure-source-20260224.md`：dispatch 主/主题 hub 背压诊断来源细化（已合并 PR #51）
 - `refactor-logix-core-rowid-updateall-dirtyset-gate-20260224.md`：RowId updateAll 按 dirtySet 门控（已合并 PR #52）
 - `refactor-logix-core-selectorgraph-rowid-rootkey-plan-20260224.md`：SelectorGraph 提交扫描去分配 + RowId rootKey 匹配计划缓存（已合并 PR #53）
-- `refactor-logix-core-staticirdigest-cache-20260224.md`：converge staticIrDigest 冷路径缓存化（本轮进行中）
+- `refactor-logix-core-staticirdigest-cache-20260224.md`：converge staticIrDigest 冷路径缓存化（PR #54，CI 中）
 
 ## 已看过模块
 
