@@ -205,8 +205,9 @@ export const makeRuntimeStore = (): RuntimeStore => {
     }
 
     if (args.onListener) {
-      let singleTopicListeners: ReadonlyArray<() => void> | undefined
-      let aggregatedTopicListeners: Array<ReadonlyArray<() => void>> | undefined
+      let firstTopicListeners: ReadonlyArray<() => void> | undefined
+      let secondTopicListeners: ReadonlyArray<() => void> | undefined
+      let restTopicListeners: Array<ReadonlyArray<() => void>> | undefined
 
       for (const [topicKey, priority] of args.accepted.dirtyTopics) {
         commitTopicBump(topicKey, priority)
@@ -214,33 +215,48 @@ export const makeRuntimeStore = (): RuntimeStore => {
         if (listeners.length === 0) {
           continue
         }
-        if (aggregatedTopicListeners) {
-          aggregatedTopicListeners.push(listeners)
+        if (!firstTopicListeners) {
+          firstTopicListeners = listeners
           continue
         }
-        if (!singleTopicListeners) {
-          singleTopicListeners = listeners
+        if (!secondTopicListeners) {
+          secondTopicListeners = listeners
           continue
         }
-        aggregatedTopicListeners = [singleTopicListeners, listeners]
+        if (!restTopicListeners) {
+          restTopicListeners = []
+        }
+        restTopicListeners.push(listeners)
       }
 
-      if (aggregatedTopicListeners) {
-        for (const listeners of aggregatedTopicListeners) {
+      if (firstTopicListeners) {
+        for (const listener of firstTopicListeners) {
+          try {
+            args.onListener(listener)
+          } catch {
+            // best-effort: never let listener callback break commit tick
+          }
+        }
+      }
+
+      if (secondTopicListeners) {
+        for (const listener of secondTopicListeners) {
+          try {
+            args.onListener(listener)
+          } catch {
+            // best-effort: never let listener callback break commit tick
+          }
+        }
+      }
+
+      if (restTopicListeners) {
+        for (const listeners of restTopicListeners) {
           for (const listener of listeners) {
             try {
               args.onListener(listener)
             } catch {
               // best-effort: never let listener callback break commit tick
             }
-          }
-        }
-      } else if (singleTopicListeners) {
-        for (const listener of singleTopicListeners) {
-          try {
-            args.onListener(listener)
-          } catch {
-            // best-effort: never let listener callback break commit tick
           }
         }
       }
