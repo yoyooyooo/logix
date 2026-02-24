@@ -52,7 +52,7 @@ import {
   makeResolveTraitConvergeConfig,
   type ResolvedTraitConvergeConfig,
 } from './ModuleRuntime.traitConvergeConfig.js'
-import { compareFieldPath, isPrefixOf, normalizeFieldPath, type DirtyAllReason, type FieldPath } from '../../field-path.js'
+import { compareFieldPath, isPrefixOf, normalizeFieldPath, toKey, type DirtyAllReason, type FieldPath } from '../../field-path.js'
 import * as RowId from '../../state-trait/rowid.js'
 import * as StateTraitBuild from '../../state-trait/build.js'
 import { exportConvergeStaticIr, getConvergeStaticIrDigest } from '../../state-trait/converge-ir.js'
@@ -314,7 +314,7 @@ export const make = <S, A, R = never>(
 
         if (reason === 'trait-external-store') {
           const resolvedFieldPath = ensureFieldPath(resolved)
-          const key = JSON.stringify(resolvedFieldPath)
+          const key = toKey(resolvedFieldPath)
           if (!externalOwnedFieldPathKeys.has(key)) {
             throwViolation({ resolvedPath: resolvedFieldPath })
           }
@@ -1493,7 +1493,7 @@ export const make = <S, A, R = never>(
         .filter((p: any): p is FieldPath => p != null)
         .sort(compareFieldPath)
       externalOwnedFieldPaths = owned
-      externalOwnedFieldPathKeys = new Set(owned.map((p) => JSON.stringify(p)))
+      externalOwnedFieldPathKeys = new Set(owned.map((p) => toKey(p)))
 
       if (!traitState.convergePlanCache) {
         traitState.convergePlanCache = new StateTraitConverge.ConvergePlanCache(convergePlanCacheCapacity)

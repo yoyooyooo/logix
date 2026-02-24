@@ -39,7 +39,7 @@
 - `refactor-logix-core-staticirdigest-cache-20260224.md`：converge staticIrDigest 冷路径缓存化（已合并 PR #54）
 - `refactor-logix-core-convergeir-precomputed-digest-20260224.md`：ConvergeStaticIr build 预计算 digest 并运行期复用（已合并 PR #55）
 - `refactor-logix-core-concurrency-policy-resolve-cache-20260224.md`：并发策略解析缓存化 + txnQueue/dispatch 解析复用（本轮进行中）
-- `refactor-logix-core-triggerstreams-runtime-cache-20260224.md`：triggerStreams runtime/tag/schemaAst 解析缓存化（PR #71；状态：non-blocker 审查完成，CodeRabbit 限流无待处理项，CI watcher 已启动）
+- `refactor-logix-core-debug-ring-buffer-o1-20260224.md`：Debug ring buffer 写入路径环形缓冲 O(1) 化（PR #70，独立审查无 blocker；CodeRabbit 限流待重跑）
 
 ## 已看过模块
 
