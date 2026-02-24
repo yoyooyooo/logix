@@ -16,6 +16,16 @@ const commitTopic = (store: RuntimeStore, topicKey: TopicKey, tickSeq: number): 
     },
   })
 
+const commitTopicWithCallback = (store: RuntimeStore, topicKey: TopicKey, tickSeq: number, onListener: (listener: () => void) => void): RuntimeStoreCommitResult =>
+  store.commitTick({
+    tickSeq,
+    accepted: {
+      modules: new Map(),
+      dirtyTopics: new Map([[topicKey, 'normal']]),
+    },
+    onListener,
+  })
+
 const notify = (committed: RuntimeStoreCommitResult): void => {
   for (const listener of committed.changedTopicListeners) {
     listener()
@@ -85,6 +95,58 @@ describe('RuntimeStore listener snapshots', () => {
 
       calls.length = 0
       notify(commitTopic(store, topicKey, 2))
+      expect(calls).toEqual(['A', 'C'])
+      expect(store.getTopicSubscriberCount(topicKey)).toBe(2)
+      expect(store.getModuleSubscriberCount(topicKey)).toBe(2)
+    } finally {
+      unsubscribeA()
+      unsubscribeB()
+      unsubscribeC()
+    }
+  })
+
+  it('supports callback fast-path and preserves in-tick subscription mutation isolation', () => {
+    const store = makeRuntimeStore()
+    const topicKey = makeModuleInstanceKey('M', 'i-1')
+    store.registerModuleInstance({
+      moduleId: 'M',
+      instanceId: 'i-1',
+      moduleInstanceKey: topicKey,
+      initialState: { v: 0 },
+    })
+
+    const calls: string[] = []
+
+    const listenerB = () => {
+      calls.push('B')
+    }
+    const listenerC = () => {
+      calls.push('C')
+    }
+
+    let unsubscribeB = () => {}
+    let unsubscribeC = () => {}
+
+    const listenerA = () => {
+      calls.push('A')
+      unsubscribeB()
+      unsubscribeC = store.subscribeTopic(topicKey, listenerC)
+    }
+
+    const unsubscribeA = store.subscribeTopic(topicKey, listenerA)
+    unsubscribeB = store.subscribeTopic(topicKey, listenerB)
+
+    try {
+      const first = commitTopicWithCallback(store, topicKey, 1, (listener) => listener())
+      expect(first.changedTopicListeners).toHaveLength(0)
+      expect(calls).toEqual(['A', 'B'])
+      expect(store.getTopicSubscriberCount(topicKey)).toBe(2)
+      expect(store.getModuleSubscriberCount(topicKey)).toBe(2)
+
+      calls.length = 0
+
+      const second = commitTopicWithCallback(store, topicKey, 2, (listener) => listener())
+      expect(second.changedTopicListeners).toHaveLength(0)
       expect(calls).toEqual(['A', 'C'])
       expect(store.getTopicSubscriberCount(topicKey)).toBe(2)
       expect(store.getModuleSubscriberCount(topicKey)).toBe(2)

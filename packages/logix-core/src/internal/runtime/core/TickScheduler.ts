@@ -687,19 +687,17 @@ export const makeTickScheduler = (args: {
       queue.requeue(deferredDrain)
     }
 
-    const committed = store.commitTick({
+    store.commitTick({
       tickSeq: currentTickSeq,
       accepted: acceptedDrain,
+      onListener: (listener) => {
+        try {
+          listener()
+        } catch {
+          // best-effort: never let a subscriber break the tick
+        }
+      },
     })
-
-    // Notify changed topics after committing the snapshot token.
-    for (const listener of committed.changedTopicListeners) {
-      try {
-        listener()
-      } catch {
-        // best-effort: never let a subscriber break the tick
-      }
-    }
 
     if (!captured.stable && shouldEmitTrace && backlog?.deferredPrimary) {
       const primary = backlog.deferredPrimary
