@@ -2,7 +2,8 @@
 
 ## Branch
 - `refactor/logix-core-perf-pr11-flowruntime-op-context-cache`
-- PR: `TBD`
+- PR: #78 (https://github.com/yoyooyooo/logix/pull/78)
+- CI watcher: `.context/pr-ci-watch/pr-78-20260224-185448.log`
 
 ## 核心改动
 - `packages/logix-core/src/internal/runtime/core/FlowRuntime.ts`
