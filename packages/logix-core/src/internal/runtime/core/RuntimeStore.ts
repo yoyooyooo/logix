@@ -58,7 +58,7 @@ export interface RuntimeStorePendingDrain {
 }
 
 export interface RuntimeStoreCommitResult {
-  readonly changedTopics: ReadonlyMap<TopicKey, { readonly priority: StateCommitPriority; readonly listeners: ReadonlyArray<() => void> }>
+  readonly changedTopicListeners: ReadonlyArray<() => void>
 }
 
 export interface RuntimeStore {
@@ -88,6 +88,8 @@ export interface RuntimeStore {
 
   readonly dispose: () => void
 }
+
+const NO_CHANGED_TOPIC_LISTENERS: ReadonlyArray<() => void> = []
 
 export const makeRuntimeStore = (): RuntimeStore => {
   let tickSeq = 0
@@ -175,17 +177,25 @@ export const makeRuntimeStore = (): RuntimeStore => {
       moduleStates.set(key, commit.state)
     }
 
-    const changedTopics = new Map<TopicKey, { readonly priority: StateCommitPriority; readonly listeners: ReadonlyArray<() => void> }>()
+    let changedTopicListeners: Array<() => void> | undefined
 
     for (const [topicKey, priority] of args.accepted.dirtyTopics) {
       commitTopicBump(topicKey, priority)
-      const listeners = Array.from(listenersByTopic.get(topicKey) ?? [])
-      if (listeners.length > 0) {
-        changedTopics.set(topicKey, { priority, listeners })
+      const listeners = listenersByTopic.get(topicKey)
+      if (!listeners || listeners.size === 0) {
+        continue
+      }
+      if (!changedTopicListeners) {
+        changedTopicListeners = []
+      }
+      for (const listener of listeners) {
+        changedTopicListeners.push(listener)
       }
     }
 
-    return { changedTopics }
+    return {
+      changedTopicListeners: changedTopicListeners ?? NO_CHANGED_TOPIC_LISTENERS,
+    }
   }
 
   const getModuleState = (moduleInstanceKey: ModuleInstanceKey): unknown => moduleStates.get(moduleInstanceKey)
