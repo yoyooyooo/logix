@@ -230,7 +230,8 @@ export const makeRuntimeStore = (): RuntimeStore => {
       }
     }
 
-    let changedTopicListeners: Array<() => void> | undefined
+    let singleTopicListeners: ReadonlyArray<() => void> | undefined
+    let flattenedTopicListeners: Array<() => void> | undefined
 
     for (const [topicKey, priority] of args.accepted.dirtyTopics) {
       commitTopicBump(topicKey, priority)
@@ -238,16 +239,24 @@ export const makeRuntimeStore = (): RuntimeStore => {
       if (listeners.length === 0) {
         continue
       }
-      if (!changedTopicListeners) {
-        changedTopicListeners = []
+      if (flattenedTopicListeners) {
+        for (const listener of listeners) {
+          flattenedTopicListeners.push(listener)
+        }
+        continue
       }
+      if (!singleTopicListeners) {
+        singleTopicListeners = listeners
+        continue
+      }
+      flattenedTopicListeners = Array.from(singleTopicListeners)
       for (const listener of listeners) {
-        changedTopicListeners.push(listener)
+        flattenedTopicListeners.push(listener)
       }
     }
 
     return {
-      changedTopicListeners: changedTopicListeners ?? NO_CHANGED_TOPIC_LISTENERS,
+      changedTopicListeners: flattenedTopicListeners ?? singleTopicListeners ?? NO_CHANGED_TOPIC_LISTENERS,
     }
   }
 
