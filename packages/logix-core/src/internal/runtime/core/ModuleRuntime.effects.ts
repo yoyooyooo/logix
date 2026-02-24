@@ -108,41 +108,44 @@ export const makeEffectsRegistry = (args: {
 
         const payload = (action as any)?.payload
 
-        yield* Effect.forEach(
-          entries,
-          (entry) =>
-            Effect.forkScoped(
-              Effect.gen(function* () {
-                const exit = yield* Effect.exit(entry.handler(payload))
-                if (exit._tag === 'Success') return
+        const dispatchEntry = (entry: HandlerEntry) =>
+          Effect.forkScoped(
+            Effect.gen(function* () {
+              const exit = yield* Effect.exit(entry.handler(payload))
+              if (exit._tag === 'Success') return
 
-                const { errorSummary, downgrade } = toSerializableErrorSummary(exit.cause)
-                const downgradeHint = downgrade ? ` (downgrade=${downgrade})` : ''
+              const { errorSummary, downgrade } = toSerializableErrorSummary(exit.cause)
+              const downgradeHint = downgrade ? ` (downgrade=${downgrade})` : ''
 
-                yield* Debug.record({
-                  type: 'diagnostic',
-                  moduleId,
-                  instanceId,
-                  code: 'effects::handler_failure',
-                  severity: 'error',
-                  message: `Effect handler failed for actionTag="${entry.actionTag}" sourceKey="${entry.sourceKey}".${downgradeHint}`,
-                  hint: `${errorSummary.name ? `${errorSummary.name}: ` : ''}${errorSummary.message}`,
-                  actionTag: entry.actionTag,
-                  kind: 'effect_handler_failure',
-                  trigger: {
-                    kind: 'effect',
-                    name: 'handler',
-                    details: {
-                      actionTag: entry.actionTag,
-                      sourceKey: entry.sourceKey,
-                      logicUnitId: entry.logicUnitId,
-                    },
+              yield* Debug.record({
+                type: 'diagnostic',
+                moduleId,
+                instanceId,
+                code: 'effects::handler_failure',
+                severity: 'error',
+                message: `Effect handler failed for actionTag="${entry.actionTag}" sourceKey="${entry.sourceKey}".${downgradeHint}`,
+                hint: `${errorSummary.name ? `${errorSummary.name}: ` : ''}${errorSummary.message}`,
+                actionTag: entry.actionTag,
+                kind: 'effect_handler_failure',
+                trigger: {
+                  kind: 'effect',
+                  name: 'handler',
+                  details: {
+                    actionTag: entry.actionTag,
+                    sourceKey: entry.sourceKey,
+                    logicUnitId: entry.logicUnitId,
                   },
-                })
-              }),
-            ),
-          { discard: true },
-        )
+                },
+              })
+            }),
+          )
+
+        if (entries.length === 1) {
+          yield* dispatchEntry(entries[0]!)
+          return
+        }
+
+        yield* Effect.forEach(entries, dispatchEntry, { discard: true })
       }),
     ).pipe(
       Effect.catchAllCause((cause) =>
