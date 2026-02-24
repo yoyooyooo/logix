@@ -184,40 +184,49 @@ const maxPriority = (a: StateCommitPriority, b: StateCommitPriority): StateCommi
   a === 'normal' || b === 'normal' ? 'normal' : 'low'
 
 type MutablePendingDrain = {
-  readonly modules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit>
-  readonly dirtyTopics: Map<string, StateCommitPriority>
+  modules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit>
+  dirtyTopics: Map<string, StateCommitPriority>
 }
 
 const mergeDrainInPlace = (base: MutablePendingDrain, next: RuntimeStorePendingDrain): void => {
-  for (const [k, commit] of next.modules) {
-    const prev = base.modules.get(k)
-    if (!prev) {
-      base.modules.set(k, commit)
-    } else {
-      const mergedPriority = maxPriority(prev.meta.priority, commit.meta.priority)
-      if (mergedPriority === commit.meta.priority) {
+  // Fast path: first capture round can take ownership directly from queue.drain() maps.
+  if (base.modules.size === 0 && next.modules instanceof Map) {
+    base.modules = next.modules as Map<ModuleInstanceKey, RuntimeStoreModuleCommit>
+  } else {
+    for (const [k, commit] of next.modules) {
+      const prev = base.modules.get(k)
+      if (!prev) {
         base.modules.set(k, commit)
       } else {
-        base.modules.set(k, {
-          ...commit,
-          meta: {
-            ...commit.meta,
-            priority: mergedPriority,
-          },
-        })
+        const mergedPriority = maxPriority(prev.meta.priority, commit.meta.priority)
+        if (mergedPriority === commit.meta.priority) {
+          base.modules.set(k, commit)
+        } else {
+          base.modules.set(k, {
+            ...commit,
+            meta: {
+              ...commit.meta,
+              priority: mergedPriority,
+            },
+          })
+        }
       }
     }
   }
 
-  for (const [k, p] of next.dirtyTopics) {
-    const prev = base.dirtyTopics.get(k)
-    if (!prev) {
-      base.dirtyTopics.set(k, p)
-      continue
-    }
-    const mergedPriority = maxPriority(prev, p)
-    if (mergedPriority !== prev) {
-      base.dirtyTopics.set(k, mergedPriority)
+  if (base.dirtyTopics.size === 0 && next.dirtyTopics instanceof Map) {
+    base.dirtyTopics = next.dirtyTopics as Map<string, StateCommitPriority>
+  } else {
+    for (const [k, p] of next.dirtyTopics) {
+      const prev = base.dirtyTopics.get(k)
+      if (!prev) {
+        base.dirtyTopics.set(k, p)
+        continue
+      }
+      const mergedPriority = maxPriority(prev, p)
+      if (mergedPriority !== prev) {
+        base.dirtyTopics.set(k, mergedPriority)
+      }
     }
   }
 }

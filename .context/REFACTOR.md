@@ -483,6 +483,7 @@
 
 - refactor-logix-core-devtoolshub-circular-ring-20260224.md：DevtoolsHub ringBuffer seq 与 eventSeq 收敛（PR #59）
 - refactor-logix-core-flowruntime-resolver-fastpath-20260224.md：FlowRuntime run* 预解析 effect resolver，减少每事件分支与闭包开销（PR #84）
+- refactor-logix-core-tickscheduler-merge-drain-inplace-20260224.md：TickScheduler fixpoint capture 改为 mergeDrain 原地合并，降低每轮 Map 复制（PR #82）
 - refactor-logix-core-trait-timeslice-dirtypaths-no-array-20260224.md：ModuleRuntime time-slicing 去除 dirtyPaths snapshot 分配，降低高频事务内存压力（PR #83）
 - refactor-logix-core-actionsbytag-fallback-fastpath-20260224.md：ModuleRuntime actionsByTag fallback 快路径，减少标签数组分配（PR #80）
 - refactor-logix-core-runtime-store-listener-snapshot-cache-20260224.md：RuntimeStore listener snapshot 单 topic 快路径（含 callback 热路径修复），降低提交阶段分配（PR #81）
