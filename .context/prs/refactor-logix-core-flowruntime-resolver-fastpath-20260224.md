@@ -2,7 +2,7 @@
 
 ## Branch
 - `refactor/logix-core-perf-pr17-flowruntime-resolver-fastpath`
-- PR: `TBD`
+- PR: `#84` (https://github.com/yoyooyooo/logix/pull/84)
 
 ## 核心改动
 - `packages/logix-core/src/internal/runtime/core/FlowRuntime.ts`
