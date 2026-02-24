@@ -25,7 +25,7 @@
 ## 验证
 - `pnpm typecheck` ✅（2026-02-24）
 - `pnpm test:turbo` ✅（2026-02-24）
-- 最终提交：`7a63af0b`
+- 最终提交：`5685f70a`
 
 ## 风险
 - 风险点：definition 更新后若缓存未刷新，会触发旧 trigger plan。
