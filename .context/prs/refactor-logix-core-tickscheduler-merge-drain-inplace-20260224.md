@@ -2,7 +2,7 @@
 
 ## Branch
 - `refactor/logix-core-perf-pr15-tickscheduler-merge-drain-inplace`
-- PR: `TBD`
+- PR: `#82` (https://github.com/yoyooyooo/logix/pull/82)
 
 ## 核心改动
 - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
