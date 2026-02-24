@@ -298,6 +298,61 @@ describe('FlowRuntime.make (internal kernel)', () => {
     expect(events).toEqual([1])
   })
 
+  it('run* should read middleware stack once per invocation instead of per payload', async () => {
+    const stackReads = {
+      run: 0,
+      runParallel: 0,
+      runLatest: 0,
+      runExhaust: 0,
+    }
+
+    const makeMiddlewareEnv = (key: keyof typeof stackReads) =>
+      ({
+        get stack() {
+          stackReads[key] += 1
+          return []
+        },
+      }) as any
+
+    const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
+      const flow = FlowRuntimeImpl.make<CounterShape, never>(undefined as any)
+      const payloads = () => Stream.fromIterable([1, 2, 3])
+
+      yield* Effect.provideService(
+        flow.run((n: number) => Effect.succeed(n))(payloads()),
+        EffectOpCore.EffectOpMiddlewareTag,
+        makeMiddlewareEnv('run'),
+      )
+
+      yield* Effect.provideService(
+        flow.runParallel((n: number) => Effect.succeed(n))(payloads()),
+        EffectOpCore.EffectOpMiddlewareTag,
+        makeMiddlewareEnv('runParallel'),
+      )
+
+      yield* Effect.provideService(
+        flow.runLatest((n: number) => Effect.succeed(n))(payloads()),
+        EffectOpCore.EffectOpMiddlewareTag,
+        makeMiddlewareEnv('runLatest'),
+      )
+
+      yield* Effect.provideService(
+        flow.runExhaust((n: number) => Effect.succeed(n))(payloads()),
+        EffectOpCore.EffectOpMiddlewareTag,
+        makeMiddlewareEnv('runExhaust'),
+      )
+    })
+
+    await Effect.runPromise(program as Effect.Effect<void, never, never>)
+
+    expect(stackReads).toEqual({
+      run: 1,
+      runParallel: 1,
+      runLatest: 1,
+      runExhaust: 1,
+    })
+  })
+
   it('fromAction/fromState and debounce/throttle/filter should compose streams', async () => {
     type Action = Logix.Module.ActionOf<CounterShape>
 
