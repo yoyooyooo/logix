@@ -510,4 +510,90 @@ describe('SelectorGraph', () => {
       }),
     ),
   )
+
+  it.effect('emits trace:selector:eval in diagnostics=sampled only when changed or slow', () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const ring = Logix.Debug.makeRingBufferSink(32)
+
+        let calls = 0
+        let shouldDelayOnce = false
+        const selectCount = Object.assign(
+          (state: { readonly count: number; readonly other: number }) => {
+            calls += 1
+            if (shouldDelayOnce) {
+              const now = (): number => {
+                const perf = (globalThis as any).performance as { now?: () => number } | undefined
+                if (perf && typeof perf.now === 'function') {
+                  return perf.now()
+                }
+                return Date.now()
+              }
+              const start = now()
+              while (now() - start < 8) {
+                // busy-wait intentionally for deterministic slow-eval sampling in test only
+              }
+              shouldDelayOnce = false
+            }
+            return state.count
+          },
+          { fieldPaths: ['count'] },
+        )
+
+        const readQuery = Logix.ReadQuery.compile(selectCount as any)
+        const registry = makeFieldPathIdRegistry([['count'], ['other']])
+        const graph = SelectorGraph.make<{ readonly count: number; readonly other: number }>({
+          moduleId: 'TestModule',
+          instanceId: 'i-test',
+          getFieldPathIdRegistry: () => registry,
+        })
+
+        const entry = yield* graph.ensureEntry(readQuery as any)
+        entry.subscriberCount = 1
+
+        yield* Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])(
+          graph.onCommit(
+            { count: 1, other: 0 },
+            { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+            'sampled',
+          ),
+        )
+
+        let evalEvents = ring.getSnapshot().filter((e) => (e as any).type === 'trace:selector:eval') as Array<any>
+        expect(evalEvents).toHaveLength(1)
+        expect(evalEvents[0]?.data?.changed).toBe(true)
+
+        yield* Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])(
+          graph.onCommit(
+            { count: 1, other: 0 },
+            { txnSeq: 2, txnId: 'i-test::t2', commitMode: 'normal', priority: 'normal' },
+            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+            'sampled',
+          ),
+        )
+
+        evalEvents = ring.getSnapshot().filter((e) => (e as any).type === 'trace:selector:eval') as Array<any>
+        expect(evalEvents).toHaveLength(1)
+
+        shouldDelayOnce = true
+
+        yield* Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])(
+          graph.onCommit(
+            { count: 1, other: 0 },
+            { txnSeq: 3, txnId: 'i-test::t3', commitMode: 'normal', priority: 'normal' },
+            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+            'sampled',
+          ),
+        )
+
+        expect(calls).toBe(3)
+        evalEvents = ring.getSnapshot().filter((e) => (e as any).type === 'trace:selector:eval') as Array<any>
+        expect(evalEvents).toHaveLength(2)
+        expect(evalEvents[1]?.data?.changed).toBe(false)
+        expect(typeof evalEvents[1]?.data?.evalMs).toBe('number')
+        expect(evalEvents[1]?.data?.evalMs).toBeGreaterThanOrEqual(4)
+      }),
+    ),
+  )
 })

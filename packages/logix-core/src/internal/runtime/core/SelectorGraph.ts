@@ -17,6 +17,8 @@ type IndexedRootCandidate<S> = {
   readonly readsForRoot: ReadonlyArray<FieldPath>
 }
 
+type SelectorEvalEventPolicy = 'always' | 'sampled'
+
 type SelectorEntry<S, V> = {
   readonly selectorId: string
   readonly readQuery: ReadQueryCompiled<S, V>
@@ -94,6 +96,8 @@ const nowMs = (): number => {
   return Date.now()
 }
 
+const SAMPLED_SELECTOR_EVAL_SLOW_THRESHOLD_MS = 4
+
 const shouldEvaluateEntryForDirtyRoots = <S>(args: {
   readonly entry: SelectorEntry<S, any>
   readonly dirtySet: DirtySet
@@ -130,6 +134,7 @@ const evaluateEntry = <S>(args: {
   readonly state: S
   readonly meta: StateCommitMeta
   readonly emitEvalEvent: boolean
+  readonly evalEventPolicy: SelectorEvalEventPolicy
   readonly moduleId: string
   readonly instanceId: string
   readonly onSelectorChanged?: (selectorId: string) => void
@@ -177,7 +182,11 @@ const evaluateEntry = <S>(args: {
       } satisfies StateChangeWithMeta<any>)
     }
 
-    if (!args.emitEvalEvent) {
+    const shouldEmitEvalTrace =
+      args.emitEvalEvent &&
+      (args.evalEventPolicy === 'always' || changed || (evalMs != null && evalMs >= SAMPLED_SELECTOR_EVAL_SLOW_THRESHOLD_MS))
+
+    if (!shouldEmitEvalTrace) {
       return
     }
 
@@ -293,6 +302,7 @@ export const make = <S>(args: {
 
       const emitEvalEvent =
         diagnosticsLevel === 'light' || diagnosticsLevel === 'full' || diagnosticsLevel === 'sampled'
+      const evalEventPolicy: SelectorEvalEventPolicy = diagnosticsLevel === 'sampled' ? 'sampled' : 'always'
 
       const registry: FieldPathIdRegistry | undefined =
         dirtySet.dirtyAll || dirtySet.rootIds.length === 0 ? undefined : getFieldPathIdRegistry?.()
@@ -318,6 +328,7 @@ export const make = <S>(args: {
           state,
           meta,
           emitEvalEvent,
+          evalEventPolicy,
           moduleId,
           instanceId,
           onSelectorChanged,
