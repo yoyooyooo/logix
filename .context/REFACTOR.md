@@ -39,7 +39,7 @@
 - `refactor-logix-core-staticirdigest-cache-20260224.md`：converge staticIrDigest 冷路径缓存化（已合并 PR #54）
 - `refactor-logix-core-convergeir-precomputed-digest-20260224.md`：ConvergeStaticIr build 预计算 digest 并运行期复用（已合并 PR #55）
 - `refactor-logix-core-concurrency-policy-resolve-cache-20260224.md`：并发策略解析缓存化 + txnQueue/dispatch 解析复用（本轮进行中）
-- `refactor-logix-core-tickscheduler-topic-key-cache-20260224.md`：TickScheduler topicKey 解析缓存化，保持分类语义不变（PR #74）
+- `refactor-logix-core-tickscheduler-topic-key-cache-20260224.md`：TickScheduler topicKey 解析缓存化，保持分类语义不变（PR #74；独立审查 non-blocker，CodeRabbit 限流，watcher 已启动）
 
 ## 已看过模块
 

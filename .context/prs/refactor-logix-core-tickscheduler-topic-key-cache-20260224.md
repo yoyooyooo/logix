@@ -14,7 +14,19 @@
 - pnpm test:turbo
 
 ## 独立审查
-- 结论：approve（本轮关注点是“仅性能优化、不改分类语义”，回归覆盖已补齐）
+- reviewer：subagent 只读审查（2026-02-24）
+- 结论：`non-blocker`，无阻塞问题，可合并。
+- non-blocker：
+  - 目前缓存更接近 FIFO（命中不刷新新鲜度），在极高 topic 基数场景下命中率可能波动；
+  - `topicKeyResolutionCacheLimit=1024` 为固定值，后续可补轻量命中/淘汰诊断计数。
+- 测试覆盖：
+  - 新增测试已覆盖 selector topic / module topic / unknown topic / non-parsable topic 的语义稳定；
+  - 未覆盖容量上限与淘汰路径（>1024）的行为。
 
-## 机器人评论处理
-- 待 PR 创建后补充 CodeRabbit / 其他机器人评论结论。
+## 机器人评论处理（PR #74）
+- CodeRabbit：`Rate limit exceeded`（未给出具体代码修复建议）。
+- github-actions（logix-perf quick）：`status: ok`，`comparable=true`、`regressions=0`。
+- Vercel：`api-deployments-free-per-day` 配额失败（外部资源限制，非代码语义问题）。
+
+## CI watcher
+- `.context/pr-ci-watch/pr-74-20260224-164046.log`
