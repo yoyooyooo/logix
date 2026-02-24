@@ -1,8 +1,8 @@
 # PR Draft: refactor/logix-core-staticirdigest-cache-20260224
 
-- PR：`#54`（待创建）
-- 合并策略：创建后开启 `auto-merge(rebase)`
-- CI watcher：创建后补充 `.context/pr-ci-watch/pr-54-*.log`
+- PR：`#54` https://github.com/yoyooyooo/logix/pull/54
+- 合并策略：`auto-merge(rebase)` 已开启（等待 required checks）
+- CI watcher：`.context/pr-ci-watch/pr-54-20260224-121332.log`
 
 ## 目标
 - 消除 `ModuleRuntime` 提交热路径中重复的 `getConvergeStaticIrDigest` 计算（`stableStringify + fnv1a32`）。
