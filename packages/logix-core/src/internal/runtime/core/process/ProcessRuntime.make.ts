@@ -239,17 +239,41 @@ export const make = (options?: {
     const installationsByPlatformEvent = new Map<string, Set<InstallationKey>>()
     const instances = new Map<ProcessInstanceId, InstanceState>()
 
-    const eventsBuffer: ProcessEvent[] = []
+    const eventHistoryCapacity = maxEventHistory > 0 ? maxEventHistory : 0
+    const eventHistoryRing: ProcessEvent[] = eventHistoryCapacity > 0 ? new Array(eventHistoryCapacity) : []
+    let eventHistoryStart = 0
+    let eventHistorySize = 0
     const eventsHub = yield* PubSub.sliding<ProcessEvent>(Math.max(1, Math.min(2048, maxEventHistory)))
 
-    const trimEvents = () => {
-      if (maxEventHistory <= 0) {
-        eventsBuffer.length = 0
+    const appendEventHistory = (event: ProcessEvent): void => {
+      if (eventHistoryCapacity <= 0) {
+        eventHistorySize = 0
+        eventHistoryStart = 0
         return
       }
-      if (eventsBuffer.length <= maxEventHistory) return
-      const excess = eventsBuffer.length - maxEventHistory
-      eventsBuffer.splice(0, excess)
+
+      if (eventHistorySize < eventHistoryCapacity) {
+        const writeIndex = (eventHistoryStart + eventHistorySize) % eventHistoryCapacity
+        eventHistoryRing[writeIndex] = event
+        eventHistorySize += 1
+        return
+      }
+
+      eventHistoryRing[eventHistoryStart] = event
+      eventHistoryStart = (eventHistoryStart + 1) % eventHistoryCapacity
+    }
+
+    const snapshotEventHistory = (): ReadonlyArray<ProcessEvent> => {
+      if (eventHistoryCapacity <= 0 || eventHistorySize === 0) {
+        return []
+      }
+
+      const snapshot = new Array<ProcessEvent>(eventHistorySize)
+      for (let index = 0; index < eventHistorySize; index += 1) {
+        const ringIndex = (eventHistoryStart + index) % eventHistoryCapacity
+        snapshot[index] = eventHistoryRing[ringIndex] as ProcessEvent
+      }
+      return snapshot
     }
 
     const recordDebugEvent = (event: ProcessEvent): Effect.Effect<void> =>
@@ -284,8 +308,7 @@ export const make = (options?: {
 
     const publishEvent = (event: ProcessEvent): Effect.Effect<void> =>
       Effect.gen(function* () {
-        eventsBuffer.push(event)
-        trimEvents()
+        appendEventHistory(event)
         yield* PubSub.publish(eventsHub, event)
         yield* recordDebugEvent(event)
       })
@@ -1146,7 +1169,7 @@ export const make = (options?: {
 
     const eventsStream: ProcessRuntime['events'] = Stream.fromPubSub(eventsHub)
 
-    const getEventsSnapshot: ProcessRuntime['getEventsSnapshot'] = () => Effect.sync(() => eventsBuffer.slice())
+    const getEventsSnapshot: ProcessRuntime['getEventsSnapshot'] = () => Effect.sync(snapshotEventHistory)
 
     yield* Effect.addFinalizer(() =>
       Effect.gen(function* () {
