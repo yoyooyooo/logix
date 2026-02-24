@@ -14,9 +14,9 @@ description: 在 intent-flow 仓库执行连续重构时，使用“同步 main 
 - 本地默认不跑性能基线；性能交给 PR CI（除非用户明确要求本地性能证据）。
 - 合并前必须至少完成 1 次独立 subagent review。
 - 每个 PR 合并前必须消化机器人 review 评论（至少包含 CodeRabbit），并把结论写入对应 `.context/prs/<pr-name-or-id>.md`。
-- 重构记录采用“总览 + 分 PR”两层：
-  - `.context/REFACTOR.md` 仅保留轻量索引/总览；
-  - 每个重构 PR 的详细记录写入 `.context/prs/<pr-name-or-id>.md`（阅读范围、重构点、验证、独立审查结论、残余风险）。
+- 持续维护重构记录，但分层存放：
+  - `.context/REFACTOR.md` 仅保留全局索引（PR 列表、模块阅读覆盖面、跨 PR 结论）。
+  - `.context/prs/<pr-name-or-id>.md` 记录单个 PR 详情（重构点、变更范围、风险、review 记录、待跟进项）。
 - 多 worktree 并行时，动手前必须先做“任务占用检查 + claim”，避免不同 agent 对同一优化点重复开工。
 
 ## 标准步骤
