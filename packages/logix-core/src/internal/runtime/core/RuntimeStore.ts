@@ -199,7 +199,8 @@ export const makeRuntimeStore = (): RuntimeStore => {
     }
 
     if (args.onListener) {
-      let changedTopicSnapshots: Array<ReadonlyArray<() => void>> | undefined
+      let singleTopicListeners: ReadonlyArray<() => void> | undefined
+      let aggregatedTopicListeners: Array<ReadonlyArray<() => void>> | undefined
 
       for (const [topicKey, priority] of args.accepted.dirtyTopics) {
         commitTopicBump(topicKey, priority)
@@ -207,20 +208,33 @@ export const makeRuntimeStore = (): RuntimeStore => {
         if (listeners.length === 0) {
           continue
         }
-        if (!changedTopicSnapshots) {
-          changedTopicSnapshots = []
+        if (aggregatedTopicListeners) {
+          aggregatedTopicListeners.push(listeners)
+          continue
         }
-        changedTopicSnapshots.push(listeners)
+        if (!singleTopicListeners) {
+          singleTopicListeners = listeners
+          continue
+        }
+        aggregatedTopicListeners = [singleTopicListeners, listeners]
       }
 
-      if (changedTopicSnapshots) {
-        for (const listeners of changedTopicSnapshots) {
+      if (aggregatedTopicListeners) {
+        for (const listeners of aggregatedTopicListeners) {
           for (const listener of listeners) {
             try {
               args.onListener(listener)
             } catch {
               // best-effort: never let listener callback break commit tick
             }
+          }
+        }
+      } else if (singleTopicListeners) {
+        for (const listener of singleTopicListeners) {
+          try {
+            args.onListener(listener)
+          } catch {
+            // best-effort: never let listener callback break commit tick
           }
         }
       }
