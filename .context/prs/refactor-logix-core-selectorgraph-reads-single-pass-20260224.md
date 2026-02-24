@@ -2,7 +2,7 @@
 
 ## Branch
 - `refactor/logix-core-perf-pr18-selectorgraph-reads-single-pass`
-- PR: `TBD`
+- PR: `#85` (https://github.com/yoyooyooo/logix/pull/85)
 
 ## 核心改动
 - `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`
