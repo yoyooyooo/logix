@@ -162,9 +162,12 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     context: FlowOpRunContext,
     name: string,
     resolver: EffectResolver<T, Sh, R & R2, A, E>,
-  ) =>
-    (payload: T) =>
-      runAsFlowOp<A, E, R2, T>(context, name, payload, resolver(payload))
+  ) => {
+    if (!context.hasMiddleware) {
+      return resolver
+    }
+    return (payload: T) => runAsFlowOp<A, E, R2, T>(context, name, payload, resolver(payload))
+  }
 
   const runStreamSequential =
     <T, A, E, R2>(
