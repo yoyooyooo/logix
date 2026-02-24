@@ -12,6 +12,7 @@ import type * as RowId from '../../state-trait/rowid.js'
 
 export type TraitState = {
   program: StateTraitProgram<any> | undefined
+  convergeStaticIrDigest: string | undefined
   convergePlanCache: StateTraitConverge.ConvergePlanCache | undefined
   convergeGeneration: TraitConvergeGenerationEvidence
   pendingCacheMissReason: TraitConvergePlanCacheEvidence['missReason'] | undefined

@@ -12,7 +12,6 @@ import * as TaskRunner from './TaskRunner.js'
 import * as StateTraitConverge from '../../state-trait/converge.js'
 import * as StateTraitValidate from '../../state-trait/validate.js'
 import * as StateTraitSource from '../../state-trait/source.js'
-import { getConvergeStaticIrDigest } from '../../state-trait/converge-ir.js'
 import * as RowId from '../../state-trait/rowid.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { ResolvedTraitConvergeConfig } from './ModuleRuntime.traitConvergeConfig.js'
@@ -51,6 +50,7 @@ export type SetStateInternal<S> = (
 
 export type TraitRuntimeAccess = {
   readonly getProgram: () => StateTraitProgram<any> | undefined
+  readonly getConvergeStaticIrDigest: () => string | undefined
   readonly getConvergePlanCache: () => StateTraitConverge.ConvergePlanCache | undefined
   readonly getConvergeGeneration: () => TraitConvergeGenerationEvidence
   readonly getPendingCacheMissReason: () => TraitConvergePlanCacheEvidence['missReason'] | undefined
@@ -598,13 +598,7 @@ export const makeTransactionOps = <S>(args: {
                       if (shouldRecordStateUpdate) {
                         const shouldComputeEvidence = diagnosticsLevel !== 'off'
 
-                        const staticIrDigest = shouldComputeEvidence
-                          ? (() => {
-                              const convergeIr: any = (stateTraitProgram as any)?.convergeIr
-                              if (!convergeIr || convergeIr.configError) return undefined
-                              return getConvergeStaticIrDigest(convergeIr)
-                            })()
-                          : undefined
+                        const staticIrDigest = shouldComputeEvidence ? traitRuntime.getConvergeStaticIrDigest() : undefined
 
                         const dirtySetEvidence = shouldComputeEvidence
                           ? (() => {
@@ -742,14 +736,11 @@ export const makeTransactionOps = <S>(args: {
     })
 
   const getExecVmAssemblyEvidence = (): unknown => {
-    const program: any = traitRuntime.getProgram()
-    const convergeIr: any = program?.convergeIr
-    if (!convergeIr || convergeIr.configError) return undefined
-
-    const digest = getConvergeStaticIrDigest(convergeIr)
+    const digest = traitRuntime.getConvergeStaticIrDigest()
+    if (!digest) return undefined
     return {
       convergeStaticIrDigest: digest,
-      convergeGeneration: convergeIr.generation,
+      convergeGeneration: traitRuntime.getConvergeGeneration().generation,
     }
   }
 
