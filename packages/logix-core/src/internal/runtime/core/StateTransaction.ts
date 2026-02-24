@@ -146,6 +146,14 @@ interface StateTxnState<S> {
 }
 
 const MAX_PATCHES_FULL = 256
+const EMPTY_DIRTY_PATH_IDS: ReadonlyArray<FieldPathId> = []
+const EMPTY_TXN_PATCHES: ReadonlyArray<TxnPatchRecord> = []
+
+interface DirtySetBuildInput {
+  readonly registry?: FieldPathIdRegistry
+  readonly dirtyAllReason?: DirtyAllReason
+  readonly dirtyPathIds?: ReadonlyArray<FieldPathId>
+}
 
 const defaultNow = () => {
   const perf = globalThis.performance
@@ -197,22 +205,46 @@ const buildPatchRecord = (
   return record
 }
 
-const buildDirtySet = <S>(state: StateTxnState<S>): DirtySet => {
+const captureDirtySetBuildInput = <S>(state: StateTxnState<S>): DirtySetBuildInput => {
   const registry = state.fieldPathIdRegistry
+  const dirtyAllReason = state.dirtyAllReason
+
+  if (registry == null) {
+    return {
+      dirtyAllReason: dirtyAllReason ?? 'fallbackPolicy',
+    }
+  }
+
+  if (dirtyAllReason != null) {
+    return {
+      registry,
+      dirtyAllReason,
+    }
+  }
+
+  return {
+    registry,
+    dirtyPathIds: state.dirtyPathIds.size > 0 ? Array.from(state.dirtyPathIds) : EMPTY_DIRTY_PATH_IDS,
+  }
+}
+
+const buildDirtySet = (input: DirtySetBuildInput): DirtySet => {
+  const registry = input.registry
   if (registry == null) {
     return {
       dirtyAll: true,
-      reason: state.dirtyAllReason ?? 'fallbackPolicy',
+      reason: input.dirtyAllReason ?? 'fallbackPolicy',
       rootIds: [],
       rootCount: 0,
       keySize: 0,
       keyHash: 0,
     }
   }
+
   return dirtyPathIdsToRootIds({
-    dirtyPathIds: state.dirtyPathIds,
+    dirtyPathIds: input.dirtyPathIds,
     registry,
-    dirtyAllReason: state.dirtyAllReason,
+    dirtyAllReason: input.dirtyAllReason,
   })
 }
 
@@ -223,6 +255,18 @@ const buildCommittedTransaction = <S>(
   endedAt: number,
 ): StateTransaction<S> => {
   const { config } = ctx
+  const dirtySetInput = captureDirtySetBuildInput(state)
+  let dirtySetCache: DirtySet | undefined
+
+  const readDirtySet = (): DirtySet => {
+    if (dirtySetCache !== undefined) {
+      return dirtySetCache
+    }
+    const next = buildDirtySet(dirtySetInput)
+    dirtySetCache = next
+    return next
+  }
+
   return {
     txnId: state.txnId,
     txnSeq: state.txnSeq,
@@ -230,13 +274,15 @@ const buildCommittedTransaction = <S>(
     startedAt: state.startedAt,
     endedAt,
     durationMs: Math.max(0, endedAt - state.startedAt),
-    dirtySet: buildDirtySet(state),
+    get dirtySet() {
+      return readDirtySet()
+    },
     patchCount: state.patchCount,
     patchesTruncated: state.patchesTruncated,
     ...(state.patchesTruncated ? { patchesTruncatedReason: 'max_patches' } : null),
     initialStateSnapshot: state.initialStateSnapshot,
     finalStateSnapshot: config.captureSnapshots ? finalState : undefined,
-    patches: config.instrumentation === 'full' ? state.patches.slice() : [],
+    patches: config.instrumentation === 'full' ? state.patches.slice() : EMPTY_TXN_PATCHES,
     moduleId: config.moduleId,
     instanceId: config.instanceId,
   }
