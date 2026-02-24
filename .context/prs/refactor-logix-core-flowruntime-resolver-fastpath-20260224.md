@@ -17,7 +17,11 @@
 - `pnpm test:turbo`
 
 ## 独立审查
-- 待 PR 创建后执行并回填。
+- 审查 agent：`019c8fbe-8ef8-7aa2-a536-ffba2caad357`（只读）
+- 结论：`no blocking findings`
+- 非阻塞建议：
+  - `FlowRuntime.test.ts` 新增用例可后续统一迁移到 `it.effect/it.scoped` 风格；
+  - 补充 perf 证据与诊断影响结论到 PR 文档。
 
 ## 机器人评论处理
 - CodeRabbit: 待 PR 创建后拉取评论并回填。
