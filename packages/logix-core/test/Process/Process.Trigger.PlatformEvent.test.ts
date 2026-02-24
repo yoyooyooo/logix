@@ -243,4 +243,85 @@ describe('process: trigger platformEvent', () => {
       expect(countTrigger('app:reregister:new')).toBe(1)
     }),
   )
+
+  it.scoped('should refresh precompiled boot trigger when install updates definition before start', () =>
+    Effect.gen(function* () {
+      const processId = 'ProcessTriggerPlatformEventStartPlanRefresh'
+
+      const Host = Logix.Module.make('ProcessTriggerPlatformEventStartPlanRefreshHost', {
+        state: Schema.Void,
+        actions: {},
+      })
+
+      const ProcOld = Logix.Process.make(
+        {
+          processId,
+          triggers: [{ kind: 'platformEvent', name: 'boot-old', platformEvent: 'runtime:boot' }],
+          concurrency: { mode: 'serial', maxQueue: 16 },
+          errorPolicy: { mode: 'failStop' },
+          diagnosticsLevel: 'light',
+        },
+        Effect.void,
+      )
+
+      const ProcNew = Logix.Process.make(
+        {
+          processId,
+          triggers: [{ kind: 'platformEvent', name: 'boot-new', platformEvent: 'runtime:boot' }],
+          concurrency: { mode: 'serial', maxQueue: 16 },
+          errorPolicy: { mode: 'failStop' },
+          diagnosticsLevel: 'light',
+        },
+        Effect.void,
+      )
+
+      const HostImpl = Host.implement({
+        initial: undefined,
+        processes: [],
+      })
+
+      const layer = withProcessRuntime(HostImpl.impl.layer)
+
+      const events = yield* withProcessRuntimeScope({
+        layer,
+        run: ({ env, runtime }) =>
+          Effect.gen(function* () {
+            const host = Context.get(env, Host.tag) as any
+            const scope = {
+              type: 'moduleInstance',
+              moduleId: Host.id,
+              instanceId: host.instanceId as string,
+            } as const
+
+            yield* runtime.install(ProcOld, { scope, enabled: false })
+            yield* runtime.install(ProcNew, { scope, enabled: true })
+
+            for (let i = 0; i < 200; i++) {
+              const snapshot = yield* runtime.getEventsSnapshot()
+              const bootReady = snapshot.some(
+                (event: any) =>
+                  event.type === 'process:trigger' &&
+                  event.identity.identity.processId === processId &&
+                  event.trigger?.kind === 'platformEvent' &&
+                  event.trigger.platformEvent === 'runtime:boot',
+              )
+              if (bootReady) break
+              yield* Effect.yieldNow()
+            }
+
+            return yield* runtime.getEventsSnapshot()
+          }),
+      })
+
+      const bootTriggers = events.filter(
+        (event: any) =>
+          event.type === 'process:trigger' &&
+          event.identity.identity.processId === processId &&
+          event.trigger?.kind === 'platformEvent' &&
+          event.trigger.platformEvent === 'runtime:boot',
+      )
+      expect(bootTriggers.length).toBe(1)
+      expect(bootTriggers[0]?.trigger?.name).toBe('boot-new')
+    }),
+  )
 })
