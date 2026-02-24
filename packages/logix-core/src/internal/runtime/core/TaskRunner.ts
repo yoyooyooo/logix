@@ -7,6 +7,9 @@ import type { AnyModuleShape, LogicEffect } from './module.js'
 import type { RuntimeInternalsResolvedConcurrencyPolicy } from './RuntimeInternals.js'
 import type { StateTxnOrigin } from './StateTransaction.js'
 
+const EXHAUST_ACQUIRE_BUSY = [true, true] as const
+const EXHAUST_REJECT_BUSY = [false, true] as const
+
 /**
  * Prevents calling run*Task inside a "synchronous transaction execution fiber" (it would deadlock the txnQueue).
  *
@@ -319,7 +322,7 @@ export const makeTaskRunner = <Payload, Sh extends AnyModuleShape, R, A = void, 
       const mapper = (payload: Payload) =>
         Effect.gen(function* () {
           const acquired = yield* Ref.modify(busyRef, (busy) =>
-            busy ? ([false, busy] as const) : ([true, true] as const),
+            busy ? EXHAUST_REJECT_BUSY : EXHAUST_ACQUIRE_BUSY,
           )
           if (!acquired) {
             // Ignore trigger: no pending transaction is produced.

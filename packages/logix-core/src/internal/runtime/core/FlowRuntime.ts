@@ -8,6 +8,9 @@ import type { RuntimeInternals } from './RuntimeInternals.js'
 import * as Debug from './DebugSink.js'
 import * as ReadQuery from './ReadQuery.js'
 
+const EXHAUST_ACQUIRE_BUSY = [true, true] as const
+const EXHAUST_REJECT_BUSY = [false, true] as const
+
 const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
   Effect.serviceOption(EffectOpCore.EffectOpMiddlewareTag).pipe(
     Effect.map((maybe) => (Option.isSome(maybe) ? maybe.value.stack : [])),
@@ -261,7 +264,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
         const mapper = (payload: any) =>
           Effect.gen(function* () {
             const acquired = yield* Ref.modify(busyRef, (busy) =>
-              busy ? ([false, busy] as const) : ([true, true] as const),
+              busy ? EXHAUST_REJECT_BUSY : EXHAUST_ACQUIRE_BUSY,
             )
             if (!acquired) {
               return
