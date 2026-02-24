@@ -181,7 +181,6 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       expect(store.getTopicPriority(key)).toBe('normal')
     }),
   )
-
   it.effect('budget steps: should defer nonUrgent backlog and emit trace + warn evidence', () =>
     Effect.gen(function* () {
       Logix.Debug.clearDevtoolsEvents()
