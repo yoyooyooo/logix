@@ -481,3 +481,4 @@
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
 
 - refactor-logix-core-devtoolshub-circular-ring-20260224.md：DevtoolsHub ringBuffer seq 与 eventSeq 收敛（PR #59）
+- refactor-logix-core-tickscheduler-merge-drain-inplace-20260224.md：TickScheduler fixpoint capture 改为 mergeDrain 原地合并，降低每轮 Map 复制（PR TBD）
