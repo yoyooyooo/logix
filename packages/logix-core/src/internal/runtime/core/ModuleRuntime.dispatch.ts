@@ -72,6 +72,7 @@ export const makeDispatchOps = <S, A>(args: {
     runWithStateTransaction,
     isDevEnv,
   } = args
+  const hasTopicTagHubs = (actionTagHubsByTag?.size ?? 0) > 0
 
   const resolveActionOriginOp = (tag: string): ActionAnalysis['originOp'] => {
     if (tag.includes('Remove') || tag.includes('remove')) return 'remove'
@@ -107,6 +108,16 @@ export const makeDispatchOps = <S, A>(args: {
             : type != null
               ? String(type)
               : undefined
+
+    if (!hasTopicTagHubs) {
+      return {
+        actionTag,
+        actionTagNormalized: typeof actionTag === 'string' && actionTag.length > 0 ? actionTag : 'unknown',
+        topicTagPrimary: undefined,
+        topicTagSecondary: undefined,
+        originOp: resolveActionOriginOp(actionTag ?? ''),
+      }
+    }
 
     let topicTagPrimary: string | undefined
     if (typeof tag === 'string' && tag.length > 0) {
@@ -389,8 +400,20 @@ export const makeDispatchOps = <S, A>(args: {
     analysis: ActionAnalysis,
     dispatchEntry: DispatchEntryPoint,
     resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
-  ): Effect.Effect<void> =>
-    Effect.gen(function* () {
+  ): Effect.Effect<void> => {
+    if (!hasTopicTagHubs) {
+      return publishWithPressureDiagnostics(PubSub.publish(actionHub, action), () => ({
+        kind: 'actionHub',
+        name: 'publish',
+        details: {
+          dispatchEntry,
+          channel: 'main',
+          fanoutCount: 0,
+        },
+      }), resolvePolicy)
+    }
+
+    return Effect.gen(function* () {
       const primaryTopicTag = analysis.topicTagPrimary
       const primaryTopicHub = primaryTopicTag ? actionTagHubsByTag?.get(primaryTopicTag) : undefined
       const secondaryTopicTag = analysis.topicTagSecondary
@@ -433,18 +456,31 @@ export const makeDispatchOps = <S, A>(args: {
         }), resolvePolicy)
       }
     })
+  }
 
   const publishBatchToHubs = (
     actions: ReadonlyArray<A>,
     analyses: ReadonlyArray<ActionAnalysis>,
     dispatchEntry: DispatchEntryPoint,
     resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
-  ): Effect.Effect<void> =>
-    Effect.gen(function* () {
-      if (actions.length === 0) {
-        return
-      }
+  ): Effect.Effect<void> => {
+    if (actions.length === 0) {
+      return Effect.void
+    }
 
+    if (!hasTopicTagHubs) {
+      return publishWithPressureDiagnostics(PubSub.publishAll(actionHub, actions), () => ({
+        kind: 'actionHub',
+        name: 'publishAll',
+        details: {
+          dispatchEntry,
+          channel: 'main',
+          batchSize: actions.length,
+        },
+      }), resolvePolicy)
+    }
+
+    return Effect.gen(function* () {
       yield* publishWithPressureDiagnostics(PubSub.publishAll(actionHub, actions), () => ({
         kind: 'actionHub',
         name: 'publishAll',
@@ -547,6 +583,7 @@ export const makeDispatchOps = <S, A>(args: {
 
       yield* flushCurrentBatch()
     })
+  }
 
   return {
     registerReducer,
