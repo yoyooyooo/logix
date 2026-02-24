@@ -52,7 +52,7 @@ import {
   makeResolveTraitConvergeConfig,
   type ResolvedTraitConvergeConfig,
 } from './ModuleRuntime.traitConvergeConfig.js'
-import { compareFieldPath, isPrefixOf, normalizeFieldPath, type DirtyAllReason, type FieldPath } from '../../field-path.js'
+import { compareFieldPath, isPrefixOf, normalizeFieldPath, toKey, type DirtyAllReason, type FieldPath } from '../../field-path.js'
 import * as RowId from '../../state-trait/rowid.js'
 import * as StateTraitBuild from '../../state-trait/build.js'
 import { exportConvergeStaticIr, getConvergeStaticIrDigest } from '../../state-trait/converge-ir.js'
@@ -314,7 +314,7 @@ export const make = <S, A, R = never>(
 
         if (reason === 'trait-external-store') {
           const resolvedFieldPath = ensureFieldPath(resolved)
-          const key = JSON.stringify(resolvedFieldPath)
+          const key = toKey(resolvedFieldPath)
           if (!externalOwnedFieldPathKeys.has(key)) {
             throwViolation({ resolvedPath: resolvedFieldPath })
           }
@@ -1145,25 +1145,21 @@ export const make = <S, A, R = never>(
       return undefined
     }
 
-    const actionTopicTagsOfUnknown = (action: unknown): ReadonlyArray<string> => {
-      const tags: string[] = []
-
+    const actionMatchesTopicTag = (action: unknown, topicTag: string): boolean => {
       const tag = (action as any)?._tag
       if (typeof tag === 'string' && tag.length > 0) {
-        tags.push(tag)
+        if (tag === topicTag) return true
+        const type = (action as any)?.type
+        return typeof type === 'string' && type.length > 0 && type === topicTag
       }
 
       const type = (action as any)?.type
-      if (typeof type === 'string' && type.length > 0 && !tags.includes(type)) {
-        tags.push(type)
-      }
-
-      if (tags.length > 0) {
-        return tags
+      if (typeof type === 'string' && type.length > 0) {
+        return type === topicTag
       }
 
       const normalized = actionTagOfUnknown(action)
-      return normalized ? [normalized] : []
+      return normalized != null && normalized.length > 0 && normalized === topicTag
     }
 
     const actionsStream: Stream.Stream<A> = Stream.fromPubSub(actionHub)
@@ -1172,7 +1168,7 @@ export const make = <S, A, R = never>(
       if (topicHub) {
         return Stream.fromPubSub(topicHub)
       }
-      return actionsStream.pipe(Stream.filter((action: A) => actionTopicTagsOfUnknown(action).includes(tag)))
+      return actionsStream.pipe(Stream.filter((action: A) => actionMatchesTopicTag(action, tag)))
     }
 
     const makeDispatchBuiltin = Effect.sync(() =>
@@ -1493,7 +1489,7 @@ export const make = <S, A, R = never>(
         .filter((p: any): p is FieldPath => p != null)
         .sort(compareFieldPath)
       externalOwnedFieldPaths = owned
-      externalOwnedFieldPathKeys = new Set(owned.map((p) => JSON.stringify(p)))
+      externalOwnedFieldPathKeys = new Set(owned.map((p) => toKey(p)))
 
       if (!traitState.convergePlanCache) {
         traitState.convergePlanCache = new StateTraitConverge.ConvergePlanCache(convergePlanCacheCapacity)

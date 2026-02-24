@@ -123,4 +123,79 @@ describe('StateTrait.externalStore external-owned governance', () => {
       expect(afterExternalWriteback.value).toBe(5)
     }),
   )
+
+  it.scoped('fails fast with external-owned fields containing special key characters', () =>
+    Effect.gen(function* () {
+      const ownedKey = 'value|pipe:😀'
+      const StateSchema = Schema.Struct({ [ownedKey]: Schema.Number, other: Schema.Number })
+      type State = Schema.Schema.Type<typeof StateSchema>
+
+      type Shape = Logix.Module.Shape<typeof StateSchema, { noop: typeof Schema.Void }>
+      type Action = Logix.Module.ActionOf<Shape>
+
+      const { store, set } = makeManualStore(0)
+
+      const program = Logix.StateTrait.build(
+        StateSchema,
+        Logix.StateTrait.from(StateSchema)({
+          [ownedKey]: Logix.StateTrait.externalStore({ store }),
+        } as any),
+      )
+
+      const runtime = yield* ModuleRuntimeImpl.make<State, Action>(
+        { [ownedKey]: -1, other: 0 } as State,
+        {
+          moduleId: 'StateTraitExternalStoreOwnershipSpecialKeyTest',
+        },
+      )
+
+      const bound = BoundApiRuntime.make<Shape, never>(
+        {
+          stateSchema: StateSchema,
+          actionSchema: Schema.Never as any,
+          actionMap: { noop: Schema.Void } as any,
+        } as any,
+        runtime as any,
+        {
+          getPhase: () => 'run',
+          moduleId: 'StateTraitExternalStoreOwnershipSpecialKeyTest',
+        },
+      )
+
+      yield* Logix.StateTrait.install(bound as any, program)
+
+      const afterInstall = (yield* runtime.getState) as State
+      expect((afterInstall as any)[ownedKey]).toBe(0)
+
+      yield* bound.state.mutate((draft: any) => {
+        draft.other = 1
+      })
+      const afterOther = (yield* runtime.getState) as State
+      expect(afterOther.other).toBe(1)
+
+      const mutateExternalOwned = yield* Effect.exit(
+        bound.state.mutate((draft: any) => {
+          draft[ownedKey] = 2
+        }),
+      )
+      expect(mutateExternalOwned._tag).toBe('Failure')
+      if (mutateExternalOwned._tag === 'Failure') {
+        const defects = Array.from(Cause.defects(mutateExternalOwned.cause))
+        expect(defects.some((d: unknown) => (d as any)?.name === 'ExternalOwnedWriteError')).toBe(true)
+      }
+
+      const rootWrite = yield* Effect.exit(runtime.setState({ [ownedKey]: 3, other: 2 } as any))
+      expect(rootWrite._tag).toBe('Failure')
+      if (rootWrite._tag === 'Failure') {
+        const defects = Array.from(Cause.defects(rootWrite.cause))
+        expect(defects.some((d: unknown) => (d as any)?.name === 'ExternalOwnedWriteError')).toBe(true)
+      }
+
+      set(7)
+      yield* flushMicrotasks(6)
+
+      const afterExternalWriteback = (yield* runtime.getState) as State
+      expect((afterExternalWriteback as any)[ownedKey]).toBe(7)
+    }),
+  )
 })

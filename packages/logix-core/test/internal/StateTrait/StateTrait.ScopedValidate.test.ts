@@ -47,6 +47,37 @@ describe('StateTrait scoped validate · ReverseClosure', () => {
       )
     }),
   )
+
+  it.scoped('reuses cached dependency graph when program edges reference is stable', () =>
+    Effect.sync(() => {
+      const StateSchema = Schema.Struct({
+        age: Schema.Number,
+        isAdult: Schema.Boolean,
+      })
+
+      const traits = Logix.StateTrait.from(StateSchema)({
+        isAdult: Logix.StateTrait.computed({
+          deps: ['age'],
+          get: (age) => age >= 18,
+        }),
+      })
+
+      const program = Logix.StateTrait.build(StateSchema, traits)
+
+      const first = buildDependencyGraph(program)
+      const second = buildDependencyGraph(program)
+      expect(second).toBe(first)
+
+      const graph = (program as any).graph
+      ;(program as any).graph = {
+        ...graph,
+        edges: [...graph.edges],
+      }
+
+      const third = buildDependencyGraph(program)
+      expect(third).not.toBe(first)
+    }),
+  )
 })
 
 describe('StateTrait scoped validate · writeback', () => {

@@ -294,5 +294,5 @@ Logix 依赖 Effect Scheduler 提供的虚拟时间能力，配合 TestClock 可
 ## 9. 现状总结与限制 (Current Limitations)
 
 1.  **Converge 性能**: 依赖运行时动态拓扑排序，且基于 String Path 比较，在大规模图下会有性能压力。(Spec 013 旨在解决此问题)
-2.  **Identity**: 内部大量使用 `JSON.stringify(path)` 作为 Key，GC 压力较大。
+2.  **Identity**: `field-path` 已切换为长度前缀的稳定编码（`toKey(path)`），用于替代 `JSON.stringify(path)` 热路径分配；其余链路仍需持续收敛到统一编码以进一步降低 GC 压力。
 3.  **Global Registry**: `runtimeRegistry` (WeakMap) 用于调试，但 Strictly Speaking 不应作为业务依赖路径 (Strict Mode 下已禁用)。

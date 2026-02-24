@@ -64,7 +64,53 @@ const latestStates = new Map<string, JsonValue>()
 const latestTraitSummaries = new Map<string, JsonValue>()
 const instanceLabels = new Map<string, string>()
 const convergeStaticIrByDigest = new Map<string, ConvergeStaticIrExport>()
-const liveInstanceKeys = new Set<string>()
+
+interface RuntimeModuleEntry {
+  readonly moduleKey: string
+  readonly instanceKeyById: Map<string, string>
+}
+
+const runtimeModules = new Map<string, Map<string, RuntimeModuleEntry>>()
+
+const normalizeKeyPart = (value: unknown): string => (value === undefined || value === null ? 'unknown' : String(value))
+
+const getRuntimeModuleEntry = (runtimeLabel: string, moduleId: string): RuntimeModuleEntry | undefined =>
+  runtimeModules.get(runtimeLabel)?.get(moduleId)
+
+const getOrCreateRuntimeModuleEntry = (runtimeLabel: string, moduleId: string): RuntimeModuleEntry => {
+  let modulesById = runtimeModules.get(runtimeLabel)
+  if (!modulesById) {
+    modulesById = new Map<string, RuntimeModuleEntry>()
+    runtimeModules.set(runtimeLabel, modulesById)
+  }
+
+  let moduleEntry = modulesById.get(moduleId)
+  if (!moduleEntry) {
+    moduleEntry = {
+      moduleKey: `${runtimeLabel}::${moduleId}`,
+      instanceKeyById: new Map<string, string>(),
+    }
+    modulesById.set(moduleId, moduleEntry)
+  }
+
+  return moduleEntry
+}
+
+const cleanupRuntimeModuleEntryIfUnused = (runtimeLabel: string, moduleId: string, moduleKey: string): void => {
+  const modulesById = runtimeModules.get(runtimeLabel)
+  if (!modulesById) return
+  const moduleEntry = modulesById.get(moduleId)
+  if (!moduleEntry) return
+  if (moduleEntry.instanceKeyById.size > 0) return
+  if ((instances.get(moduleKey) ?? 0) > 0) return
+  modulesById.delete(moduleId)
+  if (modulesById.size === 0) {
+    runtimeModules.delete(runtimeLabel)
+  }
+}
+
+const resolveLiveInstanceKey = (runtimeLabel: string, moduleId: string, instanceId: string): string | undefined =>
+  runtimeModules.get(runtimeLabel)?.get(moduleId)?.instanceKeyById.get(instanceId)
 
 const exportBudget = {
   dropped: 0,
@@ -87,31 +133,26 @@ const nextRunId = (): string => {
 }
 
 let currentRunId = nextRunId()
-let nextSeq = 1
 
 let bufferSize = 500
 const ringBuffer: RuntimeDebugEventRef[] = []
-const ringBufferSeq: number[] = []
 
 let snapshotToken: SnapshotToken = 0
 
 const ensureRingBufferSize = (): void => {
   if (bufferSize <= 0) {
     ringBuffer.length = 0
-    ringBufferSeq.length = 0
     return
   }
 
   if (ringBuffer.length <= bufferSize) return
   const excess = ringBuffer.length - bufferSize
   ringBuffer.splice(0, excess)
-  ringBufferSeq.splice(0, excess)
 }
 
 const trimRingBufferIfNeeded = (): void => {
   if (bufferSize <= 0) {
     ringBuffer.length = 0
-    ringBufferSeq.length = 0
     return
   }
 
@@ -128,7 +169,6 @@ const trimRingBufferIfNeeded = (): void => {
 
   const excess = ringBuffer.length - bufferSize
   ringBuffer.splice(0, excess)
-  ringBufferSeq.splice(0, excess)
 }
 
 // Snapshot references internal structures directly (read-only convention) to avoid copy costs in hot paths.
@@ -207,7 +247,6 @@ export const setDevtoolsRunId = (runId: string): void => {
 
 export const startDevtoolsRun = (runId?: string): string => {
   currentRunId = typeof runId === 'string' && runId.length > 0 ? runId : nextRunId()
-  nextSeq = 1
   clearRuntimeDebugEventSeq()
   clearDevtoolsEvents()
   return currentRunId
@@ -215,7 +254,6 @@ export const startDevtoolsRun = (runId?: string): string => {
 
 export const clearDevtoolsEvents = (): void => {
   ringBuffer.length = 0
-  ringBufferSeq.length = 0
   exportBudget.dropped = 0
   exportBudget.oversized = 0
   markSnapshotChanged()
@@ -248,7 +286,10 @@ export const exportDevtoolsEvidencePackage = (options?: {
   const events = ringBuffer.map((payload, i) => ({
     protocolVersion,
     runId,
-    seq: ringBufferSeq[i] ?? i + 1,
+    seq:
+      typeof payload.eventSeq === 'number' && Number.isFinite(payload.eventSeq) && payload.eventSeq > 0
+        ? Math.floor(payload.eventSeq)
+        : i + 1,
     timestamp: payload.timestamp,
     type: 'debug:event',
     payload: payload as unknown as JsonValue,
@@ -324,39 +365,56 @@ export const devtoolsHubSink: Sink = {
 
       // Instance counters: maintain active instance counts by runtimeLabel::moduleId.
       if (event.type === 'module:init' || event.type === 'module:destroy') {
-        const moduleId = (event as any).moduleId ?? 'unknown'
-        const runtimeLabel = (event as any).runtimeLabel ?? 'unknown'
+        const moduleId = normalizeKeyPart((event as any).moduleId)
+        const runtimeLabel = normalizeKeyPart((event as any).runtimeLabel)
         const instanceId = (event as any).instanceId as string | undefined
-        const key = `${runtimeLabel}::${moduleId}`
-        const prev = instances.get(key) ?? 0
         if (event.type === 'module:init') {
-          instances.set(key, prev + 1)
+          const moduleEntry = getOrCreateRuntimeModuleEntry(runtimeLabel, moduleId)
+          const moduleKey = moduleEntry.moduleKey
+          const prev = instances.get(moduleKey) ?? 0
+          instances.set(moduleKey, prev + 1)
           changed = true
           if (instanceId) {
-            const instanceKey = `${runtimeLabel}::${moduleId}::${instanceId}`
-            liveInstanceKeys.add(instanceKey)
+            const cachedInstanceKey = moduleEntry.instanceKeyById.get(instanceId)
+            const instanceKey = cachedInstanceKey ?? `${moduleKey}::${instanceId}`
+            if (cachedInstanceKey === undefined) {
+              moduleEntry.instanceKeyById.set(instanceId, instanceKey)
+            }
             // If instanceId is reused, ensure derived caches do not carry leftovers from the previous lifetime.
             if (latestStates.delete(instanceKey)) changed = true
             if (latestTraitSummaries.delete(instanceKey)) changed = true
           }
         } else {
+          const moduleEntry = getRuntimeModuleEntry(runtimeLabel, moduleId)
+          const moduleKey = moduleEntry?.moduleKey ?? `${runtimeLabel}::${moduleId}`
+          const prev = instances.get(moduleKey) ?? 0
           const next = prev - 1
           if (next <= 0) {
-            if (instances.delete(key)) changed = true
+            if (instances.delete(moduleKey)) changed = true
           } else {
-            instances.set(key, next)
+            instances.set(moduleKey, next)
             changed = true
           }
 
           if (instanceId) {
-            const instanceKey = `${runtimeLabel}::${moduleId}::${instanceId}`
-            liveInstanceKeys.delete(instanceKey)
+            const instanceKey = moduleEntry?.instanceKeyById.get(instanceId) ?? `${moduleKey}::${instanceId}`
+            moduleEntry?.instanceKeyById.delete(instanceId)
             if (latestStates.delete(instanceKey)) changed = true
             if (latestTraitSummaries.delete(instanceKey)) changed = true
             if (instanceLabels.delete(instanceId)) changed = true
             changed = true
           }
+
+          cleanupRuntimeModuleEntryIfUnused(runtimeLabel, moduleId, moduleKey)
         }
+      }
+
+      // off tier: keep only minimal counters/labels cleanup and skip heavy ref projection entirely.
+      if (level === 'off') {
+        if (changed) {
+          markSnapshotChanged()
+        }
+        return
       }
 
       let exportBudgetChanged = false
@@ -375,7 +433,7 @@ export const devtoolsHubSink: Sink = {
         changed = true
       }
       if (!ref) {
-        // off tier: do not write ring buffer / latestStates, but keep minimal counters/labels (including module:destroy cleanup).
+        // Unknown/non-exportable events: keep side caches/counters only.
         if (changed) {
           markSnapshotChanged()
         }
@@ -385,18 +443,18 @@ export const devtoolsHubSink: Sink = {
       // latestStates / latestTraitSummaries: record latest snapshots by runtimeLabel::moduleId::instanceId.
       if (ref.kind === 'state' && ref.label === 'state:update') {
         const runtimeLabel = ref.runtimeLabel ?? 'unknown'
-        const key = `${runtimeLabel}::${ref.moduleId}::${ref.instanceId}`
+        const instanceKey = resolveLiveInstanceKey(runtimeLabel, ref.moduleId, ref.instanceId)
 
         // Late/replayed events after module:destroy: allow entering the window for replay, but do not rebuild latest* caches.
-        if (liveInstanceKeys.has(key)) {
+        if (instanceKey) {
           if (ref.meta && typeof ref.meta === 'object' && !Array.isArray(ref.meta)) {
             const anyMeta = ref.meta as any
             if ('state' in anyMeta) {
-              latestStates.set(key, anyMeta.state as JsonValue)
+              latestStates.set(instanceKey, anyMeta.state as JsonValue)
               changed = true
             }
             if ('traitSummary' in anyMeta && anyMeta.traitSummary !== undefined) {
-              latestTraitSummaries.set(key, anyMeta.traitSummary as JsonValue)
+              latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
               changed = true
             }
           }
@@ -405,9 +463,7 @@ export const devtoolsHubSink: Sink = {
 
       // ring buffer: keep the most recent bufferSize RuntimeDebugEventRefs.
       if (bufferSize > 0) {
-        const seq = nextSeq++
         ringBuffer.push(ref)
-        ringBufferSeq.push(seq)
         trimRingBufferIfNeeded()
         changed = true
       }

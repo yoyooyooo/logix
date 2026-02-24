@@ -12,6 +12,14 @@ import type { ResolvedConcurrencyPolicy } from './ModuleRuntime.concurrencyPolic
 
 type DispatchEntryPoint = 'dispatch' | 'dispatchBatch' | 'dispatchLowPriority'
 
+type ActionAnalysis = {
+  readonly actionTag: string | undefined
+  readonly actionTagNormalized: string
+  readonly topicTagPrimary: string | undefined
+  readonly topicTagSecondary: string | undefined
+  readonly originOp: 'remove' | 'insert' | 'unset' | 'set'
+}
+
 export const makeDispatchOps = <S, A>(args: {
   readonly optionsModuleId: string | undefined
   readonly instanceId: string
@@ -65,35 +73,66 @@ export const makeDispatchOps = <S, A>(args: {
     isDevEnv,
   } = args
 
-  const resolveActionTag = (action: A): string | undefined => {
-    const tag = (action as any)?._tag
-    if (typeof tag === 'string' && tag.length > 0) return tag
-    const type = (action as any)?.type
-    if (typeof type === 'string' && type.length > 0) return type
-    if (tag != null) return String(tag)
-    if (type != null) return String(type)
-    return undefined
+  const resolveActionOriginOp = (tag: string): ActionAnalysis['originOp'] => {
+    if (tag.includes('Remove') || tag.includes('remove')) return 'remove'
+    if (
+      tag.includes('Append') ||
+      tag.includes('Prepend') ||
+      tag.includes('Insert') ||
+      tag.includes('Swap') ||
+      tag.includes('Move') ||
+      tag.includes('append') ||
+      tag.includes('prepend') ||
+      tag.includes('insert') ||
+      tag.includes('swap') ||
+      tag.includes('move')
+    ) {
+      return 'insert'
+    }
+    if (tag.includes('Unset') || tag.includes('unset')) return 'unset'
+    return 'set'
   }
 
-  const resolveActionTopicTags = (action: A): ReadonlyArray<string> => {
-    const tags: string[] = []
-
+  const analyzeAction = (action: A): ActionAnalysis => {
     const tag = (action as any)?._tag
-    if (typeof tag === 'string' && tag.length > 0) {
-      tags.push(tag)
-    }
-
     const type = (action as any)?.type
-    if (typeof type === 'string' && type.length > 0 && !tags.includes(type)) {
-      tags.push(type)
+
+    const actionTag =
+      typeof tag === 'string' && tag.length > 0
+        ? tag
+        : typeof type === 'string' && type.length > 0
+          ? type
+          : tag != null
+            ? String(tag)
+            : type != null
+              ? String(type)
+              : undefined
+
+    let topicTagPrimary: string | undefined
+    if (typeof tag === 'string' && tag.length > 0) {
+      topicTagPrimary = tag
     }
 
-    if (tags.length > 0) {
-      return tags
+    let topicTagSecondary: string | undefined
+    if (typeof type === 'string' && type.length > 0) {
+      if (topicTagPrimary == null) {
+        topicTagPrimary = type
+      } else if (type !== topicTagPrimary) {
+        topicTagSecondary = type
+      }
     }
 
-    const normalized = resolveActionTag(action)
-    return normalized ? [normalized] : []
+    if (topicTagPrimary == null && actionTag) {
+      topicTagPrimary = actionTag
+    }
+
+    return {
+      actionTag,
+      actionTagNormalized: typeof actionTag === 'string' && actionTag.length > 0 ? actionTag : 'unknown',
+      topicTagPrimary,
+      topicTagSecondary,
+      originOp: resolveActionOriginOp(actionTag ?? ''),
+    }
   }
 
   // Primary reducer map: initial values come from options.reducers and can be extended at runtime via internal hooks (for $.reducer sugar).
@@ -119,8 +158,8 @@ export const makeDispatchOps = <S, A>(args: {
     reducerMap.set(tag, fn)
   }
 
-  const applyPrimaryReducer = (action: A) => {
-    const tag = resolveActionTag(action)
+  const applyPrimaryReducer = (action: A, analysis: ActionAnalysis) => {
+    const tag = analysis.actionTag
     if (tag == null || reducerMap.size === 0) {
       return Effect.void
     }
@@ -195,50 +234,34 @@ export const makeDispatchOps = <S, A>(args: {
     )
   }
 
-  const makeActionOrigin = (originName: string, action: A, override?: TxnOriginOverride): StateTransaction.StateTxnOrigin => ({
+  const makeActionOrigin = (
+    originName: string,
+    action: A,
+    analysis: ActionAnalysis,
+    override?: TxnOriginOverride,
+  ): StateTransaction.StateTxnOrigin => ({
     kind: override?.kind ?? 'action',
     name: override?.name ?? originName,
     details: {
-      _tag: resolveActionTag(action) ?? 'unknown',
+      _tag: analysis.actionTagNormalized,
       path: typeof (action as any)?.payload?.path === 'string' ? ((action as any).payload.path as string) : undefined,
-      op: (() => {
-        const tag = resolveActionTag(action) ?? ''
-        if (tag.includes('Remove') || tag.includes('remove')) return 'remove'
-        if (
-          tag.includes('Append') ||
-          tag.includes('Prepend') ||
-          tag.includes('Insert') ||
-          tag.includes('Swap') ||
-          tag.includes('Move') ||
-          tag.includes('append') ||
-          tag.includes('prepend') ||
-          tag.includes('insert') ||
-          tag.includes('swap') ||
-          tag.includes('move')
-        ) {
-          return 'insert'
-        }
-        if (tag.includes('Unset') || tag.includes('unset')) return 'unset'
-        return 'set'
-      })(),
+      op: analysis.originOp,
     },
   })
 
-  const dispatchInTransaction = (action: A): Effect.Effect<void> =>
+  const dispatchInTransaction = (action: A, analysis: ActionAnalysis): Effect.Effect<void> =>
     Effect.gen(function* () {
       // Apply the primary reducer first (may be a no-op).
-      yield* applyPrimaryReducer(action)
+      yield* applyPrimaryReducer(action, analysis)
 
-      const actionTag = resolveActionTag(action)
-      const actionTagNormalized = typeof actionTag === 'string' && actionTag.length > 0 ? actionTag : 'unknown'
-      const unknownAction = declaredActionTags ? !declaredActionTags.has(actionTagNormalized) : false
+      const unknownAction = declaredActionTags ? !declaredActionTags.has(analysis.actionTagNormalized) : false
 
       // Record action dispatch (for Devtools/diagnostics).
       yield* Debug.record({
         type: 'action:dispatch',
         moduleId: optionsModuleId,
         action,
-        actionTag: actionTagNormalized,
+        actionTag: analysis.actionTagNormalized,
         ...(unknownAction ? { unknownAction: true } : {}),
         instanceId,
         txnSeq: txnContext.current?.txnSeq,
@@ -260,7 +283,7 @@ export const makeDispatchOps = <S, A>(args: {
       }
     })
 
-  const runDispatch = (action: A, override?: TxnOriginOverride): Effect.Effect<void> =>
+  const runDispatch = (action: A, analysis: ActionAnalysis, override?: TxnOriginOverride): Effect.Effect<void> =>
     runOperation(
       'action',
       'action:dispatch',
@@ -268,10 +291,12 @@ export const makeDispatchOps = <S, A>(args: {
         payload: action,
         meta: { moduleId: optionsModuleId, instanceId },
       },
-      runWithStateTransaction(makeActionOrigin('dispatch', action, override), () => dispatchInTransaction(action)),
+      runWithStateTransaction(makeActionOrigin('dispatch', action, analysis, override), () =>
+        dispatchInTransaction(action, analysis),
+      ),
     ).pipe(Effect.asVoid)
 
-  const runDispatchLowPriority = (action: A, override?: TxnOriginOverride): Effect.Effect<void> =>
+  const runDispatchLowPriority = (action: A, analysis: ActionAnalysis, override?: TxnOriginOverride): Effect.Effect<void> =>
     runOperation(
       'action',
       'action:dispatchLowPriority',
@@ -279,18 +304,22 @@ export const makeDispatchOps = <S, A>(args: {
         payload: action,
         meta: { moduleId: optionsModuleId, instanceId },
       },
-      runWithStateTransaction(makeActionOrigin('dispatchLowPriority', action, override), () =>
+      runWithStateTransaction(makeActionOrigin('dispatchLowPriority', action, analysis, override), () =>
         Effect.gen(function* () {
           if (txnContext.current) {
             ;(txnContext.current as any).commitMode = 'lowPriority' as StateCommitMode
             ;(txnContext.current as any).priority = 'low' as StateCommitPriority
           }
-          yield* dispatchInTransaction(action)
+          yield* dispatchInTransaction(action, analysis)
         }),
       ),
     ).pipe(Effect.asVoid)
 
-  const runDispatchBatch = (actions: ReadonlyArray<A>, override?: TxnOriginOverride): Effect.Effect<void> => {
+  const runDispatchBatch = (
+    actions: ReadonlyArray<A>,
+    analyses: ReadonlyArray<ActionAnalysis>,
+    override?: TxnOriginOverride,
+  ): Effect.Effect<void> => {
     if (actions.length === 0) return Effect.void
 
     return runOperation(
@@ -308,8 +337,10 @@ export const makeDispatchOps = <S, A>(args: {
               ;(txnContext.current as any).commitMode = 'batch' as StateCommitMode
               ;(txnContext.current as any).priority = 'normal' as StateCommitPriority
             }
-            for (const action of actions) {
-              yield* dispatchInTransaction(action)
+            for (let index = 0; index < actions.length; index += 1) {
+              const action = actions[index] as A
+              const analysis = analyses[index] as ActionAnalysis
+              yield* dispatchInTransaction(action, analysis)
             }
           }),
       ),
@@ -353,47 +384,51 @@ export const makeDispatchOps = <S, A>(args: {
           )
   }
 
-  const resolveTopicHubTargets = (action: A): ReadonlyArray<readonly [topicTag: string, topicHub: PubSub.PubSub<A>]> => {
-    if (!actionTagHubsByTag || actionTagHubsByTag.size === 0) {
-      return []
-    }
-    const targets: Array<readonly [string, PubSub.PubSub<A>]> = []
-    const topicTags = resolveActionTopicTags(action)
-    for (const topicTag of topicTags) {
-      const topicHub = actionTagHubsByTag.get(topicTag)
-      if (!topicHub) {
-        continue
-      }
-      targets.push([topicTag, topicHub])
-    }
-    return targets
-  }
-
   const publishActionToHubs = (
     action: A,
+    analysis: ActionAnalysis,
     dispatchEntry: DispatchEntryPoint,
     resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
   ): Effect.Effect<void> =>
     Effect.gen(function* () {
-      const topicTargets = resolveTopicHubTargets(action)
+      const primaryTopicTag = analysis.topicTagPrimary
+      const primaryTopicHub = primaryTopicTag ? actionTagHubsByTag?.get(primaryTopicTag) : undefined
+      const secondaryTopicTag = analysis.topicTagSecondary
+      const secondaryTopicHub = secondaryTopicTag ? actionTagHubsByTag?.get(secondaryTopicTag) : undefined
+      const fanoutCount = Number(primaryTopicHub != null) + Number(secondaryTopicHub != null)
+
       yield* publishWithPressureDiagnostics(PubSub.publish(actionHub, action), () => ({
         kind: 'actionHub',
         name: 'publish',
         details: {
           dispatchEntry,
           channel: 'main',
-          fanoutCount: topicTargets.length,
+          fanoutCount,
         },
       }), resolvePolicy)
-      for (const [topicTag, topicHub] of topicTargets) {
-        yield* publishWithPressureDiagnostics(PubSub.publish(topicHub, action), () => ({
+
+      if (primaryTopicHub && primaryTopicTag) {
+        yield* publishWithPressureDiagnostics(PubSub.publish(primaryTopicHub, action), () => ({
           kind: 'actionTopicHub',
           name: 'publish',
           details: {
             dispatchEntry,
             channel: 'topic',
-            topicTag,
-            fanoutCount: topicTargets.length,
+            topicTag: primaryTopicTag,
+            fanoutCount,
+          },
+        }), resolvePolicy)
+      }
+
+      if (secondaryTopicHub && secondaryTopicTag) {
+        yield* publishWithPressureDiagnostics(PubSub.publish(secondaryTopicHub, action), () => ({
+          kind: 'actionTopicHub',
+          name: 'publish',
+          details: {
+            dispatchEntry,
+            channel: 'topic',
+            topicTag: secondaryTopicTag,
+            fanoutCount,
           },
         }), resolvePolicy)
       }
@@ -401,6 +436,7 @@ export const makeDispatchOps = <S, A>(args: {
 
   const publishBatchToHubs = (
     actions: ReadonlyArray<A>,
+    analyses: ReadonlyArray<ActionAnalysis>,
     dispatchEntry: DispatchEntryPoint,
     resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
   ): Effect.Effect<void> =>
@@ -419,21 +455,44 @@ export const makeDispatchOps = <S, A>(args: {
         },
       }), resolvePolicy)
 
-      for (const action of actions) {
-        const topicTargets = resolveTopicHubTargets(action)
-        const actionTag = resolveActionTag(action) ?? 'unknown'
-        for (const [topicTag, topicHub] of topicTargets) {
+      for (let index = 0; index < actions.length; index += 1) {
+        const action = actions[index] as A
+        const analysis = analyses[index] as ActionAnalysis
+        const actionTag = analysis.actionTag ?? 'unknown'
+        const primaryTopicTag = analysis.topicTagPrimary
+        const primaryTopicHub = primaryTopicTag ? actionTagHubsByTag?.get(primaryTopicTag) : undefined
+        const secondaryTopicTag = analysis.topicTagSecondary
+        const secondaryTopicHub = secondaryTopicTag ? actionTagHubsByTag?.get(secondaryTopicTag) : undefined
+        const fanoutCount = Number(primaryTopicHub != null) + Number(secondaryTopicHub != null)
+
+        if (primaryTopicHub && primaryTopicTag) {
           // Keep original batch order when fan-outing to tag streams.
-          yield* publishWithPressureDiagnostics(PubSub.publish(topicHub, action), () => ({
+          yield* publishWithPressureDiagnostics(PubSub.publish(primaryTopicHub, action), () => ({
             kind: 'actionTopicHub',
             name: 'publish',
             details: {
               dispatchEntry,
               channel: 'topic',
-              topicTag,
+              topicTag: primaryTopicTag,
               actionTag,
               batchSize: actions.length,
-              fanoutCount: topicTargets.length,
+              fanoutCount,
+            },
+          }), resolvePolicy)
+        }
+
+        if (secondaryTopicHub && secondaryTopicTag) {
+          // Keep original batch order when fan-outing to tag streams.
+          yield* publishWithPressureDiagnostics(PubSub.publish(secondaryTopicHub, action), () => ({
+            kind: 'actionTopicHub',
+            name: 'publish',
+            details: {
+              dispatchEntry,
+              channel: 'topic',
+              topicTag: secondaryTopicTag,
+              actionTag,
+              batchSize: actions.length,
+              fanoutCount,
             },
           }), resolvePolicy)
         }
@@ -447,27 +506,33 @@ export const makeDispatchOps = <S, A>(args: {
     dispatch: (action) =>
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) => {
+          const analysis = analyzeAction(action)
           const resolvePolicy = makeLazyPolicyResolver()
-          return enqueueTransaction(runDispatch(action, override)).pipe(
-            Effect.zipRight(publishActionToHubs(action, 'dispatch', resolvePolicy)),
+          return enqueueTransaction(runDispatch(action, analysis, override)).pipe(
+            Effect.zipRight(publishActionToHubs(action, analysis, 'dispatch', resolvePolicy)),
           )
         }),
       ),
     dispatchBatch: (actions) =>
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) => {
+          const analyses = new Array<ActionAnalysis>(actions.length)
+          for (let index = 0; index < actions.length; index += 1) {
+            analyses[index] = analyzeAction(actions[index] as A)
+          }
           const resolvePolicy = makeLazyPolicyResolver()
-          return enqueueTransaction(runDispatchBatch(actions, override)).pipe(
-            Effect.zipRight(publishBatchToHubs(actions, 'dispatchBatch', resolvePolicy)),
+          return enqueueTransaction(runDispatchBatch(actions, analyses, override)).pipe(
+            Effect.zipRight(publishBatchToHubs(actions, analyses, 'dispatchBatch', resolvePolicy)),
           )
         }),
       ),
     dispatchLowPriority: (action) =>
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) => {
+          const analysis = analyzeAction(action)
           const resolvePolicy = makeLazyPolicyResolver()
-          return enqueueTransaction(runDispatchLowPriority(action, override)).pipe(
-            Effect.zipRight(publishActionToHubs(action, 'dispatchLowPriority', resolvePolicy)),
+          return enqueueTransaction(runDispatchLowPriority(action, analysis, override)).pipe(
+            Effect.zipRight(publishActionToHubs(action, analysis, 'dispatchLowPriority', resolvePolicy)),
           )
         }),
       ),
