@@ -152,7 +152,7 @@ export const makeEnqueueTransaction = (args: {
         }
       })
 
-    const acquireBacklogSlot = (lane: TxnLane, capacity: number): Effect.Effect<void> =>
+    const acquireBacklogSlot = (lane: TxnLane, capacity: number, policy: ResolvedConcurrencyPolicy): Effect.Effect<void> =>
       Effect.gen(function* () {
         const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
         if (inTxn) {
@@ -204,7 +204,6 @@ export const makeEnqueueTransaction = (args: {
             Effect.ensuring(
               restore(
                 Effect.gen(function* () {
-                  const policy = yield* args.resolveConcurrencyPolicy()
                   const now = Date.now()
                   if (waitedFromMs === undefined) {
                     waitedFromMs = now
@@ -296,7 +295,7 @@ export const makeEnqueueTransaction = (args: {
 
         const policy = yield* args.resolveConcurrencyPolicy()
         const capacity = policy.losslessBackpressureCapacity
-        yield* acquireBacklogSlot(lane, capacity)
+        yield* acquireBacklogSlot(lane, capacity, policy)
 
         const done = yield* Deferred.make<Exit.Exit<A2, E2>>()
 

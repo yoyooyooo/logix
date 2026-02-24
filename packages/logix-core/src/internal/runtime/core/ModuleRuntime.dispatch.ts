@@ -319,6 +319,7 @@ export const makeDispatchOps = <S, A>(args: {
   const publishWithPressureDiagnostics = (
     publish: Effect.Effect<unknown>,
     trigger: () => Debug.TriggerRef,
+    resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
   ): Effect.Effect<void> =>
     Effect.gen(function* () {
       const startedAt = Date.now()
@@ -330,13 +331,27 @@ export const makeDispatchOps = <S, A>(args: {
         return
       }
 
-      const policy = yield* resolveConcurrencyPolicy()
+      const policy = yield* resolvePolicy()
       yield* diagnostics.emitPressureIfNeeded({
         policy,
         trigger: trigger(),
         saturatedDurationMs: elapsedMs,
       })
     })
+
+  const makeLazyPolicyResolver = (): (() => Effect.Effect<ResolvedConcurrencyPolicy>) => {
+    let cached: ResolvedConcurrencyPolicy | undefined
+    return () =>
+      cached
+        ? Effect.succeed(cached)
+        : resolveConcurrencyPolicy().pipe(
+            Effect.tap((policy) =>
+              Effect.sync(() => {
+                cached = policy
+              }),
+            ),
+          )
+  }
 
   const resolveTopicHubTargets = (action: A): ReadonlyArray<readonly [topicTag: string, topicHub: PubSub.PubSub<A>]> => {
     if (!actionTagHubsByTag || actionTagHubsByTag.size === 0) {
@@ -354,7 +369,11 @@ export const makeDispatchOps = <S, A>(args: {
     return targets
   }
 
-  const publishActionToHubs = (action: A, dispatchEntry: DispatchEntryPoint): Effect.Effect<void> =>
+  const publishActionToHubs = (
+    action: A,
+    dispatchEntry: DispatchEntryPoint,
+    resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
+  ): Effect.Effect<void> =>
     Effect.gen(function* () {
       const topicTargets = resolveTopicHubTargets(action)
       yield* publishWithPressureDiagnostics(PubSub.publish(actionHub, action), () => ({
@@ -365,7 +384,7 @@ export const makeDispatchOps = <S, A>(args: {
           channel: 'main',
           fanoutCount: topicTargets.length,
         },
-      }))
+      }), resolvePolicy)
       for (const [topicTag, topicHub] of topicTargets) {
         yield* publishWithPressureDiagnostics(PubSub.publish(topicHub, action), () => ({
           kind: 'actionTopicHub',
@@ -376,11 +395,15 @@ export const makeDispatchOps = <S, A>(args: {
             topicTag,
             fanoutCount: topicTargets.length,
           },
-        }))
+        }), resolvePolicy)
       }
     })
 
-  const publishBatchToHubs = (actions: ReadonlyArray<A>, dispatchEntry: DispatchEntryPoint): Effect.Effect<void> =>
+  const publishBatchToHubs = (
+    actions: ReadonlyArray<A>,
+    dispatchEntry: DispatchEntryPoint,
+    resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
+  ): Effect.Effect<void> =>
     Effect.gen(function* () {
       if (actions.length === 0) {
         return
@@ -394,7 +417,7 @@ export const makeDispatchOps = <S, A>(args: {
           channel: 'main',
           batchSize: actions.length,
         },
-      }))
+      }), resolvePolicy)
 
       for (const action of actions) {
         const topicTargets = resolveTopicHubTargets(action)
@@ -412,7 +435,7 @@ export const makeDispatchOps = <S, A>(args: {
               batchSize: actions.length,
               fanoutCount: topicTargets.length,
             },
-          }))
+          }), resolvePolicy)
         }
       }
     })
@@ -423,27 +446,30 @@ export const makeDispatchOps = <S, A>(args: {
     // Must run outside the transaction window (FR-012) and must not block the txnQueue consumer fiber (avoid deadlock).
     dispatch: (action) =>
       FiberRef.get(currentTxnOriginOverride).pipe(
-        Effect.flatMap((override) =>
-          enqueueTransaction(runDispatch(action, override)).pipe(
-            Effect.zipRight(publishActionToHubs(action, 'dispatch')),
-          ),
-        ),
+        Effect.flatMap((override) => {
+          const resolvePolicy = makeLazyPolicyResolver()
+          return enqueueTransaction(runDispatch(action, override)).pipe(
+            Effect.zipRight(publishActionToHubs(action, 'dispatch', resolvePolicy)),
+          )
+        }),
       ),
     dispatchBatch: (actions) =>
       FiberRef.get(currentTxnOriginOverride).pipe(
-        Effect.flatMap((override) =>
-          enqueueTransaction(runDispatchBatch(actions, override)).pipe(
-            Effect.zipRight(publishBatchToHubs(actions, 'dispatchBatch')),
-          ),
-        ),
+        Effect.flatMap((override) => {
+          const resolvePolicy = makeLazyPolicyResolver()
+          return enqueueTransaction(runDispatchBatch(actions, override)).pipe(
+            Effect.zipRight(publishBatchToHubs(actions, 'dispatchBatch', resolvePolicy)),
+          )
+        }),
       ),
     dispatchLowPriority: (action) =>
       FiberRef.get(currentTxnOriginOverride).pipe(
-        Effect.flatMap((override) =>
-          enqueueTransaction(runDispatchLowPriority(action, override)).pipe(
-            Effect.zipRight(publishActionToHubs(action, 'dispatchLowPriority')),
-          ),
-        ),
+        Effect.flatMap((override) => {
+          const resolvePolicy = makeLazyPolicyResolver()
+          return enqueueTransaction(runDispatchLowPriority(action, override)).pipe(
+            Effect.zipRight(publishActionToHubs(action, 'dispatchLowPriority', resolvePolicy)),
+          )
+        }),
       ),
   }
 }
