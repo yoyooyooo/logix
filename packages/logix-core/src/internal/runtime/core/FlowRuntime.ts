@@ -92,6 +92,16 @@ export const make = <Sh extends AnyModuleShape, R = never>(
   ): Effect.Effect<FlowOpRunContext, never, any> =>
     Effect.gen(function* () {
       const stack = yield* getMiddlewareStack()
+      if (stack.length === 0) {
+        return {
+          stack,
+          hasMiddleware: false,
+          metaTemplate: {},
+          hasFiniteTemplateOpSeq: false,
+          allocateOpSeq: undefined,
+        }
+      }
+
       const sessionOpt = yield* Effect.serviceOption(RunSessionTag)
 
       const metaTemplate: Record<string, unknown> = {
@@ -113,7 +123,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
 
       return {
         stack,
-        hasMiddleware: stack.length > 0,
+        hasMiddleware: true,
         metaTemplate,
         hasFiniteTemplateOpSeq,
         allocateOpSeq,
