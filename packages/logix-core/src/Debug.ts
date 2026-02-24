@@ -141,7 +141,13 @@ export const makeModuleRuntimeCounterSink = (): ModuleRuntimeCounter => {
  * Records the last N events in chronological order; a good foundation for event timelines.
  */
 export const makeRingBufferSink = (capacity = 1000): RingBufferSink => {
-  const buffer: Event[] = []
+  const boundedCapacity = Number.isFinite(capacity) ? Math.ceil(capacity) : 0
+  const isBounded = boundedCapacity > 0
+
+  const boundedBuffer: Array<Event | undefined> = isBounded ? new Array(boundedCapacity) : []
+  const unboundedBuffer: Event[] = isBounded ? [] : []
+  let head = 0
+  let size = 0
 
   const sink: Sink = {
     record: (event: Event) =>
@@ -149,16 +155,45 @@ export const makeRingBufferSink = (capacity = 1000): RingBufferSink => {
         if (capacity <= 0) {
           return
         }
-        if (buffer.length >= capacity) {
-          buffer.shift()
+        if (!isBounded) {
+          unboundedBuffer.push(event)
+          return
         }
-        buffer.push(event)
+
+        const writeIndex = (head + size) % boundedCapacity
+        boundedBuffer[writeIndex] = event
+        if (size < boundedCapacity) {
+          size += 1
+          return
+        }
+        head = (head + 1) % boundedCapacity
       }),
   }
 
-  const getSnapshot = (): ReadonlyArray<Event> => buffer.slice()
+  const getSnapshot = (): ReadonlyArray<Event> => {
+    if (!isBounded) {
+      return unboundedBuffer.slice()
+    }
+    if (size === 0) {
+      return []
+    }
+    const snapshot = new Array<Event>(size)
+    for (let i = 0; i < size; i++) {
+      snapshot[i] = boundedBuffer[(head + i) % boundedCapacity]!
+    }
+    return snapshot
+  }
+
   const clear = (): void => {
-    buffer.length = 0
+    if (!isBounded) {
+      unboundedBuffer.length = 0
+      return
+    }
+    for (let i = 0; i < size; i++) {
+      boundedBuffer[(head + i) % boundedCapacity] = undefined
+    }
+    head = 0
+    size = 0
   }
 
   return { sink, getSnapshot, clear }
