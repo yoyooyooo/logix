@@ -144,22 +144,50 @@ describe('Debug (public API)', () => {
     }),
   )
 
-  it.effect('makeRingBufferSink should keep a bounded, ordered window of events', () =>
+  it.effect('makeRingBufferSink should keep a bounded, ordered window of events after repeated overflow and clear', () =>
     Effect.gen(function* () {
-      const { sink, getSnapshot, clear } = Logix.Debug.makeRingBufferSink(2)
+      const { sink, getSnapshot, clear } = Logix.Debug.makeRingBufferSink(3)
 
       // Initially empty
       expect(getSnapshot()).toHaveLength(0)
 
-      // Push 3 events with capacity=2; keep only the last 2.
+      // Push 5 events with capacity=3; keep only the last 3 in chronological order.
       yield* sink.record({ type: 'module:init', moduleId: 'A' })
       yield* sink.record({ type: 'module:init', moduleId: 'B' })
       yield* sink.record({ type: 'module:init', moduleId: 'C' })
+      yield* sink.record({ type: 'module:init', moduleId: 'D' })
+      yield* sink.record({ type: 'module:init', moduleId: 'E' })
 
       const snapshot = getSnapshot()
-      expect(snapshot).toHaveLength(2)
-      expect(snapshot[0]).toEqual({ type: 'module:init', moduleId: 'B' })
-      expect(snapshot[1]).toEqual({ type: 'module:init', moduleId: 'C' })
+      expect(snapshot).toHaveLength(3)
+      expect(snapshot[0]).toEqual({ type: 'module:init', moduleId: 'C' })
+      expect(snapshot[1]).toEqual({ type: 'module:init', moduleId: 'D' })
+      expect(snapshot[2]).toEqual({ type: 'module:init', moduleId: 'E' })
+
+      clear()
+      expect(getSnapshot()).toHaveLength(0)
+
+      // After clear, window should restart from scratch.
+      yield* sink.record({ type: 'module:init', moduleId: 'X' })
+      yield* sink.record({ type: 'module:init', moduleId: 'Y' })
+      yield* sink.record({ type: 'module:init', moduleId: 'Z' })
+      yield* sink.record({ type: 'module:init', moduleId: 'W' })
+
+      const snapshotAfterClear = getSnapshot()
+      expect(snapshotAfterClear).toHaveLength(3)
+      expect(snapshotAfterClear[0]).toEqual({ type: 'module:init', moduleId: 'Y' })
+      expect(snapshotAfterClear[1]).toEqual({ type: 'module:init', moduleId: 'Z' })
+      expect(snapshotAfterClear[2]).toEqual({ type: 'module:init', moduleId: 'W' })
+    }),
+  )
+
+  it.effect('makeRingBufferSink should ignore writes when capacity <= 0', () =>
+    Effect.gen(function* () {
+      const { sink, getSnapshot, clear } = Logix.Debug.makeRingBufferSink(0)
+
+      yield* sink.record({ type: 'module:init', moduleId: 'A' })
+      yield* sink.record({ type: 'module:init', moduleId: 'B' })
+      expect(getSnapshot()).toHaveLength(0)
 
       clear()
       expect(getSnapshot()).toHaveLength(0)
