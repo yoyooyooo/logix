@@ -16,7 +16,10 @@
 - `pnpm test:turbo`
 
 ## 独立审查
-- 待 PR 创建后执行并回填。
+- 审查 agent：`019c8fa1-e94b-7811-98c9-525a89544609`（只读）
+- 结论：`no blocking findings`
+- 非阻塞建议：补一条 field-level patch（非 dirtyAll）测试，直接命中 `dirtyPathIds` 直迭代分支
+- open question：建议补充可复现 perf baseline/diff 链接
 
 ## 机器人评论处理
 - CodeRabbit: 待 PR 创建后拉取评论并回填。
