@@ -134,4 +134,119 @@ describe('process: event history cap', () => {
       expect(snapshot).toEqual([])
     }),
   )
+
+  it.scoped('does not throw when maxEventHistory is an extremely large number', () =>
+    Effect.gen(function* () {
+      const Host = Logix.Module.make('ProcessEventHistoryCapHugeHost', {
+        state: Schema.Void,
+        actions: {},
+      })
+
+      const Proc = Logix.Process.make(
+        {
+          processId: 'ProcessEventHistoryCapHuge',
+          triggers: [{ kind: 'platformEvent', platformEvent: 'test:history:huge' }],
+          concurrency: { mode: 'serial', maxQueue: 16 },
+          errorPolicy: { mode: 'failStop' },
+          diagnosticsLevel: 'light',
+        },
+        Effect.void,
+      )
+
+      const HostImpl = Host.implement({
+        initial: undefined,
+        processes: [Proc],
+      })
+
+      const layer = Layer.provideMerge(ProcessRuntime.layer({ maxEventHistory: Number.MAX_SAFE_INTEGER }))(HostImpl.impl.layer)
+
+      let snapshot: ReadonlyArray<Logix.Process.ProcessEvent> = []
+      const scope = yield* Scope.make()
+      try {
+        const env = yield* Layer.buildWithScope(layer, scope)
+        const runtime = Context.get(
+          env as Context.Context<any>,
+          ProcessRuntime.ProcessRuntimeTag as any,
+        ) as ProcessRuntime.ProcessRuntime
+
+        snapshot = yield* runtime.getEventsSnapshot()
+      } finally {
+        yield* Scope.close(scope, Exit.succeed(undefined))
+      }
+
+      expect(Array.isArray(snapshot)).toBe(true)
+    }),
+  )
+
+  it.scoped('keeps only the latest event when maxEventHistory is 1', () =>
+    Effect.gen(function* () {
+      const maxEventHistory = 1
+      const processId = 'ProcessEventHistoryCapOne'
+      const triggerSpecs = Array.from({ length: 3 }, (_, index) => ({
+        kind: 'platformEvent' as const,
+        name: `evt-${index}`,
+        platformEvent: `test:history:one:${index}`,
+      }))
+
+      const Host = Logix.Module.make('ProcessEventHistoryCapOneHost', {
+        state: Schema.Void,
+        actions: {},
+      })
+
+      const Proc = Logix.Process.make(
+        {
+          processId,
+          triggers: triggerSpecs,
+          concurrency: { mode: 'serial', maxQueue: 16 },
+          errorPolicy: { mode: 'failStop' },
+          diagnosticsLevel: 'light',
+        },
+        Effect.void,
+      )
+
+      const HostImpl = Host.implement({
+        initial: undefined,
+        processes: [Proc],
+      })
+
+      const layer = Layer.provideMerge(ProcessRuntime.layer({ maxEventHistory }))(HostImpl.impl.layer)
+
+      let snapshot: ReadonlyArray<Logix.Process.ProcessEvent> = []
+      const scope = yield* Scope.make()
+      try {
+        const env = yield* Layer.buildWithScope(layer, scope)
+        const runtime = Context.get(
+          env as Context.Context<any>,
+          ProcessRuntime.ProcessRuntimeTag as any,
+        ) as ProcessRuntime.ProcessRuntime
+
+        for (const trigger of triggerSpecs) {
+          yield* runtime.deliverPlatformEvent({ eventName: trigger.platformEvent })
+        }
+
+        const expectedLastTriggerName = triggerSpecs[triggerSpecs.length - 1]?.name
+        for (let i = 0; i < 200; i += 1) {
+          snapshot = yield* runtime.getEventsSnapshot()
+          const hasLastTrigger = snapshot.some(
+            (event) =>
+              event.identity.identity.processId === processId &&
+              event.type === 'process:trigger' &&
+              event.trigger?.kind === 'platformEvent' &&
+              event.trigger.name === expectedLastTriggerName,
+          )
+          if (hasLastTrigger) {
+            break
+          }
+          yield* Effect.yieldNow()
+        }
+
+        snapshot = yield* runtime.getEventsSnapshot()
+      } finally {
+        yield* Scope.close(scope, Exit.succeed(undefined))
+      }
+
+      expect(snapshot).toHaveLength(1)
+      expect(snapshot[0]?.trigger?.name).toBe(triggerSpecs[triggerSpecs.length - 1]?.name)
+    }),
+  )
 })

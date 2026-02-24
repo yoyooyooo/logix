@@ -109,6 +109,7 @@ const currentProcessEventBudget = FiberRef.unsafeMake<Ref.Ref<ProcessEvents.Proc
   undefined,
 )
 const RUNTIME_BOOT_EVENT = 'runtime:boot' as const
+const PROCESS_EVENT_HISTORY_MAX_CAPACITY = 0xffff_fffe
 
 const deriveDebugModuleId = (processId: string): string => `process:${processId}`
 
@@ -228,19 +229,20 @@ export const make = (options?: {
 }): Effect.Effect<ProcessRuntime, never, Scope.Scope> =>
   Effect.gen(function* () {
     const runtimeScope = yield* Effect.scope
-    const maxEventHistory =
+    const requestedMaxEventHistory =
       typeof options?.maxEventHistory === 'number' &&
       Number.isFinite(options.maxEventHistory) &&
       options.maxEventHistory >= 0
         ? Math.floor(options.maxEventHistory)
         : 500
+    const maxEventHistory = Math.min(requestedMaxEventHistory, PROCESS_EVENT_HISTORY_MAX_CAPACITY)
 
     const installations = new Map<InstallationKey, InstallationState>()
     const installationsByPlatformEvent = new Map<string, Set<InstallationKey>>()
     const instances = new Map<ProcessInstanceId, InstanceState>()
 
     const eventHistoryCapacity = maxEventHistory > 0 ? maxEventHistory : 0
-    const eventHistoryRing: ProcessEvent[] = eventHistoryCapacity > 0 ? new Array(eventHistoryCapacity) : []
+    const eventHistoryRing: ProcessEvent[] = []
     let eventHistoryStart = 0
     let eventHistorySize = 0
     const eventsHub = yield* PubSub.sliding<ProcessEvent>(Math.max(1, Math.min(2048, maxEventHistory)))
@@ -254,7 +256,11 @@ export const make = (options?: {
 
       if (eventHistorySize < eventHistoryCapacity) {
         const writeIndex = (eventHistoryStart + eventHistorySize) % eventHistoryCapacity
-        eventHistoryRing[writeIndex] = event
+        if (writeIndex === eventHistoryRing.length) {
+          eventHistoryRing.push(event)
+        } else {
+          eventHistoryRing[writeIndex] = event
+        }
         eventHistorySize += 1
         return
       }
