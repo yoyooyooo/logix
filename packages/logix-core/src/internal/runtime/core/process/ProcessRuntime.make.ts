@@ -23,7 +23,8 @@ import * as ProcessConcurrency from './concurrency.js'
 import * as ProcessEvents from './events.js'
 import * as Meta from './meta.js'
 import { resolveSchemaAst } from './selectorSchema.js'
-import { makeNonPlatformTriggerStreamFactory, type NonPlatformTriggerSpec } from './triggerStreams.js'
+import { compileProcessTriggerStartPlan, type ProcessTriggerStartPlan } from './triggerStartPlan.js'
+import { makeNonPlatformTriggerStreamFactory } from './triggerStreams.js'
 import type {
   ProcessControlRequest,
   ProcessDefinition,
@@ -59,6 +60,7 @@ type InstallationState = {
   readonly kind: Meta.ProcessMeta['kind']
   readonly platformEventTriggerIndex: ReadonlyMap<string, ReadonlyArray<PlatformEventTriggerSpec>>
   readonly platformEventNames: ReadonlyArray<string>
+  readonly startPlan: ProcessTriggerStartPlan
   enabled: boolean
   installedAt?: string
   nextRunSeq: number
@@ -108,7 +110,7 @@ const currentProcessTrigger = FiberRef.unsafeMake<ProcessTrigger | undefined>(un
 const currentProcessEventBudget = FiberRef.unsafeMake<Ref.Ref<ProcessEvents.ProcessRunEventBudgetState> | undefined>(
   undefined,
 )
-const RUNTIME_BOOT_EVENT = 'runtime:boot' as const
+const PROCESS_EVENT_HISTORY_MAX_CAPACITY = 0xffff_fffe
 
 const deriveDebugModuleId = (processId: string): string => `process:${processId}`
 
@@ -228,28 +230,57 @@ export const make = (options?: {
 }): Effect.Effect<ProcessRuntime, never, Scope.Scope> =>
   Effect.gen(function* () {
     const runtimeScope = yield* Effect.scope
-    const maxEventHistory =
+    const requestedMaxEventHistory =
       typeof options?.maxEventHistory === 'number' &&
       Number.isFinite(options.maxEventHistory) &&
       options.maxEventHistory >= 0
         ? Math.floor(options.maxEventHistory)
         : 500
+    const maxEventHistory = Math.min(requestedMaxEventHistory, PROCESS_EVENT_HISTORY_MAX_CAPACITY)
 
     const installations = new Map<InstallationKey, InstallationState>()
     const installationsByPlatformEvent = new Map<string, Set<InstallationKey>>()
     const instances = new Map<ProcessInstanceId, InstanceState>()
 
-    const eventsBuffer: ProcessEvent[] = []
+    const eventHistoryCapacity = maxEventHistory > 0 ? maxEventHistory : 0
+    const eventHistoryRing: ProcessEvent[] = []
+    let eventHistoryStart = 0
+    let eventHistorySize = 0
     const eventsHub = yield* PubSub.sliding<ProcessEvent>(Math.max(1, Math.min(2048, maxEventHistory)))
 
-    const trimEvents = () => {
-      if (maxEventHistory <= 0) {
-        eventsBuffer.length = 0
+    const appendEventHistory = (event: ProcessEvent): void => {
+      if (eventHistoryCapacity <= 0) {
+        eventHistorySize = 0
+        eventHistoryStart = 0
         return
       }
-      if (eventsBuffer.length <= maxEventHistory) return
-      const excess = eventsBuffer.length - maxEventHistory
-      eventsBuffer.splice(0, excess)
+
+      if (eventHistorySize < eventHistoryCapacity) {
+        const writeIndex = (eventHistoryStart + eventHistorySize) % eventHistoryCapacity
+        if (writeIndex === eventHistoryRing.length) {
+          eventHistoryRing.push(event)
+        } else {
+          eventHistoryRing[writeIndex] = event
+        }
+        eventHistorySize += 1
+        return
+      }
+
+      eventHistoryRing[eventHistoryStart] = event
+      eventHistoryStart = (eventHistoryStart + 1) % eventHistoryCapacity
+    }
+
+    const snapshotEventHistory = (): ReadonlyArray<ProcessEvent> => {
+      if (eventHistoryCapacity <= 0 || eventHistorySize === 0) {
+        return []
+      }
+
+      const snapshot = new Array<ProcessEvent>(eventHistorySize)
+      for (let index = 0; index < eventHistorySize; index += 1) {
+        const ringIndex = (eventHistoryStart + index) % eventHistoryCapacity
+        snapshot[index] = eventHistoryRing[ringIndex] as ProcessEvent
+      }
+      return snapshot
     }
 
     const recordDebugEvent = (event: ProcessEvent): Effect.Effect<void> =>
@@ -284,8 +315,7 @@ export const make = (options?: {
 
     const publishEvent = (event: ProcessEvent): Effect.Effect<void> =>
       Effect.gen(function* () {
-        eventsBuffer.push(event)
-        trimEvents()
+        appendEventHistory(event)
         yield* PubSub.publish(eventsHub, event)
         yield* recordDebugEvent(event)
       })
@@ -335,15 +365,7 @@ export const make = (options?: {
     }
 
     const resolveMissingDependencies = (installation: InstallationState): ReadonlyArray<string> => {
-      const declared = installation.definition.requires ?? []
-      const implicitFromTriggers: string[] = []
-      for (const trigger of installation.definition.triggers) {
-        if (trigger.kind === 'moduleAction' || trigger.kind === 'moduleStateChange') {
-          implicitFromTriggers.push(trigger.moduleId)
-        }
-      }
-
-      const requires = Array.from(new Set([...declared, ...implicitFromTriggers]))
+      const requires = installation.startPlan.dependencyModuleIds
       if (requires.length === 0) return []
 
       const missing: string[] = []
@@ -535,15 +557,14 @@ export const make = (options?: {
             return baseEnv
           }
 
-          const requires = installation.definition.requires ?? []
+          const requires = installation.startPlan.dispatchTracingModuleIds
           if (requires.length === 0) {
             return baseEnv
           }
 
-          const ids = Array.from(new Set(requires))
           let nextEnv = baseEnv
 
-          for (const moduleId of ids) {
+          for (const moduleId of requires) {
             if (typeof moduleId !== 'string' || moduleId.length === 0) continue
             const tag = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
             const found = Context.getOption(baseEnv, tag)
@@ -681,13 +702,7 @@ export const make = (options?: {
         }
 
         const policy = installation.definition.concurrency
-        const autoStart = installation.definition.triggers.some(
-          (t) => t.kind === 'platformEvent' && t.platformEvent === RUNTIME_BOOT_EVENT,
-        )
-        const bootTriggerSpec = installation.definition.triggers.find(
-          (t): t is Extract<ProcessTriggerSpec, { readonly kind: 'platformEvent' }> =>
-            t.kind === 'platformEvent' && t.platformEvent === RUNTIME_BOOT_EVENT,
-        )
+        const bootTrigger = installation.startPlan.bootTrigger
 
         const instanceProgram = Effect.gen(function* () {
           const fatal = yield* Deferred.make<Cause.Cause<any>>()
@@ -696,9 +711,7 @@ export const make = (options?: {
             instanceState.platformTriggersQueue,
           )
 
-          const nonPlatformTriggers = installation.definition.triggers.filter(
-            (t): t is NonPlatformTriggerSpec => t.kind !== 'platformEvent',
-          )
+          const nonPlatformTriggers = installation.startPlan.nonPlatformTriggers
 
           const streams = yield* Effect.forEach(nonPlatformTriggers, makeTriggerStream)
 
@@ -737,12 +750,8 @@ export const make = (options?: {
             }),
           )
 
-          if (autoStart) {
-            yield* Queue.offer(instanceState.platformTriggersQueue, {
-              kind: 'platformEvent',
-              name: bootTriggerSpec?.name,
-              platformEvent: RUNTIME_BOOT_EVENT,
-            })
+          if (bootTrigger) {
+            yield* Queue.offer(instanceState.platformTriggersQueue, bootTrigger)
           }
 
           const cause = yield* Deferred.await(fatal)
@@ -886,6 +895,7 @@ export const make = (options?: {
         })
 
         const nextPlatformEventTriggerIndex = buildPlatformEventTriggerIndex(meta.definition)
+        const nextStartPlan = compileProcessTriggerStartPlan(meta.definition)
         const existing = installations.get(installationKey)
         if (existing) {
           const updated: InstallationState = {
@@ -902,6 +912,7 @@ export const make = (options?: {
               nextTriggerIndex: nextPlatformEventTriggerIndex,
               installationsByEventName: installationsByPlatformEvent,
             }),
+            startPlan: nextStartPlan,
             enabled: options.enabled ?? existing.enabled,
             installedAt: options.installedAt ?? existing.installedAt,
           }
@@ -994,6 +1005,7 @@ export const make = (options?: {
           kind: meta.kind ?? 'process',
           platformEventTriggerIndex: nextPlatformEventTriggerIndex,
           platformEventNames: nextPlatformEventNames,
+          startPlan: nextStartPlan,
           enabled: options.enabled ?? true,
           installedAt: options.installedAt,
           nextRunSeq: 1,
@@ -1146,7 +1158,7 @@ export const make = (options?: {
 
     const eventsStream: ProcessRuntime['events'] = Stream.fromPubSub(eventsHub)
 
-    const getEventsSnapshot: ProcessRuntime['getEventsSnapshot'] = () => Effect.sync(() => eventsBuffer.slice())
+    const getEventsSnapshot: ProcessRuntime['getEventsSnapshot'] = () => Effect.sync(snapshotEventHistory)
 
     yield* Effect.addFinalizer(() =>
       Effect.gen(function* () {

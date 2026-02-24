@@ -764,15 +764,9 @@ export const record = (event: Event) =>
         yield* lifecycleErrorLog(event)
         return
       }
-      if (event.type === 'diagnostic') {
-        if (event.severity !== 'info') {
-          yield* diagnosticLog(event)
-        } else {
-          yield* Effect.void
-        }
-        return
+      if (event.type === 'diagnostic' && event.severity !== 'info') {
+        yield* diagnosticLog(event)
       }
-      yield* Effect.void
       return
     }
 
@@ -782,9 +776,7 @@ export const record = (event: Event) =>
       if (isBrowser) {
         if (event.type === 'lifecycle:error' || event.type === 'diagnostic') {
           yield* renderBrowserConsoleEvent(event)
-          return
         }
-        yield* Effect.void
         return
       }
 
@@ -794,9 +786,7 @@ export const record = (event: Event) =>
       }
       if (event.type === 'diagnostic') {
         yield* diagnosticLog(event)
-        return
       }
-      yield* Effect.void
       return
     }
 

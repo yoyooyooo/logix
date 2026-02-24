@@ -115,6 +115,8 @@ export type Middleware = <A, E, R>(op: EffectOp<A, E, R>) => Effect.Effect<A, Op
 
 export type MiddlewareStack = ReadonlyArray<Middleware>
 
+const composeMiddlewareCache = new WeakMap<MiddlewareStack, Middleware>()
+
 /**
  * EffectOpMiddlewareEnv：
  * - A Service in Effect Env that carries the current Runtime's MiddlewareStack.
@@ -137,11 +139,19 @@ export class EffectOpMiddlewareTag extends Context.Tag('Logix/EffectOpMiddleware
  * - Matches the reduceRight example in the reference docs.
  */
 export const composeMiddleware = (stack: MiddlewareStack): Middleware => {
-  return <A, E, R>(op: EffectOp<A, E, R>): Effect.Effect<A, OperationError<E>, R> =>
+  const cached = composeMiddlewareCache.get(stack)
+  if (cached) {
+    return cached
+  }
+
+  const composed: Middleware = <A, E, R>(op: EffectOp<A, E, R>): Effect.Effect<A, OperationError<E>, R> =>
     stack.reduceRight<Effect.Effect<A, OperationError<E>, R>>(
       (eff, mw) => mw({ ...op, effect: eff } as any) as any,
       op.effect as Effect.Effect<A, OperationError<E>, R>,
     )
+
+  composeMiddlewareCache.set(stack, composed)
+  return composed
 }
 
 /**

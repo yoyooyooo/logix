@@ -16,6 +16,7 @@ type TimerTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'timer'
 type ModuleActionTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'moduleAction' }>
 type ModuleStateChangeTriggerSpec = Extract<NonPlatformTriggerSpec, { readonly kind: 'moduleStateChange' }>
 type SchemaAstLike = Parameters<typeof makeSchemaSelector>[1]
+type CachedSchemaAstEntry = { readonly ast: SchemaAstLike }
 
 type TriggerStreamFactoryOptions = {
   readonly baseEnv: Context.Context<any>
@@ -68,6 +69,9 @@ const nowMs = (): number => {
   return Date.now()
 }
 
+const isWeakMapKey = (value: unknown): value is object =>
+  (typeof value === 'object' && value !== null) || typeof value === 'function'
+
 const makeModuleStateChangeReadQuery = (args: {
   readonly moduleId: string
   readonly path: string
@@ -93,15 +97,51 @@ const dedupeConsecutiveByValue = <T extends { readonly value: unknown }>(
   })
 
 export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactoryOptions) => {
+  const moduleRuntimeTagCache = new Map<string, Context.Tag<any, any>>()
+  const moduleRuntimeCache = new Map<string, any>()
+  const runtimeSchemaAstCache = new WeakMap<object, CachedSchemaAstEntry>()
+
+  const resolveModuleRuntimeTag = (moduleId: string): Context.Tag<any, any> => {
+    const cached = moduleRuntimeTagCache.get(moduleId)
+    if (cached) {
+      return cached
+    }
+    const created = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
+    moduleRuntimeTagCache.set(moduleId, created)
+    return created
+  }
+
   const resolveModuleRuntime = (moduleId: string): Effect.Effect<any, Error> =>
     Effect.gen(function* () {
-      const tag = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
+      if (moduleRuntimeCache.has(moduleId)) {
+        return moduleRuntimeCache.get(moduleId)
+      }
+
+      const tag = resolveModuleRuntimeTag(moduleId)
       const found = Context.getOption(options.baseEnv, tag)
       if (Option.isNone(found)) {
         return yield* Effect.fail(new Error(`Missing module runtime in scope: ${moduleId}`))
       }
-      return found.value as any
+
+      const runtime = found.value as any
+      moduleRuntimeCache.set(moduleId, runtime)
+      return runtime
     })
+
+  const resolveRuntimeStateSchemaAst = (runtime: unknown): SchemaAstLike => {
+    if (!isWeakMapKey(runtime)) {
+      return options.resolveRuntimeStateSchemaAst(runtime)
+    }
+
+    const cached = runtimeSchemaAstCache.get(runtime)
+    if (cached) {
+      return cached.ast
+    }
+
+    const ast = options.resolveRuntimeStateSchemaAst(runtime)
+    runtimeSchemaAstCache.set(runtime, { ast })
+    return ast
+  }
 
   const makeTimerTriggerStream = (spec: TimerTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
     Effect.gen(function* () {
@@ -167,7 +207,7 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
   ): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
     Effect.gen(function* () {
       const runtime = yield* resolveModuleRuntime(spec.moduleId)
-      const schemaAst = options.resolveRuntimeStateSchemaAst(runtime)
+      const schemaAst = resolveRuntimeStateSchemaAst(runtime)
       const selectorResult = makeSchemaSelector(spec.path, schemaAst)
       if (!selectorResult.ok) {
         return yield* Effect.fail(options.withModuleHint(selectorResult.error, spec.moduleId))
