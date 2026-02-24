@@ -2,7 +2,7 @@
 
 ## Branch
 - `refactor/logix-core-perf-pr19-effects-single-handler-fastpath`
-- PR: `TBD`
+- PR: `#86` (https://github.com/yoyooyooo/logix/pull/86)
 
 ## 核心改动
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.effects.ts`
