@@ -1,8 +1,8 @@
 # PR Draft: refactor/logix-core-perf-pr20-exhaust-busyref-fastpath
 
-- PR：待创建
+- PR：`#87`（https://github.com/yoyooyooo/logix/pull/87）
 - 合并策略：创建后由 watcher 执行 `merge`
-- CI watcher：待创建
+- CI watcher：`.context/pr-ci-watch/pr-87-20260224-224142.log`
 
 ## 目标
 - 在 `runExhaust` 热路径消除每事件 `Ref.modify` tuple 字面量分配。
