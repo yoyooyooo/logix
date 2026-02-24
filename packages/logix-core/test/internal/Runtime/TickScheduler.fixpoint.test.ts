@@ -126,6 +126,62 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
     }),
   )
 
+  it.effect('capture merge: should keep latest state but preserve normal priority when followup is low across rounds', () =>
+    Effect.gen(function* () {
+      const store = makeRuntimeStore()
+      const queue = makeJobQueue()
+      const key = makeModuleInstanceKey('M', 'i-2')
+
+      let injectedFollowup = false
+      const declarativeLinkRuntime: DeclarativeLinkRuntime = {
+        registerModuleAsSourceLink: () => () => {},
+        registerDeclarativeLink: () => () => {},
+        applyForSources: ({ changedModuleInstanceKeys }) =>
+          Effect.sync(() => {
+            if (injectedFollowup || !changedModuleInstanceKeys.includes(key)) {
+              return { scheduled: false } as const
+            }
+            injectedFollowup = true
+            queue.enqueueModuleCommit({
+              moduleId: 'M',
+              instanceId: 'i-2',
+              moduleInstanceKey: key,
+              state: { v: 2 },
+              meta: { txnSeq: 2, txnId: 'i-2::t2', commitMode: 'lowPriority', priority: 'low', originKind: 'dispatch', originName: 'followup-low' },
+              opSeq: 2,
+            })
+            queue.markTopicDirty(key, 'low')
+            return { scheduled: true } as const
+          }),
+      }
+
+      const scheduler = makeTickScheduler({
+        runtimeStore: store,
+        queue,
+        hostScheduler: getGlobalHostScheduler(),
+        declarativeLinkRuntime,
+        config: { maxSteps: 64, urgentStepCap: 64, maxDrainRounds: 4 },
+      })
+
+      store.registerModuleInstance({ moduleId: 'M', instanceId: 'i-2', moduleInstanceKey: key, initialState: { v: 0 } })
+      queue.enqueueModuleCommit({
+        moduleId: 'M',
+        instanceId: 'i-2',
+        moduleInstanceKey: key,
+        state: { v: 1 },
+        meta: { txnSeq: 1, txnId: 'i-2::t1', commitMode: 'normal', priority: 'normal', originKind: 'dispatch', originName: 'start' },
+        opSeq: 1,
+      })
+      queue.markTopicDirty(key, 'normal')
+
+      yield* scheduler.flushNow
+
+      expect(store.getTickSeq()).toBe(1)
+      expect(store.getModuleState(key)).toEqual({ v: 2 })
+      expect(store.getTopicPriority(key)).toBe('normal')
+    }),
+  )
+
   it.effect('budget steps: should defer nonUrgent backlog and emit trace + warn evidence', () =>
     Effect.gen(function* () {
       Logix.Debug.clearDevtoolsEvents()
