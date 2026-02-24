@@ -482,6 +482,7 @@
 3. 按“本地类型+测试、性能交 PR CI”节奏推进，并持续更新本台账中的“阅读状态 / 重构点 / 已完成项 / 未看模块”。
 
 - refactor-logix-core-devtoolshub-circular-ring-20260224.md：DevtoolsHub ringBuffer seq 与 eventSeq 收敛（PR #59）
+- refactor-logix-core-flowruntime-resolver-fastpath-20260224.md：FlowRuntime run* 预解析 effect resolver，减少每事件分支与闭包开销（PR #84）
 - refactor-logix-core-tickscheduler-merge-drain-inplace-20260224.md：TickScheduler fixpoint capture 改为 mergeDrain 原地合并，降低每轮 Map 复制（PR #82）
 - refactor-logix-core-effects-single-handler-fastpath-20260224.md：ModuleRuntime.effects 增加 single-handler dispatch 快路径，降低 action watcher 调度开销（PR #86）
 - refactor-logix-core-trait-timeslice-dirtypaths-no-array-20260224.md：ModuleRuntime time-slicing 去除 dirtyPaths snapshot 分配，降低高频事务内存压力（PR #83）
