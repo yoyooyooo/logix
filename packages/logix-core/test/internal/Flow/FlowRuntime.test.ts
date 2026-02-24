@@ -298,54 +298,84 @@ describe('FlowRuntime.make (internal kernel)', () => {
     expect(events).toEqual([1])
   })
 
-  it('run* should read middleware stack once per invocation instead of per payload', async () => {
-    const stackReads = {
+  it('run/runParallel/runLatest/runExhaust should resolve stack and run session once per invocation', async () => {
+    type InvocationKind = 'run' | 'runParallel' | 'runLatest' | 'runExhaust'
+
+    const makeCounter = (): Record<InvocationKind, number> => ({
       run: 0,
       runParallel: 0,
       runLatest: 0,
       runExhaust: 0,
-    }
+    })
 
-    const makeMiddlewareEnv = (key: keyof typeof stackReads) =>
+    const stackReads = makeCounter()
+    const sessionLocalReads = makeCounter()
+
+    const makeMiddlewareEnv = (kind: InvocationKind) =>
       ({
         get stack() {
-          stackReads[key] += 1
+          stackReads[kind] += 1
           return []
         },
       }) as any
 
-    const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
-      const flow = FlowRuntimeImpl.make<CounterShape, never>(undefined as any)
-      const payloads = () => Stream.fromIterable([1, 2, 3])
+    const makeSession = (kind: InvocationKind) => {
+      const seqByKey = new Map<string, number>()
+      const local = {
+        nextSeq: (namespace: string, key: string) => {
+          const scopedKey = `${namespace}:${key}`
+          const next = (seqByKey.get(scopedKey) ?? 0) + 1
+          seqByKey.set(scopedKey, next)
+          return next
+        },
+      }
 
-      yield* Effect.provideService(
-        flow.run((n: number) => Effect.succeed(n))(payloads()),
-        EffectOpCore.EffectOpMiddlewareTag,
-        makeMiddlewareEnv('run'),
+      return {
+        runId: `run-${kind}`,
+        source: { host: 'vitest', label: 'FlowRuntime.test' },
+        startedAt: 1,
+        get local() {
+          sessionLocalReads[kind] += 1
+          return local
+        },
+      }
+    }
+
+    const runtime = {
+      moduleId: 'FlowRuntimeContextRead',
+      instanceId: 'FlowRuntimeContextRead#1',
+      actions$: Stream.empty,
+      changes: () => Stream.empty,
+    } as any
+
+    const flow = FlowRuntimeImpl.make<CounterShape, never>(runtime)
+    const payloads = () => Stream.fromIterable([1, 2, 3])
+
+    const runWithContext = (kind: InvocationKind, program: Effect.Effect<void, never, any>) =>
+      Effect.scoped(
+        Effect.provideService(
+          Effect.provideService(program as any, EffectOpCore.EffectOpMiddlewareTag, makeMiddlewareEnv(kind)),
+          RunSessionTag,
+          makeSession(kind) as any,
+        ),
       )
 
-      yield* Effect.provideService(
-        flow.runParallel((n: number) => Effect.succeed(n))(payloads()),
-        EffectOpCore.EffectOpMiddlewareTag,
-        makeMiddlewareEnv('runParallel'),
-      )
-
-      yield* Effect.provideService(
-        flow.runLatest((n: number) => Effect.succeed(n))(payloads()),
-        EffectOpCore.EffectOpMiddlewareTag,
-        makeMiddlewareEnv('runLatest'),
-      )
-
-      yield* Effect.provideService(
-        flow.runExhaust((n: number) => Effect.succeed(n))(payloads()),
-        EffectOpCore.EffectOpMiddlewareTag,
-        makeMiddlewareEnv('runExhaust'),
-      )
-    })
-
-    await Effect.runPromise(program as Effect.Effect<void, never, never>)
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* runWithContext('run', flow.run((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runParallel', flow.runParallel((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runLatest', flow.runLatest((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runExhaust', flow.runExhaust((n: number) => Effect.succeed(n))(payloads()))
+      }) as Effect.Effect<void, never, never>,
+    )
 
     expect(stackReads).toEqual({
+      run: 1,
+      runParallel: 1,
+      runLatest: 1,
+      runExhaust: 1,
+    })
+    expect(sessionLocalReads).toEqual({
       run: 1,
       runParallel: 1,
       runLatest: 1,
