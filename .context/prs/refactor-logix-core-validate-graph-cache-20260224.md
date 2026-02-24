@@ -38,4 +38,6 @@
 - 回滚：移除 `dependencyGraphCache` 与命中逻辑，恢复每次构建。
 
 ## 机器人评论消化（CodeRabbit）
-- 待 PR 创建后补充。
+- 已获取 PR #58 评论流：CodeRabbit 当前为 in-progress，尚未产出可执行建议。
+- 已记录 perf-quick 机器人摘要：comparable=true，regressions=0，head budgetExceeded=0。
+- 处理策略：等待 CodeRabbit 完成后再做最终消化与回写（如有建议将补充“采纳/暂不采纳+理由”）。
