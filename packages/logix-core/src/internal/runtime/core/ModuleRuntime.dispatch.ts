@@ -455,6 +455,81 @@ export const makeDispatchOps = <S, A>(args: {
         },
       }), resolvePolicy)
 
+      type TopicPublishBatch = {
+        readonly hub: PubSub.PubSub<A>
+        readonly topicTag: string
+        readonly actionTag: string
+        readonly fanoutCount: number
+        readonly actions: Array<A>
+      }
+
+      let currentBatch: TopicPublishBatch | undefined
+
+      const flushCurrentBatch = (): Effect.Effect<void> => {
+        if (!currentBatch || currentBatch.actions.length === 0) {
+          return Effect.void
+        }
+
+        const batch = currentBatch
+        currentBatch = undefined
+
+        return publishWithPressureDiagnostics(
+          batch.actions.length === 1
+            ? PubSub.publish(batch.hub, batch.actions[0] as A)
+            : PubSub.publishAll(batch.hub, batch.actions),
+          () => ({
+            kind: 'actionTopicHub',
+            name: 'publish',
+            details: {
+              dispatchEntry,
+              channel: 'topic',
+              topicTag: batch.topicTag,
+              actionTag: batch.actionTag,
+              batchSize: actions.length,
+              fanoutCount: batch.fanoutCount,
+            },
+          }),
+          resolvePolicy,
+        )
+      }
+
+      const queueTopicAction = (
+        topicHub: PubSub.PubSub<A> | undefined,
+        topicTag: string | undefined,
+        actionTag: string,
+        fanoutCount: number,
+        action: A,
+      ): Effect.Effect<void> => {
+        if (!topicHub || !topicTag) {
+          return Effect.void
+        }
+
+        if (
+          currentBatch &&
+          currentBatch.hub === topicHub &&
+          currentBatch.topicTag === topicTag &&
+          currentBatch.actionTag === actionTag &&
+          currentBatch.fanoutCount === fanoutCount
+        ) {
+          currentBatch.actions.push(action)
+          return Effect.void
+        }
+
+        return flushCurrentBatch().pipe(
+          Effect.tap(() =>
+            Effect.sync(() => {
+              currentBatch = {
+                hub: topicHub,
+                topicTag,
+                actionTag,
+                fanoutCount,
+                actions: [action],
+              }
+            }),
+          ),
+        )
+      }
+
       for (let index = 0; index < actions.length; index += 1) {
         const action = actions[index] as A
         const analysis = analyses[index] as ActionAnalysis
@@ -465,38 +540,12 @@ export const makeDispatchOps = <S, A>(args: {
         const secondaryTopicHub = secondaryTopicTag ? actionTagHubsByTag?.get(secondaryTopicTag) : undefined
         const fanoutCount = Number(primaryTopicHub != null) + Number(secondaryTopicHub != null)
 
-        if (primaryTopicHub && primaryTopicTag) {
-          // Keep original batch order when fan-outing to tag streams.
-          yield* publishWithPressureDiagnostics(PubSub.publish(primaryTopicHub, action), () => ({
-            kind: 'actionTopicHub',
-            name: 'publish',
-            details: {
-              dispatchEntry,
-              channel: 'topic',
-              topicTag: primaryTopicTag,
-              actionTag,
-              batchSize: actions.length,
-              fanoutCount,
-            },
-          }), resolvePolicy)
-        }
-
-        if (secondaryTopicHub && secondaryTopicTag) {
-          // Keep original batch order when fan-outing to tag streams.
-          yield* publishWithPressureDiagnostics(PubSub.publish(secondaryTopicHub, action), () => ({
-            kind: 'actionTopicHub',
-            name: 'publish',
-            details: {
-              dispatchEntry,
-              channel: 'topic',
-              topicTag: secondaryTopicTag,
-              actionTag,
-              batchSize: actions.length,
-              fanoutCount,
-            },
-          }), resolvePolicy)
-        }
+        // Keep original batch order when fan-outing to tag streams.
+        yield* queueTopicAction(primaryTopicHub, primaryTopicTag, actionTag, fanoutCount, action)
+        yield* queueTopicAction(secondaryTopicHub, secondaryTopicTag, actionTag, fanoutCount, action)
       }
+
+      yield* flushCurrentBatch()
     })
 
   return {
