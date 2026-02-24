@@ -13,9 +13,16 @@ default_global_db_path() {
 
 resolve_legacy_repo_db_path() {
   local common_git_dir
-  common_git_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+  common_git_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   if [[ -n "$common_git_dir" && "$common_git_dir" == */.git ]]; then
     local repo_root="${common_git_dir%/.git}"
+    printf "%s/.codex/skills/refactor-pr-ci-loop/state/shared-tasks.db" "$repo_root"
+    return
+  fi
+
+  local repo_root
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$repo_root" ]]; then
     printf "%s/.codex/skills/refactor-pr-ci-loop/state/shared-tasks.db" "$repo_root"
   fi
 }
