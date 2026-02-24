@@ -2,7 +2,8 @@
 
 ## Branch
 - `refactor/logix-core-perf-pr12-state-trait-depgraph-cache`
-- PR: `TBD`
+- PR: #79 (https://github.com/yoyooyooo/logix/pull/79)
+- CI watcher: `.context/pr-ci-watch/pr-79-20260224-185448.log`
 
 ## 核心改动
 - `packages/logix-core/src/internal/state-trait/graph.ts`
