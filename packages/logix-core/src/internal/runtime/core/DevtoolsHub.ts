@@ -87,31 +87,26 @@ const nextRunId = (): string => {
 }
 
 let currentRunId = nextRunId()
-let nextSeq = 1
 
 let bufferSize = 500
 const ringBuffer: RuntimeDebugEventRef[] = []
-const ringBufferSeq: number[] = []
 
 let snapshotToken: SnapshotToken = 0
 
 const ensureRingBufferSize = (): void => {
   if (bufferSize <= 0) {
     ringBuffer.length = 0
-    ringBufferSeq.length = 0
     return
   }
 
   if (ringBuffer.length <= bufferSize) return
   const excess = ringBuffer.length - bufferSize
   ringBuffer.splice(0, excess)
-  ringBufferSeq.splice(0, excess)
 }
 
 const trimRingBufferIfNeeded = (): void => {
   if (bufferSize <= 0) {
     ringBuffer.length = 0
-    ringBufferSeq.length = 0
     return
   }
 
@@ -128,7 +123,6 @@ const trimRingBufferIfNeeded = (): void => {
 
   const excess = ringBuffer.length - bufferSize
   ringBuffer.splice(0, excess)
-  ringBufferSeq.splice(0, excess)
 }
 
 // Snapshot references internal structures directly (read-only convention) to avoid copy costs in hot paths.
@@ -207,7 +201,6 @@ export const setDevtoolsRunId = (runId: string): void => {
 
 export const startDevtoolsRun = (runId?: string): string => {
   currentRunId = typeof runId === 'string' && runId.length > 0 ? runId : nextRunId()
-  nextSeq = 1
   clearRuntimeDebugEventSeq()
   clearDevtoolsEvents()
   return currentRunId
@@ -215,7 +208,6 @@ export const startDevtoolsRun = (runId?: string): string => {
 
 export const clearDevtoolsEvents = (): void => {
   ringBuffer.length = 0
-  ringBufferSeq.length = 0
   exportBudget.dropped = 0
   exportBudget.oversized = 0
   markSnapshotChanged()
@@ -248,7 +240,10 @@ export const exportDevtoolsEvidencePackage = (options?: {
   const events = ringBuffer.map((payload, i) => ({
     protocolVersion,
     runId,
-    seq: ringBufferSeq[i] ?? i + 1,
+    seq:
+      typeof payload.eventSeq === 'number' && Number.isFinite(payload.eventSeq) && payload.eventSeq > 0
+        ? Math.floor(payload.eventSeq)
+        : i + 1,
     timestamp: payload.timestamp,
     type: 'debug:event',
     payload: payload as unknown as JsonValue,
@@ -405,9 +400,7 @@ export const devtoolsHubSink: Sink = {
 
       // ring buffer: keep the most recent bufferSize RuntimeDebugEventRefs.
       if (bufferSize > 0) {
-        const seq = nextSeq++
         ringBuffer.push(ref)
-        ringBufferSeq.push(seq)
         trimRingBufferIfNeeded()
         changed = true
       }
