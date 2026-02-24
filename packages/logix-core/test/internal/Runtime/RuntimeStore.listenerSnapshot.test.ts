@@ -170,6 +170,30 @@ describe('RuntimeStore listener snapshots', () => {
     }
   })
 
+  it('returns empty listeners and skips callback when dirty topics are empty', () => {
+    const store = makeRuntimeStore()
+    const topicKey = makeModuleInstanceKey('M', 'i-1')
+    store.registerModuleInstance({
+      moduleId: 'M',
+      instanceId: 'i-1',
+      moduleInstanceKey: topicKey,
+      initialState: { v: 0 },
+    })
+
+    const unsubscribe = store.subscribeTopic(topicKey, () => {})
+    let callbackCalls = 0
+
+    try {
+      const committed = commitTopicsWithCallback(store, [], 1, () => {
+        callbackCalls += 1
+      })
+      expect(committed.changedTopicListeners).toHaveLength(0)
+      expect(callbackCalls).toBe(0)
+    } finally {
+      unsubscribe()
+    }
+  })
+
   it('non-callback path snapshots all topics before notify in same tick', () => {
     const store = makeRuntimeStore()
     const topicA = makeModuleInstanceKey('M', 'i-1')
