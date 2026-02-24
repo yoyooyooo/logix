@@ -63,7 +63,7 @@ describe('RuntimeStore listener snapshots', () => {
       const second = commitTopic(store, topicKey, 2).changedTopicListeners
       expect(first.length).toBe(1)
       expect(second.length).toBe(1)
-      expect(second[0]).toBe(first[0])
+      expect(second).toBe(first)
     } finally {
       unsubscribe()
     }
@@ -163,6 +163,68 @@ describe('RuntimeStore listener snapshots', () => {
       expect(calls).toEqual(['A', 'C'])
       expect(store.getTopicSubscriberCount(topicKey)).toBe(2)
       expect(store.getModuleSubscriberCount(topicKey)).toBe(2)
+    } finally {
+      unsubscribeA()
+      unsubscribeB()
+      unsubscribeC()
+    }
+  })
+
+  it('non-callback path snapshots all topics before notify in same tick', () => {
+    const store = makeRuntimeStore()
+    const topicA = makeModuleInstanceKey('M', 'i-1')
+    const topicB = makeModuleInstanceKey('M', 'i-2')
+
+    store.registerModuleInstance({
+      moduleId: 'M',
+      instanceId: 'i-1',
+      moduleInstanceKey: topicA,
+      initialState: { v: 0 },
+    })
+    store.registerModuleInstance({
+      moduleId: 'M',
+      instanceId: 'i-2',
+      moduleInstanceKey: topicB,
+      initialState: { v: 0 },
+    })
+
+    const calls: string[] = []
+    const listenerB = () => {
+      calls.push('B')
+    }
+    const listenerC = () => {
+      calls.push('C')
+    }
+
+    let unsubscribeB = () => {}
+    let unsubscribeC = () => {}
+
+    const listenerA = () => {
+      calls.push('A')
+      unsubscribeB()
+      unsubscribeC = store.subscribeTopic(topicB, listenerC)
+    }
+
+    const unsubscribeA = store.subscribeTopic(topicA, listenerA)
+    unsubscribeB = store.subscribeTopic(topicB, listenerB)
+
+    try {
+      notify(
+        commitTopics(
+          store,
+          [
+            [topicA, 'normal'],
+            [topicB, 'normal'],
+          ],
+          1,
+        ),
+      )
+      expect(calls).toEqual(['A', 'B'])
+      expect(store.getTopicSubscriberCount(topicB)).toBe(1)
+
+      calls.length = 0
+      notify(commitTopics(store, [[topicB, 'normal']], 2))
+      expect(calls).toEqual(['C'])
     } finally {
       unsubscribeA()
       unsubscribeB()
