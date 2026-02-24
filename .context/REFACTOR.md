@@ -39,7 +39,7 @@
 - `refactor-logix-core-staticirdigest-cache-20260224.md`：converge staticIrDigest 冷路径缓存化（已合并 PR #54）
 - `refactor-logix-core-convergeir-precomputed-digest-20260224.md`：ConvergeStaticIr build 预计算 digest 并运行期复用（已合并 PR #55）
 - `refactor-logix-core-concurrency-policy-resolve-cache-20260224.md`：并发策略解析缓存化 + txnQueue/dispatch 解析复用（本轮进行中）
-- `refactor-logix-core-process-events-ring-buffer-20260224.md`：ProcessRuntime 事件历史环形缓冲 O(1)（本轮进行中）
+- `refactor-logix-core-process-events-ring-buffer-20260224.md`：ProcessRuntime 事件历史环形缓冲 O(1)（PR #75）
 
 ## 已看过模块
 

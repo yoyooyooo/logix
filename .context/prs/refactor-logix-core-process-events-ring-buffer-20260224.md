@@ -2,7 +2,7 @@
 
 ## Branch
 - `refactor/logix-core-perf-pr8-process-events-ring`
-- PR: 待创建
+- PR: #75 (https://github.com/yoyooyooo/logix/pull/75)
 
 ## 核心改动
 - `ProcessRuntime.make` 的事件历史缓冲由 `Array + splice(0, excess)` 改为固定容量 O(1) 环形缓冲。
