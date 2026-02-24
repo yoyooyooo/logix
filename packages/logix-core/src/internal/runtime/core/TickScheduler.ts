@@ -169,6 +169,8 @@ const shouldSampleTick = (tickSeq: number, sampleRate: number): boolean => {
   return h / 0xffffffff < sampleRate
 }
 
+const topicKeyResolutionCacheLimit = 1024
+
 const toTriggerKind = (originKind: string | undefined): TriggerKind => {
   if (originKind === 'action') return 'dispatch'
   if (originKind === 'trait-external-store') return 'externalStore'
@@ -310,6 +312,20 @@ export const makeTickScheduler = (args: {
 
   let coalescedModules = 0
   let coalescedTopics = 0
+  const topicKeyToModuleInstanceKeyCache = new Map<string, ModuleInstanceKey | null>()
+
+  const rememberTopicKeyResolution = (topicKey: string, moduleInstanceKey: ModuleInstanceKey | undefined): ModuleInstanceKey | undefined => {
+    if (topicKeyToModuleInstanceKeyCache.has(topicKey)) {
+      topicKeyToModuleInstanceKeyCache.delete(topicKey)
+    } else if (topicKeyToModuleInstanceKeyCache.size >= topicKeyResolutionCacheLimit) {
+      const oldestKey = topicKeyToModuleInstanceKeyCache.keys().next().value
+      if (oldestKey !== undefined) {
+        topicKeyToModuleInstanceKeyCache.delete(oldestKey)
+      }
+    }
+    topicKeyToModuleInstanceKeyCache.set(topicKey, moduleInstanceKey ?? null)
+    return moduleInstanceKey
+  }
 
   const yieldMicrotask = Effect.async<void, never>((resume) => {
     hostScheduler.scheduleMicrotask(() => resume(Effect.void))
@@ -455,11 +471,11 @@ export const makeTickScheduler = (args: {
     const deferredTopics = new Map<string, StateCommitPriority>()
 
     for (const [topicKey, priority] of captured.accepted.dirtyTopics) {
-      const info = storeTopicToModuleInstanceKey(topicKey)
-      if (!info) continue
-      if (acceptedModules.has(info)) {
+      const moduleInstanceKey = storeTopicToModuleInstanceKey(topicKey)
+      if (!moduleInstanceKey) continue
+      if (acceptedModules.has(moduleInstanceKey)) {
         acceptedTopics.set(topicKey, priority)
-      } else if (deferredModules.has(info)) {
+      } else if (deferredModules.has(moduleInstanceKey)) {
         deferredTopics.set(topicKey, priority)
       } else {
         // Conservative default: treat unknown topics as accepted.
@@ -707,14 +723,19 @@ export const makeTickScheduler = (args: {
   const flushNow: TickScheduler['flushNow'] = flushTick({ startedAs: 'unknown' }).pipe(Effect.asVoid)
 
   const storeTopicToModuleInstanceKey = (topicKey: string): ModuleInstanceKey | undefined => {
+    const cached = topicKeyToModuleInstanceKeyCache.get(topicKey)
+    if (cached !== undefined) {
+      return cached === null ? undefined : cached
+    }
+
     const idx = topicKey.indexOf('::rq:')
     if (idx > 0) {
-      return topicKey.slice(0, idx) as ModuleInstanceKey
+      return rememberTopicKeyResolution(topicKey, topicKey.slice(0, idx) as ModuleInstanceKey)
     }
     if (topicKey.includes('::')) {
-      return topicKey as ModuleInstanceKey
+      return rememberTopicKeyResolution(topicKey, topicKey as ModuleInstanceKey)
     }
-    return undefined
+    return rememberTopicKeyResolution(topicKey, undefined)
   }
 
   const onSelectorChanged: TickScheduler['onSelectorChanged'] = ({ moduleInstanceKey, selectorId, priority }) => {
