@@ -429,6 +429,72 @@ describe('FlowRuntime.make (internal kernel)', () => {
     })
   })
 
+  it('run/runParallel/runLatest/runExhaust should skip opSeq allocation when middleware stack is empty', async () => {
+    type InvocationKind = 'run' | 'runParallel' | 'runLatest' | 'runExhaust'
+
+    const makeCounter = (): Record<InvocationKind, number> => ({
+      run: 0,
+      runParallel: 0,
+      runLatest: 0,
+      runExhaust: 0,
+    })
+
+    const nextSeqCalls = makeCounter()
+
+    const makeSession = (kind: InvocationKind) => {
+      const seqByKey = new Map<string, number>()
+      return {
+        runId: `run-${kind}`,
+        source: { host: 'vitest', label: 'FlowRuntime.test' },
+        startedAt: 1,
+        local: {
+          nextSeq: (namespace: string, key: string) => {
+            nextSeqCalls[kind] += 1
+            const scopedKey = `${namespace}:${key}`
+            const next = (seqByKey.get(scopedKey) ?? 0) + 1
+            seqByKey.set(scopedKey, next)
+            return next
+          },
+        },
+      }
+    }
+
+    const runtime = {
+      moduleId: 'FlowRuntimeFastPath',
+      instanceId: 'FlowRuntimeFastPath#1',
+      actions$: Stream.empty,
+      changes: () => Stream.empty,
+    } as any
+
+    const flow = FlowRuntimeImpl.make<CounterShape, never>(runtime)
+    const payloads = () => Stream.fromIterable([1, 2, 3])
+
+    const runWithContext = (kind: InvocationKind, program: Effect.Effect<void, never, any>) =>
+      Effect.scoped(
+        Effect.provideService(
+          Effect.provideService(program as any, EffectOpCore.EffectOpMiddlewareTag, { stack: [] }),
+          RunSessionTag,
+          makeSession(kind) as any,
+        ),
+      )
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* runWithContext('run', flow.run((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runParallel', flow.runParallel((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runLatest', flow.runLatest((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runExhaust', flow.runExhaust((n: number) => Effect.succeed(n))(payloads()))
+      }) as Effect.Effect<void, never, never>,
+    )
+
+    expect(nextSeqCalls).toEqual({
+      run: 0,
+      runParallel: 0,
+      runLatest: 0,
+      runExhaust: 0,
+    })
+  })
+
   it('fromAction/fromState and debounce/throttle/filter should compose streams', async () => {
     type Action = Logix.Module.ActionOf<CounterShape>
 

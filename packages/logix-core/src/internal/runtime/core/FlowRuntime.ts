@@ -84,6 +84,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
 
   interface FlowOpRunContext {
     readonly stack: EffectOp.MiddlewareStack
+    readonly hasMiddleware: boolean
     readonly metaTemplate: Record<string, unknown>
     readonly hasFiniteTemplateOpSeq: boolean
     readonly allocateOpSeq?: () => number
@@ -115,6 +116,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
 
       return {
         stack,
+        hasMiddleware: stack.length > 0,
         metaTemplate,
         hasFiniteTemplateOpSeq,
         allocateOpSeq,
@@ -141,8 +143,11 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     name: string,
     payload: V,
     eff: LogicEffect<Sh, R & R2, A, E>,
-  ): LogicEffect<Sh, R & R2, A, E> =>
-    Effect.gen(function* () {
+  ): LogicEffect<Sh, R & R2, A, E> => {
+    if (!context.hasMiddleware) {
+      return eff
+    }
+    return Effect.gen(function* () {
       const meta = buildFlowOpMeta(context)
 
       const op = EffectOp.make<A, E, any>({
@@ -154,6 +159,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
       })
       return yield* EffectOp.run(op, context.stack)
     }) as any
+  }
 
   const makeFlowOpMapper = <T, A, E, R2>(
     context: FlowOpRunContext,
