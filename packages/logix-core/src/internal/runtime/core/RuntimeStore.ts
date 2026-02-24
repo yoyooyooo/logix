@@ -199,11 +199,29 @@ export const makeRuntimeStore = (): RuntimeStore => {
     }
 
     if (args.onListener) {
+      let changedTopicSnapshots: Array<ReadonlyArray<() => void>> | undefined
+
       for (const [topicKey, priority] of args.accepted.dirtyTopics) {
         commitTopicBump(topicKey, priority)
         const listeners = listenersByTopic.get(topicKey)?.snapshot ?? EMPTY_LISTENER_SNAPSHOT
-        for (const listener of listeners) {
-          args.onListener(listener)
+        if (listeners.length === 0) {
+          continue
+        }
+        if (!changedTopicSnapshots) {
+          changedTopicSnapshots = []
+        }
+        changedTopicSnapshots.push(listeners)
+      }
+
+      if (changedTopicSnapshots) {
+        for (const listeners of changedTopicSnapshots) {
+          for (const listener of listeners) {
+            try {
+              args.onListener(listener)
+            } catch {
+              // best-effort: never let listener callback break commit tick
+            }
+          }
         }
       }
 
