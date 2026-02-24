@@ -137,10 +137,34 @@ let currentRunId = nextRunId()
 let bufferSize = 500
 const ringBuffer: RuntimeDebugEventRef[] = []
 
+type RingTrimMode = 'disabled' | 'strict' | 'burst'
+let ringTrimMode: RingTrimMode = 'burst'
+let ringTrimThreshold = bufferSize
+
+const refreshRingTrimPolicy = (): void => {
+  if (bufferSize <= 0) {
+    ringTrimMode = 'disabled'
+    ringTrimThreshold = 0
+    return
+  }
+
+  if (bufferSize <= 64) {
+    ringTrimMode = 'strict'
+    ringTrimThreshold = bufferSize
+    return
+  }
+
+  ringTrimMode = 'burst'
+  const slack = Math.min(1024, Math.floor(bufferSize / 2))
+  ringTrimThreshold = bufferSize + Math.max(1, slack)
+}
+
+refreshRingTrimPolicy()
+
 let snapshotToken: SnapshotToken = 0
 
 const ensureRingBufferSize = (): void => {
-  if (bufferSize <= 0) {
+  if (ringTrimMode === 'disabled') {
     ringBuffer.length = 0
     return
   }
@@ -151,21 +175,19 @@ const ensureRingBufferSize = (): void => {
 }
 
 const trimRingBufferIfNeeded = (): void => {
-  if (bufferSize <= 0) {
+  if (ringTrimMode === 'disabled') {
     ringBuffer.length = 0
     return
   }
 
   // Small windows keep a strict upper bound to avoid "size=5 but events.length briefly > 5" surprises.
   // Large windows allow short bursts + batch trimming to avoid linear shift() costs under sustained load.
-  if (bufferSize <= 64) {
+  if (ringTrimMode === 'strict') {
     ensureRingBufferSize()
     return
   }
 
-  const slack = Math.min(1024, Math.floor(bufferSize / 2))
-  const threshold = bufferSize + Math.max(1, slack)
-  if (ringBuffer.length <= threshold) return
+  if (ringBuffer.length <= ringTrimThreshold) return
 
   const excess = ringBuffer.length - bufferSize
   ringBuffer.splice(0, excess)
@@ -215,6 +237,7 @@ export const configureDevtoolsHub = (options?: DevtoolsHubOptions) => {
     const nextBufferSize = next >= 0 ? next : 0
     if (nextBufferSize !== bufferSize) {
       bufferSize = nextBufferSize
+      refreshRingTrimPolicy()
       ensureRingBufferSize()
       markSnapshotChanged()
     }
