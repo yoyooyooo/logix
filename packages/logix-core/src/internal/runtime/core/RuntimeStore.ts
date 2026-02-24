@@ -198,6 +198,12 @@ export const makeRuntimeStore = (): RuntimeStore => {
       moduleStates.set(key, commit.state)
     }
 
+    if (args.accepted.dirtyTopics.size === 0) {
+      return {
+        changedTopicListeners: NO_CHANGED_TOPIC_LISTENERS,
+      }
+    }
+
     if (args.onListener) {
       let singleTopicListeners: ReadonlyArray<() => void> | undefined
       let aggregatedTopicListeners: Array<ReadonlyArray<() => void>> | undefined
