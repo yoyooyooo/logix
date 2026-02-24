@@ -35,6 +35,33 @@ export type ResolvedConcurrencyPolicy = {
 const normalizeConcurrencyLimit = (v: unknown): ConcurrencyLimit | undefined =>
   v === 'unbounded' ? 'unbounded' : normalizePositiveInt(v)
 
+type ResolvedPolicyCache = {
+  readonly runtimeDefaultFingerprint: string
+  readonly runtimeModuleFingerprint: string
+  readonly providerDefaultFingerprint: string
+  readonly providerModuleFingerprint: string
+  readonly resolved: ResolvedConcurrencyPolicy
+}
+
+const patchFingerprint = (
+  patch: ConcurrencyPolicy | ConcurrencyPolicyPatch | ConcurrencyPolicyOverrides | undefined,
+): string => {
+  if (!patch) return ''
+  const threshold = (patch as any).pressureWarningThreshold
+  const thresholdCount =
+    threshold && typeof threshold === 'object' ? String((threshold as any).backlogCount ?? '') : ''
+  const thresholdDuration =
+    threshold && typeof threshold === 'object' ? String((threshold as any).backlogDurationMs ?? '') : ''
+  return [
+    String((patch as any).concurrencyLimit ?? ''),
+    String((patch as any).losslessBackpressureCapacity ?? ''),
+    String((patch as any).allowUnbounded ?? ''),
+    thresholdCount,
+    thresholdDuration,
+    String((patch as any).warningCooldownMs ?? ''),
+  ].join('|')
+}
+
 export const makeResolveConcurrencyPolicy = (args: {
   /** Original options.moduleId (may be undefined); used for module overrides map lookup. */
   readonly moduleId: string | undefined
@@ -47,6 +74,7 @@ export const makeResolveConcurrencyPolicy = (args: {
   const builtinThresholdBacklogCount = 1000
   const builtinThresholdBacklogDurationMs = 5000
   const builtinWarningCooldownMs = 30_000
+  let cache: ResolvedPolicyCache | undefined
 
   return () =>
     Effect.gen(function* () {
@@ -136,6 +164,26 @@ export const makeResolveConcurrencyPolicy = (args: {
         moduleId && runtimeConfig?.overridesByModuleId ? runtimeConfig.overridesByModuleId[moduleId] : undefined
       const providerModulePatch: ConcurrencyPolicyPatch | undefined =
         moduleId && providerOverrides?.overridesByModuleId ? providerOverrides.overridesByModuleId[moduleId] : undefined
+      const runtimeDefaultFingerprint = patchFingerprint(runtimeConfig)
+      const runtimeModuleFingerprint = patchFingerprint(runtimeModulePatch)
+      const providerDefaultFingerprint = patchFingerprint(providerOverrides)
+      const providerModuleFingerprint = patchFingerprint(providerModulePatch)
+
+      if (
+        cache &&
+        cache.runtimeDefaultFingerprint === runtimeDefaultFingerprint &&
+        cache.runtimeModuleFingerprint === runtimeModuleFingerprint &&
+        cache.providerDefaultFingerprint === providerDefaultFingerprint &&
+        cache.providerModuleFingerprint === providerModuleFingerprint
+      ) {
+        if (args.diagnostics) {
+          yield* args.diagnostics.emitUnboundedPolicyIfNeeded({
+            policy: cache.resolved,
+            trigger: { kind: 'concurrencyPolicy', name: 'resolve' },
+          })
+        }
+        return cache.resolved
+      }
 
       // priority: provider > runtime_module > runtime_default > builtin
       applyPatch(runtimeConfig, 'runtime_default')
@@ -174,6 +222,14 @@ export const makeResolveConcurrencyPolicy = (args: {
           policy: resolved,
           trigger: { kind: 'concurrencyPolicy', name: 'resolve' },
         })
+      }
+
+      cache = {
+        runtimeDefaultFingerprint,
+        runtimeModuleFingerprint,
+        providerDefaultFingerprint,
+        providerModuleFingerprint,
+        resolved,
       }
 
       return resolved

@@ -278,4 +278,79 @@ describe('ModuleRuntime.txnQueue (lanes)', () => {
       yield* Deferred.await(followerExecuted)
     }),
   )
+
+  it.scoped('should reuse resolved concurrency policy inside blocked acquire diagnostics path', () =>
+    Effect.gen(function* () {
+      const policy: ResolvedConcurrencyPolicy = {
+        concurrencyLimit: 16,
+        losslessBackpressureCapacity: 1,
+        allowUnbounded: false,
+        pressureWarningThreshold: {
+          backlogCount: 1,
+          backlogDurationMs: 1,
+        },
+        warningCooldownMs: 30_000,
+        configScope: 'builtin',
+        concurrencyLimitScope: 'builtin',
+        requestedConcurrencyLimit: 16,
+        requestedConcurrencyLimitScope: 'builtin',
+        allowUnboundedScope: 'builtin',
+      }
+
+      let resolveCalls = 0
+      const enteredBlockedPath = yield* Deferred.make<void>()
+      const unblockBlockedPath = yield* Deferred.make<void>()
+      const diagnostics: ConcurrencyDiagnostics = {
+        emitPressureIfNeeded: () =>
+          Effect.gen(function* () {
+            yield* Deferred.succeed(enteredBlockedPath, undefined)
+            yield* Deferred.await(unblockBlockedPath)
+          }),
+        emitUnboundedPolicyIfNeeded: () => Effect.void,
+      }
+
+      const enqueueTransaction = yield* makeEnqueueTransaction({
+        moduleId: 'M',
+        instanceId: 'i-1',
+        resolveConcurrencyPolicy: () =>
+          Effect.sync(() => {
+            resolveCalls += 1
+            return policy
+          }),
+        diagnostics,
+      })
+
+      const runningStarted = yield* Deferred.make<void>()
+      const runningGate = yield* Deferred.make<void>()
+      const waitingExecuted = yield* Deferred.make<void>()
+
+      const runningFiber = yield* Effect.fork(
+        enqueueTransaction(
+          'urgent',
+          Effect.gen(function* () {
+            yield* Deferred.succeed(runningStarted, undefined)
+            yield* Deferred.await(runningGate)
+          }),
+        ),
+      )
+      yield* Deferred.await(runningStarted)
+
+      const waitingFiber = yield* Effect.fork(
+        enqueueTransaction(
+          'urgent',
+          Deferred.succeed(waitingExecuted, undefined).pipe(Effect.asVoid),
+        ),
+      )
+
+      yield* Deferred.await(enteredBlockedPath)
+      yield* Deferred.succeed(runningGate, undefined)
+      yield* Deferred.succeed(unblockBlockedPath, undefined)
+
+      yield* Deferred.await(waitingExecuted)
+      yield* Fiber.join(waitingFiber)
+      yield* Fiber.join(runningFiber)
+
+      expect(resolveCalls).toBe(2)
+    }),
+  )
 })
