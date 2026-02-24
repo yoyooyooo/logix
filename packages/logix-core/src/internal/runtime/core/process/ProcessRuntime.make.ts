@@ -23,7 +23,8 @@ import * as ProcessConcurrency from './concurrency.js'
 import * as ProcessEvents from './events.js'
 import * as Meta from './meta.js'
 import { resolveSchemaAst } from './selectorSchema.js'
-import { makeNonPlatformTriggerStreamFactory, type NonPlatformTriggerSpec } from './triggerStreams.js'
+import { compileProcessTriggerStartPlan, type ProcessTriggerStartPlan } from './triggerStartPlan.js'
+import { makeNonPlatformTriggerStreamFactory } from './triggerStreams.js'
 import type {
   ProcessControlRequest,
   ProcessDefinition,
@@ -59,6 +60,7 @@ type InstallationState = {
   readonly kind: Meta.ProcessMeta['kind']
   readonly platformEventTriggerIndex: ReadonlyMap<string, ReadonlyArray<PlatformEventTriggerSpec>>
   readonly platformEventNames: ReadonlyArray<string>
+  readonly startPlan: ProcessTriggerStartPlan
   enabled: boolean
   installedAt?: string
   nextRunSeq: number
@@ -108,7 +110,6 @@ const currentProcessTrigger = FiberRef.unsafeMake<ProcessTrigger | undefined>(un
 const currentProcessEventBudget = FiberRef.unsafeMake<Ref.Ref<ProcessEvents.ProcessRunEventBudgetState> | undefined>(
   undefined,
 )
-const RUNTIME_BOOT_EVENT = 'runtime:boot' as const
 
 const deriveDebugModuleId = (processId: string): string => `process:${processId}`
 
@@ -335,15 +336,7 @@ export const make = (options?: {
     }
 
     const resolveMissingDependencies = (installation: InstallationState): ReadonlyArray<string> => {
-      const declared = installation.definition.requires ?? []
-      const implicitFromTriggers: string[] = []
-      for (const trigger of installation.definition.triggers) {
-        if (trigger.kind === 'moduleAction' || trigger.kind === 'moduleStateChange') {
-          implicitFromTriggers.push(trigger.moduleId)
-        }
-      }
-
-      const requires = Array.from(new Set([...declared, ...implicitFromTriggers]))
+      const requires = installation.startPlan.dependencyModuleIds
       if (requires.length === 0) return []
 
       const missing: string[] = []
@@ -535,15 +528,14 @@ export const make = (options?: {
             return baseEnv
           }
 
-          const requires = installation.definition.requires ?? []
+          const requires = installation.startPlan.dispatchTracingModuleIds
           if (requires.length === 0) {
             return baseEnv
           }
 
-          const ids = Array.from(new Set(requires))
           let nextEnv = baseEnv
 
-          for (const moduleId of ids) {
+          for (const moduleId of requires) {
             if (typeof moduleId !== 'string' || moduleId.length === 0) continue
             const tag = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
             const found = Context.getOption(baseEnv, tag)
@@ -681,13 +673,7 @@ export const make = (options?: {
         }
 
         const policy = installation.definition.concurrency
-        const autoStart = installation.definition.triggers.some(
-          (t) => t.kind === 'platformEvent' && t.platformEvent === RUNTIME_BOOT_EVENT,
-        )
-        const bootTriggerSpec = installation.definition.triggers.find(
-          (t): t is Extract<ProcessTriggerSpec, { readonly kind: 'platformEvent' }> =>
-            t.kind === 'platformEvent' && t.platformEvent === RUNTIME_BOOT_EVENT,
-        )
+        const bootTrigger = installation.startPlan.bootTrigger
 
         const instanceProgram = Effect.gen(function* () {
           const fatal = yield* Deferred.make<Cause.Cause<any>>()
@@ -696,9 +682,7 @@ export const make = (options?: {
             instanceState.platformTriggersQueue,
           )
 
-          const nonPlatformTriggers = installation.definition.triggers.filter(
-            (t): t is NonPlatformTriggerSpec => t.kind !== 'platformEvent',
-          )
+          const nonPlatformTriggers = installation.startPlan.nonPlatformTriggers
 
           const streams = yield* Effect.forEach(nonPlatformTriggers, makeTriggerStream)
 
@@ -737,12 +721,8 @@ export const make = (options?: {
             }),
           )
 
-          if (autoStart) {
-            yield* Queue.offer(instanceState.platformTriggersQueue, {
-              kind: 'platformEvent',
-              name: bootTriggerSpec?.name,
-              platformEvent: RUNTIME_BOOT_EVENT,
-            })
+          if (bootTrigger) {
+            yield* Queue.offer(instanceState.platformTriggersQueue, bootTrigger)
           }
 
           const cause = yield* Deferred.await(fatal)
@@ -886,6 +866,7 @@ export const make = (options?: {
         })
 
         const nextPlatformEventTriggerIndex = buildPlatformEventTriggerIndex(meta.definition)
+        const nextStartPlan = compileProcessTriggerStartPlan(meta.definition)
         const existing = installations.get(installationKey)
         if (existing) {
           const updated: InstallationState = {
@@ -902,6 +883,7 @@ export const make = (options?: {
               nextTriggerIndex: nextPlatformEventTriggerIndex,
               installationsByEventName: installationsByPlatformEvent,
             }),
+            startPlan: nextStartPlan,
             enabled: options.enabled ?? existing.enabled,
             installedAt: options.installedAt ?? existing.installedAt,
           }
@@ -994,6 +976,7 @@ export const make = (options?: {
           kind: meta.kind ?? 'process',
           platformEventTriggerIndex: nextPlatformEventTriggerIndex,
           platformEventNames: nextPlatformEventNames,
+          startPlan: nextStartPlan,
           enabled: options.enabled ?? true,
           installedAt: options.installedAt,
           nextRunSeq: 1,
