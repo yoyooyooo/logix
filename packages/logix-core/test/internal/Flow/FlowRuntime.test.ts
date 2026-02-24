@@ -343,7 +343,6 @@ describe('FlowRuntime.make (internal kernel)', () => {
     )
     expect(exhaustCount).toBe(1)
   })
-
   it('run/runParallel/runLatest/runExhaust should resolve stack and run session once per invocation', async () => {
     type InvocationKind = 'run' | 'runParallel' | 'runLatest' | 'runExhaust'
 
@@ -356,12 +355,13 @@ describe('FlowRuntime.make (internal kernel)', () => {
 
     const stackReads = makeCounter()
     const sessionLocalReads = makeCounter()
+    const noopMiddleware: EffectOp.Middleware = (op) => op.effect
 
     const makeMiddlewareEnv = (kind: InvocationKind) =>
       ({
         get stack() {
           stackReads[kind] += 1
-          return []
+          return [noopMiddleware]
         },
       }) as any
 
@@ -440,21 +440,27 @@ describe('FlowRuntime.make (internal kernel)', () => {
     })
 
     const nextSeqCalls = makeCounter()
+    const sessionLocalReads = makeCounter()
 
     const makeSession = (kind: InvocationKind) => {
       const seqByKey = new Map<string, number>()
+      const local = {
+        nextSeq: (namespace: string, key: string) => {
+          nextSeqCalls[kind] += 1
+          const scopedKey = `${namespace}:${key}`
+          const next = (seqByKey.get(scopedKey) ?? 0) + 1
+          seqByKey.set(scopedKey, next)
+          return next
+        },
+      }
+
       return {
         runId: `run-${kind}`,
         source: { host: 'vitest', label: 'FlowRuntime.test' },
         startedAt: 1,
-        local: {
-          nextSeq: (namespace: string, key: string) => {
-            nextSeqCalls[kind] += 1
-            const scopedKey = `${namespace}:${key}`
-            const next = (seqByKey.get(scopedKey) ?? 0) + 1
-            seqByKey.set(scopedKey, next)
-            return next
-          },
+        get local() {
+          sessionLocalReads[kind] += 1
+          return local
         },
       }
     }
@@ -488,6 +494,12 @@ describe('FlowRuntime.make (internal kernel)', () => {
     )
 
     expect(nextSeqCalls).toEqual({
+      run: 0,
+      runParallel: 0,
+      runLatest: 0,
+      runExhaust: 0,
+    })
+    expect(sessionLocalReads).toEqual({
       run: 0,
       runParallel: 0,
       runLatest: 0,
