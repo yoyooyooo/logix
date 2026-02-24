@@ -183,33 +183,46 @@ const toLane = (priority: StateCommitPriority): TickLane => (priority === 'low' 
 const maxPriority = (a: StateCommitPriority, b: StateCommitPriority): StateCommitPriority =>
   a === 'normal' || b === 'normal' ? 'normal' : 'low'
 
-const mergeDrain = (base: RuntimeStorePendingDrain, next: RuntimeStorePendingDrain): RuntimeStorePendingDrain => {
-  const modules = new Map(base.modules)
+type MutablePendingDrain = {
+  readonly modules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit>
+  readonly dirtyTopics: Map<string, StateCommitPriority>
+}
+
+const mergeDrainInPlace = (base: MutablePendingDrain, next: RuntimeStorePendingDrain): void => {
   for (const [k, commit] of next.modules) {
-    const prev = modules.get(k)
+    const prev = base.modules.get(k)
     if (!prev) {
-      modules.set(k, commit)
+      base.modules.set(k, commit)
     } else {
-      modules.set(k, {
-        ...commit,
-        meta: {
-          ...commit.meta,
-          priority: maxPriority(prev.meta.priority, commit.meta.priority),
-        },
-      })
+      const mergedPriority = maxPriority(prev.meta.priority, commit.meta.priority)
+      if (mergedPriority === commit.meta.priority) {
+        base.modules.set(k, commit)
+      } else {
+        base.modules.set(k, {
+          ...commit,
+          meta: {
+            ...commit.meta,
+            priority: mergedPriority,
+          },
+        })
+      }
     }
   }
 
-  const dirtyTopics = new Map(base.dirtyTopics)
   for (const [k, p] of next.dirtyTopics) {
-    const prev = dirtyTopics.get(k)
-    dirtyTopics.set(k, prev ? maxPriority(prev, p) : p)
+    const prev = base.dirtyTopics.get(k)
+    if (!prev) {
+      base.dirtyTopics.set(k, p)
+      continue
+    }
+    const mergedPriority = maxPriority(prev, p)
+    if (mergedPriority !== prev) {
+      base.dirtyTopics.set(k, mergedPriority)
+    }
   }
-
-  return { modules, dirtyTopics }
 }
 
-const emptyDrain = (): RuntimeStorePendingDrain => ({ modules: new Map(), dirtyTopics: new Map() })
+const emptyDrain = (): MutablePendingDrain => ({ modules: new Map(), dirtyTopics: new Map() })
 
 type BudgetPartitionResult = {
   readonly acceptedModules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit>
@@ -423,7 +436,7 @@ export const makeTickScheduler = (args: {
       stable: boolean
       degradeReason?: TickDegradeReason
       deferred?: RuntimeStorePendingDrain
-      accepted: RuntimeStorePendingDrain
+      accepted: MutablePendingDrain
     } = {
       drainRounds: 0,
       stable: true,
@@ -435,7 +448,7 @@ export const makeTickScheduler = (args: {
       const drained = queue.drain()
       if (!drained) break
       captured.drainRounds += 1
-      captured.accepted = mergeDrain(captured.accepted, drained)
+      mergeDrainInPlace(captured.accepted, drained)
 
       if (declarativeLinks && drained.modules.size > 0) {
         const changedModuleInstanceKeys = Array.from(drained.modules.keys())
