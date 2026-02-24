@@ -552,13 +552,15 @@ export const makeTransactionOps = <S>(args: {
                       // RowID virtual identity layer: align mappings after each observable commit
                       // so in-flight gates and cache reuse remain stable under insert/remove/reorder.
                       const listConfigs = traitRuntime.getListConfigs()
-                      const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtySet({
-                        dirtySet: txn.dirtySet,
-                        listConfigs,
-                        fieldPathIdRegistry,
-                      })
-                      if (shouldSyncRowIds) {
-                        traitRuntime.rowIdStore.updateAll(nextState as any, listConfigs)
+                      if (listConfigs.length > 0) {
+                        const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtySet({
+                          dirtySet: txn.dirtySet,
+                          listConfigs,
+                          fieldPathIdRegistry,
+                        })
+                        if (shouldSyncRowIds) {
+                          traitRuntime.rowIdStore.updateAll(nextState as any, listConfigs)
+                        }
                       }
 
                       const meta: StateCommitMeta = {
