@@ -20,10 +20,6 @@ type ActionAnalysis = {
   readonly originOp: 'remove' | 'insert' | 'unset' | 'set'
 }
 
-const ACTION_ORIGIN_REMOVE_PATTERN = /Remove|remove/
-const ACTION_ORIGIN_INSERT_PATTERN = /Append|Prepend|Insert|Swap|Move|append|prepend|insert|swap|move/
-const ACTION_ORIGIN_UNSET_PATTERN = /Unset|unset/
-
 export const makeDispatchOps = <S, A>(args: {
   readonly optionsModuleId: string | undefined
   readonly instanceId: string
@@ -76,12 +72,24 @@ export const makeDispatchOps = <S, A>(args: {
     runWithStateTransaction,
     isDevEnv,
   } = args
-  const hasTopicTagHubs = (actionTagHubsByTag?.size ?? 0) > 0
 
   const resolveActionOriginOp = (tag: string): ActionAnalysis['originOp'] => {
-    if (ACTION_ORIGIN_REMOVE_PATTERN.test(tag)) return 'remove'
-    if (ACTION_ORIGIN_INSERT_PATTERN.test(tag)) return 'insert'
-    if (ACTION_ORIGIN_UNSET_PATTERN.test(tag)) return 'unset'
+    if (tag.includes('Remove') || tag.includes('remove')) return 'remove'
+    if (
+      tag.includes('Append') ||
+      tag.includes('Prepend') ||
+      tag.includes('Insert') ||
+      tag.includes('Swap') ||
+      tag.includes('Move') ||
+      tag.includes('append') ||
+      tag.includes('prepend') ||
+      tag.includes('insert') ||
+      tag.includes('swap') ||
+      tag.includes('move')
+    ) {
+      return 'insert'
+    }
+    if (tag.includes('Unset') || tag.includes('unset')) return 'unset'
     return 'set'
   }
 
@@ -99,16 +107,6 @@ export const makeDispatchOps = <S, A>(args: {
             : type != null
               ? String(type)
               : undefined
-
-    if (!hasTopicTagHubs) {
-      return {
-        actionTag,
-        actionTagNormalized: typeof actionTag === 'string' && actionTag.length > 0 ? actionTag : 'unknown',
-        topicTagPrimary: undefined,
-        topicTagSecondary: undefined,
-        originOp: resolveActionOriginOp(actionTag ?? ''),
-      }
-    }
 
     let topicTagPrimary: string | undefined
     if (typeof tag === 'string' && tag.length > 0) {
@@ -391,20 +389,8 @@ export const makeDispatchOps = <S, A>(args: {
     analysis: ActionAnalysis,
     dispatchEntry: DispatchEntryPoint,
     resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
-  ): Effect.Effect<void> => {
-    if (!hasTopicTagHubs) {
-      return publishWithPressureDiagnostics(PubSub.publish(actionHub, action), () => ({
-        kind: 'actionHub',
-        name: 'publish',
-        details: {
-          dispatchEntry,
-          channel: 'main',
-          fanoutCount: 0,
-        },
-      }), resolvePolicy)
-    }
-
-    return Effect.gen(function* () {
+  ): Effect.Effect<void> =>
+    Effect.gen(function* () {
       const primaryTopicTag = analysis.topicTagPrimary
       const primaryTopicHub = primaryTopicTag ? actionTagHubsByTag?.get(primaryTopicTag) : undefined
       const secondaryTopicTag = analysis.topicTagSecondary
@@ -447,31 +433,18 @@ export const makeDispatchOps = <S, A>(args: {
         }), resolvePolicy)
       }
     })
-  }
 
   const publishBatchToHubs = (
     actions: ReadonlyArray<A>,
     analyses: ReadonlyArray<ActionAnalysis>,
     dispatchEntry: DispatchEntryPoint,
     resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
-  ): Effect.Effect<void> => {
-    if (actions.length === 0) {
-      return Effect.void
-    }
+  ): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      if (actions.length === 0) {
+        return
+      }
 
-    if (!hasTopicTagHubs) {
-      return publishWithPressureDiagnostics(PubSub.publishAll(actionHub, actions), () => ({
-        kind: 'actionHub',
-        name: 'publishAll',
-        details: {
-          dispatchEntry,
-          channel: 'main',
-          batchSize: actions.length,
-        },
-      }), resolvePolicy)
-    }
-
-    return Effect.gen(function* () {
       yield* publishWithPressureDiagnostics(PubSub.publishAll(actionHub, actions), () => ({
         kind: 'actionHub',
         name: 'publishAll',
@@ -481,81 +454,6 @@ export const makeDispatchOps = <S, A>(args: {
           batchSize: actions.length,
         },
       }), resolvePolicy)
-
-      type TopicPublishBatch = {
-        readonly hub: PubSub.PubSub<A>
-        readonly topicTag: string
-        readonly actionTag: string
-        readonly fanoutCount: number
-        readonly actions: Array<A>
-      }
-
-      let currentBatch: TopicPublishBatch | undefined
-
-      const flushCurrentBatch = (): Effect.Effect<void> => {
-        if (!currentBatch || currentBatch.actions.length === 0) {
-          return Effect.void
-        }
-
-        const batch = currentBatch
-        currentBatch = undefined
-
-        return publishWithPressureDiagnostics(
-          batch.actions.length === 1
-            ? PubSub.publish(batch.hub, batch.actions[0] as A)
-            : PubSub.publishAll(batch.hub, batch.actions),
-          () => ({
-            kind: 'actionTopicHub',
-            name: 'publish',
-            details: {
-              dispatchEntry,
-              channel: 'topic',
-              topicTag: batch.topicTag,
-              actionTag: batch.actionTag,
-              batchSize: actions.length,
-              fanoutCount: batch.fanoutCount,
-            },
-          }),
-          resolvePolicy,
-        )
-      }
-
-      const queueTopicAction = (
-        topicHub: PubSub.PubSub<A> | undefined,
-        topicTag: string | undefined,
-        actionTag: string,
-        fanoutCount: number,
-        action: A,
-      ): Effect.Effect<void> => {
-        if (!topicHub || !topicTag) {
-          return Effect.void
-        }
-
-        if (
-          currentBatch &&
-          currentBatch.hub === topicHub &&
-          currentBatch.topicTag === topicTag &&
-          currentBatch.actionTag === actionTag &&
-          currentBatch.fanoutCount === fanoutCount
-        ) {
-          currentBatch.actions.push(action)
-          return Effect.void
-        }
-
-        return flushCurrentBatch().pipe(
-          Effect.tap(() =>
-            Effect.sync(() => {
-              currentBatch = {
-                hub: topicHub,
-                topicTag,
-                actionTag,
-                fanoutCount,
-                actions: [action],
-              }
-            }),
-          ),
-        )
-      }
 
       for (let index = 0; index < actions.length; index += 1) {
         const action = actions[index] as A
@@ -567,14 +465,39 @@ export const makeDispatchOps = <S, A>(args: {
         const secondaryTopicHub = secondaryTopicTag ? actionTagHubsByTag?.get(secondaryTopicTag) : undefined
         const fanoutCount = Number(primaryTopicHub != null) + Number(secondaryTopicHub != null)
 
-        // Keep original batch order when fan-outing to tag streams.
-        yield* queueTopicAction(primaryTopicHub, primaryTopicTag, actionTag, fanoutCount, action)
-        yield* queueTopicAction(secondaryTopicHub, secondaryTopicTag, actionTag, fanoutCount, action)
-      }
+        if (primaryTopicHub && primaryTopicTag) {
+          // Keep original batch order when fan-outing to tag streams.
+          yield* publishWithPressureDiagnostics(PubSub.publish(primaryTopicHub, action), () => ({
+            kind: 'actionTopicHub',
+            name: 'publish',
+            details: {
+              dispatchEntry,
+              channel: 'topic',
+              topicTag: primaryTopicTag,
+              actionTag,
+              batchSize: actions.length,
+              fanoutCount,
+            },
+          }), resolvePolicy)
+        }
 
-      yield* flushCurrentBatch()
+        if (secondaryTopicHub && secondaryTopicTag) {
+          // Keep original batch order when fan-outing to tag streams.
+          yield* publishWithPressureDiagnostics(PubSub.publish(secondaryTopicHub, action), () => ({
+            kind: 'actionTopicHub',
+            name: 'publish',
+            details: {
+              dispatchEntry,
+              channel: 'topic',
+              topicTag: secondaryTopicTag,
+              actionTag,
+              batchSize: actions.length,
+              fanoutCount,
+            },
+          }), resolvePolicy)
+        }
+      }
     })
-  }
 
   return {
     registerReducer,
