@@ -14,6 +14,7 @@ describe('contracts (045): Kernel activation判定', () => {
 
       const layer = Layer.mergeAll(
         Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
+        Logix.Kernel.fullCutoverGateModeLayer('trial'),
         Logix.Kernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: '__missing__' },
         }),
@@ -47,6 +48,7 @@ describe('contracts (045): Kernel activation判定', () => {
 
       const layer = Layer.mergeAll(
         Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
+        Logix.Kernel.fullCutoverGateModeLayer('trial'),
         Logix.Kernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: 'trace' },
         }),
