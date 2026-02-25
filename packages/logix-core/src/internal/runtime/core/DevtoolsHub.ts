@@ -8,6 +8,7 @@ import {
   currentDiagnosticsLevel,
   clearRuntimeDebugEventSeq,
   toRuntimeDebugEventRef,
+  type DiagnosticsLevel,
   type Event,
   type RuntimeDebugEventRef,
   type Sink,
@@ -53,6 +54,7 @@ export interface DevtoolsSnapshot {
 
 export interface DevtoolsHubOptions {
   readonly bufferSize?: number
+  readonly diagnosticsLevel?: DiagnosticsLevel
 }
 
 export type SnapshotToken = number
@@ -141,22 +143,37 @@ type RingTrimMode = 'disabled' | 'strict' | 'burst'
 let ringTrimMode: RingTrimMode = 'burst'
 let ringTrimThreshold = bufferSize
 
-const refreshRingTrimPolicy = (): void => {
+const RING_TRIM_POLICY_EVENT_LABEL = 'trace:devtools:ring-trim-policy' as const
+const RING_TRIM_POLICY_MODULE_ID = 'devtools:hub'
+const RING_TRIM_POLICY_INSTANCE_ID = 'devtools:hub'
+const RING_TRIM_POLICY_RUNTIME_LABEL = 'DevtoolsHub'
+
+const getRingTrimPolicySnapshot = () => ({
+  mode: ringTrimMode,
+  threshold: ringTrimThreshold,
+  bufferSize,
+} as const)
+
+const refreshRingTrimPolicy = (): boolean => {
+  const prevMode = ringTrimMode
+  const prevThreshold = ringTrimThreshold
+
   if (bufferSize <= 0) {
     ringTrimMode = 'disabled'
     ringTrimThreshold = 0
-    return
+    return prevMode !== ringTrimMode || prevThreshold !== ringTrimThreshold
   }
 
   if (bufferSize <= 64) {
     ringTrimMode = 'strict'
     ringTrimThreshold = bufferSize
-    return
+    return prevMode !== ringTrimMode || prevThreshold !== ringTrimThreshold
   }
 
   ringTrimMode = 'burst'
   const slack = Math.min(1024, Math.floor(bufferSize / 2))
   ringTrimThreshold = bufferSize + Math.max(1, slack)
+  return prevMode !== ringTrimMode || prevThreshold !== ringTrimThreshold
 }
 
 refreshRingTrimPolicy()
@@ -191,6 +208,29 @@ const trimRingBufferIfNeeded = (): void => {
 
   const excess = ringBuffer.length - bufferSize
   ringBuffer.splice(0, excess)
+}
+
+const parseDiagnosticsLevel = (value: unknown): DiagnosticsLevel =>
+  value === 'off' || value === 'light' || value === 'sampled' || value === 'full' ? value : 'light'
+
+const emitRingTrimPolicyEvent = (diagnosticsLevel: DiagnosticsLevel): void => {
+  if (diagnosticsLevel === 'off') return
+  if (bufferSize <= 0) return
+
+  const ref = toRuntimeDebugEventRef(
+    {
+      type: RING_TRIM_POLICY_EVENT_LABEL,
+      moduleId: RING_TRIM_POLICY_MODULE_ID,
+      instanceId: RING_TRIM_POLICY_INSTANCE_ID,
+      runtimeLabel: RING_TRIM_POLICY_RUNTIME_LABEL,
+      data: getRingTrimPolicySnapshot(),
+    } as Event,
+    { diagnosticsLevel },
+  )
+  if (!ref) return
+
+  ringBuffer.push(ref)
+  trimRingBufferIfNeeded()
 }
 
 // Snapshot references internal structures directly (read-only convention) to avoid copy costs in hot paths.
@@ -237,7 +277,12 @@ export const configureDevtoolsHub = (options?: DevtoolsHubOptions) => {
     const nextBufferSize = next >= 0 ? next : 0
     if (nextBufferSize !== bufferSize) {
       bufferSize = nextBufferSize
-      refreshRingTrimPolicy()
+      const policyChanged = refreshRingTrimPolicy()
+      // Respect the caller's diagnostics setting when emitting hub policy metadata.
+      // If diagnosticsLevel is omitted, keep previous behavior for snapshots but skip extra policy events.
+      if (policyChanged && options?.diagnosticsLevel !== undefined) {
+        emitRingTrimPolicyEvent(parseDiagnosticsLevel(options.diagnosticsLevel))
+      }
       ensureRingBufferSize()
       markSnapshotChanged()
     }
