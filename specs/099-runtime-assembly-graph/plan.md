@@ -1,7 +1,7 @@
 # Implementation Plan: O-006 Runtime Assembly Graph
 
 **Branch**: `[099-runtime-assembly-graph]` | **Date**: 2026-02-25 | **Spec**: `specs/099-runtime-assembly-graph/spec.md`  
-**Input**: Feature specification from `/specs/099-runtime-assembly-graph/spec.md`
+**Input**: Feature specification from `specs/099-runtime-assembly-graph/spec.md`
 
 ## Summary
 
