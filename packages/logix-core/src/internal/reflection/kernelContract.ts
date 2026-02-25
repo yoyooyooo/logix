@@ -10,6 +10,7 @@ import * as Debug from '../runtime/core/DebugSink.js'
 import * as EffectOpCore from '../runtime/core/EffectOpCore.js'
 import * as KernelRef from '../runtime/core/KernelRef.js'
 import type * as RuntimeKernel from '../runtime/core/RuntimeKernel.js'
+import * as RuntimeKernelCore from '../runtime/core/RuntimeKernel.js'
 
 type AnyModuleLike = { readonly impl: ModuleImpl<any, AnyModuleShape, any> }
 
@@ -311,7 +312,15 @@ const runOnce = <Sh extends AnyModuleShape>(
       stack: [makeTraceEffectOpObserver()],
     }) as unknown as Layer.Layer<any, never, never>
 
-    const extraLayer = run?.layer ? (Layer.mergeAll(traceLayer, run.layer) as Layer.Layer<any, any, any>) : traceLayer
+    // Contract verification must always be able to inspect mixed/fallback wiring, so trial mode is explicit here.
+    const contractGateLayer = Layer.succeed(RuntimeKernelCore.FullCutoverGateModeTag, 'trial' as const) as Layer.Layer<
+      any,
+      never,
+      never
+    >
+    const extraLayer = run?.layer
+      ? (Layer.mergeAll(traceLayer, contractGateLayer, run.layer) as Layer.Layer<any, any, any>)
+      : (Layer.mergeAll(traceLayer, contractGateLayer) as Layer.Layer<any, any, any>)
 
     const result = yield* trialRun(program as any, {
       runId: run?.runId,

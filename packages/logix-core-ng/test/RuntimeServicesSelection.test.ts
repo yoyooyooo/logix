@@ -17,6 +17,7 @@ describe('core-ng: RuntimeServices selection', () => {
 
       const layer = Layer.mergeAll(
         CoreNg.coreNgKernelLayer(),
+        Logix.Kernel.fullCutoverGateModeLayer('trial'),
         Logix.Kernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: CoreNg.CORE_NG_IMPL_ID },
         }),

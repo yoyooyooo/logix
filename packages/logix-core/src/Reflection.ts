@@ -251,10 +251,14 @@ export const verifyFullCutoverGate = <Sh extends AnyModuleShape>(
       } as const
     })
 
+    const gateLayer = gateRun?.layer
+      ? (Layer.mergeAll(Kernel.fullCutoverGateModeLayer('trial'), gateRun.layer) as Layer.Layer<any, any, any>)
+      : (Kernel.fullCutoverGateModeLayer('trial') as Layer.Layer<any, any, any>)
+
     const gateResult = yield* trialRun(gateProgram, {
       runId: gateRun?.runId,
       diagnosticsLevel: options?.gateDiagnosticsLevel ?? 'off',
-      layer: gateRun?.layer,
+      layer: gateLayer,
       runtimeServicesInstanceOverrides: gateRun?.runtimeServicesInstanceOverrides,
     })
 

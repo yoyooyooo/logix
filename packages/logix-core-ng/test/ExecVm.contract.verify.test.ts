@@ -31,6 +31,7 @@ describe('core-ng: Exec VM evidence', () => {
 
         const afterLayer = Layer.mergeAll(
           CoreNg.coreNgKernelLayer(),
+          Logix.Kernel.fullCutoverGateModeLayer('trial'),
           Logix.Kernel.runtimeDefaultServicesOverridesLayer({
             txnQueue: { implId: 'trace' },
             transaction: { implId: CoreNg.CORE_NG_IMPL_ID },
@@ -94,6 +95,7 @@ describe('core-ng: Exec VM evidence', () => {
 
         const afterLayer = Layer.mergeAll(
           CoreNg.coreNgKernelLayer(),
+          Logix.Kernel.fullCutoverGateModeLayer('trial'),
           Logix.Kernel.runtimeDefaultServicesOverridesLayer({
             txnQueue: { implId: 'trace' },
             transaction: { implId: CoreNg.CORE_NG_IMPL_ID },

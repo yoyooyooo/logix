@@ -15,6 +15,7 @@ describe('core-ng: RuntimeServices fallback', () => {
 
       const layer = Layer.mergeAll(
         CoreNg.coreNgKernelLayer(),
+        Logix.Kernel.fullCutoverGateModeLayer('trial'),
         Logix.Kernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: '__missing__' },
         }),

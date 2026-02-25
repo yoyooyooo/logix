@@ -1,6 +1,6 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, Schema } from 'effect'
+import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Dual trial-run kernel ref', () => {
@@ -23,7 +23,10 @@ describe('Dual trial-run kernel ref', () => {
         runId: 'run:test:dual-trial-run-kernel-ref-core-ng',
         buildEnv: { hostKind: 'node', config: {} },
         diagnosticsLevel: 'off',
-        layer: Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
+        layer: Layer.mergeAll(
+          Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
+          Logix.Kernel.fullCutoverGateModeLayer('trial'),
+        ) as Layer.Layer<any, never, never>,
       })
 
       expect(reportCore.ok).toBe(true)
