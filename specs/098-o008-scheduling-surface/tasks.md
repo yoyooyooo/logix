@@ -81,6 +81,8 @@
 - [ ] T022 [US3] 更新中文用户文档于 `apps/docs/content/docs/guide/advanced/concurrency-control-plane.cn.md` 说明统一 scheduling surface 与迁移路径
 - [ ] T023 [US3] 更新 runtime 诊断文档于 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 对齐 backlog/degrade 事件语义
 - [ ] T024 [US3] 补齐 PR migration note（无兼容层）并同步 `specs/098-o008-scheduling-surface/quickstart.md`
+- [ ] T029 [US3] 固化 runtime 实现备忘到 `docs/ssot/runtime/logix-core/impl/README.md`（记录 scheduling surface 最终约束与易漂移细节）
+- [ ] T030 [US3] 如涉及平台侧约束，同步 `docs/specs/sdd-platform/impl/README.md`
 
 ---
 

@@ -21,7 +21,7 @@
 - `pressureWarningThreshold.backlogDurationMs: number`
 - `warningCooldownMs: number`
 - `configScope: "builtin" | "runtime_default" | "runtime_module" | "provider"`
-- `resolvedAtTxnSeq?: number`
+- `resolvedAtTxnSeq: number`
 
 **Invariant**:
 
@@ -47,9 +47,9 @@
 - `kind: "backlog" | "degrade" | "recover"`
 - `reason: "capacity" | "duration" | "budget_steps" | "cycle_detected" | "starvation_guard" | "manual_force" | "unknown"`
 - `instanceId: string`
-- `moduleId?: string`
-- `txnSeq?: number`
-- `opSeq?: number`
+- `moduleId: string`
+- `txnSeq: number`
+- `opSeq: number`
 - `configScope: SchedulingPolicySurfaceSnapshot["configScope"]`
 - `observed.backlogCount?: number`
 - `observed.saturatedDurationMs?: number`
@@ -73,6 +73,7 @@
 ## State Transition Rules
 
 - `backlog` 触发条件：达到容量阈值或持续时长阈值。
-- `degrade` 触发条件：tick 调度选择退化边界（如 microtask → macrotask）。
+- `degrade` 触发条件：tick 在本轮出现不稳定（如 `budget_steps` / `cycle_detected`），导致 backlog 或 defer。
+- `warn:microtask-starvation` 单独表达调度边界切换信号（如 microtask → macrotask），不等同于 `scheduling::degrade`。
 - `recover` 触发条件：系统回到稳态并退出 backlog/degrade。
 - `recover` 之后若再次触发 `backlog/degrade`，必须作为新事件发出，且可区分 cooldown 抑制周期。

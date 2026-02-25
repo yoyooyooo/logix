@@ -36,6 +36,7 @@
     "losslessBackpressureCapacity",
     "pressureWarningThreshold",
     "warningCooldownMs",
-    "configScope"
+    "configScope",
+    "resolvedAtTxnSeq"
   ]
 }

@@ -53,12 +53,14 @@ export interface RuntimeStoreModuleCommit {
   readonly schedulingPolicy?: {
     readonly configScope: 'builtin' | 'runtime_default' | 'runtime_module' | 'provider'
     readonly concurrencyLimit: number | 'unbounded'
+    readonly allowUnbounded: boolean
     readonly losslessBackpressureCapacity: number
     readonly pressureWarningThreshold: {
       readonly backlogCount: number
       readonly backlogDurationMs: number
     }
     readonly warningCooldownMs: number
+    readonly resolvedAtTxnSeq: number
   }
 }
 

@@ -200,6 +200,7 @@ export type Event =
       readonly kind?: string
       readonly txnSeq?: number
       readonly txnId?: string
+      readonly opSeq?: number
       readonly trigger?: TriggerRef
       readonly runtimeLabel?: string
       readonly timestamp?: number
@@ -1291,6 +1292,7 @@ export const toRuntimeDebugEventRef = (
         hint: e.hint,
         actionTag: e.actionTag,
         kind: e.kind,
+        opSeq: e.opSeq,
         trigger: e.trigger,
       }
       const metaProjection = projectJsonValue(metaInput)
