@@ -86,6 +86,40 @@ Add-ons and feature kits live in `packages/logix-form`, `packages/logix-query`, 
 - Quick start: `apps/docs/content/docs/guide/get-started/quick-start.en.md`
 - Tutorial (form): `apps/docs/content/docs/guide/get-started/tutorial-first-app.en.md`
 
+## Repository Skills
+
+- Canonical skill source lives at `skills/`.
+- Current migrated skill: `logix-best-practices` (`skills/logix-best-practices`).
+- Compatibility discovery path for Codex remains `.codex/skills/logix-best-practices` (symlink).
+
+### Install via Skillshare
+
+Official project: `https://github.com/runkids/skillshare`
+
+```bash
+# Install skillshare (choose one)
+curl -fsSL https://raw.githubusercontent.com/runkids/skillshare/main/install.sh | sh
+# or: brew install skillshare
+
+# Install this repository skill (project mode)
+skillshare install github.com/yoyooyooo/logix/skills/logix-best-practices -p
+skillshare sync
+```
+
+### Install via Vercel Skills CLI
+
+Official project: `https://github.com/vercel-labs/skills`
+
+```bash
+# Install from this repository to Codex (project scope)
+npx skills add yoyooyooo/logix --skill logix-best-practices -a codex
+
+# Global install example
+npx skills add yoyooyooo/logix --skill logix-best-practices -a codex -g
+```
+
+Tip: if you install from your fork, replace `yoyooyooo/logix` with your own repository.
+
 ## Development
 
 - Build packages (needed by some examples/tools): `pnpm build:pkg`

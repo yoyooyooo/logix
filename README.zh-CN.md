@@ -86,6 +86,40 @@ pnpm -C apps/docs dev
 - 快速上手：`apps/docs/content/docs/guide/get-started/quick-start.md`
 - 教程（表单）：`apps/docs/content/docs/guide/get-started/tutorial-first-app.md`
 
+## 仓库 Skills
+
+- 仓库级 skill 的 Canonical 目录是 `skills/`。
+- 当前已迁移 skill：`logix-best-practices`（`skills/logix-best-practices`）。
+- Codex 兼容发现路径仍保留：`.codex/skills/logix-best-practices`（软链）。
+
+### 通过 Skillshare 安装
+
+官方仓库：`https://github.com/runkids/skillshare`
+
+```bash
+# 安装 skillshare（任选其一）
+curl -fsSL https://raw.githubusercontent.com/runkids/skillshare/main/install.sh | sh
+# 或：brew install skillshare
+
+# 安装本仓库 skill（project mode）
+skillshare install github.com/yoyooyooo/logix/skills/logix-best-practices -p
+skillshare sync
+```
+
+### 通过 Vercel Skills CLI 安装
+
+官方仓库：`https://github.com/vercel-labs/skills`
+
+```bash
+# 从本仓库安装到 Codex（项目级）
+npx skills add yoyooyooo/logix --skill logix-best-practices -a codex
+
+# 全局安装示例
+npx skills add yoyooyooo/logix --skill logix-best-practices -a codex -g
+```
+
+提示：如果你从自己的 fork 安装，请把 `yoyooyooo/logix` 替换为你的仓库地址。
+
 ## 开发命令
 
 - 构建 packages（部分示例/工具依赖产物）：`pnpm build:pkg`
