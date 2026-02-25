@@ -719,6 +719,110 @@ describe('ModuleRuntime (internal)', () => {
         yield* Effect.promise(() => runtimeManager.runPromise(program as Effect.Effect<void, never, any>))
       }),
     )
+
+    it.scoped('should run direct LogicPlan through canonical setup/run pipeline', () =>
+      Effect.gen(function* () {
+        const events: Debug.Event[] = []
+
+        const sink: Debug.Sink = {
+          record: (event: Debug.Event) =>
+            Effect.sync(() => {
+              events.push(event)
+            }),
+        }
+
+        class EnvService extends Context.Tag('@tests/DirectPlanEnvService')<EnvService, { readonly label: string }>() {}
+
+        const PlanModule = Logix.Module.make('DirectPlanCanonical', {
+          state: Schema.Struct({ count: Schema.Number, label: Schema.String }),
+          actions: { inc: Schema.Void },
+        })
+
+        const logic = PlanModule.logic(($) => ({
+          setup: $.reducer(
+            'inc',
+            Logix.Module.Reducer.mutate((draft) => {
+              draft.count += 1
+            }),
+          ),
+          run: Effect.gen(function* () {
+            const svc = yield* $.use(EnvService)
+            yield* $.dispatchers.inc()
+            yield* $.state.update((prev) => ({ ...prev, label: svc.label }))
+          }),
+        }))
+
+        const layer = Layer.succeed(EnvService, { label: 'ok' } as { readonly label: string })
+
+        const program = Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(
+          Effect.provide(
+            Effect.gen(function* () {
+              const runtime = yield* ModuleRuntime.make(
+                { count: 0, label: 'init' },
+                {
+                  moduleId: 'direct-plan-canonical',
+                  logics: [logic],
+                  tag: PlanModule.tag,
+                },
+              )
+
+              yield* Effect.yieldNow()
+              yield* TestClock.adjust('10 millis')
+
+              const state = yield* runtime.getState
+              expect(state.count).toBe(1)
+              expect(state.label).toBe('ok')
+            }),
+            layer as Layer.Layer<any, never, never>,
+          ),
+        )
+
+        yield* program
+
+        const invalidPhase = events.find((e) => e.type === 'diagnostic' && e.code === 'logic::invalid_phase')
+        expect(invalidPhase).toBeUndefined()
+      }),
+    )
+
+    it.scoped('should ignore legacy single-phase return value that looks like LogicPlan', () =>
+      Effect.gen(function* () {
+        let setupExecuted = false
+        let runExecuted = false
+
+        const LegacyCompatModule = Logix.Module.make('LegacyCompatPlanReturn', {
+          state: Schema.Struct({ count: Schema.Number }),
+          actions: {},
+        })
+
+        // Intentionally do NOT mark this as LogicPlanEffect:
+        // under canonical semantics this value is treated as a plain run result and should be ignored.
+        const logic = Effect.succeed({
+          setup: Effect.sync(() => {
+            setupExecuted = true
+          }),
+          run: Effect.sync(() => {
+            runExecuted = true
+          }),
+        } as any)
+
+        const runtime = yield* ModuleRuntime.make(
+          { count: 0 },
+          {
+            moduleId: 'legacy-compat-plan-return',
+            logics: [logic],
+            tag: LegacyCompatModule.tag,
+          },
+        )
+
+        yield* Effect.yieldNow()
+        yield* TestClock.adjust('10 millis')
+
+        const state = yield* runtime.getState
+        expect(state.count).toBe(0)
+        expect(setupExecuted).toBe(false)
+        expect(runExecuted).toBe(false)
+      }),
+    )
   })
 
   describe('StateTransaction integration', () => {

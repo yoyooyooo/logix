@@ -1,4 +1,4 @@
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Option } from 'effect'
+import { Cause, Context, Deferred, Effect, Option } from 'effect'
 import type { LogicPlan, ModuleRuntime as PublicModuleRuntime } from './module.js'
 import * as Lifecycle from './Lifecycle.js'
 import * as ReducerDiagnostics from './ReducerDiagnostics.js'
@@ -154,6 +154,9 @@ export const runModuleLogics = <S, A, R>(args: {
     const isLogicPlan = (value: unknown): value is LogicPlan<any, any, any> =>
       Boolean(value && typeof value === 'object' && 'run' in (value as any) && 'setup' in (value as any))
 
+    const hasLogicPhaseError = (cause: Cause.Cause<unknown>): boolean =>
+      [...Cause.failures(cause), ...Cause.defects(cause)].some((err) => (err as any)?._tag === 'LogicPhaseError')
+
     const normalizeToPlan = (value: unknown, defaultPhaseRef?: PhaseRef): LogicPlan<any, any, any> => {
       const phaseRef = LogicPlanMarker.getPhaseRef(value) ?? defaultPhaseRef ?? createPhaseRef()
 
@@ -173,20 +176,142 @@ export const runModuleLogics = <S, A, R>(args: {
       return plan
     }
 
-    const pendingRunForks: Array<Effect.Effect<void, never, any>> = []
+    const makeNoopPlan = (phaseRef: PhaseRef): LogicPlan<any, any, any> => {
+      const plan: LogicPlan<any, any, any> = {
+        setup: Effect.void,
+        run: Effect.void,
+      }
+      LogicPlanMarker.attachPhaseRef(plan as any, phaseRef)
+      LogicPlanMarker.markSkipRun(plan as any)
+      return plan
+    }
 
-    let logicIndex = 0
-    for (const rawLogic of logics) {
-      const logicUnit = resolveLogicUnitService(rawLogic, logicIndex)
-      logicIndex += 1
+    const executeResolvedPlanImmediately = (
+      plan: LogicPlan<any, any, any>,
+      logicUnit: LogicDiagnostics.LogicUnitService,
+      defaultPhaseRef?: PhaseRef,
+    ): Effect.Effect<void, unknown, any> => {
+      const hadPhaseRef = Boolean(LogicPlanMarker.getPhaseRef(plan))
+      const phaseRef = LogicPlanMarker.getPhaseRef(plan) ?? defaultPhaseRef ?? createPhaseRef()
+      if (!hadPhaseRef) {
+        LogicPlanMarker.attachPhaseRef(plan as any, phaseRef)
+      }
 
-      if (isLogicPlan(rawLogic)) {
+      const setupPhase = withRuntimeAndLifecycle(plan.setup, phaseRef, logicUnit)
+      const runPhase = withRootEnvIfAvailable(withRuntimeAndLifecycle(plan.run, phaseRef, logicUnit))
+
+      phaseRef.current = 'setup'
+      return setupPhase.pipe(
+        Effect.catchAllCause(handleLogicFailure),
+        Effect.zipRight(
+          LogicPlanMarker.isSkipRun(plan)
+            ? Effect.void
+            : Effect.sync(() => {
+                phaseRef.current = 'run'
+              }).pipe(
+                Effect.zipRight(Effect.forkScoped(runPhase.pipe(Effect.catchAllCause(handleLogicFailure)))),
+                Effect.asVoid,
+              ),
+        ),
+      )
+    }
+
+    const resolveLogicPlanEffectToPlan = (
+      value: unknown,
+      logicUnit: LogicDiagnostics.LogicUnitService,
+      phaseRef: PhaseRef,
+      depth: number,
+    ): Effect.Effect<LogicPlan<any, any, any>, unknown, any> => {
+      if (!LogicPlanMarker.isLogicPlanEffect(value)) {
+        return Effect.succeed(normalizeToPlan(value, phaseRef))
+      }
+
+      if (depth > 8) {
+        return Effect.fail(new Error('Too many nested LogicPlanEffect resolutions (possible cyclic logic return).'))
+      }
+
+      // Nested LogicPlanEffect is resolved with default phase ("run" when phase service is absent),
+      // which keeps async-built ModuleImpl patterns compatible while still converging to canonical plan.
+      return withRuntimeAndLifecycle(value as Effect.Effect<any, any, any>, undefined, logicUnit).pipe(
+        Effect.matchCauseEffect({
+          onSuccess: (next) => resolveLogicPlanEffectToPlan(next, logicUnit, phaseRef, depth + 1),
+          onFailure: (cause) => {
+            if (hasLogicPhaseError(cause)) {
+              return handleLogicFailure(cause).pipe(Effect.as(makeNoopPlan(phaseRef)))
+            }
+            return handleLogicFailure(cause).pipe(Effect.zipRight(Effect.failCause(cause)))
+          },
+        }),
+      )
+    }
+
+    const resolveCanonicalPlan = (
+      rawLogic: Effect.Effect<any, any, R> | LogicPlan<any, R, any>,
+      logicUnit: LogicDiagnostics.LogicUnitService,
+    ): Effect.Effect<LogicPlan<any, any, any>, unknown, any> => {
+      if (!LogicPlanMarker.isLogicPlanEffect(rawLogic)) {
+        if (isLogicPlan(rawLogic)) {
+          return Effect.succeed(normalizeToPlan(rawLogic))
+        }
+
         const phaseRef = LogicPlanMarker.getPhaseRef(rawLogic) ?? createPhaseRef()
-        const setupPhase = withRuntimeAndLifecycle(rawLogic.setup, phaseRef, logicUnit)
-        const runPhase = withRuntimeAndLifecycle(rawLogic.run, phaseRef, logicUnit)
+        const runEffect = rawLogic as Effect.Effect<any, any, any>
+
+        // Single-phase logic remains canonical, but if its return value is a nested LogicPlanEffect
+        // (async-built ModuleImpl pattern), resolve and attach that plan explicitly.
+        const plan: LogicPlan<any, any, any> = {
+          setup: Effect.void,
+          run: runEffect.pipe(
+            Effect.flatMap((value) =>
+              !LogicPlanMarker.isLogicPlanEffect(value)
+                ? Effect.void
+                : resolveLogicPlanEffectToPlan(value, logicUnit, phaseRef, 0).pipe(
+                    Effect.flatMap((resolvedPlan) => executeResolvedPlanImmediately(resolvedPlan, logicUnit, phaseRef)),
+                  ),
+            ),
+          ),
+        }
+        LogicPlanMarker.attachPhaseRef(plan as any, phaseRef)
+        return Effect.succeed(plan)
+      }
+
+      // LogicPlanEffect: run once in setup phase to resolve the canonical plan.
+      const phaseRef = LogicPlanMarker.getPhaseRef(rawLogic) ?? createPhaseRef()
+      phaseRef.current = 'setup'
+
+      return withRuntimeAndLifecycle(rawLogic as Effect.Effect<any, any, any>, phaseRef, logicUnit).pipe(
+        Effect.matchCauseEffect({
+          onSuccess: (value) => resolveLogicPlanEffectToPlan(value, logicUnit, phaseRef, 0),
+          onFailure: (cause) => {
+            if (hasLogicPhaseError(cause)) {
+              return handleLogicFailure(cause).pipe(Effect.as(makeNoopPlan(phaseRef)))
+            }
+            return handleLogicFailure(cause).pipe(Effect.zipRight(Effect.failCause(cause)))
+          },
+        }),
+      )
+    }
+
+    const runCanonicalPlan = (
+      plan: LogicPlan<any, any, any>,
+      logicUnit: LogicDiagnostics.LogicUnitService,
+    ): Effect.Effect<void, unknown, any> =>
+      Effect.gen(function* () {
+        const hadPhaseRef = Boolean(LogicPlanMarker.getPhaseRef(plan))
+        const phaseRef = LogicPlanMarker.getPhaseRef(plan) ?? createPhaseRef()
+        if (!hadPhaseRef) {
+          LogicPlanMarker.attachPhaseRef(plan as any, phaseRef)
+        }
+
+        const setupPhase = withRuntimeAndLifecycle(plan.setup, phaseRef, logicUnit)
+        const runPhase = withRootEnvIfAvailable(withRuntimeAndLifecycle(plan.run, phaseRef, logicUnit))
 
         phaseRef.current = 'setup'
         yield* setupPhase.pipe(Effect.catchAllCause(handleLogicFailure))
+
+        if (LogicPlanMarker.isSkipRun(plan)) {
+          return
+        }
 
         pendingRunForks.push(
           Effect.sync(() => {
@@ -196,148 +321,17 @@ export const runModuleLogics = <S, A, R>(args: {
             Effect.asVoid,
           ),
         )
-        continue
-      }
+      })
 
-      if (LogicPlanMarker.isLogicPlanEffect(rawLogic)) {
-        // The logic is an Effect that returns a LogicPlan; run it once to resolve the plan.
-        const phaseRef = LogicPlanMarker.getPhaseRef(rawLogic) ?? createPhaseRef()
-        const makeNoopPlan = (): LogicPlan<any, any, any> =>
-          (() => {
-            const plan: LogicPlan<any, any, any> = {
-              setup: Effect.void,
-              run: Effect.void,
-            }
-            LogicPlanMarker.attachPhaseRef(plan as any, phaseRef)
-            LogicPlanMarker.markSkipRun(plan as any)
-            return plan
-          })()
+    const pendingRunForks: Array<Effect.Effect<void, never, any>> = []
 
-        phaseRef.current = 'setup'
-        const resolvedPlan = yield* withRuntimeAndLifecycle(
-          rawLogic as Effect.Effect<any, any, any>,
-          phaseRef,
-          logicUnit,
-        ).pipe(
-          Effect.matchCauseEffect({
-            onSuccess: (value) => Effect.succeed(normalizeToPlan(value, phaseRef)),
-            onFailure: (cause) => {
-              const isLogicPhaseError = [...Cause.failures(cause), ...Cause.defects(cause)].some(
-                (err) => (err as any)?._tag === 'LogicPhaseError',
-              )
+    let logicIndex = 0
+    for (const rawLogic of logics) {
+      const logicUnit = resolveLogicUnitService(rawLogic, logicIndex)
+      logicIndex += 1
 
-              if (isLogicPhaseError) {
-                // For LogicPhaseError: record diagnostics and continue with a noop plan,
-                // to avoid failing ModuleRuntime.make on runSync paths.
-                return LogicDiagnostics.emitInvalidPhaseDiagnosticIfNeeded(cause, moduleId).pipe(
-                  Effect.zipRight(handleLogicFailure(cause)),
-                  Effect.as(makeNoopPlan()),
-                )
-              }
-
-              // Other errors: treat as hard errors — emit diagnostics/errors first, then failCause so the caller can observe it.
-              return LogicDiagnostics.emitEnvServiceNotFoundDiagnosticIfNeeded(cause, moduleId).pipe(
-                Effect.zipRight(handleLogicFailure(cause)),
-                Effect.zipRight(Effect.failCause(cause)),
-              )
-            },
-          }),
-        )
-
-        const resolvedPlanHadPhaseRef = Boolean(LogicPlanMarker.getPhaseRef(resolvedPlan))
-        const planPhaseRef = LogicPlanMarker.getPhaseRef(resolvedPlan) ?? phaseRef
-        if (!resolvedPlanHadPhaseRef) {
-          LogicPlanMarker.attachPhaseRef(resolvedPlan as any, planPhaseRef)
-        }
-        const setupPhase = withRuntimeAndLifecycle(resolvedPlan.setup, planPhaseRef, logicUnit)
-        const runPhase = withRuntimeAndLifecycle(resolvedPlan.run, planPhaseRef, logicUnit)
-
-        // If this is a placeholder plan for phase diagnostics, only run setup (usually Effect.void),
-        // and do not fork run so ModuleRuntime.make remains synchronous under runSync.
-        const skipRun = LogicPlanMarker.isSkipRun(resolvedPlan)
-
-        planPhaseRef.current = 'setup'
-        yield* setupPhase.pipe(Effect.catchAllCause(handleLogicFailure))
-
-        if (!skipRun) {
-          pendingRunForks.push(
-            Effect.sync(() => {
-              planPhaseRef.current = 'run'
-            }).pipe(
-              Effect.zipRight(Effect.forkScoped(withRootEnvIfAvailable(runPhase).pipe(Effect.catchAllCause(handleLogicFailure)))),
-              Effect.asVoid,
-            ),
-          )
-        }
-        continue
-      }
-
-      // Default: single-phase Logic. Fork immediately; if it later resolves to a LogicPlan, execute setup/run.
-      const basePhaseRef = LogicPlanMarker.getPhaseRef(rawLogic)
-      const runPhase = withRuntimeAndLifecycle(rawLogic as Effect.Effect<any, any, any>, basePhaseRef, logicUnit).pipe(
-        Effect.catchAllCause(handleLogicFailure),
-      )
-
-      pendingRunForks.push(
-        Effect.gen(function* () {
-          const runFiber = yield* Effect.forkScoped(withRootEnvIfAvailable(runPhase))
-
-          yield* Effect.forkScoped(
-            Fiber.await(runFiber).pipe(
-              Effect.flatMap((exit) =>
-                Exit.match(exit, {
-                  onFailure: () => Effect.void,
-                  onSuccess: (value) => {
-                    const executePlan = (plan: LogicPlan<any, any, any>): Effect.Effect<void, unknown, any> => {
-                      const phaseRef = LogicPlanMarker.getPhaseRef(plan) ?? createPhaseRef()
-                      const setupPhase = withRuntimeAndLifecycle(plan.setup, phaseRef, logicUnit)
-                      const runPlanPhase = withRuntimeAndLifecycle(plan.run, phaseRef, logicUnit)
-
-                      phaseRef.current = 'setup'
-                      return setupPhase.pipe(
-                        Effect.catchAllCause(handleLogicFailure),
-                        Effect.zipRight(
-                          Effect.sync(() => {
-                            phaseRef.current = 'run'
-                          }).pipe(
-                            Effect.zipRight(
-                              Effect.forkScoped(
-                                withRootEnvIfAvailable(runPlanPhase).pipe(Effect.catchAllCause(handleLogicFailure)),
-                              ),
-                            ),
-                            Effect.asVoid,
-                          ),
-                        ),
-                      )
-                    }
-
-                    if (isLogicPlan(value)) {
-                      return executePlan(value)
-                    }
-
-                    if (LogicPlanMarker.isLogicPlanEffect(value)) {
-                      return withRuntimeAndLifecycle(
-                        value as Effect.Effect<any, any, any>,
-                        basePhaseRef,
-                        logicUnit,
-                      ).pipe(
-                        Effect.map((value) => normalizeToPlan(value, basePhaseRef)),
-                        Effect.matchCauseEffect({
-                          onFailure: (cause) => handleLogicFailure(cause),
-                          onSuccess: (plan) => executePlan(plan),
-                        }),
-                      )
-                    }
-
-                    return Effect.void
-                  },
-                }),
-              ),
-            ),
-          )
-        }),
-      )
-      continue
+      const canonicalPlan = yield* resolveCanonicalPlan(rawLogic, logicUnit)
+      yield* runCanonicalPlan(canonicalPlan, logicUnit)
     }
 
     // lifecycle initRequired: blocking gate (must complete before forking run fibers).
