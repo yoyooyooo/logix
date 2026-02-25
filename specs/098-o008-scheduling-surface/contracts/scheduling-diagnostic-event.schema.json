@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/schemas/098/scheduling-diagnostic-event.schema.json",
+  "title": "SchedulingDiagnosticEvent",
+  "description": "Slim and serializable scheduling diagnostic payload for backlog/degrade/recover alignment.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["backlog", "degrade", "recover"]
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "capacity",
+        "duration",
+        "budget_steps",
+        "cycle_detected",
+        "starvation_guard",
+        "manual_force",
+        "unknown"
+      ]
+    },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "moduleId": { "type": "string" },
+    "txnSeq": { "type": "integer", "minimum": 0 },
+    "opSeq": { "type": "integer", "minimum": 0 },
+    "configScope": {
+      "type": "string",
+      "enum": ["builtin", "runtime_default", "runtime_module", "provider"]
+    },
+    "observed": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backlogCount": { "type": "integer", "minimum": 0 },
+        "saturatedDurationMs": { "type": "number", "minimum": 0 },
+        "boundary": {
+          "type": "string",
+          "enum": ["microtask", "macrotask"]
+        }
+      }
+    },
+    "threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backlogCount": { "type": "integer", "minimum": 1 },
+        "backlogDurationMs": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "cooldownMs": { "type": "number", "minimum": 0 },
+    "suppressedCount": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["kind", "reason", "instanceId", "configScope"]
+}

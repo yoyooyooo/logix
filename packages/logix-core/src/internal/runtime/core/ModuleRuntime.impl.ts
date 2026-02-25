@@ -652,6 +652,14 @@ export const make = <S, A, R = never>(
 
             if (scheduler) {
               const opSeq = yield* readCurrentOpSeq()
+              const resolvedSchedulingPolicy = yield* resolveConcurrencyPolicy()
+              const schedulingPolicy = {
+                configScope: resolvedSchedulingPolicy.configScope,
+                concurrencyLimit: resolvedSchedulingPolicy.concurrencyLimit,
+                losslessBackpressureCapacity: resolvedSchedulingPolicy.losslessBackpressureCapacity,
+                pressureWarningThreshold: resolvedSchedulingPolicy.pressureWarningThreshold,
+                warningCooldownMs: resolvedSchedulingPolicy.warningCooldownMs,
+              } as const
 
               yield* scheduler.onModuleCommit({
                 moduleId,
@@ -660,6 +668,7 @@ export const make = <S, A, R = never>(
                 state,
                 meta,
                 opSeq,
+                schedulingPolicy,
               })
             }
           }),

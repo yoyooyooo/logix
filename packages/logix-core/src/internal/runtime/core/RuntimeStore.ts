@@ -50,6 +50,16 @@ export interface RuntimeStoreModuleCommit {
   readonly state: unknown
   readonly meta: StateCommitMeta
   readonly opSeq?: number
+  readonly schedulingPolicy?: {
+    readonly configScope: 'builtin' | 'runtime_default' | 'runtime_module' | 'provider'
+    readonly concurrencyLimit: number | 'unbounded'
+    readonly losslessBackpressureCapacity: number
+    readonly pressureWarningThreshold: {
+      readonly backlogCount: number
+      readonly backlogDurationMs: number
+    }
+    readonly warningCooldownMs: number
+  }
 }
 
 export interface RuntimeStorePendingDrain {
