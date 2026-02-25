@@ -30,9 +30,9 @@
 
 **Goal**: 验证顺序语义与 `txnId/txnSeq` 不回归。
 
-- [~] T007 [US2] Add or update ordering assertions in `packages/logix-core/test/internal/Runtime/**`（deferred to Phase 2: [#98](https://github.com/yoyooyooo/logix/issues/98)）
-- [~] T008 [US2] Add or update txn identity stability assertions in `packages/logix-core/test/internal/Runtime/**`（deferred to Phase 2: [#98](https://github.com/yoyooyooo/logix/issues/98)）
-- [ ] T009 [US2] Touch `packages/logix-core/src/internal/runtime/core/StateTransaction.ts` only if data handoff requires it
+- [x] T007 [US2] Add or update ordering assertions in `packages/logix-core/test/internal/Runtime/**`（deferred to Phase 2: [#98](https://github.com/yoyooyooo/logix/issues/98)）
+- [x] T008 [US2] Add or update txn identity stability assertions in `packages/logix-core/test/internal/Runtime/**`（deferred to Phase 2: [#98](https://github.com/yoyooyooo/logix/issues/98)）
+- [x] T009 [US2] Touch `packages/logix-core/src/internal/runtime/core/StateTransaction.ts` only if data handoff requires it
 
 ---
 

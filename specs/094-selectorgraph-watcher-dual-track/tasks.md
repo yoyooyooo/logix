@@ -67,7 +67,7 @@
 
 ## Phase 7: Perf Evidence Follow-up
 
-- [ ] T012 建立 `specs/094-selectorgraph-watcher-dual-track/perf/` 并补齐 before/after/diff 证据（后续阶段）
+- [x] T012 建立 `specs/094-selectorgraph-watcher-dual-track/perf/` 并补齐 before/after/diff 证据（后续阶段）
 
 ---
 

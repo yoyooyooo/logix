@@ -15,9 +15,9 @@
 
 **Purpose**: 固化 O-007 规划产物，确保实施前文档齐全
 
-- [ ] T001 Confirm `specs/097-o007-logic-semantics/spec.md` 满足 O-007 backlog 目标与验收约束
-- [ ] T002 [P] Confirm `specs/097-o007-logic-semantics/plan.md` Constitution Check 覆盖性能预算/诊断成本/IR锚点/稳定标识/迁移说明
-- [ ] T003 [P] Confirm `specs/097-o007-logic-semantics/research.md`, `data-model.md`, `quickstart.md`, `contracts/*` 完整可用
+- [x] T001 Confirm `specs/097-o007-logic-semantics/spec.md` 满足 O-007 backlog 目标与验收约束
+- [x] T002 [P] Confirm `specs/097-o007-logic-semantics/plan.md` Constitution Check 覆盖性能预算/诊断成本/IR锚点/稳定标识/迁移说明
+- [x] T003 [P] Confirm `specs/097-o007-logic-semantics/research.md`, `data-model.md`, `quickstart.md`, `contracts/*` 完整可用
 
 ---
 
@@ -27,10 +27,10 @@
 
 **⚠️ CRITICAL**: 进入用户故事前必须完成
 
-- [ ] T004 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.logics.ts` 抽取/实现 raw logic -> canonical plan 的统一 normalize 流程
-- [ ] T005 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.logics.ts` 将执行主流程收敛为单一 setup/run 管线，移除多重兼容执行分支
-- [ ] T006 [P] 视改造规模决定是否新增 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.logics.normalize.ts`（若新增，保持单向依赖）
-- [ ] T007 [P] 在 `packages/logix-core/src/internal/runtime/core/LogicDiagnostics.ts` 校对 phase 诊断提示与 canonical 语义一致
+- [x] T004 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.logics.ts` 抽取/实现 raw logic -> canonical plan 的统一 normalize 流程
+- [x] T005 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.logics.ts` 将执行主流程收敛为单一 setup/run 管线，移除多重兼容执行分支
+- [x] T006 [P] 视改造规模决定是否新增 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.logics.normalize.ts`（若新增，保持单向依赖）
+- [x] T007 [P] 在 `packages/logix-core/src/internal/runtime/core/LogicDiagnostics.ts` 校对 phase 诊断提示与 canonical 语义一致
 
 **Checkpoint**: `ModuleRuntime.logics` 仅保留 canonical 执行主路径，逻辑可编译。
 
@@ -44,13 +44,13 @@
 
 ### Tests for User Story 1（REQUIRED）
 
-- [ ] T008 [P] [US1] 在 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts` 增加单相 logic canonical 化回归用例
-- [ ] T009 [P] [US1] 在 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts` 增加 LogicPlan/plan-effect canonical 化回归用例
+- [x] T008 [P] [US1] 在 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts` 增加单相 logic canonical 化回归用例
+- [x] T009 [P] [US1] 在 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts` 增加 LogicPlan/plan-effect canonical 化回归用例
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.logics.ts` 完成 canonical plan 标准化结果接入执行主链
-- [ ] T011 [US1] 清理 O-007 目标范围内已淘汰的兼容逻辑分支与冗余注释
+- [x] T010 [US1] 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.logics.ts` 完成 canonical plan 标准化结果接入执行主链
+- [x] T011 [US1] 清理 O-007 目标范围内已淘汰的兼容逻辑分支与冗余注释
 
 **Checkpoint**: US1 回归用例全部通过。
 
@@ -64,13 +64,13 @@
 
 ### Tests for User Story 2（REQUIRED）
 
-- [ ] T012 [P] [US2] 在 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts` 增加 setup 中 run-only API 违规诊断断言
-- [ ] T013 [P] [US2] 在 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts` 增加 run 中 setup-only API 违规诊断断言
+- [x] T012 [P] [US2] 在 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts` 增加 setup 中 run-only API 违规诊断断言
+- [x] T013 [P] [US2] 在 `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts` 增加 run 中 setup-only API 违规诊断断言
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] 在 `packages/logix-core/src/internal/runtime/core/LogicDiagnostics.ts`/`ModuleRuntime.logics.ts` 对齐 `LogicPhaseError -> logic::invalid_phase` 处理链路
-- [ ] T015 [US2] 确保诊断事件保持 Slim 且可序列化，不引入新增协议分支
+- [x] T014 [US2] 在 `packages/logix-core/src/internal/runtime/core/LogicDiagnostics.ts`/`ModuleRuntime.logics.ts` 对齐 `LogicPhaseError -> logic::invalid_phase` 处理链路
+- [x] T015 [US2] 确保诊断事件保持 Slim 且可序列化，不引入新增协议分支
 
 **Checkpoint**: US2 诊断回归用例全部通过。
 
@@ -84,15 +84,15 @@
 
 ### Perf & Validation（REQUIRED）
 
-- [ ] T016 [US3] 采集 before perf：输出到 `specs/097-o007-logic-semantics/perf/before.*.json`
-- [ ] T017 [US3] 采集 after perf：输出到 `specs/097-o007-logic-semantics/perf/after.*.json`
-- [ ] T018 [US3] 生成 diff：输出到 `specs/097-o007-logic-semantics/perf/diff.*.json` 并确认 comparability=true
+- [x] T016 [US3] 采集 before perf：输出到 `specs/097-o007-logic-semantics/perf/before.*.json`
+- [x] T017 [US3] 采集 after perf：输出到 `specs/097-o007-logic-semantics/perf/after.*.json`
+- [x] T018 [US3] 生成 diff：输出到 `specs/097-o007-logic-semantics/perf/diff.*.json` 并确认 comparability=true
 
 ### Documentation for User Story 3
 
-- [ ] T019 [US3] 更新 `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.03-module-logic.md` 同步 canonical 语义
-- [ ] T020 [US3] 更新 `docs/ssot/runtime/logix-core/impl/README.07-env-and-bootstrap.md` 同步启动链路与 phase 诊断口径
-- [ ] T021 [US3] 更新 `specs/097-o007-logic-semantics/contracts/migration.md` 记录最终迁移说明
+- [x] T019 [US3] 更新 `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.03-module-logic.md` 同步 canonical 语义
+- [x] T020 [US3] 更新 `docs/ssot/runtime/logix-core/impl/README.07-env-and-bootstrap.md` 同步启动链路与 phase 诊断口径
+- [x] T021 [US3] 更新 `specs/097-o007-logic-semantics/contracts/migration.md` 记录最终迁移说明
 
 **Checkpoint**: US3 性能证据与文档同步完成。
 
@@ -102,12 +102,12 @@
 
 **Purpose**: 全量质量门、提交与 PR
 
-- [ ] T022 运行 `pnpm typecheck`
-- [ ] T023 运行 `pnpm lint`
-- [ ] T024 运行 `pnpm test:turbo`（必要时补充包级测试）
-- [ ] T025 整理变更并提交到分支 `refactor/o007-logic-semantics`
-- [ ] T026 创建 PR（base=`main`）并附 O-007 证据（测试 + perf + 文档）
-- [ ] T027 轮询 review bot，采纳合理建议后二次提交并记录采纳/不采纳清单
+- [x] T022 运行 `pnpm typecheck`
+- [x] T023 运行 `pnpm lint`
+- [x] T024 运行 `pnpm test:turbo`（必要时补充包级测试）
+- [x] T025 整理变更并提交到分支 `refactor/o007-logic-semantics`
+- [x] T026 创建 PR（base=`main`）并附 O-007 证据（测试 + perf + 文档）
+- [x] T027 轮询 review bot，采纳合理建议后二次提交并记录采纳/不采纳清单
 
 ---
 

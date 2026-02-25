@@ -9,9 +9,9 @@
 
 **Purpose**: 建立 O-009 所需的最小骨架与落点。
 
-- [ ] T001 建立 O-009 产物目录与合同文档引用一致性（`specs/099-o009-readquery-build-gate/*`）
-- [ ] T002 [P] 增补 ReadQuery 构建门禁模块骨架（`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
-- [ ] T003 [P] 增补 ReadQuery 测试文件骨架（`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`、`packages/logix-core/test/ReadQuery/ReadQuery.runtimeConsumption.test.ts`）
+- [x] T001 建立 O-009 产物目录与合同文档引用一致性（`specs/099-o009-readquery-build-gate/*`）
+- [x] T002 [P] 增补 ReadQuery 构建门禁模块骨架（`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
+- [x] T003 [P] 增补 ReadQuery 测试文件骨架（`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`、`packages/logix-core/test/ReadQuery/ReadQuery.runtimeConsumption.test.ts`）
 
 ---
 
@@ -19,11 +19,11 @@
 
 **Purpose**: 固化可复用的数据结构与契约，阻断后续实现漂移。
 
-- [ ] T004 定义构建期报告数据结构与导出类型（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`、`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
-- [ ] T005 [P] 提供 strict gate 构建期评估函数（`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
-- [ ] T006 [P] 统一 fallbackReason 与 rule 枚举口径，避免 build/runtime 双字典（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`）
-- [ ] T007 设计运行时消费上下文结构（build/runtime_jit/runtime_dynamic_fallback）并声明证据字段（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`、`packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`）
-- [ ] T008 [P] 增补基础类型回归测试（结构可序列化、枚举冻结）`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`
+- [x] T004 定义构建期报告数据结构与导出类型（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`、`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
+- [x] T005 [P] 提供 strict gate 构建期评估函数（`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
+- [x] T006 [P] 统一 fallbackReason 与 rule 枚举口径，避免 build/runtime 双字典（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`）
+- [x] T007 设计运行时消费上下文结构（build/runtime_jit/runtime_dynamic_fallback）并声明证据字段（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`、`packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`）
+- [x] T008 [P] 增补基础类型回归测试（结构可序列化、枚举冻结）`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`
 
 **Checkpoint**: Foundational 完成后再进入用户故事实现。
 
@@ -39,14 +39,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] 增加构建期 PASS/WARN/FAIL 判定测试（`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`）
-- [ ] T010 [P] [US1] 增加构建报告可序列化与稳定字段测试（`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`）
+- [x] T009 [P] [US1] 增加构建期 PASS/WARN/FAIL 判定测试（`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`）
+- [x] T010 [P] [US1] 增加构建报告可序列化与稳定字段测试（`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`）
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] 实现 selector 质量条目生成（`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
-- [ ] T012 [US1] 实现构建期 strict gate 决策并复用既有诊断细节结构（`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`、`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`）
-- [ ] T013 [US1] 在 ReadQuery 编译输出中接入构建定级元数据（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`）
+- [x] T011 [US1] 实现 selector 质量条目生成（`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
+- [x] T012 [US1] 实现构建期 strict gate 决策并复用既有诊断细节结构（`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`、`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`）
+- [x] T013 [US1] 在 ReadQuery 编译输出中接入构建定级元数据（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`）
 
 **Checkpoint**: 构建期报告链路可独立通过测试。
 
@@ -62,15 +62,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] 增加“已定级 selector 不重复 strict gate 判定”测试（`packages/logix-core/test/ReadQuery/ReadQuery.runtimeConsumption.test.ts`）
-- [ ] T015 [P] [US2] 增加“未定级 selector 显式降级 + 稳定 fallbackReason”测试（`packages/logix-core/test/ReadQuery/ReadQuery.runtimeConsumption.test.ts`）
-- [ ] T016 [P] [US2] 更新既有 strict gate 测试以覆盖新消费模式（`packages/logix-core/test/ReadQuery/ReadQuery.strictGate.test.ts`）
+- [x] T014 [P] [US2] 增加“已定级 selector 不重复 strict gate 判定”测试（`packages/logix-core/test/ReadQuery/ReadQuery.runtimeConsumption.test.ts`）
+- [x] T015 [P] [US2] 增加“未定级 selector 显式降级 + 稳定 fallbackReason”测试（`packages/logix-core/test/ReadQuery/ReadQuery.runtimeConsumption.test.ts`）
+- [x] T016 [P] [US2] 更新既有 strict gate 测试以覆盖新消费模式（`packages/logix-core/test/ReadQuery/ReadQuery.strictGate.test.ts`）
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] 改造 `changesReadQueryWithMeta`：优先消费 build-grade 结果（`packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`）
-- [ ] T018 [US2] 为未定级 selector 增加受控降级记录（`packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`、`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`）
-- [ ] T019 [US2] 精简运行时 strict gate 判定路径并保留 fail-fast 兜底（`packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`）
+- [x] T017 [US2] 改造 `changesReadQueryWithMeta`：优先消费 build-grade 结果（`packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`）
+- [x] T018 [US2] 为未定级 selector 增加受控降级记录（`packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`、`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`）
+- [x] T019 [US2] 精简运行时 strict gate 判定路径并保留 fail-fast 兜底（`packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`）
 
 **Checkpoint**: 运行时消费路径简化且行为等价。
 
@@ -86,14 +86,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T020 [P] [US3] 增加构建报告与运行时锚点字段一致性测试（`packages/logix-core/test/ReadQuery/ReadQuery.runtimeConsumption.test.ts`）
-- [ ] T021 [P] [US3] 增加诊断事件 Slim 可序列化回归测试（`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`）
+- [x] T020 [P] [US3] 增加构建报告与运行时锚点字段一致性测试（`packages/logix-core/test/ReadQuery/ReadQuery.runtimeConsumption.test.ts`）
+- [x] T021 [P] [US3] 增加诊断事件 Slim 可序列化回归测试（`packages/logix-core/test/ReadQuery/ReadQuery.buildGate.test.ts`）
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] 统一 build/runtime 诊断事件字段与代码路径（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`、`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
-- [ ] T023 [US3] 同步 runtime 中文文档与心智模型（`docs/ssot/runtime/logix-core/impl/04-watcher-performance-and-flow.01-dispatch-to-handler.md`）
-- [ ] T024 [US3] 更新迁移说明文档（`specs/099-o009-readquery-build-gate/contracts/migration.md`）
+- [x] T022 [US3] 统一 build/runtime 诊断事件字段与代码路径（`packages/logix-core/src/internal/runtime/core/ReadQuery.ts`、`packages/logix-core/src/internal/runtime/core/ReadQueryBuildGate.ts`）
+- [x] T023 [US3] 同步 runtime 中文文档与心智模型（`docs/ssot/runtime/logix-core/impl/04-watcher-performance-and-flow.01-dispatch-to-handler.md`）
+- [x] T024 [US3] 更新迁移说明文档（`specs/099-o009-readquery-build-gate/contracts/migration.md`）
 
 **Checkpoint**: 诊断链路可解释且迁移路径清晰。
 
@@ -103,12 +103,12 @@
 
 **Purpose**: 收尾、证据、质量门、PR 交付。
 
-- [ ] T025 [P] 补充 `ReadQuery.compile` 回归测试（构建门禁元数据不破坏既有行为）`packages/logix-core/test/ReadQuery/ReadQuery.compile.test.ts`
-- [ ] T026 [P] 更新 `specs/099-o009-readquery-build-gate/quickstart.md` 里的实际命令与文件名
-- [ ] T027 [P] 采集 O-009 性能证据（before/after/diff）`specs/099-o009-readquery-build-gate/perf/*`
-- [ ] T028 执行质量门：`pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`
-- [ ] T029 提交 PR 并回填 spec 任务状态与说明（`specs/099-o009-readquery-build-gate/tasks.md`、PR 描述）
-- [ ] T030 处理 review bot 建议：采纳后补充二次提交并更新迁移/证据结论
+- [x] T025 [P] 补充 `ReadQuery.compile` 回归测试（构建门禁元数据不破坏既有行为）`packages/logix-core/test/ReadQuery/ReadQuery.compile.test.ts`
+- [x] T026 [P] 更新 `specs/099-o009-readquery-build-gate/quickstart.md` 里的实际命令与文件名
+- [x] T027 [P] 采集 O-009 性能证据（before/after/diff）`specs/099-o009-readquery-build-gate/perf/*`
+- [x] T028 执行质量门：`pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`
+- [x] T029 提交 PR 并回填 spec 任务状态与说明（`specs/099-o009-readquery-build-gate/tasks.md`、PR 描述）
+- [x] T030 处理 review bot 建议：采纳后补充二次提交并更新迁移/证据结论
 
 ---
 

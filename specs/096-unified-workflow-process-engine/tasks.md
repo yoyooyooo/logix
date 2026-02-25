@@ -61,8 +61,8 @@
 
 - [x] T013 Run minimal type checks for touched scope: `pnpm --filter @logixjs/core typecheck:test`
 - [x] T014 Run minimal tests for touched scope (non-watch)
-- [ ] T015 Capture at least one reproducible perf baseline command result (`pnpm perf bench:012:process-baseline`) and record output path under `specs/096-unified-workflow-process-engine/perf/`（已执行命令但 gate fail）
-- [ ] T016 Produce implementation report including changed files, extracted kernels, test results, and unfinished items
+- [x] T015 Capture at least one reproducible perf baseline command result (`pnpm perf bench:012:process-baseline`) and record output path under `specs/096-unified-workflow-process-engine/perf/`（已执行命令但 gate fail）
+- [x] T016 Produce implementation report including changed files, extracted kernels, test results, and unfinished items
 
 ---
 
