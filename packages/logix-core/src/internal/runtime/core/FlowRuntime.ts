@@ -23,6 +23,16 @@ const getRuntimeScope = (runtime: unknown): { readonly moduleId?: string; readon
   }
 }
 
+type RuntimeReadQueryWithMetaCapability<S> = {
+  readonly changesReadQueryWithMeta: <V>(readQuery: ReadQuery.ReadQueryInput<S, V>) => Stream.Stream<{ readonly value: V }>
+}
+
+const hasChangesReadQueryWithMeta = <S>(candidate: unknown): candidate is RuntimeReadQueryWithMetaCapability<S> => {
+  if (candidate == null) return false
+  if (typeof candidate !== 'object' && typeof candidate !== 'function') return false
+  return typeof (candidate as { readonly changesReadQueryWithMeta?: unknown }).changesReadQueryWithMeta === 'function'
+}
+
 export interface Api<Sh extends ModuleShape<any, any>, R = never> {
   readonly fromAction: <T extends ActionOf<Sh>>(predicate: (a: ActionOf<Sh>) => a is T) => Stream.Stream<T>
 
@@ -226,16 +236,13 @@ export const make = <Sh extends AnyModuleShape, R = never>(
         )
       }) as any
 
-  const changesReadQueryWithMeta =
-    runtime != null
-      ? ((runtime as any).changesReadQueryWithMeta as
-          | (<V>(readQuery: ReadQuery.ReadQueryInput<StateOf<Sh>, V>) => Stream.Stream<{ readonly value: V }>)
-          | undefined)
-      : undefined
-
   const fromState = <V>(
     selectorOrQuery: ((s: StateOf<Sh>) => V) | ReadQuery.ReadQuery<StateOf<Sh>, V>,
   ): Stream.Stream<V> => {
+    const changesReadQueryWithMeta = hasChangesReadQueryWithMeta<StateOf<Sh>>(runtime)
+      ? runtime.changesReadQueryWithMeta
+      : undefined
+
     if (ReadQuery.isReadQuery(selectorOrQuery)) {
       if (typeof changesReadQueryWithMeta === 'function') {
         return changesReadQueryWithMeta(selectorOrQuery).pipe(Stream.map((evt) => evt.value))
@@ -243,8 +250,12 @@ export const make = <Sh extends AnyModuleShape, R = never>(
       return runtime.changes(selectorOrQuery.select)
     }
 
+    if (typeof changesReadQueryWithMeta !== 'function') {
+      return runtime.changes(selectorOrQuery)
+    }
+
     const compiled = ReadQuery.compile(selectorOrQuery)
-    if (compiled.lane === 'static' && typeof changesReadQueryWithMeta === 'function') {
+    if (compiled.lane === 'static') {
       return changesReadQueryWithMeta(compiled).pipe(Stream.map((evt) => evt.value))
     }
 
