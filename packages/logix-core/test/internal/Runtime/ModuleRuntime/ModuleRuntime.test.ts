@@ -1150,6 +1150,80 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
+    it.scoped('state:update diagnostics should keep dirtySet metadata anchors when rootIds are truncated', () =>
+      Effect.gen(function* () {
+        const ring = Debug.makeRingBufferSink(32)
+
+        const DirtySetMetaModule = Logix.Module.make('TxnDirtySetMetaModule', {
+          state: Schema.Struct({
+            a: Schema.Number,
+            b: Schema.Number,
+            c: Schema.Number,
+            d: Schema.Number,
+          }),
+          actions: { bumpAll: Schema.Void },
+        })
+
+        const program = Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
+          Effect.locally(Debug.internal.currentDiagnosticsLevel as any, 'light')(
+            Effect.scoped(
+              ModuleRuntime.make(
+                { a: 0, b: 0, c: 0, d: 0 },
+                {
+                  moduleId: 'TxnDirtySetMetaModule',
+                  tag: DirtySetMetaModule.tag,
+                  reducers: {
+                    bumpAll: Logix.Module.Reducer.mutate((draft) => {
+                      draft.a += 1
+                      draft.b += 1
+                      draft.c += 1
+                      draft.d += 1
+                    }),
+                  },
+                },
+              ).pipe(
+                Effect.flatMap((runtime) =>
+                  Effect.gen(function* () {
+                    yield* runtime.dispatch({ _tag: 'bumpAll', payload: undefined } as any)
+
+                    const committedStateUpdates = ring.getSnapshot().filter(
+                      (event) =>
+                        event.type === 'state:update' &&
+                        event.moduleId === 'TxnDirtySetMetaModule' &&
+                        (event as any).txnId != null,
+                    ) as any[]
+
+                    expect(committedStateUpdates).toHaveLength(1)
+
+                    const stateUpdate = committedStateUpdates[0]
+                    const dirtySet = stateUpdate?.dirtySet as any
+
+                    expect(dirtySet).toMatchObject({
+                      dirtyAll: false,
+                      rootCount: 4,
+                      keySize: 4,
+                      rootIdsTruncated: true,
+                    })
+                    expect(Array.isArray(dirtySet?.rootIds)).toBe(true)
+                    expect(dirtySet.rootIds).toHaveLength(3)
+                    expect(dirtySet.rootIds.every((id: unknown) => typeof id === 'number' && Number.isFinite(id))).toBe(
+                      true,
+                    )
+                    expect(typeof dirtySet.keyHash).toBe('number')
+                    expect(stateUpdate?.patchCount).toBe(4)
+                    expect(stateUpdate?.patchesTruncated).toBe(false)
+                    expect(stateUpdate?.patchesTruncatedReason).toBeUndefined()
+                  }),
+                ),
+              ),
+            ),
+          ),
+        )
+
+        yield* program
+      }),
+    )
+
     it.scoped('should serialize concurrent dispatch calls per runtime instance', () =>
       Effect.gen(function* () {
         const ring = Debug.makeRingBufferSink(32)
