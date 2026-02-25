@@ -141,6 +141,114 @@ describe('DevtoolsHub (core)', () => {
     }),
   )
 
+  it.effect('getDevtoolsSnapshotByRuntimeLabel should isolate runtime buckets', () =>
+    Effect.gen(function* () {
+      Logix.Debug.clearDevtoolsEvents()
+
+      const layer = Logix.Debug.devtoolsHubLayer({
+        bufferSize: 20,
+        diagnosticsLevel: 'full',
+      }) as Layer.Layer<any, never, never>
+
+      yield* Logix.Debug.record({
+        type: 'module:init',
+        moduleId: 'A',
+        instanceId: 'i-r1',
+        runtimeLabel: 'R1',
+      } as any).pipe(Effect.provide(layer))
+
+      yield* Logix.Debug.record({
+        type: 'state:update',
+        moduleId: 'A',
+        instanceId: 'i-r1',
+        runtimeLabel: 'R1',
+        txnSeq: 1,
+        state: { count: 1 },
+      } as any).pipe(Effect.provide(layer))
+
+      yield* Logix.Debug.record({
+        type: 'module:init',
+        moduleId: 'A',
+        instanceId: 'i-r2',
+        runtimeLabel: 'R2',
+      } as any).pipe(Effect.provide(layer))
+
+      yield* Logix.Debug.record({
+        type: 'state:update',
+        moduleId: 'A',
+        instanceId: 'i-r2',
+        runtimeLabel: 'R2',
+        txnSeq: 1,
+        state: { count: 2 },
+      } as any).pipe(Effect.provide(layer))
+
+      const r1 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R1')
+      const r2 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R2')
+
+      expect(r1.events.length).toBeGreaterThan(0)
+      expect(r2.events.length).toBeGreaterThan(0)
+      expect(r1.events.every((event) => event.runtimeLabel === 'R1')).toBe(true)
+      expect(r2.events.every((event) => event.runtimeLabel === 'R2')).toBe(true)
+      expect(r1.latestStates.get('R1::A::i-r1')).toEqual({ count: 1 })
+      expect(r2.latestStates.get('R2::A::i-r2')).toEqual({ count: 2 })
+      expect(r1.latestStates.has('R2::A::i-r2')).toBe(false)
+      expect(r2.latestStates.has('R1::A::i-r1')).toBe(false)
+      expect(Array.from(r1.instances.keys()).every((key) => key.startsWith('R1::'))).toBe(true)
+      expect(Array.from(r2.instances.keys()).every((key) => key.startsWith('R2::'))).toBe(true)
+    }),
+  )
+
+  it.effect('clearDevtoolsEvents(runtimeLabel) should clear only target runtime bucket', () =>
+    Effect.gen(function* () {
+      Logix.Debug.clearDevtoolsEvents()
+
+      const layer = Logix.Debug.devtoolsHubLayer({
+        bufferSize: 20,
+        diagnosticsLevel: 'full',
+      }) as Layer.Layer<any, never, never>
+
+      yield* Logix.Debug.record({
+        type: 'action:dispatch',
+        moduleId: 'A',
+        instanceId: 'i-r1',
+        runtimeLabel: 'R1',
+        txnSeq: 1,
+        txnId: 'i-r1::t1',
+        action: { _tag: 'HugeAction', payload: 'x'.repeat(20_000) },
+      } as any).pipe(Effect.provide(layer))
+
+      yield* Logix.Debug.record({
+        type: 'action:dispatch',
+        moduleId: 'A',
+        instanceId: 'i-r2',
+        runtimeLabel: 'R2',
+        txnSeq: 1,
+        txnId: 'i-r2::t1',
+        action: { _tag: 'HugeAction', payload: 'y'.repeat(20_000) },
+      } as any).pipe(Effect.provide(layer))
+
+      const beforeR1 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R1')
+      const beforeR2 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R2')
+      expect(beforeR1.events.length).toBeGreaterThan(0)
+      expect(beforeR2.events.length).toBeGreaterThan(0)
+      expect(beforeR1.exportBudget.oversized).toBeGreaterThan(0)
+      expect(beforeR2.exportBudget.oversized).toBeGreaterThan(0)
+
+      Logix.Debug.clearDevtoolsEvents('R1')
+
+      const afterR1 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R1')
+      const afterR2 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R2')
+      expect(afterR1.events.length).toBe(0)
+      expect(afterR1.exportBudget.oversized).toBe(0)
+      expect(afterR2.events.length).toBeGreaterThan(0)
+      expect(afterR2.exportBudget.oversized).toBeGreaterThan(0)
+
+      const globalSnapshot = Logix.Debug.getDevtoolsSnapshot()
+      expect(globalSnapshot.events.some((event) => event.runtimeLabel === 'R1')).toBe(false)
+      expect(globalSnapshot.events.some((event) => event.runtimeLabel === 'R2')).toBe(true)
+    }),
+  )
+
   it.effect('clearDevtoolsEvents should only clear hub ring buffer', () =>
     Effect.gen(function* () {
       Logix.Debug.clearDevtoolsEvents()
@@ -161,6 +269,8 @@ describe('DevtoolsHub (core)', () => {
 
       expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBe(0)
       expect(Logix.Debug.getDevtoolsSnapshot().exportBudget.dropped).toBe(0)
+      expect(Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R').events.length).toBe(0)
+      expect(Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R').exportBudget.dropped).toBe(0)
     }),
   )
 

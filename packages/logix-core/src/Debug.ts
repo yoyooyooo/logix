@@ -37,6 +37,7 @@ export interface DevtoolsHubOptions extends DevtoolsHub.DevtoolsHubOptions {
 }
 
 export const getDevtoolsSnapshot = DevtoolsHub.getDevtoolsSnapshot
+export const getDevtoolsSnapshotByRuntimeLabel = DevtoolsHub.getDevtoolsSnapshotByRuntimeLabel
 export const getDevtoolsSnapshotToken = DevtoolsHub.getDevtoolsSnapshotToken
 export const subscribeDevtoolsSnapshot = DevtoolsHub.subscribeDevtoolsSnapshot
 export const clearDevtoolsEvents = DevtoolsHub.clearDevtoolsEvents
