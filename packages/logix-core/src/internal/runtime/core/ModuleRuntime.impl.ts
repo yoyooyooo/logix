@@ -1307,11 +1307,12 @@ export const make = <S, A, R = never>(
                 yield* Effect.die(buildGradeDecision.error)
               }
 
-              if (ReadQuery.shouldEvaluateStrictGateAtRuntime(compiled)) {
+              const runtimeCompiled = ReadQuery.markRuntimeMissingBuildGrade(compiled)
+
+              if (ReadQuery.shouldEvaluateStrictGateAtRuntime(runtimeCompiled)) {
                 const strictGateOpt = yield* Effect.serviceOption(ReadQueryStrictGateConfigTag)
 
                 if (Option.isSome(strictGateOpt)) {
-                  const runtimeCompiled = ReadQuery.markRuntimeMissingBuildGrade(compiled)
                   const decision = ReadQuery.evaluateStrictGate({
                     config: strictGateOpt.value,
                     moduleId,
@@ -1330,7 +1331,7 @@ export const make = <S, A, R = never>(
               }
 
               return Stream.map(fromCommitHub, ({ value, meta }) => ({
-                value: compiled.select(value),
+                value: runtimeCompiled.select(value),
                 meta,
               }))
             }),
