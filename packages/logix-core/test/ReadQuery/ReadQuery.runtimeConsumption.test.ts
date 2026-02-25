@@ -111,6 +111,7 @@ describe('ReadQuery.runtimeConsumption', () => {
     const marked = Logix.ReadQuery.markRuntimeMissingBuildGrade(compiled)
 
     expect(marked.quality?.source).toBe('runtime_dynamic_fallback')
-    expect(marked.quality?.strictGate?.fallbackReason).toBe('missingBuildGrade')
+    expect(marked.quality?.missingBuildGrade).toBe(true)
+    expect(marked.quality?.strictGate).toBeUndefined()
   })
 })

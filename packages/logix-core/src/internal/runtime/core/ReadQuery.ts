@@ -28,6 +28,7 @@ export interface ReadQueryQualityMeta {
   readonly source: ReadQueryQualitySource
   readonly strictGate?: ReadQueryStrictGateGrade
   readonly reportId?: string
+  readonly missingBuildGrade?: boolean
 }
 
 export interface ReadsDigest {
@@ -97,15 +98,12 @@ export const shouldEvaluateStrictGateAtRuntime = (compiled: ReadQueryCompiled<an
 
 export const markRuntimeMissingBuildGrade = <S, V>(compiled: ReadQueryCompiled<S, V>): ReadQueryCompiled<S, V> => {
   if (compiled.lane !== 'dynamic' || hasBuildQualityGrade(compiled)) return compiled
+  if (compiled.quality?.missingBuildGrade === true) return compiled
   return {
     ...compiled,
     quality: {
-      source: 'runtime_dynamic_fallback',
-      strictGate: {
-        evaluatedAt: 'runtime',
-        verdict: 'PASS',
-        fallbackReason: 'missingBuildGrade',
-      },
+      ...(compiled.quality ?? { source: 'runtime_dynamic_fallback' }),
+      missingBuildGrade: true,
     },
   }
 }
