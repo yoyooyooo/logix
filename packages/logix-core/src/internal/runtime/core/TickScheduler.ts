@@ -186,6 +186,24 @@ const toSchedulingAnchor = (commit: RuntimeStoreModuleCommit | undefined): Sched
   }
 }
 
+const toSchedulingResolvedTxnSeq = (commit: RuntimeStoreModuleCommit): number =>
+  commit.schedulingPolicy?.resolvedAtTxnSeq ?? commit.meta.txnSeq
+
+const toSchedulingResolvedOpSeq = (commit: RuntimeStoreModuleCommit): number =>
+  typeof commit.opSeq === 'number' && Number.isFinite(commit.opSeq) ? commit.opSeq : -1
+
+const pickNewerSchedulingCommit = (
+  current: RuntimeStoreModuleCommit | undefined,
+  candidate: RuntimeStoreModuleCommit,
+): RuntimeStoreModuleCommit => {
+  if (!current) return candidate
+  const currentTxnSeq = toSchedulingResolvedTxnSeq(current)
+  const candidateTxnSeq = toSchedulingResolvedTxnSeq(candidate)
+  if (candidateTxnSeq > currentTxnSeq) return candidate
+  if (candidateTxnSeq < currentTxnSeq) return current
+  return toSchedulingResolvedOpSeq(candidate) > toSchedulingResolvedOpSeq(current) ? candidate : current
+}
+
 const clampSampleRate = (sampleRate: number | undefined): number => {
   if (typeof sampleRate !== 'number' || !Number.isFinite(sampleRate)) return 0
   if (sampleRate <= 0) return 0
@@ -356,8 +374,6 @@ export const makeTickScheduler = (args: {
   let microtaskChainDepth = 0
   let nextForcedReason: TickScheduleReason | undefined
   let lastSchedulingDegrade: SchedulingDegradeState | undefined
-  let lastSchedulingAnchor: SchedulingAnchor | undefined
-  let lastSchedulingPolicy: RuntimeStoreModuleCommit['schedulingPolicy']
 
   let coalescedModules = 0
   let coalescedTopics = 0
@@ -549,27 +565,20 @@ export const makeTickScheduler = (args: {
     captured.deferred = deferredDrain
 
     const anchorCommitForScheduling = (() => {
+      let selected: RuntimeStoreModuleCommit | undefined
       for (const commit of acceptedModules.values()) {
-        return commit
+        selected = pickNewerSchedulingCommit(selected, commit)
       }
       if (deferredDrain) {
         for (const commit of deferredDrain.modules.values()) {
-          return commit
+          selected = pickNewerSchedulingCommit(selected, commit)
         }
       }
-      return undefined
+      return selected
     })()
 
-    const schedulingAnchorCandidate = toSchedulingAnchor(anchorCommitForScheduling)
-    if (schedulingAnchorCandidate) {
-      lastSchedulingAnchor = schedulingAnchorCandidate
-    }
-    const schedulingAnchor = schedulingAnchorCandidate ?? lastSchedulingAnchor
-
-    if (anchorCommitForScheduling?.schedulingPolicy) {
-      lastSchedulingPolicy = anchorCommitForScheduling.schedulingPolicy
-    }
-    const schedulingPolicy = anchorCommitForScheduling?.schedulingPolicy ?? lastSchedulingPolicy
+    const schedulingAnchor = toSchedulingAnchor(anchorCommitForScheduling)
+    const schedulingPolicy = anchorCommitForScheduling?.schedulingPolicy
     const schedulingConfigScope = schedulingPolicy?.configScope ?? 'builtin'
     const schedulingLimit = schedulingPolicy?.concurrencyLimit ?? 16
     const schedulingThreshold = schedulingPolicy?.pressureWarningThreshold ?? {
