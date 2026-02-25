@@ -242,6 +242,40 @@ const runBoundary = <A, E, R>(args: {
     return yield* EffectOp.run(op, stack)
   }) as unknown as Effect.Effect<A, E, R>
 
+type WorkflowBoundaryMeta = NonNullable<EffectOp.EffectOp['meta']>
+type WorkflowBoundaryLocalMeta = Omit<WorkflowBoundaryMeta, 'moduleId' | 'instanceId' | 'programId'>
+
+const makeWorkflowBoundaryRunner = (args: {
+  readonly runtime: PublicModuleRuntime<unknown, unknown>
+  readonly programId: string
+  readonly middleware: EffectOpCore.EffectOpMiddlewareEnv | undefined
+}) => {
+  const baseMeta = {
+    moduleId: args.runtime.moduleId,
+    instanceId: args.runtime.instanceId,
+    programId: args.programId,
+  } satisfies Pick<WorkflowBoundaryMeta, 'moduleId' | 'instanceId' | 'programId'>
+
+  return <A, E, R>(boundary: {
+    readonly kind: EffectOp.EffectOp['kind']
+    readonly name: string
+    readonly effect: Effect.Effect<A, E, R>
+    readonly payload?: unknown
+    readonly meta?: WorkflowBoundaryLocalMeta
+  }): Effect.Effect<A, E, R> =>
+    runBoundary({
+      kind: boundary.kind,
+      name: boundary.name,
+      effect: boundary.effect,
+      payload: boundary.payload,
+      meta: {
+        ...baseMeta,
+        ...(boundary.meta ?? null),
+      },
+      middleware: args.middleware,
+    })
+}
+
 const makeTimer = (args: {
   readonly host: {
     readonly scheduleMicrotask: (cb: () => void) => void
@@ -360,6 +394,11 @@ const startProgramRun = (args: {
   Effect.gen(function* () {
     const { entry, runtime, registry } = args
     const { program, state } = entry
+    const runWorkflowBoundary = makeWorkflowBoundaryRunner({
+      runtime,
+      programId: program.programId,
+      middleware: args.middleware,
+    })
 
     const diagnostics = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
 
@@ -390,20 +429,16 @@ const startProgramRun = (args: {
         if (diagnostics !== 'off') {
           const observe = shouldObserveForRun(diagnostics, state.runSeq)
           const tickSeq = observe ? (yield* TickSchedulerTag).getTickSeq() : undefined
-          yield* runBoundary({
+          yield* runWorkflowBoundary({
             kind: 'flow',
             name: 'workflow.drop',
             payload: { programId: program.programId, trigger: args.trigger },
             meta: {
-              moduleId: runtime.moduleId,
-              instanceId: runtime.instanceId,
-              programId: program.programId,
               ...(tickSeq !== undefined ? { tickSeq } : null),
               policy: { disableObservers: !observe },
               reason: 'exhaust' as const,
             },
             effect: Effect.void,
-            middleware: args.middleware,
           })
         }
         return
@@ -421,14 +456,11 @@ const startProgramRun = (args: {
         if (diagnostics !== 'off') {
           const observe = shouldObserveForRun(diagnostics, runSeq)
           const tickSeq = observe ? (yield* TickSchedulerTag).getTickSeq() : undefined
-          yield* runBoundary({
+          yield* runWorkflowBoundary({
             kind: 'flow',
             name: 'workflow.cancel',
             payload: { programId: program.programId, cancelled: prevRunId, by: runId },
             meta: {
-              moduleId: runtime.moduleId,
-              instanceId: runtime.instanceId,
-              programId: program.programId,
               ...(tickSeq !== undefined ? { tickSeq } : null),
               policy: { disableObservers: !observe },
               reason: 'latest' as const,
@@ -436,7 +468,6 @@ const startProgramRun = (args: {
               cancelledRunId: prevRunId,
             },
             effect: Effect.void,
-            middleware: args.middleware,
           })
         }
       }
@@ -496,21 +527,17 @@ const startProgramRun = (args: {
                   )(dispatchEffectBase)
                 : dispatchEffectBase
 
-              yield* runBoundary({
+              yield* runWorkflowBoundary({
                 kind: 'flow',
                 name: 'workflow.dispatch',
                 payload: { actionTag: step.actionTag },
                 meta: {
-                  moduleId: runtime.moduleId,
-                  instanceId: runtime.instanceId,
-                  programId: program.programId,
                   runId,
                   stepKey: step.key,
                   ...(tickSeq !== undefined ? { tickSeq } : null),
                   policy,
                 },
                 effect: dispatchEffect,
-                middleware: args.middleware,
               }).pipe(Effect.asVoid)
               continue
             }
@@ -521,14 +548,11 @@ const startProgramRun = (args: {
               const recordTimerEvent = (name: string, patchMeta?: Record<string, unknown>) =>
                 Effect.gen(function* () {
                   const tickSeq = getTickSeq()
-                  yield* runBoundary({
+                  yield* runWorkflowBoundary({
                     kind: 'flow',
                     name,
                     payload: { ms: step.ms },
                     meta: {
-                      moduleId: runtime.moduleId,
-                      instanceId: runtime.instanceId,
-                      programId: program.programId,
                       runId,
                       stepKey: step.key,
                       ...(timerId ? { timerId } : null),
@@ -537,7 +561,6 @@ const startProgramRun = (args: {
                       ...(patchMeta ?? null),
                     },
                     effect: Effect.void,
-                    middleware: args.middleware,
                   })
                 })
 
@@ -552,14 +575,11 @@ const startProgramRun = (args: {
 
               const tickSeq = getTickSeq()
 
-              yield* runBoundary({
+              yield* runWorkflowBoundary({
                 kind: 'flow',
                 name: 'workflow.delay',
                 payload: { ms: step.ms },
                 meta: {
-                  moduleId: runtime.moduleId,
-                  instanceId: runtime.instanceId,
-                  programId: program.programId,
                   runId,
                   stepKey: step.key,
                   ...(tickSeq !== undefined ? { tickSeq } : null),
@@ -567,7 +587,6 @@ const startProgramRun = (args: {
                   policy,
                 },
                 effect: delayEffect,
-                middleware: args.middleware,
               }).pipe(Effect.asVoid)
 
               timerTriggered = true
@@ -582,14 +601,11 @@ const startProgramRun = (args: {
             for (let attempt = 1; attempt <= maxRetries + 1; attempt += 1) {
               const tickSeq = getTickSeq()
 
-              const base = runBoundary({
+              const base = runWorkflowBoundary({
                 kind: 'service',
                 name: `workflow.call:${step.serviceId}`,
                 payload: { serviceId: step.serviceId },
                 meta: {
-                  moduleId: runtime.moduleId,
-                  instanceId: runtime.instanceId,
-                  programId: program.programId,
                   runId,
                   stepKey: step.key,
                   serviceId: step.serviceId,
@@ -598,7 +614,6 @@ const startProgramRun = (args: {
                   policy,
                 },
                 effect: step.port(input),
-                middleware: args.middleware,
               })
 
               const withTimeout =
@@ -617,14 +632,11 @@ const startProgramRun = (args: {
                       const recordTimeoutEvent = (name: string, patchMeta?: Record<string, unknown>) =>
                         Effect.gen(function* () {
                           const tickSeq = getTickSeq()
-                          yield* runBoundary({
+                          yield* runWorkflowBoundary({
                             kind: 'flow',
                             name,
                             payload: { ms: timeoutMs },
                             meta: {
-                              moduleId: runtime.moduleId,
-                              instanceId: runtime.instanceId,
-                              programId: program.programId,
                               runId,
                               stepKey: step.key,
                               attempt,
@@ -634,7 +646,6 @@ const startProgramRun = (args: {
                               ...(patchMeta ?? null),
                             },
                             effect: Effect.void,
-                            middleware: args.middleware,
                           })
                         })
 
@@ -704,20 +715,16 @@ const startProgramRun = (args: {
         })
 
       const runTickSeq = getTickSeq()
-      yield* runBoundary({
+      yield* runWorkflowBoundary({
         kind: 'flow',
         name: 'workflow.run',
         payload: { trigger: args.trigger },
         meta: {
-          moduleId: runtime.moduleId,
-          instanceId: runtime.instanceId,
-          programId: program.programId,
           runId,
           ...(runTickSeq !== undefined ? { tickSeq: runTickSeq } : null),
           policy,
         },
         effect: runSteps(program.steps!),
-        middleware: args.middleware,
       }).pipe(Effect.asVoid)
     })
 
