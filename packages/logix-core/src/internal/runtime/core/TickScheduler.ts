@@ -156,14 +156,34 @@ type TickSchedule = {
 type SchedulingDegradeState = {
   readonly tickSeq: number
   readonly reason: TickDegradeReason
-  readonly moduleId?: string
-  readonly instanceId?: string
-  readonly txnSeq?: number
-  readonly txnId?: string
-  readonly opSeq?: number
+  readonly moduleId: string
+  readonly instanceId: string
+  readonly txnSeq: number
+  readonly txnId: string
+  readonly opSeq: number
   readonly configScope: 'builtin' | 'runtime_default' | 'runtime_module' | 'provider'
   readonly limit: number | 'unbounded'
   readonly backlogCount: number
+}
+
+type SchedulingAnchor = {
+  readonly moduleId: string
+  readonly instanceId: string
+  readonly txnSeq: number
+  readonly txnId: string
+  readonly opSeq: number
+}
+
+const toSchedulingAnchor = (commit: RuntimeStoreModuleCommit | undefined): SchedulingAnchor | undefined => {
+  if (!commit) return undefined
+  if (typeof commit.opSeq !== 'number') return undefined
+  return {
+    moduleId: commit.moduleId,
+    instanceId: commit.instanceId,
+    txnSeq: commit.meta.txnSeq,
+    txnId: commit.meta.txnId,
+    opSeq: commit.opSeq,
+  }
 }
 
 const clampSampleRate = (sampleRate: number | undefined): number => {
@@ -336,6 +356,8 @@ export const makeTickScheduler = (args: {
   let microtaskChainDepth = 0
   let nextForcedReason: TickScheduleReason | undefined
   let lastSchedulingDegrade: SchedulingDegradeState | undefined
+  let lastSchedulingAnchor: SchedulingAnchor | undefined
+  let lastSchedulingPolicy: RuntimeStoreModuleCommit['schedulingPolicy']
 
   let coalescedModules = 0
   let coalescedTopics = 0
@@ -538,7 +560,16 @@ export const makeTickScheduler = (args: {
       return undefined
     })()
 
-    const schedulingPolicy = anchorCommitForScheduling?.schedulingPolicy
+    const schedulingAnchorCandidate = toSchedulingAnchor(anchorCommitForScheduling)
+    if (schedulingAnchorCandidate) {
+      lastSchedulingAnchor = schedulingAnchorCandidate
+    }
+    const schedulingAnchor = schedulingAnchorCandidate ?? lastSchedulingAnchor
+
+    if (anchorCommitForScheduling?.schedulingPolicy) {
+      lastSchedulingPolicy = anchorCommitForScheduling.schedulingPolicy
+    }
+    const schedulingPolicy = anchorCommitForScheduling?.schedulingPolicy ?? lastSchedulingPolicy
     const schedulingConfigScope = schedulingPolicy?.configScope ?? 'builtin'
     const schedulingLimit = schedulingPolicy?.concurrencyLimit ?? 16
     const schedulingThreshold = schedulingPolicy?.pressureWarningThreshold ?? {
@@ -548,14 +579,15 @@ export const makeTickScheduler = (args: {
     const schedulingCooldownMs = schedulingPolicy?.warningCooldownMs ?? 30_000
     const backlogCount = deferredDrain ? deferredDrain.modules.size + deferredDrain.dirtyTopics.size : 0
 
-    if (shouldEmitSchedulingDiagnostics && !captured.stable) {
+    if (!captured.stable && shouldEmitSchedulingDiagnostics && schedulingAnchor && !lastSchedulingDegrade) {
       const reason = captured.degradeReason ?? 'unknown'
       yield* Debug.record({
         type: 'diagnostic',
-        moduleId: anchorCommitForScheduling?.moduleId,
-        instanceId: anchorCommitForScheduling?.instanceId,
-        txnSeq: anchorCommitForScheduling?.meta.txnSeq,
-        txnId: anchorCommitForScheduling?.meta.txnId,
+        moduleId: schedulingAnchor.moduleId,
+        instanceId: schedulingAnchor.instanceId,
+        txnSeq: schedulingAnchor.txnSeq,
+        txnId: schedulingAnchor.txnId,
+        opSeq: schedulingAnchor.opSeq,
         code: 'scheduling::degrade',
         severity: 'warning',
         message: 'Scheduling degraded: tick execution deferred part of the backlog.',
@@ -587,48 +619,52 @@ export const makeTickScheduler = (args: {
       lastSchedulingDegrade = {
         tickSeq: currentTickSeq,
         reason,
-        moduleId: anchorCommitForScheduling?.moduleId,
-        instanceId: anchorCommitForScheduling?.instanceId,
-        txnSeq: anchorCommitForScheduling?.meta.txnSeq,
-        txnId: anchorCommitForScheduling?.meta.txnId,
-        opSeq: anchorCommitForScheduling?.opSeq,
+        moduleId: schedulingAnchor.moduleId,
+        instanceId: schedulingAnchor.instanceId,
+        txnSeq: schedulingAnchor.txnSeq,
+        txnId: schedulingAnchor.txnId,
+        opSeq: schedulingAnchor.opSeq,
         configScope: schedulingConfigScope,
         limit: schedulingLimit,
         backlogCount,
       }
-    } else if (shouldEmitSchedulingDiagnostics && captured.stable && lastSchedulingDegrade) {
+    } else if (captured.stable && lastSchedulingDegrade) {
       const previous = lastSchedulingDegrade
-      yield* Debug.record({
-        type: 'diagnostic',
-        moduleId: anchorCommitForScheduling?.moduleId ?? previous.moduleId,
-        instanceId: anchorCommitForScheduling?.instanceId ?? previous.instanceId,
-        txnSeq: anchorCommitForScheduling?.meta.txnSeq ?? previous.txnSeq,
-        txnId: anchorCommitForScheduling?.meta.txnId ?? previous.txnId,
-        code: 'scheduling::recover',
-        severity: 'info',
-        message: 'Scheduling recovered: backlog/degrade condition cleared.',
-        hint: 'No immediate action needed unless degrade/recover oscillates frequently.',
-        kind: 'scheduling:recover',
-        trigger: {
-          kind: 'tickScheduler',
-          name: 'flushTick',
-          details: {
-            eventKind: 'recover',
-            tickSeq: currentTickSeq,
-            fromTickSeq: previous.tickSeq,
-            fromReason: previous.reason,
-            previousBacklogCount: previous.backlogCount,
-            configScope: previous.configScope,
-            limit: previous.limit,
-            schedule: {
-              startedAs: schedule.startedAs ?? 'unknown',
-              forcedMacrotask: schedule.forcedMacrotask === true,
-              reason: schedule.reason ?? 'unknown',
-              microtaskChainDepth: schedule.microtaskChainDepth ?? 0,
+      if (shouldEmitSchedulingDiagnostics) {
+        const recoverAnchor = schedulingAnchor ?? previous
+        yield* Debug.record({
+          type: 'diagnostic',
+          moduleId: recoverAnchor.moduleId,
+          instanceId: recoverAnchor.instanceId,
+          txnSeq: recoverAnchor.txnSeq,
+          txnId: recoverAnchor.txnId,
+          opSeq: recoverAnchor.opSeq,
+          code: 'scheduling::recover',
+          severity: 'info',
+          message: 'Scheduling recovered: backlog/degrade condition cleared.',
+          hint: 'No immediate action needed unless degrade/recover oscillates frequently.',
+          kind: 'scheduling:recover',
+          trigger: {
+            kind: 'tickScheduler',
+            name: 'flushTick',
+            details: {
+              eventKind: 'recover',
+              tickSeq: currentTickSeq,
+              fromTickSeq: previous.tickSeq,
+              fromReason: previous.reason,
+              previousBacklogCount: previous.backlogCount,
+              configScope: previous.configScope,
+              limit: previous.limit,
+              schedule: {
+                startedAs: schedule.startedAs ?? 'unknown',
+                forcedMacrotask: schedule.forcedMacrotask === true,
+                reason: schedule.reason ?? 'unknown',
+                microtaskChainDepth: schedule.microtaskChainDepth ?? 0,
+              },
             },
           },
-        },
-      })
+        })
+      }
       lastSchedulingDegrade = undefined
     }
 

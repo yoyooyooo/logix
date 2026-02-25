@@ -656,9 +656,11 @@ export const make = <S, A, R = never>(
               const schedulingPolicy = {
                 configScope: resolvedSchedulingPolicy.configScope,
                 concurrencyLimit: resolvedSchedulingPolicy.concurrencyLimit,
+                allowUnbounded: resolvedSchedulingPolicy.allowUnbounded,
                 losslessBackpressureCapacity: resolvedSchedulingPolicy.losslessBackpressureCapacity,
                 pressureWarningThreshold: resolvedSchedulingPolicy.pressureWarningThreshold,
                 warningCooldownMs: resolvedSchedulingPolicy.warningCooldownMs,
+                resolvedAtTxnSeq: meta.txnSeq,
               } as const
 
               yield* scheduler.onModuleCommit({

@@ -74,9 +74,11 @@ describe('TickScheduler (tickSeq correlation)', () => {
       const schedulingPolicy = {
         configScope: 'runtime_module' as const,
         concurrencyLimit: 8 as const,
+        allowUnbounded: false,
         losslessBackpressureCapacity: 32,
         pressureWarningThreshold: { backlogCount: 2, backlogDurationMs: 5 },
         warningCooldownMs: 100,
+        resolvedAtTxnSeq: 1,
       }
 
       queue.enqueueModuleCommit({
@@ -125,6 +127,171 @@ describe('TickScheduler (tickSeq correlation)', () => {
       expect(recover?.trigger?.details?.fromReason).toBe('budget_steps')
       expect(recover?.trigger?.details?.configScope).toBe('runtime_module')
       expect(recover?.trigger?.details?.fromTickSeq).toBe(degrade?.trigger?.details?.tickSeq)
+    }),
+  )
+
+  it.effect('scheduling diagnostics should clear degrade state on stable tick even when diagnostics are disabled', () =>
+    Effect.gen(function* () {
+      const ring = Logix.Debug.makeRingBufferSink(128)
+      const store = makeRuntimeStore()
+      const queue = makeJobQueue()
+      const scheduler = makeTickScheduler({
+        runtimeStore: store,
+        queue,
+        hostScheduler: getGlobalHostScheduler(),
+        config: { maxSteps: 1, urgentStepCap: 64, maxDrainRounds: 4 },
+      })
+
+      const key1 = makeModuleInstanceKey('M', 'i-1')
+      const key2 = makeModuleInstanceKey('M', 'i-2')
+      store.registerModuleInstance({ moduleId: 'M', instanceId: 'i-1', moduleInstanceKey: key1, initialState: { v: 0 } })
+      store.registerModuleInstance({ moduleId: 'M', instanceId: 'i-2', moduleInstanceKey: key2, initialState: { v: 0 } })
+
+      const schedulingPolicy = {
+        configScope: 'runtime_module' as const,
+        concurrencyLimit: 8 as const,
+        allowUnbounded: false,
+        losslessBackpressureCapacity: 32,
+        pressureWarningThreshold: { backlogCount: 2, backlogDurationMs: 5 },
+        warningCooldownMs: 100,
+        resolvedAtTxnSeq: 1,
+      }
+
+      queue.enqueueModuleCommit({
+        moduleId: 'M',
+        instanceId: 'i-1',
+        moduleInstanceKey: key1,
+        state: { v: 1 },
+        meta: { txnSeq: 1, txnId: 'i-1::t1', commitMode: 'lowPriority', priority: 'low', originKind: 'dispatch', originName: 'low' },
+        opSeq: 1,
+        schedulingPolicy,
+      })
+      queue.enqueueModuleCommit({
+        moduleId: 'M',
+        instanceId: 'i-2',
+        moduleInstanceKey: key2,
+        state: { v: 1 },
+        meta: { txnSeq: 2, txnId: 'i-2::t2', commitMode: 'lowPriority', priority: 'low', originKind: 'dispatch', originName: 'low' },
+        opSeq: 2,
+        schedulingPolicy: { ...schedulingPolicy, resolvedAtTxnSeq: 2 },
+      })
+      queue.markTopicDirty(key1, 'low')
+      queue.markTopicDirty(key2, 'low')
+
+      const withDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
+        eff.pipe(
+          Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
+          Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+        )
+
+      const withoutDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
+        eff.pipe(
+          Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
+          Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'off'),
+        )
+
+      // Tick1: enter degrade and emit scheduling::degrade.
+      yield* withDiagnostics(scheduler.flushNow)
+      // Tick2: stable while diagnostics=off; should still clear internal degrade state.
+      yield* withoutDiagnostics(scheduler.flushNow)
+
+      queue.enqueueModuleCommit({
+        moduleId: 'M',
+        instanceId: 'i-1',
+        moduleInstanceKey: key1,
+        state: { v: 2 },
+        meta: { txnSeq: 3, txnId: 'i-1::t3', commitMode: 'normal', priority: 'normal', originKind: 'dispatch', originName: 'normal' },
+        opSeq: 3,
+        schedulingPolicy: { ...schedulingPolicy, resolvedAtTxnSeq: 3 },
+      })
+      queue.markTopicDirty(key1, 'normal')
+      // Tick3: stable with diagnostics re-enabled; should not emit stale scheduling::recover.
+      yield* withDiagnostics(scheduler.flushNow)
+
+      const diagnostics = ring.getSnapshot().filter((e) => e.type === 'diagnostic') as ReadonlyArray<any>
+      const degradeCount = diagnostics.filter((e) => e.code === 'scheduling::degrade').length
+      const recoverCount = diagnostics.filter((e) => e.code === 'scheduling::recover').length
+
+      expect(degradeCount).toBe(1)
+      expect(recoverCount).toBe(0)
+    }),
+  )
+
+  it.effect('scheduling diagnostics should emit degrade once for a continuous unstable window', () =>
+    Effect.gen(function* () {
+      const ring = Logix.Debug.makeRingBufferSink(128)
+      const store = makeRuntimeStore()
+      const queue = makeJobQueue()
+      const scheduler = makeTickScheduler({
+        runtimeStore: store,
+        queue,
+        hostScheduler: getGlobalHostScheduler(),
+        config: { maxSteps: 1, urgentStepCap: 64, maxDrainRounds: 4 },
+      })
+
+      const key1 = makeModuleInstanceKey('M', 'i-1')
+      const key2 = makeModuleInstanceKey('M', 'i-2')
+      const key3 = makeModuleInstanceKey('M', 'i-3')
+      store.registerModuleInstance({ moduleId: 'M', instanceId: 'i-1', moduleInstanceKey: key1, initialState: { v: 0 } })
+      store.registerModuleInstance({ moduleId: 'M', instanceId: 'i-2', moduleInstanceKey: key2, initialState: { v: 0 } })
+      store.registerModuleInstance({ moduleId: 'M', instanceId: 'i-3', moduleInstanceKey: key3, initialState: { v: 0 } })
+
+      const schedulingPolicy = {
+        configScope: 'runtime_module' as const,
+        concurrencyLimit: 8 as const,
+        allowUnbounded: false,
+        losslessBackpressureCapacity: 32,
+        pressureWarningThreshold: { backlogCount: 2, backlogDurationMs: 5 },
+        warningCooldownMs: 100,
+        resolvedAtTxnSeq: 1,
+      }
+
+      queue.enqueueModuleCommit({
+        moduleId: 'M',
+        instanceId: 'i-1',
+        moduleInstanceKey: key1,
+        state: { v: 1 },
+        meta: { txnSeq: 1, txnId: 'i-1::t1', commitMode: 'lowPriority', priority: 'low', originKind: 'dispatch', originName: 'low' },
+        opSeq: 1,
+        schedulingPolicy,
+      })
+      queue.enqueueModuleCommit({
+        moduleId: 'M',
+        instanceId: 'i-2',
+        moduleInstanceKey: key2,
+        state: { v: 1 },
+        meta: { txnSeq: 2, txnId: 'i-2::t2', commitMode: 'lowPriority', priority: 'low', originKind: 'dispatch', originName: 'low' },
+        opSeq: 2,
+        schedulingPolicy: { ...schedulingPolicy, resolvedAtTxnSeq: 2 },
+      })
+      queue.enqueueModuleCommit({
+        moduleId: 'M',
+        instanceId: 'i-3',
+        moduleInstanceKey: key3,
+        state: { v: 1 },
+        meta: { txnSeq: 3, txnId: 'i-3::t3', commitMode: 'lowPriority', priority: 'low', originKind: 'dispatch', originName: 'low' },
+        opSeq: 3,
+        schedulingPolicy: { ...schedulingPolicy, resolvedAtTxnSeq: 3 },
+      })
+      queue.markTopicDirty(key1, 'low')
+      queue.markTopicDirty(key2, 'low')
+      queue.markTopicDirty(key3, 'low')
+
+      const withDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
+        eff.pipe(
+          Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
+          Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+        )
+
+      // Tick1: unstable (degrade emitted).
+      yield* withDiagnostics(scheduler.flushNow)
+      // Tick2: still unstable in the same degrade window (should not re-emit degrade).
+      yield* withDiagnostics(scheduler.flushNow)
+
+      const diagnostics = ring.getSnapshot().filter((e) => e.type === 'diagnostic') as ReadonlyArray<any>
+      const degradeCount = diagnostics.filter((e) => e.code === 'scheduling::degrade').length
+
+      expect(degradeCount).toBe(1)
     }),
   )
 })
