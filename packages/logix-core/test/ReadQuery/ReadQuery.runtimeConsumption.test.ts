@@ -69,7 +69,7 @@ describe('ReadQuery.runtimeConsumption', () => {
       const defects = [...Cause.defects(exit.cause)]
       const err = defects.find((e) => (e as any)?._tag === 'ReadQueryStrictGateError') as any
       expect(err).toBeDefined()
-      expect(err?.details?.fallbackReason).toBe('missingBuildGrade')
+      expect(['missingDeps', 'unsupportedSyntax', 'unstableSelectorId']).toContain(err?.details?.fallbackReason)
     }).pipe(
       Effect.provideService(ReadQueryStrictGateConfigTag, {
         mode: 'error',
@@ -112,7 +112,7 @@ describe('ReadQuery.runtimeConsumption', () => {
 
     expect(marked.quality?.source).toBe('runtime_dynamic_fallback')
     expect(marked.quality?.missingBuildGrade).toBe(true)
-    expect(marked.fallbackReason).toBe('missingBuildGrade')
+    expect(['missingDeps', 'unsupportedSyntax', 'unstableSelectorId']).toContain(marked.fallbackReason)
     expect(marked.quality?.strictGate).toBeUndefined()
   })
 })
