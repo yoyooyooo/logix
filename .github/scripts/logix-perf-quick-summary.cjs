@@ -33,8 +33,11 @@ const afterPath =
   headShort && envId ? path.join(perfDir, `after.${headShort}.${envId}.${profile}.json`) : null
 const diffPath =
   baseShort && headShort && envId ? path.join(perfDir, `diff.${baseShort}__${headShort}.${envId}.${profile}.json`) : null
-const autoProbePath =
+const autoProbeBasePath =
   baseShort && envId ? path.join(perfDir, `steps-probe.base.${baseShort}.${envId}.${profile}.json`) : null
+const autoProbeHeadPath =
+  headShort && envId ? path.join(perfDir, `steps-probe.head.${headShort}.${envId}.${profile}.json`) : null
+const capacityLatestPath = path.join(perfDir, 'capacity-latest.json')
 
 const safeReadJson = (file) => {
   try {
@@ -47,7 +50,9 @@ const safeReadJson = (file) => {
 const beforeReport = beforePath && fs.existsSync(beforePath) ? safeReadJson(beforePath) : null
 const afterReport = afterPath && fs.existsSync(afterPath) ? safeReadJson(afterPath) : null
 const diff = diffPath && fs.existsSync(diffPath) ? safeReadJson(diffPath) : null
-const autoProbe = autoProbePath && fs.existsSync(autoProbePath) ? safeReadJson(autoProbePath) : null
+const autoProbeBase = autoProbeBasePath && fs.existsSync(autoProbeBasePath) ? safeReadJson(autoProbeBasePath) : null
+const autoProbeHead = autoProbeHeadPath && fs.existsSync(autoProbeHeadPath) ? safeReadJson(autoProbeHeadPath) : null
+const capacityLatest = fs.existsSync(capacityLatestPath) ? safeReadJson(capacityLatestPath) : null
 
 const files = fs
   .readdirSync(perfDir)
@@ -482,6 +487,41 @@ const deriveAutoProbeFallbackSummary = (probe) => {
   }
 }
 
+const renderAutoProbeSummary = ({ probe, label }) => {
+  if (!probe || typeof probe !== 'object') return ''
+  const autoSummaryRaw = probe.summary && typeof probe.summary === 'object' ? probe.summary : null
+  const autoSummaryFallback = deriveAutoProbeFallbackSummary(probe)
+  const averageUpper = pickFiniteNumber(autoSummaryRaw?.averageUpperLimit, autoSummaryFallback?.averageUpperLimit)
+  const floorMedian = pickFiniteNumber(autoSummaryRaw?.floorMedianMaxLevel, autoSummaryFallback?.floorMedianMaxLevel)
+  const p50Median = pickFiniteNumber(autoSummaryRaw?.p50MedianMaxLevel, autoSummaryFallback?.p50MedianMaxLevel)
+  const p75Median = pickFiniteNumber(autoSummaryRaw?.p75MedianMaxLevel, autoSummaryFallback?.p75MedianMaxLevel)
+  const p95Median = pickFiniteNumber(autoSummaryRaw?.p95MedianMaxLevel, autoSummaryFallback?.p95MedianMaxLevel)
+  const p90Median = pickFiniteNumber(autoSummaryRaw?.p90MedianMaxLevel, autoSummaryFallback?.p90MedianMaxLevel)
+  const removed = pickFiniteNumber(autoSummaryRaw?.outlierRemovedCount, autoSummaryFallback?.outlierRemovedCount)
+  const samplesPerIteration = probe.samplesPerIteration
+  const stopReason = probe.stopReason
+  const finalLevels = Array.isArray(probe.finalLevels) ? probe.finalLevels : []
+
+  let out = ''
+  out += `- ${label} auto-probe(filtered): avgUpper=${code(
+    typeof averageUpper === 'number' && Number.isFinite(averageUpper) ? averageUpper : 'n/a',
+  )}, floorMedian=${code(
+    typeof floorMedian === 'number' && Number.isFinite(floorMedian) ? floorMedian : 'n/a',
+  )}, p50Median=${code(typeof p50Median === 'number' && Number.isFinite(p50Median) ? p50Median : 'n/a')}, p75Median=${code(
+    typeof p75Median === 'number' && Number.isFinite(p75Median) ? p75Median : 'n/a',
+  )}, p95Median=${code(typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median : 'n/a')}, p90Median=${code(
+    typeof p90Median === 'number' && Number.isFinite(p90Median) ? p90Median : 'n/a',
+  )}\n`
+  out += `- ${label} auto-probe stats: outliersRemoved=${code(
+    typeof removed === 'number' && Number.isFinite(removed) ? removed : 'n/a',
+  )}, samples/iter=${code(
+    typeof samplesPerIteration === 'number' && Number.isFinite(samplesPerIteration) ? samplesPerIteration : 'n/a',
+  )}, stop=${code(stopReason ?? 'n/a')}, levels=${code(
+    finalLevels.length > 0 ? formatAxisValues(finalLevels) : 'n/a',
+  )}\n`
+  return out
+}
+
 const afterFailures = afterReport ? collectBudgetExceeded(afterReport) : []
 const afterCapacityRows = afterReport ? collectCapacityRows(afterReport) : []
 const afterCapacitySummary = summarizeCapacityRows(afterCapacityRows)
@@ -492,11 +532,14 @@ const capacityFloorViolated =
 const comparable = diff?.meta?.comparability?.comparable === true
 const regressions = diff?.summary?.regressions ?? 0
 const improvements = diff?.summary?.improvements ?? 0
+const dynamicEvaluation = capacityLatest?.evaluation && typeof capacityLatest.evaluation === 'object' ? capacityLatest.evaluation : null
+const dynamicHardFailed = dynamicEvaluation?.hardPass === false
 
 const conclusion = (() => {
   if (!diff) return 'no_diff'
   if (!comparable) return 'triage_only_not_comparable'
   if (typeof regressions === 'number' && regressions > 0) return 'has_regressions'
+  if (dynamicHardFailed) return 'head_capacity_dynamic_hard_failed'
   if (capacityFloorViolated) return 'head_capacity_floor_failed'
   if (afterFailures.length > 0) return 'head_budget_exceeded'
   return 'ok'
@@ -520,36 +563,17 @@ if (typeof capacityFloorTarget === 'number') {
     actualFloor == null ? 'n/a' : actualFloor,
   )})\n`
 }
-if (autoProbe && typeof autoProbe === 'object') {
-  const autoSummaryRaw = autoProbe.summary && typeof autoProbe.summary === 'object' ? autoProbe.summary : null
-  const autoSummaryFallback = deriveAutoProbeFallbackSummary(autoProbe)
-  const averageUpper = pickFiniteNumber(autoSummaryRaw?.averageUpperLimit, autoSummaryFallback?.averageUpperLimit)
-  const floorMedian = pickFiniteNumber(autoSummaryRaw?.floorMedianMaxLevel, autoSummaryFallback?.floorMedianMaxLevel)
-  const p50Median = pickFiniteNumber(autoSummaryRaw?.p50MedianMaxLevel, autoSummaryFallback?.p50MedianMaxLevel)
-  const p75Median = pickFiniteNumber(autoSummaryRaw?.p75MedianMaxLevel, autoSummaryFallback?.p75MedianMaxLevel)
-  const p95Median = pickFiniteNumber(autoSummaryRaw?.p95MedianMaxLevel, autoSummaryFallback?.p95MedianMaxLevel)
-  const p90Median = pickFiniteNumber(autoSummaryRaw?.p90MedianMaxLevel, autoSummaryFallback?.p90MedianMaxLevel)
-  const removed = pickFiniteNumber(autoSummaryRaw?.outlierRemovedCount, autoSummaryFallback?.outlierRemovedCount)
-  const samplesPerIteration = autoProbe.samplesPerIteration
-  const stopReason = autoProbe.stopReason
-  const finalLevels = Array.isArray(autoProbe.finalLevels) ? autoProbe.finalLevels : []
-  md += `- base auto-probe(filtered): avgUpper=${code(
-    typeof averageUpper === 'number' && Number.isFinite(averageUpper) ? averageUpper : 'n/a',
-  )}, floorMedian=${code(
-    typeof floorMedian === 'number' && Number.isFinite(floorMedian) ? floorMedian : 'n/a',
-  )}, p50Median=${code(typeof p50Median === 'number' && Number.isFinite(p50Median) ? p50Median : 'n/a')}, p75Median=${code(
-    typeof p75Median === 'number' && Number.isFinite(p75Median) ? p75Median : 'n/a',
-  )}, p95Median=${code(typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median : 'n/a')}, p90Median=${code(
-    typeof p90Median === 'number' && Number.isFinite(p90Median) ? p90Median : 'n/a',
-  )}\n`
-  md += `- base auto-probe stats: outliersRemoved=${code(
-    typeof removed === 'number' && Number.isFinite(removed) ? removed : 'n/a',
-  )}, samples/iter=${code(
-    typeof samplesPerIteration === 'number' && Number.isFinite(samplesPerIteration) ? samplesPerIteration : 'n/a',
-  )}, stop=${code(stopReason ?? 'n/a')}, levels=${code(
-    finalLevels.length > 0 ? formatAxisValues(finalLevels) : 'n/a',
-  )}\n`
+if (dynamicEvaluation) {
+  md += `- dynamic capacity target: hardFloor=${code(dynamicEvaluation.hardFloor ?? 'n/a')} (pass=${code(
+    String(dynamicEvaluation.hardPass ?? 'n/a'),
+  )}), warnFloor=${code(dynamicEvaluation.warnFloor ?? 'n/a')} (pass=${code(
+    String(dynamicEvaluation.warnPass ?? 'n/a'),
+  )}), anchorP50=${code(dynamicEvaluation.anchorP50 ?? 'n/a')}, source=${code(
+    dynamicEvaluation.anchorSource ?? 'n/a',
+  )}, stableRuns=${code(dynamicEvaluation.stableRuns ?? 'n/a')}\n`
 }
+md += renderAutoProbeSummary({ probe: autoProbeBase, label: 'base' })
+md += renderAutoProbeSummary({ probe: autoProbeHead, label: 'head' })
 md += `- status: ${code(conclusion)}\n`
 
 if (afterFailures.length > 0) {

@@ -59,10 +59,42 @@ on:
         description: "auto 模式每个 dirtyRootsRatio 至少保留样本数"
         required: false
         default: "2"
+      perf_steps_auto_probe_target:
+        description: "auto 模式探测对象（base/head/both）"
+        required: false
+        default: "head"
       perf_capacity_floor_min:
         description: "可选动态容量 floor 目标（整数；用于反向约束旧的 2000 门槛）"
         required: false
         default: "2000"
+      perf_capacity_dynamic_enable:
+        description: "是否启用动态容量模型（true/false）"
+        required: false
+        default: "true"
+      perf_capacity_dynamic_enforce_hard:
+        description: "是否启用动态 hard floor 失败门禁（true/false）"
+        required: false
+        default: "true"
+      perf_capacity_dynamic_history_window:
+        description: "动态容量模型的历史窗口（最近 N 次）"
+        required: false
+        default: "5"
+      perf_capacity_dynamic_min_history_runs:
+        description: "启用 stableP50 前所需最小历史 run 数"
+        required: false
+        default: "3"
+      perf_capacity_dynamic_hard_ratio:
+        description: "dynamic hard floor 比例（hard=max(2000, stableP50*ratio)）"
+        required: false
+        default: "0.8"
+      perf_capacity_dynamic_warn_ratio:
+        description: "dynamic warn floor 比例（warn=stableP50*ratio）"
+        required: false
+        default: "0.9"
+      perf_capacity_auto_retry_on_timeout:
+        description: "head 采集出现 timeout 时是否自动重试一次（true/false）"
+        required: false
+        default: "true"
       diff_mode:
         description: "diff 模式（strict=不可比直接失败；triage=允许漂移，仅作线索）"
         required: false
@@ -74,6 +106,7 @@ on:
     - cron: "0 19 * * 0"
 
 permissions:
+  actions: read
   contents: read
   issues: write
   pull-requests: write
@@ -101,8 +134,20 @@ jobs:
       PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE: 0.2
       PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE: 800
       PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: 2
+      PERF_STEPS_AUTO_PROBE_TARGET: head
       PERF_OUT_DIR: perf/ci
       PERF_ARTIFACT_NAME: logix-perf-sweep-${{ github.run_id }}
+      PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS: 0
+      PERF_CAPACITY_DYNAMIC_ENABLE: 1
+      PERF_CAPACITY_DYNAMIC_ENFORCE_HARD: 1
+      PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW: 5
+      PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS: 3
+      PERF_CAPACITY_DYNAMIC_HARD_RATIO: 0.8
+      PERF_CAPACITY_DYNAMIC_WARN_RATIO: 0.9
+      PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT: 1
+      PERF_CAPACITY_HISTORY_DIR: .perf-capacity-history
+      PERF_CAPACITY_HISTORY_FILE: .perf-capacity-history/capacity-history.jsonl
+      PERF_CAPACITY_LATEST_FILE: .perf-capacity-history/capacity-latest.json
 
     steps:
       - name: Checkout
@@ -126,7 +171,15 @@ jobs:
           INPUT_PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE: ${{ github.event.inputs.perf_steps_auto_outlier_rel_tolerance }}
           INPUT_PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE: ${{ github.event.inputs.perf_steps_auto_outlier_abs_tolerance }}
           INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: ${{ github.event.inputs.perf_steps_auto_min_kept_samples }}
+          INPUT_PERF_STEPS_AUTO_PROBE_TARGET: ${{ github.event.inputs.perf_steps_auto_probe_target }}
           INPUT_PERF_CAPACITY_FLOOR_MIN: ${{ github.event.inputs.perf_capacity_floor_min }}
+          INPUT_PERF_CAPACITY_DYNAMIC_ENABLE: ${{ github.event.inputs.perf_capacity_dynamic_enable }}
+          INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD: ${{ github.event.inputs.perf_capacity_dynamic_enforce_hard }}
+          INPUT_PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW: ${{ github.event.inputs.perf_capacity_dynamic_history_window }}
+          INPUT_PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS: ${{ github.event.inputs.perf_capacity_dynamic_min_history_runs }}
+          INPUT_PERF_CAPACITY_DYNAMIC_HARD_RATIO: ${{ github.event.inputs.perf_capacity_dynamic_hard_ratio }}
+          INPUT_PERF_CAPACITY_DYNAMIC_WARN_RATIO: ${{ github.event.inputs.perf_capacity_dynamic_warn_ratio }}
+          INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT: ${{ github.event.inputs.perf_capacity_auto_retry_on_timeout }}
           INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
@@ -150,6 +203,15 @@ jobs:
             fi
             git fetch origin "$ref" --depth=1
             git rev-parse FETCH_HEAD
+          }
+
+          normalize_bool() {
+            local raw="$1"
+            case "$(echo "$raw" | tr '[:upper:]' '[:lower:]')" in
+              1|true|yes|on) echo "1" ;;
+              0|false|no|off) echo "0" ;;
+              *) echo "" ;;
+            esac
           }
 
           DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
@@ -226,8 +288,41 @@ jobs:
             if [ -n "${INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES:-}" ]; then
               echo "PERF_STEPS_AUTO_MIN_KEPT_SAMPLES=$INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES" >> "$GITHUB_ENV"
             fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_PROBE_TARGET:-}" ]; then
+              echo "PERF_STEPS_AUTO_PROBE_TARGET=$INPUT_PERF_STEPS_AUTO_PROBE_TARGET" >> "$GITHUB_ENV"
+            fi
             if [ -n "${INPUT_PERF_CAPACITY_FLOOR_MIN:-}" ]; then
               echo "PERF_CAPACITY_FLOOR_MIN=$INPUT_PERF_CAPACITY_FLOOR_MIN" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_ENABLE:-}" ]; then
+              parsed="$(normalize_bool "$INPUT_PERF_CAPACITY_DYNAMIC_ENABLE")"
+              if [ -n "$parsed" ]; then
+                echo "PERF_CAPACITY_DYNAMIC_ENABLE=$parsed" >> "$GITHUB_ENV"
+              fi
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD:-}" ]; then
+              parsed="$(normalize_bool "$INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD")"
+              if [ -n "$parsed" ]; then
+                echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=$parsed" >> "$GITHUB_ENV"
+              fi
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW:-}" ]; then
+              echo "PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW=$INPUT_PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS:-}" ]; then
+              echo "PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS=$INPUT_PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_HARD_RATIO:-}" ]; then
+              echo "PERF_CAPACITY_DYNAMIC_HARD_RATIO=$INPUT_PERF_CAPACITY_DYNAMIC_HARD_RATIO" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_WARN_RATIO:-}" ]; then
+              echo "PERF_CAPACITY_DYNAMIC_WARN_RATIO=$INPUT_PERF_CAPACITY_DYNAMIC_WARN_RATIO" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT:-}" ]; then
+              parsed="$(normalize_bool "$INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT")"
+              if [ -n "$parsed" ]; then
+                echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=$parsed" >> "$GITHUB_ENV"
+              fi
             fi
             if [ -n "${INPUT_DIFF_MODE:-}" ]; then
               echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
@@ -242,6 +337,8 @@ jobs:
           echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
           echo "BASE_SHORT=${BASE_SHA::8}" >> "$GITHUB_ENV"
           echo "HEAD_SHORT=${HEAD_SHA::8}" >> "$GITHUB_ENV"
+          echo "PERF_CAPACITY_HISTORY_CACHE_PREFIX=${RUNNER_OS}-logix-perf-capacity-${GITHUB_REF_NAME}-" >> "$GITHUB_ENV"
+          echo "PERF_CAPACITY_HISTORY_CACHE_KEY=${RUNNER_OS}-logix-perf-capacity-${GITHUB_REF_NAME}-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
 
           if git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- pnpm-lock.yaml | grep -q '^pnpm-lock.yaml$'; then
             echo "LOCKFILE_CHANGED=1" >> "$GITHUB_ENV"
@@ -301,6 +398,31 @@ jobs:
           PINNED_AUTO_PROBE_SCRIPT="$RUNNER_TEMP/logix-perf-auto-probe.cjs"
           cp .github/scripts/logix-perf-auto-probe.cjs "$PINNED_AUTO_PROBE_SCRIPT"
           echo "PERF_AUTO_PROBE_SCRIPT=$PINNED_AUTO_PROBE_SCRIPT" >> "$GITHUB_ENV"
+          PINNED_CAPACITY_MODEL_SCRIPT="$RUNNER_TEMP/logix-perf-capacity-model.cjs"
+          cp .github/scripts/logix-perf-capacity-model.cjs "$PINNED_CAPACITY_MODEL_SCRIPT"
+          echo "PERF_CAPACITY_MODEL_SCRIPT=$PINNED_CAPACITY_MODEL_SCRIPT" >> "$GITHUB_ENV"
+
+      - name: Restore capacity history cache
+        if: env.PERF_CAPACITY_DYNAMIC_ENABLE == '1'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.PERF_CAPACITY_HISTORY_DIR }}
+          key: ${{ env.PERF_CAPACITY_HISTORY_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.PERF_CAPACITY_HISTORY_CACHE_PREFIX }}
+
+      - name: Resolve dynamic capacity floor target
+        if: env.PERF_CAPACITY_DYNAMIC_ENABLE == '1'
+        run: |
+          mkdir -p "$PERF_CAPACITY_HISTORY_DIR"
+          node "$PERF_CAPACITY_MODEL_SCRIPT" resolve-target \
+            --latest "$PERF_CAPACITY_LATEST_FILE" \
+            --base-floor-min "$PERF_CAPACITY_FLOOR_MIN" \
+            --hard-floor-ratio "$PERF_CAPACITY_DYNAMIC_HARD_RATIO" \
+            --history-window "$PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW" \
+            --min-history-runs "$PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS" \
+            --env-out "$GITHUB_ENV" \
+            --out "$PERF_OUT_DIR/capacity-target.json"
 
       - name: Collect (base)
         run: |
@@ -335,8 +457,9 @@ jobs:
           if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
             export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
           fi
+          AUTO_PROBE_TARGET="${PERF_STEPS_AUTO_PROBE_TARGET:-head}"
 
-          if [ "${PERF_STEPS_MODE:-manual}" = "auto" ]; then
+          if [ "${PERF_STEPS_MODE:-manual}" = "auto" ] && { [ "$AUTO_PROBE_TARGET" = "base" ] || [ "$AUTO_PROBE_TARGET" = "both" ]; }; then
             AUTO_STEPS_OUT="$PERF_OUT_DIR/steps-levels.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.csv"
             AUTO_META_OUT="$PERF_OUT_DIR/steps-probe.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
             AUTO_ARGS=(
@@ -405,19 +528,113 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+          AUTO_PROBE_TARGET="${PERF_STEPS_AUTO_PROBE_TARGET:-head}"
           if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
             export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
-          elif [ "${PERF_STEPS_MODE:-manual}" = "auto" ]; then
-            echo "auto steps mode requires PERF_STEPS_LEVELS resolved from base collect" >&2
+          elif [ "${PERF_STEPS_MODE:-manual}" = "auto" ] && [ "$AUTO_PROBE_TARGET" = "base" ]; then
+            echo "auto steps mode with probe_target=base requires PERF_STEPS_LEVELS resolved from base collect" >&2
             exit 1
           fi
           if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
             export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
           fi
 
+          HEAD_REPORT_PATH="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+
+          collect_head_once() {
+            if [ "${PERF_STEPS_MODE:-manual}" = "auto" ] && { [ "$AUTO_PROBE_TARGET" = "head" ] || [ "$AUTO_PROBE_TARGET" = "both" ]; }; then
+              AUTO_HEAD_STEPS_OUT="$PERF_OUT_DIR/steps-levels.head.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.csv"
+              AUTO_HEAD_META_OUT="$PERF_OUT_DIR/steps-probe.head.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+              AUTO_ARGS=(
+                --profile "$PERF_PROFILE"
+                --files "$PERF_FILES"
+                --out "$HEAD_REPORT_PATH"
+                --steps-out "$AUTO_HEAD_STEPS_OUT"
+                --meta-out "$AUTO_HEAD_META_OUT"
+                --max-iterations "$PERF_STEPS_AUTO_MAX_ITERATIONS"
+                --growth-factor "$PERF_STEPS_AUTO_GROWTH_FACTOR"
+                --extend-count "$PERF_STEPS_AUTO_EXTEND_COUNT"
+                --max-level-cap "$PERF_STEPS_AUTO_MAX_LEVEL_CAP"
+                --samples-per-iteration "$PERF_STEPS_AUTO_SAMPLES_PER_ITERATION"
+                --outlier-rel-tolerance "$PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE"
+                --outlier-abs-tolerance "$PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE"
+                --min-kept-samples "$PERF_STEPS_AUTO_MIN_KEPT_SAMPLES"
+              )
+              if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+                AUTO_ARGS+=(--initial-steps "$PERF_STEPS_LEVELS")
+              fi
+              VITE_LOGIX_PERF_HARD_GATES=off node "$PERF_AUTO_PROBE_SCRIPT" "${AUTO_ARGS[@]}"
+              RESOLVED_STEPS="$(tr -d "\n\r " < "$AUTO_HEAD_STEPS_OUT" || true)"
+              if [ -z "$RESOLVED_STEPS" ]; then
+                echo "head auto steps probe produced empty steps levels" >&2
+                exit 1
+              fi
+              echo "PERF_STEPS_LEVELS=$RESOLVED_STEPS" >> "$GITHUB_ENV"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="$RESOLVED_STEPS"
+              echo "PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS=1" >> "$GITHUB_ENV"
+              echo "[logix-perf] head auto steps resolved: $RESOLVED_STEPS"
+            else
+              VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                "${FILE_ARGS[@]}" \
+                --out "$HEAD_REPORT_PATH"
+            fi
+          }
+
+          collect_head_once
+
+          if [ "${PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT:-1}" = "1" ] && [ -f "$HEAD_REPORT_PATH" ]; then
+            TIMEOUT_COUNT="$(jq '[.suites[]? | select(.id=="converge.txnCommit") | .thresholds[]? | select((.budget.id // "")=="commit.p95<=50ms") | select((.where.convergeMode // null)=="auto") | select(((.firstFail.reason // .reason // "") | test("timeout"; "i")))] | length' "$HEAD_REPORT_PATH")"
+            if [ "${TIMEOUT_COUNT:-0}" -gt 0 ]; then
+              echo "[logix-perf] timeout rows detected in head report ($TIMEOUT_COUNT); retry once"
+              collect_head_once
+            fi
+          fi
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
+
+      - name: Re-collect base (align resolved auto steps)
+        if: env.PERF_STEPS_MODE == 'auto'
+        run: |
+          if [ "${PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS:-0}" != "1" ]; then
+            echo "skip base re-collect: PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS=${PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS:-0}"
+            exit 0
+          fi
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f "$BASE_SHA"
+          if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
+            pnpm install --frozen-lockfile
+          fi
+          cp "$PERF_PINNED_VITEST_SHARED" vitest.shared.ts
+          mkdir -p .codex/skills/logix-perf-evidence/assets
+          git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          if [ ! -e node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
+          if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
+
+          IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
+          FILE_ARGS=()
+          for f in "${PERF_FILES_ARRAY[@]}"; do
+            f="$(echo "$f" | xargs)"
+            if [ -n "$f" ]; then
+              FILE_ARGS+=(--files "$f")
+            fi
+          done
+          if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
+            export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
+          fi
+          if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+            export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
+          fi
+
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
-            --out "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
 
@@ -442,9 +659,59 @@ jobs:
               --out "$PERF_OUT_DIR/diff.${BASE_SHORT}__${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
           fi
 
+      - name: Build capacity model (latest + history)
+        if: always()
+        run: |
+          REPORT="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ ! -f "$REPORT" ]; then
+            echo "skip capacity model: missing report $REPORT"
+            exit 0
+          fi
+          mkdir -p "$PERF_CAPACITY_HISTORY_DIR"
+          node "$PERF_CAPACITY_MODEL_SCRIPT" record \
+            --report "$REPORT" \
+            --suite-id "converge.txnCommit" \
+            --budget-id "commit.p95<=50ms" \
+            --converge-mode "auto" \
+            --history "$PERF_CAPACITY_HISTORY_FILE" \
+            --latest "$PERF_CAPACITY_LATEST_FILE" \
+            --artifact-history "$PERF_OUT_DIR/capacity-history.jsonl" \
+            --artifact-latest "$PERF_OUT_DIR/capacity-latest.json" \
+            --base-floor-min "$PERF_CAPACITY_FLOOR_MIN" \
+            --hard-floor-ratio "$PERF_CAPACITY_DYNAMIC_HARD_RATIO" \
+            --warn-floor-ratio "$PERF_CAPACITY_DYNAMIC_WARN_RATIO" \
+            --min-history-runs "$PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS" \
+            --history-window "$PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-url "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --head-sha "$HEAD_SHA" \
+            --base-sha "$BASE_SHA" \
+            --profile "$PERF_PROFILE" \
+            --env-id "$PERF_ENV_ID" \
+            --env-out "$GITHUB_ENV" \
+            --out "$PERF_OUT_DIR/capacity-model.json"
+
       - name: Write job summary (markdown)
         if: always()
         run: node .github/scripts/logix-perf-quick-summary.cjs
+
+      - name: Enforce dynamic hard floor
+        if: always() && env.PERF_CAPACITY_DYNAMIC_ENABLE == '1' && env.PERF_CAPACITY_DYNAMIC_ENFORCE_HARD == '1'
+        run: |
+          if [ "${PERF_CAPACITY_DYNAMIC_HARD_PASS:-1}" != "1" ]; then
+            echo "dynamic hard floor failed: floor target=${PERF_CAPACITY_DYNAMIC_HARD_FLOOR_TARGET:-n/a}" >&2
+            exit 1
+          fi
+          if [ "${PERF_CAPACITY_DYNAMIC_WARN_PASS:-1}" != "1" ]; then
+            echo "::warning::dynamic warn floor failed (target=${PERF_CAPACITY_DYNAMIC_WARN_FLOOR_TARGET:-n/a})"
+          fi
+
+      - name: Save capacity history cache
+        if: always() && env.PERF_CAPACITY_DYNAMIC_ENABLE == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.PERF_CAPACITY_HISTORY_DIR }}
+          key: ${{ env.PERF_CAPACITY_HISTORY_CACHE_KEY }}
 
       - name: Upload artifacts
         if: always()
