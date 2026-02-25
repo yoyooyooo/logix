@@ -1274,32 +1274,31 @@ export const make = <S, A, R = never>(
           meta,
         })),
       changesReadQueryWithMeta: <V>(input: ReadQuery.ReadQueryInput<S, V>) => {
-        const compiled: ReadQuery.ReadQueryCompiled<S, V> =
-          (input as any)?.staticIr != null &&
-          typeof (input as any)?.lane === 'string' &&
-          typeof (input as any)?.producer === 'string'
-            ? (input as any)
-            : ReadQuery.compile(input)
+        const compiled: ReadQuery.ReadQueryCompiled<S, V> = ReadQuery.isReadQueryCompiled<S, V>(input)
+          ? input
+          : ReadQuery.compile(input)
 
         if (compiled.lane !== 'static') {
           return Stream.unwrapScoped(
             Effect.gen(function* () {
-              const strictGateOpt = yield* Effect.serviceOption(ReadQueryStrictGateConfigTag)
+              if (ReadQuery.shouldEvaluateStrictGateAtRuntime(compiled)) {
+                const strictGateOpt = yield* Effect.serviceOption(ReadQueryStrictGateConfigTag)
 
-              if (Option.isSome(strictGateOpt)) {
-                const decision = ReadQuery.evaluateStrictGate({
-                  config: strictGateOpt.value,
-                  moduleId,
-                  instanceId,
-                  txnSeq: 0,
-                  compiled,
-                })
+                if (Option.isSome(strictGateOpt)) {
+                  const decision = ReadQuery.evaluateStrictGate({
+                    config: strictGateOpt.value,
+                    moduleId,
+                    instanceId,
+                    txnSeq: 0,
+                    compiled,
+                  })
 
-                if (decision.verdict === 'WARN') {
-                  yield* Debug.record(decision.diagnostic)
-                } else if (decision.verdict === 'FAIL') {
-                  yield* Debug.record(decision.diagnostic)
-                  yield* Effect.die(decision.error)
+                  if (decision.verdict === 'WARN') {
+                    yield* Debug.record(decision.diagnostic)
+                  } else if (decision.verdict === 'FAIL') {
+                    yield* Debug.record(decision.diagnostic)
+                    yield* Effect.die(decision.error)
+                  }
                 }
               }
 
