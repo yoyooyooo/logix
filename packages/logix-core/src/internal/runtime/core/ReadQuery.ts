@@ -9,6 +9,27 @@ export type ReadQueryFallbackReason = 'missingDeps' | 'unsupportedSyntax' | 'uns
 
 export type EqualsKind = 'objectIs' | 'shallowStruct' | 'custom'
 
+export type ReadQueryStrictGateRule =
+  | 'denyFallbackReason'
+  | 'requireStatic:global'
+  | 'requireStatic:selectorId'
+  | 'requireStatic:module'
+
+export type ReadQueryQualitySource = 'build' | 'runtime_jit' | 'runtime_dynamic_fallback'
+
+export interface ReadQueryStrictGateGrade {
+  readonly evaluatedAt: 'build' | 'runtime'
+  readonly verdict: 'PASS' | 'WARN' | 'FAIL'
+  readonly rule?: ReadQueryStrictGateRule
+  readonly fallbackReason?: ReadQueryFallbackReason
+}
+
+export interface ReadQueryQualityMeta {
+  readonly source: ReadQueryQualitySource
+  readonly strictGate?: ReadQueryStrictGateGrade
+  readonly reportId?: string
+}
+
 export interface ReadsDigest {
   readonly count: number
   readonly hash: number
@@ -40,6 +61,7 @@ export interface ReadQueryCompiled<S, V> extends ReadQuery<S, V> {
   readonly readsDigest?: ReadsDigest
   readonly fallbackReason?: ReadQueryFallbackReason
   readonly staticIr: ReadQueryStaticIr
+  readonly quality?: ReadQueryQualityMeta
 }
 
 export type ReadQueryInput<S, V> = ((state: S) => V) | ReadQuery<S, V>
@@ -51,6 +73,27 @@ export function isReadQuery(input: unknown): input is ReadQuery<any, any> {
   const maybe = input as any
   return typeof maybe.selectorId === 'string' && typeof maybe.select === 'function' && Array.isArray(maybe.reads)
 }
+
+export function isReadQueryCompiled<S, V>(input: ReadQueryInput<S, V> | ReadQueryCompiled<S, V>): input is ReadQueryCompiled<S, V>
+export function isReadQueryCompiled(input: unknown): input is ReadQueryCompiled<any, any>
+export function isReadQueryCompiled(input: unknown): input is ReadQueryCompiled<any, any> {
+  if (!input || typeof input !== 'object') return false
+  const maybe = input as any
+  return (
+    typeof maybe.selectorId === 'string' &&
+    typeof maybe.select === 'function' &&
+    Array.isArray(maybe.reads) &&
+    maybe.staticIr != null &&
+    typeof maybe.lane === 'string' &&
+    typeof maybe.producer === 'string'
+  )
+}
+
+export const hasBuildQualityGrade = (compiled: ReadQueryCompiled<any, any>): boolean =>
+  compiled.quality?.source === 'build' && compiled.quality.strictGate?.evaluatedAt === 'build'
+
+export const shouldEvaluateStrictGateAtRuntime = (compiled: ReadQueryCompiled<any, any>): boolean =>
+  compiled.lane === 'dynamic' && !hasBuildQualityGrade(compiled)
 
 const normalizeReads = (reads: ReadonlyArray<string | number>): ReadonlyArray<string | number> => {
   const unique: Array<string | number> = []
@@ -460,7 +503,7 @@ export interface ReadQueryStrictGateViolationDetails {
   readonly selectorId: string
   readonly debugKey?: string
   readonly fallbackReason: ReadQueryFallbackReason
-  readonly rule: 'denyFallbackReason' | 'requireStatic:global' | 'requireStatic:selectorId' | 'requireStatic:module'
+  readonly rule: ReadQueryStrictGateRule
 }
 
 export interface ReadQueryStrictGateError extends Error {
@@ -561,7 +604,7 @@ export const evaluateStrictGate = (args: {
     return { verdict: 'PASS' }
   }
 
-  const rule: ReadQueryStrictGateViolationDetails['rule'] = denied
+  const rule: ReadQueryStrictGateRule = denied
     ? 'denyFallbackReason'
     : !hasCoverageFilter
       ? 'requireStatic:global'
