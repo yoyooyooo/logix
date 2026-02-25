@@ -15,7 +15,7 @@ describe('ConcurrencyPolicy (US3): diagnostics degrade', () => {
         allowUnbounded: false,
         pressureWarningThreshold: { backlogCount: 1, backlogDurationMs: 1 },
         warningCooldownMs: 30,
-        configScope: 'runtime_default',
+        configScope: 'provider',
         concurrencyLimitScope: 'runtime_default',
         requestedConcurrencyLimit: 16,
         requestedConcurrencyLimitScope: 'runtime_default',
@@ -65,6 +65,7 @@ describe('ConcurrencyPolicy (US3): diagnostics degrade', () => {
       const second: any = events[1]
       const details: any = second?.trigger?.details
 
+      expect(details?.configScope).toBe('provider')
       expect(details?.degradeStrategy).toBe('cooldown')
       expect(details?.suppressedCount).toBeGreaterThanOrEqual(1)
       expect(details?.sampleRate).toBe(1)

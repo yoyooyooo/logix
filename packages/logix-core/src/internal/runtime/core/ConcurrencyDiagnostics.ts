@@ -111,7 +111,7 @@ export const make = (args: {
         }
 
         const details: Record<string, unknown> = {
-          configScope: policy.concurrencyLimitScope,
+          configScope: policy.configScope,
           limit: policy.concurrencyLimit,
           backlogCount,
           saturatedDurationMs,
@@ -172,7 +172,7 @@ export const make = (args: {
           }
 
           const details: Record<string, unknown> = {
-            configScope: policy.concurrencyLimitScope,
+            configScope: policy.configScope,
             limit: policy.concurrencyLimit,
           }
 
@@ -212,7 +212,7 @@ export const make = (args: {
         }
 
         const details: Record<string, unknown> = {
-          configScope: policy.requestedConcurrencyLimitScope,
+          configScope: policy.configScope,
           limit: policy.requestedConcurrencyLimit,
         }
 
