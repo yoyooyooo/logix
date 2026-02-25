@@ -18,7 +18,7 @@
   - `changes(selector)`: `stateRef.changes |> Stream.map(selector) |> Stream.changes`。
   - `changesReadQueryWithMeta(readQuery)`：
     - 若输入已携带构建期定级（build-grade），运行时直接消费定级结果，不再重复 strict gate 规则匹配；
-    - 若输入未定级，运行时按现有 strict gate 配置执行兜底判定并在 dynamic lane 下输出可解释诊断。
+    - 若输入未定级，运行时先标记 `missingBuildGrade`（quality marker），再按现有 strict gate 配置执行兜底判定并在 dynamic lane 下输出可解释诊断。
 
 > 关键点：`actions$` / `changes(selector)` 是所有 Flow / watcher 的统一源头。任何 watcher 数量的扩张，本质上都是在这两条源流上增加订阅和下游管道。
 
