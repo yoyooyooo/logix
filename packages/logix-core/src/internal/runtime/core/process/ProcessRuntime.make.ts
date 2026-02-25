@@ -226,21 +226,6 @@ const syncPlatformEventInstallations = (options: {
   return nextEventNames
 }
 
-const registerPlatformEventInstallations = (
-  installationKey: InstallationKey,
-  triggerIndex: ReadonlyMap<string, ReadonlyArray<PlatformEventTriggerSpec>>,
-  installationsByEventName: Map<string, Set<InstallationKey>>,
-): void => {
-  for (const eventName of triggerIndex.keys()) {
-    const current = installationsByEventName.get(eventName)
-    if (current) {
-      current.add(installationKey)
-    } else {
-      installationsByEventName.set(eventName, new Set([installationKey]))
-    }
-  }
-}
-
 export const make = (options?: {
   readonly maxEventHistory?: number
 }): Effect.Effect<ProcessRuntime, never, Scope.Scope> =>
@@ -1030,11 +1015,6 @@ export const make = (options?: {
         }
 
         installations.set(installationKey, installation)
-        registerPlatformEventInstallations(
-          installationKey,
-          installation.platformEventTriggerIndex,
-          installationsByPlatformEvent,
-        )
 
         if (installation.enabled) {
           yield* startInstallation(installationKey)
