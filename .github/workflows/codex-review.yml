@@ -28,19 +28,77 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Build PR review prompt
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          PROMPT_FILE="$RUNNER_TEMP/codex-review-prompt.md"
+          FILE_LIST="$RUNNER_TEMP/pr-files.txt"
+          DIFF_FILE="$RUNNER_TEMP/pr.diff"
+
+          git diff --name-only "$BASE_SHA...$HEAD_SHA" > "$FILE_LIST"
+          git diff --stat "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/pr.diff.stat"
+          git diff --unified=3 "$BASE_SHA...$HEAD_SHA" > "$DIFF_FILE"
+
+          FILE_COUNT="$(wc -l < "$FILE_LIST" | tr -d ' ')"
+          DIFF_LINES="$(wc -l < "$DIFF_FILE" | tr -d ' ')"
+
+          {
+            echo "# PR Review Task"
+            echo
+            echo "- pr: #$PR_NUMBER"
+            echo "- title: $PR_TITLE"
+            echo "- base: $BASE_SHA"
+            echo "- head: $HEAD_SHA"
+            echo "- changed_files: $FILE_COUNT"
+            echo
+            echo "你是本仓库代码评审助手，请只基于 **base...head diff** 评审，不要用工作区的空 `git diff` 作为结论。"
+            echo "你可以继续执行以下命令取证："
+            echo "- \`git diff --name-status $BASE_SHA...$HEAD_SHA\`"
+            echo "- \`git diff --unified=3 $BASE_SHA...$HEAD_SHA -- <path>\`"
+            echo
+            echo "输出要求（Markdown）："
+            echo "1) 先列高风险/高收益问题（按严重度排序）"
+            echo "2) 每条给出“问题 + 原因 + 建议修复”"
+            echo "3) 明确指出是否影响性能、内存、并发事务语义、可诊断性"
+            echo "4) 若未发现关键问题，输出：No critical issues found."
+            echo
+            echo "## Changed files"
+            if [ "$FILE_COUNT" -eq 0 ]; then
+              echo "- (none)"
+            else
+              sed 's/^/- /' "$FILE_LIST"
+            fi
+            echo
+            echo "## Diff stat"
+            cat "$RUNNER_TEMP/pr.diff.stat"
+            echo
+            echo "## Diff excerpt"
+            if [ "$DIFF_LINES" -eq 0 ]; then
+              echo "(empty)"
+            else
+              sed -n '1,1600p' "$DIFF_FILE"
+              if [ "$DIFF_LINES" -gt 1600 ]; then
+                echo
+                echo "[diff truncated: total_lines=$DIFF_LINES]"
+              fi
+            fi
+          } > "$PROMPT_FILE"
+
+          echo "CODEX_PROMPT_FILE=$PROMPT_FILE" >> "$GITHUB_ENV"
+
       - name: Run Codex review
         id: codex
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           responses-api-endpoint: ${{ secrets.OPENAI_BASE_URL }}
-          prompt: |
-            你是本仓库代码评审助手，请只基于当前 PR 改动做审查。
-            输出要求（Markdown）：
-            1) 先列高风险/高收益问题（按严重度排序）
-            2) 每条给出“问题 + 原因 + 建议修复”
-            3) 明确指出是否影响性能、内存、并发事务语义、可诊断性
-            4) 若未发现关键问题，输出：No critical issues found.
+          prompt-file: ${{ env.CODEX_PROMPT_FILE }}
 
       - name: Upsert PR review comment
         if: ${{ steps.codex.outputs.final-message != '' }}
