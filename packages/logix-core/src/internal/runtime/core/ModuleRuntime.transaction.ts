@@ -154,7 +154,7 @@ export const makeTransactionOps = <S>(args: {
     readonly priority: StateCommitPriority
     readonly fieldPathIdRegistry: FieldPathIdRegistry | undefined
     readonly dirtyAllSetStateHint: boolean
-    readonly traitSummary: unknown | undefined
+    readonly traitSummary: unknown
   }): Effect.Effect<void> =>
     Effect.gen(function* () {
       const {
@@ -676,9 +676,8 @@ export const makeTransactionOps = <S>(args: {
                     const commitMode = ((txnContext.current as any)?.commitMode ?? 'normal') as StateCommitMode
                     const priority = ((txnContext.current as any)?.priority ?? 'normal') as StateCommitPriority
                     const fieldPathIdRegistry = txnContext.current?.fieldPathIdRegistry
-                    const dirtyAllSetStateHint = !!(txnContext.current as any)
-                      ? (txnContext.current as any)[DIRTY_ALL_SET_STATE_HINT] === true
-                      : false
+                    const dirtyAllSetStateHint =
+                      txnContext.current != null && (txnContext.current as any)[DIRTY_ALL_SET_STATE_HINT] === true
                     const commitResult = yield* StateTransaction.commitWithState(txnContext, stateRef)
 
                     if (commitResult) {

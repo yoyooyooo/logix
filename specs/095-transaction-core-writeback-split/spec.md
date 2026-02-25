@@ -2,7 +2,7 @@
 
 **Feature Branch**: `095-transaction-core-writeback-split`  
 **Created**: 2026-02-25  
-**Status**: Planned  
+**Status**: Phase 1 Complete  
 **Input**: O-002 第一阶段：在不改公共 API 的前提下，拆解事务巨石，把 commit 后 side effects 切成显式 post-commit 阶段函数，保持语义与顺序不变。
 
 ## User Scenarios & Testing _(mandatory)_
