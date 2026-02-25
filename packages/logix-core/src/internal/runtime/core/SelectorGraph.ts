@@ -6,11 +6,6 @@ import * as Debug from './DebugSink.js'
 
 type ReadRootKey = string
 
-type DirtyRootMatchCandidate = {
-  readonly rootKey: ReadRootKey
-  readonly path: FieldPath
-}
-
 type IndexedRootCandidate<S> = {
   readonly selectorId: string
   readonly entry: SelectorEntry<S, any>
@@ -58,6 +53,25 @@ const isRedundantDirtyRoot = (existingDirtyRoots: ReadonlyArray<FieldPath>, dirt
     }
   }
   return false
+}
+
+const upsertDirtyRoot = (existingDirtyRoots: Array<FieldPath>, dirtyRoot: FieldPath): boolean => {
+  if (isRedundantDirtyRoot(existingDirtyRoots, dirtyRoot)) {
+    return false
+  }
+
+  let nextLength = 0
+  for (let i = 0; i < existingDirtyRoots.length; i++) {
+    const existing = existingDirtyRoots[i]!
+    if (isPrefixOf(dirtyRoot, existing)) {
+      continue
+    }
+    existingDirtyRoots[nextLength] = existing
+    nextLength += 1
+  }
+  existingDirtyRoots.length = nextLength
+  existingDirtyRoots.push(dirtyRoot)
+  return true
 }
 
 const equalsShallowStruct = (a: unknown, b: unknown): boolean => {
@@ -407,8 +421,7 @@ export const make = <S>(args: {
         yield* evaluateSubscribedEntry(entry, selectorId)
       }
 
-      const seenDirtyRootsByRoot = new Map<ReadRootKey, Array<FieldPath>>()
-      const dirtyRootsToProcess: Array<DirtyRootMatchCandidate> = []
+      const dirtyRootsToProcessByRoot = new Map<ReadRootKey, Array<FieldPath>>()
       for (const dirtyRootId of dirtySet.rootIds) {
         const dirtyRoot = getDirtyRootPath(dirtyRootId)
         if (!dirtyRoot) {
@@ -418,46 +431,44 @@ export const make = <S>(args: {
 
         const rootKey = getReadRootKeyFromPath(dirtyRoot)
 
-        const existingDirtyRoots = seenDirtyRootsByRoot.get(rootKey)
+        const existingDirtyRoots = dirtyRootsToProcessByRoot.get(rootKey)
         if (existingDirtyRoots) {
-          if (isRedundantDirtyRoot(existingDirtyRoots, dirtyRoot)) {
-            continue
-          }
-          existingDirtyRoots.push(dirtyRoot)
-        } else {
-          seenDirtyRootsByRoot.set(rootKey, [dirtyRoot])
+          upsertDirtyRoot(existingDirtyRoots, dirtyRoot)
+          continue
         }
-
-        dirtyRootsToProcess.push({
-          rootKey,
-          path: dirtyRoot,
-        })
+        dirtyRootsToProcessByRoot.set(rootKey, [dirtyRoot])
       }
 
-      for (const dirtyRootCandidate of dirtyRootsToProcess) {
-        const candidates = getIndexedCandidatesForRoot(dirtyRootCandidate.rootKey)
+      for (const [rootKey, dirtyRootsForRoot] of dirtyRootsToProcessByRoot) {
+        const candidates = getIndexedCandidatesForRoot(rootKey)
         if (candidates.length === 0) {
           continue
         }
-        const isRootLevelDirty = dirtyRootCandidate.path.length <= 1
+
+        const hasRootLevelDirty = dirtyRootsForRoot.some((path) => path.length <= 1)
 
         for (const candidate of candidates) {
           const { entry, selectorId, readsForRoot } = candidate
           if (entry.subscriberCount === 0 || entry.lastScheduledTxnSeq === meta.txnSeq) continue
 
-          if (isRootLevelDirty) {
+          if (hasRootLevelDirty) {
             yield* evaluateSubscribedEntry(entry, selectorId)
             continue
           }
 
-          let overlapsDirtyRoot = false
-          for (const read of readsForRoot) {
-            if (overlaps(dirtyRootCandidate.path, read)) {
-              overlapsDirtyRoot = true
+          let overlapsAnyDirtyRoot = false
+          for (const dirtyRootPath of dirtyRootsForRoot) {
+            for (const read of readsForRoot) {
+              if (overlaps(dirtyRootPath, read)) {
+                overlapsAnyDirtyRoot = true
+                break
+              }
+            }
+            if (overlapsAnyDirtyRoot) {
               break
             }
           }
-          if (!overlapsDirtyRoot) continue
+          if (!overlapsAnyDirtyRoot) continue
 
           yield* evaluateSubscribedEntry(entry, selectorId)
         }
