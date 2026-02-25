@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logixjs/specs/099-runtime-assembly-graph/contracts/assembly-boot-report.schema.json",
+  "title": "Assembly Boot Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "appId", "success", "nodes", "rootContextLifecycle"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "appId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stageId", "stageSeq", "dependsOn", "status"],
+        "properties": {
+          "stageId": {
+            "type": "string",
+            "enum": [
+              "validate.modules",
+              "validate.tags",
+              "build.baseLayer",
+              "build.baseEnv",
+              "build.moduleEnvs",
+              "merge.env",
+              "rootContext.merge",
+              "rootContext.ready",
+              "process.install"
+            ]
+          },
+          "stageSeq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "dependsOn": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "succeeded", "failed", "skipped"]
+          },
+          "durationMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rootContextLifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["uninitialized", "merged", "ready", "failed"]
+        },
+        "mergedAtStageSeq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "readyAtStageSeq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reasonCode": {
+          "type": "string"
+        }
+      }
+    },
+    "failure": {
+      "$ref": "./assembly-diagnostic.schema.json"
+    }
+  }
+}

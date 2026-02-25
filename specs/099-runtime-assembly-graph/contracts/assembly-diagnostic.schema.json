@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logixjs/specs/099-runtime-assembly-graph/contracts/assembly-diagnostic.schema.json",
+  "title": "Assembly Diagnostic",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stageId", "stageSeq", "reasonCode", "message", "upstreamStages"],
+  "properties": {
+    "stageId": {
+      "type": "string",
+      "enum": [
+        "validate.modules",
+        "validate.tags",
+        "build.baseLayer",
+        "build.baseEnv",
+        "build.moduleEnvs",
+        "merge.env",
+        "rootContext.merge",
+        "rootContext.ready",
+        "process.install"
+      ]
+    },
+    "stageSeq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "boot::module_duplicate",
+        "boot::tag_collision",
+        "boot::base_layer_build_failed",
+        "boot::module_layer_build_failed",
+        "boot::env_merge_failed",
+        "boot::root_context_merge_failed",
+        "boot::root_context_ready_failed",
+        "boot::process_install_failed",
+        "boot::unknown"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "upstreamStages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
