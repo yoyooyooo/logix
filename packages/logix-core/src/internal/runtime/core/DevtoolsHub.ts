@@ -59,13 +59,47 @@ export interface DevtoolsHubOptions {
 
 export type SnapshotToken = number
 
-// ---- Global mutable state (singleton) ----
+// ---- Global mutable state (singleton hub + runtime buckets) ----
 
 const instances = new Map<string, number>()
-const latestStates = new Map<string, JsonValue>()
-const latestTraitSummaries = new Map<string, JsonValue>()
 const instanceLabels = new Map<string, string>()
 const convergeStaticIrByDigest = new Map<string, ConvergeStaticIrExport>()
+
+interface RuntimeDevtoolsBucket {
+  readonly runtimeLabel: string
+  readonly ringBuffer: RuntimeDebugEventRef[]
+  readonly latestStates: Map<string, JsonValue>
+  readonly latestTraitSummaries: Map<string, JsonValue>
+  readonly exportBudget: {
+    dropped: number
+    oversized: number
+  }
+}
+
+const runtimeBuckets = new Map<string, RuntimeDevtoolsBucket>()
+
+const getRuntimeBucket = (runtimeLabel: string): RuntimeDevtoolsBucket | undefined => runtimeBuckets.get(runtimeLabel)
+
+const getOrCreateRuntimeBucket = (runtimeLabel: string): RuntimeDevtoolsBucket => {
+  const existing = runtimeBuckets.get(runtimeLabel)
+  if (existing) return existing
+  const created: RuntimeDevtoolsBucket = {
+    runtimeLabel,
+    ringBuffer: [],
+    latestStates: new Map<string, JsonValue>(),
+    latestTraitSummaries: new Map<string, JsonValue>(),
+    exportBudget: {
+      dropped: 0,
+      oversized: 0,
+    },
+  }
+  runtimeBuckets.set(runtimeLabel, created)
+  return created
+}
+
+// Backward-compatible global aggregate views.
+const latestStates = new Map<string, JsonValue>()
+const latestTraitSummaries = new Map<string, JsonValue>()
 
 interface RuntimeModuleEntry {
   readonly moduleKey: string
@@ -119,6 +153,17 @@ const exportBudget = {
   oversized: 0,
 }
 
+const recalculateGlobalExportBudget = (): void => {
+  let dropped = 0
+  let oversized = 0
+  for (const bucket of runtimeBuckets.values()) {
+    dropped += bucket.exportBudget.dropped
+    oversized += bucket.exportBudget.oversized
+  }
+  exportBudget.dropped = dropped
+  exportBudget.oversized = oversized
+}
+
 let lastRunTs = 0
 let lastRunTsSeq = 0
 
@@ -147,6 +192,8 @@ const RING_TRIM_POLICY_EVENT_LABEL = 'trace:devtools:ring-trim-policy' as const
 const RING_TRIM_POLICY_MODULE_ID = 'devtools:hub'
 const RING_TRIM_POLICY_INSTANCE_ID = 'devtools:hub'
 const RING_TRIM_POLICY_RUNTIME_LABEL = 'DevtoolsHub'
+
+const normalizeRuntimeLabel = (runtimeLabel: unknown): string => normalizeKeyPart(runtimeLabel)
 
 const getRingTrimPolicySnapshot = () => ({
   mode: ringTrimMode,
@@ -180,38 +227,92 @@ refreshRingTrimPolicy()
 
 let snapshotToken: SnapshotToken = 0
 
-const ensureRingBufferSize = (): void => {
+const ensureRingBufferSize = (targetRingBuffer: RuntimeDebugEventRef[]): void => {
   if (ringTrimMode === 'disabled') {
-    ringBuffer.length = 0
+    targetRingBuffer.length = 0
     return
   }
 
-  if (ringBuffer.length <= bufferSize) return
-  const excess = ringBuffer.length - bufferSize
-  ringBuffer.splice(0, excess)
+  if (targetRingBuffer.length <= bufferSize) return
+  const excess = targetRingBuffer.length - bufferSize
+  targetRingBuffer.splice(0, excess)
 }
 
-const trimRingBufferIfNeeded = (): void => {
+const trimRingBufferIfNeeded = (targetRingBuffer: RuntimeDebugEventRef[]): void => {
   if (ringTrimMode === 'disabled') {
-    ringBuffer.length = 0
+    targetRingBuffer.length = 0
     return
   }
 
   // Small windows keep a strict upper bound to avoid "size=5 but events.length briefly > 5" surprises.
   // Large windows allow short bursts + batch trimming to avoid linear shift() costs under sustained load.
   if (ringTrimMode === 'strict') {
-    ensureRingBufferSize()
+    ensureRingBufferSize(targetRingBuffer)
     return
   }
 
-  if (ringBuffer.length <= ringTrimThreshold) return
+  if (targetRingBuffer.length <= ringTrimThreshold) return
 
-  const excess = ringBuffer.length - bufferSize
-  ringBuffer.splice(0, excess)
+  const excess = targetRingBuffer.length - bufferSize
+  targetRingBuffer.splice(0, excess)
 }
 
 const parseDiagnosticsLevel = (value: unknown): DiagnosticsLevel =>
   value === 'off' || value === 'light' || value === 'sampled' || value === 'full' ? value : 'light'
+
+const appendRuntimeRef = (runtimeLabel: string, ref: RuntimeDebugEventRef): void => {
+  const bucket = getOrCreateRuntimeBucket(runtimeLabel)
+  bucket.ringBuffer.push(ref)
+  trimRingBufferIfNeeded(bucket.ringBuffer)
+
+  ringBuffer.push(ref)
+  trimRingBufferIfNeeded(ringBuffer)
+}
+
+const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
+  const bucket = getRuntimeBucket(runtimeLabel)
+  if (!bucket) return false
+
+  let changed = false
+  if (bucket.ringBuffer.length > 0) {
+    bucket.ringBuffer.length = 0
+    changed = true
+  }
+  if (bucket.exportBudget.dropped !== 0 || bucket.exportBudget.oversized !== 0) {
+    bucket.exportBudget.dropped = 0
+    bucket.exportBudget.oversized = 0
+    changed = true
+  }
+
+  if (!changed) return false
+
+  const filtered = ringBuffer.filter((event) => normalizeRuntimeLabel(event.runtimeLabel) !== runtimeLabel)
+  ringBuffer.length = 0
+  ringBuffer.push(...filtered)
+  recalculateGlobalExportBudget()
+  return true
+}
+
+const clearAllRuntimeBucketEvents = (): boolean => {
+  let changed = false
+  for (const bucket of runtimeBuckets.values()) {
+    if (bucket.ringBuffer.length > 0) {
+      bucket.ringBuffer.length = 0
+      changed = true
+    }
+    if (bucket.exportBudget.dropped !== 0 || bucket.exportBudget.oversized !== 0) {
+      bucket.exportBudget.dropped = 0
+      bucket.exportBudget.oversized = 0
+      changed = true
+    }
+  }
+  if (ringBuffer.length > 0) {
+    ringBuffer.length = 0
+    changed = true
+  }
+  recalculateGlobalExportBudget()
+  return changed
+}
 
 const emitRingTrimPolicyEvent = (diagnosticsLevel: DiagnosticsLevel): void => {
   if (diagnosticsLevel === 'off') return
@@ -229,8 +330,7 @@ const emitRingTrimPolicyEvent = (diagnosticsLevel: DiagnosticsLevel): void => {
   )
   if (!ref) return
 
-  ringBuffer.push(ref)
-  trimRingBufferIfNeeded()
+  appendRuntimeRef(RING_TRIM_POLICY_RUNTIME_LABEL, ref)
 }
 
 // Snapshot references internal structures directly (read-only convention) to avoid copy costs in hot paths.
@@ -283,7 +383,10 @@ export const configureDevtoolsHub = (options?: DevtoolsHubOptions) => {
       if (policyChanged && options?.diagnosticsLevel !== undefined) {
         emitRingTrimPolicyEvent(parseDiagnosticsLevel(options.diagnosticsLevel))
       }
-      ensureRingBufferSize()
+      ensureRingBufferSize(ringBuffer)
+      for (const bucket of runtimeBuckets.values()) {
+        ensureRingBufferSize(bucket.ringBuffer)
+      }
       markSnapshotChanged()
     }
   }
@@ -295,6 +398,26 @@ export const isDevtoolsEnabled = (): boolean => devtoolsEnabled
 
 export const getDevtoolsSnapshot = (): DevtoolsSnapshot => currentSnapshot
 export const getDevtoolsSnapshotToken = (): SnapshotToken => snapshotToken
+export const getDevtoolsSnapshotByRuntimeLabel = (runtimeLabel: string): DevtoolsSnapshot => {
+  const normalizedRuntimeLabel = normalizeRuntimeLabel(runtimeLabel)
+  const bucket = getRuntimeBucket(normalizedRuntimeLabel)
+  const runtimeInstances = new Map<string, number>()
+  const runtimePrefix = `${normalizedRuntimeLabel}::`
+  for (const [moduleKey, count] of instances.entries()) {
+    if (moduleKey.startsWith(runtimePrefix)) {
+      runtimeInstances.set(moduleKey, count)
+    }
+  }
+
+  return {
+    snapshotToken,
+    instances: runtimeInstances,
+    events: bucket?.ringBuffer ?? [],
+    latestStates: bucket?.latestStates ?? new Map<string, JsonValue>(),
+    latestTraitSummaries: bucket?.latestTraitSummaries ?? new Map<string, JsonValue>(),
+    exportBudget: bucket?.exportBudget ?? { dropped: 0, oversized: 0 },
+  }
+}
 
 export const subscribeDevtoolsSnapshot = (listener: () => void): (() => void) => {
   listeners.add(listener)
@@ -320,10 +443,15 @@ export const startDevtoolsRun = (runId?: string): string => {
   return currentRunId
 }
 
-export const clearDevtoolsEvents = (): void => {
-  ringBuffer.length = 0
-  exportBudget.dropped = 0
-  exportBudget.oversized = 0
+export const clearDevtoolsEvents = (runtimeLabel?: string): void => {
+  if (runtimeLabel !== undefined) {
+    if (clearRuntimeBucketEvents(normalizeRuntimeLabel(runtimeLabel))) {
+      markSnapshotChanged()
+    }
+    return
+  }
+
+  clearAllRuntimeBucketEvents()
   markSnapshotChanged()
 }
 
@@ -417,6 +545,7 @@ export const devtoolsHubSink: Sink = {
       // NOTE: the hub is a global singleton, but whether events are exportable/written to the buffer is controlled by FiberRef,
       // enabling different perf baselines/diagnostics tiers across scopes within the same process.
       const level = yield* FiberRef.get(currentDiagnosticsLevel)
+      const eventRuntimeLabel = normalizeRuntimeLabel((event as any).runtimeLabel)
 
       let changed = false
 
@@ -434,7 +563,8 @@ export const devtoolsHubSink: Sink = {
       // Instance counters: maintain active instance counts by runtimeLabel::moduleId.
       if (event.type === 'module:init' || event.type === 'module:destroy') {
         const moduleId = normalizeKeyPart((event as any).moduleId)
-        const runtimeLabel = normalizeKeyPart((event as any).runtimeLabel)
+        const runtimeLabel = eventRuntimeLabel
+        const runtimeBucket = getOrCreateRuntimeBucket(runtimeLabel)
         const instanceId = (event as any).instanceId as string | undefined
         if (event.type === 'module:init') {
           const moduleEntry = getOrCreateRuntimeModuleEntry(runtimeLabel, moduleId)
@@ -451,6 +581,8 @@ export const devtoolsHubSink: Sink = {
             // If instanceId is reused, ensure derived caches do not carry leftovers from the previous lifetime.
             if (latestStates.delete(instanceKey)) changed = true
             if (latestTraitSummaries.delete(instanceKey)) changed = true
+            if (runtimeBucket.latestStates.delete(instanceKey)) changed = true
+            if (runtimeBucket.latestTraitSummaries.delete(instanceKey)) changed = true
           }
         } else {
           const moduleEntry = getRuntimeModuleEntry(runtimeLabel, moduleId)
@@ -469,6 +601,8 @@ export const devtoolsHubSink: Sink = {
             moduleEntry?.instanceKeyById.delete(instanceId)
             if (latestStates.delete(instanceKey)) changed = true
             if (latestTraitSummaries.delete(instanceKey)) changed = true
+            if (runtimeBucket.latestStates.delete(instanceKey)) changed = true
+            if (runtimeBucket.latestTraitSummaries.delete(instanceKey)) changed = true
             if (instanceLabels.delete(instanceId)) changed = true
             changed = true
           }
@@ -485,19 +619,23 @@ export const devtoolsHubSink: Sink = {
         return
       }
 
-      let exportBudgetChanged = false
+      let projectedDropped = 0
+      let projectedOversized = 0
       const ref = toRuntimeDebugEventRef(event, {
         diagnosticsLevel: level,
         resolveConvergeStaticIr: (staticIrDigest) => convergeStaticIrByDigest.get(staticIrDigest),
         onMetaProjection: ({ stats }) => {
-          if (stats.dropped !== 0 || stats.oversized !== 0) {
-            exportBudgetChanged = true
-          }
-          exportBudget.dropped += stats.dropped
-          exportBudget.oversized += stats.oversized
+          projectedDropped += stats.dropped
+          projectedOversized += stats.oversized
         },
       })
-      if (exportBudgetChanged) {
+      if (projectedDropped !== 0 || projectedOversized !== 0) {
+        const budgetRuntimeLabel = normalizeRuntimeLabel(ref?.runtimeLabel ?? eventRuntimeLabel)
+        const runtimeBucket = getOrCreateRuntimeBucket(budgetRuntimeLabel)
+        runtimeBucket.exportBudget.dropped += projectedDropped
+        runtimeBucket.exportBudget.oversized += projectedOversized
+        exportBudget.dropped += projectedDropped
+        exportBudget.oversized += projectedOversized
         changed = true
       }
       if (!ref) {
@@ -508,10 +646,12 @@ export const devtoolsHubSink: Sink = {
         return
       }
 
+      const refRuntimeLabel = normalizeRuntimeLabel(ref.runtimeLabel)
+      const runtimeBucket = getOrCreateRuntimeBucket(refRuntimeLabel)
+
       // latestStates / latestTraitSummaries: record latest snapshots by runtimeLabel::moduleId::instanceId.
       if (ref.kind === 'state' && ref.label === 'state:update') {
-        const runtimeLabel = ref.runtimeLabel ?? 'unknown'
-        const instanceKey = resolveLiveInstanceKey(runtimeLabel, ref.moduleId, ref.instanceId)
+        const instanceKey = resolveLiveInstanceKey(refRuntimeLabel, ref.moduleId, ref.instanceId)
 
         // Late/replayed events after module:destroy: allow entering the window for replay, but do not rebuild latest* caches.
         if (instanceKey) {
@@ -519,10 +659,12 @@ export const devtoolsHubSink: Sink = {
             const anyMeta = ref.meta as any
             if ('state' in anyMeta) {
               latestStates.set(instanceKey, anyMeta.state as JsonValue)
+              runtimeBucket.latestStates.set(instanceKey, anyMeta.state as JsonValue)
               changed = true
             }
             if ('traitSummary' in anyMeta && anyMeta.traitSummary !== undefined) {
               latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
+              runtimeBucket.latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
               changed = true
             }
           }
@@ -531,8 +673,7 @@ export const devtoolsHubSink: Sink = {
 
       // ring buffer: keep the most recent bufferSize RuntimeDebugEventRefs.
       if (bufferSize > 0) {
-        ringBuffer.push(ref)
-        trimRingBufferIfNeeded()
+        appendRuntimeRef(refRuntimeLabel, ref)
         changed = true
       }
 
