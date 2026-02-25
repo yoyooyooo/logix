@@ -435,6 +435,30 @@ const mergeDowngrade = (
 
 type ResolveConvergeStaticIr = (staticIrDigest: string) => ConvergeStaticIrExport | undefined
 
+const resolveDirtyRootPathsFromRootIds = (args: {
+  readonly rootIds: unknown
+  readonly fieldPaths: unknown
+}): ReadonlyArray<JsonValue> | undefined => {
+  const rootIds = args.rootIds
+  if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
+
+  const fieldPaths = args.fieldPaths
+  if (!Array.isArray(fieldPaths) || fieldPaths.length === 0) return undefined
+
+  const out: Array<JsonValue> = []
+  for (const rawId of rootIds) {
+    if (typeof rawId !== 'number' || !Number.isFinite(rawId)) continue
+    const id = Math.floor(rawId)
+    if (id < 0 || id >= fieldPaths.length) continue
+    const path = (fieldPaths as ReadonlyArray<unknown>)[id]
+    if (!Array.isArray(path) || path.length === 0) continue
+    if (!path.every((seg) => typeof seg === 'string' && seg.length > 0)) continue
+    out.push(path as JsonValue)
+  }
+
+  return out.length > 0 ? out : undefined
+}
+
 const resolveStateUpdateDirtySetRootPaths = (
   event: Extract<Event, { readonly type: 'state:update' }>,
   resolveConvergeStaticIr?: ResolveConvergeStaticIr,
@@ -447,25 +471,11 @@ const resolveStateUpdateDirtySetRootPaths = (
   const dirtySet = event.dirtySet as any
   if (!dirtySet || typeof dirtySet !== 'object' || Array.isArray(dirtySet)) return undefined
 
-  const rootIds = dirtySet.rootIds
-  if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
-
   const ir = resolveConvergeStaticIr(digest) as ConvergeStaticIrExport | undefined
-  const fieldPaths = (ir as any)?.fieldPaths as unknown
-  if (!Array.isArray(fieldPaths) || fieldPaths.length === 0) return undefined
-
-  const out: Array<JsonValue> = []
-  for (const rawId of rootIds) {
-    if (typeof rawId !== 'number' || !Number.isFinite(rawId)) continue
-    const id = Math.floor(rawId)
-    if (id < 0) continue
-    const path = (fieldPaths as any)[id] as unknown
-    if (!Array.isArray(path) || path.length === 0) continue
-    if (!path.every((seg) => typeof seg === 'string' && seg.length > 0)) continue
-    out.push(path as any)
-  }
-
-  return out.length > 0 ? out : undefined
+  return resolveDirtyRootPathsFromRootIds({
+    rootIds: dirtySet.rootIds,
+    fieldPaths: (ir as any)?.fieldPaths,
+  })
 }
 
 const withStateUpdateDirtySetRootPaths = (
@@ -492,25 +502,11 @@ const resolveTraitConvergeDirtyRootPaths = (args: {
   const digest = args.staticIrDigest
   if (typeof digest !== 'string' || digest.length === 0) return undefined
 
-  const rootIds = args.rootIds
-  if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
-
   const ir = resolveConvergeStaticIr(digest) as ConvergeStaticIrExport | undefined
-  const fieldPaths = (ir as any)?.fieldPaths as unknown
-  if (!Array.isArray(fieldPaths) || fieldPaths.length === 0) return undefined
-
-  const out: Array<JsonValue> = []
-  for (const id of rootIds) {
-    if (typeof id !== 'number' || !Number.isFinite(id)) continue
-    const idx = Math.floor(id)
-    if (idx < 0 || idx >= fieldPaths.length) continue
-    const path = fieldPaths[idx]
-    if (Array.isArray(path)) {
-      out.push(path as any)
-    }
-  }
-
-  return out.length > 0 ? out : undefined
+  return resolveDirtyRootPathsFromRootIds({
+    rootIds: args.rootIds,
+    fieldPaths: (ir as any)?.fieldPaths,
+  })
 }
 
 const enrichTraitConvergeDirtyRootPaths = (
