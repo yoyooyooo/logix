@@ -230,9 +230,8 @@ export const runModuleLogics = <S, A, R>(args: {
         return Effect.fail(new Error('Too many nested LogicPlanEffect resolutions (possible cyclic logic return).'))
       }
 
-      // Nested LogicPlanEffect is resolved with default phase ("run" when phase service is absent),
-      // which keeps async-built ModuleImpl patterns compatible while still converging to canonical plan.
-      return withRuntimeAndLifecycle(value as Effect.Effect<any, any, any>, undefined, logicUnit).pipe(
+      // Keep phase guard active while resolving nested LogicPlanEffect so setup/run boundaries remain enforced.
+      return withRuntimeAndLifecycle(value as Effect.Effect<any, any, any>, phaseRef, logicUnit).pipe(
         Effect.matchCauseEffect({
           onSuccess: (next) => resolveLogicPlanEffectToPlan(next, logicUnit, phaseRef, depth + 1),
           onFailure: (cause) => {

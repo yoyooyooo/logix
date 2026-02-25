@@ -559,6 +559,62 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
+    it.scoped('should keep phase guard active for nested LogicPlanEffect setup violations', () =>
+      Effect.gen(function* () {
+        const events: Debug.Event[] = []
+
+        const sink: Debug.Sink = {
+          record: (event: Debug.Event) =>
+            Effect.sync(() => {
+              events.push(event)
+            }),
+        }
+
+        const PlanModule = Logix.Module.make('PlanPhaseGuardNested', {
+          state: Schema.Struct({ value: Schema.Number }),
+          actions: { ping: Schema.Void },
+        })
+
+        const logic = PlanModule.logic<never>(($) => {
+          const setup = $.onAction('ping').run(Effect.void)
+          const run = Effect.void
+
+          const inner = Effect.succeed({ setup, run }) as any
+          LogicPlanMarker.markAsLogicPlanEffect(inner)
+
+          const outer = Effect.succeed(inner) as any
+          LogicPlanMarker.markAsLogicPlanEffect(outer)
+
+          return outer
+        })
+
+        const program: Effect.Effect<void, never, any> = Effect.locally(Debug.internal.currentDebugSinks, [sink])(
+          Effect.gen(function* () {
+            yield* ModuleRuntime.make(
+              { value: 0 },
+              {
+                moduleId: 'plan-phase-guard-nested',
+                logics: [logic],
+                tag: PlanModule.tag,
+              },
+            )
+
+            yield* TestClock.adjust('10 millis')
+          }),
+        )
+
+        yield* program
+
+        const diagnosticEvent = events.find((e) => e.type === 'diagnostic' && e.code === 'logic::invalid_phase')
+
+        expect(diagnosticEvent).toBeDefined()
+        expect(diagnosticEvent?.type === 'diagnostic' ? diagnosticEvent.severity : undefined).toBe('error')
+        expect(diagnosticEvent && 'moduleId' in diagnosticEvent ? (diagnosticEvent as any).moduleId : undefined).toBe(
+          'PlanPhaseGuardNested',
+        )
+      }),
+    )
+
     it.scoped('should emit logic::invalid_phase when using lifecycle.onInit in LogicPlan.run', () =>
       Effect.gen(function* () {
         const events: Debug.Event[] = []
