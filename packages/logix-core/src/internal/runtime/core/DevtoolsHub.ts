@@ -286,9 +286,13 @@ const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
 
   if (!changed) return false
 
-  const filtered = ringBuffer.filter((event) => normalizeRuntimeLabel(event.runtimeLabel) !== runtimeLabel)
-  ringBuffer.length = 0
-  ringBuffer.push(...filtered)
+  let writeIndex = 0
+  for (const event of ringBuffer) {
+    if (normalizeRuntimeLabel(event.runtimeLabel) !== runtimeLabel) {
+      ringBuffer[writeIndex++] = event
+    }
+  }
+  ringBuffer.length = writeIndex
   recalculateGlobalExportBudget()
   return true
 }

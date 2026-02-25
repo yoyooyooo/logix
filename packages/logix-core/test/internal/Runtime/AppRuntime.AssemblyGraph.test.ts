@@ -44,4 +44,45 @@ describe('AppRuntime assembly graph report', () => {
     expect(report.rootContextLifecycle.mergedAtStageSeq).toBeGreaterThan(0)
     expect(report.rootContextLifecycle.readyAtStageSeq).toBeGreaterThan(0)
   })
+
+  it('resets assembly graph state between boots from the same app definition', async () => {
+    const Module = Logix.Module.make('AssemblyGraph.ResetBetweenBoots.Module', {
+      state: Schema.Struct({ value: Schema.Number }),
+      actions: {},
+    })
+
+    let failOnce = true
+    const flakyLayer = Layer.suspend(() => {
+      if (failOnce) {
+        failOnce = false
+        return Layer.fail(new Error('boot once failure')) as unknown as Layer.Layer<never, never, never>
+      }
+      return Layer.empty as Layer.Layer<never, never, never>
+    })
+
+    const app = AppRuntimeImpl.makeApp({
+      layer: flakyLayer,
+      modules: [AppRuntimeImpl.provide(Module.tag, Module.live({ value: 1 }))],
+      processes: [],
+    })
+
+    const runtimeFail = app.makeRuntime()
+    await expect(runtimeFail.runPromise(Effect.void)).rejects.toBeDefined()
+
+    const firstReport = AppRuntimeImpl.getAssemblyReport(app)
+    expect(firstReport?.success).toBe(false)
+    expect(firstReport?.failure).toBeDefined()
+
+    const runtimeSuccess = app.makeRuntime()
+    await runtimeSuccess.runPromise(Effect.void)
+
+    const secondReport = AppRuntimeImpl.getAssemblyReport(app)
+    expect(secondReport).toBeDefined()
+    if (!secondReport) return
+
+    expect(secondReport.success).toBe(true)
+    expect(secondReport.failure).toBeUndefined()
+    expect(secondReport.nodes.every((node) => node.status === 'succeeded')).toBe(true)
+    expect(secondReport.rootContextLifecycle.state).toBe('ready')
+  })
 })

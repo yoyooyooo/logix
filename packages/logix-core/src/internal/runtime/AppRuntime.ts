@@ -308,6 +308,16 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
 
   const finalLayer = Layer.unwrapScoped(
     Effect.gen(function* () {
+      // AppDefinition can be used to create multiple runtimes; reset graph state before each boot.
+      assemblyGraph.reset()
+      // These stages are validated/computed at makeApp-time and should appear as succeeded in every boot report.
+      assemblyGraph.beginStage('validate.modules')
+      assemblyGraph.completeStage('validate.modules')
+      assemblyGraph.beginStage('validate.tags')
+      assemblyGraph.completeStage('validate.tags')
+      assemblyGraph.beginStage('build.baseLayer')
+      assemblyGraph.completeStage('build.baseLayer')
+
       const scope = yield* Effect.scope
 
       // buildWithScope builds layers within the current scope and patches FiberRefs (e.g. Debug sinks).

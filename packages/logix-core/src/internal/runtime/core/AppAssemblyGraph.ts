@@ -122,6 +122,16 @@ export class AppAssemblyGraph {
     this.nodeIndex = new Map(mutableNodes.map((node) => [node.stageId, node] as const))
   }
 
+  reset(): void {
+    for (const node of this.nodes) {
+      node.status = 'pending'
+      node.reasonCode = undefined
+      node.message = undefined
+    }
+    this.rootContextLifecycle = { state: 'uninitialized' }
+    this.failure = undefined
+  }
+
   beginStage(stageId: AssemblyStageId): void {
     const node = this.getNode(stageId)
     if (node.status === 'pending') {
