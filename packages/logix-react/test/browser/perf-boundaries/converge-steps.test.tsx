@@ -10,9 +10,46 @@ import {
   runConvergeTxnCommitWithDiagnosticsLevel,
 } from './converge-runtime.js'
 
+const parseStepsLevelsOverride = (raw: string | undefined): ReadonlyArray<number> | undefined => {
+  if (raw == null) return undefined
+  const trimmed = raw.trim()
+  if (trimmed.length === 0) return undefined
+
+  const values = trimmed
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+
+  const parsed: number[] = []
+  for (const value of values) {
+    if (!/^[0-9]+$/.test(value)) {
+      throw new Error(`Invalid VITE_LOGIX_PERF_STEPS_LEVELS value: ${value}`)
+    }
+    const level = Number(value)
+    if (!Number.isFinite(level) || level <= 0) {
+      throw new Error(`Invalid VITE_LOGIX_PERF_STEPS_LEVELS value: ${value}`)
+    }
+    parsed.push(level)
+  }
+
+  if (parsed.length === 0) return undefined
+  return Array.from(new Set(parsed)).sort((a, b) => a - b)
+}
+
 const suite = (matrix.suites as any[]).find((s) => s.id === 'converge.txnCommit') as any
 
-const stepsLevels = suite.axes.steps as number[]
+const stepsLevelsOverride = parseStepsLevelsOverride(import.meta.env.VITE_LOGIX_PERF_STEPS_LEVELS)
+const stepsLevels = (stepsLevelsOverride ?? (suite.axes.steps as number[])).slice().sort((a, b) => a - b)
+const suiteWithResolvedSteps =
+  stepsLevelsOverride != null
+    ? {
+        ...suite,
+        axes: {
+          ...suite.axes,
+          steps: stepsLevels,
+        },
+      }
+    : suite
 const dirtyRootsRatioLevels = suite.axes.dirtyRootsRatio as number[]
 const convergeModeLevels = suite.axes.convergeMode as Array<'full' | 'dirty' | 'auto'>
 
@@ -45,7 +82,7 @@ test(
       const runtimeByKey = new Map<string, ConvergeRuntime>()
       try {
         const { points, thresholds } = await runMatrixSuite(
-          suite,
+          suiteWithResolvedSteps,
           { runs, warmupDiscard, timeoutMs },
           async (params) => {
             const convergeMode = params.convergeMode as 'full' | 'dirty' | 'auto'

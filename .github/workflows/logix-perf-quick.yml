@@ -22,6 +22,10 @@ on:
         description: "采样 profile（影响 runs/warmup/stability 等配置）"
         required: false
         default: "smoke"
+      perf_steps_levels:
+        description: "可选 steps 轴覆盖（CSV；例如 200,400,800,1200,1600,2000,2400,2800,3200）"
+        required: false
+        default: ""
       diff_mode:
         description: "diff 模式（strict=不可比直接失败；triage=允许漂移，仅作线索）"
         required: false
@@ -59,6 +63,7 @@ jobs:
           INPUT_HEAD_REF: ${{ github.event.inputs.head_ref }}
           INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
           INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
+          INPUT_PERF_STEPS_LEVELS: ${{ github.event.inputs.perf_steps_levels }}
           INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
         run: |
           set -euo pipefail
@@ -115,6 +120,9 @@ jobs:
             fi
             if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
               echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_LEVELS:-}" ]; then
+              echo "PERF_STEPS_LEVELS=$INPUT_PERF_STEPS_LEVELS" >> "$GITHUB_ENV"
             fi
             if [ -n "${INPUT_DIFF_MODE:-}" ]; then
               echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
@@ -211,6 +219,9 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+          if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+            export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
+          fi
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
@@ -244,6 +255,9 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+          if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+            export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
+          fi
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
