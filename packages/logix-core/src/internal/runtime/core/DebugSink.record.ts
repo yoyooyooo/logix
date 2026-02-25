@@ -1365,6 +1365,35 @@ export const toRuntimeDebugEventRef = (
         return undefined
       }
 
+      // trace:devtools:ring-trim-policy: emit a stable slim payload for ring trim policy changes.
+      if (event.type === 'trace:devtools:ring-trim-policy') {
+        const data = (event as {
+          readonly data?: {
+            readonly mode?: unknown
+            readonly threshold?: unknown
+            readonly bufferSize?: unknown
+          }
+        }).data
+        const metaInput = {
+          mode: data?.mode,
+          threshold: data?.threshold,
+          bufferSize: data?.bufferSize,
+        }
+        const metaProjection = projectJsonValue(metaInput)
+        options?.onMetaProjection?.({
+          stats: metaProjection.stats,
+          downgrade: metaProjection.downgrade,
+        })
+        downgrade = mergeDowngrade(downgrade, metaProjection.downgrade)
+
+        return withDowngrade({
+          ...base,
+          kind: 'devtools',
+          label: event.type,
+          meta: metaProjection.value,
+        })
+      }
+
       // trace:tick: runtime tick evidence; keep Slim payload even in light tier.
       if (event.type === 'trace:tick') {
         const data: any = (event as any).data

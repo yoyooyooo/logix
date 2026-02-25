@@ -107,6 +107,40 @@ describe('DevtoolsHub (core)', () => {
     }),
   )
 
+  it.effect('configure bufferSize should emit ring trim policy diagnostics with slim payload', () =>
+    Effect.gen(function* () {
+      Logix.Debug.clearDevtoolsEvents()
+
+      Logix.Debug.devtoolsHubLayer({
+        bufferSize: 5,
+        diagnosticsLevel: 'light',
+      })
+      Logix.Debug.clearDevtoolsEvents()
+
+      Logix.Debug.devtoolsHubLayer({
+        bufferSize: 6,
+        diagnosticsLevel: 'light',
+      })
+
+      const events = Logix.Debug.getDevtoolsSnapshot().events
+      const policyEvent = events[events.length - 1]
+      expect(policyEvent?.label).toBe('trace:devtools:ring-trim-policy')
+      expect(policyEvent?.meta).toEqual({
+        mode: 'strict',
+        threshold: 6,
+        bufferSize: 6,
+      })
+      expect(() => JSON.stringify(policyEvent?.meta)).not.toThrow()
+
+      Logix.Debug.clearDevtoolsEvents()
+      Logix.Debug.devtoolsHubLayer({
+        bufferSize: 7,
+        diagnosticsLevel: 'off',
+      })
+      expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBe(0)
+    }),
+  )
+
   it.effect('clearDevtoolsEvents should only clear hub ring buffer', () =>
     Effect.gen(function* () {
       Logix.Debug.clearDevtoolsEvents()
@@ -173,12 +207,12 @@ describe('DevtoolsHub (core)', () => {
 
   it.effect('startDevtoolsRun should reset per-instance eventSeq', () =>
     Effect.gen(function* () {
-      Logix.Debug.startDevtoolsRun('run-test-1')
-
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 5,
         diagnosticsLevel: 'light',
       }) as Layer.Layer<any, never, never>
+
+      Logix.Debug.startDevtoolsRun('run-test-1')
 
       yield* Logix.Debug.record({
         type: 'trace:test',
