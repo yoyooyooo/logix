@@ -1,6 +1,6 @@
 # Tasks: O-006 Runtime Assembly Graph
 
-**Input**: Design documents from `/specs/099-runtime-assembly-graph/`  
+**Input**: Design documents from `specs/099-runtime-assembly-graph/`  
 **Prerequisites**: `spec.md`, `plan.md`
 
 **Tests**: 本特性触及 runtime 核心路径，测试与性能证据为必选项。  
