@@ -1,4 +1,4 @@
-import { Context, Deferred, Effect, Layer, ManagedRuntime } from 'effect'
+import { Context, Deferred, Effect, Exit, Layer, ManagedRuntime } from 'effect'
 import {
   ConcurrencyPolicyTag,
   ReadQueryStrictGateConfigTag,
@@ -12,6 +12,12 @@ import {
   type ReadQueryStrictGateRuntimeConfig,
   type StateTransactionRuntimeConfig,
 } from './core/env.js'
+import {
+  AppAssemblyGraph,
+  type AssemblyReasonCode,
+  type AssemblyStageId,
+  type BootAssemblyReport,
+} from './core/AppAssemblyGraph.js'
 import { RootContextTag, type RootContext } from './core/RootContext.js'
 import type { HostScheduler } from './core/HostScheduler.js'
 import * as ProcessRuntime from './core/process/ProcessRuntime.js'
@@ -75,6 +81,7 @@ export interface AppDefinition<R> {
   readonly definition: LogixAppConfig<R>
   readonly layer: Layer.Layer<R, never, never>
   readonly makeRuntime: () => ManagedRuntime.ManagedRuntime<R, never>
+  readonly getAssemblyReport?: () => BootAssemblyReport | undefined
 }
 
 interface TagInfo {
@@ -195,21 +202,41 @@ const validateTags = (entries: ReadonlyArray<AppModuleEntry>): void => {
 }
 
 export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
+  const appModuleIds = config.modules.map((entry) => String(entry.module.id))
+  const appId = appModuleIds.length === 1 ? appModuleIds[0]! : appModuleIds.slice().sort().join('~')
+  const assemblyGraph = new AppAssemblyGraph(appId)
+  let latestAssemblyReport: BootAssemblyReport | undefined
+
+  const failAndThrow = (stageId: AssemblyStageId, reasonCode: AssemblyReasonCode, error: unknown): never => {
+    assemblyGraph.failStage(stageId, reasonCode, error)
+    latestAssemblyReport = assemblyGraph.buildReport(false)
+    throw error
+  }
+
+  assemblyGraph.beginStage('validate.modules')
   const seenIds = new Set<string>()
   for (const entry of config.modules) {
     const id = String(entry.module.id)
 
     if (seenIds.has(id)) {
-      throw new Error(
+      const error = new Error(
         `[Logix] Duplicate Module ID/Tag detected: "${id}". \nEnsure all modules in the application Runtime have unique IDs.`,
       )
+      failAndThrow('validate.modules', 'boot::module_duplicate', error)
     }
     seenIds.add(id)
   }
+  assemblyGraph.completeStage('validate.modules')
 
   // Validate tag collisions before merging layers.
   // This exposes "the same ServiceTag implemented by multiple modules" early, avoiding silent Env overrides.
-  validateTags(config.modules)
+  assemblyGraph.beginStage('validate.tags')
+  try {
+    validateTags(config.modules)
+    assemblyGraph.completeStage('validate.tags')
+  } catch (error) {
+    failAndThrow('validate.tags', 'boot::tag_collision', error)
+  }
 
   // If the Runtime provides a unified StateTransaction config, attach the corresponding service to the app Env.
   const stateTxnLayer: Layer.Layer<R, never, never> = config.stateTransaction
@@ -226,9 +253,6 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
     ? (Layer.succeed(ReadQueryStrictGateConfigTag, config.readQueryStrictGate) as Layer.Layer<R, never, never>)
     : (Layer.empty as Layer.Layer<R, never, never>)
 
-  const appModuleIds = config.modules.map((entry) => String(entry.module.id))
-  const appId = appModuleIds.length === 1 ? appModuleIds[0]! : appModuleIds.slice().sort().join('~')
-
   const pinnedHostSchedulerLayer: Layer.Layer<any, never, never> | undefined =
     config.hostScheduler !== undefined
       ? (Layer.succeed(HostSchedulerTag, config.hostScheduler) as Layer.Layer<any, never, never>)
@@ -242,6 +266,7 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
   // This allows app layers to override TickScheduler/HostScheduler while still depending on RuntimeStore/DeclarativeLinkRuntime.
   const appLayer = (config.layer as Layer.Layer<any, never, never>).pipe(Layer.provide(tickServicesLayer))
 
+  assemblyGraph.beginStage('build.baseLayer')
   const baseLayer = Layer.mergeAll(
     tickServicesLayer,
     appLayer,
@@ -260,6 +285,26 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
       }),
     ),
   ) as Layer.Layer<R, never, never>
+  assemblyGraph.completeStage('build.baseLayer')
+
+  const runStage = <A>(
+    stageId: AssemblyStageId,
+    reasonCode: AssemblyReasonCode,
+    effect: Effect.Effect<A, any, any>,
+  ): Effect.Effect<A, any, any> =>
+    Effect.gen(function* () {
+      assemblyGraph.beginStage(stageId)
+      const exit = yield* Effect.exit(effect)
+
+      if (Exit.isSuccess(exit)) {
+        assemblyGraph.completeStage(stageId)
+        return exit.value
+      }
+
+      assemblyGraph.failStage(stageId, reasonCode, exit.cause)
+      latestAssemblyReport = assemblyGraph.buildReport(false)
+      return yield* Effect.failCause(exit.cause)
+    })
 
   const finalLayer = Layer.unwrapScoped(
     Effect.gen(function* () {
@@ -275,11 +320,17 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
       //   is available, and those fibers will permanently miss the runtime services due to Env capture semantics.
       const [patch, env] = yield* Effect.diffFiberRefs(
         Effect.gen(function* () {
-          const baseEnv = yield* Layer.buildWithScope(baseLayer, scope)
+          const baseEnv = yield* runStage(
+            'build.baseEnv',
+            'boot::base_layer_build_failed',
+            Layer.buildWithScope(baseLayer, scope),
+          )
 
-          const moduleEnv =
+          const moduleEnv = yield* runStage(
+            'build.moduleEnvs',
+            'boot::module_layer_build_failed',
             config.modules.length > 0
-              ? yield* Effect.provide(
+              ? Effect.provide(
                   Layer.buildWithScope(
                     config.modules.length === 1
                       ? config.modules[0]!.layer
@@ -290,20 +341,47 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
                   ),
                   baseEnv as Context.Context<any>,
                 )
-              : undefined
+              : Effect.succeed(undefined),
+          )
 
-          const mergedEnv = moduleEnv
-            ? (Context.merge(baseEnv as Context.Context<any>, moduleEnv as Context.Context<any>) as Context.Context<any>)
-            : (baseEnv as Context.Context<any>)
+          const mergedEnv = yield* runStage(
+            'merge.env',
+            'boot::env_merge_failed',
+            Effect.sync(() =>
+              moduleEnv
+                ? (Context.merge(baseEnv as Context.Context<any>, moduleEnv as Context.Context<any>) as Context.Context<any>)
+                : (baseEnv as Context.Context<any>),
+            ),
+          )
 
           // After env is built, complete RootContext (single source of truth for the root provider).
           // Note: module logics may already be forked and waiting for RootContext in the run phase; completing it here unblocks them.
           // RootContextTag is an internal service injected by AppRuntime (should not leak into external R types);
           // keep types minimal to avoid incorrect generic inference in Context.get.
-          const rootContext = Context.get(mergedEnv as Context.Context<any>, RootContextTag as any) as RootContext
+          const rootContext = yield* runStage(
+            'rootContext.merge',
+            'boot::root_context_merge_failed',
+            Effect.sync(() => {
+              const root = Context.get(mergedEnv as Context.Context<any>, RootContextTag as any) as RootContext
+              if (root.context !== undefined) {
+                throw new Error('[Logix] RootContext merge duplicated during app assembly.')
+              }
+              root.context = mergedEnv as Context.Context<any>
+              return root
+            }),
+          )
+          assemblyGraph.markRootContextMerged()
 
-          rootContext.context = mergedEnv as Context.Context<any>
-          yield* Deferred.succeed(rootContext.ready, mergedEnv as Context.Context<any>)
+          yield* runStage(
+            'rootContext.ready',
+            'boot::root_context_ready_failed',
+            Effect.flatMap(Deferred.succeed(rootContext.ready, mergedEnv as Context.Context<any>), (readySucceeded) =>
+              readySucceeded
+                ? Effect.void
+                : Effect.fail(new Error('[Logix] RootContext ready was already completed before app assembly finished.')),
+            ),
+          )
+          assemblyGraph.markRootContextReady()
 
           const processRuntime = Context.get(
             mergedEnv as Context.Context<any>,
@@ -311,30 +389,34 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
           ) as ProcessRuntime.ProcessRuntime
 
           // After Env is fully ready, start app-level long-lived processes (Process / Link / watchers / host bridges, etc.).
-          yield* Effect.forEach(
-            config.processes,
-            (process) =>
-              Effect.gen(function* () {
-                const installation = yield* Effect.provide(
-                  processRuntime.install(process as any, {
-                    scope: { type: 'app', appId },
-                    enabled: true,
-                    installedAt: 'appRuntime',
-                  }),
-                  mergedEnv,
-                )
-
-                // Legacy fallback: a raw Effect is still allowed as a process host, but it has no Process static surface/diagnostics.
-                if (installation === undefined) {
-                  yield* Effect.forkScoped(
-                    Effect.provide(
-                      config.onError ? Effect.catchAllCause(process, config.onError) : process,
-                      mergedEnv,
-                    ),
+          yield* runStage(
+            'process.install',
+            'boot::process_install_failed',
+            Effect.forEach(
+              config.processes,
+              (process) =>
+                Effect.gen(function* () {
+                  const installation = yield* Effect.provide(
+                    processRuntime.install(process as any, {
+                      scope: { type: 'app', appId },
+                      enabled: true,
+                      installedAt: 'appRuntime',
+                    }),
+                    mergedEnv,
                   )
-                }
-              }),
-            { discard: true },
+
+                  // Legacy fallback: a raw Effect is still allowed as a process host, but it has no Process static surface/diagnostics.
+                  if (installation === undefined) {
+                    yield* Effect.forkScoped(
+                      Effect.provide(
+                        config.onError ? Effect.catchAllCause(process, config.onError) : process,
+                        mergedEnv,
+                      ),
+                    )
+                  }
+                }),
+              { discard: true },
+            ),
           )
 
           return mergedEnv
@@ -342,17 +424,29 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
       )
 
       const fiberRefsLayer = Layer.scopedDiscard(Effect.patchFiberRefs(patch))
+      latestAssemblyReport = assemblyGraph.buildReport(true)
 
       return Layer.mergeAll(Layer.succeedContext(env), fiberRefsLayer)
-    }),
+    }).pipe(
+      Effect.catchAllCause((cause) =>
+        Effect.gen(function* () {
+          assemblyGraph.ensureFailure('boot::unknown', cause)
+          latestAssemblyReport = assemblyGraph.buildReport(false)
+          return yield* Effect.failCause(cause)
+        }),
+      ),
+    ),
   ) as Layer.Layer<R, never, never>
 
   return {
     definition: config,
     layer: finalLayer,
     makeRuntime: () => ManagedRuntime.make(finalLayer),
+    getAssemblyReport: () => latestAssemblyReport,
   }
 }
+
+export const getAssemblyReport = <R>(app: AppDefinition<R>): BootAssemblyReport | undefined => app.getAssemblyReport?.()
 
 /**
  * Sugar: pair a Module with a runtime instance or layer for AppRuntime's modules config.
