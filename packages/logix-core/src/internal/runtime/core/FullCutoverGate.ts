@@ -13,6 +13,13 @@ export const CutoverCoverageMatrix = {
 
 export type FullCutoverGateMode = 'trial' | 'fullCutover'
 
+export type FullCutoverGateReason =
+  | 'fully_activated'
+  | 'trial_mode_with_fallback'
+  | 'missing_required_bindings'
+  | 'fallback_bindings_detected'
+  | 'missing_and_fallback'
+
 export interface FullCutoverGateAnchor {
   readonly moduleId: string
   readonly instanceId: string
@@ -41,6 +48,12 @@ export interface FullCutoverGateResult {
   readonly missingServiceIds: ReadonlyArray<string>
   readonly fallbackServiceIds: ReadonlyArray<string>
   readonly anchor: FullCutoverGateAnchor
+  readonly reason: FullCutoverGateReason
+  readonly evidence: {
+    readonly requiredServiceCount: number
+    readonly missingServiceIds: ReadonlyArray<string>
+    readonly fallbackServiceIds: ReadonlyArray<string>
+  }
   /**
    * When diagnostics=off, it must stay slim (avoid permanent overhead).
    * In light/full, additional explainable info is allowed (still must be serializable).
@@ -90,6 +103,21 @@ const collectMissingServiceIds = (args: {
   return missing
 }
 
+const resolveGateReason = (args: {
+  readonly mode: FullCutoverGateMode
+  readonly missingServiceIds: ReadonlyArray<string>
+  readonly fallbackServiceIds: ReadonlyArray<string>
+  readonly fullyActivated: boolean
+}): FullCutoverGateReason => {
+  if (args.fullyActivated) return 'fully_activated'
+  if (args.mode === 'trial') return 'trial_mode_with_fallback'
+  const hasMissing = args.missingServiceIds.length > 0
+  const hasFallback = args.fallbackServiceIds.length > 0
+  if (hasMissing && hasFallback) return 'missing_and_fallback'
+  if (hasMissing) return 'missing_required_bindings'
+  return 'fallback_bindings_detected'
+}
+
 export const evaluateFullCutoverGate = (args: {
   readonly mode: FullCutoverGateMode
   readonly requestedKernelId: KernelId
@@ -110,6 +138,12 @@ export const evaluateFullCutoverGate = (args: {
   const fullyActivated = missingServiceIds.length === 0 && fallbackServiceIds.length === 0
 
   const verdict: FullCutoverGateVerdict = args.mode === 'fullCutover' ? (fullyActivated ? 'PASS' : 'FAIL') : 'PASS'
+  const reason = resolveGateReason({
+    mode: args.mode,
+    missingServiceIds,
+    fallbackServiceIds,
+    fullyActivated,
+  })
 
   const moduleIdRaw = args.runtimeServicesEvidence.moduleId
   const moduleId = typeof moduleIdRaw === 'string' && moduleIdRaw.length > 0 ? moduleIdRaw : 'unknown'
@@ -131,6 +165,12 @@ export const evaluateFullCutoverGate = (args: {
     missingServiceIds,
     fallbackServiceIds,
     anchor,
+    reason,
+    evidence: {
+      requiredServiceCount: matrix.requiredServiceIds.length,
+      missingServiceIds,
+      fallbackServiceIds,
+    },
     ...(level === 'off'
       ? {}
       : {

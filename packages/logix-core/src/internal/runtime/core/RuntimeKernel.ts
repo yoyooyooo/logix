@@ -62,7 +62,7 @@ export const RuntimeServicesInstanceOverridesTag = RuntimeServicesInstanceOverri
  * - trial: allows fallbacks (for trial-run / comparison / diagnostics).
  * - fullCutover: forbids fallbacks (any fallback or missing binding fails).
  *
- * Default: trial. If you need a strict gate, set it to fullCutover explicitly in the public Runtime defaults.
+ * Default: fullCutover. trial must be opted in explicitly.
  */
 export type FullCutoverGateMode = 'trial' | 'fullCutover'
 

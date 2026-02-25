@@ -36,7 +36,10 @@ describe('contracts (047): Full Cutover Gate (trial)', () => {
 
       expect(gate.verdict).toBe('PASS')
       expect(gate.fullyActivated).toBe(false)
+      expect(gate.reason).toBe('trial_mode_with_fallback')
       expect(gate.fallbackServiceIds).toContain('txnQueue')
+      expect(gate.evidence.requiredServiceCount).toBe(Logix.Kernel.CutoverCoverageMatrix.requiredServiceIds.length)
+      expect(gate.evidence.fallbackServiceIds).toContain('txnQueue')
     }),
   )
 })
