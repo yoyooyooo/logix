@@ -1,6 +1,6 @@
 const fs = require('node:fs')
-const path = require('node:path')
 const os = require('node:os')
+const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
 const usage = () => `\
@@ -19,14 +19,18 @@ Usage:
     [--max-iterations <n>] \\
     [--growth-factor <float>] \\
     [--extend-count <n>] \\
-    [--max-level-cap <n>]
+    [--max-level-cap <n>] \\
+    [--samples-per-iteration <n>] \\
+    [--outlier-rel-tolerance <float>] \\
+    [--outlier-abs-tolerance <n>] \\
+    [--min-kept-samples <n>]
 
 Purpose:
-  自动探测 converge steps 上限。脚本会循环执行 perf collect：
-  1) 用当前 steps levels 采集一次报告；
-  2) 读取指定预算的 capacity floor；
-  3) 若 floor 仍处于“顶层区间”，则自动扩容 steps 再采集；
-  4) 收敛后输出最终报告，并导出最终 steps CSV。
+  智能化探测 steps 上限（多样本 + 异常值剔除）：
+  1) 每轮对同一组 levels 采样 N 次；
+  2) 对每个 dirtyRootsRatio 的 maxLevel 做异常值剔除；
+  3) 计算稳健统计（floor/p50/p90）与平均上限（average upper limit）；
+  4) 按“floor 或 average 贴近顶层”决定是否继续扩容。
 `
 
 const parseArgs = (argv) => {
@@ -45,6 +49,10 @@ const parseArgs = (argv) => {
     growthFactor: 1.25,
     extendCount: 2,
     maxLevelCap: 25600,
+    samplesPerIteration: 2,
+    outlierRelTolerance: 0.2,
+    outlierAbsTolerance: 800,
+    minKeptSamples: 2,
   }
 
   for (let i = 0; i < argv.length; i++) {
@@ -64,11 +72,13 @@ const parseArgs = (argv) => {
     if (k === '--growth-factor') out.growthFactor = Number(v)
     if (k === '--extend-count') out.extendCount = Number(v)
     if (k === '--max-level-cap') out.maxLevelCap = Number(v)
+    if (k === '--samples-per-iteration') out.samplesPerIteration = Number(v)
+    if (k === '--outlier-rel-tolerance') out.outlierRelTolerance = Number(v)
+    if (k === '--outlier-abs-tolerance') out.outlierAbsTolerance = Number(v)
+    if (k === '--min-kept-samples') out.minKeptSamples = Number(v)
   }
 
-  if (!out.profile || !out.files || !out.out) {
-    return null
-  }
+  if (!out.profile || !out.files || !out.out) return null
   if (!Number.isFinite(out.maxIterations) || out.maxIterations <= 0) {
     throw new Error(`invalid --max-iterations: ${String(out.maxIterations)}`)
   }
@@ -81,16 +91,41 @@ const parseArgs = (argv) => {
   if (!Number.isFinite(out.maxLevelCap) || out.maxLevelCap <= 0) {
     throw new Error(`invalid --max-level-cap: ${String(out.maxLevelCap)}`)
   }
+  if (!Number.isFinite(out.samplesPerIteration) || out.samplesPerIteration <= 0) {
+    throw new Error(`invalid --samples-per-iteration: ${String(out.samplesPerIteration)}`)
+  }
+  if (!Number.isFinite(out.outlierRelTolerance) || out.outlierRelTolerance < 0) {
+    throw new Error(`invalid --outlier-rel-tolerance: ${String(out.outlierRelTolerance)}`)
+  }
+  if (!Number.isFinite(out.outlierAbsTolerance) || out.outlierAbsTolerance < 0) {
+    throw new Error(`invalid --outlier-abs-tolerance: ${String(out.outlierAbsTolerance)}`)
+  }
+  if (!Number.isFinite(out.minKeptSamples) || out.minKeptSamples <= 0) {
+    throw new Error(`invalid --min-kept-samples: ${String(out.minKeptSamples)}`)
+  }
   return out
 }
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'))
 const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8')
 
-const quantileCeil = (sorted, q) => {
+const roundStep = (n) => Math.ceil(n / 100) * 100
+
+const quantileCeil = (values, q) => {
+  if (!Array.isArray(values) || values.length === 0) return 0
+  const sorted = values
+    .filter((x) => typeof x === 'number' && Number.isFinite(x))
+    .slice()
+    .sort((a, b) => a - b)
   if (sorted.length === 0) return 0
   const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * q) - 1))
   return sorted[index] ?? 0
+}
+
+const mean = (values) => {
+  if (!Array.isArray(values) || values.length === 0) return 0
+  const total = values.reduce((acc, x) => acc + x, 0)
+  return total / values.length
 }
 
 const parseLevelsCsv = (raw) => {
@@ -131,36 +166,165 @@ const toNumericLevel = (value) => {
   return 0
 }
 
-const analyzeReport = ({ report, suiteId, budgetId, convergeMode }) => {
+const collectThresholdRows = ({ report, suiteId, budgetId, convergeMode }) => {
   const suites = Array.isArray(report?.suites) ? report.suites : []
   const suite = suites.find((s) => s?.id === suiteId)
-  if (!suite) {
-    throw new Error(`suite not found in report: ${suiteId}`)
+  if (!suite || !Array.isArray(suite.thresholds)) {
+    return []
   }
+  const rows = []
+  for (const threshold of suite.thresholds) {
+    if (!threshold || typeof threshold !== 'object') continue
+    if ((threshold.budget?.id ?? '') !== budgetId) continue
+    const whereMode = threshold.where?.convergeMode
+    if (whereMode != null && whereMode !== convergeMode) continue
+    const dirtyRootsRatio = threshold.where?.dirtyRootsRatio
+    if (!(typeof dirtyRootsRatio === 'number' && Number.isFinite(dirtyRootsRatio))) continue
+    rows.push({
+      dirtyRootsRatio,
+      maxLevel: toNumericLevel(threshold.maxLevel),
+      firstFailLevel: toNumericLevel(threshold.firstFail?.primaryLevel ?? threshold.firstFailLevel),
+      reason: threshold.firstFail?.reason ?? threshold.reason,
+    })
+  }
+  return rows.sort((a, b) => a.dirtyRootsRatio - b.dirtyRootsRatio)
+}
 
-  const thresholds = Array.isArray(suite.thresholds) ? suite.thresholds : []
-  const points = Array.isArray(suite.points) ? suite.points : []
-  const selected = thresholds.filter(
-    (t) => t?.budget?.id === budgetId && (t?.where?.convergeMode == null || t.where.convergeMode === convergeMode),
-  )
-  const maxLevels = selected.map((t) => toNumericLevel(t?.maxLevel)).filter((x) => Number.isFinite(x) && x > 0)
-
-  const sorted = maxLevels.slice().sort((a, b) => a - b)
-  const floor = sorted.length > 0 ? sorted[0] : 0
-  const p50 = quantileCeil(sorted, 0.5)
-  const p90 = quantileCeil(sorted, 0.9)
-
+const summarizeRows = (rows) => {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return {
+      floorMaxLevel: 0,
+      p50MaxLevel: 0,
+      p90MaxLevel: 0,
+      maxObservedLevel: 0,
+      averageUpperLimit: 0,
+    }
+  }
+  const maxLevels = rows.map((row) => row.maxLevel)
   return {
-    thresholdsCount: selected.length,
-    floor,
-    p50,
-    p90,
-    maxLevels: sorted,
+    floorMaxLevel: Math.min(...maxLevels),
+    p50MaxLevel: quantileCeil(maxLevels, 0.5),
+    p90MaxLevel: quantileCeil(maxLevels, 0.9),
+    maxObservedLevel: Math.max(...maxLevels),
+    averageUpperLimit: roundStep(mean(maxLevels)),
+  }
+}
+
+const analyzeReport = ({ report, suiteId, budgetId, convergeMode }) => {
+  const rows = collectThresholdRows({ report, suiteId, budgetId, convergeMode })
+  const suites = Array.isArray(report?.suites) ? report.suites : []
+  const suite = suites.find((s) => s?.id === suiteId)
+  const points = Array.isArray(suite?.points) ? suite.points : []
+  return {
+    rows,
+    summary: summarizeRows(rows),
     timeoutPoints: points.filter((p) => p?.status === 'timeout' && p?.params?.convergeMode === convergeMode),
   }
 }
 
-const roundStep = (n) => Math.ceil(n / 100) * 100
+const filterOutliers = ({ values, outlierRelTolerance, outlierAbsTolerance, minKeptSamples }) => {
+  const clean = values.filter((x) => typeof x === 'number' && Number.isFinite(x))
+  const sorted = clean.slice().sort((a, b) => a - b)
+  if (sorted.length === 0) {
+    return { kept: [], excluded: [], median: 0, tolerance: 0 }
+  }
+  if (sorted.length <= 2) {
+    return { kept: sorted, excluded: [], median: quantileCeil(sorted, 0.5), tolerance: 0 }
+  }
+
+  const median = quantileCeil(sorted, 0.5)
+  const tolerance = Math.max(outlierAbsTolerance, Math.abs(median) * outlierRelTolerance, 200)
+  const kept = sorted.filter((x) => Math.abs(x - median) <= tolerance)
+  if (kept.length >= Math.min(minKeptSamples, sorted.length)) {
+    const keptSet = new Set(kept)
+    const excluded = sorted.filter((x) => !keptSet.has(x) || kept.indexOf(x) !== sorted.indexOf(x))
+    return { kept, excluded, median, tolerance }
+  }
+
+  const ranked = sorted
+    .map((x) => ({ x, dist: Math.abs(x - median) }))
+    .sort((a, b) => (a.dist !== b.dist ? a.dist - b.dist : a.x - b.x))
+  const size = Math.min(Math.max(1, minKeptSamples), sorted.length)
+  const rescued = ranked.slice(0, size).map((item) => item.x).sort((a, b) => a - b)
+  const rescuedSet = new Set(rescued)
+  const excluded = sorted.filter((x) => !rescuedSet.has(x) || rescued.indexOf(x) !== sorted.indexOf(x))
+  return { kept: rescued, excluded, median, tolerance }
+}
+
+const aggregateSampleAnalyses = ({ sampleAnalyses, outlierRelTolerance, outlierAbsTolerance, minKeptSamples }) => {
+  const dirtyRatios = Array.from(
+    new Set(sampleAnalyses.flatMap((sample) => sample.rows.map((row) => row.dirtyRootsRatio))),
+  ).sort((a, b) => a - b)
+
+  const rows = dirtyRatios.map((dirtyRootsRatio) => {
+    const sampleValues = sampleAnalyses
+      .map((sample) => sample.rows.find((row) => row.dirtyRootsRatio === dirtyRootsRatio)?.maxLevel)
+      .filter((x) => typeof x === 'number' && Number.isFinite(x))
+      .map((x) => Number(x))
+    const filtered = filterOutliers({
+      values: sampleValues,
+      outlierRelTolerance,
+      outlierAbsTolerance,
+      minKeptSamples,
+    })
+
+    const meanMaxLevel = filtered.kept.length > 0 ? roundStep(mean(filtered.kept)) : 0
+    const medianMaxLevel = filtered.kept.length > 0 ? quantileCeil(filtered.kept, 0.5) : 0
+    const p90MaxLevel = filtered.kept.length > 0 ? quantileCeil(filtered.kept, 0.9) : 0
+    return {
+      dirtyRootsRatio,
+      sampleValues,
+      filteredValues: filtered.kept,
+      excludedValues: filtered.excluded,
+      medianReference: filtered.median,
+      tolerance: filtered.tolerance,
+      sampleCount: sampleValues.length,
+      keptCount: filtered.kept.length,
+      meanMaxLevel,
+      medianMaxLevel,
+      p90MaxLevel,
+    }
+  })
+
+  const meanLevels = rows.map((row) => row.meanMaxLevel).filter((x) => x > 0)
+  const medianLevels = rows.map((row) => row.medianMaxLevel).filter((x) => x > 0)
+  const outlierRemovedCount = rows.reduce((acc, row) => acc + (row.sampleCount - row.keptCount), 0)
+
+  const summary = {
+    floorMeanMaxLevel: meanLevels.length > 0 ? Math.min(...meanLevels) : 0,
+    floorMedianMaxLevel: medianLevels.length > 0 ? Math.min(...medianLevels) : 0,
+    p50MeanMaxLevel: meanLevels.length > 0 ? quantileCeil(meanLevels, 0.5) : 0,
+    p50MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.5) : 0,
+    p90MeanMaxLevel: meanLevels.length > 0 ? quantileCeil(meanLevels, 0.9) : 0,
+    p90MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.9) : 0,
+    maxObservedMeanLevel: meanLevels.length > 0 ? Math.max(...meanLevels) : 0,
+    maxObservedMedianLevel: medianLevels.length > 0 ? Math.max(...medianLevels) : 0,
+    averageUpperLimit: meanLevels.length > 0 ? roundStep(mean(meanLevels)) : 0,
+    averageUpperLimitMedianBased: medianLevels.length > 0 ? roundStep(mean(medianLevels)) : 0,
+    outlierRemovedCount,
+    dirtyRootsRatioCount: rows.length,
+  }
+
+  return { rows, summary }
+}
+
+const selectRepresentativeSample = ({ sampleAnalyses, aggregatedRows }) => {
+  if (!Array.isArray(sampleAnalyses) || sampleAnalyses.length === 0) {
+    return { sampleIndex: 0, distance: 0, reportFile: null }
+  }
+  const ratioTarget = new Map(aggregatedRows.map((row) => [row.dirtyRootsRatio, row.medianMaxLevel]))
+  const scored = sampleAnalyses.map((sample, index) => {
+    let distance = 0
+    for (const row of sample.rows) {
+      const target = ratioTarget.get(row.dirtyRootsRatio)
+      if (!(typeof target === 'number' && Number.isFinite(target))) continue
+      distance += Math.abs(row.maxLevel - target)
+    }
+    return { sampleIndex: index + 1, distance, reportFile: sample.reportFile }
+  })
+  scored.sort((a, b) => (a.distance !== b.distance ? a.distance - b.distance : a.sampleIndex - b.sampleIndex))
+  return scored[0] ?? { sampleIndex: 1, distance: 0, reportFile: sampleAnalyses[0].reportFile }
+}
 
 const extendLevels = ({ levels, growthFactor, extendCount, maxLevelCap }) => {
   const next = levels.slice()
@@ -229,60 +393,89 @@ const main = () => {
     let stopReason = 'unknown'
     const iterationLogs = []
 
-    for (let index = 1; index <= args.maxIterations; index++) {
-      const reportFile = path.join(tempDir, `probe.${String(index)}.json`)
-      runCollect({
-        profile: args.profile,
-        files,
-        outFile: reportFile,
-        levels,
+    for (let iteration = 1; iteration <= args.maxIterations; iteration++) {
+      const sampleAnalyses = []
+      for (let sample = 1; sample <= args.samplesPerIteration; sample++) {
+        const reportFile = path.join(tempDir, `probe.${String(iteration)}.${String(sample)}.json`)
+        runCollect({ profile: args.profile, files, outFile: reportFile, levels })
+        const report = readJson(reportFile)
+        const analyzed = analyzeReport({
+          report,
+          suiteId: args.suiteId,
+          budgetId: args.budgetId,
+          convergeMode: args.convergeMode,
+        })
+        sampleAnalyses.push({
+          sample,
+          reportFile,
+          rows: analyzed.rows,
+          summary: analyzed.summary,
+          timeoutPoints: analyzed.timeoutPoints,
+        })
+      }
+
+      const aggregated = aggregateSampleAnalyses({
+        sampleAnalyses,
+        outlierRelTolerance: args.outlierRelTolerance,
+        outlierAbsTolerance: args.outlierAbsTolerance,
+        minKeptSamples: args.minKeptSamples,
       })
-      const report = readJson(reportFile)
-      const summary = analyzeReport({
-        report,
-        suiteId: args.suiteId,
-        budgetId: args.budgetId,
-        convergeMode: args.convergeMode,
+      const representative = selectRepresentativeSample({
+        sampleAnalyses,
+        aggregatedRows: aggregated.rows,
       })
 
       const maxLevel = levels[levels.length - 1] ?? 0
       const secondLevel = levels[levels.length - 2] ?? maxLevel
-      const topTimeoutCount = summary.timeoutPoints.filter((p) => Number(p?.params?.steps) >= secondLevel).length
+      const topTimeoutCount = sampleAnalyses.reduce(
+        (acc, sample) => acc + sample.timeoutPoints.filter((p) => Number(p?.params?.steps) >= secondLevel).length,
+        0,
+      )
 
       let shouldExtend = false
       let decision = 'envelope_converged'
-      if (index >= args.maxIterations) {
-        shouldExtend = false
+      if (iteration >= args.maxIterations) {
         decision = 'max_iterations_reached'
       } else if (maxLevel >= args.maxLevelCap) {
-        shouldExtend = false
         decision = 'max_level_cap_reached'
-      } else if (summary.thresholdsCount === 0) {
-        shouldExtend = false
+      } else if (aggregated.summary.dirtyRootsRatioCount === 0) {
         decision = 'missing_thresholds'
-      } else if (summary.floor >= secondLevel) {
+      } else if (aggregated.summary.floorMedianMaxLevel >= secondLevel) {
         shouldExtend = true
         decision = 'floor_near_top_band'
-      } else {
-        shouldExtend = false
-        decision = 'floor_below_top_band'
+      } else if (aggregated.summary.averageUpperLimit >= secondLevel) {
+        shouldExtend = true
+        decision = 'average_near_top_band'
+      } else if (aggregated.summary.p90MedianMaxLevel >= secondLevel) {
+        shouldExtend = true
+        decision = 'p90_near_top_band'
       }
 
       iterationLogs.push({
-        iteration: index,
+        iteration,
         levels,
         maxLevel,
         secondLevel,
-        floor: summary.floor,
-        p50: summary.p50,
-        p90: summary.p90,
-        thresholdsCount: summary.thresholdsCount,
-        topTimeoutCount,
         decision,
-        reportFile,
+        topTimeoutCount,
+        representativeSample: representative,
+        sampleCount: sampleAnalyses.length,
+        samples: sampleAnalyses.map((sample) => ({
+          sample: sample.sample,
+          reportFile: sample.reportFile,
+          floor: sample.summary.floorMaxLevel,
+          p50: sample.summary.p50MaxLevel,
+          p90: sample.summary.p90MaxLevel,
+          maxObserved: sample.summary.maxObservedLevel,
+          averageUpperLimit: sample.summary.averageUpperLimit,
+        })),
+        aggregated: {
+          summary: aggregated.summary,
+          rows: aggregated.rows,
+        },
       })
 
-      finalReportFile = reportFile
+      finalReportFile = representative.reportFile
       stopReason = decision
       if (!shouldExtend) {
         break
@@ -313,6 +506,7 @@ const main = () => {
       fs.writeFileSync(stepsOut, `${levels.join(',')}\n`, 'utf8')
     }
 
+    const finalIteration = iterationLogs[iterationLogs.length - 1]
     if (args.metaOut) {
       const metaOut = path.resolve(process.cwd(), args.metaOut)
       fs.mkdirSync(path.dirname(metaOut), { recursive: true })
@@ -328,17 +522,25 @@ const main = () => {
         growthFactor: args.growthFactor,
         extendCount: args.extendCount,
         maxLevelCap: args.maxLevelCap,
+        samplesPerIteration: args.samplesPerIteration,
+        outlierRelTolerance: args.outlierRelTolerance,
+        outlierAbsTolerance: args.outlierAbsTolerance,
+        minKeptSamples: args.minKeptSamples,
         stopReason,
         finalLevels: levels,
+        summary: finalIteration?.aggregated?.summary ?? null,
+        representativeSample: finalIteration?.representativeSample ?? null,
         iterations: iterationLogs,
       })
     }
 
-    const lastIteration = iterationLogs[iterationLogs.length - 1]
+    const summary = finalIteration?.aggregated?.summary ?? null
     // eslint-disable-next-line no-console
     console.log(
-      `[logix-perf:auto-probe] levels=${levels.join(',')} floor=${String(lastIteration?.floor ?? 0)} p90=${String(
-        lastIteration?.p90 ?? 0,
+      `[logix-perf:auto-probe] levels=${levels.join(',')} floor=${String(
+        summary?.floorMedianMaxLevel ?? 0,
+      )} avg=${String(summary?.averageUpperLimit ?? 0)} p90=${String(summary?.p90MedianMaxLevel ?? 0)} samples=${String(
+        args.samplesPerIteration,
       )} iterations=${String(iterationLogs.length)} stop=${stopReason}`,
     )
   } catch (error) {

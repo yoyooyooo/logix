@@ -43,6 +43,22 @@ on:
         description: "auto 模式 steps 绝对上限（防止无限扩容）"
         required: false
         default: "25600"
+      perf_steps_auto_samples_per_iteration:
+        description: "auto 模式每轮采样次数（用于去噪）"
+        required: false
+        default: "2"
+      perf_steps_auto_outlier_rel_tolerance:
+        description: "auto 模式异常值相对容忍（0.2=±20%）"
+        required: false
+        default: "0.2"
+      perf_steps_auto_outlier_abs_tolerance:
+        description: "auto 模式异常值绝对容忍（steps）"
+        required: false
+        default: "800"
+      perf_steps_auto_min_kept_samples:
+        description: "auto 模式每个 dirtyRootsRatio 至少保留样本数"
+        required: false
+        default: "2"
       perf_capacity_floor_min:
         description: "可选动态容量 floor 目标（整数；用于反向约束旧的 2000 门槛）"
         required: false
@@ -81,6 +97,10 @@ jobs:
       PERF_STEPS_AUTO_GROWTH_FACTOR: 1.25
       PERF_STEPS_AUTO_EXTEND_COUNT: 2
       PERF_STEPS_AUTO_MAX_LEVEL_CAP: 25600
+      PERF_STEPS_AUTO_SAMPLES_PER_ITERATION: 2
+      PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE: 0.2
+      PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE: 800
+      PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: 2
       PERF_OUT_DIR: perf/ci
       PERF_ARTIFACT_NAME: logix-perf-sweep-${{ github.run_id }}
 
@@ -102,6 +122,10 @@ jobs:
           INPUT_PERF_STEPS_AUTO_GROWTH_FACTOR: ${{ github.event.inputs.perf_steps_auto_growth_factor }}
           INPUT_PERF_STEPS_AUTO_EXTEND_COUNT: ${{ github.event.inputs.perf_steps_auto_extend_count }}
           INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP: ${{ github.event.inputs.perf_steps_auto_max_level_cap }}
+          INPUT_PERF_STEPS_AUTO_SAMPLES_PER_ITERATION: ${{ github.event.inputs.perf_steps_auto_samples_per_iteration }}
+          INPUT_PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE: ${{ github.event.inputs.perf_steps_auto_outlier_rel_tolerance }}
+          INPUT_PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE: ${{ github.event.inputs.perf_steps_auto_outlier_abs_tolerance }}
+          INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: ${{ github.event.inputs.perf_steps_auto_min_kept_samples }}
           INPUT_PERF_CAPACITY_FLOOR_MIN: ${{ github.event.inputs.perf_capacity_floor_min }}
           INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
@@ -189,6 +213,18 @@ jobs:
             fi
             if [ -n "${INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP:-}" ]; then
               echo "PERF_STEPS_AUTO_MAX_LEVEL_CAP=$INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_SAMPLES_PER_ITERATION:-}" ]; then
+              echo "PERF_STEPS_AUTO_SAMPLES_PER_ITERATION=$INPUT_PERF_STEPS_AUTO_SAMPLES_PER_ITERATION" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE:-}" ]; then
+              echo "PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE=$INPUT_PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE:-}" ]; then
+              echo "PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE=$INPUT_PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES:-}" ]; then
+              echo "PERF_STEPS_AUTO_MIN_KEPT_SAMPLES=$INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES" >> "$GITHUB_ENV"
             fi
             if [ -n "${INPUT_PERF_CAPACITY_FLOOR_MIN:-}" ]; then
               echo "PERF_CAPACITY_FLOOR_MIN=$INPUT_PERF_CAPACITY_FLOOR_MIN" >> "$GITHUB_ENV"
@@ -313,6 +349,10 @@ jobs:
               --growth-factor "$PERF_STEPS_AUTO_GROWTH_FACTOR"
               --extend-count "$PERF_STEPS_AUTO_EXTEND_COUNT"
               --max-level-cap "$PERF_STEPS_AUTO_MAX_LEVEL_CAP"
+              --samples-per-iteration "$PERF_STEPS_AUTO_SAMPLES_PER_ITERATION"
+              --outlier-rel-tolerance "$PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE"
+              --outlier-abs-tolerance "$PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE"
+              --min-kept-samples "$PERF_STEPS_AUTO_MIN_KEPT_SAMPLES"
             )
             if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
               AUTO_ARGS+=(--initial-steps "$PERF_STEPS_LEVELS")

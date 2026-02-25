@@ -33,6 +33,8 @@ const afterPath =
   headShort && envId ? path.join(perfDir, `after.${headShort}.${envId}.${profile}.json`) : null
 const diffPath =
   baseShort && headShort && envId ? path.join(perfDir, `diff.${baseShort}__${headShort}.${envId}.${profile}.json`) : null
+const autoProbePath =
+  baseShort && envId ? path.join(perfDir, `steps-probe.base.${baseShort}.${envId}.${profile}.json`) : null
 
 const safeReadJson = (file) => {
   try {
@@ -45,10 +47,11 @@ const safeReadJson = (file) => {
 const beforeReport = beforePath && fs.existsSync(beforePath) ? safeReadJson(beforePath) : null
 const afterReport = afterPath && fs.existsSync(afterPath) ? safeReadJson(afterPath) : null
 const diff = diffPath && fs.existsSync(diffPath) ? safeReadJson(diffPath) : null
+const autoProbe = autoProbePath && fs.existsSync(autoProbePath) ? safeReadJson(autoProbePath) : null
 
 const files = fs
   .readdirSync(perfDir)
-  .filter((f) => f.endsWith('.json') || f.endsWith('.md'))
+  .filter((f) => f.endsWith('.json') || f.endsWith('.md') || f.endsWith('.csv'))
   .sort()
 
 const code = (x) => `\`${String(x ?? '').replaceAll('`', '')}\``
@@ -478,6 +481,28 @@ if (typeof capacityFloorTarget === 'number') {
   md += `- capacity floor target: ${code(capacityFloorTarget)} (passed=${code(String(Boolean(passed)))}, actual=${code(
     actualFloor == null ? 'n/a' : actualFloor,
   )})\n`
+}
+if (autoProbe && typeof autoProbe === 'object') {
+  const autoSummary = autoProbe.summary && typeof autoProbe.summary === 'object' ? autoProbe.summary : null
+  const averageUpper = autoSummary?.averageUpperLimit
+  const floorMedian = autoSummary?.floorMedianMaxLevel
+  const p90Median = autoSummary?.p90MedianMaxLevel
+  const removed = autoSummary?.outlierRemovedCount
+  const samplesPerIteration = autoProbe.samplesPerIteration
+  const stopReason = autoProbe.stopReason
+  const finalLevels = Array.isArray(autoProbe.finalLevels) ? autoProbe.finalLevels : []
+  md += `- base auto-probe(filtered): avgUpper=${code(
+    typeof averageUpper === 'number' && Number.isFinite(averageUpper) ? averageUpper : 'n/a',
+  )}, floorMedian=${code(
+    typeof floorMedian === 'number' && Number.isFinite(floorMedian) ? floorMedian : 'n/a',
+  )}, p90Median=${code(typeof p90Median === 'number' && Number.isFinite(p90Median) ? p90Median : 'n/a')}\n`
+  md += `- base auto-probe stats: outliersRemoved=${code(
+    typeof removed === 'number' && Number.isFinite(removed) ? removed : 'n/a',
+  )}, samples/iter=${code(
+    typeof samplesPerIteration === 'number' && Number.isFinite(samplesPerIteration) ? samplesPerIteration : 'n/a',
+  )}, stop=${code(stopReason ?? 'n/a')}, levels=${code(
+    finalLevels.length > 0 ? formatAxisValues(finalLevels) : 'n/a',
+  )}\n`
 }
 md += `- status: ${code(conclusion)}\n`
 
