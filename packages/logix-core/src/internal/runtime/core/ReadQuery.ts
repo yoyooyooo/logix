@@ -98,11 +98,13 @@ export const shouldEvaluateStrictGateAtRuntime = (compiled: ReadQueryCompiled<an
 
 export const markRuntimeMissingBuildGrade = <S, V>(compiled: ReadQueryCompiled<S, V>): ReadQueryCompiled<S, V> => {
   if (compiled.lane !== 'dynamic' || hasBuildQualityGrade(compiled)) return compiled
-  if (compiled.quality?.missingBuildGrade === true) return compiled
+  if (compiled.quality?.missingBuildGrade === true && compiled.fallbackReason === 'missingBuildGrade') return compiled
   return {
     ...compiled,
+    fallbackReason: 'missingBuildGrade',
     quality: {
-      ...(compiled.quality ?? { source: 'runtime_dynamic_fallback' }),
+      ...(compiled.quality ?? {}),
+      source: 'runtime_dynamic_fallback',
       missingBuildGrade: true,
     },
   }

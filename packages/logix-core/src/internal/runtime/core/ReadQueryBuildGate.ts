@@ -190,14 +190,9 @@ export const buildSelectorQualityReport = (args: {
   )
 
   const graded = gradedWithoutReportId.map((result) => {
-    const quality = result.compiled.quality ?? {
-      source: 'build' as const,
-      strictGate: {
-        evaluatedAt: 'build' as const,
-        verdict: result.entry.strictGateVerdict,
-        rule: result.entry.strictGateRule,
-        fallbackReason: result.entry.fallbackReason,
-      },
+    const quality = result.compiled.quality
+    if (!quality) {
+      throw new Error('gradeReadQueryAtBuild must attach quality metadata')
     }
 
     return {
