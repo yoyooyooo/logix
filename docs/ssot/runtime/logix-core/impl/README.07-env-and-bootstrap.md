@@ -18,6 +18,15 @@
 - `ModuleDef.logic(($)=>Effect)` 在内部被提升为 `LogicPlan = { setup, run }`：return 前的同步注册被收集为 setup，return 的 Effect 作为 run。旧写法自动视为 `setup=Effect.void`、`run=原逻辑`。
 - BoundApi 在 setup 阶段仅暴露注册类 API；run 阶段暴露完整 `$`。所有 Runtime 只与 LogicPlan 对话，不再直接 fork 整坨 Logic Effect。
 
+## O-007：canonical 执行模型收敛
+
+- 运行时入口统一为：
+  1) `normalize(rawLogic) -> canonical LogicPlan`
+  2) 执行 `plan.setup`
+  3) init gate 后 fork `plan.run`
+- `rawLogic` 支持三类输入（单相 / LogicPlan / LogicPlanEffect），但执行层不再分叉到多套实现。
+- 已淘汰兼容语义：单相 logic 的 run 成功返回值不会再被二次解释为 `LogicPlan`；若需要“先运行 effect 再得到 plan”，必须显式使用 LogicPlanEffect 标记。
+
 ## 诊断与防呆
 
 - **phase 守卫**：在 setup 段调用 `$.use/$.onAction/$.onState/...` 等 run-only 能力会抛出 `LogicPhaseError`，经 DebugSink 转为 `diagnostic(error) code=logic::invalid_phase kind=...`，提示将调用移至 run 段。

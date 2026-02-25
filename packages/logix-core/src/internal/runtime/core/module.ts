@@ -231,10 +231,9 @@ type ModuleExtOf<M> = M extends ModuleLike<any, any, infer Ext> ? Ext : never
  * - setup: runs during Module instance startup, used to register reducers / lifecycle / Debug and other structural behavior.
  * - run: the main logic program, running as a long-lived fiber after Env is fully ready.
  *
- * Notes:
- * - In the current implementation, Runtime still treats Logic as a single-phase program, equivalent to
- *   `setup = Effect.void` and `run = Logic`.
- * - After the runtime-logix L4 drafts converge, we will gradually adopt a real two-phase execution model.
+ * Runtime canonicalization rule:
+ * - raw Logic inputs (single-phase / plan / marked plan effect) are normalized into LogicPlan before execution.
+ * - single-phase Logic is equivalent to `setup = Effect.void` and `run = Logic`.
  */
 export interface LogicPlan<Sh extends AnyModuleShape, R = unknown, E = unknown> {
   readonly setup: DispatchEffect<Sh, R>
