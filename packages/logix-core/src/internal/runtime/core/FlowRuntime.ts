@@ -239,24 +239,24 @@ export const make = <Sh extends AnyModuleShape, R = never>(
   const fromState = <V>(
     selectorOrQuery: ((s: StateOf<Sh>) => V) | ReadQuery.ReadQuery<StateOf<Sh>, V>,
   ): Stream.Stream<V> => {
-    const changesReadQueryWithMeta = hasChangesReadQueryWithMeta<StateOf<Sh>>(runtime)
-      ? runtime.changesReadQueryWithMeta
+    const runtimeWithReadQueryMeta = hasChangesReadQueryWithMeta<StateOf<Sh>>(runtime)
+      ? runtime
       : undefined
 
     if (ReadQuery.isReadQuery(selectorOrQuery)) {
-      if (typeof changesReadQueryWithMeta === 'function') {
-        return changesReadQueryWithMeta(selectorOrQuery).pipe(Stream.map((evt) => evt.value))
+      if (runtimeWithReadQueryMeta) {
+        return runtimeWithReadQueryMeta.changesReadQueryWithMeta(selectorOrQuery).pipe(Stream.map((evt) => evt.value))
       }
       return runtime.changes(selectorOrQuery.select)
     }
 
-    if (typeof changesReadQueryWithMeta !== 'function') {
+    if (!runtimeWithReadQueryMeta) {
       return runtime.changes(selectorOrQuery)
     }
 
     const compiled = ReadQuery.compile(selectorOrQuery)
     if (compiled.lane === 'static') {
-      return changesReadQueryWithMeta(compiled).pipe(Stream.map((evt) => evt.value))
+      return runtimeWithReadQueryMeta.changesReadQueryWithMeta(compiled).pipe(Stream.map((evt) => evt.value))
     }
 
     return runtime.changes(selectorOrQuery)
