@@ -10,6 +10,17 @@ const baseRef = (process.env.BASE_REF || '').trim()
 const headRef = (process.env.HEAD_REF || '').trim()
 const envId = process.env.PERF_ENV_ID || ''
 const profile = process.env.PERF_PROFILE || 'quick'
+const capacitySuiteId = process.env.PERF_CAPACITY_SUITE_ID || 'converge.txnCommit'
+const capacityBudgetId = process.env.PERF_CAPACITY_BUDGET_ID || 'commit.p95<=50ms'
+const capacityScopeConvergeMode = process.env.PERF_CAPACITY_SCOPE_CONVERGE_MODE || 'auto'
+const parseOptionalPositiveInt = (raw) => {
+  const text = String(raw ?? '').trim()
+  if (!text) return undefined
+  if (!/^[0-9]+$/.test(text)) return undefined
+  const value = Number(text)
+  return Number.isFinite(value) && value > 0 ? value : undefined
+}
+const capacityFloorTarget = parseOptionalPositiveInt(process.env.PERF_CAPACITY_FLOOR_MIN)
 
 const scope =
   process.env.PERF_FILES ||
@@ -61,6 +72,34 @@ const uniqValuesFromPoints = (suite, key) => {
     if (aNum && bNum) return a - b
     return String(a).localeCompare(String(b))
   })
+}
+
+const unionAxisValues = (...groups) => {
+  const out = new Set()
+  for (const group of groups) {
+    if (!Array.isArray(group)) continue
+    for (const item of group) {
+      if (item === undefined || item === null) continue
+      out.add(item)
+    }
+  }
+  return Array.from(out).sort((a, b) => {
+    const aNum = typeof a === 'number' && Number.isFinite(a)
+    const bNum = typeof b === 'number' && Number.isFinite(b)
+    if (aNum && bNum) return a - b
+    return String(a).localeCompare(String(b))
+  })
+}
+
+const resolvePrimaryAxisLevels = (suiteSpec, beforeSuite, afterSuite) => {
+  const primary = suiteSpec?.primaryAxis
+  if (!primary) return []
+  const fromPoints = unionAxisValues(
+    uniqValuesFromPoints(beforeSuite, primary),
+    uniqValuesFromPoints(afterSuite, primary),
+  )
+  if (fromPoints.length > 0) return fromPoints
+  return Array.isArray(suiteSpec?.axes?.[primary]) ? suiteSpec.axes[primary] : []
 }
 
 const formatAxisValues = (values) => {
@@ -161,9 +200,12 @@ const isRelativeBudgetExceeded = (budget, ratio, deltaMs) => {
   return ratio > budget.maxRatio && deltaMs > minDeltaMs
 }
 
-const computeThresholdMaxLevelAbsolute = (suiteSpec, suiteResult, budget, where) => {
+const computeThresholdMaxLevelAbsolute = (suiteSpec, suiteResult, budget, where, axisLevelsOverride) => {
   const primary = suiteSpec.primaryAxis
-  const axisLevels = suiteSpec.axes?.[primary] ?? []
+  const axisLevels =
+    Array.isArray(axisLevelsOverride) && axisLevelsOverride.length > 0
+      ? axisLevelsOverride
+      : suiteSpec.axes?.[primary] ?? []
   let maxLevel = null
   for (const level of axisLevels) {
     const params = { ...(where || {}), [primary]: level }
@@ -180,9 +222,12 @@ const computeThresholdMaxLevelAbsolute = (suiteSpec, suiteResult, budget, where)
   return { maxLevel, firstFailLevel: null }
 }
 
-const computeThresholdMaxLevelRelative = (suiteSpec, suiteResult, budget, where) => {
+const computeThresholdMaxLevelRelative = (suiteSpec, suiteResult, budget, where, axisLevelsOverride) => {
   const primary = suiteSpec.primaryAxis
-  const axisLevels = suiteSpec.axes?.[primary] ?? []
+  const axisLevels =
+    Array.isArray(axisLevelsOverride) && axisLevelsOverride.length > 0
+      ? axisLevelsOverride
+      : suiteSpec.axes?.[primary] ?? []
   const numeratorRef = parseRef(budget.numeratorRef)
   const denominatorRef = parseRef(budget.denominatorRef)
 
@@ -348,7 +393,61 @@ const collectBudgetExceeded = (report) => {
   return failures
 }
 
+const quantileCeil = (values, q) => {
+  if (!Array.isArray(values) || values.length === 0) return 0
+  const sorted = values
+    .filter((x) => typeof x === 'number' && Number.isFinite(x))
+    .slice()
+    .sort((a, b) => a - b)
+  if (sorted.length === 0) return 0
+  const clampedQ = Math.max(0, Math.min(1, q))
+  const index = Math.ceil(clampedQ * (sorted.length - 1))
+  return sorted[index] ?? sorted[sorted.length - 1] ?? 0
+}
+
+const collectCapacityRows = (report) => {
+  if (!report || !Array.isArray(report.suites)) return []
+  const suite = report.suites.find((s) => s?.id === capacitySuiteId)
+  if (!suite || !Array.isArray(suite.thresholds)) return []
+  const rows = []
+  for (const t of suite.thresholds) {
+    if (!t || typeof t !== 'object') continue
+    if ((t.budget?.id ?? budgetKey(t.budget)) !== capacityBudgetId) continue
+    if ((t.where?.convergeMode ?? null) !== capacityScopeConvergeMode) continue
+    const dirtyRootsRatio = t.where?.dirtyRootsRatio
+    if (!(typeof dirtyRootsRatio === 'number' && Number.isFinite(dirtyRootsRatio))) continue
+    rows.push({
+      dirtyRootsRatio,
+      maxLevel: typeof t.maxLevel === 'number' && Number.isFinite(t.maxLevel) ? t.maxLevel : 0,
+      firstFailLevel: t.firstFailLevel ?? null,
+      reason: t.reason,
+    })
+  }
+  return rows.sort((a, b) => a.dirtyRootsRatio - b.dirtyRootsRatio)
+}
+
+const summarizeCapacityRows = (rows) => {
+  if (!Array.isArray(rows) || rows.length === 0) return null
+  const maxLevels = rows.map((row) => row.maxLevel)
+  const floorMaxLevel = maxLevels.length > 0 ? Math.min(...maxLevels) : 0
+  const p50MaxLevel = quantileCeil(maxLevels, 0.5)
+  const p90MaxLevel = quantileCeil(maxLevels, 0.9)
+  const maxObservedLevel = maxLevels.length > 0 ? Math.max(...maxLevels) : 0
+  return {
+    floorMaxLevel,
+    p50MaxLevel,
+    p90MaxLevel,
+    maxObservedLevel,
+  }
+}
+
 const afterFailures = afterReport ? collectBudgetExceeded(afterReport) : []
+const afterCapacityRows = afterReport ? collectCapacityRows(afterReport) : []
+const afterCapacitySummary = summarizeCapacityRows(afterCapacityRows)
+const capacityFloorViolated =
+  typeof capacityFloorTarget === 'number' &&
+  afterCapacitySummary != null &&
+  afterCapacitySummary.floorMaxLevel < capacityFloorTarget
 const comparable = diff?.meta?.comparability?.comparable === true
 const regressions = diff?.summary?.regressions ?? 0
 const improvements = diff?.summary?.improvements ?? 0
@@ -357,6 +456,7 @@ const conclusion = (() => {
   if (!diff) return 'no_diff'
   if (!comparable) return 'triage_only_not_comparable'
   if (typeof regressions === 'number' && regressions > 0) return 'has_regressions'
+  if (capacityFloorViolated) return 'head_capacity_floor_failed'
   if (afterFailures.length > 0) return 'head_budget_exceeded'
   return 'ok'
 })()
@@ -365,6 +465,20 @@ md += `\n### Conclusion\n`
 md += `- comparable: ${code(String(diff?.meta?.comparability?.comparable ?? '?'))}\n`
 md += `- diff: regressions=${code(regressions)}, improvements=${code(improvements)}\n`
 md += `- head budgetExceeded: ${code(afterFailures.length)}\n`
+if (afterCapacitySummary) {
+  md += `- head capacity floor(${code(capacitySuiteId)} / ${code(capacityBudgetId)} / convergeMode=${code(
+    capacityScopeConvergeMode,
+  )}): floor=${code(afterCapacitySummary.floorMaxLevel)}, p50=${code(afterCapacitySummary.p50MaxLevel)}, p90=${code(
+    afterCapacitySummary.p90MaxLevel,
+  )}, max=${code(afterCapacitySummary.maxObservedLevel)}\n`
+}
+if (typeof capacityFloorTarget === 'number') {
+  const actualFloor = afterCapacitySummary?.floorMaxLevel ?? null
+  const passed = actualFloor != null && actualFloor >= capacityFloorTarget
+  md += `- capacity floor target: ${code(capacityFloorTarget)} (passed=${code(String(Boolean(passed)))}, actual=${code(
+    actualFloor == null ? 'n/a' : actualFloor,
+  )})\n`
+}
 md += `- status: ${code(conclusion)}\n`
 
 if (afterFailures.length > 0) {
@@ -396,13 +510,45 @@ if (afterFailures.length > 0) {
   }
 }
 
+if (afterCapacitySummary) {
+  md += `\n**Head capacity bottlenecks (${code(capacityBudgetId)})**\n`
+  const bottlenecks = afterCapacityRows
+    .slice()
+    .sort((a, b) => {
+      if (a.maxLevel !== b.maxLevel) return a.maxLevel - b.maxLevel
+      return b.dirtyRootsRatio - a.dirtyRootsRatio
+    })
+    .slice(0, 5)
+  for (const row of bottlenecks) {
+    md += `- dirtyRootsRatio=${code(row.dirtyRootsRatio)} maxLevel=${code(row.maxLevel)} firstFail=${code(
+      row.firstFailLevel == null ? 'null' : row.firstFailLevel,
+    )} reason=${code(row.reason ?? '-')}\n`
+  }
+}
+
 md += `\n<details>\n<summary>Terminology (maxLevel / steps / dirtyRootsRatio)</summary>\n\n`
 md += `\n### What do \`maxLevel\` and \`null\` mean?\n`
 md += `- \`maxLevel\` is the highest primary-axis level that still satisfies a budget.\n`
-md += `- Example (primary axis = \`steps\`):\n`
-md += `  - \`maxLevel=2000\`: budget passes at \`steps=200\`, \`800\`, and \`2000\`.\n`
-md += `  - \`maxLevel=800\`: budget passes at \`steps=200\` and \`800\`, but fails at \`steps=2000\`.\n`
-md += `  - \`maxLevel=null\`: budget fails already at the first tested level (e.g. \`steps=200\`).\n`
+{
+  const terminologySuite =
+    (afterReport?.suites || []).find((s) => s?.id === capacitySuiteId) || (afterReport?.suites || [])[0] || null
+  const terminologyLevels = terminologySuite ? uniqValuesFromPoints(terminologySuite, 'steps') : []
+  const firstLevel = terminologyLevels[0]
+  const middleLevel = terminologyLevels[Math.floor(terminologyLevels.length / 2)]
+  const lastLevel = terminologyLevels[terminologyLevels.length - 1]
+  if (firstLevel != null && lastLevel != null && terminologyLevels.length >= 2) {
+    md += `- Example (primary axis = \`steps\`, tested levels=${code(formatAxisValues(terminologyLevels))}):\n`
+    md += `  - \`maxLevel=${String(lastLevel)}\`: budget passes all tested levels.\n`
+    md += `  - \`maxLevel=${String(middleLevel)}\`: budget passes up to \`steps=${String(
+      middleLevel,
+    )}\`, then fails at a higher tested level.\n`
+    md += `  - \`maxLevel=null\`: budget fails already at the first tested level (e.g. \`steps=${String(
+      firstLevel,
+    )}\`).\n`
+  } else {
+    md += `- \`maxLevel=null\`: budget fails already at the first tested level.\n`
+  }
+}
 
 md += `\n### What do \`steps\` and \`dirtyRootsRatio\` mean?\n`
 md += `- \`steps\` is the primary axis for this suite: it controls the size of the converge state (more steps = more roots/fields).\n`
@@ -470,7 +616,7 @@ if (!diff) {
       const spec = suiteSpecById.get(suiteId)
       if (!spec || !afterSuite) continue
 
-      const axisLevels = spec.axes?.[spec.primaryAxis] ?? []
+      const axisLevels = resolvePrimaryAxisLevels(spec, beforeSuiteById.get(suiteId), afterSuite)
       const maxAxis = axisLevels.length > 0 ? axisLevels[axisLevels.length - 1] : null
       if (maxAxis == null) continue
 
@@ -648,7 +794,7 @@ if (!diff) {
         const rows = []
         for (const x of xAxisLevels) {
           const where = { [xAxisKey]: x }
-          const afterRes = computeThresholdMaxLevelRelative(spec, afterSuite, budget, where)
+          const afterRes = computeThresholdMaxLevelRelative(spec, afterSuite, budget, where, axisLevels)
           if (afterRes.reason && afterRes.reason !== 'budgetExceeded' && afterRes.reason !== undefined) {
             continue
           }
@@ -801,7 +947,7 @@ if (!diff) {
     if (headBudgetMaps.length > 0) {
       md += `\n<details>\n<summary>Head maps (where -> maxLevel / firstFail / p95 series)</summary>\n\n`
       md += `_Each row shows which primary-axis level starts failing for that ${code('where')} slice. ` +
-        `Levels are the discrete test levels (e.g. steps=200/800/2000)._ \n\n`
+        `Levels are the discrete test levels used in this run._ \n\n`
 
       for (const m of headBudgetMaps) {
         md += `**${m.suiteLabel} — ${code(budgetKey(m.budget))}**\n`
@@ -875,13 +1021,15 @@ if (!diff) {
     const priority = spec?.priority ? `[${spec.priority}] ` : ''
     const title = spec?.title ? ` — ${spec.title}` : ''
     const suiteLabel = `${priority}\`${s.id}\`${title}`
+    const beforeSuite = beforeSuiteById.get(s.id)
+    const afterSuite = afterSuiteById.get(s.id)
 
     if (typeof s.notes === 'string' && s.notes.trim().length > 0) {
       notes.push(`- ${suiteLabel}: ${s.notes}`)
     }
 
     const deltas = Array.isArray(s.thresholdDeltas) ? s.thresholdDeltas : []
-    const levels = spec?.primaryAxis && spec?.axes ? spec.axes[spec.primaryAxis] : null
+    const levels = spec ? resolvePrimaryAxisLevels(spec, beforeSuite, afterSuite) : null
     const idx = (v) => {
       if (!Array.isArray(levels)) return null
       if (v === null || v === undefined) return -1
@@ -921,7 +1069,7 @@ if (!diff) {
     const beforeSuite = beforeSuiteById.get(suiteIdFromLabel)
     const afterSuite = afterSuiteById.get(suiteIdFromLabel)
     const primary = suiteSpecResolved.primaryAxis
-    const axisLevels = suiteSpecResolved.axes?.[primary] ?? []
+    const axisLevels = resolvePrimaryAxisLevels(suiteSpecResolved, beforeSuite, afterSuite)
 
     const refAxes =
       budget?.type === 'relative'
@@ -957,14 +1105,14 @@ if (!diff) {
     if (beforeSuite && budget) {
       beforeRes =
         budget.type === 'absolute'
-          ? computeThresholdMaxLevelAbsolute(suiteSpecResolved, beforeSuite, budget, where)
-          : computeThresholdMaxLevelRelative(suiteSpecResolved, beforeSuite, budget, where)
+          ? computeThresholdMaxLevelAbsolute(suiteSpecResolved, beforeSuite, budget, where, axisLevels)
+          : computeThresholdMaxLevelRelative(suiteSpecResolved, beforeSuite, budget, where, axisLevels)
     }
     if (afterSuite && budget) {
       afterRes =
         budget.type === 'absolute'
-          ? computeThresholdMaxLevelAbsolute(suiteSpecResolved, afterSuite, budget, where)
-          : computeThresholdMaxLevelRelative(suiteSpecResolved, afterSuite, budget, where)
+          ? computeThresholdMaxLevelAbsolute(suiteSpecResolved, afterSuite, budget, where, axisLevels)
+          : computeThresholdMaxLevelRelative(suiteSpecResolved, afterSuite, budget, where, axisLevels)
     }
 
     let extra = ''
@@ -1054,7 +1202,7 @@ if (!diff) {
       if (!spec || !beforeSuite || !afterSuite) continue
 
       const primary = spec.primaryAxis
-      const axisLevels = spec.axes?.[primary] ?? []
+      const axisLevels = resolvePrimaryAxisLevels(spec, beforeSuite, afterSuite)
       const maxAxis = axisLevels.length > 0 ? axisLevels[axisLevels.length - 1] : null
       const priority = spec.priority ? `[${spec.priority}] ` : ''
       const title = spec.title ? ` — ${spec.title}` : ''
@@ -1107,8 +1255,8 @@ if (!diff) {
 
         const rows = []
         for (const where of whereCombos) {
-          const beforeRes = computeThresholdMaxLevelRelative(spec, beforeSuite, budget, where)
-          const afterRes = computeThresholdMaxLevelRelative(spec, afterSuite, budget, where)
+          const beforeRes = computeThresholdMaxLevelRelative(spec, beforeSuite, budget, where, axisLevels)
+          const afterRes = computeThresholdMaxLevelRelative(spec, afterSuite, budget, where, axisLevels)
           const beforeLevel = beforeRes.firstFailLevel ?? maxAxis
           const afterLevel = afterRes.firstFailLevel ?? maxAxis
 

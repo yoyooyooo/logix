@@ -26,6 +26,10 @@ on:
         description: "可选 steps 轴覆盖（CSV；例如 200,400,800,1200,1600,2000,2400,2800,3200）"
         required: false
         default: ""
+      perf_capacity_floor_min:
+        description: "可选动态容量 floor 目标（整数；用于反向约束旧的 2000 门槛）"
+        required: false
+        default: "2000"
       diff_mode:
         description: "diff 模式（strict=不可比直接失败；triage=允许漂移，仅作线索）"
         required: false
@@ -48,6 +52,7 @@ jobs:
       PERF_FILES: test/browser/perf-boundaries/diagnostics-overhead.test.tsx
       PERF_PROFILE: smoke
       PERF_DIFF_MODE: strict
+      PERF_CAPACITY_FLOOR_MIN: 2000
       PERF_OUT_DIR: perf/ci
       PERF_ARTIFACT_NAME: logix-perf-quick-${{ github.event.pull_request.number || github.run_id }}
 
@@ -64,6 +69,7 @@ jobs:
           INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
           INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
           INPUT_PERF_STEPS_LEVELS: ${{ github.event.inputs.perf_steps_levels }}
+          INPUT_PERF_CAPACITY_FLOOR_MIN: ${{ github.event.inputs.perf_capacity_floor_min }}
           INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
         run: |
           set -euo pipefail
@@ -123,6 +129,9 @@ jobs:
             fi
             if [ -n "${INPUT_PERF_STEPS_LEVELS:-}" ]; then
               echo "PERF_STEPS_LEVELS=$INPUT_PERF_STEPS_LEVELS" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_FLOOR_MIN:-}" ]; then
+              echo "PERF_CAPACITY_FLOOR_MIN=$INPUT_PERF_CAPACITY_FLOOR_MIN" >> "$GITHUB_ENV"
             fi
             if [ -n "${INPUT_DIFF_MODE:-}" ]; then
               echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
@@ -222,6 +231,9 @@ jobs:
           if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
             export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
           fi
+          if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
+            export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
+          fi
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
@@ -257,6 +269,9 @@ jobs:
           done
           if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
             export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
+          fi
+          if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
+            export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
           fi
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
