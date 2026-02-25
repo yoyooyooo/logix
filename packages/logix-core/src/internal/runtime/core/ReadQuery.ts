@@ -5,7 +5,7 @@ export type ReadLane = 'static' | 'dynamic'
 
 export type ReadProducer = 'aot' | 'jit' | 'manual' | 'dynamic'
 
-export type ReadQueryFallbackReason = 'missingDeps' | 'unsupportedSyntax' | 'unstableSelectorId'
+export type ReadQueryFallbackReason = 'missingDeps' | 'unsupportedSyntax' | 'unstableSelectorId' | 'missingBuildGrade'
 
 export type EqualsKind = 'objectIs' | 'shallowStruct' | 'custom'
 
@@ -94,6 +94,21 @@ export const hasBuildQualityGrade = (compiled: ReadQueryCompiled<any, any>): boo
 
 export const shouldEvaluateStrictGateAtRuntime = (compiled: ReadQueryCompiled<any, any>): boolean =>
   compiled.lane === 'dynamic' && !hasBuildQualityGrade(compiled)
+
+export const markRuntimeMissingBuildGrade = <S, V>(compiled: ReadQueryCompiled<S, V>): ReadQueryCompiled<S, V> => {
+  if (compiled.lane !== 'dynamic' || hasBuildQualityGrade(compiled)) return compiled
+  return {
+    ...compiled,
+    quality: {
+      source: 'runtime_dynamic_fallback',
+      strictGate: {
+        evaluatedAt: 'runtime',
+        verdict: 'PASS',
+        fallbackReason: 'missingBuildGrade',
+      },
+    },
+  }
+}
 
 const normalizeReads = (reads: ReadonlyArray<string | number>): ReadonlyArray<string | number> => {
   const unique: Array<string | number> = []
@@ -571,6 +586,45 @@ const makeStrictGateError = (args: {
       details: args.details,
     },
   ) as ReadQueryStrictGateError
+
+export const resolveBuildGradeStrictGateDecision = (args: {
+  readonly moduleId: string
+  readonly instanceId: string
+  readonly txnSeq: number
+  readonly compiled: ReadQueryCompiled<any, any>
+}): ReadQueryStrictGateDecision | undefined => {
+  if (args.compiled.quality?.source !== 'build') return undefined
+  const grade = args.compiled.quality.strictGate
+  if (!grade || grade.evaluatedAt !== 'build') return undefined
+  if (grade.verdict === 'PASS') return undefined
+
+  const fallbackReason = (grade.fallbackReason ?? args.compiled.fallbackReason ?? 'missingDeps') as ReadQueryFallbackReason
+  const details: ReadQueryStrictGateViolationDetails = {
+    moduleId: args.moduleId,
+    instanceId: args.instanceId,
+    txnSeq: args.txnSeq,
+    selectorId: args.compiled.selectorId,
+    debugKey: args.compiled.debugKey,
+    fallbackReason,
+    rule: grade.rule ?? 'requireStatic:global',
+  }
+
+  const config: ReadQueryStrictGateConfig = {
+    mode: grade.verdict === 'WARN' ? 'warn' : 'error',
+  }
+  const diagnostic = makeStrictGateDiagnostic({ config, details })
+
+  if (grade.verdict === 'WARN') {
+    return { verdict: 'WARN', diagnostic, details }
+  }
+
+  return {
+    verdict: 'FAIL',
+    diagnostic,
+    error: makeStrictGateError({ details }),
+    details,
+  }
+}
 
 export const evaluateStrictGate = (args: {
   readonly config: ReadQueryStrictGateConfig

@@ -22,6 +22,8 @@ export const isReadQuery = ReadQueryCore.isReadQuery
 export const isReadQueryCompiled = ReadQueryCore.isReadQueryCompiled
 export const hasBuildQualityGrade = ReadQueryCore.hasBuildQualityGrade
 export const shouldEvaluateStrictGateAtRuntime = ReadQueryCore.shouldEvaluateStrictGateAtRuntime
+export const markRuntimeMissingBuildGrade = ReadQueryCore.markRuntimeMissingBuildGrade
+export const resolveBuildGradeStrictGateDecision = ReadQueryCore.resolveBuildGradeStrictGateDecision
 
 export const make = ReadQueryCore.make
 
