@@ -64,7 +64,7 @@
 - **FR-001**: MUST 将 `ModuleRuntime.transaction.ts` 的 commit 后 side effects 抽为显式阶段入口（建议名：`runPostCommitPhases`）。
 - **FR-002**: MUST 保留现有执行顺序与分支语义，至少覆盖：dirty fallback diagnostic、txn history、rowId reconcile、commitHub publish、debug 记录、`onCommit` 分支。
 - **FR-003**: MUST 不修改公共 API 与调用方契约。
-- **FR-004**: MUST 补齐或更新事务顺序相关测试，证明重构不改语义。
+- **FR-004**: MUST 在 Phase 2 补齐或更新事务顺序相关测试，证明重构不改语义（追踪：[#98](https://github.com/yoyooyooo/logix/issues/98)）。
 - **FR-005**: MUST 输出改动文件、切分点、验证命令与结果。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
@@ -87,5 +87,5 @@
 
 - **SC-001**: `specs/095-transaction-core-writeback-split/spec.md`、`plan.md`、`tasks.md` 三件套完整存在且无模板占位符。  
 - **SC-002**: `ModuleRuntime.transaction.ts` 完成 post-commit 阶段入口抽取，且行为测试不回归。  
-- **SC-003**: 事务顺序与 `txnId/txnSeq` 稳定性相关测试通过。  
+- **SC-003**: 事务顺序与 `txnId/txnSeq` 稳定性相关测试在 Phase 2 通过（追踪：[#98](https://github.com/yoyooyooo/logix/issues/98)）。  
 - **SC-004**: 最小验证命令可复现，结果可留档。
