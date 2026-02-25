@@ -48,6 +48,8 @@ jobs:
           FILE_COUNT="$(wc -l < "$FILE_LIST" | tr -d ' ')"
           DIFF_LINES="$(wc -l < "$DIFF_FILE" | tr -d ' ')"
 
+          echo "PR_CHANGED_FILES=$FILE_COUNT" >> "$GITHUB_ENV"
+
           {
             echo "# PR Review Task"
             echo
@@ -57,16 +59,24 @@ jobs:
             echo "- head: $HEAD_SHA"
             echo "- changed_files: $FILE_COUNT"
             echo
-            echo "你是本仓库代码评审助手，请只基于 **base...head diff** 评审，不要用工作区的空 `git diff` 作为结论。"
+            echo "你是本仓库代码评审助手，请只基于 **base...head diff** 评审。"
+            echo "关键约束："
+            echo "- 你当前在 CI merge checkout，\`git status\` 为空是正常现象，禁止据此得出“无改动”。"
+            echo "- 禁止输出与本次评审无关的流程文本（例如 AGENTS、project-guide、Speckit、spec-kit）。"
+            echo "- 禁止使用工作区空 \`git diff\` 作为结论。"
             echo "你可以继续执行以下命令取证："
             echo "- \`git diff --name-status $BASE_SHA...$HEAD_SHA\`"
             echo "- \`git diff --unified=3 $BASE_SHA...$HEAD_SHA -- <path>\`"
             echo
             echo "输出要求（Markdown）："
-            echo "1) 先列高风险/高收益问题（按严重度排序）"
-            echo "2) 每条给出“问题 + 原因 + 建议修复”"
-            echo "3) 明确指出是否影响性能、内存、并发事务语义、可诊断性"
-            echo "4) 若未发现关键问题，输出：No critical issues found."
+            echo "1) 必须包含以下 3 个标题："
+            echo "   - ## Critical Findings"
+            echo "   - ## Non-critical Risks"
+            echo "   - ## Coverage"
+            echo "2) Critical Findings：按严重度排序给出高风险问题；若无，则只写一行：No critical issues found."
+            echo "3) Non-critical Risks：即使无 critical，也至少给 1 条中低风险观察或可改进项（不能留空）。"
+            echo "4) Coverage：列出你实际检查的文件路径；若未覆盖全部 changed files，明确写出未覆盖文件。"
+            echo "5) 每条问题都要包含：问题 + 原因 + 建议修复 + 影响（性能/内存/并发事务语义/可诊断性）。"
             echo
             echo "## Changed files"
             if [ "$FILE_COUNT" -eq 0 ]; then
@@ -99,9 +109,63 @@ jobs:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           responses-api-endpoint: ${{ secrets.OPENAI_BASE_URL }}
           prompt-file: ${{ env.CODEX_PROMPT_FILE }}
+          effort: medium
+
+      - name: Validate Codex review output
+        id: validate
+        env:
+          CODEX_REVIEW: ${{ steps.codex.outputs.final-message }}
+          PR_CHANGED_FILES: ${{ env.PR_CHANGED_FILES }}
+        run: |
+          set -euo pipefail
+
+          REVIEW_FILE="$RUNNER_TEMP/codex-review-output.md"
+          printf '%s\n' "${CODEX_REVIEW}" > "$REVIEW_FILE"
+
+          reason=""
+
+          if [ -z "$(tr -d '[:space:]' < "$REVIEW_FILE")" ]; then
+            reason="empty_output"
+          fi
+
+          if [ -z "$reason" ] && grep -Eiq "couldn[’']t locate any PR diffs|there was nothing to review|Speckit noted|project guide|project-guide|AGENTS\\.md" "$REVIEW_FILE"; then
+            reason="off_topic_or_bad_diff_basis"
+          fi
+
+          if [ -z "$reason" ]; then
+            for section in "## Critical Findings" "## Non-critical Risks" "## Coverage"; do
+              if ! grep -Fq "$section" "$REVIEW_FILE"; then
+                reason="missing_required_sections"
+                break
+              fi
+            done
+          fi
+
+          if [ -z "$reason" ] && grep -Eq "^No critical issues found\\.?$" "$REVIEW_FILE" && [ "${PR_CHANGED_FILES:-0}" -gt 0 ]; then
+            WORD_COUNT="$(wc -w < "$REVIEW_FILE" | tr -d ' ')"
+            if [ "$WORD_COUNT" -lt 40 ]; then
+              reason="too_short_no_critical_for_nonempty_diff"
+            fi
+          fi
+
+          if [ -n "$reason" ]; then
+            echo "review-valid=false" >> "$GITHUB_OUTPUT"
+            echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          else
+            echo "review-valid=true" >> "$GITHUB_OUTPUT"
+            echo "reason=ok" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fail on invalid Codex review output
+        if: ${{ steps.validate.outputs.review-valid != 'true' }}
+        env:
+          REVIEW_INVALID_REASON: ${{ steps.validate.outputs.reason }}
+        run: |
+          echo "::error::Invalid Codex review output: $REVIEW_INVALID_REASON"
+          exit 1
 
       - name: Upsert PR review comment
-        if: ${{ steps.codex.outputs.final-message != '' }}
+        if: ${{ steps.codex.outputs.final-message != '' && steps.validate.outputs.review-valid == 'true' }}
         uses: actions/github-script@v7
         env:
           CODEX_REVIEW: ${{ steps.codex.outputs.final-message }}
