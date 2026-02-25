@@ -136,6 +136,54 @@ const deriveTxnAnchor = (event: ProcessEvent): { readonly txnSeq?: number; reado
   return {}
 }
 
+type ProcessTriggerChainKernel = {
+  readonly assignTriggerSeq: (trigger: ProcessTrigger) => ProcessTrigger
+  readonly run: (trigger: ProcessTrigger, fatal: Deferred.Deferred<Cause.Cause<any>>) => Effect.Effect<void>
+  readonly onDrop: (trigger: ProcessTrigger) => Effect.Effect<void>
+}
+
+const makeProcessTriggerChainKernel = (args: {
+  readonly shouldRecordChainEvents: boolean
+  readonly nextTriggerSeq: () => number
+  readonly emitTriggerEvent: (trigger: ProcessTrigger, severity: ProcessEvent['severity']) => Effect.Effect<void>
+  readonly runWithoutChainBudget: (
+    trigger: ProcessTrigger,
+    fatal: Deferred.Deferred<Cause.Cause<any>>,
+  ) => Effect.Effect<void>
+}): ProcessTriggerChainKernel => {
+  const assignTriggerSeq = (trigger: ProcessTrigger): ProcessTrigger => {
+    if (!args.shouldRecordChainEvents) {
+      return trigger
+    }
+    return {
+      ...trigger,
+      triggerSeq: args.nextTriggerSeq(),
+    }
+  }
+
+  const run = (trigger: ProcessTrigger, fatal: Deferred.Deferred<Cause.Cause<any>>): Effect.Effect<void> => {
+    if (!args.shouldRecordChainEvents) {
+      return args.runWithoutChainBudget(trigger, fatal)
+    }
+
+    return Effect.gen(function* () {
+      const budgetRef = yield* Ref.make(ProcessEvents.makeProcessRunEventBudgetState())
+      return yield* Effect.locally(
+        currentProcessEventBudget,
+        budgetRef,
+      )(args.emitTriggerEvent(trigger, 'info').pipe(Effect.zipRight(args.runWithoutChainBudget(trigger, fatal))))
+    })
+  }
+
+  const onDrop = (trigger: ProcessTrigger): Effect.Effect<void> => args.emitTriggerEvent(trigger, 'warning')
+
+  return {
+    assignTriggerSeq,
+    run,
+    onDrop,
+  }
+}
+
 const shouldNoopDueToSyncTxn = (scope: ProcessScope, kind: string): Effect.Effect<boolean> => {
   const moduleId = scope.type === 'moduleInstance' ? scope.moduleId : undefined
   const instanceId = scope.type === 'moduleInstance' ? scope.instanceId : undefined
@@ -666,34 +714,6 @@ export const make = (options?: {
             ),
           )
 
-        const makeChainRun = (
-          trigger: ProcessTrigger,
-          fatal: Deferred.Deferred<Cause.Cause<any>>,
-        ): Effect.Effect<void> => {
-          if (!shouldRecordChainEvents) {
-            return makeRun(trigger, fatal)
-          }
-
-          return Effect.gen(function* () {
-            const budgetRef = yield* Ref.make(ProcessEvents.makeProcessRunEventBudgetState())
-            return yield* Effect.locally(
-              currentProcessEventBudget,
-              budgetRef,
-            )(emitTriggerEvent(trigger, 'info').pipe(Effect.zipRight(makeRun(trigger, fatal))))
-          })
-        }
-
-        const assignTriggerSeq = (trigger: ProcessTrigger): ProcessTrigger => {
-          if (!shouldRecordChainEvents) {
-            return trigger
-          }
-
-          return {
-            ...trigger,
-            triggerSeq: instanceState.nextTriggerSeq++,
-          }
-        }
-
         const emitTriggerEvent = (trigger: ProcessTrigger, severity: ProcessEvent['severity']): Effect.Effect<void> => {
           if (!shouldRecordChainEvents) {
             return Effect.void
@@ -701,6 +721,12 @@ export const make = (options?: {
 
           return emit(makeTriggerEvent(trigger, severity))
         }
+        const triggerChainKernel = makeProcessTriggerChainKernel({
+          shouldRecordChainEvents,
+          nextTriggerSeq: () => instanceState.nextTriggerSeq++,
+          emitTriggerEvent,
+          runWithoutChainBudget: makeRun,
+        })
 
         const policy = installation.definition.concurrency
         const bootTrigger = installation.startPlan.bootTrigger
@@ -744,9 +770,9 @@ export const make = (options?: {
             ProcessConcurrency.runProcessTriggerStream({
               stream: triggerStream,
               policy,
-              assignTriggerSeq,
-              run: (trigger) => makeChainRun(trigger, fatal),
-              onDrop: (trigger) => emitTriggerEvent(trigger, 'warning'),
+              assignTriggerSeq: triggerChainKernel.assignTriggerSeq,
+              run: (trigger) => triggerChainKernel.run(trigger, fatal),
+              onDrop: triggerChainKernel.onDrop,
               onQueueOverflow: reportQueueOverflow,
             }),
           )
