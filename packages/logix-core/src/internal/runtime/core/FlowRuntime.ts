@@ -226,12 +226,33 @@ export const make = <Sh extends AnyModuleShape, R = never>(
         )
       }) as any
 
+  const changesReadQueryWithMeta = (runtime as any).changesReadQueryWithMeta as
+    | (<V>(readQuery: ReadQuery.ReadQueryInput<StateOf<Sh>, V>) => Stream.Stream<{ readonly value: V }>)
+    | undefined
+
+  const fromState = <V>(
+    selectorOrQuery: ((s: StateOf<Sh>) => V) | ReadQuery.ReadQuery<StateOf<Sh>, V>,
+  ): Stream.Stream<V> => {
+    if (ReadQuery.isReadQuery(selectorOrQuery)) {
+      if (typeof changesReadQueryWithMeta === 'function') {
+        return changesReadQueryWithMeta(selectorOrQuery).pipe(Stream.map((evt) => evt.value))
+      }
+      return runtime.changes(selectorOrQuery.select)
+    }
+
+    const compiled = ReadQuery.compile(selectorOrQuery)
+    if (compiled.lane === 'static' && typeof changesReadQueryWithMeta === 'function') {
+      return changesReadQueryWithMeta(compiled).pipe(Stream.map((evt) => evt.value))
+    }
+
+    return runtime.changes(selectorOrQuery)
+  }
+
   return {
     fromAction: <T extends ActionOf<Sh>>(predicate: (a: ActionOf<Sh>) => a is T) =>
       runtime.actions$.pipe(Stream.filter(predicate)),
 
-    fromState: <V>(selectorOrQuery: ((s: StateOf<Sh>) => V) | ReadQuery.ReadQuery<StateOf<Sh>, V>) =>
-      runtime.changes(ReadQuery.isReadQuery(selectorOrQuery) ? selectorOrQuery.select : selectorOrQuery),
+    fromState,
 
     debounce: (ms: number) => (stream) => Stream.debounce(stream, ms),
 
