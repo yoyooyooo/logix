@@ -461,7 +461,7 @@ export const convergeInTransaction = <S extends object>(
     const getOrComputePlan = (options?: {
       readonly missReason?: TraitConvergePlanCacheEvidence['missReason']
       readonly stopOnDecisionBudget?: boolean
-    }): { readonly plan?: Int32Array; readonly hit: boolean; readonly budgetCutoff?: true } => {
+    }): { readonly plan: Int32Array; readonly hit: boolean; readonly budgetCutoff?: true } => {
       const dirty = ensureDirtyRootIds()
       if (dirty.dirtyAll) {
         if (cacheEvidence && cache) {
@@ -607,18 +607,14 @@ export const convergeInTransaction = <S extends object>(
               if (budgetCutoff) {
                 markDecisionBudgetCutoff()
               }
-              if (!plan) {
-                mode = 'dirty'
+              planStepIds = plan
+              reasons.push(hit ? 'cache_hit' : 'cache_miss')
+              const ratio = scopeStepCount > 0 ? plan.length / scopeStepCount : 1
+              if (ratio >= NEAR_FULL_PLAN_RATIO_THRESHOLD) {
+                mode = 'full'
+                reasons.push('near_full')
               } else {
-                planStepIds = plan
-                reasons.push(hit ? 'cache_hit' : 'cache_miss')
-                const ratio = scopeStepCount > 0 ? plan.length / scopeStepCount : 1
-                if (ratio >= NEAR_FULL_PLAN_RATIO_THRESHOLD) {
-                  mode = 'full'
-                  reasons.push('near_full')
-                } else {
-                  mode = 'dirty'
-                }
+                mode = 'dirty'
               }
             }
           }
