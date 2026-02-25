@@ -226,9 +226,12 @@ export const make = <Sh extends AnyModuleShape, R = never>(
         )
       }) as any
 
-  const changesReadQueryWithMeta = (runtime as any).changesReadQueryWithMeta as
-    | (<V>(readQuery: ReadQuery.ReadQueryInput<StateOf<Sh>, V>) => Stream.Stream<{ readonly value: V }>)
-    | undefined
+  const changesReadQueryWithMeta =
+    runtime != null
+      ? ((runtime as any).changesReadQueryWithMeta as
+          | (<V>(readQuery: ReadQuery.ReadQueryInput<StateOf<Sh>, V>) => Stream.Stream<{ readonly value: V }>)
+          | undefined)
+      : undefined
 
   const fromState = <V>(
     selectorOrQuery: ((s: StateOf<Sh>) => V) | ReadQuery.ReadQuery<StateOf<Sh>, V>,
