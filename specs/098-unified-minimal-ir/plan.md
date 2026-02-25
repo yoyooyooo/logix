@@ -143,8 +143,8 @@ docs/ssot/runtime/logix-core/observability/
 └── 09-debugging.*.md
 ```
 
-**Structure Decision**: 本特性采用“先规格与协议、后实现”的路径；本轮仅在 `specs/098-unified-minimal-ir/` 产出规划文档，不落实现代码。
+**Structure Decision**: 本特性采用“先规格与协议、再按 tasks 执行实现”的路径；当前 PR 交付规划基线（spec/plan/tasks），后续实现将按本计划中定义的质量门与性能证据要求推进。
 
 ## Complexity Tracking
 
-本轮为纯规划阶段，无需为复杂度违规申请豁免。若后续实现触及 ≥1000 LOC 文件，将在对应实现计划中补“无损拆解简报”并单独验收。
+当前 PR 为规划阶段，无复杂度违规豁免需求。后续进入实现时，若触及 ≥1000 LOC 文件，将补充“无损拆解简报”并单独验收。
