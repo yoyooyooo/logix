@@ -434,13 +434,51 @@ const summarizeCapacityRows = (rows) => {
   const maxLevels = rows.map((row) => row.maxLevel)
   const floorMaxLevel = maxLevels.length > 0 ? Math.min(...maxLevels) : 0
   const p50MaxLevel = quantileCeil(maxLevels, 0.5)
+  const p75MaxLevel = quantileCeil(maxLevels, 0.75)
   const p90MaxLevel = quantileCeil(maxLevels, 0.9)
+  const p95MaxLevel = quantileCeil(maxLevels, 0.95)
   const maxObservedLevel = maxLevels.length > 0 ? Math.max(...maxLevels) : 0
   return {
     floorMaxLevel,
     p50MaxLevel,
+    p75MaxLevel,
     p90MaxLevel,
+    p95MaxLevel,
     maxObservedLevel,
+  }
+}
+
+const pickFiniteNumber = (...values) => {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+  }
+  return undefined
+}
+
+const deriveAutoProbeFallbackSummary = (probe) => {
+  const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
+  const lastIteration = iterations[iterations.length - 1]
+  const rows = Array.isArray(lastIteration?.aggregated?.rows) ? lastIteration.aggregated.rows : []
+  if (rows.length === 0) return null
+  const medianLevels = rows
+    .map((row) => row?.medianMaxLevel)
+    .filter((x) => typeof x === 'number' && Number.isFinite(x))
+  const meanLevels = rows
+    .map((row) => row?.meanMaxLevel)
+    .filter((x) => typeof x === 'number' && Number.isFinite(x))
+  const outlierRemovedCount = rows.reduce((acc, row) => {
+    const sampleCount = typeof row?.sampleCount === 'number' ? row.sampleCount : 0
+    const keptCount = typeof row?.keptCount === 'number' ? row.keptCount : sampleCount
+    return acc + Math.max(0, sampleCount - keptCount)
+  }, 0)
+  return {
+    floorMedianMaxLevel: medianLevels.length > 0 ? Math.min(...medianLevels) : undefined,
+    p50MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.5) : undefined,
+    p75MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.75) : undefined,
+    p90MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.9) : undefined,
+    p95MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.95) : undefined,
+    averageUpperLimit: meanLevels.length > 0 ? Math.round(meanLevels.reduce((a, b) => a + b, 0) / meanLevels.length) : undefined,
+    outlierRemovedCount,
   }
 }
 
@@ -469,11 +507,11 @@ md += `- comparable: ${code(String(diff?.meta?.comparability?.comparable ?? '?')
 md += `- diff: regressions=${code(regressions)}, improvements=${code(improvements)}\n`
 md += `- head budgetExceeded: ${code(afterFailures.length)}\n`
 if (afterCapacitySummary) {
-  md += `- head capacity floor(${code(capacitySuiteId)} / ${code(capacityBudgetId)} / convergeMode=${code(
+  md += `- head capacity model(P50/P75/P95+floor) (${code(capacitySuiteId)} / ${code(capacityBudgetId)} / convergeMode=${code(
     capacityScopeConvergeMode,
-  )}): floor=${code(afterCapacitySummary.floorMaxLevel)}, p50=${code(afterCapacitySummary.p50MaxLevel)}, p90=${code(
-    afterCapacitySummary.p90MaxLevel,
-  )}, max=${code(afterCapacitySummary.maxObservedLevel)}\n`
+  )}): floor=${code(afterCapacitySummary.floorMaxLevel)}, p50=${code(afterCapacitySummary.p50MaxLevel)}, p75=${code(
+    afterCapacitySummary.p75MaxLevel,
+  )}, p95=${code(afterCapacitySummary.p95MaxLevel)}, max=${code(afterCapacitySummary.maxObservedLevel)}\n`
 }
 if (typeof capacityFloorTarget === 'number') {
   const actualFloor = afterCapacitySummary?.floorMaxLevel ?? null
@@ -483,11 +521,15 @@ if (typeof capacityFloorTarget === 'number') {
   )})\n`
 }
 if (autoProbe && typeof autoProbe === 'object') {
-  const autoSummary = autoProbe.summary && typeof autoProbe.summary === 'object' ? autoProbe.summary : null
-  const averageUpper = autoSummary?.averageUpperLimit
-  const floorMedian = autoSummary?.floorMedianMaxLevel
-  const p90Median = autoSummary?.p90MedianMaxLevel
-  const removed = autoSummary?.outlierRemovedCount
+  const autoSummaryRaw = autoProbe.summary && typeof autoProbe.summary === 'object' ? autoProbe.summary : null
+  const autoSummaryFallback = deriveAutoProbeFallbackSummary(autoProbe)
+  const averageUpper = pickFiniteNumber(autoSummaryRaw?.averageUpperLimit, autoSummaryFallback?.averageUpperLimit)
+  const floorMedian = pickFiniteNumber(autoSummaryRaw?.floorMedianMaxLevel, autoSummaryFallback?.floorMedianMaxLevel)
+  const p50Median = pickFiniteNumber(autoSummaryRaw?.p50MedianMaxLevel, autoSummaryFallback?.p50MedianMaxLevel)
+  const p75Median = pickFiniteNumber(autoSummaryRaw?.p75MedianMaxLevel, autoSummaryFallback?.p75MedianMaxLevel)
+  const p95Median = pickFiniteNumber(autoSummaryRaw?.p95MedianMaxLevel, autoSummaryFallback?.p95MedianMaxLevel)
+  const p90Median = pickFiniteNumber(autoSummaryRaw?.p90MedianMaxLevel, autoSummaryFallback?.p90MedianMaxLevel)
+  const removed = pickFiniteNumber(autoSummaryRaw?.outlierRemovedCount, autoSummaryFallback?.outlierRemovedCount)
   const samplesPerIteration = autoProbe.samplesPerIteration
   const stopReason = autoProbe.stopReason
   const finalLevels = Array.isArray(autoProbe.finalLevels) ? autoProbe.finalLevels : []
@@ -495,7 +537,11 @@ if (autoProbe && typeof autoProbe === 'object') {
     typeof averageUpper === 'number' && Number.isFinite(averageUpper) ? averageUpper : 'n/a',
   )}, floorMedian=${code(
     typeof floorMedian === 'number' && Number.isFinite(floorMedian) ? floorMedian : 'n/a',
-  )}, p90Median=${code(typeof p90Median === 'number' && Number.isFinite(p90Median) ? p90Median : 'n/a')}\n`
+  )}, p50Median=${code(typeof p50Median === 'number' && Number.isFinite(p50Median) ? p50Median : 'n/a')}, p75Median=${code(
+    typeof p75Median === 'number' && Number.isFinite(p75Median) ? p75Median : 'n/a',
+  )}, p95Median=${code(typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median : 'n/a')}, p90Median=${code(
+    typeof p90Median === 'number' && Number.isFinite(p90Median) ? p90Median : 'n/a',
+  )}\n`
   md += `- base auto-probe stats: outliersRemoved=${code(
     typeof removed === 'number' && Number.isFinite(removed) ? removed : 'n/a',
   )}, samples/iter=${code(

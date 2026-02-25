@@ -29,7 +29,7 @@ Purpose:
   智能化探测 steps 上限（多样本 + 异常值剔除）：
   1) 每轮对同一组 levels 采样 N 次；
   2) 对每个 dirtyRootsRatio 的 maxLevel 做异常值剔除；
-  3) 计算稳健统计（floor/p50/p90）与平均上限（average upper limit）；
+  3) 计算稳健统计（floor/p50/p75/p95）与平均上限（average upper limit）；
   4) 按“floor 或 average 贴近顶层”决定是否继续扩容。
 `
 
@@ -195,7 +195,9 @@ const summarizeRows = (rows) => {
     return {
       floorMaxLevel: 0,
       p50MaxLevel: 0,
+      p75MaxLevel: 0,
       p90MaxLevel: 0,
+      p95MaxLevel: 0,
       maxObservedLevel: 0,
       averageUpperLimit: 0,
     }
@@ -204,7 +206,9 @@ const summarizeRows = (rows) => {
   return {
     floorMaxLevel: Math.min(...maxLevels),
     p50MaxLevel: quantileCeil(maxLevels, 0.5),
+    p75MaxLevel: quantileCeil(maxLevels, 0.75),
     p90MaxLevel: quantileCeil(maxLevels, 0.9),
+    p95MaxLevel: quantileCeil(maxLevels, 0.95),
     maxObservedLevel: Math.max(...maxLevels),
     averageUpperLimit: roundStep(mean(maxLevels)),
   }
@@ -270,7 +274,9 @@ const aggregateSampleAnalyses = ({ sampleAnalyses, outlierRelTolerance, outlierA
 
     const meanMaxLevel = filtered.kept.length > 0 ? roundStep(mean(filtered.kept)) : 0
     const medianMaxLevel = filtered.kept.length > 0 ? quantileCeil(filtered.kept, 0.5) : 0
+    const p75MaxLevel = filtered.kept.length > 0 ? quantileCeil(filtered.kept, 0.75) : 0
     const p90MaxLevel = filtered.kept.length > 0 ? quantileCeil(filtered.kept, 0.9) : 0
+    const p95MaxLevel = filtered.kept.length > 0 ? quantileCeil(filtered.kept, 0.95) : 0
     return {
       dirtyRootsRatio,
       sampleValues,
@@ -282,7 +288,9 @@ const aggregateSampleAnalyses = ({ sampleAnalyses, outlierRelTolerance, outlierA
       keptCount: filtered.kept.length,
       meanMaxLevel,
       medianMaxLevel,
+      p75MaxLevel,
       p90MaxLevel,
+      p95MaxLevel,
     }
   })
 
@@ -295,8 +303,12 @@ const aggregateSampleAnalyses = ({ sampleAnalyses, outlierRelTolerance, outlierA
     floorMedianMaxLevel: medianLevels.length > 0 ? Math.min(...medianLevels) : 0,
     p50MeanMaxLevel: meanLevels.length > 0 ? quantileCeil(meanLevels, 0.5) : 0,
     p50MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.5) : 0,
+    p75MeanMaxLevel: meanLevels.length > 0 ? quantileCeil(meanLevels, 0.75) : 0,
+    p75MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.75) : 0,
     p90MeanMaxLevel: meanLevels.length > 0 ? quantileCeil(meanLevels, 0.9) : 0,
     p90MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.9) : 0,
+    p95MeanMaxLevel: meanLevels.length > 0 ? quantileCeil(meanLevels, 0.95) : 0,
+    p95MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.95) : 0,
     maxObservedMeanLevel: meanLevels.length > 0 ? Math.max(...meanLevels) : 0,
     maxObservedMedianLevel: medianLevels.length > 0 ? Math.max(...medianLevels) : 0,
     averageUpperLimit: meanLevels.length > 0 ? roundStep(mean(meanLevels)) : 0,
@@ -446,6 +458,9 @@ const main = () => {
       } else if (aggregated.summary.averageUpperLimit >= secondLevel) {
         shouldExtend = true
         decision = 'average_near_top_band'
+      } else if (aggregated.summary.p95MedianMaxLevel >= secondLevel) {
+        shouldExtend = true
+        decision = 'p95_near_top_band'
       } else if (aggregated.summary.p90MedianMaxLevel >= secondLevel) {
         shouldExtend = true
         decision = 'p90_near_top_band'
@@ -465,7 +480,9 @@ const main = () => {
           reportFile: sample.reportFile,
           floor: sample.summary.floorMaxLevel,
           p50: sample.summary.p50MaxLevel,
+          p75: sample.summary.p75MaxLevel,
           p90: sample.summary.p90MaxLevel,
+          p95: sample.summary.p95MaxLevel,
           maxObserved: sample.summary.maxObservedLevel,
           averageUpperLimit: sample.summary.averageUpperLimit,
         })),
@@ -539,9 +556,11 @@ const main = () => {
     console.log(
       `[logix-perf:auto-probe] levels=${levels.join(',')} floor=${String(
         summary?.floorMedianMaxLevel ?? 0,
-      )} avg=${String(summary?.averageUpperLimit ?? 0)} p90=${String(summary?.p90MedianMaxLevel ?? 0)} samples=${String(
-        args.samplesPerIteration,
-      )} iterations=${String(iterationLogs.length)} stop=${stopReason}`,
+      )} p50=${String(summary?.p50MedianMaxLevel ?? 0)} p75=${String(summary?.p75MedianMaxLevel ?? 0)} p95=${String(
+        summary?.p95MedianMaxLevel ?? 0,
+      )} avg=${String(summary?.averageUpperLimit ?? 0)} samples=${String(args.samplesPerIteration)} iterations=${String(
+        iterationLogs.length,
+      )} stop=${stopReason}`,
     )
   } catch (error) {
     // eslint-disable-next-line no-console
