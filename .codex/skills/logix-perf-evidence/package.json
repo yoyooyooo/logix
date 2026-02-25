@@ -25,6 +25,7 @@
     "bench:026:query-auto-trigger": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/026-query-auto-trigger.ts",
     "bench:027:devtools-txn": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/027-runtime-observability-hardening.devtools-and-txn-baseline.ts",
     "bench:060:txn-lanes-workloop": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/060-react-priority-scheduling.txn-lanes-workloop.ts",
+    "bench:061:state-transaction-lazy-dirtyset": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/061-state-transaction.lazy-dirtyset-baseline.ts",
     "bench:028:form-interactions": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/028-form-api-dx.form-interactions.baseline.ts",
     "bench:029:i18n-token": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/029-i18n-root-resolve.message-token-baseline.ts",
     "bench:029:i18n-root-resolve": "pnpm -C ../../.. exec tsx .codex/skills/logix-perf-evidence/scripts/029-i18n-root-resolve.root-resolve-baseline.ts"
