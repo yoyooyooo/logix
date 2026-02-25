@@ -1274,10 +1274,9 @@ export const make = <S, A, R = never>(
           meta,
         })),
       changesReadQueryWithMeta: <V>(input: ReadQuery.ReadQueryInput<S, V>) => {
-        const rawCompiled: ReadQuery.ReadQueryCompiled<S, V> = ReadQuery.isReadQueryCompiled<S, V>(input)
+        const compiled: ReadQuery.ReadQueryCompiled<S, V> = ReadQuery.isReadQueryCompiled<S, V>(input)
           ? input
           : ReadQuery.compile(input)
-        const compiled = ReadQuery.markRuntimeMissingBuildGrade(rawCompiled)
 
         if (compiled.lane !== 'static') {
           return Stream.unwrapScoped(
@@ -1300,12 +1299,13 @@ export const make = <S, A, R = never>(
                 const strictGateOpt = yield* Effect.serviceOption(ReadQueryStrictGateConfigTag)
 
                 if (Option.isSome(strictGateOpt)) {
+                  const runtimeCompiled = ReadQuery.markRuntimeMissingBuildGrade(compiled)
                   const decision = ReadQuery.evaluateStrictGate({
                     config: strictGateOpt.value,
                     moduleId,
                     instanceId,
                     txnSeq: 0,
-                    compiled,
+                    compiled: runtimeCompiled,
                   })
 
                   if (decision.verdict === 'WARN') {
