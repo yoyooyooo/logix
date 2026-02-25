@@ -319,7 +319,7 @@ const runOnce = <Sh extends AnyModuleShape>(
       never
     >
     const extraLayer = run?.layer
-      ? (Layer.mergeAll(traceLayer, contractGateLayer, run.layer) as Layer.Layer<any, any, any>)
+      ? (Layer.mergeAll(traceLayer, run.layer, contractGateLayer) as Layer.Layer<any, any, any>)
       : (Layer.mergeAll(traceLayer, contractGateLayer) as Layer.Layer<any, any, any>)
 
     const result = yield* trialRun(program as any, {
