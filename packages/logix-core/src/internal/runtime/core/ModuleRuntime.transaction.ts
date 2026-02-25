@@ -5,7 +5,7 @@ import type {
   TraitConvergeGenerationEvidence,
   TraitConvergePlanCacheEvidence,
 } from '../../state-trait/model.js'
-import type { DirtyAllReason, DirtySet } from '../../field-path.js'
+import type { DirtyAllReason, DirtySet, FieldPathIdRegistry } from '../../field-path.js'
 import * as Debug from './DebugSink.js'
 import * as StateTransaction from './StateTransaction.js'
 import * as TaskRunner from './TaskRunner.js'
@@ -145,6 +145,174 @@ export const makeTransactionOps = <S>(args: {
     if (inTxn && current) return current.draft
     return yield* SubscriptionRef.get(stateRef)
   })
+
+  const runPostCommitPhases = (args: {
+    readonly txn: StateTransaction.StateTransaction<S>
+    readonly nextState: S
+    readonly replayEvent: unknown
+    readonly commitMode: StateCommitMode
+    readonly priority: StateCommitPriority
+    readonly fieldPathIdRegistry: FieldPathIdRegistry | undefined
+    readonly dirtyAllSetStateHint: boolean
+    readonly traitSummary: unknown | undefined
+  }): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const {
+        txn,
+        nextState,
+        replayEvent,
+        commitMode,
+        priority,
+        fieldPathIdRegistry,
+        dirtyAllSetStateHint,
+        traitSummary,
+      } = args
+      const shouldWarnDirtyAllSetState =
+        dirtyAllSetStateHint || (txn.origin.kind === 'state' && txn.origin.name === 'setState')
+
+      if (shouldWarnDirtyAllSetState && isDevEnv() && (txn.dirtySet as any)?.dirtyAll === true) {
+        yield* Debug.record({
+          type: 'diagnostic',
+          moduleId: optionsModuleId,
+          instanceId,
+          txnSeq: txn.txnSeq,
+          txnId: txn.txnId,
+          trigger: txn.origin,
+          code: 'state_transaction::dirty_all_fallback',
+          severity: 'warning',
+          message:
+            'setState/state.update did not provide field-level dirty-set evidence; falling back to dirtyAll scheduling.',
+          hint: 'Prefer $.state.mutate(...) or Logix.Module.Reducer.mutate(...) to produce field-level patchPaths; otherwise converge/validate degrades to full-path scheduling.',
+          kind: 'dirty_all_fallback:set_state',
+        })
+      }
+
+      // Record txn history: only for dev/test or explicit full instrumentation (devtools/debugging).
+      // In production (default light), keep zero retention to avoid turning "txn history" into an implicit memory tax.
+      if (isDevEnv() || txnContext.config.instrumentation === 'full') {
+        txnHistory.push(txn)
+        txnById.set(txn.txnId, txn)
+        if (txnHistory.length > maxTxnHistory) {
+          const oldest = txnHistory.shift()
+          if (oldest) {
+            txnById.delete(oldest.txnId)
+          }
+        }
+      }
+
+      // RowID virtual identity layer: align mappings after each observable commit
+      // so in-flight gates and cache reuse remain stable under insert/remove/reorder.
+      const listConfigs = traitRuntime.getListConfigs()
+      if (listConfigs.length > 0) {
+        const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtySet({
+          dirtySet: txn.dirtySet,
+          listConfigs,
+          fieldPathIdRegistry,
+        })
+        if (shouldSyncRowIds) {
+          traitRuntime.rowIdStore.updateAll(nextState as any, listConfigs)
+        }
+      }
+
+      const meta: StateCommitMeta = {
+        txnSeq: txn.txnSeq,
+        txnId: txn.txnId,
+        commitMode,
+        priority,
+        originKind: txn.origin.kind,
+        originName: txn.origin.name,
+      }
+
+      if (!shouldPublishCommitHub || shouldPublishCommitHub()) {
+        yield* PubSub.publish(commitHub, {
+          value: nextState,
+          meta,
+        })
+      }
+
+      // Perf-sensitive ordering:
+      // - In diagnostics=off mode (default for production/perf runs), allow selectorGraph notifications to be published
+      //   before state:update debug recording so React external store subscribers can start flushing earlier.
+      // - In diagnostics=light/full, keep the original ordering so any selector eval trace stays after state:update
+      //   (preserves a more intuitive txn → selector → render causal chain in devtools).
+      const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+      if (onCommit && diagnosticsLevel === 'off') {
+        yield* onCommit({
+          state: nextState,
+          meta,
+          dirtySet: txn.dirtySet,
+          diagnosticsLevel,
+        })
+      }
+
+      const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
+      const shouldRecordStateUpdate = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
+
+      if (shouldRecordStateUpdate) {
+        const shouldComputeEvidence = diagnosticsLevel !== 'off'
+
+        const staticIrDigest = shouldComputeEvidence ? traitRuntime.getConvergeStaticIrDigest() : undefined
+
+        const dirtySetEvidence = shouldComputeEvidence
+          ? (() => {
+              const rootIdsTopK = diagnosticsLevel === 'full' ? 32 : 3
+
+              if (txn.dirtySet.dirtyAll) {
+                return {
+                  dirtyAll: true,
+                  reason: txn.dirtySet.reason ?? 'unknownWrite',
+                  rootIds: [],
+                  rootCount: 0,
+                  keySize: 0,
+                  keyHash: 0,
+                  rootIdsTruncated: false,
+                }
+              }
+
+              const fullRootIds = txn.dirtySet.rootIds
+              const topK = fullRootIds.slice(0, rootIdsTopK)
+              return {
+                dirtyAll: false,
+                // Keep diff anchors (count/hash/size) for the full set; only truncate the rootIds payload.
+                rootIds: topK,
+                rootCount: txn.dirtySet.rootCount,
+                keySize: txn.dirtySet.keySize,
+                keyHash: txn.dirtySet.keyHash,
+                rootIdsTruncated: fullRootIds.length > rootIdsTopK,
+              }
+            })()
+          : undefined
+
+        yield* Debug.record({
+          type: 'state:update',
+          moduleId: optionsModuleId,
+          state: nextState,
+          instanceId,
+          txnSeq: txn.txnSeq,
+          txnId: txn.txnId,
+          staticIrDigest,
+          dirtySet: dirtySetEvidence,
+          patchCount: txn.patchCount,
+          patchesTruncated: txn.patchesTruncated,
+          ...(txn.patchesTruncated ? { patchesTruncatedReason: txn.patchesTruncatedReason } : null),
+          commitMode,
+          priority,
+          originKind: txn.origin.kind,
+          originName: txn.origin.name,
+          traitSummary,
+          replayEvent: replayEvent as any,
+        })
+      }
+
+      if (onCommit && diagnosticsLevel !== 'off') {
+        yield* onCommit({
+          state: nextState,
+          meta,
+          dirtySet: txn.dirtySet,
+          diagnosticsLevel,
+        })
+      }
+    })
 
   /**
    * runWithStateTransaction：
@@ -514,153 +682,16 @@ export const makeTransactionOps = <S>(args: {
                     const commitResult = yield* StateTransaction.commitWithState(txnContext, stateRef)
 
                     if (commitResult) {
-                      const txn = commitResult.transaction
-                      const nextState = commitResult.finalState
-                      const shouldWarnDirtyAllSetState =
-                        dirtyAllSetStateHint || (txn.origin.kind === 'state' && txn.origin.name === 'setState')
-
-                      if (shouldWarnDirtyAllSetState && isDevEnv() && (txn.dirtySet as any)?.dirtyAll === true) {
-                        yield* Debug.record({
-                          type: 'diagnostic',
-                          moduleId: optionsModuleId,
-                          instanceId,
-                          txnSeq: txn.txnSeq,
-                          txnId: txn.txnId,
-                          trigger: txn.origin,
-                          code: 'state_transaction::dirty_all_fallback',
-                          severity: 'warning',
-                          message:
-                            'setState/state.update did not provide field-level dirty-set evidence; falling back to dirtyAll scheduling.',
-                          hint: 'Prefer $.state.mutate(...) or Logix.Module.Reducer.mutate(...) to produce field-level patchPaths; otherwise converge/validate degrades to full-path scheduling.',
-                          kind: 'dirty_all_fallback:set_state',
-                        })
-                      }
-
-                      // Record txn history: only for dev/test or explicit full instrumentation (devtools/debugging).
-                      // In production (default light), keep zero retention to avoid turning "txn history" into an implicit memory tax.
-                      if (isDevEnv() || txnContext.config.instrumentation === 'full') {
-                        txnHistory.push(txn)
-                        txnById.set(txn.txnId, txn)
-                        if (txnHistory.length > maxTxnHistory) {
-                          const oldest = txnHistory.shift()
-                          if (oldest) {
-                            txnById.delete(oldest.txnId)
-                          }
-                        }
-                      }
-
-                      // RowID virtual identity layer: align mappings after each observable commit
-                      // so in-flight gates and cache reuse remain stable under insert/remove/reorder.
-                      const listConfigs = traitRuntime.getListConfigs()
-                      if (listConfigs.length > 0) {
-                        const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtySet({
-                          dirtySet: txn.dirtySet,
-                          listConfigs,
-                          fieldPathIdRegistry,
-                        })
-                        if (shouldSyncRowIds) {
-                          traitRuntime.rowIdStore.updateAll(nextState as any, listConfigs)
-                        }
-                      }
-
-                      const meta: StateCommitMeta = {
-                        txnSeq: txn.txnSeq,
-                        txnId: txn.txnId,
+                      yield* runPostCommitPhases({
+                        txn: commitResult.transaction,
+                        nextState: commitResult.finalState,
+                        replayEvent,
                         commitMode,
                         priority,
-                        originKind: txn.origin.kind,
-                        originName: txn.origin.name,
-                      }
-
-                      if (!shouldPublishCommitHub || shouldPublishCommitHub()) {
-                        yield* PubSub.publish(commitHub, {
-                          value: nextState,
-                          meta,
-                        })
-                      }
-
-                      // Perf-sensitive ordering:
-                      // - In diagnostics=off mode (default for production/perf runs), allow selectorGraph notifications to be published
-                      //   before state:update debug recording so React external store subscribers can start flushing earlier.
-                      // - In diagnostics=light/full, keep the original ordering so any selector eval trace stays after state:update
-                      //   (preserves a more intuitive txn → selector → render causal chain in devtools).
-                      const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-                      if (onCommit && diagnosticsLevel === 'off') {
-                        yield* onCommit({
-                          state: nextState,
-                          meta,
-                          dirtySet: txn.dirtySet,
-                          diagnosticsLevel,
-                        })
-                      }
-
-                      const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
-                      const shouldRecordStateUpdate = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
-
-                      if (shouldRecordStateUpdate) {
-                        const shouldComputeEvidence = diagnosticsLevel !== 'off'
-
-                        const staticIrDigest = shouldComputeEvidence ? traitRuntime.getConvergeStaticIrDigest() : undefined
-
-                        const dirtySetEvidence = shouldComputeEvidence
-                          ? (() => {
-                              const rootIdsTopK = diagnosticsLevel === 'full' ? 32 : 3
-
-                              if (txn.dirtySet.dirtyAll) {
-                                return {
-                                  dirtyAll: true,
-                                  reason: txn.dirtySet.reason ?? 'unknownWrite',
-                                  rootIds: [],
-                                  rootCount: 0,
-                                  keySize: 0,
-                                  keyHash: 0,
-                                  rootIdsTruncated: false,
-                                }
-                              }
-
-                              const fullRootIds = txn.dirtySet.rootIds
-                              const topK = fullRootIds.slice(0, rootIdsTopK)
-                              return {
-                                dirtyAll: false,
-                                // Keep diff anchors (count/hash/size) for the full set; only truncate the rootIds payload.
-                                rootIds: topK,
-                                rootCount: txn.dirtySet.rootCount,
-                                keySize: txn.dirtySet.keySize,
-                                keyHash: txn.dirtySet.keyHash,
-                                rootIdsTruncated: fullRootIds.length > rootIdsTopK,
-                              }
-                            })()
-                          : undefined
-
-                        yield* Debug.record({
-                          type: 'state:update',
-                          moduleId: optionsModuleId,
-                          state: nextState,
-                          instanceId,
-                          txnSeq: txn.txnSeq,
-                          txnId: txn.txnId,
-                          staticIrDigest,
-                          dirtySet: dirtySetEvidence,
-                          patchCount: txn.patchCount,
-                          patchesTruncated: txn.patchesTruncated,
-                          ...(txn.patchesTruncated ? { patchesTruncatedReason: txn.patchesTruncatedReason } : null),
-                          commitMode,
-                          priority,
-                          originKind: txn.origin.kind,
-                          originName: txn.origin.name,
-                          traitSummary,
-                          replayEvent: replayEvent as any,
-                        })
-                      }
-
-                      if (onCommit && diagnosticsLevel !== 'off') {
-                        yield* onCommit({
-                          state: nextState,
-                          meta,
-                          dirtySet: txn.dirtySet,
-                          diagnosticsLevel,
-                        })
-                      }
+                        fieldPathIdRegistry,
+                        dirtyAllSetStateHint,
+                        traitSummary,
+                      })
                     }
                   }),
                 )
