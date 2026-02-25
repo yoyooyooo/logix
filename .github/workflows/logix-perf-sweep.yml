@@ -23,6 +23,26 @@ on:
         description: "可选 steps 轴覆盖（CSV；例如 200,400,800,1200,1600,2000,2400,2800,3200）"
         required: false
         default: ""
+      perf_steps_mode:
+        description: "steps 选择模式（manual=固定 CSV；auto=自动扩容探测上限）"
+        required: false
+        default: "manual"
+      perf_steps_auto_max_iterations:
+        description: "auto 模式最大迭代次数"
+        required: false
+        default: "3"
+      perf_steps_auto_growth_factor:
+        description: "auto 模式扩容倍率（>1，例如 1.25）"
+        required: false
+        default: "1.25"
+      perf_steps_auto_extend_count:
+        description: "auto 模式每轮新增 levels 数量"
+        required: false
+        default: "2"
+      perf_steps_auto_max_level_cap:
+        description: "auto 模式 steps 绝对上限（防止无限扩容）"
+        required: false
+        default: "25600"
       perf_capacity_floor_min:
         description: "可选动态容量 floor 目标（整数；用于反向约束旧的 2000 门槛）"
         required: false
@@ -56,6 +76,11 @@ jobs:
       PERF_PROFILE: quick
       PERF_DIFF_MODE: strict
       PERF_CAPACITY_FLOOR_MIN: 2000
+      PERF_STEPS_MODE: manual
+      PERF_STEPS_AUTO_MAX_ITERATIONS: 3
+      PERF_STEPS_AUTO_GROWTH_FACTOR: 1.25
+      PERF_STEPS_AUTO_EXTEND_COUNT: 2
+      PERF_STEPS_AUTO_MAX_LEVEL_CAP: 25600
       PERF_OUT_DIR: perf/ci
       PERF_ARTIFACT_NAME: logix-perf-sweep-${{ github.run_id }}
 
@@ -72,6 +97,11 @@ jobs:
           INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
           INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
           INPUT_PERF_STEPS_LEVELS: ${{ github.event.inputs.perf_steps_levels }}
+          INPUT_PERF_STEPS_MODE: ${{ github.event.inputs.perf_steps_mode }}
+          INPUT_PERF_STEPS_AUTO_MAX_ITERATIONS: ${{ github.event.inputs.perf_steps_auto_max_iterations }}
+          INPUT_PERF_STEPS_AUTO_GROWTH_FACTOR: ${{ github.event.inputs.perf_steps_auto_growth_factor }}
+          INPUT_PERF_STEPS_AUTO_EXTEND_COUNT: ${{ github.event.inputs.perf_steps_auto_extend_count }}
+          INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP: ${{ github.event.inputs.perf_steps_auto_max_level_cap }}
           INPUT_PERF_CAPACITY_FLOOR_MIN: ${{ github.event.inputs.perf_capacity_floor_min }}
           INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
@@ -145,6 +175,21 @@ jobs:
             if [ -n "${INPUT_PERF_STEPS_LEVELS:-}" ]; then
               echo "PERF_STEPS_LEVELS=$INPUT_PERF_STEPS_LEVELS" >> "$GITHUB_ENV"
             fi
+            if [ -n "${INPUT_PERF_STEPS_MODE:-}" ]; then
+              echo "PERF_STEPS_MODE=$INPUT_PERF_STEPS_MODE" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MAX_ITERATIONS:-}" ]; then
+              echo "PERF_STEPS_AUTO_MAX_ITERATIONS=$INPUT_PERF_STEPS_AUTO_MAX_ITERATIONS" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_GROWTH_FACTOR:-}" ]; then
+              echo "PERF_STEPS_AUTO_GROWTH_FACTOR=$INPUT_PERF_STEPS_AUTO_GROWTH_FACTOR" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_EXTEND_COUNT:-}" ]; then
+              echo "PERF_STEPS_AUTO_EXTEND_COUNT=$INPUT_PERF_STEPS_AUTO_EXTEND_COUNT" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP:-}" ]; then
+              echo "PERF_STEPS_AUTO_MAX_LEVEL_CAP=$INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP" >> "$GITHUB_ENV"
+            fi
             if [ -n "${INPUT_PERF_CAPACITY_FLOOR_MIN:-}" ]; then
               echo "PERF_CAPACITY_FLOOR_MIN=$INPUT_PERF_CAPACITY_FLOOR_MIN" >> "$GITHUB_ENV"
             fi
@@ -217,6 +262,9 @@ jobs:
           PINNED_VITEST_SHARED="$RUNNER_TEMP/vitest.shared.ts"
           cp vitest.shared.ts "$PINNED_VITEST_SHARED"
           echo "PERF_PINNED_VITEST_SHARED=$PINNED_VITEST_SHARED" >> "$GITHUB_ENV"
+          PINNED_AUTO_PROBE_SCRIPT="$RUNNER_TEMP/logix-perf-auto-probe.cjs"
+          cp .github/scripts/logix-perf-auto-probe.cjs "$PINNED_AUTO_PROBE_SCRIPT"
+          echo "PERF_AUTO_PROBE_SCRIPT=$PINNED_AUTO_PROBE_SCRIPT" >> "$GITHUB_ENV"
 
       - name: Collect (base)
         run: |
@@ -248,16 +296,44 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
-          if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
-            export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
-          fi
           if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
             export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
           fi
 
-          VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
-            "${FILE_ARGS[@]}" \
-            --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ "${PERF_STEPS_MODE:-manual}" = "auto" ]; then
+            AUTO_STEPS_OUT="$PERF_OUT_DIR/steps-levels.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.csv"
+            AUTO_META_OUT="$PERF_OUT_DIR/steps-probe.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            AUTO_ARGS=(
+              --profile "$PERF_PROFILE"
+              --files "$PERF_FILES"
+              --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+              --steps-out "$AUTO_STEPS_OUT"
+              --meta-out "$AUTO_META_OUT"
+              --max-iterations "$PERF_STEPS_AUTO_MAX_ITERATIONS"
+              --growth-factor "$PERF_STEPS_AUTO_GROWTH_FACTOR"
+              --extend-count "$PERF_STEPS_AUTO_EXTEND_COUNT"
+              --max-level-cap "$PERF_STEPS_AUTO_MAX_LEVEL_CAP"
+            )
+            if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+              AUTO_ARGS+=(--initial-steps "$PERF_STEPS_LEVELS")
+            fi
+            VITE_LOGIX_PERF_HARD_GATES=off node "$PERF_AUTO_PROBE_SCRIPT" "${AUTO_ARGS[@]}"
+            RESOLVED_STEPS="$(tr -d "\n\r " < "$AUTO_STEPS_OUT" || true)"
+            if [ -z "$RESOLVED_STEPS" ]; then
+              echo "auto steps probe produced empty steps levels" >&2
+              exit 1
+            fi
+            echo "PERF_STEPS_LEVELS=$RESOLVED_STEPS" >> "$GITHUB_ENV"
+            export VITE_LOGIX_PERF_STEPS_LEVELS="$RESOLVED_STEPS"
+            echo "[logix-perf] auto steps resolved: $RESOLVED_STEPS"
+          else
+            if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+              export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
+            fi
+            VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+              "${FILE_ARGS[@]}" \
+              --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          fi
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
 
@@ -291,6 +367,9 @@ jobs:
           done
           if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
             export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
+          elif [ "${PERF_STEPS_MODE:-manual}" = "auto" ]; then
+            echo "auto steps mode requires PERF_STEPS_LEVELS resolved from base collect" >&2
+            exit 1
           fi
           if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
             export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
