@@ -34,6 +34,8 @@ describe('Runtime (048): kernel evidence serializable (diagnostics=off)', () => 
       const payload = await defaultRuntime.runPromise(readEvidence)
       expect(payload.kernel.kernelId).toBe('core')
       expect(payload.gate.verdict).toBe('PASS')
+      expect(payload.gate.reason).toBe('fully_activated')
+      expect(payload.gate.evidence.requiredServiceCount).toBe(Logix.Kernel.CutoverCoverageMatrix.requiredServiceIds.length)
       expect(() => JSON.stringify(payload)).not.toThrow()
     } finally {
       await defaultRuntime.dispose()
@@ -57,6 +59,8 @@ describe('Runtime (048): kernel evidence serializable (diagnostics=off)', () => 
       const payload = await coreNgRuntime.runPromise(readEvidence)
       expect(payload.kernel.kernelId).toBe('core-ng')
       expect(payload.gate.verdict).toBe('PASS')
+      expect(payload.gate.reason).toBe('fully_activated')
+      expect(payload.gate.evidence.requiredServiceCount).toBe(Logix.Kernel.CutoverCoverageMatrix.requiredServiceIds.length)
       expect(() => JSON.stringify(payload)).not.toThrow()
     } finally {
       await coreNgRuntime.dispose()

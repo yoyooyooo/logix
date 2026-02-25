@@ -1221,34 +1221,35 @@ export const make = <S, A, R = never>(
 
     if (kernelImplementationRef.kernelId !== 'core') {
       const modeOpt = yield* Effect.serviceOption(RuntimeKernel.FullCutoverGateModeTag)
-      const mode = Option.isSome(modeOpt) ? modeOpt.value : 'trial'
+      const mode = Option.isSome(modeOpt) ? modeOpt.value : 'fullCutover'
+      const gate = FullCutoverGate.evaluateFullCutoverGate({
+        mode,
+        requestedKernelId: kernelImplementationRef.kernelId,
+        runtimeServicesEvidence,
+        diagnosticsLevel: isDevEnv() ? 'light' : 'off',
+      })
 
-      if (mode === 'fullCutover') {
-        const gate = FullCutoverGate.evaluateFullCutoverGate({
-          mode: 'fullCutover',
-          requestedKernelId: kernelImplementationRef.kernelId,
-          runtimeServicesEvidence,
-          diagnosticsLevel: isDevEnv() ? 'light' : 'off',
-        })
+      if (gate.verdict === 'FAIL') {
+        const msg = isDevEnv()
+          ? [
+              '[FullCutoverGateFailed] Runtime assembly detected implicit fallback / missing bindings under fullCutover mode.',
+              `requestedKernelId: ${kernelImplementationRef.kernelId}`,
+              `reason: ${gate.reason}`,
+              `missingServiceIds: ${gate.missingServiceIds.join(',')}`,
+              `fallbackServiceIds: ${gate.fallbackServiceIds.join(',')}`,
+              `requiredServiceCount: ${gate.evidence.requiredServiceCount}`,
+              `anchor: moduleId=${gate.anchor.moduleId}, instanceId=${gate.anchor.instanceId}, txnSeq=${gate.anchor.txnSeq}`,
+            ].join('\n')
+          : 'Full cutover gate failed'
 
-        if (gate.verdict === 'FAIL') {
-          const msg = isDevEnv()
-            ? [
-                '[FullCutoverGateFailed] Runtime assembly detected implicit fallback / missing bindings under fullCutover mode.',
-                `requestedKernelId: ${kernelImplementationRef.kernelId}`,
-                `missingServiceIds: ${gate.missingServiceIds.join(',')}`,
-                `fallbackServiceIds: ${gate.fallbackServiceIds.join(',')}`,
-                `anchor: moduleId=${gate.anchor.moduleId}, instanceId=${gate.anchor.instanceId}, txnSeq=${gate.anchor.txnSeq}`,
-              ].join('\n')
-            : 'Full cutover gate failed'
-
-          const err: any = new Error(msg)
-          err.name = 'FullCutoverGateFailed'
-          err.gate = gate
-          err.instanceId = instanceId
-          err.moduleId = options.moduleId
-          throw err
-        }
+        const err: any = new Error(msg)
+        err.name = 'FullCutoverGateFailed'
+        err.gate = gate
+        err.reason = gate.reason
+        err.evidence = gate.evidence
+        err.instanceId = instanceId
+        err.moduleId = options.moduleId
+        throw err
       }
     }
 

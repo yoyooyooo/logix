@@ -29,6 +29,8 @@ export const CutoverCoverageMatrix = FullCutoverGate.CutoverCoverageMatrix
 
 export type FullCutoverGateMode = FullCutoverGate.FullCutoverGateMode
 
+export type FullCutoverGateReason = FullCutoverGate.FullCutoverGateReason
+
 export type FullCutoverGateAnchor = FullCutoverGate.FullCutoverGateAnchor
 
 export type FullCutoverGateVerdict = FullCutoverGate.FullCutoverGateVerdict
@@ -101,7 +103,7 @@ export const runtimeServicesRegistryLayer = (registry: RuntimeServicesRegistry):
 /**
  * fullCutoverGateModeLayer:
  * - Controls cutover gate evaluation mode during runtime assembly (trial/fullCutover).
- * - The default path (048) should explicitly set fullCutover; trial-run/comparison may override to trial.
+ * - Default is fullCutover; trial-run/comparison may override to trial explicitly.
  */
 export const fullCutoverGateModeLayer = (mode: FullCutoverGateMode): LayerType.Layer<any, never, never> =>
   Layer.succeed(RuntimeKernel.FullCutoverGateModeTag, mode) as LayerType.Layer<any, never, never>

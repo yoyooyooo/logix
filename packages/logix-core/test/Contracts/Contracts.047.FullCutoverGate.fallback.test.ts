@@ -35,8 +35,11 @@ describe('contracts (047): Full Cutover Gate (fallback)', () => {
       })
 
       expect(gate.verdict).toBe('FAIL')
+      expect(gate.reason).toBe('missing_and_fallback')
       expect(gate.fallbackServiceIds).toContain('txnQueue')
       expect(gate.missingServiceIds).toContain('txnQueue')
+      expect(gate.evidence.requiredServiceCount).toBe(Logix.Kernel.CutoverCoverageMatrix.requiredServiceIds.length)
+      expect(gate.evidence.missingServiceIds).toContain('txnQueue')
       expect(gate.anchor.txnSeq).toBe(0)
     }),
   )
