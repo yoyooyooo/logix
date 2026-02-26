@@ -2,6 +2,7 @@ import { Context, Effect, Exit, Layer, ManagedRuntime } from 'effect'
 import {
   ConcurrencyPolicyTag,
   ReadQueryStrictGateConfigTag,
+  SchedulingPolicySurfaceTag,
   StateTransactionConfigTag,
   declarativeLinkRuntimeLayer,
   hostSchedulerLayer,
@@ -9,6 +10,7 @@ import {
   runtimeStoreLayer,
   tickSchedulerLayer,
   type ConcurrencyPolicy,
+  type SchedulingPolicySurface,
   type ReadQueryStrictGateRuntimeConfig,
   type StateTransactionRuntimeConfig,
 } from './core/env.js'
@@ -69,10 +71,14 @@ export interface LogixAppConfig<R> {
    */
   readonly stateTransaction?: StateTransactionRuntimeConfig
   /**
-   * Runtime-level concurrency policy:
+   * Runtime-level unified scheduling policy surface:
    * - If not provided, each entrypoint falls back to builtin defaults (e.g. concurrencyLimit=16).
    * - If provided, it becomes the default policy for modules under this Runtime;
    *   individual modules may still override via runtime_module/provider (merged by ModuleRuntime resolver).
+   */
+  readonly schedulingPolicy?: SchedulingPolicySurface
+  /**
+   * Legacy alias for schedulingPolicy (migration path).
    */
   readonly concurrencyPolicy?: ConcurrencyPolicy
   /**
@@ -249,9 +255,12 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
     ? (Layer.succeed(StateTransactionConfigTag, config.stateTransaction) as Layer.Layer<R, never, never>)
     : (Layer.empty as Layer.Layer<R, never, never>)
 
-  // If the Runtime provides a unified ConcurrencyPolicy, attach the corresponding service to the app Env.
-  const concurrencyPolicyLayer: Layer.Layer<R, never, never> = config.concurrencyPolicy
-    ? (Layer.succeed(ConcurrencyPolicyTag, config.concurrencyPolicy) as Layer.Layer<R, never, never>)
+  const resolvedSchedulingPolicy = config.schedulingPolicy ?? config.concurrencyPolicy
+
+  // If the Runtime provides a unified scheduling policy, attach the corresponding service to the app Env.
+  // NOTE: ConcurrencyPolicyTag remains a legacy alias of SchedulingPolicySurfaceTag.
+  const schedulingPolicyLayer: Layer.Layer<R, never, never> = resolvedSchedulingPolicy
+    ? (Layer.succeed(SchedulingPolicySurfaceTag, resolvedSchedulingPolicy) as Layer.Layer<R, never, never>)
     : (Layer.empty as Layer.Layer<R, never, never>)
 
   // If the Runtime provides a ReadQuery strict gate, attach the corresponding service to the app Env.
@@ -280,7 +289,12 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
     // (Build-time capture is handled above by injecting it into tickServicesLayer.)
     pinnedHostSchedulerLayer ?? (Layer.empty as Layer.Layer<any, never, never>),
     stateTxnLayer,
-    concurrencyPolicyLayer,
+    schedulingPolicyLayer,
+    // Keep explicit legacy alias provisioning in the Env merge path so older callsites that reference
+    // ConcurrencyPolicyTag keep identical behavior during phase-1 migration.
+    resolvedSchedulingPolicy
+      ? (Layer.succeed(ConcurrencyPolicyTag, resolvedSchedulingPolicy) as Layer.Layer<R, never, never>)
+      : (Layer.empty as Layer.Layer<R, never, never>),
     readQueryStrictGateLayer,
     ProcessRuntime.layer(),
     Layer.effect(

@@ -180,6 +180,12 @@ export const warnInvalidConcurrencyPolicyPatchDevOnly = (value: unknown, label: 
   warnDevOnly(label, issues)
 }
 
+export const warnInvalidSchedulingPolicySurfaceDevOnly = (value: unknown, label: string): void =>
+  warnInvalidConcurrencyPolicyDevOnly(value, label)
+
+export const warnInvalidSchedulingPolicySurfacePatchDevOnly = (value: unknown, label: string): void =>
+  warnInvalidConcurrencyPolicyPatchDevOnly(value, label)
+
 const validateStateTransactionTraitOverrides = (
   obj: Record<string, unknown>,
   prefix: string,
