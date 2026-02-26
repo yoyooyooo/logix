@@ -2,6 +2,7 @@ import { Context, Effect, FiberRef, Layer } from 'effect'
 import type { JsonValue } from './jsonValue.js'
 import { projectJsonValue } from './jsonValue.js'
 import type { EvidencePackage } from './evidence.js'
+import { collectEvidenceExport, reExportEvidencePackage, summarizeEvidenceExport } from './evidenceExportPipeline.js'
 import type { RunSession } from './runSession.js'
 import { makeEvidenceSink } from './runSession.js'
 import {
@@ -105,30 +106,15 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
   }
 
   const exportEvidencePackage = (options?: { readonly maxEvents?: number }): EvidencePackage => {
-    const convergeSummary =
-      convergeStaticIrByDigest.size > 0
-        ? ({
-            staticIrByDigest: Object.fromEntries(convergeStaticIrByDigest),
-          } as unknown as JsonValue)
-        : undefined
+    const collection = collectEvidenceExport({
+      convergeStaticIrByDigest,
+      kernelImplementationRef,
+      runtimeServicesEvidence,
+    })
+    const summary = summarizeEvidenceExport(collection)
 
-    const runtimeSummary =
-      kernelImplementationRef != null || runtimeServicesEvidence != null
-        ? ({
-            ...(kernelImplementationRef != null ? { kernelImplementationRef } : {}),
-            ...(runtimeServicesEvidence != null ? { services: runtimeServicesEvidence } : {}),
-          } as unknown as JsonValue)
-        : undefined
-
-    const summary =
-      convergeSummary != null || runtimeSummary != null
-        ? ({
-            ...(convergeSummary != null ? { converge: convergeSummary } : {}),
-            ...(runtimeSummary != null ? { runtime: runtimeSummary } : {}),
-          } as unknown as JsonValue)
-        : undefined
-
-    return sink.export({
+    return reExportEvidencePackage({
+      sink,
       maxEvents: options?.maxEvents,
       summary,
     })
