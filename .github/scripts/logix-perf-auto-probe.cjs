@@ -26,14 +26,18 @@ Usage:
     [--time-budget-minutes <n>] \\
     [--outlier-rel-tolerance <float>] \\
     [--outlier-abs-tolerance <n>] \\
-    [--min-kept-samples <n>]
+    [--min-kept-samples <n>] \\
+    [--refine-gap-min <n>] \\
+    [--refine-max-insertions <n>]
 
 Purpose:
   智能化探测 steps 上限（多样本 + 异常值剔除）：
   1) 每轮对同一组 levels 采样 N 次；
   2) 对每个 dirtyRootsRatio 的 maxLevel 做异常值剔除；
   3) 计算稳健统计（floor/p50/p75/p95）与平均上限（average upper limit）；
-  4) 按“floor 或 average 贴近顶层”决定是否继续扩容。
+  4) 按“floor 或 average 贴近顶层”决定是否继续扩容；
+  5) 在 steps 大间隔区间自动补充中间点位（自适应细化）；
+  6) 输出数据充分性标记（样本不足/预算触顶可见）。
 `
 
 const parseArgs = (argv) => {
@@ -59,6 +63,8 @@ const parseArgs = (argv) => {
     outlierRelTolerance: 0.2,
     outlierAbsTolerance: 800,
     minKeptSamples: 2,
+    refineGapMin: 2000,
+    refineMaxInsertions: 2,
   }
 
   for (let i = 0; i < argv.length; i++) {
@@ -85,6 +91,8 @@ const parseArgs = (argv) => {
     if (k === '--outlier-rel-tolerance') out.outlierRelTolerance = Number(v)
     if (k === '--outlier-abs-tolerance') out.outlierAbsTolerance = Number(v)
     if (k === '--min-kept-samples') out.minKeptSamples = Number(v)
+    if (k === '--refine-gap-min') out.refineGapMin = Number(v)
+    if (k === '--refine-max-insertions') out.refineMaxInsertions = Number(v)
   }
 
   if (!out.profile || !out.files || !out.out) return null
@@ -120,6 +128,12 @@ const parseArgs = (argv) => {
   }
   if (!Number.isFinite(out.minKeptSamples) || out.minKeptSamples <= 0) {
     throw new Error(`invalid --min-kept-samples: ${String(out.minKeptSamples)}`)
+  }
+  if (!Number.isFinite(out.refineGapMin) || out.refineGapMin < 0) {
+    throw new Error(`invalid --refine-gap-min: ${String(out.refineGapMin)}`)
+  }
+  if (!Number.isFinite(out.refineMaxInsertions) || out.refineMaxInsertions < 0) {
+    throw new Error(`invalid --refine-max-insertions: ${String(out.refineMaxInsertions)}`)
   }
   return out
 }
@@ -233,7 +247,12 @@ const summarizeRows = (rows) => {
 }
 
 const analyzeReport = ({ report, suiteId, budgetId, convergeMode }) => {
-  const rows = collectThresholdRows({ report, suiteId, budgetId, convergeMode })
+  const rows = collectThresholdRows({
+    report,
+    suiteId,
+    budgetId,
+    convergeMode,
+  })
   const suites = Array.isArray(report?.suites) ? report.suites : []
   const suite = suites.find((s) => s?.id === suiteId)
   const points = Array.isArray(suite?.points) ? suite.points : []
@@ -251,7 +270,12 @@ const filterOutliers = ({ values, outlierRelTolerance, outlierAbsTolerance, minK
     return { kept: [], excluded: [], median: 0, tolerance: 0 }
   }
   if (sorted.length <= 2) {
-    return { kept: sorted, excluded: [], median: quantileCeil(sorted, 0.5), tolerance: 0 }
+    return {
+      kept: sorted,
+      excluded: [],
+      median: quantileCeil(sorted, 0.5),
+      tolerance: 0,
+    }
   }
 
   const median = quantileCeil(sorted, 0.5)
@@ -267,7 +291,10 @@ const filterOutliers = ({ values, outlierRelTolerance, outlierAbsTolerance, minK
     .map((x) => ({ x, dist: Math.abs(x - median) }))
     .sort((a, b) => (a.dist !== b.dist ? a.dist - b.dist : a.x - b.x))
   const size = Math.min(Math.max(1, minKeptSamples), sorted.length)
-  const rescued = ranked.slice(0, size).map((item) => item.x).sort((a, b) => a - b)
+  const rescued = ranked
+    .slice(0, size)
+    .map((item) => item.x)
+    .sort((a, b) => a - b)
   const rescuedSet = new Set(rescued)
   const excluded = sorted.filter((x) => !rescuedSet.has(x) || rescued.indexOf(x) !== sorted.indexOf(x))
   return { kept: rescued, excluded, median, tolerance }
@@ -353,7 +380,13 @@ const selectRepresentativeSample = ({ sampleAnalyses, aggregatedRows }) => {
     return { sampleIndex: index + 1, distance, reportFile: sample.reportFile }
   })
   scored.sort((a, b) => (a.distance !== b.distance ? a.distance - b.distance : a.sampleIndex - b.sampleIndex))
-  return scored[0] ?? { sampleIndex: 1, distance: 0, reportFile: sampleAnalyses[0].reportFile }
+  return (
+    scored[0] ?? {
+      sampleIndex: 1,
+      distance: 0,
+      reportFile: sampleAnalyses[0].reportFile,
+    }
+  )
 }
 
 const extendLevels = ({ levels, growthFactor, extendCount, maxLevelCap }) => {
@@ -367,6 +400,89 @@ const extendLevels = ({ levels, growthFactor, extendCount, maxLevelCap }) => {
     last = candidate
   }
   return Array.from(new Set(next)).sort((a, b) => a - b)
+}
+
+const refineLargestGaps = ({ levels, refineGapMin, refineMaxInsertions }) => {
+  if (!Array.isArray(levels) || levels.length < 2 || refineMaxInsertions <= 0) {
+    return []
+  }
+  const gaps = []
+  for (let i = 0; i < levels.length - 1; i++) {
+    const left = levels[i]
+    const right = levels[i + 1]
+    const gap = right - left
+    if (gap > refineGapMin) {
+      gaps.push({ left, right, gap })
+    }
+  }
+  gaps.sort((a, b) => (a.gap !== b.gap ? b.gap - a.gap : a.left - b.left))
+  const inserted = []
+  const existing = new Set(levels)
+  for (const item of gaps) {
+    if (inserted.length >= refineMaxInsertions) break
+    const mid = roundStep((item.left + item.right) / 2)
+    if (mid <= item.left || mid >= item.right) continue
+    if (existing.has(mid)) continue
+    existing.add(mid)
+    inserted.push(mid)
+  }
+  return inserted.sort((a, b) => a - b)
+}
+
+const extendLevelsAdaptive = ({
+  levels,
+  growthFactor,
+  extendCount,
+  maxLevelCap,
+  refineGapMin,
+  refineMaxInsertions,
+}) => {
+  const refined = refineLargestGaps({
+    levels,
+    refineGapMin,
+    refineMaxInsertions: Math.min(refineMaxInsertions, extendCount),
+  })
+  let next = Array.from(new Set([...levels, ...refined])).sort((a, b) => a - b)
+  const remainingExtension = Math.max(0, extendCount - refined.length)
+  if (remainingExtension > 0) {
+    next = extendLevels({
+      levels: next,
+      growthFactor,
+      extendCount: remainingExtension,
+      maxLevelCap,
+    })
+  }
+  const topExtensions = next.filter((level) => !levels.includes(level) && !refined.includes(level))
+  return {
+    levels: next,
+    refinedInsertions: refined,
+    topExtensions,
+  }
+}
+
+const evaluateDataSufficiency = ({
+  aggregatedRows,
+  sampleCount,
+  minKeptSamples,
+  totalCollects,
+  maxTotalCollects,
+  elapsedMinutes,
+  timeBudgetMinutes,
+}) => {
+  const minKeptRequired = Math.min(Math.max(1, minKeptSamples), Math.max(1, sampleCount))
+  const insufficientRows = aggregatedRows.filter((row) => row.keptCount < minKeptRequired)
+  const reasonCodes = []
+  if (insufficientRows.length > 0) reasonCodes.push('insufficient_kept_samples')
+  if (totalCollects >= maxTotalCollects) reasonCodes.push('collect_budget_limit')
+  if (elapsedMinutes >= timeBudgetMinutes) reasonCodes.push('time_budget_limit')
+  return {
+    sampleCount,
+    minKeptRequired,
+    insufficientDirtyRatioCount: insufficientRows.length,
+    insufficientDirtyRatios: insufficientRows.map((row) => row.dirtyRootsRatio),
+    hasInsufficientData: reasonCodes.length > 0,
+    reasonCodes,
+  }
 }
 
 const runCollect = ({ profile, files, outFile, levels }) => {
@@ -426,8 +542,7 @@ const main = () => {
     let totalCollects = 0
     let collectBudgetReached = false
     const elapsedMinutes = () => (Date.now() - startedAtMs) / 60_000
-    const hasCollectBudget = () =>
-      totalCollects < args.maxTotalCollects && elapsedMinutes() < args.timeBudgetMinutes
+    const hasCollectBudget = () => totalCollects < args.maxTotalCollects && elapsedMinutes() < args.timeBudgetMinutes
 
     for (let iteration = 1; iteration <= args.maxIterations; iteration++) {
       const sampleAnalyses = []
@@ -437,7 +552,12 @@ const main = () => {
           break
         }
         const reportFile = path.join(tempDir, `probe.${String(iteration)}.${String(sample)}.json`)
-        runCollect({ profile: args.profile, files, outFile: reportFile, levels })
+        runCollect({
+          profile: args.profile,
+          files,
+          outFile: reportFile,
+          levels,
+        })
         totalCollects += 1
         const report = readJson(reportFile)
         const analyzed = analyzeReport({
@@ -468,6 +588,16 @@ const main = () => {
       const representative = selectRepresentativeSample({
         sampleAnalyses,
         aggregatedRows: aggregated.rows,
+      })
+      const elapsedMin = Number(elapsedMinutes().toFixed(2))
+      const sufficiency = evaluateDataSufficiency({
+        aggregatedRows: aggregated.rows,
+        sampleCount: sampleAnalyses.length,
+        minKeptSamples: args.minKeptSamples,
+        totalCollects,
+        maxTotalCollects: args.maxTotalCollects,
+        elapsedMinutes: elapsedMin,
+        timeBudgetMinutes: args.timeBudgetMinutes,
       })
 
       const maxLevel = levels[levels.length - 1] ?? 0
@@ -526,6 +656,10 @@ const main = () => {
           rows: aggregated.rows,
         },
       })
+      const lastLog = iterationLogs[iterationLogs.length - 1]
+      if (lastLog) {
+        lastLog.dataSufficiency = sufficiency
+      }
 
       finalReportFile = representative.reportFile
       stopReason = decision
@@ -537,15 +671,27 @@ const main = () => {
         break
       }
 
-      const nextLevels = extendLevels({
+      const nextPlan = extendLevelsAdaptive({
         levels,
         growthFactor: args.growthFactor,
         extendCount: args.extendCount,
         maxLevelCap: args.maxLevelCap,
+        refineGapMin: args.refineGapMin,
+        refineMaxInsertions: args.refineMaxInsertions,
       })
+      const nextLevels = nextPlan.levels
       if (nextLevels.length === levels.length) {
         stopReason = 'no_further_extension_possible'
         break
+      }
+      const newLevels = nextLevels.filter((level) => !levels.includes(level))
+      const levelGeneration = {
+        addedLevels: newLevels,
+        refinedInsertions: nextPlan.refinedInsertions,
+        topExtensions: nextPlan.topExtensions,
+      }
+      if (lastLog) {
+        lastLog.levelGeneration = levelGeneration
       }
       levels = nextLevels
     }
@@ -585,17 +731,21 @@ const main = () => {
         outlierRelTolerance: args.outlierRelTolerance,
         outlierAbsTolerance: args.outlierAbsTolerance,
         minKeptSamples: args.minKeptSamples,
+        refineGapMin: args.refineGapMin,
+        refineMaxInsertions: args.refineMaxInsertions,
         stopReason,
         totalCollects,
         elapsedMinutes: Number(elapsedMinutes().toFixed(2)),
         finalLevels: levels,
         summary: finalIteration?.aggregated?.summary ?? null,
         representativeSample: finalIteration?.representativeSample ?? null,
+        dataSufficiency: finalIteration?.dataSufficiency ?? null,
         iterations: iterationLogs,
       })
     }
 
     const summary = finalIteration?.aggregated?.summary ?? null
+    const dataSufficiency = finalIteration?.dataSufficiency ?? null
     // eslint-disable-next-line no-console
     console.log(
       `[logix-perf:auto-probe] levels=${levels.join(',')} floor=${String(
@@ -604,7 +754,9 @@ const main = () => {
         summary?.p95MedianMaxLevel ?? 0,
       )} avg=${String(summary?.averageUpperLimit ?? 0)} samples=${String(args.samplesPerIteration)} iterations=${String(
         iterationLogs.length,
-      )} collects=${String(totalCollects)} elapsedMin=${String(Number(elapsedMinutes().toFixed(2)))} stop=${stopReason}`,
+      )} collects=${String(totalCollects)} elapsedMin=${String(
+        Number(elapsedMinutes().toFixed(2)),
+      )} stop=${stopReason} insufficient=${dataSufficiency?.hasInsufficientData ? '1' : '0'}`,
     )
   } catch (error) {
     // eslint-disable-next-line no-console

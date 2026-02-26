@@ -137,6 +137,8 @@ jobs:
       PERF_STEPS_AUTO_SAMPLES_PER_ITERATION: 2
       PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE: 0.2
       PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE: 800
+      PERF_STEPS_AUTO_REFINE_GAP_MIN: 2000
+      PERF_STEPS_AUTO_REFINE_MAX_INSERTIONS: 2
       PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: 2
       PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION: 1
       PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS: 6
@@ -530,6 +532,8 @@ jobs:
               --time-budget-minutes "$PERF_STEPS_AUTO_TIME_BUDGET_MINUTES"
               --outlier-rel-tolerance "$PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE"
               --outlier-abs-tolerance "$PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE"
+              --refine-gap-min "$PERF_STEPS_AUTO_REFINE_GAP_MIN"
+              --refine-max-insertions "$PERF_STEPS_AUTO_REFINE_MAX_INSERTIONS"
               --min-kept-samples "$PERF_STEPS_AUTO_MIN_KEPT_SAMPLES"
             )
             if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
@@ -655,6 +659,8 @@ jobs:
                 --time-budget-minutes "$PERF_STEPS_AUTO_TIME_BUDGET_MINUTES"
                 --outlier-rel-tolerance "$PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE"
                 --outlier-abs-tolerance "$PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE"
+                --refine-gap-min "$PERF_STEPS_AUTO_REFINE_GAP_MIN"
+                --refine-max-insertions "$PERF_STEPS_AUTO_REFINE_MAX_INSERTIONS"
                 --min-kept-samples "$PERF_STEPS_AUTO_MIN_KEPT_SAMPLES"
               )
               if [ -n "${PERF_STEPS_LEVELS:-}" ]; then

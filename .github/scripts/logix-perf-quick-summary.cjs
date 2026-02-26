@@ -460,6 +460,45 @@ const pickFiniteNumber = (...values) => {
   return undefined
 }
 
+const toSortedUniqueNumericList = (values) =>
+  Array.from(
+    new Set(
+      (Array.isArray(values) ? values : []).filter((x) => typeof x === 'number' && Number.isFinite(x)).map((x) => Number(x)),
+    ),
+  ).sort((a, b) => a - b)
+
+const resolveAutoProbeDataSufficiency = (probe) => {
+  if (probe?.dataSufficiency && typeof probe.dataSufficiency === 'object') {
+    return probe.dataSufficiency
+  }
+  const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
+  const lastIteration = iterations[iterations.length - 1]
+  if (lastIteration?.dataSufficiency && typeof lastIteration.dataSufficiency === 'object') {
+    return lastIteration.dataSufficiency
+  }
+  return null
+}
+
+const collectAutoProbeLevelGeneration = (probe) => {
+  const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
+  const refinedInsertions = []
+  const topExtensions = []
+  for (const iteration of iterations) {
+    const levelGeneration = iteration?.levelGeneration
+    if (!levelGeneration || typeof levelGeneration !== 'object') continue
+    if (Array.isArray(levelGeneration.refinedInsertions)) {
+      refinedInsertions.push(...levelGeneration.refinedInsertions)
+    }
+    if (Array.isArray(levelGeneration.topExtensions)) {
+      topExtensions.push(...levelGeneration.topExtensions)
+    }
+  }
+  return {
+    refinedInsertions: toSortedUniqueNumericList(refinedInsertions),
+    topExtensions: toSortedUniqueNumericList(topExtensions),
+  }
+}
+
 const deriveAutoProbeFallbackSummary = (probe) => {
   const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
   const lastIteration = iterations[iterations.length - 1]
@@ -501,6 +540,13 @@ const renderAutoProbeSummary = ({ probe, label }) => {
   const samplesPerIteration = probe.samplesPerIteration
   const stopReason = probe.stopReason
   const finalLevels = Array.isArray(probe.finalLevels) ? probe.finalLevels : []
+  const dataSufficiency = resolveAutoProbeDataSufficiency(probe)
+  const insufficient = dataSufficiency?.hasInsufficientData === true
+  const sufficiencyReasonCodes = Array.isArray(dataSufficiency?.reasonCodes)
+    ? dataSufficiency.reasonCodes.filter((x) => typeof x === 'string' && x.length > 0)
+    : []
+  const insufficientDirtyRatios = toSortedUniqueNumericList(dataSufficiency?.insufficientDirtyRatios)
+  const levelGeneration = collectAutoProbeLevelGeneration(probe)
 
   let out = ''
   out += `- ${label} auto-probe(filtered): avgUpper=${code(
@@ -519,6 +565,16 @@ const renderAutoProbeSummary = ({ probe, label }) => {
   )}, stop=${code(stopReason ?? 'n/a')}, levels=${code(
     finalLevels.length > 0 ? formatAxisValues(finalLevels) : 'n/a',
   )}\n`
+  out += `- ${label} auto-probe dataSufficiency: insufficient=${code(insufficient ? '1' : '0')}, reasonCodes=${code(
+    sufficiencyReasonCodes.length > 0 ? sufficiencyReasonCodes.join(',') : 'none',
+  )}, insufficientRatios=${code(
+    insufficientDirtyRatios.length > 0 ? formatAxisValues(insufficientDirtyRatios) : '[]',
+  )}\n`
+  out += `- ${label} auto-probe levelGen: refinedInsertions=${code(
+    levelGeneration.refinedInsertions.length > 0 ? formatAxisValues(levelGeneration.refinedInsertions) : '[]',
+  )}, topExtensions=${code(
+    levelGeneration.topExtensions.length > 0 ? formatAxisValues(levelGeneration.topExtensions) : '[]',
+  )}\n`
   return out
 }
 
@@ -534,11 +590,17 @@ const regressions = diff?.summary?.regressions ?? 0
 const improvements = diff?.summary?.improvements ?? 0
 const dynamicEvaluation = capacityLatest?.evaluation && typeof capacityLatest.evaluation === 'object' ? capacityLatest.evaluation : null
 const dynamicHardFailed = dynamicEvaluation?.hardPass === false
+const headAutoProbeSufficiency = resolveAutoProbeDataSufficiency(autoProbeHead)
+const headAutoProbeInsufficient = headAutoProbeSufficiency?.hasInsufficientData === true
+const headAutoProbeReasonCodes = Array.isArray(headAutoProbeSufficiency?.reasonCodes)
+  ? headAutoProbeSufficiency.reasonCodes.filter((x) => typeof x === 'string' && x.length > 0)
+  : []
 
 const conclusion = (() => {
   if (!diff) return 'no_diff'
   if (!comparable) return 'triage_only_not_comparable'
   if (typeof regressions === 'number' && regressions > 0) return 'has_regressions'
+  if (headAutoProbeInsufficient) return 'head_auto_probe_insufficient'
   if (dynamicHardFailed) return 'head_capacity_dynamic_hard_failed'
   if (capacityFloorViolated) return 'head_capacity_floor_failed'
   if (afterFailures.length > 0) return 'head_budget_exceeded'
@@ -549,6 +611,9 @@ md += `\n### Conclusion\n`
 md += `- comparable: ${code(String(diff?.meta?.comparability?.comparable ?? '?'))}\n`
 md += `- diff: regressions=${code(regressions)}, improvements=${code(improvements)}\n`
 md += `- head budgetExceeded: ${code(afterFailures.length)}\n`
+md += `- head auto-probe sufficiency: insufficient=${code(headAutoProbeInsufficient ? '1' : '0')}, reasonCodes=${code(
+  headAutoProbeReasonCodes.length > 0 ? headAutoProbeReasonCodes.join(',') : 'none',
+)}\n`
 if (afterCapacitySummary) {
   md += `- head capacity model(P50/P75/P95+floor) (${code(capacitySuiteId)} / ${code(capacityBudgetId)} / convergeMode=${code(
     capacityScopeConvergeMode,
