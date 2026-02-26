@@ -8,7 +8,7 @@ export type JsonValue =
   | { readonly [k: string]: JsonValue }
   | ReadonlyArray<JsonValue>
 
-export type ArtifactOutput = {
+export interface ArtifactOutput {
   readonly outputKey: string
   readonly kind: string
   readonly schemaVersion?: number
@@ -23,7 +23,7 @@ export type ArtifactOutput = {
   readonly error?: SerializableErrorSummary
 }
 
-export type CommandResult = {
+export interface CommandResult {
   readonly schemaVersion: 1
   readonly kind: 'CommandResult'
   readonly runId: string
@@ -88,8 +88,16 @@ export const makeOversizedInlineValue = (args: {
   readonly actualBytes: number
   readonly budgetBytes: number
 } => {
-  const previewChars = Math.min(args.stableJson.length, Math.max(0, Math.min(256, args.budgetBytes)))
-  const preview = args.stableJson.slice(0, previewChars)
+  const maxPreviewBytes = Math.max(0, Math.min(256, args.budgetBytes))
+  const encoder = new TextEncoder()
+  let preview = ''
+  let usedBytes = 0
+  for (const ch of args.stableJson) {
+    const chBytes = encoder.encode(ch).length
+    if (usedBytes + chBytes > maxPreviewBytes) break
+    preview += ch
+    usedBytes += chBytes
+  }
 
   return {
     inline: { _tag: 'oversized', bytes: args.bytes, preview },
