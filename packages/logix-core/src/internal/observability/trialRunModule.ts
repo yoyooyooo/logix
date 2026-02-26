@@ -24,12 +24,15 @@ import * as Runtime from '../runtime/Runtime.js'
 import { collectTrialRunArtifacts } from './artifacts/collect.js'
 import type { TrialRunArtifacts } from './artifacts/model.js'
 import { getTrialRunArtifactExporters } from './artifacts/registry.js'
+import {
+  collectTrialRunReExport,
+  reExportTrialRunReport,
+  type TrialRunReportBudgets as TrialRunReExportBudgets,
+} from './trialRunReportPipeline.js'
 
 type RootLike<Sh extends AnyModuleShape> = ModuleImpl<any, Sh, any> | { readonly impl: ModuleImpl<any, Sh, any> }
 
-export interface TrialRunReportBudgets {
-  readonly maxBytes?: number
-}
+export interface TrialRunReportBudgets extends TrialRunReExportBudgets {}
 
 export interface TrialRunReport {
   readonly runId: string
@@ -82,14 +85,6 @@ const resolveRootImpl = <Sh extends AnyModuleShape>(root: RootLike<Sh>): ModuleI
   ((root as any)?._tag === 'ModuleImpl'
     ? (root as ModuleImpl<any, Sh, any>)
     : ((root as any)?.impl as ModuleImpl<any, Sh, any>)) satisfies ModuleImpl<any, Sh, any>
-
-const utf8ByteLength = (value: unknown): number => {
-  const json = JSON.stringify(value)
-  if (typeof TextEncoder !== 'undefined') {
-    return new TextEncoder().encode(json).length
-  }
-  return json.length
-}
 
 const parseMissingConfigKeys = (message: string): ReadonlyArray<string> => {
   const out: string[] = []
@@ -368,29 +363,6 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
       }),
     )
 
-    const evidence = collector.exportEvidencePackage({
-      maxEvents: options?.maxEvents ?? 1000,
-    })
-
-    const manifest = (() => {
-      try {
-        return extractManifest(root as any, {
-          includeStaticIr: true,
-          budgets: { maxBytes: 200_000 },
-        })
-      } catch {
-        return undefined
-      }
-    })()
-
-    const staticIr = (() => {
-      try {
-        return exportStaticIr(root as any)
-      } catch {
-        return undefined
-      }
-    })()
-
     let ok = Exit.isSuccess(bootExit) && Exit.isSuccess(closeExit)
     let error: SerializableErrorSummary | undefined
     let summary: unknown | undefined
@@ -469,57 +441,48 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
       missingConfigKeys,
     })
 
-    const moduleId =
+    const moduleIdFromRoot =
       typeof (rootImpl.module as any)?.id === 'string' && (rootImpl.module as any).id.length > 0
         ? String((rootImpl.module as any).id)
-        : (manifest?.moduleId ?? 'unknown')
+        : undefined
 
-    const artifacts = collectTrialRunArtifacts({
-      exporters: getTrialRunArtifactExporters(rootImpl.module as any),
-      ctx: {
-        moduleId,
-        manifest,
-        staticIr: staticIr as any,
+    const reExportCollection = yield* Effect.promise(async () =>
+      collectTrialRunReExport({
+        collectEvidence: () =>
+          collector.exportEvidencePackage({
+            maxEvents: options?.maxEvents ?? 1000,
+          }),
+        collectManifest: () =>
+          extractManifest(root as any, {
+            includeStaticIr: true,
+            budgets: { maxBytes: 200_000 },
+          }),
+        collectStaticIr: () => exportStaticIr(root as any),
+        collectArtifacts: ({ manifest, staticIr }) =>
+          collectTrialRunArtifacts({
+            exporters: getTrialRunArtifactExporters(rootImpl.module as any),
+            ctx: {
+              moduleId: moduleIdFromRoot ?? manifest?.moduleId ?? 'unknown',
+              manifest,
+              staticIr: staticIr as any,
+              environment,
+            },
+          }),
+      }),
+    )
+
+    const report = reExportTrialRunReport({
+      base: {
+        runId: session.runId,
+        ok,
         environment,
+        summary,
+        error,
       },
+      collection: reExportCollection,
+      maxEvents: options?.maxEvents ?? 1000,
+      budgets: options?.budgets,
     })
 
-    let report: TrialRunReport = {
-      runId: session.runId,
-      ok,
-      manifest,
-      staticIr: staticIr as any,
-      artifacts,
-      environment,
-      evidence,
-      summary,
-      error,
-    }
-
-    const maxBytes = options?.budgets?.maxBytes
-    if (typeof maxBytes === 'number' && Number.isFinite(maxBytes) && maxBytes > 0) {
-      const originalBytes = utf8ByteLength(report)
-      if (originalBytes > maxBytes) {
-        report = {
-          runId: session.runId,
-          ok: false,
-          environment,
-          error: {
-            message: `[Logix] TrialRunReport exceeded maxBytes (${originalBytes} > ${maxBytes})`,
-            code: 'Oversized',
-            hint: 'Reduce maxEvents or budgets.maxBytes, or split manifest/evidence artifacts in CI.',
-          },
-          summary: {
-            __logix: {
-              truncated: true,
-              maxBytes,
-              originalBytes,
-              dropped: ['manifest', 'staticIr', 'artifacts', 'evidence'],
-            },
-          },
-        }
-      }
-    }
-
-    return report
+    return report satisfies TrialRunReport
   })
