@@ -123,7 +123,7 @@ concurrency:
 jobs:
   perf-sweep:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 355
     env:
       PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx
       PERF_PROFILE: quick
@@ -158,8 +158,10 @@ jobs:
       PERF_CAPACITY_HISTORY_FILE: .perf-capacity-history/capacity-history.jsonl
       PERF_CAPACITY_LATEST_FILE: .perf-capacity-history/capacity-latest.json
       PERF_TIME_GUARD_ENABLE: 1
-      PERF_TIME_GUARD_SOFT_BUDGET_MINUTES: 220
-      PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS: 7200
+      PERF_TIME_GUARD_SOFT_BUDGET_MINUTES_FAST: 220
+      PERF_TIME_GUARD_SOFT_BUDGET_MINUTES_FULL: 340
+      PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS_FAST: 3600
+      PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS_FULL: 5400
       PERF_TIME_GUARD_MIN_TIMEOUT_SECONDS: 900
       PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS: 7200
       PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS: 10800
@@ -209,18 +211,9 @@ jobs:
 
           echo "PERF_ENV_ID=gh-${RUNNER_OS}-${RUNNER_ARCH}" >> "$GITHUB_ENV"
           RUN_START_EPOCH="$(date +%s)"
-          SOFT_BUDGET_MINUTES="${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES:-220}"
-          if ! [[ "$SOFT_BUDGET_MINUTES" =~ ^[0-9]+$ ]]; then
-            SOFT_BUDGET_MINUTES=220
-          fi
-          PERF_SOFT_DEADLINE_EPOCH="$((RUN_START_EPOCH + SOFT_BUDGET_MINUTES * 60))"
           echo "PERF_RUN_START_EPOCH=$RUN_START_EPOCH" >> "$GITHUB_ENV"
-          echo "PERF_SOFT_DEADLINE_EPOCH=$PERF_SOFT_DEADLINE_EPOCH" >> "$GITHUB_ENV"
           mkdir -p "$(dirname "$PERF_DEBUG_TIMELINE_FILE")"
-          {
-            echo "[logix-perf][timeline] run_id=${GITHUB_RUN_ID} workflow=${GITHUB_WORKFLOW} startedAtEpoch=${RUN_START_EPOCH} softDeadlineEpoch=${PERF_SOFT_DEADLINE_EPOCH}"
-            echo "[logix-perf][timeline] event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF_NAME} actor=${GITHUB_ACTOR}"
-          } > "$PERF_DEBUG_TIMELINE_FILE"
+          : > "$PERF_DEBUG_TIMELINE_FILE"
 
           normalize_ref() {
             local ref="$1"
@@ -258,6 +251,27 @@ jobs:
             esac
           }
 
+          positive_int_or_default() {
+            local raw="$1"
+            local fallback="$2"
+            if [[ "$raw" =~ ^[0-9]+$ ]] && [ "$raw" -gt 0 ]; then
+              echo "$raw"
+            else
+              echo "$fallback"
+            fi
+          }
+
+          percent_timeout_seconds() {
+            local budget_minutes="$1"
+            local percent="$2"
+            local min_seconds="${3:-900}"
+            local seconds=$((budget_minutes * 60 * percent / 100))
+            if [ "$seconds" -lt "$min_seconds" ]; then
+              seconds="$min_seconds"
+            fi
+            echo "$seconds"
+          }
+
           DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
           RUN_PRESET="full"
 
@@ -266,6 +280,7 @@ jobs:
             HEAD_SHA="$GITHUB_SHA"
             BASE_SHA="$(git rev-parse "${HEAD_SHA}^" 2>/dev/null || echo "$HEAD_SHA")"
             echo "PERF_RUN_PRESET=full" >> "$GITHUB_ENV"
+            RUN_PRESET="full"
 
             # Use SHAs for clarity in summaries (scheduled runs compare adjacent commits).
             echo "BASE_REF=$BASE_SHA" >> "$GITHUB_ENV"
@@ -275,10 +290,18 @@ jobs:
               # Weekly: mirror collect.ts default (perf-boundaries + watcher-browser-perf).
               echo "PERF_FILES=test/browser/perf-boundaries,test/browser/watcher-browser-perf.test.tsx" >> "$GITHUB_ENV"
               echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
+              echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=1" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=1" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-weekly-${{ github.run_id }}" >> "$GITHUB_ENV"
             else
               echo "PERF_FILES=test/browser/perf-boundaries/converge-steps.test.tsx" >> "$GITHUB_ENV"
               echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
+              echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=1" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=1" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-nightly-${{ github.run_id }}" >> "$GITHUB_ENV"
             fi
           else
@@ -310,7 +333,22 @@ jobs:
               echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=0" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-fast-${{ github.run_id }}" >> "$GITHUB_ENV"
             else
+              # Full preset: keep full-fidelity profile and enable auto capacity probing.
+              echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
+              echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=1" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=1" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_PROBE_TARGET=head" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-full-${{ github.run_id }}" >> "$GITHUB_ENV"
+            fi
+
+            if [ "$RUN_PRESET" = "full" ]; then
+              echo "PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS=10" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TIME_BUDGET_MINUTES=240" >> "$GITHUB_ENV"
+            else
+              echo "PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS=6" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TIME_BUDGET_MINUTES=150" >> "$GITHUB_ENV"
             fi
 
             if [ -n "${INPUT_PERF_FILES:-}" ]; then
@@ -387,6 +425,38 @@ jobs:
             fi
           fi
 
+          if [ "$RUN_PRESET" = "full" ]; then
+            SOFT_BUDGET_MINUTES="$(positive_int_or_default "${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES_FULL:-340}" 340)"
+            MIN_FULL_REMAINING_SECONDS="$(positive_int_or_default "${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS_FULL:-5400}" 5400)"
+            BASE_PERCENT=35
+            HEAD_PERCENT=50
+            RECOLLECT_PERCENT=22
+            FALLBACK_PERCENT=14
+          else
+            SOFT_BUDGET_MINUTES="$(positive_int_or_default "${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES_FAST:-220}" 220)"
+            MIN_FULL_REMAINING_SECONDS="$(positive_int_or_default "${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS_FAST:-3600}" 3600)"
+            BASE_PERCENT=30
+            HEAD_PERCENT=45
+            RECOLLECT_PERCENT=20
+            FALLBACK_PERCENT=12
+          fi
+
+          PERF_SOFT_DEADLINE_EPOCH="$((RUN_START_EPOCH + SOFT_BUDGET_MINUTES * 60))"
+          BASE_COLLECT_TIMEOUT_SECONDS="$(percent_timeout_seconds "$SOFT_BUDGET_MINUTES" "$BASE_PERCENT" 900)"
+          HEAD_COLLECT_TIMEOUT_SECONDS="$(percent_timeout_seconds "$SOFT_BUDGET_MINUTES" "$HEAD_PERCENT" 1200)"
+          RECOLLECT_TIMEOUT_SECONDS="$(percent_timeout_seconds "$SOFT_BUDGET_MINUTES" "$RECOLLECT_PERCENT" 900)"
+          FALLBACK_TIMEOUT_SECONDS="$(percent_timeout_seconds "$SOFT_BUDGET_MINUTES" "$FALLBACK_PERCENT" 900)"
+
+          {
+            echo "PERF_TIME_GUARD_SOFT_BUDGET_MINUTES=$SOFT_BUDGET_MINUTES"
+            echo "PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS=$MIN_FULL_REMAINING_SECONDS"
+            echo "PERF_SOFT_DEADLINE_EPOCH=$PERF_SOFT_DEADLINE_EPOCH"
+            echo "PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS=$BASE_COLLECT_TIMEOUT_SECONDS"
+            echo "PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS=$HEAD_COLLECT_TIMEOUT_SECONDS"
+            echo "PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS=$RECOLLECT_TIMEOUT_SECONDS"
+            echo "PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS=$FALLBACK_TIMEOUT_SECONDS"
+          } >> "$GITHUB_ENV"
+
           echo "BASE_SHA=$BASE_SHA" >> "$GITHUB_ENV"
           echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
           echo "BASE_SHORT=${BASE_SHA::8}" >> "$GITHUB_ENV"
@@ -399,11 +469,19 @@ jobs:
           else
             echo "LOCKFILE_CHANGED=0" >> "$GITHUB_ENV"
           fi
+
+          set -a
+          # shellcheck disable=SC1090
+          source "$GITHUB_ENV"
+          set +a
+
           {
+            echo "[logix-perf][timeline] run_id=${GITHUB_RUN_ID} workflow=${GITHUB_WORKFLOW} startedAtEpoch=${RUN_START_EPOCH} softDeadlineEpoch=${PERF_SOFT_DEADLINE_EPOCH}"
+            echo "[logix-perf][timeline] event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF_NAME} actor=${GITHUB_ACTOR}"
             echo "[logix-perf][timeline] refs baseRef=${BASE_REF} headRef=${HEAD_REF} baseSha=${BASE_SHA} headSha=${HEAD_SHA}"
             echo "[logix-perf][timeline] preset=${RUN_PRESET} profile=${PERF_PROFILE} stepsMode=${PERF_STEPS_MODE} diffMode=${PERF_DIFF_MODE}"
             echo "[logix-perf][timeline] autoProbe iterations=${PERF_STEPS_AUTO_MAX_ITERATIONS} samplesPerIteration=${PERF_STEPS_AUTO_SAMPLES_PER_ITERATION} maxTotalCollects=${PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS} budgetMin=${PERF_STEPS_AUTO_TIME_BUDGET_MINUTES}"
-            echo "[logix-perf][timeline] timeGuard softBudgetMin=${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES} minFullRemainingSec=${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS}"
+            echo "[logix-perf][timeline] timeGuard softBudgetMin=${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES} minFullRemainingSec=${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS} baseTimeoutSec=${PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS} headTimeoutSec=${PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS} recollectTimeoutSec=${PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS} fallbackTimeoutSec=${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS}"
           } >> "$PERF_DEBUG_TIMELINE_FILE"
 
       - name: Checkout head (for install)
