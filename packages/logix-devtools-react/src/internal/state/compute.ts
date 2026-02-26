@@ -24,8 +24,8 @@ const getAtPath = (obj: unknown, path: string): unknown => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-// Consumer-side digest gate: do not use rootIds -> rootPaths reverse-mapping when digest is missing (avoid showing wrong info).
-// Note: Devtools does not reverse-map by default; rootPaths is only an optional helper field for export boundaries.
+// Consumer-side digest gate: when staticIrDigest is missing, do not keep rootPaths (avoid showing wrong info).
+// Note: live runtime events are id-first by default; only Evidence import path may materialize rootPaths from summary.fieldPaths.
 const gateDirtyRootPathsByDigest = (meta: unknown): unknown => {
   if (!isRecord(meta)) return meta
 

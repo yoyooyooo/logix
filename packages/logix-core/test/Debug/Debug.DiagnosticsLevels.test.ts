@@ -58,6 +58,62 @@ describe('Debug diagnosticsLevel (off|light|full)', () => {
     }),
   )
 
+  it.effect('state:update should strip legacy dirtySet.rootPaths even when staticIrDigest is missing', () =>
+    Effect.sync(() => {
+      const event = {
+        type: 'state:update',
+        moduleId: 'M',
+        instanceId: 'i-legacy',
+        txnSeq: 2,
+        state: { count: 2 },
+        staticIrDigest: undefined,
+        dirtySet: {
+          dirtyAll: false,
+          rootIds: [0],
+          rootCount: 1,
+          keySize: 1,
+          keyHash: 42,
+          rootIdsTruncated: false,
+          rootPaths: [['count']],
+        },
+        patchCount: 1,
+        patchesTruncated: false,
+        commitMode: 'normal',
+        priority: 'normal',
+      } as any
+
+      const ref = Logix.Debug.internal.toRuntimeDebugEventRef(event, { diagnosticsLevel: 'full' }) as any
+      expect(ref).toBeDefined()
+      expect(ref.meta?.staticIrDigest).toBeUndefined()
+      expect(ref.meta?.dirtySet?.rootPaths).toBeUndefined()
+      expect(ref.meta?.dirtySet?.rootIds).toEqual([0])
+    }),
+  )
+
+  it.effect('trace:trait:converge(full) should strip legacy dirty.rootPaths and keep id-first dirty roots', () =>
+    Effect.sync(() => {
+      const event = {
+        type: 'trace:trait:converge',
+        moduleId: 'M',
+        instanceId: 'i-legacy-trait',
+        data: {
+          staticIrDigest: 'converge_ir_v2:test',
+          dirty: {
+            dirtyAll: false,
+            rootIds: [1],
+            rootIdsTruncated: false,
+            rootPaths: [['profile', 'name']],
+          },
+        },
+      } as any
+
+      const ref = Logix.Debug.internal.toRuntimeDebugEventRef(event, { diagnosticsLevel: 'full' }) as any
+      expect(ref).toBeDefined()
+      expect(ref.meta?.dirty?.rootPaths).toBeUndefined()
+      expect(ref.meta?.dirty?.rootIds).toEqual([1])
+    }),
+  )
+
   it.effect('full should enforce a hard JSON size budget and mark downgrade=oversized', () =>
     Effect.sync(() => {
       const huge = 'x'.repeat(20_000)

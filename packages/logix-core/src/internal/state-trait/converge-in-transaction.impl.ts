@@ -646,7 +646,7 @@ export const convergeInTransaction = <S extends object>(
       if (!shouldCollectDecisionDetails) return undefined
 
       // Diagnostics contract:
-      // - light/full: exported evidence expects dirty.rootIds (and rootPaths derived by DebugSink) to be present.
+      // - light/full: exported evidence expects dirty.rootIds as canonical anchor; rootPaths is materialized only on consumer side.
       // - sampled: keep slim by default (DebugSink strips heavy fields, but we also avoid unnecessary root mapping here).
       const requiresRootIds =
         diagnosticsLevel === 'light' ||

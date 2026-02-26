@@ -136,13 +136,25 @@ version: 1
 
 ### 2.5 Debug 事件：state:update 只携带 id-first 证据，rootPaths 只在显示边界反解
 
-显示边界的反解实现：`packages/logix-core/src/internal/runtime/core/DebugSink.record.ts`
+显示边界的反解实现：`packages/logix-devtools-react/src/internal/state/logic.ts`
 
-- DebugSink 允许注入 `resolveConvergeStaticIr(staticIrDigest)`，在 record 阶段把 `dirtySet.rootIds` 映射为 `rootPaths`（数组 segments）。
-- 但这个反解有硬门：
+- `DebugSink.record` 不再注入/派生 `rootPaths`；runtime 事件只保留 canonical 锚点：`staticIrDigest + rootIds`。
+- Devtools 导入 EvidencePackage 时，使用 `meta.staticIrDigest + dirty(rootIds)` 去 `summary.converge.staticIrByDigest[*].fieldPaths` 反解 `rootPaths`（仅消费侧物化）。
+- 反解硬门：
   - 必须有 `staticIrDigest`
-  - 必须能 resolve 到 `ConvergeStaticIrExport`
-  - 否则禁止反解，只显示 id 与摘要（避免展示错误信息）
+  - 必须在 `summary.converge.staticIrByDigest` 命中该 digest
+  - 命中后只按 `fieldPaths` 做 id->path 反解；命不中则保持 id-first 视图（禁止猜测）
+- 诊断层级导出约束：
+  - `full`：导出完整 `ConvergeStaticIrExport`
+  - `light/sampled`：导出最小 `fieldPaths` 映射（用于 rootIds 可解释）
+  - `off`：不导出 converge summary
+
+迁移说明（破坏性变更）：
+
+- 旧链路依赖 `DebugSink` 直接产出 `rootPaths` 的消费端需要迁移到 canonical 读取路径：
+  - 输入：`staticIrDigest + rootIds`
+  - 映射：`summary.converge.staticIrByDigest[*].fieldPaths`
+  - 输出：仅在消费边界临时物化 `rootPaths`，不要回写 runtime 事件。
 
 ### 2.6 RowIdStore：list 的内部稳定身份层（对外仍保留 index 心智）
 
@@ -242,7 +254,9 @@ Static IR（fieldPaths table + digest）：
 
 Debug 显示边界（rootIds → rootPaths 的反解 gate）：
 
-- `packages/logix-core/src/internal/runtime/core/DebugSink.record.ts`
+- `packages/logix-devtools-react/src/internal/state/logic.ts`（Evidence 导入时物化）
+- `packages/logix-devtools-react/src/internal/state/compute.ts`（digest gate，缺失 digest 时禁止显示 rootPaths）
+- `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`（`summary.converge.staticIrByDigest` 导出）
 
 RowIdStore：
 

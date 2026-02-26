@@ -67,7 +67,7 @@ export interface RuntimeDebugEventRef {
 
 export const toRuntimeDebugEventRef: (
   event: Event,
-  options?: { readonly diagnosticsLevel?: "off" | "light" | "full" },
+  options?: { readonly diagnosticsLevel?: "off" | "light" | "sampled" | "full" },
 ) => RuntimeDebugEventRef | undefined
 ```
 
@@ -95,8 +95,10 @@ export const toRuntimeDebugEventRef: (
   - 若该事件缺少 `txnId`：**不得补造/补全稳定键**。Devtools 可以基于 `instanceId + eventId` 的时间邻近关系做 UI 辅助关联（例如“最近一次事务”提示），但该关联不作为协议保证与回放依据。
 - `trace:trait:converge` → `kind = "trait:converge"`，StateTrait 收敛证据事件；`meta` 固化为 `ConvergeDecisionSummary`（见 `specs/013-auto-converge-planner/contracts/schemas/trait-converge-data.schema.json`），必须为 `JsonValue`：
   - `DiagnosticsLevel=off`：不产出任何可导出的 converge 事件/摘要；
-  - `DiagnosticsLevel=light`：裁剪重字段（`dirty` 仅保留 `dirtyAll`；不导出 `top3` 等 hotspots）；同时 `state:update.meta` 不包含 `traitSummary`；
-  - `DiagnosticsLevel=full`：允许输出受控 roots 摘要（`rootCount` + `rootIds` TopK=3，硬上界 16）与可选 hotspots；`staticIrDigest = instanceId + ":" + generation` 用于引用 EvidencePackage 内去重导出的 `ConvergeStaticIR`。
+  - `DiagnosticsLevel=light`：裁剪重字段，`dirty` 至少保留 `dirtyAll/reason/rootIds/rootIdsTruncated`；不导出 `rootPaths`；同时 `state:update.meta` 不包含 `traitSummary`；
+  - `DiagnosticsLevel=sampled`：进一步 slim，`dirty` 仅保留 `dirtyAll/reason`，并通过 `diagnosticsSampling` 标记采样上下文（可含 TopK 热点）；
+  - `DiagnosticsLevel=full`：允许输出受控 roots 摘要（如 `rootCount` + `rootIds` TopK）与可选 hotspots；`staticIrDigest` 统一为 `converge_ir_v2:*`（由 `{writersKey,depsKey,fieldPathsKey}` 稳定哈希得到），用于引用 EvidencePackage 内按 digest 去重导出的 `ConvergeStaticIR`。
+  - 统一约束：Runtime 侧保持 id-first（`rootIds`）证据，不在 record 阶段注入 `rootPaths`；`rootIds -> rootPaths` 仅允许消费侧在命中 `summary.converge.staticIrByDigest[*].fieldPaths` 时物化。
 - `trace:effectop` → 根据 EffectOp 的 `kind` 映射为 `"service"` / `"trait-computed"` / `"trait-link"` / `"trait-source"` 等；导出形态只允许保留 **Slim**、可解释且可序列化的元信息（例如 `opId/kind/name/timing`），不得透传完整 payload 对象图。
 - `linkId`：当事件发生在某条 EffectOp 链路内时，Runtime 会将当前链路 id 提拔为一等字段；Devtools 聚合/归因应优先使用 `linkId`，而不是从 `meta.meta.linkId` 深挖兜底。
 - 其他 `trace:*` → 统一归类为 `kind = "devtools"`；导出形态只允许保留可序列化的 Slim 元信息（必要时省略并标注 `downgrade.reason`）。原始 `data: unknown` 只允许存在于宿主内 `Debug.Event`，不得进入可导出事件的 `meta`。

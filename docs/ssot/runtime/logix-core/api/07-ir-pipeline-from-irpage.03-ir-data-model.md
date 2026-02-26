@@ -202,20 +202,32 @@
 summary 由 `EvidenceCollector.exportEvidencePackage()` 生成，形态是一个可选的 JsonValue（按需出现）：
 
 - `summary.runtime.services`：`RuntimeServicesEvidence`（见 3.6）
-- `summary.converge.staticIrByDigest`：`Record<string, ConvergeStaticIrExport>`
+- `summary.converge.staticIrByDigest`：`Record<string, ConvergeStaticIrSummaryEntry>`
 
 `ConvergeStaticIrExport` 定义：`packages/logix-core/src/internal/state-trait/converge-ir.ts`
 
+`ConvergeStaticIrSummaryEntry`（按诊断档位分层）：
+
+- `full`：`ConvergeStaticIrExport`（完整静态 IR，含 step 映射）
+- `light/sampled`：`{ fieldPaths: FieldPath[] }`（最小可解释映射，仅用于 `rootIds -> rootPaths` 反解）
+- `off`：不导出 `summary.converge.staticIrByDigest`
+
 | 字段                         | 类型          | 含义                                             |
 | ---------------------------- | ------------- | ------------------------------------------------ |
-| `staticIrDigest`             | `string`      | 去重 key（当前为 `${instanceId}:${generation}`） |
+| `staticIrDigest`             | `string`      | 去重 key（`converge_ir_v2:fnv1a32(stableStringify({writersKey,depsKey,fieldPathsKey}))`） |
 | `moduleId`                   | `string`      | 模块 id                                          |
 | `instanceId`                 | `string`      | 实例 id                                          |
 | `generation`                 | `number`      | converge 静态 IR 代次（结构变化会 bump）         |
 | `fieldPaths`                 | `FieldPath[]` | field path table（canonical）                    |
 | `stepOutFieldPathIdByStepId` | `number[]`    | stepId → out fieldPathId 映射                    |
+| `stepSchedulingByStepId`     | `TraitConvergeScheduling[]` | stepId → 调度策略映射（sync/deferred）           |
 | `topoOrder?`                 | `number[]`    | topo 顺序（可选）                                |
 | `buildDurationMs?`           | `number`      | build 耗时（可选）                               |
+
+迁移说明（破坏性变更）：
+
+- 旧消费端若假设 `staticIrDigest = ${instanceId}:${generation}`，需迁移到 `converge_ir_v2:*` 口径。
+- 旧消费端若假设 `summary.converge.staticIrByDigest[*]` 恒为完整 `ConvergeStaticIrExport`，需兼容 `light/sampled` 的最小条目 `{ fieldPaths }`。
 
 ## 3.8 `RuntimeDebugEventRef`（`debug:event` 的 payload）
 

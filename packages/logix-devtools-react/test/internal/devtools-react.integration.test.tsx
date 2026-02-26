@@ -210,18 +210,256 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
       }) as any,
     )
 
-	    await waitFor(() => {
-	      const state = devtoolsRuntime.runSync(devtoolsModuleRuntime.getState as any) as DevtoolsState
-	      expect(state.selectedRuntime).toBe('R')
-	      expect(state.selectedModule).toBe('M')
-	      expect(state.selectedInstance).toBe('i1')
-	    })
-	
-		    await waitFor(() => {
-		      expect(screen.getByText(/Developer Tools/i)).not.toBeNull()
-		      expect(screen.getByText(/Error Summary/i)).not.toBeNull()
-		      expect(screen.getAllByText(/boom/i).length).toBeGreaterThan(0)
-		      expect(screen.getByText(/Degraded:\s*Not serializable/i)).not.toBeNull()
-		    })
-		  })
-		})
+    await waitFor(() => {
+      const state = devtoolsRuntime.runSync(devtoolsModuleRuntime.getState as any) as DevtoolsState
+      expect(state.selectedRuntime).toBe('R')
+      expect(state.selectedModule).toBe('M')
+      expect(state.selectedInstance).toBe('i1')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Developer Tools/i)).not.toBeNull()
+      expect(screen.getByText(/Error Summary/i)).not.toBeNull()
+      expect(screen.getAllByText(/boom/i).length).toBeGreaterThan(0)
+      expect(screen.getByText(/Degraded:\s*Not serializable/i)).not.toBeNull()
+    })
+  })
+
+  it('materializes dirty rootPaths from canonical staticIrDigest + staticIrByDigest.fieldPaths on evidence import', async () => {
+    render(<LogixDevtools position="bottom-left" initialOpen={true} />)
+
+    const protocolVersion = Logix.Observability.protocolVersion
+    const digest = 'digest-light-1'
+
+    const evidence = {
+      protocolVersion,
+      runId: 'run-root-paths',
+      createdAt: 2,
+      source: { host: 'test' },
+      summary: {
+        converge: {
+          staticIrByDigest: {
+            [digest]: {
+              fieldPaths: [['profile'], ['profile', 'name']],
+            },
+          },
+        },
+      },
+      events: [
+        {
+          protocolVersion,
+          runId: 'run-root-paths',
+          seq: 1,
+          timestamp: 2,
+          type: 'debug:event',
+          payload: {
+            eventSeq: 1,
+            eventId: 'i1::e1',
+            timestamp: 2,
+            kind: 'state',
+            label: 'state:update',
+            moduleId: 'M',
+            instanceId: 'i1',
+            runtimeLabel: 'R',
+            txnSeq: 1,
+            txnId: 'txn-1',
+            meta: {
+              staticIrDigest: digest,
+              dirtySet: {
+                dirtyAll: false,
+                rootIds: [1],
+                rootCount: 1,
+                keySize: 1,
+                keyHash: 123,
+                rootIdsTruncated: false,
+              },
+            },
+          },
+        },
+      ],
+    }
+
+    devtoolsRuntime.runFork(
+      devtoolsModuleRuntime.dispatch({
+        _tag: 'importEvidenceJson',
+        payload: JSON.stringify(evidence),
+      }) as any,
+    )
+
+    await waitFor(() => {
+      const snapshot = getDevtoolsSnapshot()
+      const imported = snapshot.events.find((event) => event.kind === 'state' && event.label === 'state:update') as any
+      expect(imported).toBeDefined()
+
+      const rootPaths = imported?.meta?.dirtySet?.rootPaths as any
+      expect(Array.isArray(rootPaths)).toBe(true)
+      expect(rootPaths).toEqual([['profile', 'name']])
+    })
+  })
+
+  it('strips payload legacy rootPaths and keeps id-first when digest is missing or not matched', async () => {
+    render(<LogixDevtools position="bottom-left" initialOpen={true} />)
+
+    const protocolVersion = Logix.Observability.protocolVersion
+    const evidence = {
+      protocolVersion,
+      runId: 'run-root-paths-miss',
+      createdAt: 3,
+      source: { host: 'test' },
+      summary: {
+        converge: {
+          staticIrByDigest: {
+            digest_available: {
+              fieldPaths: [['a']],
+            },
+          },
+        },
+      },
+      events: [
+        {
+          protocolVersion,
+          runId: 'run-root-paths-miss',
+          seq: 1,
+          timestamp: 3,
+          type: 'debug:event',
+          payload: {
+            eventSeq: 1,
+            eventId: 'i1::e2',
+            timestamp: 3,
+            kind: 'state',
+            label: 'state:update',
+            moduleId: 'M',
+            instanceId: 'i1',
+            runtimeLabel: 'R',
+            txnSeq: 2,
+            txnId: 'txn-2',
+            meta: {
+              dirtySet: {
+                dirtyAll: false,
+                rootIds: [0],
+                rootCount: 1,
+                keySize: 1,
+                keyHash: 456,
+                rootIdsTruncated: false,
+                rootPaths: [['legacy', 'state']],
+              },
+            },
+          },
+        },
+        {
+          protocolVersion,
+          runId: 'run-root-paths-miss',
+          seq: 2,
+          timestamp: 4,
+          type: 'debug:event',
+          payload: {
+            eventSeq: 2,
+            eventId: 'i1::e3',
+            timestamp: 4,
+            kind: 'trait:converge',
+            label: 'trace:trait:converge',
+            moduleId: 'M',
+            instanceId: 'i1',
+            runtimeLabel: 'R',
+            txnSeq: 3,
+            txnId: 'txn-3',
+            meta: {
+              staticIrDigest: 'digest_missing',
+              dirty: {
+                dirtyAll: false,
+                rootIds: [0],
+                rootIdsTruncated: false,
+                rootPaths: [['legacy', 'trait']],
+              },
+            },
+          },
+        },
+      ],
+    }
+
+    devtoolsRuntime.runFork(
+      devtoolsModuleRuntime.dispatch({
+        _tag: 'importEvidenceJson',
+        payload: JSON.stringify(evidence),
+      }) as any,
+    )
+
+    await waitFor(() => {
+      const snapshot = getDevtoolsSnapshot()
+      const importedState = snapshot.events.find(
+        (event) => event.kind === 'state' && event.label === 'state:update',
+      ) as any
+      expect(importedState).toBeDefined()
+      expect(importedState?.meta?.dirtySet?.rootPaths).toBeUndefined()
+
+      const importedTrait = snapshot.events.find((event) => event.kind === 'trait:converge') as any
+      expect(importedTrait).toBeDefined()
+      expect(importedTrait?.meta?.dirty?.rootPaths).toBeUndefined()
+    })
+  })
+
+  it('materializes trait:converge dirty.rootPaths on evidence import', async () => {
+    render(<LogixDevtools position="bottom-left" initialOpen={true} />)
+
+    const protocolVersion = Logix.Observability.protocolVersion
+    const digest = 'digest-trait-1'
+    const evidence = {
+      protocolVersion,
+      runId: 'run-trait-root-paths',
+      createdAt: 4,
+      source: { host: 'test' },
+      summary: {
+        converge: {
+          staticIrByDigest: {
+            [digest]: {
+              fieldPaths: [['profile'], ['profile', 'email']],
+            },
+          },
+        },
+      },
+      events: [
+        {
+          protocolVersion,
+          runId: 'run-trait-root-paths',
+          seq: 1,
+          timestamp: 4,
+          type: 'debug:event',
+          payload: {
+            eventSeq: 1,
+            eventId: 'i1::e3',
+            timestamp: 4,
+            kind: 'trait:converge',
+            label: 'trace:trait:converge',
+            moduleId: 'M',
+            instanceId: 'i1',
+            runtimeLabel: 'R',
+            txnSeq: 3,
+            txnId: 'txn-3',
+            meta: {
+              staticIrDigest: digest,
+              dirty: {
+                dirtyAll: false,
+                rootIds: [1],
+                rootIdsTruncated: false,
+              },
+            },
+          },
+        },
+      ],
+    }
+
+    devtoolsRuntime.runFork(
+      devtoolsModuleRuntime.dispatch({
+        _tag: 'importEvidenceJson',
+        payload: JSON.stringify(evidence),
+      }) as any,
+    )
+
+    await waitFor(() => {
+      const snapshot = getDevtoolsSnapshot()
+      const imported = snapshot.events.find((event) => event.kind === 'trait:converge') as any
+      expect(imported).toBeDefined()
+      expect(imported?.meta?.dirty?.rootPaths).toEqual([['profile', 'email']])
+    })
+  })
+})

@@ -133,7 +133,7 @@ describe('StateTrait converge auto evidence shape', () => {
     }),
   )
 
-  it.scoped('light: EvidencePackage keeps staticIrDigest but does not export ConvergeStaticIR summary', () =>
+  it.scoped('light: EvidencePackage keeps staticIrDigest and exports fieldPaths-only ConvergeStaticIR summary', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_EvidenceShape_Light'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -173,7 +173,14 @@ describe('StateTrait converge auto evidence shape', () => {
       expect(meta.thresholds).toBeDefined()
       expect(meta.thresholds.floorRatio).toBe(1.05)
 
-      expect(pkg.summary).toBeUndefined()
+      const summary = pkg.summary as any
+      expect(summary).toBeDefined()
+      expect(summary.converge).toBeDefined()
+      expect(summary.converge.staticIrByDigest).toBeDefined()
+      const byDigest = summary.converge.staticIrByDigest as Record<string, any>
+      expect(byDigest[meta.staticIrDigest]).toBeDefined()
+      expect(Array.isArray(byDigest[meta.staticIrDigest]?.fieldPaths)).toBe(true)
+      expect(byDigest[meta.staticIrDigest]?.writersKey).toBeUndefined()
     }),
   )
 })

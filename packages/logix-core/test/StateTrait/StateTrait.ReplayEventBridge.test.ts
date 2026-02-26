@@ -60,6 +60,7 @@ describe('ReplayEvent ↔ state:update bridge', () => {
       const runtime = Logix.Runtime.make(impl, {
         layer: Layer.mergeAll(
           Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+          Debug.diagnosticsLevel('light') as Layer.Layer<any, never, never>,
           Logix.Resource.layer([spec]) as Layer.Layer<never, never, ResourceRegistry>,
         ) as Layer.Layer<any, never, never>,
       })
@@ -82,6 +83,13 @@ describe('ReplayEvent ↔ state:update bridge', () => {
         expect(hit?.replayEvent?.resourceId).toBe('user/profile')
         expect(typeof hit?.replayEvent?.keyHash).toBe('string')
         expect(hit?.replayEvent?.txnId).toBe(hit?.txnId)
+        expect(typeof hit?.staticIrDigest).toBe('string')
+        expect(hit?.staticIrDigest.length).toBeGreaterThan(0)
+
+        const dirtySet = hit?.dirtySet as any
+        if (dirtySet && typeof dirtySet === 'object') {
+          expect('rootPaths' in dirtySet).toBe(false)
+        }
       })
 
       yield* Effect.promise(() => runtime.runPromise(program as Effect.Effect<void, never, any>))
