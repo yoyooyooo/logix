@@ -6,6 +6,7 @@
 - `public-api.md`：命令表与参数语义（稳定入口）
 - `artifacts.md`：工件命名与落盘策略（稳定可预测）
 - `safety.md`：report/write 安全边界与写回硬门槛（复用 082）
+- `reason-codes.md`：reason code 权威枚举（触发条件/恢复建议/重试语义）
 - `transform-ops.md`：batch transform 的 delta.json 语义（纯数据、可版本化）
 
 ## Schemas

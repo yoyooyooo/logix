@@ -3,6 +3,17 @@
 > 本文件裁决“命令表与参数语义”（实现阶段可微调命令名，但语义必须保持稳定）。
 > 输出协议统一为 `CommandResult@v1`：`specs/085-logix-cli-node-only/contracts/schemas/cli-command-result.schema.json`。
 
+## Non-Goal（边界铁律）
+
+- CLI 是 Tool Plane（执行与验收），不是 Agent Plane（策略与决策）。
+- CLI 禁止内置 loop/memory/policy/runtime；复杂策略必须由外部 Agent 编排。
+- CLI 的职责是“可执行 + 可验证 + 可诊断”，不负责“自动下一步决策”。
+
+## Reason Codes（权威枚举）
+
+- 权威入口：`specs/085-logix-cli-node-only/contracts/reason-codes.md`
+- 要求：所有 `reasonCodes` 必须能回链到该文档中的“触发条件/恢复建议/是否可自动重试”。
+
 ## 全局参数（所有子命令共享）
 
 - `--runId <string>`：必须显式提供；用于确定性工件命名与日志关联（禁止默认 Date.now）。
@@ -13,6 +24,14 @@
 - `--tsconfig <path>`：可选；涉及 ts-morph 解析/改写时指定 tsconfig（默认自动探测）。
 
 ## 命令：Inspect / Extract（Oracle）
+
+### `logix describe --json`
+
+语义：输出机器可读命令契约（命令清单、参数、默认值、必填约束、退出码语义、schema 引用）与 config 可见性（defaults/profile/argv 覆盖链）。
+
+输出 artifacts：
+
+- `describe.report.json`（inline 或 file）
 
 ### `logix ir export`
 

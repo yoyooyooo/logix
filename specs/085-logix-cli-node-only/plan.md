@@ -10,27 +10,44 @@
 - IR 导出（Manifest/StaticIR/Artifacts）
 - Gate（`ir validate` / `ir diff`：可门禁、可 diff）
 - 受控试跑（TrialRunReport）
+- Contract Suite（036）：一键验收（trialrun + verdict/context-pack；可选 baseline diff；可选 `--includeAnchorAutofill`）
 - AnchorIndex 构建（081）
 - Autofill（report/write）（079/082）
 - 可选 Transform（`transform module --ops`：batch ops；默认 report-only）
 
 实现原则：尽可能用 `effect` 组织命令与依赖注入（同构）；输出工件 JSON-safe、确定性、可 diff；CLI 本身不接管 bundler/编译器，只做验证与导出。
 
+后续收敛裁决（2026-02-26）：
+
+- CLI 角色固定为 `Tool Plane`（执行与验收），不内置 Agent 决策能力；
+- 路线固定为 **B**：`describe --json` + config 可见性 + 字段契约测试；
+- 目标从“可用”升级到“可治理”：S 级硬门禁（边界/协议/防同偏/write/性能/迁移/回放）。
+
+补充（命令短化 / Agent&CI 友好）：
+
+- 支持 `logix.cli.json`（cwd 向上查找；或 `--cliConfig <path>`）作为 argv 前缀来源；
+- 支持 `--profile <name>` 在 `defaults` 之上叠加；
+- 支持 `--outRoot <dir>`：当未显式 `--out` 时自动落盘到 `<outRoot>/<command>/<runId>`；
+- 布尔类 flag 支持 `--flag/--noFlag` 且“最后出现者胜”，用于覆盖配置默认值。
+
 ## Questions Digest（plan-from-questions）
 
 来源：外部问题清单（Q030–Q033）。
 
 - **Q030（统一输出 Envelope）**：所有子命令 stdout 统一输出 `CommandResult@v1`（见 `specs/085-logix-cli-node-only/contracts/`），默认不包含时间戳/随机；各类工件通过 `artifacts[]` 的 `file` 或 `inline` 承载。
-- **Q031（Exit Code 规范）**：`0=PASS`、`2=VIOLATION`（门禁/差异/规则违反）、`1=ERROR`（运行失败/异常）。`ok=false` 并不等价于 ERROR：需要区分 violation vs error。
+- **Q031（Exit Code 规范）**：`0=SUCCESS`、`2=USER_ERROR`（参数/用法/输入不合法/门禁失败）、`1=INTERNAL`（运行失败/异常/defect）。`ok=false` 并不等价于 INTERNAL：需要区分 user_error vs internal。
 - **Q032（TS/tsconfig 加载）**：入口加载使用 `tsx`（Node ESM TS loader）；Parser/Rewriter（081/082）使用 `ts-morph` 读取同一份 tsconfig（含 paths alias）；CLI 提供 `--tsconfig` 显式覆盖与自动探测。
 - **Q033（冷启动预算）**：`logix --help` 与不需要解析的命令必须 lazy-load `ts-morph` 等重依赖；目标 cold start `< 500ms`（先以本机基线测量固化）；解析/索引类命令允许更慢，但必须保持确定性并以结构化摘要可解释（不依赖非结构化日志）。
 
 ## Deepening Notes（关键裁决）
 
 - Decision: stdout 默认统一输出 `CommandResult@v1`；不输出时间戳/随机字段（source: spec Clarifications AUTO + Q030）。
-- Decision: Exit Code 规范固定为 `0=PASS`、`2=VIOLATION`、`1=ERROR`（source: spec Clarifications AUTO + Q031）。
+- Decision: Exit Code 规范固定为 `0=SUCCESS`、`2=USER_ERROR`、`1=INTERNAL`（source: spec Clarifications AUTO + Q031）。
 - Decision: 入口加载用 `tsx`；Parser/Rewriter 用 `ts-morph`（子命令内 lazy-load）；`packages/logix-core` 禁止引入 `ts-morph/swc`（source: spec Clarifications AUTO + Q032）。
 - Decision: `logix --help`/不需要解析的命令必须不加载 `ts-morph`，以满足 cold start 预算（source: Q033）。
+- Decision: CLI 不承载 Agent runtime/memory/policy/loop；复杂策略只允许在外部 Agent 侧（source: 2026-02-26 多视角收敛）。
+- Decision: TDD 通过不等价于完成；必须再过 CLI 独立 Gate（source: 2026-02-26 多视角收敛）。
+- Decision: write 风险优先级高于便捷性；默认 report-only，write 路径必须显式授权与可审计（source: 2026-02-26 多视角收敛）。
 
 ## Technical Context
 
@@ -41,16 +58,18 @@
 **Target Platform**: Node.js 20+  
 **Project Type**: pnpm workspace（packages）  
 **Performance Goals**: 非解析命令 cold start `< 500ms`（禁止加载 `ts-morph`）；解析/索引命令以可解释收束为准（不触及 runtime 热路径）  
-**Constraints**: 单一真相源（写回只改源码锚点字段）、宁可漏不乱补、输出确定性/可序列化/可 diff、超限必须可解释
+**Constraints**: 单一真相源（写回只改源码显式声明面：锚点字段 + Platform-Grade module surface）、宁可漏不乱补、输出确定性/可序列化/可 diff、超限必须可解释
 
 ## Constitution Check
 
-- **定位**：CLI 属于“平台之前的验证/导出入口”，不改变 runtime 语义；它把既有反射/试跑/回写能力统一为可脚本化命令。
-- **单一真相源**：CLI 写回能力只能调用 082 rewriter 写回源码锚点字段；不得产生长期 sidecar 真相源。
+- **定位**：CLI 属于“平台之前的验证/导出入口”，不改变 Logix runtime 引擎语义；它把既有反射/试跑/回写能力统一为可脚本化命令，并允许对源码 declarative surface 做受控机械变更（锚点补全 / module transform）。
+- **边界铁律**：CLI 是 Tool Plane，不是 Agent Plane；不得内置 Agent 决策循环（loop/memory/policy/runtime）。
+- **单一真相源**：CLI 写回能力统一通过 082 rewriter（PatchPlan→WriteBack）执行，只允许改写源码显式声明面（锚点字段 + Platform-Grade module surface）；不得产生长期 sidecar 真相源。
 - **统一最小 IR**：CLI 只导出版本化 JSON 工件（Manifest/Artifacts/TrialRunReport/AnchorIndex/PatchPlan/WriteBackResult）。
 - **稳定锚点**：要求显式 `runId`（避免 `Date.now()` 默认）；输出不含时间戳/随机。
 - **受控执行**：试跑/采集必须有 timeout/budget；失败必须结构化可解释。
 - **启动预算**：不需要解析的命令禁止加载 `ts-morph`（lazy import），以保证 `--help`/基础命令冷启动预算。
+- **防同偏要求**：实现测试（TDD）与 CLI 验收轨道分离；完成判定以 CLI Gate 为准（`ir validate/diff`、contract-suite 等）。
 
 ## Design
 
@@ -62,6 +81,8 @@
 - `logix ir validate`：对导出工件做门禁（schema/digest/budgets/Raw Mode 统计/锚点规则）
 - `logix ir diff`：对两份工件目录/文件做稳定 diff（输出 reason codes；用于 CI gate）
 - `logix trialrun`：输出 TrialRunReport（受控窗口 + 资源收束）
+- `logix contract-suite run`：一键集成验收（036）：trialrun + `ContractSuiteVerdict@v1`/`ContractSuiteContextPack@v1`（可选 baseline diff / inputs 注入 / includeAnchorAutofill）
+- `logix spy evidence`：输出 Loader Spy 证据（084；report-only；不写回源码）
 - `logix anchor index`：输出 AnchorIndex@v1（081）
 - `logix anchor autofill`：输出 PatchPlan/WriteBackResult（082），并在 `--mode write` 时写回源码锚点字段（079 规则）
   - 默认 `--mode report`（不写回）
@@ -73,18 +94,11 @@
 原则：既能“脚本化抓 stdout”，也能“稳定落盘供 CI diff / 平台消费”。
 
 - stdout：统一输出单个 JSON（`CommandResult@v1`），避免各子命令格式漂移；不输出时间戳/随机字段。
-- files：支持 `--out <dir>`；文件命名策略必须稳定且可预测（例如 `control-surface.manifest.json`、`workflow.surface.json`、`trialrun.report.json`、`anchor.index.json`、`patch.plan.json`、`writeback.result.json`、`autofill.report.json`）。
+- files：支持 `--out <dir>`；文件命名策略必须稳定且可预测（例如 `control-surface.manifest.json`、`workflow.surface.json`、`trialrun.report.json`、`contract-suite.verdict.json`、`contract-suite.context-pack.json`、`anchor.index.json`、`patch.plan.json`、`writeback.result.json`、`autofill.report.json`）。
 
-### 3) 复用/迁移现有脚本（DRY）
+### 3) 入口收敛（无过渡脚本）
 
-仓库现状已有 Node-only 脚本可复用：
-
-- `scripts/ir/inspect-module.ts`：已包含 `Effect` 组织与参数解析雏形（runId/config/timeout/budgets）。
-
-计划：
-
-- 先把脚本逻辑迁移为 `packages/logix-cli` 的子命令实现（保留行为不变）；
-- 再逐步把公共逻辑下沉到 `packages/logix-anchor-engine` 与 `@logixjs/core` 的稳定 API（避免重复实现）。
+原则：Node-only 工具链入口只保留 `packages/logix-cli`（`logix`/`logix-devserver`），不再维护独立脚本分叉；公共逻辑下沉到 `@logixjs/core` / `packages/logix-anchor-engine` 以避免重复实现。
 
 ### 4) Exit Code（CI 门禁友好）
 
@@ -101,15 +115,26 @@
 - program/module 入口加载：使用 `tsx` 作为 Node ESM TS loader（支持 workspace/paths 的最小 DX）。
 - Parser/Rewriter（081/082）：使用 `ts-morph` 读取同一份 tsconfig（含 paths alias），并保持 Node-only（严禁进入 `logix-core`）。
 
+### 6) S 级补强主轴（B 路线）
+
+1. `describe --json`：提供机器可读命令契约（命令/参数/默认值/失败语义/schema 引用）。
+2. config 可见性：给出 defaults/profile/CLI 显式参数的最终生效链路，降低隐式配置误判。
+3. 字段契约测试：对 Gate 关键字段（`reasonCodes/digest/budgetBytes/artifacts[].schema`）做持续回归。
+4. 写护栏加硬：`report/write` 双路径保持显式授权与可审计诊断，优先安全而非便捷。
+5. CLI-only 验收清单：把“测试通过但 Gate 失败”纳入硬阻断，防止测试与实现同偏。
+
 ## Perf Evidence Plan
 
 N/A（不触及 runtime 热路径）。  
-但本 spec 有明确的 DX 性能预算（cold start），需要可复现的测量方式（MUST）：
+但本 spec 有明确的 DX 性能预算（cold start），且必须形成 CI 门禁（MUST）：
 
 - 目标：`logix --help` cold start `< 500ms`（禁加载 `ts-morph`）。
 - 测量（示例，after build）：
-  - `node -e \"const { spawnSync } = require('node:child_process'); const t=process.hrtime.bigint(); spawnSync('node',['packages/logix-cli/dist/bin/logix.js','--help'],{stdio:'ignore'}); console.log(Number(process.hrtime.bigint()-t)/1e6)\"`
-- 结果落盘：将基线/阈值与一次测量结果写入 `specs/085-logix-cli-node-only/plan.md` 的实现记录（或 `specs/085-logix-cli-node-only/perf/`）。
+  - `pnpm -C packages/logix-cli measure:startup`（本地）
+  - `pnpm -C packages/logix-cli measure:startup:ci`（CI）
+- 结果落盘：将基线/阈值与测量结果写入 `specs/085-logix-cli-node-only/perf/`（或同等目录）。
+- CI 门禁：预算超阈值直接 fail；并记录 runner 标签与样本统计（均值/p95）。当前 CI 报告输出为 `packages/logix-cli/perf/startup.report.json`。
+- 诊断分级：默认 light，full 需显式开启；无论模式都需保持可序列化与可回放关联（traceId/runId）。
 
 ## Project Structure
 
@@ -119,6 +144,7 @@ N/A（不触及 runtime 热路径）。
 specs/085-logix-cli-node-only/
 ├── spec.md
 ├── plan.md
+├── assessment-followups.cli-as-tool.md
 ├── research.md
 ├── data-model.md
 ├── quickstart.md
@@ -145,7 +171,6 @@ packages/logix-cli/
 
 packages/logix-anchor-engine/     # 081/082（计划新增）
 packages/logix-core/              # IR/TrialRun/Manifest（已有）
-scripts/ir/inspect-module.ts      # 迁移来源（现状）
 ```
 
 **Structure Decision**:
@@ -158,6 +183,15 @@ scripts/ir/inspect-module.ts      # 迁移来源（现状）
 - **Phase 0（research）**：确定命令集合、输出 envelope、落盘路径策略、以及如何复用现有脚本（见 `research.md`）。
 - **Phase 1（design）**：固化 `CommandResult@v1` schema 与数据模型（见 `contracts/` + `data-model.md`）。
 - **Phase 2（tasks）**：实现 `packages/logix-cli` MVP 子命令；添加最小集成测试用例。
+- **Phase 3（post-assessment, 0-30d）**：文档/合同收敛（Non-Goal、reason code 枚举、JSON 示例、`describe --json` 最小能力）。
+- **Phase 4（post-assessment, 31-60d）**：字段契约测试 + config 可见性 + write 护栏加硬。
+- **Phase 5（post-assessment, 61-90d）**：性能 CI 门禁、IR 一致性 smoke、迁移与预算联动门禁。
+
+## 30/60/90 落地映射（对齐 `assessment-followups`）
+
+- 0-30 天：T1/T2/T3 + T4（最小 `describe --json`）。
+- 31-60 天：T4/T5/T6/T7（可编排 + 字段稳定 + 写护栏）。
+- 61-90 天：T8/T9（性能门禁 + IR 一致性 + 治理闭环）。
 
 ## Complexity Tracking
 
