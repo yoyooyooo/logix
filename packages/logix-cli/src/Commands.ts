@@ -7,7 +7,7 @@ import { makeErrorCommandResult, sortArtifactsByOutputKey } from './internal/res
 import { stableStringifyJson } from './internal/stableJson.js'
 import { parseCliInvocation, type CliHelpResult, type CliInvocation } from './internal/args.js'
 import type { CliConfigArgvPrefixResolution } from './internal/cliConfig.js'
-import { resolveCliConfigArgvPrefixResolution } from './internal/cliConfig.js'
+import { resolveCliConfigArgvPrefix, resolveCliConfigArgvPrefixResolution } from './internal/cliConfig.js'
 
 export type RunOutcome =
   | { readonly kind: 'help'; readonly text: string; readonly exitCode: 0 }
@@ -219,6 +219,17 @@ const tryGetRunId = (argv: ReadonlyArray<string>): string | undefined => {
   return typeof next === 'string' && next.length > 0 ? next : undefined
 }
 
+const resolveRunIdForFailure = (argv: ReadonlyArray<string>): Effect.Effect<string, never> => {
+  const fromArgv = tryGetRunId(argv)
+  if (fromArgv) return Effect.succeed(fromArgv)
+
+  return resolveCliConfigArgvPrefix(argv).pipe(
+    Effect.map((prefix) => (prefix.length > 0 ? [...prefix, ...argv] : argv)),
+    Effect.map((argv2) => tryGetRunId(argv2) ?? 'missing-runId'),
+    Effect.catchAll(() => Effect.succeed('missing-runId')),
+  )
+}
+
 const isHostErrorCode = (code: string | undefined): code is 'CLI_HOST_MISSING_BROWSER_GLOBAL' | 'CLI_HOST_MISMATCH' =>
   code === 'CLI_HOST_MISSING_BROWSER_GLOBAL' || code === 'CLI_HOST_MISMATCH'
 
@@ -297,13 +308,14 @@ export const runCli = (argv: ReadonlyArray<string>): Effect.Effect<RunOutcome, n
     ),
     Effect.matchEffect({
       onFailure: (cause) => {
-        const runId = tryGetRunId(argv) ?? 'missing-runId'
         const error = asSerializableErrorSummary(cause)
-        return Effect.succeed({
-          kind: 'result',
-          result: makeErrorCommandResult({ runId, command: 'unknown', error }),
-          exitCode: exitCodeFromErrorSummary(error),
-        } as RunOutcome)
+        return resolveRunIdForFailure(argv).pipe(
+          Effect.map((runId) => ({
+            kind: 'result',
+            result: makeErrorCommandResult({ runId, command: 'unknown', error }),
+            exitCode: exitCodeFromErrorSummary(error),
+          }) as RunOutcome),
+        )
       },
       onSuccess: ({ argv2, parsed, cliConfig }) => {
         if (isHelp(parsed)) {
@@ -347,7 +359,6 @@ export const runCli = (argv: ReadonlyArray<string>): Effect.Effect<RunOutcome, n
       },
     }),
     Effect.catchAllCause((cause) => {
-      const runId = tryGetRunId(argv) ?? 'missing-runId'
       const error: SerializableErrorSummary = asSerializableErrorSummary(
         makeCliError({
           code: 'CLI_INTERNAL',
@@ -355,11 +366,13 @@ export const runCli = (argv: ReadonlyArray<string>): Effect.Effect<RunOutcome, n
           cause,
         }),
       )
-      return Effect.succeed({
-        kind: 'result',
-        result: makeErrorCommandResult({ runId, command: 'unknown', error }),
-        exitCode: 1,
-      } as RunOutcome)
+      return resolveRunIdForFailure(argv).pipe(
+        Effect.map((runId) => ({
+          kind: 'result',
+          result: makeErrorCommandResult({ runId, command: 'unknown', error }),
+          exitCode: 1,
+        }) as RunOutcome),
+      )
     }),
     // CLI stdout is a strict protocol (CommandResult@v1); silence Effect logs to avoid polluting stdout/stderr.
     Effect.provide(Logger.replace(Logger.defaultLogger, Logger.make(() => {}))),

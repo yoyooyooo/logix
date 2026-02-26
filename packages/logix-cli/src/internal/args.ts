@@ -532,6 +532,7 @@ const flagsWithValue = new Set([
   '--config',
   '--diagnosticsLevel',
   '--entry',
+  '--host',
   '--in',
   '--inputs',
   '--maxEvents',
