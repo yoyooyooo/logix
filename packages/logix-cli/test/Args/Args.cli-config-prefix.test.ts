@@ -53,6 +53,7 @@ describe('args: logix.cli.json argv prefix', () => {
     expect(parsed.kind).toBe('command')
     if (parsed.kind !== 'command') throw new Error('expected command')
     expect(parsed.command).toBe('trialrun')
+    if (parsed.command !== 'trialrun') throw new Error('expected trialrun command')
     expect(parsed.diagnosticsLevel).toBe('full')
     expect(parsed.includeTrace).toBe(true)
   })

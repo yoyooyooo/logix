@@ -30,9 +30,7 @@
   "dependencies": {
     "@effect/cli": "0.73.1",
     "@effect/platform-node": "0.104.0",
-    "@logixjs/anchor-engine": "workspace:*",
     "@logixjs/core": "workspace:*",
-    "@logixjs/workbench": "workspace:*",
     "effect": "^3.19.13",
     "happy-dom": "^20.0.11",
     "ts-morph": "^25.0.0",
