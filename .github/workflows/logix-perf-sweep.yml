@@ -51,14 +51,6 @@ on:
         description: "auto 模式每轮采样次数（用于去噪）"
         required: false
         default: "2"
-      perf_steps_auto_outlier_rel_tolerance:
-        description: "auto 模式异常值相对容忍（0.2=±20%）"
-        required: false
-        default: "0.2"
-      perf_steps_auto_outlier_abs_tolerance:
-        description: "auto 模式异常值绝对容忍（steps）"
-        required: false
-        default: "800"
       perf_steps_auto_min_kept_samples:
         description: "auto 模式每个 dirtyRootsRatio 至少保留样本数"
         required: false
@@ -184,8 +176,6 @@ jobs:
           INPUT_PERF_STEPS_AUTO_EXTEND_COUNT: ${{ github.event.inputs.perf_steps_auto_extend_count }}
           INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP: ${{ github.event.inputs.perf_steps_auto_max_level_cap }}
           INPUT_PERF_STEPS_AUTO_SAMPLES_PER_ITERATION: ${{ github.event.inputs.perf_steps_auto_samples_per_iteration }}
-          INPUT_PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE: ${{ github.event.inputs.perf_steps_auto_outlier_rel_tolerance }}
-          INPUT_PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE: ${{ github.event.inputs.perf_steps_auto_outlier_abs_tolerance }}
           INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: ${{ github.event.inputs.perf_steps_auto_min_kept_samples }}
           INPUT_PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION: ${{ github.event.inputs.perf_steps_auto_min_samples_per_iteration }}
           INPUT_PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS: ${{ github.event.inputs.perf_steps_auto_max_total_collects }}
@@ -322,12 +312,6 @@ jobs:
             fi
             if [ -n "${INPUT_PERF_STEPS_AUTO_SAMPLES_PER_ITERATION:-}" ]; then
               echo "PERF_STEPS_AUTO_SAMPLES_PER_ITERATION=$INPUT_PERF_STEPS_AUTO_SAMPLES_PER_ITERATION" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE:-}" ]; then
-              echo "PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE=$INPUT_PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE:-}" ]; then
-              echo "PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE=$INPUT_PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE" >> "$GITHUB_ENV"
             fi
             if [ -n "${INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES:-}" ]; then
               echo "PERF_STEPS_AUTO_MIN_KEPT_SAMPLES=$INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES" >> "$GITHUB_ENV"
