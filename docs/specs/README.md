@@ -21,14 +21,21 @@
 - **[Drafts Index](./drafts/index.md)**
   - 包含按主题分类的草稿 (`topics/`) 和按成熟度分级的草稿 (`L1~L9`)。
 
+## 3. Opportunity Backlog（输入池）
+
+- **[Todo Optimization Backlog](../todo-optimization-backlog/README.md)**
+  - 作为机会池入口，统一推进 `机会池 -> spec -> 实现 -> 证据 -> 回写`。
+
 ---
 
 ## Directory Structure
 
 ```
-docs/specs/
-├── sdd-platform/       # Platform specs root
-└── drafts/                   # Drafts & Topics
-    ├── topics/               # Consolidated Topics (AI UI, Core API...)
-    └── L1~L9/                # Tiered Drafts
+docs/
+├── specs/
+│   ├── sdd-platform/         # Platform specs root
+│   └── drafts/               # Drafts & Topics
+│       ├── topics/           # Consolidated Topics (AI UI, Core API...)
+│       └── L1~L9/            # Tiered Drafts
+└── todo-optimization-backlog/ # Opportunity backlog & writeback workflow
 ```
