@@ -84,8 +84,8 @@ const resolveRootPaths = (args: {
 
   const out: Array<ReadonlyArray<string>> = []
   for (const rawId of rootIds) {
-    if (typeof rawId !== 'number' || !Number.isFinite(rawId)) continue
-    const id = Math.floor(rawId)
+    if (!Number.isInteger(rawId)) continue
+    const id = rawId
     if (id < 0 || id >= args.fieldPaths.length) continue
     out.push(args.fieldPaths[id]!)
   }
@@ -105,7 +105,7 @@ const stripLegacyDirtyRootPathsFromEvent = (
 
   if (event.kind === 'state' && event.label === 'state:update') {
     const dirtySet = isRecord((meta as any).dirtySet) ? ((meta as any).dirtySet as Record<string, unknown>) : undefined
-    if (!dirtySet || !Array.isArray((dirtySet as any).rootPaths)) return event
+    if (!dirtySet || !Object.prototype.hasOwnProperty.call(dirtySet, 'rootPaths')) return event
     return {
       ...(event as any),
       meta: {
@@ -117,7 +117,7 @@ const stripLegacyDirtyRootPathsFromEvent = (
 
   if (event.kind === 'trait:converge') {
     const dirty = isRecord((meta as any).dirty) ? ((meta as any).dirty as Record<string, unknown>) : undefined
-    if (!dirty || !Array.isArray((dirty as any).rootPaths)) return event
+    if (!dirty || !Object.prototype.hasOwnProperty.call(dirty, 'rootPaths')) return event
     return {
       ...(event as any),
       meta: {

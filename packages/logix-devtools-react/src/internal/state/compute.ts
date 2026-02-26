@@ -37,14 +37,13 @@ const gateDirtyRootPathsByDigest = (meta: unknown): unknown => {
   const dirtySet = meta.dirtySet
   if (!isRecord(dirtySet)) return meta
 
-  if (!Array.isArray((dirtySet as any).rootPaths)) return meta
+  if (!Object.prototype.hasOwnProperty.call(dirtySet, 'rootPaths')) return meta
+
+  const { rootPaths: _rootPaths, ...dirtySetWithoutRootPaths } = dirtySet as any
 
   return {
     ...meta,
-    dirtySet: {
-      ...dirtySet,
-      rootPaths: undefined,
-    },
+    dirtySet: dirtySetWithoutRootPaths,
   }
 }
 
