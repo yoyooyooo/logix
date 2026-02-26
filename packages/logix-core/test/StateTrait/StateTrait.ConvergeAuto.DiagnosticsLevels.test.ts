@@ -110,7 +110,7 @@ describe('StateTrait converge diagnostics levels', () => {
     }),
   )
 
-  it.scoped('light: trait:converge exported with slim dirty + rootIds mapping; no staticIrByDigest summary', () =>
+  it.scoped('light: trait:converge exported with slim dirty + rootIds mapping + minimal staticIrByDigest summary', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_DiagnosticsLevels_Light'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -137,10 +137,18 @@ describe('StateTrait converge diagnostics levels', () => {
       expect('rootCount' in dirty).toBe(false)
       expect(Array.isArray(dirty.rootIds)).toBe(true)
       expect(typeof dirty.rootIdsTruncated).toBe('boolean')
-      expect(Array.isArray(dirty.rootPaths)).toBe(true)
-      expect(dirty.rootPaths.length).toBe(dirty.rootIds.length)
+      expect('rootPaths' in dirty).toBe(false)
 
-      expect(pkg.summary).toBeUndefined()
+      const summary = pkg.summary as any
+      expect(summary).toBeDefined()
+      expect(summary.converge).toBeDefined()
+      expect(summary.converge.staticIrByDigest).toBeDefined()
+      expect(typeof meta.staticIrDigest).toBe('string')
+      expect(meta.staticIrDigest.length).toBeGreaterThan(0)
+      const byDigest = summary.converge.staticIrByDigest as any
+      expect(byDigest[meta.staticIrDigest]).toBeDefined()
+      expect(Array.isArray(byDigest[meta.staticIrDigest].fieldPaths)).toBe(true)
+      expect(byDigest[meta.staticIrDigest].writersKey).toBeUndefined()
     }),
   )
 
@@ -172,6 +180,7 @@ describe('StateTrait converge diagnostics levels', () => {
       expect(Array.isArray(dirty.rootIds)).toBe(true)
       expect(dirty.rootIds.length).toBeLessThanOrEqual(3)
       expect(typeof dirty.rootIdsTruncated).toBe('boolean')
+      expect('rootPaths' in dirty).toBe(false)
 
       const summary = pkg.summary as any
       expect(summary).toBeDefined()
@@ -221,7 +230,13 @@ describe('StateTrait converge diagnostics levels', () => {
         expect(sampling.topK).toBe(3)
         expect(sampling.sampled).toBe(true)
 
-        expect(pkg.summary).toBeUndefined()
+        const summary = pkg.summary as any
+        expect(summary).toBeDefined()
+        expect(summary.converge).toBeDefined()
+        expect(summary.converge.staticIrByDigest).toBeDefined()
+        expect(typeof meta.staticIrDigest).toBe('string')
+        expect(meta.staticIrDigest.length).toBeGreaterThan(0)
+        expect((summary.converge.staticIrByDigest as any)[meta.staticIrDigest]).toBeDefined()
 
         const top3 = meta.top3 as any
         expect(Array.isArray(top3)).toBe(true)
@@ -231,5 +246,139 @@ describe('StateTrait converge diagnostics levels', () => {
         expect(typeof top3[0]?.durationMs).toBe('number')
         expect(typeof top3[0]?.changed).toBe('boolean')
       }),
+  )
+
+  it.scoped('mixed tiers: staticIrByDigest should keep full/minimal shape per digest without cross-tier pollution', () =>
+    Effect.gen(function* () {
+      Debug.clearDevtoolsEvents()
+
+      const FullState = Schema.Struct({
+        a: Schema.Number,
+        derivedA: Schema.Number,
+      })
+      const FullActions = {
+        inc: Schema.Void,
+      }
+      const FullModule = Logix.Module.make('StateTraitConvergeAuto_DiagnosticsLevels_Mixed_Full', {
+        state: FullState,
+        actions: FullActions,
+        reducers: {
+          inc: Logix.Module.Reducer.mutate((draft) => {
+            draft.a += 1
+          }),
+        },
+        traits: Logix.StateTrait.from(FullState)({
+          derivedA: Logix.StateTrait.computed({
+            deps: ['a'],
+            get: (a) => a + 1,
+          }),
+        }),
+      })
+      const fullImpl = FullModule.implement({
+        initial: { a: 0, derivedA: 1 },
+        logics: [],
+      })
+      const fullRuntime = Logix.Runtime.make(fullImpl, {
+        stateTransaction: { traitConvergeMode: 'auto' },
+        layer: Debug.devtoolsHubLayer({
+          bufferSize: 256,
+          diagnosticsLevel: 'full',
+        }) as Layer.Layer<any, never, never>,
+      })
+
+      const LightState = Schema.Struct({
+        x: Schema.Number,
+        derivedX: Schema.Number,
+        marker: Schema.Number,
+      })
+      const LightActions = {
+        inc: Schema.Void,
+      }
+      const LightModule = Logix.Module.make('StateTraitConvergeAuto_DiagnosticsLevels_Mixed_Light', {
+        state: LightState,
+        actions: LightActions,
+        reducers: {
+          inc: Logix.Module.Reducer.mutate((draft) => {
+            draft.x += 1
+          }),
+        },
+        traits: Logix.StateTrait.from(LightState)({
+          derivedX: Logix.StateTrait.computed({
+            deps: ['x'],
+            get: (x) => x + 1,
+          }),
+        }),
+      })
+      const lightImpl = LightModule.implement({
+        initial: { x: 0, derivedX: 1, marker: 0 },
+        logics: [],
+      })
+      const lightRuntime = Logix.Runtime.make(lightImpl, {
+        stateTransaction: { traitConvergeMode: 'auto' },
+        layer: Debug.devtoolsHubLayer({
+          bufferSize: 256,
+          diagnosticsLevel: 'light',
+        }) as Layer.Layer<any, never, never>,
+      })
+
+      yield* Effect.promise(() =>
+        fullRuntime.runPromise(
+          Effect.gen(function* () {
+            const rt = yield* FullModule.tag
+            yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
+          }),
+        ),
+      )
+
+      yield* Effect.promise(() =>
+        lightRuntime.runPromise(
+          Effect.gen(function* () {
+            const rt = yield* LightModule.tag
+            yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
+          }),
+        ),
+      )
+
+      const pkg = Debug.exportEvidencePackage({
+        source: { host: 'test', label: 'mixed-tiers' },
+      })
+
+      const refs = pickTraitConvergeRefs(pkg)
+      const fullRef = refs.find((ref) => ref?.moduleId === FullModule.id)
+      const lightRef = refs.find((ref) => ref?.moduleId === LightModule.id)
+
+      expect(fullRef).toBeDefined()
+      expect(lightRef).toBeDefined()
+
+      const fullDigest = (fullRef as any)?.meta?.staticIrDigest as string
+      const lightDigest = (lightRef as any)?.meta?.staticIrDigest as string
+      expect(typeof fullDigest).toBe('string')
+      expect(fullDigest.length).toBeGreaterThan(0)
+      expect(typeof lightDigest).toBe('string')
+      expect(lightDigest.length).toBeGreaterThan(0)
+      expect(fullDigest).not.toBe(lightDigest)
+
+      const byDigest = (pkg.summary as any)?.converge?.staticIrByDigest as Record<string, any>
+      expect(byDigest).toBeDefined()
+
+      const fullEntry = byDigest[fullDigest]
+      const lightEntry = byDigest[lightDigest]
+      expect(fullEntry).toBeDefined()
+      expect(lightEntry).toBeDefined()
+
+      expect(typeof fullEntry.moduleId).toBe('string')
+      expect(typeof fullEntry.instanceId).toBe('string')
+      expect(typeof fullEntry.generation).toBe('number')
+      expect(Array.isArray(fullEntry.stepOutFieldPathIdByStepId)).toBe(true)
+      expect(Array.isArray(fullEntry.stepSchedulingByStepId)).toBe(true)
+
+      expect(Array.isArray(lightEntry.fieldPaths)).toBe(true)
+      expect(lightEntry.moduleId).toBeUndefined()
+      expect(lightEntry.instanceId).toBeUndefined()
+      expect(lightEntry.generation).toBeUndefined()
+      expect(lightEntry.stepOutFieldPathIdByStepId).toBeUndefined()
+      expect(lightEntry.stepSchedulingByStepId).toBeUndefined()
+      expect(lightEntry.topoOrder).toBeUndefined()
+    }),
   )
 })

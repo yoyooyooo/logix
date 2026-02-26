@@ -47,7 +47,6 @@ export interface ConvergeSummary {
   readonly executedSteps: number
   readonly skippedSteps: number
   readonly changedSteps: number
-  readonly dirtyRoots?: ReadonlyArray<string>
   readonly top3: ReadonlyArray<ConvergeStepSummary>
 }
 

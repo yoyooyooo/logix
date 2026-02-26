@@ -1415,6 +1415,7 @@ describe('ModuleRuntime (internal)', () => {
                     expect(dirtySet.rootIds.every((id: unknown) => typeof id === 'number' && Number.isFinite(id))).toBe(
                       true,
                     )
+                    expect('rootPaths' in dirtySet).toBe(false)
                     expect(typeof dirtySet.keyHash).toBe('number')
                     expect(stateUpdate?.patchCount).toBe(4)
                     expect(stateUpdate?.patchesTruncated).toBe(false)

@@ -22,6 +22,8 @@ const asNonEmptyString = (value: unknown): string | undefined =>
 const asFiniteNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined
 
+type ConvergeFieldPathsByDigest = ReadonlyMap<string, ReadonlyArray<ReadonlyArray<string>>>
+
 const normalizeRuntimeDebugEventRef = (value: unknown): Logix.Debug.RuntimeDebugEventRef | null => {
   if (!isRecord(value)) return null
 
@@ -36,6 +38,150 @@ const normalizeRuntimeDebugEventRef = (value: unknown): Logix.Debug.RuntimeDebug
   }
 
   return { ...(value as any), instanceId } as Logix.Debug.RuntimeDebugEventRef
+}
+
+const readConvergeFieldPathsByDigest = (summary: unknown): ConvergeFieldPathsByDigest => {
+  if (!isRecord(summary)) return new Map()
+
+  const converge = isRecord(summary.converge) ? summary.converge : undefined
+  const byDigest = converge && isRecord(converge.staticIrByDigest) ? converge.staticIrByDigest : undefined
+  if (!byDigest) return new Map()
+
+  const out = new Map<string, ReadonlyArray<ReadonlyArray<string>>>()
+
+  for (const [digest, ir] of Object.entries(byDigest)) {
+    if (!isRecord(ir)) continue
+    const fieldPathsRaw = ir.fieldPaths
+    if (!Array.isArray(fieldPathsRaw)) continue
+
+    const fieldPaths: Array<ReadonlyArray<string>> = []
+    for (const pathRaw of fieldPathsRaw) {
+      if (!Array.isArray(pathRaw) || pathRaw.length === 0) {
+        fieldPaths.length = 0
+        break
+      }
+      if (!pathRaw.every((seg) => typeof seg === 'string' && seg.length > 0)) {
+        fieldPaths.length = 0
+        break
+      }
+      fieldPaths.push(pathRaw as ReadonlyArray<string>)
+    }
+
+    if (fieldPaths.length > 0) {
+      out.set(digest, fieldPaths)
+    }
+  }
+
+  return out
+}
+
+const resolveRootPaths = (args: {
+  readonly rootIds: unknown
+  readonly fieldPaths: ReadonlyArray<ReadonlyArray<string>>
+}): ReadonlyArray<ReadonlyArray<string>> | undefined => {
+  const rootIds = args.rootIds
+  if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
+
+  const out: Array<ReadonlyArray<string>> = []
+  for (const rawId of rootIds) {
+    if (typeof rawId !== 'number' || !Number.isFinite(rawId)) continue
+    const id = Math.floor(rawId)
+    if (id < 0 || id >= args.fieldPaths.length) continue
+    out.push(args.fieldPaths[id]!)
+  }
+  return out.length > 0 ? out : undefined
+}
+
+const stripRootPathsField = (value: Record<string, unknown>): Record<string, unknown> => {
+  const { rootPaths: _rootPaths, ...rest } = value as any
+  return rest
+}
+
+const stripLegacyDirtyRootPathsFromEvent = (
+  event: Logix.Debug.RuntimeDebugEventRef,
+): Logix.Debug.RuntimeDebugEventRef => {
+  const meta = isRecord(event.meta) ? (event.meta as Record<string, unknown>) : undefined
+  if (!meta) return event
+
+  if (event.kind === 'state' && event.label === 'state:update') {
+    const dirtySet = isRecord((meta as any).dirtySet) ? ((meta as any).dirtySet as Record<string, unknown>) : undefined
+    if (!dirtySet || !Array.isArray((dirtySet as any).rootPaths)) return event
+    return {
+      ...(event as any),
+      meta: {
+        ...(meta as any),
+        dirtySet: stripRootPathsField(dirtySet),
+      },
+    } as Logix.Debug.RuntimeDebugEventRef
+  }
+
+  if (event.kind === 'trait:converge') {
+    const dirty = isRecord((meta as any).dirty) ? ((meta as any).dirty as Record<string, unknown>) : undefined
+    if (!dirty || !Array.isArray((dirty as any).rootPaths)) return event
+    return {
+      ...(event as any),
+      meta: {
+        ...(meta as any),
+        dirty: stripRootPathsField(dirty),
+      },
+    } as Logix.Debug.RuntimeDebugEventRef
+  }
+
+  return event
+}
+
+const materializeDirtyRootPathsFromCanonical = (args: {
+  readonly event: Logix.Debug.RuntimeDebugEventRef
+  readonly fieldPathsByDigest: ConvergeFieldPathsByDigest
+}): Logix.Debug.RuntimeDebugEventRef => {
+  if (args.fieldPathsByDigest.size === 0) return args.event
+
+  const meta = isRecord(args.event.meta) ? args.event.meta : undefined
+  if (!meta) return args.event
+
+  const staticIrDigest = asNonEmptyString((meta as any).staticIrDigest)
+  if (!staticIrDigest) return args.event
+
+  const fieldPaths = args.fieldPathsByDigest.get(staticIrDigest)
+  if (!fieldPaths) return args.event
+
+  if (args.event.kind === 'state' && args.event.label === 'state:update') {
+    const dirtySet = isRecord((meta as any).dirtySet) ? ((meta as any).dirtySet as Record<string, unknown>) : undefined
+    if (!dirtySet) return args.event
+    const rootPaths = resolveRootPaths({ rootIds: dirtySet.rootIds, fieldPaths })
+    if (!rootPaths) return args.event
+
+    return {
+      ...(args.event as any),
+      meta: {
+        ...(meta as any),
+        dirtySet: {
+          ...(dirtySet as any),
+          rootPaths,
+        },
+      },
+    } as Logix.Debug.RuntimeDebugEventRef
+  }
+
+  if (args.event.kind === 'trait:converge') {
+    const dirty = isRecord((meta as any).dirty) ? ((meta as any).dirty as Record<string, unknown>) : undefined
+    if (!dirty) return args.event
+    const rootPaths = resolveRootPaths({ rootIds: dirty.rootIds, fieldPaths })
+    if (!rootPaths) return args.event
+
+    return {
+      ...(args.event as any),
+      meta: {
+        ...(meta as any),
+        dirty: {
+          ...(dirty as any),
+          rootPaths,
+        },
+      },
+    } as Logix.Debug.RuntimeDebugEventRef
+  }
+
+  return args.event
 }
 
 // Helper to create a stream from DOM events
@@ -181,6 +327,7 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
         }
 
         const evidence = Logix.Observability.importEvidencePackage(parsed)
+        const fieldPathsByDigest = readConvergeFieldPathsByDigest(evidence.summary)
 
         const events: Logix.Debug.RuntimeDebugEventRef[] = []
         for (const envelope of evidence.events) {
@@ -188,7 +335,8 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
           const payload = envelope.payload as unknown
           const normalized = normalizeRuntimeDebugEventRef(payload)
           if (!normalized) continue
-          events.push(normalized)
+          const canonicalEvent = stripLegacyDirtyRootPathsFromEvent(normalized)
+          events.push(materializeDirtyRootPathsFromCanonical({ event: canonicalEvent, fieldPathsByDigest }))
         }
 
         const snapshot: DevtoolsSnapshot = {

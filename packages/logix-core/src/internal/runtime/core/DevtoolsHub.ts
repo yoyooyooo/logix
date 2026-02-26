@@ -498,9 +498,11 @@ export const exportDevtoolsEvidencePackage = (options?: {
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
 
-  // In full diagnostics: de-duplicate by staticIrDigest and export matching ConvergeStaticIR (for offline explanation/replay).
+  // Export canonical static IR mapping by digest for any diagnostics tier that emits trait:converge:
+  // - full: keep full ConvergeStaticIrExport payload for offline explanation/replay.
+  // - light/sampled: export minimal fieldPaths-only entries so consumers can still materialize rootIds -> rootPaths.
   const convergeDigests = new Set<string>()
-  let sawFullConverge = false
+  const sawFullByDigest = new Set<string>()
 
   for (const ref of ringBuffer) {
     if (ref.kind !== 'trait:converge') continue
@@ -510,21 +512,22 @@ export const exportDevtoolsEvidencePackage = (options?: {
     const digest = meta.staticIrDigest
     if (typeof digest === 'string' && digest.length > 0) {
       convergeDigests.add(digest)
-    }
-
-    const dirty = meta.dirty
-    if (isRecord(dirty) && typeof dirty.rootCount === 'number') {
-      sawFullConverge = true
+      const dirty = meta.dirty
+      if (isRecord(dirty) && typeof dirty.rootCount === 'number') {
+        sawFullByDigest.add(digest)
+      }
     }
   }
 
   let summary: JsonValue | undefined
-  if (sawFullConverge && convergeDigests.size > 0) {
+  if (convergeDigests.size > 0) {
     const staticIrByDigest: Record<string, JsonValue> = {}
     for (const digest of convergeDigests) {
       const ir = convergeStaticIrByDigest.get(digest)
       if (ir) {
-        staticIrByDigest[digest] = ir as unknown as JsonValue
+        staticIrByDigest[digest] = sawFullByDigest.has(digest)
+          ? (ir as unknown as JsonValue)
+          : ({ fieldPaths: ir.fieldPaths } as unknown as JsonValue)
       }
     }
     if (Object.keys(staticIrByDigest).length > 0) {
@@ -627,7 +630,6 @@ export const devtoolsHubSink: Sink = {
       let projectedOversized = 0
       const ref = toRuntimeDebugEventRef(event, {
         diagnosticsLevel: level,
-        resolveConvergeStaticIr: (staticIrDigest) => convergeStaticIrByDigest.get(staticIrDigest),
         onMetaProjection: ({ stats }) => {
           projectedDropped += stats.dropped
           projectedOversized += stats.oversized

@@ -13,7 +13,6 @@ import {
 } from './errorSummary.js'
 import * as EffectOpCore from './EffectOpCore.js'
 import type * as ProcessProtocol from './process/protocol.js'
-import type { ConvergeStaticIrExport } from '../../state-trait/converge-ir.js'
 
 export interface TriggerRef {
   readonly kind: string
@@ -437,121 +436,33 @@ const mergeDowngrade = (
   return 'unknown'
 }
 
-type ResolveConvergeStaticIr = (staticIrDigest: string) => ConvergeStaticIrExport | undefined
-
-const resolveDirtyRootPathsFromRootIds = (args: {
-  readonly rootIds: unknown
-  readonly fieldPaths: unknown
-}): ReadonlyArray<JsonValue> | undefined => {
-  const rootIds = args.rootIds
-  if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
-
-  const fieldPaths = args.fieldPaths
-  if (!Array.isArray(fieldPaths) || fieldPaths.length === 0) return undefined
-
-  const out: Array<JsonValue> = []
-  for (const rawId of rootIds) {
-    if (typeof rawId !== 'number' || !Number.isFinite(rawId)) continue
-    const id = Math.floor(rawId)
-    if (id < 0 || id >= fieldPaths.length) continue
-    const path = (fieldPaths as ReadonlyArray<unknown>)[id]
-    if (!Array.isArray(path) || path.length === 0) continue
-    if (!path.every((seg) => typeof seg === 'string' && seg.length > 0)) continue
-    out.push(path as JsonValue)
-  }
-
-  return out.length > 0 ? out : undefined
+const stripDirtyRootPaths = (value: unknown): unknown => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+  const { rootPaths, ...rest } = value as Record<string, unknown> & { readonly rootPaths?: unknown }
+  return rest
 }
 
-const resolveStateUpdateDirtySetRootPaths = (
-  event: Extract<Event, { readonly type: 'state:update' }>,
-  resolveConvergeStaticIr?: ResolveConvergeStaticIr,
-): ReadonlyArray<JsonValue> | undefined => {
-  if (!resolveConvergeStaticIr) return undefined
-
-  const digest = event.staticIrDigest
-  if (typeof digest !== 'string' || digest.length === 0) return undefined
-
-  const dirtySet = event.dirtySet as any
-  if (!dirtySet || typeof dirtySet !== 'object' || Array.isArray(dirtySet)) return undefined
-
-  const ir = resolveConvergeStaticIr(digest) as ConvergeStaticIrExport | undefined
-  return resolveDirtyRootPathsFromRootIds({
-    rootIds: dirtySet.rootIds,
-    fieldPaths: (ir as any)?.fieldPaths,
-  })
-}
-
-const withStateUpdateDirtySetRootPaths = (
-  event: Extract<Event, { readonly type: 'state:update' }>,
-  resolveConvergeStaticIr?: ResolveConvergeStaticIr,
-): unknown => {
-  const rootPaths = resolveStateUpdateDirtySetRootPaths(event, resolveConvergeStaticIr)
-  if (!rootPaths) return event.dirtySet
-
-  const dirtySet = event.dirtySet as any
-  if (!dirtySet || typeof dirtySet !== 'object' || Array.isArray(dirtySet)) return event.dirtySet
-
-  return { ...dirtySet, rootPaths }
-}
-
-const resolveTraitConvergeDirtyRootPaths = (args: {
-  readonly staticIrDigest: unknown
-  readonly rootIds: unknown
-  readonly resolveConvergeStaticIr?: ResolveConvergeStaticIr
-}): ReadonlyArray<JsonValue> | undefined => {
-  const resolveConvergeStaticIr = args.resolveConvergeStaticIr
-  if (!resolveConvergeStaticIr) return undefined
-
-  const digest = args.staticIrDigest
-  if (typeof digest !== 'string' || digest.length === 0) return undefined
-
-  const ir = resolveConvergeStaticIr(digest) as ConvergeStaticIrExport | undefined
-  return resolveDirtyRootPathsFromRootIds({
-    rootIds: args.rootIds,
-    fieldPaths: (ir as any)?.fieldPaths,
-  })
-}
-
-const enrichTraitConvergeDirtyRootPaths = (
-  value: JsonValue,
-  resolveConvergeStaticIr?: ResolveConvergeStaticIr,
-): JsonValue => {
+const stripTraitConvergeLegacyFields = (value: JsonValue): JsonValue => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value
 
   const anyValue = value as any
-  const dirty = anyValue.dirty
-  if (!dirty || typeof dirty !== 'object' || Array.isArray(dirty)) return value
-
-  const dirtyRootPaths = resolveTraitConvergeDirtyRootPaths({
-    staticIrDigest: anyValue.staticIrDigest,
-    rootIds: dirty?.rootIds,
-    resolveConvergeStaticIr,
-  })
-  if (!dirtyRootPaths) return value
+  const { dirtyRoots, ...rest } = anyValue
+  const dirty = (rest as any).dirty
+  if (!dirty || typeof dirty !== 'object' || Array.isArray(dirty)) {
+    return rest as JsonValue
+  }
 
   return {
-    ...anyValue,
-    dirty: {
-      ...(dirty as any),
-      rootPaths: dirtyRootPaths,
-    },
+    ...rest,
+    dirty: stripDirtyRootPaths(dirty),
   } as JsonValue
 }
 
-const stripTraitConvergeLight = (
-  value: JsonValue,
-  resolveConvergeStaticIr?: ResolveConvergeStaticIr,
-): JsonValue => {
+const stripTraitConvergeLight = (value: JsonValue): JsonValue => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value
 
   const anyValue = value as any
   const dirty = anyValue.dirty
-  const dirtyRootPaths = resolveTraitConvergeDirtyRootPaths({
-    staticIrDigest: anyValue.staticIrDigest,
-    rootIds: dirty?.rootIds,
-    resolveConvergeStaticIr,
-  })
   const dirtySlim =
     dirty && typeof dirty === 'object' && !Array.isArray(dirty)
       ? {
@@ -561,7 +472,6 @@ const stripTraitConvergeLight = (
           ...(typeof (dirty as any).rootIdsTruncated === 'boolean'
             ? { rootIdsTruncated: (dirty as any).rootIdsTruncated }
             : null),
-          ...(dirtyRootPaths ? { rootPaths: dirtyRootPaths } : null),
         }
       : undefined
 
@@ -1019,7 +929,6 @@ export const toRuntimeDebugEventRef = (
   options?: {
     readonly diagnosticsLevel?: DiagnosticsLevel
     readonly eventSeq?: number
-    readonly resolveConvergeStaticIr?: (staticIrDigest: string) => ConvergeStaticIrExport | undefined
     readonly onMetaProjection?: (projection: {
       readonly stats: JsonValueProjectionStats
       readonly downgrade?: JsonDowngradeReason
@@ -1159,12 +1068,12 @@ export const toRuntimeDebugEventRef = (
     }
     case 'state:update': {
       const e = event as Extract<Event, { readonly type: 'state:update' }>
-      const dirtySetWithRootPaths = withStateUpdateDirtySetRootPaths(e, options?.resolveConvergeStaticIr)
+      const dirtySetCanonical = stripDirtyRootPaths(e.dirtySet)
 
       const metaInput = isLightLike
         ? {
             state: e.state,
-            dirtySet: dirtySetWithRootPaths,
+            dirtySet: dirtySetCanonical,
             patchCount: e.patchCount,
             patchesTruncated: e.patchesTruncated,
             patchesTruncatedReason: e.patchesTruncatedReason,
@@ -1176,7 +1085,7 @@ export const toRuntimeDebugEventRef = (
           }
         : {
             state: e.state,
-            dirtySet: dirtySetWithRootPaths,
+            dirtySet: dirtySetCanonical,
             patchCount: e.patchCount,
             patchesTruncated: e.patchesTruncated,
             patchesTruncatedReason: e.patchesTruncatedReason,
@@ -1597,14 +1506,13 @@ export const toRuntimeDebugEventRef = (
 
       // trace:trait:converge: converge evidence must be exportable (JsonValue hard gate) and trims heavy fields in light tier.
       if (event.type === 'trace:trait:converge') {
-        const resolveConvergeStaticIr = options?.resolveConvergeStaticIr
         const data = (event as Extract<Event, { readonly type: 'trace:trait:converge' }>).data
         const metaInput =
           diagnosticsLevel === 'light'
-            ? stripTraitConvergeLight(data, resolveConvergeStaticIr)
+            ? stripTraitConvergeLight(data)
             : diagnosticsLevel === 'sampled'
               ? stripTraitConvergeSampled(data)
-              : enrichTraitConvergeDirtyRootPaths(data, resolveConvergeStaticIr)
+              : stripTraitConvergeLegacyFields(data)
         const metaProjection = projectJsonValue(metaInput)
         options?.onMetaProjection?.({
           stats: metaProjection.stats,
