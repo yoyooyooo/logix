@@ -647,6 +647,65 @@ describe('WorkflowRuntime (075)', () => {
     }),
   )
 
+  it.effect('T202: workflow.run should expose diagnostics budget envelope + degrade marker', () =>
+    Effect.gen(function* () {
+      const M = Logix.Module.make('WorkflowRuntime.075.BudgetEnvelope', {
+        state: Schema.Struct({ done: Schema.Number }),
+        actions: { start: Schema.Void, done: Schema.Void },
+        reducers: {
+          done: Logix.Module.Reducer.mutate((draft) => {
+            ;(draft as { done: number }).done += 1
+          }),
+        },
+      })
+
+      const program = Logix.Workflow.make({
+        localId: 'budget-envelope',
+        trigger: Logix.Workflow.onAction('start'),
+        steps: [Logix.Workflow.dispatch({ key: 'dispatch.done', actionTag: 'done' })],
+      })
+
+      const impl = M.withWorkflow(program).implement({ initial: { done: 0 } })
+      const ring = Debug.makeRingBufferSink(256)
+      const hostScheduler = makeTestHostScheduler()
+      const runtime = Logix.Runtime.make(impl, {
+        middleware: [Middleware.makeDebugObserver()],
+        layer: Layer.mergeAll(
+          testHostSchedulerLayer(hostScheduler),
+          Debug.replace([ring.sink]),
+          Debug.diagnosticsLevel('light'),
+        ),
+      })
+
+      try {
+        yield* Effect.promise(() =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const rt = yield* M.tag
+              yield* rt.dispatch({ _tag: 'start' })
+              yield* flushAllHostScheduler(hostScheduler)
+              expect(yield* rt.getState).toEqual({ done: 1 })
+            }),
+          ),
+        )
+
+        const trace = ring.getSnapshot().filter((e) => e.type === 'trace:effectop') as Array<Debug.Event>
+        const runEvent = trace.find((e) => getTraceName(e) === 'workflow.run')
+        const meta = runEvent ? getTraceMeta(runEvent) : undefined
+        const budgetEnvelope = isRecord(meta?.budgetEnvelope) ? (meta?.budgetEnvelope as Record<string, unknown>) : undefined
+        const degrade = isRecord(meta?.degrade) ? (meta?.degrade as Record<string, unknown>) : undefined
+
+        expect(runEvent).toBeDefined()
+        expect(budgetEnvelope?.contract).toBe('diagnostics_budget.v1')
+        expect(budgetEnvelope?.domain).toBe('workflow')
+        expect(typeof budgetEnvelope?.runId).toBe('string')
+        expect(degrade?.degraded).toBe(false)
+      } finally {
+        yield* Effect.promise(() => runtime.dispose())
+      }
+    }),
+  )
+
   it.effect('T203: actions$ watcher is single-subscription per module instance', () =>
     Effect.gen(function* () {
       const M = Logix.Module.make('WorkflowRuntime.075.SingleWatcher', {

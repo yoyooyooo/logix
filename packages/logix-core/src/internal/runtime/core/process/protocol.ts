@@ -1,3 +1,5 @@
+import type { RunBudgetEnvelopeV1, RunDegradeMarkerV1 } from '../diagnosticsBudget.js'
+
 export type DiagnosticsLevel = 'off' | 'light' | 'full'
 
 export type ProcessScope =
@@ -137,6 +139,16 @@ export type ProcessEvent = {
     readonly actionId: string
   }
   readonly error?: SerializableErrorSummary
+  /**
+   * Run 级诊断预算 envelope（统一口径，兼容 workflow/flow）。
+   * - 旧消费端可继续读取 error.hint；
+   * - 新消费端应优先读取该结构化字段。
+   */
+  readonly budgetEnvelope?: RunBudgetEnvelopeV1
+  /**
+   * Run 级降级标记（统一口径，兼容 workflow/flow）。
+   */
+  readonly degrade?: RunDegradeMarkerV1
 }
 
 export interface ProcessControlRequest {

@@ -9,6 +9,7 @@ import { currentTxnOriginOverride } from './TxnOriginOverride.js'
 import { getRuntimeInternals } from './runtimeInternalsAccessor.js'
 import { RootContextTag, type RootContext } from './RootContext.js'
 import * as TaskRunner from './TaskRunner.js'
+import { makeRunBudgetEnvelopeV1, makeRunDegradeMarkerV1 } from './diagnosticsBudget.js'
 import * as EffectOp from '../../effect-op.js'
 import { makeWorkflowError } from '../../workflow/errors.js'
 import { compileWorkflowRuntimeStepsV1, type CompiledWorkflowStep } from '../../workflow/compiler.js'
@@ -221,6 +222,21 @@ const resolvePriority = (def: WorkflowDefV1): Priority => (def.policy?.priority 
 
 const makeRunId = (instanceId: string, programId: string, runSeq: number): string =>
   `${instanceId}::wf:${programId}::r${runSeq}`
+
+const makeWorkflowRunBudgetMeta = (args: {
+  readonly runId: string
+  readonly diagnostics: Debug.DiagnosticsLevel
+  readonly observed: boolean
+}) => ({
+  budgetEnvelope: makeRunBudgetEnvelopeV1({
+    domain: 'workflow',
+    runId: args.runId,
+  }),
+  degrade: makeRunDegradeMarkerV1(
+    !args.observed,
+    args.observed ? undefined : args.diagnostics === 'sampled' ? 'sampled_out' : 'observer_disabled',
+  ),
+})
 
 const runBoundary = <A, E, R>(args: {
   readonly kind: EffectOp.EffectOp['kind']
@@ -461,6 +477,11 @@ const startProgramRun = (args: {
             name: 'workflow.cancel',
             payload: { programId: program.programId, cancelled: prevRunId, by: runId },
             meta: {
+              ...makeWorkflowRunBudgetMeta({
+                runId,
+                diagnostics,
+                observed: observe,
+              }),
               ...(tickSeq !== undefined ? { tickSeq } : null),
               policy: { disableObservers: !observe },
               reason: 'latest' as const,
@@ -476,6 +497,11 @@ const startProgramRun = (args: {
 
     const observe = shouldObserveForRun(diagnostics, runSeq)
     const policy = { disableObservers: !observe } satisfies NonNullable<EffectOp.EffectOp['meta']>['policy']
+    const runBudgetMeta = makeWorkflowRunBudgetMeta({
+      runId,
+      diagnostics,
+      observed: observe,
+    })
 
     const programEffect = Effect.gen(function* () {
       const host = yield* HostSchedulerTag
@@ -533,6 +559,7 @@ const startProgramRun = (args: {
                 payload: { actionTag: step.actionTag },
                 meta: {
                   runId,
+                  ...runBudgetMeta,
                   stepKey: step.key,
                   ...(tickSeq !== undefined ? { tickSeq } : null),
                   policy,
@@ -554,6 +581,7 @@ const startProgramRun = (args: {
                     payload: { ms: step.ms },
                     meta: {
                       runId,
+                      ...runBudgetMeta,
                       stepKey: step.key,
                       ...(timerId ? { timerId } : null),
                       ...(tickSeq !== undefined ? { tickSeq } : null),
@@ -581,6 +609,7 @@ const startProgramRun = (args: {
                 payload: { ms: step.ms },
                 meta: {
                   runId,
+                  ...runBudgetMeta,
                   stepKey: step.key,
                   ...(tickSeq !== undefined ? { tickSeq } : null),
                   ...(timerId ? { timerId } : null),
@@ -607,6 +636,7 @@ const startProgramRun = (args: {
                 payload: { serviceId: step.serviceId },
                 meta: {
                   runId,
+                  ...runBudgetMeta,
                   stepKey: step.key,
                   serviceId: step.serviceId,
                   attempt,
@@ -638,6 +668,7 @@ const startProgramRun = (args: {
                             payload: { ms: timeoutMs },
                             meta: {
                               runId,
+                              ...runBudgetMeta,
                               stepKey: step.key,
                               attempt,
                               ...(timerId ? { timerId } : null),
@@ -721,6 +752,7 @@ const startProgramRun = (args: {
         payload: { trigger: args.trigger },
         meta: {
           runId,
+          ...runBudgetMeta,
           ...(runTickSeq !== undefined ? { tickSeq: runTickSeq } : null),
           policy,
         },
