@@ -20,6 +20,27 @@ type ActionAnalysis = {
   readonly originOp: 'remove' | 'insert' | 'unset' | 'set'
 }
 
+type ActionPropagationTopicTarget<A> = {
+  readonly topicTag: string
+  readonly hub: PubSub.PubSub<A>
+}
+
+type ActionPropagationEntry<A> = {
+  readonly action: A
+  readonly analysis: ActionAnalysis
+  readonly topicTargets: ReadonlyArray<ActionPropagationTopicTarget<A>>
+  readonly fanoutCount: number
+}
+
+type ActionPressureSource = {
+  readonly dispatchEntry: DispatchEntryPoint
+  readonly channel: 'main' | 'topic'
+  readonly topicTag?: string
+  readonly actionTag?: string
+  readonly batchSize?: number
+  readonly fanoutCount?: number
+}
+
 export const makeDispatchOps = <S, A>(args: {
   readonly optionsModuleId: string | undefined
   readonly instanceId: string
@@ -384,117 +405,129 @@ export const makeDispatchOps = <S, A>(args: {
           )
   }
 
-  const publishActionToHubs = (
-    action: A,
-    analysis: ActionAnalysis,
+  const makeActionPressureSource = (args: ActionPressureSource): Record<string, unknown> => ({
+    dispatchEntry: args.dispatchEntry,
+    channel: args.channel,
+    ...(typeof args.topicTag === 'string' ? { topicTag: args.topicTag } : {}),
+    ...(typeof args.actionTag === 'string' ? { actionTag: args.actionTag } : {}),
+    ...(typeof args.batchSize === 'number' ? { batchSize: args.batchSize } : {}),
+    ...(typeof args.fanoutCount === 'number' ? { fanoutCount: args.fanoutCount } : {}),
+  })
+
+  const makeActionPropagationEntry = (action: A, analysis: ActionAnalysis): ActionPropagationEntry<A> => {
+    const topicTargets: Array<ActionPropagationTopicTarget<A>> = []
+    const primaryTopicTag = analysis.topicTagPrimary
+    const primaryTopicHub = primaryTopicTag ? actionTagHubsByTag?.get(primaryTopicTag) : undefined
+    if (primaryTopicHub && primaryTopicTag) {
+      topicTargets.push({ topicTag: primaryTopicTag, hub: primaryTopicHub })
+    }
+
+    const secondaryTopicTag = analysis.topicTagSecondary
+    const secondaryTopicHub = secondaryTopicTag ? actionTagHubsByTag?.get(secondaryTopicTag) : undefined
+    if (secondaryTopicHub && secondaryTopicTag) {
+      topicTargets.push({ topicTag: secondaryTopicTag, hub: secondaryTopicHub })
+    }
+
+    return {
+      action,
+      analysis,
+      topicTargets,
+      fanoutCount: topicTargets.length,
+    }
+  }
+
+  const resolveSharedActionTag = (entries: ReadonlyArray<ActionPropagationEntry<A>>): string | undefined => {
+    if (entries.length === 0) {
+      return undefined
+    }
+    const first = entries[0]!.analysis.actionTagNormalized
+    for (let index = 1; index < entries.length; index += 1) {
+      if (entries[index]!.analysis.actionTagNormalized !== first) {
+        return undefined
+      }
+    }
+    return first
+  }
+
+  const publishActionPropagationBus = (
+    entries: ReadonlyArray<ActionPropagationEntry<A>>,
     dispatchEntry: DispatchEntryPoint,
     resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
   ): Effect.Effect<void> =>
     Effect.gen(function* () {
-      const primaryTopicTag = analysis.topicTagPrimary
-      const primaryTopicHub = primaryTopicTag ? actionTagHubsByTag?.get(primaryTopicTag) : undefined
-      const secondaryTopicTag = analysis.topicTagSecondary
-      const secondaryTopicHub = secondaryTopicTag ? actionTagHubsByTag?.get(secondaryTopicTag) : undefined
-      const fanoutCount = Number(primaryTopicHub != null) + Number(secondaryTopicHub != null)
-
-      yield* publishWithPressureDiagnostics(PubSub.publish(actionHub, action), () => ({
-        kind: 'actionHub',
-        name: 'publish',
-        details: {
-          dispatchEntry,
-          channel: 'main',
-          fanoutCount,
-        },
-      }), resolvePolicy)
-
-      if (primaryTopicHub && primaryTopicTag) {
-        yield* publishWithPressureDiagnostics(PubSub.publish(primaryTopicHub, action), () => ({
-          kind: 'actionTopicHub',
-          name: 'publish',
-          details: {
-            dispatchEntry,
-            channel: 'topic',
-            topicTag: primaryTopicTag,
-            fanoutCount,
-          },
-        }), resolvePolicy)
-      }
-
-      if (secondaryTopicHub && secondaryTopicTag) {
-        yield* publishWithPressureDiagnostics(PubSub.publish(secondaryTopicHub, action), () => ({
-          kind: 'actionTopicHub',
-          name: 'publish',
-          details: {
-            dispatchEntry,
-            channel: 'topic',
-            topicTag: secondaryTopicTag,
-            fanoutCount,
-          },
-        }), resolvePolicy)
-      }
-    })
-
-  const publishBatchToHubs = (
-    actions: ReadonlyArray<A>,
-    analyses: ReadonlyArray<ActionAnalysis>,
-    dispatchEntry: DispatchEntryPoint,
-    resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
-  ): Effect.Effect<void> =>
-    Effect.gen(function* () {
-      if (actions.length === 0) {
+      if (entries.length === 0) {
         return
       }
 
-      yield* publishWithPressureDiagnostics(PubSub.publishAll(actionHub, actions), () => ({
-        kind: 'actionHub',
-        name: 'publishAll',
-        details: {
-          dispatchEntry,
-          channel: 'main',
-          batchSize: actions.length,
-        },
-      }), resolvePolicy)
+      const batchSize = entries.length
+      let batchFanoutCount = 0
+      for (let index = 0; index < entries.length; index += 1) {
+        batchFanoutCount += entries[index]!.fanoutCount
+      }
+      const batchActionTag = batchSize === 1 ? entries[0]!.analysis.actionTagNormalized : resolveSharedActionTag(entries)
 
-      for (let index = 0; index < actions.length; index += 1) {
-        const action = actions[index] as A
-        const analysis = analyses[index] as ActionAnalysis
-        const actionTag = analysis.actionTag ?? 'unknown'
-        const primaryTopicTag = analysis.topicTagPrimary
-        const primaryTopicHub = primaryTopicTag ? actionTagHubsByTag?.get(primaryTopicTag) : undefined
-        const secondaryTopicTag = analysis.topicTagSecondary
-        const secondaryTopicHub = secondaryTopicTag ? actionTagHubsByTag?.get(secondaryTopicTag) : undefined
-        const fanoutCount = Number(primaryTopicHub != null) + Number(secondaryTopicHub != null)
-
-        if (primaryTopicHub && primaryTopicTag) {
-          // Keep original batch order when fan-outing to tag streams.
-          yield* publishWithPressureDiagnostics(PubSub.publish(primaryTopicHub, action), () => ({
-            kind: 'actionTopicHub',
+      if (batchSize === 1) {
+        const entry = entries[0]!
+        yield* publishWithPressureDiagnostics(
+          PubSub.publish(actionHub, entry.action),
+          () => ({
+            kind: 'actionHub',
             name: 'publish',
-            details: {
+            details: makeActionPressureSource({
               dispatchEntry,
-              channel: 'topic',
-              topicTag: primaryTopicTag,
-              actionTag,
-              batchSize: actions.length,
-              fanoutCount,
-            },
-          }), resolvePolicy)
+              channel: 'main',
+              actionTag: batchActionTag,
+              batchSize,
+              fanoutCount: batchFanoutCount,
+            }),
+          }),
+          resolvePolicy,
+        )
+      } else {
+        const batchActions = new Array<A>(batchSize)
+        for (let index = 0; index < batchSize; index += 1) {
+          batchActions[index] = entries[index]!.action
         }
 
-        if (secondaryTopicHub && secondaryTopicTag) {
-          // Keep original batch order when fan-outing to tag streams.
-          yield* publishWithPressureDiagnostics(PubSub.publish(secondaryTopicHub, action), () => ({
-            kind: 'actionTopicHub',
+        yield* publishWithPressureDiagnostics(
+          PubSub.publishAll(actionHub, batchActions),
+          () => ({
+            kind: 'actionHub',
             name: 'publish',
-            details: {
+            details: makeActionPressureSource({
               dispatchEntry,
-              channel: 'topic',
-              topicTag: secondaryTopicTag,
-              actionTag,
-              batchSize: actions.length,
-              fanoutCount,
-            },
-          }), resolvePolicy)
+              channel: 'main',
+              actionTag: batchActionTag,
+              batchSize,
+              fanoutCount: batchFanoutCount,
+            }),
+          }),
+          resolvePolicy,
+        )
+      }
+
+      // Keep original order when fan-outing to per-tag topic streams.
+      for (let index = 0; index < entries.length; index += 1) {
+        const entry = entries[index]!
+        const actionTag = entry.analysis.actionTagNormalized
+        for (let topicIndex = 0; topicIndex < entry.topicTargets.length; topicIndex += 1) {
+          const topicTarget = entry.topicTargets[topicIndex]!
+          yield* publishWithPressureDiagnostics(
+            PubSub.publish(topicTarget.hub, entry.action),
+            () => ({
+              kind: 'actionTopicHub',
+              name: 'publish',
+              details: makeActionPressureSource({
+                dispatchEntry,
+                channel: 'topic',
+                topicTag: topicTarget.topicTag,
+                actionTag,
+                batchSize,
+                fanoutCount: entry.fanoutCount,
+              }),
+            }),
+            resolvePolicy,
+          )
         }
       }
     })
@@ -507,9 +540,10 @@ export const makeDispatchOps = <S, A>(args: {
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) => {
           const analysis = analyzeAction(action)
+          const propagationEntry = makeActionPropagationEntry(action, analysis)
           const resolvePolicy = makeLazyPolicyResolver()
           return enqueueTransaction(runDispatch(action, analysis, override)).pipe(
-            Effect.zipRight(publishActionToHubs(action, analysis, 'dispatch', resolvePolicy)),
+            Effect.zipRight(publishActionPropagationBus([propagationEntry], 'dispatch', resolvePolicy)),
           )
         }),
       ),
@@ -520,9 +554,13 @@ export const makeDispatchOps = <S, A>(args: {
           for (let index = 0; index < actions.length; index += 1) {
             analyses[index] = analyzeAction(actions[index] as A)
           }
+          const propagationEntries = new Array<ActionPropagationEntry<A>>(actions.length)
+          for (let index = 0; index < actions.length; index += 1) {
+            propagationEntries[index] = makeActionPropagationEntry(actions[index] as A, analyses[index] as ActionAnalysis)
+          }
           const resolvePolicy = makeLazyPolicyResolver()
           return enqueueTransaction(runDispatchBatch(actions, analyses, override)).pipe(
-            Effect.zipRight(publishBatchToHubs(actions, analyses, 'dispatchBatch', resolvePolicy)),
+            Effect.zipRight(publishActionPropagationBus(propagationEntries, 'dispatchBatch', resolvePolicy)),
           )
         }),
       ),
@@ -530,9 +568,10 @@ export const makeDispatchOps = <S, A>(args: {
       FiberRef.get(currentTxnOriginOverride).pipe(
         Effect.flatMap((override) => {
           const analysis = analyzeAction(action)
+          const propagationEntry = makeActionPropagationEntry(action, analysis)
           const resolvePolicy = makeLazyPolicyResolver()
           return enqueueTransaction(runDispatchLowPriority(action, analysis, override)).pipe(
-            Effect.zipRight(publishActionToHubs(action, analysis, 'dispatchLowPriority', resolvePolicy)),
+            Effect.zipRight(publishActionPropagationBus([propagationEntry], 'dispatchLowPriority', resolvePolicy)),
           )
         }),
       ),
