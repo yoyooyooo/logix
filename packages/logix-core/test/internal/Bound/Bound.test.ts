@@ -1,6 +1,6 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
-import { Chunk, Context, Effect, Fiber, Layer, Queue, PubSub, Schema, Stream, SubscriptionRef, Deferred } from 'effect'
+import { Chunk, Context, Effect, Fiber, Layer, Queue, PubSub, Schema, Stream, Deferred } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
 import type { RuntimeInternals } from '../../../src/internal/runtime/core/RuntimeInternals.js'
@@ -144,7 +144,7 @@ describe('Bound API (public)', () => {
         values.push(initial.count)
 
         const ref = $.state.ref()
-        const fromRef1 = yield* SubscriptionRef.get(ref)
+        const fromRef1 = yield* ref.get
         values.push(fromRef1.count)
 
         yield* $.state.update((s) => ({
@@ -153,7 +153,7 @@ describe('Bound API (public)', () => {
         }))
 
         const afterUpdate = yield* $.state.read
-        const fromRef2 = yield* SubscriptionRef.get(ref)
+        const fromRef2 = yield* ref.get
         values.push(afterUpdate.count, fromRef2.count)
       }),
     )
@@ -418,7 +418,7 @@ describe('Bound API (public)', () => {
       changes: () => Stream.empty,
       changesWithMeta: () => Stream.empty,
       changesReadQueryWithMeta: () => Stream.empty as any,
-      ref: (): SubscriptionRef.SubscriptionRef<any> => ({}) as unknown as SubscriptionRef.SubscriptionRef<any>,
+      ref: (): Logix.ReadonlySubscriptionRef<any> => ({}) as unknown as Logix.ReadonlySubscriptionRef<any>,
     } as Logix.ModuleRuntime<{ count: number }, any>
 
     const internals: RuntimeInternals = {

@@ -2,6 +2,7 @@ import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Context, Effect, Stream, SubscriptionRef } from 'effect'
 import * as Logix from '../../../src/index.js'
+import * as ModuleRuntime from '../../../src/internal/runtime/ModuleRuntime.js'
 import { getExternalStoreDescriptor } from '../../../src/internal/external-store-descriptor.js'
 import { __unsafeSetGlobalHostSchedulerForTests, getGlobalHostScheduler } from '../../../src/internal/runtime/core/HostScheduler.js'
 import { flushAllHostScheduler, makeTestHostScheduler } from '../testkit/hostSchedulerTestKit.js'
@@ -93,6 +94,25 @@ describe('ExternalStore sugars', () => {
       } finally {
         __unsafeSetGlobalHostSchedulerForTests(prev)
       }
+    }),
+  )
+
+  it.scoped('fromSubscriptionRef: runtime.ref() root view keeps stable storeId across calls', () =>
+    Effect.gen(function* () {
+      const runtime = yield* ModuleRuntime.make({ count: 0 })
+
+      const ref1 = runtime.ref()
+      const ref2 = runtime.ref()
+      const store1 = Logix.ExternalStore.fromSubscriptionRef(ref1)
+      const store2 = Logix.ExternalStore.fromSubscriptionRef(ref2)
+
+      const d1 = getExternalStoreDescriptor(store1)
+      const d2 = getExternalStoreDescriptor(store2)
+      expect(d1?.kind).toBe('subscriptionRef')
+      expect(d2?.kind).toBe('subscriptionRef')
+      if (!d1 || d1.kind !== 'subscriptionRef') throw new Error('Expected a subscriptionRef descriptor')
+      if (!d2 || d2.kind !== 'subscriptionRef') throw new Error('Expected a subscriptionRef descriptor')
+      expect(d2.storeId).toBe(d1.storeId)
     }),
   )
 

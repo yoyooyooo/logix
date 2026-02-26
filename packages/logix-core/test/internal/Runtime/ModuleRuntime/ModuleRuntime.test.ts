@@ -49,9 +49,13 @@ describe('ModuleRuntime (internal)', () => {
         yield* runtime.setState({ count: 1 })
         expect(yield* runtime.getState).toEqual({ count: 1 })
 
-        // SubscriptionRef consistency via ref()
+        // Read-only ref consistency via ref()
         const ref = runtime.ref()
-        expect(yield* ref).toEqual({ count: 1 })
+        expect(yield* ref.get).toEqual({ count: 1 })
+
+        // write protection: root refs are read-only, setting should fail
+        const exit = yield* Effect.exit(SubscriptionRef.set(ref as any, { count: 2 }))
+        expect(exit._tag).toBe('Failure')
       }),
     )
 
@@ -76,7 +80,7 @@ describe('ModuleRuntime (internal)', () => {
         expect(Chunk.toReadonlyArray(changes)[0]).toBe(1)
 
         // write protection: derived refs are read-only, setting should fail
-        const exit = yield* Effect.exit(SubscriptionRef.set(countRef, 2))
+        const exit = yield* Effect.exit(SubscriptionRef.set(countRef as any, 2))
         expect(exit._tag).toBe('Failure')
       }),
     )

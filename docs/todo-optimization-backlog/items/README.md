@@ -15,6 +15,7 @@ owner: pr/o014-doc-impl-bidirectional-convergence
 | ID | 优先级 | 状态 | spec | 实现 | 证据 | 回写 | 文件 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | O-014 | P2 | done | [spec](../../../specs/102-o014-doc-impl-bidirectional-convergence/spec.md) | [docs](../README.md) | N/A（文档流程） | [specs 索引](../../specs/README.md) | [`O-014-doc-impl-bidirectional-convergence.md`](./O-014-doc-impl-bidirectional-convergence.md) |
+| O-016 | P1 | done | N/A（direct task） | [core](../../../packages/logix-core/src/internal/runtime/core/module.ts) | N/A（非热路径） | [runtime SSoT](../../ssot/runtime/logix-core/runtime/05-runtime-implementation.01-module-runtime-make.md) | [`O-016-readonly-subscription-ref.md`](./O-016-readonly-subscription-ref.md) |
 
 ## 回写要求
 

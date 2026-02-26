@@ -7,7 +7,7 @@
  *     - 自动维护 hasResults 派生标记。
  */
 
-import { Effect, Schema, Stream, SubscriptionRef } from 'effect'
+import { Effect, Schema, Stream } from 'effect'
 import { fileURLToPath } from 'node:url'
 import * as Logix from '@logixjs/core'
 
@@ -85,19 +85,26 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
     yield* Effect.log('--- Start ---')
 
-    // Simulate state update via Ref (since we don't have actions to update results)
-    const ref = runtime.ref()
+    // Simulate state updates via controlled runtime API.
+    const setResults = (results: ReadonlyArray<string>) =>
+      Effect.gen(function* () {
+        const prev = yield* runtime.getState
+        yield* runtime.setState({
+          ...prev,
+          results: Array.from(results),
+        })
+      })
 
     yield* Effect.log('Updating results to ["a"]...')
-    yield* SubscriptionRef.update(ref, (s) => ({ ...s, results: ['a'] }))
+    yield* setResults(['a'])
     yield* Effect.sleep(10)
 
     yield* Effect.log('Updating results to []...')
-    yield* SubscriptionRef.update(ref, (s) => ({ ...s, results: [] }))
+    yield* setResults([])
     yield* Effect.sleep(10)
 
     yield* Effect.log('Updating results to ["a", "b"]...')
-    yield* SubscriptionRef.update(ref, (s) => ({ ...s, results: ['a', 'b'] }))
+    yield* setResults(['a', 'b'])
     yield* Effect.sleep(10)
 
     yield* Effect.log('--- End ---')

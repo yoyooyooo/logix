@@ -25,12 +25,11 @@ export const TaskDef = Logix.Module.make('TaskModule', {
 
 export const TaskLogic = TaskDef.logic(($) =>
   Effect.gen(function* () {
-    // 借用整棵状态作为 SubscriptionRef，交给 Pattern 持续更新
-    const stateRef = $.state.ref()
-
     // 启动长任务：如果已经在 running，runExhaust 会丢弃后续触发，避免重复启动
     const startEffect = Effect.gen(function* () {
-      yield* runLongTaskPattern({ stateRef })
+      yield* runLongTaskPattern({
+        updateState: $.state.update,
+      })
     })
 
     // 重置任务状态

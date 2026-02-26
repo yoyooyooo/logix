@@ -57,6 +57,42 @@
           "userDocs": ["N/A: 无用户向功能变更"]
         }
       }
+    },
+    {
+      "id": "O-016",
+      "priority": "P1",
+      "status": "done",
+      "item": "docs/todo-optimization-backlog/items/O-016-readonly-subscription-ref.md",
+      "links": {
+        "spec": {
+          "spec": "N/A: depth1 direct task",
+          "plan": "N/A: depth1 direct task",
+          "tasks": "N/A: depth1 direct task"
+        },
+        "implementation": [
+          "packages/logix-core/src/internal/runtime/core/module.ts",
+          "packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts",
+          "packages/logix-core/src/ExternalStore.ts",
+          "examples/logix/src/patterns/long-task.ts",
+          "examples/logix/src/scenarios/approval-flow.ts",
+          "docs/todo-optimization-backlog/items/O-016-readonly-subscription-ref.md",
+          "docs/todo-optimization-backlog/items/README.md",
+          "docs/todo-optimization-backlog/status-registry.json"
+        ],
+        "evidence": {
+          "perf": ["N/A: 本次改动不触达 dispatch/commit 热路径，仅收敛 ref 暴露类型与写入口边界"],
+          "diagnostics": ["Runtime guard: 对强制 cast 后的写入触发明确 dieMessage，防止 silent bypass"]
+        },
+        "writeback": {
+          "ssot": [
+            "docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.01-module-runtime-make.md"
+          ],
+          "userDocs": [
+            "apps/docs/content/docs/api/core/bound-api.cn.md",
+            "apps/docs/content/docs/guide/learn/managing-state.cn.md"
+          ]
+        }
+      }
     }
   ]
 }

@@ -41,9 +41,9 @@ traits: Logix.StateTrait.from(StateSchema)({
 
 ### 2) `ExternalStore.fromSubscriptionRef(ref)`
 
-从 `SubscriptionRef` 创建 ExternalStore：
+从只读 ref（`get + changes`，`SubscriptionRef` 作为超集同样可用）创建 ExternalStore：
 
-- `getSnapshot()` 通过 `SubscriptionRef.get(ref)` 同步读（要求是纯读）。
+- `getSnapshot()` 通过 `ref.get` 同步读（要求是纯读）。
 - `subscribe()` 订阅 `ref.changes`，并用 microtask 合并通知（同一 microtask 多次更新只触发一次 notify）。
 
 ### 3) `ExternalStore.fromStream(stream, { initial | current })`

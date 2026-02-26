@@ -5,14 +5,18 @@ import {
   PubSub,
   Scope,
   Context,
-  Ref,
   FiberRef,
   Option,
   Queue,
   Duration,
   Chunk,
 } from 'effect'
-import type { LogicPlan, ModuleRuntime as PublicModuleRuntime, StateChangeWithMeta } from './module.js'
+import type {
+  LogicPlan,
+  ModuleRuntime as PublicModuleRuntime,
+  ReadonlySubscriptionRef,
+  StateChangeWithMeta,
+} from './module.js'
 import * as Lifecycle from './Lifecycle.js'
 import * as Debug from './DebugSink.js'
 import { currentConvergeStaticIrCollectors } from './ConvergeStaticIrCollector.js'
@@ -1262,6 +1266,36 @@ export const make = <S, A, R = never>(
       throw err
     }
 
+    const writeDenied = () =>
+      Effect.dieMessage(
+        '[ModuleRuntime.ref] state ref is read-only. Use runtime.setState / $.state.update / $.state.mutate instead.',
+      )
+
+    const passthroughPermits =
+      () =>
+      <A0, E0, R0>(self: Effect.Effect<A0, E0, R0>): Effect.Effect<A0, E0, R0> =>
+        self
+
+    const rootDenyWriteRef = {
+      get: SubscriptionRef.get(stateRef),
+      modify: writeDenied,
+    }
+
+    // Keep root ref identity stable for a runtime instance (important for storeId anchoring in ExternalStore.fromSubscriptionRef).
+    const rootReadonlyRef = {
+      get: SubscriptionRef.get(stateRef),
+      changes: stateRef.changes,
+      // Runtime guard for unsafe casts (`as any as SubscriptionRef`) to keep failure deterministic.
+      modify: writeDenied,
+      ref: rootDenyWriteRef,
+      pubsub: {
+        publish: () => Effect.succeed(true),
+      },
+      semaphore: {
+        withPermits: passthroughPermits,
+      },
+    } as const
+
     const runtime: PublicModuleRuntime<S, A> = {
       // Expose moduleId on the runtime so React / Devtools can correlate module information at the view layer.
       moduleId,
@@ -1362,36 +1396,32 @@ export const make = <S, A, R = never>(
           }),
         )
       },
-      ref: <V = S>(selector?: (s: S) => V): SubscriptionRef.SubscriptionRef<V> => {
+      ref: <V = S>(selector?: (s: S) => V): ReadonlySubscriptionRef<V> => {
         if (!selector) {
-          return stateRef as unknown as SubscriptionRef.SubscriptionRef<V>
+          return rootReadonlyRef as unknown as ReadonlySubscriptionRef<V>
         }
 
-        // Read-only derived view: derive from the root state via selector and forbid writes.
-        const readonlyRef = {
+        const denyWriteRef = {
           get: Effect.map(SubscriptionRef.get(stateRef), selector),
-          modify: () => Effect.dieMessage('Cannot write to a derived ref'),
-        } as unknown as Ref.Ref<V>
+          modify: writeDenied,
+        }
 
-        const derived = {
-          // SubscriptionRef internals access self.ref / self.pubsub / self.semaphore.
-          ref: readonlyRef,
+        const derivedRef = {
+          get: Effect.map(SubscriptionRef.get(stateRef), selector),
+          // Derived stream: selector-map stateRef.changes and de-duplicate.
+          changes: Stream.map(stateRef.changes, selector).pipe(Stream.changes) as Stream.Stream<V>,
+          // Runtime guard for unsafe casts (`as any as SubscriptionRef`) to keep failure deterministic.
+          modify: writeDenied,
+          ref: denyWriteRef,
           pubsub: {
             publish: () => Effect.succeed(true),
           },
           semaphore: {
-            withPermits:
-              () =>
-              <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-                self,
+            withPermits: passthroughPermits,
           },
-          get: readonlyRef.get,
-          modify: readonlyRef.modify,
-          // Derived stream: selector-map stateRef.changes and de-duplicate.
-          changes: Stream.map(stateRef.changes, selector).pipe(Stream.changes) as Stream.Stream<V>,
-        } as unknown as SubscriptionRef.SubscriptionRef<V>
+        }
 
-        return derived
+        return derivedRef
       },
     }
 

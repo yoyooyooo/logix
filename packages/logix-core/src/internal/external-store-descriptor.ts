@@ -1,4 +1,5 @@
-import type { Context, Stream, SubscriptionRef } from 'effect'
+import type { Context, Stream } from 'effect'
+import type * as LogixModule from './module.js'
 import type { ReadQueryCompiled } from './runtime/core/ReadQuery.js'
 
 export type ExternalStoreDescriptor =
@@ -20,7 +21,7 @@ export type ExternalStoreDescriptor =
   | {
       readonly kind: 'subscriptionRef'
       readonly storeId: string
-      readonly ref: SubscriptionRef.SubscriptionRef<any>
+      readonly ref: LogixModule.ReadonlySubscriptionRef<any>
     }
   | {
       readonly kind: 'stream'

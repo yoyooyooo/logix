@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema, Stream, SubscriptionRef } from 'effect'
+import { Context, Effect, Layer, Schema, Stream } from 'effect'
 import type * as Logic from './LogicMiddleware.js'
 import type { StateTransactionInstrumentation, TxnLanesPatch } from './env.js'
 import type { FieldPath } from '../../field-path.js'
@@ -78,6 +78,18 @@ export interface StateChangeWithMeta<V> {
 }
 
 /**
+ * Read-only state ref exposed to business/logic code.
+ *
+ * - Provides pure snapshot read (`get`) and change stream (`changes`) only.
+ * - Does not expose write methods (`set`/`modify`/`update`); writes must go through controlled APIs
+ *   such as `runtime.setState` / `$.state.update` / `$.state.mutate`.
+ */
+export interface ReadonlySubscriptionRef<V> {
+  readonly get: Effect.Effect<V, never, never>
+  readonly changes: Stream.Stream<V, never, never>
+}
+
+/**
  * The runtime interface of a Module (similar to "Store as Context" in docs),
  * exposing read/write, subscription, and dispatch capabilities to Logic / Flow.
  */
@@ -139,11 +151,11 @@ export interface ModuleRuntime<S, A> {
   readonly changesReadQueryWithMeta: <V>(readQuery: ReadQueryInput<S, V>) => Stream.Stream<StateChangeWithMeta<V>>
 
   /**
-   * Provide a SubscriptionRef for long-running / fine-grained logic to borrow state directly.
-   * The current implementation only exposes a ref for the whole state; selector views are up to the caller to wrap.
+   * Provide a read-only state ref for long-running / fine-grained logic.
+   * Write access is intentionally blocked at this boundary; all writes must use controlled runtime APIs.
    */
   readonly ref: {
-    <V = S>(selector?: (s: S) => V): SubscriptionRef.SubscriptionRef<V>
+    <V = S>(selector?: (s: S) => V): ReadonlySubscriptionRef<V>
   }
 }
 
@@ -258,7 +270,7 @@ export type BoundApiStateApi<Sh extends AnyModuleShape, R = never> = {
   readonly update: (f: (prev: StateOf<Sh>) => StateOf<Sh>) => DispatchEffect<Sh, R>
   readonly mutate: (f: (draft: Logic.Draft<StateOf<Sh>>) => void) => DispatchEffect<Sh, R>
   readonly ref: {
-    <V = StateOf<Sh>>(selector?: (s: StateOf<Sh>) => V): SubscriptionRef.SubscriptionRef<V>
+    <V = StateOf<Sh>>(selector?: (s: StateOf<Sh>) => V): ReadonlySubscriptionRef<V>
   }
 }
 

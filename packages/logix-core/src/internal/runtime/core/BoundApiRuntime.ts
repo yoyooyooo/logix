@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Option, Schema, Stream, SubscriptionRef } from 'effect'
+import { Context, Effect, FiberRef, Option, Schema, Stream } from 'effect'
 import { create } from 'mutative'
 import type * as Logix from './module.js'
 import * as Logic from './LogicMiddleware.js'

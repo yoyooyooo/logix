@@ -31,6 +31,7 @@ import type {
   StateCommitMode,
   StateCommitPriority,
   StateOf,
+  ReadonlySubscriptionRef,
 } from './internal/module.js'
 
 /**
@@ -73,6 +74,7 @@ export type {
   StateCommitPriority,
   StateCommitMeta,
   StateChangeWithMeta,
+  ReadonlySubscriptionRef,
 } from './internal/module.js'
 
 export interface DevSource {

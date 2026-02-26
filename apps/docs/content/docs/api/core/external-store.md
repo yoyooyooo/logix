@@ -41,9 +41,9 @@ Constraint: this store is resolved during install/runtime; don’t call its `get
 
 ### 2) `ExternalStore.fromSubscriptionRef(ref)`
 
-Create an ExternalStore from a `SubscriptionRef`:
+Create an ExternalStore from a read-only ref (`get + changes`; `SubscriptionRef` is supported as a superset):
 
-- `getSnapshot()` reads synchronously via `SubscriptionRef.get(ref)` (must be pure).
+- `getSnapshot()` reads synchronously via `ref.get` (must be pure).
 - `subscribe()` listens to `ref.changes` and coalesces notifications via microtasks (multiple updates in the same microtask trigger only one notify).
 
 ### 3) `ExternalStore.fromStream(stream, { initial | current })`

@@ -34,7 +34,7 @@ description: 使用 $.state 与用例级 Action 管理单一事实源。
 - `$.state.read`：读取当前状态快照；
 - `$.state.mutate(draft => { ... })`：使用可变 Draft 更新（推荐，默认优先）；
 - `$.state.update(prev => next)`：使用纯函数整棵替换状态（通常会被视为全量写入，谨慎使用）；
-- `$.state.ref(selector?)`：获取一个可订阅的 Ref，用于高级响应式场景。
+- `$.state.ref(selector?)`：获取一个只读可订阅 Ref（仅 `get/changes`），用于高级响应式场景。
 
 典型用法：
 

@@ -17,7 +17,7 @@ interface BoundApi<Sh, R> {
     readonly read: Effect<State>
     readonly update: (f: (prev: State) => State) => Effect<void>
     readonly mutate: (f: (draft: Draft<State>) => void) => Effect<void>
-    readonly ref: () => SubscriptionRef<State>
+    readonly ref: () => ReadonlySubscriptionRef<State>
   }
 
   // Action dispatching & listening
@@ -101,7 +101,7 @@ Other properties (`flow`, `match`, `traits`, etc.) have dedicated examples in Le
 - **`read`**: read the current state snapshot.
 - **`update`**: update state with a pure function.
 - **`mutate`**: update state with a `mutative`-style Draft mutation (recommended).
-- **`ref`**: access the underlying `SubscriptionRef` for advanced reactive operations.
+- **`ref`**: access a read-only ref (`get + changes`) for advanced subscriptions; writes must use `$.state.update / $.state.mutate`.
 
 ```typescript
 // Read

@@ -1,4 +1,4 @@
-import { Config, Data, Effect, Schema, SubscriptionRef, Duration } from 'effect'
+import { Config, Data, Duration, Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -80,13 +80,13 @@ export class ApprovalService extends Effect.Service<ApprovalService>()('Approval
 // ---------------------------------------------------------------------------
 
 export interface ApprovalEffectInput {
-  stateRef: SubscriptionRef.SubscriptionRef<ApprovalState>
+  readonly readState: Effect.Effect<ApprovalState, never, any>
 }
 
 export const runApprovalFlowEffect = (input: ApprovalEffectInput) =>
   Effect.gen(function* (_) {
     const api = yield* ApprovalService
-    const state = yield* SubscriptionRef.get(input.stateRef)
+    const state = yield* input.readState
 
     const { taskId, comment, decision } = state
 
@@ -119,9 +119,6 @@ export const ApprovalDef = Logix.Module.make('ApprovalModule', {
 
 export const ApprovalLogic = ApprovalDef.logic<ApprovalService>(($: Logix.BoundApi<ApprovalShape, ApprovalService>) =>
   Effect.gen(function* () {
-    // 借用整棵审批状态作为 Ref，交给封装好的长逻辑内部读取
-    const stateRef = $.state.ref()
-
     // 启动审批流：如果已有任务在提交中，runExhaust 会丢弃后续触发，防止重复提交
     const startApproval = Effect.gen(function* () {
       yield* $.state.update((prev: ApprovalState) => ({
@@ -131,7 +128,7 @@ export const ApprovalLogic = ApprovalDef.logic<ApprovalService>(($: Logix.BoundA
       }))
 
       // 执行业务长逻辑，并显式处理 ApprovalServiceError
-      yield* runApprovalFlowEffect({ stateRef }).pipe(
+      yield* runApprovalFlowEffect({ readState: $.state.read }).pipe(
         Effect.catchTag('ApprovalServiceError', (err: ApprovalServiceError) =>
           $.state.update((prev: ApprovalState) => ({
             ...prev,
