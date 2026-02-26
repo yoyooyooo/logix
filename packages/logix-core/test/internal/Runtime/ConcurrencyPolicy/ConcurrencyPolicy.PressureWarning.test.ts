@@ -81,6 +81,9 @@ describe('ConcurrencyPolicy (US1): pressure warning', () => {
           expect((event as any)?.trigger?.kind).toBe('actionHub')
           expect(source?.dispatchEntry).toBe('dispatch')
           expect(source?.channel).toBe('main')
+          expect(source?.actionTag).toBe('inc')
+          expect(source?.batchSize).toBe(1)
+          expect(source?.fanoutCount).toBe(0)
 
           yield* Fiber.join(dispatchFiber)
           yield* Fiber.join(consumerFiber)
@@ -88,6 +91,72 @@ describe('ConcurrencyPolicy (US1): pressure warning', () => {
           Effect.provideService(ConcurrencyPolicyTag, {
             concurrencyLimit: 16,
             // Tiny capacity + very low threshold to reproduce within 1s.
+            losslessBackpressureCapacity: 2,
+            pressureWarningThreshold: { backlogCount: 1, backlogDurationMs: 1 },
+            warningCooldownMs: 1000,
+          }),
+        ),
+      ),
+    )
+
+    await Effect.runPromise(program as any)
+  })
+
+  it('should annotate pressure source for dispatchBatch on main action bus', async () => {
+    const ring = Debug.makeRingBufferSink(256)
+
+    const program = Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const ready = yield* Deferred.make<void>()
+          const actionHub = yield* PubSub.bounded<any>(2)
+          const runtime = yield* ModuleRuntime.make(
+            { count: 0 } as any,
+            {
+              moduleId: 'PressureWarningBatch',
+              createActionHub: Effect.succeed(actionHub),
+            } as any,
+          )
+
+          const consumerFiber = yield* Effect.fork(
+            Effect.gen(function* () {
+              const subscription = yield* PubSub.subscribe(actionHub)
+              yield* Deferred.succeed(ready, undefined)
+              for (let i = 0; i < 12; i++) {
+                yield* Queue.take(subscription)
+                yield* Effect.sleep('50 millis')
+              }
+            }),
+          )
+          yield* Deferred.await(ready)
+
+          const actions = Array.from({ length: 12 }, () => ({
+            _tag: 'inc',
+            payload: undefined,
+          }))
+
+          const dispatchFiber = yield* Effect.fork(runtime.dispatchBatch(actions as any))
+
+          const event = yield* waitForPressureEventMatching(
+            ring,
+            Date.now() + 1000,
+            (candidate) =>
+              (candidate as any)?.trigger?.kind === 'actionHub' &&
+              ((candidate as any)?.trigger?.details?.source as any)?.dispatchEntry === 'dispatchBatch',
+          )
+          const source = (event as any)?.trigger?.details?.source
+
+          expect(source?.dispatchEntry).toBe('dispatchBatch')
+          expect(source?.channel).toBe('main')
+          expect(source?.actionTag).toBe('inc')
+          expect(source?.batchSize).toBe(12)
+          expect(source?.fanoutCount).toBe(0)
+
+          yield* Fiber.join(dispatchFiber)
+          yield* Fiber.join(consumerFiber)
+        }).pipe(
+          Effect.provideService(ConcurrencyPolicyTag, {
+            concurrencyLimit: 16,
             losslessBackpressureCapacity: 2,
             pressureWarningThreshold: { backlogCount: 1, backlogDurationMs: 1 },
             warningCooldownMs: 1000,
@@ -129,15 +198,8 @@ describe('ConcurrencyPolicy (US1): pressure warning', () => {
           const consumerFiber = yield* Effect.fork(
             Stream.runForEach(Stream.take(runtime.actionsByTag$('inc' as any), 12), () => Effect.sleep('50 millis')),
           )
-          yield* Effect.yieldNow()
-
-          const actions = Array.from({ length: 12 }, () => ({
-            _tag: 'inc',
-            payload: undefined,
-          }))
-
           const dispatchFiber = yield* Effect.fork(
-            Effect.forEach(actions, (a) => runtime.dispatch(a as any), { concurrency: 'unbounded' }),
+            Effect.forever(runtime.dispatch({ _tag: 'inc', payload: undefined } as any)),
           )
 
           const event = yield* waitForPressureEventMatching(
@@ -152,10 +214,12 @@ describe('ConcurrencyPolicy (US1): pressure warning', () => {
           expect(source?.dispatchEntry).toBe('dispatch')
           expect(source?.channel).toBe('topic')
           expect(source?.topicTag).toBe('inc')
+          expect(source?.actionTag).toBe('inc')
+          expect(source?.batchSize).toBe(1)
           expect(source?.fanoutCount).toBe(1)
 
-          yield* Fiber.join(dispatchFiber)
-          yield* Fiber.join(consumerFiber)
+          yield* Fiber.interrupt(dispatchFiber)
+          yield* Fiber.interrupt(consumerFiber)
         }).pipe(
           Effect.provideService(ConcurrencyPolicyTag, {
             concurrencyLimit: 16,
