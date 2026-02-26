@@ -107,7 +107,7 @@ export const layerFromContext = (context: Context.Context<any>): Layer.Layer<any
     Effect.gen(function* () {
       const ready = yield* Deferred.make<Context.Context<any>>()
       yield* Deferred.succeed(ready, context)
-      const root: RootContext = { context, ready }
+      const root: RootContext = { context, ready, lifecycle: { state: 'ready' } }
       return root
     }),
   )

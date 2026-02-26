@@ -30,6 +30,8 @@ describe('AppRuntime boot failure report', () => {
     expect(report.failure?.reasonCode).toBe('boot::base_layer_build_failed')
     expect(report.failure?.upstreamStages).toEqual(['build.baseLayer'])
     expect(report.rootContextLifecycle.state).toBe('uninitialized')
+    const failedStage = report.nodes.find((node) => node.stageId === 'build.baseEnv')
+    expect(typeof failedStage?.durationMs === 'number' && failedStage.durationMs >= 0).toBe(true)
 
     const mergeStage = report.nodes.find((node) => node.stageId === 'rootContext.merge')
     const readyStage = report.nodes.find((node) => node.stageId === 'rootContext.ready')
