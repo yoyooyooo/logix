@@ -399,7 +399,14 @@ export const makeDispatchOps = <S, A>(args: {
       })
     })
 
-  const publishActionsWithPressureDiagnostics = (
+  const publishActionWithPressureDiagnostics = (
+    hub: PubSub.PubSub<A>,
+    action: A,
+    trigger: () => Debug.TriggerRef,
+    resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
+  ): Effect.Effect<void> => publishWithPressureDiagnostics(PubSub.publish(hub, action), trigger, resolvePolicy)
+
+  const publishActionBatchWithPressureDiagnostics = (
     hub: PubSub.PubSub<A>,
     actions: ReadonlyArray<A>,
     trigger: () => Debug.TriggerRef,
@@ -408,12 +415,10 @@ export const makeDispatchOps = <S, A>(args: {
     if (actions.length === 0) {
       return Effect.void
     }
-
-    const publish =
-      actions.length === 1
-        ? PubSub.publish(hub, actions[0] as A)
-        : PubSub.publishAll(hub, actions)
-    return publishWithPressureDiagnostics(publish, trigger, resolvePolicy)
+    if (actions.length === 1) {
+      return publishActionWithPressureDiagnostics(hub, actions[0] as A, trigger, resolvePolicy)
+    }
+    return publishWithPressureDiagnostics(PubSub.publishAll(hub, actions), trigger, resolvePolicy)
   }
 
   const makeLazyPolicyResolver = (): (() => Effect.Effect<ResolvedConcurrencyPolicy>) => {
@@ -529,33 +534,51 @@ export const makeDispatchOps = <S, A>(args: {
         batchFanoutCount += entries[index]!.fanoutCount
       }
       const batchActionTag = batchSize === 1 ? entries[0]!.analysis.actionTagNormalized : resolveSharedActionTag(entries)
-      const batchActions = new Array<A>(batchSize)
-      for (let index = 0; index < batchSize; index += 1) {
-        batchActions[index] = entries[index]!.action
-      }
-
-      yield* publishActionsWithPressureDiagnostics(
-        actionHub,
-        batchActions,
-        () => ({
-          kind: 'actionHub',
-          name: 'publish',
-          details: makeActionPressureSource({
-            dispatchEntry,
-            channel: 'main',
-            actionTag: batchActionTag,
-            batchSize,
-            fanoutCount: batchFanoutCount,
+      if (batchSize === 1) {
+        yield* publishActionWithPressureDiagnostics(
+          actionHub,
+          entries[0]!.action,
+          () => ({
+            kind: 'actionHub',
+            name: 'publish',
+            details: makeActionPressureSource({
+              dispatchEntry,
+              channel: 'main',
+              actionTag: batchActionTag,
+              batchSize,
+              fanoutCount: batchFanoutCount,
+            }),
           }),
-        }),
-        resolvePolicy,
-      )
+          resolvePolicy,
+        )
+      } else {
+        const batchActions = new Array<A>(batchSize)
+        for (let index = 0; index < batchSize; index += 1) {
+          batchActions[index] = entries[index]!.action
+        }
+        yield* publishActionBatchWithPressureDiagnostics(
+          actionHub,
+          batchActions,
+          () => ({
+            kind: 'actionHub',
+            name: 'publish',
+            details: makeActionPressureSource({
+              dispatchEntry,
+              channel: 'main',
+              actionTag: batchActionTag,
+              batchSize,
+              fanoutCount: batchFanoutCount,
+            }),
+          }),
+          resolvePolicy,
+        )
+      }
 
       // Keep original order per topic stream while using publishAll for batch fan-out.
       const topicBatches = groupTopicBatches(entries)
       for (let topicIndex = 0; topicIndex < topicBatches.length; topicIndex += 1) {
         const topicBatch = topicBatches[topicIndex]!
-        yield* publishActionsWithPressureDiagnostics(
+        yield* publishActionBatchWithPressureDiagnostics(
           topicBatch.hub,
           topicBatch.actions,
           () => ({
