@@ -105,6 +105,36 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
+    it.scoped('dispatchBatch should keep actionHub order and count consistent', () =>
+      Effect.gen(function* () {
+        const hub = yield* PubSub.bounded<{ _tag: string; seq: number }>(64)
+        const runtime = yield* ModuleRuntime.make(
+          { count: 0 },
+          {
+            createActionHub: Effect.succeed(hub),
+          },
+        )
+
+        const subscription = yield* PubSub.subscribe(hub)
+        const actions = Array.from({ length: 8 }, (_, index) => ({
+          _tag: index % 2 === 0 ? 'INC' : 'DEC',
+          seq: index,
+          payload: undefined,
+        }))
+
+        const collectorFiber = yield* Effect.fork(
+          Effect.forEach(actions, () => Queue.take(subscription), { concurrency: 'unbounded' }),
+        )
+
+        yield* runtime.dispatchBatch(actions as any)
+
+        const received = yield* Fiber.join(collectorFiber)
+        expect(received).toHaveLength(actions.length)
+        expect(received.map((action) => action.seq)).toEqual(actions.map((action) => action.seq))
+        expect(received.map((action) => action._tag)).toEqual(actions.map((action) => action._tag))
+      }),
+    )
+
     it.scoped('should route actionsByTag$ without cross-tag noise', () =>
       Effect.gen(function* () {
         const TopicModule = Logix.Module.make('ActionTopicModule', {
@@ -139,6 +169,48 @@ describe('ModuleRuntime (internal)', () => {
 
         expect(incActions).toEqual(['inc', 'inc'])
         expect(decActions).toEqual(['dec'])
+      }),
+    )
+
+    it.scoped('dispatchBatch fan-out should keep per-topic order and count consistent', () =>
+      Effect.gen(function* () {
+        const TopicModule = Logix.Module.make('ActionTopicBatchConsistencyModule', {
+          state: Schema.Struct({ count: Schema.Number }),
+          actions: {
+            inc: Schema.Void,
+            dec: Schema.Void,
+          },
+        })
+
+        const runtime = yield* ModuleRuntime.make(
+          { count: 0 },
+          {
+            moduleId: 'action-topic-batch-consistency',
+            tag: TopicModule.tag,
+          },
+        )
+
+        expect(typeof runtime.actionsByTag$).toBe('function')
+        const actionsByTag = requireActionsByTag(runtime.actionsByTag$)
+
+        const batchActions = [
+          { _tag: 'inc', payload: undefined, seq: 1 },
+          { _tag: 'dec', payload: undefined, seq: 2 },
+          { _tag: 'inc', payload: undefined, seq: 3 },
+          { _tag: 'inc', type: 'dec', payload: undefined, seq: 4 },
+        ]
+
+        const incFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('inc'), 3)))
+        const decFiber = yield* Effect.fork(Stream.runCollect(Stream.take(actionsByTag('dec'), 2)))
+        yield* Effect.yieldNow()
+
+        yield* runtime.dispatchBatch(batchActions as any)
+
+        const incActions = Chunk.toReadonlyArray(yield* Fiber.join(incFiber))
+        const decActions = Chunk.toReadonlyArray(yield* Fiber.join(decFiber))
+
+        expect(incActions.map((action: any) => action.seq)).toEqual([1, 3, 4])
+        expect(decActions.map((action: any) => action.seq)).toEqual([2, 4])
       }),
     )
 

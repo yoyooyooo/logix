@@ -32,6 +32,14 @@ type ActionPropagationEntry<A> = {
   readonly fanoutCount: number
 }
 
+type ActionTopicBatch<A> = {
+  readonly topicTag: string
+  readonly hub: PubSub.PubSub<A>
+  readonly actions: ReadonlyArray<A>
+  readonly actionTag: string | undefined
+  readonly fanoutCount: number
+}
+
 type ActionPressureSource = {
   readonly dispatchEntry: DispatchEntryPoint
   readonly channel: 'main' | 'topic'
@@ -391,6 +399,23 @@ export const makeDispatchOps = <S, A>(args: {
       })
     })
 
+  const publishActionsWithPressureDiagnostics = (
+    hub: PubSub.PubSub<A>,
+    actions: ReadonlyArray<A>,
+    trigger: () => Debug.TriggerRef,
+    resolvePolicy: () => Effect.Effect<ResolvedConcurrencyPolicy>,
+  ): Effect.Effect<void> => {
+    if (actions.length === 0) {
+      return Effect.void
+    }
+
+    const publish =
+      actions.length === 1
+        ? PubSub.publish(hub, actions[0] as A)
+        : PubSub.publishAll(hub, actions)
+    return publishWithPressureDiagnostics(publish, trigger, resolvePolicy)
+  }
+
   const makeLazyPolicyResolver = (): (() => Effect.Effect<ResolvedConcurrencyPolicy>) => {
     let cached: ResolvedConcurrencyPolicy | undefined
     return () =>
@@ -449,6 +474,45 @@ export const makeDispatchOps = <S, A>(args: {
     return first
   }
 
+  const groupTopicBatches = (entries: ReadonlyArray<ActionPropagationEntry<A>>): ReadonlyArray<ActionTopicBatch<A>> => {
+    const grouped = new Map<
+      string,
+      {
+        topicTag: string
+        hub: PubSub.PubSub<A>
+        actions: Array<A>
+        actionTag: string | undefined
+        fanoutCount: number
+      }
+    >()
+
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index]!
+      for (let topicIndex = 0; topicIndex < entry.topicTargets.length; topicIndex += 1) {
+        const topicTarget = entry.topicTargets[topicIndex]!
+        let topicBatch = grouped.get(topicTarget.topicTag)
+        if (!topicBatch) {
+          topicBatch = {
+            topicTag: topicTarget.topicTag,
+            hub: topicTarget.hub,
+            actions: [],
+            actionTag: entry.analysis.actionTagNormalized,
+            fanoutCount: 0,
+          }
+          grouped.set(topicTarget.topicTag, topicBatch)
+        }
+
+        topicBatch.actions.push(entry.action)
+        topicBatch.fanoutCount += entry.fanoutCount
+        if (topicBatch.actionTag && topicBatch.actionTag !== entry.analysis.actionTagNormalized) {
+          topicBatch.actionTag = undefined
+        }
+      }
+    }
+
+    return Array.from(grouped.values())
+  }
+
   const publishActionPropagationBus = (
     entries: ReadonlyArray<ActionPropagationEntry<A>>,
     dispatchEntry: DispatchEntryPoint,
@@ -465,70 +529,49 @@ export const makeDispatchOps = <S, A>(args: {
         batchFanoutCount += entries[index]!.fanoutCount
       }
       const batchActionTag = batchSize === 1 ? entries[0]!.analysis.actionTagNormalized : resolveSharedActionTag(entries)
-
-      if (batchSize === 1) {
-        const entry = entries[0]!
-        yield* publishWithPressureDiagnostics(
-          PubSub.publish(actionHub, entry.action),
-          () => ({
-            kind: 'actionHub',
-            name: 'publish',
-            details: makeActionPressureSource({
-              dispatchEntry,
-              channel: 'main',
-              actionTag: batchActionTag,
-              batchSize,
-              fanoutCount: batchFanoutCount,
-            }),
-          }),
-          resolvePolicy,
-        )
-      } else {
-        const batchActions = new Array<A>(batchSize)
-        for (let index = 0; index < batchSize; index += 1) {
-          batchActions[index] = entries[index]!.action
-        }
-
-        yield* publishWithPressureDiagnostics(
-          PubSub.publishAll(actionHub, batchActions),
-          () => ({
-            kind: 'actionHub',
-            name: 'publish',
-            details: makeActionPressureSource({
-              dispatchEntry,
-              channel: 'main',
-              actionTag: batchActionTag,
-              batchSize,
-              fanoutCount: batchFanoutCount,
-            }),
-          }),
-          resolvePolicy,
-        )
+      const batchActions = new Array<A>(batchSize)
+      for (let index = 0; index < batchSize; index += 1) {
+        batchActions[index] = entries[index]!.action
       }
 
-      // Keep original order when fan-outing to per-tag topic streams.
-      for (let index = 0; index < entries.length; index += 1) {
-        const entry = entries[index]!
-        const actionTag = entry.analysis.actionTagNormalized
-        for (let topicIndex = 0; topicIndex < entry.topicTargets.length; topicIndex += 1) {
-          const topicTarget = entry.topicTargets[topicIndex]!
-          yield* publishWithPressureDiagnostics(
-            PubSub.publish(topicTarget.hub, entry.action),
-            () => ({
-              kind: 'actionTopicHub',
-              name: 'publish',
-              details: makeActionPressureSource({
-                dispatchEntry,
-                channel: 'topic',
-                topicTag: topicTarget.topicTag,
-                actionTag,
-                batchSize,
-                fanoutCount: entry.fanoutCount,
-              }),
+      yield* publishActionsWithPressureDiagnostics(
+        actionHub,
+        batchActions,
+        () => ({
+          kind: 'actionHub',
+          name: 'publish',
+          details: makeActionPressureSource({
+            dispatchEntry,
+            channel: 'main',
+            actionTag: batchActionTag,
+            batchSize,
+            fanoutCount: batchFanoutCount,
+          }),
+        }),
+        resolvePolicy,
+      )
+
+      // Keep original order per topic stream while using publishAll for batch fan-out.
+      const topicBatches = groupTopicBatches(entries)
+      for (let topicIndex = 0; topicIndex < topicBatches.length; topicIndex += 1) {
+        const topicBatch = topicBatches[topicIndex]!
+        yield* publishActionsWithPressureDiagnostics(
+          topicBatch.hub,
+          topicBatch.actions,
+          () => ({
+            kind: 'actionTopicHub',
+            name: 'publish',
+            details: makeActionPressureSource({
+              dispatchEntry,
+              channel: 'topic',
+              topicTag: topicBatch.topicTag,
+              actionTag: topicBatch.actionTag,
+              batchSize: topicBatch.actions.length,
+              fanoutCount: topicBatch.fanoutCount,
             }),
-            resolvePolicy,
-          )
-        }
+          }),
+          resolvePolicy,
+        )
       }
     })
 

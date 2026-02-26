@@ -237,4 +237,103 @@ describe('ConcurrencyPolicy (US1): pressure warning', () => {
 
     await Effect.runPromise(program as any)
   })
+
+  it('should annotate dispatchBatch topic pressure with converged source fields', async () => {
+    const ring = Debug.makeRingBufferSink(256)
+
+    const TopicModule = Logix.Module.make('PressureWarningTopicBatchModule', {
+      state: Schema.Struct({ count: Schema.Number }),
+      actions: {
+        inc: Schema.Void,
+        dec: Schema.Void,
+      },
+    })
+
+    const program = Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const actionHub = yield* PubSub.unbounded<any>()
+          const runtime = yield* ModuleRuntime.make(
+            { count: 0 } as any,
+            {
+              moduleId: 'PressureWarningTopicBatch',
+              tag: TopicModule.tag,
+              createActionHub: Effect.succeed(actionHub),
+            } as any,
+          )
+
+          if (!runtime.actionsByTag$) {
+            return yield* Effect.fail(new Error('expected actionsByTag$ to be available'))
+          }
+
+          const incConsumerFiber = yield* Effect.fork(
+            Stream.runForEach(Stream.take(runtime.actionsByTag$('inc' as any), 12), () => Effect.sleep('50 millis')),
+          )
+          const decConsumerFiber = yield* Effect.fork(
+            Stream.runForEach(Stream.take(runtime.actionsByTag$('dec' as any), 12), () => Effect.sleep('50 millis')),
+          )
+          yield* Effect.yieldNow()
+
+          const batchActions = Array.from({ length: 12 }, (_, index) =>
+            index % 2 === 0
+              ? ({ _tag: 'inc', type: 'dec', payload: undefined } as const)
+              : ({ _tag: 'dec', type: 'inc', payload: undefined } as const),
+          )
+
+          const dispatchFiber = yield* Effect.fork(runtime.dispatchBatch(batchActions as any))
+
+          const incEvent = yield* waitForPressureEventMatching(
+            ring,
+            Date.now() + 1500,
+            (candidate) =>
+              (candidate as any)?.trigger?.kind === 'actionTopicHub' &&
+              ((candidate as any)?.trigger?.details?.source as any)?.dispatchEntry === 'dispatchBatch' &&
+              ((candidate as any)?.trigger?.details?.source as any)?.topicTag === 'inc',
+          )
+          const decEvent = yield* waitForPressureEventMatching(
+            ring,
+            Date.now() + 1500,
+            (candidate) =>
+              (candidate as any)?.trigger?.kind === 'actionTopicHub' &&
+              ((candidate as any)?.trigger?.details?.source as any)?.dispatchEntry === 'dispatchBatch' &&
+              ((candidate as any)?.trigger?.details?.source as any)?.topicTag === 'dec',
+          )
+
+          const incSource = (incEvent as any)?.trigger?.details?.source
+          const decSource = (decEvent as any)?.trigger?.details?.source
+
+          expect(incSource?.dispatchEntry).toBe('dispatchBatch')
+          expect(incSource?.channel).toBe('topic')
+          expect(incSource?.topicTag).toBe('inc')
+          expect(incSource?.batchSize).toBe(12)
+          expect(incSource?.fanoutCount).toBe(24)
+          expect(Object.prototype.hasOwnProperty.call(incSource ?? {}, 'actionTag')).toBe(false)
+
+          expect(decSource?.dispatchEntry).toBe('dispatchBatch')
+          expect(decSource?.channel).toBe('topic')
+          expect(decSource?.topicTag).toBe('dec')
+          expect(decSource?.batchSize).toBe(12)
+          expect(decSource?.fanoutCount).toBe(24)
+          expect(Object.prototype.hasOwnProperty.call(decSource ?? {}, 'actionTag')).toBe(false)
+
+          yield* Fiber.join(dispatchFiber)
+          yield* Fiber.join(incConsumerFiber)
+          yield* Fiber.join(decConsumerFiber)
+        }).pipe(
+          Effect.provideService(ConcurrencyPolicyTag, {
+            concurrencyLimit: 16,
+            losslessBackpressureCapacity: 2,
+            pressureWarningThreshold: {
+              // Block txnQueue-origin warnings to isolate this test to publish/fan-out pressure.
+              backlogCount: 10_000,
+              backlogDurationMs: 1,
+            },
+            warningCooldownMs: 1000,
+          }),
+        ),
+      ),
+    )
+
+    await Effect.runPromise(program as any)
+  })
 })
