@@ -109,6 +109,9 @@ export interface RuntimeReadQueryStrictGateOptions {
    * - `off`: disabled (default).
    * - `warn`: allow but emit structured diagnostics.
    * - `error`: fail on forbidden fallbacks (CI/perf gate).
+   *
+   * O-009: runtime only consumes build-graded selectors.
+   * This gate applies to explicit runtime fallback paths (e.g. missing build grade), not to re-evaluate graded selectors.
    */
   readonly mode?: 'off' | 'warn' | 'error'
   /**

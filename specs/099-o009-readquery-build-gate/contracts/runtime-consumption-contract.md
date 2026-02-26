@@ -5,6 +5,7 @@
 - 运行时 MUST 优先消费构建期已定级 selector。
 - 对已定级 selector，运行时 MUST NOT 重复执行 strict gate 主判定。
 - 对未定级 selector，运行时 MUST 进入显式降级路径并输出稳定原因码。
+- 若配置了 `RuntimeOptions.readQuery.strictGate`，未定级 selector MUST 触发可观测行为（`warn/error`），不得静默 no-op。
 
 ## Runtime Evidence
 

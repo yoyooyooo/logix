@@ -3,10 +3,10 @@ import { it, expect } from '@effect/vitest'
 import { Cause, Chunk, Effect, Fiber, Stream } from 'effect'
 import * as Debug from '../../src/Debug.js'
 import * as ModuleRuntime from '../../src/internal/runtime/ModuleRuntime.js'
-import { ReadQueryStrictGateConfigTag } from '../../src/internal/runtime/core/env.js'
+import * as Logix from '../../src/index.js'
 
 describe('ReadQuery.strictGate', () => {
-  it.scoped('error mode: fails fast on dynamic selector (txnSeq=0)', () =>
+  it.scoped('build-grade error is enforced at runtime without re-evaluating runtime strict-gate config', () =>
     Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(64)
 
@@ -15,7 +15,12 @@ describe('ReadQuery.strictGate', () => {
       )
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
-      const stream = runtime.changesReadQueryWithMeta(selector)
+      const graded = Logix.ReadQuery.gradeReadQueryAtBuild({
+        moduleId: 'M',
+        input: selector,
+        strictGate: { mode: 'error' },
+      })
+      const stream = runtime.changesReadQueryWithMeta(graded.compiled)
 
       const fiber = yield* Effect.fork(
         Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
@@ -23,7 +28,6 @@ describe('ReadQuery.strictGate', () => {
         ),
       )
 
-      // Fallback: if the gate didn't trigger, at least ensure the stream won't block forever.
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
       )
@@ -44,16 +48,21 @@ describe('ReadQuery.strictGate', () => {
         selectorId: expect.any(String),
         fallbackReason: expect.any(String),
       })
-      expect(['missingDeps', 'unsupportedSyntax', 'unstableSelectorId']).toContain(details.fallbackReason)
+      expect(['missingDeps', 'unsupportedSyntax', 'unstableSelectorId', 'missingBuildGrade']).toContain(
+        details.fallbackReason,
+      )
       expect(() => JSON.stringify(details)).not.toThrow()
-    }).pipe(
-      Effect.provideService(ReadQueryStrictGateConfigTag, {
-        mode: 'error',
-      }),
-    ),
+
+      const diag = ring
+        .getSnapshot()
+        .find((e) => e.type === 'diagnostic' && e.code === 'read_query::strict_gate') as any
+      expect(diag).toBeDefined()
+      expect(diag.severity).toBe('error')
+      expect(diag.trigger?.details?.rule).toBe('requireStatic:global')
+    }),
   )
 
-  it.scoped('warn mode: emits serializable diagnostic and continues', () =>
+  it.scoped('build-grade warn emits serializable diagnostic and keeps stream behavior', () =>
     Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(64)
 
@@ -61,11 +70,14 @@ describe('ReadQuery.strictGate', () => {
         ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any),
       )
 
-      // Simulate a low-discriminability source via toString (e.g. [native code]) to trigger fallbackReason=unstableSelectorId.
-      const selector = (s: { count: number }) => s.count
-      ;(selector as any).toString = () => 'function () { [native code] }'
+      const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
+      const graded = Logix.ReadQuery.gradeReadQueryAtBuild({
+        moduleId: 'M',
+        input: selector,
+        strictGate: { mode: 'warn' },
+      })
 
-      const stream = Stream.take(runtime.changesReadQueryWithMeta(selector), 1)
+      const stream = Stream.take(runtime.changesReadQueryWithMeta(graded.compiled), 1)
 
       const fiber = yield* Effect.fork(
         Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(Stream.runCollect(stream)),
@@ -93,17 +105,11 @@ describe('ReadQuery.strictGate', () => {
       expect(diag.txnSeq).toBe(0)
 
       const details = diag?.trigger?.details
-      expect(details?.fallbackReason).toBe('unstableSelectorId')
-      expect(details?.rule).toBe('denyFallbackReason')
+      expect(['missingDeps', 'unsupportedSyntax', 'unstableSelectorId', 'missingBuildGrade']).toContain(
+        details?.fallbackReason,
+      )
+      expect(details?.rule).toBe('requireStatic:global')
       expect(() => JSON.stringify(details)).not.toThrow()
-    }).pipe(
-      Effect.provideService(ReadQueryStrictGateConfigTag, {
-        mode: 'warn',
-        requireStatic: {
-          selectorIds: ['rq_not_matched'],
-        },
-        denyFallbackReasons: ['unstableSelectorId'],
-      }),
-    ),
+    }),
   )
 })
