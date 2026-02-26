@@ -90,6 +90,51 @@ export interface RuntimeServicesEvidence {
   readonly overridesApplied: ReadonlyArray<string>
 }
 
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const normalizeRuntimeServiceOverride = (value: unknown): RuntimeServiceOverride | undefined => {
+  if (!isPlainRecord(value)) return undefined
+
+  const implIdRaw = value.implId
+  const notesRaw = value.notes
+
+  const implId = typeof implIdRaw === 'string' && implIdRaw.length > 0 ? implIdRaw : undefined
+  const notes = typeof notesRaw === 'string' && notesRaw.length > 0 ? notesRaw : undefined
+  if (!implId && !notes) return undefined
+
+  return Object.freeze({
+    ...(implId ? { implId } : {}),
+    ...(notes ? { notes } : {}),
+  }) as RuntimeServiceOverride
+}
+
+const freezeRuntimeServicesOverrides = (
+  value: RuntimeServicesOverrides | undefined,
+): RuntimeServicesOverrides | undefined => {
+  if (!isPlainRecord(value)) return undefined
+
+  const out: Record<string, RuntimeServiceOverride> = {}
+  for (const [serviceId, rawOverride] of Object.entries(value)) {
+    if (serviceId.length === 0) continue
+    const normalized = normalizeRuntimeServiceOverride(rawOverride)
+    if (!normalized) continue
+    out[serviceId] = normalized
+  }
+
+  if (Object.keys(out).length === 0) return undefined
+  return Object.freeze(out) as RuntimeServicesOverrides
+}
+
+const freezeRuntimeServicesOverridesAtModule = (args: {
+  readonly moduleId: string | undefined
+  readonly byModuleId: Readonly<Record<string, RuntimeServicesOverrides>> | undefined
+}): RuntimeServicesOverrides | undefined => {
+  if (!args.moduleId || args.moduleId.length === 0) return undefined
+  if (!isPlainRecord(args.byModuleId)) return undefined
+  return freezeRuntimeServicesOverrides(args.byModuleId[args.moduleId])
+}
+
 export const resolveRuntimeServicesOverrides = (args: {
   readonly moduleId: string | undefined
 }): Effect.Effect<RuntimeServicesOverrideLayers, never, any> =>
@@ -103,20 +148,25 @@ export const resolveRuntimeServicesOverrides = (args: {
     const instanceOverrides = Option.isSome(instanceOverridesOpt) ? instanceOverridesOpt.value : undefined
 
     const moduleId = args.moduleId
+    const runtimeDefaults = freezeRuntimeServicesOverrides(runtimeConfig?.services)
+    const runtimeModule = freezeRuntimeServicesOverridesAtModule({
+      moduleId,
+      byModuleId: runtimeConfig?.servicesByModuleId,
+    })
+    const providerDefaults = freezeRuntimeServicesOverrides(providerOverrides?.services)
+    const providerModule = freezeRuntimeServicesOverridesAtModule({
+      moduleId,
+      byModuleId: providerOverrides?.servicesByModuleId,
+    })
+    const instance = freezeRuntimeServicesOverrides(instanceOverrides)
 
-    const runtimeModule =
-      moduleId && runtimeConfig?.servicesByModuleId ? runtimeConfig.servicesByModuleId[moduleId] : undefined
-
-    const providerModule =
-      moduleId && providerOverrides?.servicesByModuleId ? providerOverrides.servicesByModuleId[moduleId] : undefined
-
-    return {
-      runtimeDefault: runtimeConfig?.services,
+    return Object.freeze({
+      runtimeDefault: runtimeDefaults,
       runtimeModule,
-      provider: providerOverrides?.services,
+      provider: providerDefaults,
       providerModule,
-      instance: instanceOverrides,
-    }
+      instance,
+    }) as RuntimeServicesOverrideLayers
   })
 
 export interface RuntimeServiceImpl<Service> {

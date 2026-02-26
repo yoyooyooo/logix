@@ -69,18 +69,20 @@ export const selectRuntimeService = <Service>(
   consider('instance', overrides.instance)
 
   if (!desired) {
-    return {
+    const binding = Object.freeze({
+      serviceId,
+      implId: builtin.implId,
+      implVersion: builtin.implVersion,
+      scope: 'builtin',
+      overridden: false,
+      notes: builtin.notes,
+    }) as RuntimeServiceBinding
+
+    return Object.freeze({
       impl: builtin,
-      binding: {
-        serviceId,
-        implId: builtin.implId,
-        implVersion: builtin.implVersion,
-        scope: 'builtin',
-        overridden: false,
-        notes: builtin.notes,
-      },
-      overridesApplied: [],
-    }
+      binding,
+      overridesApplied: Object.freeze([] as Array<string>) as ReadonlyArray<string>,
+    }) as RuntimeServiceSelection<Service>
   }
 
   const desiredImplId = desired.override.implId!
@@ -96,22 +98,26 @@ export const selectRuntimeService = <Service>(
     .filter((s): s is string => typeof s === 'string' && s.length > 0)
     .join('; ')
 
-  return {
+  const binding = Object.freeze({
+    serviceId,
+    implId: impl.implId,
+    implVersion: impl.implVersion,
+    scope: desired.scope,
+    overridden: true,
+    notes: notes.length > 0 ? notes : undefined,
+  }) as RuntimeServiceBinding
+
+  const overridesApplied = Object.freeze([
+    didFallback
+      ? `${desired.scope}:${serviceId}=${desiredImplId} (fallback=${builtin.implId})`
+      : `${desired.scope}:${serviceId}=${desiredImplId}`,
+  ]) as ReadonlyArray<string>
+
+  return Object.freeze({
     impl,
-    binding: {
-      serviceId,
-      implId: impl.implId,
-      implVersion: impl.implVersion,
-      scope: desired.scope,
-      overridden: true,
-      notes: notes.length > 0 ? notes : undefined,
-    },
-    overridesApplied: [
-      didFallback
-        ? `${desired.scope}:${serviceId}=${desiredImplId} (fallback=${builtin.implId})`
-        : `${desired.scope}:${serviceId}=${desiredImplId}`,
-    ],
-  }
+    binding,
+    overridesApplied,
+  }) as RuntimeServiceSelection<Service>
 }
 
 export const makeRuntimeServicesEvidence = (args: {
@@ -125,11 +131,26 @@ export const makeRuntimeServicesEvidence = (args: {
     scope = maxScope(scope, b.scope)
   }
 
-  return {
+  const bindings = Object.freeze(
+    args.bindings.map((binding) =>
+      Object.freeze({
+        serviceId: binding.serviceId,
+        ...(binding.implId ? { implId: binding.implId } : {}),
+        ...(binding.implVersion ? { implVersion: binding.implVersion } : {}),
+        scope: binding.scope,
+        overridden: binding.overridden,
+        ...(binding.notes ? { notes: binding.notes } : {}),
+      }) as RuntimeServiceBinding,
+    ),
+  ) as ReadonlyArray<RuntimeServiceBinding>
+
+  const overridesApplied = Object.freeze([...args.overridesApplied]) as ReadonlyArray<string>
+
+  return Object.freeze({
     moduleId: args.moduleId,
     instanceId: args.instanceId,
     scope,
-    bindings: args.bindings,
-    overridesApplied: args.overridesApplied,
-  }
+    bindings,
+    overridesApplied,
+  }) as RuntimeServicesEvidence
 }

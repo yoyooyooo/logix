@@ -65,7 +65,7 @@ export interface FullCutoverGateResult {
   }
 }
 
-const expectedImplIdForKernel = (kernelId: KernelId): string => (kernelId === 'core' ? 'builtin' : kernelId)
+const expectedImplIdForKernel = (kernelId: KernelId): string => kernelId
 
 const parseFallbackServiceIds = (overridesApplied: ReadonlyArray<string>): ReadonlyArray<string> => {
   const out = new Set<string>()
@@ -82,7 +82,7 @@ const parseFallbackServiceIds = (overridesApplied: ReadonlyArray<string>): Reado
 }
 
 const collectMissingServiceIds = (args: {
-  readonly expectedImplId: string
+  readonly expectedImplId: string | undefined
   readonly requiredServiceIds: ReadonlyArray<string>
   readonly bindings: ReadonlyArray<RuntimeServiceBinding>
 }): ReadonlyArray<string> => {
@@ -95,7 +95,7 @@ const collectMissingServiceIds = (args: {
   for (const serviceId of args.requiredServiceIds) {
     const binding = bindingByServiceId.get(serviceId)
     const implId = binding?.implId
-    if (!implId || implId !== args.expectedImplId) {
+    if (!implId || (args.expectedImplId != null && implId !== args.expectedImplId)) {
       missing.push(serviceId)
     }
   }
@@ -125,7 +125,8 @@ export const evaluateFullCutoverGate = (args: {
   readonly coverageMatrix?: CutoverCoverageMatrix
   readonly diagnosticsLevel?: 'off' | 'light' | 'full' | 'sampled'
 }): FullCutoverGateResult => {
-  const expectedImplId = expectedImplIdForKernel(args.requestedKernelId)
+  const expectedImplId = args.requestedKernelId === 'core' ? undefined : expectedImplIdForKernel(args.requestedKernelId)
+  const expectedImplIdLabel = expectedImplId ?? '(any)'
   const matrix = args.coverageMatrix ?? CutoverCoverageMatrix
 
   const fallbackServiceIds = parseFallbackServiceIds(args.runtimeServicesEvidence.overridesApplied)
@@ -175,7 +176,7 @@ export const evaluateFullCutoverGate = (args: {
       ? {}
       : {
           details: {
-            expectedImplId,
+            expectedImplId: expectedImplIdLabel,
             bindings: args.runtimeServicesEvidence.bindings,
             overridesApplied: args.runtimeServicesEvidence.overridesApplied,
           },
