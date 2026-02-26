@@ -9,14 +9,17 @@ import * as EffectOpCore from './internal/runtime/core/EffectOpCore.js'
 import * as RunSession from './internal/observability/runSession.js'
 import type { ReadQueryFallbackReason as ReadQueryFallbackReasonCore } from './internal/runtime/core/ReadQuery.js'
 import {
-  ConcurrencyPolicyTag,
-  ConcurrencyPolicyOverridesTag,
+  SchedulingPolicySurfaceTag,
+  SchedulingPolicySurfaceOverridesTag,
   type ReadQueryStrictGateRuntimeConfig,
   StateTransactionConfigTag,
   StateTransactionOverridesTag,
   type ConcurrencyPolicy,
   type ConcurrencyPolicyOverrides,
   type ConcurrencyPolicyPatch,
+  type SchedulingPolicySurface,
+  type SchedulingPolicySurfaceOverrides,
+  type SchedulingPolicySurfacePatch,
   type StateTransactionOverrides,
   type StateTransactionInstrumentation,
   type StateTransactionTraitConvergeOverrides,
@@ -29,7 +32,8 @@ import { enterRuntimeBatch, exitRuntimeBatch } from './internal/runtime/core/Tic
 import * as ScopeRegistry from './ScopeRegistry.js'
 import {
   warnInvalidConcurrencyPolicyDevOnly,
-  warnInvalidConcurrencyPolicyPatchDevOnly,
+  warnInvalidSchedulingPolicySurfaceDevOnly,
+  warnInvalidSchedulingPolicySurfacePatchDevOnly,
   warnInvalidStateTransactionOverridesDevOnly,
   warnInvalidStateTransactionRuntimeConfigDevOnly,
   warnInvalidStateTransactionTraitConvergeOverridesDevOnly,
@@ -74,6 +78,9 @@ const resolveRootImpl = <Sh extends AnyModuleShape>(
   ((root as any)?._tag === 'ModuleImpl'
     ? (root as ModuleImpl<any, Sh, any>)
     : ((root as any)?.impl as ModuleImpl<any, Sh, any>)) satisfies ModuleImpl<any, Sh, any>
+
+const resolveSchedulingPolicySurface = (options: RuntimeOptions | undefined): SchedulingPolicySurface | undefined =>
+  options?.schedulingPolicy ?? options?.concurrencyPolicy
 
 /**
  * Runtime-level StateTransaction defaults.
@@ -166,9 +173,15 @@ export interface RuntimeOptions {
    */
   readonly stateTransaction?: RuntimeStateTransactionOptions
   /**
-   * Runtime-level concurrency control plane.
+   * Runtime-level unified scheduling policy surface.
    *
-   * Converges unbounded concurrency into bounded (default 16), with module/provider overrides.
+   * Converges queue/tick/concurrency knobs into one policy contract (default limit=16 with bounded fallback).
+   */
+  readonly schedulingPolicy?: SchedulingPolicySurface
+  /**
+   * Legacy alias of `schedulingPolicy` (phase-1 migration path).
+   *
+   * If both are provided, `schedulingPolicy` wins.
    */
   readonly concurrencyPolicy?: ConcurrencyPolicy
   /**
@@ -213,8 +226,13 @@ export const make = (
   options?: RuntimeOptions,
 ): ManagedRuntime.ManagedRuntime<any, never> => {
   const rootImpl = resolveRootImpl(root)
+  const schedulingPolicy = resolveSchedulingPolicySurface(options)
 
-  warnInvalidConcurrencyPolicyDevOnly(options?.concurrencyPolicy, 'Runtime.make options.concurrencyPolicy')
+  if (options?.schedulingPolicy !== undefined) {
+    warnInvalidSchedulingPolicySurfaceDevOnly(options.schedulingPolicy, 'Runtime.make options.schedulingPolicy')
+  } else {
+    warnInvalidConcurrencyPolicyDevOnly(options?.concurrencyPolicy, 'Runtime.make options.concurrencyPolicy')
+  }
   warnInvalidStateTransactionRuntimeConfigDevOnly(options?.stateTransaction, 'Runtime.make options.stateTransaction')
 
   const debugLayer =
@@ -296,7 +314,7 @@ export const make = (
     onError: options?.onError,
     hostScheduler: options?.hostScheduler,
     stateTransaction: options?.stateTransaction,
-    concurrencyPolicy: options?.concurrencyPolicy,
+    schedulingPolicy,
     readQueryStrictGate,
   }
 
@@ -363,15 +381,26 @@ export const stateTransactionOverridesLayer = (
 }
 
 /**
- * Provider-scoped ConcurrencyPolicyOverrides layer.
+ * Provider-scoped SchedulingPolicySurfaceOverrides layer.
  *
  * Use it to apply local overrides on top of the `runtime_default` baseline.
+ */
+export const schedulingPolicyOverridesLayer = (
+  overrides: SchedulingPolicySurfaceOverrides,
+): Layer.Layer<any, never, never> => {
+  warnInvalidSchedulingPolicySurfaceDevOnly(overrides, 'Runtime.schedulingPolicyOverridesLayer')
+  return Layer.succeed(SchedulingPolicySurfaceOverridesTag, overrides) as Layer.Layer<any, never, never>
+}
+
+/**
+ * Legacy alias: provider-scoped ConcurrencyPolicyOverrides layer.
+ *
+ * Kept for phase-1 migration. Internally it is the same scheduling policy surface override layer.
  */
 export const concurrencyPolicyOverridesLayer = (
   overrides: ConcurrencyPolicyOverrides,
 ): Layer.Layer<any, never, never> => {
-  warnInvalidConcurrencyPolicyDevOnly(overrides, 'Runtime.concurrencyPolicyOverridesLayer')
-  return Layer.succeed(ConcurrencyPolicyOverridesTag, overrides) as Layer.Layer<any, never, never>
+  return schedulingPolicyOverridesLayer(overrides)
 }
 
 /**
@@ -413,20 +442,20 @@ export const setTraitConvergeOverride = (
 }
 
 /**
- * Hot-switch ConcurrencyPolicy patch for a moduleId.
+ * Hot-switch SchedulingPolicySurface patch for a moduleId.
  *
  * This mutates the `runtime_module` patch map only; provider overrides still take precedence.
  */
-export const setConcurrencyPolicyOverride = (
+export const setSchedulingPolicyOverride = (
   runtime: ManagedRuntime.ManagedRuntime<any, never>,
   moduleId: string,
-  patch: ConcurrencyPolicyPatch | undefined,
+  patch: SchedulingPolicySurfacePatch | undefined,
 ): void => {
-  warnInvalidConcurrencyPolicyPatchDevOnly(patch, `Runtime.setConcurrencyPolicyOverride(${moduleId})`)
+  warnInvalidSchedulingPolicySurfacePatchDevOnly(patch, `Runtime.setSchedulingPolicyOverride(${moduleId})`)
 
   runtime.runSync(
     Effect.gen(function* () {
-      const runtimeConfigOpt = yield* Effect.serviceOption(ConcurrencyPolicyTag)
+      const runtimeConfigOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceTag)
 
       if (Option.isNone(runtimeConfigOpt)) {
         return
@@ -448,6 +477,19 @@ export const setConcurrencyPolicyOverride = (
       runtimeConfig.overridesByModuleId = next
     }),
   )
+}
+
+/**
+ * Legacy alias: hot-switch ConcurrencyPolicy patch for a moduleId.
+ *
+ * Kept for phase-1 migration. Internally routes to scheduling policy surface override.
+ */
+export const setConcurrencyPolicyOverride = (
+  runtime: ManagedRuntime.ManagedRuntime<any, never>,
+  moduleId: string,
+  patch: ConcurrencyPolicyPatch | undefined,
+): void => {
+  setSchedulingPolicyOverride(runtime, moduleId, patch)
 }
 
 /**

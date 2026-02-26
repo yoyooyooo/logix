@@ -1,19 +1,20 @@
 import { Effect, Option } from 'effect'
 import type { ConcurrencyDiagnostics } from './ConcurrencyDiagnostics.js'
 import {
-  ConcurrencyPolicyOverridesTag,
-  ConcurrencyPolicyTag,
-  type ConcurrencyLimit,
-  type ConcurrencyPolicy,
-  type ConcurrencyPolicyOverrides,
-  type ConcurrencyPolicyPatch,
+  SchedulingPolicySurfaceOverridesTag,
+  SchedulingPolicySurfaceTag,
+  type SchedulingPolicyLimit,
+  type SchedulingPolicySurface,
+  type SchedulingPolicySurfaceOverrides,
+  type SchedulingPolicySurfacePatch,
 } from './env.js'
 import { normalizeBoolean, normalizePositiveInt, normalizePositiveNumber } from './normalize.js'
 
-export type ConcurrencyPolicyConfigScope = 'builtin' | 'runtime_default' | 'runtime_module' | 'provider'
+export type SchedulingPolicySurfaceConfigScope = 'builtin' | 'runtime_default' | 'runtime_module' | 'provider'
+export type ConcurrencyPolicyConfigScope = SchedulingPolicySurfaceConfigScope
 
-export type ResolvedConcurrencyPolicy = {
-  readonly concurrencyLimit: ConcurrencyLimit
+export type ResolvedSchedulingPolicySurface = {
+  readonly concurrencyLimit: SchedulingPolicyLimit
   readonly losslessBackpressureCapacity: number
   readonly allowUnbounded: boolean
   readonly pressureWarningThreshold: {
@@ -21,18 +22,19 @@ export type ResolvedConcurrencyPolicy = {
     readonly backlogDurationMs: number
   }
   readonly warningCooldownMs: number
-  readonly configScope: ConcurrencyPolicyConfigScope
+  readonly configScope: SchedulingPolicySurfaceConfigScope
   /** Field-level scope for the effective concurrency limit. */
-  readonly concurrencyLimitScope: ConcurrencyPolicyConfigScope
+  readonly concurrencyLimitScope: SchedulingPolicySurfaceConfigScope
   /** The originally requested concurrency limit (for explaining the unbounded gate). */
-  readonly requestedConcurrencyLimit: ConcurrencyLimit
+  readonly requestedConcurrencyLimit: SchedulingPolicyLimit
   /** Field-level scope for the originally requested concurrency limit. */
-  readonly requestedConcurrencyLimitScope: ConcurrencyPolicyConfigScope
+  readonly requestedConcurrencyLimitScope: SchedulingPolicySurfaceConfigScope
   /** Field-level scope for allowUnbounded. */
-  readonly allowUnboundedScope: ConcurrencyPolicyConfigScope
+  readonly allowUnboundedScope: SchedulingPolicySurfaceConfigScope
 }
+export type ResolvedConcurrencyPolicy = ResolvedSchedulingPolicySurface
 
-const normalizeConcurrencyLimit = (v: unknown): ConcurrencyLimit | undefined =>
+const normalizeConcurrencyLimit = (v: unknown): SchedulingPolicyLimit | undefined =>
   v === 'unbounded' ? 'unbounded' : normalizePositiveInt(v)
 
 type ResolvedPolicyCache = {
@@ -40,11 +42,11 @@ type ResolvedPolicyCache = {
   readonly runtimeModuleFingerprint: string
   readonly providerDefaultFingerprint: string
   readonly providerModuleFingerprint: string
-  readonly resolved: ResolvedConcurrencyPolicy
+  readonly resolved: ResolvedSchedulingPolicySurface
 }
 
 const patchFingerprint = (
-  patch: ConcurrencyPolicy | ConcurrencyPolicyPatch | ConcurrencyPolicyOverrides | undefined,
+  patch: SchedulingPolicySurface | SchedulingPolicySurfacePatch | SchedulingPolicySurfaceOverrides | undefined,
 ): string => {
   if (!patch) return ''
   const threshold = (patch as any).pressureWarningThreshold
@@ -62,13 +64,13 @@ const patchFingerprint = (
   ].join('|')
 }
 
-export const makeResolveConcurrencyPolicy = (args: {
+export const makeResolveSchedulingPolicySurface = (args: {
   /** Original options.moduleId (may be undefined); used for module overrides map lookup. */
   readonly moduleId: string | undefined
   /** Optional: one-shot audit diagnostics for unbounded opt-in/blocked. */
   readonly diagnostics?: ConcurrencyDiagnostics
-}): (() => Effect.Effect<ResolvedConcurrencyPolicy>) => {
-  const builtinConcurrencyLimit: ConcurrencyLimit = 16
+}): (() => Effect.Effect<ResolvedSchedulingPolicySurface>) => {
+  const builtinConcurrencyLimit: SchedulingPolicyLimit = 16
   const builtinLosslessBackpressureCapacity = 4096
   const builtinAllowUnbounded = false
   const builtinThresholdBacklogCount = 1000
@@ -78,33 +80,33 @@ export const makeResolveConcurrencyPolicy = (args: {
 
   return () =>
     Effect.gen(function* () {
-      const runtimeConfigOpt = yield* Effect.serviceOption(ConcurrencyPolicyTag)
-      const overridesOpt = yield* Effect.serviceOption(ConcurrencyPolicyOverridesTag)
+      const runtimeConfigOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceTag)
+      const overridesOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceOverridesTag)
 
-      const runtimeConfig: ConcurrencyPolicy | undefined = Option.isSome(runtimeConfigOpt)
+      const runtimeConfig: SchedulingPolicySurface | undefined = Option.isSome(runtimeConfigOpt)
         ? runtimeConfigOpt.value
         : undefined
-      const providerOverrides: ConcurrencyPolicyOverrides | undefined = Option.isSome(overridesOpt)
+      const providerOverrides: SchedulingPolicySurfaceOverrides | undefined = Option.isSome(overridesOpt)
         ? overridesOpt.value
         : undefined
 
-      let concurrencyLimit: ConcurrencyLimit = builtinConcurrencyLimit
-      let concurrencyLimitScope: ConcurrencyPolicyConfigScope = 'builtin'
+      let concurrencyLimit: SchedulingPolicyLimit = builtinConcurrencyLimit
+      let concurrencyLimitScope: SchedulingPolicySurfaceConfigScope = 'builtin'
       let lastBoundedConcurrencyLimit = builtinConcurrencyLimit as number
-      let lastBoundedConcurrencyLimitScope: ConcurrencyPolicyConfigScope = 'builtin'
+      let lastBoundedConcurrencyLimitScope: SchedulingPolicySurfaceConfigScope = 'builtin'
 
       let losslessBackpressureCapacity = builtinLosslessBackpressureCapacity
       let allowUnbounded = builtinAllowUnbounded
-      let allowUnboundedScope: ConcurrencyPolicyConfigScope = 'builtin'
+      let allowUnboundedScope: SchedulingPolicySurfaceConfigScope = 'builtin'
       let thresholdBacklogCount = builtinThresholdBacklogCount
       let thresholdBacklogDurationMs = builtinThresholdBacklogDurationMs
       let warningCooldownMs = builtinWarningCooldownMs
 
-      let configScope: ConcurrencyPolicyConfigScope = 'builtin'
+      let configScope: SchedulingPolicySurfaceConfigScope = 'builtin'
 
       const applyPatch = (
-        patch: ConcurrencyPolicy | ConcurrencyPolicyPatch | ConcurrencyPolicyOverrides | undefined,
-        scope: ConcurrencyPolicyConfigScope,
+        patch: SchedulingPolicySurface | SchedulingPolicySurfacePatch | SchedulingPolicySurfaceOverrides | undefined,
+        scope: SchedulingPolicySurfaceConfigScope,
       ): void => {
         if (!patch) return
         let changed = false
@@ -160,9 +162,9 @@ export const makeResolveConcurrencyPolicy = (args: {
       }
 
       const moduleId = args.moduleId
-      const runtimeModulePatch: ConcurrencyPolicyPatch | undefined =
+      const runtimeModulePatch: SchedulingPolicySurfacePatch | undefined =
         moduleId && runtimeConfig?.overridesByModuleId ? runtimeConfig.overridesByModuleId[moduleId] : undefined
-      const providerModulePatch: ConcurrencyPolicyPatch | undefined =
+      const providerModulePatch: SchedulingPolicySurfacePatch | undefined =
         moduleId && providerOverrides?.overridesByModuleId ? providerOverrides.overridesByModuleId[moduleId] : undefined
       const runtimeDefaultFingerprint = patchFingerprint(runtimeConfig)
       const runtimeModuleFingerprint = patchFingerprint(runtimeModulePatch)
@@ -201,7 +203,7 @@ export const makeResolveConcurrencyPolicy = (args: {
       }
 
       // NOTE: diagnostics may add implementation-level metrics (e.g. "saturated duration"); the resolver only decides configuration.
-      const resolved: ResolvedConcurrencyPolicy = {
+      const resolved: ResolvedSchedulingPolicySurface = {
         concurrencyLimit,
         losslessBackpressureCapacity,
         allowUnbounded,
@@ -235,3 +237,5 @@ export const makeResolveConcurrencyPolicy = (args: {
       return resolved
     })
 }
+
+export const makeResolveConcurrencyPolicy = makeResolveSchedulingPolicySurface

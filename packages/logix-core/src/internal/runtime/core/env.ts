@@ -195,10 +195,11 @@ class StateTransactionOverridesTagImpl extends Context.Tag('@logixjs/core/StateT
 
 export const StateTransactionOverridesTag = StateTransactionOverridesTagImpl
 
-export type ConcurrencyLimit = number | 'unbounded'
+export type SchedulingPolicyLimit = number | 'unbounded'
+export type ConcurrencyLimit = SchedulingPolicyLimit
 
-export interface ConcurrencyPolicyPatch {
-  readonly concurrencyLimit?: ConcurrencyLimit
+export interface SchedulingPolicySurfacePatch {
+  readonly concurrencyLimit?: SchedulingPolicyLimit
   readonly losslessBackpressureCapacity?: number
   readonly allowUnbounded?: boolean
   readonly pressureWarningThreshold?: {
@@ -209,39 +210,51 @@ export interface ConcurrencyPolicyPatch {
 }
 
 /**
- * Runtime-level ConcurrencyPolicy:
+ * Runtime-level unified scheduling policy surface:
  * - Provided at the app layer by Logix.Runtime.make / AppRuntime.makeApp.
  * - ModuleRuntime merges sources via a resolver (builtin/runtime_module/provider, etc.).
  *
  * Notes:
  * - overridesByModuleId is used for runtime_module hot-switching (hotfix / gradual tuning) and is lower priority than provider overrides.
  */
-export interface ConcurrencyPolicy extends ConcurrencyPolicyPatch {
-  readonly overridesByModuleId?: Readonly<Record<string, ConcurrencyPolicyPatch>>
+export interface SchedulingPolicySurface extends SchedulingPolicySurfacePatch {
+  readonly overridesByModuleId?: Readonly<Record<string, SchedulingPolicySurfacePatch>>
 }
 
-class ConcurrencyPolicyTagImpl extends Context.Tag('@logixjs/core/ConcurrencyPolicy')<
-  ConcurrencyPolicyTagImpl,
-  ConcurrencyPolicy
+class SchedulingPolicySurfaceTagImpl extends Context.Tag('@logixjs/core/SchedulingPolicySurface')<
+  SchedulingPolicySurfaceTagImpl,
+  SchedulingPolicySurface
 >() {}
 
-export const ConcurrencyPolicyTag = ConcurrencyPolicyTagImpl
+export const SchedulingPolicySurfaceTag = SchedulingPolicySurfaceTagImpl
 
 /**
- * Provider-scoped ConcurrencyPolicyOverrides (delta overrides):
+ * Provider-scoped SchedulingPolicySurfaceOverrides (delta overrides):
  * - Used to inject more local overrides into a Provider subtree on top of inherited global runtime config.
  * - Override precedence: provider > runtime_module > runtime_default > builtin.
  */
-export interface ConcurrencyPolicyOverrides extends ConcurrencyPolicyPatch {
-  readonly overridesByModuleId?: Readonly<Record<string, ConcurrencyPolicyPatch>>
+export interface SchedulingPolicySurfaceOverrides extends SchedulingPolicySurfacePatch {
+  readonly overridesByModuleId?: Readonly<Record<string, SchedulingPolicySurfacePatch>>
 }
 
-class ConcurrencyPolicyOverridesTagImpl extends Context.Tag('@logixjs/core/ConcurrencyPolicyOverrides')<
-  ConcurrencyPolicyOverridesTagImpl,
-  ConcurrencyPolicyOverrides
+class SchedulingPolicySurfaceOverridesTagImpl extends Context.Tag('@logixjs/core/SchedulingPolicySurfaceOverrides')<
+  SchedulingPolicySurfaceOverridesTagImpl,
+  SchedulingPolicySurfaceOverrides
 >() {}
 
-export const ConcurrencyPolicyOverridesTag = ConcurrencyPolicyOverridesTagImpl
+export const SchedulingPolicySurfaceOverridesTag = SchedulingPolicySurfaceOverridesTagImpl
+
+/**
+ * Legacy aliases:
+ * - Keep old names as pure aliases to support migration without behavior drift.
+ * - Canonical naming for new code should use SchedulingPolicySurface*.
+ */
+export type ConcurrencyPolicyPatch = SchedulingPolicySurfacePatch
+export type ConcurrencyPolicy = SchedulingPolicySurface
+export type ConcurrencyPolicyOverrides = SchedulingPolicySurfaceOverrides
+
+export const ConcurrencyPolicyTag = SchedulingPolicySurfaceTag
+export const ConcurrencyPolicyOverridesTag = SchedulingPolicySurfaceOverridesTag
 
 // ---- 073: TickScheduler + RuntimeStore (injectable runtime services) ----
 

@@ -42,6 +42,10 @@ export * as Resource from './Resource.js'
 // Runtime: application runtime (Logix.Runtime.make, etc.)
 export * as Runtime from './Runtime.js'
 export type {
+  SchedulingPolicyLimit,
+  SchedulingPolicySurface,
+  SchedulingPolicySurfaceOverrides,
+  SchedulingPolicySurfacePatch,
   ConcurrencyLimit,
   ConcurrencyPolicy,
   ConcurrencyPolicyOverrides,
