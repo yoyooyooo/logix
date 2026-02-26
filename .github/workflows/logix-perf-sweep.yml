@@ -79,14 +79,6 @@ on:
         description: "可选动态容量 floor 目标（整数；用于反向约束旧的 2000 门槛）"
         required: false
         default: "2000"
-      perf_capacity_dynamic_enable:
-        description: "是否启用动态容量模型（true/false）"
-        required: false
-        default: "true"
-      perf_capacity_dynamic_enforce_hard:
-        description: "是否启用动态 hard floor 失败门禁（true/false）"
-        required: false
-        default: "true"
       perf_capacity_dynamic_history_window:
         description: "动态容量模型的历史窗口（最近 N 次）"
         required: false
@@ -191,8 +183,6 @@ jobs:
           INPUT_PERF_STEPS_AUTO_TIME_BUDGET_MINUTES: ${{ github.event.inputs.perf_steps_auto_time_budget_minutes }}
           INPUT_PERF_STEPS_AUTO_PROBE_TARGET: ${{ github.event.inputs.perf_steps_auto_probe_target }}
           INPUT_PERF_CAPACITY_FLOOR_MIN: ${{ github.event.inputs.perf_capacity_floor_min }}
-          INPUT_PERF_CAPACITY_DYNAMIC_ENABLE: ${{ github.event.inputs.perf_capacity_dynamic_enable }}
-          INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD: ${{ github.event.inputs.perf_capacity_dynamic_enforce_hard }}
           INPUT_PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW: ${{ github.event.inputs.perf_capacity_dynamic_history_window }}
           INPUT_PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS: ${{ github.event.inputs.perf_capacity_dynamic_min_history_runs }}
           INPUT_PERF_CAPACITY_DYNAMIC_HARD_RATIO: ${{ github.event.inputs.perf_capacity_dynamic_hard_ratio }}
@@ -320,18 +310,6 @@ jobs:
             fi
             if [ -n "${INPUT_PERF_CAPACITY_FLOOR_MIN:-}" ]; then
               echo "PERF_CAPACITY_FLOOR_MIN=$INPUT_PERF_CAPACITY_FLOOR_MIN" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_ENABLE:-}" ]; then
-              parsed="$(normalize_bool "$INPUT_PERF_CAPACITY_DYNAMIC_ENABLE")"
-              if [ -n "$parsed" ]; then
-                echo "PERF_CAPACITY_DYNAMIC_ENABLE=$parsed" >> "$GITHUB_ENV"
-              fi
-            fi
-            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD:-}" ]; then
-              parsed="$(normalize_bool "$INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD")"
-              if [ -n "$parsed" ]; then
-                echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=$parsed" >> "$GITHUB_ENV"
-              fi
             fi
             if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW:-}" ]; then
               echo "PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW=$INPUT_PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW" >> "$GITHUB_ENV"
