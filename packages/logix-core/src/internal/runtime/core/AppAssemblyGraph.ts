@@ -32,6 +32,7 @@ export interface AppAssemblyGraphNode {
   readonly stageSeq: number
   readonly dependsOn: ReadonlyArray<AssemblyStageId>
   readonly status: AssemblyStageStatus
+  readonly durationMs?: number
   readonly reasonCode?: AssemblyReasonCode
   readonly message?: string
 }
@@ -41,6 +42,8 @@ interface MutableAppAssemblyGraphNode {
   stageSeq: number
   dependsOn: ReadonlyArray<AssemblyStageId>
   status: AssemblyStageStatus
+  startedAtMs?: number
+  durationMs?: number
   reasonCode?: AssemblyReasonCode
   message?: string
 }
@@ -125,6 +128,8 @@ export class AppAssemblyGraph {
   reset(): void {
     for (const node of this.nodes) {
       node.status = 'pending'
+      node.startedAtMs = undefined
+      node.durationMs = undefined
       node.reasonCode = undefined
       node.message = undefined
     }
@@ -136,17 +141,20 @@ export class AppAssemblyGraph {
     const node = this.getNode(stageId)
     if (node.status === 'pending') {
       node.status = 'running'
+      node.startedAtMs = Date.now()
     }
   }
 
   completeStage(stageId: AssemblyStageId): void {
     const node = this.getNode(stageId)
     node.status = 'succeeded'
+    node.durationMs = this.computeDurationMs(node)
   }
 
   failStage(stageId: AssemblyStageId, reasonCode: AssemblyReasonCode, error: unknown): void {
     const node = this.getNode(stageId)
     node.status = 'failed'
+    node.durationMs = this.computeDurationMs(node)
     node.reasonCode = reasonCode
     node.message = toSlimMessage(error)
 
@@ -211,7 +219,15 @@ export class AppAssemblyGraph {
       version: 1,
       appId: this.appId,
       success,
-      nodes: this.nodes.map((node) => ({ ...node })),
+      nodes: this.nodes.map((node) => ({
+        stageId: node.stageId,
+        stageSeq: node.stageSeq,
+        dependsOn: node.dependsOn,
+        status: node.status,
+        durationMs: node.durationMs,
+        reasonCode: node.reasonCode,
+        message: node.message,
+      })),
       rootContextLifecycle: { ...this.rootContextLifecycle },
       failure: this.failure ? { ...this.failure } : undefined,
     }
@@ -232,5 +248,13 @@ export class AppAssemblyGraph {
       throw new Error(`[Logix] Unknown assembly stage: ${stageId}`)
     }
     return node
+  }
+
+  private computeDurationMs(node: MutableAppAssemblyGraphNode): number | undefined {
+    if (node.startedAtMs === undefined) {
+      return undefined
+    }
+
+    return Math.max(0, Date.now() - node.startedAtMs)
   }
 }

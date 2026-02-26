@@ -1,4 +1,4 @@
-import { Context, Deferred, Effect, Exit, Layer, ManagedRuntime } from 'effect'
+import { Context, Effect, Exit, Layer, ManagedRuntime } from 'effect'
 import {
   ConcurrencyPolicyTag,
   ReadQueryStrictGateConfigTag,
@@ -18,7 +18,13 @@ import {
   type AssemblyStageId,
   type BootAssemblyReport,
 } from './core/AppAssemblyGraph.js'
-import { RootContextTag, type RootContext } from './core/RootContext.js'
+import {
+  RootContextTag,
+  makeRootContext,
+  mergeRootContext,
+  readyRootContext,
+  type RootContext,
+} from './core/RootContext.js'
 import type { HostScheduler } from './core/HostScheduler.js'
 import * as ProcessRuntime from './core/process/ProcessRuntime.js'
 import type { AnyModuleShape, ModuleTag, ModuleRuntime, StateOf, ActionOf } from './core/module.js'
@@ -279,10 +285,7 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
     ProcessRuntime.layer(),
     Layer.effect(
       RootContextTag,
-      Effect.gen(function* () {
-        const ready = yield* Deferred.make<Context.Context<any>>()
-        return { context: undefined, ready, appId, appModuleIds } satisfies RootContext
-      }),
+      makeRootContext({ appId, appModuleIds }),
     ),
   ) as Layer.Layer<R, never, never>
   assemblyGraph.completeStage('build.baseLayer')
@@ -371,25 +374,17 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
           const rootContext = yield* runStage(
             'rootContext.merge',
             'boot::root_context_merge_failed',
-            Effect.sync(() => {
-              const root = Context.get(mergedEnv as Context.Context<any>, RootContextTag as any) as RootContext
-              if (root.context !== undefined) {
-                throw new Error('[Logix] RootContext merge duplicated during app assembly.')
-              }
-              root.context = mergedEnv as Context.Context<any>
-              return root
-            }),
+            Effect.flatMap(
+              Effect.sync(() => Context.get(mergedEnv as Context.Context<any>, RootContextTag as any) as RootContext),
+              (root) => mergeRootContext(root, mergedEnv as Context.Context<any>),
+            ),
           )
           assemblyGraph.markRootContextMerged()
 
           yield* runStage(
             'rootContext.ready',
             'boot::root_context_ready_failed',
-            Effect.flatMap(Deferred.succeed(rootContext.ready, mergedEnv as Context.Context<any>), (readySucceeded) =>
-              readySucceeded
-                ? Effect.void
-                : Effect.fail(new Error('[Logix] RootContext ready was already completed before app assembly finished.')),
-            ),
+            readyRootContext(rootContext),
           )
           assemblyGraph.markRootContextReady()
 

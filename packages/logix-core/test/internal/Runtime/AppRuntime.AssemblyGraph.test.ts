@@ -40,6 +40,7 @@ describe('AppRuntime assembly graph report', () => {
     expect(report.failure).toBeUndefined()
     expect(report.nodes.map((node) => node.stageId)).toEqual(EXPECTED_STAGE_ORDER)
     expect(report.nodes.every((node) => node.status === 'succeeded')).toBe(true)
+    expect(report.nodes.every((node) => typeof node.durationMs === 'number' && node.durationMs >= 0)).toBe(true)
     expect(report.rootContextLifecycle.state).toBe('ready')
     expect(report.rootContextLifecycle.mergedAtStageSeq).toBeGreaterThan(0)
     expect(report.rootContextLifecycle.readyAtStageSeq).toBeGreaterThan(0)
@@ -83,6 +84,9 @@ describe('AppRuntime assembly graph report', () => {
     expect(secondReport.success).toBe(true)
     expect(secondReport.failure).toBeUndefined()
     expect(secondReport.nodes.every((node) => node.status === 'succeeded')).toBe(true)
+    expect(secondReport.nodes.every((node) => typeof node.durationMs === 'number' && node.durationMs >= 0)).toBe(
+      true,
+    )
     expect(secondReport.rootContextLifecycle.state).toBe('ready')
   })
 })
