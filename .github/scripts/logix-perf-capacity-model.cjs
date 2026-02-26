@@ -383,7 +383,7 @@ const cmdRecord = (kv) => {
   const stable = summarizeStableWindow({ rows: comparableHistory, historyWindow })
 
   const useStable = stable.runs >= minHistoryRuns && stable.p50 > 0
-  const anchorP50 = useStable ? stable.p50 : pickFinite(current.p50, stable.p50, baseFloorMin)
+  const anchorP50 = useStable ? stable.p50 : baseFloorMin
   const targets = computeTargets({
     baseFloorMin,
     hardFloorRatio,
@@ -400,7 +400,7 @@ const cmdRecord = (kv) => {
     hardFloorRatio,
     warnFloorRatio,
     anchorP50: targets.anchorP50,
-    anchorSource: useStable ? 'stable_p50' : 'current_p50',
+    anchorSource: useStable ? 'stable_p50' : 'base_floor_min',
     historyWindow,
     minHistoryRuns,
     stableRuns: stable.runs,

@@ -11,6 +11,10 @@ on:
         description: "after 基线（branch/tag/sha；留空=触发 SHA）"
         required: false
         default: ""
+      run_preset:
+        description: "运行预设（fast=快速疏通；full=完整采集）"
+        required: false
+        default: "fast"
       perf_files:
         description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 packages/logix-react）"
         required: false
@@ -18,7 +22,7 @@ on:
       perf_profile:
         description: "采样 profile（smoke/quick/default/soak；影响 runs/warmup/timeout）"
         required: false
-        default: "quick"
+        default: ""
       perf_steps_levels:
         description: "可选 steps 轴覆盖（CSV；例如 200,400,800,1200,1600,2000,2400,2800,3200）"
         required: false
@@ -26,7 +30,7 @@ on:
       perf_steps_mode:
         description: "steps 选择模式（manual=固定 CSV；auto=自动扩容探测上限）"
         required: false
-        default: "manual"
+        default: ""
       perf_steps_auto_max_iterations:
         description: "auto 模式最大迭代次数"
         required: false
@@ -95,14 +99,18 @@ on:
         description: "dynamic warn floor 比例（warn=stableP50*ratio）"
         required: false
         default: "0.9"
+      perf_capacity_dynamic_enforce_hard:
+        description: "是否启用 dynamic hard floor 失败门禁（true/false）"
+        required: false
+        default: ""
       perf_capacity_auto_retry_on_timeout:
         description: "head 采集出现 timeout 时是否自动重试一次（true/false）"
         required: false
-        default: "true"
+        default: ""
       diff_mode:
         description: "diff 模式（strict=不可比直接失败；triage=允许漂移，仅作线索）"
         required: false
-        default: "strict"
+        default: ""
   schedule:
     # Nightly (UTC): heavier converge sweep for tracking default parameters over time.
     - cron: "0 19 * * *"
@@ -166,6 +174,7 @@ jobs:
         env:
           INPUT_BASE_REF: ${{ github.event.inputs.base_ref }}
           INPUT_HEAD_REF: ${{ github.event.inputs.head_ref }}
+          INPUT_RUN_PRESET: ${{ github.event.inputs.run_preset }}
           INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
           INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
           INPUT_PERF_STEPS_LEVELS: ${{ github.event.inputs.perf_steps_levels }}
@@ -187,6 +196,7 @@ jobs:
           INPUT_PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS: ${{ github.event.inputs.perf_capacity_dynamic_min_history_runs }}
           INPUT_PERF_CAPACITY_DYNAMIC_HARD_RATIO: ${{ github.event.inputs.perf_capacity_dynamic_hard_ratio }}
           INPUT_PERF_CAPACITY_DYNAMIC_WARN_RATIO: ${{ github.event.inputs.perf_capacity_dynamic_warn_ratio }}
+          INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD: ${{ github.event.inputs.perf_capacity_dynamic_enforce_hard }}
           INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT: ${{ github.event.inputs.perf_capacity_auto_retry_on_timeout }}
           INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
@@ -222,12 +232,23 @@ jobs:
             esac
           }
 
+          normalize_preset() {
+            local raw="$1"
+            case "$(echo "$raw" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" in
+              full|complete|strict) echo "full" ;;
+              fast|quick|smoke|"") echo "fast" ;;
+              *) echo "fast" ;;
+            esac
+          }
+
           DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          RUN_PRESET="full"
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
             # Scheduled run on default branch: compare current HEAD to its parent (best-effort).
             HEAD_SHA="$GITHUB_SHA"
             BASE_SHA="$(git rev-parse "${HEAD_SHA}^" 2>/dev/null || echo "$HEAD_SHA")"
+            echo "PERF_RUN_PRESET=full" >> "$GITHUB_ENV"
 
             # Use SHAs for clarity in summaries (scheduled runs compare adjacent commits).
             echo "BASE_REF=$BASE_SHA" >> "$GITHUB_ENV"
@@ -259,6 +280,21 @@ jobs:
 
             BASE_SHA="$(resolve_ref_to_sha "$BASE_REF")"
             HEAD_SHA="$(resolve_ref_to_sha "$HEAD_REF")"
+            RUN_PRESET="$(normalize_preset "${INPUT_RUN_PRESET:-fast}")"
+            echo "PERF_RUN_PRESET=$RUN_PRESET" >> "$GITHUB_ENV"
+
+            if [ "$RUN_PRESET" = "fast" ]; then
+              # Fast preset: prioritize shorter end-to-end turnaround to validate pipeline wiring first.
+              echo "PERF_PROFILE=quick" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_MODE=manual" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_LEVELS=2000,3200,4800,6400,8000" >> "$GITHUB_ENV"
+              echo "PERF_DIFF_MODE=triage" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=0" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=0" >> "$GITHUB_ENV"
+              echo "PERF_ARTIFACT_NAME=logix-perf-sweep-fast-${{ github.run_id }}" >> "$GITHUB_ENV"
+            else
+              echo "PERF_ARTIFACT_NAME=logix-perf-sweep-full-${{ github.run_id }}" >> "$GITHUB_ENV"
+            fi
 
             if [ -n "${INPUT_PERF_FILES:-}" ]; then
               echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
@@ -323,6 +359,12 @@ jobs:
             if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_WARN_RATIO:-}" ]; then
               echo "PERF_CAPACITY_DYNAMIC_WARN_RATIO=$INPUT_PERF_CAPACITY_DYNAMIC_WARN_RATIO" >> "$GITHUB_ENV"
             fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD:-}" ]; then
+              parsed="$(normalize_bool "$INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD")"
+              if [ -n "$parsed" ]; then
+                echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=$parsed" >> "$GITHUB_ENV"
+              fi
+            fi
             if [ -n "${INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT:-}" ]; then
               parsed="$(normalize_bool "$INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT")"
               if [ -n "$parsed" ]; then
@@ -331,10 +373,6 @@ jobs:
             fi
             if [ -n "${INPUT_DIFF_MODE:-}" ]; then
               echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
-            fi
-
-            if [ -n "${INPUT_HEAD_REF:-}" ]; then
-              echo "PERF_ARTIFACT_NAME=logix-perf-sweep-${{ github.run_id }}" >> "$GITHUB_ENV"
             fi
           fi
 
