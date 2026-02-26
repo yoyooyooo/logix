@@ -214,15 +214,15 @@ summary 由 `EvidenceCollector.exportEvidencePackage()` 生成，形态是一个
 
 | 字段                         | 类型          | 含义                                             |
 | ---------------------------- | ------------- | ------------------------------------------------ |
-| `staticIrDigest`             | `string`      | 去重 key（`converge_ir_v2:fnv1a32(stableStringify({writersKey,depsKey,fieldPathsKey}))`） |
-| `moduleId`                   | `string`      | 模块 id                                          |
-| `instanceId`                 | `string`      | 实例 id                                          |
-| `generation`                 | `number`      | converge 静态 IR 代次（结构变化会 bump）         |
+| `staticIrDigest?`            | `string`      | full 档位可用：去重 key（`converge_ir_v2:fnv1a32(stableStringify({writersKey,depsKey,fieldPathsKey}))`） |
+| `moduleId?`                  | `string`      | full 档位可用：模块 id                           |
+| `instanceId?`                | `string`      | full 档位可用：实例 id                           |
+| `generation?`                | `number`      | full 档位可用：converge 静态 IR 代次（结构变化会 bump） |
 | `fieldPaths`                 | `FieldPath[]` | field path table（canonical）                    |
-| `stepOutFieldPathIdByStepId` | `number[]`    | stepId → out fieldPathId 映射                    |
-| `stepSchedulingByStepId`     | `TraitConvergeScheduling[]` | stepId → 调度策略映射（sync/deferred）           |
-| `topoOrder?`                 | `number[]`    | topo 顺序（可选）                                |
-| `buildDurationMs?`           | `number`      | build 耗时（可选）                               |
+| `stepOutFieldPathIdByStepId?`| `number[]`    | full 档位可用：stepId → out fieldPathId 映射     |
+| `stepSchedulingByStepId?`    | `TraitConvergeScheduling[]` | full 档位可用：stepId → 调度策略映射（sync/deferred） |
+| `topoOrder?`                 | `number[]`    | full 档位可选：topo 顺序                         |
+| `buildDurationMs?`           | `number`      | full 档位可选：build 耗时                        |
 
 迁移说明（破坏性变更）：
 
