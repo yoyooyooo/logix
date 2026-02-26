@@ -22,22 +22,21 @@ const parseOptionalPositiveInt = (raw) => {
 }
 const capacityFloorTarget = parseOptionalPositiveInt(process.env.PERF_CAPACITY_FLOOR_MIN)
 
-const scope =
-  process.env.PERF_FILES ||
-  'test/browser/perf-boundaries/diagnostics-overhead.test.tsx'
+const scope = process.env.PERF_FILES || 'test/browser/perf-boundaries/diagnostics-overhead.test.tsx'
 const artifactName = process.env.PERF_ARTIFACT_NAME || ''
 
-const beforePath =
-  baseShort && envId ? path.join(perfDir, `before.${baseShort}.${envId}.${profile}.json`) : null
-const afterPath =
-  headShort && envId ? path.join(perfDir, `after.${headShort}.${envId}.${profile}.json`) : null
+const beforePath = baseShort && envId ? path.join(perfDir, `before.${baseShort}.${envId}.${profile}.json`) : null
+const afterPath = headShort && envId ? path.join(perfDir, `after.${headShort}.${envId}.${profile}.json`) : null
 const diffPath =
-  baseShort && headShort && envId ? path.join(perfDir, `diff.${baseShort}__${headShort}.${envId}.${profile}.json`) : null
+  baseShort && headShort && envId
+    ? path.join(perfDir, `diff.${baseShort}__${headShort}.${envId}.${profile}.json`)
+    : null
 const autoProbeBasePath =
   baseShort && envId ? path.join(perfDir, `steps-probe.base.${baseShort}.${envId}.${profile}.json`) : null
 const autoProbeHeadPath =
   headShort && envId ? path.join(perfDir, `steps-probe.head.${headShort}.${envId}.${profile}.json`) : null
 const capacityLatestPath = path.join(perfDir, 'capacity-latest.json')
+const debugTimelinePath = process.env.PERF_DEBUG_TIMELINE_FILE || path.join(perfDir, 'debug.timeline.log')
 
 const safeReadJson = (file) => {
   try {
@@ -53,6 +52,13 @@ const diff = diffPath && fs.existsSync(diffPath) ? safeReadJson(diffPath) : null
 const autoProbeBase = autoProbeBasePath && fs.existsSync(autoProbeBasePath) ? safeReadJson(autoProbeBasePath) : null
 const autoProbeHead = autoProbeHeadPath && fs.existsSync(autoProbeHeadPath) ? safeReadJson(autoProbeHeadPath) : null
 const capacityLatest = fs.existsSync(capacityLatestPath) ? safeReadJson(capacityLatestPath) : null
+const debugTimelineLines = fs.existsSync(debugTimelinePath)
+  ? fs
+      .readFileSync(debugTimelinePath, 'utf8')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+  : []
 
 const files = fs
   .readdirSync(perfDir)
@@ -463,7 +469,9 @@ const pickFiniteNumber = (...values) => {
 const toSortedUniqueNumericList = (values) =>
   Array.from(
     new Set(
-      (Array.isArray(values) ? values : []).filter((x) => typeof x === 'number' && Number.isFinite(x)).map((x) => Number(x)),
+      (Array.isArray(values) ? values : [])
+        .filter((x) => typeof x === 'number' && Number.isFinite(x))
+        .map((x) => Number(x)),
     ),
   ).sort((a, b) => a - b)
 
@@ -504,12 +512,8 @@ const deriveAutoProbeFallbackSummary = (probe) => {
   const lastIteration = iterations[iterations.length - 1]
   const rows = Array.isArray(lastIteration?.aggregated?.rows) ? lastIteration.aggregated.rows : []
   if (rows.length === 0) return null
-  const medianLevels = rows
-    .map((row) => row?.medianMaxLevel)
-    .filter((x) => typeof x === 'number' && Number.isFinite(x))
-  const meanLevels = rows
-    .map((row) => row?.meanMaxLevel)
-    .filter((x) => typeof x === 'number' && Number.isFinite(x))
+  const medianLevels = rows.map((row) => row?.medianMaxLevel).filter((x) => typeof x === 'number' && Number.isFinite(x))
+  const meanLevels = rows.map((row) => row?.meanMaxLevel).filter((x) => typeof x === 'number' && Number.isFinite(x))
   const outlierRemovedCount = rows.reduce((acc, row) => {
     const sampleCount = typeof row?.sampleCount === 'number' ? row.sampleCount : 0
     const keptCount = typeof row?.keptCount === 'number' ? row.keptCount : sampleCount
@@ -521,7 +525,8 @@ const deriveAutoProbeFallbackSummary = (probe) => {
     p75MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.75) : undefined,
     p90MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.9) : undefined,
     p95MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.95) : undefined,
-    averageUpperLimit: meanLevels.length > 0 ? Math.round(meanLevels.reduce((a, b) => a + b, 0) / meanLevels.length) : undefined,
+    averageUpperLimit:
+      meanLevels.length > 0 ? Math.round(meanLevels.reduce((a, b) => a + b, 0) / meanLevels.length) : undefined,
     outlierRemovedCount,
   }
 }
@@ -553,11 +558,13 @@ const renderAutoProbeSummary = ({ probe, label }) => {
     typeof averageUpper === 'number' && Number.isFinite(averageUpper) ? averageUpper : 'n/a',
   )}, floorMedian=${code(
     typeof floorMedian === 'number' && Number.isFinite(floorMedian) ? floorMedian : 'n/a',
-  )}, p50Median=${code(typeof p50Median === 'number' && Number.isFinite(p50Median) ? p50Median : 'n/a')}, p75Median=${code(
+  )}, p50Median=${code(
+    typeof p50Median === 'number' && Number.isFinite(p50Median) ? p50Median : 'n/a',
+  )}, p75Median=${code(
     typeof p75Median === 'number' && Number.isFinite(p75Median) ? p75Median : 'n/a',
-  )}, p95Median=${code(typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median : 'n/a')}, p90Median=${code(
-    typeof p90Median === 'number' && Number.isFinite(p90Median) ? p90Median : 'n/a',
-  )}\n`
+  )}, p95Median=${code(
+    typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median : 'n/a',
+  )}, p90Median=${code(typeof p90Median === 'number' && Number.isFinite(p90Median) ? p90Median : 'n/a')}\n`
   out += `- ${label} auto-probe stats: outliersRemoved=${code(
     typeof removed === 'number' && Number.isFinite(removed) ? removed : 'n/a',
   )}, samples/iter=${code(
@@ -588,7 +595,8 @@ const capacityFloorViolated =
 const comparable = diff?.meta?.comparability?.comparable === true
 const regressions = diff?.summary?.regressions ?? 0
 const improvements = diff?.summary?.improvements ?? 0
-const dynamicEvaluation = capacityLatest?.evaluation && typeof capacityLatest.evaluation === 'object' ? capacityLatest.evaluation : null
+const dynamicEvaluation =
+  capacityLatest?.evaluation && typeof capacityLatest.evaluation === 'object' ? capacityLatest.evaluation : null
 const dynamicHardFailed = dynamicEvaluation?.hardPass === false
 const headAutoProbeSufficiency = resolveAutoProbeDataSufficiency(autoProbeHead)
 const headAutoProbeInsufficient = headAutoProbeSufficiency?.hasInsufficientData === true
@@ -615,11 +623,13 @@ md += `- head auto-probe sufficiency: insufficient=${code(headAutoProbeInsuffici
   headAutoProbeReasonCodes.length > 0 ? headAutoProbeReasonCodes.join(',') : 'none',
 )}\n`
 if (afterCapacitySummary) {
-  md += `- head capacity model(P50/P75/P95+floor) (${code(capacitySuiteId)} / ${code(capacityBudgetId)} / convergeMode=${code(
-    capacityScopeConvergeMode,
-  )}): floor=${code(afterCapacitySummary.floorMaxLevel)}, p50=${code(afterCapacitySummary.p50MaxLevel)}, p75=${code(
-    afterCapacitySummary.p75MaxLevel,
-  )}, p95=${code(afterCapacitySummary.p95MaxLevel)}, max=${code(afterCapacitySummary.maxObservedLevel)}\n`
+  md += `- head capacity model(P50/P75/P95+floor) (${code(capacitySuiteId)} / ${code(
+    capacityBudgetId,
+  )} / convergeMode=${code(capacityScopeConvergeMode)}): floor=${code(afterCapacitySummary.floorMaxLevel)}, p50=${code(
+    afterCapacitySummary.p50MaxLevel,
+  )}, p75=${code(afterCapacitySummary.p75MaxLevel)}, p95=${code(afterCapacitySummary.p95MaxLevel)}, max=${code(
+    afterCapacitySummary.maxObservedLevel,
+  )}\n`
 }
 if (typeof capacityFloorTarget === 'number') {
   const actualFloor = afterCapacitySummary?.floorMaxLevel ?? null
@@ -640,6 +650,11 @@ if (dynamicEvaluation) {
 md += renderAutoProbeSummary({ probe: autoProbeBase, label: 'base' })
 md += renderAutoProbeSummary({ probe: autoProbeHead, label: 'head' })
 md += `- status: ${code(conclusion)}\n`
+if (debugTimelineLines.length > 0) {
+  const tailSize = 24
+  const tailLines = debugTimelineLines.slice(-tailSize)
+  md += `- debug timeline: ${code(debugTimelinePath)} (tail=${code(tailLines.length)})\n`
+}
 
 if (afterFailures.length > 0) {
   const byKey = new Map()
@@ -660,8 +675,8 @@ if (afterFailures.length > 0) {
         f.type === 'absolute'
           ? `p95<=${String(f.absP95Ms)}ms`
           : f.type === 'relative'
-            ? `ratio<=${String(f.maxRatio)}`
-            : 'unknown'
+          ? `ratio<=${String(f.maxRatio)}`
+          : 'unknown'
       md += `- ${code(f.suiteId)} ${code(f.budgetId)} ${code(budgetHint)} where=${code(f.whereKey)} firstFail=${code(
         f.firstFailLevel,
       )}\n`
@@ -717,6 +732,14 @@ md += `- Metrics are evaluated on the p95 statistic (\`n = runs - warmupDiscard\
 md += `\n</details>\n`
 
 md += `\n<details>\n<summary>Details (diff / thresholds / points)</summary>\n\n`
+if (debugTimelineLines.length > 0) {
+  const tailSize = 80
+  const tailLines = debugTimelineLines.slice(-tailSize)
+  md += `\n### Debug Timeline Tail\n`
+  md += '```text\n'
+  md += `${tailLines.join('\n')}\n`
+  md += '```\n'
+}
 if (!diff) {
   md += `\n### Diff\n`
   md += `_Diff file not found. Collect or diff step may have failed. Check the Actions logs._\n`
@@ -727,7 +750,9 @@ if (!diff) {
 
   md += `\n### Comparability\n`
   md += `- comparable: ${code(String(comparability.comparable ?? '?'))}\n`
-  md += `- diffMode: allowConfigDrift=${String(comparability.allowConfigDrift ?? '?')}, allowEnvDrift=${String(comparability.allowEnvDrift ?? '?')}\n`
+  md += `- diffMode: allowConfigDrift=${String(comparability.allowConfigDrift ?? '?')}, allowEnvDrift=${String(
+    comparability.allowEnvDrift ?? '?',
+  )}\n`
   md += renderList('configMismatches', comparability.configMismatches)
   md += renderList('envMismatches', comparability.envMismatches)
 
@@ -741,7 +766,11 @@ if (!diff) {
   md += `- improvements: ${code(summary.improvements ?? '?')}\n`
   if (summary && summary.slices) {
     const s = summary.slices
-    md += `- thresholdSlices: compared=${code(s.compared ?? '?')}, afterOnly=${code(s.afterOnly ?? '?')}, beforeOnly=${code(s.beforeOnly ?? '?')}, skippedData=${code(s.skippedData ?? '?')}, total=${code(s.total ?? '?')}\n`
+    md += `- thresholdSlices: compared=${code(s.compared ?? '?')}, afterOnly=${code(
+      s.afterOnly ?? '?',
+    )}, beforeOnly=${code(s.beforeOnly ?? '?')}, skippedData=${code(s.skippedData ?? '?')}, total=${code(
+      s.total ?? '?',
+    )}\n`
   }
   if (!comparable) {
     md += `\n_Triage-only diff: before/after are not strictly comparable. Treat deltas as hints, not conclusions._\n`
@@ -768,8 +797,7 @@ if (!diff) {
     const headBudgetSummaries = []
     const headBudgetMaps = []
 
-    const fmtNum = (n, digits = 4) =>
-      typeof n === 'number' && Number.isFinite(n) ? n.toFixed(digits) : 'n/a'
+    const fmtNum = (n, digits = 4) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(digits) : 'n/a')
     const fmtMs = (n) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(3) : 'n/a')
 
     for (const [suiteId, afterSuite] of afterSuiteById.entries()) {
@@ -832,14 +860,17 @@ if (!diff) {
         const where = t.where && typeof t.where === 'object' ? t.where : {}
         const whereKey = stableParamsKey(where)
         const maxLevel = t.maxLevel ?? null
-        const firstFailLevel = t.firstFailLevel ?? (axisLevels[0] ?? null)
+        const firstFailLevel = t.firstFailLevel ?? axisLevels[0] ?? null
 
         let classification = 'unknown'
         let overshoot = null
         let detail = ''
 
         if (budget.type === 'relative') {
-          const at = firstFailLevel != null ? computeRelativeStatsAt(spec, afterSuite, budget, where, firstFailLevel) : { ok: false }
+          const at =
+            firstFailLevel != null
+              ? computeRelativeStatsAt(spec, afterSuite, budget, where, firstFailLevel)
+              : { ok: false }
           if (at.ok) {
             const p95Over = isRelativeBudgetExceeded(budget, at.ratioP95, at.deltaP95Ms)
             const medianOver = isRelativeBudgetExceeded(budget, at.ratioMedian, at.deltaMedianMs)
@@ -847,14 +878,21 @@ if (!diff) {
             overshoot = at.ratioP95 - budget.maxRatio
             const minDeltaNote = at.minDeltaMs > 0 ? `, minDeltaMs=${fmtMs(at.minDeltaMs)}ms` : ''
             detail =
-              `p95 ratio=${fmtNum(at.ratioP95)} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms, Δ=${fmtMs(at.deltaP95Ms)}ms), ` +
-              `median ratio=${fmtNum(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), ` +
+              `p95 ratio=${fmtNum(at.ratioP95)} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(
+                at.denominatorP95Ms,
+              )} ms, Δ=${fmtMs(at.deltaP95Ms)}ms), ` +
+              `median ratio=${fmtNum(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(
+                at.denominatorMedianMs,
+              )} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), ` +
               `n=${code(at.n)}${minDeltaNote}`
           } else {
             detail = `p95 ratio=n/a (${at.reason || 'unknown'})`
           }
         } else {
-          const at = firstFailLevel != null ? computeAbsoluteStatsAt(spec, afterSuite, budget, where, firstFailLevel) : { ok: false }
+          const at =
+            firstFailLevel != null
+              ? computeAbsoluteStatsAt(spec, afterSuite, budget, where, firstFailLevel)
+              : { ok: false }
           if (at.ok) {
             const p95Over = at.p95Ms > budget.p95Ms
             const medianOver = at.medianMs > budget.p95Ms
@@ -926,8 +964,8 @@ if (!diff) {
         (Array.isArray(spec.budgets) && spec.budgets.length > 0
           ? spec.budgets
           : Array.isArray(afterSuite.budgets) && afterSuite.budgets.length > 0
-            ? afterSuite.budgets
-            : []) || []
+          ? afterSuite.budgets
+          : []) || []
 
       for (const budget of budgets) {
         if (!budget || budget.type !== 'relative') continue
@@ -937,10 +975,7 @@ if (!diff) {
         if (typeof budget.maxRatio !== 'number') continue
 
         const refAxes = Array.from(
-          new Set([
-            ...Object.keys(parseRef(budget.numeratorRef)),
-            ...Object.keys(parseRef(budget.denominatorRef)),
-          ]),
+          new Set([...Object.keys(parseRef(budget.numeratorRef)), ...Object.keys(parseRef(budget.denominatorRef))]),
         )
         const otherAxes = Object.keys(spec.axes || {}).filter((k) => k !== spec.primaryAxis && !refAxes.includes(k))
         if (otherAxes.length !== 1) continue
@@ -1018,7 +1053,9 @@ if (!diff) {
     md += `_Based on head-only thresholds (not a diff). Useful even when comparable=false._\n\n`
     md += `- headBudgetFailures: ${code(headFailures.length)} (reason=budgetExceeded)\n`
     md += `- headDataIssues: ${code(headDataIssues.length)} (missing/timeout/etc)\n`
-    md += `- classification: ${code('tail-only')} = p95 over budget but median within; ${code('systemic')} = median also over\n`
+    md += `- classification: ${code('tail-only')} = p95 over budget but median within; ${code(
+      'systemic',
+    )} = median also over\n`
     md += `\n_Tip: quick profile still has limited samples vs default; tail-only failures are often noise unless reproducible._\n`
 
     if (headBudgetSummaries.length > 0) {
@@ -1027,25 +1064,21 @@ if (!diff) {
     }
 
     if (headFailures.length > 0) {
-      const sorted = headFailures
-        .slice()
-        .sort((a, b) => {
-          const aRel = a.budget?.type === 'relative'
-          const bRel = b.budget?.type === 'relative'
-          if (aRel !== bRel) return aRel ? -1 : 1
-          const aOver = typeof a.overshoot === 'number' && Number.isFinite(a.overshoot) ? a.overshoot : -Infinity
-          const bOver = typeof b.overshoot === 'number' && Number.isFinite(b.overshoot) ? b.overshoot : -Infinity
-          return bOver - aOver
-        })
+      const sorted = headFailures.slice().sort((a, b) => {
+        const aRel = a.budget?.type === 'relative'
+        const bRel = b.budget?.type === 'relative'
+        if (aRel !== bRel) return aRel ? -1 : 1
+        const aOver = typeof a.overshoot === 'number' && Number.isFinite(a.overshoot) ? a.overshoot : -Infinity
+        const bOver = typeof b.overshoot === 'number' && Number.isFinite(b.overshoot) ? b.overshoot : -Infinity
+        return bOver - aOver
+      })
 
       md += `\n**Top head failures**\n`
       const shown = sorted.slice(0, 10)
       for (const f of shown) {
         const primaryAxis = f.primaryAxis || 'steps'
         md += `- ${f.suiteLabel}: ${code(budgetKey(f.budget))} ${code(f.whereKey)}\n`
-        md += `  - after: maxLevel=${code(
-          f.maxLevel == null ? 'null' : String(f.maxLevel),
-        )} firstFail=${code(
+        md += `  - after: maxLevel=${code(f.maxLevel == null ? 'null' : String(f.maxLevel))} firstFail=${code(
           f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`,
         )} classification=${code(f.classification)}\n`
         md += `  - ${f.detail}\n`
@@ -1097,16 +1130,17 @@ if (!diff) {
           const primaryAxis = f.primaryAxis || 'steps'
           md += `- ${f.suiteLabel}: ${code(budgetKey(f.budget))} ${code(f.whereKey)} maxLevel=${code(
             f.maxLevel == null ? 'null' : String(f.maxLevel),
-          )} firstFail=${code(
-            f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`,
-          )} ${code(f.classification)}\n`
+          )} firstFail=${code(f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`)} ${code(
+            f.classification,
+          )}\n`
         }
         md += `\n</details>\n`
       }
     }
     if (headBudgetMaps.length > 0) {
       md += `\n<details>\n<summary>Head maps (where -> maxLevel / firstFail / p95 series)</summary>\n\n`
-      md += `_Each row shows which primary-axis level starts failing for that ${code('where')} slice. ` +
+      md +=
+        `_Each row shows which primary-axis level starts failing for that ${code('where')} slice. ` +
         `Levels are the discrete test levels used in this run._ \n\n`
 
       for (const m of headBudgetMaps) {
@@ -1123,7 +1157,9 @@ if (!diff) {
         for (const r of m.rows) {
           const maxLevel = r.maxLevel == null ? 'null' : String(r.maxLevel)
           const firstFail = r.firstFail == null ? '-' : `${m.primaryAxis}=${String(r.firstFail)}`
-          md += `| ${String(r.x)} | ${maxLevel} | ${firstFail} | ${r.classification} | ${r.series} | ${r.failDetail} |\n`
+          md += `| ${String(r.x)} | ${maxLevel} | ${firstFail} | ${r.classification} | ${r.series} | ${
+            r.failDetail
+          } |\n`
         }
         md += `\n`
       }
@@ -1234,10 +1270,7 @@ if (!diff) {
     const refAxes =
       budget?.type === 'relative'
         ? Array.from(
-            new Set([
-              ...Object.keys(parseRef(budget.numeratorRef)),
-              ...Object.keys(parseRef(budget.denominatorRef)),
-            ]),
+            new Set([...Object.keys(parseRef(budget.numeratorRef)), ...Object.keys(parseRef(budget.denominatorRef))]),
           )
         : []
 
@@ -1254,8 +1287,8 @@ if (!diff) {
         res.maxLevel == null
           ? ` (fails at ${primary}=${String(first)}${reason})`
           : res.firstFailLevel == null
-            ? ` (passes all levels${reason})`
-            : ` (fails at ${failAt}${reason})`
+          ? ` (passes all levels${reason})`
+          : ` (fails at ${failAt}${reason})`
       return `${side}: maxLevel=${max}${extra}`
     }
 
@@ -1306,19 +1339,31 @@ if (!diff) {
       }
 
       const delta = entry.delta ?? 0
-      const focus = delta < 0 ? { side: 'after', res: afterRes, suite: afterSuite } : { side: 'before', res: beforeRes, suite: beforeSuite }
+      const focus =
+        delta < 0
+          ? { side: 'after', res: afterRes, suite: afterSuite }
+          : { side: 'before', res: beforeRes, suite: beforeSuite }
       const failLevel = focus.res?.firstFailLevel
       if (failLevel != null) {
         const at = computeRelativeStatsAt(suiteSpecResolved, focus.suite, budget, where, failLevel)
         if (at.ok) {
           const over = isRelativeBudgetExceeded(budget, at.ratioP95, at.deltaP95Ms) ? ' (over)' : ''
           const minDeltaNote = at.minDeltaMs > 0 ? `, minDeltaMs=${fmtMs(at.minDeltaMs)}ms` : ''
-          extra += `\n  - ${focus.side} fail @ ${primary}=${String(failLevel)}: p95 ratio=${fmtRatio(at.ratioP95)}${over} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms, Δ=${fmtMs(at.deltaP95Ms)}ms), median ratio=${fmtRatio(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), n=${code(at.n)}${minDeltaNote}`
+          extra += `\n  - ${focus.side} fail @ ${primary}=${String(failLevel)}: p95 ratio=${fmtRatio(
+            at.ratioP95,
+          )}${over} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms, Δ=${fmtMs(
+            at.deltaP95Ms,
+          )}ms), median ratio=${fmtRatio(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(
+            at.denominatorMedianMs,
+          )} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), n=${code(at.n)}${minDeltaNote}`
         }
       }
     }
 
-    return `- ${suiteLabel}: ${code(budgetKey(budget))} ${code(whereKey)}\n  - ${describe('before', beforeRes)}\n  - ${describe('after', afterRes)}${extra}`
+    return `- ${suiteLabel}: ${code(budgetKey(budget))} ${code(whereKey)}\n  - ${describe(
+      'before',
+      beforeRes,
+    )}\n  - ${describe('after', afterRes)}${extra}`
   }
 
   if (regressive.length > 0) {
@@ -1347,9 +1392,7 @@ if (!diff) {
   if (beforeReport && afterReport && suiteSpecById.size > 0) {
     const suiteIds = Array.from(
       new Set(
-        []
-          .concat(beforeReport.suites?.map((s) => s.id) || [])
-          .concat(afterReport.suites?.map((s) => s.id) || []),
+        [].concat(beforeReport.suites?.map((s) => s.id) || []).concat(afterReport.suites?.map((s) => s.id) || []),
       ),
     ).sort()
 
@@ -1374,8 +1417,8 @@ if (!diff) {
         (Array.isArray(spec.budgets) && spec.budgets.length > 0
           ? spec.budgets
           : Array.isArray(beforeSuite.budgets) && beforeSuite.budgets.length > 0
-            ? beforeSuite.budgets
-            : afterSuite.budgets) || []
+          ? beforeSuite.budgets
+          : afterSuite.budgets) || []
 
       const relativeBudgets = budgets.filter((b) => b && b.type === 'relative')
       if (relativeBudgets.length === 0) {
@@ -1385,10 +1428,7 @@ if (!diff) {
 
       for (const budget of relativeBudgets) {
         const refAxes = Array.from(
-          new Set([
-            ...Object.keys(parseRef(budget.numeratorRef)),
-            ...Object.keys(parseRef(budget.denominatorRef)),
-          ]),
+          new Set([...Object.keys(parseRef(budget.numeratorRef)), ...Object.keys(parseRef(budget.denominatorRef))]),
         )
         const otherAxes = Object.keys(spec.axes || {}).filter((k) => k !== primary && !refAxes.includes(k))
         const otherAxisLevels = otherAxes.map((k) => spec.axes?.[k] ?? [])
@@ -1433,10 +1473,7 @@ if (!diff) {
             return `${ratio} (${num}/${den} ms) @ ${primary}=${String(level)}`
           }
 
-          const whereStr =
-            otherAxes.length === 0
-              ? '{}'
-              : otherAxes.map((k) => `${k}=${String(where[k])}`).join(', ')
+          const whereStr = otherAxes.length === 0 ? '{}' : otherAxes.map((k) => `${k}=${String(where[k])}`).join(', ')
 
           rows.push({
             whereStr,
@@ -1475,9 +1512,13 @@ if (!diff) {
                   if (aFailed !== bFailed) return aFailed ? -1 : 1
 
                   const aExceed =
-                    typeof a.afterRatioValue === 'number' ? a.afterRatioValue - (budget.maxRatio ?? 0) : Number.NEGATIVE_INFINITY
+                    typeof a.afterRatioValue === 'number'
+                      ? a.afterRatioValue - (budget.maxRatio ?? 0)
+                      : Number.NEGATIVE_INFINITY
                   const bExceed =
-                    typeof b.afterRatioValue === 'number' ? b.afterRatioValue - (budget.maxRatio ?? 0) : Number.NEGATIVE_INFINITY
+                    typeof b.afterRatioValue === 'number'
+                      ? b.afterRatioValue - (budget.maxRatio ?? 0)
+                      : Number.NEGATIVE_INFINITY
                   if (aExceed !== bExceed) return bExceed - aExceed
 
                   const aRatio = typeof a.afterRatioValue === 'number' ? a.afterRatioValue : Number.NEGATIVE_INFINITY

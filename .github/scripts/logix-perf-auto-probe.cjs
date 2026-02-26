@@ -504,6 +504,8 @@ const runCollect = ({ profile, files, outFile, levels }) => {
   }
 }
 
+const formatSeconds = (ms) => Number((ms / 1000).toFixed(2))
+
 const main = () => {
   try {
     const args = parseArgs(process.argv.slice(2))
@@ -543,21 +545,51 @@ const main = () => {
     let collectBudgetReached = false
     const elapsedMinutes = () => (Date.now() - startedAtMs) / 60_000
     const hasCollectBudget = () => totalCollects < args.maxTotalCollects && elapsedMinutes() < args.timeBudgetMinutes
+    // eslint-disable-next-line no-console
+    console.log(
+      `[logix-perf:auto-probe:start] profile=${args.profile} suite=${args.suiteId} budget=${
+        args.budgetId
+      } levels=${levels.join(',')} maxIterations=${String(args.maxIterations)} samplesPerIteration=${String(
+        args.samplesPerIteration,
+      )} minSamplesPerIteration=${String(args.minSamplesPerIteration)} maxTotalCollects=${String(
+        args.maxTotalCollects,
+      )} timeBudgetMin=${String(args.timeBudgetMinutes)} growthFactor=${String(args.growthFactor)} extendCount=${String(
+        args.extendCount,
+      )} refineGapMin=${String(args.refineGapMin)} refineMaxInsertions=${String(args.refineMaxInsertions)}`,
+    )
 
     for (let iteration = 1; iteration <= args.maxIterations; iteration++) {
       const sampleAnalyses = []
+      // eslint-disable-next-line no-console
+      console.log(
+        `[logix-perf:auto-probe:iteration-start] iteration=${String(iteration)}/${String(
+          args.maxIterations,
+        )} levels=${levels.join(',')} totalCollects=${String(totalCollects)} elapsedMin=${String(
+          Number(elapsedMinutes().toFixed(2)),
+        )}`,
+      )
       for (let sample = 1; sample <= args.samplesPerIteration; sample++) {
         if (!hasCollectBudget() && sampleAnalyses.length >= args.minSamplesPerIteration) {
           collectBudgetReached = true
+          // eslint-disable-next-line no-console
+          console.log(
+            `[logix-perf:auto-probe:sample-skip] iteration=${String(iteration)} sample=${String(
+              sample,
+            )} reason=collect_budget_reached minSamplesPerIteration=${String(
+              args.minSamplesPerIteration,
+            )} collectedInIteration=${String(sampleAnalyses.length)}`,
+          )
           break
         }
         const reportFile = path.join(tempDir, `probe.${String(iteration)}.${String(sample)}.json`)
+        const collectStartedAtMs = Date.now()
         runCollect({
           profile: args.profile,
           files,
           outFile: reportFile,
           levels,
         })
+        const collectDurationMs = Date.now() - collectStartedAtMs
         totalCollects += 1
         const report = readJson(reportFile)
         const analyzed = analyzeReport({
@@ -572,10 +604,29 @@ const main = () => {
           rows: analyzed.rows,
           summary: analyzed.summary,
           timeoutPoints: analyzed.timeoutPoints,
+          collectDurationMs,
         })
+        // eslint-disable-next-line no-console
+        console.log(
+          `[logix-perf:auto-probe:sample] iteration=${String(iteration)} sample=${String(sample)}/${String(
+            args.samplesPerIteration,
+          )} collectSec=${String(formatSeconds(collectDurationMs))} floor=${String(
+            analyzed.summary.floorMaxLevel,
+          )} p50=${String(analyzed.summary.p50MaxLevel)} p75=${String(analyzed.summary.p75MaxLevel)} p95=${String(
+            analyzed.summary.p95MaxLevel,
+          )} timeouts=${String(analyzed.timeoutPoints.length)} totalCollects=${String(totalCollects)}/${String(
+            args.maxTotalCollects,
+          )} elapsedMin=${String(Number(elapsedMinutes().toFixed(2)))}`,
+        )
       }
       if (sampleAnalyses.length === 0) {
         stopReason = 'collect_budget_reached_before_sampling'
+        // eslint-disable-next-line no-console
+        console.log(
+          `[logix-perf:auto-probe:iteration-stop] iteration=${String(
+            iteration,
+          )} reason=collect_budget_reached_before_sampling`,
+        )
         break
       }
 
@@ -643,6 +694,7 @@ const main = () => {
         samples: sampleAnalyses.map((sample) => ({
           sample: sample.sample,
           reportFile: sample.reportFile,
+          collectDurationMs: sample.collectDurationMs,
           floor: sample.summary.floorMaxLevel,
           p50: sample.summary.p50MaxLevel,
           p75: sample.summary.p75MaxLevel,
@@ -660,14 +712,32 @@ const main = () => {
       if (lastLog) {
         lastLog.dataSufficiency = sufficiency
       }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[logix-perf:auto-probe:iteration-summary] iteration=${String(
+          iteration,
+        )} decision=${decision} shouldExtend=${String(shouldExtend)} floorMedian=${String(
+          aggregated.summary.floorMedianMaxLevel,
+        )} p50Median=${String(aggregated.summary.p50MedianMaxLevel)} p75Median=${String(
+          aggregated.summary.p75MedianMaxLevel,
+        )} p95Median=${String(aggregated.summary.p95MedianMaxLevel)} avgUpper=${String(
+          aggregated.summary.averageUpperLimit,
+        )} topTimeoutCount=${String(topTimeoutCount)} dataInsufficient=${
+          sufficiency.hasInsufficientData ? '1' : '0'
+        } reasonCodes=${sufficiency.reasonCodes.join(',') || 'none'}`,
+      )
 
       finalReportFile = representative.reportFile
       stopReason = decision
       if (!shouldExtend) {
+        // eslint-disable-next-line no-console
+        console.log(`[logix-perf:auto-probe:stop] iteration=${String(iteration)} reason=${stopReason}`)
         break
       }
       if (collectBudgetReached) {
         stopReason = 'collect_budget_reached'
+        // eslint-disable-next-line no-console
+        console.log(`[logix-perf:auto-probe:stop] iteration=${String(iteration)} reason=${stopReason}`)
         break
       }
 
@@ -682,6 +752,8 @@ const main = () => {
       const nextLevels = nextPlan.levels
       if (nextLevels.length === levels.length) {
         stopReason = 'no_further_extension_possible'
+        // eslint-disable-next-line no-console
+        console.log(`[logix-perf:auto-probe:stop] iteration=${String(iteration)} reason=${stopReason}`)
         break
       }
       const newLevels = nextLevels.filter((level) => !levels.includes(level))
@@ -693,6 +765,14 @@ const main = () => {
       if (lastLog) {
         lastLog.levelGeneration = levelGeneration
       }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[logix-perf:auto-probe:level-generation] iteration=${String(iteration)} addedLevels=${
+          newLevels.join(',') || 'none'
+        } refinedInsertions=${nextPlan.refinedInsertions.join(',') || 'none'} topExtensions=${
+          nextPlan.topExtensions.join(',') || 'none'
+        }`,
+      )
       levels = nextLevels
     }
 
