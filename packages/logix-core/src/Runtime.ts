@@ -200,6 +200,8 @@ export interface DevtoolsRuntimeOptions {
    * Diagnostics level for exportable Devtools events.
    *
    * Forwarded to `Debug.devtoolsHubLayer({ diagnosticsLevel })`.
+   * When explicitly set to `"off"`, `Runtime.make` enters a vacuum path:
+   * it skips both DevtoolsHub sink mounting and DebugObserver middleware wiring.
    * Default: `"light"`.
    */
   readonly diagnosticsLevel?: Debug.DiagnosticsLevel
@@ -256,8 +258,9 @@ export const make = (
   // 1) Append DebugObserver (`trace:effectop`).
   // 2) Mount the DevtoolsHub sink in appLayer (process-level event aggregation).
   const devtoolsOptions: DevtoolsRuntimeOptions | undefined = options?.devtools === true ? {} : options?.devtools
+  const useDevtoolsVacuumPath = devtoolsOptions?.diagnosticsLevel === 'off'
 
-  if (options?.devtools) {
+  if (options?.devtools && !useDevtoolsVacuumPath) {
     const observerConfig = devtoolsOptions?.observer === false ? false : devtoolsOptions?.observer
     middlewareStack = Middleware.withDebug(middlewareStack, {
       logger: false,
@@ -279,7 +282,7 @@ export const make = (
       ? (Layer.mergeAll(Debug.runtimeLabel(options.label), userWithDebug) as Layer.Layer<any, never, never>)
       : userWithDebug
 
-  const baseWithDevtools = options?.devtools
+  const baseWithDevtools = options?.devtools && !useDevtoolsVacuumPath
     ? (Debug.devtoolsHubLayer(baseLayer, {
         bufferSize: devtoolsOptions?.bufferSize,
         diagnosticsLevel: devtoolsOptions?.diagnosticsLevel,
