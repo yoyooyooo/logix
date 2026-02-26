@@ -155,6 +155,15 @@ jobs:
       PERF_CAPACITY_HISTORY_DIR: .perf-capacity-history
       PERF_CAPACITY_HISTORY_FILE: .perf-capacity-history/capacity-history.jsonl
       PERF_CAPACITY_LATEST_FILE: .perf-capacity-history/capacity-latest.json
+      PERF_TIME_GUARD_ENABLE: 1
+      PERF_TIME_GUARD_SOFT_BUDGET_MINUTES: 220
+      PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS: 7200
+      PERF_TIME_GUARD_MIN_TIMEOUT_SECONDS: 900
+      PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS: 7200
+      PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS: 10800
+      PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS: 3600
+      PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS: 2400
+      PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS: 2000,3200,4800,6400,8000
 
     steps:
       - name: Checkout
@@ -194,6 +203,14 @@ jobs:
           set -euo pipefail
 
           echo "PERF_ENV_ID=gh-${RUNNER_OS}-${RUNNER_ARCH}" >> "$GITHUB_ENV"
+          RUN_START_EPOCH="$(date +%s)"
+          SOFT_BUDGET_MINUTES="${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES:-220}"
+          if ! [[ "$SOFT_BUDGET_MINUTES" =~ ^[0-9]+$ ]]; then
+            SOFT_BUDGET_MINUTES=220
+          fi
+          PERF_SOFT_DEADLINE_EPOCH="$((RUN_START_EPOCH + SOFT_BUDGET_MINUTES * 60))"
+          echo "PERF_RUN_START_EPOCH=$RUN_START_EPOCH" >> "$GITHUB_ENV"
+          echo "PERF_SOFT_DEADLINE_EPOCH=$PERF_SOFT_DEADLINE_EPOCH" >> "$GITHUB_ENV"
 
           normalize_ref() {
             local ref="$1"
@@ -428,6 +445,10 @@ jobs:
           PINNED_CAPACITY_MODEL_SCRIPT="$RUNNER_TEMP/logix-perf-capacity-model.cjs"
           cp .github/scripts/logix-perf-capacity-model.cjs "$PINNED_CAPACITY_MODEL_SCRIPT"
           echo "PERF_CAPACITY_MODEL_SCRIPT=$PINNED_CAPACITY_MODEL_SCRIPT" >> "$GITHUB_ENV"
+          PINNED_TIME_GUARD_SCRIPT="$RUNNER_TEMP/logix-perf-time-guard.sh"
+          cp .github/scripts/logix-perf-time-guard.sh "$PINNED_TIME_GUARD_SCRIPT"
+          chmod +x "$PINNED_TIME_GUARD_SCRIPT"
+          echo "PERF_TIME_GUARD_SCRIPT=$PINNED_TIME_GUARD_SCRIPT" >> "$GITHUB_ENV"
 
       - name: Restore capacity history cache
         if: env.PERF_CAPACITY_DYNAMIC_ENABLE == '1'
@@ -481,6 +502,9 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+          source "$PERF_TIME_GUARD_SCRIPT"
+          logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "before_base_collect"
+          BASE_COLLECT_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS:-7200}" 1800)"
           if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
             export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
           fi
@@ -489,6 +513,7 @@ jobs:
           if [ "${PERF_STEPS_MODE:-manual}" = "auto" ] && { [ "$AUTO_PROBE_TARGET" = "base" ] || [ "$AUTO_PROBE_TARGET" = "both" ]; }; then
             AUTO_STEPS_OUT="$PERF_OUT_DIR/steps-levels.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.csv"
             AUTO_META_OUT="$PERF_OUT_DIR/steps-probe.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            AUTO_PROBE_TIMED_OUT=0
             AUTO_ARGS=(
               --profile "$PERF_PROFILE"
               --files "$PERF_FILES"
@@ -510,22 +535,58 @@ jobs:
             if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
               AUTO_ARGS+=(--initial-steps "$PERF_STEPS_LEVELS")
             fi
-            VITE_LOGIX_PERF_HARD_GATES=off node "$PERF_AUTO_PROBE_SCRIPT" "${AUTO_ARGS[@]}"
-            RESOLVED_STEPS="$(tr -d "\n\r " < "$AUTO_STEPS_OUT" || true)"
-            if [ -z "$RESOLVED_STEPS" ]; then
-              echo "auto steps probe produced empty steps levels" >&2
-              exit 1
+            if logix_perf_guard_run_with_timeout "$BASE_COLLECT_TIMEOUT_SECONDS" env VITE_LOGIX_PERF_HARD_GATES=off node "$PERF_AUTO_PROBE_SCRIPT" "${AUTO_ARGS[@]}"; then
+              true
+            else
+              AUTO_COLLECT_RC="$?"
+              if [ "$AUTO_COLLECT_RC" -ne 124 ]; then
+                exit "$AUTO_COLLECT_RC"
+              fi
+              echo "::warning::[logix-perf] base auto collect timeout after ${BASE_COLLECT_TIMEOUT_SECONDS}s, downgrade to fast-adaptive manual collect"
+              logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "base_auto_timeout"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+              FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
+              AUTO_PROBE_TIMED_OUT=1
+              logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                "${FILE_ARGS[@]}" \
+                --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
             fi
-            echo "PERF_STEPS_LEVELS=$RESOLVED_STEPS" >> "$GITHUB_ENV"
-            export VITE_LOGIX_PERF_STEPS_LEVELS="$RESOLVED_STEPS"
-            echo "[logix-perf] auto steps resolved: $RESOLVED_STEPS"
+            if [ "${AUTO_PROBE_TIMED_OUT:-0}" = "1" ]; then
+              FALLBACK_STEPS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+              echo "PERF_STEPS_LEVELS=$FALLBACK_STEPS" >> "$GITHUB_ENV"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="$FALLBACK_STEPS"
+              echo "[logix-perf] base auto probe degraded; fallback steps: $FALLBACK_STEPS"
+            else
+              RESOLVED_STEPS="$(tr -d "\n\r " < "$AUTO_STEPS_OUT" || true)"
+              if [ -z "$RESOLVED_STEPS" ]; then
+                echo "auto steps probe produced empty steps levels" >&2
+                exit 1
+              fi
+              echo "PERF_STEPS_LEVELS=$RESOLVED_STEPS" >> "$GITHUB_ENV"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="$RESOLVED_STEPS"
+              echo "[logix-perf] auto steps resolved: $RESOLVED_STEPS"
+            fi
           else
             if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
               export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
             fi
-            VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+            if logix_perf_guard_run_with_timeout "$BASE_COLLECT_TIMEOUT_SECONDS" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
               "${FILE_ARGS[@]}" \
-              --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+              --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"; then
+              true
+            else
+              MANUAL_COLLECT_RC="$?"
+              if [ "$MANUAL_COLLECT_RC" -ne 124 ]; then
+                exit "$MANUAL_COLLECT_RC"
+              fi
+              echo "::warning::[logix-perf] base manual collect timeout after ${BASE_COLLECT_TIMEOUT_SECONDS}s, downgrade to fast-adaptive and retry once"
+              logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "base_manual_timeout"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+              FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
+              logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                "${FILE_ARGS[@]}" \
+                --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            fi
           fi
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
@@ -558,6 +619,9 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+          source "$PERF_TIME_GUARD_SCRIPT"
+          logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "before_head_collect"
+          HEAD_COLLECT_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS:-10800}" 1200)"
           AUTO_PROBE_TARGET="${PERF_STEPS_AUTO_PROBE_TARGET:-head}"
           if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
             export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
@@ -596,7 +660,22 @@ jobs:
               if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
                 AUTO_ARGS+=(--initial-steps "$PERF_STEPS_LEVELS")
               fi
-              VITE_LOGIX_PERF_HARD_GATES=off node "$PERF_AUTO_PROBE_SCRIPT" "${AUTO_ARGS[@]}"
+              if logix_perf_guard_run_with_timeout "$HEAD_COLLECT_TIMEOUT_SECONDS" env VITE_LOGIX_PERF_HARD_GATES=off node "$PERF_AUTO_PROBE_SCRIPT" "${AUTO_ARGS[@]}"; then
+                true
+              else
+                AUTO_COLLECT_RC="$?"
+                if [ "$AUTO_COLLECT_RC" -ne 124 ]; then
+                  exit "$AUTO_COLLECT_RC"
+                fi
+                echo "::warning::[logix-perf] head auto collect timeout after ${HEAD_COLLECT_TIMEOUT_SECONDS}s, downgrade to fast-adaptive manual collect"
+                logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "head_auto_timeout"
+                export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+                FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
+                logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                  "${FILE_ARGS[@]}" \
+                  --out "$HEAD_REPORT_PATH"
+                return 0
+              fi
               RESOLVED_STEPS="$(tr -d "\n\r " < "$AUTO_HEAD_STEPS_OUT" || true)"
               if [ -z "$RESOLVED_STEPS" ]; then
                 echo "head auto steps probe produced empty steps levels" >&2
@@ -607,9 +686,23 @@ jobs:
               echo "PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS=1" >> "$GITHUB_ENV"
               echo "[logix-perf] head auto steps resolved: $RESOLVED_STEPS"
             else
-              VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+              if logix_perf_guard_run_with_timeout "$HEAD_COLLECT_TIMEOUT_SECONDS" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
                 "${FILE_ARGS[@]}" \
-                --out "$HEAD_REPORT_PATH"
+                --out "$HEAD_REPORT_PATH"; then
+                true
+              else
+                MANUAL_COLLECT_RC="$?"
+                if [ "$MANUAL_COLLECT_RC" -ne 124 ]; then
+                  exit "$MANUAL_COLLECT_RC"
+                fi
+                echo "::warning::[logix-perf] head manual collect timeout after ${HEAD_COLLECT_TIMEOUT_SECONDS}s, downgrade to fast-adaptive and retry once"
+                logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "head_manual_timeout"
+                export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+                FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
+                logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                  "${FILE_ARGS[@]}" \
+                  --out "$HEAD_REPORT_PATH"
+              fi
             fi
           }
 
@@ -658,6 +751,13 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+          source "$PERF_TIME_GUARD_SCRIPT"
+          logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "before_base_recollect"
+          if [ "${PERF_RUN_PRESET:-full}" != "full" ]; then
+            echo "skip base re-collect after adaptive downgrade: PERF_RUN_PRESET=${PERF_RUN_PRESET:-unknown}"
+            exit 0
+          fi
+          RECOLLECT_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS:-3600}" 900)"
           if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
             export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
           fi
@@ -665,9 +765,18 @@ jobs:
             export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
           fi
 
-          VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+          if logix_perf_guard_run_with_timeout "$RECOLLECT_TIMEOUT_SECONDS" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
-            --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"; then
+            true
+          else
+            RECOLLECT_RC="$?"
+            if [ "$RECOLLECT_RC" -eq 124 ]; then
+              echo "::warning::[logix-perf] base re-collect timeout after ${RECOLLECT_TIMEOUT_SECONDS}s; continue with existing base report"
+              exit 0
+            fi
+            exit "$RECOLLECT_RC"
+          fi
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
 
