@@ -408,13 +408,7 @@ export const makeTransactionOps = <S>(args: {
                   const bodyExit = yield* Effect.sync(() => Runtime.runSyncExit(runtime, body()))
 
                   if (Exit.isFailure(bodyExit)) {
-                    const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(
-                      (defect): defect is Runtime.AsyncFiberException<unknown, unknown> =>
-                        defect != null &&
-                        typeof defect === 'object' &&
-                        (defect as any)._tag === 'AsyncFiberException' &&
-                        (defect as any).fiber != null,
-                    )
+                    const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(Runtime.isAsyncFiberException)
 
                     if (asyncEscapeDefect) {
                       const asyncEscapeError = makeAsyncEscapeError()
