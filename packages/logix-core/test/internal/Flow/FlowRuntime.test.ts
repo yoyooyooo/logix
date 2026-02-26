@@ -343,6 +343,67 @@ describe('FlowRuntime.make (internal kernel)', () => {
     )
     expect(exhaustCount).toBe(1)
   })
+
+  it('run(config) should keep task/parallel/latest/exhaust semantics', async () => {
+    const flow = FlowRuntimeImpl.make<CounterShape, never>(undefined as any)
+
+    let defaultModeCount = 0
+    await Effect.runPromise(
+      flow.run({
+        effect: Effect.sync(() => {
+          defaultModeCount += 1
+        }),
+      })(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
+    )
+    expect(defaultModeCount).toBe(3)
+
+    let sequentialCount = 0
+    await Effect.runPromise(
+      flow.run({
+        mode: 'task',
+        effect: Effect.sync(() => {
+          sequentialCount += 1
+        }),
+      })(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
+    )
+    expect(sequentialCount).toBe(3)
+
+    let parallelCount = 0
+    await Effect.runPromise(
+      flow.run({
+        mode: 'parallel',
+        effect: Effect.sync(() => {
+          parallelCount += 1
+        }),
+      })(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
+    )
+    expect(parallelCount).toBe(3)
+
+    let latestCount = 0
+    await Effect.runPromise(
+      flow.run({
+        mode: 'latest',
+        effect: Effect.gen(function* () {
+          yield* Effect.sleep('20 millis')
+          latestCount += 1
+        }),
+      })(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
+    )
+    expect(latestCount).toBe(1)
+
+    let exhaustCount = 0
+    await Effect.runPromise(
+      flow.run({
+        mode: 'exhaust',
+        effect: Effect.gen(function* () {
+          exhaustCount += 1
+          yield* Effect.sleep('20 millis')
+        }),
+      })(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
+    )
+    expect(exhaustCount).toBe(1)
+  })
+
   it('run/runParallel/runLatest/runExhaust should resolve stack and run session once per invocation', async () => {
     type InvocationKind = 'run' | 'runParallel' | 'runLatest' | 'runExhaust'
 

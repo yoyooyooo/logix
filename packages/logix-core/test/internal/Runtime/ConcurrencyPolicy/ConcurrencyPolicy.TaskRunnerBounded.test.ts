@@ -33,4 +33,39 @@ describe('ConcurrencyPolicy (US1): TaskRunner parallel/exhaust should be bounded
     const maxInFlight = await Effect.runPromise(program as any)
     expect(maxInFlight).toBeLessThanOrEqual(16)
   })
+
+  it('runTask(config) should preserve bounded parallel semantics', async () => {
+    const program = Effect.gen(function* () {
+      const inFlightRef = yield* Ref.make(0)
+      const maxInFlightRef = yield* Ref.make(0)
+
+      const runtime: TaskRunner.TaskRunnerRuntime = {
+        moduleId: 'TaskRunnerBoundedConfig',
+        runWithStateTransaction: (_origin, body) => body() as any,
+      }
+
+      const job = Effect.gen(function* () {
+        const current = yield* Ref.updateAndGet(inFlightRef, (n) => n + 1)
+        yield* Ref.update(maxInFlightRef, (m) => Math.max(m, current))
+        yield* Effect.sleep('10 millis')
+      }).pipe(Effect.ensuring(Ref.update(inFlightRef, (n) => n - 1).pipe(Effect.asVoid)))
+
+      const base = Stream.fromIterable(Array.from({ length: 128 }, (_, i) => i))
+
+      yield* TaskRunner.runTask<number, any, never, void, never>({
+        stream: base,
+        mode: 'parallel',
+        runtime,
+        config: {
+          effect: () => job,
+          triggerName: 'parallel',
+        },
+      })
+
+      return yield* Ref.get(maxInFlightRef)
+    })
+
+    const maxInFlight = await Effect.runPromise(program as any)
+    expect(maxInFlight).toBeLessThanOrEqual(16)
+  })
 })
