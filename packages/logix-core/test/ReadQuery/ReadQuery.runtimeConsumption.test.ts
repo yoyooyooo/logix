@@ -52,15 +52,24 @@ describe('ReadQuery.runtimeConsumption', () => {
     ),
   )
 
-  it.scoped('ungraded dynamic selector still uses runtime strict-gate and fails in error mode', () =>
+  it.scoped('ungraded dynamic selector is observable under runtime strict-gate config (missingBuildGrade)', () =>
     Effect.gen(function* () {
-      const runtime = yield* ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any)
+      const ring = Debug.makeRingBufferSink(64)
+
+      const runtime = yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
+        ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any),
+      )
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
-      const stream = runtime.changesReadQueryWithMeta(selector)
+      const stream = Stream.take(runtime.changesReadQueryWithMeta(selector), 1)
 
-      const fiber = yield* Effect.fork(Stream.runCollect(Stream.take(stream, 1)))
-      yield* runtime.setState({ count: 1 })
+      const fiber = yield* Effect.fork(
+        Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(Stream.runCollect(stream)),
+      )
+
+      yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
+        runtime.setState({ count: 1 }),
+      )
 
       const exit = yield* Fiber.await(fiber)
       expect(exit._tag).toBe('Failure')
@@ -69,7 +78,19 @@ describe('ReadQuery.runtimeConsumption', () => {
       const defects = [...Cause.defects(exit.cause)]
       const err = defects.find((e) => (e as any)?._tag === 'ReadQueryStrictGateError') as any
       expect(err).toBeDefined()
-      expect(['missingDeps', 'unsupportedSyntax', 'unstableSelectorId']).toContain(err?.details?.fallbackReason)
+      expect(err?.details?.fallbackReason).toBe('missingBuildGrade')
+
+      const strictGateDiag = ring
+        .getSnapshot()
+        .find((e) => e.type === 'diagnostic' && e.code === 'read_query::strict_gate') as any
+      expect(strictGateDiag).toBeDefined()
+      expect(strictGateDiag?.trigger?.details?.fallbackReason).toBe('missingBuildGrade')
+
+      const compiled = Logix.ReadQuery.compile(selector)
+      const marked = Logix.ReadQuery.markRuntimeMissingBuildGrade(compiled)
+      expect(marked.fallbackReason).toBe('missingBuildGrade')
+      expect(marked.quality?.source).toBe('runtime_dynamic_fallback')
+      expect(marked.quality?.missingBuildGrade).toBe(true)
     }).pipe(
       Effect.provideService(ReadQueryStrictGateConfigTag, {
         mode: 'error',
@@ -112,7 +133,8 @@ describe('ReadQuery.runtimeConsumption', () => {
 
     expect(marked.quality?.source).toBe('runtime_dynamic_fallback')
     expect(marked.quality?.missingBuildGrade).toBe(true)
-    expect(['missingDeps', 'unsupportedSyntax', 'unstableSelectorId']).toContain(marked.fallbackReason)
+    expect(marked.fallbackReason).toBe('missingBuildGrade')
+    expect(marked.staticIr.fallbackReason).toBe('missingBuildGrade')
     expect(marked.quality?.strictGate).toBeUndefined()
   })
 })
