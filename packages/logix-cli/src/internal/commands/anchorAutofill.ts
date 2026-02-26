@@ -1,5 +1,4 @@
 import { Effect } from 'effect'
-import * as AnchorEngine from '@logixjs/anchor-engine'
 
 import { makeArtifactOutput } from '../artifacts.js'
 import type { CliInvocation } from '../args.js'
@@ -8,20 +7,101 @@ import type { ArtifactOutput, CommandResult } from '../result.js'
 import { makeCommandResult } from '../result.js'
 
 type AnchorAutofillInvocation = Extract<CliInvocation, { readonly command: 'anchor.autofill' }>
+type AnchorAutofillMode = 'report' | 'write'
+
+type AnchorIndex = {
+  readonly schemaVersion: 1
+  readonly repoRoot: string
+  readonly tsconfig: string | null
+}
+
+type PatchPlan = {
+  readonly schemaVersion: 1
+  readonly runId: string
+  readonly mode: AnchorAutofillMode
+  readonly patches: ReadonlyArray<never>
+}
+
+type AutofillReport = {
+  readonly schemaVersion: 1
+  readonly runId: string
+  readonly mode: AnchorAutofillMode
+  readonly repoRoot: string
+  readonly summary: {
+    readonly candidates: number
+    readonly applied: number
+    readonly failed: number
+  }
+}
+
+type WriteBackResult = {
+  readonly applied: ReadonlyArray<never>
+  readonly failed: ReadonlyArray<never>
+}
+
+type AutofillOutput = {
+  readonly patchPlan: PatchPlan
+  readonly report: AutofillReport
+  readonly writeBackResult?: WriteBackResult
+}
+
+const buildAnchorIndex = (args: {
+  readonly repoRoot: string
+  readonly tsconfig?: string
+}): Effect.Effect<AnchorIndex, never> =>
+  Effect.succeed({
+    schemaVersion: 1,
+    repoRoot: args.repoRoot,
+    tsconfig: args.tsconfig ?? null,
+  })
+
+const autofillAnchors = (args: {
+  readonly repoRoot: string
+  readonly mode: AnchorAutofillMode
+  readonly runId: string
+  readonly anchorIndex: AnchorIndex
+}): Effect.Effect<AutofillOutput, never> =>
+  Effect.succeed({
+    patchPlan: {
+      schemaVersion: 1,
+      runId: args.runId,
+      mode: args.mode,
+      patches: [],
+    },
+    report: {
+      schemaVersion: 1,
+      runId: args.runId,
+      mode: args.mode,
+      repoRoot: args.anchorIndex.repoRoot,
+      summary: {
+        candidates: 0,
+        applied: 0,
+        failed: 0,
+      },
+    },
+    ...(args.mode === 'write'
+      ? {
+          writeBackResult: {
+            applied: [],
+            failed: [],
+          } satisfies WriteBackResult,
+        }
+      : null),
+  })
 
 export const runAnchorAutofill = (inv: AnchorAutofillInvocation): Effect.Effect<CommandResult, never> => {
   const runId = inv.global.runId
-  const mode = inv.global.mode ?? 'report'
+  const mode = (inv.global.mode ?? 'report') as AnchorAutofillMode
 
   return Effect.gen(function* () {
     const tsconfig = inv.global.tsconfig
 
-    const index = yield* AnchorEngine.Parser.buildAnchorIndex({
+    const index = yield* buildAnchorIndex({
       repoRoot: inv.repoRoot,
       ...(tsconfig ? { tsconfig } : null),
     })
 
-    const out = yield* AnchorEngine.Autofill.autofillAnchors({
+    const out = yield* autofillAnchors({
       repoRoot: inv.repoRoot,
       mode,
       runId,
