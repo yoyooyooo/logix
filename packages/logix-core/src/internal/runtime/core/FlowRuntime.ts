@@ -7,6 +7,7 @@ import { RunSessionTag } from '../../observability/runSession.js'
 import type { RuntimeInternals } from './RuntimeInternals.js'
 import * as Debug from './DebugSink.js'
 import * as ReadQuery from './ReadQuery.js'
+import { makeRunBudgetEnvelopeV1, makeRunDegradeMarkerV1 } from './diagnosticsBudget.js'
 
 const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
   Effect.serviceOption(EffectOpCore.EffectOpMiddlewareTag).pipe(
@@ -79,10 +80,46 @@ const preResolveEffectResolver = <T, Sh extends AnyModuleShape, R, A, E>(
   return () => eff
 }
 
+const resolveFlowRunId = (name: string, meta: Record<string, unknown>, fallbackRunSeq?: number): string => {
+  const explicitRunId = meta.runId
+  if (typeof explicitRunId === 'string' && explicitRunId.length > 0) {
+    return explicitRunId
+  }
+
+  const instanceId = typeof meta.instanceId === 'string' && meta.instanceId.length > 0 ? meta.instanceId : 'global'
+  const opSeq = meta.opSeq
+  if (typeof opSeq === 'number' && Number.isFinite(opSeq) && opSeq >= 1) {
+    return `${instanceId}::${name}::r${Math.floor(opSeq)}`
+  }
+  if (typeof fallbackRunSeq === 'number' && Number.isFinite(fallbackRunSeq) && fallbackRunSeq >= 1) {
+    return `${instanceId}::${name}::r${Math.floor(fallbackRunSeq)}`
+  }
+  return `${instanceId}::${name}`
+}
+
+const withFlowRunBudgetMeta = (
+  name: string,
+  meta: Record<string, unknown>,
+  fallbackRunSeq?: number,
+): Record<string, unknown> => {
+  const disableObservers =
+    typeof meta.policy === 'object' && meta.policy !== null && (meta.policy as { readonly disableObservers?: unknown }).disableObservers === true
+
+  return {
+    ...meta,
+    budgetEnvelope: makeRunBudgetEnvelopeV1({
+      domain: 'flow',
+      runId: resolveFlowRunId(name, meta, fallbackRunSeq),
+    }),
+    degrade: makeRunDegradeMarkerV1(disableObservers, disableObservers ? 'observer_disabled' : undefined),
+  }
+}
+
 export const make = <Sh extends AnyModuleShape, R = never>(
   runtime: ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>,
   runtimeInternals?: RuntimeInternals,
 ): Api<Sh, R> => {
+  let flowBudgetRunSeq = 0
   const scope = getRuntimeScope(runtime)
   const resolveConcurrencyLimit = (): Effect.Effect<number | 'unbounded', never, any> =>
     runtimeInternals
@@ -165,7 +202,8 @@ export const make = <Sh extends AnyModuleShape, R = never>(
       return eff
     }
     return Effect.gen(function* () {
-      const meta = buildFlowOpMeta(context)
+      flowBudgetRunSeq += 1
+      const meta = withFlowRunBudgetMeta(name, buildFlowOpMeta(context), flowBudgetRunSeq)
 
       const op = EffectOp.make<A, E, any>({
         kind: 'flow',

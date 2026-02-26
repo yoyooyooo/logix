@@ -1,10 +1,16 @@
 import type { ProcessEvent } from './protocol.js'
+import {
+  makeRunBudgetEnvelopeV1,
+  makeRunDegradeMarkerV1,
+  type RunDegradeReasonV1,
+} from '../diagnosticsBudget.js'
 
 export const PROCESS_EVENT_MAX_BYTES = 4 * 1024
 export const PROCESS_EVENT_MAX_EVENTS_PER_RUN = 50
 export const PROCESS_EVENT_RESERVED_EVENTS_FOR_SUMMARY = 1
 
 export type ProcessRunEventBudgetState = {
+  readonly runId: string
   readonly maxEvents: number
   readonly maxBytes: number
   readonly emitted: number
@@ -13,10 +19,42 @@ export type ProcessRunEventBudgetState = {
   readonly summaryEmitted: boolean
 }
 
+const PROCESS_RUN_BUDGET_RUN_ID_UNKNOWN = 'process:run:unknown'
+
+const scopeKeyFromProcessEventIdentity = (eventIdentity: ProcessEvent['identity']['identity']['scope']): string => {
+  switch (eventIdentity.type) {
+    case 'app':
+      return `app:${eventIdentity.appId}`
+    case 'moduleInstance':
+      return `module:${eventIdentity.moduleId}:${eventIdentity.instanceId}`
+    case 'uiSubtree':
+      return `subtree:${eventIdentity.subtreeId}`
+  }
+}
+
+export const makeProcessRunBudgetRunId = (
+  identity: ProcessEvent['identity'],
+  trigger?: ProcessEvent['trigger'],
+): string => {
+  const processId = identity.identity.processId
+  const scopeKey = scopeKeyFromProcessEventIdentity(identity.identity.scope)
+  const runSeq = identity.runSeq
+  const triggerSeq =
+    trigger && typeof trigger.triggerSeq === 'number' && Number.isFinite(trigger.triggerSeq) && trigger.triggerSeq >= 1
+      ? Math.floor(trigger.triggerSeq)
+      : undefined
+  return triggerSeq != null
+    ? `${processId}@${scopeKey}::r${runSeq}::g${triggerSeq}`
+    : `${processId}@${scopeKey}::r${runSeq}`
+}
+
 export const makeProcessRunEventBudgetState = (options?: {
+  readonly runId?: string
   readonly maxEvents?: number
   readonly maxBytes?: number
 }): ProcessRunEventBudgetState => ({
+  runId:
+    typeof options?.runId === 'string' && options.runId.length > 0 ? options.runId : PROCESS_RUN_BUDGET_RUN_ID_UNKNOWN,
   maxEvents:
     typeof options?.maxEvents === 'number' && Number.isFinite(options.maxEvents) && options.maxEvents >= 0
       ? Math.floor(options.maxEvents)
@@ -43,6 +81,65 @@ export type ProcessRunEventBudgetDecision =
   | {
       readonly _tag: 'drop'
     }
+
+const attachProcessRunBudgetEnvelope = (
+  event: ProcessEvent,
+  state: ProcessRunEventBudgetState,
+  degradeReason?: RunDegradeReasonV1,
+): ProcessEvent => ({
+  ...event,
+  budgetEnvelope: makeRunBudgetEnvelopeV1({
+    domain: 'process',
+    runId: state.runId,
+    limits: {
+      maxEvents: state.maxEvents,
+      maxBytes: state.maxBytes,
+    },
+    usage: {
+      emitted: state.emitted,
+      dropped: state.dropped,
+      downgraded: state.downgraded,
+    },
+  }),
+  degrade: makeRunDegradeMarkerV1(Boolean(degradeReason), degradeReason),
+})
+
+const finalizeBudgetedProcessEvent = (args: {
+  readonly event: ProcessEvent
+  readonly state: ProcessRunEventBudgetState
+  readonly maxBytes: number
+  readonly degradeReason?: RunDegradeReasonV1
+}): { readonly event: ProcessEvent; readonly state: ProcessRunEventBudgetState } => {
+  const withEnvelope = attachProcessRunBudgetEnvelope(args.event, args.state, args.degradeReason)
+  if (estimateEventBytes(withEnvelope) <= args.maxBytes) {
+    return { event: withEnvelope, state: args.state }
+  }
+
+  // Envelope itself may push the event over the byte budget.
+  // In this case we degrade to a slimmer event (keep degrade marker, drop envelope).
+  let nextState: ProcessRunEventBudgetState = {
+    ...args.state,
+    downgraded: args.state.downgraded + 1,
+  }
+
+  const compact: ProcessEvent = {
+    ...args.event,
+    degrade: makeRunDegradeMarkerV1(true, args.degradeReason ?? 'payload_oversized'),
+  }
+
+  const enforcedCompact = enforceProcessEventMaxBytes(compact, { maxBytes: args.maxBytes })
+  if (enforcedCompact.downgraded) {
+    nextState = {
+      ...nextState,
+      downgraded: nextState.downgraded + 1,
+    }
+  }
+
+  return {
+    event: enforcedCompact.event,
+    state: nextState,
+  }
+}
 
 const makeBudgetSummaryEvent = (args: {
   readonly sourceEvent: ProcessEvent
@@ -87,13 +184,20 @@ export const applyProcessRunEventBudget = (
 
   if (state.emitted < allowedRegular) {
     const enforced = enforceProcessEventMaxBytes(event, { maxBytes })
+    const baseState: ProcessRunEventBudgetState = {
+      ...state,
+      emitted: state.emitted + 1,
+      downgraded: state.downgraded + (enforced.downgraded ? 1 : 0),
+    }
+    const finalized = finalizeBudgetedProcessEvent({
+      event: enforced.event,
+      state: baseState,
+      maxBytes,
+      degradeReason: enforced.downgraded ? 'payload_oversized' : undefined,
+    })
     return [
-      { _tag: 'emit', event: enforced.event },
-      {
-        ...state,
-        emitted: state.emitted + 1,
-        downgraded: state.downgraded + (enforced.downgraded ? 1 : 0),
-      },
+      { _tag: 'emit', event: finalized.event },
+      finalized.state,
     ]
   }
 
@@ -107,16 +211,23 @@ export const applyProcessRunEventBudget = (
     downgraded: state.downgraded,
   })
   const enforcedSummary = enforceProcessEventMaxBytes(summary, { maxBytes })
+  const baseState: ProcessRunEventBudgetState = {
+    ...state,
+    emitted: Math.min(maxEvents, state.emitted + 1),
+    dropped,
+    downgraded: state.downgraded + (enforcedSummary.downgraded ? 1 : 0),
+    summaryEmitted: true,
+  }
+  const finalized = finalizeBudgetedProcessEvent({
+    event: enforcedSummary.event,
+    state: baseState,
+    maxBytes,
+    degradeReason: 'budget_exceeded',
+  })
 
   return [
-    { _tag: 'emitSummary', event: enforcedSummary.event },
-    {
-      ...state,
-      emitted: Math.min(maxEvents, state.emitted + 1),
-      dropped,
-      downgraded: state.downgraded + (enforcedSummary.downgraded ? 1 : 0),
-      summaryEmitted: true,
-    },
+    { _tag: 'emitSummary', event: finalized.event },
+    finalized.state,
   ]
 }
 

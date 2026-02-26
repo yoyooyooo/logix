@@ -145,6 +145,7 @@ type ProcessTriggerChainKernel = {
 const makeProcessTriggerChainKernel = (args: {
   readonly shouldRecordChainEvents: boolean
   readonly nextTriggerSeq: () => number
+  readonly makeBudgetState: (trigger: ProcessTrigger) => ProcessEvents.ProcessRunEventBudgetState
   readonly emitTriggerEvent: (trigger: ProcessTrigger, severity: ProcessEvent['severity']) => Effect.Effect<void>
   readonly runWithoutChainBudget: (
     trigger: ProcessTrigger,
@@ -167,7 +168,7 @@ const makeProcessTriggerChainKernel = (args: {
     }
 
     return Effect.gen(function* () {
-      const budgetRef = yield* Ref.make(ProcessEvents.makeProcessRunEventBudgetState())
+      const budgetRef = yield* Ref.make(args.makeBudgetState(trigger))
       return yield* Effect.locally(
         currentProcessEventBudget,
         budgetRef,
@@ -357,6 +358,8 @@ export const make = (options?: {
           trigger: event.trigger,
           dispatch: event.dispatch,
           error: event.error,
+          budgetEnvelope: (event as any).budgetEnvelope,
+          degrade: (event as any).degrade,
           txnSeq,
           txnId,
         } as any)
@@ -724,6 +727,10 @@ export const make = (options?: {
         const triggerChainKernel = makeProcessTriggerChainKernel({
           shouldRecordChainEvents,
           nextTriggerSeq: () => instanceState.nextTriggerSeq++,
+          makeBudgetState: (trigger) =>
+            ProcessEvents.makeProcessRunEventBudgetState({
+              runId: ProcessEvents.makeProcessRunBudgetRunId(identity, trigger),
+            }),
           emitTriggerEvent,
           runWithoutChainBudget: makeRun,
         })

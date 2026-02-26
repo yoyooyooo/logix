@@ -169,6 +169,8 @@ export type Event =
         readonly actionId: string
       }
       readonly error?: ProcessProtocol.SerializableErrorSummary
+      readonly budgetEnvelope?: ProcessProtocol.ProcessEvent['budgetEnvelope']
+      readonly degrade?: ProcessProtocol.ProcessEvent['degrade']
       readonly txnSeq?: number
       readonly txnId?: string
       readonly runtimeLabel?: string
@@ -350,7 +352,7 @@ export interface RuntimeDebugEventRef {
   readonly meta?: JsonValue
   readonly errorSummary?: SerializableErrorSummary
   readonly downgrade?: {
-    readonly reason?: 'non_serializable' | 'oversized' | 'unknown'
+    readonly reason?: 'non_serializable' | 'oversized' | 'budget_exceeded' | 'unknown'
   }
 }
 
@@ -421,7 +423,7 @@ const nextEventSeq = (): number => {
 
 const makeEventId = (instanceId: string, eventSeq: number): string => `${instanceId}::e${eventSeq}`
 
-type DowngradeReason = JsonDowngradeReason | ErrorDowngradeReason
+type DowngradeReason = JsonDowngradeReason | ErrorDowngradeReason | 'budget_exceeded'
 
 const mergeDowngrade = (
   current: DowngradeReason | undefined,
@@ -431,6 +433,7 @@ const mergeDowngrade = (
   if (!next) return current
   if (current === 'non_serializable' || next === 'non_serializable') return 'non_serializable'
   if (current === 'oversized' || next === 'oversized') return 'oversized'
+  if (current === 'budget_exceeded' || next === 'budget_exceeded') return 'budget_exceeded'
   return 'unknown'
 }
 
@@ -1231,6 +1234,8 @@ export const toRuntimeDebugEventRef = (
         trigger: e.trigger,
         dispatch: e.dispatch,
         error: e.error,
+        budgetEnvelope: (e as any).budgetEnvelope,
+        degrade: (e as any).degrade,
       }
       const metaProjection = projectJsonValue(metaInput)
       options?.onMetaProjection?.({
@@ -1238,6 +1243,18 @@ export const toRuntimeDebugEventRef = (
         downgrade: metaProjection.downgrade,
       })
       downgrade = mergeDowngrade(downgrade, metaProjection.downgrade)
+
+      const processDegradeReason = (() => {
+        const marker = (e as any).degrade
+        if (!marker || typeof marker !== 'object' || Array.isArray(marker)) return undefined
+        if ((marker as any).degraded !== true) return undefined
+        const reason = (marker as any).reason
+        if (reason === 'budget_exceeded') return 'budget_exceeded' as const
+        if (reason === 'payload_oversized') return 'oversized' as const
+        if (reason === 'payload_non_serializable') return 'non_serializable' as const
+        return 'unknown' as const
+      })()
+      downgrade = mergeDowngrade(downgrade, processDegradeReason)
 
       const errorSummary =
         e.type === 'process:error' || e.type === 'process:restart'

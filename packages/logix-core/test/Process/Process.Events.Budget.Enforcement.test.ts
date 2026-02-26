@@ -1,6 +1,11 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Context, Effect, Exit, Layer, Scope, Schema, TestClock } from 'effect'
 import * as Logix from '../../src/index.js'
+import {
+  makeRunBudgetEnvelopeV1,
+  makeRunDegradeMarkerV1,
+} from '../../src/internal/runtime/core/diagnosticsBudget.js'
+import * as ProcessEvents from '../../src/internal/runtime/core/process/events.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
 describe('process: event budgets', () => {
@@ -106,6 +111,63 @@ describe('process: event budgets', () => {
       expect(dispatches.length).toBeLessThanOrEqual(48)
 
       expect(summary?.trigger?.triggerSeq).toBe(triggerInfo?.trigger?.triggerSeq)
+      expect(summary?.budgetEnvelope?.contract).toBe('diagnostics_budget.v1')
+      expect(summary?.budgetEnvelope?.domain).toBe('process')
+      expect(summary?.budgetEnvelope?.usage?.dropped).toBeGreaterThanOrEqual(1)
+      expect(summary?.degrade?.degraded).toBe(true)
+      expect(summary?.degrade?.reason).toBe('budget_exceeded')
+      // 旧口径兼容：保留 hint 文本，方便阶段性迁移。
+      expect(summary?.error?.hint).toContain('maxEvents=')
+    }),
+  )
+
+  it.effect('keeps event within maxBytes when envelope attachment itself would overflow budget', () =>
+    Effect.gen(function* () {
+      const event: Logix.Process.ProcessEvent = {
+        type: 'process:trigger',
+        identity: {
+          identity: { processId: 'ProcessEventBudget', scope: { type: 'app', appId: 'app' } },
+          runSeq: 1,
+        },
+        severity: 'info',
+        eventSeq: 1,
+        timestampMs: 1,
+        trigger: {
+          kind: 'platformEvent',
+          platformEvent: 'test:budget',
+          triggerSeq: 1,
+        },
+      }
+
+      const maxBytes = 360
+      const withBudgetEnvelope = {
+        ...event,
+        budgetEnvelope: makeRunBudgetEnvelopeV1({
+          domain: 'process',
+          runId: 'ProcessEventBudget@app:app::r1::g1',
+          limits: { maxEvents: 8, maxBytes },
+          usage: { emitted: 1, dropped: 0, downgraded: 0 },
+        }),
+        degrade: makeRunDegradeMarkerV1(false),
+      } satisfies Logix.Process.ProcessEvent
+
+      expect(ProcessEvents.estimateEventBytes(event)).toBeLessThanOrEqual(maxBytes)
+      expect(ProcessEvents.estimateEventBytes(withBudgetEnvelope)).toBeGreaterThan(maxBytes)
+
+      const state = ProcessEvents.makeProcessRunEventBudgetState({
+        runId: 'ProcessEventBudget@app:app::r1::g1',
+        maxEvents: 8,
+        maxBytes,
+      })
+
+      const [decision, nextState] = ProcessEvents.applyProcessRunEventBudget(state, event)
+      expect(decision._tag).toBe('emit')
+      if (decision._tag !== 'emit') return
+
+      expect(ProcessEvents.estimateEventBytes(decision.event)).toBeLessThanOrEqual(maxBytes)
+      expect(decision.event.budgetEnvelope).toBeUndefined()
+      expect(decision.event.degrade?.degraded).toBe(true)
+      expect(nextState.downgraded).toBeGreaterThanOrEqual(1)
     }),
   )
 })
