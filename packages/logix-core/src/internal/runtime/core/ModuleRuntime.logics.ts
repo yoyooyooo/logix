@@ -256,8 +256,9 @@ export const runModuleLogics = <S, A, R>(args: {
         const phaseRef = LogicPlanMarker.getPhaseRef(rawLogic) ?? createPhaseRef()
         const runEffect = rawLogic as Effect.Effect<any, any, any>
 
-        // Single-phase logic remains canonical, but if its return value is a nested LogicPlanEffect
-        // (async-built ModuleImpl pattern), resolve and attach that plan explicitly.
+        // Canonical semantics keeps single-phase logic as run-only.
+        // Compatibility: if run returns a marked LogicPlanEffect (async-built ModuleImpl pattern),
+        // resolve and execute that nested plan immediately to preserve existing user behavior.
         const plan: LogicPlan<any, any, any> = {
           setup: Effect.void,
           run: runEffect.pipe(

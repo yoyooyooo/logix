@@ -879,6 +879,52 @@ describe('ModuleRuntime (internal)', () => {
         expect(runExecuted).toBe(false)
       }),
     )
+
+    it.scoped('should keep compatibility for marked LogicPlanEffect returned from single-phase logic', () =>
+      Effect.gen(function* () {
+        let setupExecuted = false
+        let runExecuted = false
+
+        const LegacyCompatPlanEffectModule = Logix.Module.make('LegacyCompatPlanEffectReturn', {
+          state: Schema.Struct({ count: Schema.Number }),
+          actions: {},
+        })
+
+        // Intentionally do NOT mark the outer single-phase logic as LogicPlanEffect:
+        // compatibility path still resolves a marked LogicPlanEffect returned by run.
+        const logic = Effect.succeed(undefined).pipe(
+          Effect.map(() => {
+            const planEffect = Effect.succeed({
+              setup: Effect.sync(() => {
+                setupExecuted = true
+              }),
+              run: Effect.sync(() => {
+                runExecuted = true
+              }),
+            }) as any
+            LogicPlanMarker.markAsLogicPlanEffect(planEffect)
+            return planEffect
+          }),
+        )
+
+        const runtime = yield* ModuleRuntime.make(
+          { count: 0 },
+          {
+            moduleId: 'legacy-compat-plan-effect-return',
+            logics: [logic],
+            tag: LegacyCompatPlanEffectModule.tag,
+          },
+        )
+
+        yield* Effect.yieldNow()
+        yield* TestClock.adjust('10 millis')
+
+        const state = yield* runtime.getState
+        expect(state.count).toBe(0)
+        expect(setupExecuted).toBe(true)
+        expect(runExecuted).toBe(true)
+      }),
+    )
   })
 
   describe('StateTransaction integration', () => {
