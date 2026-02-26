@@ -238,7 +238,7 @@ describe('ConcurrencyPolicy (US1): pressure warning', () => {
     await Effect.runPromise(program as any)
   })
 
-  it('should annotate dispatchBatch topic pressure with converged source fields', async () => {
+  it.live('should annotate dispatchBatch topic pressure with converged source fields', () => {
     const ring = Debug.makeRingBufferSink(256)
 
     const TopicModule = Logix.Module.make('PressureWarningTopicBatchModule', {
@@ -334,6 +334,6 @@ describe('ConcurrencyPolicy (US1): pressure warning', () => {
       ),
     )
 
-    await Effect.runPromise(program as any)
+    return program
   })
 })
