@@ -21,6 +21,9 @@ Usage:
     [--extend-count <n>] \\
     [--max-level-cap <n>] \\
     [--samples-per-iteration <n>] \\
+    [--min-samples-per-iteration <n>] \\
+    [--max-total-collects <n>] \\
+    [--time-budget-minutes <n>] \\
     [--outlier-rel-tolerance <float>] \\
     [--outlier-abs-tolerance <n>] \\
     [--min-kept-samples <n>]
@@ -50,6 +53,9 @@ const parseArgs = (argv) => {
     extendCount: 2,
     maxLevelCap: 25600,
     samplesPerIteration: 2,
+    minSamplesPerIteration: 1,
+    maxTotalCollects: 6,
+    timeBudgetMinutes: 150,
     outlierRelTolerance: 0.2,
     outlierAbsTolerance: 800,
     minKeptSamples: 2,
@@ -73,6 +79,9 @@ const parseArgs = (argv) => {
     if (k === '--extend-count') out.extendCount = Number(v)
     if (k === '--max-level-cap') out.maxLevelCap = Number(v)
     if (k === '--samples-per-iteration') out.samplesPerIteration = Number(v)
+    if (k === '--min-samples-per-iteration') out.minSamplesPerIteration = Number(v)
+    if (k === '--max-total-collects') out.maxTotalCollects = Number(v)
+    if (k === '--time-budget-minutes') out.timeBudgetMinutes = Number(v)
     if (k === '--outlier-rel-tolerance') out.outlierRelTolerance = Number(v)
     if (k === '--outlier-abs-tolerance') out.outlierAbsTolerance = Number(v)
     if (k === '--min-kept-samples') out.minKeptSamples = Number(v)
@@ -93,6 +102,15 @@ const parseArgs = (argv) => {
   }
   if (!Number.isFinite(out.samplesPerIteration) || out.samplesPerIteration <= 0) {
     throw new Error(`invalid --samples-per-iteration: ${String(out.samplesPerIteration)}`)
+  }
+  if (!Number.isFinite(out.minSamplesPerIteration) || out.minSamplesPerIteration <= 0) {
+    throw new Error(`invalid --min-samples-per-iteration: ${String(out.minSamplesPerIteration)}`)
+  }
+  if (!Number.isFinite(out.maxTotalCollects) || out.maxTotalCollects <= 0) {
+    throw new Error(`invalid --max-total-collects: ${String(out.maxTotalCollects)}`)
+  }
+  if (!Number.isFinite(out.timeBudgetMinutes) || out.timeBudgetMinutes <= 0) {
+    throw new Error(`invalid --time-budget-minutes: ${String(out.timeBudgetMinutes)}`)
   }
   if (!Number.isFinite(out.outlierRelTolerance) || out.outlierRelTolerance < 0) {
     throw new Error(`invalid --outlier-rel-tolerance: ${String(out.outlierRelTolerance)}`)
@@ -404,12 +422,23 @@ const main = () => {
     let finalReportFile = null
     let stopReason = 'unknown'
     const iterationLogs = []
+    const startedAtMs = Date.now()
+    let totalCollects = 0
+    let collectBudgetReached = false
+    const elapsedMinutes = () => (Date.now() - startedAtMs) / 60_000
+    const hasCollectBudget = () =>
+      totalCollects < args.maxTotalCollects && elapsedMinutes() < args.timeBudgetMinutes
 
     for (let iteration = 1; iteration <= args.maxIterations; iteration++) {
       const sampleAnalyses = []
       for (let sample = 1; sample <= args.samplesPerIteration; sample++) {
+        if (!hasCollectBudget() && sampleAnalyses.length >= args.minSamplesPerIteration) {
+          collectBudgetReached = true
+          break
+        }
         const reportFile = path.join(tempDir, `probe.${String(iteration)}.${String(sample)}.json`)
         runCollect({ profile: args.profile, files, outFile: reportFile, levels })
+        totalCollects += 1
         const report = readJson(reportFile)
         const analyzed = analyzeReport({
           report,
@@ -424,6 +453,10 @@ const main = () => {
           summary: analyzed.summary,
           timeoutPoints: analyzed.timeoutPoints,
         })
+      }
+      if (sampleAnalyses.length === 0) {
+        stopReason = 'collect_budget_reached_before_sampling'
+        break
       }
 
       const aggregated = aggregateSampleAnalyses({
@@ -475,6 +508,8 @@ const main = () => {
         topTimeoutCount,
         representativeSample: representative,
         sampleCount: sampleAnalyses.length,
+        totalCollects,
+        elapsedMinutes: Number(elapsedMinutes().toFixed(2)),
         samples: sampleAnalyses.map((sample) => ({
           sample: sample.sample,
           reportFile: sample.reportFile,
@@ -495,6 +530,10 @@ const main = () => {
       finalReportFile = representative.reportFile
       stopReason = decision
       if (!shouldExtend) {
+        break
+      }
+      if (collectBudgetReached) {
+        stopReason = 'collect_budget_reached'
         break
       }
 
@@ -540,10 +579,15 @@ const main = () => {
         extendCount: args.extendCount,
         maxLevelCap: args.maxLevelCap,
         samplesPerIteration: args.samplesPerIteration,
+        minSamplesPerIteration: args.minSamplesPerIteration,
+        maxTotalCollects: args.maxTotalCollects,
+        timeBudgetMinutes: args.timeBudgetMinutes,
         outlierRelTolerance: args.outlierRelTolerance,
         outlierAbsTolerance: args.outlierAbsTolerance,
         minKeptSamples: args.minKeptSamples,
         stopReason,
+        totalCollects,
+        elapsedMinutes: Number(elapsedMinutes().toFixed(2)),
         finalLevels: levels,
         summary: finalIteration?.aggregated?.summary ?? null,
         representativeSample: finalIteration?.representativeSample ?? null,
@@ -560,7 +604,7 @@ const main = () => {
         summary?.p95MedianMaxLevel ?? 0,
       )} avg=${String(summary?.averageUpperLimit ?? 0)} samples=${String(args.samplesPerIteration)} iterations=${String(
         iterationLogs.length,
-      )} stop=${stopReason}`,
+      )} collects=${String(totalCollects)} elapsedMin=${String(Number(elapsedMinutes().toFixed(2)))} stop=${stopReason}`,
     )
   } catch (error) {
     // eslint-disable-next-line no-console

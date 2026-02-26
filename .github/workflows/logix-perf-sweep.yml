@@ -59,6 +59,18 @@ on:
         description: "auto 模式每个 dirtyRootsRatio 至少保留样本数"
         required: false
         default: "2"
+      perf_steps_auto_min_samples_per_iteration:
+        description: "auto 模式每轮最少采样数（预算触发时仍至少采样该数量）"
+        required: false
+        default: "1"
+      perf_steps_auto_max_total_collects:
+        description: "auto 模式总 collect 上限（避免单次 run 过长）"
+        required: false
+        default: "6"
+      perf_steps_auto_time_budget_minutes:
+        description: "auto 模式时间预算（分钟；超出则提前收敛）"
+        required: false
+        default: "150"
       perf_steps_auto_probe_target:
         description: "auto 模式探测对象（base/head/both）"
         required: false
@@ -119,7 +131,7 @@ concurrency:
 jobs:
   perf-sweep:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 240
     env:
       PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx
       PERF_PROFILE: quick
@@ -134,6 +146,9 @@ jobs:
       PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE: 0.2
       PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE: 800
       PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: 2
+      PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION: 1
+      PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS: 6
+      PERF_STEPS_AUTO_TIME_BUDGET_MINUTES: 150
       PERF_STEPS_AUTO_PROBE_TARGET: head
       PERF_OUT_DIR: perf/ci
       PERF_ARTIFACT_NAME: logix-perf-sweep-${{ github.run_id }}
@@ -171,6 +186,9 @@ jobs:
           INPUT_PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE: ${{ github.event.inputs.perf_steps_auto_outlier_rel_tolerance }}
           INPUT_PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE: ${{ github.event.inputs.perf_steps_auto_outlier_abs_tolerance }}
           INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: ${{ github.event.inputs.perf_steps_auto_min_kept_samples }}
+          INPUT_PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION: ${{ github.event.inputs.perf_steps_auto_min_samples_per_iteration }}
+          INPUT_PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS: ${{ github.event.inputs.perf_steps_auto_max_total_collects }}
+          INPUT_PERF_STEPS_AUTO_TIME_BUDGET_MINUTES: ${{ github.event.inputs.perf_steps_auto_time_budget_minutes }}
           INPUT_PERF_STEPS_AUTO_PROBE_TARGET: ${{ github.event.inputs.perf_steps_auto_probe_target }}
           INPUT_PERF_CAPACITY_FLOOR_MIN: ${{ github.event.inputs.perf_capacity_floor_min }}
           INPUT_PERF_CAPACITY_DYNAMIC_ENABLE: ${{ github.event.inputs.perf_capacity_dynamic_enable }}
@@ -287,6 +305,15 @@ jobs:
             fi
             if [ -n "${INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES:-}" ]; then
               echo "PERF_STEPS_AUTO_MIN_KEPT_SAMPLES=$INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION:-}" ]; then
+              echo "PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION=$INPUT_PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS:-}" ]; then
+              echo "PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS=$INPUT_PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_TIME_BUDGET_MINUTES:-}" ]; then
+              echo "PERF_STEPS_AUTO_TIME_BUDGET_MINUTES=$INPUT_PERF_STEPS_AUTO_TIME_BUDGET_MINUTES" >> "$GITHUB_ENV"
             fi
             if [ -n "${INPUT_PERF_STEPS_AUTO_PROBE_TARGET:-}" ]; then
               echo "PERF_STEPS_AUTO_PROBE_TARGET=$INPUT_PERF_STEPS_AUTO_PROBE_TARGET" >> "$GITHUB_ENV"
@@ -473,6 +500,9 @@ jobs:
               --extend-count "$PERF_STEPS_AUTO_EXTEND_COUNT"
               --max-level-cap "$PERF_STEPS_AUTO_MAX_LEVEL_CAP"
               --samples-per-iteration "$PERF_STEPS_AUTO_SAMPLES_PER_ITERATION"
+              --min-samples-per-iteration "$PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION"
+              --max-total-collects "$PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS"
+              --time-budget-minutes "$PERF_STEPS_AUTO_TIME_BUDGET_MINUTES"
               --outlier-rel-tolerance "$PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE"
               --outlier-abs-tolerance "$PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE"
               --min-kept-samples "$PERF_STEPS_AUTO_MIN_KEPT_SAMPLES"
@@ -556,6 +586,9 @@ jobs:
                 --extend-count "$PERF_STEPS_AUTO_EXTEND_COUNT"
                 --max-level-cap "$PERF_STEPS_AUTO_MAX_LEVEL_CAP"
                 --samples-per-iteration "$PERF_STEPS_AUTO_SAMPLES_PER_ITERATION"
+                --min-samples-per-iteration "$PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION"
+                --max-total-collects "$PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS"
+                --time-budget-minutes "$PERF_STEPS_AUTO_TIME_BUDGET_MINUTES"
                 --outlier-rel-tolerance "$PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE"
                 --outlier-abs-tolerance "$PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE"
                 --min-kept-samples "$PERF_STEPS_AUTO_MIN_KEPT_SAMPLES"
@@ -582,7 +615,7 @@ jobs:
 
           collect_head_once
 
-          if [ "${PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT:-1}" = "1" ] && [ -f "$HEAD_REPORT_PATH" ]; then
+          if [ "${PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT:-1}" = "1" ] && [ -f "$HEAD_REPORT_PATH" ] && { [ "${PERF_STEPS_MODE:-manual}" != "auto" ] || [ "$AUTO_PROBE_TARGET" = "base" ]; }; then
             TIMEOUT_COUNT="$(jq '[.suites[]? | select(.id=="converge.txnCommit") | .thresholds[]? | select((.budget.id // "")=="commit.p95<=50ms") | select((.where.convergeMode // null)=="auto") | select(((.firstFail.reason // .reason // "") | test("timeout"; "i")))] | length' "$HEAD_REPORT_PATH")"
             if [ "${TIMEOUT_COUNT:-0}" -gt 0 ]; then
               echo "[logix-perf] timeout rows detected in head report ($TIMEOUT_COUNT); retry once"
