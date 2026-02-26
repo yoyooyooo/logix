@@ -1,7 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { RuntimeProvider, useModule, useSelector, useRuntime } from '../../src/index.js'
 import * as Logix from '@logixjs/core'
-import { Context, Effect, Layer, Schema, ManagedRuntime, SubscriptionRef } from 'effect'
+import { Context, Effect, Layer, Schema, ManagedRuntime } from 'effect'
 import { describe, it, expect, beforeEach } from 'vitest'
 // @vitest-environment happy-dom
 import React from 'react'
@@ -88,7 +88,7 @@ describe('React Hooks', () => {
     const countRef = moduleRuntime.ref((s: { count: number }) => s.count)
 
     // Check initial value
-    expect(await runtime.runPromise(SubscriptionRef.get(countRef))).toBe(0)
+    expect(await runtime.runPromise(countRef.get)).toBe(0)
 
     // Update state via runtime
     await act(async () => {
@@ -96,7 +96,7 @@ describe('React Hooks', () => {
     })
 
     // Check ref updated
-    expect(await runtime.runPromise(SubscriptionRef.get(countRef))).toBe(10)
+    expect(await runtime.runPromise(countRef.get)).toBe(10)
 
     // Check read-only: SubscriptionRef API does not expose `set`; we only verify selector behavior here.
   })

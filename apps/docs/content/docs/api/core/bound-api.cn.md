@@ -17,7 +17,7 @@ interface BoundApi<Sh, R> {
     readonly read: Effect<State>;
     readonly update: (f: (prev: State) => State) => Effect<void>;
     readonly mutate: (f: (draft: Draft<State>) => void) => Effect<void>;
-    readonly ref: () => SubscriptionRef<State>;
+    readonly ref: () => ReadonlySubscriptionRef<State>;
   };
 
   // Action（067 action surface）
@@ -104,7 +104,7 @@ interface BoundApi<Sh, R> {
 - **`read`**: 读取当前状态快照。
 - **`update`**: 使用纯函数整棵替换状态（通常会被视为全量写入，谨慎使用）。
 - **`mutate`**: 使用 `mutative` 风格的可变 Draft 更新状态（推荐；会保留字段级影响域）。
-- **`ref`**: 获取底层的 `SubscriptionRef`，用于高级响应式操作。
+- **`ref`**: 获取只读 `ref`（`get + changes`），用于高级响应式订阅；状态写入必须通过 `$.state.update / $.state.mutate`。
 
 ```typescript
 // 读取

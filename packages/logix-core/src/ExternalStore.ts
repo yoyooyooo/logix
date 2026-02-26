@@ -1,9 +1,10 @@
-import { Effect, Fiber, Stream, SubscriptionRef } from 'effect'
+import { Effect, Fiber, Stream } from 'effect'
 import type { Context } from 'effect'
 import * as ReadQuery from './ReadQuery.js'
 import { fnv1a32, stableStringify } from './internal/digest.js'
 import { attachExternalStoreDescriptor, type ExternalStoreDescriptor } from './internal/external-store-descriptor.js'
 import { getGlobalHostScheduler } from './internal/runtime/core/HostScheduler.js'
+import type * as LogixModule from './internal/module.js'
 
 export type ExternalStore<T> = {
   readonly getSnapshot: () => T
@@ -135,10 +136,10 @@ const getOrAssignAnonStoreId = (key: object, prefix: string): string => {
  * Create an ExternalStore from a SubscriptionRef.
  *
  * Notes:
- * - `getSnapshot()` is implemented via `SubscriptionRef.get(ref)` (must be a synchronous pure read; do not hide IO inside).
+ * - `getSnapshot()` is implemented via `ref.get` (must be a synchronous pure read; do not hide IO inside).
  * - change notifications are batched via microtask (multiple updates in the same microtask trigger a single notify).
  */
-export const fromSubscriptionRef = <T>(ref: SubscriptionRef.SubscriptionRef<T>): ExternalStore<T> => {
+export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<T>): ExternalStore<T> => {
   const storeId = getOrAssignAnonStoreId(ref as any, 'es_ref')
 
   let hasSnapshot = false
@@ -164,7 +165,7 @@ export const fromSubscriptionRef = <T>(ref: SubscriptionRef.SubscriptionRef<T>):
   const refreshSnapshotIfStale = () => {
     if (!hasSnapshot) return
     try {
-      const latest = Effect.runSync(SubscriptionRef.get(ref)) as T
+      const latest = Effect.runSync(ref.get) as T
       if (!Object.is(current, latest)) {
         current = latest
         scheduleNotify()
@@ -177,7 +178,7 @@ export const fromSubscriptionRef = <T>(ref: SubscriptionRef.SubscriptionRef<T>):
   const store: ExternalStore<T> = {
     getSnapshot: () => {
       if (hasSnapshot) return current as T
-      current = Effect.runSync(SubscriptionRef.get(ref)) as T
+      current = Effect.runSync(ref.get) as T
       hasSnapshot = true
       return current
     },

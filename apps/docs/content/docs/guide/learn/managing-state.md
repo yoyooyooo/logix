@@ -33,7 +33,7 @@ In Logic, you access the current Module’s state via the Bound API (`$`):
 - `$.state.read`: read the latest state snapshot
 - `$.state.update(prev => next)`: update the whole state with a pure function
 - `$.state.mutate(draft => { ... })`: update via a mutable Draft (recommended)
-- `$.state.ref(selector?)`: get a subscribable Ref for advanced reactive use cases
+- `$.state.ref(selector?)`: get a read-only subscribable Ref (`get/changes`) for advanced reactive use cases
 
 Typical usage:
 

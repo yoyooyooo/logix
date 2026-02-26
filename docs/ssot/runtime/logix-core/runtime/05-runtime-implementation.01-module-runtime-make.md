@@ -44,9 +44,10 @@ function ModuleRuntime.make<Sh extends Logix.ModuleShape<any, any>>(
   - `getState` / `setState`：反映一棵单一、严格一致的 State 树；`setState` 之后后续的 `getState` / `changes` 必须能观测到新值；
   - `dispatch` 与 `actions$`：所有通过 `dispatch` 派发的 Action 必须按顺序出现在 `actions$` 流中，不允许静默丢失或跨实例/跨模块串台；
   - `changes(selector)`：是基于 State 视图的变化流，语义等价于“`stateRef.changes` + `distinctUntilChanged(selector)`”，不能混入无关事件；
-  - `ref()`：提供对当前 State 的 `SubscriptionRef` 视图：
-    - `ref()` 返回整棵 State 的可读写 SubscriptionRef；
-    - `ref(selector)` 在当前实现中返回一个**只读派生视图**（基于 selector 从整棵 State 派生值，写入会导致运行时 `die`），主要供引擎内部与高级 Pattern 使用；业务代码仍推荐优先通过 `$.onState` / `$.flow` 订阅变化，或在必要时在调用方自行封装更语义化的 Ref。
+  - `ref()`：提供对当前 State 的只读 ref 视图：
+    - `ref()` 返回整棵 State 的**只读**视图（`get + changes`）；
+    - `ref(selector)` 返回基于 selector 的**只读派生视图**；
+    - 两者都不暴露写入口；写入必须通过 `setState` / `$.state.update` / `$.state.mutate` 等受控事务入口（若强制 cast 后写入会在运行时 fail）。
 - 典型合法用例：
   - 为“远程 Store / 既有状态机”（例如后端推送的只读 Store、Redux/Zustand 等）包装一个 `ModuleRuntime`，让 Logix 逻辑可以在它之上运行；
   - 在测试环境中实现带时间旅行 / 录制能力的 `ModuleRuntime`，用于调试与回放；

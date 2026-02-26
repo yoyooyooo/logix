@@ -3,10 +3,10 @@
  * @description
  *   将“forkScoped 长任务 + 进度更新”的逻辑抽离为可复用 Pattern：
  *   - LongTaskState / LongTaskAction 定义长任务的最小状态形状；
- *   - runLongTaskPattern 通过 SubscriptionRef 持续更新进度与状态。
+ *   - runLongTaskPattern 通过受控写入口持续更新进度与状态（避免业务直写 ref）。
  */
 
-import { Duration, Effect, Schema, SubscriptionRef } from 'effect'
+import { Duration, Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -32,7 +32,9 @@ export type LongTaskAction = Logix.ActionOf<LongTaskShape>
 // ---------------------------------------------------------------------------
 
 export interface LongTaskPatternInput {
-  stateRef: SubscriptionRef.SubscriptionRef<LongTaskState>
+  readonly updateState: (
+    updater: (prev: LongTaskState) => LongTaskState,
+  ) => Effect.Effect<void, never, any>
 }
 
 export const runLongTaskPattern = (input: LongTaskPatternInput): Effect.Effect<void, never, never> =>
@@ -45,7 +47,7 @@ export const runLongTaskPattern = (input: LongTaskPatternInput): Effect.Effect<v
         let progress = 0
 
         // 初始标记为 running
-        yield* SubscriptionRef.update(input.stateRef, (prev) => ({
+        yield* input.updateState((prev) => ({
           ...prev,
           status: 'running' as const,
           progress,
@@ -58,7 +60,7 @@ export const runLongTaskPattern = (input: LongTaskPatternInput): Effect.Effect<v
 
           const status: LongTaskState['status'] = progress >= 100 ? 'done' : 'running'
 
-          yield* SubscriptionRef.update(input.stateRef, (prev) => ({
+          yield* input.updateState((prev) => ({
             ...prev,
             status,
             progress,
