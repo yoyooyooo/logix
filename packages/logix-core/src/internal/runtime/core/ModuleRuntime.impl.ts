@@ -1271,10 +1271,12 @@ export const make = <S, A, R = never>(
         '[ModuleRuntime.ref] state ref is read-only. Use runtime.setState / $.state.update / $.state.mutate instead.',
       )
 
-    const passthroughPermits =
-      () =>
-      <A0, E0, R0>(self: Effect.Effect<A0, E0, R0>): Effect.Effect<A0, E0, R0> =>
-        self
+    const denyPublish = (_value: unknown): Effect.Effect<boolean> => writeDenied() as Effect.Effect<boolean>
+
+    const denyWithPermits =
+      (_permits: number) =>
+      <A0, E0, R0>(_self: Effect.Effect<A0, E0, R0>): Effect.Effect<A0, E0, R0> =>
+        writeDenied() as Effect.Effect<A0, E0, R0>
 
     const rootDenyWriteRef = {
       get: SubscriptionRef.get(stateRef),
@@ -1289,10 +1291,10 @@ export const make = <S, A, R = never>(
       modify: writeDenied,
       ref: rootDenyWriteRef,
       pubsub: {
-        publish: () => Effect.succeed(true),
+        publish: denyPublish,
       },
       semaphore: {
-        withPermits: passthroughPermits,
+        withPermits: denyWithPermits,
       },
     } as const
 
@@ -1414,10 +1416,10 @@ export const make = <S, A, R = never>(
           modify: writeDenied,
           ref: denyWriteRef,
           pubsub: {
-            publish: () => Effect.succeed(true),
+            publish: denyPublish,
           },
           semaphore: {
-            withPermits: passthroughPermits,
+            withPermits: denyWithPermits,
           },
         }
 
