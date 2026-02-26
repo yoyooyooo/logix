@@ -1,14 +1,11 @@
-import { Cause, Effect, Fiber, FiberRef, Ref, Stream } from 'effect'
+import { Cause, Effect, FiberRef, Stream } from 'effect'
 import * as Debug from './DebugSink.js'
 import { isDevEnv } from './env.js'
-import * as LatestFiberSlot from './LatestFiberSlot.js'
 import type * as Logic from './LogicMiddleware.js'
 import type { AnyModuleShape, LogicEffect } from './module.js'
 import type { RuntimeInternalsResolvedConcurrencyPolicy } from './RuntimeInternals.js'
 import type { StateTxnOrigin } from './StateTransaction.js'
-
-const EXHAUST_ACQUIRE_BUSY = [true, true] as const
-const EXHAUST_REJECT_BUSY = [false, true] as const
+import * as ModeRunner from './ModeRunner.js'
 
 /**
  * Prevents calling run*Task inside a "synchronous transaction execution fiber" (it would deadlock the txnQueue).
@@ -47,11 +44,7 @@ export const exitSyncTransaction = (): void => {
 
 export const isInSyncTransaction = (): boolean => inSyncTransactionGlobalDepth > 0
 
-export type TaskRunnerMode =
-  | 'task' // sequential
-  | 'parallel'
-  | 'latest'
-  | 'exhaust'
+export type TaskRunnerMode = ModeRunner.ModeRunnerMode
 
 export type TaskStatus = 'idle' | 'pending' | 'running' | 'success' | 'failure' | 'interrupted'
 
@@ -276,85 +269,53 @@ const runTaskLifecycle = <Payload, Sh extends AnyModuleShape, R, A, E>(
   ) as Effect.Effect<void, never, Logic.Env<Sh, R>>
 
 /**
- * makeTaskRunner：
- * - Reuses FlowRuntime concurrency semantics (sequential/parallel/latest/exhaust).
+ * runTask:
+ * - Uses shared ModeRunner semantics (task/parallel/latest/exhaust).
  * - Splits a single trigger into: pending (separate txn) → IO → success/failure (separate txn).
+ */
+export interface RunTaskConfig<Payload, Sh extends AnyModuleShape, R, A = void, E = never> {
+  readonly stream: Stream.Stream<Payload>
+  readonly mode?: TaskRunnerMode
+  runtime: TaskRunnerRuntime,
+  config: TaskRunnerConfig<Payload, Sh, R, A, E>
+}
+
+export const runTask = <Payload, Sh extends AnyModuleShape, R, A = void, E = never>(
+  args: RunTaskConfig<Payload, Sh, R, A, E>,
+): Effect.Effect<void, never, Logic.Env<Sh, R>> => {
+  const mode = args.mode ?? 'task'
+  const runtime = args.runtime
+  const config = args.config
+
+  return ModeRunner.runByMode<Payload, never, Logic.Env<Sh, R>>({
+    stream: args.stream,
+    mode,
+    run: (payload) => runTaskLifecycle<Payload, Sh, R, A, E>(payload, runtime, config),
+    runLatest: (payload, context) =>
+      runTaskLifecycle<Payload, Sh, R, A, E>(payload, runtime, config, context.isCurrent),
+    resolveConcurrencyLimit: resolveConcurrencyLimit(runtime),
+    latest: {
+      strategy: 'fiber-slot',
+      // Keep TaskRunner behavior: triggers are acknowledged once started; no need to await final IO on stream completion.
+      awaitLatestOnEnd: false,
+    },
+  }) as Effect.Effect<void, never, Logic.Env<Sh, R>>
+}
+
+/**
+ * makeTaskRunner:
+ * - Backward-compatible thin alias for runTask.
+ * - Signature stays stable for existing Bound API callsites.
  */
 export const makeTaskRunner = <Payload, Sh extends AnyModuleShape, R, A = void, E = never>(
   stream: Stream.Stream<Payload>,
   mode: TaskRunnerMode,
   runtime: TaskRunnerRuntime,
   config: TaskRunnerConfig<Payload, Sh, R, A, E>,
-): Effect.Effect<void, never, Logic.Env<Sh, R>> => {
-  if (mode === 'latest') {
-    return Effect.gen(function* () {
-      const stateRef = yield* LatestFiberSlot.make()
-
-      const start = (payload: Payload) =>
-        Effect.gen(function* () {
-          const [prevFiber, prevRunningId, runId] = yield* LatestFiberSlot.beginRun(stateRef)
-
-          if (prevFiber && prevRunningId !== 0) {
-            // Do not wait for the old fiber to fully end (avoid blocking new triggers); writeback is guarded by runId.
-            yield* Fiber.interruptFork(prevFiber)
-          }
-
-          const canWriteBack = Ref.get(stateRef).pipe(Effect.map((state) => state.runningId === runId))
-
-          const fiber = yield* Effect.fork(
-            runTaskLifecycle<Payload, Sh, R, A, E>(payload, runtime, config, canWriteBack).pipe(
-              Effect.ensuring(LatestFiberSlot.clearIfCurrent(stateRef, runId)),
-            ),
-          )
-
-          yield* LatestFiberSlot.setFiberIfCurrent(stateRef, runId, fiber)
-        })
-
-      return yield* Stream.runForEach(stream, start)
-    })
-  }
-
-  if (mode === 'exhaust') {
-    return Effect.gen(function* () {
-      const concurrency = yield* resolveConcurrencyLimit(runtime)
-      const busyRef = yield* Ref.make(false)
-
-      const mapper = (payload: Payload) =>
-        Effect.gen(function* () {
-          const acquired = yield* Ref.modify(busyRef, (busy) =>
-            busy ? EXHAUST_REJECT_BUSY : EXHAUST_ACQUIRE_BUSY,
-          )
-          if (!acquired) {
-            // Ignore trigger: no pending transaction is produced.
-            return
-          }
-          try {
-            yield* runTaskLifecycle<Payload, Sh, R, A, E>(payload, runtime, config)
-          } finally {
-            yield* Ref.set(busyRef, false)
-          }
-        })
-
-      return yield* Stream.runDrain(stream.pipe(Stream.mapEffect(mapper, { concurrency })))
-    }) as Effect.Effect<void, never, Logic.Env<Sh, R>>
-  }
-
-  if (mode === 'parallel') {
-    return Effect.gen(function* () {
-      const concurrency = yield* resolveConcurrencyLimit(runtime)
-
-      return yield* Stream.runDrain(
-        stream.pipe(
-          Stream.mapEffect((payload) => runTaskLifecycle<Payload, Sh, R, A, E>(payload, runtime, config), {
-            concurrency,
-          }),
-        ),
-      )
-    }) as Effect.Effect<void, never, Logic.Env<Sh, R>>
-  }
-
-  // mode === "task"（sequential）
-  return Stream.runForEach(stream, (payload) =>
-    runTaskLifecycle<Payload, Sh, R, A, E>(payload, runtime, config),
-  ) as Effect.Effect<void, never, Logic.Env<Sh, R>>
-}
+): Effect.Effect<void, never, Logic.Env<Sh, R>> =>
+  runTask<Payload, Sh, R, A, E>({
+    stream,
+    mode,
+    runtime,
+    config,
+  })

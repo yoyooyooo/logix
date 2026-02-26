@@ -1,19 +1,19 @@
 import { Fiber, Ref } from 'effect'
 
-export type LatestFiberSlotState = {
-  fiber: Fiber.RuntimeFiber<void, never> | undefined
+export type LatestFiberSlotState<E = never> = {
+  fiber: Fiber.RuntimeFiber<void, E> | undefined
   runningId: number
   nextId: number
 }
 
-export const make = () =>
-  Ref.make<LatestFiberSlotState>({
+export const make = <E = never>() =>
+  Ref.make<LatestFiberSlotState<E>>({
     fiber: undefined,
     runningId: 0,
     nextId: 0,
   })
 
-export const beginRun = (slotRef: Ref.Ref<LatestFiberSlotState>) =>
+export const beginRun = <E>(slotRef: Ref.Ref<LatestFiberSlotState<E>>) =>
   Ref.modify(slotRef, (state) => {
     const runId = state.nextId + 1
     const prevFiber = state.fiber
@@ -23,10 +23,10 @@ export const beginRun = (slotRef: Ref.Ref<LatestFiberSlotState>) =>
     return [[prevFiber, prevRunningId, runId] as const, state] as const
   })
 
-export const setFiberIfCurrent = (
-  slotRef: Ref.Ref<LatestFiberSlotState>,
+export const setFiberIfCurrent = <E>(
+  slotRef: Ref.Ref<LatestFiberSlotState<E>>,
   runId: number,
-  fiber: Fiber.RuntimeFiber<void, never>,
+  fiber: Fiber.RuntimeFiber<void, E>,
 ) =>
   Ref.update(slotRef, (state) => {
     if (state.runningId === runId) {
@@ -35,7 +35,7 @@ export const setFiberIfCurrent = (
     return state
   })
 
-export const clearIfCurrent = (slotRef: Ref.Ref<LatestFiberSlotState>, runId: number) =>
+export const clearIfCurrent = <E>(slotRef: Ref.Ref<LatestFiberSlotState<E>>, runId: number) =>
   Ref.update(slotRef, (state) => {
     if (state.runningId === runId) {
       state.runningId = 0

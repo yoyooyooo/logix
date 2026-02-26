@@ -1,4 +1,4 @@
-import { Effect, Stream, Ref, Option } from 'effect'
+import { Effect, Stream, Option } from 'effect'
 import type { AnyModuleShape, LogicEffect, ModuleRuntime, StateOf, ActionOf, ModuleShape } from './module.js'
 import type * as Logic from './LogicMiddleware.js'
 import * as EffectOp from '../../effect-op.js'
@@ -8,6 +8,7 @@ import type { RuntimeInternals } from './RuntimeInternals.js'
 import * as Debug from './DebugSink.js'
 import * as ReadQuery from './ReadQuery.js'
 import { makeRunBudgetEnvelopeV1, makeRunDegradeMarkerV1 } from './diagnosticsBudget.js'
+import * as ModeRunner from './ModeRunner.js'
 
 const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
   Effect.serviceOption(EffectOpCore.EffectOpMiddlewareTag).pipe(
@@ -48,10 +49,15 @@ export interface Api<Sh extends ModuleShape<any, any>, R = never> {
 
   readonly filter: <V>(predicate: (value: V) => boolean) => (stream: Stream.Stream<V>) => Stream.Stream<V>
 
-  readonly run: <V, A = void, E = never, R2 = unknown>(
-    eff: LogicEffect<Sh, R & R2, A, E> | ((payload: V) => LogicEffect<Sh, R & R2, A, E>),
-    options?: Logic.OperationOptions,
-  ) => (stream: Stream.Stream<V>) => LogicEffect<Sh, R & R2, void, E>
+  readonly run: {
+    <V, A = void, E = never, R2 = unknown>(
+      eff: LogicEffect<Sh, R & R2, A, E> | ((payload: V) => LogicEffect<Sh, R & R2, A, E>),
+      options?: Logic.OperationOptions,
+    ): (stream: Stream.Stream<V>) => LogicEffect<Sh, R & R2, void, E>
+    <V, A = void, E = never, R2 = unknown>(
+      config: RunConfig<Sh, R & R2, V, A, E>,
+    ): (stream: Stream.Stream<V>) => LogicEffect<Sh, R & R2, void, E>
+  }
 
   readonly runParallel: <V, A = void, E = never, R2 = unknown>(
     eff: LogicEffect<Sh, R & R2, A, E> | ((payload: V) => LogicEffect<Sh, R & R2, A, E>),
@@ -67,6 +73,12 @@ export interface Api<Sh extends ModuleShape<any, any>, R = never> {
     eff: LogicEffect<Sh, R & R2, A, E> | ((payload: V) => LogicEffect<Sh, R & R2, A, E>),
     options?: Logic.OperationOptions,
   ) => (stream: Stream.Stream<V>) => LogicEffect<Sh, R & R2, void, E>
+}
+
+export interface RunConfig<Sh extends AnyModuleShape, R, V, A = void, E = never> {
+  readonly effect: LogicEffect<Sh, R, A, E> | ((payload: V) => LogicEffect<Sh, R, A, E>)
+  readonly mode?: ModeRunner.ModeRunnerMode
+  readonly options?: Logic.OperationOptions
 }
 
 type EffectResolver<T, Sh extends AnyModuleShape, R, A, E> = (payload: T) => LogicEffect<Sh, R, A, E>
@@ -113,6 +125,23 @@ const withFlowRunBudgetMeta = (
     }),
     degrade: makeRunDegradeMarkerV1(disableObservers, disableObservers ? 'observer_disabled' : undefined),
   }
+}
+
+const isRunConfig = <Sh extends AnyModuleShape, R, V, A, E>(
+  input: unknown,
+): input is RunConfig<Sh, R, V, A, E> => {
+  if (!input || typeof input !== 'object') {
+    return false
+  }
+  const candidate = input as { readonly effect?: unknown; readonly mode?: unknown }
+  if (!('effect' in candidate)) {
+    return false
+  }
+  const mode = candidate.mode
+  if (mode === undefined) {
+    return true
+  }
+  return mode === 'task' || mode === 'parallel' || mode === 'latest' || mode === 'exhaust'
 }
 
 export const make = <Sh extends AnyModuleShape, R = never>(
@@ -227,52 +256,50 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     return (payload: T) => runAsFlowOp<A, E, R2, T>(context, name, payload, resolver(payload))
   }
 
-  const runStreamSequential =
+  const runStreamWithMode =
     <T, A, E, R2>(
+      mode: ModeRunner.ModeRunnerMode,
+      name: 'flow.run' | 'flow.runParallel' | 'flow.runLatest' | 'flow.runExhaust',
       resolver: EffectResolver<T, Sh, R & R2, A, E>,
       options?: Logic.OperationOptions,
     ) =>
     (stream: Stream.Stream<T>): LogicEffect<Sh, R & R2, void, E> =>
       Effect.gen(function* () {
         const context = yield* makeFlowOpRunContext(options)
-        const mapper = makeFlowOpMapper<T, A, E, R2>(context, 'flow.run', resolver)
-        return yield* Stream.runForEach(stream, mapper)
+        const mapper = makeFlowOpMapper<T, A, E, R2>(context, name, resolver)
+
+        return yield* ModeRunner.runByMode<T, E, any>({
+          stream,
+          mode,
+          run: mapper,
+          resolveConcurrencyLimit: resolveConcurrencyLimit(),
+          latest: {
+            strategy: 'switch',
+          },
+        })
       }) as any
 
-  const runStreamParallel =
-    <T, A, E, R2>(
-      resolver: EffectResolver<T, Sh, R & R2, A, E>,
-      options?: Logic.OperationOptions,
-    ) =>
+  const runStreamParallelWithDiagnostics =
+    <T, A, E, R2>(resolver: EffectResolver<T, Sh, R & R2, A, E>, options?: Logic.OperationOptions) =>
     (stream: Stream.Stream<T>): LogicEffect<Sh, R & R2, void, E> =>
-      Effect.gen(function* () {
-        const concurrency = yield* resolveConcurrencyLimit()
-        const context = yield* makeFlowOpRunContext(options)
-        const mapper = makeFlowOpMapper<T, A, E, R2>(context, 'flow.runParallel', resolver)
-
-        return yield* Stream.runDrain(
-          stream.pipe(
-            Stream.mapEffect(mapper, { concurrency }),
-          ),
-        ).pipe(
-          Effect.catchAllCause((cause) =>
-            Debug.record({
-              type: 'diagnostic',
-              moduleId: scope.moduleId,
-              instanceId: scope.instanceId,
-              code: 'flow::unhandled_failure',
-              severity: 'error',
-              message: 'Flow watcher (runParallel) failed with an unhandled error.',
-              hint: 'Handle errors explicitly inside the watcher (catch/catchAll) or write back via TaskRunner failure; avoid silent failures.',
-              kind: 'flow_unhandled_failure',
-              trigger: {
-                kind: 'flow',
-                name: 'runParallel',
-              },
-            }).pipe(Effect.zipRight(Effect.failCause(cause))),
-          ),
-        )
-      }) as any
+      runStreamWithMode<T, A, E, R2>('parallel', 'flow.runParallel', resolver, options)(stream).pipe(
+        Effect.catchAllCause((cause) =>
+          Debug.record({
+            type: 'diagnostic',
+            moduleId: scope.moduleId,
+            instanceId: scope.instanceId,
+            code: 'flow::unhandled_failure',
+            severity: 'error',
+            message: 'Flow watcher (runParallel) failed with an unhandled error.',
+            hint: 'Handle errors explicitly inside the watcher (catch/catchAll) or write back via TaskRunner failure; avoid silent failures.',
+            kind: 'flow_unhandled_failure',
+            trigger: {
+              kind: 'flow',
+              name: 'runParallel',
+            },
+          }).pipe(Effect.zipRight(Effect.failCause(cause))),
+        ),
+      ) as any
 
   const fromState = <V>(
     selectorOrQuery: ((s: StateOf<Sh>) => V) | ReadQuery.ReadQuery<StateOf<Sh>, V>,
@@ -318,57 +345,42 @@ export const make = <Sh extends AnyModuleShape, R = never>(
 
     filter: (predicate: (value: any) => boolean) => (stream) => Stream.filter(stream, predicate),
 
-    run: (eff, options) => (stream) =>
-      runStreamSequential<any, any, any, any>(
-        preResolveEffectResolver<any, Sh, any, any, any>(eff),
-        options,
-      )(stream),
+    run: (effOrConfig: unknown, options?: Logic.OperationOptions) => (stream) => {
+      const mode = isRunConfig<Sh, any, any, any, any>(effOrConfig) ? (effOrConfig.mode ?? 'task') : 'task'
+      const resolvedOptions = isRunConfig<Sh, any, any, any, any>(effOrConfig) ? effOrConfig.options : options
+      const effect = isRunConfig<Sh, any, any, any, any>(effOrConfig) ? effOrConfig.effect : effOrConfig
+      const resolver = preResolveEffectResolver<any, Sh, any, any, any>(effect as any)
+      if (mode === 'parallel') {
+        return runStreamParallelWithDiagnostics<any, any, any, any>(resolver, resolvedOptions)(stream) as any
+      }
+      return runStreamWithMode<any, any, any, any>(
+        mode,
+        mode === 'latest' ? 'flow.runLatest' : mode === 'exhaust' ? 'flow.runExhaust' : 'flow.run',
+        resolver,
+        resolvedOptions,
+      )(stream) as any
+    },
 
     runParallel: (eff, options) => (stream) =>
-      runStreamParallel<any, any, any, any>(
+      runStreamParallelWithDiagnostics<any, any, any, any>(
         preResolveEffectResolver<any, Sh, any, any, any>(eff),
         options,
       )(stream),
 
     runLatest: (eff, options) => (stream) =>
-      Effect.gen(function* () {
-        const context = yield* makeFlowOpRunContext(options)
-        const resolve = preResolveEffectResolver<any, Sh, any, any, any>(eff)
-        const mapper = makeFlowOpMapper<any, any, any, any>(context, 'flow.runLatest', resolve)
-        return yield* Stream.runDrain(
-          Stream.map(stream, mapper).pipe(
-            Stream.flatMap((effect) => Stream.fromEffect(effect), {
-              switch: true,
-            }),
-          ),
-        )
-      }) as any,
+      runStreamWithMode<any, any, any, any>(
+        'latest',
+        'flow.runLatest',
+        preResolveEffectResolver<any, Sh, any, any, any>(eff),
+        options,
+      )(stream),
 
     runExhaust: (eff, options) => (stream) =>
-      Effect.gen(function* () {
-        const concurrency = yield* resolveConcurrencyLimit()
-        const context = yield* makeFlowOpRunContext(options)
-        const resolve = preResolveEffectResolver<any, Sh, any, any, any>(eff)
-        const busyRef = yield* Ref.make(false)
-        const mapper = (payload: any) =>
-          Effect.gen(function* () {
-            const wasBusy = yield* Ref.getAndSet(busyRef, true)
-            if (wasBusy) {
-              return
-            }
-            try {
-              yield* runAsFlowOp<any, any, any, any>(
-                context,
-                'flow.runExhaust',
-                payload,
-                resolve(payload),
-              )
-            } finally {
-              yield* Ref.set(busyRef, false)
-            }
-          })
-
-        return yield* Stream.runDrain(stream.pipe(Stream.mapEffect(mapper, { concurrency })))
-      }),
+      runStreamWithMode<any, any, any, any>(
+        'exhaust',
+        'flow.runExhaust',
+        preResolveEffectResolver<any, Sh, any, any, any>(eff),
+        options,
+      )(stream),
   }
 }
