@@ -7,6 +7,11 @@ Usage:
     [--latest <file>] \\
     [--base-floor-min <n>] \\
     [--hard-floor-ratio <float>] \\
+    [--profile <profile>] \\
+    [--env-id <id>] \\
+    [--suite-id <id>] \\
+    [--budget-id <id>] \\
+    [--converge-mode <mode>] \\
     [--min-history-runs <n>] \\
     [--history-window <n>] \\
     [--env-out <file>] \\
@@ -275,6 +280,11 @@ const cmdResolveTarget = (kv) => {
   const latestFile = kv.latest ? path.resolve(process.cwd(), kv.latest) : null
   const outFile = kv.out ? path.resolve(process.cwd(), kv.out) : null
   const envOut = kv['env-out'] ? path.resolve(process.cwd(), kv['env-out']) : null
+  const expectedProfile = kv.profile ? String(kv.profile) : null
+  const expectedEnvId = kv['env-id'] ? String(kv['env-id']) : null
+  const expectedSuiteId = kv['suite-id'] ? String(kv['suite-id']) : null
+  const expectedBudgetId = kv['budget-id'] ? String(kv['budget-id']) : null
+  const expectedConvergeMode = kv['converge-mode'] ? String(kv['converge-mode']) : null
 
   const baseFloorMin = Math.max(0, parseIntStrict(kv['base-floor-min'], 2000))
   const hardFloorRatio = parseNumberStrict(kv['hard-floor-ratio'], 0.8)
@@ -290,9 +300,29 @@ const cmdResolveTarget = (kv) => {
     }
   }
 
-  const stableRuns = Number(latest?.stable?.runs ?? 0)
-  const stableP50 = Number(latest?.stable?.p50 ?? 0)
-  const currentP50 = Number(latest?.current?.p50 ?? 0)
+  const mismatchReasons = []
+  if (latest) {
+    if (expectedProfile && latest.profile !== expectedProfile) {
+      mismatchReasons.push(`profile:${String(latest.profile ?? 'unknown')}!=${expectedProfile}`)
+    }
+    if (expectedEnvId && latest.envId !== expectedEnvId) {
+      mismatchReasons.push(`env:${String(latest.envId ?? 'unknown')}!=${expectedEnvId}`)
+    }
+    if (expectedSuiteId && latest.suiteId !== expectedSuiteId) {
+      mismatchReasons.push(`suite:${String(latest.suiteId ?? 'unknown')}!=${expectedSuiteId}`)
+    }
+    if (expectedBudgetId && latest.budgetId !== expectedBudgetId) {
+      mismatchReasons.push(`budget:${String(latest.budgetId ?? 'unknown')}!=${expectedBudgetId}`)
+    }
+    if (expectedConvergeMode && latest.convergeMode !== expectedConvergeMode) {
+      mismatchReasons.push(`mode:${String(latest.convergeMode ?? 'unknown')}!=${expectedConvergeMode}`)
+    }
+  }
+
+  const latestComparable = mismatchReasons.length === 0 ? latest : null
+  const stableRuns = Number(latestComparable?.stable?.runs ?? 0)
+  const stableP50 = Number(latestComparable?.stable?.p50 ?? 0)
+  const currentP50 = Number(latestComparable?.current?.p50 ?? 0)
   const canUseStable = stableRuns >= minHistoryRuns && stableP50 > 0
   const anchorP50 = canUseStable ? stableP50 : pickFinite(currentP50, stableP50, baseFloorMin)
   const targets = computeTargets({ baseFloorMin, hardFloorRatio, warnFloorRatio: hardFloorRatio, anchorP50 })
@@ -304,6 +334,8 @@ const cmdResolveTarget = (kv) => {
     hardFloorRatio,
     anchorP50: targets.anchorP50,
     source: canUseStable ? 'stable_p50' : stableP50 > 0 ? 'latest_current_p50' : 'base_floor_min',
+    latestComparable: mismatchReasons.length === 0,
+    latestMismatchReasons: mismatchReasons,
     stableRuns,
     minHistoryRuns,
     historyWindow,
@@ -316,6 +348,7 @@ const cmdResolveTarget = (kv) => {
     PERF_CAPACITY_DYNAMIC_TARGET_SOURCE: result.source,
     PERF_CAPACITY_DYNAMIC_TARGET_ANCHOR_P50: result.anchorP50,
     PERF_CAPACITY_DYNAMIC_TARGET_HISTORY_RUNS: result.stableRuns,
+    PERF_CAPACITY_DYNAMIC_TARGET_LATEST_COMPARABLE: result.latestComparable ? '1' : '0',
   })
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)

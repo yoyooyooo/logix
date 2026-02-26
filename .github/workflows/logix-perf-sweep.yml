@@ -561,6 +561,11 @@ jobs:
             --latest "$PERF_CAPACITY_LATEST_FILE" \
             --base-floor-min "$PERF_CAPACITY_FLOOR_MIN" \
             --hard-floor-ratio "$PERF_CAPACITY_DYNAMIC_HARD_RATIO" \
+            --profile "$PERF_PROFILE" \
+            --env-id "$PERF_ENV_ID" \
+            --suite-id "converge.txnCommit" \
+            --budget-id "commit.p95<=50ms" \
+            --converge-mode "auto" \
             --history-window "$PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW" \
             --min-history-runs "$PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS" \
             --env-out "$GITHUB_ENV" \
@@ -967,6 +972,7 @@ jobs:
       - name: Enforce dynamic hard floor
         if: always() && env.PERF_CAPACITY_DYNAMIC_ENABLE == '1' && env.PERF_CAPACITY_DYNAMIC_ENFORCE_HARD == '1'
         run: |
+          echo "[logix-perf] dynamic floor gate: hardPass=${PERF_CAPACITY_DYNAMIC_HARD_PASS:-unset} warnPass=${PERF_CAPACITY_DYNAMIC_WARN_PASS:-unset} target=${PERF_CAPACITY_DYNAMIC_HARD_FLOOR_TARGET:-n/a} comparableLatest=${PERF_CAPACITY_DYNAMIC_TARGET_LATEST_COMPARABLE:-unset} source=${PERF_CAPACITY_DYNAMIC_TARGET_SOURCE:-n/a} stableRuns=${PERF_CAPACITY_DYNAMIC_STABLE_RUNS:-n/a}"
           if [ "${PERF_CAPACITY_DYNAMIC_HARD_PASS:-1}" != "1" ]; then
             echo "dynamic hard floor failed: floor target=${PERF_CAPACITY_DYNAMIC_HARD_FLOOR_TARGET:-n/a}" >&2
             exit 1
