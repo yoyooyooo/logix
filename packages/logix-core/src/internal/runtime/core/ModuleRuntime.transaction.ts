@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Fiber, FiberRef, Option, PubSub, Queue, SubscriptionRef } from 'effect'
+import { Cause, Effect, Exit, Fiber, FiberRef, Option, PubSub, Queue, Runtime, SubscriptionRef } from 'effect'
 import type { StateChangeWithMeta, StateCommitMeta, StateCommitMode, StateCommitPriority } from './module.js'
 import type {
   StateTraitProgram,
@@ -19,6 +19,18 @@ import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
 import { StateTransactionOverridesTag, type StateTransactionOverrides } from './env.js'
 
 const DIRTY_ALL_SET_STATE_HINT = Symbol.for('@logixjs/core/dirtyAllSetStateHint')
+const ASYNC_ESCAPE_DIAGNOSTIC_CODE = 'state_transaction::async_escape'
+const ASYNC_ESCAPE_MESSAGE = 'Synchronous StateTransaction body escaped the transaction window (async/await detected).'
+const ASYNC_ESCAPE_HINT =
+  'No IO/await/sleep/promises inside the transaction window; use run*Task (pending → IO → writeback) or move async logic outside the transaction.'
+const ASYNC_ESCAPE_KIND = 'async_in_transaction'
+
+const makeAsyncEscapeError = (): Error =>
+  Object.assign(new Error(ASYNC_ESCAPE_MESSAGE), {
+    code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
+    hint: ASYNC_ESCAPE_HINT,
+    kind: ASYNC_ESCAPE_KIND,
+  })
 
 const readDeferredFlushSlice = (details: unknown): { readonly start: number; readonly end: number } | undefined => {
   if (!details || typeof details !== 'object') return undefined
@@ -359,17 +371,22 @@ export const makeTransactionOps = <S>(args: {
                 let traitSummary: unknown | undefined
 
                 // Execute the actual logic inside the transaction window (reducer / watcher writeback / traits, etc.).
-                if (isDevEnv()) {
-                  const bodyFiber = yield* Effect.fork(body())
+                // Contract: synchronous-only; async escape is a runtime fail-fast in all environments.
+                const runtime = yield* Effect.runtime<never>()
+                const bodyExit = yield* Effect.sync(() => Runtime.runSyncExit(runtime, body()))
 
-                  const YIELD_BUDGET = 5
-                  let polled = yield* Fiber.poll(bodyFiber)
-                  for (let i = 0; i < YIELD_BUDGET && Option.isNone(polled); i++) {
-                    yield* Effect.yieldNow()
-                    polled = yield* Fiber.poll(bodyFiber)
-                  }
+                if (Exit.isFailure(bodyExit)) {
+                  const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(
+                    (defect): defect is Runtime.AsyncFiberException<unknown, unknown> =>
+                      defect != null &&
+                      typeof defect === 'object' &&
+                      (defect as any)._tag === 'AsyncFiberException' &&
+                      (defect as any).fiber != null,
+                  )
 
-                  if (Option.isNone(polled)) {
+                  if (asyncEscapeDefect) {
+                    const asyncEscapeError = makeAsyncEscapeError()
+
                     yield* Debug.record({
                       type: 'diagnostic',
                       moduleId: optionsModuleId,
@@ -377,22 +394,18 @@ export const makeTransactionOps = <S>(args: {
                       txnSeq,
                       txnId,
                       trigger: origin,
-                      code: 'state_transaction::async_escape',
+                      code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
                       severity: 'error',
-                      message:
-                        'Synchronous StateTransaction body escaped the transaction window (async/await detected).',
-                      hint: 'No IO/await/sleep/promises inside the transaction window; use run*Task (pending → IO → writeback) or move async logic outside the transaction.',
-                      kind: 'async_in_transaction',
+                      message: ASYNC_ESCAPE_MESSAGE,
+                      hint: ASYNC_ESCAPE_HINT,
+                      kind: ASYNC_ESCAPE_KIND,
                     })
+
+                    yield* Fiber.interruptFork(asyncEscapeDefect.fiber)
+                    return yield* Effect.die(asyncEscapeError)
                   }
 
-                  const bodyExit = yield* Fiber.await(bodyFiber)
-                  yield* Exit.match(bodyExit, {
-                    onFailure: (cause) => Effect.failCause(cause),
-                    onSuccess: () => Effect.void,
-                  })
-                } else {
-                  yield* body()
+                  return yield* Effect.failCause(bodyExit.cause)
                 }
 
                 const stateTraitProgram = traitRuntime.getProgram()

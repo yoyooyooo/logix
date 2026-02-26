@@ -1,0 +1,42 @@
+{
+  "id": "O-017",
+  "title": "transaction-no-io-fail-fast",
+  "kind": "A/B diff",
+  "collectedAt": "2026-02-26",
+  "repro": {
+    "command": "pnpm --filter @logixjs/core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.AsyncEscapeGuard.Perf.off.test.ts",
+    "env": {
+      "LOGIX_PERF_ITERS": 120,
+      "LOGIX_PERF_WARMUP": 20,
+      "diagnosticsLevel": "off",
+      "debugSinks": "silent"
+    }
+  },
+  "inputs": {
+    "before": {
+      "label": "sync txn body (no async escape)",
+      "source": "same command, sync sample lane"
+    },
+    "after": {
+      "label": "async-escape fail-fast lane",
+      "source": "same command, failFast sample lane"
+    }
+  },
+  "metrics": {
+    "before": {
+      "p50Ms": 0.137,
+      "p95Ms": 0.413
+    },
+    "after": {
+      "p50Ms": 0.134,
+      "p95Ms": 0.260
+    }
+  },
+  "diff": {
+    "afterMinusBeforeP50Ms": -0.003,
+    "afterMinusBeforeP95Ms": -0.153,
+    "afterOverBeforeP50": 0.978,
+    "afterOverBeforeP95": 0.629
+  },
+  "conclusion": "在固定参数与隔离日志输出条件下，fail-fast 车道未显示回归。"
+}
