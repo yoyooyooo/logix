@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-02-26",
+  "statusEnum": ["pool", "spec", "implement", "evidence", "writeback", "done", "blocked", "frozen"],
+  "requiredSections": ["problem", "evidence", "design", "budget", "check"],
+  "requiredLinkFields": [
+    "spec.spec",
+    "spec.plan",
+    "spec.tasks",
+    "implementation[]",
+    "evidence.perf[]",
+    "evidence.diagnostics[]",
+    "writeback.ssot[]",
+    "writeback.userDocs[]"
+  ],
+  "transition": {
+    "pool": ["spec", "blocked"],
+    "spec": ["implement", "blocked"],
+    "implement": ["evidence", "blocked"],
+    "evidence": ["writeback", "blocked"],
+    "writeback": ["done", "blocked"],
+    "done": ["frozen"],
+    "blocked": ["pool", "spec", "implement", "evidence", "writeback", "frozen"],
+    "frozen": []
+  },
+  "entries": [
+    {
+      "id": "O-014",
+      "priority": "P2",
+      "status": "done",
+      "item": "docs/todo-optimization-backlog/items/O-014-doc-impl-bidirectional-convergence.md",
+      "links": {
+        "spec": {
+          "spec": "specs/102-o014-doc-impl-bidirectional-convergence/spec.md",
+          "plan": "specs/102-o014-doc-impl-bidirectional-convergence/plan.md",
+          "tasks": "specs/102-o014-doc-impl-bidirectional-convergence/tasks.md"
+        },
+        "implementation": [
+          "docs/todo-optimization-backlog/README.md",
+          "docs/todo-optimization-backlog/items/_template.md",
+          "docs/todo-optimization-backlog/items/README.md",
+          "docs/todo-optimization-backlog/status-registry.json",
+          "docs/specs/README.md",
+          "specs/102-o014-doc-impl-bidirectional-convergence/spec.md",
+          "specs/102-o014-doc-impl-bidirectional-convergence/plan.md",
+          "specs/102-o014-doc-impl-bidirectional-convergence/tasks.md"
+        ],
+        "evidence": {
+          "perf": ["N/A: 文档/流程变更，不触达 runtime 核心热路径"],
+          "diagnostics": ["N/A: 文档/流程变更，不引入新的诊断事件开销"]
+        },
+        "writeback": {
+          "ssot": [
+            "docs/specs/README.md",
+            "docs/todo-optimization-backlog/README.md"
+          ],
+          "userDocs": ["N/A: 无用户向功能变更"]
+        }
+      }
+    }
+  ]
+}
