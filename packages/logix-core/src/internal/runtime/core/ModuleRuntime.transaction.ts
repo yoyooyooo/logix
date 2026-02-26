@@ -370,23 +370,19 @@ export const makeTransactionOps = <S>(args: {
                 // Trait summary inside the transaction window (for devtools/diagnostics).
                 let traitSummary: unknown | undefined
 
-                // Execute the actual logic inside the transaction window (reducer / watcher writeback / traits, etc.).
-                // Contract: synchronous-only; async escape is a runtime fail-fast in all environments.
-                const runtime = yield* Effect.runtime<never>()
-                const bodyExit = yield* Effect.sync(() => Runtime.runSyncExit(runtime, body()))
+                // Execute logic inside the transaction window (reducer / watcher writeback / traits, etc.).
+                // Contract: no long IO/await in the transaction window.
+                if (isDevEnv()) {
+                  const bodyFiber = yield* Effect.fork(body())
 
-                if (Exit.isFailure(bodyExit)) {
-                  const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(
-                    (defect): defect is Runtime.AsyncFiberException<unknown, unknown> =>
-                      defect != null &&
-                      typeof defect === 'object' &&
-                      (defect as any)._tag === 'AsyncFiberException' &&
-                      (defect as any).fiber != null,
-                  )
+                  const YIELD_BUDGET = 5
+                  let polled = yield* Fiber.poll(bodyFiber)
+                  for (let index = 0; index < YIELD_BUDGET && Option.isNone(polled); index += 1) {
+                    yield* Effect.yieldNow()
+                    polled = yield* Fiber.poll(bodyFiber)
+                  }
 
-                  if (asyncEscapeDefect) {
-                    const asyncEscapeError = makeAsyncEscapeError()
-
+                  if (Option.isNone(polled)) {
                     yield* Debug.record({
                       type: 'diagnostic',
                       moduleId: optionsModuleId,
@@ -400,12 +396,49 @@ export const makeTransactionOps = <S>(args: {
                       hint: ASYNC_ESCAPE_HINT,
                       kind: ASYNC_ESCAPE_KIND,
                     })
-
-                    yield* Fiber.interruptFork(asyncEscapeDefect.fiber)
-                    return yield* Effect.die(asyncEscapeError)
                   }
 
-                  return yield* Effect.failCause(bodyExit.cause)
+                  const bodyExit = yield* Fiber.await(bodyFiber)
+                  yield* Exit.match(bodyExit, {
+                    onFailure: (cause) => Effect.failCause(cause),
+                    onSuccess: () => Effect.void,
+                  })
+                } else {
+                  const runtime = yield* Effect.runtime<never>()
+                  const bodyExit = yield* Effect.sync(() => Runtime.runSyncExit(runtime, body()))
+
+                  if (Exit.isFailure(bodyExit)) {
+                    const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(
+                      (defect): defect is Runtime.AsyncFiberException<unknown, unknown> =>
+                        defect != null &&
+                        typeof defect === 'object' &&
+                        (defect as any)._tag === 'AsyncFiberException' &&
+                        (defect as any).fiber != null,
+                    )
+
+                    if (asyncEscapeDefect) {
+                      const asyncEscapeError = makeAsyncEscapeError()
+
+                      yield* Debug.record({
+                        type: 'diagnostic',
+                        moduleId: optionsModuleId,
+                        instanceId,
+                        txnSeq,
+                        txnId,
+                        trigger: origin,
+                        code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
+                        severity: 'error',
+                        message: ASYNC_ESCAPE_MESSAGE,
+                        hint: ASYNC_ESCAPE_HINT,
+                        kind: ASYNC_ESCAPE_KIND,
+                      })
+
+                      yield* Fiber.interruptFork(asyncEscapeDefect.fiber)
+                      return yield* Effect.die(asyncEscapeError)
+                    }
+
+                    return yield* Effect.failCause(bodyExit.cause)
+                  }
                 }
 
                 const stateTraitProgram = traitRuntime.getProgram()
