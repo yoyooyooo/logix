@@ -18,11 +18,13 @@ describe('DevtoolsHub (instance cleanup)', () => {
       const fullLayer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 10,
         diagnosticsLevel: 'full',
+        projectionTier: 'full',
       }) as Layer.Layer<any, never, never>
 
       const offLayer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 10,
         diagnosticsLevel: 'off',
+        projectionTier: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({

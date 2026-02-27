@@ -341,6 +341,11 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
 
         const snapshot: DevtoolsSnapshot = {
           snapshotToken: 0,
+          projection: {
+            tier: 'full',
+            degraded: false,
+            visibleFields: ['instances', 'events', 'latestStates', 'latestTraitSummaries', 'exportBudget'],
+          },
           instances: new Map(),
           events,
           latestStates: new Map(),

@@ -115,6 +115,8 @@ export const clearDevtoolsSnapshotOverride = (): void => {
 }
 
 export const getDevtoolsSnapshot = (): DevtoolsSnapshot => snapshotOverride ?? Logix.Debug.getDevtoolsSnapshot()
+export const getDevtoolsSnapshotByRuntimeLabel = (runtimeLabel: string): DevtoolsSnapshot =>
+  snapshotOverride ?? Logix.Debug.getDevtoolsSnapshotByRuntimeLabel(runtimeLabel)
 
 /**
  * SnapshotToken (safe for external subscription):

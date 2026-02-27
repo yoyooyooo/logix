@@ -37,6 +37,7 @@ export interface DevtoolsSnapshot {
    * - If the token does not change, externally visible snapshot fields must not change (avoid tearing / missed updates).
    */
   readonly snapshotToken: SnapshotToken
+  readonly projection: DevtoolsSnapshotProjection
   readonly instances: ReadonlyMap<string, number>
   readonly events: ReadonlyArray<RuntimeDebugEventRef>
   readonly latestStates: ReadonlyMap<string, JsonValue>
@@ -52,9 +53,79 @@ export interface DevtoolsSnapshot {
   }
 }
 
+export type DevtoolsProjectionTier = 'light' | 'full'
+export type DevtoolsSnapshotVisibleField =
+  | 'instances'
+  | 'events'
+  | 'latestStates'
+  | 'latestTraitSummaries'
+  | 'exportBudget'
+export type DevtoolsSnapshotHiddenField = 'latestStates' | 'latestTraitSummaries'
+export type DevtoolsProjectionDegradeReasonCode = 'projection_tier_light'
+
+export interface DevtoolsSnapshotDegradedReason {
+  readonly code: DevtoolsProjectionDegradeReasonCode
+  readonly message: string
+  readonly recommendedAction: string
+  readonly hiddenFields: ReadonlyArray<DevtoolsSnapshotHiddenField>
+}
+
+export interface DevtoolsSnapshotProjection {
+  readonly tier: DevtoolsProjectionTier
+  readonly degraded: boolean
+  readonly visibleFields: ReadonlyArray<DevtoolsSnapshotVisibleField>
+  readonly reason?: DevtoolsSnapshotDegradedReason
+}
+
+const FULL_VISIBLE_FIELDS = [
+  'instances',
+  'events',
+  'latestStates',
+  'latestTraitSummaries',
+  'exportBudget',
+] as const satisfies ReadonlyArray<DevtoolsSnapshotVisibleField>
+const LIGHT_VISIBLE_FIELDS = ['instances', 'events', 'exportBudget'] as const satisfies ReadonlyArray<
+  DevtoolsSnapshotVisibleField
+>
+
+type DevtoolsProjectionDegradeReasonTemplate = Omit<DevtoolsSnapshotDegradedReason, 'code'>
+
+export const DEVTOOLS_PROJECTION_DEGRADE_REASON_CATALOG: Readonly<
+  Record<DevtoolsProjectionDegradeReasonCode, DevtoolsProjectionDegradeReasonTemplate>
+> = {
+  projection_tier_light: {
+    message: 'Projection tier=light keeps summary-only views and omits heavy latest* assets.',
+    recommendedAction: 'Switch projectionTier to "full" when consumers require latest state/trait snapshots.',
+    hiddenFields: ['latestStates', 'latestTraitSummaries'],
+  },
+}
+
+const getProjectionSnapshot = (tier: DevtoolsProjectionTier): DevtoolsSnapshotProjection => {
+  if (tier === 'full') {
+    return {
+      tier,
+      degraded: false,
+      visibleFields: FULL_VISIBLE_FIELDS,
+    }
+  }
+
+  const reason = DEVTOOLS_PROJECTION_DEGRADE_REASON_CATALOG.projection_tier_light
+  return {
+    tier,
+    degraded: true,
+    visibleFields: LIGHT_VISIBLE_FIELDS,
+    reason: {
+      code: 'projection_tier_light',
+      ...reason,
+    },
+  }
+}
+
 export interface DevtoolsHubOptions {
   readonly bufferSize?: number
   readonly diagnosticsLevel?: DiagnosticsLevel
+  readonly projectionTier?: DevtoolsProjectionTier
+  readonly runtimeLabel?: string
 }
 
 export type SnapshotToken = number
@@ -225,6 +296,82 @@ const refreshRingTrimPolicy = (): boolean => {
 
 refreshRingTrimPolicy()
 
+let defaultProjectionTier: DevtoolsProjectionTier = 'light'
+const projectionTierByRuntimeLabel = new Map<string, DevtoolsProjectionTier>()
+
+const getProjectionTierForRuntime = (runtimeLabel: string): DevtoolsProjectionTier =>
+  projectionTierByRuntimeLabel.get(runtimeLabel) ?? defaultProjectionTier
+
+const setProjectionTierForRuntime = (runtimeLabel: string, tier: DevtoolsProjectionTier): boolean => {
+  const previousTier = getProjectionTierForRuntime(runtimeLabel)
+  if (previousTier === tier) return false
+  if (tier === defaultProjectionTier) {
+    projectionTierByRuntimeLabel.delete(runtimeLabel)
+  } else {
+    projectionTierByRuntimeLabel.set(runtimeLabel, tier)
+  }
+  return true
+}
+
+const clearMapByRuntimePrefix = <T>(map: Map<string, T>, runtimeLabel: string): boolean => {
+  let changed = false
+  const prefix = `${runtimeLabel}::`
+  for (const key of map.keys()) {
+    if (key.startsWith(prefix)) {
+      map.delete(key)
+      changed = true
+    }
+  }
+  return changed
+}
+
+const clearLatestProjectionAssets = (runtimeLabel?: string): boolean => {
+  if (runtimeLabel !== undefined) {
+    let changed = false
+    if (clearMapByRuntimePrefix(latestStates, runtimeLabel)) {
+      changed = true
+    }
+    if (clearMapByRuntimePrefix(latestTraitSummaries, runtimeLabel)) {
+      changed = true
+    }
+    const bucket = getRuntimeBucket(runtimeLabel)
+    if (bucket) {
+      if (bucket.latestStates.size > 0) {
+        bucket.latestStates.clear()
+        changed = true
+      }
+      if (bucket.latestTraitSummaries.size > 0) {
+        bucket.latestTraitSummaries.clear()
+        changed = true
+      }
+    }
+    return changed
+  }
+
+  let changed = false
+  if (latestStates.size > 0) {
+    latestStates.clear()
+    changed = true
+  }
+  if (latestTraitSummaries.size > 0) {
+    latestTraitSummaries.clear()
+    changed = true
+  }
+  for (const bucket of runtimeBuckets.values()) {
+    if (bucket.latestStates.size > 0) {
+      bucket.latestStates.clear()
+      changed = true
+    }
+    if (bucket.latestTraitSummaries.size > 0) {
+      bucket.latestTraitSummaries.clear()
+      changed = true
+    }
+  }
+  return changed
+}
+
+const parseProjectionTier = (value: unknown): DevtoolsProjectionTier => (value === 'full' ? 'full' : 'light')
+
 let snapshotToken: SnapshotToken = 0
 
 const ensureRingBufferSize = (targetRingBuffer: RuntimeDebugEventRef[]): void => {
@@ -340,6 +487,7 @@ const emitRingTrimPolicyEvent = (diagnosticsLevel: DiagnosticsLevel): void => {
 // Snapshot references internal structures directly (read-only convention) to avoid copy costs in hot paths.
 const currentSnapshot: DevtoolsSnapshot = {
   snapshotToken,
+  projection: getProjectionSnapshot(defaultProjectionTier),
   instances,
   events: ringBuffer,
   latestStates,
@@ -376,6 +524,25 @@ const markSnapshotChanged = (): void => {
 
 export const configureDevtoolsHub = (options?: DevtoolsHubOptions) => {
   devtoolsEnabled = true
+  let changed = false
+
+  const configuredRuntimeLabel =
+    typeof options?.runtimeLabel === 'string' && options.runtimeLabel.length > 0
+      ? normalizeRuntimeLabel(options.runtimeLabel)
+      : undefined
+  const nextTier = parseProjectionTier(options?.projectionTier)
+  if (configuredRuntimeLabel) {
+    if (setProjectionTierForRuntime(configuredRuntimeLabel, nextTier)) {
+      clearLatestProjectionAssets(configuredRuntimeLabel)
+      changed = true
+    }
+  } else if (nextTier !== defaultProjectionTier) {
+    defaultProjectionTier = nextTier
+    clearLatestProjectionAssets()
+    ;(currentSnapshot as any).projection = getProjectionSnapshot(defaultProjectionTier)
+    changed = true
+  }
+
   if (typeof options?.bufferSize === 'number' && Number.isFinite(options.bufferSize)) {
     const next = Math.floor(options.bufferSize)
     const nextBufferSize = next >= 0 ? next : 0
@@ -391,8 +558,12 @@ export const configureDevtoolsHub = (options?: DevtoolsHubOptions) => {
       for (const bucket of runtimeBuckets.values()) {
         ensureRingBufferSize(bucket.ringBuffer)
       }
-      markSnapshotChanged()
+      changed = true
     }
+  }
+
+  if (changed) {
+    markSnapshotChanged()
   }
 }
 
@@ -415,6 +586,7 @@ export const getDevtoolsSnapshotByRuntimeLabel = (runtimeLabel: string): Devtool
 
   return {
     snapshotToken,
+    projection: getProjectionSnapshot(getProjectionTierForRuntime(normalizedRuntimeLabel)),
     instances: runtimeInstances,
     events: bucket?.ringBuffer ?? [],
     latestStates: bucket?.latestStates ?? new Map<string, JsonValue>(),
@@ -654,9 +826,10 @@ export const devtoolsHubSink: Sink = {
 
       const refRuntimeLabel = normalizeRuntimeLabel(ref.runtimeLabel)
       const runtimeBucket = getOrCreateRuntimeBucket(refRuntimeLabel)
+      const runtimeProjectionTier = getProjectionTierForRuntime(refRuntimeLabel)
 
       // latestStates / latestTraitSummaries: record latest snapshots by runtimeLabel::moduleId::instanceId.
-      if (ref.kind === 'state' && ref.label === 'state:update') {
+      if (runtimeProjectionTier === 'full' && ref.kind === 'state' && ref.label === 'state:update') {
         const instanceKey = resolveLiveInstanceKey(refRuntimeLabel, ref.moduleId, ref.instanceId)
 
         // Late/replayed events after module:destroy: allow entering the window for replay, but do not rebuild latest* caches.
@@ -664,12 +837,16 @@ export const devtoolsHubSink: Sink = {
           if (ref.meta && typeof ref.meta === 'object' && !Array.isArray(ref.meta)) {
             const anyMeta = ref.meta as any
             if ('state' in anyMeta) {
-              latestStates.set(instanceKey, anyMeta.state as JsonValue)
+              if (defaultProjectionTier === 'full') {
+                latestStates.set(instanceKey, anyMeta.state as JsonValue)
+              }
               runtimeBucket.latestStates.set(instanceKey, anyMeta.state as JsonValue)
               changed = true
             }
             if ('traitSummary' in anyMeta && anyMeta.traitSummary !== undefined) {
-              latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
+              if (defaultProjectionTier === 'full') {
+                latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
+              }
               runtimeBucket.latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
               changed = true
             }

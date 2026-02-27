@@ -17,11 +17,10 @@ describe('DevtoolsHub (core)', () => {
           }),
       }
 
-      const layer = Logix.Debug.devtoolsHubLayer(Logix.Debug.replace([userSink]), { bufferSize: 10 }) as Layer.Layer<
-        any,
-        never,
-        never
-      >
+      const layer = Logix.Debug.devtoolsHubLayer(Logix.Debug.replace([userSink]), {
+        bufferSize: 10,
+        projectionTier: 'full',
+      }) as Layer.Layer<any, never, never>
 
       // Record a few different event kinds.
       yield* Logix.Debug.record({
@@ -148,6 +147,7 @@ describe('DevtoolsHub (core)', () => {
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 20,
         diagnosticsLevel: 'full',
+        projectionTier: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
