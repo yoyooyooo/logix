@@ -2,6 +2,7 @@ import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Context, Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import * as Debug from '../../src/Debug.js'
 
 const Counter = Logix.Module.make('WatcherCounter', {
   state: Schema.Struct({ value: Schema.Number }),
@@ -47,6 +48,37 @@ const CounterManualForkLogic = Counter.logic(($) =>
 )
 
 describe('Watcher patterns (Bound + Flow)', () => {
+  it('runParallelFork should not emit legacy runParallel migration diagnostics', async () => {
+    const diagnostics: Array<Debug.Event> = []
+    const sink: Debug.Sink = {
+      record: (event) =>
+        Effect.sync(() => {
+          diagnostics.push(event)
+        }),
+    }
+
+    const layer = Counter.live({ value: 0 }, CounterRunForkLogic, CounterErrorLogic)
+    const program = Effect.gen(function* () {
+      const context = yield* Layer.build(layer)
+      const runtime = Context.get(context, Counter.tag)
+      yield* Effect.sleep('80 millis')
+      yield* runtime.dispatch({ _tag: 'inc', payload: undefined })
+      yield* Effect.sleep('80 millis')
+    })
+
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(program) as Effect.Effect<void, never, never>,
+      ),
+    )
+
+    const legacyRunDiagnostics = diagnostics.filter(
+      (event): event is Extract<Debug.Event, { readonly type: 'diagnostic' }> =>
+        event.type === 'diagnostic' && event.code === 'flow::legacy_run_alias',
+    )
+    expect(legacyRunDiagnostics).toHaveLength(0)
+  })
+
   it('runParallel-based watcher should update state', async () => {
     const layer = Counter.live({ value: 0 }, CounterRunForkLogic, CounterErrorLogic)
 

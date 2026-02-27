@@ -9,6 +9,7 @@ import * as Debug from './DebugSink.js'
 import * as ReadQuery from './ReadQuery.js'
 import { makeRunBudgetEnvelopeV1, makeRunDegradeMarkerV1 } from './diagnosticsBudget.js'
 import * as ModeRunner from './ModeRunner.js'
+import { isDevEnv } from './env.js'
 
 const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
   Effect.serviceOption(EffectOpCore.EffectOpMiddlewareTag).pipe(
@@ -81,7 +82,22 @@ export interface RunConfig<Sh extends AnyModuleShape, R, V, A = void, E = never>
   readonly options?: Logic.OperationOptions
 }
 
+type LegacyRunAliasName = 'runParallel' | 'runLatest' | 'runExhaust'
+type LegacyRunAliasMode = Exclude<ModeRunner.ModeRunnerMode, 'task'>
+
 type EffectResolver<T, Sh extends AnyModuleShape, R, A, E> = (payload: T) => LogicEffect<Sh, R, A, E>
+
+const FLOW_RUN_MODES = ['task', 'parallel', 'latest', 'exhaust'] as const
+const FLOW_RUN_CONFIG_KEYS = ['effect', 'mode', 'options'] as const
+const FLOW_RUN_CONFIG_KEY_SET: ReadonlySet<string> = new Set(FLOW_RUN_CONFIG_KEYS)
+const INVALID_FLOW_RUN_CONFIG_MESSAGE =
+  "[InvalidFlowRunConfig] run(config) expects { effect, mode?, options? }, and mode must be one of 'task' | 'parallel' | 'latest' | 'exhaust'."
+
+interface CanonicalRunConfig<Sh extends AnyModuleShape, R, V, A = void, E = never> {
+  readonly mode: ModeRunner.ModeRunnerMode
+  readonly effect: LogicEffect<Sh, R, A, E> | ((payload: V) => LogicEffect<Sh, R, A, E>)
+  readonly options?: Logic.OperationOptions
+}
 
 const preResolveEffectResolver = <T, Sh extends AnyModuleShape, R, A, E>(
   eff: LogicEffect<Sh, R, A, E> | EffectResolver<T, Sh, R, A, E>,
@@ -137,11 +153,60 @@ const isRunConfig = <Sh extends AnyModuleShape, R, V, A, E>(
   if (!('effect' in candidate)) {
     return false
   }
+  const effect = candidate.effect
+  if (effect == null) {
+    return false
+  }
+  if (typeof effect !== 'function' && !Effect.isEffect(effect)) {
+    return false
+  }
   const mode = candidate.mode
   if (mode === undefined) {
     return true
   }
-  return mode === 'task' || mode === 'parallel' || mode === 'latest' || mode === 'exhaust'
+  return (FLOW_RUN_MODES as ReadonlyArray<string>).includes(mode as string)
+}
+
+const isRunConfigLike = (input: unknown): input is Record<string, unknown> => {
+  if (!input || typeof input !== 'object') {
+    return false
+  }
+  return FLOW_RUN_CONFIG_KEYS.some((key) => key in input)
+}
+
+const toCanonicalRunConfigOrThrow = <Sh extends AnyModuleShape, R, T, A, E>(
+  effOrConfig:
+    | RunConfig<Sh, R, T, A, E>
+    | LogicEffect<Sh, R, A, E>
+    | ((payload: T) => LogicEffect<Sh, R, A, E>),
+  options?: Logic.OperationOptions,
+): CanonicalRunConfig<Sh, R, T, A, E> => {
+  if (!isRunConfigLike(effOrConfig)) {
+    return {
+      mode: 'task',
+      effect: effOrConfig as LogicEffect<Sh, R, A, E> | ((payload: T) => LogicEffect<Sh, R, A, E>),
+      options,
+    }
+  }
+
+  if (options !== undefined) {
+    throw new Error(`${INVALID_FLOW_RUN_CONFIG_MESSAGE} Put options inside config.options; do not pass a second argument.`)
+  }
+
+  const unknownKeys = Object.keys(effOrConfig).filter((key) => !FLOW_RUN_CONFIG_KEY_SET.has(key))
+  if (unknownKeys.length > 0) {
+    throw new Error(`${INVALID_FLOW_RUN_CONFIG_MESSAGE} Unknown keys: ${unknownKeys.join(', ')}.`)
+  }
+
+  if (!isRunConfig<Sh, R, T, A, E>(effOrConfig)) {
+    throw new Error(INVALID_FLOW_RUN_CONFIG_MESSAGE)
+  }
+
+  return {
+    mode: effOrConfig.mode ?? 'task',
+    effect: effOrConfig.effect,
+    options: effOrConfig.options,
+  }
 }
 
 export const make = <Sh extends AnyModuleShape, R = never>(
@@ -154,6 +219,35 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     runtimeInternals
       ? runtimeInternals.concurrency.resolveConcurrencyPolicy().pipe(Effect.map((p) => p.concurrencyLimit))
       : Effect.succeed(16)
+
+  const emitLegacyRunAliasDiagnostic = (
+    aliasName: LegacyRunAliasName,
+    mode: LegacyRunAliasMode,
+  ): Effect.Effect<void, never, any> => {
+    if (!isDevEnv()) {
+      return Effect.void
+    }
+
+    return Debug.record({
+      type: 'diagnostic',
+      moduleId: scope.moduleId,
+      instanceId: scope.instanceId,
+      code: 'flow::legacy_run_alias',
+      severity: 'warning',
+      message: `Flow alias ${aliasName} is compatibility-only and delegates to run({ mode: '${mode}', effect, options }).`,
+      hint: 'run(config) is the canonical execution entry. Legacy run* aliases emit migration diagnostics only and will be removed.',
+      kind: 'flow_legacy_run_alias',
+      trigger: {
+        kind: 'flow',
+        name: aliasName,
+        details: {
+          mode,
+          canonicalEntry: 'run(config)',
+          semanticOwner: 'run(config)',
+        },
+      },
+    })
+  }
 
   interface FlowOpRunContext {
     readonly stack: EffectOp.MiddlewareStack
@@ -301,6 +395,21 @@ export const make = <Sh extends AnyModuleShape, R = never>(
         ),
       ) as any
 
+  const executeCanonicalRun =
+    <T, A, E, R2>(config: CanonicalRunConfig<Sh, R & R2, T, A, E>) =>
+    (stream: Stream.Stream<T>): LogicEffect<Sh, R & R2, void, E> => {
+      const resolver = preResolveEffectResolver<T, Sh, R & R2, A, E>(config.effect)
+      if (config.mode === 'parallel') {
+        return runStreamParallelWithDiagnostics<T, A, E, R2>(resolver, config.options)(stream) as any
+      }
+      return runStreamWithMode<T, A, E, R2>(
+        config.mode,
+        config.mode === 'latest' ? 'flow.runLatest' : config.mode === 'exhaust' ? 'flow.runExhaust' : 'flow.run',
+        resolver,
+        config.options,
+      )(stream) as any
+    }
+
   const fromState = <V>(
     selectorOrQuery: ((s: StateOf<Sh>) => V) | ReadQuery.ReadQuery<StateOf<Sh>, V>,
   ): Stream.Stream<V> => {
@@ -327,6 +436,40 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     return runtime.changes(selectorOrQuery)
   }
 
+  function runWithConfig<T, A = void, E = never, R2 = unknown>(
+    eff: LogicEffect<Sh, R & R2, A, E> | ((payload: T) => LogicEffect<Sh, R & R2, A, E>),
+    options?: Logic.OperationOptions,
+  ): (stream: Stream.Stream<T>) => LogicEffect<Sh, R & R2, void, E>
+  function runWithConfig<T, A = void, E = never, R2 = unknown>(
+    config: RunConfig<Sh, R & R2, T, A, E>,
+  ): (stream: Stream.Stream<T>) => LogicEffect<Sh, R & R2, void, E>
+  function runWithConfig<T, A = void, E = never, R2 = unknown>(
+    effOrConfig:
+      | RunConfig<Sh, R & R2, T, A, E>
+      | LogicEffect<Sh, R & R2, A, E>
+      | ((payload: T) => LogicEffect<Sh, R & R2, A, E>),
+    options?: Logic.OperationOptions,
+  ): (stream: Stream.Stream<T>) => LogicEffect<Sh, R & R2, void, E> {
+    return executeCanonicalRun<T, A, E, R2>(toCanonicalRunConfigOrThrow<Sh, R & R2, T, A, E>(effOrConfig, options))
+  }
+
+  const runLegacyAlias =
+    <T, A, E, R2>(
+      aliasName: LegacyRunAliasName,
+      mode: LegacyRunAliasMode,
+      eff: LogicEffect<Sh, R & R2, A, E> | ((payload: T) => LogicEffect<Sh, R & R2, A, E>),
+      options?: Logic.OperationOptions,
+    ) =>
+    (stream: Stream.Stream<T>): LogicEffect<Sh, R & R2, void, E> =>
+      Effect.zipRight(
+        emitLegacyRunAliasDiagnostic(aliasName, mode),
+        executeCanonicalRun<T, A, E, R2>({
+          mode,
+          effect: eff,
+          options,
+        })(stream),
+      ) as any
+
   return {
     fromAction: <T extends ActionOf<Sh>>(predicate: (a: ActionOf<Sh>) => a is T) =>
       runtime.actions$.pipe(Stream.filter(predicate)),
@@ -345,42 +488,12 @@ export const make = <Sh extends AnyModuleShape, R = never>(
 
     filter: (predicate: (value: any) => boolean) => (stream) => Stream.filter(stream, predicate),
 
-    run: (effOrConfig: unknown, options?: Logic.OperationOptions) => (stream) => {
-      const mode = isRunConfig<Sh, any, any, any, any>(effOrConfig) ? (effOrConfig.mode ?? 'task') : 'task'
-      const resolvedOptions = isRunConfig<Sh, any, any, any, any>(effOrConfig) ? effOrConfig.options : options
-      const effect = isRunConfig<Sh, any, any, any, any>(effOrConfig) ? effOrConfig.effect : effOrConfig
-      const resolver = preResolveEffectResolver<any, Sh, any, any, any>(effect as any)
-      if (mode === 'parallel') {
-        return runStreamParallelWithDiagnostics<any, any, any, any>(resolver, resolvedOptions)(stream) as any
-      }
-      return runStreamWithMode<any, any, any, any>(
-        mode,
-        mode === 'latest' ? 'flow.runLatest' : mode === 'exhaust' ? 'flow.runExhaust' : 'flow.run',
-        resolver,
-        resolvedOptions,
-      )(stream) as any
-    },
+    run: runWithConfig,
 
-    runParallel: (eff, options) => (stream) =>
-      runStreamParallelWithDiagnostics<any, any, any, any>(
-        preResolveEffectResolver<any, Sh, any, any, any>(eff),
-        options,
-      )(stream),
+    runParallel: (eff, options) => runLegacyAlias('runParallel', 'parallel', eff, options),
 
-    runLatest: (eff, options) => (stream) =>
-      runStreamWithMode<any, any, any, any>(
-        'latest',
-        'flow.runLatest',
-        preResolveEffectResolver<any, Sh, any, any, any>(eff),
-        options,
-      )(stream),
+    runLatest: (eff, options) => runLegacyAlias('runLatest', 'latest', eff, options),
 
-    runExhaust: (eff, options) => (stream) =>
-      runStreamWithMode<any, any, any, any>(
-        'exhaust',
-        'flow.runExhaust',
-        preResolveEffectResolver<any, Sh, any, any, any>(eff),
-        options,
-      )(stream),
+    runExhaust: (eff, options) => runLegacyAlias('runExhaust', 'exhaust', eff, options),
   }
 }

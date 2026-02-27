@@ -191,7 +191,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "effect": "^3.19.8",
+    "effect": "^3.19.13",
     "mutative": "^1.0.4"
   },
   "devDependencies": {
@@ -201,6 +201,6 @@
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
-    "effect": "^3.19.8"
+    "effect": "^3.19.13"
   }
 }

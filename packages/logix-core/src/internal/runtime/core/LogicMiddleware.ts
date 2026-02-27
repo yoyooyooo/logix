@@ -12,16 +12,27 @@ export type Of<Sh extends Logix.AnyModuleShape, R = never, A = void, E = never> 
 
 export type Draft<T> = MutativeDraft<T>
 
+export interface IntentRunConfig<Payload, Sh extends Logix.AnyModuleShape, R, A = void, E = never> {
+  readonly effect: Of<Sh, R, A, E> | ((payload: Payload) => Of<Sh, R, A, E>)
+  readonly mode?: 'task' | 'parallel' | 'latest' | 'exhaust'
+  readonly options?: OperationOptions
+}
+
 export interface IntentBuilder<Payload, Sh extends Logix.AnyModuleShape, R = never> {
   readonly debounce: (ms: number) => IntentBuilder<Payload, Sh, R>
   readonly throttle: (ms: number) => IntentBuilder<Payload, Sh, R>
   readonly filter: (predicate: (value: Payload) => boolean) => IntentBuilder<Payload, Sh, R>
   readonly map: <U>(f: (value: Payload) => U) => IntentBuilder<U, Sh, R>
 
-  readonly run: <A = void, E = never, R2 = unknown>(
-    effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
-    options?: OperationOptions,
-  ) => Of<Sh, R & R2, void, E>
+  readonly run: {
+    <A = void, E = never, R2 = unknown>(
+      effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
+      options?: OperationOptions,
+    ): Of<Sh, R & R2, void, E>
+    <A = void, E = never, R2 = unknown>(
+      config: IntentRunConfig<Payload, Sh, R & R2, A, E>,
+    ): Of<Sh, R & R2, void, E>
+  }
 
   readonly runParallel: <A = void, E = never, R2 = unknown>(
     effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),

@@ -3,6 +3,7 @@ import { it, expect } from '@effect/vitest'
 import { Chunk, Effect, Fiber, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as EffectOp from '../../../src/EffectOp.js'
+import * as Debug from '../../../src/Debug.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
 import * as EffectOpCore from '../../../src/internal/runtime/core/EffectOpCore.js'
 import * as FlowRuntimeImpl from '../../../src/internal/runtime/FlowRuntime.js'
@@ -403,6 +404,202 @@ describe('FlowRuntime.make (internal kernel)', () => {
     )
     expect(exhaustCount).toBe(1)
   })
+
+  it('run(config) should fail fast for malformed config objects', () => {
+    const runtime = {
+      moduleId: 'FlowRuntimeInvalidRunConfig',
+      instanceId: 'FlowRuntimeInvalidRunConfig#1',
+      actions$: Stream.empty,
+      changes: () => Stream.empty,
+    } as any
+
+    const flow = FlowRuntimeImpl.make<CounterShape, never>(runtime)
+
+    expect(() =>
+      flow.run({
+        mode: 'invalid',
+        effect: Effect.void,
+      } as any)(Stream.fromIterable([1])),
+    ).toThrowError(/\[InvalidFlowRunConfig]/)
+
+    expect(() =>
+      flow.run({
+        mode: 'latest',
+      } as any)(Stream.fromIterable([1])),
+    ).toThrowError(/\[InvalidFlowRunConfig]/)
+
+    expect(() =>
+      flow.run({
+        mode: 'task',
+        effect: undefined,
+      } as any)(Stream.fromIterable([1])),
+    ).toThrowError(/\[InvalidFlowRunConfig]/)
+
+    expect(() =>
+      flow.run({
+        mode: 'task',
+        effect: 42,
+      } as any)(Stream.fromIterable([1])),
+    ).toThrowError(/\[InvalidFlowRunConfig]/)
+
+    expect(() =>
+      flow.run({
+        mode: 'task',
+        effect: Effect.void,
+        extra: true,
+      } as any)(Stream.fromIterable([1])),
+    ).toThrowError(/\[InvalidFlowRunConfig]/)
+
+    expect(() =>
+      (flow.run(
+        {
+          effect: Effect.void,
+        } as any,
+        {
+          tags: ['forbidden-second-arg'],
+        } as any,
+      ) as any)(Stream.fromIterable([1])),
+    ).toThrowError(/\[InvalidFlowRunConfig]/)
+  })
+
+  it.effect('legacy run* aliases should emit migration diagnostics, while run(config) should not', () =>
+    Effect.gen(function* () {
+      const diagnostics: Array<Debug.Event> = []
+      const sink: Debug.Sink = {
+        record: (event) =>
+          Effect.sync(() => {
+            diagnostics.push(event)
+          }),
+      }
+
+      const runtime = {
+        moduleId: 'FlowRuntimeMigration',
+        instanceId: 'FlowRuntimeMigration#1',
+        actions$: Stream.empty,
+        changes: () => Stream.empty,
+      } as any
+
+      const flow = FlowRuntimeImpl.make<CounterShape, never>(runtime)
+      yield* (Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(
+        flow.runLatest((n: number) => Effect.succeed(n))(Stream.fromIterable([1, 2, 3])) as any,
+      ) as Effect.Effect<void, never, never>)
+
+      yield* (Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(
+        flow.runExhaust((n: number) => Effect.succeed(n))(Stream.fromIterable([1, 2, 3])) as any,
+      ) as Effect.Effect<void, never, never>)
+
+      yield* (Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(
+        flow.runParallel((n: number) => Effect.succeed(n))(Stream.fromIterable([1, 2, 3])) as any,
+      ) as Effect.Effect<void, never, never>)
+
+      yield* (Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(
+        flow.run({
+          mode: 'latest',
+          effect: (n: number) => Effect.succeed(n),
+        })(Stream.fromIterable([1, 2, 3])) as any,
+      ) as Effect.Effect<void, never, never>)
+
+      const migrationDiagnostics = diagnostics.filter(
+        (event): event is Extract<Debug.Event, { readonly type: 'diagnostic' }> =>
+          event.type === 'diagnostic' && event.code === 'flow::legacy_run_alias',
+      )
+
+      expect(migrationDiagnostics).toHaveLength(3)
+      expect(migrationDiagnostics.map((event) => event.trigger?.name).sort()).toEqual([
+        'runExhaust',
+        'runLatest',
+        'runParallel',
+      ])
+      expect(migrationDiagnostics.every((event) => event.kind === 'flow_legacy_run_alias')).toBe(true)
+    }),
+  )
+
+  it.effect('legacy runParallel should keep canonical semantics and only add migration diagnostics', () =>
+    Effect.gen(function* () {
+      const runtime = {
+        moduleId: 'FlowRuntimeCanonicalSingleEntry',
+        instanceId: 'FlowRuntimeCanonicalSingleEntry#1',
+        actions$: Stream.empty,
+        changes: () => Stream.empty,
+      } as any
+
+      const flow = FlowRuntimeImpl.make<CounterShape, never>(runtime)
+      const options = {
+        tags: ['canonical-single-entry'],
+        meta: { custom: 'canonical-single-entry' },
+      }
+
+      type CapturedRun = {
+        readonly ops: Array<EffectOp.EffectOp<any, any, any>>
+        readonly diagnostics: Array<Extract<Debug.Event, { readonly type: 'diagnostic' }>>
+      }
+
+      const runWithCapture = (runId: string, program: Effect.Effect<void, never, any>): Effect.Effect<CapturedRun, never, never> =>
+        Effect.gen(function* () {
+          const ops: Array<EffectOp.EffectOp<any, any, any>> = []
+          const diagnostics: Array<Extract<Debug.Event, { readonly type: 'diagnostic' }>> = []
+          const middleware: EffectOp.Middleware = (op) =>
+            Effect.gen(function* () {
+              ops.push(op)
+              return yield* op.effect
+            })
+          const sink: Debug.Sink = {
+            record: (event) =>
+              Effect.sync(() => {
+                if (event.type === 'diagnostic') {
+                  diagnostics.push(event)
+                }
+              }),
+          }
+
+          yield* (Effect.scoped(
+            Effect.provideService(
+              Effect.provideService(
+                Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(program as any),
+                EffectOpCore.EffectOpMiddlewareTag,
+                { stack: [middleware] },
+              ),
+              RunSessionTag,
+              makeRunSession({
+                runId,
+                source: { host: 'vitest', label: 'FlowRuntime.test' },
+                startedAt: 1,
+              }),
+            ),
+          ) as Effect.Effect<void, never, never>)
+
+          return { ops, diagnostics }
+        })
+
+      const legacy = yield* runWithCapture(
+        'run-legacy-single-entry',
+        flow.runParallel((n: number) => Effect.succeed(n), options)(Stream.fromIterable([1, 2, 3])) as any,
+      )
+
+      const canonical = yield* runWithCapture(
+        'run-canonical-single-entry',
+        flow.run({
+          mode: 'parallel',
+          effect: (n: number) => Effect.succeed(n),
+          options,
+        })(Stream.fromIterable([1, 2, 3])) as any,
+      )
+
+      const toSignature = (events: Array<EffectOp.EffectOp<any, any, any>>) =>
+        events
+          .map((event) => `${event.name}:${String(event.payload)}:${JSON.stringify(event.meta?.tags)}:${event.meta?.custom as string}`)
+          .sort()
+
+      expect(toSignature(legacy.ops)).toEqual(toSignature(canonical.ops))
+      expect(legacy.ops.every((event) => event.name === 'flow.runParallel')).toBe(true)
+      expect(canonical.ops.every((event) => event.name === 'flow.runParallel')).toBe(true)
+
+      const legacyAliasDiagnostics = legacy.diagnostics.filter((event) => event.code === 'flow::legacy_run_alias')
+      const canonicalAliasDiagnostics = canonical.diagnostics.filter((event) => event.code === 'flow::legacy_run_alias')
+      expect(legacyAliasDiagnostics).toHaveLength(1)
+      expect(canonicalAliasDiagnostics).toHaveLength(0)
+    }),
+  )
 
   it('run/runParallel/runLatest/runExhaust should resolve stack and run session once per invocation', async () => {
     type InvocationKind = 'run' | 'runParallel' | 'runLatest' | 'runExhaust'
