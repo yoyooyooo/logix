@@ -28,6 +28,7 @@ describe('ReadQuery.runtimeConsumption', () => {
       const fiber = yield* Effect.fork(
         Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(Stream.runCollect(stream)),
       )
+      yield* Effect.yieldNow()
 
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
@@ -66,6 +67,7 @@ describe('ReadQuery.runtimeConsumption', () => {
       const fiber = yield* Effect.fork(
         Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(Stream.runCollect(stream)),
       )
+      yield* Effect.yieldNow()
 
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
@@ -113,6 +115,7 @@ describe('ReadQuery.runtimeConsumption', () => {
 
       const stream = runtime.changesReadQueryWithMeta(graded.compiled)
       const fiber = yield* Effect.fork(Stream.runCollect(Stream.take(stream, 1)))
+      yield* Effect.yieldNow()
       yield* runtime.setState({ count: 1 })
 
       const exit = yield* Fiber.await(fiber)

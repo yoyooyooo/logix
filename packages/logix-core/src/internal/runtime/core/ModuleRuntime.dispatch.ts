@@ -263,20 +263,38 @@ export const makeDispatchOps = <S, A>(args: {
     )
   }
 
+  const mergeTxnOriginDetails = (
+    baseDetails: Record<string, unknown>,
+    overrideOrigin?: TxnOriginOverride,
+  ): Record<string, unknown> => {
+    const overrideDetails = overrideOrigin?.details
+    if (!overrideDetails || typeof overrideDetails !== 'object') {
+      return baseDetails
+    }
+
+    return { ...baseDetails, ...(overrideDetails as Record<string, unknown>) }
+  }
+
   const makeActionOrigin = (
     originName: string,
     action: A,
     analysis: ActionAnalysis,
     override?: TxnOriginOverride,
-  ): StateTransaction.StateTxnOrigin => ({
-    kind: override?.kind ?? 'action',
-    name: override?.name ?? originName,
-    details: {
+  ): StateTransaction.StateTxnOrigin => {
+    const baseDetails = {
       _tag: analysis.actionTagNormalized,
       path: typeof (action as any)?.payload?.path === 'string' ? ((action as any).payload.path as string) : undefined,
       op: analysis.originOp,
-    },
-  })
+    }
+
+    const details = mergeTxnOriginDetails(baseDetails, override)
+
+    return {
+      kind: override?.kind ?? 'action',
+      name: override?.name ?? originName,
+      details,
+    }
+  }
 
   const dispatchInTransaction = (action: A, analysis: ActionAnalysis): Effect.Effect<void> =>
     Effect.gen(function* () {
@@ -358,21 +376,30 @@ export const makeDispatchOps = <S, A>(args: {
         payload: actions,
         meta: { moduleId: optionsModuleId, instanceId },
       },
-      runWithStateTransaction(
-        { kind: override?.kind ?? 'action', name: override?.name ?? 'dispatchBatch', details: { count: actions.length } } as any,
-        () =>
-          Effect.gen(function* () {
-            if (txnContext.current) {
-              ;(txnContext.current as any).commitMode = 'batch' as StateCommitMode
-              ;(txnContext.current as any).priority = 'normal' as StateCommitPriority
-            }
-            for (let index = 0; index < actions.length; index += 1) {
-              const action = actions[index] as A
-              const analysis = analyses[index] as ActionAnalysis
-              yield* dispatchInTransaction(action, analysis)
-            }
-          }),
-      ),
+      (() => {
+        const baseDetails = { count: actions.length }
+        const details = mergeTxnOriginDetails(baseDetails, override)
+
+        return runWithStateTransaction(
+          {
+            kind: override?.kind ?? 'action',
+            name: override?.name ?? 'dispatchBatch',
+            details,
+          } as any,
+          () =>
+            Effect.gen(function* () {
+              if (txnContext.current) {
+                ;(txnContext.current as any).commitMode = 'batch' as StateCommitMode
+                ;(txnContext.current as any).priority = 'normal' as StateCommitPriority
+              }
+              for (let index = 0; index < actions.length; index += 1) {
+                const action = actions[index] as A
+                const analysis = analyses[index] as ActionAnalysis
+                yield* dispatchInTransaction(action, analysis)
+              }
+            }),
+        )
+      })(),
     ).pipe(Effect.asVoid)
   }
 

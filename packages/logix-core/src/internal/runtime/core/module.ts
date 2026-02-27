@@ -281,6 +281,10 @@ export type BoundApiDispatchersApi<Sh extends AnyModuleShape, R = never> = {
   >
 }
 
+export type BoundApiActionApi<Sh extends AnyModuleShape, R = never> = <K extends keyof Sh['actionMap']>(
+  token: Sh['actionMap'][K],
+) => ActionCallable<ActionPayloadOfToken<Sh['actionMap'][K]>, DispatchEffect<Sh, R>>
+
 export type BoundApiDispatchApi<Sh extends AnyModuleShape, R = never> = {
   (action: ActionOf<Sh>): DispatchEffect<Sh, R>
   <K extends keyof Sh['actionMap']>(
@@ -345,6 +349,7 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
   readonly state: BoundApiStateApi<Sh, R>
   readonly actions: Sh['actionMap']
   readonly dispatchers: BoundApiDispatchersApi<Sh, R>
+  readonly action: BoundApiActionApi<Sh, R>
   readonly dispatch: BoundApiDispatchApi<Sh, R>
   /**
    * effect：

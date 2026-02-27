@@ -97,7 +97,8 @@ const i18n = yield* $.root.resolve(I18nTag)
 
 - `$.actions.<K>(payload)`：**只创建 action object（纯数据）**，可序列化/可回放/可用于 Manifest 与事件 join。
 - `$.dispatchers.<K>(payload)`：返回可 `yield*` 的 **Effect（真正派发）**，作为 `$.dispatch($.actions.<K>, payload)` 的常用短写（payload 类型来自 action 定义）。
-- `$.dispatch(token, payload)` / `$.dispatch(action)`：通用派发入口（支持 token-first 与 action object）。
+- `$.action(token)(payload)`：动态 token 入口（桥接/运行期选择），与 `dispatchers` 共享 ActionIntent 内核。
+- `$.dispatch(token, payload)` / `$.dispatch(action)` / `$.dispatch(type, payload)`：通用派发入口；其中 `type+payload` 仅兼容/低阶路径。
 
 > IDE 侧的“跳转到定义/找引用/重命名”锚点，仍然是 **ActionToken 本身**：如果你希望 IDE 稳定地跟踪某个 action，请让代码里显式出现 token（例如 `$.dispatch($.actions.<K>, payload)`、`$.onAction($.actions.<K>)`，或在模块定义处把 actions 抽成具名常量再引用）。
 

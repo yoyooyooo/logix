@@ -12,6 +12,7 @@ import * as Lifecycle from './Lifecycle.js'
 import * as Debug from './DebugSink.js'
 import * as LogicDiagnostics from './LogicDiagnostics.js'
 import { isDevEnv } from './env.js'
+import { currentTxnOriginOverride } from './TxnOriginOverride.js'
 import type { JsonValue } from '../../observability/jsonValue.js'
 import { RunSessionTag } from '../../observability/runSession.js'
 import * as Root from '../../root.js'
@@ -510,45 +511,63 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
 
   const actions = shape.actionMap as BoundApi<Sh, R>['actions']
 
-  const dispatcherCache = new Map<string, (...args: any[]) => Effect.Effect<void, any, any>>()
+  const actionCache = new WeakMap<Action.AnyActionToken, (...args: any[]) => Effect.Effect<void, any, any>>()
 
-  const hasAction = (key: string): boolean => Object.prototype.hasOwnProperty.call(actions as any, key)
+  const dispatchActionIntent = (intent: Action.ActionIntent<Logix.ActionOf<Sh>>): Logix.DispatchEffect<Sh, R> =>
+    Effect.locally(currentTxnOriginOverride, {
+      kind: 'action-intent',
+      name: intent.source.entry,
+      details: {
+        actionIntent: true,
+        entry: intent.source.entry,
+        input: intent.source.input,
+        actionTag: intent.actionTag,
+      },
+    })(runtime.dispatch(intent.action as Logix.ActionOf<Sh>)) as Logix.DispatchEffect<Sh, R>
 
-  const dispatchers: BoundApi<Sh, R>['dispatchers'] = new Proxy({} as any, {
-    get: (_target, prop) => {
-      if (typeof prop !== 'string') return undefined
-      if (!hasAction(prop)) return undefined
+  const dispatchers = Object.freeze(
+    Object.fromEntries(
+      Object.entries(actions as Record<string, Action.AnyActionToken>).map(([key, token]) => [
+        key,
+        (...args: any[]) =>
+          dispatchActionIntent(Action.intentFromToken(token as any, args as any, 'dispatchers') as Action.ActionIntent<
+            Logix.ActionOf<Sh>
+          >),
+      ]),
+    ),
+  ) as unknown as BoundApi<Sh, R>['dispatchers']
 
-      const cached = dispatcherCache.get(prop)
-      if (cached) return cached
+  const action: BoundApi<Sh, R>['action'] = ((token: Action.AnyActionToken) => {
+    const cached = actionCache.get(token)
+    if (cached) {
+      return cached as any
+    }
 
-      const token = (actions as any)[prop] as Action.AnyActionToken
-      const fn = (...args: any[]) => runtime.dispatch((token as any)(...args))
+    const run = (...args: any[]) =>
+      dispatchActionIntent(Action.intentFromToken(token as any, args as any, 'action') as Action.ActionIntent<Logix.ActionOf<Sh>>)
 
-      dispatcherCache.set(prop, fn)
-      return fn
-    },
-    has: (_target, prop) => typeof prop === 'string' && hasAction(prop),
-    ownKeys: () => Object.keys(actions as any),
-    getOwnPropertyDescriptor: (_target, prop) => {
-      if (typeof prop !== 'string') return undefined
-      if (!hasAction(prop)) return undefined
-      return { enumerable: true, configurable: true }
-    },
-  }) as unknown as BoundApi<Sh, R>['dispatchers']
+    actionCache.set(token, run)
+    return run as any
+  }) as BoundApi<Sh, R>['action']
 
   const dispatch: BoundApi<Sh, R>['dispatch'] = (...args: any[]) => {
     const [first, second] = args
 
     if (typeof first === 'string') {
-      return runtime.dispatch({ _tag: first, payload: second } as Logix.ActionOf<Sh>)
+      return dispatchActionIntent(
+        Action.intentFromType<Logix.ActionOf<Sh>>(first, second, 'dispatch') as Action.ActionIntent<Logix.ActionOf<Sh>>,
+      )
     }
 
     if (Action.isActionToken(first)) {
-      return runtime.dispatch((first as any)(second))
+      return dispatchActionIntent(
+        Action.intentFromToken(first as any, [second] as any, 'dispatch') as Action.ActionIntent<Logix.ActionOf<Sh>>,
+      )
     }
 
-    return runtime.dispatch(first as Logix.ActionOf<Sh>)
+    return dispatchActionIntent(
+      Action.intentFromValue(first as Logix.ActionOf<Sh>, 'dispatch') as Action.ActionIntent<Logix.ActionOf<Sh>>,
+    )
   }
 
   const matchApi = <V>(value: V): Logic.FluentMatch<V> => MatchBuilder.makeMatch(value)
@@ -601,6 +620,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     state: stateApi,
     actions,
     dispatchers,
+    action,
     dispatch,
     flow: flowApi,
     match: matchApi,

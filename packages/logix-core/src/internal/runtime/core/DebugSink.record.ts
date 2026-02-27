@@ -158,20 +158,9 @@ export type Event =
        * - Populated by Runtime only on StateTransaction-based paths.
        */
       readonly originName?: string
-      /**
-       * Optional canonical lookup key for digest-first consumers.
-       * - Preferred over parsing legacy payload details when present.
-       */
+      readonly originDetails?: unknown
       readonly traceLookupKey?: ReplayLog.StaticIrLookupKey
-      /**
-       * Optional digest-first envelope:
-       * - Carries stable schema/digest algo versions + canonical lookupKey + anchor.
-       * - Used by replay/evidence consumers to avoid ad-hoc payload parsing.
-       */
       readonly traceDigestPayload?: TraceDigestPayload
-      /**
-       * Optional staged degrade record when digest/lookup cannot be fully materialized.
-       */
       readonly traceDigestDegrade?: TraceDigestDegradeRecord
       /**
        * Reserved: Trait converge summary (for Devtools window-level stats / TopN costs / degrade reasons, etc.).
@@ -1264,6 +1253,7 @@ export const toRuntimeDebugEventRef = (
             traceLookupKey,
             traceDigestPayload,
             traceDigestDegrade,
+            originDetails: e.originDetails,
           }
         : {
             state: e.state,
@@ -1279,6 +1269,7 @@ export const toRuntimeDebugEventRef = (
             traceLookupKey,
             traceDigestPayload,
             traceDigestDegrade,
+            originDetails: e.originDetails,
             traitSummary: e.traitSummary,
             replayEvent: e.replayEvent,
           }

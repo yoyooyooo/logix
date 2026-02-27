@@ -83,6 +83,9 @@ describe('process: trigger moduleStateChange', () => {
         run: ({ env }) =>
           Effect.gen(function* () {
             const host = Context.get(env, Host.tag)
+            yield* Effect.yieldNow()
+            yield* TestClock.adjust('1 millis')
+            yield* Effect.yieldNow()
 
             yield* host.dispatch({ _tag: 'setName', payload: 'A' } as any)
             yield* Effect.yieldNow()
@@ -163,6 +166,9 @@ describe('process: trigger moduleStateChange', () => {
         run: ({ env }) =>
           Effect.gen(function* () {
             const host = Context.get(env, Host.tag)
+            yield* Effect.yieldNow()
+            yield* TestClock.adjust('1 millis')
+            yield* Effect.yieldNow()
 
             yield* host.dispatch({ _tag: 'setAge', payload: 11 } as any)
             yield* Effect.yieldNow()

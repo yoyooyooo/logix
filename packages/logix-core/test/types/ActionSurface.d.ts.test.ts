@@ -36,14 +36,22 @@ M.logic(($) =>
 
     const incAction = $.actions.inc()
     const incEff = $.dispatchers.inc()
+    const addByTokenEff = $.action($.actions.add)(1)
+    const incByTokenEff = $.action($.actions.inc)()
 
     type _inc_not_effect = Expect<NotEffect<typeof incAction>>
     type _inc_eff_is_effect = Expect<IsEffect<typeof incEff>>
+    type _add_by_token_is_effect = Expect<IsEffect<typeof addByTokenEff>>
+    type _inc_by_token_is_effect = Expect<IsEffect<typeof incByTokenEff>>
 
     // @ts-expect-error void action should not accept payload
     $.actions.inc(1)
     // @ts-expect-error void dispatcher should not accept payload
     $.dispatchers.inc(1)
+    // @ts-expect-error payload type should be inferred from schema (number)
+    $.action($.actions.add)('x')
+    // @ts-expect-error void action should not accept payload
+    $.action($.actions.inc)(1)
 
     yield* $.onAction($.actions.add).run({
       effect: (payload) => {

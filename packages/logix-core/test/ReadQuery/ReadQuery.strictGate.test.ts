@@ -27,6 +27,7 @@ describe('ReadQuery.strictGate', () => {
           Stream.runCollect(Stream.take(stream, 1)),
         ),
       )
+      yield* Effect.yieldNow()
 
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
@@ -82,6 +83,7 @@ describe('ReadQuery.strictGate', () => {
       const fiber = yield* Effect.fork(
         Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(Stream.runCollect(stream)),
       )
+      yield* Effect.yieldNow()
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
       )
