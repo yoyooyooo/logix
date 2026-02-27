@@ -70,5 +70,5 @@ owner: pr/o021-module-api-unification
 | O-021 | P1 | writeback | [102-o021-module-api-unification](../../specs/102-o021-module-api-unification/spec.md) | pr/o021-module-api-unification |
 | O-023 | P1 | spec | [104-o023-flow-run-config](../../specs/104-o023-flow-run-config/spec.md) | refactor |
 | O-024 | P1 | spec | [105-o024-txn-lane-policy-cache](../../specs/105-o024-txn-lane-policy-cache/spec.md) | refactor |
-
-- O-025：`spec`（[106-o025-devtoolshub-tiered-projection](../../specs/106-o025-devtoolshub-tiered-projection/spec.md)）
+| O-025 | P1 | spec | [106-o025-devtoolshub-tiered-projection](../../specs/106-o025-devtoolshub-tiered-projection/spec.md) | refactor |
+| O-026 | P1 | spec | [107-o026-trace-digest-first](../../specs/107-o026-trace-digest-first/spec.md) | refactor |

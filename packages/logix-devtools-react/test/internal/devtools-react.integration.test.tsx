@@ -299,6 +299,77 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
     })
   })
 
+  it('supports digest-first lookup key on evidence import when staticIrDigest/rootIds are omitted from legacy slots', async () => {
+    render(<LogixDevtools position="bottom-left" initialOpen={true} />)
+
+    const protocolVersion = Logix.Observability.protocolVersion
+    const digest = 'digest-lookup-only-1'
+
+    const evidence = {
+      protocolVersion,
+      runId: 'run-root-paths-lookup-only',
+      createdAt: 21,
+      source: { host: 'test' },
+      summary: {
+        converge: {
+          staticIrByDigest: {
+            [digest]: {
+              fieldPaths: [['profile'], ['profile', 'nickname']],
+            },
+          },
+        },
+      },
+      events: [
+        {
+          protocolVersion,
+          runId: 'run-root-paths-lookup-only',
+          seq: 1,
+          timestamp: 21,
+          type: 'debug:event',
+          payload: {
+            eventSeq: 1,
+            eventId: 'i1::e11',
+            timestamp: 21,
+            kind: 'state',
+            label: 'state:update',
+            moduleId: 'M',
+            instanceId: 'i1',
+            runtimeLabel: 'R',
+            txnSeq: 11,
+            txnId: 'txn-11',
+            meta: {
+              traceLookupKey: {
+                staticIrDigest: digest,
+                nodeId: 1,
+              },
+              dirtySet: {
+                dirtyAll: false,
+                rootCount: 1,
+                keySize: 1,
+                keyHash: 110,
+                rootIdsTruncated: false,
+              },
+            },
+          },
+        },
+      ],
+    }
+
+    devtoolsRuntime.runFork(
+      devtoolsModuleRuntime.dispatch({
+        _tag: 'importEvidenceJson',
+        payload: JSON.stringify(evidence),
+      }) as any,
+    )
+
+    await waitFor(() => {
+      const snapshot = getDevtoolsSnapshot()
+      const imported = snapshot.events.find((event) => event.kind === 'state' && event.label === 'state:update') as any
+      expect(imported).toBeDefined()
+      expect(imported?.meta?.dirtySet?.rootPaths).toEqual([['profile', 'nickname']])
+    })
+  })
+
   it('strips payload legacy rootPaths and keeps id-first when digest is missing or not matched', async () => {
     render(<LogixDevtools position="bottom-left" initialOpen={true} />)
 

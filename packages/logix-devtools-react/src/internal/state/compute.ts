@@ -24,13 +24,21 @@ const getAtPath = (obj: unknown, path: string): unknown => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
+const readStaticIrDigest = (meta: Record<string, unknown>): string | undefined => {
+  const lookupKey = isRecord((meta as any).traceLookupKey) ? ((meta as any).traceLookupKey as Record<string, unknown>) : undefined
+  const digestFromLookup = lookupKey && typeof lookupKey.staticIrDigest === 'string' ? lookupKey.staticIrDigest : undefined
+  if (digestFromLookup && digestFromLookup.length > 0) return digestFromLookup
+  const digest = meta.staticIrDigest
+  return typeof digest === 'string' && digest.length > 0 ? digest : undefined
+}
+
 // Consumer-side digest gate: when staticIrDigest is missing, do not keep rootPaths (avoid showing wrong info).
 // Note: live runtime events are id-first by default; only Evidence import path may materialize rootPaths from summary.fieldPaths.
 const gateDirtyRootPathsByDigest = (meta: unknown): unknown => {
   if (!isRecord(meta)) return meta
 
-  const staticIrDigest = meta.staticIrDigest
-  if (typeof staticIrDigest === 'string' && staticIrDigest.length > 0) {
+  const staticIrDigest = readStaticIrDigest(meta)
+  if (staticIrDigest) {
     return meta
   }
 

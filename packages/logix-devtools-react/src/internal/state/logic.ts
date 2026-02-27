@@ -22,6 +22,26 @@ const asNonEmptyString = (value: unknown): string | undefined =>
 const asFiniteNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined
 
+const readTraceLookupKey = (
+  meta: Record<string, unknown>,
+): { readonly staticIrDigest: string; readonly nodeId?: number; readonly stepId?: string } | undefined => {
+  const raw = (meta as any).traceLookupKey
+  if (!isRecord(raw)) return undefined
+  const staticIrDigest = asNonEmptyString(raw.staticIrDigest)
+  if (!staticIrDigest) return undefined
+  const nodeId =
+    typeof raw.nodeId === 'number' && Number.isFinite(raw.nodeId) && raw.nodeId >= 0 ? Math.floor(raw.nodeId) : undefined
+  const stepId = asNonEmptyString(raw.stepId)
+  return {
+    staticIrDigest,
+    ...(nodeId !== undefined ? { nodeId } : null),
+    ...(stepId ? { stepId } : null),
+  }
+}
+
+const readStaticIrDigest = (meta: Record<string, unknown>): string | undefined =>
+  readTraceLookupKey(meta)?.staticIrDigest ?? asNonEmptyString((meta as any).staticIrDigest)
+
 type ConvergeFieldPathsByDigest = ReadonlyMap<string, ReadonlyArray<ReadonlyArray<string>>>
 
 const normalizeRuntimeDebugEventRef = (value: unknown): Logix.Debug.RuntimeDebugEventRef | null => {
@@ -139,7 +159,7 @@ const materializeDirtyRootPathsFromCanonical = (args: {
   const meta = isRecord(args.event.meta) ? args.event.meta : undefined
   if (!meta) return args.event
 
-  const staticIrDigest = asNonEmptyString((meta as any).staticIrDigest)
+  const staticIrDigest = readStaticIrDigest(meta)
   if (!staticIrDigest) return args.event
 
   const fieldPaths = args.fieldPathsByDigest.get(staticIrDigest)
@@ -148,7 +168,13 @@ const materializeDirtyRootPathsFromCanonical = (args: {
   if (args.event.kind === 'state' && args.event.label === 'state:update') {
     const dirtySet = isRecord((meta as any).dirtySet) ? ((meta as any).dirtySet as Record<string, unknown>) : undefined
     if (!dirtySet) return args.event
-    const rootPaths = resolveRootPaths({ rootIds: dirtySet.rootIds, fieldPaths })
+    const lookupKey = readTraceLookupKey(meta)
+    const rootIds = Array.isArray(dirtySet.rootIds)
+      ? dirtySet.rootIds
+      : lookupKey && lookupKey.nodeId !== undefined
+        ? [lookupKey.nodeId]
+        : undefined
+    const rootPaths = resolveRootPaths({ rootIds, fieldPaths })
     if (!rootPaths) return args.event
 
     return {
@@ -166,7 +192,13 @@ const materializeDirtyRootPathsFromCanonical = (args: {
   if (args.event.kind === 'trait:converge') {
     const dirty = isRecord((meta as any).dirty) ? ((meta as any).dirty as Record<string, unknown>) : undefined
     if (!dirty) return args.event
-    const rootPaths = resolveRootPaths({ rootIds: dirty.rootIds, fieldPaths })
+    const lookupKey = readTraceLookupKey(meta)
+    const rootIds = Array.isArray(dirty.rootIds)
+      ? dirty.rootIds
+      : lookupKey && lookupKey.nodeId !== undefined
+        ? [lookupKey.nodeId]
+        : undefined
+    const rootPaths = resolveRootPaths({ rootIds, fieldPaths })
     if (!rootPaths) return args.event
 
     return {

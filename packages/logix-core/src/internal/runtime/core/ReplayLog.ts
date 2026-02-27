@@ -2,6 +2,12 @@ import { Context, Effect, Layer } from 'effect'
 
 export type ResourceSnapshotPhase = 'idle' | 'loading' | 'success' | 'error'
 
+export type StaticIrLookupKey = {
+  readonly staticIrDigest: string
+  readonly nodeId?: number
+  readonly stepId?: string
+}
+
 export type ReplayLogEvent =
   | {
       readonly _tag: 'ResourceSnapshot'
@@ -16,6 +22,12 @@ export type ReplayLogEvent =
       readonly concurrency?: string
       readonly phase: ResourceSnapshotPhase
       readonly snapshot: unknown
+      /**
+       * Optional canonical lookup key for digest-first consumers:
+       * - staticIrDigest + nodeId/stepId is preferred over ad-hoc payload parsing.
+       * - fieldPath remains as compatibility fallback during staged migration.
+       */
+      readonly lookupKey?: StaticIrLookupKey
       readonly timestamp: number
       readonly moduleId?: string
       readonly instanceId?: string
@@ -42,6 +54,10 @@ export interface ReplayLogService {
     readonly fieldPath: string
     readonly keyHash?: string
     readonly phase?: ResourceSnapshotPhase
+    readonly moduleId?: string
+    readonly instanceId?: string
+    readonly lookupKey?: StaticIrLookupKey
+    readonly scopeFallbackMode?: 'legacy_only' | 'module_or_legacy'
   }) => Effect.Effect<ResourceSnapshotEvent | undefined>
 }
 
@@ -50,6 +66,7 @@ export class ReplayLog extends Context.Tag('@logixjs/core/ReplayLog')<ReplayLog,
 export const make = (initial?: ReadonlyArray<ReplayLogEvent>): ReplayLogService => {
   const events: Array<ReplayLogEvent> = initial ? Array.from(initial) : []
   let cursor = 0
+  const resourceSnapshotCursorByScope = new Map<string, number>()
 
   const consumeNext = (predicate: (event: ReplayLogEvent) => boolean): Effect.Effect<ReplayLogEvent | undefined> =>
     Effect.sync(() => {
@@ -67,25 +84,107 @@ export const make = (initial?: ReadonlyArray<ReplayLogEvent>): ReplayLogService 
     readonly fieldPath: string
     readonly keyHash?: string
     readonly phase?: ResourceSnapshotPhase
+    readonly moduleId?: string
+    readonly instanceId?: string
+    readonly lookupKey?: StaticIrLookupKey
+    readonly scopeFallbackMode?: 'legacy_only' | 'module_or_legacy'
   }): Effect.Effect<ResourceSnapshotEvent | undefined> =>
-    consumeNext((event): event is ResourceSnapshotEvent => {
-      if (event._tag !== 'ResourceSnapshot') return false
-      if (event.resourceId !== params.resourceId) return false
-      if (event.fieldPath !== params.fieldPath) return false
-      if (params.keyHash !== undefined && event.keyHash !== params.keyHash) {
-        return false
+    Effect.sync(() => {
+      let moduleScopeFallbackIndex = -1
+      let legacyScopeFallbackIndex = -1
+      const scopeFallbackMode = params.scopeFallbackMode ?? 'legacy_only'
+      const scopeCursorKey =
+        params.moduleId !== undefined || params.instanceId !== undefined
+          ? JSON.stringify([params.moduleId ?? null, params.instanceId ?? null])
+          : undefined
+      const startCursor = scopeCursorKey ? (resourceSnapshotCursorByScope.get(scopeCursorKey) ?? 0) : cursor
+
+      const isBaseMatch = (event: ReplayLogEvent): event is ResourceSnapshotEvent => {
+        if (event._tag !== 'ResourceSnapshot') return false
+        if (event.resourceId !== params.resourceId) return false
+        if (params.keyHash !== undefined && event.keyHash !== params.keyHash) {
+          return false
+        }
+        if (params.phase !== undefined && event.phase !== params.phase) {
+          return false
+        }
+        if (params.lookupKey) {
+          const lookupKey = event.lookupKey
+          if (lookupKey) {
+            if (lookupKey.staticIrDigest !== params.lookupKey.staticIrDigest) return false
+            if (params.lookupKey.nodeId !== undefined && lookupKey.nodeId !== params.lookupKey.nodeId) return false
+            if (params.lookupKey.stepId !== undefined && lookupKey.stepId !== params.lookupKey.stepId) return false
+            const hasStrongLookupSelector = params.lookupKey.nodeId !== undefined || params.lookupKey.stepId !== undefined
+            if (!hasStrongLookupSelector && event.fieldPath !== params.fieldPath) return false
+          } else if (event.fieldPath !== params.fieldPath) {
+            // Legacy compatibility: old records without lookupKey still fall back to fieldPath matching.
+            return false
+          }
+        } else if (event.fieldPath !== params.fieldPath) {
+          return false
+        }
+        return true
       }
-      if (params.phase !== undefined && event.phase !== params.phase) {
-        return false
+
+      const isScopeStrictMatch = (event: ResourceSnapshotEvent): boolean => {
+        if (params.moduleId !== undefined && event.moduleId !== params.moduleId) return false
+        if (params.instanceId !== undefined && event.instanceId !== params.instanceId) return false
+        return true
       }
-      return true
-    }).pipe(Effect.map((event) => event as ResourceSnapshotEvent | undefined))
+
+      const isLegacyScopeMissing = (event: ResourceSnapshotEvent): boolean =>
+        event.moduleId === undefined && event.instanceId === undefined
+
+      const isModuleScopeFallbackMatch = (event: ResourceSnapshotEvent): boolean =>
+        scopeFallbackMode === 'module_or_legacy' && params.moduleId !== undefined && event.moduleId === params.moduleId
+
+      for (let i = startCursor; i < events.length; i++) {
+        const event = events[i]
+        if (!isBaseMatch(event)) continue
+
+        if (isScopeStrictMatch(event)) {
+          if (scopeCursorKey) {
+            resourceSnapshotCursorByScope.set(scopeCursorKey, i + 1)
+          } else {
+            cursor = i + 1
+          }
+          return event
+        }
+
+        if (moduleScopeFallbackIndex < 0 && isModuleScopeFallbackMatch(event)) {
+          moduleScopeFallbackIndex = i
+          continue
+        }
+
+        if (legacyScopeFallbackIndex < 0 && isLegacyScopeMissing(event)) {
+          legacyScopeFallbackIndex = i
+        }
+      }
+
+      const fallbackIndex =
+        moduleScopeFallbackIndex >= 0 && legacyScopeFallbackIndex >= 0
+          ? Math.min(moduleScopeFallbackIndex, legacyScopeFallbackIndex)
+          : moduleScopeFallbackIndex >= 0
+            ? moduleScopeFallbackIndex
+            : legacyScopeFallbackIndex
+      if (fallbackIndex >= 0) {
+        if (scopeCursorKey) {
+          resourceSnapshotCursorByScope.set(scopeCursorKey, fallbackIndex + 1)
+        } else {
+          cursor = fallbackIndex + 1
+        }
+        return events[fallbackIndex] as ResourceSnapshotEvent
+      }
+
+      return undefined
+    })
 
   return {
     record: (event) => Effect.sync(() => events.push(event)),
     snapshot: Effect.sync(() => events.slice()),
     resetCursor: Effect.sync(() => {
       cursor = 0
+      resourceSnapshotCursorByScope.clear()
     }),
     consumeNext,
     consumeNextResourceSnapshot,
@@ -116,6 +215,10 @@ export const consumeNextResourceSnapshot = (params: {
   readonly fieldPath: string
   readonly keyHash?: string
   readonly phase?: ResourceSnapshotPhase
+  readonly moduleId?: string
+  readonly instanceId?: string
+  readonly lookupKey?: StaticIrLookupKey
+  readonly scopeFallbackMode?: 'legacy_only' | 'module_or_legacy'
 }): Effect.Effect<ResourceSnapshotEvent | undefined, never, ReplayLog> =>
   Effect.gen(function* () {
     const log = yield* ReplayLog

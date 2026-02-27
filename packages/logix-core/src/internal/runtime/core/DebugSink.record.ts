@@ -36,6 +36,32 @@ export type ReplayEventRef = ReplayLog.ReplayLogEvent & {
   readonly trigger?: TriggerRef
 }
 
+export type TraceDigestReasonCode = 'digest_missing' | 'lookup_key_missing' | 'digest_mismatch'
+
+export type TraceDigestAnchor = {
+  readonly moduleId: string
+  readonly instanceId: string
+  readonly txnSeq: number
+  readonly txnId?: string
+  readonly opSeq?: number
+}
+
+export const TRACE_DIGEST_PAYLOAD_SCHEMA_VERSION = 1 as const
+export const TRACE_DIGEST_PAYLOAD_DIGEST_ALGO_VERSION = 'converge_ir_v2' as const
+
+export type TraceDigestPayload = {
+  readonly schemaVersion: typeof TRACE_DIGEST_PAYLOAD_SCHEMA_VERSION
+  readonly digestAlgoVersion: typeof TRACE_DIGEST_PAYLOAD_DIGEST_ALGO_VERSION
+  readonly lookupKey: ReplayLog.StaticIrLookupKey
+  readonly anchor: TraceDigestAnchor
+}
+
+export type TraceDigestDegradeRecord = {
+  readonly reasonCode: TraceDigestReasonCode
+  readonly fallbackMode: 'legacy_payload' | 'id_first'
+  readonly anchor: TraceDigestAnchor
+}
+
 export type Event =
   | {
       readonly type: 'module:init'
@@ -132,6 +158,21 @@ export type Event =
        * - Populated by Runtime only on StateTransaction-based paths.
        */
       readonly originName?: string
+      /**
+       * Optional canonical lookup key for digest-first consumers.
+       * - Preferred over parsing legacy payload details when present.
+       */
+      readonly traceLookupKey?: ReplayLog.StaticIrLookupKey
+      /**
+       * Optional digest-first envelope:
+       * - Carries stable schema/digest algo versions + canonical lookupKey + anchor.
+       * - Used by replay/evidence consumers to avoid ad-hoc payload parsing.
+       */
+      readonly traceDigestPayload?: TraceDigestPayload
+      /**
+       * Optional staged degrade record when digest/lookup cannot be fully materialized.
+       */
+      readonly traceDigestDegrade?: TraceDigestDegradeRecord
       /**
        * Reserved: Trait converge summary (for Devtools window-level stats / TopN costs / degrade reasons, etc.).
        * - Phase 2: field slot only; structure is not fixed.
@@ -1077,6 +1118,108 @@ export const toRuntimeDebugEventRef = (
     case 'state:update': {
       const e = event as Extract<Event, { readonly type: 'state:update' }>
       const dirtySetCanonical = stripDirtyRootPaths(e.dirtySet)
+      const traceAnchor: TraceDigestAnchor = {
+        moduleId,
+        instanceId,
+        txnSeq,
+        ...(txnId ? { txnId } : null),
+      }
+
+      const readLookupKey = (value: unknown): ReplayLog.StaticIrLookupKey | undefined => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+        const staticIrDigestRaw = (value as any).staticIrDigest
+        if (typeof staticIrDigestRaw !== 'string' || staticIrDigestRaw.length === 0) return undefined
+        const nodeIdRaw = (value as any).nodeId
+        const stepIdRaw = (value as any).stepId
+        return {
+          staticIrDigest: staticIrDigestRaw,
+          ...(typeof nodeIdRaw === 'number' && Number.isFinite(nodeIdRaw) && nodeIdRaw >= 0
+            ? { nodeId: Math.floor(nodeIdRaw) }
+            : null),
+          ...(typeof stepIdRaw === 'string' && stepIdRaw.length > 0 ? { stepId: stepIdRaw } : null),
+        }
+      }
+
+      const fallbackNodeId = (() => {
+        if (!dirtySetCanonical || typeof dirtySetCanonical !== 'object' || Array.isArray(dirtySetCanonical)) {
+          return undefined
+        }
+        const rootIds = (dirtySetCanonical as any).rootIds
+        if (!Array.isArray(rootIds)) return undefined
+        for (const id of rootIds) {
+          if (typeof id === 'number' && Number.isFinite(id) && id >= 0) {
+            return Math.floor(id)
+          }
+        }
+        return undefined
+      })()
+
+      const lookupKeyFromEvent = readLookupKey((e as any).traceLookupKey)
+      const lookupKeyFromReplayEvent = readLookupKey((e.replayEvent as any)?.lookupKey)
+      const staticIrDigestFromEvent = typeof e.staticIrDigest === 'string' && e.staticIrDigest.length > 0 ? e.staticIrDigest : undefined
+      const staticIrDigestFromLookup = lookupKeyFromEvent?.staticIrDigest ?? lookupKeyFromReplayEvent?.staticIrDigest
+      const nodeIdFromLookup = lookupKeyFromEvent?.nodeId ?? lookupKeyFromReplayEvent?.nodeId
+      const stepIdFromLookup = lookupKeyFromEvent?.stepId ?? lookupKeyFromReplayEvent?.stepId
+      const digestMismatch =
+        staticIrDigestFromEvent !== undefined &&
+        staticIrDigestFromLookup !== undefined &&
+        staticIrDigestFromEvent !== staticIrDigestFromLookup
+      const staticIrDigest = staticIrDigestFromEvent ?? staticIrDigestFromLookup
+      const nodeId = (digestMismatch ? undefined : nodeIdFromLookup) ?? fallbackNodeId
+      const stepId = digestMismatch ? undefined : stepIdFromLookup
+
+      const traceLookupKey =
+        staticIrDigest != null
+          ? ({
+              staticIrDigest,
+              ...(nodeId !== undefined ? { nodeId } : null),
+              ...(stepId ? { stepId } : null),
+            } as ReplayLog.StaticIrLookupKey)
+          : undefined
+
+      const traceDigestPayload =
+        traceLookupKey != null
+          ? ({
+              schemaVersion: TRACE_DIGEST_PAYLOAD_SCHEMA_VERSION,
+              digestAlgoVersion: TRACE_DIGEST_PAYLOAD_DIGEST_ALGO_VERSION,
+              lookupKey: { ...traceLookupKey },
+              anchor: traceAnchor,
+            } as TraceDigestPayload)
+          : undefined
+
+      const explicitDegrade = (() => {
+        const raw = (e as any).traceDigestDegrade
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+        const reasonCode = (raw as any).reasonCode
+        if (reasonCode !== 'digest_missing' && reasonCode !== 'lookup_key_missing' && reasonCode !== 'digest_mismatch') {
+          return undefined
+        }
+        const fallbackMode = (raw as any).fallbackMode === 'legacy_payload' ? 'legacy_payload' : 'id_first'
+        return {
+          reasonCode,
+          fallbackMode,
+          anchor: traceAnchor,
+        } satisfies TraceDigestDegradeRecord
+      })()
+
+      const traceDigestDegrade = (() => {
+        if (explicitDegrade) return explicitDegrade
+        if (digestMismatch) {
+          return {
+            reasonCode: 'digest_mismatch',
+            fallbackMode: 'legacy_payload',
+            anchor: traceAnchor,
+          } satisfies TraceDigestDegradeRecord
+        }
+        if ((staticIrDigestFromEvent || lookupKeyFromEvent || lookupKeyFromReplayEvent) && staticIrDigest && nodeId === undefined && !stepId) {
+          return {
+            reasonCode: 'lookup_key_missing',
+            fallbackMode: 'id_first',
+            anchor: traceAnchor,
+          } satisfies TraceDigestDegradeRecord
+        }
+        return undefined
+      })()
 
       const metaInput = isLightLike
         ? {
@@ -1085,11 +1228,14 @@ export const toRuntimeDebugEventRef = (
             patchCount: e.patchCount,
             patchesTruncated: e.patchesTruncated,
             patchesTruncatedReason: e.patchesTruncatedReason,
-            staticIrDigest: e.staticIrDigest,
+            staticIrDigest,
             commitMode: e.commitMode,
             priority: e.priority,
             originKind: e.originKind,
             originName: e.originName,
+            traceLookupKey,
+            traceDigestPayload,
+            traceDigestDegrade,
           }
         : {
             state: e.state,
@@ -1097,11 +1243,14 @@ export const toRuntimeDebugEventRef = (
             patchCount: e.patchCount,
             patchesTruncated: e.patchesTruncated,
             patchesTruncatedReason: e.patchesTruncatedReason,
-            staticIrDigest: e.staticIrDigest,
+            staticIrDigest,
             commitMode: e.commitMode,
             priority: e.priority,
             originKind: e.originKind,
             originName: e.originName,
+            traceLookupKey,
+            traceDigestPayload,
+            traceDigestDegrade,
             traitSummary: e.traitSummary,
             replayEvent: e.replayEvent,
           }
@@ -1516,12 +1665,78 @@ export const toRuntimeDebugEventRef = (
       // trace:trait:converge: converge evidence must be exportable (JsonValue hard gate) and trims heavy fields in light tier.
       if (event.type === 'trace:trait:converge') {
         const data = (event as Extract<Event, { readonly type: 'trace:trait:converge' }>).data
-        const metaInput =
+        const metaInputBase =
           diagnosticsLevel === 'light'
             ? stripTraitConvergeLight(data)
             : diagnosticsLevel === 'sampled'
               ? stripTraitConvergeSampled(data)
               : stripTraitConvergeLegacyFields(data)
+        const traceAnchor: TraceDigestAnchor = {
+          moduleId,
+          instanceId,
+          txnSeq,
+          ...(txnId ? { txnId } : null),
+        }
+        const traceLookupKey = (() => {
+          if (!metaInputBase || typeof metaInputBase !== 'object' || Array.isArray(metaInputBase)) return undefined
+          const staticIrDigestRaw = (metaInputBase as any).staticIrDigest
+          if (typeof staticIrDigestRaw !== 'string' || staticIrDigestRaw.length === 0) return undefined
+          const dirty = (metaInputBase as any).dirty
+          const rootIds = dirty && typeof dirty === 'object' && !Array.isArray(dirty) ? (dirty as any).rootIds : undefined
+          const nodeId =
+            Array.isArray(rootIds) &&
+            typeof rootIds[0] === 'number' &&
+            Number.isFinite(rootIds[0]) &&
+            rootIds[0] >= 0
+              ? Math.floor(rootIds[0])
+              : undefined
+          const top3 = (metaInputBase as any).top3
+          const firstTopStep = Array.isArray(top3) ? top3[0] : undefined
+          const stepIdRaw = firstTopStep && typeof firstTopStep === 'object' ? (firstTopStep as any).stepId : undefined
+          const stepId = typeof stepIdRaw === 'string' && stepIdRaw.length > 0 ? stepIdRaw : undefined
+          return {
+            staticIrDigest: staticIrDigestRaw,
+            ...(nodeId !== undefined ? { nodeId } : null),
+            ...(stepId ? { stepId } : null),
+          } satisfies ReplayLog.StaticIrLookupKey
+        })()
+        const traceDigestPayload =
+          traceLookupKey != null
+            ? ({
+                schemaVersion: TRACE_DIGEST_PAYLOAD_SCHEMA_VERSION,
+                digestAlgoVersion: TRACE_DIGEST_PAYLOAD_DIGEST_ALGO_VERSION,
+                lookupKey: { ...traceLookupKey },
+                anchor: traceAnchor,
+              } satisfies TraceDigestPayload)
+            : undefined
+        const traceDigestDegrade = (() => {
+          if (!metaInputBase || typeof metaInputBase !== 'object' || Array.isArray(metaInputBase)) return undefined
+          const staticIrDigestRaw = (metaInputBase as any).staticIrDigest
+          if (typeof staticIrDigestRaw !== 'string' || staticIrDigestRaw.length === 0) {
+            return {
+              reasonCode: 'digest_missing',
+              fallbackMode: 'legacy_payload',
+              anchor: traceAnchor,
+            } satisfies TraceDigestDegradeRecord
+          }
+          if (traceLookupKey && traceLookupKey.nodeId === undefined && !traceLookupKey.stepId) {
+            return {
+              reasonCode: 'lookup_key_missing',
+              fallbackMode: 'id_first',
+              anchor: traceAnchor,
+            } satisfies TraceDigestDegradeRecord
+          }
+          return undefined
+        })()
+        const metaInput =
+          metaInputBase && typeof metaInputBase === 'object' && !Array.isArray(metaInputBase)
+            ? ({
+                ...(metaInputBase as Record<string, unknown>),
+                ...(traceLookupKey ? { traceLookupKey } : null),
+                ...(traceDigestPayload ? { traceDigestPayload } : null),
+                ...(traceDigestDegrade ? { traceDigestDegrade } : null),
+              } as JsonValue)
+            : metaInputBase
         const metaProjection = projectJsonValue(metaInput)
         options?.onMetaProjection?.({
           stats: metaProjection.stats,

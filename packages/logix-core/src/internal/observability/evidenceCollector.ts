@@ -50,6 +50,12 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
     nonSerializable: 0,
   }
 
+  const traceDigestDegradeCounts = {
+    digest_missing: 0,
+    lookup_key_missing: 0,
+    digest_mismatch: 0,
+  }
+
   const debugSink: DebugSink = {
     record: (event: DebugEvent) =>
       Effect.gen(function* () {
@@ -66,6 +72,22 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
           },
         })
         if (!ref) return
+
+        const digestDegradeReason = (() => {
+          const meta = (ref as any).meta
+          if (!isRecord(meta)) return undefined
+          const degrade = (meta as any).traceDigestDegrade
+          if (!isRecord(degrade)) return undefined
+          const reasonCode = degrade.reasonCode
+          return reasonCode === 'digest_missing' ||
+            reasonCode === 'lookup_key_missing' ||
+            reasonCode === 'digest_mismatch'
+            ? reasonCode
+            : undefined
+        })()
+        if (digestDegradeReason) {
+          traceDigestDegradeCounts[digestDegradeReason] += 1
+        }
 
         const projected = projectJsonValue(ref)
         exportBudget.dropped += projected.stats.dropped
@@ -110,6 +132,7 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
       convergeStaticIrByDigest,
       kernelImplementationRef,
       runtimeServicesEvidence,
+      traceDigestDegradeCounts,
     })
     const summary = summarizeEvidenceExport(collection)
 
@@ -128,6 +151,9 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
     exportBudget.dropped = 0
     exportBudget.oversized = 0
     exportBudget.nonSerializable = 0
+    traceDigestDegradeCounts.digest_missing = 0
+    traceDigestDegradeCounts.lookup_key_missing = 0
+    traceDigestDegradeCounts.digest_mismatch = 0
   }
 
   return {
