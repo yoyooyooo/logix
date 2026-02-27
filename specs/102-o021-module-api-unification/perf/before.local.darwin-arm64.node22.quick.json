@@ -1,0 +1,613 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-02-27T02:35:00.035Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-01-19",
+    "matrixHash": "5b637a7f6a69f6d760459b3fe90cb3f41060eee3bc26d9ebe90021d20ffaddfe",
+    "git": {
+      "branch": "pr/o021-module-api-unification",
+      "commit": "65fadbed59d5194abefe46b39d85c09516c387aa",
+      "dirty": true
+    },
+    "config": {
+      "runs": 25,
+      "warmupDiscard": 5,
+      "timeoutMs": 15000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M4 Pro",
+      "memoryGb": 24,
+      "node": "v22.19.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "watchers.clickToPaint",
+      "title": "watchers: click→paint",
+      "priority": "P1",
+      "primaryAxis": "watchers",
+      "budgets": [
+        {
+          "id": "p95<=16ms",
+          "type": "absolute",
+          "metric": "e2e.clickToPaintMs",
+          "p95Ms": 16
+        },
+        {
+          "id": "p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.clickToPaintMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.clickToPaintMs",
+          "p95Ms": 100
+        }
+      ],
+      "metricCategories": {
+        "e2e.clickToPaintMs": "e2e"
+      },
+      "points": [
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 54.19999980926514,
+                "p95Ms": 66.09999990463257
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 51.19999980926514,
+                "p95Ms": 64.2000002861023
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 32
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 54.40000009536743,
+                "p95Ms": 64.09999990463257
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 52.799999713897705,
+                "p95Ms": 63.69999980926514
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 54,
+                "p95Ms": 67.2000002861023
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 85.30000019073486,
+                "p95Ms": 139.69999980926514
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "watchers": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 124.40000009536743,
+                "p95Ms": 168.69999980926514
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 58.80000019073486,
+                "p95Ms": 120.2000002861023
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 8
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 55.19999980926514,
+                "p95Ms": 63.5
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 32
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 51.10000038146973,
+                "p95Ms": 93.80000019073486
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 64
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 52.69999980926514,
+                "p95Ms": 64.80000019073486
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 48.30000019073486,
+                "p95Ms": 63.200000286102295
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 100.5,
+                "p95Ms": 335.2000002861023
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "watchers": 512
+          },
+          "status": "timeout",
+          "reason": "pointTimeoutMs=15000",
+          "metrics": [
+            {
+              "name": "e2e.clickToPaintMs",
+              "unit": "ms",
+              "status": "unavailable",
+              "unavailableReason": "pointTimeoutMs=15000"
+            }
+          ],
+          "evidence": [
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "p95<=16ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 16
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "maxLevel": null,
+          "firstFailLevel": 1,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=16ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 16
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "maxLevel": null,
+          "firstFailLevel": 1,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "maxLevel": null,
+          "firstFailLevel": 1,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "maxLevel": null,
+          "firstFailLevel": 1,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "maxLevel": 128,
+          "firstFailLevel": 256,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "maxLevel": null,
+          "firstFailLevel": 1,
+          "reason": "budgetExceeded"
+        }
+      ]
+    }
+  ]
+}

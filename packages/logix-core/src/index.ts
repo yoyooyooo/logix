@@ -4,6 +4,11 @@
 // Then `Logix` exposes Module / State / Actions / Logic / Bound / Handle / Link / Flow / Runtime / Debug namespaces.
 
 // Core module API: Module / ModuleRuntime / ModuleImpl / StateOf / ActionOf / Reducer, etc.
+// O-021: instantiation entry ranking is
+// primary: `Module.make(...).layer(...)`
+// advanced: `Module.make(...).build(...).createInstance()`
+// bridge-only (non-tutorial): `Module.make(...).createInstance(...)`
+// Legacy `implement/.impl` remains temporary for writeback migration and is marked deprecated in Module types.
 export * as Module from './Module.js'
 export type * from './Module.js'
 export * as ModuleTag from './ModuleTag.js'

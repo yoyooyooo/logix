@@ -197,6 +197,7 @@ export type Event =
       readonly severity: 'error' | 'warning' | 'info'
       readonly message: string
       readonly hint?: string
+      readonly source?: string
       readonly actionTag?: string
       readonly kind?: string
       readonly txnSeq?: number
@@ -586,6 +587,8 @@ const diagnosticLog = (event: Extract<Event, { readonly type: 'diagnostic' }>) =
   const moduleId = event.moduleId ?? 'unknown'
   const header = `[Logix][module=${moduleId}] diagnostic(${event.severity})`
   const detail = `code=${event.code} message=${event.message}${
+    event.source ? ` source=${event.source}` : ''
+  }${
     event.actionTag ? ` action=${event.actionTag}` : ''
   }${event.hint ? `\nhint: ${event.hint}` : ''}`
   const msg = `${header}\n${detail}`
@@ -605,6 +608,9 @@ const diagnosticLog = (event: Extract<Event, { readonly type: 'diagnostic' }>) =
   }
   if (event.hint) {
     annotations['logix.diagnostic.hint'] = event.hint
+  }
+  if (event.source) {
+    annotations['logix.diagnostic.source'] = event.source
   }
   if (event.actionTag) {
     annotations['logix.diagnostic.actionTag'] = event.actionTag
@@ -718,6 +724,8 @@ const renderBrowserConsoleEvent = (event: Event): Effect.Effect<void> => {
   if (event.type === 'diagnostic') {
     const moduleId = event.moduleId ?? 'unknown'
     const detail = `code=${event.code} message=${event.message}${
+      event.source ? ` source=${event.source}` : ''
+    }${
       event.actionTag ? ` action=${event.actionTag}` : ''
     }${event.hint ? `\nhint: ${event.hint}` : ''}`
 
@@ -731,7 +739,7 @@ const renderBrowserConsoleEvent = (event: Event): Effect.Effect<void> => {
           ? 'diagnostic(info)'
           : 'diagnostic(error)'
 
-    const key = `${moduleId}|${event.code}|${event.message}`
+    const key = `${moduleId}|${event.code}|${event.message}|${event.source ?? ''}`
     if (browserDiagnosticSeen.has(key)) {
       return Effect.void
     }
@@ -1216,6 +1224,7 @@ export const toRuntimeDebugEventRef = (
         severity: e.severity,
         message: e.message,
         hint: e.hint,
+        source: e.source,
         actionTag: e.actionTag,
         kind: e.kind,
         opSeq: e.opSeq,

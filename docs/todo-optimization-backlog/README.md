@@ -1,8 +1,8 @@
 ---
 title: Logix Core 待办优化机会池
 status: living
-updatedAt: 2026-02-26
-owner: pr/o014-doc-impl-bidirectional-convergence
+updatedAt: 2026-02-27
+owner: pr/o021-module-api-unification
 ---
 
 # Logix Core 待办优化机会池
@@ -64,3 +64,8 @@ owner: pr/o014-doc-impl-bidirectional-convergence
 - 条目索引：[`items/README.md`](./items/README.md)
 - 状态注册表：[`status-registry.json`](./status-registry.json)
 
+## 7. O 系列状态追踪（最小同步）
+
+| ID | Priority | Status | Spec | Owner |
+| --- | --- | --- | --- | --- |
+| O-021 | P1 | writeback | [102-o021-module-api-unification](../../specs/102-o021-module-api-unification/spec.md) | pr/o021-module-api-unification |
