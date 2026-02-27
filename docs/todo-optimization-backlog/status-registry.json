@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-02-26",
+  "updatedAt": "2026-02-27",
   "statusEnum": ["pool", "spec", "implement", "evidence", "writeback", "done", "blocked", "frozen"],
   "requiredSections": ["problem", "evidence", "design", "budget", "check"],
   "requiredLinkFields": [
@@ -90,6 +90,73 @@
           "userDocs": [
             "apps/docs/content/docs/api/core/bound-api.cn.md",
             "apps/docs/content/docs/guide/learn/managing-state.cn.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "O-021",
+      "priority": "P1",
+      "status": "writeback",
+      "item": "docs/todo-optimization-backlog/items/O-021-module-instantiation-api-unification.md",
+      "links": {
+        "spec": {
+          "spec": "specs/102-o021-module-api-unification/spec.md",
+          "plan": "specs/102-o021-module-api-unification/plan.md",
+          "tasks": "specs/102-o021-module-api-unification/tasks.md"
+        },
+        "implementation": [
+          "packages/logix-core/src/Module.ts",
+          "packages/logix-core/src/Runtime.ts",
+          "packages/logix-core/src/internal/runtime/core/DebugSink.record.ts",
+          "packages/logix-core/test/Module/Module.api-unification.test.ts",
+          "packages/logix-core/test/internal/Runtime/Runtime.ModuleInput.Unification.test.ts",
+          "docs/todo-optimization-backlog/README.md",
+          "docs/todo-optimization-backlog/items/README.md",
+          "docs/todo-optimization-backlog/items/O-021-module-instantiation-api-unification.md",
+          "docs/ssot/runtime/logix-core/observability/09-debugging.01-debugsink.md",
+          "docs/ssot/runtime/logix-core/observability/09-debugging.02-eventref.md",
+          "docs/ssot/runtime/logix-core/observability/09-debugging.05-diagnostics.md",
+          "docs/ssot/runtime/logix-core/api/02-module-and-logic-api.00-quick-overview.md",
+          "docs/ssot/runtime/logix-core/api/02-module-and-logic-api.03-module-logic.md",
+          "docs/ssot/runtime/logix-core/api/02-module-and-logic-api.04-live-layer.md",
+          "docs/ssot/runtime/logix-core/api/02-module-and-logic-api.06-runtime-container.md",
+          "docs/ssot/runtime/logix-core/api/03-logic-and-flow.02-logic-program.md",
+          "docs/ssot/runtime/logix-core/api/05-runtime-and-runner.md",
+          "apps/docs/content/docs/api/core/module.cn.md",
+          "apps/docs/content/docs/api/core/runtime.cn.md",
+          "specs/102-o021-module-api-unification/tasks.md",
+          "specs/102-o021-module-api-unification/perf/README.md",
+          "specs/102-o021-module-api-unification/perf/before.local.darwin-arm64.node22.quick.json",
+          "specs/102-o021-module-api-unification/perf/after.local.darwin-arm64.node22.quick.json",
+          "specs/102-o021-module-api-unification/perf/diff.before__after.node22.quick.json"
+        ],
+        "evidence": {
+          "perf": [
+            "specs/102-o021-module-api-unification/perf/before.local.darwin-arm64.node22.quick.json",
+            "specs/102-o021-module-api-unification/perf/after.local.darwin-arm64.node22.quick.json",
+            "specs/102-o021-module-api-unification/perf/diff.before__after.node22.quick.json"
+          ],
+          "diagnostics": [
+            "packages/logix-core/test/Module/Module.api-unification.test.ts",
+            "packages/logix-core/test/internal/Runtime/Runtime.ModuleInput.Unification.test.ts"
+          ]
+        },
+        "writeback": {
+          "ssot": [
+            "docs/ssot/runtime/logix-core/observability/09-debugging.01-debugsink.md",
+            "docs/ssot/runtime/logix-core/observability/09-debugging.02-eventref.md",
+            "docs/ssot/runtime/logix-core/observability/09-debugging.05-diagnostics.md",
+            "docs/ssot/runtime/logix-core/api/02-module-and-logic-api.00-quick-overview.md",
+            "docs/ssot/runtime/logix-core/api/02-module-and-logic-api.03-module-logic.md",
+            "docs/ssot/runtime/logix-core/api/02-module-and-logic-api.04-live-layer.md",
+            "docs/ssot/runtime/logix-core/api/02-module-and-logic-api.06-runtime-container.md",
+            "docs/ssot/runtime/logix-core/api/03-logic-and-flow.02-logic-program.md",
+            "docs/ssot/runtime/logix-core/api/05-runtime-and-runner.md"
+          ],
+          "userDocs": [
+            "apps/docs/content/docs/api/core/module.cn.md",
+            "apps/docs/content/docs/api/core/runtime.cn.md"
           ]
         }
       }

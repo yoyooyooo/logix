@@ -74,10 +74,45 @@ type HostScheduler = {
 
 const resolveRootImpl = <Sh extends AnyModuleShape>(
   root: ModuleImpl<any, Sh, any> | AnyModule,
-): ModuleImpl<any, Sh, any> =>
-  ((root as any)?._tag === 'ModuleImpl'
-    ? (root as ModuleImpl<any, Sh, any>)
-    : ((root as any)?.impl as ModuleImpl<any, Sh, any>)) satisfies ModuleImpl<any, Sh, any>
+): ModuleImpl<any, Sh, any> => {
+  const isModuleImpl = (value: unknown): value is ModuleImpl<any, Sh, any> => {
+    if (!value || typeof value !== 'object') return false
+    const candidate = value as any
+    return candidate._tag === 'ModuleImpl' && candidate.module != null && candidate.layer != null
+  }
+
+  if (isModuleImpl(root)) {
+    return root
+  }
+
+  const rootModule = root as AnyModule & {
+    readonly _kind?: string
+    readonly createInstance?: (() => ModuleImpl<any, Sh, any>) | undefined
+  }
+  // Only runtime-ready Module objects (kind=Module) can be instantiated with zero-arg createInstance().
+  // ModuleDef also exposes createInstance(config), but passing ModuleDef to Runtime.make is invalid.
+  const fromCreateInstanceRaw =
+    rootModule._kind === 'Module' && typeof rootModule.createInstance === 'function'
+      ? rootModule.createInstance()
+      : undefined
+  if (fromCreateInstanceRaw !== undefined && !isModuleImpl(fromCreateInstanceRaw)) {
+    throw new Error('[InvalidModuleRoot] Runtime.make expects ModuleImpl or Module.build(...) result.')
+  }
+  if (isModuleImpl(fromCreateInstanceRaw)) {
+    return fromCreateInstanceRaw
+  }
+
+  const fromLegacyImplRaw = (rootModule as any).impl as unknown
+  if (fromLegacyImplRaw !== undefined && !isModuleImpl(fromLegacyImplRaw)) {
+    throw new Error('[InvalidModuleRoot] Runtime.make expects ModuleImpl or Module.build(...) result.')
+  }
+
+  const resolved = fromLegacyImplRaw
+  if (!resolved || resolved._tag !== 'ModuleImpl') {
+    throw new Error('[InvalidModuleRoot] Runtime.make expects ModuleImpl or Module.build(...) result.')
+  }
+  return resolved
+}
 
 const resolveSchedulingPolicySurface = (options: RuntimeOptions | undefined): SchedulingPolicySurface | undefined =>
   options?.schedulingPolicy ?? options?.concurrencyPolicy

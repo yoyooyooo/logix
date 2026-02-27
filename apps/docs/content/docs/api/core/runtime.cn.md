@@ -36,13 +36,13 @@ const RootLogic = RootDef.logic<UserService>(($) =>
   }),
 )
 
-const RootModule = RootDef.implement<UserService>({
+const RootModule = RootDef.build<UserService>({
   initial: { /* ... */ },
-  logics: [RootLogic],
-  imports: [/* 子模块 module.impl / Service Layer */],
+  logics: [RootLogic], 
+  imports: [/* 子模块 createInstance() / Service Layer */],
   processes: [/* 长生命周期流程（Process，例如 Process.link(...)） */],
 })
-const RootImpl = RootModule.impl
+const RootImpl = RootModule.createInstance()
 
 // 应用级 Runtime：承载 Root + 子模块 + 长驻流程
 // 通过 Layer.mergeAll(...) 显式闭合 RootImpl.layer 的 Env（R），最终交给 Runtime.make。
@@ -56,7 +56,8 @@ export const AppRuntime = Logix.Runtime.make(RootImpl, {
 
 此时：
 
-- `RootImpl` 描述了“应用有哪些模块、初始状态是什么、有哪些长驻流程（Process，例如 Process.link）”；
+- `RootModule` 描述了“应用有哪些模块、初始状态是什么、有哪些长驻流程（Process，例如 Process.link）”；
+- `RootImpl` 是通过 `RootModule.createInstance()` 得到的底层装配蓝图；
 - `AppRuntime` 是一个可运行的 Runtime 实例，可以在 React / Node / 测试环境中通过 `run*` 方法执行 Effect。
 
 ## 2. 在 React 中挂载 Runtime：RuntimeProvider
@@ -181,11 +182,11 @@ const MyLogic = MyModule.logic(($) =>
 可以把 Runtime 理解为“运行一组模块和流程的容器”，而模块对象（Module）/ ModuleImpl / Process 是这个容器里的内容：
 
 - **Module（模块对象 / program module）**：
-  - 先用 `const RootDef = Logix.Module.make("Root", { state, actions })` 定义模块，再通过 `RootDef.implement({ initial, logics, imports, processes })` 得到 `RootModule`；
-  - 可直接交给 `Logix.Runtime.make(...)` 或 React `useModule(...)` 消费（内部会使用其 `.impl` 蓝图）。
+  - 先用 `const RootDef = Logix.Module.make("Root", { state, actions })` 定义模块，再通过 `RootDef.build({ initial, logics, imports, processes })` 得到 `RootModule`；
+  - 可直接交给 `Logix.Runtime.make(...)` 或 React `useModule(...)` 消费（Runtime 内部统一走 `createInstance()`）。
 - **ModuleImpl（蓝图）**：
-  - 模块对象的底层蓝图（`module.impl`），包含 `layer` / imports / processes 等装配信息；
-  - 主要用于更底层的装配/组合场景（例如 `imports: [Child.impl]`）。
+  - 模块对象的底层蓝图（`module.createInstance()`），包含 `layer` / imports / processes 等装配信息；
+  - 主要用于更底层的装配/组合场景（例如 `imports: [Child.createInstance()]`）。
 - **Process（长生命周期流程）**：
   - 使用 `Logix.Process.make({ ... }, effect)` 定义一个长驻流程；或使用 `Logix.Process.link({ modules: [...] }, ($) => Effect)` 定义跨模块协作流程；
   - Process 通过触发源（moduleAction/moduleStateChange/platformEvent/timer）+ 并发策略 + 错误策略来驱动长期行为；
@@ -198,7 +199,7 @@ Runtime 的职责，就是把这些模块与流程组合成一棵可运行的树
 可以按下面的经验规则来选：
 
 - **小型场景 / 局部状态**：
-  - 直接在组件中使用 `useLocalModule` 或 `useModule(Impl)`，不必显式创建 Runtime。
+  - 直接在组件中使用 `useLocalModule` 或 `useModule(Module)`，不必显式创建 Runtime。
 - **页面级 / 应用级状态**：
   - 使用 Root Module + `Logix.Runtime.make` 构造一个 Runtime；
   - 在 React 根或路由级别用 `RuntimeProvider runtime={...}` 包裹；

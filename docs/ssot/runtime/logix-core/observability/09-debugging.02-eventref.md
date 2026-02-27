@@ -85,6 +85,7 @@ export const toRuntimeDebugEventRef: (
   - `replayEvent`：预留的回放事件引用（Phase 2 仅固化字段位）。
 - `lifecycle:error` → `kind = "lifecycle"`，不得透传原始 `cause`；必须产出 `errorSummary`，必要时附带 `downgrade.reason`。
 - `diagnostic` → `kind = "diagnostic"`，`meta` 必须为 `JsonValue` 且 Slim（禁止把闭包/Effect/大对象图塞入）。
+  - `meta.source` 用于记录诊断来源（例如 `Module.implement` 迁移入口），作为解释链的一等字段；禁止把不可序列化对象塞入 `source`。
   - `code` 以 `concurrency::` 开头时，`trigger.details` 必须对齐 `specs/021-limit-unbounded-concurrency/contracts/concurrency-diagnostic-details.schema.json`（`additionalProperties=false`，禁止塞额外字段），并满足最小字段：`configScope`（并发上限的配置来源）与 `limit`（并发上限值）。
   - 约定的并发诊断 code（021）：
     - `concurrency::pressure`（warning）：背压/饱和预警；`trigger.details` 可包含 `backlogCount/saturatedDurationMs/threshold/cooldownMs`，并通过 `degradeStrategy="cooldown"` + `suppressedCount` 表示冷却窗口内合并情况。
