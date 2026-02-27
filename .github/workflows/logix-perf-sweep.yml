@@ -103,34 +103,6 @@ on:
         description: "diff 模式（strict=不可比直接失败；triage=允许漂移，仅作线索）"
         required: false
         default: ""
-      perf_tail_recheck_enable:
-        description: "是否启用 tail-only 回归点二次复测（true/false）"
-        required: false
-        default: ""
-      perf_tail_recheck_max_candidates:
-        description: "tail recheck 最多复测候选点数量"
-        required: false
-        default: "3"
-      perf_tail_recheck_head_samples_min:
-        description: "tail recheck 最少 head 复测样本数"
-        required: false
-        default: "2"
-      perf_tail_recheck_head_samples_max:
-        description: "tail recheck 最多 head 复测样本数（按剩余预算自适应）"
-        required: false
-        default: "8"
-      perf_tail_recheck_sample_estimate_seconds:
-        description: "tail recheck 单样本预估耗时（秒），用于剩余预算换算样本数"
-        required: false
-        default: "1200"
-      perf_tail_recheck_collect_timeout_seconds:
-        description: "tail recheck 单样本最大超时（秒）"
-        required: false
-        default: "1800"
-      perf_tail_recheck_min_remaining_seconds:
-        description: "tail recheck 启动前所需最小剩余秒数"
-        required: false
-        default: "3600"
   schedule:
     # Nightly (UTC): heavier converge sweep for tracking default parameters over time.
     - cron: "0 19 * * *"
@@ -243,13 +215,6 @@ jobs:
           INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD: ${{ github.event.inputs.perf_capacity_dynamic_enforce_hard }}
           INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT: ${{ github.event.inputs.perf_capacity_auto_retry_on_timeout }}
           INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
-          INPUT_PERF_TAIL_RECHECK_ENABLE: ${{ github.event.inputs.perf_tail_recheck_enable }}
-          INPUT_PERF_TAIL_RECHECK_MAX_CANDIDATES: ${{ github.event.inputs.perf_tail_recheck_max_candidates }}
-          INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN: ${{ github.event.inputs.perf_tail_recheck_head_samples_min }}
-          INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX: ${{ github.event.inputs.perf_tail_recheck_head_samples_max }}
-          INPUT_PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS: ${{ github.event.inputs.perf_tail_recheck_sample_estimate_seconds }}
-          INPUT_PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS: ${{ github.event.inputs.perf_tail_recheck_collect_timeout_seconds }}
-          INPUT_PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS: ${{ github.event.inputs.perf_tail_recheck_min_remaining_seconds }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
@@ -469,36 +434,6 @@ jobs:
             fi
             if [ -n "${INPUT_DIFF_MODE:-}" ]; then
               echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_TAIL_RECHECK_ENABLE:-}" ]; then
-              parsed="$(normalize_bool "$INPUT_PERF_TAIL_RECHECK_ENABLE")"
-              if [ -n "$parsed" ]; then
-                echo "PERF_TAIL_RECHECK_ENABLE=$parsed" >> "$GITHUB_ENV"
-              fi
-            fi
-            if [ -n "${INPUT_PERF_TAIL_RECHECK_MAX_CANDIDATES:-}" ]; then
-              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_MAX_CANDIDATES" "${PERF_TAIL_RECHECK_MAX_CANDIDATES:-3}")"
-              echo "PERF_TAIL_RECHECK_MAX_CANDIDATES=$value" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-}" ]; then
-              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN" "${PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-2}")"
-              echo "PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN=$value" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-}" ]; then
-              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX" "${PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-8}")"
-              echo "PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX=$value" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-}" ]; then
-              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS" "${PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-1200}")"
-              echo "PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS=$value" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-}" ]; then
-              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS" "${PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-1800}")"
-              echo "PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS=$value" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-}" ]; then
-              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS" "${PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-3600}")"
-              echo "PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS=$value" >> "$GITHUB_ENV"
             fi
           fi
 
