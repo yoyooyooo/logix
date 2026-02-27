@@ -23,9 +23,11 @@ interface BoundApi<Sh, R> {
   // Action（067 action surface）
   // - actions: ActionToken（创建 action value）
   // - dispatchers: 直接 dispatch（推荐）
+  // - action(token): 动态 token 入口（桥接）
   // - dispatch: 通用 dispatch（action/token/tag）
   readonly actions: ActionMap;
   readonly dispatchers: Record<string, (...args) => Effect<void>>;
+  readonly action: (token) => (...args) => Effect<void>;
   readonly dispatch: (actionOrTokenOrTag, ...args) => Effect<void>;
 
   // 逻辑流构建
@@ -83,8 +85,9 @@ interface BoundApi<Sh, R> {
   - `$.state.update(prev => next)`：整棵替换（通常会被视为全量写入，谨慎使用）；
 - Actions：
   - `yield* $.dispatchers.<K>(payload)`：派发 Action（常用短写）；
+  - `yield* $.action($.actions.<K>)(payload)`：动态 token 入口（运行期桥接）；
   - `yield* $.dispatch($.actions.<K>, payload)`：token-first（让代码里显式出现 ActionToken，便于 IDE 跳转/找引用/重命名）；
-  - `yield* $.dispatch({ _tag: "<K>", payload })`：通用派发；
+  - `yield* $.dispatch({ _tag: "<K>", payload })` / `yield* $.dispatch("<K>", payload)`：兼容/低阶派发；
 - 事件与 Flow：
   - `$.onAction("tag").run(handler)` / `.runLatest(handler)` / `.runExhaust(handler)`；
   - `$.onState(selector).debounce(300).run(handler)`；
@@ -118,8 +121,9 @@ yield* $.state.mutate(draft => {
 
 ## 动作 (Actions)
 
-- **`dispatch`**: 通用派发（action value / ActionToken / tag）。
+- **`dispatch`**: 通用派发（action value / ActionToken / tag），定位为兼容/低阶入口。
 - **`dispatchers`**: 常用短写：`yield* $.dispatchers.increment()`（payload 类型来自 `actions` 定义）。
+- **`action(token)`**: 动态/桥接入口：`yield* $.action($.actions.increment)()`。
 - **`actions`**: ActionToken（创建 action value）：`const action = $.actions.increment()`；需要 action object 时可配合 `yield* $.dispatch(action)`。
   - 如果你希望 IDE 能稳定“跳转/找引用/重命名”，请让代码里显式出现 ActionToken：例如 `yield* $.dispatch($.actions.increment)` 或 `yield* $.dispatch($.actions.add, 1)`，并把同一个 token 传给 `$.onAction(token)`。
 

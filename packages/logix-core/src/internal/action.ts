@@ -1,6 +1,6 @@
 import { Schema } from 'effect'
 
-type ActionArgs<P> = [P] extends [void] ? [] | [P] : [P]
+export type ActionArgs<P> = [P] extends [void] ? [] | [P] : [P]
 type ActionFn<P, Out> = (...args: ActionArgs<P>) => Out
 
 type DevSource = {
@@ -33,6 +33,7 @@ export type ActionToken<
 }
 
 export type AnyActionToken = ActionToken<string, any, Schema.Schema<any, any, any>>
+export type ActionPayloadOfToken<T> = T extends ActionToken<any, infer P, any> ? P : never
 
 export const isActionToken = (value: unknown): value is AnyActionToken =>
   typeof value === 'function' &&
@@ -112,3 +113,81 @@ export const normalizeActions = <M extends ActionDefs>(defs: M): NormalizedActio
 
   return out as any
 }
+
+export type ActionIntentEntry = 'dispatchers' | 'action' | 'dispatch'
+export type ActionIntentInput = 'token' | 'type' | 'value'
+
+export type ActionIntentSource = {
+  readonly entry: ActionIntentEntry
+  readonly input: ActionIntentInput
+}
+
+export type ActionIntent<A = unknown> = {
+  readonly action: A
+  readonly actionTag: string
+  readonly source: ActionIntentSource
+}
+
+const resolveActionTag = (action: unknown): string => {
+  const tag = (action as any)?._tag
+  if (typeof tag === 'string' && tag.length > 0) {
+    return tag
+  }
+
+  const type = (action as any)?.type
+  if (typeof type === 'string' && type.length > 0) {
+    return type
+  }
+
+  if (tag != null) {
+    return String(tag)
+  }
+  if (type != null) {
+    return String(type)
+  }
+  return 'unknown'
+}
+
+export const actionTagOf = (action: unknown): string => resolveActionTag(action)
+
+const makeActionIntent = <A>(action: A, source: ActionIntentSource): ActionIntent<A> => ({
+  action,
+  actionTag: resolveActionTag(action),
+  source,
+})
+
+export const intentFromToken = <
+  Tag extends string,
+  Payload,
+  PayloadSchema extends Schema.Schema<any, any, any> = Schema.Schema<any, any, any>,
+>(
+  token: ActionToken<Tag, Payload, PayloadSchema>,
+  args: ActionArgs<Payload>,
+  entry: ActionIntentEntry,
+): ActionIntent<ActionValue<Tag, Payload>> =>
+  makeActionIntent((token as any)(...args), {
+    entry,
+    input: 'token',
+  })
+
+export const intentFromType = <A = unknown>(
+  type: string,
+  payload: unknown,
+  entry: ActionIntentEntry,
+): ActionIntent<A> =>
+  makeActionIntent(
+    {
+      _tag: type,
+      payload,
+    } as A,
+    {
+      entry,
+      input: 'type',
+    },
+  )
+
+export const intentFromValue = <A>(action: A, entry: ActionIntentEntry): ActionIntent<A> =>
+  makeActionIntent(action, {
+    entry,
+    input: 'value',
+  })

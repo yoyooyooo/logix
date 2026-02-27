@@ -68,6 +68,7 @@ owner: pr/o021-module-api-unification
 | ID | Priority | Status | Spec | Owner |
 | --- | --- | --- | --- | --- |
 | O-021 | P1 | writeback | [102-o021-module-api-unification](../../specs/102-o021-module-api-unification/spec.md) | pr/o021-module-api-unification |
+| O-022 | P1 | spec | [103-o022-action-intent-api](../../specs/103-o022-action-intent-api/spec.md) | refactor |
 | O-023 | P1 | spec | [104-o023-flow-run-config](../../specs/104-o023-flow-run-config/spec.md) | refactor |
 | O-024 | P1 | spec | [105-o024-txn-lane-policy-cache](../../specs/105-o024-txn-lane-policy-cache/spec.md) | refactor |
 | O-025 | P1 | spec | [106-o025-devtoolshub-tiered-projection](../../specs/106-o025-devtoolshub-tiered-projection/spec.md) | refactor |

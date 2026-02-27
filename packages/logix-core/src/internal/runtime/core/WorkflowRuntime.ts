@@ -292,6 +292,8 @@ const makeWorkflowBoundaryRunner = (args: {
     })
 }
 
+const noopHostCancel = (): void => {}
+
 const makeTimer = (args: {
   readonly host: {
     readonly scheduleMicrotask: (cb: () => void) => void
@@ -302,16 +304,34 @@ const makeTimer = (args: {
 }): Effect.Effect<void, never, unknown> =>
   Effect.async<void, never, unknown>((resume) => {
     let fired = false
-    const cancel = args.host.scheduleTimeout(args.ms, () => {
-      fired = true
-      // Route resumption through a microtask boundary:
-      // - Improves determinism in tests (deterministic HostScheduler).
-      // - Avoids deep JS-microtask chains that are invisible to HostScheduler flushing.
-      args.host.scheduleMicrotask(() => resume(Effect.void))
-    })
-    return Effect.sync(() => {
+    let canceled = false
+    let cancel = noopHostCancel
+
+    if (args.ms <= 0) {
+      // Fast-path: delay(0) only needs an async boundary; avoid timeout+microtask double scheduling.
+      args.host.scheduleMicrotask(() => {
+        if (canceled) return
+        fired = true
+        resume(Effect.void)
+      })
+    } else {
+      cancel = args.host.scheduleTimeout(args.ms, () => {
+        fired = true
+        // Route resumption through a microtask boundary:
+        // - Improves determinism in tests (deterministic HostScheduler).
+        // - Avoids deep JS-microtask chains that are invisible to HostScheduler flushing.
+        args.host.scheduleMicrotask(() => {
+          if (canceled) return
+          resume(Effect.void)
+        })
+      })
+    }
+
+    return Effect.suspend(() => {
+      canceled = true
       cancel()
-    }).pipe(Effect.zipRight(fired ? Effect.void : args.onCancel))
+      return fired ? Effect.void : args.onCancel
+    })
   })
 
 const ensureLimiterReady = (registry: WorkflowRegistryV1, runtime: PublicModuleRuntime<unknown, unknown>) =>

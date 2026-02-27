@@ -436,6 +436,7 @@ export const makeTransactionOps = <S>(args: {
           originKind: txn.origin.kind,
           originName: txn.origin.name,
           traceLookupKey,
+          originDetails: txn.origin.details,
           traitSummary,
           replayEvent: replayEventWithLookup.replayEvent as any,
         })
@@ -498,9 +499,9 @@ export const makeTransactionOps = <S>(args: {
 
                 // Execute logic inside the transaction window (reducer / watcher writeback / traits, etc.).
                 // Contract: no long IO/await in the transaction window.
+                const diagnosticsLevelAtBody = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
                 if (isDevEnv()) {
                   const bodyFiber = yield* Effect.fork(body())
-
                   const YIELD_BUDGET = 5
                   let polled = yield* Fiber.poll(bodyFiber)
                   for (let index = 0; index < YIELD_BUDGET && Option.isNone(polled); index += 1) {
@@ -508,7 +509,7 @@ export const makeTransactionOps = <S>(args: {
                     polled = yield* Fiber.poll(bodyFiber)
                   }
 
-                  if (Option.isNone(polled)) {
+                  if (Option.isNone(polled) && diagnosticsLevelAtBody !== 'off') {
                     yield* Debug.record({
                       type: 'diagnostic',
                       moduleId: optionsModuleId,
@@ -523,7 +524,6 @@ export const makeTransactionOps = <S>(args: {
                       kind: ASYNC_ESCAPE_KIND,
                     })
                   }
-
                   const bodyExit = yield* Fiber.await(bodyFiber)
                   yield* Exit.match(bodyExit, {
                     onFailure: (cause) => Effect.failCause(cause),
@@ -537,8 +537,6 @@ export const makeTransactionOps = <S>(args: {
                     const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(Runtime.isAsyncFiberException)
 
                     if (asyncEscapeDefect) {
-                      const asyncEscapeError = makeAsyncEscapeError()
-
                       yield* Debug.record({
                         type: 'diagnostic',
                         moduleId: optionsModuleId,
@@ -552,7 +550,7 @@ export const makeTransactionOps = <S>(args: {
                         hint: ASYNC_ESCAPE_HINT,
                         kind: ASYNC_ESCAPE_KIND,
                       })
-
+                      const asyncEscapeError = makeAsyncEscapeError()
                       yield* Fiber.interruptFork(asyncEscapeDefect.fiber)
                       return yield* Effect.die(asyncEscapeError)
                     }
