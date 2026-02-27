@@ -37,6 +37,8 @@ const autoProbeHeadPath =
   headShort && envId ? path.join(perfDir, `steps-probe.head.${headShort}.${envId}.${profile}.json`) : null
 const capacityLatestPath = path.join(perfDir, 'capacity-latest.json')
 const debugTimelinePath = process.env.PERF_DEBUG_TIMELINE_FILE || path.join(perfDir, 'debug.timeline.log')
+const tailRecheckPlanPath = path.join(perfDir, 'tail-recheck-plan.json')
+const tailRecheckSummaryPath = path.join(perfDir, 'tail-recheck-summary.json')
 
 const safeReadJson = (file) => {
   try {
@@ -52,6 +54,8 @@ const diff = diffPath && fs.existsSync(diffPath) ? safeReadJson(diffPath) : null
 const autoProbeBase = autoProbeBasePath && fs.existsSync(autoProbeBasePath) ? safeReadJson(autoProbeBasePath) : null
 const autoProbeHead = autoProbeHeadPath && fs.existsSync(autoProbeHeadPath) ? safeReadJson(autoProbeHeadPath) : null
 const capacityLatest = fs.existsSync(capacityLatestPath) ? safeReadJson(capacityLatestPath) : null
+const tailRecheckPlan = fs.existsSync(tailRecheckPlanPath) ? safeReadJson(tailRecheckPlanPath) : null
+const tailRecheckSummary = fs.existsSync(tailRecheckSummaryPath) ? safeReadJson(tailRecheckSummaryPath) : null
 const debugTimelineLines = fs.existsSync(debugTimelinePath)
   ? fs
       .readFileSync(debugTimelinePath, 'utf8')
@@ -598,6 +602,14 @@ const improvements = diff?.summary?.improvements ?? 0
 const dynamicEvaluation =
   capacityLatest?.evaluation && typeof capacityLatest.evaluation === 'object' ? capacityLatest.evaluation : null
 const dynamicHardFailed = dynamicEvaluation?.hardPass === false
+const tailRecheckCounts =
+  tailRecheckSummary?.counts && typeof tailRecheckSummary.counts === 'object' ? tailRecheckSummary.counts : null
+const tailRecheckCandidateCount =
+  typeof tailRecheckSummary?.candidateCount === 'number' && Number.isFinite(tailRecheckSummary.candidateCount)
+    ? tailRecheckSummary.candidateCount
+    : typeof tailRecheckPlan?.selectedCandidates?.length === 'number'
+    ? tailRecheckPlan.selectedCandidates.length
+    : 0
 const headAutoProbeSufficiency = resolveAutoProbeDataSufficiency(autoProbeHead)
 const headAutoProbeInsufficient = headAutoProbeSufficiency?.hasInsufficientData === true
 const headAutoProbeReasonCodes = Array.isArray(headAutoProbeSufficiency?.reasonCodes)
@@ -622,6 +634,15 @@ md += `- head budgetExceeded: ${code(afterFailures.length)}\n`
 md += `- head auto-probe sufficiency: insufficient=${code(headAutoProbeInsufficient ? '1' : '0')}, reasonCodes=${code(
   headAutoProbeReasonCodes.length > 0 ? headAutoProbeReasonCodes.join(',') : 'none',
 )}\n`
+if (tailRecheckSummary || tailRecheckPlan) {
+  md += `- tail recheck: status=${code(tailRecheckSummary?.status ?? 'not_evaluated')}, candidates=${code(
+    tailRecheckCandidateCount,
+  )}, samples=${code(tailRecheckSummary?.headSampleCount ?? 0)}, resolved=${code(
+    tailRecheckCounts?.resolved ?? 0,
+  )}, flaky=${code(tailRecheckCounts?.flaky ?? 0)}, persistent=${code(
+    (tailRecheckCounts?.persistentTail ?? 0) + (tailRecheckCounts?.persistentSystemic ?? 0),
+  )}, missing=${code(tailRecheckCounts?.missing ?? 0)}\n`
+}
 if (afterCapacitySummary) {
   md += `- head capacity model(P50/P75/P95+floor) (${code(capacitySuiteId)} / ${code(
     capacityBudgetId,
@@ -1135,6 +1156,35 @@ if (!diff) {
           )}\n`
         }
         md += `\n</details>\n`
+      }
+    }
+    if (tailRecheckSummary && Array.isArray(tailRecheckSummary.candidates) && tailRecheckSummary.candidates.length > 0) {
+      md += `\n**Tail Recheck (extra evidence using remaining budget)**\n`
+      md += `- status=${code(tailRecheckSummary.status ?? 'unknown')} sampleCount=${code(
+        tailRecheckSummary.headSampleCount ?? 0,
+      )} candidates=${code(tailRecheckSummary.candidateCount ?? tailRecheckSummary.candidates.length)}\n`
+      const candidateRows = tailRecheckSummary.candidates.slice(0, 12)
+      for (const candidate of candidateRows) {
+        const ratio = candidate?.dirtyRootsRatio
+        const failLevel = candidate?.firstFailLevel
+        const status = candidate?.status ?? 'unknown'
+        const failCount = candidate?.failCount ?? 0
+        const sampleCount = candidate?.sampleCount ?? 0
+        const p95Median = candidate?.summary?.ratioP95Median
+        const p95P95 = candidate?.summary?.ratioP95P95
+        const medianMedian = candidate?.summary?.ratioMedianMedian
+        md += `- dirtyRootsRatio=${code(ratio)} failLevel=${code(failLevel)} status=${code(status)} fail=${code(
+          `${failCount}/${sampleCount}`,
+        )} p95Median=${code(
+          typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median.toFixed(4) : 'n/a',
+        )} p95P95=${code(
+          typeof p95P95 === 'number' && Number.isFinite(p95P95) ? p95P95.toFixed(4) : 'n/a',
+        )} medianMedian=${code(
+          typeof medianMedian === 'number' && Number.isFinite(medianMedian) ? medianMedian.toFixed(4) : 'n/a',
+        )}\n`
+      }
+      if (tailRecheckSummary.candidates.length > candidateRows.length) {
+        md += `- ... +${tailRecheckSummary.candidates.length - candidateRows.length} more\n`
       }
     }
     if (headBudgetMaps.length > 0) {

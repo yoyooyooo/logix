@@ -103,6 +103,34 @@ on:
         description: "diff 模式（strict=不可比直接失败；triage=允许漂移，仅作线索）"
         required: false
         default: ""
+      perf_tail_recheck_enable:
+        description: "是否启用 tail-only 回归点二次复测（true/false）"
+        required: false
+        default: ""
+      perf_tail_recheck_max_candidates:
+        description: "tail recheck 最多复测候选点数量"
+        required: false
+        default: "3"
+      perf_tail_recheck_head_samples_min:
+        description: "tail recheck 最少 head 复测样本数"
+        required: false
+        default: "2"
+      perf_tail_recheck_head_samples_max:
+        description: "tail recheck 最多 head 复测样本数（按剩余预算自适应）"
+        required: false
+        default: "8"
+      perf_tail_recheck_sample_estimate_seconds:
+        description: "tail recheck 单样本预估耗时（秒），用于剩余预算换算样本数"
+        required: false
+        default: "1200"
+      perf_tail_recheck_collect_timeout_seconds:
+        description: "tail recheck 单样本最大超时（秒）"
+        required: false
+        default: "1800"
+      perf_tail_recheck_min_remaining_seconds:
+        description: "tail recheck 启动前所需最小剩余秒数"
+        required: false
+        default: "3600"
   schedule:
     # Nightly (UTC): heavier converge sweep for tracking default parameters over time.
     - cron: "0 19 * * *"
@@ -154,6 +182,16 @@ jobs:
       PERF_CAPACITY_DYNAMIC_HARD_RATIO: 0.8
       PERF_CAPACITY_DYNAMIC_WARN_RATIO: 0.9
       PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT: 1
+      PERF_TAIL_RECHECK_ENABLE: 1
+      PERF_TAIL_RECHECK_SUITE_ID: converge.txnCommit
+      PERF_TAIL_RECHECK_BUDGET_ID: auto<=full*1.05
+      PERF_TAIL_RECHECK_SCOPE_CONVERGE_MODE: auto
+      PERF_TAIL_RECHECK_MAX_CANDIDATES: 3
+      PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN: 2
+      PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX: 8
+      PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS: 1200
+      PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS: 1800
+      PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS: 3600
       PERF_CAPACITY_HISTORY_DIR: .perf-capacity-history
       PERF_CAPACITY_HISTORY_FILE: .perf-capacity-history/capacity-history.jsonl
       PERF_CAPACITY_LATEST_FILE: .perf-capacity-history/capacity-latest.json
@@ -205,6 +243,13 @@ jobs:
           INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD: ${{ github.event.inputs.perf_capacity_dynamic_enforce_hard }}
           INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT: ${{ github.event.inputs.perf_capacity_auto_retry_on_timeout }}
           INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
+          INPUT_PERF_TAIL_RECHECK_ENABLE: ${{ github.event.inputs.perf_tail_recheck_enable }}
+          INPUT_PERF_TAIL_RECHECK_MAX_CANDIDATES: ${{ github.event.inputs.perf_tail_recheck_max_candidates }}
+          INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN: ${{ github.event.inputs.perf_tail_recheck_head_samples_min }}
+          INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX: ${{ github.event.inputs.perf_tail_recheck_head_samples_max }}
+          INPUT_PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS: ${{ github.event.inputs.perf_tail_recheck_sample_estimate_seconds }}
+          INPUT_PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS: ${{ github.event.inputs.perf_tail_recheck_collect_timeout_seconds }}
+          INPUT_PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS: ${{ github.event.inputs.perf_tail_recheck_min_remaining_seconds }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
@@ -331,6 +376,7 @@ jobs:
               echo "PERF_DIFF_MODE=triage" >> "$GITHUB_ENV"
               echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=0" >> "$GITHUB_ENV"
               echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=0" >> "$GITHUB_ENV"
+              echo "PERF_TAIL_RECHECK_ENABLE=0" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-fast-${{ github.run_id }}" >> "$GITHUB_ENV"
             else
               # Full preset: keep full-fidelity profile and enable auto capacity probing.
@@ -339,6 +385,7 @@ jobs:
               echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
               echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=1" >> "$GITHUB_ENV"
               echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=1" >> "$GITHUB_ENV"
+              echo "PERF_TAIL_RECHECK_ENABLE=1" >> "$GITHUB_ENV"
               echo "PERF_STEPS_AUTO_PROBE_TARGET=head" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-full-${{ github.run_id }}" >> "$GITHUB_ENV"
             fi
@@ -423,6 +470,36 @@ jobs:
             if [ -n "${INPUT_DIFF_MODE:-}" ]; then
               echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
             fi
+            if [ -n "${INPUT_PERF_TAIL_RECHECK_ENABLE:-}" ]; then
+              parsed="$(normalize_bool "$INPUT_PERF_TAIL_RECHECK_ENABLE")"
+              if [ -n "$parsed" ]; then
+                echo "PERF_TAIL_RECHECK_ENABLE=$parsed" >> "$GITHUB_ENV"
+              fi
+            fi
+            if [ -n "${INPUT_PERF_TAIL_RECHECK_MAX_CANDIDATES:-}" ]; then
+              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_MAX_CANDIDATES" "${PERF_TAIL_RECHECK_MAX_CANDIDATES:-3}")"
+              echo "PERF_TAIL_RECHECK_MAX_CANDIDATES=$value" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-}" ]; then
+              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN" "${PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-2}")"
+              echo "PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN=$value" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-}" ]; then
+              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX" "${PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-8}")"
+              echo "PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX=$value" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-}" ]; then
+              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS" "${PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-1200}")"
+              echo "PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS=$value" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-}" ]; then
+              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS" "${PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-1800}")"
+              echo "PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS=$value" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-}" ]; then
+              value="$(positive_int_or_default "$INPUT_PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS" "${PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-3600}")"
+              echo "PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS=$value" >> "$GITHUB_ENV"
+            fi
           fi
 
           if [ "$RUN_PRESET" = "full" ]; then
@@ -482,6 +559,7 @@ jobs:
             echo "[logix-perf][timeline] preset=${RUN_PRESET} profile=${PERF_PROFILE} stepsMode=${PERF_STEPS_MODE} diffMode=${PERF_DIFF_MODE}"
             echo "[logix-perf][timeline] autoProbe iterations=${PERF_STEPS_AUTO_MAX_ITERATIONS} samplesPerIteration=${PERF_STEPS_AUTO_SAMPLES_PER_ITERATION} maxTotalCollects=${PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS} budgetMin=${PERF_STEPS_AUTO_TIME_BUDGET_MINUTES}"
             echo "[logix-perf][timeline] timeGuard softBudgetMin=${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES} minFullRemainingSec=${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS} baseTimeoutSec=${PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS} headTimeoutSec=${PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS} recollectTimeoutSec=${PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS} fallbackTimeoutSec=${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS}"
+            echo "[logix-perf][timeline] tailRecheck enable=${PERF_TAIL_RECHECK_ENABLE:-0} maxCandidates=${PERF_TAIL_RECHECK_MAX_CANDIDATES:-3} samplesMin=${PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-2} samplesMax=${PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-8} sampleEstimateSec=${PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-1200} sampleTimeoutSec=${PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-1800} minRemainingSec=${PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-3600}"
           } >> "$PERF_DEBUG_TIMELINE_FILE"
 
       - name: Checkout head (for install)
@@ -539,6 +617,9 @@ jobs:
           PINNED_CAPACITY_MODEL_SCRIPT="$RUNNER_TEMP/logix-perf-capacity-model.cjs"
           cp .github/scripts/logix-perf-capacity-model.cjs "$PINNED_CAPACITY_MODEL_SCRIPT"
           echo "PERF_CAPACITY_MODEL_SCRIPT=$PINNED_CAPACITY_MODEL_SCRIPT" >> "$GITHUB_ENV"
+          PINNED_TAIL_RECHECK_SCRIPT="$RUNNER_TEMP/logix-perf-tail-recheck.cjs"
+          cp .github/scripts/logix-perf-tail-recheck.cjs "$PINNED_TAIL_RECHECK_SCRIPT"
+          echo "PERF_TAIL_RECHECK_SCRIPT=$PINNED_TAIL_RECHECK_SCRIPT" >> "$GITHUB_ENV"
           PINNED_TIME_GUARD_SCRIPT="$RUNNER_TEMP/logix-perf-time-guard.sh"
           cp .github/scripts/logix-perf-time-guard.sh "$PINNED_TIME_GUARD_SCRIPT"
           chmod +x "$PINNED_TIME_GUARD_SCRIPT"
@@ -921,6 +1002,184 @@ jobs:
               --before "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json" \
               --after "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json" \
               --out "$PERF_OUT_DIR/diff.${BASE_SHORT}__${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          fi
+
+      - name: Plan tail recheck candidates
+        if: always() && env.PERF_RUN_PRESET == 'full' && env.PERF_TAIL_RECHECK_ENABLE == '1'
+        run: |
+          BEFORE_REPORT="$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          AFTER_REPORT="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ ! -f "$BEFORE_REPORT" ] || [ ! -f "$AFTER_REPORT" ]; then
+            echo "PERF_TAIL_RECHECK_SHOULD_RUN=0" >> "$GITHUB_ENV"
+            echo "::warning::[logix-perf] skip tail recheck plan: missing before/after report"
+            exit 0
+          fi
+          node "$PERF_TAIL_RECHECK_SCRIPT" plan \
+            --before "$BEFORE_REPORT" \
+            --after "$AFTER_REPORT" \
+            --matrix "$PERF_PINNED_MATRIX" \
+            --suite-id "$PERF_TAIL_RECHECK_SUITE_ID" \
+            --budget-id "$PERF_TAIL_RECHECK_BUDGET_ID" \
+            --converge-mode "$PERF_TAIL_RECHECK_SCOPE_CONVERGE_MODE" \
+            --max-candidates "$PERF_TAIL_RECHECK_MAX_CANDIDATES" \
+            --matrix-out "$PERF_OUT_DIR/tail-recheck.matrix.json" \
+            --env-out "$GITHUB_ENV" \
+            --out "$PERF_OUT_DIR/tail-recheck-plan.json"
+          if [ -f "$PERF_OUT_DIR/tail-recheck-plan.json" ]; then
+            node -e "const fs=require('node:fs');const p=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const picked=Array.isArray(p.selectedCandidates)?p.selectedCandidates:[];const steps=Array.isArray(p.stepsLevels)&&p.stepsLevels.length>0?p.stepsLevels.join(','):'n/a';const ratios=Array.isArray(p.dirtyRootsRatios)&&p.dirtyRootsRatios.length>0?p.dirtyRootsRatios.join(','):'n/a';console.log('[logix-perf] tail recheck plan shouldRun='+(p.shouldRun?'1':'0')+' candidates='+picked.length+' steps='+steps+' ratios='+ratios);" "$PERF_OUT_DIR/tail-recheck-plan.json"
+          fi
+
+      - name: Tail recheck (head samples)
+        if: always() && env.PERF_RUN_PRESET == 'full' && env.PERF_TAIL_RECHECK_ENABLE == '1' && env.PERF_TAIL_RECHECK_SHOULD_RUN == '1'
+        run: |
+          source "$PERF_TIME_GUARD_SCRIPT"
+          logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "before_tail_recheck_head"
+          logix_perf_guard_report_budget "tail-recheck:begin"
+          logix_perf_guard_dump_state "tail-recheck:begin"
+
+          REMAINING_SECONDS="$(logix_perf_guard_remaining_seconds)"
+          MIN_REMAINING_SECONDS="${PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-3600}"
+          if ! [[ "$MIN_REMAINING_SECONDS" =~ ^[0-9]+$ ]] || [ "$MIN_REMAINING_SECONDS" -le 0 ]; then
+            MIN_REMAINING_SECONDS=3600
+          fi
+
+          if [ "$REMAINING_SECONDS" -lt "$MIN_REMAINING_SECONDS" ]; then
+            echo "::warning::[logix-perf] skip tail recheck: remaining=${REMAINING_SECONDS}s < min=${MIN_REMAINING_SECONDS}s"
+            {
+              echo "PERF_TAIL_RECHECK_SKIPPED=1"
+              echo "PERF_TAIL_RECHECK_COLLECTED_SAMPLE_COUNT=0"
+            } >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          SAMPLES_MIN="${PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-2}"
+          SAMPLES_MAX="${PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-8}"
+          SAMPLE_ESTIMATE_SECONDS="${PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-1200}"
+
+          if ! [[ "$SAMPLES_MIN" =~ ^[0-9]+$ ]] || [ "$SAMPLES_MIN" -le 0 ]; then
+            SAMPLES_MIN=2
+          fi
+          if ! [[ "$SAMPLES_MAX" =~ ^[0-9]+$ ]] || [ "$SAMPLES_MAX" -le 0 ]; then
+            SAMPLES_MAX=8
+          fi
+          if [ "$SAMPLES_MAX" -lt "$SAMPLES_MIN" ]; then
+            SAMPLES_MAX="$SAMPLES_MIN"
+          fi
+          if ! [[ "$SAMPLE_ESTIMATE_SECONDS" =~ ^[0-9]+$ ]] || [ "$SAMPLE_ESTIMATE_SECONDS" -le 0 ]; then
+            SAMPLE_ESTIMATE_SECONDS=1200
+          fi
+
+          EXTRA_SAMPLES=0
+          if [ "$REMAINING_SECONDS" -gt "$MIN_REMAINING_SECONDS" ]; then
+            EXTRA_SAMPLES=$(( (REMAINING_SECONDS - MIN_REMAINING_SECONDS) / SAMPLE_ESTIMATE_SECONDS ))
+          fi
+          TARGET_SAMPLES=$((SAMPLES_MIN + EXTRA_SAMPLES))
+          if [ "$TARGET_SAMPLES" -gt "$SAMPLES_MAX" ]; then
+            TARGET_SAMPLES="$SAMPLES_MAX"
+          fi
+          if [ "$TARGET_SAMPLES" -le 0 ]; then
+            TARGET_SAMPLES=1
+          fi
+          echo "PERF_TAIL_RECHECK_ACTUAL_SAMPLES=$TARGET_SAMPLES" >> "$GITHUB_ENV"
+          echo "[logix-perf] tail recheck budget: remaining=${REMAINING_SECONDS}s minRemaining=${MIN_REMAINING_SECONDS}s"
+          echo "[logix-perf] tail recheck sample policy: min=${SAMPLES_MIN} max=${SAMPLES_MAX} estimate=${SAMPLE_ESTIMATE_SECONDS}s target=${TARGET_SAMPLES}"
+
+          TARGET_MATRIX="${PERF_TAIL_RECHECK_MATRIX:-$PERF_OUT_DIR/tail-recheck.matrix.json}"
+          if [ ! -f "$TARGET_MATRIX" ]; then
+            echo "::warning::[logix-perf] skip tail recheck: target matrix missing ($TARGET_MATRIX)"
+            echo "PERF_TAIL_RECHECK_COLLECTED_SAMPLE_COUNT=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          if [ -z "${PERF_TAIL_RECHECK_STEPS_LEVELS:-}" ]; then
+            echo "::warning::[logix-perf] skip tail recheck: empty PERF_TAIL_RECHECK_STEPS_LEVELS"
+            echo "PERF_TAIL_RECHECK_COLLECTED_SAMPLE_COUNT=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "[logix-perf] tail recheck scope: matrix=${TARGET_MATRIX}"
+          echo "[logix-perf] tail recheck scope: steps=${PERF_TAIL_RECHECK_STEPS_LEVELS} dirtyRootsRatios=${PERF_TAIL_RECHECK_DIRTY_ROOTS_RATIOS:-n/a}"
+          {
+            echo "[logix-perf][timeline] tailRecheck budget remainingSec=${REMAINING_SECONDS} minRemainingSec=${MIN_REMAINING_SECONDS} sampleEstimateSec=${SAMPLE_ESTIMATE_SECONDS} targetSamples=${TARGET_SAMPLES}"
+            echo "[logix-perf][timeline] tailRecheck scope steps=${PERF_TAIL_RECHECK_STEPS_LEVELS} dirtyRootsRatios=${PERF_TAIL_RECHECK_DIRTY_ROOTS_RATIOS:-n/a}"
+          } >> "$PERF_DEBUG_TIMELINE_FILE"
+
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f "$HEAD_SHA"
+          if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
+            pnpm install --frozen-lockfile
+          fi
+          cp "$PERF_PINNED_VITEST_SHARED" vitest.shared.ts
+          mkdir -p .codex/skills/logix-perf-evidence/assets
+          git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          cp "$TARGET_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          if [ ! -e node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
+          if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
+
+          IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
+          FILE_ARGS=()
+          for f in "${PERF_FILES_ARRAY[@]}"; do
+            f="$(echo "$f" | xargs)"
+            if [ -n "$f" ]; then
+              FILE_ARGS+=(--files "$f")
+            fi
+          done
+
+          COLLECTED=0
+          for i in $(seq 1 "$TARGET_SAMPLES"); do
+            SAMPLE_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-1800}" 1800)"
+            OUT_FILE="$PERF_OUT_DIR/tail-recheck.head.sample$(printf '%02d' "$i").${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            echo "[logix-perf] tail recheck sample${i}/${TARGET_SAMPLES} timeout=${SAMPLE_TIMEOUT_SECONDS}s out=$(basename "$OUT_FILE")"
+            if logix_perf_guard_run_with_timeout "$SAMPLE_TIMEOUT_SECONDS" "tail-recheck:head:sample${i}" env \
+              VITE_LOGIX_PERF_HARD_GATES=off \
+              VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_TAIL_RECHECK_STEPS_LEVELS" \
+              pnpm perf collect -- --profile "$PERF_PROFILE" "${FILE_ARGS[@]}" --out "$OUT_FILE"; then
+              COLLECTED=$((COLLECTED + 1))
+              echo "[logix-perf] tail recheck sample${i} done (${COLLECTED}/${TARGET_SAMPLES})"
+              echo "[logix-perf][timeline] tailRecheck sample${i} result=ok out=$(basename "$OUT_FILE")" >> "$PERF_DEBUG_TIMELINE_FILE"
+            else
+              RC="$?"
+              if [ "$RC" -eq 124 ]; then
+                echo "::warning::[logix-perf] tail recheck sample${i} timeout (${SAMPLE_TIMEOUT_SECONDS}s)"
+                echo "[logix-perf][timeline] tailRecheck sample${i} result=timeout timeoutSec=${SAMPLE_TIMEOUT_SECONDS}" >> "$PERF_DEBUG_TIMELINE_FILE"
+                continue
+              fi
+              echo "[logix-perf][timeline] tailRecheck sample${i} result=error code=${RC}" >> "$PERF_DEBUG_TIMELINE_FILE"
+              exit "$RC"
+            fi
+          done
+
+          echo "PERF_TAIL_RECHECK_COLLECTED_SAMPLE_COUNT=$COLLECTED" >> "$GITHUB_ENV"
+          echo "[logix-perf] tail recheck collected samples=${COLLECTED}/${TARGET_SAMPLES}"
+          echo "[logix-perf][timeline] tailRecheck collected=${COLLECTED} target=${TARGET_SAMPLES}" >> "$PERF_DEBUG_TIMELINE_FILE"
+          cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
+
+      - name: Evaluate tail recheck
+        if: always() && env.PERF_RUN_PRESET == 'full' && env.PERF_TAIL_RECHECK_ENABLE == '1'
+        run: |
+          PLAN_FILE="$PERF_OUT_DIR/tail-recheck-plan.json"
+          BEFORE_REPORT="$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          AFTER_REPORT="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ ! -f "$PLAN_FILE" ]; then
+            echo "[logix-perf] skip tail recheck evaluation: missing $PLAN_FILE"
+            exit 0
+          fi
+          node "$PERF_TAIL_RECHECK_SCRIPT" evaluate \
+            --plan "$PLAN_FILE" \
+            --report-dir "$PERF_OUT_DIR" \
+            --sample-prefix "tail-recheck.head.sample" \
+            --before "$BEFORE_REPORT" \
+            --after "$AFTER_REPORT" \
+            --env-out "$GITHUB_ENV" \
+            --out "$PERF_OUT_DIR/tail-recheck-summary.json"
+          if [ -f "$PERF_OUT_DIR/tail-recheck-summary.json" ]; then
+            node -e "const fs=require('node:fs');const s=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const c=s.counts&&typeof s.counts==='object'?s.counts:{};const line='[logix-perf] tail recheck evaluate status='+(s.status||'unknown')+' candidates='+(s.candidateCount||0)+' samples='+(s.headSampleCount||0)+' resolved='+(c.resolved||0)+' flaky='+(c.flaky||0)+' persistent='+((c.persistentTail||0)+(c.persistentSystemic||0))+' missing='+(c.missing||0);console.log(line);fs.appendFileSync(process.argv[2],line+'\\n','utf8');" "$PERF_OUT_DIR/tail-recheck-summary.json" "$PERF_DEBUG_TIMELINE_FILE"
           fi
 
       - name: Build capacity model (latest + history)
