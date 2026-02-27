@@ -164,6 +164,7 @@ jobs:
       PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS: 1200
       PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS: 1800
       PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS: 3600
+      PERF_TAIL_RECHECK_NEAR_BUDGET_MIN_RATIO: 0.92
       PERF_CAPACITY_HISTORY_DIR: .perf-capacity-history
       PERF_CAPACITY_HISTORY_FILE: .perf-capacity-history/capacity-history.jsonl
       PERF_CAPACITY_LATEST_FILE: .perf-capacity-history/capacity-latest.json
@@ -494,7 +495,7 @@ jobs:
             echo "[logix-perf][timeline] preset=${RUN_PRESET} profile=${PERF_PROFILE} stepsMode=${PERF_STEPS_MODE} diffMode=${PERF_DIFF_MODE}"
             echo "[logix-perf][timeline] autoProbe iterations=${PERF_STEPS_AUTO_MAX_ITERATIONS} samplesPerIteration=${PERF_STEPS_AUTO_SAMPLES_PER_ITERATION} maxTotalCollects=${PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS} budgetMin=${PERF_STEPS_AUTO_TIME_BUDGET_MINUTES}"
             echo "[logix-perf][timeline] timeGuard softBudgetMin=${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES} minFullRemainingSec=${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS} baseTimeoutSec=${PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS} headTimeoutSec=${PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS} recollectTimeoutSec=${PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS} fallbackTimeoutSec=${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS}"
-            echo "[logix-perf][timeline] tailRecheck enable=${PERF_TAIL_RECHECK_ENABLE:-0} maxCandidates=${PERF_TAIL_RECHECK_MAX_CANDIDATES:-3} samplesMin=${PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-2} samplesMax=${PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-8} sampleEstimateSec=${PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-1200} sampleTimeoutSec=${PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-1800} minRemainingSec=${PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-3600}"
+            echo "[logix-perf][timeline] tailRecheck enable=${PERF_TAIL_RECHECK_ENABLE:-0} maxCandidates=${PERF_TAIL_RECHECK_MAX_CANDIDATES:-3} nearBudgetMinRatio=${PERF_TAIL_RECHECK_NEAR_BUDGET_MIN_RATIO:-0.92} samplesMin=${PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-2} samplesMax=${PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-8} sampleEstimateSec=${PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-1200} sampleTimeoutSec=${PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-1800} minRemainingSec=${PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-3600}"
           } >> "$PERF_DEBUG_TIMELINE_FILE"
 
       - name: Checkout head (for install)
@@ -555,6 +556,9 @@ jobs:
           PINNED_TAIL_RECHECK_SCRIPT="$RUNNER_TEMP/logix-perf-tail-recheck.cjs"
           cp .github/scripts/logix-perf-tail-recheck.cjs "$PINNED_TAIL_RECHECK_SCRIPT"
           echo "PERF_TAIL_RECHECK_SCRIPT=$PINNED_TAIL_RECHECK_SCRIPT" >> "$GITHUB_ENV"
+          PINNED_QUICK_SUMMARY_SCRIPT="$RUNNER_TEMP/logix-perf-quick-summary.cjs"
+          cp .github/scripts/logix-perf-quick-summary.cjs "$PINNED_QUICK_SUMMARY_SCRIPT"
+          echo "PERF_QUICK_SUMMARY_SCRIPT=$PINNED_QUICK_SUMMARY_SCRIPT" >> "$GITHUB_ENV"
           PINNED_TIME_GUARD_SCRIPT="$RUNNER_TEMP/logix-perf-time-guard.sh"
           cp .github/scripts/logix-perf-time-guard.sh "$PINNED_TIME_GUARD_SCRIPT"
           chmod +x "$PINNED_TIME_GUARD_SCRIPT"
@@ -957,11 +961,12 @@ jobs:
             --budget-id "$PERF_TAIL_RECHECK_BUDGET_ID" \
             --converge-mode "$PERF_TAIL_RECHECK_SCOPE_CONVERGE_MODE" \
             --max-candidates "$PERF_TAIL_RECHECK_MAX_CANDIDATES" \
+            --near-budget-min-ratio "$PERF_TAIL_RECHECK_NEAR_BUDGET_MIN_RATIO" \
             --matrix-out "$PERF_OUT_DIR/tail-recheck.matrix.json" \
             --env-out "$GITHUB_ENV" \
             --out "$PERF_OUT_DIR/tail-recheck-plan.json"
           if [ -f "$PERF_OUT_DIR/tail-recheck-plan.json" ]; then
-            node -e "const fs=require('node:fs');const p=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const picked=Array.isArray(p.selectedCandidates)?p.selectedCandidates:[];const steps=Array.isArray(p.stepsLevels)&&p.stepsLevels.length>0?p.stepsLevels.join(','):'n/a';const ratios=Array.isArray(p.dirtyRootsRatios)&&p.dirtyRootsRatios.length>0?p.dirtyRootsRatios.join(','):'n/a';console.log('[logix-perf] tail recheck plan shouldRun='+(p.shouldRun?'1':'0')+' candidates='+picked.length+' steps='+steps+' ratios='+ratios);" "$PERF_OUT_DIR/tail-recheck-plan.json"
+            node -e "const fs=require('node:fs');const p=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const picked=Array.isArray(p.selectedCandidates)?p.selectedCandidates:[];const steps=Array.isArray(p.stepsLevels)&&p.stepsLevels.length>0?p.stepsLevels.join(','):'n/a';const ratios=Array.isArray(p.dirtyRootsRatios)&&p.dirtyRootsRatios.length>0?p.dirtyRootsRatios.join(','):'n/a';console.log('[logix-perf] tail recheck plan mode='+(p.selectionMode||'unknown')+' shouldRun='+(p.shouldRun?'1':'0')+' candidates='+picked.length+' steps='+steps+' ratios='+ratios);" "$PERF_OUT_DIR/tail-recheck-plan.json"
           fi
 
       - name: Tail recheck (head samples)
@@ -1018,6 +1023,7 @@ jobs:
           echo "PERF_TAIL_RECHECK_ACTUAL_SAMPLES=$TARGET_SAMPLES" >> "$GITHUB_ENV"
           echo "[logix-perf] tail recheck budget: remaining=${REMAINING_SECONDS}s minRemaining=${MIN_REMAINING_SECONDS}s"
           echo "[logix-perf] tail recheck sample policy: min=${SAMPLES_MIN} max=${SAMPLES_MAX} estimate=${SAMPLE_ESTIMATE_SECONDS}s target=${TARGET_SAMPLES}"
+          echo "[logix-perf] tail recheck selectionMode=${PERF_TAIL_RECHECK_SELECTION_MODE:-unknown}"
 
           TARGET_MATRIX="${PERF_TAIL_RECHECK_MATRIX:-$PERF_OUT_DIR/tail-recheck.matrix.json}"
           if [ ! -f "$TARGET_MATRIX" ]; then
@@ -1035,6 +1041,7 @@ jobs:
           {
             echo "[logix-perf][timeline] tailRecheck budget remainingSec=${REMAINING_SECONDS} minRemainingSec=${MIN_REMAINING_SECONDS} sampleEstimateSec=${SAMPLE_ESTIMATE_SECONDS} targetSamples=${TARGET_SAMPLES}"
             echo "[logix-perf][timeline] tailRecheck scope steps=${PERF_TAIL_RECHECK_STEPS_LEVELS} dirtyRootsRatios=${PERF_TAIL_RECHECK_DIRTY_ROOTS_RATIOS:-n/a}"
+            echo "[logix-perf][timeline] tailRecheck selectionMode=${PERF_TAIL_RECHECK_SELECTION_MODE:-unknown}"
           } >> "$PERF_DEBUG_TIMELINE_FILE"
 
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
@@ -1151,7 +1158,7 @@ jobs:
 
       - name: Write job summary (markdown)
         if: always()
-        run: node .github/scripts/logix-perf-quick-summary.cjs
+        run: node "${PERF_QUICK_SUMMARY_SCRIPT:-.github/scripts/logix-perf-quick-summary.cjs}"
 
       - name: Dump debug timeline tail
         if: always()

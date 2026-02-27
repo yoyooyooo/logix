@@ -604,6 +604,12 @@ const dynamicEvaluation =
 const dynamicHardFailed = dynamicEvaluation?.hardPass === false
 const tailRecheckCounts =
   tailRecheckSummary?.counts && typeof tailRecheckSummary.counts === 'object' ? tailRecheckSummary.counts : null
+const tailRecheckSelectionMode =
+  typeof tailRecheckSummary?.selectionMode === 'string' && tailRecheckSummary.selectionMode
+    ? tailRecheckSummary.selectionMode
+    : typeof tailRecheckPlan?.selectionMode === 'string' && tailRecheckPlan.selectionMode
+    ? tailRecheckPlan.selectionMode
+    : null
 const tailRecheckCandidateCount =
   typeof tailRecheckSummary?.candidateCount === 'number' && Number.isFinite(tailRecheckSummary.candidateCount)
     ? tailRecheckSummary.candidateCount
@@ -635,9 +641,9 @@ md += `- head auto-probe sufficiency: insufficient=${code(headAutoProbeInsuffici
   headAutoProbeReasonCodes.length > 0 ? headAutoProbeReasonCodes.join(',') : 'none',
 )}\n`
 if (tailRecheckSummary || tailRecheckPlan) {
-  md += `- tail recheck: status=${code(tailRecheckSummary?.status ?? 'not_evaluated')}, candidates=${code(
-    tailRecheckCandidateCount,
-  )}, samples=${code(tailRecheckSummary?.headSampleCount ?? 0)}, resolved=${code(
+  md += `- tail recheck: status=${code(tailRecheckSummary?.status ?? 'not_evaluated')}, mode=${code(
+    tailRecheckSelectionMode ?? 'n/a',
+  )}, candidates=${code(tailRecheckCandidateCount)}, samples=${code(tailRecheckSummary?.headSampleCount ?? 0)}, resolved=${code(
     tailRecheckCounts?.resolved ?? 0,
   )}, flaky=${code(tailRecheckCounts?.flaky ?? 0)}, persistent=${code(
     (tailRecheckCounts?.persistentTail ?? 0) + (tailRecheckCounts?.persistentSystemic ?? 0),
@@ -1160,20 +1166,26 @@ if (!diff) {
     }
     if (tailRecheckSummary && Array.isArray(tailRecheckSummary.candidates) && tailRecheckSummary.candidates.length > 0) {
       md += `\n**Tail Recheck (extra evidence using remaining budget)**\n`
-      md += `- status=${code(tailRecheckSummary.status ?? 'unknown')} sampleCount=${code(
+      md += `- status=${code(tailRecheckSummary.status ?? 'unknown')} mode=${code(
+        tailRecheckSummary.selectionMode ?? tailRecheckSelectionMode ?? 'n/a',
+      )} sampleCount=${code(
         tailRecheckSummary.headSampleCount ?? 0,
       )} candidates=${code(tailRecheckSummary.candidateCount ?? tailRecheckSummary.candidates.length)}\n`
       const candidateRows = tailRecheckSummary.candidates.slice(0, 12)
       for (const candidate of candidateRows) {
         const ratio = candidate?.dirtyRootsRatio
+        const sampleLevel = candidate?.sampleLevel
         const failLevel = candidate?.firstFailLevel
         const status = candidate?.status ?? 'unknown'
+        const initialClassification = candidate?.initialClassification ?? 'unknown'
         const failCount = candidate?.failCount ?? 0
         const sampleCount = candidate?.sampleCount ?? 0
         const p95Median = candidate?.summary?.ratioP95Median
         const p95P95 = candidate?.summary?.ratioP95P95
         const medianMedian = candidate?.summary?.ratioMedianMedian
-        md += `- dirtyRootsRatio=${code(ratio)} failLevel=${code(failLevel)} status=${code(status)} fail=${code(
+        md += `- dirtyRootsRatio=${code(ratio)} level=${code(sampleLevel ?? failLevel)} firstFail=${code(
+          failLevel == null ? 'n/a' : failLevel,
+        )} initial=${code(initialClassification)} status=${code(status)} fail=${code(
           `${failCount}/${sampleCount}`,
         )} p95Median=${code(
           typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median.toFixed(4) : 'n/a',

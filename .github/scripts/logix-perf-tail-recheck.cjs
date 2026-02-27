@@ -11,6 +11,7 @@ Usage:
     [--budget-id <id>] \\
     [--converge-mode <mode>] \\
     [--max-candidates <n>] \\
+    [--near-budget-min-ratio <ratio>] \\
     [--matrix-out <target.matrix.json>] \\
     [--env-out <github.env>] \\
     --out <plan.json>
@@ -186,7 +187,8 @@ const computeRelativeStatsAt = (suite, budget, where, level) => {
 const classificationRank = (classification) => {
   if (classification === 'tail-only') return 0
   if (classification === 'systemic') return 1
-  return 2
+  if (classification === 'near-budget-pass') return 2
+  return 3
 }
 
 const buildTargetMatrix = ({ matrix, suiteId, stepsLevels, dirtyRootsRatios }) => {
@@ -239,6 +241,24 @@ const parseArgs = (argv) => {
   return { mode, kv }
 }
 
+const parseRatioOrDefault = (raw, fallback) => {
+  if (raw == null || String(raw).trim().length === 0) return fallback
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n <= 0) return fallback
+  return Math.min(Math.max(n, 0.5), 0.999)
+}
+
+const collectSuiteLevels = (suiteSpec, suiteReport) => {
+  const values = []
+  if (Array.isArray(suiteSpec?.axes?.steps)) {
+    values.push(...suiteSpec.axes.steps)
+  }
+  if (Array.isArray(suiteReport?.points)) {
+    values.push(...suiteReport.points.map((point) => point?.params?.steps))
+  }
+  return toSortedUniqueNumbers(values)
+}
+
 const cmdPlan = (kv) => {
   const beforeFile = kv.before ? path.resolve(process.cwd(), kv.before) : null
   const afterFile = kv.after ? path.resolve(process.cwd(), kv.after) : null
@@ -261,6 +281,7 @@ const cmdPlan = (kv) => {
   const budgetId = kv['budget-id'] || 'auto<=full*1.05'
   const convergeMode = kv['converge-mode'] || 'auto'
   const maxCandidates = Math.max(1, parseIntStrict(kv['max-candidates'], 3))
+  const nearBudgetMinRatio = parseRatioOrDefault(kv['near-budget-min-ratio'], 0.92)
 
   const matrix = readJson(matrixFile)
   const afterReport = readJson(afterFile)
@@ -281,6 +302,8 @@ const cmdPlan = (kv) => {
   if (!budget || budget.type !== 'relative') {
     throw new Error(`relative budget not found: ${budgetId}`)
   }
+  const suiteLevels = collectSuiteLevels(suiteSpec, afterSuite)
+  const topSuiteLevel = suiteLevels.length > 0 ? suiteLevels[suiteLevels.length - 1] : null
 
   const thresholds = Array.isArray(afterSuite.thresholds) ? afterSuite.thresholds : []
   const allCandidates = []
@@ -289,37 +312,45 @@ const cmdPlan = (kv) => {
     if ((threshold.budget?.id ?? '') !== budgetId) continue
     const thresholdConvergeMode = threshold.where?.convergeMode
     if (thresholdConvergeMode != null && thresholdConvergeMode !== convergeMode) continue
-    if (threshold.reason !== 'budgetExceeded') continue
-
     const dirtyRootsRatio = toFiniteNumberOrNull(threshold.where?.dirtyRootsRatio)
     const firstFailLevel = toFiniteNumberOrNull(threshold.firstFail?.primaryLevel ?? threshold.firstFailLevel)
     const maxLevel = toFiniteNumberOrNull(threshold.maxLevel)
-    if (dirtyRootsRatio == null || firstFailLevel == null) continue
+    if (dirtyRootsRatio == null) continue
 
+    const sampleLevel = firstFailLevel ?? maxLevel ?? topSuiteLevel
+    if (sampleLevel == null) continue
     const where = { dirtyRootsRatio, convergeMode }
-    const afterStats = computeRelativeStatsAt(afterSuite, budget, where, firstFailLevel)
-    const beforeStats = beforeSuite ? computeRelativeStatsAt(beforeSuite, budget, where, firstFailLevel) : null
+    const afterStats = computeRelativeStatsAt(afterSuite, budget, where, sampleLevel)
+    const beforeStats = beforeSuite ? computeRelativeStatsAt(beforeSuite, budget, where, sampleLevel) : null
 
     let classification = 'unknown'
     let overshootRatio = null
     let overshootMs = null
+    let gapToBudgetRatio = null
     if (afterStats.ok) {
       const p95Over = isRelativeBudgetExceeded(budget, afterStats.ratioP95, afterStats.deltaP95Ms)
       const medianOver = isRelativeBudgetExceeded(budget, afterStats.ratioMedian, afterStats.deltaMedianMs)
-      classification = medianOver ? 'systemic' : p95Over ? 'tail-only' : 'unknown'
+      if (threshold.reason === 'budgetExceeded' || p95Over || medianOver) {
+        classification = medianOver ? 'systemic' : p95Over ? 'tail-only' : 'unknown'
+      } else {
+        classification = 'near-budget-pass'
+      }
       overshootRatio = afterStats.ratioP95 - budget.maxRatio
       overshootMs = afterStats.deltaP95Ms
+      gapToBudgetRatio = budget.maxRatio - afterStats.ratioP95
     }
 
     allCandidates.push({
       dirtyRootsRatio,
       firstFailLevel,
       maxLevel,
+      sampleLevel,
       where,
       reason: threshold.reason,
       classification,
       overshootRatio,
       overshootMs,
+      gapToBudgetRatio,
       afterStats,
       beforeStats,
     })
@@ -328,15 +359,41 @@ const cmdPlan = (kv) => {
   allCandidates.sort((a, b) => {
     const rankDiff = classificationRank(a.classification) - classificationRank(b.classification)
     if (rankDiff !== 0) return rankDiff
-    const aOver = typeof a.overshootRatio === 'number' ? a.overshootRatio : Number.NEGATIVE_INFINITY
-    const bOver = typeof b.overshootRatio === 'number' ? b.overshootRatio : Number.NEGATIVE_INFINITY
-    if (aOver !== bOver) return bOver - aOver
+    if (a.classification === 'tail-only' || a.classification === 'systemic') {
+      const aOver = typeof a.overshootRatio === 'number' ? a.overshootRatio : Number.NEGATIVE_INFINITY
+      const bOver = typeof b.overshootRatio === 'number' ? b.overshootRatio : Number.NEGATIVE_INFINITY
+      if (aOver !== bOver) return bOver - aOver
+    }
+    if (a.classification === 'near-budget-pass') {
+      const aGap = typeof a.gapToBudgetRatio === 'number' ? a.gapToBudgetRatio : Number.POSITIVE_INFINITY
+      const bGap = typeof b.gapToBudgetRatio === 'number' ? b.gapToBudgetRatio : Number.POSITIVE_INFINITY
+      if (aGap !== bGap) return aGap - bGap
+    }
     return a.dirtyRootsRatio - b.dirtyRootsRatio
   })
 
-  const selectedCandidates = allCandidates.filter((item) => item.classification === 'tail-only').slice(0, maxCandidates)
+  const tailOnlyCandidates = allCandidates.filter((item) => item.classification === 'tail-only')
+  const nearBudgetCandidates = allCandidates.filter((item) => {
+    if (item.classification !== 'near-budget-pass') return false
+    const ratio = item.afterStats?.ratioP95
+    if (typeof ratio !== 'number' || !Number.isFinite(ratio)) return false
+    return ratio >= budget.maxRatio * nearBudgetMinRatio
+  })
+
+  let selectionMode = 'tail-only'
+  let selectedCandidates = tailOnlyCandidates.slice(0, maxCandidates)
+  if (selectedCandidates.length <= 0) {
+    selectionMode = 'near-budget'
+    selectedCandidates = nearBudgetCandidates.slice(0, maxCandidates)
+  }
+  if (selectedCandidates.length <= 0) {
+    selectionMode = 'none'
+  }
+
   const stepsLevels = toSortedUniqueNumbers(
-    selectedCandidates.flatMap((item) => [item.firstFailLevel, item.maxLevel].filter((x) => Number.isFinite(x))),
+    selectedCandidates.flatMap((item) =>
+      [item.sampleLevel, item.firstFailLevel, item.maxLevel].filter((x) => Number.isFinite(x)),
+    ),
   )
   const dirtyRootsRatios = toSortedUniqueNumbers(selectedCandidates.map((item) => item.dirtyRootsRatio))
   const shouldRun = selectedCandidates.length > 0 && stepsLevels.length > 0 && dirtyRootsRatios.length > 0
@@ -357,6 +414,8 @@ const cmdPlan = (kv) => {
     budgetId,
     convergeMode,
     maxCandidates,
+    nearBudgetMinRatio,
+    selectionMode,
     shouldRun,
     matrixOut: shouldRun && matrixOut ? matrixOut : null,
     stepsLevels,
@@ -377,6 +436,7 @@ const cmdPlan = (kv) => {
   writeEnv(envOut, {
     PERF_TAIL_RECHECK_SHOULD_RUN: shouldRun ? '1' : '0',
     PERF_TAIL_RECHECK_CANDIDATE_COUNT: selectedCandidates.length,
+    PERF_TAIL_RECHECK_SELECTION_MODE: selectionMode,
     PERF_TAIL_RECHECK_STEPS_LEVELS: stepsLevels.join(','),
     PERF_TAIL_RECHECK_DIRTY_ROOTS_RATIOS: dirtyRootsRatios.join(','),
     PERF_TAIL_RECHECK_MATRIX: shouldRun && matrixOut ? matrixOut : '',
@@ -441,14 +501,18 @@ const cmdEvaluate = (kv) => {
   const candidates = Array.isArray(plan.selectedCandidates) ? plan.selectedCandidates : []
   const candidateResults = candidates.map((candidate) => {
     const dirtyRootsRatio = Number(candidate.dirtyRootsRatio)
-    const firstFailLevel = Number(candidate.firstFailLevel)
+    const sampleLevel = Number(candidate.sampleLevel ?? candidate.firstFailLevel ?? candidate.maxLevel)
+    const firstFailLevel =
+      candidate.firstFailLevel == null || Number.isNaN(Number(candidate.firstFailLevel))
+        ? null
+        : Number(candidate.firstFailLevel)
     const where = { dirtyRootsRatio, convergeMode }
 
-    const beforeMain = beforeSuite ? computeRelativeStatsAt(beforeSuite, budget, where, firstFailLevel) : null
-    const afterMain = afterSuite ? computeRelativeStatsAt(afterSuite, budget, where, firstFailLevel) : null
+    const beforeMain = beforeSuite ? computeRelativeStatsAt(beforeSuite, budget, where, sampleLevel) : null
+    const afterMain = afterSuite ? computeRelativeStatsAt(afterSuite, budget, where, sampleLevel) : null
 
     const samples = sampleSuites.map((item) => {
-      const stats = computeRelativeStatsAt(item.suite, budget, where, firstFailLevel)
+      const stats = computeRelativeStatsAt(item.suite, budget, where, sampleLevel)
       if (!stats.ok) {
         return {
           file: path.basename(item.file),
@@ -486,6 +550,7 @@ const cmdEvaluate = (kv) => {
 
     return {
       dirtyRootsRatio,
+      sampleLevel,
       firstFailLevel,
       initialClassification: candidate.classification,
       mainAfter: afterMain,
@@ -531,6 +596,7 @@ const cmdEvaluate = (kv) => {
     suiteId,
     budgetId: plan.budgetId,
     convergeMode,
+    selectionMode: plan.selectionMode ?? 'unknown',
     shouldRun: Boolean(plan.shouldRun),
     candidateCount: candidateResults.length,
     headSampleCount,
