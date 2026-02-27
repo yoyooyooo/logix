@@ -51,12 +51,26 @@ import { makeDispatchOps } from './ModuleRuntime.dispatch.js'
 import { makeEffectsRegistry } from './ModuleRuntime.effects.js'
 import { makeTransactionOps } from './ModuleRuntime.transaction.js'
 import { makeResolveConcurrencyPolicy } from './ModuleRuntime.concurrencyPolicy.js'
-import { makeResolveTxnLanePolicy } from './ModuleRuntime.txnLanePolicy.js'
+import {
+  captureTxnLanePolicy,
+  makeResolveTxnLanePolicy,
+  resolveTxnLanePolicyFromCache,
+  resolveTxnLanePolicyFromRecompute,
+  type TxnLanePolicyCacheEntry,
+  type TxnLanePolicyResolution,
+} from './ModuleRuntime.txnLanePolicy.js'
 import {
   makeResolveTraitConvergeConfig,
   type ResolvedTraitConvergeConfig,
 } from './ModuleRuntime.traitConvergeConfig.js'
-import { compareFieldPath, isPrefixOf, normalizeFieldPath, toKey, type DirtyAllReason, type FieldPath } from '../../field-path.js'
+import {
+  compareFieldPath,
+  isPrefixOf,
+  normalizeFieldPath,
+  toKey,
+  type DirtyAllReason,
+  type FieldPath,
+} from '../../field-path.js'
 import * as RowId from '../../state-trait/rowid.js'
 import * as StateTraitBuild from '../../state-trait/build.js'
 import { exportConvergeStaticIr, getConvergeStaticIrDigest } from '../../state-trait/converge-ir.js'
@@ -193,6 +207,21 @@ export const make = <S, A, R = never>(
       stateTransaction: options.stateTransaction,
     })
 
+    const captureTxnLanePolicyCache = (args: {
+      readonly overrides: StateTransactionOverrides | undefined
+      readonly previous: TxnLanePolicyCacheEntry | undefined
+    }): Effect.Effect<TxnLanePolicyCacheEntry, never, never> =>
+      Effect.gen(function* () {
+        const resolvedPolicy = yield* args.overrides
+          ? Effect.provideService(resolveTxnLanePolicy(), StateTransactionOverridesTag, args.overrides)
+          : resolveTxnLanePolicy()
+
+        return captureTxnLanePolicy({
+          previous: args.previous,
+          resolvedPolicy,
+        })
+      })
+
     const actionHub = options.createActionHub
       ? yield* options.createActionHub
       : yield* Effect.gen(function* () {
@@ -281,7 +310,10 @@ export const make = <S, A, R = never>(
 
         const resolved = toFieldPathOrStar(path)
 
-        const throwViolation = (details: { readonly resolvedPath?: FieldPath | '*'; readonly owned?: FieldPath }): never => {
+        const throwViolation = (details: {
+          readonly resolvedPath?: FieldPath | '*'
+          readonly owned?: FieldPath
+        }): never => {
           const owned = details.owned ?? externalOwnedFieldPaths[0]
           const ownedPath = owned ? owned.join('.') : '<unknown>'
           const resolvedPath =
@@ -354,6 +386,7 @@ export const make = <S, A, R = never>(
             readonly diagnosticsLevel: Debug.DiagnosticsLevel
             readonly debugSinks: ReadonlyArray<Debug.Sink>
             readonly overrides: StateTransactionOverrides | undefined
+            readonly policyCache: TxnLanePolicyCacheEntry
           }
         | undefined
     } = {
@@ -475,7 +508,11 @@ export const make = <S, A, R = never>(
       runtimeServicesOverrides,
     )
 
-    const enqueueTransactionBase = yield* withRuntimeServiceBuiltins('txnQueue', makeTxnQueueBuiltin, enqueueTxnSel.impl.make)
+    const enqueueTransactionBase = yield* withRuntimeServiceBuiltins(
+      'txnQueue',
+      makeTxnQueueBuiltin,
+      enqueueTxnSel.impl.make,
+    )
 
     const makeOperationRunnerBuiltin = Effect.succeed(
       makeRunOperation({
@@ -546,7 +583,9 @@ export const make = <S, A, R = never>(
     const rootContext = Option.isSome(rootContextSvcOpt) ? (rootContextSvcOpt.value as RootContext) : undefined
 
     const tickSchedulerOpt = (yield* Effect.serviceOption(TickSchedulerTag)) as Option.Option<TickSchedulerService>
-    let tickSchedulerCached: TickSchedulerService | undefined = Option.isSome(tickSchedulerOpt) ? tickSchedulerOpt.value : undefined
+    let tickSchedulerCached: TickSchedulerService | undefined = Option.isSome(tickSchedulerOpt)
+      ? tickSchedulerOpt.value
+      : undefined
 
     const readTickSchedulerFromRootContext = (root: RootContext | undefined): TickSchedulerService | undefined => {
       if (!root?.context) {
@@ -584,7 +623,7 @@ export const make = <S, A, R = never>(
         }
 
         // Preserve the original call signature: (eff) or (lane, eff).
-        return yield* (a1 !== undefined ? (enqueueTransactionBase as any)(a0, a1) : (enqueueTransactionBase as any)(a0))
+        return yield* a1 !== undefined ? (enqueueTransactionBase as any)(a0, a1) : (enqueueTransactionBase as any)(a0)
       })) as any
 
     const makeTransactionBuiltin = Effect.sync(() =>
@@ -634,8 +673,7 @@ export const make = <S, A, R = never>(
                 severity: 'error',
                 message:
                   'TickScheduler service is not visible in ModuleRuntime.onCommit; tickSeq will not advance and RuntimeStore subscribers will not flush.',
-                hint:
-                  'Ensure TickSchedulerTag is available in the fiber Env for logic/task/txnQueue execution (AppRuntime baseLayer + RootContext wiring).',
+                hint: 'Ensure TickSchedulerTag is available in the fiber Env for logic/task/txnQueue execution (AppRuntime baseLayer + RootContext wiring).',
                 kind: 'missing_tick_scheduler',
               })
             }
@@ -697,6 +735,7 @@ export const make = <S, A, R = never>(
           getListConfigs: () => traitState.listConfigs,
         },
         resolveTraitConvergeConfig,
+        captureTxnLanePolicyCache,
         isDevEnv,
         maxTxnHistory,
         txnHistory,
@@ -794,6 +833,59 @@ export const make = <S, A, R = never>(
       )
     }
 
+    const resolveTxnLanePolicyWithCache = (args: {
+      readonly captured:
+        | {
+            readonly overrides: StateTransactionOverrides | undefined
+            readonly policyCache: TxnLanePolicyCacheEntry
+          }
+        | undefined
+    }): Effect.Effect<TxnLanePolicyResolution, never, never> =>
+      Effect.gen(function* () {
+        const fromCache = resolveTxnLanePolicyFromCache(args.captured?.policyCache)
+        if (fromCache) return fromCache
+
+        // Determinism guard:
+        // cache miss must never become an implicit "instant override apply" path.
+        // Fresh overrides become effective only after an explicit transaction re-capture.
+        const recomputedPolicy = yield* resolveTxnLanePolicy()
+
+        return resolveTxnLanePolicyFromRecompute(recomputedPolicy)
+      })
+
+    const recordTxnLanePolicyResolved = (args: {
+      readonly resolution: TxnLanePolicyResolution
+      readonly txnSeq?: number
+      readonly txnId?: string
+      readonly opSeq?: number
+    }): Effect.Effect<void> =>
+      Debug.record({
+        type: 'diagnostic',
+        moduleId,
+        instanceId,
+        code: 'txn_lane_policy::resolved',
+        severity: 'info',
+        message: args.resolution.cacheHit
+          ? 'Txn lane policy resolved from capture cache.'
+          : 'Txn lane policy resolved by fallback recompute (capture cache unavailable; recapture required for fresh overrides).',
+        kind: 'txn_lane_policy_resolved',
+        ...(typeof args.txnSeq === 'number' ? { txnSeq: args.txnSeq } : {}),
+        ...(typeof args.txnId === 'string' ? { txnId: args.txnId } : {}),
+        ...(typeof args.opSeq === 'number' ? { opSeq: args.opSeq } : {}),
+        trigger: {
+          kind: 'txn-lane-policy',
+          name: 'resolve',
+          details: {
+            cacheHit: args.resolution.cacheHit,
+            captureSeq: args.resolution.captureSeq,
+            reason: args.resolution.reason,
+            recaptureRequired: args.resolution.recaptureRequired,
+            configScope: args.resolution.policy.configScope,
+            queueMode: args.resolution.policy.queueMode,
+          },
+        },
+      })
+
     // 043: time-slicing scheduler for deferred converge (debounce + maxLag); triggered by in-txn signals and enqueued outside the txn.
     yield* Effect.forkScoped(
       Effect.forever(
@@ -815,9 +907,7 @@ export const make = <S, A, R = never>(
             traitConvergeTimeSlicingState.firstPendingAtMs = firstPendingAtMs
 
             const captured = traitConvergeTimeSlicingState.capturedContext
-            const txnLanePolicy = yield* captured?.overrides
-              ? Effect.provideService(resolveTxnLanePolicy(), StateTransactionOverridesTag, captured.overrides)
-              : resolveTxnLanePolicy()
+            const txnLanePolicy = (yield* resolveTxnLanePolicyWithCache({ captured })).policy
 
             const debounceMs = txnLanePolicy.enabled ? txnLanePolicy.debounceMs : config.debounceMs
             const maxLagMs = txnLanePolicy.enabled ? txnLanePolicy.maxLagMs : config.maxLagMs
@@ -859,9 +949,8 @@ export const make = <S, A, R = never>(
           }
 
           const captured = traitConvergeTimeSlicingState.capturedContext
-          const txnLanePolicy = yield* captured?.overrides
-            ? Effect.provideService(resolveTxnLanePolicy(), StateTransactionOverridesTag, captured.overrides)
-            : resolveTxnLanePolicy()
+          const txnLanePolicyResolution = yield* resolveTxnLanePolicyWithCache({ captured })
+          const txnLanePolicy = txnLanePolicyResolution.policy
 
           const shouldEmitLaneEvidence = captured != null && captured.diagnosticsLevel !== 'off'
           const shouldEmitLaneEvidenceForPolicy =
@@ -882,6 +971,19 @@ export const make = <S, A, R = never>(
             return next
           }
 
+          const diagnosticsLevelForPolicyResolution =
+            captured?.diagnosticsLevel ?? (yield* FiberRef.get(Debug.currentDiagnosticsLevel))
+          const shouldEmitPolicyResolution = diagnosticsLevelForPolicyResolution !== 'off'
+          const recordTxnLanePolicyResolvedWithContext = (args: {
+            readonly resolution: TxnLanePolicyResolution
+            readonly txnSeq?: number
+            readonly txnId?: string
+            readonly opSeq?: number
+          }): Effect.Effect<void> => {
+            const next = recordTxnLanePolicyResolved(args)
+            return captured ? withCapturedContext(next) : next
+          }
+
           const firstPendingAtMs = firstPendingAtMsForRun ?? Date.now()
 
           if (!txnLanePolicy.enabled) {
@@ -893,6 +995,15 @@ export const make = <S, A, R = never>(
                 captureOpSeq: shouldEmitLaneEvidenceForPolicy,
               }),
             )
+
+            if (shouldEmitPolicyResolution) {
+              yield* recordTxnLanePolicyResolvedWithContext({
+                resolution: txnLanePolicyResolution,
+                txnSeq: anchor.txnSeq,
+                txnId: anchor.txnId,
+                opSeq: anchor.opSeq,
+              })
+            }
 
             if (shouldEmitLaneEvidenceForPolicy) {
               const reasons: ReadonlyArray<Debug.TxnLaneEvidenceReason> =
@@ -980,6 +1091,15 @@ export const make = <S, A, R = never>(
                 return { sliceDurationMs, anchor } as const
               }),
             )
+
+            if (shouldEmitPolicyResolution) {
+              yield* recordTxnLanePolicyResolvedWithContext({
+                resolution: txnLanePolicyResolution,
+                txnSeq: anchor.txnSeq,
+                txnId: anchor.txnId,
+                opSeq: anchor.opSeq,
+              })
+            }
 
             cursor = sliceEnd
 
@@ -1140,12 +1260,8 @@ export const make = <S, A, R = never>(
     )
     const actionTagHubsByTag = new Map<string, PubSub.PubSub<A>>()
     if (declaredActionTags && declaredActionTags.size > 0) {
-      const topicHubEntries = yield* Effect.forEach(
-        declaredActionTags,
-        (tag) =>
-          PubSub.bounded<A>(actionTopicHubCapacity).pipe(
-            Effect.map((hub) => [tag, hub] as const),
-          ),
+      const topicHubEntries = yield* Effect.forEach(declaredActionTags, (tag) =>
+        PubSub.bounded<A>(actionTopicHubCapacity).pipe(Effect.map((hub) => [tag, hub] as const)),
       )
       for (const [tag, hub] of topicHubEntries) {
         actionTagHubsByTag.set(tag, hub)

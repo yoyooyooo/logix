@@ -25,6 +25,62 @@ export type ResolvedTxnLanePolicy = {
   readonly queueMode: TxnLaneQueueMode
 }
 
+export type TxnLanePolicyCaptureReason = 'capture' | 're_capture'
+
+export type TxnLanePolicyResolutionReason = 'cache_hit' | 'cache_miss_recompute'
+
+export type TxnLanePolicyCacheEntry = {
+  readonly captureSeq: number
+  readonly reason: TxnLanePolicyCaptureReason
+  readonly resolvedPolicy: ResolvedTxnLanePolicy
+}
+
+export type TxnLanePolicyResolution = {
+  readonly policy: ResolvedTxnLanePolicy
+  readonly cacheHit: boolean
+  readonly captureSeq: number
+  readonly reason: TxnLanePolicyResolutionReason
+  /**
+   * cache_miss fallback means current task did not carry a captured policy snapshot.
+   * Runtime behavior remains deterministic, but fresh overrides require a new transaction capture.
+   */
+  readonly recaptureRequired: boolean
+}
+
+export const captureTxnLanePolicy = (args: {
+  readonly previous: TxnLanePolicyCacheEntry | undefined
+  readonly resolvedPolicy: ResolvedTxnLanePolicy
+}): TxnLanePolicyCacheEntry => {
+  const captureSeq = (args.previous?.captureSeq ?? 0) + 1
+  const reason: TxnLanePolicyCaptureReason = args.previous ? 're_capture' : 'capture'
+  return {
+    captureSeq,
+    reason,
+    resolvedPolicy: args.resolvedPolicy,
+  }
+}
+
+export const resolveTxnLanePolicyFromCache = (
+  cache: TxnLanePolicyCacheEntry | undefined,
+): TxnLanePolicyResolution | undefined => {
+  if (!cache) return undefined
+  return {
+    policy: cache.resolvedPolicy,
+    cacheHit: true,
+    captureSeq: cache.captureSeq,
+    reason: 'cache_hit',
+    recaptureRequired: false,
+  }
+}
+
+export const resolveTxnLanePolicyFromRecompute = (policy: ResolvedTxnLanePolicy): TxnLanePolicyResolution => ({
+  policy,
+  cacheHit: false,
+  captureSeq: 0,
+  reason: 'cache_miss_recompute',
+  recaptureRequired: true,
+})
+
 type ModuleStateTransactionOptions =
   | {
       readonly txnLanes?: TxnLanesPatch
