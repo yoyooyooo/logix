@@ -314,6 +314,47 @@ export const installSourceRefresh = <S>(
     return replayLog.record(event)
   }
 
+  const consumeReplaySnapshotWithFallback = (
+    replayLog: ReplayLog.ReplayLogService,
+    params: {
+      readonly fieldPath: string
+      readonly keyHash: string
+      readonly phase?: ReplayLog.ResourceSnapshotPhase
+      readonly moduleId?: string
+      readonly instanceId?: string
+    },
+  ): Effect.Effect<ReplayLog.ResourceSnapshotEvent | undefined, never, any> =>
+    Effect.gen(function* () {
+      let replayed = yield* replayLog.consumeNextResourceSnapshot({
+        resourceId,
+        fieldPath: params.fieldPath,
+        keyHash: params.keyHash,
+        phase: params.phase,
+        moduleId: params.moduleId,
+        instanceId: params.instanceId,
+      })
+      if (!replayed) {
+        replayed = yield* replayLog.consumeNextResourceSnapshot({
+          resourceId,
+          fieldPath: params.fieldPath,
+          keyHash: params.keyHash,
+          phase: params.phase,
+          moduleId: params.moduleId,
+          instanceId: params.instanceId,
+          scopeFallbackMode: 'module_or_legacy',
+        })
+      }
+      if (!replayed) {
+        replayed = yield* replayLog.consumeNextResourceSnapshot({
+          resourceId,
+          fieldPath: params.fieldPath,
+          keyHash: params.keyHash,
+          phase: params.phase,
+        })
+      }
+      return replayed
+    })
+
   // list.item scope: in-flight gating by RowID (avoid writing to the wrong row under insert/remove/reorder).
   if (listItem) {
     const store = internals.traits.rowIdStore as RowId.RowIdStore | undefined
@@ -429,11 +470,12 @@ export const installSourceRefresh = <S>(
 
         let loadingSnapshot: unknown = Snapshot.loading({ keyHash })
         if (replayMode === 'replay' && replayLog && logFieldPath) {
-          const replayLoading = yield* replayLog.consumeNextResourceSnapshot({
-            resourceId,
+          const replayLoading = yield* consumeReplaySnapshotWithFallback(replayLog, {
             fieldPath: logFieldPath,
             keyHash,
             phase: 'loading',
+            moduleId,
+            instanceId,
           })
           if (replayLoading) {
             loadingSnapshot = replayLoading.snapshot
@@ -469,10 +511,11 @@ export const installSourceRefresh = <S>(
             const consumePath = wroteLoadingPath ?? logFieldPath
             if (!consumePath) return yield* Effect.void
 
-            const replayed = yield* replayLog.consumeNextResourceSnapshot({
-              resourceId,
+            const replayed = yield* consumeReplaySnapshotWithFallback(replayLog, {
               fieldPath: consumePath,
               keyHash,
+              moduleId,
+              instanceId,
             })
             if (!replayed) return yield* Effect.void
 
@@ -804,11 +847,12 @@ export const installSourceRefresh = <S>(
       // 1) pending: synchronously write a loading snapshot (within the current transaction window).
       let loadingSnapshot: unknown = Snapshot.loading({ keyHash })
       if (replayMode === 'replay' && replayLog) {
-        const replayLoading = yield* replayLog.consumeNextResourceSnapshot({
-          resourceId,
+        const replayLoading = yield* consumeReplaySnapshotWithFallback(replayLog, {
           fieldPath,
           keyHash,
           phase: 'loading',
+          moduleId,
+          instanceId,
         })
         if (replayLoading) {
           loadingSnapshot = replayLoading.snapshot
@@ -844,10 +888,11 @@ export const installSourceRefresh = <S>(
         if (replayMode === 'replay' && replayLog) {
           // Let loading commit become visible first, then replay the settled phase (preserve the async-resource timeline shape).
           yield* Effect.yieldNow()
-          const replayed = yield* replayLog.consumeNextResourceSnapshot({
-            resourceId,
+          const replayed = yield* consumeReplaySnapshotWithFallback(replayLog, {
             fieldPath,
             keyHash,
+            moduleId,
+            instanceId,
           })
           if (!replayed) return yield* Effect.void
 

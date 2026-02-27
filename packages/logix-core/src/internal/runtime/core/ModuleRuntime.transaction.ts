@@ -5,7 +5,7 @@ import type {
   TraitConvergeGenerationEvidence,
   TraitConvergePlanCacheEvidence,
 } from '../../state-trait/model.js'
-import type { DirtyAllReason, DirtySet, FieldPathIdRegistry } from '../../field-path.js'
+import { normalizeFieldPath, type DirtyAllReason, type DirtySet, type FieldPathIdRegistry } from '../../field-path.js'
 import * as Debug from './DebugSink.js'
 import * as StateTransaction from './StateTransaction.js'
 import * as TaskRunner from './TaskRunner.js'
@@ -13,6 +13,7 @@ import * as StateTraitConverge from '../../state-trait/converge.js'
 import * as StateTraitValidate from '../../state-trait/validate.js'
 import * as StateTraitSource from '../../state-trait/source.js'
 import * as RowId from '../../state-trait/rowid.js'
+import type * as ReplayLog from './ReplayLog.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { ResolvedTraitConvergeConfig } from './ModuleRuntime.traitConvergeConfig.js'
 import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
@@ -44,6 +45,103 @@ const readDeferredFlushSlice = (details: unknown): { readonly start: number; rea
   const e = Math.floor(end)
   if (s < 0 || e <= s) return undefined
   return { start: s, end: e }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const readFirstNodeIdFromDirtySet = (dirtySet: unknown): number | undefined => {
+  if (!isRecord(dirtySet)) return undefined
+  const rootIds = dirtySet.rootIds
+  if (!Array.isArray(rootIds)) return undefined
+  for (const id of rootIds) {
+    if (typeof id === 'number' && Number.isFinite(id) && id >= 0) {
+      return Math.floor(id)
+    }
+  }
+  return undefined
+}
+
+const findNodeIdByFieldPath = (
+  fieldPath: string,
+  fieldPathIdRegistry: FieldPathIdRegistry | undefined,
+): number | undefined => {
+  if (!fieldPathIdRegistry) return undefined
+
+  const direct = fieldPathIdRegistry.pathStringToId?.get(fieldPath)
+  if (typeof direct === 'number' && Number.isFinite(direct) && direct >= 0) {
+    return Math.floor(direct)
+  }
+
+  const normalized = normalizeFieldPath(fieldPath)
+  if (!normalized) return undefined
+
+  const canonical = normalized.join('.')
+  const normalizedHit = fieldPathIdRegistry.pathStringToId?.get(canonical)
+  if (typeof normalizedHit === 'number' && Number.isFinite(normalizedHit) && normalizedHit >= 0) {
+    return Math.floor(normalizedHit)
+  }
+
+  for (let i = 0; i < fieldPathIdRegistry.fieldPaths.length; i++) {
+    const path = fieldPathIdRegistry.fieldPaths[i]
+    if (!path || path.length !== normalized.length) continue
+    let matched = true
+    for (let j = 0; j < path.length; j++) {
+      if (path[j] !== normalized[j]) {
+        matched = false
+        break
+      }
+    }
+    if (matched) return i
+  }
+
+  return undefined
+}
+
+const enrichReplayEventLookupKey = (args: {
+  readonly replayEvent: unknown
+  readonly staticIrDigest: string | undefined
+  readonly fieldPathIdRegistry: FieldPathIdRegistry | undefined
+}): { readonly replayEvent: unknown; readonly lookupKey: ReplayLog.StaticIrLookupKey | undefined } => {
+  const { replayEvent, staticIrDigest, fieldPathIdRegistry } = args
+  if (!isRecord(replayEvent) || replayEvent._tag !== 'ResourceSnapshot' || !staticIrDigest) {
+    return { replayEvent, lookupKey: undefined }
+  }
+
+  const existingLookupRaw = replayEvent.lookupKey
+  if (isRecord(existingLookupRaw) && typeof existingLookupRaw.staticIrDigest === 'string') {
+    return {
+      replayEvent,
+      lookupKey: {
+        staticIrDigest: existingLookupRaw.staticIrDigest,
+        ...(typeof existingLookupRaw.nodeId === 'number' && Number.isFinite(existingLookupRaw.nodeId)
+          ? { nodeId: Math.floor(existingLookupRaw.nodeId) }
+          : null),
+        ...(typeof existingLookupRaw.stepId === 'string' && existingLookupRaw.stepId.length > 0
+          ? { stepId: existingLookupRaw.stepId }
+          : null),
+      } satisfies ReplayLog.StaticIrLookupKey,
+    }
+  }
+
+  const fieldPath = typeof replayEvent.fieldPath === 'string' ? replayEvent.fieldPath : undefined
+  if (!fieldPath) return { replayEvent, lookupKey: undefined }
+
+  const nodeId = findNodeIdByFieldPath(fieldPath, fieldPathIdRegistry)
+  const lookupKey: ReplayLog.StaticIrLookupKey =
+    nodeId !== undefined
+      ? { staticIrDigest, nodeId }
+      : {
+          staticIrDigest,
+        }
+
+  return {
+    replayEvent: {
+      ...(replayEvent as any),
+      lookupKey,
+    } as ReplayLog.ReplayLogEvent,
+    lookupKey,
+  }
 }
 
 export type RunWithStateTransaction = <E>(
@@ -302,6 +400,25 @@ export const makeTransactionOps = <S>(args: {
             })()
           : undefined
 
+        const replayEventWithLookup = shouldComputeEvidence
+          ? enrichReplayEventLookupKey({
+              replayEvent,
+              staticIrDigest,
+              fieldPathIdRegistry,
+            })
+          : { replayEvent, lookupKey: undefined as ReplayLog.StaticIrLookupKey | undefined }
+
+        const fallbackNodeId = readFirstNodeIdFromDirtySet(dirtySetEvidence)
+
+        const traceLookupKey =
+          replayEventWithLookup.lookupKey ??
+          (shouldComputeEvidence && staticIrDigest
+            ? ({
+                staticIrDigest,
+                ...(fallbackNodeId !== undefined ? { nodeId: fallbackNodeId } : null),
+              } satisfies ReplayLog.StaticIrLookupKey)
+            : undefined)
+
         yield* Debug.record({
           type: 'state:update',
           moduleId: optionsModuleId,
@@ -318,8 +435,9 @@ export const makeTransactionOps = <S>(args: {
           priority,
           originKind: txn.origin.kind,
           originName: txn.origin.name,
+          traceLookupKey,
           traitSummary,
-          replayEvent: replayEvent as any,
+          replayEvent: replayEventWithLookup.replayEvent as any,
         })
       }
 
@@ -352,6 +470,7 @@ export const makeTransactionOps = <S>(args: {
 
         StateTransaction.beginTransaction(txnContext, origin, baseState)
         const txnCurrent: any = txnContext.current
+        txnCurrent.lastReplayEvent = undefined
         txnCurrent.stateTraitValidateRequests = []
         txnCurrent.commitMode = 'normal' as StateCommitMode
         txnCurrent.priority = 'normal' as StateCommitPriority

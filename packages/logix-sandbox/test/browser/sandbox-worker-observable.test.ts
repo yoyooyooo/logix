@@ -26,9 +26,15 @@ testFn(
 
       const program = Effect.gen(function* () {
         // Trigger a Debug trace:* event; the worker maps it to TRACE(kind:"logix-debug").
-        yield* Logix.Debug.record({ type: "trace:demo", payload: { foo: "bar" } });
+        // test-only: this inline snippet runs inside worker runtime and cannot import internal payload typings.
+        yield* Logix.Debug.record(({
+          type: "trace:demo",
+          payload: { foo: "bar" },
+          traceLookupKey: { staticIrDigest: "sandbox:digest:1", nodeId: 1 },
+        }) as any);
 
         // Trigger UI_INTENT
+        // test-only: bridge is injected by sandbox runtime on globalThis.
         const bridge = (globalThis as any).logixSandboxBridge;
         if (bridge && typeof bridge.emitUiIntent === "function") {
           bridge.emitUiIntent({
@@ -73,6 +79,7 @@ testFn(
 
     const runResult = await client.run({ useCompiledCode: true })
 
+    // test-only: runResult attributes are dynamic trace payloads, so assertions narrow them at runtime.
     expect(runResult.stateSnapshot && typeof runResult.stateSnapshot === 'object').toBe(true)
     expect((runResult.stateSnapshot as any).ok).toBe(true)
 
@@ -94,6 +101,8 @@ testFn(
     const logixDebugTrace = byKind('logix-debug')
     expect(logixDebugTrace).toBeDefined()
     expect((logixDebugTrace!.attributes as any).type).toBe('trace:demo')
+    expect((logixDebugTrace!.attributes as any).traceLookupKey?.staticIrDigest).toBe('sandbox:digest:1')
+    expect((logixDebugTrace!.attributes as any).traceLookupKey?.nodeId).toBe(1)
   },
   60000,
 )
