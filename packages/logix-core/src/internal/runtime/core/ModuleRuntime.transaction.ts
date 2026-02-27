@@ -17,6 +17,7 @@ import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { ResolvedTraitConvergeConfig } from './ModuleRuntime.traitConvergeConfig.js'
 import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
 import { StateTransactionOverridesTag, type StateTransactionOverrides } from './env.js'
+import type { TxnLanePolicyCacheEntry } from './ModuleRuntime.txnLanePolicy.js'
 
 const DIRTY_ALL_SET_STATE_HINT = Symbol.for('@logixjs/core/dirtyAllSetStateHint')
 const ASYNC_ESCAPE_DIAGNOSTIC_CODE = 'state_transaction::async_escape'
@@ -84,6 +85,7 @@ export type TraitConvergeTimeSlicingState = {
         readonly diagnosticsLevel: Debug.DiagnosticsLevel
         readonly debugSinks: ReadonlyArray<Debug.Sink>
         readonly overrides: StateTransactionOverrides | undefined
+        readonly policyCache: TxnLanePolicyCacheEntry
       }
     | undefined
 }
@@ -115,6 +117,10 @@ export const makeTransactionOps = <S>(args: {
   readonly traitConvergeTimeSlicing: TraitConvergeTimeSlicingState
   readonly traitRuntime: TraitRuntimeAccess
   readonly resolveTraitConvergeConfig: () => Effect.Effect<ResolvedTraitConvergeConfig, never, never>
+  readonly captureTxnLanePolicyCache: (args: {
+    readonly overrides: StateTransactionOverrides | undefined
+    readonly previous: TxnLanePolicyCacheEntry | undefined
+  }) => Effect.Effect<TxnLanePolicyCacheEntry, never, never>
   readonly isDevEnv: () => boolean
   readonly maxTxnHistory: number
   readonly txnHistory: Array<StateTransaction.StateTransaction<S>>
@@ -140,6 +146,7 @@ export const makeTransactionOps = <S>(args: {
     traitConvergeTimeSlicing,
     traitRuntime,
     resolveTraitConvergeConfig,
+    captureTxnLanePolicyCache,
     isDevEnv,
     maxTxnHistory,
     txnHistory,
@@ -531,7 +538,8 @@ export const makeTransactionOps = <S>(args: {
 
                   const outcome = convergeExit.value
 
-                  const dirtyAllReasonForDeferred: DirtyAllReason | undefined = (txnContext.current as any)?.dirtyAllReason
+                  const dirtyAllReasonForDeferred: DirtyAllReason | undefined = (txnContext.current as any)
+                    ?.dirtyAllReason
                   const dirtyPathIdsForDeferred: ReadonlySet<StateTransaction.StatePatchPath> | undefined =
                     canTimeSlice && !isDeferredFlushTxn && !dirtyAllReasonForDeferred
                       ? txnContext.current.dirtyPathIds
@@ -562,12 +570,17 @@ export const makeTransactionOps = <S>(args: {
                     const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
                     const overridesOpt = yield* Effect.serviceOption(StateTransactionOverridesTag)
                     const overrides = Option.isSome(overridesOpt) ? overridesOpt.value : undefined
+                    const policyCache = yield* captureTxnLanePolicyCache({
+                      overrides,
+                      previous: traitConvergeTimeSlicing.capturedContext?.policyCache,
+                    })
 
                     traitConvergeTimeSlicing.capturedContext = {
                       runtimeLabel,
                       diagnosticsLevel,
                       debugSinks,
                       overrides,
+                      policyCache,
                     }
 
                     yield* Queue.offer(traitConvergeTimeSlicing.signal, undefined)
