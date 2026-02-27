@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@logixjs/core": "workspace:*",
-    "effect": "^3.19.8",
+    "effect": "^3.19.13",
     "use-sync-external-store": "^1.2.0"
   },
   "devDependencies": {

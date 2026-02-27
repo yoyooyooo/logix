@@ -47,12 +47,8 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
         LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(flowApi.filter(predicate)(stream), triggerName),
       map: <U>(f: (value: T) => U) =>
         LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(stream.pipe(Stream.map(f)), triggerName),
-      run<A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-        options?: Logic.OperationOptions,
-      ): Logic.Of<Sh, R & R2, void, E> {
-        return flowApi.run<T, A, E, R2>(eff, options)(stream)
-      },
+      run: ((effOrConfig: unknown, options?: Logic.OperationOptions) =>
+        flowApi.run<T, any, any, any>(effOrConfig as any, options)(stream)) as Logic.IntentBuilder<T, Sh, R>['run'],
       runLatest<A = void, E = never, R2 = unknown>(
         eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
         options?: Logic.OperationOptions,
@@ -78,12 +74,12 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
       runParallelFork: <A = void, E = never, R2 = unknown>(
         eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
       ): Logic.Of<Sh, R & R2, void, E> =>
-        Effect.forkScoped(flowApi.runParallel<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
-          Sh,
-          R & R2,
-          void,
-          E
-        >,
+        Effect.forkScoped(
+          flowApi.run<T, A, E, R2>({
+            mode: 'parallel',
+            effect: eff,
+          })(stream),
+        ).pipe(Effect.asVoid) as Logic.Of<Sh, R & R2, void, E>,
       runTask: <A = void, E = never, R2 = unknown>(
         config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
       ): Logic.Of<Sh, R & R2, void, never> =>
