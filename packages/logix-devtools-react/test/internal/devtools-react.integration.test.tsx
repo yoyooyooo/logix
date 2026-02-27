@@ -9,6 +9,7 @@ import { LogixDevtools } from '../../src/LogixDevtools.js'
 import {
   devtoolsLayer,
   getDevtoolsSnapshot,
+  setDevtoolsSnapshotOverride,
   clearDevtoolsEvents,
   clearDevtoolsSnapshotOverride,
 } from '../../src/DevtoolsLayer.js'
@@ -461,6 +462,119 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
       const imported = snapshot.events.find((event) => event.kind === 'trait:converge') as any
       expect(imported).toBeDefined()
       expect(imported?.meta?.dirty?.rootPaths).toEqual([['profile', 'email']])
+    })
+  })
+
+  it('shows projection degraded badge for light summary snapshots', async () => {
+    setDevtoolsSnapshotOverride({
+      snapshotToken: 1,
+      projection: {
+        tier: 'light',
+        degraded: true,
+        visibleFields: ['instances', 'events', 'exportBudget'],
+        reason: {
+          code: 'projection_tier_light',
+          message: 'summary-only',
+          recommendedAction: 'switch to full',
+          hiddenFields: ['latestStates', 'latestTraitSummaries'],
+        },
+      },
+      instances: new Map(),
+      events: [],
+      latestStates: new Map(),
+      latestTraitSummaries: new Map(),
+      exportBudget: { dropped: 0, oversized: 0 },
+    })
+
+    render(<LogixDevtools position="bottom-left" initialOpen={true} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/projection:light/i)).not.toBeNull()
+      expect(screen.getByText(/degraded · projection_tier_light/i)).not.toBeNull()
+    })
+  })
+
+  it('projection badge should follow selected runtime tier in mixed runtime view', async () => {
+    const moduleId = 'DevtoolsProjectionBadgeMixedRuntime'
+    const fullRuntimeLabel = 'R::DevtoolsProjectionBadge::Full'
+    const lightRuntimeLabel = 'R::DevtoolsProjectionBadge::Light'
+    const findRuntimeButton = (runtimeLabel: string): HTMLButtonElement => {
+      const button = screen
+        .getAllByText(runtimeLabel)
+        .map((node) => node.closest('button'))
+        .find((node): node is HTMLButtonElement => node instanceof HTMLButtonElement)
+      if (!button) {
+        throw new Error(`runtime button not found for ${runtimeLabel}`)
+      }
+      return button
+    }
+
+    const emitRuntimeEvents = async (args: {
+      readonly runtimeLabel: string
+      readonly projectionTier: Logix.Debug.DevtoolsProjectionTier
+      readonly instanceId: string
+      readonly count: number
+    }) => {
+      const layer = Logix.Debug.devtoolsHubLayer({
+        bufferSize: 32,
+        diagnosticsLevel: 'full',
+        projectionTier: args.projectionTier,
+        runtimeLabel: args.runtimeLabel,
+      }) as Layer.Layer<any, never, never>
+
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          yield* Logix.Debug.record({
+            type: 'module:init',
+            moduleId,
+            instanceId: args.instanceId,
+            runtimeLabel: args.runtimeLabel,
+          } as any)
+          yield* Logix.Debug.record({
+            type: 'state:update',
+            moduleId,
+            instanceId: args.instanceId,
+            runtimeLabel: args.runtimeLabel,
+            txnSeq: 1,
+            txnId: `${args.instanceId}::t1`,
+            state: { count: args.count },
+            traitSummary: { t: args.count },
+          } as any)
+        }).pipe(Effect.provide(layer)),
+      )
+    }
+
+    Logix.Debug.devtoolsHubLayer({ projectionTier: 'light' })
+    await emitRuntimeEvents({
+      runtimeLabel: fullRuntimeLabel,
+      projectionTier: 'full',
+      instanceId: 'i-projection-badge-full',
+      count: 1,
+    })
+    await emitRuntimeEvents({
+      runtimeLabel: lightRuntimeLabel,
+      projectionTier: 'light',
+      instanceId: 'i-projection-badge-light',
+      count: 2,
+    })
+
+    render(<LogixDevtools position="bottom-left" initialOpen={true} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText(fullRuntimeLabel).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(lightRuntimeLabel).length).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(findRuntimeButton(lightRuntimeLabel))
+    await waitFor(() => {
+      expect(screen.getByText(/projection:light/i)).not.toBeNull()
+      expect(screen.getByText(/degraded · projection_tier_light/i)).not.toBeNull()
+    })
+
+    fireEvent.click(findRuntimeButton(fullRuntimeLabel))
+    await waitFor(() => {
+      expect(screen.getByText(/projection:full/i)).not.toBeNull()
+      expect(screen.queryByText(/degraded · projection_tier_light/i)).toBeNull()
     })
   })
 })

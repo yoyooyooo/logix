@@ -19,6 +19,12 @@ export interface RuntimeDebugEventRef extends Internal.RuntimeDebugEventRef {}
 export type DiagnosticsLevel = Internal.DiagnosticsLevel
 export type TraitConvergeDiagnosticsSamplingConfig = Internal.TraitConvergeDiagnosticsSamplingConfig
 export type SnapshotToken = DevtoolsHub.SnapshotToken
+export type DevtoolsProjectionTier = DevtoolsHub.DevtoolsProjectionTier
+export type DevtoolsProjectionMode = 'off' | 'light' | 'full'
+export type DevtoolsSnapshotProjection = DevtoolsHub.DevtoolsSnapshotProjection
+export type DevtoolsSnapshotDegradedReason = DevtoolsHub.DevtoolsSnapshotDegradedReason
+export type DevtoolsProjectionDegradeReasonCode = DevtoolsHub.DevtoolsProjectionDegradeReasonCode
+export const DEVTOOLS_PROJECTION_DEGRADE_REASON_CATALOG = DevtoolsHub.DEVTOOLS_PROJECTION_DEGRADE_REASON_CATALOG
 
 export const toRuntimeDebugEventRef = Internal.toRuntimeDebugEventRef
 
@@ -32,6 +38,17 @@ export const internal = {
 
 export interface DevtoolsSnapshot extends DevtoolsHub.DevtoolsSnapshot {}
 export interface DevtoolsHubOptions extends DevtoolsHub.DevtoolsHubOptions {
+  /**
+   * Unified Devtools observation mode.
+   *
+   * - `off`: disable exportable Devtools observation (no ring/event projection).
+   * - `light`: summary-only projection with degraded semantics.
+   * - `full`: keep heavy latest* assets for high-fidelity consumers.
+   *
+   * This knob only changes observation depth, not business execution semantics.
+   * Default: `"light"`.
+   */
+  readonly mode?: DevtoolsProjectionMode
   readonly diagnosticsLevel?: DiagnosticsLevel
   readonly traitConvergeDiagnosticsSampling?: TraitConvergeDiagnosticsSamplingConfig
 }
@@ -336,6 +353,50 @@ export const appendSinks = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never,
     ...(sinks as ReadonlyArray<Internal.Sink>),
   ]) as Layer.Layer<any, never, never>
 
+const resolveDevtoolsObservationOptions = (
+  options: DevtoolsHubOptions | undefined,
+): Pick<
+  DevtoolsHubOptions,
+  'bufferSize' | 'projectionTier' | 'diagnosticsLevel' | 'traitConvergeDiagnosticsSampling' | 'runtimeLabel'
+> => {
+  const mode = options?.mode
+  if (mode === 'off') {
+    return {
+      bufferSize: options?.bufferSize,
+      projectionTier: 'light',
+      diagnosticsLevel: 'off',
+      traitConvergeDiagnosticsSampling: options?.traitConvergeDiagnosticsSampling,
+      runtimeLabel: options?.runtimeLabel,
+    }
+  }
+  if (mode === 'full') {
+    return {
+      bufferSize: options?.bufferSize,
+      projectionTier: 'full',
+      diagnosticsLevel: 'full',
+      traitConvergeDiagnosticsSampling: options?.traitConvergeDiagnosticsSampling,
+      runtimeLabel: options?.runtimeLabel,
+    }
+  }
+  if (mode === 'light') {
+    return {
+      bufferSize: options?.bufferSize,
+      projectionTier: 'light',
+      diagnosticsLevel: 'light',
+      traitConvergeDiagnosticsSampling: options?.traitConvergeDiagnosticsSampling,
+      runtimeLabel: options?.runtimeLabel,
+    }
+  }
+
+  return {
+    bufferSize: options?.bufferSize,
+    projectionTier: options?.projectionTier,
+    diagnosticsLevel: options?.diagnosticsLevel ?? 'light',
+    traitConvergeDiagnosticsSampling: options?.traitConvergeDiagnosticsSampling,
+    runtimeLabel: options?.runtimeLabel,
+  }
+}
+
 /**
  * Append the DevtoolsHub sink to aggregate Debug events into snapshots.
  *
@@ -359,15 +420,25 @@ export function devtoolsHubLayer(
     ? (baseOrOptions as Layer.Layer<any, any, any>)
     : (Layer.empty as unknown as Layer.Layer<any, any, any>)
   const options = hasBase ? maybeOptions : (baseOrOptions as DevtoolsHubOptions | undefined)
+  const resolvedOptions = resolveDevtoolsObservationOptions(options)
+  const configureOptions = {
+    bufferSize: resolvedOptions.bufferSize,
+    projectionTier: resolvedOptions.projectionTier,
+    runtimeLabel: resolvedOptions.runtimeLabel,
+    diagnosticsLevel:
+      options?.mode === undefined && options?.diagnosticsLevel === undefined
+        ? undefined
+        : resolvedOptions.diagnosticsLevel,
+  } satisfies Pick<DevtoolsHubOptions, 'bufferSize' | 'projectionTier' | 'runtimeLabel' | 'diagnosticsLevel'>
 
-  DevtoolsHub.configureDevtoolsHub(options)
+  DevtoolsHub.configureDevtoolsHub(configureOptions)
   const append = appendSinks([DevtoolsHub.devtoolsHubSink])
   const appendConvergeStaticIr = ConvergeStaticIrCollector.appendConvergeStaticIrCollectors([
     DevtoolsHub.devtoolsHubConvergeStaticIrCollector,
   ])
-  const enableExportableDiagnostics = diagnosticsLevel(options?.diagnosticsLevel ?? 'light')
-  const convergeSamplingLayer = options?.traitConvergeDiagnosticsSampling
-    ? traitConvergeDiagnosticsSampling(options.traitConvergeDiagnosticsSampling)
+  const enableExportableDiagnostics = diagnosticsLevel(resolvedOptions.diagnosticsLevel ?? 'light')
+  const convergeSamplingLayer = resolvedOptions.traitConvergeDiagnosticsSampling
+    ? traitConvergeDiagnosticsSampling(resolvedOptions.traitConvergeDiagnosticsSampling)
     : (Layer.empty as unknown as Layer.Layer<any, never, never>)
 
   // FiberRef layers must build base sinks first, then append; provideMerge(append, base)

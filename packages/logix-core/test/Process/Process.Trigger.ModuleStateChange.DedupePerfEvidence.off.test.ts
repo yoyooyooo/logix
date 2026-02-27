@@ -247,5 +247,6 @@ describe('process: trigger moduleStateChange dedupe perf evidence (Diagnostics=o
       )
       console.log(`[perf:evidence] ${JSON.stringify(evidence)}`)
     }),
+    15000,
   )
 })

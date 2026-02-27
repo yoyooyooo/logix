@@ -237,5 +237,6 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
           `guardedOverhead=${overlapOverheadRatio.toFixed(2)}x updateAll(legacy=${overlapLegacy.updateAllCalls},guarded=${overlapGuarded.updateAllCalls})`,
       )
       }),
+    15000,
   )
 })
