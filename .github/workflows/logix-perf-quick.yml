@@ -15,13 +15,9 @@ on:
         required: false
         default: ""
       perf_files:
-        description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 perf_cwd）"
+        description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 examples/logix-react）"
         required: false
         default: "test/browser/perf-scenarios/route-switch.test.tsx,test/browser/perf-scenarios/query-list-refresh.test.tsx,test/browser/perf-scenarios/form-cascade-validate.test.tsx"
-      perf_cwd:
-        description: "采集项目目录（相对仓库根；默认 examples/logix-react）"
-        required: false
-        default: "examples/logix-react"
       perf_profile:
         description: "采样 profile（影响 runs/warmup/stability 等配置）"
         required: false
@@ -72,7 +68,6 @@ jobs:
           INPUT_BASE_REF: ${{ github.event.inputs.base_ref }}
           INPUT_HEAD_REF: ${{ github.event.inputs.head_ref }}
           INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
-          INPUT_PERF_CWD: ${{ github.event.inputs.perf_cwd }}
           INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
           INPUT_PERF_STEPS_LEVELS: ${{ github.event.inputs.perf_steps_levels }}
           INPUT_PERF_CAPACITY_FLOOR_MIN: ${{ github.event.inputs.perf_capacity_floor_min }}
@@ -129,9 +124,6 @@ jobs:
 
             if [ -n "${INPUT_PERF_FILES:-}" ]; then
               echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_CWD:-}" ]; then
-              echo "PERF_CWD=$INPUT_PERF_CWD" >> "$GITHUB_ENV"
             fi
             if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
               echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"

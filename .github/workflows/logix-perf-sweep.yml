@@ -16,13 +16,9 @@ on:
         required: false
         default: "fast"
       perf_files:
-        description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 perf_cwd）"
+        description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 examples/logix-react）"
         required: false
         default: "test/browser/perf-scenarios"
-      perf_cwd:
-        description: "采集项目目录（相对仓库根；默认 examples/logix-react）"
-        required: false
-        default: "examples/logix-react"
       perf_profile:
         description: "采样 profile（smoke/quick/default/soak；影响 runs/warmup/timeout）"
         required: false
@@ -204,7 +200,6 @@ jobs:
           INPUT_HEAD_REF: ${{ github.event.inputs.head_ref }}
           INPUT_RUN_PRESET: ${{ github.event.inputs.run_preset }}
           INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
-          INPUT_PERF_CWD: ${{ github.event.inputs.perf_cwd }}
           INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
           INPUT_PERF_STEPS_LEVELS: ${{ github.event.inputs.perf_steps_levels }}
           INPUT_PERF_STEPS_MODE: ${{ github.event.inputs.perf_steps_mode }}
@@ -376,9 +371,6 @@ jobs:
 
             if [ -n "${INPUT_PERF_FILES:-}" ]; then
               echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
-            fi
-            if [ -n "${INPUT_PERF_CWD:-}" ]; then
-              echo "PERF_CWD=$INPUT_PERF_CWD" >> "$GITHUB_ENV"
             fi
             if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
               echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
