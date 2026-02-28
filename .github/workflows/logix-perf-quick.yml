@@ -15,9 +15,13 @@ on:
         required: false
         default: ""
       perf_files:
-        description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 packages/logix-react）"
+        description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 perf_cwd）"
         required: false
         default: "test/browser/perf-scenarios/route-switch.test.tsx,test/browser/perf-scenarios/query-list-refresh.test.tsx,test/browser/perf-scenarios/form-cascade-validate.test.tsx"
+      perf_cwd:
+        description: "采集项目目录（相对仓库根；默认 examples/logix-react）"
+        required: false
+        default: "examples/logix-react"
       perf_profile:
         description: "采样 profile（影响 runs/warmup/stability 等配置）"
         required: false
@@ -50,6 +54,7 @@ jobs:
     timeout-minutes: 45
     env:
       PERF_FILES: test/browser/perf-scenarios/route-switch.test.tsx,test/browser/perf-scenarios/query-list-refresh.test.tsx,test/browser/perf-scenarios/form-cascade-validate.test.tsx
+      PERF_CWD: examples/logix-react
       PERF_PROFILE: smoke
       PERF_DIFF_MODE: strict
       PERF_CAPACITY_FLOOR_MIN: 2000
@@ -67,6 +72,7 @@ jobs:
           INPUT_BASE_REF: ${{ github.event.inputs.base_ref }}
           INPUT_HEAD_REF: ${{ github.event.inputs.head_ref }}
           INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
+          INPUT_PERF_CWD: ${{ github.event.inputs.perf_cwd }}
           INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
           INPUT_PERF_STEPS_LEVELS: ${{ github.event.inputs.perf_steps_levels }}
           INPUT_PERF_CAPACITY_FLOOR_MIN: ${{ github.event.inputs.perf_capacity_floor_min }}
@@ -123,6 +129,9 @@ jobs:
 
             if [ -n "${INPUT_PERF_FILES:-}" ]; then
               echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CWD:-}" ]; then
+              echo "PERF_CWD=$INPUT_PERF_CWD" >> "$GITHUB_ENV"
             fi
             if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
               echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
@@ -182,6 +191,10 @@ jobs:
             mkdir -p packages/logix-react/node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
+          if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p examples/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
+          fi
 
       - name: Install Playwright Chromium deps
         run: pnpm exec playwright install --with-deps chromium
@@ -220,6 +233,10 @@ jobs:
             mkdir -p packages/logix-react/node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
+          if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p examples/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
+          fi
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
           FILE_ARGS=()
           for f in "${PERF_FILES_ARRAY[@]}"; do
@@ -234,7 +251,7 @@ jobs:
           if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
             export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
           fi
-          VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+          VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
@@ -259,6 +276,10 @@ jobs:
             mkdir -p packages/logix-react/node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
+          if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p examples/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
+          fi
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
           FILE_ARGS=()
           for f in "${PERF_FILES_ARRAY[@]}"; do
@@ -273,7 +294,7 @@ jobs:
           if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
             export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
           fi
-          VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+          VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true

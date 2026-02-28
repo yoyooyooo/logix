@@ -16,9 +16,13 @@ on:
         required: false
         default: "fast"
       perf_files:
-        description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 packages/logix-react）"
+        description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 perf_cwd）"
         required: false
-        default: "test/browser/perf-boundaries/converge-steps.test.tsx,test/browser/perf-scenarios"
+        default: "test/browser/perf-scenarios"
+      perf_cwd:
+        description: "采集项目目录（相对仓库根；默认 examples/logix-react）"
+        required: false
+        default: "examples/logix-react"
       perf_profile:
         description: "采样 profile（smoke/quick/default/soak；影响 runs/warmup/timeout）"
         required: false
@@ -125,7 +129,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 355
     env:
-      PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx,test/browser/perf-scenarios
+      PERF_FILES: test/browser/perf-scenarios
+      PERF_CWD: examples/logix-react
       PERF_PROFILE: quick
       PERF_DIFF_MODE: strict
       PERF_CAPACITY_FLOOR_MIN: 2000
@@ -199,6 +204,7 @@ jobs:
           INPUT_HEAD_REF: ${{ github.event.inputs.head_ref }}
           INPUT_RUN_PRESET: ${{ github.event.inputs.run_preset }}
           INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
+          INPUT_PERF_CWD: ${{ github.event.inputs.perf_cwd }}
           INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
           INPUT_PERF_STEPS_LEVELS: ${{ github.event.inputs.perf_steps_levels }}
           INPUT_PERF_STEPS_MODE: ${{ github.event.inputs.perf_steps_mode }}
@@ -302,8 +308,8 @@ jobs:
             echo "HEAD_REF=$HEAD_SHA" >> "$GITHUB_ENV"
 
             if [ "${GITHUB_EVENT_SCHEDULE:-}" = "0 19 * * 0" ]; then
-              # Weekly: mirror collect.ts default (perf-boundaries + watcher-browser-perf).
-              echo "PERF_FILES=test/browser/perf-boundaries,test/browser/watcher-browser-perf.test.tsx,test/browser/perf-scenarios" >> "$GITHUB_ENV"
+              # Weekly: run full scenario suite in real-project carrier.
+              echo "PERF_FILES=test/browser/perf-scenarios" >> "$GITHUB_ENV"
               echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
               echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
               echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
@@ -311,7 +317,7 @@ jobs:
               echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=1" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-weekly-${{ github.run_id }}" >> "$GITHUB_ENV"
             else
-              echo "PERF_FILES=test/browser/perf-boundaries/converge-steps.test.tsx,test/browser/perf-scenarios" >> "$GITHUB_ENV"
+              echo "PERF_FILES=test/browser/perf-scenarios" >> "$GITHUB_ENV"
               echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
               echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
               echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
@@ -370,6 +376,9 @@ jobs:
 
             if [ -n "${INPUT_PERF_FILES:-}" ]; then
               echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CWD:-}" ]; then
+              echo "PERF_CWD=$INPUT_PERF_CWD" >> "$GITHUB_ENV"
             fi
             if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
               echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
@@ -533,6 +542,10 @@ jobs:
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
+          if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p examples/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
+          fi
             ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
@@ -615,6 +628,10 @@ jobs:
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
+          if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p examples/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
+          fi
             ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
@@ -678,7 +695,7 @@ jobs:
               FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
               AUTO_PROBE_TIMED_OUT=1
               logix_perf_guard_log "plan" "phase=base fallbackCollect timeout=${FALLBACK_TIMEOUT_SECONDS}s"
-              logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "base:auto-timeout-fallback-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+              logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "base:auto-timeout-fallback-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" \
                 "${FILE_ARGS[@]}" \
                 --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
             fi
@@ -703,7 +720,7 @@ jobs:
             if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
               export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
             fi
-            if logix_perf_guard_run_with_timeout "$BASE_COLLECT_TIMEOUT_SECONDS" "base:manual-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+            if logix_perf_guard_run_with_timeout "$BASE_COLLECT_TIMEOUT_SECONDS" "base:manual-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" \
               "${FILE_ARGS[@]}" \
               --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"; then
               true
@@ -717,7 +734,7 @@ jobs:
               export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
               FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
               logix_perf_guard_log "plan" "phase=base manualRetry timeout=${FALLBACK_TIMEOUT_SECONDS}s"
-              logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "base:manual-timeout-retry-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+              logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "base:manual-timeout-retry-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" \
                 "${FILE_ARGS[@]}" \
                 --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
             fi
@@ -742,6 +759,10 @@ jobs:
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
+          if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p examples/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
+          fi
             ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
@@ -812,7 +833,7 @@ jobs:
                 export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
                 FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
                 logix_perf_guard_log "plan" "phase=head fallbackCollect timeout=${FALLBACK_TIMEOUT_SECONDS}s"
-                logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "head:auto-timeout-fallback-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "head:auto-timeout-fallback-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" \
                   "${FILE_ARGS[@]}" \
                   --out "$HEAD_REPORT_PATH"
                 return 0
@@ -829,7 +850,7 @@ jobs:
               echo "[logix-perf] head auto steps resolved: $RESOLVED_STEPS"
               logix_perf_guard_log "resolved-steps" "phase=head source=auto-probe count=${RESOLVED_STEPS_COUNT} levels=${RESOLVED_STEPS}"
             else
-              if logix_perf_guard_run_with_timeout "$HEAD_COLLECT_TIMEOUT_SECONDS" "head:manual-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+              if logix_perf_guard_run_with_timeout "$HEAD_COLLECT_TIMEOUT_SECONDS" "head:manual-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" \
                 "${FILE_ARGS[@]}" \
                 --out "$HEAD_REPORT_PATH"; then
                 true
@@ -843,7 +864,7 @@ jobs:
                 export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
                 FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
                 logix_perf_guard_log "plan" "phase=head manualRetry timeout=${FALLBACK_TIMEOUT_SECONDS}s"
-                logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "head:manual-timeout-retry-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "head:manual-timeout-retry-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" \
                   "${FILE_ARGS[@]}" \
                   --out "$HEAD_REPORT_PATH"
               fi
@@ -884,6 +905,10 @@ jobs:
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
+          if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p examples/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
+          fi
             ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
@@ -912,7 +937,7 @@ jobs:
             export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
           fi
 
-          if logix_perf_guard_run_with_timeout "$RECOLLECT_TIMEOUT_SECONDS" "base:recollect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+          if logix_perf_guard_run_with_timeout "$RECOLLECT_TIMEOUT_SECONDS" "base:recollect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"; then
             true
@@ -1064,6 +1089,10 @@ jobs:
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
+          if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p examples/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
+          fi
             ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
@@ -1084,7 +1113,7 @@ jobs:
             if logix_perf_guard_run_with_timeout "$SAMPLE_TIMEOUT_SECONDS" "tail-recheck:head:sample${i}" env \
               VITE_LOGIX_PERF_HARD_GATES=off \
               VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_TAIL_RECHECK_STEPS_LEVELS" \
-              pnpm perf collect -- --profile "$PERF_PROFILE" "${FILE_ARGS[@]}" --out "$OUT_FILE"; then
+              pnpm perf collect -- --cwd "$PERF_CWD" --profile "$PERF_PROFILE" "${FILE_ARGS[@]}" --out "$OUT_FILE"; then
               COLLECTED=$((COLLECTED + 1))
               echo "[logix-perf] tail recheck sample${i} done (${COLLECTED}/${TARGET_SAMPLES})"
               echo "[logix-perf][timeline] tailRecheck sample${i} result=ok out=$(basename "$OUT_FILE")" >> "$PERF_DEBUG_TIMELINE_FILE"
