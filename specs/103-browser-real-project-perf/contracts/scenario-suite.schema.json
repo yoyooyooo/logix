@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/specs/103/scenario-suite.schema.json",
+  "title": "ScenarioSuiteRegistry",
+  "type": "object",
+  "required": ["version", "suites"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suites": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/Suite"
+      }
+    }
+  },
+  "$defs": {
+    "Primitive": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" }
+      ]
+    },
+    "AbsoluteBudget": {
+      "type": "object",
+      "required": ["type", "metric", "p95Ms"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "absolute" },
+        "metric": { "type": "string", "minLength": 1 },
+        "p95Ms": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "RelativeBudget": {
+      "type": "object",
+      "required": ["type", "metric", "maxRatio", "numeratorRef", "denominatorRef"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "relative" },
+        "metric": { "type": "string", "minLength": 1 },
+        "maxRatio": { "type": "number", "exclusiveMinimum": 0 },
+        "minDeltaMs": { "type": "number", "minimum": 0 },
+        "numeratorRef": { "type": "string", "minLength": 1 },
+        "denominatorRef": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "Suite": {
+      "type": "object",
+      "required": ["id", "priority", "primaryAxis", "axes", "metrics", "requiredEvidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "priority": { "enum": ["P1", "P2", "P3"] },
+        "primaryAxis": { "type": "string", "minLength": 1 },
+        "axes": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/Primitive" }
+          }
+        },
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "budgets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/AbsoluteBudget" },
+              { "$ref": "#/$defs/RelativeBudget" }
+            ]
+          }
+        },
+        "requiredEvidence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

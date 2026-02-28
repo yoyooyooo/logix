@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "logix-browser-perf-matrix-v1",
-  "updatedAt": "2026-01-19",
+  "updatedAt": "2026-02-27",
   "defaults": {
     "runs": 30,
     "warmupDiscard": 5,
@@ -586,6 +586,57 @@
         "budget.cutOffCount"
       ],
       "notes": "073 TickScheduler yield-to-host：通过人为缩小 maxSteps 触发 stable=false（budget_steps）并强制后续 tick 以 macrotask 续跑；用于观测 backlog 追平的端到端延迟（包含 tick continuation + notify）。"
+    },
+    {
+      "id": "examples.logixReact.scenarios",
+      "priority": "P1",
+      "title": "examples/logix-react: real project browser scenarios",
+      "primaryAxis": "scenarioId",
+      "axes": {
+        "scenarioId": [
+          "route-switch",
+          "query-list-refresh",
+          "form-cascade-validate",
+          "dense-interaction-burst",
+          "external-push-sync"
+        ],
+        "loadLevel": ["low", "medium", "high"]
+      },
+      "metrics": ["runtime.txnCommitMs", "workflow.scenarioMs"],
+      "budgets": [
+        {
+          "id": "commit.p95<=50ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "high<=medium*1.20",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.2,
+          "minDeltaMs": 0.5,
+          "numeratorRef": "loadLevel=high",
+          "denominatorRef": "loadLevel=medium"
+        }
+      ],
+      "requiredEvidence": [
+        "instanceId",
+        "txnSeq",
+        "opSeq",
+        "traceDigest",
+        "diagnostics.level",
+        "diagnostics.overheadLevel",
+        "diagnostics.overheadMs",
+        "diagnostics.overheadRatio",
+        "memory.heapStartBytes",
+        "memory.heapEndBytes",
+        "memory.heapDriftBytes",
+        "memory.heapDriftRatio",
+        "memory.gcSupported",
+        "budget.cutOffCount"
+      ],
+      "notes": "feature 103 真实业务场景入口；作为 examples/logix-react Browser 集成性能基线的统一 suite 注册点。"
     }
   ]
 }

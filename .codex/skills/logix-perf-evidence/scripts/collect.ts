@@ -49,6 +49,11 @@ type PerfReport = {
       readonly vitest?: string
       readonly playwright?: string
     }
+    readonly evidence?: {
+      readonly memory?: Record<string, unknown>
+      readonly diagnostics?: Record<string, unknown>
+      readonly soak?: Record<string, unknown>
+    }
   }
   readonly suites: ReadonlyArray<unknown>
 }
@@ -65,18 +70,30 @@ const parseArgs = (
   readonly outFile: string
   readonly profile?: string
   readonly files: ReadonlyArray<string>
+  readonly targetCwd: string
+  readonly configFile?: string
 } => {
   const outFlagIndex = argv.lastIndexOf('--out')
   const profileFlagIndex = argv.lastIndexOf('--profile')
+  const cwdFlagIndex = argv.lastIndexOf('--cwd')
+  const configFlagIndex = argv.lastIndexOf('--config')
 
   const outFile = outFlagIndex >= 0 ? argv[outFlagIndex + 1] : undefined
   const profile = profileFlagIndex >= 0 ? argv[profileFlagIndex + 1] : undefined
+  const cwd = cwdFlagIndex >= 0 ? argv[cwdFlagIndex + 1] : undefined
+  const config = configFlagIndex >= 0 ? argv[configFlagIndex + 1] : undefined
 
   if (outFlagIndex >= 0 && (!outFile || outFile.startsWith('--'))) {
     throw new Error('Missing value for --out')
   }
   if (profileFlagIndex >= 0 && (!profile || profile.startsWith('--'))) {
     throw new Error('Missing value for --profile')
+  }
+  if (cwdFlagIndex >= 0 && (!cwd || cwd.startsWith('--'))) {
+    throw new Error('Missing value for --cwd')
+  }
+  if (configFlagIndex >= 0 && (!config || config.startsWith('--'))) {
+    throw new Error('Missing value for --config')
   }
 
   const files: string[] = []
@@ -87,14 +104,19 @@ const parseArgs = (
     }
   }
 
-  const defaultFiles = ['test/browser/watcher-browser-perf.test.tsx', 'test/browser/perf-boundaries'].filter((p) =>
-    fsSync.existsSync(path.resolve('packages/logix-react', p)),
-  )
+  const targetCwd = path.resolve(cwd ?? 'packages/logix-react')
+  const defaultFiles = [
+    'test/browser/watcher-browser-perf.test.tsx',
+    'test/browser/perf-boundaries',
+    'test/browser/perf-scenarios',
+  ].filter((p) => fsSync.existsSync(path.resolve(targetCwd, p)))
 
   return {
     outFile: outFile ?? 'perf/after.local.json',
     profile,
     files: files.length > 0 ? files : defaultFiles,
+    targetCwd,
+    configFile: config ? path.resolve(config) : undefined,
   }
 }
 
@@ -130,6 +152,80 @@ const readGitMeta = (): PerfReport['meta']['git'] | undefined => {
     branch: branch || undefined,
     commit: commit || undefined,
     dirty: dirty != null ? dirty.length > 0 : undefined,
+  }
+}
+
+const quantile = (values: ReadonlyArray<number>, q: number): number | undefined => {
+  if (values.length === 0) return undefined
+  const sorted = values.slice().sort((a, b) => a - b)
+  const index = Math.floor(Math.max(0, Math.min(1, q)) * (sorted.length - 1))
+  return sorted[index]
+}
+
+const collectEvidenceValues = (
+  parts: ReadonlyArray<PerfReport>,
+  evidenceName: string,
+): ReadonlyArray<number | string> => {
+  const out: Array<number | string> = []
+  for (const report of parts) {
+    const suites = Array.isArray(report.suites) ? (report.suites as Array<any>) : []
+    for (const suite of suites) {
+      const points = Array.isArray(suite?.points) ? suite.points : []
+      for (const point of points) {
+        const evidence = Array.isArray(point?.evidence) ? point.evidence : []
+        for (const entry of evidence) {
+          if (entry?.name !== evidenceName || entry?.status !== 'ok') continue
+          if (typeof entry.value === 'number' || typeof entry.value === 'string') {
+            out.push(entry.value)
+          }
+        }
+      }
+    }
+  }
+  return out
+}
+
+const summarizeEvidenceMeta = (parts: ReadonlyArray<PerfReport>): PerfReport['meta']['evidence'] => {
+  const memoryDriftBytes = collectEvidenceValues(parts, 'memory.heapDriftBytes').filter(
+    (x): x is number => typeof x === 'number' && Number.isFinite(x),
+  )
+  const memoryDriftRatio = collectEvidenceValues(parts, 'memory.heapDriftRatio').filter(
+    (x): x is number => typeof x === 'number' && Number.isFinite(x),
+  )
+  const diagnosticsLevels = collectEvidenceValues(parts, 'diagnostics.level').filter(
+    (x): x is string => typeof x === 'string',
+  )
+  const diagnosticsOverheadRatio = collectEvidenceValues(parts, 'diagnostics.overheadRatio').filter(
+    (x): x is number => typeof x === 'number' && Number.isFinite(x),
+  )
+  const soakRounds = collectEvidenceValues(parts, 'workload.soakRounds').filter(
+    (x): x is number => typeof x === 'number' && Number.isFinite(x),
+  )
+
+  return {
+    memory: {
+      driftBytes: {
+        count: memoryDriftBytes.length,
+        p50: quantile(memoryDriftBytes, 0.5),
+        p95: quantile(memoryDriftBytes, 0.95),
+      },
+      driftRatio: {
+        count: memoryDriftRatio.length,
+        p50: quantile(memoryDriftRatio, 0.5),
+        p95: quantile(memoryDriftRatio, 0.95),
+      },
+    },
+    diagnostics: {
+      levels: Array.from(new Set(diagnosticsLevels)).sort(),
+      overheadRatio: {
+        count: diagnosticsOverheadRatio.length,
+        p50: quantile(diagnosticsOverheadRatio, 0.5),
+        p95: quantile(diagnosticsOverheadRatio, 0.95),
+      },
+    },
+    soak: {
+      roundsObserved: Array.from(new Set(soakRounds)).sort((a, b) => a - b),
+    },
   }
 }
 
@@ -173,6 +269,7 @@ const mergeReports = (parts: ReadonlyArray<PerfReport>, matrixMeta: MatrixMeta |
           version: base.meta.env.browser.version,
         },
       },
+      evidence: summarizeEvidenceMeta(parts),
     },
     suites: parts.flatMap((p) => p.suites),
   }
@@ -202,19 +299,21 @@ const collectTestFilesRecursively = async (args: {
   return out
 }
 
-const expandVitestTargets = async (targets: ReadonlyArray<string>): Promise<ReadonlyArray<string>> => {
-  const rootAbs = path.resolve('packages/logix-react')
+const expandVitestTargets = async (args: {
+  readonly rootAbs: string
+  readonly targets: ReadonlyArray<string>
+}): Promise<ReadonlyArray<string>> => {
   const expanded: string[] = []
 
-  for (const target of targets) {
-    const abs = path.resolve(rootAbs, target)
+  for (const target of args.targets) {
+    const abs = path.resolve(args.rootAbs, target)
     const stat = await fs.stat(abs).catch(() => undefined)
     if (!stat) {
       throw new Error(`Missing --files target: ${target} (resolved: ${abs})`)
     }
 
     if (stat.isDirectory()) {
-      const files = await collectTestFilesRecursively({ rootAbs, dirAbs: abs })
+      const files = await collectTestFilesRecursively({ rootAbs: args.rootAbs, dirAbs: abs })
       expanded.push(...files)
       continue
     }
@@ -231,9 +330,15 @@ const expandVitestTargets = async (targets: ReadonlyArray<string>): Promise<Read
 const runVitestBrowser = async (args: {
   readonly files: ReadonlyArray<string>
   readonly env: NodeJS.ProcessEnv
+  readonly projectCwd: string
+  readonly configFile?: string
 }): Promise<ReadonlyArray<PerfReport>> => {
   const cmd = 'pnpm'
-  const childArgs = ['-C', 'packages/logix-react', 'test', '--', '--project', 'browser', '--maxWorkers', '1', ...args.files]
+  const childArgs = ['-C', args.projectCwd, 'test', '--', '--project', 'browser', '--maxWorkers', '1']
+  if (args.configFile) {
+    childArgs.push('--config', args.configFile)
+  }
+  childArgs.push(...args.files)
 
   const child = spawn(cmd, childArgs, {
     env: args.env,
@@ -276,7 +381,7 @@ const runVitestBrowser = async (args: {
 }
 
 const main = async (): Promise<void> => {
-  const { outFile, profile, files } = parseArgs(process.argv.slice(2))
+  const { outFile, profile, files, targetCwd, configFile } = parseArgs(process.argv.slice(2))
 
   const childEnv: NodeJS.ProcessEnv = {
     ...process.env,
@@ -285,11 +390,19 @@ const main = async (): Promise<void> => {
     ...(profile ? { VITE_LOGIX_PERF_PROFILE: profile } : {}),
   }
 
-  const expandedFiles = await expandVitestTargets(files)
+  const expandedFiles = await expandVitestTargets({ rootAbs: targetCwd, targets: files })
+  if (expandedFiles.length === 0) {
+    throw new Error(`No test files resolved in target cwd: ${targetCwd}`)
+  }
 
   const parts: PerfReport[] = []
   for (const file of expandedFiles) {
-    const collected = await runVitestBrowser({ files: [file], env: childEnv })
+    const collected = await runVitestBrowser({
+      files: [file],
+      env: childEnv,
+      projectCwd: targetCwd,
+      configFile,
+    })
     parts.push(...collected)
   }
 

@@ -11,6 +11,7 @@ Usage:
     [--env-id <id>] \\
     [--suite-id <id>] \\
     [--budget-id <id>] \\
+    [--where-axis <axis>] \\
     [--converge-mode <mode>] \\
     [--min-history-runs <n>] \\
     [--history-window <n>] \\
@@ -21,6 +22,7 @@ Usage:
     --report <after.json> \\
     [--suite-id <id>] \\
     [--budget-id <id>] \\
+    [--where-axis <axis>] \\
     [--converge-mode <mode>] \\
     [--history <jsonl>] \\
     [--latest <json>] \\
@@ -88,43 +90,107 @@ const pickFinite = (...values) => {
   return undefined
 }
 
-const collectCapacityRows = ({ report, suiteId, budgetId, convergeMode }) => {
+const toNumericLevel = (value, primaryAxisLevels) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const numeric = Number(value)
+    if (Number.isFinite(numeric)) return numeric
+    const idx = Array.isArray(primaryAxisLevels) ? primaryAxisLevels.indexOf(value) : -1
+    if (idx >= 0) return idx + 1
+    return 0
+  }
+  if (typeof value === 'boolean') return value ? 1 : 0
+  return 0
+}
+
+const resolveScopeFilter = (convergeMode) => {
+  if (convergeMode == null) return null
+  const text = String(convergeMode).trim()
+  if (!text || text === '*' || text.toLowerCase() === 'any') return null
+  return text
+}
+
+const collectPrimaryAxisLevels = ({ suite, primaryAxis }) => {
+  const out = []
+  const seen = new Set()
+  const points = Array.isArray(suite?.points) ? suite.points : []
+  for (const point of points) {
+    const level = point?.params?.[primaryAxis]
+    if (level === undefined || level === null) continue
+    const key = `${typeof level}:${String(level)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(level)
+  }
+  return out
+}
+
+const compareSliceValues = (a, b) => {
+  const aNum = typeof a === 'number' && Number.isFinite(a)
+  const bNum = typeof b === 'number' && Number.isFinite(b)
+  if (aNum && bNum) return a - b
+  return String(a).localeCompare(String(b))
+}
+
+const collectCapacityRows = ({ report, suiteId, budgetId, whereAxis, convergeMode }) => {
   const suites = Array.isArray(report?.suites) ? report.suites : []
   const suite = suites.find((s) => s?.id === suiteId)
-  if (!suite || !Array.isArray(suite.thresholds)) return []
+  if (!suite || !Array.isArray(suite.thresholds)) {
+    return {
+      rows: [],
+      primaryAxis: 'steps',
+      primaryAxisLevels: [],
+      whereAxis: whereAxis || 'dirtyRootsRatio',
+    }
+  }
+
+  const primaryAxis = typeof suite?.primaryAxis === 'string' && suite.primaryAxis.length > 0 ? suite.primaryAxis : 'steps'
+  const primaryAxisLevels = collectPrimaryAxisLevels({ suite, primaryAxis })
+  const resolvedWhereAxis = whereAxis && String(whereAxis).trim().length > 0 ? String(whereAxis).trim() : 'dirtyRootsRatio'
+  const scopeFilter = resolveScopeFilter(convergeMode)
 
   const rows = []
   for (const threshold of suite.thresholds) {
     if (!threshold || typeof threshold !== 'object') continue
     if ((threshold.budget?.id ?? '') !== budgetId) continue
-    if ((threshold.where?.convergeMode ?? null) !== convergeMode) continue
-    const dirtyRootsRatio = threshold.where?.dirtyRootsRatio
-    if (!(typeof dirtyRootsRatio === 'number' && Number.isFinite(dirtyRootsRatio))) continue
+    if (scopeFilter != null && (threshold.where?.convergeMode ?? null) !== scopeFilter) continue
+    const sliceValue = threshold.where?.[resolvedWhereAxis]
+    if (sliceValue === undefined || sliceValue === null) continue
+    if (typeof sliceValue !== 'number' && typeof sliceValue !== 'string' && typeof sliceValue !== 'boolean') continue
 
     const maxLevel = Number(threshold.maxLevel)
+    const firstFailRaw = threshold.firstFail?.primaryLevel ?? threshold.firstFailLevel
     rows.push({
-      dirtyRootsRatio,
-      maxLevel: Number.isFinite(maxLevel) ? maxLevel : 0,
-      firstFailLevel: Number.isFinite(Number(threshold.firstFail?.primaryLevel ?? threshold.firstFailLevel))
-        ? Number(threshold.firstFail?.primaryLevel ?? threshold.firstFailLevel)
-        : null,
+      sliceValue,
+      maxLevel: Number.isFinite(maxLevel) ? maxLevel : toNumericLevel(threshold.maxLevel, primaryAxisLevels),
+      maxLevelRaw: threshold.maxLevel ?? null,
+      firstFailLevel: Number.isFinite(Number(firstFailRaw))
+        ? Number(firstFailRaw)
+        : toNumericLevel(firstFailRaw, primaryAxisLevels) || null,
+      firstFailLevelRaw: firstFailRaw ?? null,
       reason: threshold.firstFail?.reason ?? threshold.reason ?? null,
     })
   }
 
-  rows.sort((a, b) => a.dirtyRootsRatio - b.dirtyRootsRatio)
-  return rows
+  rows.sort((a, b) => compareSliceValues(a.sliceValue, b.sliceValue))
+  return {
+    rows,
+    primaryAxis,
+    primaryAxisLevels,
+    whereAxis: resolvedWhereAxis,
+  }
 }
 
-const detectMaxTestedLevel = ({ report, suiteId, convergeMode }) => {
+const detectMaxTestedLevel = ({ report, suiteId, convergeMode, primaryAxis, primaryAxisLevels }) => {
   const suites = Array.isArray(report?.suites) ? report.suites : []
   const suite = suites.find((s) => s?.id === suiteId)
   if (!suite || !Array.isArray(suite.points)) return 0
+  const scopeFilter = resolveScopeFilter(convergeMode)
   const levels = []
   for (const point of suite.points) {
     if (!point || typeof point !== 'object') continue
-    if ((point.params?.convergeMode ?? null) !== convergeMode) continue
-    const steps = Number(point.params?.steps)
+    if (scopeFilter != null && (point.params?.convergeMode ?? null) !== scopeFilter) continue
+    const steps = toNumericLevel(point.params?.[primaryAxis], primaryAxisLevels)
     if (Number.isFinite(steps)) levels.push(steps)
   }
   if (levels.length === 0) return 0
@@ -206,13 +272,14 @@ const dedupeHistoryRows = (rows) => {
   return out
 }
 
-const filterComparableHistoryRows = ({ rows, profile, envId, suiteId, budgetId, convergeMode }) =>
+const filterComparableHistoryRows = ({ rows, profile, envId, suiteId, budgetId, whereAxis, convergeMode }) =>
   rows.filter(
     (row) =>
       row?.profile === profile &&
       row?.envId === envId &&
       row?.suiteId === suiteId &&
       row?.budgetId === budgetId &&
+      row?.whereAxis === whereAxis &&
       row?.convergeMode === convergeMode,
   )
 
@@ -284,6 +351,7 @@ const cmdResolveTarget = (kv) => {
   const expectedEnvId = kv['env-id'] ? String(kv['env-id']) : null
   const expectedSuiteId = kv['suite-id'] ? String(kv['suite-id']) : null
   const expectedBudgetId = kv['budget-id'] ? String(kv['budget-id']) : null
+  const expectedWhereAxis = kv['where-axis'] ? String(kv['where-axis']) : null
   const expectedConvergeMode = kv['converge-mode'] ? String(kv['converge-mode']) : null
 
   const baseFloorMin = Math.max(0, parseIntStrict(kv['base-floor-min'], 2000))
@@ -313,6 +381,9 @@ const cmdResolveTarget = (kv) => {
     }
     if (expectedBudgetId && latest.budgetId !== expectedBudgetId) {
       mismatchReasons.push(`budget:${String(latest.budgetId ?? 'unknown')}!=${expectedBudgetId}`)
+    }
+    if (expectedWhereAxis && latest.whereAxis !== expectedWhereAxis) {
+      mismatchReasons.push(`whereAxis:${String(latest.whereAxis ?? 'unknown')}!=${expectedWhereAxis}`)
     }
     if (expectedConvergeMode && latest.convergeMode !== expectedConvergeMode) {
       mismatchReasons.push(`mode:${String(latest.convergeMode ?? 'unknown')}!=${expectedConvergeMode}`)
@@ -362,6 +433,7 @@ const cmdRecord = (kv) => {
 
   const suiteId = kv['suite-id'] || 'converge.txnCommit'
   const budgetId = kv['budget-id'] || 'commit.p95<=50ms'
+  const whereAxis = kv['where-axis'] || 'dirtyRootsRatio'
   const convergeMode = kv['converge-mode'] || 'auto'
   const historyFile = kv.history ? path.resolve(process.cwd(), kv.history) : null
   const latestFile = kv.latest ? path.resolve(process.cwd(), kv.latest) : null
@@ -377,8 +449,15 @@ const cmdRecord = (kv) => {
   const historyWindow = Math.max(1, parseIntStrict(kv['history-window'], 5))
 
   const report = readJson(reportFile)
-  const rows = collectCapacityRows({ report, suiteId, budgetId, convergeMode })
-  const maxTestedLevel = detectMaxTestedLevel({ report, suiteId, convergeMode })
+  const capacitySlice = collectCapacityRows({ report, suiteId, budgetId, whereAxis, convergeMode })
+  const rows = capacitySlice.rows
+  const maxTestedLevel = detectMaxTestedLevel({
+    report,
+    suiteId,
+    convergeMode,
+    primaryAxis: capacitySlice.primaryAxis,
+    primaryAxisLevels: capacitySlice.primaryAxisLevels,
+  })
   const current = summarizeRows({ rows, maxTestedLevel })
 
   const runRecord = {
@@ -395,9 +474,15 @@ const cmdRecord = (kv) => {
     envId: kv['env-id'] ?? 'unknown',
     suiteId,
     budgetId,
+    whereAxis: capacitySlice.whereAxis,
+    primaryAxis: capacitySlice.primaryAxis,
     convergeMode,
     current,
-    timeoutRatios: rows.filter((row) => /timeout/i.test(String(row.reason ?? ''))).map((row) => row.dirtyRootsRatio),
+    timeoutRatios: rows
+      .filter((row) => /timeout/i.test(String(row.reason ?? '')))
+      .map((row) => row.sliceValue)
+      .filter((value) => typeof value === 'number' && Number.isFinite(value)),
+    timeoutSlices: rows.filter((row) => /timeout/i.test(String(row.reason ?? ''))).map((row) => row.sliceValue),
     rows,
   }
 
@@ -411,6 +496,7 @@ const cmdRecord = (kv) => {
     envId: runRecord.envId,
     suiteId,
     budgetId,
+    whereAxis: runRecord.whereAxis,
     convergeMode,
   })
   const stable = summarizeStableWindow({ rows: comparableHistory, historyWindow })
@@ -448,6 +534,8 @@ const cmdRecord = (kv) => {
     envId: runRecord.envId,
     suiteId,
     budgetId,
+    whereAxis: runRecord.whereAxis,
+    primaryAxis: runRecord.primaryAxis,
     convergeMode,
     current,
     stable,

@@ -1,0 +1,13 @@
+{
+  "status": "not_applicable",
+  "candidateCount": 0,
+  "headSampleCount": 0,
+  "counts": {
+    "resolved": 0,
+    "flaky": 0,
+    "persistentTail": 0,
+    "persistentSystemic": 0,
+    "missing": 0
+  },
+  "reason": "tail-recheck skipped for examples.logixReact.scenarios"
+}

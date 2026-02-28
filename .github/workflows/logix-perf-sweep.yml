@@ -18,7 +18,7 @@ on:
       perf_files:
         description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 packages/logix-react）"
         required: false
-        default: "test/browser/perf-boundaries/converge-steps.test.tsx"
+        default: "test/browser/perf-boundaries/converge-steps.test.tsx,test/browser/perf-scenarios"
       perf_profile:
         description: "采样 profile（smoke/quick/default/soak；影响 runs/warmup/timeout）"
         required: false
@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 355
     env:
-      PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx
+      PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx,test/browser/perf-scenarios
       PERF_PROFILE: quick
       PERF_DIFF_MODE: strict
       PERF_CAPACITY_FLOOR_MIN: 2000
@@ -154,6 +154,10 @@ jobs:
       PERF_CAPACITY_DYNAMIC_HARD_RATIO: 0.8
       PERF_CAPACITY_DYNAMIC_WARN_RATIO: 0.9
       PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT: 1
+      PERF_CAPACITY_SUITE_ID: converge.txnCommit
+      PERF_CAPACITY_BUDGET_ID: commit.p95<=50ms
+      PERF_CAPACITY_SCOPE_CONVERGE_MODE: auto
+      PERF_CAPACITY_WHERE_AXIS: dirtyRootsRatio
       PERF_TAIL_RECHECK_ENABLE: 1
       PERF_TAIL_RECHECK_SUITE_ID: converge.txnCommit
       PERF_TAIL_RECHECK_BUDGET_ID: auto<=full*1.05
@@ -299,7 +303,7 @@ jobs:
 
             if [ "${GITHUB_EVENT_SCHEDULE:-}" = "0 19 * * 0" ]; then
               # Weekly: mirror collect.ts default (perf-boundaries + watcher-browser-perf).
-              echo "PERF_FILES=test/browser/perf-boundaries,test/browser/watcher-browser-perf.test.tsx" >> "$GITHUB_ENV"
+              echo "PERF_FILES=test/browser/perf-boundaries,test/browser/watcher-browser-perf.test.tsx,test/browser/perf-scenarios" >> "$GITHUB_ENV"
               echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
               echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
               echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
@@ -307,7 +311,7 @@ jobs:
               echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=1" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-weekly-${{ github.run_id }}" >> "$GITHUB_ENV"
             else
-              echo "PERF_FILES=test/browser/perf-boundaries/converge-steps.test.tsx" >> "$GITHUB_ENV"
+              echo "PERF_FILES=test/browser/perf-boundaries/converge-steps.test.tsx,test/browser/perf-scenarios" >> "$GITHUB_ENV"
               echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
               echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
               echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
@@ -583,9 +587,10 @@ jobs:
             --hard-floor-ratio "$PERF_CAPACITY_DYNAMIC_HARD_RATIO" \
             --profile "$PERF_PROFILE" \
             --env-id "$PERF_ENV_ID" \
-            --suite-id "converge.txnCommit" \
-            --budget-id "commit.p95<=50ms" \
-            --converge-mode "auto" \
+            --suite-id "$PERF_CAPACITY_SUITE_ID" \
+            --budget-id "$PERF_CAPACITY_BUDGET_ID" \
+            --where-axis "$PERF_CAPACITY_WHERE_AXIS" \
+            --converge-mode "$PERF_CAPACITY_SCOPE_CONVERGE_MODE" \
             --history-window "$PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW" \
             --min-history-runs "$PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS" \
             --env-out "$GITHUB_ENV" \
@@ -1135,9 +1140,10 @@ jobs:
           mkdir -p "$PERF_CAPACITY_HISTORY_DIR"
           node "$PERF_CAPACITY_MODEL_SCRIPT" record \
             --report "$REPORT" \
-            --suite-id "converge.txnCommit" \
-            --budget-id "commit.p95<=50ms" \
-            --converge-mode "auto" \
+            --suite-id "$PERF_CAPACITY_SUITE_ID" \
+            --budget-id "$PERF_CAPACITY_BUDGET_ID" \
+            --where-axis "$PERF_CAPACITY_WHERE_AXIS" \
+            --converge-mode "$PERF_CAPACITY_SCOPE_CONVERGE_MODE" \
             --history "$PERF_CAPACITY_HISTORY_FILE" \
             --latest "$PERF_CAPACITY_LATEST_FILE" \
             --artifact-history "$PERF_OUT_DIR/capacity-history.jsonl" \

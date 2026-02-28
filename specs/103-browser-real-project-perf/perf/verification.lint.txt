@@ -1,0 +1,14 @@
+
+> intent-flow@0.0.0 lint /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic
+> pnpm lint:oxlint && pnpm lint:eslint
+
+
+> intent-flow@0.0.0 lint:oxlint /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic
+> oxlint -c .oxlintrc.json --deny-warnings apps packages
+
+Found 0 warnings and 0 errors.
+Finished in 42ms on 593 files with 74 rules using 12 threads.
+
+> intent-flow@0.0.0 lint:eslint /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic
+> eslint "apps/**/src/**/*.{ts,tsx}" "packages/**/src/**/*.{ts,tsx}" --max-warnings 0
+

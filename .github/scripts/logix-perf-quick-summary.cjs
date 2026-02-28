@@ -10,9 +10,16 @@ const baseRef = (process.env.BASE_REF || '').trim()
 const headRef = (process.env.HEAD_REF || '').trim()
 const envId = process.env.PERF_ENV_ID || ''
 const profile = process.env.PERF_PROFILE || 'quick'
+const scenarioSuiteId = 'examples.logixReact.scenarios'
 const capacitySuiteId = process.env.PERF_CAPACITY_SUITE_ID || 'converge.txnCommit'
 const capacityBudgetId = process.env.PERF_CAPACITY_BUDGET_ID || 'commit.p95<=50ms'
-const capacityScopeConvergeMode = process.env.PERF_CAPACITY_SCOPE_CONVERGE_MODE || 'auto'
+const capacityScopeConvergeModeRaw = (process.env.PERF_CAPACITY_SCOPE_CONVERGE_MODE || 'auto').trim()
+const capacityScopeConvergeMode =
+  capacityScopeConvergeModeRaw.length > 0 &&
+  capacityScopeConvergeModeRaw !== '*' &&
+  capacityScopeConvergeModeRaw.toLowerCase() !== 'any'
+    ? capacityScopeConvergeModeRaw
+    : null
 const parseOptionalPositiveInt = (raw) => {
   const text = String(raw ?? '').trim()
   if (!text) return undefined
@@ -431,7 +438,7 @@ const collectCapacityRows = (report) => {
   for (const t of suite.thresholds) {
     if (!t || typeof t !== 'object') continue
     if ((t.budget?.id ?? budgetKey(t.budget)) !== capacityBudgetId) continue
-    if ((t.where?.convergeMode ?? null) !== capacityScopeConvergeMode) continue
+    if (capacityScopeConvergeMode != null && (t.where?.convergeMode ?? null) !== capacityScopeConvergeMode) continue
     const dirtyRootsRatio = t.where?.dirtyRootsRatio
     if (!(typeof dirtyRootsRatio === 'number' && Number.isFinite(dirtyRootsRatio))) continue
     rows.push({
@@ -461,6 +468,58 @@ const summarizeCapacityRows = (rows) => {
     p95MaxLevel,
     maxObservedLevel,
   }
+}
+
+const collectScenarioThresholdDeltas = (diffReport) => {
+  if (!diffReport || !Array.isArray(diffReport.suites)) return []
+  const suite = diffReport.suites.find((s) => s?.id === scenarioSuiteId)
+  if (!suite || !Array.isArray(suite.thresholdDeltas)) return []
+  return suite.thresholdDeltas
+    .filter((t) => t && typeof t === 'object')
+    .map((t) => ({
+      budgetId: budgetKey(t.budget),
+      whereKey: stableParamsKey(t.where),
+      beforeMaxLevel: t.beforeMaxLevel ?? null,
+      afterMaxLevel: t.afterMaxLevel ?? null,
+      message: t.message ?? '',
+      deltaDirection:
+        t.beforeMaxLevel === t.afterMaxLevel
+          ? 'same'
+          : typeof t.beforeMaxLevel === 'number' && typeof t.afterMaxLevel === 'number'
+          ? t.afterMaxLevel < t.beforeMaxLevel
+            ? 'regression'
+            : 'improvement'
+          : 'changed',
+    }))
+}
+
+const collectEvidenceDeltasByPrefix = (diffReport, suiteId, prefix) => {
+  if (!diffReport || !Array.isArray(diffReport.suites)) return []
+  const suite = diffReport.suites.find((s) => s?.id === suiteId)
+  if (!suite || !Array.isArray(suite.evidenceDeltas)) return []
+  return suite.evidenceDeltas.filter(
+    (entry) => entry && typeof entry.name === 'string' && entry.name.startsWith(prefix),
+  )
+}
+
+const buildScenarioActionSuggestions = (args) => {
+  const out = []
+  const hasRegression = args.scenarioThresholdDeltas.some((x) => x.deltaDirection === 'regression')
+  const hasMemorySignal = args.memoryEvidenceDeltas.length > 0
+  const hasDiagnosticsSignal = args.diagnosticsEvidenceDeltas.length > 0
+
+  if (hasRegression) {
+    out.push('优先收窄热点写入范围（按场景拆分 state 写路径），避免一次事务影响过宽。')
+    out.push('检查订阅粒度（selector/useModule 订阅面），优先把高频读热点拆分为更小切片。')
+  }
+  if (hasMemorySignal) {
+    out.push('对长时场景增加 heap 观测，若 drift 持续上升优先检查对象保留与缓存回收边界。')
+  }
+  if (hasDiagnosticsSignal) {
+    out.push('诊断开销异常时先降到 sampled/light，再对高开销场景定点开启 full。')
+  }
+
+  return Array.from(new Set(out))
 }
 
 const pickFiniteNumber = (...values) => {
@@ -599,6 +658,14 @@ const capacityFloorViolated =
 const comparable = diff?.meta?.comparability?.comparable === true
 const regressions = diff?.summary?.regressions ?? 0
 const improvements = diff?.summary?.improvements ?? 0
+const scenarioThresholdDeltas = collectScenarioThresholdDeltas(diff)
+const memoryEvidenceDeltas = collectEvidenceDeltasByPrefix(diff, scenarioSuiteId, 'memory.')
+const diagnosticsEvidenceDeltas = collectEvidenceDeltasByPrefix(diff, scenarioSuiteId, 'diagnostics.')
+const scenarioActionSuggestions = buildScenarioActionSuggestions({
+  scenarioThresholdDeltas,
+  memoryEvidenceDeltas,
+  diagnosticsEvidenceDeltas,
+})
 const dynamicEvaluation =
   capacityLatest?.evaluation && typeof capacityLatest.evaluation === 'object' ? capacityLatest.evaluation : null
 const dynamicHardFailed = dynamicEvaluation?.hardPass === false
@@ -635,7 +702,23 @@ const conclusion = (() => {
 
 md += `\n### Conclusion\n`
 md += `- comparable: ${code(String(diff?.meta?.comparability?.comparable ?? '?'))}\n`
+if (diff?.meta?.comparability?.comparable === false) {
+  const configDrift = Array.isArray(diff?.meta?.comparability?.configMismatches)
+    ? diff.meta.comparability.configMismatches
+    : []
+  const envDrift = Array.isArray(diff?.meta?.comparability?.envMismatches) ? diff.meta.comparability.envMismatches : []
+  if (configDrift.length > 0) {
+    md += `- comparability config drift: ${code(configDrift.slice(0, 3).join('; '))}\n`
+  }
+  if (envDrift.length > 0) {
+    md += `- comparability env drift: ${code(envDrift.slice(0, 3).join('; '))}\n`
+  }
+}
 md += `- diff: regressions=${code(regressions)}, improvements=${code(improvements)}\n`
+md += `- scenario suite deltas(${code(scenarioSuiteId)}): ${code(scenarioThresholdDeltas.length)}\n`
+md += `- scenario evidence signals: memory=${code(memoryEvidenceDeltas.length)}, diagnostics=${code(
+  diagnosticsEvidenceDeltas.length,
+)}\n`
 md += `- head budgetExceeded: ${code(afterFailures.length)}\n`
 md += `- head auto-probe sufficiency: insufficient=${code(headAutoProbeInsufficient ? '1' : '0')}, reasonCodes=${code(
   headAutoProbeReasonCodes.length > 0 ? headAutoProbeReasonCodes.join(',') : 'none',
@@ -712,6 +795,51 @@ if (afterFailures.length > 0) {
   }
 }
 
+if (scenarioThresholdDeltas.length > 0) {
+  md += `\n**Scenario budget deltas (${code(scenarioSuiteId)})**\n`
+  const shown = scenarioThresholdDeltas.slice(0, 10)
+  for (const row of shown) {
+    md += `- ${code(row.budgetId)} ${code(row.whereKey)} before=${code(
+      row.beforeMaxLevel == null ? 'null' : row.beforeMaxLevel,
+    )} after=${code(row.afterMaxLevel == null ? 'null' : row.afterMaxLevel)} trend=${code(row.deltaDirection)}\n`
+  }
+  if (scenarioThresholdDeltas.length > shown.length) {
+    md += `- ... +${scenarioThresholdDeltas.length - shown.length} more\n`
+  }
+
+  const scenarioHeadFailures = afterFailures.filter((entry) => entry.suiteId === scenarioSuiteId).slice(0, 8)
+  if (scenarioHeadFailures.length > 0) {
+    md += `\n- first-fail slices (head):\n`
+    for (const failure of scenarioHeadFailures) {
+      md += `  - budget=${failure.budgetId} where=${failure.whereKey} firstFail=${String(
+        failure.firstFailLevel ?? 'null',
+      )}\n`
+    }
+  }
+}
+
+if (memoryEvidenceDeltas.length > 0 || diagnosticsEvidenceDeltas.length > 0) {
+  md += `\n**Scenario evidence signals (${code(scenarioSuiteId)})**\n`
+  const evidenceRows = memoryEvidenceDeltas.concat(diagnosticsEvidenceDeltas).slice(0, 10)
+  for (const entry of evidenceRows) {
+    const beforeValue = entry?.before?.value
+    const afterValue = entry?.after?.value
+    md += `- ${code(entry.name)}: before=${code(beforeValue ?? 'n/a')} after=${code(afterValue ?? 'n/a')} ${code(
+      entry.message ?? '',
+    )}\n`
+  }
+  if (memoryEvidenceDeltas.length + diagnosticsEvidenceDeltas.length > evidenceRows.length) {
+    md += `- ... +${memoryEvidenceDeltas.length + diagnosticsEvidenceDeltas.length - evidenceRows.length} more\n`
+  }
+}
+
+if (scenarioActionSuggestions.length > 0) {
+  md += `\n**Recommended actions**\n`
+  for (const suggestion of scenarioActionSuggestions) {
+    md += `- ${suggestion}\n`
+  }
+}
+
 if (afterCapacitySummary) {
   md += `\n**Head capacity bottlenecks (${code(capacityBudgetId)})**\n`
   const bottlenecks = afterCapacityRows
@@ -752,9 +880,27 @@ md += `- \`maxLevel\` is the highest primary-axis level that still satisfies a b
   }
 }
 
-md += `\n### What do \`steps\` and \`dirtyRootsRatio\` mean?\n`
-md += `- \`steps\` is the primary axis for this suite: it controls the size of the converge state (more steps = more roots/fields).\n`
-md += `- \`dirtyRootsRatio\` controls how many roots/fields are patched per transaction: \`dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))\`.\n`
+{
+  const terminologySuite =
+    (afterReport?.suites || []).find((s) => s?.id === capacitySuiteId) || (afterReport?.suites || [])[0] || null
+  const terminologyPoint = Array.isArray(terminologySuite?.points) ? terminologySuite.points[0] : null
+  const terminologyKeys = terminologyPoint?.params && typeof terminologyPoint.params === 'object'
+    ? Object.keys(terminologyPoint.params)
+    : []
+
+  if (terminologyKeys.includes('steps') && terminologyKeys.includes('dirtyRootsRatio')) {
+    md += `\n### What do \`steps\` and \`dirtyRootsRatio\` mean?\n`
+    md += `- \`steps\` is the primary axis for this suite: it controls the size of the converge state (more steps = more roots/fields).\n`
+    md += `- \`dirtyRootsRatio\` controls how many roots/fields are patched per transaction: \`dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))\`.\n`
+  } else if (terminologyKeys.includes('scenarioId') && terminologyKeys.includes('loadLevel')) {
+    md += `\n### What do \`scenarioId\` and \`loadLevel\` mean?\n`
+    md += `- \`scenarioId\` identifies real business paths in examples/logix-react (route/query/form/burst/external).\n`
+    md += `- \`loadLevel\` is workload tier (\`low/medium/high\`), used to locate the first failing pressure level.\n`
+  } else {
+    md += `\n### Axis hints\n`
+    md += `- primary axis levels and firstFail are taken from suite thresholds; see detailed section for exact where-slices.\n`
+  }
+}
 md += `- Metrics are evaluated on the p95 statistic (\`n = runs - warmupDiscard\`; tail-only failures are often noise unless reproducible).\n`
 md += `\n</details>\n`
 

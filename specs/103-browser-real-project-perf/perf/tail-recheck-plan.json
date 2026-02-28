@@ -1,0 +1,6 @@
+{
+  "suiteId": "examples.logixReact.scenarios",
+  "budgetId": "commit.p95<=50ms",
+  "status": "not_applicable",
+  "reason": "tail-recheck requires dirtyRootsRatio + relative budget slices; scenario suite is scenarioId/loadLevel"
+}

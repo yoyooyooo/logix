@@ -592,6 +592,34 @@ const main = async (): Promise<void> => {
     },
   } as const
 
+  const deriveSliceRecommendations = (issueCounts: Record<string, number>): ReadonlyArray<string> => {
+    const keys = Object.keys(issueCounts)
+    const out: string[] = []
+
+    const has = (pattern: RegExp): boolean => keys.some((key) => pattern.test(key))
+
+    if (has(/^threshold:budgetExceeded$/)) {
+      out.push('出现 budgetExceeded 切片：优先收窄写入范围（热点字段拆分）并减少单事务脏根数量。')
+      out.push('若热点集中在少数切片：优先优化订阅粒度（selector/useModule 切片）以降低无关重算。')
+    }
+
+    if (has(/^threshold:missing/) || has(/^p95:missing/) || has(/^p95:metricMissing$/)) {
+      out.push('存在缺失切片/指标：先补齐场景覆盖与证据字段，再做容量结论。')
+    }
+
+    if (has(/timeout/i)) {
+      out.push('存在 timeout 信号：先降诊断档位（full -> sampled/light）并缩小单次采样范围。')
+    }
+
+    if (has(/^p95:statsMissing$/)) {
+      out.push('统计样本不足：提高 runs 或降低 warmupDiscard，保证每切片至少有稳定样本。')
+    }
+
+    return Array.from(new Set(out))
+  }
+
+  const sliceRecommendations = deriveSliceRecommendations(sliceIssueCounts)
+
   const recommendation = {
     schemaVersion: 1,
     meta: {
@@ -646,6 +674,7 @@ const main = async (): Promise<void> => {
         ...(confirm && confirmationPerformed && confirmedWinner && confirmedWinner.id !== winner.id
           ? ['profile=default 确认后 winner 发生变化：结论不稳定，建议缩小 candidates 或增加采样再跑']
           : []),
+        ...sliceRecommendations,
       ],
     },
     candidates: results.map((r) => ({

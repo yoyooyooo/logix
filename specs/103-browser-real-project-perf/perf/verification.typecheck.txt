@@ -1,0 +1,59 @@
+
+> intent-flow@0.0.0 typecheck /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic
+> pnpm -r typecheck
+
+Scope: 26 of 27 workspace projects
+apps/logix-galaxy-api typecheck$ tsc -p tsconfig.json --noEmit
+apps/speckit-kanban-api typecheck$ tsc -p tsconfig.json --noEmit
+examples/effect-api typecheck$ tsc -p tsconfig.json --noEmit
+apps/speckit-kanban-fe typecheck$ tsc -p tsconfig.json --noEmit
+apps/speckit-kanban-fe typecheck: Done
+packages/logix-core typecheck$ tsc --noEmit
+examples/effect-api typecheck: Done
+packages/logix-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+apps/speckit-kanban-api typecheck: Done
+apps/logix-galaxy-api typecheck: Done
+packages/logix-sandbox typecheck: Done
+packages/logix-core typecheck: Done
+packages/i18n typecheck$ tsc -p tsconfig.json --noEmit
+packages/logix-cli typecheck$ tsc -p tsconfig.json --noEmit
+examples/logix-form-poc typecheck$ tsc -p tsconfig.json
+packages/domain typecheck$ tsc -p tsconfig.json --noEmit
+packages/logix-cli typecheck: Done
+packages/logix-core-ng typecheck$ tsc -p tsconfig.json --noEmit
+packages/i18n typecheck: Done
+packages/logix-query typecheck$ tsc -p tsconfig.json --noEmit
+packages/domain typecheck: Done
+packages/logix-test typecheck$ tsc -p tsconfig.test.json --noEmit
+examples/logix-form-poc typecheck: Done
+packages/logix-core-ng typecheck: Done
+packages/logix-query typecheck: Done
+packages/logix-test typecheck: Done
+examples/logix typecheck$ pnpm run check:pattern-reuse && tsc -p tsconfig.json --noEmit
+examples/logix-cli-playground typecheck$ tsc -p tsconfig.json --noEmit
+packages/logix-react typecheck$ tsc -p tsconfig.test.json --noEmit
+examples/logix typecheck: > @examples/logix@0.0.1 check:pattern-reuse /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/examples/logix
+examples/logix typecheck: > node scripts/check-pattern-reuse.mjs
+examples/logix typecheck: [pattern-reuse] allowlist（允许 < 2 consumers）：
+examples/logix typecheck: - cascade: consumers=1
+examples/logix typecheck:   - src/scenarios/region-cascade.ts
+examples/logix typecheck: [pattern-reuse] ok (patterns=8, scenarios=38, min=2)
+examples/logix-cli-playground typecheck: Done
+examples/logix typecheck: Done
+packages/logix-react typecheck: Done
+packages/logix-devtools-react typecheck$ tsc -p tsconfig.json --noEmit
+packages/logix-form typecheck$ tsc -p tsconfig.json --noEmit
+packages/speckit-kit typecheck$ tsc -p tsconfig.json --noEmit && tsc -p ui/tsconfig.json --noEmit
+packages/logix-form typecheck: Done
+packages/logix-devtools-react typecheck: Done
+packages/speckit-kit typecheck: Done
+examples/logix-react typecheck$ tsc -p tsconfig.json --noEmit
+examples/logix-sandbox-mvp pretypecheck$ pnpm gen:monaco:types
+apps/logix-galaxy-fe typecheck$ tsc -p tsconfig.json --noEmit
+examples/logix-sandbox-mvp pretypecheck: > @examples/logix-sandbox-mvp@0.0.1 gen:monaco:types /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/examples/logix-sandbox-mvp
+examples/logix-sandbox-mvp pretypecheck: > tsx scripts/generate-monaco-type-bundle.ts
+examples/logix-sandbox-mvp pretypecheck: Done
+examples/logix-sandbox-mvp typecheck$ tsc -p tsconfig.json --noEmit
+apps/logix-galaxy-fe typecheck: Done
+examples/logix-react typecheck: Done
+examples/logix-sandbox-mvp typecheck: Done

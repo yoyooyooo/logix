@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/specs/103/gate-policy.schema.json",
+  "title": "PerfGatePolicy",
+  "type": "object",
+  "required": ["profiles", "comparability", "failurePolicy", "executionModes"],
+  "properties": {
+    "profiles": {
+      "type": "object",
+      "required": ["pr", "merge", "nightly"],
+      "properties": {
+        "pr": { "$ref": "#/$defs/ProfileRule" },
+        "merge": { "$ref": "#/$defs/ProfileRule" },
+        "nightly": { "$ref": "#/$defs/ProfileRule" }
+      },
+      "additionalProperties": false
+    },
+    "comparability": {
+      "type": "object",
+      "required": ["requireComparableForHardConclusion"],
+      "properties": {
+        "requireComparableForHardConclusion": { "const": true },
+        "allowedConfigDrift": { "type": "boolean", "default": false },
+        "allowedEnvDrift": { "type": "boolean", "default": false },
+        "onComparableFalse": {
+          "enum": ["triage_only", "fail_hard_gate"],
+          "default": "triage_only"
+        }
+      },
+      "additionalProperties": false
+    },
+    "failurePolicy": {
+      "type": "object",
+      "required": ["onTimeout", "onMissingSuite", "onStabilityWarning", "onScenarioCoverageBelowTarget"],
+      "properties": {
+        "onTimeout": { "enum": ["retry_subset", "retry_higher_profile", "fail"] },
+        "onMissingSuite": { "enum": ["fail", "skip_with_warning"] },
+        "onStabilityWarning": { "enum": ["retry_higher_profile", "warn_only"] },
+        "onScenarioCoverageBelowTarget": { "enum": ["warn_only", "fail"] }
+      },
+      "additionalProperties": false
+    },
+    "executionModes": {
+      "type": "object",
+      "required": ["quick", "default", "soak"],
+      "properties": {
+        "quick": { "$ref": "#/$defs/ExecutionModeRule" },
+        "default": { "$ref": "#/$defs/ExecutionModeRule" },
+        "soak": { "$ref": "#/$defs/ExecutionModeRule" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "ProfileRule": {
+      "type": "object",
+      "required": ["profile", "scope"],
+      "properties": {
+        "profile": { "enum": ["quick", "default", "soak"] },
+        "scope": { "enum": ["subset", "p1_full", "all"] },
+        "maxDurationMinutes": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ExecutionModeRule": {
+      "type": "object",
+      "required": ["scope", "hardGate", "maxDurationMinutes"],
+      "properties": {
+        "scope": { "enum": ["subset", "p1_full", "all"] },
+        "hardGate": { "type": "boolean" },
+        "maxDurationMinutes": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

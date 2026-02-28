@@ -1,0 +1,1874 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-02-27T18:42:06.829Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-02-27",
+    "matrixHash": "5e43bddfd8e970072889caaf89dbcbb154d0c4c750b9cf02683a014f6c80bc0d",
+    "git": {
+      "branch": "feat/103-browser-real-project-perf-scale",
+      "commit": "9de0f176257470b7290e37790669d6b78fc89971",
+      "dirty": true
+    },
+    "config": {
+      "runs": 80,
+      "warmupDiscard": 10,
+      "timeoutMs": 30000,
+      "headless": true,
+      "profile": "soak",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M4 Pro",
+      "memoryGb": 24,
+      "node": "v22.19.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    },
+    "evidence": {
+      "memory": {
+        "driftBytes": {
+          "count": 15,
+          "p50": 6367240,
+          "p95": 10247520
+        },
+        "driftRatio": {
+          "count": 15,
+          "p50": 0.06385432571661706,
+          "p95": 0.08565213439931174
+        }
+      },
+      "diagnostics": {
+        "levels": [
+          "off"
+        ],
+        "overheadRatio": {
+          "count": 15,
+          "p50": 0,
+          "p95": 0
+        }
+      },
+      "soak": {
+        "roundsObserved": []
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "examples.logixReact.scenarios",
+      "title": "examples/logix-react: real project browser scenarios",
+      "priority": "P1",
+      "primaryAxis": "scenarioId",
+      "budgets": [
+        {
+          "type": "absolute",
+          "id": "commit.p95<=50ms",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 50
+        },
+        {
+          "type": "relative",
+          "id": "high<=medium*1.20",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.2,
+          "minDeltaMs": 0.5,
+          "numeratorRef": "loadLevel=high",
+          "denominatorRef": "loadLevel=medium"
+        }
+      ],
+      "points": [
+        {
+          "params": {
+            "scenarioId": "route-switch",
+            "loadLevel": "low"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 1.108333333240201,
+                "p95Ms": 1.7583333333022892
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 13.299999998882413,
+                "p95Ms": 21.09999999962747
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.route-switch.low"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 12
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 12
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "checkout:0:0:0:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 58742752
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 58620784
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 4298500
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.07269031724839468
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "route-switch",
+            "loadLevel": "medium"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.659999999962747,
+                "p95Ms": 0.9799999999813735
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 13.199999999254942,
+                "p95Ms": 19.59999999962747
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.route-switch.medium"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 20
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 20
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "checkout:0:0:0:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 92288303
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 92769967
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6628992
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.06815489566554452
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "route-switch",
+            "loadLevel": "high"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.40625,
+                "p95Ms": 0.6218749999534339
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 13,
+                "p95Ms": 19.899999998509884
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.route-switch.high"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 32
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 32
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "checkout:0:0:0:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 148435967
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 150296015
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 10247520
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.06510833949901601
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "query-list-refresh",
+            "loadLevel": "low"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 1.1333333334575098,
+                "p95Ms": 1.825000000031044
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 13.600000001490116,
+                "p95Ms": 21.90000000037253
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.query-list-refresh.low"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 12
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 96
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:96:0:0:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 86858263
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 87561847
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 3844084
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.0436234824004299
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "query-list-refresh",
+            "loadLevel": "medium"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.7049999999813735,
+                "p95Ms": 0.975
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 14.099999999627471,
+                "p95Ms": 19.5
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.query-list-refresh.medium"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 20
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 280
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:280:0:0:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 111221827
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 111724631
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6367240
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.054364814538561054
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "query-list-refresh",
+            "loadLevel": "high"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.4156249999650754,
+                "p95Ms": 0.6593750000465661
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 13.299999998882413,
+                "p95Ms": 21.100000001490116
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.query-list-refresh.high"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 32
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 768
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:768:0:0:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 108068843
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 108499747
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 10156232
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.08565213439931174
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "form-cascade-validate",
+            "loadLevel": "low"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 1.0833333333333333,
+                "p95Ms": 1.8666666665424902
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 13,
+                "p95Ms": 22.399999998509884
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.form-cascade-validate.low"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 12
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 48
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:0:0:0:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 73177368
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 73648828
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 3493704
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.04764664089362843
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "form-cascade-validate",
+            "loadLevel": "medium"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.6,
+                "p95Ms": 1
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 12,
+                "p95Ms": 20
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.form-cascade-validate.medium"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 20
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 80
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:0:0:0:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 101019611
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 100829371
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 5785860
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.056379591230893464
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "form-cascade-validate",
+            "loadLevel": "high"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.3843749999650754,
+                "p95Ms": 0.6656250000232831
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 12.299999998882413,
+                "p95Ms": 21.300000000745058
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.form-cascade-validate.high"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 32
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 128
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:0:0:0:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 92569768
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 92960016
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 9217708
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.09042325371243476
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "dense-interaction-burst",
+            "loadLevel": "low"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 1.1000000000931323,
+                "p95Ms": 1.8333333333333333
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 13.200000001117587,
+                "p95Ms": 22
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.dense-interaction-burst.low"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 12
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 72
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:0:0:156877:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 136777735
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 136736643
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 3780168
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.027691524501410995
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "dense-interaction-burst",
+            "loadLevel": "medium"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.715000000037253,
+                "p95Ms": 1.0450000000186264
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 14.300000000745058,
+                "p95Ms": 20.90000000037253
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.dense-interaction-burst.medium"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 20
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 200
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:0:0:343302:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 83769735
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 86313519
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6276624
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.07325088961631705
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "dense-interaction-burst",
+            "loadLevel": "high"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.48124999995343387,
+                "p95Ms": 0.7625000000116415
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 15.399999998509884,
+                "p95Ms": 24.40000000037253
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.dense-interaction-burst.high"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 32
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 512
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:0:0:302294:0"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 127582542
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 129217770
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 10007588
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.07309254771886832
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "external-push-sync",
+            "loadLevel": "low"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 1.0916666666356225,
+                "p95Ms": 1.6416666666045785
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 13.099999999627471,
+                "p95Ms": 19.699999999254942
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.external-push-sync.low"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 12
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 24
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:0:0:0:24"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 163933498
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 163589878
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 3919996
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.02357763797085406
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "external-push-sync",
+            "loadLevel": "medium"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.6300000000745059,
+                "p95Ms": 1.1350000000558793
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 12.600000001490116,
+                "p95Ms": 22.700000001117587
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.external-push-sync.medium"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 20
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 80
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:0:0:0:80"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 100258638
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 100272210
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 6512760
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.06244075890512052
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "params": {
+            "scenarioId": "external-push-sync",
+            "loadLevel": "high"
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 0.44374999997671694,
+                "p95Ms": 0.6187499999650754
+              }
+            },
+            {
+              "name": "workflow.scenarioMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 70,
+                "medianMs": 14.199999999254942,
+                "p95Ms": 19.799999998882413
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "instanceId",
+              "unit": "string",
+              "status": "ok",
+              "value": "examples.logix-react.external-push-sync.high"
+            },
+            {
+              "name": "txnSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 32
+            },
+            {
+              "name": "opSeq",
+              "unit": "count",
+              "status": "ok",
+              "value": 192
+            },
+            {
+              "name": "traceDigest",
+              "unit": "string",
+              "status": "ok",
+              "value": "home:0:0:0:192"
+            },
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadLevel",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "diagnostics.overheadMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "diagnostics.overheadRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "memory.heapStartBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 157007378
+            },
+            {
+              "name": "memory.heapEndBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 159777454
+            },
+            {
+              "name": "memory.heapDriftBytes",
+              "unit": "bytes",
+              "status": "ok",
+              "value": 10378560
+            },
+            {
+              "name": "memory.heapDriftRatio",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0.06385432571661706
+            },
+            {
+              "name": "memory.gcSupported",
+              "unit": "string",
+              "status": "ok",
+              "value": "true"
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "type": "absolute",
+            "id": "commit.p95<=50ms",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "loadLevel": "low"
+          },
+          "maxLevel": "external-push-sync",
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "type": "absolute",
+            "id": "commit.p95<=50ms",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "loadLevel": "medium"
+          },
+          "maxLevel": "external-push-sync",
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "type": "absolute",
+            "id": "commit.p95<=50ms",
+            "metric": "runtime.txnCommitMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "loadLevel": "high"
+          },
+          "maxLevel": "external-push-sync",
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "type": "relative",
+            "id": "high<=medium*1.20",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.2,
+            "minDeltaMs": 0.5,
+            "numeratorRef": "loadLevel=high",
+            "denominatorRef": "loadLevel=medium"
+          },
+          "maxLevel": "external-push-sync",
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

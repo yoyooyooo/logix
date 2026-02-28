@@ -1,0 +1,797 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-02-27T18:38:05.315Z",
+    "from": {
+      "file": "specs/103-browser-real-project-perf/perf/before.baseline.darwin-arm64.local.default.json",
+      "commit": "9de0f176257470b7290e37790669d6b78fc89971"
+    },
+    "to": {
+      "file": "specs/103-browser-real-project-perf/perf/after.head.darwin-arm64.local.default.json",
+      "commit": "9de0f176257470b7290e37790669d6b78fc89971"
+    },
+    "comparability": {
+      "comparable": false,
+      "allowConfigDrift": true,
+      "allowEnvDrift": true,
+      "configMismatches": [
+        "matrixHash: before=72024dcbdc8cc0df7195ac982026eaf68ebcb86fc217f6fa9e7a8ab59bb8e7d9 after=5e43bddfd8e970072889caaf89dbcbb154d0c4c750b9cf02683a014f6c80bc0d"
+      ],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0,
+    "slices": {
+      "total": 4,
+      "compared": 4,
+      "skippedCoverage": 0,
+      "skippedData": 0,
+      "beforeOnly": 0,
+      "afterOnly": 0
+    }
+  },
+  "suites": [
+    {
+      "id": "examples.logixReact.scenarios",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=3 unavailable=0 missing=0] after[value=0 ok=3 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=off ok=15 unavailable=0 missing=0] after[value=off ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overheadLevel",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 15
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "message": "diagnostics.overheadLevel(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=15] after[value=off ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overheadMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 15
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "diagnostics.overheadMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=15] after[value=0 ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overheadRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 15
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "diagnostics.overheadRatio(points) unit=ratio: before[value=undefined ok=0 unavailable=0 missing=15] after[value=0 ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "instanceId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "examples.logix-react.external-push-sync.high"
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "examples.logix-react.external-push-sync.high"
+          },
+          "message": "instanceId(points) unit=count: before[value=examples.logix-react.external-push-sync.high ok=15 unavailable=0 missing=0] after[value=examples.logix-react.external-push-sync.high ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "memory.gcSupported",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 15
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "true"
+          },
+          "message": "memory.gcSupported(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=15] after[value=true ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "memory.heapDriftBytes",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 15
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 6495484
+          },
+          "message": "memory.heapDriftBytes(points) unit=bytes: before[value=undefined ok=0 unavailable=0 missing=15] after[value=6495484 ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "memory.heapDriftRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 15
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.06943138708437167
+          },
+          "message": "memory.heapDriftRatio(points) unit=ratio: before[value=undefined ok=0 unavailable=0 missing=15] after[value=0.06943138708437167 ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "memory.heapEndBytes",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 15
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 106413106
+          },
+          "message": "memory.heapEndBytes(points) unit=bytes: before[value=undefined ok=0 unavailable=0 missing=15] after[value=106413106 ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "memory.heapStartBytes",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 15
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 106058742
+          },
+          "message": "memory.heapStartBytes(points) unit=bytes: before[value=undefined ok=0 unavailable=0 missing=15] after[value=106058742 ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "opSeq",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 80
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 80
+          },
+          "message": "opSeq(points) unit=count: before[value=80 ok=15 unavailable=0 missing=0] after[value=80 ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "traceDigest",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "home:0:0:0:192"
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "home:0:0:0:192"
+          },
+          "message": "traceDigest(points) unit=count: before[value=home:0:0:0:192 ok=15 unavailable=0 missing=0] after[value=home:0:0:0:192 ok=15 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnSeq",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 20
+          },
+          "after": {
+            "ok": 15,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 20
+          },
+          "message": "txnSeq(points) unit=count: before[value=20 ok=15 unavailable=0 missing=0] after[value=20 ok=15 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "runtime.txnCommitMs",
+          "unit": "ms",
+          "compared": 15,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "scenarioId": "route-switch",
+                "loadLevel": "low"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 1.266666666759799,
+                "p95Ms": 1.625
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 1.3916666666045785,
+                "p95Ms": 1.9333333334264655
+              },
+              "deltaMs": {
+                "medianMs": 0.1249999998447795,
+                "p95Ms": 0.3083333334264655
+              },
+              "ratio": {
+                "median": 1.0986842103965175,
+                "p95": 1.189743589800902
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "dense-interaction-burst",
+                "loadLevel": "low"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.8333333333333334,
+                "p95Ms": 1.7249999999379118
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 1.2083333333333333,
+                "p95Ms": 1.9750000000931323
+              },
+              "deltaMs": {
+                "medianMs": 0.3749999999999999,
+                "p95Ms": 0.2500000001552205
+              },
+              "ratio": {
+                "median": 1.45,
+                "p95": 1.1449275363270834
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "query-list-refresh",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.7449999999254941,
+                "p95Ms": 0.9899999999441207
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.65,
+                "p95Ms": 1.1700000000186264
+              },
+              "deltaMs": {
+                "medianMs": -0.09499999992549413,
+                "p95Ms": 0.18000000007450567
+              },
+              "ratio": {
+                "median": 0.8724832215637652,
+                "p95": 1.1818181819037026
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "form-cascade-validate",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.5150000000372529,
+                "p95Ms": 0.9599999999627471
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.7,
+                "p95Ms": 1.1200000000186265
+              },
+              "deltaMs": {
+                "medianMs": 0.18499999996274707,
+                "p95Ms": 0.16000000005587944
+              },
+              "ratio": {
+                "median": 1.3592233008725534,
+                "p95": 1.166666666731342
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "query-list-refresh",
+                "loadLevel": "high"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.39374999998835847,
+                "p95Ms": 0.59375
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.37187500001164153,
+                "p95Ms": 0.7062500000465661
+              },
+              "deltaMs": {
+                "medianMs": -0.021874999976716936,
+                "p95Ms": 0.11250000004656613
+              },
+              "ratio": {
+                "median": 0.9444444445019335,
+                "p95": 1.1894736842889535
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "scenarioId": "external-push-sync",
+                "loadLevel": "low"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 1.2916666666666667,
+                "p95Ms": 1.9083333333643775
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.8333333333333334,
+                "p95Ms": 1.2916666666666667
+              },
+              "deltaMs": {
+                "medianMs": -0.45833333333333337,
+                "p95Ms": -0.6166666666977108
+              },
+              "ratio": {
+                "median": 0.6451612903225806,
+                "p95": 0.6768558951854957
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "external-push-sync",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.7800000000745058,
+                "p95Ms": 1.1799999999813735
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.775,
+                "p95Ms": 1.034999999962747
+              },
+              "deltaMs": {
+                "medianMs": -0.005000000074505739,
+                "p95Ms": -0.14500000001862645
+              },
+              "ratio": {
+                "median": 0.9935897434948358,
+                "p95": 0.8771186440500718
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "dense-interaction-burst",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.5,
+                "p95Ms": 1.1899999999441206
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.7950000000186265,
+                "p95Ms": 1.05
+              },
+              "deltaMs": {
+                "medianMs": 0.2950000000186265,
+                "p95Ms": -0.1399999999441206
+              },
+              "ratio": {
+                "median": 1.590000000037253,
+                "p95": 0.8823529412179036
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "dense-interaction-burst",
+                "loadLevel": "high"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.5906250000116415,
+                "p95Ms": 0.7156250000116415
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.37812499998835847,
+                "p95Ms": 0.5906250000116415
+              },
+              "deltaMs": {
+                "medianMs": -0.21250000002328306,
+                "p95Ms": -0.125
+              },
+              "ratio": {
+                "median": 0.6402116401793108,
+                "p95": 0.8253275109198721
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "route-switch",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.840000000037253,
+                "p95Ms": 1.0549999999813735
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.7950000000186265,
+                "p95Ms": 1.0299999999813736
+              },
+              "deltaMs": {
+                "medianMs": -0.045000000018626474,
+                "p95Ms": -0.02499999999999991
+              },
+              "ratio": {
+                "median": 0.9464285714087729,
+                "p95": 0.9763033175351268
+              }
+            }
+          ]
+        },
+        {
+          "metric": "workflow.scenarioMs",
+          "unit": "ms",
+          "compared": 15,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "scenarioId": "route-switch",
+                "loadLevel": "low"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 15.200000001117587,
+                "p95Ms": 19.5
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 16.699999999254942,
+                "p95Ms": 23.200000001117587
+              },
+              "deltaMs": {
+                "medianMs": 1.4999999981373549,
+                "p95Ms": 3.700000001117587
+              },
+              "ratio": {
+                "median": 1.0986842103965175,
+                "p95": 1.189743589800902
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "query-list-refresh",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 14.899999998509884,
+                "p95Ms": 19.799999998882413
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 13,
+                "p95Ms": 23.40000000037253
+              },
+              "deltaMs": {
+                "medianMs": -1.8999999985098839,
+                "p95Ms": 3.600000001490116
+              },
+              "ratio": {
+                "median": 0.8724832215637652,
+                "p95": 1.1818181819037028
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "query-list-refresh",
+                "loadLevel": "high"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 12.599999999627471,
+                "p95Ms": 19
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 11.900000000372529,
+                "p95Ms": 22.600000001490116
+              },
+              "deltaMs": {
+                "medianMs": -0.6999999992549419,
+                "p95Ms": 3.600000001490116
+              },
+              "ratio": {
+                "median": 0.9444444445019335,
+                "p95": 1.1894736842889535
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "form-cascade-validate",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 10.300000000745058,
+                "p95Ms": 19.199999999254942
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 14,
+                "p95Ms": 22.40000000037253
+              },
+              "deltaMs": {
+                "medianMs": 3.699999999254942,
+                "p95Ms": 3.200000001117587
+              },
+              "ratio": {
+                "median": 1.3592233008725534,
+                "p95": 1.166666666731342
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "dense-interaction-burst",
+                "loadLevel": "low"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 10,
+                "p95Ms": 20.699999999254942
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 14.5,
+                "p95Ms": 23.700000001117587
+              },
+              "deltaMs": {
+                "medianMs": 4.5,
+                "p95Ms": 3.000000001862645
+              },
+              "ratio": {
+                "median": 1.45,
+                "p95": 1.1449275363270832
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "scenarioId": "external-push-sync",
+                "loadLevel": "low"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 15.5,
+                "p95Ms": 22.90000000037253
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 10,
+                "p95Ms": 15.5
+              },
+              "deltaMs": {
+                "medianMs": -5.5,
+                "p95Ms": -7.400000000372529
+              },
+              "ratio": {
+                "median": 0.6451612903225806,
+                "p95": 0.6768558951854957
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "dense-interaction-burst",
+                "loadLevel": "high"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 18.90000000037253,
+                "p95Ms": 22.90000000037253
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 12.099999999627471,
+                "p95Ms": 18.90000000037253
+              },
+              "deltaMs": {
+                "medianMs": -6.800000000745058,
+                "p95Ms": -4
+              },
+              "ratio": {
+                "median": 0.6402116401793108,
+                "p95": 0.8253275109198721
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "external-push-sync",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 15.600000001490116,
+                "p95Ms": 23.59999999962747
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 15.5,
+                "p95Ms": 20.699999999254942
+              },
+              "deltaMs": {
+                "medianMs": -0.10000000149011612,
+                "p95Ms": -2.900000000372529
+              },
+              "ratio": {
+                "median": 0.9935897434948356,
+                "p95": 0.8771186440500718
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "dense-interaction-burst",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 10,
+                "p95Ms": 23.799999998882413
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 15.900000000372529,
+                "p95Ms": 21
+              },
+              "deltaMs": {
+                "medianMs": 5.900000000372529,
+                "p95Ms": -2.799999998882413
+              },
+              "ratio": {
+                "median": 1.590000000037253,
+                "p95": 0.8823529412179036
+              }
+            },
+            {
+              "params": {
+                "scenarioId": "route-switch",
+                "loadLevel": "medium"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 16.800000000745058,
+                "p95Ms": 21.09999999962747
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 15.900000000372529,
+                "p95Ms": 20.59999999962747
+              },
+              "deltaMs": {
+                "medianMs": -0.900000000372529,
+                "p95Ms": -0.5
+              },
+              "ratio": {
+                "median": 0.9464285714087729,
+                "p95": 0.9763033175351267
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "stabilityWarning: metric=workflow.scenarioMs {loadLevel=low&scenarioId=external-push-sync} baselineP95=22.90ms afterP95=15.50ms diff=7.40ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

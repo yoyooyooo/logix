@@ -1,0 +1,225 @@
+
+> intent-flow@0.0.0 test:turbo /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic
+> turbo run test --ui=stream --output-logs=new-only --log-prefix=none --summarize=true --filter='./packages/*' --filter='./apps/logix-galaxy-api' --filter='./examples/effect-api' --filter='./examples/logix-react' -- --run --cache --project=!browser* --silent=passed-only --reporter=dot --hideSkippedTests
+
+turbo 2.6.1
+
+• Packages in scope: @examples/effect-api, @examples/logix-react, @logixjs/cli, @logixjs/core, @logixjs/core-ng, @logixjs/devtools-react, @logixjs/domain, @logixjs/form, @logixjs/i18n, @logixjs/query, @logixjs/react, @logixjs/sandbox, @logixjs/test, logix-galaxy-api, speckit-kit
+• Running test in 15 packages
+• Remote caching disabled
+cache miss, executing 0e3c4cdd62d93e1e
+cache miss, executing abdb7158b1ba37cd
+cache miss, executing 1354891f746ba76e
+cache miss, executing 26a501fca5af5a45
+
+> @examples/effect-api@0.0.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/examples/effect-api
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+> @logixjs/sandbox@0.0.2 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-sandbox
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+> logix-galaxy-api@0.0.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/apps/logix-galaxy-api
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+> @logixjs/core@0.0.2 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-core
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/apps/logix-galaxy-api
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/examples/effect-api
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-core
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-sandbox
+
+···
+
+ Test Files  2 passed (2)
+      Tests  3 passed (3)
+   Start at  02:44:41
+   Duration  1.03s (transform 206ms, setup 0ms, import 1.65s, tests 151ms, environment 0ms)
+
+·················
+
+ Test Files  5 passed | 1 skipped (6)
+      Tests  17 passed (17)
+   Start at  02:44:41
+   Duration  1.18s (transform 954ms, setup 0ms, import 5.56s, tests 705ms, environment 0ms)
+
+··
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  02:44:41
+   Duration  684ms (transform 189ms, setup 0ms, import 1.03s, tests 9ms, environment 0ms)
+
+-··························································································································································································································································································································································································································································································································································································································································
+
+ Test Files  279 passed (279)
+      Tests  634 passed | 1 skipped (635)
+   Start at  02:44:41
+   Duration  14.71s (transform 8.12s, setup 0ms, import 109.16s, tests 24.30s, environment 233ms)
+
+cache miss, executing 5248432252ae9e93
+cache miss, executing f533e6d64c433ea8
+cache miss, executing 398b652a8b40aeb8
+cache miss, executing dc6a606b031d30dc
+cache miss, executing f3284f1679226c91
+cache miss, executing 0ee436bec10416dd
+
+> @logixjs/domain@0.0.2 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/domain
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+> @logixjs/cli@0.0.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-cli
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+> @logixjs/core-ng@0.0.2 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-core-ng
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+> @logixjs/query@0.0.2 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-query
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+> @logixjs/i18n@0.0.2 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/i18n
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+> @logixjs/test@0.0.2 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-test
+> vitest --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/domain
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-cli
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/i18n
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-core-ng
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-query
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-test
+
+·
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  02:44:57
+   Duration  2.51s (transform 1.92s, setup 0ms, import 2.37s, tests 76ms, environment 0ms)
+
+······
+
+ Test Files  5 passed (5)
+      Tests  6 passed (6)
+   Start at  02:44:57
+   Duration  2.35s (transform 479ms, setup 0ms, import 10.75s, tests 303ms, environment 0ms)
+
+·········
+
+ Test Files  3 passed (3)
+      Tests  9 passed (9)
+   Start at  02:44:57
+   Duration  2.72s (transform 3.65s, setup 0ms, import 7.68s, tests 121ms, environment 0ms)
+
+·········
+
+ Test Files  7 passed (7)
+      Tests  9 passed (9)
+   Start at  02:44:57
+   Duration  2.80s (transform 6.85s, setup 0ms, import 17.35s, tests 378ms, environment 0ms)
+
+··············
+
+ Test Files  11 passed (11)
+      Tests  14 passed (14)
+   Start at  02:44:57
+   Duration  3.02s (transform 8.83s, setup 0ms, import 23.82s, tests 1.35s, environment 1ms)
+
+················
+
+ Test Files  5 passed (5)
+      Tests  16 passed (16)
+   Start at  02:44:58
+   Duration  2.50s (transform 3.93s, setup 0ms, import 8.17s, tests 541ms, environment 0ms)
+
+cache miss, executing c8996f81a5f8092e
+
+> @logixjs/react@0.1.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-react
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-react
+
+································································--······························--································
+
+ Test Files  49 passed | 2 skipped (51)
+      Tests  126 passed | 4 skipped (130)
+   Start at  02:45:01
+   Duration  5.60s (transform 6.89s, setup 0ms, import 30.31s, tests 13.40s, environment 9.14s)
+
+cache miss, executing abb8e8cdac9805e2
+cache miss, executing 1a8ed3b36f9b606b
+
+> @logixjs/devtools-react@0.0.2 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-devtools-react
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+> @logixjs/form@0.0.2 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-form
+> vitest run --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-devtools-react
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/packages/logix-form
+
+·······································
+
+ Test Files  26 passed (26)
+      Tests  39 passed (39)
+   Start at  02:45:08
+   Duration  2.93s (transform 7.47s, setup 0ms, import 25.27s, tests 2.71s, environment 2ms)
+
+·························
+
+ Test Files  11 passed (11)
+      Tests  25 passed (25)
+   Start at  02:45:07
+   Duration  3.61s (transform 7.08s, setup 0ms, import 14.21s, tests 3.77s, environment 7.30s)
+
+cache miss, executing 10b51251d14ff2f7
+
+> @examples/logix-react@0.0.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/examples/logix-react
+> vitest --run --cache --project\=\!browser\* --silent\=passed-only --reporter\=dot --hideSkippedTests
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/examples/logix-react
+
+·······
+
+ Test Files  3 passed (3)
+      Tests  7 passed (7)
+   Start at  02:45:11
+   Duration  786ms (transform 446ms, setup 0ms, import 664ms, tests 111ms, environment 0ms)
+
+
+  Tasks:    14 successful, 14 total
+ Cached:    0 cached, 14 total
+   Time:    32.209s 
+Summary:    /Users/yoyo/Documents/code/personal/logix.worktrees/rebase-perf-dynamic/.turbo/runs/3AGTT88uxi5DeNGmbdIsBYihGq7.json
+

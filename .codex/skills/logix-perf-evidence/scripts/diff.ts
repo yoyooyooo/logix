@@ -390,6 +390,29 @@ const assertComparable = (args: {
     warnings.push(`git.commit: before=${beforeGit.commit} after=${afterGit.commit}`)
   }
 
+  // Dataset drift warnings: this does not block comparability by itself, but helps explain
+  // when before/after do not cover exactly the same suite/point space.
+  const beforeSuites = new Map(args.beforeReport.suites.map((suite) => [suite.id, suite]))
+  const afterSuites = new Map(args.afterReport.suites.map((suite) => [suite.id, suite]))
+  const allSuiteIds = new Set([...beforeSuites.keys(), ...afterSuites.keys()])
+
+  for (const suiteId of allSuiteIds) {
+    const beforeSuite = beforeSuites.get(suiteId)
+    const afterSuite = afterSuites.get(suiteId)
+    if (!beforeSuite) {
+      warnings.push(`dataset.suite.afterOnly:${suiteId}`)
+      continue
+    }
+    if (!afterSuite) {
+      warnings.push(`dataset.suite.beforeOnly:${suiteId}`)
+      continue
+    }
+
+    if (beforeSuite.points.length !== afterSuite.points.length) {
+      warnings.push(`dataset.pointsCount.${suiteId}: before=${beforeSuite.points.length} after=${afterSuite.points.length}`)
+    }
+  }
+
   const docRef = '.codex/skills/logix-perf-evidence/references/perf-evidence.md'
 
   if (configMismatches.length > 0 && !args.allowConfigDrift) {
