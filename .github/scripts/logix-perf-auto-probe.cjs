@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process')
 const usage = () => `\
 Usage:
   node .github/scripts/logix-perf-auto-probe.cjs \\
+    --cwd <examples/logix-react|packages/logix-react> \\
     --profile <smoke|quick|default|soak> \\
     --files <csv> \\
     --out <report.json> \\
@@ -42,6 +43,7 @@ Purpose:
 
 const parseArgs = (argv) => {
   const out = {
+    cwd: undefined,
     profile: undefined,
     files: undefined,
     out: undefined,
@@ -70,6 +72,7 @@ const parseArgs = (argv) => {
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i]
     const v = argv[i + 1]
+    if (k === '--cwd') out.cwd = v
     if (k === '--profile') out.profile = v
     if (k === '--files') out.files = v
     if (k === '--out') out.out = v
@@ -485,8 +488,8 @@ const evaluateDataSufficiency = ({
   }
 }
 
-const runCollect = ({ profile, files, outFile, levels }) => {
-  const args = ['perf', 'collect', '--', '--profile', profile]
+const runCollect = ({ cwd, profile, files, outFile, levels }) => {
+  const args = ['perf', 'collect', '--', '--cwd', cwd, '--profile', profile]
   for (const file of files) {
     args.push('--files', file)
   }
@@ -519,6 +522,7 @@ const main = () => {
     const outFile = path.resolve(process.cwd(), args.out)
     const outDir = path.dirname(outFile)
     fs.mkdirSync(outDir, { recursive: true })
+    const collectCwd = (args.cwd ?? '').trim().length > 0 ? args.cwd.trim() : 'packages/logix-react'
 
     const files = args.files
       .split(',')
@@ -547,7 +551,7 @@ const main = () => {
     const hasCollectBudget = () => totalCollects < args.maxTotalCollects && elapsedMinutes() < args.timeBudgetMinutes
     // eslint-disable-next-line no-console
     console.log(
-      `[logix-perf:auto-probe:start] profile=${args.profile} suite=${args.suiteId} budget=${
+      `[logix-perf:auto-probe:start] profile=${args.profile} cwd=${collectCwd} suite=${args.suiteId} budget=${
         args.budgetId
       } levels=${levels.join(',')} maxIterations=${String(args.maxIterations)} samplesPerIteration=${String(
         args.samplesPerIteration,
@@ -584,6 +588,7 @@ const main = () => {
         const reportFile = path.join(tempDir, `probe.${String(iteration)}.${String(sample)}.json`)
         const collectStartedAtMs = Date.now()
         runCollect({
+          cwd: collectCwd,
           profile: args.profile,
           files,
           outFile: reportFile,

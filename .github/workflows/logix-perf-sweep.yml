@@ -534,11 +534,11 @@ jobs:
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
           if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p examples/logix-react/node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
-          fi
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
       - name: Install Playwright Chromium deps
@@ -620,11 +620,11 @@ jobs:
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
           if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p examples/logix-react/node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
-          fi
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
@@ -651,6 +651,7 @@ jobs:
             AUTO_META_OUT="$PERF_OUT_DIR/steps-probe.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
             AUTO_PROBE_TIMED_OUT=0
             AUTO_ARGS=(
+              --cwd "$PERF_CWD"
               --profile "$PERF_PROFILE"
               --files "$PERF_FILES"
               --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
@@ -751,11 +752,11 @@ jobs:
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
           if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p examples/logix-react/node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
-          fi
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
@@ -790,6 +791,7 @@ jobs:
               AUTO_HEAD_STEPS_OUT="$PERF_OUT_DIR/steps-levels.head.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.csv"
               AUTO_HEAD_META_OUT="$PERF_OUT_DIR/steps-probe.head.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
               AUTO_ARGS=(
+                --cwd "$PERF_CWD"
                 --profile "$PERF_PROFILE"
                 --files "$PERF_FILES"
                 --out "$HEAD_REPORT_PATH"
@@ -897,11 +899,11 @@ jobs:
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
           if [ -d examples/logix-react/node_modules ] && [ ! -e examples/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p examples/logix-react/node_modules/@logixjs
             ln -s "$PWD/.codex/skills/logix-perf-evidence" examples/logix-react/node_modules/@logixjs/perf-evidence
-          fi
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
