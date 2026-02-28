@@ -668,7 +668,8 @@ const scenarioActionSuggestions = buildScenarioActionSuggestions({
 })
 const dynamicEvaluation =
   capacityLatest?.evaluation && typeof capacityLatest.evaluation === 'object' ? capacityLatest.evaluation : null
-const dynamicHardFailed = dynamicEvaluation?.hardPass === false
+const dynamicInapplicable = dynamicEvaluation?.inapplicable === true
+const dynamicHardFailed = dynamicEvaluation?.hardPass === false && !dynamicInapplicable
 const tailRecheckCounts =
   tailRecheckSummary?.counts && typeof tailRecheckSummary.counts === 'object' ? tailRecheckSummary.counts : null
 const tailRecheckSelectionMode =
@@ -755,7 +756,9 @@ if (dynamicEvaluation) {
     String(dynamicEvaluation.warnPass ?? 'n/a'),
   )}), anchorP50=${code(dynamicEvaluation.anchorP50 ?? 'n/a')}, source=${code(
     dynamicEvaluation.anchorSource ?? 'n/a',
-  )}, stableRuns=${code(dynamicEvaluation.stableRuns ?? 'n/a')}\n`
+  )}, stableRuns=${code(dynamicEvaluation.stableRuns ?? 'n/a')}, inapplicable=${code(
+    dynamicInapplicable ? '1' : '0',
+  )}\n`
 }
 md += renderAutoProbeSummary({ probe: autoProbeBase, label: 'base' })
 md += renderAutoProbeSummary({ probe: autoProbeHead, label: 'head' })

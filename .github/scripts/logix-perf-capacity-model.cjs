@@ -509,10 +509,11 @@ const cmdRecord = (kv) => {
     warnFloorRatio,
     anchorP50,
   })
+  const inapplicable = current.ratioCount <= 0
 
   const evaluation = {
-    hardPass: current.floor >= targets.hardFloor,
-    warnPass: current.floor >= targets.warnFloor,
+    hardPass: inapplicable ? true : current.floor >= targets.hardFloor,
+    warnPass: inapplicable ? true : current.floor >= targets.warnFloor,
     hardFloor: targets.hardFloor,
     warnFloor: targets.warnFloor,
     baseFloorMin,
@@ -524,6 +525,8 @@ const cmdRecord = (kv) => {
     minHistoryRuns,
     stableRuns: stable.runs,
     timeoutRetrySuggested: current.timeoutCount > 0,
+    inapplicable,
+    inapplicableReason: inapplicable ? 'missing_capacity_rows' : null,
   }
 
   const latest = {
@@ -559,6 +562,7 @@ const cmdRecord = (kv) => {
     PERF_CAPACITY_DYNAMIC_ANCHOR_P50: evaluation.anchorP50,
     PERF_CAPACITY_DYNAMIC_STABLE_RUNS: evaluation.stableRuns,
     PERF_CAPACITY_DYNAMIC_TIMEOUT_RETRY_SUGGESTED: evaluation.timeoutRetrySuggested ? '1' : '0',
+    PERF_CAPACITY_DYNAMIC_INAPPLICABLE: evaluation.inapplicable ? '1' : '0',
   })
 
   process.stdout.write(`${JSON.stringify(latest, null, 2)}\n`)

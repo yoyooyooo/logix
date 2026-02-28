@@ -287,20 +287,55 @@ const cmdPlan = (kv) => {
   const afterReport = readJson(afterFile)
   const beforeReport = beforeFile && fs.existsSync(beforeFile) ? readJson(beforeFile) : null
 
+  const emitSkipPlan = (skipReason) => {
+    const plan = {
+      generatedAt: new Date().toISOString(),
+      suiteId,
+      budgetId,
+      convergeMode,
+      maxCandidates,
+      nearBudgetMinRatio,
+      selectionMode: 'inapplicable',
+      shouldRun: false,
+      skipReason,
+      matrixOut: null,
+      stepsLevels: [],
+      dirtyRootsRatios: [],
+      budget: null,
+      selectedCandidates: [],
+      allCandidates: [],
+    }
+
+    writeJson(outFile, plan)
+    writeEnv(envOut, {
+      PERF_TAIL_RECHECK_SHOULD_RUN: '0',
+      PERF_TAIL_RECHECK_CANDIDATE_COUNT: 0,
+      PERF_TAIL_RECHECK_SELECTION_MODE: plan.selectionMode,
+      PERF_TAIL_RECHECK_STEPS_LEVELS: '',
+      PERF_TAIL_RECHECK_DIRTY_ROOTS_RATIOS: '',
+      PERF_TAIL_RECHECK_MATRIX: '',
+    })
+
+    process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`)
+  }
+
   const suiteSpec = (Array.isArray(matrix?.suites) ? matrix.suites : []).find((suite) => suite?.id === suiteId)
   if (!suiteSpec) {
-    throw new Error(`suite not found in matrix: ${suiteId}`)
+    emitSkipPlan(`suite_not_found_in_matrix:${suiteId}`)
+    return
   }
 
   const afterSuite = findSuite(afterReport, suiteId)
   if (!afterSuite) {
-    throw new Error(`suite not found in after report: ${suiteId}`)
+    emitSkipPlan(`suite_not_found_in_after_report:${suiteId}`)
+    return
   }
   const beforeSuite = beforeReport ? findSuite(beforeReport, suiteId) : null
 
   const budget = findBudget(suiteSpec, afterSuite, budgetId)
   if (!budget || budget.type !== 'relative') {
-    throw new Error(`relative budget not found: ${budgetId}`)
+    emitSkipPlan(`relative_budget_not_found:${budgetId}`)
+    return
   }
   const suiteLevels = collectSuiteLevels(suiteSpec, afterSuite)
   const topSuiteLevel = suiteLevels.length > 0 ? suiteLevels[suiteLevels.length - 1] : null
