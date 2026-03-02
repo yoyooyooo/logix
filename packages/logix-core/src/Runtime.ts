@@ -102,16 +102,9 @@ const resolveRootImpl = <Sh extends AnyModuleShape>(
     return fromCreateInstanceRaw
   }
 
-  const fromLegacyImplRaw = (rootModule as any).impl as unknown
-  if (fromLegacyImplRaw !== undefined && !isModuleImpl(fromLegacyImplRaw)) {
-    throw new Error('[InvalidModuleRoot] Runtime.make expects ModuleImpl or Module.build(...) result.')
-  }
-
-  const resolved = fromLegacyImplRaw
-  if (!resolved || resolved._tag !== 'ModuleImpl') {
-    throw new Error('[InvalidModuleRoot] Runtime.make expects ModuleImpl or Module.build(...) result.')
-  }
-  return resolved
+  throw new Error(
+    '[InvalidModuleRoot] Runtime.make expects ModuleImpl (e.g. root.createInstance() / root.impl) or Module.build(...) result.',
+  )
 }
 
 const resolveSchedulingPolicySurface = (options: RuntimeOptions | undefined): SchedulingPolicySurface | undefined =>

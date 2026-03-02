@@ -180,7 +180,7 @@ describe('Runtime module input unification', () => {
     ).toThrowError(/\[InvalidModuleRoot]/)
   })
 
-  it('fails fast when neither createInstance() nor legacy .impl provides ModuleImpl', () => {
+  it('fails fast when createInstance() is missing (legacy .impl is ignored)', () => {
     const Root = Logix.Module.make('RuntimeInvalidRootNoImpl', {
       state: Schema.Void,
       actions: {},
@@ -200,17 +200,19 @@ describe('Runtime module input unification', () => {
     ).toThrowError(/\[InvalidModuleRoot]/)
   })
 
-  it('fails fast when legacy .impl exists but is malformed', () => {
+  it('fails fast when root only provides legacy .impl (no fallback unwrap)', () => {
     const Root = Logix.Module.make('RuntimeInvalidLegacyImpl', {
       state: Schema.Void,
       actions: {},
     })
 
+    const built = Root.build({ initial: undefined })
+
     const invalidRoot = {
       _kind: 'Module',
       id: 'RuntimeInvalidLegacyImpl',
       tag: Root.tag,
-      impl: { _tag: 'NotModuleImpl' },
+      impl: built.createInstance(),
     } as any
 
     expect(() =>
