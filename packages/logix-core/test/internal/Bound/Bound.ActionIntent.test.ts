@@ -114,7 +114,7 @@ describe('Bound ActionIntent kernel (O-022)', () => {
     }) as Effect.Effect<void, never, any>,
   )
 
-  it.scoped('dispatchBatch should merge override details and keep count semantics', () =>
+  it.scoped('dispatchBatch should merge override details but keep runtime-owned count semantics', () =>
     Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(64)
       const moduleId = 'Bound.ActionIntentBatchOrigin'
@@ -172,8 +172,64 @@ describe('Bound ActionIntent kernel (O-022)', () => {
           expect(commits[0]?.originDetails?.actionIntent).toBe(true)
           expect(commits[0]?.originDetails?.entry).toBe('dispatchBatch')
           expect(commits[0]?.originDetails?.count).toBe(2)
-          expect(commits[1]?.originDetails?.count).toBe(99)
+          expect(commits[1]?.originDetails?.count).toBe(2)
           expect((yield* runtime.getState).count).toBe(4)
+        }),
+      )
+    }) as Effect.Effect<void, never, any>,
+  )
+
+  it.scoped('dispatch should ignore override attempts for reserved origin audit detail keys', () =>
+    Effect.gen(function* () {
+      const ring = Debug.makeRingBufferSink(64)
+      const moduleId = 'Bound.ActionIntentDispatchOrigin'
+
+      yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
+        Effect.gen(function* () {
+          const runtime = yield* ModuleRuntime.make<
+            Logix.StateOf<typeof Counter.shape>,
+            Logix.ActionOf<typeof Counter.shape>
+          >(
+            { count: 0 },
+            {
+              moduleId,
+              reducers: {
+                inc: Logix.Module.Reducer.mutate((draft) => {
+                  draft.count += 1
+                }),
+              },
+            },
+          )
+
+          yield* Effect.locally(currentTxnOriginOverride, {
+            kind: 'action-intent',
+            name: 'dispatch',
+            details: {
+              _tag: 'override',
+              path: 'override.path',
+              op: 'remove',
+              count: 99,
+              ext: 'ok',
+            },
+          })(runtime.dispatch({ _tag: 'inc', payload: { path: 'real.path' } } as any))
+
+          const commits = ring
+            .getSnapshot()
+            .filter(
+              (event) => event.type === 'state:update' && event.moduleId === moduleId && (event as any).txnId != null,
+            ) as ReadonlyArray<any>
+
+          expect(commits).toHaveLength(1)
+          expect(commits[0]?.originKind).toBe('action-intent')
+          expect(commits[0]?.originName).toBe('dispatch')
+          expect(commits[0]?.originDetails?.ext).toBe('ok')
+
+          expect(commits[0]?.originDetails?._tag).toBe('inc')
+          expect(commits[0]?.originDetails?.path).toBe('real.path')
+          expect(commits[0]?.originDetails?.op).toBe('set')
+
+          expect(commits[0]?.originDetails?.count).toBeUndefined()
+          expect((yield* runtime.getState).count).toBe(1)
         }),
       )
     }) as Effect.Effect<void, never, any>,
