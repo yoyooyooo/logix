@@ -1,4 +1,4 @@
-# Implementation Plan: O-025 DevtoolsHub 投影分层（light/full）
+# Implementation Plan: O-025 DevtoolsHub 投影分层（off/light/full）
 
 **Branch**: `106-o025-devtoolshub-tiered-projection` | **Date**: 2026-02-26 | **Spec**: `specs/106-o025-devtoolshub-tiered-projection/spec.md`  
 **Input**: Feature specification from `specs/106-o025-devtoolshub-tiered-projection/spec.md`
@@ -10,7 +10,7 @@
 
 ## Summary
 
-在 DevtoolsHub 引入 light/full 投影分层：full 保持完整重资产，light 仅输出摘要与降级原因；消费端先适配 degraded 语义后再切默认 light。
+在 DevtoolsHub 引入 off/light/full 投影分层：off 关闭观测导出、full 保持完整重资产、light 仅输出摘要与降级原因；消费端先适配 degraded 语义后再切默认 light。
 
 ## Technical Context
 
