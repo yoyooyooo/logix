@@ -12,7 +12,7 @@
     "testFile": "packages/logix-core/test/Debug/DevtoolsHub.ProjectionTier.test.ts",
     "testCase": "light should reduce state:update write overhead versus full under same workload",
     "iterations": 1500,
-    "shape": "unique-instance module:init + state:update pairs under identical diagnosticsLevel=full"
+    "shape": "unique-instance module:init + state:update pairs under identical workload; compared with mode=full vs mode=light"
   },
   "result": {
     "full": {

@@ -8,7 +8,12 @@ import { Inspector } from '../inspector/Inspector.js'
 import { OverviewStrip } from '../overview/OverviewStrip.js'
 import { OperationSummaryBar } from '../summary/OperationSummaryBar.js'
 import { SettingsPanel } from '../settings/SettingsPanel.js'
-import { getDevtoolsSnapshot, getDevtoolsSnapshotByRuntimeLabel } from '../../snapshot/index.js'
+import {
+  getDevtoolsSnapshot,
+  getDevtoolsSnapshotByRuntimeLabel,
+  getDevtoolsSnapshotToken,
+  subscribeDevtoolsSnapshotToken,
+} from '../../snapshot/index.js'
 
 export interface DevtoolsShellProps {
   position?: 'bottom-left' | 'bottom-right'
@@ -29,9 +34,18 @@ export const DevtoolsShell: React.FC<DevtoolsShellProps & { getProgramForModule?
 }) => {
   const { open, layout, theme, settings, operationSummary, selectedRuntime } = useDevtoolsState()
   const dispatch = useDevtoolsDispatch()
-  const snapshotProjection = selectedRuntime
-    ? getDevtoolsSnapshotByRuntimeLabel(selectedRuntime).projection
-    : getDevtoolsSnapshot().projection
+  const snapshotToken = React.useSyncExternalStore(
+    subscribeDevtoolsSnapshotToken,
+    getDevtoolsSnapshotToken,
+    getDevtoolsSnapshotToken,
+  )
+  const snapshotProjection = React.useMemo(() => {
+    if (selectedRuntime) {
+      return getDevtoolsSnapshotByRuntimeLabel(selectedRuntime).projection
+    }
+
+    return getDevtoolsSnapshot().projection
+  }, [selectedRuntime, snapshotToken])
   const dragStateRef = React.useRef<{
     startMouseX: number
     startMouseY: number
