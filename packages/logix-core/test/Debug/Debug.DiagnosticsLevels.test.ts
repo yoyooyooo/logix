@@ -87,6 +87,37 @@ describe('Debug diagnosticsLevel (off|light|full)', () => {
       expect(ref.meta?.staticIrDigest).toBeUndefined()
       expect(ref.meta?.dirtySet?.rootPaths).toBeUndefined()
       expect(ref.meta?.dirtySet?.rootIds).toEqual([0])
+      expect(ref.meta?.traceDigestDegrade?.reasonCode).toBe('digest_missing')
+      expect(ref.meta?.traceDigestDegrade?.fallbackMode).toBe('legacy_payload')
+      expect(ref.meta?.traceDigestDegrade?.anchor).toEqual({
+        moduleId: 'M',
+        instanceId: 'i-legacy',
+        txnSeq: 2,
+        txnId: 'i-legacy::t2',
+      })
+    }),
+  )
+
+  it.effect('state:update should propagate opSeq into traceDigestPayload.anchor when available', () =>
+    Effect.sync(() => {
+      const event = {
+        type: 'state:update',
+        moduleId: 'M',
+        instanceId: 'i-opseq',
+        txnSeq: 3,
+        txnId: 'i-opseq::t3',
+        opSeq: 42,
+        state: { count: 3 },
+        traceLookupKey: {
+          staticIrDigest: 'converge_ir_v2:digest',
+          nodeId: 7,
+        },
+      } as any
+
+      const ref = Logix.Debug.internal.toRuntimeDebugEventRef(event, { diagnosticsLevel: 'light' }) as any
+      expect(ref).toBeDefined()
+      expect(ref.meta?.traceDigestPayload?.anchor?.opSeq).toBe(42)
+      expect(ref.meta?.traceDigestDegrade).toBeUndefined()
     }),
   )
 
