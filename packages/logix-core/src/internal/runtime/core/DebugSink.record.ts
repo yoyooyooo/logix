@@ -918,6 +918,17 @@ export const record = (event: Event) =>
 
     const diagnosticsLevel = yield* FiberRef.get(currentDiagnosticsLevel)
 
+    if (
+      diagnosticsLevel !== 'off' &&
+      (enriched.type === 'state:update' || (enriched as any).type === 'trace:trait:converge') &&
+      (enriched as any).opSeq === undefined
+    ) {
+      const opSeqRaw = yield* FiberRef.get(currentOpSeq)
+      if (typeof opSeqRaw === 'number' && Number.isFinite(opSeqRaw) && opSeqRaw >= 0) {
+        ;(enriched as any).opSeq = Math.floor(opSeqRaw)
+      }
+    }
+
     // Enrich Debug.Event with basic fields (enabled only when diagnosticsLevel!=off):
     // - timestamp: for Devtools/Timeline/Overview time aggregation; avoids UI-side "first observed time" distortion.
     // - runtimeLabel: from FiberRef for grouping by runtime (injected only when not already provided by the event).
@@ -1058,6 +1069,11 @@ export const toRuntimeDebugEventRef = (
     return { ...ref, downgrade: { reason: downgrade } }
   }
 
+  const readStableOpSeq = (value: unknown): number | undefined => {
+    const raw = (value as any)?.opSeq
+    return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : undefined
+  }
+
   switch (event.type) {
     case 'module:init':
       return withDowngrade({
@@ -1118,11 +1134,16 @@ export const toRuntimeDebugEventRef = (
     case 'state:update': {
       const e = event as Extract<Event, { readonly type: 'state:update' }>
       const dirtySetCanonical = stripDirtyRootPaths(e.dirtySet)
+      const opSeq =
+        readStableOpSeq(event) ??
+        readStableOpSeq((e as any).traceDigestPayload?.anchor) ??
+        readStableOpSeq((e as any).traceDigestDegrade?.anchor)
       const traceAnchor: TraceDigestAnchor = {
         moduleId,
         instanceId,
         txnSeq,
         ...(txnId ? { txnId } : null),
+        ...(opSeq !== undefined ? { opSeq } : null),
       }
 
       const readLookupKey = (value: unknown): ReplayLog.StaticIrLookupKey | undefined => {
@@ -1207,6 +1228,13 @@ export const toRuntimeDebugEventRef = (
         if (digestMismatch) {
           return {
             reasonCode: 'digest_mismatch',
+            fallbackMode: 'legacy_payload',
+            anchor: traceAnchor,
+          } satisfies TraceDigestDegradeRecord
+        }
+        if (staticIrDigest == null) {
+          return {
+            reasonCode: 'digest_missing',
             fallbackMode: 'legacy_payload',
             anchor: traceAnchor,
           } satisfies TraceDigestDegradeRecord
@@ -1671,11 +1699,16 @@ export const toRuntimeDebugEventRef = (
             : diagnosticsLevel === 'sampled'
               ? stripTraitConvergeSampled(data)
               : stripTraitConvergeLegacyFields(data)
+        const opSeq =
+          readStableOpSeq(event) ??
+          readStableOpSeq((event as any).traceDigestPayload?.anchor) ??
+          readStableOpSeq((event as any).traceDigestDegrade?.anchor)
         const traceAnchor: TraceDigestAnchor = {
           moduleId,
           instanceId,
           txnSeq,
           ...(txnId ? { txnId } : null),
+          ...(opSeq !== undefined ? { opSeq } : null),
         }
         const traceLookupKey = (() => {
           if (!metaInputBase || typeof metaInputBase !== 'object' || Array.isArray(metaInputBase)) return undefined
