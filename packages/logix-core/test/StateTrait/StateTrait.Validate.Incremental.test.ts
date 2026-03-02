@@ -44,18 +44,19 @@ describe('StateTrait validate · incremental scopes + request dedupe', () => {
 
       const ValidateLogic = M.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('validateA').run(() =>
-            Effect.gen(function* () {
-              yield* Logix.TraitLifecycle.scopedValidate($ as any, {
-                mode: 'valueChange',
-                target: Logix.TraitLifecycle.Ref.field('a'),
-              })
-              yield* Logix.TraitLifecycle.scopedValidate($ as any, {
-                mode: 'valueChange',
-                target: Logix.TraitLifecycle.Ref.field('a'),
-              })
-            }),
-          )
+          yield* $.onAction('validateA').run({
+            effect: () =>
+              Effect.gen(function* () {
+                yield* Logix.TraitLifecycle.scopedValidate($ as any, {
+                  mode: 'valueChange',
+                  target: Logix.TraitLifecycle.Ref.field('a'),
+                })
+                yield* Logix.TraitLifecycle.scopedValidate($ as any, {
+                  mode: 'valueChange',
+                  target: Logix.TraitLifecycle.Ref.field('a'),
+                })
+              }),
+          })
         }),
       )
 

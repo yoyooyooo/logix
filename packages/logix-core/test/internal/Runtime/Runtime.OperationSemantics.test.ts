@@ -216,17 +216,18 @@ describe('Runtime + EffectOp bus semantics', () => {
 
         const TraitLogic = TraitModule.logic(($) =>
           Effect.gen(function* () {
-            yield* $.onAction('bump').run(() =>
-              Effect.gen(function* () {
-                yield* $.state.mutate((draft) => {
-                  draft.base += 1
-                })
-                yield* Logix.TraitLifecycle.scopedValidate($ as any, {
-                  mode: 'valueChange',
-                  target: Logix.TraitLifecycle.Ref.field('base'),
-                })
-              }),
-            )
+            yield* $.onAction('bump').run({
+              effect: () =>
+                Effect.gen(function* () {
+                  yield* $.state.mutate((draft) => {
+                    draft.base += 1
+                  })
+                  yield* Logix.TraitLifecycle.scopedValidate($ as any, {
+                    mode: 'valueChange',
+                    target: Logix.TraitLifecycle.Ref.field('base'),
+                  })
+                }),
+            })
           }),
         )
 

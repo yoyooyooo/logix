@@ -133,12 +133,13 @@ describe('StateTrait scoped validate · writeback', () => {
 
       const ValidateLogic = M.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('validateAge').run(() =>
-            Logix.TraitLifecycle.scopedValidate($ as any, {
-              mode: 'manual',
-              target: Logix.TraitLifecycle.Ref.field('age'),
-            }),
-          )
+          yield* $.onAction('validateAge').run({
+            effect: () =>
+              Logix.TraitLifecycle.scopedValidate($ as any, {
+                mode: 'manual',
+                target: Logix.TraitLifecycle.Ref.field('age'),
+              }),
+          })
         }),
       )
 

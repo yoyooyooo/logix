@@ -155,8 +155,8 @@ export const ApprovalLogic = ApprovalDef.logic<ApprovalService>(($: Logix.BoundA
       comment: '',
     }))
 
-    yield* $.onAction('submit').runExhaust(startApproval)
-    yield* $.onAction('reset').run(resetEffect)
+    yield* $.onAction('submit').run({ mode: 'exhaust', effect: startApproval })
+    yield* $.onAction('reset').run({ effect: resetEffect })
   }),
 )
 

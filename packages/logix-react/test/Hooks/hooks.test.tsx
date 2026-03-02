@@ -117,7 +117,9 @@ describe('React Hooks', () => {
 
     const counterLogic = Counter.logic(($) =>
       Effect.gen(function* () {
-        yield* $.onAction('inc').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
+        yield* $.onAction('inc').run({
+          effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })),
+        })
       }),
     )
 
@@ -127,12 +129,13 @@ describe('React Hooks', () => {
 
         yield* $.on(counter.changes((s: { count: number }) => s.count))
           .filter((count) => count > 0)
-          .run((count) =>
-            $.state.update((s) => ({
-              ...s,
-              text: `count:${count}`,
-            })),
-          )
+          .run({
+            effect: (count: number) =>
+              $.state.update((s) => ({
+                ...s,
+                text: `count:${count}`,
+              })),
+          })
       }),
     )
 
@@ -364,12 +367,13 @@ describe('React Hooks', () => {
     const loggerLogic = Logger.logic(($) =>
       Effect.gen(function* () {
         // Logger listens to the log action only in the run phase.
-        yield* $.onAction('log').run((action) =>
-          $.state.update((s) => ({
-            ...s,
-            logs: [...s.logs, action.payload],
-          })),
-        )
+        yield* $.onAction('log').run({
+          effect: (action: any) =>
+            $.state.update((s) => ({
+              ...s,
+              logs: [...s.logs, action.payload],
+            })),
+        })
       }),
     )
 

@@ -14,13 +14,14 @@ const Counter = Logix.Module.make('ReactDebugTraceCounter', {
 
 const logic = Counter.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').run(() =>
-      Logix.Debug.record({
-        type: 'trace:inc',
-        moduleId: Counter.id,
-        data: { source: 'runtime-debug-trace-integration.test' },
-      }),
-    )
+    yield* $.onAction('inc').run({
+      effect: () =>
+        Logix.Debug.record({
+          type: 'trace:inc',
+          moduleId: Counter.id,
+          data: { source: 'runtime-debug-trace-integration.test' },
+        }),
+    })
   }),
 )
 

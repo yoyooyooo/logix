@@ -136,8 +136,8 @@ export const makeOptimisticToggleLogicPattern =
       }))
 
       yield* Effect.all([
-        click$.pipe($Toggle.flow.runExhaust(handleClick)),
-        resetError$.pipe($Toggle.flow.run(handleResetError)),
+        click$.pipe($Toggle.flow.run({ mode: 'exhaust', effect: handleClick })),
+        resetError$.pipe($Toggle.flow.run({ effect: handleResetError })),
       ])
     }) as Logix.ModuleLogic<ToggleShape, ToggleService, never>
 

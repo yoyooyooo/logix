@@ -43,27 +43,27 @@ export const CounterDef = Logix.Module.make('CounterModule', {
 export const CounterLogic = CounterDef.logic(($) =>
   Effect.gen(function* () {
     // 1. 监听 inc / dec Action，更新 count
-    yield* $.onAction('inc').run(
-      $.state.update((prev) => ({
+    yield* $.onAction('inc').run({
+      effect: $.state.update((prev) => ({
         ...prev,
         count: prev.count + 1,
       })),
-    )
+    })
 
-    yield* $.onAction('dec').run(
-      $.state.update((prev) => ({
+    yield* $.onAction('dec').run({
+      effect: $.state.update((prev) => ({
         ...prev,
         count: prev.count - 1,
       })),
-    )
+    })
 
     // 2. 监听 count 派生 hasValue 字段
-    yield* $.onState((s) => s.count).run(
-      $.state.update((prev) => ({
+    yield* $.onState((s) => s.count).run({
+      effect: $.state.update((prev) => ({
         ...prev,
         hasValue: prev.count !== 0,
       })),
-    )
+    })
   }),
 )
 

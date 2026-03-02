@@ -35,7 +35,7 @@ describe('FlowRuntime: diagnostics budget envelope', () => {
       })
 
       const program = flow
-        .run((n: number) => Effect.sync(() => n))(
+        .run({ effect: (n: number) => Effect.sync(() => n) })(
           Stream.make(1, 2),
         )
         .pipe(

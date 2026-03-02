@@ -15,7 +15,9 @@ const Counter = Logix.Module.make('Counter', {
 
 const CounterLogic = Counter.logic((api) =>
   Effect.gen(function* () {
-    yield* api.onAction('increment').run(() => api.state.update((s) => ({ ...s, count: s.count + 1 })))
+    yield* api.onAction('increment').run({
+      effect: () => api.state.update((s) => ({ ...s, count: s.count + 1 })),
+    })
   }),
 )
 
@@ -44,8 +46,12 @@ describe('TestProgram (new model: program module)', () => {
   it('should support forked onAction watchers inside a single Logic', async () => {
     const ForkCounterLogic = Counter.logic(($) =>
       Effect.gen(function* () {
-        yield* Effect.fork($.onAction('increment').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 }))))
-        yield* Effect.fork($.onAction('decrement').run(() => $.state.update((s) => ({ ...s, count: s.count - 1 }))))
+        yield* Effect.fork(
+          $.onAction('increment').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) }),
+        )
+        yield* Effect.fork(
+          $.onAction('decrement').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count - 1 })) }),
+        )
       }),
     )
 

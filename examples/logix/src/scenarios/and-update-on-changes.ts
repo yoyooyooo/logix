@@ -45,12 +45,12 @@ export const CounterDef = Logix.Module.make('CounterModule', {
 export const CounterLogic = CounterDef.logic(($) =>
   Effect.gen(function* () {
     // 监听 results.length 变化，并维护 hasResults
-    yield* $.onState((s) => s.results.length).run(
-      $.state.update((prev) => ({
+    yield* $.onState((s) => s.results.length).run({
+      effect: $.state.update((prev) => ({
         ...prev,
         hasResults: prev.results.length > 0,
       })),
-    )
+    })
   }),
 )
 

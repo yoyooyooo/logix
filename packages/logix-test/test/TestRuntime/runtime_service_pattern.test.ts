@@ -14,13 +14,14 @@ const CounterLogic = Counter.logic(($) =>
     const t1 = yield* TestClock.currentTimeMillis
     yield* Effect.log(`LOGIC TIME 1: ${t1}`)
 
-    yield* $.onAction('inc').runParallel(
-      Effect.gen(function* () {
+    yield* $.onAction('inc').run({
+      mode: 'parallel',
+      effect: Effect.gen(function* () {
         const t2 = yield* TestClock.currentTimeMillis
         yield* Effect.log(`LOGIC TIME 2: ${t2}`)
         yield* $.state.update((s) => ({ ...s, count: s.count + 1 }))
       }),
-    )
+    })
   }),
 )
 

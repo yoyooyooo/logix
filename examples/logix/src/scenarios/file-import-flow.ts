@@ -141,8 +141,8 @@ export const FileImportLogic = FileImportDef.logic<FileUploadService | ImportSer
       errorMessage: undefined,
     }))
 
-    yield* $.onAction('import/start').runExhaust(handleStart)
-    yield* $.onAction('import/reset').run(handleReset)
+    yield* $.onAction('import/start').run({ mode: 'exhaust', effect: handleStart })
+    yield* $.onAction('import/reset').run({ effect: handleReset })
   }).pipe(
     // 收敛错误通道到 never，确保作为 ModuleLogic 使用时类型安全
     Effect.catchAll(() => Effect.void),

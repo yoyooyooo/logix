@@ -99,8 +99,8 @@ export const CompositionLogic = CompositionDef.logic<CompositionServices>(
         status: 'idle',
       }))
 
-      yield* $.onAction('combo/run').runExhaust(handleRun)
-      yield* $.onAction('combo/reset').run(handleReset)
+      yield* $.onAction('combo/run').run({ mode: 'exhaust', effect: handleRun })
+      yield* $.onAction('combo/reset').run({ effect: handleReset })
     }),
 )
 

@@ -64,7 +64,7 @@ const DemoLogic = DemoDef.logic(($) => ({
     $.lifecycle.onDestroy(Console.log('[Demo] destroy#2'))
   }),
   run: Effect.gen(function* () {
-    yield* $.onAction('boot').run($.state.update((s) => ({ ...s, booted: true })))
+    yield* $.onAction('boot').run({ effect: $.state.update((s) => ({ ...s, booted: true })) })
   }),
 }))
 

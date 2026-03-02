@@ -27,9 +27,10 @@ const ToggleModule = Logix.Module.make('ToggleModule', {
 
 const ToggleLogic = ToggleModule.logic<ToggleService>((api) =>
   Effect.gen(function* () {
-    yield* api.onAction('toggle').run((action) =>
-      Effect.gen(function* () {
-        const { id, value } = action.payload
+    yield* api.onAction('toggle').run({
+      effect: (action: any) =>
+        Effect.gen(function* () {
+          const { id, value } = action.payload
 
         // Optimistic update
         yield* api.state.update((s) => ({
@@ -48,8 +49,8 @@ const ToggleLogic = ToggleModule.logic<ToggleService>((api) =>
             })),
           ),
         )
-      }),
-    )
+        }),
+    })
   }),
 )
 
@@ -116,8 +117,9 @@ const TaskLogic = TaskModule.logic((api) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
-        api.onAction('start').run(() =>
-          Effect.gen(function* () {
+        api.onAction('start').run({
+          effect: () =>
+            Effect.gen(function* () {
             yield* api.state.update((s) => ({
               ...s,
               status: 'PENDING',
@@ -131,9 +133,11 @@ const TaskLogic = TaskModule.logic((api) =>
               }),
               Schedule.recurWhile((done: boolean) => !done).pipe(Schedule.addDelay(() => '10 millis')),
             )
-          }),
-        ),
-        api.onAction('externalDone').run(() => api.state.update((s) => ({ ...s, status: 'DONE' }))),
+            }),
+        }),
+        api.onAction('externalDone').run({
+          effect: () => api.state.update((s) => ({ ...s, status: 'DONE' })),
+        }),
       ],
       { concurrency: 'unbounded' },
     )
@@ -157,19 +161,20 @@ const BatchModule = Logix.Module.make('BatchModule', {
 
 const BatchLogic = BatchModule.logic((api) =>
   Effect.gen(function* () {
-    yield* api.onAction('processAll').run(() =>
-      Effect.gen(function* () {
-        const state = yield* api.state.read
-        for (const item of state.items) {
-          // Simulate async work; relies on TestClock/Effect.sleep virtual time.
-          yield* Effect.sleep('5 millis')
-          yield* api.state.update((s) => ({
-            ...s,
-            processed: [...s.processed, item],
-          }))
-        }
-      }),
-    )
+    yield* api.onAction('processAll').run({
+      effect: () =>
+        Effect.gen(function* () {
+          const state = yield* api.state.read
+          for (const item of state.items) {
+            // Simulate async work; relies on TestClock/Effect.sleep virtual time.
+            yield* Effect.sleep('5 millis')
+            yield* api.state.update((s) => ({
+              ...s,
+              processed: [...s.processed, item],
+            }))
+          }
+        }),
+    })
   }),
 )
 
@@ -216,8 +221,10 @@ const BulkLogic = BulkModule.logic((api) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
-        api.onAction('bulk/run').runExhaust((_) =>
-          Effect.gen(function* () {
+        api.onAction('bulk/run').run({
+          mode: 'exhaust',
+          effect: (_: any) =>
+            Effect.gen(function* () {
             const current = yield* api.state.read
             const selection = yield* api.use(SelectionServiceTag)
             const bulk = yield* api.use(BulkOperationServiceTag)
@@ -247,14 +254,15 @@ const BulkLogic = BulkModule.logic((api) =>
               lastCount: count,
               lastMessage: `本次 ${prev.operation} 作用于 ${count} 条记录`,
             }))
-          }),
-        ),
-        api.onAction('bulk/resetMessage').run((_) =>
-          api.state.update((prev) => ({
-            ...prev,
-            lastMessage: undefined,
-          })),
-        ),
+            }),
+        }),
+        api.onAction('bulk/resetMessage').run({
+          effect: (_: any) =>
+            api.state.update((prev) => ({
+              ...prev,
+              lastMessage: undefined,
+            })),
+        }),
       ],
       { concurrency: 'unbounded' },
     )
@@ -280,12 +288,13 @@ const DerivedStateLogic = DerivedStateModule.logic((api) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
-        api.onAction('setResults').run((action) =>
-          api.state.update((prev) => ({
-            ...prev,
-            results: action.payload,
-          })),
-        ),
+        api.onAction('setResults').run({
+          effect: (action: any) =>
+            api.state.update((prev) => ({
+              ...prev,
+              results: action.payload,
+            })),
+        }),
         api
           .onState((s) => s.results.length)
           .update((prev, len) => ({
@@ -318,19 +327,21 @@ const DirtyFormLogic = DirtyFormModule.logic((api) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
-        api.onAction('input/change').run((action) =>
-          api.state.update((prev) => ({
-            ...prev,
-            value: action.payload,
-            isDirty: true,
-          })),
-        ),
-        api.onAction('input/reset').run(() =>
-          api.state.update(() => ({
-            value: '',
-            isDirty: false,
-          })),
-        ),
+        api.onAction('input/change').run({
+          effect: (action: any) =>
+            api.state.update((prev) => ({
+              ...prev,
+              value: action.payload,
+              isDirty: true,
+            })),
+        }),
+        api.onAction('input/reset').run({
+          effect: () =>
+            api.state.update(() => ({
+              value: '',
+              isDirty: false,
+            })),
+        }),
       ],
       { concurrency: 'unbounded' },
     )
@@ -362,15 +373,16 @@ const SearchModule = Logix.Module.make('SearchModule', {
   },
 })
 
-const SearchLogic = SearchModule.logic(($) =>
+const SearchLogic = SearchModule.logic<SearchApi>(($) =>
   Effect.gen(function* () {
     // Map the setKeyword action to the `keyword` field as the driving source for fromState.
-    yield* $.onAction('setKeyword').run((action) =>
-      $.state.update((prev) => ({
-        ...prev,
-        keyword: action.payload,
-      })),
-    )
+    yield* $.onAction('setKeyword').run({
+      effect: (action: any) =>
+        $.state.update((prev) => ({
+          ...prev,
+          keyword: action.payload,
+        })),
+    })
 
     const keywordChanges$ = $.flow.fromState((s) => s.keyword)
 
@@ -394,7 +406,7 @@ const SearchLogic = SearchModule.logic(($) =>
     })
 
     // External dispatch setKeyword -> keyword change -> debounce + runLatest search.
-    yield* debouncedValidKeyword$.pipe($.flow.runLatest(runSearch))
+    yield* debouncedValidKeyword$.pipe($.flow.run({ mode: 'latest', effect: runSearch }))
   }),
 )
 

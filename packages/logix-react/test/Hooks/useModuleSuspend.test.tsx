@@ -16,7 +16,7 @@ const Counter = Logix.Module.make('SuspendCounter', {
 
 const CounterLogic = Counter.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').run($.state.update((s) => ({ ...s, value: s.value + 1 })))
+    yield* $.onAction('inc').run({ effect: $.state.update((s) => ({ ...s, value: s.value + 1 })) })
   }),
 )
 

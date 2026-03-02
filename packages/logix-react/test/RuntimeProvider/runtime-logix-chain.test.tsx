@@ -27,8 +27,8 @@ describe('Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
   const TestLogic = TestModule.logic<{ readonly label: string }>(($) =>
     Effect.gen(function* () {
       // Read EnvTag in the run phase to ensure RuntimeProvider.layer overrides take effect.
-      yield* $.onAction('init').run(
-        Effect.gen(function* () {
+      yield* $.onAction('init').run({
+        effect: Effect.gen(function* () {
           const env = yield* EnvTag
           yield* $.state.update((s) => ({
             ...s,
@@ -36,7 +36,7 @@ describe('Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
             label: env.label,
           }))
         }),
-      )
+      })
     }),
   )
 

@@ -550,7 +550,7 @@ describe('ModuleRuntime (internal)', () => {
         const logic = ModuleWithWatcher.logic(($) =>
           Effect.gen(function* () {
             // Using run-only watcher APIs during setup should trigger a phase-guard diagnostic.
-            yield* $.onAction('ping').run(Effect.void)
+            yield* $.onAction('ping').run({ effect: Effect.void })
             return Effect.void
           }),
         )
@@ -600,7 +600,7 @@ describe('ModuleRuntime (internal)', () => {
         })
 
         const logic = PlanModule.logic<never>(($) => {
-          const setup = $.onAction('ping').run(Effect.void)
+          const setup = $.onAction('ping').run({ effect: Effect.void })
           const run = Effect.void
           const plan = { setup, run }
           const effect = Effect.succeed(plan) as any
@@ -652,7 +652,7 @@ describe('ModuleRuntime (internal)', () => {
         })
 
         const logic = PlanModule.logic<never>(($) => {
-          const setup = $.onAction('ping').run(Effect.void)
+          const setup = $.onAction('ping').run({ effect: Effect.void })
           const run = Effect.void
 
           const inner = Effect.succeed({ setup, run }) as any

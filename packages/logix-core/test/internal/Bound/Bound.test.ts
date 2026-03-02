@@ -192,9 +192,9 @@ describe('Bound API (public)', () => {
     const sourceLogic = Source.logic(($) =>
       Effect.gen(function* () {
         const $Target = yield* $.use(Target)
-        yield* $.on($Target.changes((s) => s.count)).run((count) =>
-          $.state.update((prev) => ({ ...prev, lastCount: count })),
-        )
+        yield* $.on($Target.changes((s) => s.count)).run({
+          effect: (count: number) => $.state.update((prev) => ({ ...prev, lastCount: count })),
+        })
       }),
     )
 
@@ -261,12 +261,13 @@ describe('Bound API (public)', () => {
 
         yield* $.on($Counter.actions$)
           .filter((a: any) => a._tag === 'inc')
-          .run(() =>
-            $.state.update((s) => ({
-              ...s,
-              logs: [...s.logs, 'counter/inc'],
-            })),
-          )
+          .run({
+            effect: () =>
+              $.state.update((s) => ({
+                ...s,
+                logs: [...s.logs, 'counter/inc'],
+              })),
+          })
       }),
     )
 

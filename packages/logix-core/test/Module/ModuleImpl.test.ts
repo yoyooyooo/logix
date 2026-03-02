@@ -25,12 +25,13 @@ const consumerLogic = Consumer.logic<{ label: string }>(($) =>
   Effect.gen(function* () {
     const svc = yield* ServiceTag
 
-    yield* $.onAction('read').run(() =>
-      $.state.update((s) => ({
-        ...s,
-        seen: svc.label,
-      })),
-    )
+    yield* $.onAction('read').run({
+      effect: () =>
+        $.state.update((s) => ({
+          ...s,
+          seen: svc.label,
+        })),
+    })
   }),
 )
 

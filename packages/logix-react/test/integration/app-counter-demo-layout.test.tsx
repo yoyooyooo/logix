@@ -30,16 +30,19 @@ describe('App-like counter demo layout (AppDemoLayout-style)', () => {
       yield* Effect.log('AppDemoCounter logic setup')
 
       // Regular watcher: log once to prove dispatch works.
-      yield* $.onAction('increment').run(() => Effect.log('increment dispatched from AppDemoCounter'))
+      yield* $.onAction('increment').run({
+        effect: () => Effect.log('increment dispatched from AppDemoCounter'),
+      })
 
       // Trace watcher: emit a trace:* Debug event on each increment.
-      yield* $.onAction('increment').run(() =>
-        Logix.Debug.record({
-          type: 'trace:increment',
-          moduleId: CounterModule.id,
-          data: { source: 'app-counter-demo-layout.test' },
-        }),
-      )
+      yield* $.onAction('increment').run({
+        effect: () =>
+          Logix.Debug.record({
+            type: 'trace:increment',
+            moduleId: CounterModule.id,
+            data: { source: 'app-counter-demo-layout.test' },
+          }),
+      })
     })
   })
 

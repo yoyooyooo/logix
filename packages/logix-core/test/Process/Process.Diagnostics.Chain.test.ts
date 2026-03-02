@@ -24,7 +24,7 @@ describe('process: diagnostics chain (trigger → dispatch → error/stop)', () 
 
       const TargetLogic = TargetModule.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('inc').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
+          yield* $.onAction('inc').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) })
         }),
       )
 

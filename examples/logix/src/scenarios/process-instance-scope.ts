@@ -25,13 +25,15 @@ const Target = Logix.Module.make('ProcessInstanceScopeTarget', {
 
 const SourceLogic = Source.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('increment').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
+    yield* $.onAction('increment').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) })
   }),
 )
 
 const TargetLogic = Target.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('log').run((action) => $.state.update((s) => ({ ...s, logs: [...s.logs, action.payload] })))
+    yield* $.onAction('log').run({
+      effect: (action: any) => $.state.update((s) => ({ ...s, logs: [...s.logs, action.payload] })),
+    })
   }),
 )
 

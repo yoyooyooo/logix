@@ -111,7 +111,7 @@ export const BatchArchiveLogic = BatchArchiveDef.logic<ConfirmServiceTag | Archi
         })
       })
 
-      yield* $.onAction('batch/archive').runExhaust(handleArchive)
+      yield* $.onAction('batch/archive').run({ mode: 'exhaust', effect: handleArchive })
     }).pipe(
       // 收敛错误通道，方便作为 ModuleLogic 使用
       Effect.catchAll(() => Effect.void),

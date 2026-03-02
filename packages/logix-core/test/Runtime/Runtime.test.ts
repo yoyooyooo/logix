@@ -13,12 +13,13 @@ const RootModule = Logix.Module.make('RuntimeRoot', {
 
 const RootLogic = RootModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('bump').run(() =>
-      $.state.update((s) => ({
-        ...s,
-        value: s.value + 1,
-      })),
-    )
+    yield* $.onAction('bump').run({
+      effect: () =>
+        $.state.update((s) => ({
+          ...s,
+          value: s.value + 1,
+        })),
+    })
   }),
 )
 
