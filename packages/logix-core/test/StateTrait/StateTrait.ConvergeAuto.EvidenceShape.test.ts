@@ -45,10 +45,16 @@ const makeRuntimeWithDevtoolsHub = (options: {
 
   Debug.clearDevtoolsEvents()
 
-  const layer = Debug.devtoolsHubLayer({
-    bufferSize: 256,
-    diagnosticsLevel: options.diagnosticsLevel,
-  })
+  const mode: Debug.DevtoolsProjectionMode =
+    options.diagnosticsLevel === 'off' ? 'off' : options.diagnosticsLevel === 'full' ? 'full' : 'light'
+
+  const layer = Layer.mergeAll(
+    Debug.devtoolsHubLayer({
+      bufferSize: 256,
+      mode,
+    }),
+    Debug.diagnosticsLevel(options.diagnosticsLevel),
+  )
 
   const runtime = Logix.Runtime.make(impl, {
     stateTransaction: options.stateTransaction,

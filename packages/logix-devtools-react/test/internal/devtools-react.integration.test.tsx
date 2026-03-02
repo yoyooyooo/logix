@@ -511,14 +511,13 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
 
     const emitRuntimeEvents = async (args: {
       readonly runtimeLabel: string
-      readonly projectionTier: Logix.Debug.DevtoolsProjectionTier
+      readonly mode: Logix.Debug.DevtoolsProjectionMode
       readonly instanceId: string
       readonly count: number
     }) => {
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 32,
-        diagnosticsLevel: 'full',
-        projectionTier: args.projectionTier,
+        mode: args.mode,
         runtimeLabel: args.runtimeLabel,
       }) as Layer.Layer<any, never, never>
 
@@ -544,16 +543,16 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
       )
     }
 
-    Logix.Debug.devtoolsHubLayer({ projectionTier: 'light' })
+    Logix.Debug.devtoolsHubLayer({ mode: 'light' })
     await emitRuntimeEvents({
       runtimeLabel: fullRuntimeLabel,
-      projectionTier: 'full',
+      mode: 'full',
       instanceId: 'i-projection-badge-full',
       count: 1,
     })
     await emitRuntimeEvents({
       runtimeLabel: lightRuntimeLabel,
-      projectionTier: 'light',
+      mode: 'light',
       instanceId: 'i-projection-badge-light',
       count: 2,
     })

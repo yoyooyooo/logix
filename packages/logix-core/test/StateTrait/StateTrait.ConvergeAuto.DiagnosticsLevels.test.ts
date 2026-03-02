@@ -52,13 +52,19 @@ const makeRuntimeWithDevtoolsHub = (options: {
 
   Debug.clearDevtoolsEvents()
 
-  const layer = Debug.devtoolsHubLayer({
-    bufferSize: 256,
-    diagnosticsLevel: options.diagnosticsLevel,
-    ...(options.traitConvergeDiagnosticsSampling
-      ? { traitConvergeDiagnosticsSampling: options.traitConvergeDiagnosticsSampling }
-      : null),
-  })
+  const mode: Debug.DevtoolsProjectionMode =
+    options.diagnosticsLevel === 'off' ? 'off' : options.diagnosticsLevel === 'full' ? 'full' : 'light'
+
+  const layer = Layer.mergeAll(
+    Debug.devtoolsHubLayer({
+      bufferSize: 256,
+      mode,
+      ...(options.traitConvergeDiagnosticsSampling
+        ? { traitConvergeDiagnosticsSampling: options.traitConvergeDiagnosticsSampling }
+        : null),
+    }),
+    Debug.diagnosticsLevel(options.diagnosticsLevel),
+  )
 
   const runtime = Logix.Runtime.make(impl, {
     stateTransaction: options.stateTransaction,
@@ -282,7 +288,7 @@ describe('StateTrait converge diagnostics levels', () => {
         stateTransaction: { traitConvergeMode: 'auto' },
         layer: Debug.devtoolsHubLayer({
           bufferSize: 256,
-          diagnosticsLevel: 'full',
+          mode: 'full',
         }) as Layer.Layer<any, never, never>,
       })
 
@@ -317,7 +323,7 @@ describe('StateTrait converge diagnostics levels', () => {
         stateTransaction: { traitConvergeMode: 'auto' },
         layer: Debug.devtoolsHubLayer({
           bufferSize: 256,
-          diagnosticsLevel: 'light',
+          mode: 'light',
         }) as Layer.Layer<any, never, never>,
       })
 

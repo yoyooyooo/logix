@@ -50,7 +50,7 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
 
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
-        devtools: { diagnosticsLevel: 'light', bufferSize: 128 },
+        devtools: { mode: 'light', bufferSize: 128 },
       })
 
       try {
@@ -139,7 +139,7 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
 
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
-        devtools: { diagnosticsLevel: 'light', bufferSize: 256 },
+        devtools: { mode: 'light', bufferSize: 256 },
       })
 
       try {

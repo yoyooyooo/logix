@@ -86,7 +86,7 @@ describe('Module-as-Source (recognizability gate)', () => {
 
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
-        devtools: { diagnosticsLevel: 'light', bufferSize: 256 },
+        devtools: { mode: 'light', bufferSize: 256 },
       })
 
       try {

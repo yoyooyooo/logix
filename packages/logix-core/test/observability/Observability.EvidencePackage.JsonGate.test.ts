@@ -10,7 +10,7 @@ describe('Observability.EvidencePackage JSON hard gate', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 10,
-        diagnosticsLevel: 'full',
+        mode: 'full',
       })
 
       const cause: any = { bigint: 1n, fn: () => undefined }

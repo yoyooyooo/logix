@@ -19,7 +19,7 @@ describe('DevtoolsHub (core)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer(Logix.Debug.replace([userSink]), {
         bufferSize: 10,
-        projectionTier: 'full',
+        mode: 'full',
       }) as Layer.Layer<any, never, never>
 
       // Record a few different event kinds.
@@ -87,7 +87,7 @@ describe('DevtoolsHub (core)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 10,
-        diagnosticsLevel: 'full',
+        mode: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
@@ -112,13 +112,13 @@ describe('DevtoolsHub (core)', () => {
 
       Logix.Debug.devtoolsHubLayer({
         bufferSize: 5,
-        diagnosticsLevel: 'light',
+        mode: 'light',
       })
       Logix.Debug.clearDevtoolsEvents()
 
       Logix.Debug.devtoolsHubLayer({
         bufferSize: 6,
-        diagnosticsLevel: 'light',
+        mode: 'light',
       })
 
       const events = Logix.Debug.getDevtoolsSnapshot().events
@@ -134,7 +134,7 @@ describe('DevtoolsHub (core)', () => {
       Logix.Debug.clearDevtoolsEvents()
       Logix.Debug.devtoolsHubLayer({
         bufferSize: 7,
-        diagnosticsLevel: 'off',
+        mode: 'off',
       })
       expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBe(0)
     }),
@@ -146,8 +146,7 @@ describe('DevtoolsHub (core)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 20,
-        diagnosticsLevel: 'full',
-        projectionTier: 'full',
+        mode: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
@@ -204,7 +203,7 @@ describe('DevtoolsHub (core)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 20,
-        diagnosticsLevel: 'full',
+        mode: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
@@ -280,7 +279,7 @@ describe('DevtoolsHub (core)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 3,
-        diagnosticsLevel: 'light',
+        mode: 'light',
       }) as Layer.Layer<any, never, never>
 
       for (let i = 1; i <= 5; i++) {
@@ -319,7 +318,7 @@ describe('DevtoolsHub (core)', () => {
     Effect.gen(function* () {
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 5,
-        diagnosticsLevel: 'light',
+        mode: 'light',
       }) as Layer.Layer<any, never, never>
 
       Logix.Debug.startDevtoolsRun('run-test-1')

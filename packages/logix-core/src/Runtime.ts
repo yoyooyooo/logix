@@ -110,35 +110,11 @@ const resolveRootImpl = <Sh extends AnyModuleShape>(
 const resolveSchedulingPolicySurface = (options: RuntimeOptions | undefined): SchedulingPolicySurface | undefined =>
   options?.schedulingPolicy ?? options?.concurrencyPolicy
 
-const resolveDevtoolsObservationConfig = (options: DevtoolsRuntimeOptions | undefined) => {
-  const mode = options?.mode
-  if (mode === 'off') {
-    return {
-      projectionTier: 'light' as const,
-      diagnosticsLevel: 'off' as const,
-      useVacuumPath: true,
-    }
-  }
-  if (mode === 'full') {
-    return {
-      projectionTier: 'full' as const,
-      diagnosticsLevel: 'full' as const,
-      useVacuumPath: false,
-    }
-  }
-  if (mode === 'light') {
-    return {
-      projectionTier: 'light' as const,
-      diagnosticsLevel: 'light' as const,
-      useVacuumPath: false,
-    }
-  }
-
-  return {
-    projectionTier: (options?.projectionTier ?? 'light') as Debug.DevtoolsProjectionTier,
-    diagnosticsLevel: options?.diagnosticsLevel,
-    useVacuumPath: options?.diagnosticsLevel === 'off',
-  }
+const resolveDevtoolsObservationMode = (
+  options: DevtoolsRuntimeOptions | undefined,
+): { readonly mode: Debug.DevtoolsProjectionMode; readonly useVacuumPath: boolean } => {
+  const mode = options?.mode ?? 'light'
+  return { mode, useVacuumPath: mode === 'off' }
 }
 
 /**
@@ -267,25 +243,6 @@ export interface DevtoolsRuntimeOptions {
    */
   readonly mode?: Debug.DevtoolsProjectionMode
   /**
-   * Devtools snapshot projection tier.
-   *
-   * - `light`: summary-only projection with explainable degraded semantics.
-   * - `full`: keep heavy latest* assets for high-fidelity consumers.
-   *
-   * Advanced override when `mode` is omitted. Default: `"light"`.
-   */
-  readonly projectionTier?: Debug.DevtoolsProjectionTier
-  /**
-   * Diagnostics level for exportable Devtools events.
-   *
-   * Forwarded to `Debug.devtoolsHubLayer({ diagnosticsLevel })`.
-   * When resolved to `"off"`, `Runtime.make` enters a vacuum path:
-   * it skips both DevtoolsHub sink mounting and DebugObserver middleware wiring.
-   *
-   * Advanced override when `mode` is omitted. Default: `"light"`.
-   */
-  readonly diagnosticsLevel?: Debug.DiagnosticsLevel
-  /**
    * Trait converge diagnostics sampling config.
    *
    * Forwarded to `Debug.devtoolsHubLayer({ traitConvergeDiagnosticsSampling })`.
@@ -338,7 +295,7 @@ export const make = (
   // 1) Append DebugObserver (`trace:effectop`).
   // 2) Mount the DevtoolsHub sink in appLayer (process-level event aggregation).
   const devtoolsOptions: DevtoolsRuntimeOptions | undefined = options?.devtools === true ? {} : options?.devtools
-  const devtoolsObservation = resolveDevtoolsObservationConfig(devtoolsOptions)
+  const devtoolsObservation = resolveDevtoolsObservationMode(devtoolsOptions)
   const useDevtoolsVacuumPath = devtoolsObservation.useVacuumPath
 
   if (options?.devtools && !useDevtoolsVacuumPath) {
@@ -365,13 +322,11 @@ export const make = (
 
   const baseWithDevtools = options?.devtools && !useDevtoolsVacuumPath
     ? (Debug.devtoolsHubLayer(baseLayer, {
-        bufferSize: devtoolsOptions?.bufferSize,
-        mode: devtoolsOptions?.mode,
-        runtimeLabel: options?.label,
-        projectionTier: devtoolsObservation.projectionTier,
-        diagnosticsLevel: devtoolsObservation.diagnosticsLevel,
-        traitConvergeDiagnosticsSampling: devtoolsOptions?.traitConvergeDiagnosticsSampling,
-      }) as Layer.Layer<any, never, never>)
+         bufferSize: devtoolsOptions?.bufferSize,
+         mode: devtoolsOptions?.mode,
+         runtimeLabel: options?.label,
+         traitConvergeDiagnosticsSampling: devtoolsOptions?.traitConvergeDiagnosticsSampling,
+       }) as Layer.Layer<any, never, never>)
     : baseLayer
 
   // NOTE: runSession should be overrideable by callers (e.g. CI/trial-run injecting a stable runId).

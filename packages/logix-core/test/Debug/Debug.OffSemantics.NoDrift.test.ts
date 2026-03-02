@@ -30,7 +30,7 @@ describe('Debug semantics: diagnostics=off should not change runtime behavior (U
 
           const layer = Debug.devtoolsHubLayer({
             bufferSize: 64,
-            diagnosticsLevel,
+            mode: diagnosticsLevel === 'off' ? 'off' : diagnosticsLevel === 'full' ? 'full' : 'light',
           }) as Layer.Layer<any, never, never>
 
           const runtime = Logix.Runtime.make(impl, { layer })

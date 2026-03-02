@@ -144,7 +144,7 @@ describe('StateTrait converge auto deterministic ids', () => {
 
           const layer = Debug.devtoolsHubLayer({
             bufferSize: 256,
-            diagnosticsLevel: 'full',
+            mode: 'full',
           }) as Layer.Layer<any, never, never>
 
           const runtime = Logix.Runtime.make(impl, {

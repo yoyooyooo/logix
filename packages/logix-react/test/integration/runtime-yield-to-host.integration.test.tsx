@@ -75,7 +75,7 @@ describe('TickScheduler yield-to-host (React integration)', () => {
 
     const runtime = Logix.Runtime.make(RootImpl, {
       hostScheduler,
-      devtools: { diagnosticsLevel: 'light' },
+      devtools: { mode: 'light' },
       layer: tickLayer,
     })
 
