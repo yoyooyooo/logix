@@ -84,50 +84,48 @@ export const ProjectMembersLogic = ProjectMembersDef.logic(($) => {
               }),
         ),
 
-        $.onAction('refresh').runLatest(() =>
+        $.onAction('refresh').run({ mode: 'latest', effect: () =>
           Effect.gen(function* () {
             const token = yield* auth.read((s) => s.token)
             const projectId = yield* projects.read((s) => s.selectedProjectId)
             if (!token || projectId == null) return yield* clear
             yield* load(token, projectId)
-          }),
-        ),
+          }) }),
 
-        $.onAction('addByEmail').runLatest((action) =>
+        $.onAction('addByEmail').run({ mode: 'latest', effect: (action) =>
           Effect.gen(function* () {
             const token = yield* auth.read((s) => s.token)
             const projectId = yield* projects.read((s) => s.selectedProjectId)
             if (!token || projectId == null) return
-
+        
             yield* $.dispatchers.setLoading(true)
             yield* $.dispatchers.setError(null)
-
+        
             const addEither = yield* Effect.tryPromise({
               try: () => galaxyApi.projectMemberAdd(token, projectId, action.payload),
               catch: (e) => e,
             }).pipe(Effect.either)
-
+        
             if (addEither._tag === 'Left') {
               yield* $.dispatchers.setError(galaxyApi.toMessage(addEither.left))
               yield* $.dispatchers.setLoading(false)
               return
             }
-
+        
             yield* $.dispatchers.setLoading(false)
             yield* load(token, projectId)
             yield* projects.actions.refreshAccess()
-          }),
-        ),
+          }) }),
 
-        $.onAction('setRole').runLatest((action) =>
+        $.onAction('setRole').run({ mode: 'latest', effect: (action) =>
           Effect.gen(function* () {
             const token = yield* auth.read((s) => s.token)
             const projectId = yield* projects.read((s) => s.selectedProjectId)
             if (!token || projectId == null) return
-
+        
             yield* $.dispatchers.setLoading(true)
             yield* $.dispatchers.setError(null)
-
+        
             const updateEither = yield* Effect.tryPromise({
               try: () =>
                 galaxyApi.projectMemberUpdateRole(token, projectId, action.payload.userId, {
@@ -135,44 +133,42 @@ export const ProjectMembersLogic = ProjectMembersDef.logic(($) => {
                 }),
               catch: (e) => e,
             }).pipe(Effect.either)
-
+        
             if (updateEither._tag === 'Left') {
               yield* $.dispatchers.setError(galaxyApi.toMessage(updateEither.left))
               yield* $.dispatchers.setLoading(false)
               return
             }
-
+        
             yield* $.dispatchers.setLoading(false)
             yield* load(token, projectId)
             yield* projects.actions.refreshAccess()
-          }),
-        ),
+          }) }),
 
-        $.onAction('remove').runLatest((action) =>
+        $.onAction('remove').run({ mode: 'latest', effect: (action) =>
           Effect.gen(function* () {
             const token = yield* auth.read((s) => s.token)
             const projectId = yield* projects.read((s) => s.selectedProjectId)
             if (!token || projectId == null) return
-
+        
             yield* $.dispatchers.setLoading(true)
             yield* $.dispatchers.setError(null)
-
+        
             const removeEither = yield* Effect.tryPromise({
               try: () => galaxyApi.projectMemberRemove(token, projectId, action.payload),
               catch: (e) => e,
             }).pipe(Effect.either)
-
+        
             if (removeEither._tag === 'Left') {
               yield* $.dispatchers.setError(galaxyApi.toMessage(removeEither.left))
               yield* $.dispatchers.setLoading(false)
               return
             }
-
+        
             yield* $.dispatchers.setLoading(false)
             yield* load(token, projectId)
             yield* projects.actions.refreshAccess()
-          }),
-        ),
+          }) }),
       ], { concurrency: 'unbounded' })
     }),
   }

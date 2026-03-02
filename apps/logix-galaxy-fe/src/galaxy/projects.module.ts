@@ -160,58 +160,54 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
                 : resetAll,
           ),
 
-          $.onAction('refreshProjects').runLatest(() =>
+          $.onAction('refreshProjects').run({ mode: 'latest', effect: () =>
             Effect.gen(function* () {
               const t = yield* auth.read((s) => s.token)
               if (!t) return yield* resetAll
               yield* loadProjects(t)
-            }),
-          ),
+            }) }),
 
-          $.onAction('createProject').runLatest((action) =>
+          $.onAction('createProject').run({ mode: 'latest', effect: (action) =>
             Effect.gen(function* () {
               const t = yield* auth.read((s) => s.token)
               if (!t) return yield* resetAll
-
+          
               yield* $.dispatchers.setProjectsError(null)
               yield* $.dispatchers.setProjectsLoading(true)
-
+          
               const createEither = yield* Effect.tryPromise({
                 try: () => galaxyApi.projectCreate(t, { name: action.payload }),
                 catch: (e) => e,
               }).pipe(Effect.either)
-
+          
               if (createEither._tag === 'Left') {
                 yield* $.dispatchers.setProjectsError(galaxyApi.toMessage(createEither.left))
                 yield* $.dispatchers.setProjectsLoading(false)
                 return
               }
-
+          
               yield* $.dispatchers.setProjectsLoading(false)
               yield* loadProjects(t)
-            }),
-          ),
+            }) }),
 
-          $.onAction('selectProject').runLatest((action) =>
+          $.onAction('selectProject').run({ mode: 'latest', effect: (action) =>
             Effect.gen(function* () {
               const projectId = action.payload
               yield* $.dispatchers.setSelectedProjectId(projectId)
-
+          
               const t = yield* auth.read((s) => s.token)
               if (!t) return yield* resetAll
-
+          
               yield* Effect.all([loadSelectedProject(t, projectId), loadAccess(t, projectId)])
-            }),
-          ),
+            }) }),
 
-          $.onAction('refreshAccess').runLatest(() =>
+          $.onAction('refreshAccess').run({ mode: 'latest', effect: () =>
             Effect.gen(function* () {
               const t = yield* auth.read((s) => s.token)
               const projectId = (yield* $.state.read).selectedProjectId
               if (!t || projectId == null) return
               yield* loadAccess(t, projectId)
-            }),
-          ),
+            }) }),
         ],
         { concurrency: 'unbounded' },
       )
