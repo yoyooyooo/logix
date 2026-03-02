@@ -272,7 +272,20 @@ export const makeDispatchOps = <S, A>(args: {
       return baseDetails
     }
 
-    return { ...baseDetails, ...(overrideDetails as Record<string, unknown>) }
+    const runtimeOwnedAuditKeys = ['count', '_tag', 'path', 'op'] as const
+
+    const merged = { ...baseDetails, ...(overrideDetails as Record<string, unknown>) } as Record<string, unknown>
+
+    for (let index = 0; index < runtimeOwnedAuditKeys.length; index += 1) {
+      const key = runtimeOwnedAuditKeys[index]
+      if (Object.prototype.hasOwnProperty.call(baseDetails, key)) {
+        merged[key] = baseDetails[key]
+      } else {
+        delete merged[key]
+      }
+    }
+
+    return merged
   }
 
   const makeActionOrigin = (
