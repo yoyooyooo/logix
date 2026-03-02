@@ -139,50 +139,48 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
                   }),
           ),
 
-          $.onAction('refreshGroups').runLatest(() =>
+          $.onAction('refreshGroups').run({ mode: 'latest', effect: () =>
             Effect.gen(function* () {
               const token = yield* auth.read((s) => s.token)
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return yield* clearAll
               yield* loadGroups(token, projectId)
-            }),
-          ),
+            }) }),
 
-          $.onAction('createGroup').runLatest((action) =>
+          $.onAction('createGroup').run({ mode: 'latest', effect: (action) =>
             Effect.gen(function* () {
               const token = yield* auth.read((s) => s.token)
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
-
+          
               yield* $.dispatchers.setGroupsLoading(true)
               yield* $.dispatchers.setGroupsError(null)
-
+          
               const createEither = yield* Effect.tryPromise({
                 try: () => galaxyApi.projectGroupCreate(token, projectId, action.payload),
                 catch: (e) => e,
               }).pipe(Effect.either)
-
+          
               if (createEither._tag === 'Left') {
                 yield* $.dispatchers.setGroupsError(galaxyApi.toMessage(createEither.left))
                 yield* $.dispatchers.setGroupsLoading(false)
                 return
               }
-
+          
               yield* $.dispatchers.setGroupsLoading(false)
               yield* loadGroups(token, projectId)
               yield* projects.actions.refreshAccess()
-            }),
-        ),
+            }) }),
 
-          $.onAction('updateGroup').runLatest((action) =>
+          $.onAction('updateGroup').run({ mode: 'latest', effect: (action) =>
             Effect.gen(function* () {
               const token = yield* auth.read((s) => s.token)
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
-
+          
               yield* $.dispatchers.setGroupsLoading(true)
               yield* $.dispatchers.setGroupsError(null)
-
+          
               const updateEither = yield* Effect.tryPromise({
                 try: () =>
                   galaxyApi.projectGroupUpdate(token, projectId, action.payload.groupId, {
@@ -191,78 +189,74 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
                   }),
                 catch: (e) => e,
               }).pipe(Effect.either)
-
+          
               if (updateEither._tag === 'Left') {
                 yield* $.dispatchers.setGroupsError(galaxyApi.toMessage(updateEither.left))
                 yield* $.dispatchers.setGroupsLoading(false)
                 return
               }
-
+          
               yield* $.dispatchers.setGroupsLoading(false)
               yield* loadGroups(token, projectId)
               yield* projects.actions.refreshAccess()
-            }),
-        ),
+            }) }),
 
-          $.onAction('deleteGroup').runLatest((action) =>
+          $.onAction('deleteGroup').run({ mode: 'latest', effect: (action) =>
             Effect.gen(function* () {
               const token = yield* auth.read((s) => s.token)
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
-
+          
               yield* $.dispatchers.setGroupsLoading(true)
               yield* $.dispatchers.setGroupsError(null)
-
+          
               const deleteEither = yield* Effect.tryPromise({
                 try: () => galaxyApi.projectGroupDelete(token, projectId, action.payload),
                 catch: (e) => e,
               }).pipe(Effect.either)
-
+          
               if (deleteEither._tag === 'Left') {
                 yield* $.dispatchers.setGroupsError(galaxyApi.toMessage(deleteEither.left))
                 yield* $.dispatchers.setGroupsLoading(false)
                 return
               }
-
+          
               yield* $.dispatchers.setGroupsLoading(false)
               yield* loadGroups(token, projectId)
               yield* projects.actions.refreshAccess()
-            }),
-        ),
+            }) }),
 
-          $.onAction('selectGroup').runLatest((action) =>
+          $.onAction('selectGroup').run({ mode: 'latest', effect: (action) =>
             Effect.gen(function* () {
               const nextId = action.payload
               yield* $.dispatchers.setSelectedGroupId(nextId)
               yield* $.dispatchers.setSelectedGroupMembers([])
               yield* $.dispatchers.setMembersError(null)
-
+          
               const token = yield* auth.read((s) => s.token)
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null || nextId == null) return
               yield* loadGroupMembers(token, projectId, nextId)
-            }),
-          ),
+            }) }),
 
-          $.onAction('refreshMembers').runLatest(() =>
+          $.onAction('refreshMembers').run({ mode: 'latest', effect: () =>
             Effect.gen(function* () {
               const token = yield* auth.read((s) => s.token)
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               const groupId = (yield* $.state.read).selectedGroupId
               if (!token || projectId == null || groupId == null) return
               yield* loadGroupMembers(token, projectId, groupId)
-            }),
-          ),
+            }) }),
 
-          $.onAction('addMember').runLatest((action) =>
+          $.onAction('addMember').run({ mode: 'latest', effect: (action) =>
             Effect.gen(function* () {
               const token = yield* auth.read((s) => s.token)
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
-
+          
               yield* $.dispatchers.setMembersLoading(true)
               yield* $.dispatchers.setMembersError(null)
-
+          
               const addEither = yield* Effect.tryPromise({
                 try: () =>
                   galaxyApi.projectGroupMemberAdd(token, projectId, action.payload.groupId, {
@@ -270,45 +264,43 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
                   }),
                 catch: (e) => e,
               }).pipe(Effect.either)
-
+          
               if (addEither._tag === 'Left') {
                 yield* $.dispatchers.setMembersError(galaxyApi.toMessage(addEither.left))
                 yield* $.dispatchers.setMembersLoading(false)
                 return
               }
-
+          
               yield* $.dispatchers.setMembersLoading(false)
               yield* loadGroupMembers(token, projectId, action.payload.groupId)
               yield* projects.actions.refreshAccess()
-            }),
-        ),
+            }) }),
 
-          $.onAction('removeMember').runLatest((action) =>
+          $.onAction('removeMember').run({ mode: 'latest', effect: (action) =>
             Effect.gen(function* () {
               const token = yield* auth.read((s) => s.token)
               const projectId = yield* projects.read((s) => s.selectedProjectId)
               if (!token || projectId == null) return
-
+          
               yield* $.dispatchers.setMembersLoading(true)
               yield* $.dispatchers.setMembersError(null)
-
+          
               const removeEither = yield* Effect.tryPromise({
                 try: () =>
                   galaxyApi.projectGroupMemberRemove(token, projectId, action.payload.groupId, action.payload.userId),
                 catch: (e) => e,
               }).pipe(Effect.either)
-
+          
               if (removeEither._tag === 'Left') {
                 yield* $.dispatchers.setMembersError(galaxyApi.toMessage(removeEither.left))
                 yield* $.dispatchers.setMembersLoading(false)
                 return
               }
-
+          
               yield* $.dispatchers.setMembersLoading(false)
               yield* loadGroupMembers(token, projectId, action.payload.groupId)
               yield* projects.actions.refreshAccess()
-            }),
-        ),
+            }) }),
         ],
         { concurrency: 'unbounded' },
       )

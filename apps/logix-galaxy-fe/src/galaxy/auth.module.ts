@@ -91,39 +91,37 @@ export const AuthLogic = AuthDef.logic(($) => {
       yield* bootstrapFromStorage
 
       yield* Effect.all([
-        $.onAction('login').runLatest((action) =>
+        $.onAction('login').run({ mode: 'latest', effect: (action) =>
           Effect.gen(function* () {
             yield* $.dispatchers.setPending(true)
             yield* $.dispatchers.setError(null)
-
+        
             const resEither = yield* Effect.tryPromise({
               try: () => galaxyApi.login(action.payload),
               catch: (e) => e,
             }).pipe(Effect.either)
-
+        
             if (resEither._tag === 'Left') {
               yield* $.dispatchers.setPending(false)
               yield* $.dispatchers.setPhase('anonymous')
               yield* $.dispatchers.setError(galaxyApi.toMessage(resEither.left))
               return
             }
-
+        
             tokenStorage.set(resEither.right.token)
             yield* $.dispatchers.setToken(resEither.right.token)
             yield* $.dispatchers.setUser(resEither.right.user as any)
             yield* $.dispatchers.setPhase('authenticated')
             yield* $.dispatchers.setPending(false)
-          }),
-        ),
+          }) }),
 
-        $.onAction('logout').runLatest(() =>
+        $.onAction('logout').run({ mode: 'latest', effect: () =>
           Effect.gen(function* () {
             const token = (yield* $.state.read).token
             yield* clearSession()
             if (!token) return
             yield* Effect.tryPromise({ try: () => galaxyApi.logout(token), catch: () => undefined }).pipe(Effect.asVoid)
-          }),
-        ),
+          }) }),
       ], { concurrency: 'unbounded' })
     }),
   }
