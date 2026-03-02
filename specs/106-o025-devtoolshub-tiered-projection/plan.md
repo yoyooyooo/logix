@@ -29,8 +29,22 @@
 _GATE: 进入实现前必须通过，Phase 1 后复核。_
 
 - docs-first：先更新规格与 contracts，再改实现。
-- 诊断约束：degraded 原因码必须可解释。
-- 性能预算：light/full 对比必须有可复现证据。
+- 诊断成本预算：
+  - degraded 原因码必须可解释（`code/message/recommendedAction`），并可序列化。
+  - 运行时需保留 `exportBudget(dropped/oversized)` 以量化投影裁剪成本。
+- 性能预算：
+  - light/full 对比必须有可复现证据（同 workload、同 envId、同 profile）。
+  - 验收信号优先看写入体积差（`latest*` 写入规模）与时延比值。
+- IR / Anchor 漂移控制：
+  - 统一锚点为 `staticIrDigest`，通过 `summary.converge.staticIrByDigest` 保持可解释链路。
+  - light 模式不得引入第二事实源，不回填 `latestStates/latestTraitSummaries` 重资产。
+- 稳定标识约束：
+  - `runtimeLabel/moduleId/instanceId/txnSeq/eventSeq` 必须稳定、可复现、可追踪。
+  - snapshot 读模型依赖 `snapshotToken` 触发一致性更新。
+- 迁移与回滚说明：
+  - Stage 1：消费端先适配 degraded 语义与 projection tier。
+  - Stage 2：默认策略再切到 light。
+  - 回滚：统一通过 `mode: 'full'` 回退，不引入长期兼容层。
 - forward-only：消费端通过迁移说明完成适配，不做长期兼容层。
 
 ### Gate Result

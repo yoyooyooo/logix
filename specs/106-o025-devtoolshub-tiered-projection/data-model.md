@@ -13,8 +13,9 @@
   - `snapshotToken`
   - `summaryFields`
   - `degraded`
+  - `reason`（当 `degraded=true` 时必填）
 - **Validation Rules**:
-  - degraded=true 时必须附带 reason
+  - `degraded=true` 时必须附带 `reason`
 
 ## Entity: ProjectionDegradeReason
 

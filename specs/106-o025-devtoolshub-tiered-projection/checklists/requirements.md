@@ -2,7 +2,7 @@
 
 **Purpose**: 验证 O-025 规格完整性与可迁移性  
 **Created**: 2026-02-26  
-**Feature**: [spec.md](/Users/yoyo/Documents/code/personal/logix.worktrees/refactor__todo-optimization-items/specs/106-o025-devtoolshub-tiered-projection/spec.md)
+**Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 

@@ -9,7 +9,7 @@
 
 - **Backlog Item**: O-025
 - **Source File**: `docs/todo-optimization-backlog/items/O-025-devtoolshub-tiered-projection.md`
-- **Source Link**: [/docs/todo-optimization-backlog/items/O-025-devtoolshub-tiered-projection.md](/Users/yoyo/Documents/code/personal/logix.worktrees/refactor__todo-optimization-items/docs/todo-optimization-backlog/items/O-025-devtoolshub-tiered-projection.md)
+- **Source Link**: [docs/todo-optimization-backlog/items/O-025-devtoolshub-tiered-projection.md](../../docs/todo-optimization-backlog/items/O-025-devtoolshub-tiered-projection.md)
 
 ## North Stars & Kill Features Traceability _(optional)_
 
