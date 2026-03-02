@@ -853,6 +853,9 @@ export const make = <S, A, R = never>(
         return resolveTxnLanePolicyFromRecompute(recomputedPolicy)
       })
 
+    let lastEmittedTxnLanePolicyResolvedCaptureSeq: number | undefined = undefined
+    let lastEmittedTxnLanePolicyResolvedRecomputeTxnSeq: number | undefined = undefined
+
     const recordTxnLanePolicyResolved = (args: {
       readonly resolution: TxnLanePolicyResolution
       readonly txnSeq?: number
@@ -971,18 +974,38 @@ export const make = <S, A, R = never>(
             return next
           }
 
-          const diagnosticsLevelForPolicyResolution =
-            captured?.diagnosticsLevel ?? (yield* FiberRef.get(Debug.currentDiagnosticsLevel))
-          const shouldEmitPolicyResolution = diagnosticsLevelForPolicyResolution !== 'off'
-          const recordTxnLanePolicyResolvedWithContext = (args: {
-            readonly resolution: TxnLanePolicyResolution
-            readonly txnSeq?: number
-            readonly txnId?: string
-            readonly opSeq?: number
-          }): Effect.Effect<void> => {
-            const next = recordTxnLanePolicyResolved(args)
-            return captured ? withCapturedContext(next) : next
-          }
+           const diagnosticsLevelForPolicyResolution =
+             captured?.diagnosticsLevel ?? (yield* FiberRef.get(Debug.currentDiagnosticsLevel))
+           const shouldEmitPolicyResolution = diagnosticsLevelForPolicyResolution !== 'off'
+           const recordTxnLanePolicyResolvedWithContext = (args: {
+             readonly resolution: TxnLanePolicyResolution
+             readonly txnSeq?: number
+             readonly txnId?: string
+             readonly opSeq?: number
+           }): Effect.Effect<void> => {
+             if (args.resolution.reason === 'cache_hit' && args.resolution.captureSeq > 0) {
+               if (lastEmittedTxnLanePolicyResolvedCaptureSeq === args.resolution.captureSeq) {
+                 return Effect.void
+               }
+               lastEmittedTxnLanePolicyResolvedCaptureSeq = args.resolution.captureSeq
+             } else {
+               const txnSeq = args.txnSeq
+               if (typeof txnSeq === 'number') {
+                 if (lastEmittedTxnLanePolicyResolvedRecomputeTxnSeq === txnSeq) {
+                   return Effect.void
+                 }
+                 lastEmittedTxnLanePolicyResolvedRecomputeTxnSeq = txnSeq
+               } else {
+                 if (lastEmittedTxnLanePolicyResolvedRecomputeTxnSeq === -1) {
+                   return Effect.void
+                 }
+                 lastEmittedTxnLanePolicyResolvedRecomputeTxnSeq = -1
+               }
+             }
+
+             const next = recordTxnLanePolicyResolved(args)
+             return captured ? withCapturedContext(next) : next
+           }
 
           const firstPendingAtMs = firstPendingAtMsForRun ?? Date.now()
 

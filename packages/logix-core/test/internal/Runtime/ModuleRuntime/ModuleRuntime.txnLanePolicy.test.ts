@@ -368,4 +368,64 @@ describe('ModuleRuntime txn lane policy capture cache (O-024)', () => {
       expect(cacheHitRecaptureRequired).toBe(false)
     }),
   )
+
+  it.scoped('txn_lane_policy::resolved emits at most once per capture context under slicing loops', () =>
+    Effect.gen(function* () {
+      const events: Array<Logix.Debug.Event> = []
+      const sink: Logix.Debug.Sink = {
+        record: (event: Logix.Debug.Event) =>
+          Effect.sync(() => {
+            events.push(event)
+          }),
+      }
+
+      const layer = Layer.mergeAll(Logix.Debug.diagnosticsLevel('full'), Logix.Debug.replace([sink])) as Layer.Layer<
+        any,
+        never,
+        never
+      >
+
+      const DEFERRED = 256
+      const { M, impl } = makeDeferredModule({ deferred: DEFERRED })
+      const runtime = makeRuntime({ impl, layer })
+
+      yield* Effect.promise(() =>
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const rt: any = yield* M.tag
+            const lastKey = `d${DEFERRED - 1}`
+
+            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'slice-flood' }, () =>
+              Effect.gen(function* () {
+                const prev = yield* rt.getState
+                yield* rt.setState({ ...prev, a: 1 })
+                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+              }),
+            )
+
+            const expectedLast = computeValue(1, DEFERRED - 1)
+            yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast)))
+          }),
+        ),
+      )
+
+      const deferredFlushTxnCount = events.filter(
+        (e: any) => e.type === 'state:update' && e.originKind === 'trait:deferred_flush',
+      ).length
+      expect(deferredFlushTxnCount).toBeGreaterThan(1)
+
+      const detailsList = collectResolvedDetails(events)
+      expect(detailsList.length).toBeGreaterThan(0)
+
+      const countByCaptureSeq = new Map<number, number>()
+      for (const details of detailsList) {
+        countByCaptureSeq.set(details.captureSeq, (countByCaptureSeq.get(details.captureSeq) ?? 0) + 1)
+      }
+
+      expect(countByCaptureSeq.get(1)).toBe(1)
+      for (const count of countByCaptureSeq.values()) {
+        expect(count).toBe(1)
+      }
+    }),
+  )
 })
