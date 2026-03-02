@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -48,3 +50,55 @@ jobs:
 
       - name: Test
         run: pnpm test:turbo
+
+      - name: Test (governance checks unit)
+        run: pnpm test -- scripts/checks/governance-checks.test.ts scripts/checks/governance-checks-negative.test.ts
+
+      - name: Governance Checks
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+            pnpm run check:forward-evolution -- --base "$BASE_REF"
+            pnpm run check:ssot-alignment -- --base "$BASE_REF"
+            pnpm run check:perf-evidence -- --base "$BASE_REF"
+            pnpm run check:protocol-antipatterns -- --base "$BASE_REF"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            BASE_REF="${{ github.event.before }}"
+            pnpm run check:forward-evolution -- --base "$BASE_REF"
+            pnpm run check:ssot-alignment -- --base "$BASE_REF"
+            pnpm run check:perf-evidence -- --base "$BASE_REF"
+            pnpm run check:protocol-antipatterns -- --base "$BASE_REF"
+          else
+            pnpm run verify:governance
+          fi
+
+      - name: Scenario Coverage (facts)
+        run: pnpm run check:scenario-coverage
+
+  verify-autonomous-loop:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: true
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify autonomous loop
+        run: pnpm run verify:self-bootstrap-readiness-examples-real

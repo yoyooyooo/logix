@@ -1,0 +1,21 @@
+{
+  "checks": [
+    {
+      "id": "report-linked",
+      "ok": true,
+      "reasonCode": "EVIDENCE_REPORT_LINKED"
+    },
+    {
+      "id": "trace-linked",
+      "ok": true,
+      "reasonCode": "EVIDENCE_TRACE_LINKED"
+    }
+  ],
+  "kind": "TrialRunEvidence",
+  "links": {
+    "traceSlimDigest": "sha256:d80abbd6667b4a5a6258227396dfc4b5f79b11993509f9821cd551568af5e240",
+    "trialRunReportDigest": "sha256:3af8fe325239cdad934bea0ab4cd07c2f788fe0b2dc63de8ea34689e47218275"
+  },
+  "runId": "demo-contract-pass-trialrun",
+  "schemaVersion": 1
+}

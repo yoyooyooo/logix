@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "defaults": {
+    "entry": "src/entry.basic.ts#AppRoot"
+  },
+  "profiles": {
+    "contract": {},
+    "trace": {
+      "includeTrace": true,
+      "diagnosticsLevel": "full"
+    }
+  }
+}

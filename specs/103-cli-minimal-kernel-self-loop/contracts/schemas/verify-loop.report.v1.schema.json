@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix/specs/103/verify-loop.report.v1.schema.json",
+  "title": "VerifyLoopReportV1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kind",
+    "runId",
+    "instanceId",
+    "mode",
+    "gateScope",
+    "txnSeq",
+    "opSeq",
+    "attemptSeq",
+    "verdict",
+    "exitCode",
+    "gateResults",
+    "reasonCode",
+    "reasons",
+    "trajectory",
+    "nextActions",
+    "artifacts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "VerifyLoopReport"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "instanceId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["run", "resume"]
+    },
+    "gateScope": {
+      "type": "string",
+      "enum": ["runtime", "governance"]
+    },
+    "previousRunId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "txnSeq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "opSeq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "attemptSeq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "VIOLATION", "RETRYABLE", "NOT_IMPLEMENTED", "NO_PROGRESS", "ERROR"]
+    },
+    "exitCode": {
+      "type": "integer",
+      "enum": [0, 1, 2, 3, 4, 5]
+    },
+    "gateResults": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/gateResultItem"
+      }
+    },
+    "reasonCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reasonItem"
+      }
+    },
+    "trajectory": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/trajectoryItem"
+      }
+    },
+    "nextActions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nextActionItem"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifactItem"
+      }
+    },
+    "ext": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "gateResultItem": {
+      "type": "object",
+      "required": ["gate", "status", "durationMs", "command", "exitCode"],
+      "properties": {
+        "gate": {
+          "type": "string",
+          "enum": [
+            "gate:type",
+            "gate:lint",
+            "gate:test",
+            "gate:control-surface-artifact",
+            "gate:diagnostics-protocol",
+            "gate:perf-hard",
+            "gate:ssot-drift",
+            "gate:migration-forward-only"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "retryable", "skipped"]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exitCode": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasonCode": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "reasonItem": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "trajectoryItem": {
+      "type": "object",
+      "required": ["attemptSeq", "reasonCode"],
+      "properties": {
+        "attemptSeq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reasonCode": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifactItem": {
+      "type": "object",
+      "required": ["name", "path"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "nextActionItem": {
+      "type": "object",
+      "required": ["id", "action", "args"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["run-command", "rerun", "inspect", "stop"]
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "ifReasonCodes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "resume"
+          }
+        }
+      },
+      "then": {
+        "required": ["previousRunId"],
+        "properties": {
+          "trajectory": {
+            "minItems": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "gateScope": {
+            "const": "runtime"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "gateResults": {
+            "items": {
+              "type": "object",
+              "properties": {
+                "gate": {
+                  "enum": [
+                    "gate:type",
+                    "gate:lint",
+                    "gate:test",
+                    "gate:control-surface-artifact",
+                    "gate:diagnostics-protocol"
+                  ]
+                }
+              },
+              "required": ["gate"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "gateScope": {
+            "const": "governance"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "gateResults": {
+            "items": {
+              "type": "object",
+              "properties": {
+                "gate": {
+                  "enum": [
+                    "gate:perf-hard",
+                    "gate:ssot-drift",
+                    "gate:migration-forward-only"
+                  ]
+                }
+              },
+              "required": ["gate"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "PASS"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exitCode": {
+            "const": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "ERROR"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exitCode": {
+            "const": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "VIOLATION"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exitCode": {
+            "const": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "RETRYABLE"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exitCode": {
+            "const": 3
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "NOT_IMPLEMENTED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exitCode": {
+            "const": 4
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "NO_PROGRESS"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exitCode": {
+            "const": 5
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

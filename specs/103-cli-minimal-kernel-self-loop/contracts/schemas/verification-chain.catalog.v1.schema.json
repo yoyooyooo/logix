@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix/specs/103/verification-chain.catalog.v1.schema.json",
+  "title": "VerificationChainCatalogV1",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "source", "chains"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "VerificationChainCatalog"
+    },
+    "source": {
+      "const": "primitives.capability-model.v1"
+    },
+    "chains": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/chainTemplate"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "commandStep": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "chainTemplate": {
+      "type": "object",
+      "required": ["id", "purpose", "commandSteps"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["static-contract", "dynamic-evidence", "change-safety", "closure-ready"]
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commandSteps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/commandStep"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

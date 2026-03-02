@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix/specs/103/verify-loop.input.v1.schema.json",
+  "title": "VerifyLoopInputV1",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "mode", "instanceId", "target"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "VerifyLoopInput"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["run", "resume"]
+    },
+    "instanceId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "previousRunId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1
+    },
+    "maxAttempts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nonTty": {
+      "type": "boolean"
+    },
+    "ext": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "run"
+          }
+        }
+      },
+      "then": {
+        "required": ["runId"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "resume"
+          }
+        }
+      },
+      "then": {
+        "required": ["runId", "previousRunId"]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

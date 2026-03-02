@@ -1,0 +1,15 @@
+{
+  "digest": "sha256:f8232ebaeb0b4df0073d03521adddf69ca64950c2183e216e1b7823ba8bd0b08",
+  "kind": "ControlSurfaceManifest",
+  "moduleId": "entry.basic.v2.ts#AppRoot",
+  "modules": [
+    {
+      "moduleId": "entry.basic.v2.ts#AppRoot",
+      "workflowSurface": {
+        "digest": "sha256:dfa8b6cc536aa4d41fd7252e60424e2a40716ed1afa1b49679722793e511675f"
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "version": 1
+}

@@ -1,0 +1,47 @@
+{
+  "config": [],
+  "entry": {
+    "entryRef": "src/entry.basic.ts#AppRoot",
+    "exportName": "AppRoot",
+    "modulePath": "src/entry.basic.ts"
+  },
+  "execution": {
+    "diagnosticsLevel": "light",
+    "emit": "evidence",
+    "host": "node",
+    "includeTrace": true
+  },
+  "identity": {
+    "instanceId": "demo-contract-inputs-trialrun",
+    "opSeq": 1,
+    "txnSeq": 1
+  },
+  "kind": "TrialRunReport",
+  "manifest": {
+    "digest": "sha256:d79fe51057c6ec169634031a553003e576efe35a0e9e9d8b1e4d4665ba0a8144",
+    "kind": "ControlSurfaceManifest",
+    "moduleId": "entry.basic.ts#AppRoot",
+    "modules": [
+      {
+        "moduleId": "entry.basic.ts#AppRoot",
+        "workflowSurface": {
+          "digest": "sha256:2514bd61ee156653bfa92b8697f08ee4d764adb96c021d609e5fb7b4990a9ff5"
+        }
+      }
+    ],
+    "schemaVersion": 1,
+    "version": 1
+  },
+  "runId": "demo-contract-inputs-trialrun",
+  "schemaVersion": 1,
+  "summary": {
+    "emittedArtifacts": {
+      "evidence": true,
+      "traceSlim": true,
+      "trialRunReport": true
+    },
+    "reasonCode": "VERIFY_PASS",
+    "traceEventCount": 2,
+    "verdict": "pass"
+  }
+}

@@ -24,6 +24,8 @@
 2. 当做完一个特性时，需要跑通测试用例和所有类型检测；文档同步按 `project-guide` 的 spec→ 产物落点执行。
 3. 若改动触及核心路径 / 诊断协议 / 对外 API，必须在 plan.md 的 Constitution Check 中补齐性能预算、
    诊断代价、IR/锚点漂移点、稳定标识与迁移说明，并同步更新对应 SSoT 与用户文档 （开发阶段只考虑中文文档，忽略 .en.md）。
+4. 涉及 CLI 能力演进时，默认走 **scenario-driven**：先定义业务场景与可验证产物，再补 CLI 命令；禁止“无场景先堆命令”。
+5. 遵循 **core-first / cli-thin**：基础能力先落 `packages/logix-core`（或已存在 core 公共能力），`packages/logix-cli` 只做命令包装、参数绑定与结构化输出，不复制 runtime 语义。
 
 ## 规划对齐（简版）
 
@@ -50,6 +52,8 @@
 - **引擎优先**：先把 Intent/Flow/Logix/Effect 的契约和幂等出码引擎打磨稳定，再考虑 Studio/画布等交互体验；遇到冲突，一律保证引擎正确、可回放、可追踪。
 - **Effect 作为统一运行时**：默认使用 `effect`（effect-ts v3 系列）承载行为与流程执行，出码后的业务流程应以 `.flow.ts` + Effect/Logix 程序为落点；其他运行时只作为 PoC，而不是第二套正式栈。
 - **Logix dogfooding（简称 Logix fooding）**：本仓所有上层应用（如 `examples/*`、`packages/logix-devtools-react` 等）在可行范围内，一律以 Logix Runtime（Flow/Effect/Logix）作为主要运行时与状态管理方式，不再引入第二套 ad-hoc 状态机或流程引擎，以便在真实场景中持续“吃自己狗粮”、验证和打磨 Logix 本身。
+- **CLI 角色边界（core-first / cli-thin）**：CLI 是支撑 Agent 的工具平面（Tool Plane），不是第二套 runtime；优先暴露 primitives（可组合基础命令），高阶 loop/策略保持可选且外置。
+- **场景驱动 CLI 演进**：CLI 新能力必须绑定至少一个真实或近真实业务场景（优先 `examples/*`），并提供结构化产物与可自动验收路径（非日志驱动）。
 - **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/ssot/platform` 与 `docs/ssot/runtime` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
   - 对于已经确定、但实现细节容易跑偏的技术决策（例如 Store.Spec / Universal Bound API / Fluent DSL / Parser 约束），**需要同时在实现备忘中固化**：
     - 平台侧：`docs/specs/sdd-platform/impl/README.md`；

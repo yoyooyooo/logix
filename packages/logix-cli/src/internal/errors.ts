@@ -23,8 +23,17 @@ const isCliUsageCode = (code: string | undefined): boolean =>
     code === 'CLI_HOST_MISSING_BROWSER_GLOBAL' ||
     code === 'CLI_HOST_MISMATCH')
 
-export const exitCodeFromErrorSummary = (error: SerializableErrorSummary | undefined): 1 | 2 =>
-  isCliViolationCode(error?.code) || isCliUsageCode(error?.code) ? 2 : 1
+const isGateFailureCode = (code: string | undefined): boolean =>
+  typeof code === 'string' && code.startsWith('GATE_') && code.endsWith('_FAILED')
+
+export const exitCodeFromErrorSummary = (error: SerializableErrorSummary | undefined): 1 | 2 | 3 | 4 | 5 => {
+  const code = error?.code
+  if (code === 'VERIFY_RETRYABLE') return 3
+  if (code === 'VERIFY_NO_PROGRESS') return 5
+  if (code === 'CLI_NOT_IMPLEMENTED') return 4
+  if (isGateFailureCode(code)) return 2
+  return isCliViolationCode(code) || isCliUsageCode(code) ? 2 : 1
+}
 
 export class CliError extends Error {
   readonly code: CliErrorCode
