@@ -32,7 +32,9 @@ const RegionDef = Logix.Module.make('RegionModule', {
 
 const RegionLogic = RegionDef.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('region/select').run((action) => $.state.update((s) => ({ ...s, province: action.payload })))
+    yield* $.onAction('region/select').run({
+      effect: (action: any) => $.state.update((s) => ({ ...s, province: action.payload })),
+    })
   }),
 )
 
@@ -58,8 +60,12 @@ const CartDef = Logix.Module.make('CartModule', {
 const CartLogic = CartDef.logic(($) =>
   Effect.gen(function* () {
     yield* Effect.all([
-      $.onAction('cart/addShippingFee').run((action) => $.state.update((s) => ({ ...s, shippingFee: action.payload }))),
-      $.onAction('cart/resetShippingFee').run(() => $.state.update((s) => ({ ...s, shippingFee: 0 }))),
+      $.onAction('cart/addShippingFee').run({
+        effect: (action: any) => $.state.update((s) => ({ ...s, shippingFee: action.payload })),
+      }),
+      $.onAction('cart/resetShippingFee').run({
+        effect: () => $.state.update((s) => ({ ...s, shippingFee: 0 })),
+      }),
     ])
   }),
 )

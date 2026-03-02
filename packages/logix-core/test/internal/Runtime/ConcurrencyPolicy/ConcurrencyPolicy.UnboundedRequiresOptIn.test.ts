@@ -29,7 +29,7 @@ describe('ConcurrencyPolicy (US2): unbounded requires explicit opt-in', () => {
           }).pipe(Effect.ensuring(Ref.update(inFlightRef, (n) => n - 1).pipe(Effect.asVoid)))
 
           const base = Stream.fromIterable(Array.from({ length: 128 }, (_, i) => i))
-          yield* flow.runParallel(() => job)(base)
+          yield* flow.run({ mode: 'parallel', effect: () => job })(base)
 
           const maxInFlight = yield* Ref.get(maxInFlightRef)
           expect(maxInFlight).toBeLessThanOrEqual(16)

@@ -39,16 +39,17 @@ describe('AppDemoLayout-style runtime + Debug.traceLayer + Suspense', () => {
       yield* Effect.log('AppCounterLogic (test) setup')
 
       // On each increment, emit one business log + one trace:* Debug event.
-      yield* $.onAction('increment').run(() =>
-        Effect.gen(function* () {
-          yield* Effect.log('increment dispatched from AppCounterLogic (test)')
-          yield* Logix.Debug.record({
-            type: 'trace:increment',
-            moduleId: AppCounterModule.id,
-            data: { source: 'app-demo-layout-trace-suspend.test' },
-          })
-        }),
-      )
+      yield* $.onAction('increment').run({
+        effect: () =>
+          Effect.gen(function* () {
+            yield* Effect.log('increment dispatched from AppCounterLogic (test)')
+            yield* Logix.Debug.record({
+              type: 'trace:increment',
+              moduleId: AppCounterModule.id,
+              data: { source: 'app-demo-layout-trace-suspend.test' },
+            })
+          }),
+      })
     })
   })
 

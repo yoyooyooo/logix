@@ -140,8 +140,9 @@ export const IrLogic = IrDef.logic(($) => ({
 
     yield* Effect.all(
       [
-        $.onAction('init').run(() =>
-          Effect.gen(function* () {
+        $.onAction('init').run({
+          effect: () =>
+            Effect.gen(function* () {
             const { kernels, defaultKernelId } = yield* client.listKernels()
             yield* $.dispatchers.setKernelCatalog({ kernels: kernels as any, defaultKernelId: defaultKernelId as any })
 
@@ -155,11 +156,13 @@ export const IrLogic = IrDef.logic(($) => ({
             }
 
             yield* client.init()
-          }),
-        ),
+            }),
+        }),
 
-        $.onAction('run').runLatest(() =>
-          Effect.gen(function* () {
+        $.onAction('run').run({
+          mode: 'latest',
+          effect: () =>
+            Effect.gen(function* () {
             const state = yield* $.state.read
 
             const wrapper = buildSandboxIrWrapper({
@@ -232,11 +235,11 @@ export const IrLogic = IrDef.logic(($) => ({
 
             yield* $.dispatchers.setBundle(incoming as any)
             yield* $.dispatchers.setActiveTab(incoming.trialRunReport ? 'trialRun' : 'manifest')
-          }).pipe(
-            Effect.catchAll((e) => $.dispatchers.setRunError(String(e))),
-            Effect.ensuring($.dispatchers.setIsRunning(false)),
-          ),
-        ),
+            }).pipe(
+              Effect.catchAll((e) => $.dispatchers.setRunError(String(e))),
+              Effect.ensuring($.dispatchers.setIsRunning(false)),
+            ),
+        }),
       ],
       { concurrency: 'unbounded' },
     )

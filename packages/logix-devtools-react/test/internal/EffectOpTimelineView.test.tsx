@@ -91,13 +91,14 @@ const CounterImpl = CounterModule.implement({
     CounterModule.logic(($) =>
       Effect.gen(function* () {
         // Record a visible trace event via DebugSink so it's easy to locate in the timeline.
-        yield* $.onAction('increment').run(() =>
-          Logix.Debug.record({
-            type: 'trace:increment',
-            moduleId: CounterModule.id,
-            data: { source: 'EffectOpTimelineView.test' },
-          }),
-        )
+        yield* $.onAction('increment').run({
+          effect: () =>
+            Logix.Debug.record({
+              type: 'trace:increment',
+              moduleId: CounterModule.id,
+              data: { source: 'EffectOpTimelineView.test' },
+            }),
+        })
       }),
     ),
   ],

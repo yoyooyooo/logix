@@ -7,7 +7,7 @@
  *
  *   在 v3 最终形态下，业务代码更推荐使用 Fluent DSL：
  *     - 通过 `$.use(Search)` / `$.use(Detail)` 获取 Store 句柄；
- *     - 使用 `$.on($Search.changes(...)).run((results) => $Detail.dispatch(...))` 编排跨 Store 联动；
+ *     - 使用 `$.on($Search.changes(...)).run({ effect: (results) => $Detail.dispatch(...) })` 编排跨 Store 联动；
  *   本文件保留作为跨 Store Fluent Intent 的 IR 级示例，而非推荐业务写法。
  * @requirement
  *   1. SearchStore: 位于全局 Layout，负责根据用户点击按钮触发搜索，并存储结果列表。
@@ -75,7 +75,7 @@ const SearchLogic = SearchDef.logic<SearchApi>(($Search) =>
       }
     })
 
-    yield* $Search.onAction('search/trigger').runExhaust(searchEffect)
+    yield* $Search.onAction('search/trigger').run({ mode: 'exhaust', effect: searchEffect })
   }).pipe(
     // 收敛错误通道，方便作为 ModuleLogic 使用
     Effect.catchAll(() => Effect.void),
@@ -115,14 +115,15 @@ export const DetailDef = Logix.Module.make('DetailModule', {
 const DetailLogic = DetailDef.logic(($Detail) =>
   Effect.gen(function* () {
     // 监听到初始化动作，就更新自己的状态
-    yield* $Detail.onAction('detail/initialize').run((action) =>
-      $Detail.state.update((prev) => ({
-        ...prev,
-        selectedItem: {
-          ...action.payload,
-        },
-      })),
-    )
+    yield* $Detail.onAction('detail/initialize').run({
+      effect: (action: any) =>
+        $Detail.state.update((prev) => ({
+          ...prev,
+          selectedItem: {
+            ...action.payload,
+          },
+        })),
+    })
   }),
 )
 
@@ -161,15 +162,16 @@ export const CoordinatorLogic = CoordinatorDef.logic(($) =>
 
     yield* $.on(results$)
       .filter((results: readonly { id: string; name: string }[]) => results.length > 0)
-      .run((results: readonly { id: string; name: string }[]) =>
-        $DetailHandle.dispatch({
-          _tag: 'detail/initialize',
-          payload: {
-            id: results[0]!.id,
-            name: results[0]!.name,
-          },
-        }),
-      )
+      .run({
+        effect: (results: readonly { id: string; name: string }[]) =>
+          $DetailHandle.dispatch({
+            _tag: 'detail/initialize',
+            payload: {
+              id: results[0]!.id,
+              name: results[0]!.name,
+            },
+          }),
+      })
   }),
 )
 

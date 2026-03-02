@@ -7,7 +7,7 @@
  *
  *   代码遵守 v3 的硬约束：
  *   - 使用 Bound API (`$`) 作为唯一入口；
- *   - Fluent 链写成单条 `yield* $.onState/$.onAction(...).debounce(...).runLatest(Effect.gen(...))`；
+ *   - Fluent 链写成单条 `yield* $.onState/$.onAction(...).debounce(...).run({ mode: 'latest', effect: Effect.gen(...) })`；
  *   - handler 内仅使用 Effect.gen + yield*，不使用 async/await。
  */
 
@@ -49,14 +49,15 @@ export const SearchLogicAgent = AgentDef.logic<SearchService>(($) =>
   Effect.gen(function* () {
     yield* $.onState((s) => s.keyword)
       .debounce(500)
-      .runLatest(
-        Effect.gen(function* () {
+      .run({
+        mode: 'latest',
+        effect: Effect.gen(function* () {
           const api = yield* $.use(SearchService)
           const { keyword } = yield* $.state.read
           const results = yield* api.search(keyword)
           yield* $.state.update((d) => ({ ...d, results }))
         }),
-      )
+      })
   }),
 )
 
@@ -104,8 +105,8 @@ export const ProfileDef = Logix.Module.make('ProfileModule', {
 
 export const ProfileLogicAgent = ProfileDef.logic<LocationService>(($) =>
   Effect.gen(function* () {
-    yield* $.onState((s) => s.country).run(
-      Effect.gen(function* () {
+    yield* $.onState((s) => s.country).run({
+      effect: Effect.gen(function* () {
         // 1. 国家变化时重置 city
         yield* $.state.update((d) => ({ ...d, city: '' }))
 
@@ -120,7 +121,7 @@ export const ProfileLogicAgent = ProfileDef.logic<LocationService>(($) =>
 
         yield* loadCities.pipe(Effect.catchAll(() => $.state.update((d) => ({ ...d, toast: '加载城市失败' }))))
       }),
-    )
+    })
   }),
 )
 

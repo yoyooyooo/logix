@@ -47,30 +47,18 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
         LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(flowApi.filter(predicate)(stream), triggerName),
       map: <U>(f: (value: T) => U) =>
         LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(stream.pipe(Stream.map(f)), triggerName),
-      run: ((effOrConfig: unknown, options?: Logic.OperationOptions) =>
-        flowApi.run<T, any, any, any>(effOrConfig as any, options)(stream)) as Logic.IntentBuilder<T, Sh, R>['run'],
-      runLatest<A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-        options?: Logic.OperationOptions,
-      ): Logic.Of<Sh, R & R2, void, E> {
-        return flowApi.runLatest<T, A, E, R2>(eff, options)(stream)
-      },
-      runExhaust<A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-        options?: Logic.OperationOptions,
-      ): Logic.Of<Sh, R & R2, void, E> {
-        return flowApi.runExhaust<T, A, E, R2>(eff, options)(stream)
-      },
-      runParallel<A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-        options?: Logic.OperationOptions,
-      ): Logic.Of<Sh, R & R2, void, E> {
-        return flowApi.runParallel<T, A, E, R2>(eff, options)(stream)
-      },
+      run: (function (config: unknown) {
+        if (arguments.length !== 1) {
+          throw new Error(
+            "[InvalidFlowRunConfig] run(config) expects a single argument. Put all options inside config.options; do not pass a second argument.",
+          )
+        }
+        return flowApi.run<T, any, any, any>(config as any)(stream)
+      }) as Logic.IntentBuilder<T, Sh, R>['run'],
       runFork: <A = void, E = never, R2 = unknown>(
         eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
       ): Logic.Of<Sh, R & R2, void, E> =>
-        Effect.forkScoped(flowApi.run<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<Sh, R & R2, void, E>,
+        Effect.forkScoped(flowApi.run<T, A, E, R2>({ effect: eff } as any)(stream)).pipe(Effect.asVoid) as Logic.Of<Sh, R & R2, void, E>,
       runParallelFork: <A = void, E = never, R2 = unknown>(
         eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
       ): Logic.Of<Sh, R & R2, void, E> =>

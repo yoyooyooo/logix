@@ -54,8 +54,9 @@ export const SandboxLogic = SandboxDef.logic(($) => {
       yield* Effect.all(
         [
           // Init Flow
-          $.onAction('init').run(() =>
-            Effect.gen(function* () {
+          $.onAction('init').run({
+            effect: () =>
+              Effect.gen(function* () {
               yield* Effect.log('[SandboxLogic] init action received')
               yield* $.dispatchers.setStatus('initializing')
               // Start syncing state (fork daemon)
@@ -80,12 +81,14 @@ export const SandboxLogic = SandboxDef.logic(($) => {
               yield* Effect.log('[SandboxLogic] client.init() completed')
               yield* $.dispatchers.setStatus('ready')
               yield* Effect.log('[SandboxLogic] status set to ready')
-            }),
-          ),
+              }),
+          }),
 
           // Run Flow
-          $.onAction('run').runLatest(() =>
-            Effect.gen(function* () {
+          $.onAction('run').run({
+            mode: 'latest',
+            effect: () =>
+              Effect.gen(function* () {
               yield* Effect.log('[SandboxLogic] run action received')
               const state = yield* $.state.read
               const code = state.code
@@ -169,12 +172,13 @@ export const SandboxLogic = SandboxDef.logic(($) => {
                 ...prev,
                 uiIntents: result.uiIntents ?? [],
               }))
-            }),
-          ),
+              }),
+          }),
 
           // UI Callback Flow: bridge Mock UI interactions back to sandbox worker
-          $.onAction('uiCallbackFromMockUi').run((action) =>
-            Effect.gen(function* () {
+          $.onAction('uiCallbackFromMockUi').run({
+            effect: (action: any) =>
+              Effect.gen(function* () {
               const payload: unknown = action.payload
 
               if (!payload || typeof payload !== 'object') {
@@ -209,14 +213,15 @@ export const SandboxLogic = SandboxDef.logic(($) => {
                 callback: callbackName,
                 data,
               })
-            }),
-          ),
+              }),
+          }),
 
           // Spec Selection Flow (Sync Spec -> Runtime)
-          $.onAction('setSpecSelection').run((action) => {
-            const { featureId, storyId, scenarioId } = action.payload
-            return Effect.gen(function* () {
-              if (!featureId || !storyId || !scenarioId) return
+          $.onAction('setSpecSelection').run({
+            effect: (action: any) => {
+              const { featureId, storyId, scenarioId } = action.payload
+              return Effect.gen(function* () {
+                if (!featureId || !storyId || !scenarioId) return
 
               const state = yield* $.state.read
               const features = state.specFeatures as readonly SpecFeature[]
@@ -237,7 +242,8 @@ export const SandboxLogic = SandboxDef.logic(($) => {
 
                 yield* $.dispatchers.setScenarioId(foundScenario.id)
               }
-            })
+              })
+            },
           }),
         ],
         { concurrency: 'unbounded' },

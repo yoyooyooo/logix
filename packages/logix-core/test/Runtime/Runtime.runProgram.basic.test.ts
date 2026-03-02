@@ -18,11 +18,12 @@ describe('Runtime.runProgram (US1)', () => {
 
       const logic = Root.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('bump').run(() =>
-            $.state.mutate((draft) => {
-              draft.value += 1
-            }),
-          )
+          yield* $.onAction('bump').run({
+            effect: () =>
+              $.state.mutate((draft) => {
+                draft.value += 1
+              }),
+          })
         }),
       )
 

@@ -33,13 +33,14 @@ const CounterImpl = CounterModule.implement({
     CounterModule.logic(($) =>
       Effect.gen(function* () {
         // Record one debug event to verify the Debug Sink receives events.
-        yield* $.onAction('increment').run(() =>
-          Logix.Debug.record({
-            type: 'trace:increment',
-            moduleId: CounterModule.id,
-            data: { source: 'devtools-react.integration.test' },
-          }),
-        )
+        yield* $.onAction('increment').run({
+          effect: () =>
+            Logix.Debug.record({
+              type: 'trace:increment',
+              moduleId: CounterModule.id,
+              data: { source: 'devtools-react.integration.test' },
+            }),
+        })
       }),
     ),
   ],

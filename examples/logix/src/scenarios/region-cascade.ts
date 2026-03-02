@@ -119,13 +119,13 @@ export const RegionLogic = RegionDef.logic<RegionService>(($) =>
     // -----------------------------------------------------------------------
     // 初始化逻辑
     // -----------------------------------------------------------------------
-    yield* $.onAction('region/init').run(
-      Effect.gen(function* () {
+    yield* $.onAction('region/init').run({
+      effect: Effect.gen(function* () {
         const svc = yield* $.use(RegionService)
         const provinces = yield* svc.getProvinces()
         yield* $.state.update((prev) => ({ ...prev, provinceOptions: provinces }))
       }),
-    )
+    })
   }),
 )
 

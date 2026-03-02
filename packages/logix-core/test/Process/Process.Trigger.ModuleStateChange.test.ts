@@ -54,7 +54,9 @@ describe('process: trigger moduleStateChange', () => {
 
       const HostLogic = Host.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('setName').run((action) => $.state.update(() => ({ user: { name: action.payload } })))
+          yield* $.onAction('setName').run({
+            effect: (action: any) => $.state.update(() => ({ user: { name: action.payload } })),
+          })
         }),
       )
 
@@ -120,19 +122,21 @@ describe('process: trigger moduleStateChange', () => {
 
       const HostLogic = Host.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('setName').run((action) =>
-            $.state.update((state) => ({
-              user: { name: action.payload },
-              profile: state.profile,
-            })),
-          )
+          yield* $.onAction('setName').run({
+            effect: (action: any) =>
+              $.state.update((state) => ({
+                user: { name: action.payload },
+                profile: state.profile,
+              })),
+          })
 
-          yield* $.onAction('setAge').run((action) =>
-            $.state.update((state) => ({
-              user: state.user,
-              profile: { age: action.payload },
-            })),
-          )
+          yield* $.onAction('setAge').run({
+            effect: (action: any) =>
+              $.state.update((state) => ({
+                user: state.user,
+                profile: { age: action.payload },
+              })),
+          })
         }),
       )
 

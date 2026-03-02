@@ -28,13 +28,13 @@ const CounterRunForkLogic = Counter.logic(($) =>
 // Watcher wiring using Effect.all + run.
 const CounterAllLogic = Counter.logic(($) =>
   Effect.gen(function* () {
-    yield* Effect.all(
-      [
-        $.onAction('inc').run($.state.update((s) => ({ ...s, value: s.value + 1 }))),
-        $.onAction('dec').run($.state.update((s) => ({ ...s, value: s.value - 1 }))),
-      ],
-      { concurrency: 'unbounded' },
-    )
+      yield* Effect.all(
+        [
+        $.onAction('inc').run({ effect: $.state.update((s) => ({ ...s, value: s.value + 1 })) }),
+        $.onAction('dec').run({ effect: $.state.update((s) => ({ ...s, value: s.value - 1 })) }),
+        ],
+        { concurrency: 'unbounded' },
+      )
   }),
 )
 

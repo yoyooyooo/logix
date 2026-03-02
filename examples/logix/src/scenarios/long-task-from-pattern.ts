@@ -38,8 +38,8 @@ export const TaskLogic = TaskDef.logic(($) =>
       progress: 0,
     }))
 
-    yield* $.onAction('start').runExhaust(startEffect)
-    yield* $.onAction('reset').run(resetEffect)
+    yield* $.onAction('start').run({ mode: 'exhaust', effect: startEffect })
+    yield* $.onAction('reset').run({ effect: resetEffect })
   }),
 )
 

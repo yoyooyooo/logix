@@ -39,11 +39,11 @@ describe('ConcurrencyPolicy (US1): nested concurrency', () => {
             yield* Ref.update(maxOuterInFlightRef, (m) => Math.max(m, current))
 
             const base = Stream.fromIterable(Array.from({ length: 16 }, (_, i) => i))
-            yield* flow.runParallel(() => innerJob)(base)
+            yield* flow.run({ mode: 'parallel', effect: () => innerJob })(base)
           }).pipe(Effect.ensuring(Ref.update(outerInFlightRef, (n) => n - 1).pipe(Effect.asVoid)))
 
         // Outer layer: handle action triggers in parallel; inner layer: each action triggers another parallel fan-out.
-        const worker = flow.runParallel(outerHandler)(runtime.actions$.pipe(Stream.take(4)))
+        const worker = flow.run({ mode: 'parallel', effect: outerHandler })(runtime.actions$.pipe(Stream.take(4)))
 
         const fiber = yield* Effect.fork(worker as any)
 

@@ -35,21 +35,23 @@ const CounterRunForkLogic = Counter.logic<Scope.Scope>(($) =>
     yield* Effect.log('CounterRunForkLogic setup')
 
     yield* Effect.forkScoped(
-      $.onAction('inc').runParallel(
-        Effect.gen(function* () {
+      $.onAction('inc').run({
+        mode: 'parallel',
+        effect: Effect.gen(function* () {
           yield* Effect.log('CounterRunForkLogic inc watcher')
           yield* $.state.update((s) => ({ ...s, value: s.value + 1 }))
         }),
-      ),
+      }),
     )
 
     yield* Effect.forkScoped(
-      $.onAction('dec').runParallel(
-        Effect.gen(function* () {
+      $.onAction('dec').run({
+        mode: 'parallel',
+        effect: Effect.gen(function* () {
           yield* Effect.log('CounterRunForkLogic dec watcher')
           yield* $.state.update((s) => ({ ...s, value: s.value - 1 }))
         }),
-      ),
+      }),
     )
   }),
 )
@@ -59,8 +61,8 @@ const CounterAllLogic = Counter.logic<Scope.Scope>(($) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
-        $.onAction('inc').run($.state.update((s) => ({ ...s, value: s.value + 1 }))),
-        $.onAction('dec').run($.state.update((s) => ({ ...s, value: s.value - 1 }))),
+        $.onAction('inc').run({ effect: $.state.update((s) => ({ ...s, value: s.value + 1 })) }),
+        $.onAction('dec').run({ effect: $.state.update((s) => ({ ...s, value: s.value - 1 })) }),
       ],
       { concurrency: 'unbounded' },
     )
@@ -70,9 +72,13 @@ const CounterAllLogic = Counter.logic<Scope.Scope>(($) =>
 // Logic 3: manually forkScoped($.onAction().run(...)) for two watchers (equivalence check vs runFork).
 const CounterManualForkLogic = Counter.logic<Scope.Scope>(($) =>
   Effect.gen(function* () {
-    yield* Effect.forkScoped($.onAction('inc').runParallel($.state.update((s) => ({ ...s, value: s.value + 1 }))))
+    yield* Effect.forkScoped(
+      $.onAction('inc').run({ mode: 'parallel', effect: $.state.update((s) => ({ ...s, value: s.value + 1 })) }),
+    )
 
-    yield* Effect.forkScoped($.onAction('dec').runParallel($.state.update((s) => ({ ...s, value: s.value - 1 }))))
+    yield* Effect.forkScoped(
+      $.onAction('dec').run({ mode: 'parallel', effect: $.state.update((s) => ({ ...s, value: s.value - 1 })) }),
+    )
   }),
 )
 

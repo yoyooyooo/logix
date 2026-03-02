@@ -14,7 +14,7 @@ const Counter = Logix.Module.make('useModuleImplKeyedCounter', {
 
 const CounterLogic = Counter.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('increment').run($.state.update((s) => ({ count: s.count + 1 })))
+    yield* $.onAction('increment').run({ effect: $.state.update((s) => ({ count: s.count + 1 })) })
   }),
 )
 

@@ -45,9 +45,11 @@ M.logic(($) =>
     // @ts-expect-error void dispatcher should not accept payload
     $.dispatchers.inc(1)
 
-    yield* $.onAction($.actions.add).run((payload) => {
-      type _payload_is_number = Expect<Equal<typeof payload, number>>
-      return Effect.void
+    yield* $.onAction($.actions.add).run({
+      effect: (payload) => {
+        type _payload_is_number = Expect<Equal<typeof payload, number>>
+        return Effect.void
+      },
     })
   }),
 )

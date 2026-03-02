@@ -13,7 +13,7 @@ describe('process: trigger moduleStateChange selector diagnostics', () => {
 
       const HostLogic = Host.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('bump').run(() => $.state.update((s) => ({ n: s.n + 1 })))
+          yield* $.onAction('bump').run({ effect: () => $.state.update((s) => ({ n: s.n + 1 })) })
         }),
       )
 
@@ -91,7 +91,7 @@ describe('process: trigger moduleStateChange selector diagnostics', () => {
 
       const HostLogic = Host.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('bumpOther').run(() => $.state.update((s) => ({ ...s, other: s.other + 1 })))
+          yield* $.onAction('bumpOther').run({ effect: () => $.state.update((s) => ({ ...s, other: s.other + 1 })) })
         }),
       )
 

@@ -59,14 +59,16 @@ test(
 
       const manualLogic = M.logic<SubmitPort>(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('submit').runLatest((action) =>
-            Effect.gen(function* () {
-              const port = yield* $.use(SubmitPort)
-              const shouldFail = Boolean((action as any)?.payload?.shouldFail)
-              const exit = yield* Effect.exit(port(shouldFail))
-              yield* $.dispatch(Exit.isSuccess(exit) ? 'ok' : 'bad')
-            }),
-          )
+          yield* $.onAction('submit').run({
+            mode: 'latest',
+            effect: (action: any) =>
+              Effect.gen(function* () {
+                const port = yield* $.use(SubmitPort)
+                const shouldFail = Boolean((action as any)?.payload?.shouldFail)
+                const exit = yield* Effect.exit(port(shouldFail))
+                yield* $.dispatch(Exit.isSuccess(exit) ? 'ok' : 'bad')
+              }),
+          })
         }),
       )
 
@@ -298,13 +300,15 @@ test(
 
       const manualLogic = M.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('start').runLatest(() =>
-            Effect.gen(function* () {
-              // manual baseline: use Effect.sleep (timer-based) + dispatch
-              yield* Effect.sleep('0 millis')
-              yield* $.dispatch('done')
-            }),
-          )
+          yield* $.onAction('start').run({
+            mode: 'latest',
+            effect: () =>
+              Effect.gen(function* () {
+                // manual baseline: use Effect.sleep (timer-based) + dispatch
+                yield* Effect.sleep('0 millis')
+                yield* $.dispatch('done')
+              }),
+          })
         }),
       )
 

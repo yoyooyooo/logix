@@ -24,35 +24,14 @@ export interface IntentBuilder<Payload, Sh extends Logix.AnyModuleShape, R = nev
   readonly filter: (predicate: (value: Payload) => boolean) => IntentBuilder<Payload, Sh, R>
   readonly map: <U>(f: (value: Payload) => U) => IntentBuilder<U, Sh, R>
 
-  readonly run: {
-    <A = void, E = never, R2 = unknown>(
-      effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
-      options?: OperationOptions,
-    ): Of<Sh, R & R2, void, E>
-    <A = void, E = never, R2 = unknown>(
-      config: IntentRunConfig<Payload, Sh, R & R2, A, E>,
-    ): Of<Sh, R & R2, void, E>
-  }
-
-  readonly runParallel: <A = void, E = never, R2 = unknown>(
-    effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
-    options?: OperationOptions,
-  ) => Of<Sh, R & R2, void, E>
-
-  readonly runLatest: <A = void, E = never, R2 = unknown>(
-    effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
-    options?: OperationOptions,
-  ) => Of<Sh, R & R2, void, E>
-
-  readonly runExhaust: <A = void, E = never, R2 = unknown>(
-    effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
-    options?: OperationOptions,
+  readonly run: <A = void, E = never, R2 = unknown>(
+    config: IntentRunConfig<Payload, Sh, R & R2, A, E>,
   ) => Of<Sh, R & R2, void, E>
 
   /**
    * run*Task: long-chain TaskRunner sugar (pending → IO → success/failure), automatically split into multiple entries/transactions.
    *
-   * Concurrency semantics mirror run/runLatest/runExhaust/runParallel.
+   * Concurrency semantics mirror run({ mode }).
    */
   readonly runTask: <A = void, E = never, R2 = unknown>(
     config: TaskRunner.TaskRunnerConfig<Payload, Sh, R & R2, A, E>,
@@ -70,12 +49,12 @@ export interface IntentBuilder<Payload, Sh extends Logix.AnyModuleShape, R = nev
     config: TaskRunner.TaskRunnerConfig<Payload, Sh, R & R2, A, E>,
   ) => Of<Sh, R & R2, void, never>
 
-  /** Fork a watcher that runs in the ModuleRuntime Scope (equivalent to Effect.forkScoped + run) */
+  /** Fork a watcher that runs in the ModuleRuntime Scope (equivalent to Effect.forkScoped + run({ mode: 'task' })) */
   readonly runFork: <A = void, E = never, R2 = unknown>(
     effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
   ) => Of<Sh, R & R2, void, E>
 
-  /** Fork a watcher with parallel event processing (equivalent to Effect.forkScoped + runParallel) */
+  /** Fork a watcher with parallel event processing (equivalent to Effect.forkScoped + run({ mode: 'parallel' })) */
   readonly runParallelFork: <A = void, E = never, R2 = unknown>(
     effect: Of<Sh, R & R2, A, E> | ((p: Payload) => Of<Sh, R & R2, A, E>),
   ) => Of<Sh, R & R2, void, E>

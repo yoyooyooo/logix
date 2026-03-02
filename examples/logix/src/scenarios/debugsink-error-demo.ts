@@ -32,11 +32,12 @@ export const ErrorDef = Logix.Module.make('DebugDemoModule', {
 export const ErrorLogic = ErrorDef.logic(($) =>
   Effect.gen(function* () {
     // 在 run 段监听 triggerError，避免 setup 阶段触发 Phase Guard
-    yield* $.onAction('triggerError').run(() =>
-      // 使用 dieMessage 将错误作为 defect 抛出，错误通道仍为 never，
-      // 由 ModuleRuntime 捕获后通过 DebugSink 以 lifecycle:error 上报。
-      Effect.dieMessage('Boom from DebugDemoModule'),
-    )
+    yield* $.onAction('triggerError').run({
+      effect: () =>
+        // 使用 dieMessage 将错误作为 defect 抛出，错误通道仍为 never，
+        // 由 ModuleRuntime 捕获后通过 DebugSink 以 lifecycle:error 上报。
+        Effect.dieMessage('Boom from DebugDemoModule'),
+    })
   }),
 )
 

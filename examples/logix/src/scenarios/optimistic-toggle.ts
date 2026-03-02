@@ -82,8 +82,8 @@ export const FeatureToggleLogic = FeatureToggleDef.logic<ToggleService>(($) =>
       errorMessage: undefined,
     }))
 
-    yield* $.onAction('toggle/click').runExhaust(handleClick)
-    yield* $.onAction('toggle/resetError').run(handleResetError)
+    yield* $.onAction('toggle/click').run({ mode: 'exhaust', effect: handleClick })
+    yield* $.onAction('toggle/resetError').run({ effect: handleResetError })
   }),
 )
 

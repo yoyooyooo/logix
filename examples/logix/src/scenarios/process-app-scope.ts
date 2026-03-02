@@ -25,7 +25,7 @@ const Target = Logix.Module.make('ProcessAppScopeTarget', {
 
 const TargetLogic = Target.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
+    yield* $.onAction('inc').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) })
   }),
 )
 

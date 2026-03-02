@@ -29,7 +29,7 @@ describe('useModule', () => {
       { count: 0 },
       Counter.logic<never>((api) =>
         Effect.gen(function* () {
-          yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
+          yield* api.onAction('increment').run({ effect: () => api.state.update((s) => ({ count: s.count + 1 })) })
         }),
       ),
     )

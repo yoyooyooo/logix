@@ -3,7 +3,7 @@ import { it, expect } from '@effect/vitest'
 import { Effect, Ref, Stream } from 'effect'
 import * as FlowRuntime from '../../../../src/internal/runtime/FlowRuntime.js'
 
-describe('ConcurrencyPolicy (US1): FlowRuntime.runParallel should be bounded by default', () => {
+describe("ConcurrencyPolicy (US1): FlowRuntime.run({ mode: 'parallel' }) should be bounded by default", () => {
   it('in-flight should not exceed 16 (default)', async () => {
     const program = Effect.gen(function* () {
       const flow = FlowRuntime.make<any, never>(undefined as any)
@@ -19,7 +19,7 @@ describe('ConcurrencyPolicy (US1): FlowRuntime.runParallel should be bounded by 
 
       const base = Stream.fromIterable(Array.from({ length: 128 }, (_, i) => i))
 
-      yield* flow.runParallel(() => job)(base)
+      yield* flow.run({ mode: 'parallel', effect: () => job })(base)
 
       return yield* Ref.get(maxInFlightRef)
     })

@@ -141,8 +141,9 @@ export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>(($)
     })
 
     const ensure = visibleKey$.pipe(
-      $.flow.runLatest(
-        Effect.gen(function* () {
+      $.flow.run({
+        mode: 'latest',
+        effect: Effect.gen(function* () {
           const state = (yield* $.state.read) as KanbanState
           if (isSpecDetailRoute()) return
           if (state.specDetail.open || state.taskDetail.open) return
@@ -230,7 +231,7 @@ export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>(($)
             { concurrency: 4 },
           )
         }),
-      ),
+      }),
     )
 
     yield* ensure

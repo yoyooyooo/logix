@@ -43,7 +43,7 @@ describe('ReplayEvent ↔ state:update bridge', () => {
 
       const RefreshLogic = M.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('refresh').run(() => $.traits.source.refresh('profileResource'))
+          yield* $.onAction('refresh').run({ effect: () => $.traits.source.refresh('profileResource') })
         }),
       )
 

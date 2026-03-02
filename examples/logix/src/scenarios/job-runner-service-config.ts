@@ -113,8 +113,8 @@ export const JobLogic = JobDef.logic<JobRunner>(($: Logix.BoundApi<JobShape, Job
       errorMessage: undefined,
     }))
 
-    yield* $.onAction('run').runExhaust(runEffect)
-    yield* $.onAction('reset').run(resetEffect)
+    yield* $.onAction('run').run({ mode: 'exhaust', effect: runEffect })
+    yield* $.onAction('reset').run({ effect: resetEffect })
   }),
 )
 

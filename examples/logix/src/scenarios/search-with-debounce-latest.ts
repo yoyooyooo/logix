@@ -77,7 +77,7 @@ export const SearchLogic = SearchDef.logic<SearchApi>(($) =>
     //    - 时间：通过 debounce 限制频率
     //    - 过滤：只放过非空关键字
     //    - 并发语义：runLatest，始终只保留最新一次搜索
-    yield* debouncedValidKeyword$.pipe($.flow.runLatest(runSearch))
+    yield* debouncedValidKeyword$.pipe($.flow.run({ mode: 'latest', effect: runSearch }))
   }),
 )
 

@@ -55,9 +55,9 @@ describe('Lifecycle hooks (Bound.lifecycle)', () => {
         }),
       ),
       run: Effect.gen(function* () {
-        yield* $.onAction((a): a is Logix.ActionOf<typeof TestModule.shape> => a._tag === 'triggerFlowError').run(() =>
-          Effect.die(new Error('Flow Failed')),
-        )
+        yield* $.onAction((a): a is Logix.ActionOf<typeof TestModule.shape> => a._tag === 'triggerFlowError').run({
+          effect: () => Effect.die(new Error('Flow Failed')),
+        })
       }),
     }))
 
