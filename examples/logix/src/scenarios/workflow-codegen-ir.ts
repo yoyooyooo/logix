@@ -116,7 +116,7 @@ const main = Effect.gen(function* () {
   const ring = Logix.Debug.makeRingBufferSink(512)
 
   const runtime = Logix.Runtime.make(impl, {
-    devtools: { bufferSize: 512, diagnosticsLevel: 'full' },
+    devtools: { bufferSize: 512, mode: 'full' },
     layer: Layer.mergeAll(
       Logix.Debug.replace([ring.sink]),
       Layer.succeed(SubmitPort, (input) => (input.shouldFail ? Effect.fail(new Error('boom')) : Effect.void)),
