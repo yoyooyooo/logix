@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logixjs.dev/schemas/103/scenario-playbook.report.v1.schema.json",
+  "title": "ScenarioPlaybookReport@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "scenarioId",
+    "runIdPrefix",
+    "primitiveChain",
+    "steps",
+    "assertions",
+    "summary",
+    "artifacts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "ScenarioPlaybookReport"
+    },
+    "scenarioId": {
+      "type": "string",
+      "pattern": "^S[0-9]{2}$"
+    },
+    "runIdPrefix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "primitiveChain": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "runId",
+          "command",
+          "exitCode",
+          "reasonCode",
+          "verdict",
+          "outDir"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "runId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "exitCode": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "ERROR",
+              "VIOLATION",
+              "RETRYABLE",
+              "NOT_IMPLEMENTED",
+              "NO_PROGRESS"
+            ]
+          },
+          "outDir": {
+            "type": "string",
+            "minLength": 1
+          },
+          "instanceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "txnSeq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "opSeq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "attemptSeq": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "status",
+          "message"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finalVerdict",
+        "finalReasonCode",
+        "passedSteps",
+        "failedSteps"
+      ],
+      "properties": {
+        "finalVerdict": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "FAIL_HARD",
+            "FAIL_SOFT",
+            "BLOCKED",
+            "INFRA_FLAKY"
+          ]
+        },
+        "finalReasonCode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "passedSteps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedSteps": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "path"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "reasonCodes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

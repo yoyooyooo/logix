@@ -10,6 +10,12 @@ import { makeCliError } from './errors.js'
 export type DiagnosticsLevel = 'off' | 'light' | 'full'
 export type CliMode = 'report' | 'write'
 export type CliHost = 'node' | 'browser-mock'
+export type VerifyLoopMode = 'run' | 'resume'
+export type VerifyLoopGateScope = 'runtime' | 'governance'
+export type VerifyLoopExecutor = 'real' | 'fixture'
+export type TrialRunEmit = 'none' | 'evidence'
+export type IrValidateProfile = 'contract' | 'cross-module'
+export type NextActionsEngine = 'bootstrap'
 
 export type EntryRef = {
   readonly modulePath: string
@@ -25,8 +31,14 @@ export type CliCommand =
   | 'ir.export'
   | 'ir.validate'
   | 'ir.diff'
+  | 'extension.validate'
+  | 'extension.load'
+  | 'extension.reload'
+  | 'extension.status'
   | 'trialrun'
   | 'contract-suite.run'
+  | 'verify-loop'
+  | 'next-actions.exec'
   | 'anchor.index'
   | 'anchor.autofill'
   | 'transform.module'
@@ -44,12 +56,14 @@ export type CliInvocation =
       readonly command: 'ir.export'
       readonly global: CliInvocation.Global
       readonly entry: EntryRef
+      readonly withAnchors: boolean
     }
   | {
       readonly kind: 'command'
       readonly command: 'ir.validate'
       readonly global: CliInvocation.Global
       readonly input: IrValidateInput
+      readonly profile?: IrValidateProfile
     }
   | {
       readonly kind: 'command'
@@ -60,6 +74,32 @@ export type CliInvocation =
     }
   | {
       readonly kind: 'command'
+      readonly command: 'extension.validate'
+      readonly global: CliInvocation.Global
+      readonly manifestPath: string
+    }
+  | {
+      readonly kind: 'command'
+      readonly command: 'extension.load'
+      readonly global: CliInvocation.Global
+      readonly manifestPath: string
+      readonly stateFile: string
+    }
+  | {
+      readonly kind: 'command'
+      readonly command: 'extension.reload'
+      readonly global: CliInvocation.Global
+      readonly stateFile: string
+    }
+  | {
+      readonly kind: 'command'
+      readonly command: 'extension.status'
+      readonly global: CliInvocation.Global
+      readonly stateFile: string
+      readonly json: boolean
+    }
+  | {
+      readonly kind: 'command'
       readonly command: 'trialrun'
       readonly global: CliInvocation.Global
       readonly entry: EntryRef
@@ -67,6 +107,7 @@ export type CliInvocation =
       readonly maxEvents?: number
       readonly timeoutMs?: number
       readonly includeTrace: boolean
+      readonly emit: TrialRunEmit
       readonly config: Record<string, string | number | boolean>
     }
   | {
@@ -88,6 +129,28 @@ export type CliInvocation =
       readonly includeUiKitRegistry: boolean
       readonly includeAnchorAutofill: boolean
       readonly repoRoot: string
+    }
+  | {
+      readonly kind: 'command'
+      readonly command: 'verify-loop'
+      readonly global: CliInvocation.Global
+      readonly mode: VerifyLoopMode
+      readonly gateScope: VerifyLoopGateScope
+      readonly target: string
+      readonly executor?: VerifyLoopExecutor
+      readonly emitNextActions: boolean
+      readonly emitNextActionsOut?: string
+      readonly instanceId?: string
+      readonly maxAttempts?: number
+      readonly previousRunId?: string
+    }
+  | {
+      readonly kind: 'command'
+      readonly command: 'next-actions.exec'
+      readonly global: CliInvocation.Global
+      readonly reportPath: string
+      readonly engine: NextActionsEngine
+      readonly strict: boolean
     }
   | {
       readonly kind: 'command'
@@ -210,6 +273,16 @@ const parseIrValidateInputFromOptions = (opts: {
   return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少输入：请提供 --in <dir> 或 --artifact <file>')))
 }
 
+const parseIrValidateProfileFromOptions = (opts: {
+  readonly profile?: string
+}): Effect.Effect<IrValidateProfile | undefined, ValidationError.ValidationError> => {
+  const profile = typeof opts.profile === 'string' ? opts.profile.trim() : undefined
+  if (!profile) return Effect.succeed(undefined)
+  if (profile === 'contract') return Effect.succeed('contract')
+  if (profile === 'cross-module') return Effect.succeed('cross-module')
+  return Effect.fail(ValidationError.invalidValue(HelpDoc.p(`--profile 非法：${profile}（ir validate 支持 contract/cross-module）`)))
+}
+
 const parseIrDiffInputFromOptions = (opts: {
   readonly before?: string
   readonly after?: string
@@ -220,6 +293,117 @@ const parseIrDiffInputFromOptions = (opts: {
     return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少输入：请提供 --before <dir|file> 与 --after <dir|file>')))
   }
   return Effect.succeed({ before, after })
+}
+
+const parseManifestPathFromOptions = (opts: {
+  readonly manifest?: string
+}): Effect.Effect<string, ValidationError.ValidationError> => {
+  const manifestPath = typeof opts.manifest === 'string' ? opts.manifest.trim() : ''
+  if (manifestPath.length === 0) {
+    return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少参数：请提供 --manifest <path>')))
+  }
+  return Effect.succeed(manifestPath)
+}
+
+const parseStateFileFromOptions = (opts: {
+  readonly stateFile?: string
+}): Effect.Effect<string, ValidationError.ValidationError> => {
+  const stateFile = typeof opts.stateFile === 'string' ? opts.stateFile.trim() : ''
+  if (stateFile.length === 0) {
+    return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少参数：请提供 --stateFile <path>')))
+  }
+  return Effect.succeed(stateFile)
+}
+
+const parseVerifyLoopInputFromOptions = (opts: {
+  readonly verifyLoopMode?: VerifyLoopMode
+  readonly gateScope?: VerifyLoopGateScope
+  readonly target?: string
+  readonly executor?: VerifyLoopExecutor
+  readonly emitNextActions: boolean
+  readonly emitNextActionsOut?: string
+  readonly instanceId?: string
+  readonly maxAttempts?: number
+  readonly previousRunId?: string
+}): Effect.Effect<
+  {
+    readonly mode: VerifyLoopMode
+    readonly gateScope: VerifyLoopGateScope
+    readonly target: string
+    readonly executor?: VerifyLoopExecutor
+    readonly emitNextActions: boolean
+    readonly emitNextActionsOut?: string
+    readonly instanceId?: string
+    readonly maxAttempts?: number
+    readonly previousRunId?: string
+  },
+  ValidationError.ValidationError
+> => {
+  const mode = opts.verifyLoopMode
+  if (!mode) {
+    return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少参数：请提供 --mode <run|resume>')))
+  }
+
+  const target = typeof opts.target === 'string' ? opts.target.trim() : ''
+  if (target.length === 0) {
+    return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少参数：请提供 --target <value>')))
+  }
+
+  const gateScope = opts.gateScope ?? 'runtime'
+  const executor = opts.executor
+  const emitNextActionsOut = typeof opts.emitNextActionsOut === 'string' ? opts.emitNextActionsOut.trim() : undefined
+  const emitNextActions = opts.emitNextActions || Boolean(emitNextActionsOut)
+  const instanceId = typeof opts.instanceId === 'string' ? opts.instanceId.trim() : undefined
+  const previousRunId = typeof opts.previousRunId === 'string' ? opts.previousRunId.trim() : undefined
+
+  if (mode === 'resume' && !previousRunId) {
+    return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少参数：--mode resume 需要 --previousRunId <runId>')))
+  }
+
+  if (mode === 'resume' && !instanceId) {
+    return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少参数：--mode resume 需要 --instanceId <instanceId>')))
+  }
+
+  if (mode === 'run' && previousRunId) {
+    return Effect.fail(ValidationError.invalidValue(HelpDoc.p('--previousRunId 仅在 --mode resume 时允许提供')))
+  }
+
+  return Effect.succeed({
+    mode,
+    gateScope,
+    target,
+    ...(executor ? { executor } : null),
+    emitNextActions,
+    ...(emitNextActionsOut ? { emitNextActionsOut } : null),
+    ...(instanceId ? { instanceId } : null),
+    ...(typeof opts.maxAttempts === 'number' ? { maxAttempts: opts.maxAttempts } : null),
+    ...(previousRunId ? { previousRunId } : null),
+  })
+}
+
+const parseNextActionsExecInputFromOptions = (opts: {
+  readonly report?: string
+  readonly dsl?: string
+  readonly nextActionsEngine?: NextActionsEngine
+  readonly strict: boolean
+}): Effect.Effect<
+  {
+    readonly reportPath: string
+    readonly engine: NextActionsEngine
+    readonly strict: boolean
+  },
+  ValidationError.ValidationError
+> => {
+  const dslPath = typeof opts.dsl === 'string' ? opts.dsl.trim() : undefined
+  const reportPath = typeof opts.report === 'string' ? opts.report.trim() : dslPath ?? 'verify-loop.report.json'
+  if (reportPath.length === 0) {
+    return Effect.fail(ValidationError.invalidValue(HelpDoc.p('--report 不能为空')))
+  }
+  return Effect.succeed({
+    reportPath,
+    engine: opts.nextActionsEngine ?? 'bootstrap',
+    strict: opts.strict,
+  })
 }
 
 export type ParsedOptions = {
@@ -238,11 +422,15 @@ export type ParsedOptions = {
   readonly artifact?: string
   readonly before?: string
   readonly after?: string
+  readonly manifest?: string
+  readonly stateFile?: string
   readonly opsPath?: string
   readonly diagnosticsLevel: DiagnosticsLevel
   readonly maxEvents?: number
   readonly timeoutMs?: number
   readonly includeTrace: boolean
+  readonly withAnchors: boolean
+  readonly emit: TrialRunEmit
   readonly config: Record<string, string | number | boolean>
   readonly allowWarn: boolean
   readonly baselineDir?: string
@@ -254,6 +442,19 @@ export type ParsedOptions = {
   readonly includeAnchorAutofill: boolean
   readonly maxUsedServices?: number
   readonly maxRawMode?: number
+  readonly verifyLoopMode?: VerifyLoopMode
+  readonly gateScope?: VerifyLoopGateScope
+  readonly target?: string
+  readonly executor?: VerifyLoopExecutor
+  readonly emitNextActions: boolean
+  readonly emitNextActionsOut?: string
+  readonly instanceId?: string
+  readonly maxAttempts?: number
+  readonly previousRunId?: string
+  readonly report?: string
+  readonly dsl?: string
+  readonly nextActionsEngine?: NextActionsEngine
+  readonly strict: boolean
   readonly describeJson: boolean
 }
 
@@ -263,9 +464,18 @@ type LeafParsed =
       readonly options: ParsedOptions
       readonly format: 'json'
     }
-  | { readonly command: 'ir.export'; readonly options: ParsedOptions; readonly entry: EntryRef }
-  | { readonly command: 'ir.validate'; readonly options: ParsedOptions; readonly input: IrValidateInput }
+  | { readonly command: 'ir.export'; readonly options: ParsedOptions; readonly entry: EntryRef; readonly withAnchors: boolean }
+  | {
+      readonly command: 'ir.validate'
+      readonly options: ParsedOptions
+      readonly input: IrValidateInput
+      readonly profile?: IrValidateProfile
+    }
   | { readonly command: 'ir.diff'; readonly options: ParsedOptions; readonly before: string; readonly after: string }
+  | { readonly command: 'extension.validate'; readonly options: ParsedOptions; readonly manifestPath: string }
+  | { readonly command: 'extension.load'; readonly options: ParsedOptions; readonly manifestPath: string; readonly stateFile: string }
+  | { readonly command: 'extension.reload'; readonly options: ParsedOptions; readonly stateFile: string }
+  | { readonly command: 'extension.status'; readonly options: ParsedOptions; readonly stateFile: string; readonly json: boolean }
   | {
       readonly command: 'trialrun'
       readonly options: ParsedOptions
@@ -274,6 +484,7 @@ type LeafParsed =
       readonly maxEvents?: number
       readonly timeoutMs?: number
       readonly includeTrace: boolean
+      readonly emit: TrialRunEmit
       readonly config: Record<string, string | number | boolean>
     }
   | {
@@ -296,6 +507,26 @@ type LeafParsed =
       readonly repoRoot: string
     }
   | {
+      readonly command: 'verify-loop'
+      readonly options: ParsedOptions
+      readonly mode: VerifyLoopMode
+      readonly gateScope: VerifyLoopGateScope
+      readonly target: string
+      readonly executor?: VerifyLoopExecutor
+      readonly emitNextActions: boolean
+      readonly emitNextActionsOut?: string
+      readonly instanceId?: string
+      readonly maxAttempts?: number
+      readonly previousRunId?: string
+    }
+  | {
+      readonly command: 'next-actions.exec'
+      readonly options: ParsedOptions
+      readonly reportPath: string
+      readonly engine: NextActionsEngine
+      readonly strict: boolean
+    }
+  | {
       readonly command: 'spy.evidence'
       readonly options: ParsedOptions
       readonly entry: EntryRef
@@ -308,6 +539,16 @@ type LeafParsed =
   | { readonly command: 'transform.module'; readonly options: ParsedOptions; readonly repoRoot: string; readonly opsPath: string }
 
 const repoRootWithDefault = Options.text('repoRoot').pipe(Options.withDefault('.'))
+
+const trialRunEmitOption: Options.Options<TrialRunEmit> = Options.choice('emit', ['evidence'] as const).pipe(
+  Options.optional,
+  Options.map((opt) =>
+    FxOption.match(opt, {
+      onNone: () => 'none' as const,
+      onSome: (value) => value as TrialRunEmit,
+    }),
+  ),
+)
 
 const baseOptions: Options.Options<ParsedOptions> = Options.all({
   runId: optionalText('runId'),
@@ -325,11 +566,15 @@ const baseOptions: Options.Options<ParsedOptions> = Options.all({
   artifact: optionalText('artifact'),
   before: optionalText('before'),
   after: optionalText('after'),
+  manifest: optionalText('manifest'),
+  stateFile: optionalText('stateFile'),
   opsPath: optionalText('ops').pipe(Options.map((s) => (s ? s.trim() : s))),
   diagnosticsLevel: Options.choice('diagnosticsLevel', ['off', 'light', 'full'] as const).pipe(Options.withDefault('light')),
   maxEvents: positiveIntOptional('maxEvents'),
   timeoutMs: positiveIntOptional('timeout'),
   includeTrace: booleanWithNegation('includeTrace'),
+  withAnchors: booleanWithNegation('withAnchors'),
+  emit: trialRunEmitOption,
   config: configFlags,
   allowWarn: booleanWithNegation('allowWarn'),
   baselineDir: optionalText('baseline'),
@@ -341,6 +586,19 @@ const baseOptions: Options.Options<ParsedOptions> = Options.all({
   includeAnchorAutofill: booleanWithNegation('includeAnchorAutofill'),
   maxUsedServices: positiveIntOptional('maxUsedServices'),
   maxRawMode: positiveIntOptional('maxRawMode'),
+  verifyLoopMode: optionalChoice<VerifyLoopMode>('verifyLoopMode', ['run', 'resume']),
+  gateScope: optionalChoice<VerifyLoopGateScope>('gateScope', ['runtime', 'governance']),
+  nextActionsEngine: optionalChoice<NextActionsEngine>('engine', ['bootstrap']),
+  target: optionalText('target'),
+  executor: optionalChoice<VerifyLoopExecutor>('executor', ['real', 'fixture']),
+  emitNextActions: booleanWithNegation('emitNextActions'),
+  emitNextActionsOut: optionalText('emitNextActionsOut'),
+  instanceId: optionalText('instanceId'),
+  maxAttempts: positiveIntOptional('maxAttempts'),
+  previousRunId: optionalText('previousRunId'),
+  report: optionalText('report'),
+  dsl: optionalText('dsl'),
+  strict: booleanWithNegation('strict'),
   describeJson: booleanWithNegation('json'),
 })
 
@@ -359,14 +617,24 @@ const describeCommand = CommandDescriptor.make('describe', baseOptions).pipe(
 
 const irExportCommand = CommandDescriptor.make('export', baseOptions).pipe(
   CommandDescriptor.mapEffect(({ options }) =>
-    parseEntryRefFromOptions(options).pipe(Effect.map((entry) => ({ command: 'ir.export' as const, options, entry }))),
+    parseEntryRefFromOptions(options).pipe(
+      Effect.map((entry) => ({ command: 'ir.export' as const, options, entry, withAnchors: options.withAnchors })),
+    ),
   ),
 )
 
 const irValidateCommand = CommandDescriptor.make('validate', baseOptions).pipe(
   CommandDescriptor.mapEffect(({ options }) =>
-    parseIrValidateInputFromOptions(options).pipe(
-      Effect.map((input) => ({ command: 'ir.validate' as const, options, input })),
+    Effect.all({
+      input: parseIrValidateInputFromOptions(options),
+      profile: parseIrValidateProfileFromOptions(options),
+    }).pipe(
+      Effect.map(({ input, profile }) => ({
+        command: 'ir.validate' as const,
+        options,
+        input,
+        ...(profile ? { profile } : null),
+      })),
     ),
   ),
 )
@@ -387,6 +655,64 @@ const irCommand = CommandDescriptor.make('ir').pipe(
   ] as const),
 )
 
+const extensionValidateCommand = CommandDescriptor.make('validate', baseOptions).pipe(
+  CommandDescriptor.mapEffect(({ options }) =>
+    parseManifestPathFromOptions(options).pipe(
+      Effect.map((manifestPath) => ({ command: 'extension.validate' as const, options, manifestPath })),
+    ),
+  ),
+)
+
+const extensionLoadCommand = CommandDescriptor.make('load', baseOptions).pipe(
+  CommandDescriptor.mapEffect(({ options }) =>
+    Effect.all({
+      manifestPath: parseManifestPathFromOptions(options),
+      stateFile: parseStateFileFromOptions(options),
+    }).pipe(
+      Effect.map(({ manifestPath, stateFile }) => ({
+        command: 'extension.load' as const,
+        options,
+        manifestPath,
+        stateFile,
+      })),
+    ),
+  ),
+)
+
+const extensionReloadCommand = CommandDescriptor.make('reload', baseOptions).pipe(
+  CommandDescriptor.mapEffect(({ options }) =>
+    parseStateFileFromOptions(options).pipe(
+      Effect.map((stateFile) => ({
+        command: 'extension.reload' as const,
+        options,
+        stateFile,
+      })),
+    ),
+  ),
+)
+
+const extensionStatusCommand = CommandDescriptor.make('status', baseOptions).pipe(
+  CommandDescriptor.mapEffect(({ options }) =>
+    parseStateFileFromOptions(options).pipe(
+      Effect.map((stateFile) => ({
+        command: 'extension.status' as const,
+        options,
+        stateFile,
+        json: options.describeJson,
+      })),
+    ),
+  ),
+)
+
+const extensionCommand = CommandDescriptor.make('extension').pipe(
+  CommandDescriptor.withSubcommands([
+    ['validate', extensionValidateCommand],
+    ['load', extensionLoadCommand],
+    ['reload', extensionReloadCommand],
+    ['status', extensionStatusCommand],
+  ] as const),
+)
+
 const trialRunCommand = CommandDescriptor.make('trialrun', baseOptions).pipe(
   CommandDescriptor.mapEffect(({ options }) =>
     parseEntryRefFromOptions(options).pipe(
@@ -398,6 +724,7 @@ const trialRunCommand = CommandDescriptor.make('trialrun', baseOptions).pipe(
         maxEvents: options.maxEvents,
         timeoutMs: options.timeoutMs,
         includeTrace: options.includeTrace,
+        emit: options.emit,
         config: options.config,
       })),
     ),
@@ -480,12 +807,53 @@ const contractSuiteCommand = CommandDescriptor.make('contract-suite').pipe(
   CommandDescriptor.withSubcommands([['run', contractSuiteRunCommand]] as const),
 )
 
+const verifyLoopCommand = CommandDescriptor.make('verify-loop', baseOptions).pipe(
+  CommandDescriptor.mapEffect(({ options }) =>
+    parseVerifyLoopInputFromOptions(options).pipe(
+      Effect.map(({ mode, gateScope, target, executor, emitNextActions, instanceId, maxAttempts, previousRunId }) => ({
+        command: 'verify-loop' as const,
+        options,
+        mode,
+        gateScope,
+        target,
+        ...(executor ? { executor } : null),
+        emitNextActions,
+        ...(options.emitNextActionsOut ? { emitNextActionsOut: options.emitNextActionsOut } : null),
+        ...(instanceId ? { instanceId } : null),
+        ...(typeof maxAttempts === 'number' ? { maxAttempts } : null),
+        ...(previousRunId ? { previousRunId } : null),
+      })),
+    ),
+  ),
+)
+
+const nextActionsExecCommand = CommandDescriptor.make('exec', baseOptions).pipe(
+  CommandDescriptor.mapEffect(({ options }) =>
+    parseNextActionsExecInputFromOptions(options).pipe(
+      Effect.map(({ reportPath, engine, strict }) => ({
+        command: 'next-actions.exec' as const,
+        options,
+        reportPath,
+        engine,
+        strict,
+      })),
+    ),
+  ),
+)
+
+const nextActionsCommand = CommandDescriptor.make('next-actions').pipe(
+  CommandDescriptor.withSubcommands([['exec', nextActionsExecCommand]] as const),
+)
+
 const rootCommand = CommandDescriptor.make('logix').pipe(
   CommandDescriptor.withSubcommands([
     ['describe', describeCommand],
     ['ir', irCommand],
+    ['extension', extensionCommand],
     ['trialrun', trialRunCommand],
     ['contract-suite', contractSuiteCommand],
+    ['verify-loop', verifyLoopCommand],
+    ['next-actions', nextActionsCommand],
     ['spy', spyCommand],
     ['anchor', anchorCommand],
     ['transform', transformCommand],
@@ -519,7 +887,10 @@ const booleanOptionNames = new Set([
   'includeTrace',
   'includeUiKitRegistry',
   'json',
+  'emitNextActions',
+  'strict',
   'requireRulesManifest',
+  'withAnchors',
 ])
 
 const flagsWithValue = new Set([
@@ -531,10 +902,18 @@ const flagsWithValue = new Set([
   '--cliConfig',
   '--config',
   '--diagnosticsLevel',
+  '--engine',
   '--entry',
+  '--executor',
+  '--emit',
+  '--emitNextActionsOut',
+  '--gateScope',
   '--host',
+  '--instanceId',
   '--in',
   '--inputs',
+  '--manifest',
+  '--maxAttempts',
   '--maxEvents',
   '--maxRawMode',
   '--maxUsedServices',
@@ -542,12 +921,18 @@ const flagsWithValue = new Set([
   '--ops',
   '--out',
   '--outRoot',
+  '--dsl',
   '--packMaxBytes',
   '--profile',
+  '--report',
+  '--previousRunId',
   '--repoRoot',
   '--runId',
+  '--stateFile',
+  '--target',
   '--timeout',
   '--tsconfig',
+  '--verifyLoopMode',
 ])
 
 const isKnownBooleanFlag = (flag: string): boolean => {
@@ -631,7 +1016,13 @@ const commandTokenShapes: ReadonlyArray<ReadonlyArray<string>> = [
   ['ir', 'export'],
   ['ir', 'validate'],
   ['ir', 'diff'],
+  ['extension', 'validate'],
+  ['extension', 'load'],
+  ['extension', 'reload'],
+  ['extension', 'status'],
   ['contract-suite', 'run'],
+  ['verify-loop'],
+  ['next-actions', 'exec'],
   ['spy', 'evidence'],
   ['anchor', 'index'],
   ['anchor', 'autofill'],
@@ -667,7 +1058,33 @@ const normalizeArgvForEffectCli = (argv: ReadonlyArray<string>): ReadonlyArray<s
 
   const drop = new Set(extracted.indices)
   const rest = argv.filter((_, idx) => !drop.has(idx))
+  if (extracted.tokens[0] === 'verify-loop') {
+    const rewritten: string[] = []
+    for (let i = 0; i < rest.length; i += 1) {
+      const token = rest[i]!
+      if (token === '--mode') {
+        rewritten.push('--verifyLoopMode')
+        continue
+      }
+      if (token === '--emitNextActions') {
+        const next = rest[i + 1]
+        if (typeof next === 'string' && !next.startsWith('-')) {
+          rewritten.push('--emitNextActionsOut', next, '--emitNextActions')
+          i += 1
+          continue
+        }
+      }
+      rewritten.push(token)
+    }
+    return [...extracted.tokens, ...dedupeOptionTokensLastWins(rewritten)]
+  }
   return [...extracted.tokens, ...dedupeOptionTokensLastWins(rest)]
+}
+
+const normalizeFlagAlias = (token: string): string => {
+  if (token === '--with-anchors') return '--withAnchors'
+  if (token === '--no-with-anchors') return '--noWithAnchors'
+  return token
 }
 
 const ANSI_CSI_REGEX = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g')
@@ -688,7 +1105,7 @@ export const parseCliInvocation = (
     return Effect.succeed(({ kind: 'help', text: options.helpText } as const satisfies CliHelpResult))
   }
 
-  const normalized = normalizeArgvForEffectCli(argv)
+  const normalized = normalizeArgvForEffectCli(argv.map(normalizeFlagAlias))
 
   return CommandDescriptor.parse(rootCommand, ['logix', ...normalized], CliConfig.defaultConfig).pipe(
     Effect.provide(NodeContext.layer),
@@ -744,11 +1161,51 @@ export const parseCliInvocation = (
         case 'describe':
           return Effect.succeed(({ kind: 'command', command: 'describe', global, format: leaf.format } as const))
         case 'ir.export':
-          return Effect.succeed(({ kind: 'command', command: 'ir.export', global, entry: leaf.entry } as const))
+          return Effect.succeed(
+            ({ kind: 'command', command: 'ir.export', global, entry: leaf.entry, withAnchors: leaf.withAnchors } as const),
+          )
         case 'ir.validate':
-          return Effect.succeed(({ kind: 'command', command: 'ir.validate', global, input: leaf.input } as const))
+          return Effect.succeed(
+            ({
+              kind: 'command',
+              command: 'ir.validate',
+              global,
+              input: leaf.input,
+              ...(leaf.profile ? { profile: leaf.profile } : null),
+            } as const),
+          )
         case 'ir.diff':
           return Effect.succeed(({ kind: 'command', command: 'ir.diff', global, before: leaf.before, after: leaf.after } as const))
+        case 'extension.validate':
+          return Effect.succeed({
+            kind: 'command',
+            command: 'extension.validate',
+            global,
+            manifestPath: leaf.manifestPath,
+          } as const)
+        case 'extension.load':
+          return Effect.succeed({
+            kind: 'command',
+            command: 'extension.load',
+            global,
+            manifestPath: leaf.manifestPath,
+            stateFile: leaf.stateFile,
+          } as const)
+        case 'extension.reload':
+          return Effect.succeed({
+            kind: 'command',
+            command: 'extension.reload',
+            global,
+            stateFile: leaf.stateFile,
+          } as const)
+        case 'extension.status':
+          return Effect.succeed({
+            kind: 'command',
+            command: 'extension.status',
+            global,
+            stateFile: leaf.stateFile,
+            json: leaf.json,
+          } as const)
         case 'trialrun':
           return Effect.succeed({
             kind: 'command',
@@ -759,6 +1216,7 @@ export const parseCliInvocation = (
             ...(typeof leaf.maxEvents === 'number' ? { maxEvents: leaf.maxEvents } : null),
             ...(typeof leaf.timeoutMs === 'number' ? { timeoutMs: leaf.timeoutMs } : null),
             includeTrace: leaf.includeTrace,
+            emit: leaf.emit,
             config: leaf.config,
           } as const)
         case 'contract-suite.run':
@@ -781,6 +1239,30 @@ export const parseCliInvocation = (
             includeUiKitRegistry: leaf.includeUiKitRegistry,
             includeAnchorAutofill: leaf.includeAnchorAutofill,
             repoRoot: leaf.repoRoot,
+          } as const)
+        case 'verify-loop':
+          return Effect.succeed({
+            kind: 'command',
+            command: 'verify-loop',
+            global,
+            mode: leaf.mode,
+            gateScope: leaf.gateScope,
+            target: leaf.target,
+            ...(leaf.executor ? { executor: leaf.executor } : null),
+            emitNextActions: leaf.emitNextActions,
+            ...(leaf.emitNextActionsOut ? { emitNextActionsOut: leaf.emitNextActionsOut } : null),
+            ...(leaf.instanceId ? { instanceId: leaf.instanceId } : null),
+            ...(typeof leaf.maxAttempts === 'number' ? { maxAttempts: leaf.maxAttempts } : null),
+            ...(leaf.previousRunId ? { previousRunId: leaf.previousRunId } : null),
+          } as const)
+        case 'next-actions.exec':
+          return Effect.succeed({
+            kind: 'command',
+            command: 'next-actions.exec',
+            global,
+            reportPath: leaf.reportPath,
+            engine: leaf.engine,
+            strict: leaf.strict,
           } as const)
         case 'spy.evidence':
           return Effect.succeed({

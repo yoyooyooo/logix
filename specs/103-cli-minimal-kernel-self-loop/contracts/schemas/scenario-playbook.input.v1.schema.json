@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logixjs.dev/schemas/103/scenario-playbook.input.v1.schema.json",
+  "title": "ScenarioPlaybookInput@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "scenarioId",
+    "runIdPrefix",
+    "context",
+    "primitiveChain",
+    "actions",
+    "assertions"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "ScenarioPlaybookInput"
+    },
+    "scenarioId": {
+      "type": "string",
+      "pattern": "^S[0-9]{2}$"
+    },
+    "runIdPrefix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry",
+        "verifyTarget",
+        "gateScope"
+      ],
+      "properties": {
+        "entry": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verifyTarget": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gateScope": {
+          "type": "string",
+          "enum": [
+            "runtime",
+            "governance"
+          ]
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "timeBudgetMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600000
+        }
+      }
+    },
+    "primitiveChain": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "describe",
+          "ir.export",
+          "trialrun.evidence",
+          "ir.validate.contract",
+          "ir.diff",
+          "transform.module.report",
+          "verify-loop.run",
+          "verify-loop.resume",
+          "next-actions.exec"
+        ]
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "action"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "args": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "step.exit-code",
+              "step.reason-code",
+              "final.verdict",
+              "step.duration-ms.lte"
+            ]
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "lteMs": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "equals": {}
+        }
+      }
+    },
+    "fixtures": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transformOpsPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cliConfigPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "path"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "inline-json",
+                  "copy-file"
+                ]
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "from": {
+                "type": "string",
+                "minLength": 1
+              },
+              "payload": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "addedFiles": [],
+  "after": ".logix/out/ir.export/current-1",
+  "before": ".logix/out/ir.export/baseline-1",
+  "changedFiles": [],
+  "kind": "IrDiffReport",
+  "nonGatingChangedFiles": [],
+  "parseErrors": [],
+  "removedFiles": [],
+  "schemaVersion": 1,
+  "status": "pass",
+  "summary": {
+    "added": 0,
+    "changed": 0,
+    "nonGatingChanged": 0,
+    "removed": 0,
+    "unchanged": 2
+  }
+}

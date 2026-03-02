@@ -1,0 +1,54 @@
+import { makeCliError } from '../errors.js'
+
+export const REASON_CODES = [
+  'VERIFY_PASS',
+  'CLI_INVALID_ARGUMENT',
+  'CLI_INVALID_COMMAND',
+  'CLI_NON_TTY_DANGEROUS_WRITE_DENIED',
+  'CLI_NOT_IMPLEMENTED',
+  'E_CLI_COMMAND_MERGED',
+  'CLI_PROTOCOL_VIOLATION',
+  'GATE_TYPE_FAILED',
+  'GATE_LINT_FAILED',
+  'GATE_TEST_FAILED',
+  'GATE_CONTROL_SURFACE_ARTIFACT_FAILED',
+  'GATE_DIAGNOSTICS_FAILED',
+  'GATE_PERF_HARD_FAILED',
+  'GATE_SSOT_DRIFT_FAILED',
+  'GATE_MIGRATION_FORWARD_ONLY_FAILED',
+  'VERIFY_RETRYABLE',
+  'VERIFY_NO_PROGRESS',
+  'TRIALRUN_MISSING_SERVICES',
+  'TRIALRUN_MISSING_CONFIG_KEYS',
+  'TRIALRUN_TIMEOUT',
+  'TRIALRUN_DISPOSE_TIMEOUT',
+  'TRIALRUN_RUNTIME_FAILURE',
+  'TRIALRUN_REPORT_ONLY',
+  'TRIALRUN_EMIT_EVIDENCE',
+  'TRIALRUN_TRACE_EMITTED',
+  'TRIALRUN_EVIDENCE_EMITTED',
+  'EVIDENCE_REPORT_LINKED',
+  'EVIDENCE_TRACE_LINKED',
+  'SCENARIO_ASSERTION_FAILED',
+  'SCENARIO_TIME_BUDGET_EXCEEDED',
+  'EXT_MANIFEST_INVALID',
+  'EXT_API_INCOMPATIBLE',
+  'EXT_HOOK_TIMEOUT',
+  'EXT_STATE_MIGRATION_FAILED',
+] as const
+
+export type RegisteredReasonCode = (typeof REASON_CODES)[number]
+
+const REASON_CODE_SET = new Set<string>(REASON_CODES)
+
+export const isRegisteredReasonCode = (code: string): code is RegisteredReasonCode => REASON_CODE_SET.has(code)
+
+export const assertRegisteredReasonCode = (code: string): RegisteredReasonCode => {
+  if (!isRegisteredReasonCode(code)) {
+    throw makeCliError({
+      code: 'CLI_PROTOCOL_VIOLATION',
+      message: `[Logix][CLI] 未登记 reason code：${code}`,
+    })
+  }
+  return code
+}

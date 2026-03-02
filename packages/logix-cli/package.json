@@ -5,11 +5,12 @@
   "description": "Node-only Logix CLI toolbox (IR export / trialrun / gates)",
   "type": "module",
   "bin": {
-    "logix": "dist/bin/logix.js",
-    "logix-devserver": "dist/bin/logix-devserver.js"
+    "logix": "bin/logix.mjs",
+    "logix-devserver": "bin/logix-devserver.mjs"
   },
   "files": [
-    "dist/**"
+    "dist/**",
+    "bin/**"
   ],
   "exports": {
     "./package.json": "./package.json",

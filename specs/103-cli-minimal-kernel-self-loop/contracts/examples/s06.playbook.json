@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "kind": "ScenarioPlaybookInput",
+  "scenarioId": "S06",
+  "runIdPrefix": "scenario-s06",
+  "context": {
+    "entry": "examples/logix/src/scenarios/long-task-pattern.ts#LongTaskModule",
+    "verifyTarget": "fixture:pass",
+    "gateScope": "runtime",
+    "maxAttempts": 3
+  },
+  "primitiveChain": [
+    "describe",
+    "ir.export",
+    "trialrun.evidence",
+    "ir.validate.contract",
+    "ir.diff",
+    "transform.module.report",
+    "verify-loop.run",
+    "next-actions.exec"
+  ],
+  "actions": [
+    {
+      "id": "start-task",
+      "action": "task.start",
+      "args": {
+        "taskId": "TASK-001"
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "id": "final-pass",
+      "type": "final.verdict",
+      "equals": "PASS"
+    },
+    {
+      "id": "verify-run-pass",
+      "type": "step.exit-code",
+      "stepId": "verify-loop.run",
+      "equals": 0
+    }
+  ]
+}

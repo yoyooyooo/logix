@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix/specs/103/next-actions.execution.v1.schema.json",
+  "title": "NextActionsExecutionV1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kind",
+    "runId",
+    "instanceId",
+    "txnSeq",
+    "opSeq",
+    "attemptSeq",
+    "sourceReportPath",
+    "sourceReportDigest",
+    "reportPath",
+    "sourceReasonCode",
+    "engine",
+    "strict",
+    "summary",
+    "results"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "NextActionsExecution"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "instanceId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "txnSeq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "opSeq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "attemptSeq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sourceReportPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceReportDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "reportPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceReasonCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "engine": {
+      "const": "bootstrap"
+    },
+    "strict": {
+      "type": "boolean"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/resultItem"
+      }
+    }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "required": ["executed", "failed", "noOp"],
+      "properties": {
+        "executed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "noOp": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "rerun": {
+      "type": "object",
+      "required": ["runId", "exitCode"],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exitCode": {
+          "type": "integer",
+          "enum": [0, 1, 2, 3, 4, 5]
+        }
+      },
+      "additionalProperties": false
+    },
+    "resultItem": {
+      "type": "object",
+      "required": ["id", "action", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["executed", "failed", "no-op"]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exitCode": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rerun": {
+          "$ref": "#/$defs/rerun"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

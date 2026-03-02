@@ -1,9 +1,10 @@
+import * as Logix from '@logixjs/core'
 import { Effect } from 'effect'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { makeArtifactOutput } from '../artifacts.js'
-import type { CliInvocation, IrValidateInput } from '../args.js'
+import type { CliInvocation, IrValidateInput, IrValidateProfile } from '../args.js'
 import { asSerializableErrorSummary, makeCliError } from '../errors.js'
 import { readJsonFile } from '../output.js'
 import type { ArtifactOutput, CommandResult } from '../result.js'
@@ -23,6 +24,7 @@ type IrValidateFileCheck = {
 type IrValidateReportV1 = {
   readonly schemaVersion: 1
   readonly kind: 'IrValidateReport'
+  readonly profile: 'default' | IrValidateProfile
   readonly input: IrValidateInput
   readonly status: 'pass' | 'violation' | 'error'
   readonly requiredFiles: ReadonlyArray<string>
@@ -35,69 +37,10 @@ type IrValidateReportV1 = {
   }
 }
 
+const CONTRACT_PROFILE_REQUIRES_DIRECTORY_INPUT = 'CONTRACT_PROFILE_REQUIRES_DIRECTORY_INPUT'
+const CROSS_MODULE_PROFILE_REQUIRES_DIRECTORY_INPUT = 'CROSS_MODULE_PROFILE_REQUIRES_DIRECTORY_INPUT'
+
 const toBytes = (text: string): number => new TextEncoder().encode(text).length
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-
-const isNonGatingFile = (fileName: string): boolean => fileName === 'trace.slim.json' || fileName === 'trialrun.report.json'
-
-const extractSemanticDigest = (fileName: string, value: unknown): { readonly digest?: string; readonly digestKind: IrValidateFileCheck['digestKind'] } => {
-  if (isNonGatingFile(fileName)) return { digest: undefined, digestKind: 'nonGating' }
-
-  if (fileName === 'control-surface.manifest.json') {
-    const digest = isRecord(value) && typeof value.digest === 'string' ? value.digest : undefined
-    return { digest: digest ?? sha256DigestOfJson(value), digestKind: 'semantic' }
-  }
-
-  if (fileName === 'workflow.surface.json') {
-    const digestPairs = Array.isArray(value)
-      ? value
-          .map((x) => {
-            const moduleId = isRecord(x) && typeof x.moduleId === 'string' ? x.moduleId : undefined
-            const surface = isRecord(x) ? x.surface : undefined
-            const digest = isRecord(surface) && typeof surface.digest === 'string' ? surface.digest : undefined
-            return moduleId && digest ? { moduleId, digest } : undefined
-          })
-          .filter((x): x is { moduleId: string; digest: string } => Boolean(x))
-          .sort((a, b) => (a.moduleId < b.moduleId ? -1 : a.moduleId > b.moduleId ? 1 : 0))
-      : []
-    return { digest: sha256DigestOfJson(digestPairs), digestKind: 'semantic' }
-  }
-
-  return { digest: sha256DigestOfJson(value), digestKind: 'content' }
-}
-
-const minimalValidateKnownFile = (fileName: string, value: unknown): ReadonlyArray<string> => {
-  if (!value || typeof value !== 'object') return [`INVALID_SHAPE:${fileName}`]
-
-  if (fileName === 'control-surface.manifest.json') {
-    const version = (value as any).version
-    if (version !== 1) return [`MANIFEST_VERSION_MISMATCH:${String(version)}`]
-    const digest = (value as any).digest
-    if (typeof digest !== 'string' || digest.length === 0) return ['MANIFEST_MISSING_DIGEST']
-    const modules = (value as any).modules
-    if (!Array.isArray(modules)) return ['MANIFEST_MISSING_MODULES_ARRAY']
-  }
-
-  if (fileName === 'workflow.surface.json') {
-    if (!Array.isArray(value)) return ['WORKFLOW_SURFACE_NOT_ARRAY']
-    for (const [i, item] of value.entries()) {
-      if (!isRecord(item)) return [`WORKFLOW_SURFACE_ITEM_NOT_OBJECT:${i}`]
-      if (typeof item.moduleId !== 'string' || item.moduleId.length === 0) return [`WORKFLOW_SURFACE_ITEM_MISSING_MODULE_ID:${i}`]
-      const surface = item.surface
-      if (!isRecord(surface)) return [`WORKFLOW_SURFACE_ITEM_MISSING_SURFACE:${i}`]
-      if (typeof surface.digest !== 'string' || surface.digest.length === 0) return [`WORKFLOW_SURFACE_ITEM_MISSING_SURFACE_DIGEST:${i}`]
-    }
-  }
-
-  if (fileName === 'trialrun.report.json') {
-    const ok = (value as any).ok
-    if (typeof ok !== 'boolean') return ['TRIALRUN_MISSING_OK_BOOLEAN']
-  }
-
-  return []
-}
 
 const readDirJsonFileNames = (dirAbs: string): Effect.Effect<ReadonlyArray<string>, unknown> =>
   Effect.tryPromise({
@@ -138,12 +81,16 @@ const checkJsonFile = (fileAbs: string, fileName: string): Effect.Effect<IrValid
           }),
       }).pipe(
         Effect.map((parsed) => {
-          const digestInfo = extractSemanticDigest(fileName, parsed)
-          const reasonCodes = minimalValidateKnownFile(fileName, parsed)
+          const digestInfo = Logix.Reflection.computeIrArtifactDigestSeed(fileName, parsed)
+          const reasonCodes = Logix.Reflection.validateIrArtifactFile(fileName, parsed)
+          const digest =
+            digestInfo.digestKind === 'nonGating'
+              ? undefined
+              : sha256DigestOfJson(digestInfo.digestSeed ?? parsed)
           return {
             fileName,
             ok: reasonCodes.length === 0,
-            digest: digestInfo.digest,
+            digest,
             digestKind: digestInfo.digestKind,
             bytes: toBytes(raw),
             ...(reasonCodes.length > 0 ? { reasonCodes } : null),
@@ -167,8 +114,21 @@ export const runIrValidate = (inv: IrValidateInvocation): Effect.Effect<CommandR
 
   return Effect.gen(function* () {
     const input = inv.input
+    const profile = inv.profile ?? 'default'
 
-    const requiredFiles = ['control-surface.manifest.json']
+    const requiredFiles =
+      profile === 'contract'
+        ? ['control-surface.manifest.json', 'trialrun.report.json', 'trace.slim.json', 'evidence.json']
+        : profile === 'cross-module'
+          ? ['control-surface.manifest.json', 'workflow.surface.json']
+          : ['control-surface.manifest.json']
+
+    const profileInputReasonCodes =
+      profile === 'contract' && input.kind === 'file'
+        ? ([CONTRACT_PROFILE_REQUIRES_DIRECTORY_INPUT] as const)
+        : profile === 'cross-module' && input.kind === 'file'
+          ? ([CROSS_MODULE_PROFILE_REQUIRES_DIRECTORY_INPUT] as const)
+          : ([] as ReadonlyArray<string>)
 
     const files =
       input.kind === 'dir'
@@ -187,63 +147,48 @@ export const runIrValidate = (inv: IrValidateInvocation): Effect.Effect<CommandR
 
     const manifestCheck = checks.find((c) => c.fileName === 'control-surface.manifest.json')
     const workflowSurfaceCheck = checks.find((c) => c.fileName === 'workflow.surface.json')
+    const inputDirAbs = input.kind === 'dir' ? path.resolve(process.cwd(), input.dir) : undefined
+    const manifestValue =
+      inputDirAbs && files.includes('control-surface.manifest.json')
+        ? yield* readJsonFile(path.join(inputDirAbs, 'control-surface.manifest.json')).pipe(
+            Effect.catchAll(() => Effect.succeed(undefined)),
+          )
+        : undefined
+    const workflowSurfaceValue =
+      inputDirAbs && files.includes('workflow.surface.json')
+        ? yield* readJsonFile(path.join(inputDirAbs, 'workflow.surface.json')).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+        : undefined
 
-    const workflowSurfaceReasons: string[] = []
-    if (input.kind === 'dir' && manifestCheck?.ok) {
-      const manifestFileAbs = path.join(path.resolve(process.cwd(), input.dir), 'control-surface.manifest.json')
-      const manifestValue = yield* readJsonFile(manifestFileAbs).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+    const workflowSurfaceReasons: ReadonlyArray<string> =
+      input.kind === 'dir' && manifestCheck?.ok
+        ? Logix.Reflection.validateWorkflowSurfaceManifestLinks({
+            manifest: manifestValue,
+            workflowSurface: workflowSurfaceCheck?.ok ? workflowSurfaceValue : files.includes('workflow.surface.json') ? {} : undefined,
+          })
+        : []
 
-      const workflowRefs =
-        isRecord(manifestValue) && Array.isArray((manifestValue as any).modules)
-          ? (manifestValue as any).modules
-              .map((m: any) => (m && typeof m.moduleId === 'string' && m.workflowSurface && typeof m.workflowSurface.digest === 'string'
-                ? { moduleId: String(m.moduleId), digest: String(m.workflowSurface.digest) }
-                : undefined))
-              .filter((x: any) => Boolean(x))
-          : []
-
-      if (workflowRefs.length > 0) {
-        if (!files.includes('workflow.surface.json')) {
-          workflowSurfaceReasons.push('MISSING_WORKFLOW_SURFACE_FILE')
-        } else if (!workflowSurfaceCheck?.ok) {
-          workflowSurfaceReasons.push('WORKFLOW_SURFACE_FILE_INVALID')
-        } else {
-          const wfAbs = path.join(path.resolve(process.cwd(), input.dir), 'workflow.surface.json')
-          const wfValue = yield* readJsonFile(wfAbs).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
-          const wfMap =
-            Array.isArray(wfValue)
-              ? new Map(
-                  wfValue
-                    .map((x: any) => {
-                      const moduleId = isRecord(x) && typeof x.moduleId === 'string' ? x.moduleId : undefined
-                      const surface = isRecord(x) ? x.surface : undefined
-                      const digest = isRecord(surface) && typeof surface.digest === 'string' ? surface.digest : undefined
-                      return moduleId && digest ? [moduleId, digest] : undefined
-                    })
-                    .filter((x: any): x is [string, string] => Boolean(x)),
-                )
-              : new Map<string, string>()
-
-          for (const ref of workflowRefs) {
-            const got = wfMap.get(ref.moduleId)
-            if (!got) workflowSurfaceReasons.push(`WORKFLOW_SURFACE_MISSING_MODULE:${ref.moduleId}`)
-            else if (got !== ref.digest) workflowSurfaceReasons.push(`WORKFLOW_SURFACE_DIGEST_MISMATCH:${ref.moduleId}`)
-          }
-        }
-      }
-    }
+    const crossModuleReasons: ReadonlyArray<string> =
+      profile === 'cross-module' && input.kind === 'dir'
+        ? Logix.Reflection.validateCrossModuleProfileSurface({
+            manifest: manifestValue,
+            workflowSurface: workflowSurfaceValue,
+          })
+        : []
 
     const hasParseErrors = checks.some((c) => c.ok === false && c.error)
     const hasViolations =
+      profileInputReasonCodes.length > 0 ||
       missingRequiredFiles.length > 0 ||
       checks.some((c) => c.ok === false && (c.reasonCodes?.length ?? 0) > 0) ||
-      workflowSurfaceReasons.length > 0
+      workflowSurfaceReasons.length > 0 ||
+      crossModuleReasons.length > 0
 
     const status: IrValidateReportV1['status'] = hasParseErrors ? 'error' : hasViolations ? 'violation' : 'pass'
 
     const report: IrValidateReportV1 = {
       schemaVersion: 1,
       kind: 'IrValidateReport',
+      profile,
       input,
       status,
       requiredFiles,
@@ -256,14 +201,26 @@ export const runIrValidate = (inv: IrValidateInvocation): Effect.Effect<CommandR
       },
     }
 
-    const reportWithWorkflow: IrValidateReportV1 & { readonly workflowSurface?: { readonly reasonCodes: ReadonlyArray<string> } } =
-      workflowSurfaceReasons.length > 0 ? { ...report, workflowSurface: { reasonCodes: workflowSurfaceReasons } } : report
+    const reportWithWorkflow: IrValidateReportV1 & {
+      readonly workflowSurface?: { readonly reasonCodes: ReadonlyArray<string> }
+      readonly crossModule?: { readonly reasonCodes: ReadonlyArray<string> }
+    } =
+      workflowSurfaceReasons.length > 0 || crossModuleReasons.length > 0
+        ? {
+            ...report,
+            ...(workflowSurfaceReasons.length > 0 ? { workflowSurface: { reasonCodes: workflowSurfaceReasons } } : null),
+            ...(crossModuleReasons.length > 0 ? { crossModule: { reasonCodes: crossModuleReasons } } : null),
+          }
+        : report
 
     const artifactReasonCodes = Array.from(
       new Set([
         ...missingRequiredFiles.map((fileName) => `MISSING_REQUIRED_FILE:${fileName}`),
+        ...(profile === 'contract' ? missingRequiredFiles.map((fileName) => `CONTRACT_MISSING_KEY_ARTIFACT:${fileName}`) : []),
         ...checks.flatMap((check) => check.reasonCodes ?? []),
         ...workflowSurfaceReasons,
+        ...crossModuleReasons,
+        ...profileInputReasonCodes,
         ...checks
           .filter((check) => check.error?.code)
           .map((check) => `PARSE_ERROR:${String(check.error?.code ?? 'UNKNOWN')}`),

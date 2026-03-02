@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "kind": "ScenarioSuiteInput",
+  "suiteId": "p0p1-primitives",
+  "scenarios": [
+    {
+      "scenarioId": "S01",
+      "playbookPath": "specs/103-cli-minimal-kernel-self-loop/contracts/examples/s01.playbook.json",
+      "requiredChain": [
+        "describe",
+        "ir.export",
+        "trialrun.evidence",
+        "ir.validate.contract",
+        "ir.diff",
+        "transform.module.report",
+        "verify-loop.run",
+        "next-actions.exec"
+      ],
+      "requiredArtifacts": [
+        "scenario-playbook.report.json",
+        "scenario.verdict.json",
+        "checksums.sha256"
+      ]
+    },
+    {
+      "scenarioId": "S03",
+      "playbookPath": "specs/103-cli-minimal-kernel-self-loop/contracts/examples/s03.playbook.json",
+      "requiredChain": [
+        "describe",
+        "ir.export",
+        "trialrun.evidence",
+        "ir.validate.contract",
+        "ir.diff",
+        "transform.module.report",
+        "verify-loop.run",
+        "next-actions.exec"
+      ],
+      "requiredArtifacts": [
+        "scenario-playbook.report.json",
+        "scenario.verdict.json",
+        "checksums.sha256"
+      ]
+    },
+    {
+      "scenarioId": "S06",
+      "playbookPath": "specs/103-cli-minimal-kernel-self-loop/contracts/examples/s06.playbook.json",
+      "requiredChain": [
+        "describe",
+        "ir.export",
+        "trialrun.evidence",
+        "ir.validate.contract",
+        "ir.diff",
+        "transform.module.report",
+        "verify-loop.run",
+        "next-actions.exec"
+      ],
+      "requiredArtifacts": [
+        "scenario-playbook.report.json",
+        "scenario.verdict.json",
+        "checksums.sha256"
+      ]
+    },
+    {
+      "scenarioId": "S08",
+      "playbookPath": "specs/103-cli-minimal-kernel-self-loop/contracts/examples/s08.playbook.json",
+      "requiredChain": [
+        "describe",
+        "trialrun.evidence",
+        "verify-loop.run",
+        "next-actions.exec"
+      ],
+      "requiredArtifacts": [
+        "scenario-playbook.report.json",
+        "scenario.verdict.json",
+        "checksums.sha256",
+        "scenario-fixtures.report.json"
+      ]
+    }
+  ]
+}

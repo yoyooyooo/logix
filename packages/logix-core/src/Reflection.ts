@@ -18,6 +18,20 @@ import type {
   VerifyKernelContractOptions,
 } from './internal/reflection/kernelContract.js'
 import { verifyKernelContract as verifyKernelContractInternal } from './internal/reflection/kernelContract.js'
+import type {
+  EntryControlSurfaceEntryRef,
+  EntryControlSurfaceManifest,
+  EntryControlSurfaceProjection,
+  EntryWorkflowSurfaceItem,
+} from './internal/reflection/controlPlaneEntryProjection.js'
+import { projectControlSurfaceFromEntryRef as projectControlSurfaceFromEntryRefInternal } from './internal/reflection/controlPlaneEntryProjection.js'
+import type {
+  IrArtifactDigestKind,
+  TrialRunSummaryInput,
+  TrialRunSummaryReasonCode,
+  TrialRunSummaryVerdict,
+} from './internal/reflection/controlPlaneValidation.js'
+import * as ControlPlaneValidation from './internal/reflection/controlPlaneValidation.js'
 import { trialRun } from './internal/observability/trialRun.js'
 import type { RuntimeServicesOverrides } from './Kernel.js'
 import * as Kernel from './Kernel.js'
@@ -33,6 +47,14 @@ export type {
   ExportControlSurfaceOptions,
   ExportControlSurfaceResult,
   ExportedWorkflowSurface,
+  EntryControlSurfaceEntryRef,
+  EntryControlSurfaceManifest,
+  EntryControlSurfaceProjection,
+  EntryWorkflowSurfaceItem,
+  IrArtifactDigestKind,
+  TrialRunSummaryInput,
+  TrialRunSummaryReasonCode,
+  TrialRunSummaryVerdict,
 }
 
 type AnyModuleLike = { readonly impl: ModuleImpl<any, AnyModuleShape, any> }
@@ -205,6 +227,63 @@ export const exportControlSurface = (
   modules: ReadonlyArray<AnyModule>,
   options?: ExportControlSurfaceOptions,
 ): ExportControlSurfaceResult => ControlSurfaceExport.exportControlSurface(modules, options)
+
+/**
+ * Reflection.computeIrArtifactDigestSeed
+ *
+ * Produces semantic/content digest seed for CLI/agent-side artifact hashing.
+ */
+export const computeIrArtifactDigestSeed = ControlPlaneValidation.computeIrArtifactDigestSeed
+
+/**
+ * Reflection.projectControlSurfaceFromEntryRef
+ *
+ * Generates a minimal deterministic control-surface projection from an entry ref.
+ * This is used by thin CLI wrappers that need a stable artifact shape without loading full modules.
+ */
+export const projectControlSurfaceFromEntryRef = projectControlSurfaceFromEntryRefInternal
+
+/**
+ * Reflection.validateIrArtifactFile
+ *
+ * Validates known control-plane artifact file shape and returns reason codes.
+ */
+export const validateIrArtifactFile = ControlPlaneValidation.validateIrArtifactFile
+
+/**
+ * Reflection.validateWorkflowSurfaceManifestLinks
+ *
+ * Checks workflow surface digest linkage against manifest module refs.
+ */
+export const validateWorkflowSurfaceManifestLinks = ControlPlaneValidation.validateWorkflowSurfaceManifestLinks
+
+/**
+ * Reflection.validateCrossModuleProfileSurface
+ *
+ * Verifies minimal cross-module profile constraints (>=2 modules in manifest/workflow surface).
+ */
+export const validateCrossModuleProfileSurface = ControlPlaneValidation.validateCrossModuleProfileSurface
+
+/**
+ * Reflection.collectTrialRunFailureReasonCodes
+ *
+ * Classifies trial-run failure reason codes from runtime report-like payload.
+ */
+export const collectTrialRunFailureReasonCodes = ControlPlaneValidation.collectTrialRunFailureReasonCodes
+
+/**
+ * Reflection.pickTrialRunSummaryReasonCode
+ *
+ * Picks canonical summary reason code from runtime report-like payload.
+ */
+export const pickTrialRunSummaryReasonCode = ControlPlaneValidation.pickTrialRunSummaryReasonCode
+
+/**
+ * Reflection.pickTrialRunSummaryVerdict
+ *
+ * Maps canonical summary reason code to summary verdict.
+ */
+export const pickTrialRunSummaryVerdict = ControlPlaneValidation.pickTrialRunSummaryVerdict
 
 /**
  * Reflection.verifyKernelContract

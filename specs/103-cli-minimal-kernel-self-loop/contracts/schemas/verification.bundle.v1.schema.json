@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logixjs.dev/schemas/103/verification.bundle.v1.schema.json",
+  "title": "VerificationBundle@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "suiteId",
+    "requiredScenarios",
+    "scenarios",
+    "summary"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "VerificationBundle"
+    },
+    "suiteId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requiredScenarios": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^S[0-9]{2}$"
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scenarioId",
+          "status",
+          "finalVerdict",
+          "finalReasonCode",
+          "reasonCodes",
+          "checksumsValid"
+        ],
+        "properties": {
+          "scenarioId": {
+            "type": "string",
+            "pattern": "^S[0-9]{2}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "covered",
+              "partial",
+              "missing"
+            ]
+          },
+          "finalVerdict": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL_HARD",
+              "FAIL_SOFT",
+              "BLOCKED",
+              "INFRA_FLAKY"
+            ]
+          },
+          "finalReasonCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reasonCodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "checksumsValid": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "covered",
+        "partial",
+        "missing",
+        "total"
+      ],
+      "properties": {
+        "covered": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partial": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

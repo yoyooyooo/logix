@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "IrConsistencySmokeReport",
+  "runIds": {
+    "irExport": "smoke-ir",
+    "trialrun": "smoke-trialrun"
+  },
+  "manifest": {
+    "exportDigest": "sha256:d79fe51057c6ec169634031a553003e576efe35a0e9e9d8b1e4d4665ba0a8144",
+    "trialDigest": "sha256:d79fe51057c6ec169634031a553003e576efe35a0e9e9d8b1e4d4665ba0a8144",
+    "exportDigestDomain": "sha256",
+    "trialDigestDomain": "sha256",
+    "match": true
+  },
+  "moduleIdentity": {
+    "exportModuleIds": [
+      "entry.basic.ts#AppRoot"
+    ],
+    "trialModuleId": "entry.basic.ts#AppRoot",
+    "match": true
+  },
+  "workflowSurface": {
+    "checked": 1,
+    "mismatches": []
+  },
+  "pass": true
+}
