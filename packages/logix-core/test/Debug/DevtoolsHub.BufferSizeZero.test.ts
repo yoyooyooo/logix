@@ -14,8 +14,7 @@ describe('DevtoolsHub (bufferSize=0)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 0,
-        diagnosticsLevel: 'full',
-        projectionTier: 'full',
+        mode: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({

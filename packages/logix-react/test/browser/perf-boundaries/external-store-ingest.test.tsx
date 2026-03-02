@@ -113,9 +113,13 @@ test(
         if (cached) return cached
 
         const instrumentation = args.diagnosticsLevel === 'full' ? 'full' : 'light'
-        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
-          diagnosticsLevel: args.diagnosticsLevel,
-        }) as Layer.Layer<any, never, never>
+        const mode: Logix.Debug.DevtoolsProjectionMode = args.diagnosticsLevel === 'full' ? 'full' : 'off'
+        const debugLayer = Layer.mergeAll(
+          Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+            mode,
+          }) as Layer.Layer<any, never, never>,
+          Logix.Debug.diagnosticsLevel(args.diagnosticsLevel),
+        ) as Layer.Layer<any, never, never>
 
         const State = Schema.Struct({ value: Schema.Number })
         const manualStores = Array.from({ length: moduleCount }, (_, i) => makeManualStore(i))

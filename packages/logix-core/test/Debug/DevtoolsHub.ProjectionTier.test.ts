@@ -7,7 +7,7 @@ const nowMs = (): number =>
   typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now()
 
 const runStateUpdateWorkload = (args: {
-  readonly tier: Logix.Debug.DevtoolsProjectionTier
+  readonly mode: Logix.Debug.DevtoolsProjectionMode
   readonly iterations: number
   readonly runtimeLabel: string
 }): Effect.Effect<{
@@ -21,8 +21,7 @@ const runStateUpdateWorkload = (args: {
 
     const layer = Logix.Debug.devtoolsHubLayer({
       bufferSize: Math.max(64, args.iterations + 8),
-      diagnosticsLevel: 'full',
-      projectionTier: args.tier,
+      mode: args.mode,
     }) as Layer.Layer<any, never, never>
 
     const moduleId = 'DevtoolsHub.ProjectionTier.Workload'
@@ -31,7 +30,7 @@ const runStateUpdateWorkload = (args: {
       const heavyPayload = 'x'.repeat(96)
       const begin = nowMs()
       for (let i = 1; i <= args.iterations; i++) {
-        const instanceId = `i-${args.tier}-${i}`
+        const instanceId = `i-${args.mode}-${i}`
         yield* Logix.Debug.record({
           type: 'module:init',
           moduleId,
@@ -79,8 +78,7 @@ describe('DevtoolsHub projection tier (O-025)', () => {
       const instanceId = 'i-projection-tier-light'
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 32,
-        diagnosticsLevel: 'full',
-        projectionTier: 'light',
+        mode: 'light',
       }) as Layer.Layer<any, never, never>
 
       yield* Effect.gen(function* () {
@@ -125,8 +123,7 @@ describe('DevtoolsHub projection tier (O-025)', () => {
       const instanceId = 'i-projection-tier-full'
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 32,
-        diagnosticsLevel: 'full',
-        projectionTier: 'full',
+        mode: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Effect.gen(function* () {
@@ -177,15 +174,13 @@ describe('DevtoolsHub projection tier (O-025)', () => {
 
       const fullLayer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 32,
-        diagnosticsLevel: 'full',
-        projectionTier: 'full',
+        mode: 'full',
         runtimeLabel: fullRuntimeLabel,
       }) as Layer.Layer<any, never, never>
 
       const lightLayer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 32,
-        diagnosticsLevel: 'full',
-        projectionTier: 'light',
+        mode: 'light',
         runtimeLabel: lightRuntimeLabel,
       }) as Layer.Layer<any, never, never>
 
@@ -245,15 +240,14 @@ describe('DevtoolsHub projection tier (O-025)', () => {
   it.effect('global snapshot should stay light-consistent when only runtime-local tier is full', () =>
     Effect.gen(function* () {
       Logix.Debug.clearDevtoolsEvents()
-      Logix.Debug.devtoolsHubLayer({ projectionTier: 'light' })
+      Logix.Debug.devtoolsHubLayer({ mode: 'light' })
 
       const runtimeLabel = 'R::DevtoolsHub.ProjectionTier.GlobalConsistency.FullOnly'
       const moduleId = 'ProjectionTierGlobalConsistencyModule'
       const instanceId = 'i-projection-tier-global-consistency'
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 32,
-        diagnosticsLevel: 'full',
-        projectionTier: 'full',
+        mode: 'full',
         runtimeLabel,
       }) as Layer.Layer<any, never, never>
 
@@ -300,8 +294,7 @@ describe('DevtoolsHub projection tier (O-025)', () => {
 
       const fullLayer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 16,
-        diagnosticsLevel: 'full',
-        projectionTier: 'full',
+        mode: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Effect.gen(function* () {
@@ -326,7 +319,7 @@ describe('DevtoolsHub projection tier (O-025)', () => {
       const tokenBeforeSwitch = Logix.Debug.getDevtoolsSnapshotToken()
       expect(Logix.Debug.getDevtoolsSnapshot().latestStates.size).toBeGreaterThan(0)
 
-      Logix.Debug.devtoolsHubLayer({ projectionTier: 'light' })
+      Logix.Debug.devtoolsHubLayer({ mode: 'light' })
 
       const tokenAfterSwitch = Logix.Debug.getDevtoolsSnapshotToken()
       expect(tokenAfterSwitch).toBeGreaterThan(tokenBeforeSwitch)
@@ -334,7 +327,7 @@ describe('DevtoolsHub projection tier (O-025)', () => {
       expect(Logix.Debug.getDevtoolsSnapshot().latestStates.size).toBe(0)
       expect(Logix.Debug.getDevtoolsSnapshot().latestTraitSummaries.size).toBe(0)
 
-      Logix.Debug.devtoolsHubLayer({ projectionTier: 'light' })
+      Logix.Debug.devtoolsHubLayer({ mode: 'light' })
       expect(Logix.Debug.getDevtoolsSnapshotToken()).toBe(tokenAfterSwitch)
     }),
   )
@@ -343,7 +336,7 @@ describe('DevtoolsHub projection tier (O-025)', () => {
     Effect.sync(() => {
       Logix.Debug.clearDevtoolsEvents()
 
-      Logix.Debug.devtoolsHubLayer({ projectionTier: 'full' })
+      Logix.Debug.devtoolsHubLayer({ mode: 'full' })
       expect(Logix.Debug.getDevtoolsSnapshot().projection.tier).toBe('full')
 
       const tokenBefore = Logix.Debug.getDevtoolsSnapshotToken()
@@ -361,12 +354,12 @@ describe('DevtoolsHub projection tier (O-025)', () => {
       const iterations = 1500
 
       const full = yield* runStateUpdateWorkload({
-        tier: 'full',
+        mode: 'full',
         iterations,
         runtimeLabel: 'R::DevtoolsHub.ProjectionTier.Perf.Full',
       })
       const light = yield* runStateUpdateWorkload({
-        tier: 'light',
+        mode: 'light',
         iterations,
         runtimeLabel: 'R::DevtoolsHub.ProjectionTier.Perf.Light',
       })

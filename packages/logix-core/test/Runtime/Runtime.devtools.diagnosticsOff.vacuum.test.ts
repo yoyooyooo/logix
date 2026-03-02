@@ -3,7 +3,7 @@ import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
-describe('Runtime devtools diagnostics=off vacuum path', () => {
+describe('Runtime devtools mode=off vacuum path', () => {
   it.scoped('should skip DebugObserver and DevtoolsHub while preserving user sinks', () =>
     Effect.gen(function* () {
       Debug.clearDevtoolsEvents()
@@ -27,7 +27,7 @@ describe('Runtime devtools diagnostics=off vacuum path', () => {
       const ring = Debug.makeRingBufferSink(256)
       const runtime = Logix.Runtime.make(impl, {
         layer: Debug.replace([ring.sink]),
-        devtools: { diagnosticsLevel: 'off' },
+        devtools: { mode: 'off' },
       })
 
       try {
@@ -55,10 +55,10 @@ describe('Runtime devtools diagnostics=off vacuum path', () => {
     }),
   )
 
-  it.scoped('should keep omitted diagnosticsLevel semantics (no ring-trim policy event)', () =>
+  it.scoped('should keep omitted mode semantics (no ring-trim policy event)', () =>
     Effect.gen(function* () {
       Debug.clearDevtoolsEvents()
-      Debug.devtoolsHubLayer({ bufferSize: 9, diagnosticsLevel: 'full' })
+      Debug.devtoolsHubLayer({ bufferSize: 9, mode: 'full' })
       Debug.clearDevtoolsEvents()
 
       const M = Logix.Module.make('Runtime.Devtools.DiagnosticsDefault.Semantics', {

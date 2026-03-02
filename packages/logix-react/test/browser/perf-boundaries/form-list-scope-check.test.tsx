@@ -103,9 +103,13 @@ const makeListScopeRuntime = (
       ? (Logix.Debug.replace([captureSink]) as Layer.Layer<any, never, never>)
       : (silentDebugLayer as Layer.Layer<any, never, never>)
 
-  const debugLayer = Logix.Debug.devtoolsHubLayer(baseDebugLayer, {
-    diagnosticsLevel,
-  }) as Layer.Layer<any, never, never>
+  const mode: Logix.Debug.DevtoolsProjectionMode = diagnosticsLevel === 'full' ? 'full' : diagnosticsLevel
+  const debugLayer = Layer.mergeAll(
+    Logix.Debug.devtoolsHubLayer(baseDebugLayer, {
+      mode,
+    }) as Layer.Layer<any, never, never>,
+    Logix.Debug.diagnosticsLevel(diagnosticsLevel),
+  ) as Layer.Layer<any, never, never>
 
   const runtime = Logix.Runtime.make(impl, {
     stateTransaction: {

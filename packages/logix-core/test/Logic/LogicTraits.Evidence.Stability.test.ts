@@ -28,7 +28,7 @@ describe('LogicTraits - evidence stability (US3)', () => {
 
           const layer = Debug.devtoolsHubLayer({
             bufferSize: 128,
-            diagnosticsLevel: 'full',
+            mode: 'full',
           }) as Layer.Layer<any, never, never>
 
           const M = Logix.Module.make('LogicTraitsEvidenceStability', {

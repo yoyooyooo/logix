@@ -376,7 +376,7 @@ describe('WorkflowRuntime (075)', () => {
       const ring = Debug.makeRingBufferSink(256)
       const hostScheduler = makeTestHostScheduler()
       const debugLayer = Debug.devtoolsHubLayer(Debug.replace([ring.sink]), {
-        diagnosticsLevel: 'full',
+        mode: 'full',
       }) as unknown as Layer.Layer<unknown, never, never>
       const runtime = Logix.Runtime.make(impl, {
         middleware: [Middleware.makeDebugObserver()],
@@ -447,7 +447,7 @@ describe('WorkflowRuntime (075)', () => {
       const ring = Debug.makeRingBufferSink(256)
       const hostScheduler = makeTestHostScheduler()
       const debugLayer = Debug.devtoolsHubLayer(Debug.replace([ring.sink]), {
-        diagnosticsLevel: 'full',
+        mode: 'full',
       }) as unknown as Layer.Layer<unknown, never, never>
       const runtime = Logix.Runtime.make(impl, {
         middleware: [Middleware.makeDebugObserver()],

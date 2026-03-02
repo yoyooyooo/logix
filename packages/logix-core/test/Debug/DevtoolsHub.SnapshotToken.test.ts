@@ -14,7 +14,7 @@ describe('DevtoolsHub (SnapshotToken)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 5,
-        diagnosticsLevel: 'light',
+        mode: 'light',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
@@ -36,8 +36,7 @@ describe('DevtoolsHub (SnapshotToken)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 0,
-        diagnosticsLevel: 'full',
-        projectionTier: 'full',
+        mode: 'full',
       }) as Layer.Layer<any, never, never>
 
       const base = Logix.Debug.getDevtoolsSnapshotToken()

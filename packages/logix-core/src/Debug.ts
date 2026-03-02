@@ -37,19 +37,14 @@ export const internal = {
 }
 
 export interface DevtoolsSnapshot extends DevtoolsHub.DevtoolsSnapshot {}
-export interface DevtoolsHubOptions extends DevtoolsHub.DevtoolsHubOptions {
+export interface DevtoolsHubOptions {
+  readonly bufferSize?: number
   /**
-   * Unified Devtools observation mode.
-   *
-   * - `off`: disable exportable Devtools observation (no ring/event projection).
-   * - `light`: summary-only projection with degraded semantics.
-   * - `full`: keep heavy latest* assets for high-fidelity consumers.
-   *
-   * This knob only changes observation depth, not business execution semantics.
+   * Unified Devtools observation mode (single knob).
    * Default: `"light"`.
    */
   readonly mode?: DevtoolsProjectionMode
-  readonly diagnosticsLevel?: DiagnosticsLevel
+  readonly runtimeLabel?: string
   readonly traitConvergeDiagnosticsSampling?: TraitConvergeDiagnosticsSamplingConfig
 }
 
@@ -355,43 +350,18 @@ export const appendSinks = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never,
 
 const resolveDevtoolsObservationOptions = (
   options: DevtoolsHubOptions | undefined,
-): Pick<
-  DevtoolsHubOptions,
-  'bufferSize' | 'projectionTier' | 'diagnosticsLevel' | 'traitConvergeDiagnosticsSampling' | 'runtimeLabel'
-> => {
-  const mode = options?.mode
-  if (mode === 'off') {
-    return {
-      bufferSize: options?.bufferSize,
-      projectionTier: 'light',
-      diagnosticsLevel: 'off',
-      traitConvergeDiagnosticsSampling: options?.traitConvergeDiagnosticsSampling,
-      runtimeLabel: options?.runtimeLabel,
-    }
-  }
-  if (mode === 'full') {
-    return {
-      bufferSize: options?.bufferSize,
-      projectionTier: 'full',
-      diagnosticsLevel: 'full',
-      traitConvergeDiagnosticsSampling: options?.traitConvergeDiagnosticsSampling,
-      runtimeLabel: options?.runtimeLabel,
-    }
-  }
-  if (mode === 'light') {
-    return {
-      bufferSize: options?.bufferSize,
-      projectionTier: 'light',
-      diagnosticsLevel: 'light',
-      traitConvergeDiagnosticsSampling: options?.traitConvergeDiagnosticsSampling,
-      runtimeLabel: options?.runtimeLabel,
-    }
-  }
-
+): {
+  readonly bufferSize: number | undefined
+  readonly projectionTier: DevtoolsProjectionTier
+  readonly diagnosticsLevel: DiagnosticsLevel
+  readonly traitConvergeDiagnosticsSampling: TraitConvergeDiagnosticsSamplingConfig | undefined
+  readonly runtimeLabel: string | undefined
+} => {
+  const mode = options?.mode ?? 'light'
   return {
     bufferSize: options?.bufferSize,
-    projectionTier: options?.projectionTier,
-    diagnosticsLevel: options?.diagnosticsLevel ?? 'light',
+    projectionTier: mode === 'full' ? 'full' : 'light',
+    diagnosticsLevel: mode === 'off' ? 'off' : mode,
     traitConvergeDiagnosticsSampling: options?.traitConvergeDiagnosticsSampling,
     runtimeLabel: options?.runtimeLabel,
   }
@@ -421,15 +391,13 @@ export function devtoolsHubLayer(
     : (Layer.empty as unknown as Layer.Layer<any, any, any>)
   const options = hasBase ? maybeOptions : (baseOrOptions as DevtoolsHubOptions | undefined)
   const resolvedOptions = resolveDevtoolsObservationOptions(options)
+  const shouldEmitPolicyDiagnostics = options?.mode !== undefined
   const configureOptions = {
     bufferSize: resolvedOptions.bufferSize,
     projectionTier: resolvedOptions.projectionTier,
     runtimeLabel: resolvedOptions.runtimeLabel,
-    diagnosticsLevel:
-      options?.mode === undefined && options?.diagnosticsLevel === undefined
-        ? undefined
-        : resolvedOptions.diagnosticsLevel,
-  } satisfies Pick<DevtoolsHubOptions, 'bufferSize' | 'projectionTier' | 'runtimeLabel' | 'diagnosticsLevel'>
+    diagnosticsLevel: shouldEmitPolicyDiagnostics ? resolvedOptions.diagnosticsLevel : undefined,
+  } satisfies Pick<DevtoolsHub.DevtoolsHubOptions, 'bufferSize' | 'projectionTier' | 'runtimeLabel' | 'diagnosticsLevel'>
 
   DevtoolsHub.configureDevtoolsHub(configureOptions)
   const append = appendSinks([DevtoolsHub.devtoolsHubSink])

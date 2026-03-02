@@ -115,9 +115,13 @@ test(
         if (cached) return cached
 
         const instrumentation = 'light'
-        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
-          diagnosticsLevel: args.diagnosticsLevel,
-        }) as Layer.Layer<any, never, never>
+        const projectionMode: Logix.Debug.DevtoolsProjectionMode = args.diagnosticsLevel
+        const debugLayer = Layer.mergeAll(
+          Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+            mode: projectionMode,
+          }) as Layer.Layer<any, never, never>,
+          Logix.Debug.diagnosticsLevel(args.diagnosticsLevel),
+        ) as Layer.Layer<any, never, never>
 
         const impl = mode === 'workflow' ? workflowImpl : manualImpl
 
@@ -347,9 +351,13 @@ test(
         if (cached) return cached
 
         const instrumentation = 'light'
-        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
-          diagnosticsLevel: args.diagnosticsLevel,
-        }) as Layer.Layer<any, never, never>
+        const projectionMode: Logix.Debug.DevtoolsProjectionMode = args.diagnosticsLevel
+        const debugLayer = Layer.mergeAll(
+          Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+            mode: projectionMode,
+          }) as Layer.Layer<any, never, never>,
+          Logix.Debug.diagnosticsLevel(args.diagnosticsLevel),
+        ) as Layer.Layer<any, never, never>
 
         const impl = mode === 'workflow' ? workflowImpl : manualImpl
 
