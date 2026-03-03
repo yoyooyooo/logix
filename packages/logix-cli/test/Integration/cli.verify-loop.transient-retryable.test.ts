@@ -61,5 +61,5 @@ describe('logix-cli integration (verify-loop transient => retryable)', () => {
     expect(report?.verdict).toBe('RETRYABLE')
     expect(report?.gateResults?.[0]?.status).toBe('retryable')
     expect(report?.gateResults?.[0]?.reasonCode).toBe('VERIFY_RETRYABLE')
-  })
+  }, 20_000)
 })

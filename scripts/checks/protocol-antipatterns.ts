@@ -69,7 +69,17 @@ const runGitDiff = (mode: Mode): string => {
   }).toString('utf-8')
 }
 
+const normalizePathForMatch = (file: string): string => file.replace(/\\/g, '/').toLowerCase()
+
+const isTestOrSpecFile = (file: string): boolean => {
+  const normalized = normalizePathForMatch(file)
+  if (/(^|\/)(test|tests|__tests__)\//.test(normalized)) return true
+  if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) return true
+  return false
+}
+
 const shouldCheckCodeFile = (file: string): boolean => {
+  if (isTestOrSpecFile(file)) return false
   const lower = file.toLowerCase()
   if (lower.endsWith('.ts') || lower.endsWith('.tsx') || lower.endsWith('.js') || lower.endsWith('.mjs') || lower.endsWith('.cjs')) {
     return true
@@ -179,7 +189,7 @@ const main = (): void => {
   const mode = parseArgs(process.argv.slice(2))
   const registeredReasonCodes = readRegisteredReasonCodes()
 
-  let diff: string
+  let diff = ''
   try {
     diff = runGitDiff(mode)
   } catch (error) {

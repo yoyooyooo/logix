@@ -9,7 +9,7 @@ const repoRoot = path.resolve(__dirname, '../../../..')
 const bootstrapScript = path.resolve(repoRoot, 'specs/103-cli-minimal-kernel-self-loop/scripts/bootstrap-loop.mjs')
 const autonomousScript = path.resolve(repoRoot, 'examples/logix/scripts/cli-autonomous-loop.mjs')
 
-const quoteForShell = (value: string): string => `"${value.replaceAll('"', '\\"')}"`
+const quoteForShell = (value: string): string => `"${value.replace(/"/g, '\\"')}"`
 
 const makeBootstrapCliStub = (markerFile: string): string => {
   const runPayload = {
@@ -162,7 +162,7 @@ describe('logix-cli integration (next-actions dsl-no-hardcode e2e)', () => {
       },
     )
 
-    expect(run.status).toBe(1)
+    expect(run.status).toBe(2)
     expect(run.stdout).toContain('decision=error:unknown-action:command.run')
     await expect(fs.stat(markerFile)).rejects.toThrow()
   })

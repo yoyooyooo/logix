@@ -27,7 +27,7 @@
     "check:scenario-coverage": "pnpm run verify:scenario-suite-p0p1 && pnpm run check:scenario-coverage-facts",
     "check:protocol-antipatterns": "tsx scripts/checks/protocol-antipatterns.ts",
     "verify:governance": "pnpm run check:forward-evolution && pnpm run check:ssot-alignment && pnpm run check:perf-evidence && pnpm run check:protocol-antipatterns",
-    "verify:self-bootstrap-readiness-examples-real": "node examples/logix/scripts/cli-autonomous-loop.mjs --runIdPrefix self-bootstrap-readiness-examples-real --outDir .artifacts/examples-real --entry examples/logix/src/scenarios/basic/entry.ts#AppRoot --verifyTarget examples:real --gateScope runtime --maxAttempts 4",
+    "verify:self-bootstrap-readiness-examples-real": "node examples/logix/scripts/cli-autonomous-loop.mjs --runIdPrefix self-bootstrap-readiness-examples-real --outDir .artifacts/examples-real --entry examples/logix/src/runtime/root.impl.ts#RootImpl --verifyTarget examples:real --gateScope runtime --maxAttempts 4",
     "speckit:kanban": "pnpm -C packages/speckit-kit build && speckit-kit kanban",
     "speckit:kanban:dev": "tsx scripts/speckit-kanban.ts",
     "test": "vitest run --cache --silent=passed-only --reporter=dot --hideSkippedTests",

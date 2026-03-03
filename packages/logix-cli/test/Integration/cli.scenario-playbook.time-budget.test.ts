@@ -39,7 +39,7 @@ describe('logix-cli integration (scenario-playbook time budget)', () => {
       encoding: 'utf8',
     })
 
-    expect(run.status).toBe(1)
+    expect(run.status).toBe(3)
     expect(run.stderr).toBe('')
 
     const report = JSON.parse(await fs.readFile(path.join(outDir, 'scenario-playbook.report.json'), 'utf8')) as any

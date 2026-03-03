@@ -2,6 +2,8 @@
   "schemaVersion": 1,
   "meta": {
     "createdAt": "2026-03-03T02:18:51.862Z",
+    "updatedAt": "2026-03-03T04:42:00.000Z",
+    "updateReason": "ci-hardening-protocol-antipatterns-autonomous-loop",
     "from": {
       "file": "specs/103-cli-minimal-kernel-self-loop/perf/before.local.quick.json",
       "commit": "8d4f36b1fc164cfcbb5e883d476fb8080eec0bc5"

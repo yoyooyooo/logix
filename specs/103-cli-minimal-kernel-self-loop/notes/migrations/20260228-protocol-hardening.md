@@ -25,6 +25,9 @@ owners:
 | contract.reason-catalog | specs/103-cli-minimal-kernel-self-loop/contracts/reason-catalog.md | reason-catalog-break | legacy-set | strict-set | reason code 仅允许登记集合，旧自定义码需补登记 |
 | runtime.verify.gates | packages/logix-cli/src/internal/verify-loop/gates.ts | behavior-break | legacy-gates | runtime-governance-partitioned | runtime/governance gate 分层固定化，调用方需按 scope 运行 |
 | runtime.verify.state-machine | packages/logix-cli/src/internal/verify-loop/stateMachine.ts | behavior-break | legacy-machine | strict-machine | 退出码与 verdict 映射按新状态机更新 |
+| contract.reason-catalog (extension 2026-03-03) | specs/103-cli-minimal-kernel-self-loop/contracts/reason-catalog.md | reason-catalog-break | strict-set | strict-set+governance-extensions | 新增 governance/perf/scenario/no-copy 相关 reason code，调用方若引用这些信号需同步升级目录 |
+| runtime.verify.executor-cwd (extension 2026-03-03) | packages/logix-cli/src/internal/verify-loop/realGateExecutor.ts | behavior-break | target-cwd-runtime-gates | repo-root-for-in-repo-target | in-repo target 统一回到 repo root 执行 runtime gates，避免 workspace script 在子目录误执行 |
+| scripts.semantic-exit-codes (extension 2026-03-03) | examples/logix/scripts/cli-autonomous-loop.mjs; specs/103-cli-minimal-kernel-self-loop/scripts/bootstrap-loop.mjs; specs/103-cli-minimal-kernel-self-loop/scripts/scenario-playbook-runner.mjs | behavior-break | coarse-0-1-exit | verdict-semantic-exit | 自治/回放脚本退出码改为语义化映射，不再用粗粒度 0/1 |
 
 ## Upgrade Steps
 
@@ -32,6 +35,15 @@ owners:
 2. 按 `contracts/verify-loop.md` 调整 `verify-loop run/resume` 输入，禁止沿用旧参数组合。
 3. 把所有自定义 `reasonCode` 先补入 `contracts/reason-catalog.md`，再更新实现。
 4. 执行 `pnpm run check:forward-evolution -- --base <baseRef>` 并确认 `gate:migration-forward-only` 通过。
+
+## Incremental Update (2026-03-03)
+
+- 原因：CI governance 增加 `check:protocol-antipatterns -- --base origin/main` 后，reason catalog 与脚本退出码语义需要同步扩展，且 runtime gate 执行目录需避免 workspace script 误判。
+- 影响面：`reason-catalog.md`、`realGateExecutor.ts`、`cli-autonomous-loop.mjs`、`bootstrap-loop.mjs`、`scenario-playbook-runner.mjs`。
+- 迁移动作：
+  1. 如果外部流程依赖旧的 0/1 脚本退出语义，改为消费语义化 exit code（0/2/3/4/5）。
+  2. 如果在 in-repo target 上依赖“target 目录执行 runtime gates”，改为按 repo root 执行并从 `VerifyLoopReport.gateResults[]` 读取真实 gate 结果。
+  3. 升级所有 reason code 校验器，纳入新增 governance/perf/scenario/no-copy 码表。
 
 ## Failure Guidance
 

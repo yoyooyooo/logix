@@ -123,6 +123,12 @@ const VERDICT_BY_EXIT_CODE = {
   5: 'NO_PROGRESS',
 }
 
+const resolveBootstrapLoopExitCode = (args) => {
+  if (args.protocolErrorDetected) return 2
+  if (Number.isInteger(args.finalExitCode) && args.finalExitCode >= 0) return args.finalExitCode
+  return 1
+}
+
 const parseVerifyLoopReportFromDisk = (reportPath) => {
   if (!fs.existsSync(reportPath)) return undefined
   try {
@@ -457,7 +463,10 @@ const run = () => {
     `[bootstrap-loop] summary rounds=${audit.rounds} finalVerdict=${audit.finalVerdict} finalReasonCode=${audit.finalReasonCode} converged=${audit.converged} auditFile=${options.auditFile}\n`,
   )
 
-  process.exitCode = protocolErrorDetected ? 1 : finalRecord.verdict === 'PASS' ? 0 : finalRecord.exitCode || 1
+  process.exitCode = resolveBootstrapLoopExitCode({
+    protocolErrorDetected,
+    finalExitCode: finalRecord.exitCode,
+  })
 }
 
 try {
