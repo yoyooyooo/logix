@@ -61,6 +61,11 @@ type NextActionsExecutionReport = {
   readonly sourceReasonCode: string
   readonly engine: 'bootstrap'
   readonly strict: boolean
+  readonly policy: {
+    readonly onFailure: 'continue' | 'fail-fast'
+    readonly onUnsupportedAction: 'continue' | 'fail-fast'
+    readonly onMissingRequiredArgs: 'continue' | 'fail-fast'
+  }
   readonly summary: {
     readonly executed: number
     readonly failed: number
@@ -220,7 +225,10 @@ const parseReport = (value: unknown): VerifyLoopReportRecord => {
 }
 
 const shouldSkipByReasonCode = (action: NextActionRecord, reasonCode: string): boolean =>
-  Array.isArray(action.ifReasonCodes) && action.ifReasonCodes.length > 0 && !action.ifReasonCodes.includes(reasonCode)
+  reasonCode !== 'NEXT_ACTIONS_DSL' &&
+  Array.isArray(action.ifReasonCodes) &&
+  action.ifReasonCodes.length > 0 &&
+  !action.ifReasonCodes.includes(reasonCode)
 
 const parseMode = (value: JsonValue | undefined): VerifyLoopMode => (value === 'resume' ? 'resume' : 'run')
 
@@ -235,12 +243,28 @@ const parseExecutor = (value: JsonValue | undefined): VerifyLoopExecutor | undef
 const parsePositiveInteger = (value: JsonValue | undefined): number | undefined =>
   typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
 
+const parseNonNegativeInteger = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined
+
 const parseNonEmptyString = (value: JsonValue | undefined): string | undefined =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
 
 const parseBoolean = (value: JsonValue | undefined): boolean | undefined => (typeof value === 'boolean' ? value : undefined)
 
-const executeRunCommandAction = (action: NextActionRecord): ActionDispatchResult => {
+const failurePolicy = (strict: boolean): 'continue' | 'fail-fast' => (strict ? 'fail-fast' : 'continue')
+
+const ATTEMPT_SUFFIX_RE = /-attempt-(\d+)$/u
+
+const buildResumeRunId = (previousRunId: string): string => {
+  const normalized = previousRunId.trim()
+  const matched = normalized.match(ATTEMPT_SUFFIX_RE)
+  if (!matched) return `${normalized}-attempt-2`
+  const currentAttempt = Number.parseInt(matched[1] ?? '1', 10)
+  const nextAttempt = Number.isInteger(currentAttempt) && currentAttempt >= 1 ? currentAttempt + 1 : 2
+  return `${normalized.slice(0, normalized.length - matched[0].length)}-attempt-${nextAttempt}`
+}
+
+const executeRunCommandAction = (action: NextActionRecord, strict: boolean): ActionDispatchResult => {
   const args = action.args ?? {}
   const command = parseNonEmptyString(args.command)
   if (!command) {
@@ -251,7 +275,7 @@ const executeRunCommandAction = (action: NextActionRecord): ActionDispatchResult
         status: 'failed',
         reason: 'missing args.command',
       },
-      failFast: true,
+      failFast: strict,
     }
   }
 
@@ -287,7 +311,7 @@ const executeRunCommandAction = (action: NextActionRecord): ActionDispatchResult
         command: commandArgs.length > 0 ? `${command} ${commandArgs.join(' ')}`.trim() : command,
         exitCode: 1,
       },
-      failFast: false,
+      failFast: strict,
     }
   }
 
@@ -301,13 +325,14 @@ const executeRunCommandAction = (action: NextActionRecord): ActionDispatchResult
       command: commandArgs.length > 0 ? `${command} ${commandArgs.join(' ')}`.trim() : command,
       exitCode,
     },
-    failFast: false,
+    failFast: exitCode !== 0 && strict,
   }
 }
 
 const executeRerunVerifyLoopAction = (
   inv: NextActionsExecInvocation,
   action: NextActionRecord,
+  sourceReasonCode: string,
   sourceGateScope: VerifyLoopGateScope,
 ): Effect.Effect<ActionDispatchResult, never> =>
   Effect.gen(function* () {
@@ -322,16 +347,19 @@ const executeRerunVerifyLoopAction = (
           status: 'failed',
           reason: 'missing args.target for rerun-verify-loop',
         },
-        failFast: true,
+        failFast: inv.strict,
       }
     }
 
     const mode = parseMode(args.mode)
-    const runId = parseNonEmptyString(args.runId) ?? `${inv.global.runId}-${action.id}`
     const gateScope = parseGateScope(args.gateScope, sourceGateScope)
     const maxAttempts = parsePositiveInteger(args.maxAttempts)
     const instanceId = parseNonEmptyString(args.instanceId)
     const previousRunId = parseNonEmptyString(args.previousRunId)
+    const previousReasonCode = parseNonEmptyString(args.previousReasonCode) ?? sourceReasonCode
+    const runId =
+      parseNonEmptyString(args.runId) ??
+      (mode === 'resume' && previousRunId ? buildResumeRunId(previousRunId) : `${inv.global.runId}-${action.id}`)
     const executor = parseExecutor(args.executor)
     const emitNextActions = parseBoolean(args.emitNextActions) ?? false
 
@@ -343,7 +371,7 @@ const executeRerunVerifyLoopAction = (
           status: 'failed',
           reason: 'resume mode requires args.instanceId and args.previousRunId',
         },
-        failFast: true,
+        failFast: inv.strict,
       }
     }
 
@@ -366,18 +394,32 @@ const executeRerunVerifyLoopAction = (
       ...(typeof maxAttempts === 'number' ? { maxAttempts } : null),
       ...(instanceId ? { instanceId } : null),
       ...(previousRunId ? { previousRunId } : null),
+      ...(previousReasonCode ? { previousReasonCode } : null),
     })
+
+    const rerunExitCode = parseNonNegativeInteger(rerunResult.exitCode)
+    if (typeof rerunExitCode !== 'number') {
+      return {
+        result: {
+          id: action.id,
+          action: action.action,
+          status: 'failed',
+          reason: 'rerun verify-loop returned invalid exitCode',
+        },
+        failFast: true,
+      }
+    }
 
     return {
       result: {
         id: action.id,
         action: action.action,
-        status: rerunResult.ok ? 'executed' : 'failed',
-        ...(rerunResult.ok ? null : { reason: rerunResult.error?.message ?? 'rerun verify-loop failed' }),
-        exitCode: rerunResult.exitCode ?? (rerunResult.ok ? 0 : 1),
+        status: 'executed',
+        ...(rerunResult.ok ? null : { reason: `rerun verify-loop exited with ${rerunExitCode}` }),
+        exitCode: rerunExitCode,
         rerun: {
           runId,
-          exitCode: rerunResult.exitCode ?? (rerunResult.ok ? 0 : 1),
+          exitCode: rerunExitCode,
         },
       },
       failFast: false,
@@ -404,11 +446,35 @@ const executeAction = (
     }
 
     if (action.action === 'run-command') {
-      return executeRunCommandAction(action)
+      return executeRunCommandAction(action, inv.strict)
     }
 
     if (action.action === 'rerun-verify-loop' || action.action === 'rerun') {
-      return yield* executeRerunVerifyLoopAction(inv, action, sourceGateScope)
+      return yield* executeRerunVerifyLoopAction(inv, action, sourceReasonCode, sourceGateScope)
+    }
+
+    if (action.action === 'inspect') {
+      return {
+        result: {
+          id: action.id,
+          action: action.action,
+          status: 'executed',
+          reason: 'inspect action acknowledged',
+        },
+        failFast: false,
+      }
+    }
+
+    if (action.action === 'stop') {
+      return {
+        result: {
+          id: action.id,
+          action: action.action,
+          status: 'executed',
+          reason: 'stop action requested chain halt',
+        },
+        failFast: true,
+      }
     }
 
     return {
@@ -418,7 +484,7 @@ const executeAction = (
         status: 'failed',
         reason: `unsupported action '${action.action}'`,
       },
-      failFast: true,
+      failFast: inv.strict,
     }
   })
 
@@ -490,6 +556,11 @@ export const runNextActionsExec = (inv: NextActionsExecInvocation): Effect.Effec
       sourceReasonCode: parsed.reasonCode,
       engine: inv.engine,
       strict: inv.strict,
+      policy: {
+        onFailure: failurePolicy(inv.strict),
+        onUnsupportedAction: failurePolicy(inv.strict),
+        onMissingRequiredArgs: failurePolicy(inv.strict),
+      },
       summary,
       results,
     }

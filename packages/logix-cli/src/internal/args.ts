@@ -143,6 +143,7 @@ export type CliInvocation =
       readonly instanceId?: string
       readonly maxAttempts?: number
       readonly previousRunId?: string
+      readonly previousReasonCode?: string
     }
   | {
       readonly kind: 'command'
@@ -325,6 +326,7 @@ const parseVerifyLoopInputFromOptions = (opts: {
   readonly instanceId?: string
   readonly maxAttempts?: number
   readonly previousRunId?: string
+  readonly previousReasonCode?: string
 }): Effect.Effect<
   {
     readonly mode: VerifyLoopMode
@@ -336,6 +338,7 @@ const parseVerifyLoopInputFromOptions = (opts: {
     readonly instanceId?: string
     readonly maxAttempts?: number
     readonly previousRunId?: string
+    readonly previousReasonCode?: string
   },
   ValidationError.ValidationError
 > => {
@@ -355,6 +358,7 @@ const parseVerifyLoopInputFromOptions = (opts: {
   const emitNextActions = opts.emitNextActions || Boolean(emitNextActionsOut)
   const instanceId = typeof opts.instanceId === 'string' ? opts.instanceId.trim() : undefined
   const previousRunId = typeof opts.previousRunId === 'string' ? opts.previousRunId.trim() : undefined
+  const previousReasonCode = typeof opts.previousReasonCode === 'string' ? opts.previousReasonCode.trim() : undefined
 
   if (mode === 'resume' && !previousRunId) {
     return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少参数：--mode resume 需要 --previousRunId <runId>')))
@@ -368,6 +372,10 @@ const parseVerifyLoopInputFromOptions = (opts: {
     return Effect.fail(ValidationError.invalidValue(HelpDoc.p('--previousRunId 仅在 --mode resume 时允许提供')))
   }
 
+  if (mode === 'run' && previousReasonCode) {
+    return Effect.fail(ValidationError.invalidValue(HelpDoc.p('--previousReasonCode 仅在 --mode resume 时允许提供')))
+  }
+
   return Effect.succeed({
     mode,
     gateScope,
@@ -378,6 +386,7 @@ const parseVerifyLoopInputFromOptions = (opts: {
     ...(instanceId ? { instanceId } : null),
     ...(typeof opts.maxAttempts === 'number' ? { maxAttempts: opts.maxAttempts } : null),
     ...(previousRunId ? { previousRunId } : null),
+    ...(previousReasonCode ? { previousReasonCode } : null),
   })
 }
 
@@ -451,6 +460,7 @@ export type ParsedOptions = {
   readonly instanceId?: string
   readonly maxAttempts?: number
   readonly previousRunId?: string
+  readonly previousReasonCode?: string
   readonly report?: string
   readonly dsl?: string
   readonly nextActionsEngine?: NextActionsEngine
@@ -518,6 +528,7 @@ type LeafParsed =
       readonly instanceId?: string
       readonly maxAttempts?: number
       readonly previousRunId?: string
+      readonly previousReasonCode?: string
     }
   | {
       readonly command: 'next-actions.exec'
@@ -596,6 +607,7 @@ const baseOptions: Options.Options<ParsedOptions> = Options.all({
   instanceId: optionalText('instanceId'),
   maxAttempts: positiveIntOptional('maxAttempts'),
   previousRunId: optionalText('previousRunId'),
+  previousReasonCode: optionalText('previousReasonCode'),
   report: optionalText('report'),
   dsl: optionalText('dsl'),
   strict: booleanWithNegation('strict'),
@@ -810,7 +822,7 @@ const contractSuiteCommand = CommandDescriptor.make('contract-suite').pipe(
 const verifyLoopCommand = CommandDescriptor.make('verify-loop', baseOptions).pipe(
   CommandDescriptor.mapEffect(({ options }) =>
     parseVerifyLoopInputFromOptions(options).pipe(
-      Effect.map(({ mode, gateScope, target, executor, emitNextActions, instanceId, maxAttempts, previousRunId }) => ({
+      Effect.map(({ mode, gateScope, target, executor, emitNextActions, instanceId, maxAttempts, previousRunId, previousReasonCode }) => ({
         command: 'verify-loop' as const,
         options,
         mode,
@@ -822,6 +834,7 @@ const verifyLoopCommand = CommandDescriptor.make('verify-loop', baseOptions).pip
         ...(instanceId ? { instanceId } : null),
         ...(typeof maxAttempts === 'number' ? { maxAttempts } : null),
         ...(previousRunId ? { previousRunId } : null),
+        ...(previousReasonCode ? { previousReasonCode } : null),
       })),
     ),
   ),
@@ -926,6 +939,7 @@ const flagsWithValue = new Set([
   '--profile',
   '--report',
   '--previousRunId',
+  '--previousReasonCode',
   '--repoRoot',
   '--runId',
   '--stateFile',
@@ -1254,6 +1268,7 @@ export const parseCliInvocation = (
             ...(leaf.instanceId ? { instanceId: leaf.instanceId } : null),
             ...(typeof leaf.maxAttempts === 'number' ? { maxAttempts: leaf.maxAttempts } : null),
             ...(leaf.previousRunId ? { previousRunId: leaf.previousRunId } : null),
+            ...(leaf.previousReasonCode ? { previousReasonCode: leaf.previousReasonCode } : null),
           } as const)
         case 'next-actions.exec':
           return Effect.succeed({

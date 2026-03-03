@@ -279,4 +279,82 @@ describe('logix-cli integration (verify-loop resume identity monotonic)', () => 
     expect(resumeOutNoSuffix.result.trajectory.map((point) => point.attemptSeq)).toEqual([2, 3])
     expect(resumeReportNoSuffix.trajectory.map((point: any) => point.attemptSeq)).toEqual([2, 3])
   })
+
+  it('preserves previous attempt reasonCode when resume supplies previousReasonCode', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'logix-verify-loop-trajectory-reason-'))
+    const runOut = await Effect.runPromise(
+      runCli([
+        'verify-loop',
+        '--runId',
+        'trajectory-reason-attempt-01',
+        '--mode',
+        'run',
+        '--target',
+        'fixture:retryable',
+        '--out',
+        path.join(tmp, 'attempt-01'),
+      ]),
+    )
+
+    expect(runOut.kind).toBe('result')
+    if (runOut.kind !== 'result') throw new Error('expected result')
+    const runReport = await getReport(runOut.result)
+
+    const dslPath = path.join(tmp, 'next-actions.resume-pass.json')
+    await fs.writeFile(
+      dslPath,
+      `${JSON.stringify(
+        [
+          {
+            id: 'resume-pass-with-previous-reason',
+            action: 'rerun',
+            args: {
+              mode: 'resume',
+              target: 'fixture:pass',
+              instanceId: runReport.instanceId,
+              previousRunId: runReport.runId,
+              previousReasonCode: runReport.reasonCode,
+            },
+          },
+        ],
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    )
+
+    const execOut = await Effect.runPromise(
+      runCli([
+        'next-actions',
+        'exec',
+        '--runId',
+        'trajectory-reason-exec-01',
+        '--dsl',
+        dslPath,
+        '--out',
+        path.join(tmp, 'next-actions-exec'),
+      ]),
+    )
+
+    expect(execOut.kind).toBe('result')
+    if (execOut.kind !== 'result') throw new Error('expected result')
+    expect(execOut.result.ok).toBe(true)
+
+    const rerunReportPath = path.join(
+      tmp,
+      'next-actions-exec',
+      'next-actions-resume-pass-with-previous-reason',
+      'verify-loop.report.json',
+    )
+    const rerunReport = JSON.parse(await fs.readFile(rerunReportPath, 'utf8')) as {
+      readonly trajectory: ReadonlyArray<{ readonly attemptSeq: number; readonly reasonCode: string }>
+      readonly reasonCode: string
+    }
+
+    expect(rerunReport.reasonCode).toBe('VERIFY_PASS')
+    expect(rerunReport.trajectory).toEqual([
+      { attemptSeq: 1, reasonCode: 'VERIFY_RETRYABLE' },
+      { attemptSeq: 2, reasonCode: 'VERIFY_PASS' },
+    ])
+  })
 })

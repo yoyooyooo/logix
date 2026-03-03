@@ -7,7 +7,7 @@ import { makeArtifactOutput } from '../artifacts.js'
 import type { CliInvocation, VerifyLoopExecutor } from '../args.js'
 import { asSerializableErrorSummary, makeCliError } from '../errors.js'
 import { resolveVerifyLoopIdentity } from '../protocol/identityDriftGuard.js'
-import { assertVerifyLoopReportV1Schema } from '../protocol/schemaValidation.js'
+import { assertVerifyLoopInputV1Schema, assertVerifyLoopReportV1Schema } from '../protocol/schemaValidation.js'
 import { buildVerifyLoopReasonTrajectory } from '../protocol/trajectory.js'
 import type { ControlEvent } from '../protocol/types.js'
 import type { CommandResult } from '../result.js'
@@ -205,6 +205,16 @@ export const runVerifyLoop = (inv: VerifyLoopInvocation): Effect.Effect<CommandR
       providedInstanceId,
     })
     const ids = identityResolution.identity
+    assertVerifyLoopInputV1Schema({
+      schemaVersion: 1,
+      kind: 'VerifyLoopInput',
+      mode: inv.mode,
+      instanceId: ids.instanceId,
+      runId,
+      ...(inv.mode === 'resume' ? { previousRunId: inv.previousRunId } : null),
+      target: inv.target,
+      ...(typeof inv.maxAttempts === 'number' ? { maxAttempts: inv.maxAttempts } : null),
+    })
     const maxAttempts = inv.maxAttempts ?? 3
     const gateScope = inv.gateScope
     const gates = listVerifyGates(gateScope)
@@ -239,9 +249,10 @@ export const runVerifyLoop = (inv: VerifyLoopInvocation): Effect.Effect<CommandR
       reasonCode: 'VERIFY_RETRYABLE',
       gateResults,
     })
+    const hasRetryableGate = gateResults.some((item) => item.status === 'retryable')
 
     const retryContext =
-      fixtureScenario === 'retryable' || fixtureScenario === 'no-progress' || fixtureScenario === 'transient'
+      fixtureScenario === 'retryable' || fixtureScenario === 'no-progress' || fixtureScenario === 'transient' || hasRetryableGate
         ? {
             attemptSeq: ids.attemptSeq,
             maxAttempts,
@@ -249,8 +260,8 @@ export const runVerifyLoop = (inv: VerifyLoopInvocation): Effect.Effect<CommandR
             trajectory:
               fixtureScenario === 'no-progress'
                 ? [
-                    { attemptSeq: Math.max(1, ids.attemptSeq - 2), signature: retrySignature },
-                    { attemptSeq: Math.max(1, ids.attemptSeq - 1), signature: retrySignature },
+                    { attemptSeq: Math.max(1, ids.attemptSeq - 2), signature: retrySignature, reasonCode: 'VERIFY_RETRYABLE' },
+                    { attemptSeq: Math.max(1, ids.attemptSeq - 1), signature: retrySignature, reasonCode: 'VERIFY_RETRYABLE' },
                   ]
                 : [],
             ...(fixtureScenario === 'no-progress' ? { noProgressThreshold: 2 } : null),
@@ -266,6 +277,7 @@ export const runVerifyLoop = (inv: VerifyLoopInvocation): Effect.Effect<CommandR
       mode: inv.mode,
       currentAttemptSeq: ids.attemptSeq,
       currentReasonCode: decision.reasonCode,
+      ...(inv.previousReasonCode ? { previousReasonCode: inv.previousReasonCode } : null),
       previousAttemptSeq: identityResolution.previousAttemptSeq,
       retryTrajectory: retryContext?.trajectory,
     })

@@ -118,8 +118,14 @@ const normalizeReasons = (args: {
   }))
 }
 
-const defaultNextActions = (verdict: CommandVerdict, reasonCode: string, target: string | undefined): ReadonlyArray<NextAction> => {
-  const rerunTarget = typeof target === 'string' ? target.trim() : ''
+const defaultNextActions = (args: {
+  readonly verdict: CommandVerdict
+  readonly reasonCode: string
+  readonly target: string | undefined
+  readonly runId: string
+  readonly instanceId: string
+}): ReadonlyArray<NextAction> => {
+  const rerunTarget = typeof args.target === 'string' ? args.target.trim() : ''
   const assertDefaultRerunTarget = (): string => {
     if (rerunTarget.length > 0) return rerunTarget
     throw makeCliError({
@@ -128,7 +134,7 @@ const defaultNextActions = (verdict: CommandVerdict, reasonCode: string, target:
     })
   }
 
-  switch (verdict) {
+  switch (args.verdict) {
     case 'PASS':
       return []
     case 'VIOLATION':
@@ -139,9 +145,12 @@ const defaultNextActions = (verdict: CommandVerdict, reasonCode: string, target:
           args: {
             mode: 'resume',
             target: assertDefaultRerunTarget(),
+            instanceId: args.instanceId,
+            previousRunId: args.runId,
+            previousReasonCode: args.reasonCode,
             resumePolicy: 'after-violation',
           },
-          ifReasonCodes: [reasonCode],
+          ifReasonCodes: [args.reasonCode],
         },
       ]
     case 'RETRYABLE':
@@ -152,9 +161,12 @@ const defaultNextActions = (verdict: CommandVerdict, reasonCode: string, target:
           args: {
             mode: 'resume',
             target: assertDefaultRerunTarget(),
+            instanceId: args.instanceId,
+            previousRunId: args.runId,
+            previousReasonCode: args.reasonCode,
             resumePolicy: 'after-retryable',
           },
-          ifReasonCodes: [reasonCode],
+          ifReasonCodes: [args.reasonCode],
         },
       ]
     case 'NO_PROGRESS':
@@ -163,7 +175,7 @@ const defaultNextActions = (verdict: CommandVerdict, reasonCode: string, target:
           id: 'diagnose-no-progress',
           action: CANONICAL_NEXT_ACTION.INSPECT,
           args: { mode: 'manual', recommend: 'inspect-and-decide' },
-          ifReasonCodes: [reasonCode],
+          ifReasonCodes: [args.reasonCode],
         },
       ]
     case 'NOT_IMPLEMENTED':
@@ -172,7 +184,7 @@ const defaultNextActions = (verdict: CommandVerdict, reasonCode: string, target:
           id: 'implement-missing-gates',
           action: CANONICAL_NEXT_ACTION.STOP,
           args: { mode: 'manual', reason: 'implement-missing-gates', gateScope: 'runtime' },
-          ifReasonCodes: [reasonCode],
+          ifReasonCodes: [args.reasonCode],
         },
       ]
     case 'ERROR':
@@ -181,7 +193,7 @@ const defaultNextActions = (verdict: CommandVerdict, reasonCode: string, target:
           id: 'inspect-runtime-error',
           action: CANONICAL_NEXT_ACTION.INSPECT,
           args: { mode: 'inspect', recommend: 'manual-rerun' },
-          ifReasonCodes: [reasonCode],
+          ifReasonCodes: [args.reasonCode],
         },
       ]
   }
@@ -366,7 +378,16 @@ export const makeVerifyLoopReport = (args: {
       message: '[Logix][CLI] trajectory 终点必须与 report identity/reason 对齐',
     })
   }
-  const nextActions = normalizeNextActions(args.nextActions ?? defaultNextActions(args.verdict, reasonCode, args.target))
+  const nextActions = normalizeNextActions(
+    args.nextActions ??
+      defaultNextActions({
+        verdict: args.verdict,
+        reasonCode,
+        target: args.target,
+        runId,
+        instanceId,
+      }),
+  )
   const artifacts = normalizeArtifacts(args.artifacts ?? [])
 
   return {

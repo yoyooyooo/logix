@@ -92,6 +92,19 @@ const VERIFY_LOOP_REPORT_ROOT_KEYS = new Set<string>([
   'ext',
 ])
 
+const VERIFY_LOOP_INPUT_ROOT_KEYS = new Set<string>([
+  'schemaVersion',
+  'kind',
+  'mode',
+  'instanceId',
+  'runId',
+  'previousRunId',
+  'target',
+  'maxAttempts',
+  'nonTty',
+  'ext',
+])
+
 const VERIFY_LOOP_GATE_RESULT_KEYS = new Set<string>(['gate', 'status', 'durationMs', 'command', 'exitCode', 'reasonCode'])
 
 const VERIFY_LOOP_ARTIFACT_KEYS = new Set<string>(['name', 'path'])
@@ -110,8 +123,15 @@ const NEXT_ACTIONS_EXECUTION_ROOT_KEYS = new Set<string>([
   'sourceReasonCode',
   'engine',
   'strict',
+  'policy',
   'summary',
   'results',
+])
+
+const NEXT_ACTIONS_EXECUTION_POLICY_KEYS = new Set<string>([
+  'onFailure',
+  'onUnsupportedAction',
+  'onMissingRequiredArgs',
 ])
 
 const NEXT_ACTIONS_EXECUTION_SUMMARY_KEYS = new Set<string>(['executed', 'failed', 'noOp'])
@@ -624,6 +644,54 @@ const assertVerifyLoopGateResult = (schemaName: string, path: string, gateScope:
   }
 }
 
+export const assertVerifyLoopInputV1Schema = (value: unknown): void => {
+  const schemaName = 'verify-loop.input@v1'
+  const record = assertRecord(schemaName, '$', value)
+
+  assertKnownKeys(schemaName, '$', record, VERIFY_LOOP_INPUT_ROOT_KEYS)
+  assertRequiredKeys(schemaName, '$', record, ['schemaVersion', 'kind', 'mode', 'instanceId', 'target'])
+
+  if (record.schemaVersion !== 1) {
+    throwProtocolViolation(schemaName, '$.schemaVersion', '必须等于 1')
+  }
+  if (record.kind !== 'VerifyLoopInput') {
+    throwProtocolViolation(schemaName, '$.kind', "必须等于 'VerifyLoopInput'")
+  }
+
+  const mode = assertNonEmptyString(schemaName, '$.mode', record.mode) as VerifyLoopMode
+  if (!VERIFY_LOOP_MODE_SET.has(mode)) {
+    throwProtocolViolation(schemaName, '$.mode', `必须是 [${Array.from(VERIFY_LOOP_MODE_SET).join(', ')}]`)
+  }
+
+  assertToken(schemaName, '$.instanceId', record.instanceId)
+  assertNonEmptyString(schemaName, '$.target', record.target)
+
+  if (Object.prototype.hasOwnProperty.call(record, 'runId')) {
+    assertNonEmptyString(schemaName, '$.runId', record.runId)
+  }
+  if (Object.prototype.hasOwnProperty.call(record, 'previousRunId')) {
+    assertNonEmptyString(schemaName, '$.previousRunId', record.previousRunId)
+  }
+  if (Object.prototype.hasOwnProperty.call(record, 'maxAttempts')) {
+    assertIntegerAtLeast(schemaName, '$.maxAttempts', record.maxAttempts, 1)
+  }
+  if (Object.prototype.hasOwnProperty.call(record, 'nonTty')) {
+    assertBoolean(schemaName, '$.nonTty', record.nonTty)
+  }
+  if (Object.prototype.hasOwnProperty.call(record, 'ext')) {
+    assertRecord(schemaName, '$.ext', record.ext)
+  }
+
+  if (mode === 'run') {
+    assertNonEmptyString(schemaName, '$.runId', record.runId)
+    return
+  }
+
+  assertNonEmptyString(schemaName, '$.runId', record.runId)
+  assertNonEmptyString(schemaName, '$.previousRunId', record.previousRunId)
+  assertToken(schemaName, '$.instanceId', record.instanceId)
+}
+
 export const assertVerifyLoopReportV1Schema = (value: unknown): void => {
   const schemaName = 'verify-loop.report@v1'
   const record = assertRecord(schemaName, '$', value)
@@ -794,6 +862,7 @@ export const assertNextActionsExecutionV1Schema = (value: unknown): void => {
     'sourceReasonCode',
     'engine',
     'strict',
+    'policy',
     'summary',
     'results',
   ])
@@ -826,6 +895,22 @@ export const assertNextActionsExecutionV1Schema = (value: unknown): void => {
   }
 
   assertBoolean(schemaName, '$.strict', record.strict)
+
+  const policy = assertRecord(schemaName, '$.policy', record.policy)
+  assertKnownKeys(schemaName, '$.policy', policy, NEXT_ACTIONS_EXECUTION_POLICY_KEYS)
+  assertRequiredKeys(schemaName, '$.policy', policy, ['onFailure', 'onUnsupportedAction', 'onMissingRequiredArgs'])
+  const onFailure = assertNonEmptyString(schemaName, '$.policy.onFailure', policy.onFailure)
+  const onUnsupportedAction = assertNonEmptyString(schemaName, '$.policy.onUnsupportedAction', policy.onUnsupportedAction)
+  const onMissingRequiredArgs = assertNonEmptyString(schemaName, '$.policy.onMissingRequiredArgs', policy.onMissingRequiredArgs)
+  for (const [path, value] of [
+    ['$.policy.onFailure', onFailure],
+    ['$.policy.onUnsupportedAction', onUnsupportedAction],
+    ['$.policy.onMissingRequiredArgs', onMissingRequiredArgs],
+  ] as const) {
+    if (value !== 'continue' && value !== 'fail-fast') {
+      throwProtocolViolation(schemaName, path, "必须是 ['continue', 'fail-fast']")
+    }
+  }
 
   const summary = assertRecord(schemaName, '$.summary', record.summary)
   assertKnownKeys(schemaName, '$.summary', summary, NEXT_ACTIONS_EXECUTION_SUMMARY_KEYS)
@@ -1027,7 +1112,10 @@ export const assertDescribeReportV1Schema = (value: unknown): void => {
       'remediationMapRef',
       'scenarios',
     ])
-    assertNonEmptyString(schemaName, '$.ext.internal.orchestration.source', orchestration.source)
+    const orchestrationSource = assertNonEmptyString(schemaName, '$.ext.internal.orchestration.source', orchestration.source)
+    if (orchestrationSource !== 'spec-103.scenario-index') {
+      throwProtocolViolation(schemaName, '$.ext.internal.orchestration.source', "必须等于 'spec-103.scenario-index'")
+    }
     assertNonEmptyString(schemaName, '$.ext.internal.orchestration.contractRef', orchestration.contractRef)
     assertNonEmptyString(schemaName, '$.ext.internal.orchestration.remediationMapRef', orchestration.remediationMapRef)
     if (!Array.isArray(orchestration.scenarios)) {
@@ -1040,7 +1128,10 @@ export const assertDescribeReportV1Schema = (value: unknown): void => {
       assertKnownKeys(schemaName, scenarioPath, scenario, DESCRIBE_EXT_SCENARIO_KEYS)
       assertRequiredKeys(schemaName, scenarioPath, scenario, ['id', 'recommendedPrimitiveChain'])
       assertNonEmptyString(schemaName, `${scenarioPath}.id`, scenario.id)
-      assertStringArray(schemaName, `${scenarioPath}.recommendedPrimitiveChain`, scenario.recommendedPrimitiveChain)
+      const recommended = assertStringArray(schemaName, `${scenarioPath}.recommendedPrimitiveChain`, scenario.recommendedPrimitiveChain)
+      if (recommended.length === 0) {
+        throwProtocolViolation(schemaName, `${scenarioPath}.recommendedPrimitiveChain`, '至少包含一个命令')
+      }
     }
   }
 }

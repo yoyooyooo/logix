@@ -153,6 +153,14 @@
 - **FR-030**: (NS-8) `transform.module` MUST 提供最小可执行实现（`insert/remove/replace`）并保持 report-first（`--mode report` 默认）。
 - **FR-031**: (NS-8) examples 门禁 MUST 升级为自治闭环链：`gate_static -> gate_dynamic -> gate_contract -> gate_decision -> gate_verdict`，并产出统一裁决工件 `verdict.json`。
 - **FR-032**: (NS-10) 自治闭环裁决 MUST 使用结构化失败语义：`PASS/FAIL_HARD/FAIL_SOFT/BLOCKED/INFRA_FLAKY`，并绑定机读错误码与证据引用。
+- **FR-033**: (NS-8) `verify-loop` 产出的 `nextActions[]` MUST 可被 `next-actions exec` 直接消费执行；禁止要求外部 Agent 对 action payload 进行手工补丁。
+- **FR-034**: (NS-10) 当 `nextActions.action=rerun` 且 `args.mode=resume` 时，payload MUST 显式携带 `args.target/args.instanceId/args.previousRunId`，并与当前闭环标识链保持一致。
+- **FR-035**: (NS-8) `next-actions exec` MUST 完整支持规范动作集（`run-command/rerun/inspect/stop`）并为每个动作定义稳定执行语义；不得把规范内动作降级为“unknown/unsupported action”。
+- **FR-036**: (NS-3) `next-actions exec --strict` 与非 strict 模式 MUST 具备可验证且文档化的行为差异（例如失败策略/中断策略），禁止 strict 仅作为回显字段。
+- **FR-037**: (NS-8) `verify-loop --executor real` MUST 让 `target` 真实参与 gate 执行作用域（而非仅做存在性探测），并保证 report 中作用域语义可回放验证。
+- **FR-038**: (NS-10) 瞬态错误分类与重试策略 MUST 覆盖 real executor 路径（含 spawn/IO/IPC 瞬态故障），不得仅在 fixture 路径生效。
+- **FR-039**: (NS-10) `trajectory` MUST 保留每个历史 attempt 的原始 `reasonCode`，并禁止用当前轮 reason 覆写历史轨迹。
+- **FR-040**: (NS-3) 运行时 schema 校验器 MUST 与 contracts JSON schema 保持语义等价（含 `const/minItems/required` 约束），任何漂移必须被测试与 CI 阻断。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 
@@ -168,6 +176,10 @@
 - **NFR-010**: (NS-3) 公开命令路径（`describe/ir export/ir validate/ir diff/trialrun/transform.module`）`CLI_NOT_IMPLEMENTED` 暴露率 MUST 为 0。
 - **NFR-011**: (NS-10) 同输入重复运行 `trialrun` 两次时，稳定标识链（`instanceId/txnSeq/opSeq`）一致率 MUST 为 100%。
 - **NFR-012**: (NS-10) 自治闭环门禁产物 MUST 包含最小证据包与校验清单：`trialrun.report.json`、`trace.slim.json`、`evidence.json`、`verdict.json`、`checksums.sha256`。
+- **NFR-013**: (NS-8) `run -> next-actions exec -> resume` 链路在标准 retryable/no-progress 样本上的协议一致性 MUST 达到 100%，不得出现 `CLI_PROTOCOL_VIOLATION` 级断链。
+- **NFR-014**: (NS-3) schema 等价性校验 MUST 自动化并纳入默认质量门，确保运行时校验与 `contracts/schemas/*.json` 长期无漂移。
+- **NFR-015**: (NS-10) 轨迹可解释性 MUST 满足历史保真：任何 attempt 的 reason 追溯准确率目标为 100%。
+- **NFR-016**: (NS-8) canonical nextActions 执行层 MUST 保持确定性：同输入下 action 执行结果（executed/failed/no-op）一致率 MUST 为 100%。
 
 ### Key Entities _(include if feature involves data)_
 
@@ -203,3 +215,10 @@
 - **SC-018**: (NS-3) 三个合并命令（`contract-suite.run/spy.evidence/anchor.index`）迁移提示覆盖率 100%（reason code + nextActions + 文档指针）。
 - **SC-019**: (NS-8) examples 自治闭环门禁在 CI 回归样本通过率 >= 90%，且每次执行均产出 `verdict.json` 与 `checksums.sha256`。
 - **SC-020**: (NS-8) `transform.module --mode report` 可解释报告覆盖率 100%（每个操作均包含目标、变更类型与结果）。
+- **SC-021**: (NS-8) 对 `VERIFY_RETRYABLE` 标准样本执行 `verify-loop -> next-actions exec -> verify-loop(resume)`，协议断链率为 0（不得因缺失 `instanceId/previousRunId` 失败）。
+- **SC-022**: (NS-8) 对 `VERIFY_NO_PROGRESS` 标准样本执行 `next-actions exec` 时，规范动作（含 `inspect/stop`）执行失败率为 0（非业务失败除外）。
+- **SC-023**: (NS-8) `--executor real` 的 `target` 作用域一致性达到 100%（执行作用域、report 记录、回放验证三者一致）。
+- **SC-024**: (NS-10) real executor 瞬态故障样本映射到 `RETRYABLE` 的命中率 >= 95%，误判为永久错误率 <= 5%。
+- **SC-025**: (NS-10) run/resume 多轮回放中 trajectory 历史 reason 保真率 100%（历史 attempt 不得被当前 reason 覆写）。
+- **SC-026**: (NS-3) 运行时 schema validator 与 `command-result/verify-loop.input/verify-loop.report/describe/next-actions.execution` 五类 schema 的等价校验通过率 100%。
+- **SC-027**: (NS-3) `next-actions exec` strict 与非 strict 模式行为差异可观测率 100%（测试可稳定区分策略分支）。
