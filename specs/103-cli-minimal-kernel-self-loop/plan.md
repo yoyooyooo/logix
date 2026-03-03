@@ -94,6 +94,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - self-bootstrap-readiness@examples-real（examples/CI 里程碑）: 在真实 `examples/logix` 项目上跑通 `run -> resume` 多轮自治闭环，CI 阻断门以机读 `verdict.json` 与 `checksums.sha256` 为准。
 - extension-hot-reload-readiness（扩展热重载稳态）: `shadow -> healthcheck -> revalidate -> swap -> rollback` 全链路可回归。
 - governance（治理阻断门）: 固化 governance gate（`gate:migration-forward-only/gate:ssot-drift/gate:perf-hard`）并接入 CI 默认阻断。
+- review-closure-readiness（审查收口里程碑）: 收口 `nextActions` 契约、real executor 作用域、trajectory 历史保真与 schema/runtime 等价性，确保自治闭环无协议断链。
 
 ## 后续增量规划（Round 1 辩论收敛）
 
@@ -168,6 +169,33 @@ Forward-only 裁决：Phase 10 只做向前演进，不提供兼容层/弃用期
 - 在真实 `examples/logix` 运行 `describe -> ir export -> trialrun -> verify-loop(run/resume) -> verdict`；
 - 至少完成 2 轮闭环（含一次 resume），最终 `finalVerdict=PASS`；
 - CI 增加阻断 job：`self-bootstrap-readiness@examples-real`，失败即阻断合并。
+
+## 后续增量规划（Phase 17：审查收口）
+
+Forward-only 裁决：本阶段修复以“更新契约 + 更新实现 + 更新回归”为唯一路径，不保留向后兼容分支。
+
+### 主线 E：nextActions 契约与执行器一致化（P0）
+
+- 对齐 `verify-loop` 默认 `nextActions` 与 `next-actions exec` 的 resume 入参要求，禁止执行阶段要求额外手工补丁参数。
+- `next-actions exec` 必须覆盖 canonical action 全集（`run-command/rerun/inspect/stop`），并输出稳定执行结果。
+- `--strict` 必须具有可观测策略差异（而非仅作为报告字段）。
+
+### 主线 F：real gate 作用域与瞬态重试（P1）
+
+- `verify-loop --executor real --target` 必须进入实际 gate 执行作用域，不得退化为存在性探针。
+- real 路径必须接入瞬态错误分类与重试策略，避免 `RETRYABLE` 仅 fixture 可达。
+
+### 主线 G：轨迹保真与 schema 等价性（P1）
+
+- trajectory 保留每轮 attempt 的原始 reason，禁止历史覆写。
+- 运行时 validator 与 contracts JSON schema 在 `const/minItems/required` 约束上保持等价，漂移由合同测试阻断。
+
+### 本阶段验收口径
+
+1. `VERIFY_RETRYABLE` 样本执行 `verify-loop(run) -> next-actions exec -> verify-loop(resume)` 断链率为 0。
+2. `VERIFY_NO_PROGRESS` 样本中 `inspect/stop` 不得再出现 `unsupported action` 失败。
+3. `describe.report` 与 `verify-loop.input` 关键约束在 runtime 与 JSON schema 双边一致。
+4. resume 多轮回放中历史 attempt reason 保真率 100%。
 
 ## 风险与对策（规划级）
 

@@ -58,3 +58,51 @@ pnpm run check:protocol-antipatterns
 - CI 场景建议使用 `--base <baseRef>`（PR: `origin/<base_branch>`，push: `${{ github.event.before }}`）确保以真实基线对比。
 - `--base <ref>` 是“提交区间”对比口径；本地未提交改动验证请优先使用 worktree 口径（不传 `--base`）。
 - 术语约束：`gateScope=governance`（verify-loop）仅包含 3 个 gate（migration/ssot/perf）；`protocol-antipatterns` 为并行 guard。
+
+---
+
+## Phase 17 补充验证（2026-03-03）
+
+### 执行命令（实现收口后）
+
+```bash
+# 定向回归（Phase 17 相关）
+pnpm -C packages/logix-cli exec vitest run \
+  test/Integration/cli.next-actions.exec.test.ts \
+  test/Integration/cli.verify-loop.emit-next-actions.test.ts \
+  test/Integration/cli.verify-loop.transient-retryable.test.ts \
+  test/Integration/cli.verify-loop.target-alias.test.ts \
+  test/Integration/cli.verify-loop.resume-identity-monotonic.test.ts \
+  test/Integration/cli.verify-loop.resume-trace.test.ts \
+  test/Integration/cli.autonomous-loop.examples.e2e.test.ts \
+  test/Contracts/Contracts.103.VerifyLoopInput.test.ts \
+  test/Contracts/Contracts.103.DescribeSchema.test.ts
+
+# 全量质量门
+pnpm typecheck
+pnpm test:turbo
+pnpm build
+
+# 治理门
+pnpm run verify:governance
+```
+
+### 结果摘要
+
+1. 定向回归：`9 files / 38 tests` 全部通过（覆盖 next-actions canonical 动作、resume 链路、trajectory 保真、schema/runtime 等价）。
+2. `pnpm typecheck`：通过。
+3. `pnpm test:turbo`：通过（`@logixjs/cli` `70 files / 157 tests` 通过）。
+4. `pnpm build`：通过（包含 workspace build + docs prebuild）。
+5. `pnpm run verify:governance`：通过（`forward-evolution` / `ssot-alignment` / `perf-evidence` / `protocol-antipatterns` 全部 PASS）。
+
+### 关键证据
+
+- `specs/103-cli-minimal-kernel-self-loop/perf/diff.latest.json` 重新生成并纳入本次变更；硬判据保持：
+
+```json
+{
+  "meta.comparability.comparable": true,
+  "summary.regressions": 0,
+  "summary.budgetViolations": 0
+}
+```

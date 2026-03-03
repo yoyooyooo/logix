@@ -17,6 +17,7 @@
     "sourceReasonCode",
     "engine",
     "strict",
+    "policy",
     "summary",
     "results"
   ],
@@ -69,6 +70,9 @@
     "strict": {
       "type": "boolean"
     },
+    "policy": {
+      "$ref": "#/$defs/policy"
+    },
     "summary": {
       "$ref": "#/$defs/summary"
     },
@@ -95,6 +99,25 @@
         "noOp": {
           "type": "integer",
           "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "policy": {
+      "type": "object",
+      "required": ["onFailure", "onUnsupportedAction", "onMissingRequiredArgs"],
+      "properties": {
+        "onFailure": {
+          "type": "string",
+          "enum": ["continue", "fail-fast"]
+        },
+        "onUnsupportedAction": {
+          "type": "string",
+          "enum": ["continue", "fail-fast"]
+        },
+        "onMissingRequiredArgs": {
+          "type": "string",
+          "enum": ["continue", "fail-fast"]
         }
       },
       "additionalProperties": false

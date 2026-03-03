@@ -44,6 +44,44 @@ describe('contracts 103 describe schema', () => {
       },
     }
     expect(() => assertDescribeReportV1Schema(invalid)).toThrowError(/expectedOutputKeys/)
+
+    const withExt =
+      report.ext ?? {
+        internal: {
+          orchestration: {
+            source: 'spec-103.scenario-index',
+            contractRef: 'specs/103-cli-minimal-kernel-self-loop/contracts/scenario-index.md',
+            remediationMapRef: 'specs/103-cli-minimal-kernel-self-loop/contracts/scenario-remediation-map.md',
+            scenarios: [{ id: 's01', recommendedPrimitiveChain: ['describe'] }],
+          },
+        },
+      }
+
+    const invalidOrchestrationSource = {
+      ...report,
+      ext: {
+        internal: {
+          orchestration: {
+            ...withExt.internal.orchestration,
+            source: 'wrong-source',
+          },
+        },
+      },
+    }
+    expect(() => assertDescribeReportV1Schema(invalidOrchestrationSource)).toThrowError(/orchestration.source/)
+
+    const invalidPrimitiveChainMinItems = {
+      ...report,
+      ext: {
+        internal: {
+          orchestration: {
+            ...withExt.internal.orchestration,
+            scenarios: [{ id: 's01', recommendedPrimitiveChain: [] }],
+          },
+        },
+      },
+    }
+    expect(() => assertDescribeReportV1Schema(invalidPrimitiveChainMinItems)).toThrowError(/recommendedPrimitiveChain/)
   })
 
   it('keeps default artifact filename metadata complete for primary command outputs', () => {

@@ -30,7 +30,7 @@ const makeInvalidToken = (next: () => number): string => {
 }
 
 describe('logix-cli integration (next-actions exec)', () => {
-  it('默认模式下未知 action 仍必须 fail-fast，并输出来源追踪字段', async () => {
+  it('默认模式下支持 canonical inspect/stop，并输出来源追踪字段', async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'logix-next-actions-exec-'))
     const reportPath = path.join(tmp, 'verify-loop.report.json')
 
@@ -82,8 +82,15 @@ describe('logix-cli integration (next-actions exec)', () => {
               },
             },
             {
-              id: 'unsupported-safe-noop',
+              id: 'inspect-canonical',
               action: 'inspect',
+              args: {
+                mode: 'manual',
+              },
+            },
+            {
+              id: 'unsupported-safe-non-strict',
+              action: 'unsupported-action',
               args: {
                 mode: 'manual',
               },
@@ -130,8 +137,8 @@ describe('logix-cli integration (next-actions exec)', () => {
       readonly results: ReadonlyArray<{ readonly id: string; readonly status: string; readonly reason?: string }>
     }
 
-    expect(executionReport.summary.executed).toBe(2)
-    expect(executionReport.summary.failed).toBe(1)
+    expect(executionReport.summary.executed).toBe(3)
+    expect(executionReport.summary.failed).toBe(2)
     expect(executionReport.summary.noOp).toBe(0)
     expect(executionReport.runId).toBe('verify-report-1')
     expect(executionReport.instanceId).toBe('verify-report-1-instance')
@@ -141,6 +148,11 @@ describe('logix-cli integration (next-actions exec)', () => {
     expect(executionReport.sourceReportPath).toBe(path.resolve(reportPath))
     expect(executionReport.sourceReportDigest.startsWith('sha256:')).toBe(true)
     expect(executionReport.strict).toBe(false)
+    expect((executionReport as any).policy).toEqual({
+      onFailure: 'continue',
+      onUnsupportedAction: 'continue',
+      onMissingRequiredArgs: 'continue',
+    })
     expect(executionReport.engine).toBe('bootstrap')
     assertNextActionsExecutionV1Schema(executionReport)
     expect(() =>
@@ -150,10 +162,95 @@ describe('logix-cli integration (next-actions exec)', () => {
       }),
     ).toThrowError(/schema 校验失败/)
 
-    const unsupportedResult = executionReport.results.find((item) => item.id === 'unsupported-safe-noop')
+    const inspectResult = executionReport.results.find((item) => item.id === 'inspect-canonical')
+    expect(inspectResult?.status).toBe('executed')
+    const unsupportedResult = executionReport.results.find((item) => item.id === 'unsupported-safe-non-strict')
     expect(unsupportedResult?.status).toBe('failed')
-    expect(unsupportedResult?.reason).toContain("unsupported action 'inspect'")
-    expect(executionReport.results.some((item) => item.id === 'missing-command-safe-noop')).toBe(false)
+    expect(unsupportedResult?.reason).toContain("unsupported action 'unsupported-action'")
+    expect(executionReport.results.some((item) => item.id === 'missing-command-safe-noop')).toBe(true)
+  })
+
+  it('canonical stop 必须可执行并中断后续动作', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'logix-next-actions-stop-'))
+    const reportPath = path.join(tmp, 'verify-loop.report.stop.json')
+
+    await fs.writeFile(
+      reportPath,
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          kind: 'VerifyLoopReport',
+          runId: 'verify-report-stop-1',
+          instanceId: 'verify-report-stop-1-instance',
+          mode: 'run',
+          gateScope: 'runtime',
+          txnSeq: 1,
+          opSeq: 1,
+          attemptSeq: 1,
+          verdict: 'NO_PROGRESS',
+          exitCode: 5,
+          gateResults: [
+            {
+              gate: 'gate:test',
+              status: 'retryable',
+              durationMs: 1,
+              command: 'fixture:no-progress:gate:test',
+              exitCode: 75,
+              reasonCode: 'VERIFY_RETRYABLE',
+            },
+          ],
+          reasonCode: 'VERIFY_NO_PROGRESS',
+          reasons: [{ code: 'VERIFY_NO_PROGRESS', message: 'manual decision required' }],
+          nextActions: [
+            {
+              id: 'inspect-before-stop',
+              action: 'inspect',
+              args: { mode: 'manual' },
+            },
+            {
+              id: 'stop-now',
+              action: 'stop',
+              args: { reason: 'manual-stop' },
+            },
+            {
+              id: 'should-not-run-after-stop',
+              action: 'run-command',
+              args: {
+                command: process.execPath,
+                argv: ['-e', 'process.exit(0)'],
+              },
+            },
+          ],
+          artifacts: [],
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    )
+
+    const out = await Effect.runPromise(runCli(['next-actions', 'exec', '--runId', 'next-actions-stop-1', '--report', reportPath, '--out', tmp]))
+
+    expect(out.kind).toBe('result')
+    if (out.kind !== 'result') throw new Error('expected result')
+    expect(out.result.ok).toBe(true)
+    expect(out.result.exitCode).toBe(0)
+
+    const executionArtifact = out.result.artifacts.find((item) => item.outputKey === 'nextActionsExecution')
+    expect(executionArtifact).toBeDefined()
+    expect(typeof executionArtifact?.file).toBe('string')
+    const executionFilePath = path.resolve(tmp, executionArtifact!.file!)
+    const executionReport = JSON.parse(await fs.readFile(executionFilePath, 'utf8')) as {
+      readonly summary: { readonly executed: number; readonly failed: number; readonly noOp: number }
+      readonly results: ReadonlyArray<{ readonly id: string; readonly status: string }>
+    }
+
+    expect(executionReport.summary.executed).toBe(2)
+    expect(executionReport.summary.failed).toBe(0)
+    expect(executionReport.summary.noOp).toBe(0)
+    expect(executionReport.results.some((item) => item.id === 'inspect-before-stop' && item.status === 'executed')).toBe(true)
+    expect(executionReport.results.some((item) => item.id === 'stop-now' && item.status === 'executed')).toBe(true)
+    expect(executionReport.results.some((item) => item.id === 'should-not-run-after-stop')).toBe(false)
   })
 
   it('strict 模式下未知 action 必须 fail-fast（不是 safe no-op）', async () => {
@@ -176,10 +273,10 @@ describe('logix-cli integration (next-actions exec)', () => {
           nextActions: [
             {
               id: 'unknown-action-fail-fast',
-              action: 'inspect',
-              args: {
-                mode: 'manual',
-              },
+                action: 'unsupported-action',
+                args: {
+                  mode: 'manual',
+                },
             },
             {
               id: 'should-not-run-after-fail-fast',
@@ -230,13 +327,18 @@ describe('logix-cli integration (next-actions exec)', () => {
     }
 
     expect(executionReport.strict).toBe(true)
+    expect((executionReport as any).policy).toEqual({
+      onFailure: 'fail-fast',
+      onUnsupportedAction: 'fail-fast',
+      onMissingRequiredArgs: 'fail-fast',
+    })
     expect(executionReport.summary.executed).toBe(0)
     expect(executionReport.summary.failed).toBe(1)
     expect(executionReport.summary.noOp).toBe(0)
     expect(executionReport.results.length).toBe(1)
     expect(executionReport.results[0]?.id).toBe('unknown-action-fail-fast')
     expect(executionReport.results[0]?.status).toBe('failed')
-    expect(executionReport.results[0]?.reason).toContain("unsupported action 'inspect'")
+    expect(executionReport.results[0]?.reason).toContain("unsupported action 'unsupported-action'")
   })
 
   it('strict 模式下缺必要 args 必须 fail-fast', async () => {
@@ -747,10 +849,10 @@ describe('logix-cli integration (next-actions exec)', () => {
             },
             {
               id: 'fuzz-mixed-invalid-middle',
-              action: 'inspect',
-              args: {
-                mode: 'manual',
-              },
+                action: 'unsupported-action',
+                args: {
+                  mode: 'manual',
+                },
             },
             {
               id: 'fuzz-mixed-valid-after-invalid',
@@ -805,7 +907,7 @@ describe('logix-cli integration (next-actions exec)', () => {
     expect(executionReport.results[0]?.status).toBe('executed')
     expect(executionReport.results[1]?.id).toBe('fuzz-mixed-invalid-middle')
     expect(executionReport.results[1]?.status).toBe('failed')
-    expect(executionReport.results[1]?.reason).toContain("unsupported action 'inspect'")
+    expect(executionReport.results[1]?.reason).toContain("unsupported action 'unsupported-action'")
     expect(executionReport.results.some((item) => item.id === 'fuzz-mixed-valid-after-invalid')).toBe(false)
   })
 
@@ -863,7 +965,7 @@ describe('logix-cli integration (next-actions exec)', () => {
       )
       nextActions.push({
         id: `property-invalid-${caseIndex}`,
-        action: 'inspect',
+        action: 'unsupported-action',
         args: { mode: 'manual' },
       })
       nextActions.push({

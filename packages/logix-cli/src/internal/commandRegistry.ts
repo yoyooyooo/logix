@@ -299,7 +299,7 @@ export const COMMAND_REGISTRY: ReadonlyArray<CommandRegistryEntry> = [
     contract: makeCommandContract({
       name: 'next-actions.exec',
       category: 'gate',
-      summary: '执行 verify-loop nextActions（run-command / rerun-verify-loop）',
+      summary: '执行 verify-loop nextActions（run-command / rerun / inspect / stop）',
       options: [
         { name: '--report', type: 'string', required: false, default: 'verify-loop.report.json' },
         { name: '--dsl', type: 'string', required: false },

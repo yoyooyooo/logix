@@ -59,9 +59,11 @@ export const buildVerifyLoopReasonTrajectory = (args: {
   readonly mode: 'run' | 'resume'
   readonly currentAttemptSeq: number
   readonly currentReasonCode: string
+  readonly previousReasonCode?: string
   readonly previousAttemptSeq?: number
   readonly retryTrajectory?: ReadonlyArray<{
     readonly attemptSeq: number
+    readonly reasonCode?: string
   }>
 }): ReadonlyArray<ReasonTrajectoryPoint> => {
   const points: ReasonTrajectoryPoint[] = []
@@ -69,17 +71,19 @@ export const buildVerifyLoopReasonTrajectory = (args: {
   if (Array.isArray(args.retryTrajectory)) {
     for (const point of args.retryTrajectory) {
       if (!isPositiveInteger(point.attemptSeq)) continue
+      const pointReasonCode = parseReasonCode(point.reasonCode) ?? args.currentReasonCode
       points.push({
         attemptSeq: point.attemptSeq,
-        reasonCode: args.currentReasonCode,
+        reasonCode: pointReasonCode,
       })
     }
   }
 
   if (args.mode === 'resume' && isPositiveInteger(args.previousAttemptSeq)) {
+    const previousReasonCode = parseReasonCode(args.previousReasonCode) ?? args.currentReasonCode
     points.push({
       attemptSeq: args.previousAttemptSeq,
-      reasonCode: args.currentReasonCode,
+      reasonCode: previousReasonCode,
     })
   }
 

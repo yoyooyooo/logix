@@ -70,4 +70,61 @@ describe('logix-cli integration (verify-loop emitNextActions)', () => {
     expect(typeof parsed[0]?.id).toBe('string')
     expect(typeof parsed[0]?.action).toBe('string')
   })
+
+  it('run -> next-actions exec -> resume 在 retryable 样本上必须无协议断链', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'logix-verify-next-actions-resume-chain-'))
+    const nextActionsOut = path.join(tmp, 'next-actions.run.json')
+
+    const runOut = await Effect.runPromise(
+      runCli([
+        'verify-loop',
+        '--runId',
+        'verify-chain-run-1',
+        '--mode',
+        'run',
+        '--target',
+        'fixture:retryable',
+        '--executor',
+        'fixture',
+        '--emitNextActions',
+        nextActionsOut,
+        '--out',
+        path.join(tmp, 'run'),
+      ]),
+    )
+
+    expect(runOut.kind).toBe('result')
+    if (runOut.kind !== 'result') throw new Error('expected result')
+    expect(runOut.result.exitCode).toBe(3)
+
+    const execOut = await Effect.runPromise(
+      runCli([
+        'next-actions',
+        'exec',
+        '--runId',
+        'verify-chain-exec-1',
+        '--dsl',
+        nextActionsOut,
+        '--out',
+        path.join(tmp, 'exec'),
+      ]),
+    )
+
+    expect(execOut.kind).toBe('result')
+    if (execOut.kind !== 'result') throw new Error('expected result')
+    expect(execOut.result.ok).toBe(true)
+    expect(execOut.result.exitCode).toBe(0)
+
+    const executionArtifact = execOut.result.artifacts.find((item) => item.outputKey === 'nextActionsExecution')
+    expect(executionArtifact).toBeDefined()
+    expect(typeof executionArtifact?.file).toBe('string')
+    const execution = JSON.parse(
+      await fs.readFile(path.resolve(path.join(tmp, 'exec'), executionArtifact?.file ?? ''), 'utf8'),
+    ) as {
+      readonly results: ReadonlyArray<{ readonly id: string; readonly status: string; readonly rerun?: { readonly exitCode: number } }>
+    }
+    expect(execution?.results.some((item) => item.id === 'resume-after-retryable' && item.status === 'executed')).toBe(true)
+    const rerun = execution?.results.find((item) => item.id === 'resume-after-retryable')
+    expect(rerun?.rerun?.exitCode).toBe(3)
+  })
 })

@@ -298,6 +298,25 @@ description: "Task list for 103-cli-minimal-kernel-self-loop"
 
 ---
 
+## Phase 17: 审查收口增量（P0/P1）
+
+**Goal**: 收口审查发现的闭环断点与契约漂移，确保 CLI 真正具备“可自动收敛”的执行底盘。  
+**Independent Test**: `VERIFY_RETRYABLE` 与 `VERIFY_NO_PROGRESS` 样本均可通过 canonical nextActions 执行链推进，且无 `CLI_PROTOCOL_VIOLATION/unsupported action` 断链。
+
+- [x] T142 [US3] 对齐 `verify-loop` 默认 `rerun(resume)` payload，显式携带 `target/instanceId/previousRunId` 并与 identity 链一致 `packages/logix-cli/src/internal/verify-loop/report.ts`、`packages/logix-cli/src/internal/commands/verifyLoop.ts`
+- [x] T143 [P] [US3] 扩展 `next-actions exec` 对 canonical action 全集支持（`run-command/rerun/inspect/stop`）并定义稳定执行语义 `packages/logix-cli/src/internal/commands/nextActionsExec.ts`
+- [x] T144 [P] [US3] 让 `--strict` 成为真实执行策略开关（失败处理/中断策略可区分）`packages/logix-cli/src/internal/commands/nextActionsExec.ts`、`specs/103-cli-minimal-kernel-self-loop/contracts/schemas/next-actions.execution.v1.schema.json`
+- [x] T145 [P] [US3] 集成测试：`verify-loop(run)->next-actions exec->verify-loop(resume)` retryable 链路无断链 `packages/logix-cli/test/Integration/cli.verify-loop.emit-next-actions.test.ts`、`packages/logix-cli/test/Integration/cli.next-actions.exec.test.ts`
+- [x] T146 [US3] real executor 让 `target` 进入实际 gate 执行作用域（而非仅探针）`packages/logix-cli/src/internal/verify-loop/realGateExecutor.ts`
+- [x] T147 [P] [US3] real 路径接入瞬态错误分类与 retryable 映射 `packages/logix-cli/src/internal/verify-loop/realGateExecutor.ts`、`packages/logix-cli/src/internal/commands/verifyLoop.ts`
+- [x] T148 [P] [US3] 修复 trajectory 历史 reason 覆写，保留每轮 attempt 原始 reason `packages/logix-cli/src/internal/protocol/trajectory.ts`、`packages/logix-cli/src/internal/commands/verifyLoop.ts`
+- [x] T149 [US5] 对齐 runtime validator 与 contracts schema 约束（`describe.report` const/minItems、`verify-loop.input` required 策略）`packages/logix-cli/src/internal/protocol/schemaValidation.ts`、`specs/103-cli-minimal-kernel-self-loop/contracts/schemas/*.json`
+- [x] T150 [P] [US5] 合同测试：新增 schema/runtime 等价性回归（describe + verify-loop.input）`packages/logix-cli/test/Contracts/Contracts.103.DescribeSchema.test.ts`、`packages/logix-cli/test/Contracts/Contracts.103.VerifyLoopInput.test.ts`
+- [x] T151 [P] [US3] 集成测试：`inspect/stop` 在 next-actions exec 可执行且不再 unsupported `packages/logix-cli/test/Integration/cli.next-actions.exec.test.ts`
+- [x] T152 [US5] 复跑质量门并回写证据（typecheck/test/build + governance checks）`specs/103-cli-minimal-kernel-self-loop/notes/verification.md`
+
+---
+
 ## Dependencies & Execution Order
 
 - Phase 1 -> Phase 2 -> Phase 2.1
@@ -314,6 +333,7 @@ description: "Task list for 103-cli-minimal-kernel-self-loop"
 - Phase 14 在 Phase 13 后执行（M3 entry-projection core-first）：`T127`（core 投影 API）-> `T128-T129`（CLI 薄包装与协议稳定）-> `T130`（守门回归）
 - Phase 15 在 Phase 14 后执行（M4 discoverability）：`T131`（describe guidance）-> `T132`（链路可执行性约束测试）-> `T133`（README 收口）-> `T134-T135`（registry 自动解析与稳定性约束）-> `T136`（expected output keys 自动推导）-> `T137`（expected artifacts 自动推导）-> `T138`（独立 contract）-> `T139`（schema fail-fast + 合同测试）
 - Phase 16 在 Phase 15 后执行（M5 schema-asset）：`T140`（新增 describe/guidance schema 资产）-> `T141`（contracts 索引与加载测试回写）
+- Phase 17 在 Phase 16 后执行（审查收口）：`T142-T145`（P0 nextActions 闭环）-> `T146-T149`（real executor + trajectory + schema 等价）-> `T150-T152`（回归与证据收口）
 
 ## Implementation Strategy
 

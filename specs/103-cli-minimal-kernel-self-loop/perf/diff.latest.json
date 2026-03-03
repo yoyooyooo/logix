@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "meta": {
-    "createdAt": "2026-02-28T05:53:24.830Z",
+    "createdAt": "2026-03-03T02:18:51.862Z",
     "from": {
       "file": "specs/103-cli-minimal-kernel-self-loop/perf/before.local.quick.json",
       "commit": "8d4f36b1fc164cfcbb5e883d476fb8080eec0bc5"
