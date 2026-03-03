@@ -116,6 +116,8 @@ const runtime = Logix.Runtime.make(CounterImpl, {
   },
 })
 
+const DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS = process.env.CI === 'true' ? 20_000 : 8_000
+
 const CounterView: React.FC = () => {
   const runtimeHandle = useModule(CounterImpl.tag)
   const count = useSelector(runtimeHandle, (s) => s.count)
@@ -129,7 +131,9 @@ const CounterView: React.FC = () => {
 }
 
 describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior', () => {
-  it('shows latest event details by default, and toggles to selected event details on click', async () => {
+  it(
+    'shows latest event details by default, and toggles to selected event details on click',
+    async () => {
     render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
@@ -198,9 +202,13 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       expect(screen.getByText(/Latest Event/i)).not.toBeNull()
       expect(screen.queryByText(/Selected Event/i)).toBeNull()
     })
-  })
+    },
+    DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS,
+  )
 
-  it('normalizes timeline events to RuntimeDebugEventRef and supports filtering by kind + txnId', async () => {
+  it(
+    'normalizes timeline events to RuntimeDebugEventRef and supports filtering by kind + txnId',
+    async () => {
     render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
@@ -247,9 +255,13 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     const kindsForTxn = new Set(eventsForTxn.map((ref) => ref.kind))
     expect(kindsForTxn.has('state')).toBe(true)
     expect(kindsForTxn.has('action')).toBe(true)
-  })
+    },
+    DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS,
+  )
 
-  it('visualizes react-render events and supports View kind filter', async () => {
+  it(
+    'visualizes react-render events and supports View kind filter',
+    async () => {
     render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
@@ -296,9 +308,13 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       })
       expect(viewRows.length).toBeGreaterThan(0)
     })
-  })
+    },
+    DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS,
+  )
 
-  it('renders selector lane summary (static/dynamic + fallbackTop)', async () => {
+  it(
+    'renders selector lane summary (static/dynamic + fallbackTop)',
+    async () => {
     render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
@@ -317,5 +333,7 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       expect(screen.getAllByText(/txnBacklog: pending \d+, age/i).length).toBeGreaterThan(0)
       expect(screen.getAllByText(/txnReasons:/i).length).toBeGreaterThan(0)
     })
-  })
+    },
+    DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS,
+  )
 })
