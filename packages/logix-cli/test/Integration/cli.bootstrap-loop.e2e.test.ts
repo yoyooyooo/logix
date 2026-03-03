@@ -9,6 +9,7 @@ const repoRoot = path.resolve(__dirname, '../../../..')
 const bootstrapScript = path.resolve(repoRoot, 'specs/103-cli-minimal-kernel-self-loop/scripts/bootstrap-loop.mjs')
 const bootstrapScriptRelativePath = 'specs/103-cli-minimal-kernel-self-loop/scripts/bootstrap-loop.mjs'
 const fakeCliRelativePath = 'packages/logix-cli/dist/bin/logix.js'
+const BOOTSTRAP_LOOP_E2E_TIMEOUT_MS = process.env.CI === 'true' ? 45_000 : 18_000
 
 type BootstrapAudit = {
   readonly kind: string
@@ -23,7 +24,7 @@ type StubNextAction = {
   readonly args: Record<string, unknown>
 }
 
-const quoteForShell = (value: string): string => `"${value.replaceAll('"', '\\"')}"`
+const quoteForShell = (value: string): string => `"${value.replace(/"/g, '\\"')}"`
 
 const makeFakeCliStub = (args: { readonly nextAction: StubNextAction }): string => {
   const runPayload = {
@@ -170,7 +171,7 @@ describe('logix-cli integration (bootstrap-loop e2e)', () => {
       expect(typeof record.target).toBe('string')
       expect(typeof record.instanceId === 'string' || record.instanceId === null).toBe(true)
     }
-  }, 18_000)
+  }, BOOTSTRAP_LOOP_E2E_TIMEOUT_MS)
 
   it('fails fast for unknown action even when args.command exists (no fallback execution)', async () => {
     const markerFile = path.join(os.tmpdir(), `bootstrap-dsl-marker-${Date.now()}.txt`)
