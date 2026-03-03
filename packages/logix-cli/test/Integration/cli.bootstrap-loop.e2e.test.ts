@@ -193,7 +193,7 @@ describe('logix-cli integration (bootstrap-loop e2e)', () => {
       auditFile,
     })
 
-    expect(run.status).toBe(1)
+    expect(run.status).toBe(2)
     expect(run.stdout).toContain('decision=error:unknown-action:command.run')
     expect(run.stdout).not.toContain('attempt=2 mode=resume')
     expect(run.stderr).not.toContain('[bootstrap-loop] fatal')
@@ -226,7 +226,7 @@ describe('logix-cli integration (bootstrap-loop e2e)', () => {
       auditFile,
     })
 
-    expect(run.status).toBe(1)
+    expect(run.status).toBe(2)
     expect(run.stdout).toContain('decision=error:rerun:rerun-missing-target:missing-args.target')
     expect(run.stdout).not.toContain('attempt=2 mode=resume')
     expect(run.stderr).not.toContain('[bootstrap-loop] fatal')

@@ -39,6 +39,21 @@ const FINAL_VERDICT_BY_VERIFY_EXIT_CODE = {
   5: 'INFRA_FLAKY',
 }
 
+const FINAL_EXIT_CODE_BY_VERDICT = {
+  PASS: 0,
+  FAIL_HARD: 2,
+  FAIL_SOFT: 3,
+  BLOCKED: 4,
+  INFRA_FLAKY: 1,
+}
+
+const resolveAutonomousLoopExitCode = (args) => {
+  if (Number.isInteger(args.verifyExitCode) && args.verifyExitCode >= 0) {
+    return args.verifyExitCode
+  }
+  return FINAL_EXIT_CODE_BY_VERDICT[args.finalVerdict] ?? 1
+}
+
 const parsePositiveInteger = (value, fallback) => {
   const parsed = Number(value)
   if (!Number.isInteger(parsed) || parsed < 1) return fallback
@@ -905,7 +920,10 @@ const main = async () => {
     `[autonomous-loop] summary finalVerdict=${finalVerdict} finalReasonCode=${finalVerifyReasonCode} verdictFile=${verdictPath} checksumsFile=${checksumsPath}\n`,
   )
 
-  process.exitCode = finalVerdict === 'PASS' ? 0 : 1
+  process.exitCode = resolveAutonomousLoopExitCode({
+    finalVerdict,
+    verifyExitCode: finalVerifyStep.exitCode,
+  })
 }
 
 try {

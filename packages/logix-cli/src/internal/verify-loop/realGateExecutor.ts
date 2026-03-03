@@ -45,6 +45,16 @@ export const resolveVerifyExecutionCwd = (targetPath: string): string => {
   return stats.isDirectory() ? targetPath : path.dirname(targetPath)
 }
 
+const isPathWithinRepo = (targetPath: string, repoRoot: string): boolean => {
+  const relative = path.relative(repoRoot, targetPath)
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
+
+export const resolveRuntimeGateCwd = (args: {
+  readonly targetPath: string
+  readonly repoRoot: string
+}): string => (isPathWithinRepo(args.targetPath, args.repoRoot) ? args.repoRoot : resolveVerifyExecutionCwd(args.targetPath))
+
 const durationSince = (startMs: number): number => Math.max(0, Date.now() - startMs)
 
 const toExitCode = (status: number | null): number => (typeof status === 'number' && status >= 0 ? status : 1)
@@ -186,11 +196,11 @@ export const runVerifyGateExecutor = (args: {
 
   const gates = listVerifyGates(args.scope)
   const results: VerifyGateResult[] = []
-  const executionCwd = resolveVerifyExecutionCwd(targetPath)
+  const runtimeGateCwd = resolveRuntimeGateCwd({ targetPath, repoRoot })
 
   for (let index = 0; index < gates.length; index += 1) {
     const gate = gates[index]!
-    const gateCwd = args.scope === 'runtime' ? executionCwd : repoRoot
+    const gateCwd = args.scope === 'runtime' ? runtimeGateCwd : repoRoot
     const gateResult = runGate({
       gate,
       cwd: gateCwd,

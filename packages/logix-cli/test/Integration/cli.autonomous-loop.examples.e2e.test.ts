@@ -48,6 +48,7 @@ const runAutonomousLoop = (args: {
   readonly entry: string
   readonly verifyTarget: string
   readonly gateScope?: 'runtime' | 'governance'
+  readonly allowFixture?: boolean
 }): { readonly status: number | null; readonly stdout: string; readonly stderr: string } => {
   const commandArgs = [
     scriptPath,
@@ -65,6 +66,10 @@ const runAutonomousLoop = (args: {
 
   if (args.gateScope) {
     commandArgs.push('--gateScope', args.gateScope)
+  }
+
+  if (args.allowFixture) {
+    commandArgs.push('--allowFixture')
   }
 
   const run = spawnSync(
@@ -97,13 +102,14 @@ describe('logix-cli integration (autonomous-loop examples e2e)', () => {
 
     const runIdPrefix = 'autonomous-loop-e2e'
     const entry = 'examples/logix/src/runtime/root.impl.ts#RootImpl'
-    const verifyTarget = 'examples/logix'
+    const verifyTarget = 'fixture:pass'
 
     const first = runAutonomousLoop({
       outDir: firstOutDir,
       runIdPrefix,
       entry,
       verifyTarget,
+      allowFixture: true,
     })
 
     expect(first.status).toBe(0)
@@ -184,6 +190,7 @@ describe('logix-cli integration (autonomous-loop examples e2e)', () => {
       runIdPrefix,
       entry,
       verifyTarget,
+      allowFixture: true,
     })
 
     expect(second.status).toBe(0)

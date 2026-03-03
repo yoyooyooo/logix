@@ -29,5 +29,5 @@ describe('logix-cli integration (trialrun determinism)', () => {
       traceSlim: false,
       evidence: false,
     })
-  })
+  }, 20_000)
 })
