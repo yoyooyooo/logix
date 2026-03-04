@@ -14,7 +14,7 @@
 
 - [x] A-1：Devtools full 懒构造（lazy materialization）+ Trace gate（`traceMode`）的最小闭环（含回归与 perf 证据）。
 - [x] A-2：externalStore full/off 方差收敛：在 `traceMode=off` 时提前 `onCommit`（避免 full 延迟 notify）。
-- [ ] B-1：externalStore 写回批处理（microtask/tick window），把 “每 callback 一笔 txn” 改为窗口合并。
+- [x] B-1：externalStore 写回批处理（in-flight window），把 “每 callback 一笔 txn” 改为同 module 的窗口合并。
 - [ ] C-1：`Ref.list(...)` 默认自动增量化（从 txn evidence 推导 `changedIndices`），业务侧不再要求拆 `Ref.item(...)`。
 - [ ] D-1：DirtySet v2（root-level + index-level evidence 统一协议），converge/validate/selector 共用。
 
@@ -109,10 +109,10 @@ TraitLifecycle.scopedValidate($, {
 
 落点：
 - `packages/logix-core/src/internal/state-trait/external-store.ts`
-- `packages/logix-core/src/StateTrait.ts`（`writeback` API）
+- （可选后续刀）`packages/logix-core/src/StateTrait.ts`（vNext `writeback` API）
 
 状态：
-- [ ] 未开始
+- [x] 已完成（内核实现）：引入 per-module writeback coordinator（同 module 同时最多一个 writeback txn in-flight），burst 更新在 in-flight window 内合并写回；证据见 `docs/perf/2026-03-04-b1-externalStore-batched-writeback.md`。
 
 ### Wave C（P1）：Ref.list 自动增量
 

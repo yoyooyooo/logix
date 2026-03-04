@@ -11,7 +11,9 @@
 - 对应切刀已落盘：
   - A-1：诊断 lazy materialization + trace gate
   - A-2：`traceMode=off` 时提前 `onCommit`（对齐 notify 启动时机）
-- 下一刀建议：直接转入 B-1（externalStore 批处理写回）与 C-1（`Ref.list(...)` 自动增量）。
+- 后续切刀已推进：
+  - B-1：externalStore 写回批处理（in-flight batching）：`docs/perf/2026-03-04-b1-externalStore-batched-writeback.md`
+- 下一刀建议：直接转入 C-1（`Ref.list(...)` 自动增量）。
 
 ## 历史卡点（以 ULW31 快照为锚；现已解决）
 

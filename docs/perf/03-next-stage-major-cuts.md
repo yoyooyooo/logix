@@ -8,7 +8,7 @@
 
 - [x] A-1：Devtools full 懒构造（lazy materialization）+ Trace gate（`traceMode`）。
 - [x] A-2：externalStore full/off 方差收敛（`traceMode=off` 时提前 `onCommit`，避免 full 延迟 notify）。
-- [ ] B-1：externalStore 批处理写回（窗口合并 txn）。
+- [x] B-1：externalStore 批处理写回（同 module 写回 txn 合并）。
 - [ ] C-1：`Ref.list(...)` 自动增量（txn evidence -> `changedIndices`）。
 - [ ] D-1：DirtySet v2（统一索引证据协议）。
 
@@ -35,9 +35,24 @@
 - 从“每 callback 一笔 txn”改为“同窗口批处理 txn”。
 
 核心做法：
-1. 对同 module 的 externalStore 更新做 microtask/tick 合并。
-2. 合并窗口内多次写回为一次 transaction + 一次 notify。
-3. 保留 `sync` 兼容模式，但默认切到 `batched`。
+1. 对同 module 的 externalStore 更新做 “in-flight 合并”：同一时刻同一 module 只允许一个 writeback txn in-flight。
+2. 写回窗口内 burst 更新合并为更少的 transaction（通常 1~2 笔），减少每笔 txn 的固定成本。
+3. 不引入额外 microtask 边界（避免把单次更新 latency 变差）；合并主要发生在 txn 背压/高频输入下。
+
+实现细化（确定性，不再讨论）：
+- 内核引入 `per-module externalStore writeback coordinator`：
+  - key：`RuntimeInternals`（同 module 同 instance 共享）；
+  - value：`pendingWrites(Map<fieldPath, { nextValue, traitNodeId, normalizedPatchPath, isEqual, commitPriority }>)` + `inFlight` 单 flush 锁。
+- raw external store（manual/service/subscriptionRef/stream）触发写回时不再直接 `runWithStateTransaction`：
+  - `inTxn=true`：仍立即写 draft（保持事务内语义）。
+  - `inTxn=false`：enqueue 到 coordinator；由第一个 caller 在当前 fiber 内 drain queue（single-flusher），在 txn 里应用 pendingWrites。
+  - fast-path：coordinator 无 backlog 时仍同步跑单笔 txn（保持 baseline latency）；只有出现 in-flight/backlog 才进入合并路径。
+- Module-as-Source（DeclarativeLinkRuntime.applyForSources）保持“立即 writeback”：
+  - 原因：TickScheduler fixpoint 依赖 `applyValue` 在同 tick 内立刻产生 commit 并回灌 queue；延迟会引入跨模块 tearing。
+- 事务 originName 规则：
+  - 单 field：`origin.name=fieldPath`（保持可诊断性与既有测试直觉）。
+  - 多 field：`origin.name='externalStore:batched'`（具体写回路径靠 patches/dirty evidence 解释）。
+- Perf 验收必须用现有 suite 防回归；如后续仍需继续榨干，可追加“burst 写回”专用 perf-boundary 证明 batching 覆盖率。
 
 收益预期：
 - 降低 per-txn 固定成本，显著减少高频输入下抖动。

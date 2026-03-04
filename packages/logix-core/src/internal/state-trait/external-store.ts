@@ -19,6 +19,162 @@ type ExternalStoreLike = {
   readonly subscribe: (listener: () => void) => (() => void) | undefined
 }
 
+type ExternalStoreWritebackCommitPriority = 'normal' | 'low'
+
+type ExternalStoreWritebackRequest = {
+  readonly fieldPath: string
+  readonly traitNodeId: string
+  readonly normalizedPatchPath: ReadonlyArray<string>
+  readonly nextValue: unknown
+  readonly isEqual: (a: unknown, b: unknown) => boolean
+  readonly commitPriority: ExternalStoreWritebackCommitPriority
+}
+
+type ExternalStoreWritebackCoordinator = {
+  readonly enqueue: (request: ExternalStoreWritebackRequest) => Effect.Effect<void, never, any>
+}
+
+const writebackCoordinatorByInternals = new WeakMap<object, ExternalStoreWritebackCoordinator>()
+
+const getOrCreateExternalStoreWritebackCoordinator = (args: {
+  readonly internals: ReturnType<typeof getBoundInternals>
+  readonly bound: BoundApi<any, any>
+  readonly env: Context.Context<any>
+}): Effect.Effect<ExternalStoreWritebackCoordinator, never, any> =>
+  Effect.gen(function* () {
+    const cached = writebackCoordinatorByInternals.get(args.internals as any)
+    if (cached) return cached
+
+    let closed = false
+    let inFlight = false
+    let pendingWrites = new Map<string, ExternalStoreWritebackRequest>()
+
+    const drainPendingWrites = (): ReadonlyArray<ExternalStoreWritebackRequest> => {
+      if (pendingWrites.size === 0) return []
+      const drained = pendingWrites
+      pendingWrites = new Map()
+      return Array.from(drained.values())
+    }
+
+    const applyWritebackBatch = (batch: ReadonlyArray<ExternalStoreWritebackRequest>): Effect.Effect<void, never, any> =>
+      Effect.gen(function* () {
+        if (batch.length === 0) return
+
+        // Hot-path: single field writeback (most externalStore updates).
+        // Avoid allocating per-batch/per-change arrays here: full diagnostics already has higher overhead.
+        if (batch.length === 1) {
+          const req = batch[0]!
+          const prevState = (yield* args.bound.state.read) as any
+          const prevValue = RowId.getAtPath(prevState as any, req.fieldPath)
+          if (req.isEqual(prevValue, req.nextValue)) return
+
+          const nextDraft = create(prevState, (draft) => {
+            RowId.setAtPathMutating(draft as any, req.fieldPath, req.nextValue)
+          })
+
+          args.internals.txn.recordStatePatch(
+            req.normalizedPatchPath,
+            'trait-external-store',
+            prevValue,
+            req.nextValue,
+            req.traitNodeId,
+          )
+          args.internals.txn.updateDraft(nextDraft)
+          return
+        }
+
+        const prevState = (yield* args.bound.state.read) as any
+
+        const changes: Array<{
+          readonly request: ExternalStoreWritebackRequest
+          readonly prevValue: unknown
+        }> = []
+
+        for (let i = 0; i < batch.length; i++) {
+          const req = batch[i]!
+          const prevValue = RowId.getAtPath(prevState as any, req.fieldPath)
+          if (req.isEqual(prevValue, req.nextValue)) continue
+          changes.push({ request: req, prevValue })
+        }
+
+        if (changes.length === 0) return
+
+        const nextDraft = create(prevState, (draft) => {
+          for (let i = 0; i < changes.length; i++) {
+            const { request } = changes[i]!
+            RowId.setAtPathMutating(draft as any, request.fieldPath, request.nextValue)
+          }
+        })
+
+        for (let i = 0; i < changes.length; i++) {
+          const { request, prevValue } = changes[i]!
+          args.internals.txn.recordStatePatch(
+            request.normalizedPatchPath,
+            'trait-external-store',
+            prevValue,
+            request.nextValue,
+            request.traitNodeId,
+          )
+        }
+
+        args.internals.txn.updateDraft(nextDraft)
+      })
+
+    const coordinator: ExternalStoreWritebackCoordinator = {
+      enqueue: (request) =>
+        Effect.gen(function* () {
+          if (closed) return
+
+          pendingWrites.set(request.fieldPath, request)
+
+          // Single-flusher: avoid an extra per-module fiber by letting the first caller drain the queue.
+          if (inFlight) return
+          inFlight = true
+
+          try {
+            while (true) {
+              const batch = drainPendingWrites()
+              if (batch.length === 0) return
+
+              const commitPriority: ExternalStoreWritebackCommitPriority = batch.some((x) => x.commitPriority === 'normal')
+                ? 'normal'
+                : 'low'
+
+              const originName = batch.length === 1 ? batch[0]!.fieldPath : 'externalStore:batched'
+
+              yield* args.internals.txn
+                .runWithStateTransaction(
+                  {
+                    kind: 'trait-external-store',
+                    name: originName,
+                    details: {
+                      stateCommit: {
+                        priority: commitPriority,
+                      },
+                    },
+                  },
+                  () => applyWritebackBatch(batch).pipe(Effect.asVoid),
+                )
+                .pipe(Effect.provide(args.env))
+            }
+          } finally {
+            inFlight = false
+          }
+        }),
+    }
+
+    writebackCoordinatorByInternals.set(args.internals as any, coordinator)
+
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        closed = true
+        pendingWrites.clear()
+      }),
+    )
+
+    return coordinator
+  })
+
 const resolveStore = (entry: ExternalStoreEntry<any>): Effect.Effect<any, never, any> =>
   Effect.gen(function* () {
     const store = (entry.meta as any)?.store
@@ -407,7 +563,12 @@ export const installExternalStoreSync = <S>(
       return
     }
 
-    const writeValue = (nextValue: unknown): Effect.Effect<void, never, any> =>
+    const coordinator = yield* getOrCreateExternalStoreWritebackCoordinator({ internals, bound, env })
+
+    const normalizedPatchPath = normalizeFieldPath(fieldPath) ?? []
+    const commitPriority: ExternalStoreWritebackCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
+
+    const writeValueSync = (nextValue: unknown): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
         const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
 
@@ -423,32 +584,40 @@ export const installExternalStoreSync = <S>(
             RowId.setAtPathMutating(draft as any, fieldPath, nextValue)
           })
 
-          const normalized = normalizeFieldPath(fieldPath) ?? []
-          internals.txn.recordStatePatch(normalized, 'trait-external-store', prevValue, nextValue, step.id)
+          internals.txn.recordStatePatch(normalizedPatchPath, 'trait-external-store', prevValue, nextValue, step.id)
           internals.txn.updateDraft(nextDraft)
         })
 
-          if (inTxn) {
-            return yield* body
-          }
+        if (inTxn) {
+          return yield* body
+        }
 
-          const stateCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
-          return yield* internals.txn.runWithStateTransaction(
-            {
-              kind: 'trait-external-store',
-              name: fieldPath,
-              details: {
-                stateCommit: {
-                  priority: stateCommitPriority,
-                },
+        return yield* internals.txn.runWithStateTransaction(
+          {
+            kind: 'trait-external-store',
+            name: fieldPath,
+            details: {
+              stateCommit: {
+                priority: commitPriority,
               },
             },
-            () => body.pipe(Effect.asVoid),
-          )
-        })
+          },
+          () => body.pipe(Effect.asVoid),
+        )
+      }).pipe(Effect.provide(env))
+
+    const enqueueWriteValue = (nextValue: unknown): Effect.Effect<void, never, any> =>
+      coordinator.enqueue({
+        fieldPath,
+        traitNodeId: step.id,
+        normalizedPatchPath,
+        nextValue,
+        isEqual,
+        commitPriority,
+      })
 
     // Use the post-subscribe snapshot as the initial committed value to avoid missing an update between getSnapshot and subscribe.
-    yield* writeValue(computeValue(after))
+    yield* writeValueSync(computeValue(after))
 
     if (!isEqual(before, after)) {
       signal()
@@ -468,7 +637,7 @@ export const installExternalStoreSync = <S>(
               return
             }
 
-            yield* writeValue(computeValue(snapshot))
+            yield* enqueueWriteValue(computeValue(snapshot))
           }
         }),
       ),
