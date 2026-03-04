@@ -1,6 +1,6 @@
 import { Effect, FiberRef } from 'effect'
 import { create } from 'mutative'
-import type { PatchReason, StateTxnOrigin } from '../runtime/core/StateTransaction.js'
+import type { PatchReason, StateTxnOrigin, TxnListIndexEvidence } from '../runtime/core/StateTransaction.js'
 import { normalizeFieldPath, type FieldPath, type FieldPathId } from '../field-path.js'
 import * as Debug from '../runtime/core/DebugSink.js'
 import { buildDependencyGraph } from './graph.js'
@@ -56,6 +56,12 @@ export interface ValidateContext<S> {
    * List config hint from StateTraitSpec.list.identityHint (trackBy), used for rowIdMode explanation and degrade diagnostics.
    */
   readonly listConfigs?: ReadonlyArray<RowId.ListConfig>
+  /**
+   * Transaction list-index evidence (best-effort):
+   * - Derived from StateTransaction.recordPatch(valuePath) within the same txn window.
+   * - Enables list-scope incremental rules even when callers validate by Ref.list(...).
+   */
+  readonly txnIndexEvidence?: TxnListIndexEvidence
   readonly getDraft: () => S
   readonly setDraft: (next: S) => void
   readonly recordPatch: (
@@ -1166,16 +1172,28 @@ export const validateInTransaction = <S extends object>(
 
             const instanceKey = toListInstanceKey(listPath, listRuntime.listIndexPath)
 
-            // Best-effort changed indices hint for incremental list-scope rules.
-            // Only safe when the validate batch is scoped by item targets (no list/root bindings).
-            const changedIndices: ReadonlyArray<number> | undefined =
-              hasRoot || listBindingsAll.has(listPath) || listBindingsInstances.has(instanceKey)
-                ? undefined
-                : (() => {
-                    const set = indexBindings.get(instanceKey)
-                    if (!set || set.size === 0) return undefined
-                    return Array.from(set).sort((a, b) => a - b)
-                  })()
+	            // Best-effort changed indices hint for incremental list-scope rules.
+	            // Priority order:
+	            // 1) request-scoped evidence (item/field validate targets)
+	            // 2) txn evidence (Ref.list(...) -> changedIndices derived from recordPatch(valuePath))
+	            const changedIndices: ReadonlyArray<number> | undefined = (() => {
+	              if (hasRoot) return undefined
+
+	              // When the batch is scoped by item/field targets, prefer request-derived bindings (cheapest + explicit).
+	              if (!listBindingsAll.has(listPath) && !listBindingsInstances.has(instanceKey)) {
+	                const set = indexBindings.get(instanceKey)
+	                if (!set || set.size === 0) return undefined
+	                return Array.from(set).sort((a, b) => a - b)
+	              }
+
+	              // Ref.list(...) / list-scope validate: derive from txn dirty evidence.
+	              const ev = ctx.txnIndexEvidence
+	              if (!ev || ev.dirtyAll) return undefined
+	              if (ev.rootTouched.has(instanceKey)) return undefined
+	              const set = ev.indexBindings.get(instanceKey)
+	              if (!set || set.size === 0) return undefined
+	              return Array.from(set).sort((a, b) => a - b)
+	            })()
 
             const trigger = enableTrace ? toTraitCheckTrigger(ctx.origin, listPath) : undefined
 
@@ -1401,14 +1419,26 @@ export const validateInTransaction = <S extends object>(
           const rules = check.meta.rules as Record<string, any>
           const names = Object.keys(rules).sort()
 
-          for (const listRuntime of listInstances) {
-            const instanceKey = toListInstanceKey(listPath, listRuntime.listIndexPath)
-            const indices: ReadonlyArray<number> =
-              hasRoot || listBindingsAll.has(listPath) || listBindingsInstances.has(instanceKey)
-                ? listRuntime.items.map((_, i) => i)
-                : Array.from(indexBindings.get(instanceKey) ?? [])
+	          for (const listRuntime of listInstances) {
+	            const instanceKey = toListInstanceKey(listPath, listRuntime.listIndexPath)
+	            const indices: ReadonlyArray<number> = (() => {
+	              if (hasRoot) return listRuntime.items.map((_, i) => i)
 
-            if (indices.length === 0) continue
+	              // When the batch is scoped by item/field targets, prefer request-derived bindings.
+	              if (!listBindingsAll.has(listPath) && !listBindingsInstances.has(instanceKey)) {
+	                return Array.from(indexBindings.get(instanceKey) ?? [])
+	              }
+
+	              // Ref.list(...) / list-scope validate: derive from txn dirty evidence.
+	              const ev = ctx.txnIndexEvidence
+	              if (!ev || ev.dirtyAll) return listRuntime.items.map((_, i) => i)
+	              if (ev.rootTouched.has(instanceKey)) return listRuntime.items.map((_, i) => i)
+	              const set = ev.indexBindings.get(instanceKey)
+	              if (!set || set.size === 0) return []
+	              return Array.from(set).sort((a, b) => a - b)
+	            })()
+
+	            if (indices.length === 0) continue
 
             for (const index of indices) {
               if (index < 0 || index >= listRuntime.items.length) continue

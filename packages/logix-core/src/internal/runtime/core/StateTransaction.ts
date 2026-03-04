@@ -44,11 +44,31 @@ export interface StateTxnOrigin {
 
 export type StateTxnInstrumentationLevel = 'full' | 'light'
 
+/**
+ * TxnListIndexEvidence:
+ * - Best-effort list index hints extracted from string patch paths ("value paths") inside the transaction window.
+ * - Used by validate/converge to enable list-scope incrementalization even when callers validate by Ref.list(...).
+ *
+ * Key format must match validate.impl.ts `toListInstanceKey`:
+ * - root list: `${listPath}@@`
+ * - nested list: `${listPath}@@${parentIndexPath.join(',')}`
+ */
+export type TxnListIndexEvidence = {
+  readonly dirtyAll: boolean
+  readonly indexBindings: ReadonlyMap<string, ReadonlySet<number>>
+  readonly rootTouched: ReadonlySet<string>
+}
+
 export interface StateTxnConfig {
   readonly moduleId?: string
   readonly instanceId?: string
   readonly instrumentation?: StateTxnInstrumentationLevel
   readonly getFieldPathIdRegistry?: () => FieldPathIdRegistry | undefined
+  /**
+   * Optional: list path set for this module instance (derived from StateTrait.list configs).
+   * - When absent/empty, list-index evidence is not recorded (zero overhead for modules without list traits).
+   */
+  readonly getListPathSet?: () => ReadonlySet<string> | undefined
   /**
    * Whether to capture initial/final state snapshots:
    * - enabled by default in full mode
@@ -101,6 +121,7 @@ export interface StateTxnRuntimeConfig {
   readonly captureSnapshots: boolean
   readonly now: () => number
   readonly getFieldPathIdRegistry?: () => FieldPathIdRegistry | undefined
+  readonly getListPathSet?: () => ReadonlySet<string> | undefined
 }
 
 export interface StateTxnContext<S> {
@@ -131,6 +152,12 @@ interface StateTxnState<S> {
   baseState: S
   draft: S
   initialStateSnapshot?: S
+  /**
+   * listPathSet:
+   * - Captured once at transaction start from runtime config.
+   * - Used to enable list-index evidence recording only when the module actually declares list traits.
+   */
+  listPathSet?: ReadonlySet<string>
   readonly patches: Array<TxnPatchRecord>
   patchCount: number
   patchesTruncated: boolean
@@ -152,6 +179,18 @@ interface StateTxnState<S> {
   dirtyPathIdsKeyHash: number
   dirtyPathIdsKeySize: number
   dirtyAllReason?: DirtyAllReason
+  /**
+   * listIndexEvidence:
+   * - key: listInstanceKey ("<listPath>@@<parentIndexPath>")
+   * - value: changed indices for that list instance within the current transaction window.
+   */
+  readonly listIndexEvidence: Map<string, Set<number>>
+  /**
+   * listRootTouched:
+   * - listInstanceKey set for which a patch directly touched the list root (structure may have changed),
+   *   so changedIndices hints must be ignored.
+   */
+  readonly listRootTouched: Set<string>
 }
 
 const MAX_PATCHES_FULL = 256
@@ -177,6 +216,114 @@ const normalizePatchStepId = (stepId?: number): number | undefined => {
     return undefined
   }
   return Math.floor(stepId)
+}
+
+const toListInstanceKey = (listPath: string, parentIndexPathKey: string): string =>
+  parentIndexPathKey.length === 0 ? `${listPath}@@` : `${listPath}@@${parentIndexPathKey}`
+
+const parseNonNegativeIntMaybe = (text: string): number | undefined => {
+  if (!text) return undefined
+  let n = 0
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    if (c < 48 /* '0' */ || c > 57 /* '9' */) return undefined
+    n = n * 10 + (c - 48)
+    // Best-effort guard: keep values in a reasonable integer range.
+    if (n > 2_147_483_647) return undefined
+  }
+  return n
+}
+
+const recordListIndexEvidenceFromPathString = <S>(state: StateTxnState<S>, path: string): void => {
+  if (state.dirtyAllReason) return
+  const listPathSet = state.listPathSet
+  if (!listPathSet || listPathSet.size === 0) return
+  if (!path || path === '*') return
+
+  // Hot path: plain dot/bracket-free path can only contribute list-root touched evidence.
+  const dotIdx = path.indexOf('.')
+  const bracketIdx = path.indexOf('[')
+  if (dotIdx < 0 && bracketIdx < 0 && path.indexOf(']') < 0) {
+    if (listPathSet.has(path)) {
+      state.listRootTouched.add(toListInstanceKey(path, ''))
+    }
+    return
+  }
+
+  let listPath = ''
+  let parentIndexPathKey = ''
+  let endedWithNumeric = false
+
+	  const parts = path.split('.')
+	  for (let i = 0; i < parts.length; i++) {
+	    const raw = parts[i]
+	    if (!raw) continue
+	    const seg = raw
+	    endedWithNumeric = false
+
+    // "foo[]" => list root marker (no index)
+    if (seg.endsWith('[]')) {
+      const base = seg.slice(0, -2)
+      if (base) {
+        listPath = listPath.length === 0 ? base : `${listPath}.${base}`
+      }
+      continue
+    }
+
+    // "foo[123]" => list index marker
+    const left = seg.indexOf('[')
+    if (left > 0 && seg.endsWith(']')) {
+      const base = seg.slice(0, left)
+      const inside = seg.slice(left + 1, -1)
+      const idx = parseNonNegativeIntMaybe(inside)
+
+      if (base) {
+        listPath = listPath.length === 0 ? base : `${listPath}.${base}`
+      }
+
+      if (idx !== undefined) {
+        if (listPath && listPathSet.has(listPath)) {
+          const key = toListInstanceKey(listPath, parentIndexPathKey)
+          const set = state.listIndexEvidence.get(key) ?? new Set<number>()
+          set.add(idx)
+          state.listIndexEvidence.set(key, set)
+        }
+
+        // Descend into this list item: subsequent nested list bindings should carry this index as parent indexPath.
+        parentIndexPathKey = parentIndexPathKey.length === 0 ? String(idx) : `${parentIndexPathKey},${idx}`
+        endedWithNumeric = true
+      }
+
+      continue
+    }
+
+    // ".<digits>" => list index segment
+    const idx = parseNonNegativeIntMaybe(seg)
+    if (idx !== undefined) {
+      if (listPath && listPathSet.has(listPath)) {
+        const key = toListInstanceKey(listPath, parentIndexPathKey)
+        const set = state.listIndexEvidence.get(key) ?? new Set<number>()
+        set.add(idx)
+        state.listIndexEvidence.set(key, set)
+      }
+
+      parentIndexPathKey = parentIndexPathKey.length === 0 ? String(idx) : `${parentIndexPathKey},${idx}`
+      endedWithNumeric = true
+      continue
+    }
+
+    // Unknown bracket syntax: bail out for this segment (best-effort).
+    if (seg.includes('[') || seg.includes(']')) {
+      continue
+    }
+
+    listPath = listPath.length === 0 ? seg : `${listPath}.${seg}`
+  }
+
+  // If the terminal normalized path is a configured list path, treat it as "list root touched" (structure may have changed).
+  if (!endedWithNumeric && listPath && listPathSet.has(listPath)) {
+    state.listRootTouched.add(toListInstanceKey(listPath, parentIndexPathKey))
+  }
 }
 
 const buildPatchRecord = (
@@ -310,6 +457,7 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     baseState: undefined as any,
     draft: undefined as any,
     initialStateSnapshot: undefined,
+    listPathSet: undefined,
     patches: [],
     patchCount: 0,
     patchesTruncated: false,
@@ -317,6 +465,8 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     dirtyPathIdsKeyHash: 2166136261 >>> 0,
     dirtyPathIdsKeySize: 0,
     dirtyAllReason: undefined,
+    listIndexEvidence: new Map(),
+    listRootTouched: new Set(),
   }
 
   const ctx: StateTxnContext<S> = {
@@ -327,6 +477,7 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
       moduleId: config.moduleId,
       instanceId: config.instanceId,
       getFieldPathIdRegistry: config.getFieldPathIdRegistry,
+      getListPathSet: config.getListPathSet,
     },
     current: undefined,
     nextTxnSeq: 0,
@@ -345,6 +496,9 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     const state = ctx.current
     if (!state) return
     state.patchCount += 1
+    if (typeof path === 'string') {
+      recordListIndexEvidenceFromPathString(state, path)
+    }
     resolveAndRecordDirtyPathId(state, path, _reason)
   }
 
@@ -359,6 +513,9 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     const state = ctx.current
     if (!state) return
     state.patchCount += 1
+    if (typeof path === 'string') {
+      recordListIndexEvidenceFromPathString(state, path)
+    }
     const opSeq = state.patchCount - 1
     const pathId = resolveAndRecordDirtyPathId(state, path, reason)
     if (state.patchesTruncated || state.patches.length >= MAX_PATCHES_FULL) {
@@ -406,6 +563,9 @@ export const beginTransaction = <S>(ctx: StateTxnContext<S>, origin: StateTxnOri
   state.dirtyPathIdsKeyHash = 2166136261 >>> 0
   state.dirtyPathIdsKeySize = 0
   state.dirtyAllReason = undefined
+  state.listPathSet = ctx.config.getListPathSet?.()
+  state.listIndexEvidence.clear()
+  state.listRootTouched.clear()
   ctx.current = state
 }
 
@@ -577,6 +737,18 @@ export const recordPatch = <S>(
   stepId?: number,
 ): void => {
   ctx.recordPatch(path, reason, from, to, traitNodeId, stepId)
+}
+
+export const readListIndexEvidence = <S>(ctx: StateTxnContext<S>): TxnListIndexEvidence | undefined => {
+  const state = ctx.current as StateTxnState<S> | undefined
+  if (!state) return undefined
+  const listPathSet = state.listPathSet
+  if (!listPathSet || listPathSet.size === 0) return undefined
+  return {
+    dirtyAll: state.dirtyAllReason != null,
+    indexBindings: state.listIndexEvidence,
+    rootTouched: state.listRootTouched,
+  }
 }
 
 /**

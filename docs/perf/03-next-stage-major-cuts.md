@@ -9,7 +9,7 @@
 - [x] A-1：Devtools full 懒构造（lazy materialization）+ Trace gate（`traceMode`）。
 - [x] A-2：externalStore full/off 方差收敛（`traceMode=off` 时提前 `onCommit`，避免 full 延迟 notify）。
 - [x] B-1：externalStore 批处理写回（同 module 写回 txn 合并）。
-- [ ] C-1：`Ref.list(...)` 自动增量（txn evidence -> `changedIndices`）。
+- [x] C-1：`Ref.list(...)` 自动增量（txn evidence -> `changedIndices`）。
 - [ ] D-1：DirtySet v2（统一索引证据协议）。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
@@ -69,6 +69,17 @@
 1. 在 transaction 里沉淀 index-level hint（来自 patch path/valuePath）。
 2. validate list-scope 默认读取该 hint 走增量分支。
 3. 无法推导时显式降级 full（并产出可解释 degrade reason）。
+
+实现细化（确定性，不再讨论）：
+- `StateTransaction` 增加 list-index 证据通道（不依赖 diagnostics full）：
+  - 由 `recordPatch(path:string)` 在检测到 numeric segment / bracket index 时提取索引证据：
+    - key：`listInstanceKey = "${listPath}@@${parentIndexPath}"`（与 validate 的 `toListInstanceKey` 同口径）
+    - value：`Set<changedIndex>`
+  - 同时记录 `listRootTouched(Set<listInstanceKey>)`：当 patch 直接命中 list root（结构可能变化）时禁用增量 hint。
+  - dirtyAll/unknownWrite 时一律禁用增量 hint（正确性优先）。
+- `validate.impl.ts`：
+  - 当 validate target 为 `list`（即 `Ref.list(...)`）时，优先从 txn list-index evidence 取 `changedIndices`；
+  - 若命中 `listRootTouched` / dirtyAll / 无证据，则降级 full（`changedIndices=undefined`）。
 
 收益预期：
 - list/form 场景普遍减少 O(n) 扫描，降低 p95。

@@ -28,3 +28,5 @@
   - 本轮“下一刀”分析快照（时间点结论）。
 - `2026-03-04-b1-externalStore-batched-writeback.md`
   - B-1：externalStore 写回批处理（in-flight batching）实现与证据路标。
+- `2026-03-04-c1-ref-list-auto-incremental.md`
+  - C-1：`Ref.list(...)` 自动增量（txn evidence -> changedIndices）实现记录。

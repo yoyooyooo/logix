@@ -15,7 +15,7 @@
 - [x] A-1：Devtools full 懒构造（lazy materialization）+ Trace gate（`traceMode`）的最小闭环（含回归与 perf 证据）。
 - [x] A-2：externalStore full/off 方差收敛：在 `traceMode=off` 时提前 `onCommit`（避免 full 延迟 notify）。
 - [x] B-1：externalStore 写回批处理（in-flight window），把 “每 callback 一笔 txn” 改为同 module 的窗口合并。
-- [ ] C-1：`Ref.list(...)` 默认自动增量化（从 txn evidence 推导 `changedIndices`），业务侧不再要求拆 `Ref.item(...)`。
+- [x] C-1：`Ref.list(...)` 默认自动增量化（从 txn evidence 推导 `changedIndices`），业务侧不再要求拆 `Ref.item(...)`。
 - [ ] D-1：DirtySet v2（root-level + index-level evidence 统一协议），converge/validate/selector 共用。
 
 ## 1. 目标状态（一次性收敛）
@@ -125,7 +125,11 @@ TraitLifecycle.scopedValidate($, {
 - `packages/logix-core/src/internal/trait-lifecycle/index.ts`
 
 状态：
-- [ ] 未开始
+- [x] 已完成：StateTransaction 记录 list-index evidence，validate 在 `Ref.list(...)` 下从 txn evidence 推导 `changedIndices`；证据见 `docs/perf/2026-03-04-c1-ref-list-auto-incremental.md`。
+
+实现细化（裁决版）：
+- `StateTransaction.recordPatch(path:string)` 记录 list-index evidence（`listInstanceKey -> changedIndices`），并记录 list root touched 作为降级门。
+- list validate（`Ref.list(...)`）默认从 txn evidence 推导 `changedIndices`；无法推导则显式 full。
 
 ### Wave D（P1/P2）：DirtySet v2 统一协议
 

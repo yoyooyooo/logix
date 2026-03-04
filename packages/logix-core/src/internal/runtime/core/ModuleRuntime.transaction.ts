@@ -675,19 +675,20 @@ export const makeTransactionOps = <S>(args: {
                   if (pending && pending.length > 0) {
                     const deduped = dedupeScopedValidateRequests(pending)
                     yield* StateTraitValidate.validateInTransaction(
-                      stateTraitProgram as any,
-                      {
-                        moduleId: optionsModuleId,
-                        instanceId,
-                        txnSeq: txnContext.current!.txnSeq,
-                        txnId: txnContext.current!.txnId,
-                        origin: txnContext.current!.origin,
-                        rowIdStore: traitRuntime.rowIdStore,
-                        listConfigs: traitRuntime.getListConfigs(),
-                        getDraft: () => txnContext.current!.draft as any,
-                        setDraft: (next) => {
-                          StateTransaction.updateDraft(txnContext, next as any)
-                        },
+	                      stateTraitProgram as any,
+	                      {
+	                        moduleId: optionsModuleId,
+	                        instanceId,
+	                        txnSeq: txnContext.current!.txnSeq,
+	                        txnId: txnContext.current!.txnId,
+	                        origin: txnContext.current!.origin,
+	                        rowIdStore: traitRuntime.rowIdStore,
+	                        listConfigs: traitRuntime.getListConfigs(),
+	                        txnIndexEvidence: StateTransaction.readListIndexEvidence(txnContext),
+	                        getDraft: () => txnContext.current!.draft as any,
+	                        setDraft: (next) => {
+	                          StateTransaction.updateDraft(txnContext, next as any)
+	                        },
                         recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
                           recordStatePatch(path, reason, from, to, traitNodeId, stepId),
                       } as StateTraitValidate.ValidateContext<any>,

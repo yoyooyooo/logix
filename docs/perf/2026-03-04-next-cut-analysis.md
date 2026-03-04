@@ -13,7 +13,8 @@
   - A-2：`traceMode=off` 时提前 `onCommit`（对齐 notify 启动时机）
 - 后续切刀已推进：
   - B-1：externalStore 写回批处理（in-flight batching）：`docs/perf/2026-03-04-b1-externalStore-batched-writeback.md`
-- 下一刀建议：直接转入 C-1（`Ref.list(...)` 自动增量）。
+-  - C-1：`Ref.list(...)` 自动增量（txn evidence -> changedIndices）：`docs/perf/2026-03-04-c1-ref-list-auto-incremental.md`
+- 下一刀建议：直接转入 D-1（DirtySet v2，统一索引证据协议）。
 
 ## 历史卡点（以 ULW31 快照为锚；现已解决）
 

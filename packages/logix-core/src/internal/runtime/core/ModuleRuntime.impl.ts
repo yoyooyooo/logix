@@ -209,23 +209,27 @@ export const make = <S, A, R = never>(
           return yield* PubSub.bounded<A>(policy.losslessBackpressureCapacity)
         })
 
-	    const convergePlanCacheCapacity = 128
-	    const traitState: TraitState = {
-	      program: undefined,
-	      convergeStaticIrDigest: undefined,
-	      convergePlanCache: undefined,
+		    const convergePlanCacheCapacity = 128
+		    const traitState: TraitState = {
+		      program: undefined,
+		      convergeStaticIrDigest: undefined,
+		      convergePlanCache: undefined,
 	      convergeGeneration: {
 	        generation: 0,
 	        generationBumpCount: 0,
 	      },
 	      pendingCacheMissReason: undefined,
 	      pendingCacheMissReasonCount: 0,
-	      lastConvergeIrKeys: undefined,
-	      listConfigs: [],
-	    }
+		      lastConvergeIrKeys: undefined,
+		      listConfigs: [],
+		    }
 
-    let externalOwnedFieldPaths: ReadonlyArray<FieldPath> = []
-    let externalOwnedFieldPathKeys: ReadonlySet<string> = new Set()
+	    // Cached list-path set (derived from listConfigs) for txn index evidence recording.
+	    // - undefined => no list traits; keep recordPatch overhead at ~0 for non-list modules.
+	    let listPathSet: ReadonlySet<string> | undefined = undefined
+
+	    let externalOwnedFieldPaths: ReadonlyArray<FieldPath> = []
+	    let externalOwnedFieldPathKeys: ReadonlySet<string> = new Set()
 
     const rowIdStore = new RowId.RowIdStore(instanceId)
     const selectorGraph = SelectorGraph.make<S>({
@@ -242,16 +246,17 @@ export const make = <S, A, R = never>(
     // - Maintain a single active transaction per ModuleRuntime;
     // - Aggregate state writes from all entrypoints on this instance (dispatch / Traits / source-refresh, etc.);
     // - New entrypoints (e.g. service writebacks / devtools operations) must also go through the same context + queue.
-    const txnContext = StateTransaction.makeContext<S>({
-      moduleId,
-      instanceId,
-      instrumentation,
-      getFieldPathIdRegistry: () => {
-        const convergeIr: any = (traitState.program as any)?.convergeIr
-        if (!convergeIr || convergeIr.configError) return undefined
-        return convergeIr.fieldPathIdRegistry
-      },
-    })
+	    const txnContext = StateTransaction.makeContext<S>({
+	      moduleId,
+	      instanceId,
+	      instrumentation,
+	      getFieldPathIdRegistry: () => {
+	        const convergeIr: any = (traitState.program as any)?.convergeIr
+	        if (!convergeIr || convergeIr.configError) return undefined
+	        return convergeIr.fieldPathIdRegistry
+	      },
+	      getListPathSet: () => listPathSet,
+	    })
 
     const recordStatePatch: RuntimeInternals['txn']['recordStatePatch'] = (
       path,
@@ -1651,16 +1656,26 @@ export const make = <S, A, R = never>(
       traitState.convergeStaticIrDigest =
         convergeIr && !(convergeIr as any).configError ? getConvergeStaticIrDigest(convergeIr as any) : undefined
 
-      traitState.program = {
-        ...(program as any),
-        convergeIr,
-        convergeExecIr,
-      }
-      traitState.listConfigs = RowId.collectListConfigs((program as any).spec)
-      const owned: FieldPath[] = ((program as any)?.entries ?? [])
-        .filter((e: any) => e && e.kind === 'externalStore' && typeof e.fieldPath === 'string')
-        .map((e: any) => normalizeFieldPath(e.fieldPath))
-        .filter((p: any): p is FieldPath => p != null)
+	      traitState.program = {
+	        ...(program as any),
+	        convergeIr,
+	        convergeExecIr,
+	      }
+	      traitState.listConfigs = RowId.collectListConfigs((program as any).spec)
+	      listPathSet = (() => {
+	        const configs = traitState.listConfigs
+	        if (!Array.isArray(configs) || configs.length === 0) return undefined
+	        const set = new Set<string>()
+	        for (const cfg of configs as ReadonlyArray<any>) {
+	          const p = cfg?.path
+	          if (typeof p === 'string' && p.length > 0) set.add(p)
+	        }
+	        return set.size > 0 ? set : undefined
+	      })()
+	      const owned: FieldPath[] = ((program as any)?.entries ?? [])
+	        .filter((e: any) => e && e.kind === 'externalStore' && typeof e.fieldPath === 'string')
+	        .map((e: any) => normalizeFieldPath(e.fieldPath))
+	        .filter((p: any): p is FieldPath => p != null)
         .sort(compareFieldPath)
       externalOwnedFieldPaths = owned
       externalOwnedFieldPathKeys = new Set(owned.map((p) => toKey(p)))
