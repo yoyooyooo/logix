@@ -18,8 +18,11 @@
   - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw56.b1-externalStore-batched-writeback.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw57.b1-externalStore-batched-writeback.json`
 
-待补（硬结论口径，clean workspace）：
-- [ ] clean after + diff（避免 `git.dirty=true` 带来的可比性争论）。
+clean workspace（硬结论口径）：
+- PerfReport：
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw58.b1-externalStore-batched-writeback.clean.json`
+- PerfDiff：
+  - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw55-to-ulw58.b1-externalStore-batched-writeback.clean.json`
 
 ## 改动点（实现细节）
 
@@ -84,4 +87,3 @@ Browser perf-boundaries（最小闭环）：
 2. externalStore 仍可继续榨干（如果 future 复发）：
 - 把 in-flight window 升级为显式 window（microtask 或 budgetMs），进一步提高 batch 覆盖率（代价：会改变可见时序/latency）。
 - 或把 coordinator 做成可选策略（vNext `StateTrait.externalStore({ writeback: ... })`），把“吞吐优先 vs latency 优先”的裁决外显为 API（零存量用户模式下允许破坏式替换）。
-
