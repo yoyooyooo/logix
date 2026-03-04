@@ -9,6 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_LOGIX_CORE_NG_EXEC_VM_MODE?: string
   readonly VITE_LOGIX_TRAIT_CONVERGE_BUDGET_MS?: string
   readonly VITE_LOGIX_TRAIT_CONVERGE_DECISION_BUDGET_MS?: string
+  readonly VITE_LOGIX_PERF_OUTLIER_CAPTURE?: string
 }
 
 interface ImportMeta {

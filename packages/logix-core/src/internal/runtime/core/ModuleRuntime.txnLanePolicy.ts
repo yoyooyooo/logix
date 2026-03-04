@@ -39,13 +39,14 @@ export const makeResolveTxnLanePolicy = (args: {
   readonly moduleId: string | undefined
   readonly stateTransaction: ModuleStateTransactionOptions
 }): (() => Effect.Effect<ResolvedTxnLanePolicy>) => {
-  const builtinEnabled = normalizeBool(args.stateTransaction?.txnLanes?.enabled) ?? true
-  const builtinBudgetMs = normalizeMs(args.stateTransaction?.txnLanes?.budgetMs) ?? 1
-  const builtinDebounceMs = normalizeMs(args.stateTransaction?.txnLanes?.debounceMs) ?? 0
-  const builtinMaxLagMs = normalizeMs(args.stateTransaction?.txnLanes?.maxLagMs) ?? 50
-  const builtinAllowCoalesce = normalizeBool(args.stateTransaction?.txnLanes?.allowCoalesce) ?? true
-  const builtinYieldStrategy: TxnLaneYieldStrategy =
-    args.stateTransaction?.txnLanes?.yieldStrategy === 'inputPending' ? 'inputPending' : 'baseline'
+  const moduleRuntimeDefaultPatch = args.stateTransaction?.txnLanes
+
+  const builtinEnabled = true
+  const builtinBudgetMs = 1
+  const builtinDebounceMs = 0
+  const builtinMaxLagMs = 50
+  const builtinAllowCoalesce = true
+  const builtinYieldStrategy: TxnLaneYieldStrategy = 'baseline'
 
   return () =>
     Effect.gen(function* () {
@@ -135,6 +136,7 @@ export const makeResolveTxnLanePolicy = (args: {
           : undefined
 
       // priority: provider > runtime_module > runtime_default > builtin
+      applyPatch(moduleRuntimeDefaultPatch, 'runtime_default')
       applyPatch(runtimeConfig, 'runtime_default')
       applyPatch(runtimeModulePatch, 'runtime_module')
       applyPatch(providerOverrides, 'provider')

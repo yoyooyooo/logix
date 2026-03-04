@@ -25,24 +25,27 @@ export const inSyncTransactionFiber = FiberRef.unsafeMake(false)
  */
 export const forceSourceRefresh = FiberRef.unsafeMake(false)
 
-/**
- * Synchronous transaction window (process-level) marker:
- * - Used as a hard guard in "non-Effect API" entry points (e.g. Promise/async functions).
- * - FiberRef cannot reliably read the "current fiber" in such entry points, so we need a synchronous callstack-level marker.
- *
- * Note: if a transaction body incorrectly crosses async boundaries, this marker will be held longer; that is a severe violation.
- */
-let inSyncTransactionGlobalDepth = 0
+let inSyncTransactionShadowDepth = 0
+
+export const enterSyncTransactionShadow = (): void => {
+  inSyncTransactionShadowDepth += 1
+}
+
+export const exitSyncTransactionShadow = (): void => {
+  inSyncTransactionShadowDepth = Math.max(0, inSyncTransactionShadowDepth - 1)
+}
+
+export const isInSyncTransactionShadow = (): boolean => inSyncTransactionShadowDepth > 0
 
 export const enterSyncTransaction = (): void => {
-  inSyncTransactionGlobalDepth += 1
+  enterSyncTransactionShadow()
 }
 
 export const exitSyncTransaction = (): void => {
-  inSyncTransactionGlobalDepth = Math.max(0, inSyncTransactionGlobalDepth - 1)
+  exitSyncTransactionShadow()
 }
 
-export const isInSyncTransaction = (): boolean => inSyncTransactionGlobalDepth > 0
+export const isInSyncTransaction = (): boolean => isInSyncTransactionShadow()
 
 export type TaskRunnerMode = ModeRunner.ModeRunnerMode
 

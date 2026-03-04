@@ -1,6 +1,6 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Schema, Stream } from 'effect'
+import { Effect, Schema, Stream } from 'effect'
 import { resolveSchemaAst } from '../../../../src/internal/runtime/core/process/selectorSchema.js'
 import { makeNonPlatformTriggerStreamFactory } from '../../../../src/internal/runtime/core/process/triggerStreams.js'
 
@@ -8,7 +8,6 @@ describe('TriggerStreams runtime schema cache', () => {
   it.effect('reuses schema ast resolution for same runtime across moduleStateChange triggers', () =>
     Effect.gen(function* () {
       const moduleId = 'TriggerStreamsSchemaCacheModule'
-      const moduleTag = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
 
       const runtime = {
         moduleId,
@@ -16,7 +15,7 @@ describe('TriggerStreams runtime schema cache', () => {
         changesReadQueryWithMeta: () => Stream.empty,
       } as any
 
-      const baseEnv = Context.add(moduleTag, runtime)(Context.empty())
+      const moduleRuntimeRegistry = new Map<string, unknown>([[moduleId, runtime]])
       const schemaAst = resolveSchemaAst(
         Schema.Struct({
           user: Schema.Struct({
@@ -28,7 +27,7 @@ describe('TriggerStreams runtime schema cache', () => {
 
       let resolveCalls = 0
       const makeTriggerStream = makeNonPlatformTriggerStreamFactory({
-        baseEnv,
+        moduleRuntimeRegistry,
         shouldRecordChainEvents: false,
         actionIdFromUnknown: () => undefined,
         resolveRuntimeStateSchemaAst: (value) => {

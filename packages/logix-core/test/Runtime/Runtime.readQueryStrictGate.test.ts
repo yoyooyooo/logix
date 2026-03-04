@@ -35,6 +35,14 @@ describe('Runtime.readQuery.strictGate', () => {
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
 
       const fiber = yield* Effect.fork(Stream.runCollect(Stream.take(rt.changesReadQueryWithMeta(selector), 1)))
+      // Ensure subscription starts before dispatch; PubSub-based streams drop events when no subscribers exist.
+      for (let i = 0; i < 64; i++) {
+        const status = yield* Fiber.status(fiber)
+        if (status._tag === 'Suspended' || status._tag === 'Done') {
+          break
+        }
+        yield* Effect.yieldNow()
+      }
       yield* rt.dispatch({ _tag: 'inc', payload: undefined })
 
       const exit = yield* Fiber.await(fiber)
@@ -92,6 +100,14 @@ describe('Runtime.readQuery.strictGate', () => {
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
 
       const fiber = yield* Effect.fork(Stream.runCollect(Stream.take(rt.changesReadQueryWithMeta(selector), 1)))
+      // Ensure subscription starts before dispatch; PubSub-based streams drop events when no subscribers exist.
+      for (let i = 0; i < 64; i++) {
+        const status = yield* Fiber.status(fiber)
+        if (status._tag === 'Suspended' || status._tag === 'Done') {
+          break
+        }
+        yield* Effect.yieldNow()
+      }
       yield* rt.dispatch({ _tag: 'inc', payload: undefined })
 
       const exit = yield* Fiber.await(fiber)

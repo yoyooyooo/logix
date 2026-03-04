@@ -1,0 +1,847 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-02T17:26:52.770Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.node.before.local.quick.json",
+      "commit": "8d4f36b1fc164cfcbb5e883d476fb8080eec0bc5"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.node.after.local.quick.json",
+      "commit": "8d4f36b1fc164cfcbb5e883d476fb8080eec0bc5"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 9,
+    "improvements": 5,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.005
+          },
+          "beforeMaxLevel": 1200,
+          "afterMaxLevel": 1600,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.005}: before=1200 after=1600 (after:budgetExceeded) (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.01
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": 1200,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.01}: before=2000 after=1200 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.02
+          },
+          "beforeMaxLevel": 1600,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.02}: before=1600 after=800 (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.05
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": 1200,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05}: before=2000 after=1200 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.1
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.1}: before=2000 after=800 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.15
+          },
+          "beforeMaxLevel": 1600,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.15}: before=1600 after=2000 (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.2
+          },
+          "beforeMaxLevel": 400,
+          "afterMaxLevel": 1600,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.2}: before=400 after=1600 (after:budgetExceeded) (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.25
+          },
+          "beforeMaxLevel": 1200,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.25}: before=1200 after=800 (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.33
+          },
+          "beforeMaxLevel": 1600,
+          "afterMaxLevel": 2000,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.33}: before=1600 after=2000 (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.6
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.6}: before=2000 after=800 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.7
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": 600,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.7}: before=2000 after=600 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.75
+          },
+          "beforeMaxLevel": 1200,
+          "afterMaxLevel": 1600,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.75}: before=1200 after=1600 (after:budgetExceeded) (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.8
+          },
+          "beforeMaxLevel": 1200,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.8}: before=1200 after=800 (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 0.9
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": 1600,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.9}: before=2000 after=1600 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.569666999999754
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1.6240840000027674
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaMs(points) unit=count: before[value=1.569666999999754 ok=357 unavailable=0 missing=0] after[value=1.6240840000027674 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 6.586042016006499
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 6.941789393728895
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.medianDeltaRatio(points) unit=ratio: before[value=6.586042016006499 ok=357 unavailable=0 missing=0] after[value=6.941789393728895 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 7.586042016006499
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 7.941789393728895
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.medianRatio(points) unit=ratio: before[value=7.586042016006499 ok=357 unavailable=0 missing=0] after[value=7.941789393728895 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.381833999996161
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 2.3305839999993623
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaMs(points) unit=count: before[value=2.381833999996161 ok=357 unavailable=0 missing=0] after[value=2.3305839999993623 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 7.856536638529738
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 7.74139484888002
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.p95DeltaRatio(points) unit=ratio: before[value=7.856536638529738 ok=357 unavailable=0 missing=0] after[value=7.74139484888002 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 8.856536638529738
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 8.74139484888002
+          },
+          "message": "diagnostics.overhead.fullOverOff.txnCommitMs.p95Ratio(points) unit=ratio: before[value=8.856536638529738 ok=357 unavailable=0 missing=0] after[value=8.74139484888002 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 6.071558831530168
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 6.179904955882081
+          },
+          "message": "diagnostics.overhead.lightOverOff.txnCommitMs.medianDeltaRatio(points) unit=ratio: before[value=6.071558831530168 ok=357 unavailable=0 missing=0] after[value=6.179904955882081 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 7.071558831530168
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 7.179904955882081
+          },
+          "message": "diagnostics.overhead.lightOverOff.txnCommitMs.medianRatio(points) unit=ratio: before[value=7.071558831530168 ok=357 unavailable=0 missing=0] after[value=7.179904955882081 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 7.358286071716057
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 7.302512882200787
+          },
+          "message": "diagnostics.overhead.lightOverOff.txnCommitMs.p95DeltaRatio(points) unit=ratio: before[value=7.358286071716057 ok=357 unavailable=0 missing=0] after[value=7.302512882200787 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 8.358286071716057
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 8.302512882200787
+          },
+          "message": "diagnostics.overhead.lightOverOff.txnCommitMs.p95Ratio(points) unit=ratio: before[value=8.358286071716057 ok=357 unavailable=0 missing=0] after[value=8.302512882200787 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.execVmMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "message": "runtime.execVmMode(points) unit=count: before[value=off ok=357 unavailable=0 missing=0] after[value=off ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.heapDeltaBytes.median",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 630240
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 630520
+          },
+          "message": "runtime.heapDeltaBytes.median(points) unit=bytes: before[value=630240 ok=357 unavailable=0 missing=0] after[value=630520 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.heapDeltaBytes.p95",
+          "unit": "bytes",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 631000
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 630840
+          },
+          "message": "runtime.heapDeltaBytes.p95(points) unit=bytes: before[value=631000 ok=357 unavailable=0 missing=0] after[value=630840 ok=357 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "runtime.decisionMs",
+          "unit": "ms",
+          "compared": 0,
+          "missing": 0,
+          "unavailable": 357,
+          "topRegressions": [],
+          "topImprovements": []
+        },
+        {
+          "metric": "runtime.txnCommitMs",
+          "unit": "ms",
+          "compared": 357,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.05
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.38462499999877764,
+                "p95Ms": 0.43699999999807915
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.405083999998169,
+                "p95Ms": 1.337041999999201
+              },
+              "deltaMs": {
+                "medianMs": 0.02045899999939138,
+                "p95Ms": 0.9000420000011218
+              },
+              "ratio": {
+                "median": 1.0531920701968318,
+                "p95": 3.059592677357158
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.6
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.5597920000000158,
+                "p95Ms": 0.7076670000024023
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.5429159999985131,
+                "p95Ms": 1.5070840000043972
+              },
+              "deltaMs": {
+                "medianMs": -0.01687600000150269,
+                "p95Ms": 0.7994170000019949
+              },
+              "ratio": {
+                "median": 0.9698530882872527,
+                "p95": 2.12965137557535
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.01
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.40595900000016627,
+                "p95Ms": 0.44570800000019517
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.4179170000002159,
+                "p95Ms": 1.1084999999998217
+              },
+              "deltaMs": {
+                "medianMs": 0.011958000000049651,
+                "p95Ms": 0.6627919999996266
+              },
+              "ratio": {
+                "median": 1.0294561766090782,
+                "p95": 2.487054304610499
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 1600,
+                "dirtyRootsRatio": 0.2
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.35720799999944575,
+                "p95Ms": 0.3801660000008269
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.3763329999992493,
+                "p95Ms": 0.9940829999995913
+              },
+              "deltaMs": {
+                "medianMs": 0.01912499999980355,
+                "p95Ms": 0.6139169999987644
+              },
+              "ratio": {
+                "median": 1.0535402342608038,
+                "p95": 2.6148656113314424
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.4
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.49012499999662396,
+                "p95Ms": 0.5144580000051064
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.4675409999981639,
+                "p95Ms": 1.118624999995518
+              },
+              "deltaMs": {
+                "medianMs": -0.022583999998460058,
+                "p95Ms": 0.6041669999904116
+              },
+              "ratio": {
+                "median": 0.9539219586868337,
+                "p95": 2.1743757507598573
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.33
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.45370899999397807,
+                "p95Ms": 1.4699589999945601
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.4535829999949783,
+                "p95Ms": 0.4672500000015134
+              },
+              "deltaMs": {
+                "medianMs": -0.00012599999899975955,
+                "p95Ms": -1.0027089999930467
+              },
+              "ratio": {
+                "median": 0.999722288958338,
+                "p95": 0.31786600850992613
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.15
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.42695800000365125,
+                "p95Ms": 1.3634579999998095
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.41766700000152923,
+                "p95Ms": 0.46108299999468727
+              },
+              "deltaMs": {
+                "medianMs": -0.009291000002122018,
+                "p95Ms": -0.9023750000051223
+              },
+              "ratio": {
+                "median": 0.9782390773751924,
+                "p95": 0.3381717661965031
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 1600,
+                "dirtyRootsRatio": 0.8
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.49041700000088895,
+                "p95Ms": 1.2941659999996773
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.46875,
+                "p95Ms": 0.47658400000364054
+              },
+              "deltaMs": {
+                "medianMs": -0.021667000000888947,
+                "p95Ms": -0.8175819999960368
+              },
+              "ratio": {
+                "median": 0.9558192313870651,
+                "p95": 0.3682556951764761
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "dirty",
+                "steps": 1600,
+                "dirtyRootsRatio": 0.75
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.47075000000040745,
+                "p95Ms": 1.2568339999997988
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.4505829999980051,
+                "p95Ms": 0.4802909999998519
+              },
+              "deltaMs": {
+                "medianMs": -0.020167000002402347,
+                "p95Ms": -0.7765429999999469
+              },
+              "ratio": {
+                "median": 0.9571598512960491,
+                "p95": 0.3821435448117482
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.8
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.5833750000019791,
+                "p95Ms": 1.4959170000001905
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.5791670000035083,
+                "p95Ms": 0.7348330000022543
+              },
+              "deltaMs": {
+                "medianMs": -0.004207999998470768,
+                "p95Ms": -0.7610839999979362
+              },
+              "ratio": {
+                "median": 0.9927868009454356,
+                "p95": 0.49122578325011396
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "mostSignificantRegression: auto<=full*1.05 {dirtyRootsRatio=0.7} (before=2000, after=600)"
+    }
+  ]
+}

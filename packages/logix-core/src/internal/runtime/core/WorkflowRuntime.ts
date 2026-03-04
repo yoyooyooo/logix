@@ -100,6 +100,16 @@ const asNonEmptyString = (value: unknown): string | undefined =>
 
 const KERNEL_PORT_SOURCE_REFRESH = 'logix/kernel/sourceRefresh'
 
+const serviceTagCache = new Map<string, Context.Tag<unknown, unknown>>()
+
+const resolveServiceTag = (serviceId: string): Context.Tag<unknown, unknown> => {
+  const cached = serviceTagCache.get(serviceId)
+  if (cached) return cached
+  const created = Context.Tag(serviceId)() as Context.Tag<unknown, unknown>
+  serviceTagCache.set(serviceId, created)
+  return created
+}
+
 const resolveServicePort = (
   runtime: PublicModuleRuntime<unknown, unknown>,
   env: Context.Context<unknown>,
@@ -154,7 +164,7 @@ const resolveServicePort = (
       })
   }
 
-  const tag = Context.GenericTag<unknown>(serviceId)
+  const tag = resolveServiceTag(serviceId)
   const opt = Context.getOption(env, tag)
   if (Option.isNone(opt)) {
     throw makeWorkflowError({
@@ -295,6 +305,7 @@ const makeWorkflowBoundaryRunner = (args: {
 const makeTimer = (args: {
   readonly host: {
     readonly scheduleMicrotask: (cb: () => void) => void
+    readonly scheduleMacrotask: (cb: () => void) => () => void
     readonly scheduleTimeout: (ms: number, cb: () => void) => () => void
   }
   readonly ms: number
@@ -302,13 +313,24 @@ const makeTimer = (args: {
 }): Effect.Effect<void, never, unknown> =>
   Effect.async<void, never, unknown>((resume) => {
     let fired = false
-    const cancel = args.host.scheduleTimeout(args.ms, () => {
-      fired = true
-      // Route resumption through a microtask boundary:
-      // - Improves determinism in tests (deterministic HostScheduler).
-      // - Avoids deep JS-microtask chains that are invisible to HostScheduler flushing.
-      args.host.scheduleMicrotask(() => resume(Effect.void))
-    })
+    // For ms=0, prefer host macrotask scheduling to avoid setTimeout(0) clamping
+    // (workflow.delay.timer perf boundary is sensitive to this).
+    const cancel =
+      args.ms <= 0
+        ? args.host.scheduleMacrotask(() => {
+            fired = true
+            // Route resumption through a microtask boundary:
+            // - Improves determinism in tests (deterministic HostScheduler).
+            // - Avoids deep JS-microtask chains that are invisible to HostScheduler flushing.
+            args.host.scheduleMicrotask(() => resume(Effect.void))
+          })
+        : args.host.scheduleTimeout(args.ms, () => {
+          fired = true
+          // Route resumption through a microtask boundary:
+          // - Improves determinism in tests (deterministic HostScheduler).
+          // - Avoids deep JS-microtask chains that are invisible to HostScheduler flushing.
+          args.host.scheduleMicrotask(() => resume(Effect.void))
+        })
     return Effect.sync(() => {
       cancel()
     }).pipe(Effect.zipRight(fired ? Effect.void : args.onCancel))
@@ -508,16 +530,12 @@ const startProgramRun = (args: {
       const tick = yield* TickSchedulerTag
 
       if (!program.steps) {
-        const env = yield* Effect.context<unknown>()
-        const portCache = new Map<string, ServicePort>()
-        const resolvePort = (serviceId: string, stepKey: string): ServicePort => {
-          const cached = portCache.get(serviceId)
-          if (cached) return cached
-          const resolved = resolveServicePort(runtime, env, serviceId, program.programId, stepKey)
-          portCache.set(serviceId, resolved)
-          return resolved
-        }
-        program.steps = compileSteps(program.compiledSteps, resolvePort)
+        throw makeWorkflowError({
+          code: 'WORKFLOW_INVALID_DEF',
+          message: `Workflow steps were not resolved before run (programId="${program.programId}").`,
+          programId: program.programId,
+          detail: { programId: program.programId },
+        })
       }
 
       const getTickSeq = (): number | undefined => (observe ? tick.getTickSeq() : undefined)
@@ -762,7 +780,7 @@ const startProgramRun = (args: {
 
     const limited = registry.parallelLimiter ? registry.parallelLimiter.withPermits(1)(programEffect) : programEffect
 
-    const fiber = yield* Effect.forkScoped(
+    const runOutsideTransaction = Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
       limited.pipe(
         Effect.catchAllCause((cause) => {
           const { errorSummary, downgrade } = toSerializableErrorSummary(cause)
@@ -797,6 +815,8 @@ const startProgramRun = (args: {
         ),
       ),
     )
+
+    const fiber = yield* Effect.forkScoped(runOutsideTransaction)
 
     if (state.mode === 'latest') {
       state.current = fiber as Fiber.RuntimeFiber<void, never>
@@ -1044,6 +1064,7 @@ const startWatcherIfNeeded = (args: {
         )
       }),
     ).pipe(
+      Effect.locally(TaskRunner.inSyncTransactionFiber, false),
       Effect.catchAllCause((cause) => {
         const { errorSummary, downgrade } = toSerializableErrorSummary(cause)
         const downgradeHint = downgrade ? ` (downgrade=${downgrade})` : ''

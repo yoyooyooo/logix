@@ -434,8 +434,16 @@ export const makeTickScheduler = (args: {
             try {
               yield* waitForBatchEndIfNeeded()
               if (boundary === 'microtask') {
+                // Always yield at least one microtask tick boundary before flushing:
+                // - Keeps tick→notify semantics stable (async flush window) even under Runtime.batch.
+                // - Avoids "denominatorZero" artifacts in perf budgets when dispatch is synchronous (mr.actions.*).
+                if (waitedForBatch) {
+                  microtaskChainDepth = 0
+                }
                 yield* yieldMicrotask
-                microtaskChainDepth += 1
+                if (!waitedForBatch) {
+                  microtaskChainDepth += 1
+                }
               } else {
                 yield* yieldMacrotask
                 microtaskChainDepth = 0
@@ -519,11 +527,26 @@ export const makeTickScheduler = (args: {
     }
 
     // Budget enforcement (defer nonUrgent only; urgent may be cut only in cycle safety-break).
-    const { acceptedModules, deferredModules, urgentCapExceeded, deferredNonUrgentCount } = partitionModulesForBudget({
-      modules: captured.accepted.modules,
-      maxSteps: config.maxSteps,
-      urgentStepCap: config.urgentStepCap,
-    })
+    //
+    // Perf: fast-path the common case where a tick is far under both budgets:
+    // - Avoid allocating new Maps in partitionModulesForBudget.
+    // - Avoid re-walking dirtyTopics to split accepted/deferred topics.
+    let acceptedModules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit> = captured.accepted.modules
+    let deferredModules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit> | undefined = undefined
+    let urgentCapExceeded = false
+    let deferredNonUrgentCount = 0
+
+    if (!(captured.accepted.modules.size <= config.maxSteps && captured.accepted.modules.size <= config.urgentStepCap)) {
+      const partitioned = partitionModulesForBudget({
+        modules: captured.accepted.modules,
+        maxSteps: config.maxSteps,
+        urgentStepCap: config.urgentStepCap,
+      })
+      acceptedModules = partitioned.acceptedModules
+      deferredModules = partitioned.deferredModules
+      urgentCapExceeded = partitioned.urgentCapExceeded
+      deferredNonUrgentCount = partitioned.deferredNonUrgentCount
+    }
 
     if (urgentCapExceeded) {
       captured.stable = false
@@ -533,34 +556,82 @@ export const makeTickScheduler = (args: {
       captured.degradeReason = captured.degradeReason ?? 'budget_steps'
     }
 
-    const acceptedTopics = new Map<string, StateCommitPriority>()
-    const deferredTopics = new Map<string, StateCommitPriority>()
+    const canAcceptAllTopics = deferredModules == null || deferredModules.size === 0
 
-    for (const [topicKey, priority] of captured.accepted.dirtyTopics) {
-      const moduleInstanceKey = storeTopicToModuleInstanceKey(topicKey)
-      if (!moduleInstanceKey) continue
-      if (acceptedModules.has(moduleInstanceKey)) {
-        acceptedTopics.set(topicKey, priority)
-      } else if (deferredModules.has(moduleInstanceKey)) {
-        deferredTopics.set(topicKey, priority)
-      } else {
-        // Conservative default: treat unknown topics as accepted.
-        acceptedTopics.set(topicKey, priority)
+    const acceptedDrain: RuntimeStorePendingDrain = (() => {
+      if (canAcceptAllTopics) {
+        // Even when we accept all module topics, we must ignore non-parsable topic keys.
+        // Otherwise, arbitrary strings would become "real" topics in RuntimeStore and create silent drift.
+        if (captured.accepted.dirtyTopics.size === 0) {
+          return captured.accepted as unknown as RuntimeStorePendingDrain
+        }
+
+        let hasNonParsable = false
+        for (const topicKey of captured.accepted.dirtyTopics.keys()) {
+          if (!storeTopicToModuleInstanceKey(topicKey)) {
+            hasNonParsable = true
+            break
+          }
+        }
+
+        if (!hasNonParsable) {
+          return captured.accepted as unknown as RuntimeStorePendingDrain
+        }
+
+        const acceptedTopics = new Map<string, StateCommitPriority>()
+        for (const [topicKey, priority] of captured.accepted.dirtyTopics) {
+          const moduleInstanceKey = storeTopicToModuleInstanceKey(topicKey)
+          if (!moduleInstanceKey) continue
+          acceptedTopics.set(topicKey, priority)
+        }
+
+        return {
+          modules: acceptedModules,
+          dirtyTopics: acceptedTopics,
+        } satisfies RuntimeStorePendingDrain
       }
-    }
 
-    const acceptedDrain: RuntimeStorePendingDrain = {
-      modules: acceptedModules,
-      dirtyTopics: acceptedTopics,
-    }
+      const acceptedTopics = new Map<string, StateCommitPriority>()
+      const deferredTopics = new Map<string, StateCommitPriority>()
+
+      for (const [topicKey, priority] of captured.accepted.dirtyTopics) {
+        const moduleInstanceKey = storeTopicToModuleInstanceKey(topicKey)
+        if (!moduleInstanceKey) continue
+        if (acceptedModules.has(moduleInstanceKey)) {
+          acceptedTopics.set(topicKey, priority)
+        } else if (deferredModules && deferredModules.has(moduleInstanceKey)) {
+          deferredTopics.set(topicKey, priority)
+        } else {
+          // Conservative default: treat unknown topics as accepted.
+          acceptedTopics.set(topicKey, priority)
+        }
+      }
+
+      return {
+        modules: acceptedModules,
+        dirtyTopics: acceptedTopics,
+      } satisfies RuntimeStorePendingDrain
+    })()
 
     const deferredDrain: RuntimeStorePendingDrain | undefined =
-      deferredModules.size > 0 || deferredTopics.size > 0
-        ? {
-            modules: deferredModules,
-            dirtyTopics: deferredTopics,
-          }
-        : undefined
+      canAcceptAllTopics || !deferredModules
+        ? undefined
+        : deferredModules.size > 0
+          ? {
+              modules: deferredModules,
+              dirtyTopics: (() => {
+                const deferredTopics = new Map<string, StateCommitPriority>()
+                for (const [topicKey, priority] of captured.accepted.dirtyTopics) {
+                  const moduleInstanceKey = storeTopicToModuleInstanceKey(topicKey)
+                  if (!moduleInstanceKey) continue
+                  if (deferredModules.has(moduleInstanceKey)) {
+                    deferredTopics.set(topicKey, priority)
+                  }
+                }
+                return deferredTopics
+              })(),
+            }
+          : undefined
 
     captured.deferred = deferredDrain
 
@@ -885,13 +956,7 @@ export const makeTickScheduler = (args: {
     store.commitTick({
       tickSeq: currentTickSeq,
       accepted: acceptedDrain,
-      onListener: (listener) => {
-        try {
-          listener()
-        } catch {
-          // best-effort: never let a subscriber break the tick
-        }
-      },
+      onListener: (listener) => listener(),
     })
 
     if (!captured.stable && shouldEmitTrace && backlog?.deferredPrimary) {
@@ -956,7 +1021,27 @@ export const makeTickScheduler = (args: {
     return { stable: captured.stable, degradeReason: captured.degradeReason }
   })
 
-  const flushNow: TickScheduler['flushNow'] = flushTick({ startedAs: 'unknown' }).pipe(Effect.asVoid)
+  const flushNow: TickScheduler['flushNow'] = Effect.gen(function* () {
+    const beforeTickSeq = tickSeq
+    yield* flushTick({ startedAs: 'unknown' })
+
+    if (tickSeq > beforeTickSeq) {
+      return
+    }
+
+    if (!queue.hasPending() && !scheduled) {
+      return
+    }
+
+    yield* Effect.yieldNow()
+    if (tickSeq > beforeTickSeq) {
+      return
+    }
+
+    if (queue.hasPending()) {
+      yield* flushTick({ startedAs: 'unknown' })
+    }
+  }).pipe(Effect.asVoid)
 
   const storeTopicToModuleInstanceKey = (topicKey: string): ModuleInstanceKey | undefined => {
     const cached = topicKeyToModuleInstanceKeyCache.get(topicKey)

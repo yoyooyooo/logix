@@ -8,7 +8,7 @@ import * as Logix from '@logixjs/core'
 
 // Scenario A: React / Browser Runtime
 // Implements 'suspend' by listening to Page Visibility API
-const ReactPlatformLive: Layer.Layer<Logix.Platform.Service, never, never> = Layer.succeed(Logix.Platform.tag, {
+const ReactPlatformLive = Layer.succeed(Logix.Platform.tag, {
   lifecycle: {
     onSuspend: (eff: Effect.Effect<void, never, any>) =>
       // In a real app, this would listen to document.addEventListener("visibilitychange")
@@ -27,7 +27,7 @@ const ReactPlatformLive: Layer.Layer<Logix.Platform.Service, never, never> = Lay
 
 // Scenario B: Node / Server Runtime
 // Server never suspends in this context, so this is a no-op
-const NodePlatformLive: Layer.Layer<Logix.Platform.Service, never, never> = Layer.succeed(Logix.Platform.tag, {
+const NodePlatformLive = Layer.succeed(Logix.Platform.tag, {
   lifecycle: {
     onSuspend: () => Effect.void, // Do nothing
     onResume: () => Effect.void,

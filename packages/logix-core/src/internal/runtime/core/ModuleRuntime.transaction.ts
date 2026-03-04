@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Fiber, FiberRef, Option, PubSub, Queue, Runtime, SubscriptionRef } from 'effect'
+import { Cause, Effect, Exit, Fiber, FiberRef, Option, PubSub, Queue, SubscriptionRef } from 'effect'
 import type { StateChangeWithMeta, StateCommitMeta, StateCommitMode, StateCommitPriority } from './module.js'
 import type {
   StateTraitProgram,
@@ -15,7 +15,7 @@ import * as StateTraitSource from '../../state-trait/source.js'
 import * as RowId from '../../state-trait/rowid.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { ResolvedTraitConvergeConfig } from './ModuleRuntime.traitConvergeConfig.js'
-import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
+import type { CapturedTxnRuntimeScope, EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
 import { StateTransactionOverridesTag, type StateTransactionOverrides } from './env.js'
 
 const DIRTY_ALL_SET_STATE_HINT = Symbol.for('@logixjs/core/dirtyAllSetStateHint')
@@ -66,6 +66,7 @@ export type TraitRuntimeAccess = {
   readonly getConvergePlanCache: () => StateTraitConverge.ConvergePlanCache | undefined
   readonly getConvergeGeneration: () => TraitConvergeGenerationEvidence
   readonly getPendingCacheMissReason: () => TraitConvergePlanCacheEvidence['missReason'] | undefined
+  readonly getPendingCacheMissReasonCount: () => number
   readonly setPendingCacheMissReason: (next: TraitConvergePlanCacheEvidence['missReason'] | undefined) => void
   readonly rowIdStore: RowId.RowIdStore
   readonly getListConfigs: () => ReadonlyArray<RowId.ListConfig>
@@ -78,14 +79,7 @@ export type TraitConvergeTimeSlicingState = {
   firstPendingAtMs: number | undefined
   lastTouchedAtMs: number | undefined
   latestConvergeConfig: ResolvedTraitConvergeConfig | undefined
-  capturedContext:
-    | {
-        readonly runtimeLabel: string | undefined
-        readonly diagnosticsLevel: Debug.DiagnosticsLevel
-        readonly debugSinks: ReadonlyArray<Debug.Sink>
-        readonly overrides: StateTransactionOverrides | undefined
-      }
-    | undefined
+  capturedContext: CapturedTxnRuntimeScope | undefined
 }
 
 export const makeTransactionOps = <S>(args: {
@@ -106,7 +100,7 @@ export const makeTransactionOps = <S>(args: {
   readonly onCommit?: (args: {
     readonly state: S
     readonly meta: StateCommitMeta
-    readonly dirtySet: DirtySet
+    readonly transaction: StateTransaction.StateTransaction<S>
     readonly diagnosticsLevel: Debug.DiagnosticsLevel
   }) => Effect.Effect<void>
   readonly enqueueTransaction: EnqueueTransaction
@@ -116,8 +110,12 @@ export const makeTransactionOps = <S>(args: {
   readonly traitRuntime: TraitRuntimeAccess
   readonly resolveTraitConvergeConfig: () => Effect.Effect<ResolvedTraitConvergeConfig, never, never>
   readonly isDevEnv: () => boolean
-  readonly maxTxnHistory: number
-  readonly txnHistory: Array<StateTransaction.StateTransaction<S>>
+  readonly txnHistory: {
+    readonly buffer: Array<StateTransaction.StateTransaction<S> | undefined>
+    start: number
+    size: number
+    readonly capacity: number
+  }
   readonly txnById: Map<string, StateTransaction.StateTransaction<S>>
 }): {
   readonly readState: Effect.Effect<S>
@@ -141,7 +139,6 @@ export const makeTransactionOps = <S>(args: {
     traitRuntime,
     resolveTraitConvergeConfig,
     isDevEnv,
-    maxTxnHistory,
     txnHistory,
     txnById,
   } = args
@@ -202,12 +199,20 @@ export const makeTransactionOps = <S>(args: {
       // Record txn history: only for dev/test or explicit full instrumentation (devtools/debugging).
       // In production (default light), keep zero retention to avoid turning "txn history" into an implicit memory tax.
       if (isDevEnv() || txnContext.config.instrumentation === 'full') {
-        txnHistory.push(txn)
         txnById.set(txn.txnId, txn)
-        if (txnHistory.length > maxTxnHistory) {
-          const oldest = txnHistory.shift()
-          if (oldest) {
-            txnById.delete(oldest.txnId)
+        const cap = txnHistory.capacity
+        if (cap > 0) {
+          const buf = txnHistory.buffer
+          if (txnHistory.size < cap) {
+            buf[(txnHistory.start + txnHistory.size) % cap] = txn
+            txnHistory.size += 1
+          } else {
+            const evicted = buf[txnHistory.start]
+            buf[txnHistory.start] = txn
+            txnHistory.start = (txnHistory.start + 1) % cap
+            if (evicted) {
+              txnById.delete(evicted.txnId)
+            }
           }
         }
       }
@@ -235,12 +240,13 @@ export const makeTransactionOps = <S>(args: {
         originName: txn.origin.name,
       }
 
-      if (!shouldPublishCommitHub || shouldPublishCommitHub()) {
-        yield* PubSub.publish(commitHub, {
-          value: nextState,
-          meta,
-        })
-      }
+      // Always publish:
+      // - PubSub already optimizes for 0 subscribers.
+      // - Skipping here can drop the first commit due to subscription start races (strictGate/process triggers/tests).
+      yield* PubSub.publish(commitHub, {
+        value: nextState,
+        meta,
+      })
 
       // Perf-sensitive ordering:
       // - In diagnostics=off mode (default for production/perf runs), allow selectorGraph notifications to be published
@@ -252,7 +258,7 @@ export const makeTransactionOps = <S>(args: {
         yield* onCommit({
           state: nextState,
           meta,
-          dirtySet: txn.dirtySet,
+          transaction: txn,
           diagnosticsLevel,
         })
       }
@@ -320,7 +326,7 @@ export const makeTransactionOps = <S>(args: {
         yield* onCommit({
           state: nextState,
           meta,
-          dirtySet: txn.dirtySet,
+          transaction: txn,
           diagnosticsLevel,
         })
       }
@@ -357,7 +363,7 @@ export const makeTransactionOps = <S>(args: {
         const txnId = txnContext.current?.txnId
         const txnSeq = txnContext.current?.txnSeq
 
-        TaskRunner.enterSyncTransaction()
+        TaskRunner.enterSyncTransactionShadow()
         let exit: Exit.Exit<void, E2> | undefined
 
         try {
@@ -371,18 +377,29 @@ export const makeTransactionOps = <S>(args: {
                 let traitSummary: unknown | undefined
 
                 // Execute logic inside the transaction window (reducer / watcher writeback / traits, etc.).
-                // Contract: no long IO/await in the transaction window.
-                if (isDevEnv()) {
-                  const bodyFiber = yield* Effect.fork(body())
+                // Contract: no IO/await/sleep/promises inside the transaction window.
+                //
+                // Fail-fast when async escapes the window (even in production), without blocking on cleanup.
+                // - Sync bodies typically finish before/within the first few polls.
+                // - Async bodies (sleep/await/IO) suspend and will not complete within the budget.
+                // Use daemon fiber to avoid supervision-induced blocking:
+                // - An uninterruptible async escape must not block abort/next transaction.
+                const bodyFiber = yield* Effect.forkDaemon(body())
 
-                  const YIELD_BUDGET = 5
-                  let polled = yield* Fiber.poll(bodyFiber)
-                  for (let index = 0; index < YIELD_BUDGET && Option.isNone(polled); index += 1) {
-                    yield* Effect.yieldNow()
-                    polled = yield* Fiber.poll(bodyFiber)
-                  }
+                // Tune for perf: production path uses a small budget to keep the fast path cheap,
+                // but must still tolerate Effect's cooperative scheduling (especially in browser runs).
+                const yieldBudget = 8
 
-                  if (Option.isNone(polled)) {
+                let polled = yield* Fiber.poll(bodyFiber)
+                for (let index = 0; index < yieldBudget && Option.isNone(polled); index += 1) {
+                  yield* Effect.yieldNow()
+                  polled = yield* Fiber.poll(bodyFiber)
+                }
+
+                if (Option.isNone(polled)) {
+                  // Do not pay diagnostics overhead when DiagnosticsLevel=off (perf default).
+                  const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+                  if (diagnosticsLevel !== 'off') {
                     yield* Debug.record({
                       type: 'diagnostic',
                       moduleId: optionsModuleId,
@@ -398,42 +415,16 @@ export const makeTransactionOps = <S>(args: {
                     })
                   }
 
-                  const bodyExit = yield* Fiber.await(bodyFiber)
-                  yield* Exit.match(bodyExit, {
-                    onFailure: (cause) => Effect.failCause(cause),
-                    onSuccess: () => Effect.void,
-                  })
-                } else {
-                  const runtime = yield* Effect.runtime<never>()
-                  const bodyExit = yield* Effect.sync(() => Runtime.runSyncExit(runtime, body()))
-
-                  if (Exit.isFailure(bodyExit)) {
-                    const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(Runtime.isAsyncFiberException)
-
-                    if (asyncEscapeDefect) {
-                      const asyncEscapeError = makeAsyncEscapeError()
-
-                      yield* Debug.record({
-                        type: 'diagnostic',
-                        moduleId: optionsModuleId,
-                        instanceId,
-                        txnSeq,
-                        txnId,
-                        trigger: origin,
-                        code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
-                        severity: 'error',
-                        message: ASYNC_ESCAPE_MESSAGE,
-                        hint: ASYNC_ESCAPE_HINT,
-                        kind: ASYNC_ESCAPE_KIND,
-                      })
-
-                      yield* Fiber.interruptFork(asyncEscapeDefect.fiber)
-                      return yield* Effect.die(asyncEscapeError)
-                    }
-
-                    return yield* Effect.failCause(bodyExit.cause)
-                  }
+                  // Interrupt without awaiting: uninterruptible async escapes must not block abort/next txn.
+                  yield* Fiber.interruptFork(bodyFiber)
+                  return yield* Effect.die(makeAsyncEscapeError())
                 }
+
+                const bodyExit = Option.getOrThrow(polled)
+                yield* Exit.match(bodyExit, {
+                  onFailure: (cause) => Effect.failCause(cause),
+                  onSuccess: () => Effect.void,
+                })
 
                 const stateTraitProgram = traitRuntime.getProgram()
 
@@ -479,16 +470,19 @@ export const makeTransactionOps = <S>(args: {
                         ...(deferredScopeStepIds ? { schedulingScopeStepIds: deferredScopeStepIds } : {}),
                         dirtyAllReason: (txnContext.current as any)?.dirtyAllReason,
                         dirtyPaths: txnContext.current?.dirtyPathIds,
+                        dirtyPathsKeyHash: (txnContext.current as any)?.dirtyPathIdsKeyHash,
+                        dirtyPathsKeySize: (txnContext.current as any)?.dirtyPathIdsKeySize,
                         allowInPlaceDraft:
                           txnContext.current != null &&
                           !Object.is(txnContext.current.draft, txnContext.current.baseState),
-                        planCache: traitRuntime.getConvergePlanCache(),
-                        generation: traitRuntime.getConvergeGeneration(),
-                        cacheMissReasonHint: traitRuntime.getPendingCacheMissReason(),
-                        getDraft: () => txnContext.current!.draft as any,
-                        setDraft: (next) => {
-                          StateTransaction.updateDraft(txnContext, next as any)
-                        },
+	                        planCache: traitRuntime.getConvergePlanCache(),
+	                        generation: traitRuntime.getConvergeGeneration(),
+	                        cacheMissReasonHint: traitRuntime.getPendingCacheMissReason(),
+	                        cacheMissReasonHintCount: traitRuntime.getPendingCacheMissReasonCount(),
+	                        getDraft: () => txnContext.current!.draft as any,
+	                        setDraft: (next) => {
+	                          StateTransaction.updateDraft(txnContext, next as any)
+	                        },
                         recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
                           recordStatePatch(path, reason, from, to, traitNodeId, stepId),
                       } as StateTraitConverge.ConvergeContext<any>,
@@ -738,7 +732,7 @@ export const makeTransactionOps = <S>(args: {
             ),
           )
         } finally {
-          TaskRunner.exitSyncTransaction()
+          TaskRunner.exitSyncTransactionShadow()
         }
 
         if (exit!._tag === 'Failure') {
@@ -774,6 +768,16 @@ export const makeTransactionOps = <S>(args: {
         const current: any = txnContext.current
 
         StateTransaction.updateDraft(txnContext, next)
+        // Soft dirtyAll hint for `runtime.setState(...)` inside an active transaction:
+        // - `setState` is a whole-state write and does not carry field-level dirty evidence by itself.
+        // - Advanced callers (perf harness / internal integrators) may provide precise dirty evidence via
+        //   `InternalContracts.recordStatePatch(...)` after `setState`.
+        // - We must not permanently degrade the txn to dirtyAll before that evidence arrives.
+        if (path === '*' && reason === 'unknown') {
+          current[DIRTY_ALL_SET_STATE_HINT] = true
+          return
+        }
+
         recordStatePatch(path, reason, from, to, traitNodeId, stepId)
 
         if (path === '*') {

@@ -1,9 +1,9 @@
-import { Deferred, Effect, Exit, FiberRef, Option, Queue, Ref, Scope } from 'effect'
-import * as EffectOpCore from './EffectOpCore.js'
+import { Deferred, Effect, FiberRef, Ref, Scope } from 'effect'
 import * as Debug from './DebugSink.js'
+import * as EffectOpCore from './EffectOpCore.js'
 import * as TaskRunner from './TaskRunner.js'
 import type { ConcurrencyDiagnostics } from './ConcurrencyDiagnostics.js'
-import { RuntimeStoreTag, StateTransactionOverridesTag, TickSchedulerTag, type StateTransactionOverrides } from './env.js'
+import type { StateTransactionOverrides } from './env.js'
 import type { ResolvedConcurrencyPolicy } from './ModuleRuntime.concurrencyPolicy.js'
 
 export type TxnLane = 'urgent' | 'nonUrgent'
@@ -27,62 +27,11 @@ type BacklogAcquireAttempt =
       readonly signal: Deferred.Deferred<void>
     }
 
-type CapturedDiagnosticContext = {
-  readonly linkId: string
+export type CapturedTxnRuntimeScope = {
   readonly runtimeLabel: string | undefined
   readonly diagnosticsLevel: Debug.DiagnosticsLevel
   readonly debugSinks: ReadonlyArray<Debug.Sink>
-  readonly overridesOpt: Option.Option<StateTransactionOverrides>
-  readonly runtimeStoreOpt: Option.Option<any>
-  readonly tickSchedulerOpt: Option.Option<any>
-}
-
-const captureDiagnosticContext = (args: {
-  readonly nextLinkId: () => string
-}): Effect.Effect<CapturedDiagnosticContext> =>
-  Effect.gen(function* () {
-    const overridesOpt = yield* Effect.serviceOption(StateTransactionOverridesTag)
-    const runtimeStoreOpt = yield* Effect.serviceOption(RuntimeStoreTag)
-    const tickSchedulerOpt = yield* Effect.serviceOption(TickSchedulerTag)
-    const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-    const runtimeLabel = yield* FiberRef.get(Debug.currentRuntimeLabel)
-    const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
-    const existingLinkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
-    const linkId = existingLinkId ?? args.nextLinkId()
-
-    return {
-      linkId,
-      runtimeLabel,
-      diagnosticsLevel,
-      debugSinks,
-      overridesOpt,
-      runtimeStoreOpt,
-      tickSchedulerOpt,
-    }
-  })
-
-const withDiagnosticContext = <A, E>(
-  context: CapturedDiagnosticContext,
-  eff: Effect.Effect<A, E, never>,
-): Effect.Effect<A, E, never> => {
-  const effWithOverrides = Option.isSome(context.overridesOpt)
-    ? Effect.provideService(eff, StateTransactionOverridesTag, context.overridesOpt.value)
-    : eff
-
-  const effWithRuntimeStore = Option.isSome(context.runtimeStoreOpt)
-    ? Effect.provideService(effWithOverrides, RuntimeStoreTag, context.runtimeStoreOpt.value)
-    : effWithOverrides
-
-  const effWithTickScheduler = Option.isSome(context.tickSchedulerOpt)
-    ? Effect.provideService(effWithRuntimeStore, TickSchedulerTag, context.tickSchedulerOpt.value)
-    : effWithRuntimeStore
-
-  return effWithTickScheduler.pipe(
-    Effect.locally(EffectOpCore.currentLinkId, context.linkId),
-    Effect.locally(Debug.currentRuntimeLabel, context.runtimeLabel),
-    Effect.locally(Debug.currentDiagnosticsLevel, context.diagnosticsLevel),
-    Effect.locally(Debug.currentDebugSinks, context.debugSinks),
-  )
+  readonly overrides: StateTransactionOverrides | undefined
 }
 
 /**
@@ -101,16 +50,7 @@ export const makeEnqueueTransaction = (args: {
   readonly diagnostics: ConcurrencyDiagnostics
 }): Effect.Effect<EnqueueTransaction, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const urgentQueue = yield* Queue.unbounded<Effect.Effect<void>>()
-    const nonUrgentQueue = yield* Queue.unbounded<Effect.Effect<void>>()
-    const wakeQueue = yield* Queue.unbounded<void>()
     const diagnostics = args.diagnostics
-
-    let nextLinkSeq = 0
-    const nextLinkId = (): string => {
-      nextLinkSeq += 1
-      return `${args.instanceId}::l${nextLinkSeq}`
-    }
 
     const initialUrgentSignal = yield* Deferred.make<void>()
     const urgentStateRef = yield* Ref.make<BackpressureState>({
@@ -125,7 +65,6 @@ export const makeEnqueueTransaction = (args: {
       waiters: 0,
       signal: initialNonUrgentSignal,
     })
-    const wakePendingRef = yield* Ref.make(false)
 
     const release = (stateRef: Ref.Ref<BackpressureState>) =>
       Effect.gen(function* () {
@@ -230,59 +169,105 @@ export const makeEnqueueTransaction = (args: {
         }
       })
 
-    // wakePendingRef contract:
-    // - false: consumer is sleeping, first enqueue must publish a wake token and set true.
-    // - true: consumer is active (or wake already queued), subsequent enqueues can skip duplicate wake tokens.
-    const offerWakeIfNeeded = (): Effect.Effect<void> =>
-      Ref.modify(wakePendingRef, (isPending) => {
-        if (isPending) {
-          return [false, true] as const
-        }
-        return [true, true] as const
-      }).pipe(Effect.flatMap((shouldWake) => (shouldWake ? Queue.offer(wakeQueue, undefined) : Effect.void)))
+    // Priority FIFO queue:
+    // - Runs each transaction Effect on the *caller fiber* (preserves Provider-local overrides + FiberRef diagnostics).
+    // - Serializes per-instance transactions (at most one active at a time).
+    // - Urgent lane always wins over non-urgent lane when choosing the next task.
+    //
+    // Note: this means interrupting the caller fiber can cancel a queued transaction. This is acceptable for
+    // Logix runtime semantics (forward-only evolution) and avoids the hot-path overhead of a background consumer
+    // fiber + per-task diagnostic-context capture.
+    let currentStart: Deferred.Deferred<void> | undefined = undefined
+    const urgentWaitQueue: Array<Deferred.Deferred<void>> = []
+    const nonUrgentWaitQueue: Array<Deferred.Deferred<void>> = []
 
-    const consumerLoop: Effect.Effect<never, never, never> = Effect.forever(
+    const pickNextWaiter = (): Deferred.Deferred<void> | undefined => {
+      if (urgentWaitQueue.length > 0) {
+        return urgentWaitQueue.shift()
+      }
+      if (nonUrgentWaitQueue.length > 0) {
+        return nonUrgentWaitQueue.shift()
+      }
+      return undefined
+    }
+
+    const removeWaiter = (lane: TxnLane, start: Deferred.Deferred<void>): void => {
+      const q = lane === 'urgent' ? urgentWaitQueue : nonUrgentWaitQueue
+      for (let i = 0; i < q.length; i += 1) {
+        if (q[i] === start) {
+          q.splice(i, 1)
+          return
+        }
+      }
+    }
+
+    const enqueueAndMaybeStart = (lane: TxnLane, start: Deferred.Deferred<void>): Effect.Effect<void> =>
       Effect.gen(function* () {
-        yield* Queue.take(wakeQueue)
-        yield* Ref.set(wakePendingRef, true)
+        let toStart: Deferred.Deferred<void> | undefined
+        yield* Effect.uninterruptible(
+          Effect.sync(() => {
+            if (lane === 'urgent') {
+              urgentWaitQueue.push(start)
+            } else {
+              nonUrgentWaitQueue.push(start)
+            }
 
-        while (true) {
-          const urgent = yield* Queue.poll(urgentQueue)
-          if (Option.isSome(urgent)) {
-            yield* urgent.value
-            continue
-          }
-
-          const nonUrgent = yield* Queue.poll(nonUrgentQueue)
-          if (Option.isSome(nonUrgent)) {
-            yield* nonUrgent.value
-            continue
-          }
-
-          // Transition to sleep state, then re-check queues once to avoid missing a wake-up race.
-          yield* Ref.set(wakePendingRef, false)
-
-          const urgentAfterSleep = yield* Queue.poll(urgentQueue)
-          if (Option.isSome(urgentAfterSleep)) {
-            yield* Ref.set(wakePendingRef, true)
-            yield* urgentAfterSleep.value
-            continue
-          }
-
-          const nonUrgentAfterSleep = yield* Queue.poll(nonUrgentQueue)
-          if (Option.isSome(nonUrgentAfterSleep)) {
-            yield* Ref.set(wakePendingRef, true)
-            yield* nonUrgentAfterSleep.value
-            continue
-          }
-
-          break
+            if (!currentStart) {
+              const next = pickNextWaiter()
+              if (next) {
+                currentStart = next
+                toStart = next
+              }
+            }
+          }),
+        )
+        if (toStart) {
+          yield* Deferred.succeed(toStart, undefined)
         }
-      }),
-    )
+      })
 
-    // Background consumer fiber: executes queued transaction Effects sequentially (urgent first).
-    yield* Effect.forkScoped(consumerLoop)
+    const advanceQueue = (lane: TxnLane, start: Deferred.Deferred<void>): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        let toStart: Deferred.Deferred<void> | undefined
+        yield* Effect.uninterruptible(
+          Effect.sync(() => {
+            if (currentStart === start) {
+              currentStart = undefined
+              const next = pickNextWaiter()
+              if (next) {
+                currentStart = next
+                toStart = next
+              }
+              return
+            }
+
+            // If the fiber is interrupted before it becomes active, remove it from the wait queue.
+            removeWaiter(lane, start)
+
+            // Safety: if the system became idle (should not happen unless interrupted races), restart the baton.
+            if (!currentStart) {
+              const next = pickNextWaiter()
+              if (next) {
+                currentStart = next
+                toStart = next
+              }
+            }
+          }),
+        )
+        if (toStart) {
+          yield* Deferred.succeed(toStart, undefined)
+        }
+      })
+
+    let nextLinkSeq = 0
+    const assignLinkId = (existing: string | undefined): string => {
+      if (typeof existing === 'string' && existing.length > 0) {
+        return existing
+      }
+      nextLinkSeq += 1
+      // Stable and deterministic: never use randomness/time.
+      return `${args.instanceId}::l${nextLinkSeq}`
+    }
 
     const enqueueTransaction: EnqueueTransaction = <A2, E2>(
       a0: TxnLane | Effect.Effect<A2, E2, never>,
@@ -293,31 +278,26 @@ export const makeEnqueueTransaction = (args: {
         const eff: Effect.Effect<A2, E2, never> = a1 ? a1 : (a0 as Effect.Effect<A2, E2, never>)
         const stateRef = lane === 'urgent' ? urgentStateRef : nonUrgentStateRef
 
+        const existingLinkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
+        const linkId = assignLinkId(existingLinkId)
+
         const policy = yield* args.resolveConcurrencyPolicy()
         const capacity = policy.losslessBackpressureCapacity
-        yield* acquireBacklogSlot(lane, capacity, policy)
-
-        const done = yield* Deferred.make<Exit.Exit<A2, E2>>()
-
-        const capturedContext = yield* captureDiagnosticContext({ nextLinkId })
-        const effWithContext = withDiagnosticContext(capturedContext, eff)
-
-        const task: Effect.Effect<void> = effWithContext.pipe(
-          Effect.exit,
-          Effect.flatMap((exit) => Deferred.succeed(done, exit)),
-          Effect.asVoid,
-          Effect.ensuring(release(stateRef)),
+        yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(
+          acquireBacklogSlot(lane, capacity, policy),
         )
 
-        // Important: slot is already acquired; offer must be uninterruptible to avoid leaking backlog counters.
-        const targetQueue = lane === 'urgent' ? urgentQueue : nonUrgentQueue
-        yield* Effect.uninterruptible(Queue.offer(targetQueue, task).pipe(Effect.zipRight(offerWakeIfNeeded())))
+        const start = yield* Deferred.make<void>()
+        yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(enqueueAndMaybeStart(lane, start))
 
-        const exit = yield* Deferred.await(done)
-        return yield* Exit.match(exit, {
-          onFailure: (cause) => Effect.failCause(cause),
-          onSuccess: (value) => Effect.succeed(value),
-        })
+        return yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(
+          Effect.uninterruptibleMask((restore) =>
+            Effect.ensuring(
+              restore(Deferred.await(start)).pipe(Effect.zipRight(restore(eff))),
+              Effect.uninterruptible(advanceQueue(lane, start).pipe(Effect.zipRight(release(stateRef)))),
+            ),
+          ),
+        )
       })
 
     return enqueueTransaction

@@ -351,15 +351,28 @@ const computeThresholdMaxLevelRelative = (
       }
     }
 
+    const minDeltaMsRaw = budget.minDeltaMs
+    const minDeltaMs = typeof minDeltaMsRaw === 'number' && Number.isFinite(minDeltaMsRaw) ? minDeltaMsRaw : 0
+
     if (denominatorP95.p95Ms <= 0) {
+      // When both sides are effectively 0 (below timer resolution), treat the ratio as non-actionable and pass.
+      // This avoids spurious failures on ultra-fast paths (e.g. synchronous dispatch + microtask flush).
+      if (numeratorP95.p95Ms <= 0) {
+        maxLevel = level
+        continue
+      }
+
+      // If the absolute delta is below the configured floor, treat it as non-actionable even when denominator is 0.
+      // This keeps relative budgets usable under coarse timer resolution.
+      if (numeratorP95.p95Ms - denominatorP95.p95Ms <= minDeltaMs) {
+        maxLevel = level
+        continue
+      }
       return { maxLevel, firstFailLevel: level, reason: 'denominatorZero' }
     }
 
     const ratio = numeratorP95.p95Ms / denominatorP95.p95Ms
     const deltaMs = numeratorP95.p95Ms - denominatorP95.p95Ms
-    const minDeltaMsRaw = budget.minDeltaMs
-    const minDeltaMs =
-      typeof minDeltaMsRaw === 'number' && Number.isFinite(minDeltaMsRaw) ? minDeltaMsRaw : 0
     const overBudget = ratio > budget.maxRatio && deltaMs > minDeltaMs
 
     if (!overBudget) {

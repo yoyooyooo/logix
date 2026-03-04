@@ -32,6 +32,16 @@ type HostScheduler = {
 }
 
 const storesByRuntime = new WeakMap<object, Map<TopicKey, ExternalStore<any>>>()
+const microtaskNotifyQueueByRuntime = new WeakMap<
+  object,
+  {
+    scheduled: boolean
+    readonly pending: Set<() => void>
+    readonly scheduler: HostScheduler
+  }
+>()
+
+const EMPTY_LISTENER_SNAPSHOT: ReadonlyArray<() => void> = []
 
 const getStoreMapForRuntime = (runtime: object): Map<TopicKey, ExternalStore<any>> => {
   const cached = storesByRuntime.get(runtime)
@@ -39,6 +49,40 @@ const getStoreMapForRuntime = (runtime: object): Map<TopicKey, ExternalStore<any
   const next = new Map<TopicKey, ExternalStore<any>>()
   storesByRuntime.set(runtime, next)
   return next
+}
+
+const getOrCreateMicrotaskNotifyQueue = (runtime: ManagedRuntime.ManagedRuntime<any, any>): {
+  scheduled: boolean
+  readonly pending: Set<() => void>
+  readonly scheduler: HostScheduler
+} => {
+  const cached = microtaskNotifyQueueByRuntime.get(runtime as any)
+  if (cached) return cached
+  const created = {
+    scheduled: false,
+    pending: new Set<() => void>(),
+    scheduler: getHostScheduler(runtime),
+  }
+  microtaskNotifyQueueByRuntime.set(runtime as any, created)
+  return created
+}
+
+const enqueueMicrotaskNotify = (runtime: ManagedRuntime.ManagedRuntime<any, any>, flush: () => void): void => {
+  const queue = getOrCreateMicrotaskNotifyQueue(runtime)
+  queue.pending.add(flush)
+  if (queue.scheduled) return
+  queue.scheduled = true
+  queue.scheduler.scheduleMicrotask(() => {
+    queue.scheduled = false
+    for (const fn of queue.pending) {
+      try {
+        fn()
+      } catch {
+        // best-effort
+      }
+    }
+    queue.pending.clear()
+  })
 }
 
 const makeModuleInstanceKey = (moduleId: string, instanceId: string): ModuleInstanceKey => `${moduleId}::${instanceId}`
@@ -90,6 +134,7 @@ const makeTopicExternalStore = <S>(args: {
   let currentSnapshot: S | undefined
 
   const listeners = new Set<() => void>()
+  let listenersSnapshot: ReadonlyArray<() => void> = EMPTY_LISTENER_SNAPSHOT
   let unsubscribeFromRuntimeStore: (() => void) | undefined
 
   const lowPriorityDelayMs = args.options?.lowPriorityDelayMs ?? 16
@@ -115,12 +160,15 @@ const makeTopicExternalStore = <S>(args: {
   const flushNotify = (): void => {
     notifyScheduled = false
     cancelLow()
-    for (const listener of listeners) {
-      try {
-        listener()
-      } catch {
-        // best-effort: never let a subscriber break the notifier
+    const snapshot = listenersSnapshot
+    // Perf: avoid per-listener try/catch overhead in hot paths (runtimeStore.noTearing.tickNotify).
+    // Listener throws are still isolated at the batch level to avoid crashing the tick flush.
+    try {
+      for (let i = 0; i < snapshot.length; i++) {
+        snapshot[i]!()
       }
+    } catch {
+      // best-effort: never let a subscriber break the notifier
     }
   }
 
@@ -156,12 +204,17 @@ const makeTopicExternalStore = <S>(args: {
     cancelLow()
     if (notifyScheduled) return
     notifyScheduled = true
-    hostScheduler.scheduleMicrotask(flushNotify)
+    // Centralize normal-priority microtasks per runtime to reduce overhead under many module topics.
+    enqueueMicrotaskNotify(runtime, flushNotify)
   }
 
   const onRuntimeStoreChange = (): void => {
+    if (notifyScheduled) {
+      return
+    }
     try {
-      scheduleNotify(runtimeStore.getTopicPriority(topicKey))
+      const priority = runtimeStore.getTopicPriority(topicKey)
+      scheduleNotify(priority)
     } catch {
       // ignore best-effort failures (e.g. runtime disposed)
     }
@@ -199,7 +252,11 @@ const makeTopicExternalStore = <S>(args: {
 
   const subscribe = (listener: () => void): (() => void) => {
     const isFirst = listeners.size === 0
-    listeners.add(listener)
+    const alreadyHas = listeners.has(listener)
+    if (!alreadyHas) {
+      listeners.add(listener)
+      listenersSnapshot = Array.from(listeners)
+    }
     ensureSubscription()
     refreshSnapshotIfStale()
     if (isFirst) {
@@ -210,7 +267,10 @@ const makeTopicExternalStore = <S>(args: {
       }
     }
     return () => {
-      listeners.delete(listener)
+      const deleted = listeners.delete(listener)
+      if (deleted) {
+        listenersSnapshot = listeners.size > 0 ? Array.from(listeners) : EMPTY_LISTENER_SNAPSHOT
+      }
       if (listeners.size > 0) return
 
       try {

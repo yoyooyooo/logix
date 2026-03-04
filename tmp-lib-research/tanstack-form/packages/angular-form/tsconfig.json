@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "Bundler",
+    "useDefineForClassFields": false,
+    "paths": {
+      "@tanstack/form-core": ["../form-core/src"]
+    }
+  },
+  "include": ["src", "tests", "eslint.config.js", "vite.config.ts"]
+}

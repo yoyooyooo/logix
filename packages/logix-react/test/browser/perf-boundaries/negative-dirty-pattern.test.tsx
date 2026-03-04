@@ -20,6 +20,15 @@ type PatternState = {
 
 const stateByKey = new Map<string, PatternState>()
 
+const readBoolEnv = (raw: unknown): boolean => {
+  if (raw === true) return true
+  if (typeof raw !== 'string') return false
+  const trimmed = raw.trim().toLowerCase()
+  return trimmed === '1' || trimmed === 'true' || trimmed === 'yes' || trimmed === 'on'
+}
+
+const OUTLIER_CAPTURE_ENABLED = readBoolEnv(import.meta.env.VITE_LOGIX_PERF_OUTLIER_CAPTURE)
+
 const stableParamsKey = (params: Record<string, unknown>): string => {
   const keys = Object.keys(params).sort()
   return keys.map((k) => `${k}=${String((params as any)[k])}`).join('&')
@@ -123,6 +132,13 @@ test('browser negative boundaries: dirty-pattern adversarial scenarios', { timeo
     const controlPlane = readConvergeControlPlaneFromEnv()
     const runtimeByKey = new Map<string, ConvergeRuntime>()
     const lastEvictsByKey = new Map<string, number>()
+    const outlierByKey = new Map<
+      string,
+      {
+        maxTxnCommitMs: number
+        maxDetail: string | undefined
+      }
+    >()
 
     try {
       const { points, thresholds } = await runMatrixSuite(
@@ -132,12 +148,31 @@ test('browser negative boundaries: dirty-pattern adversarial scenarios', { timeo
           const convergeMode = params.convergeMode as 'full' | 'auto'
           const steps = params.steps as number
           const patternKind = params.patternKind as PatternKind
+          const evidenceStart = Math.max(0, runs - (warmupDiscard + 1))
 
           const key = `${convergeMode}:${steps}`
           const cached = runtimeByKey.get(key) ?? makeConvergeRuntime(steps, convergeMode, { captureDecision: true })
           runtimeByKey.set(key, cached)
 
           const { indices, iteration } = chooseDirtyIndices(params as any, patternKind)
+          const emitEvidence = iteration >= evidenceStart
+
+          const outlierKey = stableParamsKey({
+            steps,
+            dirtyRootsRatio: params.dirtyRootsRatio as number,
+            uniquePatternPoolSize: params.uniquePatternPoolSize as number,
+            patternKind,
+            seed: params.seed as number,
+            convergeMode,
+          })
+          const outlier =
+            outlierByKey.get(outlierKey) ??
+            (() => {
+              const created = { maxTxnCommitMs: -Infinity, maxDetail: undefined }
+              outlierByKey.set(outlierKey, created)
+              return created
+            })()
+
           cached.clearLastConvergeDecision()
 
           const program = Effect.gen(function* () {
@@ -175,19 +210,58 @@ test('browser negative boundaries: dirty-pattern adversarial scenarios', { timeo
 
           const decision = cached.getLastConvergeDecision() as any
 
+          if (OUTLIER_CAPTURE_ENABLED && iteration >= warmupDiscard && end - start > outlier.maxTxnCommitMs) {
+            outlier.maxTxnCommitMs = end - start
+
+            const pickConverge = (d: any): unknown => {
+              if (!d || typeof d !== 'object') return undefined
+              return {
+                requestedMode: d.requestedMode,
+                executedMode: d.executedMode,
+                outcome: d.outcome,
+                reasons: Array.isArray(d.reasons) ? d.reasons.slice(0, 8) : d.reasons,
+                decisionBudgetMs: d.decisionBudgetMs,
+                decisionDurationMs: d.decisionDurationMs,
+                executionBudgetMs: d.executionBudgetMs,
+                executionDurationMs: d.executionDurationMs,
+                stepStats: d.stepStats,
+                dirty: d.dirty,
+                cache: d.cache,
+              }
+            }
+
+            try {
+              outlier.maxDetail = JSON.stringify({
+                txnCommitMs: Number((end - start).toFixed(3)),
+                iteration,
+                steps,
+                patternKind,
+                uniquePatternPoolSize: params.uniquePatternPoolSize as number,
+                dirtyRootsRatio: params.dirtyRootsRatio as number,
+                convergeMode,
+                converge: pickConverge(decision),
+              })
+            } catch {
+              outlier.maxDetail = `unserializable_outlier txnCommitMs=${Number((end - start).toFixed(3))} iteration=${iteration}`
+            }
+          }
+
           if (convergeMode !== 'auto') {
             return {
               metrics: {
                 'runtime.txnCommitMs': end - start,
                 'runtime.decisionMs': { unavailableReason: 'notApplicable' },
               },
-              evidence: {
-                'cache.size': { unavailableReason: 'notApplicable' },
-                'cache.hit': { unavailableReason: 'notApplicable' },
-                'cache.miss': { unavailableReason: 'notApplicable' },
-                'cache.evict': { unavailableReason: 'notApplicable' },
-                'cache.invalidate': { unavailableReason: 'notApplicable' },
-              },
+              evidence: emitEvidence
+                ? {
+                    'cache.size': { unavailableReason: 'notApplicable' },
+                    'cache.hit': { unavailableReason: 'notApplicable' },
+                    'cache.miss': { unavailableReason: 'notApplicable' },
+                    'cache.evict': { unavailableReason: 'notApplicable' },
+                    'cache.invalidate': { unavailableReason: 'notApplicable' },
+                    ...(OUTLIER_CAPTURE_ENABLED ? { 'outlier.max': outlier.maxDetail ?? '' } : {}),
+                  }
+                : undefined,
             }
           }
 
@@ -197,6 +271,18 @@ test('browser negative boundaries: dirty-pattern adversarial scenarios', { timeo
           const prevEvicts = lastEvictsByKey.get(key) ?? 0
           lastEvictsByKey.set(key, cacheEvicts)
           const evictDelta = Math.max(0, cacheEvicts - prevEvicts)
+
+          if (!emitEvidence) {
+            return {
+              metrics: {
+                'runtime.txnCommitMs': end - start,
+                'runtime.decisionMs':
+                  typeof decision?.decisionDurationMs === 'number'
+                    ? decision.decisionDurationMs
+                    : { unavailableReason: 'decisionMissing' },
+              },
+            }
+          }
 
           return {
             metrics: {
@@ -212,6 +298,7 @@ test('browser negative boundaries: dirty-pattern adversarial scenarios', { timeo
               'cache.miss': cache ? (cacheHit ? 0 : 1) : { unavailableReason: 'cacheMissing' },
               'cache.evict': cache ? evictDelta : { unavailableReason: 'cacheMissing' },
               'cache.invalidate': cache && cache.missReason === 'generation_bumped' ? 1 : 0,
+              ...(OUTLIER_CAPTURE_ENABLED ? { 'outlier.max': outlier.maxDetail ?? '' } : {}),
             },
           }
         },

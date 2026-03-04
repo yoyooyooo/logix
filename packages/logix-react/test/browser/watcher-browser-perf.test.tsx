@@ -69,7 +69,7 @@ test(
           try {
             await expect.element(screen.getByText('Value: 0')).toBeInTheDocument()
 
-            const button = screen.getByRole('button', { name: 'Increment' })
+            const button = screen.getByRole('button', { name: 'Increment' }).first()
             const start = performance.now()
             await button.click()
             await expect.element(screen.getByText(`Value: ${watchers}`)).toBeInTheDocument()

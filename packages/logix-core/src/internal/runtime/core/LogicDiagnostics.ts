@@ -84,7 +84,10 @@ export interface LogicPhaseService {
   readonly current: 'setup' | 'run'
 }
 
-export const LogicPhaseServiceTag = Context.GenericTag<LogicPhaseService>('@logixjs/LogicPhaseService')
+export class LogicPhaseServiceTag extends Context.Tag('@logixjs/LogicPhaseService')<
+  LogicPhaseServiceTag,
+  LogicPhaseService
+>() {}
 
 /**
  * LogicUnitService:

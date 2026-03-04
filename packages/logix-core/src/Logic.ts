@@ -10,10 +10,7 @@ export * from './internal/LogicMiddleware.js'
 /**
  * Core Tag for retrieving the current ModuleRuntime within a Logic scope.
  */
-export const RuntimeTag: Context.Tag<any, Logix.ModuleRuntime<any, any>> = Context.GenericTag<
-  any,
-  Logix.ModuleRuntime<any, any>
->('@logixjs/Runtime')
+export class RuntimeTag extends Context.Tag('@logixjs/Runtime')<RuntimeTag, Logix.ModuleRuntime<any, any>>() {}
 
 // Public Platform alias (equivalent to internal/platform/Platform.Service).
 export type Platform = PlatformInternal.Service

@@ -142,6 +142,15 @@ interface StateTxnState<S> {
    * - Independent of instrumentation: light mode does not keep patches, but still maintains dirtyPathIds/dirtyAllReason for low-cost semantics (e.g. scheduling/diagnostics).
    */
   readonly dirtyPathIds: Set<FieldPathId>
+  /**
+   * dirtyPathIdsKeyHash / dirtyPathIdsKeySize:
+   * - Incrementally maintained key for the current dirtyPathIds Set (in insertion order),
+   *   optimized for ultra-hot converge paths (inline_dirty micro-cache).
+   * - Hash: FNV-1a (32-bit) over unique FieldPathIds in Set insertion order.
+   * - Size: number of unique ids (mirrors dirtyPathIds.size when no dirtyAllReason).
+   */
+  dirtyPathIdsKeyHash: number
+  dirtyPathIdsKeySize: number
   dirtyAllReason?: DirtyAllReason
 }
 
@@ -305,6 +314,8 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     patchCount: 0,
     patchesTruncated: false,
     dirtyPathIds: new Set(),
+    dirtyPathIdsKeyHash: 2166136261 >>> 0,
+    dirtyPathIdsKeySize: 0,
     dirtyAllReason: undefined,
   }
 
@@ -392,6 +403,8 @@ export const beginTransaction = <S>(ctx: StateTxnContext<S>, origin: StateTxnOri
   state.patchesTruncated = false
   state.fieldPathIdRegistry = ctx.config.getFieldPathIdRegistry?.()
   state.dirtyPathIds.clear()
+  state.dirtyPathIdsKeyHash = 2166136261 >>> 0
+  state.dirtyPathIdsKeySize = 0
   state.dirtyAllReason = undefined
   ctx.current = state
 }
@@ -437,12 +450,74 @@ const resolveAndRecordDirtyPathId = <S>(
     }
     id = n
   } else if (typeof path === 'string') {
+    // Fast path: direct dot-separated lookup.
     const direct = registry.pathStringToId?.get(path)
-    if (direct == null) {
-      state.dirtyAllReason = 'fallbackPolicy'
-      return undefined
+    if (direct != null) {
+      id = direct
+    } else {
+      // Structural string fallback: support list/index syntax such as:
+      // - "b123[456]" / "b123[]"   -> "b123"
+      // - "a.0.b" / "a.0.b[3].c"   -> "a.b.c"
+      //
+      // IMPORTANT: only attempt normalization when the input clearly contains structural syntax
+      // (brackets or a numeric segment). This avoids accidentally interpreting literal "." keys
+      // (which are intentionally excluded from pathStringToId due to ambiguity).
+
+      const dotIdx = path.indexOf('.')
+      const bracketIdx = path.indexOf('[')
+
+      // Extremely hot case in perf boundaries: single-segment "foo[123]" should not allocate.
+      if (dotIdx < 0 && bracketIdx > 0) {
+        const base = path.slice(0, bracketIdx)
+        const baseDirect = registry.pathStringToId?.get(base)
+        if (baseDirect != null) {
+          id = baseDirect
+        }
+      }
+
+      if (id == null) {
+        let hasStructuralSyntax = bracketIdx >= 0 || path.indexOf(']') >= 0
+
+        // Detect ".<digits>(.|$)" segments without regex allocations.
+        if (!hasStructuralSyntax) {
+          for (let i = 0; i < path.length; i++) {
+            if (path.charCodeAt(i) !== 46 /* '.' */) continue
+            let j = i + 1
+            if (j >= path.length) break
+            const c = path.charCodeAt(j)
+            if (c < 48 /* '0' */ || c > 57 /* '9' */) continue
+
+            while (j < path.length) {
+              const d = path.charCodeAt(j)
+              if (d < 48 /* '0' */ || d > 57 /* '9' */) break
+              j += 1
+            }
+
+            if (j === path.length || path.charCodeAt(j) === 46 /* '.' */) {
+              hasStructuralSyntax = true
+              break
+            }
+
+            i = j
+          }
+        }
+
+        if (hasStructuralSyntax) {
+          const normalized = normalizeFieldPath(path)
+          if (normalized) {
+            const next = getFieldPathId(registry, normalized)
+            if (next != null) {
+              id = next
+            }
+          }
+        }
+      }
+
+      if (id == null) {
+        state.dirtyAllReason = 'fallbackPolicy'
+        return undefined
+      }
     }
-    id = direct
   } else {
     const normalized = normalizeFieldPath(path)
     if (!normalized) {
@@ -459,6 +534,16 @@ const resolveAndRecordDirtyPathId = <S>(
   }
 
   state.dirtyPathIds.add(id)
+  // Maintain an incremental key for inline_dirty micro-cache without scanning the Set.
+  // Only update when the id is newly inserted (Set ignores duplicates but keeps insertion order).
+  const afterSize = state.dirtyPathIds.size
+  if (afterSize !== state.dirtyPathIdsKeySize) {
+    let h = state.dirtyPathIdsKeyHash >>> 0
+    h ^= id >>> 0
+    h = Math.imul(h, 16777619)
+    state.dirtyPathIdsKeyHash = h >>> 0
+    state.dirtyPathIdsKeySize = afterSize
+  }
   return id
 }
 

@@ -503,9 +503,40 @@ const stripTraitCheckLight = (value: JsonValue): JsonValue => {
   const degraded = anyValue.degraded
   const degradedSlim =
     degraded && typeof degraded === 'object' && !Array.isArray(degraded) ? { kind: (degraded as any).kind } : undefined
+  const summary = anyValue.summary
+  let summarySlim: Record<string, number> | undefined
+  if (summary && typeof summary === 'object' && !Array.isArray(summary)) {
+    const candidate: Record<string, number> = {}
+    let hasSummaryField = false
+    if (typeof (summary as any).scannedRows === 'number') {
+      candidate.scannedRows = (summary as any).scannedRows
+      hasSummaryField = true
+    }
+    if (typeof (summary as any).affectedRows === 'number') {
+      candidate.affectedRows = (summary as any).affectedRows
+      hasSummaryField = true
+    }
+    if (typeof (summary as any).changedRows === 'number') {
+      candidate.changedRows = (summary as any).changedRows
+      hasSummaryField = true
+    }
+    if (hasSummaryField) {
+      summarySlim = candidate
+    }
+  }
 
-  const { degraded: _degraded, ...rest } = anyValue
-  return (degradedSlim ? { ...rest, degraded: degradedSlim } : rest) as JsonValue
+  const slim: Record<string, unknown> = {}
+  if (typeof anyValue.ruleId === 'string') slim.ruleId = anyValue.ruleId
+  if (Array.isArray(anyValue.scopeFieldPath)) slim.scopeFieldPath = anyValue.scopeFieldPath
+  if (typeof anyValue.mode === 'string') slim.mode = anyValue.mode
+  if (anyValue.trigger && typeof anyValue.trigger === 'object' && !Array.isArray(anyValue.trigger)) {
+    slim.trigger = anyValue.trigger
+  }
+  if (typeof anyValue.rowIdMode === 'string') slim.rowIdMode = anyValue.rowIdMode
+  if (summarySlim) slim.summary = summarySlim
+  if (degradedSlim) slim.degraded = degradedSlim
+
+  return slim as JsonValue
 }
 
 // In browsers, to reduce duplicated noise caused by React StrictMode, etc.,
@@ -899,7 +930,7 @@ export const record = (event: Event) =>
         ;(enriched as any).txnId = txnId
       }
     }
-    // linkId is meaningful only for EffectOp events: avoid extra FiberRef reads on high-frequency events (state:update, etc.).
+
     if (
       diagnosticsLevel !== 'off' &&
       (enriched as any).type === 'trace:effectop' &&

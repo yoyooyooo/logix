@@ -76,6 +76,16 @@ type RuleContext = {
     readonly listPath?: string
     readonly listIndexPath?: ReadonlyArray<number>
     readonly index?: number
+    /**
+     * list-scope check hint: stable RowId accessor for the current list instance.
+     * Used by optimized list rules to cache/skip full rescans without requiring an O(n) rowId array.
+     */
+    readonly rowIdAt?: (index: number) => string
+    /**
+     * list-scope check hint: indices that are known to be relevant for this validation batch.
+     * Derived from item/field validate targets (best-effort).
+     */
+    readonly changedIndices?: ReadonlyArray<number>
   }
 }
 
@@ -133,7 +143,9 @@ const unsetAtPathMutating = (draft: unknown, path: string): void => {
 
   const last = segments[segments.length - 1]!
   if (Array.isArray(current) && typeof last === 'number') {
-    current[last] = undefined
+    // Keep `errors.*.rows` arrays sparse to avoid dense-undefined scans (perf + variance).
+    // Note: `delete` keeps `.length` unchanged but removes the element key (hole).
+    delete current[last]
     return
   }
   if (current && typeof current === 'object') {
@@ -356,6 +368,7 @@ const evalListScopeCheck = (
       readonly errorsBasePath: string
       readonly errorsRoot: unknown
     }
+    readonly traceLite?: boolean
   },
 ): ListScopeResult | typeof RULE_SKIP => {
   const rules = entry.meta.rules as Record<string, any>
@@ -368,15 +381,20 @@ const evalListScopeCheck = (
   let touchedListError = false
   const touchedKeys = new Set<string>()
   const listPath = ctx.scope.listPath ?? ctx.scope.fieldPath
+  const scannedRows = Array.isArray(input) ? input.length : 0
 
   const mergeRows = (incomingRows: ReadonlyArray<unknown>): void => {
     if (!rows) rows = []
-    const limit = Math.max(rows.length, incomingRows.length)
-    if (rows.length < limit) rows.length = limit
+    if (rows.length < incomingRows.length) rows.length = incomingRows.length
 
-    for (let i = 0; i < incomingRows.length; i++) {
-      const merged = mergeRowPatchPreferFirst(rows[i], incomingRows[i])
-      rows[i] = merged
+    // Sparse merge: most list-scope rules only touch a small number of rows.
+    for (const key of Object.keys(incomingRows as any)) {
+      const index = Number(key)
+      if (!Number.isInteger(index) || index < 0) continue
+      const incoming = (incomingRows as any)[index]
+      if (incoming === undefined) continue
+      const merged = mergeRowPatchPreferFirst(rows[index], incoming)
+      rows[index] = merged
     }
   }
 
@@ -400,8 +418,42 @@ const evalListScopeCheck = (
     let setCount = 0
     let clearedCount = 0
 
-    for (let index = 0; index < scannedRows; index++) {
-      const prevRow = getAtPath(options?.trace?.errorsRoot as any, `${errorsBasePath}.rows.${index}`)
+    const prevRowsAny = getAtPath(options?.trace?.errorsRoot as any, `${errorsBasePath}.rows`)
+    const prevRowsLike =
+      prevRowsAny && typeof prevRowsAny === 'object' && !Array.isArray(prevRowsAny) ? (prevRowsAny as any) : undefined
+    const prevRows = Array.isArray(prevRowsAny) ? prevRowsAny : undefined
+
+    const indices = new Set<number>()
+    const addIndex = (k: string): void => {
+      const i = Number(k)
+      if (!Number.isInteger(i) || i < 0 || i >= scannedRows) return
+      indices.add(i)
+    }
+
+    if (rowsPatch && typeof rowsPatch === 'object') {
+      for (const k of Object.keys(rowsPatch as any)) {
+        const v = (rowsPatch as any)[k]
+        if (v === undefined) continue
+        addIndex(k)
+      }
+    }
+
+    if (prevRows && typeof prevRows === 'object') {
+      for (const k of Object.keys(prevRows as any)) {
+        const v = (prevRows as any)[k]
+        if (v === undefined) continue
+        addIndex(k)
+      }
+    } else if (prevRowsLike && typeof prevRowsLike === 'object') {
+      for (const k of Object.keys(prevRowsLike as any)) {
+        const v = (prevRowsLike as any)[k]
+        if (v === undefined) continue
+        addIndex(k)
+      }
+    }
+
+    for (const index of Array.from(indices).sort((a, b) => a - b)) {
+      const prevRow = prevRows ? prevRows[index] : prevRowsLike ? prevRowsLike[index] : undefined
       const prevObj = isPlainObject(prevRow) ? (prevRow as Record<string, unknown>) : undefined
       const patch = rowsPatch?.[index]
       const patchObj = isPlainObject(patch) ? (patch as Record<string, unknown>) : undefined
@@ -434,6 +486,7 @@ const evalListScopeCheck = (
   for (const name of names) {
     const rule = rules[name]
     const collectTrace = options?.trace?.listPath && options?.trace?.errorsRoot
+    const collectTraceLite = options?.traceLite === true
     const startedAt = collectTrace ? nowMs() : 0
     try {
       const out =
@@ -446,15 +499,14 @@ const evalListScopeCheck = (
       if (out === RULE_SKIP) continue
       ran = true
 
-      for (const key of collectRuleKeysFromDeps(rule, listPath)) {
+      const keysFromDeps = collectRuleKeysFromDeps(rule, listPath)
+
+      for (const key of keysFromDeps) {
         touchedKeys.add(key)
       }
 
       if (collectTrace) {
-        const traceListPath = options!.trace!.listPath
         const traceErrorsBasePath = options!.trace!.errorsBasePath
-        const keys = collectRuleKeysFromDeps(rule, traceListPath)
-        const scannedRows = Array.isArray(input) ? input.length : 0
 
         const rowsPatch: ReadonlyArray<unknown> | undefined = Array.isArray(out)
           ? out
@@ -462,7 +514,7 @@ const evalListScopeCheck = (
             ? ((out as any).rows as ReadonlyArray<unknown>)
             : undefined
 
-        const summary = summarizeRuleRows(traceErrorsBasePath, keys, scannedRows, rowsPatch)
+        const summary = summarizeRuleRows(traceErrorsBasePath, keysFromDeps, scannedRows, rowsPatch)
         const durationMs = Math.max(0, nowMs() - startedAt)
 
         if (!traces) traces = []
@@ -475,6 +527,16 @@ const evalListScopeCheck = (
             setCount: summary.setCount,
             clearedCount: summary.clearedCount,
             durationMs,
+          },
+        })
+      } else if (collectTraceLite) {
+        if (!traces) traces = []
+        traces.push({
+          ruleId: `${entry.fieldPath}#${name}`,
+          summary: {
+            scannedRows,
+            affectedRows: 0,
+            changedRows: 0,
           },
         })
       }
@@ -575,16 +637,73 @@ const toListInstanceKey = (listPath: string, listIndexPath: ReadonlyArray<number
   return p.length === 0 ? `${listPath}@@` : `${listPath}@@${p.join(',')}`
 }
 
-const extractIndexBindings = (requests: ReadonlyArray<ScopedValidateRequest>): Map<string, ReadonlySet<number>> => {
-  const map = new Map<string, Set<number>>()
-  for (const req of requests) {
-    if (req.target.kind !== 'item') continue
-    const key = toListInstanceKey(req.target.path, req.target.listIndexPath)
-    const set = map.get(key) ?? new Set<number>()
-    set.add(req.target.index)
-    map.set(key, set)
+const extractIndexBindingsAndInstanceIndexPaths = (
+  requests: ReadonlyArray<ScopedValidateRequest>,
+): {
+  readonly indexBindings: Map<string, ReadonlySet<number>>
+  readonly instanceIndexPathByKey: Map<string, ReadonlyArray<number>>
+} => {
+  const indexBindings = new Map<string, Set<number>>()
+  const instanceIndexPathByKey = new Map<string, ReadonlyArray<number>>()
+
+  const ensureInstanceIndexPath = (listPath: string, listIndexPath: ReadonlyArray<number> | undefined): string => {
+    const normalized = normalizeListIndexPath(listIndexPath)
+    const key = toListInstanceKey(listPath, normalized)
+    if (!instanceIndexPathByKey.has(key)) {
+      instanceIndexPathByKey.set(key, normalized)
+    }
+    return key
   }
-  return map
+
+  const addIndexBinding = (listPath: string, listIndexPath: ReadonlyArray<number> | undefined, index: number): void => {
+    if (!Number.isInteger(index) || index < 0) return
+    const key = ensureInstanceIndexPath(listPath, listIndexPath)
+    const set = indexBindings.get(key) ?? new Set<number>()
+    set.add(index)
+    indexBindings.set(key, set)
+  }
+
+  for (const req of requests) {
+    const target = req.target
+    if (target.kind === 'item') {
+      addIndexBinding(target.path, target.listIndexPath, target.index)
+      continue
+    }
+    if (target.kind === 'list') {
+      // Needed for nested list instance enumeration (listIndexPath comes from the ref).
+      ensureInstanceIndexPath(target.path, target.listIndexPath)
+      continue
+    }
+    if (target.kind === 'field') {
+      // Best-effort: treat numeric segments as list indices, and derive index bindings for list/item scopes.
+      // This enables incremental list-scope rules even when callers validate by concrete valuePath ("items.10.x").
+      const segments = target.path.split('.').filter(Boolean)
+      const listPathSegments: Array<string> = []
+      const listIndexPath: Array<number> = []
+      for (const seg of segments) {
+        if (/^[0-9]+$/.test(seg)) {
+          if (listPathSegments.length === 0) continue
+          const idx = Number(seg)
+          if (!Number.isFinite(idx) || idx < 0) continue
+          const n = Math.floor(idx)
+          addIndexBinding(listPathSegments.join('.'), listIndexPath, n)
+          // Descend into this list item: subsequent nested list bindings should carry this index as parent listIndexPath.
+          listIndexPath.push(n)
+          continue
+        }
+        listPathSegments.push(seg)
+      }
+      continue
+    }
+  }
+
+  const readonlyIndexBindings = new Map<string, ReadonlySet<number>>()
+  for (const [k, set] of indexBindings) readonlyIndexBindings.set(k, set)
+
+  return {
+    indexBindings: readonlyIndexBindings,
+    instanceIndexPathByKey,
+  }
 }
 
 const extractListBindings = (
@@ -680,6 +799,8 @@ export const validateInTransaction = <S extends object>(
   Effect.gen(function* () {
     const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
     const enableTrace = diagnosticsLevel !== 'off'
+    const enableTraceDetail = diagnosticsLevel === 'full' || diagnosticsLevel === 'sampled'
+    const enableTraceLite = diagnosticsLevel === 'light'
     const traceEvents: Array<Debug.Event> | undefined = enableTrace ? [] : undefined
 
     yield* Effect.sync(() => {
@@ -732,20 +853,14 @@ export const validateInTransaction = <S extends object>(
       }
 
       // Item-scope bindings: used only for non-root validate (root validate runs full length by current arrays).
-      const indexBindings = extractIndexBindings(requests)
+      // Includes best-effort extraction from field valuePaths with numeric segments (e.g. "items.10.x").
+      const extracted = extractIndexBindingsAndInstanceIndexPaths(requests)
+      const indexBindings = extracted.indexBindings
+      const instanceIndexPathByKey = extracted.instanceIndexPathByKey
+
       const listBindings = extractListBindings(requests)
       const listBindingsAll = listBindings.all
       const listBindingsInstances = listBindings.instances
-
-      const instanceIndexPathByKey = (() => {
-        const map = new Map<string, ReadonlyArray<number>>()
-        for (const req of requests) {
-          if (req.target.kind !== 'item' && req.target.kind !== 'list') continue
-          const key = toListInstanceKey(req.target.path, req.target.listIndexPath)
-          map.set(key, normalizeListIndexPath(req.target.listIndexPath))
-        }
-        return map
-      })()
 
       const updates: Array<ErrorUpdate> = []
 
@@ -781,7 +896,7 @@ export const validateInTransaction = <S extends object>(
         readonly parentRowId?: RowId.RowId
         readonly items: ReadonlyArray<unknown>
         readonly trackBy?: string
-        readonly rowIds?: ReadonlyArray<string>
+        readonly rowIdAt?: (index: number) => string
       }
 
       const listPaths = Array.from(listConfigByPath.keys())
@@ -838,9 +953,23 @@ export const validateInTransaction = <S extends object>(
         if (!parent) {
           const listValue = getAtPath(draft, listPath)
           const items: ReadonlyArray<unknown> = Array.isArray(listValue) ? listValue : []
-          const rowIds: ReadonlyArray<string> | undefined = ctx.rowIdStore
-            ? ctx.rowIdStore.ensureList(listPath, items, trackBy)
-            : undefined
+          // Correctness: lists without trackBy must reconcile rowIds on every validate window,
+          // otherwise nested list rowId bindings can break under parent reorder.
+          const ensuredRowIds: ReadonlyArray<string> | undefined =
+            ctx.rowIdStore && !trackBy ? ctx.rowIdStore.ensureList(listPath, items, trackBy) : undefined
+          const rowIdAt = (index: number): string => {
+            if (index < 0 || index >= items.length) return String(index)
+            const item = items[index]
+            if (trackBy) {
+              const k = readTrackBy(item, trackBy)
+              if (k !== undefined) return String(k)
+            }
+            const fromEnsured = ensuredRowIds?.[index]
+            if (typeof fromEnsured === 'string' && fromEnsured.length > 0) return fromEnsured
+            const fromStore = ctx.rowIdStore?.getRowId(listPath, index)
+            if (typeof fromStore === 'string' && fromStore.length > 0) return fromStore
+            return String(index)
+          }
 
           const out: ListRuntime = {
             listPath,
@@ -849,7 +978,7 @@ export const validateInTransaction = <S extends object>(
             errorBasePath: `errors.${listPath}`,
             items,
             trackBy,
-            rowIds,
+            rowIdAt,
           }
           listRuntimeByKey.set(cacheKey, out)
           return out
@@ -872,12 +1001,25 @@ export const validateInTransaction = <S extends object>(
         const items: ReadonlyArray<unknown> = Array.isArray(listValue) ? listValue : []
 
         const parentRowId =
-          (parentRuntime.rowIds?.[parentIndex] as any) ??
+          (parentRuntime.rowIdAt ? (parentRuntime.rowIdAt(parentIndex) as any) : undefined) ??
           (ctx.rowIdStore ? ctx.rowIdStore.getRowId(parent, parentIndex, parentRuntime.parentRowId) : undefined)
 
-        const rowIds: ReadonlyArray<string> | undefined = ctx.rowIdStore
-          ? ctx.rowIdStore.ensureList(listPath, items, trackBy, parentRowId)
-          : undefined
+        // See root list comment above: ensure mapping for no-trackBy lists to preserve stability under reorder.
+        const ensuredRowIds: ReadonlyArray<string> | undefined =
+          ctx.rowIdStore && !trackBy ? ctx.rowIdStore.ensureList(listPath, items, trackBy, parentRowId) : undefined
+        const rowIdAt = (index: number): string => {
+          if (index < 0 || index >= items.length) return String(index)
+          const item = items[index]
+          if (trackBy) {
+            const k = readTrackBy(item, trackBy)
+            if (k !== undefined) return String(k)
+          }
+          const fromEnsured = ensuredRowIds?.[index]
+          if (typeof fromEnsured === 'string' && fromEnsured.length > 0) return fromEnsured
+          const fromStore = ctx.rowIdStore?.getRowId(listPath, index, parentRowId)
+          if (typeof fromStore === 'string' && fromStore.length > 0) return fromStore
+          return String(index)
+        }
 
         const out: ListRuntime = {
           listPath,
@@ -887,7 +1029,7 @@ export const validateInTransaction = <S extends object>(
           parentRowId,
           items,
           trackBy,
-          rowIds,
+          rowIdAt,
         }
         listRuntimeByKey.set(cacheKey, out)
         return out
@@ -927,12 +1069,18 @@ export const validateInTransaction = <S extends object>(
 
       const rowDrafts = new Map<string, RowDraft>()
 
-      const getOrCreateRowDraft = (list: ListRuntime, index: number, stepId: string): RowDraft => {
+      const ROW_DRAFT_PREV_NOT_PROVIDED = Symbol.for('logix.state-trait.validate.rowDraftPrev.notProvided')
+      const getOrCreateRowDraft = (
+        list: ListRuntime,
+        index: number,
+        stepId: string,
+        prevRow: unknown | typeof ROW_DRAFT_PREV_NOT_PROVIDED = ROW_DRAFT_PREV_NOT_PROVIDED,
+      ): RowDraft => {
         const errorPath = `${list.errorBasePath}.rows.${index}`
         const existing = rowDrafts.get(errorPath)
         if (existing) return existing
 
-        const prev = getAtPath(draft, errorPath)
+        const prev = prevRow === ROW_DRAFT_PREV_NOT_PROVIDED ? getAtPath(draft, errorPath) : prevRow
         const next: Record<string, unknown> = isPlainObject(prev) ? { ...(prev as any) } : {}
 
         const out: RowDraft = {
@@ -1016,6 +1164,19 @@ export const validateInTransaction = <S extends object>(
           for (const listRuntime of listInstances) {
             const items = listRuntime.items
 
+            const instanceKey = toListInstanceKey(listPath, listRuntime.listIndexPath)
+
+            // Best-effort changed indices hint for incremental list-scope rules.
+            // Only safe when the validate batch is scoped by item targets (no list/root bindings).
+            const changedIndices: ReadonlyArray<number> | undefined =
+              hasRoot || listBindingsAll.has(listPath) || listBindingsInstances.has(instanceKey)
+                ? undefined
+                : (() => {
+                    const set = indexBindings.get(instanceKey)
+                    if (!set || set.size === 0) return undefined
+                    return Array.from(set).sort((a, b) => a - b)
+                  })()
+
             const trigger = enableTrace ? toTraitCheckTrigger(ctx.origin, listPath) : undefined
 
             const scopeFieldPathSegments = enableTrace ? normalizeTraitCheckPath(listPath) : undefined
@@ -1038,12 +1199,20 @@ export const validateInTransaction = <S extends object>(
               {
                 mode,
                 state: draft,
-                scope: { fieldPath: scopeFieldPath, listPath, listIndexPath: listRuntime.listIndexPath },
+                scope: {
+                  fieldPath: scopeFieldPath,
+                  listPath,
+                  listIndexPath: listRuntime.listIndexPath,
+                  rowIdAt: listRuntime.rowIdAt,
+                  changedIndices,
+                },
               },
-              enableTrace
+              enableTraceDetail
                 ? {
                     trace: { listPath, errorsBasePath: listRuntime.errorBasePath, errorsRoot: draft },
                   }
+                : enableTraceLite
+                  ? { traceLite: true }
                 : undefined,
             )
             if (next === RULE_SKIP) continue
@@ -1095,18 +1264,78 @@ export const validateInTransaction = <S extends object>(
             }
 
             const rows = next.rows ?? []
-            const prevRows = getAtPath(draft, `${listRuntime.errorBasePath}.rows`)
-            const prevLen = Array.isArray(prevRows) ? prevRows.length : 0
-            const limit = Math.max(items.length, rows.length, prevLen)
+            const prevRowsAny = getAtPath(draft, `${listRuntime.errorBasePath}.rows`)
+            const prevRows =
+              prevRowsAny && typeof prevRowsAny === 'object' && !Array.isArray(prevRowsAny)
+                ? (prevRowsAny as any)
+                : Array.isArray(prevRowsAny)
+                  ? prevRowsAny
+                  : undefined
 
-            for (let index = 0; index < limit; index++) {
-              const rowErrorPath = `${listRuntime.errorBasePath}.rows.${index}`
+            const hasRelevantKeys = (obj: Record<string, unknown>, deps: ReadonlySet<string>): boolean => {
+              for (const k in obj) {
+                if (!Object.prototype.hasOwnProperty.call(obj, k)) continue
+                if (k === '$rowId') continue
+                if (deps.has(k)) return true
+              }
+              return false
+            }
+
+            const isOnlyRowId = (obj: Record<string, unknown>): boolean => {
+              let hasRowId = false
+              for (const k in obj) {
+                if (!Object.prototype.hasOwnProperty.call(obj, k)) continue
+                if (k === '$rowId') {
+                  hasRowId = true
+                  continue
+                }
+                return false
+              }
+              return hasRowId
+            }
+
+            const rowErrorPrefix = `${listRuntime.errorBasePath}.rows.`
+
+            const indicesToVisit = (() => {
+              const set = new Set<number>()
+              const addIndex = (k: string): void => {
+                const i = Number(k)
+                if (!Number.isInteger(i) || i < 0) return
+                set.add(i)
+              }
+
+              // Patch indices (sparse by convention).
+              if (rows && typeof rows === 'object') {
+                for (const k of Object.keys(rows as any)) {
+                  const v = (rows as any)[k]
+                  if (v === undefined) continue
+                  addIndex(k)
+                }
+              }
+
+              // Existing error indices (sparse if we keep delete-holes on clear).
+              if (prevRows && typeof prevRows === 'object') {
+                for (const k of Object.keys(prevRows as any)) {
+                  const v = (prevRows as any)[k]
+                  if (v === undefined) continue
+                  addIndex(k)
+                }
+              }
+
+              return Array.from(set).sort((a, b) => a - b)
+            })()
+
+            for (const index of indicesToVisit) {
+              const rowErrorPath = `${rowErrorPrefix}${index}`
               const existing = rowDrafts.get(rowErrorPath)
 
               if (index >= items.length) {
-                const prevRow = existing?.prev ?? getAtPath(draft, rowErrorPath)
+                const prevRow =
+                  existing?.prev ?? (prevRows ? (prevRows as any)[index] : getAtPath(draft, rowErrorPath))
                 if (prevRow === undefined && !existing) continue
-                const row = existing ?? getOrCreateRowDraft(listRuntime, index, makeStepId(scopeFieldPath, index))
+                const row =
+                  existing ??
+                  getOrCreateRowDraft(listRuntime, index, makeStepId(scopeFieldPath, index), prevRow)
                 row.removed = true
                 for (const key of Object.keys(row.next)) {
                   delete row.next[key]
@@ -1114,7 +1343,7 @@ export const validateInTransaction = <S extends object>(
                 continue
               }
 
-              const patch = rows[index]
+              const patch = (rows as any)[index]
               const patchObj = isPlainObject(patch) ? patch : undefined
 
               if (existing) {
@@ -1122,23 +1351,15 @@ export const validateInTransaction = <S extends object>(
                 continue
               }
 
-              const patchHasRelevant = patchObj && Object.keys(patchObj).some((k) => keysFromDeps.has(k))
+              const patchHasRelevant = patchObj && hasRelevantKeys(patchObj as any, keysFromDeps)
+              const prevRow = prevRows ? (prevRows as any)[index] : getAtPath(draft, rowErrorPath)
+              const prevObj = isPlainObject(prevRow) ? (prevRow as Record<string, unknown>) : undefined
+              const prevHasRelevant = prevObj ? hasRelevantKeys(prevObj, keysFromDeps) : false
+              const prevOnlyRowId = prevObj ? isOnlyRowId(prevObj) : false
 
-              if (patchHasRelevant) {
-                const row = getOrCreateRowDraft(listRuntime, index, makeStepId(scopeFieldPath, index))
-                applyScopedRowPatch(row, keysFromDeps, patchObj)
-                continue
-              }
-
-              const prevRow = getAtPath(draft, rowErrorPath)
-              const prevHasRelevant =
-                isPlainObject(prevRow) && Object.keys(prevRow).some((k) => k !== '$rowId' && keysFromDeps.has(k))
-              const prevOnlyRowId =
-                isPlainObject(prevRow) && Object.keys(prevRow).length === 1 && Object.keys(prevRow)[0] === '$rowId'
-
-              if (prevHasRelevant || prevOnlyRowId) {
-                const row = getOrCreateRowDraft(listRuntime, index, makeStepId(scopeFieldPath, index))
-                applyScopedRowPatch(row, keysFromDeps, undefined)
+              if (patchHasRelevant || prevHasRelevant || prevOnlyRowId) {
+                const row = getOrCreateRowDraft(listRuntime, index, makeStepId(scopeFieldPath, index), prevRow)
+                applyScopedRowPatch(row, keysFromDeps, patchHasRelevant ? (patchObj as any) : undefined)
               }
             }
 
@@ -1305,16 +1526,13 @@ export const validateInTransaction = <S extends object>(
 
           const listRuntime = getListRuntime(row.listPath, row.listIndexPath)
           const item = listRuntime?.items[row.index]
-          const rowId = (() => {
-            if (listRuntime?.trackBy) {
-              const k = readTrackBy(item, listRuntime.trackBy)
-              if (k !== undefined) return String(k)
-            }
-            const fromStore =
-              listRuntime?.rowIds?.[row.index] ?? ctx.rowIdStore?.getRowId(row.listPath, row.index, row.parentRowId)
-            if (typeof fromStore === 'string' && fromStore.length > 0) return fromStore
-            return String(row.index)
-          })()
+            const rowId = (() => {
+              const fromRuntime = listRuntime?.rowIdAt ? listRuntime.rowIdAt(row.index) : undefined
+              if (typeof fromRuntime === 'string' && fromRuntime.length > 0) return fromRuntime
+              const fromStore = ctx.rowIdStore?.getRowId(row.listPath, row.index, row.parentRowId)
+              if (typeof fromStore === 'string' && fromStore.length > 0) return fromStore
+              return String(row.index)
+            })()
 
           const nextRowRaw: Record<string, unknown> = { $rowId: rowId, ...row.next }
           return isPlainObject(prevRow) && shallowEqualPlainObject(prevRow, nextRowRaw) ? prevRow : nextRowRaw
@@ -1370,10 +1588,13 @@ export const validateInTransaction = <S extends object>(
 
       ctx.setDraft(nextState)
 
-      for (const u of updates) {
-        const normalized = normalizeFieldPath(u.errorPath) ?? []
-        ctx.recordPatch(normalized, reason, u.prev, u.next)
-      }
+      // Patch evidence for dirty-set scheduling:
+      // - Nested `errors.*` paths are dynamic (Schema.Any) and are typically not present in FieldPathIdRegistry.
+      // - Recording them verbatim would degrade the whole txn to dirtyAll (fallbackPolicy), which is both noisy and expensive.
+      // - For derived error writebacks, recording the canonical root `errors` anchor is sufficient.
+      const prevErrorsRoot = (draft as any)?.errors
+      const nextErrorsRoot = (nextState as any)?.errors
+      ctx.recordPatch(['errors'], reason, prevErrorsRoot, nextErrorsRoot, 'trait:validate')
     })
 
     if (traceEvents && traceEvents.length > 0) {

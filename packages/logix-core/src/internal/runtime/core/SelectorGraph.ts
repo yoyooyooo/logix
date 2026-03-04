@@ -33,6 +33,13 @@ export interface SelectorGraph<S> {
     readQuery: ReadQueryCompiled<S, V>,
   ) => Effect.Effect<SelectorEntry<S, V>, never, Scope.Scope>
   readonly releaseEntry: (selectorId: string) => void
+  /**
+   * O(1) check: whether any selector entries exist.
+   *
+   * Important perf contract:
+   * - Avoid triggering DirtySet construction on commit when there are no selectors at all.
+   */
+  readonly hasAnyEntries: () => boolean
   readonly onCommit: (
     state: S,
     meta: StateCommitMeta,
@@ -233,6 +240,8 @@ export const make = <S>(args: {
   const selectorsById = new Map<string, SelectorEntry<S, any>>()
   const indexByReadRoot = new Map<ReadRootKey, Set<string>>()
   const selectorsWithoutReads = new Set<string>()
+
+  const hasAnyEntries: SelectorGraph<S>['hasAnyEntries'] = () => selectorsById.size > 0
 
   const ensureEntry: SelectorGraph<S>['ensureEntry'] = (readQuery) => {
     const existing = selectorsById.get(readQuery.selectorId)
@@ -475,5 +484,5 @@ export const make = <S>(args: {
       }
     })
 
-  return { ensureEntry, releaseEntry, onCommit }
+  return { ensureEntry, releaseEntry, hasAnyEntries, onCommit }
 }

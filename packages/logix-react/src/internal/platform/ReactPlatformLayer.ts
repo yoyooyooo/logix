@@ -44,7 +44,7 @@ const makeReactPlatform: Effect.Effect<Platform.Service, never, never> = Effect.
   return new ReactPlatformImpl(suspendRef, resumeRef, resetRef)
 })
 
-export const ReactPlatformLayer: Layer.Layer<Platform.Service, never, never> = Layer.scoped(
+export const ReactPlatformLayer = Layer.scoped(
   Platform.tag,
   makeReactPlatform,
 )

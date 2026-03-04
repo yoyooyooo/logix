@@ -1,5 +1,7 @@
 import {
+  Exit,
   Effect,
+  Runtime,
   Stream,
   SubscriptionRef,
   PubSub,
@@ -38,7 +40,6 @@ import {
 } from './env.js'
 import type {
   StateTransactionInstrumentation,
-  StateTransactionOverrides,
   TraitConvergeTimeSlicingPatch,
   TickSchedulerService,
   TxnLanesPatch,
@@ -68,7 +69,7 @@ import { RootContextTag, type RootContext } from './RootContext.js'
 import * as ProcessRuntime from './process/ProcessRuntime.js'
 import * as ReadQuery from './ReadQuery.js'
 import * as SelectorGraph from './SelectorGraph.js'
-import { makeModuleInstanceKey } from './RuntimeStore.js'
+import { makeModuleInstanceKey, type RuntimeStoreModuleCommit } from './RuntimeStore.js'
 import {
   getRegisteredRuntime,
   getRuntimeByModuleAndInstance,
@@ -77,7 +78,11 @@ import {
   unregisterRuntime,
   unregisterRuntimeByInstanceKey,
 } from './ModuleRuntime.registry.js'
-import { makeEnqueueTransaction, type EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
+import {
+  makeEnqueueTransaction,
+  type CapturedTxnRuntimeScope,
+  type EnqueueTransaction,
+} from './ModuleRuntime.txnQueue.js'
 import { runModuleLogics } from './ModuleRuntime.logics.js'
 import * as ConcurrencyDiagnostics from './ConcurrencyDiagnostics.js'
 
@@ -188,6 +193,10 @@ export const make = <S, A, R = never>(
       diagnostics: concurrencyDiagnostics,
     })
 
+    const resolveConcurrencyPolicyFast = makeResolveConcurrencyPolicy({
+      moduleId: options.moduleId,
+    })
+
     const resolveTxnLanePolicy = makeResolveTxnLanePolicy({
       moduleId: options.moduleId,
       stateTransaction: options.stateTransaction,
@@ -200,19 +209,20 @@ export const make = <S, A, R = never>(
           return yield* PubSub.bounded<A>(policy.losslessBackpressureCapacity)
         })
 
-    const convergePlanCacheCapacity = 128
-    const traitState: TraitState = {
-      program: undefined,
-      convergeStaticIrDigest: undefined,
-      convergePlanCache: undefined,
-      convergeGeneration: {
-        generation: 0,
-        generationBumpCount: 0,
-      },
-      pendingCacheMissReason: undefined,
-      lastConvergeIrKeys: undefined,
-      listConfigs: [],
-    }
+	    const convergePlanCacheCapacity = 128
+	    const traitState: TraitState = {
+	      program: undefined,
+	      convergeStaticIrDigest: undefined,
+	      convergePlanCache: undefined,
+	      convergeGeneration: {
+	        generation: 0,
+	        generationBumpCount: 0,
+	      },
+	      pendingCacheMissReason: undefined,
+	      pendingCacheMissReasonCount: 0,
+	      lastConvergeIrKeys: undefined,
+	      listConfigs: [],
+	    }
 
     let externalOwnedFieldPaths: ReadonlyArray<FieldPath> = []
     let externalOwnedFieldPathKeys: ReadonlySet<string> = new Set()
@@ -348,14 +358,7 @@ export const make = <S, A, R = never>(
       firstPendingAtMs: number | undefined
       lastTouchedAtMs: number | undefined
       latestConvergeConfig: ResolvedTraitConvergeConfig | undefined
-      capturedContext:
-        | {
-            readonly runtimeLabel: string | undefined
-            readonly diagnosticsLevel: Debug.DiagnosticsLevel
-            readonly debugSinks: ReadonlyArray<Debug.Sink>
-            readonly overrides: StateTransactionOverrides | undefined
-          }
-        | undefined
+      capturedContext: CapturedTxnRuntimeScope | undefined
     } = {
       signal: traitConvergeTimeSlicingSignal,
       backlogDirtyPaths: new Set(),
@@ -383,7 +386,12 @@ export const make = <S, A, R = never>(
      * - Capacity is bounded to avoid unbounded memory growth in long-running apps.
      */
     const maxTxnHistory = 500
-    const txnHistory: Array<StateTransaction.StateTransaction<S>> = []
+    const txnHistory = {
+      buffer: new Array<StateTransaction.StateTransaction<S> | undefined>(maxTxnHistory),
+      start: 0,
+      size: 0,
+      capacity: maxTxnHistory,
+    }
     const txnById = new Map<string, StateTransaction.StateTransaction<S>>()
 
     /**
@@ -596,7 +604,7 @@ export const make = <S, A, R = never>(
         commitHub,
         shouldPublishCommitHub: () => commitHubSubscriberCount > 0,
         recordStatePatch,
-        onCommit: ({ state, meta, dirtySet, diagnosticsLevel }) =>
+        onCommit: ({ state, meta, transaction, diagnosticsLevel }) =>
           Effect.gen(function* () {
             let scheduler = tickSchedulerCached
             if (!scheduler) {
@@ -640,34 +648,42 @@ export const make = <S, A, R = never>(
               })
             }
 
-            yield* selectorGraph.onCommit(
-              state,
-              meta,
-              dirtySet,
-              diagnosticsLevel,
-              scheduler
-                ? (selectorId) => {
-                    scheduler.onSelectorChanged({
-                      moduleInstanceKey,
-                      selectorId,
-                      priority: meta.priority,
-                    })
-                  }
-                : undefined,
-            )
+            // Avoid paying dirty-set construction cost when there are no selectors at all.
+            // (SelectorGraph will no-op, but StateTransaction dirtySet is still lazily computed on access.)
+            if (selectorGraph.hasAnyEntries()) {
+              const dirtySet = transaction.dirtySet
+              yield* selectorGraph.onCommit(
+                state,
+                meta,
+                dirtySet,
+                diagnosticsLevel,
+                scheduler
+                  ? (selectorId) => {
+                      scheduler.onSelectorChanged({
+                        moduleInstanceKey,
+                        selectorId,
+                        priority: meta.priority,
+                      })
+                    }
+                  : undefined,
+              )
+            }
 
             if (scheduler) {
               const opSeq = yield* readCurrentOpSeq()
-              const resolvedSchedulingPolicy = yield* resolveConcurrencyPolicy()
-              const schedulingPolicy = {
-                configScope: resolvedSchedulingPolicy.configScope,
-                concurrencyLimit: resolvedSchedulingPolicy.concurrencyLimit,
-                allowUnbounded: resolvedSchedulingPolicy.allowUnbounded,
-                losslessBackpressureCapacity: resolvedSchedulingPolicy.losslessBackpressureCapacity,
-                pressureWarningThreshold: resolvedSchedulingPolicy.pressureWarningThreshold,
-                warningCooldownMs: resolvedSchedulingPolicy.warningCooldownMs,
-                resolvedAtTxnSeq: meta.txnSeq,
-              } as const
+                let resolvedSchedulingPolicy: RuntimeStoreModuleCommit['schedulingPolicy'] | undefined
+                if (diagnosticsLevel !== 'off') {
+                  const resolved = yield* resolveConcurrencyPolicyFast()
+                  resolvedSchedulingPolicy = {
+                    configScope: resolved.configScope,
+                    concurrencyLimit: resolved.concurrencyLimit,
+                    allowUnbounded: resolved.allowUnbounded,
+                  losslessBackpressureCapacity: resolved.losslessBackpressureCapacity,
+                  pressureWarningThreshold: resolved.pressureWarningThreshold,
+                  warningCooldownMs: resolved.warningCooldownMs,
+                  resolvedAtTxnSeq: meta.txnSeq,
+                }
+              }
 
               yield* scheduler.onModuleCommit({
                 moduleId,
@@ -676,7 +692,7 @@ export const make = <S, A, R = never>(
                 state,
                 meta,
                 opSeq,
-                schedulingPolicy,
+                schedulingPolicy: resolvedSchedulingPolicy,
               })
             }
           }),
@@ -684,21 +700,24 @@ export const make = <S, A, R = never>(
         runOperation,
         txnContext,
         traitConvergeTimeSlicing: traitConvergeTimeSlicingState,
-        traitRuntime: {
-          getProgram: () => traitState.program,
-          getConvergeStaticIrDigest: () => traitState.convergeStaticIrDigest,
-          getConvergePlanCache: () => traitState.convergePlanCache,
-          getConvergeGeneration: () => traitState.convergeGeneration,
-          getPendingCacheMissReason: () => traitState.pendingCacheMissReason,
-          setPendingCacheMissReason: (next) => {
-            traitState.pendingCacheMissReason = next
-          },
-          rowIdStore,
-          getListConfigs: () => traitState.listConfigs,
-        },
+	        traitRuntime: {
+	          getProgram: () => traitState.program,
+	          getConvergeStaticIrDigest: () => traitState.convergeStaticIrDigest,
+	          getConvergePlanCache: () => traitState.convergePlanCache,
+	          getConvergeGeneration: () => traitState.convergeGeneration,
+	          getPendingCacheMissReason: () => traitState.pendingCacheMissReason,
+	          getPendingCacheMissReasonCount: () => traitState.pendingCacheMissReasonCount,
+	          setPendingCacheMissReason: (next) => {
+	            traitState.pendingCacheMissReason = next
+	            if (next == null) {
+	              traitState.pendingCacheMissReasonCount = 0
+	            }
+	          },
+	          rowIdStore,
+	          getListConfigs: () => traitState.listConfigs,
+	        },
         resolveTraitConvergeConfig,
         isDevEnv,
-        maxTxnHistory,
         txnHistory,
         txnById,
       }),
@@ -731,6 +750,11 @@ export const make = <S, A, R = never>(
       readonly lane: 'urgent' | 'nonUrgent'
       readonly slice?: { readonly start: number; readonly end: number; readonly total: number }
       readonly captureOpSeq?: boolean
+      readonly emitLaneEvidence?: (anchor: {
+        readonly txnSeq: number
+        readonly txnId?: string
+        readonly opSeq?: number
+      }) => Effect.Effect<void, never, never>
     }): Effect.Effect<{ readonly txnSeq: number; readonly txnId?: string; readonly opSeq?: number }> => {
       let capturedTxnSeq = 0
       let capturedTxnId: string | undefined = undefined
@@ -771,6 +795,14 @@ export const make = <S, A, R = never>(
 
                 if (args.captureOpSeq) {
                   capturedOpSeq = yield* readCurrentOpSeq()
+                }
+
+                if (args.emitLaneEvidence) {
+                  yield* args.emitLaneEvidence({
+                    txnSeq: capturedTxnSeq,
+                    txnId: capturedTxnId,
+                    opSeq: capturedOpSeq,
+                  })
                 }
 
                 if (!current) return
@@ -885,54 +917,57 @@ export const make = <S, A, R = never>(
           const firstPendingAtMs = firstPendingAtMsForRun ?? Date.now()
 
           if (!txnLanePolicy.enabled) {
-            const anchor = yield* withCapturedContext(
+            if (txnLanePolicy.overrideMode === 'forced_off') {
+              deferredFlushCoalescedCount += 1
+              deferredFlushCanceledCount += 1
+            }
+
+            const reasons: ReadonlyArray<Debug.TxnLaneEvidenceReason> =
+              txnLanePolicy.overrideMode === 'forced_off'
+                ? ['forced_off', 'canceled']
+                : txnLanePolicy.overrideMode === 'forced_sync'
+                  ? ['forced_sync']
+                  : ['disabled']
+
+            yield* withCapturedContext(
               runDeferredConvergeFlush({
                 dirtyPathsSnapshot,
                 dirtyAllReason: dirtyAllReasonSnapshot,
                 lane: 'urgent',
                 captureOpSeq: shouldEmitLaneEvidenceForPolicy,
+                emitLaneEvidence: shouldEmitLaneEvidenceForPolicy
+                  ? (anchor) =>
+                      Debug.record({
+                        type: 'trace:txn-lane',
+                        moduleId,
+                        instanceId,
+                        txnSeq: anchor.txnSeq,
+                        txnId: anchor.txnId,
+                        data: {
+                          evidence: {
+                            anchor: {
+                              moduleId,
+                              instanceId,
+                              txnSeq: anchor.txnSeq,
+                              ...(typeof anchor.opSeq === 'number' ? { opSeq: anchor.opSeq } : {}),
+                            },
+                            lane: 'urgent',
+                            kind: 'trait:deferred_flush',
+                            policy: txnLanePolicy,
+                            backlog: {
+                              pendingCount: 0,
+                              ageMs: Math.max(0, Date.now() - firstPendingAtMs),
+                              coalescedCount: deferredFlushCoalescedCount,
+                              canceledCount: deferredFlushCanceledCount,
+                            },
+                            starvation: { triggered: false },
+                            reasons,
+                          } satisfies Debug.TxnLaneEvidence,
+                        },
+                      })
+                  : undefined,
               }),
             )
-
-            if (shouldEmitLaneEvidenceForPolicy) {
-              const reasons: ReadonlyArray<Debug.TxnLaneEvidenceReason> =
-                txnLanePolicy.overrideMode === 'forced_off'
-                  ? ['forced_off']
-                  : txnLanePolicy.overrideMode === 'forced_sync'
-                    ? ['forced_sync']
-                    : ['disabled']
-
-              const evidence: Debug.TxnLaneEvidence = {
-                anchor: {
-                  moduleId,
-                  instanceId,
-                  txnSeq: anchor.txnSeq,
-                  ...(typeof anchor.opSeq === 'number' ? { opSeq: anchor.opSeq } : {}),
-                },
-                lane: 'urgent',
-                kind: 'trait:deferred_flush',
-                policy: txnLanePolicy,
-                backlog: {
-                  pendingCount: 0,
-                  ageMs: Math.max(0, Date.now() - firstPendingAtMs),
-                  coalescedCount: deferredFlushCoalescedCount,
-                  canceledCount: deferredFlushCanceledCount,
-                },
-                starvation: { triggered: false },
-                reasons,
-              }
-
-              yield* withCapturedContext(
-                Debug.record({
-                  type: 'trace:txn-lane',
-                  moduleId,
-                  instanceId,
-                  txnSeq: anchor.txnSeq,
-                  txnId: anchor.txnId,
-                  data: { evidence },
-                }),
-              )
-            }
 
             return
           }
@@ -940,7 +975,11 @@ export const make = <S, A, R = never>(
           const totalSteps = program.convergeExecIr.topoOrderDeferredInt32.length
 
           let cursor = 0
-          let chunkSize = Math.min(32, totalSteps)
+          // Perf/latency tradeoff:
+          // - Smaller initial slices reduce worst-case urgent blocking while a nonUrgent backlog is being drained.
+          // - Catch-up time is still bounded by maxLagMs and the yield policy.
+          const initialChunkSize = txnLanePolicy.budgetMs <= 1 ? 4 : 32
+          let chunkSize = Math.min(initialChunkSize, totalSteps)
           let yieldCount = 0
           let lastYieldAtMs = Date.now()
 
@@ -1325,49 +1364,54 @@ export const make = <S, A, R = never>(
           : ReadQuery.compile(input)
 
         if (compiled.lane !== 'static') {
-          return Stream.unwrapScoped(
+          const buildGradeDecision = ReadQuery.resolveBuildGradeStrictGateDecision({
+            moduleId,
+            instanceId,
+            txnSeq: 0,
+            compiled,
+          })
+
+          const runtimeCompiled = ReadQuery.markRuntimeMissingBuildGrade(compiled)
+          let strictGateChecked = false
+
+          return Stream.mapEffect(fromCommitHub, ({ value, meta }) =>
             Effect.gen(function* () {
-              const buildGradeDecision = ReadQuery.resolveBuildGradeStrictGateDecision({
-                moduleId,
-                instanceId,
-                txnSeq: 0,
-                compiled,
-              })
+              if (!strictGateChecked) {
+                strictGateChecked = true
 
-              if (buildGradeDecision?.verdict === 'WARN') {
-                yield* Debug.record(buildGradeDecision.diagnostic)
-              } else if (buildGradeDecision?.verdict === 'FAIL') {
-                yield* Debug.record(buildGradeDecision.diagnostic)
-                yield* Effect.die(buildGradeDecision.error)
-              }
+                if (buildGradeDecision?.verdict === 'WARN') {
+                  yield* Debug.record(buildGradeDecision.diagnostic)
+                } else if (buildGradeDecision?.verdict === 'FAIL') {
+                  yield* Debug.record(buildGradeDecision.diagnostic)
+                  yield* Effect.die(buildGradeDecision.error)
+                }
 
-              const runtimeCompiled = ReadQuery.markRuntimeMissingBuildGrade(compiled)
+                if (ReadQuery.shouldEvaluateStrictGateAtRuntime(runtimeCompiled)) {
+                  const strictGateOpt = yield* Effect.serviceOption(ReadQueryStrictGateConfigTag)
 
-              if (ReadQuery.shouldEvaluateStrictGateAtRuntime(runtimeCompiled)) {
-                const strictGateOpt = yield* Effect.serviceOption(ReadQueryStrictGateConfigTag)
+                  if (Option.isSome(strictGateOpt)) {
+                    const decision = ReadQuery.evaluateStrictGate({
+                      config: strictGateOpt.value,
+                      moduleId,
+                      instanceId,
+                      txnSeq: 0,
+                      compiled: runtimeCompiled,
+                    })
 
-                if (Option.isSome(strictGateOpt)) {
-                  const decision = ReadQuery.evaluateStrictGate({
-                    config: strictGateOpt.value,
-                    moduleId,
-                    instanceId,
-                    txnSeq: 0,
-                    compiled: runtimeCompiled,
-                  })
-
-                  if (decision.verdict === 'WARN') {
-                    yield* Debug.record(decision.diagnostic)
-                  } else if (decision.verdict === 'FAIL') {
-                    yield* Debug.record(decision.diagnostic)
-                    yield* Effect.die(decision.error)
+                    if (decision.verdict === 'WARN') {
+                      yield* Debug.record(decision.diagnostic)
+                    } else if (decision.verdict === 'FAIL') {
+                      yield* Debug.record(decision.diagnostic)
+                      yield* Effect.die(decision.error)
+                    }
                   }
                 }
               }
 
-              return Stream.map(fromCommitHub, ({ value, meta }) => ({
+              return {
                 value: runtimeCompiled.select(value),
                 meta,
-              }))
+              }
             }),
           )
         }
@@ -1425,6 +1469,40 @@ export const make = <S, A, R = never>(
 
         return derivedRef
       },
+    }
+
+    // Best-effort sync action callables (perf / JS entrypoints):
+    // - Exposes `runtime.actions.<tag>(payload?)` for callers that want "just do it" semantics.
+    // - Tries to run the dispatch synchronously when possible (common case: no queue contention) so perf workloads
+    //   can time the tick flush separately from transaction overhead.
+    // - Falls back to forking the dispatch Effect if it cannot complete synchronously.
+    if (declaredActionTags && declaredActionTags.size > 0) {
+      const driver = yield* Effect.runtime<never>()
+      const actions: any = {}
+
+      const dispatchSyncBestEffort = (action: A): void => {
+        try {
+          const exit = Runtime.runSyncExit(driver, dispatchOps.dispatch(action) as any)
+          if (Exit.isFailure(exit)) {
+            Runtime.runFork(driver, dispatchOps.dispatch(action) as any)
+          }
+        } catch {
+          try {
+            Runtime.runFork(driver, dispatchOps.dispatch(action) as any)
+          } catch {
+            // ignore best-effort failures (e.g. runtime disposed)
+          }
+        }
+      }
+
+      for (const tag of declaredActionTags) {
+        actions[tag] = (payload?: unknown) => {
+          const action = payload === undefined ? ({ _tag: tag } as any) : ({ _tag: tag, payload } as any)
+          dispatchSyncBestEffort(action as A)
+        }
+      }
+
+      ;(runtime as any).actions = actions
     }
 
     KernelRef.setKernelImplementationRef(runtime, kernelImplementationRef)
@@ -1513,11 +1591,12 @@ export const make = <S, A, R = never>(
           generation: nextGeneration,
           generationBumpCount: nextBumpCount,
           lastBumpReason: bumpReason,
-        }
-
-        traitState.pendingCacheMissReason = 'generation_bumped'
-        traitState.convergePlanCache = new StateTraitConverge.ConvergePlanCache(convergePlanCacheCapacity)
-      }
+	        }
+	
+	        traitState.pendingCacheMissReason = 'generation_bumped'
+	        traitState.pendingCacheMissReasonCount = (traitState.pendingCacheMissReasonCount ?? 0) + 1
+	        traitState.convergePlanCache = new StateTraitConverge.ConvergePlanCache(convergePlanCacheCapacity)
+	      }
 
       traitState.lastConvergeIrKeys = nextKeys
 
@@ -1528,8 +1607,46 @@ export const make = <S, A, R = never>(
           }
         : undefined
 
+      const prevConvergeIr = (traitState.program as any)?.convergeIr as any | undefined
+      const canPreserveInlinePlanCache =
+        !!prevConvergeIr &&
+        !!nextIr &&
+        prevConvergeIr.writersKey === (nextIr as any).writersKey &&
+        prevConvergeIr.depsKey === (nextIr as any).depsKey
+
+      const prevConvergeExecIr = (traitState.program as any)?.convergeExecIr as ReturnType<typeof makeConvergeExecIr>
+        | undefined
+
       const convergeExecIr =
         convergeIr && !(convergeIr as any).configError ? makeConvergeExecIr(convergeIr as any) : undefined
+
+      if (convergeExecIr && prevConvergeExecIr) {
+        // Preserve hot-path perf hints across generation bumps (forward-only; no compatibility layer).
+        // This keeps auto mode stable under frequent register/bump cycles (e.g. graphChangeInvalidation perf boundary).
+        convergeExecIr.perf.fullCommitEwmaOffMs = prevConvergeExecIr.perf.fullCommitEwmaOffMs
+        convergeExecIr.perf.fullCommitLastTxnSeqOff = prevConvergeExecIr.perf.fullCommitLastTxnSeqOff
+        convergeExecIr.perf.fullCommitMinOffMs = prevConvergeExecIr.perf.fullCommitMinOffMs
+        convergeExecIr.perf.fullCommitSampleCountOff = prevConvergeExecIr.perf.fullCommitSampleCountOff
+        convergeExecIr.perf.recentPlanMissHash1 = prevConvergeExecIr.perf.recentPlanMissHash1
+        convergeExecIr.perf.recentPlanMissHash2 = prevConvergeExecIr.perf.recentPlanMissHash2
+
+        // Reuse per-instance scratch draft across rebuilds (avoids per-txn allocations on shallow graphs).
+        const nextScratch: any = convergeExecIr.scratch as any
+        const prevScratch: any = prevConvergeExecIr.scratch as any
+        nextScratch.shallowInPlaceDraft = prevScratch.shallowInPlaceDraft
+
+        // Inline plan micro-cache is safe to preserve only when the converge graph keys are unchanged.
+        if (canPreserveInlinePlanCache) {
+          nextScratch.inlinePlanCacheHash1 = prevScratch.inlinePlanCacheHash1
+          nextScratch.inlinePlanCacheSize1 = prevScratch.inlinePlanCacheSize1
+          nextScratch.inlinePlanCachePlan1 = prevScratch.inlinePlanCachePlan1
+          nextScratch.inlinePlanCacheHash2 = prevScratch.inlinePlanCacheHash2
+          nextScratch.inlinePlanCacheSize2 = prevScratch.inlinePlanCacheSize2
+          nextScratch.inlinePlanCachePlan2 = prevScratch.inlinePlanCachePlan2
+          nextScratch.inlinePlanCacheRecentMissHash1 = prevScratch.inlinePlanCacheRecentMissHash1
+          nextScratch.inlinePlanCacheRecentMissHash2 = prevScratch.inlinePlanCacheRecentMissHash2
+        }
+      }
 
       traitState.convergeStaticIrDigest =
         convergeIr && !(convergeIr as any).configError ? getConvergeStaticIrDigest(convergeIr as any) : undefined

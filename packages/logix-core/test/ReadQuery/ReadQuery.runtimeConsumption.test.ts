@@ -29,6 +29,15 @@ describe('ReadQuery.runtimeConsumption', () => {
         Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(Stream.runCollect(stream)),
       )
 
+      // Ensure subscription starts before the commit happens; PubSub-based streams drop events when no subscribers exist.
+      for (let i = 0; i < 64; i++) {
+        const status = yield* Fiber.status(fiber)
+        if (status._tag === 'Suspended' || status._tag === 'Done') {
+          break
+        }
+        yield* Effect.yieldNow()
+      }
+
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
       )
@@ -66,6 +75,15 @@ describe('ReadQuery.runtimeConsumption', () => {
       const fiber = yield* Effect.fork(
         Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(Stream.runCollect(stream)),
       )
+
+      // Ensure subscription starts before the commit happens; PubSub-based streams drop events when no subscribers exist.
+      for (let i = 0; i < 64; i++) {
+        const status = yield* Fiber.status(fiber)
+        if (status._tag === 'Suspended' || status._tag === 'Done') {
+          break
+        }
+        yield* Effect.yieldNow()
+      }
 
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
@@ -113,6 +131,16 @@ describe('ReadQuery.runtimeConsumption', () => {
 
       const stream = runtime.changesReadQueryWithMeta(graded.compiled)
       const fiber = yield* Effect.fork(Stream.runCollect(Stream.take(stream, 1)))
+
+      // Ensure subscription starts before the commit happens; PubSub-based streams drop events when no subscribers exist.
+      for (let i = 0; i < 64; i++) {
+        const status = yield* Fiber.status(fiber)
+        if (status._tag === 'Suspended' || status._tag === 'Done') {
+          break
+        }
+        yield* Effect.yieldNow()
+      }
+
       yield* runtime.setState({ count: 1 })
 
       const exit = yield* Fiber.await(fiber)

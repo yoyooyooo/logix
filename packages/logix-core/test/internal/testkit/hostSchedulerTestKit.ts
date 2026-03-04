@@ -13,7 +13,7 @@ export const flushAllHostScheduler = (
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
     const maxTurns = options?.maxTurns ?? 1_000
-    const settleYields = options?.settleYields ?? 8
+    const settleYields = options?.settleYields ?? 64
 
     for (let turn = 0; turn < maxTurns; turn += 1) {
       yield* Effect.sync(() => {

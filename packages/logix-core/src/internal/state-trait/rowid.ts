@@ -84,7 +84,8 @@ export const unsetAtPathMutating = (draft: unknown, path: string): void => {
 
   const last = segments[segments.length - 1]!
   if (Array.isArray(current) && typeof last === 'number') {
-    current[last] = undefined
+    // Keep arrays sparse (holes) rather than dense-undefined: improves perf in common "sparse rows" trees.
+    delete current[last]
     return
   }
 

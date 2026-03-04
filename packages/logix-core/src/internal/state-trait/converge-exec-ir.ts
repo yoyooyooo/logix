@@ -18,6 +18,13 @@ export interface ConvergeExecIr {
   readonly triggerStepOffsetsByFieldPathId: Int32Array
 
   readonly topoOrderInt32: Int32Array
+  /**
+   * stepId -> topo index in {@link topoOrderInt32}.
+   *
+   * Used by auto-plan computation to sort small reachable sets without scanning
+   * the entire topo slice every time (avoids O(totalSteps) tail cost).
+   */
+  readonly topoIndexByStepId: Int32Array
   readonly topoOrderImmediateInt32: Int32Array
   readonly topoOrderDeferredInt32: Int32Array
   /**
@@ -31,10 +38,53 @@ export interface ConvergeExecIr {
   readonly stepDepsFieldPathIds: Int32Array
   readonly stepDepsOffsetsByStepId: Int32Array
 
+  /**
+   * Perf hints collected at runtime (per module instance, per generation).
+   * Mutated only in hot paths and must remain O(1).
+   */
+  readonly perf: {
+    /**
+     * EWMA of full converge execution duration (ms) under the "off-fast-path"
+     * (diagnostics=off, middleware stack empty).
+     *
+     * Used by auto mode to short-circuit planning when full is already cheap.
+     */
+    fullCommitEwmaOffMs?: number
+    /**
+     * Last txnSeq (stable anchor) where we executed a full converge under off-fast-path.
+     * Used to periodically re-calibrate fullCommitEwmaOffMs after warmup/JIT effects.
+     */
+    fullCommitLastTxnSeqOff?: number
+    /**
+     * Minimum observed full converge duration (ms) under off-fast-path.
+     * Helps auto mode quickly detect "full is already cheap" after warmup/JIT without getting stuck on cold-start outliers.
+     */
+    fullCommitMinOffMs?: number
+    /**
+     * Number of full converge samples recorded under off-fast-path (best-effort; for tuning/debug only).
+     */
+    fullCommitSampleCountOff?: number
+
+    /**
+     * "2-hit" admission control for plan computation under auto mode:
+     * - On cache miss, we only pay the cost to compute a plan after the same key repeats.
+     * - Prevents high-cardinality dirty patterns from turning auto into a negative optimization.
+     */
+    recentPlanMissHash1?: number
+    recentPlanMissHash2?: number
+  }
+
   readonly scratch: {
     readonly dirtyPrefixBitSet: DenseIdBitSet
     readonly reachableStepBitSet: DenseIdBitSet
     readonly dirtyPrefixQueue: Int32Array
+    /**
+     * Scratch buffer for building canonical (sorted+deduped) dirty root ids in hot paths
+     * without allocating JS arrays on every txn window.
+     *
+     * Note: callers must treat it as ephemeral and must copy before storing into caches.
+     */
+    readonly dirtyRootIds: Int32Array
     readonly planStepIds: Int32Array
   }
 }
@@ -80,6 +130,12 @@ export const makeConvergeExecIr = (ir: ConvergeStaticIrRegistry): ConvergeExecIr
   const topoOrderInt32 = Int32Array.from(ir.topoOrder)
 
   const stepCount = ir.stepsById.length
+  const topoIndexByStepId = new Int32Array(stepCount)
+  topoIndexByStepId.fill(-1)
+  for (let i = 0; i < topoOrderInt32.length; i++) {
+    topoIndexByStepId[topoOrderInt32[i]!] = i
+  }
+
   const stepSchedulingByStepId = new Uint8Array(stepCount)
   for (let stepId = 0; stepId < stepCount; stepId++) {
     stepSchedulingByStepId[stepId] = ir.stepSchedulingByStepId[stepId] === 'deferred' ? 1 : 0
@@ -99,6 +155,9 @@ export const makeConvergeExecIr = (ir: ConvergeStaticIrRegistry): ConvergeExecIr
   const stepFromFieldPathIdByStepId = new Int32Array(stepCount)
   stepFromFieldPathIdByStepId.fill(-1)
   for (let stepId = 0; stepId < stepCount; stepId++) {
+    if (topoIndexByStepId[stepId]! < 0) {
+      throw new Error(`[StateTrait.converge] Missing topo index for stepId=${String(stepId)} generation=${String(generation)}`)
+    }
     const step = ir.stepsById[stepId]
     if (step) {
       stepLabelByStepId[stepId] =
@@ -224,6 +283,7 @@ export const makeConvergeExecIr = (ir: ConvergeStaticIrRegistry): ConvergeExecIr
     triggerStepIdsByFieldPathId,
     triggerStepOffsetsByFieldPathId,
     topoOrderInt32,
+    topoIndexByStepId,
     topoOrderImmediateInt32,
     topoOrderDeferredInt32,
     stepSchedulingByStepId,
@@ -233,10 +293,12 @@ export const makeConvergeExecIr = (ir: ConvergeStaticIrRegistry): ConvergeExecIr
     allOutPathsShallow,
     stepDepsFieldPathIds,
     stepDepsOffsetsByStepId,
+    perf: {},
     scratch: {
       dirtyPrefixBitSet: new DenseIdBitSet(fieldPathCount),
       reachableStepBitSet: new DenseIdBitSet(stepCount),
       dirtyPrefixQueue: new Int32Array(fieldPathCount),
+      dirtyRootIds: new Int32Array(fieldPathCount),
       planStepIds: new Int32Array(stepCount),
     },
   }

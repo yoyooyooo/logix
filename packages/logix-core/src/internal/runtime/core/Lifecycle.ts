@@ -138,7 +138,7 @@ export interface LifecycleManager {
   >
 }
 
-export const LifecycleContext = Context.GenericTag<LifecycleManager>('@logixjs/LifecycleManager')
+export class LifecycleContext extends Context.Tag('@logixjs/LifecycleManager')<LifecycleContext, LifecycleManager>() {}
 
 const safeRun = (label: string, eff: Effect.Effect<void, any, any>) =>
   eff.pipe(

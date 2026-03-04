@@ -291,6 +291,15 @@ export const make = (options?: {
     const installations = new Map<InstallationKey, InstallationState>()
     const installationsByPlatformEvent = new Map<string, Set<InstallationKey>>()
     const instances = new Map<ProcessInstanceId, InstanceState>()
+    const moduleRuntimeTagCache = new Map<string, Context.Tag<any, any>>()
+
+    const resolveModuleRuntimeTag = (moduleId: string): Context.Tag<any, any> => {
+      const cached = moduleRuntimeTagCache.get(moduleId)
+      if (cached) return cached
+      const created = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
+      moduleRuntimeTagCache.set(moduleId, created)
+      return created
+    }
 
     const eventHistoryCapacity = maxEventHistory > 0 ? maxEventHistory : 0
     const eventHistoryRing: ProcessEvent[] = []
@@ -424,14 +433,29 @@ export const make = (options?: {
       for (const dep of requires) {
         if (typeof dep !== 'string' || dep.length === 0) continue
 
-        // ModuleTag key convention: `@logixjs/Module/${id}`; Tag identity is derived from the key, so we can construct it on demand.
-        const tag = Context.Tag(`@logixjs/Module/${dep}`)() as Context.Tag<any, any>
+        const tag = resolveModuleRuntimeTag(dep)
         const found = Context.getOption(installation.env, tag)
         if (Option.isNone(found)) {
           missing.push(dep)
         }
       }
       return missing
+    }
+
+    const buildModuleRuntimeRegistry = (
+      installation: InstallationState,
+      env: Context.Context<any>,
+    ): ReadonlyMap<string, unknown> => {
+      const registry = new Map<string, unknown>()
+      for (const moduleId of installation.startPlan.dependencyModuleIds) {
+        if (typeof moduleId !== 'string' || moduleId.length === 0 || registry.has(moduleId)) continue
+        const tag = resolveModuleRuntimeTag(moduleId)
+        const found = Context.getOption(env, tag)
+        if (Option.isSome(found)) {
+          registry.set(moduleId, found.value)
+        }
+      }
+      return registry
     }
 
     const stopInstance = (
@@ -603,6 +627,7 @@ export const make = (options?: {
         const shouldRecordChainEvents = installation.definition.diagnosticsLevel !== 'off'
 
         const baseEnv = installation.env
+        const moduleRuntimeRegistry = buildModuleRuntimeRegistry(installation, baseEnv)
 
         const makeWrappedEnv = (): Context.Context<any> => {
           if (!shouldRecordChainEvents) {
@@ -614,11 +639,11 @@ export const make = (options?: {
             return baseEnv
           }
 
-          let nextEnv = baseEnv
+            let nextEnv = baseEnv
 
-          for (const moduleId of requires) {
-            if (typeof moduleId !== 'string' || moduleId.length === 0) continue
-            const tag = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
+            for (const moduleId of requires) {
+              if (typeof moduleId !== 'string' || moduleId.length === 0) continue
+            const tag = resolveModuleRuntimeTag(moduleId)
             const found = Context.getOption(baseEnv, tag)
             if (Option.isNone(found)) continue
             const runtime = found.value as any
@@ -691,7 +716,7 @@ export const make = (options?: {
         })
 
         const makeTriggerStream = makeNonPlatformTriggerStreamFactory({
-          baseEnv,
+          moduleRuntimeRegistry,
           shouldRecordChainEvents,
           actionIdFromUnknown,
           resolveRuntimeStateSchemaAst,
@@ -737,6 +762,9 @@ export const make = (options?: {
 
         const policy = installation.definition.concurrency
         const bootTrigger = installation.startPlan.bootTrigger
+
+        const streamReady = yield* Deferred.make<void>()
+        const markStreamReady: Effect.Effect<void> = Deferred.succeed(streamReady, undefined).pipe(Effect.asVoid)
 
         const instanceProgram = Effect.gen(function* () {
           const fatal = yield* Deferred.make<Cause.Cause<any>>()
@@ -784,6 +812,20 @@ export const make = (options?: {
             }),
           )
 
+          // Ensure the trigger stream fiber has started pulling, otherwise moduleAction/moduleStateChange events
+          // may be published before any subscriber exists (PubSub streams drop events without subscribers).
+          //
+          // We rely on the fiber reaching "Suspended" (typically blocked on a queue take) as a proxy that the
+          // subscription has been established.
+          for (let i = 0; i < 64; i++) {
+            const status = yield* Fiber.status(runnerFiber)
+            if (status._tag === 'Suspended' || status._tag === 'Done') {
+              break
+            }
+            yield* Effect.yieldNow()
+          }
+          yield* markStreamReady
+
           if (bootTrigger) {
             yield* Queue.offer(instanceState.platformTriggersQueue, bootTrigger)
           }
@@ -794,9 +836,12 @@ export const make = (options?: {
         })
 
         const fiber = yield* Effect.forkIn(installation.forkScope)(
-          Effect.scoped(instanceProgram).pipe(
-            Effect.catchAllCause((cause) =>
-              Effect.gen(function* () {
+          Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
+            Effect.scoped(instanceProgram).pipe(
+              // If the instance fails early (e.g. invalid trigger spec), still unblock install/start.
+              Effect.ensuring(markStreamReady),
+              Effect.catchAllCause((cause) =>
+                Effect.gen(function* () {
                 // Interruptions (typically from scope dispose / manual stop) should not be treated as process failures.
                 // Otherwise we emit process:error/diagnostic during scope shutdown and may deadlock disposal.
                 if (Cause.isInterruptedOnly(cause)) {
@@ -880,7 +925,8 @@ export const make = (options?: {
                     `processId=${installation.identity.processId} scopeKey=${installation.scopeKey} failures=${decision.withinWindowFailures} maxRestarts=${decision.maxRestarts}`,
                   )
                 }
-              }),
+                }),
+              ),
             ),
           ),
         )
@@ -891,9 +937,8 @@ export const make = (options?: {
           status: 'running',
         }
 
-        // Best-effort: ensure the instance fiber starts subscribing to trigger streams before install/start returns,
-        // avoiding lost moduleAction/moduleStateChange triggers right after env is built and dispatch happens.
-        yield* Effect.yieldNow()
+        // Hard guarantee: block until trigger subscriptions are acquired (or the instance fiber failed early).
+        yield* Deferred.await(streamReady)
       })
 
     const install = <E, R>(

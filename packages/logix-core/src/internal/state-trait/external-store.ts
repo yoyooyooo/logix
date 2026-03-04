@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Option } from 'effect'
+import { Context, Effect, FiberRef, Option, Stream } from 'effect'
 import { create } from 'mutative'
 import type { BoundApi } from '../runtime/core/module.js'
 import { getBoundInternals } from '../runtime/core/runtimeInternalsAccessor.js'
@@ -6,14 +6,18 @@ import * as TaskRunner from '../runtime/core/TaskRunner.js'
 import * as Debug from '../runtime/core/DebugSink.js'
 import { getExternalStoreDescriptor } from '../external-store-descriptor.js'
 import { normalizeFieldPath } from '../field-path.js'
-import { DeclarativeLinkRuntimeTag, HostSchedulerTag } from '../runtime/core/env.js'
-import { getGlobalHostScheduler } from '../runtime/core/HostScheduler.js'
+import { DeclarativeLinkRuntimeTag } from '../runtime/core/env.js'
 import * as RowId from './rowid.js'
 import type { StateTraitEntry, StateTraitPlanStep } from './model.js'
 
 const isFn = (value: unknown): value is (...args: ReadonlyArray<any>) => unknown => typeof value === 'function'
 
 type ExternalStoreEntry<S> = Extract<StateTraitEntry<S, string>, { readonly kind: 'externalStore' }>
+
+type ExternalStoreLike = {
+  readonly getSnapshot: () => unknown
+  readonly subscribe: (listener: () => void) => (() => void) | undefined
+}
 
 const resolveStore = (entry: ExternalStoreEntry<any>): Effect.Effect<any, never, any> =>
   Effect.gen(function* () {
@@ -38,12 +42,6 @@ export const installExternalStoreSync = <S>(
     if (!fieldPath) return
 
     const env = yield* Effect.context<any>()
-    const hostSchedulerOpt = yield* Effect.serviceOption(HostSchedulerTag)
-    const hostScheduler = Option.isSome(hostSchedulerOpt) ? hostSchedulerOpt.value : getGlobalHostScheduler()
-    const microtask = Effect.async<void, never>((resume) => {
-      hostScheduler.scheduleMicrotask(() => resume(Effect.void))
-    })
-
     let internals: ReturnType<typeof getBoundInternals>
     try {
       internals = getBoundInternals(bound as any)
@@ -61,6 +59,75 @@ export const installExternalStoreSync = <S>(
 
     const rawStore = (entry.meta as any)?.store
     const rawDescriptor = getExternalStoreDescriptor(rawStore)
+
+    const makeScopedDescriptorStore = (): Effect.Effect<ExternalStoreLike | undefined, never, any> =>
+      Effect.gen(function* () {
+        if (rawDescriptor?.kind === 'subscriptionRef') {
+          let current = yield* Effect.locally(TaskRunner.inSyncTransactionFiber, false)(rawDescriptor.ref.get as any)
+          const listeners = new Set<() => void>()
+
+          const notify = (): void => {
+            for (const listener of listeners) {
+              listener()
+            }
+          }
+
+          yield* Effect.forkScoped(
+            Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
+              Stream.runForEach(rawDescriptor.ref.changes as Stream.Stream<unknown, never, never>, (value) =>
+                Effect.sync(() => {
+                  current = value
+                  notify()
+                }),
+              ).pipe(Effect.catchAllCause(() => Effect.void)),
+            ),
+          )
+
+          return {
+            getSnapshot: () => current,
+            subscribe: (listener) => {
+              listeners.add(listener)
+              return () => {
+                listeners.delete(listener)
+              }
+            },
+          }
+        }
+
+        if (rawDescriptor?.kind === 'stream') {
+          let current = rawDescriptor.initial
+          const listeners = new Set<() => void>()
+
+          const notify = (): void => {
+            for (const listener of listeners) {
+              listener()
+            }
+          }
+
+          yield* Effect.forkScoped(
+            Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
+              Stream.runForEach(rawDescriptor.stream as Stream.Stream<unknown, any, any>, (value) =>
+                Effect.sync(() => {
+                  current = value
+                  notify()
+                }),
+              ).pipe(Effect.catchAllCause(() => Effect.void)),
+            ),
+          )
+
+          return {
+            getSnapshot: () => current,
+            subscribe: (listener) => {
+              listeners.add(listener)
+              return () => {
+                listeners.delete(listener)
+              }
+            },
+          }
+        }
+
+        return undefined
+      }) as Effect.Effect<ExternalStoreLike | undefined, never, any>
 
     if (rawDescriptor?.kind === 'module') {
       const linkRuntimeOpt = yield* Effect.serviceOption(DeclarativeLinkRuntimeTag)
@@ -207,7 +274,8 @@ export const installExternalStoreSync = <S>(
       return
     }
 
-    const store = rawDescriptor?.kind === 'service' ? yield* resolveStore(entry) : rawStore
+    const scopedDescriptorStore = yield* makeScopedDescriptorStore()
+    const store = scopedDescriptorStore ?? (rawDescriptor?.kind === 'service' ? yield* resolveStore(entry) : rawStore)
 
     if (!store || typeof store !== 'object') {
       return yield* Effect.dieMessage(
@@ -392,8 +460,6 @@ export const installExternalStoreSync = <S>(
         Effect.gen(function* () {
           while (true) {
             yield* awaitSignal()
-            if (fused) return
-            yield* microtask
             if (fused) return
 
             const snapshot = yield* readSnapshotOrFuse

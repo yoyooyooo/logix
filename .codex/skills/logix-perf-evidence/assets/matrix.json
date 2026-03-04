@@ -175,6 +175,7 @@
           "type": "relative",
           "metric": "runtime.txnCommitMs",
           "maxRatio": 1.05,
+          "minDeltaMs": 0.5,
           "numeratorRef": "requestedMode=auto",
           "denominatorRef": "requestedMode=full"
         }

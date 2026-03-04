@@ -59,7 +59,7 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
   main: (ctx: ProgramRunContext<Sh>, args: Args) => Effect.Effect<A, E, R>,
   options?: unknown,
 ): Promise<A> => {
-  if (TaskRunner.isInSyncTransaction()) {
+  if (TaskRunner.isInSyncTransactionShadow()) {
     throw new Error('[Logix] Runtime.openProgram/runProgram is not allowed inside a synchronous StateTransaction body')
   }
 

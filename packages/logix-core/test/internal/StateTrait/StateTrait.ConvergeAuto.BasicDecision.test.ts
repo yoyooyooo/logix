@@ -11,6 +11,7 @@ describe('StateTrait converge auto basic decision', () => {
     Effect.gen(function* () {
       const { M, ring, runtime } = makeConvergeAutoFixture({
         diagnosticsLevel: 'light',
+        extraADerivedCount: 1,
       })
 
       const program = Effect.gen(function* () {

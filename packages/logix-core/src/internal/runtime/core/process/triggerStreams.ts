@@ -1,4 +1,4 @@
-import { Context, Duration, Effect, Option, Ref, Stream } from 'effect'
+import { Duration, Effect, Option, Ref, Stream } from 'effect'
 import { isDevEnv } from '../env.js'
 import * as ReadQuery from '../ReadQuery.js'
 import { makeSchemaSelector } from './selectorSchema.js'
@@ -19,7 +19,7 @@ type SchemaAstLike = Parameters<typeof makeSchemaSelector>[1]
 type CachedSchemaAstEntry = { readonly ast: SchemaAstLike }
 
 type TriggerStreamFactoryOptions = {
-  readonly baseEnv: Context.Context<any>
+  readonly moduleRuntimeRegistry: ReadonlyMap<string, unknown>
   readonly shouldRecordChainEvents: boolean
   readonly actionIdFromUnknown: (action: unknown) => string | undefined
   readonly resolveRuntimeStateSchemaAst: (runtime: unknown) => SchemaAstLike
@@ -86,19 +86,8 @@ const makeModuleStateChangeReadQuery = (args: {
   })
 
 export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactoryOptions) => {
-  const moduleRuntimeTagCache = new Map<string, Context.Tag<any, any>>()
   const moduleRuntimeCache = new Map<string, any>()
   const runtimeSchemaAstCache = new WeakMap<object, CachedSchemaAstEntry>()
-
-  const resolveModuleRuntimeTag = (moduleId: string): Context.Tag<any, any> => {
-    const cached = moduleRuntimeTagCache.get(moduleId)
-    if (cached) {
-      return cached
-    }
-    const created = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
-    moduleRuntimeTagCache.set(moduleId, created)
-    return created
-  }
 
   const resolveModuleRuntime = (moduleId: string): Effect.Effect<any, Error> =>
     Effect.gen(function* () {
@@ -106,14 +95,12 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
         return moduleRuntimeCache.get(moduleId)
       }
 
-      const tag = resolveModuleRuntimeTag(moduleId)
-      const found = Context.getOption(options.baseEnv, tag)
-      if (Option.isNone(found)) {
+      const runtime = options.moduleRuntimeRegistry.get(moduleId)
+      if (runtime === undefined) {
         return yield* Effect.fail(new Error(`Missing module runtime in scope: ${moduleId}`))
       }
 
-      const runtime = found.value as any
-      moduleRuntimeCache.set(moduleId, runtime)
+      moduleRuntimeCache.set(moduleId, runtime as any)
       return runtime
     })
 

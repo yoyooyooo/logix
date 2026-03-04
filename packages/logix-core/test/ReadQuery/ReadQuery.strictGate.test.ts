@@ -28,6 +28,15 @@ describe('ReadQuery.strictGate', () => {
         ),
       )
 
+      // Ensure the subscription is active before triggering the first commit.
+      for (let i = 0; i < 64; i++) {
+        const status = yield* Fiber.status(fiber)
+        if (status._tag === 'Suspended' || status._tag === 'Done') {
+          break
+        }
+        yield* Effect.yieldNow()
+      }
+
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
       )
@@ -82,6 +91,14 @@ describe('ReadQuery.strictGate', () => {
       const fiber = yield* Effect.fork(
         Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(Stream.runCollect(stream)),
       )
+      // Ensure the subscription is active before triggering the first commit.
+      for (let i = 0; i < 64; i++) {
+        const status = yield* Fiber.status(fiber)
+        if (status._tag === 'Suspended' || status._tag === 'Done') {
+          break
+        }
+        yield* Effect.yieldNow()
+      }
       yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
         runtime.setState({ count: 1 }),
       )

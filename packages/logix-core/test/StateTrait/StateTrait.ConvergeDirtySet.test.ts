@@ -47,7 +47,10 @@ describe('StateTrait converge dirty-set scheduling', () => {
 
       const runtime = Logix.Runtime.make(impl, {
         stateTransaction: { traitConvergeMode: 'dirty' },
-        layer: Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+        layer: Layer.mergeAll(
+          Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+          Debug.diagnosticsLevel('light'),
+        ) as Layer.Layer<any, never, never>,
       })
 
       const program = Effect.gen(function* () {
@@ -86,7 +89,10 @@ describe('StateTrait converge dirty-set scheduling', () => {
 
       const runtime = Logix.Runtime.make(impl, {
         stateTransaction: { traitConvergeMode: 'dirty' },
-        layer: Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+        layer: Layer.mergeAll(
+          Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+          Debug.diagnosticsLevel('light'),
+        ) as Layer.Layer<any, never, never>,
       })
 
       const program = Effect.gen(function* () {

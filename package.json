@@ -9,6 +9,7 @@
     "typecheck": "pnpm -r typecheck",
     "typecheck:test": "pnpm -r typecheck:test",
     "verify": "pnpm verify:public-submodules",
+    "check:forbidden-patterns": "tsx scripts/checks/forbidden-patterns.ts",
     "verify:public-submodules": "tsx scripts/public-submodules/verify.ts",
     "lint": "pnpm lint:oxlint && pnpm lint:eslint",
     "lint:eslint": "eslint \"apps/**/src/**/*.{ts,tsx}\" \"packages/**/src/**/*.{ts,tsx}\" --max-warnings 0",

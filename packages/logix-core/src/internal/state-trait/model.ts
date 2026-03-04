@@ -581,6 +581,8 @@ export type TraitConvergeConfigScope = 'provider' | 'runtime_module' | 'runtime_
 
 export type TraitConvergeReason =
   | 'cold_start'
+  | 'fast_full'
+  | 'inline_dirty'
   | 'cache_hit'
   | 'cache_miss'
   | 'budget_cutoff'
