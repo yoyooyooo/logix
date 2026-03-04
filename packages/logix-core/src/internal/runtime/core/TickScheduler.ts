@@ -1,6 +1,5 @@
 import { Effect, FiberRef } from 'effect'
 import * as Debug from './DebugSink.js'
-import * as DevtoolsHub from './DevtoolsHub.js'
 import type { DeclarativeLinkRuntime } from './DeclarativeLinkRuntime.js'
 import type { HostScheduler } from './HostScheduler.js'
 import { makeJobQueue, type JobQueue } from './JobQueue.js'
@@ -489,7 +488,8 @@ export const makeTickScheduler = (args: {
     const currentTickSeq = tickSeq
 
     const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-    const shouldEmitTrace = DevtoolsHub.isDevtoolsEnabled() && diagnosticsLevel !== 'off'
+    const traceMode = yield* FiberRef.get(Debug.currentTraceMode)
+    const shouldEmitTrace = traceMode === 'on' && diagnosticsLevel !== 'off'
     const shouldEmitSchedulingDiagnostics = diagnosticsLevel !== 'off'
 
     const captured: {

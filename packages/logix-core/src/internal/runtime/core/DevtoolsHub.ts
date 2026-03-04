@@ -6,9 +6,11 @@ import type { ConvergeStaticIrExport } from '../../state-trait/converge-ir.js'
 import type { ConvergeStaticIrCollector } from './ConvergeStaticIrCollector.js'
 import {
   currentDiagnosticsLevel,
+  currentDiagnosticsMaterialization,
   clearRuntimeDebugEventSeq,
   toRuntimeDebugEventRef,
   type DiagnosticsLevel,
+  type DiagnosticsMaterialization,
   type Event,
   type RuntimeDebugEventRef,
   type Sink,
@@ -552,6 +554,7 @@ export const devtoolsHubSink: Sink = {
       // NOTE: the hub is a global singleton, but whether events are exportable/written to the buffer is controlled by FiberRef,
       // enabling different perf baselines/diagnostics tiers across scopes within the same process.
       const level = yield* FiberRef.get(currentDiagnosticsLevel)
+      const materialization = yield* FiberRef.get(currentDiagnosticsMaterialization)
       const eventRuntimeLabel = normalizeRuntimeLabel((event as any).runtimeLabel)
 
       let changed = false
@@ -630,6 +633,7 @@ export const devtoolsHubSink: Sink = {
       let projectedOversized = 0
       const ref = toRuntimeDebugEventRef(event, {
         diagnosticsLevel: level,
+        materialization: materialization as DiagnosticsMaterialization,
         onMetaProjection: ({ stats }) => {
           projectedDropped += stats.dropped
           projectedOversized += stats.oversized

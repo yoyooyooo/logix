@@ -12,6 +12,12 @@
 
 结论：`form.listScopeCheck` 与 `runtimeStore.noTearing.tickNotify` 的“硬天花板”已被打穿，剩余主线聚焦 `externalStore.ingest.tickNotify` 的 `diagnosticsLevel=full` 相对开销（`full/off`）。
 
+补充（同日后续切刀，externalStore 单项 quick 复测）：
+
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw40.diag-lazy-materialization.json`：
+  - `externalStore.ingest.tickNotify` 的 `full/off<=1.25` **可通过到 `watchers=512`**。
+  - 但仍有方差：`ulw38/ulw39` 在 `512` 处复发（见下方“证据路标 #4”）。
+
 ## 证据路标（PerfReport）
 
 ### 1) ULW31：当前快照（S2 全量 quick）
@@ -40,6 +46,20 @@
 - 该阶段的关键改动（见下方“切刀 #1/#2”）：
   - tiny-graph auto→full 提前切换
   - form perf 观测对齐（full/auto 同 capture sink）
+
+### 4) ULW38/ULW39/ULW40：externalStore 单项 quick（diagnostics lazy materialization）
+
+说明：这是“只跑 `externalStore.ingest.tickNotify`”的 targeted quick 证据，用于判断 full 诊断开销是否收敛。
+
+- PerfReport：
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw38.diag-lazy-materialization.json`
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw39.diag-lazy-materialization.json`
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw40.diag-lazy-materialization.json`
+- PerfDiff：
+  - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw39-to-ulw40.diag-lazy-materialization.json`
+- 关键阈值：
+  - `ulw38/ulw39`：`full/off<=1.25` 在 `watchers=512` 处失败（通过到 `256`）
+  - `ulw40`：`full/off<=1.25` 通过到 `watchers=512`
 
 ## 这波切刀（做了什么，落点在哪）
 
@@ -102,6 +122,34 @@
   - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
   - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
 
+### 切刀 #7：Devtools full 懒构造 + Trace gate（降低 full 相对开销）
+
+目标：继续打 `externalStore.ingest.tickNotify` 的 `full/off<=1.25`，把 `diagnosticsLevel=full` 在热路径里的“额外 work”压到最低。
+
+做法（核心点）：
+
+- 新增 `diagnostics materialization` 旋钮（`eager/lazy`）：
+  - full + lazy 时，`state:update` 不再在提交时投影/导出“重 payload”（如 `state` 快照、`traitSummary`、`replayEvent`），只保留 slim anchors（dirtySet/txn 锚点/patchCount 等）。
+- 新增 `trace gate`（`traceMode on/off`）：
+  - 在 `Debug.record` 边界对 `trace:*` 做开关；`off` 时直接丢弃 trace 事件，避免热路径里“观测噪音”的固定成本。
+- 对齐 DevtoolsHub 投影：
+  - Hub 在 `toRuntimeDebugEventRef` 时显式传入 `materialization`，保证 exportable event refs 的成本可控且语义一致。
+
+代码落点：
+
+- `packages/logix-core/src/internal/runtime/core/DebugSink.record.ts`
+  - FiberRef：`currentDiagnosticsMaterialization` / `currentTraceMode`
+  - `record()`：对 `trace:*` 做 gate
+  - `toRuntimeDebugEventRef()`：`state:update` 在 `lazy` 下只导出 slim meta（不再 `projectJsonValue(state)`）
+- `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
+  - Hub sink 在投影时传入 `materialization`
+- `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
+  - `shouldEmitTrace` 改为依赖 `Debug.currentTraceMode`（解除对 `DevtoolsHub.isDevtoolsEnabled()` 的耦合）
+- `packages/logix-core/src/Debug.ts`
+  - `Debug.devtoolsHubLayer` 支持 `materialization/traceMode`，并给出 production 默认策略：
+    - `diagnosticsLevel=full` 且 `NODE_ENV=production` 默认 `materialization=lazy`
+    - `NODE_ENV=production` 默认 `traceMode=off`
+
 ## 为什么这次有用（本质原因）
 
 - 把“每次变更都全量”的 rule 链路改成 “按变更行/变更字段增量”：
@@ -121,6 +169,7 @@
   - `pnpm -C packages/logix-react typecheck:test`
 - 回归测试：
   - `pnpm -C packages/logix-core test`（当时跑出 `279 files / 634 passed`）
+  - `pnpm -C packages/logix-core typecheck:test`
 - Browser perf 单跑（按需挑重点）：
   - `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx`
   - `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t "perf: runtimeStore tick"`
@@ -147,4 +196,3 @@
 
 - 建议固定 3~5 轮重复采集（同 profile/同参数），对 `full/off` 产出中位数结论；
 - 需要时输出更细的分解指标（例如 full 模式额外事件数、事件体积、每 tick 构造对象数），避免只盯最终 ms。
-

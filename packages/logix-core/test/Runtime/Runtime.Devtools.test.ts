@@ -50,7 +50,13 @@ describe('Runtime.make · devtools option', () => {
         const byLabel = snapshot.events.filter((e) => (e as any).runtimeLabel === runtimeLabel)
 
         expect(byLabel.length).toBeGreaterThan(0)
-        expect(byLabel.some((e) => e.kind === 'action' && e.label === 'action:dispatch')).toBe(true)
+        const sawBump = byLabel.some((e) => {
+          if (e.kind !== 'action') return false
+          if (e.label === 'bump') return true
+          const metaAny = e.meta as any
+          return metaAny && typeof metaAny === 'object' && metaAny.actionTag === 'bump'
+        })
+        expect(sawBump).toBe(true)
       } finally {
         process.env.NODE_ENV = prevEnv
       }

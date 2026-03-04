@@ -6,6 +6,10 @@
 - 若未特别说明，一律按 `05-forward-only-vnext-plan.md` 的“零存量用户”路线执行。
 - 不做兼容层，不保留弃用期。
 
+执行新增约束（本仓当前策略）：
+- **每一刀必须独立提交**（一个 commit 对应一刀，避免“多刀混在一起”导致后续回滚/二分困难）。
+- 每刀完成后，必须在 `docs/perf/05-forward-only-vnext-plan.md` 与 `docs/perf/03-next-stage-major-cuts.md` 勾选对应条目为 `[x]`。
+
 ## 0. 先读顺序
 
 1. `docs/perf/01-architecture-keep-vs-change.md`

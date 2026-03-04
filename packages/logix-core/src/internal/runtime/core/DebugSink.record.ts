@@ -284,6 +284,21 @@ export const currentDiagnosticsLevel = FiberRef.unsafeMake<DiagnosticsLevel>('of
 export const diagnosticsLevel = (level: DiagnosticsLevel): Layer.Layer<any, never, never> =>
   Layer.fiberRefLocallyScopedWith(currentDiagnosticsLevel as any, () => level) as Layer.Layer<any, never, never>
 
+export type DiagnosticsMaterialization = 'eager' | 'lazy'
+export const currentDiagnosticsMaterialization = FiberRef.unsafeMake<DiagnosticsMaterialization>('eager')
+
+export const diagnosticsMaterialization = (mode: DiagnosticsMaterialization): Layer.Layer<any, never, never> =>
+  Layer.fiberRefLocallyScopedWith(
+    currentDiagnosticsMaterialization as any,
+    () => mode,
+  ) as Layer.Layer<any, never, never>
+
+export type TraceMode = 'off' | 'on'
+export const currentTraceMode = FiberRef.unsafeMake<TraceMode>('on')
+
+export const traceMode = (mode: TraceMode): Layer.Layer<any, never, never> =>
+  Layer.fiberRefLocallyScopedWith(currentTraceMode as any, () => mode) as Layer.Layer<any, never, never>
+
 export interface TraitConvergeDiagnosticsSamplingConfig {
   /**
    * Sample once every N txns (deterministic, based on stable txnSeq).
@@ -896,6 +911,13 @@ export const record = (event: Event) =>
       return
     }
 
+    // Trace events are performance-sensitive and should be explicitly enabled.
+    // Keep the check scoped to trace:* only so non-trace events stay on the fast path.
+    if (typeof event.type === 'string' && event.type.startsWith('trace:')) {
+      const mode = yield* FiberRef.get(currentTraceMode)
+      if (mode === 'off') return
+    }
+
     const enriched = event as Event
 
     const diagnosticsLevel = yield* FiberRef.get(currentDiagnosticsLevel)
@@ -959,6 +981,7 @@ export const toRuntimeDebugEventRef = (
   event: Event,
   options?: {
     readonly diagnosticsLevel?: DiagnosticsLevel
+    readonly materialization?: DiagnosticsMaterialization
     readonly eventSeq?: number
     readonly onMetaProjection?: (projection: {
       readonly stats: JsonValueProjectionStats
@@ -972,6 +995,8 @@ export const toRuntimeDebugEventRef = (
   }
 
   const isLightLike = diagnosticsLevel === 'light' || diagnosticsLevel === 'sampled'
+  const materialization = options?.materialization ?? 'eager'
+  const isLazyMaterialization = materialization === 'lazy'
 
   const timestamp =
     typeof event.timestamp === 'number' && Number.isFinite(event.timestamp) ? event.timestamp : Date.now()
@@ -1100,35 +1125,32 @@ export const toRuntimeDebugEventRef = (
     case 'state:update': {
       const e = event as Extract<Event, { readonly type: 'state:update' }>
       const dirtySetCanonical = stripDirtyRootPaths(e.dirtySet)
+      const slimMetaInput: Record<string, unknown> = {}
+      if (dirtySetCanonical !== undefined) slimMetaInput.dirtySet = dirtySetCanonical
+      if (e.patchCount !== undefined) slimMetaInput.patchCount = e.patchCount
+      if (e.patchesTruncated !== undefined) slimMetaInput.patchesTruncated = e.patchesTruncated
+      if (e.patchesTruncatedReason !== undefined) slimMetaInput.patchesTruncatedReason = e.patchesTruncatedReason
+      if (e.staticIrDigest !== undefined) slimMetaInput.staticIrDigest = e.staticIrDigest
+      if (e.commitMode !== undefined) slimMetaInput.commitMode = e.commitMode
+      if (e.priority !== undefined) slimMetaInput.priority = e.priority
+      if (e.originKind !== undefined) slimMetaInput.originKind = e.originKind
+      if (e.originName !== undefined) slimMetaInput.originName = e.originName
 
       const metaInput = isLightLike
+        ? isLazyMaterialization
+          ? slimMetaInput
+          : { state: e.state, ...slimMetaInput }
+        : isLazyMaterialization
+          ? slimMetaInput
+          : { state: e.state, ...slimMetaInput, traitSummary: e.traitSummary, replayEvent: e.replayEvent }
+
+      const metaProjection = isLazyMaterialization
         ? {
-            state: e.state,
-            dirtySet: dirtySetCanonical,
-            patchCount: e.patchCount,
-            patchesTruncated: e.patchesTruncated,
-            patchesTruncatedReason: e.patchesTruncatedReason,
-            staticIrDigest: e.staticIrDigest,
-            commitMode: e.commitMode,
-            priority: e.priority,
-            originKind: e.originKind,
-            originName: e.originName,
+            value: metaInput as unknown as JsonValue,
+            stats: { dropped: 0, oversized: 0, nonSerializable: 0 } satisfies JsonValueProjectionStats,
+            downgrade: undefined,
           }
-        : {
-            state: e.state,
-            dirtySet: dirtySetCanonical,
-            patchCount: e.patchCount,
-            patchesTruncated: e.patchesTruncated,
-            patchesTruncatedReason: e.patchesTruncatedReason,
-            staticIrDigest: e.staticIrDigest,
-            commitMode: e.commitMode,
-            priority: e.priority,
-            originKind: e.originKind,
-            originName: e.originName,
-            traitSummary: e.traitSummary,
-            replayEvent: e.replayEvent,
-          }
-      const metaProjection = projectJsonValue(metaInput)
+        : projectJsonValue(metaInput)
       options?.onMetaProjection?.({
         stats: metaProjection.stats,
         downgrade: metaProjection.downgrade,

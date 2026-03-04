@@ -17,6 +17,8 @@ export type Event = Internal.Event
 export interface Sink extends Internal.Sink {}
 export interface RuntimeDebugEventRef extends Internal.RuntimeDebugEventRef {}
 export type DiagnosticsLevel = Internal.DiagnosticsLevel
+export type DiagnosticsMaterialization = Internal.DiagnosticsMaterialization
+export type TraceMode = Internal.TraceMode
 export type TraitConvergeDiagnosticsSamplingConfig = Internal.TraitConvergeDiagnosticsSamplingConfig
 export type SnapshotToken = DevtoolsHub.SnapshotToken
 
@@ -26,6 +28,8 @@ export const internal = {
   currentDebugSinks: Internal.currentDebugSinks,
   currentRuntimeLabel: Internal.currentRuntimeLabel,
   currentDiagnosticsLevel: Internal.currentDiagnosticsLevel,
+  currentDiagnosticsMaterialization: Internal.currentDiagnosticsMaterialization,
+  currentTraceMode: Internal.currentTraceMode,
   currentTraitConvergeDiagnosticsSampling: Internal.currentTraitConvergeDiagnosticsSampling,
   toRuntimeDebugEventRef: Internal.toRuntimeDebugEventRef,
 }
@@ -33,6 +37,18 @@ export const internal = {
 export interface DevtoolsSnapshot extends DevtoolsHub.DevtoolsSnapshot {}
 export interface DevtoolsHubOptions extends DevtoolsHub.DevtoolsHubOptions {
   readonly diagnosticsLevel?: DiagnosticsLevel
+  /**
+   * Diagnostics materialization mode:
+   * - eager: include heavy payloads (e.g. state snapshot) in exportable events.
+   * - lazy: keep slim anchors only; heavy payloads must be materialized on-demand by higher layers.
+   */
+  readonly materialization?: DiagnosticsMaterialization
+  /**
+   * Trace mode:
+   * - on: enables `trace:*` events (e.g. trace:tick / trace:effectop).
+   * - off: drops trace events at the Debug.record boundary (keeps non-trace diagnostics/events).
+   */
+  readonly traceMode?: TraceMode
   readonly traitConvergeDiagnosticsSampling?: TraitConvergeDiagnosticsSamplingConfig
 }
 
@@ -64,6 +80,18 @@ export const diagnosticsLevel = (level: DiagnosticsLevel): Layer.Layer<any, neve
     never,
     never
   >
+
+export const diagnosticsMaterialization = (
+  mode: DiagnosticsMaterialization,
+): Layer.Layer<any, never, never> =>
+  Layer.fiberRefLocallyScopedWith(Internal.currentDiagnosticsMaterialization as any, () => mode) as Layer.Layer<
+    any,
+    never,
+    never
+  >
+
+export const traceMode = (mode: TraceMode): Layer.Layer<any, never, never> =>
+  Layer.fiberRefLocallyScopedWith(Internal.currentTraceMode as any, () => mode) as Layer.Layer<any, never, never>
 
 export const traitConvergeDiagnosticsSampling = (
   config: TraitConvergeDiagnosticsSamplingConfig,
@@ -291,9 +319,11 @@ export const layer = (options?: DebugLayerOptions): Layer.Layer<any, never, neve
     }
   })()
 
-  return diagnostics
-    ? (Layer.mergeAll(sinks, diagnosticsLevel(diagnostics)) as Layer.Layer<any, never, never>)
-    : sinks
+  const trace = mode === 'dev' ? traceMode('on') : traceMode('off')
+
+  const base = Layer.mergeAll(sinks, trace) as Layer.Layer<any, never, never>
+
+  return diagnostics ? (Layer.mergeAll(base, diagnosticsLevel(diagnostics)) as Layer.Layer<any, never, never>) : base
 }
 
 /**
@@ -365,7 +395,14 @@ export function devtoolsHubLayer(
   const appendConvergeStaticIr = ConvergeStaticIrCollector.appendConvergeStaticIrCollectors([
     DevtoolsHub.devtoolsHubConvergeStaticIrCollector,
   ])
-  const enableExportableDiagnostics = diagnosticsLevel(options?.diagnosticsLevel ?? 'light')
+  const resolvedDiagnosticsLevel = options?.diagnosticsLevel ?? 'light'
+  const resolvedTraceMode = options?.traceMode ?? (resolvedDiagnosticsLevel === 'off' ? 'off' : getNodeEnv() === 'production' ? 'off' : 'on')
+  const enableExportableDiagnostics = diagnosticsLevel(resolvedDiagnosticsLevel)
+  const enableMaterialization = diagnosticsMaterialization(
+    options?.materialization ??
+      (resolvedDiagnosticsLevel === 'full' && getNodeEnv() === 'production' ? 'lazy' : 'eager'),
+  )
+  const enableTraceMode = traceMode(resolvedTraceMode)
   const convergeSamplingLayer = options?.traitConvergeDiagnosticsSampling
     ? traitConvergeDiagnosticsSampling(options.traitConvergeDiagnosticsSampling)
     : (Layer.empty as unknown as Layer.Layer<any, never, never>)
@@ -373,7 +410,14 @@ export function devtoolsHubLayer(
   // FiberRef layers must build base sinks first, then append; provideMerge(append, base)
   // builds base first and then applies append's FiberRefs patch, avoiding overrides.
   return Layer.provideMerge(
-    Layer.mergeAll(append, enableExportableDiagnostics, convergeSamplingLayer, appendConvergeStaticIr) as Layer.Layer<
+    Layer.mergeAll(
+      append,
+      enableExportableDiagnostics,
+      enableMaterialization,
+      enableTraceMode,
+      convergeSamplingLayer,
+      appendConvergeStaticIr,
+    ) as Layer.Layer<
       any,
       never,
       any

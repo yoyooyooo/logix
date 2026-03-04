@@ -2,6 +2,16 @@
 
 本文件是执行裁决，不是讨论稿。默认目标：不计代价，优先性能上限与稳定性。
 
+## 状态（作为任务清单维护）
+
+说明：每一刀必须独立提交；做完一刀就把对应条目勾上，并在 `docs/perf/05-forward-only-vnext-plan.md` 同步状态。
+
+- [x] A-1：Devtools full 懒构造（lazy materialization）+ Trace gate（`traceMode`）。
+- [ ] A-2：externalStore full/off 方差收敛（修正 full 诊断链路导致的 notify 延迟/排队差异）。
+- [ ] B-1：externalStore 批处理写回（窗口合并 txn）。
+- [ ] C-1：`Ref.list(...)` 自动增量（txn evidence -> `changedIndices`）。
+- [ ] D-1：DirtySet v2（统一索引证据协议）。
+
 ## A 刀（优先级 P0）：full 诊断懒构造
 
 目标：
@@ -91,4 +101,3 @@
 
 3. validate 调用语义
 - `Ref.list(...)` 默认自动增量化（由 txn evidence 驱动）
-

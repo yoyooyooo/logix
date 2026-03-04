@@ -8,6 +8,16 @@
 2. 目标优先级：性能上限 > 可诊断性 > API 清晰度 > 兼容性。
 3. 允许破坏式 API 调整；不提供兼容层，不保留弃用期。
 
+## 0.1 执行清单（按刀提交）
+
+约束：每一刀必须独立提交，并在本文件与相关专题里把对应条目标记为已完成。
+
+- [x] A-1：Devtools full 懒构造（lazy materialization）+ Trace gate（`traceMode`）的最小闭环（含回归与 perf 证据）。
+- [ ] A-2：externalStore full/off 方差收敛：修正 tick flush 与 full 诊断链路的微任务排队顺序（避免 full 延迟 notify）。
+- [ ] B-1：externalStore 写回批处理（microtask/tick window），把 “每 callback 一笔 txn” 改为窗口合并。
+- [ ] C-1：`Ref.list(...)` 默认自动增量化（从 txn evidence 推导 `changedIndices`），业务侧不再要求拆 `Ref.item(...)`。
+- [ ] D-1：DirtySet v2（root-level + index-level evidence 统一协议），converge/validate/selector 共用。
+
 ## 1. 目标状态（一次性收敛）
 
 1. `externalStore.ingest.tickNotify` 的 `full/off<=1.25` 稳定通过到 `watchers=512`。
@@ -88,6 +98,10 @@ TraitLifecycle.scopedValidate($, {
 - `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
 - `packages/logix-core/src/Runtime.ts`（新 `observability` 配置接线）
 
+状态：
+- [x] A-1 已完成：引入 `diagnosticsMaterialization=eager/lazy` 与 `traceMode=on/off`，并在 production + full 下默认 `lazy + trace off`；证据见 `docs/perf/2026-03-04-s2-kernel-perf-cuts.md` 的“切刀 #7”。
+- [ ] A-2 待完成：进一步稳定 `externalStore.ingest.tickNotify` 的 `full/off<=1.25`（3~5 轮 quick 中位数判定）。
+
 ### Wave B（P0）：externalStore 批处理写回
 
 目标：
@@ -96,6 +110,9 @@ TraitLifecycle.scopedValidate($, {
 落点：
 - `packages/logix-core/src/internal/state-trait/external-store.ts`
 - `packages/logix-core/src/StateTrait.ts`（`writeback` API）
+
+状态：
+- [ ] 未开始
 
 ### Wave C（P1）：Ref.list 自动增量
 
@@ -107,6 +124,9 @@ TraitLifecycle.scopedValidate($, {
 - `packages/logix-core/src/internal/state-trait/validate.impl.ts`
 - `packages/logix-core/src/internal/trait-lifecycle/index.ts`
 
+状态：
+- [ ] 未开始
+
 ### Wave D（P1/P2）：DirtySet v2 统一协议
 
 目标：
@@ -117,6 +137,9 @@ TraitLifecycle.scopedValidate($, {
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
 - `packages/logix-core/src/internal/state-trait/*`
 - `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`
+
+状态：
+- [ ] 未开始
 
 ## 4. 破坏式变更策略（必须执行）
 
@@ -148,4 +171,3 @@ TraitLifecycle.scopedValidate($, {
 1. 新会话先读本文件，再读 `04-agent-execution-playbook.md`。
 2. 若实现与本文件冲突，以本文件为准并回写其它专题文档。
 3. 每个 wave 完成后新增日期记录（改动/证据/结论/下一步）。
-
