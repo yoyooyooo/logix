@@ -4,19 +4,24 @@
 
 ## TL;DR（当前状态）
 
-以 `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw31.json` 为准（Browser / `profile=quick` / dirty workspace 快照）：
+以以下证据为锚（Browser / `profile=quick` / dirty workspace 快照）：
+- `form.listScopeCheck`：`specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw51.form-list-scope-check.json`
+- `externalStore.ingest.tickNotify`：`specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw52.diag-early-onCommit-trace-off.json`（以及 ULW53/54）
+- `runtimeStore.noTearing.tickNotify`：仍以 `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw31.json` 作为历史锚点（本轮也已单跑回归通过，见下方“验证”）
 
 - ✅ `form.listScopeCheck`：`auto<=full*1.05` 在 `diagnosticsLevel=off/light/full` 全部 **通过**（`maxLevel=300`，`firstFailLevel=null`）。
 - ✅ `runtimeStore.noTearing.tickNotify`：`full/off<=1.25` **通过**（`maxLevel=512`，`firstFailLevel=null`）。
-- ❌ `externalStore.ingest.tickNotify`：`full/off<=1.25` **仍不稳定**（该次快照 `firstFailLevel=256`；不同 ULW 轮次会漂移到 256~512）。
+- ✅ `externalStore.ingest.tickNotify`：`full/off<=1.25` **已稳定通过到 `watchers=512`**（ULW52/53/54 三轮 targeted quick 均通过）。
 
-结论：`form.listScopeCheck` 与 `runtimeStore.noTearing.tickNotify` 的“硬天花板”已被打穿，剩余主线聚焦 `externalStore.ingest.tickNotify` 的 `diagnosticsLevel=full` 相对开销（`full/off`）。
+结论：S2 三大 perf-boundaries 均已过线；下一阶段转入 “进一步抬高上限 + 默认增量化能力收口”（B/C/D）。
 
 补充（同日后续切刀，externalStore 单项 quick 复测）：
 
 - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw40.diag-lazy-materialization.json`：
   - `externalStore.ingest.tickNotify` 的 `full/off<=1.25` **可通过到 `watchers=512`**。
   - 但仍有方差：`ulw38/ulw39` 在 `512` 处复发（见下方“证据路标 #4”）。
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw52.diag-early-onCommit-trace-off.json`（以及 ULW53/54）：
+  - 通过“`traceMode=off` 时提前 onCommit”把方差收敛到可复现的稳定通过（见下方“证据路标 #5 / 切刀 #8”）。
 
 ## 证据路标（PerfReport）
 
@@ -60,6 +65,19 @@
 - 关键阈值：
   - `ulw38/ulw39`：`full/off<=1.25` 在 `watchers=512` 处失败（通过到 `256`）
   - `ulw40`：`full/off<=1.25` 通过到 `watchers=512`
+
+### 5) ULW52/ULW53/ULW54：externalStore 单项 quick（traceMode=off 提前 onCommit）
+
+说明：这是“只跑 `externalStore.ingest.tickNotify`”的 targeted quick 证据，用于验证 full/off 方差是否被收敛。
+
+- PerfReport：
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw52.diag-early-onCommit-trace-off.json`
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw53.diag-early-onCommit-trace-off.json`
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw54.diag-early-onCommit-trace-off.json`
+- PerfDiff（注意：before 文件的 profile 标记有漂移告警，仅作趋势参考）：
+  - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw39-to-ulw52.diag-early-onCommit-trace-off.json`
+- 关键阈值：
+  - 三轮均：`full/off<=1.25` 通过到 `watchers=512`
 
 ## 这波切刀（做了什么，落点在哪）
 
@@ -150,6 +168,25 @@
     - `diagnosticsLevel=full` 且 `NODE_ENV=production` 默认 `materialization=lazy`
     - `NODE_ENV=production` 默认 `traceMode=off`
 
+### 切刀 #8：`traceMode=off` 时提前 onCommit（对齐 notify 启动时机，收敛 full/off 方差）
+
+目标：把 `externalStore.ingest.tickNotify` 的 `full/off<=1.25` 从“偶发复发”收敛成“可复现稳定通过”。
+
+做法：
+
+- 在 commit 阶段引入新的顺序判定：
+  - `diagnosticsLevel=off`：保持既有策略（`onCommit` 早于 `state:update`）。
+  - `diagnosticsLevel!=off` 且 `traceMode=off`：同样把 `onCommit` 提前到 `state:update` 之前（尽早 schedule tick flush 的 microtask 边界）。
+  - `traceMode=on`：保持原顺序（继续保证 selector/trace 因果链在 `state:update` 之后）。
+
+代码落点：
+
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
+
+证据：
+
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw52.diag-early-onCommit-trace-off.json`（以及 ULW53/54）
+
 ## 为什么这次有用（本质原因）
 
 - 把“每次变更都全量”的 rule 链路改成 “按变更行/变更字段增量”：
@@ -177,20 +214,18 @@
 
 ## 剩余问题与下一刀（继续不计代价压榨）
 
-### 1) externalStore.ingest.tickNotify：`full/off<=1.25` 仍未稳定过线
+### 1) externalStore.ingest.tickNotify：`full/off<=1.25` 已稳定过线（A-2 完成）
 
-现状（ULW31）：
+证据：
 
-- `p95<=3ms {off/full}` 可到 `watchers=512`；
-- 但 `full/off<=1.25` 在 `watchers=256` 开始失败（不同轮次可能漂移到 512）。
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw52.diag-early-onCommit-trace-off.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw53.diag-early-onCommit-trace-off.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw54.diag-early-onCommit-trace-off.json`
 
-下一刀方向（建议优先级从高到低）：
+下一刀（建议优先级从高到低）：
 
-- 继续砍 `diagnosticsLevel=full` 的“额外 work”：
-  - 复核 full 模式下是否仍在 tickNotify 热路径里做了不必要的事件构建/复制/数组拼接/字符串化。
-  - 若必须保留诊断信息，优先改为“结构化 slim 事件 + 延迟 materialize（仅 devtools 消费时展开）”。
-- 把 externalStore ingest 的 notify 链路做“变更批处理/去重/短路”：
-  - 同一 tick 内对同一订阅者的多次触发尽量合并，减少观察者 fan-out 下的固定成本。
+- B-1：externalStore 批处理写回（窗口合并 txn），继续抬高上限并降低高频输入下的 txn 数量与抖动。
+- C-1：`Ref.list(...)` 自动增量（txn evidence -> `changedIndices`），把增量化从“调用方配合”升级到“内核默认能力”。
 
 ### 2) 证据层面：把 externalStore 的不稳定性从“感觉”变成“可解释”
 

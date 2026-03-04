@@ -48,6 +48,12 @@
 3. 当前问题不在监听器通知本身：
 - `runtimeStore.noTearing.tickNotify` 已通过 `full/off<=1.25`，说明 notify 主干已被优化过一轮。
 
+4. full 与 off 的“commit 顺序差异”会放大方差（尤其在生产 trace 关闭时属于纯成本）：
+- 现状：`diagnosticsLevel=off` 时 `onCommit` 早于 `Debug.record(state:update)`；但 `diagnosticsLevel=light/full` 时相反。
+  - 位置：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`（commit ordering 注释段）
+- 影响：TickScheduler 会强制跨一个 microtask 边界后才 flush（`scheduleTick` 的 `yieldMicrotask`），因此 `onCommit` 被推迟会直接推迟 notify 启动时间，进而放大 `full/off` 的相对预算与抖动。
+- 关键前提：生产环境通常 `traceMode=off`，此时不存在“trace 因果链顺序”需求，顺序差异几乎只剩性能成本。
+
 ## 诊断与验证口径（固定）
 
 1. 每次改造至少验证三组：
@@ -60,3 +66,21 @@
 
 3. 任何“只提升 off，不改善 full”的方案不能算完成。
 
+## A-2（已完成）：在 `traceMode=off` 时提前 onCommit（对齐 off 的 notify 启动时机）
+
+目标：
+- 收敛 `externalStore.ingest.tickNotify` 的 `full/off<=1.25` 方差，至少在 `watchers=512` 处稳定过线（3~5 轮 quick 中位数）。
+
+做法（最小语义改动）：
+- 仅在 `traceMode=off` 时，把 `onCommit(...)` 移到 `Debug.record(state:update)` 之前（并确保只调用一次）。
+- `traceMode=on` 保持现有顺序不变（继续保证 `txn → state:update → selector/trace → render` 的直觉链路）。
+
+验收：
+- `pnpm -C packages/logix-core test`
+- `pnpm -C packages/logix-core typecheck:test`
+- `pnpm perf collect:quick -- --files test/browser/perf-boundaries/external-store-ingest.test.tsx --out specs/103-effect-v4-forward-cutover/perf/<ulw>.json` ×3~5
+
+证据：
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw52.diag-early-onCommit-trace-off.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw53.diag-early-onCommit-trace-off.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw54.diag-early-onCommit-trace-off.json`

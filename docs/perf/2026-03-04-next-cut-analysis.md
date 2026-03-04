@@ -2,7 +2,18 @@
 
 目标：继续打 `externalStore.ingest.tickNotify` 的 `full/off<=1.25`，并把 list-scope 增量化从“调用方配合”推进到“内核自动推导”。
 
-## 当前卡点（以 ULW31 快照为锚）
+## 状态更新（同日后续已完成）
+
+- `externalStore.ingest.tickNotify` 的 `full/off<=1.25` 已稳定通过到 `watchers=512`：
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw52.diag-early-onCommit-trace-off.json`
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw53.diag-early-onCommit-trace-off.json`
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw54.diag-early-onCommit-trace-off.json`
+- 对应切刀已落盘：
+  - A-1：诊断 lazy materialization + trace gate
+  - A-2：`traceMode=off` 时提前 `onCommit`（对齐 notify 启动时机）
+- 下一刀建议：直接转入 B-1（externalStore 批处理写回）与 C-1（`Ref.list(...)` 自动增量）。
+
+## 历史卡点（以 ULW31 快照为锚；现已解决）
 
 - 证据：`specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw31.json`
 - `externalStore.ingest.tickNotify`：
@@ -145,4 +156,3 @@
   - 稳定标识（instanceId/txnSeq/opSeq）不漂移；
   - 诊断事件保持 slim + 可序列化；
   - list reorder + 无 trackBy 场景仍正确（允许降级，但不可错）。
-

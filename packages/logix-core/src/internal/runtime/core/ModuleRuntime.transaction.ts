@@ -251,10 +251,23 @@ export const makeTransactionOps = <S>(args: {
       // Perf-sensitive ordering:
       // - In diagnostics=off mode (default for production/perf runs), allow selectorGraph notifications to be published
       //   before state:update debug recording so React external store subscribers can start flushing earlier.
-      // - In diagnostics=light/full, keep the original ordering so any selector eval trace stays after state:update
+      // - When traceMode=off (production default), treat it as a perf mode even under diagnostics=light/full:
+      //   publish onCommit before state:update so TickScheduler can schedule the tick flush earlier (yieldMicrotask),
+      //   reducing end-to-end latency and full/off variance on externalStore ingest workloads.
+      // - When traceMode=on, keep the original ordering so any selector eval trace stays after state:update
       //   (preserves a more intuitive txn → selector → render causal chain in devtools).
       const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-      if (onCommit && diagnosticsLevel === 'off') {
+      let shouldCommitBeforeStateUpdate = false
+      if (onCommit) {
+        if (diagnosticsLevel === 'off') {
+          shouldCommitBeforeStateUpdate = true
+        } else {
+          const traceMode = yield* FiberRef.get(Debug.currentTraceMode)
+          shouldCommitBeforeStateUpdate = traceMode === 'off'
+        }
+      }
+
+      if (onCommit && shouldCommitBeforeStateUpdate) {
         yield* onCommit({
           state: nextState,
           meta,
@@ -322,7 +335,7 @@ export const makeTransactionOps = <S>(args: {
         })
       }
 
-      if (onCommit && diagnosticsLevel !== 'off') {
+      if (onCommit && !shouldCommitBeforeStateUpdate) {
         yield* onCommit({
           state: nextState,
           meta,

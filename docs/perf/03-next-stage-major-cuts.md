@@ -7,7 +7,7 @@
 说明：每一刀必须独立提交；做完一刀就把对应条目勾上，并在 `docs/perf/05-forward-only-vnext-plan.md` 同步状态。
 
 - [x] A-1：Devtools full 懒构造（lazy materialization）+ Trace gate（`traceMode`）。
-- [ ] A-2：externalStore full/off 方差收敛（修正 full 诊断链路导致的 notify 延迟/排队差异）。
+- [x] A-2：externalStore full/off 方差收敛（`traceMode=off` 时提前 `onCommit`，避免 full 延迟 notify）。
 - [ ] B-1：externalStore 批处理写回（窗口合并 txn）。
 - [ ] C-1：`Ref.list(...)` 自动增量（txn evidence -> `changedIndices`）。
 - [ ] D-1：DirtySet v2（统一索引证据协议）。
