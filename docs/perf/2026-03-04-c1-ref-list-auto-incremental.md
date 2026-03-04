@@ -56,10 +56,12 @@
 - `pnpm -C packages/logix-react typecheck:test`
 - `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 
-待补（PerfReport/PerfDiff，clean workspace）：
-- [ ] `form.listScopeCheck` 的 quick 证据落盘（以及与历史锚点的 diff）。
+PerfReport/PerfDiff（quick，clean workspace）：
+- PerfReport：
+  - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw59.c1-ref-list-auto-incremental.clean.json`
+- PerfDiff（对比历史锚点；before 为 dirty 快照，仅作趋势参考）：
+  - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw51-to-ulw59.c1-ref-list-auto-incremental.clean.json`
 
 ## 下一刀（不计代价）
 
 - D-1：DirtySet v2（把 index-level evidence 升级为统一协议，供 converge/validate/selectorGraph 共用），彻底去掉各处重复的路径解析与 hint 拼装。
-
