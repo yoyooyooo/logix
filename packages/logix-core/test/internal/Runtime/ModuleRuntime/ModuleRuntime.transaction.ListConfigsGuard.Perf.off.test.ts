@@ -163,7 +163,12 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
 
       const fieldPathIdRegistry = makeFieldPathIdRegistry([
         ['meta', 'updatedAt'],
-        ['list0', '0', 'value'],
+        // Structural list root dirtiness must trigger RowId reconciliation.
+        ['list0'],
+        // Non-structural list item field updates (e.g. list0.value) should be gated.
+        ['list0', 'value'],
+        // TrackBy dirtiness must still trigger reconciliation (identity can change).
+        ['list0', 'id'],
       ])
 
       const noOverlapDirtySet = makeDirtySet([0])

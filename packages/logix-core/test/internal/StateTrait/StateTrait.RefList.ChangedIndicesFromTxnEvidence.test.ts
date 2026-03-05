@@ -76,7 +76,7 @@ describe('StateTrait validate: Ref.list changedIndices from txn evidence', () =>
           origin: { kind: 'perf', name: 'c-1' },
           rowIdStore,
           listConfigs,
-          txnIndexEvidence: StateTransaction.readListIndexEvidence(txnContext),
+          txnDirtyEvidence: StateTransaction.readDirtyEvidence(txnContext),
           getDraft: () => txnContext.current!.draft as any,
           setDraft: (next) => {
             StateTransaction.updateDraft(txnContext, next as any)
@@ -99,4 +99,3 @@ describe('StateTrait validate: Ref.list changedIndices from txn evidence', () =>
     }),
   )
 })
-

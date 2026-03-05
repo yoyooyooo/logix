@@ -124,8 +124,8 @@ describe('RowId update gate', () => {
 
   it('should match only same-root list paths when multiple list roots exist', () => {
     const registry = makeFieldPathIdRegistry([
-      ['profile', 'friends', 'name'],
-      ['orders', 'items', 'sku'],
+      ['profile', 'friends'],
+      ['orders', 'items'],
     ])
 
     const shouldSync = shouldReconcileListConfigsByDirtySet({
@@ -156,5 +156,31 @@ describe('RowId update gate', () => {
 
     expect(first).toBe(true)
     expect(second).toBe(true)
+  })
+
+  it('should return false when dirty roots are nested under a list path but do not overlap trackBy', () => {
+    const registry = makeFieldPathIdRegistry([
+      ['items', 'warehouseId'],
+      ['items', 'id'],
+    ])
+    const shouldSync = shouldReconcileListConfigsByDirtySet({
+      dirtySet: makeDirtySet([0]),
+      listConfigs: [{ path: 'items', trackBy: 'id' }],
+      fieldPathIdRegistry: registry,
+    })
+    expect(shouldSync).toBe(false)
+  })
+
+  it('should return true when dirty roots overlap a list trackBy field path', () => {
+    const registry = makeFieldPathIdRegistry([
+      ['items', 'warehouseId'],
+      ['items', 'id'],
+    ])
+    const shouldSync = shouldReconcileListConfigsByDirtySet({
+      dirtySet: makeDirtySet([1]),
+      listConfigs: [{ path: 'items', trackBy: 'id' }],
+      fieldPathIdRegistry: registry,
+    })
+    expect(shouldSync).toBe(true)
   })
 })

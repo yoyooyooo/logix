@@ -10,7 +10,8 @@
 - [x] A-2：externalStore full/off 方差收敛（`traceMode=off` 时提前 `onCommit`，避免 full 延迟 notify）。
 - [x] B-1：externalStore 批处理写回（同 module 写回 txn 合并）。
 - [x] C-1：`Ref.list(...)` 自动增量（txn evidence -> `changedIndices`）。
-- [ ] D-1：DirtySet v2（统一索引证据协议）。
+- [x] D-1：DirtySet v2（统一索引证据协议）。
+- [ ] D-2：SelectorGraph/Converge 证据消费收口（`TxnDirtyEvidence`）。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 
@@ -95,6 +96,19 @@
 核心做法：
 1. 在 root-level dirtySet 之外增加 list-index delta 通道。
 2. 统一消费接口，去掉各子系统重复路径解析。
+
+实现细化（确定性，不再讨论）：
+- 内核统一产出 `TxnDirtyEvidence`（只在事务窗口有效，禁止持久化引用）：
+  - root-level：`dirtyAllReason | dirtyPathIds(Set<FieldPathId>) | dirtyPathsKeyHash/keySize`
+  - list-level：`listIndexEvidence(listInstanceKey -> changedIndices)` + `listRootTouched(listInstanceKey)` + `listItemTouched(listInstanceKey -> indices)`
+- `validate.impl.ts`：
+  - 用 `ctx.txnDirtyEvidence?.list` 替代 `ctx.txnIndexEvidence`；
+  - list-scope / item-scope 的 `changedIndices` 读取统一走 evidence（优先 request-scoped，回落 txn-scoped）。
+- `rowId.updateAll` 的触发条件从“任何 list 子字段变化都更新”收敛到“结构变化/trackBy 变化才更新”：
+  - 结构变化：dirtyRoot 是 listPath 的 prefix（含相等，覆盖 parent list reorder 对 nested list 的影响）
+  - trackBy 变化：dirtyRoot overlaps `listPath + trackBy`
+  - 其它 list 子字段变化（例如 `items.warehouseId`）默认 **不触发** `updateAll`
+  - 目的：避免每次 row edit 都跑 O(n) RowId reconcile（这是 `form.listScopeCheck` 的隐藏大头）
 
 收益预期：
 - 最大化长期上限，减少重复计算与多处漂移。

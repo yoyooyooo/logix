@@ -510,6 +510,15 @@ type ListConfigDirtyMatchPlan = {
   readonly fallbackToDirtyAll: boolean
   readonly listPaths: ReadonlyArray<FieldPath>
   readonly listPathsByRootKey: ReadonlyMap<string, ReadonlyArray<FieldPath>>
+  /**
+   * trackByPathsByListPath:
+   * - key: normalized listPath (by reference)
+   * - value: normalized full field path for the list item trackBy field (listPath + trackBy segments)
+   *
+   * Used to decide when RowId mappings must be reconciled even if the list root itself is not dirty:
+   * - changing trackBy values can change row identity, which impacts in-flight gates and nested list bindings.
+   */
+  readonly trackByPathsByListPath: ReadonlyMap<FieldPath, FieldPath>
 }
 
 const listConfigDirtyMatchPlanCache = new WeakMap<ReadonlyArray<ListConfig>, ListConfigDirtyMatchPlan>()
@@ -519,6 +528,7 @@ const getPathRootKey = (path: ReadonlyArray<string>): string => path[0] ?? ''
 const buildListConfigDirtyMatchPlan = (listConfigs: ReadonlyArray<ListConfig>): ListConfigDirtyMatchPlan => {
   const listPaths: Array<FieldPath> = []
   const listPathsByRootKey = new Map<string, Array<FieldPath>>()
+  const trackByPathsByListPath = new Map<FieldPath, FieldPath>()
   const seen = new Set<string>()
 
   for (const cfg of listConfigs) {
@@ -532,6 +542,7 @@ const buildListConfigDirtyMatchPlan = (listConfigs: ReadonlyArray<ListConfig>): 
         fallbackToDirtyAll: true,
         listPaths: [],
         listPathsByRootKey: new Map(),
+        trackByPathsByListPath: new Map(),
       }
     }
 
@@ -547,12 +558,28 @@ const buildListConfigDirtyMatchPlan = (listConfigs: ReadonlyArray<ListConfig>): 
     } else {
       listPathsByRootKey.set(rootKey, [normalized])
     }
+
+    const trackBy = typeof cfg.trackBy === 'string' ? cfg.trackBy.trim() : ''
+    if (trackBy) {
+      const trackByNormalized = normalizeFieldPath(`${rawPath}.${trackBy}`)
+      if (!trackByNormalized || trackByNormalized.length === 0) {
+        // Conservative fallback: unknown trackBy encoding must not skip RowID alignment.
+        return {
+          fallbackToDirtyAll: true,
+          listPaths: [],
+          listPathsByRootKey: new Map(),
+          trackByPathsByListPath: new Map(),
+        }
+      }
+      trackByPathsByListPath.set(normalized, trackByNormalized)
+    }
   }
 
   return {
     fallbackToDirtyAll: false,
     listPaths,
     listPathsByRootKey,
+    trackByPathsByListPath,
   }
 }
 
@@ -595,7 +622,22 @@ export const shouldReconcileListConfigsByDirtySet = (args: {
     }
 
     for (const listPath of candidates) {
-      if (overlapsPath(dirtyPath, listPath)) {
+      // 1) Structural changes: when the dirty root is at/above the list path (prefix),
+      // we must reconcile because insert/remove/reorder in parent lists affects nested list bindings too.
+      if (isPrefixPath(dirtyPath, listPath)) {
+        return true
+      }
+
+      // 2) TrackBy changes: even if the list root is not dirty, changing trackBy values can change row identity.
+      const trackByPath = plan.trackByPathsByListPath.get(listPath)
+      if (trackByPath && overlapsPath(dirtyPath, trackByPath)) {
+        return true
+      }
+
+      // 3) No trackBy: keep legacy behavior.
+      // For reference-based identity, we must keep RowIdStore's itemsRef aligned even for nested field updates,
+      // otherwise later structural changes (insert/remove/reorder) can churn RowIds and break in-flight writebacks.
+      if (!trackByPath && overlapsPath(dirtyPath, listPath)) {
         return true
       }
     }

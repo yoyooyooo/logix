@@ -45,18 +45,34 @@ export interface StateTxnOrigin {
 export type StateTxnInstrumentationLevel = 'full' | 'light'
 
 /**
- * TxnListIndexEvidence:
- * - Best-effort list index hints extracted from string patch paths ("value paths") inside the transaction window.
- * - Used by validate/converge to enable list-scope incrementalization even when callers validate by Ref.list(...).
+ * TxnDirtyEvidence:
+ * - Unified "dirty evidence" protocol within a single transaction window.
+ * - Carries both root-level dirty path ids (Static IR anchors) and best-effort list index hints.
+ *
+ * IMPORTANT:
+ * - This evidence is only valid within the current transaction window.
+ * - Consumers must not persist references (maps/sets are reused across transactions).
  *
  * Key format must match validate.impl.ts `toListInstanceKey`:
  * - root list: `${listPath}@@`
  * - nested list: `${listPath}@@${parentIndexPath.join(',')}`
  */
-export type TxnListIndexEvidence = {
+export type TxnDirtyEvidence = {
   readonly dirtyAll: boolean
-  readonly indexBindings: ReadonlyMap<string, ReadonlySet<number>>
-  readonly rootTouched: ReadonlySet<string>
+  readonly dirtyAllReason?: DirtyAllReason
+  readonly dirtyPathIds: ReadonlySet<FieldPathId>
+  readonly dirtyPathsKeyHash: number
+  readonly dirtyPathsKeySize: number
+  readonly list?: {
+    readonly indexBindings: ReadonlyMap<string, ReadonlySet<number>>
+    readonly rootTouched: ReadonlySet<string>
+    /**
+     * itemTouched:
+     * - Indices for which the patch path directly targeted a list index (e.g. "items.3" / "items[3]"),
+     *   which is a stronger structural hint than nested field writes (e.g. "items.3.name").
+     */
+    readonly itemTouched: ReadonlyMap<string, ReadonlySet<number>>
+  }
 }
 
 export interface StateTxnConfig {
@@ -186,6 +202,12 @@ interface StateTxnState<S> {
    */
   readonly listIndexEvidence: Map<string, Set<number>>
   /**
+   * listItemTouched:
+   * - key: listInstanceKey
+   * - value: indices for which the patch directly targeted the item itself (terminal numeric segment).
+   */
+  readonly listItemTouched: Map<string, Set<number>>
+  /**
    * listRootTouched:
    * - listInstanceKey set for which a patch directly touched the list root (structure may have changed),
    *   so changedIndices hints must be ignored.
@@ -287,6 +309,13 @@ const recordListIndexEvidenceFromPathString = <S>(state: StateTxnState<S>, path:
           const set = state.listIndexEvidence.get(key) ?? new Set<number>()
           set.add(idx)
           state.listIndexEvidence.set(key, set)
+
+          // Stronger structural hint: item-level write ("items[3]" as terminal segment).
+          if (i === parts.length - 1) {
+            const touched = state.listItemTouched.get(key) ?? new Set<number>()
+            touched.add(idx)
+            state.listItemTouched.set(key, touched)
+          }
         }
 
         // Descend into this list item: subsequent nested list bindings should carry this index as parent indexPath.
@@ -305,6 +334,13 @@ const recordListIndexEvidenceFromPathString = <S>(state: StateTxnState<S>, path:
         const set = state.listIndexEvidence.get(key) ?? new Set<number>()
         set.add(idx)
         state.listIndexEvidence.set(key, set)
+
+        // Stronger structural hint: item-level write ("items.3" as terminal segment).
+        if (i === parts.length - 1) {
+          const touched = state.listItemTouched.get(key) ?? new Set<number>()
+          touched.add(idx)
+          state.listItemTouched.set(key, touched)
+        }
       }
 
       parentIndexPathKey = parentIndexPathKey.length === 0 ? String(idx) : `${parentIndexPathKey},${idx}`
@@ -466,6 +502,7 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     dirtyPathIdsKeySize: 0,
     dirtyAllReason: undefined,
     listIndexEvidence: new Map(),
+    listItemTouched: new Map(),
     listRootTouched: new Set(),
   }
 
@@ -565,6 +602,7 @@ export const beginTransaction = <S>(ctx: StateTxnContext<S>, origin: StateTxnOri
   state.dirtyAllReason = undefined
   state.listPathSet = ctx.config.getListPathSet?.()
   state.listIndexEvidence.clear()
+  state.listItemTouched.clear()
   state.listRootTouched.clear()
   ctx.current = state
 }
@@ -739,15 +777,25 @@ export const recordPatch = <S>(
   ctx.recordPatch(path, reason, from, to, traitNodeId, stepId)
 }
 
-export const readListIndexEvidence = <S>(ctx: StateTxnContext<S>): TxnListIndexEvidence | undefined => {
+export const readDirtyEvidence = <S>(ctx: StateTxnContext<S>): TxnDirtyEvidence | undefined => {
   const state = ctx.current as StateTxnState<S> | undefined
   if (!state) return undefined
   const listPathSet = state.listPathSet
-  if (!listPathSet || listPathSet.size === 0) return undefined
+  const list =
+    listPathSet && listPathSet.size > 0
+      ? {
+          indexBindings: state.listIndexEvidence,
+          rootTouched: state.listRootTouched,
+          itemTouched: state.listItemTouched,
+        }
+      : undefined
   return {
     dirtyAll: state.dirtyAllReason != null,
-    indexBindings: state.listIndexEvidence,
-    rootTouched: state.listRootTouched,
+    dirtyAllReason: state.dirtyAllReason,
+    dirtyPathIds: state.dirtyPathIds,
+    dirtyPathsKeyHash: state.dirtyPathIdsKeyHash,
+    dirtyPathsKeySize: state.dirtyPathIdsKeySize,
+    ...(list ? { list } : null),
   }
 }
 

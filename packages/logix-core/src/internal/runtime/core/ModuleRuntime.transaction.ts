@@ -684,7 +684,7 @@ export const makeTransactionOps = <S>(args: {
 	                        origin: txnContext.current!.origin,
 	                        rowIdStore: traitRuntime.rowIdStore,
 	                        listConfigs: traitRuntime.getListConfigs(),
-	                        txnIndexEvidence: StateTransaction.readListIndexEvidence(txnContext),
+	                        txnDirtyEvidence: StateTransaction.readDirtyEvidence(txnContext),
 	                        getDraft: () => txnContext.current!.draft as any,
 	                        setDraft: (next) => {
 	                          StateTransaction.updateDraft(txnContext, next as any)

@@ -16,7 +16,8 @@
 - [x] A-2：externalStore full/off 方差收敛：在 `traceMode=off` 时提前 `onCommit`（避免 full 延迟 notify）。
 - [x] B-1：externalStore 写回批处理（in-flight window），把 “每 callback 一笔 txn” 改为同 module 的窗口合并。
 - [x] C-1：`Ref.list(...)` 默认自动增量化（从 txn evidence 推导 `changedIndices`），业务侧不再要求拆 `Ref.item(...)`。
-- [ ] D-1：DirtySet v2（root-level + index-level evidence 统一协议），converge/validate/selector 共用。
+- [x] D-1：DirtySet v2（root-level + index-level evidence 统一协议），converge/validate/selector 共用。
+- [ ] D-2：SelectorGraph/Converge 统一消费 `TxnDirtyEvidence`（删除重复路径解析与重复 dirty 缓存口径）。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -137,13 +138,28 @@ TraitLifecycle.scopedValidate($, {
 - root-level dirtySet + index-level evidence 双通道统一，供 converge/validate/selector 共用。
 
 落点：
-- `packages/logix-core/src/internal/field-path.ts`
 - `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
 - `packages/logix-core/src/internal/state-trait/*`
-- `packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`
+- （D-2）`packages/logix-core/src/internal/runtime/core/SelectorGraph.ts`
 
 状态：
-- [ ] 未开始
+- [x] 已完成（D-1）：引入 `TxnDirtyEvidence` 并把 validate/rowId 的证据消费口径统一；证据见 `docs/perf/2026-03-05-d1-dirtyset-v2.md`。
+- [ ] 待做（D-2）：SelectorGraph/Converge 的证据消费收口到 `TxnDirtyEvidence`。
+
+实现细化（裁决版）：
+1. 事务窗口统一证据对象：`TxnDirtyEvidence`
+   - root-level：沿用 `dirtyPathIds`（Set）与 `dirtyPathsKeyHash/keySize`（converge 热路径微缓存），并保留 `dirtyAllReason`。
+   - list-level：把 “changedIndices / rootTouched / itemTouched” 作为 list 子证据挂到同一对象上（仅事务窗口有效）。
+2. validate 统一消费：
+   - `ValidateContext` 的 txn 证据字段从 `txnIndexEvidence` 升级为 `txnDirtyEvidence`；
+   - list-scope 规则读取 `changedIndices` 统一走 evidence（request-scoped 优先，txn-scoped 兜底）。
+3. RowId reconcile 触发条件收敛（关键 perf 刀）：
+   - 仅当 dirtyRoot 影响 list 结构或 trackBy 时才 `rowIdStore.updateAll`；
+   - row edit（例如 `items.warehouseId`）不再触发全量 reconcile。
+4. 兼容策略：
+   - 不做兼容层：一次性替换内部接口与所有调用点；
+   - 新增/调整回归测试锁定“非结构 list 子字段更新不触发 updateAll”的语义。
 
 ## 4. 破坏式变更策略（必须执行）
 

@@ -1,6 +1,6 @@
 import { Effect, FiberRef } from 'effect'
 import { create } from 'mutative'
-import type { PatchReason, StateTxnOrigin, TxnListIndexEvidence } from '../runtime/core/StateTransaction.js'
+import type { PatchReason, StateTxnOrigin, TxnDirtyEvidence } from '../runtime/core/StateTransaction.js'
 import { normalizeFieldPath, type FieldPath, type FieldPathId } from '../field-path.js'
 import * as Debug from '../runtime/core/DebugSink.js'
 import { buildDependencyGraph } from './graph.js'
@@ -57,11 +57,11 @@ export interface ValidateContext<S> {
    */
   readonly listConfigs?: ReadonlyArray<RowId.ListConfig>
   /**
-   * Transaction list-index evidence (best-effort):
-   * - Derived from StateTransaction.recordPatch(valuePath) within the same txn window.
+   * Transaction dirty evidence (best-effort):
+   * - Unified root/list evidence derived from StateTransaction.recordPatch(...) within the same txn window.
    * - Enables list-scope incremental rules even when callers validate by Ref.list(...).
    */
-  readonly txnIndexEvidence?: TxnListIndexEvidence
+  readonly txnDirtyEvidence?: TxnDirtyEvidence
   readonly getDraft: () => S
   readonly setDraft: (next: S) => void
   readonly recordPatch: (
@@ -1187,10 +1187,11 @@ export const validateInTransaction = <S extends object>(
 	              }
 
 	              // Ref.list(...) / list-scope validate: derive from txn dirty evidence.
-	              const ev = ctx.txnIndexEvidence
-	              if (!ev || ev.dirtyAll) return undefined
-	              if (ev.rootTouched.has(instanceKey)) return undefined
-	              const set = ev.indexBindings.get(instanceKey)
+	              const ev = ctx.txnDirtyEvidence
+	              const listEv = ev?.list
+	              if (!ev || ev.dirtyAll || !listEv) return undefined
+	              if (listEv.rootTouched.has(instanceKey)) return undefined
+	              const set = listEv.indexBindings.get(instanceKey)
 	              if (!set || set.size === 0) return undefined
 	              return Array.from(set).sort((a, b) => a - b)
 	            })()
@@ -1430,10 +1431,11 @@ export const validateInTransaction = <S extends object>(
 	              }
 
 	              // Ref.list(...) / list-scope validate: derive from txn dirty evidence.
-	              const ev = ctx.txnIndexEvidence
-	              if (!ev || ev.dirtyAll) return listRuntime.items.map((_, i) => i)
-	              if (ev.rootTouched.has(instanceKey)) return listRuntime.items.map((_, i) => i)
-	              const set = ev.indexBindings.get(instanceKey)
+	              const ev = ctx.txnDirtyEvidence
+	              const listEv = ev?.list
+	              if (!ev || ev.dirtyAll || !listEv) return listRuntime.items.map((_, i) => i)
+	              if (listEv.rootTouched.has(instanceKey)) return listRuntime.items.map((_, i) => i)
+	              const set = listEv.indexBindings.get(instanceKey)
 	              if (!set || set.size === 0) return []
 	              return Array.from(set).sort((a, b) => a - b)
 	            })()
