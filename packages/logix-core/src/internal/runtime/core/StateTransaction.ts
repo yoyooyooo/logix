@@ -371,6 +371,70 @@ const recordListIndexEvidenceFromPathString = <S>(state: StateTxnState<S>, path:
   }
 }
 
+const recordListIndexEvidenceFromPathArray = <S>(state: StateTxnState<S>, path: ReadonlyArray<string>): void => {
+  if (state.dirtyAllReason) return
+  const listPathSet = state.listPathSet
+  if (!listPathSet || listPathSet.size === 0) return
+  if (!path || path.length === 0) return
+
+  // Array-path evidence (from mutative patches) can include list indices as digit strings ("3").
+  // Unlike string-path parsing, we do not support bracket syntax here (segments are already split).
+  let listPath = ''
+  let parentIndexPathKey = ''
+  let endedWithNumeric = false
+
+  for (let i = 0; i < path.length; i++) {
+    const raw = path[i]
+    if (!raw) continue
+
+    // List root marker (rare but supported): "items[]"
+    if (raw.endsWith('[]')) {
+      const base = raw.slice(0, -2)
+      if (base) {
+        listPath = listPath.length === 0 ? base : `${listPath}.${base}`
+      }
+      endedWithNumeric = false
+      continue
+    }
+
+    const idx = parseNonNegativeIntMaybe(raw)
+    if (idx !== undefined) {
+      endedWithNumeric = true
+
+      if (listPath && listPathSet.has(listPath)) {
+        const key = toListInstanceKey(listPath, parentIndexPathKey)
+        const set = state.listIndexEvidence.get(key) ?? new Set<number>()
+        set.add(idx)
+        state.listIndexEvidence.set(key, set)
+
+        // Stronger structural hint: item-level write (terminal numeric segment).
+        if (i === path.length - 1) {
+          const touched = state.listItemTouched.get(key) ?? new Set<number>()
+          touched.add(idx)
+          state.listItemTouched.set(key, touched)
+        }
+      }
+
+      parentIndexPathKey = parentIndexPathKey.length === 0 ? String(idx) : `${parentIndexPathKey},${idx}`
+      continue
+    }
+
+    // Unknown segment encoding: bail out for best-effort evidence recording.
+    if (raw.includes('[') || raw.includes(']') || raw.includes('.')) {
+      endedWithNumeric = false
+      continue
+    }
+
+    endedWithNumeric = false
+    listPath = listPath.length === 0 ? raw : `${listPath}.${raw}`
+  }
+
+  // If the terminal normalized path is a configured list path, treat it as "list root touched" (structure may have changed).
+  if (!endedWithNumeric && listPath && listPathSet.has(listPath)) {
+    state.listRootTouched.add(toListInstanceKey(listPath, parentIndexPathKey))
+  }
+}
+
 const buildPatchRecord = (
   opSeq: number,
   pathId: FieldPathId | undefined,
@@ -537,6 +601,8 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     state.patchCount += 1
     if (typeof path === 'string') {
       recordListIndexEvidenceFromPathString(state, path)
+    } else if (Array.isArray(path)) {
+      recordListIndexEvidenceFromPathArray(state, path)
     }
     resolveAndRecordDirtyPathId(state, path, _reason)
   }
@@ -554,6 +620,8 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     state.patchCount += 1
     if (typeof path === 'string') {
       recordListIndexEvidenceFromPathString(state, path)
+    } else if (Array.isArray(path)) {
+      recordListIndexEvidenceFromPathArray(state, path)
     }
     const opSeq = state.patchCount - 1
     const pathId = resolveAndRecordDirtyPathId(state, path, reason)

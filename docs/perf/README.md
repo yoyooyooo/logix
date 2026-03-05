@@ -34,3 +34,5 @@
   - D-1：DirtySet v2（TxnDirtyEvidence）+ RowId reconcile gate。
 - `2026-03-05-d2-dirtyevidence-snapshot.md`
   - D-2：TxnDirtyEvidenceSnapshot（commit 热路径去 DirtySet rootIds；SelectorGraph/RowId 直接消费 dirtyPathIds）。
+- `2026-03-05-e1-mutative-index-evidence.md`
+  - E-1：mutative patchPaths 保留索引证据（array path -> listIndexEvidence，提升 `Ref.list(...)` 增量覆盖率）。

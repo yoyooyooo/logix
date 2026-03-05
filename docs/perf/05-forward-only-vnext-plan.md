@@ -18,6 +18,7 @@
 - [x] C-1：`Ref.list(...)` 默认自动增量化（从 txn evidence 推导 `changedIndices`），业务侧不再要求拆 `Ref.item(...)`。
 - [x] D-1：DirtySet v2（root-level + index-level evidence 统一协议），converge/validate/selector 共用。
 - [x] D-2：SelectorGraph/Converge 统一消费 `TxnDirtyEvidenceSnapshot`（删除重复路径解析与重复 dirty 缓存口径）。
+- [x] E-1：mutative patchPaths 保留索引证据（array path -> listIndexEvidence；提升 `Ref.list(...)` 增量覆盖率）。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -160,6 +161,19 @@ TraitLifecycle.scopedValidate($, {
 4. 兼容策略：
    - 不做兼容层：一次性替换内部接口与所有调用点；
    - 新增/调整回归测试锁定“非结构 list 子字段更新不触发 updateAll”的语义。
+
+### Wave E（P1）：mutative patchPaths 的索引证据
+
+目标：
+- 让 `mutative` 的 patch path（含数组索引）也能产出 transaction 的 `listIndexEvidence`，减少 list validate 的 full 降级。
+
+落点：
+- `packages/logix-core/src/internal/runtime/core/mutativePatches.ts`
+- `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
+- `packages/logix-core/test/internal/StateTrait/StateTrait.RefList.ChangedIndicesFromTxnEvidence.test.ts`
+
+状态：
+- [x] 已完成（E-1）：mutative patchPaths 保留索引段（`3 -> "3"`），并在 `StateTransaction.recordPatch` 对 array path 记录 listIndexEvidence（与 string path 同口径）；证据见 `docs/perf/2026-03-05-e1-mutative-index-evidence.md`。
 
 ## 4. 破坏式变更策略（必须执行）
 

@@ -12,6 +12,7 @@
 - [x] C-1：`Ref.list(...)` 自动增量（txn evidence -> `changedIndices`）。
 - [x] D-1：DirtySet v2（统一索引证据协议）。
 - [x] D-2：SelectorGraph/Converge 证据消费收口（`TxnDirtyEvidenceSnapshot`）。
+- [x] E-1：mutative patchPaths 保留索引证据（array path -> listIndexEvidence；减少 list validate 降级）。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 
@@ -136,11 +137,30 @@
 2. B 刀
 3. C 刀
 4. D 刀
+5. E 刀
 
 顺序理由：
 - A/B 直击当前 P1 阻塞；
 - C 提升适用面；
 - D 作为统一内核基础设施收口。
+- E 继续压榨 list/form 场景：让 mutative 的 patch 路径也能产出 index evidence，提升增量化覆盖率。
+
+## E 刀（优先级 P1）：mutative patchPaths 的索引证据
+
+目标：
+- 让通过 `mutative` 生成的 patchPaths（当前会丢掉数组索引）也能喂给 transaction 的 `listIndexEvidence`；
+- 提升 `Ref.list(...)` 增量化覆盖率，减少 form/list 校验链路的 “无证据 → full” 降级。
+
+核心做法（确定性，不再讨论）：
+1. `mutativePatches.toPatchFieldPath`：把 patch path 里的数组索引（number）转换为数字字符串（如 `3 -> "3"`），并保留到 patchPaths 证据里（而不是直接丢弃）。
+2. `StateTransaction.recordPatch`：对 array path 追加一条轻量 `recordListIndexEvidenceFromPathArray(...)` 分支：
+   - 扫描 segments，识别数字段作为 index；
+   - 生成与 string path 同口径的 `listInstanceKey`（`<listPath>@@<parentIndexPathKey>`）与 `changedIndices`；
+   - 同时标记 listRootTouched（当 patch 命中 list root）。
+3. dirtyPathId 仍沿用现有策略：通过 `normalizeFieldPath` 过滤掉数字段（索引），以 field-level id-first 作为 converge/selector 的稳定锚点。
+
+证据与实现记录：
+- `docs/perf/2026-03-05-e1-mutative-index-evidence.md`
 
 ## API forward-only 演进建议
 

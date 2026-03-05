@@ -8,6 +8,17 @@ export const mutateWithoutPatches = <S>(base: S, mutator: (draft: S) => void): S
   return create(base, mutator as any) as unknown as S
 }
 
+// Patch path evidence (from mutative) is allowed to include list indices (number / digit strings).
+// Field-level dirty ids are still derived by filtering out index segments via normalizeFieldPath.
+const isNonNegativeIntString = (text: string): boolean => {
+  if (!text) return false
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    if (c < 48 /* '0' */ || c > 57 /* '9' */) return false
+  }
+  return true
+}
+
 const toPatchFieldPath = (path: unknown): PatchPath | '*' | undefined => {
   if (typeof path === 'string') {
     const trimmed = path.trim()
@@ -16,23 +27,36 @@ const toPatchFieldPath = (path: unknown): PatchPath | '*' | undefined => {
 
   if (!Array.isArray(path)) return undefined
 
-  // Fast path: patch path is already a pure string FieldPath (common case for flat object writes).
+  // Fast path: patch path is already a pure string path evidence array.
   let allValidString = true
   for (let i = 0; i < path.length; i++) {
     const seg = path[i]
-    if (typeof seg !== 'string' || !isFieldPathSegment(seg)) {
+    if (typeof seg !== 'string' || !(isFieldPathSegment(seg) || isNonNegativeIntString(seg))) {
       allValidString = false
       break
     }
   }
   if (allValidString) return path as PatchPath
 
-  // Structural path: keep only valid string segments (drop indices / invalid parts).
+  // Structural path:
+  // - keep valid field segments (non-numeric), and
+  // - keep list indices (numbers / digit strings) for listIndexEvidence (C-1 / D-1).
   const parts: Array<string> = []
   for (let i = 0; i < path.length; i++) {
     const seg = path[i]
-    if (typeof seg !== 'string') continue
-    if (isFieldPathSegment(seg)) parts.push(seg)
+    if (typeof seg === 'string') {
+      if (isFieldPathSegment(seg) || isNonNegativeIntString(seg)) {
+        parts.push(seg)
+      }
+      continue
+    }
+
+    if (typeof seg === 'number' && Number.isFinite(seg)) {
+      const n = Math.floor(seg)
+      if (n >= 0 && n <= 2_147_483_647) {
+        parts.push(String(n))
+      }
+    }
   }
 
   return parts.length === 0 ? '*' : parts
