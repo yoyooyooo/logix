@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
-import { hashFieldPathIds, makeFieldPathIdRegistry, type DirtySet } from '../../../../src/internal/field-path.js'
+import { makeFieldPathIdRegistry } from '../../../../src/internal/field-path.js'
+import type { TxnDirtyEvidenceSnapshot } from '../../../../src/internal/runtime/core/StateTransaction.js'
 import * as RowId from '../../../../src/internal/state-trait/rowid.js'
 
 type BenchMode = 'legacy' | 'guarded'
@@ -34,24 +35,22 @@ const quantile = (samples: ReadonlyArray<number>, q: number): number => {
   return sorted[idx]!
 }
 
-const makeDirtySet = (rootIds: ReadonlyArray<number>, dirtyAll = false): DirtySet => {
+const makeDirty = (dirtyPathIds: ReadonlyArray<number>, dirtyAll = false): TxnDirtyEvidenceSnapshot => {
   if (dirtyAll) {
     return {
       dirtyAll: true,
-      reason: 'unknownWrite',
-      rootIds: [],
-      rootCount: 0,
-      keySize: 0,
-      keyHash: 0,
+      dirtyAllReason: 'unknownWrite',
+      dirtyPathIds: [],
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
     }
   }
 
   return {
     dirtyAll: false,
-    rootIds,
-    rootCount: rootIds.length,
-    keySize: rootIds.length,
-    keyHash: hashFieldPathIds(rootIds),
+    dirtyPathIds,
+    dirtyPathsKeyHash: 0,
+    dirtyPathsKeySize: dirtyPathIds.length,
   }
 }
 
@@ -84,11 +83,11 @@ const runBench = (args: {
   readonly warmup: number
   readonly txnsPerIteration: number
   readonly getListConfigs: () => ReadonlyArray<RowId.ListConfig>
-  readonly dirtySet: DirtySet
+  readonly dirty: TxnDirtyEvidenceSnapshot
   readonly state: BenchState
   readonly fieldPathIdRegistry: ReturnType<typeof makeFieldPathIdRegistry> | undefined
 }): BenchResult => {
-  const { mode, iterations, warmup, txnsPerIteration, getListConfigs, dirtySet, state, fieldPathIdRegistry } = args
+  const { mode, iterations, warmup, txnsPerIteration, getListConfigs, dirty, state, fieldPathIdRegistry } = args
 
   const rowIdStore = new RowId.RowIdStore(`i-list-configs-guard-perf-${mode}`)
   const primeListConfigs = getListConfigs()
@@ -110,8 +109,8 @@ const runBench = (args: {
         continue
       }
 
-      const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtySet({
-        dirtySet,
+      const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtyEvidence({
+        dirty,
         listConfigs,
         fieldPathIdRegistry,
       })
@@ -171,8 +170,8 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
         ['list0', 'id'],
       ])
 
-      const noOverlapDirtySet = makeDirtySet([0])
-      const overlapDirtySet = makeDirtySet([1])
+      const noOverlapDirty = makeDirty([0])
+      const overlapDirty = makeDirty([1])
 
       const noOverlapLegacy = runBench({
         mode: 'legacy',
@@ -180,7 +179,7 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
         warmup,
         txnsPerIteration,
         getListConfigs,
-        dirtySet: noOverlapDirtySet,
+        dirty: noOverlapDirty,
         state,
         fieldPathIdRegistry,
       })
@@ -191,7 +190,7 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
         warmup,
         txnsPerIteration,
         getListConfigs,
-        dirtySet: noOverlapDirtySet,
+        dirty: noOverlapDirty,
         state,
         fieldPathIdRegistry,
       })
@@ -202,7 +201,7 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
         warmup,
         txnsPerIteration,
         getListConfigs,
-        dirtySet: overlapDirtySet,
+        dirty: overlapDirty,
         state,
         fieldPathIdRegistry,
       })
@@ -213,7 +212,7 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
         warmup,
         txnsPerIteration,
         getListConfigs,
-        dirtySet: overlapDirtySet,
+        dirty: overlapDirty,
         state,
         fieldPathIdRegistry,
       })

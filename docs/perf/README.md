@@ -32,3 +32,5 @@
   - C-1：`Ref.list(...)` 自动增量（txn evidence -> changedIndices）实现记录。
 - `2026-03-05-d1-dirtyset-v2.md`
   - D-1：DirtySet v2（TxnDirtyEvidence）+ RowId reconcile gate。
+- `2026-03-05-d2-dirtyevidence-snapshot.md`
+  - D-2：TxnDirtyEvidenceSnapshot（commit 热路径去 DirtySet rootIds；SelectorGraph/RowId 直接消费 dirtyPathIds）。

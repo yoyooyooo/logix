@@ -1,12 +1,10 @@
 import { Effect, SubscriptionRef } from 'effect'
 import {
   getFieldPathId,
-  dirtyPathIdsToRootIds,
   normalizeFieldPath,
   normalizePatchReason,
   type FieldPathIdRegistry,
   type DirtyAllReason,
-  type DirtySet,
   type FieldPath,
   type FieldPathId,
   type PatchReason,
@@ -43,6 +41,23 @@ export interface StateTxnOrigin {
 }
 
 export type StateTxnInstrumentationLevel = 'full' | 'light'
+
+/**
+ * TxnDirtyEvidenceSnapshot:
+ * - Immutable snapshot attached to the committed StateTransaction.
+ * - Designed for hot-path consumers (SelectorGraph / RowId gate / Debug evidence) without forcing DirtySet(rootIds) construction.
+ *
+ * Notes:
+ * - dirtyPathIds is captured as an Array at commit time (stable across transactions).
+ * - When registry is missing, the snapshot conservatively degrades to dirtyAll.
+ */
+export type TxnDirtyEvidenceSnapshot = {
+  readonly dirtyAll: boolean
+  readonly dirtyAllReason?: DirtyAllReason
+  readonly dirtyPathIds: ReadonlyArray<FieldPathId>
+  readonly dirtyPathsKeyHash: number
+  readonly dirtyPathsKeySize: number
+}
 
 /**
  * TxnDirtyEvidence:
@@ -104,7 +119,7 @@ export interface StateTransaction<S> {
   readonly startedAt: number
   readonly endedAt: number
   readonly durationMs: number
-  readonly dirtySet: DirtySet
+  readonly dirty: TxnDirtyEvidenceSnapshot
   readonly patchCount: number
   readonly patchesTruncated: boolean
   readonly patchesTruncatedReason?: 'max_patches'
@@ -218,12 +233,6 @@ interface StateTxnState<S> {
 const MAX_PATCHES_FULL = 256
 const EMPTY_DIRTY_PATH_IDS: ReadonlyArray<FieldPathId> = []
 const EMPTY_TXN_PATCHES: ReadonlyArray<TxnPatchRecord> = []
-
-interface DirtySetBuildInput {
-  readonly registry?: FieldPathIdRegistry
-  readonly dirtyAllReason?: DirtyAllReason
-  readonly dirtyPathIds?: ReadonlyArray<FieldPathId>
-}
 
 const defaultNow = () => {
   const perf = globalThis.performance
@@ -397,47 +406,52 @@ const buildPatchRecord = (
   return record
 }
 
-const captureDirtySetBuildInput = <S>(state: StateTxnState<S>): DirtySetBuildInput => {
+const buildDirtyEvidenceSnapshot = <S>(state: StateTxnState<S>): TxnDirtyEvidenceSnapshot => {
   const registry = state.fieldPathIdRegistry
   const dirtyAllReason = state.dirtyAllReason
 
+  // If registry is missing, we cannot safely map pathIds -> FieldPaths for consumers;
+  // conservatively degrade to dirtyAll (same as DirtySet fallback policy).
   if (registry == null) {
     return {
+      dirtyAll: true,
       dirtyAllReason: dirtyAllReason ?? 'fallbackPolicy',
+      dirtyPathIds: EMPTY_DIRTY_PATH_IDS,
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
     }
   }
 
   if (dirtyAllReason != null) {
     return {
-      registry,
+      dirtyAll: true,
       dirtyAllReason,
+      dirtyPathIds: EMPTY_DIRTY_PATH_IDS,
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
     }
   }
 
-  return {
-    registry,
-    dirtyPathIds: state.dirtyPathIds.size > 0 ? Array.from(state.dirtyPathIds) : EMPTY_DIRTY_PATH_IDS,
-  }
-}
-
-const buildDirtySet = (input: DirtySetBuildInput): DirtySet => {
-  const registry = input.registry
-  if (registry == null) {
+  // IMPORTANT:
+  // - If there is no dirty evidence at all (empty set), we must degrade to dirtyAll=unknownWrite.
+  // - This preserves legacy behavior where DirtySet construction would fallback to dirtyAll on empty roots.
+  if (state.dirtyPathIds.size === 0) {
     return {
       dirtyAll: true,
-      reason: input.dirtyAllReason ?? 'fallbackPolicy',
-      rootIds: [],
-      rootCount: 0,
-      keySize: 0,
-      keyHash: 0,
+      dirtyAllReason: 'unknownWrite',
+      dirtyPathIds: EMPTY_DIRTY_PATH_IDS,
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
     }
   }
 
-  return dirtyPathIdsToRootIds({
-    dirtyPathIds: input.dirtyPathIds,
-    registry,
-    dirtyAllReason: input.dirtyAllReason,
-  })
+  const dirtyPathIds = Array.from(state.dirtyPathIds)
+  return {
+    dirtyAll: false,
+    dirtyPathIds,
+    dirtyPathsKeyHash: state.dirtyPathIdsKeyHash,
+    dirtyPathsKeySize: state.dirtyPathIdsKeySize,
+  }
 }
 
 const buildCommittedTransaction = <S>(
@@ -447,17 +461,7 @@ const buildCommittedTransaction = <S>(
   endedAt: number,
 ): StateTransaction<S> => {
   const { config } = ctx
-  const dirtySetInput = captureDirtySetBuildInput(state)
-  let dirtySetCache: DirtySet | undefined
-
-  const readDirtySet = (): DirtySet => {
-    if (dirtySetCache !== undefined) {
-      return dirtySetCache
-    }
-    const next = buildDirtySet(dirtySetInput)
-    dirtySetCache = next
-    return next
-  }
+  const dirty = buildDirtyEvidenceSnapshot(state)
 
   return {
     txnId: state.txnId,
@@ -466,9 +470,7 @@ const buildCommittedTransaction = <S>(
     startedAt: state.startedAt,
     endedAt,
     durationMs: Math.max(0, endedAt - state.startedAt),
-    get dirtySet() {
-      return readDirtySet()
-    },
+    dirty,
     patchCount: state.patchCount,
     patchesTruncated: state.patchesTruncated,
     ...(state.patchesTruncated ? { patchesTruncatedReason: 'max_patches' } : null),

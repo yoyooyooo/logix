@@ -179,7 +179,7 @@ export const makeTransactionOps = <S>(args: {
       const shouldWarnDirtyAllSetState =
         dirtyAllSetStateHint || (txn.origin.kind === 'state' && txn.origin.name === 'setState')
 
-      if (shouldWarnDirtyAllSetState && isDevEnv() && (txn.dirtySet as any)?.dirtyAll === true) {
+      if (shouldWarnDirtyAllSetState && isDevEnv() && txn.dirty.dirtyAll === true) {
         yield* Debug.record({
           type: 'diagnostic',
           moduleId: optionsModuleId,
@@ -221,8 +221,8 @@ export const makeTransactionOps = <S>(args: {
       // so in-flight gates and cache reuse remain stable under insert/remove/reorder.
       const listConfigs = traitRuntime.getListConfigs()
       if (listConfigs.length > 0) {
-        const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtySet({
-          dirtySet: txn.dirtySet,
+        const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtyEvidence({
+          dirty: txn.dirty,
           listConfigs,
           fieldPathIdRegistry,
         })
@@ -286,30 +286,30 @@ export const makeTransactionOps = <S>(args: {
 
         const dirtySetEvidence = shouldComputeEvidence
           ? (() => {
-              const rootIdsTopK = diagnosticsLevel === 'full' ? 32 : 3
+              const pathIdsTopK = diagnosticsLevel === 'full' ? 32 : 3
 
-              if (txn.dirtySet.dirtyAll) {
+              if (txn.dirty.dirtyAll) {
                 return {
                   dirtyAll: true,
-                  reason: txn.dirtySet.reason ?? 'unknownWrite',
-                  rootIds: [],
-                  rootCount: 0,
+                  reason: txn.dirty.dirtyAllReason ?? 'unknownWrite',
+                  pathIds: [],
+                  pathCount: 0,
                   keySize: 0,
                   keyHash: 0,
-                  rootIdsTruncated: false,
+                  pathIdsTruncated: false,
                 }
               }
 
-              const fullRootIds = txn.dirtySet.rootIds
-              const topK = fullRootIds.slice(0, rootIdsTopK)
+              const fullPathIds = txn.dirty.dirtyPathIds
+              const topK = fullPathIds.slice(0, pathIdsTopK)
               return {
                 dirtyAll: false,
-                // Keep diff anchors (count/hash/size) for the full set; only truncate the rootIds payload.
-                rootIds: topK,
-                rootCount: txn.dirtySet.rootCount,
-                keySize: txn.dirtySet.keySize,
-                keyHash: txn.dirtySet.keyHash,
-                rootIdsTruncated: fullRootIds.length > rootIdsTopK,
+                // Keep diff anchors (count/hash/size) for the full set; only truncate the pathIds payload.
+                pathIds: topK,
+                pathCount: fullPathIds.length,
+                keySize: txn.dirty.dirtyPathsKeySize,
+                keyHash: txn.dirty.dirtyPathsKeyHash,
+                pathIdsTruncated: fullPathIds.length > pathIdsTopK,
               }
             })()
           : undefined

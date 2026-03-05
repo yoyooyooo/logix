@@ -17,7 +17,7 @@
 - [x] B-1：externalStore 写回批处理（in-flight window），把 “每 callback 一笔 txn” 改为同 module 的窗口合并。
 - [x] C-1：`Ref.list(...)` 默认自动增量化（从 txn evidence 推导 `changedIndices`），业务侧不再要求拆 `Ref.item(...)`。
 - [x] D-1：DirtySet v2（root-level + index-level evidence 统一协议），converge/validate/selector 共用。
-- [ ] D-2：SelectorGraph/Converge 统一消费 `TxnDirtyEvidence`（删除重复路径解析与重复 dirty 缓存口径）。
+- [x] D-2：SelectorGraph/Converge 统一消费 `TxnDirtyEvidenceSnapshot`（删除重复路径解析与重复 dirty 缓存口径）。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -145,7 +145,7 @@ TraitLifecycle.scopedValidate($, {
 
 状态：
 - [x] 已完成（D-1）：引入 `TxnDirtyEvidence` 并把 validate/rowId 的证据消费口径统一；证据见 `docs/perf/2026-03-05-d1-dirtyset-v2.md`。
-- [ ] 待做（D-2）：SelectorGraph/Converge 的证据消费收口到 `TxnDirtyEvidence`。
+- [x] 已完成（D-2）：commit 热路径不再构造 `DirtySet(rootIds)`；SelectorGraph/RowId 统一消费 `TxnDirtyEvidenceSnapshot`；`state:update.dirtySet` 改为 `pathIdsTopK + diff anchors`；证据见 `docs/perf/2026-03-05-d2-dirtyevidence-snapshot.md`。
 
 实现细化（裁决版）：
 1. 事务窗口统一证据对象：`TxnDirtyEvidence`

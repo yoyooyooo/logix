@@ -77,7 +77,7 @@ export const toRuntimeDebugEventRef: (
 - 生命周期阶段事件（init/start/destroy/platform）→ `kind = "lifecycle"`，`meta` 中携带对齐 `specs/011-upgrade-lifecycle/contracts/schemas/lifecycle-event.schema.json` 的最小证据（必须可序列化且遵守事件预算）。
 - `action:dispatch` → `kind = "action"`，label 取 `action._tag` / `action.type` / `"action:dispatch"`。
 - `state:update` → `kind = "state"`，`meta` 中只保留 **JsonValue 投影后的摘要**（不得透传原始 `state` 对象图），例如：
-  - `dirtySet`：本次提交聚合的影响域（字段级 dirty-set，见 `specs/019-txn-perf-controls/contracts/schemas/dirty-set-v2.schema.json`）；当无法追踪字段级信息时应显式 `dirtyAll=true` 并给出 `reason`（用于解释退化）。
+  - `dirtySet`：本次提交聚合的影响域（字段级 dirty-set，id-first；见 `specs/019-txn-perf-controls/contracts/schemas/dirty-set-v2.schema.json`）。当无法追踪字段级信息时应显式 `dirtyAll=true` 并给出 `reason`（用于解释退化）。当 `dirtyAll=false` 时，`pathIds` 是 TopK payload（可能被截断），`pathCount/keySize/keyHash` 是 diff anchor；`pathIds -> rootPaths` 仅允许消费侧在命中 `summary.converge.staticIrByDigest[*].fieldPaths` 时物化。
   - `patchCount`：本次事务聚合的 Patch 数量（若启用 StateTransaction）；
   - `commitMode` / `priority`：本次提交的合并/调度模式（`normal|batch|lowPriority`）与可见性优先级（`normal|low`，主要用于 React 外部订阅调度），见 `specs/019-txn-perf-controls/contracts/schemas/txn-commit-evidence.schema.json`；
   - `originKind` / `originName`：触发该事务的来源（事务入口的 origin.kind / origin.name）；

@@ -653,14 +653,13 @@ export const make = <S, A, R = never>(
               })
             }
 
-            // Avoid paying dirty-set construction cost when there are no selectors at all.
-            // (SelectorGraph will no-op, but StateTransaction dirtySet is still lazily computed on access.)
+            // Avoid selector graph work when there are no selectors at all.
+            // (SelectorGraph will no-op; transaction.dirty is already snapshotted at commit time.)
             if (selectorGraph.hasAnyEntries()) {
-              const dirtySet = transaction.dirtySet
               yield* selectorGraph.onCommit(
                 state,
                 meta,
-                dirtySet,
+                transaction.dirty,
                 diagnosticsLevel,
                 scheduler
                   ? (selectorId) => {

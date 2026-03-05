@@ -500,23 +500,36 @@ export const exportDevtoolsEvidencePackage = (options?: {
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
 
-  // Export canonical static IR mapping by digest for any diagnostics tier that emits trait:converge:
+  // Export canonical static IR mapping by digest for any diagnostics tier that emits:
+  // - trait:converge (trace) events, or
+  // - state:update events with id-first dirty evidence (pathIds/rootIds).
+  //
+  // Policy:
   // - full: keep full ConvergeStaticIrExport payload for offline explanation/replay.
-  // - light/sampled: export minimal fieldPaths-only entries so consumers can still materialize rootIds -> rootPaths.
+  // - light/sampled: export minimal fieldPaths-only entries so consumers can materialize ids -> paths.
   const convergeDigests = new Set<string>()
   const sawFullByDigest = new Set<string>()
 
   for (const ref of ringBuffer) {
-    if (ref.kind !== 'trait:converge') continue
-    const meta = ref.meta
-    if (!isRecord(meta)) continue
+    const meta = isRecord(ref.meta) ? (ref.meta as Record<string, unknown>) : undefined
+    if (!meta) continue
 
-    const digest = meta.staticIrDigest
-    if (typeof digest === 'string' && digest.length > 0) {
-      convergeDigests.add(digest)
-      const dirty = meta.dirty
-      if (isRecord(dirty) && typeof dirty.rootCount === 'number') {
-        sawFullByDigest.add(digest)
+    if (ref.kind === 'trait:converge') {
+      const digest = meta.staticIrDigest
+      if (typeof digest === 'string' && digest.length > 0) {
+        convergeDigests.add(digest)
+        const dirty = meta.dirty
+        if (isRecord(dirty) && typeof dirty.rootCount === 'number') {
+          sawFullByDigest.add(digest)
+        }
+      }
+      continue
+    }
+
+    if (ref.kind === 'state' && ref.label === 'state:update') {
+      const digest = meta.staticIrDigest
+      if (typeof digest === 'string' && digest.length > 0) {
+        convergeDigests.add(digest)
       }
     }
   }

@@ -25,7 +25,7 @@ import * as BoundApiRuntime from '../../../../src/internal/runtime/BoundApiRunti
 import * as LogicPlanMarker from '../../../../src/internal/runtime/core/LogicPlanMarker.js'
 import { getBoundInternals } from '../../../../src/internal/runtime/core/runtimeInternalsAccessor.js'
 import { getDefaultStateTxnInstrumentation } from '../../../../src/internal/runtime/core/env.js'
-import { hashFieldPathIds, makeFieldPathIdRegistry } from '../../../../src/internal/field-path.js'
+import { makeFieldPathIdRegistry } from '../../../../src/internal/field-path.js'
 
 const requireActionsByTag = <A>(
   actionsByTag: ((tag: string) => Stream.Stream<A>) | undefined,
@@ -1156,7 +1156,7 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
-    it.scoped('StateTransaction.commit should output segment-based dirtySet roots (no join/split roundtrip)', () =>
+    it.scoped('StateTransaction.commit should snapshot dirtyPathIds (id-first) without constructing DirtySet roots', () =>
       Effect.gen(function* () {
         type S = { a: { b: { c: number } } }
 
@@ -1183,13 +1183,12 @@ describe('ModuleRuntime (internal)', () => {
         const txn = yield* StateTransaction.commit(ctx, ref)
 
         expect(txn).toBeDefined()
-        expect(txn?.dirtySet).toMatchObject({
-          dirtyAll: false,
-          rootIds: [0, 1],
-          rootCount: 2,
-          keySize: 2,
-          keyHash: hashFieldPathIds([0, 1]),
-        })
+        expect(txn?.dirty.dirtyAll).toBe(false)
+        expect(txn?.dirty.dirtyAllReason).toBeUndefined()
+        expect(txn?.dirty.dirtyPathIds).toEqual([1, 0, 3])
+        expect(txn?.dirty.dirtyPathsKeySize).toBe(3)
+        expect(typeof txn?.dirty.dirtyPathsKeyHash).toBe('number')
+        expect(Number.isFinite(txn?.dirty.dirtyPathsKeyHash)).toBe(true)
       }),
     )
 
@@ -1432,7 +1431,7 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
-    it.scoped('state:update diagnostics should keep dirtySet metadata anchors when rootIds are truncated', () =>
+    it.scoped('state:update diagnostics should keep dirtySet metadata anchors when pathIds are truncated', () =>
       Effect.gen(function* () {
         const ring = Debug.makeRingBufferSink(32)
 
@@ -1482,13 +1481,13 @@ describe('ModuleRuntime (internal)', () => {
 
                     expect(dirtySet).toMatchObject({
                       dirtyAll: false,
-                      rootCount: 4,
+                      pathCount: 4,
                       keySize: 4,
-                      rootIdsTruncated: true,
+                      pathIdsTruncated: true,
                     })
-                    expect(Array.isArray(dirtySet?.rootIds)).toBe(true)
-                    expect(dirtySet.rootIds).toHaveLength(3)
-                    expect(dirtySet.rootIds.every((id: unknown) => typeof id === 'number' && Number.isFinite(id))).toBe(
+                    expect(Array.isArray(dirtySet?.pathIds)).toBe(true)
+                    expect(dirtySet.pathIds).toHaveLength(3)
+                    expect(dirtySet.pathIds.every((id: unknown) => typeof id === 'number' && Number.isFinite(id))).toBe(
                       true,
                     )
                     expect('rootPaths' in dirtySet).toBe(false)

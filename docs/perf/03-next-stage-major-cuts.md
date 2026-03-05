@@ -11,7 +11,7 @@
 - [x] B-1：externalStore 批处理写回（同 module 写回 txn 合并）。
 - [x] C-1：`Ref.list(...)` 自动增量（txn evidence -> `changedIndices`）。
 - [x] D-1：DirtySet v2（统一索引证据协议）。
-- [ ] D-2：SelectorGraph/Converge 证据消费收口（`TxnDirtyEvidence`）。
+- [x] D-2：SelectorGraph/Converge 证据消费收口（`TxnDirtyEvidenceSnapshot`）。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 
@@ -115,6 +115,20 @@
 
 风险：
 - 破坏性重构面较广，需要分阶段切换。
+
+### D-2（已做）：SelectorGraph/Debug/RowId 去 DirtySet（统一消费 TxnDirtyEvidenceSnapshot）
+
+目标：
+- 彻底移除 commit 热路径里 `dirtyPathIdsToRootIds(...)` 的排序/前缀消除成本（尤其是 full 诊断下的额外固定成本）。
+
+核心做法：
+1. committed txn 不再构造 `DirtySet(rootIds/keyHash)` 作为热路径输入；
+2. 统一改为 snapshot `dirtyPathIds + dirtyPathsKeyHash/size + dirtyAllReason`（commit-time 一次性拷贝）；
+3. `SelectorGraph.onCommit` / `RowId.shouldReconcile...` 直接消费 `dirtyPathIds`，用 `upsertDirtyRoot` 做 per-rootKey 的最小化（不排序）；
+4. `state:update.dirtySet` 证据结构改为 `pathIdsTopK`（不再强制 rootIds），Devtools 用 registry 反查即可。
+
+证据与实现记录：
+- `docs/perf/2026-03-05-d2-dirtyevidence-snapshot.md`
 
 ## 推荐执行顺序
 

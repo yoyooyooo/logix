@@ -75,21 +75,56 @@ const readConvergeFieldPathsByDigest = (summary: unknown): ConvergeFieldPathsByD
   return out
 }
 
+const isPrefixPath = (prefix: ReadonlyArray<string>, path: ReadonlyArray<string>): boolean => {
+  if (prefix.length > path.length) return false
+  for (let i = 0; i < prefix.length; i++) {
+    if (prefix[i] !== path[i]) return false
+  }
+  return true
+}
+
+const minimizeRootPaths = (paths: ReadonlyArray<ReadonlyArray<string>>): ReadonlyArray<ReadonlyArray<string>> => {
+  const roots: Array<ReadonlyArray<string>> = []
+  for (const path of paths) {
+    let redundant = false
+    for (const existing of roots) {
+      if (isPrefixPath(existing, path)) {
+        redundant = true
+        break
+      }
+    }
+    if (redundant) continue
+
+    let nextLen = 0
+    for (let i = 0; i < roots.length; i++) {
+      const existing = roots[i]!
+      if (isPrefixPath(path, existing)) continue
+      roots[nextLen] = existing
+      nextLen += 1
+    }
+    roots.length = nextLen
+    roots.push(path)
+  }
+  return roots
+}
+
 const resolveRootPaths = (args: {
-  readonly rootIds: unknown
+  readonly ids: unknown
   readonly fieldPaths: ReadonlyArray<ReadonlyArray<string>>
 }): ReadonlyArray<ReadonlyArray<string>> | undefined => {
-  const rootIds = args.rootIds
-  if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
+  const ids = args.ids
+  if (!Array.isArray(ids) || ids.length === 0) return undefined
 
-  const out: Array<ReadonlyArray<string>> = []
-  for (const rawId of rootIds) {
+  const candidates: Array<ReadonlyArray<string>> = []
+  for (const rawId of ids) {
     if (!Number.isInteger(rawId)) continue
     const id = rawId
     if (id < 0 || id >= args.fieldPaths.length) continue
-    out.push(args.fieldPaths[id]!)
+    candidates.push(args.fieldPaths[id]!)
   }
-  return out.length > 0 ? out : undefined
+  if (candidates.length === 0) return undefined
+  const minimized = minimizeRootPaths(candidates)
+  return minimized.length > 0 ? minimized : undefined
 }
 
 const stripRootPathsField = (value: Record<string, unknown>): Record<string, unknown> => {
@@ -148,7 +183,8 @@ const materializeDirtyRootPathsFromCanonical = (args: {
   if (args.event.kind === 'state' && args.event.label === 'state:update') {
     const dirtySet = isRecord((meta as any).dirtySet) ? ((meta as any).dirtySet as Record<string, unknown>) : undefined
     if (!dirtySet) return args.event
-    const rootPaths = resolveRootPaths({ rootIds: dirtySet.rootIds, fieldPaths })
+    const ids = Object.prototype.hasOwnProperty.call(dirtySet, 'pathIds') ? (dirtySet as any).pathIds : (dirtySet as any).rootIds
+    const rootPaths = resolveRootPaths({ ids, fieldPaths })
     if (!rootPaths) return args.event
 
     return {
@@ -166,7 +202,7 @@ const materializeDirtyRootPathsFromCanonical = (args: {
   if (args.event.kind === 'trait:converge') {
     const dirty = isRecord((meta as any).dirty) ? ((meta as any).dirty as Record<string, unknown>) : undefined
     if (!dirty) return args.event
-    const rootPaths = resolveRootPaths({ rootIds: dirty.rootIds, fieldPaths })
+    const rootPaths = resolveRootPaths({ ids: (dirty as any).rootIds, fieldPaths })
     if (!rootPaths) return args.event
 
     return {

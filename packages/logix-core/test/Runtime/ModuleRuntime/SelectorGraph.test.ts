@@ -1,8 +1,50 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Fiber, Option, PubSub, Queue } from 'effect'
 import * as Logix from '../../../src/index.js'
-import { dirtyPathsToRootIds, makeFieldPathIdRegistry } from '../../../src/internal/field-path.js'
+import { makeFieldPathIdRegistry } from '../../../src/internal/field-path.js'
+import type { TxnDirtyEvidenceSnapshot } from '../../../src/internal/runtime/core/StateTransaction.js'
 import * as SelectorGraph from '../../../src/internal/runtime/core/SelectorGraph.js'
+
+const makeDirty = (args: {
+  readonly registry: ReturnType<typeof makeFieldPathIdRegistry>
+  readonly paths?: ReadonlyArray<string>
+  readonly dirtyAll?: boolean
+}): TxnDirtyEvidenceSnapshot => {
+  if (args.dirtyAll) {
+    return {
+      dirtyAll: true,
+      dirtyAllReason: 'unknownWrite',
+      dirtyPathIds: [],
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
+    }
+  }
+
+  const ids = (args.paths ?? []).map((path) => {
+    const id = args.registry.pathStringToId?.get(path)
+    if (id == null) {
+      throw new Error(`Missing pathStringToId for ${path}`)
+    }
+    return id
+  })
+
+  if (ids.length === 0) {
+    return {
+      dirtyAll: true,
+      dirtyAllReason: 'unknownWrite',
+      dirtyPathIds: [],
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
+    }
+  }
+
+  return {
+    dirtyAll: false,
+    dirtyPathIds: ids,
+    dirtyPathsKeyHash: 0,
+    dirtyPathsKeySize: ids.length,
+  }
+}
 
 describe('SelectorGraph', () => {
   it.effect('does not recompute/notify when dirtyRoots do not overlap selector reads', () =>
@@ -34,7 +76,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { count: 0, other: 1 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['other']], registry }),
+          makeDirty({ registry, paths: ['other'] }),
           'off',
         )
 
@@ -77,7 +119,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { count: 1, other: 0 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+          makeDirty({ registry, paths: ['count'] }),
           'off',
         )
 
@@ -134,7 +176,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { count: 1, other: 10 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+          makeDirty({ registry, paths: ['count'] }),
           'off',
         )
 
@@ -195,7 +237,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['settings', 'locale']], registry }),
+          makeDirty({ registry, paths: ['settings.locale'] }),
           'off',
         )
 
@@ -255,7 +297,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['settings']], registry }),
+          makeDirty({ registry, paths: ['settings'] }),
           'off',
         )
 
@@ -311,13 +353,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({
-            dirtyPaths: [
-              ['settings', 'locale'],
-              ['settings'],
-            ],
-            registry,
-          }),
+          makeDirty({ registry, paths: ['settings.locale', 'settings'] }),
           'off',
           (selectorId) => changedSelectors.push(selectorId),
         )
@@ -370,13 +406,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({
-            dirtyPaths: [
-              ['settings'],
-              ['settings', 'locale'],
-            ],
-            registry,
-          }),
+          makeDirty({ registry, paths: ['settings', 'settings.locale'] }),
           'off',
           (selectorId) => changedSelectors.push(selectorId),
         )
@@ -429,7 +459,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { count: 1, other: 0 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+          makeDirty({ registry, paths: ['count'] }),
           'off',
         )
 
@@ -484,7 +514,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { user: { name: 'A' }, settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['settings', 'locale']], registry }),
+          makeDirty({ registry, paths: ['settings.locale'] }),
           'off',
         )
 
@@ -533,13 +563,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { user: { name: 'A' }, settings: { theme: 'dark' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({
-            dirtyPaths: [
-              ['user', 'name'],
-              ['settings', 'theme'],
-            ],
-            registry,
-          }),
+          makeDirty({ registry, paths: ['user.name', 'settings.theme'] }),
           'off',
         )
 
@@ -621,7 +645,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { count: 1, settings: { theme: 'dark', locale: 'en-US' }, other: 7 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['settings', 'locale']], registry }),
+          makeDirty({ registry, paths: ['settings.locale'] }),
           'off',
         )
 
@@ -667,7 +691,7 @@ describe('SelectorGraph', () => {
           graph.onCommit(
             { count: 1, other: 0 },
             { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+            makeDirty({ registry, paths: ['count'] }),
             'light',
           ),
         )
@@ -731,7 +755,7 @@ describe('SelectorGraph', () => {
           graph.onCommit(
             { count: 1, other: 0 },
             { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+            makeDirty({ registry, paths: ['count'] }),
             'sampled',
           ),
         )
@@ -744,7 +768,7 @@ describe('SelectorGraph', () => {
           graph.onCommit(
             { count: 1, other: 0 },
             { txnSeq: 2, txnId: 'i-test::t2', commitMode: 'normal', priority: 'normal' },
-            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+            makeDirty({ registry, paths: ['count'] }),
             'sampled',
           ),
         )
@@ -758,7 +782,7 @@ describe('SelectorGraph', () => {
           graph.onCommit(
             { count: 1, other: 0 },
             { txnSeq: 3, txnId: 'i-test::t3', commitMode: 'normal', priority: 'normal' },
-            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+            makeDirty({ registry, paths: ['count'] }),
             'sampled',
           ),
         )

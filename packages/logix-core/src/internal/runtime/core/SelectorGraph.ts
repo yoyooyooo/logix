@@ -1,6 +1,7 @@
 import { Effect, PubSub, Scope } from 'effect'
-import { isPrefixOf, normalizeFieldPath, type DirtySet, type FieldPath, type FieldPathIdRegistry } from '../../field-path.js'
+import { isPrefixOf, normalizeFieldPath, type FieldPath, type FieldPathIdRegistry } from '../../field-path.js'
 import type { ReadQueryCompiled } from './ReadQuery.js'
+import type { TxnDirtyEvidenceSnapshot } from './StateTransaction.js'
 import type { StateChangeWithMeta, StateCommitMeta } from './module.js'
 import * as Debug from './DebugSink.js'
 
@@ -43,7 +44,7 @@ export interface SelectorGraph<S> {
   readonly onCommit: (
     state: S,
     meta: StateCommitMeta,
-    dirtySet: DirtySet,
+    dirty: TxnDirtyEvidenceSnapshot,
     diagnosticsLevel: Debug.DiagnosticsLevel,
     onSelectorChanged?: (selectorId: string) => void,
   ) => Effect.Effect<void, never, never>
@@ -121,26 +122,26 @@ const SAMPLED_SELECTOR_EVAL_SLOW_THRESHOLD_MS = 4
 
 const shouldEvaluateEntryForDirtyRoots = <S>(args: {
   readonly entry: SelectorEntry<S, any>
-  readonly dirtySet: DirtySet
-  readonly getDirtyRootPath: (id: number) => FieldPath | undefined
+  readonly dirty: TxnDirtyEvidenceSnapshot
+  readonly getDirtyPath: (id: number) => FieldPath | undefined
   readonly hasRegistry: boolean
 }): boolean => {
-  if (args.dirtySet.dirtyAll) return true
+  if (args.dirty.dirtyAll) return true
   if (args.entry.reads.length === 0) return true
   if (!args.hasRegistry) return true
 
-  for (const dirtyRootId of args.dirtySet.rootIds) {
-    const dirtyRoot = args.getDirtyRootPath(dirtyRootId)
-    if (!dirtyRoot) return true
+  for (const dirtyPathId of args.dirty.dirtyPathIds) {
+    const dirtyPath = args.getDirtyPath(dirtyPathId)
+    if (!dirtyPath) return true
 
-    const dirtyRootKey = getReadRootKeyFromPath(dirtyRoot)
+    const dirtyRootKey = getReadRootKeyFromPath(dirtyPath)
     const readsForRoot = args.entry.readsByRootKey.get(dirtyRootKey)
     if (!readsForRoot || readsForRoot.length === 0) {
       continue
     }
 
     for (const read of readsForRoot) {
-      if (overlaps(dirtyRoot, read)) {
+      if (overlaps(dirtyPath, read)) {
         return true
       }
     }
@@ -319,7 +320,7 @@ export const make = <S>(args: {
     }
   }
 
-  const onCommit: SelectorGraph<S>['onCommit'] = (state, meta, dirtySet, diagnosticsLevel, onSelectorChanged) =>
+  const onCommit: SelectorGraph<S>['onCommit'] = (state, meta, dirty, diagnosticsLevel, onSelectorChanged) =>
     Effect.gen(function* () {
       if (selectorsById.size === 0) return
 
@@ -328,9 +329,9 @@ export const make = <S>(args: {
       const evalEventPolicy: SelectorEvalEventPolicy = diagnosticsLevel === 'sampled' ? 'sampled' : 'always'
 
       const registry: FieldPathIdRegistry | undefined =
-        dirtySet.dirtyAll || dirtySet.rootIds.length === 0 ? undefined : getFieldPathIdRegistry?.()
+        dirty.dirtyAll || dirty.dirtyPathIds.length === 0 ? undefined : getFieldPathIdRegistry?.()
 
-      const getDirtyRootPath = (id: number): FieldPath | undefined => {
+      const getDirtyPath = (id: number): FieldPath | undefined => {
         if (!registry) return undefined
         if (!Number.isFinite(id)) return undefined
         const idx = Math.floor(id)
@@ -402,8 +403,8 @@ export const make = <S>(args: {
         if (
           !shouldEvaluateEntryForDirtyRoots({
             entry,
-            dirtySet,
-            getDirtyRootPath,
+            dirty,
+            getDirtyPath,
             hasRegistry: registry != null,
           })
         ) {
@@ -414,7 +415,7 @@ export const make = <S>(args: {
         return
       }
 
-      if (dirtySet.dirtyAll) {
+      if (dirty.dirtyAll) {
         yield* evaluateAllSubscribedSelectors()
         return
       }
@@ -431,21 +432,21 @@ export const make = <S>(args: {
       }
 
       const dirtyRootsToProcessByRoot = new Map<ReadRootKey, Array<FieldPath>>()
-      for (const dirtyRootId of dirtySet.rootIds) {
-        const dirtyRoot = getDirtyRootPath(dirtyRootId)
-        if (!dirtyRoot) {
+      for (const dirtyPathId of dirty.dirtyPathIds) {
+        const dirtyPath = getDirtyPath(dirtyPathId)
+        if (!dirtyPath) {
           yield* evaluateAllSubscribedSelectors()
           return
         }
 
-        const rootKey = getReadRootKeyFromPath(dirtyRoot)
+        const rootKey = getReadRootKeyFromPath(dirtyPath)
 
         const existingDirtyRoots = dirtyRootsToProcessByRoot.get(rootKey)
         if (existingDirtyRoots) {
-          upsertDirtyRoot(existingDirtyRoots, dirtyRoot)
+          upsertDirtyRoot(existingDirtyRoots, dirtyPath)
           continue
         }
-        dirtyRootsToProcessByRoot.set(rootKey, [dirtyRoot])
+        dirtyRootsToProcessByRoot.set(rootKey, [dirtyPath])
       }
 
       for (const [rootKey, dirtyRootsForRoot] of dirtyRootsToProcessByRoot) {
