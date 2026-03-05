@@ -1192,6 +1192,120 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
+    it.scoped('StateTransaction.commit should infer dirty evidence for whole-state replace ("*") when registry is available', () =>
+      Effect.gen(function* () {
+        type S = { a: number; b: number; items: ReadonlyArray<number> }
+
+        const ref = yield* SubscriptionRef.make<S>({ a: 0, b: 0, items: [1, 2, 3] })
+        const registry = makeFieldPathIdRegistry([['a'], ['b'], ['items']])
+
+        const ctx = StateTransaction.makeContext<S>({
+          moduleId: 'InferReplaceUnitModule',
+          instanceId: 'infer-replace-instance',
+          instrumentation: 'light',
+          captureSnapshots: false,
+          getFieldPathIdRegistry: () => registry,
+          getListPathSet: () => new Set(['items']),
+          now: () => 1,
+        })
+
+        StateTransaction.beginTransaction(
+          ctx,
+          { kind: 'unit-test', name: 'infer-replace' },
+          { a: 0, b: 0, items: [1, 2, 3] },
+        )
+        StateTransaction.updateDraft(ctx, { a: 1, b: 0, items: [1, 4, 3] })
+        StateTransaction.recordPatch(ctx, '*', 'reducer')
+
+        const txn = yield* StateTransaction.commit(ctx, ref)
+
+        expect(txn).toBeDefined()
+        expect(txn?.dirty.dirtyAll).toBe(false)
+        expect(txn?.dirty.dirtyAllReason).toBeUndefined()
+        expect(txn?.dirty.dirtyPathIds).toEqual([0, 2])
+        expect(txn?.dirty.dirtyPathsKeySize).toBe(2)
+      }),
+    )
+
+    it.scoped('StateTransaction.recordPatch("*", "perf") should keep forcing dirtyAll (perf harness contract)', () =>
+      Effect.gen(function* () {
+        type S = { a: number }
+
+        const ref = yield* SubscriptionRef.make<S>({ a: 0 })
+        const registry = makeFieldPathIdRegistry([['a']])
+
+        const ctx = StateTransaction.makeContext<S>({
+          moduleId: 'PerfDirtyAllUnitModule',
+          instanceId: 'perf-dirtyall-instance',
+          instrumentation: 'light',
+          captureSnapshots: false,
+          getFieldPathIdRegistry: () => registry,
+          now: () => 1,
+        })
+
+        StateTransaction.beginTransaction(ctx, { kind: 'unit-test', name: 'perf-dirtyall' }, { a: 0 })
+        StateTransaction.updateDraft(ctx, { a: 1 })
+        StateTransaction.recordPatch(ctx, '*', 'perf')
+
+        const txn = yield* StateTransaction.commit(ctx, ref)
+
+        expect(txn).toBeDefined()
+        expect(txn?.dirty.dirtyAll).toBe(true)
+        expect(txn?.dirty.dirtyAllReason).toBe('unknownWrite')
+        expect(txn?.dirty.dirtyPathIds).toEqual([])
+      }),
+    )
+
+    it.scoped('setState inside an active transaction should infer dirty evidence (no dirtyAll degrade)', () =>
+      Effect.gen(function* () {
+        const ring = Debug.makeRingBufferSink(16)
+
+        const InferModule = Logix.Module.make('InferReplaceInTxnSetStateModule', {
+          state: Schema.Struct({ a: Schema.Number, b: Schema.Number }),
+          actions: { noop: Schema.Null },
+        })
+
+        const program = Effect.locally(Debug.internal.currentDiagnosticsLevel as any, 'light')(
+          Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
+            Effect.scoped(
+              ModuleRuntime.make(
+                { a: 0, b: 0 },
+                {
+                  moduleId: 'InferReplaceInTxnSetStateModule',
+                  tag: InferModule.tag,
+                },
+              ).pipe(
+                Effect.flatMap((runtime) =>
+                  Effect.gen(function* () {
+                    yield* Logix.InternalContracts.runWithStateTransaction(
+                      runtime as any,
+                      { kind: 'unit-test', name: 'in-txn-setState' },
+                      () => runtime.setState({ a: 1, b: 0 }),
+                    )
+
+                    const updates = ring
+                      .getSnapshot()
+                      .filter(
+                        (event) =>
+                          event.type === 'state:update' && event.moduleId === 'InferReplaceInTxnSetStateModule',
+                      ) as any[]
+
+                    expect(updates.length).toBeGreaterThanOrEqual(1)
+                    const last = updates[updates.length - 1]!
+                    expect(last.dirtySet).toBeDefined()
+                    expect(last.dirtySet.dirtyAll).toBe(false)
+                    expect(last.dirtySet.pathCount).toBeGreaterThan(0)
+                  }),
+                ),
+              ),
+            ),
+          ),
+        )
+
+        yield* program
+      }),
+    )
+
     it.scoped('StateTransaction full patch records must be bounded (<=256) and mark truncation', () =>
       Effect.gen(function* () {
         type S = { value: number }

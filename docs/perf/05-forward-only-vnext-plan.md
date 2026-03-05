@@ -20,6 +20,7 @@
 - [x] D-2：SelectorGraph/Converge 统一消费 `TxnDirtyEvidenceSnapshot`（删除重复路径解析与重复 dirty 缓存口径）。
 - [x] E-1：mutative patchPaths 保留索引证据（array path -> listIndexEvidence；提升 `Ref.list(...)` 增量覆盖率）。
 - [x] F-1：DevtoolsHub 事件窗口 O(1) ring buffer（去 `splice` trimming 抖动；full 诊断更稳）。
+- [x] G-1：整状态替换推导 dirty evidence（`setState/state.update`/reducer 无 patchPaths 不再立刻 dirtyAll；commit-time best-effort diff 推导顶层 key/list evidence）。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -186,6 +187,20 @@ TraitLifecycle.scopedValidate($, {
 
 状态：
 - [x] 已完成（F-1）：用 O(1) ring storage 替换 `push+splice`，并把“有序 view 重建”推迟到 snapshot read/export；证据见 `docs/perf/2026-03-05-f1-devtools-ring-buffer.md`。
+
+### Wave G（P1）：整状态替换推导 dirty evidence（replace -> inferred patch roots）
+
+目标：
+- 当出现 `path="*"`（`setState/state.update`/reducer 无 patchPaths）时，尽可能避免 txn 直接降级 `dirtyAll`；
+- 在 commit-time 对 `baseState -> finalState` 做 best-effort diff，推导顶层 key（+ root list changedIndices）级别的 dirty evidence，提升增量路径覆盖面。
+
+落点：
+- `packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts`
+
+状态：
+- [x] 已完成（G-1）：`recordPatch('*', reason!=perf)` 改为“标记整状态替换→commit-time 推导证据”，并补齐 txn 内 `setState` 早退分支的推导接线；证据见 `docs/perf/2026-03-05-g1-infer-replace-patches.md`。
 
 ## 4. 破坏式变更策略（必须执行）
 

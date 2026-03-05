@@ -38,3 +38,5 @@
   - E-1：mutative patchPaths 保留索引证据（array path -> listIndexEvidence，提升 `Ref.list(...)` 增量覆盖率）。
 - `2026-03-05-f1-devtools-ring-buffer.md`
   - F-1：DevtoolsHub 事件窗口 O(1) ring buffer（去 `splice` trimming 抖动；full 诊断更稳）。
+- `2026-03-05-g1-infer-replace-patches.md`
+  - G-1：整状态替换推导 dirty evidence（`setState/state.update`/reducer 无 patchPaths 不再立刻 dirtyAll）。

@@ -184,6 +184,19 @@ interface StateTxnState<S> {
   draft: S
   initialStateSnapshot?: S
   /**
+   * inferReplaceEvidence:
+   * - Set when a whole-state replacement write occurred without explicit patch paths.
+   * - On commit, the transaction infers best-effort field-level dirty evidence by diffing baseState -> finalState.
+   *
+   * Motivation:
+   * - Avoid dirtyAll fallback on `runtime.setState` / `$.state.update` / reducers without sink patchPaths.
+   * - Preserve correctness in `dispatchBatch` where different reducers may mix "has patchPaths" and "no patchPaths".
+   *
+   * Note:
+   * - Kept internal to the txn window; never exported as part of the committed transaction.
+   */
+  inferReplaceEvidence: boolean
+  /**
    * listPathSet:
    * - Captured once at transaction start from runtime config.
    * - Used to enable list-index evidence recording only when the module actually declares list traits.
@@ -231,6 +244,7 @@ interface StateTxnState<S> {
 }
 
 const MAX_PATCHES_FULL = 256
+const MAX_INFERRED_LIST_INDICES = 64
 const EMPTY_DIRTY_PATH_IDS: ReadonlyArray<FieldPathId> = []
 const EMPTY_TXN_PATCHES: ReadonlyArray<TxnPatchRecord> = []
 
@@ -518,6 +532,116 @@ const buildDirtyEvidenceSnapshot = <S>(state: StateTxnState<S>): TxnDirtyEvidenc
   }
 }
 
+const inferReplaceEvidence = <S>(ctx: StateTxnContext<S>, state: StateTxnState<S>, finalState: S): void => {
+  if (!state.inferReplaceEvidence) return
+  if (state.dirtyAllReason) return
+
+  const registry = state.fieldPathIdRegistry
+  if (!registry) {
+    state.dirtyAllReason = 'fallbackPolicy'
+    return
+  }
+
+  const base = state.baseState as any
+  const next = finalState as any
+
+  // Best-effort inference supports plain object states only.
+  if (!base || !next) {
+    state.dirtyAllReason = 'unknownWrite'
+    return
+  }
+  if (typeof base !== 'object' || typeof next !== 'object') {
+    state.dirtyAllReason = 'unknownWrite'
+    return
+  }
+  if (Array.isArray(base) || Array.isArray(next)) {
+    state.dirtyAllReason = 'unknownWrite'
+    return
+  }
+
+  const pathStringToId = registry.pathStringToId
+  const listPathSet = state.listPathSet
+
+  const recordKey = (key: string, prevValue: unknown, nextValue: unknown): void => {
+    if (state.dirtyAllReason) return
+    if (!key) return
+
+    // Only infer for keys that exist in the Static IR registry (avoid degrading due to extra/untracked keys).
+    if (!pathStringToId || !pathStringToId.has(key)) {
+      return
+    }
+
+    if (listPathSet && listPathSet.has(key)) {
+      const instanceKey = toListInstanceKey(key, '')
+
+      // If the list instance is already marked as structurally dirty, skip.
+      if (state.listRootTouched.has(instanceKey)) {
+        return
+      }
+
+      const prevArr = Array.isArray(prevValue) ? (prevValue as ReadonlyArray<unknown>) : undefined
+      const nextArr = Array.isArray(nextValue) ? (nextValue as ReadonlyArray<unknown>) : undefined
+
+      if (!prevArr || !nextArr) {
+        // Treat unknown encoding as a structural list change (disable incremental hints).
+        ctx.recordPatch(`${key}[]`, 'unknown')
+        return
+      }
+
+      if (prevArr.length !== nextArr.length) {
+        ctx.recordPatch(`${key}[]`, 'unknown')
+        return
+      }
+
+      let changed = 0
+      for (let i = 0; i < prevArr.length; i++) {
+        if (Object.is(prevArr[i], nextArr[i])) continue
+        changed += 1
+        ctx.recordPatch([key, String(i)], 'unknown')
+
+        // Guard: if too many indices differ, treat it as a structural churn and stop tracking individual indices.
+        if (changed > MAX_INFERRED_LIST_INDICES) {
+          ctx.recordPatch(`${key}[]`, 'unknown')
+          break
+        }
+      }
+
+      // If the array identity changed but no element differs, treat it as a structural list touch.
+      if (changed === 0) {
+        ctx.recordPatch(`${key}[]`, 'unknown')
+      }
+
+      return
+    }
+
+    ctx.recordPatch(key, 'unknown')
+  }
+
+  // Removed/changed keys (covers "key removed" as next[key] becomes undefined).
+  const baseKeys = Object.keys(base)
+  for (let i = 0; i < baseKeys.length; i++) {
+    const key = baseKeys[i]!
+    const prevValue = base[key]
+    const nextValue = next[key]
+    if (!Object.is(prevValue, nextValue) || !Object.prototype.hasOwnProperty.call(next, key)) {
+      recordKey(key, prevValue, nextValue)
+    }
+  }
+
+  // Added keys (rare for schema-backed states, but supported).
+  const nextKeys = Object.keys(next)
+  for (let i = 0; i < nextKeys.length; i++) {
+    const key = nextKeys[i]!
+    if (Object.prototype.hasOwnProperty.call(base, key)) continue
+    recordKey(key, base[key], next[key])
+  }
+
+  // If inference produced nothing (e.g., non-trackable schema), deterministically degrade to dirtyAll.
+  if (!state.dirtyAllReason && state.dirtyPathIds.size === 0) {
+    state.dirtyAllReason = 'unknownWrite'
+  }
+}
+
 const buildCommittedTransaction = <S>(
   ctx: StateTxnContext<S>,
   state: StateTxnState<S>,
@@ -525,6 +649,7 @@ const buildCommittedTransaction = <S>(
   endedAt: number,
 ): StateTransaction<S> => {
   const { config } = ctx
+  inferReplaceEvidence(ctx, state, finalState)
   const dirty = buildDirtyEvidenceSnapshot(state)
 
   return {
@@ -559,6 +684,7 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     baseState: undefined as any,
     draft: undefined as any,
     initialStateSnapshot: undefined,
+    inferReplaceEvidence: false,
     listPathSet: undefined,
     patches: [],
     patchCount: 0,
@@ -662,6 +788,7 @@ export const beginTransaction = <S>(ctx: StateTxnContext<S>, origin: StateTxnOri
   state.baseState = initialState
   state.draft = initialState
   state.initialStateSnapshot = initialSnapshot
+  state.inferReplaceEvidence = false
   state.patches.length = 0
   state.patchCount = 0
   state.patchesTruncated = false
@@ -690,7 +817,15 @@ const resolveAndRecordDirtyPathId = <S>(
   }
 
   if (path === '*') {
-    state.dirtyAllReason = 'unknownWrite'
+    // Perf boundary harness: keep a stable way to force dirtyAll (explicit contract).
+    if (reason === 'perf') {
+      state.dirtyAllReason = 'unknownWrite'
+      return undefined
+    }
+
+    // Whole-state replacement without explicit patch paths:
+    // defer to commit-time inference rather than eagerly degrading to dirtyAll.
+    state.inferReplaceEvidence = true
     return undefined
   }
 

@@ -763,9 +763,10 @@ export const makeTransactionOps = <S>(args: {
    * - Outside a transaction: keep legacy behavior, write to SubscriptionRef directly and emit a state:update Debug event.
    *
    * Notes:
-   * - When path="*" and field-level evidence is missing, treat it as a dirtyAll-degrade entrypoint: it triggers full converge/validate paths;
-   * - Prefer `$.state.mutate(...)` / `Logix.Module.Reducer.mutate(...)` to produce field-level patchPaths;
-   * - Any non-trackable write (including path="*") must explicitly degrade (dirtyAll); do not "ignore *" when roots exist.
+   * - When path="*" and field-level evidence is missing, the transaction attempts a best-effort commit-time inference
+   *   (diff baseState -> finalState) to produce field-level dirty evidence. If inference is not possible, it degrades to dirtyAll.
+   * - Prefer `$.state.mutate(...)` / `Logix.Module.Reducer.mutate(...)` to produce exact field-level patchPaths.
+   * - Perf harness can still force dirtyAll via `recordStatePatch('*', 'perf')` (explicit contract).
    */
   const setStateInternal: SetStateInternal<S> = (
     next: S,
@@ -789,6 +790,7 @@ export const makeTransactionOps = <S>(args: {
         // - We must not permanently degrade the txn to dirtyAll before that evidence arrives.
         if (path === '*' && reason === 'unknown') {
           current[DIRTY_ALL_SET_STATE_HINT] = true
+          current.inferReplaceEvidence = true
           return
         }
 
