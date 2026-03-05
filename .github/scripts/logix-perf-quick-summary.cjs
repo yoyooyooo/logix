@@ -10,18 +10,40 @@ const baseRef = (process.env.BASE_REF || '').trim()
 const headRef = (process.env.HEAD_REF || '').trim()
 const envId = process.env.PERF_ENV_ID || ''
 const profile = process.env.PERF_PROFILE || 'quick'
+const capacitySuiteId = process.env.PERF_CAPACITY_SUITE_ID || 'converge.txnCommit'
+const capacityBudgetId = process.env.PERF_CAPACITY_BUDGET_ID || 'commit.p95<=50ms'
+const capacityScopeConvergeMode = process.env.PERF_CAPACITY_SCOPE_CONVERGE_MODE || 'auto'
+const curveBudgetId = process.env.PERF_CURVE_BUDGET_ID || 'auto<=full*1.05'
+const parseOptionalPositiveInt = (raw) => {
+  const text = String(raw ?? '').trim()
+  if (!text) return undefined
+  if (!/^[0-9]+$/.test(text)) return undefined
+  const value = Number(text)
+  return Number.isFinite(value) && value > 0 ? value : undefined
+}
+const capacityFloorTarget = parseOptionalPositiveInt(process.env.PERF_CAPACITY_FLOOR_MIN)
+const curveHistoryRuns = parseOptionalPositiveInt(process.env.PERF_CURVE_HISTORY_RUNS) ?? 3
+const curveHistoryDir = (process.env.PERF_CURVE_HISTORY_DIR || '').trim()
 
-const scope =
-  process.env.PERF_FILES ||
-  'test/browser/perf-boundaries/diagnostics-overhead.test.tsx'
+const scope = process.env.PERF_FILES || 'test/browser/perf-boundaries/diagnostics-overhead.test.tsx'
 const artifactName = process.env.PERF_ARTIFACT_NAME || ''
 
-const beforePath =
-  baseShort && envId ? path.join(perfDir, `before.${baseShort}.${envId}.${profile}.json`) : null
-const afterPath =
-  headShort && envId ? path.join(perfDir, `after.${headShort}.${envId}.${profile}.json`) : null
+const beforePath = baseShort && envId ? path.join(perfDir, `before.${baseShort}.${envId}.${profile}.json`) : null
+const afterPath = headShort && envId ? path.join(perfDir, `after.${headShort}.${envId}.${profile}.json`) : null
+const afterProbePath = headShort && envId ? path.join(perfDir, `after.probe.${headShort}.${envId}.${profile}.json`) : null
 const diffPath =
-  baseShort && headShort && envId ? path.join(perfDir, `diff.${baseShort}__${headShort}.${envId}.${profile}.json`) : null
+  baseShort && headShort && envId
+    ? path.join(perfDir, `diff.${baseShort}__${headShort}.${envId}.${profile}.json`)
+    : null
+const autoProbeBasePath =
+  baseShort && envId ? path.join(perfDir, `steps-probe.base.${baseShort}.${envId}.${profile}.json`) : null
+const autoProbeHeadPath =
+  headShort && envId ? path.join(perfDir, `steps-probe.head.${headShort}.${envId}.${profile}.json`) : null
+const capacityLatestPath = path.join(perfDir, 'capacity-latest.json')
+const debugTimelinePath = process.env.PERF_DEBUG_TIMELINE_FILE || path.join(perfDir, 'debug.timeline.log')
+const tailRecheckPlanPath = path.join(perfDir, 'tail-recheck-plan.json')
+const tailRecheckSummaryPath = path.join(perfDir, 'tail-recheck-summary.json')
+const agentResultPath = path.join(perfDir, 'agent-result.json')
 
 const safeReadJson = (file) => {
   try {
@@ -31,13 +53,75 @@ const safeReadJson = (file) => {
   }
 }
 
+const loadCurveHistoryReports = (dir, maxRuns) => {
+  if (!dir || !fs.existsSync(dir)) return []
+  let entries = []
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory())
+  } catch {
+    return []
+  }
+
+  const normalized = entries
+    .map((entry) => {
+      const runIdMatch = entry.name.match(/run-(\d+)/)
+      const runId = runIdMatch ? Number(runIdMatch[1]) : Number.NaN
+      return {
+        dirName: entry.name,
+        runId: Number.isFinite(runId) ? runId : null,
+        fullPath: path.join(dir, entry.name),
+      }
+    })
+    .sort((a, b) => {
+      if (a.runId != null && b.runId != null) return b.runId - a.runId
+      return String(b.dirName).localeCompare(String(a.dirName))
+    })
+
+  const selected = normalized.slice(0, Math.max(1, maxRuns)).reverse()
+  const out = []
+  for (const entry of selected) {
+    let files = []
+    try {
+      files = fs.readdirSync(entry.fullPath)
+    } catch {
+      continue
+    }
+    const afterFile = files.find((file) => file.startsWith('after.') && !file.startsWith('after.probe.') && file.endsWith('.json'))
+    if (!afterFile) continue
+    const report = safeReadJson(path.join(entry.fullPath, afterFile))
+    if (!report || !Array.isArray(report.suites)) continue
+    out.push({
+      runId: entry.runId,
+      label: entry.runId != null ? `run-${entry.runId}` : entry.dirName,
+      report,
+    })
+  }
+  return out
+}
+
 const beforeReport = beforePath && fs.existsSync(beforePath) ? safeReadJson(beforePath) : null
 const afterReport = afterPath && fs.existsSync(afterPath) ? safeReadJson(afterPath) : null
+const afterProbeReport = afterProbePath && fs.existsSync(afterProbePath) ? safeReadJson(afterProbePath) : null
+const headSignalReport = afterProbeReport || afterReport
 const diff = diffPath && fs.existsSync(diffPath) ? safeReadJson(diffPath) : null
+const autoProbeBase = autoProbeBasePath && fs.existsSync(autoProbeBasePath) ? safeReadJson(autoProbeBasePath) : null
+const autoProbeHead = autoProbeHeadPath && fs.existsSync(autoProbeHeadPath) ? safeReadJson(autoProbeHeadPath) : null
+const capacityLatest = fs.existsSync(capacityLatestPath) ? safeReadJson(capacityLatestPath) : null
+const tailRecheckPlan = fs.existsSync(tailRecheckPlanPath) ? safeReadJson(tailRecheckPlanPath) : null
+const tailRecheckSummary = fs.existsSync(tailRecheckSummaryPath) ? safeReadJson(tailRecheckSummaryPath) : null
+const agentResult = fs.existsSync(agentResultPath) ? safeReadJson(agentResultPath) : null
+const curveHistoryReports = loadCurveHistoryReports(curveHistoryDir, curveHistoryRuns)
+const debugTimelineLines = fs.existsSync(debugTimelinePath)
+  ? fs
+      .readFileSync(debugTimelinePath, 'utf8')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+  : []
 
 const files = fs
   .readdirSync(perfDir)
-  .filter((f) => f.endsWith('.json') || f.endsWith('.md'))
+  .filter((f) => f.endsWith('.json') || f.endsWith('.md') || f.endsWith('.csv'))
   .sort()
 
 const code = (x) => `\`${String(x ?? '').replaceAll('`', '')}\``
@@ -61,6 +145,34 @@ const uniqValuesFromPoints = (suite, key) => {
     if (aNum && bNum) return a - b
     return String(a).localeCompare(String(b))
   })
+}
+
+const unionAxisValues = (...groups) => {
+  const out = new Set()
+  for (const group of groups) {
+    if (!Array.isArray(group)) continue
+    for (const item of group) {
+      if (item === undefined || item === null) continue
+      out.add(item)
+    }
+  }
+  return Array.from(out).sort((a, b) => {
+    const aNum = typeof a === 'number' && Number.isFinite(a)
+    const bNum = typeof b === 'number' && Number.isFinite(b)
+    if (aNum && bNum) return a - b
+    return String(a).localeCompare(String(b))
+  })
+}
+
+const resolvePrimaryAxisLevels = (suiteSpec, beforeSuite, afterSuite) => {
+  const primary = suiteSpec?.primaryAxis
+  if (!primary) return []
+  const fromPoints = unionAxisValues(
+    uniqValuesFromPoints(beforeSuite, primary),
+    uniqValuesFromPoints(afterSuite, primary),
+  )
+  if (fromPoints.length > 0) return fromPoints
+  return Array.isArray(suiteSpec?.axes?.[primary]) ? suiteSpec.axes[primary] : []
 }
 
 const formatAxisValues = (values) => {
@@ -161,9 +273,12 @@ const isRelativeBudgetExceeded = (budget, ratio, deltaMs) => {
   return ratio > budget.maxRatio && deltaMs > minDeltaMs
 }
 
-const computeThresholdMaxLevelAbsolute = (suiteSpec, suiteResult, budget, where) => {
+const computeThresholdMaxLevelAbsolute = (suiteSpec, suiteResult, budget, where, axisLevelsOverride) => {
   const primary = suiteSpec.primaryAxis
-  const axisLevels = suiteSpec.axes?.[primary] ?? []
+  const axisLevels =
+    Array.isArray(axisLevelsOverride) && axisLevelsOverride.length > 0
+      ? axisLevelsOverride
+      : suiteSpec.axes?.[primary] ?? []
   let maxLevel = null
   for (const level of axisLevels) {
     const params = { ...(where || {}), [primary]: level }
@@ -180,9 +295,12 @@ const computeThresholdMaxLevelAbsolute = (suiteSpec, suiteResult, budget, where)
   return { maxLevel, firstFailLevel: null }
 }
 
-const computeThresholdMaxLevelRelative = (suiteSpec, suiteResult, budget, where) => {
+const computeThresholdMaxLevelRelative = (suiteSpec, suiteResult, budget, where, axisLevelsOverride) => {
   const primary = suiteSpec.primaryAxis
-  const axisLevels = suiteSpec.axes?.[primary] ?? []
+  const axisLevels =
+    Array.isArray(axisLevelsOverride) && axisLevelsOverride.length > 0
+      ? axisLevelsOverride
+      : suiteSpec.axes?.[primary] ?? []
   const numeratorRef = parseRef(budget.numeratorRef)
   const denominatorRef = parseRef(budget.denominatorRef)
 
@@ -348,24 +466,525 @@ const collectBudgetExceeded = (report) => {
   return failures
 }
 
-const afterFailures = afterReport ? collectBudgetExceeded(afterReport) : []
+const quantileCeil = (values, q) => {
+  if (!Array.isArray(values) || values.length === 0) return 0
+  const sorted = values
+    .filter((x) => typeof x === 'number' && Number.isFinite(x))
+    .slice()
+    .sort((a, b) => a - b)
+  if (sorted.length === 0) return 0
+  const clampedQ = Math.max(0, Math.min(1, q))
+  const index = Math.ceil(clampedQ * (sorted.length - 1))
+  return sorted[index] ?? sorted[sorted.length - 1] ?? 0
+}
+
+const intersectAxisValues = (left, right) => {
+  const rightSet = new Set(Array.isArray(right) ? right : [])
+  return (Array.isArray(left) ? left : []).filter((value) => rightSet.has(value))
+}
+
+const buildRelativeMetricCurve = ({ suiteSpec, beforeSuite, afterSuite, budget, axisLevels, whereCombos }) => {
+  if (!suiteSpec || !beforeSuite || !afterSuite || !budget) return null
+  if (!Array.isArray(axisLevels) || axisLevels.length === 0) return null
+  if (!Array.isArray(whereCombos) || whereCombos.length === 0) return null
+
+  const toQuantiles = (values) => ({
+    p50: quantileCeil(values, 0.5),
+    p75: quantileCeil(values, 0.75),
+    p95: quantileCeil(values, 0.95),
+  })
+
+  const rows = []
+  for (const level of axisLevels) {
+    const beforeValues = []
+    const afterValues = []
+
+    for (const where of whereCombos) {
+      const beforeStats = computeRelativeStatsAt(suiteSpec, beforeSuite, budget, where, level)
+      if (beforeStats.ok) beforeValues.push(beforeStats.numeratorP95Ms)
+
+      const afterStats = computeRelativeStatsAt(suiteSpec, afterSuite, budget, where, level)
+      if (afterStats.ok) afterValues.push(afterStats.numeratorP95Ms)
+    }
+
+    if (beforeValues.length === 0 || afterValues.length === 0) continue
+
+    rows.push({
+      level,
+      before: toQuantiles(beforeValues),
+      after: toQuantiles(afterValues),
+      beforeCount: beforeValues.length,
+      afterCount: afterValues.length,
+    })
+  }
+
+  if (rows.length < 2) return null
+  return {
+    levels: rows.map((row) => row.level),
+    beforeP50: rows.map((row) => row.before.p50),
+    beforeP75: rows.map((row) => row.before.p75),
+    beforeP95: rows.map((row) => row.before.p95),
+    afterP50: rows.map((row) => row.after.p50),
+    afterP75: rows.map((row) => row.after.p75),
+    afterP95: rows.map((row) => row.after.p95),
+    beforeCountMin: Math.min(...rows.map((row) => row.beforeCount)),
+    afterCountMin: Math.min(...rows.map((row) => row.afterCount)),
+  }
+}
+
+const buildSingleRelativeMetricCurve = ({ suiteSpec, suiteResult, budget, axisLevels, whereCombos }) => {
+  if (!suiteSpec || !suiteResult || !budget) return null
+  if (!Array.isArray(axisLevels) || axisLevels.length === 0) return null
+  if (!Array.isArray(whereCombos) || whereCombos.length === 0) return null
+
+  const toQuantiles = (values) => ({
+    p50: quantileCeil(values, 0.5),
+    p75: quantileCeil(values, 0.75),
+    p95: quantileCeil(values, 0.95),
+  })
+
+  const rows = []
+  for (const level of axisLevels) {
+    const values = []
+    for (const where of whereCombos) {
+      const stats = computeRelativeStatsAt(suiteSpec, suiteResult, budget, where, level)
+      if (stats.ok) values.push(stats.numeratorP95Ms)
+    }
+    if (values.length === 0) continue
+    rows.push({
+      level,
+      quantiles: toQuantiles(values),
+      sampleCount: values.length,
+    })
+  }
+
+  if (rows.length < 2) return null
+  return {
+    levels: rows.map((row) => row.level),
+    p50: rows.map((row) => row.quantiles.p50),
+    p75: rows.map((row) => row.quantiles.p75),
+    p95: rows.map((row) => row.quantiles.p95),
+    sampleCountMin: Math.min(...rows.map((row) => row.sampleCount)),
+  }
+}
+
+const collectCapacityRows = (report) => {
+  if (!report || !Array.isArray(report.suites)) return []
+  const suite = report.suites.find((s) => s?.id === capacitySuiteId)
+  if (!suite || !Array.isArray(suite.thresholds)) return []
+  const rows = []
+  for (const t of suite.thresholds) {
+    if (!t || typeof t !== 'object') continue
+    if ((t.budget?.id ?? budgetKey(t.budget)) !== capacityBudgetId) continue
+    if ((t.where?.convergeMode ?? null) !== capacityScopeConvergeMode) continue
+    const dirtyRootsRatio = t.where?.dirtyRootsRatio
+    if (!(typeof dirtyRootsRatio === 'number' && Number.isFinite(dirtyRootsRatio))) continue
+    rows.push({
+      dirtyRootsRatio,
+      maxLevel: typeof t.maxLevel === 'number' && Number.isFinite(t.maxLevel) ? t.maxLevel : 0,
+      firstFailLevel: t.firstFailLevel ?? null,
+      reason: t.reason,
+    })
+  }
+  return rows.sort((a, b) => a.dirtyRootsRatio - b.dirtyRootsRatio)
+}
+
+const summarizeCapacityRows = (rows) => {
+  if (!Array.isArray(rows) || rows.length === 0) return null
+  const maxLevels = rows.map((row) => row.maxLevel)
+  const floorMaxLevel = maxLevels.length > 0 ? Math.min(...maxLevels) : 0
+  const p50MaxLevel = quantileCeil(maxLevels, 0.5)
+  const p75MaxLevel = quantileCeil(maxLevels, 0.75)
+  const p90MaxLevel = quantileCeil(maxLevels, 0.9)
+  const p95MaxLevel = quantileCeil(maxLevels, 0.95)
+  const maxObservedLevel = maxLevels.length > 0 ? Math.max(...maxLevels) : 0
+  return {
+    floorMaxLevel,
+    p50MaxLevel,
+    p75MaxLevel,
+    p90MaxLevel,
+    p95MaxLevel,
+    maxObservedLevel,
+  }
+}
+
+const pickFiniteNumber = (...values) => {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+  }
+  return undefined
+}
+
+const toSortedUniqueNumericList = (values) =>
+  Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [])
+        .filter((x) => typeof x === 'number' && Number.isFinite(x))
+        .map((x) => Number(x)),
+    ),
+  ).sort((a, b) => a - b)
+
+const resolveAutoProbeDataSufficiency = (probe) => {
+  if (probe?.dataSufficiency && typeof probe.dataSufficiency === 'object') {
+    return probe.dataSufficiency
+  }
+  const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
+  const lastIteration = iterations[iterations.length - 1]
+  if (lastIteration?.dataSufficiency && typeof lastIteration.dataSufficiency === 'object') {
+    return lastIteration.dataSufficiency
+  }
+  return null
+}
+
+const collectAutoProbeLevelGeneration = (probe) => {
+  const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
+  const refinedInsertions = []
+  const topExtensions = []
+  for (const iteration of iterations) {
+    const levelGeneration = iteration?.levelGeneration
+    if (!levelGeneration || typeof levelGeneration !== 'object') continue
+    if (Array.isArray(levelGeneration.refinedInsertions)) {
+      refinedInsertions.push(...levelGeneration.refinedInsertions)
+    }
+    if (Array.isArray(levelGeneration.topExtensions)) {
+      topExtensions.push(...levelGeneration.topExtensions)
+    }
+  }
+  return {
+    refinedInsertions: toSortedUniqueNumericList(refinedInsertions),
+    topExtensions: toSortedUniqueNumericList(topExtensions),
+  }
+}
+
+const deriveAutoProbeFallbackSummary = (probe) => {
+  const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
+  const lastIteration = iterations[iterations.length - 1]
+  const rows = Array.isArray(lastIteration?.aggregated?.rows) ? lastIteration.aggregated.rows : []
+  if (rows.length === 0) return null
+  const medianLevels = rows.map((row) => row?.medianMaxLevel).filter((x) => typeof x === 'number' && Number.isFinite(x))
+  const meanLevels = rows.map((row) => row?.meanMaxLevel).filter((x) => typeof x === 'number' && Number.isFinite(x))
+  const outlierRemovedCount = rows.reduce((acc, row) => {
+    const sampleCount = typeof row?.sampleCount === 'number' ? row.sampleCount : 0
+    const keptCount = typeof row?.keptCount === 'number' ? row.keptCount : sampleCount
+    return acc + Math.max(0, sampleCount - keptCount)
+  }, 0)
+  return {
+    floorMedianMaxLevel: medianLevels.length > 0 ? Math.min(...medianLevels) : undefined,
+    p50MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.5) : undefined,
+    p75MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.75) : undefined,
+    p90MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.9) : undefined,
+    p95MedianMaxLevel: medianLevels.length > 0 ? quantileCeil(medianLevels, 0.95) : undefined,
+    averageUpperLimit:
+      meanLevels.length > 0 ? Math.round(meanLevels.reduce((a, b) => a + b, 0) / meanLevels.length) : undefined,
+    outlierRemovedCount,
+  }
+}
+
+const renderAutoProbeSummary = ({ probe, label }) => {
+  if (!probe || typeof probe !== 'object') return ''
+  const autoSummaryRaw = probe.summary && typeof probe.summary === 'object' ? probe.summary : null
+  const autoSummaryFallback = deriveAutoProbeFallbackSummary(probe)
+  const averageUpper = pickFiniteNumber(autoSummaryRaw?.averageUpperLimit, autoSummaryFallback?.averageUpperLimit)
+  const floorMedian = pickFiniteNumber(autoSummaryRaw?.floorMedianMaxLevel, autoSummaryFallback?.floorMedianMaxLevel)
+  const p50Median = pickFiniteNumber(autoSummaryRaw?.p50MedianMaxLevel, autoSummaryFallback?.p50MedianMaxLevel)
+  const p75Median = pickFiniteNumber(autoSummaryRaw?.p75MedianMaxLevel, autoSummaryFallback?.p75MedianMaxLevel)
+  const p95Median = pickFiniteNumber(autoSummaryRaw?.p95MedianMaxLevel, autoSummaryFallback?.p95MedianMaxLevel)
+  const p90Median = pickFiniteNumber(autoSummaryRaw?.p90MedianMaxLevel, autoSummaryFallback?.p90MedianMaxLevel)
+  const removed = pickFiniteNumber(autoSummaryRaw?.outlierRemovedCount, autoSummaryFallback?.outlierRemovedCount)
+  const samplesPerIteration = probe.samplesPerIteration
+  const stopReason = probe.stopReason
+  const finalLevels = Array.isArray(probe.finalLevels) ? probe.finalLevels : []
+  const dataSufficiency = resolveAutoProbeDataSufficiency(probe)
+  const insufficient = dataSufficiency?.hasInsufficientData === true
+  const sufficiencyReasonCodes = Array.isArray(dataSufficiency?.reasonCodes)
+    ? dataSufficiency.reasonCodes.filter((x) => typeof x === 'string' && x.length > 0)
+    : []
+  const insufficientDirtyRatios = toSortedUniqueNumericList(dataSufficiency?.insufficientDirtyRatios)
+  const levelGeneration = collectAutoProbeLevelGeneration(probe)
+
+  let out = ''
+  out += `- ${label} auto-probe(filtered): avgUpper=${code(
+    typeof averageUpper === 'number' && Number.isFinite(averageUpper) ? averageUpper : 'n/a',
+  )}, floorMedian=${code(
+    typeof floorMedian === 'number' && Number.isFinite(floorMedian) ? floorMedian : 'n/a',
+  )}, p50Median=${code(
+    typeof p50Median === 'number' && Number.isFinite(p50Median) ? p50Median : 'n/a',
+  )}, p75Median=${code(
+    typeof p75Median === 'number' && Number.isFinite(p75Median) ? p75Median : 'n/a',
+  )}, p95Median=${code(
+    typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median : 'n/a',
+  )}, p90Median=${code(typeof p90Median === 'number' && Number.isFinite(p90Median) ? p90Median : 'n/a')}\n`
+  out += `- ${label} auto-probe stats: outliersRemoved=${code(
+    typeof removed === 'number' && Number.isFinite(removed) ? removed : 'n/a',
+  )}, samples/iter=${code(
+    typeof samplesPerIteration === 'number' && Number.isFinite(samplesPerIteration) ? samplesPerIteration : 'n/a',
+  )}, stop=${code(stopReason ?? 'n/a')}, levels=${code(
+    finalLevels.length > 0 ? formatAxisValues(finalLevels) : 'n/a',
+  )}\n`
+  out += `- ${label} auto-probe dataSufficiency: insufficient=${code(insufficient ? '1' : '0')}, reasonCodes=${code(
+    sufficiencyReasonCodes.length > 0 ? sufficiencyReasonCodes.join(',') : 'none',
+  )}, insufficientRatios=${code(
+    insufficientDirtyRatios.length > 0 ? formatAxisValues(insufficientDirtyRatios) : '[]',
+  )}\n`
+  out += `- ${label} auto-probe levelGen: refinedInsertions=${code(
+    levelGeneration.refinedInsertions.length > 0 ? formatAxisValues(levelGeneration.refinedInsertions) : '[]',
+  )}, topExtensions=${code(
+    levelGeneration.topExtensions.length > 0 ? formatAxisValues(levelGeneration.topExtensions) : '[]',
+  )}\n`
+  return out
+}
+
+const afterFailures = headSignalReport ? collectBudgetExceeded(headSignalReport) : []
+const afterCapacityRows = headSignalReport ? collectCapacityRows(headSignalReport) : []
+const afterCapacitySummary = summarizeCapacityRows(afterCapacityRows)
+const capacityFloorViolated =
+  typeof capacityFloorTarget === 'number' &&
+  afterCapacitySummary != null &&
+  afterCapacitySummary.floorMaxLevel < capacityFloorTarget
 const comparable = diff?.meta?.comparability?.comparable === true
 const regressions = diff?.summary?.regressions ?? 0
 const improvements = diff?.summary?.improvements ?? 0
+const dynamicEvaluation =
+  capacityLatest?.evaluation && typeof capacityLatest.evaluation === 'object' ? capacityLatest.evaluation : null
+const dynamicHardFailed = dynamicEvaluation?.hardPass === false
+const tailRecheckCounts =
+  tailRecheckSummary?.counts && typeof tailRecheckSummary.counts === 'object' ? tailRecheckSummary.counts : null
+const tailRecheckStatus =
+  typeof tailRecheckSummary?.status === 'string' && tailRecheckSummary.status ? tailRecheckSummary.status : 'not_evaluated'
+const tailRecheckSelectionMode =
+  typeof tailRecheckSummary?.selectionMode === 'string' && tailRecheckSummary.selectionMode
+    ? tailRecheckSummary.selectionMode
+    : typeof tailRecheckPlan?.selectionMode === 'string' && tailRecheckPlan.selectionMode
+    ? tailRecheckPlan.selectionMode
+    : null
+const tailRecheckSelectionStrategy =
+  typeof tailRecheckSummary?.selectionStrategy === 'string' && tailRecheckSummary.selectionStrategy
+    ? tailRecheckSummary.selectionStrategy
+    : typeof tailRecheckPlan?.selectionStrategy === 'string' && tailRecheckPlan.selectionStrategy
+    ? tailRecheckPlan.selectionStrategy
+    : null
+const tailRecheckEvidenceIntent =
+  typeof tailRecheckSummary?.evidenceIntent === 'string' && tailRecheckSummary.evidenceIntent
+    ? tailRecheckSummary.evidenceIntent
+    : typeof tailRecheckPlan?.evidenceIntent === 'string' && tailRecheckPlan.evidenceIntent
+    ? tailRecheckPlan.evidenceIntent
+    : null
+const tailRecheckCandidateCount =
+  typeof tailRecheckSummary?.candidateCount === 'number' && Number.isFinite(tailRecheckSummary.candidateCount)
+    ? tailRecheckSummary.candidateCount
+    : typeof tailRecheckPlan?.selectedCandidates?.length === 'number'
+    ? tailRecheckPlan.selectedCandidates.length
+    : 0
+const tailRecheckPersistentCount = (tailRecheckCounts?.persistentTail ?? 0) + (tailRecheckCounts?.persistentSystemic ?? 0)
+const tailRecheckResolvedBySamples =
+  (tailRecheckCounts?.resolved ?? 0) > 0 &&
+  (tailRecheckCounts?.flaky ?? 0) <= 0 &&
+  tailRecheckPersistentCount <= 0 &&
+  (tailRecheckCounts?.missing ?? 0) <= 0
+const tailRecheckEvidenceRecovered = tailRecheckStatus === 'resolved' || tailRecheckResolvedBySamples
+const regressionCount = typeof regressions === 'number' && Number.isFinite(regressions) ? regressions : 0
+const tailRecheckResolvedCount =
+  typeof tailRecheckCounts?.resolved === 'number' && Number.isFinite(tailRecheckCounts.resolved)
+    ? tailRecheckCounts.resolved
+    : 0
+const regressionsResolvedByTailRecheck =
+  regressionCount > 0 &&
+  tailRecheckEvidenceRecovered &&
+  tailRecheckResolvedCount >= regressionCount &&
+  (tailRecheckCounts?.flaky ?? 0) <= 0 &&
+  tailRecheckPersistentCount <= 0 &&
+  (tailRecheckCounts?.missing ?? 0) <= 0
+const headAutoProbeSufficiency = resolveAutoProbeDataSufficiency(autoProbeHead)
+const headAutoProbeInsufficient = headAutoProbeSufficiency?.hasInsufficientData === true
+const headAutoProbeReasonCodes = Array.isArray(headAutoProbeSufficiency?.reasonCodes)
+  ? headAutoProbeSufficiency.reasonCodes.filter((x) => typeof x === 'string' && x.length > 0)
+  : []
+const headAutoProbeInsufficientDirtyRatioCount =
+  typeof headAutoProbeSufficiency?.insufficientDirtyRatioCount === 'number' &&
+  Number.isFinite(headAutoProbeSufficiency.insufficientDirtyRatioCount)
+    ? headAutoProbeSufficiency.insufficientDirtyRatioCount
+    : 0
+const headAutoProbeHardInsufficient =
+  headAutoProbeInsufficient &&
+  (headAutoProbeInsufficientDirtyRatioCount > 0 || headAutoProbeReasonCodes.includes('insufficient_kept_samples'))
+const headAutoProbeBudgetLimitedReasonCodes = headAutoProbeReasonCodes.filter(
+  (reason) => reason === 'collect_budget_limit' || reason === 'time_budget_limit',
+)
+const headAutoProbeBudgetLimited = headAutoProbeInsufficient && !headAutoProbeHardInsufficient
+const headAutoProbeRecoveredByTailRecheck = headAutoProbeBudgetLimited && tailRecheckEvidenceRecovered
+const agentEnabled = agentResult?.enabled === true
+const agentStatus = typeof agentResult?.status === 'string' && agentResult.status ? agentResult.status : 'not_configured'
 
 const conclusion = (() => {
   if (!diff) return 'no_diff'
   if (!comparable) return 'triage_only_not_comparable'
-  if (typeof regressions === 'number' && regressions > 0) return 'has_regressions'
+  if (regressionCount > 0 && regressionsResolvedByTailRecheck) return 'regressions_resolved_by_tail_recheck'
+  if (regressionCount > 0) return 'has_regressions'
+  if (dynamicHardFailed) return 'head_capacity_dynamic_hard_failed'
+  if (capacityFloorViolated) return 'head_capacity_floor_failed'
   if (afterFailures.length > 0) return 'head_budget_exceeded'
+  if (headAutoProbeHardInsufficient) return 'head_auto_probe_insufficient'
+  if (headAutoProbeRecoveredByTailRecheck) return 'head_auto_probe_budget_limited_tail_recheck_resolved'
+  if (headAutoProbeBudgetLimited) return 'head_auto_probe_budget_limited'
   return 'ok'
 })()
+const hasDiff = diff != null
+const hasHardFloorNumbers =
+  typeof afterCapacitySummary?.floorMaxLevel === 'number' && Number.isFinite(afterCapacitySummary.floorMaxLevel) &&
+  typeof dynamicEvaluation?.hardFloor === 'number' && Number.isFinite(dynamicEvaluation.hardFloor)
 
+const humanVerdict = (() => {
+  if (conclusion === 'no_diff') return 'Diff missing (cannot conclude)'
+  if (conclusion === 'ok') return 'Healthy'
+  if (conclusion === 'has_regressions') return 'Regression risk detected'
+  if (conclusion === 'regressions_resolved_by_tail_recheck') return 'Regressions reconciled by tail recheck'
+  if (conclusion === 'triage_only_not_comparable') return 'Trend-only (not comparable)'
+  if (conclusion === 'head_capacity_dynamic_hard_failed' || conclusion === 'head_capacity_floor_failed') {
+    return 'Capacity target not met'
+  }
+  if (conclusion === 'head_budget_exceeded') return 'Head budget exceeded'
+  if (conclusion === 'head_auto_probe_insufficient') return 'Auto-probe data insufficient'
+  if (conclusion === 'head_auto_probe_budget_limited') {
+    return headAutoProbeBudgetLimitedReasonCodes.length > 0
+      ? 'Auto-probe budget-limited'
+      : 'Auto-probe limited/insufficient'
+  }
+  if (conclusion === 'head_auto_probe_budget_limited_tail_recheck_resolved') {
+    return headAutoProbeBudgetLimitedReasonCodes.length > 0
+      ? 'Auto-probe budget-limited, tail recheck resolved'
+      : 'Auto-probe limited/insufficient, tail recheck resolved'
+  }
+  return conclusion
+})()
+
+const humanPrimaryInsight = (() => {
+  if (conclusion === 'no_diff') {
+    return 'Diff artifact is missing; this run cannot produce a strict comparable/no-regression conclusion.'
+  }
+  if (conclusion === 'triage_only_not_comparable') {
+    return 'Use head-only trend charts; base/head strict diff is not comparable in this run.'
+  }
+  if (conclusion === 'head_capacity_dynamic_hard_failed') {
+    if (hasHardFloorNumbers) {
+      return `Comparable, but capacity floor is below dynamic hard floor (${afterCapacitySummary.floorMaxLevel} < ${dynamicEvaluation.hardFloor}).`
+    }
+    return 'Comparable, but dynamic hard capacity target failed; check Agent Readout for floor/hardFloor details.'
+  }
+  if (conclusion === 'head_capacity_floor_failed') {
+    return `Comparable, but capacity floor is below required floor (${afterCapacitySummary?.floorMaxLevel ?? 'n/a'} < ${capacityFloorTarget ?? 'n/a'}).`
+  }
+  if (conclusion === 'has_regressions') {
+    return 'Comparable run with unresolved regressions; inspect top failing budgets first.'
+  }
+  if (conclusion === 'ok') {
+    return 'Comparable run with no regressions and no blocking capacity signal.'
+  }
+  return `Status=${conclusion}; check Agent Readout for full diagnostics.`
+})()
+
+const humanComparableValue = hasDiff ? String(comparable) : 'n/a'
+const humanRegressionsValue = hasDiff ? regressions : 'n/a'
+const humanImprovementsValue = hasDiff ? improvements : 'n/a'
+
+md += `\n## Human Readout\n`
+md += `- verdict: ${code(humanVerdict)}\n`
+md += `- primary insight: ${humanPrimaryInsight}\n`
+md += `- comparability: ${code(humanComparableValue)}; diff(regressions=${code(humanRegressionsValue)}, improvements=${code(humanImprovementsValue)})\n`
+md += `- head signal source: ${code(afterProbeReport ? 'probe' : 'anchor')}; head budgetExceeded=${code(afterFailures.length)}\n`
+if (regressionCount > 0 && regressionsResolvedByTailRecheck) {
+  md += `- reconciliation: regressions were resolved by tail recheck evidence\n`
+}
+if (afterCapacitySummary) {
+  md += `- capacity snapshot (floor/p50/p75/p95/max): ${code(afterCapacitySummary.floorMaxLevel)}/${code(
+    afterCapacitySummary.p50MaxLevel,
+  )}/${code(afterCapacitySummary.p75MaxLevel)}/${code(afterCapacitySummary.p95MaxLevel)}/${code(
+    afterCapacitySummary.maxObservedLevel,
+  )}\n`
+}
+if (dynamicEvaluation) {
+  md += `- dynamic target (hard/warn): ${code(dynamicEvaluation.hardFloor ?? 'n/a')}/${code(
+    dynamicEvaluation.warnFloor ?? 'n/a',
+  )}, pass=${code(String(dynamicEvaluation.hardPass ?? 'n/a'))}/${code(String(dynamicEvaluation.warnPass ?? 'n/a'))}\n`
+}
+if (typeof capacityFloorTarget === 'number') {
+  md += `- configured floor target: ${code(capacityFloorTarget)}\n`
+}
+md += `- trend context: curve history runs loaded=${code(curveHistoryReports.length)}\n`
+
+md += `\n## Agent Readout\n`
 md += `\n### Conclusion\n`
 md += `- comparable: ${code(String(diff?.meta?.comparability?.comparable ?? '?'))}\n`
 md += `- diff: regressions=${code(regressions)}, improvements=${code(improvements)}\n`
 md += `- head budgetExceeded: ${code(afterFailures.length)}\n`
+md += `- head signal source: ${code(afterProbeReport ? 'probe' : 'anchor')}\n`
+md += `- head auto-probe sufficiency: insufficient=${code(headAutoProbeInsufficient ? '1' : '0')}, strictInsufficient=${code(
+  headAutoProbeHardInsufficient ? '1' : '0',
+)}, budgetLimited=${code(headAutoProbeBudgetLimited ? '1' : '0')}, recoveredByTailRecheck=${code(
+  headAutoProbeRecoveredByTailRecheck ? '1' : '0',
+)}, insufficientDirtyRatios=${code(headAutoProbeInsufficientDirtyRatioCount)}, reasonCodes=${code(
+  headAutoProbeReasonCodes.length > 0 ? headAutoProbeReasonCodes.join(',') : 'none',
+)}\n`
+if (tailRecheckSummary || tailRecheckPlan) {
+  md += `- tail recheck: status=${code(tailRecheckStatus)}, mode=${code(
+    tailRecheckSelectionMode ?? 'n/a',
+  )}, strategy=${code(tailRecheckSelectionStrategy ?? 'n/a')}, intent=${code(
+    tailRecheckEvidenceIntent ?? 'n/a',
+  )}, candidates=${code(tailRecheckCandidateCount)}, samples=${code(
+    tailRecheckSummary?.headSampleCount ?? 0,
+  )}, resolved=${code(tailRecheckCounts?.resolved ?? 0)}, flaky=${code(tailRecheckCounts?.flaky ?? 0)}, persistent=${code(
+    tailRecheckPersistentCount,
+  )}, missing=${code(tailRecheckCounts?.missing ?? 0)}\n`
+}
+if (regressionCount > 0 || tailRecheckSummary || tailRecheckPlan) {
+  md += `- regression reconciliation: regressionCount=${code(
+    regressionCount,
+  )}, tailResolved=${code(tailRecheckResolvedCount)}, resolvedByTailRecheck=${code(
+    regressionsResolvedByTailRecheck ? '1' : '0',
+  )}\n`
+}
+if (agentResult) {
+  md += `- perf agent: enabled=${code(agentEnabled ? '1' : '0')}, mode=${code(
+    agentResult?.mode ?? 'n/a',
+  )}, status=${code(agentStatus)}, rc=${code(agentResult?.exitCode ?? 'n/a')}, durationSec=${code(
+    agentResult?.durationSeconds ?? 'n/a',
+  )}, command=${code(agentResult?.command ?? 'n/a')}\n`
+}
+if (afterCapacitySummary) {
+  md += `- head capacity model(P50/P75/P95+floor) (${code(capacitySuiteId)} / ${code(
+    capacityBudgetId,
+  )} / convergeMode=${code(capacityScopeConvergeMode)}): floor=${code(afterCapacitySummary.floorMaxLevel)}, p50=${code(
+    afterCapacitySummary.p50MaxLevel,
+  )}, p75=${code(afterCapacitySummary.p75MaxLevel)}, p95=${code(afterCapacitySummary.p95MaxLevel)}, max=${code(
+    afterCapacitySummary.maxObservedLevel,
+  )}\n`
+}
+if (typeof capacityFloorTarget === 'number') {
+  const actualFloor = afterCapacitySummary?.floorMaxLevel ?? null
+  const passed = actualFloor != null && actualFloor >= capacityFloorTarget
+  md += `- capacity floor target: ${code(capacityFloorTarget)} (passed=${code(String(Boolean(passed)))}, actual=${code(
+    actualFloor == null ? 'n/a' : actualFloor,
+  )})\n`
+}
+if (dynamicEvaluation) {
+  md += `- dynamic capacity target: hardFloor=${code(dynamicEvaluation.hardFloor ?? 'n/a')} (pass=${code(
+    String(dynamicEvaluation.hardPass ?? 'n/a'),
+  )}), warnFloor=${code(dynamicEvaluation.warnFloor ?? 'n/a')} (pass=${code(
+    String(dynamicEvaluation.warnPass ?? 'n/a'),
+  )}), anchorP50=${code(dynamicEvaluation.anchorP50 ?? 'n/a')}, source=${code(
+    dynamicEvaluation.anchorSource ?? 'n/a',
+  )}, stableRuns=${code(dynamicEvaluation.stableRuns ?? 'n/a')}\n`
+}
+md += renderAutoProbeSummary({ probe: autoProbeBase, label: 'base' })
+md += renderAutoProbeSummary({ probe: autoProbeHead, label: 'head' })
+if (headAutoProbeBudgetLimitedReasonCodes.length > 0) {
+  md += `- head auto-probe budget limits: ${code(headAutoProbeBudgetLimitedReasonCodes.join(','))}\n`
+}
 md += `- status: ${code(conclusion)}\n`
+if (debugTimelineLines.length > 0) {
+  const tailSize = 24
+  const tailLines = debugTimelineLines.slice(-tailSize)
+  md += `- debug timeline: ${code(debugTimelinePath)} (tail=${code(tailLines.length)})\n`
+}
 
 if (afterFailures.length > 0) {
   const byKey = new Map()
@@ -386,8 +1005,8 @@ if (afterFailures.length > 0) {
         f.type === 'absolute'
           ? `p95<=${String(f.absP95Ms)}ms`
           : f.type === 'relative'
-            ? `ratio<=${String(f.maxRatio)}`
-            : 'unknown'
+          ? `ratio<=${String(f.maxRatio)}`
+          : 'unknown'
       md += `- ${code(f.suiteId)} ${code(f.budgetId)} ${code(budgetHint)} where=${code(f.whereKey)} firstFail=${code(
         f.firstFailLevel,
       )}\n`
@@ -396,13 +1015,45 @@ if (afterFailures.length > 0) {
   }
 }
 
+if (afterCapacitySummary) {
+  md += `\n**Head capacity bottlenecks (${code(capacityBudgetId)})**\n`
+  const bottlenecks = afterCapacityRows
+    .slice()
+    .sort((a, b) => {
+      if (a.maxLevel !== b.maxLevel) return a.maxLevel - b.maxLevel
+      return b.dirtyRootsRatio - a.dirtyRootsRatio
+    })
+    .slice(0, 5)
+  for (const row of bottlenecks) {
+    md += `- dirtyRootsRatio=${code(row.dirtyRootsRatio)} maxLevel=${code(row.maxLevel)} firstFail=${code(
+      row.firstFailLevel == null ? 'null' : row.firstFailLevel,
+    )} reason=${code(row.reason ?? '-')}\n`
+  }
+}
+
 md += `\n<details>\n<summary>Terminology (maxLevel / steps / dirtyRootsRatio)</summary>\n\n`
 md += `\n### What do \`maxLevel\` and \`null\` mean?\n`
 md += `- \`maxLevel\` is the highest primary-axis level that still satisfies a budget.\n`
-md += `- Example (primary axis = \`steps\`):\n`
-md += `  - \`maxLevel=2000\`: budget passes at \`steps=200\`, \`800\`, and \`2000\`.\n`
-md += `  - \`maxLevel=800\`: budget passes at \`steps=200\` and \`800\`, but fails at \`steps=2000\`.\n`
-md += `  - \`maxLevel=null\`: budget fails already at the first tested level (e.g. \`steps=200\`).\n`
+{
+  const terminologySuite =
+    (headSignalReport?.suites || []).find((s) => s?.id === capacitySuiteId) || (headSignalReport?.suites || [])[0] || null
+  const terminologyLevels = terminologySuite ? uniqValuesFromPoints(terminologySuite, 'steps') : []
+  const firstLevel = terminologyLevels[0]
+  const middleLevel = terminologyLevels[Math.floor(terminologyLevels.length / 2)]
+  const lastLevel = terminologyLevels[terminologyLevels.length - 1]
+  if (firstLevel != null && lastLevel != null && terminologyLevels.length >= 2) {
+    md += `- Example (primary axis = \`steps\`, tested levels=${code(formatAxisValues(terminologyLevels))}):\n`
+    md += `  - \`maxLevel=${String(lastLevel)}\`: budget passes all tested levels.\n`
+    md += `  - \`maxLevel=${String(middleLevel)}\`: budget passes up to \`steps=${String(
+      middleLevel,
+    )}\`, then fails at a higher tested level.\n`
+    md += `  - \`maxLevel=null\`: budget fails already at the first tested level (e.g. \`steps=${String(
+      firstLevel,
+    )}\`).\n`
+  } else {
+    md += `- \`maxLevel=null\`: budget fails already at the first tested level.\n`
+  }
+}
 
 md += `\n### What do \`steps\` and \`dirtyRootsRatio\` mean?\n`
 md += `- \`steps\` is the primary axis for this suite: it controls the size of the converge state (more steps = more roots/fields).\n`
@@ -411,6 +1062,14 @@ md += `- Metrics are evaluated on the p95 statistic (\`n = runs - warmupDiscard\
 md += `\n</details>\n`
 
 md += `\n<details>\n<summary>Details (diff / thresholds / points)</summary>\n\n`
+if (debugTimelineLines.length > 0) {
+  const tailSize = 80
+  const tailLines = debugTimelineLines.slice(-tailSize)
+  md += `\n### Debug Timeline Tail\n`
+  md += '```text\n'
+  md += `${tailLines.join('\n')}\n`
+  md += '```\n'
+}
 if (!diff) {
   md += `\n### Diff\n`
   md += `_Diff file not found. Collect or diff step may have failed. Check the Actions logs._\n`
@@ -421,7 +1080,9 @@ if (!diff) {
 
   md += `\n### Comparability\n`
   md += `- comparable: ${code(String(comparability.comparable ?? '?'))}\n`
-  md += `- diffMode: allowConfigDrift=${String(comparability.allowConfigDrift ?? '?')}, allowEnvDrift=${String(comparability.allowEnvDrift ?? '?')}\n`
+  md += `- diffMode: allowConfigDrift=${String(comparability.allowConfigDrift ?? '?')}, allowEnvDrift=${String(
+    comparability.allowEnvDrift ?? '?',
+  )}\n`
   md += renderList('configMismatches', comparability.configMismatches)
   md += renderList('envMismatches', comparability.envMismatches)
 
@@ -435,7 +1096,11 @@ if (!diff) {
   md += `- improvements: ${code(summary.improvements ?? '?')}\n`
   if (summary && summary.slices) {
     const s = summary.slices
-    md += `- thresholdSlices: compared=${code(s.compared ?? '?')}, afterOnly=${code(s.afterOnly ?? '?')}, beforeOnly=${code(s.beforeOnly ?? '?')}, skippedData=${code(s.skippedData ?? '?')}, total=${code(s.total ?? '?')}\n`
+    md += `- thresholdSlices: compared=${code(s.compared ?? '?')}, afterOnly=${code(
+      s.afterOnly ?? '?',
+    )}, beforeOnly=${code(s.beforeOnly ?? '?')}, skippedData=${code(s.skippedData ?? '?')}, total=${code(
+      s.total ?? '?',
+    )}\n`
   }
   if (!comparable) {
     md += `\n_Triage-only diff: before/after are not strictly comparable. Treat deltas as hints, not conclusions._\n`
@@ -456,21 +1121,23 @@ if (!diff) {
   )
 
   // Head-only budget status: show current head failures even when base is not comparable.
-  if (afterReport && suiteSpecById.size > 0) {
+  if (headSignalReport && suiteSpecById.size > 0) {
+    const headSignalSuiteById = new Map(
+      headSignalReport && Array.isArray(headSignalReport.suites) ? headSignalReport.suites.map((s) => [s.id, s]) : [],
+    )
     const headFailures = []
     const headDataIssues = []
     const headBudgetSummaries = []
     const headBudgetMaps = []
 
-    const fmtNum = (n, digits = 4) =>
-      typeof n === 'number' && Number.isFinite(n) ? n.toFixed(digits) : 'n/a'
+    const fmtNum = (n, digits = 4) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(digits) : 'n/a')
     const fmtMs = (n) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(3) : 'n/a')
 
-    for (const [suiteId, afterSuite] of afterSuiteById.entries()) {
+    for (const [suiteId, afterSuite] of headSignalSuiteById.entries()) {
       const spec = suiteSpecById.get(suiteId)
       if (!spec || !afterSuite) continue
 
-      const axisLevels = spec.axes?.[spec.primaryAxis] ?? []
+      const axisLevels = resolvePrimaryAxisLevels(spec, beforeSuiteById.get(suiteId), afterSuite)
       const maxAxis = axisLevels.length > 0 ? axisLevels[axisLevels.length - 1] : null
       if (maxAxis == null) continue
 
@@ -526,14 +1193,17 @@ if (!diff) {
         const where = t.where && typeof t.where === 'object' ? t.where : {}
         const whereKey = stableParamsKey(where)
         const maxLevel = t.maxLevel ?? null
-        const firstFailLevel = t.firstFailLevel ?? (axisLevels[0] ?? null)
+        const firstFailLevel = t.firstFailLevel ?? axisLevels[0] ?? null
 
         let classification = 'unknown'
         let overshoot = null
         let detail = ''
 
         if (budget.type === 'relative') {
-          const at = firstFailLevel != null ? computeRelativeStatsAt(spec, afterSuite, budget, where, firstFailLevel) : { ok: false }
+          const at =
+            firstFailLevel != null
+              ? computeRelativeStatsAt(spec, afterSuite, budget, where, firstFailLevel)
+              : { ok: false }
           if (at.ok) {
             const p95Over = isRelativeBudgetExceeded(budget, at.ratioP95, at.deltaP95Ms)
             const medianOver = isRelativeBudgetExceeded(budget, at.ratioMedian, at.deltaMedianMs)
@@ -541,14 +1211,21 @@ if (!diff) {
             overshoot = at.ratioP95 - budget.maxRatio
             const minDeltaNote = at.minDeltaMs > 0 ? `, minDeltaMs=${fmtMs(at.minDeltaMs)}ms` : ''
             detail =
-              `p95 ratio=${fmtNum(at.ratioP95)} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms, Δ=${fmtMs(at.deltaP95Ms)}ms), ` +
-              `median ratio=${fmtNum(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), ` +
+              `p95 ratio=${fmtNum(at.ratioP95)} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(
+                at.denominatorP95Ms,
+              )} ms, Δ=${fmtMs(at.deltaP95Ms)}ms), ` +
+              `median ratio=${fmtNum(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(
+                at.denominatorMedianMs,
+              )} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), ` +
               `n=${code(at.n)}${minDeltaNote}`
           } else {
             detail = `p95 ratio=n/a (${at.reason || 'unknown'})`
           }
         } else {
-          const at = firstFailLevel != null ? computeAbsoluteStatsAt(spec, afterSuite, budget, where, firstFailLevel) : { ok: false }
+          const at =
+            firstFailLevel != null
+              ? computeAbsoluteStatsAt(spec, afterSuite, budget, where, firstFailLevel)
+              : { ok: false }
           if (at.ok) {
             const p95Over = at.p95Ms > budget.p95Ms
             const medianOver = at.medianMs > budget.p95Ms
@@ -620,8 +1297,8 @@ if (!diff) {
         (Array.isArray(spec.budgets) && spec.budgets.length > 0
           ? spec.budgets
           : Array.isArray(afterSuite.budgets) && afterSuite.budgets.length > 0
-            ? afterSuite.budgets
-            : []) || []
+          ? afterSuite.budgets
+          : []) || []
 
       for (const budget of budgets) {
         if (!budget || budget.type !== 'relative') continue
@@ -631,10 +1308,7 @@ if (!diff) {
         if (typeof budget.maxRatio !== 'number') continue
 
         const refAxes = Array.from(
-          new Set([
-            ...Object.keys(parseRef(budget.numeratorRef)),
-            ...Object.keys(parseRef(budget.denominatorRef)),
-          ]),
+          new Set([...Object.keys(parseRef(budget.numeratorRef)), ...Object.keys(parseRef(budget.denominatorRef))]),
         )
         const otherAxes = Object.keys(spec.axes || {}).filter((k) => k !== spec.primaryAxis && !refAxes.includes(k))
         if (otherAxes.length !== 1) continue
@@ -648,7 +1322,7 @@ if (!diff) {
         const rows = []
         for (const x of xAxisLevels) {
           const where = { [xAxisKey]: x }
-          const afterRes = computeThresholdMaxLevelRelative(spec, afterSuite, budget, where)
+          const afterRes = computeThresholdMaxLevelRelative(spec, afterSuite, budget, where, axisLevels)
           if (afterRes.reason && afterRes.reason !== 'budgetExceeded' && afterRes.reason !== undefined) {
             continue
           }
@@ -712,7 +1386,9 @@ if (!diff) {
     md += `_Based on head-only thresholds (not a diff). Useful even when comparable=false._\n\n`
     md += `- headBudgetFailures: ${code(headFailures.length)} (reason=budgetExceeded)\n`
     md += `- headDataIssues: ${code(headDataIssues.length)} (missing/timeout/etc)\n`
-    md += `- classification: ${code('tail-only')} = p95 over budget but median within; ${code('systemic')} = median also over\n`
+    md += `- classification: ${code('tail-only')} = p95 over budget but median within; ${code(
+      'systemic',
+    )} = median also over\n`
     md += `\n_Tip: quick profile still has limited samples vs default; tail-only failures are often noise unless reproducible._\n`
 
     if (headBudgetSummaries.length > 0) {
@@ -721,25 +1397,21 @@ if (!diff) {
     }
 
     if (headFailures.length > 0) {
-      const sorted = headFailures
-        .slice()
-        .sort((a, b) => {
-          const aRel = a.budget?.type === 'relative'
-          const bRel = b.budget?.type === 'relative'
-          if (aRel !== bRel) return aRel ? -1 : 1
-          const aOver = typeof a.overshoot === 'number' && Number.isFinite(a.overshoot) ? a.overshoot : -Infinity
-          const bOver = typeof b.overshoot === 'number' && Number.isFinite(b.overshoot) ? b.overshoot : -Infinity
-          return bOver - aOver
-        })
+      const sorted = headFailures.slice().sort((a, b) => {
+        const aRel = a.budget?.type === 'relative'
+        const bRel = b.budget?.type === 'relative'
+        if (aRel !== bRel) return aRel ? -1 : 1
+        const aOver = typeof a.overshoot === 'number' && Number.isFinite(a.overshoot) ? a.overshoot : -Infinity
+        const bOver = typeof b.overshoot === 'number' && Number.isFinite(b.overshoot) ? b.overshoot : -Infinity
+        return bOver - aOver
+      })
 
       md += `\n**Top head failures**\n`
       const shown = sorted.slice(0, 10)
       for (const f of shown) {
         const primaryAxis = f.primaryAxis || 'steps'
         md += `- ${f.suiteLabel}: ${code(budgetKey(f.budget))} ${code(f.whereKey)}\n`
-        md += `  - after: maxLevel=${code(
-          f.maxLevel == null ? 'null' : String(f.maxLevel),
-        )} firstFail=${code(
+        md += `  - after: maxLevel=${code(f.maxLevel == null ? 'null' : String(f.maxLevel))} firstFail=${code(
           f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`,
         )} classification=${code(f.classification)}\n`
         md += `  - ${f.detail}\n`
@@ -791,17 +1463,71 @@ if (!diff) {
           const primaryAxis = f.primaryAxis || 'steps'
           md += `- ${f.suiteLabel}: ${code(budgetKey(f.budget))} ${code(f.whereKey)} maxLevel=${code(
             f.maxLevel == null ? 'null' : String(f.maxLevel),
-          )} firstFail=${code(
-            f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`,
-          )} ${code(f.classification)}\n`
+          )} firstFail=${code(f.firstFailLevel == null ? 'null' : `${primaryAxis}=${String(f.firstFailLevel)}`)} ${code(
+            f.classification,
+          )}\n`
         }
         md += `\n</details>\n`
       }
     }
+    if (tailRecheckSummary && Array.isArray(tailRecheckSummary.candidates) && tailRecheckSummary.candidates.length > 0) {
+      md += `\n**Tail Recheck (extra evidence using remaining budget)**\n`
+      md += `- status=${code(tailRecheckSummary.status ?? 'unknown')} mode=${code(
+        tailRecheckSummary.selectionMode ?? tailRecheckSelectionMode ?? 'n/a',
+      )} strategy=${code(tailRecheckSummary.selectionStrategy ?? tailRecheckSelectionStrategy ?? 'n/a')} intent=${code(
+        tailRecheckSummary.evidenceIntent ?? tailRecheckEvidenceIntent ?? 'n/a',
+      )} sampleCount=${code(
+        tailRecheckSummary.headSampleCount ?? 0,
+      )} candidates=${code(tailRecheckSummary.candidateCount ?? tailRecheckSummary.candidates.length)}\n`
+      if (Array.isArray(tailRecheckSummary.selectedAnchorLabels) && tailRecheckSummary.selectedAnchorLabels.length > 0) {
+        md += `- anchors=${code(tailRecheckSummary.selectedAnchorLabels.join(','))}\n`
+      }
+      const candidateRows = tailRecheckSummary.candidates.slice(0, 12)
+      for (const candidate of candidateRows) {
+        const ratio = candidate?.dirtyRootsRatio
+        const sampleLevel = candidate?.sampleLevel
+        const failLevel = candidate?.firstFailLevel
+        const status = candidate?.status ?? 'unknown'
+        const initialClassification = candidate?.initialClassification ?? 'unknown'
+        const failCount = candidate?.failCount ?? 0
+        const sampleCount = candidate?.sampleCount ?? 0
+        const p95Median = candidate?.summary?.ratioP95Median
+        const p95P95 = candidate?.summary?.ratioP95P95
+        const medianMedian = candidate?.summary?.ratioMedianMedian
+        const anchorLabel = candidate?.anchorLabel ?? 'n/a'
+        md += `- dirtyRootsRatio=${code(ratio)} level=${code(sampleLevel ?? failLevel)} firstFail=${code(
+          failLevel == null ? 'n/a' : failLevel,
+        )} initial=${code(initialClassification)} anchor=${code(anchorLabel)} status=${code(status)} fail=${code(
+          `${failCount}/${sampleCount}`,
+        )} p95Median=${code(
+          typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median.toFixed(4) : 'n/a',
+        )} p95P95=${code(
+          typeof p95P95 === 'number' && Number.isFinite(p95P95) ? p95P95.toFixed(4) : 'n/a',
+        )} medianMedian=${code(
+          typeof medianMedian === 'number' && Number.isFinite(medianMedian) ? medianMedian.toFixed(4) : 'n/a',
+        )}\n`
+      }
+      if (tailRecheckSummary.candidates.length > candidateRows.length) {
+        md += `- ... +${tailRecheckSummary.candidates.length - candidateRows.length} more\n`
+      }
+    }
+    if (agentResult) {
+      md += `\n**Perf Agent (optional advisor)**\n`
+      md += `- enabled=${code(agentEnabled ? '1' : '0')} mode=${code(agentResult?.mode ?? 'n/a')} status=${code(
+        agentStatus,
+      )} rc=${code(agentResult?.exitCode ?? 'n/a')} durationSec=${code(agentResult?.durationSeconds ?? 'n/a')}\n`
+      md += `- command=${code(agentResult?.command ?? 'n/a')}\n`
+      if (agentResult?.output && typeof agentResult.output === 'object') {
+        md += `- outputs: advice=${code(agentResult.output.adviceFile ?? 'n/a')}, stdout=${code(
+          agentResult.output.stdoutFile ?? 'n/a',
+        )}, stderr=${code(agentResult.output.stderrFile ?? 'n/a')}\n`
+      }
+    }
     if (headBudgetMaps.length > 0) {
       md += `\n<details>\n<summary>Head maps (where -> maxLevel / firstFail / p95 series)</summary>\n\n`
-      md += `_Each row shows which primary-axis level starts failing for that ${code('where')} slice. ` +
-        `Levels are the discrete test levels (e.g. steps=200/800/2000)._ \n\n`
+      md +=
+        `_Each row shows which primary-axis level starts failing for that ${code('where')} slice. ` +
+        `Levels are the discrete test levels used in this run._ \n\n`
 
       for (const m of headBudgetMaps) {
         md += `**${m.suiteLabel} — ${code(budgetKey(m.budget))}**\n`
@@ -817,7 +1543,9 @@ if (!diff) {
         for (const r of m.rows) {
           const maxLevel = r.maxLevel == null ? 'null' : String(r.maxLevel)
           const firstFail = r.firstFail == null ? '-' : `${m.primaryAxis}=${String(r.firstFail)}`
-          md += `| ${String(r.x)} | ${maxLevel} | ${firstFail} | ${r.classification} | ${r.series} | ${r.failDetail} |\n`
+          md += `| ${String(r.x)} | ${maxLevel} | ${firstFail} | ${r.classification} | ${r.series} | ${
+            r.failDetail
+          } |\n`
         }
         md += `\n`
       }
@@ -875,13 +1603,15 @@ if (!diff) {
     const priority = spec?.priority ? `[${spec.priority}] ` : ''
     const title = spec?.title ? ` — ${spec.title}` : ''
     const suiteLabel = `${priority}\`${s.id}\`${title}`
+    const beforeSuite = beforeSuiteById.get(s.id)
+    const afterSuite = afterSuiteById.get(s.id)
 
     if (typeof s.notes === 'string' && s.notes.trim().length > 0) {
       notes.push(`- ${suiteLabel}: ${s.notes}`)
     }
 
     const deltas = Array.isArray(s.thresholdDeltas) ? s.thresholdDeltas : []
-    const levels = spec?.primaryAxis && spec?.axes ? spec.axes[spec.primaryAxis] : null
+    const levels = spec ? resolvePrimaryAxisLevels(spec, beforeSuite, afterSuite) : null
     const idx = (v) => {
       if (!Array.isArray(levels)) return null
       if (v === null || v === undefined) return -1
@@ -921,15 +1651,12 @@ if (!diff) {
     const beforeSuite = beforeSuiteById.get(suiteIdFromLabel)
     const afterSuite = afterSuiteById.get(suiteIdFromLabel)
     const primary = suiteSpecResolved.primaryAxis
-    const axisLevels = suiteSpecResolved.axes?.[primary] ?? []
+    const axisLevels = resolvePrimaryAxisLevels(suiteSpecResolved, beforeSuite, afterSuite)
 
     const refAxes =
       budget?.type === 'relative'
         ? Array.from(
-            new Set([
-              ...Object.keys(parseRef(budget.numeratorRef)),
-              ...Object.keys(parseRef(budget.denominatorRef)),
-            ]),
+            new Set([...Object.keys(parseRef(budget.numeratorRef)), ...Object.keys(parseRef(budget.denominatorRef))]),
           )
         : []
 
@@ -946,8 +1673,8 @@ if (!diff) {
         res.maxLevel == null
           ? ` (fails at ${primary}=${String(first)}${reason})`
           : res.firstFailLevel == null
-            ? ` (passes all levels${reason})`
-            : ` (fails at ${failAt}${reason})`
+          ? ` (passes all levels${reason})`
+          : ` (fails at ${failAt}${reason})`
       return `${side}: maxLevel=${max}${extra}`
     }
 
@@ -957,14 +1684,14 @@ if (!diff) {
     if (beforeSuite && budget) {
       beforeRes =
         budget.type === 'absolute'
-          ? computeThresholdMaxLevelAbsolute(suiteSpecResolved, beforeSuite, budget, where)
-          : computeThresholdMaxLevelRelative(suiteSpecResolved, beforeSuite, budget, where)
+          ? computeThresholdMaxLevelAbsolute(suiteSpecResolved, beforeSuite, budget, where, axisLevels)
+          : computeThresholdMaxLevelRelative(suiteSpecResolved, beforeSuite, budget, where, axisLevels)
     }
     if (afterSuite && budget) {
       afterRes =
         budget.type === 'absolute'
-          ? computeThresholdMaxLevelAbsolute(suiteSpecResolved, afterSuite, budget, where)
-          : computeThresholdMaxLevelRelative(suiteSpecResolved, afterSuite, budget, where)
+          ? computeThresholdMaxLevelAbsolute(suiteSpecResolved, afterSuite, budget, where, axisLevels)
+          : computeThresholdMaxLevelRelative(suiteSpecResolved, afterSuite, budget, where, axisLevels)
     }
 
     let extra = ''
@@ -998,19 +1725,31 @@ if (!diff) {
       }
 
       const delta = entry.delta ?? 0
-      const focus = delta < 0 ? { side: 'after', res: afterRes, suite: afterSuite } : { side: 'before', res: beforeRes, suite: beforeSuite }
+      const focus =
+        delta < 0
+          ? { side: 'after', res: afterRes, suite: afterSuite }
+          : { side: 'before', res: beforeRes, suite: beforeSuite }
       const failLevel = focus.res?.firstFailLevel
       if (failLevel != null) {
         const at = computeRelativeStatsAt(suiteSpecResolved, focus.suite, budget, where, failLevel)
         if (at.ok) {
           const over = isRelativeBudgetExceeded(budget, at.ratioP95, at.deltaP95Ms) ? ' (over)' : ''
           const minDeltaNote = at.minDeltaMs > 0 ? `, minDeltaMs=${fmtMs(at.minDeltaMs)}ms` : ''
-          extra += `\n  - ${focus.side} fail @ ${primary}=${String(failLevel)}: p95 ratio=${fmtRatio(at.ratioP95)}${over} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms, Δ=${fmtMs(at.deltaP95Ms)}ms), median ratio=${fmtRatio(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(at.denominatorMedianMs)} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), n=${code(at.n)}${minDeltaNote}`
+          extra += `\n  - ${focus.side} fail @ ${primary}=${String(failLevel)}: p95 ratio=${fmtRatio(
+            at.ratioP95,
+          )}${over} (auto/full=${fmtMs(at.numeratorP95Ms)}/${fmtMs(at.denominatorP95Ms)} ms, Δ=${fmtMs(
+            at.deltaP95Ms,
+          )}ms), median ratio=${fmtRatio(at.ratioMedian)} (auto/full=${fmtMs(at.numeratorMedianMs)}/${fmtMs(
+            at.denominatorMedianMs,
+          )} ms, Δ=${fmtMs(at.deltaMedianMs)}ms), n=${code(at.n)}${minDeltaNote}`
         }
       }
     }
 
-    return `- ${suiteLabel}: ${code(budgetKey(budget))} ${code(whereKey)}\n  - ${describe('before', beforeRes)}\n  - ${describe('after', afterRes)}${extra}`
+    return `- ${suiteLabel}: ${code(budgetKey(budget))} ${code(whereKey)}\n  - ${describe(
+      'before',
+      beforeRes,
+    )}\n  - ${describe('after', afterRes)}${extra}`
   }
 
   if (regressive.length > 0) {
@@ -1039,9 +1778,7 @@ if (!diff) {
   if (beforeReport && afterReport && suiteSpecById.size > 0) {
     const suiteIds = Array.from(
       new Set(
-        []
-          .concat(beforeReport.suites?.map((s) => s.id) || [])
-          .concat(afterReport.suites?.map((s) => s.id) || []),
+        [].concat(beforeReport.suites?.map((s) => s.id) || []).concat(afterReport.suites?.map((s) => s.id) || []),
       ),
     ).sort()
 
@@ -1054,7 +1791,9 @@ if (!diff) {
       if (!spec || !beforeSuite || !afterSuite) continue
 
       const primary = spec.primaryAxis
-      const axisLevels = spec.axes?.[primary] ?? []
+      const axisLevels = resolvePrimaryAxisLevels(spec, beforeSuite, afterSuite)
+      const beforePrimaryLevels = uniqValuesFromPoints(beforeSuite, primary)
+      const afterPrimaryLevels = uniqValuesFromPoints(afterSuite, primary)
       const maxAxis = axisLevels.length > 0 ? axisLevels[axisLevels.length - 1] : null
       const priority = spec.priority ? `[${spec.priority}] ` : ''
       const title = spec.title ? ` — ${spec.title}` : ''
@@ -1066,8 +1805,8 @@ if (!diff) {
         (Array.isArray(spec.budgets) && spec.budgets.length > 0
           ? spec.budgets
           : Array.isArray(beforeSuite.budgets) && beforeSuite.budgets.length > 0
-            ? beforeSuite.budgets
-            : afterSuite.budgets) || []
+          ? beforeSuite.budgets
+          : afterSuite.budgets) || []
 
       const relativeBudgets = budgets.filter((b) => b && b.type === 'relative')
       if (relativeBudgets.length === 0) {
@@ -1077,10 +1816,7 @@ if (!diff) {
 
       for (const budget of relativeBudgets) {
         const refAxes = Array.from(
-          new Set([
-            ...Object.keys(parseRef(budget.numeratorRef)),
-            ...Object.keys(parseRef(budget.denominatorRef)),
-          ]),
+          new Set([...Object.keys(parseRef(budget.numeratorRef)), ...Object.keys(parseRef(budget.denominatorRef))]),
         )
         const otherAxes = Object.keys(spec.axes || {}).filter((k) => k !== primary && !refAxes.includes(k))
         const otherAxisLevels = otherAxes.map((k) => spec.axes?.[k] ?? [])
@@ -1107,8 +1843,8 @@ if (!diff) {
 
         const rows = []
         for (const where of whereCombos) {
-          const beforeRes = computeThresholdMaxLevelRelative(spec, beforeSuite, budget, where)
-          const afterRes = computeThresholdMaxLevelRelative(spec, afterSuite, budget, where)
+          const beforeRes = computeThresholdMaxLevelRelative(spec, beforeSuite, budget, where, axisLevels)
+          const afterRes = computeThresholdMaxLevelRelative(spec, afterSuite, budget, where, axisLevels)
           const beforeLevel = beforeRes.firstFailLevel ?? maxAxis
           const afterLevel = afterRes.firstFailLevel ?? maxAxis
 
@@ -1125,10 +1861,7 @@ if (!diff) {
             return `${ratio} (${num}/${den} ms) @ ${primary}=${String(level)}`
           }
 
-          const whereStr =
-            otherAxes.length === 0
-              ? '{}'
-              : otherAxes.map((k) => `${k}=${String(where[k])}`).join(', ')
+          const whereStr = otherAxes.length === 0 ? '{}' : otherAxes.map((k) => `${k}=${String(where[k])}`).join(', ')
 
           rows.push({
             whereStr,
@@ -1151,47 +1884,268 @@ if (!diff) {
 
         if (comparableRows.length === 0) {
           md += `_No comparable rows for this budget._\n`
-          continue
+        } else {
+          // Render a compact table for comparable rows only.
+          const maxRows = 24
+          const shownRows =
+            comparableRows.length <= maxRows
+              ? comparableRows
+              : comparableRows
+                  .slice()
+                  .sort((a, b) => {
+                    const aFailed = a.after?.firstFailLevel != null
+                    const bFailed = b.after?.firstFailLevel != null
+                    if (aFailed !== bFailed) return aFailed ? -1 : 1
+
+                    const aExceed =
+                      typeof a.afterRatioValue === 'number'
+                        ? a.afterRatioValue - (budget.maxRatio ?? 0)
+                        : Number.NEGATIVE_INFINITY
+                    const bExceed =
+                      typeof b.afterRatioValue === 'number'
+                        ? b.afterRatioValue - (budget.maxRatio ?? 0)
+                        : Number.NEGATIVE_INFINITY
+                    if (aExceed !== bExceed) return bExceed - aExceed
+
+                    const aRatio = typeof a.afterRatioValue === 'number' ? a.afterRatioValue : Number.NEGATIVE_INFINITY
+                    const bRatio = typeof b.afterRatioValue === 'number' ? b.afterRatioValue : Number.NEGATIVE_INFINITY
+                    if (aRatio !== bRatio) return bRatio - aRatio
+
+                    return String(a.whereStr).localeCompare(String(b.whereStr))
+                  })
+                  .slice(0, maxRows)
+
+          md += `\n| where | before maxLevel | after maxLevel | before ratio | after ratio |\n`
+          md += `| --- | --- | --- | --- | --- |\n`
+          for (const r of shownRows) {
+            const b = r.before
+            const a = r.after
+            const bMax = b.maxLevel == null ? 'null' : String(b.maxLevel)
+            const aMax = a.maxLevel == null ? 'null' : String(a.maxLevel)
+            md += `| ${r.whereStr} | ${bMax} | ${aMax} | ${r.beforeRatio} | ${r.afterRatio} |\n`
+          }
+
+          if (comparableRows.length > shownRows.length) {
+            md += `\n_Showing ${shownRows.length}/${comparableRows.length} comparable rows (matrix too large for full table)._ \n`
+          }
         }
 
-        // Render a compact table for comparable rows only.
-        const maxRows = 24
-        const shownRows =
-          comparableRows.length <= maxRows
-            ? comparableRows
-            : comparableRows
-                .slice()
-                .sort((a, b) => {
-                  const aFailed = a.after?.firstFailLevel != null
-                  const bFailed = b.after?.firstFailLevel != null
-                  if (aFailed !== bFailed) return aFailed ? -1 : 1
+        if (suiteId === capacitySuiteId && budgetKey(budget) === curveBudgetId) {
+          const sharedLevels = intersectAxisValues(beforePrimaryLevels, afterPrimaryLevels)
+          const curve = buildRelativeMetricCurve({
+            suiteSpec: spec,
+            beforeSuite,
+            afterSuite,
+            budget,
+            axisLevels: sharedLevels,
+            whereCombos,
+          })
+          const headOnlyCurve = buildSingleRelativeMetricCurve({
+            suiteSpec: spec,
+            suiteResult: afterSuite,
+            budget,
+            axisLevels: afterPrimaryLevels,
+            whereCombos,
+          })
+          const toChartNum = (n) => Number(n.toFixed(4))
 
-                  const aExceed =
-                    typeof a.afterRatioValue === 'number' ? a.afterRatioValue - (budget.maxRatio ?? 0) : Number.NEGATIVE_INFINITY
-                  const bExceed =
-                    typeof b.afterRatioValue === 'number' ? b.afterRatioValue - (budget.maxRatio ?? 0) : Number.NEGATIVE_INFINITY
-                  if (aExceed !== bExceed) return bExceed - aExceed
+          const renderCurveChartSet = ({ titleSuffix, levels, chartRows }) => {
+            if (!Array.isArray(levels) || levels.length < 2) return
+            const allValues = chartRows
+              .flatMap((chart) => chart.lines)
+              .flat()
+              .filter((n) => typeof n === 'number' && Number.isFinite(n))
+            if (allValues.length === 0) return
+            const min = Math.min(...allValues)
+            const max = Math.max(...allValues)
+            const pad = Math.max(0.05, (max - min) * 0.1)
+            const yMin = Math.max(0, min - pad)
+            const yMax = max + pad
+            const xLabels = levels.map((v) => JSON.stringify(String(v))).join(', ')
 
-                  const aRatio = typeof a.afterRatioValue === 'number' ? a.afterRatioValue : Number.NEGATIVE_INFINITY
-                  const bRatio = typeof b.afterRatioValue === 'number' ? b.afterRatioValue : Number.NEGATIVE_INFINITY
-                  if (aRatio !== bRatio) return bRatio - aRatio
+            for (const chart of chartRows) {
+              md += `\n##### ${chart.label}\n`
+              md += `\n\`\`\`mermaid\n`
+              md += `xychart-beta\n`
+              md += `    title ${JSON.stringify(`${suiteId} ${budgetKey(budget)} ${chart.label} curve${titleSuffix}`)}\n`
+              md += `    x-axis [${xLabels}]\n`
+              md += `    y-axis ${JSON.stringify('ms')} ${toChartNum(yMin)} --> ${toChartNum(yMax)}\n`
+              for (const line of chart.lines) {
+                md += `    line [${line.map((v) => toChartNum(v)).join(', ')}]\n`
+              }
+              md += `\`\`\`\n`
+            }
+          }
 
-                  return String(a.whereStr).localeCompare(String(b.whereStr))
+          const currentCurve = curve
+            ? {
+                mode: 'base-head',
+                levels: curve.levels,
+                p50: curve.afterP50,
+                p75: curve.afterP75,
+                p95: curve.afterP95,
+                sampleCountMin: curve.afterCountMin,
+              }
+            : headOnlyCurve
+              ? {
+                  mode: 'head-only',
+                  levels: headOnlyCurve.levels,
+                  p50: headOnlyCurve.p50,
+                  p75: headOnlyCurve.p75,
+                  p95: headOnlyCurve.p95,
+                  sampleCountMin: headOnlyCurve.sampleCountMin,
+                }
+              : null
+
+          if (curve) {
+            md += `\n#### Curve mode: base/head p50-p75-p95 across ${code(primary)}\n\n`
+            md += `- metric=${code(budget.metric)} source=${code('numeratorRef')}(${code(
+              budget.numeratorRef,
+            )}) groupedBy=${code('where axis')}, levels=${code(formatAxisValues(curve.levels))}\n`
+            md += `- per-level sampleCount(min): base=${code(curve.beforeCountMin)}, head=${code(curve.afterCountMin)}\n`
+            md += `- chart line order: ${code('base')} then ${code('head')}\n\n`
+
+            renderCurveChartSet({
+              titleSuffix: '',
+              levels: curve.levels,
+              chartRows: [
+                { label: 'p50', lines: [curve.beforeP50, curve.afterP50] },
+                { label: 'p75', lines: [curve.beforeP75, curve.afterP75] },
+                { label: 'p95', lines: [curve.beforeP95, curve.afterP95] },
+              ],
+            })
+          } else if (headOnlyCurve) {
+            md += `\n#### Curve mode: head-only p50-p75-p95 across ${code(primary)}\n\n`
+            md += `- metric=${code(budget.metric)} source=${code('numeratorRef')}(${code(
+              budget.numeratorRef,
+            )}) groupedBy=${code('where axis')}, levels=${code(formatAxisValues(headOnlyCurve.levels))}\n`
+            md += `- per-level sampleCount(min): head=${code(headOnlyCurve.sampleCountMin)}\n`
+            md += `- reason: ${code('missing/incomplete base curve points')} (still renderable from head-only data)\n`
+            md += `- chart line order: ${code('current-head')}\n\n`
+
+            renderCurveChartSet({
+              titleSuffix: ' (head-only)',
+              levels: headOnlyCurve.levels,
+              chartRows: [
+                { label: 'p50', lines: [headOnlyCurve.p50] },
+                { label: 'p75', lines: [headOnlyCurve.p75] },
+                { label: 'p95', lines: [headOnlyCurve.p95] },
+              ],
+            })
+          }
+
+          if (currentCurve) {
+            const historyCurves = []
+            const historyStats = {
+              total: curveHistoryReports.length,
+              used: 0,
+              missingSuite: 0,
+              missingLevels: 0,
+              invalidCurve: 0,
+            }
+
+            if (curveHistoryReports.length > 0) {
+              for (const history of curveHistoryReports) {
+                const historySuite = Array.isArray(history?.report?.suites)
+                  ? history.report.suites.find((suite) => suite?.id === suiteId)
+                  : null
+                if (!historySuite) {
+                  historyStats.missingSuite += 1
+                  continue
+                }
+
+                const historyPrimaryLevels = uniqValuesFromPoints(historySuite, primary)
+                const canUse = currentCurve.levels.every((level) => historyPrimaryLevels.includes(level))
+                if (!canUse) {
+                  historyStats.missingLevels += 1
+                  continue
+                }
+
+                const historyCurve = buildSingleRelativeMetricCurve({
+                  suiteSpec: spec,
+                  suiteResult: historySuite,
+                  budget,
+                  axisLevels: currentCurve.levels,
+                  whereCombos,
                 })
-                .slice(0, maxRows)
+                if (!historyCurve || historyCurve.levels.length !== currentCurve.levels.length) {
+                  historyStats.invalidCurve += 1
+                  continue
+                }
 
-        md += `\n| where | before maxLevel | after maxLevel | before ratio | after ratio |\n`
-        md += `| --- | --- | --- | --- | --- |\n`
-        for (const r of shownRows) {
-          const b = r.before
-          const a = r.after
-          const bMax = b.maxLevel == null ? 'null' : String(b.maxLevel)
-          const aMax = a.maxLevel == null ? 'null' : String(a.maxLevel)
-          md += `| ${r.whereStr} | ${bMax} | ${aMax} | ${r.beforeRatio} | ${r.afterRatio} |\n`
-        }
+                historyCurves.push({
+                  label: history.label,
+                  runId: history.runId,
+                  curve: historyCurve,
+                })
+                historyStats.used += 1
+              }
+            }
 
-        if (comparableRows.length > shownRows.length) {
-          md += `\n_Showing ${shownRows.length}/${comparableRows.length} comparable rows (matrix too large for full table)._ \n`
+            if (historyCurves.length > 0) {
+              md += `\n**Historical curve overlay (head-only)**\n`
+              md += `- baselineRuns=${code(historyCurves.length)} levels=${code(formatAxisValues(currentCurve.levels))}\n`
+              md += `- line order: ${code([
+                ...historyCurves.map((item) => item.label),
+                'current-head',
+              ].join(' -> '))}\n`
+
+              const historyCharts = [
+                { label: 'p50', key: 'p50', current: currentCurve.p50 },
+                { label: 'p75', key: 'p75', current: currentCurve.p75 },
+                { label: 'p95', key: 'p95', current: currentCurve.p95 },
+              ]
+
+              const xLabelsHistory = currentCurve.levels.map((v) => JSON.stringify(String(v))).join(', ')
+              for (const chart of historyCharts) {
+                const historySeries = historyCurves.map((item) => item.curve[chart.key])
+                const allValues = [...chart.current, ...historySeries.flat()].filter(
+                  (n) => typeof n === 'number' && Number.isFinite(n),
+                )
+                const historyMin = Math.min(...allValues)
+                const historyMax = Math.max(...allValues)
+                const historyPad = Math.max(0.05, (historyMax - historyMin) * 0.1)
+                const historyYMin = Math.max(0, historyMin - historyPad)
+                const historyYMax = historyMax + historyPad
+
+                md += `\n##### ${chart.label} (history)\n`
+                md += `\n\`\`\`mermaid\n`
+                md += `xychart-beta\n`
+                md += `    title ${JSON.stringify(`${suiteId} ${budgetKey(budget)} ${chart.label} history overlay`)}\n`
+                md += `    x-axis [${xLabelsHistory}]\n`
+                md += `    y-axis ${JSON.stringify('ms')} ${toChartNum(historyYMin)} --> ${toChartNum(historyYMax)}\n`
+                for (const series of historySeries) {
+                  md += `    line [${series.map((v) => toChartNum(v)).join(', ')}]\n`
+                }
+                md += `    line [${chart.current.map((v) => toChartNum(v)).join(', ')}]\n`
+                md += `\`\`\`\n`
+              }
+
+              const lastIndex = currentCurve.levels.length - 1
+              const maxLevel = currentCurve.levels[lastIndex]
+              const fmtDelta = (value) => {
+                if (typeof value !== 'number' || !Number.isFinite(value)) return 'n/a'
+                const rounded = Number(value.toFixed(4))
+                return rounded > 0 ? `+${rounded}` : String(rounded)
+              }
+
+              md += `\n| baseline run | Δp50@${String(primary)}=${String(maxLevel)} | Δp75@${String(primary)}=${String(maxLevel)} | Δp95@${String(primary)}=${String(maxLevel)} |\n`
+              md += `| --- | --- | --- | --- |\n`
+              for (const item of historyCurves) {
+                const deltaP50 = currentCurve.p50[lastIndex] - item.curve.p50[lastIndex]
+                const deltaP75 = currentCurve.p75[lastIndex] - item.curve.p75[lastIndex]
+                const deltaP95 = currentCurve.p95[lastIndex] - item.curve.p95[lastIndex]
+                const baselineLabel = String(item.label).replaceAll('|', '\\|')
+                md += `| ${baselineLabel} | ${fmtDelta(deltaP50)} | ${fmtDelta(deltaP75)} | ${fmtDelta(deltaP95)} |\n`
+              }
+            } else if (historyStats.total > 0) {
+              md += `\n- historical overlay skipped: loaded=${code(historyStats.total)}, used=${code(
+                historyStats.used,
+              )}, missingSuite=${code(historyStats.missingSuite)}, missingLevels=${code(
+                historyStats.missingLevels,
+              )}, invalidCurve=${code(historyStats.invalidCurve)}\n`
+            }
+          }
         }
 
         const canChart =
@@ -1206,8 +2160,8 @@ if (!diff) {
           if (chartLevels.length === 0) continue
           const xAxisKey = otherAxes[0]
           const xAxisLevels = (spec.axes?.[xAxisKey] ?? []).slice()
-          md += `\n<details>\n<summary>Charts: p95 ratio across ${code(xAxisKey)}</summary>\n\n`
-          md += `Bars: base(before) vs head(after). Line: budget maxRatio=${code(budget.maxRatio)}.\n\n`
+          let ratioChartBlocks = ''
+          let ratioChartCount = 0
 
           const fmtNum = (n) => {
             if (typeof n !== 'number' || !Number.isFinite(n)) return null
@@ -1248,18 +2202,25 @@ if (!diff) {
             const xLabels = xs.map((v) => JSON.stringify(String(v))).join(', ')
             const threshold = fmtNum(budget.maxRatio) ?? budget.maxRatio
 
-            md += `\n\`\`\`mermaid\n`
-            md += `xychart-beta\n`
-            md += `    title ${JSON.stringify(title)}\n`
-            md += `    x-axis [${xLabels}]\n`
-            md += `    y-axis ${JSON.stringify('ratio')} ${fmtNum(yMin) ?? yMin} --> ${fmtNum(yMax) ?? yMax}\n`
-            md += `    bar [${beforeBars.join(', ')}]\n`
-            md += `    bar [${afterBars.join(', ')}]\n`
-            md += `    line [${xs.map(() => threshold).join(', ')}]\n`
-            md += `\`\`\`\n`
+            ratioChartCount += 1
+            ratioChartBlocks += `\n##### ${primary}=${String(level)}\n`
+            ratioChartBlocks += `\n\`\`\`mermaid\n`
+            ratioChartBlocks += `xychart-beta\n`
+            ratioChartBlocks += `    title ${JSON.stringify(title)}\n`
+            ratioChartBlocks += `    x-axis [${xLabels}]\n`
+            ratioChartBlocks += `    y-axis ${JSON.stringify('ratio')} ${fmtNum(yMin) ?? yMin} --> ${fmtNum(yMax) ?? yMax}\n`
+            ratioChartBlocks += `    bar [${beforeBars.join(', ')}]\n`
+            ratioChartBlocks += `    bar [${afterBars.join(', ')}]\n`
+            ratioChartBlocks += `    line [${xs.map(() => threshold).join(', ')}]\n`
+            ratioChartBlocks += `\`\`\`\n`
           }
 
-          md += `\n</details>\n`
+          if (ratioChartCount > 0) {
+            md += `\n<details>\n<summary>Charts: p95 ratio across ${code(xAxisKey)}</summary>\n\n`
+            md += `Bars: base(before) vs head(after). Line: budget maxRatio=${code(budget.maxRatio)}.\n`
+            md += ratioChartBlocks
+            md += `\n</details>\n`
+          }
         }
       }
     }

@@ -139,6 +139,42 @@
 - 只跑子集（例：只跑 converge suite 文件）：`pnpm perf collect -- --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/<id>/perf/after.local.json`
 - 校验（硬结论门禁）：`pnpm perf validate -- --report <before|after>.json`（子集采集可加 `--allow-partial`）
 
+### 本地快速门禁（先本地再长时 CI）
+
+- 决策层 smoke：`pnpm -C .codex/skills/logix-perf-evidence run ci:decision-smoke`
+- 夹具回放（probe + summary）：`pnpm -C .codex/skills/logix-perf-evidence run ci:replay`
+- 预检总入口（默认=smoke+replay）：`pnpm -C .codex/skills/logix-perf-evidence run ci:preflight`
+- 需要端到端最小采样时：`pnpm -C .codex/skills/logix-perf-evidence run ci:preflight -- --with-tiny-collect`
+- `ci:tiny-collect` 默认输出到 `/tmp/logix-perf-tiny-collect.json`，避免污染仓库工作区。
+
+Workflow 集成（已接入）：
+
+- `logix-perf-sweep.yml` 与 `logix-perf-quick.yml` 在长耗时采集前执行 `Perf preflight (fast-fail)`。
+- 默认变量：`PERF_PREFLIGHT_ENABLE=1`、`PERF_PREFLIGHT_WITH_TINY_COLLECT=0`（CI 上默认不跑 tiny collect）。
+
+### sweep 预设（fast / curve / full）
+
+- `fast`：快速疏通，`profile=quick`，手动 steps，`diff_mode=triage`。
+- `curve`：固定区间曲线，`profile=default`，手动 steps（默认 `2000,4000,6000,7000,7600,8200,8800,9400,10000`），`diff_mode=strict`，默认关闭硬门禁与 tail-recheck。
+- `full`：完整采集 + auto-probe，上限探索优先（成本最高）。
+
+curve 历史叠加（同分支最近成功 run）：
+
+- 默认开启：`PERF_CURVE_HISTORY_ENABLE=1`（仅 `run_preset=curve`）。
+- 默认数量：`PERF_CURVE_HISTORY_RUNS=3`，可通过 workflow_dispatch 输入 `curve_history_runs` 覆盖。
+- 可通过 `curve_history_enable=true/false` 手动开关。
+
+推荐命令（固定区间曲线）：
+
+`gh workflow run "logix-perf (sweep)" --ref <branch> -f run_preset=curve`
+
+### summary 曲线图（Mermaid）
+
+- 在 `Budget details` 区域新增 `Curve mode: base/head p50-p75-p95 across steps`。
+- 曲线预算默认使用 `PERF_CURVE_BUDGET_ID=auto<=full*1.05`（可覆写）。
+- 图表为 `xychart-beta` 折线图：每个分位（p50/p75/p95）各一图，包含 `base` 与 `head` 两根线。
+- 若存在历史 curve artifact，会追加 `Historical curve overlay (head-only)`：每个分位叠加最近 N 次 run 与当前 run，并输出 `Δp50/Δp75/Δp95@maxStep` 漂移表。
+
 ## 命名约定（envId / before / after）
 
 - envId 建议：`<os>-<arch>.<cpu>.<browser>-<version>.<headless>`（示例：`darwin-arm64.m2max.chromium-131.headless`）

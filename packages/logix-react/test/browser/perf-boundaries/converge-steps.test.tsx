@@ -10,9 +10,60 @@ import {
   runConvergeTxnCommitWithDiagnosticsLevel,
 } from './converge-runtime.js'
 
+const parseStepsLevelsOverride = (raw: string | undefined): ReadonlyArray<number> | undefined => {
+  if (raw == null) return undefined
+  const trimmed = raw.trim()
+  if (trimmed.length === 0) return undefined
+
+  const values = trimmed
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+
+  const parsed: number[] = []
+  for (const value of values) {
+    if (!/^[0-9]+$/.test(value)) {
+      throw new Error(`Invalid VITE_LOGIX_PERF_STEPS_LEVELS value: ${value}`)
+    }
+    const level = Number(value)
+    if (!Number.isFinite(level) || level <= 0) {
+      throw new Error(`Invalid VITE_LOGIX_PERF_STEPS_LEVELS value: ${value}`)
+    }
+    parsed.push(level)
+  }
+
+  if (parsed.length === 0) return undefined
+  return Array.from(new Set(parsed)).sort((a, b) => a - b)
+}
+
+const parsePositiveIntegerEnv = (name: string, raw: string | undefined): number | undefined => {
+  if (raw == null) return undefined
+  const trimmed = raw.trim()
+  if (trimmed.length === 0) return undefined
+  if (!/^[0-9]+$/.test(trimmed)) {
+    throw new Error(`Invalid ${name} value: ${trimmed}`)
+  }
+  const value = Number(trimmed)
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`Invalid ${name} value: ${trimmed}`)
+  }
+  return value
+}
+
 const suite = (matrix.suites as any[]).find((s) => s.id === 'converge.txnCommit') as any
 
-const stepsLevels = suite.axes.steps as number[]
+const stepsLevelsOverride = parseStepsLevelsOverride(import.meta.env.VITE_LOGIX_PERF_STEPS_LEVELS)
+const stepsLevels = (stepsLevelsOverride ?? (suite.axes.steps as number[])).slice().sort((a, b) => a - b)
+const suiteWithResolvedSteps =
+  stepsLevelsOverride != null
+    ? {
+        ...suite,
+        axes: {
+          ...suite.axes,
+          steps: stepsLevels,
+        },
+      }
+    : suite
 const dirtyRootsRatioLevels = suite.axes.dirtyRootsRatio as number[]
 const convergeModeLevels = suite.axes.convergeMode as Array<'full' | 'dirty' | 'auto'>
 
@@ -27,10 +78,9 @@ const resolveProfileId = (): string => {
   return 'matrix.defaults'
 }
 
-const TEST_TIMEOUT_MS = Math.max(
-  30_000,
-  timeoutMs * stepsLevels.length * dirtyRootsRatioLevels.length * convergeModeLevels.length,
-)
+const EXPECTED_POINT_COUNT = stepsLevels.length * dirtyRootsRatioLevels.length * convergeModeLevels.length
+const EXPECTED_WORK_MS = timeoutMs * EXPECTED_POINT_COUNT
+const TEST_TIMEOUT_MS = Math.max(45_000, Math.ceil(EXPECTED_WORK_MS * 1.35 + 5_000))
 
 const SAMPLE_BATCH = 50
 
@@ -42,10 +92,17 @@ test(
       const controlPlane = readConvergeControlPlaneFromEnv()
       const maxSteps = stepsLevels[stepsLevels.length - 1]
       const autoRatioBudgetId = 'auto<=full*1.05'
+      const capacityFloorBudgetId = import.meta.env.VITE_LOGIX_PERF_CAPACITY_BUDGET_ID?.trim() || 'commit.p95<=50ms'
+      const capacityFloorScopeConvergeMode =
+        import.meta.env.VITE_LOGIX_PERF_CAPACITY_SCOPE_CONVERGE_MODE?.trim() || 'auto'
+      const capacityFloorMin = parsePositiveIntegerEnv(
+        'VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN',
+        import.meta.env.VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN,
+      )
       const runtimeByKey = new Map<string, ConvergeRuntime>()
       try {
         const { points, thresholds } = await runMatrixSuite(
-          suite,
+          suiteWithResolvedSteps,
           { runs, warmupDiscard, timeoutMs },
           async (params) => {
             const convergeMode = params.convergeMode as 'full' | 'dirty' | 'auto'
@@ -226,6 +283,35 @@ test(
           )
         }
 
+        const capacityFloorThresholds = thresholds.filter(
+          (t) =>
+            (t.budget as any)?.id === capacityFloorBudgetId &&
+            (t.where as any)?.convergeMode === capacityFloorScopeConvergeMode,
+        )
+        const capacityFloorMaxLevel =
+          capacityFloorThresholds.length > 0
+            ? Math.min(
+                ...capacityFloorThresholds.map((t) =>
+                  typeof t.maxLevel === 'number' && Number.isFinite(t.maxLevel) ? t.maxLevel : 0,
+                ),
+              )
+            : undefined
+
+        if (hardGatesEnabled && capacityFloorMin != null) {
+          expect(capacityFloorThresholds.length).toBeGreaterThan(0)
+          if ((capacityFloorMaxLevel ?? 0) < capacityFloorMin) {
+            const floorViolations = capacityFloorThresholds.filter(
+              (t) => !(typeof t.maxLevel === 'number' && Number.isFinite(t.maxLevel) && t.maxLevel >= capacityFloorMin),
+            )
+            throw new Error(
+              `perf hard gate failed: ${capacityFloorBudgetId} floorMaxLevel expected>=${String(
+                capacityFloorMin,
+              )} (scope.convergeMode=${capacityFloorScopeConvergeMode}) actual=${String(capacityFloorMaxLevel ?? 0)}\n` +
+                formatGateFailures(points, floorViolations),
+            )
+          }
+        }
+
         const overheadRuns = Math.min(5, runs)
         const overheadWarmupDiscard = 0
         const overheadPoints: Array<{
@@ -243,8 +329,15 @@ test(
               p &&
               typeof p === 'object' &&
               (p as any).convergeMode === 'auto' &&
-              (p as any).steps === 2000 &&
+              (p as any).steps === maxSteps &&
               (p as any).dirtyRootsRatio === 0.05,
+          ) ??
+          (suite.baselinePoints as any[] | undefined)?.find(
+            (p) =>
+              p &&
+              typeof p === 'object' &&
+              (p as any).convergeMode === 'auto' &&
+              (p as any).steps === maxSteps,
           ) ??
           (suite.baselinePoints as any[] | undefined)?.find(
             (p) => p && typeof p === 'object' && (p as any).convergeMode === 'auto',
@@ -254,10 +347,17 @@ test(
           baselinePoint && typeof baselinePoint === 'object'
             ? {
                 convergeMode: (baselinePoint as any).convergeMode as 'auto',
-                steps: (baselinePoint as any).steps as number,
-                dirtyRootsRatio: (baselinePoint as any).dirtyRootsRatio as number,
+                steps:
+                  typeof (baselinePoint as any).steps === 'number' && Number.isFinite((baselinePoint as any).steps)
+                    ? ((baselinePoint as any).steps as number)
+                    : maxSteps,
+                dirtyRootsRatio:
+                  typeof (baselinePoint as any).dirtyRootsRatio === 'number' &&
+                  Number.isFinite((baselinePoint as any).dirtyRootsRatio)
+                    ? ((baselinePoint as any).dirtyRootsRatio as number)
+                    : 0.05,
               }
-            : { convergeMode: 'auto' as const, steps: 2000, dirtyRootsRatio: 0.05 }
+            : { convergeMode: 'auto' as const, steps: maxSteps, dirtyRootsRatio: 0.05 }
 
         const overheadDirtyRoots = Math.max(1, Math.ceil(overheadScenario.steps * overheadScenario.dirtyRootsRatio))
         const overheadRuntime = makeConvergeRuntime(overheadScenario.steps, overheadScenario.convergeMode, { captureDecision: true })

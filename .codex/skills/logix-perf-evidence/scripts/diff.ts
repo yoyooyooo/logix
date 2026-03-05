@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
+import { compareStepsGrid } from './lib/steps-grid'
 
 type Primitive = string | number | boolean
 type Params = Record<string, Primitive>
@@ -328,6 +329,13 @@ const assertComparable = (args: {
     configMismatches.push(`matrixHash: missing (before=${String(beforeMatrixHash)} after=${String(afterMatrixHash)})`)
   } else if (beforeMatrixHash !== afterMatrixHash) {
     configMismatches.push(`matrixHash: before=${beforeMatrixHash} after=${afterMatrixHash}`)
+  }
+
+  const stepsGrid = compareStepsGrid(args.beforeReport, args.afterReport)
+  if (!stepsGrid.matched) {
+    configMismatches.push(`stepsGridHash: before=${stepsGrid.beforeHash} after=${stepsGrid.afterHash}`)
+    warnings.push(`steps.grid.before: ${stepsGrid.beforeSummary}`)
+    warnings.push(`steps.grid.after: ${stepsGrid.afterSummary}`)
   }
 
   const assertNumber = (label: string, before: number, after: number) => {
