@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Option, Schema, Stream } from 'effect'
+import { Context, Deferred, Effect, FiberRef, Option, Schema, Stream } from 'effect'
 import { create } from 'mutative'
 import type * as Logix from './module.js'
 import * as Logic from './LogicMiddleware.js'
@@ -467,6 +467,170 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       return yield* Effect.die(err)
     })
 
+  type BatchedStateWritebackOutcome =
+    | { readonly _tag: 'ok' }
+    | { readonly _tag: 'failure'; readonly cause: unknown }
+
+  type BatchedStateWritebackRequest =
+    | {
+        readonly kind: 'update'
+        readonly update: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>
+        readonly done: Deferred.Deferred<BatchedStateWritebackOutcome>
+      }
+    | {
+        readonly kind: 'mutate'
+        readonly mutate: (draft: Logic.Draft<Logix.StateOf<Sh>>) => void
+        readonly done: Deferred.Deferred<BatchedStateWritebackOutcome>
+      }
+
+  type BatchedStateWritebackCoordinator = {
+    readonly enqueueUpdate: (update: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>) => Effect.Effect<void, never, any>
+    readonly enqueueMutate: (mutate: (draft: Logic.Draft<Logix.StateOf<Sh>>) => void) => Effect.Effect<void, never, any>
+  }
+
+  // Perf-first batching for `$.state.update/$.state.mutate` called *outside* a transaction:
+  // - Many watchers may write back on the same tick; running N transactions is dominated by fixed txn cost.
+  // - Batch them into a single StateTransaction (still sequentially applies reducers), reducing queue/commit overhead.
+  //
+  // Notes:
+  // - Enabled only when runtimeInternals exists and NODE_ENV=production (perf mode).
+  // - Semantics change: multiple state writebacks may share the same txnSeq/txnId (forward-only evolution).
+  let batchedStateWritebackCoordinator: BatchedStateWritebackCoordinator | undefined
+
+  const getOrCreateBatchedStateWritebackCoordinator = (): BatchedStateWritebackCoordinator => {
+    if (batchedStateWritebackCoordinator) return batchedStateWritebackCoordinator
+    if (!runtimeInternals) {
+      throw new Error('[BatchedStateWritebackCoordinator] Missing runtimeInternals (expected in ModuleRuntime-backed $).')
+    }
+
+    let inFlight = false
+    const pending: Array<BatchedStateWritebackRequest> = []
+
+    const drain = (): ReadonlyArray<BatchedStateWritebackRequest> => {
+      if (pending.length === 0) return []
+      return pending.splice(0, pending.length)
+    }
+
+    const ok: BatchedStateWritebackOutcome = { _tag: 'ok' }
+    const fail = (cause: unknown): BatchedStateWritebackOutcome => ({ _tag: 'failure', cause })
+
+    const applyBatch = (batch: ReadonlyArray<BatchedStateWritebackRequest>): Effect.Effect<void, never, any> =>
+      Effect.gen(function* () {
+        if (batch.length === 0) return
+
+        let current = (yield* runtime.getState) as Logix.StateOf<Sh>
+
+        for (let i = 0; i < batch.length; i++) {
+          const req = batch[i]!
+          if (req.kind === 'update') {
+            const next = req.update(current)
+            current = next
+            yield* runtime.setState(next)
+            continue
+          }
+
+          const { nextState, patchPaths } = mutateWithPatchPaths(current as Logix.StateOf<Sh>, (draft) => {
+            req.mutate(draft as Logic.Draft<Logix.StateOf<Sh>>)
+          })
+
+          for (const path of patchPaths) {
+            runtimeInternals.txn.recordStatePatch(path, 'unknown')
+          }
+
+          runtimeInternals.txn.updateDraft(nextState)
+          current = nextState as Logix.StateOf<Sh>
+        }
+      })
+
+    const flushInFlight = (): Effect.Effect<void, never, any> =>
+      Effect.uninterruptible(
+        Effect.gen(function* () {
+          if (inFlight) return
+          inFlight = true
+          try {
+            while (true) {
+              const batch = drain()
+              if (batch.length === 0) {
+                // Release the inFlight lock, then re-check pending to avoid the "enqueue while exiting" race.
+                inFlight = false
+                if (pending.length === 0) return
+                inFlight = true
+                continue
+              }
+
+              const originName =
+                batch.length === 1 ? (batch[0]!.kind === 'update' ? 'update' : 'mutate') : 'writeback:batched'
+
+              const exit = yield* Effect.exit(
+                runtimeInternals.txn.runWithStateTransaction(
+                  {
+                    kind: 'state',
+                    name: originName,
+                    details: { batched: true, count: batch.length },
+                  } as any,
+                  () => applyBatch(batch).pipe(Effect.asVoid),
+                ),
+              )
+
+              const outcome: BatchedStateWritebackOutcome = exit._tag === 'Success' ? ok : fail(exit.cause)
+
+              for (let i = 0; i < batch.length; i++) {
+                yield* Deferred.succeed(batch[i]!.done, outcome)
+              }
+
+              // Unexpected failures are treated as fatal; unblock waiters and stop the drain loop.
+              if (outcome._tag === 'failure') {
+                return
+              }
+            }
+          } finally {
+            inFlight = false
+          }
+        }),
+      )
+
+    const waitForMicrotask = (): Effect.Effect<void, never, never> =>
+      Effect.promise(
+        () =>
+          new Promise<void>((resolve) => {
+            if (typeof queueMicrotask === 'function') {
+              queueMicrotask(resolve)
+              return
+            }
+            Promise.resolve().then(resolve)
+          }),
+      )
+
+    const enqueueAndAwait = (req: BatchedStateWritebackRequest): Effect.Effect<void, never, any> =>
+      Effect.gen(function* () {
+        pending.push(req)
+        if (!inFlight) {
+          yield* waitForMicrotask()
+        }
+        yield* flushInFlight()
+        const outcome = yield* Deferred.await(req.done)
+        if (outcome._tag === 'failure') {
+          return yield* Effect.die(outcome.cause)
+        }
+      })
+
+    const coordinator: BatchedStateWritebackCoordinator = {
+      enqueueUpdate: (update) =>
+        Effect.gen(function* () {
+          const done = yield* Deferred.make<BatchedStateWritebackOutcome>()
+          yield* enqueueAndAwait({ kind: 'update', update, done })
+        }),
+      enqueueMutate: (mutate) =>
+        Effect.gen(function* () {
+          const done = yield* Deferred.make<BatchedStateWritebackOutcome>()
+          yield* enqueueAndAwait({ kind: 'mutate', mutate, done })
+        }),
+    }
+
+    batchedStateWritebackCoordinator = coordinator
+    return coordinator
+  }
+
   const stateApi: BoundApi<Sh, R>['state'] = {
     read: runtime.getState,
     update: (f) =>
@@ -478,6 +642,10 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         }
 
         const body = () => Effect.flatMap(runtime.getState, (prev) => runtime.setState(f(prev)))
+
+        if (runtimeInternals && !isDevEnv()) {
+          return yield* getOrCreateBatchedStateWritebackCoordinator().enqueueUpdate(f as any)
+        }
 
         return yield* runtimeInternals
           ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'update' } as any, body)
@@ -516,6 +684,10 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
 
             updateDraft?.(nextState)
           })
+
+        if (runtimeInternals && !isDevEnv()) {
+          return yield* getOrCreateBatchedStateWritebackCoordinator().enqueueMutate(f as any)
+        }
 
         return yield* runtimeInternals
           ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'mutate' } as any, body)

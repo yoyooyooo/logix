@@ -46,3 +46,5 @@
   - H-1：converge(off-fast-path) 负优化边界压榨：perf hint 跨 generation bump 保留 + 冷启动样本隔离；并记录 fast_full guard 的失败尝试与回滚。
 - `2026-03-05-h2-negative-boundary-min-delta.md`
   - H-2：negativeBoundaries.dirtyPattern 增加 `minDeltaMs=0.1`（sub-ms 相对预算地板），让 gate 可复测可执行。
+- `2026-03-06-i1-state-writeback-batched.md`
+  - I-1：`$.state.update/$.state.mutate` 生产态批处理写回（microtask 合批 + in-flight drain），把 `watchers.clickToPaint` 的 `p95<=100ms` 档位从 256 提到 512。

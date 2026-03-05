@@ -18,6 +18,7 @@
 - [x] G-2：整状态替换推导 if_empty（当 txn 已有精确 dirty evidence 时跳过推导，避免 perf harness 纯 overhead）。
 - [x] H-1：converge(off-fast-path) perf hint 保留 + 冷启动样本隔离（并记录 fast_full guard 的失败尝试与回滚）。
 - [x] H-2：negativeBoundaries.dirtyPattern 增加 `minDeltaMs=0.1`（sub-ms 相对预算地板），让 gate 可复测可执行。
+- [x] I-1：`$.state.update/$.state.mutate` 批处理写回（生产态 microtask 合批 + in-flight drain，同 burst 收敛到 batched txn），优先打穿 `watchers.clickToPaint` 的 txn 固定成本。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 

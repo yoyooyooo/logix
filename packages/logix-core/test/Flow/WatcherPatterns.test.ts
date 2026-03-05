@@ -2,6 +2,7 @@ import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Context, Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import * as Debug from '../../src/Debug.js'
 
 const Counter = Logix.Module.make('WatcherCounter', {
   state: Schema.Struct({ value: Schema.Number }),
@@ -150,4 +151,64 @@ describe('Watcher patterns (Bound + Flow)', () => {
 
     await Effect.runPromise(Effect.scoped(program) as Effect.Effect<void, never, never>)
   })
+
+  it.scoped('production burst watcher writebacks should collapse into a single state:update commit', () =>
+    Effect.gen(function* () {
+      const previousEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'production'
+
+      try {
+        const watcherCount = 8
+        const burstLogic = Counter.logic(($) =>
+          Effect.gen(function* () {
+            for (let index = 0; index < watcherCount; index++) {
+              yield* $.onAction('inc').runParallelFork(
+                $.state.mutate((draft) => {
+                  draft.value += 1
+                }),
+              )
+            }
+          }),
+        )
+
+        const impl = Counter.implement({
+          initial: { value: 0 },
+          logics: [burstLogic, CounterErrorLogic],
+        })
+
+        const ring = Debug.makeRingBufferSink(128)
+        const layer = Layer.mergeAll(Debug.replace([ring.sink]), Debug.diagnosticsLevel('light')) as Layer.Layer<
+          any,
+          never,
+          never
+        >
+
+        const runtime = Logix.Runtime.make(impl, { layer })
+
+        yield* Effect.promise(() =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const rt: any = yield* Counter.tag
+
+              yield* Effect.sleep('50 millis')
+              yield* rt.dispatch({ _tag: 'inc', payload: undefined })
+              yield* Effect.sleep('100 millis')
+
+              const state: any = yield* rt.getState
+              expect(state.value).toBe(watcherCount)
+            }),
+          ),
+        )
+
+        const commits = ring
+          .getSnapshot()
+          .filter((event) => event.type === 'state:update' && (event as any).txnId) as ReadonlyArray<any>
+
+        expect(commits.length).toBe(1)
+        expect(commits[0]?.originName).toBe('writeback:batched')
+      } finally {
+        process.env.NODE_ENV = previousEnv
+      }
+    }),
+  )
 })
