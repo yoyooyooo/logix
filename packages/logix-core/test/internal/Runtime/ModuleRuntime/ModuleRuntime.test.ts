@@ -1227,6 +1227,38 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
+    it.scoped('StateTransaction should skip replace inference (if_empty) when explicit evidence exists', () =>
+      Effect.gen(function* () {
+        type S = { a: number; b: number }
+
+        const ref = yield* SubscriptionRef.make<S>({ a: 0, b: 0 })
+        const registry = makeFieldPathIdRegistry([['a'], ['b']])
+
+        const ctx = StateTransaction.makeContext<S>({
+          moduleId: 'InferReplaceSkipUnitModule',
+          instanceId: 'infer-replace-skip-instance',
+          instrumentation: 'light',
+          captureSnapshots: false,
+          getFieldPathIdRegistry: () => registry,
+          now: () => 1,
+        })
+
+        StateTransaction.beginTransaction(ctx, { kind: 'unit-test', name: 'infer-replace-skip' }, { a: 0, b: 0 })
+        StateTransaction.updateDraft(ctx, { a: 1, b: 0 })
+
+        // Explicit evidence exists; a subsequent setState marker ("*") should not trigger extra inference work.
+        StateTransaction.recordPatch(ctx, 'a', 'unknown', 0, 1)
+        StateTransaction.recordPatch(ctx, '*', 'unknown')
+
+        const txn = yield* StateTransaction.commit(ctx, ref)
+
+        expect(txn).toBeDefined()
+        expect(txn?.dirty.dirtyAll).toBe(false)
+        expect(txn?.dirty.dirtyPathIds).toEqual([0])
+        expect(txn?.patchCount).toBe(2)
+      }),
+    )
+
     it.scoped('StateTransaction.recordPatch("*", "perf") should keep forcing dirtyAll (perf harness contract)', () =>
       Effect.gen(function* () {
         type S = { a: number }

@@ -15,6 +15,7 @@
 - [x] E-1：mutative patchPaths 保留索引证据（array path -> listIndexEvidence；减少 list validate 降级）。
 - [x] F-1：DevtoolsHub 事件窗口 O(1) ring buffer（去 `splice` trimming 抖动；full 诊断更稳）。
 - [x] G-1：整状态替换推导 dirty evidence（`path="*"` 不再立刻 dirtyAll；commit-time best-effort diff 推导顶层 key/list evidence）。
+- [x] G-2：整状态替换推导 if_empty（当 txn 已有精确 dirty evidence 时跳过推导，避免 perf harness 纯 overhead）。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 

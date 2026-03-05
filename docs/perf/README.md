@@ -40,3 +40,5 @@
   - F-1：DevtoolsHub 事件窗口 O(1) ring buffer（去 `splice` trimming 抖动；full 诊断更稳）。
 - `2026-03-05-g1-infer-replace-patches.md`
   - G-1：整状态替换推导 dirty evidence（`setState/state.update`/reducer 无 patchPaths 不再立刻 dirtyAll）。
+- `2026-03-05-g2-infer-replace-if-empty.md`
+  - G-2：整状态替换推导 if_empty（已有精确 dirty evidence 时跳过推导，避免纯 overhead）。

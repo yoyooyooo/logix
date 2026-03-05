@@ -197,6 +197,13 @@ interface StateTxnState<S> {
    */
   inferReplaceEvidence: boolean
   /**
+   * inferReplaceEvidenceIfEmpty:
+   * - When true, inference runs only if there is no explicit field-level dirty evidence at commit time.
+   * - Primary use case: `setState/state.update` in perf harnesses that record precise patch paths separately.
+   * - When a reducer falls back to `path="*"`, this flag is forced to false (supplement mode) to preserve correctness.
+   */
+  inferReplaceEvidenceIfEmpty: boolean
+  /**
    * listPathSet:
    * - Captured once at transaction start from runtime config.
    * - Used to enable list-index evidence recording only when the module actually declares list traits.
@@ -536,6 +543,9 @@ const inferReplaceEvidence = <S>(ctx: StateTxnContext<S>, state: StateTxnState<S
   if (!state.inferReplaceEvidence) return
   if (state.dirtyAllReason) return
 
+  // If explicit dirty evidence exists and this replace marker is "if_empty" mode, skip inference (perf-first contract).
+  if (state.inferReplaceEvidenceIfEmpty && state.dirtyPathIds.size > 0) return
+
   const registry = state.fieldPathIdRegistry
   if (!registry) {
     state.dirtyAllReason = 'fallbackPolicy'
@@ -685,6 +695,7 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     draft: undefined as any,
     initialStateSnapshot: undefined,
     inferReplaceEvidence: false,
+    inferReplaceEvidenceIfEmpty: true,
     listPathSet: undefined,
     patches: [],
     patchCount: 0,
@@ -789,6 +800,7 @@ export const beginTransaction = <S>(ctx: StateTxnContext<S>, origin: StateTxnOri
   state.draft = initialState
   state.initialStateSnapshot = initialSnapshot
   state.inferReplaceEvidence = false
+  state.inferReplaceEvidenceIfEmpty = true
   state.patches.length = 0
   state.patchCount = 0
   state.patchesTruncated = false
@@ -826,6 +838,11 @@ const resolveAndRecordDirtyPathId = <S>(
     // Whole-state replacement without explicit patch paths:
     // defer to commit-time inference rather than eagerly degrading to dirtyAll.
     state.inferReplaceEvidence = true
+    // Reducer fallback must preserve correctness even when other reducers already produced evidence.
+    // For non-reducer callers (setState/update), default to if_empty mode to avoid extra diff cost when precise evidence exists.
+    if (reason === 'reducer') {
+      state.inferReplaceEvidenceIfEmpty = false
+    }
     return undefined
   }
 
