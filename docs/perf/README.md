@@ -42,3 +42,5 @@
   - G-1：整状态替换推导 dirty evidence（`setState/state.update`/reducer 无 patchPaths 不再立刻 dirtyAll）。
 - `2026-03-05-g2-infer-replace-if-empty.md`
   - G-2：整状态替换推导 if_empty（已有精确 dirty evidence 时跳过推导，避免纯 overhead）。
+- `2026-03-05-h1-converge-offfast-perf-hints.md`
+  - H-1：converge(off-fast-path) 负优化边界压榨：perf hint 跨 generation bump 保留 + 冷启动样本隔离；并记录 fast_full guard 的失败尝试与回滚。

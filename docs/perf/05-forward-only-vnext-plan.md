@@ -22,6 +22,7 @@
 - [x] F-1：DevtoolsHub 事件窗口 O(1) ring buffer（去 `splice` trimming 抖动；full 诊断更稳）。
 - [x] G-1：整状态替换推导 dirty evidence（`setState/state.update`/reducer 无 patchPaths 不再立刻 dirtyAll；commit-time best-effort diff 推导顶层 key/list evidence）。
 - [x] G-2：整状态替换推导 if_empty（当 txn 已有精确 dirty evidence 时跳过推导，避免 perf harness 纯 overhead）。
+- [x] H-1：converge(off-fast-path) perf hint 保留 + 冷启动样本隔离（负优化边界专项；fast_full guard 尝试已回滚并保留证据）。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -203,6 +204,18 @@ TraitLifecycle.scopedValidate($, {
 状态：
 - [x] 已完成（G-1）：`recordPatch('*', reason!=perf)` 改为“标记整状态替换→commit-time 推导证据”，并补齐 txn 内 `setState` 早退分支的推导接线；证据见 `docs/perf/2026-03-05-g1-infer-replace-patches.md`。
 - [x] 已完成（G-2）：新增推导模式位 `inferReplaceEvidenceIfEmpty`，在 `setState/state.update` 场景下“已有精确 dirty evidence 则跳过推导”，避免 perf harness 纯 overhead；证据见 `docs/perf/2026-03-05-g2-infer-replace-if-empty.md`。
+
+### Wave H（P2）：converge(off-fast-path) 负优化边界（perf hint 保留 + 冷启动样本隔离）
+
+目标：
+- 在 `diagnosticsLevel=off && middleware=empty` 的 ultra-fast 场景下，让 converge 的判定与缓存策略尽量稳定；
+- 避免 generation bump 后重复冷启动导致误判（尤其是 adversarial dirty-pattern）。
+
+落点：
+- `packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
+
+状态：
+- [x] 已完成（H-1）：generation bump 时携带 off-fast-path perf hint（stepCount 不变时），并跳过 `txnSeq===1` 的 off-fast-path full 样本更新；同时记录 fast_full guard 的失败尝试与回滚；证据见 `docs/perf/2026-03-05-h1-converge-offfast-perf-hints.md`。
 
 ## 4. 破坏式变更策略（必须执行）
 

@@ -236,7 +236,20 @@ export const convergeInTransaction = <S extends object>(
     // 049: Exec IR must be tied to the generation lifecycle and should not be rebuilt on every txn window.
     let execIr = program.convergeExecIr
     if (!execIr || execIr.generation !== ir.generation) {
-      execIr = makeConvergeExecIr(ir)
+      // Carry over off-fast-path perf hints across generation bumps when step count is unchanged.
+      // Motivation: avoid repeated warmup / misclassification after graph-change invalidation,
+      // while still allowing the EWMA to adapt when the actual cost shifts.
+      const prev = execIr
+      const next = makeConvergeExecIr(ir)
+
+      if (prev && prev.topoOrderInt32.length === next.topoOrderInt32.length) {
+        next.perf.fullCommitEwmaOffMs = prev.perf.fullCommitEwmaOffMs
+        next.perf.fullCommitSampleCountOff = prev.perf.fullCommitSampleCountOff
+        next.perf.fullCommitLastTxnSeqOff = prev.perf.fullCommitLastTxnSeqOff
+        // NOTE: do not carry over fullCommitMinOffMs; it never increases and can become stale across rebuilds.
+      }
+
+      execIr = next
       ;(program as any).convergeExecIr = execIr
     }
 
@@ -365,6 +378,7 @@ export const convergeInTransaction = <S extends object>(
     const DIRTY_ROOT_IDS_TOP_K = 3
     const AUTO_FLOOR_RATIO = 1.05
     const AUTO_FAST_FULL_EWMA_THRESHOLD_MS = 0.6
+    const AUTO_FAST_FULL_WARMUP_FULL_SAMPLES_OFF = 2
     const AUTO_TINY_GRAPH_FULL_STEP_THRESHOLD = 2
     const MAX_CACHEABLE_ROOT_IDS = 128
     const MAX_CACHEABLE_ROOT_RATIO = 0.5
@@ -968,7 +982,8 @@ export const convergeInTransaction = <S extends object>(
               : typeof fullCommitEwmaOffMs === 'number' && Number.isFinite(fullCommitEwmaOffMs)
                 ? fullCommitEwmaOffMs
                 : undefined
-          const shouldWarmupFull = fullCommitSampleCountOff < 2 && scopeStepCount <= 1024
+          const shouldWarmupFull =
+            fullCommitSampleCountOff < AUTO_FAST_FULL_WARMUP_FULL_SAMPLES_OFF && scopeStepCount <= 1024
 
           if (
             shouldWarmupFull ||
@@ -1662,18 +1677,21 @@ export const convergeInTransaction = <S extends object>(
     }
 
     if (mode === 'full' && diagnosticsLevel === 'off' && stack.length === 0) {
-      const perf = execIr.perf
-      const prev = perf.fullCommitEwmaOffMs
-      // Keep it O(1): a tiny EWMA is enough to decide if planning is worth trying at all.
-      perf.fullCommitEwmaOffMs =
-        typeof prev === 'number' && Number.isFinite(prev) ? prev * 0.8 + totalDurationMs * 0.2 : totalDurationMs
-      const prevMin = perf.fullCommitMinOffMs
-      perf.fullCommitMinOffMs =
-        typeof prevMin === 'number' && Number.isFinite(prevMin) ? Math.min(prevMin, totalDurationMs) : totalDurationMs
-      const prevCount = perf.fullCommitSampleCountOff ?? 0
-      perf.fullCommitSampleCountOff = prevCount + 1
-      if (typeof ctx.txnSeq === 'number' && Number.isFinite(ctx.txnSeq)) {
-        perf.fullCommitLastTxnSeqOff = ctx.txnSeq
+      // Skip cold-start samples: dominated by JIT/module init and poison the EWMA.
+      if (ctx.txnSeq !== 1) {
+        const perf = execIr.perf
+        const prev = perf.fullCommitEwmaOffMs
+        // Keep it O(1): a tiny EWMA is enough to decide if planning is worth trying at all.
+        perf.fullCommitEwmaOffMs =
+          typeof prev === 'number' && Number.isFinite(prev) ? prev * 0.8 + totalDurationMs * 0.2 : totalDurationMs
+        const prevMin = perf.fullCommitMinOffMs
+        perf.fullCommitMinOffMs =
+          typeof prevMin === 'number' && Number.isFinite(prevMin) ? Math.min(prevMin, totalDurationMs) : totalDurationMs
+        const prevCount = perf.fullCommitSampleCountOff ?? 0
+        perf.fullCommitSampleCountOff = prevCount + 1
+        if (typeof ctx.txnSeq === 'number' && Number.isFinite(ctx.txnSeq)) {
+          perf.fullCommitLastTxnSeqOff = ctx.txnSeq
+        }
       }
     }
 

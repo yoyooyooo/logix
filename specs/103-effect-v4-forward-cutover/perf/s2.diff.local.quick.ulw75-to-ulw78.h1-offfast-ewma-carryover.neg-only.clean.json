@@ -1,0 +1,704 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-05T15:20:42.950Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.ulw75.h1-auto-fastfull-baseline.clean.json",
+      "commit": "c148734b60c91ba4fd4b9bf5252d8072f8c4d9d2"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw78.h1-offfast-ewma-carryover.neg-only.clean.json",
+      "commit": "c148734b60c91ba4fd4b9bf5252d8072f8c4d9d2"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": true,
+      "allowEnvDrift": true,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 4,
+    "improvements": 4,
+    "budgetViolations": 0,
+    "slices": {
+      "total": 9,
+      "compared": 9,
+      "skippedCoverage": 0,
+      "skippedData": 0,
+      "beforeOnly": 0,
+      "afterOnly": 0
+    }
+  },
+  "suites": [
+    {
+      "id": "converge.timeSlicing.txnCommit",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "converge.txnCommit",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "diagnostics.overhead.e2e",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "externalStore.ingest.tickNotify",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "form.listScopeCheck",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "repeatedStable"
+          },
+          "beforeMaxLevel": 4096,
+          "afterMaxLevel": 8,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=repeatedStable&seed=1337&steps=800}: before=4096 after=8 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.negativeBoundaries.inspect-dirty-pattern",
+              "title": "收紧 dirty-pattern 基数或调整缓存策略",
+              "detail": "负优化边界回归，多数与高基数/低命中率 dirty-pattern 相关，可优先检查写入 pattern 与缓存配置。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "alternatingTwoStable"
+          },
+          "beforeMaxLevel": 512,
+          "afterMaxLevel": 4096,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=alternatingTwoStable&seed=1337&steps=800}: before=512 after=4096 (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise"
+          },
+          "beforeMaxLevel": 4096,
+          "afterMaxLevel": 512,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=mostlyStableWithNoise&seed=1337&steps=800}: before=4096 after=512 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.negativeBoundaries.inspect-dirty-pattern",
+              "title": "收紧 dirty-pattern 基数或调整缓存策略",
+              "detail": "负优化边界回归，多数与高基数/低命中率 dirty-pattern 相关，可优先检查写入 pattern 与缓存配置。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "warmupPhaseShift"
+          },
+          "beforeMaxLevel": 4096,
+          "afterMaxLevel": null,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=warmupPhaseShift&seed=1337&steps=800}: before=4096 after=null (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.negativeBoundaries.inspect-dirty-pattern",
+              "title": "收紧 dirty-pattern 基数或调整缓存策略",
+              "detail": "负优化边界回归，多数与高基数/低命中率 dirty-pattern 相关，可优先检查写入 pattern 与缓存配置。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "sawtoothCardinality"
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 64,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=sawtoothCardinality&seed=1337&steps=800}: before=null after=64 (after:budgetExceeded) (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "randomHighCardinality"
+          },
+          "beforeMaxLevel": 8,
+          "afterMaxLevel": 4096,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=randomHighCardinality&seed=1337&steps=800}: before=8 after=4096 (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation"
+          },
+          "beforeMaxLevel": 4096,
+          "afterMaxLevel": 64,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=graphChangeInvalidation&seed=1337&steps=800}: before=4096 after=64 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.negativeBoundaries.inspect-dirty-pattern",
+              "title": "收紧 dirty-pattern 基数或调整缓存策略",
+              "detail": "负优化边界回归，多数与高基数/低命中率 dirty-pattern 相关，可优先检查写入 pattern 与缓存配置。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion"
+          },
+          "beforeMaxLevel": 8,
+          "afterMaxLevel": 64,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=listIndexExplosion&seed=1337&steps=800}: before=8 after=64 (after:budgetExceeded) (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 18,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 18,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=18 unavailable=0 missing=0] after[value=0 ok=18 unavailable=0 missing=0]"
+        },
+        {
+          "name": "cache.evict",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.evict(points) unit=count: before[value=undefined ok=0 unavailable=72 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "cache.hit",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.hit(points) unit=count: before[value=undefined ok=0 unavailable=72 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "cache.invalidate",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.invalidate(points) unit=count: before[value=0 ok=36 unavailable=36 missing=0] after[value=0 ok=36 unavailable=36 missing=0]"
+        },
+        {
+          "name": "cache.miss",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.miss(points) unit=count: before[value=undefined ok=0 unavailable=72 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "cache.size",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.size(points) unit=count: before[value=undefined ok=0 unavailable=72 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 72,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 72,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=72 unavailable=0 missing=0] after[value=core ok=72 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "runtime.decisionMs",
+          "unit": "ms",
+          "compared": 0,
+          "missing": 0,
+          "unavailable": 72,
+          "topRegressions": [],
+          "topImprovements": []
+        },
+        {
+          "metric": "runtime.txnCommitMs",
+          "unit": "ms",
+          "compared": 72,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 8,
+                "patternKind": "warmupPhaseShift"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.19999998807907104,
+                "p95Ms": 0.20000000298023224
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.4000000059604645
+              },
+              "deltaMs": {
+                "medianMs": 1.4901161193847656e-8,
+                "p95Ms": 0.20000000298023224
+              },
+              "ratio": {
+                "median": 1.0000000745058104,
+                "p95": 2
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 8,
+                "patternKind": "repeatedStable"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.30000001192092896
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.5
+              },
+              "deltaMs": {
+                "medianMs": 0.09999999403953552,
+                "p95Ms": 0.19999998807907104
+              },
+              "ratio": {
+                "median": 1.4999999627470975,
+                "p95": 1.6666666004392863
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 64,
+                "patternKind": "repeatedStable"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.30000001192092896
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.5
+              },
+              "deltaMs": {
+                "medianMs": 0.09999999403953552,
+                "p95Ms": 0.19999998807907104
+              },
+              "ratio": {
+                "median": 1.4999999627470975,
+                "p95": 1.6666666004392863
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 64,
+                "patternKind": "warmupPhaseShift"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.10000000894069672,
+                "p95Ms": 0.20000000298023224
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.3999999910593033
+              },
+              "deltaMs": {
+                "medianMs": 0.09999999403953552,
+                "p95Ms": 0.19999998807907104
+              },
+              "ratio": {
+                "median": 1.9999998509884014,
+                "p95": 1.9999999254941951
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 512,
+                "patternKind": "repeatedStable"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.30000001192092896
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.5
+              },
+              "deltaMs": {
+                "medianMs": 0.09999999403953552,
+                "p95Ms": 0.19999998807907104
+              },
+              "ratio": {
+                "median": 1.4999999627470975,
+                "p95": 1.6666666004392863
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 4096,
+                "patternKind": "graphChangeInvalidation"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 1
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.5
+              },
+              "deltaMs": {
+                "medianMs": 0,
+                "p95Ms": -0.5
+              },
+              "ratio": {
+                "median": 1,
+                "p95": 0.5
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 8,
+                "patternKind": "sawtoothCardinality"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.30000001192092896
+              },
+              "deltaMs": {
+                "medianMs": -0.09999999403953552,
+                "p95Ms": -0.19999998807907104
+              },
+              "ratio": {
+                "median": 0.6666666832235126,
+                "p95": 0.6000000238418579
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 64,
+                "patternKind": "graphChangeInvalidation"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.3999999910593033
+              },
+              "deltaMs": {
+                "medianMs": -0.09999999403953552,
+                "p95Ms": -0.10000000894069672
+              },
+              "ratio": {
+                "median": 0.6666666832235126,
+                "p95": 0.7999999821186066
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 512,
+                "patternKind": "randomHighCardinality"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.4000000059604645
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.29999999701976776
+              },
+              "deltaMs": {
+                "medianMs": 0,
+                "p95Ms": -0.10000000894069672
+              },
+              "ratio": {
+                "median": 1,
+                "p95": 0.7499999813735487
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 4096,
+                "patternKind": "slidingWindowOverlap"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.4000000059604645
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.29999999701976776
+              },
+              "deltaMs": {
+                "medianMs": -0.09999999403953552,
+                "p95Ms": -0.10000000894069672
+              },
+              "ratio": {
+                "median": 0.6666666832235126,
+                "p95": 0.7499999813735487
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "mostSignificantRegression: auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=warmupPhaseShift&seed=1337&steps=800} (before=4096, after=null)"
+    },
+    {
+      "id": "react.bootResolve",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "react.deferPreload",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "react.strictSuspenseJitter",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "runtimeStore.noTearing.tickNotify",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "tickScheduler.yieldToHost.backlog",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "txnLanes.urgentBacklog",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "watchers.clickToPaint",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "workflow.delay.timer",
+      "notes": "missing suite in after report"
+    },
+    {
+      "id": "workflow.submit.tickNotify",
+      "notes": "missing suite in after report"
+    }
+  ]
+}
