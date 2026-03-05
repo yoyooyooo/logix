@@ -19,6 +19,7 @@
 - [x] D-1：DirtySet v2（root-level + index-level evidence 统一协议），converge/validate/selector 共用。
 - [x] D-2：SelectorGraph/Converge 统一消费 `TxnDirtyEvidenceSnapshot`（删除重复路径解析与重复 dirty 缓存口径）。
 - [x] E-1：mutative patchPaths 保留索引证据（array path -> listIndexEvidence；提升 `Ref.list(...)` 增量覆盖率）。
+- [x] F-1：DevtoolsHub 事件窗口 O(1) ring buffer（去 `splice` trimming 抖动；full 诊断更稳）。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -174,6 +175,17 @@ TraitLifecycle.scopedValidate($, {
 
 状态：
 - [x] 已完成（E-1）：mutative patchPaths 保留索引段（`3 -> "3"`），并在 `StateTransaction.recordPatch` 对 array path 记录 listIndexEvidence（与 string path 同口径）；证据见 `docs/perf/2026-03-05-e1-mutative-index-evidence.md`。
+
+### Wave F（P0）：DevtoolsHub 事件窗口 O(1) ring buffer
+
+目标：
+- 消灭 `DevtoolsHub` 的 `Array.splice` trimming（burst/strict shift）抖动，让 `full` 诊断在高频 `state:update` 下更稳定。
+
+落点：
+- `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
+
+状态：
+- [x] 已完成（F-1）：用 O(1) ring storage 替换 `push+splice`，并把“有序 view 重建”推迟到 snapshot read/export；证据见 `docs/perf/2026-03-05-f1-devtools-ring-buffer.md`。
 
 ## 4. 破坏式变更策略（必须执行）
 

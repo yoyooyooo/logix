@@ -67,9 +67,118 @@ const instances = new Map<string, number>()
 const instanceLabels = new Map<string, string>()
 const convergeStaticIrByDigest = new Map<string, ConvergeStaticIrExport>()
 
+// ---- Event window (ring buffer) ----
+//
+// Perf:
+// - DevtoolsHub runs on hot paths under diagnostics=full (and even light in dev).
+// - Avoid splice/shift based trimming per event; keep O(1) append and rebuild an ordered view only when needed
+//   (snapshot read / export / buffer resize).
+type EventRing = {
+  capacity: number
+  start: number
+  size: number
+  data: Array<RuntimeDebugEventRef | undefined>
+  readonly view: RuntimeDebugEventRef[]
+  dirty: boolean
+}
+
+const toCapacity = (value: number): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0
+  const n = Math.floor(value)
+  return n > 0 ? n : 0
+}
+
+const makeEventRing = (capacity: number): EventRing => {
+  const cap = toCapacity(capacity)
+  return {
+    capacity: cap,
+    start: 0,
+    size: 0,
+    data: cap > 0 ? new Array<RuntimeDebugEventRef | undefined>(cap) : [],
+    view: [],
+    dirty: true,
+  }
+}
+
+const clearEventRing = (ring: EventRing): void => {
+  ring.start = 0
+  ring.size = 0
+  ring.data = ring.capacity > 0 ? new Array<RuntimeDebugEventRef | undefined>(ring.capacity) : []
+  ring.view.length = 0
+  ring.dirty = true
+}
+
+const pushEventRing = (ring: EventRing, ref: RuntimeDebugEventRef): void => {
+  const cap = ring.capacity
+  if (cap <= 0) return
+
+  if (ring.size < cap) {
+    ring.data[(ring.start + ring.size) % cap] = ref
+    ring.size += 1
+  } else {
+    ring.data[ring.start] = ref
+    ring.start = (ring.start + 1) % cap
+  }
+
+  ring.dirty = true
+}
+
+const getEventRingView = (ring: EventRing): RuntimeDebugEventRef[] => {
+  if (!ring.dirty) return ring.view
+
+  const cap = ring.capacity
+  const size = ring.size
+  const out = ring.view
+  out.length = size
+
+  if (cap <= 0 || size === 0) {
+    ring.dirty = false
+    return out
+  }
+
+  const start = ring.start
+  const data = ring.data
+  for (let i = 0; i < size; i++) {
+    out[i] = data[(start + i) % cap]!
+  }
+
+  ring.dirty = false
+  return out
+}
+
+const resizeEventRing = (ring: EventRing, capacity: number): void => {
+  const cap = toCapacity(capacity)
+  if (cap === ring.capacity) return
+
+  const snapshot = getEventRingView(ring)
+  const keepStart = cap <= 0 ? snapshot.length : Math.max(0, snapshot.length - cap)
+  const keep: RuntimeDebugEventRef[] = []
+  for (let i = keepStart; i < snapshot.length; i++) {
+    keep.push(snapshot[i]!)
+  }
+
+  ring.capacity = cap
+  ring.start = 0
+  ring.size = 0
+  ring.data = cap > 0 ? new Array<RuntimeDebugEventRef | undefined>(cap) : []
+  ring.view.length = 0
+  ring.dirty = true
+
+  for (let i = 0; i < keep.length; i++) {
+    pushEventRing(ring, keep[i]!)
+  }
+}
+
+const rebuildEventRingFromOrdered = (ring: EventRing, ordered: ReadonlyArray<RuntimeDebugEventRef>): void => {
+  clearEventRing(ring)
+  for (let i = 0; i < ordered.length; i++) {
+    pushEventRing(ring, ordered[i]!)
+  }
+}
+
 interface RuntimeDevtoolsBucket {
   readonly runtimeLabel: string
-  readonly ringBuffer: RuntimeDebugEventRef[]
+  readonly ring: EventRing
   readonly latestStates: Map<string, JsonValue>
   readonly latestTraitSummaries: Map<string, JsonValue>
   readonly exportBudget: {
@@ -87,7 +196,7 @@ const getOrCreateRuntimeBucket = (runtimeLabel: string): RuntimeDevtoolsBucket =
   if (existing) return existing
   const created: RuntimeDevtoolsBucket = {
     runtimeLabel,
-    ringBuffer: [],
+    ring: makeEventRing(bufferSize),
     latestStates: new Map<string, JsonValue>(),
     latestTraitSummaries: new Map<string, JsonValue>(),
     exportBudget: {
@@ -184,10 +293,10 @@ const nextRunId = (): string => {
 let currentRunId = nextRunId()
 
 let bufferSize = 500
-const ringBuffer: RuntimeDebugEventRef[] = []
+const globalRing = makeEventRing(bufferSize)
 
-type RingTrimMode = 'disabled' | 'strict' | 'burst'
-let ringTrimMode: RingTrimMode = 'burst'
+type RingTrimMode = 'disabled' | 'strict'
+let ringTrimMode: RingTrimMode = 'strict'
 let ringTrimThreshold = bufferSize
 
 const RING_TRIM_POLICY_EVENT_LABEL = 'trace:devtools:ring-trim-policy' as const
@@ -213,15 +322,9 @@ const refreshRingTrimPolicy = (): boolean => {
     return prevMode !== ringTrimMode || prevThreshold !== ringTrimThreshold
   }
 
-  if (bufferSize <= 64) {
-    ringTrimMode = 'strict'
-    ringTrimThreshold = bufferSize
-    return prevMode !== ringTrimMode || prevThreshold !== ringTrimThreshold
-  }
-
-  ringTrimMode = 'burst'
-  const slack = Math.min(1024, Math.floor(bufferSize / 2))
-  ringTrimThreshold = bufferSize + Math.max(1, slack)
+  // With O(1) ring storage, the window is always a strict capacity bound.
+  ringTrimMode = 'strict'
+  ringTrimThreshold = bufferSize
   return prevMode !== ringTrimMode || prevThreshold !== ringTrimThreshold
 }
 
@@ -229,46 +332,13 @@ refreshRingTrimPolicy()
 
 let snapshotToken: SnapshotToken = 0
 
-const ensureRingBufferSize = (targetRingBuffer: RuntimeDebugEventRef[]): void => {
-  if (ringTrimMode === 'disabled') {
-    targetRingBuffer.length = 0
-    return
-  }
-
-  if (targetRingBuffer.length <= bufferSize) return
-  const excess = targetRingBuffer.length - bufferSize
-  targetRingBuffer.splice(0, excess)
-}
-
-const trimRingBufferIfNeeded = (targetRingBuffer: RuntimeDebugEventRef[]): void => {
-  if (ringTrimMode === 'disabled') {
-    targetRingBuffer.length = 0
-    return
-  }
-
-  // Small windows keep a strict upper bound to avoid "size=5 but events.length briefly > 5" surprises.
-  // Large windows allow short bursts + batch trimming to avoid linear shift() costs under sustained load.
-  if (ringTrimMode === 'strict') {
-    ensureRingBufferSize(targetRingBuffer)
-    return
-  }
-
-  if (targetRingBuffer.length <= ringTrimThreshold) return
-
-  const excess = targetRingBuffer.length - bufferSize
-  targetRingBuffer.splice(0, excess)
-}
-
 const parseDiagnosticsLevel = (value: unknown): DiagnosticsLevel =>
   value === 'off' || value === 'light' || value === 'sampled' || value === 'full' ? value : 'light'
 
 const appendRuntimeRef = (runtimeLabel: string, ref: RuntimeDebugEventRef): void => {
   const bucket = getOrCreateRuntimeBucket(runtimeLabel)
-  bucket.ringBuffer.push(ref)
-  trimRingBufferIfNeeded(bucket.ringBuffer)
-
-  ringBuffer.push(ref)
-  trimRingBufferIfNeeded(ringBuffer)
+  pushEventRing(bucket.ring, ref)
+  pushEventRing(globalRing, ref)
 }
 
 const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
@@ -276,8 +346,8 @@ const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
   if (!bucket) return false
 
   let changed = false
-  if (bucket.ringBuffer.length > 0) {
-    bucket.ringBuffer.length = 0
+  if (bucket.ring.size > 0) {
+    clearEventRing(bucket.ring)
     changed = true
   }
   if (bucket.exportBudget.dropped !== 0 || bucket.exportBudget.oversized !== 0) {
@@ -288,13 +358,8 @@ const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
 
   if (!changed) return false
 
-  let writeIndex = 0
-  for (const event of ringBuffer) {
-    if (normalizeRuntimeLabel(event.runtimeLabel) !== runtimeLabel) {
-      ringBuffer[writeIndex++] = event
-    }
-  }
-  ringBuffer.length = writeIndex
+  const kept = getEventRingView(globalRing).filter((event) => normalizeRuntimeLabel(event.runtimeLabel) !== runtimeLabel)
+  rebuildEventRingFromOrdered(globalRing, kept)
   recalculateGlobalExportBudget()
   return true
 }
@@ -302,8 +367,8 @@ const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
 const clearAllRuntimeBucketEvents = (): boolean => {
   let changed = false
   for (const bucket of runtimeBuckets.values()) {
-    if (bucket.ringBuffer.length > 0) {
-      bucket.ringBuffer.length = 0
+    if (bucket.ring.size > 0) {
+      clearEventRing(bucket.ring)
       changed = true
     }
     if (bucket.exportBudget.dropped !== 0 || bucket.exportBudget.oversized !== 0) {
@@ -312,8 +377,8 @@ const clearAllRuntimeBucketEvents = (): boolean => {
       changed = true
     }
   }
-  if (ringBuffer.length > 0) {
-    ringBuffer.length = 0
+  if (globalRing.size > 0) {
+    clearEventRing(globalRing)
     changed = true
   }
   recalculateGlobalExportBudget()
@@ -343,7 +408,7 @@ const emitRingTrimPolicyEvent = (diagnosticsLevel: DiagnosticsLevel): void => {
 const currentSnapshot: DevtoolsSnapshot = {
   snapshotToken,
   instances,
-  events: ringBuffer,
+  events: globalRing.view,
   latestStates,
   latestTraitSummaries,
   exportBudget,
@@ -384,14 +449,15 @@ export const configureDevtoolsHub = (options?: DevtoolsHubOptions) => {
     if (nextBufferSize !== bufferSize) {
       bufferSize = nextBufferSize
       const policyChanged = refreshRingTrimPolicy()
+      // Resize rings first so the policy event lands in the new window capacity (avoid overwriting on expand).
+      resizeEventRing(globalRing, bufferSize)
+      for (const bucket of runtimeBuckets.values()) {
+        resizeEventRing(bucket.ring, bufferSize)
+      }
       // Respect the caller's diagnostics setting when emitting hub policy metadata.
       // If diagnosticsLevel is omitted, keep previous behavior for snapshots but skip extra policy events.
       if (policyChanged && options?.diagnosticsLevel !== undefined) {
         emitRingTrimPolicyEvent(parseDiagnosticsLevel(options.diagnosticsLevel))
-      }
-      ensureRingBufferSize(ringBuffer)
-      for (const bucket of runtimeBuckets.values()) {
-        ensureRingBufferSize(bucket.ringBuffer)
       }
       markSnapshotChanged()
     }
@@ -402,7 +468,10 @@ export const isDevtoolsEnabled = (): boolean => devtoolsEnabled
 
 // ---- Snapshot public helpers ----
 
-export const getDevtoolsSnapshot = (): DevtoolsSnapshot => currentSnapshot
+export const getDevtoolsSnapshot = (): DevtoolsSnapshot => {
+  getEventRingView(globalRing)
+  return currentSnapshot
+}
 export const getDevtoolsSnapshotToken = (): SnapshotToken => snapshotToken
 export const getDevtoolsSnapshotByRuntimeLabel = (runtimeLabel: string): DevtoolsSnapshot => {
   const normalizedRuntimeLabel = normalizeRuntimeLabel(runtimeLabel)
@@ -418,7 +487,7 @@ export const getDevtoolsSnapshotByRuntimeLabel = (runtimeLabel: string): Devtool
   return {
     snapshotToken,
     instances: runtimeInstances,
-    events: bucket?.ringBuffer ?? [],
+    events: bucket ? getEventRingView(bucket.ring) : [],
     latestStates: bucket?.latestStates ?? new Map<string, JsonValue>(),
     latestTraitSummaries: bucket?.latestTraitSummaries ?? new Map<string, JsonValue>(),
     exportBudget: bucket?.exportBudget ?? { dropped: 0, oversized: 0 },
@@ -485,7 +554,8 @@ export const exportDevtoolsEvidencePackage = (options?: {
   const runId = options?.runId ?? currentRunId
   const source = options?.source ?? { host: 'unknown' }
 
-  const events = ringBuffer.map((payload, i) => ({
+  const refs = getEventRingView(globalRing)
+  const events = refs.map((payload, i) => ({
     protocolVersion,
     runId,
     seq:
@@ -510,7 +580,7 @@ export const exportDevtoolsEvidencePackage = (options?: {
   const convergeDigests = new Set<string>()
   const sawFullByDigest = new Set<string>()
 
-  for (const ref of ringBuffer) {
+  for (const ref of refs) {
     const meta = isRecord(ref.meta) ? (ref.meta as Record<string, unknown>) : undefined
     if (!meta) continue
 
