@@ -33,6 +33,7 @@ Thumbs.db
 .idea/
 .obsidian/
 .artifacts/
+examples/logix-cli-playground/.logix/out/
 
 # Auto Claude data directory
 .auto-claude/
