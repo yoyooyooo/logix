@@ -1,9 +1,0 @@
-[
-  {
-    "moduleId": "entry.basic.ts#AppRoot",
-    "surface": {
-      "digest": "sha256:2514bd61ee156653bfa92b8697f08ee4d764adb96c021d609e5fb7b4990a9ff5",
-      "source": "src/entry.basic.ts#AppRoot"
-    }
-  }
-]
