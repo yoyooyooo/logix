@@ -11,6 +11,10 @@ on:
         description: "after 基线（branch/tag/sha；留空=触发 SHA）"
         required: false
         default: ""
+      run_preset:
+        description: "运行预设（fast=快速疏通；curve=固定区间曲线；full=完整采集）"
+        required: false
+        default: "fast"
       perf_files:
         description: "采集范围（logix-react browser perf 测试文件/目录；支持逗号分隔多个，相对 packages/logix-react）"
         required: false
@@ -18,11 +22,87 @@ on:
       perf_profile:
         description: "采样 profile（smoke/quick/default/soak；影响 runs/warmup/timeout）"
         required: false
-        default: "quick"
+        default: ""
+      perf_steps_levels:
+        description: "可选 steps 轴覆盖（CSV；例如 200,400,800,1200,1600,2000,2400,2800,3200）"
+        required: false
+        default: ""
+      perf_steps_mode:
+        description: "steps 选择模式（manual=固定 CSV；auto=自动扩容探测上限）"
+        required: false
+        default: ""
+      perf_steps_auto_max_iterations:
+        description: "auto 模式最大迭代次数"
+        required: false
+        default: ""
+      perf_steps_auto_growth_factor:
+        description: "auto 模式扩容倍率（>1，例如 1.25）"
+        required: false
+        default: ""
+      perf_steps_auto_extend_count:
+        description: "auto 模式每轮新增 levels 数量"
+        required: false
+        default: ""
+      perf_steps_auto_max_level_cap:
+        description: "auto 模式 steps 绝对上限（防止无限扩容）"
+        required: false
+        default: ""
+      perf_steps_auto_samples_per_iteration:
+        description: "auto 模式每轮采样次数（用于去噪）"
+        required: false
+        default: ""
+      perf_steps_auto_min_kept_samples:
+        description: "auto 模式每个 dirtyRootsRatio 至少保留样本数"
+        required: false
+        default: ""
+      perf_steps_auto_min_samples_per_iteration:
+        description: "auto 模式每轮最少采样数（预算触发时仍至少采样该数量）"
+        required: false
+        default: ""
+      perf_steps_auto_max_total_collects:
+        description: "auto 模式总 collect 上限（避免单次 run 过长）"
+        required: false
+        default: ""
+      perf_steps_auto_time_budget_minutes:
+        description: "auto 模式时间预算（分钟；超出则提前收敛）"
+        required: false
+        default: ""
+      perf_steps_auto_probe_target:
+        description: "auto 模式探测对象（base/head/both）"
+        required: false
+        default: ""
+      perf_capacity_floor_min:
+        description: "可选动态容量 floor 目标（整数；用于反向约束旧的 2000 门槛）"
+        required: false
+        default: "2000"
+      perf_capacity_dynamic_history_window:
+        description: "动态容量模型的历史窗口（最近 N 次）"
+        required: false
+        default: "5"
+      perf_capacity_dynamic_min_history_runs:
+        description: "启用 stableP50 前所需最小历史 run 数"
+        required: false
+        default: "3"
+      perf_capacity_dynamic_hard_ratio:
+        description: "dynamic hard floor 比例（hard=max(2000, stableP50*ratio)）"
+        required: false
+        default: "0.8"
+      perf_capacity_dynamic_warn_ratio:
+        description: "dynamic warn floor 比例（warn=stableP50*ratio）"
+        required: false
+        default: "0.9"
+      perf_capacity_dynamic_enforce_hard:
+        description: "是否启用 dynamic hard floor 失败门禁（true/false）"
+        required: false
+        default: ""
+      perf_capacity_auto_retry_on_timeout:
+        description: "head 采集出现 timeout 时是否自动重试一次（true/false）"
+        required: false
+        default: ""
       diff_mode:
         description: "diff 模式（strict=不可比直接失败；triage=允许漂移，仅作线索）"
         required: false
-        default: "strict"
+        default: ""
   schedule:
     # Nightly (UTC): heavier converge sweep for tracking default parameters over time.
     - cron: "0 19 * * *"
@@ -30,6 +110,7 @@ on:
     - cron: "0 19 * * 0"
 
 permissions:
+  actions: read
   contents: read
   issues: write
   pull-requests: write
@@ -42,13 +123,83 @@ concurrency:
 jobs:
   perf-sweep:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 355
     env:
       PERF_FILES: test/browser/perf-boundaries/converge-steps.test.tsx
       PERF_PROFILE: quick
       PERF_DIFF_MODE: strict
+      PERF_CAPACITY_FLOOR_MIN: 2000
+      PERF_STEPS_MODE: manual
+      PERF_STEPS_AUTO_MAX_ITERATIONS: 3
+      PERF_STEPS_AUTO_GROWTH_FACTOR: 1.25
+      PERF_STEPS_AUTO_EXTEND_COUNT: 2
+      PERF_STEPS_AUTO_MAX_LEVEL_CAP: 25600
+      PERF_STEPS_AUTO_SAMPLES_PER_ITERATION: 2
+      PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE: 0.2
+      PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE: 800
+      PERF_STEPS_AUTO_REFINE_GAP_MIN: 2000
+      PERF_STEPS_AUTO_REFINE_MAX_INSERTIONS: 2
+      PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: 2
+      PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION: 1
+      PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS: 6
+      PERF_STEPS_AUTO_TIME_BUDGET_MINUTES: 150
+      PERF_STEPS_AUTO_MIN_TOTAL_COLLECTS: 2
+      PERF_STEPS_AUTO_COLLECT_ESTIMATE_SECONDS: 1200
+      PERF_STEPS_AUTO_COLLECT_ESTIMATE_MULTIPLIER: 1.8
+      PERF_STEPS_AUTO_MIN_ITERATIONS_BEFORE_EARLY_STOP: 2
+      PERF_STEPS_AUTO_PROBE_TARGET: head
+      PERF_STEPS_AUTO_TARGET_FLOOR_RATIO: 1.35
+      PERF_STEPS_AUTO_TARGET_FLOOR_CAP: 0
       PERF_OUT_DIR: perf/ci
       PERF_ARTIFACT_NAME: logix-perf-sweep-${{ github.run_id }}
+      PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS: 0
+      PERF_CAPACITY_DYNAMIC_ENABLE: 1
+      PERF_CAPACITY_DYNAMIC_ENFORCE_HARD: 1
+      PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW: 5
+      PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS: 3
+      PERF_CAPACITY_DYNAMIC_HARD_RATIO: 0.8
+      PERF_CAPACITY_DYNAMIC_WARN_RATIO: 0.9
+      PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT: 1
+      PERF_TAIL_RECHECK_ENABLE: 1
+      PERF_TAIL_RECHECK_SUITE_ID: converge.txnCommit
+      PERF_TAIL_RECHECK_BUDGET_ID: auto<=full*1.05
+      PERF_TAIL_RECHECK_SCOPE_CONVERGE_MODE: auto
+      PERF_TAIL_RECHECK_MAX_CANDIDATES: 3
+      PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN: 2
+      PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX: 8
+      PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS: 1200
+      PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS: 1800
+      PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS: 3600
+      PERF_TAIL_RECHECK_NEAR_BUDGET_MIN_RATIO: 0.92
+      PERF_CAPACITY_HISTORY_DIR: .perf-capacity-history
+      PERF_CAPACITY_HISTORY_FILE: .perf-capacity-history/capacity-history.jsonl
+      PERF_CAPACITY_LATEST_FILE: .perf-capacity-history/capacity-latest.json
+      PERF_TIME_GUARD_ENABLE: 1
+      PERF_TIME_GUARD_SOFT_BUDGET_MINUTES_FAST: 220
+      PERF_TIME_GUARD_SOFT_BUDGET_MINUTES_FULL: 340
+      PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS_FAST: 3600
+      PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS_FULL: 5400
+      PERF_TIME_GUARD_MIN_TIMEOUT_SECONDS: 900
+      PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS: 7200
+      PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS: 10800
+      PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS: 3600
+      PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS: 2400
+      PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS: 2000,3200,4800,6400,8000
+      PERF_CURVE_STEPS_LEVELS: 2000,4000,6000,7000,7600,8200,8800,9400,10000
+      PERF_CURVE_HISTORY_ENABLE: 0
+      PERF_CURVE_HISTORY_RUNS: 3
+      PERF_CURVE_HISTORY_MAX_SCAN: 20
+      PERF_CURVE_HISTORY_DIR: perf/ci/curve-history
+      PERF_DEBUG_TRACE: 1
+      PERF_DEBUG_TRACE_SHOW_STEPS_LEVELS: 1
+      PERF_DEBUG_TIMELINE_FILE: perf/ci/debug.timeline.log
+      PERF_AGENT_ENABLE: ${{ vars.LOGIX_PERF_AGENT_ENABLE || '0' }}
+      PERF_AGENT_MODE: ${{ vars.LOGIX_PERF_AGENT_MODE || 'advisor' }}
+      PERF_AGENT_COMMAND: ${{ vars.LOGIX_PERF_AGENT_COMMAND || '' }}
+      PERF_AGENT_FAIL_ON_ERROR: ${{ vars.LOGIX_PERF_AGENT_FAIL_ON_ERROR || '0' }}
+      PERF_AGENT_TIMEOUT_SECONDS: ${{ vars.LOGIX_PERF_AGENT_TIMEOUT_SECONDS || '900' }}
+      PERF_PREFLIGHT_ENABLE: 1
+      PERF_PREFLIGHT_WITH_TINY_COLLECT: 0
 
     steps:
       - name: Checkout
@@ -60,14 +211,38 @@ jobs:
         env:
           INPUT_BASE_REF: ${{ github.event.inputs.base_ref }}
           INPUT_HEAD_REF: ${{ github.event.inputs.head_ref }}
+          INPUT_RUN_PRESET: ${{ github.event.inputs.run_preset }}
           INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
           INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
+          INPUT_PERF_STEPS_LEVELS: ${{ github.event.inputs.perf_steps_levels }}
+          INPUT_PERF_STEPS_MODE: ${{ github.event.inputs.perf_steps_mode }}
+          INPUT_PERF_STEPS_AUTO_MAX_ITERATIONS: ${{ github.event.inputs.perf_steps_auto_max_iterations }}
+          INPUT_PERF_STEPS_AUTO_GROWTH_FACTOR: ${{ github.event.inputs.perf_steps_auto_growth_factor }}
+          INPUT_PERF_STEPS_AUTO_EXTEND_COUNT: ${{ github.event.inputs.perf_steps_auto_extend_count }}
+          INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP: ${{ github.event.inputs.perf_steps_auto_max_level_cap }}
+          INPUT_PERF_STEPS_AUTO_SAMPLES_PER_ITERATION: ${{ github.event.inputs.perf_steps_auto_samples_per_iteration }}
+          INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES: ${{ github.event.inputs.perf_steps_auto_min_kept_samples }}
+          INPUT_PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION: ${{ github.event.inputs.perf_steps_auto_min_samples_per_iteration }}
+          INPUT_PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS: ${{ github.event.inputs.perf_steps_auto_max_total_collects }}
+          INPUT_PERF_STEPS_AUTO_TIME_BUDGET_MINUTES: ${{ github.event.inputs.perf_steps_auto_time_budget_minutes }}
+          INPUT_PERF_STEPS_AUTO_PROBE_TARGET: ${{ github.event.inputs.perf_steps_auto_probe_target }}
+          INPUT_PERF_CAPACITY_FLOOR_MIN: ${{ github.event.inputs.perf_capacity_floor_min }}
+          INPUT_PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW: ${{ github.event.inputs.perf_capacity_dynamic_history_window }}
+          INPUT_PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS: ${{ github.event.inputs.perf_capacity_dynamic_min_history_runs }}
+          INPUT_PERF_CAPACITY_DYNAMIC_HARD_RATIO: ${{ github.event.inputs.perf_capacity_dynamic_hard_ratio }}
+          INPUT_PERF_CAPACITY_DYNAMIC_WARN_RATIO: ${{ github.event.inputs.perf_capacity_dynamic_warn_ratio }}
+          INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD: ${{ github.event.inputs.perf_capacity_dynamic_enforce_hard }}
+          INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT: ${{ github.event.inputs.perf_capacity_auto_retry_on_timeout }}
           INPUT_DIFF_MODE: ${{ github.event.inputs.diff_mode }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
 
           echo "PERF_ENV_ID=gh-${RUNNER_OS}-${RUNNER_ARCH}" >> "$GITHUB_ENV"
+          RUN_START_EPOCH="$(date +%s)"
+          echo "PERF_RUN_START_EPOCH=$RUN_START_EPOCH" >> "$GITHUB_ENV"
+          mkdir -p "$(dirname "$PERF_DEBUG_TIMELINE_FILE")"
+          : > "$PERF_DEBUG_TIMELINE_FILE"
 
           normalize_ref() {
             local ref="$1"
@@ -87,12 +262,69 @@ jobs:
             git rev-parse FETCH_HEAD
           }
 
+          normalize_bool() {
+            local raw="$1"
+            case "$(echo "$raw" | tr '[:upper:]' '[:lower:]')" in
+              1|true|yes|on) echo "1" ;;
+              0|false|no|off) echo "0" ;;
+              *) echo "" ;;
+            esac
+          }
+
+          normalize_preset() {
+            local raw="$1"
+            case "$(echo "$raw" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" in
+              full|complete|strict) echo "full" ;;
+              curve|fixed|line|chart) echo "curve" ;;
+              fast|quick|smoke|"") echo "fast" ;;
+              *) echo "fast" ;;
+            esac
+          }
+
+          positive_int_or_default() {
+            local raw="$1"
+            local fallback="$2"
+            if [[ "$raw" =~ ^[0-9]+$ ]] && [ "$raw" -gt 0 ]; then
+              echo "$raw"
+            else
+              echo "$fallback"
+            fi
+          }
+
+          percent_timeout_seconds() {
+            local budget_minutes="$1"
+            local percent="$2"
+            local min_seconds="${3:-900}"
+            local seconds=$((budget_minutes * 60 * percent / 100))
+            if [ "$seconds" -lt "$min_seconds" ]; then
+              seconds="$min_seconds"
+            fi
+            echo "$seconds"
+          }
+
           DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          RUN_PRESET="full"
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
             # Scheduled run on default branch: compare current HEAD to its parent (best-effort).
             HEAD_SHA="$GITHUB_SHA"
             BASE_SHA="$(git rev-parse "${HEAD_SHA}^" 2>/dev/null || echo "$HEAD_SHA")"
+            echo "PERF_RUN_PRESET=full" >> "$GITHUB_ENV"
+            echo "PERF_CURVE_BASELINE_MODE=main" >> "$GITHUB_ENV"
+            echo "PERF_CURVE_BASELINE_ENABLE=0" >> "$GITHUB_ENV"
+            RUN_PRESET="full"
+            echo "PERF_STEPS_AUTO_MAX_ITERATIONS=5" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_GROWTH_FACTOR=1.25" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_EXTEND_COUNT=2" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_MAX_LEVEL_CAP=25600" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_SAMPLES_PER_ITERATION=2" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_MIN_KEPT_SAMPLES=2" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION=1" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS=10" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_TIME_BUDGET_MINUTES=240" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_PROBE_TARGET=head" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_TARGET_FLOOR_RATIO=1.35" >> "$GITHUB_ENV"
+            echo "PERF_STEPS_AUTO_TARGET_FLOOR_CAP=0" >> "$GITHUB_ENV"
 
             # Use SHAs for clarity in summaries (scheduled runs compare adjacent commits).
             echo "BASE_REF=$BASE_SHA" >> "$GITHUB_ENV"
@@ -102,10 +334,18 @@ jobs:
               # Weekly: mirror collect.ts default (perf-boundaries + watcher-browser-perf).
               echo "PERF_FILES=test/browser/perf-boundaries,test/browser/watcher-browser-perf.test.tsx" >> "$GITHUB_ENV"
               echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
+              echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=1" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=1" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-weekly-${{ github.run_id }}" >> "$GITHUB_ENV"
             else
               echo "PERF_FILES=test/browser/perf-boundaries/converge-steps.test.tsx" >> "$GITHUB_ENV"
               echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
+              echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=1" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=1" >> "$GITHUB_ENV"
               echo "PERF_ARTIFACT_NAME=logix-perf-sweep-nightly-${{ github.run_id }}" >> "$GITHUB_ENV"
             fi
           else
@@ -124,6 +364,97 @@ jobs:
 
             BASE_SHA="$(resolve_ref_to_sha "$BASE_REF")"
             HEAD_SHA="$(resolve_ref_to_sha "$HEAD_REF")"
+            RUN_PRESET="$(normalize_preset "${INPUT_RUN_PRESET:-fast}")"
+            echo "PERF_RUN_PRESET=$RUN_PRESET" >> "$GITHUB_ENV"
+            echo "PERF_CURVE_BASELINE_MODE=main" >> "$GITHUB_ENV"
+            echo "PERF_CURVE_BASELINE_ENABLE=0" >> "$GITHUB_ENV"
+
+            if [ "$RUN_PRESET" = "fast" ]; then
+              # Fast preset: prioritize shorter end-to-end turnaround to validate pipeline wiring first.
+              echo "PERF_PROFILE=quick" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_MODE=manual" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_LEVELS=2000,3200,4800,6400,8000" >> "$GITHUB_ENV"
+              echo "PERF_DIFF_MODE=triage" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=0" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=0" >> "$GITHUB_ENV"
+              echo "PERF_TAIL_RECHECK_ENABLE=0" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_RATIO=1.00" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_CAP=0" >> "$GITHUB_ENV"
+              echo "PERF_CURVE_HISTORY_ENABLE=0" >> "$GITHUB_ENV"
+              echo "PERF_ARTIFACT_NAME=logix-perf-sweep-fast-${{ github.run_id }}" >> "$GITHUB_ENV"
+            elif [ "$RUN_PRESET" = "curve" ]; then
+              # Curve preset: fixed steps for stable base/head curve comparison.
+              echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_MODE=manual" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_LEVELS=${PERF_CURVE_STEPS_LEVELS:-2000,4000,6000,7000,7600,8200,8800,9400,10000}" >> "$GITHUB_ENV"
+              echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=0" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=0" >> "$GITHUB_ENV"
+              echo "PERF_TAIL_RECHECK_ENABLE=0" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_RATIO=1.00" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_CAP=0" >> "$GITHUB_ENV"
+              echo "PERF_CURVE_HISTORY_ENABLE=1" >> "$GITHUB_ENV"
+              echo "PERF_CURVE_BASELINE_ENABLE=1" >> "$GITHUB_ENV"
+              echo "PERF_CURVE_HISTORY_RUNS=${PERF_CURVE_HISTORY_RUNS:-3}" >> "$GITHUB_ENV"
+              echo "PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS=${PERF_CURVE_STEPS_LEVELS:-2000,4000,6000,7000,7600,8200,8800,9400,10000}" >> "$GITHUB_ENV"
+              echo "PERF_ARTIFACT_NAME=logix-perf-sweep-curve-${{ github.run_id }}" >> "$GITHUB_ENV"
+            else
+              # Full preset: keep full-fidelity profile and enable auto capacity probing.
+              echo "PERF_PROFILE=default" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_MODE=auto" >> "$GITHUB_ENV"
+              echo "PERF_DIFF_MODE=strict" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=1" >> "$GITHUB_ENV"
+              echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=1" >> "$GITHUB_ENV"
+              echo "PERF_TAIL_RECHECK_ENABLE=1" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_PROBE_TARGET=head" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_RATIO=1.35" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_CAP=0" >> "$GITHUB_ENV"
+              echo "PERF_CURVE_HISTORY_ENABLE=0" >> "$GITHUB_ENV"
+              echo "PERF_ARTIFACT_NAME=logix-perf-sweep-full-${{ github.run_id }}" >> "$GITHUB_ENV"
+            fi
+
+            if [ "$RUN_PRESET" = "full" ]; then
+              # Full preset defaults should prioritize upper-limit exploration.
+              echo "PERF_STEPS_AUTO_MAX_ITERATIONS=5" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_GROWTH_FACTOR=1.25" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_EXTEND_COUNT=2" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MAX_LEVEL_CAP=25600" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_SAMPLES_PER_ITERATION=2" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MIN_KEPT_SAMPLES=2" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION=1" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS=10" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TIME_BUDGET_MINUTES=240" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_PROBE_TARGET=head" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_RATIO=1.35" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_CAP=0" >> "$GITHUB_ENV"
+            elif [ "$RUN_PRESET" = "curve" ]; then
+              # Curve preset keeps auto knobs conservative in case user manually overrides steps_mode=auto.
+              echo "PERF_STEPS_AUTO_MAX_ITERATIONS=3" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_GROWTH_FACTOR=1.20" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_EXTEND_COUNT=1" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MAX_LEVEL_CAP=16000" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_SAMPLES_PER_ITERATION=1" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MIN_KEPT_SAMPLES=1" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION=1" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS=4" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TIME_BUDGET_MINUTES=180" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_PROBE_TARGET=head" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_RATIO=1.00" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_CAP=0" >> "$GITHUB_ENV"
+            else
+              echo "PERF_STEPS_AUTO_MAX_ITERATIONS=3" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_GROWTH_FACTOR=1.25" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_EXTEND_COUNT=2" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MAX_LEVEL_CAP=25600" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_SAMPLES_PER_ITERATION=2" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MIN_KEPT_SAMPLES=2" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION=1" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS=6" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TIME_BUDGET_MINUTES=150" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_PROBE_TARGET=head" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_RATIO=1.00" >> "$GITHUB_ENV"
+              echo "PERF_STEPS_AUTO_TARGET_FLOOR_CAP=0" >> "$GITHUB_ENV"
+            fi
 
             if [ -n "${INPUT_PERF_FILES:-}" ]; then
               echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
@@ -131,25 +462,134 @@ jobs:
             if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
               echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
             fi
+            if [ -n "${INPUT_PERF_STEPS_LEVELS:-}" ]; then
+              echo "PERF_STEPS_LEVELS=$INPUT_PERF_STEPS_LEVELS" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_MODE:-}" ]; then
+              echo "PERF_STEPS_MODE=$INPUT_PERF_STEPS_MODE" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MAX_ITERATIONS:-}" ]; then
+              echo "PERF_STEPS_AUTO_MAX_ITERATIONS=$INPUT_PERF_STEPS_AUTO_MAX_ITERATIONS" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_GROWTH_FACTOR:-}" ]; then
+              echo "PERF_STEPS_AUTO_GROWTH_FACTOR=$INPUT_PERF_STEPS_AUTO_GROWTH_FACTOR" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_EXTEND_COUNT:-}" ]; then
+              echo "PERF_STEPS_AUTO_EXTEND_COUNT=$INPUT_PERF_STEPS_AUTO_EXTEND_COUNT" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP:-}" ]; then
+              echo "PERF_STEPS_AUTO_MAX_LEVEL_CAP=$INPUT_PERF_STEPS_AUTO_MAX_LEVEL_CAP" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_SAMPLES_PER_ITERATION:-}" ]; then
+              echo "PERF_STEPS_AUTO_SAMPLES_PER_ITERATION=$INPUT_PERF_STEPS_AUTO_SAMPLES_PER_ITERATION" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES:-}" ]; then
+              echo "PERF_STEPS_AUTO_MIN_KEPT_SAMPLES=$INPUT_PERF_STEPS_AUTO_MIN_KEPT_SAMPLES" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION:-}" ]; then
+              echo "PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION=$INPUT_PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS:-}" ]; then
+              echo "PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS=$INPUT_PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_TIME_BUDGET_MINUTES:-}" ]; then
+              echo "PERF_STEPS_AUTO_TIME_BUDGET_MINUTES=$INPUT_PERF_STEPS_AUTO_TIME_BUDGET_MINUTES" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_STEPS_AUTO_PROBE_TARGET:-}" ]; then
+              echo "PERF_STEPS_AUTO_PROBE_TARGET=$INPUT_PERF_STEPS_AUTO_PROBE_TARGET" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_FLOOR_MIN:-}" ]; then
+              echo "PERF_CAPACITY_FLOOR_MIN=$INPUT_PERF_CAPACITY_FLOOR_MIN" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW:-}" ]; then
+              echo "PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW=$INPUT_PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS:-}" ]; then
+              echo "PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS=$INPUT_PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_HARD_RATIO:-}" ]; then
+              echo "PERF_CAPACITY_DYNAMIC_HARD_RATIO=$INPUT_PERF_CAPACITY_DYNAMIC_HARD_RATIO" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_WARN_RATIO:-}" ]; then
+              echo "PERF_CAPACITY_DYNAMIC_WARN_RATIO=$INPUT_PERF_CAPACITY_DYNAMIC_WARN_RATIO" >> "$GITHUB_ENV"
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD:-}" ]; then
+              parsed="$(normalize_bool "$INPUT_PERF_CAPACITY_DYNAMIC_ENFORCE_HARD")"
+              if [ -n "$parsed" ]; then
+                echo "PERF_CAPACITY_DYNAMIC_ENFORCE_HARD=$parsed" >> "$GITHUB_ENV"
+              fi
+            fi
+            if [ -n "${INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT:-}" ]; then
+              parsed="$(normalize_bool "$INPUT_PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT")"
+              if [ -n "$parsed" ]; then
+                echo "PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT=$parsed" >> "$GITHUB_ENV"
+              fi
+            fi
             if [ -n "${INPUT_DIFF_MODE:-}" ]; then
               echo "PERF_DIFF_MODE=$INPUT_DIFF_MODE" >> "$GITHUB_ENV"
             fi
-
-            if [ -n "${INPUT_HEAD_REF:-}" ]; then
-              echo "PERF_ARTIFACT_NAME=logix-perf-sweep-${{ github.run_id }}" >> "$GITHUB_ENV"
-            fi
           fi
+
+          if [ "$RUN_PRESET" = "full" ]; then
+            SOFT_BUDGET_MINUTES="$(positive_int_or_default "${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES_FULL:-340}" 340)"
+            MIN_FULL_REMAINING_SECONDS="$(positive_int_or_default "${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS_FULL:-5400}" 5400)"
+            BASE_PERCENT=35
+            HEAD_PERCENT=50
+            RECOLLECT_PERCENT=22
+            FALLBACK_PERCENT=14
+          else
+            SOFT_BUDGET_MINUTES="$(positive_int_or_default "${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES_FAST:-220}" 220)"
+            MIN_FULL_REMAINING_SECONDS="$(positive_int_or_default "${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS_FAST:-3600}" 3600)"
+            BASE_PERCENT=30
+            HEAD_PERCENT=45
+            RECOLLECT_PERCENT=20
+            FALLBACK_PERCENT=12
+          fi
+
+          PERF_SOFT_DEADLINE_EPOCH="$((RUN_START_EPOCH + SOFT_BUDGET_MINUTES * 60))"
+          BASE_COLLECT_TIMEOUT_SECONDS="$(percent_timeout_seconds "$SOFT_BUDGET_MINUTES" "$BASE_PERCENT" 900)"
+          HEAD_COLLECT_TIMEOUT_SECONDS="$(percent_timeout_seconds "$SOFT_BUDGET_MINUTES" "$HEAD_PERCENT" 1200)"
+          RECOLLECT_TIMEOUT_SECONDS="$(percent_timeout_seconds "$SOFT_BUDGET_MINUTES" "$RECOLLECT_PERCENT" 900)"
+          FALLBACK_TIMEOUT_SECONDS="$(percent_timeout_seconds "$SOFT_BUDGET_MINUTES" "$FALLBACK_PERCENT" 900)"
+
+          {
+            echo "PERF_TIME_GUARD_SOFT_BUDGET_MINUTES=$SOFT_BUDGET_MINUTES"
+            echo "PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS=$MIN_FULL_REMAINING_SECONDS"
+            echo "PERF_SOFT_DEADLINE_EPOCH=$PERF_SOFT_DEADLINE_EPOCH"
+            echo "PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS=$BASE_COLLECT_TIMEOUT_SECONDS"
+            echo "PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS=$HEAD_COLLECT_TIMEOUT_SECONDS"
+            echo "PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS=$RECOLLECT_TIMEOUT_SECONDS"
+            echo "PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS=$FALLBACK_TIMEOUT_SECONDS"
+          } >> "$GITHUB_ENV"
 
           echo "BASE_SHA=$BASE_SHA" >> "$GITHUB_ENV"
           echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
           echo "BASE_SHORT=${BASE_SHA::8}" >> "$GITHUB_ENV"
           echo "HEAD_SHORT=${HEAD_SHA::8}" >> "$GITHUB_ENV"
+          echo "PERF_CAPACITY_HISTORY_CACHE_PREFIX=${RUNNER_OS}-logix-perf-capacity-${GITHUB_REF_NAME}-" >> "$GITHUB_ENV"
+          echo "PERF_CAPACITY_HISTORY_CACHE_KEY=${RUNNER_OS}-logix-perf-capacity-${GITHUB_REF_NAME}-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
 
           if git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- pnpm-lock.yaml | grep -q '^pnpm-lock.yaml$'; then
             echo "LOCKFILE_CHANGED=1" >> "$GITHUB_ENV"
           else
             echo "LOCKFILE_CHANGED=0" >> "$GITHUB_ENV"
           fi
+
+          set -a
+          # shellcheck disable=SC1090
+          source "$GITHUB_ENV"
+          set +a
+
+          {
+            echo "[logix-perf][timeline] run_id=${GITHUB_RUN_ID} workflow=${GITHUB_WORKFLOW} startedAtEpoch=${RUN_START_EPOCH} softDeadlineEpoch=${PERF_SOFT_DEADLINE_EPOCH}"
+            echo "[logix-perf][timeline] event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF_NAME} actor=${GITHUB_ACTOR}"
+            echo "[logix-perf][timeline] refs baseRef=${BASE_REF} headRef=${HEAD_REF} baseSha=${BASE_SHA} headSha=${HEAD_SHA}"
+            echo "[logix-perf][timeline] preset=${RUN_PRESET} profile=${PERF_PROFILE} stepsMode=${PERF_STEPS_MODE} diffMode=${PERF_DIFF_MODE}"
+            echo "[logix-perf][timeline] autoProbe iterations=${PERF_STEPS_AUTO_MAX_ITERATIONS} samplesPerIteration=${PERF_STEPS_AUTO_SAMPLES_PER_ITERATION} maxTotalCollects=${PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS} budgetMin=${PERF_STEPS_AUTO_TIME_BUDGET_MINUTES}"
+            echo "[logix-perf][timeline] timeGuard softBudgetMin=${PERF_TIME_GUARD_SOFT_BUDGET_MINUTES} minFullRemainingSec=${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS} baseTimeoutSec=${PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS} headTimeoutSec=${PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS} recollectTimeoutSec=${PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS} fallbackTimeoutSec=${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS}"
+            echo "[logix-perf][timeline] tailRecheck enable=${PERF_TAIL_RECHECK_ENABLE:-0} maxCandidates=${PERF_TAIL_RECHECK_MAX_CANDIDATES:-3} nearBudgetMinRatio=${PERF_TAIL_RECHECK_NEAR_BUDGET_MIN_RATIO:-0.92} samplesMin=${PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-2} samplesMax=${PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-8} sampleEstimateSec=${PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-1200} sampleTimeoutSec=${PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-1800} minRemainingSec=${PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-3600}"
+            echo "[logix-perf][timeline] agent enable=${PERF_AGENT_ENABLE:-0} mode=${PERF_AGENT_MODE:-advisor} failOnError=${PERF_AGENT_FAIL_ON_ERROR:-0} timeoutSec=${PERF_AGENT_TIMEOUT_SECONDS:-900} commandSet=$(if [ -n "${PERF_AGENT_COMMAND:-}" ]; then echo 1; else echo 0; fi)"
+          } >> "$PERF_DEBUG_TIMELINE_FILE"
 
       - name: Checkout head (for install)
         run: git checkout --quiet -f "$HEAD_SHA"
@@ -185,6 +625,15 @@ jobs:
             ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
+      - name: Perf preflight (fast-fail)
+        if: env.PERF_PREFLIGHT_ENABLE == '1'
+        run: |
+          if [ "${PERF_PREFLIGHT_WITH_TINY_COLLECT:-0}" = "1" ]; then
+            pnpm -C .codex/skills/logix-perf-evidence run ci:preflight -- --with-tiny-collect
+          else
+            pnpm -C .codex/skills/logix-perf-evidence run ci:preflight
+          fi
+
       - name: Install Playwright Chromium deps
         run: pnpm exec playwright install --with-deps chromium
 
@@ -200,10 +649,222 @@ jobs:
           PINNED_VITEST_SHARED="$RUNNER_TEMP/vitest.shared.ts"
           cp vitest.shared.ts "$PINNED_VITEST_SHARED"
           echo "PERF_PINNED_VITEST_SHARED=$PINNED_VITEST_SHARED" >> "$GITHUB_ENV"
+          PINNED_AUTO_PROBE_DIR="$RUNNER_TEMP/logix-perf-auto-probe"
+          mkdir -p "$PINNED_AUTO_PROBE_DIR/lib"
+          PINNED_AUTO_PROBE_SCRIPT="$PINNED_AUTO_PROBE_DIR/logix-perf-auto-probe.cjs"
+          cp .github/scripts/logix-perf-auto-probe.cjs "$PINNED_AUTO_PROBE_SCRIPT"
+          cp .github/scripts/lib/logix-perf-budget-controller.cjs "$PINNED_AUTO_PROBE_DIR/lib/logix-perf-budget-controller.cjs"
+          cp .github/scripts/lib/logix-perf-probe-decision.cjs "$PINNED_AUTO_PROBE_DIR/lib/logix-perf-probe-decision.cjs"
+          echo "PERF_AUTO_PROBE_SCRIPT=$PINNED_AUTO_PROBE_SCRIPT" >> "$GITHUB_ENV"
+          PINNED_CAPACITY_MODEL_SCRIPT="$RUNNER_TEMP/logix-perf-capacity-model.cjs"
+          cp .github/scripts/logix-perf-capacity-model.cjs "$PINNED_CAPACITY_MODEL_SCRIPT"
+          echo "PERF_CAPACITY_MODEL_SCRIPT=$PINNED_CAPACITY_MODEL_SCRIPT" >> "$GITHUB_ENV"
+          PINNED_TAIL_RECHECK_SCRIPT="$RUNNER_TEMP/logix-perf-tail-recheck.cjs"
+          cp .github/scripts/logix-perf-tail-recheck.cjs "$PINNED_TAIL_RECHECK_SCRIPT"
+          echo "PERF_TAIL_RECHECK_SCRIPT=$PINNED_TAIL_RECHECK_SCRIPT" >> "$GITHUB_ENV"
+          PINNED_QUICK_SUMMARY_SCRIPT="$RUNNER_TEMP/logix-perf-quick-summary.cjs"
+          cp .github/scripts/logix-perf-quick-summary.cjs "$PINNED_QUICK_SUMMARY_SCRIPT"
+          echo "PERF_QUICK_SUMMARY_SCRIPT=$PINNED_QUICK_SUMMARY_SCRIPT" >> "$GITHUB_ENV"
+          PINNED_TIME_GUARD_SCRIPT="$RUNNER_TEMP/logix-perf-time-guard.sh"
+          cp .github/scripts/logix-perf-time-guard.sh "$PINNED_TIME_GUARD_SCRIPT"
+          chmod +x "$PINNED_TIME_GUARD_SCRIPT"
+          echo "PERF_TIME_GUARD_SCRIPT=$PINNED_TIME_GUARD_SCRIPT" >> "$GITHUB_ENV"
+
+      - name: Restore capacity history cache
+        if: env.PERF_CAPACITY_DYNAMIC_ENABLE == '1'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.PERF_CAPACITY_HISTORY_DIR }}
+          key: ${{ env.PERF_CAPACITY_HISTORY_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.PERF_CAPACITY_HISTORY_CACHE_PREFIX }}
+
+      - name: Resolve dynamic capacity floor target
+        if: env.PERF_CAPACITY_DYNAMIC_ENABLE == '1'
+        run: |
+          mkdir -p "$PERF_CAPACITY_HISTORY_DIR"
+          node "$PERF_CAPACITY_MODEL_SCRIPT" resolve-target \
+            --latest "$PERF_CAPACITY_LATEST_FILE" \
+            --base-floor-min "$PERF_CAPACITY_FLOOR_MIN" \
+            --hard-floor-ratio "$PERF_CAPACITY_DYNAMIC_HARD_RATIO" \
+            --profile "$PERF_PROFILE" \
+            --env-id "$PERF_ENV_ID" \
+            --suite-id "converge.txnCommit" \
+            --budget-id "commit.p95<=50ms" \
+            --converge-mode "auto" \
+            --history-window "$PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW" \
+            --min-history-runs "$PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS" \
+            --env-out "$GITHUB_ENV" \
+            --out "$PERF_OUT_DIR/capacity-target.json"
+
+      - name: Resolve curve baseline from history (optional)
+        if: always() && env.PERF_RUN_PRESET == 'curve' && env.PERF_CURVE_BASELINE_ENABLE == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          HISTORY_BRANCH="${HEAD_REF:-${GITHUB_REF_NAME:-}}"
+          if [[ "$HISTORY_BRANCH" =~ ^[0-9a-f]{40}$ ]]; then
+            HISTORY_BRANCH="${GITHUB_REF_NAME:-}"
+          fi
+          if [ -z "$HISTORY_BRANCH" ]; then
+            echo "::warning::[logix-perf] curve baseline fallback to main: empty branch"
+            echo "[logix-perf][timeline] curveBaseline mode=main reason=empty-branch" >> "$PERF_DEBUG_TIMELINE_FILE"
+            exit 0
+          fi
+
+          SCAN_LIMIT="${PERF_CURVE_HISTORY_MAX_SCAN:-20}"
+          if ! [[ "$SCAN_LIMIT" =~ ^[0-9]+$ ]] || [ "$SCAN_LIMIT" -le 0 ]; then
+            SCAN_LIMIT=20
+          fi
+          if [ "$SCAN_LIMIT" -gt 100 ]; then
+            SCAN_LIMIT=100
+          fi
+
+          WORKFLOW_ID="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows" --jq '.workflows[] | select(.path==".github/workflows/logix-perf-sweep.yml") | .id' | head -n 1 || true)"
+          if [ -z "$WORKFLOW_ID" ]; then
+            echo "::warning::[logix-perf] curve baseline fallback to main: workflow id not found"
+            echo "[logix-perf][timeline] curveBaseline mode=main reason=workflow-id-missing branch=$HISTORY_BRANCH" >> "$PERF_DEBUG_TIMELINE_FILE"
+            exit 0
+          fi
+
+          RUNS_JSON="$RUNNER_TEMP/curve-baseline-runs.json"
+          FALLBACK_NOTE=""
+          if ! gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/${WORKFLOW_ID}/runs" \
+            -f branch="$HISTORY_BRANCH" \
+            -f event=workflow_dispatch \
+            -f status=completed \
+            -f per_page="$SCAN_LIMIT" > "$RUNS_JSON"; then
+            echo "::warning::[logix-perf] curve baseline runs query with event filter failed; fallback to branch-only query"
+            if ! gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/${WORKFLOW_ID}/runs" \
+              -f branch="$HISTORY_BRANCH" \
+              -f status=completed \
+              -f per_page="$SCAN_LIMIT" > "$RUNS_JSON"; then
+              echo "::warning::[logix-perf] curve baseline fallback to main: cannot list workflow runs"
+              echo "[logix-perf][timeline] curveBaseline mode=main reason=runs-query-failed branch=$HISTORY_BRANCH" >> "$PERF_DEBUG_TIMELINE_FILE"
+              exit 0
+            fi
+            FALLBACK_NOTE="fallback-branch-only-query"
+          fi
+
+          RUNS_COUNT="$(node -e 'const fs = require("node:fs"); const file = process.argv[1]; const payload = JSON.parse(fs.readFileSync(file, "utf8")); const runs = Array.isArray(payload.workflow_runs) ? payload.workflow_runs : []; process.stdout.write(String(runs.length));' "$RUNS_JSON")"
+          if ! [[ "$RUNS_COUNT" =~ ^[0-9]+$ ]]; then
+            RUNS_COUNT=0
+          fi
+          if [ "$RUNS_COUNT" -eq 0 ] && [ -z "$FALLBACK_NOTE" ]; then
+            echo "[logix-perf] curve baseline event-filter query returned 0 runs; fallback to branch-only query"
+            if ! gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/${WORKFLOW_ID}/runs" \
+              -f branch="$HISTORY_BRANCH" \
+              -f status=completed \
+              -f per_page="$SCAN_LIMIT" > "$RUNS_JSON"; then
+              echo "::warning::[logix-perf] curve baseline fallback to main: cannot list workflow runs"
+              echo "[logix-perf][timeline] curveBaseline mode=main reason=runs-query-failed branch=$HISTORY_BRANCH" >> "$PERF_DEBUG_TIMELINE_FILE"
+              exit 0
+            fi
+            FALLBACK_NOTE="fallback-branch-only-empty-result"
+          fi
+          if [ -n "$FALLBACK_NOTE" ]; then
+            echo "[logix-perf][timeline] curveBaseline branch=$HISTORY_BRANCH note=$FALLBACK_NOTE" >> "$PERF_DEBUG_TIMELINE_FILE"
+          fi
+
+          mapfile -t HISTORY_RUN_ENTRIES < <(node -e 'const fs = require("node:fs"); const file = process.argv[1]; const currentRunId = Number(process.argv[2]); const payload = JSON.parse(fs.readFileSync(file, "utf8")); const runs = Array.isArray(payload.workflow_runs) ? payload.workflow_runs : []; for (const run of runs) { const id = Number(run?.id); const conclusion = String(run?.conclusion || ""); const headSha = String(run?.head_sha || "").trim(); if (!Number.isFinite(id) || id === currentRunId) continue; if (conclusion !== "success") continue; process.stdout.write(`${id} ${headSha}\n`); }' "$RUNS_JSON" "$GITHUB_RUN_ID")
+
+          BASELINE_DIR="$PERF_OUT_DIR/curve-baseline"
+          mkdir -p "$BASELINE_DIR"
+          BASELINE_FOUND=0
+          for entry in "${HISTORY_RUN_ENTRIES[@]}"; do
+            RUN_ID="${entry%% *}"
+            RUN_SHA="${entry#* }"
+            if [ "$RUN_SHA" = "$RUN_ID" ]; then
+              RUN_SHA=""
+            fi
+
+            ARTIFACTS_JSON="$RUNNER_TEMP/curve-baseline-artifacts-${RUN_ID}.json"
+            if ! gh api "repos/$GITHUB_REPOSITORY/actions/runs/${RUN_ID}/artifacts" > "$ARTIFACTS_JSON"; then
+              continue
+            fi
+
+            ARTIFACT_NAME="$(node -e 'const fs = require("node:fs"); const payload = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : []; const item = artifacts.find((artifact) => { if (!artifact || artifact.expired) return false; const name = String(artifact.name || ""); return name.startsWith("logix-perf-sweep-curve-"); }); if (item) process.stdout.write(String(item.name));' "$ARTIFACTS_JSON")"
+            if [ -z "$ARTIFACT_NAME" ]; then
+              continue
+            fi
+
+            RUN_DIR="$BASELINE_DIR/run-${RUN_ID}"
+            mkdir -p "$RUN_DIR"
+            if ! gh run download "$RUN_ID" -n "$ARTIFACT_NAME" -D "$RUN_DIR"; then
+              continue
+            fi
+
+            BASELINE_REPORT=""
+            for candidate in "$RUN_DIR"/after.*."$PERF_ENV_ID"."$PERF_PROFILE".json; do
+              if [ ! -e "$candidate" ]; then
+                continue
+              fi
+              case "$candidate" in
+                */after.probe.*) continue ;;
+              esac
+              BASELINE_REPORT="$candidate"
+              break
+            done
+            if [ -z "$BASELINE_REPORT" ]; then
+              for candidate in "$RUN_DIR"/after.probe.*."$PERF_ENV_ID"."$PERF_PROFILE".json; do
+                if [ ! -e "$candidate" ]; then
+                  continue
+                fi
+                BASELINE_REPORT="$candidate"
+                break
+              done
+            fi
+            if [ -z "$BASELINE_REPORT" ]; then
+              continue
+            fi
+
+            if ! [[ "$RUN_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              RUN_SHA="$(node -e 'const fs = require("node:fs"); const payload = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const commit = String(payload?.meta?.git?.commit || "").trim(); if (commit) process.stdout.write(commit);' "$BASELINE_REPORT" || true)"
+            fi
+            if ! [[ "$RUN_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::warning::[logix-perf] skip curve baseline candidate run=${RUN_ID}: invalid commit sha"
+              continue
+            fi
+
+            BASELINE_SHORT="${RUN_SHA:0:8}"
+            BEFORE_REPORT="$PERF_OUT_DIR/before.${BASELINE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            cp "$BASELINE_REPORT" "$BEFORE_REPORT"
+
+            {
+              echo "PERF_CURVE_BASELINE_MODE=history"
+              echo "PERF_CURVE_BASELINE_RUN_ID=${RUN_ID}"
+              echo "PERF_CURVE_BASELINE_SHA=${RUN_SHA}"
+              echo "PERF_CURVE_BASELINE_REPORT=${BEFORE_REPORT}"
+              echo "BASE_REF=curve-history-run-${RUN_ID}"
+              echo "BASE_SHA=${RUN_SHA}"
+              echo "BASE_SHORT=${BASELINE_SHORT}"
+            } >> "$GITHUB_ENV"
+
+            echo "[logix-perf] curve baseline selected run=${RUN_ID} sha=${RUN_SHA} report=$(basename "$BEFORE_REPORT")"
+            echo "[logix-perf][timeline] curveBaseline mode=history run=${RUN_ID} baseSha=${RUN_SHA} report=$(basename "$BEFORE_REPORT") branch=$HISTORY_BRANCH" >> "$PERF_DEBUG_TIMELINE_FILE"
+            BASELINE_FOUND=1
+            break
+          done
+
+          if [ "$BASELINE_FOUND" -eq 0 ]; then
+            echo "[logix-perf] curve baseline fallback to main run baseline (no usable history artifact)"
+            echo "[logix-perf][timeline] curveBaseline mode=main reason=no-usable-history branch=$HISTORY_BRANCH" >> "$PERF_DEBUG_TIMELINE_FILE"
+          fi
 
       - name: Collect (base)
         run: |
           mkdir -p "$PERF_OUT_DIR"
+          BASE_REPORT_PATH="$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ "${PERF_RUN_PRESET:-full}" = "curve" ] && [ "${PERF_CURVE_BASELINE_MODE:-main}" = "history" ]; then
+            if [ -f "$BASE_REPORT_PATH" ]; then
+              echo "[logix-perf] skip base collect: use history baseline run=${PERF_CURVE_BASELINE_RUN_ID:-unknown} sha=${BASE_SHA}"
+              echo "[logix-perf][timeline] curveBaseline skipBaseCollect run=${PERF_CURVE_BASELINE_RUN_ID:-unknown} baseSha=${BASE_SHA} report=$(basename "$BASE_REPORT_PATH")" >> "$PERF_DEBUG_TIMELINE_FILE"
+              exit 0
+            fi
+            echo "::warning::[logix-perf] curve baseline report missing: $BASE_REPORT_PATH; fallback to main base collect"
+          fi
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f "$BASE_SHA"
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
@@ -231,10 +892,108 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+          source "$PERF_TIME_GUARD_SCRIPT"
+          logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "before_base_collect"
+          logix_perf_guard_report_budget "base:begin"
+          logix_perf_guard_dump_state "base:begin"
+          BASE_COLLECT_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_BASE_COLLECT_TIMEOUT_SECONDS:-7200}" 1800)"
+          if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
+            export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
+          fi
+          AUTO_PROBE_TARGET="${PERF_STEPS_AUTO_PROBE_TARGET:-head}"
+          logix_perf_guard_log "plan" "phase=base collectTimeout=${BASE_COLLECT_TIMEOUT_SECONDS}s stepsMode=${PERF_STEPS_MODE:-manual} autoProbeTarget=${AUTO_PROBE_TARGET}"
 
-          VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
-            "${FILE_ARGS[@]}" \
-            --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ "${PERF_STEPS_MODE:-manual}" = "auto" ] && { [ "$AUTO_PROBE_TARGET" = "base" ] || [ "$AUTO_PROBE_TARGET" = "both" ]; }; then
+            AUTO_STEPS_OUT="$PERF_OUT_DIR/steps-levels.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.csv"
+            AUTO_META_OUT="$PERF_OUT_DIR/steps-probe.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            AUTO_BUDGET_LEDGER_OUT="$PERF_OUT_DIR/steps-probe-budget.base.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            AUTO_PROBE_TIMED_OUT=0
+            AUTO_ARGS=(
+              --profile "$PERF_PROFILE"
+              --files "$PERF_FILES"
+              --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+              --steps-out "$AUTO_STEPS_OUT"
+              --meta-out "$AUTO_META_OUT"
+              --budget-ledger-out "$AUTO_BUDGET_LEDGER_OUT"
+              --max-iterations "$PERF_STEPS_AUTO_MAX_ITERATIONS"
+              --growth-factor "$PERF_STEPS_AUTO_GROWTH_FACTOR"
+              --extend-count "$PERF_STEPS_AUTO_EXTEND_COUNT"
+              --max-level-cap "$PERF_STEPS_AUTO_MAX_LEVEL_CAP"
+              --samples-per-iteration "$PERF_STEPS_AUTO_SAMPLES_PER_ITERATION"
+              --min-samples-per-iteration "$PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION"
+              --max-total-collects "$PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS"
+              --time-budget-minutes "$PERF_STEPS_AUTO_TIME_BUDGET_MINUTES"
+              --time-reserve-minutes "${PERF_STEPS_AUTO_TIME_RESERVE_MINUTES:-5}"
+              --min-collect-estimate-seconds "${PERF_STEPS_AUTO_MIN_COLLECT_ESTIMATE_SECONDS:-45}"
+              --top-saturation-ratio "${PERF_STEPS_AUTO_TOP_SATURATION_RATIO:-0.95}"
+              --min-top-headroom "${PERF_STEPS_AUTO_MIN_TOP_HEADROOM:-400}"
+              --outlier-rel-tolerance "$PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE"
+              --outlier-abs-tolerance "$PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE"
+              --refine-gap-min "$PERF_STEPS_AUTO_REFINE_GAP_MIN"
+              --refine-max-insertions "$PERF_STEPS_AUTO_REFINE_MAX_INSERTIONS"
+              --min-kept-samples "$PERF_STEPS_AUTO_MIN_KEPT_SAMPLES"
+            )
+            if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+              AUTO_ARGS+=(--initial-steps "$PERF_STEPS_LEVELS")
+            fi
+            logix_perf_guard_log "plan" "phase=base autoProbe maxIterations=${PERF_STEPS_AUTO_MAX_ITERATIONS} samplesPerIteration=${PERF_STEPS_AUTO_SAMPLES_PER_ITERATION} maxTotalCollects=${PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS} autoBudgetMin=${PERF_STEPS_AUTO_TIME_BUDGET_MINUTES}"
+            if logix_perf_guard_run_with_timeout "$BASE_COLLECT_TIMEOUT_SECONDS" "base:auto-probe" env VITE_LOGIX_PERF_HARD_GATES=off node "$PERF_AUTO_PROBE_SCRIPT" "${AUTO_ARGS[@]}"; then
+              true
+            else
+              AUTO_COLLECT_RC="$?"
+              if [ "$AUTO_COLLECT_RC" -ne 124 ]; then
+                exit "$AUTO_COLLECT_RC"
+              fi
+              echo "::warning::[logix-perf] base auto collect timeout after ${BASE_COLLECT_TIMEOUT_SECONDS}s, downgrade to fast-adaptive manual collect"
+              logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "base_auto_timeout"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+              FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
+              AUTO_PROBE_TIMED_OUT=1
+              logix_perf_guard_log "plan" "phase=base fallbackCollect timeout=${FALLBACK_TIMEOUT_SECONDS}s"
+              logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "base:auto-timeout-fallback-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                "${FILE_ARGS[@]}" \
+                --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            fi
+            if [ "${AUTO_PROBE_TIMED_OUT:-0}" = "1" ]; then
+              FALLBACK_STEPS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+              echo "PERF_STEPS_LEVELS=$FALLBACK_STEPS" >> "$GITHUB_ENV"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="$FALLBACK_STEPS"
+              echo "[logix-perf] base auto probe degraded; fallback steps: $FALLBACK_STEPS"
+            else
+              RESOLVED_STEPS="$(tr -d "\n\r " < "$AUTO_STEPS_OUT" || true)"
+              if [ -z "$RESOLVED_STEPS" ]; then
+                echo "auto steps probe produced empty steps levels" >&2
+                exit 1
+              fi
+              RESOLVED_STEPS_COUNT="$(awk -F',' '{print NF}' <<< "$RESOLVED_STEPS")"
+              echo "PERF_STEPS_LEVELS=$RESOLVED_STEPS" >> "$GITHUB_ENV"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="$RESOLVED_STEPS"
+              echo "[logix-perf] auto steps resolved: $RESOLVED_STEPS"
+              logix_perf_guard_log "resolved-steps" "phase=base source=auto-probe count=${RESOLVED_STEPS_COUNT} levels=${RESOLVED_STEPS}"
+            fi
+          else
+            if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+              export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
+            fi
+            if logix_perf_guard_run_with_timeout "$BASE_COLLECT_TIMEOUT_SECONDS" "base:manual-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+              "${FILE_ARGS[@]}" \
+              --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"; then
+              true
+            else
+              MANUAL_COLLECT_RC="$?"
+              if [ "$MANUAL_COLLECT_RC" -ne 124 ]; then
+                exit "$MANUAL_COLLECT_RC"
+              fi
+              echo "::warning::[logix-perf] base manual collect timeout after ${BASE_COLLECT_TIMEOUT_SECONDS}s, downgrade to fast-adaptive and retry once"
+              logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "base_manual_timeout"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+              FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
+              logix_perf_guard_log "plan" "phase=base manualRetry timeout=${FALLBACK_TIMEOUT_SECONDS}s"
+              logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "base:manual-timeout-retry-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                "${FILE_ARGS[@]}" \
+                --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            fi
+          fi
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
 
@@ -242,6 +1001,315 @@ jobs:
         run: |
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f "$HEAD_SHA"
+          if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
+            pnpm install --frozen-lockfile
+          fi
+          if [ -n "${PERF_PINNED_VITEST_SHARED:-}" ] && [ -f "$PERF_PINNED_VITEST_SHARED" ]; then
+            cp "$PERF_PINNED_VITEST_SHARED" vitest.shared.ts
+          else
+            echo "::warning::[logix-perf] skip restoring pinned vitest.shared.ts (missing PERF_PINNED_VITEST_SHARED)"
+          fi
+          mkdir -p .codex/skills/logix-perf-evidence/assets
+          if [ -n "${PERF_PINNED_MATRIX:-}" ] && [ -f "$PERF_PINNED_MATRIX" ]; then
+            git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+            cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          else
+            echo "::warning::[logix-perf] skip restoring pinned matrix (missing PERF_PINNED_MATRIX)"
+          fi
+          if [ ! -e node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
+          if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
+
+          IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
+          FILE_ARGS=()
+          for f in "${PERF_FILES_ARRAY[@]}"; do
+            f="$(echo "$f" | xargs)"
+            if [ -n "$f" ]; then
+              FILE_ARGS+=(--files "$f")
+            fi
+          done
+          source "$PERF_TIME_GUARD_SCRIPT"
+          logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "before_head_collect"
+          logix_perf_guard_report_budget "head:begin"
+          logix_perf_guard_dump_state "head:begin"
+          HEAD_COLLECT_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_HEAD_COLLECT_TIMEOUT_SECONDS:-10800}" 1200)"
+          AUTO_PROBE_TARGET="${PERF_STEPS_AUTO_PROBE_TARGET:-head}"
+          logix_perf_guard_log "plan" "phase=head collectTimeout=${HEAD_COLLECT_TIMEOUT_SECONDS}s stepsMode=${PERF_STEPS_MODE:-manual} autoProbeTarget=${AUTO_PROBE_TARGET}"
+          if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+            export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
+          elif [ "${PERF_STEPS_MODE:-manual}" = "auto" ] && [ "$AUTO_PROBE_TARGET" = "base" ]; then
+            echo "auto steps mode with probe_target=base requires PERF_STEPS_LEVELS resolved from base collect" >&2
+            exit 1
+          fi
+          if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
+            export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
+          fi
+
+          HEAD_ANCHOR_REPORT_PATH="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          HEAD_PROBE_REPORT_PATH="$PERF_OUT_DIR/after.probe.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          echo "PERF_HEAD_ANCHOR_REPORT_PATH=$HEAD_ANCHOR_REPORT_PATH" >> "$GITHUB_ENV"
+          echo "PERF_HEAD_PROBE_REPORT_PATH=$HEAD_PROBE_REPORT_PATH" >> "$GITHUB_ENV"
+
+          collect_head_once() {
+            if [ "${PERF_STEPS_MODE:-manual}" = "auto" ] && { [ "$AUTO_PROBE_TARGET" = "head" ] || [ "$AUTO_PROBE_TARGET" = "both" ]; }; then
+              AUTO_HEAD_STEPS_OUT="$PERF_OUT_DIR/steps-levels.head.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.csv"
+              AUTO_HEAD_META_OUT="$PERF_OUT_DIR/steps-probe.head.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+              AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE="${PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS}"
+              AUTO_TIME_BUDGET_MINUTES_EFFECTIVE="${PERF_STEPS_AUTO_TIME_BUDGET_MINUTES}"
+              AUTO_MIN_TOTAL_COLLECTS="${PERF_STEPS_AUTO_MIN_TOTAL_COLLECTS:-2}"
+              AUTO_COLLECT_ESTIMATE_SECONDS="${PERF_STEPS_AUTO_COLLECT_ESTIMATE_SECONDS:-1200}"
+              AUTO_COLLECT_ESTIMATE_MULTIPLIER="${PERF_STEPS_AUTO_COLLECT_ESTIMATE_MULTIPLIER:-1.8}"
+              if ! [[ "$AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE" =~ ^[0-9]+$ ]] || [ "$AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE" -le 0 ]; then
+                AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE=6
+              fi
+              if ! [[ "$AUTO_TIME_BUDGET_MINUTES_EFFECTIVE" =~ ^[0-9]+$ ]] || [ "$AUTO_TIME_BUDGET_MINUTES_EFFECTIVE" -le 0 ]; then
+                AUTO_TIME_BUDGET_MINUTES_EFFECTIVE=150
+              fi
+              if ! [[ "$AUTO_MIN_TOTAL_COLLECTS" =~ ^[0-9]+$ ]] || [ "$AUTO_MIN_TOTAL_COLLECTS" -le 0 ]; then
+                AUTO_MIN_TOTAL_COLLECTS=2
+              fi
+              if ! [[ "$AUTO_COLLECT_ESTIMATE_SECONDS" =~ ^[0-9]+$ ]] || [ "$AUTO_COLLECT_ESTIMATE_SECONDS" -le 0 ]; then
+                AUTO_COLLECT_ESTIMATE_SECONDS=1200
+              fi
+              if ! [[ "$AUTO_COLLECT_ESTIMATE_MULTIPLIER" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+                AUTO_COLLECT_ESTIMATE_MULTIPLIER=1.8
+              fi
+
+              BASE_COLLECT_DURATION_SECONDS="$(sed -n 's/.*label=base:manual-collect .* duration=\([0-9][0-9]*\)s.*/\1/p' "$PERF_DEBUG_TIMELINE_FILE" | tail -n 1)"
+              if [[ "${BASE_COLLECT_DURATION_SECONDS:-}" =~ ^[0-9]+$ ]] && [ "$BASE_COLLECT_DURATION_SECONDS" -gt 0 ]; then
+                AUTO_COLLECT_ESTIMATE_SECONDS="$(awk -v base="$BASE_COLLECT_DURATION_SECONDS" -v mult="$AUTO_COLLECT_ESTIMATE_MULTIPLIER" -v fallback="$AUTO_COLLECT_ESTIMATE_SECONDS" 'BEGIN { scaled=int(base*mult); if (scaled < fallback) scaled=fallback; if (scaled < 60) scaled=60; print scaled }')"
+              fi
+
+              REMAINING_SECONDS="$(logix_perf_guard_remaining_seconds)"
+              RESERVE_SECONDS="${PERF_TIME_GUARD_MIN_FULL_REMAINING_SECONDS:-5400}"
+              if ! [[ "$RESERVE_SECONDS" =~ ^[0-9]+$ ]] || [ "$RESERVE_SECONDS" -lt 0 ]; then
+                RESERVE_SECONDS=5400
+              fi
+              AVAILABLE_SECONDS=$((REMAINING_SECONDS - RESERVE_SECONDS))
+              if [ "$AVAILABLE_SECONDS" -gt 0 ]; then
+                AFFORDABLE_COLLECTS=$((AVAILABLE_SECONDS / AUTO_COLLECT_ESTIMATE_SECONDS))
+                if [ "$AFFORDABLE_COLLECTS" -lt "$AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE" ]; then
+                  if [ "$AFFORDABLE_COLLECTS" -ge "$AUTO_MIN_TOTAL_COLLECTS" ]; then
+                    AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE="$AFFORDABLE_COLLECTS"
+                  else
+                    AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE="$AUTO_MIN_TOTAL_COLLECTS"
+                  fi
+                fi
+                AVAILABLE_MINUTES=$((AVAILABLE_SECONDS / 60))
+                if [ "$AVAILABLE_MINUTES" -gt 0 ] && [ "$AVAILABLE_MINUTES" -lt "$AUTO_TIME_BUDGET_MINUTES_EFFECTIVE" ]; then
+                  AUTO_TIME_BUDGET_MINUTES_EFFECTIVE="$AVAILABLE_MINUTES"
+                fi
+              fi
+              if [ "$AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE" -lt 1 ]; then
+                AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE=1
+              fi
+              if [ "$AUTO_TIME_BUDGET_MINUTES_EFFECTIVE" -lt 30 ]; then
+                AUTO_TIME_BUDGET_MINUTES_EFFECTIVE=30
+              fi
+              HEAD_TIMEOUT_BUDGET_MINUTES=$((HEAD_COLLECT_TIMEOUT_SECONDS / 60))
+              if [ "$HEAD_TIMEOUT_BUDGET_MINUTES" -le 1 ]; then
+                HEAD_TIMEOUT_BUDGET_MINUTES=1
+              else
+                HEAD_TIMEOUT_BUDGET_MINUTES=$((HEAD_TIMEOUT_BUDGET_MINUTES - 1))
+              fi
+              if [ "$AUTO_TIME_BUDGET_MINUTES_EFFECTIVE" -gt "$HEAD_TIMEOUT_BUDGET_MINUTES" ]; then
+                AUTO_TIME_BUDGET_MINUTES_EFFECTIVE="$HEAD_TIMEOUT_BUDGET_MINUTES"
+              fi
+
+              echo "[logix-perf] head auto-probe tuning: requestedCollects=${PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS} effectiveCollects=${AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE} requestedBudgetMin=${PERF_STEPS_AUTO_TIME_BUDGET_MINUTES} effectiveBudgetMin=${AUTO_TIME_BUDGET_MINUTES_EFFECTIVE} headTimeoutBudgetMin=${HEAD_TIMEOUT_BUDGET_MINUTES} estimateSec=${AUTO_COLLECT_ESTIMATE_SECONDS} remainingSec=${REMAINING_SECONDS} reserveSec=${RESERVE_SECONDS} baseCollectSec=${BASE_COLLECT_DURATION_SECONDS:-n/a}"
+              AUTO_TARGET_FLOOR_BASE="${PERF_CAPACITY_FLOOR_MIN:-0}"
+              AUTO_TARGET_FLOOR_RATIO="${PERF_STEPS_AUTO_TARGET_FLOOR_RATIO:-1.35}"
+              AUTO_TARGET_FLOOR_CAP="${PERF_STEPS_AUTO_TARGET_FLOOR_CAP:-0}"
+              AUTO_TARGET_FLOOR_MAX_LEVEL_CAP="${PERF_STEPS_AUTO_MAX_LEVEL_CAP:-0}"
+              AUTO_TARGET_FLOOR_ANCHOR_P50="${PERF_CAPACITY_DYNAMIC_TARGET_ANCHOR_P50:-}"
+              AUTO_TARGET_FLOOR_SOURCE="floor_min"
+
+              if ! [[ "$AUTO_TARGET_FLOOR_BASE" =~ ^[0-9]+$ ]]; then
+                AUTO_TARGET_FLOOR_BASE=0
+              fi
+              if ! [[ "$AUTO_TARGET_FLOOR_RATIO" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+                AUTO_TARGET_FLOOR_RATIO=1.35
+              fi
+              if ! [[ "$AUTO_TARGET_FLOOR_CAP" =~ ^[0-9]+$ ]]; then
+                AUTO_TARGET_FLOOR_CAP=0
+              fi
+              if ! [[ "$AUTO_TARGET_FLOOR_MAX_LEVEL_CAP" =~ ^[0-9]+$ ]]; then
+                AUTO_TARGET_FLOOR_MAX_LEVEL_CAP=0
+              fi
+
+              AUTO_TARGET_FLOOR_MIN="$AUTO_TARGET_FLOOR_BASE"
+              if [[ "$AUTO_TARGET_FLOOR_ANCHOR_P50" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+                AUTO_TARGET_FLOOR_MIN="$(awk -v anchor="$AUTO_TARGET_FLOOR_ANCHOR_P50" -v ratio="$AUTO_TARGET_FLOOR_RATIO" 'BEGIN { v=int(anchor*ratio+0.999999); if (v < 0) v=0; print v }')"
+                AUTO_TARGET_FLOOR_SOURCE="anchor_p50"
+              fi
+              if [ "$AUTO_TARGET_FLOOR_MIN" -lt "$AUTO_TARGET_FLOOR_BASE" ]; then
+                AUTO_TARGET_FLOOR_MIN="$AUTO_TARGET_FLOOR_BASE"
+              fi
+              AUTO_TARGET_FLOOR_MIN="$(( (AUTO_TARGET_FLOOR_MIN + 99) / 100 * 100 ))"
+              if [ "$AUTO_TARGET_FLOOR_MIN" -lt "$AUTO_TARGET_FLOOR_BASE" ]; then
+                AUTO_TARGET_FLOOR_MIN="$AUTO_TARGET_FLOOR_BASE"
+              fi
+              if [ "$AUTO_TARGET_FLOOR_MAX_LEVEL_CAP" -gt 0 ] && [ "$AUTO_TARGET_FLOOR_MIN" -gt "$AUTO_TARGET_FLOOR_MAX_LEVEL_CAP" ]; then
+                AUTO_TARGET_FLOOR_MIN="$AUTO_TARGET_FLOOR_MAX_LEVEL_CAP"
+                AUTO_TARGET_FLOOR_SOURCE="${AUTO_TARGET_FLOOR_SOURCE}+max_level_cap"
+              fi
+              if [ "$AUTO_TARGET_FLOOR_CAP" -gt 0 ] && [ "$AUTO_TARGET_FLOOR_MIN" -gt "$AUTO_TARGET_FLOOR_CAP" ]; then
+                AUTO_TARGET_FLOOR_MIN="$AUTO_TARGET_FLOOR_CAP"
+                AUTO_TARGET_FLOOR_SOURCE="${AUTO_TARGET_FLOOR_SOURCE}+target_cap"
+              fi
+
+              echo "[logix-perf] head auto target floor: target=${AUTO_TARGET_FLOOR_MIN} source=${AUTO_TARGET_FLOOR_SOURCE} floorMin=${AUTO_TARGET_FLOOR_BASE} anchorP50=${AUTO_TARGET_FLOOR_ANCHOR_P50:-n/a} ratio=${AUTO_TARGET_FLOOR_RATIO} cap=${AUTO_TARGET_FLOOR_CAP} maxLevelCap=${AUTO_TARGET_FLOOR_MAX_LEVEL_CAP}"
+              echo "[logix-perf][timeline] autoProbeTargetFloor phase=head target=${AUTO_TARGET_FLOOR_MIN} source=${AUTO_TARGET_FLOOR_SOURCE} floorMin=${AUTO_TARGET_FLOOR_BASE} anchorP50=${AUTO_TARGET_FLOOR_ANCHOR_P50:-n/a} ratio=${AUTO_TARGET_FLOOR_RATIO} cap=${AUTO_TARGET_FLOOR_CAP} maxLevelCap=${AUTO_TARGET_FLOOR_MAX_LEVEL_CAP}" >> "$PERF_DEBUG_TIMELINE_FILE"
+
+              AUTO_ARGS=(
+                --profile "$PERF_PROFILE"
+                --files "$PERF_FILES"
+                --out "$HEAD_PROBE_REPORT_PATH"
+                --steps-out "$AUTO_HEAD_STEPS_OUT"
+                --meta-out "$AUTO_HEAD_META_OUT"
+                --budget-ledger-out "$PERF_OUT_DIR/steps-probe-budget.head.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+                --max-iterations "$PERF_STEPS_AUTO_MAX_ITERATIONS"
+                --growth-factor "$PERF_STEPS_AUTO_GROWTH_FACTOR"
+                --extend-count "$PERF_STEPS_AUTO_EXTEND_COUNT"
+                --max-level-cap "$PERF_STEPS_AUTO_MAX_LEVEL_CAP"
+                --samples-per-iteration "$PERF_STEPS_AUTO_SAMPLES_PER_ITERATION"
+                --min-samples-per-iteration "$PERF_STEPS_AUTO_MIN_SAMPLES_PER_ITERATION"
+                --max-total-collects "$AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE"
+                --time-budget-minutes "$AUTO_TIME_BUDGET_MINUTES_EFFECTIVE"
+                --time-reserve-minutes "${PERF_STEPS_AUTO_TIME_RESERVE_MINUTES:-5}"
+                --min-collect-estimate-seconds "${PERF_STEPS_AUTO_MIN_COLLECT_ESTIMATE_SECONDS:-45}"
+                --min-iterations-before-early-stop "${PERF_STEPS_AUTO_MIN_ITERATIONS_BEFORE_EARLY_STOP:-2}"
+                --top-saturation-ratio "${PERF_STEPS_AUTO_TOP_SATURATION_RATIO:-0.95}"
+                --min-top-headroom "${PERF_STEPS_AUTO_MIN_TOP_HEADROOM:-400}"
+                --outlier-rel-tolerance "$PERF_STEPS_AUTO_OUTLIER_REL_TOLERANCE"
+                --outlier-abs-tolerance "$PERF_STEPS_AUTO_OUTLIER_ABS_TOLERANCE"
+                --refine-gap-min "$PERF_STEPS_AUTO_REFINE_GAP_MIN"
+                --refine-max-insertions "$PERF_STEPS_AUTO_REFINE_MAX_INSERTIONS"
+                --min-kept-samples "$PERF_STEPS_AUTO_MIN_KEPT_SAMPLES"
+              )
+              if [ "$AUTO_TARGET_FLOOR_MIN" -gt 0 ]; then
+                AUTO_ARGS+=(--target-floor-min "$AUTO_TARGET_FLOOR_MIN")
+              fi
+              if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+                AUTO_ARGS+=(--initial-steps "$PERF_STEPS_LEVELS")
+              fi
+              logix_perf_guard_log "plan" "phase=head autoProbe maxIterations=${PERF_STEPS_AUTO_MAX_ITERATIONS} samplesPerIteration=${PERF_STEPS_AUTO_SAMPLES_PER_ITERATION} maxTotalCollects=${AUTO_MAX_TOTAL_COLLECTS_EFFECTIVE}/${PERF_STEPS_AUTO_MAX_TOTAL_COLLECTS} autoBudgetMin=${AUTO_TIME_BUDGET_MINUTES_EFFECTIVE}/${PERF_STEPS_AUTO_TIME_BUDGET_MINUTES} headTimeoutBudgetMin=${HEAD_TIMEOUT_BUDGET_MINUTES} estimateSec=${AUTO_COLLECT_ESTIMATE_SECONDS} remainingSec=${REMAINING_SECONDS} reserveSec=${RESERVE_SECONDS} baseCollectSec=${BASE_COLLECT_DURATION_SECONDS:-n/a} targetFloorMin=${AUTO_TARGET_FLOOR_MIN} targetFloorSource=${AUTO_TARGET_FLOOR_SOURCE} anchorP50=${AUTO_TARGET_FLOOR_ANCHOR_P50:-n/a} targetFloorRatio=${AUTO_TARGET_FLOOR_RATIO}"
+              if logix_perf_guard_run_with_timeout "$HEAD_COLLECT_TIMEOUT_SECONDS" "head:auto-probe" env VITE_LOGIX_PERF_HARD_GATES=off node "$PERF_AUTO_PROBE_SCRIPT" "${AUTO_ARGS[@]}"; then
+                true
+              else
+                AUTO_COLLECT_RC="$?"
+                if [ "$AUTO_COLLECT_RC" -ne 124 ]; then
+                  exit "$AUTO_COLLECT_RC"
+                fi
+                echo "::warning::[logix-perf] head auto collect timeout after ${HEAD_COLLECT_TIMEOUT_SECONDS}s, downgrade to fast-adaptive manual collect"
+                logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "head_auto_timeout"
+                RESOLVED_STEPS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+                RESOLVED_STEPS_COUNT="$(awk -F',' '{print NF}' <<< "$RESOLVED_STEPS")"
+                export VITE_LOGIX_PERF_STEPS_LEVELS="$RESOLVED_STEPS"
+                echo "PERF_STEPS_LEVELS=$RESOLVED_STEPS" >> "$GITHUB_ENV"
+                echo "PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS=0" >> "$GITHUB_ENV"
+                echo "[logix-perf] head auto timeout fallback steps: $RESOLVED_STEPS"
+                logix_perf_guard_log "resolved-steps" "phase=head source=auto-timeout-fallback count=${RESOLVED_STEPS_COUNT} levels=${RESOLVED_STEPS}"
+                FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
+                logix_perf_guard_log "plan" "phase=head fallbackCollect timeout=${FALLBACK_TIMEOUT_SECONDS}s"
+                logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "head:auto-timeout-fallback-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                  "${FILE_ARGS[@]}" \
+                  --out "$HEAD_PROBE_REPORT_PATH"
+                return 0
+              fi
+              RESOLVED_STEPS="$(tr -d "\n\r " < "$AUTO_HEAD_STEPS_OUT" || true)"
+              if [ -z "$RESOLVED_STEPS" ]; then
+                echo "head auto steps probe produced empty steps levels" >&2
+                exit 1
+              fi
+              RESOLVED_STEPS_COUNT="$(awk -F',' '{print NF}' <<< "$RESOLVED_STEPS")"
+              echo "PERF_STEPS_LEVELS=$RESOLVED_STEPS" >> "$GITHUB_ENV"
+              export VITE_LOGIX_PERF_STEPS_LEVELS="$RESOLVED_STEPS"
+              echo "PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS=0" >> "$GITHUB_ENV"
+              echo "[logix-perf] head auto steps resolved: $RESOLVED_STEPS"
+              logix_perf_guard_log "resolved-steps" "phase=head source=auto-probe count=${RESOLVED_STEPS_COUNT} levels=${RESOLVED_STEPS}"
+            else
+              if logix_perf_guard_run_with_timeout "$HEAD_COLLECT_TIMEOUT_SECONDS" "head:manual-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                "${FILE_ARGS[@]}" \
+                --out "$HEAD_ANCHOR_REPORT_PATH"; then
+                true
+              else
+                MANUAL_COLLECT_RC="$?"
+                if [ "$MANUAL_COLLECT_RC" -ne 124 ]; then
+                  exit "$MANUAL_COLLECT_RC"
+                fi
+                echo "::warning::[logix-perf] head manual collect timeout after ${HEAD_COLLECT_TIMEOUT_SECONDS}s, downgrade to fast-adaptive and retry once"
+                logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "head_manual_timeout"
+                export VITE_LOGIX_PERF_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+                FALLBACK_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
+                logix_perf_guard_log "plan" "phase=head manualRetry timeout=${FALLBACK_TIMEOUT_SECONDS}s"
+                logix_perf_guard_run_with_timeout "$FALLBACK_TIMEOUT_SECONDS" "head:manual-timeout-retry-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+                  "${FILE_ARGS[@]}" \
+                  --out "$HEAD_ANCHOR_REPORT_PATH"
+              fi
+            fi
+          }
+
+          collect_head_once
+
+          BASE_REPORT_PATH="$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ "${PERF_STEPS_MODE:-manual}" = "auto" ] && { [ "$AUTO_PROBE_TARGET" = "head" ] || [ "$AUTO_PROBE_TARGET" = "both" ]; }; then
+            PERF_ANCHOR_STEPS_LEVELS=""
+            if [ -f "$BASE_REPORT_PATH" ]; then
+              PERF_ANCHOR_STEPS_LEVELS="$(node -e "const fs=require('node:fs'); const report=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); const suite=(report.suites||[]).find((s)=>s?.id==='converge.txnCommit')||(report.suites||[])[0]; if(!suite||!Array.isArray(suite.points)){process.exit(0)} const levels=Array.from(new Set(suite.points.map((p)=>p?.params?.steps).filter((v)=>typeof v==='number'&&Number.isFinite(v)))).sort((a,b)=>a-b); if(levels.length>0) process.stdout.write(levels.join(','));" "$BASE_REPORT_PATH" || true)"
+            fi
+            if [ -z "${PERF_ANCHOR_STEPS_LEVELS:-}" ]; then
+              PERF_ANCHOR_STEPS_LEVELS="${PERF_STEPS_LEVELS:-${PERF_TIME_GUARD_FALLBACK_STEPS_LEVELS:-2000,3200,4800,6400,8000}}"
+            fi
+            echo "PERF_ANCHOR_STEPS_LEVELS=$PERF_ANCHOR_STEPS_LEVELS" >> "$GITHUB_ENV"
+            export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_ANCHOR_STEPS_LEVELS"
+            ANCHOR_COLLECT_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_FALLBACK_COLLECT_TIMEOUT_SECONDS:-2400}" 900)"
+            echo "[logix-perf] head anchor steps: $PERF_ANCHOR_STEPS_LEVELS"
+            logix_perf_guard_log "plan" "phase=head anchorCollect timeout=${ANCHOR_COLLECT_TIMEOUT_SECONDS}s steps=${PERF_ANCHOR_STEPS_LEVELS}"
+            if logix_perf_guard_run_with_timeout "$ANCHOR_COLLECT_TIMEOUT_SECONDS" "head:anchor-collect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+              "${FILE_ARGS[@]}" \
+              --out "$HEAD_ANCHOR_REPORT_PATH"; then
+              true
+            else
+              ANCHOR_COLLECT_RC="$?"
+              if [ "$ANCHOR_COLLECT_RC" -ne 124 ]; then
+                exit "$ANCHOR_COLLECT_RC"
+              fi
+              echo "::warning::[logix-perf] head anchor collect timeout after ${ANCHOR_COLLECT_TIMEOUT_SECONDS}s; fallback to probe report"
+              if [ -f "$HEAD_PROBE_REPORT_PATH" ]; then
+                cp "$HEAD_PROBE_REPORT_PATH" "$HEAD_ANCHOR_REPORT_PATH"
+              fi
+            fi
+          fi
+
+          if [ ! -f "$HEAD_PROBE_REPORT_PATH" ] && [ -f "$HEAD_ANCHOR_REPORT_PATH" ]; then
+            cp "$HEAD_ANCHOR_REPORT_PATH" "$HEAD_PROBE_REPORT_PATH"
+          fi
+
+          if [ "${PERF_CAPACITY_AUTO_RETRY_ON_TIMEOUT:-1}" = "1" ] && [ -f "$HEAD_ANCHOR_REPORT_PATH" ] && { [ "${PERF_STEPS_MODE:-manual}" != "auto" ] || [ "$AUTO_PROBE_TARGET" = "base" ]; }; then
+            TIMEOUT_COUNT="$(jq '[.suites[]? | select(.id=="converge.txnCommit") | .thresholds[]? | select((.budget.id // "")=="commit.p95<=50ms") | select((.where.convergeMode // null)=="auto") | select(((.firstFail.reason // .reason // "") | test("timeout"; "i")))] | length' "$HEAD_ANCHOR_REPORT_PATH")"
+            if [ "${TIMEOUT_COUNT:-0}" -gt 0 ]; then
+              echo "[logix-perf] timeout rows detected in head report ($TIMEOUT_COUNT); retry once"
+              collect_head_once
+            fi
+          fi
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
+
+      - name: Re-collect base (align resolved auto steps)
+        if: env.PERF_STEPS_MODE == 'auto'
+        run: |
+          if [ "${PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS:-0}" != "1" ]; then
+            echo "skip base re-collect: PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS=${PERF_BASE_RECOLLECT_WITH_RESOLVED_STEPS:-0}"
+            exit 0
+          fi
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f "$BASE_SHA"
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
           fi
@@ -266,12 +1334,69 @@ jobs:
               FILE_ARGS+=(--files "$f")
             fi
           done
+          source "$PERF_TIME_GUARD_SCRIPT"
+          logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "before_base_recollect"
+          logix_perf_guard_report_budget "base:recollect:begin"
+          logix_perf_guard_dump_state "base:recollect:begin"
+          if [ "${PERF_RUN_PRESET:-full}" != "full" ]; then
+            echo "skip base re-collect after adaptive downgrade: PERF_RUN_PRESET=${PERF_RUN_PRESET:-unknown}"
+            exit 0
+          fi
+          RECOLLECT_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TIME_GUARD_RECOLLECT_TIMEOUT_SECONDS:-3600}" 900)"
+          logix_perf_guard_log "plan" "phase=base_recollect collectTimeout=${RECOLLECT_TIMEOUT_SECONDS}s"
+          if [ -n "${PERF_CAPACITY_FLOOR_MIN:-}" ]; then
+            export VITE_LOGIX_PERF_CAPACITY_FLOOR_MIN="$PERF_CAPACITY_FLOOR_MIN"
+          fi
+          if [ -n "${PERF_STEPS_LEVELS:-}" ]; then
+            export VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_STEPS_LEVELS"
+          fi
 
-          VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+          if logix_perf_guard_run_with_timeout "$RECOLLECT_TIMEOUT_SECONDS" "base:recollect" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
-            --out "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"; then
+            true
+          else
+            RECOLLECT_RC="$?"
+            if [ "$RECOLLECT_RC" -eq 124 ]; then
+              echo "::warning::[logix-perf] base re-collect timeout after ${RECOLLECT_TIMEOUT_SECONDS}s; continue with existing base report"
+              exit 0
+            fi
+            exit "$RECOLLECT_RC"
+          fi
           git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
+
+      - name: Restore head workspace (after base re-collect)
+        if: always()
+        run: |
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f "$HEAD_SHA"
+          if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
+            pnpm install --frozen-lockfile
+          fi
+          cp "$PERF_PINNED_VITEST_SHARED" vitest.shared.ts
+          mkdir -p .codex/skills/logix-perf-evidence/assets
+          git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          if [ ! -e node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
+          if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
+
+      - name: Guard steps grid comparability
+        if: always()
+        run: |
+          BEFORE_REPORT="$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          AFTER_REPORT="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ ! -f "$BEFORE_REPORT" ] || [ ! -f "$AFTER_REPORT" ]; then
+            echo "::warning::[logix-perf] skip steps-grid guard: missing before/after report"
+            exit 0
+          fi
+          pnpm -C .codex/skills/logix-perf-evidence ci:check-steps-grid -- --before "$BEFORE_REPORT" --after "$AFTER_REPORT" --env-out "$GITHUB_ENV"
 
       - name: Normalize reports (pin matrixHash + browser.version)
         run: |
@@ -294,9 +1419,490 @@ jobs:
               --out "$PERF_OUT_DIR/diff.${BASE_SHORT}__${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
           fi
 
+      - name: Plan tail recheck candidates
+        if: always() && env.PERF_RUN_PRESET == 'full' && env.PERF_TAIL_RECHECK_ENABLE == '1'
+        run: |
+          BEFORE_REPORT="$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          AFTER_REPORT="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          PROBE_REPORT="$PERF_OUT_DIR/after.probe.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ -f "$PROBE_REPORT" ]; then
+            AFTER_REPORT="$PROBE_REPORT"
+          fi
+          if [ ! -f "$BEFORE_REPORT" ] || [ ! -f "$AFTER_REPORT" ]; then
+            echo "PERF_TAIL_RECHECK_SHOULD_RUN=0" >> "$GITHUB_ENV"
+            echo "::warning::[logix-perf] skip tail recheck plan: missing before/after report"
+            exit 0
+          fi
+          node "$PERF_TAIL_RECHECK_SCRIPT" plan \
+            --before "$BEFORE_REPORT" \
+            --after "$AFTER_REPORT" \
+            --matrix "$PERF_PINNED_MATRIX" \
+            --suite-id "$PERF_TAIL_RECHECK_SUITE_ID" \
+            --budget-id "$PERF_TAIL_RECHECK_BUDGET_ID" \
+            --converge-mode "$PERF_TAIL_RECHECK_SCOPE_CONVERGE_MODE" \
+            --max-candidates "$PERF_TAIL_RECHECK_MAX_CANDIDATES" \
+            --near-budget-min-ratio "$PERF_TAIL_RECHECK_NEAR_BUDGET_MIN_RATIO" \
+            --matrix-out "$PERF_OUT_DIR/tail-recheck.matrix.json" \
+            --env-out "$GITHUB_ENV" \
+            --out "$PERF_OUT_DIR/tail-recheck-plan.json"
+          if [ -f "$PERF_OUT_DIR/tail-recheck-plan.json" ]; then
+            node -e "const fs=require('node:fs');const p=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const picked=Array.isArray(p.selectedCandidates)?p.selectedCandidates:[];const steps=Array.isArray(p.stepsLevels)&&p.stepsLevels.length>0?p.stepsLevels.join(','):'n/a';const ratios=Array.isArray(p.dirtyRootsRatios)&&p.dirtyRootsRatios.length>0?p.dirtyRootsRatios.join(','):'n/a';console.log('[logix-perf] tail recheck plan mode='+(p.selectionMode||'unknown')+' shouldRun='+(p.shouldRun?'1':'0')+' candidates='+picked.length+' steps='+steps+' ratios='+ratios);" "$PERF_OUT_DIR/tail-recheck-plan.json"
+          fi
+
+      - name: Tail recheck (head samples)
+        if: always() && env.PERF_RUN_PRESET == 'full' && env.PERF_TAIL_RECHECK_ENABLE == '1' && env.PERF_TAIL_RECHECK_SHOULD_RUN == '1'
+        continue-on-error: true
+        run: |
+          source "$PERF_TIME_GUARD_SCRIPT"
+          logix_perf_guard_maybe_downgrade "$GITHUB_ENV" "before_tail_recheck_head"
+          logix_perf_guard_report_budget "tail-recheck:begin"
+          logix_perf_guard_dump_state "tail-recheck:begin"
+
+          REMAINING_SECONDS="$(logix_perf_guard_remaining_seconds)"
+          MIN_REMAINING_SECONDS="${PERF_TAIL_RECHECK_MIN_REMAINING_SECONDS:-3600}"
+          if ! [[ "$MIN_REMAINING_SECONDS" =~ ^[0-9]+$ ]] || [ "$MIN_REMAINING_SECONDS" -le 0 ]; then
+            MIN_REMAINING_SECONDS=3600
+          fi
+
+          if [ "$REMAINING_SECONDS" -lt "$MIN_REMAINING_SECONDS" ]; then
+            echo "::warning::[logix-perf] skip tail recheck: remaining=${REMAINING_SECONDS}s < min=${MIN_REMAINING_SECONDS}s"
+            {
+              echo "PERF_TAIL_RECHECK_SKIPPED=1"
+              echo "PERF_TAIL_RECHECK_COLLECTED_SAMPLE_COUNT=0"
+            } >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          SAMPLES_MIN="${PERF_TAIL_RECHECK_HEAD_SAMPLES_MIN:-2}"
+          SAMPLES_MAX="${PERF_TAIL_RECHECK_HEAD_SAMPLES_MAX:-8}"
+          SAMPLE_ESTIMATE_SECONDS="${PERF_TAIL_RECHECK_SAMPLE_ESTIMATE_SECONDS:-1200}"
+
+          if ! [[ "$SAMPLES_MIN" =~ ^[0-9]+$ ]] || [ "$SAMPLES_MIN" -le 0 ]; then
+            SAMPLES_MIN=2
+          fi
+          if ! [[ "$SAMPLES_MAX" =~ ^[0-9]+$ ]] || [ "$SAMPLES_MAX" -le 0 ]; then
+            SAMPLES_MAX=8
+          fi
+          if [ "$SAMPLES_MAX" -lt "$SAMPLES_MIN" ]; then
+            SAMPLES_MAX="$SAMPLES_MIN"
+          fi
+          if ! [[ "$SAMPLE_ESTIMATE_SECONDS" =~ ^[0-9]+$ ]] || [ "$SAMPLE_ESTIMATE_SECONDS" -le 0 ]; then
+            SAMPLE_ESTIMATE_SECONDS=1200
+          fi
+
+          EXTRA_SAMPLES=0
+          if [ "$REMAINING_SECONDS" -gt "$MIN_REMAINING_SECONDS" ]; then
+            EXTRA_SAMPLES=$(( (REMAINING_SECONDS - MIN_REMAINING_SECONDS) / SAMPLE_ESTIMATE_SECONDS ))
+          fi
+          TARGET_SAMPLES=$((SAMPLES_MIN + EXTRA_SAMPLES))
+          if [ "$TARGET_SAMPLES" -gt "$SAMPLES_MAX" ]; then
+            TARGET_SAMPLES="$SAMPLES_MAX"
+          fi
+          if [ "$TARGET_SAMPLES" -le 0 ]; then
+            TARGET_SAMPLES=1
+          fi
+          echo "PERF_TAIL_RECHECK_ACTUAL_SAMPLES=$TARGET_SAMPLES" >> "$GITHUB_ENV"
+          echo "[logix-perf] tail recheck budget: remaining=${REMAINING_SECONDS}s minRemaining=${MIN_REMAINING_SECONDS}s"
+          echo "[logix-perf] tail recheck sample policy: min=${SAMPLES_MIN} max=${SAMPLES_MAX} estimate=${SAMPLE_ESTIMATE_SECONDS}s target=${TARGET_SAMPLES}"
+          echo "[logix-perf] tail recheck selectionMode=${PERF_TAIL_RECHECK_SELECTION_MODE:-unknown}"
+
+          TARGET_MATRIX="${PERF_TAIL_RECHECK_MATRIX:-$PERF_OUT_DIR/tail-recheck.matrix.json}"
+          if [ ! -f "$TARGET_MATRIX" ]; then
+            echo "::warning::[logix-perf] skip tail recheck: target matrix missing ($TARGET_MATRIX)"
+            echo "PERF_TAIL_RECHECK_COLLECTED_SAMPLE_COUNT=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          if [ -z "${PERF_TAIL_RECHECK_STEPS_LEVELS:-}" ]; then
+            echo "::warning::[logix-perf] skip tail recheck: empty PERF_TAIL_RECHECK_STEPS_LEVELS"
+            echo "PERF_TAIL_RECHECK_COLLECTED_SAMPLE_COUNT=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "[logix-perf] tail recheck scope: matrix=${TARGET_MATRIX}"
+          echo "[logix-perf] tail recheck scope: steps=${PERF_TAIL_RECHECK_STEPS_LEVELS} dirtyRootsRatios=${PERF_TAIL_RECHECK_DIRTY_ROOTS_RATIOS:-n/a}"
+          {
+            echo "[logix-perf][timeline] tailRecheck budget remainingSec=${REMAINING_SECONDS} minRemainingSec=${MIN_REMAINING_SECONDS} sampleEstimateSec=${SAMPLE_ESTIMATE_SECONDS} targetSamples=${TARGET_SAMPLES}"
+            echo "[logix-perf][timeline] tailRecheck scope steps=${PERF_TAIL_RECHECK_STEPS_LEVELS} dirtyRootsRatios=${PERF_TAIL_RECHECK_DIRTY_ROOTS_RATIOS:-n/a}"
+            echo "[logix-perf][timeline] tailRecheck selectionMode=${PERF_TAIL_RECHECK_SELECTION_MODE:-unknown}"
+          } >> "$PERF_DEBUG_TIMELINE_FILE"
+
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f "$HEAD_SHA"
+          if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
+            pnpm install --frozen-lockfile
+          fi
+          cp "$PERF_PINNED_VITEST_SHARED" vitest.shared.ts
+          mkdir -p .codex/skills/logix-perf-evidence/assets
+          git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          cp "$TARGET_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          if [ ! -e node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
+          if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
+
+          IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
+          FILE_ARGS=()
+          for f in "${PERF_FILES_ARRAY[@]}"; do
+            f="$(echo "$f" | xargs)"
+            if [ -n "$f" ]; then
+              FILE_ARGS+=(--files "$f")
+            fi
+          done
+
+          COLLECTED=0
+          SAMPLE_ERRORS=0
+          for i in $(seq 1 "$TARGET_SAMPLES"); do
+            SAMPLE_TIMEOUT_SECONDS="$(logix_perf_guard_step_timeout_seconds "${PERF_TAIL_RECHECK_COLLECT_TIMEOUT_SECONDS:-1800}" 1800)"
+            OUT_FILE="$PERF_OUT_DIR/tail-recheck.head.sample$(printf '%02d' "$i").${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            echo "[logix-perf] tail recheck sample${i}/${TARGET_SAMPLES} timeout=${SAMPLE_TIMEOUT_SECONDS}s out=$(basename "$OUT_FILE")"
+            if logix_perf_guard_run_with_timeout "$SAMPLE_TIMEOUT_SECONDS" "tail-recheck:head:sample${i}" env \
+              VITE_LOGIX_PERF_HARD_GATES=off \
+              VITE_LOGIX_PERF_STEPS_LEVELS="$PERF_TAIL_RECHECK_STEPS_LEVELS" \
+              pnpm perf collect -- --profile "$PERF_PROFILE" "${FILE_ARGS[@]}" --out "$OUT_FILE"; then
+              COLLECTED=$((COLLECTED + 1))
+              echo "[logix-perf] tail recheck sample${i} done (${COLLECTED}/${TARGET_SAMPLES})"
+              echo "[logix-perf][timeline] tailRecheck sample${i} result=ok out=$(basename "$OUT_FILE")" >> "$PERF_DEBUG_TIMELINE_FILE"
+            else
+              RC="$?"
+              if [ "$RC" -eq 124 ]; then
+                echo "::warning::[logix-perf] tail recheck sample${i} timeout (${SAMPLE_TIMEOUT_SECONDS}s)"
+                echo "[logix-perf][timeline] tailRecheck sample${i} result=timeout timeoutSec=${SAMPLE_TIMEOUT_SECONDS}" >> "$PERF_DEBUG_TIMELINE_FILE"
+                continue
+              fi
+              echo "::warning::[logix-perf] tail recheck sample${i} failed (exit=${RC}), continue"
+              echo "[logix-perf][timeline] tailRecheck sample${i} result=error code=${RC}" >> "$PERF_DEBUG_TIMELINE_FILE"
+              SAMPLE_ERRORS=$((SAMPLE_ERRORS + 1))
+              continue
+            fi
+          done
+
+          echo "PERF_TAIL_RECHECK_COLLECTED_SAMPLE_COUNT=$COLLECTED" >> "$GITHUB_ENV"
+          echo "PERF_TAIL_RECHECK_ERROR_COUNT=$SAMPLE_ERRORS" >> "$GITHUB_ENV"
+          echo "[logix-perf] tail recheck collected samples=${COLLECTED}/${TARGET_SAMPLES}"
+          if [ "$SAMPLE_ERRORS" -gt 0 ]; then
+            echo "::warning::[logix-perf] tail recheck encountered ${SAMPLE_ERRORS} sample error(s); status will be resolved by evaluate step"
+          fi
+          echo "[logix-perf][timeline] tailRecheck collected=${COLLECTED} target=${TARGET_SAMPLES} errors=${SAMPLE_ERRORS}" >> "$PERF_DEBUG_TIMELINE_FILE"
+          cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
+
+      - name: Evaluate tail recheck
+        if: always() && env.PERF_RUN_PRESET == 'full' && env.PERF_TAIL_RECHECK_ENABLE == '1'
+        run: |
+          PLAN_FILE="$PERF_OUT_DIR/tail-recheck-plan.json"
+          BEFORE_REPORT="$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          AFTER_REPORT="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          PROBE_REPORT="$PERF_OUT_DIR/after.probe.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ -f "$PROBE_REPORT" ]; then
+            AFTER_REPORT="$PROBE_REPORT"
+          fi
+          if [ ! -f "$PLAN_FILE" ]; then
+            echo "[logix-perf] skip tail recheck evaluation: missing $PLAN_FILE"
+            exit 0
+          fi
+          node "$PERF_TAIL_RECHECK_SCRIPT" evaluate \
+            --plan "$PLAN_FILE" \
+            --report-dir "$PERF_OUT_DIR" \
+            --sample-prefix "tail-recheck.head.sample" \
+            --before "$BEFORE_REPORT" \
+            --after "$AFTER_REPORT" \
+            --env-out "$GITHUB_ENV" \
+            --out "$PERF_OUT_DIR/tail-recheck-summary.json"
+          if [ -f "$PERF_OUT_DIR/tail-recheck-summary.json" ]; then
+            node -e "const fs=require('node:fs');const s=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const c=s.counts&&typeof s.counts==='object'?s.counts:{};const line='[logix-perf] tail recheck evaluate status='+(s.status||'unknown')+' candidates='+(s.candidateCount||0)+' samples='+(s.headSampleCount||0)+' resolved='+(c.resolved||0)+' flaky='+(c.flaky||0)+' persistent='+((c.persistentTail||0)+(c.persistentSystemic||0))+' missing='+(c.missing||0);console.log(line);fs.appendFileSync(process.argv[2],line+'\\n','utf8');" "$PERF_OUT_DIR/tail-recheck-summary.json" "$PERF_DEBUG_TIMELINE_FILE"
+          fi
+
+      - name: Build capacity model (latest + history)
+        if: always()
+        run: |
+          REPORT="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          PROBE_REPORT="$PERF_OUT_DIR/after.probe.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          if [ -f "$PROBE_REPORT" ]; then
+            REPORT="$PROBE_REPORT"
+          fi
+          if [ ! -f "$REPORT" ]; then
+            echo "skip capacity model: missing report $REPORT"
+            exit 0
+          fi
+          mkdir -p "$PERF_CAPACITY_HISTORY_DIR"
+          node "$PERF_CAPACITY_MODEL_SCRIPT" record \
+            --report "$REPORT" \
+            --suite-id "converge.txnCommit" \
+            --budget-id "commit.p95<=50ms" \
+            --converge-mode "auto" \
+            --history "$PERF_CAPACITY_HISTORY_FILE" \
+            --latest "$PERF_CAPACITY_LATEST_FILE" \
+            --artifact-history "$PERF_OUT_DIR/capacity-history.jsonl" \
+            --artifact-latest "$PERF_OUT_DIR/capacity-latest.json" \
+            --base-floor-min "$PERF_CAPACITY_FLOOR_MIN" \
+            --hard-floor-ratio "$PERF_CAPACITY_DYNAMIC_HARD_RATIO" \
+            --warn-floor-ratio "$PERF_CAPACITY_DYNAMIC_WARN_RATIO" \
+            --min-history-runs "$PERF_CAPACITY_DYNAMIC_MIN_HISTORY_RUNS" \
+            --history-window "$PERF_CAPACITY_DYNAMIC_HISTORY_WINDOW" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-url "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --head-sha "$HEAD_SHA" \
+            --base-sha "$BASE_SHA" \
+            --profile "$PERF_PROFILE" \
+            --env-id "$PERF_ENV_ID" \
+            --env-out "$GITHUB_ENV" \
+            --out "$PERF_OUT_DIR/capacity-model.json"
+
+      - name: Run perf agent (optional)
+        if: always()
+        run: |
+          mkdir -p "$PERF_OUT_DIR"
+          AGENT_RESULT_FILE="$PERF_OUT_DIR/agent-result.json"
+          AGENT_STDOUT_FILE="$PERF_OUT_DIR/agent.stdout.log"
+          AGENT_STDERR_FILE="$PERF_OUT_DIR/agent.stderr.log"
+          AGENT_ADVICE_FILE="$PERF_OUT_DIR/agent-advice.md"
+
+          AGENT_ENABLED="${PERF_AGENT_ENABLE:-0}"
+          AGENT_STATUS="disabled"
+          AGENT_EXIT_CODE=0
+          AGENT_DURATION_SECONDS=0
+
+          if [ "$AGENT_ENABLED" != "1" ]; then
+            echo "[logix-perf] perf agent disabled (PERF_AGENT_ENABLE=${AGENT_ENABLED})"
+          elif [ -z "${PERF_AGENT_COMMAND:-}" ]; then
+            AGENT_STATUS="missing_command"
+            AGENT_EXIT_CODE=2
+            echo "::warning::[logix-perf] PERF_AGENT_ENABLE=1 but PERF_AGENT_COMMAND is empty"
+          else
+            AGENT_STATUS="running"
+            AGENT_TIMEOUT_SECONDS="${PERF_AGENT_TIMEOUT_SECONDS:-900}"
+            if ! [[ "$AGENT_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || [ "$AGENT_TIMEOUT_SECONDS" -le 0 ]; then
+              AGENT_TIMEOUT_SECONDS=900
+            fi
+
+            export PERF_AGENT_MODE="${PERF_AGENT_MODE:-advisor}"
+            export PERF_AGENT_ARTIFACT_DIR="$PERF_OUT_DIR"
+            export PERF_AGENT_BEFORE_REPORT="$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            export PERF_AGENT_AFTER_REPORT="$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            export PERF_AGENT_DIFF_REPORT="$PERF_OUT_DIR/diff.${BASE_SHORT}__${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+            export PERF_AGENT_TAIL_RECHECK_PLAN="$PERF_OUT_DIR/tail-recheck-plan.json"
+            export PERF_AGENT_TAIL_RECHECK_SUMMARY="$PERF_OUT_DIR/tail-recheck-summary.json"
+            export PERF_AGENT_CAPACITY_MODEL="$PERF_OUT_DIR/capacity-model.json"
+            export PERF_AGENT_ADVICE_FILE="$AGENT_ADVICE_FILE"
+            export PERF_AGENT_RUN_ID="$GITHUB_RUN_ID"
+            export PERF_AGENT_REPOSITORY="$GITHUB_REPOSITORY"
+            export PERF_AGENT_RUN_URL="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+            START_EPOCH="$(date +%s)"
+            set +e
+            timeout "$AGENT_TIMEOUT_SECONDS" bash -lc "$PERF_AGENT_COMMAND" >"$AGENT_STDOUT_FILE" 2>"$AGENT_STDERR_FILE"
+            AGENT_EXIT_CODE="$?"
+            set -e
+            END_EPOCH="$(date +%s)"
+            AGENT_DURATION_SECONDS="$((END_EPOCH - START_EPOCH))"
+
+            if [ "$AGENT_EXIT_CODE" -eq 0 ]; then
+              AGENT_STATUS="ok"
+            elif [ "$AGENT_EXIT_CODE" -eq 124 ]; then
+              AGENT_STATUS="timeout"
+            else
+              AGENT_STATUS="failed"
+            fi
+            echo "[logix-perf] perf agent status=${AGENT_STATUS} rc=${AGENT_EXIT_CODE} durationSec=${AGENT_DURATION_SECONDS} timeoutSec=${AGENT_TIMEOUT_SECONDS}"
+            echo "[logix-perf][timeline] perfAgent status=${AGENT_STATUS} rc=${AGENT_EXIT_CODE} durationSec=${AGENT_DURATION_SECONDS} timeoutSec=${AGENT_TIMEOUT_SECONDS}" >> "$PERF_DEBUG_TIMELINE_FILE"
+          fi
+
+          export PERF_AGENT_RESULT_FILE="$AGENT_RESULT_FILE"
+          export PERF_AGENT_RESULT_ENABLED="$AGENT_ENABLED"
+          export PERF_AGENT_RESULT_MODE="${PERF_AGENT_MODE:-advisor}"
+          export PERF_AGENT_RESULT_STATUS="$AGENT_STATUS"
+          export PERF_AGENT_RESULT_EXIT_CODE="$AGENT_EXIT_CODE"
+          export PERF_AGENT_RESULT_DURATION_SECONDS="$AGENT_DURATION_SECONDS"
+          export PERF_AGENT_RESULT_COMMAND="${PERF_AGENT_COMMAND:-}"
+          export PERF_AGENT_RESULT_STDOUT_FILE="$AGENT_STDOUT_FILE"
+          export PERF_AGENT_RESULT_STDERR_FILE="$AGENT_STDERR_FILE"
+          export PERF_AGENT_RESULT_ADVICE_FILE="$AGENT_ADVICE_FILE"
+          node <<'NODE'
+          const fs = require('node:fs')
+          const path = require('node:path')
+
+          const outFile = process.env.PERF_AGENT_RESULT_FILE
+          const enabled = process.env.PERF_AGENT_RESULT_ENABLED === '1'
+          const mode = process.env.PERF_AGENT_RESULT_MODE || 'advisor'
+          const status = process.env.PERF_AGENT_RESULT_STATUS || 'unknown'
+          const exitCode = Number(process.env.PERF_AGENT_RESULT_EXIT_CODE || 0)
+          const durationSeconds = Number(process.env.PERF_AGENT_RESULT_DURATION_SECONDS || 0)
+          const command = process.env.PERF_AGENT_RESULT_COMMAND || ''
+          const stdoutFile = process.env.PERF_AGENT_RESULT_STDOUT_FILE || ''
+          const stderrFile = process.env.PERF_AGENT_RESULT_STDERR_FILE || ''
+          const adviceFile = process.env.PERF_AGENT_RESULT_ADVICE_FILE || ''
+
+          const payload = {
+            generatedAt: new Date().toISOString(),
+            enabled,
+            mode,
+            status,
+            exitCode,
+            durationSeconds,
+            command,
+            output: {
+              adviceFile: adviceFile && fs.existsSync(adviceFile) ? path.basename(adviceFile) : null,
+              stdoutFile: stdoutFile && fs.existsSync(stdoutFile) ? path.basename(stdoutFile) : null,
+              stderrFile: stderrFile && fs.existsSync(stderrFile) ? path.basename(stderrFile) : null,
+            },
+          }
+          fs.writeFileSync(outFile, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+          NODE
+
+          if [ "$AGENT_STATUS" != "ok" ] && [ "$AGENT_STATUS" != "disabled" ] && [ "${PERF_AGENT_FAIL_ON_ERROR:-0}" = "1" ]; then
+            if [ "$AGENT_EXIT_CODE" -ne 0 ]; then
+              exit "$AGENT_EXIT_CODE"
+            fi
+            exit 1
+          fi
+
+      - name: Fetch curve history artifacts (optional)
+        if: always() && env.PERF_RUN_PRESET == 'curve' && env.PERF_CURVE_HISTORY_ENABLE == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          TARGET_COUNT="${PERF_CURVE_HISTORY_RUNS:-3}"
+          if ! [[ "$TARGET_COUNT" =~ ^[0-9]+$ ]] || [ "$TARGET_COUNT" -le 0 ]; then
+            TARGET_COUNT=3
+          fi
+
+          SCAN_LIMIT="${PERF_CURVE_HISTORY_MAX_SCAN:-20}"
+          if ! [[ "$SCAN_LIMIT" =~ ^[0-9]+$ ]] || [ "$SCAN_LIMIT" -le 0 ]; then
+            SCAN_LIMIT=20
+          fi
+          if [ "$SCAN_LIMIT" -gt 100 ]; then
+            SCAN_LIMIT=100
+          fi
+
+          HISTORY_DIR="${PERF_CURVE_HISTORY_DIR:-$PERF_OUT_DIR/curve-history}"
+          mkdir -p "$HISTORY_DIR"
+
+          HISTORY_BRANCH="${HEAD_REF:-${GITHUB_REF_NAME:-}}"
+          if [[ "$HISTORY_BRANCH" =~ ^[0-9a-f]{40}$ ]]; then
+            HISTORY_BRANCH="${GITHUB_REF_NAME:-}"
+          fi
+          if [ -z "$HISTORY_BRANCH" ]; then
+            echo "::warning::[logix-perf] skip curve history fetch: empty branch"
+            exit 0
+          fi
+
+          WORKFLOW_ID="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows" --jq '.workflows[] | select(.path==".github/workflows/logix-perf-sweep.yml") | .id' | head -n 1 || true)"
+          if [ -z "$WORKFLOW_ID" ]; then
+            echo "::warning::[logix-perf] skip curve history fetch: workflow id not found"
+            echo "[logix-perf][timeline] curveHistory downloaded=0 branch=$HISTORY_BRANCH reason=workflow-id-missing" >> "$PERF_DEBUG_TIMELINE_FILE"
+            exit 0
+          fi
+
+          RUNS_JSON="$RUNNER_TEMP/curve-history-runs.json"
+          FALLBACK_NOTE=""
+          if ! gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/${WORKFLOW_ID}/runs" \
+            -f branch="$HISTORY_BRANCH" \
+            -f event=workflow_dispatch \
+            -f status=completed \
+            -f per_page="$SCAN_LIMIT" > "$RUNS_JSON"; then
+            echo "::warning::[logix-perf] runs query with event filter failed; fallback to branch-only query"
+            if ! gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/${WORKFLOW_ID}/runs" \
+              -f branch="$HISTORY_BRANCH" \
+              -f status=completed \
+              -f per_page="$SCAN_LIMIT" > "$RUNS_JSON"; then
+              echo "::warning::[logix-perf] skip curve history fetch: cannot list workflow runs"
+              echo "[logix-perf][timeline] curveHistory downloaded=0 branch=$HISTORY_BRANCH reason=runs-query-failed" >> "$PERF_DEBUG_TIMELINE_FILE"
+              exit 0
+            fi
+            FALLBACK_NOTE="fallback-branch-only-query"
+          fi
+
+          RUNS_COUNT="$(node -e 'const fs = require("node:fs"); const file = process.argv[1]; const payload = JSON.parse(fs.readFileSync(file, "utf8")); const runs = Array.isArray(payload.workflow_runs) ? payload.workflow_runs : []; process.stdout.write(String(runs.length));' "$RUNS_JSON")"
+          if ! [[ "$RUNS_COUNT" =~ ^[0-9]+$ ]]; then
+            RUNS_COUNT=0
+          fi
+          if [ "$RUNS_COUNT" -eq 0 ] && [ -z "$FALLBACK_NOTE" ]; then
+            echo "[logix-perf] curve history event-filter query returned 0 runs; fallback to branch-only query"
+            if ! gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/${WORKFLOW_ID}/runs" \
+              -f branch="$HISTORY_BRANCH" \
+              -f status=completed \
+              -f per_page="$SCAN_LIMIT" > "$RUNS_JSON"; then
+              echo "::warning::[logix-perf] skip curve history fetch: cannot list workflow runs"
+              echo "[logix-perf][timeline] curveHistory downloaded=0 branch=$HISTORY_BRANCH reason=runs-query-failed" >> "$PERF_DEBUG_TIMELINE_FILE"
+              exit 0
+            fi
+            FALLBACK_NOTE="fallback-branch-only-empty-result"
+          fi
+          if [ -n "$FALLBACK_NOTE" ]; then
+            echo "[logix-perf][timeline] curveHistory branch=$HISTORY_BRANCH note=$FALLBACK_NOTE" >> "$PERF_DEBUG_TIMELINE_FILE"
+          fi
+
+          mapfile -t HISTORY_RUN_IDS < <(node -e 'const fs = require("node:fs"); const file = process.argv[1]; const currentRunId = Number(process.argv[2]); const payload = JSON.parse(fs.readFileSync(file, "utf8")); const runs = Array.isArray(payload.workflow_runs) ? payload.workflow_runs : []; for (const run of runs) { const id = Number(run?.id); const conclusion = String(run?.conclusion || ""); if (!Number.isFinite(id) || id === currentRunId) continue; if (conclusion !== "success") continue; process.stdout.write(`${id}\n`); }' "$RUNS_JSON" "$GITHUB_RUN_ID")
+
+          DOWNLOADED=0
+          for run_id in "${HISTORY_RUN_IDS[@]}"; do
+            if [ "$DOWNLOADED" -ge "$TARGET_COUNT" ]; then
+              break
+            fi
+
+            ARTIFACTS_JSON="$RUNNER_TEMP/curve-history-artifacts-${run_id}.json"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/${run_id}/artifacts" > "$ARTIFACTS_JSON"
+
+            ARTIFACT_NAME="$(node -e 'const fs = require("node:fs"); const payload = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : []; const item = artifacts.find((artifact) => { if (!artifact || artifact.expired) return false; const name = String(artifact.name || ""); return name.startsWith("logix-perf-sweep-curve-"); }); if (item) process.stdout.write(String(item.name));' "$ARTIFACTS_JSON")"
+
+            if [ -z "$ARTIFACT_NAME" ]; then
+              continue
+            fi
+
+            RUN_DIR="$HISTORY_DIR/run-${run_id}"
+            mkdir -p "$RUN_DIR"
+            if gh run download "$run_id" -n "$ARTIFACT_NAME" -D "$RUN_DIR"; then
+              DOWNLOADED=$((DOWNLOADED + 1))
+            fi
+          done
+
+          if [ "$DOWNLOADED" -gt 0 ]; then
+            echo "PERF_CURVE_HISTORY_DIR=$HISTORY_DIR" >> "$GITHUB_ENV"
+            echo "[logix-perf] curve history downloaded: $DOWNLOADED run(s) from branch=$HISTORY_BRANCH"
+            echo "[logix-perf][timeline] curveHistory downloaded=$DOWNLOADED branch=$HISTORY_BRANCH dir=$HISTORY_DIR" >> "$PERF_DEBUG_TIMELINE_FILE"
+          else
+            echo "[logix-perf] curve history not found for branch=$HISTORY_BRANCH"
+            echo "[logix-perf][timeline] curveHistory downloaded=0 branch=$HISTORY_BRANCH" >> "$PERF_DEBUG_TIMELINE_FILE"
+          fi
+
       - name: Write job summary (markdown)
         if: always()
-        run: node .github/scripts/logix-perf-quick-summary.cjs
+        run: node "${PERF_QUICK_SUMMARY_SCRIPT:-.github/scripts/logix-perf-quick-summary.cjs}"
+
+      - name: Dump debug timeline tail
+        if: always()
+        run: |
+          if [ -n "${PERF_DEBUG_TIMELINE_FILE:-}" ] && [ -f "$PERF_DEBUG_TIMELINE_FILE" ]; then
+            echo "[logix-perf] debug timeline path: $PERF_DEBUG_TIMELINE_FILE"
+            tail -n 120 "$PERF_DEBUG_TIMELINE_FILE"
+          else
+            echo "[logix-perf] debug timeline file not found: ${PERF_DEBUG_TIMELINE_FILE:-unset}"
+          fi
+
+      - name: Enforce dynamic hard floor
+        if: always() && env.PERF_CAPACITY_DYNAMIC_ENABLE == '1' && env.PERF_CAPACITY_DYNAMIC_ENFORCE_HARD == '1'
+        run: |
+          echo "[logix-perf] dynamic floor gate: hardPass=${PERF_CAPACITY_DYNAMIC_HARD_PASS:-unset} warnPass=${PERF_CAPACITY_DYNAMIC_WARN_PASS:-unset} target=${PERF_CAPACITY_DYNAMIC_HARD_FLOOR_TARGET:-n/a} comparableLatest=${PERF_CAPACITY_DYNAMIC_TARGET_LATEST_COMPARABLE:-unset} source=${PERF_CAPACITY_DYNAMIC_TARGET_SOURCE:-n/a} stableRuns=${PERF_CAPACITY_DYNAMIC_STABLE_RUNS:-n/a}"
+          if [ "${PERF_CAPACITY_DYNAMIC_HARD_PASS:-1}" != "1" ]; then
+            echo "dynamic hard floor failed: floor target=${PERF_CAPACITY_DYNAMIC_HARD_FLOOR_TARGET:-n/a}" >&2
+            exit 1
+          fi
+          if [ "${PERF_CAPACITY_DYNAMIC_WARN_PASS:-1}" != "1" ]; then
+            echo "::warning::dynamic warn floor failed (target=${PERF_CAPACITY_DYNAMIC_WARN_FLOOR_TARGET:-n/a})"
+          fi
+
+      - name: Save capacity history cache
+        if: always() && env.PERF_CAPACITY_DYNAMIC_ENABLE == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.PERF_CAPACITY_HISTORY_DIR }}
+          key: ${{ env.PERF_CAPACITY_HISTORY_CACHE_KEY }}
 
       - name: Upload artifacts
         if: always()

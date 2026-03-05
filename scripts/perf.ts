@@ -18,6 +18,7 @@ Examples:
   pnpm perf collect -- --out specs/<id>/perf/after.local.json
   pnpm perf diff -- --before <before.json> --after <after.json> --out <diff.json>
   pnpm perf diff:triage -- --before <before.json> --after <after.json> --out <diff.json>
+  pnpm perf capacity:probe -- --profile default --steps 200,400,800,1200,1600,2000,2400,2800,3200
   pnpm perf validate -- --report <before|after>.json
   pnpm perf tuning:best
 `
