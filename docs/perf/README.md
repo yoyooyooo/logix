@@ -44,3 +44,5 @@
   - G-2：整状态替换推导 if_empty（已有精确 dirty evidence 时跳过推导，避免纯 overhead）。
 - `2026-03-05-h1-converge-offfast-perf-hints.md`
   - H-1：converge(off-fast-path) 负优化边界压榨：perf hint 跨 generation bump 保留 + 冷启动样本隔离；并记录 fast_full guard 的失败尝试与回滚。
+- `2026-03-05-h2-negative-boundary-min-delta.md`
+  - H-2：negativeBoundaries.dirtyPattern 增加 `minDeltaMs=0.1`（sub-ms 相对预算地板），让 gate 可复测可执行。

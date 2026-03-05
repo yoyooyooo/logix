@@ -17,6 +17,7 @@
 - [x] G-1：整状态替换推导 dirty evidence（`path="*"` 不再立刻 dirtyAll；commit-time best-effort diff 推导顶层 key/list evidence）。
 - [x] G-2：整状态替换推导 if_empty（当 txn 已有精确 dirty evidence 时跳过推导，避免 perf harness 纯 overhead）。
 - [x] H-1：converge(off-fast-path) perf hint 保留 + 冷启动样本隔离（并记录 fast_full guard 的失败尝试与回滚）。
+- [x] H-2：negativeBoundaries.dirtyPattern 增加 `minDeltaMs=0.1`（sub-ms 相对预算地板），让 gate 可复测可执行。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 

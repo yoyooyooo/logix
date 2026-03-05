@@ -23,6 +23,7 @@
 - [x] G-1：整状态替换推导 dirty evidence（`setState/state.update`/reducer 无 patchPaths 不再立刻 dirtyAll；commit-time best-effort diff 推导顶层 key/list evidence）。
 - [x] G-2：整状态替换推导 if_empty（当 txn 已有精确 dirty evidence 时跳过推导，避免 perf harness 纯 overhead）。
 - [x] H-1：converge(off-fast-path) perf hint 保留 + 冷启动样本隔离（负优化边界专项；fast_full guard 尝试已回滚并保留证据）。
+- [x] H-2：negativeBoundaries.dirtyPattern 增加 `minDeltaMs=0.1`（sub-ms 相对预算地板），让 gate 可复测可执行。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -216,6 +217,7 @@ TraitLifecycle.scopedValidate($, {
 
 状态：
 - [x] 已完成（H-1）：generation bump 时携带 off-fast-path perf hint（stepCount 不变时），并跳过 `txnSeq===1` 的 off-fast-path full 样本更新；同时记录 fast_full guard 的失败尝试与回滚；证据见 `docs/perf/2026-03-05-h1-converge-offfast-perf-hints.md`。
+- [x] 已完成（H-2）：negativeBoundaries.dirtyPattern 的 `auto<=full*1.05` 增加 `minDeltaMs=0.1`（与 converge.txnCommit 对齐），让 sub-ms 相对预算可执行；证据见 `docs/perf/2026-03-05-h2-negative-boundary-min-delta.md`。
 
 ## 4. 破坏式变更策略（必须执行）
 

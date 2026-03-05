@@ -290,14 +290,15 @@
       "metrics": ["runtime.txnCommitMs", "runtime.decisionMs"],
       "budgets": [
         {
-          "id": "auto<=full*1.05",
-          "type": "relative",
-          "metric": "runtime.txnCommitMs",
-          "maxRatio": 1.05,
-          "numeratorRef": "convergeMode=auto",
-          "denominatorRef": "convergeMode=full"
-        }
-      ],
+      "id": "auto<=full*1.05",
+      "type": "relative",
+      "metric": "runtime.txnCommitMs",
+      "maxRatio": 1.05,
+      "minDeltaMs": 0.1,
+      "numeratorRef": "convergeMode=auto",
+      "denominatorRef": "convergeMode=full"
+    }
+  ],
       "requiredEvidence": [
         "cache.size",
         "cache.hit",

@@ -49,8 +49,7 @@
 ## 剩余问题与下一刀（裁决）
 
 1. 负优化边界的 budget 缺少 `minDeltaMs`，导致 `0.1ms` 级波动被放大为“档位断崖”
-   - 下一刀（应独立提交）：给 `negativeBoundaries.dirtyPattern` 的 `auto<=full*1.05` 增加 `minDeltaMs=0.1`（与 `converge.txnCommit` 对齐），让 gate 在 sub-ms 场景下可执行且可复测。
+   - 下一刀（已完成于 H-2）：给 `negativeBoundaries.dirtyPattern` 的 `auto<=full*1.05` 增加 `minDeltaMs=0.1`（与 `converge.txnCommit` 对齐），让 gate 在 sub-ms 场景下可执行且可复测；见 `docs/perf/2026-03-05-h2-negative-boundary-min-delta.md`。
 
 2. 若在补 gate floor 后仍出现真实回归：
    - 再考虑内核进一步减配 `diagnosticsLevel=off` 下的 decision 资产（例如 reasons/重证据按需 materialize），把 `auto` 固定开销继续向 0 收敛。
-
