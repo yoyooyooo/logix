@@ -205,7 +205,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
           .filter((event) => event.type === 'state:update' && (event as any).txnId) as ReadonlyArray<any>
 
         expect(commits.length).toBe(1)
-        expect(commits[0]?.originName).toBe('writeback:batched')
+        expect(commits[0]?.originName).toBe('dispatch')
       } finally {
         process.env.NODE_ENV = previousEnv
       }

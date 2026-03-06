@@ -1350,9 +1350,9 @@ export const make = <S, A, R = never>(
       setState: (next) => setStateInternal(next, '*', 'unknown', undefined, next),
       dispatch: (action) =>
         // Enqueue the txn request to guarantee FIFO serialization within a single instance.
-        dispatchOps.dispatch(action),
-      dispatchBatch: (actions) => dispatchOps.dispatchBatch(actions),
-      dispatchLowPriority: (action) => dispatchOps.dispatchLowPriority(action),
+        dispatchOps.dispatch(action) as Effect.Effect<void, never, never>,
+      dispatchBatch: (actions) => dispatchOps.dispatchBatch(actions) as Effect.Effect<void, never, never>,
+      dispatchLowPriority: (action) => dispatchOps.dispatchLowPriority(action) as Effect.Effect<void, never, never>,
       actions$: actionsStream,
       actionsByTag$: actionsByTagStream,
       actionsWithMeta$: Stream.fromPubSub(actionCommitHub),
@@ -1822,6 +1822,7 @@ export const make = <S, A, R = never>(
       txn: {
         instrumentation,
         registerReducer: dispatchOps.registerReducer as any,
+        registerActionStateWriteback: dispatchOps.registerActionStateWriteback as any,
         runWithStateTransaction: runWithStateTransactionInternal as any,
         updateDraft,
         recordStatePatch,

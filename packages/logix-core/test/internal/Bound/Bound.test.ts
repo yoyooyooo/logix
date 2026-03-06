@@ -437,6 +437,7 @@ describe('Bound API (public)', () => {
       txn: {
         instrumentation: 'light',
         registerReducer: () => {},
+        registerActionStateWriteback: () => {},
         runWithStateTransaction: (_origin, body) => body(),
         updateDraft: () => {},
         recordStatePatch: () => {},

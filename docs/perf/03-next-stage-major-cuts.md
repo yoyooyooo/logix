@@ -24,6 +24,7 @@
 - [x] L-1：`txnLanes` 在 `budgetMs<=1` 时把 non-urgent 首片缩到 1（inner-loop constant cut）；`mode=default` 的 50ms 硬门从全灭提升到 `steps<=800` 可过。
 - [x] M-1：`suspend` 路径加入 optimistic sync fast-path（行为前移优化）；`react.bootResolve` 的 `suspend` 冷启动从 `~320ms` 级降到 `~17-19ms`。
 - [x] N-1：`defer` 增加 render 前 sync-warm 预热（行为前移优化）；去掉同步模块的 provider preload gating fallback，`bootToReady` 从 `~345ms` 级降到 `~60ms`。
+- [x] O-1：纯 state action watcher 并回原 action txn（watcher→action fusion）；`watchers=512` 从 `~85-95ms` 级压到 `~50-55ms`。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 

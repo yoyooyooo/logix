@@ -20,6 +20,22 @@ import type * as ModuleTraits from './ModuleTraits.js'
 import { getRuntimeInternals, setBoundInternals } from './runtimeInternalsAccessor.js'
 import type { AnyModuleShape, ModuleRuntime, StateOf, ActionOf } from './module.js'
 
+const DIRECT_STATE_WRITE_EFFECT = Symbol.for('logix.directStateWriteEffect')
+
+type DirectStateWriteEffect = Effect.Effect<void, never, any> & {
+  [DIRECT_STATE_WRITE_EFFECT]?: true
+}
+
+const markDirectStateWriteEffect = <A extends Effect.Effect<void, never, any>>(effect: A): A => {
+  ;(effect as DirectStateWriteEffect)[DIRECT_STATE_WRITE_EFFECT] = true
+  return effect
+}
+
+const isDirectStateWriteEffect = (value: unknown): value is DirectStateWriteEffect => {
+  if (!value || (typeof value !== 'object' && typeof value !== 'function')) return false
+  return (value as DirectStateWriteEffect)[DIRECT_STATE_WRITE_EFFECT] === true
+}
+
 // Local IntentBuilder factory; equivalent to the old internal/dsl/LogicBuilder.makeIntentBuilderFactory.
 const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
   runtime: ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>,
@@ -73,17 +89,34 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
       },
       runFork: <A = void, E = never, R2 = unknown>(
         eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-      ): Logic.Of<Sh, R & R2, void, E> =>
-        Effect.forkScoped(flowApi.run<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<Sh, R & R2, void, E>,
-      runParallelFork: <A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-      ): Logic.Of<Sh, R & R2, void, E> =>
-        Effect.forkScoped(flowApi.runParallel<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
+      ): Logic.Of<Sh, R & R2, void, E> => {
+        if (runtimeInternals && triggerName && typeof eff !== 'function' && isDirectStateWriteEffect(eff)) {
+          return Effect.sync(() => {
+            runtimeInternals.txn.registerActionStateWriteback(triggerName, () => eff as Effect.Effect<void, never, any>)
+          }) as Logic.Of<Sh, R & R2, void, E>
+        }
+        return Effect.forkScoped(flowApi.run<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
           Sh,
           R & R2,
           void,
           E
-        >,
+        >
+      },
+      runParallelFork: <A = void, E = never, R2 = unknown>(
+        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
+      ): Logic.Of<Sh, R & R2, void, E> => {
+        if (runtimeInternals && triggerName && typeof eff !== 'function' && isDirectStateWriteEffect(eff)) {
+          return Effect.sync(() => {
+            runtimeInternals.txn.registerActionStateWriteback(triggerName, () => eff as Effect.Effect<void, never, any>)
+          }) as Logic.Of<Sh, R & R2, void, E>
+        }
+        return Effect.forkScoped(flowApi.runParallel<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
+          Sh,
+          R & R2,
+          void,
+          E
+        >
+      },
       runTask: <A = void, E = never, R2 = unknown>(
         config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
       ): Logic.Of<Sh, R & R2, void, never> =>
@@ -634,7 +667,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   const stateApi: BoundApi<Sh, R>['state'] = {
     read: runtime.getState,
     update: (f) =>
-      Effect.gen(function* () {
+      markDirectStateWriteEffect(
+        Effect.gen(function* () {
         const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
         if (inTxn) {
           const prev = yield* runtime.getState
@@ -650,9 +684,11 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         return yield* runtimeInternals
           ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'update' } as any, body)
           : body()
-      }),
+        }),
+      ),
     mutate: (f) =>
-      Effect.gen(function* () {
+      markDirectStateWriteEffect(
+        Effect.gen(function* () {
         const recordPatch = runtimeInternals?.txn.recordStatePatch
         const updateDraft = runtimeInternals?.txn.updateDraft
 
@@ -692,7 +728,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         return yield* runtimeInternals
           ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'mutate' } as any, body)
           : body()
-      }),
+        }),
+      ),
     ref: runtime.ref,
   }
 

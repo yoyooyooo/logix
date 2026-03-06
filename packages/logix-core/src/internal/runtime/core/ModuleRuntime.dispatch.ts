@@ -78,9 +78,10 @@ export const makeDispatchOps = <S, A>(args: {
   readonly isDevEnv: () => boolean
 }): {
   readonly registerReducer: (tag: string, fn: (state: S, action: A) => S) => void
-  readonly dispatch: (action: A) => Effect.Effect<void>
-  readonly dispatchBatch: (actions: ReadonlyArray<A>) => Effect.Effect<void>
-  readonly dispatchLowPriority: (action: A) => Effect.Effect<void>
+  readonly registerActionStateWriteback: (tag: string, run: (action: A) => Effect.Effect<void, never, any>) => void
+  readonly dispatch: (action: A) => Effect.Effect<void, never, any>
+  readonly dispatchBatch: (actions: ReadonlyArray<A>) => Effect.Effect<void, never, any>
+  readonly dispatchLowPriority: (action: A) => Effect.Effect<void, never, any>
 } => {
   const {
     optionsModuleId,
@@ -174,6 +175,7 @@ export const makeDispatchOps = <S, A>(args: {
 
   // Track whether an Action tag has been dispatched, for diagnosing config issues like late reducer registration.
   const dispatchedTags = new Set<string>()
+  const actionStateWritebacks = new Map<string, Array<(action: A) => Effect.Effect<void, never, any>>>()
 
   const registerReducer = (tag: string, fn: (state: S, action: A) => S): void => {
     if (reducerMap.has(tag)) {
@@ -185,6 +187,18 @@ export const makeDispatchOps = <S, A>(args: {
       throw ReducerDiagnostics.makeReducerError('ReducerLateRegistrationError', tag, optionsModuleId)
     }
     reducerMap.set(tag, fn)
+  }
+
+  const registerActionStateWriteback = (tag: string, run: (action: A) => Effect.Effect<void, never, any>): void => {
+    if (dispatchedTags.has(tag)) {
+      throw ReducerDiagnostics.makeReducerError('ReducerLateRegistrationError', tag, optionsModuleId)
+    }
+    const existing = actionStateWritebacks.get(tag)
+    if (existing) {
+      existing.push(run)
+      return
+    }
+    actionStateWritebacks.set(tag, [run])
   }
 
   const applyPrimaryReducer = (action: A, analysis: ActionAnalysis) => {
@@ -263,6 +277,19 @@ export const makeDispatchOps = <S, A>(args: {
     )
   }
 
+
+  const applyActionStateWritebacks = (action: A, analysis: ActionAnalysis): Effect.Effect<void, never, any> => {
+    const tag = analysis.actionTag
+    if (tag == null || actionStateWritebacks.size === 0) {
+      return Effect.void
+    }
+    const handlers = actionStateWritebacks.get(tag.length > 0 ? tag : 'unknown')
+    if (!handlers || handlers.length === 0) {
+      return Effect.void
+    }
+    return Effect.forEach(handlers, (run) => run(action), { discard: true })
+  }
+
   const makeActionOrigin = (
     originName: string,
     action: A,
@@ -278,10 +305,11 @@ export const makeDispatchOps = <S, A>(args: {
     },
   })
 
-  const dispatchInTransaction = (action: A, analysis: ActionAnalysis): Effect.Effect<void> =>
+  const dispatchInTransaction = (action: A, analysis: ActionAnalysis): Effect.Effect<void, never, any> =>
     Effect.gen(function* () {
       // Apply the primary reducer first (may be a no-op).
       yield* applyPrimaryReducer(action, analysis)
+      yield* applyActionStateWritebacks(action, analysis)
 
       const unknownAction = declaredActionTags ? !declaredActionTags.has(analysis.actionTagNormalized) : false
 
@@ -321,7 +349,7 @@ export const makeDispatchOps = <S, A>(args: {
         meta: { moduleId: optionsModuleId, instanceId },
       },
       runWithStateTransaction(makeActionOrigin('dispatch', action, analysis, override), () =>
-        dispatchInTransaction(action, analysis),
+        dispatchInTransaction(action, analysis) as Effect.Effect<void, never, never>,
       ),
     ).pipe(Effect.asVoid)
 
@@ -339,7 +367,7 @@ export const makeDispatchOps = <S, A>(args: {
             ;(txnContext.current as any).commitMode = 'lowPriority' as StateCommitMode
             ;(txnContext.current as any).priority = 'low' as StateCommitPriority
           }
-          yield* dispatchInTransaction(action, analysis)
+          yield* (dispatchInTransaction(action, analysis) as Effect.Effect<void, never, never>)
         }),
       ),
     ).pipe(Effect.asVoid)
@@ -369,7 +397,7 @@ export const makeDispatchOps = <S, A>(args: {
             for (let index = 0; index < actions.length; index += 1) {
               const action = actions[index] as A
               const analysis = analyses[index] as ActionAnalysis
-              yield* dispatchInTransaction(action, analysis)
+              yield* (dispatchInTransaction(action, analysis) as Effect.Effect<void, never, never>)
             }
           }),
       ),
@@ -600,6 +628,7 @@ export const makeDispatchOps = <S, A>(args: {
 
   return {
     registerReducer,
+    registerActionStateWriteback,
     // Note: publish is a lossless/backpressure channel and may wait.
     // Must run outside the transaction window (FR-012) and must not block the txnQueue consumer fiber (avoid deadlock).
     dispatch: (action) =>
