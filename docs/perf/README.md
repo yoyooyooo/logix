@@ -50,3 +50,5 @@
   - I-1：`$.state.update/$.state.mutate` 生产态批处理写回（microtask 合批 + in-flight drain），把 `watchers.clickToPaint` 的 `p95<=100ms` 档位从 256 提到 512。
 - `2026-03-06-j1-txn-lanes-mode-matrix.md`
   - J-1：`txnLanes.urgentBacklog` 改成显式 `mode(default/off)` 轴，broad matrix 不再隐式测 forced-off。
+- `2026-03-06-k1-react-strict-suspense-realpath.md`
+  - K-1：`react.strictSuspenseJitter` 改成真实 state-level suspend + 单次 interaction 计时，移除旧的线性点击伪失败。

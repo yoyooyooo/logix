@@ -329,7 +329,8 @@
         }
       ],
       "baselineBudgetId": "p95<=100ms",
-      "notes": "对应 Edge Cases: 严格模式/挂起导致抖动；指标以“稳定交互延迟”定义边界（而非首次渲染）。"
+      "requiredEvidence": ["react.suspenseFallbackRenders"],
+      "notes": "对应 Edge Cases: StrictMode + 现有 runtime 内的真实 state-level suspend 路径；mountCycles 表示预热后被计时的第 N 次交互，suspenseCycles 表示 tick 后额外的 async wait 次数。指标是单次 interaction→stable，而不是多次点击总耗时。"
     },
     {
       "id": "react.bootResolve",

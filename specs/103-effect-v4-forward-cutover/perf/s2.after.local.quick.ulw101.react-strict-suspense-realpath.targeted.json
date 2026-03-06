@@ -1,0 +1,469 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T00:31:33.323Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-01-19",
+    "matrixHash": "cea713e478201c1e24f4180106ec7dc85ab59c031e8c90dbc039507404a510f3",
+    "git": {
+      "branch": "effect-v4",
+      "commit": "629cef0fee044cbd17e59be1d226abd94dc7d43b",
+      "dirty": true
+    },
+    "config": {
+      "runs": 25,
+      "warmupDiscard": 5,
+      "timeoutMs": 15000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M4 Pro",
+      "memoryGb": 24,
+      "node": "v22.22.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "react.strictSuspenseJitter",
+      "title": "react: strict mode / suspense jitter (interaction→stable)",
+      "priority": "P3",
+      "primaryAxis": "mountCycles",
+      "budgets": [
+        {
+          "id": "p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.interactionToStableMs",
+          "p95Ms": 100
+        }
+      ],
+      "requiredEvidence": [
+        "react.suspenseFallbackRenders"
+      ],
+      "metricCategories": {
+        "e2e.interactionToStableMs": "e2e"
+      },
+      "points": [
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 0,
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 44.1000000089407,
+                "p95Ms": 60.599999994039536
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 0,
+            "mountCycles": 3
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 38,
+                "p95Ms": 50.1000000089407
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 0,
+            "mountCycles": 5
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 37.599999994039536,
+                "p95Ms": 58.5
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 1,
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 54.5,
+                "p95Ms": 57.20000000298023
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 1,
+            "mountCycles": 3
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 42.900000005960464,
+                "p95Ms": 60.5
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 3
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 1,
+            "mountCycles": 5
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 38.900000005960464,
+                "p95Ms": 50.1000000089407
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 5
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 3,
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 67.8999999910593,
+                "p95Ms": 70.19999998807907
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 3,
+            "mountCycles": 3
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 46.29999999701977,
+                "p95Ms": 60.400000005960464
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 3
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": true,
+            "suspenseCycles": 3,
+            "mountCycles": 5
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.interactionToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 44.29999999701977,
+                "p95Ms": 55.80000001192093
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 5
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.interactionToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true,
+            "suspenseCycles": 0
+          },
+          "maxLevel": 5,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.interactionToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true,
+            "suspenseCycles": 1
+          },
+          "maxLevel": 5,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.interactionToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "reactStrictMode": true,
+            "suspenseCycles": 3
+          },
+          "maxLevel": 5,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

@@ -32,7 +32,6 @@ const State = Schema.Struct({
 
 const Actions = {
   tick: Schema.Void,
-  resolve: Schema.Number,
 }
 
 const SuspenseModule = Logix.Module.make('PerfStrictSuspenseJitter', {
@@ -43,32 +42,84 @@ const SuspenseModule = Logix.Module.make('PerfStrictSuspenseJitter', {
 const makeLogic = (suspenseCycles: number) =>
   SuspenseModule.logic(($) =>
     Effect.gen(function* () {
-      let pendingResolves = 0
+      yield* $.onAction('tick').runLatest(() =>
+        Effect.gen(function* () {
+          yield* $.state.mutate((draft) => {
+            draft.value += 1
+            draft.ready = suspenseCycles === 0
+          })
 
-      yield* $.onAction('tick').runParallelFork(
-        $.state.update((prev) => {
-          const nextValue = prev.value + 1
-          const nextPending = (pendingResolves + 1) % Math.max(1, suspenseCycles + 1)
-          pendingResolves = nextPending
-          return {
-            ready: suspenseCycles === 0 ? true : nextPending === 0,
-            value: nextValue,
+          for (let index = 0; index < suspenseCycles; index++) {
+            yield* Effect.sleep('0 millis')
+          }
+
+          if (suspenseCycles > 0) {
+            yield* $.state.mutate((draft) => {
+              draft.ready = true
+            })
           }
         }),
       )
     }),
   )
 
-const SuspenseChild: React.FC<{ readonly module: any }> = ({ module }) => {
-  const state = useModule(module, (s: unknown) => s as { ready: boolean; value: number })
-  return <p>Value: {state.value}</p>
+type SuspenseState = {
+  readonly ready: boolean
+  readonly value: number
 }
 
-const App: React.FC = () => {
+const pendingReadyByRuntime = new WeakMap<object, Promise<void>>()
+
+const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
+
+const waitForReady = (module: any): Promise<void> => {
+  const runtimeKey = module.runtime as object
+  const cached = pendingReadyByRuntime.get(runtimeKey)
+  if (cached) return cached
+
+  const promise = new Promise<void>((resolve, reject) => {
+    const poll = () => {
+      void Effect.runPromise(module.getState as Effect.Effect<SuspenseState>).then(
+        (state) => {
+          if (state.ready) {
+            pendingReadyByRuntime.delete(runtimeKey)
+            resolve()
+            return
+          }
+          void nextFrame().then(poll)
+        },
+        (error) => {
+          pendingReadyByRuntime.delete(runtimeKey)
+          reject(error)
+        },
+      )
+    }
+
+    void nextFrame().then(poll)
+  })
+
+  pendingReadyByRuntime.set(runtimeKey, promise)
+  return promise
+}
+
+const SuspenseChild: React.FC<{ readonly module: any }> = ({ module }) => {
+  const state = useModule(module, (s: unknown) => s as SuspenseState)
+  if (!state.ready) {
+    throw waitForReady(module)
+  }
+  return <p>{`Value: ${String(state.value)}`}</p>
+}
+
+const Fallback: React.FC<{ readonly onRender: () => void }> = ({ onRender }) => {
+  onRender()
+  return <p>Loading…</p>
+}
+
+const App: React.FC<{ readonly onFallbackRender: () => void }> = ({ onFallbackRender }) => {
   const module = useModule(SuspenseModule.tag)
   return (
     <div>
-      <Suspense fallback={<p>Loading…</p>}>
+      <Suspense fallback={<Fallback onRender={onFallbackRender} />}>
         <SuspenseChild module={module} />
       </Suspense>
       <button type="button" onClick={() => module.actions.tick()}>
@@ -78,6 +129,15 @@ const App: React.FC = () => {
   )
 }
 
+const waitForBodyText = async (text: string, timeoutMs: number): Promise<void> => {
+  const deadline = performance.now() + timeoutMs
+  while (performance.now() < deadline) {
+    if (document.body.textContent?.includes(text)) return
+    await nextFrame()
+  }
+  throw new Error(`waitForBodyText timeout: ${text}`)
+}
+
 test('browser react strict/suspense jitter: interaction→stable', { timeout: TEST_TIMEOUT_MS }, async () => {
   await withNodeEnv('production', async () => {
     const perfKernelLayer = makePerfKernelLayer()
@@ -85,11 +145,12 @@ test('browser react strict/suspense jitter: interaction→stable', { timeout: TE
       suite,
       { runs, warmupDiscard, timeoutMs },
       async (params: Params) => {
+        const reactStrictMode = params.reactStrictMode as boolean
         const mountCycles = params.mountCycles as number
         const suspenseCycles = params.suspenseCycles as number
 
         const impl = SuspenseModule.implement({
-          initial: { ready: suspenseCycles === 0, value: 0 },
+          initial: { ready: true, value: 0 },
           logics: [makeLogic(suspenseCycles)],
         })
 
@@ -98,32 +159,51 @@ test('browser react strict/suspense jitter: interaction→stable', { timeout: TE
           label: `perf:reactStrictSuspense:${mountCycles}:${suspenseCycles}`,
         })
 
+        let fallbackRenders = 0
+
         const app = (
-          <RuntimeProvider runtime={runtime}>
-            <App />
+          <RuntimeProvider runtime={runtime} fallback={<p>Provider Loading…</p>}>
+            <App onFallbackRender={() => fallbackRenders += 1} />
           </RuntimeProvider>
         )
 
-        const wrapped = <React.StrictMode>{app}</React.StrictMode>
+        const wrapped = reactStrictMode ? <React.StrictMode>{app}</React.StrictMode> : app
 
         document.body.innerHTML = ''
         const screen = await render(wrapped)
 
         try {
           const button = screen.getByRole('button', { name: 'Tick' })
+          const perRunWaitMs = Math.min(10_000, timeoutMs)
 
-          const start = performance.now()
-          for (let i = 0; i < mountCycles; i++) {
+          await waitForBodyText('Value: 0', perRunWaitMs)
+
+          for (let cycle = 1; cycle < mountCycles; cycle++) {
             await button.click()
+            await waitForBodyText(`Value: ${String(cycle)}`, perRunWaitMs)
           }
 
-          await expect.element(screen.getByText(/Value:/)).toBeInTheDocument()
-
+          const start = performance.now()
+          await button.click()
+          await waitForBodyText(`Value: ${String(mountCycles)}`, perRunWaitMs)
           const end = performance.now()
 
           return {
             metrics: {
               'e2e.interactionToStableMs': end - start,
+            },
+            evidence: {
+              'react.suspenseFallbackRenders': fallbackRenders,
+            },
+          }
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : 'unknown'
+          return {
+            metrics: {
+              'e2e.interactionToStableMs': { unavailableReason: reason },
+            },
+            evidence: {
+              'react.suspenseFallbackRenders': fallbackRenders,
             },
           }
         } finally {
@@ -168,6 +248,7 @@ test('browser react strict/suspense jitter: interaction→stable', { timeout: TE
           priority: suite.priority,
           primaryAxis: suite.primaryAxis,
           budgets: suite.budgets,
+          requiredEvidence: suite.requiredEvidence,
           metricCategories: {
             'e2e.interactionToStableMs': 'e2e',
           },
