@@ -11,6 +11,7 @@
 - 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）。
 - 已关闭：`S-1` residual audit、`S-3` gate/applicability、`S-5` refresh unblock 审计。
 - 真正的排期与并行策略以 `07-optimization-backlog-and-routing.md` 为准。
+- 执行协议以 `08-perf-execution-protocol.md` 为准：主会话保持干净，只做协调/审查/合流；每条实施线都在独立 `worktree/branch/subagent` 中推进，并在收口时相对主分支只保留 `1` 个最终 HEAD 提交。
 
 ## 当前主线（无存量用户）
 
@@ -35,6 +36,8 @@
   - current-head 的最新裁决页；开始新一轮 perf 工作前优先读它，而不是直接翻旧波次。
 - `07-optimization-backlog-and-routing.md`
   - 真正的实施路由页：哪些做主线、哪些做副线、哪些能并行、哪些必须串行。
+- `08-perf-execution-protocol.md`
+  - 统一执行协议：主会话与实施线分工、独立 worktree/branch 纪律、成功/失败统一单提交收口。
 
 ## 时间线记录（按日期回看）
 

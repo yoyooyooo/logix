@@ -7,17 +7,20 @@
 - 不做兼容层，不保留弃用期。
 
 执行新增约束（本仓当前策略）：
-- **每一刀必须独立提交**（一个 commit 对应一刀，避免“多刀混在一起”导致后续回滚/二分困难）。
-- 每刀完成后，必须在 `docs/perf/05-forward-only-vnext-plan.md` 与 `docs/perf/03-next-stage-major-cuts.md` 勾选对应条目为 `[x]`。
+- **主会话保持干净**：主会话只做 routing / 审查 / 合流，不直接承载 runtime / benchmark / gate 实施；统一协议见 `docs/perf/08-perf-execution-protocol.md`。
+- **每条实施线只承载一刀，并在独立 `worktree/branch/subagent` 中推进**；中间试验可存在于线内，但交回主会话前，相对主分支只允许保留 `1` 个最终 HEAD commit。
+- **成功与失败都要以 `1` 个最终提交收口**：成功线保留最终有效 diff；失败线清掉半成品代码，只保留 dated evidence / `docs/perf/*` 结论与必要路由更新。
+- 只有“真正完成并被吸收”的 major cut，才在 `docs/perf/05-forward-only-vnext-plan.md` 与 `docs/perf/03-next-stage-major-cuts.md` 勾选对应条目为 `[x]`；失败线只写 dated record 与路由回写，不得假装完成。
 
 ## 0. 先读顺序
 
 1. `docs/perf/README.md`
-2. `docs/perf/06-current-head-triage.md`
-3. `docs/perf/07-optimization-backlog-and-routing.md`
-4. `docs/perf/05-forward-only-vnext-plan.md`
-5. `docs/perf/03-next-stage-major-cuts.md`
-6. 只在需要补历史上下文时再读旧日期记录
+2. `docs/perf/08-perf-execution-protocol.md`
+3. `docs/perf/06-current-head-triage.md`
+4. `docs/perf/07-optimization-backlog-and-routing.md`
+5. `docs/perf/05-forward-only-vnext-plan.md`
+6. `docs/perf/03-next-stage-major-cuts.md`
+7. 只在需要补历史上下文时再读旧日期记录
 
 ## 1. 进入实现前的硬约束
 
@@ -28,16 +31,17 @@
 
 ## 2. 推荐执行节奏
 
-1. 先看 `06-current-head-triage.md`，确认这轮是在做真实 runtime 刀、证据纠偏，还是 gate 清理。
-2. 再看 `07-optimization-backlog-and-routing.md`，确认这轮任务是主线、低冲突副线，还是必须独立 worktree 的副线。
-3. 默认只做一个 next cut：当前唯一活跃主线是 `R-1 v2：txnLanes urgent-aware handoff`。
-4. `F-1` 已完成；需要查看 backlog/routing 任务时，直接用 `python3 fabfile.py list-tasks`、`python3 fabfile.py show-task R-1`、`python3 fabfile.py plan-parallel`。
-5. `S-2` 已完成第一刀（`clickToDomStable` + `clickToPaint` 双轨）；除非要继续补 benchmark 解释链，否则不要再把它升级回 runtime 主线。
-6. `startup-phase` 显式切面只保留 checkpoint 结论，不单独落 `D-1` 日期记录；不要把 startup cap 直接当正式 runtime cut。
-7. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
-8. 只有当 `R-1 v2` 明确无稳定收益，才考虑是否重开 `S-2` 的后续展示层收口，或升级到 `R-2`。
-9. `S-4` 已于 `2026-03-06` 用 `RuntimeExternalStore delayed teardown` 完成最小修复；若再复现 multi-instance isolation，优先从同 tick unsubscribe/resubscribe 时序重新排查。
-10. `S-5` 已于 `2026-03-06` 复核关闭：`react.strictSuspenseJitter` 在主分支环境可直接跑通；除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不要再把它当 broad/full collect 的默认阻塞项。
+1. 主会话先看 `08-perf-execution-protocol.md`，确认这轮是协调/审查角色，而不是直接下场实施。
+2. 再看 `06-current-head-triage.md`，确认这轮是在做真实 runtime 刀、证据纠偏，还是 gate 清理。
+3. 再看 `07-optimization-backlog-and-routing.md`，确认这轮任务是主线、低冲突副线，还是必须独立 worktree 的副线。
+4. 真正实施前，先开独立 `worktree + branch (+ subagent)`；默认一条实施线只做一个 next cut。当前唯一活跃主线是 `R-1 v2：txnLanes urgent-aware handoff`。
+5. `F-1` 已完成；需要查看 backlog/routing 任务时，直接用 `python3 fabfile.py list-tasks`、`python3 fabfile.py show-task R-1`、`python3 fabfile.py plan-parallel`。
+6. `S-2` 已完成第一刀（`clickToDomStable` + `clickToPaint` 双轨）；除非要继续补 benchmark 解释链，否则不要再把它升级回 runtime 主线。
+7. `startup-phase` 显式切面只保留 checkpoint 结论，不单独落 `D-1` 日期记录；不要把 startup cap 直接当正式 runtime cut。
+8. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
+9. 只有当 `R-1 v2` 明确无稳定收益，才考虑是否重开 `S-2` 的后续展示层收口，或升级到 `R-2`。
+10. `S-4` 已于 `2026-03-06` 用 `RuntimeExternalStore delayed teardown` 完成最小修复；若再复现 multi-instance isolation，优先从同 tick unsubscribe/resubscribe 时序重新排查。
+11. `S-5` 已于 `2026-03-06` 复核关闭：`react.strictSuspenseJitter` 在主分支环境可直接跑通；除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不要再把它当 broad/full collect 的默认阻塞项。
 
 ## 3. 复测命令模板
 
@@ -86,4 +90,6 @@
 - 证据文件路径
 - 通过/未通过门
 - 下一刀计划
-3. 同步 `specs/103-effect-v4-forward-cutover/perf/` 下的证据索引文档（如果本轮产出新 report/diff）。
+3. 若该线成功并被吸收，再同步 `docs/perf/05-forward-only-vnext-plan.md` 与 `docs/perf/03-next-stage-major-cuts.md` 的完成标记；若该线失败，只更新 dated record / routing，不勾 `[x]`。
+4. 同步 `specs/103-effect-v4-forward-cutover/perf/` 下的证据索引文档（如果本轮产出新 report/diff）。
+5. 线结束前自检：相对主分支只剩 `1` 个最终 HEAD commit；主会话只接这 `1` 个提交，不替你在线外补 diff。
