@@ -35,7 +35,7 @@
 | `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
 | `F-1` | 自动化副线 | 将 `07` 的 backlog/routing 落成 `Fabfile` 任务图 | 中 | 中 | 低 | 可并行 | 不需要 |
-| `S-4` | 验证解锁副线 | 解除 current-head full-matrix 刷新阻塞（`runtime-store-no-tearing` 多实例隔离） | 中 | 中 | 中 | 可并行 | 不需要 |
+| `S-4` | 验证解锁副线（已完成） | 已完成审计：current-head 未复现 `runtime-store-no-tearing` 多实例隔离问题，关闭为 stale blocker / evidence drift | 中 | 低 | 低 | 已关闭 | 不需要 |
 
 ## 任务详情
 
@@ -207,11 +207,20 @@ API 变动：
 API 变动：
 - 不需要。
 
-### `S-4` · current-head full-matrix 刷新解锁
+### `S-4` · current-head full-matrix 刷新解锁（已完成）
+
+状态：
+- 已于 `2026-03-06` 完成 evidence-only 审计，当前不再作为 current-head full-matrix 的默认阻塞项。
+- 收口记录：`docs/perf/2026-03-06-s4-full-matrix-refresh-unblock.md`
 
 问题：
 - 当前 perf 主线虽然已有 targeted 证据，但 full-matrix 刷新曾被 `runtime store: multi-instance isolation (same moduleId, different instanceId)` 挡住。
 - 这使得 current-head 的 broad/full 收口能力不稳定，后续每刀都更依赖 targeted 证据。
+
+本轮裁决：
+- current-head 复核没有再次复现这条语义失败。
+- 不做 `RuntimeStore` / `TickScheduler` 的猜测式补丁；把问题定性为 backlog 真相源漂移，而不是 live runtime bug。
+- 除非后续在 clean/comparable 条件下重新拿到失败样本，否则不要再让 `S-4` 阻塞 full-matrix 刷新。
 
 架构缺陷：
 - perf 体系对“全量矩阵能否刷新”过度依赖少数语义测试；一旦其中一条功能/隔离线回归，整个 broad 收口就被拖住。
@@ -221,8 +230,8 @@ API 变动：
 - 不直接提速 runtime，但能恢复 full-matrix 刷新能力，让后续性能刀更快收口。
 
 实施成本：
-- 中等。
-- 可能需要在 `runtime-store-no-tearing` 测试、`RuntimeStore`、`TickScheduler`、相关 instance key 路径里定位语义问题。
+- 已完成。
+- 本轮没有动 runtime；成本主要在 clean verification + backlog 回写。
 
 主要落点：
 - `packages/logix-react/test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx`
@@ -231,8 +240,8 @@ API 变动：
 - 必要时少量触及 `ModuleRuntime.impl.ts`
 
 并行/串行：
-- 可并行，但它和 `R-1` 的冲突风险高于 `S-2/F-1`。
-- 若需要改 `ModuleRuntime.impl.ts`，则必须与 `R-1` 串行；若只改 `RuntimeStore/TickScheduler/test`，可继续独立推进。
+- 已关闭，不再单独占用并行槽位。
+- 若未来重开，仍应优先限定在 test / `RuntimeStore` / `TickScheduler` 范围，避免无证据触碰 `ModuleRuntime.impl.ts`。
 
 API 变动：
 - 不需要。

@@ -33,6 +33,7 @@
 3. 默认只做一个 next cut：当前主线是 `R-1：txnLanes backlog policy split`。
 4. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
 5. 只有当 `R-1` 明确无稳定收益，才回到 `externalStore` 的 broad residual 做第二优先级复核。
+6. `S-4` 已于 `2026-03-06` 做过 evidence-only 审计；除非 clean/comparable 环境再次实测复现 `runtime-store-no-tearing` 的 multi-instance isolation 失败，否则不要再把它当 current-head full-matrix 的默认阻塞项。
 
 ## 3. 复测命令模板
 
