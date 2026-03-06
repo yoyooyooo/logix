@@ -79,15 +79,9 @@
 
 API 变动：
 - 当前不需要。
-- 下一轮仍优先沿 `txnQueue snapshot -> urgent-aware handoff` 收口，不要重复 blind first-host-yield。
-- `2026-03-06` 的显式 startup-phase 版在 3/3 quick audit 回归，见 `docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`；不要把 startup cap 直接固化为正式 policy。
-- 只有当 queue-snapshot 路线仍无法稳定过线，才升级到 `R-2`。
-- 下一轮仍可继续 `urgent-aware` 主线，但不要重复 blind first-host-yield，也不要重复这版 handoff-lite。
-- 只有当更高层的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
-- 当前活跃方案就是 `urgent-aware handoff`，不要重复 blind first-host-yield。
-- 不要把 startup cap / startup phase checkpoint 直接固化成正式 runtime policy。
+- 当前活跃方案仍是 `urgent-aware handoff`；不要重复 blind first-host-yield，也不要把 startup-phase checkpoint / handoff-lite 失败尝试固化成正式 policy。
+- `2026-03-06` 的显式 startup-phase 版在 3/3 quick audit 回归，见 `docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`；该记录只保留为 checkpoint。
 - 只有当 `R-1 v2` 的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
->>>>>>> 2935c015 (docs(perf): refresh d1 routing status)
 
 ### `S-1` · `externalStore` broad residual 复核（已完成）
 
@@ -206,20 +200,9 @@ API 变动：
 - 已于 `2026-03-06` 在主分支环境复核通过，并以 docs/evidence-only 方式关闭。
 - 除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不再占用并行槽位。
 
-问题：
-- `S-4` 关闭后，broad/full collect 的首个 blocker 已经转移到 `react.strictSuspenseJitter` 的导入/运行失败。
-- 它不一定是 runtime 性能问题，但确实在阻断 full-matrix 刷新。
-
-架构缺陷：
-- broad/full 收口链路容易被单个 browser suite 的运行时/导入层问题卡住，导致性能主线过度依赖 targeted 证据。
-
-预期收益：
-- 中等。
-- 不直接提速 runtime，但能继续恢复 broad/full collect 的可用性。
-
-实施成本：
-- 已完成。
-- 本轮仅做主分支环境复核与 docs 回写，不保留额外配置改动。
+历史阻塞点：
+- 它曾在 `S-4` 收口后短暂成为 broad/full collect 的首个 blocker，但该状态已经被主分支环境复核消化，不再代表当前默认盘面。
+- 这条线的价值始终是解锁 collect，而不是继续作为 runtime 性能主线。
 
 主要落点：
 - `packages/logix-react/test/browser/perf-boundaries/react-strict-suspense-jitter.test.tsx`
@@ -238,6 +221,8 @@ API 变动：
 状态：
 - 已于 `2026-03-06` 落成最小可用 perf `fabfile.py`。
 - 当前不再是活跃副线；需要路由/排期时直接复用现成命令。
+- 这里只保留“现成工具已落地”的结论，不再把它当作待排期任务展开。
+
 ### `S-6` · browser perf collect stabilization（已完成）
 
 状态：
@@ -271,61 +256,16 @@ API 变动：
 API 变动：
 - 不需要。
 
-### `F-1` · `Fabfile` 自动化编排
-
-问题：
-- `07` 已经把 perf 任务拆成 `task_id/kind/priority/conflict_level/parallelizable/requires_worktree/files/verify_commands/next_gate`。
-- 但当前仍需人工把这些字段转成可执行路由。
-
-架构缺陷：
-- 缺少一层统一的 perf 编排面，导致每轮并行推进前都要重新做任务拆分和冲突分析。
-
-预期收益：
-- 中等。
-- 不直接提速 runtime，但能把后续“多 worktree + 多 subagent + 一刀一提交”的执行成本显著压低。
-
-实施成本：
-- 已完成。
-- 本轮落的是最小可用 router，不触碰 runtime 内核。
-
-主要落点：
-- `fabfile.py`
-- 必要时 `scripts/` 下新增薄包装
-- `docs/perf/07-optimization-backlog-and-routing.md`（字段对齐）
-
-并行/串行：
-- 已完成，不再单独排期。
-- 若后续继续扩展，也不应修改 `packages/logix-core/src/internal/runtime/core/**`。
-
-API 变动：
-- 不需要。
-
 ### `S-4` · `RuntimeExternalStore delayed teardown` 最小修复（已完成）
 
 状态：
 - 已于 `2026-03-06` 升级成最小代码修复，不再是 evidence-only 关闭。
 - 收口记录：`docs/perf/2026-03-06-s4-runtime-external-store-delayed-teardown.md`
+- `runtime-store-no-tearing` 不再作为 current-head full-matrix 的默认 blocker。
 
-问题：
-- `runtime store: multi-instance isolation (same moduleId, different instanceId)` 在整文件/collect 场景下存在低频 flake。
-- 这会让 full-matrix 收口链路被 `runtime-store-no-tearing` 偶发挡住。
-
-本轮裁决：
-- 根因更像 `RuntimeExternalStore` 在同一 tick 的 unsubscribe -> resubscribe 抖动里立即 teardown / removeStore，导致 store 被拆掉又重建。
-- 修复方式不是继续猜 `RuntimeStore` / `TickScheduler`，而是把最后一个 listener 移除后的 teardown 延迟到一个 microtask，并允许同 tick resubscribe 取消 teardown。
-- 结果是 `runtime-store-no-tearing` 不再作为 current-head full-matrix 的默认 blocker。
-
-架构缺陷：
-- `RuntimeExternalStore` 之前把“最后一个 listener 移除”视为可以立即 teardown 的硬边界，但 React/browser 会在同一 tick 内出现 unsubscribe -> resubscribe 抖动。
-- 这种时序窗口一旦被忽略，就会把本该稳定的 selector snapshot 重新计算成 flake。
-
-预期收益：
-- 中等。
-- 不直接提速 runtime，但能恢复 `runtime-store-no-tearing` 作为 full-matrix 收口链路的一致性。
-
-实施成本：
-- 已完成。
-- 成本集中在 React external store teardown 时序的最小修复与稳定性复核。
+历史问题：
+- 根因是 `RuntimeExternalStore` 在同一 tick 的 unsubscribe -> resubscribe 抖动里过早 teardown / removeStore，导致 store 被拆掉又重建。
+- 该问题已经被最小修复吸收；除非 clean/comparable 环境再次稳定复现 flake，否则不再重开为活跃副线。
 
 主要落点：
 - `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`

@@ -29,9 +29,8 @@
 - [x] P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时（evidence correction）；去掉 timer 排队噪声，`mode=default, steps=2000` 已进 `50ms`。
 - [x] Q-1：`converge auto->full (near_full)` 改成 slim decision summary（保留 evidence、去掉重资产）；`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
 - [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门）。
-  - `2026-03-06` checkpoint：blind first-host-yield 已证伪；显式 startup-phase 版（`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`）在 3/3 quick audit 回归，当前只能保留为 evidence-only。
-  - `2026-03-06` handoff-lite checkpoint：`txnQueue snapshot + preUrgent chunk cap + urgent_waiter handoff` 版在 3/3 quick audit 回归，当前也只能保留为 evidence-only（`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`）。
-- [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门；最新失败子尝试见 `docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`，当前这版 `txnQueue snapshot + preUrgent chunk cap + urgent_waiter handoff` 不落代码）。
+  - `2026-03-06` checkpoint：blind first-host-yield 已证伪；显式 startup-phase 版（`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`）在 3/3 quick audit 回归，仅保留为 checkpoint / evidence-only。
+  - `2026-03-06` handoff-lite 失败证据：`txnQueue snapshot + preUrgent chunk cap + urgent_waiter handoff` 版同样在 3/3 quick audit 回归；记录见 `docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`，当前不落代码。
 
 
 ## Current-Head 裁决（2026-03-06）
