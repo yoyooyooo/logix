@@ -11,6 +11,8 @@ import { getProfileConfig, makePerfKernelLayer, runMatrixSuite, withNodeEnv } fr
 
 const PerfModule = makePerfCounterModule('PerfBrowserCounter')
 
+const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
+
 const PerfApp: React.FC = () => {
   const perf = useModule(PerfModule.tag)
   const value = useModule(perf, (s) => (s as { value: number }).value)
@@ -68,6 +70,7 @@ test(
           const screen = await render(reactStrictMode ? <React.StrictMode>{app}</React.StrictMode> : app)
           try {
             await expect.element(screen.getByText('Value: 0')).toBeInTheDocument()
+            await nextFrame()
 
             const button = screen.getByRole('button', { name: 'Increment' }).first()
             const start = performance.now()

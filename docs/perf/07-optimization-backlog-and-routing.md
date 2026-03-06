@@ -124,7 +124,7 @@ API 变动：
 
 并行/串行：
 - 语义上与 `R-1` 低冲突，可并行。
-- 但当前工作区这个测试文件已存在未提交本地改动，因此真正实施时应强制独立 worktree。
+- 但它会直接改变 benchmark 语义并影响 current-head 可比性，因此真正实施时应强制独立 worktree。
 
 API 变动：
 - 不需要。
@@ -204,8 +204,7 @@ API 变动：
 ### 可以并行，但应独立 worktree
 
 1. `S-2` 与任何其它任务
-- 原因不是语义冲突，而是当前工作区已有 `packages/logix-react/test/browser/watcher-browser-perf.test.tsx` 的未提交本地改动。
-- 若不隔离，很容易互相覆盖或污染 diff。
+- 原因不是 runtime 冲突，而是它会直接改变 benchmark 语义；若不隔离，current-head 与 targeted 证据很容易互相污染。
 
 ### 必须串行
 

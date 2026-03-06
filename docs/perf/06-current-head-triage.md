@@ -143,7 +143,7 @@
   - `packages/logix-react/test/browser/watcher-browser-perf.test.tsx`
   - `packages/logix-react/src/internal/store/perfWorkloads.ts`
   - `packages/logix-react/test/browser/perf-boundaries/*watcher*`
-- 额外说明：当前工作区里 [watcher-browser-perf.test.tsx](/Users/yoyo/Documents/code/personal/logix.worktrees/effect-v4/packages/logix-react/test/browser/watcher-browser-perf.test.tsx) 已有未提交本地改动，因此这条副线若实施，应该优先放到独立 worktree 里做。
+- 额外说明：这条副线会直接改变 benchmark 语义并影响 current-head 可比性，因此实施时仍应优先放到独立 worktree 里做。
 
 ### 可并行副线 C
 
