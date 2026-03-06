@@ -12,10 +12,11 @@
 
 ## 0. 先读顺序
 
-1. `docs/perf/01-architecture-keep-vs-change.md`
-2. `docs/perf/02-externalstore-bottleneck-map.md`
-3. `docs/perf/03-next-stage-major-cuts.md`
-4. 最新日期记录（例如 `2026-03-04-*.md`）
+1. `docs/perf/README.md`
+2. `docs/perf/06-current-head-triage.md`
+3. `docs/perf/05-forward-only-vnext-plan.md`
+4. `docs/perf/03-next-stage-major-cuts.md`
+5. 只在需要补历史上下文时再读旧日期记录
 
 ## 1. 进入实现前的硬约束
 
@@ -26,10 +27,10 @@
 
 ## 2. 推荐执行节奏
 
-1. 先做 A 刀（full 诊断懒构造），提交最小可测切片。
-2. 复测三件套，确认 `externalStore` 相对预算有改善。
-3. 再做 B 刀（externalStore 批处理写回），复测并观察抖动。
-4. 若 A/B 通过，再推进 C 刀与 D 刀。
+1. 先看 `06-current-head-triage.md`，确认这轮是在做真实 runtime 刀、证据纠偏，还是 gate 清理。
+2. 默认只做一个 next cut：当前主线是 `R-1：txnLanes backlog policy split`。
+3. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
+4. 只有当 `R-1` 明确无稳定收益，才回到 `externalStore` 的 broad residual 做第二优先级复核。
 
 ## 3. 复测命令模板
 
@@ -41,23 +42,32 @@
 - `pnpm -C packages/logix-core test`
 
 3. Browser perf 重点：
+- `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/txn-lanes.test.tsx -t "browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)"`
 - `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t "perf: externalStore ingest"`
 - `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t "perf: runtimeStore tick"`
 - `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 
 4. 可选 collect（落盘到 spec perf 目录）：
+- `pnpm perf collect -- --files test/browser/perf-boundaries/txn-lanes.test.tsx --out specs/103-effect-v4-forward-cutover/perf/<name>.json`
 - `pnpm perf collect -- --files test/browser/perf-boundaries/external-store-ingest.test.tsx --out specs/103-effect-v4-forward-cutover/perf/<name>.json`
 
 ## 4. 验收门
 
 1. 主要门：
-- `externalStore.ingest.tickNotify` 的 `full/off<=1.25` 要稳定通过到 `watchers=512`。
+- `txnLanes.urgentBacklog` 的 `urgent.p95<=50ms` 要稳定通过到 `steps=2000`（`mode=default/off`）。
 
-2. 防回归门：
+2. 第二优先级门：
+- `externalStore.ingest.tickNotify` 的 `full/off<=1.25` broad matrix 要稳定通过到 `watchers=512`。
+
+3. 防回归门：
 - `runtimeStore.noTearing.tickNotify` 继续保持通过。
 - `form.listScopeCheck` 继续保持通过。
 
-3. 稳定性门：
+4. 证据卫生门：
+- `watchers.clickToPaint` 若仍表现为 `watchers=1` 已超线且曲线非单调，先判为 suite 语义问题，不直接下 runtime 回归结论。
+- `converge.txnCommit` 的 `reason=notApplicable` 不计入真实性能失败。
+
+5. 稳定性门：
 - quick 至少 3 轮，按中位数结论判定。
 
 ## 5. 每轮完成后必须回写

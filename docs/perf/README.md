@@ -8,6 +8,8 @@
 
 - `05-forward-only-vnext-plan.md`
   - 在“零存量用户”前提下的唯一主线方案（破坏式收敛 + API vNext + 执行波次）。
+- `06-current-head-triage.md`
+  - 基于 current-head 证据的四分法裁决：真实瓶颈、伪影、门禁噪声与唯一下一刀。
 
 ## 专题导航（先读）
 
@@ -19,6 +21,8 @@
   - 下一阶段定向大改（A/B/C/D）与 API forward-only 演进方案。
 - `04-agent-execution-playbook.md`
   - 后续 agent 直接执行用：步骤、命令、门禁、回写要求。
+- `06-current-head-triage.md`
+  - current-head 的最新裁决页；开始新一轮 perf 工作前优先读它，而不是直接翻旧波次。
 
 ## 时间线记录（按日期回看）
 

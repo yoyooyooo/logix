@@ -1,4 +1,4 @@
-# 03 · 下一阶段定向大改（A/B/C/D）
+# 03 · 下一阶段定向大改（持续维护）
 
 本文件是执行裁决，不是讨论稿。默认目标：不计代价，优先性能上限与稳定性。
 
@@ -28,6 +28,31 @@
 - [x] O-2：纯 state action watcher 直接写 draft（watcher→action direct writeback）；`watchers=512` 进一步压到 `~36-43ms`，strict 下 `50ms` 线打穿到 `512`。
 - [x] P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时（evidence correction）；去掉 timer 排队噪声，`mode=default, steps=2000` 已进 `50ms`。
 - [x] Q-1：`converge auto->full (near_full)` 改成 slim decision summary（保留 evidence、去掉重资产）；`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
+- [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门）。
+
+
+## Current-Head 裁决（2026-03-06）
+
+证据锚点：
+- `ulw123.current-head.full-matrix`：broad/current-head 盘面。
+- `ulw124.external-store-current.targeted`：`externalStore` targeted 复核。
+- `ulw120.watchers-direct-writeback.targeted`：`watchers` 最强 targeted。
+- `ulw116.txn-lanes-click-anchored.targeted`：`txnLanes` click-anchored targeted。
+
+四分法：
+1. 真实运行时瓶颈：`txnLanes.urgentBacklog`。它在 broad 和 targeted 都仍然卡在 `urgent.p95<=50ms`，是 current-head 最像真实 runtime 成本的残项。
+2. 证据/benchmark 伪影：`watchers.clickToPaint`。`watchers=1` 已经超 `50ms`，且曲线非单调；这更像 suite 语义仍混入 browser floor，而不是 watcher scaling 还没打穿。
+3. 门禁噪声：`converge.txnCommit / decision.p95<=0.5ms`。`reason=notApplicable`，不该继续当作性能失败处理。
+4. 已基本解决但仍需稳定性复核：`externalStore.ingest.tickNotify / full-off`。targeted 已过到 `watchers=512`，broad 只剩 `256` 单点失守，优先级低于 `txnLanes`。
+
+下一刀（只给一个）：
+- `R-1：txnLanes backlog policy split`。
+- 方向：不要再继续拧 `budgetMs/chunkSize` 小常数，而是把 backlog 启动期与 steady-state 的 urgent 调度策略拆开。
+
+当前不建议先做：
+- `watchers`：先修 suite 语义，不再继续往 runtime 里塞 watcher 优化。
+- `converge`：先修 gate 表达，把 `notApplicable` 从失败视图剥离。
+- `externalStore`：先保留为第二优先级稳定性项，等 `txnLanes` 这一刀收口后再复核 broad residual。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 

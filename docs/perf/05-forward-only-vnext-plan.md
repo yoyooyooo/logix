@@ -34,13 +34,30 @@
 - [x] O-2：纯 state action watcher 直接写 draft（watcher→action direct writeback）；`watchers=512` 进一步压到 `~36-43ms`，strict 下 `50ms` 线打穿到 `512`。
 - [x] P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时（evidence correction）；去掉 timer 排队噪声，`mode=default, steps=2000` 已进 `50ms`。
 - [x] Q-1：`converge auto->full (near_full)` 改成 slim decision summary（保留 evidence、去掉重资产）；`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
+- [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门）。
 
 ## 1. 目标状态（一次性收敛）
 
-1. `externalStore.ingest.tickNotify` 的 `full/off<=1.25` 稳定通过到 `watchers=512`。
-2. list/form 默认增量化，不依赖业务层手工拆分 `Ref.item(...)`。
-3. full 诊断成本受控：事件默认 `lazy materialization`，热路径只保留 slim anchor。
-4. Runtime 配置语义去重：诊断配置单一入口，不再分散在多处。
+1. `txnLanes.urgentBacklog` 的 `urgent.p95<=50ms` 在 `mode=default/off` 下稳定通过到 `steps=2000`。
+2. `externalStore.ingest.tickNotify` 的 `full/off<=1.25` broad matrix 稳定通过到 `watchers=512`。
+3. `watchers.clickToPaint` 不再把 browser floor / suite 语义噪声误记为 watcher runtime 回归。
+4. `converge.txnCommit` 的 `reason=notApplicable` 不再出现在失败视图。
+5. Runtime 配置语义去重：诊断配置单一入口，不再分散在多处。
+
+
+## 1.1 Current-Head 裁决（2026-03-06）
+
+当前 evidence 以 `ulw123.current-head.full-matrix` 为 broad 锚点，并用 `ulw124`（externalStore）、`ulw120`（watchers）、`ulw116`（txnLanes）做 targeted 对照。
+
+裁决：
+1. 真实运行时瓶颈：`txnLanes.urgentBacklog`。它在 broad 与 targeted 都仍然卡在 `urgent.p95<=50ms`，是 current-head 唯一应继续优先砍的 runtime 主线。
+2. 已基本解决但仍需稳定性复核：`externalStore.ingest.tickNotify / full-off`。targeted 已过到 `watchers=512`，broad 只剩 `256` 单点失守；先保留为第二优先级稳定性项。
+3. 证据伪影：`watchers.clickToPaint`。`watchers=1` 已超线且曲线非单调，先视为 suite 语义问题，不再优先往 runtime 继续塞 watcher 优化。
+4. 门禁噪声：`converge.txnCommit / decision.p95<=0.5ms` 的 `reason=notApplicable` 不计入真实性能失败。
+
+当前唯一下一刀：
+- `R-1：txnLanes backlog policy split`。
+- 先在内核 policy 层区分 backlog 启动期与 steady-state；当前暂不需要动表面 API。
 
 ## 2. API vNext（直接替换，不兼容旧形态）
 
@@ -243,13 +260,20 @@ TraitLifecycle.scopedValidate($, {
 - `pnpm -C packages/logix-core test`
 
 2. Perf 主门：
-- `externalStore.ingest.tickNotify`：`full/off<=1.25` 到 `watchers=512` 稳定通过（3~5 轮 quick 中位）。
+- `txnLanes.urgentBacklog`：`urgent.p95<=50ms` 到 `steps=2000` 稳定通过（`mode=default/off`）。
 
-3. Perf 防回归：
+3. Perf 第二优先级：
+- `externalStore.ingest.tickNotify`：`full/off<=1.25` 的 broad matrix 到 `watchers=512` 稳定通过。
+
+4. Perf 防回归：
 - `runtimeStore.noTearing.tickNotify` 继续通过。
 - `form.listScopeCheck` 继续通过。
 
-4. 语义硬门：
+5. 证据卫生门：
+- `watchers.clickToPaint` 若仍出现 `watchers=1` 已超线且曲线非单调，先按 suite 语义问题处理。
+- `converge.txnCommit` 的 `reason=notApplicable` 不计入真实性能失败。
+
+6. 语义硬门：
 - 事务窗口禁 IO。
 - `instanceId/txnSeq/opSeq` 稳定不漂移。
 - 诊断事件 slim + 可序列化。
