@@ -1,0 +1,61 @@
+{
+  "skill_name": "logix-perf-cut-loop",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "继续狠狠干。先看当前项目最新的 full-matrix 和 docs/perf，告诉我现在真正还剩哪些性能瓶颈，哪些只是 benchmark 测歪了，然后只选最值的一刀往下做。",
+      "expected_output": "先做瓶颈分类与排行，再给出单一下一刀建议；如果 suite 测错对象，要先提出证据纠偏而不是盲目优化内核。",
+      "files": [],
+      "assertions": [
+        {
+          "name": "classifies_real_vs_artifact",
+          "description": "输出要明确区分真实瓶颈与测量伪影/门禁噪声。"
+        },
+        {
+          "name": "recommends_one_next_cut",
+          "description": "只能给出一个主推下一刀，而不是同时推进多个方向。"
+        },
+        {
+          "name": "grounds_in_perf_evidence",
+          "description": "应引用 docs/perf 或 specs/.../perf 中的现有证据作为判断依据。"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我不介意为了性能轻微改 API，但如果要动表面 API，请你先跟我对齐。你现在判断一下：txnLanes 或 watcher 这条线里，有没有值得为了收益去动 API 的地方？",
+      "expected_output": "能识别 API 变动门槛；若需要动 API，应先输出提案和收益面，而不是直接实施。",
+      "files": [],
+      "assertions": [
+        {
+          "name": "respects_api_gate",
+          "description": "如果建议改 API，必须停在提案层，不能直接进入实施。"
+        },
+        {
+          "name": "states_benefit_surface",
+          "description": "应说明 API 变动带来的收益面和影响范围。"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "按我们现在的方式继续：一刀一提交。先找一个高收益的性能刀，做完后更新 docs/perf、验证并单独提交，失败试探不要混进 commit。",
+      "expected_output": "按固定循环推进：单刀、验证、docs/perf、单独提交，并把探索样本和正式刀分开。",
+      "files": [],
+      "assertions": [
+        {
+          "name": "enforces_single_cut_loop",
+          "description": "输出应强调一刀一改、一刀一验、一刀一提交。"
+        },
+        {
+          "name": "separates_exploration_from_commit",
+          "description": "输出应明确把探索样本与正式提交分开。"
+        },
+        {
+          "name": "mentions_docs_perf_writeback",
+          "description": "输出应包含 docs/perf 回写与清单更新要求。"
+        }
+      ]
+    }
+  ]
+}
