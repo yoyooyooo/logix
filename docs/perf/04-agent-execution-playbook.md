@@ -14,9 +14,10 @@
 
 1. `docs/perf/README.md`
 2. `docs/perf/06-current-head-triage.md`
-3. `docs/perf/05-forward-only-vnext-plan.md`
-4. `docs/perf/03-next-stage-major-cuts.md`
-5. 只在需要补历史上下文时再读旧日期记录
+3. `docs/perf/07-optimization-backlog-and-routing.md`
+4. `docs/perf/05-forward-only-vnext-plan.md`
+5. `docs/perf/03-next-stage-major-cuts.md`
+6. 只在需要补历史上下文时再读旧日期记录
 
 ## 1. 进入实现前的硬约束
 
@@ -28,9 +29,10 @@
 ## 2. 推荐执行节奏
 
 1. 先看 `06-current-head-triage.md`，确认这轮是在做真实 runtime 刀、证据纠偏，还是 gate 清理。
-2. 默认只做一个 next cut：当前主线是 `R-1：txnLanes backlog policy split`。
-3. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
-4. 只有当 `R-1` 明确无稳定收益，才回到 `externalStore` 的 broad residual 做第二优先级复核。
+2. 再看 `07-optimization-backlog-and-routing.md`，确认这轮任务是主线、低冲突副线，还是必须独立 worktree 的副线。
+3. 默认只做一个 next cut：当前主线是 `R-1：txnLanes backlog policy split`。
+4. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
+5. 只有当 `R-1` 明确无稳定收益，才回到 `externalStore` 的 broad residual 做第二优先级复核。
 
 ## 3. 复测命令模板
 

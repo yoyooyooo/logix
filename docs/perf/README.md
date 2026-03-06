@@ -10,6 +10,8 @@
   - 在“零存量用户”前提下的唯一主线方案（破坏式收敛 + API vNext + 执行波次）。
 - `06-current-head-triage.md`
   - 基于 current-head 证据的四分法裁决：真实瓶颈、伪影、门禁噪声与唯一下一刀。
+- `07-optimization-backlog-and-routing.md`
+  - 把识别结论收敛成可执行 backlog：收益/成本/冲突面/并行策略/worktree 需求。
 
 ## 专题导航（先读）
 
@@ -23,6 +25,8 @@
   - 后续 agent 直接执行用：步骤、命令、门禁、回写要求。
 - `06-current-head-triage.md`
   - current-head 的最新裁决页；开始新一轮 perf 工作前优先读它，而不是直接翻旧波次。
+- `07-optimization-backlog-and-routing.md`
+  - 真正的实施路由页：哪些做主线、哪些做副线、哪些能并行、哪些必须串行。
 
 ## 时间线记录（按日期回看）
 
