@@ -83,6 +83,7 @@
 
 - 不开新的 runtime 主线。
 - 若 `probe_next_blocker` 为 `clear`，本轮应以 docs/evidence-only 收口，而不是继续向 `packages/logix-core/**` 下刀。
+- 是否允许继续开新的 perf worktree，统一按 `docs/perf/09-worktree-open-decision-template.md` 裁决；当前默认答案应为“不开”。
 
 ### 可并行副线 A
 

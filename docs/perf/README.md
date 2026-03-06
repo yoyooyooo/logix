@@ -39,6 +39,8 @@
   - 真正的实施路由页：哪些做主线、哪些做副线、哪些能并行、哪些必须串行。
 - `08-perf-execution-protocol.md`
   - 统一执行协议：主会话与实施线分工、独立 worktree/branch 纪律、成功/失败统一单提交收口。
+- `09-worktree-open-decision-template.md`
+  - 当 current-head 没有默认 blocker 时，用它裁决“要不要再开新的 perf worktree”，默认先判定为不开。
 
 ## 时间线记录（按日期回看）
 

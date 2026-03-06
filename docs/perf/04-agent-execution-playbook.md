@@ -20,7 +20,8 @@
 4. `docs/perf/07-optimization-backlog-and-routing.md`
 5. `docs/perf/05-forward-only-vnext-plan.md`
 6. `docs/perf/03-next-stage-major-cuts.md`
-7. 只在需要补历史上下文时再读旧日期记录
+7. `docs/perf/09-worktree-open-decision-template.md`（仅在 `probe_next_blocker=clear` 或准备重开 perf worktree 时必读）
+8. 只在需要补历史上下文时再读旧日期记录
 
 ## 1. 进入实现前的硬约束
 
@@ -40,9 +41,10 @@
 7. `S-2` 已完成第一刀（`clickToDomStable` + `clickToPaint` 双轨）；除非要继续补 benchmark 解释链，否则不要再把它升级回 runtime 主线。
 8. `startup-phase` 显式切面只保留 checkpoint 结论，不单独落 `D-1` 日期记录；不要把 startup cap 直接当正式 runtime cut。
 9. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
-10. 若 `probe_next_blocker` 为 `clear`，不要硬造新的 runtime 线；只在 `S-2` benchmark 解释链或 `R-2` 架构/API 候选里显式选线。
-11. `S-4` 已于 `2026-03-06` 用 `RuntimeExternalStore delayed teardown` 完成最小修复；若再复现 multi-instance isolation，优先从同 tick unsubscribe/resubscribe 时序重新排查。
-12. `S-5` 已于 `2026-03-06` 复核关闭：`react.strictSuspenseJitter` 在主分支环境可直接跑通；除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不要再把它当 broad/full collect 的默认阻塞项。
+10. 若 `probe_next_blocker` 为 `clear`，不要硬造新的 runtime 线；先回到 `docs/perf/09-worktree-open-decision-template.md` 做“开/不开 worktree”裁决。
+11. 只有模板里的触发器成立时，才允许继续开新的 perf worktree；否则本轮只做 docs/evidence-only 收口。
+12. `S-4` 已于 `2026-03-06` 用 `RuntimeExternalStore delayed teardown` 完成最小修复；若再复现 multi-instance isolation，优先从同 tick unsubscribe/resubscribe 时序重新排查。
+13. `S-5` 已于 `2026-03-06` 复核关闭：`react.strictSuspenseJitter` 在主分支环境可直接跑通；除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不要再把它当 broad/full collect 的默认阻塞项。
 
 ## 3. 复测命令模板
 
