@@ -36,6 +36,7 @@
 | `F-1` | 自动化副线（已完成） | 最小可用 perf `Fabfile` router 已落地 | 中 | 中 | 低 | 已完成 | 不需要 |
 | `S-4` | 验证解锁副线（已完成） | `RuntimeExternalStore delayed teardown` 最小修复已落地，`runtime-store-no-tearing` 不再是默认 blocker | 中 | 中 | 中 | 已完成 | 不需要 |
 | `S-5` | 验证解锁副线（已关闭） | `react.strictSuspenseJitter` 主分支环境可跑通，审计后以 docs/evidence-only 关闭 | 中 | 低 | 低 | 已关闭 | 不需要 |
+| `S-6` | collect 稳定化副线（已关闭） | browser perf collect 首轮预热噪声已复核，不保留基础设施补丁 | 中 | 低 | 低 | 已关闭 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
 
 ## 任务详情
@@ -78,13 +79,11 @@
 
 API 变动：
 - 当前不需要。
-<<<<<<< HEAD
 - 下一轮仍优先沿 `txnQueue snapshot -> urgent-aware handoff` 收口，不要重复 blind first-host-yield。
 - `2026-03-06` 的显式 startup-phase 版在 3/3 quick audit 回归，见 `docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`；不要把 startup cap 直接固化为正式 policy。
 - 只有当 queue-snapshot 路线仍无法稳定过线，才升级到 `R-2`。
 - 下一轮仍可继续 `urgent-aware` 主线，但不要重复 blind first-host-yield，也不要重复这版 handoff-lite。
 - 只有当更高层的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
-=======
 - 当前活跃方案就是 `urgent-aware handoff`，不要重复 blind first-host-yield。
 - 不要把 startup cap / startup phase checkpoint 直接固化成正式 runtime policy。
 - 只有当 `R-1 v2` 的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
@@ -239,6 +238,40 @@ API 变动：
 状态：
 - 已于 `2026-03-06` 落成最小可用 perf `fabfile.py`。
 - 当前不再是活跃副线；需要路由/排期时直接复用现成命令。
+### `S-6` · browser perf collect stabilization（已完成）
+
+状态：
+- 已于 `2026-03-06` 完成，收口记录见 `docs/perf/2026-03-06-s6-browser-collect-stabilization.md`。
+
+问题：
+- browser perf collect 在 fresh worktree / fresh cache 下曾被怀疑会踩到 Vite 首轮预热噪声，并表现为 browser reload / 动态导入失败。
+- 这类失败若被误判成 runtime 问题，会继续污染 perf 主线选路。
+
+本轮裁决：
+- 不触碰 `packages/logix-core/**`。
+- 试探性 browser 预热补丁
+  - `cacheDir`
+  - `optimizeDeps.entries`
+  - `server.warmup.clientFiles`
+  - `scripts/browser-perf-prewarm.ts`
+  在 fresh cache 首轮会放大成新的导入失败，因此不值得保留。
+- 回到 `HEAD` 基线配置后，targeted browser perf collect 可在 fresh cache 首轮直接通过；`S-6` 因此以 docs/evidence-only 关闭。
+
+预期收益：
+- 中等。
+- 不直接提速 runtime，但避免把错误的基础设施补丁带入主线，并明确当前 collect 已不依赖“第二次重跑才过”。
+
+主要落点：
+- `docs/perf/2026-03-06-s6-browser-collect-stabilization.md`
+- 本页状态回写
+
+并行/串行：
+- 已关闭，不再占用新的 browser/runtime 改动预算。
+
+API 变动：
+- 不需要。
+
+### `F-1` · `Fabfile` 自动化编排
 
 问题：
 - `07` 已经把 perf 任务拆成 `task_id/kind/priority/conflict_level/parallelizable/requires_worktree/files/verify_commands/next_gate`。
