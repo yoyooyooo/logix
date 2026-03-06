@@ -16,6 +16,7 @@ ROUTING_DOC = ROOT / 'docs' / 'perf' / '07-optimization-backlog-and-routing.md'
 WORKTREE_SERIES = ROOT.name.split('.', 1)[0]
 WORKTREE_ROOT = ROOT.parent
 AGENT_BRANCH_PREFIX = 'agent/'
+DEFAULT_BASE_BRANCH = 'main'
 
 TABLE_HEADER = '| ID | 类别 | 问题 | 预期收益 | 成本 | 冲突风险 | 并行策略 | API 变动 |'
 SECTION_TITLE_RE = re.compile(r'^### `(?P<task_id>[^`]+)` · (?P<title>.+)$', re.M)
@@ -71,6 +72,22 @@ class WorktreeInfo:
     dirty_count: int
     task_id: str | None
     category: str
+
+
+@dataclass
+class BranchDiffInfo:
+    branch: str
+    base_branch: str
+    ahead_count: int
+    behind_count: int
+    head: str
+    head_short: str
+    committed_date: str
+    author_name: str
+    subject: str
+    worktree: WorktreeInfo | None
+    merge_ready: bool
+    merge_ready_reasons: list[str]
 
 
 def _read_doc() -> str:
@@ -219,6 +236,35 @@ def _run_git(args: list[str], cwd: Path = ROOT) -> str:
         message = result.stderr.strip() or result.stdout.strip() or 'unknown git error'
         raise SystemExit(f'git {" ".join(args)} 失败: {message}')
     return result.stdout
+
+
+def _run_git_optional(args: list[str], cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(['git', *args], cwd=cwd, text=True, capture_output=True, check=False)
+
+
+def _resolve_base_branch() -> str:
+    result = _run_git_optional(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
+    if result.returncode != 0:
+        return DEFAULT_BASE_BRANCH
+    ref = result.stdout.strip()
+    return ref.removeprefix('origin/') or DEFAULT_BASE_BRANCH
+
+
+def _local_branch_exists(branch: str) -> bool:
+    result = _run_git_optional(['show-ref', '--verify', '--quiet', f'refs/heads/{branch}'])
+    return result.returncode == 0
+
+
+def _resolve_branch_name(branch: str, worktrees: list[WorktreeInfo]) -> str | None:
+    if _local_branch_exists(branch):
+        return branch
+    if not branch.startswith(AGENT_BRANCH_PREFIX) and _local_branch_exists(f'{AGENT_BRANCH_PREFIX}{branch}'):
+        return f'{AGENT_BRANCH_PREFIX}{branch}'
+    for worktree in worktrees:
+        if worktree.basename == branch or worktree.basename.removeprefix(f'{WORKTREE_SERIES}.') == branch:
+            if worktree.branch_name:
+                return worktree.branch_name
+    return None
 
 
 def _infer_task_id(name: str | None) -> str | None:
@@ -392,6 +438,67 @@ def _worktree_payload(worktree: WorktreeInfo) -> dict[str, Any]:
         'detached': worktree.detached,
         'prunable': worktree.prunable,
         'path': worktree.path,
+    }
+
+
+def _worktree_for_branch(branch: str, worktrees: list[WorktreeInfo]) -> WorktreeInfo | None:
+    for worktree in worktrees:
+        if worktree.branch_name == branch:
+            return worktree
+    return None
+
+
+def _branch_diff_info(branch: str, worktrees: list[WorktreeInfo], *, base_branch: str | None = None) -> BranchDiffInfo:
+    target_base = base_branch or _resolve_base_branch()
+    behind_raw, ahead_raw = _run_git(['rev-list', '--left-right', '--count', f'{target_base}...{branch}']).strip().split()
+    head, head_short, committed_date, author_name, subject = _run_git(
+        ['log', '-1', '--format=%H%x1f%h%x1f%cs%x1f%an%x1f%s', branch],
+    ).strip().split('\x1f', 4)
+    worktree = _worktree_for_branch(branch, worktrees)
+    ahead_count = int(ahead_raw)
+    behind_count = int(behind_raw)
+    merge_ready_reasons: list[str] = []
+    if ahead_count != 1:
+        merge_ready_reasons.append(f'相对 {target_base} 不是恰好多 1 个提交（ahead={ahead_count}）')
+    if behind_count != 0:
+        merge_ready_reasons.append(f'{target_base} 已领先 {behind_count} 个提交')
+    if worktree is None:
+        merge_ready_reasons.append('没有 active worktree，无法判定 clean')
+    elif worktree.dirty_count < 0:
+        merge_ready_reasons.append('worktree 状态不可读')
+    elif worktree.dirty:
+        merge_ready_reasons.append(f'worktree dirty_count={worktree.dirty_count}')
+    return BranchDiffInfo(
+        branch=branch,
+        base_branch=target_base,
+        ahead_count=ahead_count,
+        behind_count=behind_count,
+        head=head,
+        head_short=head_short,
+        committed_date=committed_date,
+        author_name=author_name,
+        subject=subject,
+        worktree=worktree,
+        merge_ready=not merge_ready_reasons,
+        merge_ready_reasons=merge_ready_reasons,
+    )
+
+
+def _branch_diff_payload(diff: BranchDiffInfo) -> dict[str, Any]:
+    return {
+        'branch': diff.branch,
+        'base_branch': diff.base_branch,
+        'ahead_count': diff.ahead_count,
+        'behind_count': diff.behind_count,
+        'head': diff.head,
+        'head_short': diff.head_short,
+        'committed_date': diff.committed_date,
+        'author_name': diff.author_name,
+        'subject': diff.subject,
+        'merge_ready': diff.merge_ready,
+        'merge_ready_reasons': diff.merge_ready_reasons,
+        'task_id': diff.worktree.task_id if diff.worktree else None,
+        'worktree': _worktree_payload(diff.worktree) if diff.worktree else None,
     }
 
 
@@ -611,6 +718,75 @@ def cmd_list_active_worktrees(worktrees: list[WorktreeInfo], json_mode: bool) ->
     return 0
 
 
+def cmd_list_merge_ready(worktrees: list[WorktreeInfo], json_mode: bool) -> int:
+    base_branch = _resolve_base_branch()
+    candidates = [worktree for worktree in worktrees if worktree.branch_name and not worktree.detached]
+    diffs = sorted(
+        (_branch_diff_info(worktree.branch_name, worktrees, base_branch=base_branch) for worktree in candidates),
+        key=lambda item: ((item.worktree.task_id or '') if item.worktree else '', item.branch),
+    )
+    ready = [diff for diff in diffs if diff.merge_ready]
+    payload = {
+        'base_branch': base_branch,
+        'criteria': {
+            'ahead_count': 1,
+            'behind_count': 0,
+            'worktree_clean': True,
+        },
+        'merge_ready_branches': [_branch_diff_payload(diff) for diff in ready],
+        'scanned_branches': len(diffs),
+    }
+    if json_mode:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f'merge-ready satellites（base={base_branch}，ahead=1，behind=0，worktree clean）:')
+    if not ready:
+        print('- 当前没有满足条件的分支')
+        print(f'- 已扫描 active satellite branches: {len(diffs)}')
+        return 0
+    for diff in ready:
+        worktree = diff.worktree
+        task_label = worktree.task_id if worktree and worktree.task_id else '-'
+        print(
+            f'- {diff.branch} | task={task_label} | head={diff.head_short} | latest={diff.committed_date} {diff.subject}',
+        )
+        if worktree:
+            print(f'  worktree={worktree.basename} dirty={worktree.dirty_count} path={worktree.path}')
+    return 0
+
+
+def cmd_show_branch_diff(worktrees: list[WorktreeInfo], branch: str, json_mode: bool) -> int:
+    resolved_branch = _resolve_branch_name(branch, worktrees)
+    if not resolved_branch:
+        print(f'未找到本地分支: {branch}', file=sys.stderr)
+        return 1
+    diff = _branch_diff_info(resolved_branch, worktrees)
+    payload = _branch_diff_payload(diff)
+    if json_mode:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f'base: {diff.base_branch}')
+    print(f'branch: {diff.branch}')
+    print(f'diff: ahead={diff.ahead_count} behind={diff.behind_count}')
+    print(f'latest: {diff.head_short} {diff.committed_date} {diff.author_name} :: {diff.subject}')
+    if diff.worktree:
+        print(
+            'worktree: '
+            f'{diff.worktree.basename} | task={diff.worktree.task_id or "-"} | dirty={diff.worktree.dirty_count} | '
+            f'path={diff.worktree.path}',
+        )
+    else:
+        print('worktree: (no active worktree)')
+    print(f'merge_ready: {str(diff.merge_ready).lower()}')
+    if diff.merge_ready_reasons:
+        print('not_ready_reasons:')
+        for reason in diff.merge_ready_reasons:
+            print(f'- {reason}')
+    return 0
+
+
 def cmd_plan_parallel(tasks: dict[str, TaskInfo], worktrees: list[WorktreeInfo], json_mode: bool) -> int:
     payload = {
         'source': str(ROUTING_DOC),
@@ -661,6 +837,23 @@ def build_parser() -> argparse.ArgumentParser:
     list_worktrees.add_argument('--json', action='store_true')
     list_worktrees.set_defaults(handler='list_active_worktrees')
 
+    list_merge_ready = sub.add_parser(
+        'list_merge_ready',
+        aliases=['list-merge-ready'],
+        help='列出相对主分支恰好多 1 个提交且 worktree clean 的 satellite branch',
+    )
+    list_merge_ready.add_argument('--json', action='store_true')
+    list_merge_ready.set_defaults(handler='list_merge_ready')
+
+    show_branch_diff = sub.add_parser(
+        'show_branch_diff',
+        aliases=['show-branch-diff'],
+        help='展示某个 satellite branch 相对主分支的 ahead/behind 与最新提交信息',
+    )
+    show_branch_diff.add_argument('branch')
+    show_branch_diff.add_argument('--json', action='store_true')
+    show_branch_diff.set_defaults(handler='show_branch_diff')
+
     plan = sub.add_parser('plan_parallel', aliases=['plan-parallel'], help='输出当前推荐并行组')
     plan.add_argument('--json', action='store_true')
     plan.set_defaults(handler='plan_parallel')
@@ -681,6 +874,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_show_worktree_plan(tasks, worktrees, args.task_id, args.json)
     if args.handler == 'list_active_worktrees':
         return cmd_list_active_worktrees(worktrees, args.json)
+    if args.handler == 'list_merge_ready':
+        return cmd_list_merge_ready(worktrees, args.json)
+    if args.handler == 'show_branch_diff':
+        return cmd_show_branch_diff(worktrees, args.branch, args.json)
     if args.handler == 'plan_parallel':
         return cmd_plan_parallel(tasks, worktrees, args.json)
     parser.error(f'未知命令: {args.command}')

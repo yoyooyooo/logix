@@ -35,6 +35,9 @@
    - 成功线保留最终有效 diff，并在同一提交内完成必要的 `docs/perf/*` 回写。
    - 失败线清掉半成品代码，只保留失败结论需要的 dated evidence / routing 更新；不要拆成多次“补文档”提交。
 6. 主会话只审查这 `1` 个最终提交；若不通过，退回原实施线继续收口，而不是在主会话里二次拼 diff。
+3. 默认一次只推进一个主线切刀；副线只在低冲突时并行。
+4. 若某条副线主要价值是修证据/gate，而不是 runtime 提速，不得阻塞主线。
+5. 若某条副线的主要文件在当前工作区已存在未提交改动，应优先放到独立 worktree。
 
 ## 排序原则
 
@@ -222,7 +225,8 @@ API 变动：
 
 状态：
 - 已完成；`fabfile.py` 已转为现成工具，默认直接复用 `list-tasks` / `show-task` / `plan-parallel`。
-- 详细完成记录保留在 `docs/perf/05-forward-only-vnext-plan.md` 的 Wave F；本页不再重复展开历史状态。
+- `F-3` 已补上 `list_merge_ready` / `show_branch_diff`，可直接查看哪些 satellite branch 已达到“相对主分支仅 1 个提交且 worktree clean”的合流条件。
+- 详细完成记录保留在 `docs/perf/2026-03-06-f1-perf-fabfile.md`、`docs/perf/2026-03-06-f2-perf-fabfile-worktree-plan.md`、`docs/perf/2026-03-06-f3-perf-fabfile-merge-ready.md`。
 
 ### `S-6` · browser perf collect stabilization（已完成）
 
