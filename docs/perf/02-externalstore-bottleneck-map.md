@@ -1,18 +1,43 @@
-# 02 · externalStore 瓶颈地图（P1 主阻塞）
+# 02 · externalStore 瓶颈地图（历史主阻塞，当前已降级为 residual 复核项）
 
 目标：把 `externalStore.ingest.tickNotify` 的性能问题拆到可执行级别，避免重复猜测。
+
+## 当前状态（2026-03-06 更新）
+
+- current-head broad matrix 曾在 `watchers=256` 出现一次 `full/off<=1.25` 失守。
+- 但独立 worktree 内 5 轮 quick audit 全部通过到 `watchers=512`。
+- 因此这条线当前应视为 **第二优先级 residual 复核项**，而不是继续优先砍的 runtime 主线。
+- 证据见：`docs/perf/2026-03-06-s1-externalstore-residual-audit.md`。
 
 ## 当前已确认现象
 
 证据锚点：
 - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw31.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw123.current-head.full-matrix.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw124.external-store-current.targeted.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r1.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r2.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r3.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r4.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r5.json`
 
 结论：
 - `p95<=3.00ms`（off/full）可以到 `watchers=512`。
-- `full/off<=1.25` 不稳定，在 `watchers=256` 或 `512` 可能触发失败。
+- broad/current-head 的 `watchers=256` 单点失守已被 `2026-03-06` 的 5 轮 clean targeted audit 复核为 residual/noise，不再视为 current-head 的活跃 runtime 问题。
 
 解释：
-- 问题主因是 `diagnosticsLevel=full` 的额外成本与抖动，不是 ingest 基线吞吐不足。
+- `diagnosticsLevel=full` 仍然是相对开销的主要放大点，但现阶段它没有把该 suite 稳定推到门外；当前更应该把这里当作“历史热路径地图 + 复开条件”，而不是继续追的主线瓶颈。
+
+## S-1 residual audit（2026-03-06）
+
+结论：
+- 使用同 profile=`quick`、同 suite=`externalStore.ingest.tickNotify` 连续复跑 5 轮 targeted audit，全部 `maxLevel=512 / firstFailLevel=null`。
+- `watchers=256` 的 `full/off` ratio 分别为 `0.83 / 1.00 / 0.92 / 1.00 / 0.91`。
+- 因此 `ulw123` 在 broad/current-head 中的 `watchers=256` 单次 `ratio=1.30`，判定为 residual/noise，而不是真实残余 runtime 问题。
+
+处理策略：
+- 本线关闭为 docs/evidence-only 结案，不再继续做 runtime 热路径改造。
+- 只有再次拿到 clean/comparable 口径下连续 3 轮以上稳定复现，才重新打开这条线。
 
 ## 热路径拆解（按调用顺序）
 
@@ -63,6 +88,7 @@
 
 2. `externalStore` 判定以相对预算为主：
 - `full/off<=1.25` 稳定通过（建议 3~5 轮 quick 中位数）
+  - `2026-03-06` 已用 5 轮 clean targeted audit 完成一次 closing check，并判定 broad 单点红样本为 residual/noise。
 
 3. 任何“只提升 off，不改善 full”的方案不能算完成。
 

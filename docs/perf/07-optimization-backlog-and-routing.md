@@ -30,7 +30,7 @@
 | ID | 类别 | 问题 | 预期收益 | 成本 | 冲突风险 | 并行策略 | API 变动 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `R-1` | 真实 runtime 主线 | `txnLanes.urgentBacklog` 仍卡 `urgent.p95<=50ms` | 很高 | 中高 | 高 | 主线串行 | 暂不需要 |
-| `S-1` | 稳定性副线 | `externalStore.ingest.tickNotify` broad residual 复核 | 中 | 低到中 | 低 | 可并行 | 不需要 |
+| `S-1` | 稳定性副线（已完成） | `externalStore.ingest.tickNotify` broad residual 复核 | 中 | 低到中 | 低 | 已关闭 | 不需要 |
 | `S-2` | benchmark 纠偏 | `watchers.clickToPaint` 混入 browser floor | 中 | 中 | 中 | 可并行，但应独立 worktree | 不需要 |
 | `S-3` | gate/matrix 清理 | `converge decision` 的 `notApplicable` 仍进失败视图 | 中 | 低 | 低 | 可并行 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
@@ -67,11 +67,22 @@ API 变动：
 - 当前不需要。
 - 只有当 policy split 仍无法稳定过线，才升级到 `R-2`。
 
-### `S-1` · `externalStore` broad residual 复核
+### `S-1` · `externalStore` broad residual 复核（已完成）
+
+状态：
+- 已于 `2026-03-06` 完成 clean targeted audit，并收口为 residual/noise。
 
 问题：
 - current-head broad matrix 只在 `watchers=256` 的 `full/off<=1.25` 掉了一次，targeted 到 `512` 全绿。
 - 这更像 residual / broad-matrix 噪声，不像当前真实 runtime 主线。
+
+收口证据：
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r1.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r2.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r3.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r4.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r5.json`
+- 五轮结果均为 `maxLevel=512 / firstFailLevel=null`，因此 broad `watchers=256` 单点红样本已按 residual/noise 关闭。
 
 架构缺陷：
 - current-head 真相源仍可能被 broad 单点 residual 误导；缺少 clean/comparable 复核时，容易过早下热路径优化结论。
@@ -81,8 +92,8 @@ API 变动：
 - 主要价值是提高结论确定性，避免把不是主线的问题继续当主线砍。
 
 实施成本：
-- 低到中。
-- 首刀应以 targeted/broad 复核为主，不直接进内核重构。
+- 已完成。
+- 结论是 residual/noise，不进入内核重构。
 
 主要落点：
 - `packages/logix-core/src/internal/state-trait/external-store.ts`
@@ -91,8 +102,8 @@ API 变动：
 - `docs/perf/02-externalstore-bottleneck-map.md`
 
 并行/串行：
-- 与 `R-1` 低冲突，可并行。
-- 推荐独立分支；若要实改代码，最好单独 worktree 保持提交隔离。
+- 已完成，无需继续排期。
+- 若后续再次出现单点红样本，先按本节证据口径做 clean targeted audit，再决定是否重新打开。
 
 API 变动：
 - 当前不需要。

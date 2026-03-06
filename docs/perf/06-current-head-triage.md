@@ -33,7 +33,8 @@
 2. `externalStore.ingest.tickNotify`
 - broad current-head 只在 `watchers=256` 出现一次 `full/off<=1.25` 失败；`128` 和 `512` 都过。
 - targeted `ulw124` 则到 `watchers=512` 全绿。
-- 结论：它仍是需要盯住的稳定性残项，但优先级低于 `txnLanes`，更像“broad matrix 噪声 + 单点残差”。
+- `2026-03-06` 的 5 轮 clean targeted audit（`s2.audit.external-store.current.quick.r1-r5.json`）全部 `maxLevel=512 / firstFailLevel=null`。
+- 结论：这条线已可正式降级为 residual/noise，不再保留为 current-head 的待复核残项。
 
 3. `watchers.clickToPaint`
 - broad current-head 在 `watchers=1` 就已经 `56-60ms`，而 `64` 或 `512` 并没有单调更差。
@@ -68,8 +69,8 @@
 ### 4. 已基本解决但仍需稳定性复核
 
 - `externalStore.ingest.tickNotify / full-off`
-- 原因：targeted 已过，broad 只剩 `watchers=256` 单点失守。
-- 裁决：保留为第二优先级稳定性项；只有在 `txnLanes` 这一刀无稳定收益时，才回到这条线做 targeted 复核与链路清理。
+- 原因：历史上 targeted 已过，而 `2026-03-06` 的 5 轮 clean targeted audit 进一步证明 broad 的 `watchers=256` 单点失守并不稳定复现。
+- 裁决：这条线已完成 residual audit，正式关闭；除非后续出现新的 clean/comparable 连续复现证据，否则不再阻塞主线。
 
 ## 背后的架构缺陷（系统性税）
 
