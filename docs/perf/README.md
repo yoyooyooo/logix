@@ -62,3 +62,5 @@
   - O-1：纯 state action watcher 并回原 action txn，`watchers=512` 从 `~85-95ms` 级压到 `~50-55ms`。
 - `2026-03-06-p1-txn-lanes-click-anchored.md`
   - P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时，去掉 timer 排队噪声；`mode=default, steps=2000` 已进 `50ms`。
+- `2026-03-06-q1-converge-nearfull-slim-decision.md`
+  - Q-1：`converge auto->full (near_full)` 改成 slim decision summary，`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。

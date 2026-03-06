@@ -1136,19 +1136,24 @@ export const convergeInTransaction = <S extends object>(
     }
 
     let changedCount = 0
+    const shouldCollectNearFullSlimDecision =
+      diagnosticsLevel === 'off' && requestedMode === 'auto' && mode === 'full' && reasons.length === 1 && reasons[0] === 'near_full'
+    const shouldCollectDecisionSummary = shouldCollectDecision && !shouldCollectNearFullSlimDecision
+
+    const buildStepStats = (executedSteps: number): TraitConvergeStepStats => ({
+      totalSteps,
+      executedSteps,
+      skippedSteps: Math.max(0, totalSteps - executedSteps),
+      changedSteps: changedCount,
+      ...(typeof affectedSteps === 'number' ? { affectedSteps } : null),
+    })
 
     const makeDecisionSummary = (params: {
       readonly outcome: TraitConvergeOutcomeTag
       readonly executedSteps: number
       readonly executionDurationMs: number
     }): TraitConvergeDecisionSummary => {
-      const stepStats: TraitConvergeStepStats = {
-        totalSteps,
-        executedSteps: params.executedSteps,
-        skippedSteps: Math.max(0, totalSteps - params.executedSteps),
-        changedSteps: changedCount,
-        ...(typeof affectedSteps === 'number' ? { affectedSteps } : null),
-      }
+      const stepStats = buildStepStats(params.executedSteps)
 
       return {
         requestedMode,
@@ -1181,6 +1186,24 @@ export const convergeInTransaction = <S extends object>(
             : undefined,
       } satisfies TraitConvergeDecisionSummary
     }
+
+    const makeNearFullSlimDecisionSummary = (params: {
+      readonly outcome: TraitConvergeOutcomeTag
+      readonly executedSteps: number
+      readonly executionDurationMs: number
+    }): TraitConvergeDecisionSummary => ({
+      requestedMode,
+      executedMode: mode,
+      outcome: params.outcome,
+      configScope,
+      staticIrDigest: '',
+      executionBudgetMs: ctx.budgetMs,
+      executionDurationMs: params.executionDurationMs,
+      decisionBudgetMs: requestedMode === 'auto' ? ctx.decisionBudgetMs : undefined,
+      decisionDurationMs: requestedMode === 'auto' ? decisionDurationMs : undefined,
+      reasons,
+      stepStats: buildStepStats(params.executedSteps),
+    })
 
     const steps: Array<ConvergeStepSummary> | undefined = diagnosticsLevel === 'full' ? [] : undefined
     let executedSteps = 0
@@ -1695,13 +1718,19 @@ export const convergeInTransaction = <S extends object>(
       }
     }
 
-    const decision = shouldCollectDecision
+    const decision = shouldCollectDecisionSummary
       ? makeDecisionSummary({
           outcome,
           executedSteps,
           executionDurationMs: totalDurationMs,
         })
-      : undefined
+      : shouldCollectNearFullSlimDecision
+        ? makeNearFullSlimDecisionSummary({
+            outcome,
+            executedSteps,
+            executionDurationMs: totalDurationMs,
+          })
+        : undefined
     if (decision && diagnosticsLevel !== 'off') yield* emitTraitConvergeTraceEvent(decision)
 
     return changedCount > 0

@@ -26,6 +26,7 @@
 - [x] N-1：`defer` 增加 render 前 sync-warm 预热（行为前移优化）；去掉同步模块的 provider preload gating fallback，`bootToReady` 从 `~345ms` 级降到 `~60ms`。
 - [x] O-1：纯 state action watcher 并回原 action txn（watcher→action fusion）；`watchers=512` 从 `~85-95ms` 级压到 `~50-55ms`。
 - [x] P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时（evidence correction）；去掉 timer 排队噪声，`mode=default, steps=2000` 已进 `50ms`。
+- [x] Q-1：`converge auto->full (near_full)` 改成 slim decision summary（保留 evidence、去掉重资产）；`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 
