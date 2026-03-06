@@ -8,9 +8,9 @@
 
 - 编号说明：`03/05` 沿用 major-cut 历史编号，`07` 使用 routing track 编号；存在同名如 `F-1`，排期与当前状态一律以 `07-optimization-backlog-and-routing.md` 为准。
 - 当前没有默认 runtime 主线：`R-1` 已由 `S-10` native-anchor benchmark cut 收口，`S-11` post-probe 又确认 remaining browser blocker queue 已清空；`startup-phase` / `handoff-lite` / `urgent-aware handoff` 只保留失败 checkpoint，不再代表活跃排期。
-- 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）、`S-10`（`txnLanes` native-anchor benchmark cut）、`S-11`（post-S10 blocker probe）。
+- 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-12`（watchers paired phase evidence）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）、`S-10`（`txnLanes` native-anchor benchmark cut）、`S-11`（post-S10 blocker probe）。
 - 已关闭：`R-1` runtime 主线、`S-1` residual audit、`S-3` gate/applicability、`S-5` refresh unblock 审计、`S-6` collect 稳定化副线。
-- 当前只剩显式候选：`S-2` benchmark 解释链 / 展示层收口，以及 `R-2` 架构/API 候选；都不是默认 runtime blocker 后继。
+- 当前只剩显式候选：`S-2` 展示层 / 汇总层收口（paired phase evidence 已到位），以及 `R-2` 架构/API 候选；都不是默认 runtime blocker 后继。
 - 真正的排期与并行策略以 `07-optimization-backlog-and-routing.md` 为准。
 - 执行协议以 `08-perf-execution-protocol.md` 为准：主会话保持干净，只做协调/审查/合流；每条实施线都在独立 `worktree/branch/subagent` 中推进，并在收口时相对主分支只保留 `1` 个最终 HEAD 提交。
 
@@ -104,3 +104,5 @@
   - S-10：`txnLanes.urgentBacklog` 改成 `nativeCapture -> MutationObserver DOM stable` 语义，并在 clean HEAD 复验后正式关闭 `R-1` queue-side runtime 主线。
 - `2026-03-06-s11-post-s10-blocker-probe.md`
   - S-11：在独立 worktree 重新 probe current-head，确认 remaining blocker queue 全绿、默认 runtime 主线已清空，并把 `txnLanes` 从默认 blocker probe 队列移除。
+- `2026-03-06-s12-watchers-paired-phase-evidence.md`
+  - S-12：watchers 红样本改为同 sample phase evidence，自身即可解释超线主要落在 `clickToHandler / handlerToDomStable / domStableToPaintGap` 哪一段。

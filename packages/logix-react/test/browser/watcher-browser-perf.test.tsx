@@ -13,14 +13,24 @@ const PerfModule = makePerfCounterModule('PerfBrowserCounter')
 
 const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
 
-const PerfApp: React.FC = () => {
+type PerfAppProps = {
+  readonly onIncrementHandlerStart?: (atMs: number) => void
+}
+
+const PerfApp: React.FC<PerfAppProps> = ({ onIncrementHandlerStart }) => {
   const perf = useModule(PerfModule.tag)
   const value = useModule(perf, (s) => (s as { value: number }).value)
 
   return (
     <div>
       <p>Value: {value}</p>
-      <button type="button" onClick={() => perf.actions.inc()}>
+      <button
+        type="button"
+        onClick={() => {
+          onIncrementHandlerStart?.(performance.now())
+          perf.actions.inc()
+        }}
+      >
         Increment
       </button>
     </div>
@@ -47,18 +57,30 @@ const resolveProfileId = (): string => {
 const TEST_TIMEOUT_MS = Math.max(30_000, timeoutMs * watchersLevels.length * strictModeLevels.length * 2)
 
 type SampleMetrics = {
+  readonly clickToHandlerMs: number
+  readonly handlerToDomStableMs: number
+  readonly domStableToPaintGapMs: number
   readonly paintishMs: number
   readonly domStableMs: number
 }
+
+const toPhaseEvidence = (sample: SampleMetrics) => ({
+  'watchers.phase.clickToHandlerMs': sample.clickToHandlerMs,
+  'watchers.phase.handlerToDomStableMs': sample.handlerToDomStableMs,
+  'watchers.phase.domStableToPaintGapMs': sample.domStableToPaintGapMs,
+})
 
 const collectSampleMetrics = async (args: { readonly watchers: number; readonly reactStrictMode: boolean }): Promise<SampleMetrics> => {
   const perfKernelLayer = makePerfKernelLayer()
   const layer = PerfModule.live({ value: 0 }, makePerfCounterIncWatchersLogic(PerfModule, args.watchers))
   const runtime = ManagedRuntime.make(Layer.mergeAll(perfKernelLayer, layer) as Layer.Layer<any, never, never>)
+  let handlerStartAt: number | undefined
 
   const app = (
     <RuntimeProvider runtime={runtime}>
-      <PerfApp />
+      <PerfApp onIncrementHandlerStart={(atMs) => {
+        handlerStartAt = atMs
+      }} />
     </RuntimeProvider>
   )
 
@@ -75,7 +97,14 @@ const collectSampleMetrics = async (args: { readonly watchers: number; readonly 
     await nextFrame()
     const paintishAt = performance.now()
 
+    if (handlerStartAt === undefined) {
+      throw new Error('watcherHandlerStartMissing')
+    }
+
     return {
+      clickToHandlerMs: Math.max(0, handlerStartAt - start),
+      handlerToDomStableMs: Math.max(0, domStableAt - handlerStartAt),
+      domStableToPaintGapMs: Math.max(0, paintishAt - domStableAt),
       domStableMs: domStableAt - start,
       paintishMs: paintishAt - start,
     }
@@ -99,7 +128,10 @@ test(
             reactStrictMode: params.reactStrictMode as boolean,
           })
           return {
-            'e2e.clickToPaintMs': sample.paintishMs,
+            metrics: {
+              'e2e.clickToPaintMs': sample.paintishMs,
+            },
+            evidence: toPhaseEvidence(sample),
           }
         },
         { cutOffOn: ['timeout'] },
@@ -114,7 +146,10 @@ test(
             reactStrictMode: params.reactStrictMode as boolean,
           })
           return {
-            'e2e.clickToDomStableMs': sample.domStableMs,
+            metrics: {
+              'e2e.clickToDomStableMs': sample.domStableMs,
+            },
+            evidence: toPhaseEvidence(sample),
           }
         },
         { cutOffOn: ['timeout'] },

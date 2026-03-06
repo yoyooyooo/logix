@@ -38,7 +38,7 @@ type MetricResult =
       readonly unavailableReason: string
     }
 
-type EvidenceUnit = 'count' | 'ratio' | 'bytes' | 'string'
+type EvidenceUnit = 'count' | 'ratio' | 'bytes' | 'ms' | 'string'
 
 type EvidenceResult =
   | {
@@ -693,6 +693,7 @@ const medianNumber = (samples: ReadonlyArray<number>): number => {
 const inferEvidenceUnit = (name: string): EvidenceUnit => {
   const lowered = name.toLowerCase()
   if (lowered.includes('bytes') || lowered.includes('byte')) return 'bytes'
+  if (lowered.endsWith('ms')) return 'ms'
   if (lowered.includes('ratio') || lowered.includes('rate')) return 'ratio'
   return 'count'
 }

@@ -46,7 +46,7 @@
 - `form.listScopeCheck`：`S-11` real probe 继续通过。
 
 4. 剩余只保留 benchmark / 架构候选。
-- benchmark 候选：`S-2`，继续补 `watchers.clickToPaint` 的解释链 / 展示层语义，而不是继续塞 runtime cut。
+- benchmark 候选：`S-2`。`S-12` 已把 `watchers.clickToPaint` 收紧成同 sample phase evidence；后续只剩解释链 / 展示层语义，不再需要继续塞 runtime cut。
 - 架构候选：`R-2`，只有在出现新的产品级 SLA 或新的 native-anchor 证据时，才讨论 `TxnLanePolicy` API vNext。
 
 ## 四分法裁决
@@ -60,7 +60,7 @@
 
 - `watchers.clickToPaint`
 - 原因：它仍更像 browser floor / suite 语义混入，而不是 current-head 的 runtime blocker。
-- 裁决：若后续继续推进 perf，优先做 `S-2` 的 benchmark 解释链，而不是先开 runtime 内核线。
+- 裁决：`S-12` 已补齐同 sample phase evidence；若后续继续推进 perf，只做 `S-2` 的展示/汇总层收口，而不是先开 runtime 内核线。
 
 ### 3. 门禁 / tooling 注意项
 
@@ -86,7 +86,7 @@
 
 ### 可并行副线 A
 
-- `S-2`：`watchers.clickToPaint` benchmark 解释链 / 展示层收口。
+- `S-2`：`watchers.clickToPaint` 展示层 / 汇总层收口（phase evidence 已在 `S-12` 落地）。
 - 说明：它会改变 benchmark 语义，应始终放在独立 worktree 中处理。
 
 ### 可并行副线 B

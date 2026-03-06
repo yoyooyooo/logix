@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "logix-browser-perf-matrix-v1",
-  "updatedAt": "2026-01-19",
+  "updatedAt": "2026-03-06",
   "defaults": {
     "runs": 30,
     "warmupDiscard": 5,
@@ -43,6 +43,12 @@
         "reactStrictMode": [false, true]
       },
       "metrics": ["e2e.clickToPaintMs"],
+      "requiredEvidence": [
+        "watchers.phase.clickToHandlerMs",
+        "watchers.phase.handlerToDomStableMs",
+        "watchers.phase.domStableToPaintGapMs",
+        "budget.cutOffCount"
+      ],
       "budgets": [
         {
           "id": "p95<=16ms",
@@ -69,7 +75,7 @@
         { "watchers": 128, "reactStrictMode": true },
         { "watchers": 256, "reactStrictMode": true }
       ],
-      "notes": "使用 DOM stable 后再过一帧的近似 paint 口径；同时配对输出 watchers.clickToDomStable，避免把浏览器帧地板与 watcher runtime 成本混成一个数字。"
+      "notes": "使用 DOM stable 后再过一帧的近似 paint 口径；同次 sample 内额外输出 click→handler、handler→DOM stable、DOM stable→paint gap phase evidence，避免继续依赖两条独立 suite 的聚合差值来判断超线落点。"
     },
     {
       "id": "watchers.clickToDomStable",
@@ -81,6 +87,12 @@
         "reactStrictMode": [false, true]
       },
       "metrics": ["e2e.clickToDomStableMs"],
+      "requiredEvidence": [
+        "watchers.phase.clickToHandlerMs",
+        "watchers.phase.handlerToDomStableMs",
+        "watchers.phase.domStableToPaintGapMs",
+        "budget.cutOffCount"
+      ],
       "budgets": [
         {
           "id": "p95<=16ms",
@@ -107,7 +119,7 @@
         { "watchers": 128, "reactStrictMode": true },
         { "watchers": 256, "reactStrictMode": true }
       ],
-      "notes": "把 watcher runtime 更直接映射到 DOM stable，不再把下一帧 paint 的浏览器地板完全混进唯一主指标。"
+      "notes": "把 watcher runtime 更直接映射到 DOM stable，并和 clickToPaint 共用同次 sample 的 phase evidence，直接解释超线主要落在 handler→DOM stable 还是 DOM stable→paint。"
     },
     {
       "id": "converge.txnCommit",

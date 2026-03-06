@@ -53,7 +53,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `R-1` | runtime 主线（已关闭） | `txnLanes.urgentBacklog` 在 `S-10` native-anchor 纠偏后，`mode=default/off` 的 `urgent.p95<=50ms` 都已过到 `steps=2000`；不再继续 queue-side runtime cut | 很高 | 中高 | 高 | 已关闭；仅在新证据下重开 | 暂不需要 |
 | `S-1` | 稳定性副线（已关闭） | `externalStore.ingest.tickNotify` broad residual 复核已完成 | 中 | 低到中 | 低 | 已关闭 | 不需要 |
-| `S-2` | benchmark 纠偏（已完成第一刀） | watchers 双轨语义已落地；后续仅剩解释链/展示层补完 | 中 | 中 | 中 | 已完成第一刀；如重开需独立 worktree | 不需要 |
+| `S-2` | benchmark 纠偏（已完成第二刀） | watchers 双轨语义 + paired phase evidence 已落地；后续仅剩解释链/展示层补完 | 中 | 中 | 中 | 已完成第二刀；如重开需独立 worktree | 不需要 |
 | `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
 | `F-1` | 自动化工具（已完成） | `fabfile.py` 已转为现成工具，不再占用 backlog | 中 | 中 | 低 | 已完成 | 不需要 |
 | `S-4` | 验证解锁副线（已完成） | `RuntimeExternalStore delayed teardown` 最小修复已吸收，已从默认 blocker 列表移除 | 中 | 中 | 中 | 已完成 | 不需要 |
@@ -153,10 +153,11 @@ API 变动：
 - 当前不需要。
 - 只有复核后 residual 稳定复现，才考虑继续推进 `StateTrait.externalStore({ writeback })` 方向。
 
-### `S-2` · `watchers.clickToPaint` suite 语义纠偏（已完成第一刀）
+### `S-2` · `watchers.clickToPaint` suite 语义纠偏（已完成第二刀）
 
 状态：
-- 已于 `2026-03-06` 完成第一刀，双轨语义（`clickToDomStable` + `clickToPaint`）已合回主分支。
+- 已于 `2026-03-06` 完成第一刀：双轨语义（`clickToDomStable` + `clickToPaint`）已合回主分支。
+- 已于 `2026-03-06` 完成第二刀：`S-12` 把 red sample 收紧成同 sample phase evidence（`clickToHandler / handlerToDomStable / domStableToPaintGap`）。
 - 当前不再是 runtime 主线；若要重开，仅限 benchmark 解释链/展示层继续收口。
 
 问题：
@@ -173,8 +174,9 @@ API 变动：
 
 实施成本：
 - 中等。
-- 需要统一 warmup / settle / click-to-paint 语义，必要时补双轨指标。
+- 需要统一 warmup / settle / click-to-paint 语义，并让 red sample 自带 phase evidence。
 - 已完成第一刀：拆成 `clickToDomStable` + `clickToPaint` 双轨。
+- 已完成第二刀：phase evidence 跟随单次 sample 落盘，不再依赖两条独立 suite 的聚合差值来解释超线。
 
 主要落点：
 - `packages/logix-react/test/browser/watcher-browser-perf.test.tsx`

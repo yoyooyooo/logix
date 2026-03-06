@@ -40,7 +40,7 @@ export type MetricResult =
 
 export type MetricSample = number | { readonly unavailableReason: string }
 
-export type EvidenceUnit = 'count' | 'ratio' | 'bytes' | 'string'
+export type EvidenceUnit = 'count' | 'ratio' | 'bytes' | 'ms' | 'string'
 
 export type EvidenceSample = number | string | { readonly unavailableReason: string }
 
@@ -142,6 +142,7 @@ const summarizeNumber = (samples: ReadonlyArray<number>): number => {
 const inferEvidenceUnit = (name: string): EvidenceUnit => {
   const lowered = name.toLowerCase()
   if (lowered.includes('bytes') || lowered.includes('byte')) return 'bytes'
+  if (lowered.endsWith('ms')) return 'ms'
   if (lowered.includes('ratio') || lowered.includes('rate')) return 'ratio'
   return 'count'
 }
