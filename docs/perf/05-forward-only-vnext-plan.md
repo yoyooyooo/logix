@@ -40,7 +40,7 @@
 - [x] Q-1：`converge auto->full (near_full)` 改成 slim decision summary（保留 evidence、去掉重资产）；`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
 - [x] S-3：`converge` gate / matrix applicability 局部清理；`decision.p95<=0.5ms` 拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 计入失败视图。
 - [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门）。
-  - 当前活跃路由见 `docs/perf/07-optimization-backlog-and-routing.md`；这里只保留 `2026-03-06` 的失败/checkpoint 锚点：`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`、`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`。
+  - 当前活跃路由见 `docs/perf/07-optimization-backlog-and-routing.md`；这里只保留 `2026-03-06` 的失败/checkpoint 锚点：`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`、`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v3-failed.md`。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -64,7 +64,7 @@
 当前唯一下一刀：
 - `R-1：txnLanes backlog policy split`。
 - 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`；本页只保留设计裁决：继续拆 backlog 启动期与 steady-state 的调度策略，暂不动表面 API。
-- blind first-host-yield 与 handoff-lite 已明确判失败，不再在本页重复展开。
+- blind first-host-yield、handoff-lite、以及 remembered-pressure pre-urgent cap 已明确判失败，不再在本页重复展开。
 
 ## 2. API vNext（直接替换，不兼容旧形态）
 

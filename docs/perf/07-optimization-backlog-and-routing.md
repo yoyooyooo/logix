@@ -74,8 +74,8 @@
 - 现有优化主要靠 `budgetMs/maxLagMs/chunkSize/yieldStrategy` 这类低层常数，已经接近收益上限。
 
 最新状态：
-- `2026-03-06` 已新增第二个失败子尝试：`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`。
-- 该方案只保留 `txnQueue snapshot + preUrgent chunk cap + urgent_waiter handoff/requeue`，去掉了 blind host yield，但在 `mode=default, steps=800/2000` 与 `catchUp` 上都显著回归。
+- `2026-03-06` 已新增第三个失败子尝试：`docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v3-failed.md`。
+- 该方案只保留 remembered-pressure 的 `urgent-aware handoff`：上一轮真实出现 `urgent waiter` 时，下一轮 backlog 才启用窄的 `pre-urgent growth cap`；但 3-run quick audit 只有前两轮在 `mode=default, steps=200` 上有收益，第三轮又把 `default` 三档拉回门外，因此不保留 runtime 代码。
 
 架构缺陷：
 - backlog 启动期与 steady-state 共用同一策略面，导致“首个 urgent 延迟”和“整体 catch-up 吞吐”被迫一起调。
@@ -100,7 +100,7 @@
 
 API 变动：
 - 当前不需要。
-- 当前活跃方案仍是 `urgent-aware handoff`；不要重复 blind first-host-yield，也不要把 startup-phase checkpoint / handoff-lite 失败尝试固化成正式 policy。
+- 当前活跃方案仍是 `urgent-aware handoff`；不要重复 blind first-host-yield，也不要把 startup-phase checkpoint / handoff-lite / remembered-pressure pre-urgent cap 这些失败尝试固化成正式 policy。
 - `2026-03-06` 的显式 startup-phase 版在 3/3 quick audit 回归，见 `docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`；该记录只保留为 checkpoint。
 - 只有当 `R-1 v2` 的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
 
