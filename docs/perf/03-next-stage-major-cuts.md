@@ -37,22 +37,24 @@
   - 正式收口记录：`docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`。
 
 
-## Current-Head 裁决（2026-03-06）
+## Current-Head 裁决（2026-03-06，含 `S-11` blocker probe 回写）
 
 证据锚点：
 - `ulw123.current-head.full-matrix`：broad/current-head 盘面。
 - `ulw124.external-store-current.targeted`：`externalStore` targeted 复核。
 - `ulw120.watchers-direct-writeback.targeted`：`watchers` 最强 targeted。
 - `s10 native-anchor targeted/recheck/confirm`：`txnLanes` native-anchor 三轮 targeted 收口证据。
+- `docs/perf/2026-03-06-s11-post-s10-blocker-probe.md`：post-S10 real probe；remaining browser blocker queue 已清空。
 
 四分法：
-1. 已由 benchmark 纠偏关闭：`txnLanes.urgentBacklog`。`S-10` 把 suite 改成 `nativeCapture -> MutationObserver DOM stable` 后，`mode=default/off` 的 `urgent.p95<=50ms` 都稳定通过到 `steps=2000`；旧的 `50ms+` 失败不再作为 runtime queue 主 blocker。
-2. 证据/benchmark 伪影：`watchers.clickToPaint`。`watchers=1` 已经超 `50ms`，且曲线非单调；这更像 suite 语义仍混入 browser floor，而不是 watcher scaling 还没打穿。
-3. 门禁噪声：`converge.txnCommit / decision.p95<=0.5ms`。`reason=notApplicable`，不该继续当作性能失败处理。
-4. 已完成 residual audit 并关闭：`externalStore.ingest.tickNotify / full-off`。broad `watchers=256` 单点红样本已被 clean targeted audit 复核为 residual/noise，不再作为当前待排期残项。
+1. 默认 runtime 主线已清空：`S-11` real probe 对 remaining browser blocker queue 给出 `next_blocker: none`，current-head 不再存在新的默认 runtime 第一失败项。
+2. 已由 benchmark 纠偏关闭：`txnLanes.urgentBacklog`。`S-10` 把 suite 改成 `nativeCapture -> MutationObserver DOM stable` 后，`mode=default/off` 的 `urgent.p95<=50ms` 都稳定通过到 `steps=2000`；`S-11` 进一步确认它不应继续留在默认 blocker probe 队列里。
+3. 证据/benchmark 候选：`watchers.clickToPaint`。它仍更像 suite 语义混入 browser floor，而不是 current-head 的 runtime 主 blocker。
+4. 已完成 residual audit 并关闭：`externalStore.ingest.tickNotify / full-off`。broad `watchers=256` 单点红样本已被 clean targeted audit 复核为 residual/noise，且 `S-11` real probe 继续通过。
 
 当前路由裁决：
 - `R-1` 已关闭，当前不再保留新的 `txnLanes` queue-side runtime 下一刀。
+- 当前也没有新的默认 runtime 后继；若要继续推进，只能在 `S-2` benchmark 解释链或 `R-2` 架构/API 候选里显式选线。
 - 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`。
 - 这里只保留 current-head 裁决：不要再继续拧 `budgetMs/chunkSize` 小常数。`txnQueue.*` observation 与 native-anchor 证据都显示，旧主延迟不在 queue 内；blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败。
 
@@ -178,7 +180,9 @@
 证据与实现记录：
 - `docs/perf/2026-03-05-d2-dirtyevidence-snapshot.md`
 
-## 推荐执行顺序
+## 如未来重开 vNext 的建议顺序
+
+`S-11` 已确认 current-head 无默认 runtime 主线；下列顺序只在 future evidence / 新 SLA 明确要求 forward-only vNext 时启用，不代表当前默认排期。
 
 1. A 刀
 2. B 刀
@@ -187,7 +191,7 @@
 5. E 刀
 
 顺序理由：
-- A/B 直击当前 P1 阻塞；
+- 当前没有默认 P1 runtime 阻塞；A/B/C/D/E 只保留为 future vNext 候选顺序；
 - C 提升适用面；
 - D 作为统一内核基础设施收口。
 - E 继续压榨 list/form 场景：让 mutative 的 patch 路径也能产出 index evidence，提升增量化覆盖率。

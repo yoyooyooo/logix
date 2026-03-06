@@ -3,188 +3,114 @@
 本文件是 current-head 的四分法裁决页。
 
 目标不是统计谁红得最多，而是回答五个更重要的问题：
-- 现在真正还值得继续砍的 runtime 瓶颈是什么
-- 哪些更像 benchmark/计时语义问题
-- 哪些只是 gate / matrix 表达噪声
-- 背后有哪些原架构层面的系统性税
-- 后续应该怎么拆成主线与可并行副线
+- 现在是否还存在默认 runtime 主线
+- 哪些更像 benchmark / 计时语义问题
+- 哪些只是 gate / tooling 表达问题
+- 哪些已经被 targeted 复核或 blocker probe 清空
+- 后续还剩哪些值得单开 worktree 的方向
 
 ## 前提
 
-1. `b2e6cf51` 只新增了 `logix-perf-cut-loop` skill 与参考文档，没有改 runtime；因此 current-head runtime 事实仍以现有 perf 证据为准。
-2. `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw123.current-head.full-matrix.json` 是 `quick + git.dirty` 样本，只适合做“下一刀选择”，不适合单独当作最终硬裁决。
-3. 本页一律用 broad/full matrix + targeted 对照做判断，避免追着单次噪声点继续砍内核。
+1. `S-10` 已把 `txnLanes.urgentBacklog` 改成 `nativeCapture -> MutationObserver DOM stable` 语义，并在 clean-head verify 后关闭了 `R-1` queue-side runtime 主线。
+2. `S-11` 在独立 worktree 中重新执行了 `probe_next_blocker`，目标不是继续砍内核，而是确认 `S-10` 之后 current-head 是否还存在新的默认 browser/runtime blocker。
+3. 本页优先采信 `S-10` 的 targeted 收口证据、`S-1/S-4/S-7` 的 targeted audit，以及 `S-11` 的 real probe；旧 broad residual 只作为背景，不再单独驱动新 runtime 线。
 
 ## 当前证据锚点
 
-- broad/current-head：`specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw123.current-head.full-matrix.json`
-- externalStore targeted：`specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw124.external-store-current.targeted.json`
-- watchers targeted：`specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw120.watchers-direct-writeback.targeted.json`
-- txnLanes targeted：`specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw116.txn-lanes-click-anchored.targeted.json`
+- `docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`
+- `docs/perf/2026-03-06-s11-post-s10-blocker-probe.md`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.targeted.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.recheck.targeted.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.confirm.targeted.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r1.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r2.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r3.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r4.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.audit.external-store.current.quick.r5.json`
+- `python3 fabfile.py probe_next_blocker`
+- `python3 fabfile.py probe_next_blocker --json`
 
-## 当前瓶颈排行
+## 当前结论摘要
 
-1. `txnLanes.urgentBacklog`
-- 当前仍同时出现在 broad 与 targeted 的 `urgent.p95<=50ms` 失败里。
-- `ulw123`：`mode=default` 的 `urgent.p95` 为 `45.8 / 51.0 / 56.1ms`（`steps=200/800/2000`），`mode=off` 为 `47.5 / 52.2 / 54.5ms`。
-- `ulw116`：click-anchored targeted 仍有 `50ms` 线失败，说明旧 timer 排队噪声已经不是主要解释。
-- 结论：这是 current-head 最像“真实残余 runtime 成本”的项。
+1. current-head 已无默认 runtime blocker。
+- `S-11` 的 real probe 在补齐 worktree 依赖后，对 remaining browser blocker 队列给出 `next_blocker: none`。
+- 这意味着默认 browser/runtime 主线已经清空，不应再硬造新的 queue-side runtime worktree。
 
-2. `externalStore.ingest.tickNotify`
-- broad current-head 只在 `watchers=256` 出现一次 `full/off<=1.25` 失败；`128` 和 `512` 都过。
-- targeted `ulw124` 则到 `watchers=512` 全绿。
-- `2026-03-06` 的 5 轮 clean targeted audit（`s2.audit.external-store.current.quick.r1-r5.json`）全部 `maxLevel=512 / firstFailLevel=null`。
-- 结论：这条线已可正式降级为 residual/noise，不再保留为 current-head 的待复核残项。
+2. `txnLanes` 继续保持关闭结论，不再回到默认 blocker 队列。
+- `S-10` 已证明 native-anchor 语义下 `urgent.p95<=50ms` 在 `mode=default/off` 都能稳定通过到 `steps=2000`。
+- `S-11` 还额外暴露出旧 `-t "...(mode matrix)"` 命令会因为 Vitest regex 语义把目标测试记成 `skipped`；因此 `txnLanes` 更不应继续留在默认 probe 队列里。
 
-3. `watchers.clickToPaint`
-- broad current-head 在 `watchers=1` 就已经 `56-60ms`，而 `64` 或 `512` 并没有单调更差。
-- 当前 full-matrix 非 strict：`1 -> 56.8ms`、`64 -> 49.1ms`、`512 -> 54.9ms`；strict：`1 -> 60.1ms`、`8 -> 49.6ms`、`512 -> 58.1ms`。
-- targeted `ulw120` 又说明 runtime 优化已经把 strict `p95<=50ms` 打到 `512`。
-- 结论：这条现在更像 benchmark / browser floor 问题，不宜继续把它当作 watcher scaling 的 runtime 主瓶颈。
+3. remaining targeted gates 已清空。
+- `externalStore.ingest.tickNotify`：targeted residual audit 已关闭，`S-11` real probe 再次通过。
+- `runtimeStore.noTearing.tickNotify`：`S-4` 最小修复已吸收，`S-11` real probe 继续通过。
+- `form.listScopeCheck`：`S-11` real probe 继续通过。
 
-4. `converge.txnCommit / decision.p95<=0.5ms`
-- `2026-03-06` 的 `S-3` 已完成局部清理：`decision` budget 拆到 auto-only suite `converge.txnCommit.autoDecision`。
-- `converge.txnCommit` 主 suite 不再把 full/dirty 的 `notApplicable` 记成失败。
-- 结论：这条已从 current-head 失败视图剥离；shared applicability 的一等语义仍留待后续统一收敛。
+4. 剩余只保留 benchmark / 架构候选。
+- benchmark 候选：`S-2`，继续补 `watchers.clickToPaint` 的解释链 / 展示层语义，而不是继续塞 runtime cut。
+- 架构候选：`R-2`，只有在出现新的产品级 SLA 或新的 native-anchor 证据时，才讨论 `TxnLanePolicy` API vNext。
 
 ## 四分法裁决
 
 ### 1. 真实运行时瓶颈
 
-- `txnLanes.urgentBacklog`
-- 原因：broad 与 targeted 都仍然失败；而且它打在 P1 的 `urgent.p95<=50ms` 硬门上。
-- 现象特征：不是 backlog 吞吐爆炸，而是“urgent latency 仍然卡在 50ms 边缘”。说明下一刀不该再随机拧常数，而该动 policy 结构。
+- 当前没有默认 runtime 主线。
+- `R-1` 已由 `S-10` 关闭，`S-11` 也没有识别出新的 current-head 第一失败项。
 
-### 2. 证据语义错误 / benchmark 伪影
+### 2. 证据语义错误 / benchmark 候选
 
 - `watchers.clickToPaint`
-- 原因：`watchers=1` 已经明显超线，且曲线非单调；这更像浏览器 click-to-paint 地板或 suite 语义仍混入了不该计入 watcher runtime 的成本。
-- 裁决：若后续还要继续碰这条线，先修 suite 语义，不再优先向 runtime 再塞 watcher 优化。
+- 原因：它仍更像 browser floor / suite 语义混入，而不是 current-head 的 runtime blocker。
+- 裁决：若后续继续推进 perf，优先做 `S-2` 的 benchmark 解释链，而不是先开 runtime 内核线。
 
-### 3. 门禁表达错误
+### 3. 门禁 / tooling 注意项
 
-- `converge.txnCommit / decision.p95<=0.5ms`
-- 状态：已由 `S-3` 做局部收口，`decision` gate 改成 auto-only suite，主 `converge.txnCommit` 不再出现 full/dirty 的 `reason=notApplicable`。
-- 裁决：当前不再需要继续做 converge 性能优化；若后续要统一 shared gate 语义，再单独推进 first-class applicability。
+- `txnLanes` 的旧 `-t "browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)"` 命令依赖未转义括号的 regex，会把目标测试记成 `skipped`。
+- `converge.txnCommit` 的 `reason=notApplicable` 已由 `S-3` 从真实性能失败视图剥离，不再是当前 blocker。
+- 裁决：默认 blocker probe 不再包含 `txnLanes`；如未来重开，只能用 file-level 命令或显式转义 pattern。
 
-### 4. 已基本解决但仍需稳定性复核
+### 4. 已解决 / 已清空项
 
-- `externalStore.ingest.tickNotify / full-off`
-- 原因：历史上 targeted 已过，而 `2026-03-06` 的 5 轮 clean targeted audit 进一步证明 broad 的 `watchers=256` 单点失守并不稳定复现。
-- 裁决：这条线已完成 residual audit，正式关闭；除非后续出现新的 clean/comparable 连续复现证据，否则不再阻塞主线。
-
-## 背后的架构缺陷（系统性税）
-
-### 1. 调度策略仍以低层常数为主要控制面
-
-表现：
-- `txnLanes` 的优化长期围绕 `budgetMs/maxLagMs/chunkSize/yieldStrategy` 这类常数打转。
-- 一旦问题从“是否 time-slice”进入“不同 backlog 阶段该如何取舍”，现有控制面就不够表达。
-
-为什么这是架构缺陷：
-- runtime 暴露的是低层参数，而不是更高层的 backlog policy。
-- 结果是每次优化都容易退化成调参试错，而不是结构性收敛。
-
-### 2. runtime、benchmark、gate 三层边界不够硬
-
-表现：
-- `txnLanes` 需要 click-anchored 才能把 timer 排队噪声剥掉。
-- `react.strictSuspenseJitter` 之前测到的是多次点击总耗时，而不是真实 suspense 路径。
-- `watchers.clickToPaint` 当前仍混着 browser floor 与 runtime 成本。
-
-为什么这是架构缺陷：
-- suite 在测什么、gate 在判什么、runtime 在优化什么，这三层没有被硬隔离。
-- 结果是内核经常被迫为测量伪影背锅，优化方向容易漂移。
-
-### 3. unavailable / notApplicable 不是 matrix / gate 的一等语义
-
-表现：
-- `converge.txnCommit / decision.p95<=0.5ms` 这条已通过 `S-3` 的局部 split-suite 绕开，不再把 full/dirty 的 `reason=notApplicable` 混进失败清单。
-- 但 `decisionMissing` 与真实性能回归在 shared 视图层仍未完全拆开。
-
-为什么这是架构缺陷：
-- gate 系统还没有把“无法比较 / 不适用 / 缺证据”统一建模成 first-class outcome。
-- 当前只是先把 `converge` 这条噪声局部剥离，以免继续拖慢 runtime 主线。
-
-### 4. current-head 真相源容易漂移
-
-表现：
-- broad matrix、targeted、计划文档、历史专题有时会停在不同状态。
-- 例如 `externalStore` 在历史计划里一度仍是主目标第一位，但 current-head targeted 已表明它更像稳定性残项，而不是最该优先砍的 runtime 主线。
-
-为什么这是架构缺陷：
-- 计划层没有持续按 current-head 证据自动收敛。
-- 结果是后续 agent 很容易继续沿旧路线优化已经不是最优先的问题。
+- `txnLanes.urgentBacklog`：已由 `S-10` 关闭，不再作为默认 blocker。
+- `externalStore.ingest.tickNotify`：已由 `S-1` residual audit 关闭，`S-11` real probe 再次通过。
+- `runtimeStore.noTearing.tickNotify`：`S-4` 修复后继续保持通过。
+- `form.listScopeCheck`：当前继续保持通过。
+- `react.strictSuspenseJitter`：`S-5` 已关闭。
+- `browser collect stabilization`：`S-6` 已关闭。
 
 ## 并行 Workstream 拆分建议
 
-### 主线（不要拆给副线）
+### 默认
 
-- `R-1：txnLanes backlog policy split`
-- 原因：这是 current-head 唯一确定应继续优先砍的 runtime 主线，而且会直接触及 `ModuleRuntime` 的核心调度策略。
-- 主要落点：
-  - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
-  - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnLanePolicy.ts`
-  - `packages/logix-react/test/browser/perf-boundaries/txn-lanes.test.tsx`
+- 不开新的 runtime 主线。
+- 若 `probe_next_blocker` 为 `clear`，本轮应以 docs/evidence-only 收口，而不是继续向 `packages/logix-core/**` 下刀。
 
 ### 可并行副线 A
 
-- `externalStore` 稳定性复核 / targeted 复测 / residual 链路审计
-- 说明：与 `txnLanes` 内核调度几乎解耦，主要集中在 writeback / observability 链路。
-- 主要落点：
-  - `packages/logix-core/src/internal/state-trait/external-store.ts`
-  - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
-  - `packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx`
-  - `docs/perf/02-externalstore-bottleneck-map.md`
+- `S-2`：`watchers.clickToPaint` benchmark 解释链 / 展示层收口。
+- 说明：它会改变 benchmark 语义，应始终放在独立 worktree 中处理。
 
 ### 可并行副线 B
 
-- `watchers.clickToPaint` suite 语义纠偏
-- 说明：这条线已经不该继续塞主线 runtime 切刀；适合独立分支只动测试 / 证据面。
-- 主要落点：
-  - `packages/logix-react/test/browser/watcher-browser-perf.test.tsx`
-  - `packages/logix-react/src/internal/store/perfWorkloads.ts`
-  - `packages/logix-react/test/browser/perf-boundaries/*watcher*`
-- 额外说明：这条副线会直接改变 benchmark 语义并影响 current-head 可比性，因此实施时仍应优先放到独立 worktree 里做。
+- `R-2`：`TxnLanePolicy` API vNext 收敛。
+- 说明：这不是当前 blocker 的自然后继，只能在新 SLA / 新证据成立时单独立项。
 
-### 可并行副线 C
+### 健康检查
 
-- `converge.txnCommit` gate / matrix applicability 清理
-- 状态：已在 `2026-03-06` 用局部 split-suite 收口，不再阻塞主线。
-- 主要落点：
-  - `.codex/skills/logix-perf-evidence/assets/matrix.json`
-  - `packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx`
-  - 如后续要 shared 化，再补 `logix-perf-evidence` 的 validate / report 视图逻辑
-
-## 暂不建议先做的项
-
-1. `watchers.clickToPaint`
-- 先修 suite 语义，再决定要不要继续动 runtime。
-
-2. `converge.txnCommit`
-- `S-3` 已完成，当前无需继续处理；后续若要统一 shared applicability，再单独立项。
-
-3. `externalStore.ingest.tickNotify`
-- targeted 已过到 `watchers=512`；当前更像 broad residual，不是最该先砍的主线。
+- current-head 只要发生实质性变化，就重新运行 `python3 fabfile.py probe_next_blocker`。
+- 如果 real probe 再次出现 failure，先判断是 `environment` 还是 `suite`，不要把环境缺失误记成 runtime regression。
 
 ## 建议下一刀（只给一个）
 
-- `R-1：把定位前移到 queue 之前（schedule -> handler invoke -> runtime admission）`
+- 当前没有默认 runtime 下一刀。
 
-### 为什么是它
+### 为什么是“没有”
 
-1. `txnLanes.urgentBacklog` 仍是 current-head 最稳定复现的 P1 主门失败。
-2. 最新 invoke-window evidence 显示：`firstNonUrgent/urgent` 一旦进入 handler，`invoke -> enqueue/start` 只有 `0.1~0.8ms`，queue 内几乎没有可砍空间。
-3. 因此继续在 `enqueueTransaction` / baton window 上落 policy，很可能只是重跑已失败的 queue-level 尝试。
+1. `S-10` 已经关闭了旧的 `txnLanes` queue-side runtime 主线。
+2. `S-11` 在独立 worktree 中对 remaining blocker 队列做 real probe 后，得到 `next_blocker: none`。
+3. 因而 current-head 已经不再满足“必须立刻开新的 runtime worktree”这一前提。
 
-### 建议切法
+### 如果必须继续做 perf
 
-- 先不要继续改 `enqueueTransaction` / baton visibility window，也不要再回到 startup-phase / handoff-lite / blind first-host-yield。
-- 把 `txnLanes` 的定位前移到 `schedule -> handler invoke` 这段，判断是 browser click harness、React 事件交付，还是更高层 admission model 在拖慢 urgent 到达 runtime。
-- 在没有更早层写权限之前，这条线应以 docs/evidence-only 收口，而不是强落一个 queue-side runtime 补丁。
-
-## 是否需要 API 变动
-
-- 当前裁决：`R-1` 暂不动表面 API，但也不再把 queue policy split 当作立即可落的一刀。
-- 原因：最新 evidence 表明主延迟发生在 runtime 看到请求之前；只有当后续确认需要改 admission model，才讨论更高层 API / policy 收敛方案。
-- 只有当前移到 pre-queue / admission model 之后仍然卡在 `50ms` 地板，才再提出更高层的 `TxnLanePolicy` API vNext 收敛方案。
+1. 先选 `S-2`：继续修 benchmark 解释链，而不是重开 runtime。
+2. 只有在新的 clean/comparable native-anchor 证据再次出现后，才重新讨论 `txnLanes` 或 `R-2`。
+3. 在没有新增证据之前，所有结论都以 docs/evidence-only 收口。

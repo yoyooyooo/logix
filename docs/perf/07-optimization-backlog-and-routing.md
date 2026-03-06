@@ -25,6 +25,10 @@
 5. 若某条副线主要价值是修证据/gate，而不是 runtime 提速，不得阻塞主线。
 6. 若某条副线的主要文件在当前工作区已存在未提交改动，应优先放到独立 worktree。
 
+当前判定补充（`2026-03-06 / S-11`）：
+- `probe_next_blocker` 在独立 worktree 的 real probe 已确认 remaining browser blocker queue clear。
+- 默认不再存在 runtime 主线；当前只保留 `S-2` benchmark 候选与 `R-2` 架构/API 候选。
+
 ## D-3 执行协议（当前默认）
 
 1. 主会话保持干净，只负责选路、派线、审查、合流。
@@ -35,9 +39,6 @@
    - 成功线保留最终有效 diff，并在同一提交内完成必要的 `docs/perf/*` 回写。
    - 失败线清掉半成品代码，只保留失败结论需要的 dated evidence / routing 更新；不要拆成多次“补文档”提交。
 6. 主会话只审查这 `1` 个最终提交；若不通过，退回原实施线继续收口，而不是在主会话里二次拼 diff。
-3. 默认一次只推进一个主线切刀；副线只在低冲突时并行。
-4. 若某条副线主要价值是修证据/gate，而不是 runtime 提速，不得阻塞主线。
-5. 若某条副线的主要文件在当前工作区已存在未提交改动，应优先放到独立 worktree。
 
 ## 排序原则
 
@@ -60,6 +61,7 @@
 | `S-6` | collect 稳定化副线（已关闭） | browser perf collect 首轮预热噪声已复核，不保留基础设施补丁 | 中 | 低 | 低 | 已关闭 | 不需要 |
 | `S-9` | control-surface 识别（已完成） | `txn-lanes` native event window observation 已证明主延迟落在 schedule->handler invoke，而不是 queue 内 | 中 | 低到中 | 低 | 已完成 | 不需要 |
 | `S-10` | benchmark 纠偏（已完成） | `txn-lanes` 已改成 `nativeCapture -> MutationObserver DOM stable` 语义；三轮 targeted 与 1 次 clean-HEAD verify 都让 `urgent.p95<=50ms` 通过到 `steps=2000` | 中 | 低到中 | 低 | 已完成 | 不需要 |
+| `S-11` | blocker 识别（已完成） | post-S10 real probe 证明 remaining browser blocker queue clear；current-head 无新的默认 runtime blocker | 中 | 低 | 低 | 已完成；docs/evidence-only 收口 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 默认不立项；仅在新 SLA / 新证据下单开 | 需要 |
 
 ## 任务详情
@@ -232,7 +234,43 @@ API 变动：
 - 已完成；`fabfile.py` 已转为现成工具，默认直接复用 `list-tasks` / `show-task` / `plan-parallel`。
 - `F-3` / `F-5` 已补上 `list_merge_ready` / `show_branch_diff` 的 base 语义：默认以当前所在分支为 base，若要回看主分支视角，需显式传 `--base main`。
 - `F-4` 已补上 `probe_next_blocker`，会按 `04-agent-execution-playbook.md` 预设顺序逐个跑 targeted browser suites，遇到第一个失败即停，并明确列出 remaining blocker 队列。
+- `S-11` 已把关闭的 `txnLanes` 从默认 blocker probe 队列移除；当前默认顺序只剩 `externalStore -> runtimeStore -> form`，real probe 结果为 `next_blocker: none`。
 - 详细完成记录保留在 `docs/perf/2026-03-06-f1-perf-fabfile.md`、`docs/perf/2026-03-06-f2-perf-fabfile-worktree-plan.md`、`docs/perf/2026-03-06-f3-perf-fabfile-merge-ready.md`、`docs/perf/2026-03-06-f4-perf-blocker-probe.md`、`docs/perf/2026-03-06-f5-perf-fabfile-current-branch-base.md`。
+
+### `S-11` · post-S10 blocker probe（已完成）
+
+状态：
+- 已于 `2026-03-06` 在独立 worktree 完成，收口记录见 `docs/perf/2026-03-06-s11-post-s10-blocker-probe.md`。
+- 结论不是“找到新的 runtime blocker”，而是确认 current-head 的 default blocker queue 已清空。
+
+问题：
+- `S-10` 关闭 `txnLanes` 之后，current-head 需要重新识别第一失败项，避免 routing 仍停留在旧 blocker 名单上。
+- 旧的 `txnLanes` probe 命令还依赖未转义括号的 `-t` regex，会把目标测试记成 `skipped`；这类关闭项不应继续占默认 blocker 队列。
+
+本轮裁决：
+- 默认 blocker probe 只保留 `externalStore`、`runtimeStore`、`form` 三条 remaining health/regression suites。
+- 在补齐 worktree 依赖后，real probe 对三条 suite 全部给出 `passed`，因此 `next_blocker: none`。
+- 当前不新开 runtime worktree；remaining 只保留 `S-2` benchmark 候选与 `R-2` 架构/API 候选。
+
+预期收益：
+- 中等。
+- 不直接提速 runtime，但能避免继续沿已经关闭的 blocker 名单误开新线。
+
+实施成本：
+- 低。
+- 只涉及 docs/evidence/tooling routing，不改 runtime core。
+
+主要落点：
+- `docs/perf/04-agent-execution-playbook.md`
+- `docs/perf/06-current-head-triage.md`
+- `docs/perf/07-optimization-backlog-and-routing.md`
+
+并行/串行：
+- 已完成，不再占默认执行槽位。
+- 后续只有在 current-head 发生实质性变化时才重跑同类 probe。
+
+API 变动：
+- 不需要。
 
 ### `S-6` · browser perf collect stabilization（已完成）
 
@@ -304,6 +342,7 @@ API 变动：
 
 1. 无默认 runtime 主线
 - `R-1` 已由 `S-10` native-anchor benchmark cut 关闭，不再预留 `txnLanes` 串行槽位。
+- `S-11` 已确认 remaining browser blocker queue clear；默认不为 runtime 再开新 worktree。
 - `F-1`、`S-2`、`S-4`、`S-5`、`S-10` 已完成或关闭，不再纳入默认并行组。
 
 ### 如需重开，可并行
@@ -336,10 +375,11 @@ API 变动：
 
 1. 当前无默认 runtime 主线；`R-1` 已关闭
 2. `F-1` 已完成；需要路由/排期时直接用 `python3 fabfile.py list-tasks|show-task|plan-parallel`
-3. `S-2` 已完成第一刀；只有在要继续补 benchmark 解释链时才重开，并强制独立 worktree
-4. `S-4` 已完成最小修复，不再占新 worktree
-5. `S-5` 已完成审计关闭，不再占新 worktree
-6. `S-3`、`S-6`、`S-10` 已收口，不再占新 worktree
+3. 先跑 `python3 fabfile.py probe_next_blocker`；若结果为 `clear`，不要硬开 runtime 线
+4. `S-2` 已完成第一刀；只有在要继续补 benchmark 解释链时才重开，并强制独立 worktree
+5. `S-4` 已完成最小修复，不再占新 worktree
+6. `S-5` 已完成审计关闭，不再占新 worktree
+7. `S-3`、`S-6`、`S-10`、`S-11` 已收口，不再占新 worktree
 
 ### Phase 2
 

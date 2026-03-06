@@ -34,13 +34,13 @@
 1. 主会话先看 `08-perf-execution-protocol.md`，确认这轮是协调/审查角色，而不是直接下场实施。
 2. 再看 `06-current-head-triage.md`，确认这轮是在做真实 runtime 刀、证据纠偏，还是 gate 清理。
 3. 再看 `07-optimization-backlog-and-routing.md`，确认这轮任务是主线、低冲突副线，还是必须独立 worktree 的副线。
-4. 真正实施前，先开独立 `worktree + branch (+ subagent)`；默认一条实施线只做一个 next cut。当前唯一活跃主线是 `R-1 v2：txnLanes urgent-aware handoff`。
+4. 真正实施前，先开独立 `worktree + branch (+ subagent)`；默认一条实施线只做一个 next cut。当前没有默认 runtime 主线；只有在新的 clean/comparable 证据下才重开 runtime 刀。
 5. `F-1` 已完成；需要查看 backlog/routing 任务时，直接用 `python3 fabfile.py list-tasks`、`python3 fabfile.py show-task R-1`、`python3 fabfile.py plan-parallel`。
-6. 只想更快定位“下一个 browser blocker”时，优先用 `python3 fabfile.py probe_next_blocker`；它只按下方预设顺序跑 targeted browser suites，遇到第一个失败就停，不默认触发 full collect。
+6. 只想更快定位“下一个 browser blocker”时，优先用 `python3 fabfile.py probe_next_blocker`；它只按下方预设顺序跑 remaining health/regression suites，遇到第一个失败就停，不默认触发 full collect。
 7. `S-2` 已完成第一刀（`clickToDomStable` + `clickToPaint` 双轨）；除非要继续补 benchmark 解释链，否则不要再把它升级回 runtime 主线。
 8. `startup-phase` 显式切面只保留 checkpoint 结论，不单独落 `D-1` 日期记录；不要把 startup cap 直接当正式 runtime cut。
 9. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
-10. 只有当 `R-1 v2` 明确无稳定收益，才考虑是否重开 `S-2` 的后续展示层收口，或升级到 `R-2`。
+10. 若 `probe_next_blocker` 为 `clear`，不要硬造新的 runtime 线；只在 `S-2` benchmark 解释链或 `R-2` 架构/API 候选里显式选线。
 11. `S-4` 已于 `2026-03-06` 用 `RuntimeExternalStore delayed teardown` 完成最小修复；若再复现 multi-instance isolation，优先从同 tick unsubscribe/resubscribe 时序重新排查。
 12. `S-5` 已于 `2026-03-06` 复核关闭：`react.strictSuspenseJitter` 在主分支环境可直接跑通；除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不要再把它当 broad/full collect 的默认阻塞项。
 
@@ -54,18 +54,19 @@
 - `pnpm -C packages/logix-core test`
 
 3. Browser perf 重点：
-- `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/txn-lanes.test.tsx -t "browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)"`
 - `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t "perf: externalStore ingest"`
 - `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t "perf: runtimeStore tick"`
 - `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx`
+- 仅在 future evidence 需要重开 `txnLanes` 时，手动跑整文件：`pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/txn-lanes.test.tsx`
 
 3A. `fabfile.py probe_next_blocker` 默认顺序（只读 targeted probe，不默认触发 full collect）：
 <!-- fabfile:probe_next_blocker:start -->
-- `txnLanes.urgentBacklog` | `主要门` | `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/txn-lanes.test.tsx -t "browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)"`
-- `externalStore.ingest.tickNotify` | `第二优先级门` | `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t "perf: externalStore ingest"`
+- `externalStore.ingest.tickNotify` | `残余复核门` | `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t "perf: externalStore ingest"`
 - `runtimeStore.noTearing.tickNotify` | `防回归门` | `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t "perf: runtimeStore tick"`
 - `form.listScopeCheck` | `防回归门` | `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 <!-- fabfile:probe_next_blocker:end -->
+
+注：`S-10/S-11` 之后，`txnLanes` 已退出默认 blocker probe 队列；如未来重开，不要再使用带括号的 `-t` regex，直接跑 file-level 命令或显式转义 pattern。
 
 4. 可选 collect（落盘到 spec perf 目录）：
 - `pnpm perf collect -- --files test/browser/perf-boundaries/txn-lanes.test.tsx --out specs/103-effect-v4-forward-cutover/perf/<name>.json`
@@ -73,15 +74,15 @@
 
 ## 4. 验收门
 
-1. 主要门：
-- `txnLanes.urgentBacklog` 的 `urgent.p95<=50ms` 要稳定通过到 `steps=2000`（`mode=default/off`）。
-
-2. 第二优先级门：
+1. 默认 blocker probe：
 - `externalStore.ingest.tickNotify` 的 `full/off<=1.25` broad matrix 要稳定通过到 `watchers=512`。
 
-3. 防回归门：
+2. 防回归门：
 - `runtimeStore.noTearing.tickNotify` 继续保持通过。
 - `form.listScopeCheck` 继续保持通过。
+
+3. `txnLanes` 重开门（仅在新证据下使用）：
+- `pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/txn-lanes.test.tsx` 需继续保持 `urgent.p95<=50ms` 在 `mode=default/off` 下通过到 `steps=2000`。
 
 4. 证据卫生门：
 - `watchers.clickToPaint` 若仍表现为 `watchers=1` 已超线且曲线非单调，先判为 suite 语义问题，不直接下 runtime 回归结论。

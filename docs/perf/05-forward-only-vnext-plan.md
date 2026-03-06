@@ -52,18 +52,19 @@
 5. Runtime 配置语义去重：诊断配置单一入口，不再分散在多处。
 
 
-## 1.1 Current-Head 裁决（2026-03-06）
+## 1.1 Current-Head 裁决（2026-03-06，含 `S-11` blocker probe 回写）
 
-当前 evidence 以 `ulw123.current-head.full-matrix` 为 broad 锚点，并用 `ulw124`（externalStore）、`ulw120`（watchers）、`S-10 native-anchor targeted/recheck/confirm`（txnLanes）做 targeted 对照。
+当前 evidence 以 `S-10 native-anchor targeted/recheck/confirm`、`S-1 externalStore residual audit`、以及 `S-11` real `probe_next_blocker` 为主；旧 broad residual 只保留为背景，不再单独驱动新的 runtime 主线。
 
 裁决：
-1. 已由 benchmark 纠偏关闭：`txnLanes.urgentBacklog`。`S-10` 把 suite 改成 `nativeCapture -> MutationObserver DOM stable` 后，`mode=default/off` 的 `urgent.p95<=50ms` 都稳定通过到 `steps=2000`；旧的 `50ms+` 失败不再作为 runtime queue 主 blocker。
-2. 已完成 residual audit 并关闭：`externalStore.ingest.tickNotify / full-off`。broad `watchers=256` 单点红样本已被 clean targeted audit 复核为 residual/noise；除非后续出现新的 clean/comparable 连续复现证据，否则不再作为待排期残项。
-3. 证据伪影：`watchers.clickToPaint`。`watchers=1` 已超线且曲线非单调，先视为 suite 语义问题，不再优先往 runtime 继续塞 watcher 优化。
-4. 门禁噪声：`converge.txnCommit / decision.p95<=0.5ms` 已通过 S-3 局部清理；当前不再把 full/dirty 的 `reason=notApplicable` 计入真实性能失败。
+1. current-head 已无默认 runtime blocker。`S-11` 在独立 worktree 对 remaining browser blocker 队列做 real probe 后，得到 `next_blocker: none`。
+2. 已由 benchmark 纠偏关闭：`txnLanes.urgentBacklog`。`S-10` 把 suite 改成 `nativeCapture -> MutationObserver DOM stable` 后，`mode=default/off` 的 `urgent.p95<=50ms` 都稳定通过到 `steps=2000`；`S-11` 进一步确认它不应继续留在默认 blocker probe 队列里。
+3. 已完成 residual audit 并关闭：`externalStore.ingest.tickNotify / full-off`。clean targeted audit 已证明它是 residual/noise，且 `S-11` real probe 再次通过。
+4. 证据候选：`watchers.clickToPaint`。它仍更像 suite 语义问题，不再优先往 runtime 继续塞 watcher 优化。
 
 当前路由裁决：
 - `R-1` 已关闭，当前不再保留新的 `txnLanes` queue-side runtime 下一刀。
+- 当前默认只剩 `S-2` benchmark 解释链与 `R-2` 架构/API 候选；两者都不是默认 blocker 后继。
 - 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`；本页只保留设计裁决：queue-side runtime cut 已被 invoke-window observation 与 native-anchor benchmark cut 联合否掉。
 - blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败，不再在本页重复展开；若未来要重开，只能基于新的 native-anchor SLA 或新的页面内 queue 内税点证据。
 
@@ -128,7 +129,9 @@ TraitLifecycle.scopedValidate($, {
 })
 ```
 
-## 3. 内核改造波次（执行顺序）
+## 3. 内核改造波次（仅在 future evidence / 新 SLA 触发时）
+
+`S-11` 已确认 current-head 无默认 runtime 主线；下列 wave 保留为 forward-only vNext 方案，不代表当前默认排期。
 
 ### Wave A（P0）：诊断懒构造
 
