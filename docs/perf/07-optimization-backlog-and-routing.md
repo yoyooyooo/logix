@@ -12,6 +12,8 @@
 
 状态治理约定：本页是 current-head backlog 的唯一状态源；`03` / `05` 只保留执行清单、设计裁决与完成标记，不再重复展开 `R-1` / `F-1` / `S-4` / `S-5` 的现状说明。
 
+编号说明：本页使用 routing track 编号；与 `03` / `05` 的历史 major-cut 编号不是同一命名空间。例：`03/05` 的 `F-1` = DevtoolsHub ring buffer，本文的 `F-1` = perf `fabfile.py` 自动化。
+
 ## 使用规则
 
 1. 先读 `06-current-head-triage.md`，确认 current-head 的真实主线。

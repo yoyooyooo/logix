@@ -6,7 +6,8 @@
 
 ## 当前路由快照（2026-03-06）
 
-- 唯一活跃主线：`R-1 v2`，即 `txnLanes` 的 `urgent-aware handoff`；`startup-phase` 只保留 checkpoint 结论，当前仍在 `v2` worktree 里推进。
+- 编号说明：`03/05` 沿用 major-cut 历史编号，`07` 使用 routing track 编号；存在同名如 `F-1`，排期与当前状态一律以 `07-optimization-backlog-and-routing.md` 为准。
+- 唯一活跃主线：`R-1 v2`，即 `txnLanes` 的 `urgent-aware handoff`；`startup-phase` / `handoff-lite` 只保留失败 checkpoint，不再代表活跃排期。
 - 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）。
 - 已关闭：`S-1` residual audit、`S-3` gate/applicability、`S-5` refresh unblock 审计。
 - 真正的排期与并行策略以 `07-optimization-backlog-and-routing.md` 为准。
@@ -52,7 +53,7 @@
 - `2026-03-05-e1-mutative-index-evidence.md`
   - E-1：mutative patchPaths 保留索引证据（array path -> listIndexEvidence，提升 `Ref.list(...)` 增量覆盖率）。
 - `2026-03-05-f1-devtools-ring-buffer.md`
-  - F-1：DevtoolsHub 事件窗口 O(1) ring buffer（去 `splice` trimming 抖动；full 诊断更稳）。
+  - 历史 major-cut `F-1`：DevtoolsHub 事件窗口 O(1) ring buffer（去 `splice` trimming 抖动；full 诊断更稳）。
 - `2026-03-05-g1-infer-replace-patches.md`
   - G-1：整状态替换推导 dirty evidence（`setState/state.update`/reducer 无 patchPaths 不再立刻 dirtyAll）。
 - `2026-03-05-g2-infer-replace-if-empty.md`
@@ -78,7 +79,7 @@
 - `2026-03-06-o2-watchers-direct-writeback.md`
   - O-2：纯 state action watcher 直接写 draft，`watchers=512` 进一步压到 `~36-43ms`，strict 下 `50ms` 线打穿到 `512`。
 - `2026-03-06-f1-perf-fabfile.md`
-  - F-1：落最小可用 perf `fabfile.py`；`07` 的任务路由已可直接被编排读取。
+  - routing `F-1`：落最小可用 perf `fabfile.py`；`07` 的任务路由已可直接被编排读取。
 - `2026-03-06-s2-watchers-preclick-settle.md`
   - S-2 准备刀：watchers benchmark 在真正点击前先 settle 一帧，减少初始挂载噪声对 click→paint 的污染。
 - `2026-03-06-s2-watchers-semantic-split.md`

@@ -4,6 +4,8 @@
 
 状态治理约定：本页只维护“还做不做”与“这刀具体是什么”；`R-1` 的当前路由、并行规则、以及已完成/已关闭副线的现状统一以 `docs/perf/07-optimization-backlog-and-routing.md` 为准。
 
+编号说明：本页沿用 major-cut 历史编号；与 `07` 的 routing track 编号不是同一命名空间。例：本页 `F-1` = DevtoolsHub ring buffer，`07` 的 `F-1` = perf `fabfile.py` 自动化。
+
 ## 状态（作为任务清单维护）
 
 说明：每一刀必须独立提交；做完一刀就把对应条目勾上，并在 `docs/perf/05-forward-only-vnext-plan.md` 同步状态。
@@ -46,7 +48,7 @@
 1. 真实运行时瓶颈：`txnLanes.urgentBacklog`。它在 broad 和 targeted 都仍然卡在 `urgent.p95<=50ms`，是 current-head 最像真实 runtime 成本的残项。
 2. 证据/benchmark 伪影：`watchers.clickToPaint`。`watchers=1` 已经超 `50ms`，且曲线非单调；这更像 suite 语义仍混入 browser floor，而不是 watcher scaling 还没打穿。
 3. 门禁噪声：`converge.txnCommit / decision.p95<=0.5ms`。`reason=notApplicable`，不该继续当作性能失败处理。
-4. 已基本解决但仍需稳定性复核：`externalStore.ingest.tickNotify / full-off`。targeted 已过到 `watchers=512`，broad 只剩 `256` 单点失守，优先级低于 `txnLanes`。
+4. 已完成 residual audit 并关闭：`externalStore.ingest.tickNotify / full-off`。broad `watchers=256` 单点红样本已被 clean targeted audit 复核为 residual/noise，不再作为当前待排期残项。
 
 下一刀（只给一个）：
 - `R-1：txnLanes backlog policy split`。
@@ -56,7 +58,7 @@
 当前不建议先做：
 - `watchers`：先修 suite 语义，不再继续往 runtime 里塞 watcher 优化。
 - `converge`：先修 gate 表达，把 `notApplicable` 从失败视图剥离。
-- `externalStore`：先保留为第二优先级稳定性项，等 `txnLanes` 这一刀收口后再复核 broad residual。
+- `externalStore`：`S-1` 已按 residual/noise 关闭；除非后续出现新的 clean/comparable 连续复现证据，否则不要重开。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 

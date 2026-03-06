@@ -3,7 +3,9 @@
 本刀目标不是继续猜测 `runtime store: multi-instance isolation (same moduleId, different instanceId)` 的实现问题，
 而是先回答一个更硬的问题：它在 current-head 上是否还是 live blocker。
 
-本轮结论：**当前 head 未复现该问题，S-4 以 evidence-only 方式关闭，不做 runtime 补丁。**
+本页记录的是 `2026-03-06` 早些时候的 audit 结论：**当时 current head 未复现该问题，因此先把 `S-4` 按 evidence-only 方式关闭，不做 runtime 补丁。**
+
+> 状态更新：这不是 `S-4` 的最终状态。后续已由 `docs/perf/2026-03-06-s4-runtime-external-store-delayed-teardown.md` 覆盖为“最小代码修复已落地”；当前以该文作为 `S-4` 的最终收口记录。
 
 ## 根因结论
 

@@ -2,6 +2,8 @@
 
 本刀延续 `F-1` 的最小可用 `fabfile.py`，目标不是执行 git 动作，而是把“并行 worktree 怎么命名、当前有哪些活跃 worktree、当前并行组如何结构化输出”落成只读规划层。
 
+> 状态更新：本文记录的是 `2026-03-06` 当时的规划层假设。当前默认排期已经由 `docs/perf/07-optimization-backlog-and-routing.md` 收敛为“默认只剩 `R-1` 活跃主线”；`F-1` 已是现成工具，`S-5` 也已关闭，不再占用 Phase 1 并行位。
+
 ## 实现
 
 更新：
@@ -22,7 +24,7 @@
 - 仍然只有一个真相源：任务信息继续来自 `docs/perf/07-optimization-backlog-and-routing.md`。
 - 不引入危险 git 默认动作：不自动创建、切换、删除、清理 worktree；只读取 `git worktree list` 与各 worktree 的 `git status --short`。
 - 命名建议优先复用已有同任务 worktree 的 slug；只有在没有现成模式时才从任务标题/问题描述推导 slug。
-- `plan_parallel` 的分组与约束对齐当前 backlog 盘面：`Phase 1` 的主三线是 `R-1 + S-2 + F-1`；`S-5` 会作为可选第四线保留，如果稳定任务表暂缺则显式标成 `missing_from_source`；`R-2` 继续 blocked by `R-1`。
+- `plan_parallel` 的分组与约束现在应对齐当前 backlog 盘面：默认只保留 `R-1` 活跃主线；`S-2` 仅在继续补 benchmark 解释链时重开；`F-1` 已落成现成工具；`S-5` 已关闭；`R-2` 继续 blocked by `R-1`。
 
 ## 验证
 

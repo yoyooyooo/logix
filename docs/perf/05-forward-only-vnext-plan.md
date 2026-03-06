@@ -4,6 +4,8 @@
 
 状态治理约定：本页只维护 forward-only 方案、wave 设计与完成标记；`R-1` 的当前路由、并行规则、以及已完成/已关闭副线的现状统一以 `docs/perf/07-optimization-backlog-and-routing.md` 为准。
 
+编号说明：本页沿用 major-cut 历史编号；与 `07` 的 routing track 编号不是同一命名空间。例：本页 `F-1` = DevtoolsHub ring buffer，`07` 的 `F-1` = perf `fabfile.py` 自动化。
+
 ## 0. 裁决前提
 
 1. 无存量用户、无兼容包袱。
@@ -55,7 +57,7 @@
 
 裁决：
 1. 真实运行时瓶颈：`txnLanes.urgentBacklog`。它在 broad 与 targeted 都仍然卡在 `urgent.p95<=50ms`，是 current-head 唯一应继续优先砍的 runtime 主线。
-2. 已基本解决但仍需稳定性复核：`externalStore.ingest.tickNotify / full-off`。targeted 已过到 `watchers=512`，broad 只剩 `256` 单点失守；先保留为第二优先级稳定性项。
+2. 已完成 residual audit 并关闭：`externalStore.ingest.tickNotify / full-off`。broad `watchers=256` 单点红样本已被 clean targeted audit 复核为 residual/noise；除非后续出现新的 clean/comparable 连续复现证据，否则不再作为待排期残项。
 3. 证据伪影：`watchers.clickToPaint`。`watchers=1` 已超线且曲线非单调，先视为 suite 语义问题，不再优先往 runtime 继续塞 watcher 优化。
 4. 门禁噪声：`converge.txnCommit / decision.p95<=0.5ms` 已通过 S-3 局部清理；当前不再把 full/dirty 的 `reason=notApplicable` 计入真实性能失败。
 
