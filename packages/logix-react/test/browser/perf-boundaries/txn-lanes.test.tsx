@@ -18,11 +18,12 @@ import {
 
 const suite = (matrix.suites as any[]).find((s) => s.id === 'txnLanes.urgentBacklog') as any
 
-const readTxnLanesMode = (): 'off' | 'on' | 'default' => {
+const readTxnLanesModeOverride = (): 'off' | 'on' | 'default' | undefined => {
   const raw = (import.meta.env as any).VITE_LOGIX_PERF_TXN_LANES_MODE as unknown
   if (raw === 'on') return 'on'
+  if (raw === 'off') return 'off'
   if (raw === 'default') return 'default'
-  return 'off'
+  return undefined
 }
 
 const readTxnLanesYieldStrategy = (): 'baseline' | 'inputPending' => {
@@ -30,8 +31,16 @@ const readTxnLanesYieldStrategy = (): 'baseline' | 'inputPending' => {
   return raw === 'inputPending' ? 'inputPending' : 'baseline'
 }
 
-const TXN_LANES_MODE = readTxnLanesMode()
+const TXN_LANES_MODE_OVERRIDE = readTxnLanesModeOverride()
 const TXN_LANES_YIELD_STRATEGY = readTxnLanesYieldStrategy()
+
+const resolveTxnLanesMode = (params: Params): 'off' | 'on' | 'default' => {
+  if (TXN_LANES_MODE_OVERRIDE) return TXN_LANES_MODE_OVERRIDE
+  const raw = params.mode
+  if (raw === 'on') return 'on'
+  if (raw === 'off') return 'off'
+  return 'default'
+}
 
 const computeValue = (iters: number, a: number, offset: number): number => {
   let x = (a + offset) | 0
@@ -136,7 +145,7 @@ const pointCount = Object.values(suite.axes as Record<string, ReadonlyArray<unkn
 
 const TEST_TIMEOUT_MS = Math.max(30_000, timeoutMs * pointCount)
 
-test('browser txn lanes: urgent p95 under non-urgent backlog (off vs on)', { timeout: TEST_TIMEOUT_MS }, async () => {
+test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { timeout: TEST_TIMEOUT_MS }, async () => {
   await withNodeEnv('production', async () => {
     const perfKernelLayer = makePerfKernelLayer()
     const runtimeLayer = Layer.mergeAll(silentDebugLayer, perfKernelLayer) as Layer.Layer<any, never, never>
@@ -147,6 +156,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (off vs on)', { tim
 
     type Active = {
       readonly steps: number
+      readonly mode: 'off' | 'on' | 'default'
       readonly iters: number
       readonly lastKey: string
       readonly runtime: any
@@ -168,21 +178,21 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (off vs on)', { tim
       active = undefined
     }
 
-    const ensureActive = async (steps: number): Promise<Active> => {
-      if (active?.steps === steps) return active
+    const ensureActive = async (steps: number, mode: 'off' | 'on' | 'default'): Promise<Active> => {
+      if (active?.steps === steps && active?.mode === mode) return active
       await disposeActive()
 
       const { M, impl, lastKey, initialLastValue } = makeTxnLanesModule(steps, ITERS)
 
       const runtime = Logix.Runtime.make(impl, {
         layer: runtimeLayer,
-        label: `perf:txnLanes:${TXN_LANES_MODE}:${TXN_LANES_YIELD_STRATEGY}:${steps}`,
+        label: `perf:txnLanes:${mode}:${TXN_LANES_YIELD_STRATEGY}:${steps}`,
         stateTransaction: {
           traitConvergeMode: 'dirty',
           traitConvergeBudgetMs: 100_000,
           traitConvergeDecisionBudgetMs: 100_000,
           traitConvergeTimeSlicing: { enabled: true, debounceMs: 0, maxLagMs: LANE_MAX_LAG_MS },
-          ...(TXN_LANES_MODE === 'on'
+          ...(mode === 'on'
             ? {
                 txnLanes: {
                   enabled: true,
@@ -193,7 +203,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (off vs on)', { tim
                   yieldStrategy: TXN_LANES_YIELD_STRATEGY,
                 },
               }
-            : TXN_LANES_MODE === 'off'
+            : mode === 'off'
               ? { txnLanes: { enabled: false } }
               : {}),
         },
@@ -213,7 +223,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (off vs on)', { tim
       const setA1 = screen.getByRole('button', { name: 'SetA1' })
       const urgent = screen.getByRole('button', { name: 'Urgent' })
 
-      active = { steps, iters: ITERS, lastKey, runtime, screen, setA0, setA1, urgent, a: 0, b: 0 }
+      active = { steps, mode, iters: ITERS, lastKey, runtime, screen, setA0, setA1, urgent, a: 0, b: 0 }
       return active
     }
 
@@ -223,7 +233,8 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (off vs on)', { tim
         { runs, warmupDiscard, timeoutMs },
         async (params: Params) => {
           const steps = params.steps as number
-          const ctx = await ensureActive(steps)
+          const mode = resolveTxnLanesMode(params)
+          const ctx = await ensureActive(steps, mode)
 
           const perRunWaitMs = Math.min(10_000, timeoutMs)
 
@@ -264,10 +275,10 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (off vs on)', { tim
                 'runtime.backlogCatchUpMs': caughtUpAt - backlogStartedAt,
               },
               evidence: {
-                'txnLanes.mode': TXN_LANES_MODE,
+                'txnLanes.mode': mode,
                 'txnLanes.budgetMs': LANE_BUDGET_MS,
                 'txnLanes.maxLagMs': LANE_MAX_LAG_MS,
-                'txnLanes.yieldStrategy': TXN_LANES_MODE === 'on' ? TXN_LANES_YIELD_STRATEGY : 'baseline',
+                'txnLanes.yieldStrategy': mode === 'on' ? TXN_LANES_YIELD_STRATEGY : 'baseline',
               },
             }
           } catch (error) {
@@ -278,10 +289,10 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (off vs on)', { tim
                 'runtime.backlogCatchUpMs': { unavailableReason: reason },
               },
               evidence: {
-                'txnLanes.mode': TXN_LANES_MODE,
+                'txnLanes.mode': mode,
                 'txnLanes.budgetMs': LANE_BUDGET_MS,
                 'txnLanes.maxLagMs': LANE_MAX_LAG_MS,
-                'txnLanes.yieldStrategy': TXN_LANES_MODE === 'on' ? TXN_LANES_YIELD_STRATEGY : 'baseline',
+                'txnLanes.yieldStrategy': mode === 'on' ? TXN_LANES_YIELD_STRATEGY : 'baseline',
               },
             }
           }

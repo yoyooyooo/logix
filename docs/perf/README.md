@@ -48,3 +48,5 @@
   - H-2：negativeBoundaries.dirtyPattern 增加 `minDeltaMs=0.1`（sub-ms 相对预算地板），让 gate 可复测可执行。
 - `2026-03-06-i1-state-writeback-batched.md`
   - I-1：`$.state.update/$.state.mutate` 生产态批处理写回（microtask 合批 + in-flight drain），把 `watchers.clickToPaint` 的 `p95<=100ms` 档位从 256 提到 512。
+- `2026-03-06-j1-txn-lanes-mode-matrix.md`
+  - J-1：`txnLanes.urgentBacklog` 改成显式 `mode(default/off)` 轴，broad matrix 不再隐式测 forced-off。

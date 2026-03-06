@@ -19,6 +19,7 @@
 - [x] H-1：converge(off-fast-path) perf hint 保留 + 冷启动样本隔离（并记录 fast_full guard 的失败尝试与回滚）。
 - [x] H-2：negativeBoundaries.dirtyPattern 增加 `minDeltaMs=0.1`（sub-ms 相对预算地板），让 gate 可复测可执行。
 - [x] I-1：`$.state.update/$.state.mutate` 批处理写回（生产态 microtask 合批 + in-flight drain，同 burst 收敛到 batched txn），优先打穿 `watchers.clickToPaint` 的 txn 固定成本。
+- [x] J-1：`txnLanes.urgentBacklog` 改成显式 `mode(default/off)` 轴（evidence alignment）；broad matrix 不再依赖隐式 `forced_off` 默认值。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 
