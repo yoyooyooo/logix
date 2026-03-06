@@ -74,8 +74,8 @@
 - 现有优化主要靠 `budgetMs/maxLagMs/chunkSize/yieldStrategy` 这类低层常数，已经接近收益上限。
 
 最新状态：
-- `2026-03-06` 已新增第四个失败子尝试：`docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v4-failed.md`。
-- 该方案把 `txnQueue` 的 `urgent -> nonUrgent` handoff 改成一次 queue-level `post-urgent visibility window`，不动 chunk/budget/requeue；4-run quick audit 中 `run3` 一度把 `mode=default` 三档压回 `50ms` 线内，但 `run4` 又把三档同时拉回 `53.8 / 54.8 / 53.7ms`，因此不保留 runtime 代码。
+- `2026-03-06` 已新增 observation-first 收口：`docs/perf/2026-03-06-r1-txn-lanes-observation-v5.md`。
+- 当前 `txn-lanes` targeted 已导出 `txnQueue.*` evidence；最新观测显示 `mode=default` 下 `urgent.enqueueVsFirstNonUrgentStartMs > 0`、`urgent.queueWaitMs ~= 0`、`urgent.diagnosis.lateEnqueue = 1`、`queuedWaiter = 0`，说明主问题更像 enqueue-side late visibility，而不是 queue 内 waiter 抢不到 baton。
 
 架构缺陷：
 - backlog 启动期与 steady-state 共用同一策略面，导致“首个 urgent 延迟”和“整体 catch-up 吞吐”被迫一起调。
@@ -83,7 +83,7 @@
 预期收益：
 - 这是 current-head 唯一明确的 runtime 主线，收益最高。
 - 若成功，能把 `urgent.p95<=50ms` 从边缘抖动改成稳定过线。
-- 已知失败方向：`2026-03-06` 的 blind first-host-yield phase split 会让 `mode=default` 三档回归，见 `docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`；最新的 queue-level `post-urgent visibility window` 也因 4-run quick audit 不可复现而失败，见 `docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v4-failed.md`。
+- 已知失败方向：`2026-03-06` 的 blind first-host-yield phase split 会让 `mode=default` 三档回归，见 `docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`；queue-level `post-urgent visibility window` 也因 4-run quick audit 不可复现而失败，见 `docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v4-failed.md`。当前应优先消费 observation-first 证据，而不是回到 handoff/常数调参。
 
 实施成本：
 - 中高。
@@ -91,8 +91,8 @@
 
 主要落点：
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnQueue.ts`
-- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
 - `packages/logix-react/test/browser/perf-boundaries/txn-lanes.test.tsx`
+- `docs/perf/2026-03-06-r1-txn-lanes-observation-v5.md`
 
 并行/串行：
 - 必须作为主线串行推进。
@@ -100,7 +100,7 @@
 
 API 变动：
 - 当前不需要。
-- 当前活跃方案仍是 `urgent-aware handoff`；不要重复 blind first-host-yield，也不要把 startup-phase checkpoint / handoff-lite / remembered-pressure pre-urgent cap / post-urgent visibility window 这些失败尝试固化成正式 policy。
+- 当前活跃主线仍是 `R-1`，但 current head 的优先动作已切到 observation-first 之后的 enqueue-side runtime cut；不要重复 blind first-host-yield，也不要把 startup-phase checkpoint / handoff-lite / remembered-pressure pre-urgent cap / post-urgent visibility window 这些失败尝试固化成正式 policy。
 - `2026-03-06` 的显式 startup-phase 版在 3/3 quick audit 回归，见 `docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`；该记录只保留为 checkpoint。
 - 只有当 `R-1 v2` 的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
 

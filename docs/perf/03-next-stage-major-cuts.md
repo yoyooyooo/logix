@@ -53,7 +53,7 @@
 下一刀（只给一个）：
 - `R-1：txnLanes backlog policy split`。
 - 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`。
-- 这里只保留 current-head 裁决：不要再继续拧 `budgetMs/chunkSize` 小常数，而是把 backlog 启动期与 steady-state 的 urgent 调度策略拆开；blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败。
+- 这里只保留 current-head 裁决：不要再继续拧 `budgetMs/chunkSize` 小常数。当前 head 已补上 `txnQueue.*` observation 证据，并显示 urgent 主要是 late enqueue 而不是 queued waiter；blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败。
 
 当前不建议先做：
 - `watchers`：先修 suite 语义，不再继续往 runtime 里塞 watcher 优化。

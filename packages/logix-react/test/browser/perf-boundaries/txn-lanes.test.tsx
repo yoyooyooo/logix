@@ -1,7 +1,7 @@
 import { test } from 'vitest'
 import React from 'react'
 import { render } from 'vitest-browser-react'
-import { Layer, Schema } from 'effect'
+import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
@@ -11,7 +11,7 @@ import {
   getProfileConfig,
   makePerfKernelLayer,
   runMatrixSuite,
-  silentDebugLayer,
+  type EvidenceSample,
   type Params,
   withNodeEnv,
 } from './harness.js'
@@ -59,6 +59,139 @@ const waitForBodyText = async (text: string, timeoutMs: number): Promise<void> =
     await nextFrame()
   }
   throw new Error(`waitForBodyText timeout: ${text}`)
+}
+
+const TXN_QUEUE_EPSILON_MS = 1
+
+type TxnQueueTraceData = {
+  readonly lane: 'urgent' | 'nonUrgent'
+  readonly waiterSeq: number
+  readonly enqueueAtMs: number
+  readonly startAtMs: number
+  readonly queueWaitMs: number
+  readonly startMode: 'direct_idle' | 'direct_handoff' | 'post_visibility_window'
+  readonly visibilityWindowMs?: number
+  readonly previousCompletedLane?: 'urgent' | 'nonUrgent'
+  readonly activeLaneAtEnqueue?: 'urgent' | 'nonUrgent'
+  readonly queueDepthAtStart: {
+    readonly urgent: number
+    readonly nonUrgent: number
+  }
+}
+
+const unavailableEvidence = (reason: string): EvidenceSample => ({ unavailableReason: reason })
+
+const isTxnQueueTraceData = (value: unknown): value is TxnQueueTraceData => {
+  if (!value || typeof value !== 'object') return false
+  const data = value as Record<string, unknown>
+  if (data.lane !== 'urgent' && data.lane !== 'nonUrgent') return false
+  if (typeof data.waiterSeq !== 'number' || !Number.isFinite(data.waiterSeq)) return false
+  if (typeof data.enqueueAtMs !== 'number' || !Number.isFinite(data.enqueueAtMs)) return false
+  if (typeof data.startAtMs !== 'number' || !Number.isFinite(data.startAtMs)) return false
+  if (typeof data.queueWaitMs !== 'number' || !Number.isFinite(data.queueWaitMs)) return false
+  if (
+    data.startMode !== 'direct_idle' &&
+    data.startMode !== 'direct_handoff' &&
+    data.startMode !== 'post_visibility_window'
+  ) {
+    return false
+  }
+  const queueDepthAtStart = data.queueDepthAtStart
+  if (!queueDepthAtStart || typeof queueDepthAtStart !== 'object') return false
+  return true
+}
+
+const isTxnQueueTraceEvent = (event: unknown): event is { readonly type: 'trace:txn-queue'; readonly data: TxnQueueTraceData } => {
+  if (!event || typeof event !== 'object') return false
+  const record = event as Record<string, unknown>
+  return record.type === 'trace:txn-queue' && isTxnQueueTraceData(record.data)
+}
+
+const summarizeTxnQueueEvidence = (args: {
+  readonly events: ReadonlyArray<unknown>
+  readonly backlogStartedAt: number
+  readonly urgentScheduledAt: number
+}): Record<string, EvidenceSample> => {
+  const queueEvents = args.events
+    .filter(isTxnQueueTraceEvent)
+    .map((event) => event.data)
+    .sort((a, b) => a.startAtMs - b.startAtMs)
+
+  const firstNonUrgent = queueEvents.find(
+    (event) => event.lane === 'nonUrgent' && event.startAtMs >= args.backlogStartedAt - TXN_QUEUE_EPSILON_MS,
+  )
+  const urgentQueue = queueEvents
+    .filter((event) => event.lane === 'urgent' && event.enqueueAtMs >= args.urgentScheduledAt - TXN_QUEUE_EPSILON_MS)
+    .sort((a, b) => a.enqueueAtMs - b.enqueueAtMs)[0]
+
+  const missingUrgent = unavailableEvidence('urgentQueueStartMissing')
+  const missingNonUrgent = unavailableEvidence('firstNonUrgentQueueStartMissing')
+
+  const urgentEnqueueVsFirstNonUrgentStartMs =
+    urgentQueue && firstNonUrgent ? urgentQueue.enqueueAtMs - firstNonUrgent.startAtMs : undefined
+
+  const urgentQueuedWaiter =
+    urgentQueue &&
+    urgentQueue.activeLaneAtEnqueue === 'nonUrgent' &&
+    urgentQueue.queueWaitMs > TXN_QUEUE_EPSILON_MS
+      ? 1
+      : 0
+
+  const urgentLateEnqueue =
+    urgentQueue &&
+    typeof urgentEnqueueVsFirstNonUrgentStartMs === 'number' &&
+    urgentEnqueueVsFirstNonUrgentStartMs > 0 &&
+    urgentQueue.queueWaitMs <= TXN_QUEUE_EPSILON_MS
+      ? 1
+      : 0
+
+  return {
+    'txnQueue.urgent.enqueueOffsetFromBacklogMs': urgentQueue
+      ? Math.max(0, urgentQueue.enqueueAtMs - args.backlogStartedAt)
+      : missingUrgent,
+    'txnQueue.urgent.startOffsetFromBacklogMs': urgentQueue
+      ? Math.max(0, urgentQueue.startAtMs - args.backlogStartedAt)
+      : missingUrgent,
+    'txnQueue.urgent.enqueueDelayFromScheduleMs': urgentQueue
+      ? Math.max(0, urgentQueue.enqueueAtMs - args.urgentScheduledAt)
+      : missingUrgent,
+    'txnQueue.urgent.startDelayFromScheduleMs': urgentQueue
+      ? Math.max(0, urgentQueue.startAtMs - args.urgentScheduledAt)
+      : missingUrgent,
+    'txnQueue.urgent.queueWaitMs': urgentQueue ? urgentQueue.queueWaitMs : missingUrgent,
+    'txnQueue.urgent.startMode.directIdle': urgentQueue?.startMode === 'direct_idle' ? 1 : 0,
+    'txnQueue.urgent.startMode.directHandoff': urgentQueue?.startMode === 'direct_handoff' ? 1 : 0,
+    'txnQueue.urgent.startMode.postVisibilityWindow': urgentQueue?.startMode === 'post_visibility_window' ? 1 : 0,
+    'txnQueue.urgent.visibilityWindowMs': urgentQueue?.visibilityWindowMs ?? 0,
+    'txnQueue.urgent.previousCompletedLane.nonUrgent': urgentQueue?.previousCompletedLane === 'nonUrgent' ? 1 : 0,
+    'txnQueue.urgent.activeLaneAtEnqueue.nonUrgent': urgentQueue?.activeLaneAtEnqueue === 'nonUrgent' ? 1 : 0,
+    'txnQueue.urgent.queueDepthAtStart.urgent': urgentQueue ? urgentQueue.queueDepthAtStart.urgent : missingUrgent,
+    'txnQueue.urgent.queueDepthAtStart.nonUrgent': urgentQueue ? urgentQueue.queueDepthAtStart.nonUrgent : missingUrgent,
+    'txnQueue.urgent.enqueueVsFirstNonUrgentStartMs':
+      typeof urgentEnqueueVsFirstNonUrgentStartMs === 'number'
+        ? urgentEnqueueVsFirstNonUrgentStartMs
+        : missingNonUrgent,
+    'txnQueue.urgent.diagnosis.queuedWaiter': urgentQueuedWaiter,
+    'txnQueue.urgent.diagnosis.lateEnqueue': urgentLateEnqueue,
+    'txnQueue.urgent.diagnosis.idleDirect':
+      urgentQueue?.startMode === 'direct_idle' && urgentQueue.activeLaneAtEnqueue == null ? 1 : 0,
+    'txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs': firstNonUrgent
+      ? Math.max(0, firstNonUrgent.enqueueAtMs - args.backlogStartedAt)
+      : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs': firstNonUrgent
+      ? Math.max(0, firstNonUrgent.startAtMs - args.backlogStartedAt)
+      : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs': firstNonUrgent
+      ? Math.max(0, firstNonUrgent.startAtMs - args.backlogStartedAt)
+      : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.queueWaitMs': firstNonUrgent ? firstNonUrgent.queueWaitMs : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.startMode.directHandoff':
+      firstNonUrgent?.startMode === 'direct_handoff' ? 1 : 0,
+    'txnQueue.backlog.firstNonUrgent.previousCompletedLane.urgent':
+      firstNonUrgent?.previousCompletedLane === 'urgent' ? 1 : 0,
+    'txnQueue.backlog.firstNonUrgent.activeLaneAtEnqueue.urgent':
+      firstNonUrgent?.activeLaneAtEnqueue === 'urgent' ? 1 : 0,
+  }
 }
 
 const makeTxnLanesModule = (
@@ -148,7 +281,6 @@ const TEST_TIMEOUT_MS = Math.max(30_000, timeoutMs * pointCount)
 test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { timeout: TEST_TIMEOUT_MS }, async () => {
   await withNodeEnv('production', async () => {
     const perfKernelLayer = makePerfKernelLayer()
-    const runtimeLayer = Layer.mergeAll(silentDebugLayer, perfKernelLayer) as Layer.Layer<any, never, never>
 
     const ITERS = 800
     const LANE_BUDGET_MS = 1
@@ -164,6 +296,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       readonly setA0: any
       readonly setA1: any
       readonly urgent: any
+      readonly queueTraceBuffer: ReturnType<typeof Logix.Debug.makeRingBufferSink>
       a: 0 | 1
       b: number
     }
@@ -183,9 +316,15 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       await disposeActive()
 
       const { M, impl, lastKey, initialLastValue } = makeTxnLanesModule(steps, ITERS)
+      const queueTraceBuffer = Logix.Debug.makeRingBufferSink(2048)
+      const debugLayer = Layer.mergeAll(
+        Logix.Debug.replace([queueTraceBuffer.sink]),
+        Logix.Debug.diagnosticsLevel('light'),
+        Logix.Debug.traceMode('on'),
+      ) as Layer.Layer<any, never, never>
 
       const runtime = Logix.Runtime.make(impl, {
-        layer: runtimeLayer,
+        layer: Layer.mergeAll(debugLayer, perfKernelLayer) as Layer.Layer<any, never, never>,
         label: `perf:txnLanes:${mode}:${TXN_LANES_YIELD_STRATEGY}:${steps}`,
         stateTransaction: {
           traitConvergeMode: 'dirty',
@@ -223,7 +362,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       const setA1 = screen.getByRole('button', { name: 'SetA1' })
       const urgent = screen.getByRole('button', { name: 'Urgent' })
 
-      active = { steps, mode, iters: ITERS, lastKey, runtime, screen, setA0, setA1, urgent, a: 0, b: 0 }
+      active = { steps, mode, iters: ITERS, lastKey, runtime, screen, setA0, setA1, urgent, queueTraceBuffer, a: 0, b: 0 }
       return active
     }
 
@@ -242,6 +381,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
             const nextA: 0 | 1 = ctx.a === 0 ? 1 : 0
             const expectedLast = computeValue(ctx.iters, nextA, Math.max(0, steps - 1))
 
+            ctx.queueTraceBuffer.clear()
             const backlogStartedAt = performance.now()
             if (nextA === 0) {
               await ctx.setA0.click()
@@ -269,6 +409,11 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
 
             await waitForBodyText(`D: ${String(expectedLast)}`, perRunWaitMs)
             const caughtUpAt = performance.now()
+            const queueEvidence = summarizeTxnQueueEvidence({
+              events: ctx.queueTraceBuffer.getSnapshot(),
+              backlogStartedAt,
+              urgentScheduledAt,
+            })
 
             return {
               metrics: {
@@ -280,6 +425,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
                 'txnLanes.budgetMs': LANE_BUDGET_MS,
                 'txnLanes.maxLagMs': LANE_MAX_LAG_MS,
                 'txnLanes.yieldStrategy': mode === 'on' ? TXN_LANES_YIELD_STRATEGY : 'baseline',
+                ...queueEvidence,
               },
             }
           } catch (error) {

@@ -8,6 +8,24 @@ import type { ResolvedConcurrencyPolicy } from './ModuleRuntime.concurrencyPolic
 
 export type TxnLane = 'urgent' | 'nonUrgent'
 
+export type TxnQueueStartMode = 'direct_idle' | 'direct_handoff' | 'post_visibility_window'
+
+export type TxnQueueStartTrace = {
+  readonly lane: TxnLane
+  readonly waiterSeq: number
+  readonly enqueueAtMs: number
+  readonly startAtMs: number
+  readonly queueWaitMs: number
+  readonly startMode: TxnQueueStartMode
+  readonly visibilityWindowMs?: number
+  readonly previousCompletedLane?: TxnLane
+  readonly activeLaneAtEnqueue?: TxnLane
+  readonly queueDepthAtStart: {
+    readonly urgent: number
+    readonly nonUrgent: number
+  }
+}
+
 export interface EnqueueTransaction {
   <A, E>(eff: Effect.Effect<A, E, never>): Effect.Effect<A, E, never>
   <A, E>(lane: TxnLane, eff: Effect.Effect<A, E, never>): Effect.Effect<A, E, never>
@@ -26,6 +44,14 @@ type BacklogAcquireAttempt =
       readonly backlogCount: number
       readonly signal: Deferred.Deferred<void>
     }
+
+type QueueWaiter = {
+  readonly lane: TxnLane
+  readonly start: Deferred.Deferred<void>
+  readonly waiterSeq: number
+  readonly enqueueAtMs: number
+  readonly activeLaneAtEnqueue?: TxnLane
+}
 
 export type CapturedTxnRuntimeScope = {
   readonly runtimeLabel: string | undefined
@@ -174,14 +200,32 @@ export const makeEnqueueTransaction = (args: {
     // - Serializes per-instance transactions (at most one active at a time).
     // - Urgent lane always wins over non-urgent lane when choosing the next task.
     //
-    // Note: this means interrupting the caller fiber can cancel a queued transaction. This is acceptable for
-    // Logix runtime semantics (forward-only evolution) and avoids the hot-path overhead of a background consumer
-    // fiber + per-task diagnostic-context capture.
-    let currentStart: Deferred.Deferred<void> | undefined = undefined
-    const urgentWaitQueue: Array<Deferred.Deferred<void>> = []
-    const nonUrgentWaitQueue: Array<Deferred.Deferred<void>> = []
+    // Observation-first note:
+    // - We keep the scheduler semantics unchanged here.
+    // - The only added surface is a slim `trace:txn-queue` start event so perf suites can distinguish
+    //   "urgent enqueued late" vs "urgent already queued but waited for baton".
+    let currentWaiter: QueueWaiter | undefined = undefined
+    let currentLane: TxnLane | undefined = undefined
+    let lastCompletedLane: TxnLane | undefined = undefined
+    let nextWaiterSeq = 0
+    const startTraceByStart = new Map<Deferred.Deferred<void>, TxnQueueStartTrace>()
+    const urgentWaitQueue: Array<QueueWaiter> = []
+    const nonUrgentWaitQueue: Array<QueueWaiter> = []
 
-    const pickNextWaiter = (): Deferred.Deferred<void> | undefined => {
+    const readClockMs = (): number => {
+      const perf = globalThis.performance
+      if (perf && typeof perf.now === 'function') {
+        return perf.now()
+      }
+      return Date.now()
+    }
+
+    const nextQueueWaiterSeq = (): number => {
+      nextWaiterSeq += 1
+      return nextWaiterSeq
+    }
+
+    const pickNextWaiter = (): QueueWaiter | undefined => {
       if (urgentWaitQueue.length > 0) {
         return urgentWaitQueue.shift()
       }
@@ -191,51 +235,91 @@ export const makeEnqueueTransaction = (args: {
       return undefined
     }
 
+    const recordStartTrace = (waiter: QueueWaiter, startMode: TxnQueueStartMode): void => {
+      const startAtMs = readClockMs()
+      startTraceByStart.set(waiter.start, {
+        lane: waiter.lane,
+        waiterSeq: waiter.waiterSeq,
+        enqueueAtMs: waiter.enqueueAtMs,
+        startAtMs,
+        queueWaitMs: Math.max(0, startAtMs - waiter.enqueueAtMs),
+        startMode,
+        ...(lastCompletedLane ? { previousCompletedLane: lastCompletedLane } : {}),
+        ...(waiter.activeLaneAtEnqueue ? { activeLaneAtEnqueue: waiter.activeLaneAtEnqueue } : {}),
+        queueDepthAtStart: {
+          urgent: urgentWaitQueue.length,
+          nonUrgent: nonUrgentWaitQueue.length,
+        },
+      })
+    }
+
     const removeWaiter = (lane: TxnLane, start: Deferred.Deferred<void>): void => {
       const q = lane === 'urgent' ? urgentWaitQueue : nonUrgentWaitQueue
       for (let i = 0; i < q.length; i += 1) {
-        if (q[i] === start) {
+        if (q[i]?.start === start) {
           q.splice(i, 1)
           return
         }
       }
     }
 
-    const enqueueAndMaybeStart = (lane: TxnLane, start: Deferred.Deferred<void>): Effect.Effect<void> =>
+    const emitStartTrace = (trace: TxnQueueStartTrace | undefined): Effect.Effect<void> =>
+      !trace
+        ? Effect.void
+        : FiberRef.get(Debug.currentDiagnosticsLevel).pipe(
+            Effect.flatMap((diagnosticsLevel) =>
+              diagnosticsLevel === 'off'
+                ? Effect.void
+                : Debug.record({
+                    type: 'trace:txn-queue',
+                    moduleId: args.moduleId,
+                    instanceId: args.instanceId,
+                    data: trace,
+                  }),
+            ),
+          )
+
+    const enqueueAndMaybeStart = (waiter: QueueWaiter): Effect.Effect<void> =>
       Effect.gen(function* () {
-        let toStart: Deferred.Deferred<void> | undefined
+        let toStart: QueueWaiter | undefined
         yield* Effect.uninterruptible(
           Effect.sync(() => {
-            if (lane === 'urgent') {
-              urgentWaitQueue.push(start)
+            if (waiter.lane === 'urgent') {
+              urgentWaitQueue.push(waiter)
             } else {
-              nonUrgentWaitQueue.push(start)
+              nonUrgentWaitQueue.push(waiter)
             }
 
-            if (!currentStart) {
+            if (!currentWaiter) {
               const next = pickNextWaiter()
               if (next) {
-                currentStart = next
+                currentWaiter = next
+                currentLane = next.lane
+                recordStartTrace(next, lastCompletedLane ? 'direct_handoff' : 'direct_idle')
                 toStart = next
               }
             }
           }),
         )
         if (toStart) {
-          yield* Deferred.succeed(toStart, undefined)
+          yield* Deferred.succeed(toStart.start, undefined)
         }
       })
 
     const advanceQueue = (lane: TxnLane, start: Deferred.Deferred<void>): Effect.Effect<void> =>
       Effect.gen(function* () {
-        let toStart: Deferred.Deferred<void> | undefined
+        let toStart: QueueWaiter | undefined
         yield* Effect.uninterruptible(
           Effect.sync(() => {
-            if (currentStart === start) {
-              currentStart = undefined
+            if (currentWaiter?.start === start) {
+              currentWaiter = undefined
+              currentLane = undefined
+              lastCompletedLane = lane
               const next = pickNextWaiter()
               if (next) {
-                currentStart = next
+                currentWaiter = next
+                currentLane = next.lane
+                recordStartTrace(next, 'direct_handoff')
                 toStart = next
               }
               return
@@ -245,17 +329,19 @@ export const makeEnqueueTransaction = (args: {
             removeWaiter(lane, start)
 
             // Safety: if the system became idle (should not happen unless interrupted races), restart the baton.
-            if (!currentStart) {
+            if (!currentWaiter) {
               const next = pickNextWaiter()
               if (next) {
-                currentStart = next
+                currentWaiter = next
+                currentLane = next.lane
+                recordStartTrace(next, lastCompletedLane ? 'direct_handoff' : 'direct_idle')
                 toStart = next
               }
             }
           }),
         )
         if (toStart) {
-          yield* Deferred.succeed(toStart, undefined)
+          yield* Deferred.succeed(toStart.start, undefined)
         }
       })
 
@@ -288,12 +374,23 @@ export const makeEnqueueTransaction = (args: {
         )
 
         const start = yield* Deferred.make<void>()
-        yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(enqueueAndMaybeStart(lane, start))
+        const waiter: QueueWaiter = {
+          lane,
+          start,
+          waiterSeq: nextQueueWaiterSeq(),
+          enqueueAtMs: readClockMs(),
+          ...(currentLane ? { activeLaneAtEnqueue: currentLane } : {}),
+        }
+        yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(enqueueAndMaybeStart(waiter))
 
         return yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(
           Effect.uninterruptibleMask((restore) =>
             Effect.ensuring(
-              restore(Deferred.await(start)).pipe(Effect.zipRight(restore(eff))),
+              Effect.flatMap(restore(Deferred.await(start)), () => {
+                const startTrace = startTraceByStart.get(start)
+                startTraceByStart.delete(start)
+                return emitStartTrace(startTrace).pipe(Effect.zipRight(restore(eff)))
+              }),
               Effect.uninterruptible(advanceQueue(lane, start).pipe(Effect.zipRight(release(stateRef)))),
             ),
           ),
