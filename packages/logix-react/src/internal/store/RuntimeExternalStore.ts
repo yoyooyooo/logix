@@ -32,16 +32,6 @@ type HostScheduler = {
 }
 
 const storesByRuntime = new WeakMap<object, Map<TopicKey, ExternalStore<any>>>()
-const microtaskNotifyQueueByRuntime = new WeakMap<
-  object,
-  {
-    scheduled: boolean
-    readonly pending: Set<() => void>
-    readonly scheduler: HostScheduler
-  }
->()
-
-const EMPTY_LISTENER_SNAPSHOT: ReadonlyArray<() => void> = []
 
 const getStoreMapForRuntime = (runtime: object): Map<TopicKey, ExternalStore<any>> => {
   const cached = storesByRuntime.get(runtime)
@@ -49,40 +39,6 @@ const getStoreMapForRuntime = (runtime: object): Map<TopicKey, ExternalStore<any
   const next = new Map<TopicKey, ExternalStore<any>>()
   storesByRuntime.set(runtime, next)
   return next
-}
-
-const getOrCreateMicrotaskNotifyQueue = (runtime: ManagedRuntime.ManagedRuntime<any, any>): {
-  scheduled: boolean
-  readonly pending: Set<() => void>
-  readonly scheduler: HostScheduler
-} => {
-  const cached = microtaskNotifyQueueByRuntime.get(runtime as any)
-  if (cached) return cached
-  const created = {
-    scheduled: false,
-    pending: new Set<() => void>(),
-    scheduler: getHostScheduler(runtime),
-  }
-  microtaskNotifyQueueByRuntime.set(runtime as any, created)
-  return created
-}
-
-const enqueueMicrotaskNotify = (runtime: ManagedRuntime.ManagedRuntime<any, any>, flush: () => void): void => {
-  const queue = getOrCreateMicrotaskNotifyQueue(runtime)
-  queue.pending.add(flush)
-  if (queue.scheduled) return
-  queue.scheduled = true
-  queue.scheduler.scheduleMicrotask(() => {
-    queue.scheduled = false
-    for (const fn of queue.pending) {
-      try {
-        fn()
-      } catch {
-        // best-effort
-      }
-    }
-    queue.pending.clear()
-  })
 }
 
 const makeModuleInstanceKey = (moduleId: string, instanceId: string): ModuleInstanceKey => `${moduleId}::${instanceId}`
@@ -134,8 +90,9 @@ const makeTopicExternalStore = <S>(args: {
   let currentSnapshot: S | undefined
 
   const listeners = new Set<() => void>()
-  let listenersSnapshot: ReadonlyArray<() => void> = EMPTY_LISTENER_SNAPSHOT
   let unsubscribeFromRuntimeStore: (() => void) | undefined
+  let teardownScheduled = false
+  let teardownToken = 0
 
   const lowPriorityDelayMs = args.options?.lowPriorityDelayMs ?? 16
   const lowPriorityMaxDelayMs = args.options?.lowPriorityMaxDelayMs ?? 50
@@ -160,15 +117,12 @@ const makeTopicExternalStore = <S>(args: {
   const flushNotify = (): void => {
     notifyScheduled = false
     cancelLow()
-    const snapshot = listenersSnapshot
-    // Perf: avoid per-listener try/catch overhead in hot paths (runtimeStore.noTearing.tickNotify).
-    // Listener throws are still isolated at the batch level to avoid crashing the tick flush.
-    try {
-      for (let i = 0; i < snapshot.length; i++) {
-        snapshot[i]!()
+    for (const listener of listeners) {
+      try {
+        listener()
+      } catch {
+        // best-effort: never let a subscriber break the notifier
       }
-    } catch {
-      // best-effort: never let a subscriber break the notifier
     }
   }
 
@@ -204,17 +158,12 @@ const makeTopicExternalStore = <S>(args: {
     cancelLow()
     if (notifyScheduled) return
     notifyScheduled = true
-    // Centralize normal-priority microtasks per runtime to reduce overhead under many module topics.
-    enqueueMicrotaskNotify(runtime, flushNotify)
+    hostScheduler.scheduleMicrotask(flushNotify)
   }
 
   const onRuntimeStoreChange = (): void => {
-    if (notifyScheduled) {
-      return
-    }
     try {
-      const priority = runtimeStore.getTopicPriority(topicKey)
-      scheduleNotify(priority)
+      scheduleNotify(runtimeStore.getTopicPriority(topicKey))
     } catch {
       // ignore best-effort failures (e.g. runtime disposed)
     }
@@ -250,13 +199,49 @@ const makeTopicExternalStore = <S>(args: {
     return next
   }
 
-  const subscribe = (listener: () => void): (() => void) => {
-    const isFirst = listeners.size === 0
-    const alreadyHas = listeners.has(listener)
-    if (!alreadyHas) {
-      listeners.add(listener)
-      listenersSnapshot = Array.from(listeners)
+  const cancelScheduledTeardown = (): void => {
+    if (!teardownScheduled) return
+    teardownScheduled = false
+    teardownToken += 1
+  }
+
+  const finalizeTeardown = (): void => {
+    if (listeners.size > 0) return
+
+    try {
+      args.onLastListener?.()
+    } catch {
+      // ignore best-effort failures
     }
+
+    const unsub = unsubscribeFromRuntimeStore
+    unsubscribeFromRuntimeStore = undefined
+    cancelLow()
+
+    try {
+      unsub?.()
+    } catch {
+      // ignore best-effort unsubscribe failures
+    }
+
+    removeStore(runtime, topicKey)
+  }
+
+  const scheduleTeardown = (): void => {
+    if (teardownScheduled) return
+    teardownScheduled = true
+    const token = ++teardownToken
+    hostScheduler.scheduleMicrotask(() => {
+      if (!teardownScheduled || token !== teardownToken) return
+      teardownScheduled = false
+      finalizeTeardown()
+    })
+  }
+
+  const subscribe = (listener: () => void): (() => void) => {
+    cancelScheduledTeardown()
+    const isFirst = listeners.size === 0
+    listeners.add(listener)
     ensureSubscription()
     refreshSnapshotIfStale()
     if (isFirst) {
@@ -267,29 +252,9 @@ const makeTopicExternalStore = <S>(args: {
       }
     }
     return () => {
-      const deleted = listeners.delete(listener)
-      if (deleted) {
-        listenersSnapshot = listeners.size > 0 ? Array.from(listeners) : EMPTY_LISTENER_SNAPSHOT
-      }
+      listeners.delete(listener)
       if (listeners.size > 0) return
-
-      try {
-        args.onLastListener?.()
-      } catch {
-        // ignore best-effort failures
-      }
-
-      const unsub = unsubscribeFromRuntimeStore
-      unsubscribeFromRuntimeStore = undefined
-      cancelLow()
-
-      try {
-        unsub?.()
-      } catch {
-        // ignore best-effort unsubscribe failures
-      }
-
-      removeStore(runtime, topicKey)
+      scheduleTeardown()
     }
   }
 
