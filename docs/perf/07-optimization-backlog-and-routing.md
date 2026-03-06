@@ -225,9 +225,9 @@ API 变动：
 
 状态：
 - 已完成；`fabfile.py` 已转为现成工具，默认直接复用 `list-tasks` / `show-task` / `plan-parallel`。
-- `F-3` 已补上 `list_merge_ready` / `show_branch_diff`，可直接查看哪些 satellite branch 已达到“相对主分支仅 1 个提交且 worktree clean”的合流条件。
+- `F-3` / `F-5` 已补上 `list_merge_ready` / `show_branch_diff` 的 base 语义：默认以当前所在分支为 base，若要回看主分支视角，需显式传 `--base main`。
 - `F-4` 已补上 `probe_next_blocker`，会按 `04-agent-execution-playbook.md` 预设顺序逐个跑 targeted browser suites，遇到第一个失败即停，并明确列出 remaining blocker 队列。
-- 详细完成记录保留在 `docs/perf/2026-03-06-f1-perf-fabfile.md`、`docs/perf/2026-03-06-f2-perf-fabfile-worktree-plan.md`、`docs/perf/2026-03-06-f3-perf-fabfile-merge-ready.md`、`docs/perf/2026-03-06-f4-perf-blocker-probe.md`。
+- 详细完成记录保留在 `docs/perf/2026-03-06-f1-perf-fabfile.md`、`docs/perf/2026-03-06-f2-perf-fabfile-worktree-plan.md`、`docs/perf/2026-03-06-f3-perf-fabfile-merge-ready.md`、`docs/perf/2026-03-06-f4-perf-blocker-probe.md`、`docs/perf/2026-03-06-f5-perf-fabfile-current-branch-base.md`。
 
 ### `S-6` · browser perf collect stabilization（已完成）
 

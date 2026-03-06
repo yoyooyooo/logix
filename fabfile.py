@@ -350,12 +350,25 @@ def _run_git_optional(args: list[str], cwd: Path = ROOT) -> subprocess.Completed
     return subprocess.run(['git', *args], cwd=cwd, text=True, capture_output=True, check=False)
 
 
-def _resolve_base_branch() -> str:
+def _resolve_remote_default_branch() -> str:
     result = _run_git_optional(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
     if result.returncode != 0:
         return DEFAULT_BASE_BRANCH
     ref = result.stdout.strip()
     return ref.removeprefix('origin/') or DEFAULT_BASE_BRANCH
+
+
+def _current_branch_name() -> str | None:
+    result = _run_git_optional(['symbolic-ref', '--quiet', '--short', 'HEAD'])
+    if result.returncode != 0:
+        return None
+    branch = result.stdout.strip()
+    return branch or None
+
+
+def _git_ref_exists(ref: str) -> bool:
+    result = _run_git_optional(['rev-parse', '--verify', '--quiet', f'{ref}^{{commit}}'])
+    return result.returncode == 0
 
 
 def _local_branch_exists(branch: str) -> bool:
@@ -373,6 +386,22 @@ def _resolve_branch_name(branch: str, worktrees: list[WorktreeInfo]) -> str | No
             if worktree.branch_name:
                 return worktree.branch_name
     return None
+
+
+def _resolve_base_branch(worktrees: list[WorktreeInfo], requested_base: str | None = None) -> str:
+    if requested_base:
+        resolved = _resolve_branch_name(requested_base, worktrees)
+        if resolved:
+            return resolved
+        if _git_ref_exists(requested_base):
+            return requested_base
+        raise SystemExit(f'未找到 base 分支/引用: {requested_base}')
+
+    current_branch = _current_branch_name()
+    if current_branch:
+        return current_branch
+
+    return _resolve_remote_default_branch()
 
 
 def _infer_task_id(name: str | None) -> str | None:
@@ -556,9 +585,8 @@ def _worktree_for_branch(branch: str, worktrees: list[WorktreeInfo]) -> Worktree
     return None
 
 
-def _branch_diff_info(branch: str, worktrees: list[WorktreeInfo], *, base_branch: str | None = None) -> BranchDiffInfo:
-    target_base = base_branch or _resolve_base_branch()
-    behind_raw, ahead_raw = _run_git(['rev-list', '--left-right', '--count', f'{target_base}...{branch}']).strip().split()
+def _branch_diff_info(branch: str, worktrees: list[WorktreeInfo], *, base_branch: str) -> BranchDiffInfo:
+    behind_raw, ahead_raw = _run_git(['rev-list', '--left-right', '--count', f'{base_branch}...{branch}']).strip().split()
     head, head_short, committed_date, author_name, subject = _run_git(
         ['log', '-1', '--format=%H%x1f%h%x1f%cs%x1f%an%x1f%s', branch],
     ).strip().split('\x1f', 4)
@@ -567,9 +595,9 @@ def _branch_diff_info(branch: str, worktrees: list[WorktreeInfo], *, base_branch
     behind_count = int(behind_raw)
     merge_ready_reasons: list[str] = []
     if ahead_count != 1:
-        merge_ready_reasons.append(f'相对 {target_base} 不是恰好多 1 个提交（ahead={ahead_count}）')
+        merge_ready_reasons.append(f'相对 {base_branch} 不是恰好多 1 个提交（ahead={ahead_count}）')
     if behind_count != 0:
-        merge_ready_reasons.append(f'{target_base} 已领先 {behind_count} 个提交')
+        merge_ready_reasons.append(f'{base_branch} 已领先 {behind_count} 个提交')
     if worktree is None:
         merge_ready_reasons.append('没有 active worktree，无法判定 clean')
     elif worktree.dirty_count < 0:
@@ -578,7 +606,7 @@ def _branch_diff_info(branch: str, worktrees: list[WorktreeInfo], *, base_branch
         merge_ready_reasons.append(f'worktree dirty_count={worktree.dirty_count}')
     return BranchDiffInfo(
         branch=branch,
-        base_branch=target_base,
+        base_branch=base_branch,
         ahead_count=ahead_count,
         behind_count=behind_count,
         head=head,
@@ -826,9 +854,11 @@ def cmd_list_active_worktrees(worktrees: list[WorktreeInfo], json_mode: bool) ->
     return 0
 
 
-def cmd_list_merge_ready(worktrees: list[WorktreeInfo], json_mode: bool) -> int:
-    base_branch = _resolve_base_branch()
-    candidates = [worktree for worktree in worktrees if worktree.branch_name and not worktree.detached]
+def cmd_list_merge_ready(worktrees: list[WorktreeInfo], json_mode: bool, base: str | None = None) -> int:
+    base_branch = _resolve_base_branch(worktrees, base)
+    candidates = [
+        worktree for worktree in worktrees if worktree.branch_name and not worktree.detached and worktree.branch_name != base_branch
+    ]
     diffs = sorted(
         (_branch_diff_info(worktree.branch_name, worktrees, base_branch=base_branch) for worktree in candidates),
         key=lambda item: ((item.worktree.task_id or '') if item.worktree else '', item.branch),
@@ -864,12 +894,13 @@ def cmd_list_merge_ready(worktrees: list[WorktreeInfo], json_mode: bool) -> int:
     return 0
 
 
-def cmd_show_branch_diff(worktrees: list[WorktreeInfo], branch: str, json_mode: bool) -> int:
+def cmd_show_branch_diff(worktrees: list[WorktreeInfo], branch: str, json_mode: bool, base: str | None = None) -> int:
     resolved_branch = _resolve_branch_name(branch, worktrees)
     if not resolved_branch:
         print(f'未找到本地分支: {branch}', file=sys.stderr)
         return 1
-    diff = _branch_diff_info(resolved_branch, worktrees)
+    base_branch = _resolve_base_branch(worktrees, base)
+    diff = _branch_diff_info(resolved_branch, worktrees, base_branch=base_branch)
     payload = _branch_diff_payload(diff)
     if json_mode:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -1027,17 +1058,19 @@ def build_parser() -> argparse.ArgumentParser:
     list_merge_ready = sub.add_parser(
         'list_merge_ready',
         aliases=['list-merge-ready'],
-        help='列出相对主分支恰好多 1 个提交且 worktree clean 的 satellite branch',
+        help='列出相对 base 分支恰好多 1 个提交且 worktree clean 的 satellite branch（默认 base=当前分支）',
     )
+    list_merge_ready.add_argument('--base', help='显式指定 base 分支/引用；默认使用当前所在分支，detached 时回退到 origin/HEAD 或 main')
     list_merge_ready.add_argument('--json', action='store_true')
     list_merge_ready.set_defaults(handler='list_merge_ready')
 
     show_branch_diff = sub.add_parser(
         'show_branch_diff',
         aliases=['show-branch-diff'],
-        help='展示某个 satellite branch 相对主分支的 ahead/behind 与最新提交信息',
+        help='展示某个 satellite branch 相对 base 分支的 ahead/behind 与最新提交信息（默认 base=当前分支）',
     )
     show_branch_diff.add_argument('branch')
+    show_branch_diff.add_argument('--base', help='显式指定 base 分支/引用；默认使用当前所在分支，detached 时回退到 origin/HEAD 或 main')
     show_branch_diff.add_argument('--json', action='store_true')
     show_branch_diff.set_defaults(handler='show_branch_diff')
 
@@ -1076,10 +1109,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_list_active_worktrees(worktrees, args.json)
     if args.handler == 'list_merge_ready':
         worktrees = load_active_worktrees()
-        return cmd_list_merge_ready(worktrees, args.json)
+        return cmd_list_merge_ready(worktrees, args.json, args.base)
     if args.handler == 'show_branch_diff':
         worktrees = load_active_worktrees()
-        return cmd_show_branch_diff(worktrees, args.branch, args.json)
+        return cmd_show_branch_diff(worktrees, args.branch, args.json, args.base)
     if args.handler == 'plan_parallel':
         tasks = load_tasks()
         worktrees = load_active_worktrees()
