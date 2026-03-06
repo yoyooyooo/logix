@@ -78,3 +78,5 @@
   - P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时，去掉 timer 排队噪声；`mode=default, steps=2000` 已进 `50ms`。
 - `2026-03-06-q1-converge-nearfull-slim-decision.md`
   - Q-1：`converge auto->full (near_full)` 改成 slim decision summary，`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
+- `2026-03-06-r1-txn-lanes-phase-split-failed.md`
+  - R-1 失败试验：blind first-host-yield 的两阶段 backlog policy 在 `mode=default` 三档都回归，应改走 urgent-aware handoff。

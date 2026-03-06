@@ -49,6 +49,7 @@
 预期收益：
 - 这是 current-head 唯一明确的 runtime 主线，收益最高。
 - 若成功，能把 `urgent.p95<=50ms` 从边缘抖动改成稳定过线。
+- 已知失败方向：`2026-03-06` 的 blind first-host-yield phase split 会让 `mode=default` 三档回归，见 `docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`。
 
 实施成本：
 - 中高。
@@ -65,7 +66,8 @@
 
 API 变动：
 - 当前不需要。
-- 只有当 policy split 仍无法稳定过线，才升级到 `R-2`。
+- 下一轮应优先尝试 `urgent-aware handoff`，不要重复 blind first-host-yield。
+- 只有当更高层的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
 
 ### `S-1` · `externalStore` broad residual 复核（已完成）
 
