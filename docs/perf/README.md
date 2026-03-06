@@ -60,3 +60,5 @@
   - N-1：`defer` 增加 render 前 sync-warm 预热，去掉同步模块的 provider preload gating fallback；`bootToReady` 从 `~345ms` 级降到 `~60ms`。
 - `2026-03-06-o1-watchers-action-writeback-fusion.md`
   - O-1：纯 state action watcher 并回原 action txn，`watchers=512` 从 `~85-95ms` 级压到 `~50-55ms`。
+- `2026-03-06-p1-txn-lanes-click-anchored.md`
+  - P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时，去掉 timer 排队噪声；`mode=default, steps=2000` 已进 `50ms`。

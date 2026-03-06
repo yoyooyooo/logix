@@ -451,7 +451,7 @@
       "limitBudgetId": "urgent.p95<=100ms",
       "baselinePoints": [{ "steps": 2000, "mode": "default" }, { "steps": 2000, "mode": "off" }],
       "requiredEvidence": ["txnLanes.mode", "txnLanes.budgetMs", "txnLanes.maxLagMs", "budget.cutOffCount"],
-      "notes": "060 Txn Lanes：在 backlog 存在时测量 urgent 交互延迟与追平时间；mode 轴显式覆盖 runtime 默认 default-on 与 forced-off 基线，不再依赖隐式 VITE_LOGIX_PERF_TXN_LANES_MODE 默认值。仍支持通过 env 强制覆盖做专项实验；支持 VITE_LOGIX_PERF_KERNEL_ID=core-ng 复跑。"
+      "notes": "060 Txn Lanes：在 backlog 存在时测量 urgent 交互延迟与追平时间；计时起点锚定到真实 click 触发时刻（不是 setTimeout 排队时刻），避免把浏览器 timer 排队延迟混进 runtime 指标。mode 轴显式覆盖 runtime 默认 default-on 与 forced-off 基线，不再依赖隐式 VITE_LOGIX_PERF_TXN_LANES_MODE 默认值。仍支持通过 env 强制覆盖做专项实验；支持 VITE_LOGIX_PERF_KERNEL_ID=core-ng 复跑。"
     },
     {
       "id": "runtimeStore.noTearing.tickNotify",

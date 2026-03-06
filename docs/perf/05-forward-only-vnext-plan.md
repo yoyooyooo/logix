@@ -31,6 +31,7 @@
 - [x] M-1：`suspend` 路径加入 optimistic sync fast-path（行为前移优化）；`react.bootResolve` 的 `suspend` 冷启动从 `~320ms` 级降到 `~17-19ms`。
 - [x] N-1：`defer` 增加 render 前 sync-warm 预热（行为前移优化）；去掉同步模块的 provider preload gating fallback，`bootToReady` 从 `~345ms` 级降到 `~60ms`。
 - [x] O-1：纯 state action watcher 并回原 action txn（watcher→action fusion）；`watchers=512` 从 `~85-95ms` 级压到 `~50-55ms`。
+- [x] P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时（evidence correction）；去掉 timer 排队噪声，`mode=default, steps=2000` 已进 `50ms`。
 
 ## 1. 目标状态（一次性收敛）
 

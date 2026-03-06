@@ -253,9 +253,10 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
             ctx.b += 1
             const expectedB = ctx.b
 
-            const urgentScheduledAt = performance.now()
+            let urgentScheduledAt = 0
             await new Promise<void>((resolve, reject) => {
               setTimeout(() => {
+                urgentScheduledAt = performance.now()
                 ctx.urgent
                   .click()
                   .then(() => resolve())
