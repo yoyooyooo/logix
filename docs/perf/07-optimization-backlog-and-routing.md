@@ -58,6 +58,7 @@
 | `S-4` | 验证解锁副线（已完成） | `RuntimeExternalStore delayed teardown` 最小修复已吸收，已从默认 blocker 列表移除 | 中 | 中 | 中 | 已完成 | 不需要 |
 | `S-5` | 验证解锁副线（已关闭） | `react.strictSuspenseJitter` 已按 current-head 代码状态复核关闭，不再作为默认 blocker | 中 | 低 | 低 | 已关闭 | 不需要 |
 | `S-6` | collect 稳定化副线（已关闭） | browser perf collect 首轮预热噪声已复核，不保留基础设施补丁 | 中 | 低 | 低 | 已关闭 | 不需要 |
+| `S-9` | control-surface 识别（已完成） | `txn-lanes` native event window observation 已证明主延迟落在 schedule->handler invoke，而不是 queue 内 | 中 | 低到中 | 低 | 已完成 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
 
 ## 任务详情
@@ -382,6 +383,34 @@ API 变动：
 
 并行/串行：
 - 已完成，不再占用新并行槽位。
+
+API 变动：
+- 不需要。
+
+
+### `S-9` · txn-lanes control-surface / native event window observation（已完成）
+
+状态：
+- 已于 `2026-03-06` 完成，收口记录见 `docs/perf/2026-03-06-s9-txn-lanes-control-surface.md`。
+
+问题：
+- `R-1` observation 已指出主延迟更像 `schedule -> handler invoke`。
+- 这刀继续把 `native capture / bubble / handler invoke` 之间的窗口拆细。
+
+本轮裁决：
+- 不碰 `txnQueue` / `ModuleRuntime.impl.ts`。
+- 只补 test/evidence，把主延迟继续定位在 queue 之前。
+
+预期收益：
+- 中。
+- 不直接提速 runtime，但能明确下一刀应该前移到 control-surface / benchmark admission，而不是 queue 内。
+
+主要落点：
+- `packages/logix-react/test/browser/perf-boundaries/txn-lanes.test.tsx`
+- `docs/perf/2026-03-06-s9-txn-lanes-control-surface.md`
+
+并行/串行：
+- 已完成，不再占用新的 runtime 并行槽位。
 
 API 变动：
 - 不需要。
