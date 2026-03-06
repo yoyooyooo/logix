@@ -7,9 +7,9 @@
 ## 当前路由快照（2026-03-06）
 
 - 编号说明：`03/05` 沿用 major-cut 历史编号，`07` 使用 routing track 编号；存在同名如 `F-1`，排期与当前状态一律以 `07-optimization-backlog-and-routing.md` 为准。
-- 唯一活跃主线：`R-1 v2`，即 `txnLanes` 的 `urgent-aware handoff`；`startup-phase` / `handoff-lite` 只保留失败 checkpoint，不再代表活跃排期。
-- 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）。
-- 已关闭：`S-1` residual audit、`S-3` gate/applicability、`S-5` refresh unblock 审计。
+- 当前没有默认 runtime 主线：`R-1` 已由 `S-10` native-anchor benchmark cut 收口，`startup-phase` / `handoff-lite` / `urgent-aware handoff` 只保留失败 checkpoint，不再代表活跃排期。
+- 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）、`S-10`（`txnLanes` native-anchor benchmark cut）。
+- 已关闭：`R-1` runtime 主线、`S-1` residual audit、`S-3` gate/applicability、`S-5` refresh unblock 审计、`S-6` collect 稳定化副线。
 - 真正的排期与并行策略以 `07-optimization-backlog-and-routing.md` 为准。
 - 执行协议以 `08-perf-execution-protocol.md` 为准：主会话保持干净，只做协调/审查/合流；每条实施线都在独立 `worktree/branch/subagent` 中推进，并在收口时相对主分支只保留 `1` 个最终 HEAD 提交。
 
@@ -99,3 +99,5 @@
   - S-4：`RuntimeExternalStore delayed teardown` 最小修复已合回，`runtime-store-no-tearing` 不再按 evidence-only 关闭。
 - `2026-03-06-s5-suspense-refresh-unblock.md`
   - S-5：`react.strictSuspenseJitter` 在主分支环境可直接跑通，按 docs/evidence-only 审计关闭。
+- `2026-03-06-s10-txn-lanes-native-anchor.md`
+  - S-10：`txnLanes.urgentBacklog` 改成 `nativeCapture -> MutationObserver DOM stable` 语义，并在 clean HEAD 复验后正式关闭 `R-1` queue-side runtime 主线。

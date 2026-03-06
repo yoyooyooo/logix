@@ -50,15 +50,84 @@ const computeValue = (iters: number, a: number, offset: number): number => {
   return x
 }
 
-const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
+const waitForBodyText = async (text: string, timeoutMs: number): Promise<number> => {
+  const hasText = (): boolean => document.body.textContent?.includes(text) ?? false
 
-const waitForBodyText = async (text: string, timeoutMs: number): Promise<void> => {
-  const deadline = performance.now() + timeoutMs
-  while (performance.now() < deadline) {
-    if (document.body.textContent?.includes(text)) return
-    await nextFrame()
+  if (hasText()) return performance.now()
+
+  return await new Promise<number>((resolve, reject) => {
+    let settled = false
+    const settle = (kind: 'resolve' | 'reject', value?: number | Error): void => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timeoutId)
+      observer.disconnect()
+      if (kind === 'resolve') {
+        resolve(value as number)
+      } else {
+        reject(value)
+      }
+    }
+
+    const observer = new MutationObserver(() => {
+      if (hasText()) settle('resolve', performance.now())
+    })
+
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
+
+    const timeoutId = window.setTimeout(() => {
+      settle('reject', new Error(`waitForBodyText timeout: ${text}`))
+    }, timeoutMs)
+
+    if (hasText()) settle('resolve', performance.now())
+  })
+}
+
+type NativeClickTraceHandlers = {
+  readonly onCapture?: (atMs: number) => void
+  readonly onBubble?: (atMs: number) => void
+}
+
+const useNativeClickTrace = (
+  ref: React.RefObject<HTMLButtonElement | null>,
+  handlers: NativeClickTraceHandlers,
+): void => {
+  React.useLayoutEffect(() => {
+    const node = ref.current
+    if (!node) return
+
+    const handleCapture = () => {
+      handlers.onCapture?.(performance.now())
+    }
+    const handleBubble = () => {
+      handlers.onBubble?.(performance.now())
+    }
+
+    node.addEventListener('click', handleCapture, true)
+    node.addEventListener('click', handleBubble)
+
+    return () => {
+      node.removeEventListener('click', handleCapture, true)
+      node.removeEventListener('click', handleBubble)
+    }
+  }, [ref, handlers.onBubble, handlers.onCapture])
+}
+
+const selectNativeAnchor = (
+  captureAt?: number,
+  bubbleAt?: number,
+): { readonly atMs: number; readonly phase: 'nativeCapture' | 'nativeBubble' } | undefined => {
+  if (typeof captureAt === 'number') {
+    return { atMs: captureAt, phase: 'nativeCapture' }
   }
-  throw new Error(`waitForBodyText timeout: ${text}`)
+  if (typeof bubbleAt === 'number') {
+    return { atMs: bubbleAt, phase: 'nativeBubble' }
+  }
+  return undefined
 }
 
 const TXN_QUEUE_EPSILON_MS = 1
@@ -110,8 +179,12 @@ const isTxnQueueTraceEvent = (event: unknown): event is { readonly type: 'trace:
 const summarizeTxnQueueEvidence = (args: {
   readonly events: ReadonlyArray<unknown>
   readonly backlogStartedAt: number
+  readonly backlogNativeCaptureAt?: number
+  readonly backlogNativeBubbleAt?: number
   readonly backlogActionInvokedAt?: number
   readonly urgentScheduledAt: number
+  readonly urgentNativeCaptureAt?: number
+  readonly urgentNativeBubbleAt?: number
   readonly urgentActionInvokedAt?: number
 }): Record<string, EvidenceSample> => {
   const queueEvents = args.events
@@ -135,12 +208,34 @@ const summarizeTxnQueueEvidence = (args: {
   const backlogActionInvokeOffsetMs =
     typeof args.backlogActionInvokedAt === 'number' ? args.backlogActionInvokedAt - args.backlogStartedAt : undefined
 
+  const backlogNativeCaptureOffsetMs =
+    typeof args.backlogNativeCaptureAt === 'number' ? args.backlogNativeCaptureAt - args.backlogStartedAt : undefined
+
+  const backlogNativeBubbleOffsetMs =
+    typeof args.backlogNativeBubbleAt === 'number' ? args.backlogNativeBubbleAt - args.backlogStartedAt : undefined
+
   const urgentInvokeDelayFromScheduleMs =
     typeof args.urgentActionInvokedAt === 'number' ? args.urgentActionInvokedAt - args.urgentScheduledAt : undefined
+
+  const urgentNativeCaptureDelayFromScheduleMs =
+    typeof args.urgentNativeCaptureAt === 'number' ? args.urgentNativeCaptureAt - args.urgentScheduledAt : undefined
+
+  const urgentNativeBubbleDelayFromScheduleMs =
+    typeof args.urgentNativeBubbleAt === 'number' ? args.urgentNativeBubbleAt - args.urgentScheduledAt : undefined
 
   const urgentInvokeVsFirstNonUrgentStartMs =
     typeof args.urgentActionInvokedAt === 'number' && firstNonUrgent
       ? args.urgentActionInvokedAt - firstNonUrgent.startAtMs
+      : undefined
+
+  const urgentNativeCaptureVsFirstNonUrgentStartMs =
+    typeof args.urgentNativeCaptureAt === 'number' && firstNonUrgent
+      ? args.urgentNativeCaptureAt - firstNonUrgent.startAtMs
+      : undefined
+
+  const urgentNativeBubbleVsFirstNonUrgentStartMs =
+    typeof args.urgentNativeBubbleAt === 'number' && firstNonUrgent
+      ? args.urgentNativeBubbleAt - firstNonUrgent.startAtMs
       : undefined
 
   const urgentQueuedWaiter =
@@ -168,8 +263,32 @@ const summarizeTxnQueueEvidence = (args: {
     'txnQueue.urgent.enqueueDelayFromScheduleMs': urgentQueue
       ? Math.max(0, urgentQueue.enqueueAtMs - args.urgentScheduledAt)
       : missingUrgent,
+    'txnQueue.urgent.nativeCaptureDelayFromScheduleMs':
+      typeof urgentNativeCaptureDelayFromScheduleMs === 'number'
+        ? Math.max(0, urgentNativeCaptureDelayFromScheduleMs)
+        : missingUrgent,
+    'txnQueue.urgent.nativeBubbleDelayFromScheduleMs':
+      typeof urgentNativeBubbleDelayFromScheduleMs === 'number'
+        ? Math.max(0, urgentNativeBubbleDelayFromScheduleMs)
+        : missingUrgent,
     'txnQueue.urgent.invokeDelayFromScheduleMs':
       typeof urgentInvokeDelayFromScheduleMs === 'number' ? Math.max(0, urgentInvokeDelayFromScheduleMs) : missingUrgent,
+    'txnQueue.urgent.invokeDelayFromNativeCaptureMs':
+      typeof args.urgentActionInvokedAt === 'number' && typeof args.urgentNativeCaptureAt === 'number'
+        ? Math.max(0, args.urgentActionInvokedAt - args.urgentNativeCaptureAt)
+        : missingUrgent,
+    'txnQueue.urgent.invokeDelayFromNativeBubbleMs':
+      typeof args.urgentActionInvokedAt === 'number' && typeof args.urgentNativeBubbleAt === 'number'
+        ? Math.max(0, args.urgentActionInvokedAt - args.urgentNativeBubbleAt)
+        : missingUrgent,
+    'txnQueue.urgent.enqueueDelayFromNativeCaptureMs':
+      urgentQueue && typeof args.urgentNativeCaptureAt === 'number'
+        ? Math.max(0, urgentQueue.enqueueAtMs - args.urgentNativeCaptureAt)
+        : missingUrgent,
+    'txnQueue.urgent.startDelayFromNativeCaptureMs':
+      urgentQueue && typeof args.urgentNativeCaptureAt === 'number'
+        ? Math.max(0, urgentQueue.startAtMs - args.urgentNativeCaptureAt)
+        : missingUrgent,
     'txnQueue.urgent.enqueueDelayFromInvokeMs':
       urgentQueue && typeof args.urgentActionInvokedAt === 'number'
         ? Math.max(0, urgentQueue.enqueueAtMs - args.urgentActionInvokedAt)
@@ -198,15 +317,43 @@ const summarizeTxnQueueEvidence = (args: {
       typeof urgentInvokeVsFirstNonUrgentStartMs === 'number'
         ? urgentInvokeVsFirstNonUrgentStartMs
         : missingNonUrgent,
+    'txnQueue.urgent.nativeCaptureVsFirstNonUrgentStartMs':
+      typeof urgentNativeCaptureVsFirstNonUrgentStartMs === 'number'
+        ? urgentNativeCaptureVsFirstNonUrgentStartMs
+        : missingNonUrgent,
+    'txnQueue.urgent.nativeBubbleVsFirstNonUrgentStartMs':
+      typeof urgentNativeBubbleVsFirstNonUrgentStartMs === 'number'
+        ? urgentNativeBubbleVsFirstNonUrgentStartMs
+        : missingNonUrgent,
     'txnQueue.urgent.diagnosis.queuedWaiter': urgentQueuedWaiter,
     'txnQueue.urgent.diagnosis.lateEnqueue': urgentLateEnqueue,
     'txnQueue.urgent.diagnosis.idleDirect':
       urgentQueue?.startMode === 'direct_idle' && urgentQueue.activeLaneAtEnqueue == null ? 1 : 0,
+    'txnQueue.backlog.firstNonUrgent.nativeCaptureOffsetFromBacklogMs':
+      typeof backlogNativeCaptureOffsetMs === 'number' ? Math.max(0, backlogNativeCaptureOffsetMs) : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.nativeBubbleOffsetFromBacklogMs':
+      typeof backlogNativeBubbleOffsetMs === 'number' ? Math.max(0, backlogNativeBubbleOffsetMs) : missingNonUrgent,
     'txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs': firstNonUrgent
       ? Math.max(0, firstNonUrgent.enqueueAtMs - args.backlogStartedAt)
       : missingNonUrgent,
     'txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs':
       typeof backlogActionInvokeOffsetMs === 'number' ? Math.max(0, backlogActionInvokeOffsetMs) : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.invokeDelayFromNativeCaptureMs':
+      typeof args.backlogActionInvokedAt === 'number' && typeof args.backlogNativeCaptureAt === 'number'
+        ? Math.max(0, args.backlogActionInvokedAt - args.backlogNativeCaptureAt)
+        : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.invokeDelayFromNativeBubbleMs':
+      typeof args.backlogActionInvokedAt === 'number' && typeof args.backlogNativeBubbleAt === 'number'
+        ? Math.max(0, args.backlogActionInvokedAt - args.backlogNativeBubbleAt)
+        : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.enqueueDelayFromNativeCaptureMs':
+      firstNonUrgent && typeof args.backlogNativeCaptureAt === 'number'
+        ? Math.max(0, firstNonUrgent.enqueueAtMs - args.backlogNativeCaptureAt)
+        : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.startDelayFromNativeCaptureMs':
+      firstNonUrgent && typeof args.backlogNativeCaptureAt === 'number'
+        ? Math.max(0, firstNonUrgent.startAtMs - args.backlogNativeCaptureAt)
+        : missingNonUrgent,
     'txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs':
       firstNonUrgent && typeof args.backlogActionInvokedAt === 'number'
         ? Math.max(0, firstNonUrgent.enqueueAtMs - args.backlogActionInvokedAt)
@@ -287,15 +434,44 @@ const makeTxnLanesModule = (
 const App: React.FC<{
   readonly moduleTag: any
   readonly lastKey: string
-  readonly onSetAInvoked?: (atMs: number) => void
+  readonly onBacklogNativeCapture?: (atMs: number) => void
+  readonly onBacklogNativeBubble?: (atMs: number) => void
+  readonly onBacklogInvoked?: (atMs: number) => void
+  readonly onUrgentNativeCapture?: (atMs: number) => void
+  readonly onUrgentNativeBubble?: (atMs: number) => void
   readonly onUrgentInvoked?: (atMs: number) => void
-}> = ({ moduleTag, lastKey, onSetAInvoked, onUrgentInvoked }) => {
+}> = ({
+  moduleTag,
+  lastKey,
+  onBacklogNativeCapture,
+  onBacklogNativeBubble,
+  onBacklogInvoked,
+  onUrgentNativeCapture,
+  onUrgentNativeBubble,
+  onUrgentInvoked,
+}) => {
   const module = useModule(moduleTag) as any
   const b = useModule(module, (s) => (s as any).b as number)
   const dLast = useModule(module, (s) => (s as any)[lastKey] as number)
+  const setA0Ref = React.useRef<HTMLButtonElement>(null)
+  const setA1Ref = React.useRef<HTMLButtonElement>(null)
+  const urgentRef = React.useRef<HTMLButtonElement>(null)
+
+  useNativeClickTrace(setA0Ref, {
+    onCapture: onBacklogNativeCapture,
+    onBubble: onBacklogNativeBubble,
+  })
+  useNativeClickTrace(setA1Ref, {
+    onCapture: onBacklogNativeCapture,
+    onBubble: onBacklogNativeBubble,
+  })
+  useNativeClickTrace(urgentRef, {
+    onCapture: onUrgentNativeCapture,
+    onBubble: onUrgentNativeBubble,
+  })
 
   const handleSetA = (value: number) => {
-    onSetAInvoked?.(performance.now())
+    onBacklogInvoked?.(performance.now())
     module.actions.setA(value)
   }
 
@@ -308,13 +484,13 @@ const App: React.FC<{
     <div>
       <p>B: {b}</p>
       <p>D: {dLast}</p>
-      <button type="button" onClick={() => handleSetA(0)}>
+      <button ref={setA0Ref} type="button" onClick={() => handleSetA(0)}>
         SetA0
       </button>
-      <button type="button" onClick={() => handleSetA(1)}>
+      <button ref={setA1Ref} type="button" onClick={() => handleSetA(1)}>
         SetA1
       </button>
-      <button type="button" onClick={handleUrgent}>
+      <button ref={urgentRef} type="button" onClick={handleUrgent}>
         Urgent
       </button>
     </div>
@@ -350,7 +526,11 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       readonly urgent: any
       readonly queueTraceBuffer: ReturnType<typeof Logix.Debug.makeRingBufferSink>
       readonly actionTrace: {
+        backlogNativeCaptureAt?: number
+        backlogNativeBubbleAt?: number
         backlogActionInvokedAt?: number
+        urgentNativeCaptureAt?: number
+        urgentNativeBubbleAt?: number
         urgentActionInvokedAt?: number
       }
       a: 0 | 1
@@ -374,7 +554,11 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       const { M, impl, lastKey, initialLastValue } = makeTxnLanesModule(steps, ITERS)
       const queueTraceBuffer = Logix.Debug.makeRingBufferSink(2048)
       const actionTrace: {
+        backlogNativeCaptureAt?: number
+        backlogNativeBubbleAt?: number
         backlogActionInvokedAt?: number
+        urgentNativeCaptureAt?: number
+        urgentNativeBubbleAt?: number
         urgentActionInvokedAt?: number
       } = {}
       const debugLayer = Layer.mergeAll(
@@ -414,8 +598,20 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
           <App
             moduleTag={M.tag}
             lastKey={lastKey}
-            onSetAInvoked={(atMs) => {
+            onBacklogNativeCapture={(atMs) => {
+              actionTrace.backlogNativeCaptureAt = atMs
+            }}
+            onBacklogNativeBubble={(atMs) => {
+              actionTrace.backlogNativeBubbleAt = atMs
+            }}
+            onBacklogInvoked={(atMs) => {
               actionTrace.backlogActionInvokedAt = atMs
+            }}
+            onUrgentNativeCapture={(atMs) => {
+              actionTrace.urgentNativeCaptureAt = atMs
+            }}
+            onUrgentNativeBubble={(atMs) => {
+              actionTrace.urgentNativeBubbleAt = atMs
             }}
             onUrgentInvoked={(atMs) => {
               actionTrace.urgentActionInvokedAt = atMs
@@ -460,13 +656,23 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
 
           const perRunWaitMs = Math.min(10_000, timeoutMs)
 
+          let urgentStablePromise: Promise<number> | undefined
+          let caughtUpPromise: Promise<number> | undefined
+
           try {
             const nextA: 0 | 1 = ctx.a === 0 ? 1 : 0
             const expectedLast = computeValue(ctx.iters, nextA, Math.max(0, steps - 1))
 
             ctx.queueTraceBuffer.clear()
+            ctx.actionTrace.backlogNativeCaptureAt = undefined
+            ctx.actionTrace.backlogNativeBubbleAt = undefined
             ctx.actionTrace.backlogActionInvokedAt = undefined
+            ctx.actionTrace.urgentNativeCaptureAt = undefined
+            ctx.actionTrace.urgentNativeBubbleAt = undefined
             ctx.actionTrace.urgentActionInvokedAt = undefined
+
+            caughtUpPromise = waitForBodyText(`D: ${String(expectedLast)}`, perRunWaitMs)
+
             const backlogStartedAt = performance.now()
             if (nextA === 0) {
               await ctx.setA0.click()
@@ -477,6 +683,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
 
             ctx.b += 1
             const expectedB = ctx.b
+            urgentStablePromise = waitForBodyText(`B: ${String(expectedB)}`, perRunWaitMs)
 
             let urgentScheduledAt = 0
             await new Promise<void>((resolve, reject) => {
@@ -489,33 +696,51 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
               }, 0)
             })
 
-            await waitForBodyText(`B: ${String(expectedB)}`, perRunWaitMs)
-            const urgentStableAt = performance.now()
+            const urgentStableAt = await urgentStablePromise
+            const caughtUpAt = await caughtUpPromise
+            const urgentAnchor = selectNativeAnchor(
+              ctx.actionTrace.urgentNativeCaptureAt,
+              ctx.actionTrace.urgentNativeBubbleAt,
+            )
+            const backlogAnchor = selectNativeAnchor(
+              ctx.actionTrace.backlogNativeCaptureAt,
+              ctx.actionTrace.backlogNativeBubbleAt,
+            )
 
-            await waitForBodyText(`D: ${String(expectedLast)}`, perRunWaitMs)
-            const caughtUpAt = performance.now()
+            if (!urgentAnchor) throw new Error('urgentNativeAnchorMissing')
+            if (!backlogAnchor) throw new Error('backlogNativeAnchorMissing')
+
             const queueEvidence = summarizeTxnQueueEvidence({
               events: ctx.queueTraceBuffer.getSnapshot(),
               backlogStartedAt,
+              backlogNativeCaptureAt: ctx.actionTrace.backlogNativeCaptureAt,
+              backlogNativeBubbleAt: ctx.actionTrace.backlogNativeBubbleAt,
               backlogActionInvokedAt: ctx.actionTrace.backlogActionInvokedAt,
               urgentScheduledAt,
+              urgentNativeCaptureAt: ctx.actionTrace.urgentNativeCaptureAt,
+              urgentNativeBubbleAt: ctx.actionTrace.urgentNativeBubbleAt,
               urgentActionInvokedAt: ctx.actionTrace.urgentActionInvokedAt,
             })
 
             return {
               metrics: {
-                'e2e.urgentToStableMs': urgentStableAt - urgentScheduledAt,
-                'runtime.backlogCatchUpMs': caughtUpAt - backlogStartedAt,
+                'e2e.urgentToStableMs': urgentStableAt - urgentAnchor.atMs,
+                'runtime.backlogCatchUpMs': caughtUpAt - backlogAnchor.atMs,
               },
               evidence: {
                 'txnLanes.mode': mode,
                 'txnLanes.budgetMs': LANE_BUDGET_MS,
                 'txnLanes.maxLagMs': LANE_MAX_LAG_MS,
                 'txnLanes.yieldStrategy': mode === 'on' ? TXN_LANES_YIELD_STRATEGY : 'baseline',
+                'txnLanes.urgentAnchor': urgentAnchor.phase,
+                'txnLanes.backlogAnchor': backlogAnchor.phase,
+                'txnLanes.domStableWait': 'mutationObserver',
                 ...queueEvidence,
               },
             }
           } catch (error) {
+            void urgentStablePromise?.catch(() => undefined)
+            void caughtUpPromise?.catch(() => undefined)
             const reason = error instanceof Error ? error.message : 'unknown'
             return {
               metrics: {
@@ -527,6 +752,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
                 'txnLanes.budgetMs': LANE_BUDGET_MS,
                 'txnLanes.maxLagMs': LANE_MAX_LAG_MS,
                 'txnLanes.yieldStrategy': mode === 'on' ? TXN_LANES_YIELD_STRATEGY : 'baseline',
+                'txnLanes.domStableWait': 'mutationObserver',
               },
             }
           }

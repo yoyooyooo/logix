@@ -39,8 +39,9 @@
 - [x] P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时（evidence correction）；去掉 timer 排队噪声，`mode=default, steps=2000` 已进 `50ms`。
 - [x] Q-1：`converge auto->full (near_full)` 改成 slim decision summary（保留 evidence、去掉重资产）；`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
 - [x] S-3：`converge` gate / matrix applicability 局部清理；`decision.p95<=0.5ms` 拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 计入失败视图。
-- [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门）。
-  - 当前活跃路由见 `docs/perf/07-optimization-backlog-and-routing.md`；这里只保留 `2026-03-06` 的失败/checkpoint 锚点：`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`、`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v3-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`。
+- [x] R-1：`txnLanes` backlog policy split（历史 runtime 主线，已由 `S-10` native-anchor benchmark cut 收口；不再继续 queue-side runtime cut）。
+  - 这里只保留 `2026-03-06` 的失败/checkpoint 锚点：`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`、`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v3-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`。
+  - 正式收口记录：`docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -53,18 +54,18 @@
 
 ## 1.1 Current-Head 裁决（2026-03-06）
 
-当前 evidence 以 `ulw123.current-head.full-matrix` 为 broad 锚点，并用 `ulw124`（externalStore）、`ulw120`（watchers）、`ulw116`（txnLanes）做 targeted 对照。
+当前 evidence 以 `ulw123.current-head.full-matrix` 为 broad 锚点，并用 `ulw124`（externalStore）、`ulw120`（watchers）、`S-10 native-anchor targeted/recheck/confirm`（txnLanes）做 targeted 对照。
 
 裁决：
-1. 真实运行时瓶颈：`txnLanes.urgentBacklog`。它在 broad 与 targeted 都仍然卡在 `urgent.p95<=50ms`，是 current-head 唯一应继续优先砍的 runtime 主线。
+1. 已由 benchmark 纠偏关闭：`txnLanes.urgentBacklog`。`S-10` 把 suite 改成 `nativeCapture -> MutationObserver DOM stable` 后，`mode=default/off` 的 `urgent.p95<=50ms` 都稳定通过到 `steps=2000`；旧的 `50ms+` 失败不再作为 runtime queue 主 blocker。
 2. 已完成 residual audit 并关闭：`externalStore.ingest.tickNotify / full-off`。broad `watchers=256` 单点红样本已被 clean targeted audit 复核为 residual/noise；除非后续出现新的 clean/comparable 连续复现证据，否则不再作为待排期残项。
 3. 证据伪影：`watchers.clickToPaint`。`watchers=1` 已超线且曲线非单调，先视为 suite 语义问题，不再优先往 runtime 继续塞 watcher 优化。
 4. 门禁噪声：`converge.txnCommit / decision.p95<=0.5ms` 已通过 S-3 局部清理；当前不再把 full/dirty 的 `reason=notApplicable` 计入真实性能失败。
 
-当前唯一下一刀：
-- `R-1：txnLanes backlog policy split`。
-- 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`；本页只保留设计裁决：`R-1` 仍是主问题，但 queue-side runtime cut 已被 invoke-window observation 否掉，当前不要继续在 `enqueueTransaction` / baton visibility 上落 policy。
-- blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败，不再在本页重复展开；latest `txn-lanes` invoke-window evidence 显示主要延迟发生在 `schedule -> handler invoke`，下一刀若继续 `R-1`，必须前移到 queue 之前。
+当前路由裁决：
+- `R-1` 已关闭，当前不再保留新的 `txnLanes` queue-side runtime 下一刀。
+- 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`；本页只保留设计裁决：queue-side runtime cut 已被 invoke-window observation 与 native-anchor benchmark cut 联合否掉。
+- blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败，不再在本页重复展开；若未来要重开，只能基于新的 native-anchor SLA 或新的页面内 queue 内税点证据。
 
 ## 2. API vNext（直接替换，不兼容旧形态）
 

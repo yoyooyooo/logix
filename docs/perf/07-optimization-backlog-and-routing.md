@@ -50,7 +50,7 @@
 
 | ID | 类别 | 问题 | 预期收益 | 成本 | 冲突风险 | 并行策略 | API 变动 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `R-1` | 真实 runtime 主线（活跃：v2） | `txnLanes.urgentBacklog` 仍卡 `urgent.p95<=50ms`；下一刀是 `urgent-aware handoff` | 很高 | 中高 | 高 | 主线串行 | 暂不需要 |
+| `R-1` | runtime 主线（已关闭） | `txnLanes.urgentBacklog` 在 `S-10` native-anchor 纠偏后，`mode=default/off` 的 `urgent.p95<=50ms` 都已过到 `steps=2000`；不再继续 queue-side runtime cut | 很高 | 中高 | 高 | 已关闭；仅在新证据下重开 | 暂不需要 |
 | `S-1` | 稳定性副线（已关闭） | `externalStore.ingest.tickNotify` broad residual 复核已完成 | 中 | 低到中 | 低 | 已关闭 | 不需要 |
 | `S-2` | benchmark 纠偏（已完成第一刀） | watchers 双轨语义已落地；后续仅剩解释链/展示层补完 | 中 | 中 | 中 | 已完成第一刀；如重开需独立 worktree | 不需要 |
 | `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
@@ -59,52 +59,55 @@
 | `S-5` | 验证解锁副线（已关闭） | `react.strictSuspenseJitter` 已按 current-head 代码状态复核关闭，不再作为默认 blocker | 中 | 低 | 低 | 已关闭 | 不需要 |
 | `S-6` | collect 稳定化副线（已关闭） | browser perf collect 首轮预热噪声已复核，不保留基础设施补丁 | 中 | 低 | 低 | 已关闭 | 不需要 |
 | `S-9` | control-surface 识别（已完成） | `txn-lanes` native event window observation 已证明主延迟落在 schedule->handler invoke，而不是 queue 内 | 中 | 低到中 | 低 | 已完成 | 不需要 |
-| `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
+| `S-10` | benchmark 纠偏（已完成） | `txn-lanes` 已改成 `nativeCapture -> MutationObserver DOM stable` 语义；三轮 targeted 与 1 次 clean-HEAD verify 都让 `urgent.p95<=50ms` 通过到 `steps=2000` | 中 | 低到中 | 低 | 已完成 | 不需要 |
+| `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 默认不立项；仅在新 SLA / 新证据下单开 | 需要 |
 
 ## 任务详情
 
-### `R-1` · `txnLanes` backlog policy split（当前活跃：pre-queue invoke delay re-triage）
+### `R-1` · `txnLanes` backlog policy split（已关闭：由 `S-10` native-anchor benchmark cut 收口）
 
 状态：
-- `txnLanes` 仍是当前唯一未关闭的主问题，但 queue-side runtime cut 已暂停。
-- `observation-first` 已完成两层定位：先用 `txnQueue` 区分 `late enqueue` vs `queued waiter`，再用 invoke-window evidence 区分“晚在 handler 前”还是“晚在 runtime queue 内”。
-- `startup-phase` checkpoint 与 handoff-lite 失败尝试只保留为 dated evidence，不再视作单独活跃任务。
+- `2026-03-06` 的 `S-9` / `R-1 invoke-window` 已证明旧主延迟落在 `schedule -> handler invoke`，不是 queue 内。
+- `2026-03-06` 的 `S-10` 再把 suite 起点前移到页面内 `nativeCapture`，并把终点收紧到 `MutationObserver` 看到的 DOM stable。
+- 在这组语义下，两轮 targeted (`after + recheck`) 都显示：`mode=default/off` 的 `urgent.p95<=50ms` 通过到 `steps=2000`。
 
 问题：
-- `txnLanes.urgentBacklog` 在 broad 与 targeted 都仍然卡在 `urgent.p95<=50ms`。
-- 现有优化主要靠 `budgetMs/maxLagMs/chunkSize/yieldStrategy` 这类低层常数，已经接近收益上限。
+- 旧的 `txnLanes.urgentBacklog` 失败不再能作为 runtime queue 主 blocker 立项。
+- 之前的 `50ms+` 主要是 control-surface / automation / admission 语义，而不是 `enqueueTransaction` / baton steady-state 成本。
 
 最新状态：
-- `2026-03-06` 已新增 observation-first 收口：`docs/perf/2026-03-06-r1-txn-lanes-observation-v5.md`。
-- `2026-03-06` 已补 invoke-window 失败收口：`docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`。
-- 当前 `txn-lanes` targeted 仍显示 `late enqueue`，但 default 三档里的新证据表明：`firstNonUrgent.invokeOffsetFromBacklogMs ~= 28~32ms`、`firstNonUrgent.enqueueDelayFromInvokeMs ~= 0.6~0.8ms`、`urgent.invokeDelayFromScheduleMs ~= 26.6~28.5ms`、`urgent.enqueueDelayFromInvokeMs ~= 0.1ms`、`urgent.queueWaitMs = 0`。
-- 这说明当前主要延迟发生在 **handler 真正调用 runtime 之前**；`enqueueTransaction` / baton 交接内部不是主要税点。
+- `docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`：证明主延迟在 handler invoke 之前。
+- `docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`：正式把 suite 改成 `nativeCapture -> MutationObserver DOM stable`，并完成三轮 targeted + 1 次 clean-HEAD verify 收口。
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.recheck.targeted.json`：默认/关闭模式的 `urgent.p95<=50ms` 都是 `maxLevel=2000 / firstFailLevel=null`。
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.verify.targeted.json`：在 `a76af988` clean HEAD 上再次复验，`git.dirty=false` 且默认/关闭模式仍是 `maxLevel=2000 / firstFailLevel=null`。
 
 架构缺陷：
-- 当前 harness / control-surface 会在 runtime 看到请求之前就消耗几十毫秒，导致 queue policy 与 steady-state 策略不是当前 write scope 内的首要瓶颈。
+- 旧 harness 把页面外 `.click()` 调度与页面内 runtime 处理混进同一个指标，导致 queue-side runtime cut 被假问题驱动。
 
 预期收益：
-- `R-1` 仍是 current-head 最重要的问题，但在当前 write scope 内继续做 queue-side runtime cut，收益已经不清晰。
-- 若继续重试 `txnQueue` visibility window / handoff 细磨，大概率只会追逐噪声或重走已失败路径。
-- 如果还要继续 `R-1`，下一刀必须前移到 queue 之前，或明确扩大实现边界。
+- 在当前语义下，继续做 queue/runtime 微调已没有明确收益。
+- 真正值得保留的是 control-surface 解释链，而不是继续磨 queue 常数。
 
 实施成本：
-- 中高。
-- 现阶段更像需要改 browser/React/control-surface 或 admission model，而不是继续只动 runtime core queue。
+- 已完成。
+- 当前不再建议在 `packages/logix-core/**` 上继续开这条线。
 
 主要落点：
 - `packages/logix-react/test/browser/perf-boundaries/txn-lanes.test.tsx`
-- `docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`
-- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.r1-late-enqueue-v5.invoke-observation.txn-lanes.targeted.json`
+- `docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.targeted.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.confirm.targeted.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.recheck.targeted.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.verify.targeted.json`
+- `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.r1-to-s10-txn-lanes-native-anchor.targeted.json`
 
 并行/串行：
-- `txnLanes` 结论仍应串行治理，避免不同 agent 再次同时改 queue/runtime 路径。
-- 在 evidence 没变化之前，不要再开新的 `enqueueTransaction` / baton window runtime 试验。
+- 这条线已关闭，不再占用 runtime 主线串行槽位。
+- 若未来要重开，只能以新的 SLA 定义或新的 native-anchor 证据为前提，不能直接回到旧的 queue-side runtime 尝试。
 
 API 变动：
 - 当前不需要。
-- 当前不要重复 blind first-host-yield，也不要把 startup-phase checkpoint / handoff-lite / remembered-pressure pre-urgent cap / post-urgent visibility window 这些失败尝试固化成正式 policy。
-- invoke-window evidence 已否掉“继续磨 `enqueueTransaction` / baton 可见性”的方向；只有当后续允许改更早层 admission model，或 evidence 再次显示 queue 内有实质税点时，才考虑升级到 `R-2`。
+- 不要再重复 blind first-host-yield、handoff-lite、post-urgent visibility window 这类 queue-side 旧试探。
 
 ### `S-1` · `externalStore` broad residual 复核（已完成）
 
@@ -256,7 +259,7 @@ API 变动：
 - `docs/perf/2026-03-06-s6-browser-collect-stabilization.md`
 
 并行/串行：
-- 与 `R-1`、`F-1`、`S-2` 低冲突，可并行。
+- 与 `F-1`、`S-2` 低冲突；当前也不存在需要规避的 `txnLanes` runtime 主线。
 - 不应修改 runtime core。
 
 API 变动：
@@ -271,13 +274,13 @@ API 变动：
 ### `R-2` · `TxnLanePolicy` API vNext 收敛
 
 问题：
-- 如果 `R-1` 之后仍要继续提速，现有对外控制面仍过于低层。
+- 即使 `R-1` 已由 `S-10` 关闭，若未来要把页面外 admission/SLA 抽象成产品能力，现有对外控制面仍过于低层。
 
 架构缺陷：
 - 现在的控制面更像一组调参旋钮，而不是面向策略的 API。
 
 预期收益：
-- 潜在很高，但前提是 `R-1` 已证明内核 policy split 仍然不够。
+- 潜在很高，但前提是未来确实出现新的产品级 SLA 或新的 native-anchor 证据，证明还需要更高层的 policy surface。
 
 实施成本：
 - 高。
@@ -289,8 +292,8 @@ API 变动：
 - `docs/perf/05-forward-only-vnext-plan.md`
 
 并行/串行：
-- 必须等 `R-1` 结论明确后再开。
-- 不与任何当前 runtime 主线并行。
+- 不再依赖 `R-1`；但必须以新的 SLA/新证据为前提单独立项。
+- 若启动，应视为独立架构/API 轨，不与任何新的 `txnLanes` runtime 重构混做一刀。
 
 API 变动：
 - 需要。
@@ -299,15 +302,15 @@ API 变动：
 
 ### 当前默认执行组
 
-1. `R-1`
-- 当前唯一活跃主线，默认按 `v2 = urgent-aware handoff` 串行推进。
-- `F-1`、`S-2`、`S-4`、`S-5` 已完成或关闭，不再纳入默认并行组。
+1. 无默认 runtime 主线
+- `R-1` 已由 `S-10` native-anchor benchmark cut 关闭，不再预留 `txnLanes` 串行槽位。
+- `F-1`、`S-2`、`S-4`、`S-5`、`S-10` 已完成或关闭，不再纳入默认并行组。
 
 ### 如需重开，可并行
 
-1. `R-1` + `S-2`
-- 一个改 `txnLanes` 主线，一个改 watcher benchmark 语义。
-- 仅当 `S-2` 继续补 benchmark 解释链/展示层时成立；仍需独立 worktree。
+1. 新的 `txnLanes` runtime 重构 + `S-2`
+- 仅当 future evidence 再次证明页面内 queue 存在真实税点时成立；一个改 runtime，一个改 watcher benchmark 解释链。
+- 仍需独立 worktree，且新的 runtime 重构必须先明确新的 SLA / native-anchor 证据。
 
 ### 可以并行，但应独立 worktree
 
@@ -316,11 +319,11 @@ API 变动：
 
 ### 必须串行
 
-1. `R-1` 与任何新的 `txnLanes` runtime 重构
+1. 任意两个新的 `txnLanes` runtime / policy 重构
 - 凡是要改 `ModuleRuntime.impl.ts` / `ModuleRuntime.txnLanePolicy.ts` 的，必须串行。
 
-2. `R-1` 之后才能决定是否启动 `R-2`
-- `R-2` 是 API/架构层升级，不应在 `R-1` 结果未明时提前展开。
+2. 只有在新的 SLA / 新证据出现后，才能决定是否启动 `R-2`
+- `R-2` 是 API/架构层升级，不应在没有新增目标定义的前提下凭空展开。
 
 ## 推荐执行顺序
 
@@ -331,18 +334,18 @@ API 变动：
 
 ### Phase 1
 
-1. 主线：`R-1 v2`（`urgent-aware handoff`）
+1. 当前无默认 runtime 主线；`R-1` 已关闭
 2. `F-1` 已完成；需要路由/排期时直接用 `python3 fabfile.py list-tasks|show-task|plan-parallel`
 3. `S-2` 已完成第一刀；只有在要继续补 benchmark 解释链时才重开，并强制独立 worktree
 4. `S-4` 已完成最小修复，不再占新 worktree
 5. `S-5` 已完成审计关闭，不再占新 worktree
-6. `S-3` 已收口，不再占新 worktree
+6. `S-3`、`S-6`、`S-10` 已收口，不再占新 worktree
 
 ### Phase 2
 
-- 只有当 `R-1` 收益已经确认后，才决定：
+- 只有当未来出现新的 native-anchor 证据或新的产品级 SLA 时，才决定：
   - `watchers` 是否在 suite 校正后还剩 runtime 问题
-  - `R-2` 是否值得立项
+  - `txnLanes` 是否值得重开 runtime 重构或推进 `R-2`
 - `F-1` 已落地为现成工具，不再单独占用执行波次。
 
 ## 给后续 `Fabfile` 的落点建议
