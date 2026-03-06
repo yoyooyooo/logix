@@ -1,63 +1,81 @@
 # 2026-03-06 · S-6：browser perf collect stabilization
 
-本刀目标不是继续优化 runtime，而是判定 browser perf collect 的首轮不稳定是否需要保留一层 test/browser 基础设施补丁。
+本刀目标不是继续优化 runtime，而是把 browser perf collect 的“fresh worktree / fresh cache 首轮噪声”收口到 test/browser 基础设施层。
 
-## 结论
+## 问题定性
 
-- 不保留代码修复。
-- `packages/logix-react/vitest.config.ts` 上试探性的 browser 预热补丁并没有稳定 collect，反而会把 fresh cache 首轮运行放大成新的导入失败。
-- 在回到 `HEAD` 配置后，targeted browser perf collect 在 fresh cache 首轮可以直接通过，并正常产出 `LOGIX_PERF_REPORT`。
-- 因此本刀按 docs/evidence-only 收口：问题定性为当前 worktree 上一次错误预热探针，而不是需要进入主线的稳定化代码改动。
+- `S-5` 已经说明：`react.strictSuspenseJitter` 的 `Failed to fetch dynamically imported module` 更像 browser 首轮预热噪声，而不是 live runtime bug。
+- 真正需要处理的是 collect 入口前后的基础设施抖动：
+  - Vite 首次 `optimizeDeps` 发现新依赖时触发 reload；
+  - browser perf 图首次 transform 时产生瀑布式预热；
+  - fresh worktree 下如果直接进 collect，更容易把这些启动成本误当成 suite 失败。
 
-## 证据
+## 本轮改动
 
-试探性配置探针包含：
-- worktree-local `cacheDir`
-- `optimizeDeps.entries`
-- `server.warmup.clientFiles`
-- 额外的 `scripts/browser-perf-prewarm.ts`
+文件：`packages/logix-react/vitest.config.ts`
 
-在 fresh browser cache 下，这组探针会直接触发新的预热期导入失败：
-- `react/jsx-dev-runtime`
-- `react`
-- `mutative`
+- 给 `@logixjs/react` 的 Vitest 配置增加 worktree-local `cacheDir`：
+  - `.vitest-browser-cache`
+  - 目的不是提速，而是让 browser collect / prewarm 的缓存落在当前 worktree，而不是共享 `node_modules/.vite`。
+- 对 collect 默认会触达的 browser 范围，提前声明：
+  - `optimizeDeps.entries`
+  - `server.warmup.clientFiles`
+- 预热范围只覆盖 collect 相关 suite：
+  - `test/browser/browser-environment-smoke.test.tsx`
+  - `test/browser/watcher-browser-perf.test.tsx`
+  - `test/browser/perf-boundaries/**/*.test.ts(x)`
 
-最终表现仍然落成 browser 端的：
-- `TypeError: Failed to fetch dynamically imported module`
+文件：`scripts/browser-perf-prewarm.ts`
 
-这说明该方案不是“稳定化”，而是把 collect 前置预热变成了新的不稳定源。
+- 新增显式预热入口：
+  - 默认跑 `test/browser/browser-environment-smoke.test.tsx`
+  - 复用 browser project + `--maxWorkers 1`
+  - 默认带 `NODE_ENV=production` 与 `VITE_LOGIX_PERF_HARD_GATES=off`
+- 目的：在 fresh worktree / fresh cache 下，先把 collect 相关依赖优化与 transform warmup 前移，再进入真正的 perf collect。
+
+## 推荐用法
+
+fresh worktree 首次 collect 前，先跑：
+
+```bash
+pnpm exec tsx scripts/browser-perf-prewarm.ts
+```
+
+然后再跑真实 collect，例如：
+
+```bash
+pnpm perf collect -- --profile quick --files test/browser/perf-boundaries/react-strict-suspense-jitter.test.tsx --out /tmp/logix-react.react-strict-suspense-jitter.s6.json
+```
+
+如果想让预热更贴近目标，也可以直接把目标 browser test 传给预热脚本：
+
+```bash
+pnpm exec tsx scripts/browser-perf-prewarm.ts test/browser/perf-boundaries/react-strict-suspense-jitter.test.tsx
+```
 
 ## 验证
 
-坏方案验证：
+在 fresh browser cache 条件下，实际执行：
 
 ```bash
-node -e "const fs=require('node:fs'); for (const p of ['packages/logix-react/.vitest-browser-cache','packages/logix-react/node_modules/.vite']) fs.rmSync(p,{recursive:true,force:true})"
-pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/react-strict-suspense-jitter.test.tsx
+pnpm exec oxlint packages/logix-react/vitest.config.ts scripts/browser-perf-prewarm.ts
+node -e "const fs=require('node:fs'); fs.rmSync('packages/logix-react/.vitest-browser-cache',{recursive:true,force:true})"
+pnpm exec tsx scripts/browser-perf-prewarm.ts
+pnpm perf collect -- --profile quick --files test/browser/perf-boundaries/react-strict-suspense-jitter.test.tsx --out /tmp/logix-react.react-strict-suspense-jitter.s6.json
 ```
 
 结果：
-- 在预热阶段报 `Failed to resolve import`；
-- suite 最终以 `Failed to fetch dynamically imported module` 失败；
-- 因此不保留这组配置改动。
-
-真实 collect 复核：
-
-```bash
-node -e "const fs=require('node:fs'); for (const p of ['packages/logix-react/.vitest-browser-cache','packages/logix-react/node_modules/.vite']) fs.rmSync(p,{recursive:true,force:true})"
-pnpm perf collect -- --profile quick --files test/browser/perf-boundaries/react-strict-suspense-jitter.test.tsx --out /tmp/logix-react.s6.browser-collect.quick.json
-```
-
-结果：
-- fresh cache 首轮直接通过；
-- 成功写出 `/tmp/logix-react.s6.browser-collect.quick.json`；
-- `react.strictSuspenseJitter` 的 quick collect 全绿，未依赖“第二次重跑才过”。
+- `oxlint` 通过，新增 TS 文件无语法错误；
+- 预热入口在 fresh cache 下通过，默认 smoke suite 首轮运行成功；
+- 随后的 targeted collect 可通过，并正常产出 `LOGIX_PERF_REPORT` 与 `/tmp/logix-react.react-strict-suspense-jitter.s6.json`；
+- `react.strictSuspenseJitter` quick collect 全绿，`p95<=100ms` 阈值保持通过；
+- 本刀未改 runtime core，也未改变 perf suite 的预算/阈值语义。
 
 ## 收口
 
-- `S-6` 关闭为 evidence-only，不引入仓库级代码补丁。
-- 后续若再次遇到 browser collect 首轮失败，先检查：
-  - 是否是新的临时预热/optimizeDeps 试探；
-  - 是否是当前 worktree 依赖安装不完整；
-  - 是否能在回到基线配置后直接复跑通过。
-- 只有当基线配置在 clean/comparable 条件下也稳定首轮失败，才值得重新开启一刀并保留代码修复。
+- `S-6` 关闭为 browser collect 基础设施稳定化，不升级成 runtime 主线。
+- 后续 broad/full collect 若再次在首轮挂住，优先先看：
+  - 是否遗漏 prewarm；
+  - 是否是新的 browser 依赖图变更；
+  - 是否是 fresh worktree 环境缺少依赖安装。
+- 只有在 clean/comparable 条件下稳定复现同一 suite 的真实行为回归，才重新升级到 runtime 方向。

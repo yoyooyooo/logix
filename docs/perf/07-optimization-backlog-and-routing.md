@@ -214,29 +214,27 @@ API 变动：
 - 已于 `2026-03-06` 完成，收口记录见 `docs/perf/2026-03-06-s6-browser-collect-stabilization.md`。
 
 问题：
-- browser perf collect 在 fresh worktree / fresh cache 下曾被怀疑会踩到 Vite 首轮预热噪声，并表现为 browser reload / 动态导入失败。
-- 这类失败若被误判成 runtime 问题，会继续污染 perf 主线选路。
+- browser perf collect 在 fresh worktree / fresh cache 下，首轮容易踩到 Vite `optimizeDeps` 与 transform warmup 的启动噪声。
+- 这类噪声会表现为 browser reload / 动态导入失败，从而把 collect 阻断在基础设施层，而不是 runtime 性能层。
 
 本轮裁决：
 - 不触碰 `packages/logix-core/**`。
-- 试探性 browser 预热补丁
-  - `cacheDir`
-  - `optimizeDeps.entries`
-  - `server.warmup.clientFiles`
-  - `scripts/browser-perf-prewarm.ts`
-  在 fresh cache 首轮会放大成新的导入失败，因此不值得保留。
-- 回到 `HEAD` 基线配置后，targeted browser perf collect 可在 fresh cache 首轮直接通过；`S-6` 因此以 docs/evidence-only 关闭。
+- 只在 `packages/logix-react` 的 browser test 基础设施层做两件事：
+  - 给 browser 项目固定 worktree-local cacheDir，避免把 collect 预热写进共享 `node_modules/.vite`。
+  - 对 collect 相关 browser suite 提前做 `optimizeDeps.entries` + `server.warmup.clientFiles` 预热，并提供显式预热入口 `scripts/browser-perf-prewarm.ts`。
 
 预期收益：
 - 中等。
-- 不直接提速 runtime，但避免把错误的基础设施补丁带入主线，并明确当前 collect 已不依赖“第二次重跑才过”。
+- 不直接提速 runtime，但能让 fresh worktree 的 browser collect 首轮更稳，减少把基础设施噪声误判成 runtime blocker。
 
 主要落点：
+- `packages/logix-react/vitest.config.ts`
+- `scripts/browser-perf-prewarm.ts`
 - `docs/perf/2026-03-06-s6-browser-collect-stabilization.md`
-- 本页状态回写
 
 并行/串行：
-- 已关闭，不再占用新的 browser/runtime 改动预算。
+- 与 `R-1`、`F-1`、`S-2` 低冲突，可并行。
+- 不应修改 runtime core。
 
 API 变动：
 - 不需要。
