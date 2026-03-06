@@ -35,6 +35,7 @@
 | `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
 | `F-1` | 自动化副线 | 将 `07` 的 backlog/routing 落成 `Fabfile` 任务图 | 中 | 中 | 低 | 可并行 | 不需要 |
+| `S-4` | 验证解锁副线 | 解除 current-head full-matrix 刷新阻塞（`runtime-store-no-tearing` 多实例隔离） | 中 | 中 | 中 | 可并行 | 不需要 |
 
 ## 任务详情
 
@@ -205,6 +206,36 @@ API 变动：
 API 变动：
 - 不需要。
 
+### `S-4` · current-head full-matrix 刷新解锁
+
+问题：
+- 当前 perf 主线虽然已有 targeted 证据，但 full-matrix 刷新曾被 `runtime store: multi-instance isolation (same moduleId, different instanceId)` 挡住。
+- 这使得 current-head 的 broad/full 收口能力不稳定，后续每刀都更依赖 targeted 证据。
+
+架构缺陷：
+- perf 体系对“全量矩阵能否刷新”过度依赖少数语义测试；一旦其中一条功能/隔离线回归，整个 broad 收口就被拖住。
+
+预期收益：
+- 中等。
+- 不直接提速 runtime，但能恢复 full-matrix 刷新能力，让后续性能刀更快收口。
+
+实施成本：
+- 中等。
+- 可能需要在 `runtime-store-no-tearing` 测试、`RuntimeStore`、`TickScheduler`、相关 instance key 路径里定位语义问题。
+
+主要落点：
+- `packages/logix-react/test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx`
+- `packages/logix-core/src/internal/runtime/core/RuntimeStore.ts`
+- `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
+- 必要时少量触及 `ModuleRuntime.impl.ts`
+
+并行/串行：
+- 可并行，但它和 `R-1` 的冲突风险高于 `S-2/F-1`。
+- 若需要改 `ModuleRuntime.impl.ts`，则必须与 `R-1` 串行；若只改 `RuntimeStore/TickScheduler/test`，可继续独立推进。
+
+API 变动：
+- 不需要。
+
 ### `R-2` · `TxnLanePolicy` API vNext 收敛
 
 问题：
@@ -251,6 +282,9 @@ API 变动：
 4. `F-1` + `S-2`
 - 一个改自动化，一个改 benchmark 语义，几乎无共享文件。
 
+5. `F-1` + `S-4`
+- 一个改自动化，一个改 full-matrix 刷新解锁，冲突面低。
+
 ### 可以并行，但应独立 worktree
 
 1. `S-2` 与任何其它任务
@@ -276,7 +310,8 @@ API 变动：
 1. 主线：`R-1`
 2. 并行副线：`S-2`（独立 worktree）
 3. 并行自动化：`F-1`
-4. `S-3` 已收口，不再占新 worktree
+4. 可选第四线：`S-4`（先限定在 test/RuntimeStore/TickScheduler 范围）
+5. `S-3` 已收口，不再占新 worktree
 
 ### Phase 2
 
