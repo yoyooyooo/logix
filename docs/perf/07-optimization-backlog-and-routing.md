@@ -34,6 +34,7 @@
 | `S-2` | benchmark 纠偏 | `watchers.clickToPaint` 混入 browser floor | 中 | 中 | 中 | 可并行，但应独立 worktree | 不需要 |
 | `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
+| `F-1` | 自动化副线 | 将 `07` 的 backlog/routing 落成 `Fabfile` 任务图 | 中 | 中 | 低 | 可并行 | 不需要 |
 
 ## 任务详情
 
@@ -175,6 +176,35 @@ API 变动：
 API 变动：
 - 不需要。
 
+### `F-1` · `Fabfile` 自动化编排
+
+问题：
+- `07` 已经把 perf 任务拆成 `task_id/kind/priority/conflict_level/parallelizable/requires_worktree/files/verify_commands/next_gate`。
+- 但当前仍需人工把这些字段转成可执行路由。
+
+架构缺陷：
+- 缺少一层统一的 perf 编排面，导致每轮并行推进前都要重新做任务拆分和冲突分析。
+
+预期收益：
+- 中等。
+- 不直接提速 runtime，但能把后续“多 worktree + 多 subagent + 一刀一提交”的执行成本显著压低。
+
+实施成本：
+- 中等。
+- 主要是新增 `fabfile.py`/辅助脚本，不触碰 runtime 内核。
+
+主要落点：
+- `fabfile.py`
+- 必要时 `scripts/` 下新增薄包装
+- `docs/perf/07-optimization-backlog-and-routing.md`（字段对齐）
+
+并行/串行：
+- 与 `R-1`、`S-2`、`S-3` 都低冲突，可并行。
+- 这条线不应修改 `packages/logix-core/src/internal/runtime/core/**`。
+
+API 变动：
+- 不需要。
+
 ### `R-2` · `TxnLanePolicy` API vNext 收敛
 
 问题：
@@ -206,16 +236,20 @@ API 变动：
 
 ### 可以并行
 
-1. `R-1` + `S-1`
-- 文件集几乎不重叠。
-- 一个是 `txnLanes` 调度主线，一个是 `externalStore` residual 复核。
+1. `R-1` + `F-1`
+- 一个改 runtime core 调度，一个改自动化编排层。
+- 文件集完全分离。
 
-2. `R-1` + `S-3`
+2. `R-1` + `S-2`
+- 一个改 `txnLanes` 主线，一个改 watcher benchmark 语义。
+- 只要 `S-2` 独立 worktree，就不会互踩。
+
+3. `R-1` + `S-3`
 - 一个改 runtime core policy，一个改 matrix/gate 语义。
 - 冲突面很低。
 
-3. `S-1` + `S-3`
-- 都是低冲突副线，可以同时推进。
+4. `F-1` + `S-2`
+- 一个改自动化，一个改 benchmark 语义，几乎无共享文件。
 
 ### 可以并行，但应独立 worktree
 
@@ -240,15 +274,16 @@ API 变动：
 ### Phase 1
 
 1. 主线：`R-1`
-2. 并行副线：`S-1` 或 `S-3`
-3. 若要动 `S-2`，强制独立 worktree
+2. 并行副线：`S-2`（独立 worktree）
+3. 并行自动化：`F-1`
+4. `S-3` 已收口，不再占新 worktree
 
 ### Phase 2
 
 - 只有当 `R-1` 收益已经确认后，才决定：
-  - `externalStore` 是否需要从复核升级为热路径优化
   - `watchers` 是否在 suite 校正后还剩 runtime 问题
   - `R-2` 是否值得立项
+- `F-1` 不依赖 `R-1` 收敛，可持续并行演进。
 
 ## 给后续 `Fabfile` 的落点建议
 
