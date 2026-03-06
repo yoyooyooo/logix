@@ -113,7 +113,7 @@ API 变动：
 - 当前不需要。
 - 只有复核后 residual 稳定复现，才考虑继续推进 `StateTrait.externalStore({ writeback })` 方向。
 
-### `S-2` · `watchers.clickToPaint` suite 语义纠偏
+### `S-2` · `watchers.clickToPaint` suite 语义纠偏（已完成第一刀）
 
 问题：
 - `watchers=1` 就已经超 `50ms`，且曲线非单调。
@@ -130,6 +130,7 @@ API 变动：
 实施成本：
 - 中等。
 - 需要统一 warmup / settle / click-to-paint 语义，必要时补双轨指标。
+- 已完成第一刀：拆成 `clickToDomStable` + `clickToPaint` 双轨。
 
 主要落点：
 - `packages/logix-react/test/browser/watcher-browser-perf.test.tsx`

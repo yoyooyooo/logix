@@ -36,7 +36,7 @@
     {
       "id": "watchers.clickToPaint",
       "priority": "P1",
-      "title": "watchers: click→paint",
+      "title": "watchers: click→paint-ish (DOM stable + next frame)",
       "primaryAxis": "watchers",
       "axes": {
         "watchers": [1, 8, 32, 64, 128, 256, 512],
@@ -69,7 +69,45 @@
         { "watchers": 128, "reactStrictMode": true },
         { "watchers": 256, "reactStrictMode": true }
       ],
-      "notes": "现有维度示例：packages/logix-react/test/browser/watcher-browser-perf.test.tsx（后续纳入统一报告输出）。"
+      "notes": "使用 DOM stable 后再过一帧的近似 paint 口径；同时配对输出 watchers.clickToDomStable，避免把浏览器帧地板与 watcher runtime 成本混成一个数字。"
+    },
+    {
+      "id": "watchers.clickToDomStable",
+      "priority": "P1",
+      "title": "watchers: click→DOM stable",
+      "primaryAxis": "watchers",
+      "axes": {
+        "watchers": [1, 8, 32, 64, 128, 256, 512],
+        "reactStrictMode": [false, true]
+      },
+      "metrics": ["e2e.clickToDomStableMs"],
+      "budgets": [
+        {
+          "id": "p95<=16ms",
+          "type": "absolute",
+          "metric": "e2e.clickToDomStableMs",
+          "p95Ms": 16
+        },
+        {
+          "id": "p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.clickToDomStableMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.clickToDomStableMs",
+          "p95Ms": 100
+        }
+      ],
+      "baselineBudgetId": "p95<=50ms",
+      "limitBudgetId": "p95<=100ms",
+      "baselinePoints": [
+        { "watchers": 128, "reactStrictMode": true },
+        { "watchers": 256, "reactStrictMode": true }
+      ],
+      "notes": "把 watcher runtime 更直接映射到 DOM stable，不再把下一帧 paint 的浏览器地板完全混进唯一主指标。"
     },
     {
       "id": "converge.txnCommit",

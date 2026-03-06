@@ -72,6 +72,8 @@
   - O-2：纯 state action watcher 直接写 draft，`watchers=512` 进一步压到 `~36-43ms`，strict 下 `50ms` 线打穿到 `512`。
 - `2026-03-06-s2-watchers-preclick-settle.md`
   - S-2 准备刀：watchers benchmark 在真正点击前先 settle 一帧，减少初始挂载噪声对 click→paint 的污染。
+- `2026-03-06-s2-watchers-semantic-split.md`
+  - S-2 第一刀：把 watchers benchmark 拆成 `clickToDomStable` 与 `clickToPaint` 双轨，分离 DOM 稳定与帧地板语义。
 - `2026-03-06-s1-externalstore-residual-audit.md`
   - S-1：`externalStore.ingest.tickNotify` 的 broad `watchers=256` 单点红样本已被 5 轮 clean targeted audit 复核为 residual/noise，并以 docs/evidence-only 关闭。
 - `2026-03-06-p1-txn-lanes-click-anchored.md`

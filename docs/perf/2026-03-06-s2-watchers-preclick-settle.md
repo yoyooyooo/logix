@@ -39,3 +39,7 @@ current-head 已经把 `watchers.clickToPaint` 裁定为更像 benchmark / brows
 
 - `S-2` 仍建议在独立 worktree 中继续做。
 - 若后续要进一步改 `watchers.clickToPaint`，优先统一：warmup / settle / click→paint 的定义，再决定是否需要拆双轨指标。
+
+## 后续如果继续做 `S-2`
+
+- 下一刀应把 `click→DOM stable` 与 `click→paint-ish` 拆成双轨，不再让单一指标承担两层语义。

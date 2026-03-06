@@ -27,10 +27,11 @@ const PerfApp: React.FC = () => {
   )
 }
 
-const suite = (matrix.suites as any[]).find((s) => s.id === 'watchers.clickToPaint') as any
+const paintSuite = (matrix.suites as any[]).find((s) => s.id === 'watchers.clickToPaint') as any
+const domStableSuite = (matrix.suites as any[]).find((s) => s.id === 'watchers.clickToDomStable') as any
 
-const watchersLevels = suite.axes.watchers as number[]
-const strictModeLevels = suite.axes.reactStrictMode as boolean[]
+const watchersLevels = paintSuite.axes.watchers as number[]
+const strictModeLevels = paintSuite.axes.reactStrictMode as boolean[]
 
 const { runs, warmupDiscard, timeoutMs } = getProfileConfig(matrix)
 
@@ -43,47 +44,77 @@ const resolveProfileId = (): string => {
   return 'matrix.defaults'
 }
 
-const TEST_TIMEOUT_MS = Math.max(30_000, timeoutMs * watchersLevels.length * strictModeLevels.length)
+const TEST_TIMEOUT_MS = Math.max(30_000, timeoutMs * watchersLevels.length * strictModeLevels.length * 2)
+
+type SampleMetrics = {
+  readonly paintishMs: number
+  readonly domStableMs: number
+}
+
+const collectSampleMetrics = async (args: { readonly watchers: number; readonly reactStrictMode: boolean }): Promise<SampleMetrics> => {
+  const perfKernelLayer = makePerfKernelLayer()
+  const layer = PerfModule.live({ value: 0 }, makePerfCounterIncWatchersLogic(PerfModule, args.watchers))
+  const runtime = ManagedRuntime.make(Layer.mergeAll(perfKernelLayer, layer) as Layer.Layer<any, never, never>)
+
+  const app = (
+    <RuntimeProvider runtime={runtime}>
+      <PerfApp />
+    </RuntimeProvider>
+  )
+
+  const screen = await render(args.reactStrictMode ? <React.StrictMode>{app}</React.StrictMode> : app)
+  try {
+    await expect.element(screen.getByText('Value: 0')).toBeInTheDocument()
+    await nextFrame()
+
+    const button = screen.getByRole('button', { name: 'Increment' }).first()
+    const start = performance.now()
+    await button.click()
+    await expect.element(screen.getByText(`Value: ${args.watchers}`)).toBeInTheDocument()
+    const domStableAt = performance.now()
+    await nextFrame()
+    const paintishAt = performance.now()
+
+    return {
+      domStableMs: domStableAt - start,
+      paintishMs: paintishAt - start,
+    }
+  } finally {
+    screen.unmount()
+    await runtime.dispose()
+  }
+}
 
 test(
   'browser watchers baseline: click-to-paint under different watcher counts',
   { timeout: TEST_TIMEOUT_MS },
   async () => {
     await withNodeEnv('production', async () => {
-      const perfKernelLayer = makePerfKernelLayer()
-      const { points, thresholds } = await runMatrixSuite(
-        suite,
+      const { points: paintPoints, thresholds: paintThresholds } = await runMatrixSuite(
+        paintSuite,
         { runs, warmupDiscard, timeoutMs },
         async (params) => {
-          const watchers = params.watchers as number
-          const reactStrictMode = params.reactStrictMode as boolean
+          const sample = await collectSampleMetrics({
+            watchers: params.watchers as number,
+            reactStrictMode: params.reactStrictMode as boolean,
+          })
+          return {
+            'e2e.clickToPaintMs': sample.paintishMs,
+          }
+        },
+        { cutOffOn: ['timeout'] },
+      )
 
-          const layer = PerfModule.live({ value: 0 }, makePerfCounterIncWatchersLogic(PerfModule, watchers))
-          const runtime = ManagedRuntime.make(Layer.mergeAll(perfKernelLayer, layer) as Layer.Layer<any, never, never>)
-
-          const app = (
-            <RuntimeProvider runtime={runtime}>
-              <PerfApp />
-            </RuntimeProvider>
-          )
-
-          const screen = await render(reactStrictMode ? <React.StrictMode>{app}</React.StrictMode> : app)
-          try {
-            await expect.element(screen.getByText('Value: 0')).toBeInTheDocument()
-            await nextFrame()
-
-            const button = screen.getByRole('button', { name: 'Increment' }).first()
-            const start = performance.now()
-            await button.click()
-            await expect.element(screen.getByText(`Value: ${watchers}`)).toBeInTheDocument()
-            const end = performance.now()
-
-            return {
-              'e2e.clickToPaintMs': end - start,
-            }
-          } finally {
-            screen.unmount()
-            await runtime.dispose()
+      const { points: domStablePoints, thresholds: domStableThresholds } = await runMatrixSuite(
+        domStableSuite,
+        { runs, warmupDiscard, timeoutMs },
+        async (params) => {
+          const sample = await collectSampleMetrics({
+            watchers: params.watchers as number,
+            reactStrictMode: params.reactStrictMode as boolean,
+          })
+          return {
+            'e2e.clickToDomStableMs': sample.domStableMs,
           }
         },
         { cutOffOn: ['timeout'] },
@@ -115,16 +146,28 @@ test(
         },
         suites: [
           {
-            id: suite.id,
-            title: suite.title,
-            priority: suite.priority,
-            primaryAxis: suite.primaryAxis,
-            budgets: suite.budgets,
+            id: paintSuite.id,
+            title: paintSuite.title,
+            priority: paintSuite.priority,
+            primaryAxis: paintSuite.primaryAxis,
+            budgets: paintSuite.budgets,
             metricCategories: {
               'e2e.clickToPaintMs': 'e2e',
             },
-            points,
-            thresholds,
+            points: paintPoints,
+            thresholds: paintThresholds,
+          },
+          {
+            id: domStableSuite.id,
+            title: domStableSuite.title,
+            priority: domStableSuite.priority,
+            primaryAxis: domStableSuite.primaryAxis,
+            budgets: domStableSuite.budgets,
+            metricCategories: {
+              'e2e.clickToDomStableMs': 'e2e',
+            },
+            points: domStablePoints,
+            thresholds: domStableThresholds,
           },
         ],
       }
