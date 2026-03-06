@@ -178,6 +178,35 @@ API 变动：
 API 变动：
 - 不需要。
 
+### `S-5` · `react.strictSuspenseJitter` refresh unblock
+
+问题：
+- `S-4` 关闭后，broad/full collect 的首个 blocker 已经转移到 `react.strictSuspenseJitter` 的导入/运行失败。
+- 它不一定是 runtime 性能问题，但确实在阻断 full-matrix 刷新。
+
+架构缺陷：
+- broad/full 收口链路容易被单个 browser suite 的运行时/导入层问题卡住，导致性能主线过度依赖 targeted 证据。
+
+预期收益：
+- 中等。
+- 不直接提速 runtime，但能继续恢复 broad/full collect 的可用性。
+
+实施成本：
+- 中等。
+- 先从测试/浏览器导入链路排障，不默认触碰 runtime core。
+
+主要落点：
+- `packages/logix-react/test/browser/perf-boundaries/react-strict-suspense-jitter.test.tsx`
+- 必要时相关 browser harness / test imports
+- 对应 `docs/perf/*` 日期记录与 `07` 回写
+
+并行/串行：
+- 与 `R-1`、`F-1`、`S-2` 低冲突，可并行。
+- 若定位结果要求改 React/runtime 适配层，再单独评估冲突。
+
+API 变动：
+- 不需要。
+
 ### `F-1` · `Fabfile` 自动化编排
 
 问题：
@@ -320,8 +349,9 @@ API 变动：
 1. 主线：`R-1`
 2. 并行副线：`S-2`（独立 worktree）
 3. 并行自动化：`F-1`
-4. 可选第四线：`S-4`（先限定在 test/RuntimeStore/TickScheduler 范围）
-5. `S-3` 已收口，不再占新 worktree
+4. 可选第四线：`S-5`（先限定在 react.strictSuspenseJitter test/browser import 范围）
+5. `S-4` 已收口，不再占新 worktree
+6. `S-3` 已收口，不再占新 worktree
 
 ### Phase 2
 
