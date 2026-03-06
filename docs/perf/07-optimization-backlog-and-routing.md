@@ -25,9 +25,9 @@
 5. 若某条副线主要价值是修证据/gate，而不是 runtime 提速，不得阻塞主线。
 6. 若某条副线的主要文件在当前工作区已存在未提交改动，应优先放到独立 worktree。
 
-当前判定补充（`2026-03-06 / S-11`）：
+当前判定补充（`2026-03-06 / S-14`）：
 - `probe_next_blocker` 在独立 worktree 的 real probe 已确认 remaining browser blocker queue clear。
-- 默认不再存在 runtime 主线；当前只保留 `S-2` benchmark 候选与 `R-2` 架构/API 候选。
+- 默认不再存在 runtime 主线；`S-2` 已由 `S-14` 关闭，当前只保留 `R-2` 架构/API 候选。
 
 ## D-3 执行协议（当前默认）
 
@@ -53,7 +53,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `R-1` | runtime 主线（已关闭） | `txnLanes.urgentBacklog` 在 `S-10` native-anchor 纠偏后，`mode=default/off` 的 `urgent.p95<=50ms` 都已过到 `steps=2000`；不再继续 queue-side runtime cut | 很高 | 中高 | 高 | 已关闭；仅在新证据下重开 | 暂不需要 |
 | `S-1` | 稳定性副线（已关闭） | `externalStore.ingest.tickNotify` broad residual 复核已完成 | 中 | 低到中 | 低 | 已关闭 | 不需要 |
-| `S-2` | benchmark 纠偏（已完成第三刀） | watchers 双轨语义 + paired phase evidence + display 首屏收口已落地；后续只在 report 漂移时重开 | 中 | 中 | 中 | 已完成第三刀；如重开需独立 worktree | 不需要 |
+| `S-2` | benchmark 纠偏（已完成第四刀 / 已关闭） | watchers 双轨语义 + paired phase evidence + display 首屏 + native-anchor pre-handler split 已落地；后续只在 report 漂移或新 native-anchor 证据下重开 | 中 | 中 | 中 | 已关闭；如重开需独立 worktree | 不需要 |
 | `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
 | `F-1` | 自动化工具（已完成） | `fabfile.py` 已转为现成工具，不再占用 backlog | 中 | 中 | 低 | 已完成 | 不需要 |
 | `S-4` | 验证解锁副线（已完成） | `RuntimeExternalStore delayed teardown` 最小修复已吸收，已从默认 blocker 列表移除 | 中 | 中 | 中 | 已完成 | 不需要 |
@@ -153,13 +153,14 @@ API 变动：
 - 当前不需要。
 - 只有复核后 residual 稳定复现，才考虑继续推进 `StateTrait.externalStore({ writeback })` 方向。
 
-### `S-2` · `watchers.clickToPaint` suite 语义纠偏（已完成第三刀）
+### `S-2` · `watchers.clickToPaint` suite 语义纠偏（已完成第四刀 / 已关闭）
 
 状态：
 - 已于 `2026-03-06` 完成第一刀：双轨语义（`clickToDomStable` + `clickToPaint`）已合回主分支。
 - 已于 `2026-03-06` 完成第二刀：`S-12` 把 red sample 收紧成同 sample phase evidence（`clickToHandler / handlerToDomStable / domStableToPaintGap`）。
 - 已于 `2026-03-06` 完成第三刀：`S-13` 把 paired phase evidence 提升到 diff / triage / artifact report 首屏，并明确禁止再用 `watchers.clickToPaint - watchers.clickToDomStable` 的跨 suite 聚合差值解释红样本。
-- 当前不再是 runtime 主线；解释链 / 展示层也已收口。若要重开，仅限新的 report drift / display 缺口。
+- 已于 `2026-03-06` 完成第四刀：`S-14` 把旧 `clickToHandler` 再拆成 `clickInvokeToNativeCapture / nativeCaptureToHandler`，并确认 dominant phase 是页面外 click 注入税，而不是页面内 `nativeCapture->handler`。
+- 当前不再是 runtime 主线；解释链 / 展示层 / native-anchor 不确定性都已收口。若要重开，仅限新的 report drift、display 缺口或新的 native-anchor 漂移。
 
 问题：
 - `watchers=1` 就已经超 `50ms`，且曲线非单调。
@@ -179,10 +180,12 @@ API 变动：
 - 已完成第一刀：拆成 `clickToDomStable` + `clickToPaint` 双轨。
 - 已完成第二刀：phase evidence 跟随单次 sample 落盘，不再依赖两条独立 suite 的聚合差值来解释超线。
 - 已完成第三刀：`summary.highlights` / `suites[].watchersPhaseDisplay` / artifact `triage highlights` 都会直接展示主要 phase，并把“禁止跨 suite 做减法”写成固定 guidance。
+- 已完成第四刀：phase evidence 进一步拆成 `clickInvokeToNativeCapture / nativeCaptureToHandler / handlerToDomStable / domStableToPaintGap` 四段，并确认 page-external tax 才是 dominant segment。
 
 主要落点：
 - 第一/二刀：`packages/logix-react/test/browser/watcher-browser-perf.test.tsx`、`packages/logix-react/src/internal/store/perfWorkloads.ts`、`packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
 - 第三刀：`.codex/skills/logix-perf-evidence/scripts/diff.ts`、`.codex/skills/logix-perf-evidence/scripts/ci.interpret-artifact.ts`、`docs/perf/2026-03-06-s13-watchers-phase-display.md`
+- 第四刀：`packages/logix-react/test/browser/watcher-browser-perf.test.tsx`、`.codex/skills/logix-perf-evidence/assets/matrix.json`、`.codex/skills/logix-perf-evidence/scripts/watchers-phase-display.ts`、`docs/perf/2026-03-06-s14-watchers-native-anchor-pre-handler-split.md`
 
 并行/串行：
 - 语义上与 `R-1` 低冲突，可并行。
@@ -252,7 +255,7 @@ API 变动：
 本轮裁决：
 - 默认 blocker probe 只保留 `externalStore`、`runtimeStore`、`form` 三条 remaining health/regression suites。
 - 在补齐 worktree 依赖后，real probe 对三条 suite 全部给出 `passed`，因此 `next_blocker: none`。
-- 当前不新开 runtime worktree；remaining 只保留 `S-2` benchmark 候选与 `R-2` 架构/API 候选。
+- 当前不新开 runtime worktree；remaining 只保留 `R-2` 架构/API 候选。
 
 预期收益：
 - 中等。
@@ -299,7 +302,7 @@ API 变动：
 - `docs/perf/2026-03-06-s6-browser-collect-stabilization.md`
 
 并行/串行：
-- 与 `F-1`、`S-2` 低冲突；当前也不存在需要规避的 `txnLanes` runtime 主线。
+- 与 `F-1` 低冲突；当前也不存在需要规避的 `txnLanes` runtime 主线。
 - 不应修改 runtime core。
 
 API 变动：
@@ -349,13 +352,13 @@ API 变动：
 
 ### 如需重开，可并行
 
-1. 新的 `txnLanes` runtime 重构 + `S-2`
-- 仅当 future evidence 再次证明页面内 queue 存在真实税点时成立；一个改 runtime，一个改 watcher benchmark 解释链。
+1. 新的 `txnLanes` runtime 重构 + 重开的 `S-2`
+- 仅当 future evidence 再次证明页面内 queue 或 `nativeCapture->handler` 存在真实税点时成立；一个改 runtime，一个改 watcher benchmark 解释链。
 - 仍需独立 worktree，且新的 runtime 重构必须先明确新的 SLA / native-anchor 证据。
 
 ### 可以并行，但应独立 worktree
 
-1. `S-2` 与任何其它任务
+1. 重开的 `S-2` 与任何其它任务
 - 原因不是 runtime 冲突，而是它会直接改变 benchmark 语义；若不隔离，current-head 与 targeted 证据很容易互相污染。
 
 ### 必须串行
@@ -378,7 +381,7 @@ API 变动：
 1. 当前无默认 runtime 主线；`R-1` 已关闭
 2. `F-1` 已完成；需要路由/排期时直接用 `python3 fabfile.py list-tasks|show-task|plan-parallel`
 3. 先跑 `python3 fabfile.py probe_next_blocker`；若结果为 `clear`，不要硬开 runtime 线
-4. `S-2` 已完成第一刀；只有在要继续补 benchmark 解释链时才重开，并强制独立 worktree
+4. `S-2` 已完成第四刀；只有在 report/display drift 或新的 native-anchor 证据出现时才重开，并强制独立 worktree
 5. `S-4` 已完成最小修复，不再占新 worktree
 6. `S-5` 已完成审计关闭，不再占新 worktree
 7. `S-3`、`S-6`、`S-10`、`S-11` 已收口，不再占新 worktree

@@ -8,9 +8,9 @@
 
 - 编号说明：`03/05` 沿用 major-cut 历史编号，`07` 使用 routing track 编号；存在同名如 `F-1`，排期与当前状态一律以 `07-optimization-backlog-and-routing.md` 为准。
 - 当前没有默认 runtime 主线：`R-1` 已由 `S-10` native-anchor benchmark cut 收口，`S-11` post-probe 又确认 remaining browser blocker queue 已清空；`startup-phase` / `handoff-lite` / `urgent-aware handoff` 只保留失败 checkpoint，不再代表活跃排期。
-- 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-12`（watchers paired phase evidence）、`S-13`（watchers phase display）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）、`S-10`（`txnLanes` native-anchor benchmark cut）、`S-11`（post-S10 blocker probe）。
+- 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-12`（watchers paired phase evidence）、`S-13`（watchers phase display）、`S-14`（watchers native-anchor pre-handler split）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）、`S-10`（`txnLanes` native-anchor benchmark cut）、`S-11`（post-S10 blocker probe）。
 - 已关闭：`R-1` runtime 主线、`S-1` residual audit、`S-3` gate/applicability、`S-5` refresh unblock 审计、`S-6` collect 稳定化副线。
-- 当前只剩显式候选：`R-2` 架构/API 候选；`S-2` 的展示层 / 汇总层收口已由 `S-13` 完成，都不是默认 runtime blocker 后继。
+- 当前只剩显式候选：`R-2` 架构/API 候选；`S-2` 已由 `S-14` 把最后的 native-anchor / pre-handler 不确定性拆开并关闭，不再是默认 runtime blocker 后继。
 - 真正的排期与并行策略以 `07-optimization-backlog-and-routing.md` 为准。
 - 执行协议以 `08-perf-execution-protocol.md` 为准：主会话保持干净，只做协调/审查/合流；每条实施线都在独立 `worktree/branch/subagent` 中推进，并在收口时相对主分支只保留 `1` 个最终 HEAD 提交。
 
@@ -108,3 +108,5 @@
   - S-12：watchers 红样本改为同 sample phase evidence，自身即可解释超线主要落在 `clickToHandler / handlerToDomStable / domStableToPaintGap` 哪一段。
 - `2026-03-06-s13-watchers-phase-display.md`
   - S-13：把 `watchers.phase.*Ms` 提升到 diff / triage / artifact report 首屏显示，并明确禁止再用跨 suite 聚合差值解释 watchers 红样本。
+- `2026-03-06-s14-watchers-native-anchor-pre-handler-split.md`
+  - S-14：把 `clickToHandler` 再拆成 `clickInvokeToNativeCapture / nativeCaptureToHandler` 两段，并确认 dominant phase 是页面外 click 注入税，而不是页面内 `nativeCapture->handler`。

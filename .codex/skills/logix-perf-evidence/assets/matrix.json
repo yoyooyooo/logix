@@ -44,7 +44,8 @@
       },
       "metrics": ["e2e.clickToPaintMs"],
       "requiredEvidence": [
-        "watchers.phase.clickToHandlerMs",
+        "watchers.phase.clickInvokeToNativeCaptureMs",
+        "watchers.phase.nativeCaptureToHandlerMs",
         "watchers.phase.handlerToDomStableMs",
         "watchers.phase.domStableToPaintGapMs",
         "budget.cutOffCount"
@@ -75,7 +76,7 @@
         { "watchers": 128, "reactStrictMode": true },
         { "watchers": 256, "reactStrictMode": true }
       ],
-      "notes": "使用 DOM stable 后再过一帧的近似 paint 口径；同次 sample 内额外输出 click→handler、handler→DOM stable、DOM stable→paint gap phase evidence，避免继续依赖两条独立 suite 的聚合差值来判断超线落点。"
+      "notes": "使用 DOM stable 后再过一帧的近似 paint 口径；同次 sample 内额外输出 click invoke→native capture、native capture→handler、handler→DOM stable、DOM stable→paint gap phase evidence，避免继续依赖两条独立 suite 的聚合差值来判断超线落点。"
     },
     {
       "id": "watchers.clickToDomStable",
@@ -88,7 +89,8 @@
       },
       "metrics": ["e2e.clickToDomStableMs"],
       "requiredEvidence": [
-        "watchers.phase.clickToHandlerMs",
+        "watchers.phase.clickInvokeToNativeCaptureMs",
+        "watchers.phase.nativeCaptureToHandlerMs",
         "watchers.phase.handlerToDomStableMs",
         "watchers.phase.domStableToPaintGapMs",
         "budget.cutOffCount"

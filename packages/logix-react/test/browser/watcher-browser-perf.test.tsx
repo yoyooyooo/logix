@@ -14,17 +14,36 @@ const PerfModule = makePerfCounterModule('PerfBrowserCounter')
 const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
 
 type PerfAppProps = {
+  readonly onIncrementNativeCapture?: (atMs: number) => void
   readonly onIncrementHandlerStart?: (atMs: number) => void
 }
 
-const PerfApp: React.FC<PerfAppProps> = ({ onIncrementHandlerStart }) => {
+const PerfApp: React.FC<PerfAppProps> = ({ onIncrementNativeCapture, onIncrementHandlerStart }) => {
   const perf = useModule(PerfModule.tag)
   const value = useModule(perf, (s) => (s as { value: number }).value)
+  const buttonRef = React.useRef<HTMLButtonElement | null>(null)
+
+  React.useLayoutEffect(() => {
+    const button = buttonRef.current
+    if (!button || !onIncrementNativeCapture) {
+      return
+    }
+
+    const handleNativeCapture = () => {
+      onIncrementNativeCapture(performance.now())
+    }
+
+    button.addEventListener('click', handleNativeCapture, { capture: true })
+    return () => {
+      button.removeEventListener('click', handleNativeCapture, { capture: true })
+    }
+  }, [onIncrementNativeCapture])
 
   return (
     <div>
       <p>Value: {value}</p>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => {
           onIncrementHandlerStart?.(performance.now())
@@ -57,7 +76,8 @@ const resolveProfileId = (): string => {
 const TEST_TIMEOUT_MS = Math.max(30_000, timeoutMs * watchersLevels.length * strictModeLevels.length * 2)
 
 type SampleMetrics = {
-  readonly clickToHandlerMs: number
+  readonly clickInvokeToNativeCaptureMs: number
+  readonly nativeCaptureToHandlerMs: number
   readonly handlerToDomStableMs: number
   readonly domStableToPaintGapMs: number
   readonly paintishMs: number
@@ -65,7 +85,8 @@ type SampleMetrics = {
 }
 
 const toPhaseEvidence = (sample: SampleMetrics) => ({
-  'watchers.phase.clickToHandlerMs': sample.clickToHandlerMs,
+  'watchers.phase.clickInvokeToNativeCaptureMs': sample.clickInvokeToNativeCaptureMs,
+  'watchers.phase.nativeCaptureToHandlerMs': sample.nativeCaptureToHandlerMs,
   'watchers.phase.handlerToDomStableMs': sample.handlerToDomStableMs,
   'watchers.phase.domStableToPaintGapMs': sample.domStableToPaintGapMs,
 })
@@ -74,13 +95,19 @@ const collectSampleMetrics = async (args: { readonly watchers: number; readonly 
   const perfKernelLayer = makePerfKernelLayer()
   const layer = PerfModule.live({ value: 0 }, makePerfCounterIncWatchersLogic(PerfModule, args.watchers))
   const runtime = ManagedRuntime.make(Layer.mergeAll(perfKernelLayer, layer) as Layer.Layer<any, never, never>)
+  let nativeCaptureAt: number | undefined
   let handlerStartAt: number | undefined
 
   const app = (
     <RuntimeProvider runtime={runtime}>
-      <PerfApp onIncrementHandlerStart={(atMs) => {
-        handlerStartAt = atMs
-      }} />
+      <PerfApp
+        onIncrementNativeCapture={(atMs) => {
+          nativeCaptureAt = atMs
+        }}
+        onIncrementHandlerStart={(atMs) => {
+          handlerStartAt = atMs
+        }}
+      />
     </RuntimeProvider>
   )
 
@@ -90,23 +117,28 @@ const collectSampleMetrics = async (args: { readonly watchers: number; readonly 
     await nextFrame()
 
     const button = screen.getByRole('button', { name: 'Increment' }).first()
-    const start = performance.now()
+    const clickInvokeAt = performance.now()
     await button.click()
     await expect.element(screen.getByText(`Value: ${args.watchers}`)).toBeInTheDocument()
     const domStableAt = performance.now()
     await nextFrame()
     const paintishAt = performance.now()
 
+    if (nativeCaptureAt === undefined) {
+      throw new Error('watcherNativeCaptureMissing')
+    }
+
     if (handlerStartAt === undefined) {
       throw new Error('watcherHandlerStartMissing')
     }
 
     return {
-      clickToHandlerMs: Math.max(0, handlerStartAt - start),
+      clickInvokeToNativeCaptureMs: Math.max(0, nativeCaptureAt - clickInvokeAt),
+      nativeCaptureToHandlerMs: Math.max(0, handlerStartAt - nativeCaptureAt),
       handlerToDomStableMs: Math.max(0, domStableAt - handlerStartAt),
       domStableToPaintGapMs: Math.max(0, paintishAt - domStableAt),
-      domStableMs: domStableAt - start,
-      paintishMs: paintishAt - start,
+      domStableMs: domStableAt - clickInvokeAt,
+      paintishMs: paintishAt - clickInvokeAt,
     }
   } finally {
     screen.unmount()

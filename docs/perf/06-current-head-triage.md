@@ -46,7 +46,7 @@
 - `form.listScopeCheck`：`S-11` real probe 继续通过。
 
 4. 剩余只保留架构候选。
-- `S-13` 已把 `watchers.clickToPaint` 的 same-sample phase evidence 提升到 diff / triage / artifact report 首屏；`S-2` 展示层线已收口，不再是待排期候选。
+- `S-14` 已把 `watchers.clickToPaint` 的旧 `clickToHandler` 再拆成 `clickInvokeToNativeCapture + nativeCaptureToHandler`，并确认 dominant phase 是页面外 click 注入税；`S-2` 整条 benchmark 解释链已收口，不再是待排期候选。
 - 架构候选：`R-2`，只有在出现新的产品级 SLA 或新的 native-anchor 证据时，才讨论 `TxnLanePolicy` API vNext。
 
 ## 四分法裁决
@@ -60,7 +60,7 @@
 
 - `watchers.clickToPaint`
 - 原因：它仍更像 browser floor / suite 语义混入，而不是 current-head 的 runtime blocker。
-- 裁决：`S-12` 已补齐同 sample phase evidence，`S-13` 又把它提升到 `summary.highlights` / `suites[].watchersPhaseDisplay` / artifact `triage highlights` 首屏；后续禁止再用 `watchers.clickToPaint - watchers.clickToDomStable` 的跨 suite 聚合差值解释红样本。
+- 裁决：`S-12` / `S-13` 已补齐并前置 same-sample phase evidence，`S-14` 又把旧 `clickToHandler` 拆成 `clickInvokeToNativeCapture + nativeCaptureToHandler`；当前证据明确显示 dominant phase 是页面外 click 注入税（`~34-36ms / 64-66%`），页面内 `nativeCapture->handler` 基本为 `0ms`，后续禁止再用 `watchers.clickToPaint - watchers.clickToDomStable` 的跨 suite 聚合差值解释红样本。
 
 ### 3. 门禁 / tooling 注意项
 
@@ -86,8 +86,8 @@
 
 ### 可并行副线 A
 
-- 当前无默认 perf/tooling 副线；`S-2` 的展示层 / 汇总层收口已由 `S-13` 完成。
-- 若 future diff/report 再次丢失 paired phase 首屏展示，再单开新的 tooling worktree。
+- 当前无默认 perf/tooling 副线；`S-2` 已由 `S-14` 完成 native-anchor pre-handler split 并关闭。
+- 若 future diff/report 再次丢失 paired phase 首屏展示，或 `nativeCaptureToHandler` 再次出现稳定非零税点，再单开新的 tooling/evidence worktree。
 
 ### 可并行副线 B
 
@@ -111,6 +111,6 @@
 
 ### 如果必须继续做 perf
 
-1. 先选 `S-2`：继续修 benchmark 解释链，而不是重开 runtime。
-2. 只有在新的 clean/comparable native-anchor 证据再次出现后，才重新讨论 `txnLanes` 或 `R-2`。
+1. 先做 clean/comparable evidence audit，不要在没有新证据时重开新的 code cut。
+2. 只有在新的 native-anchor 证据再次显示页面内 `nativeCapture->handler` 存在稳定税点，或出现新的产品级 SLA 时，才重新讨论 `S-2` 重开或推进 `R-2`。
 3. 在没有新增证据之前，所有结论都以 docs/evidence-only 收口。

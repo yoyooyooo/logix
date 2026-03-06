@@ -43,7 +43,8 @@ export type PerfDiffHighlight = {
 }
 
 const WATCHERS_PHASES = [
-  { name: 'watchers.phase.clickToHandlerMs', label: 'clickToHandler' },
+  { name: 'watchers.phase.clickInvokeToNativeCaptureMs', label: 'clickInvokeToNativeCapture' },
+  { name: 'watchers.phase.nativeCaptureToHandlerMs', label: 'nativeCaptureToHandler' },
   { name: 'watchers.phase.handlerToDomStableMs', label: 'handlerToDomStable' },
   { name: 'watchers.phase.domStableToPaintGapMs', label: 'domStableToPaintGap' },
 ] as const
