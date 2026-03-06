@@ -545,7 +545,7 @@
           "type": "relative",
           "metric": "timePerTickMs",
           "maxRatio": 1.25,
-          "minDeltaMs": 0.02,
+          "minDeltaMs": 0.11,
           "numeratorRef": "diagnosticsLevel=full",
           "denominatorRef": "diagnosticsLevel=off"
         }

@@ -338,3 +338,30 @@ API 变动：
 - `next_gate`
 
 这样 `Fabfile` 只需要把“任务路由与执行”自动化，不需要重新理解 perf 盘面。
+
+
+### `S-7` · `runtimeStore.noTearing` gate noise cleanup（已完成）
+
+状态：
+- 已于 `2026-03-06` 完成，收口记录见 `docs/perf/2026-03-06-s7-runtime-store-gate-noise-cleanup.md`。
+
+问题：
+- `runtimeStore.noTearing.tickNotify` 的 `full/off<=1.25` 在极低耗时点位上会被 `denominatorZero` 噪声误触发。
+
+本轮裁决：
+- 不改 runtime core。
+- 仅把该 suite 的 `minDeltaMs` 提到 `0.11`，跨过单个 `0.1ms` browser timer quantum。
+
+预期收益：
+- 低到中。
+- 不直接提速 runtime，但能净化 relative budget 信号。
+
+主要落点：
+- `.codex/skills/logix-perf-evidence/assets/matrix.json`
+- `docs/perf/2026-03-06-s7-runtime-store-gate-noise-cleanup.md`
+
+并行/串行：
+- 已完成，不再占用新并行槽位。
+
+API 变动：
+- 不需要。
