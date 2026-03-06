@@ -29,6 +29,7 @@
 - [x] P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时（evidence correction）；去掉 timer 排队噪声，`mode=default, steps=2000` 已进 `50ms`。
 - [x] Q-1：`converge auto->full (near_full)` 改成 slim decision summary（保留 evidence、去掉重资产）；`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
 - [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门）。
+  - `2026-03-06` checkpoint：blind first-host-yield 已证伪；显式 startup-phase 版（`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`）在 3/3 quick audit 回归，当前只能保留为 evidence-only。
 
 
 ## Current-Head 裁决（2026-03-06）
@@ -47,7 +48,8 @@
 
 下一刀（只给一个）：
 - `R-1：txnLanes backlog policy split`。
-- 方向：不要再继续拧 `budgetMs/chunkSize` 小常数，而是把 backlog 启动期与 steady-state 的 urgent 调度策略拆开。
+- 方向：优先沿 `txnQueue snapshot -> urgent-aware handoff` 收口，不再重复 blind first-host-yield，也不把显式 startup-phase 版本直接落为正式策略。
+- 最新 checkpoint：`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`。
 
 当前不建议先做：
 - `watchers`：先修 suite 语义，不再继续往 runtime 里塞 watcher 优化。

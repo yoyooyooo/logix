@@ -68,8 +68,9 @@
 
 API 变动：
 - 当前不需要。
-- 下一轮应优先尝试 `urgent-aware handoff`，不要重复 blind first-host-yield。
-- 只有当更高层的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
+- 下一轮仍优先沿 `txnQueue snapshot -> urgent-aware handoff` 收口，不要重复 blind first-host-yield。
+- `2026-03-06` 的显式 startup-phase 版在 3/3 quick audit 回归，见 `docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`；不要把 startup cap 直接固化为正式 policy。
+- 只有当 queue-snapshot 路线仍无法稳定过线，才升级到 `R-2`。
 
 ### `S-1` · `externalStore` broad residual 复核（已完成）
 
