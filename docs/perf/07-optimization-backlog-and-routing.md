@@ -10,6 +10,8 @@
 - 是否必须独立 worktree
 - 哪些必须串行，避免互相干扰
 
+状态治理约定：本页是 current-head backlog 的唯一状态源；`03` / `05` 只保留执行清单、设计裁决与完成标记，不再重复展开 `R-1` / `F-1` / `S-4` / `S-5` 的现状说明。
+
 ## 使用规则
 
 1. 先读 `06-current-head-triage.md`，确认 current-head 的真实主线。
@@ -33,9 +35,9 @@
 | `S-1` | 稳定性副线（已关闭） | `externalStore.ingest.tickNotify` broad residual 复核已完成 | 中 | 低到中 | 低 | 已关闭 | 不需要 |
 | `S-2` | benchmark 纠偏（已完成第一刀） | watchers 双轨语义已落地；后续仅剩解释链/展示层补完 | 中 | 中 | 中 | 已完成第一刀；如重开需独立 worktree | 不需要 |
 | `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
-| `F-1` | 自动化副线（已完成） | 最小可用 perf `Fabfile` router 已落地 | 中 | 中 | 低 | 已完成 | 不需要 |
-| `S-4` | 验证解锁副线（已完成） | `RuntimeExternalStore delayed teardown` 最小修复已落地，`runtime-store-no-tearing` 不再是默认 blocker | 中 | 中 | 中 | 已完成 | 不需要 |
-| `S-5` | 验证解锁副线（已关闭） | `react.strictSuspenseJitter` 主分支环境可跑通，审计后以 docs/evidence-only 关闭 | 中 | 低 | 低 | 已关闭 | 不需要 |
+| `F-1` | 自动化工具（已完成） | `fabfile.py` 已转为现成工具，不再占用 backlog | 中 | 中 | 低 | 已完成 | 不需要 |
+| `S-4` | 验证解锁副线（已完成） | `RuntimeExternalStore delayed teardown` 最小修复已吸收，已从默认 blocker 列表移除 | 中 | 中 | 中 | 已完成 | 不需要 |
+| `S-5` | 验证解锁副线（已关闭） | `react.strictSuspenseJitter` 已按 current-head 代码状态复核关闭，不再作为默认 blocker | 中 | 低 | 低 | 已关闭 | 不需要 |
 | `S-6` | collect 稳定化副线（已关闭） | browser perf collect 首轮预热噪声已复核，不保留基础设施补丁 | 中 | 低 | 低 | 已关闭 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
 
@@ -45,8 +47,8 @@
 
 状态：
 - 当前唯一活跃主线。
-- `2026-03-06` 的 blind first-host-yield phase split 已判失败；下一刀改走 `urgent-aware handoff`。
-- `startup-phase` 显式切面目前只保留为 checkpoint 结论，不单独落 `D-1` 日期记录；当前仍在 `agent/r1-txn-lanes-policy-split-v2` worktree 里继续推进 `R-1 v2`。
+- 当前活跃方案是 `urgent-aware handoff`；`2026-03-06` 的 blind first-host-yield phase split 已判失败。
+- `startup-phase` checkpoint 与 handoff-lite 失败尝试只保留为 dated evidence，不再视作单独活跃任务。
 
 问题：
 - `txnLanes.urgentBacklog` 在 broad 与 targeted 都仍然卡在 `urgent.p95<=50ms`。
@@ -197,31 +199,14 @@ API 变动：
 ### `S-5` · `react.strictSuspenseJitter` refresh unblock（已关闭）
 
 状态：
-- 已于 `2026-03-06` 在主分支环境复核通过，并以 docs/evidence-only 方式关闭。
-- 除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不再占用并行槽位。
-
-历史阻塞点：
-- 它曾在 `S-4` 收口后短暂成为 broad/full collect 的首个 blocker，但该状态已经被主分支环境复核消化，不再代表当前默认盘面。
-- 这条线的价值始终是解锁 collect，而不是继续作为 runtime 性能主线。
-
-主要落点：
-- `packages/logix-react/test/browser/perf-boundaries/react-strict-suspense-jitter.test.tsx`
-- 必要时相关 browser harness / test imports
-- 对应 `docs/perf/*` 日期记录与 `07` 回写
-
-并行/串行：
-- 已关闭，不再单独排期。
-- 若未来重开，先区分 worktree/browser 预热噪声与真实代码问题，再决定是否触碰 React/runtime 适配层。
-
-API 变动：
-- 不需要。
+- 已于 `2026-03-06` 按 current-head / 主分支代码状态复核通过，收口记录见 `docs/perf/2026-03-06-s5-suspense-refresh-unblock.md`。
+- 当前默认视为已关闭的 collect unblock，不再占用并行槽位；只有在 clean/comparable 环境再次稳定复现时才重开。
 
 ### `F-1` · `Fabfile` 自动化编排（已完成）
 
 状态：
-- 已于 `2026-03-06` 落成最小可用 perf `fabfile.py`。
-- 当前不再是活跃副线；需要路由/排期时直接复用现成命令。
-- 这里只保留“现成工具已落地”的结论，不再把它当作待排期任务展开。
+- 已完成；`fabfile.py` 已转为现成工具，默认直接复用 `list-tasks` / `show-task` / `plan-parallel`。
+- 详细完成记录保留在 `docs/perf/05-forward-only-vnext-plan.md` 的 Wave F；本页不再重复展开历史状态。
 
 ### `S-6` · browser perf collect stabilization（已完成）
 
@@ -259,24 +244,8 @@ API 变动：
 ### `S-4` · `RuntimeExternalStore delayed teardown` 最小修复（已完成）
 
 状态：
-- 已于 `2026-03-06` 升级成最小代码修复，不再是 evidence-only 关闭。
-- 收口记录：`docs/perf/2026-03-06-s4-runtime-external-store-delayed-teardown.md`
-- `runtime-store-no-tearing` 不再作为 current-head full-matrix 的默认 blocker。
-
-历史问题：
-- 根因是 `RuntimeExternalStore` 在同一 tick 的 unsubscribe -> resubscribe 抖动里过早 teardown / removeStore，导致 store 被拆掉又重建。
-- 该问题已经被最小修复吸收；除非 clean/comparable 环境再次稳定复现 flake，否则不再重开为活跃副线。
-
-主要落点：
-- `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`
-- `packages/logix-react/test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx`
-
-并行/串行：
-- 已完成，不再单独占用并行槽位。
-- 若未来重开，优先沿同 tick unsubscribe/resubscribe 的时序窗口排查，而不是回到旧的 topic folding 假设。
-
-API 变动：
-- 不需要。
+- 已于 `2026-03-06` 以最小代码修复收口，记录见 `docs/perf/2026-03-06-s4-runtime-external-store-delayed-teardown.md`。
+- 当前已从 `runtime-store-no-tearing` 默认 blocker 列表移除；若未来重开，优先沿同 tick unsubscribe/resubscribe 的时序窗口排查。
 
 ### `R-2` · `TxnLanePolicy` API vNext 收敛
 
