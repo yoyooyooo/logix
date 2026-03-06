@@ -64,7 +64,7 @@
 当前唯一下一刀：
 - `R-1：txnLanes backlog policy split`。
 - 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`；本页只保留设计裁决：继续拆 backlog 启动期与 steady-state 的调度策略，暂不动表面 API。
-- blind first-host-yield、handoff-lite、以及 remembered-pressure pre-urgent cap 已明确判失败，不再在本页重复展开。
+- blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败，不再在本页重复展开。
 
 ## 2. API vNext（直接替换，不兼容旧形态）
 
