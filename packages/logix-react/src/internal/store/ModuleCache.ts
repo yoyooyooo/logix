@@ -21,6 +21,7 @@ export interface ModuleCacheLoadOptions {
   readonly policyMode?: ModuleCachePolicyMode
   readonly yield?: YieldPolicy
   readonly warnSyncBlockingThresholdMs?: number
+  readonly optimisticSyncBudgetMs?: number
 }
 
 export interface ModuleCachePreloadOptions extends ModuleCacheLoadOptions {
@@ -266,6 +267,78 @@ export class ModuleCache {
 
     const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
     const yieldDecision = decideYieldStrategy(this.runtime as unknown as object, workloadKey, options?.yield)
+    const optimisticSyncBudgetMs = options?.optimisticSyncBudgetMs ?? 0
+    const shouldTryOptimisticSync = options?.policyMode === 'suspend' && optimisticSyncBudgetMs > 0
+
+    if (shouldTryOptimisticSync) {
+      const startedAt = performance.now()
+      try {
+        const value = this.runtime.runSync(factory(scope)) as A
+        const durationMs = performance.now() - startedAt
+        YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
+
+        const entry: ResourceEntry = {
+          scope,
+          status: 'success',
+          promise: Promise.resolve(value),
+          value,
+          refCount: 0,
+          preloadRefCount: 0,
+          gcTime: gcTime ?? this.gcDelayMs,
+          ownerId,
+          createdBy: 'read',
+          workloadKey,
+          yieldStrategy: 'none',
+        }
+
+        this.scheduleGC(key, entry)
+        this.entries.set(key, entry)
+
+        if (isDevEnv() || Logix.Debug.isDevtoolsEnabled()) {
+          void this.runtime
+            .runPromise(
+              Logix.Debug.record({
+                type: 'trace:react.module.init',
+                moduleId: ownerId,
+                instanceId: value.instanceId,
+                data: {
+                  mode: 'suspend',
+                  key,
+                  durationMs: Math.round(durationMs * 100) / 100,
+                  yieldStrategy: 'none',
+                  fastPath: 'sync',
+                },
+              }) as unknown as Effect.Effect<void, never, never>,
+            )
+            .catch((error) => {
+              debugBestEffortFailure('[ModuleCache] Debug.record failed', error)
+            })
+
+          void this.runtime
+            .runPromise(
+              Logix.Debug.record({
+                type: 'trace:react.module-instance',
+                moduleId: ownerId,
+                instanceId: value.instanceId,
+                data: {
+                  event: 'attach',
+                  key,
+                  mode: 'suspend',
+                  gcTime: entry.gcTime,
+                  fastPath: 'sync',
+                },
+              }) as unknown as Effect.Effect<void, never, never>,
+            )
+            .catch((error) => {
+              debugBestEffortFailure('[ModuleCache] Debug.record failed', error)
+            })
+        }
+
+        return value
+      } catch {
+        // Fall through to the async Suspense path.
+      }
+    }
 
     const entry: ResourceEntry = {
       scope,

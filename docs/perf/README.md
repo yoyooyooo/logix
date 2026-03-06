@@ -54,3 +54,5 @@
   - K-1：`react.strictSuspenseJitter` 改成真实 state-level suspend + 单次 interaction 计时，移除旧的线性点击伪失败。
 - `2026-03-06-l1-txn-lanes-initial-chunk-1.md`
   - L-1：`txnLanes` 在 `budgetMs<=1` 时把 non-urgent 首片缩到 1，`mode=default` 的 50ms 硬门从全灭提升到 `steps<=800` 可过。
+- `2026-03-06-m1-react-bootresolve-optimistic-sync.md`
+  - M-1：`suspend` 路径加入 optimistic sync fast-path，`react.bootResolve` 的 `suspend` 冷启动从 `~320ms` 级降到 `~17-19ms`。

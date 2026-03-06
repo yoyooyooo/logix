@@ -280,6 +280,7 @@ export function useModule(
           entrypoint: 'react.useModule',
           policyMode: runtimeContext.policy.mode,
           yield: runtimeContext.policy.yield,
+          optimisticSyncBudgetMs: runtimeContext.policy.syncBudgetMs,
         })
       : cache.readSync(key, factory, gcTime, ownerId, {
           entrypoint: 'react.useModule',

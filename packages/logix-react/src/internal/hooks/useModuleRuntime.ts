@@ -75,6 +75,7 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
             entrypoint: 'react.useModuleRuntime',
             policyMode: runtimeContext.policy.mode,
             yield: runtimeContext.policy.yield,
+            optimisticSyncBudgetMs: runtimeContext.policy.syncBudgetMs,
           })
         : cache.readSync(key, factory, undefined, tokenId, {
             entrypoint: 'react.useModuleRuntime',

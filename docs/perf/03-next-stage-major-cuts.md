@@ -22,6 +22,7 @@
 - [x] J-1：`txnLanes.urgentBacklog` 改成显式 `mode(default/off)` 轴（evidence alignment）；broad matrix 不再依赖隐式 `forced_off` 默认值。
 - [x] K-1：`react.strictSuspenseJitter` 改成真实 state-level suspend + 单次 interaction 计时（evidence correction）；不再把多次点击总耗时误判成 suspense jitter。
 - [x] L-1：`txnLanes` 在 `budgetMs<=1` 时把 non-urgent 首片缩到 1（inner-loop constant cut）；`mode=default` 的 50ms 硬门从全灭提升到 `steps<=800` 可过。
+- [x] M-1：`suspend` 路径加入 optimistic sync fast-path（行为前移优化）；`react.bootResolve` 的 `suspend` 冷启动从 `~320ms` 级降到 `~17-19ms`。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 
