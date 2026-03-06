@@ -178,7 +178,7 @@ API 变动：
 API 变动：
 - 不需要。
 
-### `S-5` · `react.strictSuspenseJitter` refresh unblock
+### `S-5` · `react.strictSuspenseJitter` refresh unblock（已完成）
 
 问题：
 - `S-4` 关闭后，broad/full collect 的首个 blocker 已经转移到 `react.strictSuspenseJitter` 的导入/运行失败。
