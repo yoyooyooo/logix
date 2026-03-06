@@ -22,18 +22,27 @@ import type { AnyModuleShape, ModuleRuntime, StateOf, ActionOf } from './module.
 
 const DIRECT_STATE_WRITE_EFFECT = Symbol.for('logix.directStateWriteEffect')
 
-type DirectStateWriteEffect = Effect.Effect<void, never, any> & {
-  [DIRECT_STATE_WRITE_EFFECT]?: true
+type DirectStateWriteMetadata<Sh extends AnyModuleShape> =
+  | { readonly kind: 'update'; readonly run: (prev: StateOf<Sh>) => StateOf<Sh> }
+  | { readonly kind: 'mutate'; readonly run: (draft: Logic.Draft<StateOf<Sh>>) => void }
+
+type DirectStateWriteEffect<Sh extends AnyModuleShape> = Effect.Effect<void, never, any> & {
+  [DIRECT_STATE_WRITE_EFFECT]?: DirectStateWriteMetadata<Sh>
 }
 
-const markDirectStateWriteEffect = <A extends Effect.Effect<void, never, any>>(effect: A): A => {
-  ;(effect as DirectStateWriteEffect)[DIRECT_STATE_WRITE_EFFECT] = true
+const markDirectStateWriteEffect = <Sh extends AnyModuleShape, A extends Effect.Effect<void, never, any>>(
+  effect: A,
+  metadata: DirectStateWriteMetadata<Sh>,
+): A => {
+  ;(effect as DirectStateWriteEffect<Sh>)[DIRECT_STATE_WRITE_EFFECT] = metadata
   return effect
 }
 
-const isDirectStateWriteEffect = (value: unknown): value is DirectStateWriteEffect => {
-  if (!value || (typeof value !== 'object' && typeof value !== 'function')) return false
-  return (value as DirectStateWriteEffect)[DIRECT_STATE_WRITE_EFFECT] === true
+const getDirectStateWriteMetadata = <Sh extends AnyModuleShape>(
+  value: unknown,
+): DirectStateWriteMetadata<Sh> | undefined => {
+  if (!value || (typeof value !== 'object' && typeof value !== 'function')) return undefined
+  return (value as DirectStateWriteEffect<Sh>)[DIRECT_STATE_WRITE_EFFECT]
 }
 
 // Local IntentBuilder factory; equivalent to the old internal/dsl/LogicBuilder.makeIntentBuilderFactory.
@@ -90,9 +99,15 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
       runFork: <A = void, E = never, R2 = unknown>(
         eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
       ): Logic.Of<Sh, R & R2, void, E> => {
-        if (runtimeInternals && triggerName && typeof eff !== 'function' && isDirectStateWriteEffect(eff)) {
+        if (runtimeInternals && triggerName && typeof eff !== 'function' && getDirectStateWriteMetadata<Sh>(eff) != null) {
           return Effect.sync(() => {
-            runtimeInternals.txn.registerActionStateWriteback(triggerName, () => eff as Effect.Effect<void, never, any>)
+            const metadata = getDirectStateWriteMetadata<Sh>(eff)!
+            runtimeInternals.txn.registerActionStateWriteback(
+              triggerName,
+              metadata.kind === 'update'
+                ? ({ kind: 'update', run: metadata.run } as any)
+                : ({ kind: 'mutate', run: metadata.run } as any),
+            )
           }) as Logic.Of<Sh, R & R2, void, E>
         }
         return Effect.forkScoped(flowApi.run<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
@@ -105,9 +120,15 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
       runParallelFork: <A = void, E = never, R2 = unknown>(
         eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
       ): Logic.Of<Sh, R & R2, void, E> => {
-        if (runtimeInternals && triggerName && typeof eff !== 'function' && isDirectStateWriteEffect(eff)) {
+        if (runtimeInternals && triggerName && typeof eff !== 'function' && getDirectStateWriteMetadata<Sh>(eff) != null) {
           return Effect.sync(() => {
-            runtimeInternals.txn.registerActionStateWriteback(triggerName, () => eff as Effect.Effect<void, never, any>)
+            const metadata = getDirectStateWriteMetadata<Sh>(eff)!
+            runtimeInternals.txn.registerActionStateWriteback(
+              triggerName,
+              metadata.kind === 'update'
+                ? ({ kind: 'update', run: metadata.run } as any)
+                : ({ kind: 'mutate', run: metadata.run } as any),
+            )
           }) as Logic.Of<Sh, R & R2, void, E>
         }
         return Effect.forkScoped(flowApi.runParallel<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
@@ -259,8 +280,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         Option.match(maybe, {
           onSome: available,
           onNone: missing,
-        }),
-      ),
+        })),
     )
   const withPlatform = (invoke: (platform: Platform.Service) => Effect.Effect<void, never, any>) =>
     Effect.serviceOption(Platform.Tag).pipe(
@@ -667,48 +687,34 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   const stateApi: BoundApi<Sh, R>['state'] = {
     read: runtime.getState,
     update: (f) =>
-      markDirectStateWriteEffect(
+      markDirectStateWriteEffect<Sh, Effect.Effect<void, never, any>>(
         Effect.gen(function* () {
-        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
-        if (inTxn) {
-          const prev = yield* runtime.getState
-          return yield* runtime.setState(f(prev))
-        }
-
-        const body = () => Effect.flatMap(runtime.getState, (prev) => runtime.setState(f(prev)))
-
-        if (runtimeInternals && !isDevEnv()) {
-          return yield* getOrCreateBatchedStateWritebackCoordinator().enqueueUpdate(f as any)
-        }
-
-        return yield* runtimeInternals
-          ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'update' } as any, body)
-          : body()
-        }),
-      ),
-    mutate: (f) =>
-      markDirectStateWriteEffect(
-        Effect.gen(function* () {
-        const recordPatch = runtimeInternals?.txn.recordStatePatch
-        const updateDraft = runtimeInternals?.txn.updateDraft
-
-        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
-        if (inTxn) {
-          const prev = yield* runtime.getState
-          const { nextState, patchPaths } = mutateWithPatchPaths(prev as Logix.StateOf<Sh>, (draft) => {
-            f(draft as Logic.Draft<Logix.StateOf<Sh>>)
-          })
-
-          for (const path of patchPaths) {
-            recordPatch?.(path, 'unknown')
+          const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+          if (inTxn) {
+            const prev = yield* runtime.getState
+            return yield* runtime.setState(f(prev))
           }
 
-          updateDraft?.(nextState)
-          return
-        }
+          const body = () => Effect.flatMap(runtime.getState, (prev) => runtime.setState(f(prev)))
 
-        const body = () =>
-          Effect.gen(function* () {
+          if (runtimeInternals && !isDevEnv()) {
+            return yield* getOrCreateBatchedStateWritebackCoordinator().enqueueUpdate(f as any)
+          }
+
+          return yield* runtimeInternals
+            ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'update' } as any, body)
+            : body()
+        }),
+        { kind: 'update', run: f as any },
+      ),
+    mutate: (f) =>
+      markDirectStateWriteEffect<Sh, Effect.Effect<void, never, any>>(
+        Effect.gen(function* () {
+          const recordPatch = runtimeInternals?.txn.recordStatePatch
+          const updateDraft = runtimeInternals?.txn.updateDraft
+
+          const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+          if (inTxn) {
             const prev = yield* runtime.getState
             const { nextState, patchPaths } = mutateWithPatchPaths(prev as Logix.StateOf<Sh>, (draft) => {
               f(draft as Logic.Draft<Logix.StateOf<Sh>>)
@@ -719,19 +725,36 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
             }
 
             updateDraft?.(nextState)
-          })
+            return
+          }
 
-        if (runtimeInternals && !isDevEnv()) {
-          return yield* getOrCreateBatchedStateWritebackCoordinator().enqueueMutate(f as any)
-        }
+          const body = () =>
+            Effect.gen(function* () {
+              const prev = yield* runtime.getState
+              const { nextState, patchPaths } = mutateWithPatchPaths(prev as Logix.StateOf<Sh>, (draft) => {
+                f(draft as Logic.Draft<Logix.StateOf<Sh>>)
+              })
 
-        return yield* runtimeInternals
-          ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'mutate' } as any, body)
-          : body()
+              for (const path of patchPaths) {
+                recordPatch?.(path, 'unknown')
+              }
+
+              updateDraft?.(nextState)
+            })
+
+          if (runtimeInternals && !isDevEnv()) {
+            return yield* getOrCreateBatchedStateWritebackCoordinator().enqueueMutate(f as any)
+          }
+
+          return yield* runtimeInternals
+            ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'mutate' } as any, body)
+            : body()
         }),
+        { kind: 'mutate', run: f as any },
       ),
     ref: runtime.ref,
   }
+
 
   const actions = shape.actionMap as BoundApi<Sh, R>['actions']
 

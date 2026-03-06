@@ -42,7 +42,7 @@ export type RuntimeInternalsLifecycle = {
 export type RuntimeInternalsTxn = {
   readonly instrumentation: StateTransactionInstrumentation
   readonly registerReducer: (tag: string, fn: (state: unknown, action: unknown) => unknown) => void
-  readonly registerActionStateWriteback: (tag: string, run: (action: unknown) => Effect.Effect<void, never, any>) => void
+  readonly registerActionStateWriteback: (tag: string, handler: unknown) => void
   readonly runWithStateTransaction: (
     origin: StateTransaction.StateTxnOrigin,
     body: () => Effect.Effect<void, never, any>,

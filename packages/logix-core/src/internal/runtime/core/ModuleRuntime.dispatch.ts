@@ -4,6 +4,7 @@ import * as Debug from './DebugSink.js'
 import type { ConcurrencyDiagnostics } from './ConcurrencyDiagnostics.js'
 import * as ReducerDiagnostics from './ReducerDiagnostics.js'
 import * as StateTransaction from './StateTransaction.js'
+import { mutateWithPatchPaths } from './mutativePatches.js'
 import { currentTxnOriginOverride, type TxnOriginOverride } from './TxnOriginOverride.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { RunWithStateTransaction, SetStateInternal } from './ModuleRuntime.transaction.js'
@@ -31,6 +32,11 @@ type ActionPropagationEntry<A> = {
   readonly topicTargets: ReadonlyArray<ActionPropagationTopicTarget<A>>
   readonly fanoutCount: number
 }
+
+type ActionStateWritebackHandler<S, A> =
+  | { readonly kind: 'update'; readonly run: (state: S, action: A) => S }
+  | { readonly kind: 'mutate'; readonly run: (draft: S, action: A) => void }
+  | { readonly kind: 'effect'; readonly run: (action: A) => Effect.Effect<void, never, any> }
 
 type ActionTopicBatch<A> = {
   readonly topicTag: string
@@ -78,7 +84,7 @@ export const makeDispatchOps = <S, A>(args: {
   readonly isDevEnv: () => boolean
 }): {
   readonly registerReducer: (tag: string, fn: (state: S, action: A) => S) => void
-  readonly registerActionStateWriteback: (tag: string, run: (action: A) => Effect.Effect<void, never, any>) => void
+  readonly registerActionStateWriteback: (tag: string, handler: ActionStateWritebackHandler<S, A>) => void
   readonly dispatch: (action: A) => Effect.Effect<void, never, any>
   readonly dispatchBatch: (actions: ReadonlyArray<A>) => Effect.Effect<void, never, any>
   readonly dispatchLowPriority: (action: A) => Effect.Effect<void, never, any>
@@ -175,7 +181,7 @@ export const makeDispatchOps = <S, A>(args: {
 
   // Track whether an Action tag has been dispatched, for diagnosing config issues like late reducer registration.
   const dispatchedTags = new Set<string>()
-  const actionStateWritebacks = new Map<string, Array<(action: A) => Effect.Effect<void, never, any>>>()
+  const actionStateWritebacks = new Map<string, Array<ActionStateWritebackHandler<S, A>>>()
 
   const registerReducer = (tag: string, fn: (state: S, action: A) => S): void => {
     if (reducerMap.has(tag)) {
@@ -189,16 +195,16 @@ export const makeDispatchOps = <S, A>(args: {
     reducerMap.set(tag, fn)
   }
 
-  const registerActionStateWriteback = (tag: string, run: (action: A) => Effect.Effect<void, never, any>): void => {
+  const registerActionStateWriteback = (tag: string, handler: ActionStateWritebackHandler<S, A>): void => {
     if (dispatchedTags.has(tag)) {
       throw ReducerDiagnostics.makeReducerError('ReducerLateRegistrationError', tag, optionsModuleId)
     }
     const existing = actionStateWritebacks.get(tag)
     if (existing) {
-      existing.push(run)
+      existing.push(handler)
       return
     }
-    actionStateWritebacks.set(tag, [run])
+    actionStateWritebacks.set(tag, [handler])
   }
 
   const applyPrimaryReducer = (action: A, analysis: ActionAnalysis) => {
@@ -287,7 +293,33 @@ export const makeDispatchOps = <S, A>(args: {
     if (!handlers || handlers.length === 0) {
       return Effect.void
     }
-    return Effect.forEach(handlers, (run) => run(action), { discard: true })
+
+    return Effect.forEach(
+      handlers,
+      (handler) =>
+        Effect.gen(function* () {
+          if (handler.kind === 'effect') {
+            yield* handler.run(action)
+            return
+          }
+
+          const prev = yield* readState
+          if (handler.kind === 'update') {
+            const next = handler.run(prev, action)
+            if (Object.is(next, prev)) return
+            yield* setStateInternal(next, '*', 'unknown', undefined, next)
+            return
+          }
+
+          const { nextState, patchPaths } = mutateWithPatchPaths(prev as S, (draft) => handler.run(draft as S, action))
+
+          for (const path of patchPaths) {
+            recordStatePatch(path, 'unknown')
+          }
+          StateTransaction.updateDraft(txnContext, nextState)
+        }),
+      { discard: true },
+    )
   }
 
   const makeActionOrigin = (
