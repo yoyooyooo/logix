@@ -37,6 +37,8 @@
 - [x] S-3：`converge` gate / matrix applicability 局部清理；`decision.p95<=0.5ms` 拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 计入失败视图。
 - [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门）。
   - `2026-03-06` checkpoint：blind first-host-yield 已证伪；显式 startup-phase 版（`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`）在 3/3 quick audit 回归，当前只能保留为 evidence-only。
+  - `2026-03-06` handoff-lite checkpoint：`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md` 记录了 queue-snapshot + handoff-lite 版本的 3/3 quick audit 回归。
+- [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门；`2026-03-06` 已新增 handoff-lite 失败证据，见 `docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`）。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -59,8 +61,10 @@
 
 当前唯一下一刀：
 - `R-1：txnLanes backlog policy split`。
-- 当前仍优先沿 `txnQueue snapshot -> urgent-aware handoff` 收口；blind first-host-yield 与显式 startup-phase 版本都已保留为失败证据，不直接落 runtime。
+- 当前仍优先沿 `txnQueue snapshot -> urgent-aware handoff` 收口；blind first-host-yield、显式 startup-phase 与 handoff-lite 版本都已保留为失败证据，不直接落 runtime。
 - 当前暂不需要动表面 API。
+- 先在内核 policy 层区分 backlog 启动期与 steady-state；当前暂不需要动表面 API。
+- 已明确不值得重复的子尝试：blind first-host-yield（`docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`）与 handoff-lite（`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`）。
 
 ## 2. API vNext（直接替换，不兼容旧形态）
 
