@@ -329,6 +329,51 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     return resolveRuntimeProviderFallback({ fallback, phase, policyMode: resolvedPolicy.mode })
   }
 
+  const preloadCache = useMemo(
+    () => getModuleCache(runtimeWithBindings, configState.snapshot, configState.version),
+    [runtimeWithBindings, configState.snapshot, configState.version],
+  )
+
+  const syncWarmPreloadReady = useMemo(() => {
+    if (resolvedPolicy.mode !== 'defer') return false
+    if (!resolvedPolicy.preload) return true
+    if (!isLayerReady || !isConfigReady) return false
+
+    const handles = resolvedPolicy.preload.handles
+    if (handles.length === 0) return true
+
+    for (const handle of handles) {
+      if ((handle as any)?._tag === 'ModuleImpl') {
+        const moduleId = (handle as any).module?.id ?? 'ModuleImpl'
+        const key = resolvedPolicy.preload.keysByModuleId.get(moduleId) ?? getPreloadKeyForModuleId(moduleId)
+        const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
+          Layer.buildWithScope((handle as any).layer, scope).pipe(
+            Effect.map((context) => Context.get(context, (handle as any).module) as any),
+          )
+
+        const value = preloadCache.warmSync(key, factory, configState.snapshot.gcTime, moduleId, {
+          entrypoint: 'react.runtime.preload.sync-warm',
+          policyMode: 'defer',
+        })
+        if (!value) return false
+        continue
+      }
+
+      const tagId = (handle as any).id ?? 'ModuleTag'
+      const key = resolvedPolicy.preload.keysByTagId.get(tagId) ?? getPreloadKeyForTagId(tagId)
+      const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
+        (handle as unknown as Effect.Effect<{ readonly instanceId?: string }, unknown, unknown>).pipe(Scope.extend(scope))
+
+      const value = preloadCache.warmSync(key, factory, configState.snapshot.gcTime, tagId, {
+        entrypoint: 'react.runtime.preload.sync-warm',
+        policyMode: 'defer',
+      })
+      if (!value) return false
+    }
+
+    return true
+  }, [resolvedPolicy, isLayerReady, isConfigReady, preloadCache, configState.snapshot.gcTime])
+
   const [deferReady, setDeferReady] = useState(false)
   useEffect(() => {
     if (resolvedPolicy.mode !== 'defer') {
@@ -344,6 +389,10 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     if (resolvedPolicy.mode !== 'defer') {
       return
     }
+    if (syncWarmPreloadReady) {
+      setDeferReady(true)
+      return
+    }
     setDeferReady(false)
     if (!resolvedPolicy.preload) {
       setDeferReady(true)
@@ -355,7 +404,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
     let cancelled = false
 
-    const cache = getModuleCache(runtimeWithBindings, configState.snapshot, configState.version)
+    const cache = preloadCache
 
     const preloadHandles = resolvedPolicy.preload.handles
     if (preloadHandles.length === 0) {
@@ -389,6 +438,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
             yield: resolvedPolicy.preload!.yield,
             entrypoint: 'react.runtime.preload',
             policyMode: 'defer',
+            optimisticSyncBudgetMs: resolvedPolicy.syncBudgetMs,
           })
           allCancels.add(op.cancel)
           await op.promise
@@ -427,6 +477,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
           yield: resolvedPolicy.preload!.yield,
           entrypoint: 'react.runtime.preload',
           policyMode: 'defer',
+          optimisticSyncBudgetMs: resolvedPolicy.syncBudgetMs,
         })
         allCancels.add(op.cancel)
         await op.promise
@@ -513,14 +564,14 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     }
   }, [resolvedPolicy.mode, deferReady])
 
-  const isReady = isTickServicesReady && isLayerReady && isConfigReady && (resolvedPolicy.mode !== 'defer' || deferReady)
+  const isReady = isTickServicesReady && isLayerReady && isConfigReady && (resolvedPolicy.mode !== 'defer' || deferReady || syncWarmPreloadReady)
 
   if (!isReady) {
     const blockersList = [
       isTickServicesReady ? null : 'tick',
       isLayerReady ? null : 'layer',
       isConfigReady ? null : 'config',
-      resolvedPolicy.mode !== 'defer' || deferReady ? null : 'preload',
+      resolvedPolicy.mode !== 'defer' || deferReady || syncWarmPreloadReady ? null : 'preload',
     ].filter((x): x is string => x !== null)
     const blockers = blockersList.length > 0 ? blockersList.join('+') : undefined
 

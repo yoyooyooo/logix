@@ -63,4 +63,32 @@ describe('RuntimeProvider suspend optimistic sync fast-path', () => {
       await runtime.dispose()
     })
   })
+
+
+  it('should skip provider gating fallback in defer+preload when handles are sync-resolvable', async () => {
+    const runtime = Logix.Runtime.make(TagModuleImpl, {
+      layer: Logix.Debug.noopLayer,
+    })
+
+    await act(async () => {
+      render(
+        <RuntimeProvider
+          runtime={runtime}
+          policy={{ mode: 'defer', syncBudgetMs: 1000, preload: [ImplModuleImpl, TagModule.tag] }}
+          fallback={<div data-testid="fallback">fallback</div>}
+        >
+          <App />
+        </RuntimeProvider>,
+      )
+    })
+
+    expect(screen.queryByTestId('fallback')).toBeNull()
+    expect(screen.getByTestId('impl').textContent).toBe('0')
+    expect(screen.getByTestId('tag').textContent).toBe('0')
+
+    await act(async () => {
+      await runtime.dispose()
+    })
+  })
 })
+

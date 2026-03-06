@@ -643,6 +643,63 @@ export class ModuleCache {
     }
   }
 
+  warmSync<A extends ModuleRuntimeLike>(
+    key: ResourceKey,
+    factory: ModuleCacheFactory<A>,
+    gcTime?: number,
+    ownerId?: string,
+    options?: ModuleCacheLoadOptions,
+  ): A | undefined {
+    const existing = this.entries.get(key)
+
+    if (existing) {
+      if (isDevEnv() && existing.ownerId !== undefined && ownerId !== undefined && existing.ownerId !== ownerId) {
+        throw new Error(
+          `[ModuleCache.warmSync] resource key "${key}" has already been claimed by module "${existing.ownerId}", ` +
+            `but is now requested by module "${ownerId}".`,
+        )
+      }
+
+      if (existing.status === 'success') {
+        return existing.value as A
+      }
+      return undefined
+    }
+
+    const scope = this.runtime.runSync(Scope.make()) as Scope.CloseableScope
+    const startedAt = performance.now()
+    const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
+
+    try {
+      const value = this.runtime.runSync(factory(scope)) as A
+      const durationMs = performance.now() - startedAt
+      YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
+
+      const entry: ResourceEntry = {
+        scope,
+        status: 'success',
+        promise: Promise.resolve(value),
+        value,
+        refCount: 0,
+        preloadRefCount: 0,
+        gcTime: gcTime ?? this.gcDelayMs,
+        ownerId,
+        createdBy: 'preload',
+        workloadKey,
+        yieldStrategy: 'none',
+      }
+
+      this.scheduleGC(key, entry)
+      this.entries.set(key, entry)
+      return value
+    } catch (error) {
+      void this.runtime.runPromise(Scope.close(scope, Exit.fail(error as unknown))).catch((closeError) => {
+        debugBestEffortFailure('[ModuleCache] Scope.close failed', closeError)
+      })
+      return undefined
+    }
+  }
+
   preload<A extends ModuleRuntimeLike>(
     key: ResourceKey,
     factory: ModuleCacheFactory<A>,
@@ -677,6 +734,43 @@ export class ModuleCache {
     const gcTime = options?.gcTime ?? this.gcDelayMs
     const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
     const yieldDecision = decideYieldStrategy(this.runtime as unknown as object, workloadKey, options?.yield)
+    const optimisticSyncBudgetMs = options?.optimisticSyncBudgetMs ?? 0
+    const shouldTryOptimisticSync = options?.policyMode === 'defer' && optimisticSyncBudgetMs > 0
+
+    if (shouldTryOptimisticSync) {
+      const startedAt = performance.now()
+      try {
+        const value = this.runtime.runSync(factory(scope)) as A
+        const durationMs = performance.now() - startedAt
+        YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
+
+        const entry: ResourceEntry = {
+          scope,
+          status: 'success',
+          promise: Promise.resolve(value),
+          value,
+          refCount: 0,
+          preloadRefCount: 1,
+          gcTime,
+          ownerId,
+          createdBy: 'preload',
+          workloadKey,
+          yieldStrategy: 'none',
+        }
+
+        this.scheduleGC(key, entry)
+        this.entries.set(key, entry)
+
+        return {
+          promise: Promise.resolve(value),
+          cancel: () => {
+            this.cancelPreload(key, entry)
+          },
+        }
+      } catch {
+        // Fall through to async preload.
+      }
+    }
 
     const entry: ResourceEntry = {
       scope,

@@ -56,3 +56,5 @@
   - L-1：`txnLanes` 在 `budgetMs<=1` 时把 non-urgent 首片缩到 1，`mode=default` 的 50ms 硬门从全灭提升到 `steps<=800` 可过。
 - `2026-03-06-m1-react-bootresolve-optimistic-sync.md`
   - M-1：`suspend` 路径加入 optimistic sync fast-path，`react.bootResolve` 的 `suspend` 冷启动从 `~320ms` 级降到 `~17-19ms`。
+- `2026-03-06-n1-react-defer-sync-warm.md`
+  - N-1：`defer` 增加 render 前 sync-warm 预热，去掉同步模块的 provider preload gating fallback；`bootToReady` 从 `~345ms` 级降到 `~60ms`。
