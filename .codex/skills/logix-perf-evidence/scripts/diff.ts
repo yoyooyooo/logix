@@ -1,6 +1,13 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
+import {
+  applyWatchersPhaseDisplayToNotes,
+  buildWatchersPhaseDisplay,
+  buildWatchersPhaseHighlight,
+  type PerfDiffHighlight,
+  type WatchersPhaseDisplay,
+} from './watchers-phase-display'
 
 type Primitive = string | number | boolean
 type Params = Record<string, Primitive>
@@ -198,6 +205,7 @@ type PerfDiff = {
       readonly beforeOnly: number
       readonly afterOnly: number
     }
+    readonly highlights?: ReadonlyArray<PerfDiffHighlight>
   }
   readonly suites: ReadonlyArray<{
     readonly id: string
@@ -205,6 +213,7 @@ type PerfDiff = {
     readonly budgetViolations?: ReadonlyArray<unknown>
     readonly evidenceDeltas?: ReadonlyArray<EvidenceDelta>
     readonly metricDeltas?: ReadonlyArray<MetricDeltaSummary>
+    readonly watchersPhaseDisplay?: WatchersPhaseDisplay
     readonly notes?: string
   }>
 }
@@ -1100,6 +1109,7 @@ const main = async (): Promise<void> => {
   let slicesAfterOnly = 0
 
   const suiteDiffs: Array<PerfDiff['suites'][number]> = []
+  const summaryHighlights: PerfDiffHighlight[] = []
 
   for (const suiteId of suiteIds) {
     const spec = suiteSpecById.get(suiteId)
@@ -1291,6 +1301,12 @@ const main = async (): Promise<void> => {
       })
     }
 
+    const watchersPhaseDisplay = buildWatchersPhaseDisplay(suiteId, evidenceDeltas)
+    const watchersPhaseHighlight = buildWatchersPhaseHighlight(watchersPhaseDisplay)
+    if (watchersPhaseHighlight) {
+      summaryHighlights.push(watchersPhaseHighlight)
+    }
+
     const metricDeltas = computeMetricDeltaSummaries(spec, beforeSuite, afterSuite)
 
     let notes: string | undefined
@@ -1311,12 +1327,15 @@ const main = async (): Promise<void> => {
       }
     }
 
+    notes = applyWatchersPhaseDisplayToNotes(notes, watchersPhaseDisplay)
+
     suiteDiffs.push({
       id: suiteId,
       thresholdDeltas: thresholdDeltas.length > 0 ? thresholdDeltas : undefined,
       budgetViolations: [],
       evidenceDeltas: evidenceDeltas.length > 0 ? evidenceDeltas : undefined,
       metricDeltas: metricDeltas.length > 0 ? metricDeltas : undefined,
+      watchersPhaseDisplay,
       notes,
     })
   }
@@ -1349,6 +1368,7 @@ const main = async (): Promise<void> => {
             afterOnly: slicesAfterOnly,
           }
         : undefined,
+      highlights: summaryHighlights.length > 0 ? summaryHighlights : undefined,
     },
     suites: suiteDiffs,
   }

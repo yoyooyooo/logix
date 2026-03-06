@@ -45,8 +45,8 @@
 - `runtimeStore.noTearing.tickNotify`：`S-4` 最小修复已吸收，`S-11` real probe 继续通过。
 - `form.listScopeCheck`：`S-11` real probe 继续通过。
 
-4. 剩余只保留 benchmark / 架构候选。
-- benchmark 候选：`S-2`。`S-12` 已把 `watchers.clickToPaint` 收紧成同 sample phase evidence；后续只剩解释链 / 展示层语义，不再需要继续塞 runtime cut。
+4. 剩余只保留架构候选。
+- `S-13` 已把 `watchers.clickToPaint` 的 same-sample phase evidence 提升到 diff / triage / artifact report 首屏；`S-2` 展示层线已收口，不再是待排期候选。
 - 架构候选：`R-2`，只有在出现新的产品级 SLA 或新的 native-anchor 证据时，才讨论 `TxnLanePolicy` API vNext。
 
 ## 四分法裁决
@@ -60,7 +60,7 @@
 
 - `watchers.clickToPaint`
 - 原因：它仍更像 browser floor / suite 语义混入，而不是 current-head 的 runtime blocker。
-- 裁决：`S-12` 已补齐同 sample phase evidence；若后续继续推进 perf，只做 `S-2` 的展示/汇总层收口，而不是先开 runtime 内核线。
+- 裁决：`S-12` 已补齐同 sample phase evidence，`S-13` 又把它提升到 `summary.highlights` / `suites[].watchersPhaseDisplay` / artifact `triage highlights` 首屏；后续禁止再用 `watchers.clickToPaint - watchers.clickToDomStable` 的跨 suite 聚合差值解释红样本。
 
 ### 3. 门禁 / tooling 注意项
 
@@ -86,8 +86,8 @@
 
 ### 可并行副线 A
 
-- `S-2`：`watchers.clickToPaint` 展示层 / 汇总层收口（phase evidence 已在 `S-12` 落地）。
-- 说明：它会改变 benchmark 语义，应始终放在独立 worktree 中处理。
+- 当前无默认 perf/tooling 副线；`S-2` 的展示层 / 汇总层收口已由 `S-13` 完成。
+- 若 future diff/report 再次丢失 paired phase 首屏展示，再单开新的 tooling worktree。
 
 ### 可并行副线 B
 

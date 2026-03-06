@@ -53,7 +53,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `R-1` | runtime 主线（已关闭） | `txnLanes.urgentBacklog` 在 `S-10` native-anchor 纠偏后，`mode=default/off` 的 `urgent.p95<=50ms` 都已过到 `steps=2000`；不再继续 queue-side runtime cut | 很高 | 中高 | 高 | 已关闭；仅在新证据下重开 | 暂不需要 |
 | `S-1` | 稳定性副线（已关闭） | `externalStore.ingest.tickNotify` broad residual 复核已完成 | 中 | 低到中 | 低 | 已关闭 | 不需要 |
-| `S-2` | benchmark 纠偏（已完成第二刀） | watchers 双轨语义 + paired phase evidence 已落地；后续仅剩解释链/展示层补完 | 中 | 中 | 中 | 已完成第二刀；如重开需独立 worktree | 不需要 |
+| `S-2` | benchmark 纠偏（已完成第三刀） | watchers 双轨语义 + paired phase evidence + display 首屏收口已落地；后续只在 report 漂移时重开 | 中 | 中 | 中 | 已完成第三刀；如重开需独立 worktree | 不需要 |
 | `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
 | `F-1` | 自动化工具（已完成） | `fabfile.py` 已转为现成工具，不再占用 backlog | 中 | 中 | 低 | 已完成 | 不需要 |
 | `S-4` | 验证解锁副线（已完成） | `RuntimeExternalStore delayed teardown` 最小修复已吸收，已从默认 blocker 列表移除 | 中 | 中 | 中 | 已完成 | 不需要 |
@@ -153,12 +153,13 @@ API 变动：
 - 当前不需要。
 - 只有复核后 residual 稳定复现，才考虑继续推进 `StateTrait.externalStore({ writeback })` 方向。
 
-### `S-2` · `watchers.clickToPaint` suite 语义纠偏（已完成第二刀）
+### `S-2` · `watchers.clickToPaint` suite 语义纠偏（已完成第三刀）
 
 状态：
 - 已于 `2026-03-06` 完成第一刀：双轨语义（`clickToDomStable` + `clickToPaint`）已合回主分支。
 - 已于 `2026-03-06` 完成第二刀：`S-12` 把 red sample 收紧成同 sample phase evidence（`clickToHandler / handlerToDomStable / domStableToPaintGap`）。
-- 当前不再是 runtime 主线；若要重开，仅限 benchmark 解释链/展示层继续收口。
+- 已于 `2026-03-06` 完成第三刀：`S-13` 把 paired phase evidence 提升到 diff / triage / artifact report 首屏，并明确禁止再用 `watchers.clickToPaint - watchers.clickToDomStable` 的跨 suite 聚合差值解释红样本。
+- 当前不再是 runtime 主线；解释链 / 展示层也已收口。若要重开，仅限新的 report drift / display 缺口。
 
 问题：
 - `watchers=1` 就已经超 `50ms`，且曲线非单调。
@@ -177,12 +178,11 @@ API 变动：
 - 需要统一 warmup / settle / click-to-paint 语义，并让 red sample 自带 phase evidence。
 - 已完成第一刀：拆成 `clickToDomStable` + `clickToPaint` 双轨。
 - 已完成第二刀：phase evidence 跟随单次 sample 落盘，不再依赖两条独立 suite 的聚合差值来解释超线。
+- 已完成第三刀：`summary.highlights` / `suites[].watchersPhaseDisplay` / artifact `triage highlights` 都会直接展示主要 phase，并把“禁止跨 suite 做减法”写成固定 guidance。
 
 主要落点：
-- `packages/logix-react/test/browser/watcher-browser-perf.test.tsx`
-- `packages/logix-react/src/internal/store/perfWorkloads.ts`
-- `packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
-- 需要时补 `packages/logix-react/test/browser/perf-boundaries/harness.ts`
+- 第一/二刀：`packages/logix-react/test/browser/watcher-browser-perf.test.tsx`、`packages/logix-react/src/internal/store/perfWorkloads.ts`、`packages/logix-react/test/browser/perf-boundaries/diagnostics-overhead.test.tsx`
+- 第三刀：`.codex/skills/logix-perf-evidence/scripts/diff.ts`、`.codex/skills/logix-perf-evidence/scripts/ci.interpret-artifact.ts`、`docs/perf/2026-03-06-s13-watchers-phase-display.md`
 
 并行/串行：
 - 语义上与 `R-1` 低冲突，可并行。
