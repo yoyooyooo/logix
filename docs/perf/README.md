@@ -52,3 +52,5 @@
   - J-1：`txnLanes.urgentBacklog` 改成显式 `mode(default/off)` 轴，broad matrix 不再隐式测 forced-off。
 - `2026-03-06-k1-react-strict-suspense-realpath.md`
   - K-1：`react.strictSuspenseJitter` 改成真实 state-level suspend + 单次 interaction 计时，移除旧的线性点击伪失败。
+- `2026-03-06-l1-txn-lanes-initial-chunk-1.md`
+  - L-1：`txnLanes` 在 `budgetMs<=1` 时把 non-urgent 首片缩到 1，`mode=default` 的 50ms 硬门从全灭提升到 `steps<=800` 可过。

@@ -982,7 +982,7 @@ export const make = <S, A, R = never>(
           // Perf/latency tradeoff:
           // - Smaller initial slices reduce worst-case urgent blocking while a nonUrgent backlog is being drained.
           // - Catch-up time is still bounded by maxLagMs and the yield policy.
-          const initialChunkSize = txnLanePolicy.budgetMs <= 1 ? 4 : 32
+          const initialChunkSize = txnLanePolicy.budgetMs <= 1 ? 1 : 32
           let chunkSize = Math.min(initialChunkSize, totalSteps)
           let yieldCount = 0
           let lastYieldAtMs = Date.now()
