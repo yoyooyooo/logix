@@ -70,6 +70,28 @@ description: 在 logix 仓库里识别当前性能瓶颈、区分真实瓶颈与
   - `下一刀`
 - 如果 2 分钟内还在扩散阅读范围，说明方向错了，应回到 current-head 证据重新裁剪。
 
+## 1.6) 显式 Subagent / Worktree 模式（用户明确要求时强制）
+
+当用户明确要求：
+- 用 subagent 推进
+- 每条线都在独立 worktree / 分支里实施
+- 主会话保持干净，只做协调/审查/合流
+
+则进入以下硬约束：
+
+1. **一条方向 = 一个 worktree + 一个分支 + 一个 subagent owner**。
+2. **主会话不直接写实现代码**：主会话只做识别、路由、审查、收口和合流。
+3. **只有低冲突方向允许并行**：
+   - benchmark / gate / automation 通常可并行。
+   - 任何会同时改 `ModuleRuntime.impl.ts` / `ModuleRuntime.txnLanePolicy.ts` / `RuntimeStore.ts` / `TickScheduler.ts` / `RuntimeExternalStore.ts` 的线，默认串行。
+4. **每条分支结束时，相对主分支只允许 1 个最终 HEAD 提交**：
+   - 成功：实现 + 证据 + docs/perf + 1 个收口提交。
+   - 放弃：docs/evidence-only + 1 个收口提交。
+5. **失败也必须提交**：失败方向不能只留在聊天里，必须固化为可检索的 docs/evidence-only 结论。
+6. **合流方式默认是单提交回主分支**：主会话审查后，只把该 worktree 的最终 1 个提交合回当前主分支，然后该线结束。
+
+这组规则只在用户明确要求 subagent/worktree 隔离时强制；未显式要求时，仍可由主 agent 直连实施。
+
 ## 2) 识别阶段：先做四分法，不要盲砍
 
 把每个问题先归入以下四类之一：
@@ -201,6 +223,7 @@ description: 在 logix 仓库里识别当前性能瓶颈、区分真实瓶颈与
 - `验证`
 - `提交`
 - `当前还剩什么`
+- 若是显式 subagent/worktree 模式，再补：`所在分支/worktree` 与 `是否已收口成相对主分支仅 1 个 HEAD 提交`
 
 ## 10) 深入阅读
 

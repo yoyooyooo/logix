@@ -56,6 +56,30 @@
           "description": "输出应包含 docs/perf 回写与清单更新要求。"
         }
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "我要求你用 subagent + worktree 并行推进剩余性能线，主会话保持干净。每条分支无论成功还是失败，收口时都必须相对主分支只保留 1 个最终 HEAD 提交，然后再合回当前主分支。",
+      "expected_output": "能明确进入显式 subagent/worktree 模式：一条方向一个 worktree/分支/owner，主会话只做协调与合流，并把失败方向也以 docs/evidence-only 的单提交方式收口。",
+      "files": [],
+      "assertions": [
+        {
+          "name": "enforces_worktree_ownership",
+          "description": "应明确一条方向对应一个独立 worktree/分支/subagent owner。"
+        },
+        {
+          "name": "keeps_main_session_clean",
+          "description": "应明确主会话不直接写实现代码，只做协调、审查和合流。"
+        },
+        {
+          "name": "requires_single_head_commit_on_close",
+          "description": "应明确每条分支收口时，相对主分支只允许一个最终 HEAD 提交。"
+        },
+        {
+          "name": "failure_also_commits",
+          "description": "应明确失败方向也必须落成 docs/evidence-only 的单提交结论。"
+        }
+      ]
     }
   ]
 }
