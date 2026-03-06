@@ -43,8 +43,9 @@
 - 结论：这条现在更像 benchmark / browser floor 问题，不宜继续把它当作 watcher scaling 的 runtime 主瓶颈。
 
 4. `converge.txnCommit / decision.p95<=0.5ms`
-- 失败来源是 `notApplicable`，不是超时或真实回归。
-- 结论：这是 gate 语义清理项，不是性能项。
+- `2026-03-06` 的 `S-3` 已完成局部清理：`decision` budget 拆到 auto-only suite `converge.txnCommit.autoDecision`。
+- `converge.txnCommit` 主 suite 不再把 full/dirty 的 `notApplicable` 记成失败。
+- 结论：这条已从 current-head 失败视图剥离；shared applicability 的一等语义仍留待后续统一收敛。
 
 ## 四分法裁决
 
@@ -63,8 +64,8 @@
 ### 3. 门禁表达错误
 
 - `converge.txnCommit / decision.p95<=0.5ms`
-- 原因：`reason=notApplicable`；属于不应出现在失败视图里的门禁噪声。
-- 裁决：后续应修 matrix / gate 表达，而不是继续做 converge 性能优化。
+- 状态：已由 `S-3` 做局部收口，`decision` gate 改成 auto-only suite，主 `converge.txnCommit` 不再出现 full/dirty 的 `reason=notApplicable`。
+- 裁决：当前不再需要继续做 converge 性能优化；若后续要统一 shared gate 语义，再单独推进 first-class applicability。
 
 ### 4. 已基本解决但仍需稳定性复核
 
@@ -98,12 +99,12 @@
 ### 3. unavailable / notApplicable 不是 matrix / gate 的一等语义
 
 表现：
-- `converge.txnCommit / decision.p95<=0.5ms` 现在仍在失败清单里出现 `reason=notApplicable`。
-- `decisionMissing` 和真实性能回归在视图层也容易混在一起。
+- `converge.txnCommit / decision.p95<=0.5ms` 这条已通过 `S-3` 的局部 split-suite 绕开，不再把 full/dirty 的 `reason=notApplicable` 混进失败清单。
+- 但 `decisionMissing` 与真实性能回归在 shared 视图层仍未完全拆开。
 
 为什么这是架构缺陷：
-- gate 系统没有把“无法比较 / 不适用 / 缺证据”建模成 first-class outcome。
-- 结果是 perf 红线里混入大量非性能噪声，拖慢真正的主线推进。
+- gate 系统还没有把“无法比较 / 不适用 / 缺证据”统一建模成 first-class outcome。
+- 当前只是先把 `converge` 这条噪声局部剥离，以免继续拖慢 runtime 主线。
 
 ### 4. current-head 真相源容易漂移
 
@@ -149,11 +150,11 @@
 ### 可并行副线 C
 
 - `converge.txnCommit` gate / matrix applicability 清理
-- 说明：这是证据系统清理，不依赖 `txnLanes` 或 `externalStore` 的内核实现。
+- 状态：已在 `2026-03-06` 用局部 split-suite 收口，不再阻塞主线。
 - 主要落点：
   - `.codex/skills/logix-perf-evidence/assets/matrix.json`
   - `packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx`
-  - 必要时补充 `logix-perf-evidence` 的 validate / report 视图逻辑
+  - 如后续要 shared 化，再补 `logix-perf-evidence` 的 validate / report 视图逻辑
 
 ## 暂不建议先做的项
 
@@ -161,7 +162,7 @@
 - 先修 suite 语义，再决定要不要继续动 runtime。
 
 2. `converge.txnCommit`
-- 先修 gate 表达，把 `notApplicable` 从失败视图里剥离。
+- `S-3` 已完成，当前无需继续处理；后续若要统一 shared applicability，再单独立项。
 
 3. `externalStore.ingest.tickNotify`
 - targeted 已过到 `watchers=512`；当前更像 broad residual，不是最该先砍的主线。

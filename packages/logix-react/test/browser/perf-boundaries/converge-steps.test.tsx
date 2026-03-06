@@ -11,6 +11,7 @@ import {
 } from './converge-runtime.js'
 
 const suite = (matrix.suites as any[]).find((s) => s.id === 'converge.txnCommit') as any
+const autoDecisionSuite = (matrix.suites as any[]).find((s) => s.id === 'converge.txnCommit.autoDecision') as any
 
 const stepsLevels = suite.axes.steps as number[]
 const dirtyRootsRatioLevels = suite.axes.dirtyRootsRatio as number[]
@@ -29,7 +30,7 @@ const resolveProfileId = (): string => {
 
 const TEST_TIMEOUT_MS = Math.max(
   30_000,
-  timeoutMs * stepsLevels.length * dirtyRootsRatioLevels.length * convergeModeLevels.length,
+  timeoutMs * stepsLevels.length * dirtyRootsRatioLevels.length * (convergeModeLevels.length + 1),
 )
 
 const SAMPLE_BATCH = 50
@@ -42,7 +43,111 @@ test(
       const controlPlane = readConvergeControlPlaneFromEnv()
       const maxSteps = stepsLevels[stepsLevels.length - 1]
       const autoRatioBudgetId = 'auto<=full*1.05'
+      const autoDecisionBudgetId = 'decision.p95<=0.5ms'
       const runtimeByKey = new Map<string, ConvergeRuntime>()
+
+      const collectConvergePoint = async (args: {
+        readonly convergeMode: 'full' | 'dirty' | 'auto'
+        readonly steps: number
+        readonly dirtyRootsRatio: number
+      }) => {
+        const dirtyRoots = Math.max(1, Math.ceil(args.steps * args.dirtyRootsRatio))
+        const key = `${args.convergeMode}:${args.steps}`
+        const cached =
+          runtimeByKey.get(key) ??
+          makeConvergeRuntime(args.steps, args.convergeMode, { captureDecision: true })
+        runtimeByKey.set(key, cached)
+
+        const start = performance.now()
+        await cached.runtime.runPromise(
+          Effect.gen(function* () {
+            for (let i = 0; i < SAMPLE_BATCH; i++) {
+              cached.clearLastConvergeDecision()
+              yield* runConvergeTxnCommitWithDiagnosticsLevel(cached, dirtyRoots, 'off') as Effect.Effect<
+                void,
+                never,
+                any
+              >
+            }
+          }) as Effect.Effect<void, never, any>,
+        )
+        const end = performance.now()
+        const decision = cached.getLastConvergeDecision() as any
+        const stepStats = (decision && typeof decision === "object" ? decision.stepStats : undefined) as any
+
+        const totalSteps =
+          typeof stepStats?.totalSteps === 'number' && Number.isFinite(stepStats.totalSteps)
+            ? stepStats.totalSteps
+            : { unavailableReason: 'decisionMissing' }
+
+        const executedSteps =
+          typeof stepStats?.executedSteps === 'number' && Number.isFinite(stepStats.executedSteps)
+            ? stepStats.executedSteps
+            : { unavailableReason: 'decisionMissing' }
+
+        const affectedSteps =
+          typeof stepStats?.affectedSteps === 'number' && Number.isFinite(stepStats.affectedSteps)
+            ? stepStats.affectedSteps
+            : typeof stepStats?.totalSteps === 'number' && Number.isFinite(stepStats.totalSteps)
+              ? stepStats.totalSteps
+              : { unavailableReason: 'decisionMissing' }
+
+        const executedMode =
+          typeof decision?.executedMode === 'string' && decision.executedMode.length > 0
+            ? decision.executedMode
+            : { unavailableReason: 'decisionMissing' }
+
+        const requestedMode =
+          typeof decision?.requestedMode === 'string' && decision.requestedMode.length > 0
+            ? decision.requestedMode
+            : { unavailableReason: 'decisionMissing' }
+
+        const outcome =
+          typeof decision?.outcome === 'string' && decision.outcome.length > 0
+            ? decision.outcome
+            : { unavailableReason: 'decisionMissing' }
+
+        const reasons =
+          Array.isArray(decision?.reasons) && decision.reasons.every((x: unknown) => typeof x === 'string')
+            ? (decision.reasons as string[]).join(',')
+            : { unavailableReason: 'decisionMissing' }
+
+        const executionDurationMs =
+          typeof decision?.executionDurationMs === 'number' && Number.isFinite(decision.executionDurationMs)
+            ? decision.executionDurationMs
+            : { unavailableReason: 'decisionMissing' }
+
+        const decisionDurationMs =
+          args.convergeMode === 'auto'
+            ? typeof decision?.decisionDurationMs === 'number' && Number.isFinite(decision.decisionDurationMs)
+              ? decision.decisionDurationMs
+              : { unavailableReason: 'decisionMissing' }
+            : { unavailableReason: 'notApplicable' }
+
+        return {
+          metrics: {
+            'runtime.txnCommitMs': (end - start) / SAMPLE_BATCH,
+            'runtime.decisionMs':
+              args.convergeMode === 'auto'
+                ? typeof decision?.decisionDurationMs === 'number'
+                  ? decision.decisionDurationMs
+                  : { unavailableReason: 'decisionMissing' }
+                : { unavailableReason: 'notApplicable' },
+          },
+          evidence: {
+            'converge.requestedMode': requestedMode,
+            'converge.executedMode': executedMode,
+            'converge.outcome': outcome,
+            'converge.executedSteps': executedSteps,
+            'converge.affectedSteps': affectedSteps,
+            'converge.totalSteps': totalSteps,
+            'converge.reasons': reasons,
+            'converge.executionDurationMs': executionDurationMs,
+            'converge.decisionDurationMs': decisionDurationMs,
+          },
+        }
+      }
+
       try {
         const { points, thresholds } = await runMatrixSuite(
           suite,
@@ -51,102 +156,35 @@ test(
             const convergeMode = params.convergeMode as 'full' | 'dirty' | 'auto'
             const steps = params.steps as number
             const dirtyRootsRatio = params.dirtyRootsRatio as number
-            const dirtyRoots = Math.max(1, Math.ceil(steps * dirtyRootsRatio))
 
-            const key = `${convergeMode}:${steps}`
-            const cached =
-              runtimeByKey.get(key) ??
-              makeConvergeRuntime(steps, convergeMode, { captureDecision: true })
-            runtimeByKey.set(key, cached)
+            return collectConvergePoint({ convergeMode, steps, dirtyRootsRatio })
+          },
+          {
+            enrichParams: (params) => {
+              const steps = params.steps as number
+              const dirtyRootsRatio = params.dirtyRootsRatio as number
+              return {
+                ...params,
+                dirtyRoots: Math.max(1, Math.ceil(steps * dirtyRootsRatio)),
+              }
+            },
+            cutOffOn: ['timeout'],
+          },
+        )
 
-            const start = performance.now()
-            await cached.runtime.runPromise(
-              Effect.gen(function* () {
-                for (let i = 0; i < SAMPLE_BATCH; i++) {
-                  cached.clearLastConvergeDecision()
-                  yield* runConvergeTxnCommitWithDiagnosticsLevel(cached, dirtyRoots, 'off') as Effect.Effect<
-                    void,
-                    never,
-                    any
-                  >
-                }
-              }) as Effect.Effect<void, never, any>,
-            )
-            const end = performance.now()
-            const decision = cached.getLastConvergeDecision() as any
-
-            const stepStats = (decision && typeof decision === 'object' ? decision.stepStats : undefined) as any
-
-            const totalSteps =
-              typeof stepStats?.totalSteps === 'number' && Number.isFinite(stepStats.totalSteps)
-                ? stepStats.totalSteps
-                : { unavailableReason: 'decisionMissing' }
-
-            const executedSteps =
-              typeof stepStats?.executedSteps === 'number' && Number.isFinite(stepStats.executedSteps)
-                ? stepStats.executedSteps
-                : { unavailableReason: 'decisionMissing' }
-
-            const affectedSteps =
-              typeof stepStats?.affectedSteps === 'number' && Number.isFinite(stepStats.affectedSteps)
-                ? stepStats.affectedSteps
-                : typeof stepStats?.totalSteps === 'number' && Number.isFinite(stepStats.totalSteps)
-                  ? stepStats.totalSteps
-                  : { unavailableReason: 'decisionMissing' }
-
-            const executedMode =
-              typeof decision?.executedMode === 'string' && decision.executedMode.length > 0
-                ? decision.executedMode
-                : { unavailableReason: 'decisionMissing' }
-
-            const requestedMode =
-              typeof decision?.requestedMode === 'string' && decision.requestedMode.length > 0
-                ? decision.requestedMode
-                : { unavailableReason: 'decisionMissing' }
-
-            const outcome =
-              typeof decision?.outcome === 'string' && decision.outcome.length > 0
-                ? decision.outcome
-                : { unavailableReason: 'decisionMissing' }
-
-            const reasons =
-              Array.isArray(decision?.reasons) && decision.reasons.every((x: unknown) => typeof x === 'string')
-                ? (decision.reasons as string[]).join(',')
-                : { unavailableReason: 'decisionMissing' }
-
-            const executionDurationMs =
-              typeof decision?.executionDurationMs === 'number' && Number.isFinite(decision.executionDurationMs)
-                ? decision.executionDurationMs
-                : { unavailableReason: 'decisionMissing' }
-
-            const decisionDurationMs =
-              convergeMode === 'auto'
-                ? typeof decision?.decisionDurationMs === 'number' && Number.isFinite(decision.decisionDurationMs)
-                  ? decision.decisionDurationMs
-                  : { unavailableReason: 'decisionMissing' }
-                : { unavailableReason: 'notApplicable' }
+        const { points: autoDecisionPoints, thresholds: autoDecisionThresholds } = await runMatrixSuite(
+          autoDecisionSuite,
+          { runs, warmupDiscard, timeoutMs },
+          async (params) => {
+            const steps = params.steps as number
+            const dirtyRootsRatio = params.dirtyRootsRatio as number
+            const base = await collectConvergePoint({ convergeMode: 'auto', steps, dirtyRootsRatio })
 
             return {
               metrics: {
-                'runtime.txnCommitMs': (end - start) / SAMPLE_BATCH,
-                'runtime.decisionMs':
-                  convergeMode === 'auto'
-                    ? typeof decision?.decisionDurationMs === 'number'
-                      ? decision.decisionDurationMs
-                      : { unavailableReason: 'decisionMissing' }
-                    : { unavailableReason: 'notApplicable' },
+                'runtime.decisionMs': base.metrics['runtime.decisionMs'],
               },
-              evidence: {
-                'converge.requestedMode': requestedMode,
-                'converge.executedMode': executedMode,
-                'converge.outcome': outcome,
-                'converge.executedSteps': executedSteps,
-                'converge.affectedSteps': affectedSteps,
-                'converge.totalSteps': totalSteps,
-                'converge.reasons': reasons,
-                'converge.executionDurationMs': executionDurationMs,
-                'converge.decisionDurationMs': decisionDurationMs,
-              },
+              evidence: base.evidence,
             }
           },
           {
@@ -176,6 +214,17 @@ test(
               (p.params as any).dirtyRootsRatio === args.dirtyRootsRatio,
           )
           const metric = point?.metrics.find((m: any) => m.name === 'runtime.txnCommitMs')
+          return metric && metric.status === 'ok' ? metric.stats.p95Ms : undefined
+        }
+
+        const readDecisionP95 = (args: { readonly steps: number; readonly dirtyRootsRatio: number }): number | undefined => {
+          const point = autoDecisionPoints.find(
+            (p) =>
+              p.status === 'ok' &&
+              (p.params as any).steps === args.steps &&
+              (p.params as any).dirtyRootsRatio === args.dirtyRootsRatio,
+          )
+          const metric = point?.metrics.find((m: any) => m.name === 'runtime.decisionMs')
           return metric && metric.status === 'ok' ? metric.stats.p95Ms : undefined
         }
 
@@ -214,15 +263,48 @@ test(
             })
             .join('\n')
 
+        const formatDecisionGateFailures = (failures: ReadonlyArray<any>): string =>
+          failures
+            .map((t) => {
+              const dirtyRootsRatio = (t.where as any)?.dirtyRootsRatio
+              const level = typeof t.firstFailLevel === 'number' ? t.firstFailLevel : undefined
+              const decisionP95 =
+                typeof dirtyRootsRatio === 'number' && typeof level === 'number'
+                  ? readDecisionP95({ steps: level, dirtyRootsRatio })
+                  : undefined
+
+              const decisionSummary =
+                typeof decisionP95 === 'number' ? ` p95(decision)=${String(decisionP95)}` : ''
+
+              return (
+                `where=${JSON.stringify(t.where ?? {})} maxLevel=${String(t.maxLevel)} firstFail=${String(
+                  t.firstFailLevel,
+                )} reason=${String(t.reason)}` + decisionSummary
+              )
+            })
+            .join('\n')
+
         const autoRatioThresholds = thresholds.filter((t) => (t.budget as any)?.id === autoRatioBudgetId)
         expect(autoRatioThresholds.length).toBeGreaterThan(0)
         const gateFailures = autoRatioThresholds.filter((t) => t.maxLevel !== maxSteps)
+
+        const autoDecisionHardGateThresholds = autoDecisionThresholds.filter(
+          (t) => (t.budget as any)?.id === autoDecisionBudgetId,
+        )
+        expect(autoDecisionHardGateThresholds.length).toBeGreaterThan(0)
+        const autoDecisionFailures = autoDecisionHardGateThresholds.filter((t) => t.maxLevel !== maxSteps)
 
         const hardGatesEnabled = import.meta.env.VITE_LOGIX_PERF_HARD_GATES !== 'off'
         if (hardGatesEnabled && gateFailures.length > 0) {
           throw new Error(
             `perf hard gate failed: ${autoRatioBudgetId} expected maxLevel=${String(maxSteps)}\n` +
               formatGateFailures(points, gateFailures),
+          )
+        }
+        if (hardGatesEnabled && autoDecisionFailures.length > 0) {
+          throw new Error(
+            `perf hard gate failed: ${autoDecisionBudgetId} expected maxLevel=${String(maxSteps)}\n` +
+              formatDecisionGateFailures(autoDecisionFailures),
           )
         }
 
@@ -260,7 +342,9 @@ test(
             : { convergeMode: 'auto' as const, steps: 2000, dirtyRootsRatio: 0.05 }
 
         const overheadDirtyRoots = Math.max(1, Math.ceil(overheadScenario.steps * overheadScenario.dirtyRootsRatio))
-        const overheadRuntime = makeConvergeRuntime(overheadScenario.steps, overheadScenario.convergeMode, { captureDecision: true })
+        const overheadRuntime = makeConvergeRuntime(overheadScenario.steps, overheadScenario.convergeMode, {
+          captureDecision: true,
+        })
 
         try {
           for (const entry of overheadPoints) {
@@ -393,6 +477,18 @@ test(
               points,
               thresholds,
               comparisons: comparisons.length > 0 ? comparisons : undefined,
+            },
+            {
+              id: autoDecisionSuite.id,
+              title: autoDecisionSuite.title,
+              priority: autoDecisionSuite.priority,
+              primaryAxis: autoDecisionSuite.primaryAxis,
+              budgets: autoDecisionSuite.budgets,
+              metricCategories: {
+                'runtime.decisionMs': 'runtime',
+              },
+              points: autoDecisionPoints,
+              thresholds: autoDecisionThresholds,
             },
           ],
         }

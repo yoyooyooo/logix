@@ -109,12 +109,6 @@
           "minDeltaMs": 0.1,
           "numeratorRef": "convergeMode=auto",
           "denominatorRef": "convergeMode=full"
-        },
-        {
-          "id": "decision.p95<=0.5ms",
-          "type": "absolute",
-          "metric": "runtime.decisionMs",
-          "p95Ms": 0.5
         }
       ],
       "baselineBudgetId": "commit.p95<=50ms",
@@ -124,7 +118,45 @@
         { "steps": 800, "dirtyRootsRatio": 0.05, "convergeMode": "auto" },
         { "steps": 2000, "dirtyRootsRatio": 0.75, "convergeMode": "full" }
       ],
-      "notes": "对齐 013 的写入分布口径（通过 dirtyRootsRatio 派生 dirtyRoots）；auto<=full*1.05 是 runtime 类硬门（默认在 DiagnosticsLevel=off 下跑）；light|full 仅记录开销曲线；decisionMs 可先占位，不可用时必须显式标注 unavailable + reason。"
+      "notes": "对齐 013 的写入分布口径（通过 dirtyRootsRatio 派生 dirtyRoots）；auto<=full*1.05 是 runtime 类硬门（默认在 DiagnosticsLevel=off 下跑）；light|full 仅记录开销曲线；decisionMs 继续采样，但 auto-only 的 decision gate 单独拆到 converge.txnCommit.autoDecision，避免 full/dirty 的 notApplicable 混进失败视图。"
+    },
+    {
+      "id": "converge.txnCommit.autoDecision",
+      "priority": "P1",
+      "title": "converge: auto decision / txn commit",
+      "primaryAxis": "steps",
+      "axes": {
+        "steps": [200, 400, 600, 800, 1200, 1600, 2000],
+        "dirtyRootsRatio": [0.005, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.25, 0.33, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1]
+      },
+      "derivedParams": [
+        {
+          "name": "dirtyRoots",
+          "rule": "dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))"
+        }
+      ],
+      "metrics": ["runtime.decisionMs"],
+      "budgets": [
+        {
+          "id": "decision.p95<=0.5ms",
+          "type": "absolute",
+          "metric": "runtime.decisionMs",
+          "p95Ms": 0.5
+        }
+      ],
+      "baselineBudgetId": "decision.p95<=0.5ms",
+      "requiredEvidence": [
+        "converge.requestedMode",
+        "converge.executedMode",
+        "converge.outcome",
+        "converge.reasons",
+        "converge.decisionDurationMs"
+      ],
+      "baselinePoints": [
+        { "steps": 800, "dirtyRootsRatio": 0.05 },
+        { "steps": 2000, "dirtyRootsRatio": 1 }
+      ],
+      "notes": "只覆盖 auto 路径的 decision budget，避免在 full/dirty 上把 runtime.decisionMs=notApplicable 误记为 gate 失败。"
     },
     {
       "id": "converge.timeSlicing.txnCommit",

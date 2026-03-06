@@ -34,6 +34,7 @@
 - [x] O-2：纯 state action watcher 直接写 draft（watcher→action direct writeback）；`watchers=512` 进一步压到 `~36-43ms`，strict 下 `50ms` 线打穿到 `512`。
 - [x] P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时（evidence correction）；去掉 timer 排队噪声，`mode=default, steps=2000` 已进 `50ms`。
 - [x] Q-1：`converge auto->full (near_full)` 改成 slim decision summary（保留 evidence、去掉重资产）；`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
+- [x] S-3：`converge` gate / matrix applicability 局部清理；`decision.p95<=0.5ms` 拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 计入失败视图。
 - [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门）。
 
 ## 1. 目标状态（一次性收敛）
@@ -41,7 +42,7 @@
 1. `txnLanes.urgentBacklog` 的 `urgent.p95<=50ms` 在 `mode=default/off` 下稳定通过到 `steps=2000`。
 2. `externalStore.ingest.tickNotify` 的 `full/off<=1.25` broad matrix 稳定通过到 `watchers=512`。
 3. `watchers.clickToPaint` 不再把 browser floor / suite 语义噪声误记为 watcher runtime 回归。
-4. `converge.txnCommit` 的 `reason=notApplicable` 不再出现在失败视图。
+4. `converge.txnCommit` 的 full/dirty `reason=notApplicable` 已经从失败视图剥离；`decision` gate 改由 auto-only suite 承担。
 5. Runtime 配置语义去重：诊断配置单一入口，不再分散在多处。
 
 
@@ -53,7 +54,7 @@
 1. 真实运行时瓶颈：`txnLanes.urgentBacklog`。它在 broad 与 targeted 都仍然卡在 `urgent.p95<=50ms`，是 current-head 唯一应继续优先砍的 runtime 主线。
 2. 已基本解决但仍需稳定性复核：`externalStore.ingest.tickNotify / full-off`。targeted 已过到 `watchers=512`，broad 只剩 `256` 单点失守；先保留为第二优先级稳定性项。
 3. 证据伪影：`watchers.clickToPaint`。`watchers=1` 已超线且曲线非单调，先视为 suite 语义问题，不再优先往 runtime 继续塞 watcher 优化。
-4. 门禁噪声：`converge.txnCommit / decision.p95<=0.5ms` 的 `reason=notApplicable` 不计入真实性能失败。
+4. 门禁噪声：`converge.txnCommit / decision.p95<=0.5ms` 已通过 S-3 局部清理；当前不再把 full/dirty 的 `reason=notApplicable` 计入真实性能失败。
 
 当前唯一下一刀：
 - `R-1：txnLanes backlog policy split`。
@@ -271,7 +272,7 @@ TraitLifecycle.scopedValidate($, {
 
 5. 证据卫生门：
 - `watchers.clickToPaint` 若仍出现 `watchers=1` 已超线且曲线非单调，先按 suite 语义问题处理。
-- `converge.txnCommit` 的 `reason=notApplicable` 不计入真实性能失败。
+- `converge.txnCommit` 的 full/dirty `reason=notApplicable` 已通过 S-3 split-suite 清理，不再计入真实性能失败。
 
 6. 语义硬门：
 - 事务窗口禁 IO。

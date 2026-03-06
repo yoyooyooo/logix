@@ -32,7 +32,7 @@
 | `R-1` | 真实 runtime 主线 | `txnLanes.urgentBacklog` 仍卡 `urgent.p95<=50ms` | 很高 | 中高 | 高 | 主线串行 | 暂不需要 |
 | `S-1` | 稳定性副线（已完成） | `externalStore.ingest.tickNotify` broad residual 复核 | 中 | 低到中 | 低 | 已关闭 | 不需要 |
 | `S-2` | benchmark 纠偏 | `watchers.clickToPaint` 混入 browser floor | 中 | 中 | 中 | 可并行，但应独立 worktree | 不需要 |
-| `S-3` | gate/matrix 清理 | `converge decision` 的 `notApplicable` 仍进失败视图 | 中 | 低 | 低 | 可并行 | 不需要 |
+| `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
 
 ## 任务详情
@@ -144,9 +144,12 @@ API 变动：
 
 ### `S-3` · `converge` gate / matrix applicability 清理
 
+状态：
+- 已完成（`2026-03-06`，见 `docs/perf/2026-03-06-s3-converge-gate-applicability.md`）。
+- `decision` gate 已拆到 auto-only suite `converge.txnCommit.autoDecision`；主 `converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记成失败。
+
 问题：
-- `converge.txnCommit / decision.p95<=0.5ms` 的 `reason=notApplicable` 仍出现在失败视图。
-- 这是 gate/matrix 噪声，不是 runtime 退化。
+- 原问题已收口；当前剩余的 shared 级别工作只是“让 applicability 成为汇总层的一等语义”。
 
 架构缺陷：
 - `notApplicable` / `decisionMissing` 不是汇总视图中的一等语义。
@@ -158,7 +161,7 @@ API 变动：
 
 实施成本：
 - 低。
-- 主要是 matrix/test/report 语义调整。
+- 本次通过 matrix + test 的局部 split-suite 收口，暂未动 shared harness。
 
 主要落点：
 - `packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx`
@@ -166,8 +169,8 @@ API 变动：
 - 必要时补 `logix-perf-evidence` 的汇总脚本
 
 并行/串行：
-- 与 `R-1`、`S-1`、`S-2` 都低冲突，可并行。
-- 不必占用主线时段。
+- 已完成，不再占用主线时段。
+- 若未来要 shared 化 applicability，可继续与 `R-1` 并行，但需另开独立小刀。
 
 API 变动：
 - 不需要。
