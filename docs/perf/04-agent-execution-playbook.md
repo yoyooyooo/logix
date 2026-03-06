@@ -30,11 +30,14 @@
 
 1. 先看 `06-current-head-triage.md`，确认这轮是在做真实 runtime 刀、证据纠偏，还是 gate 清理。
 2. 再看 `07-optimization-backlog-and-routing.md`，确认这轮任务是主线、低冲突副线，还是必须独立 worktree 的副线。
-3. 默认只做一个 next cut：当前主线是 `R-1：txnLanes backlog policy split`。
-4. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
-5. 只有当 `R-1` 明确无稳定收益，才回到 `externalStore` 的 broad residual 做第二优先级复核。
-6. `S-4` 已于 `2026-03-06` 用 `RuntimeExternalStore delayed teardown` 完成最小修复；若再复现 multi-instance isolation，优先从同 tick unsubscribe/resubscribe 时序重新排查。
-7. `S-5` 已于 `2026-03-06` 复核：`react.strictSuspenseJitter` 在主分支环境可直接跑通；除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不要再把它当 broad/full collect 的默认阻塞项。
+3. 默认只做一个 next cut：当前唯一活跃主线是 `R-1 v2：txnLanes urgent-aware handoff`。
+4. `F-1` 已完成；需要查看 backlog/routing 任务时，直接用 `python3 fabfile.py list-tasks`、`python3 fabfile.py show-task R-1`、`python3 fabfile.py plan-parallel`。
+5. `S-2` 已完成第一刀（`clickToDomStable` + `clickToPaint` 双轨）；除非要继续补 benchmark 解释链，否则不要再把它升级回 runtime 主线。
+6. `startup-phase` 显式切面只保留 checkpoint 结论，不单独落 `D-1` 日期记录；不要把 startup cap 直接当正式 runtime cut。
+7. 先跑与该刀最贴边的 targeted tests / targeted perf，再决定要不要补 broader matrix。
+8. 只有当 `R-1 v2` 明确无稳定收益，才考虑是否重开 `S-2` 的后续展示层收口，或升级到 `R-2`。
+9. `S-4` 已于 `2026-03-06` 用 `RuntimeExternalStore delayed teardown` 完成最小修复；若再复现 multi-instance isolation，优先从同 tick unsubscribe/resubscribe 时序重新排查。
+10. `S-5` 已于 `2026-03-06` 复核关闭：`react.strictSuspenseJitter` 在主分支环境可直接跑通；除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不要再把它当 broad/full collect 的默认阻塞项。
 
 ## 3. 复测命令模板
 
@@ -70,6 +73,7 @@
 4. 证据卫生门：
 - `watchers.clickToPaint` 若仍表现为 `watchers=1` 已超线且曲线非单调，先判为 suite 语义问题，不直接下 runtime 回归结论。
 - `converge.txnCommit` 的 `reason=notApplicable` 不计入真实性能失败。
+- `react.strictSuspenseJitter` 若只在单个 worktree/browser 首轮预热失败，先判为环境/预热噪声，不直接升级成 runtime 问题。
 
 5. 稳定性门：
 - quick 至少 3 轮，按中位数结论判定。

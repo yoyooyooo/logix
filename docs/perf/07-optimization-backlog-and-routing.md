@@ -29,17 +29,23 @@
 
 | ID | 类别 | 问题 | 预期收益 | 成本 | 冲突风险 | 并行策略 | API 变动 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `R-1` | 真实 runtime 主线 | `txnLanes.urgentBacklog` 仍卡 `urgent.p95<=50ms` | 很高 | 中高 | 高 | 主线串行 | 暂不需要 |
-| `S-1` | 稳定性副线（已完成） | `externalStore.ingest.tickNotify` broad residual 复核 | 中 | 低到中 | 低 | 已关闭 | 不需要 |
-| `S-2` | benchmark 纠偏 | `watchers.clickToPaint` 混入 browser floor | 中 | 中 | 中 | 可并行，但应独立 worktree | 不需要 |
+| `R-1` | 真实 runtime 主线（活跃：v2） | `txnLanes.urgentBacklog` 仍卡 `urgent.p95<=50ms`；下一刀是 `urgent-aware handoff` | 很高 | 中高 | 高 | 主线串行 | 暂不需要 |
+| `S-1` | 稳定性副线（已关闭） | `externalStore.ingest.tickNotify` broad residual 复核已完成 | 中 | 低到中 | 低 | 已关闭 | 不需要 |
+| `S-2` | benchmark 纠偏（已完成第一刀） | watchers 双轨语义已落地；后续仅剩解释链/展示层补完 | 中 | 中 | 中 | 已完成第一刀；如重开需独立 worktree | 不需要 |
 | `S-3` | gate/matrix 清理 | 已收口：`decision` gate 已拆到 auto-only suite，`converge.txnCommit` 不再把 full/dirty 的 `notApplicable` 记为失败 | 中 | 低 | 低 | 可并行 | 不需要 |
+| `F-1` | 自动化副线（已完成） | 最小可用 perf `Fabfile` router 已落地 | 中 | 中 | 低 | 已完成 | 不需要 |
+| `S-4` | 验证解锁副线（已完成） | `RuntimeExternalStore delayed teardown` 最小修复已落地，`runtime-store-no-tearing` 不再是默认 blocker | 中 | 中 | 中 | 已完成 | 不需要 |
+| `S-5` | 验证解锁副线（已关闭） | `react.strictSuspenseJitter` 主分支环境可跑通，审计后以 docs/evidence-only 关闭 | 中 | 低 | 低 | 已关闭 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 必须在 `R-1` 之后 | 需要 |
-| `F-1` | 自动化副线 | 将 `07` 的 backlog/routing 落成 `Fabfile` 任务图 | 中 | 中 | 低 | 可并行 | 不需要 |
-| `S-4` | 验证解锁副线（已完成） | 已完成审计：current-head 未复现 `runtime-store-no-tearing` 多实例隔离问题，关闭为 stale blocker / evidence drift | 中 | 低 | 低 | 已关闭 | 不需要 |
 
 ## 任务详情
 
-### `R-1` · `txnLanes` backlog policy split
+### `R-1` · `txnLanes` backlog policy split（当前活跃：v2 urgent-aware handoff）
+
+状态：
+- 当前唯一活跃主线。
+- `2026-03-06` 的 blind first-host-yield phase split 已判失败；下一刀改走 `urgent-aware handoff`。
+- `startup-phase` 显式切面目前只保留为 checkpoint 结论，不单独落 `D-1` 日期记录；当前仍在 `agent/r1-txn-lanes-policy-split-v2` worktree 里继续推进 `R-1 v2`。
 
 问题：
 - `txnLanes.urgentBacklog` 在 broad 与 targeted 都仍然卡在 `urgent.p95<=50ms`。
@@ -72,11 +78,17 @@
 
 API 变动：
 - 当前不需要。
+<<<<<<< HEAD
 - 下一轮仍优先沿 `txnQueue snapshot -> urgent-aware handoff` 收口，不要重复 blind first-host-yield。
 - `2026-03-06` 的显式 startup-phase 版在 3/3 quick audit 回归，见 `docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`；不要把 startup cap 直接固化为正式 policy。
 - 只有当 queue-snapshot 路线仍无法稳定过线，才升级到 `R-2`。
 - 下一轮仍可继续 `urgent-aware` 主线，但不要重复 blind first-host-yield，也不要重复这版 handoff-lite。
 - 只有当更高层的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
+=======
+- 当前活跃方案就是 `urgent-aware handoff`，不要重复 blind first-host-yield。
+- 不要把 startup cap / startup phase checkpoint 直接固化成正式 runtime policy。
+- 只有当 `R-1 v2` 的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
+>>>>>>> 2935c015 (docs(perf): refresh d1 routing status)
 
 ### `S-1` · `externalStore` broad residual 复核（已完成）
 
@@ -121,6 +133,10 @@ API 变动：
 - 只有复核后 residual 稳定复现，才考虑继续推进 `StateTrait.externalStore({ writeback })` 方向。
 
 ### `S-2` · `watchers.clickToPaint` suite 语义纠偏（已完成第一刀）
+
+状态：
+- 已于 `2026-03-06` 完成第一刀，双轨语义（`clickToDomStable` + `clickToPaint`）已合回主分支。
+- 当前不再是 runtime 主线；若要重开，仅限 benchmark 解释链/展示层继续收口。
 
 问题：
 - `watchers=1` 就已经超 `50ms`，且曲线非单调。
@@ -185,7 +201,11 @@ API 变动：
 API 变动：
 - 不需要。
 
-### `S-5` · `react.strictSuspenseJitter` refresh unblock（已完成）
+### `S-5` · `react.strictSuspenseJitter` refresh unblock（已关闭）
+
+状态：
+- 已于 `2026-03-06` 在主分支环境复核通过，并以 docs/evidence-only 方式关闭。
+- 除非 clean/comparable 环境再次稳定复现导入/运行失败，否则不再占用并行槽位。
 
 问题：
 - `S-4` 关闭后，broad/full collect 的首个 blocker 已经转移到 `react.strictSuspenseJitter` 的导入/运行失败。
@@ -199,8 +219,8 @@ API 变动：
 - 不直接提速 runtime，但能继续恢复 broad/full collect 的可用性。
 
 实施成本：
-- 中等。
-- 先从测试/浏览器导入链路排障，不默认触碰 runtime core。
+- 已完成。
+- 本轮仅做主分支环境复核与 docs 回写，不保留额外配置改动。
 
 主要落点：
 - `packages/logix-react/test/browser/perf-boundaries/react-strict-suspense-jitter.test.tsx`
@@ -208,13 +228,17 @@ API 变动：
 - 对应 `docs/perf/*` 日期记录与 `07` 回写
 
 并行/串行：
-- 与 `R-1`、`F-1`、`S-2` 低冲突，可并行。
-- 若定位结果要求改 React/runtime 适配层，再单独评估冲突。
+- 已关闭，不再单独排期。
+- 若未来重开，先区分 worktree/browser 预热噪声与真实代码问题，再决定是否触碰 React/runtime 适配层。
 
 API 变动：
 - 不需要。
 
-### `F-1` · `Fabfile` 自动化编排
+### `F-1` · `Fabfile` 自动化编排（已完成）
+
+状态：
+- 已于 `2026-03-06` 落成最小可用 perf `fabfile.py`。
+- 当前不再是活跃副线；需要路由/排期时直接复用现成命令。
 
 问题：
 - `07` 已经把 perf 任务拆成 `task_id/kind/priority/conflict_level/parallelizable/requires_worktree/files/verify_commands/next_gate`。
@@ -228,8 +252,8 @@ API 变动：
 - 不直接提速 runtime，但能把后续“多 worktree + 多 subagent + 一刀一提交”的执行成本显著压低。
 
 实施成本：
-- 中等。
-- 主要是新增 `fabfile.py`/辅助脚本，不触碰 runtime 内核。
+- 已完成。
+- 本轮落的是最小可用 router，不触碰 runtime 内核。
 
 主要落点：
 - `fabfile.py`
@@ -237,47 +261,46 @@ API 变动：
 - `docs/perf/07-optimization-backlog-and-routing.md`（字段对齐）
 
 并行/串行：
-- 与 `R-1`、`S-2`、`S-3` 都低冲突，可并行。
-- 这条线不应修改 `packages/logix-core/src/internal/runtime/core/**`。
+- 已完成，不再单独排期。
+- 若后续继续扩展，也不应修改 `packages/logix-core/src/internal/runtime/core/**`。
 
 API 变动：
 - 不需要。
 
-### `S-4` · current-head full-matrix 刷新解锁（已完成）
+### `S-4` · `RuntimeExternalStore delayed teardown` 最小修复（已完成）
 
 状态：
-- 已于 `2026-03-06` 完成 evidence-only 审计，当前不再作为 current-head full-matrix 的默认阻塞项。
-- 收口记录：`docs/perf/2026-03-06-s4-full-matrix-refresh-unblock.md`
+- 已于 `2026-03-06` 升级成最小代码修复，不再是 evidence-only 关闭。
+- 收口记录：`docs/perf/2026-03-06-s4-runtime-external-store-delayed-teardown.md`
 
 问题：
-- 当前 perf 主线虽然已有 targeted 证据，但 full-matrix 刷新曾被 `runtime store: multi-instance isolation (same moduleId, different instanceId)` 挡住。
-- 这使得 current-head 的 broad/full 收口能力不稳定，后续每刀都更依赖 targeted 证据。
+- `runtime store: multi-instance isolation (same moduleId, different instanceId)` 在整文件/collect 场景下存在低频 flake。
+- 这会让 full-matrix 收口链路被 `runtime-store-no-tearing` 偶发挡住。
 
 本轮裁决：
-- current-head 复核没有再次复现这条语义失败。
-- 不做 `RuntimeStore` / `TickScheduler` 的猜测式补丁；把问题定性为 backlog 真相源漂移，而不是 live runtime bug。
-- 除非后续在 clean/comparable 条件下重新拿到失败样本，否则不要再让 `S-4` 阻塞 full-matrix 刷新。
+- 根因更像 `RuntimeExternalStore` 在同一 tick 的 unsubscribe -> resubscribe 抖动里立即 teardown / removeStore，导致 store 被拆掉又重建。
+- 修复方式不是继续猜 `RuntimeStore` / `TickScheduler`，而是把最后一个 listener 移除后的 teardown 延迟到一个 microtask，并允许同 tick resubscribe 取消 teardown。
+- 结果是 `runtime-store-no-tearing` 不再作为 current-head full-matrix 的默认 blocker。
 
 架构缺陷：
-- perf 体系对“全量矩阵能否刷新”过度依赖少数语义测试；一旦其中一条功能/隔离线回归，整个 broad 收口就被拖住。
+- `RuntimeExternalStore` 之前把“最后一个 listener 移除”视为可以立即 teardown 的硬边界，但 React/browser 会在同一 tick 内出现 unsubscribe -> resubscribe 抖动。
+- 这种时序窗口一旦被忽略，就会把本该稳定的 selector snapshot 重新计算成 flake。
 
 预期收益：
 - 中等。
-- 不直接提速 runtime，但能恢复 full-matrix 刷新能力，让后续性能刀更快收口。
+- 不直接提速 runtime，但能恢复 `runtime-store-no-tearing` 作为 full-matrix 收口链路的一致性。
 
 实施成本：
 - 已完成。
-- 本轮没有动 runtime；成本主要在 clean verification + backlog 回写。
+- 成本集中在 React external store teardown 时序的最小修复与稳定性复核。
 
 主要落点：
+- `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`
 - `packages/logix-react/test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx`
-- `packages/logix-core/src/internal/runtime/core/RuntimeStore.ts`
-- `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
-- 必要时少量触及 `ModuleRuntime.impl.ts`
 
 并行/串行：
-- 已关闭，不再单独占用并行槽位。
-- 若未来重开，仍应优先限定在 test / `RuntimeStore` / `TickScheduler` 范围，避免无证据触碰 `ModuleRuntime.impl.ts`。
+- 已完成，不再单独占用并行槽位。
+- 若未来重开，优先沿同 tick unsubscribe/resubscribe 的时序窗口排查，而不是回到旧的 topic folding 假设。
 
 API 变动：
 - 不需要。
@@ -311,25 +334,17 @@ API 变动：
 
 ## 并行矩阵
 
-### 可以并行
+### 当前默认执行组
 
-1. `R-1` + `F-1`
-- 一个改 runtime core 调度，一个改自动化编排层。
-- 文件集完全分离。
+1. `R-1`
+- 当前唯一活跃主线，默认按 `v2 = urgent-aware handoff` 串行推进。
+- `F-1`、`S-2`、`S-4`、`S-5` 已完成或关闭，不再纳入默认并行组。
 
-2. `R-1` + `S-2`
+### 如需重开，可并行
+
+1. `R-1` + `S-2`
 - 一个改 `txnLanes` 主线，一个改 watcher benchmark 语义。
-- 只要 `S-2` 独立 worktree，就不会互踩。
-
-3. `R-1` + `S-3`
-- 一个改 runtime core policy，一个改 matrix/gate 语义。
-- 冲突面很低。
-
-4. `F-1` + `S-2`
-- 一个改自动化，一个改 benchmark 语义，几乎无共享文件。
-
-5. `F-1` + `S-4`
-- 一个改自动化，一个改 full-matrix 刷新解锁，冲突面低。
+- 仅当 `S-2` 继续补 benchmark 解释链/展示层时成立；仍需独立 worktree。
 
 ### 可以并行，但应独立 worktree
 
@@ -353,11 +368,11 @@ API 变动：
 
 ### Phase 1
 
-1. 主线：`R-1`
-2. 并行副线：`S-2`（独立 worktree）
-3. 并行自动化：`F-1`
-4. 可选第四线：`S-5`（先限定在 react.strictSuspenseJitter test/browser import 范围）
-5. `S-4` 已收口，不再占新 worktree
+1. 主线：`R-1 v2`（`urgent-aware handoff`）
+2. `F-1` 已完成；需要路由/排期时直接用 `python3 fabfile.py list-tasks|show-task|plan-parallel`
+3. `S-2` 已完成第一刀；只有在要继续补 benchmark 解释链时才重开，并强制独立 worktree
+4. `S-4` 已完成最小修复，不再占新 worktree
+5. `S-5` 已完成审计关闭，不再占新 worktree
 6. `S-3` 已收口，不再占新 worktree
 
 ### Phase 2
@@ -365,7 +380,7 @@ API 变动：
 - 只有当 `R-1` 收益已经确认后，才决定：
   - `watchers` 是否在 suite 校正后还剩 runtime 问题
   - `R-2` 是否值得立项
-- `F-1` 不依赖 `R-1` 收敛，可持续并行演进。
+- `F-1` 已落地为现成工具，不再单独占用执行波次。
 
 ## 给后续 `Fabfile` 的落点建议
 

@@ -4,6 +4,13 @@
 
 注意：正式 perf 证据（PerfReport/PerfDiff）仍归档在 `specs/<id>/perf/`，本目录负责“结论、约束、路线、执行手册”。
 
+## 当前路由快照（2026-03-06）
+
+- 唯一活跃主线：`R-1 v2`，即 `txnLanes` 的 `urgent-aware handoff`；`startup-phase` 只保留 checkpoint 结论，当前仍在 `v2` worktree 里推进。
+- 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）。
+- 已关闭：`S-1` residual audit、`S-3` gate/applicability、`S-5` refresh unblock 审计。
+- 真正的排期与并行策略以 `07-optimization-backlog-and-routing.md` 为准。
+
 ## 当前主线（无存量用户）
 
 - `05-forward-only-vnext-plan.md`
@@ -70,6 +77,8 @@
   - O-1：纯 state action watcher 并回原 action txn，`watchers=512` 从 `~85-95ms` 级压到 `~50-55ms`。
 - `2026-03-06-o2-watchers-direct-writeback.md`
   - O-2：纯 state action watcher 直接写 draft，`watchers=512` 进一步压到 `~36-43ms`，strict 下 `50ms` 线打穿到 `512`。
+- `2026-03-06-f1-perf-fabfile.md`
+  - F-1：落最小可用 perf `fabfile.py`；`07` 的任务路由已可直接被编排读取。
 - `2026-03-06-s2-watchers-preclick-settle.md`
   - S-2 准备刀：watchers benchmark 在真正点击前先 settle 一帧，减少初始挂载噪声对 click→paint 的污染。
 - `2026-03-06-s2-watchers-semantic-split.md`
@@ -82,3 +91,7 @@
   - Q-1：`converge auto->full (near_full)` 改成 slim decision summary，`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
 - `2026-03-06-r1-txn-lanes-phase-split-failed.md`
   - R-1 失败试验：blind first-host-yield 的两阶段 backlog policy 在 `mode=default` 三档都回归，应改走 urgent-aware handoff。
+- `2026-03-06-s4-runtime-external-store-delayed-teardown.md`
+  - S-4：`RuntimeExternalStore delayed teardown` 最小修复已合回，`runtime-store-no-tearing` 不再按 evidence-only 关闭。
+- `2026-03-06-s5-suspense-refresh-unblock.md`
+  - S-5：`react.strictSuspenseJitter` 在主分支环境可直接跑通，按 docs/evidence-only 审计关闭。
