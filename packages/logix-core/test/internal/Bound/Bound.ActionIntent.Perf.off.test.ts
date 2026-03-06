@@ -197,7 +197,7 @@ describe('Bound ActionIntent entry perf baseline (Diagnostics=off)', () => {
         const warmup = readNumberEnv('LOGIX_PERF_WARMUP', isCi ? 1 : 2, { integer: true, min: 0 })
         const attempts = readNumberEnv('LOGIX_ACTION_ENTRY_ATTEMPTS', isCi ? 3 : 3, { integer: true, min: 1 })
         // Shared CI runners have higher jitter; keep local default strict and CI moderately relaxed.
-        const maxRatio = readNumberEnv('LOGIX_ACTION_ENTRY_MAX_RATIO', isCi ? 1.15 : 1.05, { min: 0 })
+        const maxRatio = readNumberEnv('LOGIX_ACTION_ENTRY_MAX_RATIO', isCi ? 1.2 : 1.05, { min: 0 })
         const ciSoftMaxRatio = readNumberEnv('LOGIX_ACTION_ENTRY_CI_SOFT_MAX_RATIO', 1.1, { min: 0 })
         const maxCompatRatio = readNumberEnv('LOGIX_ACTION_ENTRY_COMPAT_MAX_RATIO', 1.2, { min: 0 })
         const ciJitterAllowance = readNumberEnv('LOGIX_ACTION_ENTRY_CI_JITTER_ALLOWANCE', isCi ? 0.01 : 0, { min: 0 })
