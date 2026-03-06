@@ -62,11 +62,11 @@
 
 ## 任务详情
 
-### `R-1` · `txnLanes` backlog policy split（当前活跃：v2 urgent-aware handoff）
+### `R-1` · `txnLanes` backlog policy split（当前活跃：observation-first）
 
 状态：
 - 当前唯一活跃主线。
-- 当前活跃方案是 `urgent-aware handoff`；`2026-03-06` 的 blind first-host-yield phase split 已判失败。
+- 当前活跃方案已升级为 `observation-first`：先用 `txnQueue` slim evidence 回答 urgent 到底是“入队太晚”还是“已入队但拿不到 baton”，再决定下一刀实现。`2026-03-06` 的 blind first-host-yield phase split 已判失败。
 - `startup-phase` checkpoint 与 handoff-lite 失败尝试只保留为 dated evidence，不再视作单独活跃任务。
 
 问题：
