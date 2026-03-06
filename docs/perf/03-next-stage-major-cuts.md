@@ -33,7 +33,7 @@
 - [x] P-1：`txnLanes.urgentBacklog` 改成 click-anchored 计时（evidence correction）；去掉 timer 排队噪声，`mode=default, steps=2000` 已进 `50ms`。
 - [x] Q-1：`converge auto->full (near_full)` 改成 slim decision summary（保留 evidence、去掉重资产）；`dirtyRootsRatio=1, steps=2000` 的 `auto<=full*1.05` 已回到门内。
 - [ ] R-1：`txnLanes` backlog policy split（区分 backlog 启动期与 steady-state 的 urgent 调度策略，继续打 `urgent.p95<=50ms` 硬门）。
-  - 当前活跃路由见 `docs/perf/07-optimization-backlog-and-routing.md`；这里只保留 `2026-03-06` 的失败/checkpoint 锚点：`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`、`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v3-failed.md`。
+  - 当前活跃路由见 `docs/perf/07-optimization-backlog-and-routing.md`；这里只保留 `2026-03-06` 的失败/checkpoint 锚点：`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`、`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v3-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`。
 
 
 ## Current-Head 裁决（2026-03-06）
@@ -53,7 +53,7 @@
 下一刀（只给一个）：
 - `R-1：txnLanes backlog policy split`。
 - 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`。
-- 这里只保留 current-head 裁决：不要再继续拧 `budgetMs/chunkSize` 小常数。当前 head 已补上 `txnQueue.*` observation 证据，并显示 urgent 主要是 late enqueue 而不是 queued waiter；blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败。
+- 这里只保留 current-head 裁决：不要再继续拧 `budgetMs/chunkSize` 小常数。当前 head 已补上 `txnQueue.*` observation 证据，并显示 urgent 主要是 late enqueue 而不是 queued waiter；但最新 invoke-window observation 进一步表明，`handler invoke -> queue enqueue/start` 只有 `0.1~0.8ms`，当前不要继续磨 `enqueueTransaction` / baton window；blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败。
 
 当前不建议先做：
 - `watchers`：先修 suite 语义，不再继续往 runtime 里塞 watcher 优化。

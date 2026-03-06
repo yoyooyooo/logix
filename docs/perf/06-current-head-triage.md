@@ -169,24 +169,22 @@
 
 ## 建议下一刀（只给一个）
 
-- `R-1：txnLanes backlog policy split`
+- `R-1：把定位前移到 queue 之前（schedule -> handler invoke -> runtime admission）`
 
 ### 为什么是它
 
-1. 它是 current-head 里最稳定复现的 P1 主门失败。
-2. 它既出现在 broad，也出现在 targeted，不是只在某个 noisy suite 里偶发。
-3. 它的现象更像“策略层没有把 backlog 启动期与 steady-state 区分开”，继续调 `budgetMs/chunkSize` 这种常数，收益大概率已经见顶。
+1. `txnLanes.urgentBacklog` 仍是 current-head 最稳定复现的 P1 主门失败。
+2. 最新 invoke-window evidence 显示：`firstNonUrgent/urgent` 一旦进入 handler，`invoke -> enqueue/start` 只有 `0.1~0.8ms`，queue 内几乎没有可砍空间。
+3. 因此继续在 `enqueueTransaction` / baton window 上落 policy，很可能只是重跑已失败的 queue-level 尝试。
 
 ### 建议切法
 
-- 不再继续拧 `budgetMs/maxLagMs/chunkSize` 的小常数。
-- 直接把 `txnLanes` 策略拆成两段：
-  - backlog 启动期：优先降低 first urgent after backlog start 的等待
-  - steady-state：优先吞吐与 catch-up
-- 目标是把 `urgent.p95<=50ms` 从“边缘抖动”变成“稳定过线”，而不是只改善某一个 steps 档位。
+- 先不要继续改 `enqueueTransaction` / baton visibility window，也不要再回到 startup-phase / handoff-lite / blind first-host-yield。
+- 把 `txnLanes` 的定位前移到 `schedule -> handler invoke` 这段，判断是 browser click harness、React 事件交付，还是更高层 admission model 在拖慢 urgent 到达 runtime。
+- 在没有更早层写权限之前，这条线应以 docs/evidence-only 收口，而不是强落一个 queue-side runtime 补丁。
 
 ## 是否需要 API 变动
 
-- 当前裁决：`R-1` 先不动表面 API。
-- 原因：`txnLanes` 还可以先在内核 policy 层做结构性重排，未到必须推翻对外配置面的阶段。
-- 只有当 policy split 之后仍然卡在 `50ms` 地板，才再提出更高层的 `TxnLanePolicy` API vNext 收敛方案。
+- 当前裁决：`R-1` 暂不动表面 API，但也不再把 queue policy split 当作立即可落的一刀。
+- 原因：最新 evidence 表明主延迟发生在 runtime 看到请求之前；只有当后续确认需要改 admission model，才讨论更高层 API / policy 收敛方案。
+- 只有当前移到 pre-queue / admission model 之后仍然卡在 `50ms` 地板，才再提出更高层的 `TxnLanePolicy` API vNext 收敛方案。

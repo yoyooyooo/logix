@@ -110,7 +110,9 @@ const isTxnQueueTraceEvent = (event: unknown): event is { readonly type: 'trace:
 const summarizeTxnQueueEvidence = (args: {
   readonly events: ReadonlyArray<unknown>
   readonly backlogStartedAt: number
+  readonly backlogActionInvokedAt?: number
   readonly urgentScheduledAt: number
+  readonly urgentActionInvokedAt?: number
 }): Record<string, EvidenceSample> => {
   const queueEvents = args.events
     .filter(isTxnQueueTraceEvent)
@@ -129,6 +131,17 @@ const summarizeTxnQueueEvidence = (args: {
 
   const urgentEnqueueVsFirstNonUrgentStartMs =
     urgentQueue && firstNonUrgent ? urgentQueue.enqueueAtMs - firstNonUrgent.startAtMs : undefined
+
+  const backlogActionInvokeOffsetMs =
+    typeof args.backlogActionInvokedAt === 'number' ? args.backlogActionInvokedAt - args.backlogStartedAt : undefined
+
+  const urgentInvokeDelayFromScheduleMs =
+    typeof args.urgentActionInvokedAt === 'number' ? args.urgentActionInvokedAt - args.urgentScheduledAt : undefined
+
+  const urgentInvokeVsFirstNonUrgentStartMs =
+    typeof args.urgentActionInvokedAt === 'number' && firstNonUrgent
+      ? args.urgentActionInvokedAt - firstNonUrgent.startAtMs
+      : undefined
 
   const urgentQueuedWaiter =
     urgentQueue &&
@@ -155,6 +168,16 @@ const summarizeTxnQueueEvidence = (args: {
     'txnQueue.urgent.enqueueDelayFromScheduleMs': urgentQueue
       ? Math.max(0, urgentQueue.enqueueAtMs - args.urgentScheduledAt)
       : missingUrgent,
+    'txnQueue.urgent.invokeDelayFromScheduleMs':
+      typeof urgentInvokeDelayFromScheduleMs === 'number' ? Math.max(0, urgentInvokeDelayFromScheduleMs) : missingUrgent,
+    'txnQueue.urgent.enqueueDelayFromInvokeMs':
+      urgentQueue && typeof args.urgentActionInvokedAt === 'number'
+        ? Math.max(0, urgentQueue.enqueueAtMs - args.urgentActionInvokedAt)
+        : missingUrgent,
+    'txnQueue.urgent.startDelayFromInvokeMs':
+      urgentQueue && typeof args.urgentActionInvokedAt === 'number'
+        ? Math.max(0, urgentQueue.startAtMs - args.urgentActionInvokedAt)
+        : missingUrgent,
     'txnQueue.urgent.startDelayFromScheduleMs': urgentQueue
       ? Math.max(0, urgentQueue.startAtMs - args.urgentScheduledAt)
       : missingUrgent,
@@ -171,6 +194,10 @@ const summarizeTxnQueueEvidence = (args: {
       typeof urgentEnqueueVsFirstNonUrgentStartMs === 'number'
         ? urgentEnqueueVsFirstNonUrgentStartMs
         : missingNonUrgent,
+    'txnQueue.urgent.invokeVsFirstNonUrgentStartMs':
+      typeof urgentInvokeVsFirstNonUrgentStartMs === 'number'
+        ? urgentInvokeVsFirstNonUrgentStartMs
+        : missingNonUrgent,
     'txnQueue.urgent.diagnosis.queuedWaiter': urgentQueuedWaiter,
     'txnQueue.urgent.diagnosis.lateEnqueue': urgentLateEnqueue,
     'txnQueue.urgent.diagnosis.idleDirect':
@@ -178,12 +205,22 @@ const summarizeTxnQueueEvidence = (args: {
     'txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs': firstNonUrgent
       ? Math.max(0, firstNonUrgent.enqueueAtMs - args.backlogStartedAt)
       : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs':
+      typeof backlogActionInvokeOffsetMs === 'number' ? Math.max(0, backlogActionInvokeOffsetMs) : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs':
+      firstNonUrgent && typeof args.backlogActionInvokedAt === 'number'
+        ? Math.max(0, firstNonUrgent.enqueueAtMs - args.backlogActionInvokedAt)
+        : missingNonUrgent,
     'txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs': firstNonUrgent
       ? Math.max(0, firstNonUrgent.startAtMs - args.backlogStartedAt)
       : missingNonUrgent,
     'txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs': firstNonUrgent
       ? Math.max(0, firstNonUrgent.startAtMs - args.backlogStartedAt)
       : missingNonUrgent,
+    'txnQueue.backlog.firstNonUrgent.startDelayFromInvokeMs':
+      firstNonUrgent && typeof args.backlogActionInvokedAt === 'number'
+        ? Math.max(0, firstNonUrgent.startAtMs - args.backlogActionInvokedAt)
+        : missingNonUrgent,
     'txnQueue.backlog.firstNonUrgent.queueWaitMs': firstNonUrgent ? firstNonUrgent.queueWaitMs : missingNonUrgent,
     'txnQueue.backlog.firstNonUrgent.startMode.directHandoff':
       firstNonUrgent?.startMode === 'direct_handoff' ? 1 : 0,
@@ -247,22 +284,37 @@ const makeTxnLanesModule = (
   return { M, impl, lastKey, initialLastValue: initial[lastKey] ?? 0 }
 }
 
-const App: React.FC<{ readonly moduleTag: any; readonly lastKey: string }> = ({ moduleTag, lastKey }) => {
+const App: React.FC<{
+  readonly moduleTag: any
+  readonly lastKey: string
+  readonly onSetAInvoked?: (atMs: number) => void
+  readonly onUrgentInvoked?: (atMs: number) => void
+}> = ({ moduleTag, lastKey, onSetAInvoked, onUrgentInvoked }) => {
   const module = useModule(moduleTag) as any
   const b = useModule(module, (s) => (s as any).b as number)
   const dLast = useModule(module, (s) => (s as any)[lastKey] as number)
+
+  const handleSetA = (value: number) => {
+    onSetAInvoked?.(performance.now())
+    module.actions.setA(value)
+  }
+
+  const handleUrgent = () => {
+    onUrgentInvoked?.(performance.now())
+    module.actions.urgent()
+  }
 
   return (
     <div>
       <p>B: {b}</p>
       <p>D: {dLast}</p>
-      <button type="button" onClick={() => module.actions.setA(0)}>
+      <button type="button" onClick={() => handleSetA(0)}>
         SetA0
       </button>
-      <button type="button" onClick={() => module.actions.setA(1)}>
+      <button type="button" onClick={() => handleSetA(1)}>
         SetA1
       </button>
-      <button type="button" onClick={() => module.actions.urgent()}>
+      <button type="button" onClick={handleUrgent}>
         Urgent
       </button>
     </div>
@@ -297,6 +349,10 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       readonly setA1: any
       readonly urgent: any
       readonly queueTraceBuffer: ReturnType<typeof Logix.Debug.makeRingBufferSink>
+      readonly actionTrace: {
+        backlogActionInvokedAt?: number
+        urgentActionInvokedAt?: number
+      }
       a: 0 | 1
       b: number
     }
@@ -317,6 +373,10 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
 
       const { M, impl, lastKey, initialLastValue } = makeTxnLanesModule(steps, ITERS)
       const queueTraceBuffer = Logix.Debug.makeRingBufferSink(2048)
+      const actionTrace: {
+        backlogActionInvokedAt?: number
+        urgentActionInvokedAt?: number
+      } = {}
       const debugLayer = Layer.mergeAll(
         Logix.Debug.replace([queueTraceBuffer.sink]),
         Logix.Debug.diagnosticsLevel('light'),
@@ -351,7 +411,16 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       document.body.innerHTML = ''
       const screen = await render(
         <RuntimeProvider runtime={runtime}>
-          <App moduleTag={M.tag} lastKey={lastKey} />
+          <App
+            moduleTag={M.tag}
+            lastKey={lastKey}
+            onSetAInvoked={(atMs) => {
+              actionTrace.backlogActionInvokedAt = atMs
+            }}
+            onUrgentInvoked={(atMs) => {
+              actionTrace.urgentActionInvokedAt = atMs
+            }}
+          />
         </RuntimeProvider>,
       )
 
@@ -362,7 +431,21 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       const setA1 = screen.getByRole('button', { name: 'SetA1' })
       const urgent = screen.getByRole('button', { name: 'Urgent' })
 
-      active = { steps, mode, iters: ITERS, lastKey, runtime, screen, setA0, setA1, urgent, queueTraceBuffer, a: 0, b: 0 }
+      active = {
+        steps,
+        mode,
+        iters: ITERS,
+        lastKey,
+        runtime,
+        screen,
+        setA0,
+        setA1,
+        urgent,
+        queueTraceBuffer,
+        actionTrace,
+        a: 0,
+        b: 0,
+      }
       return active
     }
 
@@ -382,6 +465,8 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
             const expectedLast = computeValue(ctx.iters, nextA, Math.max(0, steps - 1))
 
             ctx.queueTraceBuffer.clear()
+            ctx.actionTrace.backlogActionInvokedAt = undefined
+            ctx.actionTrace.urgentActionInvokedAt = undefined
             const backlogStartedAt = performance.now()
             if (nextA === 0) {
               await ctx.setA0.click()
@@ -412,7 +497,9 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
             const queueEvidence = summarizeTxnQueueEvidence({
               events: ctx.queueTraceBuffer.getSnapshot(),
               backlogStartedAt,
+              backlogActionInvokedAt: ctx.actionTrace.backlogActionInvokedAt,
               urgentScheduledAt,
+              urgentActionInvokedAt: ctx.actionTrace.urgentActionInvokedAt,
             })
 
             return {

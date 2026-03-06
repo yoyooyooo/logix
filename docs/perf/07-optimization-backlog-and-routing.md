@@ -62,11 +62,11 @@
 
 ## 任务详情
 
-### `R-1` · `txnLanes` backlog policy split（当前活跃：observation-first）
+### `R-1` · `txnLanes` backlog policy split（当前活跃：pre-queue invoke delay re-triage）
 
 状态：
-- 当前唯一活跃主线。
-- 当前活跃方案已升级为 `observation-first`：先用 `txnQueue` slim evidence 回答 urgent 到底是“入队太晚”还是“已入队但拿不到 baton”，再决定下一刀实现。`2026-03-06` 的 blind first-host-yield phase split 已判失败。
+- `txnLanes` 仍是当前唯一未关闭的主问题，但 queue-side runtime cut 已暂停。
+- `observation-first` 已完成两层定位：先用 `txnQueue` 区分 `late enqueue` vs `queued waiter`，再用 invoke-window evidence 区分“晚在 handler 前”还是“晚在 runtime queue 内”。
 - `startup-phase` checkpoint 与 handoff-lite 失败尝试只保留为 dated evidence，不再视作单独活跃任务。
 
 问题：
@@ -75,34 +75,35 @@
 
 最新状态：
 - `2026-03-06` 已新增 observation-first 收口：`docs/perf/2026-03-06-r1-txn-lanes-observation-v5.md`。
-- 当前 `txn-lanes` targeted 已导出 `txnQueue.*` evidence；最新观测显示 `mode=default` 下 `urgent.enqueueVsFirstNonUrgentStartMs > 0`、`urgent.queueWaitMs ~= 0`、`urgent.diagnosis.lateEnqueue = 1`、`queuedWaiter = 0`，说明主问题更像 enqueue-side late visibility，而不是 queue 内 waiter 抢不到 baton。
+- `2026-03-06` 已补 invoke-window 失败收口：`docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`。
+- 当前 `txn-lanes` targeted 仍显示 `late enqueue`，但 default 三档里的新证据表明：`firstNonUrgent.invokeOffsetFromBacklogMs ~= 28~32ms`、`firstNonUrgent.enqueueDelayFromInvokeMs ~= 0.6~0.8ms`、`urgent.invokeDelayFromScheduleMs ~= 26.6~28.5ms`、`urgent.enqueueDelayFromInvokeMs ~= 0.1ms`、`urgent.queueWaitMs = 0`。
+- 这说明当前主要延迟发生在 **handler 真正调用 runtime 之前**；`enqueueTransaction` / baton 交接内部不是主要税点。
 
 架构缺陷：
-- backlog 启动期与 steady-state 共用同一策略面，导致“首个 urgent 延迟”和“整体 catch-up 吞吐”被迫一起调。
+- 当前 harness / control-surface 会在 runtime 看到请求之前就消耗几十毫秒，导致 queue policy 与 steady-state 策略不是当前 write scope 内的首要瓶颈。
 
 预期收益：
-- 这是 current-head 唯一明确的 runtime 主线，收益最高。
-- 若成功，能把 `urgent.p95<=50ms` 从边缘抖动改成稳定过线。
-- 已知失败方向：`2026-03-06` 的 blind first-host-yield phase split 会让 `mode=default` 三档回归，见 `docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`；queue-level `post-urgent visibility window` 也因 4-run quick audit 不可复现而失败，见 `docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v4-failed.md`。当前应优先消费 observation-first 证据，而不是回到 handoff/常数调参。
+- `R-1` 仍是 current-head 最重要的问题，但在当前 write scope 内继续做 queue-side runtime cut，收益已经不清晰。
+- 若继续重试 `txnQueue` visibility window / handoff 细磨，大概率只会追逐噪声或重走已失败路径。
+- 如果还要继续 `R-1`，下一刀必须前移到 queue 之前，或明确扩大实现边界。
 
 实施成本：
 - 中高。
-- 需要动 runtime 核心调度逻辑与 targeted perf suite。
+- 现阶段更像需要改 browser/React/control-surface 或 admission model，而不是继续只动 runtime core queue。
 
 主要落点：
-- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnQueue.ts`
 - `packages/logix-react/test/browser/perf-boundaries/txn-lanes.test.tsx`
-- `docs/perf/2026-03-06-r1-txn-lanes-observation-v5.md`
+- `docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`
+- `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.r1-late-enqueue-v5.invoke-observation.txn-lanes.targeted.json`
 
 并行/串行：
-- 必须作为主线串行推进。
-- 不要与任何会改 `ModuleRuntime.impl.ts` 或 `txnLanePolicy` 的任务并行。
+- `txnLanes` 结论仍应串行治理，避免不同 agent 再次同时改 queue/runtime 路径。
+- 在 evidence 没变化之前，不要再开新的 `enqueueTransaction` / baton window runtime 试验。
 
 API 变动：
 - 当前不需要。
-- 当前活跃主线仍是 `R-1`，但 current head 的优先动作已切到 observation-first 之后的 enqueue-side runtime cut；不要重复 blind first-host-yield，也不要把 startup-phase checkpoint / handoff-lite / remembered-pressure pre-urgent cap / post-urgent visibility window 这些失败尝试固化成正式 policy。
-- `2026-03-06` 的显式 startup-phase 版在 3/3 quick audit 回归，见 `docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`；该记录只保留为 checkpoint。
-- 只有当 `R-1 v2` 的 urgent-aware policy 仍无法稳定过线，才升级到 `R-2`。
+- 当前不要重复 blind first-host-yield，也不要把 startup-phase checkpoint / handoff-lite / remembered-pressure pre-urgent cap / post-urgent visibility window 这些失败尝试固化成正式 policy。
+- invoke-window evidence 已否掉“继续磨 `enqueueTransaction` / baton 可见性”的方向；只有当后续允许改更早层 admission model，或 evidence 再次显示 queue 内有实质税点时，才考虑升级到 `R-2`。
 
 ### `S-1` · `externalStore` broad residual 复核（已完成）
 
