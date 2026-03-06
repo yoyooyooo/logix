@@ -4,23 +4,35 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import subprocess
 import sys
+import time
 from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parent
+PLAYBOOK_DOC = ROOT / 'docs' / 'perf' / '04-agent-execution-playbook.md'
 ROUTING_DOC = ROOT / 'docs' / 'perf' / '07-optimization-backlog-and-routing.md'
 WORKTREE_SERIES = ROOT.name.split('.', 1)[0]
 WORKTREE_ROOT = ROOT.parent
 AGENT_BRANCH_PREFIX = 'agent/'
 DEFAULT_BASE_BRANCH = 'main'
+PROBE_MARKER_START = '<!-- fabfile:probe_next_blocker:start -->'
+PROBE_MARKER_END = '<!-- fabfile:probe_next_blocker:end -->'
+ENV_FAILURE_PATTERNS = (
+    re.compile(r'command not found', re.I),
+    re.compile(r'node_modules missing', re.I),
+    re.compile(r'no such file or directory', re.I),
+    re.compile(r'cannot find module', re.I),
+)
 
 TABLE_HEADER = '| ID | 类别 | 问题 | 预期收益 | 成本 | 冲突风险 | 并行策略 | API 变动 |'
 SECTION_TITLE_RE = re.compile(r'^### `(?P<task_id>[^`]+)` · (?P<title>.+)$', re.M)
 FILE_RE = re.compile(r'^- `([^`]+)`$', re.M)
+PROBE_ENTRY_RE = re.compile(r'^- `(?P<suite_id>[^`]+)` \| `(?P<gate>[^`]+)` \| `(?P<command>[^`]+)`$')
 TASK_TOKEN_RE = re.compile(r'(^|[./_-])([a-z])([0-9]+)(?=-|$)')
 TRAILING_VERSION_RE = re.compile(r'-v(?P<version>[0-9]+)$')
 SLUG_STOPWORDS = {
@@ -90,8 +102,104 @@ class BranchDiffInfo:
     merge_ready_reasons: list[str]
 
 
+@dataclass
+class BrowserProbeTarget:
+    order: int
+    suite_id: str
+    gate: str
+    command: str
+
+
+@dataclass
+class BrowserProbeRun:
+    order: int
+    suite_id: str
+    gate: str
+    command: str
+    status: str
+    failure_kind: str | None
+    returncode: int
+    duration_ms: int
+    stdout_tail: list[str]
+    stderr_tail: list[str]
+
+
 def _read_doc() -> str:
     return ROUTING_DOC.read_text(encoding='utf-8')
+
+
+def _read_playbook() -> str:
+    return PLAYBOOK_DOC.read_text(encoding='utf-8')
+
+
+def _extract_marked_block(text: str, source: Path, start_marker: str, end_marker: str) -> str:
+    start = text.find(start_marker)
+    if start < 0:
+        raise SystemExit(f'未找到标记 {start_marker!r}: {source}')
+    start += len(start_marker)
+    end = text.find(end_marker, start)
+    if end < 0:
+        raise SystemExit(f'未找到标记 {end_marker!r}: {source}')
+    return text[start:end].strip()
+
+
+def load_browser_probe_targets() -> list[BrowserProbeTarget]:
+    block = _extract_marked_block(_read_playbook(), PLAYBOOK_DOC, PROBE_MARKER_START, PROBE_MARKER_END)
+    targets: list[BrowserProbeTarget] = []
+    for line_no, raw_line in enumerate(block.splitlines(), start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        match = PROBE_ENTRY_RE.match(line)
+        if not match:
+            raise SystemExit(f'无法解析 blocker probe 定义（第 {line_no} 行）: {raw_line}')
+        targets.append(BrowserProbeTarget(order=len(targets) + 1, **match.groupdict()))
+    if not targets:
+        raise SystemExit(f'未在 {PLAYBOOK_DOC} 中解析到 browser blocker probe 顺序')
+    return targets
+
+
+def _tail_lines(text: str, limit: int) -> list[str]:
+    if limit <= 0:
+        return []
+    lines = [line for line in text.splitlines() if line.strip()]
+    return lines[-limit:]
+
+
+def _probe_target_payload(target: BrowserProbeTarget) -> dict[str, Any]:
+    return asdict(target)
+
+
+def _probe_run_payload(run: BrowserProbeRun) -> dict[str, Any]:
+    return asdict(run)
+
+
+def _run_probe_target(target: BrowserProbeTarget, tail_lines: int) -> BrowserProbeRun:
+    started_at = time.perf_counter()
+    result = subprocess.run(
+        shlex.split(target.command),
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    duration_ms = int((time.perf_counter() - started_at) * 1000)
+    failure_kind = None
+    if result.returncode != 0:
+        combined_output = f'{result.stdout}\n{result.stderr}'
+        failure_kind = 'environment' if any(pattern.search(combined_output) for pattern in ENV_FAILURE_PATTERNS) else 'suite'
+    return BrowserProbeRun(
+        order=target.order,
+        suite_id=target.suite_id,
+        gate=target.gate,
+        command=target.command,
+        status='passed' if result.returncode == 0 else 'failed',
+        failure_kind=failure_kind,
+        returncode=result.returncode,
+        duration_ms=duration_ms,
+        stdout_tail=_tail_lines(result.stdout, tail_lines),
+        stderr_tail=_tail_lines(result.stderr, tail_lines),
+    )
 
 
 def _parse_table(text: str) -> dict[str, dict[str, str]]:
@@ -816,6 +924,85 @@ def cmd_plan_parallel(tasks: dict[str, TaskInfo], worktrees: list[WorktreeInfo],
     return 0
 
 
+def cmd_probe_next_blocker(json_mode: bool, dry_run: bool, tail_lines: int) -> int:
+    targets = load_browser_probe_targets()
+    payload: dict[str, Any] = {
+        'source': str(PLAYBOOK_DOC),
+        'mode': 'probe_next_blocker',
+        'dry_run': dry_run,
+        'tail_lines': tail_lines,
+        'targets': [_probe_target_payload(target) for target in targets],
+    }
+    if dry_run:
+        payload.update(
+            {
+                'status': 'dry_run',
+                'executed': [],
+                'blocker': None,
+                'pending': [_probe_target_payload(target) for target in targets],
+            },
+        )
+        if json_mode:
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+            return 0
+
+        print('browser blocker probe（dry-run）:')
+        for target in targets:
+            print(f'- [{target.order}/{len(targets)}] {target.suite_id} | gate={target.gate}')
+            print(f'  command={target.command}')
+        print('- 不执行 full collect；只按 playbook 预设顺序跑 targeted browser suites')
+        return 0
+
+    runs: list[BrowserProbeRun] = []
+    blocker: BrowserProbeRun | None = None
+    for target in targets:
+        run = _run_probe_target(target, tail_lines)
+        runs.append(run)
+        if run.returncode != 0:
+            blocker = run
+            break
+
+    pending_targets = targets[len(runs) :]
+    payload.update(
+        {
+            'status': 'blocked' if blocker else 'clear',
+            'executed': [_probe_run_payload(run) for run in runs],
+            'blocker': _probe_run_payload(blocker) if blocker else None,
+            'pending': [_probe_target_payload(target) for target in pending_targets],
+        },
+    )
+    if json_mode:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return blocker.returncode if blocker else 0
+
+    print('browser blocker probe:')
+    for run in runs:
+        print(
+            f'- [{run.order}/{len(targets)}] {run.suite_id} | gate={run.gate} | status={run.status} | failure_kind={run.failure_kind or "-"} | duration_ms={run.duration_ms}',
+        )
+        print(f'  command={run.command}')
+    if blocker:
+        print(f'next_blocker: {blocker.suite_id} ({blocker.gate})')
+        print(f'failure_kind: {blocker.failure_kind}')
+        print(f'returncode: {blocker.returncode}')
+        if blocker.stdout_tail:
+            print('stdout_tail:')
+            for line in blocker.stdout_tail:
+                print(f'- {line}')
+        if blocker.stderr_tail:
+            print('stderr_tail:')
+            for line in blocker.stderr_tail:
+                print(f'- {line}')
+        if pending_targets:
+            print('pending_suites:')
+            for target in pending_targets:
+                print(f'- {target.suite_id} ({target.gate})')
+        return blocker.returncode
+
+    print('next_blocker: none（预设 browser blocker suites 全部通过）')
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='Perf backlog routing fabfile')
     sub = parser.add_subparsers(dest='command', required=True)
@@ -858,28 +1045,47 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument('--json', action='store_true')
     plan.set_defaults(handler='plan_parallel')
 
+    probe = sub.add_parser(
+        'probe_next_blocker',
+        aliases=['probe-next-blocker'],
+        help='按 playbook 预设顺序逐个跑 targeted browser suite，遇到第一个失败就停',
+    )
+    probe.add_argument('--json', action='store_true')
+    probe.add_argument('--dry-run', action='store_true')
+    probe.add_argument('--tail-lines', type=int, default=20)
+    probe.set_defaults(handler='probe_next_blocker')
+
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    tasks = load_tasks()
-    worktrees = load_active_worktrees()
     if args.handler == 'list_tasks':
+        tasks = load_tasks()
         return cmd_list_tasks(tasks)
     if args.handler == 'show_task':
+        tasks = load_tasks()
         return cmd_show_task(tasks, args.task_id, args.json)
     if args.handler == 'show_worktree_plan':
+        tasks = load_tasks()
+        worktrees = load_active_worktrees()
         return cmd_show_worktree_plan(tasks, worktrees, args.task_id, args.json)
     if args.handler == 'list_active_worktrees':
+        worktrees = load_active_worktrees()
         return cmd_list_active_worktrees(worktrees, args.json)
     if args.handler == 'list_merge_ready':
+        worktrees = load_active_worktrees()
         return cmd_list_merge_ready(worktrees, args.json)
     if args.handler == 'show_branch_diff':
+        worktrees = load_active_worktrees()
         return cmd_show_branch_diff(worktrees, args.branch, args.json)
     if args.handler == 'plan_parallel':
+        tasks = load_tasks()
+        worktrees = load_active_worktrees()
         return cmd_plan_parallel(tasks, worktrees, args.json)
+    if args.handler == 'probe_next_blocker':
+        return cmd_probe_next_blocker(args.json, args.dry_run, args.tail_lines)
     parser.error(f'未知命令: {args.command}')
     return 2
 
