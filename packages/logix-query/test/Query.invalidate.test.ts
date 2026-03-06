@@ -6,6 +6,24 @@ import * as Query from '../src/index.js'
 
 const ReplayLog = Logix.InternalContracts.ReplayLog
 
+const waitUntil = (
+  predicate: () => boolean,
+  options?: { readonly timeoutMs?: number; readonly intervalMs?: number; readonly label?: string },
+): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    const timeoutMs = options?.timeoutMs ?? 1000
+    const intervalMs = options?.intervalMs ?? 10
+    const label = options?.label ? ` (${options.label})` : ''
+    const startedAt = Date.now()
+
+    while (!predicate()) {
+      if (Date.now() - startedAt > timeoutMs) {
+        throw new Error(`[waitUntil] timeout after ${timeoutMs}ms${label}`)
+      }
+      yield* Effect.sleep(Duration.millis(intervalMs))
+    }
+  })
+
 describe('Query.invalidate', () => {
   it.scoped('should record invalidate event, call engine.invalidate, and refetch afterwards', () =>
     Effect.gen(function* () {
@@ -164,19 +182,21 @@ describe('Query.invalidate', () => {
         const controller = module.controller.make(rt)
 
         // onMount: both a & b load once
-        yield* Effect.sleep(Duration.millis(30))
+        yield* waitUntil(() => loadCallsA === 1 && loadCallsB === 1, { label: 'onMount a & b load once' })
         expect(loadCallsA).toBe(1)
         expect(loadCallsB).toBe(1)
 
         // Tag match: refresh `a` only
         yield* controller.controller.invalidate({ kind: 'byTag', tag: 'user' })
-        yield* Effect.sleep(Duration.millis(60))
+        yield* waitUntil(() => loadCallsA === 2 && loadCallsB === 1, { label: 'invalidate byTag=user refreshes a only' })
         expect(loadCallsA).toBe(2)
         expect(loadCallsB).toBe(1)
 
         // No tag match: fall back to refreshing all
         yield* controller.controller.invalidate({ kind: 'byTag', tag: 'unknown' })
-        yield* Effect.sleep(Duration.millis(60))
+        yield* waitUntil(() => loadCallsA === 3 && loadCallsB === 2, {
+          label: 'invalidate byTag=unknown falls back to refresh all',
+        })
         expect(loadCallsA).toBe(3)
         expect(loadCallsB).toBe(2)
 
